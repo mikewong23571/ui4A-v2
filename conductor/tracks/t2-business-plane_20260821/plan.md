@@ -35,8 +35,8 @@
 
 ## Phase D: rule driver 与 agent 循环(E2E B1–B3)
 
-- [ ] Task: agent 循环协议(TDD:navigate/exec/done 步进、停止条件、拒绝即数据回流)
-- [ ] Task: rule driver 决策器(TDD:目标相关性四层级次序与各层停止条件;done=完成类动作成功过)
+- [x] Task: agent 循环协议(TDD:navigate/exec/done 步进、停止条件、拒绝即数据回流) `7921b74`
+- [~] Task: rule driver 决策器(TDD:目标相关性四层级次序与各层停止条件;done=完成类动作成功过)
 - [ ] Task: E2E B1/B2/B3(Playwright request 级:跑循环断言业务结果与日志)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
