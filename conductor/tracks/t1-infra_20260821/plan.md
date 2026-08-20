@@ -31,9 +31,9 @@
 
 ## Phase 3: 质量门、E2E 基座与文档
 
-- [ ] Task: 质量门(typecheck + lint + 聚合脚本)
-  - [ ] eslint flat config + prettier;`tsc --noEmit` 全 workspace;根 `pnpm check` 聚合
-  - [ ] 验证:`pnpm check` 在有 lint 违例样例时失败,清理后全绿
+- [x] Task: 质量门(typecheck + lint + 聚合脚本) (a9365bd)
+  - [x] eslint flat config + prettier;`tsc --noEmit` 全 workspace;根 `pnpm check` 聚合
+  - [x] 验证:`pnpm check` 在有 lint 违例样例时失败,清理后全绿
 - [ ] Task: Playwright E2E 骨架与首页 smoke(TDD)
   - [ ] 初始化 playwright(webServer 配置复用 dev server,CI=true 单次)
   - [ ] smoke 测试:访问 `/` 得 200 且标题含 "UI4A";访问 `/api/health` 得 `status: "ok"`
