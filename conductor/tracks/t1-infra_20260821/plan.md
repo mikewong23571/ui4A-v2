@@ -4,9 +4,9 @@
 
 ## Phase 1: Monorepo 骨架与共享通路
 
-- [ ] Task: 搭建 pnpm workspaces 根骨架
-  - [ ] 写 `pnpm-workspace.yaml`、根 `package.json`(scripts: check/dev/e2e)、`tsconfig.base.json`(strict)、`.gitignore`、`.env.example`
-  - [ ] 验证:`pnpm install` 成功且根脚本可执行
+- [x] Task: 搭建 pnpm workspaces 根骨架 (a912c5c)
+  - [x] 写 `pnpm-workspace.yaml`、根 `package.json`(scripts: check/dev/e2e)、`tsconfig.base.json`(strict)、`.gitignore`、`.env.example`
+  - [x] 验证:`pnpm install` 成功且根脚本可执行
 - [ ] Task: 建立 packages/shared(TDD)
   - [ ] 先写 vitest 失败测试(占位函数 `APP_NAME`/`VERSION` 等)
   - [ ] 实现 shared 包使测试转绿;package.json 导出类型与入口
