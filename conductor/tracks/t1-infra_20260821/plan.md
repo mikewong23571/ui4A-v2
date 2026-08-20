@@ -2,7 +2,7 @@
 
 > 依据 `spec.md` 与 `workflow.md`(TDD:每个实现任务先写失败测试)。状态:`[ ]` 待办 / `[~]` 进行中 / `[x]` 完成(附 commit 短 SHA)。
 
-## Phase 1: Monorepo 骨架与共享通路
+## Phase 1: Monorepo 骨架与共享通路 [checkpoint: 3212e1e]
 
 - [x] Task: 搭建 pnpm workspaces 根骨架 (a912c5c)
   - [x] 写 `pnpm-workspace.yaml`、根 `package.json`(scripts: check/dev/e2e)、`tsconfig.base.json`(strict)、`.gitignore`、`.env.example`
@@ -17,7 +17,7 @@
 - [x] Task: 建立 apps/worker(空壳心跳进程,接入 shared) (3212e1e)
   - [x] 先写失败测试(心跳函数纯逻辑:间隔计算/退出信号处理)
   - [x] 实现 tsx 入口:启动打印心跳(含 shared VERSION),SIGINT 干净退出
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) (3212e1e)
 
 ## Phase 2: PostgreSQL 与运行环境
 
