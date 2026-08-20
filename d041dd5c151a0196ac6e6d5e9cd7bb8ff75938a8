@@ -1,0 +1,18 @@
+Task Summary — T1 Phase 3 Task 2: Playwright E2E 骨架与首页 smoke(TDD)
+
+TDD 过程:
+- Red:先写 playwright.config.ts + e2e/smoke.spec.ts 并将根 e2e 脚本改为 CI=true playwright test,运行 pnpm e2e → 'playwright: command not found' 失败(未安装,符合预期)。
+- Green:pnpm add -w -D playwright @playwright/test(均为 1.62.1);pnpm exec playwright install chromium 一次成功(94.7 MiB,约 23s,无 D6 代理阻碍),Chromium 151.0.7922.34(playwright build v1234,含 chromium 与 chromium_headless_shell)。
+
+改动文件:
+- playwright.config.ts(新):testDir 'e2e/';webServer.command='PORT=3100 pnpm dev'、url=http://localhost:3100、reuseExistingServer=!CI、timeout 120s;baseURL 3100;CI 下 forbidOnly + list/html reporter。
+- e2e/smoke.spec.ts(新):①访问 / 断言 response.status()===200、title 含 UI4A、h1 UI4A 可见;②GET /api/health 断言 200 且 {status:'ok', db:'ok'}(postgres 由 compose 提供)。
+- vitest.config.ts(新):exclude e2e/**——自纠发现:vitest 默认收集 *.spec.ts 会把 Playwright spec 当单测执行导致 pnpm check 失败(复现:6 个文件 1 failed),排除后恢复 5 文件/15 用例。
+- eslint.config.mjs:tseslint 块纳入 e2e/**/*.ts 与根级 playwright/vitest 配置文件。
+- package.json:e2e 脚本 'CI=true playwright test';devDeps + playwright/@playwright/test 1.62.1。
+
+验证:
+- pnpm e2e → 2 passed;首轮冷启动总耗时 9.8s(dev server 启动占大头),复跑 2.1s;测试本体 82-276ms;结束后 3100 端口无残留监听(webServer 正常回收)。
+- pnpm check 仍全绿(typecheck + eslint(16 文件,含 e2e)+ vitest 15/15)。
+
+为何:spec FR6/AC4——E2E 基座 + 首页 smoke,后续 track 的合同 API/投影断言都跑在这条通路上。
