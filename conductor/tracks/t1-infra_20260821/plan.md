@@ -19,7 +19,7 @@
   - [x] 实现 tsx 入口:启动打印心跳(含 shared VERSION),SIGINT 干净退出
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) (3212e1e)
 
-## Phase 2: PostgreSQL 与运行环境
+## Phase 2: PostgreSQL 与运行环境 [checkpoint: 92cfa29]
 
 - [x] Task: docker compose 提供 PostgreSQL(TDD:连通性测试先行) (1d641d3)
   - [x] 先写失败测试(用 pg 客户端对 compose 库执行 `SELECT 1`)
@@ -27,7 +27,7 @@
 - [x] Task: `/api/health` 端点含 db 检查(TDD) (92cfa29)
   - [x] 先写失败测试(route handler 单测:有库时 `{status:"ok",db:"ok"}`,无库时 `db:"error"` 不抛 500)
   - [x] 实现 health route(pg 池 + `SELECT 1`,失败降级)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) (92cfa29)
 
 ## Phase 3: 质量门、E2E 基座与文档
 
