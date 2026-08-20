@@ -59,5 +59,5 @@
 
 - [x] Task: 实体通用渲染页(TDD:actions→RJSF 表单/按钮;guard-results 驱动 disabled;提交走 /api/exec actor=human) `830f25a`
 - [x] Task: 入口页(文章列表/评论队列/发布向导入口;极简样式) `936ae6b`
-- [~] Task: Playwright UI E2E:人类路径 B1/B2/B3(表单走查全过;日志含 actor=human)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Playwright UI E2E:人类路径 B1/B2/B3(表单走查全过;日志含 actor=human) `4cde4d7`
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
