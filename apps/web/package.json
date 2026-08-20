@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@assistant-ui/react": "^0.15.16",
+    "@rjsf/core": "^6.8.0",
+    "@rjsf/validator-ajv8": "^6.8.0",
     "@ui4a/agent": "workspace:*",
     "@ui4a/engine": "workspace:*",
     "@ui4a/shared": "workspace:*",
@@ -21,12 +23,15 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
+    "jsdom": "^30.0.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
