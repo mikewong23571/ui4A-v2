@@ -214,7 +214,9 @@ async function llmDecide(model: LanguageModel, context: DriverContext): Promise<
       system: SYSTEM_PROMPT,
       prompt: buildUserPrompt(context),
       tools: toToolSet(buildToolProjection(context.entity)),
-      toolChoice: 'required',
+      // toolChoice 保持缺省 auto:GLM coding 端点对 "required" 挂起不响应
+      // (实测 2026-08-21,90s 无返回;default auto 正常产出 tool_calls)。
+      // 系统提示词已约束"每轮恰好一个工具调用";无调用时 fail-safe 兜底。
     });
     const call = result.toolCalls[0];
     if (call === undefined) {
