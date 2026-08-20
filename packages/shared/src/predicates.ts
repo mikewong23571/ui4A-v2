@@ -35,10 +35,18 @@ export const titleNotTaken: GuardPredicate = (context) => {
 /** 恒真(空 guard 动作的显式占位,亦用于测试)。 */
 export const alwaysTrue: GuardPredicate = () => true;
 
+/**
+ * 本次 exec 的行为者是人类(铁律 5"审批不委托":确认实体的 approve/reject guard)。
+ * 无 actor 上下文(Siren 投影求值)时 fail-closed 为 false——
+ * 投影不是裁决,真正判定永远发生在 exec 时(同一个谓词的两个投影)。
+ */
+export const actorIsHuman: GuardPredicate = (context) => context.actor === 'human';
+
 /** 种子注册表:名字 → 谓词。meta/registries 的运行时子集。 */
 export const seedGuardRegistry: GuardRegistry = {
   'is-pending': isPending,
   'is-published': isPublished,
   'title-not-taken': titleNotTaken,
   'always-true': alwaysTrue,
+  'actor-is-human': actorIsHuman,
 };

@@ -7,11 +7,18 @@
  */
 import type { EngineSnapshot, InstanceSnapshot } from './state';
 
-/** guard 求值上下文:实例 + 全局快照(只读)+ 本次动作参数。 */
+/**
+ * guard 求值上下文:实例 + 全局快照(只读)+ 本次动作参数。
+ * actor 为 T3 扩展(可选,最小侵入:既有谓词不读它,全部仍编译)——
+ * actor-is-human 读它判定"审批不委托"(铁律 5);
+ * 投影路径无 actor 上下文(求值时缺省),谓词按 fail-closed 处理。
+ */
 export interface GuardContext {
   instance: Readonly<InstanceSnapshot>;
   snapshot: Readonly<EngineSnapshot>;
   params: Readonly<Record<string, unknown>>;
+  /** 本次 exec 的行为者(exec 裁决时必填;Siren 投影时缺省)。 */
+  actor?: 'human' | 'agent';
 }
 
 /** 谓词:纯函数,输入快照与参数,输出布尔。 */

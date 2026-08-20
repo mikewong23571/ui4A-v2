@@ -12,8 +12,13 @@
  * 日志形状(LogEvent)因此成为引擎公共合同的一部分。
  */
 import { fieldValues } from '@ui4a/shared';
-import type { EngineSnapshot, InstanceSnapshot } from '@ui4a/shared';
+import type { ConfirmationSnapshot, EngineSnapshot, InstanceSnapshot } from '@ui4a/shared';
 
+import {
+  confirmationRel,
+  type ConfirmationDecisionDetail,
+  type ConfirmationRequestDetail,
+} from './confirmation';
 import { applyEffects } from './effects';
 import type { EngineEvent } from './effects';
 import type { ExecRequest } from './judge';
@@ -83,7 +88,12 @@ function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
     const existing = collections[name] ?? [];
     collections[name] = [...existing, ...members.filter((rel) => !existing.includes(rel))];
   }
-  return { instances, collections };
+  return {
+    instances,
+    collections,
+    // confirmations 表随行(seed 只补实体与集合,不动确认门状态)。
+    confirmations: { ...snapshot.confirmations },
+  };
 }
 
 /**
@@ -126,6 +136,97 @@ function applyExecuted(
   }
 }
 
+// ---------------------------------------------------------------------------
+// confirmation 事件链重放(T3:挂起→approve/reject;与在线路径同构)
+// ---------------------------------------------------------------------------
+
+/** confirmation-requested 重放:pending 实体物化(不重新裁决策略,载荷即真相)。 */
+function applyConfirmationRequested(
+  snapshot: EngineSnapshot,
+  event: LogEvent,
+): EngineSnapshot {
+  const detail = event.detail as Partial<ConfirmationRequestDetail> | undefined;
+  if (
+    detail === undefined ||
+    typeof detail !== 'object' ||
+    typeof detail.id !== 'string' ||
+    typeof detail.targetRel !== 'string' ||
+    typeof detail.targetAction !== 'string'
+  ) {
+    throw new Error(
+      `重放失败:seq=${event.seq} confirmation-requested 缺少 detail 载荷(日志完整性)`,
+    );
+  }
+  const rel = confirmationRel(detail.id);
+  if (snapshot.confirmations?.[rel] !== undefined) {
+    throw new Error(`重放失败:seq=${event.seq} 确认 "${rel}" 重复物化(日志完整性)`);
+  }
+  // 与 suspendForConfirmation 的物化形状逐字段同构(I5 hash 一致的前提):
+  // 空参数表/缺信道时不落键,保持与在线构造完全一致。
+  const params = event.params;
+  const confirmation: ConfirmationSnapshot = {
+    id: detail.id,
+    targetRel: detail.targetRel,
+    targetAction: detail.targetAction,
+    ...(params !== undefined && Object.keys(params).length > 0 ? { params } : {}),
+    proposedBy: {
+      actor: event.actor ?? 'human',
+      ...(event.principal !== undefined ? { principal: event.principal } : {}),
+    },
+    ...(event.channel !== undefined ? { channel: event.channel } : {}),
+    status: 'pending',
+    ...(typeof detail.policy === 'string' ? { policy: detail.policy } : {}),
+    ...(typeof detail.policyReason === 'string' ? { policyReason: detail.policyReason } : {}),
+  };
+  return {
+    ...snapshot,
+    confirmations: { ...(snapshot.confirmations ?? {}), [rel]: confirmation },
+  };
+}
+
+/** confirmation-approved / rejected 重放:状态流转(实体保留供审计)。 */
+function applyConfirmationDecision(
+  snapshot: EngineSnapshot,
+  event: LogEvent,
+  status: 'approved' | 'rejected',
+): EngineSnapshot {
+  const detail = event.detail as Partial<ConfirmationDecisionDetail> | undefined;
+  if (detail === undefined || typeof detail !== 'object' || typeof detail.id !== 'string') {
+    throw new Error(
+      `重放失败:seq=${event.seq} confirmation-${status} 缺少 detail 载荷(日志完整性)`,
+    );
+  }
+  const rel = confirmationRel(detail.id);
+  const existing = snapshot.confirmations?.[rel];
+  if (existing === undefined) {
+    throw new Error(`重放失败:seq=${event.seq} 确认 "${rel}" 不存在(日志与状态漂移)`);
+  }
+  if (existing.status !== 'pending') {
+    throw new Error(
+      `重放失败:seq=${event.seq} 确认 "${rel}" 已是 ${existing.status}(重复裁决)`,
+    );
+  }
+  // decidedBy 从 detail 还原(含 principal;与在线 decidedByOf 构造逐字段同构)。
+  const decidedBy = detail.decidedBy;
+  if (
+    decidedBy === undefined ||
+    typeof decidedBy !== 'object' ||
+    (decidedBy.actor !== 'human' && decidedBy.actor !== 'agent')
+  ) {
+    throw new Error(
+      `重放失败:seq=${event.seq} confirmation-${status} 缺少 decidedBy(日志完整性)`,
+    );
+  }
+  const updated: ConfirmationSnapshot =
+    status === 'approved'
+      ? { ...existing, status, approvedBy: decidedBy }
+      : { ...existing, status, rejectedReason: event.reason };
+  return {
+    ...snapshot,
+    confirmations: { ...(snapshot.confirmations ?? {}), [rel]: updated },
+  };
+}
+
 /**
  * 折叠事件日志为引擎快照(纯函数;events 须按 seq 升序传入)。
  *
@@ -133,6 +234,10 @@ function applyExecuted(
  * - action-rejected:不改状态(拒绝即数据,留痕在日志本身,I6);
  * - entity-appended / spawn-requested:伴随事件——状态已由同批 action-executed
  *   重放体现(append 由 applyEffects 落位;spawn 在 T2 不改状态),fold 不双算;
+ * - confirmation-requested:pending 确认实体物化(目标动作不生效);
+ * - confirmation-approved:状态 → approved(实体保留);紧随其后的 action-executed
+ *   照常重放(挂起→approve 重放后效果必须出现,I5);
+ * - confirmation-rejected:状态 → rejected(原因保留),原动作永不生效;
  * - seed:合并种子实体(幂等);
  * - 未知 kind:抛错(日志完整性守卫)。
  */
@@ -140,7 +245,7 @@ export function fold(
   events: readonly LogEvent[],
   deps: { flows: Readonly<Record<string, FlowDefinition>> },
 ): EngineSnapshot {
-  let snapshot: EngineSnapshot = { instances: {}, collections: {} };
+  let snapshot: EngineSnapshot = { instances: {}, collections: {}, confirmations: {} };
   for (const event of events) {
     switch (event.kind) {
       case 'seed':
@@ -148,6 +253,15 @@ export function fold(
         break;
       case 'action-executed':
         snapshot = applyExecuted(snapshot, event, deps.flows);
+        break;
+      case 'confirmation-requested':
+        snapshot = applyConfirmationRequested(snapshot, event);
+        break;
+      case 'confirmation-approved':
+        snapshot = applyConfirmationDecision(snapshot, event, 'approved');
+        break;
+      case 'confirmation-rejected':
+        snapshot = applyConfirmationDecision(snapshot, event, 'rejected');
         break;
       case 'action-rejected':
       case 'entity-appended':

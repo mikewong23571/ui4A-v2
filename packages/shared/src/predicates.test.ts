@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import type { GuardContext } from './guards';
-import { isPending, isPublished, alwaysTrue, nodeIs, seedGuardRegistry, titleNotTaken } from './predicates';
+import { actorIsHuman, isPending, isPublished, alwaysTrue, nodeIs, seedGuardRegistry, titleNotTaken } from './predicates';
 import type { EngineSnapshot } from './state';
 
-function contextAt(node: string): GuardContext {
+function contextAt(node: string, actor?: 'human' | 'agent'): GuardContext {
   const snapshot: EngineSnapshot = {
     instances: {
       'comment:c1': { rel: 'comment:c1', flow: 'comment-moderation', node, fields: {} },
@@ -15,6 +15,7 @@ function contextAt(node: string): GuardContext {
     instance: snapshot.instances['comment:c1']!,
     snapshot,
     params: {},
+    ...(actor !== undefined ? { actor } : {}),
   };
 }
 
@@ -81,6 +82,21 @@ describe('种子谓词(纯函数,只读快照)', () => {
     isPending(context);
     nodeIs('x')(context);
     expect(JSON.stringify(context)).toBe(before);
+  });
+});
+
+describe('actor-is-human(铁律 5:审批不委托)', () => {
+  it('actor=human → true;actor=agent → false(I4:agent 身份审批被拒)', () => {
+    expect(actorIsHuman(contextAt('pending', 'human'))).toBe(true);
+    expect(actorIsHuman(contextAt('pending', 'agent'))).toBe(false);
+  });
+
+  it('无 actor 上下文(投影求值)→ false(fail-closed,与未注册 guard 同口径)', () => {
+    expect(actorIsHuman(contextAt('pending'))).toBe(false);
+  });
+
+  it('进入种子注册表(actor-is-human)', () => {
+    expect(seedGuardRegistry['actor-is-human']).toBe(actorIsHuman);
   });
 });
 

@@ -1,9 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
-import type { InstanceSnapshot } from '@ui4a/shared';
+import type { EngineSnapshot, InstanceSnapshot } from '@ui4a/shared';
 
+import { approveConfirmation, rejectConfirmation } from './confirmation';
+import type { ConfirmationRequestDetail } from './confirmation';
+import { executeWithGates } from './execute';
 import { fold, type LogEvent, type SeedDetail } from './fold';
-import { articleDraftingFlow, commentModerationFlow, flowRegistry } from './fixtures';
+import {
+  articleDraftingFlow,
+  commentModerationFlow,
+  flowRegistry,
+  postStatusFlow,
+  seedSnapshot,
+} from './fixtures';
+import { seedGuardRegistry } from '@ui4a/shared';
+import { contentVersion } from './sitemap';
+import type { EngineEvent } from './effects';
 
 // fold 投影(TDD 红→绿):事件日志 → 引擎快照的纯函数(arch-brief §4:
 // "当前 UI 状态 = 日志折叠后的物化状态";I5 的根基)。
@@ -12,6 +24,8 @@ import { articleDraftingFlow, commentModerationFlow, flowRegistry } from './fixt
 // - action-rejected 不改状态但参与日志(I6);
 // - entity-appended / spawn-requested 是伴随事件(状态已由 action-executed 重放体现;
 //   spawn 在 T2 不改状态),fold 不双算;
+// - confirmation-requested/approved/rejected(T3):pending 实体化 / 状态流转,
+//   approved 后的 action-executed 照常重放(挂起→approve 重放后效果必须出现);
 // - seed 事件合并种子实体(幂等:只补缺,不覆盖);
 // - 定义漂移(日志与 flow 常量不一致)必须响亮失败。
 const flows = flowRegistry(commentModerationFlow, articleDraftingFlow);
@@ -38,8 +52,8 @@ const seedDetail: SeedDetail = {
 const seedEvent: LogEvent = { seq: 1, kind: 'seed', detail: seedDetail };
 
 describe('fold 投影', () => {
-  it('空日志 → 空快照', () => {
-    expect(fold([], { flows })).toEqual({ instances: {}, collections: {} });
+  it('空日志 → 空快照(confirmations 恒为空表)', () => {
+    expect(fold([], { flows })).toEqual({ instances: {}, collections: {}, confirmations: {} });
   });
 
   it('seed 事件建立种子实体与集合', () => {
@@ -215,5 +229,172 @@ describe('fold 投影', () => {
     };
 
     expect(() => fold([orphan], { flows })).toThrow(/seq=2/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// confirmation 事件链重放(T3:挂起→approve/reject 全部参与 fold;I5 语义保持)
+// ---------------------------------------------------------------------------
+
+const postFlows = flowRegistry(postStatusFlow, commentModerationFlow, articleDraftingFlow);
+const postDeps = { flows: postFlows, guards: seedGuardRegistry };
+
+const agentArchive = {
+  rel: 'post:post-welcome',
+  action: 'archive',
+  params: {},
+  actor: 'agent' as const,
+  principal: 'user:mike',
+  channel: 'http',
+};
+
+const seedFromSnapshot: LogEvent = {
+  seq: 1,
+  kind: 'seed',
+  rel: 'seed:bootstrap',
+  detail: { instances: seedSnapshot.instances, collections: seedSnapshot.collections },
+};
+
+/** 引擎事件 → 日志事件(seq 从 start 起连续分配;模拟日志层)。 */
+function withSeq(events: readonly EngineEvent[], start: number): LogEvent[] {
+  return events.map((event, index) => ({ ...event, seq: start + index }));
+}
+
+/** 在线跑一遍 挂起→approve,产出(在线终态快照, 全部日志事件)。 */
+function onlineSuspendApprove(): { online: EngineSnapshot; log: LogEvent[] } {
+  const base = fold([seedFromSnapshot], postDeps);
+  const suspended = executeWithGates(agentArchive, base, postDeps);
+  if (suspended.kind !== 'suspended') throw new Error(`前置失败:期望 suspended,得到 ${suspended.kind}`);
+
+  const decision = approveConfirmation(
+    suspended.snapshot,
+    suspended.confirmation.id,
+    { actor: 'human', principal: 'user:mike' },
+    postDeps,
+  );
+  if (decision.kind !== 'confirmed') throw new Error(`前置失败:期望 confirmed,得到 ${decision.kind}`);
+
+  const log: LogEvent[] = [
+    seedFromSnapshot,
+    ...withSeq(suspended.events, 2),
+    ...withSeq(decision.events, 2 + suspended.events.length),
+  ];
+  return { online: decision.snapshot, log };
+}
+
+describe('fold — confirmation 事件链', () => {
+  it('confirmation-requested → pending 实体物化(目标动作不生效)', () => {
+    const suspended = executeWithGates(agentArchive, fold([seedFromSnapshot], postDeps), postDeps);
+    if (suspended.kind !== 'suspended') throw new Error('前置失败');
+    const log = [seedFromSnapshot, ...withSeq(suspended.events, 2)];
+
+    const snapshot = fold(log, postDeps);
+
+    expect(snapshot.instances['post:post-welcome']?.node).toBe('published');
+    expect(snapshot.confirmations?.['confirmation:c1']).toMatchObject({
+      id: 'c1',
+      targetRel: 'post:post-welcome',
+      targetAction: 'archive',
+      status: 'pending',
+      proposedBy: { actor: 'agent', principal: 'user:mike' },
+      channel: 'http',
+      policy: 'builtin:high-agent',
+    });
+  });
+
+  it('挂起→approve:fold 后效果必须出现 + 状态 approved(hash 与在线一致,I5)', () => {
+    const { online, log } = onlineSuspendApprove();
+
+    const replayed = fold(log, postDeps);
+
+    // 效果出现:重放后文章已归档。
+    expect(replayed.instances['post:post-welcome']?.node).toBe('archived');
+    expect(replayed.confirmations?.['confirmation:c1']).toMatchObject({
+      status: 'approved',
+      approvedBy: { actor: 'human', principal: 'user:mike' },
+    });
+    // 重放一致性:内容 hash 与在线路径一致。
+    expect(contentVersion(replayed)).toBe(contentVersion(online));
+  });
+
+  it('挂起→reject:重放后原动作永不生效 + 状态 rejected(原因保留)', () => {
+    const base = fold([seedFromSnapshot], postDeps);
+    const suspended = executeWithGates(agentArchive, base, postDeps);
+    if (suspended.kind !== 'suspended') throw new Error('前置失败');
+    const decision = rejectConfirmation(
+      suspended.snapshot,
+      'c1',
+      { actor: 'human', principal: 'user:mike' },
+      '仍在服务,不归档',
+      postDeps,
+    );
+    if (decision.kind !== 'confirmed') throw new Error('前置失败');
+
+    const log = [
+      seedFromSnapshot,
+      ...withSeq(suspended.events, 2),
+      ...withSeq(decision.events, 3),
+    ];
+    const replayed = fold(log, postDeps);
+
+    expect(replayed.instances['post:post-welcome']?.node).toBe('published');
+    expect(replayed.confirmations?.['confirmation:c1']).toMatchObject({
+      status: 'rejected',
+      rejectedReason: '仍在服务,不归档',
+    });
+    expect(contentVersion(replayed)).toBe(contentVersion(decision.snapshot));
+  });
+
+  it('confirmation-approved 指向未知确认 → 响亮失败(日志完整性,带 seq)', () => {
+    const orphan: LogEvent = {
+      seq: 2,
+      kind: 'confirmation-approved',
+      rel: 'confirmation:ghost',
+      action: 'approve',
+      actor: 'human',
+      detail: {
+        id: 'ghost',
+        proposedBy: { actor: 'agent' },
+        decidedBy: { actor: 'human' },
+      },
+    };
+
+    expect(() => fold([seedFromSnapshot, orphan], postDeps)).toThrow(/seq=2/);
+  });
+
+  it('重复 confirmation-requested(同 id)→ 响亮失败(日志完整性)', () => {
+    const requested: LogEvent = {
+      seq: 2,
+      kind: 'confirmation-requested',
+      rel: 'confirmation:c1',
+      action: 'archive',
+      actor: 'agent',
+      principal: 'user:mike',
+      channel: 'http',
+      detail: {
+        id: 'c1',
+        targetRel: 'post:post-welcome',
+        targetAction: 'archive',
+        policy: 'builtin:high-agent',
+        policyReason: 'x',
+        request: agentArchive,
+      } satisfies ConfirmationRequestDetail,
+    };
+
+    expect(() => fold([seedFromSnapshot, requested, { ...requested, seq: 3 }], postDeps)).toThrow(
+      /c1/,
+    );
+  });
+
+  it('approval 事件缺 detail 载荷 → 响亮失败(不静默吞)', () => {
+    const malformed = {
+      seq: 2,
+      kind: 'confirmation-approved',
+      rel: 'confirmation:c1',
+      action: 'approve',
+      actor: 'human',
+    } as unknown as LogEvent;
+
+    expect(() => fold([seedFromSnapshot, malformed], postDeps)).toThrow(/seq=2/);
   });
 });

@@ -53,6 +53,7 @@ function reject(layer: JudgeLayer, reason: string, detail?: unknown): JudgeResul
 /**
  * 求值动作的全部 guard(不短路:每个谓词都要有结果,供 guard-results 逐项注入)。
  * 注册表缺名或谓词抛错均 fail-closed(pass=false + reason)。
+ * actor 为 T3 扩展:exec 裁决时传入(actor-is-human 读它);投影求值可缺省。
  */
 export function evaluateGuards(
   action: ActionDefinition,
@@ -60,6 +61,7 @@ export function evaluateGuards(
   snapshot: EngineSnapshot,
   params: Readonly<Record<string, unknown>>,
   guards: GuardRegistry,
+  actor?: 'human' | 'agent',
 ): GuardEvaluation[] {
   return (action.guards ?? []).map((name) => {
     const predicate = guards[name];
@@ -67,7 +69,7 @@ export function evaluateGuards(
       return { name, pass: false, reason: `guard "${name}" 未注册` };
     }
     try {
-      return { name, pass: predicate({ instance, snapshot, params }) };
+      return { name, pass: predicate({ instance, snapshot, params, actor }) };
     } catch (error) {
       return {
         name,
@@ -110,7 +112,14 @@ export function judge(
 
   // ② guard 层:全部求值,任一 false 即拒,原因含谓词名与求值结果。
   const params = request.params ?? {};
-  const guardResults = evaluateGuards(action, instance, snapshot, params, deps.guards);
+  const guardResults = evaluateGuards(
+    action,
+    instance,
+    snapshot,
+    params,
+    deps.guards,
+    request.actor,
+  );
   const failed = guardResults.filter((result) => !result.pass);
   if (failed.length > 0) {
     const summary = failed.map((result) => `${result.name}=false`).join(', ');

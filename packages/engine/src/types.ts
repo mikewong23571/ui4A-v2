@@ -50,6 +50,8 @@ export interface FieldDefinition {
   source?: FieldSource;
   /** select 类型的候选值。 */
   options?: string[];
+  /** 字符串最小长度(T3:reject 的 reason 必填且非空;RJSF 原生渲染)。 */
+  minLength?: number;
   /** 默认值(静态来源)。 */
   default?: unknown;
   /** 校验失败时的去向:转澄清 session。 */

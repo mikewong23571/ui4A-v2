@@ -43,4 +43,13 @@ describe('fieldDefinitionsToJsonSchema(JSON Schema draft-07,RJSF 直接输入)',
     expect(schema.properties).toEqual({});
     expect(schema.required).toEqual([]);
   });
+
+  it('minLength 声明透传(T3:reject 的 reason 必填且非空)', () => {
+    const schema = fieldDefinitionsToJsonSchema([
+      { name: 'reason', type: 'textarea', required: true, minLength: 1 },
+    ]);
+    const properties = schema.properties as Record<string, Record<string, unknown>>;
+    expect(properties.reason).toMatchObject({ type: 'string', minLength: 1 });
+    expect(schema.required).toEqual(['reason']);
+  });
 });

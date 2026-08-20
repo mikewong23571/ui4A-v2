@@ -43,6 +43,8 @@ export interface EngineEvent {
    * 见 confirmation.ts;与日志层 LogEvent.detail 同一落点)。
    */
   detail?: unknown;
+  /** confirmation-rejected:人类给出的驳回原因(与 detail.reason 同源)。 */
+  reason?: string;
 }
 
 /** 效果应用结果:新快照 + 待追加事件(顺序即日志顺序,重放确定性依赖它)。 */
