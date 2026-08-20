@@ -73,7 +73,6 @@ interface EngineGlobalState {
   tail: Promise<unknown>;
 }
 
-const GLOBAL_KEY = '__ui4aEngine__';
 // 类型断言理由:Next dev 多入口模块隔离,必须借 globalThis 跨入口共享单例。
 const globalRef = globalThis as typeof globalThis & { __ui4aEngine__?: EngineGlobalState };
 
