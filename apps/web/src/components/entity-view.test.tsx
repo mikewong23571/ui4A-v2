@@ -307,4 +307,77 @@ describe('EntityView:实体四件组装渲染', () => {
     const publish = screen.getByRole('button', { name: '发布' }) as HTMLButtonElement;
     expect(publish.disabled).toBe(false);
   });
+
+  it('节点切换后表单不携带前节点字段(向导三步零状态泄漏)', async () => {
+    // 复刻向导真实序列:basic-info(title)→ 提交 → 同一页面位置重渲染为
+    // classification(category/tags)。RJSF 内部 formData 是组件态,若实例被
+    // React 复用,step1 的 title 会漏进 step2 的提交(additionalProperties:
+    // false 拒绝)。Renderer 必须随 action schema 换代表单实例。
+    const stepOne: SirenEntity = {
+      ...wizardEntity,
+      properties: { ...wizardEntity.properties, node: 'basic-info', title: '基本信息' },
+      actions: [
+        {
+          name: 'next',
+          title: '下一步',
+          method: 'POST',
+          href: '/api/exec',
+          fields: {
+            $schema: 'http://json-schema.org/draft-07/schema#',
+            type: 'object',
+            properties: { title: { type: 'string' } },
+            required: ['title'],
+            additionalProperties: false,
+          },
+        },
+      ],
+      'guard-results': [{ action: 'next', blocked: false, guards: [] }],
+    };
+    const stepTwo: SirenEntity = {
+      ...wizardEntity,
+      properties: { ...wizardEntity.properties, node: 'classification', title: '分类' },
+      actions: [
+        {
+          name: 'next',
+          title: '下一步',
+          method: 'POST',
+          href: '/api/exec',
+          fields: {
+            $schema: 'http://json-schema.org/draft-07/schema#',
+            type: 'object',
+            properties: {
+              category: { type: 'string', enum: ['tech', 'essay', 'review'] },
+              tags: { type: 'string' },
+            },
+            required: ['category'],
+            additionalProperties: false,
+          },
+        },
+      ],
+      'guard-results': [{ action: 'next', blocked: false, guards: [] }],
+    };
+
+    const fetchMock = mockFetch(200, { entity: stepTwo });
+    vi.stubGlobal('fetch', fetchMock);
+    const view = render(<EntityView rel="article-drafting:main" entity={stepOne} />);
+
+    // step1:填 title → 下一步
+    fireEvent.change(screen.getByLabelText(/title/), { target: { value: '第三篇' } });
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    // exec 成功后页面刷新为 step2 的实体投影(rerender 同一组件树)
+    view.rerender(<EntityView rel="article-drafting:main" entity={stepTwo} />);
+
+    // step2:选 category → 下一步;提交参数不得携带 step1 的 title
+    fireEvent.change(screen.getByLabelText(/category/), { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    const body = JSON.parse(
+      String((fetchMock.mock.calls[1] as [string, RequestInit])[1]!.body),
+    ) as Record<string, unknown>;
+    expect(body.action).toBe('next');
+    expect(body.params).toEqual({ category: 'tech' });
+  });
 });

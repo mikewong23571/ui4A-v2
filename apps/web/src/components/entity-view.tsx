@@ -114,7 +114,11 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
               const guard = guardMap.get(action.name);
               return (
                 <ActionRunner
-                  key={action.name}
+                  // key 含参数 schema:向导跨节点同名动作(如 next)的 schema 不同,
+                  // 换 key 强制换表单实例——RJSF 内部 formData 是组件态,实例被
+                  // React 复用会把前节点字段漏进本节点提交(additionalProperties:
+                  // false 拒绝)。每个 action schema 一个干净表单。
+                  key={`${execRel}:${action.name}:${JSON.stringify(action.fields)}`}
                   rel={execRel}
                   action={action}
                   blocked={guard?.blocked}

@@ -90,6 +90,10 @@ export function ActionRunner({
       <Form
         schema={action.fields}
         validator={rjsfValidator}
+        // 只提交当前 action schema 声明过的字段(铁律 3 的提交面):
+        // omitExtraData 剥离一切 schema 外键,liveOmit 在编辑期即保持剥离。
+        omitExtraData
+        liveOmit
         onSubmit={({ formData }) => void submit(formData as Record<string, unknown> | undefined)}
       >
         <button
