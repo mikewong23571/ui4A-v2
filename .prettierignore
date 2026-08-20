@@ -1,0 +1,14 @@
+# 锁文件由包管理器维护
+pnpm-lock.yaml
+
+# 非代码工作流管辖的文档与脚手架产物(docs/ 为架构正典原样保留;conductor/ 文档另行维护)
+docs/
+conductor/
+GOAL.md
+DECISIONS.md
+
+# create-next-app 脚手架附属文件
+apps/web/README.md
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
+apps/web/public/

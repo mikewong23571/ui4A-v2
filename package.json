@@ -7,12 +7,19 @@
     "dev": "pnpm --filter @ui4a/web dev",
     "dev:worker": "pnpm --filter @ui4a/worker dev",
     "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest run",
-    "check": "pnpm typecheck && pnpm test",
+    "check": "pnpm typecheck && pnpm lint && pnpm test",
     "e2e": "echo \"e2e: Playwright 骨架在 T1 Phase 3 引入,当前为占位\" && exit 0"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.3.1",
+    "prettier": "^3.6.2",
+    "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.11"
   }
 }
