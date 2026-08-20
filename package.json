@@ -12,12 +12,14 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
-    "e2e": "echo \"e2e: Playwright 骨架在 T1 Phase 3 引入,当前为占位\" && exit 0"
+    "e2e": "CI=true playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^26.2.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.1",
+    "playwright": "^1.62.1",
     "prettier": "^3.6.2",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.11"

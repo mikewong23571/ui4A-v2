@@ -24,7 +24,14 @@ export default defineConfig([
     extends: [nextCoreWebVitals, nextTypescript],
   },
   {
-    files: ['apps/worker/src/**/*.ts', 'packages/shared/src/**/*.ts', 'e2e/**/*.ts'],
+    files: [
+      'apps/worker/src/**/*.ts',
+      'packages/shared/src/**/*.ts',
+      'e2e/**/*.ts',
+      // 根级 Node 环境配置文件(不属任何 workspace 的 tsconfig 范围)
+      'playwright.config.ts',
+      'vitest.config.ts',
+    ],
     extends: [tseslint.configs.recommended],
     rules: {
       // recommended 里默认 warn;质量门要求出现违例即失败,提升为 error。
