@@ -9,6 +9,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
+  // 单 worker:baseline/chat/llm-smoke 的场景 server 共用 3110 端口与同一 PG
+  // (TRUNCATE seed-reset),文件级并行会互相杀 server——串行执行(T2 Phase E)。
+  workers: process.env.CI ? 1 : undefined,
   use: {
     baseURL: 'http://localhost:3100',
     trace: 'retain-on-failure',
