@@ -37,8 +37,8 @@
 
 - [x] Task: agent 循环协议(TDD:navigate/exec/done 步进、停止条件、拒绝即数据回流) `7921b74`
 - [x] Task: rule driver 决策器(TDD:目标相关性四层级次序与各层停止条件;done=完成类动作成功过) `351562d`
-- [~] Task: E2E B1/B2/B3(Playwright request 级:跑循环断言业务结果与日志)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: E2E B1/B2/B3(Playwright request 级:跑循环断言业务结果与日志) `d12a608`
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase E: LLM driver 与悬浮聊天(B4、I1)
 
