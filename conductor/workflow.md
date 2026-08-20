@@ -12,6 +12,43 @@
 6.  **Non-Interactive & CI-Aware:** Prefer non-interactive commands. Use
     `CI=true` for watch-mode tools (tests, linters) to ensure single execution.
 
+## Autonomous Orchestration Protocol (自治编排协议)
+
+> 本节由用户于 2026-08-21 授权启用:编排 agent 主导从 track 规划到 DONE 的全流程,
+> **所有审批/验收点由编排 agent 代行**,不暂停等待用户;用户事后通过 git log/notes 与
+> track 计划文档审计全部决策。
+
+### 角色分工
+
+- **编排 agent(主会话)**:新建 track、拆任务、派发 subagent、验收、提交、推进下一 track;
+- **实施 subagent**:每次领一个任务,自包含上下文,完成即返回;
+- **用户**:仅在编排 agent 被真正阻塞时介入(如外部凭证缺失、不可逆破坏风险)。
+
+### Subagent Prompt 合同(铁律)
+
+每个派发给 subagent 的 prompt **必须**包含四要素,缺一不可:
+
+1. **目标(Goal)**:可验收的结果描述 + 完成判据(DoD,含必须通过的测试命令);
+2. **非目标(Non-goals)**:明确不做的事,防止 scope creep(如"不实现 X,那是下一任务");
+3. **改动(Changes)**:预期创建/修改的文件与内容概述;
+4. **影响作用域(Blast radius)**:允许触碰的目录/模块清单;禁止触碰的(如 `conductor/`、
+   其他 track 的产出、无关包)。
+
+Prompt 必须自包含(仓库路径、相关文档路径、技术栈与铁律约束条目),因为 subagent
+没有共享记忆。风格与命名遵守 `code_styleguides/`。
+
+### 验收协议(编排 agent 代行)
+
+- subagent 返回后,编排 agent **必须亲自复跑**其声称通过的测试命令,不信口头报告;
+- `plan.md` 任务状态流转、commit、git notes 由编排 agent 执行;
+- Phase Checkpoint 协议中"等待用户确认"(Step 5)由编排 agent 代行:以自动化等效验证
+  (测试全绿 + 将手动验证步骤脚本化执行,如 curl/Playwright)作为确认依据,并在 git
+  notes 中如实标注"自治验收"及验证证据;
+- 验收失败处理:最多两次修复尝试(派回 subagent 或直接修复);仍失败则回滚该任务
+  (`conductor-revert` 语义),在计划文档记录原因后继续后续任务,不无限阻塞;
+- 每个里程碑(track)结束时系统必须处于可运行状态(GOAL.md 约束),编排 agent 须实际
+  启动系统验证,而非仅凭单测通过。
+
 ## Task Workflow
 
 All tasks follow a strict lifecycle:
