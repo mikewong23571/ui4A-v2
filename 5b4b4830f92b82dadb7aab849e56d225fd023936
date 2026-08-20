@@ -1,0 +1,38 @@
+Task: T3 Phase A / Task 1 — 确认裁决步与挂起结果类型
+
+Summary:
+- packages/engine/src/confirmation.ts(新):ConfirmationVerdict/ConfirmationPolicy 接口、
+  builtinConfirmationPolicy(high+agent→需确认;human/无标注直通;actor 缺省 human)、
+  confirmGate(request, action, policy?)、nextConfirmationId(确定性 c1/c2/… 计数,
+  时钟是 capability 不用时间戳)、suspendForConfirmation(挂起物化:pending 实体 +
+  confirmation-requested 事件,detail 含原请求全文/policy/policyReason)、
+  ConfirmationRequestDetail/SuspendedConfirmation 类型。
+- packages/engine/src/execute.ts(新):executeWithGates 编排(judge 三层 → confirmGate
+  策略层 → applyEffects),结果 executed/suspended/rejected;suspended 携带
+  {id,targetRel,targetAction,params,proposedBy,channel,policyReason} 摘要
+  (HTTP 202 的引擎侧形态,web 接线在 Phase B)。
+- packages/shared/src/state.ts:ConfirmationSnapshot(id/targetRel/targetAction/params/
+  proposedBy/channel/status/policy/approvedBy/rejectedReason)+ EngineSnapshot.confirmations?
+  (可选字段:不破坏既有快照构造点;引擎产出函数恒携带)。
+- packages/engine/src/effects.ts:EngineEvent kind 增 confirmation-requested/approved/
+  rejected + detail?:unknown;applyEffects 产出恒携带 confirmations 表(透传);
+  paramsToFields 导出(confirmation 与服务层共用出处口径)。
+- packages/engine/src/judge.ts:accepted 结果增 action: ActionDefinition(确认门读标注)。
+
+TDD: Red(confirmation.test.ts 8 用例 + execute.test.ts 12 用例先行失败)→ Green。
+挂起矩阵(high+agent/low+agent/high+human/无标注/actor 缺省)、裁决顺序(guard/schema
+失败不进确认门)、纯函数性、id 确定性、策略注入点均覆盖。
+
+机械适配(类型扩展所致,语义不变,逐一记录):
+1. apps/web/src/db/events.ts:EventKind 联合补 3 个 confirmation-* 字面量
+   (DB 列为 TEXT,运行时零变化;web 行为接线在 Phase B)。
+2. packages/engine/src/judge.test.ts:accepted 精确断言补 action 字段。
+3. packages/engine/src/effects.test.ts:spawn 快照断言补 confirmations:{}。
+4. packages/engine/src/purity.test.ts:库源计数 11→13;公共导出面补
+   confirmGate/builtinConfirmationPolicy/executeWithGates。
+
+与 spec 架构决定 1 对齐:挂起位置=三层全过后、效果应用前;产出 confirmation:<id>
+pending 实体 + confirmation-requested(含原请求、提议者 actor/principal、信道);
+exec 挂起形态非拒绝。偏差:无。
+
+验证:CI=true pnpm check 全绿(typecheck×5 + eslint + vitest 308 passed)。
