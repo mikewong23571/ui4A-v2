@@ -1,0 +1,27 @@
+Task: T2 Phase F / F3 Playwright UI E2E 人类路径 B1/B2/B3
+
+Summary:
+- e2e/human.spec.ts:test.use({ baseURL: SCENARIO_BASE }) 指向 server-kit 的
+  3110 场景 server;serial + 180s 超时(冷编译);三场景各 TRUNCATE 自起。
+- B1(人类委托发布):首页 → a[data-rel=flow:article-drafting] → 三步表单
+  (#root_title 文本 / #root_category selectOption / #root_body textarea)→
+  ready 节点 publish 表单 → 发布 → h1=完成 → 回首页断言 文章(共 3 篇) 与
+  新文章 published;/api/events 断言 publish 唯一、actor=human、
+  principal=local-user、channel=renderer、rel=article-drafting:main。
+- B2(人类点名下线):post:post-welcome 详情 → 下线 → 节点 offline;
+  guard 声明层投影断言:下线按钮 count=0、重新发布可见;first-post 仍
+  published;unpublish 日志 actor=human。
+- B3(人类审核队列):先验证 c4 终态详情页 main button count=0(approved
+  无声明动作 → 无重复按钮);循环 3 轮从队列点进 pending 成员 → 通过 →
+  节点 approved;最终队列 pending count=0;日志恰 3 次 approve(c1/c2/c3)
+  全 human,c4 零痕迹。
+- 发现并修复真实 bug(浏览器走查价值):向导跨节点同名动作 next 处于同一
+  React 树位置,ActionRunner 实例被复用,RJSF formData 残留 basic-info 的
+  title → classification 提交被 additionalProperties:false 拒绝(表单卡住)。
+  修复:EntityView 动作 key 含 JSON.stringify(action.fields)(schema 换则
+  实例换)+ Form omitExtraData/liveOmit(提交面只含声明字段,铁律 3)。
+  组件回归测试:step1 提交 → rerender step2 → 提交 params 恰为 {category}。
+- 验证:CI=true pnpm e2e 全量 12 passed + 1 skipped(RUN_LLM_E2E 门控,
+  编排者手动跑);CI=true pnpm check 281/281 绿(新增 1 例回归)。
+- 手工等效:dev 3100 Playwright 走查完整向导(四步 exec 200、终态完成、
+  首页三篇文章),无页面错误。
