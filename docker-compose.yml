@@ -1,0 +1,23 @@
+# UI4A v2 本地开发环境(T1 Phase 2 起)。
+# 用法:docker compose up -d --wait(等 healthcheck 通过)
+# 端口 5433 固定映射容器内 5432,与 .env.example 的 DATABASE_URL 对应。
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: ui4a-postgres
+    environment:
+      POSTGRES_USER: ui4a
+      POSTGRES_PASSWORD: ui4a
+      POSTGRES_DB: ui4a
+    ports:
+      - '5433:5432'
+    volumes:
+      - ui4a-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ui4a -d ui4a']
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  ui4a-pgdata:
