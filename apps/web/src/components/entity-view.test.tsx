@@ -59,7 +59,7 @@ const wizardEntity: SirenEntity = {
     flow: 'article-drafting',
     node: 'ready',
     title: '就绪',
-    fields: { title: { value: '草稿标题', origin: 'intent' } },
+    fields: { title: '草稿标题' },
   },
   actions: [publishAction, resetAction],
   links: [
@@ -91,7 +91,7 @@ const articlesEntity: SirenEntity = {
         rel: 'post:post-welcome',
         node: 'published',
         title: '已发布',
-        fields: { title: { value: '欢迎来到 UI4A', origin: 'default' } },
+        fields: { title: '欢迎来到 UI4A' },
       },
       actions: [],
       links: [],

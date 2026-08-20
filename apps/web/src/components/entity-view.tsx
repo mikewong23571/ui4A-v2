@@ -24,27 +24,23 @@ export function entityPageHref(rel: string): string {
   return `/entity?rel=${encodeURIComponent(rel)}`;
 }
 
-/** 字段值(带出处)的展示文本:fields = { name: { value, origin } }。 */
+/**
+ * 字段键值对的展示文本。properties.fields 是投影后的扁平形状
+ * `{ name: value }`(engine fieldValues 已剥离开出处——出处只在事件日志里)。
+ */
 function fieldsSummary(fields: unknown): string {
   if (typeof fields !== 'object' || fields === null) return '';
-  const parts: string[] = [];
-  for (const [name, wrapped] of Object.entries(fields as Record<string, unknown>)) {
-    if (typeof wrapped === 'object' && wrapped !== null && 'value' in wrapped) {
-      const entry = wrapped as { value: unknown; origin?: unknown };
-      parts.push(`${name}=${String(entry.value)}(出处 ${String(entry.origin ?? 'unknown')})`);
-    }
-  }
-  return parts.join(' · ');
+  return Object.entries(fields as Record<string, unknown>)
+    .map(([name, value]) => `${name}=${String(value)}`)
+    .join(' · ');
 }
 
 /** 集合成员条目的展示文本:rel + 全部字段值 + 节点(零硬编码字段名)。 */
 function memberSummary(sub: SirenEntity): string {
-  const parts: string[] = [String(sub.properties.rel ?? '')];
+  const parts: string[] = [];
   if (typeof sub.properties.fields === 'object' && sub.properties.fields !== null) {
-    for (const wrapped of Object.values(sub.properties.fields as Record<string, unknown>)) {
-      if (typeof wrapped === 'object' && wrapped !== null && 'value' in wrapped) {
-        parts.push(String((wrapped as { value: unknown }).value));
-      }
+    for (const value of Object.values(sub.properties.fields as Record<string, unknown>)) {
+      if (typeof value !== 'object' || value === null) parts.push(String(value));
     }
   }
   if (sub.properties.node !== undefined) parts.push(String(sub.properties.node));

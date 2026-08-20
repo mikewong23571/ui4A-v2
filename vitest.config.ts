@@ -1,6 +1,15 @@
+import path from 'node:path';
+
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // apps/web 的 tsconfig paths(@/* → apps/web/src/*):Phase F 起组件测试直接
+      // import 页面/组件,须与 Next 的别名口径一致(仅测试解析,不影响构建)。
+      '@': path.resolve(__dirname, 'apps/web/src'),
+    },
+  },
   test: {
     // e2e/ 是 Playwright 专属目录(*.spec.ts);vitest 只收应用单测(*.test.ts)。
     // 覆盖 exclude 会替换默认值,故须一并保留 node_modules/dist 的默认排除。
