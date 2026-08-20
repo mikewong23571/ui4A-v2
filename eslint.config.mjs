@@ -10,6 +10,7 @@ import tseslint from 'typescript-eslint';
 export default defineConfig([
   globalIgnores([
     '**/.next/**',
+    '**/.next-e2e/**',
     '**/out/**',
     '**/build/**',
     '**/dist/**',

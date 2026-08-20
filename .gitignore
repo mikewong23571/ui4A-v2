@@ -25,3 +25,6 @@ blob-report/
 # Logs & misc
 *.log
 .DS_Store
+
+# E2E 场景 server 的独立构建目录(见 apps/web/next.config.ts UI4A_DIST_DIR)
+apps/web/.next-e2e/

@@ -17,6 +17,7 @@
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.2.0",
+    "@ui4a/agent": "workspace:*",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.1",
     "playwright": "^1.62.1",

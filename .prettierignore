@@ -12,3 +12,6 @@ apps/web/README.md
 apps/web/AGENTS.md
 apps/web/CLAUDE.md
 apps/web/public/
+
+# E2E 场景 server 的独立构建目录
+apps/web/.next-e2e/

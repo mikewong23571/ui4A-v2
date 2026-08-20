@@ -14,6 +14,9 @@ importers:
       '@types/node':
         specifier: ^26.2.0
         version: 26.2.0
+      '@ui4a/agent':
+        specifier: workspace:*
+        version: link:packages/agent
       eslint:
         specifier: ^9.39.5
         version: 9.39.5(jiti@2.7.0)
