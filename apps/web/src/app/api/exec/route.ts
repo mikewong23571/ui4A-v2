@@ -84,7 +84,17 @@ export async function POST(request: Request) {
       response.detail = outcome.detail;
     }
     return Response.json(response, { status: rejectionStatus(outcome.layer) });
-  } catch {
-    return Response.json({ error: 'exec 数据库不可用' }, { status: 503 });
+  } catch (error) {
+    // db 层故障(pg 连接类错误 code 为 ECONNREFUSED/ETIMEDOUT 等,AggregateError
+    // 的 message 为空,必须按 code 分类)→ 503;引擎内部不变式破坏如实 500 带原始
+    // 信息,不伪装成基础设施故障(产品指南:如实,不粉饰)。
+    const err = error as { code?: string; message?: string };
+    const dbFailure =
+      typeof err.code === 'string' && /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
+    const message = error instanceof Error ? error.message : String(error);
+    return Response.json(
+      dbFailure ? { error: 'exec 数据库不可用' } : { error: `exec 引擎内部错误: ${message}` },
+      { status: dbFailure ? 503 : 500 },
+    );
   }
 }

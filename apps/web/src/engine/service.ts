@@ -6,6 +6,7 @@
  *   通过:applyEffects → appendEvent(s) → 增量持有新快照(日志是真相,快照可重算);
  * - 串行化(单 atom):exec 全程(judge+效果+落日志+换快照)经模块级 promise 队列串行,
  *   Next dev 多请求并发下无交错——"裁决器即并发控制";
+ *   作用域=本进程:T3 引入 worker(第二个写者)前须收敛为单一写者或 DB 级串行化,届时记入 DECISIONS.md;
  * - 单例挂在 globalThis:Next dev 对每个 route 入口独立打包模块,普通模块级变量
  *   会得到多个实例(globalThis 是 Next 生态共享单例的标准做法);
  * - sitemap 从 flow 常量纯推导后缓存(定义不变则拓扑不变,版本号即缓存键)。

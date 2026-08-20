@@ -163,7 +163,9 @@ test('B1 委托发布:agent 三步向导发布文章,计数 2→3', async () => 
       {
         baseUrl: AGENT_BASE,
         fetchImpl: (url, init) => fetch(url, init),
-        startRel: 'article-drafting:main',
+        // 零特权起点:从 articles 集合出发,由决策器沿 flow 入口链接自行进入向导
+        // (评审 Low #5:不再使用向导实例 rel 特权起步)。
+        startRel: 'articles',
         actor: 'agent',
         principal: PRINCIPAL,
         channel: 'e2e',

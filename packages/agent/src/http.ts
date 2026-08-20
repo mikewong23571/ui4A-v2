@@ -8,7 +8,7 @@
  */
 import type { SirenEntity } from '@ui4a/engine';
 
-import type { FetchLike } from './types';
+import type { FetchLike, SitemapSummary } from './types';
 
 /** exec 请求体(HTTP 合同的 POST 载荷形状)。 */
 export interface ExecPayload {
@@ -38,6 +38,8 @@ export interface ExecCallResult {
 export interface ContractClient {
   getEntity(rel: string): Promise<EntityFetchResult>;
   exec(payload: ExecPayload): Promise<ExecCallResult>;
+  /** sitemap(/.well-known/ui4a.json);不可得时返回 undefined,不抛(循环按数据降级)。 */
+  getSitemap(): Promise<SitemapSummary | undefined>;
 }
 
 interface JsonObject {
@@ -74,6 +76,26 @@ function errorMessage(body: unknown, fallback: string): string {
 export function createContractClient(baseUrl: string, fetchImpl: FetchLike): ContractClient {
   const root = baseUrl.replace(/\/+$/, '');
   return {
+    async getSitemap(): Promise<SitemapSummary | undefined> {
+      try {
+        const response = await fetchImpl(`${root}/.well-known/ui4a.json`);
+        if (response.status !== 200) return undefined;
+        const body = await readJson(response);
+        if (!isPlainObject(body) || typeof body.version !== 'string') return undefined;
+        if (!Array.isArray(body.surfaces)) return undefined;
+        const surfaces = body.surfaces
+          .filter(
+            (surface): surface is { rel: string; title: string } =>
+              isPlainObject(surface) &&
+              typeof surface.rel === 'string' &&
+              typeof surface.title === 'string',
+          )
+          .map((surface) => ({ rel: surface.rel, title: surface.title }));
+        return { version: body.version, surfaces };
+      } catch {
+        return undefined;
+      }
+    },
     async getEntity(rel: string): Promise<EntityFetchResult> {
       const url = `${root}/api/entity?rel=${encodeURIComponent(rel)}`;
       try {

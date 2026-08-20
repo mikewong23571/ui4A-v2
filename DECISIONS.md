@@ -50,3 +50,7 @@
 - `@ai-sdk/openai` 缺省走 Responses API,接 GLM 必须显式 `provider.chat()` 锁定 Chat Completions 协议。
 - 推理模型每步决策 8–20s;agent 循环步数上限要考虑真实时延(当前 24 步)。
 
+## D8 审计身份口径:T3 前为自报(2026-08-21)
+
+- 事件日志的 actor/principal/channel 来自请求自报(exec/chat 端点无认证),在 T3 接入 Keycloak(RFC 8693 `act` 链)之前**不具强审计语义**;I5/I6 断言基于此口径成立。评审记录(T2 review Low #6)。
+

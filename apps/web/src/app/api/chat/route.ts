@@ -56,6 +56,8 @@ function parseBody(body: unknown): ParsedChatBody | ParseError {
   }
   return {
     ok: true,
+    // 双重断言理由:goal 的 verb/targetRel/resource/fields 各键已在上文逐键校验,
+    // Record<string,unknown> 与 AgentGoal 结构不重叠是 TS 的保守判断,运行时形状已收敛。
     goal: goal as unknown as AgentGoal,
     sessionId: sessionId ?? crypto.randomUUID(),
     driver: driver ?? 'auto',

@@ -162,6 +162,7 @@ function decide(
     trail?: TrailStep[];
     successes?: DriverContext['successes'];
     lastRejection?: RejectionRecord;
+    sitemap?: DriverContext['sitemap'];
   } = {},
 ): AgentOperation {
   const driver = createRuleDriver();
@@ -176,6 +177,7 @@ function decide(
     trail: extras.trail ?? [],
     successes: extras.successes ?? [],
     lastRejection: extras.lastRejection,
+    sitemap: extras.sitemap,
     // rule driver 的 decide 是同步实现(接口允许 Promise 是为 LLM driver);
     // 断言理由:此处构造的正是 createRuleDriver。
   }) as AgentOperation;
@@ -360,6 +362,50 @@ describe('④自由漫游(沿 links 走到有交集处)', () => {
 
   it('无任何可导航路径且无动作 → fail(停止条件)', () => {
     const op = decide(wizardDone, { verb: '审核' });
+    expect(op.kind).toBe('fail');
+  });
+
+  it('sitemap surfaces:目标词命中表面标题且入口在 links 上 → 沿入口进入(零特权导航)', () => {
+    const articles = collectionEntity({
+      rel: 'articles',
+      members: [
+        { rel: 'post:post-welcome', flow: 'post-status', node: 'published' },
+      ],
+    });
+    const entity: SirenEntity = {
+      ...articles,
+      links: [
+        ...articles.links,
+        { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting' },
+      ],
+    };
+    const op = decide(entity, { verb: '发布' }, {
+      sitemap: {
+        version: 'v1',
+        surfaces: [
+          { rel: 'flow:article-drafting', title: '文章发布向导' },
+          { rel: 'flow:post-status', title: '文章状态' },
+        ],
+      },
+    });
+    // 目标"发布"与表面标题"文章发布向导"词级交集 → 进入 flow 入口链接
+    expect(op).toEqual({ kind: 'navigate', rel: 'flow:article-drafting' });
+  });
+
+  it('sitemap 命中但入口不在当前实体 links 上 → 不据此导航(退回普通漫游)', () => {
+    const articles = collectionEntity({
+      rel: 'articles',
+      members: [
+        { rel: 'post:post-welcome', flow: 'post-status', node: 'published' },
+      ],
+    });
+    const op = decide(articles, { verb: '发布' }, {
+      sitemap: {
+        version: 'v1',
+        surfaces: [{ rel: 'flow:article-drafting', title: '文章发布向导' }],
+      },
+    });
+    // articles 上无 flow 入口链接也无词交集链接 → fail(不幻觉导航)
     expect(op.kind).toBe('fail');
   });
 });

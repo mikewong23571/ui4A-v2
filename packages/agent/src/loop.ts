@@ -19,6 +19,7 @@ import type {
   ExecSuccess,
   RejectionRecord,
   RunAgentOptions,
+  SitemapSummary,
   TrailStep,
 } from './types';
 import type { SirenEntity } from '@ui4a/engine';
@@ -51,6 +52,24 @@ export async function runAgent(
   const actor = options.actor ?? 'agent';
   const channel = options.channel ?? DEFAULT_CHANNEL;
 
+  // sitemap 是版本级缓存结构的最外层,架构规定它是 agent 的静态上下文(取一次,
+  // 全程复用);拿不到不致命——driver 退化为仅用实体导航。
+  let sitemap: SitemapSummary | undefined;
+  try {
+    const fetched = await client.getSitemap();
+    if (fetched !== undefined) {
+      sitemap = {
+        version: fetched.version,
+        surfaces: fetched.surfaces.map((surface) => ({
+          rel: surface.rel,
+          title: surface.title,
+        })),
+      };
+    }
+  } catch {
+    sitemap = undefined;
+  }
+
   let currentRel = options.startRel ?? DEFAULT_START_REL;
   const trail: TrailStep[] = [];
   const successes: ExecSuccess[] = [];
@@ -77,6 +96,7 @@ export async function runAgent(
       trail: [...trail],
       successes: [...successes],
       lastRejection,
+      sitemap,
     };
     lastRejection = undefined;
     const op = await driver.decide(context);

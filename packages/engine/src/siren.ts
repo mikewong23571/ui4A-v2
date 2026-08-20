@@ -23,7 +23,9 @@ export interface SirenAction {
   'requires-confirmation'?: 'low' | 'medium' | 'high';
 }
 
-/** guard 求值结果逐项注入的条目(每个 action 一条,含 blocked 原因)。 */
+/** guard 求值结果逐项注入的条目(每个 action 一条,含 blocked 原因)。
+ *  投影口径:guard 以空参数求值——依赖提交参数的谓词(如 title-not-taken)在投影中
+ *  恒过;真正裁决以 exec 时的 guard 层为准,拒绝仍会带原因回流(拒绝即教育)。 */
 export interface GuardResultEntry {
   action: string;
   blocked: boolean;

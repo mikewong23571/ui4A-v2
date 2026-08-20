@@ -8,7 +8,8 @@
  *   停止条件:guard-results 标记 blocked、guard/undeclared 已拒(换路径)。
  * ③ 相关节点上的流程推进词:向导 next(字段按当前步 schema 过滤)/
  *   队列逐条点名待处理成员 / 队列成员沿 collection 回链回队列视图。
- * ④ 自由漫游:沿 links 走到与目标有词级交集处;无交集可走 → fail。
+ * ④ 自由漫游:sitemap surfaces(静态上下文)命中目标词且入口可达 → 沿入口进入;
+ *   否则沿 links 走到与目标有词级交集处;无交集可走 → fail。
  *
  * done 判定(完成类动作成功过,相对目标):
  * - 发布类:publish 词级匹配的成功存在,且当前实体无剩余目标相关动作;
@@ -345,6 +346,21 @@ function freeRoamDecision(context: DriverContext, goalTokens: readonly string[])
     hints.push(context.goal.targetRel, ...asciiTokens(context.goal.targetRel));
   }
   const candidates = navigableRels(context.entity, context.currentRel);
+
+  // sitemap surfaces 是 agent 的静态上下文(缓存结构第四层的 tool 版):
+  // 目标词命中某表面的 rel/title 且该表面入口在当前实体 links 上 → 沿入口进入。
+  // 例:目标"发布"命中"文章发布向导"(flow:article-drafting)→ 从 articles 进入向导。
+  if (context.sitemap !== undefined) {
+    for (const surface of context.sitemap.surfaces) {
+      if (!anyTokenInString(hints, `${surface.rel} ${surface.title}`)) continue;
+      const entryRel =
+        candidates.find((rel) => rel === surface.rel) ??
+        // 入口链接的 rel 可能是别名(flow:x),也可能指向实例——两者都试。
+        candidates.find((rel) => rel.endsWith(`:${surface.rel.split(':').pop()}`));
+      if (entryRel !== undefined) return { kind: 'navigate', rel: entryRel };
+    }
+  }
+
   const hit = candidates.find((rel) => anyTokenInString(hints, rel));
   if (hit === undefined) {
     return {

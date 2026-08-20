@@ -79,6 +79,18 @@ export interface DriverContext {
   trail: TrailStep[];
   successes: ExecSuccess[];
   lastRejection?: RejectionRecord;
+  /**
+   * 应用 sitemap(版本级缓存结构的最外层,架构规定它是 agent 的静态上下文):
+   * surfaces 的 rel/title 供自由漫游层把目标动词映射到可达表面(flow 入口)。
+   * 可选:循环拿不到 sitemap(端点缺失)时为 undefined,driver 须能退化为仅用实体。
+   */
+  sitemap?: SitemapSummary;
+}
+
+/** sitemap 中 driver 需要的最小投影(surfaces 的 rel/title)。 */
+export interface SitemapSummary {
+  version: string;
+  surfaces: { rel: string; title: string }[];
 }
 
 /**
