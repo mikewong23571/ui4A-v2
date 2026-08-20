@@ -7,3 +7,5 @@
 export * from './types';
 export * from './http';
 export * from './loop';
+export * from './match';
+export * from './rule-driver';
