@@ -1,0 +1,23 @@
+{
+  "name": "@ui4a/agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "UI4A agent 循环协议与 rule driver:循环是协议,driver 是插件(arch-brief §6)。纯 TS 两栖,HTTP 客户端经 fetchImpl 注入(测试脚本化/真实 fetch 双用)。",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ui4a/engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^5.9.3"
+  }
+}

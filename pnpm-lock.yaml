@@ -95,6 +95,19 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  packages/agent:
+    dependencies:
+      '@ui4a/engine':
+        specifier: workspace:*
+        version: link:../engine
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   packages/engine:
     dependencies:
       '@ui4a/shared':
