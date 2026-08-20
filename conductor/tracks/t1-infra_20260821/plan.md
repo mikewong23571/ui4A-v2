@@ -10,10 +10,10 @@
 - [x] Task: 建立 packages/shared(TDD) (b7f41f5)
   - [x] 先写 vitest 失败测试(占位函数 `APP_NAME`/`VERSION` 等)
   - [x] 实现 shared 包使测试转绿;package.json 导出类型与入口
-- [ ] Task: 建立 apps/web(Next.js 壳,接入 shared)
-  - [ ] create-next-app 非交互脚手架(App Router / TS strict)
-  - [ ] 首页占位(标题含 "UI4A"),import shared 的 VERSION 渲染在页面
-  - [ ] vitest:shared 引用断言测试
+- [x] Task: 建立 apps/web(Next.js 壳,接入 shared) (9a3cad3)
+  - [x] create-next-app 非交互脚手架(App Router / TS strict)
+  - [x] 首页占位(标题含 "UI4A"),import shared 的 VERSION 渲染在页面
+  - [x] vitest:shared 引用断言测试
 - [ ] Task: 建立 apps/worker(空壳心跳进程,接入 shared)
   - [ ] 先写失败测试(心跳函数纯逻辑:间隔计算/退出信号处理)
   - [ ] 实现 tsx 入口:启动打印心跳(含 shared VERSION),SIGINT 干净退出
