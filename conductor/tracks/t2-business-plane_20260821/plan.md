@@ -52,7 +52,8 @@
 - [x] Task: 聊天路由与悬浮窗(服务端跑 agent 循环,轨迹流式进对话;assistant-ui 悬浮组件) `8677f37`
 - [x] Task: E2E B4(坏 key→401 原文进对话、后续轮次存活)+ I1(无 key 环境 B1–B3 全过) `3dab0d3`
 - [x] Task: RUN_LLM_E2E 冒烟(标记 skip-unless-env;编排者验收时手动跑) `8847567`
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `8847567`
+  [checkpoint: 8847567]
 
 ## Phase F: :form runner 人类路径(双执行者走查)
 
