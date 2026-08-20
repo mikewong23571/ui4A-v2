@@ -1,0 +1,9 @@
+Task: 建立 apps/web(Next.js 壳,接入 shared) (T1 Phase 1)
+
+改动:create-next-app@latest 非交互脚手架(--typescript --eslint --tailwind --app --src-dir --no-git --use-pnpm --yes)生成 apps/web;包名改为 @ui4a/web 并加 @ui4a/shared workspace:* 依赖与 typecheck 脚本;next.config.ts 加 transpilePackages=['@ui4a/shared'];layout metadata title='UI4A';首页重写为极简占位页(渲染 APP_NAME 与 VERSION);新增 src/app/shared-import.test.ts 断言 shared 导入可用(APP_NAME==='UI4A')。
+
+偏差与处理:① create-next-app 首次在仓库根运行报 'application path is not writable',预创建 apps/ 目录后在 apps/ 内重跑成功;② CNA 在 apps/web 内生成了嵌套 pnpm-workspace.yaml + pnpm-lock.yaml(会割裂根 workspace),已删除并回归根 install;③ CNA 产物含 AGENTS.md/CLAUDE.md(Next 16 新增 agent 说明文件),按脚手架产物保留。
+
+验证:CI=true pnpm vitest run 2 files/7 tests 全绿;pnpm --filter @ui4a/web exec tsc --noEmit 通过;pnpm --filter @ui4a/web build 成功,预渲染 HTML 含 UI4A 与 0.1.0。
+
+依赖版本:next 16.3.1、react 19.2.8、tailwindcss ^4.3.3、eslint ^9.39.5 + eslint-config-next 16.3.1、typescript ^5.9.3
