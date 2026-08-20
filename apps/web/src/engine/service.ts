@@ -151,7 +151,12 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           });
           return verdict.detail === undefined
             ? { kind: 'rejected', layer: verdict.layer, reason: verdict.reason }
-            : { kind: 'rejected', layer: verdict.layer, reason: verdict.reason, detail: verdict.detail };
+            : {
+                kind: 'rejected',
+                layer: verdict.layer,
+                reason: verdict.reason,
+                detail: verdict.detail,
+              };
         }
 
         const outcome = applyEffects(aliased, verdict.effects, snapshot, {

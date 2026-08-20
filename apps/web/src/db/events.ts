@@ -15,11 +15,7 @@ import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
 
 /** 事件种类(spec FR2):拒绝事件与执行事件同表(I6)。 */
 export type EventKind =
-  | 'action-executed'
-  | 'action-rejected'
-  | 'entity-appended'
-  | 'spawn-requested'
-  | 'seed';
+  'action-executed' | 'action-rejected' | 'entity-appended' | 'spawn-requested' | 'seed';
 
 /** 追加事件(引擎 EngineEvent 的日志层超集:引擎不产 seq/ts/reason,由本层分配)。 */
 export interface EventAppend {

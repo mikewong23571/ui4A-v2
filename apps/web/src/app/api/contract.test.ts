@@ -60,7 +60,12 @@ async function advanceWizard(): Promise<void> {
     { params: { body: '正文内容' } },
   ];
   for (const step of steps) {
-    const res = await exec({ rel: 'article-drafting:main', action: 'next', params: step.params, actor: 'agent' });
+    const res = await exec({
+      rel: 'article-drafting:main',
+      action: 'next',
+      params: step.params,
+      actor: 'agent',
+    });
     expect(res.status).toBe(200);
   }
 }
@@ -171,7 +176,12 @@ describe('B1 投影联动:exec → /api/entity', () => {
   });
 
   it('B2:unpublish 后该篇 offline,另一篇不受影响(精确下线)', async () => {
-    const res = await exec({ rel: 'post:post-welcome', action: 'unpublish', params: {}, actor: 'human' });
+    const res = await exec({
+      rel: 'post:post-welcome',
+      action: 'unpublish',
+      params: {},
+      actor: 'human',
+    });
     expect(res.status).toBe(200);
 
     const welcome = (await (await entity('post:post-welcome')).json()) as SirenEntity;

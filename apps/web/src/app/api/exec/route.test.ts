@@ -86,15 +86,16 @@ describe('POST /api/exec', () => {
     expect(body.entity.properties).toMatchObject({ rel: 'post:new-article', node: 'published' });
 
     // 集合投影联动:articles 2→3(经 /api/entity 验证留给合同级测试)。
-    const appended = await pool.query(
-      'SELECT COUNT(*)::int AS n FROM events WHERE kind = $1',
-      ['entity-appended'],
-    );
+    const appended = await pool.query('SELECT COUNT(*)::int AS n FROM events WHERE kind = $1', [
+      'entity-appended',
+    ]);
     expect(appended.rows[0]).toMatchObject({ n: 1 });
   });
 
   it('声明层拒绝:未声明动作 → 400 {layer,reason}', async () => {
-    const res = await POST(post({ rel: 'comment:c1', action: 'explode', params: {}, actor: 'agent' }));
+    const res = await POST(
+      post({ rel: 'comment:c1', action: 'explode', params: {}, actor: 'agent' }),
+    );
 
     expect(res.status).toBe(400);
     const body = (await res.json()) as { layer: string; reason: string };
@@ -106,7 +107,12 @@ describe('POST /api/exec', () => {
     await advanceWizard();
 
     const res = await POST(
-      post({ rel: 'article-drafting:main', action: 'publish', params: { title: '欢迎来到 UI4A' }, actor: 'agent' }),
+      post({
+        rel: 'article-drafting:main',
+        action: 'publish',
+        params: { title: '欢迎来到 UI4A' },
+        actor: 'agent',
+      }),
     );
 
     expect(res.status).toBe(422);
@@ -117,7 +123,9 @@ describe('POST /api/exec', () => {
     };
     expect(body.layer).toBe('guard-failed');
     expect(body.reason).toContain('title-not-taken');
-    expect(body.detail).toEqual([expect.objectContaining({ name: 'title-not-taken', pass: false })]);
+    expect(body.detail).toEqual([
+      expect.objectContaining({ name: 'title-not-taken', pass: false }),
+    ]);
   });
 
   it('schema 层拒绝:缺必填 → 422 {layer,reason,detail 为 ajv 错误}', async () => {

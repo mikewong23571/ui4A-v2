@@ -138,11 +138,7 @@ async function execOnline(
   request: OnlineRequest,
   snapshot: EngineSnapshot,
 ): Promise<EngineSnapshot> {
-  const verdict = judge(
-    { ...request, channel: 'http' },
-    snapshot,
-    { flows, guards },
-  );
+  const verdict = judge({ ...request, channel: 'http' }, snapshot, { flows, guards });
 
   if (verdict.kind === 'rejected') {
     // 拒绝即数据(I6):不改状态,带结构化原因入日志。
@@ -160,7 +156,9 @@ async function execOnline(
     return snapshot;
   }
 
-  const outcome = applyEffects({ ...request, channel: 'http' }, verdict.effects, snapshot, { flows });
+  const outcome = applyEffects({ ...request, channel: 'http' }, verdict.effects, snapshot, {
+    flows,
+  });
   for (const event of outcome.events) {
     await appendEvent(db, {
       kind: event.kind,
@@ -188,8 +186,16 @@ async function runScenario(db: DbExecutor): Promise<EngineSnapshot> {
   let snapshot = seedSnapshot;
 
   // 三层各一次拒绝(声明层 / guard 层 / schema 层)——全部留痕、不改状态。
-  snapshot = await execOnline(db, { rel: 'comment:c1', action: 'explode', params: {}, actor: 'agent' }, snapshot);
-  snapshot = await execOnline(db, { rel: 'comment:c1', action: 'hold', params: {}, actor: 'agent' }, snapshot);
+  snapshot = await execOnline(
+    db,
+    { rel: 'comment:c1', action: 'explode', params: {}, actor: 'agent' },
+    snapshot,
+  );
+  snapshot = await execOnline(
+    db,
+    { rel: 'comment:c1', action: 'hold', params: {}, actor: 'agent' },
+    snapshot,
+  );
   snapshot = await execOnline(
     db,
     { rel: 'article-drafting:main', action: 'next', params: {}, actor: 'agent' },
@@ -199,7 +205,13 @@ async function runScenario(db: DbExecutor): Promise<EngineSnapshot> {
   // 成功序列:向导三步(其一带 proposal 出处)→ publish(append)→ 评论通过。
   snapshot = await execOnline(
     db,
-    { rel: 'article-drafting:main', action: 'next', params: { title: 'Hello World' }, actor: 'agent', principal: 'user:mike' },
+    {
+      rel: 'article-drafting:main',
+      action: 'next',
+      params: { title: 'Hello World' },
+      actor: 'agent',
+      principal: 'user:mike',
+    },
     snapshot,
   );
   snapshot = await execOnline(
@@ -220,10 +232,19 @@ async function runScenario(db: DbExecutor): Promise<EngineSnapshot> {
   );
   snapshot = await execOnline(
     db,
-    { rel: 'article-drafting:main', action: 'publish', params: { title: 'Hello World' }, actor: 'human' },
+    {
+      rel: 'article-drafting:main',
+      action: 'publish',
+      params: { title: 'Hello World' },
+      actor: 'human',
+    },
     snapshot,
   );
-  snapshot = await execOnline(db, { rel: 'comment:c1', action: 'approve', params: {}, actor: 'agent' }, snapshot);
+  snapshot = await execOnline(
+    db,
+    { rel: 'comment:c1', action: 'approve', params: {}, actor: 'agent' },
+    snapshot,
+  );
   return snapshot;
 }
 

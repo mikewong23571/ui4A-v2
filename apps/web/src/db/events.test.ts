@@ -44,7 +44,11 @@ describe('events 表迁移', () => {
 describe('appendEvent', () => {
   it('seq 由 bigserial 单调递增分配,ts 由库时钟填充', async () => {
     const a = await appendEvent(pool, { kind: 'seed', rel: 'seed:test' });
-    const b = await appendEvent(pool, { kind: 'action-executed', rel: 'post:x', action: 'unpublish' });
+    const b = await appendEvent(pool, {
+      kind: 'action-executed',
+      rel: 'post:x',
+      action: 'unpublish',
+    });
 
     expect(typeof a.seq).toBe('number');
     expect(b.seq).toBe(a.seq + 1);
@@ -124,7 +128,9 @@ describe('listEvents', () => {
 
     const all = await listEvents(pool);
     expect(all.map((event) => event.rel)).toEqual(['seed:test-1', 'seed:test-2', 'seed:test-3']);
-    expect(all.map((event) => event.seq)).toEqual([...all.map((event) => event.seq)].sort((a, b) => a - b));
+    expect(all.map((event) => event.seq)).toEqual(
+      [...all.map((event) => event.seq)].sort((a, b) => a - b),
+    );
 
     const afterFirst = await listEvents(pool, all[0]!.seq);
     expect(afterFirst.map((event) => event.rel)).toEqual(['seed:test-2', 'seed:test-3']);

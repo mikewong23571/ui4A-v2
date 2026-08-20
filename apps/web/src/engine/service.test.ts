@@ -140,11 +140,20 @@ describe('exec:三层裁决 → 事件 → 增量快照', () => {
 
   it('声明层拒绝:未声明动作 → 事件留痕,状态不变', async () => {
     const engine = await boot();
-    const outcome = await engine.exec({ rel: 'comment:c1', action: 'explode', params: {}, actor: 'agent' });
+    const outcome = await engine.exec({
+      rel: 'comment:c1',
+      action: 'explode',
+      params: {},
+      actor: 'agent',
+    });
 
     expect(outcome).toMatchObject({ kind: 'rejected', layer: 'undeclared' });
     const events = await logEvents();
-    expect(events.at(-1)).toMatchObject({ kind: 'action-rejected', rel: 'comment:c1', action: 'explode' });
+    expect(events.at(-1)).toMatchObject({
+      kind: 'action-rejected',
+      rel: 'comment:c1',
+      action: 'explode',
+    });
     expect(engine.getSnapshot().instances['comment:c1']?.node).toBe('pending');
   });
 
@@ -183,7 +192,12 @@ describe('exec:三层裁决 → 事件 → 增量快照', () => {
 
   it('拒绝事件的 detail 携带 layer(日志与 HTTP 响应同源的存储侧)', async () => {
     const engine = await boot();
-    const outcome = await engine.exec({ rel: 'nope', action: 'approve', params: {}, actor: 'agent' });
+    const outcome = await engine.exec({
+      rel: 'nope',
+      action: 'approve',
+      params: {},
+      actor: 'agent',
+    });
     if (outcome.kind !== 'rejected') throw new Error('应被拒绝');
 
     const last = (await logEvents()).at(-1);
@@ -257,10 +271,34 @@ describe('串行化:exec 单 atom(裁决器即并发控制)', () => {
   it('不同实例并发 exec 全部成功,增量快照与 fold(日志) hash 一致', async () => {
     const engine = await boot();
     const outcomes = await Promise.all([
-      engine.exec({ rel: 'comment:c1', action: 'approve', params: {}, actor: 'agent', channel: 'http' }),
-      engine.exec({ rel: 'comment:c2', action: 'reject', params: {}, actor: 'agent', channel: 'http' }),
-      engine.exec({ rel: 'comment:c3', action: 'approve', params: {}, actor: 'agent', channel: 'http' }),
-      engine.exec({ rel: 'post:post-welcome', action: 'unpublish', params: {}, actor: 'human', channel: 'http' }),
+      engine.exec({
+        rel: 'comment:c1',
+        action: 'approve',
+        params: {},
+        actor: 'agent',
+        channel: 'http',
+      }),
+      engine.exec({
+        rel: 'comment:c2',
+        action: 'reject',
+        params: {},
+        actor: 'agent',
+        channel: 'http',
+      }),
+      engine.exec({
+        rel: 'comment:c3',
+        action: 'approve',
+        params: {},
+        actor: 'agent',
+        channel: 'http',
+      }),
+      engine.exec({
+        rel: 'post:post-welcome',
+        action: 'unpublish',
+        params: {},
+        actor: 'human',
+        channel: 'http',
+      }),
     ]);
 
     expect(outcomes.every((outcome) => outcome.kind === 'accepted')).toBe(true);

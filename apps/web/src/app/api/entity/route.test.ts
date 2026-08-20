@@ -58,7 +58,11 @@ describe('GET /api/entity', () => {
     const entity = (await res.json()) as {
       properties: { rel: string; flow: string; node: string; title: string };
       actions: { name: string; href: string }[];
-      'guard-results': { action: string; blocked: boolean; guards: { name: string; pass: boolean }[] }[];
+      'guard-results': {
+        action: string;
+        blocked: boolean;
+        guards: { name: string; pass: boolean }[];
+      }[];
     };
     expect(entity.properties).toMatchObject({
       rel: 'post:post-welcome',
@@ -69,7 +73,10 @@ describe('GET /api/entity', () => {
     expect(entity.actions.map((action) => action.name)).toEqual(['unpublish', 'archive']);
     expect(entity.actions.every((action) => action.href === '/api/exec')).toBe(true);
     const unpublish = entity['guard-results']?.find((entry) => entry.action === 'unpublish');
-    expect(unpublish).toMatchObject({ blocked: false, guards: [{ name: 'is-published', pass: true }] });
+    expect(unpublish).toMatchObject({
+      blocked: false,
+      guards: [{ name: 'is-published', pass: true }],
+    });
     const archive = entity['guard-results']?.find((entry) => entry.action === 'archive');
     expect(archive?.guards).toEqual([{ name: 'is-published', pass: true }]);
   });
@@ -80,7 +87,10 @@ describe('GET /api/entity', () => {
     expect(res.status).toBe(200);
     const entity = (await res.json()) as {
       properties: { node: string };
-      actions: { name: string; fields: { required: string[]; properties: Record<string, unknown> } }[];
+      actions: {
+        name: string;
+        fields: { required: string[]; properties: Record<string, unknown> };
+      }[];
     };
     expect(entity.properties.node).toBe('basic-info');
     expect(entity.actions).toHaveLength(1);

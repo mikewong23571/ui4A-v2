@@ -50,7 +50,12 @@ const articleDrafting: FlowDefinition = {
           type: 'textarea',
           required: true,
           semantics: 'work-product',
-          source: { kind: 'proposal', capability: 'draft', options: 3, selection: 'human-required' },
+          source: {
+            kind: 'proposal',
+            capability: 'draft',
+            options: 3,
+            selection: 'human-required',
+          },
         },
       ],
       actions: [{ name: 'next', title: '完成编辑', to: 'ready' }],

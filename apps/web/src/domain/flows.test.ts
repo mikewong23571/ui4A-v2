@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { contentVersion, fold, parseFlowDefinition } from '@ui4a/engine';
 import { seedGuardRegistry } from '@ui4a/shared';
 
-import { businessFlows, businessFlowList, commentModerationFlow, postStatusFlow, articleDraftingFlow } from './flows';
+import {
+  businessFlows,
+  businessFlowList,
+  commentModerationFlow,
+  postStatusFlow,
+  articleDraftingFlow,
+} from './flows';
 import { SEED_REL, seedDetail } from './seed';
 
 // 种子业务域合同测试(spec 架构决定 5 / FR3):
@@ -46,7 +52,11 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
       expect.objectContaining({ name: 'title', type: 'text', required: true }),
     ]);
     expect(nodeOf(articleDraftingFlow, 'classification').fields).toEqual([
-      expect.objectContaining({ name: 'category', type: 'select', options: ['tech', 'essay', 'review'] }),
+      expect.objectContaining({
+        name: 'category',
+        type: 'select',
+        options: ['tech', 'essay', 'review'],
+      }),
       expect.objectContaining({ name: 'tags', type: 'text' }),
     ]);
     expect(nodeOf(articleDraftingFlow, 'content').fields).toEqual([
@@ -95,7 +105,12 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
     const published = nodeOf(postStatusFlow, 'published');
     expect(published.title).toBe('已发布');
     expect(published.actions).toEqual([
-      expect.objectContaining({ name: 'unpublish', title: '下线', to: 'offline', guards: ['is-published'] }),
+      expect.objectContaining({
+        name: 'unpublish',
+        title: '下线',
+        to: 'offline',
+        guards: ['is-published'],
+      }),
       expect.objectContaining({
         name: 'archive',
         title: '归档',
