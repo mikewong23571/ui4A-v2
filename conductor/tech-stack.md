@@ -33,6 +33,20 @@
 
 `table`(TanStack Table)/ `chart`(shadcn Charts, Recharts 3)/ `stat`(Tremor)/ `timeline`(react-chrono)/ `flow`(React Flow)/ `form`(RJSF)/ `diff`(deep-object-diff + react-diff-view)/ `kanban`(dnd-kit)/ `markdown`(react-markdown / Streamdown)/ `detail`(shadcn Sheet/Card);后期:`calendar`(FullCalendar)、`map`(MapLibre)。
 
+## LLM Provider 接入(已定)
+
+**Provider**:GLM Coding Plan(智谱 BigModel)。提供的端点:
+
+| 协议 | Base URL | 是否使用 |
+|---|---|---|
+| **OpenAI Chat Completion** | `https://open.bigmodel.cn/api/coding/paas/v4` | ✅ **暂时只兼容这个** |
+| Anthropic Message | `https://open.bigmodel.cn/api/anthropic` | ❌ 暂不兼容 |
+| OpenAI Response | `https://open.bigmodel.cn/api/v1` | ❌ 暂不兼容 |
+
+**API Key**:本地文件 `/Users/mike/.secrets/glm_coding_plan_key`(在仓库外;运行时读取,严禁把 key 拷入仓库、写入日志或提交)。
+
+接入方式:AI SDK 用 OpenAI 兼容 provider(`createOpenAI({ baseURL: 'https://open.bigmodel.cn/api/coding/paas/v4', apiKey })`);B4 场景(无效 API key 的 401 如实进入对话)即以这套端点为验证对象。
+
 ## Agent 侧接口(不自造线协议)
 
 1. **固定协议动词**(≈5 个,全应用通用):`navigate(rel)` / `exec(action, params)` / `clarify(fields)` / `render(spec)` / `done(summary)`;
