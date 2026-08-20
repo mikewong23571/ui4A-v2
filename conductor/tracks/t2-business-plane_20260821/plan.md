@@ -43,6 +43,11 @@
 
 ## Phase E: LLM driver 与悬浮聊天(B4、I1)
 
+> 2026-08-21 任务增补(编排 prompt):先行补全 `flow:<name>` 实体投影合同
+> (sitemap surfaces 已声明但 /api/entity 404;目标:从 articles 沿 links 到达向导实例,
+> 零 startRel 特权的完整导航——处境披露的根基)。
+
+- [x] Task: flow:<name> 实体投影合同补全(TDD:向导类 flow 投影为其实例实体;集合 links 补 flow 入口链接;web 服务层实现,engine 不动) `f0dc65c`
 - [ ] Task: LLM driver(TDD:工具投影生成器(动词5+动态动作工具,guard 嵌 description);GLM 端点接入 createOpenAI;无 key 回退 rule)
 - [ ] Task: 聊天路由与悬浮窗(服务端跑 agent 循环,轨迹流式进对话;assistant-ui 悬浮组件)
 - [ ] Task: E2E B4(坏 key→401 原文进对话、后续轮次存活)+ I1(无 key 环境 B1–B3 全过)
