@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+dist/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Test & coverage
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# Logs & misc
+*.log
+.DS_Store

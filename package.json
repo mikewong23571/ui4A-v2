@@ -1,0 +1,14 @@
+{
+  "name": "ui4a",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "dev": "pnpm --filter @ui4a/web dev",
+    "dev:worker": "pnpm --filter @ui4a/worker dev",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "check": "pnpm typecheck && pnpm test",
+    "e2e": "echo \"e2e: Playwright 骨架在 T1 Phase 3 引入,当前为占位\" && exit 0"
+  }
+}
