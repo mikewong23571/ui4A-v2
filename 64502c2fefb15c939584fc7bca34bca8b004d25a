@@ -6,3 +6,26 @@ Task: /api/events 只读端点(T2 Phase B)
 验证:CI=true pnpm check 全绿(134 tests,18 files)。
 
 Commit: 64502c2
+
+===========
+Phase B Verification & Checkpoint(自治验收,workflow.md 自治编排协议)
+
+阶段范围(git diff 4f01f11..HEAD):apps/web(db/events、api/events route、package.json、tsconfig)、packages/engine(fold.ts/fold.test.ts/index.ts/purity.test.ts)、vitest.config.ts、pnpm-lock.yaml、plan.md。
+
+测试覆盖核查:全部新增代码文件均有对应测试(route.ts→route.test.ts;events.ts→events.test.ts+replay.test.ts;fold.ts→fold.test.ts;index.ts→purity.test.ts 导出面断言);events.sql(非代码工件)由 events.test.ts 逐字一致性测试锁定。
+
+自动化验证(等效手工步骤,编排代行):
+- 命令:CI=true pnpm check → 全绿(18 files / 134 tests;typecheck×3 + eslint + vitest)。
+- 连跑两轮通过(events/replay 集成测试 TRUNCATE 自清理,可重复)。
+
+等效手工验证(真实 HTTP,live dev server PORT=3100):
+- GET /api/health → {status:ok,db:ok};
+- 造 3 条事件(seed/action-rejected/action-executed)后 GET /api/events → seq 升序原始事件,拒绝事件带 reason=guard 不满足: is-pending=false;
+- GET /api/events?afterSeq=<cursor> → 严格大于 cursor 的后续事件(afterSeq=507 → 空);
+- GET /api/events?afterSeq=abc → 400 {error:afterSeq 必须是非负整数};
+- POST /api/events → 405(只读端点,仅 GET);
+- 收尾:TRUNCATE events、停 dev server(3100 无监听)、postgres 容器保持运行(healthy)。
+
+DoD 对照:check 全绿 ✓;I5 真 PG 可重复 ✓;UPDATE/DELETE 被触发器拒绝(错误断言)✓;/api/events seq 有序+拒绝带 reason ✓;4 任务 commit+notes+plan ✓。
+
+自治验收说明:本报告由实施 subagent 依自治编排协议生成,验证证据如上(可复跑)。
