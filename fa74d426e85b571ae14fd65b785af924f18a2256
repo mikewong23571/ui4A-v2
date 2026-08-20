@@ -1,0 +1,20 @@
+Task: 合同级测试补充(T2 Phase C / Task C4)
+
+摘要:
+- apps/web/src/app/api/contract.test.ts(7 测试,route handler 直测):
+  * DoD3 三层各一:undeclared/guard-failed/schema-invalid 的 exec 响应与
+    /api/events 最新 action-rejected 事件 reason 逐字一致、layer 一致
+    (事件 detail.layer);guard 层双侧 detail 均含谓词名 title-not-taken。
+  * 并发:4 路 POST(3 approve + 1 抢同一评论的 reject)→ [200,200,200,400],
+    pending 清零、拒绝留痕恰 1 条、增量快照 hash === fold(日志) hash。
+  * 投影联动 B1:publish 后 /api/entity?rel=articles count 2→3、
+    post:new-article 直达且挂 unpublish/archive;B2:unpublish 精确下线
+    (post-welcome offline、first-post 不受影响)。
+  * sitemap 集合表面(articles/comments)全部经 /api/entity 可达。
+- server 级 fetch smoke 按编排决定留给 Phase D E2E;本文件不依赖运行中 dev server。
+
+CI=true pnpm check 全绿(24 文件 183 测试)。
+
+核心 why:'拒绝响应与日志事件一致'若不测则只是口头承诺——同一 verdict 对象
+分叉成 HTTP body 与事件行,测试把它们重新对齐;并发+fold hash 把单 atom
+串行化的'无交错'固化为回归护栏。
