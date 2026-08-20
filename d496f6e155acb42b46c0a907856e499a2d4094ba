@@ -1,0 +1,31 @@
+Task: 引擎服务层(T2 Phase C / Task C2)
+
+摘要:
+- apps/web/src/engine/service.ts:EngineRuntime{getSnapshot/getEntity/getSitemap/exec}。
+  * getEngine(db):globalThis 挂单例(Next dev 每个 route 入口独立打包模块,
+    模块级变量会裂成多实例;globalThis 是 Next 共享单例标准做法);同 db 幂等,
+    boot 失败清除缓存可重试;resetEngineForTests 供测试 TRUNCATE 后重 boot。
+  * boot = ensureEventsTable → seedIfMissing(readLog 查 seed:business-domain,
+    无才 appendEvent,幂等)→ fold(readLog)→ 增量快照起点。
+  * exec:串行队列(state.tail 链,promise 吞错保活)内完成 judge→拒绝:
+    appendEvent(action-rejected, reason, detail={layer, judge}),不改状态;
+    通过:applyEffects→逐事件 appendEvent→snapshot=outcome.snapshot;
+    受影响实体 = appended 最后一个 rel 的投影,否则执行 rel 的新投影。
+  * 日志保持 Phase B 口径:to/appended/appendedRel/collection 不落列
+    (fold 由 flow 定义重推导),未改 events 表与 engine LogEvent 语义。
+- 测试 service.test.ts(16):
+  * boot:空库 seed 1 次;二次 boot 不翻倍(seed 仍 1 条、7 实例);
+    TRUNCATE 后重启重 seed;同 db 幂等同实例。
+  * exec:approve 通过(事件+快照+投影);三层各拒(undeclared/guard-failed
+    重名 publish/schema-invalid 缺 title)且状态不变;拒绝事件 detail.layer;
+    B1 全链(向导三步+publish→articles 2→3,entity=post:new-article published)。
+  * 串行:同评论并发 approve×2 恰一成功一拒;4 路混战 3 pending 清零恰 1 拒;
+    并发后增量快照 hash === fold(日志) hash(I5 语义在服务层成立)。
+  * 投影:articles count/entities;guard-results 逐项注入;sitemap 缓存同引用。
+- 修正:EngineSnapshot 从 @ui4a/shared 导入(engine 不再导出该类型,types.ts 无它)。
+
+CI=true pnpm check 全绿(20 文件 158 测试)。
+
+核心 why:HTTP 三端点(下一任务)需要一个跨入口共享、可串行化的运行时持有者;
+单 atom 串行队列让'裁决器即并发控制'在多请求下字面成立(两 agent 抢同一评论,
+一个成功一个拿到拒绝),fold hash 一致性证明增量路径与重放路径同构。
