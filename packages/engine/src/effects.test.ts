@@ -237,7 +237,6 @@ describe('效果词汇表 — append(生成 `类型:实例名` rel)', () => {
 
 describe('效果词汇表 — spawn(T2 stub:只记事件不改状态)', () => {
   it('产出 spawn-requested 事件,携带 capability/bind/on-done;快照实例不变', () => {
-    const before = JSON.stringify(seedSnapshot);
     const outcome = applyEffects(
       exec('summarize', 'post:post-welcome'),
       [
@@ -251,7 +250,10 @@ describe('效果词汇表 — spawn(T2 stub:只记事件不改状态)', () => {
       seedSnapshot,
       deps,
     );
-    expect(JSON.stringify(outcome.snapshot)).toBe(before);
+    // T3 机械适配:applyEffects 恒携带 confirmations 表(空表也随行),spawn 不改其内容。
+    expect(JSON.stringify(outcome.snapshot)).toBe(
+      JSON.stringify({ ...seedSnapshot, confirmations: {} }),
+    );
     expect(outcome.events.map((e) => e.kind)).toEqual(['action-executed', 'spawn-requested']);
     expect(outcome.events[1]).toMatchObject({
       kind: 'spawn-requested',

@@ -41,8 +41,8 @@ describe('引擎两栖性(纯 TS,浏览器/服务端零 Node API)', () => {
     }
   });
 
-  it('扫描到的库源覆盖引擎全部模块(11 个非测试源文件)', () => {
-    expect(librarySources(srcDir).length).toBe(11);
+  it('扫描到的库源覆盖引擎全部模块(13 个非测试源文件;T3 增 confirmation/execute)', () => {
+    expect(librarySources(srcDir).length).toBe(13);
   });
 
   it('公共导出面完整(barrel 可整体导入求值)', () => {
@@ -64,6 +64,9 @@ describe('引擎两栖性(纯 TS,浏览器/服务端零 Node API)', () => {
         'deriveSitemap',
         'canonicalJson',
         'contentVersion',
+        'confirmGate',
+        'builtinConfirmationPolicy',
+        'executeWithGates',
       ]),
     );
   });

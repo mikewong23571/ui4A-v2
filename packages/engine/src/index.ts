@@ -11,6 +11,8 @@ export * from './machine';
 export * from './schema';
 export * from './judge';
 export * from './effects';
+export * from './confirmation';
+export * from './execute';
 export * from './fold';
 export * from './siren';
 export * from './sitemap';

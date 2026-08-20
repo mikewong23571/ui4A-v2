@@ -39,10 +39,12 @@ function exec(
 }
 
 describe('三层裁决 — 通过路径', () => {
-  it('声明+guard+schema 全过 → accepted,携带规范化效果与字段 schema', () => {
+  it('声明+guard+schema 全过 → accepted,携带动作声明、规范化效果与字段 schema', () => {
     const result = exec('comment:c1', 'approve');
     expect(result).toEqual({
       kind: 'accepted',
+      // T3 机械适配:accepted 结果携带动作声明(确认门读 requires-confirmation 标注)。
+      action: commentModerationFlow.nodes[0].actions.find((a) => a.name === 'approve'),
       effects: [{ type: 'transition', to: 'approved' }],
       schema: expect.objectContaining({ type: 'object' }),
     });

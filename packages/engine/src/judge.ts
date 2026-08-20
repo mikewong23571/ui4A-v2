@@ -29,7 +29,13 @@ export type JudgeLayer = 'undeclared' | 'guard-failed' | 'schema-invalid';
 
 /** 裁决结果(discriminated union)。 */
 export type JudgeResult =
-  | { kind: 'accepted'; effects: EffectDefinition[]; schema: Record<string, unknown> }
+  | {
+      kind: 'accepted';
+      /** 通过裁决的动作声明(确认门读 requires-confirmation 标注)。 */
+      action: ActionDefinition;
+      effects: EffectDefinition[];
+      schema: Record<string, unknown>;
+    }
   | { kind: 'rejected'; layer: JudgeLayer; reason: string; detail?: unknown };
 
 /** judge 依赖:flow 注册表(须为 parseFlowDefinition 规范化后的定义)+ 谓词注册表。 */
@@ -121,5 +127,5 @@ export function judge(
     return reject('schema-invalid', '参数不符合动作字段 schema', validate.errors);
   }
 
-  return { kind: 'accepted', effects: actionEffects(action), schema };
+  return { kind: 'accepted', action, effects: actionEffects(action), schema };
 }

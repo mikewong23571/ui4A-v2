@@ -13,7 +13,13 @@ import type { EffectDefinition, FlowDefinition } from './types';
 
 /** 引擎产出的事件(append 到事件日志;seq/ts 由日志层分配——时钟是 capability)。 */
 export interface EngineEvent {
-  kind: 'action-executed' | 'entity-appended' | 'spawn-requested';
+  kind:
+    | 'action-executed'
+    | 'entity-appended'
+    | 'spawn-requested'
+    | 'confirmation-requested'
+    | 'confirmation-approved'
+    | 'confirmation-rejected';
   rel: string;
   action: string;
   actor: 'human' | 'agent';
@@ -32,6 +38,11 @@ export interface EngineEvent {
   capability?: string;
   bind?: Record<string, unknown>;
   'on-done'?: string;
+  /**
+   * confirmation-*:结构化载荷(ConfirmationRequestDetail / ConfirmationDecisionDetail,
+   * 见 confirmation.ts;与日志层 LogEvent.detail 同一落点)。
+   */
+  detail?: unknown;
 }
 
 /** 效果应用结果:新快照 + 待追加事件(顺序即日志顺序,重放确定性依赖它)。 */
@@ -89,8 +100,8 @@ function instanceName(
   return `${base}-${counter}`;
 }
 
-/** 请求参数 → 带出处的字段(可按白名单过滤)。 */
-function paramsToFields(
+/** 请求参数 → 带出处的字段(可按白名单过滤;confirmation 模块与 web 服务层共用口径)。 */
+export function paramsToFields(
   request: ExecRequest,
   whitelist?: string[],
 ): Record<string, FieldValue> {
@@ -203,7 +214,7 @@ export function applyEffects(
   };
 
   return {
-    snapshot: { instances, collections },
+    snapshot: { instances, collections, confirmations: { ...snapshot.confirmations } },
     events: [executedEvent, ...appendedEvents, ...spawnEvents],
   };
 }
