@@ -1,0 +1,9 @@
+Task: E2E B4 + I1 + flow 导航(T2 Phase E / Task E3)
+
+Summary:
+- e2e/chat.spec.ts 四场景:①flow 导航补全(articles→flow 入口→向导实例,零 startRel 特权);②I1(spawn env GLM_API_KEY='' 压过 .env.local → auto→rule,B1 完成 2→3,轨迹 3×next+publish+完成,driver='rule' 即零 LLM 网络路径的 e2e 证据);③B4(GLM_API_KEY=invalid + driver llm + LLM_BASE_URL→本地 401 桩:200+401 原文+同 session 重发一致,route 不 5xx;真实端点 401 已另行手工验证);④悬浮窗首页可见可展开(3100 webServer)。
+- e2e/server-kit.ts:baseline 的 seed-reset 方案参数化(可注入 env),baseline.spec 保持自含未动。
+- playwright.config:CI workers=1——两个 spec 文件并行 worker 共用 3110 端口与 PG,互相杀 server(首跑 B1/B4 撞车超时的根因);单 worker 后全绿(8.2s)。
+- llm-smoke.spec.ts 属 Task E4,未含本 commit。
+
+Verification: CI=true pnpm e2e 全绿(9 passed + 1 skipped[llm-smoke];baseline 3 + chat 4 + smoke 2);CI=true pnpm check 全绿(264 tests)。
