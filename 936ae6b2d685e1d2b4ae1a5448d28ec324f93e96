@@ -1,0 +1,20 @@
+Task: T2 Phase F / F2 入口页(文章列表/评论队列/发布向导入口)
+
+Summary:
+- apps/web/src/app/page.tsx 由 T1 占位页改为合同驱动导航首页(client):
+  GET /api/entity?rel=articles + ?rel=comments 并行拉取。
+- 文章列表:entities[] 成员逐篇 anchor → /entity?rel=post:<id>,
+  文本 = 字段值 + 节点(零硬编码字段名);计数取 properties.count。
+- 发布向导入口:articles.links 中 rel 含 flow 的链接(引擎 flow-entry 注入),
+  renderer 零 startRel 特权——从集合沿 links 到达向导(处境披露)。
+- 评论队列:pending 计数(节点 === pending 过滤)+ 入口链接。
+- 铁律 3:首页零可提交元素(测试断言 button/form 均为 0);
+  悬浮聊天是全局布局的 agent 入口,不属于实体渲染面。
+- 合同形状修正:properties.fields 是 fieldValues 投影后的扁平 {name: value}
+  (出处只在事件日志);entity-view/page 及两处 fixtures 从 {value,origin}
+  包裹形状改为扁平(浏览器走查发现,组件测试同步收紧)。
+- vitest.config.ts:补 resolve.alias '@' → apps/web/src(与 Next paths 同口径),
+  根配置其余未动;jsdom 经 per-file docblock,未改全局 environment。
+- 测试:home.test.tsx 4 例;全量 CI=true pnpm check 280/280 绿。
+- 手工等效:dev 3100 Playwright 截图走查首页(两篇文章 + 向导入口 + 待处理 3)
+  与 post:post-welcome 详情(properties 表含 title/category),无页面错误。
