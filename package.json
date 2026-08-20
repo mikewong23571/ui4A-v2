@@ -10,5 +10,9 @@
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm test",
     "e2e": "echo \"e2e: Playwright 骨架在 T1 Phase 3 引入,当前为占位\" && exit 0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "vitest": "^4.1.11"
   }
 }
