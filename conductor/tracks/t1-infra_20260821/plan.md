@@ -21,9 +21,9 @@
 
 ## Phase 2: PostgreSQL 与运行环境
 
-- [ ] Task: docker compose 提供 PostgreSQL(TDD:连通性测试先行)
-  - [ ] 先写失败测试(用 pg 客户端对 compose 库执行 `SELECT 1`)
-  - [ ] 写 `docker-compose.yml`(postgres alpine 稳定版、healthcheck、固定端口)、`.env.example` 补 `DATABASE_URL`
+- [x] Task: docker compose 提供 PostgreSQL(TDD:连通性测试先行) (1d641d3)
+  - [x] 先写失败测试(用 pg 客户端对 compose 库执行 `SELECT 1`)
+  - [x] 写 `docker-compose.yml`(postgres alpine 稳定版、healthcheck、固定端口)、`.env.example` 补 `DATABASE_URL`
 - [ ] Task: `/api/health` 端点含 db 检查(TDD)
   - [ ] 先写失败测试(route handler 单测:有库时 `{status:"ok",db:"ok"}`,无库时 `db:"error"` 不抛 500)
   - [ ] 实现 health route(pg 池 + `SELECT 1`,失败降级)
