@@ -1,0 +1,26 @@
+Task: 业务域定义与种子数据(T2 Phase C / Task C1)
+
+摘要:
+- apps/web/src/domain/flows.ts:三个 flow 常量(machine-as-JSON,复用 @ui4a/engine 类型),
+  模块加载即经 parseFlowDefinition 校验+规范化(非法定义在定义期响亮失败):
+  * article-drafting:basic-info(title)→ classification(category[tech/essay/review]+tags)→
+    content(body)→ ready(publish:to done,guards [title-not-taken],effect [transition,
+    append{articles/post/post-status/name-from:title/node:published}])→ done(terminal);
+    每步一个 next 推进动作。
+  * post-status:published(unpublish→offline、archive→archived[requires-confirmation:high,
+    T3 才生效],均挂 is-published)/ offline(republish→published)/ archived(terminal)。
+  * comment-moderation:pending(approve/reject 挂 is-pending)/ approved / rejected(terminal)。
+- apps/web/src/domain/seed.ts:SEED_REL=seed:business-domain;seedDetail(SeedDetail 形状)
+  = 7 实例(post:post-welcome「欢迎来到 UI4A」、post:first-post「第一篇」均 published;
+  c1/c2/c3 pending、c4 approved;article-drafting:main @ basic-info 供 B1 入口)+
+  collections{articles 2, comments 4};种子字段出处记 'default'(应用引导,非意图)。
+- packages/shared/src/predicates.ts:新增 titleNotTaken('title-not-taken')——拟发布标题
+  不与既有 post-status 实例 title 重复,跨实例只读快照;进 seedGuardRegistry。
+  (既有谓词语义零改动;新增谓词属 blast radius 明确允许项。)
+
+测试:apps/web/src/domain/flows.test.ts(7)+ predicates.test.ts 增 1;CI=true pnpm check
+全绿(19 文件 142 测试)。种子幂等的 DB 级验证(seed 事件只落一次)在 C2 服务层测试覆盖。
+
+核心 why:种子域是 HTTP 合同三个端点的投影对象;flow 常量即 T2 真相源(T4 才挪进日志),
+parseFlowDefinition 守门让定义 bug 在模块加载期暴露。title-not-taken 为三层裁决的
+guard 层提供真实可触发的拒绝路径(重名发布),同时演示跨实例 guard 只读快照语义。
