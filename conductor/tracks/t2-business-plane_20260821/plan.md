@@ -62,3 +62,7 @@
 - [x] Task: Playwright UI E2E:人类路径 B1/B2/B3(表单走查全过;日志含 actor=human) `4cde4d7`
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `9ca2e32`
   [checkpoint: 9ca2e32]
+
+## Phase: Review Fixes
+
+- [x] Task: Apply review suggestions `33802f1`
