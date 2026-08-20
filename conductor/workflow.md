@@ -272,31 +272,37 @@ Before marking any task complete, verify:
 
 ## Development Commands
 
-**AI AGENT INSTRUCTION: This section should be adapted to the project's specific
-language, framework, and build tools.**
-
 ### Setup
 
 ```bash
-# Example: Commands to set up the development environment (e.g., install dependencies, configure database)
-# e.g., for a Node.js project: npm install
-# e.g., for a Go project: go mod tidy
+# 安装依赖(pnpm workspaces monorepo)
+pnpm install
+
+# 启动 PostgreSQL(postgres:17-alpine,宿主端口 5433;--wait 等 healthcheck 就绪)
+docker compose up -d --wait
 ```
 
 ### Daily Development
 
 ```bash
-# Example: Commands for common daily tasks (e.g., start dev server, run tests, lint, format)
-# e.g., for a Node.js project: npm run dev, npm test, npm run lint
-# e.g., for a Go project: go run main.go, go test ./..., go fmt ./...
+# web dev server(端口固定 3100,见 DECISIONS.md D5)
+PORT=3100 pnpm dev
+
+# 单元/集成测试(vitest,CI=true 单次执行)
+CI=true pnpm vitest run
+
+# worker 空壳进程(心跳日志,Ctrl-C 干净退出)
+pnpm --filter @ui4a/worker dev
 ```
 
 ### Before Committing
 
 ```bash
-# Example: Commands to run all pre-commit checks (e.g., format, lint, type check, run tests)
-# e.g., for a Node.js project: npm run check
-# e.g., for a Go project: make check (if a Makefile exists)
+# 质量门:typecheck(三 workspace)+ eslint + vitest,任一失败即失败
+pnpm check
+
+# Playwright E2E(自动拉起 3100 dev server,单次执行)
+CI=true pnpm e2e
 ```
 
 ## Testing Requirements
