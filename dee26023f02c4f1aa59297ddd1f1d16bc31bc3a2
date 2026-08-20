@@ -1,0 +1,5 @@
+T2 Phase A Task 5: sitemap 推导
+
+- engine/src/sitemap.ts:deriveSitemap(flows, options) 纯函数推导 {version, surfaces, flows, generatedAt?}。surfaces 界面清单 = flow 定义实体(flow:<name>)+ append 目标集合(去重,首次出现序)+ 可选 extraSurfaces(种子域 comments 集合无 append 来源,由调用方补);flows 拓扑 = 节点(name/title/字段定义含 semantics 语义锚点)+ 边(from/action/to)+ 每节点 action 摘要(name/title/method/to/guards/requires-confirmation/参数 JSON Schema)。
+- 版本号 = 内容 hash 短码:canonicalJson(递归键排序稳定序列化,键序无关、数组序是内容)+ FNV-1a 64(BigInt 实现,同步、两栖)→ 12 hex。同内容同版本;surfaces/拓扑任一变化即变版(缓存键)。偏差说明:未用 sha256——crypto.subtle 是异步 API 且 Node crypto 违反两栖约束,FNV-1a 足够缓存版本号用途;T4 meta/versions 的内容寻址工件才上 sha256。generatedAt 由调用方注入(时钟是 capability),不入 hash。
+- 测试:10 新用例(拓扑/摘要/surfaces/版本确定性/键序无关/数组序敏感);CI=true pnpm check 全绿(104 tests)。
