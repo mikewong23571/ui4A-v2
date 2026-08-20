@@ -1,0 +1,11 @@
+Task: 建立 apps/worker(空壳心跳进程,接入 shared) (T1 Phase 1)
+
+流程:TDD——先写 apps/worker/src/heartbeat.test.ts 失败测试(Red:./heartbeat 无法解析,1 failed | 2 passed),再实现转绿(3 files / 12 tests)。
+
+改动:apps/worker/{package.json(@ui4a/worker,scripts dev=tsx src/main.ts / typecheck),tsconfig.json(继承 base),src/heartbeat.ts(纯函数:startupMessage/nextDelayMs/formatHeartbeat/shutdownMessage),src/main.ts(启动行→3s 间隔心跳→SIGINT/SIGTERM 打印退出信息并 exit 0),src/heartbeat.test.ts};根 dev:worker 脚本 Task 1 已指向 pnpm --filter @ui4a/worker dev。
+
+设计说明:日志文案组装全部收敛为纯函数便于测试,main.ts 只做定时器与信号接线;formatHeartbeat 委托 shared 的 heartbeatMessage(worker↔shared 通路在心跳里持续验证);nextDelayMs 固定间隔策略作为纯函数保留,为后续退避留缝。
+
+验证:CI=true pnpm vitest run 3 files/12 tests 全绿;tsc --noEmit 通过;8 秒限时运行(macOS 无 timeout,用 perl alarm 等效,exit=142≈timeout 124)输出启动行 [UI4A] worker v0.1.0 started 与 heartbeat #1/#2;真实 SIGTERM 测试输出退出信息且 exit=0。
+
+依赖版本:tsx ^4.20.x、typescript ^5.9.3、vitest 4.1.11
