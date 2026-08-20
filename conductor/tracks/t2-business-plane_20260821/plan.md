@@ -4,7 +4,7 @@
 
 ## Phase A: 引擎核心(@ui4a/engine,纯单测 TDD)
 
-- [ ] Task: machine-as-JSON 类型与解析(flow/node/action/field-definition 类型;XState v5 createMachine 运行时构造与转移校验)
+- [x] Task: machine-as-JSON 类型与解析(flow/node/action/field-definition 类型;XState v5 createMachine 运行时构造与转移校验) `4f5e109`
 - [ ] Task: 三层裁决器(TDD:声明→guard→schema 每层拒绝/通过矩阵;拒绝带结构化原因)
 - [ ] Task: guard 谓词注册表(shared 放谓词实现,engine 只持注册表)与效果词汇表(TDD:transition/set-field/append;spawn stub 记事件)
 - [ ] Task: Siren 投影器(TDD:rel→实体四件组装 properties/actions/links/guard-results;集合 entities[] 子实体;子实体直达链接)
