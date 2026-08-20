@@ -221,8 +221,8 @@ function validateEffects(
   });
 }
 
-/** 规范化:补默认值,effect 统一数组并让 transition 继承 action.to。 */
-function normalizeAction(action: ActionDefinition): ActionDefinition {
+/** 动作的效果列表(规范化:单/缺省效果数组化;有 to 无 effect 时补 transition)。 */
+export function actionEffects(action: ActionDefinition): EffectDefinition[] {
   const rawEffects = Array.isArray(action.effect)
     ? action.effect
     : action.effect !== undefined
@@ -237,12 +237,16 @@ function normalizeAction(action: ActionDefinition): ActionDefinition {
   if (effects.length === 0 && action.to !== undefined) {
     effects.push({ type: 'transition', to: action.to });
   }
+  return effects;
+}
+
+function normalizeAction(action: ActionDefinition): ActionDefinition {
   return {
     ...action,
     method: action.method ?? 'POST',
     guards: [...(action.guards ?? [])],
     fields: [...(action.fields ?? [])],
-    effect: effects,
+    effect: actionEffects(action),
   };
 }
 

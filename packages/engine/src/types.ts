@@ -63,10 +63,12 @@ export interface FieldDefinition {
 }
 
 /**
- * 参数/字段值出处(事件日志记录口径,arch-brief §2):
- * default(默认)/ intent(显式意图)/ proposal(起草+选择)/ elicited(引出)/ effect(效果产出)。
+ * 参数/字段值出处(事件日志记录口径)。
+ * 唯一定义在 @ui4a/shared(FieldValue 需要),此处 re-export 保持引擎公共面完整。
  */
-export type ParamOrigin = 'default' | 'intent' | 'proposal' | 'elicited' | 'effect';
+import type { ParamOrigin } from '@ui4a/shared';
+
+export type { ParamOrigin };
 
 /**
  * 效果词汇表(T2 子集):

@@ -2,6 +2,7 @@
  * 测试专用 flow 常量(spec.md 架构决定 5 的种子域形状)。
  * 仅被 *.test.ts 引用,不进引擎公共导出;Phase C 才落地真正的种子域。
  */
+import type { EngineSnapshot } from '@ui4a/shared';
 import type { FlowDefinition } from './types';
 
 /** B1:三步发布向导。 */
@@ -117,3 +118,74 @@ export const minimalFlow: FlowDefinition = {
     { name: 'b', actions: [] },
   ],
 };
+
+// ---------------------------------------------------------------------------
+// 运行时快照 fixture(种子数据的形状,spec 架构决定 5)。
+// ---------------------------------------------------------------------------
+
+/** 种子引擎快照:2 篇已发布文章 + 3 pending 评论 + 1 approved + 一个向导实例。 */
+export const seedSnapshot: EngineSnapshot = {
+  instances: {
+    'post:post-welcome': {
+      rel: 'post:post-welcome',
+      flow: 'post-status',
+      node: 'published',
+      fields: {
+        title: { value: 'Welcome to UI4A', origin: 'intent' },
+        category: { value: 'tech', origin: 'intent' },
+      },
+    },
+    'post:post-getting-started': {
+      rel: 'post:post-getting-started',
+      flow: 'post-status',
+      node: 'published',
+      fields: {
+        title: { value: 'Getting Started', origin: 'intent' },
+        category: { value: 'essay', origin: 'intent' },
+      },
+    },
+    'comment:c1': {
+      rel: 'comment:c1',
+      flow: 'comment-moderation',
+      node: 'pending',
+      fields: { body: { value: '好文章', origin: 'intent' } },
+    },
+    'comment:c2': {
+      rel: 'comment:c2',
+      flow: 'comment-moderation',
+      node: 'pending',
+      fields: { body: { value: '学习了', origin: 'intent' } },
+    },
+    'comment:c3': {
+      rel: 'comment:c3',
+      flow: 'comment-moderation',
+      node: 'pending',
+      fields: { body: { value: '期待下一篇', origin: 'intent' } },
+    },
+    'comment:c4': {
+      rel: 'comment:c4',
+      flow: 'comment-moderation',
+      node: 'approved',
+      fields: { body: { value: '赞', origin: 'intent' } },
+    },
+    'article-drafting:main': {
+      rel: 'article-drafting:main',
+      flow: 'article-drafting',
+      node: 'classification',
+      fields: {
+        title: { value: 'New Article', origin: 'intent' },
+      },
+    },
+  },
+  collections: {
+    articles: ['post:post-welcome', 'post:post-getting-started'],
+    comments: ['comment:c1', 'comment:c2', 'comment:c3', 'comment:c4'],
+  },
+};
+
+/** 测试用 flow 注册表(name → 定义)。 */
+export function flowRegistry(
+  ...flows: FlowDefinition[]
+): Record<string, FlowDefinition> {
+  return Object.fromEntries(flows.map((flow) => [flow.name, flow]));
+}
