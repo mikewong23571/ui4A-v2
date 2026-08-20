@@ -1,0 +1,10 @@
+Task: docker compose 提供 PostgreSQL(TDD:连通性测试先行)
+
+- TDD:先写 apps/web/src/db/pg.test.ts(pg.Client 连 DATABASE_URL ?? postgres://ui4a:ui4a@localhost:5433/ui4a,SELECT 1 as ok),红:ECONNREFUSED 127.0.0.1:5433;compose 起库后绿。
+- docker-compose.yml:postgres:17-alpine(实际 server 版本 17.11),端口 5433:5432,env ui4a/ui4a/ui4a,healthcheck pg_isready 间隔 3s,命名卷 ui4a-pgdata 持久化。
+- 依赖:pg@8.23.0 加 apps/web dependencies(health route 运行时 import,devDep 会破坏生产构建),@types/pg 加 devDependencies;lockfile 相应更新。
+- .env.example 注释更新:DATABASE_URL 自本阶段起启用。
+- 测试位置理由:pg 当前唯一消费方是 apps/web(下一任务 health route),单连通性检查不值得新建包;T2 引入 schema/迁移时再评估抽 packages/db。
+- 环境异常与自纠:宿主 dockerd 的镜像拉取走 Docker Desktop 内置代理 http.docker.internal:3128 且不转发(所有 docker pull 无限挂起;容器直连 registry 正常,系统代理已关)。绕过:在本地既有镜像内跑临时脚本 /tmp/ui4a-img/pull.js 经容器网络下载 arm64 blobs 组装 legacy tar 流,宿主 docker load 注入 postgres:17-alpine。docker Desktop 代理配置未改动(超授权作用域),需用户在 GUI 修复。
+
+验证:CI=true pnpm vitest run 13/13 绿;pnpm typecheck 全过;docker compose ps 显示 healthy。
