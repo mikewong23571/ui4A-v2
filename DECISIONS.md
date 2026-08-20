@@ -43,3 +43,10 @@
 - **已做**:postgres:17-alpine 通过本地脚本经容器网络下载 blobs 组装 tar 后 `docker load` 注入;未改动用户 Docker Desktop 配置。
 - **影响与预案**:后续需要拉镜像(如 Keycloak)时:优先在 Docker Desktop GUI 修正/关闭手动代理后重启;否则重复上述 load 方案,或改用 brew/发行 tarball 安装。编排 agent 在派发相关任务时必须把本注记写进 subagent prompt。
 
+## D7 环境注记:GLM 端点行为(2026-08-21)
+
+- 模型:缺省 `glm-4.7`(env `LLM_MODEL` 可覆盖);tool calling 工作正常。
+- **`tool_choice: "required"` 在 GLM Chat Completion 端点挂起不响应**(90s+ 无返回)——必须用缺省 `auto`;已修复于 commit `004e3db`,后续任何 LLM 调用不得再传 required。
+- `@ai-sdk/openai` 缺省走 Responses API,接 GLM 必须显式 `provider.chat()` 锁定 Chat Completions 协议。
+- 推理模型每步决策 8–20s;agent 循环步数上限要考虑真实时延(当前 24 步)。
+
