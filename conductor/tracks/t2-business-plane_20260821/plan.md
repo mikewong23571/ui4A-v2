@@ -16,8 +16,8 @@
 
 - [x] Task: events 表与 appendEvent(TDD:单调 seq、append-only(UPDATE/DELETE 被拒)、字段完整) `c4e9d0f`
 - [x] Task: fold 投影(TDD:日志→实体状态;拒绝事件参与投影但不改状态) `16e3ff2`
-- [~] Task: I5 重放测试(TDD:跑种子操作序列→hash;空库重放→hash 一致)
-- [ ] Task: /api/events 只读端点(TDD:seq 有序、含拒绝事件与 reason)
+- [x] Task: I5 重放测试(TDD:跑种子操作序列→hash;空库重放→hash 一致) `77b2294`
+- [~] Task: /api/events 只读端点(TDD:seq 有序、含拒绝事件与 reason)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase C: HTTP 合同与种子域
