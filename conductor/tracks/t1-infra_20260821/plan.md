@@ -37,7 +37,7 @@
 - [x] Task: Playwright E2E 骨架与首页 smoke(TDD) (d041dd5)
   - [x] 初始化 playwright(webServer 配置复用 dev server,CI=true 单次)
   - [x] smoke 测试:访问 `/` 得 200 且标题含 "UI4A";访问 `/api/health` 得 `status: "ok"`
-- [ ] Task: 文档落地
-  - [ ] 根 `README.md` quickstart(3 条命令:install / compose up / dev)
-  - [ ] `conductor/workflow.md` Development Commands 替换为真实命令
+- [x] Task: 文档落地 (cb488b3)
+  - [x] 根 `README.md` quickstart(3 条命令:install / compose up / dev)
+  - [x] `conductor/workflow.md` Development Commands 替换为真实命令
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
