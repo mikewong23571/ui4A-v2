@@ -1,0 +1,14 @@
+Task: I5 重放测试(T2 Phase B)
+
+- 新增 apps/web/src/db/replay.test.ts(真 PG 集成,3 用例):
+  1) 在线路径(judge→applyEffects→appendEvent→增量持有快照)跑混合序列(seed + 三层各一次拒绝 + 向导三步 + publish append + approve),与 fold(readLog(全部日志)) 的快照内容 hash 一致(hash 复用 engine 的 contentVersion = canonicalJson + 64 位 FNV-1a,快照无时间戳字段;fold 依赖不含 guard 注册表——结构上证明重放不重新裁决);并抽查终态(post:hello-world 落位、tags 出处 proposal 保留、集合成员)。
+  2) 拒绝事件留痕带 reason(I6):三条 rejection 各含「未声明/guard 不满足/schema」;剔除拒绝事件重放 hash 不变(拒绝不改状态)。
+  3) 可重复跑:TRUNCATE 后再跑一轮,两轮 hash 相同(确定性)。
+- events.ts 补 toLogEvent/readLog(StoredEvent→engine LogEvent 的 null 归一,重放读日志入口)。
+- 接线改动:apps/web 增依赖 @ui4a/engine workspace:*(零新外部依赖,lockfile 仅 workspace 链接);apps/web tsconfig target ES2017→ES2020(engine sitemap 的 BigInt 字面量需要,受支持环境均具备;清除陈旧 tsbuildinfo);vitest.config.ts 加 fileParallelism:false——events/replay 两个集成测试共用同一 PG 库且 TRUNCATE 自清理,文件级并行会互相清库。
+- 测试自造最小业务域(comment-moderation + article-drafting 内联于测试文件;非目标:种子域 Phase C 落)。
+- 发现的契约细节(非 engine bug):actionEffects 的 transition 目标补全仅在 action.to 存在时生效——publish 类组合效果必须声明 action.to(与 fixtures 一致);strict schema(additionalProperties:false)要求 append 参数必须被节点/动作字段声明。
+
+验证:CI=true pnpm check 全绿(129 tests,17 files),连续两轮通过(TRUNCATE 自清理可重复跑)。
+
+Commit: 77b2294
