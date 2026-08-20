@@ -1,0 +1,8 @@
+Task: /api/events 只读端点(T2 Phase B)
+
+- 新增 apps/web/src/app/api/events/route.ts:GET,seq 升序,?afterSeq=<非负整数> 分页(严格大于),返回 {events:[原始事件]}(kind/reason/detail 原样,I6 审计视图);非法 afterSeq → 400 {error};db 不可达 → 503 JSON 不抛 500;force-dynamic 防缓存;复用 src/db 的 listEvents 与 pg pool(Phase 2 基座)。
+- 新增 route.test.ts(真库,5 用例):升序+原始事件含拒绝 reason、afterSeq 分页、afterSeq=0 全量、三种非法 afterSeq 400、坏连接串 503。TRUNCATE 不重置 bigserial 序列——断言用相对 seq(首条+递增)。
+
+验证:CI=true pnpm check 全绿(134 tests,18 files)。
+
+Commit: 64502c2
