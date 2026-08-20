@@ -17,6 +17,21 @@ export const isPending: GuardPredicate = nodeIs('pending');
 /** 实例处于已发布节点(post-status 的可下线/可归档谓词)。 */
 export const isPublished: GuardPredicate = nodeIs('published');
 
+/**
+ * 拟发布文章标题未被既有文章占用(发布向导 publish 的 guard)。
+ * 跨实例只读快照演示 guard 的真实用途:状态相关而非节点同义反复——
+ * 重名发布被拒并留痕,拒绝即教育(B1 的字段级自救场景)。
+ */
+export const titleNotTaken: GuardPredicate = (context) => {
+  const candidate = context.params.title;
+  if (typeof candidate !== 'string') return true;
+  for (const instance of Object.values(context.snapshot.instances)) {
+    if (instance.flow !== 'post-status') continue;
+    if (instance.fields.title?.value === candidate) return false;
+  }
+  return true;
+};
+
 /** 恒真(空 guard 动作的显式占位,亦用于测试)。 */
 export const alwaysTrue: GuardPredicate = () => true;
 
@@ -24,5 +39,6 @@ export const alwaysTrue: GuardPredicate = () => true;
 export const seedGuardRegistry: GuardRegistry = {
   'is-pending': isPending,
   'is-published': isPublished,
+  'title-not-taken': titleNotTaken,
   'always-true': alwaysTrue,
 };
