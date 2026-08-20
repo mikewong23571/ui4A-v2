@@ -2,11 +2,11 @@
 
 > 依据 `spec.md` 与 `workflow.md`(TDD)。状态:`[ ]` / `[~]` / `[x]`(附 SHA)。
 
-## Phase A: 确认门引擎语义(纯单测)
+## Phase A: 确认门引擎语义(纯单测)[checkpoint: d3df9be]
 
 - [x] Task: 确认裁决步与挂起结果类型(TDD:requires-confirmation+agent → 挂起;human → 直通;策略原因入事件;引擎级 confirmation-requested 事件)(5b4b483)
 - [x] Task: confirmation 实体与 approve/reject(TDD:approve 应用原效果+事件链;I4 actor-is-human 拒 agent;reject 带 reason 不生效;重放一致性——confirmation 事件入 fold)(d3df9be)
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)(自治验收:CI=true pnpm check 全绿 339 tests;验证报告挂 d3df9be git notes)
 
 ## Phase B: Cedar 风险策略接入
 
