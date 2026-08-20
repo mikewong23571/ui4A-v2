@@ -1,0 +1,7 @@
+Task: 搭建 pnpm workspaces 根骨架 (T1 Phase 1)
+
+改动:pnpm-workspace.yaml(apps/* + packages/*)、根 package.json(private, packageManager pnpm@10.32.1, scripts: dev/dev:worker/typecheck/test/check/e2e 占位)、tsconfig.base.json(strict + moduleResolution bundler + esModuleInterop, noEmit)、.gitignore、.env.example(DATABASE_URL 端口 5433,注释说明 T1 Phase 2 启用)、pnpm-lock.yaml(新)。
+
+设计说明:check 暂为 typecheck+test 聚合,lint 部分按计划留到 Phase 3;e2e 为 echo 占位防误跑;tsconfig.base 仅放跨包共识项,各包自持细节(Next 由脚手架生成、worker/shared 继承 base)。验证:pnpm install 成功、pnpm e2e 可执行。
+
+环境:node v24.14.0 / pnpm 10.32.1
