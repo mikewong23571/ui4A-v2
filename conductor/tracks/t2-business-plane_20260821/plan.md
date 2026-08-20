@@ -9,7 +9,8 @@
 - [x] Task: guard 谓词注册表(shared 放谓词实现,engine 只持注册表)与效果词汇表(TDD:transition/set-field/append;spawn stub 记事件) `50381e4`
 - [x] Task: Siren 投影器(TDD:rel→实体四件组装 properties/actions/links/guard-results;集合 entities[] 子实体;子实体直达链接) `2c84e94`
 - [x] Task: sitemap 推导(TDD:从 flow 常量生成界面清单/拓扑/节点 action schema/版本号) `dee2602`
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `4f01f11`
+  [checkpoint: 4f01f11]
 
 ## Phase B: 事件日志与投影重放(PG)
 
