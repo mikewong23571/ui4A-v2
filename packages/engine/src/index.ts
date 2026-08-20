@@ -9,3 +9,4 @@ export * from './parse';
 export * from './machine';
 export * from './schema';
 export * from './judge';
+export * from './effects';

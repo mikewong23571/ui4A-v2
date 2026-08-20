@@ -91,6 +91,8 @@ export type EffectDefinition =
       collection: string;
       /** 新实例的资源类型(rel 前缀),缺省取 collection 单数化。 */
       'resource-type'?: string;
+      /** 新实例受辖的 flow(如 "post-status")。 */
+      flow?: string;
       /** 显式实例名。 */
       name?: string;
       /** 从请求参数取实例名(如 title → slug)。 */

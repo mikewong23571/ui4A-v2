@@ -15,3 +15,4 @@ export function heartbeatMessage(tick: number): string {
 // 引擎运行时状态与 guard 合同(T2:谓词实现与引擎共用的类型基座)。
 export * from './state';
 export * from './guards';
+export * from './predicates';
