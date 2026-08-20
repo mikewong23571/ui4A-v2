@@ -48,7 +48,7 @@
 > 零 startRel 特权的完整导航——处境披露的根基)。
 
 - [x] Task: flow:<name> 实体投影合同补全(TDD:向导类 flow 投影为其实例实体;集合 links 补 flow 入口链接;web 服务层实现,engine 不动) `f0dc65c`
-- [ ] Task: LLM driver(TDD:工具投影生成器(动词5+动态动作工具,guard 嵌 description);GLM 端点接入 createOpenAI;无 key 回退 rule)
+- [x] Task: LLM driver(TDD:工具投影生成器(动词5+动态动作工具,guard 嵌 description);GLM 端点接入 createOpenAI;无 key 回退 rule) `f13a9c0`
 - [ ] Task: 聊天路由与悬浮窗(服务端跑 agent 循环,轨迹流式进对话;assistant-ui 悬浮组件)
 - [ ] Task: E2E B4(坏 key→401 原文进对话、后续轮次存活)+ I1(无 key 环境 B1–B3 全过)
 - [ ] Task: RUN_LLM_E2E 冒烟(标记 skip-unless-env;编排者验收时手动跑)
