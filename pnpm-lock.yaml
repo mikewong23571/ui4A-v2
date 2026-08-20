@@ -35,6 +35,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@ui4a/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@ui4a/shared':
         specifier: workspace:*
         version: link:../../packages/shared

@@ -9,6 +9,7 @@
  * - append-only:DB 层行级触发器拒绝 UPDATE/DELETE;TRUNCATE 保留为测试/运维清库口。
  * - 串行单写:单条 INSERT 原子提交,bigserial 序列保证 seq 单调(PG 事务内 nextval 语义)。
  */
+import type { LogEvent } from '@ui4a/engine';
 import type { FieldValue } from '@ui4a/shared';
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
 
@@ -165,3 +166,26 @@ export async function listEvents(db: DbExecutor, afterSeq = 0): Promise<StoredEv
 
 // PoolClient 仅用于类型派生,避免运行时引入多余依赖。
 export type { PoolClient };
+
+/** 存储事件 → 引擎 fold 的 LogEvent(null 归一为 undefined;ts 保留 ISO 字符串)。 */
+export function toLogEvent(event: StoredEvent): LogEvent {
+  return {
+    seq: event.seq,
+    ts: event.ts,
+    kind: event.kind,
+    rel: event.rel ?? undefined,
+    action: event.action ?? undefined,
+    actor: event.actor ?? undefined,
+    principal: event.principal ?? undefined,
+    channel: event.channel ?? undefined,
+    params: event.params,
+    reason: event.reason ?? undefined,
+    detail: event.detail ?? undefined,
+  };
+}
+
+/** 读出日志并归一为引擎可折叠形状(seq 升序;afterSeq 分页)。 */
+export async function readLog(db: DbExecutor, afterSeq = 0): Promise<LogEvent[]> {
+  const stored = await listEvents(db, afterSeq);
+  return stored.map(toLogEvent);
+}
