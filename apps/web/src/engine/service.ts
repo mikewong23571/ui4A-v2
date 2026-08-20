@@ -30,6 +30,7 @@ import { appendEvent, ensureEventsTable, readLog, type DbExecutor } from '../db/
 import { getPool } from '../db/pool';
 import { businessFlows, businessFlowList } from '../domain/flows';
 import { SEED_REL, seedDetail } from '../domain/seed';
+import { resolveFlowRelAlias, withCollectionFlowEntryLinks } from './flow-entry';
 
 /** exec 结果(discriminated union;HTTP 层据此映射 200/4xx)。 */
 export type ExecOutcome =
@@ -116,23 +117,35 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
 
   return {
     getSnapshot: () => snapshot,
-    getEntity: (rel) => project(snapshot, rel, projectDeps),
+    getEntity: (rel) => {
+      // flow:<name> 别名(向导类 flow 投影为其实例实体)——纯服务层投影补全,
+      // engine 的 project/judge 语义不动。alias 请求参数缺省仅影响 rel 解析。
+      const target = resolveFlowRelAlias(rel, snapshot) ?? rel;
+      const entity = project(snapshot, target, projectDeps);
+      if (entity === undefined) return undefined;
+      return withCollectionFlowEntryLinks(entity, businessFlowList);
+    },
     getSitemap: () => sitemap,
     exec(request) {
       return enqueue(state, async () => {
-        const verdict = judge(request, snapshot, judgeDeps);
+        // exec 同样吃 flow 别名:裁决与日志都记实例 rel(不产生幽灵实体)。
+        const aliased: ExecRequest = {
+          ...request,
+          rel: resolveFlowRelAlias(request.rel, snapshot) ?? request.rel,
+        };
+        const verdict = judge(aliased, snapshot, judgeDeps);
 
         if (verdict.kind === 'rejected') {
           // 拒绝即数据(I6):不改状态,结构化原因入日志;detail 携带 layer,
           // HTTP 响应与本事件同源(同一 verdict 对象),口径必然一致。
           await appendEvent(db, {
             kind: 'action-rejected',
-            rel: request.rel,
-            action: request.action,
-            actor: request.actor ?? 'human',
-            principal: request.principal,
-            channel: request.channel,
-            params: paramsWithOrigins(request),
+            rel: aliased.rel,
+            action: aliased.action,
+            actor: aliased.actor ?? 'human',
+            principal: aliased.principal,
+            channel: aliased.channel,
+            params: paramsWithOrigins(aliased),
             reason: verdict.reason,
             detail: { layer: verdict.layer, judge: verdict.detail },
           });
@@ -141,7 +154,9 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
             : { kind: 'rejected', layer: verdict.layer, reason: verdict.reason, detail: verdict.detail };
         }
 
-        const outcome = applyEffects(request, verdict.effects, snapshot, { flows: businessFlows });
+        const outcome = applyEffects(aliased, verdict.effects, snapshot, {
+          flows: businessFlows,
+        });
         for (const event of outcome.events) {
           await appendEvent(db, {
             kind: event.kind,
@@ -157,7 +172,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
 
         // 受影响实体:append 产出新实例时返回新实体,否则返回执行实体的新投影。
         const appended = outcome.events[0]?.appended ?? [];
-        const targetRel = appended.length > 0 ? appended[appended.length - 1]! : request.rel;
+        const targetRel = appended.length > 0 ? appended[appended.length - 1]! : aliased.rel;
         const entity = project(snapshot, targetRel, projectDeps);
         if (entity === undefined) {
           throw new Error(`exec 后目标实体 "${targetRel}" 不可投影(内部不变式破坏)`);

@@ -197,3 +197,62 @@ describe('sitemap 表面 ↔ entity 端点一致', () => {
     }
   });
 });
+
+// T2 Phase E 先行:flow:<name> 实体投影合同补全(编排 prompt 2026-08-21)。
+// sitemap surfaces 声明了 flow:* 但 /api/entity 曾 404——向导类 flow(flow 有
+// 单实例语义)投影为其实例实体;集合 links 补 flow 入口链接。目标:从 articles
+// 出发沿 links 能到达向导实例(零 startRel 特权的完整导航,处境披露的根基)。
+describe('flow:<name> 实体投影:向导入口可达', () => {
+  it('GET flow:article-drafting → 向导实例实体(basic-info 起步)', async () => {
+    const res = await entity('flow:article-drafting');
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as SirenEntity;
+    expect(body.class).toContain('flow-instance');
+    expect(body.class).toContain('article-drafting');
+    expect(body.properties).toMatchObject({ rel: 'article-drafting:main', node: 'basic-info' });
+    expect(body.actions.map((action) => action.name)).toEqual(['next']);
+  });
+
+  it('articles 集合 links 携带 flow:article-drafting 入口链接', async () => {
+    const res = await entity('articles');
+    const body = (await res.json()) as SirenEntity;
+    const entry = body.links.find((link) => link.rel.includes('flow'));
+    expect(entry, 'articles 应携带 flow 入口链接').toBeDefined();
+    expect(decodeURIComponent(entry!.href)).toContain('rel=flow:article-drafting');
+  });
+
+  it('完整导航:articles → 沿 flow 入口链接 → 向导实例(零 startRel 特权)', async () => {
+    const articles = (await (await entity('articles')).json()) as SirenEntity;
+    const entry = articles.links.find((link) => link.rel.includes('flow'))!;
+    const rel = decodeURIComponent(/[?&]rel=([^&]+)/.exec(entry.href)![1]!);
+
+    const wizardRes = await entity(rel);
+    expect(wizardRes.status).toBe(200);
+    const wizard = (await wizardRes.json()) as SirenEntity;
+    expect(wizard.properties).toMatchObject({ flow: 'article-drafting', node: 'basic-info' });
+  });
+
+  it('exec 经 flow 别名可达:rel=flow:article-drafting 等价于实例 rel(日志记实例)', async () => {
+    const res = await exec({
+      rel: 'flow:article-drafting',
+      action: 'next',
+      params: { title: '合同补全' },
+      actor: 'agent',
+    });
+    expect(res.status).toBe(200);
+
+    const eventsRes = await getEvents(new Request('http://localhost:3100/api/events'));
+    const body = (await eventsRes.json()) as { events: LoggedEvent[] };
+    const executed = body.events.filter(
+      (event) => event.kind === 'action-executed' && event.action === 'next',
+    );
+    expect(executed).toHaveLength(1);
+    expect(executed[0]!.rel).toBe('article-drafting:main');
+  });
+
+  it('无单实例语义的 flow rel 仍 404(多实例/未知不冒充实体)', async () => {
+    expect((await entity('flow:post-status')).status).toBe(404);
+    expect((await entity('flow:comment-moderation')).status).toBe(404);
+    expect((await entity('flow:no-such-flow')).status).toBe(404);
+  });
+});

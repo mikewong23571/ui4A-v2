@@ -44,7 +44,11 @@ describe('GET /api/entity', () => {
     // 子实体直达链接:rel 值可作 ?rel= 直接取(B2 点名导航的合同)。
     expect(entity.entities[0]?.href).toBe('/api/entity?rel=post:post-welcome');
     expect(entity.entities[0]?.rel).toEqual(['item']);
-    expect(entity.links).toEqual([{ rel: ['self'], href: '/api/entity?rel=articles' }]);
+    // Phase E 合同补全:集合 links 除 self 外携带 flow 入口链接(向导可达)。
+    expect(entity.links).toEqual([
+      { rel: ['self'], href: '/api/entity?rel=articles' },
+      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting' },
+    ]);
   });
 
   it('post:post-welcome:200,actions 含 unpublish/archive,guard-results 逐项注入', async () => {
