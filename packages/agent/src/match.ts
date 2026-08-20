@@ -72,9 +72,7 @@ export function expandVerb(verb: string): string[] {
     if (run.length >= 2) expanded.add(run);
   }
   for (const [key, extras] of Object.entries(VERB_LEXICON)) {
-    const hit = isAsciiWord(key)
-      ? asciiTokens(verb).includes(key)
-      : verb.includes(key);
+    const hit = isAsciiWord(key) ? asciiTokens(verb).includes(key) : verb.includes(key);
     if (!hit) continue;
     expanded.add(key);
     for (const extra of extras) {

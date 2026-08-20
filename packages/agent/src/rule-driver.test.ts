@@ -63,7 +63,12 @@ const contentSchema = {
 const articles = collectionEntity({
   rel: 'articles',
   members: [
-    { rel: 'post:post-welcome', flow: 'post-status', node: 'published', fields: { title: '欢迎来到 UI4A' } },
+    {
+      rel: 'post:post-welcome',
+      flow: 'post-status',
+      node: 'published',
+      fields: { title: '欢迎来到 UI4A' },
+    },
     { rel: 'post:first-post', flow: 'post-status', node: 'published', fields: { title: '第一篇' } },
   ],
 });
@@ -79,9 +84,24 @@ const postWelcome = instanceEntity({
 const comments = collectionEntity({
   rel: 'comments',
   members: [
-    { rel: 'comment:c1', flow: 'comment-moderation', node: 'pending', actions: [action('approve', '通过'), action('reject', '驳回')] },
-    { rel: 'comment:c2', flow: 'comment-moderation', node: 'pending', actions: [action('approve', '通过'), action('reject', '驳回')] },
-    { rel: 'comment:c3', flow: 'comment-moderation', node: 'pending', actions: [action('approve', '通过'), action('reject', '驳回')] },
+    {
+      rel: 'comment:c1',
+      flow: 'comment-moderation',
+      node: 'pending',
+      actions: [action('approve', '通过'), action('reject', '驳回')],
+    },
+    {
+      rel: 'comment:c2',
+      flow: 'comment-moderation',
+      node: 'pending',
+      actions: [action('approve', '通过'), action('reject', '驳回')],
+    },
+    {
+      rel: 'comment:c3',
+      flow: 'comment-moderation',
+      node: 'pending',
+      actions: [action('approve', '通过'), action('reject', '驳回')],
+    },
     { rel: 'comment:c4', flow: 'comment-moderation', node: 'approved' },
   ],
 });
@@ -138,7 +158,11 @@ const wizardDone = instanceEntity({
 function decide(
   entity: SirenEntity,
   goal: AgentGoal,
-  extras: { trail?: TrailStep[]; successes?: DriverContext['successes']; lastRejection?: RejectionRecord } = {},
+  extras: {
+    trail?: TrailStep[];
+    successes?: DriverContext['successes'];
+    lastRejection?: RejectionRecord;
+  } = {},
 ): ReturnType<ReturnType<typeof createRuleDriver>['decide']> {
   const driver = createRuleDriver();
   const currentRel =
@@ -247,21 +271,27 @@ describe('②点名的动作(词级交集 → exec)', () => {
       node: 'published',
       collection: 'articles',
       actions: [action('unpublish', '下线'), action('archive', '归档')],
-      guardResults: [{ action: 'unpublish', blocked: true, reason: 'guard 不满足: is-published=false' }],
+      guardResults: [
+        { action: 'unpublish', blocked: true, reason: 'guard 不满足: is-published=false' },
+      ],
     });
     const op = decide(blocked, { verb: '下线' });
     expect(op.kind).not.toBe('exec');
   });
 
   it('guard-failed 拒绝后换路径:同 (rel,action) 不再直投(B2 目标场景)', () => {
-    const op = decide(postWelcome, { verb: '下线', resource: 'post-welcome' }, {
-      lastRejection: {
-        rel: 'post:post-welcome',
-        action: 'unpublish',
-        layer: 'guard-failed',
-        reason: 'guard 不满足: is-published=false',
+    const op = decide(
+      postWelcome,
+      { verb: '下线', resource: 'post-welcome' },
+      {
+        lastRejection: {
+          rel: 'post:post-welcome',
+          action: 'unpublish',
+          layer: 'guard-failed',
+          reason: 'guard 不满足: is-published=false',
+        },
       },
-    });
+    );
     expect(op.kind).toBe('fail');
   });
 });
@@ -358,28 +388,22 @@ describe('done 判定(完成类动作成功过,相对目标)', () => {
       collection: 'articles',
       actions: [action('republish', '重新发布')],
     });
-    const done = decide(
-      offlinePost,
-      goal,
-      { successes: [{ rel: 'post:post-welcome', action: 'unpublish' }] },
-    );
+    const done = decide(offlinePost, goal, {
+      successes: [{ rel: 'post:post-welcome', action: 'unpublish' }],
+    });
     expect(done.kind).toBe('done');
 
-    const notDone = decide(
-      offlinePost,
-      goal,
-      { successes: [{ rel: 'post:first-post', action: 'unpublish' }] },
-    );
+    const notDone = decide(offlinePost, goal, {
+      successes: [{ rel: 'post:first-post', action: 'unpublish' }],
+    });
     expect(notDone.kind).not.toBe('done');
   });
 
   it('审核:队列仍有待处理成员 → 不 done,继续点名下一个;清零且成功过 → done', () => {
     const goal = { verb: '审核' } satisfies AgentGoal;
-    const stillPending = decide(
-      comments,
-      goal,
-      { successes: [{ rel: 'comment:c1', action: 'approve' }] },
-    );
+    const stillPending = decide(comments, goal, {
+      successes: [{ rel: 'comment:c1', action: 'approve' }],
+    });
     expect(stillPending).toEqual({ kind: 'navigate', rel: 'comment:c2' });
 
     const allApproved = collectionEntity({
@@ -391,11 +415,9 @@ describe('done 判定(完成类动作成功过,相对目标)', () => {
         { rel: 'comment:c4', flow: 'comment-moderation', node: 'approved' },
       ],
     });
-    const done = decide(
-      allApproved,
-      goal,
-      { successes: [{ rel: 'comment:c1', action: 'approve' }] },
-    );
+    const done = decide(allApproved, goal, {
+      successes: [{ rel: 'comment:c1', action: 'approve' }],
+    });
     expect(done.kind).toBe('done');
   });
 
@@ -430,27 +452,45 @@ describe('schema 拒绝后的字段自救', () => {
   });
 
   it('schema-invalid 拒绝 → 按 schema 默认值(缺省时枚举首项)补齐重试', () => {
-    const op = decide(wizardRescue, { verb: '发布' }, {
-      lastRejection: {
-        rel: 'article-drafting:main',
-        action: 'next',
-        params: {},
-        layer: 'schema-invalid',
-        reason: '参数不符合动作字段 schema',
+    const op = decide(
+      wizardRescue,
+      { verb: '发布' },
+      {
+        lastRejection: {
+          rel: 'article-drafting:main',
+          action: 'next',
+          params: {},
+          layer: 'schema-invalid',
+          reason: '参数不符合动作字段 schema',
+        },
       },
+    );
+    expect(op).toEqual({
+      kind: 'exec',
+      action: 'next',
+      params: { title: '草稿标题', category: 'tech' },
     });
-    expect(op).toEqual({ kind: 'exec', action: 'next', params: { title: '草稿标题', category: 'tech' } });
   });
 
   it('自救只允许一次:同一 (rel,action) 第二次 schema 拒绝 → 放弃该动作', () => {
     const trail: TrailStep[] = [
       rejectedStep('article-drafting:main', 'next', {}, 'schema-invalid', '第一次'),
-      rejectedStep('article-drafting:main', 'next', { title: '草稿标题', category: 'tech' }, 'schema-invalid', '第二次'),
+      rejectedStep(
+        'article-drafting:main',
+        'next',
+        { title: '草稿标题', category: 'tech' },
+        'schema-invalid',
+        '第二次',
+      ),
     ];
-    const op = decide(wizardRescue, { verb: '发布' }, {
-      trail,
-      lastRejection: trail[1]!.rejection,
-    });
+    const op = decide(
+      wizardRescue,
+      { verb: '发布' },
+      {
+        trail,
+        lastRejection: trail[1]!.rejection,
+      },
+    );
     expect(op.kind).not.toBe('exec');
   });
 });
@@ -482,12 +522,16 @@ describe('rule driver 与循环握手(B2 微缩)', () => {
         : jsonResponse({ error: `实体 "${rel}" 不存在` }, 404);
     });
 
-    const result = await runAgent(createRuleDriver(), { verb: '下线', resource: 'post-welcome' }, {
-      baseUrl: BASE,
-      fetchImpl: transport.fetch,
-      startRel: 'articles',
-      principal: 'mike',
-    });
+    const result = await runAgent(
+      createRuleDriver(),
+      { verb: '下线', resource: 'post-welcome' },
+      {
+        baseUrl: BASE,
+        fetchImpl: transport.fetch,
+        startRel: 'articles',
+        principal: 'mike',
+      },
+    );
 
     expect(result.outcome).toBe('done');
     expect(result.steps[0]!.op).toEqual({ kind: 'navigate', rel: 'post:post-welcome' });

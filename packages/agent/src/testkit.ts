@@ -17,9 +17,10 @@ export interface RecordedCall {
 }
 
 /** 脚本化传输:responder 同步决定响应;所有调用留痕。 */
-export function createScriptedTransport(
-  responder: (url: string, init?: RequestInit) => Response,
-): { fetch: FetchLike; calls: RecordedCall[] } {
+export function createScriptedTransport(responder: (url: string, init?: RequestInit) => Response): {
+  fetch: FetchLike;
+  calls: RecordedCall[];
+} {
   const calls: RecordedCall[] = [];
   const fetch: FetchLike = async (url, init) => {
     const rawBody = init?.body;
@@ -27,9 +28,7 @@ export function createScriptedTransport(
       url,
       method: init?.method ?? 'GET',
       body:
-        typeof rawBody === 'string'
-          ? (JSON.parse(rawBody) as Record<string, unknown>)
-          : undefined,
+        typeof rawBody === 'string' ? (JSON.parse(rawBody) as Record<string, unknown>) : undefined,
     });
     return responder(url, init);
   };

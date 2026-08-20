@@ -26,7 +26,18 @@ import { anyTokenInString, asciiTokens, expandVerb } from './match';
 import type { AgentDriver, AgentGoal, AgentOperation, DriverContext } from './types';
 
 /** 流程推进词(③:向导/表单类流程的前进动作)。 */
-const ADVANCE_TOKENS = ['next', '下一步', 'continue', '继续', 'submit', '提交', 'save', '保存', 'finish', '完成'];
+const ADVANCE_TOKENS = [
+  'next',
+  '下一步',
+  'continue',
+  '继续',
+  'submit',
+  '提交',
+  'save',
+  '保存',
+  'finish',
+  '完成',
+];
 
 /** 队列类目标特征词(③/ done 判定按队列语义处理)。 */
 const QUEUE_HINTS = ['审核', 'approve', 'moderate', 'review', '队列', 'queue', '处理'];
@@ -76,9 +87,7 @@ function navigableRels(entity: SirenEntity, currentRel: string): string[] {
 /** guard-results 里被阻断的动作名(拒绝即教育:不再直投)。 */
 function blockedActionNames(entity: SirenEntity): Set<string> {
   return new Set(
-    (entity['guard-results'] ?? [])
-      .filter((entry) => entry.blocked)
-      .map((entry) => entry.action),
+    (entity['guard-results'] ?? []).filter((entry) => entry.blocked).map((entry) => entry.action),
   );
 }
 
@@ -96,7 +105,9 @@ function goalOverlappingActions(
 
 /** 队列视角:仍声明目标动作的待处理成员。 */
 function pendingMembers(entity: SirenEntity, goalTokens: readonly string[]): SirenEntity[] {
-  return (entity.entities ?? []).filter((sub) => goalOverlappingActions(sub, goalTokens).length > 0);
+  return (entity.entities ?? []).filter(
+    (sub) => goalOverlappingActions(sub, goalTokens).length > 0,
+  );
 }
 
 function isQueueGoal(context: DriverContext): boolean {
@@ -143,7 +154,10 @@ function schemaRejectionState(
   );
   if (steps.length > 0) {
     const last = steps[steps.length - 1]!;
-    return { count: steps.length, lastParams: last.op.kind === 'exec' ? (last.op.params ?? {}) : {} };
+    return {
+      count: steps.length,
+      lastParams: last.op.kind === 'exec' ? (last.op.params ?? {}) : {},
+    };
   }
   const rejection = context.lastRejection;
   if (rejection !== undefined && matches(rejection)) {
@@ -224,9 +238,13 @@ function execOperation(context: DriverContext, action: SirenAction): AgentOperat
 // ---- 四层决策 --------------------------------------------------------------
 
 /** done 判定:完成类动作成功过,且(队列目标)待处理清零。 */
-function doneDecision(context: DriverContext, goalTokens: readonly string[]): AgentOperation | undefined {
+function doneDecision(
+  context: DriverContext,
+  goalTokens: readonly string[],
+): AgentOperation | undefined {
   const success = context.successes.find(
-    (entry) => anyTokenInString(goalTokens, entry.action) && successOnTarget(entry.rel, context.goal),
+    (entry) =>
+      anyTokenInString(goalTokens, entry.action) && successOnTarget(entry.rel, context.goal),
   );
   if (success === undefined) return undefined;
 
@@ -265,7 +283,10 @@ function namedResourceDecision(context: DriverContext): AgentOperation | undefin
 }
 
 /** ② 点名的动作:goal.verb 与 action name/title 词级交集 → exec。 */
-function namedActionDecision(context: DriverContext, goalTokens: readonly string[]): AgentOperation | undefined {
+function namedActionDecision(
+  context: DriverContext,
+  goalTokens: readonly string[],
+): AgentOperation | undefined {
   for (const action of goalOverlappingActions(context.entity, goalTokens)) {
     const op = execOperation(context, action);
     if (op !== undefined) return op;
@@ -274,7 +295,10 @@ function namedActionDecision(context: DriverContext, goalTokens: readonly string
 }
 
 /** ③ 相关节点上的流程推进:向导 next / 队列逐条 / 成员回集合。 */
-function flowAdvanceDecision(context: DriverContext, goalTokens: readonly string[]): AgentOperation | undefined {
+function flowAdvanceDecision(
+  context: DriverContext,
+  goalTokens: readonly string[],
+): AgentOperation | undefined {
   const entity = context.entity;
 
   if (isInstanceEntity(entity)) {

@@ -31,7 +31,11 @@ const articlesEntity = collectionEntity({
   ],
 });
 
-const postWelcomeEntity = instanceEntity({ rel: 'post:post-welcome', flow: 'post-status', node: 'published' });
+const postWelcomeEntity = instanceEntity({
+  rel: 'post:post-welcome',
+  flow: 'post-status',
+  node: 'published',
+});
 
 /** 按脚本依次决策的 driver(耗尽后 fail,测试显式给出全部决策)。 */
 class ScriptedDriver implements AgentDriver {
