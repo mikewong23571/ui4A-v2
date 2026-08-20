@@ -29,8 +29,8 @@
 - [x] Task: 业务域定义与种子数据(domain flow 常量 article-drafting/post-status/comment-moderation;seed 事件载荷 2 文章+4 评论;shared 按需补谓词) `ef34987`
 - [x] Task: 引擎服务层(boot=建表+幂等 seed+fold 快照;exec 裁决→事件→增量快照;模块级串行队列保证单 atom) `d496f6e`
 - [x] Task: 三端点 /api/entity、/api/exec、/.well-known/ui4a.json(TDD:route 直测;已知 rel 200 Siren/未知 404;三层各拒绝→4xx 与日志一致;sitemap 结构与版本) `e849005`
-- [~] Task: 合同级测试补充(拒绝响应与 /api/events 最新 action-rejected 一致;并发 exec 串行无交错;guard-results 注入)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: 合同级测试补充(拒绝响应与 /api/events 最新 action-rejected 一致;并发 exec 串行无交错;guard-results 注入) `fa74d42`
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase D: rule driver 与 agent 循环(E2E B1–B3)
 
