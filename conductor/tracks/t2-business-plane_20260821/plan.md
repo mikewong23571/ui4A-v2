@@ -18,7 +18,8 @@
 - [x] Task: fold 投影(TDD:日志→实体状态;拒绝事件参与投影但不改状态) `16e3ff2`
 - [x] Task: I5 重放测试(TDD:跑种子操作序列→hash;空库重放→hash 一致) `77b2294`
 - [x] Task: /api/events 只读端点(TDD:seq 有序、含拒绝事件与 reason) `64502c2`
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `64502c2`
+  [checkpoint: 64502c2]
 
 ## Phase C: HTTP 合同与种子域
 
