@@ -31,3 +31,15 @@
 - **背景**:Temporal 是 T3 起的运行依赖。
 - **决定**:用 `temporal server start-dev`(brew 安装的 temporal CLI)作本地 dev server;compose 中不放 temporal 镜像。
 - **理由**:start-dev 零配置、秒起、自带 UI;demo 质量目标下比 docker 镜像更省。生产化显式排除在范围外(GOAL.md)。
+
+## D5 dev 端口固定 3100(2026-08-21)
+
+- **背景**:端口 3000 被本机另一项目(ui4A v1 Vite dev server)长期占用,不可杀。
+- **决定**:本项目 web dev server 一律 `PORT=3100`;Playwright webServer、E2E、curl 验证全部用 3100;文档(README quickstart、workflow.md 命令)统一写 `PORT=3100 pnpm dev`。
+
+## D6 环境注记:Docker Desktop 代理异常(2026-08-21)
+
+- **现象**:`docker pull` 全局挂起(Docker Desktop 内置代理 `http.docker.internal:3128` 上游不转发);容器内直连 registry 正常。
+- **已做**:postgres:17-alpine 通过本地脚本经容器网络下载 blobs 组装 tar 后 `docker load` 注入;未改动用户 Docker Desktop 配置。
+- **影响与预案**:后续需要拉镜像(如 Keycloak)时:优先在 Docker Desktop GUI 修正/关闭手动代理后重启;否则重复上述 load 方案,或改用 brew/发行 tarball 安装。编排 agent 在派发相关任务时必须把本注记写进 subagent prompt。
+
