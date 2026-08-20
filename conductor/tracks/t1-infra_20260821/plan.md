@@ -14,9 +14,9 @@
   - [x] create-next-app 非交互脚手架(App Router / TS strict)
   - [x] 首页占位(标题含 "UI4A"),import shared 的 VERSION 渲染在页面
   - [x] vitest:shared 引用断言测试
-- [ ] Task: 建立 apps/worker(空壳心跳进程,接入 shared)
-  - [ ] 先写失败测试(心跳函数纯逻辑:间隔计算/退出信号处理)
-  - [ ] 实现 tsx 入口:启动打印心跳(含 shared VERSION),SIGINT 干净退出
+- [x] Task: 建立 apps/worker(空壳心跳进程,接入 shared) (3212e1e)
+  - [x] 先写失败测试(心跳函数纯逻辑:间隔计算/退出信号处理)
+  - [x] 实现 tsx 入口:启动打印心跳(含 shared VERSION),SIGINT 干净退出
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase 2: PostgreSQL 与运行环境
