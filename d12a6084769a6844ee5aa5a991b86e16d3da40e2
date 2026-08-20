@@ -17,3 +17,39 @@ T2 Phase D / Task D3: E2E B1/B2/B3(agent 走合同,request 级,无浏览器)
   tsconfig include 增 .next-e2e types(Next 自动维护,已稳定)。
 - 根 package.json 增 @ui4a/agent devDep(e2e spec 解析 workspace 包)。
 - 一次自纠:B2 断言 toEqual→toMatchObject(exec op 携带 params:{})。
+
+==== T2 Phase D Verification Report(自治验收,workflow.md Autonomous Orchestration Protocol)====
+
+## 自动化验证(2026-08-21)
+- Command: CI=true pnpm check
+  → typecheck(4 workspace)✓;eslint 0 error 0 warning ✓;vitest 27 files / 224 tests 全绿 ✓
+  (Phase C 基线 183 → 224,+41 全部来自 packages/agent:循环 11 + 匹配 7 + 决策器 23)
+- Command: CI=true pnpm e2e
+  → 5/5 通过:smoke×2 + B1(articles 2→3、新文章 published、日志 publish actor=agent
+  principal=orchestrator)+ B2(轨迹首步 navigate post:post-welcome、仅 post-welcome
+  offline、first-post 仍 published)+ B3(c1–c3 approve 留痕 3 条、pending 清零、
+  c4 零触碰)。
+
+## DoD 复核
+1. check 全绿且 0 warning ✓(清理 service.ts 未用常量 GLOBAL_KEY,commit 2f4049c);
+   agent 单测覆盖循环终止/拒绝回流/字段自救/四层决策次序 ✓;
+2. e2e 全过(smoke 2 + B1/B2/B3)✓;
+3. B1 后 articles count=3(spec 内断言起点 count=2——幂等 seed 经每场景 TRUNCATE
+   + 重 boot 保证)、B2 只影响 post-welcome ✓、B3 pending=0 ✓;
+4. 轨迹可断言 ✓(AgentRunResult.steps 逐步 op/outcome/实体摘要;B2 直接断言);
+5. git:3 任务 commit(7921b74/351562d/d12a608)+ style 56feab4 + plan 提交;
+   每任务挂 git notes ✓。
+
+## 手动验证等效(脚本化,e2e 即证据)
+- B1 场景内 before 断言 GET /api/entity?rel=articles count===2(幂等 seed 起点);
+- 三场景全部经真实 HTTP(3110 独立 dev server)驱动 /api/entity + /api/exec,
+  断言基于 /api/events 原始日志(拒绝/执行同表)。
+
+## 覆盖率说明
+仓库未配置覆盖率工具(vitest 无 coverage provider,历 Phase 一致);行为覆盖以
+上述 41 例枚举口径记录于任务 notes。
+
+## Phase 范围(fa74d42..56feab4)
+packages/agent(新包)、e2e/baseline.spec.ts、apps/web next.config.ts(UI4A_DIST_DIR
+测试旋钮)与 tsconfig include(Next 自动维护)、根 package.json/lockfile(@ui4a/agent
+devDep)、ignore 文件、eslint 配置、service.ts 未用常量清理。未改任何引擎/合同语义。
