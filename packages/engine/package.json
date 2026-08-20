@@ -1,0 +1,24 @@
+{
+  "name": "@ui4a/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "UI4A 引擎核心:machine-as-JSON 类型、三层裁决、效果词汇表、Siren 投影、sitemap 推导。纯 TS,浏览器/服务端两栖,零 Node API。",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ui4a/shared": "workspace:*",
+    "ajv": "^8.20.0",
+    "xstate": "^5.32.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

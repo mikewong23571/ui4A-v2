@@ -26,6 +26,7 @@ export default defineConfig([
   {
     files: [
       'apps/worker/src/**/*.ts',
+      'packages/engine/src/**/*.ts',
       'packages/shared/src/**/*.ts',
       'e2e/**/*.ts',
       // 根级 Node 环境配置文件(不属任何 workspace 的 tsconfig 范围)
