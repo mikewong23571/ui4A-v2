@@ -54,3 +54,7 @@
 
 - 事件日志的 actor/principal/channel 来自请求自报(exec/chat 端点无认证),在 T3 接入 Keycloak(RFC 8693 `act` 链)之前**不具强审计语义**;I5/I6 断言基于此口径成立。评审记录(T2 review Low #6)。
 
+
+## D9 Keycloak 延后至 T5(2026-08-21)
+
+- T3 确认门的 S1/I4 验收断言(actor/principal 入日志、approve 必 human)不依赖 token 基础设施(D8 自报口径已覆盖);Keycloak(RFC 8693 act 链)在 T5 委托实体切片真需要 principal 语义时接入(届时解 D6 镜像问题:brew/tarball 或修代理)。
