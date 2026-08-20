@@ -1,0 +1,15 @@
+Task: fold 投影(T2 Phase B)
+
+- 新增 packages/engine/src/fold.ts:fold(events, deps) 纯函数,事件日志→EngineSnapshot。
+  LogEvent 类型 = EngineEvent + seq/ts/reason/detail(kind 扩 action-rejected/seed,actor/rel/action 放宽可缺省,与存储层 nullable 列对齐)。
+- 规则:action-executed 按「重放位点查 flow 常量动作声明 → 还原 ExecRequest(fieldValues + paramOrigins)→ 重放同一个 applyEffects」,丢弃重放中再产出的事件(避免与 entity-appended 双算);action-rejected/entity-appended/spawn-requested 不改状态;seed 幂等合并(detail.instances/collections 只补缺);未知 kind 或定义漂移抛错并带 seq(日志完整性守卫)。
+- 新增 fold.test.ts:10 用例(空日志、seed 建立/幂等、transition+参数出处、append 落位与集合、拒绝不改状态、伴随事件不双算、未知 kind、漂移抛错×2)。
+- 接线:index.ts 导出 fold;purity.test.ts 库源计数 10→11、导出面断言加 fold(既有测试的机械更新,非语义改动)。
+
+放置位置理由:fold 是「应用核心是日志的纯函数」的本体,纯 TS 零 Node API(过 purity 守卫),worker(T3)与重放工具复用;放 web 会把核心钉死在 HTTP 层。
+
+engine 语义改动:无(fold 为全新文件;fixtures append 未声明 flow 时继承源实例 flow 是 effects.ts 既有语义,测试按此断言)。
+
+验证:CI=true pnpm check 全绿(126 tests,16 files)。
+
+Commit: 16e3ff2
