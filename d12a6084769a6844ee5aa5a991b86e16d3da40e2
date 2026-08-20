@@ -1,0 +1,19 @@
+T2 Phase D / Task D3: E2E B1/B2/B3(agent 走合同,request 级,无浏览器)
+
+- e2e/baseline.spec.ts:runAgent(createRuleDriver()) 直接驱动真实 dev server:
+  B1 发布(三步向导 next×3+publish;articles 2→3;新文章 published;
+    日志含 publish actor=agent principal=orchestrator);
+  B2 下线(轨迹首步 navigate post:post-welcome=经子实体链接直达;仅 post-welcome offline,
+    first-post 仍 published;unpublish 留痕 1 条);
+  B3 审核(c1–c3 逐条 approve 至 pending 清零;3 次 approve actor=agent;
+    c4 已 approved 零触碰)。
+- seed-reset 方案(报告重点):Playwright webServer 先于 globalSetup 启动(实测
+  runner 任务序),3100 server 引擎内存快照在 TRUNCATE 后失效且无法外部重置 →
+  每场景直连 PG TRUNCATE events(复用 apps/web getPool,相对导入,零新依赖)
+  → 自起独立 dev server(端口 3110)→ 场景毕杀进程组;不往生产合同加 reset 后门。
+- Next 16 发现:next dev 对同一项目目录持单实例锁(.next/dev),双 server 并存必须
+  隔离 distDir → next.config.ts 增 UI4A_DIST_DIR 测试旋钮(仅改构建目录,
+  不触运行时合同);apps/web/.next-e2e 入 git/prettier/eslint ignore;
+  tsconfig include 增 .next-e2e types(Next 自动维护,已稳定)。
+- 根 package.json 增 @ui4a/agent devDep(e2e spec 解析 workspace 包)。
+- 一次自纠:B2 断言 toEqual→toMatchObject(exec op 携带 params:{})。
