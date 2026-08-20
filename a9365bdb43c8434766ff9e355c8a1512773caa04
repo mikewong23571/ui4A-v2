@@ -1,0 +1,15 @@
+Task Summary — T1 Phase 3 Task 1: 质量门(typecheck + lint + 聚合脚本)
+
+改动:
+- 新增根级 eslint.config.mjs(flat config):apps/web/src 沿用 eslint-config-next(core-web-vitals + typescript)语义;apps/worker/src、packages/shared/src(及后续 e2e/)用 typescript-eslint recommended,并将 no-unused-vars 提升为 error(recommended 默认 warn 会让 gate 漏过纯警告违例)。print-config 实测作用域隔离:worker main.ts 46 规则(0 react/next),web page.tsx 113 规则(react 38 / @next 22 / tseslint 20)。
+- 新增 .prettierrc.json(singleQuote/trailingComma:all/printWidth:100)与 .prettierignore(排除 pnpm-lock、docs/、conductor/、GOAL/DECISIONS、脚手架附属 md/public)。
+- 根 scripts:lint=eslint .;format=prettier --write .;format:check=prettier --check .;check 由 typecheck+test 升级为 typecheck && lint && test(顺序执行,任一失败即失败)。
+- 根 devDeps:eslint 9.39.5、eslint-config-next 16.3.1(与 apps/web 的 next 版本对齐)、typescript-eslint 8.67.0、prettier 3.9.6。
+- 一次 pnpm format:存量文件纯格式化(引号风格/换行,无逻辑变化):apps/web/eslint.config.mjs、next.config.ts、postcss.config.mjs、globals.css、layout.tsx、pg.test.ts;apps/worker/src/main.ts;pnpm-workspace.yaml。
+
+验证:
+- pnpm -r typecheck 覆盖全部三个 workspace(shared/worker/web)。
+- 负向验证:注入 packages/shared/src/lint-violation.probe.ts(unused var)→ pnpm check exit 1;注入 apps/web/src/lint-violation.probe.tsx → exit 1;删除探针后 pnpm check 全绿(typecheck + eslint + vitest 15/15)。
+- pnpm format:check 全部通过。
+
+为何:spec FR7/AC1——质量门全绿才算过门;web 保持 next 官方 lint 语义避免与 create-next-app 生态漂移。
