@@ -4,8 +4,8 @@
 
 ## Phase A: 确认门引擎语义(纯单测)
 
-- [ ] Task: 确认裁决步与挂起结果类型(TDD:requires-confirmation+agent → 挂起;human → 直通;策略原因入事件;引擎级 confirmation-requested 事件)
-- [ ] Task: confirmation 实体与 approve/reject(TDD:approve 应用原效果+事件链;I4 actor-is-human 拒 agent;reject 带 reason 不生效;重放一致性——confirmation 事件入 fold)
+- [x] Task: 确认裁决步与挂起结果类型(TDD:requires-confirmation+agent → 挂起;human → 直通;策略原因入事件;引擎级 confirmation-requested 事件)(5b4b483)
+- [~] Task: confirmation 实体与 approve/reject(TDD:approve 应用原效果+事件链;I4 actor-is-human 拒 agent;reject 带 reason 不生效;重放一致性——confirmation 事件入 fold)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: Cedar 风险策略接入
