@@ -29,7 +29,7 @@
   - [x] 实现 health route(pg 池 + `SELECT 1`,失败降级)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) (92cfa29)
 
-## Phase 3: 质量门、E2E 基座与文档
+## Phase 3: 质量门、E2E 基座与文档 [checkpoint: cb488b3]
 
 - [x] Task: 质量门(typecheck + lint + 聚合脚本) (a9365bd)
   - [x] eslint flat config + prettier;`tsc --noEmit` 全 workspace;根 `pnpm check` 聚合
@@ -40,4 +40,4 @@
 - [x] Task: 文档落地 (cb488b3)
   - [x] 根 `README.md` quickstart(3 条命令:install / compose up / dev)
   - [x] `conductor/workflow.md` Development Commands 替换为真实命令
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) (cb488b3)
