@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@assistant-ui/react": "^0.15.16",
+    "@ui4a/agent": "workspace:*",
     "@ui4a/engine": "workspace:*",
     "@ui4a/shared": "workspace:*",
     "next": "16.3.1",

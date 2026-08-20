@@ -53,10 +53,8 @@ class ScriptedDriver implements AgentDriver {
 class AsyncScriptedDriver implements AgentDriver {
   constructor(private readonly script: AgentOperation[]) {}
 
-  // eslint 参数使用规则与 ScriptedDriver 对齐:此处刻意不读上下文。
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   decide(context: DriverContext): Promise<AgentOperation> {
-    void context;
+    void context; // 与 ScriptedDriver 对齐:刻意不读上下文
     return Promise.resolve(this.script.shift() ?? { kind: 'fail', reason: '脚本耗尽' });
   }
 }
