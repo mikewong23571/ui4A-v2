@@ -56,3 +56,55 @@ confirmation-rejected 原动作不生效、I4 agent 身份 approve 被拒且留�
 
 验证:CI=true pnpm check 全绿(typecheck×5 + eslint + vitest 339 passed,
 T2 基线 288 → 本 Phase 共 +51)。
+
+===== Phase Verification & Checkpoint — T3 Phase A: 确认门引擎语义(自治验收)=====
+
+按 workflow.md Phase Completion Verification and Checkpoint Protocol 执行;
+Step 5(用户确认)由编排 agent 依『自治编排协议』代行——以自动化等效验证
+(全量测试 + 关键用例脚本化逐条执行)作为确认依据。
+
+【阶段范围】git diff 87a4012..HEAD(23 文件):
+engine:confirmation/execute(新模块)、effects/fold/judge/schema/siren/types/index;
+shared:state/guards/predicates;apps/web/src/db/events.ts(仅 EventKind 联合的
+机械类型扩展);plan.md。
+
+【测试覆盖核查】每个改动的代码文件均有对应测试:confirmation.test /
+execute.test / fold.test / siren.test / judge.test / schema.test / effects.test /
+predicates.test / purity.test(两栖性+导出面)。types.ts 纯类型(minLength 由
+schema.test 覆盖);index.ts barrel 由 purity.test 覆盖;web events.ts 行为未变
+(既有 events.test/replay.test 覆盖)。
+
+【自动化验证】Command: CI=true pnpm check
+结果:typecheck(5 workspaces)+ eslint + vitest 全绿,339 tests / 37 files
+(T2 基线 288 → Phase A +51,DoD ≥25 满足)。
+
+【脚本化人工等效验证】(CI=true pnpm vitest run --reporter=verbose 于五个
+核心测试文件,逐条确认):
+1. 挂起矩阵:high+agent→挂起;low+agent→直通;high+human→直通;无标注→
+   直通;actor 缺省 human→直通
+2. executeWithGates:suspended 效果不应用 + confirmation:c1 pending 物化 +
+   confirmation-requested 含原请求全文;guard/schema 失败不进确认门
+3. approve:human→原效果应用(post→archived)+ 事件链 confirmation-approved
+   →action-executed(actor=human/principal=提议者/channel=confirmation)+
+   实体 approved 保留审计
+4. I4:agent approve/reject 均 guard-failed(actor-is-human=false),确认仍
+   pending,human 补审批仍可行
+5. reject:reason 空→schema-invalid(minLength);带原因→confirmation-rejected,
+   目标永不生效
+6. I5 重放一致性:挂起→approve 全链 fold 后效果出现,快照内容 hash
+   (contentVersion/canonicalJson)与在线路径一致;挂起→reject 重放后原动作
+   不生效;重复物化/未知确认/载荷畸形响亮失败带 seq
+7. Siren:confirmation 实体四件组装 + inbox 集合(pending 视图,子实体直达)
+
+以上全部通过(verbose 输出留档于实施会话)。
+
+【已知无害噪音】vitest stderr 出现 Ajv『unknown format textarea ignored』
+——T2 以来 judge 校验 textarea 字段的既有行为,非本阶段引入。
+
+【DoD 核对】
+1. CI=true pnpm check 全绿,+51 用例(矩阵/approve/I4/reject/fold/inbox)
+2. 重放一致性 hash 断言(fold.test.ts『挂起→approve』用例)
+3. 谓词签名扩展影响面报告 → 见本 commit Task 2 note 与实施报告
+4. git:2 任务 commit(5b4b483 / d3df9be)+ notes + plan 状态 + 本 checkpoint
+
+结论:Phase A 通过,进入 Phase B(Cedar 风险策略接入)。
