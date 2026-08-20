@@ -1,0 +1,7 @@
+T2 Phase A Task 4: Siren 投影器
+
+- engine/src/siren.ts:project(snapshot, rel, deps) 纯函数,rel → Siren 实体四件组装 properties/actions/links/guard-results(arch-brief §2 字段名原样)。实例实体:class=['flow-instance',flow];properties={rel,flow,node,title(节点标题),fields(原始值视图,经 shared fieldValues 去出处)};actions=name/title/method/href + fields(节点∪动作字段的 JSON Schema)+ requires-confirmation 透传;links=self + collection 反查回链。
+- guard-results 逐项注入:当前节点每个 action 的每个 guard 求值结果(复用 judge.evaluateGuards,params 为空投影),blocked=true 时附 reason 'guard 不满足: 谓词名=false'(拒绝即教育);未注册 guard fail-closed。
+- 集合实体:class=['collection',rel],properties.count,entities[] 子实体=嵌入投影 + rel=['item'] + 直达 href /api/entity?rel=成员rel(B2 点名直达的机制);子实体自带 actions/guard-results,agent 直达即可执行。
+- href 策略:引擎默认相对路径(/api/exec、/api/entity?rel=…),baseHref 可选注入绝对前缀——引擎不知道部署位置,HTTP 合同由 Phase C 决定。未知 rel → undefined(HTTP 层映射 404)。
+- 测试:12 新用例(实体形状/actions+schema/guard 三态/子实体直达/baseHref/纯函数);CI=true pnpm check 全绿(94 tests)。
