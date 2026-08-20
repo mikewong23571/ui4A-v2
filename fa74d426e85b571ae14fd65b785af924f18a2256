@@ -18,3 +18,40 @@ CI=true pnpm check 全绿(24 文件 183 测试)。
 核心 why:'拒绝响应与日志事件一致'若不测则只是口头承诺——同一 verdict 对象
 分叉成 HTTP body 与事件行,测试把它们重新对齐;并发+fold hash 把单 atom
 串行化的'无交错'固化为回归护栏。
+
+==================== Phase Verification Report(自治验收)====================
+Phase: T2 Phase C — HTTP 合同与种子域(编排 agent 代行验收,workflow 自治协议)
+
+自动化测试:
+- 命令:CI=true pnpm check(typecheck 三 workspace + eslint + vitest)
+- 结果:全绿。24 个测试文件、183 个测试(Phase B 收尾时 134;Phase C 净增 49)。
+- 变更文件↔测试映射(64502c2..HEAD):
+  packages/shared/src/predicates.ts ← predicates.test.ts;
+  apps/web/src/domain/{flows,seed}.ts ← domain/flows.test.ts;
+  apps/web/src/engine/service.ts ← engine/service.test.ts;
+  apps/web/src/app/api/{entity,exec}/route.ts、.well-known/ui4a.json/route.ts ← 各自
+  route.test.ts + api/contract.test.ts;apps/web/next.config.ts 为配置(无测试对象)。
+
+等效手工验证(dev server 冷启动 curl,DoD 逐条;PORT=3100 pnpm dev):
+1. curl localhost:3100/.well-known/ui4a.json | jq .version → "9794d12dda37"(12hex 有值);
+   surfaces = [flow:article-drafting, flow:post-status, flow:comment-moderation, articles, comments]。
+2. /api/entity?rel=articles → 200,count=2,entities=[post:post-welcome, post:first-post],
+   子实体 href=/api/entity?rel=post:post-welcome 可直达。
+3. /api/entity?rel=post:post-welcome → 200,node=published,actions=[unpublish,archive],
+   guard-results 逐项注入(blocked=false,guards 含 is-published)。
+4. /api/entity?rel=nope → 404 {"error":"实体 \"nope\" 不存在"}。
+5. POST /api/exec approve c1 → 200 {entity.properties.node=approved};
+   POST explode → 400 {layer:undeclared,reason:"动作 \"explode\" 未声明…"};
+   /api/events 最新 action-rejected 与响应 reason 逐字一致、detail.layer=undeclared 一致(DoD3)。
+6. 冷启动二次幂等:kill + 重启 dev server → articles count 仍 2、seed 事件仍 1 条
+   (数据不翻倍);comment:c1 仍 approved(boot=fold 日志,重放一致性);
+   sitemap version 跨重启稳定。
+验证后现场清理:dev server 停止、events 表 TRUNCATE。
+
+偏差记录:
+- 本 Phase 将 plan.md Phase C 任务重排为「种子域/服务层/三端点/合同级测试」
+  (编排 prompt 指定;端点依赖前两者),验收口径不变。
+- exec 拒绝状态映射:undeclared→400,guard-failed/schema-invalid→422(prompt 授权 400/422)。
+- 日志保持 Phase B 最小列集(to/appended/appendedRel/collection 不落列,fold 由定义重推导)。
+- HTTP 合同不收 paramOrigins(出处一律 intent);服务层 ExecRequest 仍支持。
+- 未新增任何依赖,lockfile 零变更。
