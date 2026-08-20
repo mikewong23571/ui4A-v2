@@ -14,7 +14,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ui4a/engine": "workspace:*"
+    "@ai-sdk/openai": "^4.0.45",
+    "@ui4a/engine": "workspace:*",
+    "ai": "^7.0.71",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

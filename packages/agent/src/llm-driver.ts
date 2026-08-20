@@ -1,0 +1,266 @@
+/**
+ * LLM driver(arch-brief §6:「同一 agent 执行循环,双 driver 一键互换」)。
+ *
+ * - 决策由 LLM 产出:OpenAI 兼容 tool calling(Vercel AI SDK generateText);
+ *   prompt = 目标 + 轨迹 + 最近拒绝(拒绝即数据)+ 当前实体摘要;
+ * - 工具列表 = buildToolProjection(固定动词 5 + 动态动作工具,guard 嵌
+ *   description)——合法动作集就是工具列表,处境披露的 tool 形态;
+ * - 模型输出不合法(无工具调用/未知工具/保留动词/参数残缺)→ fail-safe 返回 fail;
+ * - LLM 端点错误(401 等)如实折算为 fail reason 进轨迹(B4:失败也是合同的
+ *   一部分,委托不崩溃)——decide 永不抛异常;
+ * - createDriver('auto'):无 key 回退 rule driver(I1 机械层)。
+ *
+ * GLM coding plan:baseURL open.bigmodel.cn/api/coding/paas/v4,模型名缺省
+ * glm-4.7(coding plan 常用旗舰;LLM_MODEL env 可覆盖)。
+ */
+import { createOpenAI } from '@ai-sdk/openai';
+import { generateText, jsonSchema, type LanguageModel, type ToolSet } from 'ai';
+import type { SirenEntity } from '@ui4a/engine';
+
+import { createRuleDriver } from './rule-driver';
+import { summarizeEntity } from './loop';
+import { ACTION_TOOL_PREFIX, buildToolProjection, isReservedVerb } from './tools';
+import type { AgentDriver, AgentOperation, DriverContext, FetchLike } from './types';
+
+/** GLM coding plan 的 OpenAI 兼容端点(中国区)。 */
+export const DEFAULT_LLM_BASE_URL = 'https://open.bigmodel.cn/api/coding/paas/v4';
+
+/** coding plan 常用旗舰模型(LLM_MODEL 可覆盖;验收报告记录选择理由)。 */
+export const DEFAULT_LLM_MODEL = 'glm-4.7';
+
+export interface LlmDriverOptions {
+  /** 缺省 process.env.GLM_API_KEY。 */
+  apiKey?: string;
+  /** 缺省 process.env.LLM_BASE_URL ?? DEFAULT_LLM_BASE_URL。 */
+  baseURL?: string;
+  /** 缺省 process.env.LLM_MODEL ?? DEFAULT_LLM_MODEL。 */
+  model?: string;
+  /** 注入传输(单测脚本化;缺省真实 fetch)。 */
+  fetchImpl?: FetchLike;
+}
+
+export type DriverKind = 'rule' | 'llm' | 'auto';
+
+interface ResolvedLlmSettings {
+  apiKey: string;
+  baseURL: string;
+  model: string;
+  fetchImpl?: FetchLike;
+}
+
+function resolveSettings(options: LlmDriverOptions): ResolvedLlmSettings {
+  return {
+    apiKey: options.apiKey ?? process.env.GLM_API_KEY ?? '',
+    baseURL: options.baseURL ?? process.env.LLM_BASE_URL ?? DEFAULT_LLM_BASE_URL,
+    model: options.model ?? process.env.LLM_MODEL ?? DEFAULT_LLM_MODEL,
+    ...(options.fetchImpl !== undefined ? { fetchImpl: options.fetchImpl } : {}),
+  };
+}
+
+const SYSTEM_PROMPT = [
+  '你是 UI4A 合同 agent:通过调用工具操作超媒体合同(HTTP 合同)完成用户委托的目标。',
+  '规则:',
+  '1. 每轮必须且只能输出一个工具调用;合法动作集就是当前工具列表(处境披露)。',
+  '2. navigate 的 rel 必须来自其枚举;工具 description 标注 blocked 的动作当前被 guard 阻断,不要调用。',
+  '3. 拒绝即数据:轨迹中的被拒动作与「最近拒绝」携带结构化原因——换路径,或按动作字段 schema 修正参数后重试。',
+  '4. 字段值按语义构造:枚举字段必须取 enum 内的值;标题/正文等 intent 字段按目标意图编写;不要发明合同外的值。',
+  '5. clarify 与 render 是保留动词且当前未实现:禁止调用;缺字段值时按规则 4 自行构造。',
+  '6. 完成判定:目标对应的完成类动作(如 publish)成功执行过之后才调用 done,并用 summary 总结;不得提前 done。',
+].join('\n');
+
+/** 当前实体摘要:供 prompt 的紧凑投影(不内联全部子实体)。 */
+function describeEntity(entity: SirenEntity): string {
+  const summary = summarizeEntity(entity);
+  const subRels = (entity.entities ?? [])
+    .map((sub) => (typeof sub.properties.rel === 'string' ? sub.properties.rel : ''))
+    .filter((rel) => rel !== '');
+  const linkRels = entity.links
+    .map((link) => decodeURIComponent(/[?&]rel=([^&]+)/.exec(link.href)?.[1] ?? ''))
+    .filter((rel) => rel !== '');
+  const blocked = (entity['guard-results'] ?? [])
+    .filter((entry) => entry.blocked)
+    .map((entry) => entry.action);
+  return [
+    `- rel: ${summary.rel}(class: ${summary.class.join(', ')}${summary.node !== undefined ? `, node: ${summary.node}` : ''}${summary.count !== undefined ? `, count: ${summary.count}` : ''})`,
+    `- 动作: ${summary.actions.join(', ') || '(无)'}`,
+    ...(blocked.length > 0 ? [`- guard 阻断: ${blocked.join(', ')}`] : []),
+    `- 可导航 rel: ${[...new Set([...linkRels, ...subRels])].join(', ') || '(无)'}`,
+  ].join('\n');
+}
+
+function describeTrail(context: DriverContext): string {
+  if (context.trail.length === 0) return '(空——这是第一步)';
+  return context.trail
+    .map((step) => {
+      const op =
+        step.op.kind === 'navigate'
+          ? `navigate → ${step.op.rel}`
+          : step.op.kind === 'exec'
+            ? `exec ${step.op.action} ${JSON.stringify(step.op.params ?? {})}`
+            : step.op.kind === 'done'
+              ? `done ${step.op.summary}`
+              : `fail ${step.op.reason}`;
+      const note = step.rejection !== undefined ? `(拒绝: ${step.rejection.reason})` : '';
+      return `${step.step}. [${step.rel}] ${op} ⇒ ${step.outcome} ${note}`;
+    })
+    .join('\n');
+}
+
+function buildUserPrompt(context: DriverContext): string {
+  const parts = [
+    `## 用户目标\n${JSON.stringify(context.goal)}`,
+    `## 当前实体\n${describeEntity(context.entity)}`,
+    `## 轨迹(至今)\n${describeTrail(context)}`,
+  ];
+  if (context.lastRejection !== undefined) {
+    parts.push(`## 最近拒绝(上一步被拒,拒绝即数据)\n${JSON.stringify(context.lastRejection)}`);
+  }
+  if (context.successes.length > 0) {
+    parts.push(
+      `## 已成功的执行\n${context.successes.map((entry) => `${entry.rel} :: ${entry.action}`).join('\n')}`,
+    );
+  }
+  return parts.join('\n\n');
+}
+
+// ---- 工具调用 → 循环操作映射 ------------------------------------------------
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** fail-safe:任何不合法的模型输出都折算为 fail,绝不抛异常。 */
+function invalidOutput(reason: string): AgentOperation {
+  return { kind: 'fail', reason: `LLM 输出不合法: ${reason}` };
+}
+
+function mapToolCall(toolName: string, input: unknown): AgentOperation {
+  switch (toolName) {
+    case 'navigate': {
+      const rel = isPlainObject(input) ? input.rel : undefined;
+      return typeof rel === 'string' && rel !== ''
+        ? { kind: 'navigate', rel }
+        : invalidOutput('navigate 缺少字符串参数 rel');
+    }
+    case 'exec': {
+      if (!isPlainObject(input) || typeof input.action !== 'string') {
+        return invalidOutput('exec 缺少字符串参数 action');
+      }
+      return {
+        kind: 'exec',
+        action: input.action,
+        params: isPlainObject(input.params) ? input.params : {},
+      };
+    }
+    case 'done': {
+      const summary = isPlainObject(input) ? input.summary : undefined;
+      return {
+        kind: 'done',
+        summary: typeof summary === 'string' && summary !== '' ? summary : '目标完成',
+      };
+    }
+    default:
+      break;
+  }
+  if (isReservedVerb(toolName)) {
+    return {
+      kind: 'fail',
+      reason: `LLM 调用了保留动词 ${toolName}(T2 未实现 clarify/render capability)`,
+    };
+  }
+  if (toolName.startsWith(ACTION_TOOL_PREFIX)) {
+    return {
+      kind: 'exec',
+      action: toolName.slice(ACTION_TOOL_PREFIX.length),
+      params: isPlainObject(input) ? input : {},
+    };
+  }
+  return invalidOutput(`未知工具 "${toolName}"`);
+}
+
+/** LLM 端点错误 → fail reason(如实呈现状态码与响应体,B4)。 */
+function llmErrorToReason(error: unknown): string {
+  const parts: string[] = [];
+  const candidate = error as { statusCode?: unknown; responseBody?: unknown } | null;
+  if (candidate !== null && typeof candidate.statusCode === 'number') {
+    parts.push(`HTTP ${candidate.statusCode}`);
+  }
+  if (error instanceof Error) {
+    parts.push(error.message);
+  } else {
+    parts.push(String(error));
+  }
+  if (candidate !== null && typeof candidate.responseBody === 'string') {
+    parts.push(candidate.responseBody);
+  }
+  return `LLM 调用失败: ${parts.join(' ')}`;
+}
+
+function toToolSet(descriptors: ReturnType<typeof buildToolProjection>): ToolSet {
+  const tools: ToolSet = {};
+  for (const descriptor of descriptors) {
+    tools[descriptor.name] = {
+      description: descriptor.description,
+      inputSchema: jsonSchema(descriptor.parameters),
+    };
+  }
+  return tools;
+}
+
+async function llmDecide(model: LanguageModel, context: DriverContext): Promise<AgentOperation> {
+  try {
+    const result = await generateText({
+      model,
+      system: SYSTEM_PROMPT,
+      prompt: buildUserPrompt(context),
+      tools: toToolSet(buildToolProjection(context.entity)),
+      toolChoice: 'required',
+    });
+    const call = result.toolCalls[0];
+    if (call === undefined) {
+      return invalidOutput(`未输出工具调用(模型文本: ${result.text.slice(0, 200) || '(空)'})`);
+    }
+    return mapToolCall(call.toolName, call.input);
+  } catch (error) {
+    return { kind: 'fail', reason: llmErrorToReason(error) };
+  }
+}
+
+/** LLM driver 工厂:OpenAI 兼容端点(缺省 GLM coding plan)+ 注入传输。 */
+export function createLlmDriver(options: LlmDriverOptions = {}): AgentDriver {
+  const settings = resolveSettings(options);
+  // 空 key 也构造:显式 llm 时由端点裁决(401 如实回流,B4);auto 的回退在工厂层。
+  // fetch 适配:SDK 传输签名(string|URL|Request)收敛为本包的 FetchLike(string)。
+  const provider = createOpenAI({
+    baseURL: settings.baseURL,
+    apiKey: settings.apiKey,
+    ...(settings.fetchImpl !== undefined
+      ? {
+          fetch: (input: string | URL | Request, init?: RequestInit) =>
+            settings.fetchImpl!(String(input), init),
+        }
+      : {}),
+  });
+  // GLM coding plan 只有 chat/completions;provider(id) 缺省走 Responses API,
+  // 必须显式 .chat() 锁定 Chat Completions。
+  const model = provider.chat(settings.model);
+  return { decide: (context) => llmDecide(model, context) };
+}
+
+/** 解析实际 driver 类型(auto:无 key → rule,I1 回退)。 */
+export function resolveDriverKind(
+  kind: DriverKind,
+  options: LlmDriverOptions = {},
+): 'rule' | 'llm' {
+  if (kind === 'rule') return 'rule';
+  const apiKey = options.apiKey ?? process.env.GLM_API_KEY;
+  if (kind === 'auto' && !apiKey) return 'rule';
+  return 'llm';
+}
+
+/** 双 driver 一键互换的工厂(rule / llm / auto)。 */
+export function createDriver(kind: DriverKind, options: LlmDriverOptions = {}): AgentDriver {
+  return resolveDriverKind(kind, options) === 'rule'
+    ? createRuleDriver()
+    : createLlmDriver(options);
+}

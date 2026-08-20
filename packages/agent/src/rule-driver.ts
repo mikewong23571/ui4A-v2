@@ -68,7 +68,7 @@ function relFromHref(href: string | undefined): string | undefined {
 }
 
 /** 实体上可导航的 rel 候选(links 的 rel= 与子实体),排除当前 rel,保序去重。 */
-function navigableRels(entity: SirenEntity, currentRel: string): string[] {
+export function navigableRels(entity: SirenEntity, currentRel: string): string[] {
   const candidates: string[] = [];
   const push = (rel: string | undefined): void => {
     if (rel === undefined || rel === '' || rel === currentRel) return;

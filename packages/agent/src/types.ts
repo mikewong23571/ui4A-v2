@@ -81,9 +81,12 @@ export interface DriverContext {
   lastRejection?: RejectionRecord;
 }
 
-/** driver 插件接口:rule driver(本包)与 LLM driver(Phase E)共用。 */
+/**
+ * driver 插件接口:rule driver(本包)与 LLM driver(Phase E)共用。
+ * decide 允许异步(LLM 决策要等网络);rule driver 保持同步实现。
+ */
 export interface AgentDriver {
-  decide(context: DriverContext): AgentOperation;
+  decide(context: DriverContext): AgentOperation | Promise<AgentOperation>;
 }
 
 export interface RunAgentOptions {

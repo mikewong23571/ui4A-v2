@@ -79,7 +79,7 @@ export async function runAgent(
       lastRejection,
     };
     lastRejection = undefined;
-    const op = driver.decide(context);
+    const op = await driver.decide(context);
 
     if (op.kind === 'done') {
       trail.push({ step, rel: currentRel, op, outcome: 'done' });

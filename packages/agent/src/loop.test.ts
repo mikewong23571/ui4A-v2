@@ -49,6 +49,18 @@ class ScriptedDriver implements AgentDriver {
   }
 }
 
+/** 异步决策 driver(Phase E:LLM driver 的 decide 是异步的,循环须 await)。 */
+class AsyncScriptedDriver implements AgentDriver {
+  constructor(private readonly script: AgentOperation[]) {}
+
+  // eslint 参数使用规则与 ScriptedDriver 对齐:此处刻意不读上下文。
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  decide(context: DriverContext): Promise<AgentOperation> {
+    void context;
+    return Promise.resolve(this.script.shift() ?? { kind: 'fail', reason: '脚本耗尽' });
+  }
+}
+
 interface TransportOptions {
   entities?: Record<string, SirenEntity>;
   execResponses?: Response[];
@@ -98,6 +110,16 @@ describe('循环终止', () => {
     expect(driver.contexts[0]!.entity).toEqual(articlesEntity);
     expect(driver.contexts[0]!.trail).toEqual([]);
     expect(driver.contexts[0]!.successes).toEqual([]);
+  });
+
+  it('异步 decide(LLM driver 形态)同样被循环接受', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const driver = new AsyncScriptedDriver([{ kind: 'done', summary: '异步完成' }]);
+
+    const result = await runAgent(driver, GOAL, { baseUrl: BASE, fetchImpl: transport.fetch });
+
+    expect(result.outcome).toBe('done');
+    expect(result.summary).toBe('异步完成');
   });
 
   it('driver 返回 fail 即终止并携带原因', async () => {

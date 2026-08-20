@@ -23,7 +23,7 @@ import {
   instanceEntity,
   jsonResponse,
 } from './testkit';
-import type { AgentGoal, DriverContext, RejectionRecord, TrailStep } from './types';
+import type { AgentGoal, AgentOperation, DriverContext, RejectionRecord, TrailStep } from './types';
 
 const BASE = 'http://contract.test';
 
@@ -163,7 +163,7 @@ function decide(
     successes?: DriverContext['successes'];
     lastRejection?: RejectionRecord;
   } = {},
-): ReturnType<ReturnType<typeof createRuleDriver>['decide']> {
+): AgentOperation {
   const driver = createRuleDriver();
   const currentRel =
     typeof entity.properties.rel === 'string' && entity.properties.rel !== ''
@@ -176,7 +176,9 @@ function decide(
     trail: extras.trail ?? [],
     successes: extras.successes ?? [],
     lastRejection: extras.lastRejection,
-  });
+    // rule driver 的 decide 是同步实现(接口允许 Promise 是为 LLM driver);
+    // 断言理由:此处构造的正是 createRuleDriver。
+  }) as AgentOperation;
 }
 
 function rejectedStep(
