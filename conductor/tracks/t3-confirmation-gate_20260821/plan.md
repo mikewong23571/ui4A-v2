@@ -16,7 +16,7 @@
 
 ## Phase C: Temporal worker 与 notify
 
-- [ ] Task: worker 真身(@temporalio/worker;notifyWorkflow + notify activity;taskQueue ui4a;心跳改为 worker 启动日志)(TDD:activity 单测——inbox 事件写入)
+- [x] Task: worker 真身(@temporalio/worker;notifyWorkflow + notify activity;taskQueue ui4a;心跳改为 worker 启动日志)(TDD:activity 单测——inbox 事件写入)(c09ae38)
 - [ ] Task: web→Temporal 接线(exec 挂起后 startWorkflow;事件流增量:web 读路径按 seq 增量 fold worker 追加的事件)(TDD:双写一致性——worker appendEvent 后 web entity 查询可见)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
