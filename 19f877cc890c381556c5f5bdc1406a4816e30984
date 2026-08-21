@@ -1,0 +1,28 @@
+Task: T4 Phase B Task 3 — 在途实例出生版本戳(激活不迁移在途)
+
+改动(引擎最小扩展 + 服务接线):
+- packages/engine/src/judge.ts:DefinitionVersionTable 类型 + flowForInstance
+  (出生版本优先,活跃注册表兜底);JudgeDeps.versions;judge 用之。
+- packages/engine/src/siren.ts:ProjectDeps.versions;projectInstance 按出生解析
+  (在途实例看到的动作面 = 出生定义)。
+- packages/engine/src/effects.ts:EffectDeps.versions(transition 校验按出生解析);
+  append 派生实例盖 bornVersion=目标 flow 当前活跃版本(无定义条目不盖戳)。
+- packages/engine/src/execute.ts:ExecuteDeps.versions 透传 applyEffects。
+- packages/engine/src/confirmation.ts:ConfirmationDeps.versions;approve 生效的
+  动作定位/效果按出生解析。
+- packages/engine/src/fold.ts:applySeed 新装实例盖戳(空库序:定义先于业务
+  seed);applyExecuted 以快照 definitionVersions 为主源解析(常量兜底),
+  applyEffects 重放同样注入 versions。
+- apps/web/src/engine/service.ts:gateDeps/confirmDeps/projectDeps 注入
+  versions=快照定义历史。
+
+口径(报告):
+- 出生戳三来源:append 派生(在线/重放同构)、applySeed 装载、迁移序回溯盖戳
+  (Task 1);未盖戳实例回退活跃定义(兼容引擎测试 fixture 与既有语义)。
+- S2 语义澄清:v1 在途实例对新动作 undeclared(按出生走完);新实例出生于激活后
+  版本即刻可用新动作——'agent 下一步可用新动作'落在激活后出生/派生的实例上。
+  service.meta.test(DoD 4)相应修正:publish 派生的 post:new-article(born 2)
+  执行 feature,而非 v1 在途的 post:first-post。
+
+测试:+7(definition-resolution 5 + service.bornversion 2);总 522(check 全绿);
+CI=true pnpm e2e 18 过 +1 skip。
