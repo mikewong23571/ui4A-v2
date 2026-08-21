@@ -1,0 +1,7 @@
+T12 Phase A Task 1: render LLM 路由 fallthrough
+
+改动:agent/llm-driver.ts(createLlmChatModel 抽出)、agent/render.ts(+3 导出)、api/chat/route.ts(fallthrough + respondWithFrozenSpec/llmSpecPassesGates 提取)+ 2 测试文件(+14)
+路径:renderSpecFor miss 且 hasDisplayIntent → buildRenderPrompt(词汇表+sitemap 处境)→ streamText(60s abort)→ parseRenderResponse → validateSpec(同一零字面闸)+ grounding 核对 + bindSchema → freezeSpec → 响应;失败交回普通循环(诚实失败)。
+超出原列半径申报:llm-driver.ts 抽出(任务要求复用现成客户端 helper 的最小扩展,纯提取零行为变化)。
+Why:spec 架构决定 1/2——rule miss 展示意图不再直接落回普通循环;LLM 产出必过同一对闸(铁律 2)。
+验收(编排 agent 亲自复跑):render+route.render 37/37;CI=true pnpm check 948 passed;s5+chat e2e 7/7(S5 断言零改动)。自治验收。
