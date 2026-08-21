@@ -1,0 +1,7 @@
+T10 Phase D Task 1: agent 静态上下文 app 分组 + role/app 槽位
+
+改动:packages/agent/src/types.ts(SitemapApplicationSummary/槽位字段)、http.ts(asApplicationSummaries 宽容解析)、loop.ts(静态上下文投影+槽位注入)、llm-driver.ts(buildSystemPrompt)、3 测试文件(+8)
+SitemapSummary 唯一生产方:packages/agent/src/http.ts getSitemap(apps/web 原样序列化 engine Sitemap,零改动)。
+槽位机制:SYSTEM_PROMPT 常量私有不动;空槽 → buildSystemPrompt 逐字节返回原常量(测试钉住);有值 → 前缀 + 数据行。未接线真实角色(D19 T3/T5 钩子)。
+Why:spec 架构决定 6——两层发现的静态上下文载体 + 角色职责组合的数据槽位。
+验收(编排 agent 亲自复跑):packages/agent 107/107;CI=true pnpm check 894 passed。自治验收。
