@@ -4,7 +4,7 @@
 
 ## Phase A: definition-lifecycle 引擎语义(纯单测)
 
-- [~] Task: lifecycle flow 定义(machine-as-JSON 自举,meta/self)+ 定义实体投影(meta/flows 草稿/活跃形状)
+- [x] Task: lifecycle flow 定义(machine-as-JSON 自举,meta/self)+ 定义实体投影(meta/flows 草稿/活跃形状) (616a94a)
 - [ ] Task: 编辑动词过三层裁决(TDD:add-node/add-action[含 to-exists/guards-registered/effect-known guard]/submit/revise/deprecate;非法定义拒且留痕形态)
 - [ ] Task: 激活不变式检查器(TDD:edge-targets-exist/guards-registered/field-types-known/effect-known/initial-exists+terminal-reachable;checks 入 activation;checks-fail→draft 附报告)
 - [ ] Task: approve/reject(actor-is-human;approve→active+版本+sitemap bump 信号事件 definition-activated;reject reason)(TDD)
