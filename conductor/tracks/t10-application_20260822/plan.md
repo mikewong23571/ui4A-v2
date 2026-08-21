@@ -27,7 +27,7 @@
 - [x] Task: rule-driver app 定位层(目标相关性先匹配 app intent → 该 app 内入口优先;不做硬过滤,跨 app links 仍合法)(TDD) — aaf547c
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — aaf547c
 
-## Phase E: 全量回归与走查
+## Phase E: 全量回归与走查 [checkpoint: aaf547c]
 
-- [~] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增用例)+ demo 走查(sitemap 分组人工确认)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增用例)+ demo 走查(sitemap 分组人工确认) — 证据挂 aaf547c note(check 900 passed / e2e 33+11skip / llm-smoke 门控 1 passed / curl 走查 3 组)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — aaf547c
