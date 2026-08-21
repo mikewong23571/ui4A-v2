@@ -9,6 +9,7 @@
  * - 评论队列:pending 计数 + 入口链接;
  * - 收件箱(T3 Phase D):GET /api/entity?rel=inbox 的 pending 确认计数 +
  *   入口链接(确认门的人类待办视图,成员逐条进确认实体页 approve/reject);
+ * - 委托舰队(T5 Phase B):/delegations 入口(并行委托的监控视图);
  * - 铁律 3:首页零可提交元素(无 button/form),一切动作发生在实体页的已声明
  *   action 上;悬浮聊天在全局布局,是 agent 路径入口。
  */
@@ -143,6 +144,21 @@ export default function Home() {
             className="text-blue-600 hover:underline"
           >
             评论队列(待处理 {pendingCount})
+          </a>
+        </p>
+      </section>
+
+      {/* 委托舰队入口(T5 Phase B):并行委托的监控视图(一行一委托,
+          人类监控成本不随 N 超线性);纯导航链接,零可提交元素。 */}
+      <section aria-label="委托舰队" className="mt-8">
+        <h2 className="mb-2 text-sm font-semibold text-zinc-700">委托舰队</h2>
+        <p className="text-sm">
+          <a
+            href="/delegations"
+            data-rel="delegations"
+            className="text-blue-600 hover:underline"
+          >
+            委托舰队(并行委托监控)
           </a>
         </p>
       </section>

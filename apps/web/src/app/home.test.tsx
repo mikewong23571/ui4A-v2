@@ -210,6 +210,17 @@ describe('入口页(首页)', () => {
     );
   });
 
+  it('委托舰队入口(T5 Phase B):链接到 /delegations(并行委托的监控视图)', async () => {
+    vi.stubGlobal('fetch', mockContract());
+    const { container } = render(<Home />);
+    await waitFor(() => {
+      expect(container.querySelector('a[href*="post%3Apost-welcome"]')).not.toBeNull();
+    });
+    const fleet = container.querySelector<HTMLAnchorElement>('a[href="/delegations"]');
+    expect(fleet).not.toBeNull();
+    expect(fleet!.textContent).toContain('委托舰队');
+  });
+
   it('BIOS 入口:仅一行链接到 /meta(人类显式意图,进入定义层;T4 Phase C)', async () => {
     vi.stubGlobal('fetch', mockContract());
     const { container } = render(<Home />);

@@ -8,6 +8,11 @@
  * + 本站 tailwind 极简样式(shadcn 风格,刻意不引完整 shadcn 主题)。
  * sessionId 持久化到 localStorage(纯投影,清掉无损);driver 缺省 auto
  * (无 key 自动回退 rule,I1)。
+ *
+ * 委托模式(T5 Phase B):开关打开后发送 mode:'delegated'——目标派发为
+ * Temporal workflow,立即回执「已派发委托 <id>,进度见舰队页 /delegations」;
+ * 后台执行的监控交给舰队页(不在悬浮窗内轮询长任务——人类监控成本不随 N
+ * 超线性,arch-brief §9.3)。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -32,6 +37,13 @@ interface ChatResponse {
   outcome: 'done' | 'failed' | 'max-steps';
   summary: string | null;
   messages: { role: 'assistant'; text: string }[];
+}
+
+/** /api/chat mode=delegated 的派发回执(T5 Phase B)。 */
+interface DelegatedResponse {
+  mode: 'delegated';
+  delegationId: string;
+  statusUrl: string;
 }
 
 const SESSION_STORAGE_KEY = 'ui4a.chat.sessionId';
@@ -70,7 +82,12 @@ function AssistantMessage() {
   );
 }
 
-function MyThread() {
+interface MyThreadProps {
+  delegated: boolean;
+  onToggleDelegated: () => void;
+}
+
+function MyThread({ delegated, onToggleDelegated }: MyThreadProps) {
   return (
     <ThreadPrimitive.Root className="flex h-full flex-col">
       <ThreadPrimitive.Viewport className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
@@ -87,6 +104,20 @@ function MyThread() {
           placeholder="输入目标…"
           className="max-h-24 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none"
         />
+        {/* 委托模式开关(T5 Phase B):on→mode:'delegated' 派发 workflow。 */}
+        <button
+          type="button"
+          aria-label="委托模式"
+          aria-pressed={delegated}
+          className={`rounded-lg px-2 py-1.5 text-xs font-medium ${
+            delegated
+              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+              : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+          }`}
+          onClick={onToggleDelegated}
+        >
+          委托
+        </button>
         <ThreadPrimitive.If running={false}>
           <ComposerPrimitive.Send className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40">
             发送
@@ -110,6 +141,9 @@ export function FloatingChat() {
   const [isRunning, setIsRunning] = useState(false);
   const [sessionId, setSessionId] = useState('');
   const sessionRef = useRef('');
+  // 委托模式(ref 镜像:onNew 回调零依赖 memo,发送时读 ref 防闭包过期)。
+  const [delegated, setDelegated] = useState(false);
+  const delegatedRef = useRef(false);
 
   useEffect(() => {
     const stored = loadSessionId();
@@ -132,9 +166,21 @@ export function FloatingChat() {
         body: JSON.stringify({
           goal: { verb: goal },
           ...(sessionRef.current !== '' ? { sessionId: sessionRef.current } : {}),
+          ...(delegatedRef.current ? { mode: 'delegated' } : {}),
         }),
       });
-      const body = (await response.json()) as ChatResponse & { error?: string };
+      const body = (await response.json()) as ChatResponse & DelegatedResponse & { error?: string };
+      // 委托派发回执:目标已交 workflow 后台执行,监控去舰队页(不在此轮询)。
+      if (body.mode === 'delegated' && typeof body.delegationId === 'string') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: `已派发委托 ${body.delegationId.slice(0, 8)}…(后台执行中),进度见舰队页 /delegations`,
+          },
+        ]);
+        return;
+      }
       if (body.sessionId !== undefined && body.sessionId !== sessionRef.current) {
         sessionRef.current = body.sessionId;
         setSessionId(body.sessionId);
@@ -160,6 +206,12 @@ export function FloatingChat() {
     } finally {
       setIsRunning(false);
     }
+  }, []);
+
+  const toggleDelegated = useCallback(() => {
+    const next = !delegatedRef.current;
+    delegatedRef.current = next;
+    setDelegated(next);
   }, []);
 
   const runtime = useExternalStoreRuntime({
@@ -191,7 +243,7 @@ export function FloatingChat() {
           </div>
           <div className="min-h-0 flex-1">
             <AssistantRuntimeProvider runtime={runtime}>
-              <MyThread />
+              <MyThread delegated={delegated} onToggleDelegated={toggleDelegated} />
             </AssistantRuntimeProvider>
           </div>
         </div>
