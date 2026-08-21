@@ -32,7 +32,17 @@ export interface EngineEvent {
     | 'spawn-requested'
     | 'confirmation-requested'
     | 'confirmation-approved'
-    | 'confirmation-rejected';
+    | 'confirmation-rejected'
+    // T4 定义事件族(meta 模块产出;definition-seeded 为日志层事件,见 fold):
+    // - definition-edited:编辑动词伴随事件(状态由同批 action-executed 重放);
+    // - definition-submitted / -activated / -rejected / -revised / -deprecated:
+    //   生命周期落态事件(fold 按载荷还原定义平面状态)。
+    | 'definition-edited'
+    | 'definition-submitted'
+    | 'definition-activated'
+    | 'definition-rejected'
+    | 'definition-revised'
+    | 'definition-deprecated';
   rel: string;
   action: string;
   actor: 'human' | 'agent';

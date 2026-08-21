@@ -11,8 +11,15 @@
  * 两栖),worker(T3 消费 spawn-requested)与任何重放工具都需要它;
  * 日志形状(LogEvent)因此成为引擎公共合同的一部分。
  */
-import { fieldValues } from '@ui4a/shared';
-import type { ConfirmationSnapshot, EngineSnapshot, InstanceSnapshot } from '@ui4a/shared';
+import { fieldValues, metaFlowRel } from '@ui4a/shared';
+import type {
+  ConfirmationSnapshot,
+  DefinitionEntry,
+  DefinitionStatus,
+  EngineSnapshot,
+  FlowDefinition,
+  InstanceSnapshot,
+} from '@ui4a/shared';
 
 import {
   confirmationRel,
@@ -22,17 +29,24 @@ import {
 import { applyEffects } from './effects';
 import type { EngineEvent } from './effects';
 import type { ExecRequest } from './judge';
+import { withLifecycleFlows } from './lifecycle';
+import type {
+  DefinitionDeprecatedDetail,
+  DefinitionRevisedDetail,
+  DefinitionSeededDetail,
+} from './meta';
 import { actionEffects } from './parse';
-import type { FlowDefinition } from './types';
 
-/** 日志事件种类:引擎产出三种 + 日志层两种(拒绝留痕 I6 / 种子装载)+
+/** 日志事件种类:引擎产出(含 T4 定义事件族)+ 日志层三种
+ *  (拒绝留痕 I6 / 种子装载 / definition-seeded 定义种子)+
  *  notification-delivered(T3 notify capability 送达事件,worker 第二写者写入;
  *  fold 分支见 Task 2 读路径)。 */
 export type LogEventKind =
   | EngineEvent['kind']
   | 'action-rejected'
   | 'notification-delivered'
-  | 'seed';
+  | 'seed'
+  | 'definition-seeded';
 
 /**
  * 存储事件(引擎 EngineEvent + 日志层字段)。
@@ -259,6 +273,106 @@ function applyNotificationDelivered(snapshot: EngineSnapshot, event: LogEvent): 
   };
 }
 
+// ---------------------------------------------------------------------------
+// 定义事件族重放(T4:与在线 executeMeta 路径同构)
+// ---------------------------------------------------------------------------
+
+/** definition-seeded 重放:建立 definitions 条目 + lifecycle 实例(幂等:已存在跳过)。 */
+function applyDefinitionSeeded(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
+  const detail = event.detail as Partial<DefinitionSeededDetail> | undefined;
+  if (
+    detail === undefined ||
+    typeof detail !== 'object' ||
+    typeof detail.name !== 'string' ||
+    typeof detail.version !== 'number' ||
+    typeof detail.status !== 'string' ||
+    detail.definition === undefined
+  ) {
+    throw new Error(`重放失败:seq=${event.seq} definition-seeded 缺少 detail 载荷(日志完整性)`);
+  }
+  const definitions = { ...(snapshot.definitions ?? {}) };
+  if (definitions[detail.name] !== undefined) {
+    return snapshot; // 幂等:重复 seed 不覆盖(boot 重放安全)。
+  }
+  const status = detail.status as DefinitionStatus;
+  const entry: DefinitionEntry = {
+    name: detail.name,
+    version: detail.version,
+    status,
+    definition: detail.definition,
+  };
+  definitions[detail.name] = entry;
+  const instances = { ...snapshot.instances };
+  const rel = metaFlowRel(detail.name);
+  if (instances[rel] === undefined) {
+    instances[rel] = { rel, flow: 'definition-lifecycle', node: status, fields: {} };
+  }
+  return { ...snapshot, instances, definitions };
+}
+
+/** definitions 条目定位(定义事件重放的公共前置;缺条目 = 日志漂移)。 */
+function definitionEntry(snapshot: EngineSnapshot, event: LogEvent, name: string): DefinitionEntry {
+  const entry = snapshot.definitions?.[name];
+  if (entry === undefined) {
+    throw new Error(`重放失败:seq=${event.seq} 定义 "${name}" 不在 definitions 表(日志与状态漂移)`);
+  }
+  return entry;
+}
+
+/** lifecycle 实例节点核对(转移已由前置 action-executed 重放;此处只核对)。 */
+function lifecycleNodeOf(
+  snapshot: EngineSnapshot,
+  event: LogEvent,
+  name: string,
+): InstanceSnapshot {
+  const instance = snapshot.instances[metaFlowRel(name)];
+  if (instance === undefined) {
+    throw new Error(`重放失败:seq=${event.seq} lifecycle 实例 "${metaFlowRel(name)}" 不存在(漂移)`);
+  }
+  return instance;
+}
+
+/** definition-revised 重放:条目 → draft,bornBy=当前版本(工作副本即当前定义)。 */
+function applyDefinitionRevised(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
+  const detail = event.detail as Partial<DefinitionRevisedDetail> | undefined;
+  if (detail === undefined || typeof detail.name !== 'string') {
+    throw new Error(`重放失败:seq=${event.seq} definition-revised 缺少 detail.name(日志完整性)`);
+  }
+  const entry = definitionEntry(snapshot, event, detail.name);
+  const instance = lifecycleNodeOf(snapshot, event, detail.name);
+  if (instance.node !== 'draft') {
+    throw new Error(
+      `重放失败:seq=${event.seq} definition-revised 时实例不在 draft(在 ${instance.node};日志完整性)`,
+    );
+  }
+  return {
+    ...snapshot,
+    definitions: {
+      ...snapshot.definitions,
+      [detail.name]: { ...entry, status: 'draft', bornBy: entry.version },
+    },
+  };
+}
+
+/** definition-deprecated 重放:条目 → deprecated。 */
+function applyDefinitionDeprecated(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
+  const detail = event.detail as Partial<DefinitionDeprecatedDetail> | undefined;
+  if (detail === undefined || typeof detail.name !== 'string') {
+    throw new Error(`重放失败:seq=${event.seq} definition-deprecated 缺少 detail.name(日志完整性)`);
+  }
+  const entry = definitionEntry(snapshot, event, detail.name);
+  const instance = lifecycleNodeOf(snapshot, event, detail.name);
+  if (instance.node !== 'deprecated') {
+    throw new Error(
+      `重放失败:seq=${event.seq} definition-deprecated 时实例不在 deprecated(在 ${instance.node};日志完整性)`,
+    );
+  }
+  return {
+    ...snapshot,
+    definitions: { ...snapshot.definitions, [detail.name]: { ...entry, status: 'deprecated' } },
+  };
+}
+
 /**
  * 折叠事件日志为引擎快照(纯函数;events 须按 seq 升序传入)。
  *
@@ -273,6 +387,11 @@ function applyNotificationDelivered(snapshot: EngineSnapshot, event: LogEvent): 
  * - notification-delivered:确认标记 notified=true(worker 第二写者的送达事件,
  *   重复幂等;spec 决定 4 双写者方案);
  * - seed:合并种子实体(幂等);
+ * - definition-seeded(T4):建立 definitions 条目 + lifecycle 实例(幂等);
+ * - definition-edited:伴随事件——工作副本已由同批 action-executed 重放
+ *   (applyEffects 的 meta-edit),fold 不双算;
+ * - definition-revised / -deprecated:条目状态落态(转移由前置 action-executed
+ *   重放,此处核对 + 条目同步);
  * - 未知 kind:抛错(日志完整性守卫)。
  *
  * initial(可选):从既有快照继续折叠——web 读路径按 seq 增量 fold 的根基
@@ -283,6 +402,9 @@ export function fold(
   deps: { flows: Readonly<Record<string, FlowDefinition>> },
   initial?: EngineSnapshot,
 ): EngineSnapshot {
+  // T4:lifecycle 常量自动注入(保留名)——meta 动作的 action-executed 重放
+  // 需要 definition-lifecycle,调用方无须自带。
+  const flows = withLifecycleFlows(deps.flows);
   let snapshot: EngineSnapshot =
     initial === undefined
       ? {
@@ -306,8 +428,19 @@ export function fold(
       case 'seed':
         snapshot = applySeed(snapshot, event);
         break;
+      case 'definition-seeded':
+        snapshot = applyDefinitionSeeded(snapshot, event);
+        break;
+      case 'definition-edited':
+        break;
+      case 'definition-revised':
+        snapshot = applyDefinitionRevised(snapshot, event);
+        break;
+      case 'definition-deprecated':
+        snapshot = applyDefinitionDeprecated(snapshot, event);
+        break;
       case 'action-executed':
-        snapshot = applyExecuted(snapshot, event, deps.flows);
+        snapshot = applyExecuted(snapshot, event, flows);
         break;
       case 'confirmation-requested':
         snapshot = applyConfirmationRequested(snapshot, event);

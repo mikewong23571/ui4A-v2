@@ -17,12 +17,12 @@ import { project } from './siren';
 import type { SirenEntity } from './siren';
 import type { DefinitionEntry } from '@ui4a/shared';
 
-/** 与种子谓词同义的测试注册表(真实实现 Task 2 入 @ui4a/shared)。 */
+/** 与种子谓词同义的测试注册表(真实实现 Task 2 入 @ui4a/shared;空参数 vacuous)。 */
 const metaTestGuards: GuardRegistry = {
   'is-draft': (ctx) => ctx.instance.node === 'draft',
   'is-active': (ctx) => ctx.instance.node === 'active',
-  'node-not-exists': () => false,
-  'node-exists': () => false,
+  'node-not-exists': () => true,
+  'node-exists': () => true,
   'to-exists': () => true,
   'guards-registered': () => true,
   'effect-known': () => true,
@@ -151,14 +151,16 @@ describe('meta/flow:<name> 投影(A.2 定义实体)', () => {
     expect(entity.actions.map((a) => a.name)).toEqual(['revise', 'deprecate']);
   });
 
-  it('guard-results 逐项注入(同一谓词的两个投影):submit 未阻塞,add-node 因缺参数 fail-closed 阻塞', () => {
+  it('guard-results 逐项注入(同一谓词的两个投影):空参数求值下编辑动词全部放行', () => {
     const entity = project(metaSnapshot('draft'), 'meta/flow:post-status', deps)!;
     const byAction = Object.fromEntries(
       entity['guard-results']!.map((entry) => [entry.action, entry]),
     );
+    // 投影口径(与业务谓词一致):依赖参数的谓词对空参数 vacuous pass——
+    // 真正裁决在 exec 时(to-exists 等以实参求值,拒绝带原因回流)。
     expect(byAction.submit.blocked).toBe(false);
-    expect(byAction['add-node'].blocked).toBe(true);
-    expect(byAction['add-node'].reason).toContain('node-not-exists=false');
+    expect(byAction['add-node'].blocked).toBe(false);
+    expect(byAction['add-action'].blocked).toBe(false);
   });
 
   it('rejected/validating/pending-approval 状态:无编辑动作(审计视图;approve/reject 在 activation 实体)', () => {

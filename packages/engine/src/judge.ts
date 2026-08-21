@@ -54,6 +54,7 @@ function reject(layer: JudgeLayer, reason: string, detail?: unknown): JudgeResul
  * 求值动作的全部 guard(不短路:每个谓词都要有结果,供 guard-results 逐项注入)。
  * 注册表缺名或谓词抛错均 fail-closed(pass=false + reason)。
  * actor 为 T3 扩展:exec 裁决时传入(actor-is-human 读它);投影求值可缺省。
+ * knownGuards 为 T4 扩展:注册表键集注入上下文(guards-registered 读它)。
  */
 export function evaluateGuards(
   action: ActionDefinition,
@@ -63,13 +64,14 @@ export function evaluateGuards(
   guards: GuardRegistry,
   actor?: 'human' | 'agent',
 ): GuardEvaluation[] {
+  const knownGuards = new Set(Object.keys(guards));
   return (action.guards ?? []).map((name) => {
     const predicate = guards[name];
     if (predicate === undefined) {
       return { name, pass: false, reason: `guard "${name}" 未注册` };
     }
     try {
-      return { name, pass: predicate({ instance, snapshot, params, actor }) };
+      return { name, pass: predicate({ instance, snapshot, params, actor, knownGuards }) };
     } catch (error) {
       return {
         name,
