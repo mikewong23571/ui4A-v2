@@ -6,7 +6,7 @@
 
 - [x] Task: render spec 类型 + 零字面校验器 + 解引用器(纯函数)(TDD:I2 property test)(10686ee)
 - [x] Task: 词汇表注册表 + A2UI 扩展目录形状(SDK 调研结论落 DECISIONS;薄协议层)(595423a)
-- [ ] Task: 凝固机制(render-spec-frozen 事件;concern-key 持久化)(TDD)
+- [x] Task: 凝固机制(render-spec-frozen 事件;concern-key 持久化)(TDD)(ea54554)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: 组件词条实现与骨架面
