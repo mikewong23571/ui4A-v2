@@ -1,0 +1,28 @@
+Task: rule driver 计划生成器 + LLM plan 模式接口(T6 Phase A Task 3)
+
+变更摘要:
+- packages/agent/src/plan.ts(新):
+  - planFor(goal, sitemap) 纯函数、确定性:发布类(向导型)目标 → 目标动词与
+    sitemap flow 名/标题词级匹配(expandVerb/anyTokenInString)→ 沿推进动作链
+    (ADVANCE_TOKENS,与 rule driver ③ 层同一词表,自 rule-driver 导出)从
+    initial 走到终点,每步 params 取 goal.fields ∩ 该步动作 schema 声明字段
+    (分步组参,不发明事实);终点取词级匹配的完成动作(publish)。rel 用
+    flow:<name> 别名(服务层解析到唯一实例)。非向导形状(无推进步/无完成
+    动作)→ undefined,调用方回退既有逐步循环——plan 是旁路能力,不改 runAgent。
+  - buildPlanPrompt(goal, sitemap):LLM plan 模式 prompt 构造(纯函数,
+    含目标 JSON + flow 动作清单 + 严格 JSON 输出协议);parsePlanResponse(text):
+    模型输出解析(裸 JSON 或 ```json 围栏;步形状逐项校验;fail-safe
+    {ok:false},绝不抛异常;params 规范化 {})。真实模型调用留 e2e 可选。
+- packages/agent/src/rule-driver.ts:ADVANCE_TOKENS 改为导出(共用词表,无行为变化)。
+- packages/agent/src/index.ts:导出 plan 模块。
+
+方案报告:采用「读 sitemap flow 形状推导」而非硬编码拓扑——adv 链 + 完成语义
+均来自 SitemapFlow.nodes/actions(定义是数据,S2 语义保持:改定义即改计划);
+非向导目标(审核队列)明确不生成计划(队列成员 rel 不在 sitemap,不冒充)。
+
+测试:plan.test.ts 14 用例(推导 4 步确定性/字段分步只取声明字段/非向导与
+无完成动作 → undefined/abandon 不进计划/prompt 构造含清单与协议/解析 mock:
+裸 JSON/围栏/非 JSON/steps 非数组/缺 rel/action/params 非对象/空 steps)。
+CI=true pnpm check 全绿(658 passed,+14)。
+
+文件:packages/agent/src/{plan.ts,plan.test.ts,rule-driver.ts,index.ts}
