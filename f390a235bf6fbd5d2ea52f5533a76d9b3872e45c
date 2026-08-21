@@ -1,0 +1,20 @@
+Task: web→Temporal 接线(exec 挂起后 startWorkflow;事件流增量:web 读路径按 seq 增量 fold worker 追加的事件)
+
+## 变更
+- apps/web/src/temporal/notify.ts: dispatchNotify(web→Temporal 接线)。取舍:**启动失败不阻塞挂起响应**——任何失败(连接拒绝/already-started/超时)只 console.warn,不抛、不入串行队列(fire-and-forget);失败不缓存连接(下次派发重连,Temporal 恢复自愈)。参数 NotifyWorkflowArgs 镜像 worker 的 NotifyConfirmation(跨 app 不建共享包,由集成测试对齐)。派发开关:vitest 缺省关(单测不派发真实 workflow,防污染/防 stuck workflowId),UI4A_NOTIFY_DISPATCH=on/off 显式覆盖——报告该取舍。
+- apps/web/src/engine/service.ts: 双写者方案落地(spec 决定 4)——lastSeq 高水位;自身 appendWithSeq 推进;refreshFromLog(PG max(seq) > lastSeq → readLog(afterSeq=lastSeq) → fold(events, deps, 快照));getEntity 变 async(读前增量)、新增 readSnapshot;exec 开头先 refresh(裁决前同步外部写者进度);挂起分支 fire-and-forget dispatchNotify。
+- packages/engine: fold 增可选 initial 快照参数(增量=全量同构,I5 由测试 hash 断言);notification-delivered fold 分支(notified=true;重复幂等;孤儿响亮失败)。
+- packages/shared/state.ts: ConfirmationSnapshot.notified?: boolean(最小字段;偏差:超出计划列出的 fold.ts,但为 notified 投影所必需)。
+- packages/engine/siren.ts: inbox properties.delivered 计数;确认实体 properties.notified(仅 true 时注入)。
+- /api/entity: await getEntity;错误分类对齐 /api/exec(ECONN→503,重放完整性→500 如实)。
+
+## 测试
+- engine fold.test +5(notification-delivered 分支/幂等/孤儿/全链重放 hash/增量同构);siren.test +2(delivered 计数/notified 注入);
+- web notify.test +10(mock @temporalio/client:参数形状/尽力而为/失败不缓存/开关/exec 挂起触发派发/派发失败不影响 202);
+- service.incremental.test +4(真 PG:worker 直连写→web 立即可见;跨写者 I5;并发交错);
+- service.notify.integration.test +1(真 PG+真 Temporal+spawn worker 独立进程组:202→≤15s notification-delivered→inbox delivered=1;7233 不可达 skipIf 跳过;beforeAll terminate 残留 notify-c1/c2/c3 防 stuck workflowId)。
+- CI=true pnpm check 全绿 398 tests(+22);手工等效:web dev(3100)+worker 起后 curl archive→202→数秒内 inbox count=1 delivered=1 notified=true(同一 web 进程增量可见,不需重启),post 仍 published;SIGTERM worker 优雅 drain(STOPPED)无残留。
+
+## 报告要点
+- 双写一致性实现:web 侧 lastSeq 增量 fold 读路径 + exec 前同步;PG bigserial 全序 + appendEvent 单口 = 两写者收敛,无需重启。
+- exec 前同步外部事件的额外 1 次 max(seq) 查询(PK 索引,代价可忽略)。
