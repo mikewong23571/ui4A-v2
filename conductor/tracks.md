@@ -13,4 +13,4 @@
 
 - [x] **Track: T6 plan-exec 切片:一次决策批量裁决(S4)** *Link: [tracks/t6-plan-exec_20260821/index.md](./tracks/t6-plan-exec_20260821/index.md)*
 
-- [~] **Track: T7 骨架与渲染切片:词汇表 + binding-only 渲染器 + A2UI 画布 + 骨架五面(S5, I2, I3)** *Link: [tracks/t7-rendering_20260821/index.md](./tracks/t7-rendering_20260821/index.md)*
+- [x] **Track: T7 骨架与渲染切片:词汇表 + binding-only 渲染器 + A2UI 画布 + 骨架五面(S5, I2, I3)** *Link: [tracks/t7-rendering_20260821/index.md](./tracks/t7-rendering_20260821/index.md)*
