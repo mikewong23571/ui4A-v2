@@ -1,0 +1,5 @@
+T11 Phase D 门控实测:llm-thinking.spec.ts
+
+改动:e2e/llm-thinking.spec.ts(新增门控 spec,唯一文件)
+实测观测(真实 glm-5.3,编排 agent 亲自复跑 1 passed 17.6s):3 步回合(navigate→exec→done),thinking 帧=3(先于同号 step 帧),reasoning 非空(334/237/1413 字符),agent-decision 每步一条五要素齐全,chat-turn steps 结构化,思考区折叠可见可展开。回合 ~20s(≈6.8s/步,D22 区间)。
+验收:spec 验收 4(llm reasoning 非空门控实测)与 5(思考区可见门控实测)闭环。无 key 跳过不红;CI=true pnpm check 931 passed。自治验收。
