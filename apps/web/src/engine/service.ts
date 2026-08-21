@@ -62,7 +62,13 @@ import type { EngineSnapshot } from '@ui4a/shared';
 import type { FieldValue } from '@ui4a/shared';
 import { metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
 
-import { appendEvent, ensureEventsTable, readLog, type DbExecutor, type EventAppend } from '../db/events';
+import {
+  appendEvent,
+  ensureEventsTable,
+  readLog,
+  type DbExecutor,
+  type EventAppend,
+} from '../db/events';
 import { getPool } from '../db/pool';
 import { cedarPolicyFromDefaultFile } from '../domain/cedarPolicy';
 import { businessFlows, businessFlowList } from '../domain/flows';
@@ -207,8 +213,17 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   const guards = seedGuardRegistry;
   // 确认门依赖:Cedar 策略在 boot 时装配一次(策略文件改动重启生效,T4 起 _meta 热更新)。
   const policy = cedarPolicyFromDefaultFile();
-  const gateDeps = (): ExecuteDeps => ({ flows: activeFlows(), guards, policy, versions: versions() });
-  const confirmDeps = (): ConfirmationDeps => ({ flows: activeFlows(), guards, versions: versions() });
+  const gateDeps = (): ExecuteDeps => ({
+    flows: activeFlows(),
+    guards,
+    policy,
+    versions: versions(),
+  });
+  const confirmDeps = (): ConfirmationDeps => ({
+    flows: activeFlows(),
+    guards,
+    versions: versions(),
+  });
   const projectDeps = (): ProjectDeps => ({ flows: activeFlows(), guards, versions: versions() });
   // meta 平面编排依赖(编辑动词裁决用 lifecycle 常量自举,executeMeta 内部注入;
   // 激活不变式的注册表缺省 KNOWN_FIELD_TYPES/KNOWN_EFFECT_TYPES)。
@@ -260,12 +275,39 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     reason: event.reason,
   });
 
-  /** 追加并推进 lastSeq(自身事件不进入增量 fold,防双算)。 */
+  /**
+   * 追加并推进 lastSeq(自身事件不进入增量 fold,防双算)。
+   *
+   * 多写者水位铁律(T5 Phase C 实测链路 bug 修复):水位只能跨过**已折叠或
+   * 自身已应用**的 seq。自身 INSERT 落库时,日志里可能夹着 worker 在本次
+   * exec 的 refresh 之后、INSERT 之前刚提交的外部事件(其 seq 低于自身新
+   * 事件)——直接把 lastSeq 推到自身 seq 会让 refresh 的 `seq > lastSeq`
+   * **永久跳过**它们(S3 并行委托实测:delegation-step 缺步 → 折叠层抛
+   * 「步号不连续」、读路径全 500)。故推进前先把 (lastSeq, 自身 seq) 区间
+   * 的外部事件收进 foreignGaps,随后由 applyForeignGaps 折入。
+   *
+   * 收集而非立即折叠的原因:exec/确认裁决随后会用**不含这些外部事件的**
+   * 派生快照整体覆写 snapshot(applyEffects 的纯函数产物)——立即折会被
+   * 覆写冲掉;每个覆写点之后统一补折。域可交换性:外部事件恒为 delegation:*
+   * 族(worker 直写),自身事件恒为业务/确认/定义族,rel 不相交,次序交换安全。
+   */
+  let foreignGaps: LogEvent[] = [];
+
   const appendWithSeq = async (event: EventAppend): Promise<void> => {
     const { seq } = await appendEvent(db, event);
     if (seq > lastSeq) {
+      const gap = (await readLog(db, lastSeq)).filter((entry) => entry.seq < seq);
+      foreignGaps.push(...gap);
       lastSeq = seq;
     }
+  };
+
+  /** 把落库窗口内挤进来的外部事件补折进当前快照(幂等清空;所有覆写点之后调用)。 */
+  const applyForeignGaps = (): void => {
+    if (foreignGaps.length === 0) return;
+    const gaps = foreignGaps;
+    foreignGaps = [];
+    snapshot = fold(gaps, { flows: businessFlows }, snapshot);
   };
 
   /**
@@ -278,19 +320,29 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       'SELECT max(seq) AS max_seq FROM events',
     );
     const maxSeq = Number(result.rows[0]?.max_seq ?? 0);
-    if (maxSeq <= lastSeq) return;
+    if (maxSeq <= lastSeq) {
+      applyForeignGaps(); // 上一队列操作若中途抛错可能遗留未补折的外部事件
+      return;
+    }
     const fresh = await readLog(db, lastSeq);
-    if (fresh.length === 0) return;
+    if (fresh.length === 0) {
+      applyForeignGaps();
+      return;
+    }
     snapshot = fold(fresh, { flows: businessFlows }, snapshot);
+    applyForeignGaps(); // 外部 backlog 与 fresh 域不相交,可安全随后补折
     lastSeq = Math.max(lastSeq, fresh[fresh.length - 1]!.seq);
   };
 
   /** 拒绝留痕(action-rejected;detail 携带 layer,HTTP 响应与本事件同源)。 */
-  const persistRejection = async (request: ExecRequest, verdict: {
-    layer: JudgeLayer;
-    reason: string;
-    detail?: unknown;
-  }): Promise<ExecOutcome> => {
+  const persistRejection = async (
+    request: ExecRequest,
+    verdict: {
+      layer: JudgeLayer;
+      reason: string;
+      detail?: unknown;
+    },
+  ): Promise<ExecOutcome> => {
     await appendWithSeq({
       kind: 'action-rejected',
       rel: request.rel,
@@ -344,6 +396,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       await appendWithSeq(toAppend(event));
     }
     snapshot = decision.snapshot;
+    applyForeignGaps();
 
     const targetRel =
       request.action === 'approve'
@@ -358,8 +411,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
 
   return {
     getSnapshot: () => snapshot,
-    readSnapshot: () =>
-      enqueue(state, refreshFromLog).then(() => snapshot),
+    readSnapshot: () => enqueue(state, refreshFromLog).then(() => snapshot),
     getEntity: async (rel) => {
       // 读路径增量 fold(spec 决定 4):返回前同步 worker 等外部写者的新事件。
       await enqueue(state, refreshFromLog);
@@ -416,6 +468,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
             await appendWithSeq(toAppend(event));
           }
           snapshot = outcome.snapshot;
+          applyForeignGaps();
           const rel = `confirmation:${outcome.confirmation.id}`;
           const entity = project(snapshot, rel, projectDeps());
           if (entity === undefined) {
@@ -431,6 +484,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           await appendWithSeq(toAppend(event));
         }
         snapshot = outcome.snapshot;
+        applyForeignGaps();
 
         // 受影响实体:append 产出新实例时返回新实体,否则返回执行实体的新投影。
         const appended = outcome.events[0]?.appended ?? [];

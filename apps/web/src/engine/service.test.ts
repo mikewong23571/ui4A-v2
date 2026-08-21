@@ -6,7 +6,8 @@ import type { LogEvent } from '@ui4a/engine';
 
 import { businessFlows } from '../domain/flows';
 import { SEED_REL } from '../domain/seed';
-import { ensureEventsTable, readLog } from '../db/events';
+import { appendEvent, ensureEventsTable, readLog } from '../db/events';
+import type { DbExecutor } from '../db/events';
 import { getPool } from '../db/pool';
 
 import { getEngine, resetEngineForTests } from './service';
@@ -232,7 +233,7 @@ describe('exec:三层裁决 → 事件 → 增量快照', () => {
       'post:first-post',
       'post:new-article',
     ]);
-    expect(snapshot.instances['article-drafting:main']?.node).toBe('done');
+    expect(snapshot.instances['article-drafting:main']?.node).toBe('basic-info');
 
     // 事件对:action-executed + entity-appended(appended/collection 不落列,
     // Phase B 日志口径——fold 由 flow 定义重推导;此断言验证事件顺序与种类)。
@@ -378,5 +379,77 @@ describe('投影与 sitemap 接线', () => {
       'comment-moderation',
     ]);
     expect(engine.getSitemap()).toBe(sitemap);
+  });
+});
+
+describe('多写者水位:自身 append 不得跨过未折叠的外部事件(T5 Phase C 实测链路 bug)', () => {
+  it('exec 落库窗口内 worker 提交的 delegation-step 被增量折叠,不被 lastSeq 跳过', async () => {
+    // S3 并行实测:exec 的 refresh 与自身 INSERT 之间,worker 直接入库的外部事件
+    // seq 低于自身新事件——旧实现 append 后把 lastSeq 推到自身 seq,外部事件被
+    // `seq > lastSeq` 永久跳过(委托缺步 → 后续折叠层日志完整性炸、读路径 500)。
+    await ensureEventsTable(pool);
+    await pool.query('TRUNCATE events');
+    resetEngineForTests();
+    // 前置:委托已物化(boot 前直接入库,模拟 worker 已派发)。
+    await appendEvent(pool, {
+      kind: 'delegation-started',
+      rel: 'delegation:delegation-race',
+      actor: 'agent',
+      detail: {
+        delegationId: 'delegation-race',
+        goal: { verb: '发布一篇文章' },
+        driverKind: 'rule',
+        startRel: 'articles',
+      },
+    });
+
+    // 竞态注入:engine 第一次自身 INSERT 落库前,worker 先提交 delegation-step 1
+    //(seq 将低于自身事件——正是并行委托踩中的窗口;注入一次即还原现场)。
+    let armed = false;
+    let injected = false;
+    const racingDb: DbExecutor = {
+      query: <R extends import('pg').QueryResultRow>(
+        sqlText: string,
+        values?: readonly unknown[],
+      ): Promise<import('pg').QueryResult<R>> =>
+        (async () => {
+          if (armed && !injected && sqlText.includes('INSERT INTO events')) {
+            injected = true;
+            await appendEvent(pool, {
+              kind: 'delegation-step',
+              rel: 'delegation:delegation-race',
+              actor: 'agent',
+              channel: 'delegation',
+              detail: {
+                step: 1,
+                op: { kind: 'navigate', rel: 'flow:article-drafting' },
+                outcome: 'navigated',
+              },
+            });
+          }
+          return pool.query<R>(sqlText, values === undefined ? undefined : [...values]);
+        })(),
+    };
+
+    const engine = await getEngine(racingDb);
+    armed = true;
+    const outcome = await engine.exec({
+      rel: 'article-drafting:main',
+      action: 'next',
+      params: { title: 'Race' },
+      actor: 'agent',
+    });
+    armed = false;
+    expect(outcome.kind).toBe('accepted');
+
+    // 修复前:step 1 被 lastSeq 跳过 → 投影 steps=0(随后 step 2 会让折叠层抛
+    // 「步号不连续」);修复后:窗口内外部事件先折入再推进水位。
+    const delegations = await engine.getEntity('delegations');
+    const row = delegations?.entities?.find((sub) => sub.properties.id === 'delegation-race');
+    expect(row?.properties.steps, '窗口内外部事件必须被折叠,不得跳过').toBe(1);
+
+    // I5 口径:内存快照与全量重放一致(跳步会让两者漂移)。
+    const replayed = fold(await readLog(pool), { flows: businessFlows });
+    expect(replayed.delegations?.['delegation:delegation-race']?.steps).toBe(1);
   });
 });
