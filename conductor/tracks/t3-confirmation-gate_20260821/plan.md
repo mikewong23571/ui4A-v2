@@ -20,8 +20,8 @@
 - [x] Task: web→Temporal 接线(exec 挂起后 startWorkflow;事件流增量:web 读路径按 seq 增量 fold worker 追加的事件)(TDD:双写一致性——worker appendEvent 后 web entity 查询可见)(f390a23)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)(自治验收:CI=true pnpm check 全绿 398 tests(+23);集成测试真 PG+真 Temporal+spawn worker 全链 1.5s;手工等效 curl 202→inbox delivered=1(不需重启);worker SIGTERM 优雅退出无残留;验证报告挂 f390a23 git notes)
 
-## Phase D: 收件箱 UI 与 S1 全链路 E2E
+## Phase D: 收件箱 UI 与 S1 全链路 E2E [checkpoint: 4172a80]
 
 - [x] Task: inbox 集合投影 + 首页入口 + 通用页渲染确认实体(RJSF approve/reject;I3 前置:按钮均背书)(df9f712)
 - [x] Task: S1/I4 E2E(agent archive→挂起→notify→inbox 可见→human approve→生效;agent approve 被拒;reject 路径;B1–B3 回归)(4172a80)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)(自治验收:CI=true pnpm check 全绿 407 tests(+9);CI=true pnpm e2e 17 passed + 1 skipped(llm-smoke 既有口径)= 既有 12 + S1 新 5;UI 走查 --trace on 截图级证据;验证报告 append 挂 4172a80 git notes)
