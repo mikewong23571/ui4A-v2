@@ -7,7 +7,8 @@
 - [x] Task: delegationWorkflow + execStep activity(决策/activity 边界确定;fetch 引擎合同;委托事件 delegation-started/step/completed|failed 入日志)(TDD:activity 单测)(97c5a8f;activity 定名 agentStep:决策+执行合一,报告见 git notes)
 - [x] Task: delegations 集合投影(engine fold + /api/entity 可查)(TDD)(19fc516)
 - [x] Task: 集成测试:kill worker(SIGKILL)→ 重启 → 续跑无缺口(Temporal dev server)(f692e5f)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+[checkpoint: f62d2f1] — 验证报告挂 git note(自治验收,编排代行);CI=true pnpm check 全绿(582,+29 用例)+ kill 续跑集成通过(真 Temporal+真 worker,序列无缺口)+ CI=true pnpm e2e 22 passed 零回归;手工等效:真 dispatch 委托走完(completed 6 步 4 成功,文章落库,/api/entity?rel=delegations 可查,事件链 started→step×6→completed)。
 
 ## Phase B: web 集成与舰队页
 
