@@ -93,8 +93,8 @@ describe('GET /api/entity', () => {
       }[];
     };
     expect(entity.properties.node).toBe('basic-info');
-    expect(entity.actions).toHaveLength(1);
-    expect(entity.actions[0]?.name).toBe('next');
+    // next(推进)+ abandon(放弃 → done;向导循环化的可达终态出口,D11)。
+    expect(entity.actions.map((action) => action.name)).toEqual(['next', 'abandon']);
     expect(entity.actions[0]?.fields.required).toEqual(['title']);
     expect(entity.actions[0]?.fields.properties).toHaveProperty('title');
   });

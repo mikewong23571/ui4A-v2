@@ -76,8 +76,8 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
     await page.fill('#root_title', '人类的第三篇');
     await page.getByRole('button', { name: '发布' }).click();
 
-    // 向导到终态 done
-    await expect(page.locator('h1')).toHaveText('完成');
+    // 向导循环语义(D11):发布后回到基本信息(起草下一篇),不再是 done 终态
+    await expect(page.locator('h1')).toHaveText('基本信息');
 
     // 回首页:文章计数 2→3,新文章 published
     await page.goto('/');

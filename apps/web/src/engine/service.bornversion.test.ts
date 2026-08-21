@@ -68,7 +68,7 @@ describe('在途实例按出生定义走完(激活不迁移在途)', () => {
       status: 'active',
     });
 
-    // 在途实例:投影动作面 = 出生定义 v1(无 skip-category)。
+    // 在途实例:投影动作面 = 出生定义 v1(无 skip-category;当前 classification 节点)。
     const wizard = (await engine.getEntity('article-drafting:main')) as SirenEntity;
     expect(wizard.actions.map((action) => action.name)).toEqual(['next']);
 

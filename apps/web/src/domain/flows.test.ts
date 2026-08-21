@@ -63,9 +63,11 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
       expect.objectContaining({ name: 'body', type: 'textarea', required: true }),
     ]);
 
-    // 每步一个推进动作(声明于该节点,fields 即节点字段)。
+    // 每步一个推进动作(声明于该节点,fields 即节点字段);basic-info 另有
+    // abandon(放弃起草 → done,保持可达终态;T5 Phase C 向导循环化)。
     expect(nodeOf(articleDraftingFlow, 'basic-info').actions).toEqual([
       expect.objectContaining({ name: 'next', to: 'classification' }),
+      expect.objectContaining({ name: 'abandon', to: 'done' }),
     ]);
     expect(nodeOf(articleDraftingFlow, 'classification').actions).toEqual([
       expect.objectContaining({ name: 'next', to: 'content' }),
@@ -74,17 +76,17 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
       expect.objectContaining({ name: 'next', to: 'ready' }),
     ]);
 
-    // ready:publish(to done)+ [transition, append] 组合效果。
+    // ready:publish(to basic-info,向导循环)+ [transition, append] 组合效果。
     const ready = nodeOf(articleDraftingFlow, 'ready');
     expect(ready.actions).toHaveLength(1);
     const publish = ready.actions[0]!;
     expect(publish.name).toBe('publish');
-    expect(publish.to).toBe('done');
+    expect(publish.to).toBe('basic-info');
     expect(publish.fields).toEqual([
       expect.objectContaining({ name: 'title', type: 'text', required: true }),
     ]);
     expect(publish.effect).toEqual([
-      { type: 'transition', to: 'done' },
+      { type: 'transition', to: 'basic-info' },
       {
         type: 'append',
         collection: 'articles',
@@ -95,7 +97,7 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
       },
     ]);
 
-    // done 为终态(无动作)。
+    // done 为终态(无动作;经 abandon 可达)。
     expect(nodeOf(articleDraftingFlow, 'done').actions).toEqual([]);
   });
 

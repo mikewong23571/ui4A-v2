@@ -64,3 +64,9 @@
 - GOAL 范围边界明文:"生产化(多租户、部署硬化、压测、**真实 SSO 对接**)显式排除在外";B/S/I 六组验收无一断言 Keycloak。
 - 信任线语义在引擎层已强制(actor-is-human、principal 委托链入日志[D8 自报口径]);S3 断言(并发裁决/崩溃续跑/N 路并行/舰队页)全部由 Temporal 承载,不需要 token 基础设施。
 - 决定:T5 不装 Keycloak;若后续(用户要求或 T8 空间富余)做 token 交换演示,按 D6 预案(brew/tarball)单独立项。
+
+## D11 发布向导循环化:publish 回 basic-info(T5 Phase C,2026-08-21)
+
+- **背景(spec 与实现的缺口)**:T5 spec 验收 4 要求「发布×2 不同标题」委托并行**全部完成**;实测第二个发布目标必失败——`publish` 迁到 `done` 终态后单例向导(article-drafting:main)被消费,`flow:article-drafting` 别名指向的实例停在无动作节点,合同上不存在再次发布的路径(read-判-行 agent 无从续)。
+- **决定**:`article-drafting` 的 `publish.to` 由 `done` 改为 **`basic-info`**(发布即回到起草起点,向导循环使用);`basic-info` 增补 `abandon`(放弃 → `done`)以保持「terminal 节点存在且从 initial 可达」的激活不变式(terminal-reachable 对修订后的定义仍过)。同步更新 6 处既有测试的机械期望(domain/flows、engine/service、bornversion、api/contract 单测 + e2e chat/s2)。
+- **语义影响**:B1/I1/B4/kill 续跑的断言零改动(轨迹与 successes 不变);S2 仅机械期望更新(ready 节点动作面未动)。S3-并发/S3-并行的发布载体自此成立。

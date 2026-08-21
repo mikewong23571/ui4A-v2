@@ -101,7 +101,7 @@ test('flow 导航补全:articles → flow 入口链接 → 向导实例(零 star
       flow: 'article-drafting',
       node: 'basic-info',
     });
-    expect(wizard.actions.map((action) => action.name)).toEqual(['next']);
+    expect(wizard.actions.map((action) => action.name)).toEqual(['next', 'abandon']);
   });
 });
 

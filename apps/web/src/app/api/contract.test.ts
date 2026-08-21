@@ -220,7 +220,7 @@ describe('flow:<name> 实体投影:向导入口可达', () => {
     expect(body.class).toContain('flow-instance');
     expect(body.class).toContain('article-drafting');
     expect(body.properties).toMatchObject({ rel: 'article-drafting:main', node: 'basic-info' });
-    expect(body.actions.map((action) => action.name)).toEqual(['next']);
+    expect(body.actions.map((action) => action.name)).toEqual(['next', 'abandon']);
   });
 
   it('articles 集合 links 携带 flow:article-drafting 入口链接', async () => {

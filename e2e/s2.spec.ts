@@ -827,7 +827,7 @@ test('重放一致:S2 全链事件 TRUNCATE 原序回灌 → 活跃定义 v2 含
       actions: ['unpublish', 'archive', 'pin'],
     });
     expect((before.post as { fields: Record<string, unknown> }).fields.pinned).toBe(true);
-    expect(before.wizard).toMatchObject({ node: 'done', actions: [] });
+    expect(before.wizard).toMatchObject({ node: 'basic-info', actions: ['next', 'abandon'] });
   } finally {
     await server2.kill();
   }

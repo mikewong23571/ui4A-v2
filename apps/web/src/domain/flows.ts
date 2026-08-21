@@ -27,7 +27,11 @@ const articleDrafting: FlowDefinition = {
       name: 'basic-info',
       title: '基本信息',
       fields: [{ name: 'title', type: 'text', required: true, semantics: 'intent' }],
-      actions: [{ name: 'next', title: '下一步', to: 'classification' }],
+      actions: [
+        { name: 'next', title: '下一步', to: 'classification' },
+        // 放弃起草 → done:向导循环化(publish 回到 basic-info)后保持可达终态。
+        { name: 'abandon', title: '放弃', to: 'done' },
+      ],
     },
     {
       name: 'classification',
@@ -71,7 +75,10 @@ const articleDrafting: FlowDefinition = {
         {
           name: 'publish',
           title: '发布',
-          to: 'done',
+          // 发布后向导回到 basic-info 循环起草下一篇(T5 Phase C:委托并行
+          // 发布×2 的域支撑;此前的 to 'done' 会消费掉单例向导,第二个发布
+          // 目标必失败)。done 终态改由 basic-info 的 abandon 保持可达。
+          to: 'basic-info',
           guards: ['title-not-taken'],
           // 发布参数只需 title(slug 来源);向导前序步骤的字段已落在实例上。
           fields: [{ name: 'title', type: 'text', required: true, semantics: 'intent' }],
