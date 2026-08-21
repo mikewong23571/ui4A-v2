@@ -1,0 +1,13 @@
+任务:/delegations 舰队页(极简表格 + 首页入口)(T5 Phase B / Task 2)
+
+悬浮窗改动评估(任务要求报告项):**做了(小)**——委托模式开关(composer 内「委托」toggle,aria-pressed)+ onNew 分支:开→POST body 带 mode:'delegated',回执消息「已派发委托 <id8>…(后台执行中),进度见舰队页 /delegations」;关→既有 inline 行为零改动(请求体不带 mode 字段,组件测试直接断言)。不在悬浮窗内轮询长任务——监控归舰队页(人类监控成本不随 N 超线性)。工作量 ~40 行组件 + 2 组件测试;jsdom 需 ResizeObserver 桩(assistant-ui 观测用,测试内提供)。
+
+变更:
+- apps/web/src/app/delegations/page.tsx(新):/delegations 舰队页——极简表格(目标/状态/步数/成功/摘要,时间无关),状态色 running 蓝/completed 绿/failed 红/max-steps 琥珀(data-status 锚点),空态「暂无委托」,自动轮询 3s + 手动刷新按钮;初拉经 0ms 定时器避开 react-hooks/set-state-in-effect;
+- apps/web/src/app/page.tsx:首页新增「委托舰队」入口(纯导航链接 /delegations,零可提交元素,不新增首页 fetch——既有 home mock 合同不动);
+- apps/web/src/components/floating-chat.tsx:委托模式开关(MyThread 传参)+ DelegatedResponse 分支;delegatedRef 镜像防 onNew 闭包过期。
+
+测试(9 新用例,CI=true pnpm check 全绿 612):
+- delegations/page.test.tsx:列表渲染(goal/计数/摘要)/状态色四态/空态/失败态/3s 自动轮询(fake timers)/手动刷新;
+- home.test.tsx 增 it:委托舰队入口链接(既有用例零改动);
+- floating-chat.test.tsx(新文件):委托开关→mode:'delegated'+回执消息;默认 inline→无 mode 字段+轨迹照旧。
