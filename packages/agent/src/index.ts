@@ -8,6 +8,7 @@ export * from './types';
 export * from './http';
 export * from './loop';
 export * from './match';
+export * from './plan';
 export * from './rule-driver';
 export * from './tools';
 export * from './llm-driver';

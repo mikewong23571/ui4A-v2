@@ -26,8 +26,8 @@ import type { SirenAction, SirenEntity } from '@ui4a/engine';
 import { anyTokenInString, asciiTokens, expandVerb } from './match';
 import type { AgentDriver, AgentGoal, AgentOperation, DriverContext } from './types';
 
-/** 流程推进词(③:向导/表单类流程的前进动作)。 */
-const ADVANCE_TOKENS = [
+/** 流程推进词(③:向导/表单类流程的前进动作;plan 生成器共用同一词表)。 */
+export const ADVANCE_TOKENS = [
   'next',
   '下一步',
   'continue',
