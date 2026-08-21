@@ -1,0 +1,29 @@
+T3 Phase D / Task D2 — S1/I4 确认门全链路 E2E
+
+任务:S1/I4 E2E(agent archive→挂起→notify→inbox 可见→human approve→生效;
+agent approve 被拒;reject 路径;B1–B3 回归)。
+
+新增/改动文件:
+- e2e/s1.spec.ts(新):5 用例(S1 agent 视角 / S1 human 视角双执行者 / I4 /
+  reject / UI 浏览器走查);Temporal 探活(nc -z 同步,Playwright CJS 转译
+  不支持顶层 await)→ 不可达整文件 skip;
+- e2e/server-kit.ts:withWorkerServer + waitForWorkerBanner + killProcessGroup
+  (SIGTERM→SIGKILL 升级)+ 起栈前端口守卫;
+- apps/web/src/temporal/notify.ts:terminateStaleNotifyWorkflows(e2e 导入
+  web 模块复用其 @temporalio/client 依赖,与 getPool 同模式);
+- apps/web/src/temporal/notify.test.ts:+3 单测(逐 id 终止/单失败吞掉/不可达兜底)。
+
+发现并修复的链路 bug(2):
+1. server-kit 残留 server 竞态:场景收尾仅按 webExited 门控杀 web 进程组且
+   无 SIGKILL 兜底——next-server(Next 16 render 子进程)偶发不随组 SIGTERM
+   退出,残留 server 顶掉下一场景的 3110,其内存快照(含已决策确认)污染
+   串行管线(实测:第二场景拿到 confirmation:c2 且日志缺 seed)。修复:
+   无条件杀两组 + SIGKILL 升级 + 起栈前 waitUntilPortFree 硬失败。
+2. 跨轮次 Temporal workflow 残留:确认 id 确定性(c1/…)与 workflowId
+   notify-<id> 复用冲突(already-started/completed)→ terminateStaleNotifyWorkflows
+   每场景前清理。
+
+验证:CI=true npx playwright test e2e/s1.spec.ts 5/5 过;CI=true pnpm e2e
+17 passed + 1 skipped(llm-smoke 无真实 key,既有口径)= 既有 12 + 新 5
++ smoke 细分;CI=true pnpm check 全绿 407 tests(+3)。B1–B3 回归通过
+(human archive 直通不挂起:human.spec B2 下线用例 + s1 场景隔离互不干扰)。
