@@ -31,8 +31,8 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
-/** TCP 探活(短超时):判断 Temporal dev server 是否在本机可达。 */
-function isPortOpen(port: number, host = '127.0.0.1', timeoutMs = 800): Promise<boolean> {
+/** TCP 探活(短超时):判断 Temporal dev server 是否可达(与 TEMPORAL_ADDRESS 同源)。 */
+function isPortOpen(host: string, port: number, timeoutMs = 800): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = net.connect({ port, host });
     const done = (up: boolean): void => {
@@ -45,9 +45,17 @@ function isPortOpen(port: number, host = '127.0.0.1', timeoutMs = 800): Promise<
   });
 }
 
-const temporalUp = await isPortOpen(7233);
+function temporalHostPort(): { host: string; port: number } {
+  const [host = 'localhost', port = '7233'] = TEMPORAL_ADDRESS.split(':');
+  return { host, port: Number(port) };
+}
+
+const { host: temporalHost, port: temporalPort } = temporalHostPort();
+const temporalUp = await isPortOpen(temporalHost, temporalPort);
 if (!temporalUp) {
-  console.warn('[ui4a] Temporal dev server 不可达(localhost:7233),notify 集成测试跳过');
+  console.warn(
+    `[ui4a] Temporal dev server 不可达(${TEMPORAL_ADDRESS}),notify 集成测试跳过`,
+  );
 }
 
 const agentArchive = {
