@@ -1,0 +1,16 @@
+Task: T4 Phase A Task 2 — 编辑动词过三层裁决
+
+变更:
+- packages/shared/src/predicates.ts:meta 谓词族(is-draft/is-active/node-exists/node-not-exists/to-exists/guards-registered/effect-known/action-not-exists/no-live-instances)入 seedGuardRegistry。口径:参数缺席 vacuous pass(必填/形状是 schema 层职责),在场畸形/未命中 fail-closed。
+- packages/shared/src/guards.ts(前任务)+ engine/src/judge.ts:GuardContext.knownGuards,由 evaluateGuards 从注册表键集注入。
+- packages/engine/src/meta.ts(新):executeMeta(executeWithGates 复用,flows 恒为 lifecycle 常量)+ definitionSeedEvent + 定义事件 detail 类型。
+- packages/engine/src/effects.ts:EngineEvent kind 增 definition-edited/-submitted/-activated/-rejected/-revised/-deprecated。
+- packages/engine/src/fold.ts:LogEventKind 增 definition-seeded;四类事件重放(definition-seeded 幂等建 definitions 条目 + lifecycle 实例;definition-edited 伴随 no-op;revised/deprecated 核对实例节点后落态);withLifecycleFlows 自动注入(保留名 definition-lifecycle)。
+
+关键决定:
+- action-not-exists 谓词为 A.3 清单之外的补充(add-action 的重复声明防护;六项不变式不含唯一性,不补会在激活后破坏 judge 声明层)。已记偏差。
+- 编辑动词无 requires-confirmation(低风险修订,不进确认门);approve 由 actor-is-human 把关——Cedar 交互口径见任务 4。
+
+测试:meta.test.ts 23 用例(含 S2 非负例引擎级:add-action to 指向不存在节点 → guard-failed to-exists=false;lifecycle 自举:self 实例 add-node 过同一 judge;拒绝形态与业务拒绝键集同构;fold 编辑链重放一致)。全仓 453 全绿。
+
+机械适配:apps/web/src/db/events.ts EventKind 联合类型对齐(仅类型,DDL TEXT 列无迁移);meta-project 投影断言随 vacuous 口径更新(add-node 不再因空参数 blocked);purity 计数 14→15。
