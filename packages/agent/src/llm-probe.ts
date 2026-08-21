@@ -8,7 +8,8 @@
  * 与 llm-driver 的关系:端点/模型解析口径一致(同 GLM_API_KEY/LLM_BASE_URL/
  * LLM_MODEL env、同 provider.chat() 锁 Chat Completions、同 buildSystemPrompt
  * 协议核心、同固定动词工具形态),但本模块独立发起 generateText/streamText
- * 调用——不改 llm-driver 的现有 generateText 实现(Phase C 才做流式改造)。
+ * 调用;llm-driver 的 streamText 决策取数(Phase C)与本探针共用
+ * raw-reasoning.ts 的 raw 部件解析,两处口径逐字节一致。
  *
  * 探针只观测、不执行:工具不带 execute,模型单步产出 tool call 即结束。
  */
@@ -16,6 +17,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, jsonSchema, streamText, type LanguageModel, type ToolSet } from 'ai';
 
 import { DEFAULT_LLM_BASE_URL, DEFAULT_LLM_MODEL, buildSystemPrompt } from './llm-driver';
+import { extractRawReasoning, readRawDelta } from './raw-reasoning';
 
 /** 单次调用的 abort 兜底缺省值(推理模型 effort max 时单步可能远超 60s)。 */
 export const DEFAULT_PROBE_ABORT_MS = 150_000;
@@ -182,27 +184,6 @@ function readRawMessage(body: unknown): Record<string, unknown> | null {
   const first = choices[0];
   if (!isPlainObject(first) || !isPlainObject(first.message)) return null;
   return first.message;
-}
-
-/** 从原始 SSE chunk 取 choices[0].delta(流式)。 */
-function readRawDelta(rawChunk: unknown): Record<string, unknown> | null {
-  if (!isPlainObject(rawChunk)) return null;
-  const choices = rawChunk.choices;
-  if (!Array.isArray(choices) || choices.length === 0) return null;
-  const first = choices[0];
-  if (!isPlainObject(first) || !isPlainObject(first.delta)) return null;
-  return first.delta;
-}
-
-/**
- * 原始对象上的 reasoning 提取:键名含 "reasoning" 的字符串字段全部收集
- * (防御字段名漂移——实测先于假设;键名集合同时入观测供报告列示)。
- */
-function extractRawReasoning(container: Record<string, unknown>): string | null {
-  const texts = Object.entries(container)
-    .filter(([key, value]) => /reasoning/i.test(key) && typeof value === 'string' && value !== '')
-    .map(([, value]) => value as string);
-  return texts.length > 0 ? texts.join('') : null;
 }
 
 function toErrorMessage(error: unknown): string {

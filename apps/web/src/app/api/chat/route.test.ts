@@ -397,43 +397,48 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
     );
   }
 
-  /** 脚本化 LLM 桩:第一次调用返回 exec(next),其后一律 done(不触网)。 */
+  /** 脚本化 LLM 桩(SSE 流式;T11 Phase C streamText 改造的传输形态——driver
+   * 改走流式后桩必须讲 SSE):第一次调用返回 exec(next)+reasoning_content,
+   * 其后一律 done+reasoning_content(不触网;reasoning 经 raw 部件进审计)。 */
   function createScriptedLlmStub(): Promise<Server & { port(): number }> {
     return new Promise((resolve) => {
       let calls = 0;
+      const chunk = (delta: Record<string, unknown>, finishReason: string | null = null) =>
+        `data: ${JSON.stringify({
+          id: 'chatcmpl-test',
+          object: 'chat.completion.chunk',
+          created: 1755700000,
+          model: 'glm-test',
+          choices: [{ index: 0, delta, finish_reason: finishReason }],
+        })}`;
       const stub = createServer((req, res) => {
         calls += 1;
         const tool =
           calls === 1
-            ? { name: 'exec', args: { action: 'next', params: { title: 'LLM 决策的标题' } } }
-            : { name: 'done', args: { summary: 'LLM 完成' } };
+            ? {
+                name: 'exec',
+                args: { action: 'next', params: { title: 'LLM 决策的标题' } },
+                reasoning: '先补标题,再推进向导',
+              }
+            : { name: 'done', args: { summary: 'LLM 完成' }, reasoning: '字段已齐,收尾收工' };
         res.statusCode = 200;
-        res.setHeader('content-type', 'application/json');
+        res.setHeader('content-type', 'text/event-stream');
         res.end(
-          JSON.stringify({
-            id: 'chatcmpl-test',
-            object: 'chat.completion',
-            created: 1755700000,
-            model: 'glm-test',
-            choices: [
-              {
-                index: 0,
-                finish_reason: 'tool_calls',
-                message: {
-                  role: 'assistant',
-                  content: null,
-                  tool_calls: [
-                    {
-                      id: 'call_1',
-                      type: 'function',
-                      function: { name: tool.name, arguments: JSON.stringify(tool.args) },
-                    },
-                  ],
+          `${[
+            chunk({ reasoning_content: tool.reasoning }),
+            chunk({
+              tool_calls: [
+                {
+                  index: 0,
+                  id: 'call_1',
+                  type: 'function',
+                  function: { name: tool.name, arguments: JSON.stringify(tool.args) },
                 },
-              },
-            ],
-            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-          }),
+              ],
+            }),
+            chunk({}, 'tool_calls'),
+            'data: [DONE]',
+          ].join('\n\n')}\n\n`,
         );
       }) as Server & { port(): number };
       stub.port = () => (stub.address() as { port: number }).port;
@@ -494,7 +499,7 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
     expect(Math.max(...decisions.map((event) => event.seq))).toBeLessThan(turn?.seq ?? 0);
   });
 
-  it('llm 回合(mock 端点):每步一条,prompt 为 system/user 全量原文,reasoning 恒 null', async () => {
+  it('llm 回合(mock 端点):每步一条,prompt 为 system/user 全量原文,reasoning 填真值(T11 Phase C)', async () => {
     const stub = await createScriptedLlmStub();
     try {
       process.env.GLM_API_KEY = 'test-key';
@@ -520,8 +525,11 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
           principal: 'user:sess-decision-llm',
         });
         expect(event.detail.driver).toBe('llm');
-        expect(event.detail.reasoning).toBeNull();
       }
+      // reasoning 真值(T11 Phase C):driver 经 raw 部件解析 delta.reasoning_content,
+      // 由审计包装器的 sink 捕获落库——两步各携该步自述。
+      expect(decisions[0]!.detail.reasoning).toBe('先补标题,再推进向导');
+      expect(decisions[1]!.detail.reasoning).toBe('字段已齐,收尾收工');
       expect(decisions[0]!.detail.op).toEqual({
         kind: 'exec',
         action: 'next',
@@ -529,7 +537,7 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
       });
       expect(decisions[1]!.detail.op).toEqual({ kind: 'done', summary: 'LLM 完成' });
       // prompt 全量(架构决定 3:训练提取免回放重建)——system 为协议核心原文,
-      // user 内嵌目标 JSON;reasoning 在 generateText 非流式下拿不到,如实 null(Phase C 补)。
+      // user 内嵌目标 JSON;端点不返回 reasoning 时如实 null(验收 4)。
       const prompt = decisions[0]!.detail.prompt as { system: string; user: string };
       expect(prompt.system).toContain('UI4A 合同 agent');
       expect(prompt.user).toContain('发布一篇文章');

@@ -89,6 +89,21 @@ export async function runAgent(
     }
   };
 
+  // 推理自述观测通道(T11 Phase C):llm 步 decide 产出 reasoning 时由 driver
+  // 回调一次(聚合整段);rule driver 零回调。异常吞掉口径同 onStep。
+  const decideSink =
+    options.onReasoning === undefined
+      ? undefined
+      : {
+          onReasoning: (text: string): void => {
+            try {
+              options.onReasoning?.(text);
+            } catch {
+              // 观测者不得污染协议循环(同 pushStep 口径)。
+            }
+          },
+        };
+
   for (let step = 1; step <= maxSteps; step += 1) {
     const fetched = await client.getEntity(currentRel);
     if (fetched.entity === undefined) {
@@ -115,7 +130,7 @@ export async function runAgent(
       app: options.app,
     };
     lastRejection = undefined;
-    const op = await driver.decide(context);
+    const op = await driver.decide(context, decideSink);
 
     if (op.kind === 'done') {
       pushStep({ step, rel: currentRel, op, outcome: 'done' });

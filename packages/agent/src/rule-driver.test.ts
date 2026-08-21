@@ -736,3 +736,22 @@ describe('rule driver 与循环握手(B2 微缩)', () => {
     });
   });
 });
+
+// ---- reasoning 通道(T11 Phase C)--------------------------------------------
+
+describe('reasoning 通道(T11 Phase C)', () => {
+  it('rule driver 携带 sink 也零回调(机械层无推理自述)', () => {
+    const seen: string[] = [];
+    createRuleDriver().decide(
+      {
+        goal: { verb: '发布' },
+        currentRel: 'articles',
+        entity: articles,
+        trail: [],
+        successes: [],
+      },
+      { onReasoning: (text) => seen.push(text) },
+    );
+    expect(seen).toEqual([]);
+  });
+});

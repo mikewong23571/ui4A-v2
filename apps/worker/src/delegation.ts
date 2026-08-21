@@ -51,12 +51,13 @@ export const DELEGATION_CHANNEL = 'delegation';
 
 /**
  * delegation-step 事件的 detail 载荷:步号 + 步结果 + 推理自述(activity 重试的
- * 恢复输入)。reasoning 恒落库(T11 Phase B / spec 架构决定 3:无则 null,与
- * agent-decision 同口径);幂等恢复对旧事件(无 reasoning 字段)读出兼容。
+ * 恢复输入)。reasoning 恒落库(T11 / spec 架构决定 3:无则 null,与 agent-decision
+ * 同口径;llm 路径自 Phase C streamText 改造起填真值);幂等恢复对旧事件
+ * (无 reasoning 字段)读出兼容。
  */
 export interface DelegationStepRecord extends AgentStepResult {
   step: number;
-  /** 推理自述:当前恒 null(driver 无通道,D22);Phase C streamText 后 llm 路径填真值。 */
+  /** 推理自述:llm 路径为 driver 产出的聚合整段;rule 路径与端点不返回时恒 null。 */
   reasoning: string | null;
 }
 
@@ -243,13 +244,24 @@ export async function runAgentStep(
     sitemap: args.sitemap,
   };
   const driver = deps.driver ?? createDriver(args.driverKind);
-  const op = await driver.decide(context);
+  // 推理自述捕获(T11 Phase C):llm driver 决策产出 reasoning 时经 sink 回调
+  // 一次(聚合整段,D22);rule/脚本 driver 零回调,reasoning 保持 null。
+  let reasoning: string | null = null;
+  const op = await driver.decide(context, {
+    onReasoning: (text) => {
+      reasoning = text;
+    },
+  });
+  // reasoning 仅在产生时挂键(条件 spread):rule 路径结果形状与 T11 前逐键一致;
+  // recordStep 落库恒写 reasoning 字段(无则 null,DelegationStepRecord 口径)。
+  const decisionExtra = reasoning !== null ? { reasoning } : {};
 
   if (op.kind === 'done' || op.kind === 'fail') {
     // 终止决策同样产轨迹步(runAgent 同口径);终态事件由 workflow 随后落。
     return recordStep(deps.db, args, {
       op,
       outcome: op.kind === 'done' ? 'done' : 'failed',
+      ...decisionExtra,
     });
   }
 
@@ -260,6 +272,7 @@ export async function runAgentStep(
         op,
         outcome: 'navigated',
         entitySummary: summarizeEntity(target.entity),
+        ...decisionExtra,
       });
     }
     const rejection: RejectionRecord = {
@@ -267,7 +280,7 @@ export async function runAgentStep(
       layer: 'not-found',
       reason: target.error ?? `实体 "${op.rel}" 不可达`,
     };
-    return recordStep(deps.db, args, { op, outcome: 'not-found', rejection });
+    return recordStep(deps.db, args, { op, outcome: 'not-found', rejection, ...decisionExtra });
   }
 
   const call = await client.exec({
@@ -283,6 +296,7 @@ export async function runAgentStep(
       op,
       outcome: 'executed',
       ...(call.entity !== undefined ? { entitySummary: summarizeEntity(call.entity) } : {}),
+      ...decisionExtra,
     });
   }
   const rejection: RejectionRecord = {
@@ -293,7 +307,7 @@ export async function runAgentStep(
     reason: call.reason ?? `exec 被拒(HTTP ${call.status})`,
     detail: call.detail,
   };
-  return recordStep(deps.db, args, { op, outcome: 'rejected', rejection });
+  return recordStep(deps.db, args, { op, outcome: 'rejected', rejection, ...decisionExtra });
 }
 
 /** 步结果落库(delegation-step;detail=载荷即真相,重试恢复的输入)并回传。 */
@@ -312,8 +326,8 @@ async function recordStep(
       step: args.step,
       op: result.op,
       outcome: result.outcome,
-      // reasoning 恒落库(T11 Phase B:无则 null);driver 接口暂无推理自述通道
-      //(D22),Phase C streamText 改造后由 result.reasoning 自然流出真值。
+      // reasoning 恒落库(T11:无则 null);llm 路径自 Phase C streamText 改造起
+      // 由 driver 决策时的 sink 回调捕获,经 result.reasoning 自然流出真值。
       reasoning: result.reasoning ?? null,
       ...(result.entitySummary !== undefined ? { entitySummary: result.entitySummary } : {}),
       ...(result.rejection !== undefined ? { rejection: result.rejection } : {}),

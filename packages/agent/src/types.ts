@@ -114,11 +114,22 @@ export interface SitemapSummary {
 }
 
 /**
+ * decide 的观测通道(T11 Phase C / spec 架构决定 4):driver 决策产出推理自述时
+ * 回调一次(聚合整段——D22 探针:GLM reasoning 非增量、末尾齐发,不是打字机)。
+ * 不产生 reasoning 的 driver(rule driver)零回调;decide 永不抛异常的口径覆盖
+ * 观测调用本身(观测者不得污染协议)。
+ */
+export interface DecideSink {
+  onReasoning?(text: string): void;
+}
+
+/**
  * driver 插件接口:rule driver(本包)与 LLM driver(Phase E)共用。
  * decide 允许异步(LLM 决策要等网络);rule driver 保持同步实现。
+ * sink 为可选第二参(向后兼容:单参实现的 mock/既有 driver 零改动)。
  */
 export interface AgentDriver {
-  decide(context: DriverContext): AgentOperation | Promise<AgentOperation>;
+  decide(context: DriverContext, sink?: DecideSink): AgentOperation | Promise<AgentOperation>;
 }
 
 export interface RunAgentOptions {
@@ -146,6 +157,12 @@ export interface RunAgentOptions {
    * 回调抛错不拦截循环(观测者不得污染协议);调用方自行兜底。
    */
   onStep?(step: TrailStep): void;
+  /**
+   * 推理自述回调(T11 Phase C):llm 步的 decide 产出 reasoning 时回调一次
+   * (聚合整段,非打字机——D22:GLM reasoning 末尾齐发);rule driver 零回调。
+   * 与 onStep 同口径:回调抛错不拦截循环。
+   */
+  onReasoning?(text: string): void;
 }
 
 export type AgentOutcome = 'done' | 'failed' | 'max-steps';

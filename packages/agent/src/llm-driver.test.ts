@@ -1,9 +1,10 @@
 /**
- * LLM driver 单测(T2 Phase E / Task E1):
+ * LLM driver 单测(T2 Phase E / Task E1;T11 Phase C 起 streamText 流式):
  * - 决策由 LLM 产出:OpenAI 兼容 tool calling 映射回循环操作;
- * - mock fetch 充当 LLM 传输(不触网);
+ * - mock fetch 充当 LLM 传输(不触网;SSE chat.completion.chunk 序列);
  * - 坏 key → 401 错误原文如实进入 fail reason(B4 的委托不崩溃前提);
  * - 模型输出不合法(无工具调用/未知工具/保留动词)→ fail-safe 返回 fail;
+ * - reasoning 经 raw 部件(delta.reasoning_content)解析累积,sink 一次性回调(D22);
  * - createDriver('auto'):无 key 回退 rule driver(I1 机械层)。
  */
 import type { SirenAction } from '@ui4a/engine';
@@ -54,32 +55,62 @@ function context(overrides: Partial<DriverContext> = {}): DriverContext {
   };
 }
 
-/** OpenAI 兼容 chat completion(单个 tool call;信封字段满足 SDK 校验)。 */
-function openaiToolResponse(toolName: string, args: unknown): Response {
-  return jsonResponse({
+/** OpenAI 兼容 SSE 流(chat.completion.chunk 序列 + [DONE];streamText 的传输形态)。 */
+function sseResponse(chunks: unknown[]): Response {
+  const body = `${[...chunks.map((entry) => `data: ${JSON.stringify(entry)}`), 'data: [DONE]'].join('\n\n')}\n\n`;
+  return new Response(body, {
+    status: 200,
+    headers: { 'content-type': 'text/event-stream' },
+  });
+}
+
+/** 单个 chat.completion.chunk(delta + finish_reason;信封字段满足 SDK 校验)。 */
+function chunk(delta: Record<string, unknown>, finishReason: string | null = null) {
+  return {
     id: 'chatcmpl-test',
-    object: 'chat.completion',
+    object: 'chat.completion.chunk',
     created: 1755700000,
     model: 'glm-test',
-    choices: [
-      {
-        index: 0,
-        finish_reason: 'tool_calls',
-        message: {
-          role: 'assistant',
-          content: null,
-          tool_calls: [
-            {
-              id: 'call_1',
-              type: 'function',
-              function: { name: toolName, arguments: JSON.stringify(args) },
-            },
-          ],
-        },
-      },
-    ],
-    usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-  });
+    choices: [{ index: 0, delta, finish_reason: finishReason }],
+  };
+}
+
+/**
+ * 单 tool call 的 SSE 响应(T11 Phase C:streamText 改造后的 mock 形态):
+ * - arguments 可分片(argumentChunks)——验证 SDK 流式聚合后语义不变;
+ * - reasoning 片段经 delta.reasoning_content 注入——D22 探针结论:SDK 层剥离
+ *   该字段(zod strip),只能从 fullStream 的 raw 部件解析累积;
+ * - 工具调用与 finish_reason=tool_calls 收尾,与 GLM 实测 chunk 序列同构。
+ */
+function openaiToolResponse(
+  toolName: string,
+  args: unknown,
+  options: { reasoning?: string[]; argumentChunks?: string[] } = {},
+): Response {
+  const argumentChunks = options.argumentChunks ?? [JSON.stringify(args)];
+  return sseResponse([
+    ...(options.reasoning ?? []).map((text) => chunk({ reasoning_content: text })),
+    ...argumentChunks.map((slice, index) =>
+      chunk({
+        tool_calls: [
+          index === 0
+            ? {
+                index: 0,
+                id: 'call_1',
+                type: 'function',
+                function: { name: toolName, arguments: slice },
+              }
+            : { index: 0, function: { arguments: slice } },
+        ],
+      }),
+    ),
+    chunk({}, 'tool_calls'),
+  ]);
+}
+
+/** 纯文本回复的 SSE 响应(无工具调用 → fail-safe 用例)。 */
+function openaiTextResponse(text: string): Response {
+  return sseResponse([chunk({ role: 'assistant', content: text }), chunk({}, 'stop')]);
 }
 
 /** 用脚本化 LLM 传输构造 driver(单测不触网)。 */
@@ -102,10 +133,11 @@ describe('LLM 工具调用 → 循环操作映射', () => {
     expect(op).toEqual({ kind: 'exec', action: 'next', params: { title: 'LLM 编的标题' } });
     expect(calls).toHaveLength(1);
     expect(calls[0]!.url).toContain('/chat/completions');
-    // 请求体携带工具投影(固定动词 + 动态动作工具)
+    // 请求体携带工具投影(固定动词 + 动态动作工具);stream:true 标记流式传输(T11 Phase C)。
     const body = JSON.stringify(calls[0]!.body);
     expect(body).toContain('"navigate"');
     expect(body).toContain('"action_next"');
+    expect(body).toContain('"stream":true');
   });
 
   it('navigate 工具调用 → navigate', async () => {
@@ -168,21 +200,7 @@ describe('B4:失败如实呈现(委托不崩溃)', () => {
 
 describe('fail-safe:模型输出不合法', () => {
   it('无工具调用(纯文本回复)→ fail 附模型文本', async () => {
-    const { driver } = llmDriverWith(() =>
-      jsonResponse({
-        id: 'chatcmpl-test',
-        object: 'chat.completion',
-        created: 1755700000,
-        model: 'glm-test',
-        choices: [
-          {
-            index: 0,
-            finish_reason: 'stop',
-            message: { role: 'assistant', content: '我认为应该…' },
-          },
-        ],
-      }),
-    );
+    const { driver } = llmDriverWith(() => openaiTextResponse('我认为应该…'));
 
     const op = await driver.decide(context());
 
@@ -315,5 +333,88 @@ describe('SYSTEM_PROMPT role/app 上下文槽位(T10 Phase D)', () => {
     await driver.decide(context());
 
     expect(systemPromptOf(calls)).toBe(buildSystemPrompt());
+  });
+});
+
+// ---- streamText 聚合与 reasoning 通道(T11 Phase C / 架构决定 4)------------
+
+describe('streamText 聚合与 reasoning 通道(T11 Phase C)', () => {
+  it('tool call arguments 分片到达 → SDK 聚合后映射语义不变', async () => {
+    const { driver } = llmDriverWith(() =>
+      openaiToolResponse('action_next', { title: '分片标题' }, {
+        argumentChunks: ['{"title":"分片', '标题"}'],
+      }),
+    );
+
+    await expect(driver.decide(context())).resolves.toEqual({
+      kind: 'exec',
+      action: 'next',
+      params: { title: '分片标题' },
+    });
+  });
+
+  it('reasoning_content 经 raw 部件解析累积 → sink 一次性收到拼接整段,op 语义不变', async () => {
+    // D22 探针结论:SDK 层剥离 reasoning_content(zod strip,fullStream 零 reasoning 部件),
+    // 只能从 raw 部件解析;GLM 末尾齐发——sink 回调是聚合后一次性,不是打字机。
+    const { driver } = llmDriverWith(() =>
+      openaiToolResponse('done', { summary: 'ok' }, { reasoning: ['先核对目标', ',再收尾。'] }),
+    );
+    const seen: string[] = [];
+
+    const op = await driver.decide(context(), { onReasoning: (text) => seen.push(text) });
+
+    expect(op).toEqual({ kind: 'done', summary: 'ok' });
+    expect(seen).toEqual(['先核对目标,再收尾。']);
+  });
+
+  it('fail-safe 决策同样携带 reasoning(输出不合法时自述仍是蒸馏原料)', async () => {
+    const { driver } = llmDriverWith(() =>
+      openaiToolResponse('teleport', { to: 'moon' }, { reasoning: ['想直接瞬移过去'] }),
+    );
+    const seen: string[] = [];
+
+    const op = await driver.decide(context(), { onReasoning: (text) => seen.push(text) });
+
+    expect(op.kind).toBe('fail');
+    expect(seen).toEqual(['想直接瞬移过去']);
+  });
+
+  it('端点不返回 reasoning → sink 零回调(如实缺席,不发明)', async () => {
+    const { driver } = llmDriverWith(() => openaiToolResponse('done', { summary: 'ok' }));
+    const seen: string[] = [];
+
+    await driver.decide(context(), { onReasoning: (text) => seen.push(text) });
+
+    expect(seen).toEqual([]);
+  });
+
+  it('sink 回调抛错 → decide 不抛异常,op 原样返回(观测者不得污染协议)', async () => {
+    const { driver } = llmDriverWith(() =>
+      openaiToolResponse('done', { summary: 'ok' }, { reasoning: ['自述'] }),
+    );
+
+    const op = await driver.decide(context(), {
+      onReasoning: () => {
+        throw new Error('观测者爆炸');
+      },
+    });
+
+    expect(op).toEqual({ kind: 'done', summary: 'ok' });
+  });
+
+  it('端点错误(401)→ fail 原文保持且 sink 零回调(B4 口径在流式下不变)', async () => {
+    const { driver } = llmDriverWith(() =>
+      jsonResponse({ error: { code: '1002', message: '令牌无效或已过期' } }, 401),
+    );
+    const seen: string[] = [];
+
+    const op = await driver.decide(context(), { onReasoning: (text) => seen.push(text) });
+
+    expect(op.kind).toBe('fail');
+    if (op.kind === 'fail') {
+      expect(op.reason).toContain('401');
+      expect(op.reason).toContain('令牌无效或已过期');
+    }
+    expect(seen).toEqual([]);
   });
 });

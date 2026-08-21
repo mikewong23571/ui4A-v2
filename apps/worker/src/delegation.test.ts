@@ -2,7 +2,7 @@ import type { QueryResult, QueryResultRow } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
-import type { AgentDriver, AgentOperation, FetchLike } from '@ui4a/agent';
+import type { AgentDriver, AgentOperation, DecideSink, DriverContext, FetchLike } from '@ui4a/agent';
 
 import type { DbExecutor } from '../../web/src/db/events';
 
@@ -26,9 +26,10 @@ import {
 // - 循环状态推导(applyStepToState 纯函数):navigate 切 rel / executed 计数 /
 //   lastRejection 单步消费——与 runAgent 逐条对齐;
 // - 首尾事件:startDelegation / finishDelegation 幂等(kind+rel 查重);
-// - T11 Phase B(验收 6):delegation-step detail 恒携带 reasoning 字段(当前恒
-//   null——D22:generateText 非流式拿不到,Phase C streamText 后填真值),幂等
-//   恢复载荷同构扩展,旧形状事件(无 reasoning 字段)读出兼容。
+// - T11(验收 6):delegation-step detail 恒携带 reasoning 字段——driver 经
+//   DecideSink 产出推理自述时填真值(llm 路径,Phase C streamText 起),无自述
+//   (rule/脚本 driver)落库 null;幂等恢复载荷同构扩展,旧形状事件(无
+//   reasoning 字段)读出兼容。
 // 真 Temporal + 真 worker 链路由 kill 续跑集成测试覆盖(delegation.kill.integration.test.ts)。
 const BASE = 'http://contract.test';
 
@@ -195,7 +196,7 @@ describe('runAgentStep(rule driver,决策+执行合一)', () => {
       step: 1,
       op: { kind: 'navigate', rel: 'post:post-welcome' },
       outcome: 'navigated',
-      // T11 Phase B:reasoning 恒落库;rule 路径无推理自述,恒 null。
+      // T11:reasoning 恒落库;rule 路径无推理自述,恒 null。
       reasoning: null,
       entitySummary: {
         rel: 'post:post-welcome',
@@ -371,8 +372,8 @@ describe('runAgentStep(幂等恢复)', () => {
   });
 });
 
-describe('delegation-step reasoning 留痕(T11 Phase B / 验收 6)', () => {
-  it('detail 恒携带 reasoning 字段:driver 接口无推理自述通道(D22),当前落库恒 null(Phase C streamText 后填真值)', async () => {
+describe('delegation-step reasoning 留痕(T11 / 验收 6)', () => {
+  it('detail 恒携带 reasoning 字段:driver 未产自述(rule/脚本)→ 落库 null', async () => {
     const transport = contractTransport({ entities: { articles: articlesEntity } });
     const { db, inserts } = fakeDb();
 
@@ -397,6 +398,38 @@ describe('delegation-step reasoning 留痕(T11 Phase B / 验收 6)', () => {
     const detail = JSON.parse(String(inserts[0]!.values[8])) as Record<string, unknown>;
     expect('reasoning' in detail).toBe(true);
     expect(detail.reasoning).toBeNull();
+  });
+
+  it('driver 经 sink 产出 reasoning(llm 决策形态)→ 步结果与落库 detail 均携真值(T11 Phase C)', async () => {
+    // llm driver 的 DecideSink 回调形态:decide 时一次性回调聚合整段自述(D22)。
+    class ReasoningDriver implements AgentDriver {
+      decide(context: DriverContext, sink?: DecideSink): AgentOperation {
+        void context;
+        sink?.onReasoning?.('文章草稿已就绪,执行 publish 即达成目标');
+        return { kind: 'done', summary: '目标完成' };
+      }
+    }
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const { db, inserts } = fakeDb();
+
+    const result = await runAgentStep(
+      { db, fetchImpl: transport.fetch, driver: new ReasoningDriver() },
+      {
+        delegationId: 'wf-r4',
+        step: 1,
+        goal: { verb: '任意' },
+        driverKind: 'llm',
+        baseUrl: BASE,
+        ...BASE_STATE,
+      },
+    );
+
+    // 步结果携带真值(workflows.ts AgentStepResult.reasoning 通道);
+    // 落库 detail 同值(幂等恢复载荷与 detail 同构——崩溃续跑读回不丢失)。
+    expect(result.reasoning).toBe('文章草稿已就绪,执行 publish 即达成目标');
+    expect(inserts).toHaveLength(1);
+    const detail = JSON.parse(String(inserts[0]!.values[8])) as Record<string, unknown>;
+    expect(detail.reasoning).toBe('文章草稿已就绪,执行 publish 即达成目标');
   });
 
   it('幂等恢复载荷同构:存量事件 detail 含 reasoning(真值)→ 恢复结果原样携带;零 HTTP、不双写', async () => {

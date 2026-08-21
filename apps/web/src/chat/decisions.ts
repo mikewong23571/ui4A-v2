@@ -5,8 +5,8 @@
  *
  * 捕获方案:route 层包装 driver,在 decide 时刻记录——决策输入(当前实体/轨迹/
  * 最近拒绝)只存在于 decide 时的 DriverContext;TrailStep 是操作执行后的投影,
- * 回推不出决策输入,onStep 回调拿不到 prompt。包装器让循环协议(loop.ts)与
- * driver 接口(types.ts)零改动:不加回调、不改签名。
+ * 回推不出决策输入,onStep 回调拿不到 prompt。包装器让循环协议(loop.ts)零改动
+ * (Phase C 起 driver 接口新增可选 sink 第二参,用于 reasoning 捕获与透传)。
  *
  * prompt 口径:
  * - llm:发给端点的 {system, user} 全量原文——经 llm-driver 导出的同一对纯函数
@@ -18,9 +18,9 @@
  *   轨迹是蒸馏的正确答案生成器)。轨迹本身不冗余存储:在 chat-turn 的 steps 与
  *   本事件链的既有 op 序列中可得。
  *
- * reasoning:llm 路径在 generateText 非流式下拿不到 reasoning(D22 探针结论),
- * 本任务恒为 null(端点不返回时如实 null,验收 4 允许)——Phase C streamText
- * 改造后填真值;rule 恒 null。
+ * reasoning:llm 路径自 Phase C streamText 改造起填真值——包装器把内部 sink
+ * 透传给被包 driver,decide 产出推理自述时一次性捕获(聚合整段,D22),并原样
+ * 转发给上游 sink(loop 的 onReasoning 通道);rule 与端点不返回时恒 null。
  */
 import {
   buildSystemPrompt,
@@ -61,7 +61,7 @@ export interface AgentDecisionDetail {
   step: number;
   driver: 'rule' | 'llm';
   prompt: LlmPromptRecord | RulePromptRecord;
-  /** 推理自述:当前恒 null(见模块头);Phase C streamText 后 llm 路径填真值。 */
+  /** 推理自述:llm 路径为 driver 产出的聚合整段;rule 与端点不返回时恒 null。 */
   reasoning: string | null;
   /** 该步决策产出的操作(协议动词原样)。 */
   op: AgentOperation;
@@ -92,8 +92,10 @@ function promptRecord(
 
 /**
  * driver 审计包装:decide 原样透传,产出后把决策记录推给 collect。
- * 记录构造失败只丢该条留痕,op 照常回流——观测者不得污染协议
- * (decide 永不抛异常的口径不因留痕而破)。
+ * reasoning 经内部 sink 捕获(T11 Phase C:llm driver 决策时一次性回调聚合
+ * 整段自述),并转发给上游 sink——审计留痕与 loop 的 onReasoning 通道共用同
+ * 一次 driver 回调。记录构造失败只丢该条留痕,op 照常回流——观测者不得污染
+ * 协议(decide 永不抛异常的口径不因留痕而破)。
  */
 export function wrapDriverForAudit(
   base: AgentDriver,
@@ -101,14 +103,26 @@ export function wrapDriverForAudit(
   collect: (detail: AgentDecisionDetail) => void,
 ): AgentDriver {
   return {
-    decide: async (context) => {
-      const op = await base.decide(context);
+    decide: async (context, sink) => {
+      let reasoning: string | null = null;
+      const op = await base.decide(context, {
+        onReasoning: (text) => {
+          // 先捕获再转发:上游(loop onReasoning)抛错不得弄丢审计留痕;
+          // 转发本身兜底——driver 侧亦有 guard,双保险均不影响 op 回流。
+          reasoning = text;
+          try {
+            sink?.onReasoning?.(text);
+          } catch {
+            // 上游观测者异常吞掉(观测者不得污染协议)。
+          }
+        },
+      });
       try {
         collect({
           step: context.trail.length + 1,
           driver,
           prompt: promptRecord(driver, context),
-          reasoning: null,
+          reasoning,
           op,
         });
       } catch {

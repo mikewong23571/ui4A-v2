@@ -9,6 +9,7 @@ import type { SirenEntity } from '@ui4a/engine';
 import { describe, expect, it } from 'vitest';
 
 import { runAgent } from './loop';
+import { createRuleDriver } from './rule-driver';
 import {
   collectionEntity,
   createScriptedTransport,
@@ -17,7 +18,14 @@ import {
   instanceEntity,
   jsonResponse,
 } from './testkit';
-import type { AgentDriver, AgentGoal, AgentOperation, DriverContext, TrailStep } from './types';
+import type {
+  AgentDriver,
+  AgentGoal,
+  AgentOperation,
+  DecideSink,
+  DriverContext,
+  TrailStep,
+} from './types';
 
 const BASE = 'http://contract.test';
 
@@ -504,5 +512,72 @@ describe('role/app 上下文槽位:数据注入路径(T10 Phase D)', () => {
 
     expect(driver.contexts[0]!.role).toBeUndefined();
     expect(driver.contexts[0]!.app).toBeUndefined();
+  });
+});
+
+// ---- onReasoning 推理自述回调(T11 Phase C / 架构决定 4)--------------------
+
+/** 模拟 llm driver 的 reasoning 产出:decide 时经 sink 回调聚合整段自述。 */
+class ReasoningDriver implements AgentDriver {
+  constructor(private readonly script: AgentOperation[]) {}
+
+  decide(context: DriverContext, sink?: DecideSink): AgentOperation {
+    void context; // 与 ScriptedDriver 对齐:刻意不读上下文
+    sink?.onReasoning?.('推理自述:先核对目标,再调用工具');
+    return this.script.shift() ?? { kind: 'fail', reason: '脚本耗尽' };
+  }
+}
+
+describe('onReasoning 推理自述回调(T11 Phase C)', () => {
+  it('driver 产 reasoning → 循环逐步经 sink 回调给 options.onReasoning(每步一次)', async () => {
+    const transport = contractTransport({
+      entities: { articles: articlesEntity, 'post:post-welcome': postWelcomeEntity },
+    });
+    const driver = new ReasoningDriver([
+      { kind: 'navigate', rel: 'post:post-welcome' },
+      { kind: 'done', summary: 'ok' },
+    ]);
+    const seen: string[] = [];
+
+    const result = await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+      onReasoning: (text) => seen.push(text),
+    });
+
+    expect(result.outcome).toBe('done');
+    expect(seen).toEqual(['推理自述:先核对目标,再调用工具', '推理自述:先核对目标,再调用工具']);
+  });
+
+  it('onReasoning 抛错不中断循环(观测者不得污染协议,同 onStep 口径)', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const driver = new ReasoningDriver([{ kind: 'done', summary: 'ok' }]);
+
+    const result = await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+      onReasoning: () => {
+        throw new Error('观测者爆炸');
+      },
+    });
+
+    expect(result.outcome).toBe('done');
+    expect(result.steps).toHaveLength(1);
+  });
+
+  it('rule driver 零回调(机械层无推理自述;端到端循环级证据)', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const seen: string[] = [];
+
+    const result = await runAgent(createRuleDriver(), { verb: 'zzqqx 无交集' }, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+      onReasoning: (text) => seen.push(text),
+    });
+
+    // 自由漫游无路 → fail 收尾;全程 reasoning 回调零次。
+    expect(result.outcome).toBe('failed');
+    expect(result.steps.length).toBeGreaterThan(0);
+    expect(seen).toEqual([]);
   });
 });
