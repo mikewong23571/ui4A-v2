@@ -1,0 +1,14 @@
+Task: T7-A1 render spec 类型 + 零字面校验器 + 解引用器
+
+Summary:
+- apps/web/src/render/spec.ts: RenderSpec 类型与 BindTree 三种引用节点(ref='entity:<rel>' / field='<rel>.<path>' 嵌套点路径 / collection+可选 dimension field-ref,维度 rel 前缀须与 collection 一致)+ 引用字符串构造/解析助手(entityRef/fieldRef/collectionRef/dimensionRef/parseFieldRef)。
+- apps/web/src/render/validator.ts: validateSpec 纯函数零字面校验——裸 number/string/boolean/null 载荷拒(错误带路径 bind.a.b[0] 口径);引用节点恰一种(混键拒);ref/field/dimension 格式校验;顶层 concern/component/bind 形状校验。
+- apps/web/src/render/deref.ts: deref/derefSpec 纯函数解引用器——ref→实体本身(引用同一性),field→属性值(嵌套下钻),collection→成员实体数组,collection+dimension→分组计数 [{key,count}](首次出现序=集合 append 序,确定性);缺实体/缺路径/非集合响亮 throw(事实永不发明,不静默造值);derefSpec 对非字典根包 {value}(词条 props 入口稳定)。
+- apps/web/src/render/property.test.ts: I2 property test(fast-check@4.9.0,devDep 加在仓库根):150 runs 随机世界(实体含一层嵌套属性+posts 集合+全员维度键)×随机合法 spec,bind 与输出并行遍历逐项溯源(引用同一性/字段逐项相等/聚合独立重算/聚合键 ∈ 快照值宇宙);150 runs 随机位置随机类型字面注入→校验器必拒且路径精确指向注入点。
+- apps/web/src/render/spec.test.ts(25 例校验器矩阵)+ deref.test.ts(15 例解引用/聚合/响亮失败)。
+
+Why: '模型发不出一个数字'的 schema 侧剃刀(binding-only,铁律 2)与客户端拥有数据模型的解引用路径;I2 前提。聚合在解引用器内做,spec 只声明维度引用。
+
+Tests: CI=true pnpm vitest run apps/web/src/render/ → 42 passed;CI=true pnpm check 全绿(700 tests)。
+
+Files: apps/web/src/render/{spec,validator,deref,spec.test,deref.test,property.test}.ts, package.json, pnpm-lock.yaml
