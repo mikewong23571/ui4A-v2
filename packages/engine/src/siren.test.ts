@@ -276,4 +276,38 @@ describe('project — inbox 集合(spec 架构决定 5)', () => {
     });
     expect(entity?.entities).toEqual([]);
   });
+
+  it('delivered 计数:已送达(notified)的 pending 确认计入,未送达不计(T3 Phase C)', () => {
+    const suspended = suspendedSnapshot();
+    const c1 = suspended.confirmations?.['confirmation:c1'];
+    if (c1 === undefined) throw new Error('前置失败:缺少 confirmation:c1');
+    const notified: EngineSnapshot = {
+      ...suspended,
+      confirmations: { 'confirmation:c1': { ...c1, notified: true } },
+    };
+
+    const entity = project(notified, 'inbox', deps);
+    expect(entity?.properties).toMatchObject({ rel: 'inbox', count: 1, delivered: 1 });
+    expect(entity?.entities?.[0]?.properties).toMatchObject({ notified: true });
+
+    // 未送达:delivered=0,子实体不带 notified 键。
+    const plain = project(suspendedSnapshot(), 'inbox', deps);
+    expect(plain?.properties).toMatchObject({ rel: 'inbox', count: 1, delivered: 0 });
+    expect(plain?.entities?.[0]?.properties).not.toHaveProperty('notified');
+  });
+
+  it('确认实体投影:notified=true 时注入 properties(送达状态对人类可见)', () => {
+    const suspended = suspendedSnapshot();
+    const c1 = suspended.confirmations?.['confirmation:c1'];
+    if (c1 === undefined) throw new Error('前置失败:缺少 confirmation:c1');
+    const notified: EngineSnapshot = {
+      ...suspended,
+      confirmations: { 'confirmation:c1': { ...c1, notified: true } },
+    };
+
+    expect(project(notified, 'confirmation:c1', deps)?.properties).toMatchObject({
+      status: 'pending',
+      notified: true,
+    });
+  });
 });

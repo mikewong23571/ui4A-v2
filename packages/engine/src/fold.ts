@@ -233,6 +233,29 @@ function applyConfirmationDecision(
   };
 }
 
+/** notification-delivered 重放:对应确认标记 notified=true(worker 送达事件)。
+ *  重复送达(capability 重试)幂等:已 notified 则原快照返回,不抛错;
+ *  指向未知确认响亮失败(日志完整性)。 */
+function applyNotificationDelivered(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
+  const rel = event.rel;
+  if (rel === undefined || rel === '') {
+    throw new Error(`重放失败:seq=${event.seq} notification-delivered 缺少 rel(日志完整性)`);
+  }
+  const existing = snapshot.confirmations?.[rel];
+  if (existing === undefined) {
+    throw new Error(
+      `重放失败:seq=${event.seq} notification-delivered 指向未知确认 "${rel}"(日志完整性)`,
+    );
+  }
+  if (existing.notified === true) {
+    return snapshot;
+  }
+  return {
+    ...snapshot,
+    confirmations: { ...(snapshot.confirmations ?? {}), [rel]: { ...existing, notified: true } },
+  };
+}
+
 /**
  * 折叠事件日志为引擎快照(纯函数;events 须按 seq 升序传入)。
  *
@@ -244,14 +267,27 @@ function applyConfirmationDecision(
  * - confirmation-approved:状态 → approved(实体保留);紧随其后的 action-executed
  *   照常重放(挂起→approve 重放后效果必须出现,I5);
  * - confirmation-rejected:状态 → rejected(原因保留),原动作永不生效;
+ * - notification-delivered:确认标记 notified=true(worker 第二写者的送达事件,
+ *   重复幂等;spec 决定 4 双写者方案);
  * - seed:合并种子实体(幂等);
  * - 未知 kind:抛错(日志完整性守卫)。
+ *
+ * initial(可选):从既有快照继续折叠——web 读路径按 seq 增量 fold 的根基
+ * (增量结果与全量 fold 同构,由测试以内容 hash 断言;缺省从空快照起步)。
  */
 export function fold(
   events: readonly LogEvent[],
   deps: { flows: Readonly<Record<string, FlowDefinition>> },
+  initial?: EngineSnapshot,
 ): EngineSnapshot {
-  let snapshot: EngineSnapshot = { instances: {}, collections: {}, confirmations: {} };
+  let snapshot: EngineSnapshot =
+    initial === undefined
+      ? { instances: {}, collections: {}, confirmations: {} }
+      : {
+          instances: initial.instances,
+          collections: initial.collections,
+          confirmations: initial.confirmations ?? {},
+        };
   for (const event of events) {
     switch (event.kind) {
       case 'seed':
@@ -268,6 +304,9 @@ export function fold(
         break;
       case 'confirmation-rejected':
         snapshot = applyConfirmationDecision(snapshot, event, 'rejected');
+        break;
+      case 'notification-delivered':
+        snapshot = applyNotificationDelivered(snapshot, event);
         break;
       case 'action-rejected':
       case 'entity-appended':

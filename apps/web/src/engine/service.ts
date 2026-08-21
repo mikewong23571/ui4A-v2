@@ -6,14 +6,21 @@
  *   确认裁决(Cedar 策略,policy.cedar 文本驱动)→ 效果应用;
  *   - 拒绝:appendEvent(action-rejected,reason+detail{layer})不改状态;
  *   - 挂起:appendEvent(confirmation-requested,detail 含 Cedar 策略 id 与原因)
- *     + pending 确认实体物化,exec 结果 suspended(HTTP 层映射 202);
+ *     + pending 确认实体物化,exec 结果 suspended(HTTP 层映射 202),随后
+ *     **尽力而为**派发 notifyWorkflow(Temporal client;失败不阻塞 202,见 temporal/notify.ts);
  *   - 通过:applyEffects → appendEvent(s) → 增量持有新快照(日志是真相,快照可重算);
  *   - confirmation:<id> 实体上的 approve/reject 是普通 exec 的声明动作(铁律 5:
  *     审批不委托,guard actor-is-human 在引擎层拒 agent,I4),内部路由到引擎的
  *     人类裁决入口(approveConfirmation/rejectConfirmation),留痕口径与业务动作一致;
- * - 串行化(单 atom):exec 全程(裁决+效果+落日志+换快照)经模块级 promise 队列串行,
- *   Next dev 多请求并发下无交错——"裁决器即并发控制";
- *   作用域=本进程:T3 引入 worker(第二个写者)前须收敛为单一写者或 DB 级串行化,届时记入 DECISIONS.md;
+ * - 双写者(T3 Phase C / spec 决定 4):worker 直接 appendEvent 同一 PG
+ *   (notification-delivered 等)。web 以 lastSeq 追踪已折叠进度:
+ *   - 自身 append 后推进 lastSeq(不重折叠自己的事件);
+ *   - 读路径(getEntity/readSnapshot)与 exec 开头先查 max(seq),有新事件则
+ *     readLog(afterSeq=lastSeq) 增量 fold 进快照(fold(events, deps, initial)
+ *     与全量重放同构,I5);worker 写的事件**不需重启**立即可见;
+ * - 串行化(单 atom):exec 与增量 fold 全程经模块级 promise 队列串行,
+ *   Next dev 多请求并发下无交错——"裁决器即并发控制";两写者的 PG 端一致性由
+ *   bigserial seq 全序保证,web 侧按序 fold;
  * - 单例挂在 globalThis:Next dev 对每个 route 入口独立打包模块,普通模块级变量
  *   会得到多个实例(globalThis 是 Next 生态共享单例的标准做法);
  * - sitemap 从 flow 常量纯推导后缓存(定义不变则拓扑不变,版本号即缓存键)。
@@ -46,6 +53,7 @@ import { getPool } from '../db/pool';
 import { cedarPolicyFromDefaultFile } from '../domain/cedarPolicy';
 import { businessFlows, businessFlowList } from '../domain/flows';
 import { SEED_REL, seedDetail } from '../domain/seed';
+import { dispatchNotify } from '../temporal/notify';
 import { resolveFlowRelAlias, withCollectionFlowEntryLinks } from './flow-entry';
 
 /** exec 结果(discriminated union;HTTP 层据此映射 200/202/4xx)。 */
@@ -55,13 +63,15 @@ export type ExecOutcome =
   | { kind: 'rejected'; layer: JudgeLayer; reason: string; detail?: unknown };
 
 export interface EngineRuntime {
-  /** 当前快照(fold 或增量维护;只读视图)。 */
+  /** 当前内存快照(boot/exec/增量 fold 维护;只读视图,不触库——需外部写者进度用 readSnapshot)。 */
   getSnapshot(): EngineSnapshot;
-  /** rel → Siren 实体(含 guard-results 注入);未知 rel 返回 undefined。 */
-  getEntity(rel: string): SirenEntity | undefined;
+  /** 读路径快照:先增量 fold worker 等外部写者追加的事件,再返回(spec 决定 4)。 */
+  readSnapshot(): Promise<EngineSnapshot>;
+  /** rel → Siren 实体(含 guard-results 注入);返回前增量 fold 新事件;未知 rel 返回 undefined。 */
+  getEntity(rel: string): Promise<SirenEntity | undefined>;
   /** 应用 sitemap(缓存;版本号 = 内容 hash)。 */
   getSitemap(): Sitemap;
-  /** 执行动作(串行单 atom):三层裁决 → 事件留痕 → 增量快照。 */
+  /** 执行动作(串行单 atom):同步外部写者 → 三层裁决 → 事件留痕 → 增量快照 → notify 派发(尽力而为)。 */
   exec(request: ExecRequest): Promise<ExecOutcome>;
 }
 
@@ -128,6 +138,8 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
 
   const events: LogEvent[] = await readLog(db);
   let snapshot = fold(events, { flows: businessFlows });
+  // 已折叠进度(seq 高水位):自身 append 推进;读路径/exec 开头按此增量 fold 外部写者。
+  let lastSeq = events.length > 0 ? events[events.length - 1]!.seq : 0;
   const sitemap = deriveSitemap(businessFlowList, {
     extraSurfaces: [{ rel: 'comments', title: '评论', collection: true }],
   });
@@ -154,13 +166,38 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     reason: event.reason,
   });
 
+  /** 追加并推进 lastSeq(自身事件不进入增量 fold,防双算)。 */
+  const appendWithSeq = async (event: EventAppend): Promise<void> => {
+    const { seq } = await appendEvent(db, event);
+    if (seq > lastSeq) {
+      lastSeq = seq;
+    }
+  };
+
+  /**
+   * 增量 fold 外部写者(worker)追加的事件:PG max(seq) 高于 lastSeq 时,
+   * readLog(afterSeq=lastSeq) 按序折进快照。必须在串行队列内调用
+   * (与 exec 无交错);fold(initial=当前快照)与全量重放同构(I5)。
+   */
+  const refreshFromLog = async (): Promise<void> => {
+    const result = await db.query<{ max_seq: string | number | null }>(
+      'SELECT max(seq) AS max_seq FROM events',
+    );
+    const maxSeq = Number(result.rows[0]?.max_seq ?? 0);
+    if (maxSeq <= lastSeq) return;
+    const fresh = await readLog(db, lastSeq);
+    if (fresh.length === 0) return;
+    snapshot = fold(fresh, { flows: businessFlows }, snapshot);
+    lastSeq = Math.max(lastSeq, fresh[fresh.length - 1]!.seq);
+  };
+
   /** 拒绝留痕(action-rejected;detail 携带 layer,HTTP 响应与本事件同源)。 */
   const persistRejection = async (request: ExecRequest, verdict: {
     layer: JudgeLayer;
     reason: string;
     detail?: unknown;
   }): Promise<ExecOutcome> => {
-    await appendEvent(db, {
+    await appendWithSeq({
       kind: 'action-rejected',
       rel: request.rel,
       action: request.action,
@@ -210,7 +247,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     }
 
     for (const event of decision.events) {
-      await appendEvent(db, toAppend(event));
+      await appendWithSeq(toAppend(event));
     }
     snapshot = decision.snapshot;
 
@@ -227,7 +264,11 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
 
   return {
     getSnapshot: () => snapshot,
-    getEntity: (rel) => {
+    readSnapshot: () =>
+      enqueue(state, refreshFromLog).then(() => snapshot),
+    getEntity: async (rel) => {
+      // 读路径增量 fold(spec 决定 4):返回前同步 worker 等外部写者的新事件。
+      await enqueue(state, refreshFromLog);
       // flow:<name> 别名(向导类 flow 投影为其实例实体)——纯服务层投影补全,
       // engine 的 project/judge 语义不动。alias 请求参数缺省仅影响 rel 解析。
       const target = resolveFlowRelAlias(rel, snapshot) ?? rel;
@@ -238,6 +279,10 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     getSitemap: () => sitemap,
     exec(request) {
       return enqueue(state, async () => {
+        // 先同步外部写者进度再裁决(裁决器只见全序日志的最新折叠态);
+        // 已在串行队列内,直接调用(不重入 enqueue)。
+        await refreshFromLog();
+
         // exec 同样吃 flow 别名:裁决与日志都记实例 rel(不产生幽灵实体)。
         const aliased: ExecRequest = {
           ...request,
@@ -261,7 +306,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           // 挂起(非拒绝):confirmation-requested 落库(detail 含 Cedar 策略 id
           // 与原因,spec 验收 5),pending 实体物化进快照,业务状态不动。
           for (const event of outcome.events) {
-            await appendEvent(db, toAppend(event));
+            await appendWithSeq(toAppend(event));
           }
           snapshot = outcome.snapshot;
           const rel = `confirmation:${outcome.confirmation.id}`;
@@ -269,11 +314,14 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           if (entity === undefined) {
             throw new Error(`挂起后确认实体 "${rel}" 不可投影(内部不变式破坏)`);
           }
+          // notify 派发(尽力而为,fire-and-forget):失败不影响挂起结果/202;
+          // 不入串行队列——派发不触快照,temporal/notify.ts 内部全兜底。
+          void dispatchNotify(outcome.confirmation);
           return { kind: 'suspended', entity, confirmation: outcome.confirmation };
         }
 
         for (const event of outcome.events) {
-          await appendEvent(db, toAppend(event));
+          await appendWithSeq(toAppend(event));
         }
         snapshot = outcome.snapshot;
 

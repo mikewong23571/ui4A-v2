@@ -205,6 +205,9 @@ function projectConfirmation(
       'proposed-by': confirmation.proposedBy,
       ...(confirmation.channel !== undefined ? { channel: confirmation.channel } : {}),
       status: confirmation.status,
+      // 送达状态(T3 Phase C:notification-delivered 折叠而来;仅已送达时注入,
+      // 保持未送达实体的 properties 形状稳定)。
+      ...(confirmation.notified === true ? { notified: true } : {}),
     },
     actions: confirmationActions.map((action) => toSirenAction(action, [], deps.baseHref)),
     links: [
@@ -219,11 +222,13 @@ function projectConfirmation(
  * inbox 集合投影(spec 架构决定 5):全部 pending confirmations 的集合实体,
  * 子实体直达(rel=["item"] + href)。已决策(approved/rejected)的确认不进
  * inbox——收件箱是待办视图,审计走事件日志。
+ * properties.delivered:已送达(notify capability 完成)的条数(T3 Phase C)。
  */
 function projectInbox(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
   const pending = Object.values(snapshot.confirmations ?? {}).filter(
     (confirmation) => confirmation.status === 'pending',
   );
+  const delivered = pending.filter((confirmation) => confirmation.notified === true).length;
   const entities = pending.map((confirmation) => ({
     ...projectConfirmation(confirmation, snapshot, deps),
     rel: ['item'],
@@ -231,7 +236,7 @@ function projectInbox(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity 
   }));
   return {
     class: ['collection', 'inbox'],
-    properties: { rel: 'inbox', count: pending.length },
+    properties: { rel: 'inbox', count: pending.length, delivered },
     actions: [],
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'inbox') }],
     'guard-results': [],

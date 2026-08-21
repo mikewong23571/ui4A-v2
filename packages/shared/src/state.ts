@@ -58,6 +58,11 @@ export interface ConfirmationSnapshot {
   approvedBy?: { actor: 'human' | 'agent'; principal?: string };
   /** 驳回原因(human reject 必填)。 */
   rejectedReason?: string;
+  /**
+   * 通知已送达(T3 Phase C:notification-delivered 事件折叠而来;
+   * notify capability 的送达标记,收件箱 delivered 计数的数据源)。
+   */
+  notified?: boolean;
 }
 
 /** 引擎全局快照 = 日志折叠态;guard 只读,效果以不可变方式产出新快照。 */

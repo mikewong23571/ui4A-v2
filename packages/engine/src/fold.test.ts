@@ -398,3 +398,92 @@ describe('fold — confirmation 事件链', () => {
     expect(() => fold([seedFromSnapshot, malformed], postDeps)).toThrow(/seq=2/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// notification-delivered(T3 Phase C:notify capability 送达事件,worker 第二写者)
+// ---------------------------------------------------------------------------
+
+/** 挂起一次 agent archive,产出(日志前缀, 挂起产出)——同一次执行,防二次挂起出 c2。 */
+function suspendedOnce(): { log: LogEvent[]; suspended: ReturnType<typeof executeWithGates> } {
+  const base = fold([seedFromSnapshot], postDeps);
+  const suspended = executeWithGates(agentArchive, base, postDeps);
+  if (suspended.kind !== 'suspended') throw new Error(`前置失败:期望 suspended,得到 ${suspended.kind}`);
+  return { log: [seedFromSnapshot, ...withSeq(suspended.events, 2)], suspended };
+}
+
+/** worker 写出的送达事件形状(与 apps/worker/src/activities.ts 同构)。 */
+function deliveredEvent(seq: number, rel = 'confirmation:c1'): LogEvent {
+  return {
+    seq,
+    kind: 'notification-delivered',
+    rel,
+    actor: 'agent',
+    principal: 'user:mike',
+    channel: 'notify',
+    detail: {
+      notificationId: `notif:${rel.slice('confirmation:'.length)}`,
+      confirmation: {
+        id: rel.slice('confirmation:'.length),
+        targetRel: 'post:post-welcome',
+        targetAction: 'archive',
+        proposedBy: { actor: 'agent', principal: 'user:mike' },
+      },
+    },
+  };
+}
+
+describe('fold — notification-delivered(T3 Phase C)', () => {
+  it('送达 → 对应 confirmation 标记 notified=true(inbox delivered 计数的数据源)', () => {
+    const snapshot = fold([...suspendedOnce().log, deliveredEvent(3)], postDeps);
+
+    expect(snapshot.confirmations?.['confirmation:c1']).toMatchObject({ status: 'pending', notified: true });
+  });
+
+  it('重复送达(同 rel,capability 重试)→ 幂等:不抛错、状态不变', () => {
+    const log = [...suspendedOnce().log, deliveredEvent(3), deliveredEvent(4)];
+
+    expect(() => fold(log, postDeps)).not.toThrow();
+    const snapshot = fold(log, postDeps);
+    expect(snapshot.confirmations?.['confirmation:c1']?.notified).toBe(true);
+  });
+
+  it('挂起→送达→approve 全链重放:notified 保留、效果出现(hash 与在线一致,I5)', () => {
+    const { log: logBefore, suspended } = suspendedOnce();
+    if (suspended.kind !== 'suspended') throw new Error('前置失败');
+    // 在线等价路径:worker 送达 → web 增量 fold(拿到 notified)→ human approve。
+    const withDelivery = fold([deliveredEvent(3)], postDeps, suspended.snapshot);
+    const decision = approveConfirmation(
+      withDelivery,
+      'c1',
+      { actor: 'human', principal: 'user:mike' },
+      postDeps,
+    );
+    if (decision.kind !== 'confirmed') throw new Error('前置失败');
+
+    const log = [...logBefore, deliveredEvent(3), ...withSeq(decision.events, 4)];
+    const replayed = fold(log, postDeps);
+
+    expect(replayed.instances['post:post-welcome']?.node).toBe('archived');
+    expect(replayed.confirmations?.['confirmation:c1']).toMatchObject({
+      status: 'approved',
+      notified: true,
+    });
+    expect(contentVersion(replayed)).toBe(contentVersion(decision.snapshot));
+  });
+
+  it('指向未知确认 → 响亮失败(日志完整性,带 seq)', () => {
+    expect(() => fold([seedFromSnapshot, deliveredEvent(2, 'confirmation:ghost')], postDeps)).toThrow(
+      /seq=2/,
+    );
+  });
+
+  it('增量重放:fold(后段, initial=前段快照) 与全量 fold 同构(I5;web 读路径增量 fold 的根基)', () => {
+    const log = [...suspendedOnce().log, deliveredEvent(3)];
+    const first = fold(log.slice(0, 2), postDeps);
+
+    const incremental = fold(log.slice(2), postDeps, first);
+
+    expect(contentVersion(incremental)).toBe(contentVersion(fold(log, postDeps)));
+    expect(incremental.confirmations?.['confirmation:c1']?.notified).toBe(true);
+  });
+});

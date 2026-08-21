@@ -337,22 +337,22 @@ describe('投影与 sitemap 接线', () => {
   it('getEntity:集合/实例/未知', async () => {
     const engine = await boot();
 
-    const articles = engine.getEntity('articles') as SirenEntity;
+    const articles = (await engine.getEntity('articles')) as SirenEntity;
     expect(articles.properties).toMatchObject({ rel: 'articles', count: 2 });
     expect(articles.entities?.map((entity) => entity.properties.rel)).toEqual([
       'post:post-welcome',
       'post:first-post',
     ]);
 
-    const post = engine.getEntity('post:post-welcome') as SirenEntity;
+    const post = (await engine.getEntity('post:post-welcome')) as SirenEntity;
     expect(post.actions.map((action) => action.name)).toEqual(['unpublish', 'archive']);
 
-    expect(engine.getEntity('nope')).toBeUndefined();
+    expect(await engine.getEntity('nope')).toBeUndefined();
   });
 
   it('guard-results 逐项注入(按钮 disabled 与 agent 同一谓词)', async () => {
     const engine = await boot();
-    const comment = engine.getEntity('comment:c1') as SirenEntity;
+    const comment = (await engine.getEntity('comment:c1')) as SirenEntity;
 
     const results = comment['guard-results'] ?? [];
     expect(results.map((entry) => entry.action)).toEqual(['approve', 'reject']);
