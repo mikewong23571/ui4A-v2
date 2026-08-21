@@ -4,7 +4,7 @@
 
 - [x] Task: invariants 套件(I1 keyless 显式/I2–I4/I6 引用收拢/I5 全量重放新增)(TDD) — 8674c5a
 - [x] Task: 双执行者口径套件收拢 — 0bc5220
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — 014f433
 
 ## Phase B: 文档与走查清单
 
