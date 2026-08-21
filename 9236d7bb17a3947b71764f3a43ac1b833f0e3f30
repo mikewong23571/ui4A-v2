@@ -1,0 +1,32 @@
+Task: /api/exec-plan 端点 + 服务层接线(T6 Phase A Task 2)
+
+变更摘要:
+- apps/web/src/engine/service.ts:EngineRuntime 增 execPlan(steps)——整个计划一次
+  入串行队列(单事务 atom):refreshFromLog → 逐步 flow 别名 → executePlan →
+  落库(伴随事件 → 拒绝步 action-rejected[detail 带 plan.step] → plan-executed
+  标记)→ 增量快照 → entities 摘要(executed 步目标+追加 rel 保序去重);
+  挂起时 notify 派发与 exec 同口径(尽力而为)。新增 PlanServiceOutcome 类型。
+- apps/web/src/app/api/exec-request.ts:parsePlanBody——{steps, actor?, principal?,
+  channel?} 逐项形状校验;计划级身份是步级默认值(步级声明优先,channel 终缺省
+  http);空 steps → 400。
+- apps/web/src/app/api/exec-plan/route.ts:POST 端点。三态映射:
+  plan-completed → 200 {plan:'completed', results, entities};
+  plan-rejected → 200 {plan:'rejected', results, entities}(口径:请求被完整处理,
+  拒绝是步级数据而非 HTTP 错误,分步报告在 body——文档化于 route 头注释);
+  plan-suspended → 202 {plan:'suspended', …, confirmation 摘录}。
+  meta/ rel 步 → 404(跨站规则);confirmation: rel 步 → 引擎 undeclared 拒
+  (审批不委托:plan 是 agent 侧批量,人类裁决走单步 /api/exec)。
+- packages/engine/src/plan.ts:PlanOutcome 改为真 discriminated union
+  (plan-suspended 必携 confirmation;service 层类型收窄修复)。
+
+状态码口径:中拒 200(倾向 200+kind 字段,分步结果在 body;207 会暗示
+部分资源语义而这里资源裁决已完整);中挂 202(与 /api/exec 挂起一致);
+空计划 HTTP 400 / engine 平凡完成(双口径文档化)。
+
+测试:route.test.ts 13 用例(真库:全过 4 步/一条记录+伴随事件/单事务 seq 连续/
+重放一致重启;中拒截断+留痕+标记;中挂 202+approve 后不续跑;边界 400×4/
+404 meta/confirmation rel 口径/503);CI=true pnpm check 全绿(644 passed,+13)。
+
+文件:apps/web/src/app/api/exec-plan/{route.ts,route.test.ts},
+apps/web/src/app/api/exec-request.ts,apps/web/src/engine/service.ts,
+packages/engine/src/plan.ts
