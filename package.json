@@ -20,6 +20,7 @@
     "@ui4a/agent": "workspace:*",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.1",
+    "fast-check": "^4.9.0",
     "playwright": "^1.62.1",
     "prettier": "^3.6.2",
     "typescript-eslint": "^8.67.0",
