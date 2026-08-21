@@ -11,8 +11,8 @@
 
 ## Phase B: 定义入日志与 fold
 
-- [~] Task: boot seed 扩展(application 定义与 flow 同等作为 active 定义事件入日志;`default` app seed;既有 flows 按域归类 ≥2 个语义 app)(TDD:fold 出活跃 app 定义,业务行为不变)
-- [ ] Task: 重放一致扩展(app 定义事件参与 fold;I5 重放 hash 一致)(TDD)
+- [x] Task: boot seed 扩展(application 定义与 flow 同等作为 active 定义事件入日志;`default` app seed;既有 flows 按域归类 ≥2 个语义 app)(TDD:fold 出活跃 app 定义,业务行为不变) — 0cc4d60
+- [~] Task: 重放一致扩展(app 定义事件参与 fold;I5 重放 hash 一致)(TDD)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase C: sitemap 分组投影
