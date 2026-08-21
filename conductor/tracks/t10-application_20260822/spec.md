@@ -16,7 +16,7 @@
 3. **激活不变式第七条 `app-known`**:submit 时 flow.app(归一化后)必须指向已激活的 application 定义;非法引用被拒且留痕(定义平面非法显式拒,同 S2 哲学),不静默归并。`default` application 由 seed 保证始终激活。
 4. **定义入日志同构扩展**:boot seed 把 application 定义与 flow 定义同等作为 active 定义事件入日志;fold 出活跃 app 定义;重放一致(I5 保持,扩展重放测试)。**meta 编辑动词本 track 不扩展**(add-app/set-intent 等归后续,同 T4 缓 remove-* 口径)——T1 的 app 定义经 seed 进入。
 5. **sitemap 分组投影**:`Sitemap` 增 `applications: [{name, title, intent, flows: [...]}]`;扁平 `flows[]` **保留**(向后兼容,条目增 `app` 字段);surfaces 条目增 `app` 字段;version 仍为内容 hash,app 定义变更自动 bump(纯推导免费获得)。
-6. **agent 两层发现(软边界)**:agent loop 静态上下文按 app 分组呈现(name+intent+flows);rule-driver 决策链第一层前加 **app 定位层**(目标相关性先匹配 app intent,再在该 app 内选 flow/资源)。**不做硬过滤**:links 可天然跨 app(超媒体原则,跨 app 深链合法);application 是发现层边界,不是裁决层围墙。startRel 机制不变。
+6. **agent 两层发现(软边界)**:agent loop 静态上下文按 app 分组呈现(name+intent+flows);rule-driver 决策链第一层前加 **app 定位层**(目标相关性先匹配 app intent,再在该 app 内选 flow/资源)。**不做硬过滤**:links 可天然跨 app(超媒体原则,跨 app 深链合法);application 是发现层边界,不是裁决层围墙。startRel 机制不变。同时给 SYSTEM_PROMPT 加 **role/app 上下文槽位**(空槽 = 现状,零行为变化;角色职责组合的数据载体,是 D19 路线 T3/T5 的钩子——prompt 只装不变协议核心,角色/意图从数据注入)。
 7. **seed 分类**:既有业务 flows 按域归入 ≥2 个语义 app(如 `publishing` / `community`),`default` 仅作归一化兜底——保证两层发现在 demo 中真实可验。
 
 ## Acceptance Criteria
