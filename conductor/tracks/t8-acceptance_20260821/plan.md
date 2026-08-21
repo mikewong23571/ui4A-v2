@@ -8,9 +8,10 @@
 
 ## Phase B: 文档与走查清单
 
-- [ ] Task: demo-checklist.md + README 校对
-- [ ] Task: tech-stack 实况注记 + done-report.md(GOAL 逐条对照)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: demo-checklist.md + README 校对 `c6ba0d1`
+- [x] Task: tech-stack 实况注记 + done-report.md(GOAL 逐条对照) `c6ba0d1`
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `c6ba0d1`
+  [checkpoint: c6ba0d1]
 
 ## Phase C: 终审 review 与处置
 
