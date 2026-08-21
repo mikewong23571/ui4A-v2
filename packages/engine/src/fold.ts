@@ -25,8 +25,14 @@ import type { ExecRequest } from './judge';
 import { actionEffects } from './parse';
 import type { FlowDefinition } from './types';
 
-/** 日志事件种类:引擎产出三种 + 日志层两种(拒绝留痕 I6 / 种子装载)。 */
-export type LogEventKind = EngineEvent['kind'] | 'action-rejected' | 'seed';
+/** 日志事件种类:引擎产出三种 + 日志层两种(拒绝留痕 I6 / 种子装载)+
+ *  notification-delivered(T3 notify capability 送达事件,worker 第二写者写入;
+ *  fold 分支见 Task 2 读路径)。 */
+export type LogEventKind =
+  | EngineEvent['kind']
+  | 'action-rejected'
+  | 'notification-delivered'
+  | 'seed';
 
 /**
  * 存储事件(引擎 EngineEvent + 日志层字段)。

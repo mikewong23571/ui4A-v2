@@ -14,6 +14,7 @@
     "@cedar-policy/cedar-wasm": "^4.12.0",
     "@rjsf/core": "^6.8.0",
     "@rjsf/validator-ajv8": "^6.8.0",
+    "@temporalio/client": "1.22.0",
     "@ui4a/agent": "workspace:*",
     "@ui4a/engine": "workspace:*",
     "@ui4a/shared": "workspace:*",

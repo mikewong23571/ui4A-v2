@@ -13,7 +13,8 @@ import type { LogEvent } from '@ui4a/engine';
 import type { FieldValue } from '@ui4a/shared';
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
 
-/** 事件种类(spec FR2):拒绝事件与执行事件同表(I6);confirmation-* 为 T3 确认门事件。 */
+/** 事件种类(spec FR2):拒绝事件与执行事件同表(I6);confirmation-* 为 T3 确认门事件;
+ *  notification-delivered 为 T3 notify capability 送达事件(worker 第二写者,spec 决定 4)。 */
 export type EventKind =
   | 'action-executed'
   | 'action-rejected'
@@ -22,6 +23,7 @@ export type EventKind =
   | 'confirmation-requested'
   | 'confirmation-approved'
   | 'confirmation-rejected'
+  | 'notification-delivered'
   | 'seed';
 
 /** 追加事件(引擎 EngineEvent 的日志层超集:引擎不产 seq/ts/reason,由本层分配)。 */
