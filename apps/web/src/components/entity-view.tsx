@@ -97,8 +97,8 @@ export interface EntityViewProps {
   /** 页面请求的 rel(标题与缺省用途)。 */
   rel: string;
   entity: SirenEntity;
-  /** 任一动作 exec 成功后的刷新回调(重新拉取实体)。 */
-  onChanged?: () => void;
+  /** 任一动作 exec 成功后的刷新回调(参数 = 实际提交的实例 rel)。 */
+  onChanged?: (rel: string) => void;
 }
 
 export function EntityView({ rel, entity, onChanged }: EntityViewProps) {

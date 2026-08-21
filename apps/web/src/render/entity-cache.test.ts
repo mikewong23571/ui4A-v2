@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { SirenEntity } from '@ui4a/engine';
 
-import { collectionRelOf, PageEntityCache, type EntityFetcher } from './entity-cache';
+import {
+  collectionBacklinkOf,
+  collectionRelOf,
+  PageEntityCache,
+  type EntityFetcher,
+} from './entity-cache';
 
 // 页面级实体缓存(T12 Phase B Task 1 / spec 架构决定 3):rel 索引 +
 // sitemap version 一致性戳。version 变 → 全量失效;exec 成功 → 精确失效
@@ -179,6 +184,83 @@ describe('页面级实体缓存:exec 后精确失效', () => {
     cache.invalidateAfterExec('articles');
     fetcher.mockResolvedValue(fresh);
     expect(await cache.get('articles', 'v1')).toBe(fresh);
+  });
+});
+
+describe('页面级实体缓存:真实所属 collection(T12 Task 2 接线闭环)', () => {
+  it('显式 collection 参数使命中真实所属集合(post:* ∈ articles 的前缀推导缺口闭环)', async () => {
+    const { fetcher, calls } = countingFetcher({
+      'post:post-welcome': entity('post:post-welcome'),
+      articles: collection('articles', [entity('post:post-welcome')]),
+      comments: collection('comments', []),
+    });
+    const cache = new PageEntityCache(fetcher);
+
+    await cache.get('post:post-welcome', 'v1');
+    await cache.get('articles', 'v1');
+    await cache.get('comments', 'v1');
+    expect(calls).toHaveLength(3);
+
+    // 前缀推导只给候选 'post'(不在缓存,no-op);显式 collection 使命中 articles。
+    cache.invalidateAfterExec('post:post-welcome', { collection: 'articles' });
+
+    await cache.get('post:post-welcome', 'v1');
+    await cache.get('articles', 'v1');
+    expect(calls).toHaveLength(5);
+    // 无关 rel 命中缓存,零重复 fetch。
+    await cache.get('comments', 'v1');
+    expect(calls).toHaveLength(5);
+  });
+
+  it('显式 collection 与前缀推导不同名时两者都失效(并集,宁可多失效)', async () => {
+    const { fetcher, calls } = countingFetcher({
+      'post:x': entity('post:x'),
+      post: collection('post', []),
+      articles: collection('articles', [entity('post:x')]),
+    });
+    const cache = new PageEntityCache(fetcher);
+
+    await cache.get('post:x', 'v1');
+    await cache.get('post', 'v1');
+    await cache.get('articles', 'v1');
+    expect(calls).toHaveLength(3);
+
+    cache.invalidateAfterExec('post:x', { collection: 'articles' });
+
+    await cache.get('post:x', 'v1');
+    await cache.get('post', 'v1');
+    await cache.get('articles', 'v1');
+    expect(calls).toHaveLength(6);
+  });
+
+  it('collectionBacklinkOf:实例 links 的 collection 回链给出真实所属集合', () => {
+    const instance = entity('post:post-welcome');
+    instance.links = [
+      { rel: ['self'], href: '/api/entity?rel=post:post-welcome' },
+      { rel: ['collection'], href: '/api/entity?rel=articles' },
+    ];
+    expect(collectionBacklinkOf(instance)).toBe('articles');
+  });
+
+  it('collectionBacklinkOf:baseHref 前缀与 url 编码的 href 同样解析', () => {
+    const instance = entity('post:x');
+    instance.links = [
+      { rel: ['collection'], href: 'http://localhost:3100/api/entity?rel=my%20collection' },
+    ];
+    expect(collectionBacklinkOf(instance)).toBe('my collection');
+  });
+
+  it('collectionBacklinkOf:无 collection 回链(集合自身/确认实体)→ undefined', () => {
+    const collectionEntity = collection('articles', []);
+    collectionEntity.links = [{ rel: ['self'], href: '/api/entity?rel=articles' }];
+    expect(collectionBacklinkOf(collectionEntity)).toBeUndefined();
+
+    const confirmation = entity('confirmation:c1');
+    confirmation.links = [
+      { rel: ['self'], href: '/api/entity?rel=confirmation:c1' },
+      { rel: ['target'], href: '/api/entity?rel=post:post-welcome' },
+    ];
+    expect(collectionBacklinkOf(confirmation)).toBeUndefined();
   });
 });
 

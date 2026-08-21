@@ -145,8 +145,8 @@ export interface ActionRunnerProps {
   /** guard-results 注入:谓词投影 = disabled。 */
   blocked?: boolean;
   blockReason?: string;
-  /** exec 成功后的刷新回调。 */
-  onExecuted?: () => void;
+  /** exec 成功后的刷新回调(参数 = 实际提交的 rel)。 */
+  onExecuted?: (rel: string) => void;
   /** 提交函数(缺省业务端 /api/exec;_meta 站点动作注入 meta 客户端)。 */
   execFn?: ExecFn;
 }
@@ -168,7 +168,7 @@ export function ActionRunner({
     const result = await execFn({ rel, action: action.name, params });
     setSubmitting(false);
     if (result.ok) {
-      onExecuted?.();
+      onExecuted?.(rel);
       return;
     }
     const detail = result.detail !== undefined ? ` · ${JSON.stringify(result.detail)}` : '';

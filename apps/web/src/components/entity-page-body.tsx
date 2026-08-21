@@ -4,19 +4,23 @@
  *
  * 与 app/entity/page.tsx 拆分的理由:页面壳只做 use(searchParams) 解包
  * (Next 16 客户端页的官方形态,由 e2e 走查覆盖);状态机本体在此,组件级可测。
- * - 加载:fetch /api/entity;404 → missing;异常 → error;成功 → EntityView;
- * - 刷新:动作 exec 成功后 tick 重拉(重拉期间保留旧投影——事件溯源口径:
- *   投影总能由日志重算,短暂展示旧态无害且避免闪屏)。
+ * - 加载:经页面级实体缓存(T12 Phase B:EntityCacheProvider,rel + sitemap
+ *   version 一致性戳);404 → missing;异常 → error;成功 → EntityView;
+ * - 刷新:动作 exec 成功后先精确失效(当前 rel + 真实所属 collection,
+ *   实体回链优先)再 tick 重拉(重拉期间保留旧投影——事件溯源口径:
+ *   投影总能由日志重算,短暂展示旧态无害且避免闪屏);tick 重拉即
+ *   整面 reload 兜底路径,保留不变。
  */
 import type { SirenEntity } from '@ui4a/engine';
 import { useEffect, useState } from 'react';
 
+import { useEntityCache } from './entity-cache-provider';
 import { EntityView } from './entity-view';
-import { fetchEntity } from './exec-client';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
 export function EntityPageBody({ rel }: { rel: string }) {
+  const cache = useEntityCache();
   const [tick, setTick] = useState(0);
   const [entity, setEntity] = useState<SirenEntity | null>(null);
   const [state, setState] = useState<LoadState>('loading');
@@ -25,7 +29,7 @@ export function EntityPageBody({ rel }: { rel: string }) {
     let cancelled = false;
     const load = async () => {
       try {
-        const next = await fetchEntity(rel);
+        const next = await cache.get(rel);
         if (cancelled) return;
         setEntity(next);
         setState(next === null ? 'missing' : 'ready');
@@ -37,7 +41,7 @@ export function EntityPageBody({ rel }: { rel: string }) {
     return () => {
       cancelled = true;
     };
-  }, [rel, tick]);
+  }, [cache, rel, tick]);
 
   if (rel === '') {
     return (
@@ -79,5 +83,16 @@ export function EntityPageBody({ rel }: { rel: string }) {
     );
   }
 
-  return <EntityView rel={rel} entity={entity} onChanged={() => setTick((n) => n + 1)} />;
+  return (
+    <EntityView
+      rel={rel}
+      entity={entity}
+      onChanged={(execRel) => {
+        // exec 成功 → 精确失效(当前 rel + 真实所属 collection,回链优先);
+        // tick 重拉 = 整面 reload 兜底(spec 架构决定 3)。
+        cache.invalidateAfterExec(execRel, entity);
+        setTick((n) => n + 1);
+      }}
+    />
+  );
 }

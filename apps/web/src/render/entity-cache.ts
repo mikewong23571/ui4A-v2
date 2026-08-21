@@ -15,9 +15,11 @@
  * 实体 rel 形如 `<collection>:<name>`(post:post-welcome / comment:c1 /
  * meta/flow:article-drafting)→ 首个 ":" 前缀即所属集合 rel;rel 不含 ":"
  * (articles / comments / inbox / delegations)→ 集合自身,失效即自身。
- * 已知边界:种子数据里成员 rel 前缀是实体型前缀而集合名未必相同
- * (post:* 隶属集合 articles),前缀推导出的集合候选不在缓存时失效是
- * no-op(安全方向:不脏读);version 全量失效与整面 reload 兜底不变。
+ * 已知边界(Task 2 起在接线点闭环):种子数据里成员 rel 前缀≠集合名
+ * (post:* ∈ articles),前缀推导失效为 no-op(安全方向:不脏读)——接线点
+ * 用实体投影 links 的 collection 回链(引擎成员反查)拿真实所属集合,经
+ * invalidateAfterExec 的显式 collection 参数传入,与前缀推导取并集失效
+ * (宁可多失效,I2);version 全量失效与整面 reload 兜底不变。
  */
 import type { SirenEntity } from '@ui4a/engine';
 
@@ -32,6 +34,22 @@ export type EntityFetcher = (rel: string) => Promise<SirenEntity | null>;
 export function collectionRelOf(rel: string): string {
   const colon = rel.indexOf(':');
   return colon === -1 ? rel : rel.slice(0, colon);
+}
+
+/**
+ * 真实所属 collection rel:实体投影 links 里的 collection 回链
+ * (engine siren.ts 成员反查:实例 → 所属集合;集合自身/确认/委托等无此回链
+ * → undefined,调用方回退前缀推导)。href 形态 `/api/entity?rel=…`
+ * (可带 baseHref 前缀;rel 经 url 编码)。
+ */
+export function collectionBacklinkOf(entity: SirenEntity): string | undefined {
+  for (const link of entity.links) {
+    if (!link.rel.includes('collection')) continue;
+    const query = link.href.split('?')[1] ?? '';
+    const match = /(?:^|&)rel=([^&]*)/.exec(query);
+    if (match !== null) return decodeURIComponent(match[1].replace(/\+/g, ' '));
+  }
+  return undefined;
 }
 
 /**
@@ -81,14 +99,17 @@ export class PageEntityCache {
     return request;
   }
 
-  /** exec 成功后精确失效:当前 rel + 所属 collection rel;其他 rel 不动。 */
-  invalidateAfterExec(rel: string): void {
-    this.entities.delete(rel);
-    this.inflight.delete(rel);
-    const collection = collectionRelOf(rel);
-    if (collection !== rel) {
-      this.entities.delete(collection);
-      this.inflight.delete(collection);
+  /**
+   * exec 成功后精确失效:当前 rel + 所属 collection rel;其他 rel 不动。
+   * 所属 collection = 显式 options.collection(接线点从实体回链拿到的真实
+   * 归属)与 rel 前缀推导候选的并集——宁可多失效不可脏读(I2)。
+   */
+  invalidateAfterExec(rel: string, options?: { collection?: string }): void {
+    const targets = new Set([rel, collectionRelOf(rel)]);
+    if (options?.collection !== undefined) targets.add(options.collection);
+    for (const target of targets) {
+      this.entities.delete(target);
+      this.inflight.delete(target);
     }
   }
 
