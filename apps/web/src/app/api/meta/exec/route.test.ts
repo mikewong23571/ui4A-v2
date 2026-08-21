@@ -84,9 +84,23 @@ describe('POST /_meta/api/exec', () => {
     expect(last?.detail).toMatchObject({ layer: 'guard-failed' });
   });
 
-  it('请求形状非法 → 400(缺 action / rel 非字符串)', async () => {
+  it('请求形状非法 → 400(缺 action / rel 非字符串 / 坏 actor / 坏 principal)', async () => {
     expect((await POST(post({ rel: 'meta/flow:post-status' }))).status).toBe(400);
     expect((await POST(post({ rel: 1, action: 'revise' }))).status).toBe(400);
+    expect(
+      (
+        await POST(
+          post({ rel: 'meta/flow:post-status', action: 'revise', actor: 'robot' }),
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await POST(
+          post({ rel: 'meta/flow:post-status', action: 'revise', principal: 42 }),
+        )
+      ).status,
+    ).toBe(400);
   });
 
   it('跨站规则:非 meta rel → 404;业务 /api/exec 对 meta rel → 404', async () => {

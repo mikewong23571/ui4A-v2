@@ -133,6 +133,14 @@ describe('meta exec 编排(service.exec 的 meta/ 前缀路由)', () => {
     expect(engine.getSnapshot().instances['post:new-article']?.node).toBe('archived');
   });
 
+  it('meta sitemap 缓存:定义面不变则同对象引用、版本稳定', async () => {
+    const engine = await getEngine(pool);
+    const first = engine.getMetaSitemap();
+    expect(engine.getMetaSitemap()).toBe(first);
+    expect(engine.getMetaSitemap().version).toBe(first.version);
+    expect(first.surfaces.map((surface) => surface.rel)).toContain('meta/flow:post-status');
+  });
+
   it('在线激活链与 fold 重放一致(I5:定义事件参与 fold)', async () => {
     const engine = await getEngine(pool);
 
