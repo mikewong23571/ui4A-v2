@@ -188,6 +188,8 @@ export function suspendForConfirmation(
       // T4:definitions/activations 表随行(挂起不改定义平面状态)。
       definitions: { ...snapshot.definitions },
       activations: { ...(snapshot.activations ?? {}) },
+      // T4 Phase B:definitionVersions 同口径随行(内容不改)。
+      definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
     },
     events: [event],
     confirmation: {
@@ -471,6 +473,8 @@ export function rejectConfirmation(
       // T4:definitions/activations 表随行(驳回不改定义平面状态)。
       definitions: { ...snapshot.definitions },
       activations: { ...(snapshot.activations ?? {}) },
+      // T4 Phase B:definitionVersions 同口径随行(内容不改)。
+      definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
     },
     events: [rejectedEvent],
   };

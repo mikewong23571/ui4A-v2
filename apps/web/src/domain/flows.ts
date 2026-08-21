@@ -1,12 +1,16 @@
 /**
- * 种子业务域:T2 阶段的 flow 常量(spec 架构决定 5,machine-as-JSON)。
+ * 业务 flow 常量(machine-as-JSON)——T4 Phase B 起降级为 **seed 源 + 类型来源 +
+ * sitemap 顺序锚**,不再是运行时真相源:
+ * - boot 时若日志无 definition-seeded,常量全文入事件日志(seeded 即 active,v1),
+ *   此后引擎的业务 exec/judge/project/sitemap 一律吃 fold 快照的活跃定义
+ *   (见 engine/service.ts 的 activeDefinitionOf 接线与 domain 注释);
+ * - 定义修订/激活走 _meta 平面(executeMeta),常量不再随定义演进更新。
  *
  * 三个 flow 支撑 B1–B3 验收场景:
  * - article-drafting(B1):三步发布向导 → publish 追加文章进 articles 集合;
  * - post-status(B2):published/offline/archived,unpublish 精确下线单篇;
  * - comment-moderation(B3):pending → approved | rejected。
  *
- * T4 起 flow 定义挪进事件日志(meta 平面);在此之前这里就是真相源。
  * 常量在模块加载时经 parseFlowDefinition 校验+规范化——非法定义在此处
  * 就响亮失败,而不是等到第一次 exec。
  */

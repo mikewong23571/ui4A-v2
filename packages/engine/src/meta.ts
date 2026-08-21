@@ -147,6 +147,27 @@ export interface DefinitionSubmittedDetail {
 }
 
 // ---------------------------------------------------------------------------
+// 活跃定义解析(定义历史指针;Task 1)
+// ---------------------------------------------------------------------------
+
+/**
+ * flow 的活跃定义:definitionVersions[条目当前版本](最后激活的内容)。
+ *
+ * 条目 definition 在草稿窗口是工作副本(revise 后被编辑动词改写),不是活跃
+ * 内容——活跃内容只随 approve 移动指针。历史缺项(老日志/测试 fixture)回退
+ * 条目 definition(seed 后未编辑时二者同文)。供 web 服务层组装 flows 注册表
+ * (业务 exec/judge/project/sitemap 的唯一来源,fold 快照即真相)。
+ */
+export function activeDefinitionOf(
+  snapshot: EngineSnapshot,
+  flowName: string,
+): FlowDefinition | undefined {
+  const entry = snapshot.definitions?.[flowName];
+  if (entry === undefined) return undefined;
+  return snapshot.definitionVersions?.[flowName]?.[entry.version] ?? entry.definition;
+}
+
+// ---------------------------------------------------------------------------
 // executeMeta
 // ---------------------------------------------------------------------------
 
@@ -413,6 +434,14 @@ function decide(
             status: 'active',
             version: activation.version,
             definition: activation.definition,
+          },
+        },
+        // 版本历史沉淀:旧版本保留供在途实例按出生版本回取(仅指针移动)。
+        definitionVersions: {
+          ...(verdict.snapshot.definitionVersions ?? {}),
+          [flowName]: {
+            ...(verdict.snapshot.definitionVersions?.[flowName] ?? {}),
+            [activation.version]: activation.definition,
           },
         },
         activations,

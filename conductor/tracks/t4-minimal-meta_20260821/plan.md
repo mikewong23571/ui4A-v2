@@ -14,7 +14,7 @@
 
 ## Phase B: 定义入事件日志与 _meta 站点
 
-- [ ] Task: 定义 seed 迁移(boot:日志无定义→三 flow machine-as-JSON 入日志;fold 出活跃定义供引擎;代码常量降级为 seed 源)(TDD:fold 定义=B1–B3 行为不变)
+- [~] Task: 定义 seed 迁移(boot:日志无定义→三 flow machine-as-JSON 入日志;fold 出活跃定义供引擎;代码常量降级为 seed 源)(TDD:fold 定义=B1–B3 行为不变)
 - [ ] Task: /_meta 端点(well-known/entity/exec 同引擎 rel 前缀路由;业务 sitemap 排除 _meta)(TDD)
 - [ ] Task: 在途实例出生版本戳(激活不迁移在途;实例按出生定义走完)(TDD)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)

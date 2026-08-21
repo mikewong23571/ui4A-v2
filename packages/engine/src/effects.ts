@@ -330,6 +330,8 @@ export function applyEffects(
       confirmations: { ...snapshot.confirmations },
       definitions,
       activations,
+      // T4 Phase B:定义版本历史随行(fold/在线同构;内容本函数不改)。
+      definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
     },
     events: [executedEvent, ...appendedEvents, ...spawnEvents],
   };

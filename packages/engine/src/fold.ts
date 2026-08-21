@@ -119,6 +119,7 @@ function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
     confirmations: { ...snapshot.confirmations },
     definitions: { ...snapshot.definitions },
     activations: { ...(snapshot.activations ?? {}) },
+    definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
   };
 }
 
@@ -280,7 +281,9 @@ function applyNotificationDelivered(snapshot: EngineSnapshot, event: LogEvent): 
 // 定义事件族重放(T4:与在线 executeMeta 路径同构)
 // ---------------------------------------------------------------------------
 
-/** definition-seeded 重放:建立 definitions 条目 + lifecycle 实例(幂等:已存在跳过)。 */
+/** definition-seeded 重放:建立 definitions 条目 + lifecycle 实例(幂等:已存在跳过)。
+ *  同时沉淀版本历史(v1 全文),并对先于定义入日志的既有实例回溯盖出生版本戳
+ *  (旧库迁移口径:迁移时在途实例视为出生于迁移落定的活跃版本)。 */
 function applyDefinitionSeeded(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
   const detail = event.detail as Partial<DefinitionSeededDetail> | undefined;
   if (
@@ -310,7 +313,24 @@ function applyDefinitionSeeded(snapshot: EngineSnapshot, event: LogEvent): Engin
   if (instances[rel] === undefined) {
     instances[rel] = { rel, flow: 'definition-lifecycle', node: status, fields: {} };
   }
-  return { ...snapshot, instances, definitions };
+  // 迁移序回溯盖戳:该 flow 既有实例(定义入日志前出生)补 bornVersion。
+  for (const [instanceRel, instance] of Object.entries(instances)) {
+    if (instance.flow === detail.name && instance.bornVersion === undefined) {
+      instances[instanceRel] = { ...instance, bornVersion: detail.version };
+    }
+  }
+  return {
+    ...snapshot,
+    instances,
+    definitions,
+    definitionVersions: {
+      ...(snapshot.definitionVersions ?? {}),
+      [detail.name]: {
+        ...(snapshot.definitionVersions?.[detail.name] ?? {}),
+        [detail.version]: detail.definition,
+      },
+    },
+  };
 }
 
 /** definitions 条目定位(定义事件重放的公共前置;缺条目 = 日志漂移)。 */
@@ -495,6 +515,14 @@ function applyDefinitionActivated(snapshot: EngineSnapshot, event: LogEvent): En
         definition: detail.definition,
       },
     },
+    // 版本历史沉淀(与在线 decide() 同构):旧版本保留,仅活跃指针移动。
+    definitionVersions: {
+      ...(snapshot.definitionVersions ?? {}),
+      [detail.name]: {
+        ...(snapshot.definitionVersions?.[detail.name] ?? {}),
+        [detail.version]: detail.definition,
+      },
+    },
     activations: {
       ...(snapshot.activations ?? {}),
       [activationRel]: { ...activation, status: 'approved' as const, approvedBy: detail.decidedBy },
@@ -586,15 +614,17 @@ export function fold(
           confirmations: {},
           definitions: {},
           activations: {},
+          definitionVersions: {},
         }
       : {
           instances: initial.instances,
           collections: initial.collections,
           confirmations: initial.confirmations ?? {},
           // T4:definitions/activations 表随行(在线 applyEffects 恒物化,
-          // 重放同构前提是两边形状一致)。
+          // 重放同构前提是两边形状一致);definitionVersions(T4 Phase B)同口径。
           definitions: initial.definitions ?? {},
           activations: initial.activations ?? {},
+          definitionVersions: initial.definitionVersions ?? {},
         };
   for (const event of events) {
     switch (event.kind) {

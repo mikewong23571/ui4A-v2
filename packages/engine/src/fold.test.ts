@@ -60,6 +60,8 @@ describe('fold 投影', () => {
       // T4 机械适配:definitions/activations 恒物化(空表)。
       definitions: {},
       activations: {},
+      // T4 Phase B:定义版本历史恒物化(空表)。
+      definitionVersions: {},
     });
   });
 

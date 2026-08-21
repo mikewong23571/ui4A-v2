@@ -5,7 +5,7 @@
  * (spec 架构决定 2),类型若在 engine 会造成 shared→engine 反向依赖。
  * 纯数据、可序列化,web/worker/引擎三方共用。
  */
-import type { ActivationSnapshot, DefinitionEntry } from './definition';
+import type { ActivationSnapshot, DefinitionEntry, FlowDefinition } from './definition';
 
 /**
  * 参数/字段值出处(事件日志记录口径,arch-brief §2):
@@ -29,6 +29,13 @@ export interface InstanceSnapshot {
   node: string;
   fields: Record<string, FieldValue>;
   createdAt?: string;
+  /**
+   * 出生版本戳(T4 Phase B):实例出生时其 flow 定义的活跃版本号。
+   * 在途实例按出生定义走完——激活新版本只移动活跃指针,不迁移在途;
+   * 定义解析(裁决/投影/重放)按本戳从 definitionVersions 历史取定义,
+   * 缺省(未盖戳的旧实例/引擎测试 fixture)回退当前活跃定义。
+   */
+  bornVersion?: number;
 }
 
 /**
@@ -85,6 +92,15 @@ export interface EngineSnapshot {
   definitions?: Record<string, DefinitionEntry>;
   /** 激活实体表(T4):meta/activation:<id> → 激活快照(批准后保留供审计)。 */
   activations?: Record<string, ActivationSnapshot>;
+  /**
+   * 定义版本历史(T4 Phase B):flow 名 → 版本号 → 定义全文。
+   * definitions 条目只持"活跃指针"(name/version/status + 工作副本),
+   * 历史由 definition-seeded(boot 迁移)与 definition-activated(approve)
+   * 沉淀——旧版本定义保留于此,仅在途实例按 bornVersion 回取。
+   * 可选与 definitions 同口径:既有快照构造点的类型兼容;
+   * fold/applyEffects 等引擎产出函数恒携带(空表也为 {})。
+   */
+  definitionVersions?: Record<string, Record<number, FlowDefinition>>;
 }
 
 /** 原始字段值视图(properties 投影用):去掉出处,仅取值。 */

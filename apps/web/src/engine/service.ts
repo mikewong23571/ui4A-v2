@@ -1,7 +1,12 @@
 /**
  * 引擎服务层:单例 engine runtime,把纯引擎(裁决/效果/投影)接到 PG 事件日志。
  *
- * - boot = ensureEventsTable + 幂等 seed(日志中无本种子标识才 append)+ fold(日志)→ 快照;
+ * - boot = ensureEventsTable + 幂等 seed(T4 Phase B 起先种定义后种业务:
+ *   三个业务 flow 以 definition-seeded 全文入日志[seeded 即 active],旧库
+ *   迁移时追加尾部)+ fold(日志)→ 快照;
+ * - 定义解析(T4 Phase B):业务 exec/judge/project/sitemap 一律吃 fold 快照的
+ *   活跃定义(activeDefinitionOf:definitions 条目只持活跃指针,内容在
+ *   definitionVersions 历史);代码常量仅 seed 源 + sitemap 顺序锚;
  * - exec(T3 Phase B 起)= executeWithGates:三层裁决(声明→guard→schema)→
  *   确认裁决(Cedar 策略,policy.cedar 文本驱动)→ 效果应用;
  *   - 拒绝:appendEvent(action-rejected,reason+detail{layer})不改状态;
@@ -23,10 +28,13 @@
  *   bigserial seq 全序保证,web 侧按序 fold;
  * - 单例挂在 globalThis:Next dev 对每个 route 入口独立打包模块,普通模块级变量
  *   会得到多个实例(globalThis 是 Next 生态共享单例的标准做法);
- * - sitemap 从 flow 常量纯推导后缓存(定义不变则拓扑不变,版本号即缓存键)。
+ * - sitemap 从快照活跃定义纯推导,按活跃集内容 hash 缓存(定义激活即重生成,
+ *   版本号=内容 hash,S2 的根基)。
  */
 import {
+  activeDefinitionOf,
   approveConfirmation,
+  contentVersion,
   deriveSitemap,
   executeWithGates,
   fold,
@@ -38,15 +46,18 @@ import {
   type EngineEvent,
   type ExecRequest,
   type ExecuteDeps,
+  type FlowDefinition,
   type JudgeLayer,
   type LogEvent,
+  type ProjectDeps,
   type Sitemap,
   type SirenEntity,
   type SuspendedConfirmation,
 } from '@ui4a/engine';
 import type { EngineSnapshot } from '@ui4a/shared';
 import type { FieldValue } from '@ui4a/shared';
-import { seedGuardRegistry } from '@ui4a/shared';
+import { metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
+import type { DefinitionSeededDetail } from '@ui4a/engine';
 
 import { appendEvent, ensureEventsTable, readLog, type DbExecutor, type EventAppend } from '../db/events';
 import { getPool } from '../db/pool';
@@ -124,34 +135,73 @@ function enqueue<T>(state: EngineGlobalState, run: () => Promise<T>): Promise<T>
   return result;
 }
 
-async function seedIfMissing(db: DbExecutor): Promise<void> {
+/**
+ * boot 种子装载(T4 Phase B 起,幂等):
+ * - 定义 seed 迁移(spec 架构决定 5):日志无某业务 flow 的 definition-seeded →
+ *   常量定义以 machine-as-JSON 全文入日志(seeded 即 active,v1——种子是 boot
+ *   自举地板,不是审批链产物,不补 definition-activated)。空库序:定义在前、
+ *   业务 seed 在后(fold 出生盖戳天然成立);旧库迁移:定义追加尾部,fold 对
+ *   既有实例回溯盖 bornVersion(引擎 fold 的迁移口径);
+ * - 业务 seed:日志无本种子标识才 append(既有口径)。
+ */
+async function seedBootData(db: DbExecutor): Promise<void> {
   const log = await readLog(db);
-  const seeded = log.some((event) => event.kind === 'seed' && event.rel === SEED_REL);
-  if (!seeded) {
+  const definedFlows = new Set(
+    log
+      .filter((event) => event.kind === 'definition-seeded')
+      .map((event) => (event.detail as Partial<DefinitionSeededDetail> | undefined)?.name)
+      .filter((name): name is string => typeof name === 'string'),
+  );
+  for (const flow of businessFlowList) {
+    if (definedFlows.has(flow.name)) continue;
+    await appendEvent(db, {
+      kind: 'definition-seeded',
+      rel: metaFlowRel(flow.name),
+      detail: { name: flow.name, version: 1, status: 'active', definition: flow },
+    });
+  }
+  if (!log.some((event) => event.kind === 'seed' && event.rel === SEED_REL)) {
     await appendEvent(db, { kind: 'seed', rel: SEED_REL, detail: seedDetail });
   }
 }
 
 async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   await ensureEventsTable(db);
-  await seedIfMissing(db);
+  await seedBootData(db);
 
   const events: LogEvent[] = await readLog(db);
   let snapshot = fold(events, { flows: businessFlows });
   // 已折叠进度(seq 高水位):自身 append 推进;读路径/exec 开头按此增量 fold 外部写者。
   let lastSeq = events.length > 0 ? events[events.length - 1]!.seq : 0;
-  const sitemap = deriveSitemap(businessFlowList, {
-    extraSurfaces: [{ rel: 'comments', title: '评论', collection: true }],
-  });
-  const projectDeps = { flows: businessFlows, guards: seedGuardRegistry };
-  // 确认门依赖:Cedar 策略在 boot 时装配一次(策略文件改动重启生效,T4 起 _meta 热更新)。
-  const gateDeps: ExecuteDeps = {
-    flows: businessFlows,
-    guards: seedGuardRegistry,
-    policy: cedarPolicyFromDefaultFile(),
-  };
-  const confirmDeps: ConfirmationDeps = { flows: businessFlows, guards: seedGuardRegistry };
   const state = engineState();
+
+  // ---- 定义解析(T4 Phase B:fold 快照即真相,代码常量仅 seed 源+顺序锚)----
+  // 活跃定义 = definitionVersions[条目当前版本](activeDefinitionOf):草稿窗口
+  // 的工作副本不进业务平面;每快照演进后重算(定义激活即自动切换)。
+  const activeFlowList = (): FlowDefinition[] =>
+    businessFlowList.map((seed) => activeDefinitionOf(snapshot, seed.name) ?? seed);
+  const activeFlows = (): Record<string, FlowDefinition> =>
+    Object.fromEntries(activeFlowList().map((flow) => [flow.name, flow]));
+  const guards = seedGuardRegistry;
+  // 确认门依赖:Cedar 策略在 boot 时装配一次(策略文件改动重启生效,T4 起 _meta 热更新)。
+  const policy = cedarPolicyFromDefaultFile();
+  const gateDeps = (): ExecuteDeps => ({ flows: activeFlows(), guards, policy });
+  const confirmDeps = (): ConfirmationDeps => ({ flows: activeFlows(), guards });
+  const projectDeps = (): ProjectDeps => ({ flows: activeFlows(), guards });
+
+  // sitemap 从快照活跃定义推导,按活跃集内容 hash 缓存(定义不变同对象引用;
+  // 定义激活 → 活跃集变化 → 版本号变[S2 根基]——version 本身就是内容 hash)。
+  let sitemapCache: { key: string; sitemap: Sitemap } | undefined;
+  const currentSitemap = (): Sitemap => {
+    const flows = activeFlowList();
+    const key = contentVersion(flows);
+    if (sitemapCache?.key === key) return sitemapCache.sitemap;
+    const sitemap = deriveSitemap(flows, {
+      extraSurfaces: [{ rel: 'comments', title: '评论', collection: true }],
+    });
+    sitemapCache = { key, sitemap };
+    return sitemap;
+  };
 
   /** 引擎事件 → 日志层追加形状(detail/reason 一并落库:fold 依赖 detail 重放)。 */
   const toAppend = (event: EngineEvent): EventAppend => ({
@@ -231,10 +281,10 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     };
     let decision: ConfirmationDecision;
     if (request.action === 'approve') {
-      decision = approveConfirmation(snapshot, id, approver, confirmDeps);
+      decision = approveConfirmation(snapshot, id, approver, confirmDeps());
     } else if (request.action === 'reject') {
       const reason = typeof request.params?.reason === 'string' ? request.params.reason : '';
-      decision = rejectConfirmation(snapshot, id, approver, reason, confirmDeps);
+      decision = rejectConfirmation(snapshot, id, approver, reason, confirmDeps());
     } else {
       decision = {
         kind: 'rejected',
@@ -255,7 +305,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       request.action === 'approve'
         ? (snapshot.confirmations?.[request.rel]?.targetRel ?? request.rel)
         : request.rel;
-    const entity = project(snapshot, targetRel, projectDeps);
+    const entity = project(snapshot, targetRel, projectDeps());
     if (entity === undefined) {
       throw new Error(`exec 后目标实体 "${targetRel}" 不可投影(内部不变式破坏)`);
     }
@@ -272,11 +322,12 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       // flow:<name> 别名(向导类 flow 投影为其实例实体)——纯服务层投影补全,
       // engine 的 project/judge 语义不动。alias 请求参数缺省仅影响 rel 解析。
       const target = resolveFlowRelAlias(rel, snapshot) ?? rel;
-      const entity = project(snapshot, target, projectDeps);
+      const entity = project(snapshot, target, projectDeps());
       if (entity === undefined) return undefined;
-      return withCollectionFlowEntryLinks(entity, businessFlowList);
+      // 集合入口链接同样吃快照活跃定义(append 目标随定义激活演进)。
+      return withCollectionFlowEntryLinks(entity, activeFlowList());
     },
-    getSitemap: () => sitemap,
+    getSitemap: () => currentSitemap(),
     exec(request) {
       return enqueue(state, async () => {
         // 先同步外部写者进度再裁决(裁决器只见全序日志的最新折叠态);
@@ -294,7 +345,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           return execConfirmationDecision(aliased);
         }
 
-        const outcome = executeWithGates(aliased, snapshot, gateDeps);
+        const outcome = executeWithGates(aliased, snapshot, gateDeps());
 
         if (outcome.kind === 'rejected') {
           // 拒绝即数据(I6):不改状态,结构化原因入日志;detail 携带 layer,
@@ -310,7 +361,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           }
           snapshot = outcome.snapshot;
           const rel = `confirmation:${outcome.confirmation.id}`;
-          const entity = project(snapshot, rel, projectDeps);
+          const entity = project(snapshot, rel, projectDeps());
           if (entity === undefined) {
             throw new Error(`挂起后确认实体 "${rel}" 不可投影(内部不变式破坏)`);
           }
@@ -328,7 +379,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         // 受影响实体:append 产出新实例时返回新实体,否则返回执行实体的新投影。
         const appended = outcome.events[0]?.appended ?? [];
         const targetRel = appended.length > 0 ? appended[appended.length - 1]! : aliased.rel;
-        const entity = project(snapshot, targetRel, projectDeps);
+        const entity = project(snapshot, targetRel, projectDeps());
         if (entity === undefined) {
           throw new Error(`exec 后目标实体 "${targetRel}" 不可投影(内部不变式破坏)`);
         }

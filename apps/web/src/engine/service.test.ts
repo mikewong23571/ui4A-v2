@@ -75,7 +75,9 @@ describe('boot:建表 + 幂等 seed + fold', () => {
 
     expect(await seedEventCount()).toBe(1);
     const snapshot = engine.getSnapshot();
-    expect(Object.keys(snapshot.instances)).toHaveLength(7);
+    // 7 业务实例 + 3 个 lifecycle 实例(T4 Phase B:definition-seeded 落
+    // meta/flow:<name> 实例,见 service.definitions.test.ts)。
+    expect(Object.keys(snapshot.instances)).toHaveLength(10);
     expect(snapshot.collections.articles).toEqual(['post:post-welcome', 'post:first-post']);
     expect(snapshot.collections.comments).toHaveLength(4);
   });
@@ -86,7 +88,7 @@ describe('boot:建表 + 幂等 seed + fold', () => {
     const second = await boot();
 
     expect(await seedEventCount()).toBe(1);
-    expect(Object.keys(second.getSnapshot().instances)).toHaveLength(7);
+    expect(Object.keys(second.getSnapshot().instances)).toHaveLength(10);
     expect(second.getSnapshot().collections.articles).toHaveLength(2);
   });
 
