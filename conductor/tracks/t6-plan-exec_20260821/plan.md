@@ -9,7 +9,7 @@
 - [x] Task: rule driver 计划生成器 + LLM plan 模式接口(TDD:确定性推导;mock) `e4e1c57`
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `e4e1c57`
 
-## Phase B: S4 E2E
+## Phase B: S4 E2E `[checkpoint: 86f6c0f]`
 
-- [~] Task: S4 E2E(六步一次决策/一条 plan-executed/每步可见/exec 调用数=1;拒绝截断;挂起交互;回归 25)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: S4 E2E(六步一次决策/一条 plan-executed/每步可见/exec 调用数=1;拒绝截断;挂起交互;回归 25) `86f6c0f`
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `86f6c0f`
