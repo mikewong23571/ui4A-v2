@@ -1,0 +1,7 @@
+T7 Phase C 修复性改动(bug 清单 #1/#2,均为既有测试的时序敏感缺陷,
+非本 Phase 引入;全量 e2e 复跑时在负载下暴露):
+1. home.test.tsx 态势 timeline:waitFor 等容器不等内容 → 竞态空读。
+2. home.test.tsx 铁律 3:chrono 箭头钮无 type 属性,HTMLButtonElement.type
+   缺省 'submit' → 误报提交面;真实提交面 = form owner 关联(无 form 的
+   按钮在浏览器语义里不提交)。修正后 6 连跑稳定。
+产品代码零改动(渲染/提交行为未变,仅测试口径对齐浏览器事实)。
