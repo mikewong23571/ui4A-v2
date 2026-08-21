@@ -163,6 +163,42 @@ export async function withWorkerServer(
   scenario: () => Promise<void>,
   extraEnv: ScenarioEnv = {},
 ): Promise<void> {
+  await withWorkerStack(() => scenario(), extraEnv);
+}
+
+/**
+ * S3 委托栈(T5 Phase C):与 withWorkerServer 同一双进程栈,但把 worker 的
+ * 生杀交给场景(S3-续跑:SIGKILL 崩溃注入 → 断言 Temporal 侧仍 running →
+ * 重启续跑)。杀/起在场景内自洽:句柄只暴露整组 SIGKILL 与重起(等启动横幅),
+ * 场景结束 finally 无条件杀净当前 worker 与 web 组——重启过的 worker 同样被
+ * 收尾,不污染后续场景(串行管线的 3110 与 taskQueue 干净交接)。
+ */
+export interface WorkerStackHandle {
+  /** SIGKILL worker 进程组并等退出(模拟进程崩溃,无优雅退出)。 */
+  killWorkerHard(): Promise<void>;
+  /** 重起 worker 并等启动横幅(Temporal 把在途任务重新投给新 worker 续跑)。 */
+  respawnWorker(): Promise<void>;
+}
+
+/** 起 worker 进程组(detached;stderr 转发便于排障;与 withWorkerServer 同参)。 */
+function spawnWorkerProcess(extraEnv: ScenarioEnv): ChildProcess {
+  const worker: ChildProcess = spawn('pnpm', ['dev'], {
+    cwd: WORKER_DIR,
+    env: { ...process.env, TEMPORAL_ADDRESS, DATABASE_URL, ...extraEnv },
+    detached: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  worker.stderr?.on('data', (chunk: Buffer) => {
+    const text = chunk.toString('utf8').trim();
+    if (text.length > 0) console.error('[e2e worker stderr]', text);
+  });
+  return worker;
+}
+
+export async function withWorkerStack(
+  scenario: (stack: WorkerStackHandle) => Promise<void>,
+  extraEnv: ScenarioEnv = {},
+): Promise<void> {
   // 起栈前确认 3110 空闲:上一场景若泄漏,waitUntilHealthy 会误连残留 server
   //(其内存快照携带旧确认状态),整个串行管线被污染——宁可直接失败。
   await waitUntilPortFree(SCENARIO_PORT, 15_000);
@@ -181,16 +217,7 @@ export async function withWorkerServer(
     detached: true,
     stdio: 'ignore',
   });
-  const worker: ChildProcess = spawn('pnpm', ['dev'], {
-    cwd: WORKER_DIR,
-    env: { ...process.env, TEMPORAL_ADDRESS, DATABASE_URL },
-    detached: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  worker.stderr?.on('data', (chunk: Buffer) => {
-    const text = chunk.toString('utf8').trim();
-    if (text.length > 0) console.error('[e2e worker stderr]', text);
-  });
+  let worker: ChildProcess = spawnWorkerProcess({});
   let webExited = false;
   child.on('exit', () => {
     webExited = true;
@@ -201,7 +228,32 @@ export async function withWorkerServer(
       throw new Error('dev server 进程提前退出(检查端口 3110 是否被占用)');
     }
     await waitForWorkerBanner(worker, 30_000);
-    await scenario();
+    await scenario({
+      killWorkerHard: async () => {
+        if (worker.pid === undefined) return;
+        const exited = new Promise<void>((resolve) => {
+          worker.once('exit', () => resolve());
+        });
+        try {
+          process.kill(-worker.pid, 'SIGKILL');
+        } catch {
+          return; // 进程组已不在
+        }
+        await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 10_000))]);
+      },
+      respawnWorker: async () => {
+        // 防御:若上一个 worker 仍在(未先杀),先杀净再起——finally 只收尾最新组。
+        if (worker.pid !== undefined) {
+          try {
+            process.kill(-worker.pid, 'SIGKILL');
+          } catch {
+            // 已退出。
+          }
+        }
+        worker = spawnWorkerProcess({});
+        await waitForWorkerBanner(worker, 30_000);
+      },
+    });
   } finally {
     await killProcessGroup(worker).catch(() => undefined);
     // 无条件杀 web 组(webExited 只反映 pnpm 外壳退出,不代表 next-server 已退);
