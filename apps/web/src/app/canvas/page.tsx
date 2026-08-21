@@ -11,6 +11,10 @@
  * 5. action 拦截门:组件事件 → 实体已声明 action → /api/exec;白名单外
  *    拒(零调用),executed 后重载 surface(数据即事件投影)。
  *
+ * spec 激活(T7 Phase C / S5):?concern=<凝固键>(悬浮聊天 render 回执的
+ * 画布入口)→ 命中 surface 排最前 + data-active 高亮;每个 surface 携带
+ * data-concern(断言/链接锚点)。
+ *
  * 词汇表 = 官方 SDK(@a2ui/react + web_core,DECISIONS D12)的
  * basic 布局原语 + 十数据词条(word-catalog)。
  */
@@ -54,6 +58,10 @@ function frozenSpecsOf(collection: SirenEntity): RenderSpec[] {
 /** 渲染中的 surface 条目(surface 模型进 state:渲染只读 state,不读 ref)。 */
 interface SurfaceEntry {
   id: string;
+  /** spec 关注点键(data-concern 锚点;chat 回执链接/断言用)。 */
+  concern: string;
+  /** ?concern= 激活高亮(排最前 + data-active)。 */
+  active: boolean;
   surface: SurfaceModel<ReactComponentImplementation>;
 }
 
@@ -82,11 +90,18 @@ export default function CanvasPage() {
       }
       setNegotiated(true);
 
-      // 2/3. 凝固 spec 列表(合同路径)+ 单例演示。
+      // 2/3. 凝固 spec 列表(合同路径)+ 单例演示;?concern= 激活的
+      // spec 排最前(S5:悬浮聊天的画布入口;命中与否不改变渲染集)。
       const frozenCollection = await fetchEntity('render-specs');
+      const frozenSpecs = frozenCollection !== null ? frozenSpecsOf(frozenCollection) : [];
+      const activeConcern =
+        typeof window === 'undefined'
+          ? undefined
+          : new URLSearchParams(window.location.search).get('concern') ?? undefined;
+      const all = [...frozenSpecs, DEMO_SPEC];
       const specs = [
-        ...(frozenCollection !== null ? frozenSpecsOf(frozenCollection) : []),
-        DEMO_SPEC,
+        ...all.filter((spec) => spec.concern === activeConcern),
+        ...all.filter((spec) => spec.concern !== activeConcern),
       ];
 
       // 4. 拦截门 + MessageProcessor(每轮重载重建,白名单随数据模型重建)。
@@ -106,18 +121,25 @@ export default function CanvasPage() {
       });
 
       const failed: string[] = [];
+      const planned: { surfaceId: string; concern: string }[] = [];
       for (const spec of specs) {
         try {
           const plan = await planSurface(spec, fetchEntity);
           for (const entity of plan.cache.values()) gate.register(entity);
           processor.processMessages(plan.messages);
+          planned.push({ surfaceId: plan.surfaceId, concern: spec.concern });
         } catch (error) {
           failed.push(`${spec.concern}:${error instanceof Error ? error.message : String(error)}`);
         }
       }
 
       setSurfaces(
-        [...processor.model.surfacesMap.entries()].map(([id, surface]) => ({ id, surface })),
+        planned.flatMap(({ surfaceId, concern }) => {
+          const surface = processor.model.surfacesMap.get(surfaceId);
+          return surface === undefined
+            ? []
+            : [{ id: surfaceId, concern, active: concern === activeConcern, surface }];
+        }),
       );
       setErrors(failed);
     } catch (error) {
@@ -174,7 +196,15 @@ export default function CanvasPage() {
 
       <section aria-label="surfaces" className="mt-6 space-y-8">
         {surfaces.map((entry) => (
-          <div key={entry.id} data-surface={entry.id} className="rounded-lg border border-zinc-200 p-4">
+          <div
+            key={entry.id}
+            data-surface={entry.id}
+            data-concern={entry.concern}
+            {...(entry.active ? { 'data-active': 'true' } : {})}
+            className={`rounded-lg border p-4 ${
+              entry.active ? 'border-blue-400 ring-2 ring-blue-100' : 'border-zinc-200'
+            }`}
+          >
             <h2 className="mb-3 text-sm font-semibold text-zinc-500">{entry.id}</h2>
             <A2uiSurface surface={entry.surface} />
           </div>

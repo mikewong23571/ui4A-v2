@@ -13,6 +13,10 @@
  * Temporal workflow,立即回执「已派发委托 <id>,进度见舰队页 /delegations」;
  * 后台执行的监控交给舰队页(不在悬浮窗内轮询长任务——人类监控成本不随 N
  * 超线性,arch-brief §9.3)。
+ *
+ * render 回执(T7 Phase C / S5):响应携带 render 载荷(展示意图 → 凝固
+ * spec)时,消息呈现生成回执,底部出现「在画布查看」入口(点击带
+ * ?concern= 打开画布对应 surface;画布读凝固 spec 渲染)。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -37,6 +41,11 @@ interface ChatResponse {
   outcome: 'done' | 'failed' | 'max-steps';
   summary: string | null;
   messages: { role: 'assistant'; text: string }[];
+  /** render capability(T7 Phase C / S5):展示意图 → 凝固 spec + 画布入口。 */
+  render?: {
+    concern: string;
+    canvasUrl: string;
+  };
 }
 
 /** /api/chat mode=delegated 的派发回执(T5 Phase B)。 */
@@ -145,6 +154,8 @@ export function FloatingChat() {
   // 委托模式(ref 镜像:onNew 回调零依赖 memo,发送时读 ref 防闭包过期)。
   const [delegated, setDelegated] = useState(false);
   const delegatedRef = useRef(false);
+  // 最近一次渲染回执(S5:surface 引用的可点形态——点击在画布打开)。
+  const [lastRender, setLastRender] = useState<ChatResponse['render']>(undefined);
 
   useEffect(() => {
     const stored = loadSessionId();
@@ -191,6 +202,8 @@ export function FloatingChat() {
           // localStorage 不可用(隐私模式等):会话退化为内存态,无损
         }
       }
+      // render 回执(S5):展示意图 → 画布入口链接(替换上一条渲染回执)。
+      setLastRender(body.render ?? undefined);
       const trail =
         body.messages !== undefined && body.messages.length > 0
           ? body.messages.map((entry) => entry.text).join('\n')
@@ -248,6 +261,16 @@ export function FloatingChat() {
               <MyThread delegated={delegated} onToggleDelegated={toggleDelegated} />
             </AssistantRuntimeProvider>
           </div>
+          {/* render 回执入口(S5):点击在画布打开该 surface(合同导航标注)。 */}
+          {lastRender !== undefined && (
+            <a
+              href={lastRender.canvasUrl}
+              data-nav={`render:${lastRender.concern}`}
+              className="border-t border-zinc-200 px-3 py-2 text-xs font-medium text-blue-600 hover:underline"
+            >
+              在画布查看:{lastRender.concern}
+            </a>
+          )}
         </div>
       ) : (
         <button

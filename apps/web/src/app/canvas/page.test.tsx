@@ -160,4 +160,43 @@ describe('画布页(A2UI surface 宿主)', () => {
     });
     expect(document.querySelector('[data-nav="local:canvas-reload"]')).not.toBeNull();
   });
+
+  it('?concern= 激活:命中凝固 spec 排最前并高亮,各 surface 带 data-concern', async () => {
+    window.history.pushState({}, '', '/canvas?concern=demo-articles-table');
+    try {
+      vi.stubGlobal('fetch', mockCanvasContract());
+      render(<CanvasPage />);
+      await waitFor(() => {
+        expect(screen.getByText('欢迎来到 UI4A')).toBeTruthy();
+      });
+      const surfaces = [...document.querySelectorAll('[data-surface]')];
+      expect(surfaces.length).toBe(2);
+      // data-concern:surface 的关注点标识(chat 链接/断言锚点)
+      expect(surfaces.map((node) => node.getAttribute('data-concern'))).toEqual(
+        expect.arrayContaining(['articles-by-category', 'demo-articles-table']),
+      );
+      // 激活排序:?concern=demo-articles-table 的 surface 排最前 + data-active
+      expect(surfaces[0]!.getAttribute('data-concern')).toBe('demo-articles-table');
+      expect(surfaces[0]!.getAttribute('data-active')).toBe('true');
+      expect(surfaces[1]!.getAttribute('data-active')).toBeNull();
+    } finally {
+      window.history.pushState({}, '', '/canvas');
+    }
+  });
+
+  it('?concern= 未命中任何凝固 spec:不改变缺省排序(凝固在前,演示在后)', async () => {
+    window.history.pushState({}, '', '/canvas?concern=no-such-concern');
+    try {
+      vi.stubGlobal('fetch', mockCanvasContract());
+      render(<CanvasPage />);
+      await waitFor(() => {
+        expect(screen.getByText('欢迎来到 UI4A')).toBeTruthy();
+      });
+      const surfaces = [...document.querySelectorAll('[data-surface]')];
+      expect(surfaces[0]!.getAttribute('data-concern')).toBe('articles-by-category');
+      expect(surfaces.every((node) => node.getAttribute('data-active') === null)).toBe(true);
+    } finally {
+      window.history.pushState({}, '', '/canvas');
+    }
+  });
 });

@@ -1,12 +1,20 @@
-import { createDriver, resolveDriverKind, runAgent, type AgentGoal } from '@ui4a/agent';
+import { createDriver, renderSpecFor, resolveDriverKind, runAgent, type AgentGoal } from '@ui4a/agent';
 
 import { resolveStartRel } from '../../../chat/start';
 import { trailToMessages } from '../../../chat/trail';
+import { getDb, getEngine } from '../../../engine/service';
 import { dispatchDelegation } from '../../../temporal/delegation';
+import type { RenderSpec } from '../../../render/spec';
+import { validateSpec } from '../../../render/validator';
 
 // POST /api/chat — 悬浮聊天的合同后端(spec FR6/FR7,arch-brief §8)。
 // - 请求 {goal: {verb, targetRel?, resource?, fields?}, sessionId?, driver?,
 //   mode?: 'inline'|'delegated'};mode 缺省 inline(既有行为与测试零改动);
+// - render capability(T7 Phase C / S5):展示类意图(按分类展示文章)先于
+//   inline/delegated 分派短路——renderSpecFor(rule 确定路径)产零字面 spec →
+//   零字面校验 → freezeSpec(首冻事件留痕,同 concern 复用首冻)→ 响应携带
+//   render 载荷(spec + 画布入口);零 /api/exec(渲染不是执行,不走循环);
+//   意图未命中/引擎不可达 → 原路交回 agent 循环(诚实失败口径不变);
 // - inline:服务端组装 driver(rule | llm | auto——auto 无 key 回退 rule,I1 机械层),
 //   runAgent 循环过本源 HTTP 合同(actor=agent,principal=user:<sessionId>,
 //   channel=chat)——"agent 走合同"字面成立;
@@ -92,6 +100,60 @@ export async function POST(request: Request) {
   const { goal, sessionId, driver: requested, mode } = parsed;
   const baseUrl = new URL(request.url).origin;
   const resolved = resolveDriverKind(requested);
+
+  // render capability(T7 Phase C / S5):展示类意图 → spec 生成 + 凝固。
+  // 先于 inline/delegated 分派:渲染说明不是委托任务,也不进执行循环。
+  // 引擎不可达/意图未命中 → 原路交回下方既分派(诚实失败口径不变)。
+  try {
+    const engine = await getEngine(getDb());
+    const generated = renderSpecFor(goal.verb, engine.getSitemap(), engine.listFrozenSpecs());
+    if (generated !== undefined) {
+      const validation = validateSpec(generated);
+      if (!validation.valid) {
+        // 生成器产出非法 spec 属内部缺陷:如实失败,不落日志不渲染(零字面入口把关)。
+        const summary = validation.errors.map((error) => `${error.path}: ${error.message}`).join('; ');
+        return Response.json({
+          sessionId,
+          driver: resolved,
+          requestedDriver: requested,
+          outcome: 'failed',
+          summary: `生成的渲染说明未过零字面校验: ${summary}`,
+          messages: [{ role: 'assistant', text: `失败: 生成的渲染说明未过零字面校验: ${summary}` }],
+          steps: [],
+          successes: [],
+        });
+      }
+      // 断言理由:validateSpec 已确认形状(引用节点 + 结构容器),Record 与
+      // BindTree 的差异仅是类型层收窄,运行时形状已收敛。
+      const spec = generated as unknown as RenderSpec;
+      const frozen = await engine.freezeSpec(spec.concern, spec, {
+        actor: 'agent',
+        principal: `user:${sessionId}`,
+      });
+      const concern = frozen.spec.concern;
+      const canvasUrl = `/canvas?concern=${encodeURIComponent(concern)}`;
+      return Response.json({
+        sessionId,
+        driver: resolved,
+        requestedDriver: requested,
+        outcome: 'done',
+        summary: `渲染已生成:${concern}(词条 ${frozen.spec.component})→ 画布 ${canvasUrl}`,
+        messages: [
+          {
+            role: 'assistant',
+            text: `已生成渲染「${concern}」(${frozen.spec.component}${
+              frozen.frozen ? ',首次凝固' : ',复用已凝固布局'
+            })→ 在画布打开:${canvasUrl}`,
+          },
+        ],
+        steps: [],
+        successes: [],
+        render: { concern, spec: frozen.spec, frozenNow: frozen.frozen, canvasUrl },
+      });
+    }
+  } catch {
+    // 引擎/库故障:不吞——交回既分派,由循环或委托路径如实报告失败。
+  }
 
   // delegated(T5 Phase B):派发 delegationWorkflow,响应委托 id 与轮询入口;
   // 轨迹/状态经事件日志(/api/delegations/<id>)查询,与 inline 的消息语义等价。
