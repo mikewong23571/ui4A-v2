@@ -21,7 +21,7 @@
 - [x] Task: chat-panel 可折叠思考区(thinking 帧渲染;与 step 帧交错正确)(组件测试) — c297157
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — c297157
 
-## Phase D: 全量回归与走查
+## Phase D: 全量回归与走查 [checkpoint: 986ef4c]
 
-- [~] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增)+ 门控 llm 实测(思考区可见、reasoning 落库)+ demo 走查
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增)+ 门控 llm 实测(思考区可见、reasoning 落库)+ demo 走查 — 986ef4c(llm-thinking 门控 1 passed;check 931;e2e 33/13skip)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — 986ef4c
