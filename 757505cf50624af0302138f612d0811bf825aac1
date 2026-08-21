@@ -1,0 +1,16 @@
+T7 Phase C Task 2: S5 E2E
+
+断言原文映射(GOAL S5 / T7 spec 验收 2/3/6):
+- '聊天说按分类展示文章 → A2UI surface 渲染图表':chat API(rule driver)
+  → render 载荷 → Playwright 打开 /canvas?concern=articles-by-category →
+  [data-surface=articles-by-category] 内 [data-word=chart] 可见(SVG 真渲染)。
+- '渲染 spec 中不含任何字面数值,全部为实体引用':e2e 进程内 import web
+  零字面校验器 validateSpec 断言 {valid:true}(S5 断言口径 = 校验器通过)。
+- '渲染数值与实体快照一致(tech=2 essay=1 口径,以种子+场景数据为准)':
+  期望值从 /api/entity?rel=articles 快照按 fields.category 动态分组计算,
+  另锚定种子形状 tech=1/essay=1 防解析自错;逐项断言 + 总和=成员数。
+- 凝固(spec 验收 6):二次同 concern → 同 spec + frozenNow=false +
+  render-spec-frozen 事件恰 1 条 + 画布重载布局稳定。
+- 交互形态:?concern= 激活(data-active + 排最前)即 chat 回执链接的目标态。
+
+CI=true pnpm exec playwright test e2e/s5.spec.ts → 1 passed。
