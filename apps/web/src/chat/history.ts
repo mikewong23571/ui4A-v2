@@ -1,11 +1,11 @@
 /**
- * 聊天历史投影的公共类型(T9 Phase B / B3)。
+ * 聊天历史投影的公共类型(T9 Phase B / B3;T11 Phase B 增结构化 steps)。
  *
  * chat-turn 事件(chat 路由 inline 回合完成时直写事件日志,与 worker 同一
  * 双写者模式)→ GET /api/chat/history 按 sessionId 过滤投影为本类型序列
  * (seq 升序)。服务端零会话态:会话是客户端对日志的投影。
  */
-import type { AgentGoal, AgentOutcome } from '@ui4a/agent';
+import type { AgentGoal, AgentOutcome, TrailStep } from '@ui4a/agent';
 
 import type { ChatMessage } from './trail';
 
@@ -15,7 +15,14 @@ export interface ChatTurnDetail {
   goal: AgentGoal;
   outcome: AgentOutcome;
   summary: string | null;
+  /** 人读投影(trailToMessages 压扁;渲染用,口径不变)。 */
   messages: ChatMessage[];
+  /**
+   * 结构化轨迹原料(T11 Phase B / 架构决定 2):runAgent 的 TrailStep[] 原样
+   * 落库——messages 是人读投影,steps 是机器可读原料(轨迹挖掘/蒸馏的数据
+   * 飞轮)。向后兼容:T11 前写入的旧事件无此字段,history 读端归一为空数组。
+   */
+  steps: TrailStep[];
   driver: 'rule' | 'llm';
 }
 

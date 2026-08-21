@@ -8,6 +8,8 @@
  * 覆盖:
  * - 已落回合:按 sessionId 过滤,goal/outcome/messages/driver 原样返回,
  *   seq 升序(两回合顺序保持);
+ * - T11 Phase B:回合读出携带结构化 steps;T11 前写入的旧形状 detail
+ *   (无 steps 字段)读出归一为空数组(向后兼容);
  * - 无该会话回合 → { turns: [] }(空态非错误);
  * - 缺 sessionId → 400。
  */
@@ -15,7 +17,7 @@ import { createServer, type Server } from 'node:http';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { ensureEventsTable } from '../../../../db/events';
+import { appendEvent, ensureEventsTable } from '../../../../db/events';
 import { getPool } from '../../../../db/pool';
 import { resetEngineForTests } from '../../../../engine/service';
 
@@ -50,6 +52,12 @@ interface HistoryTurn {
   outcome: string;
   summary: string | null;
   messages: { role: 'assistant'; text: string }[];
+  steps: {
+    step: number;
+    rel: string;
+    op: { kind: string; action?: string };
+    outcome: string;
+  }[];
   driver: string;
 }
 
@@ -143,6 +151,53 @@ describe('聊天历史投影(T9 Phase B)', () => {
     const { status, json } = await history('?sessionId=sess-ghost');
     expect(status).toBe(200);
     expect(json.turns).toEqual([]);
+  });
+
+  it('回合读出携带结构化 steps(T11 Phase B):与 messages 并存', async () => {
+    await runChatTurn('sess-steps', '发布一篇文章');
+
+    const { status, json } = await history('?sessionId=sess-steps');
+    expect(status).toBe(200);
+    const turns = json.turns ?? [];
+    expect(turns).toHaveLength(1);
+    const { steps, messages } = turns[0]!;
+    // steps 是机器可读原料(messages 仍是人读投影,口径不变)。
+    expect(steps.length).toBeGreaterThan(0);
+    expect(steps).toHaveLength(messages.length);
+    expect(steps[0]!.op.kind, '首步是协议操作(navigate 或直接 exec)').toMatch(
+      /^(navigate|exec)$/,
+    );
+    expect(steps[steps.length - 1]!.op.kind).toBe('done');
+    expect(
+      steps.every((step) => typeof step.step === 'number' && typeof step.rel === 'string'),
+    ).toBe(true);
+  });
+
+  it('旧形状兼容:T11 前写入的 chat-turn(无 steps 字段)读出归一为空数组', async () => {
+    // 直写一条 T11 Phase B 之前的旧形状 detail(无 steps 字段),模拟存量事件。
+    await appendEvent(pool, {
+      kind: 'chat-turn',
+      actor: 'agent',
+      principal: 'user:sess-legacy',
+      channel: 'chat',
+      rel: 'chat:sess-legacy',
+      detail: {
+        sessionId: 'sess-legacy',
+        goal: { verb: '发布一篇文章' },
+        outcome: 'done',
+        summary: '已发布',
+        messages: [{ role: 'assistant', text: '完成: 已发布' }],
+        driver: 'rule',
+      },
+    });
+
+    const { status, json } = await history('?sessionId=sess-legacy');
+    expect(status).toBe(200);
+    const turns = json.turns ?? [];
+    expect(turns).toHaveLength(1);
+    expect(turns[0]!.goal.verb).toBe('发布一篇文章');
+    expect(turns[0]!.messages[0]!.text).toContain('完成');
+    expect(turns[0]!.steps).toEqual([]);
   });
 
   it('缺 sessionId → 400', async () => {

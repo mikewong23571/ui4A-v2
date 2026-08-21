@@ -19,6 +19,7 @@
  * - I1(路由级):无 GLM_API_KEY → auto 回退 rule → B1 目标完成,文章计数 +1,
  *   轨迹消息含三步填充 + publish;
  * - B4(路由级):坏 key + 显式 llm → 401 错误原文进对话,route 不 5xx;
+ * - T11 Phase B:chat-turn detail 含结构化 steps(与 trail 逐条等值);
  * - 请求形状:缺 goal → 400。
  */
 import { createServer, type Server } from 'node:http';
@@ -302,6 +303,54 @@ describe('I1(路由级):无 key → auto 回退 rule,B1 完成', () => {
     expect(turns[0]!.detail.driver).toBe('rule');
     expect(turns[0]!.detail.messages.map((message) => message.text).join('\n')).toContain(
       '执行 publish',
+    );
+  });
+
+  it('chat-turn detail 含结构化 steps(T11 Phase B):与回合 trail 逐条等值', async () => {
+    const { json } = await chat({
+      sessionId: 'sess-steps',
+      goal: {
+        verb: '发布一篇文章',
+        fields: { title: '结构化留痕', category: 'tech', tags: '', body: '正文' },
+      },
+    });
+    expect(json.outcome).toBe('done');
+
+    const response = await fetch(`${base}/api/events`);
+    const body = (await response.json()) as {
+      events: {
+        kind: string;
+        rel: string;
+        detail: {
+          messages: { role: string; text: string }[];
+          steps: {
+            step: number;
+            rel: string;
+            op: { kind: string; action?: string; summary?: string };
+            outcome: string;
+          }[];
+        };
+      }[];
+    };
+    const turns = body.events.filter(
+      (event) => event.kind === 'chat-turn' && event.rel === 'chat:sess-steps',
+    );
+    expect(turns).toHaveLength(1);
+    const { steps, messages } = turns[0]!.detail;
+    // 结构化原料与 final 帧载荷的 trail(result.steps)逐条等值——
+    // messages 是人读投影,steps 是同一轨迹的机器可读原料(架构决定 2)。
+    expect(steps).toEqual(json.steps);
+    expect(steps.length).toBeGreaterThan(0);
+    // done 结局无 max-steps 补条:steps 与 messages 一步一条对应。
+    expect(steps).toHaveLength(messages.length);
+    expect(steps[0]!.op.kind, '首步是协议操作(navigate 或直接 exec)').toMatch(
+      /^(navigate|exec)$/,
+    );
+    expect(steps[steps.length - 1]!.op.kind).toBe('done');
+    expect(steps.filter((step) => step.op.kind === 'exec' && step.op.action === 'next')).toHaveLength(3);
+    expect(steps.some((step) => step.op.kind === 'exec' && step.op.action === 'publish')).toBe(true);
+    expect(steps.every((step) => typeof step.step === 'number' && typeof step.rel === 'string')).toBe(
+      true,
     );
   });
 });

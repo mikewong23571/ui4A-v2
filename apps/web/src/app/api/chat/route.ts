@@ -33,7 +33,8 @@ import { validateSpec } from '../../../render/validator';
 //   {type:'error', error};客户端断开仅中断推帧,循环照常跑完(留痕);
 // - 聊天历史(T9 Phase B):inline 回合完成(含 failed/max-steps)后直写一条
 //   chat-turn 事件(rel=chat:<sessionId>,detail 含 goal/outcome/summary/
-//   messages/driver)——与 worker 同一双写者模式;engine fold 忽略该 kind
+//   messages/steps/driver——T11 Phase B 起 steps 为结构化 TrailStep[] 原料)
+//   ——与 worker 同一双写者模式;engine fold 忽略该 kind
 //   (纯审计留痕);落库失败 console.error 不阻断响应。GET /api/chat/history
 //   按 sessionId 投影回合序列(服务端零会话态);
 // - delegated(T5 Phase B / spec 架构决定 5):校验 goal → 解析 startRel 与
@@ -263,12 +264,15 @@ export async function POST(request: Request) {
         // 聊天历史(B3):inline 回合完成(含 failed/max-steps)直写 chat-turn
         // 事件——与 worker 同一双写者模式;engine fold 忽略该 kind。落库失败
         // 不阻断聊天响应(历史是投影,丢失可从轨迹推知,响应才是合同)。
+        // T11 Phase B:detail 增结构化 steps(result.steps 原样)——messages
+        // 是人读投影,steps 是机器可读原料(架构决定 2)。
         const turnDetail: ChatTurnDetail = {
           sessionId,
           goal,
           outcome: result.outcome,
           summary: result.summary ?? null,
           messages,
+          steps: result.steps,
           driver: resolved,
         };
         try {
