@@ -13,3 +13,4 @@ export * from './render';
 export * from './rule-driver';
 export * from './tools';
 export * from './llm-driver';
+export * from './llm-probe';

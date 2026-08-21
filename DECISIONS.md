@@ -149,3 +149,10 @@
 - **背景(spec 内部张力)**:T10 spec 架构决定 3 要求第七条不变式 `app-known` 且 checks 全量报告(checks 入 activation 实体与事件 detail);同 spec 红线「B1–B4/S1–S5/I1–I6 既有断言零改动」——两者对 e2e/s2.spec.ts 的 checks 精确名单断言(:383)与 UI 行数断言(:432,`toHaveCount(6)`)不可同时成立。
 - **决定**:按 D11 先例(机械期望更新不算语义改动)处理:s2.spec.ts 名单断言加 `'app-known'`、行数 6→7、注释「六项」→「七项」;submit 链路语义(checks 全过 → pending-approval;fail → 回 draft 留痕)零改动。
 - **过渡期语义**:application 表落库前(Phase B seed 完成前)`app-known` vacuous pass(检查在列表、恒过);Phase B seed 保证 `default` 恒激活后检查长牙。invariants.ts/effects.ts/meta.ts 三处注释已固化此口径。
+
+## D22 GLM-5.3 探针实测结论(2026-08-22,T11 Phase A;校准 D7/D20)
+
+- **实测环境**:glm-5.3 @ open.bigmodel.cn coding endpoint,ai@7.0.71 + @ai-sdk/openai@4.0.45,generateText×3 / streamText×3(e2e/glm-probe.spec.ts 门控)。
+- **reasoning 暴露形态(新事实)**:@ai-sdk/openai chat 路径 SDK 层**完全不暴露** reasoning(`result.reasoning` 0 parts、fullStream 0 个 reasoning-* 部件,zod schema 剥离 `reasoning_content`);只能经原始 HTTP 层取——流式用 `includeRawChunks: true` 从 fullStream `raw` 部件解析 `delta.reasoning_content`(T11 Phase C 取数路线即此)。GLM 端点 reasoning **非增量、末尾齐发**(静默 4–9s 后与 tool call 同批到达)——thinking 帧语义 = 整段一次性「留痕回放」,不是实时打字机。
+- **tool calling(auto)复验成立**:6/6 返回 tool call 且与 reasoning 同现;D7 的 `tool_choice` auto + `provider.chat()` 口径在 glm-5.3 继续有效。
+- **时延校准(与 D7/D20 冲突点的裁决)**:小 prompt(615 tokens)简单步实测 4.2–8.5s,低于 D7 的 8–20s 下限;D20「effort max 时延上浮」未在该场景复现(effort 档位端点行为不可证实,SDK 不发 reasoning_effort)。裁决:**8–20s 作为上限口径保留**(大 prompt/长轨迹场景以 llm-smoke 为准),下限校准为「简单步 4–9s」;60s abort 兜底继续宽裕。
