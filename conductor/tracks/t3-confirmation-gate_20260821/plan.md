@@ -10,7 +10,7 @@
 
 ## Phase B: Cedar 风险策略接入
 
-- [ ] Task: @cedar-policy/cedar-wasm 集成与 policy.cedar(TDD:策略文本驱动裁决;变更策略文本改变行为;求值原因留痕)
+- [x] Task: @cedar-policy/cedar-wasm 集成与 policy.cedar(TDD:策略文本驱动裁决;变更策略文本改变行为;求值原因留痕)(ab6eac3)
 - [ ] Task: web 服务层接线(确认裁决进 exec 流程;202 挂起响应;日志事件与 detail)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
