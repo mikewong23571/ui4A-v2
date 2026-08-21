@@ -21,13 +21,13 @@
 - [x] Task: 合同测试(`/.well-known/ui4a.json` 形状;app 定义变更 → version bump)(TDD) — e4eacf5
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — e4eacf5
 
-## Phase D: agent 两层发现
+## Phase D: agent 两层发现 [checkpoint: aaf547c]
 
 - [x] Task: agent loop 静态上下文按 app 分组呈现(name+intent+flows)(TDD/合同测试) — a7f0cb7
 - [x] Task: rule-driver app 定位层(目标相关性先匹配 app intent → 该 app 内入口优先;不做硬过滤,跨 app links 仍合法)(TDD) — aaf547c
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — aaf547c
 
 ## Phase E: 全量回归与走查
 
-- [ ] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增用例)+ demo 走查(sitemap 分组人工确认)
+- [~] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增用例)+ demo 走查(sitemap 分组人工确认)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
