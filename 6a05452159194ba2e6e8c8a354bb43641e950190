@@ -1,0 +1,13 @@
+Task: T4 Phase A Task 3 — 激活不变式检查器 + submit + activation 实体
+
+变更:
+- packages/engine/src/invariants.ts(新):validateDefinition 六项检查(edge-targets-exist[覆盖 action.to 与 transition effect.to]/guards-registered/field-types-known[流级+节点+动作字段]/effect-known/initial-exists/terminal-reachable[BFS+无出边 terminal]);DefinitionRegistries(guards 必填,fieldTypes/effectTypes 缺省 shared 词表)。
+- packages/engine/src/meta.ts:submit 分支——executeWithGates 转移到 validating 后立即求值 checks;passed → activation 实体(nextActivationId a1/a2 确定性计数)+ pending-approval;fail → 回 draft;definition-submitted detail {name, passed, checks, activation?}。
+- packages/engine/src/fold.ts:applyDefinitionSubmitted(载荷即真相,不重跑不变式——注册表随时间可变,重放确定性以日志为准);validating 节点核对。
+- packages/engine/src/siren.ts:projectActivation(A.2 properties + pending 挂 lifecycle 常量的 approve/reject + guard-results fail-closed)+ projectActivations 待审队列(仅 pending)。
+
+设计要点:activation.artifact 用 contentVersion(FNV-64 短码)——versions 内容寻址工件(sha256)为 Phase B,届时升级;activation.version = 当前版本+1(版本号 approve 时落实,见 Task 4 报告)。
+
+测试:invariants.test.ts 13 用例(六项逐条:to ghost/effect transition ghost/未注册 guard/colour 类型/teleport 效果/initial ghost/纯环/孤岛 terminal;submit 集成:合法→pending-approval+activation+fold 一致、编辑缝隙 add-action effect 藏 ghost→submit 拒回 draft 报告入事件)+ meta-project.test.ts 增 4 用例(activation 投影三态+队列)。全仓 470 全绿。
+
+机械适配:purity 计数 15→16。
