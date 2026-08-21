@@ -73,8 +73,7 @@ test.beforeEach(() => {
   test.setTimeout(180_000);
 });
 
-test('S5:聊天"按分类展示文章" → 零字面 spec → 画布 chart 与快照逐项一致 → 凝固', async ({ page }) => {
-  await withFreshServer(
+test('S5:聊天"按分类展示文章" → 零字面 spec → 画布 chart 与快照逐项一致 → 凝固', async ({ page }) => {  await withFreshServer(
     async () => {
       // ---- a) agent 路径(chat API,rule driver)→ render spec 生成 ----------
       const first = await chatDisplayArticles();
@@ -156,6 +155,50 @@ test('S5:聊天"按分类展示文章" → 零字面 spec → 画布 chart 与�
       );
     },
     // 显式空 key:e2e 进程零 LLM 凭证(rule 确定路径,I1 口径)
+    { GLM_API_KEY: '' },
+  );
+});
+
+test('S5 附:展示意图的第二形态——"展示文章列表" → table 词条,成员与快照一致', async ({ page }) => {
+  await withFreshServer(
+    async () => {
+      const response = await fetch(`${SCENARIO_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 's5-e2e-table',
+          driver: 'rule',
+          goal: { verb: '展示文章列表' },
+        }),
+      });
+      const json = (await response.json()) as ChatRenderResponse;
+      expect(response.status).toBe(200);
+      // 无维度词 → table 词条(集合直列),同样零字面。
+      expect(json.render!.spec).toEqual({
+        concern: 'articles-list',
+        component: 'table',
+        bind: { rows: { collection: 'articles' } },
+      });
+      expect(validateSpec(json.render!.spec)).toEqual({ valid: true });
+      expect(json.render!.canvasUrl).toBe('/canvas?concern=articles-list');
+
+      // 画布:table surface 渲染集合成员(标题来自实体快照,零发明)。
+      const articles = (await (
+        await fetch(`${SCENARIO_BASE}/api/entity?rel=articles`)
+      ).json()) as { entities: { properties: { fields: { title?: unknown } } }[] };
+      const titles = articles.entities
+        .map((member) => member.properties.fields?.title)
+        .filter((title): title is string => typeof title === 'string');
+      expect(titles.length).toBe(articles.entities.length);
+
+      await page.goto(`${SCENARIO_BASE}/canvas?concern=articles-list`);
+      const surface = page.locator('[data-surface="articles-list"]');
+      await expect(surface).toBeVisible();
+      await expect(surface.locator('[data-word="table"]')).toBeVisible();
+      for (const title of titles) {
+        await expect(surface.locator('[data-word="table"]')).toContainText(title);
+      }
+    },
     { GLM_API_KEY: '' },
   );
 });
