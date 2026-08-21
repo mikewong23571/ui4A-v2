@@ -1,0 +1,26 @@
+T7 Phase C Task 3: I3 E2E
+
+I3 白名单口径(报告):
+- 展示类白名单 = react-chrono(timeline 词条)内部控件:closest
+  [data-word=timeline] 内的 button(实测 /events 4 个,tabindex=-1 时间轴
+  点位标记)。依据:纯展示组件自带交互原语,无合同语义、不产生任何提交;
+  词条实现 toolbar 缺省关闭(timeline.tsx 头注既有口径)。
+- Next dev overlay 位于 nextjs-portal 影子 DOM,document 枚举不可见且非
+  应用树产物,不需白名单。
+
+拒提交断言口径(任务注记的直接 fetch 注入按钮绕过渲染层,故不断言其
+被拦;可测口径设计):
+- React 树内合成路径:注入按钮挂在 React 渲染的 main 容器内,原生 click +
+  bubbles MouseEvent 双发 → 都经 React 根容器事件委托;渲染层无环境级
+  提交通道 → 零 /api/exec(网络监听计数)。
+- 正控制:已声明 data-action=unpublish 点击 → 恰一次 /api/exec + 实体
+  刷新为已下线;随后再注入再合成点击 → 仍恰一次。
+- 画布(A2UI 宿主)同口径复核零提交;拦截门白名单的功能面由单测
+  action-gate.test.ts 覆盖,e2e 证明宿主层无旁路。
+
+页面就绪锚点:首页 situation/事件流 timeline 或 empty-events/收件箱与
+激活页 data-nav 回链/实体页 data-action/画布 data-surface/舰队页
+empty-fleet 或 table。
+
+CI=true pnpm exec playwright test e2e/i3.spec.ts → 2 passed。
+白名单实测非空泛:/events 4 个 chrono 内部按钮命中白名单,其余全标注。
