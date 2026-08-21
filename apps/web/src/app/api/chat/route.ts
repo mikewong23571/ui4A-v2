@@ -1,9 +1,15 @@
 import {
   createDriver,
+  generateRenderSpecWithLlm,
+  hasDisplayIntent,
   renderSpecFor,
+  renderSpecGroundingErrors,
   resolveDriverKind,
   runAgent,
   type AgentGoal,
+  type GeneratedRenderSpec,
+  type RenderSitemapContext,
+  type RenderWordSummary,
 } from '@ui4a/agent';
 
 import type { ChatTurnDetail } from '../../../chat/history';
@@ -11,10 +17,12 @@ import { wrapDriverForAudit, type AgentDecisionDetail } from '../../../chat/deci
 import { resolveStartRel } from '../../../chat/start';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
 import { appendEvent } from '../../../db/events';
-import { getDb, getEngine } from '../../../engine/service';
+import { getDb, getEngine, type EngineRuntime } from '../../../engine/service';
 import { dispatchDelegation } from '../../../temporal/delegation';
+import { RENDER_WORDS } from '../../../render/registry';
 import type { RenderSpec } from '../../../render/spec';
 import { validateSpec } from '../../../render/validator';
+import { validateWordBind } from '../../../render/word-bind';
 
 // POST /api/chat — 悬浮聊天的合同后端(spec FR6/FR7,arch-brief §8)。
 // - 请求 {goal: {verb, targetRel?, resource?, fields?}, sessionId?, driver?,
@@ -24,6 +32,12 @@ import { validateSpec } from '../../../render/validator';
 //   零字面校验 → freezeSpec(首冻事件留痕,同 concern 复用首冻)→ 响应携带
 //   render 载荷(spec + 画布入口);零 /api/exec(渲染不是执行,不走循环);
 //   意图未命中/引擎不可达 → 原路交回 agent 循环(诚实失败口径不变);
+//   T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthrough(无 key
+//   跳过,I1)——buildRenderPrompt(词汇表 + sitemap 处境)→ streamText
+//   (glm-5.3,60s abort)→ parseRenderResponse(fail-safe)→ 同一零字面
+//   校验器 + 处境核对(集合/字段真实性)+ 词条形状 bindSchema → freezeSpec
+//   凝固留痕 → 响应(形状不变);解析失败/校验失败/端点失败 → 原路交回普通
+//   agent 循环(不留半成品 spec,不凝固);
 // - inline(T9 Phase B 起为 SSE 流式,text/event-stream):服务端组装 driver
 //   (rule | llm | auto——auto 无 key 回退 rule,I1 机械层),runAgent 循环过本源
 //   HTTP 合同(actor=agent,principal=user:<sessionId>,channel=chat)——
@@ -115,6 +129,67 @@ function parseBody(body: unknown): ParsedChatBody | ParseError {
   };
 }
 
+/** 词汇表摘要(buildRenderPrompt 的处境披露输入;注册表与 /api/render/catalog 同源,D12)。 */
+function renderWordSummaries(): RenderWordSummary[] {
+  return RENDER_WORDS.map((word) => ({
+    name: word.name,
+    description: word.description,
+    bindSchema: word.bindSchema,
+  }));
+}
+
+/**
+ * 凝固 + render 载荷响应(rule/LLM 两路径共用;响应形状自 T7 以来不变)。
+ * spec 须已过零字面校验;freezeSpec 入口复校(校验器 + 词汇表词名,双闸口径)。
+ */
+async function respondWithFrozenSpec(
+  engine: EngineRuntime,
+  generated: GeneratedRenderSpec,
+  sessionId: string,
+  requested: 'rule' | 'llm' | 'auto',
+  resolved: 'rule' | 'llm',
+): Promise<Response> {
+  // 断言理由:validateSpec 已确认形状(引用节点 + 结构容器),Record 与
+  // BindTree 的差异仅是类型层收窄,运行时形状已收敛。
+  const spec = generated as unknown as RenderSpec;
+  const frozen = await engine.freezeSpec(spec.concern, spec, {
+    actor: 'agent',
+    principal: `user:${sessionId}`,
+  });
+  const concern = frozen.spec.concern;
+  const canvasUrl = `/canvas?concern=${encodeURIComponent(concern)}`;
+  return Response.json({
+    sessionId,
+    driver: resolved,
+    requestedDriver: requested,
+    outcome: 'done',
+    summary: `渲染已生成:${concern}(词条 ${frozen.spec.component})→ 画布 ${canvasUrl}`,
+    messages: [
+      {
+        role: 'assistant',
+        text: `已生成渲染「${concern}」(${frozen.spec.component}${
+          frozen.frozen ? ',首次凝固' : ',复用已凝固布局'
+        })→ 在画布打开:${canvasUrl}`,
+      },
+    ],
+    steps: [],
+    successes: [],
+    render: { concern, spec: frozen.spec, frozenNow: frozen.frozen, canvasUrl },
+  });
+}
+
+/**
+ * LLM 产 spec 的入口把关(双闸不动,同 rule 路径口径):同一零字面校验器 →
+ * 处境核对(collection ∈ sitemap 集合面、维度字段已声明——rule 路径由构造
+ * 保证,LLM 路径显式核对)→ 词条形状 bindSchema(与画布渲染流同源)。
+ * 任一不过返回 false:调用方交回普通 agent 循环(不留半成品 spec,不凝固)。
+ */
+function llmSpecPassesGates(spec: GeneratedRenderSpec, sitemap: RenderSitemapContext): boolean {
+  if (!validateSpec(spec).valid) return false;
+  if (renderSpecGroundingErrors(spec, sitemap).length > 0) return false;
+  return validateWordBind(spec.bind, spec.component).valid;
+}
+
 export async function POST(request: Request) {
   let body: unknown;
   try {
@@ -153,12 +228,14 @@ export async function POST(request: Request) {
     );
   }
 
-  // render capability(T7 Phase C / S5):展示类意图 → spec 生成 + 凝固。
-  // 先于 inline/delegated 分派:渲染说明不是委托任务,也不进执行循环。
-  // 引擎不可达/意图未命中 → 原路交回下方既分派(诚实失败口径不变)。
+  // render capability(T7 Phase C / S5;T12 Phase A 起含 LLM fallthrough):
+  // 展示类意图 → spec 生成 + 凝固。先于 inline/delegated 分派:渲染说明不是
+  // 委托任务,也不进执行循环。引擎不可达/意图未命中/LLM 路径任一失败 →
+  // 原路交回下方既分派(诚实失败口径不变)。
   try {
     const engine = await getEngine(getDb());
-    const generated = renderSpecFor(goal.verb, engine.getSitemap(), engine.listFrozenSpecs());
+    const sitemap = engine.getSitemap();
+    const generated = renderSpecFor(goal.verb, sitemap, engine.listFrozenSpecs());
     if (generated !== undefined) {
       const validation = validateSpec(generated);
       if (!validation.valid) {
@@ -177,33 +254,21 @@ export async function POST(request: Request) {
           successes: [],
         });
       }
-      // 断言理由:validateSpec 已确认形状(引用节点 + 结构容器),Record 与
-      // BindTree 的差异仅是类型层收窄,运行时形状已收敛。
-      const spec = generated as unknown as RenderSpec;
-      const frozen = await engine.freezeSpec(spec.concern, spec, {
-        actor: 'agent',
-        principal: `user:${sessionId}`,
+      return await respondWithFrozenSpec(engine, generated, sessionId, requested, resolved);
+    }
+    // T12(架构决定 1):rule miss 的展示意图 → LLM fallthrough。仅展示意图
+    // 进入(非展示意图直落既分派);generateRenderSpecWithLlm 内部无 key 跳过
+    // (I1)、端点/解析失败 undefined(fail-safe);把关失败同样交回普通循环
+    // (不留半成品 spec,不凝固)。
+    if (hasDisplayIntent(goal.verb)) {
+      const llmGenerated = await generateRenderSpecWithLlm({
+        intent: goal.verb,
+        sitemap,
+        words: renderWordSummaries(),
       });
-      const concern = frozen.spec.concern;
-      const canvasUrl = `/canvas?concern=${encodeURIComponent(concern)}`;
-      return Response.json({
-        sessionId,
-        driver: resolved,
-        requestedDriver: requested,
-        outcome: 'done',
-        summary: `渲染已生成:${concern}(词条 ${frozen.spec.component})→ 画布 ${canvasUrl}`,
-        messages: [
-          {
-            role: 'assistant',
-            text: `已生成渲染「${concern}」(${frozen.spec.component}${
-              frozen.frozen ? ',首次凝固' : ',复用已凝固布局'
-            })→ 在画布打开:${canvasUrl}`,
-          },
-        ],
-        steps: [],
-        successes: [],
-        render: { concern, spec: frozen.spec, frozenNow: frozen.frozen, canvasUrl },
-      });
+      if (llmGenerated !== undefined && llmSpecPassesGates(llmGenerated, sitemap)) {
+        return await respondWithFrozenSpec(engine, llmGenerated, sessionId, requested, resolved);
+      }
     }
   } catch {
     // 引擎/库故障:不吞——交回既分派,由循环或委托路径如实报告失败。

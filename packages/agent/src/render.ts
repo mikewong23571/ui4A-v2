@@ -1,7 +1,8 @@
 /**
- * render 意图 → spec 生成器(T7 Phase C / spec 架构决定 4:S5 的生成路径)。
+ * render 意图 → spec 生成器(T7 Phase C / spec 架构决定 4:S5 的生成路径;
+ * T12 Phase A 起接线 LLM fallthrough,spec 架构决定 1)。
  *
- * 与 rule driver 同族的确定路径:纯函数、词级匹配、零 LLM 依赖(I1)。
+ * rule 确定路径(renderSpecFor):纯函数、词级匹配、零 LLM 依赖(I1)。
  * - 意图词级匹配:展示/图表词 + 双语名词词表(文章→articles)命中 sitemap
  *   集合面 → chart(带维度词)/table 词条 spec;
  * - 零字面:bind 只产引用节点(collection+dimension),维度引用真实字段
@@ -14,10 +15,20 @@
  * - 未命中(非展示意图/集合不在 sitemap/维度字段未声明)→ undefined,
  *   交回普通 agent 循环——不猜、不半吊子。
  *
- * LLM 路径接口:buildRenderPrompt(词汇表+sitemap 处境披露)+ parseRenderResponse
- * (fail-safe JSON 提取;零字面/词条形状的最终把关在 freezeSpec 入口,
- * web 侧校验器——分层把关,不在本包重复)。
+ * LLM 路径(T12 架构决定 1;chat 路由 render 短路内 rule miss 后的 fallthrough):
+ * - buildRenderPrompt(词汇表+sitemap 处境披露)+ parseRenderResponse(fail-safe
+ *   JSON 提取)是纯函数接口;generateRenderSpecWithLlm 把它们接上 streamText
+ *   (客户端构造复用 llm-driver 的 createLlmChatModel,60s abort 同 decide
+ *   口径)——无 key 跳过(I1),端点/解析失败一律 undefined,绝不抛;
+ * - hasDisplayIntent 是 fallthrough 的前置闸(与 renderSpecFor 入口闸同词表):
+ *   非展示意图直落普通循环,不打扰 LLM;
+ * - renderSpecGroundingErrors 把 rule 路径由构造保证的"引用真实"(集合 ∈
+ *   sitemap 集合面、维度字段已声明)显式化为 LLM 产出的核对;零字面/词条
+ *   形状的最终把关在 web 侧校验器与 freezeSpec 入口(分层把关,不在本包重复)。
  */
+import { streamText } from 'ai';
+
+import { createLlmChatModel, type LlmDriverOptions } from './llm-driver';
 import { asciiTokens } from './match';
 
 // ---- 类型 --------------------------------------------------------------------
@@ -129,6 +140,14 @@ function dimensionFieldOf(intent: string, sitemap: RenderSitemapContext): string
 }
 
 /**
+ * 展示意图判定(DISPLAY_TOKENS 词级命中;renderSpecFor 入口闸与 chat 路由
+ * LLM fallthrough 的前置闸共用——非展示意图不打扰 LLM,直落普通循环)。
+ */
+export function hasDisplayIntent(intent: string): boolean {
+  return DISPLAY_TOKENS.some((token) => tokenInString(token, intent));
+}
+
+/**
  * rule 确定路径:意图 + sitemap + 已凝固清单 → 渲染说明(纯函数)。
  *
  * - 维度词命中且字段已声明 → chart(collection+dimension 聚合);
@@ -143,7 +162,7 @@ export function renderSpecFor(
   sitemap: RenderSitemapContext,
   frozen: readonly FrozenSpecEntry[],
 ): GeneratedRenderSpec | undefined {
-  if (!DISPLAY_TOKENS.some((token) => tokenInString(token, intent))) return undefined;
+  if (!hasDisplayIntent(intent)) return undefined;
   const collection = collectionOf(intent, sitemap);
   if (collection === undefined) return undefined;
   const dimensionWordHit = Object.keys(DIMENSION_LEXICON).some((word) => tokenInString(word, intent));
@@ -257,4 +276,106 @@ export function parseRenderResponse(text: string): GeneratedRenderSpec | undefin
     component: record.component,
     bind: record.bind as Record<string, unknown>,
   };
+}
+
+// ---- LLM 路径生成(T12 架构决定 1;chat 路由 rule miss 的 fallthrough)-------
+
+/**
+ * LLM 产 spec 的处境核对(纯函数)。rule 路径的"引用真实"由构造保证
+ * (词表命中 + sitemap 声明核对);LLM 路径显式核对同一不变式:collection
+ * 引用必须是 sitemap 集合面、dimension 字段必须在流程节点声明(与
+ * dimensionFieldOf 同为"全局声明过"口径;维度格式与 rel 前缀一致性由
+ * 零字面校验器先把关——本函数假定 spec 已过 validateSpec)。ref/field
+ * 指向实例级 rel(非 sitemap 面),其真实性由解引用器渲染时把关
+ * (第二道闸),不在此核对。返回违规清单(空 = 通过),不抛错。
+ */
+export function renderSpecGroundingErrors(
+  spec: GeneratedRenderSpec,
+  sitemap: RenderSitemapContext,
+): string[] {
+  const collections = new Set(
+    sitemap.surfaces.filter((surface) => surface.collection === true).map((surface) => surface.rel),
+  );
+  const declaredFields = new Set(
+    sitemap.flows.flatMap((flow) =>
+      flow.nodes.flatMap((node) => (node.fields ?? []).map((field) => field.name)),
+    ),
+  );
+  const errors: string[] = [];
+  const walk = (node: unknown, path: string): void => {
+    if (Array.isArray(node)) {
+      node.forEach((child, index) => walk(child, `${path}[${index}]`));
+      return;
+    }
+    if (typeof node !== 'object' || node === null) return;
+    // 断言理由:上方已排除 null/数组,object 即 JSON 对象(Record 收窄)。
+    const record = node as Record<string, unknown>;
+    if (typeof record.collection === 'string') {
+      // 已过零字面校验的 collection 节点是干净的引用节点(无混入键)。
+      if (!collections.has(record.collection)) {
+        errors.push(`${path}: 集合引用 "${record.collection}" 不在 sitemap 集合面(事实不可发明)`);
+      }
+      if (typeof record.dimension === 'string') {
+        // 维度路径 "<collection>.fields.<name>":字段名取末段(全局声明口径
+        // 同 dimensionFieldOf);格式非法由零字面校验器先拒,到不了这里。
+        const fieldName = record.dimension.split('.').pop() ?? '';
+        if (!declaredFields.has(fieldName)) {
+          errors.push(`${path}: 维度字段 "${fieldName}" 未在 sitemap 流程节点声明(事实不可发明)`);
+        }
+      }
+      return; // 引用节点无子树(collection/dimension 取值是"指向哪"的声明,不是容器)
+    }
+    for (const [key, child] of Object.entries(record)) {
+      walk(child, `${path}.${key}`);
+    }
+  };
+  walk(spec.bind, 'bind');
+  return errors;
+}
+
+/**
+ * LLM 生成路径(chat 路由 render 短路内 rule miss 后的 fallthrough):
+ * buildRenderPrompt(词汇表 + sitemap 处境披露)→ streamText(provider.chat
+ * 锁 Chat Completions,D7;60s abort 与 llm-driver decide 同口径[D17/D22];
+ * 零工具调用,不涉及 tool_choice)→ parseRenderResponse(fail-safe)。
+ * 零字面/处境/词条形状的把关在调用方(web 校验器,分层不重复)。
+ * fail-safe:无 key(I1,跳过 LLM 路径,rule 路径完整)/端点错误/abort/
+ * 解析失败一律 undefined,绝不抛异常——调用方原路交回普通 agent 循环
+ * (诚实失败口径不变,不留半成品 spec,不凝固)。
+ */
+export async function generateRenderSpecWithLlm(
+  input: BuildRenderPromptInput,
+  options: LlmDriverOptions = {},
+): Promise<GeneratedRenderSpec | undefined> {
+  // I1:无 key 跳过 LLM 路径(空串同缺省——显式空压过 .env.local,e2e 口径)。
+  const apiKey = options.apiKey ?? process.env.GLM_API_KEY;
+  if (apiKey === undefined || apiKey === '') return undefined;
+  try {
+    const result = streamText({
+      model: createLlmChatModel(options),
+      prompt: buildRenderPrompt(input),
+      // 端点挂死兜底:60s 无响应流被 abort(下文 'abort' 部件),经 catch 化为
+      // undefined(与 llm-driver 的 B4 口径同族:失败如实,绝不抛出)。
+      abortSignal: AbortSignal.timeout(60_000),
+    });
+    let text = '';
+    for await (const part of result.fullStream) {
+      switch (part.type) {
+        case 'text-delta':
+          text += part.text;
+          break;
+        case 'error':
+          // 端点错误(401 等)以 error 部件到达(非抛出)——转交 catch 统一折算。
+          throw part.error;
+        case 'abort':
+          // 60s 兜底触发:abort 部件的 reason 是 AbortSignal.reason 的序列化文本。
+          throw new Error(part.reason ?? 'LLM 调用被中止');
+        default:
+          break;
+      }
+    }
+    return parseRenderResponse(text);
+  } catch {
+    return undefined;
+  }
 }

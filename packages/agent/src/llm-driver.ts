@@ -327,11 +327,15 @@ async function llmDecide(
   }
 }
 
-/** LLM driver 工厂:OpenAI 兼容端点(缺省 GLM coding plan)+ 注入传输。 */
-export function createLlmDriver(options: LlmDriverOptions = {}): AgentDriver {
+/**
+ * LLM chat 模型工厂(T12 抽出,llm driver 与 render LLM 路径共用客户端口径):
+ * OpenAI 兼容端点 + provider.chat() 锁 Chat Completions(GLM coding plan 只有
+ * chat/completions;provider(id) 缺省走 Responses API)。空 key 也构造:显式
+ * llm 时由端点裁决(401 如实回流,B4);auto/无 key 的回退在各自工厂层。
+ * fetch 适配:SDK 传输签名(string|URL|Request)收敛为本包的 FetchLike(string)。
+ */
+export function createLlmChatModel(options: LlmDriverOptions = {}): LanguageModel {
   const settings = resolveSettings(options);
-  // 空 key 也构造:显式 llm 时由端点裁决(401 如实回流,B4);auto 的回退在工厂层。
-  // fetch 适配:SDK 传输签名(string|URL|Request)收敛为本包的 FetchLike(string)。
   const provider = createOpenAI({
     baseURL: settings.baseURL,
     apiKey: settings.apiKey,
@@ -342,9 +346,12 @@ export function createLlmDriver(options: LlmDriverOptions = {}): AgentDriver {
         }
       : {}),
   });
-  // GLM coding plan 只有 chat/completions;provider(id) 缺省走 Responses API,
-  // 必须显式 .chat() 锁定 Chat Completions。
-  const model = provider.chat(settings.model);
+  return provider.chat(settings.model);
+}
+
+/** LLM driver 工厂:OpenAI 兼容端点(缺省 GLM coding plan)+ 注入传输。 */
+export function createLlmDriver(options: LlmDriverOptions = {}): AgentDriver {
+  const model = createLlmChatModel(options);
   return { decide: (context, sink) => llmDecide(model, context, sink) };
 }
 
