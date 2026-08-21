@@ -62,9 +62,11 @@ class AsyncScriptedDriver implements AgentDriver {
 interface TransportOptions {
   entities?: Record<string, SirenEntity>;
   execResponses?: Response[];
+  /** 在场时按 /.well-known/ui4a.json 响应(缺省 404,等价端点缺失)。 */
+  sitemap?: unknown;
 }
 
-/** 契同路由:GET /api/entity 查表;POST /api/exec 依次出队。 */
+/** 契同路由:GET sitemap/entity 查表;POST /api/exec 依次出队。 */
 function contractTransport(options: TransportOptions = {}) {
   const entities = options.entities ?? {};
   const execResponses = [...(options.execResponses ?? [])];
@@ -73,6 +75,9 @@ function contractTransport(options: TransportOptions = {}) {
       const response = execResponses.shift();
       if (response !== undefined) return response;
       return jsonResponse({ error: '脚本耗尽:无更多 exec 响应' }, 500);
+    }
+    if (options.sitemap !== undefined && url.endsWith('/.well-known/ui4a.json')) {
+      return jsonResponse(options.sitemap);
     }
     const rel = new URL(url).searchParams.get('rel') ?? '';
     const entity = entities[rel];
@@ -406,5 +411,98 @@ describe('onStep 流式轨迹回调(T9 Phase B)', () => {
 
     expect(result.outcome).toBe('failed');
     expect(seen).toEqual([]);
+  });
+});
+
+// ---- 静态上下文:sitemap 按 app 分组(T10 Phase D / Task D1)------------------
+
+/** 与 /.well-known/ui4a.json 真实输出同形的分组 sitemap(T10 Phase C 形状)。 */
+const groupedSitemapBody = {
+  version: 'v-apps',
+  surfaces: [
+    { rel: 'articles', title: '文章集合', app: 'publishing' },
+    { rel: 'comments', title: '评论队列', app: 'community' },
+  ],
+  flows: [
+    { name: 'article-drafting', title: '文章发布向导', app: 'publishing' },
+    { name: 'comment-moderation', title: '评论审核', app: 'community' },
+  ],
+  applications: [
+    {
+      name: 'publishing',
+      title: '发布',
+      intent: '内容起草与发布',
+      flows: [{ name: 'article-drafting', title: '文章发布向导', app: 'publishing' }],
+    },
+    {
+      name: 'community',
+      title: '社区',
+      intent: '评论审核与社区互动',
+      flows: [{ name: 'comment-moderation', title: '评论审核', app: 'community' }],
+    },
+  ],
+};
+
+describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
+  it('applications 分组进入 DriverContext:name/intent 在场,组内 flows 摘要齐全,扁平 surfaces 保留', async () => {
+    const transport = contractTransport({
+      entities: { articles: articlesEntity },
+      sitemap: groupedSitemapBody,
+    });
+    const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
+
+    await runAgent(driver, GOAL, { baseUrl: BASE, fetchImpl: transport.fetch });
+
+    const sitemap = driver.contexts[0]!.sitemap;
+    expect(sitemap?.version).toBe('v-apps');
+    // 两层发现第一层:app 分组与 intent 在场(选 app → 选 flow)。
+    expect(sitemap?.applications.map((app) => app.name)).toEqual(['publishing', 'community']);
+    const publishing = sitemap?.applications.find((app) => app.name === 'publishing');
+    expect(publishing?.intent).toBe('内容起草与发布');
+    expect(publishing?.flows).toEqual([{ name: 'article-drafting', title: '文章发布向导' }]);
+    // 扁平信息保留(向后兼容:既有消费方零改动)。
+    expect(sitemap?.surfaces.map((surface) => surface.rel)).toEqual(['articles', 'comments']);
+  });
+
+  it('旧形状 sitemap(无 applications 字段)→ 分组为空数组,扁平 surfaces 照常', async () => {
+    const transport = contractTransport({
+      entities: { articles: articlesEntity },
+      sitemap: { version: 'v-flat', surfaces: [{ rel: 'articles', title: '文章集合' }] },
+    });
+    const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
+
+    await runAgent(driver, GOAL, { baseUrl: BASE, fetchImpl: transport.fetch });
+
+    const sitemap = driver.contexts[0]!.sitemap;
+    expect(sitemap?.version).toBe('v-flat');
+    expect(sitemap?.applications).toEqual([]);
+    expect(sitemap?.surfaces).toEqual([{ rel: 'articles', title: '文章集合' }]);
+  });
+});
+
+describe('role/app 上下文槽位:数据注入路径(T10 Phase D)', () => {
+  it('RunAgentOptions 提供 role/app → 每步 DriverContext 原样携带', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
+
+    await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+      role: '内容审核员',
+      app: 'community',
+    });
+
+    expect(driver.contexts[0]!.role).toBe('内容审核员');
+    expect(driver.contexts[0]!.app).toBe('community');
+  });
+
+  it('空槽(未提供)→ DriverContext 的 role/app 缺席(零行为变化)', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
+
+    await runAgent(driver, GOAL, { baseUrl: BASE, fetchImpl: transport.fetch });
+
+    expect(driver.contexts[0]!.role).toBeUndefined();
+    expect(driver.contexts[0]!.app).toBeUndefined();
   });
 });

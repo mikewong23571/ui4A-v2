@@ -8,7 +8,7 @@
  */
 import type { SirenEntity } from '@ui4a/engine';
 
-import type { FetchLike, SitemapSummary } from './types';
+import type { FetchLike, SitemapApplicationSummary, SitemapSummary } from './types';
 
 /** exec 请求体(HTTP 合同的 POST 载荷形状)。 */
 export interface ExecPayload {
@@ -73,6 +73,27 @@ function errorMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
+/**
+ * sitemap JSON 的 applications 分组 → agent 摘要(宽容解析:字段缺失的
+ * 条目跳过;旧形状无 applications 字段 → 空数组,静态上下文退化为扁平)。
+ */
+function asApplicationSummaries(value: unknown): SitemapApplicationSummary[] {
+  if (!Array.isArray(value)) return [];
+  const applications: SitemapApplicationSummary[] = [];
+  for (const entry of value) {
+    if (!isPlainObject(entry)) continue;
+    if (typeof entry.name !== 'string' || typeof entry.intent !== 'string') continue;
+    const flows = (Array.isArray(entry.flows) ? entry.flows : [])
+      .filter(
+        (flow): flow is { name: string; title: string } =>
+          isPlainObject(flow) && typeof flow.name === 'string' && typeof flow.title === 'string',
+      )
+      .map((flow) => ({ name: flow.name, title: flow.title }));
+    applications.push({ name: entry.name, intent: entry.intent, flows });
+  }
+  return applications;
+}
+
 export function createContractClient(baseUrl: string, fetchImpl: FetchLike): ContractClient {
   const root = baseUrl.replace(/\/+$/, '');
   return {
@@ -91,7 +112,11 @@ export function createContractClient(baseUrl: string, fetchImpl: FetchLike): Con
               typeof surface.title === 'string',
           )
           .map((surface) => ({ rel: surface.rel, title: surface.title }));
-        return { version: body.version, surfaces };
+        return {
+          version: body.version,
+          surfaces,
+          applications: asApplicationSummaries(body.applications),
+        };
       } catch {
         return undefined;
       }

@@ -81,16 +81,36 @@ export interface DriverContext {
   lastRejection?: RejectionRecord;
   /**
    * 应用 sitemap(版本级缓存结构的最外层,架构规定它是 agent 的静态上下文):
-   * surfaces 的 rel/title 供自由漫游层把目标动词映射到可达表面(flow 入口)。
+   * surfaces 的 rel/title 供自由漫游层把目标动词映射到可达表面(flow 入口);
+   * applications 按 app 分组呈现发现面(T10 两层发现:选 app〔读 intent〕→ 选 flow)。
    * 可选:循环拿不到 sitemap(端点缺失)时为 undefined,driver 须能退化为仅用实体。
    */
   sitemap?: SitemapSummary;
+  /**
+   * role/app 上下文槽位(T10 Phase D,架构决定 6):角色职责组合的数据载体
+   * (D19 路线 T3/T5 的钩子)。值由 RunAgentOptions 注入,循环原样随行每步
+   * 上下文;空槽(未提供)= 现状,零行为变化——prompt 只装不变协议核心。
+   */
+  role?: string;
+  app?: string;
 }
 
-/** sitemap 中 driver 需要的最小投影(surfaces 的 rel/title)。 */
+/** application 分组的 agent 投影:两层发现第一层(name + intent + 组内 flow 摘要)。 */
+export interface SitemapApplicationSummary {
+  name: string;
+  intent: string;
+  flows: { name: string; title: string }[];
+}
+
+/** sitemap 中 driver 需要的最小投影(surfaces 的 rel/title + applications 分组)。 */
 export interface SitemapSummary {
   version: string;
   surfaces: { rel: string; title: string }[];
+  /**
+   * 按 app 分组的发现面(T10):agent 先读 intent 定位 app,再在组内选 flow。
+   * 端点未提供(旧形状)时解析为空数组;扁平 surfaces 始终保留(向后兼容)。
+   */
+  applications: SitemapApplicationSummary[];
 }
 
 /**
@@ -114,6 +134,12 @@ export interface RunAgentOptions {
   channel?: string;
   /** 起始实体 rel(缺省 articles——种子域的入口集合)。 */
   startRel?: string;
+  /**
+   * role/app 上下文槽位(T10 Phase D):原样注入每步 DriverContext,
+   * LLM driver 据此渲染 SYSTEM_PROMPT 槽位;缺省 = 空槽,零行为变化。
+   */
+  role?: string;
+  app?: string;
   /**
    * 流式轨迹回调(T9 Phase B):循环每次 trail.push 后同步调用
    * (navigate/exec/done/fail 各结局全覆盖)——聊天路由据此逐步推 SSE 帧。

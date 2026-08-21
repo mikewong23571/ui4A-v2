@@ -386,6 +386,7 @@ describe('④自由漫游(沿 links 走到有交集处)', () => {
           { rel: 'flow:article-drafting', title: '文章发布向导' },
           { rel: 'flow:post-status', title: '文章状态' },
         ],
+        applications: [],
       },
     });
     // 目标"发布"与表面标题"文章发布向导"词级交集 → 进入 flow 入口链接
@@ -403,6 +404,7 @@ describe('④自由漫游(沿 links 走到有交集处)', () => {
       sitemap: {
         version: 'v1',
         surfaces: [{ rel: 'flow:article-drafting', title: '文章发布向导' }],
+        applications: [],
       },
     });
     // articles 上无 flow 入口链接也无词交集链接 → fail(不幻觉导航)

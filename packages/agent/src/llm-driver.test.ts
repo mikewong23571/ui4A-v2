@@ -9,9 +9,14 @@
 import type { SirenAction } from '@ui4a/engine';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { createDriver, createLlmDriver, resolveDriverKind } from './llm-driver';
+import { buildSystemPrompt, createDriver, createLlmDriver, resolveDriverKind } from './llm-driver';
 import { createRuleDriver } from './rule-driver';
-import { createScriptedTransport, instanceEntity, jsonResponse } from './testkit';
+import {
+  createScriptedTransport,
+  instanceEntity,
+  jsonResponse,
+  type RecordedCall,
+} from './testkit';
 import type { AgentGoal, DriverContext, FetchLike } from './types';
 
 const nextAction: SirenAction = {
@@ -258,5 +263,57 @@ describe('createDriver 工厂(auto 回退 = I1 机械层)', () => {
 
   it('rule 恒为 rule driver', () => {
     expect(resolveDriverKind('rule', { apiKey: 'k' })).toBe('rule');
+  });
+});
+
+// ---- SYSTEM_PROMPT role/app 上下文槽位(T10 Phase D / 架构决定 6)------------
+
+/** 抓取脚本化传输首条 LLM 请求的 system prompt 文本(chat completions 首条 system 消息)。 */
+function systemPromptOf(calls: RecordedCall[]): string | undefined {
+  const messages = calls[0]?.body?.messages;
+  if (!Array.isArray(messages)) return undefined;
+  const entry = messages.find(
+    (message): message is { role: string; content: string } =>
+      typeof message === 'object' &&
+      message !== null &&
+      (message as { role?: unknown }).role === 'system' &&
+      typeof (message as { content?: unknown }).content === 'string',
+  );
+  return entry?.content;
+}
+
+describe('SYSTEM_PROMPT role/app 上下文槽位(T10 Phase D)', () => {
+  it('空槽 = 现状:无槽位/空槽位的 system prompt 逐字节一致', () => {
+    const base = buildSystemPrompt();
+    expect(buildSystemPrompt({})).toBe(base);
+    expect(buildSystemPrompt({ role: undefined, app: undefined })).toBe(base);
+    // 协议核心内容不变(既有规则原文)。
+    expect(base).toContain('你是 UI4A 合同 agent');
+    expect(base).toContain('完成判定');
+  });
+
+  it('槽位值在场:协议核心原样为前缀,role/app 以数据行追加', () => {
+    const prompt = buildSystemPrompt({ role: '内容审核员', app: 'community' });
+    expect(prompt.startsWith(buildSystemPrompt())).toBe(true);
+    expect(prompt).toContain('内容审核员');
+    expect(prompt).toContain('community');
+  });
+
+  it('槽位值经 DriverContext 注入 LLM 请求的 system prompt', async () => {
+    const { driver, calls } = llmDriverWith(() => openaiToolResponse('done', { summary: 'ok' }));
+
+    await driver.decide(context({ role: '内容审核员', app: 'community' }));
+
+    const system = systemPromptOf(calls);
+    expect(system).toContain('内容审核员');
+    expect(system).toContain('community');
+  });
+
+  it('空槽 decide:请求的 system prompt 与协议核心逐字节一致(零行为变化)', async () => {
+    const { driver, calls } = llmDriverWith(() => openaiToolResponse('done', { summary: 'ok' }));
+
+    await driver.decide(context());
+
+    expect(systemPromptOf(calls)).toBe(buildSystemPrompt());
   });
 });

@@ -3,6 +3,8 @@
  *
  * - 决策由 LLM 产出:OpenAI 兼容 tool calling(Vercel AI SDK generateText);
  *   prompt = 目标 + 轨迹 + 最近拒绝(拒绝即数据)+ 当前实体摘要;
+ * - SYSTEM_PROMPT 只装不变协议核心;role/app 上下文槽位(T10)从
+ *   DriverContext 数据注入,空槽 = 现状(零行为变化);
  * - 工具列表 = buildToolProjection(固定动词 5 + 动态动作工具,guard 嵌
  *   description)——合法动作集就是工具列表,处境披露的 tool 形态;
  * - 模型输出不合法(无工具调用/未知工具/保留动词/参数残缺)→ fail-safe 返回 fail;
@@ -67,6 +69,29 @@ const SYSTEM_PROMPT = [
   '5. clarify 与 render 是保留动词且当前未实现:禁止调用;缺字段值时按规则 4 自行构造。',
   '6. 完成判定:目标对应的完成类动作(如 publish)成功执行过之后才调用 done,并用 summary 总结;不得提前 done。',
 ].join('\n');
+
+/**
+ * SYSTEM_PROMPT 的 role/app 上下文槽位(T10 Phase D,架构决定 6):
+ * 角色职责组合的数据载体(D19 路线 T3/T5 的钩子)——prompt 只装不变协议
+ * 核心,角色/意图从数据(DriverContext.role/app)注入。空槽 = 现状。
+ */
+export interface SystemPromptSlots {
+  role?: string;
+  app?: string;
+}
+
+/**
+ * system prompt 组装:空槽(未提供/空串)逐字节返回协议核心 SYSTEM_PROMPT
+ * (零行为变化);槽位值在场时协议核心原样为前缀,追加数据行。
+ */
+export function buildSystemPrompt(slots: SystemPromptSlots = {}): string {
+  const lines = [
+    ...(slots.role !== undefined && slots.role !== '' ? [`- 角色: ${slots.role}`] : []),
+    ...(slots.app !== undefined && slots.app !== '' ? [`- 应用: ${slots.app}`] : []),
+  ];
+  if (lines.length === 0) return SYSTEM_PROMPT;
+  return `${SYSTEM_PROMPT}\n\n## 角色与应用上下文\n${lines.join('\n')}`;
+}
 
 /** 当前实体摘要:供 prompt 的紧凑投影(不内联全部子实体)。 */
 function describeEntity(entity: SirenEntity): string {
@@ -211,7 +236,7 @@ async function llmDecide(model: LanguageModel, context: DriverContext): Promise<
   try {
     const result = await generateText({
       model,
-      system: SYSTEM_PROMPT,
+      system: buildSystemPrompt({ role: context.role, app: context.app }),
       prompt: buildUserPrompt(context),
       tools: toToolSet(buildToolProjection(context.entity)),
       // 端点挂死兜底(T9 Phase B):60s 无响应折算 abort 错误,经 catch 如实进

@@ -54,6 +54,8 @@ export async function runAgent(
 
   // sitemap 是版本级缓存结构的最外层,架构规定它是 agent 的静态上下文(取一次,
   // 全程复用);拿不到不致命——driver 退化为仅用实体导航。
+  // T10:投影保留两层发现结构——扁平 surfaces(向后兼容)+ applications 分组
+  //(name/intent/组内 flows 摘要;选 app〔读 intent〕→ 选 flow)。
   let sitemap: SitemapSummary | undefined;
   try {
     const fetched = await client.getSitemap();
@@ -64,6 +66,7 @@ export async function runAgent(
           rel: surface.rel,
           title: surface.title,
         })),
+        applications: fetched.applications,
       };
     }
   } catch {
@@ -108,6 +111,8 @@ export async function runAgent(
       successes: [...successes],
       lastRejection,
       sitemap,
+      role: options.role,
+      app: options.app,
     };
     lastRejection = undefined;
     const op = await driver.decide(context);
