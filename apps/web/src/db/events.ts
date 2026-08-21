@@ -18,7 +18,8 @@ import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
  *  definition-* 为 T4 定义平面事件(meta 模块产出 + definition-seeded 种子,
  *  Phase B 起 web 层写入;类型先行以与 engine LogEventKind 对齐——机械适配);
  *  delegation-* 为 T5 委托事件族(worker delegationWorkflow 的首/步/终事件,
- *  同一双写者方案;类型先行,engine fold 分支见 T5 Phase A Task 2)。 */
+ *  同一双写者方案;类型先行,engine fold 分支见 T5 Phase A Task 2);
+ *  plan-executed 为 T6 批量裁决记录事件(engine executePlan 每计划恰一条)。 */
 export type EventKind =
   | 'action-executed'
   | 'action-rejected'
@@ -40,7 +41,8 @@ export type EventKind =
   | 'delegation-step'
   | 'delegation-completed'
   | 'delegation-failed'
-  | 'delegation-max-steps';
+  | 'delegation-max-steps'
+  | 'plan-executed';
 
 /** 追加事件(引擎 EngineEvent 的日志层超集:引擎不产 seq/ts/reason,由本层分配)。 */
 export interface EventAppend {

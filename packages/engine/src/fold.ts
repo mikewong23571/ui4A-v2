@@ -731,6 +731,9 @@ export function fold(
       case 'action-rejected':
       case 'entity-appended':
       case 'spawn-requested':
+      // plan-executed(T6):批量裁决记录——纯标记,状态由同批各步伴随事件
+      // (action-executed / confirmation-requested 族)重放,fold 不双算。
+      case 'plan-executed':
         break;
       default:
         throw new Error(`重放失败:未知事件 kind "${String(event.kind)}"(seq=${event.seq})`);

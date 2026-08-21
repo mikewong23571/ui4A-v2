@@ -14,6 +14,7 @@ export * from './judge';
 export * from './effects';
 export * from './confirmation';
 export * from './execute';
+export * from './plan';
 export * from './fold';
 export * from './delegation';
 export * from './lifecycle';
