@@ -6,7 +6,7 @@ import {
   postStatusFlow,
 } from './fixtures';
 import { deriveSitemap } from './sitemap';
-import type { FlowDefinition } from './types';
+import type { ApplicationDefinition, FlowDefinition } from './types';
 
 const flows = [articleDraftingFlow, postStatusFlow, commentModerationFlow];
 
@@ -60,9 +60,9 @@ describe('deriveSitemap — 结构', () => {
     const sitemap = deriveSitemap(flows);
     expect(sitemap.surfaces).toEqual(
       expect.arrayContaining([
-        { rel: 'flow:article-drafting', title: '文章发布向导' },
-        { rel: 'flow:post-status', title: '文章状态' },
-        { rel: 'articles', title: 'articles', collection: true },
+        { rel: 'flow:article-drafting', title: '文章发布向导', app: 'default' },
+        { rel: 'flow:post-status', title: '文章状态', app: 'default' },
+        { rel: 'articles', title: 'articles', collection: true, app: 'default' },
       ]),
     );
     const articlesSurfaces = sitemap.surfaces.filter((s) => s.rel === 'articles');
@@ -74,7 +74,9 @@ describe('deriveSitemap — 结构', () => {
       extraSurfaces: [{ rel: 'comments', title: '评论队列', collection: true }],
     });
     expect(sitemap.surfaces).toEqual(
-      expect.arrayContaining([{ rel: 'comments', title: '评论队列', collection: true }]),
+      expect.arrayContaining([
+        { rel: 'comments', title: '评论队列', collection: true, app: 'default' },
+      ]),
     );
   });
 
@@ -135,5 +137,104 @@ describe('deriveSitemap — 版本号(内容 hash 短码,缓存键)', () => {
       extraSurfaces: [{ rel: 'comments', title: '评论队列', collection: true }],
     });
     expect(b.version).not.toBe(a.version);
+  });
+});
+
+describe('deriveSitemap — application 分组投影(T10 Phase C,spec 架构决定 5)', () => {
+  /** 活跃 app 定义表(snapshot.applications 的形状;声明序 = 投影序)。 */
+  const applications: Record<string, ApplicationDefinition> = {
+    default: { name: 'default', title: '默认应用', intent: '归一化兜底' },
+    publishing: { name: 'publishing', title: '内容发布', intent: '内容起草与发布' },
+    community: { name: 'community', title: '社区互动', intent: '评论与社区互动' },
+  };
+  /** 带归属的 flow(fixture 本体不带 app,此处声明 membership)。 */
+  const appFlows: FlowDefinition[] = [
+    { ...articleDraftingFlow, app: 'publishing' },
+    { ...postStatusFlow, app: 'publishing' },
+    { ...commentModerationFlow, app: 'community' },
+  ];
+
+  it('applications 分组:name/title/intent 齐全,flow 按其 app 归组(声明序)', () => {
+    const sitemap = deriveSitemap(appFlows, { applications });
+    expect(sitemap.applications.map((app) => app.name)).toEqual([
+      'default',
+      'publishing',
+      'community',
+    ]);
+    const publishing = sitemap.applications.find((app) => app.name === 'publishing');
+    expect(publishing).toMatchObject({
+      name: 'publishing',
+      title: '内容发布',
+      intent: '内容起草与发布',
+    });
+    // 组内 flows 保持扁平表声明序,且与扁平条目同形状(同一投影)。
+    expect(publishing?.flows.map((flow) => flow.name)).toEqual([
+      'article-drafting',
+      'post-status',
+    ]);
+    expect(publishing?.flows[0]).toEqual(
+      sitemap.flows.find((flow) => flow.name === 'article-drafting'),
+    );
+    // 无成员的 app 定义也在场(intent 是发现层第一层依据,不因空成员缺席)。
+    expect(sitemap.applications.find((app) => app.name === 'default')).toMatchObject({
+      name: 'default',
+      flows: [],
+    });
+  });
+
+  it('无归属 flow(app 缺省)归一化落 default 组', () => {
+    const sitemap = deriveSitemap(flows, { applications });
+    const defaultApp = sitemap.applications.find((app) => app.name === 'default');
+    expect(defaultApp?.flows.map((flow) => flow.name)).toEqual([
+      'article-drafting',
+      'post-status',
+      'comment-moderation',
+    ]);
+  });
+
+  it('扁平 flows 条目带 app(向后兼容:既有字段不变,缺省归一化 default)', () => {
+    const sitemap = deriveSitemap(appFlows, { applications });
+    expect(sitemap.flows.map((flow) => `${flow.name}:${flow.app}`)).toEqual([
+      'article-drafting:publishing',
+      'post-status:publishing',
+      'comment-moderation:community',
+    ]);
+    const normalized = deriveSitemap(flows, { applications });
+    expect(normalized.flows.every((flow) => flow.app === 'default')).toBe(true);
+  });
+
+  it('surfaces 条目带 app:flow 面取其 flow.app;集合面取首次 append 它的 flow 的 app', () => {
+    const sitemap = deriveSitemap(appFlows, {
+      applications,
+      extraSurfaces: [{ rel: 'comments', title: '评论队列', collection: true }],
+    });
+    expect(sitemap.surfaces).toEqual(
+      expect.arrayContaining([
+        { rel: 'flow:article-drafting', title: '文章发布向导', app: 'publishing' },
+        { rel: 'flow:comment-moderation', title: '评论审核', app: 'community' },
+        { rel: 'articles', title: 'articles', collection: true, app: 'publishing' },
+        // extraSurfaces 无归属信息 → 归 'default'。
+        { rel: 'comments', title: '评论队列', collection: true, app: 'default' },
+      ]),
+    );
+  });
+
+  it('app 定义内容变更(intent 改动)→ version 变化(纯推导免费获得的 bump)', () => {
+    const a = deriveSitemap(appFlows, { applications });
+    const changed = deriveSitemap(appFlows, {
+      applications: {
+        ...applications,
+        publishing: { ...applications.publishing, intent: '内容起草与发布(改)' },
+      },
+    });
+    expect(changed.version).not.toBe(a.version);
+  });
+
+  it('无 app 定义的快照(applications 缺省)→ applications 为空数组,不炸', () => {
+    const sitemap = deriveSitemap(flows);
+    expect(sitemap.applications).toEqual([]);
+    // 扁平投影照常:flows/surfaces 归一化 app='default',version 照常产出。
+    expect(sitemap.flows.map((flow) => flow.app)).toEqual(['default', 'default', 'default']);
+    expect(sitemap.version).toMatch(/^[0-9a-f]{12}$/);
   });
 });

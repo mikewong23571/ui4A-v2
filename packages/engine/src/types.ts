@@ -16,6 +16,7 @@ export type {
   ActionDefinition,
   NodeDefinition,
   FlowDefinition,
+  ApplicationDefinition,
   FlowEdge,
   DefinitionStatus,
   DefinitionEntry,
