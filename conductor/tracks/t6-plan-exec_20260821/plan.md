@@ -11,5 +11,5 @@
 
 ## Phase B: S4 E2E
 
-- [ ] Task: S4 E2E(六步一次决策/一条 plan-executed/每步可见/exec 调用数=1;拒绝截断;挂起交互;回归 25)
+- [~] Task: S4 E2E(六步一次决策/一条 plan-executed/每步可见/exec 调用数=1;拒绝截断;挂起交互;回归 25)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
