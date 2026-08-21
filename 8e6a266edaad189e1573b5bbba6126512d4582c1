@@ -1,0 +1,6 @@
+T11 Phase B Task 1: chat-turn detail 结构化 steps
+
+改动:apps/web/src/chat/history.ts(ChatTurnDetail.steps)、api/chat/route.ts(写入点)、api/chat/history/route.ts(读端归一 ?? [])+ 两测试文件(+3)
+Why:spec 架构决定 2——留痕不对称修复:结构化 TrailStep[] 不再丢弃,蒸馏原料在 inline 路径补齐;messages 仍是人读投影。
+兼容口径:写入端恒含 steps;读端旧事件 steps 归一空数组。
+验收(编排 agent 亲自复跑):route+history 13/13;CI=true pnpm check 903 passed;chat e2e 5/5。自治验收。
