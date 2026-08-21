@@ -4,7 +4,7 @@
 
 ## Phase A: 词汇表与 binding-only 渲染核心
 
-- [ ] Task: render spec 类型 + 零字面校验器 + 解引用器(纯函数)(TDD:I2 property test)
+- [x] Task: render spec 类型 + 零字面校验器 + 解引用器(纯函数)(TDD:I2 property test)(10686ee)
 - [ ] Task: 词汇表注册表 + A2UI 扩展目录形状(SDK 调研结论落 DECISIONS;薄协议层)
 - [ ] Task: 凝固机制(render-spec-frozen 事件;concern-key 持久化)(TDD)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
