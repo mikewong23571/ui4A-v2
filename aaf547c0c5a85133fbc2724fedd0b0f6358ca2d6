@@ -1,0 +1,5 @@
+T10 Phase D Task 2: rule-driver app 定位层
+
+改动:packages/agent/src/rule-driver.ts(appLocationDecision + reachableEntryRel 提取)、rule-driver.test.ts(+6 用例)
+插入点:ruleDecide 链 doneDecision 之后、namedResourceDecision 之前。匹配口径:expandVerb(goal.verb) 目标词与 'app.name app.intent' 词级交集;组内 flow 词级交集;入口须 ∈ navigableRels。多命中声明序先到先得,组内落空顺延。无命中/空 applications → 零行为变化(软边界,spec 架构决定 6)。
+验收(编排 agent 亲自复跑):packages/agent 113/113;CI=true pnpm check 900 passed。自治验收。
