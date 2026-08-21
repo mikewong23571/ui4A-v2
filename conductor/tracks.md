@@ -7,4 +7,4 @@
 
 - [x] **Track: T3 确认门切片:guard 挂起 + pending 实体 + Cedar 风险策略 + Temporal notify + 收件箱(S1, I4)** *Link: [tracks/t3-confirmation-gate_20260821/index.md](./tracks/t3-confirmation-gate_20260821/index.md)*
 
-- [~] **Track: T4 最小 meta 切片:定义入日志 + lifecycle 自举 + 激活不变式 + 机械 diff + BIOS(S2)** *Link: [tracks/t4-minimal-meta_20260821/index.md](./tracks/t4-minimal-meta_20260821/index.md)*
+- [x] **Track: T4 最小 meta 切片:定义入日志 + lifecycle 自举 + 激活不变式 + 机械 diff + BIOS(S2)** *Link: [tracks/t4-minimal-meta_20260821/index.md](./tracks/t4-minimal-meta_20260821/index.md)*
