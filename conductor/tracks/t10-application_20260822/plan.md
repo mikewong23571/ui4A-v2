@@ -2,7 +2,7 @@
 
 > 依据 `spec.md` 与 `workflow.md`(TDD)。状态:`[ ]` / `[~]` / `[x]`(附 SHA)。
 
-## Phase A: 定义层(packages/shared,纯单测)
+## Phase A: 定义层(packages/shared,纯单测) [checkpoint: 26d2097]
 
 - [x] Task: ApplicationDefinition 类型 + parse 校验(name/title/intent 必填;rel 前缀 `meta/application:`)(TDD) — 85ae222
 - [x] Task: FlowDefinition.app 可选字段 + parse 归一化(缺省 → `'default'`;显式值原样保留入定义)(TDD) — c3947e0
