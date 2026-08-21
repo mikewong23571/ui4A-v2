@@ -78,3 +78,15 @@
 - **决定**:Phase B 画布接入用官方 SDK——`@a2ui/react`(渲染器)+ `@a2ui/web_core`(surface 管理/catalog 协商);**不自实现薄协议层**。词汇表注册表即 A2UI 自定义扩展目录:目录 JSON 与注册表同源,经 `/api/render/catalog` 提供,`catalogUrl` 以 URL 引用。
 - **我方强制不因 SDK 改变**(spec 架构决定 3 的两条):a) agent 只发 updateComponents + 实体引用,不发 updateDataModel 数值——数据模型由渲染器从 /api/entity 拉取私有持有(updateDataModel 是渲染器内部操作);b) action 事件渲染器拦截 → 映射实体已声明 action → /api/exec 裁决(合同外按钮无法提交)。
 - **安装时机与回退**:Phase A 只落注册表形状与目录端点骨架(词条组件 lazy 占位 + bindSchema),SDK 依赖在 Phase B 组件接入时安装(避免提前引依赖);若届时集成受阻(如 React 19/Next 16 兼容或目录协商缺口),回退自实现薄协议层(四消息 + surface 管理器,数据与组件分离、组件按路径绑定),并更新本决定。
+
+## D13 chart/detail 词条:shadcn 未初始化,直接用 recharts + 极简样式(2026-08-21,T7 Phase B)
+
+- **背景**:选型 §6 chart 词条 = shadcn Charts(Recharts 3 封装)、detail 词条 = shadcn Sheet/Card。实查 apps/web:shadcn 起手架**未初始化**(无 components.json、无 ui/ 组件源);T7 阶段补装 shadcn CLI 并初始化会引入一批本 track 用不到的组件与配置面,超出"骨架五面全用现成组件拼"的最小口径。
+- **决定**:chart 词条直接用 **recharts**(shadcn Charts 的底层库,同为选型指定)/ detail 词条用**极简 tailwind 卡片**实现;均记为本偏差,不硬凑 shadcn 封装。
+- **语义影响**:零——词条合同(bind schema/目录/渲染链)不变,仅组件实现层替换;日后初始化 shadcn 可平替(词条模块内部替换实现即可)。
+
+## D14 词条依赖版本注记:Tremor 3 于 React 19(实测可用)、TanStack Table 锁 v8(2026-08-21,T7 Phase B)
+
+- **Tremor(stat 词条)**:`@tremor/react@3.18.7` peer 声明 react ^18(项目 19.2.8)——pnpm 安装告警但**实测渲染通过**(jsdom 组件测试 + Metric/Card/Text)。样式经 globals.css `@source '../../node_modules/@tremor/react/dist'` 让 Tailwind v4 扫描库内类名生成。若后续真机出现 React 19 运行时问题,回退为极简统计卡(同 D13 口径)并更新本条。
+- **TanStack Table(table 词条)**:v9(9.1.2)是 signal 化重写(useTable/table.Subscribe 新 API,经典 API 移入 `/legacy` 导出);**锁 `^8.21.3`**(useReactTable 稳定 API,社区文档完备)。选型只写"TanStack Table"未锁版本,v8 同为 TanStack Table。
+- **A2UI SDK**:`@a2ui/react@0.10.2` + `@a2ui/web_core@0.10.6` 装机成功;peer zod ^3.25.76 与仓库 hoist 的 zod 4.4.3 告警——SDK 以自身依赖嵌套解析 zod 3.x,peer 告警为传递性噪音(pnpm 逐包解析),实测不影响使用。

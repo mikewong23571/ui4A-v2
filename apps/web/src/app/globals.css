@@ -1,5 +1,9 @@
 @import 'tailwindcss';
 
+/* Tremor(stat 词条,DECISIONS D14):Tailwind v4 扫描 Tremor dist 的类名
+   (库组件的样式类随本应用构建生成;React 19 peer 告警已实测渲染通过)。 */
+@source '../../node_modules/@tremor/react/dist';
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

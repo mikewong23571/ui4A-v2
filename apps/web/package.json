@@ -10,19 +10,29 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@a2ui/react": "0.10.2",
+    "@a2ui/web_core": "0.10.6",
     "@assistant-ui/react": "^0.15.16",
     "@cedar-policy/cedar-wasm": "^4.12.0",
+    "@dnd-kit/core": "^6.3.1",
     "@rjsf/core": "^6.8.0",
     "@rjsf/validator-ajv8": "^6.8.0",
+    "@tanstack/react-table": "^8.21.3",
     "@temporalio/client": "1.22.0",
+    "@tremor/react": "^3.18.7",
     "@ui4a/agent": "workspace:*",
     "@ui4a/engine": "workspace:*",
     "@ui4a/shared": "workspace:*",
+    "@xyflow/react": "^12.11.3",
+    "ajv": "^8.20.0",
     "next": "16.3.1",
     "pg": "^8.23.0",
     "react": "19.2.8",
+    "react-chrono": "^3.3.3",
     "react-diff-view": "^3.3.3",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-markdown": "^10.1.0",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
