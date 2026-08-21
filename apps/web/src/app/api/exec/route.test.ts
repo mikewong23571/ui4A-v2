@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { ensureEventsTable } from '../../../db/events';
 import { getPool } from '../../../db/pool';
 import { resetEngineForTests } from '../../../engine/service';
+import { GET as getEntity } from '../entity/route';
 
 import { POST } from './route';
 
@@ -180,5 +181,163 @@ describe('POST /api/exec', () => {
       }
       resetEngineForTests();
     }
+  });
+});
+
+describe('POST /api/exec — 确认门(T3 Phase B)', () => {
+  /** agent 挂起 archive 一次,返回 202 body(矩阵测试公共前置)。 */
+  async function suspendArchive(): Promise<{ status: number; body: Record<string, unknown> }> {
+    const res = await POST(
+      post({
+        rel: 'post:post-welcome',
+        action: 'archive',
+        params: {},
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'http',
+      }),
+    );
+    return { status: res.status, body: (await res.json()) as Record<string, unknown> };
+  }
+
+  it('agent archive(high)→ 202 {status:"suspended", confirmation:{rel,...摘录}}', async () => {
+    const { status, body } = await suspendArchive();
+
+    expect(status).toBe(202);
+    expect(body.status).toBe('suspended');
+    expect(body.confirmation).toMatchObject({
+      rel: 'confirmation:c1',
+      id: 'c1',
+      targetRel: 'post:post-welcome',
+      targetAction: 'archive',
+      proposedBy: { actor: 'agent', principal: 'user:mike' },
+      channel: 'http',
+      policyReason: expect.stringContaining('Cedar'),
+    });
+
+    // 动作未生效:文章仍 published;confirmation-requested 事件落库(detail 带 Cedar 策略 id)。
+    const post = await pool.query(
+      "SELECT COUNT(*)::int AS n FROM events WHERE kind = 'action-executed' AND rel = 'post:post-welcome' AND action = 'archive'",
+    );
+    expect(post.rows[0]).toMatchObject({ n: 0 });
+    const requested = await pool.query(
+      "SELECT actor, detail FROM events WHERE kind = 'confirmation-requested' ORDER BY seq DESC LIMIT 1",
+    );
+    expect(requested.rows[0]).toMatchObject({ actor: 'agent' });
+    expect(requested.rows[0].detail).toMatchObject({
+      policy: expect.stringMatching(/^cedar:/),
+    });
+  });
+
+  it('human approve(经 /api/exec)→ 200,文章 archived,事件链委托语义', async () => {
+    await suspendArchive();
+
+    const res = await POST(
+      post({ rel: 'confirmation:c1', action: 'approve', params: {}, actor: 'human' }),
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { entity: { properties: Record<string, unknown> } };
+    expect(body.entity.properties).toMatchObject({
+      rel: 'post:post-welcome',
+      node: 'archived',
+    });
+
+    const tail = await pool.query(
+      "SELECT kind, actor, principal, channel FROM events WHERE kind IN ('confirmation-approved', 'action-executed') ORDER BY seq DESC LIMIT 2",
+    );
+    expect(tail.rows.reverse()).toEqual([
+      expect.objectContaining({
+        kind: 'confirmation-approved',
+        actor: 'human',
+        channel: 'confirmation',
+      }),
+      expect.objectContaining({
+        kind: 'action-executed',
+        actor: 'human',
+        principal: 'user:mike',
+        channel: 'confirmation',
+      }),
+    ]);
+  });
+
+  it('agent approve → 422 guard(actor-is-human),确认仍 pending(I4)', async () => {
+    await suspendArchive();
+
+    const res = await POST(
+      post({
+        rel: 'confirmation:c1',
+        action: 'approve',
+        params: {},
+        actor: 'agent',
+        principal: 'user:mike',
+      }),
+    );
+
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as {
+      layer: string;
+      reason: string;
+      detail: { name: string; pass: boolean }[];
+    };
+    expect(body.layer).toBe('guard-failed');
+    expect(body.reason).toContain('actor-is-human');
+    expect(body.detail).toEqual([expect.objectContaining({ name: 'actor-is-human', pass: false })]);
+
+    // 留痕且状态不变(经 /api/entity 验证确认实体仍 pending)。
+    const rejected = await pool.query(
+      "SELECT actor FROM events WHERE kind = 'action-rejected' AND rel = 'confirmation:c1' ORDER BY seq DESC LIMIT 1",
+    );
+    expect(rejected.rows[0]).toMatchObject({ actor: 'agent' });
+    const entityRes = await getEntity(
+      new Request('http://localhost:3100/api/entity?rel=confirmation:c1'),
+    );
+    const entityBody = (await entityRes.json()) as { properties: Record<string, unknown> };
+    expect(entityBody.properties).toMatchObject({ status: 'pending' });
+  });
+
+  it('human reject → 200,原动作永不生效;再 approve → 400 undeclared', async () => {
+    await suspendArchive();
+
+    const reject = await POST(
+      post({
+        rel: 'confirmation:c1',
+        action: 'reject',
+        params: { reason: '还要留着' },
+        actor: 'human',
+      }),
+    );
+    expect(reject.status).toBe(200);
+    const rejectBody = (await reject.json()) as { entity: { properties: Record<string, unknown> } };
+    expect(rejectBody.entity.properties).toMatchObject({ status: 'rejected' });
+
+    const executed = await pool.query(
+      "SELECT COUNT(*)::int AS n FROM events WHERE kind = 'action-executed' AND action = 'archive'",
+    );
+    expect(executed.rows[0]).toMatchObject({ n: 0 });
+
+    const approve = await POST(
+      post({ rel: 'confirmation:c1', action: 'approve', params: {}, actor: 'human' }),
+    );
+    expect(approve.status).toBe(400);
+    const approveBody = (await approve.json()) as { layer: string };
+    expect(approveBody.layer).toBe('undeclared');
+  });
+
+  it('B2 回归:human archive 直通 200,不挂起', async () => {
+    const res = await POST(
+      post({ rel: 'post:post-welcome', action: 'archive', params: {}, actor: 'human' }),
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { entity: { properties: Record<string, unknown> } };
+    expect(body.entity.properties).toMatchObject({
+      rel: 'post:post-welcome',
+      node: 'archived',
+    });
+    const suspended = await pool.query(
+      "SELECT COUNT(*)::int AS n FROM events WHERE kind = 'confirmation-requested'",
+    );
+    expect(suspended.rows[0]).toMatchObject({ n: 0 });
   });
 });

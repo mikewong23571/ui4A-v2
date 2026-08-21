@@ -2,9 +2,12 @@ import type { ExecRequest } from '@ui4a/engine';
 
 import { getDb, getEngine } from '../../../engine/service';
 
-// POST /api/exec — 引擎裁决端点(spec FR4):
+// POST /api/exec — 引擎裁决端点(spec FR4;T3 Phase B 起含确认门):
 // - 请求 {rel, action, params?, actor?, principal?, channel?}(actor 缺省 human);
 // - 通过 → 200 {entity: 受影响实体的新投影}(append 时为新实例);
+// - 挂起(确认门:策略判定需人类确认;rel 亦可为 confirmation:<id> 之外的
+//   任何业务实体)→ 202 {status:'suspended', confirmation:{rel, …摘录}}
+//   ——动作未生效,等待 confirmation:<id> 上的 approve/reject(也是普通 exec);
 // - 拒绝 → undeclared 400 / guard-failed|schema-invalid 422,body {layer, reason, detail?}
 //   ——与日志 action-rejected 事件同源(同一 verdict 对象,service 落库 detail.layer);
 // - 请求形状非法 → 400;db 不可达 → 503。
@@ -78,6 +81,19 @@ export async function POST(request: Request) {
     const outcome = await engine.exec(parsed.request);
     if (outcome.kind === 'accepted') {
       return Response.json({ entity: outcome.entity });
+    }
+    if (outcome.kind === 'suspended') {
+      // 202 Accepted:动作已被受理但挂起(非拒绝)——等待人类在确认实体上裁决。
+      return Response.json(
+        {
+          status: 'suspended',
+          confirmation: {
+            rel: `confirmation:${outcome.confirmation.id}`,
+            ...outcome.confirmation,
+          },
+        },
+        { status: 202 },
+      );
     }
     const response: Record<string, unknown> = { layer: outcome.layer, reason: outcome.reason };
     if (outcome.detail !== undefined) {
