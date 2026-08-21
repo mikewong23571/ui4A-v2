@@ -2,8 +2,8 @@
 
 ## Phase A: 不变量套件与全量重放
 
-- [~] Task: invariants 套件(I1 keyless 显式/I2–I4/I6 引用收拢/I5 全量重放新增)(TDD)
-- [ ] Task: 双执行者口径套件收拢
+- [x] Task: invariants 套件(I1 keyless 显式/I2–I4/I6 引用收拢/I5 全量重放新增)(TDD) — 8674c5a
+- [~] Task: 双执行者口径套件收拢
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: 文档与走查清单
