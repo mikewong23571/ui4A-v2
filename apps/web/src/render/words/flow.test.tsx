@@ -4,7 +4,9 @@
  * 图:节点标签与边拓扑来自实体数据(节点位置确定性分层,重放一致)。
  */
 import { cleanup, render } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { stubBrowserApis } from '@/test/browser-stubs';
 
 import { derefSpec } from '../deref';
 
@@ -12,20 +14,8 @@ import { graphEntity, specOf } from './fixtures';
 import { FlowWord, layeredLayout } from './flow';
 
 // React Flow 在浏览器依赖 ResizeObserver/DOMMatrixReadOnly——jsdom 缺失,
-// 测试注入极简 stub(零测量;布局断言走纯函数 layeredLayout)。
-class ResizeObserverStub {
-  observe(): void {}
-  unobserve(): void {}
-  disconnect(): void {}
-}
-vi.stubGlobal('ResizeObserver', ResizeObserverStub);
-vi.stubGlobal(
-  'DOMMatrixReadOnly',
-  class DOMMatrixReadOnlyStub {
-    m22 = 1;
-    constructor(_transform?: string) {}
-  },
-);
+// 统一注入极简 stub(零测量;布局断言走纯函数 layeredLayout)。
+stubBrowserApis();
 
 afterEach(cleanup);
 

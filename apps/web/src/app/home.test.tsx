@@ -1,20 +1,28 @@
 // @vitest-environment jsdom
 /**
- * 入口页测试(T2 Phase F / Task F2):首页 = renderer 的导航入口。
+ * 入口页测试(T2 Phase F / Task F2;T7 Phase B 增态势投影与骨架导航):
+ * 首页 = renderer 的导航入口 + 态势投影(骨架路径,零 AI)。
  *
- * - 文章列表:articles 集合成员逐篇链接到 /entity?rel=post:<id>(标题 + 节点可见);
+ * - 文章列表:articles 集合成员逐篇链接到 /entity?rel=post:<id>;
  * - 发布向导入口:来自 articles.links 的 flow 入口链接(零 startRel 特权);
- * - 评论队列:pending 计数 + 入口链接 /entity?rel=comments;
- * - 收件箱(T3 Phase D):pending 确认计数(/api/entity?rel=inbox)+ 入口链接
- *   /entity?rel=inbox(确认门的人类待办入口);
- * - 铁律 3:首页是纯导航页,不渲染任何 button/form(可提交元素只存在于实体页)。
+ * - 评论队列/收件箱:pending 计数 + 入口链接;
+ * - 态势投影(T7):stat 数值与实体 count 对拍(待确认 = inbox.count、
+ *   文章数 = articles.count、在飞 = delegations running 计数);timeline
+ *   最近事件(/api/events 投影,零 AI);
+ * - 全站导航(SiteNav):事件流/画布/舰队/BIOS 入口;
+ * - 铁律 3:首页是纯导航页,不渲染任何可提交元素(form / type=submit 按钮 /
+ *   data-action 按钮;chrono 内部 type=button 控件不构成提交面)。
  */
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenEntity } from '@ui4a/engine';
 
+import { stubBrowserApis } from '@/test/browser-stubs';
+
 import Home from './page';
+
+stubBrowserApis();
 
 // ---- fixtures -----------------------------------------------------------------
 
@@ -121,7 +129,7 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-/** 按合同 URL 分发的 fetch mock(articles/comments/inbox 三端点)。 */
+/** 按合同 URL 分发的 fetch mock(articles/comments/inbox/delegations/events)。 */
 function mockContract(inbox: SirenEntity = inboxEntity(2)) {
   return vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
@@ -134,6 +142,31 @@ function mockContract(inbox: SirenEntity = inboxEntity(2)) {
     if (url.startsWith('/api/entity?rel=inbox')) {
       return Promise.resolve(jsonResponse(200, inbox));
     }
+    if (url.startsWith('/api/entity?rel=delegations')) {
+      return Promise.resolve(
+        jsonResponse(200, {
+          class: ['collection', 'delegations'],
+          properties: { rel: 'delegations', count: 2 },
+          actions: [],
+          links: [],
+          entities: [
+            { class: ['delegation'], properties: { rel: 'delegation:a', status: 'running' }, actions: [], links: [] },
+            { class: ['delegation'], properties: { rel: 'delegation:b', status: 'completed' }, actions: [], links: [] },
+          ],
+        }),
+      );
+    }
+    if (url.startsWith('/api/events')) {
+      return Promise.resolve(
+        jsonResponse(200, {
+          events: [
+            { seq: 1, kind: 'seed', rel: 'seed:business-domain', action: null, actor: null, principal: null, channel: null },
+            { seq: 2, kind: 'action-executed', rel: 'post:post-welcome', action: 'unpublish', actor: 'human', principal: 'local-user', channel: 'renderer' },
+            { seq: 3, kind: 'delegation-started', rel: 'delegation:a', action: null, actor: 'agent', principal: 'user:mike', channel: null },
+          ],
+        }),
+      );
+    }
     return Promise.resolve(jsonResponse(404, { error: `未知端点 ${url}` }));
   });
 }
@@ -141,6 +174,7 @@ function mockContract(inbox: SirenEntity = inboxEntity(2)) {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  stubBrowserApis();
   vi.restoreAllMocks();
 });
 
@@ -191,9 +225,9 @@ describe('入口页(首页)', () => {
     const { container } = render(<Home />);
 
     await waitFor(() => {
-      expect(container.querySelector('a[href$="rel=inbox"]')).not.toBeNull();
+      expect(container.querySelector('a[data-rel="inbox"]')).not.toBeNull();
     });
-    const inbox = container.querySelector<HTMLAnchorElement>('a[href$="rel=inbox"]')!;
+    const inbox = container.querySelector<HTMLAnchorElement>('a[data-rel="inbox"]')!;
     expect(inbox.textContent).toContain('待确认 2');
     expect(inbox.href).toBe('http://localhost:3000/entity?rel=inbox');
   });
@@ -203,9 +237,9 @@ describe('入口页(首页)', () => {
     const { container } = render(<Home />);
 
     await waitFor(() => {
-      expect(container.querySelector('a[href$="rel=inbox"]')).not.toBeNull();
+      expect(container.querySelector('a[data-rel="inbox"]')).not.toBeNull();
     });
-    expect(container.querySelector<HTMLAnchorElement>('a[href$="rel=inbox"]')!.textContent).toContain(
+    expect(container.querySelector<HTMLAnchorElement>('a[data-rel="inbox"]')!.textContent).toContain(
       '待确认 0',
     );
   });
@@ -216,7 +250,7 @@ describe('入口页(首页)', () => {
     await waitFor(() => {
       expect(container.querySelector('a[href*="post%3Apost-welcome"]')).not.toBeNull();
     });
-    const fleet = container.querySelector<HTMLAnchorElement>('a[href="/delegations"]');
+    const fleet = container.querySelector<HTMLAnchorElement>('a[data-rel="delegations"]');
     expect(fleet).not.toBeNull();
     expect(fleet!.textContent).toContain('委托舰队');
   });
@@ -227,19 +261,66 @@ describe('入口页(首页)', () => {
     await waitFor(() => {
       expect(container.querySelector('a[href*="post%3Apost-welcome"]')).not.toBeNull();
     });
-    const bios = container.querySelector<HTMLAnchorElement>('a[href="/meta"]');
+    const bios = container.querySelector<HTMLAnchorElement>('a[data-rel="meta"]');
     expect(bios).not.toBeNull();
     expect(bios!.textContent).toContain('BIOS');
   });
 
-  it('铁律 3:纯导航首页不渲染任何可提交元素(零 button/form)', async () => {
+  it('铁律 3:纯导航首页不渲染任何可提交元素(零 form / 零提交按钮 / 零 data-action)', async () => {
     vi.stubGlobal('fetch', mockContract());
     const { container } = render(<Home />);
 
     await waitFor(() => {
       expect(container.querySelector('a[href*="post%3Apost-welcome"]')).not.toBeNull();
     });
-    expect(container.querySelectorAll('button')).toHaveLength(0);
     expect(container.querySelectorAll('form')).toHaveLength(0);
+    // 可提交元素 = form、type=submit 按钮、或携带 data-action(已声明动作)的按钮。
+    // chrono 的内部控制按钮是 type=button 的展示控件(不关联 form、无 data-action),
+    // 不构成提交面;此前"任何可聚焦按钮"口径过宽,在 chrono 按渲染上下文出箭头钮时
+    // 误报,按铁律本义收窄。
+    const submitButtons = [...container.querySelectorAll('button')].filter(
+      (button) => button.type === 'submit' || button.hasAttribute('data-action'),
+    );
+    expect(submitButtons).toHaveLength(0);
+    expect(container.querySelectorAll('[data-action]')).toHaveLength(0);
+  });
+
+  it('态势投影(T7):stat 数值与实体对拍——待确认=inbox.count、文章数=articles.count、在飞=running 计数', async () => {
+    vi.stubGlobal('fetch', mockContract(inboxEntity(2)));
+    const { container } = render(<Home />);
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="stat-pending"]')).not.toBeNull();
+    });
+    // deref 对拍:待确认 = inbox.count(2),文章数 = articles.count(2)
+    expect(container.querySelector('[data-testid="stat-pending"]')?.textContent).toContain('2');
+    expect(container.querySelector('[data-testid="stat-pending"]')?.textContent).toContain('待确认');
+    expect(container.querySelector('[data-testid="stat-articles"]')?.textContent).toContain('2');
+    expect(container.querySelector('[data-testid="stat-articles"]')?.textContent).toContain('文章数');
+    // 在飞委托 = delegations 成员 running 计数(1 running / 2 total)
+    expect(container.querySelector('[data-testid="stat-running"]')?.textContent).toContain('1');
+    expect(container.querySelector('[data-testid="stat-running"]')?.textContent).toContain('在飞委托');
+  });
+
+  it('态势 timeline:最近事件来自 /api/events 投影(零 AI,尾部窗口)', async () => {
+    vi.stubGlobal('fetch', mockContract());
+    const { container } = render(<Home />);
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="situation-timeline"]')).not.toBeNull();
+    });
+    const text = container.querySelector('[data-testid="situation-timeline"]')?.textContent ?? '';
+    expect(text).toContain('action-executed');
+    expect(text).toContain('delegation-started');
+  });
+
+  it('全站导航(SiteNav):事件流/画布入口可见(data-nav 标注)', async () => {
+    vi.stubGlobal('fetch', mockContract());
+    const { container } = render(<Home />);
+    await waitFor(() => {
+      expect(container.querySelector('a[href*="post%3Apost-welcome"]')).not.toBeNull();
+    });
+    expect(container.querySelector('a[data-nav="events"]')?.getAttribute('href')).toBe('/events');
+    expect(container.querySelector('a[data-nav="canvas"]')?.getAttribute('href')).toBe('/canvas');
   });
 });

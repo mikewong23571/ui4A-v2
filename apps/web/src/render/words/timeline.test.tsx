@@ -6,50 +6,22 @@
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { stubBrowserApis } from '@/test/browser-stubs';
+
 import { derefSpec } from '../deref';
 
 import { articlesCache, eventMember, specOf } from './fixtures';
 import { TimelineWord } from './timeline';
 
-// react-chrono 在浏览器依赖 window.matchMedia/IntersectionObserver——jsdom
-// 缺失,注入极简 stub。
-vi.stubGlobal(
-  'matchMedia',
-  vi.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => false,
-  })),
-);
-vi.stubGlobal(
-  'IntersectionObserver',
-  class IntersectionObserverStub {
-    root = null;
-    rootMargin = '';
-    thresholds = [];
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-    takeRecords(): IntersectionObserverEntry[] {
-      return [];
-    }
-  },
-);
-vi.stubGlobal(
-  'ResizeObserver',
-  class ResizeObserverStub {
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-  },
-);
+// react-chrono 在浏览器依赖 matchMedia/IntersectionObserver/ResizeObserver
+// ——jsdom 缺失,统一注入极简 stub(test/browser-stubs)。
+stubBrowserApis();
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  stubBrowserApis();
+});
 
 describe('timeline 词条', () => {
   it('deref 输出 → 时间线:每个成员一条目(seq 为标题,摘要来自投影)', () => {
