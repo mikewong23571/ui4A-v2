@@ -1,0 +1,7 @@
+T11 Phase C Task 3: chat-panel 可折叠思考区
+
+改动:chat/sse.ts(thinking 帧类型)、components/chat-panel.tsx(thinking 分支)、components/assistant-ui/thread.tsx(ThinkingMessage + hook)、floating-chat.test.tsx(+3)
+结构:thinking 条目独立成区(带 thinking 标记的 assistant 条目),Collapsible 默认收起;交错正确性 = 到达序(thinking N 紧邻 step N 消息前)。
+范围偏差说明:chat/sse.ts 不在原「预计改动」清单但在允许目录(apps/web/src/chat/——注:任务书允许 components/,sse.ts 属类型安全必需的最小扩展,已申报)。
+Why:spec 验收 5——折叠思考区组件测试;rule 零帧不炸。
+验收(编排 agent 亲自复跑):floating-chat 16/16;CI=true pnpm check 931 passed;chat e2e 5/5。自治验收。
