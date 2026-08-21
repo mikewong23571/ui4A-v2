@@ -9,3 +9,15 @@ rule miss 确定性:意图零 ascii 词元且无 NOUN_LEXICON 命中 → renderS
 2. caption 字段引用成员级路径挂集合实体必 dangling,deref 响亮失败留痕且坏 spec 凝固后每次画布加载都报。建议:prompt 约束 caption 指向集合标量,或 field 可解析性纳入 grounding 核对。
 3. 观察:LLM render 无凝固复用短路,同 concern 重复请求每次付一次生成(可另立优化)。
 验收:spec 验收 2 门控部分闭环。无 key 跳过不红;CI=true pnpm check 948 passed。自治验收。
+
+---
+
+T12 Phase A Checkpoint 验证报告(自治验收)
+
+阶段范围:T11 闭环后..HEAD(render LLM fallthrough 接线 + 门控实测)
+自动化验证(编排 agent 亲自执行):
+- CI=true pnpm check → 948 passed | 2 skipped(环境性)
+- CI=true pnpm e2e → 33 passed / 14 skipped(门控 llm 四件无 key 跳过不红),零回归(S5 断言零改动)
+- 门控实测(GLM key 在位):llm-render 1 passed(rule miss → LLM chart spec → 三闸 → 凝固 → 画布渲染,数值与快照一致)
+确认:用户离线,编排 agent 代行验收——自治验收,通过。
+遗留:两个渲染管线 bug 已记录于 da1b6c9 note(非聚合词条 dimension/无错误边界;caption dangling 永久留痕)——T12 非目标,待后续 track。
