@@ -1,0 +1,228 @@
+// @vitest-environment jsdom
+/**
+ * BIOS 激活详情面(T4 Phase C Task 2;spec 架构决定 7)。
+ *
+ * - checks 列表逐项显示(名称 + 通过/失败 + 失败明细);
+ * - 机械 diff 用内建 react-diff-view 渲染(不经过被审批者的任何渲染器);
+ * - approve/reject 是已声明动作(RJSF:reject reason 必填),提交走
+ *   /_meta/api/exec 且 actor=human(铁律 5:审批不委托——renderer 恒以人类
+ *   身份提交,agent 侧 approve 在引擎层被拒);
+ * - 已决策(approved/rejected)是审计视图:无审批动作。
+ */
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import type { DefinitionDiff, SirenAction, SirenEntity } from '@ui4a/engine';
+
+import { ActivationView } from './activation-view';
+
+// ---- fixtures(形状与 projectActivation 投影一致)---------------------------
+
+const approveAction: SirenAction = {
+  name: 'approve',
+  title: '批准',
+  method: 'POST',
+  href: '/_meta/api/exec',
+  fields: {
+    $schema: 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+    properties: {},
+    required: [],
+    additionalProperties: false,
+  },
+};
+
+const rejectAction: SirenAction = {
+  name: 'reject',
+  title: '驳回',
+  method: 'POST',
+  href: '/_meta/api/exec',
+  fields: {
+    $schema: 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+    properties: { reason: { type: 'string', format: 'textarea', minLength: 1, title: '原因' } },
+    required: ['reason'],
+    additionalProperties: false,
+  },
+};
+
+const diff: DefinitionDiff = {
+  algorithm: 'deep-object-diff',
+  before: {
+    name: 'article-drafting',
+    title: '文章发布向导',
+    initial: 'basic-info',
+    nodes: [{ name: 'ready', title: '就绪', actions: [{ name: 'publish', title: '发布', to: 'done' }] }],
+  },
+  after: {
+    name: 'article-drafting',
+    title: '文章发布向导',
+    initial: 'basic-info',
+    nodes: [
+      {
+        name: 'ready',
+        title: '就绪',
+        actions: [
+          { name: 'publish', title: '发布', to: 'done' },
+          { name: 'pin', title: '置顶', to: 'done', guards: [] },
+        ],
+      },
+    ],
+  },
+  changed: {
+    added: { nodes: { 0: { actions: { 1: { name: 'pin', title: '置顶', to: 'done', guards: [] } } } } },
+    deleted: {},
+    updated: {},
+  },
+};
+
+function activationEntity(
+  status: 'pending-approval' | 'approved' | 'rejected',
+  overrides: Record<string, unknown> = {},
+): SirenEntity {
+  const pending = status === 'pending-approval';
+  return {
+    class: ['meta', 'activation', status],
+    properties: {
+      id: 'a1',
+      flow: 'article-drafting',
+      status,
+      version: 2,
+      artifact: 'fnv9f3k2',
+      checks: [
+        { name: 'edge-targets-exist', pass: true },
+        { name: 'guards-registered', pass: true },
+        { name: 'field-types-known', pass: true },
+        { name: 'effect-known', pass: true },
+        { name: 'initial-exists', pass: true },
+        {
+          name: 'terminal-reachable',
+          pass: false,
+          detail: ['nodes[ready].actions[pin]: to "done" 不在节点集'],
+        },
+      ],
+      diff,
+      'requested-by': { actor: 'agent', principal: 'user:mike' },
+      ...(status === 'approved' ? { 'approved-by': { actor: 'human', principal: 'user:mike' } } : {}),
+      ...(status === 'rejected' ? { 'rejected-reason': '理由' } : {}),
+      ...overrides,
+    },
+    actions: pending ? [approveAction, rejectAction] : [],
+    links: [
+      { rel: ['self'], href: '/_meta/api/entity?rel=meta/activation:a1' },
+      { rel: ['target'], href: '/_meta/api/entity?rel=meta/flow:article-drafting' },
+    ],
+    'guard-results': pending
+      ? [
+          {
+            action: 'approve',
+            blocked: true,
+            reason: 'guard 不满足: actor-is-human=false',
+            guards: [{ name: 'actor-is-human', pass: false }],
+          },
+          {
+            action: 'reject',
+            blocked: true,
+            reason: 'guard 不满足: actor-is-human=false',
+            guards: [{ name: 'actor-is-human', pass: false }],
+          },
+        ]
+      : [],
+  };
+}
+
+function jsonResponse(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  });
+}
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+describe('ActivationView(BIOS 激活详情)', () => {
+  it('checks 列表逐项显示:名称 + 通过/失败标记 + 失败明细', () => {
+    render(<ActivationView id="a1" entity={activationEntity('pending-approval')} />);
+
+    expect(screen.getByText('edge-targets-exist')).toBeTruthy();
+    expect(screen.getByText('terminal-reachable')).toBeTruthy();
+    expect(screen.getAllByText('通过').length).toBe(5);
+    expect(screen.getByText('失败')).toBeTruthy();
+    expect(screen.getByText(/to "done" 不在节点集/)).toBeTruthy();
+  });
+
+  it('机械 diff 用内建 react-diff-view 呈现:新增动作 pin 可见(绿行)', () => {
+    const { container } = render(
+      <ActivationView id="a1" entity={activationEntity('pending-approval')} />,
+    );
+    expect(container.querySelector('table.diff')).not.toBeNull();
+    const inserts = [...container.querySelectorAll('.diff-code-insert')].map(
+      (node) => node.textContent ?? '',
+    );
+    expect(inserts.join('\n')).toContain('pin');
+  });
+
+  it('approve 提交走 /_meta/api/exec 且 actor=human(铁律 5:审批不委托)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(200, { entity: activationEntity('approved') }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ActivationView id="a1" entity={activationEntity('pending-approval')} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '批准' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/_meta/api/exec');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(String(init.body))).toEqual({
+      rel: 'meta/activation:a1',
+      action: 'approve',
+      actor: 'human',
+      principal: 'local-user',
+      channel: 'bios',
+    });
+  });
+
+  it('reject reason 必填:空原因提交被 RJSF 拦截(不发请求),填写后带 reason 提交', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(200, { entity: activationEntity('rejected') }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ActivationView id="a1" entity={activationEntity('pending-approval')} />);
+
+    // 空原因:RJSF required 校验拦截,不产生任何请求。
+    fireEvent.click(screen.getByRole('button', { name: '驳回' }));
+    await waitFor(() =>
+      expect(screen.getByText(/reason|原因|required/i)).toBeTruthy(),
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // 填写原因后提交:params.reason + actor=human。
+    fireEvent.change(screen.getByLabelText(/原因/), { target: { value: 'pin 动作不该无 guard' } });
+    fireEvent.click(screen.getByRole('button', { name: '驳回' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({
+      rel: 'meta/activation:a1',
+      action: 'reject',
+      params: { reason: 'pin 动作不该无 guard' },
+      actor: 'human',
+      principal: 'local-user',
+      channel: 'bios',
+    });
+  });
+
+  it('已决策(approved)是审计视图:无 approve/reject 按钮,决策者留痕可见', () => {
+    render(<ActivationView id="a1" entity={activationEntity('approved')} />);
+    expect(screen.queryByRole('button', { name: '批准' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '驳回' })).toBeNull();
+    // requested-by(agent 提议)与 approved-by(human 决策)都留在审计视图。
+    expect(screen.getAllByText(/user:mike/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/approved-by/)).toBeTruthy();
+  });
+});

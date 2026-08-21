@@ -146,6 +146,17 @@ export default function Home() {
           </a>
         </p>
       </section>
+
+      {/* BIOS 入口(T4 Phase C):仅一行链接——进入定义层必须显式意图,
+          业务站 sitemap 不携带 _meta(跨站规则)。 */}
+      <section aria-label="BIOS" className="mt-8">
+        <h2 className="mb-2 text-sm font-semibold text-zinc-700">BIOS</h2>
+        <p className="text-sm">
+          <a href="/meta" data-rel="meta" className="text-blue-600 hover:underline">
+            BIOS · 定义平面(定义查看 / 激活队列审批)
+          </a>
+        </p>
+      </section>
     </main>
   );
 }

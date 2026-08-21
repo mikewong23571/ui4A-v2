@@ -16,6 +16,7 @@ import { useState } from 'react';
 import type { SirenAction } from '@ui4a/engine';
 
 import { execAction } from './exec-client';
+import type { ExecClientResult } from './exec-client';
 import { rjsfValidator } from './rjsf-validator';
 
 /** 参数 schema 是否声明了字段(空 schema 走推送按钮路径)。 */
@@ -23,6 +24,13 @@ function schemaHasFields(schema: SirenAction['fields']): boolean {
   const properties = schema.properties as Record<string, unknown> | undefined;
   return properties !== undefined && Object.keys(properties).length > 0;
 }
+
+/** 提交函数形态(缺省业务 /api/exec;BIOS 面注入 /_meta/api/exec)。 */
+export type ExecFn = (input: {
+  rel: string;
+  action: string;
+  params?: Record<string, unknown>;
+}) => Promise<ExecClientResult>;
 
 export interface ActionRunnerProps {
   /** 提交目标实例 rel(集合页无动作;实例页取实体自身 rel)。 */
@@ -33,6 +41,8 @@ export interface ActionRunnerProps {
   blockReason?: string;
   /** exec 成功后的刷新回调。 */
   onExecuted?: () => void;
+  /** 提交函数(缺省业务端 /api/exec;_meta 站点动作注入 meta 客户端)。 */
+  execFn?: ExecFn;
 }
 
 export function ActionRunner({
@@ -41,6 +51,7 @@ export function ActionRunner({
   blocked = false,
   blockReason,
   onExecuted,
+  execFn = execAction,
 }: ActionRunnerProps) {
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -48,7 +59,7 @@ export function ActionRunner({
   async function submit(params?: Record<string, unknown>): Promise<void> {
     setSubmitting(true);
     setFailure(null);
-    const result = await execAction({ rel, action: action.name, params });
+    const result = await execFn({ rel, action: action.name, params });
     setSubmitting(false);
     if (result.ok) {
       onExecuted?.();

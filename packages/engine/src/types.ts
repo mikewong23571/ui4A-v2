@@ -17,6 +17,10 @@ export type {
   NodeDefinition,
   FlowDefinition,
   FlowEdge,
+  DefinitionStatus,
+  DefinitionEntry,
+  ActivationCheck,
+  DefinitionDiff,
 } from '@ui4a/shared';
 
 /** 定义语言注册表常量(字段/效果类型清单;meta/registries 的运行时子集)。 */

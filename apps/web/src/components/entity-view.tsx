@@ -80,7 +80,7 @@ function memberSummary(sub: SirenEntity): string {
  * (agent 侧 approve 被 422 拒,I4)。仅当失败谓词**全部**是 actor-is-human
  * 时解除 disabled;状态类谓词(如 is-published)的 blocked 照旧呈现。
  */
-function blockedForRenderer(entry: GuardResultEntry | undefined): boolean {
+export function blockedForRenderer(entry: GuardResultEntry | undefined): boolean {
   if (entry?.blocked !== true) return false;
   const failed = entry.guards.filter((evaluation) => !evaluation.pass);
   if (failed.length === 0) return true;

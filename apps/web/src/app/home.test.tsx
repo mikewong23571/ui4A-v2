@@ -210,6 +210,17 @@ describe('入口页(首页)', () => {
     );
   });
 
+  it('BIOS 入口:仅一行链接到 /meta(人类显式意图,进入定义层;T4 Phase C)', async () => {
+    vi.stubGlobal('fetch', mockContract());
+    const { container } = render(<Home />);
+    await waitFor(() => {
+      expect(container.querySelector('a[href*="post%3Apost-welcome"]')).not.toBeNull();
+    });
+    const bios = container.querySelector<HTMLAnchorElement>('a[href="/meta"]');
+    expect(bios).not.toBeNull();
+    expect(bios!.textContent).toContain('BIOS');
+  });
+
   it('铁律 3:纯导航首页不渲染任何可提交元素(零 button/form)', async () => {
     vi.stubGlobal('fetch', mockContract());
     const { container } = render(<Home />);
