@@ -1,0 +1,25 @@
+Task: executePlan 引擎函数(T6 Phase A Task 1)
+
+变更摘要:
+- 新增 packages/engine/src/plan.ts:executePlan(steps, snapshot, deps) 批量裁决器——
+  串行逐步 executeWithGates(每步吃前步产出快照),全过 plan-completed / 某步拒绝
+  plan-rejected(停止后续)/ 某步挂起 plan-suspended(停止后续,confirmation 照常);
+  已过步骤效果保留(append-only 不回滚);每计划恰一条 plan-executed 标记事件
+  (rel='plan', detail={kind, steps:[{step,rel,action,outcome}]}, actor 取首步)。
+- effects.ts:EngineEvent 增 'plan-executed' 种类;fold.ts:标记事件纯 no-op 分支
+  (状态由同批伴随事件重放);index.ts 导出 plan 模块。
+- apps/web/src/db/events.ts:EventKind 机械对齐(类型先行,web 层会写该事件)。
+- purity.test.ts:模块计数 18→19,导出面断言补 executePlan。
+
+口径决定:
+1. 空计划 → engine 返回 plan-completed 空结果(零步平凡为真,零伴随事件);
+   HTTP 层按 400 拒绝空 steps(边界校验归合同层,引擎保持全函数)——已文档化于
+   plan.ts 头注释,route 任务落地 400。
+2. plan-executed 标记对三种结局都产出(一条批量裁决记录),detail.kind 区分。
+
+测试:packages/engine/src/plan.test.ts 18 用例(全过/依赖链/中拒截断×5/
+中挂×3/空计划/纯度/标记 actor/fold 重放×3);CI=true pnpm check 全绿
+(631 passed,较基线 +18)。
+
+文件:packages/engine/src/{plan.ts,plan.test.ts,effects.ts,fold.ts,index.ts,
+purity.test.ts},apps/web/src/db/events.ts
