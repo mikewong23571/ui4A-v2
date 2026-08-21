@@ -14,7 +14,8 @@
 
 - [x] Task: /api/chat mode=delegated(dispatch + statusUrl)+ /api/delegations(列表/详情)(TDD)(f9fd37a;数据源=事件日志为主,读路径零 Temporal 依赖)
 - [x] Task: /delegations 舰队页(极简表格 + 首页入口)(组件测试)(1c5cd5b;含悬浮窗委托模式开关小改——工作量小,已做)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+[checkpoint: 173d4b8] — 验证报告挂 git note(自治验收,编排代行);CI=true pnpm check 全绿(612,+30 用例)+ e2e 22 passed 零回归;手工等效:delegated dispatch → statusUrl 轮询至 completed(真栈),inline/delegated 消息同构对拍(next×3→publish→完成,失败路径亦等价),舰队页无头走查截图确认;验证中发现并修复 delegationId=workflowId 对齐 bug(statusUrl 404,173d4b8)。
 
 ## Phase C: S3 全链路 E2E
 
