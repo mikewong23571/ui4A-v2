@@ -14,3 +14,5 @@
 - [x] **Track: T6 plan-exec 切片:一次决策批量裁决(S4)** *Link: [tracks/t6-plan-exec_20260821/index.md](./tracks/t6-plan-exec_20260821/index.md)*
 
 - [x] **Track: T7 骨架与渲染切片:词汇表 + binding-only 渲染器 + A2UI 画布 + 骨架五面(S5, I2, I3)** *Link: [tracks/t7-rendering_20260821/index.md](./tracks/t7-rendering_20260821/index.md)*
+
+- [~] **Track: T8 验收收口:不变量持续套件 + 全量重放 + 双执行者 + demo 清单 + 终审 review + DONE 报告** *Link: [tracks/t8-acceptance_20260821/index.md](./tracks/t8-acceptance_20260821/index.md)*
