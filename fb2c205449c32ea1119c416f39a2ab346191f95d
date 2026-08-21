@@ -1,0 +1,3 @@
+S5 e2e 补充第 4 个新测试(DoD:S5/I3 ≥4 新——s5×2 + i3×2)。
+table 词条经 chat 生成路径渲染(spec 验收 5 的 table 实例从静态演示
+升级为生成路径覆盖)。2 passed。
