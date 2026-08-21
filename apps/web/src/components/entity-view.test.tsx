@@ -99,6 +99,82 @@ const articlesEntity: SirenEntity = {
   ],
 };
 
+// ---- 确认门 fixtures(T3 Phase D;形状与 projectConfirmation 一致)-----------
+
+const approveAction: SirenAction = {
+  name: 'approve',
+  title: '批准',
+  method: 'POST',
+  href: '/api/exec',
+  fields: {
+    $schema: 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+    properties: {},
+    required: [],
+    additionalProperties: false,
+  },
+};
+
+const rejectAction: SirenAction = {
+  name: 'reject',
+  title: '驳回',
+  method: 'POST',
+  href: '/api/exec',
+  fields: {
+    $schema: 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+    properties: { reason: { type: 'string', format: 'textarea', minLength: 1 } },
+    required: ['reason'],
+    additionalProperties: false,
+  },
+};
+
+/** 投影 guard-results:actor-is-human 无 actor 上下文 fail-closed(engine 口径)。 */
+const actorGuardBlocked = (action: string) => ({
+  action,
+  blocked: true,
+  reason: 'guard 不满足: actor-is-human=false',
+  guards: [{ name: 'actor-is-human', pass: false }],
+});
+
+function confirmationEntity(overrides: Record<string, unknown> = {}): SirenEntity {
+  return {
+    class: ['confirmation', 'pending'],
+    properties: {
+      id: 'c1',
+      'target-rel': 'post:post-welcome',
+      'target-action': 'archive',
+      params: {},
+      'proposed-by': { actor: 'agent', principal: 'user:mike' },
+      channel: 'e2e',
+      status: 'pending',
+      notified: true,
+      ...overrides,
+    },
+    actions: [approveAction, rejectAction],
+    links: [
+      { rel: ['self'], href: '/api/entity?rel=confirmation:c1' },
+      { rel: ['target'], href: '/api/entity?rel=post:post-welcome' },
+    ],
+    'guard-results': [actorGuardBlocked('approve'), actorGuardBlocked('reject')],
+  };
+}
+
+const inboxEntity: SirenEntity = {
+  class: ['collection', 'inbox'],
+  properties: { rel: 'inbox', count: 1, delivered: 1 },
+  actions: [],
+  links: [{ rel: ['self'], href: '/api/entity?rel=inbox' }],
+  'guard-results': [],
+  entities: [
+    {
+      ...confirmationEntity(),
+      rel: ['item'],
+      href: '/api/entity?rel=confirmation:c1',
+    },
+  ],
+};
+
 // ---- harness -----------------------------------------------------------------
 
 function mockFetch(status: number, body: unknown) {
@@ -379,5 +455,70 @@ describe('EntityView:实体四件组装渲染', () => {
     ) as Record<string, unknown>;
     expect(body.action).toBe('next');
     expect(body.params).toEqual({ category: 'tech' });
+  });
+});
+
+// ---- 确认门渲染(T3 Phase D / Task D1)--------------------------------------
+
+describe('EntityView:确认实体与 inbox 集合渲染', () => {
+  it('inbox 成员:确认条目含目标动作与提议者,逐条链接到 /entity?rel=confirmation:<id>', () => {
+    const { container } = render(<EntityView rel="inbox" entity={inboxEntity} />);
+
+    const anchor = container.querySelector<HTMLAnchorElement>(
+      'a[href*="confirmation%3Ac1"]',
+    );
+    expect(anchor).not.toBeNull();
+    expect(anchor!.textContent).toContain('target-action=archive');
+    expect(anchor!.textContent).toContain('proposed-by.actor=agent');
+    expect(anchor!.textContent).toContain('proposed-by.principal=user:mike');
+    expect(anchor!.textContent).toContain('status=pending');
+    expect(anchor!.href).toBe('http://localhost:3000/entity?rel=confirmation%3Ac1');
+  });
+
+  it('确认实体页:批准为推送按钮、驳回为 RJSF 表单且 reason 必填', () => {
+    const { container } = render(<EntityView rel="confirmation:c1" entity={confirmationEntity()} />);
+
+    const approve = screen.getByRole('button', { name: '批准' }) as HTMLButtonElement;
+    expect(approve.dataset.action).toBe('approve');
+    const reason = container.querySelector<HTMLTextAreaElement>('#root_reason');
+    expect(reason).not.toBeNull();
+    expect(reason!.hasAttribute('required')).toBe(true);
+    // 提交面铁律 3:两个可提交元素分别背书 approve/reject
+    expect(container.querySelectorAll('[data-action="approve"]').length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('[data-action="reject"]').length).toBeGreaterThan(0);
+  });
+
+  it('renderer 身份规则:投影 fail-closed 的 actor-is-human 不禁用批准/驳回(人类路径)', () => {
+    render(<EntityView rel="confirmation:c1" entity={confirmationEntity()} />);
+
+    const approve = screen.getByRole('button', { name: '批准' }) as HTMLButtonElement;
+    expect(approve.disabled).toBe(false);
+    const reject = screen.getByRole('button', { name: '驳回' }) as HTMLButtonElement;
+    expect(reject.disabled).toBe(false);
+  });
+
+  it('状态类 guard 失败仍禁用(renderer 身份规则只解除 actor-is-human)', () => {
+    const entity = confirmationEntity({
+      'target-action': 'unpublish',
+    });
+    entity['guard-results'] = [
+      {
+        action: 'approve',
+        blocked: true,
+        reason: 'guard 不满足: actor-is-human=false, is-published=false',
+        guards: [
+          { name: 'actor-is-human', pass: false },
+          { name: 'is-published', pass: false },
+        ],
+      },
+      actorGuardBlocked('reject'),
+    ];
+    render(<EntityView rel="confirmation:c1" entity={entity} />);
+
+    const approve = screen.getByRole('button', { name: '批准' }) as HTMLButtonElement;
+    expect(approve.disabled).toBe(true);
+    // reject 只挂 actor-is-human → 解除
+    const reject = screen.getByRole('button', { name: '驳回' }) as HTMLButtonElement;
+    expect(reject.disabled).toBe(false);
   });
 });

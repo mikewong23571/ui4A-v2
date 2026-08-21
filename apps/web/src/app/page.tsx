@@ -1,11 +1,14 @@
 'use client';
 /**
- * 入口页(首页,T2 Phase F):renderer 的导航入口,纯合同驱动。
+ * 入口页(首页,T2 Phase F;T3 Phase D 增收件箱入口):renderer 的导航入口,
+ * 纯合同驱动。
  *
  * - 文章列表:GET /api/entity?rel=articles,成员(post:<id>)逐篇链接到实体页;
  * - 发布向导入口:取 articles.links 的 flow 入口链接(零 startRel 特权,从集合
  *   沿 links 到达向导——处境披露的根基);
  * - 评论队列:pending 计数 + 入口链接;
+ * - 收件箱(T3 Phase D):GET /api/entity?rel=inbox 的 pending 确认计数 +
+ *   入口链接(确认门的人类待办视图,成员逐条进确认实体页 approve/reject);
  * - 铁律 3:首页零可提交元素(无 button/form),一切动作发生在实体页的已声明
  *   action 上;悬浮聊天在全局布局,是 agent 路径入口。
  */
@@ -38,19 +41,22 @@ function hrefToRel(href: string): string | null {
 export default function Home() {
   const [articles, setArticles] = useState<SirenEntity | null>(null);
   const [comments, setComments] = useState<SirenEntity | null>(null);
+  const [inbox, setInbox] = useState<SirenEntity | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const [nextArticles, nextComments] = await Promise.all([
+        const [nextArticles, nextComments, nextInbox] = await Promise.all([
           fetchEntity('articles'),
           fetchEntity('comments'),
+          fetchEntity('inbox'),
         ]);
         if (cancelled) return;
         setArticles(nextArticles);
         setComments(nextComments);
+        setInbox(nextInbox);
       } catch {
         if (!cancelled) setFailed(true);
       }
@@ -64,6 +70,9 @@ export default function Home() {
   const articleMembers = articles?.entities ?? [];
   const commentMembers = comments?.entities ?? [];
   const pendingCount = commentMembers.filter((sub) => sub.properties.node === 'pending').length;
+  // pending 确认计数取集合投影的 count(engine 口径),投影缺失时回退成员计数。
+  const inboxPending =
+    inbox !== null ? Number(inbox.properties.count ?? (inbox.entities ?? []).length) : 0;
   const wizardEntries = (articles?.links ?? [])
     .filter((link) => link.rel.includes('flow'))
     .map((link) => hrefToRel(link.href))
@@ -111,6 +120,19 @@ export default function Home() {
           ))}
         </section>
       )}
+
+      <section aria-label="收件箱" className="mt-8">
+        <h2 className="mb-2 text-sm font-semibold text-zinc-700">收件箱</h2>
+        <p className="text-sm">
+          <a
+            href={entityPageHref('inbox')}
+            data-rel="inbox"
+            className="text-blue-600 hover:underline"
+          >
+            收件箱(待确认 {inboxPending})
+          </a>
+        </p>
+      </section>
 
       <section aria-label="评论队列" className="mt-8">
         <h2 className="mb-2 text-sm font-semibold text-zinc-700">评论审核</h2>

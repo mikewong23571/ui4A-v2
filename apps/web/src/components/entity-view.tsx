@@ -8,7 +8,7 @@
  * - 谓词投影:guard-results.blocked → 对应动作 disabled + title 原因;
  * - exec 提交 rel 取实体自身 properties.rel(flow: 别名页落在实例 rel 上,直投不绕别名)。
  */
-import type { SirenEntity } from '@ui4a/engine';
+import type { GuardResultEntry, SirenEntity } from '@ui4a/engine';
 
 import { ActionRunner } from './action-runner';
 
@@ -35,7 +35,26 @@ function fieldsSummary(fields: unknown): string {
     .join(' · ');
 }
 
-/** 集合成员条目的展示文本:rel + 全部字段值 + 节点(零硬编码字段名)。 */
+/** 展平一个 properties 值:标量 → `key=value`;一层对象 → `key.sub=value`。 */
+function flattenProperty(parts: string[], key: string, value: unknown): void {
+  if (value === null || value === '' || typeof value === 'undefined') return;
+  if (typeof value === 'object') {
+    for (const [child, leaf] of Object.entries(value as Record<string, unknown>)) {
+      if (leaf !== null && typeof leaf !== 'object' && leaf !== '') {
+        parts.push(`${key}.${child}=${String(leaf)}`);
+      }
+    }
+    return;
+  }
+  parts.push(`${key}=${String(value)}`);
+}
+
+/**
+ * 集合成员条目的展示文本:零硬编码字段名,两条通用路径——
+ * - 流程实例(fields 扁平值 + 节点);
+ * - 通用回退(确认等非实例成员):无 fields/node 时按 properties 展平呈现
+ *   (标量 + 一层对象,如 target-action=archive、proposed-by.actor=agent)。
+ */
 function memberSummary(sub: SirenEntity): string {
   const parts: string[] = [];
   if (typeof sub.properties.fields === 'object' && sub.properties.fields !== null) {
@@ -44,7 +63,28 @@ function memberSummary(sub: SirenEntity): string {
     }
   }
   if (sub.properties.node !== undefined) parts.push(String(sub.properties.node));
+  if (parts.length === 0) {
+    for (const [key, value] of Object.entries(sub.properties)) {
+      if (key === 'rel') continue;
+      flattenProperty(parts, key, value);
+    }
+  }
   return parts.filter((part) => part !== '').join(' · ');
+}
+
+/**
+ * renderer 身份规则(arch-brief §3"同一个谓词的两个投影"):
+ * Siren 投影的 guard-results 无 actor 上下文,actor-is-human 按引擎口径
+ * fail-closed 为 false;但本 renderer 的 exec 恒以 actor=human 提交
+ * (exec-client 固定身份)——该谓词在本视图恒过,真正的裁决仍在 exec
+ * (agent 侧 approve 被 422 拒,I4)。仅当失败谓词**全部**是 actor-is-human
+ * 时解除 disabled;状态类谓词(如 is-published)的 blocked 照旧呈现。
+ */
+function blockedForRenderer(entry: GuardResultEntry | undefined): boolean {
+  if (entry?.blocked !== true) return false;
+  const failed = entry.guards.filter((evaluation) => !evaluation.pass);
+  if (failed.length === 0) return true;
+  return !failed.every((evaluation) => evaluation.name === 'actor-is-human');
 }
 
 export interface EntityViewProps {
@@ -121,7 +161,7 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
                   key={`${execRel}:${action.name}:${JSON.stringify(action.fields)}`}
                   rel={execRel}
                   action={action}
-                  blocked={guard?.blocked}
+                  blocked={blockedForRenderer(guard)}
                   blockReason={guard?.reason}
                   onExecuted={onChanged}
                 />

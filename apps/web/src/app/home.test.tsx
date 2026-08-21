@@ -5,6 +5,8 @@
  * - 文章列表:articles 集合成员逐篇链接到 /entity?rel=post:<id>(标题 + 节点可见);
  * - 发布向导入口:来自 articles.links 的 flow 入口链接(零 startRel 特权);
  * - 评论队列:pending 计数 + 入口链接 /entity?rel=comments;
+ * - 收件箱(T3 Phase D):pending 确认计数(/api/entity?rel=inbox)+ 入口链接
+ *   /entity?rel=inbox(确认门的人类待办入口);
  * - 铁律 3:首页是纯导航页,不渲染任何 button/form(可提交元素只存在于实体页)。
  */
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
@@ -73,6 +75,45 @@ const commentsEntity: SirenEntity = {
   ],
 };
 
+/** 确认成员(inbox 子实体;pending confirmation 的投影形状)。 */
+function confirmationMember(
+  id: string,
+  overrides: Record<string, unknown> = {},
+): SirenEntity {
+  return {
+    class: ['confirmation', 'pending'],
+    rel: ['item'],
+    href: `/api/entity?rel=${encodeURIComponent(`confirmation:${id}`)}`,
+    properties: {
+      id,
+      'target-rel': 'post:post-welcome',
+      'target-action': 'archive',
+      params: {},
+      'proposed-by': { actor: 'agent', principal: 'user:mike' },
+      channel: 'e2e',
+      status: 'pending',
+      notified: true,
+      ...overrides,
+    },
+    actions: [],
+    links: [],
+  };
+}
+
+function inboxEntity(count: number): SirenEntity {
+  return {
+    class: ['collection', 'inbox'],
+    properties: { rel: 'inbox', count, delivered: count },
+    actions: [],
+    links: [{ rel: ['self'], href: '/api/entity?rel=inbox' }],
+    'guard-results': [],
+    entities:
+      count === 0
+        ? []
+        : [confirmationMember('c1'), confirmationMember('c2', { id: 'c2' })].slice(0, count),
+  };
+}
+
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -80,8 +121,8 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-/** 按合同 URL 分发的 fetch mock(articles/comments 两端点)。 */
-function mockContract() {
+/** 按合同 URL 分发的 fetch mock(articles/comments/inbox 三端点)。 */
+function mockContract(inbox: SirenEntity = inboxEntity(2)) {
   return vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
     if (url.startsWith('/api/entity?rel=articles')) {
@@ -89,6 +130,9 @@ function mockContract() {
     }
     if (url.startsWith('/api/entity?rel=comments')) {
       return Promise.resolve(jsonResponse(200, commentsEntity));
+    }
+    if (url.startsWith('/api/entity?rel=inbox')) {
+      return Promise.resolve(jsonResponse(200, inbox));
     }
     return Promise.resolve(jsonResponse(404, { error: `未知端点 ${url}` }));
   });
@@ -140,6 +184,30 @@ describe('入口页(首页)', () => {
     expect(screen.getByText(/待处理 3/)).toBeTruthy();
     const queue = container.querySelector<HTMLAnchorElement>('a[href$="rel=comments"]')!;
     expect(queue.href).toBe('http://localhost:3000/entity?rel=comments');
+  });
+
+  it('收件箱入口:pending 确认计数(/api/entity?rel=inbox)与链接', async () => {
+    vi.stubGlobal('fetch', mockContract(inboxEntity(2)));
+    const { container } = render(<Home />);
+
+    await waitFor(() => {
+      expect(container.querySelector('a[href$="rel=inbox"]')).not.toBeNull();
+    });
+    const inbox = container.querySelector<HTMLAnchorElement>('a[href$="rel=inbox"]')!;
+    expect(inbox.textContent).toContain('待确认 2');
+    expect(inbox.href).toBe('http://localhost:3000/entity?rel=inbox');
+  });
+
+  it('收件箱入口:空收件箱渲染待确认 0(集合恒可投影)', async () => {
+    vi.stubGlobal('fetch', mockContract(inboxEntity(0)));
+    const { container } = render(<Home />);
+
+    await waitFor(() => {
+      expect(container.querySelector('a[href$="rel=inbox"]')).not.toBeNull();
+    });
+    expect(container.querySelector<HTMLAnchorElement>('a[href$="rel=inbox"]')!.textContent).toContain(
+      '待确认 0',
+    );
   });
 
   it('铁律 3:纯导航首页不渲染任何可提交元素(零 button/form)', async () => {
