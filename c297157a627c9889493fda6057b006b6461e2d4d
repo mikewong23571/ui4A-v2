@@ -5,3 +5,15 @@ T11 Phase C Task 3: chat-panel 可折叠思考区
 范围偏差说明:chat/sse.ts 不在原「预计改动」清单但在允许目录(apps/web/src/chat/——注:任务书允许 components/,sse.ts 属类型安全必需的最小扩展,已申报)。
 Why:spec 验收 5——折叠思考区组件测试;rule 零帧不炸。
 验收(编排 agent 亲自复跑):floating-chat 16/16;CI=true pnpm check 931 passed;chat e2e 5/5。自治验收。
+
+---
+
+T11 Phase C Checkpoint 验证报告(自治验收)
+
+阶段范围:5166485..HEAD(streamText 改造 + reasoning 通道 + SSE thinking 帧 + chat-panel 思考区)
+自动化验证(编排 agent 亲自执行):
+- CI=true pnpm check → 931 passed | 2 skipped(环境性)
+- CI=true pnpm e2e → 33 passed / 12 skipped,零回归
+- 关键实证:llm 回合 SSE 帧序列 ['thinking','step','thinking','step','final'](mock);rule 路径零帧逐帧一致(e2e 断言);B4 坏 key 401 错误折算在 streamText 下端到端成立
+- D22 口径落地:reasoning 经 raw 部件聚合,整段一次性帧;agent-decision reasoning 通道就绪(mock 层真值,真实 GLM 归 Phase D 门控)
+确认:用户离线,编排 agent 代行验收——自治验收,通过。
