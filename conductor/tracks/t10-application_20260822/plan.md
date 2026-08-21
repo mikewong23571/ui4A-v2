@@ -4,8 +4,8 @@
 
 ## Phase A: 定义层(packages/shared,纯单测)
 
-- [ ] Task: ApplicationDefinition 类型 + parse 校验(name/title/intent 必填;rel 前缀 `meta/application:`)(TDD)
-- [ ] Task: FlowDefinition.app 可选字段 + parse 归一化(缺省 → `'default'`;显式值原样保留入定义)(TDD)
+- [x] Task: ApplicationDefinition 类型 + parse 校验(name/title/intent 必填;rel 前缀 `meta/application:`)(TDD) — 85ae222
+- [~] Task: FlowDefinition.app 可选字段 + parse 归一化(缺省 → `'default'`;显式值原样保留入定义)(TDD)
 - [ ] Task: 激活不变式第七条 `app-known`(submit 时归一化后的 app 指向已激活 application;非法引用拒且留痕)(TDD)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
