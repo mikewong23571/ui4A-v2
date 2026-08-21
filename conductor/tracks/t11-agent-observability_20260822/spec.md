@@ -38,3 +38,16 @@
 - prompt 分层槽位(role/app,L1 上下文)——挂 T10 Phase D;
 - render LLM 路径接线、页面级实体缓存——t12;
 - 决策理由的「忠实性」校验(reasoning 是模型自述,按审计数据处理,不进裁决)。
+
+## 施工上下文(自包含:subagent 无需再做 discovery)
+
+**模块地图(精确触点)**:
+
+- 决策与轨迹:`packages/agent/src/loop.ts`(runAgent 循环)、`packages/agent/src/types.ts`(TrailStep :64-72;AgentRunResult :128-135;AgentRunOptions :122 附近——`onReasoning` 加在这里)、`packages/agent/src/llm-driver.ts`(llmDecide :210-232,generateText → streamText 改造点;SYSTEM_PROMPT :60-69 不动)。
+- SSE:服务端 `apps/web/src/app/api/chat/route.ts`(step/final 帧推送段 :257-300);客户端解析 `apps/web/src/components/chat-panel.tsx:242-245`(`frame.type === 'step'/'final'`——`thinking` 帧分支加在这里)。
+- 留痕:`apps/web/src/chat/history.ts`(ChatTurnDetail 加 `steps`);history 端点 `apps/web/src/app/api/chat/history/route.ts`(+ route.test.ts 兼容用例);事件写入 `apps/web/src/db/events.ts`(appendEvent);新 kind `agent-decision` 须加入 `packages/engine/src/fold.ts:55-67` 的 LogEventKind 联合且 fold no-op。worker:`apps/worker/src/delegation.ts:52-55` DelegationStepRecord 增 `reasoning` 字段(幂等恢复载荷同构)。
+- GLM 探针:参照 `e2e/llm-smoke.spec.ts` 的门控模式(`GLM_API_KEY=$(cat ~/.secrets/glm_coding_plan_key) RUN_LLM_E2E=1 CI=true pnpm exec playwright test <spec>`);探针实现为门控 spec 或 `scripts/` 脚本,结论进 git note,与 D7/D20 冲突先更 DECISIONS。
+
+**既有断言红线**:`LogEventKind` 扩展必须 fold no-op(I5 重放同构有测试);`decide` 永不抛异常(B4:端点错误折算 fail reason);`tool_choice` 保持 auto(D7:required 在 GLM 端点挂死);chat-turn 写失败不阻断响应(route.ts:283-285 既有口径);rule 路径零 thinking 帧。
+
+**基础设施与命令**:同仓通用(PG 5433 docker;`CI=true pnpm check`;e2e 3100 端口 D5);worker 单测不需要 Temporal(kill 续跑集成测试才需要,本 track 不碰)。**改 apps/web 前必读 `apps/web/AGENTS.md`**。

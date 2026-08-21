@@ -33,3 +33,17 @@
 - react-query / SWR / service worker 等外部缓存方案(明确不引);
 - 跨页面共享缓存、离线缓存;
 - 渲染词汇表新词条(词汇表扩充按需另立)。
+
+## 施工上下文(自包含:subagent 无需再做 discovery)
+
+**模块地图(精确触点)**:
+
+- render 生成:`packages/agent/src/render.ts`——rule 路径 renderSpecFor(:141-180)、LLM 接口 buildRenderPrompt(:198-231)/ parseRenderResponse(:237-260),测试 `render.test.ts`。
+- 短路接线:`apps/web/src/app/api/chat/route.ts:142-155`(render 短路段;LLM fallthrough 加在 rule miss 之后、普通循环分派之前)。
+- 校验与凝固:`apps/web/src/render/validator.ts`(validateSpec,零字面把关);freezeSpec 服务层入口 `apps/web/src/engine/service.ts:162`,引擎模块 `packages/engine/src/render-spec.ts`;词汇表目录端点 `/api/render/catalog`(D12:catalog JSON 与注册表同源)。
+- 缓存:`EntityCache` 类型 `apps/web/src/render/deref.ts:15`;临时构建点 `apps/web/src/app/page.tsx:86-93`(提升为页面级模块的替换点);画布注册 `apps/web/src/app/canvas/page.tsx:131`;通用实体渲染页 `apps/web/src/app/entity/page.tsx`(缓存接入点)。
+- sitemap version(缓存一致性戳):`packages/engine/src/sitemap.ts`(deriveSitemap 纯推导,内容 hash)。
+
+**既有断言红线**:I2 事实不可发明——缓存宁可多失效不可脏读(exec 成功 → 当前 rel + 所属 collection 失效;version 变 → 全量失效);铁律 2 binding-only——LLM 产出必过 validateSpec,零字面,不新辟通道;D18 binderless——agent 不发 updateDataModel,action 后重建语义不变;I1——无 key 时 rule 路径完整;**不引新依赖**(react-query/SWR 明确排除)。
+
+**基础设施与命令**:PG 5433 docker;`CI=true pnpm check`;e2e 3100 端口(D5);门控实测同 llm-smoke 模式(GLM_API_KEY + RUN_LLM_E2E)。**改 apps/web 前必读 `apps/web/AGENTS.md`**(Next.js 分叉版,先读 node_modules/next/dist/docs)。

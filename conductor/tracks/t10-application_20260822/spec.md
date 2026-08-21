@@ -36,3 +36,18 @@
 - `/app/<name>` 人类默认页、scoped chat → 路线 T3;meta 可视化 → 路线 T4;角色 archetype / policy scope → 路线 T5;
 - 硬边界裁决(跨 app 动作拒绝)——明确不做,application 非站点分裂;
 - 业务实例归父 / 数据平面改动——零改动。
+
+## 施工上下文(自包含:subagent 无需再做 discovery)
+
+**模块地图(精确触点)**:
+
+- 定义层:`packages/shared/src/definition.ts`——FlowDefinition(:150-158)、实体 rel 前缀常量(:189-192,此处加 `meta/application:`);parse 在 `packages/engine/src/parse.ts`(parseFlowDefinition,模块加载即校验,非法定义响亮失败)。
+- 激活不变式:`packages/engine/src/invariants.ts`(+ `invariants.test.ts`)——现有六项,`app-known` 加在这里;submit 时求值于 `packages/engine/src/meta.ts:305-381`。
+- seed 源:`apps/web/src/domain/flows.ts`——既有 flow 共三个:article-drafting(B1 发布向导)/ post-status(B2 状态机)/ comment-moderation(B3 审核),导出 `businessFlowList`(声明序 = sitemap 展示序)。建议分组:`publishing` = {article-drafting, post-status},`community` = {comment-moderation};application seed 常量放同文件或新建 `apps/web/src/domain/applications.ts`(与 flow 同等 boot 入日志)。
+- 定义入日志 / fold:boot seed 接线在 `apps/web/src/engine/service.ts`(definition-seeded 事件);fold 在 `packages/engine/src/fold.ts`(definitions 表)。
+- sitemap:`packages/engine/src/sitemap.ts`——Sitemap 类型(:38-58)、deriveSitemap(:137-178);HTTP 暴露在 `apps/web/src/app/.well-known/ui4a.json/route.ts`。
+- agent 视野:`packages/agent/src/types.ts:91-94` SitemapSummary(现仅 surfaces 的 rel/title)——Phase D 在此加 applications 分组;静态上下文组装在 `packages/agent/src/loop.ts:57-71`,决策分层在 `packages/agent/src/rule-driver.ts`。
+
+**既有断言红线(不得破坏)**:业务站 sitemap 排除 `_meta`(e2e 有断言);扁平 `flows[]` 保留(e2e/合同测试既有消费);B1–B4/S1–S5/I1–I6 断言零改动。
+
+**基础设施与命令**:PG `docker compose up -d --wait`(宿主 5433);单测 `CI=true pnpm vitest run <path>`;质量门 `CI=true pnpm check`;e2e `CI=true pnpm e2e`(自动起 3100 端口,D5)。**改 apps/web 前必读 `apps/web/AGENTS.md`**(本仓 Next.js 有破坏性变更,先读 `node_modules/next/dist/docs/` 相关指南再写码)。actor/principal 自报口径(D8)。subagent prompt 四要素合同见 `conductor/workflow.md`。
