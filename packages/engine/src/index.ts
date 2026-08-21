@@ -17,6 +17,7 @@ export * from './execute';
 export * from './fold';
 export * from './lifecycle';
 export * from './meta';
+export * from './definition-diff';
 export * from './invariants';
 export * from './siren';
 export * from './sitemap';

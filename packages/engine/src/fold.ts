@@ -458,6 +458,16 @@ function applyDefinitionSubmitted(snapshot: EngineSnapshot, event: LogEvent): En
     if (snapshot.activations?.[rel] !== undefined) {
       throw new Error(`重放失败:seq=${event.seq} 激活 "${rel}" 重复物化(日志完整性)`);
     }
+    // 机械 diff 从载荷还原(载荷即真相,不重算);older 日志(diff 字段引入前)
+    // 可缺省——投影按缺 diff 处理,不破坏旧日志重放。
+    if (
+      payload.diff !== undefined &&
+      (typeof payload.diff !== 'object' ||
+        payload.diff === null ||
+        (payload.diff as { algorithm?: unknown }).algorithm !== 'deep-object-diff')
+    ) {
+      throw new Error(`重放失败:seq=${event.seq} activation.diff 载荷形状非法(日志完整性)`);
+    }
     const activation = {
       id: payload.id,
       flow: detail.name,
@@ -467,6 +477,7 @@ function applyDefinitionSubmitted(snapshot: EngineSnapshot, event: LogEvent): En
       checks: detail.checks,
       definition: payload.definition,
       requestedBy: payload.requestedBy,
+      ...(payload.diff !== undefined ? { diff: payload.diff } : {}),
     };
     return {
       ...snapshot,

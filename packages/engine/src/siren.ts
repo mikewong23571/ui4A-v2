@@ -453,6 +453,8 @@ function projectActivation(
       version: activation.version,
       artifact: activation.artifact,
       checks: activation.checks,
+      // 机械 diff 纯数据原样入 properties(渲染零 AI:结构化数据 → 内建组件树)。
+      ...(activation.diff !== undefined ? { diff: activation.diff } : {}),
       'requested-by': activation.requestedBy,
       ...(activation.approvedBy !== undefined ? { 'approved-by': activation.approvedBy } : {}),
       ...(activation.rejectedReason !== undefined

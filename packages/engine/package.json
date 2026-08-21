@@ -16,6 +16,7 @@
   "dependencies": {
     "@ui4a/shared": "workspace:*",
     "ajv": "^8.20.0",
+    "deep-object-diff": "^1.1.9",
     "xstate": "^5.32.5"
   },
   "devDependencies": {

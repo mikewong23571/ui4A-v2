@@ -41,8 +41,8 @@ describe('引擎两栖性(纯 TS,浏览器/服务端零 Node API)', () => {
     }
   });
 
-  it('扫描到的库源覆盖引擎全部模块(16 个非测试源文件;T4 增 lifecycle/meta/invariants)', () => {
-    expect(librarySources(srcDir).length).toBe(16);
+  it('扫描到的库源覆盖引擎全部模块(17 个非测试源文件;T4 增 lifecycle/meta/invariants/definition-diff)', () => {
+    expect(librarySources(srcDir).length).toBe(17);
   });
 
   it('公共导出面完整(barrel 可整体导入求值)', () => {
@@ -67,6 +67,7 @@ describe('引擎两栖性(纯 TS,浏览器/服务端零 Node API)', () => {
         'confirmGate',
         'builtinConfirmationPolicy',
         'executeWithGates',
+        'definitionDiff',
       ]),
     );
   });

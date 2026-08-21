@@ -218,6 +218,18 @@ describe('meta/activation:<id> 激活实体投影(A.2 激活请求形状)', () =
         { name: 'guards-registered', pass: false, detail: ['nodes[published].actions[unpublish]: no-such-guard 未注册'] },
       ],
       definition: cloneFlow(),
+      // 机械 diff 纯数据(T4 Phase C):引擎在 submit 时计算,投影原样携带——
+      // 审批者看到的 diff 来自内建渲染,不经过被审批者的任何渲染器(铁律 5)。
+      diff: {
+        algorithm: 'deep-object-diff',
+        before: cloneFlow(),
+        after: cloneFlow(),
+        changed: {
+          added: { nodes: { 2: { actions: { 1: { name: 'pin', title: '置顶' } } } } },
+          deleted: {},
+          updated: { title: '文章状态(v2)' },
+        },
+      },
       requestedBy: { actor: 'agent', principal: 'user:mike' },
       ...(status === 'approved' ? { approvedBy: { actor: 'human' } } : {}),
       ...(status === 'rejected' ? { rejectedReason: '理由' } : {}),
@@ -245,6 +257,8 @@ describe('meta/activation:<id> 激活实体投影(A.2 激活请求形状)', () =
       flow: 'post-status',
     });
     expect(entity.actions.map((a) => a.name)).toEqual(['approve', 'reject']);
+    // 机械 diff 原样入 properties(纯数据;渲染在 BIOS 内建面,零 AI)。
+    expect(entity.properties.diff).toEqual(activationSnapshot('pending-approval').diff);
     // reject 的 reason 字段 schema 必填且非空。
     const rejectAction = entity.actions[1]!;
     expect(rejectAction.fields).toMatchObject({

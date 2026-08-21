@@ -26,6 +26,7 @@ import type {
 import { flowNameFromMetaRel, metaFlowRel, metaActivationRel } from '@ui4a/shared';
 
 import type { EngineEvent } from './effects';
+import { definitionDiff } from './definition-diff';
 import { executeWithGates } from './execute';
 import type { ExecWithGatesOutcome } from './execute';
 import type { ExecRequest } from './judge';
@@ -142,6 +143,8 @@ export interface DefinitionSubmittedDetail {
     version: number;
     artifact: string;
     definition: FlowDefinition;
+    /** 机械 diff 纯数据(submit 时引擎侧算好;fold 从载荷还原,不重算)。 */
+    diff?: ActivationSnapshot['diff'];
     requestedBy: ActivationSnapshot['requestedBy'];
   };
 }
@@ -316,6 +319,11 @@ export function executeMeta(
     if (passed) {
       const activations = snapshot.activations ?? {};
       const id = nextActivationId(activations);
+      // 机械 diff(铁律 5):基线 = 提交时的活跃定义(草稿窗口的工作副本不是
+      // 活跃内容,activeDefinitionOf 按版本历史取),候选 = 草稿全文。
+      // diff 由引擎(非提交者、非渲染器)算好冻结进 activation 与事件载荷。
+      const before = activeDefinitionOf(snapshot, flowName) ?? entry.definition;
+      const diff = definitionDiff(before, entry.definition);
       const activation: ActivationSnapshot = {
         id,
         flow: flowName,
@@ -324,6 +332,7 @@ export function executeMeta(
         artifact: contentVersion(entry.definition),
         checks,
         definition: entry.definition,
+        diff,
         requestedBy: {
           actor: request.actor ?? 'human',
           ...(request.principal !== undefined ? { principal: request.principal } : {}),
@@ -335,6 +344,7 @@ export function executeMeta(
         version: activation.version,
         artifact: activation.artifact,
         definition: entry.definition,
+        diff,
         requestedBy: activation.requestedBy,
       };
       snapshot = {

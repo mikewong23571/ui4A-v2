@@ -318,6 +318,31 @@ export interface ActivationCheck {
 }
 
 /**
+ * 机械 diff 纯数据(T4 Phase C;铁律 5"审计渲染路径零 AI"):
+ * 引擎在 submit 时对 before/after 定义计算结构化差异(deep-object-diff 三视角),
+ * 前后全文随行——diff 自包含、可序列化、重放不重算(载荷即真相)。审批者看到的
+ * diff 由内建渲染器(react-diff-view)呈现,不经过被审批者提供的任何渲染器。
+ */
+export interface DefinitionDiff {
+  /** diff 算法标识(数据自描述,审计口径)。 */
+  algorithm: 'deep-object-diff';
+  /** 基线:提交时的活跃定义。 */
+  before: FlowDefinition;
+  /** 候选:提交的草稿全文(与 activation.definition 同文)。 */
+  after: FlowDefinition;
+  /**
+   * deep-object-diff 三视角差异(嵌套对象即路径,数字键为数组下标):
+   * added/deleted 持整份增删子树;updated 只持新值,旧值由渲染器从 before
+   * 按同路径机械取回。
+   */
+  changed: {
+    added: Record<string, unknown>;
+    deleted: Record<string, unknown>;
+    updated: Record<string, unknown>;
+  };
+}
+
+/**
  * 激活实体快照(A.2 激活请求形状):pending-approval 物化;approve/reject 的
  * 目标。artifact 为 definition 内容 hash(T4 用 FNV 短码;sha256 随 versions
  * 工件落地——Phase B)。
@@ -334,6 +359,11 @@ export interface ActivationSnapshot {
   checks: ActivationCheck[];
   /** 提交时的完整草稿(approve 时据此激活;fold 的真相载荷)。 */
   definition: FlowDefinition;
+  /**
+   * 机械 diff 纯数据(submit 时引擎侧计算;older 日志重放可缺省——
+   * 载荷即真相,fold 从 definition-submitted.detail 还原,不重算)。
+   */
+  diff?: DefinitionDiff;
   requestedBy: { actor: 'human' | 'agent'; principal?: string };
   /** 审批者(铁律 5"审批不委托":approved 时 actor 必为 human)。 */
   approvedBy?: { actor: 'human' | 'agent'; principal?: string };
