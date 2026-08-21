@@ -11,4 +11,4 @@
 
 - [x] **Track: T5 委托实体切片:Temporal workflow 即委托实体(并发裁决/崩溃续跑/N 路并行/舰队页)(S3)** *Link: [tracks/t5-delegation_20260821/index.md](./tracks/t5-delegation_20260821/index.md)*
 
-- [~] **Track: T6 plan-exec 切片:一次决策批量裁决(S4)** *Link: [tracks/t6-plan-exec_20260821/index.md](./tracks/t6-plan-exec_20260821/index.md)*
+- [x] **Track: T6 plan-exec 切片:一次决策批量裁决(S4)** *Link: [tracks/t6-plan-exec_20260821/index.md](./tracks/t6-plan-exec_20260821/index.md)*
