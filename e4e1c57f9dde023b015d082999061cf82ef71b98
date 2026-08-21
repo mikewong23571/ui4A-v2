@@ -26,3 +26,37 @@ Task: rule driver 计划生成器 + LLM plan 模式接口(T6 Phase A Task 3)
 CI=true pnpm check 全绿(658 passed,+14)。
 
 文件:packages/agent/src/{plan.ts,plan.test.ts,rule-driver.ts,index.ts}
+
+=========================================================================
+Phase Verification & Checkpoint — T6 Phase A: 批量裁决器(engine + 合同)【自治验收】
+
+自动化验证(编排 agent 代行,workflow.md 自治编排协议):
+1. CI=true pnpm check → 全绿:75 test files / 658 tests passed
+   (基线 613 + 45 新增:engine plan 18 + web exec-plan route 13 + agent plan 14);
+   typecheck(四 workspace)+ eslint 同轮通过。
+2. CI=true pnpm e2e → 25 passed + 1 skipped(llm-smoke 无 key 跳过),既有零回归。
+
+覆盖核对(track 起点 a592e8a → e4e1c57 全部代码改动均有对应测试):
+engine/plan.ts+effects.ts+fold.ts←plan.test.ts;web service.ts+exec-request.ts+
+exec-plan/route.ts←exec-plan/route.test.ts(真库);agent/plan.ts+rule-driver.ts←plan.test.ts。
+
+手工等效验证(自治验收,脚本化 curl;TRUNCATE 后全新 dev server @3100):
+- 六步全过计划(wizard next×3 + publish + approve c2/c3,actor=agent,一次 POST)
+  → 200 {plan:'completed'},6 步 results 全 executed;flow 别名解析为
+  article-drafting:main;publish 追加 post:plan-article,向导循环回 basic-info(D11);
+  /api/events 恰一条 plan-executed(detail.kind=plan-completed,steps=6 全 executed)
+  + 6 条 action-executed 伴随事件 + 1 条 entity-appended。
+- 中拒计划([approve c1, approve c1, approve c2])→ 200 {plan:'rejected'}:
+  前序生效(c1 approved 保留),第 2 步 undeclared 带原因,第 3 步未执行;
+  action-rejected 留痕 detail.plan.step=2;标记 detail.kind=plan-rejected steps=2。
+- 中挂计划([unpublish first-post, archive post-welcome(agent), …])→ 202
+  {plan:'suspended'}:前序生效,确认门挂起(Cedar policyReason 原文回流),
+  confirmation-requested + notification-delivered(Temporal notify 全链路)均落日志,
+  后续步未执行。
+
+口径记录(报告正文同步):
+- 状态码:completed/rejected → 200(body.plan 区分;拒绝是步级数据,分步报告在 body),
+  suspended → 202;空 steps → 400(engine 侧平凡完成,双口径文档化)。
+- plan-executed 标记对三种结局均产出(一条批量裁决记录),fold 纯标记不双算。
+
+Phase A 提交:fb2c344(engine executePlan)、9236d7b(web exec-plan)、e4e1c57(agent plan)。
