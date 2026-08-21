@@ -10,8 +10,8 @@
 
 ## Phase B: 页面级实体缓存
 
-- [~] Task: 缓存模块(rel 索引 + sitemap version 一致性戳;version 变全量失效)(TDD)
-- [ ] Task: 精确失效接线(exec 成功 → 当前 rel + 所属 collection 失效;整面 reload 兜底保留)(TDD)
+- [x] Task: 缓存模块(rel 索引 + sitemap version 一致性戳;version 变全量失效)(TDD) — 5df1c3c
+- [~] Task: 精确失效接线(exec 成功 → 当前 rel + 所属 collection 失效;整面 reload 兜底保留)(TDD)
 - [ ] Task: 页面/画布接入(page.tsx 临时 cache 替换;画布多 surface 共享;同 rel 二次渲染零重复 fetch)(TDD/组件测试)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
