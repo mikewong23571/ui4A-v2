@@ -9,15 +9,15 @@
 - [x] Task: 激活不变式第七条 `app-known`(submit 时归一化后的 app 指向已激活 application;非法引用拒且留痕)(TDD) — 26d2097
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — 26d2097
 
-## Phase B: 定义入日志与 fold
+## Phase B: 定义入日志与 fold [checkpoint: 0cc4d60]
 
 - [x] Task: boot seed 扩展(application 定义与 flow 同等作为 active 定义事件入日志;`default` app seed;既有 flows 按域归类 ≥2 个语义 app)(TDD:fold 出活跃 app 定义,业务行为不变) — 0cc4d60
 - [x] Task: 重放一致扩展(app 定义事件参与 fold;I5 重放 hash 一致)(TDD) — 1b9ed95
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — 0cc4d60
 
 ## Phase C: sitemap 分组投影
 
-- [ ] Task: deriveSitemap 增 `applications[]` 分组(name/title/intent/flows)+ flows 条目 app 字段 + surfaces 条目 app 字段;扁平 flows 保留;version hash 行为不变(TDD)
+- [~] Task: deriveSitemap 增 `applications[]` 分组(name/title/intent/flows)+ flows 条目 app 字段 + surfaces 条目 app 字段;扁平 flows 保留;version hash 行为不变(TDD)
 - [ ] Task: 合同测试(`/.well-known/ui4a.json` 形状;app 定义变更 → version bump)(TDD)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
