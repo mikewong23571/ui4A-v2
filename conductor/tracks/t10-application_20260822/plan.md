@@ -17,8 +17,8 @@
 
 ## Phase C: sitemap 分组投影
 
-- [~] Task: deriveSitemap 增 `applications[]` 分组(name/title/intent/flows)+ flows 条目 app 字段 + surfaces 条目 app 字段;扁平 flows 保留;version hash 行为不变(TDD)
-- [ ] Task: 合同测试(`/.well-known/ui4a.json` 形状;app 定义变更 → version bump)(TDD)
+- [x] Task: deriveSitemap 增 `applications[]` 分组(name/title/intent/flows)+ flows 条目 app 字段 + surfaces 条目 app 字段;扁平 flows 保留;version hash 行为不变(TDD) — a8d8b12
+- [~] Task: 合同测试(`/.well-known/ui4a.json` 形状;app 定义变更 → version bump)(TDD)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase D: agent 两层发现
