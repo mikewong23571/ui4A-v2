@@ -6,8 +6,8 @@
 
 - [x] Task: executePlan 引擎函数(TDD:全过/中拒截断/中挂停止/空计划;plan-executed 事件;fold 重放一致) `fb2c344`
 - [x] Task: /api/exec-plan 端点 + 服务层接线(TDD:响应形状;串行队列内单事务) `9236d7b`
-- [~] Task: rule driver 计划生成器 + LLM plan 模式接口(TDD:确定性推导;mock)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: rule driver 计划生成器 + LLM plan 模式接口(TDD:确定性推导;mock) `e4e1c57`
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: S4 E2E
 
