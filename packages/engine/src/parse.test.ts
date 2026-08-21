@@ -143,6 +143,34 @@ describe('parseFlowDefinition — 拒绝非法定义', () => {
   });
 });
 
+describe('parseFlowDefinition — app 归属(T10 架构决定 2)', () => {
+  it('无 app 字段归一化为 default', () => {
+    const parsed = parseFlowDefinition(minimalFlow);
+    expect(parsed.app).toBe('default');
+  });
+
+  it('显式 app 原样保留', () => {
+    const parsed = parseFlowDefinition({ ...minimalFlow, app: 'publishing' });
+    expect(parsed.app).toBe('publishing');
+  });
+
+  it('显式空字符串 parse 不拒(归一化原样保留,留给激活不变式 app-known 拒绝)', () => {
+    const parsed = parseFlowDefinition({ ...minimalFlow, app: '' });
+    expect(parsed.app).toBe('');
+  });
+
+  it('非字符串 app 拒绝,issues 含 app path', () => {
+    try {
+      parseFlowDefinition({ ...minimalFlow, app: 123 });
+      expect.unreachable('应当抛出 FlowParseError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(FlowParseError);
+      const issues = (error as FlowParseError).issues;
+      expect(issues.some((i) => i.path === 'app')).toBe(true);
+    }
+  });
+});
+
 describe('validateFlowDefinition(已类型化定义的语义校验)', () => {
   it('对三个种子 flow 返回空 issue 列表', () => {
     expect(validateFlowDefinition(articleDraftingFlow)).toEqual([]);

@@ -155,6 +155,12 @@ export interface FlowDefinition {
   /** 流级字段(整个流程实例携带)。 */
   fields?: FieldDefinition[];
   version?: number | string;
+  /**
+   * 声明归属的 application 名(T10 架构决定 2:membership 方向 = flow 声明归属)。
+   * 单属:一个 flow 恰属一个 app;parse 归一化缺省 → 'default'。
+   * application 不持成员清单(避免双重真相),membership 由本字段聚合推导。
+   */
+  app?: string;
 }
 
 /**

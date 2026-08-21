@@ -2,7 +2,8 @@
  * flow 定义的解析与校验("machine-as-JSON 的解析")。
  *
  * 结构校验(unknown → FlowDefinition)+ 语义校验(节点存在性/唯一性/引用完整性)
- * + 规范化(默认值补齐:method=POST、guards=[]、fields=[]、effect 数组化)。
+ * + 规范化(默认值补齐:method=POST、guards=[]、fields=[]、effect 数组化、
+ * app 缺省 → 'default'(T10 架构决定 2))。
  * T4 的 meta 平台激活不变式(edge-targets-exist 等)在本层之上叠加。
  */
 import { KNOWN_EFFECT_TYPES, KNOWN_FIELD_TYPES } from '@ui4a/shared';
@@ -65,6 +66,10 @@ function structuralIssues(input: unknown): FlowIssue[] {
   }
   if (typeof input.initial !== 'string' || input.initial === '') {
     issues.push({ path: 'initial', message: 'initial 必须是非空字符串' });
+  }
+  // app 归属(T10 架构决定 2):存在时必须为字符串;空字符串留给激活不变式拒绝。
+  if (input.app !== undefined && typeof input.app !== 'string') {
+    issues.push({ path: 'app', message: 'app 必须是字符串' });
   }
   if (!Array.isArray(input.nodes) || input.nodes.length === 0) {
     issues.push({ path: 'nodes', message: 'nodes 必须是非空数组' });
@@ -282,6 +287,7 @@ export function parseFlowDefinition(input: unknown): FlowDefinition {
   }
   return {
     ...record,
+    app: record.app ?? 'default',
     title: record.title ?? record.name,
     fields: [...(record.fields ?? [])],
     nodes: record.nodes.map(normalizeNode),
