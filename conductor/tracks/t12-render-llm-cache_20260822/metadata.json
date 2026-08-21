@@ -1,0 +1,8 @@
+{
+  "id": "t12-render-llm-cache_20260822",
+  "type": "feature",
+  "status": "new",
+  "title": "T12 渲染增强:render LLM 路径接线 + 页面级实体缓存",
+  "created_at": "2026-08-22T02:15:00+08:00",
+  "approved_by": "orchestrator (autonomous mode, user-authorized)"
+}
