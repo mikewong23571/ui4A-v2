@@ -274,12 +274,13 @@ describe('入口页(首页)', () => {
       expect(container.querySelector('a[href*="post%3Apost-welcome"]')).not.toBeNull();
     });
     expect(container.querySelectorAll('form')).toHaveLength(0);
-    // 可提交元素 = form、type=submit 按钮、或携带 data-action(已声明动作)的按钮。
-    // chrono 的内部控制按钮是 type=button 的展示控件(不关联 form、无 data-action),
-    // 不构成提交面;此前"任何可聚焦按钮"口径过宽,在 chrono 按渲染上下文出箭头钮时
-    // 误报,按铁律本义收窄。
+    // 可提交元素 = form、关联 form 的 submit 按钮、或携带 data-action(已声明
+    // 动作)的按钮。chrono 的箭头/点位按钮无 type 属性(HTML 缺省序列化为
+    // submit)但**不关联任何 form**——无 form owner 的按钮在浏览器语义里
+    // 不构成提交面;此前"type=submit 即提交面"口径在 chrono 按渲染上下文
+    // 出箭头钮时误报,按铁律本义(能否提交)以 form owner 为准。
     const submitButtons = [...container.querySelectorAll('button')].filter(
-      (button) => button.type === 'submit' || button.hasAttribute('data-action'),
+      (button) => button.form !== null || button.hasAttribute('data-action'),
     );
     expect(submitButtons).toHaveLength(0);
     expect(container.querySelectorAll('[data-action]')).toHaveLength(0);
@@ -306,11 +307,14 @@ describe('入口页(首页)', () => {
     vi.stubGlobal('fetch', mockContract());
     const { container } = render(<Home />);
 
+    // chrono 的卡片在容器挂载后异步渲染:等待内容本身而非仅容器
+    //(机器负载下卡片晚于容器出现,读早了 textContent 为空——竞态修复)。
     await waitFor(() => {
-      expect(container.querySelector('[data-testid="situation-timeline"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="situation-timeline"]')?.textContent ?? '').toContain(
+        'action-executed',
+      );
     });
     const text = container.querySelector('[data-testid="situation-timeline"]')?.textContent ?? '';
-    expect(text).toContain('action-executed');
     expect(text).toContain('delegation-started');
   });
 
