@@ -6,7 +6,7 @@
 
 - [x] Task: ApplicationDefinition 类型 + parse 校验(name/title/intent 必填;rel 前缀 `meta/application:`)(TDD) — 85ae222
 - [x] Task: FlowDefinition.app 可选字段 + parse 归一化(缺省 → `'default'`;显式值原样保留入定义)(TDD) — c3947e0
-- [~] Task: 激活不变式第七条 `app-known`(submit 时归一化后的 app 指向已激活 application;非法引用拒且留痕)(TDD)
+- [x] Task: 激活不变式第七条 `app-known`(submit 时归一化后的 app 指向已激活 application;非法引用拒且留痕)(TDD) — 26d2097
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: 定义入日志与 fold
