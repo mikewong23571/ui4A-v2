@@ -1,5 +1,6 @@
 /**
- * E2E 共用 server 装置(Phase E 起 chat/llm-smoke 复用;baseline.spec.ts 保持自含)。
+ * E2E 共用 server 装置(Phase E 起 chat/llm-smoke 复用;baseline.spec.ts 保持自含;
+ * T3 Phase D 增 withWorkerServer:web + Temporal worker 双进程栈,S1/I4 用)。
  *
  * 与 baseline 相同的 seed-reset 方案:每场景直连 PG TRUNCATE events → 自起独立
  * dev server(端口 3110,独立 distDir)→ 结束杀进程组。差异:支持向 spawned
@@ -91,5 +92,123 @@ export async function withFreshServer(
       }
     }
     await waitUntilPortFree(SCENARIO_PORT, 15_000).catch(() => undefined);
+  }
+}
+
+// ---- 确认门栈(T3 Phase D:web + Temporal worker 双进程)----------------------
+
+/** worker 侧 taskQueue 会合点与 Temporal 地址(与 apps/worker、apps/web 同源)。 */
+const WORKER_DIR = path.join(REPO_ROOT, 'apps', 'worker');
+export const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? 'localhost:7233';
+
+/**
+ * 等待 worker 启动横幅(startupBanner:Worker.create 成功、即将 run)。
+ * 超时或进程提前退出即失败(worker 不在,notify 链路无从谈起)。
+ */
+async function waitForWorkerBanner(worker: ChildProcess, timeoutMs: number): Promise<void> {
+  const startedAt = Date.now();
+  return new Promise((resolve, reject) => {
+    const timer = setInterval(() => {
+      if (Date.now() - startedAt > timeoutMs) {
+        clearInterval(timer);
+        reject(new Error(`worker 启动横幅超时(${timeoutMs}ms)`));
+      }
+    }, 200);
+    const check = (chunk: Buffer): void => {
+      if (chunk.toString('utf8').includes('started (taskQueue=')) {
+        clearInterval(timer);
+        resolve();
+      }
+    };
+    worker.stdout?.on('data', check);
+    worker.once('exit', (code) => {
+      clearInterval(timer);
+      reject(new Error(`worker 进程提前退出(code=${code})`));
+    });
+  });
+}
+
+/** 杀进程组并等退出:SIGTERM 优雅 → 5s 未退 SIGKILL 兜底 → 再等 3s。
+ *  (实测 Next 16 dev 的 render 子进程偶发不随组内 SIGTERM 退出——SIGKILL 兜底
+ *  后由 waitUntilPortFree 复核;残留 server 会顶掉下一场景的 3110,状态污染
+ *  整个串行管线,必须杀干净。) */
+async function killProcessGroup(child: ChildProcess): Promise<void> {
+  if (child.pid === undefined) return;
+  const exited = new Promise<void>((resolve) => {
+    child.once('exit', () => resolve());
+  });
+  try {
+    process.kill(-child.pid, 'SIGTERM');
+  } catch {
+    return; // 进程组已不在
+  }
+  await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 5000))]);
+  try {
+    process.kill(-child.pid, 'SIGKILL');
+  } catch {
+    // 已退出。
+  }
+  await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 3000))]);
+}
+
+/**
+ * TRUNCATE + 独立 dev server(3110,UI4A_NOTIFY_DISPATCH=on)+ 真 Temporal worker
+ * (taskQueue ui4a;与 apps/web/src/engine/service.notify.integration.test.ts 同一
+ * spawn 模式)→ 跑场景 → 杀两个进程组。S1/I4 确认门全链路用(worker 送达
+ * notification-delivered 后 web 读路径增量 fold 可见)。
+ * 前置:Temporal dev server(TEMPORAL_ADDRESS)可达——调用方负责探活 skip-if;
+ * 场景前调用 terminateStaleNotifyWorkflows 清理跨轮次残留(s1.spec.ts)。
+ */
+export async function withWorkerServer(
+  scenario: () => Promise<void>,
+  extraEnv: ScenarioEnv = {},
+): Promise<void> {
+  // 起栈前确认 3110 空闲:上一场景若泄漏,waitUntilHealthy 会误连残留 server
+  //(其内存快照携带旧确认状态),整个串行管线被污染——宁可直接失败。
+  await waitUntilPortFree(SCENARIO_PORT, 15_000);
+  await truncateEvents();
+  const child: ChildProcess = spawn('pnpm', ['dev'], {
+    cwd: REPO_ROOT,
+    env: {
+      ...process.env,
+      PORT: String(SCENARIO_PORT),
+      UI4A_DIST_DIR: '.next-e2e',
+      TEMPORAL_ADDRESS,
+      // 显式开启 notify 派发(dev server 缺省即开,显式便于阅读)
+      UI4A_NOTIFY_DISPATCH: 'on',
+      ...extraEnv,
+    },
+    detached: true,
+    stdio: 'ignore',
+  });
+  const worker: ChildProcess = spawn('pnpm', ['dev'], {
+    cwd: WORKER_DIR,
+    env: { ...process.env, TEMPORAL_ADDRESS, DATABASE_URL },
+    detached: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  worker.stderr?.on('data', (chunk: Buffer) => {
+    const text = chunk.toString('utf8').trim();
+    if (text.length > 0) console.error('[e2e worker stderr]', text);
+  });
+  let webExited = false;
+  child.on('exit', () => {
+    webExited = true;
+  });
+  try {
+    await waitUntilHealthy(SCENARIO_BASE, 90_000);
+    if (webExited) {
+      throw new Error('dev server 进程提前退出(检查端口 3110 是否被占用)');
+    }
+    await waitForWorkerBanner(worker, 30_000);
+    await scenario();
+  } finally {
+    await killProcessGroup(worker).catch(() => undefined);
+    // 无条件杀 web 组(webExited 只反映 pnpm 外壳退出,不代表 next-server 已退);
+    // SIGKILL 兜底见 killProcessGroup。
+    await killProcessGroup(child).catch(() => undefined);
+    await waitUntilPortFree(SCENARIO_PORT, 15_000).catch(() => {
+      console.error('[e2e] 警告:场景结束后 3110 未释放(残留 server 将污染后续场景)');
+    });
   }
 }

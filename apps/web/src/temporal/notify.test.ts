@@ -12,20 +12,31 @@ import { getEngine, resetEngineForTests } from '../engine/service';
 // - 尽力而为:连接/启动失败只记日志不抛(挂起的 202 响应绝不被 notify 阻塞);
 // - 失败不缓存:下次派发重连;
 // - 测试默认关闭派发(process.env.VITEST 下),UI4A_NOTIFY_DISPATCH 显式开关。
-const { startMock, connectMock } = vi.hoisted(() => ({
-  startMock: vi.fn(async () => ({ workflowId: 'notify-c1' })),
-  connectMock: vi.fn(async () => ({ connection: true })),
-}));
+const { startMock, connectMock, getHandleMock, terminateMock } = vi.hoisted(() => {
+  const terminateMock = vi.fn(async () => undefined);
+  return {
+    startMock: vi.fn(async () => ({ workflowId: 'notify-c1' })),
+    connectMock: vi.fn(async () => ({ connection: true })),
+    getHandleMock: vi.fn(() => ({ terminate: terminateMock })),
+    terminateMock,
+  };
+});
 
 vi.mock('@temporalio/client', () => ({
   Connection: { connect: connectMock },
-  // 测试替身:只实现 dispatchNotify 用到的 workflow.start。
+  // 测试替身:实现 dispatchNotify/terminateStaleNotifyWorkflows 用到的 workflow 面。
   Client: class {
-    workflow = { start: startMock };
+    workflow = { start: startMock, getHandle: getHandleMock };
   },
 }));
 
-import { dispatchNotify, notifyDispatchEnabled, notifyWorkflowArgs, resetTemporalClientForTests } from './notify';
+import {
+  dispatchNotify,
+  notifyDispatchEnabled,
+  notifyWorkflowArgs,
+  resetTemporalClientForTests,
+  terminateStaleNotifyWorkflows,
+} from './notify';
 
 const suspended: SuspendedConfirmation = {
   id: 'c1',
@@ -40,6 +51,8 @@ const suspended: SuspendedConfirmation = {
 beforeEach(() => {
   startMock.mockClear();
   connectMock.mockClear();
+  getHandleMock.mockClear();
+  terminateMock.mockClear();
   connectMock.mockImplementation(async () => ({ connection: true }));
   startMock.mockImplementation(async () => ({ workflowId: 'notify-c1' }));
   resetTemporalClientForTests();
@@ -135,6 +148,35 @@ describe('dispatchNotify(尽力而为派发)', () => {
 
     expect(connectMock).not.toHaveBeenCalled();
     expect(startMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('terminateStaleNotifyWorkflows(跨轮次残留清理)', () => {
+  it('逐 id 终止 notify-<id>(terminated 状态可被下一轮 start 重用)', async () => {
+    await terminateStaleNotifyWorkflows(['c1', 'c2']);
+
+    expect(getHandleMock).toHaveBeenCalledWith('notify-c1');
+    expect(getHandleMock).toHaveBeenCalledWith('notify-c2');
+    expect(terminateMock).toHaveBeenCalledTimes(2);
+    expect(terminateMock).toHaveBeenCalledWith('stale cleanup');
+  });
+
+  it('单个终止失败(不存在/已完成)→ 吞掉并继续其余 id(卫生动作不抛)', async () => {
+    getHandleMock.mockImplementationOnce(() => ({
+      terminate: vi.fn(async () => {
+        throw new Error('workflow execution not found');
+      }),
+    }));
+
+    await expect(terminateStaleNotifyWorkflows(['c1', 'c2'])).resolves.toBeUndefined();
+    expect(terminateMock).toHaveBeenCalledTimes(1); // c2 正常终止
+  });
+
+  it('Temporal 不可达 → 静默返回(调用方已探活,此处兜底)', async () => {
+    connectMock.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+
+    await expect(terminateStaleNotifyWorkflows(['c1'])).resolves.toBeUndefined();
+    expect(getHandleMock).not.toHaveBeenCalled();
   });
 });
 

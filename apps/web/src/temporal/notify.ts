@@ -89,3 +89,25 @@ export async function dispatchNotify(confirmation: SuspendedConfirmation): Promi
 export function resetTemporalClientForTests(): void {
   clientPromise = null;
 }
+
+/**
+ * 终止历史 notify workflow(e2e/运维卫生动作):workflowId=notify-<id> 的**在跑或
+ * 已成功完成**实例会让同 id 的下一次 start 报 already-started/already-completed
+ * (缺省复用策略 AllowDuplicateFailedOnly——terminated 视为可重用);确认 id 由
+ * 引擎确定性分配(c1/c2/…),跨测试轮次的残留实例须先终止。不存在/不可达按
+ * 尽力而为吞掉——清理不是裁决。
+ */
+export async function terminateStaleNotifyWorkflows(ids: readonly string[]): Promise<void> {
+  let client: Client;
+  try {
+    client = await temporalClient();
+  } catch {
+    return; // Temporal 不可达:无可清理(调用方已探活,此处兜底)。
+  }
+  for (const id of ids) {
+    await client.workflow
+      .getHandle(`notify-${id}`)
+      .terminate('stale cleanup')
+      .catch(() => undefined);
+  }
+}
