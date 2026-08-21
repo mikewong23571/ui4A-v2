@@ -21,7 +21,8 @@ import {
   CONFIRMATION_REJECT_ACTION,
   confirmationRel,
 } from './confirmation';
-import { evaluateGuards } from './judge';
+import { evaluateGuards, flowForInstance } from './judge';
+import type { DefinitionVersionTable } from './judge';
 import {
   DEFINITION_LIFECYCLE_FLOW,
   LIFECYCLE_INTERNAL_EDGES,
@@ -70,7 +71,9 @@ export interface SirenEntity {
 export interface ProjectDeps {
   flows: Readonly<Record<string, FlowDefinition>>;
   guards: GuardRegistry;
-  /** href 前缀(如 "http://localhost:3100");缺省相对路径。 */
+  /** 按出生版本解析的注册表(T4 Phase B,与 JudgeDeps 同口径;缺省回退 flows)。 */
+  versions?: DefinitionVersionTable;
+  /** href 前缀(如 "http://localhost:3100" 或 "/_meta");缺省相对路径。 */
   baseHref?: string;
 }
 
@@ -121,13 +124,14 @@ function guardResultsFor(
   });
 }
 
-/** 实例实体投影(节点 = 界面:动作、guard、字段全部来自当前节点声明)。 */
+/** 实例实体投影(节点 = 界面:动作、guard、字段全部来自当前节点声明——
+ *  声明按实例出生版本解析:在途实例看到的动作面是它的出生定义)。 */
 function projectInstance(
   instance: EngineSnapshot['instances'][string],
   snapshot: EngineSnapshot,
   deps: ProjectDeps,
 ): SirenEntity {
-  const flow = deps.flows[instance.flow];
+  const flow = flowForInstance(deps, instance);
   const node = flow?.nodes.find((candidate) => candidate.name === instance.node);
   const actions = node?.actions ?? [];
   const links: SirenLink[] = [

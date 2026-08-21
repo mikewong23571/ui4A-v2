@@ -201,12 +201,15 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     businessFlowList.map((seed) => activeDefinitionOf(snapshot, seed.name) ?? seed);
   const activeFlows = (): Record<string, FlowDefinition> =>
     Object.fromEntries(activeFlowList().map((flow) => [flow.name, flow]));
+  // 出生版本注册表(在途实例按出生定义走完):definitions 历史原样注入。
+  const versions = (): Record<string, Record<number, FlowDefinition>> =>
+    snapshot.definitionVersions ?? {};
   const guards = seedGuardRegistry;
   // 确认门依赖:Cedar 策略在 boot 时装配一次(策略文件改动重启生效,T4 起 _meta 热更新)。
   const policy = cedarPolicyFromDefaultFile();
-  const gateDeps = (): ExecuteDeps => ({ flows: activeFlows(), guards, policy });
-  const confirmDeps = (): ConfirmationDeps => ({ flows: activeFlows(), guards });
-  const projectDeps = (): ProjectDeps => ({ flows: activeFlows(), guards });
+  const gateDeps = (): ExecuteDeps => ({ flows: activeFlows(), guards, policy, versions: versions() });
+  const confirmDeps = (): ConfirmationDeps => ({ flows: activeFlows(), guards, versions: versions() });
+  const projectDeps = (): ProjectDeps => ({ flows: activeFlows(), guards, versions: versions() });
   // meta 平面编排依赖(编辑动词裁决用 lifecycle 常量自举,executeMeta 内部注入;
   // 激活不变式的注册表缺省 KNOWN_FIELD_TYPES/KNOWN_EFFECT_TYPES)。
   const metaDeps = (): MetaDeps => ({ guards, policy });

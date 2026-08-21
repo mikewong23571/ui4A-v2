@@ -21,7 +21,7 @@ import Ajv from 'ajv';
 
 import { applyEffects, paramsToFields } from './effects';
 import type { EngineEvent } from './effects';
-import { evaluateGuards, type ExecRequest, type JudgeLayer } from './judge';
+import { evaluateGuards, flowForInstance, type DefinitionVersionTable, type ExecRequest, type JudgeLayer } from './judge';
 import { actionEffects } from './parse';
 import { fieldDefinitionsToJsonSchema } from './schema';
 import type { ActionDefinition, FlowDefinition } from './types';
@@ -252,6 +252,8 @@ export type ConfirmationDecision =
 export interface ConfirmationDeps {
   flows: Readonly<Record<string, FlowDefinition>>;
   guards: GuardRegistry;
+  /** 按出生版本解析的注册表(T4 Phase B,与 JudgeDeps 同口径;缺省回退 flows)。 */
+  versions?: DefinitionVersionTable;
 }
 
 /** 确认 rel(id → confirmation:<id>)。 */
@@ -359,7 +361,7 @@ export function approveConfirmation(
   if (target === undefined) {
     throw new Error(`确认 "${confirmationId}" 的目标实体不存在(日志与状态漂移)`);
   }
-  const flow = deps.flows[target.flow];
+  const flow = flowForInstance(deps, target);
   const node = flow?.nodes.find((candidate) => candidate.name === target.node);
   const action = node?.actions.find((candidate) => candidate.name === confirmation.targetAction);
   if (action === undefined) {
@@ -385,6 +387,7 @@ export function approveConfirmation(
   };
   const outcome = applyEffects(request, actionEffects(action), snapshot, {
     flows: deps.flows,
+    versions: deps.versions,
   });
 
   const approvedEvent: EngineEvent = {

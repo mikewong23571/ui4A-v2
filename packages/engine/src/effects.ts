@@ -16,6 +16,8 @@ import { flowNameFromMetaRel } from '@ui4a/shared';
 
 import { canTransition } from './machine';
 import { actionEffects } from './parse';
+import { flowForInstance } from './judge';
+import type { DefinitionVersionTable } from './judge';
 import type { ExecRequest } from './judge';
 import type {
   ActionDefinition,
@@ -78,6 +80,8 @@ export interface EffectOutcome {
 
 export interface EffectDeps {
   flows: Readonly<Record<string, FlowDefinition>>;
+  /** 按出生版本解析的注册表(T4 Phase B,与 JudgeDeps 同口径;缺省回退 flows)。 */
+  versions?: DefinitionVersionTable;
 }
 
 /** 参数出处:显式声明优先,缺省 intent(直接意图提交)。 */
@@ -244,7 +248,7 @@ export function applyEffects(
 
   for (const effect of effects) {
     if (effect.type === 'transition') {
-      const flow = deps.flows[instance.flow];
+      const flow = flowForInstance(deps, instance);
       const target = effect.to;
       if (flow === undefined || target === undefined) {
         throw new Error(`transition 缺少可校验的目标(流程 "${instance.flow}" 或 to 未定义)`);
@@ -269,11 +273,16 @@ export function applyEffects(
       const type = resourceType(effect);
       const name = instanceName(effect, request, instances, type);
       const rel = `${type}:${name}`;
+      const flowName = effect.flow ?? instance.flow;
+      // 出生版本戳(T4 Phase B):新实例出生于目标 flow 定义的当前活跃版本
+      // (激活只移指针,新实例天然拿新版本;无定义条目则不盖戳,保持既有形状)。
+      const bornVersion = definitions[flowName]?.version;
       instances[rel] = {
         rel,
-        flow: effect.flow ?? instance.flow,
-        node: effect.node ?? deps.flows[instance.flow]?.initial ?? instance.node,
+        flow: flowName,
+        node: effect.node ?? deps.flows[flowName]?.initial ?? instance.node,
         fields: paramsToFields(request, effect.fields),
+        ...(bornVersion !== undefined ? { bornVersion } : {}),
       };
       collections[effect.collection] = [...(collections[effect.collection] ?? []), rel];
       appendedRels.push(rel);

@@ -42,6 +42,33 @@ export type JudgeResult =
 export interface JudgeDeps {
   flows: Readonly<Record<string, FlowDefinition>>;
   guards: GuardRegistry;
+  /**
+   * 按出生版本解析的注册表(T4 Phase B):flow → 版本 → 定义全文。
+   * 实例带 bornVersion 且命中时优先于 flows(在途实例按出生定义走完);
+   * 缺省/未命中回退 flows 活跃注册表(与既有语义一致)。
+   */
+  versions?: DefinitionVersionTable;
+}
+
+/** 定义版本注册表形状(flow 名 → 版本号 → 定义全文)。 */
+export type DefinitionVersionTable = Readonly<
+  Record<string, Readonly<Record<number, FlowDefinition>>>
+>;
+
+/**
+ * 实例的定义解析(T4 Phase B):出生版本优先,活跃注册表兜底。
+ * judge / Siren 投影 / transition 校验 / 确认门生效共用同一口径——
+ * 同一实例在任何裁决/投影路径下看到同一份定义。
+ */
+export function flowForInstance(
+  deps: { flows: Readonly<Record<string, FlowDefinition>>; versions?: DefinitionVersionTable },
+  instance: { flow: string; bornVersion?: number },
+): FlowDefinition | undefined {
+  if (instance.bornVersion !== undefined && deps.versions !== undefined) {
+    const born = deps.versions[instance.flow]?.[instance.bornVersion];
+    if (born !== undefined) return born;
+  }
+  return deps.flows[instance.flow];
 }
 
 function reject(layer: JudgeLayer, reason: string, detail?: unknown): JudgeResult {
@@ -93,7 +120,7 @@ export function judge(
   if (instance === undefined) {
     return reject('undeclared', `实体 "${request.rel}" 不存在`);
   }
-  const flow = deps.flows[instance.flow];
+  const flow = flowForInstance(deps, instance);
   if (flow === undefined) {
     return reject('undeclared', `实体 "${request.rel}" 所属流程 "${instance.flow}" 未注册`);
   }

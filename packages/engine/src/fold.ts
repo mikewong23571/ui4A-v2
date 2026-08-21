@@ -91,17 +91,20 @@ function toExecRequest(event: LogEvent): ExecRequest {
   };
 }
 
-/** seed 合并:只补缺、不覆盖(幂等种子装载;重复 seed 事件无害)。 */
+/** seed 合并:只补缺、不覆盖(幂等种子装载;重复 seed 事件无害)。
+ *  T4 Phase B:新装实例按当时活跃定义盖出生版本戳(空库序:定义先于业务 seed,
+ *  天然可解析;定义未入日志的 flow 不盖戳,保持既有形状)。 */
 function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
   const detail = event.detail as Partial<SeedDetail> | undefined;
   if (detail === undefined || typeof detail !== 'object' || detail.instances === undefined) {
     throw new Error(`seed 事件(seq=${event.seq})缺少 detail.instances`);
   }
   const instances: EngineSnapshot['instances'] = { ...snapshot.instances };
-  for (const [rel, instance] of Object.entries(detail.instances)) {
-    if (instances[rel] === undefined) {
-      instances[rel] = instance;
-    }
+  for (const [rel, seeded] of Object.entries(detail.instances)) {
+    if (instances[rel] !== undefined) continue;
+    const bornVersion = seeded.bornVersion ?? snapshot.definitions?.[seeded.flow]?.version;
+    instances[rel] =
+      bornVersion !== undefined ? { ...seeded, bornVersion } : { ...seeded };
   }
   const collections: Record<string, string[]> = {};
   for (const [name, members] of Object.entries(snapshot.collections)) {
@@ -124,10 +127,22 @@ function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
 }
 
 /**
- * 重放一条 action-executed:按重放位点(flow 常量 × 实例当前节点)查动作声明,
- * 还原求值输入后走同一个 applyEffects。日志与定义漂移时响亮失败(带 seq)——
- * 日志 + 定义 = 完整重放输入,任何缺口都必须被 I5 级测试看见。
+ * 重放一条 action-executed:定义解析以**快照为准**(T4 Phase B:定义来自日志)——
+ * 实例带出生版本戳按 definitionVersions[bornVersion] 取,否则取该 flow 当前活跃
+ * 版本;快照无该 flow 定义(测试 fixture/常量域)才回退 deps.flows 常量。
+ * 日志与定义漂移时响亮失败(带 seq)——日志 + 定义 = 完整重放输入,任何缺口都
+ * 必须被 I5 级测试看见。
  */
+function instanceFlowFromSnapshot(
+  snapshot: EngineSnapshot,
+  instance: EngineSnapshot['instances'][string],
+): FlowDefinition | undefined {
+  const entry = snapshot.definitions?.[instance.flow];
+  if (entry === undefined) return undefined;
+  const version = instance.bornVersion ?? entry.version;
+  return snapshot.definitionVersions?.[instance.flow]?.[version] ?? entry.definition;
+}
+
 function applyExecuted(
   snapshot: EngineSnapshot,
   event: LogEvent,
@@ -140,7 +155,7 @@ function applyExecuted(
   if (instance === undefined) {
     throw new Error(`重放失败:${where} 实例不存在(日志与状态漂移)`);
   }
-  const flow = flows[instance.flow];
+  const flow = instanceFlowFromSnapshot(snapshot, instance) ?? flows[instance.flow];
   if (flow === undefined) {
     throw new Error(`重放失败:${where} 流程 "${instance.flow}" 未注册(定义漂移)`);
   }
@@ -156,7 +171,11 @@ function applyExecuted(
   }
 
   try {
-    return applyEffects(request, actionEffects(action), snapshot, { flows }).snapshot;
+    // versions 随快照传入:transition 校验同样按出生版本解析(与在线一致)。
+    return applyEffects(request, actionEffects(action), snapshot, {
+      flows,
+      versions: snapshot.definitionVersions,
+    }).snapshot;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`重放失败:${where} ${message}`);

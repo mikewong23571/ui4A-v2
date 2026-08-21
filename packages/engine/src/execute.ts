@@ -12,7 +12,7 @@ import type { EngineSnapshot, GuardRegistry } from '@ui4a/shared';
 
 import { confirmGate, suspendForConfirmation, type ConfirmationPolicy, type SuspendedConfirmation } from './confirmation';
 import { applyEffects, type EngineEvent } from './effects';
-import { judge, type ExecRequest, type JudgeLayer } from './judge';
+import { judge, type DefinitionVersionTable, type ExecRequest, type JudgeLayer } from './judge';
 import type { FlowDefinition } from './types';
 
 /** 编排依赖:flow 注册表 + guard 注册表 + 确认策略(缺省内置,Phase B 注入 Cedar)。 */
@@ -20,6 +20,8 @@ export interface ExecuteDeps {
   flows: Readonly<Record<string, FlowDefinition>>;
   guards: GuardRegistry;
   policy?: ConfirmationPolicy;
+  /** 按出生版本解析的注册表(T4 Phase B,与 JudgeDeps 同口径;缺省回退 flows)。 */
+  versions?: DefinitionVersionTable;
 }
 
 /** exec 编排结果(discriminated union;suspended 是挂起,不是拒绝)。 */
@@ -56,6 +58,9 @@ export function executeWithGates(
     };
   }
 
-  const outcome = applyEffects(request, verdict.effects, snapshot, { flows: deps.flows });
+  const outcome = applyEffects(request, verdict.effects, snapshot, {
+    flows: deps.flows,
+    versions: deps.versions,
+  });
   return { kind: 'executed', ...outcome };
 }

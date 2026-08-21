@@ -103,16 +103,34 @@ describe('meta exec 编排(service.exec 的 meta/ 前缀路由)', () => {
         ?.actions.map((action) => action.name),
     ).toEqual(['unpublish', 'archive', 'feature']);
 
-    // 业务平面立即可用新动作(同引擎同快照):feature 在活跃定义上可执行。
+    // 业务平面立即可用新动作(同引擎同快照):v1 在途实例按出生定义走完
+    // (feature 对其 undeclared,见 service.bornversion.test);出生于 v2 的
+    // 新实例(B1 publish 派生)则即刻可用 feature——S2 的根基。
+    for (const [action, params] of [
+      ['next', { title: 'New Article' }],
+      ['next', { category: 'tech', tags: 'ui4a' }],
+      ['next', { body: '正文内容' }],
+      ['publish', { title: 'New Article' }],
+    ] as const) {
+      const step = await engine.exec({
+        rel: 'article-drafting:main',
+        action,
+        params,
+        actor: 'agent',
+        channel: 'http',
+      });
+      if (step.kind !== 'accepted') throw new Error(`${action} 应通过`);
+    }
+    expect(engine.getSnapshot().instances['post:new-article']?.bornVersion).toBe(2);
     const outcome = await engine.exec({
-      rel: 'post:first-post',
+      rel: 'post:new-article',
       action: 'feature',
       params: {},
       actor: 'agent',
       channel: 'http',
     });
     expect(outcome.kind).toBe('accepted');
-    expect(engine.getSnapshot().instances['post:first-post']?.node).toBe('archived');
+    expect(engine.getSnapshot().instances['post:new-article']?.node).toBe('archived');
   });
 
   it('在线激活链与 fold 重放一致(I5:定义事件参与 fold)', async () => {

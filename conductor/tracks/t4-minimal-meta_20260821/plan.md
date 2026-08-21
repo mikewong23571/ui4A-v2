@@ -16,7 +16,7 @@
 
 - [x] Task: 定义 seed 迁移(boot:日志无定义→三 flow machine-as-JSON 入日志;fold 出活跃定义供引擎;代码常量降级为 seed 源)(TDD:fold 定义=B1–B3 行为不变) (a1d7e63)
 - [x] Task: /_meta 端点(well-known/entity/exec 同引擎 rel 前缀路由;业务 sitemap 排除 _meta)(TDD) (45fa459)
-- [ ] Task: 在途实例出生版本戳(激活不迁移在途;实例按出生定义走完)(TDD)
+- [~] Task: 在途实例出生版本戳(激活不迁移在途;实例按出生定义走完)(TDD)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase C: 激活队列、机械 diff 与 BIOS 最小面
