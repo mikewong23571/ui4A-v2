@@ -5,7 +5,7 @@
 ## Phase A: render LLM 路径接线
 
 - [x] Task: 路由 fallthrough(rule miss → buildRenderPrompt[词汇表+sitemap 处境] → LLM → parseRenderResponse → validateSpec → freezeSpec;失败交回普通循环;无 key 跳过保 I1)(TDD:mock LLM;非法 JSON/零字面违规/假字段三拒) — 85f8854
-- [~] Task: 门控实测(glm-5.3 真实端点:rule miss 意图 → spec → 凝固 → 画布渲染;RUN_LLM_E2E 口径)
+- [x] Task: 门控实测(glm-5.3 真实端点:rule miss 意图 → spec → 凝固 → 画布渲染;RUN_LLM_E2E 口径) — da1b6c9
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: 页面级实体缓存
