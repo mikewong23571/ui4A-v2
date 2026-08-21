@@ -14,6 +14,8 @@
  * T9 Phase B:inline 响应改 SSE 流(text/event-stream;step 帧逐步 + final
  * 终帧)——chat() helper 解析帧并把 step 文本聚回 messages,既有断言口径
  * 不变;新增:帧序断言(step 先于 final)与「停止」按钮可点的 UI 走查。
+ * T11 Phase C:rule 路径断言零 thinking 帧且不炸(spec 验收 5 前半;thinking
+ * 帧为 llm 步推理自述,rule driver 零回调零帧)。
  */
 import { createServer } from 'node:http';
 
@@ -30,10 +32,13 @@ interface ChatResponseBody {
   error?: string;
 }
 
-/** SSE 帧(T9 Phase B):step 逐步消息 / final 终帧 / error 兜底。 */
+/** SSE 帧(T9 Phase B):step 逐步消息 / final 终帧 / error 兜底;
+ * T11 Phase C 增 thinking 帧(llm 步推理自述;rule 路径零帧,仅作类型容错)。 */
 interface SseFrame {
-  type: 'step' | 'final' | 'error';
+  type: 'step' | 'final' | 'error' | 'thinking';
   message?: { role: 'assistant'; text: string };
+  step?: number;
+  text?: string;
   payload?: Omit<ChatResponseBody, 'messages'>;
   error?: string;
 }
@@ -174,6 +179,9 @@ test('I1:无 GLM_API_KEY → chat auto 回退 rule,B1 完成(文章 2→3)', asy
       expect(frames.length).toBeGreaterThan(1);
       expect(frames[frames.length - 1]!.type).toBe('final');
       expect(frames.slice(0, -1).every((frame) => frame.type === 'step')).toBe(true);
+      // T11 Phase C(spec 验收 5 前半):rule driver 无 reasoning → 零 thinking
+      // 帧,rule 路径帧序列与现状逐帧一致。
+      expect(frames.filter((frame) => frame.type === 'thinking')).toHaveLength(0);
 
       expect(await articleCount()).toBe(3);
     },

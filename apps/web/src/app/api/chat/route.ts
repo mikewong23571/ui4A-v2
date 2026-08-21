@@ -29,8 +29,12 @@ import { validateSpec } from '../../../render/validator';
 //   HTTP 合同(actor=agent,principal=user:<sessionId>,channel=chat)——
 //   "agent 走合同"字面成立;onStep 每步推一帧
 //   {type:'step', message:{role:'assistant',text}, rel}(text 为 trail.ts
-//   stepToMessage 口径),结束推 {type:'final', payload:{sessionId, driver,
-//   requestedDriver, outcome, summary, steps, successes}};异常兜底
+//   stepToMessage 口径);llm 步 decide 产推理自述时先于同号 step 帧推一帧
+//   {type:'thinking', step, text}(T11 Phase C / 架构决定 4:聚合整段一次性
+//   帧——D22 GLM reasoning 末尾齐发,非打字机;step 与对应 step 帧同号,
+//   便于客户端归步;rule driver / 端点不返回 reasoning → 零 thinking 帧,
+//   rule 路径帧序列与现状逐帧一致),结束推 {type:'final', payload:{sessionId,
+//   driver, requestedDriver, outcome, summary, steps, successes}};异常兜底
 //   {type:'error', error};客户端断开仅中断推帧,循环照常跑完(留痕);
 // - 聊天历史(T9 Phase B):inline 回合完成(含 failed/max-steps)后直写一条
 //   chat-turn 事件(rel=chat:<sessionId>,detail 含 goal/outcome/summary/
@@ -41,7 +45,8 @@ import { validateSpec } from '../../../render/validator';
 // - 决策审计(T11 Phase B / 架构决定 3):inline 路径每步决策直写一条
 //   agent-decision 事件(rel/actor/principal/channel 与 chat-turn 同源同值,
 //   detail 五要素 step/driver/prompt/reasoning/op——llm 的 prompt 为 system/user
-//   全量原文、reasoning 暂恒 null;rule 的 prompt 为决策输入结构化摘要),
+//   全量原文、reasoning 为聚合整段自述(Phase C 起填真值;端点不返回时如实
+//   null);rule 的 prompt 为决策输入结构化摘要),
 //   先于 chat-turn 落库;engine fold 忽略该 kind(纯留痕,I5 重放 hash 不变),
 //   落库失败 console.error 不阻断响应(同 chat-turn 口径);delegated/render
 //   短路回合不写(轨迹分别在舰队页/凝固事件,口径同 chat-turn);
@@ -254,6 +259,9 @@ export async function POST(request: Request) {
         // (prompt/reasoning/op)——决策输入只存在于 decide 时的 DriverContext,
         // 执行后的 TrailStep 回推不出 prompt(捕获方案见 chat/decisions.ts)。
         const decisions: AgentDecisionDetail[] = [];
+        // 已发 step 帧计数:thinking 帧的步号 = 计数 + 1(decide 先于 trail.push,
+        // 回调时第 N 步的 step 帧尚未发出)——与对应 step 帧同号,便于客户端归步。
+        let stepFramesSent = 0;
         const result = await runAgent(
           wrapDriverForAudit(createDriver(requested), resolved, (detail) =>
             decisions.push(detail),
@@ -266,7 +274,14 @@ export async function POST(request: Request) {
             principal: `user:${sessionId}`,
             channel: 'chat',
             startRel,
+            // thinking 帧(T11 Phase C / 架构决定 4):llm 步的推理自述聚合整段
+            // 一次性推送(D22 末尾齐发),先于同号 step 帧;rule driver 零回调
+            // → 零帧(帧序列与现状逐帧一致)。
+            onReasoning: (text) => {
+              send({ type: 'thinking', step: stepFramesSent + 1, text });
+            },
             onStep: (step) => {
+              stepFramesSent += 1;
               send({ type: 'step', message: stepToMessage(step), rel: step.rel });
             },
           },

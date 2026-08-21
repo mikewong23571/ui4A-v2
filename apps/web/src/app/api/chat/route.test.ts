@@ -22,6 +22,8 @@
  * - T11 Phase B:chat-turn detail 含结构化 steps(与 trail 逐条等值);
  * - T11 Phase B Task 2:agent-decision 审计事件——inline rule/llm 回合每步一条
  *   (detail 五要素:step/driver/prompt/reasoning/op),落库失败不阻断响应;
+ * - T11 Phase C Task 2:thinking 帧——llm 步 reasoning 整段成帧、先于同号 step
+ *   帧推送;rule 回合零 thinking 帧、帧序列与现状逐帧一致;
  * - 请求形状:缺 goal → 400。
  */
 import { createServer, type Server } from 'node:http';
@@ -68,6 +70,56 @@ function createUnauthorizedStub(): Promise<Server & { port(): number }> {
   });
 }
 
+/** 脚本化 LLM 桩(SSE 流式;T11 Phase C streamText 改造的传输形态——driver
+ * 改走流式后桩必须讲 SSE):第一次调用返回 exec(next)+reasoning_content,
+ * 其后一律 done+reasoning_content(不触网;reasoning 经 raw 部件进审计与
+ * thinking 帧)。 */
+function createScriptedLlmStub(): Promise<Server & { port(): number }> {
+  return new Promise((resolve) => {
+    let calls = 0;
+    const chunk = (delta: Record<string, unknown>, finishReason: string | null = null) =>
+      `data: ${JSON.stringify({
+        id: 'chatcmpl-test',
+        object: 'chat.completion.chunk',
+        created: 1755700000,
+        model: 'glm-test',
+        choices: [{ index: 0, delta, finish_reason: finishReason }],
+      })}`;
+    const stub = createServer((req, res) => {
+      calls += 1;
+      const tool =
+        calls === 1
+          ? {
+              name: 'exec',
+              args: { action: 'next', params: { title: 'LLM 决策的标题' } },
+              reasoning: '先补标题,再推进向导',
+            }
+          : { name: 'done', args: { summary: 'LLM 完成' }, reasoning: '字段已齐,收尾收工' };
+      res.statusCode = 200;
+      res.setHeader('content-type', 'text/event-stream');
+      res.end(
+        `${[
+          chunk({ reasoning_content: tool.reasoning }),
+          chunk({
+            tool_calls: [
+              {
+                index: 0,
+                id: 'call_1',
+                type: 'function',
+                function: { name: tool.name, arguments: JSON.stringify(tool.args) },
+              },
+            ],
+          }),
+          chunk({}, 'tool_calls'),
+          'data: [DONE]',
+        ].join('\n\n')}\n\n`,
+      );
+    }) as Server & { port(): number };
+    stub.port = () => (stub.address() as { port: number }).port;
+    stub.listen(0, '127.0.0.1', () => resolve(stub));
+  });
+}
+
 interface ChatResponseBody {
   sessionId?: string;
   driver?: string;
@@ -80,11 +132,14 @@ interface ChatResponseBody {
   error?: string;
 }
 
-/** SSE 帧(T9 Phase B):step 逐步消息 / final 终帧 / error 兜底。 */
+/** SSE 帧(T9 Phase B):step 逐步消息 / final 终帧 / error 兜底;
+ * T11 Phase C 增 thinking 帧(llm 步推理自述,聚合整段一次性)。 */
 interface SseFrame {
-  type: 'step' | 'final' | 'error';
+  type: 'step' | 'final' | 'error' | 'thinking';
   message?: { role: 'assistant'; text: string };
   rel?: string;
+  step?: number;
+  text?: string;
   payload?: ChatResponseBody;
   error?: string;
 }
@@ -397,55 +452,6 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
     );
   }
 
-  /** 脚本化 LLM 桩(SSE 流式;T11 Phase C streamText 改造的传输形态——driver
-   * 改走流式后桩必须讲 SSE):第一次调用返回 exec(next)+reasoning_content,
-   * 其后一律 done+reasoning_content(不触网;reasoning 经 raw 部件进审计)。 */
-  function createScriptedLlmStub(): Promise<Server & { port(): number }> {
-    return new Promise((resolve) => {
-      let calls = 0;
-      const chunk = (delta: Record<string, unknown>, finishReason: string | null = null) =>
-        `data: ${JSON.stringify({
-          id: 'chatcmpl-test',
-          object: 'chat.completion.chunk',
-          created: 1755700000,
-          model: 'glm-test',
-          choices: [{ index: 0, delta, finish_reason: finishReason }],
-        })}`;
-      const stub = createServer((req, res) => {
-        calls += 1;
-        const tool =
-          calls === 1
-            ? {
-                name: 'exec',
-                args: { action: 'next', params: { title: 'LLM 决策的标题' } },
-                reasoning: '先补标题,再推进向导',
-              }
-            : { name: 'done', args: { summary: 'LLM 完成' }, reasoning: '字段已齐,收尾收工' };
-        res.statusCode = 200;
-        res.setHeader('content-type', 'text/event-stream');
-        res.end(
-          `${[
-            chunk({ reasoning_content: tool.reasoning }),
-            chunk({
-              tool_calls: [
-                {
-                  index: 0,
-                  id: 'call_1',
-                  type: 'function',
-                  function: { name: tool.name, arguments: JSON.stringify(tool.args) },
-                },
-              ],
-            }),
-            chunk({}, 'tool_calls'),
-            'data: [DONE]',
-          ].join('\n\n')}\n\n`,
-        );
-      }) as Server & { port(): number };
-      stub.port = () => (stub.address() as { port: number }).port;
-      stub.listen(0, '127.0.0.1', () => resolve(stub));
-    });
-  }
-
   it('rule 回合:每步一条,五要素齐全,prompt 为决策输入的结构化摘要', async () => {
     const { json } = await chat({
       sessionId: 'sess-decision-rule',
@@ -587,6 +593,85 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
         DROP FUNCTION IF EXISTS test_reject_agent_decision;
       `);
     }
+  });
+});
+
+describe('T11 Phase C Task 2:thinking 帧(SSE 推理自述管道)', () => {
+  const envKey = process.env.GLM_API_KEY;
+  const envBase = process.env.LLM_BASE_URL;
+
+  beforeEach(() => {
+    delete process.env.GLM_API_KEY;
+    delete process.env.LLM_BASE_URL;
+  });
+
+  afterEach(() => {
+    if (envKey === undefined) delete process.env.GLM_API_KEY;
+    else process.env.GLM_API_KEY = envKey;
+    if (envBase === undefined) delete process.env.LLM_BASE_URL;
+    else process.env.LLM_BASE_URL = envBase;
+  });
+
+  it('llm 回合(mock 端点产 reasoning):thinking 帧携整段自述,先于同号 step 帧', async () => {
+    const stub = await createScriptedLlmStub();
+    try {
+      process.env.GLM_API_KEY = 'test-key';
+      process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+
+      const { json, frames } = await chat({
+        sessionId: 'sess-thinking-llm',
+        driver: 'llm',
+        goal: {
+          verb: '发布一篇文章',
+          fields: { title: 't', category: 'tech', tags: '', body: 'b' },
+        },
+      });
+      expect(json.outcome).toBe('done');
+      expect(json.driver).toBe('llm');
+
+      // 帧型序列(D22:reasoning 末尾齐发 → 整段一次性帧,逐步决策前推送即
+      // 「先于同号 step 帧」):每步 thinking → step,final 收尾。
+      expect(frames.map((frame) => frame.type)).toEqual([
+        'thinking',
+        'step',
+        'thinking',
+        'step',
+        'final',
+      ]);
+      const thinking = frames.filter((frame) => frame.type === 'thinking');
+      // 整段聚合:与脚本桩的 reasoning_content 逐字等值,步号从 1 递增。
+      expect(thinking.map((frame) => [frame.step, frame.text])).toEqual([
+        [1, '先补标题,再推进向导'],
+        [2, '字段已齐,收尾收工'],
+      ]);
+      // step 号与对应 step 帧一致(便于客户端归步):第 N 条 thinking 紧贴
+      // 第 N 条 step 之前。
+      const stepFrames = frames.filter((frame) => frame.type === 'step');
+      thinking.forEach((frame, index) => {
+        expect(frames.indexOf(frame)).toBe(frames.indexOf(stepFrames[index]!) - 1);
+      });
+    } finally {
+      await new Promise<void>((resolve) => stub.close(() => resolve()));
+    }
+  });
+
+  it('rule 回合:零 thinking 帧,帧序列与现状逐帧一致', async () => {
+    const { json, frames } = await chat({
+      sessionId: 'sess-thinking-rule',
+      driver: 'rule',
+      goal: {
+        verb: '发布一篇文章',
+        fields: { title: '零帧', category: 'tech', tags: '', body: '正文' },
+      },
+    });
+    expect(json.outcome).toBe('done');
+    expect(json.driver).toBe('rule');
+
+    // rule driver 无 reasoning → 零回调零帧;帧序列保持「若干 step + final」。
+    expect(frames.filter((frame) => frame.type === 'thinking')).toHaveLength(0);
+    expect(frames.length).toBeGreaterThan(1);
+    expect(frames.slice(0, -1).every((frame) => frame.type === 'step')).toBe(true);
+    expect(frames[frames.length - 1]!.type).toBe('final');
   });
 });
 
