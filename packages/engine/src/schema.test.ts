@@ -10,6 +10,7 @@ const fields: FieldDefinition[] = [
   { name: 'published', type: 'boolean' },
   { name: 'publishAt', type: 'date' },
   { name: 'title', type: 'text' },
+  { name: 'action', type: 'json', required: true },
 ];
 
 describe('fieldDefinitionsToJsonSchema(JSON Schema draft-07,RJSF 直接输入)', () => {
@@ -18,7 +19,7 @@ describe('fieldDefinitionsToJsonSchema(JSON Schema draft-07,RJSF 直接输入)',
     expect(schema).toMatchObject({
       type: 'object',
       additionalProperties: false,
-      required: ['content'],
+      required: ['content', 'action'],
     });
   });
 
@@ -42,6 +43,13 @@ describe('fieldDefinitionsToJsonSchema(JSON Schema draft-07,RJSF 直接输入)',
     const schema = fieldDefinitionsToJsonSchema([]);
     expect(schema.properties).toEqual({});
     expect(schema.required).toEqual([]);
+  });
+
+  it('json 字段(T4 add-action 的 action-definition 全文)→ 不约束内层形状', () => {
+    const schema = fieldDefinitionsToJsonSchema(fields);
+    const properties = schema.properties as Record<string, Record<string, unknown>>;
+    // 无 type 约束 = 任意 JSON 值;内层形状由专门 guard(to-exists 等)裁决。
+    expect(properties.action).toEqual({});
   });
 
   it('minLength 声明透传(T3:reject 的 reason 必填且非空)', () => {

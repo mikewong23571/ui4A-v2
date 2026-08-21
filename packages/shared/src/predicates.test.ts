@@ -1,8 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
 import type { GuardContext } from './guards';
-import { actorIsHuman, isPending, isPublished, alwaysTrue, nodeIs, seedGuardRegistry, titleNotTaken } from './predicates';
+import {
+  actorIsHuman,
+  isPending,
+  isPublished,
+  alwaysTrue,
+  nodeIs,
+  seedGuardRegistry,
+  titleNotTaken,
+  isDraft,
+  isActive,
+  nodeExists,
+  nodeNotExists,
+  toExists,
+  guardsRegistered,
+  effectKnown,
+  actionNotExists,
+  noLiveInstances,
+} from './predicates';
 import type { EngineSnapshot } from './state';
+import type { FlowDefinition } from './definition';
 
 function contextAt(node: string, actor?: 'human' | 'agent'): GuardContext {
   const snapshot: EngineSnapshot = {
@@ -110,5 +128,128 @@ describe('seedGuardRegistry(名字 → 谓词)', () => {
   it('注册表条目可直接求值', () => {
     expect(seedGuardRegistry['is-pending']!(contextAt('pending'))).toBe(true);
     expect(seedGuardRegistry['is-published']!(contextAt('pending'))).toBe(false);
+  });
+
+  it('T4 meta 谓词名全部注册(A.3 编辑动词 guard 集)', () => {
+    expect(Object.keys(seedGuardRegistry)).toEqual(
+      expect.arrayContaining([
+        'is-draft',
+        'is-active',
+        'node-exists',
+        'node-not-exists',
+        'to-exists',
+        'guards-registered',
+        'effect-known',
+        'action-not-exists',
+        'no-live-instances',
+      ]),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// meta 平面谓词(T4):上下文 = lifecycle 实例,工作副本从 definitions 表读。
+// ---------------------------------------------------------------------------
+
+const draftFlow: FlowDefinition = {
+  name: 'post-status',
+  initial: 'published',
+  nodes: [
+    { name: 'published', actions: [{ name: 'unpublish', title: '下线', to: 'offline' }] },
+    { name: 'offline', actions: [] },
+  ],
+};
+
+/** lifecycle 实例上下文(meta/flow:post-status,工作副本 = draftFlow)。 */
+function metaContext(
+  node: string,
+  params: Record<string, unknown> = {},
+  extra?: { liveInstances?: boolean; knownGuards?: ReadonlySet<string> },
+): GuardContext {
+  const snapshot: EngineSnapshot = {
+    instances: {
+      'meta/flow:post-status': {
+        rel: 'meta/flow:post-status',
+        flow: 'definition-lifecycle',
+        node,
+        fields: {},
+      },
+      ...(extra?.liveInstances
+        ? { 'post:p1': { rel: 'post:p1', flow: 'post-status', node: 'published', fields: {} } }
+        : {}),
+    },
+    collections: {},
+    definitions: { 'post-status': { name: 'post-status', version: 1, status: 'draft', definition: draftFlow } },
+  };
+  return {
+    instance: snapshot.instances['meta/flow:post-status']!,
+    snapshot,
+    params,
+    ...(extra?.knownGuards !== undefined ? { knownGuards: extra.knownGuards } : {}),
+  };
+}
+
+describe('meta 谓词(纯函数,只读快照)', () => {
+  it('is-draft/is-active:lifecycle 实例按节点判定;业务实例恒 false', () => {
+    expect(isDraft(metaContext('draft'))).toBe(true);
+    expect(isDraft(metaContext('active'))).toBe(false);
+    expect(isActive(metaContext('active'))).toBe(true);
+    expect(isActive(contextAt('published'))).toBe(false); // 业务实例不带 definition-lifecycle flow
+  });
+
+  it('node-exists/node-not-exists:按工作副本;参数缺席 vacuous pass', () => {
+    expect(nodeExists(metaContext('draft', { node: 'published' }))).toBe(true);
+    expect(nodeExists(metaContext('draft', { node: 'ghost' }))).toBe(false);
+    expect(nodeExists(metaContext('draft', {}))).toBe(true);
+    expect(nodeNotExists(metaContext('draft', { name: 'fresh' }))).toBe(true);
+    expect(nodeNotExists(metaContext('draft', { name: 'published' }))).toBe(false);
+    // add-node 用 name,add-action 用 node——两者都识别。
+    expect(nodeNotExists(metaContext('draft', { node: 'fresh' }))).toBe(true);
+  });
+
+  it('to-exists:to 指向工作副本节点;未声明 to = vacuous;畸形载荷 false', () => {
+    expect(toExists(metaContext('draft', { action: { name: 'x', to: 'offline' } }))).toBe(true);
+    expect(toExists(metaContext('draft', { action: { name: 'x', to: 'ghost' } }))).toBe(false);
+    expect(toExists(metaContext('draft', { action: { name: 'x' } }))).toBe(true);
+    expect(toExists(metaContext('draft', {}))).toBe(true);
+    expect(toExists(metaContext('draft', { action: 'not-an-object' }))).toBe(false);
+  });
+
+  it('guards-registered:按 knownGuards 键集;未注册/缺上下文 false', () => {
+    const known = new Set(['is-pending']);
+    expect(guardsRegistered(metaContext('draft', { action: { guards: ['is-pending'] } }, { knownGuards: known }))).toBe(true);
+    expect(guardsRegistered(metaContext('draft', { action: { guards: ['nope'] } }, { knownGuards: known }))).toBe(false);
+    expect(guardsRegistered(metaContext('draft', { action: { guards: ['is-pending'] } }))).toBe(false);
+    expect(guardsRegistered(metaContext('draft', {}))).toBe(true);
+  });
+
+  it('effect-known:类型词表;未声明效果 vacuous;未知类型 false', () => {
+    expect(effectKnown(metaContext('draft', { action: { effect: [{ type: 'transition', to: 'offline' }] } }))).toBe(true);
+    expect(effectKnown(metaContext('draft', { action: { effect: { type: 'set-field', field: 'x', value: 1 } } }))).toBe(true);
+    expect(effectKnown(metaContext('draft', { action: { effect: [{ type: 'teleport' }] } }))).toBe(false);
+    expect(effectKnown(metaContext('draft', { action: {} }))).toBe(true);
+  });
+
+  it('action-not-exists:目标节点上同名动作防重复;参数缺席 vacuous', () => {
+    expect(actionNotExists(metaContext('draft', { node: 'published', action: { name: 'pin' } }))).toBe(true);
+    expect(actionNotExists(metaContext('draft', { node: 'published', action: { name: 'unpublish' } }))).toBe(false);
+    expect(actionNotExists(metaContext('draft', {}))).toBe(true);
+  });
+
+  it('no-live-instances:非 terminal 节点上的业务实例即"在途"', () => {
+    expect(noLiveInstances(metaContext('active', {}, { liveInstances: true }))).toBe(false);
+    expect(noLiveInstances(metaContext('active'))).toBe(true);
+    // 在 terminal(offline 无出边)上的实例不算在途。
+    const terminalOnly: GuardContext = {
+      ...metaContext('active'),
+      snapshot: {
+        ...metaContext('active').snapshot,
+        instances: {
+          'meta/flow:post-status': metaContext('active').instance,
+          'post:p1': { rel: 'post:p1', flow: 'post-status', node: 'offline', fields: {} },
+        },
+      },
+    };
+    expect(noLiveInstances(terminalOnly)).toBe(true);
   });
 });
