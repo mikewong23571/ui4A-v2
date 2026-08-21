@@ -48,6 +48,11 @@ function goalText(goal: FleetRow['goal']): string {
   return parts.join(' · ');
 }
 
+/** 委托短标识:剥 delegation- 前缀后取 uuid 前 8 位(与悬浮窗回执同口径)。 */
+function idBrief(id: string): string {
+  return id.replace(/^delegation-/, '').slice(0, 8);
+}
+
 export default function DelegationsPage() {
   const [rows, setRows] = useState<FleetRow[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -120,7 +125,7 @@ export default function DelegationsPage() {
               <tr key={row.id} className="border-b border-zinc-100 align-top" data-delegation={row.id}>
                 <td className="py-2 pr-4">
                   <span className="font-medium text-zinc-800">{goalText(row.goal)}</span>
-                  <span className="ml-2 text-xs text-zinc-400">{row.id.slice(0, 8)}</span>
+                  <span className="ml-2 text-xs text-zinc-400">{idBrief(row.id)}</span>
                 </td>
                 <td className="py-2 pr-4">
                   <span data-status={row.status} className={STATUS_COLOR[row.status]}>

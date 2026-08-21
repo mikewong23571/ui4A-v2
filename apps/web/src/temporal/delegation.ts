@@ -57,16 +57,20 @@ function temporalClient(): Promise<Client> {
   return clientPromise;
 }
 
-/** 派发一个委托 workflow,返回 delegationId(uuid;workflowId=delegation-<id>)。 */
+/**
+ * 派发一个委托 workflow,返回 delegationId(**即 workflowId,含 delegation- 前缀**:
+ * worker 侧事件 rel=delegation:<workflowInfo().workflowId>,/api/delegations/<id>
+ * 与该约定对齐——手工验证实测锚定,前缀不可剥)。
+ */
 export async function dispatchDelegation(
   args: DelegationDispatchArgs,
 ): Promise<{ delegationId: string }> {
-  const delegationId = crypto.randomUUID();
+  const delegationId = `delegation-${crypto.randomUUID()}`;
   const client = await temporalClient();
   await client.workflow.start('delegationWorkflow', {
     args: [args],
     taskQueue: TASK_QUEUE,
-    workflowId: `delegation-${delegationId}`,
+    workflowId: delegationId,
   });
   return { delegationId };
 }

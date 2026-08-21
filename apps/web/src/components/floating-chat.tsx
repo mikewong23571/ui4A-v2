@@ -176,7 +176,7 @@ export function FloatingChat() {
           ...prev,
           {
             role: 'assistant',
-            content: `已派发委托 ${body.delegationId.slice(0, 8)}…(后台执行中),进度见舰队页 /delegations`,
+            content: `已派发委托 ${body.delegationId.replace(/^delegation-/, '').slice(0, 8)}…(后台执行中),进度见舰队页 /delegations`,
           },
         ]);
         return;

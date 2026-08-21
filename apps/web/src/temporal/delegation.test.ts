@@ -59,7 +59,9 @@ describe('dispatchDelegation(委托派发)', () => {
     });
     const workflowId = call[1]!.workflowId as string;
     expect(workflowId).toMatch(/^delegation-[0-9a-f-]{36}$/);
-    expect(delegationId).toBe(workflowId.replace(/^delegation-/, ''));
+    // delegationId 即 workflowId 全量(含前缀):worker 侧事件 rel=
+    // delegation:<workflowId>,statusUrl 直查该 id 才能命中(手工验证锚定)。
+    expect(delegationId).toBe(workflowId);
   });
 
   it('两次派发生成不同 uuid(并行委托各自独立)', async () => {
