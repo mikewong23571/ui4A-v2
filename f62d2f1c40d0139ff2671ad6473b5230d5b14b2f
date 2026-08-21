@@ -1,0 +1,18 @@
+T5 Phase A Phase Verification & Checkpoint(自治验收,编排代行)
+
+自动化验证:
+- CI=true pnpm check 全绿:66→67 文件,553→582 测试(Task1 +13、Task2 +14[engine 10 + web 合同 4]、Task3 +1 集成、验证期 +1 unrecorded)。
+- CI=true pnpm vitest run apps/worker/src/delegation.kill.integration.test.ts 通过:真 Temporal(7233)+ 真 worker 进程 + 真 PG(5433)+ in-process 引擎 HTTP 适配器;SIGKILL 后 workflow 仍 RUNNING → 重启 → COMPLETED(全程 12.7s);delegation-step detail.step = 1..N 连续无缺口;文章 post:kill-resume-* 落库 published;delegations 投影 status=completed 计数一致。
+- CI=true pnpm e2e:22 passed + 1 skipped(既有全绿零回归,B 系/S1/S2 不受影响)。
+
+手工等效验证(编排代行,2026-08-21):
+- TRUNCATE events → PORT=3100 pnpm dev + pnpm --filter @ui4a/worker dev → 一次性脚本真 dispatch delegationWorkflow(goal=发布 t5-manual-verify,rule driver,startRel=articles,principal=user:manual)。
+- handle.result():{outcome: completed, steps: 6, successes: 4, summary: 目标完成: publish 已成功}。
+- curl /api/entity?rel=delegations → count=1,子实体直达 /api/entity?rel=delegation:delegation-manual-<ts>,properties {status: completed, steps: 6, successes: 4, goal/driver-kind/start-rel/principal 齐全}。
+- curl /api/entity?rel=post:t5-manual-verify → {flow: post-status, node: published};articles count 2→3。
+- /api/events 委托事件链:delegation-started → step×6(navigated/3×executed next/executed publish/done)→ delegation-completed,seq 序即轨迹。
+- 验证后清理:杀净自起进程(web dev + worker)、TRUNCATE events 复位、临时 dispatch 脚本删除;编排者 postgres/temporal 保持运行。
+
+验证期修正(本提交):unrecorded fail 出口的轨迹跳过从 workflow 分支下沉到 applyStepToState 纯函数(可单测),保证 trail 步数与 delegation-step 事件计数恒一致(engine 终态计数交叉核对的前提)。
+
+Phase 变更清单(git diff 388730a..HEAD --name-only):apps/worker/{delegation,delegation.test,delegation.kill.integration.test,workflows,activities}.ts + package.json;packages/shared/src/state.ts;packages/engine/{delegation,delegation.test,fold,fold.test,siren,effects,effects.test,confirmation,index,purity.test}.ts;apps/web/src/db/events.ts;apps/web/src/app/api/delegations.contract.test.ts;plan.md。全部代码文件有对应测试(engine delegation/fold/siren→delegation.test.ts;worker 核心→delegation.test.ts + kill 集成;web events.ts 纯类型由合同测试覆盖)。
