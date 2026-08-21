@@ -246,6 +246,29 @@ describe('fold 投影', () => {
     expect(after).toEqual(before);
   });
 
+  it('agent-decision(T11 Phase B):逐步决策审计被 fold 忽略(纯留痕,不改状态)', () => {
+    const decision: LogEvent = {
+      seq: 2,
+      kind: 'agent-decision',
+      rel: 'chat:sess-1',
+      actor: 'agent',
+      principal: 'user:sess-1',
+      channel: 'chat',
+      detail: {
+        step: 1,
+        driver: 'llm',
+        prompt: { system: '系统提示', user: '用户提示全量' },
+        reasoning: null,
+        op: { kind: 'exec', action: 'publish', params: { title: 'x' } },
+      },
+    };
+
+    const before = fold([seedEvent], { flows });
+    const after = fold([seedEvent, decision], { flows });
+
+    expect(after).toEqual(before);
+  });
+
   it('定义漂移:动作未声明于重放位点 → 抛错并带 seq(I5 完整性)', () => {
     const drifted: LogEvent = {
       seq: 2,

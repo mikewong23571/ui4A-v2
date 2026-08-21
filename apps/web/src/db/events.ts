@@ -23,6 +23,8 @@ import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
  *  render-spec-frozen 为 T7 凝固事件(web freezeSpec 首冻恰一条);
  *  chat-turn 为 T9 Phase B 聊天回合投影(web 聊天路由 inline 完成后直写,
  *  同一双写者方案;engine fold 忽略——纯审计留痕);
+ *  agent-decision 为 T11 Phase B inline 每步决策审计(与 chat-turn 同源同值,
+ *  engine fold 忽略——纯留痕);
  *  application-seeded 为 T10 Phase B application 定义种子(boot 装载,
  *  与 engine LogEventKind 对齐——机械适配)。 */
 export type EventKind =
@@ -50,7 +52,8 @@ export type EventKind =
   | 'delegation-max-steps'
   | 'plan-executed'
   | 'render-spec-frozen'
-  | 'chat-turn';
+  | 'chat-turn'
+  | 'agent-decision';
 
 /** 追加事件(引擎 EngineEvent 的日志层超集:引擎不产 seq/ts/reason,由本层分配)。 */
 export interface EventAppend {

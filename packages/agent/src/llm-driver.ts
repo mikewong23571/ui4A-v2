@@ -131,7 +131,13 @@ function describeTrail(context: DriverContext): string {
     .join('\n');
 }
 
-function buildUserPrompt(context: DriverContext): string {
+/**
+ * user prompt 组装(目标 + 当前实体 + 轨迹 + 最近拒绝 + 已成功执行)。
+ * 导出理由(T11 Phase B):agent-decision 审计留痕按同一纯函数从同一
+ * DriverContext 重建 prompt 原文(免回放重建的训练原料)——llmDecide 实际
+ * 发送的 prompt 必须经本函数构造,重建才与实际发送逐字节一致。
+ */
+export function buildUserPrompt(context: DriverContext): string {
   const parts = [
     `## 用户目标\n${JSON.stringify(context.goal)}`,
     `## 当前实体\n${describeEntity(context.entity)}`,
@@ -234,6 +240,8 @@ function toToolSet(descriptors: ReturnType<typeof buildToolProjection>): ToolSet
 
 async function llmDecide(model: LanguageModel, context: DriverContext): Promise<AgentOperation> {
   try {
+    // 注意:system/prompt 必须经 buildSystemPrompt/buildUserPrompt 构造——
+    // T11 Phase B 的 agent-decision 审计按同二函数重建全量 prompt 落库。
     const result = await generateText({
       model,
       system: buildSystemPrompt({ role: context.role, app: context.app }),

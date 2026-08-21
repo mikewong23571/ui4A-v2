@@ -7,6 +7,7 @@ import {
 } from '@ui4a/agent';
 
 import type { ChatTurnDetail } from '../../../chat/history';
+import { wrapDriverForAudit, type AgentDecisionDetail } from '../../../chat/decisions';
 import { resolveStartRel } from '../../../chat/start';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
 import { appendEvent } from '../../../db/events';
@@ -37,6 +38,13 @@ import { validateSpec } from '../../../render/validator';
 //   ——与 worker 同一双写者模式;engine fold 忽略该 kind
 //   (纯审计留痕);落库失败 console.error 不阻断响应。GET /api/chat/history
 //   按 sessionId 投影回合序列(服务端零会话态);
+// - 决策审计(T11 Phase B / 架构决定 3):inline 路径每步决策直写一条
+//   agent-decision 事件(rel/actor/principal/channel 与 chat-turn 同源同值,
+//   detail 五要素 step/driver/prompt/reasoning/op——llm 的 prompt 为 system/user
+//   全量原文、reasoning 暂恒 null;rule 的 prompt 为决策输入结构化摘要),
+//   先于 chat-turn 落库;engine fold 忽略该 kind(纯留痕,I5 重放 hash 不变),
+//   落库失败 console.error 不阻断响应(同 chat-turn 口径);delegated/render
+//   短路回合不写(轨迹分别在舰队页/凝固事件,口径同 chat-turn);
 // - delegated(T5 Phase B / spec 架构决定 5):校验 goal → 解析 startRel 与
 //   driverKind(auto 先解析)→ dispatchDelegation 派发 delegationWorkflow
 //   (taskQueue ui4a;baseUrl=自身 origin,worker activity 回环走本源合同)→
@@ -242,23 +250,51 @@ export async function POST(request: Request) {
       };
       try {
         const startRel = await resolveStartRel(baseUrl, goal, (url, init) => fetch(url, init));
-        const result = await runAgent(createDriver(requested), goal, {
-          baseUrl,
-          fetchImpl: (url, init) => fetch(url, init),
-          actor: 'agent',
-          principal: `user:${sessionId}`,
-          channel: 'chat',
-          startRel,
-          onStep: (step) => {
-            send({ type: 'step', message: stepToMessage(step), rel: step.rel });
+        // agent-decision 审计(T11 Phase B):包装 driver 在 decide 时刻捕获
+        // (prompt/reasoning/op)——决策输入只存在于 decide 时的 DriverContext,
+        // 执行后的 TrailStep 回推不出 prompt(捕获方案见 chat/decisions.ts)。
+        const decisions: AgentDecisionDetail[] = [];
+        const result = await runAgent(
+          wrapDriverForAudit(createDriver(requested), resolved, (detail) =>
+            decisions.push(detail),
+          ),
+          goal,
+          {
+            baseUrl,
+            fetchImpl: (url, init) => fetch(url, init),
+            actor: 'agent',
+            principal: `user:${sessionId}`,
+            channel: 'chat',
+            startRel,
+            onStep: (step) => {
+              send({ type: 'step', message: stepToMessage(step), rel: step.rel });
+            },
           },
-        });
+        );
 
         const messages = trailToMessages(result);
         // max-steps 的上限说明不是轨迹步(无 TrailStep 可挂 onStep),补一帧,
         // 保持客户端「消息 = 各 step 帧文本」的重建口径与 trailToMessages 等值。
         for (const extra of messages.slice(result.steps.length)) {
           send({ type: 'step', message: extra });
+        }
+
+        // agent-decision 落库:inline 每步决策一条,与 chat-turn 同源同值
+        // (actor/principal/channel);先于回合投影写入(决策在先,回合在后)。
+        // 落库失败 console.error 不阻断响应(同 chat-turn 口径:审计是投影)。
+        try {
+          for (const detail of decisions) {
+            await appendEvent(getDb(), {
+              kind: 'agent-decision',
+              actor: 'agent',
+              principal: `user:${sessionId}`,
+              channel: 'chat',
+              rel: `chat:${sessionId}`,
+              detail,
+            });
+          }
+        } catch (persistError) {
+          console.error('agent-decision 事件落库失败(不阻断聊天响应):', persistError);
         }
 
         // 聊天历史(B3):inline 回合完成(含 failed/max-steps)直写 chat-turn

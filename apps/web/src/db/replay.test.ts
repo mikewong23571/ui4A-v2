@@ -322,4 +322,35 @@ describe('I5 重放一致性(真 PG)', () => {
     expect(secondHash).toBe(contentVersion(second));
     expect(secondHash).toBe(firstHash); // 序列确定性:同输入同日志同终态
   });
+
+  it('agent-decision 审计事件(T11 Phase B)混入日志:fold no-op,重放 hash 不变', async () => {
+    const online = await runScenario(pool);
+
+    // inline 聊天路径的逐步决策留痕(rel=chat:<sessionId>,detail 五要素)——
+    // 经 PG JSONB 往返后 fold 仍须忽略该 kind(纯审计,不改状态)。
+    await appendEvent(pool, {
+      kind: 'agent-decision',
+      rel: 'chat:sess-replay',
+      actor: 'agent',
+      principal: 'user:sess-replay',
+      channel: 'chat',
+      detail: {
+        step: 1,
+        driver: 'rule',
+        prompt: {
+          goal: { verb: '发布一篇文章' },
+          currentRel: 'article-drafting:main',
+          entity: { rel: 'article-drafting:main', class: ['flow-instance'], actions: ['next'] },
+          blocked: [],
+          lastRejection: null,
+          successes: [],
+        },
+        reasoning: null,
+        op: { kind: 'exec', action: 'next', params: { title: 'Hello World' } },
+      },
+    });
+
+    const replayed = fold(await readLog(pool), { flows });
+    expect(contentVersion(replayed)).toBe(contentVersion(online));
+  });
 });

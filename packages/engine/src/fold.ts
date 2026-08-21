@@ -53,6 +53,8 @@ import { applyRenderSpecFrozen } from './render-spec';
  *  fold 分支见 render-spec 模块)+
  *  chat-turn(T9 Phase B:聊天 inline 回合投影,web 聊天路由直写——
  *  纯审计留痕,fold 不改状态)+
+ *  agent-decision(T11 Phase B:inline 路径每步决策一条审计,与 chat-turn 同源;
+ *  纯留痕,fold 不改状态)+
  *  application-seeded(T10 Phase B:application 定义种子,boot 装载;
  *  fold 落 applications 表——seeded 即 active,键集 = app-known 已激活集合)。 */
 export type LogEventKind =
@@ -68,7 +70,8 @@ export type LogEventKind =
   | 'delegation-failed'
   | 'delegation-max-steps'
   | 'render-spec-frozen'
-  | 'chat-turn';
+  | 'chat-turn'
+  | 'agent-decision';
 
 /**
  * 存储事件(引擎 EngineEvent + 日志层字段)。
@@ -692,6 +695,7 @@ function applyDefinitionRejected(snapshot: EngineSnapshot, event: LogEvent): Eng
  * - definition-activated / -rejected:approve/reject 落态(版本推进/驳回留痕;
  *   转移由前置 action-executed 重放,此处核对 + 条目与 activation 同步);
  * - chat-turn(T9 Phase B):聊天回合投影——纯审计留痕,fold 不改状态;
+ * - agent-decision(T11 Phase B):inline 每步决策审计——纯留痕,fold 不改状态;
  * - 未知 kind:抛错(日志完整性守卫)。
  *
  * initial(可选):从既有快照继续折叠——web 读路径按 seq 增量 fold 的根基
@@ -803,6 +807,9 @@ export function fold(
       // chat-turn(T9 Phase B):聊天回合投影——纯审计留痕(消息全文在 detail),
       // 状态与引擎无关,fold 忽略;历史读路径走 /api/chat/history 的日志过滤。
       case 'chat-turn':
+      // agent-decision(T11 Phase B):inline 每步决策审计(step/driver/prompt/
+      // reasoning/op 在 detail)——纯留痕,fold 忽略,与 chat-turn 同口径。
+      case 'agent-decision':
         break;
       default:
         throw new Error(`重放失败:未知事件 kind "${String(event.kind)}"(seq=${event.seq})`);

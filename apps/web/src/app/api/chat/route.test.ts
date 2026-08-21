@@ -20,6 +20,8 @@
  *   轨迹消息含三步填充 + publish;
  * - B4(路由级):坏 key + 显式 llm → 401 错误原文进对话,route 不 5xx;
  * - T11 Phase B:chat-turn detail 含结构化 steps(与 trail 逐条等值);
+ * - T11 Phase B Task 2:agent-decision 审计事件——inline rule/llm 回合每步一条
+ *   (detail 五要素:step/driver/prompt/reasoning/op),落库失败不阻断响应;
  * - 请求形状:缺 goal → 400。
  */
 import { createServer, type Server } from 'node:http';
@@ -352,6 +354,231 @@ describe('I1(路由级):无 key → auto 回退 rule,B1 完成', () => {
     expect(steps.every((step) => typeof step.step === 'number' && typeof step.rel === 'string')).toBe(
       true,
     );
+  });
+});
+
+describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', () => {
+  const envKey = process.env.GLM_API_KEY;
+  const envBase = process.env.LLM_BASE_URL;
+
+  beforeEach(() => {
+    delete process.env.GLM_API_KEY;
+    delete process.env.LLM_BASE_URL;
+  });
+
+  afterEach(() => {
+    if (envKey === undefined) delete process.env.GLM_API_KEY;
+    else process.env.GLM_API_KEY = envKey;
+    if (envBase === undefined) delete process.env.LLM_BASE_URL;
+    else process.env.LLM_BASE_URL = envBase;
+  });
+
+  /** agent-decision 事件行(只取本测试关心的字段)。 */
+  interface DecisionEvent {
+    seq: number;
+    rel: string;
+    actor: string;
+    channel: string;
+    principal: string;
+    detail: {
+      step: number;
+      driver: string;
+      prompt: unknown;
+      reasoning: string | null;
+      op: { kind: string; action?: string; params?: Record<string, unknown>; summary?: string };
+    };
+  }
+
+  async function decisionsOf(sessionId: string): Promise<DecisionEvent[]> {
+    const response = await fetch(`${base}/api/events`);
+    const body = (await response.json()) as { events: (DecisionEvent & { kind: string })[] };
+    return body.events.filter(
+      (event) => event.kind === 'agent-decision' && event.rel === `chat:${sessionId}`,
+    );
+  }
+
+  /** 脚本化 LLM 桩:第一次调用返回 exec(next),其后一律 done(不触网)。 */
+  function createScriptedLlmStub(): Promise<Server & { port(): number }> {
+    return new Promise((resolve) => {
+      let calls = 0;
+      const stub = createServer((req, res) => {
+        calls += 1;
+        const tool =
+          calls === 1
+            ? { name: 'exec', args: { action: 'next', params: { title: 'LLM 决策的标题' } } }
+            : { name: 'done', args: { summary: 'LLM 完成' } };
+        res.statusCode = 200;
+        res.setHeader('content-type', 'application/json');
+        res.end(
+          JSON.stringify({
+            id: 'chatcmpl-test',
+            object: 'chat.completion',
+            created: 1755700000,
+            model: 'glm-test',
+            choices: [
+              {
+                index: 0,
+                finish_reason: 'tool_calls',
+                message: {
+                  role: 'assistant',
+                  content: null,
+                  tool_calls: [
+                    {
+                      id: 'call_1',
+                      type: 'function',
+                      function: { name: tool.name, arguments: JSON.stringify(tool.args) },
+                    },
+                  ],
+                },
+              },
+            ],
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          }),
+        );
+      }) as Server & { port(): number };
+      stub.port = () => (stub.address() as { port: number }).port;
+      stub.listen(0, '127.0.0.1', () => resolve(stub));
+    });
+  }
+
+  it('rule 回合:每步一条,五要素齐全,prompt 为决策输入的结构化摘要', async () => {
+    const { json } = await chat({
+      sessionId: 'sess-decision-rule',
+      driver: 'rule',
+      goal: {
+        verb: '发布一篇文章',
+        fields: { title: '决策留痕', category: 'tech', tags: '', body: '正文' },
+      },
+    });
+    expect(json.outcome).toBe('done');
+    expect(json.driver).toBe('rule');
+
+    const decisions = await decisionsOf('sess-decision-rule');
+    const steps = (json.steps ?? []) as { op: unknown }[];
+    // 每步决策恰一条(蒸馏原料:机械层轨迹是正确答案生成器)。
+    expect(decisions.length).toBeGreaterThan(0);
+    expect(decisions).toHaveLength(steps.length);
+    decisions.forEach((event, index) => {
+      expect(event).toMatchObject({
+        actor: 'agent',
+        channel: 'chat',
+        principal: 'user:sess-decision-rule',
+      });
+      expect(event.detail.step).toBe(index + 1);
+      expect(event.detail.driver).toBe('rule');
+      expect(event.detail.reasoning).toBeNull();
+      // op 与回合 trail 逐步等值(同一决策的两种投影:审计事件 + chat-turn steps)。
+      expect(event.detail.op).toEqual(steps[index]!.op);
+      // rule driver 无自然语言 prompt:存决策输入的结构化摘要(口径见 decisions.ts)。
+      const prompt = event.detail.prompt as {
+        goal: { verb: string };
+        currentRel: string;
+        entity: { rel: string; actions: string[] };
+        blocked: string[];
+        successes: unknown[];
+      };
+      expect(prompt.goal.verb).toBe('发布一篇文章');
+      expect(typeof prompt.currentRel).toBe('string');
+      expect(typeof prompt.entity.rel).toBe('string');
+      expect(Array.isArray(prompt.entity.actions)).toBe(true);
+      expect(Array.isArray(prompt.blocked)).toBe(true);
+      expect(Array.isArray(prompt.successes)).toBe(true);
+    });
+
+    // 写入序:决策审计先于回合投影(chat-turn)落库。
+    const response = await fetch(`${base}/api/events`);
+    const body = (await response.json()) as { events: { kind: string; rel: string; seq: number }[] };
+    const turn = body.events.find(
+      (event) => event.kind === 'chat-turn' && event.rel === 'chat:sess-decision-rule',
+    );
+    expect(Math.max(...decisions.map((event) => event.seq))).toBeLessThan(turn?.seq ?? 0);
+  });
+
+  it('llm 回合(mock 端点):每步一条,prompt 为 system/user 全量原文,reasoning 恒 null', async () => {
+    const stub = await createScriptedLlmStub();
+    try {
+      process.env.GLM_API_KEY = 'test-key';
+      process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+
+      const { json } = await chat({
+        sessionId: 'sess-decision-llm',
+        driver: 'llm',
+        goal: {
+          verb: '发布一篇文章',
+          fields: { title: 't', category: 'tech', tags: '', body: 'b' },
+        },
+      });
+      expect(json.outcome).toBe('done');
+      expect(json.driver).toBe('llm');
+
+      const decisions = await decisionsOf('sess-decision-llm');
+      expect(decisions.map((event) => event.detail.step)).toEqual([1, 2]);
+      for (const event of decisions) {
+        expect(event).toMatchObject({
+          actor: 'agent',
+          channel: 'chat',
+          principal: 'user:sess-decision-llm',
+        });
+        expect(event.detail.driver).toBe('llm');
+        expect(event.detail.reasoning).toBeNull();
+      }
+      expect(decisions[0]!.detail.op).toEqual({
+        kind: 'exec',
+        action: 'next',
+        params: { title: 'LLM 决策的标题' },
+      });
+      expect(decisions[1]!.detail.op).toEqual({ kind: 'done', summary: 'LLM 完成' });
+      // prompt 全量(架构决定 3:训练提取免回放重建)——system 为协议核心原文,
+      // user 内嵌目标 JSON;reasoning 在 generateText 非流式下拿不到,如实 null(Phase C 补)。
+      const prompt = decisions[0]!.detail.prompt as { system: string; user: string };
+      expect(prompt.system).toContain('UI4A 合同 agent');
+      expect(prompt.user).toContain('发布一篇文章');
+    } finally {
+      await new Promise<void>((resolve) => stub.close(() => resolve()));
+    }
+  });
+
+  it('agent-decision 落库失败不阻断响应(同 chat-turn 口径)', async () => {
+    // 注入 PG 触发器让 agent-decision 的 INSERT 抛错(其它 kind 不受影响)——
+    // 审计写失败只 console.error,回合照常完成且 chat-turn 仍落库。
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION test_reject_agent_decision() RETURNS trigger AS $$
+      BEGIN RAISE EXCEPTION 'test 注入:agent-decision 写入故障'; END;
+      $$ LANGUAGE plpgsql;
+      DROP TRIGGER IF EXISTS test_reject_agent_decision ON events;
+      CREATE TRIGGER test_reject_agent_decision
+        BEFORE INSERT ON events FOR EACH ROW
+        WHEN (NEW.kind = 'agent-decision')
+        EXECUTE FUNCTION test_reject_agent_decision();
+    `);
+    try {
+      const { status, json } = await chat({
+        sessionId: 'sess-decision-fail',
+        driver: 'rule',
+        goal: {
+          verb: '发布一篇文章',
+          fields: { title: '写失败', category: 'essay', tags: '', body: '正文' },
+        },
+      });
+      expect(status).toBe(200);
+      expect(json.outcome).toBe('done');
+      expect((json.steps ?? []).length).toBeGreaterThan(0);
+
+      // 审计事件缺失(写失败),但 chat-turn 回合投影照常落库——响应才是合同。
+      expect(await decisionsOf('sess-decision-fail')).toHaveLength(0);
+      const response = await fetch(`${base}/api/events`);
+      const body = (await response.json()) as { events: { kind: string; rel: string }[] };
+      expect(
+        body.events.some(
+          (event) => event.kind === 'chat-turn' && event.rel === 'chat:sess-decision-fail',
+        ),
+      ).toBe(true);
+    } finally {
+      await pool.query(`
+        DROP TRIGGER IF EXISTS test_reject_agent_decision ON events;
+        DROP FUNCTION IF EXISTS test_reject_agent_decision;
+      `);
+    }
   });
 });
 
