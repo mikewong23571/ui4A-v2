@@ -55,12 +55,24 @@ export async function waitUntilPortFree(port: number, timeoutMs: number): Promis
   throw new Error(`端口 ${port} 在 ${timeoutMs}ms 内未释放`);
 }
 
+/** withFreshServer 的启动选项。 */
+export interface FreshServerOptions {
+  /**
+   * true = 起 server 前不 TRUNCATE(I5 全量重放的"重新 boot"相位:日志已由
+   * 调用方回灌,boot 的 fold 即全量重放;fresh 语义只保留"独立进程")。
+   */
+  keepLog?: boolean;
+}
+
 /** TRUNCATE + 独立 dev server(3110,注入 env)→ 跑场景 → 杀进程组。 */
 export async function withFreshServer(
   scenario: () => Promise<void>,
   extraEnv: ScenarioEnv = {},
+  options: FreshServerOptions = {},
 ): Promise<void> {
-  await truncateEvents();
+  if (options.keepLog !== true) {
+    await truncateEvents();
+  }
   const child: ChildProcess = spawn('pnpm', ['dev'], {
     cwd: REPO_ROOT,
     env: {
