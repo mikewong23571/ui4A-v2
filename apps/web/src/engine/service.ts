@@ -343,13 +343,17 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
 
   // sitemap 从快照活跃定义推导,按活跃集内容 hash 缓存(定义不变同对象引用;
   // 定义激活 → 活跃集变化 → 版本号变[S2 根基]——version 本身就是内容 hash)。
+  // T10:applications 分组吃 snapshot.applications(fold 落表)且进缓存键——
+  // app 定义变更(无 flow 变更)同样重生成,版本号随之 bump。
   let sitemapCache: { key: string; sitemap: Sitemap } | undefined;
   const currentSitemap = (): Sitemap => {
     const flows = activeFlowList();
-    const key = contentVersion(flows);
+    const applications = snapshot.applications;
+    const key = contentVersion({ flows, applications });
     if (sitemapCache?.key === key) return sitemapCache.sitemap;
     const sitemap = deriveSitemap(flows, {
       extraSurfaces: [{ rel: 'comments', title: '评论', collection: true }],
+      applications,
     });
     sitemapCache = { key, sitemap };
     return sitemap;
