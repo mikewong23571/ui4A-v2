@@ -7,13 +7,14 @@
  * HTTP 层以 baseHref 注入本源前缀——引擎不知道自己被挂在哪。
  */
 import type {
+  ActivationSnapshot,
   ConfirmationSnapshot,
   DefinitionEntry,
   EngineSnapshot,
   GuardEvaluation,
   GuardRegistry,
 } from '@ui4a/shared';
-import { fieldValues, terminalNodes } from '@ui4a/shared';
+import { fieldValues, metaActivationRel, terminalNodes } from '@ui4a/shared';
 
 import {
   CONFIRMATION_APPROVE_ACTION,
@@ -420,8 +421,75 @@ function projectFlows(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity 
 }
 
 /**
- * meta 平面路由(T4 Task 1 覆盖 self/flows/flow:<name>;
- * activation:<id> 与 activations 随 Task 3/4 落地)。未知 meta rel → undefined。
+ * 激活实体投影(A.2 激活请求形状):properties {id,status,artifact,checks,
+ * requested-by,version,flow};pending 时挂 approve/reject(声明取自 lifecycle
+ * 常量 pending-approval 节点,含 reject 的 reason 必填字段);已决策
+ * (approved/rejected)是审计视图——无动作、无 guard-results。
+ * guard 求值上下文以目标定义的 lifecycle 实例为 instance;投影无 actor
+ * 上下文,actor-is-human fail-closed(与确认实体同口径)。
+ */
+function projectActivation(
+  activation: ActivationSnapshot,
+  snapshot: EngineSnapshot,
+  deps: ProjectDeps,
+): SirenEntity {
+  const rel = metaActivationRel(activation.id);
+  const pending = activation.status === 'pending-approval';
+  const targetInstance = snapshot.instances[`meta/flow:${activation.flow}`];
+  const lifecycleNode = DEFINITION_LIFECYCLE_FLOW.nodes.find(
+    (candidate) => candidate.name === 'pending-approval',
+  );
+  const actions = pending ? (lifecycleNode?.actions ?? []) : [];
+  return {
+    class: ['meta', 'activation', activation.status],
+    properties: {
+      id: activation.id,
+      flow: activation.flow,
+      status: activation.status,
+      version: activation.version,
+      artifact: activation.artifact,
+      checks: activation.checks,
+      'requested-by': activation.requestedBy,
+      ...(activation.approvedBy !== undefined ? { 'approved-by': activation.approvedBy } : {}),
+      ...(activation.rejectedReason !== undefined
+        ? { 'rejected-reason': activation.rejectedReason }
+        : {}),
+    },
+    actions: actions.map((action) => toSirenAction(action, [], deps.baseHref)),
+    links: [
+      { rel: ['self'], href: entityHref(deps.baseHref, rel) },
+      { rel: ['target'], href: entityHref(deps.baseHref, `meta/flow:${activation.flow}`) },
+    ],
+    'guard-results':
+      pending && targetInstance !== undefined
+        ? guardResultsFor(actions, targetInstance, snapshot, deps.guards)
+        : [],
+  };
+}
+
+/** meta/activations:激活队列(仅 pending;已决策走审计视图与事件日志)。 */
+function projectActivations(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
+  const pending = Object.values(snapshot.activations ?? {}).filter(
+    (activation) => activation.status === 'pending-approval',
+  );
+  const entities = pending.map((activation) => ({
+    ...projectActivation(activation, snapshot, deps),
+    rel: ['item'],
+    href: entityHref(deps.baseHref, metaActivationRel(activation.id)),
+  }));
+  return {
+    class: ['collection', 'meta/activations'],
+    properties: { rel: 'meta/activations', count: pending.length },
+    actions: [],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'meta/activations') }],
+    'guard-results': [],
+    entities,
+  };
+}
+
+/**
+ * meta 平面路由:self / flows / flow:<name> / activation:<id> / activations。
+ * 未知 meta rel → undefined(HTTP 层映射 404)。
  */
 function projectMeta(
   snapshot: EngineSnapshot,
@@ -430,8 +498,13 @@ function projectMeta(
 ): SirenEntity | undefined {
   if (rel === 'meta/self') return projectSelf(snapshot, deps);
   if (rel === 'meta/flows') return projectFlows(snapshot, deps);
+  if (rel === 'meta/activations') return projectActivations(snapshot, deps);
   if (rel.startsWith('meta/flow:')) {
     return projectFlowDefinition(snapshot, rel.slice('meta/flow:'.length), deps);
+  }
+  if (rel.startsWith('meta/activation:')) {
+    const activation = snapshot.activations?.[rel];
+    return activation === undefined ? undefined : projectActivation(activation, snapshot, deps);
   }
   return undefined;
 }

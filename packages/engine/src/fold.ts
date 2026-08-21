@@ -11,7 +11,7 @@
  * 两栖),worker(T3 消费 spawn-requested)与任何重放工具都需要它;
  * 日志形状(LogEvent)因此成为引擎公共合同的一部分。
  */
-import { fieldValues, metaFlowRel } from '@ui4a/shared';
+import { fieldValues, metaActivationRel, metaFlowRel } from '@ui4a/shared';
 import type {
   ConfirmationSnapshot,
   DefinitionEntry,
@@ -34,6 +34,7 @@ import type {
   DefinitionDeprecatedDetail,
   DefinitionRevisedDetail,
   DefinitionSeededDetail,
+  DefinitionSubmittedDetail,
 } from './meta';
 import { actionEffects } from './parse';
 
@@ -374,6 +375,80 @@ function applyDefinitionDeprecated(snapshot: EngineSnapshot, event: LogEvent): E
 }
 
 /**
+ * definition-submitted 重放(载荷即真相:不重新求值不变式——在线路径的
+ * 求值输入已随 definition-seeded/edited 链重放,注册表随时间可变,重放
+ * 确定性以日志为准,与 confirmation-requested 同口径)。
+ * passed → pending-approval + activation 物化;fail → 回 draft。
+ * 前置 action-executed(submit)已把实例迁到 validating,此处核对。
+ */
+function applyDefinitionSubmitted(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
+  const detail = event.detail as Partial<DefinitionSubmittedDetail> | undefined;
+  if (
+    detail === undefined ||
+    typeof detail.name !== 'string' ||
+    typeof detail.passed !== 'boolean' ||
+    !Array.isArray(detail.checks)
+  ) {
+    throw new Error(`重放失败:seq=${event.seq} definition-submitted 缺少 detail 载荷(日志完整性)`);
+  }
+  const instance = lifecycleNodeOf(snapshot, event, detail.name);
+  if (instance.node !== 'validating') {
+    throw new Error(
+      `重放失败:seq=${event.seq} definition-submitted 时实例不在 validating(在 ${instance.node};日志完整性)`,
+    );
+  }
+  const entry = definitionEntry(snapshot, event, detail.name);
+
+  if (detail.passed) {
+    const payload = detail.activation;
+    if (
+      payload === undefined ||
+      typeof payload.id !== 'string' ||
+      typeof payload.version !== 'number' ||
+      typeof payload.artifact !== 'string' ||
+      payload.definition === undefined ||
+      payload.requestedBy === undefined
+    ) {
+      throw new Error(
+        `重放失败:seq=${event.seq} definition-submitted(passed)缺少 activation 载荷(日志完整性)`,
+      );
+    }
+    const rel = metaActivationRel(payload.id);
+    if (snapshot.activations?.[rel] !== undefined) {
+      throw new Error(`重放失败:seq=${event.seq} 激活 "${rel}" 重复物化(日志完整性)`);
+    }
+    const activation = {
+      id: payload.id,
+      flow: detail.name,
+      status: 'pending-approval' as const,
+      version: payload.version,
+      artifact: payload.artifact,
+      checks: detail.checks,
+      definition: payload.definition,
+      requestedBy: payload.requestedBy,
+    };
+    return {
+      ...snapshot,
+      instances: {
+        ...snapshot.instances,
+        [metaFlowRel(detail.name)]: { ...instance, node: 'pending-approval' },
+      },
+      definitions: {
+        ...snapshot.definitions,
+        [detail.name]: { ...entry, status: 'pending-approval' },
+      },
+      activations: { ...(snapshot.activations ?? {}), [rel]: activation },
+    };
+  }
+
+  return {
+    ...snapshot,
+    instances: { ...snapshot.instances, [metaFlowRel(detail.name)]: { ...instance, node: 'draft' } },
+    definitions: { ...snapshot.definitions, [detail.name]: { ...entry, status: 'draft' } },
+  };
+}
+
+/**
  * 折叠事件日志为引擎快照(纯函数;events 须按 seq 升序传入)。
  *
  * - action-executed:重放 applyEffects(在线路径同一函数);
@@ -392,6 +467,8 @@ function applyDefinitionDeprecated(snapshot: EngineSnapshot, event: LogEvent): E
  *   (applyEffects 的 meta-edit),fold 不双算;
  * - definition-revised / -deprecated:条目状态落态(转移由前置 action-executed
  *   重放,此处核对 + 条目同步);
+ * - definition-submitted:载荷即真相——passed 则 pending-approval + activation
+ *   物化;fail 则回 draft(校验报告即 checks 失败项);
  * - 未知 kind:抛错(日志完整性守卫)。
  *
  * initial(可选):从既有快照继续折叠——web 读路径按 seq 增量 fold 的根基
@@ -438,6 +515,9 @@ export function fold(
         break;
       case 'definition-deprecated':
         snapshot = applyDefinitionDeprecated(snapshot, event);
+        break;
+      case 'definition-submitted':
+        snapshot = applyDefinitionSubmitted(snapshot, event);
         break;
       case 'action-executed':
         snapshot = applyExecuted(snapshot, event, flows);

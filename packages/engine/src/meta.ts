@@ -16,13 +16,14 @@
  * 测试共用同一形状。
  */
 import type {
+  ActivationSnapshot,
   DefinitionEntry,
   DefinitionStatus,
   EngineSnapshot,
   FlowDefinition,
   GuardRegistry,
 } from '@ui4a/shared';
-import { flowNameFromMetaRel, metaFlowRel } from '@ui4a/shared';
+import { flowNameFromMetaRel, metaFlowRel, metaActivationRel } from '@ui4a/shared';
 
 import type { EngineEvent } from './effects';
 import { executeWithGates } from './execute';
@@ -30,11 +31,16 @@ import type { ExecWithGatesOutcome } from './execute';
 import type { ExecRequest } from './judge';
 import { DEFINITION_LIFECYCLE, DEFINITION_LIFECYCLE_FLOW } from './lifecycle';
 import type { LogEvent } from './fold';
+import { validateDefinition, type DefinitionRegistries } from './invariants';
+import { contentVersion } from './sitemap';
 
 /** meta 编排依赖:谓词注册表 + 确认策略(可选;修订动词无 requires-confirmation)。 */
 export interface MetaDeps {
   guards: GuardRegistry;
   policy?: Parameters<typeof executeWithGates>[2]['policy'];
+  /** 激活不变式的注册表(字段/效果类型覆盖);guards 复用本 deps 的注册表。 */
+  fieldTypes?: DefinitionRegistries['fieldTypes'];
+  effectTypes?: DefinitionRegistries['effectTypes'];
 }
 
 /** meta exec 结果(与业务 exec 同构:executed / suspended / rejected)。 */
@@ -100,9 +106,40 @@ export interface DefinitionDeprecatedDetail {
   version: number;
 }
 
+/**
+ * definition-submitted:submit 后立即求值六项不变式的落态事件
+ * (checks-pass → pending-approval + activation 物化;checks-fail → 回 draft,
+ * 校验报告即 checks 中的失败项——A.4 原样)。
+ */
+export interface DefinitionSubmittedDetail {
+  name: string;
+  passed: boolean;
+  checks: ActivationSnapshot['checks'];
+  /** checks 全过时的激活载荷(fold 据此物化 activation 实体,载荷即真相)。 */
+  activation?: {
+    id: string;
+    flow: string;
+    version: number;
+    artifact: string;
+    definition: FlowDefinition;
+    requestedBy: ActivationSnapshot['requestedBy'];
+  };
+}
+
 // ---------------------------------------------------------------------------
 // executeMeta
 // ---------------------------------------------------------------------------
+
+/** 激活 id 分配:确定性计数 a1/a2/…(与 confirmation c1/c2 同构)。 */
+export function nextActivationId(
+  activations: Readonly<Record<string, unknown>>,
+): string {
+  let counter = Object.keys(activations).length + 1;
+  while (activations[metaActivationRel(`a${counter}`)] !== undefined) {
+    counter += 1;
+  }
+  return `a${counter}`;
+}
 
 function definitionEvent(
   request: ExecRequest,
@@ -146,9 +183,9 @@ function withEntry(
 /**
  * meta exec 主入口(编辑动词 + 生命周期动词)。
  *
- * Task 2 覆盖:add-node / add-action(applyEffects 的 meta-edit 已改工作副本,
- * 此处补伴随事件 definition-edited)、revise、deprecate。
- * submit(不变式校验)与 approve/reject 见 meta 模块后续任务。
+ * 覆盖:add-node / add-action(applyEffects 的 meta-edit 已改工作副本,此处补
+ * 伴随事件 definition-edited)、revise、deprecate、submit(六项不变式 + activation
+ * 物化/checks-fail 回 draft)。approve/reject 见 Task 4。
  */
 export function executeMeta(
   request: ExecRequest,
@@ -211,6 +248,77 @@ export function executeMeta(
     };
   }
 
-  // submit / approve / reject:Task 3/4 接管(此处到达时仅转移已发生)。
+  if (request.action === 'submit') {
+    // A.4:draft --submit--> validating,引擎内立即求值六项不变式并落态
+    // (validating 是瞬态,不持久化)。checks 全过 → pending-approval +
+    // activation 实体;有 fail → 回 draft(校验报告入事件)。
+    const entry = entryOf(verdict.snapshot, flowName)!;
+    const checks = validateDefinition(entry.definition, {
+      guards: deps.guards,
+      ...(deps.fieldTypes !== undefined ? { fieldTypes: deps.fieldTypes } : {}),
+      ...(deps.effectTypes !== undefined ? { effectTypes: deps.effectTypes } : {}),
+    });
+    const passed = checks.every((check) => check.pass);
+    const detail: DefinitionSubmittedDetail = { name: flowName, passed, checks };
+
+    let snapshot = verdict.snapshot;
+    if (passed) {
+      const activations = snapshot.activations ?? {};
+      const id = nextActivationId(activations);
+      const activation: ActivationSnapshot = {
+        id,
+        flow: flowName,
+        status: 'pending-approval',
+        version: entry.version + 1,
+        artifact: contentVersion(entry.definition),
+        checks,
+        definition: entry.definition,
+        requestedBy: {
+          actor: request.actor ?? 'human',
+          ...(request.principal !== undefined ? { principal: request.principal } : {}),
+        },
+      };
+      detail.activation = {
+        id,
+        flow: flowName,
+        version: activation.version,
+        artifact: activation.artifact,
+        definition: entry.definition,
+        requestedBy: activation.requestedBy,
+      };
+      snapshot = {
+        ...snapshot,
+        instances: {
+          ...snapshot.instances,
+          [request.rel]: { ...snapshot.instances[request.rel]!, node: 'pending-approval' },
+        },
+        definitions: {
+          ...snapshot.definitions,
+          [flowName]: { ...entry, status: 'pending-approval' },
+        },
+        activations: { ...activations, [metaActivationRel(id)]: activation },
+      };
+    } else {
+      // checks-fail → 回 draft(validating --checks-fail--> draft 附校验报告)。
+      snapshot = {
+        ...snapshot,
+        instances: {
+          ...snapshot.instances,
+          [request.rel]: { ...snapshot.instances[request.rel]!, node: 'draft' },
+        },
+        definitions: {
+          ...snapshot.definitions,
+          [flowName]: { ...entry, status: 'draft' },
+        },
+      };
+    }
+    return {
+      kind: 'executed',
+      snapshot,
+      events: [...verdict.events, definitionEvent(request, 'definition-submitted', detail)],
+    };
+  }
+
+  // approve / reject:Task 4 接管(此处到达时仅转移已发生)。
   return verdict;
 }

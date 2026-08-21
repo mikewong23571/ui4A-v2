@@ -10,12 +10,16 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import type { EngineSnapshot, GuardRegistry } from '@ui4a/shared';
+import type {
+  ActivationSnapshot,
+  DefinitionEntry,
+  EngineSnapshot,
+  GuardRegistry,
+} from '@ui4a/shared';
 import { postStatusFlow } from './fixtures';
 import { DEFINITION_LIFECYCLE_FLOW } from './lifecycle';
 import { project } from './siren';
 import type { SirenEntity } from './siren';
-import type { DefinitionEntry } from '@ui4a/shared';
 
 /** 与种子谓词同义的测试注册表(真实实现 Task 2 入 @ui4a/shared;空参数 vacuous)。 */
 const metaTestGuards: GuardRegistry = {
@@ -196,5 +200,91 @@ describe('meta/flows 集合投影', () => {
     expect(entity.entities![0].rel).toEqual(['item']);
     expect(entity.entities![0].href).toBe('/api/entity?rel=meta/flow:post-status');
     expect(entity.entities![0].properties).toMatchObject({ name: 'post-status', status: 'active' });
+  });
+});
+
+describe('meta/activation:<id> 激活实体投影(A.2 激活请求形状)', () => {
+  function activationSnapshot(
+    status: 'pending-approval' | 'approved' | 'rejected',
+  ): ActivationSnapshot {
+    return {
+      id: 'a1',
+      flow: 'post-status',
+      status,
+      version: 2,
+      artifact: 'abc123def456',
+      checks: [
+        { name: 'edge-targets-exist', pass: true },
+        { name: 'guards-registered', pass: false, detail: ['nodes[published].actions[unpublish]: no-such-guard 未注册'] },
+      ],
+      definition: cloneFlow(),
+      requestedBy: { actor: 'agent', principal: 'user:mike' },
+      ...(status === 'approved' ? { approvedBy: { actor: 'human' } } : {}),
+      ...(status === 'rejected' ? { rejectedReason: '理由' } : {}),
+    };
+  }
+
+  function snapshotWith(status: 'pending-approval' | 'approved' | 'rejected'): EngineSnapshot {
+    const snapshot = metaSnapshot('pending-approval');
+    return {
+      ...snapshot,
+      activations: { 'meta/activation:a1': activationSnapshot(status) },
+    };
+  }
+
+  it('pending:properties{id,status,artifact,checks,requested-by,version,flow};actions approve/reject', () => {
+    const entity = project(snapshotWith('pending-approval'), 'meta/activation:a1', deps)!;
+    expect(entity.class).toEqual(['meta', 'activation', 'pending-approval']);
+    expect(entity.properties).toMatchObject({
+      id: 'a1',
+      status: 'pending-approval',
+      artifact: 'abc123def456',
+      checks: activationSnapshot('pending-approval').checks,
+      'requested-by': { actor: 'agent', principal: 'user:mike' },
+      version: 2,
+      flow: 'post-status',
+    });
+    expect(entity.actions.map((a) => a.name)).toEqual(['approve', 'reject']);
+    // reject 的 reason 字段 schema 必填且非空。
+    const rejectAction = entity.actions[1]!;
+    expect(rejectAction.fields).toMatchObject({
+      required: ['reason'],
+      properties: { reason: { minLength: 1 } },
+    });
+    expect(entity.links).toEqual([
+      { rel: ['self'], href: '/api/entity?rel=meta/activation:a1' },
+      { rel: ['target'], href: '/api/entity?rel=meta/flow:post-status' },
+    ]);
+  });
+
+  it('guard-results:approve/reject 的 actor-is-human 在投影 fail-closed(同一谓词的两个投影)', () => {
+    const entity = project(snapshotWith('pending-approval'), 'meta/activation:a1', deps)!;
+    for (const entry of entity['guard-results']!) {
+      expect(entry.blocked).toBe(true);
+      expect(entry.reason).toContain('actor-is-human=false');
+    }
+  });
+
+  it('已决策(approved/rejected)是审计视图:无动作、无 guard-results', () => {
+    for (const status of ['approved', 'rejected'] as const) {
+      const entity = project(snapshotWith(status), 'meta/activation:a1', deps)!;
+      expect(entity.actions, status).toEqual([]);
+      expect(entity['guard-results'], status).toEqual([]);
+      expect(entity.properties).toMatchObject({ status });
+    }
+  });
+
+  it('未知激活 id → undefined;meta/activations = 待审队列(仅 pending)', () => {
+    expect(project(snapshotWith('pending-approval'), 'meta/activation:ghost', deps)).toBeUndefined();
+    const queue = project(snapshotWith('pending-approval'), 'meta/activations', deps)!;
+    expect(queue.class).toEqual(['collection', 'meta/activations']);
+    expect(queue.properties).toMatchObject({ rel: 'meta/activations', count: 1 });
+    expect(queue.entities![0].href).toBe('/api/entity?rel=meta/activation:a1');
+
+    const decidedOnly = {
+      ...snapshotWith('approved'),
+      activations: { 'meta/activation:a1': activationSnapshot('approved') },
+    };
+    expect(project(decidedOnly, 'meta/activations', deps)!.properties).toMatchObject({ count: 0 });
   });
 });
