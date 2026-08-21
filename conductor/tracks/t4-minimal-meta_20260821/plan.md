@@ -8,7 +8,9 @@
 - [x] Task: 编辑动词过三层裁决(TDD:add-node/add-action[含 to-exists/guards-registered/effect-known guard]/submit/revise/deprecate;非法定义拒且留痕形态) (e26b30d)
 - [x] Task: 激活不变式检查器(TDD:edge-targets-exist/guards-registered/field-types-known/effect-known/initial-exists+terminal-reachable;checks 入 activation;checks-fail→draft 附报告) (6a05452)
 - [x] Task: approve/reject(actor-is-human;approve→active+版本+sitemap bump 信号事件 definition-activated;reject reason)(TDD) (ed5f96d)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) (3f1e8e7)
+
+[checkpoint: 3f1e8e7] — 验证报告挂 refs/notes/verification;CI=true pnpm check 全绿(487,+80 用例)+ CI=true pnpm e2e 18 过回归;自治验收(编排代行)。
 
 ## Phase B: 定义入事件日志与 _meta 站点
 
