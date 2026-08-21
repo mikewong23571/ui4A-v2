@@ -1,0 +1,29 @@
+Task: web 服务层接线(T3 Phase B Task 2)
+
+变更文件:
+- apps/web/src/engine/service.ts:exec 改走 executeWithGates(gateDeps 含
+  cedarPolicyFromDefaultFile() boot 装配);confirmation:<id> rel 路由到
+  approveConfirmation/rejectConfirmation(unknown action → undeclared 留痕);
+  ExecOutcome 增 suspended 形态(entity=pending 确认实体投影 + confirmation 摘录);
+  事件落库映射 toAppend 补 detail/reason(confirmation-* 的 fold 重放依赖 detail,
+  T2 旧映射丢列对 action-executed 无影响,对 confirmation 是必需修复)。
+- apps/web/src/app/api/exec/route.ts:suspended → 202
+  {status:'suspended', confirmation:{rel:'confirmation:<id>', …SuspendedConfirmation 摘录}}。
+- apps/web/src/engine/service.confirmation.test.ts(新增,16 测试,真 PG)。
+- apps/web/src/app/api/exec/route.test.ts:确认门 describe(5 测试:202 形态/
+  human approve 200/agent approve 422+pending/reject+再 approve 400/B2 human 直通)。
+
+设计要点:
+1. approve/reject 即普通 exec(HTTP 合同不变):POST /api/exec
+   {rel:'confirmation:c1', action:'approve', actor:'human'};服务层按 rel 前缀
+   路由到引擎裁决入口,guard actor-is-human 在引擎层拒 agent(I4)。
+2. 受影响实体口径:approve → 目标业务实体(效果已应用);reject → 确认实体自身
+  (审计视图);suspended → pending 确认实体。
+3. 挂起非拒绝:三层(声明/guard/schema)拒绝仍先于确认门(schema-invalid
+   测试锚定顺序);挂起不改业务状态,只物化 pending + 落 confirmation-requested。
+4. I5:挂起后与 approve 后增量快照均与 fold(日志) contentVersion 同构(测试断言)。
+
+验证:CI=true pnpm check 全绿(375 tests);另做 Next dev 实机冒烟(自治验收):
+agent archive→202(post 仍 published)→ human approve→200 archived;
+agent approve→422;reject→200;重启 dev server 后 fold 重放 confirmation 链
+(c1 approved/c2 rejected/post-welcome archived)——detail 落库与重放闭环。
