@@ -12,7 +12,7 @@
 ## Phase B: 组件词条实现与骨架面
 
 - [x] Task: 十词条组件接入(table/chart/stat/timeline/kanban/markdown/detail;form/diff 复用)(组件测试)(9557395)
-- [ ] Task: 画布 /canvas(A2UI surface 宿主;action 拦截映射;data-action/data-nav 全站标注)
+- [x] Task: 画布 /canvas(A2UI surface 宿主;action 拦截映射;data-action/data-nav 全站标注)(80cdad5)
 - [ ] Task: 主页态势投影 + 事件流 /events(timeline 零 AI)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
