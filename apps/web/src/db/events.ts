@@ -121,9 +121,24 @@ CREATE TRIGGER events_append_only_trigger
   FOR EACH ROW EXECUTE FUNCTION events_append_only();
 `;
 
-/** 引导 events 表(幂等;应用启动与测试 setup 各自调用)。 */
+/**
+ * 引导 events 表(幂等;应用启动与测试 setup 各自调用)。
+ *
+ * DDL 互斥:web boot 与 worker boot 可能并发执行(CREATE OR REPLACE FUNCTION
+ * / DROP TRIGGER 都要动 pg_proc 系统表,并发时 PG 报 deadlock detected——
+ * T5/T8 两度实测的偶发 flake 源)。用事务级咨询锁把幂等 DDL 串行化:后到者
+ * 等先到者提交后再跑一遍幂等 DDL(结果不变),死锁消失。
+ */
 export async function ensureEventsTable(db: DbExecutor): Promise<void> {
-  await db.query(EVENTS_DDL);
+  await db.query('BEGIN');
+  try {
+    await db.query('SELECT pg_advisory_xact_lock(740933)'); // 任意固定键:仅用于 DDL 互斥
+    await db.query(EVENTS_DDL);
+    await db.query('COMMIT');
+  } catch (error) {
+    await db.query('ROLLBACK');
+    throw error;
+  }
 }
 
 /** 追加一条事件,返回日志层分配的 seq 与 ts。 */

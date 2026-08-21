@@ -452,4 +452,71 @@ describe('多写者水位:自身 append 不得跨过未折叠的外部事件(T5 
     const replayed = fold(await readLog(pool), { flows: businessFlows });
     expect(replayed.delegations?.['delegation:delegation-race']?.steps).toBe(1);
   });
+
+  it('freezeSpec 落库窗口内 worker 提交的外部事件同样不被跳过(终审 H-1 回归)', async () => {
+    // T7 freezeSpec 曾用裸 appendEvent + lastSeq=Math.max——同样的水位窗口:
+    // S5(凝固)与 S3(并行委托)并跑时,窗口内 delegation-step 会被永久跳过,
+    // 后续步事件折叠即抛「步号不连续」、读路径 500。修复后走 appendWithSeq。
+    await ensureEventsTable(pool);
+    await pool.query('TRUNCATE events');
+    resetEngineForTests();
+    await appendEvent(pool, {
+      kind: 'delegation-started',
+      rel: 'delegation:delegation-freeze-race',
+      actor: 'agent',
+      detail: {
+        delegationId: 'delegation-freeze-race',
+        goal: { verb: '发布一篇文章' },
+        driverKind: 'rule',
+        startRel: 'articles',
+      },
+    });
+
+    let armed = false;
+    let injected = false;
+    const racingDb: DbExecutor = {
+      query: <R extends import('pg').QueryResultRow>(
+        sqlText: string,
+        values?: readonly unknown[],
+      ): Promise<import('pg').QueryResult<R>> =>
+        (async () => {
+          if (armed && !injected && sqlText.includes('INSERT INTO events')) {
+            injected = true;
+            await appendEvent(pool, {
+              kind: 'delegation-step',
+              rel: 'delegation:delegation-freeze-race',
+              actor: 'agent',
+              channel: 'delegation',
+              detail: {
+                step: 1,
+                op: { kind: 'navigate', rel: 'flow:article-drafting' },
+                outcome: 'navigated',
+              },
+            });
+          }
+          return pool.query<R>(sqlText, values === undefined ? undefined : [...values]);
+        })(),
+    };
+
+    const engine = await getEngine(racingDb);
+    armed = true;
+    const frozen = await engine.freezeSpec('articles-by-category', {
+      concern: 'articles-by-category',
+      component: 'chart',
+      bind: { collection: 'articles', dimension: 'articles.fields.category' },
+    });
+    armed = false;
+    expect(frozen.frozen).toBe(true);
+
+    // 修复前:step 1 被凝固事件的水位推进跳过 → 投影 steps=0;修复后:先收进
+    // foreignGaps 再补折(凝固的在线物化之后 applyForeignGaps)。
+    const delegations = await engine.getEntity('delegations');
+    const row = delegations?.entities?.find(
+      (sub) => sub.properties.id === 'delegation-freeze-race',
+    );
+    expect(row?.properties.steps, '凝固窗口内外部事件必须被折叠,不得跳过').toBe(1);
+
+    const replayed = fold(await readLog(pool), { flows: businessFlows });
+    expect(replayed.delegations?.['delegation:delegation-freeze-race']?.steps).toBe(1);
+  });
 });

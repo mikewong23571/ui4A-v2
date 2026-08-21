@@ -358,18 +358,22 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
    *
    * 收集而非立即折叠的原因:exec/确认裁决随后会用**不含这些外部事件的**
    * 派生快照整体覆写 snapshot(applyEffects 的纯函数产物)——立即折会被
-   * 覆写冲掉;每个覆写点之后统一补折。域可交换性:外部事件恒为 delegation:*
-   * 族(worker 直写),自身事件恒为业务/确认/定义族,rel 不相交,次序交换安全。
+   * 覆写冲掉;每个覆写点之后统一补折。可交换性论证:worker 直写的是
+   * delegation:* 族与 notification-delivered(rel=confirmation:<id>)——
+   * 前者 rel 与自身族不相交;后者与确认族 rel 相交但**字段级可交换**
+   * (notified 标志不与 status/approvedBy 等字段互相覆盖),交换次序安全。
    */
   let foreignGaps: LogEvent[] = [];
 
-  const appendWithSeq = async (event: EventAppend): Promise<void> => {
+  /** 追加并返回自身 seq(自身事件不进增量 fold;调用方用它做在线物化)。 */
+  const appendWithSeq = async (event: EventAppend): Promise<number> => {
     const { seq } = await appendEvent(db, event);
     if (seq > lastSeq) {
       const gap = (await readLog(db, lastSeq)).filter((entry) => entry.seq < seq);
       foreignGaps.push(...gap);
       lastSeq = seq;
     }
+    return seq;
   };
 
   /** 把落库窗口内挤进来的外部事件补折进当前快照(幂等清空;所有覆写点之后调用)。 */
@@ -399,8 +403,11 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       applyForeignGaps();
       return;
     }
+    // 先折遗留 foreignGaps 再折 fresh:gaps 构造上恒更旧(seq < 收集时的
+    // lastSeq),先折保持时序;若先折 fresh,遗留 gap 与 fresh 中相邻的
+    // 委托步号会触发折叠层「步号不连续」响亮报错且确定性复发(终审 M-1)。
+    applyForeignGaps();
     snapshot = fold(fresh, { flows: businessFlows }, snapshot);
-    applyForeignGaps(); // 外部 backlog 与 fresh 域不相交,可安全随后补折
     lastSeq = Math.max(lastSeq, fresh[fresh.length - 1]!.seq);
   };
 
@@ -658,14 +665,16 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           spec: { concern: spec.concern, component: spec.component, bind: spec.bind },
           requestedBy: by,
         };
-        const { seq } = await appendEvent(db, {
+        // 终审 H-1:走 appendWithSeq(多写者水位铁律)——裸 appendEvent +
+        // lastSeq 推进会永久跳过 INSERT 窗口内挤入的外部事件(S5 与 S3 并跑
+        // 的真实窗口);appendWithSeq 把区间收进 foreignGaps,末尾补折。
+        const seq = await appendWithSeq({
           kind: 'render-spec-frozen',
           rel: renderSpecRel(concern),
           actor: by.actor,
           ...(by.principal !== undefined ? { principal: by.principal } : {}),
           detail,
         });
-        lastSeq = Math.max(lastSeq, seq);
         // 在线增量物化(与 fold 同构:同一 applyRenderSpecFrozen)。
         snapshot = fold(
           [{ seq, kind: 'render-spec-frozen', rel: renderSpecRel(concern), actor: by.actor, ...(by.principal !== undefined ? { principal: by.principal } : {}), detail }],

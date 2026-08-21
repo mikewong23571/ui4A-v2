@@ -90,3 +90,11 @@
 - **Tremor(stat 词条)**:`@tremor/react@3.18.7` peer 声明 react ^18(项目 19.2.8)——pnpm 安装告警但**实测渲染通过**(jsdom 组件测试 + Metric/Card/Text)。样式经 globals.css `@source '../../node_modules/@tremor/react/dist'` 让 Tailwind v4 扫描库内类名生成。若后续真机出现 React 19 运行时问题,回退为极简统计卡(同 D13 口径)并更新本条。
 - **TanStack Table(table 词条)**:v9(9.1.2)是 signal 化重写(useTable/table.Subscribe 新 API,经典 API 移入 `/legacy` 导出);**锁 `^8.21.3`**(useReactTable 稳定 API,社区文档完备)。选型只写"TanStack Table"未锁版本,v8 同为 TanStack Table。
 - **A2UI SDK**:`@a2ui/react@0.10.2` + `@a2ui/web_core@0.10.6` 装机成功;peer zod ^3.25.76 与仓库 hoist 的 zod 4.4.3 告警——SDK 以自身依赖嵌套解析 zod 3.x,peer 告警为传递性噪音(pnpm 逐包解析),实测不影响使用。
+
+## D15 终审跟进项(2026-08-21,T8 终审 review;H-1/M-1/M-2/M-4 已当场修复)
+
+- **M-3(跟进)**:meta add-action 的 action-definition 载荷目前无深层 JSON Schema(多余键原样入定义,靠机械 diff 人工把关)。跟进方向:action-definition Ajv schema(白名单键 + additionalProperties:false)作为第七条激活不变式 `action-shape-valid`。属 arch-brief 洞 #1(meta 注入放大)的有界化,不阻塞 DONE。
+- **L-1(跟进)**:事件日志模块(db/events)后续抽 packages/eventlog,消除 worker→web 跨 app 引用。
+- **L-2(跟进)**:RenderSpec 形状(agent/web 两处)下沉 shared,消除运行时才发现的漂移。
+- **L-3(注记)**:spawn 效果当前只产 spawn-requested 审计事件、无消费者(capability 沙箱后续接入时补)。
+- **铁律 4 范围口径**:field-source-declared / work-product-selection-gated 两条 A.5 全集不变式不在 T4 种子六条内(计划内缺口,后续 track)。

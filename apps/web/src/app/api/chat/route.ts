@@ -98,8 +98,29 @@ export async function POST(request: Request) {
   }
 
   const { goal, sessionId, driver: requested, mode } = parsed;
-  const baseUrl = new URL(request.url).origin;
+  // baseUrl 口径(终审 M-2):delegated 派发的 workflow args.baseUrl 不信任
+  // 请求 Host 头(可被调用方控制,进 workflow 会让 worker 以服务端身份持续
+  // 回环抓取任意 origin)。APP_ORIGIN 显式覆盖;否则仅放行本机 Host(dev/
+  // e2e 都在 localhost),非本机且未配置 → 拒绝 delegated 派发。
+  const requestUrl = new URL(request.url);
   const resolved = resolveDriverKind(requested);
+  let baseUrl: string;
+  if (mode !== 'delegated') {
+    baseUrl = requestUrl.origin;
+  } else if (process.env.APP_ORIGIN !== undefined) {
+    baseUrl = process.env.APP_ORIGIN;
+  } else if (
+    requestUrl.hostname === 'localhost' ||
+    requestUrl.hostname === '127.0.0.1' ||
+    requestUrl.hostname === '[::1]'
+  ) {
+    baseUrl = requestUrl.origin;
+  } else {
+    return Response.json(
+      { error: 'delegated 派发要求配置 APP_ORIGIN(当前 Host 非本机,拒绝以不可信 origin 派发委托)' },
+      { status: 400 },
+    );
+  }
 
   // render capability(T7 Phase C / S5):展示类意图 → spec 生成 + 凝固。
   // 先于 inline/delegated 分派:渲染说明不是委托任务,也不进执行循环。
