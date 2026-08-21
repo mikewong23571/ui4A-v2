@@ -1,0 +1,6 @@
+T10 Phase B Task 1: boot seed 扩展(application 定义入日志 + fold)
+
+改动:apps/web/src/domain/applications.ts(新增,3 seed)+ flows.ts(app 归属)、engine/service.ts(补种)、engine/fold.ts(application-seeded fold 落 applications 表)、confirmation.ts + db/events.ts(随行/类型镜像机械适配)
+事件形态决策:新增 kind application-seeded 而非复用 definition-seeded——后者 fold 与 flow lifecycle/definitions 键空间深度耦合,复用需判别字段+分支补丁且污染键空间;独立 kind 落表单行、重放确定、旧库 boot 尾部补种。
+Why:spec 架构决定 4/7——application 与 flow 同等入日志;default 恒激活使 app-known 长牙;≥2 语义 app 使两层发现可验。
+验收(编排 agent 亲自复跑):scoped 68/68;CI=true pnpm check 877 passed;s2+baseline e2e 7/7(app-known 长牙后 submit 链零误伤)。自治验收。
