@@ -4,7 +4,7 @@
 
 ## Phase A: GLM-5.3 探针(实测先行,决定帧格式)
 
-- [ ] Task: 探针脚本(glm-5.3 经 @ai-sdk/openai chat provider:reasoning 暴露形态 / tool calling / 时延;门控 GLM_API_KEY+RUN_LLM_E2E,无 key 跳过)+ 结论入库(git note;冲突先更 DECISIONS)
+- [~] Task: 探针脚本(glm-5.3 经 @ai-sdk/openai chat provider:reasoning 暴露形态 / tool calling / 时延;门控 GLM_API_KEY+RUN_LLM_E2E,无 key 跳过)+ 结论入库(git note;冲突先更 DECISIONS)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: 留痕结构化
