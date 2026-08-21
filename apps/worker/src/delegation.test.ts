@@ -367,6 +367,20 @@ describe('runAgentStep(幂等恢复)', () => {
 });
 
 describe('applyStepToState(循环状态推导,runAgent 语义对齐)', () => {
+  it('unrecorded(实体不可得 fail 出口):状态原样返回——不产轨迹步,步计数与步事件保持一致', () => {
+    const before = applyStepToState(BASE_STATE, 1, {
+      op: { kind: 'navigate', rel: 'post:post-welcome' },
+      outcome: 'navigated',
+    });
+    const after = applyStepToState(before, 2, {
+      op: { kind: 'fail', reason: '实体 "post:post-welcome" 不可得' },
+      outcome: 'failed',
+      unrecorded: true,
+    });
+    expect(after).toEqual(before);
+    expect(after.trail).toHaveLength(1);
+  });
+
   it('navigated:currentRel 切换至目标 rel,轨迹记目标 rel', () => {
     const state = applyStepToState(BASE_STATE, 1, {
       op: { kind: 'navigate', rel: 'post:post-welcome' },

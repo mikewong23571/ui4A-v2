@@ -136,6 +136,11 @@ export interface AgentStepResult {
   outcome: TrailStep['outcome'];
   entitySummary?: EntitySummary;
   rejection?: RejectionRecord;
+  /**
+   * 当前实体不可得的 fail 出口(runAgent 同口径:不产轨迹步、不落步事件)——
+   * workflow 收到后不推导状态,直接落 delegation-failed 终态。
+   */
+  unrecorded?: true;
 }
 
 /**
@@ -151,6 +156,11 @@ export function applyStepToState(
   step: number,
   result: AgentStepResult,
 ): DelegationLoopState {
+  // 实体不可得的 fail 出口(runAgent 同口径:不产轨迹步)——状态原样返回,
+  // 使 trail 步数与 delegation-step 事件计数始终一致(终态计数交叉核对的前提)。
+  if (result.unrecorded === true) {
+    return state;
+  }
   const rel = result.op.kind === 'navigate' ? result.op.rel : state.currentRel;
   const trailStep: TrailStep = {
     step,
@@ -227,6 +237,8 @@ export async function delegationWorkflow(
       successes: state.successes,
       lastRejection: state.lastRejection,
     });
+    // unrecorded(实体不可得)经 applyStepToState 原样返回——无轨迹步,
+    // 下面的 fail 分支以当前计数落 delegation-failed(与 runAgent 语义一致)。
     state = applyStepToState(state, step, result);
     const steps = state.trail.length;
     const successes = state.successes.length;

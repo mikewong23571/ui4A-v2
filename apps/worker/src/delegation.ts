@@ -214,10 +214,12 @@ export async function runAgentStep(
   const client = createContractClient(args.baseUrl, deps.fetchImpl);
   const fetched = await client.getEntity(args.currentRel);
   if (fetched.entity === undefined) {
-    // 当前实体不可得(runAgent 同口径:failed 出口,不产轨迹步、不落步事件)。
+    // 当前实体不可得(runAgent 同口径:failed 出口,不产轨迹步、不落步事件——
+    // unrecorded 标记让 workflow 跳过状态推导,保持步计数与步事件一致)。
     return {
       op: { kind: 'fail', reason: fetched.error ?? `实体 "${args.currentRel}" 不可得` },
       outcome: 'failed',
+      unrecorded: true,
     };
   }
 
