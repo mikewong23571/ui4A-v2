@@ -137,6 +137,13 @@ export interface AgentStepResult {
   entitySummary?: EntitySummary;
   rejection?: RejectionRecord;
   /**
+   * 推理自述(T11 Phase B / spec 架构决定 3;审计留痕,非循环状态——
+   * applyStepToState 不消费):driver 接口暂无 reasoning 通道(D22:generateText
+   * 非流式拿不到),当前不产生(落库恒 null);Phase C streamText 改造后 llm
+   * 路径填真值。幂等恢复载荷与 detail 同构:旧事件无此字段,恢复结果同样不带。
+   */
+  reasoning?: string | null;
+  /**
    * 当前实体不可得的 fail 出口(runAgent 同口径:不产轨迹步、不落步事件)——
    * workflow 收到后不推导状态,直接落 delegation-failed 终态。
    */

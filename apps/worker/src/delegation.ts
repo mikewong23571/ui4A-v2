@@ -49,9 +49,15 @@ export type { AgentStepArgs, AgentStepResult, DelegationFinishArgs, DelegationSt
 /** 委托事件的信道标记(与 notify 的 'notify' 同风格;事件日志可区分来源)。 */
 export const DELEGATION_CHANNEL = 'delegation';
 
-/** delegation-step 事件的 detail 载荷:步号 + 步结果(activity 重试的恢复输入)。 */
+/**
+ * delegation-step 事件的 detail 载荷:步号 + 步结果 + 推理自述(activity 重试的
+ * 恢复输入)。reasoning 恒落库(T11 Phase B / spec 架构决定 3:无则 null,与
+ * agent-decision 同口径);幂等恢复对旧事件(无 reasoning 字段)读出兼容。
+ */
 export interface DelegationStepRecord extends AgentStepResult {
   step: number;
+  /** 推理自述:当前恒 null(driver 无通道,D22);Phase C streamText 后 llm 路径填真值。 */
+  reasoning: string | null;
 }
 
 export interface AgentStepDeps {
@@ -194,6 +200,9 @@ async function findRecordedStep(
         outcome: detail.outcome,
         ...(detail.entitySummary !== undefined ? { entitySummary: detail.entitySummary } : {}),
         ...(detail.rejection !== undefined ? { rejection: detail.rejection } : {}),
+        // 旧事件(T11 前)无 reasoning 键:不补——恢复载荷与存量 detail 同构,
+        // 缺省即"未产生"(与 detail 落库的 null 同口径,见 DelegationStepRecord)。
+        ...(detail.reasoning !== undefined ? { reasoning: detail.reasoning } : {}),
       };
     }
   }
@@ -303,6 +312,9 @@ async function recordStep(
       step: args.step,
       op: result.op,
       outcome: result.outcome,
+      // reasoning 恒落库(T11 Phase B:无则 null);driver 接口暂无推理自述通道
+      //(D22),Phase C streamText 改造后由 result.reasoning 自然流出真值。
+      reasoning: result.reasoning ?? null,
       ...(result.entitySummary !== undefined ? { entitySummary: result.entitySummary } : {}),
       ...(result.rejection !== undefined ? { rejection: result.rejection } : {}),
     },

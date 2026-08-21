@@ -25,7 +25,10 @@ import {
 // - 幂等恢复:activity 重试发现该步事件已落库 → 返回记录结果,不重执行不双写;
 // - 循环状态推导(applyStepToState 纯函数):navigate 切 rel / executed 计数 /
 //   lastRejection 单步消费——与 runAgent 逐条对齐;
-// - 首尾事件:startDelegation / finishDelegation 幂等(kind+rel 查重)。
+// - 首尾事件:startDelegation / finishDelegation 幂等(kind+rel 查重);
+// - T11 Phase B(验收 6):delegation-step detail 恒携带 reasoning 字段(当前恒
+//   null——D22:generateText 非流式拿不到,Phase C streamText 后填真值),幂等
+//   恢复载荷同构扩展,旧形状事件(无 reasoning 字段)读出兼容。
 // 真 Temporal + 真 worker 链路由 kill 续跑集成测试覆盖(delegation.kill.integration.test.ts)。
 const BASE = 'http://contract.test';
 
@@ -180,7 +183,7 @@ describe('runAgentStep(rule driver,决策+执行合一)', () => {
       rel: 'post:post-welcome',
       actions: ['unpublish', 'archive'],
     });
-    // 事件写入:kind/rel/actor/principal/channel + detail {step, op, outcome, entitySummary}。
+    // 事件写入:kind/rel/actor/principal/channel + detail {step, op, outcome, reasoning, entitySummary}。
     expect(inserts).toHaveLength(1);
     const values = inserts[0]!.values;
     expect(values[3]).toBe('delegation-step');
@@ -192,6 +195,8 @@ describe('runAgentStep(rule driver,决策+执行合一)', () => {
       step: 1,
       op: { kind: 'navigate', rel: 'post:post-welcome' },
       outcome: 'navigated',
+      // T11 Phase B:reasoning 恒落库;rule 路径无推理自述,恒 null。
+      reasoning: null,
       entitySummary: {
         rel: 'post:post-welcome',
         class: ['flow-instance', 'post-status'],
@@ -363,6 +368,97 @@ describe('runAgentStep(幂等恢复)', () => {
 
     expect(result.outcome).toBe('failed');
     expect(inserts).toHaveLength(1);
+  });
+});
+
+describe('delegation-step reasoning 留痕(T11 Phase B / 验收 6)', () => {
+  it('detail 恒携带 reasoning 字段:driver 接口无推理自述通道(D22),当前落库恒 null(Phase C streamText 后填真值)', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const { db, inserts } = fakeDb();
+
+    const result = await runAgentStep(
+      {
+        db,
+        fetchImpl: transport.fetch,
+        driver: new ScriptedDriver([{ kind: 'done', summary: '目标完成' }]),
+      },
+      {
+        delegationId: 'wf-r1',
+        step: 1,
+        goal: { verb: '任意' },
+        driverKind: 'rule',
+        baseUrl: BASE,
+        ...BASE_STATE,
+      },
+    );
+
+    expect(result.outcome).toBe('done');
+    expect(inserts).toHaveLength(1);
+    const detail = JSON.parse(String(inserts[0]!.values[8])) as Record<string, unknown>;
+    expect('reasoning' in detail).toBe(true);
+    expect(detail.reasoning).toBeNull();
+  });
+
+  it('幂等恢复载荷同构:存量事件 detail 含 reasoning(真值)→ 恢复结果原样携带;零 HTTP、不双写', async () => {
+    // 真值 fixture:证明恢复通道同构(Phase C streamText 产出真 reasoning 后,
+    // 崩溃续跑读回的步结果与落库 detail 一致,reasoning 不丢失)。
+    const recorded: AgentStepResult = {
+      op: { kind: 'exec', action: 'publish' },
+      outcome: 'executed',
+      reasoning: '文章草稿已就绪,执行 publish 即达成目标',
+    };
+    const transport = contractTransport(); // 无路由:任何调用都 404,但不应被调用
+    const { db, inserts } = fakeDb({ stepEvents: [{ step: 2, result: recorded }] });
+
+    const result = await runAgentStep(
+      { db, fetchImpl: transport.fetch },
+      {
+        delegationId: 'wf-r2',
+        step: 2,
+        goal: GOAL,
+        driverKind: 'rule',
+        baseUrl: BASE,
+        currentRel: 'post:post-welcome',
+        trail: [],
+        successes: [],
+      },
+    );
+
+    expect(result).toEqual(recorded);
+    expect(transport.calls).toHaveLength(0);
+    expect(inserts).toHaveLength(0);
+  });
+
+  it('旧形状兼容:存量事件 detail 无 reasoning 字段 → 恢复结果同旧形状(不炸、不重执行、不双写)', async () => {
+    // T11 之前落库的旧事件:detail 只有 {step, op, outcome, ...},无 reasoning 键。
+    const recorded: AgentStepResult = {
+      op: { kind: 'navigate', rel: 'post:post-welcome' },
+      outcome: 'navigated',
+      entitySummary: {
+        rel: 'post:post-welcome',
+        class: ['flow-instance', 'post-status'],
+        node: 'published',
+        actions: ['unpublish', 'archive'],
+      },
+    };
+    const transport = contractTransport(); // 无路由:任何调用都 404,但不应被调用
+    const { db, inserts } = fakeDb({ stepEvents: [{ step: 4, result: recorded }] });
+
+    const result = await runAgentStep(
+      { db, fetchImpl: transport.fetch },
+      {
+        delegationId: 'wf-r3',
+        step: 4,
+        goal: GOAL,
+        driverKind: 'rule',
+        baseUrl: BASE,
+        ...BASE_STATE,
+      },
+    );
+
+    expect(result).toEqual(recorded);
+    expect(transport.calls).toHaveLength(0);
+    expect(inserts).toHaveLength(0);
   });
 });
 
