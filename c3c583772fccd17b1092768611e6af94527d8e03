@@ -1,0 +1,13 @@
+T5 Phase C / Task 1 — S3 全链路 E2E(自治实施,编排代行验收)
+
+产出:e2e/s3.spec.ts(3 用例)+ e2e/server-kit.ts withWorkerStack(worker 生杀交场景,withWorkerServer 变薄委托)。
+
+发现并修复的链路问题(本任务核心价值):
+1. 多写者水位跳步(fix ee93eb8):web 增量 fold 的 lastSeq 会被自身 append 跨过未读 worker 事件 → delegation-step 缺步 → 折叠层「步号不连续」炸、/api/delegations 读路径全 500(S3-N 路实测复现;service.test 以 db 代理注入窗口 Red→Green)。
+2. 发布向导不可循环(feat b17591a,D11):spec 验收 4 的「发布×2」在旧域上结构性不可能(publish→done 消费单例向导);publish 改回 basic-info + basic-info 增 abandon→done 保 terminal-reachable;6 处机械期望同步,B1/I1/B4 行为零改动。
+
+S3-并发载体偏差(如实记录):并发 approve 同一评论对败者是读-判-行竞态——败者若在胜者提交后才读实体,approve 已 undeclared、根本不尝试,轨迹无被拒步骤(非确定性);改用同标题并发发布(title-not-taken 为世界状态型 guard),败者无论何时尝试必得带原因拒绝(guard-failed/undeclared),GOAL 原文「一个成功、一个拿到带原因的拒绝」逐字成立。败者可能吃两次拒绝(undeclared + title-not-taken),均为合法裁决留痕。
+
+稳定性处理:kill 场景直查 PG(25ms 轮询)压低杀点检测延迟;Temporal 探活 skip-if;S3 spec 连跑 3 轮全绿(31-66s/轮)。
+
+验证:CI=true pnpm check 全绿(613,+1 水位回归);CI=true pnpm e2e 25 passed + 1 skipped(llm-smoke 门控;22 既有 + 3 新增,零回归)。
