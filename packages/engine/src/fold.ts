@@ -31,7 +31,9 @@ import type { EngineEvent } from './effects';
 import type { ExecRequest } from './judge';
 import { withLifecycleFlows } from './lifecycle';
 import type {
+  DefinitionActivatedDetail,
   DefinitionDeprecatedDetail,
+  DefinitionRejectedDetail,
   DefinitionRevisedDetail,
   DefinitionSeededDetail,
   DefinitionSubmittedDetail,
@@ -449,6 +451,98 @@ function applyDefinitionSubmitted(snapshot: EngineSnapshot, event: LogEvent): En
 }
 
 /**
+ * definition-activated 重放:approve 落态——条目 {status: active,
+ * version(激活落实的新版本), definition(草稿全文)};activation → approved
+ * (decidedBy 留痕)。前置 action-executed(approve)已迁实例到 active,此处核对。
+ */
+function applyDefinitionActivated(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
+  const detail = event.detail as Partial<DefinitionActivatedDetail> | undefined;
+  if (
+    detail === undefined ||
+    typeof detail.name !== 'string' ||
+    typeof detail.version !== 'number' ||
+    typeof detail.activationId !== 'string' ||
+    detail.definition === undefined ||
+    detail.decidedBy === undefined
+  ) {
+    throw new Error(`重放失败:seq=${event.seq} definition-activated 缺少 detail 载荷(日志完整性)`);
+  }
+  const entry = definitionEntry(snapshot, event, detail.name);
+  const instance = lifecycleNodeOf(snapshot, event, detail.name);
+  if (instance.node !== 'active') {
+    throw new Error(
+      `重放失败:seq=${event.seq} definition-activated 时实例不在 active(在 ${instance.node};日志完整性)`,
+    );
+  }
+  const activationRel = metaActivationRel(detail.activationId);
+  const activation = snapshot.activations?.[activationRel];
+  if (activation === undefined) {
+    throw new Error(`重放失败:seq=${event.seq} 激活 "${activationRel}" 不存在(日志与状态漂移)`);
+  }
+  if (activation.status !== 'pending-approval') {
+    throw new Error(
+      `重放失败:seq=${event.seq} 激活 "${activationRel}" 已是 ${activation.status}(重复裁决)`,
+    );
+  }
+  return {
+    ...snapshot,
+    definitions: {
+      ...snapshot.definitions,
+      [detail.name]: {
+        ...entry,
+        status: 'active',
+        version: detail.version,
+        definition: detail.definition,
+      },
+    },
+    activations: {
+      ...(snapshot.activations ?? {}),
+      [activationRel]: { ...activation, status: 'approved' as const, approvedBy: detail.decidedBy },
+    },
+  };
+}
+
+/** definition-rejected 重放:条目 → rejected;activation → rejected(reason 留痕)。 */
+function applyDefinitionRejected(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
+  const detail = event.detail as Partial<DefinitionRejectedDetail> | undefined;
+  if (
+    detail === undefined ||
+    typeof detail.name !== 'string' ||
+    typeof detail.activationId !== 'string' ||
+    detail.decidedBy === undefined ||
+    typeof detail.reason !== 'string'
+  ) {
+    throw new Error(`重放失败:seq=${event.seq} definition-rejected 缺少 detail 载荷(日志完整性)`);
+  }
+  const entry = definitionEntry(snapshot, event, detail.name);
+  const instance = lifecycleNodeOf(snapshot, event, detail.name);
+  if (instance.node !== 'rejected') {
+    throw new Error(
+      `重放失败:seq=${event.seq} definition-rejected 时实例不在 rejected(在 ${instance.node};日志完整性)`,
+    );
+  }
+  const activationRel = metaActivationRel(detail.activationId);
+  const activation = snapshot.activations?.[activationRel];
+  if (activation === undefined || activation.status !== 'pending-approval') {
+    throw new Error(
+      `重放失败:seq=${event.seq} 激活 "${activationRel}" 不存在或已决策(日志完整性)`,
+    );
+  }
+  return {
+    ...snapshot,
+    definitions: { ...snapshot.definitions, [detail.name]: { ...entry, status: 'rejected' } },
+    activations: {
+      ...(snapshot.activations ?? {}),
+      [activationRel]: {
+        ...activation,
+        status: 'rejected' as const,
+        rejectedReason: detail.reason,
+      },
+    },
+  };
+}
+
+/**
  * 折叠事件日志为引擎快照(纯函数;events 须按 seq 升序传入)。
  *
  * - action-executed:重放 applyEffects(在线路径同一函数);
@@ -469,6 +563,8 @@ function applyDefinitionSubmitted(snapshot: EngineSnapshot, event: LogEvent): En
  *   重放,此处核对 + 条目同步);
  * - definition-submitted:载荷即真相——passed 则 pending-approval + activation
  *   物化;fail 则回 draft(校验报告即 checks 失败项);
+ * - definition-activated / -rejected:approve/reject 落态(版本推进/驳回留痕;
+ *   转移由前置 action-executed 重放,此处核对 + 条目与 activation 同步);
  * - 未知 kind:抛错(日志完整性守卫)。
  *
  * initial(可选):从既有快照继续折叠——web 读路径按 seq 增量 fold 的根基
@@ -518,6 +614,12 @@ export function fold(
         break;
       case 'definition-submitted':
         snapshot = applyDefinitionSubmitted(snapshot, event);
+        break;
+      case 'definition-activated':
+        snapshot = applyDefinitionActivated(snapshot, event);
+        break;
+      case 'definition-rejected':
+        snapshot = applyDefinitionRejected(snapshot, event);
         break;
       case 'action-executed':
         snapshot = applyExecuted(snapshot, event, flows);

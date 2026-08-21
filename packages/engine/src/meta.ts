@@ -106,6 +106,26 @@ export interface DefinitionDeprecatedDetail {
   version: number;
 }
 
+/** definition-activated:approve 的落态事件(sitemap 重生成信号;机器可重放)。 */
+export interface DefinitionActivatedDetail {
+  name: string;
+  /** 激活落实的新版本(此前为草稿目标版本)。 */
+  version: number;
+  /** 被批准的激活实体 id(approve 也可经 meta/activation:<id> 发起)。 */
+  activationId: string;
+  /** 激活后的定义全文(活跃定义 = 草稿内容)。 */
+  definition: FlowDefinition;
+  decidedBy: { actor: 'human' | 'agent'; principal?: string };
+}
+
+/** definition-rejected:人类驳回(reason 必填,入日志)。 */
+export interface DefinitionRejectedDetail {
+  name: string;
+  activationId: string;
+  decidedBy: { actor: 'human' | 'agent'; principal?: string };
+  reason: string;
+}
+
 /**
  * definition-submitted:submit 后立即求值六项不变式的落态事件
  * (checks-pass → pending-approval + activation 物化;checks-fail → 回 draft,
@@ -185,14 +205,24 @@ function withEntry(
  *
  * 覆盖:add-node / add-action(applyEffects 的 meta-edit 已改工作副本,此处补
  * 伴随事件 definition-edited)、revise、deprecate、submit(六项不变式 + activation
- * 物化/checks-fail 回 draft)。approve/reject 见 Task 4。
+ * 物化/checks-fail 回 draft)、approve / reject(actor-is-human 铁律 5;可经
+ * meta/flow:<name> 或 meta/activation:<id> 发起——A.2 把 approve/reject 挂在
+ * 激活实体上,裁决仍是 lifecycle 实例同一套三层)。
  */
 export function executeMeta(
   request: ExecRequest,
   snapshot: EngineSnapshot,
   deps: MetaDeps,
 ): MetaOutcome {
-  const verdict = executeWithGates(request, snapshot, {
+  // activation rel 归一化:审批动作的声明与 guard 在 lifecycle 实例上
+  // (同一谓词的两个投影——激活实体投影挂的是同一批声明的镜像)。
+  const activation = activationTargetOf(request, snapshot);
+  const judgeRequest: ExecRequest =
+    activation !== undefined
+      ? { ...request, rel: metaFlowRel(activation.flow) }
+      : request;
+
+  const verdict = executeWithGates(judgeRequest, snapshot, {
     flows: { [DEFINITION_LIFECYCLE]: DEFINITION_LIFECYCLE_FLOW },
     guards: deps.guards,
     ...(deps.policy !== undefined ? { policy: deps.policy } : {}),
@@ -201,7 +231,7 @@ export function executeMeta(
     return verdict;
   }
 
-  const flowName = flowNameFromMetaRel(request.rel);
+  const flowName = flowNameFromMetaRel(judgeRequest.rel);
   if (flowName === undefined) return verdict;
   if (entryOf(verdict.snapshot, flowName) === undefined) return verdict;
 
@@ -319,6 +349,115 @@ export function executeMeta(
     };
   }
 
-  // approve / reject:Task 4 接管(此处到达时仅转移已发生)。
+  if (request.action === 'approve' || request.action === 'reject') {
+    if (activation === undefined) {
+      // approve/reject 也可直接打在 flow rel 上:按"该 flow 的 pending 激活"定位。
+      const pending = Object.values(verdict.snapshot.activations ?? {}).find(
+        (candidate) => candidate.flow === flowName && candidate.status === 'pending-approval',
+      );
+      if (pending === undefined) return verdict; // 理论不可达:judge 已要求 pending-approval 节点
+      return decide(verdict, request, judgeRequest, flowName, pending);
+    }
+    return decide(verdict, request, judgeRequest, flowName, activation);
+  }
+
   return verdict;
+}
+
+/** 审批落态:approve → active+version+1+definition-activated;reject → rejected。 */
+function decide(
+  verdict: Extract<MetaOutcome, { kind: 'executed' }>,
+  request: ExecRequest,
+  judgeRequest: ExecRequest,
+  flowName: string,
+  activation: ActivationSnapshot,
+): { kind: 'executed'; snapshot: EngineSnapshot; events: EngineEvent[] } {
+  const entry = entryOf(verdict.snapshot, flowName)!;
+  const decidedBy: { actor: 'human' | 'agent'; principal?: string } = {
+    actor: request.actor ?? 'human',
+    ...(request.principal !== undefined ? { principal: request.principal } : {}),
+  };
+  const activations = {
+    ...(verdict.snapshot.activations ?? {}),
+    [metaActivationRel(activation.id)]:
+      request.action === 'approve'
+        ? { ...activation, status: 'approved' as const, approvedBy: decidedBy }
+        : {
+            ...activation,
+            status: 'rejected' as const,
+            rejectedReason: String(request.params?.reason ?? ''),
+          },
+  };
+
+  if (request.action === 'approve') {
+    if (activation.version !== entry.version + 1) {
+      throw new Error(
+        `approve 一致性:激活 ${activation.id} 目标版本 ${activation.version} ≠ 当前版本+1(${entry.version + 1})`,
+      );
+    }
+    const detail: DefinitionActivatedDetail = {
+      name: flowName,
+      version: activation.version,
+      activationId: activation.id,
+      definition: activation.definition,
+      decidedBy,
+    };
+    return {
+      kind: 'executed',
+      snapshot: {
+        ...verdict.snapshot,
+        definitions: {
+          ...verdict.snapshot.definitions,
+          [flowName]: {
+            ...entry,
+            status: 'active',
+            version: activation.version,
+            definition: activation.definition,
+          },
+        },
+        activations,
+      },
+      events: [
+        ...verdict.events,
+        definitionEvent(judgeRequest, 'definition-activated', detail),
+      ],
+    };
+  }
+
+  const reason = String(request.params?.reason ?? '');
+  const detail: DefinitionRejectedDetail = {
+    name: flowName,
+    activationId: activation.id,
+    decidedBy,
+    reason,
+  };
+  return {
+    kind: 'executed',
+    snapshot: {
+      ...verdict.snapshot,
+      definitions: {
+        ...verdict.snapshot.definitions,
+        [flowName]: { ...entry, status: 'rejected' },
+      },
+      activations,
+    },
+    events: [
+      ...verdict.events,
+      { ...definitionEvent(judgeRequest, 'definition-rejected', detail), reason },
+    ],
+  };
+}
+
+/**
+ * activation rel 解析:meta/activation:<id> 且 pending → 返回激活快照
+ * (非 pending 的激活是审计实体,approve/reject 未声明于该状态 → undeclared)。
+ */
+function activationTargetOf(
+  request: ExecRequest,
+  snapshot: EngineSnapshot,
+): ActivationSnapshot | undefined {
+  if (!request.rel.startsWith('meta/activation:')) return undefined;
+  const activation = snapshot.activations?.[request.rel];
+  if (activation === undefined || activation.status !== 'pending-approval') return undefined;
+  return activation;
 }
