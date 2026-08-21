@@ -24,8 +24,10 @@
 ## Phase C: 激活队列、机械 diff 与 BIOS 最小面
 
 - [x] Task: activation 实体投影(checks/diff/artifact)+ deep-object-diff 集成(TDD:diff 是纯数据) (5856baa)
-- [~] Task: BIOS 页三面(meta/flows 定义查看、激活队列+react-diff-view 渲染+approve/reject[RJSF]、meta/self)(组件测试:diff 零 AI 内建渲染;approve 按钮 actor=human)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: BIOS 页三面(meta/flows 定义查看、激活队列+react-diff-view 渲染+approve/reject[RJSF]、meta/self)(组件测试:diff 零 AI 内建渲染;approve 按钮 actor=human) (5474a47)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) (77a41e3)
+
+[checkpoint: 77a41e3] — 验证报告挂 git note(自治验收);CI=true pnpm check 全绿(553,+30 用例)+ CI=true pnpm e2e 18 过零回归;无头走查(截图 /tmp/bios-*.png):激活链 revise→add-action→submit→pending→BIOS 三面(diff 含 pin、checks 全过)→浏览器批准→active v2、sitemap version 变、业务面无 _meta;agent approve 422 actor-is-human。
 
 ## Phase D: S2 全链路 E2E
 
