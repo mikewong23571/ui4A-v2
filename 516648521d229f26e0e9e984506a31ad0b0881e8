@@ -5,3 +5,15 @@ T11 Phase B Task 2: agent-decision 审计事件
 口径:llm prompt = system/user 全量;rule prompt = {goal,currentRel,entity,blocked,lastRejection,successes} 结构化摘要;reasoning 恒 null(Phase C 填真值,验收 4 允许)。
 Why:spec 架构决定 3——蒸馏原料 (context→reasoning→op) 决策记录;rule 机械层轨迹是正确答案生成器。
 验收(编排 agent 亲自复跑):fold/replay/route 44/44;CI=true pnpm check 908 passed;chat+invariants e2e 11/11(I5 events=29 含 agent-decision,hash 一致)。自治验收。
+
+---
+
+T11 Phase B Checkpoint 验证报告(自治验收)
+
+阶段范围:de5791f..HEAD(chat-turn 结构化 steps + agent-decision 审计事件 + delegation-step reasoning)
+自动化验证(编排 agent 亲自执行):
+- CI=true pnpm check → 911 passed | 2 skipped(环境性)
+- CI=true pnpm e2e → 33 passed / 12 skipped,零回归
+- I5 实证:invariants e2e 全量重放 events=29 含 chat-turn(steps)/agent-decision 事件,hash 一致;fold 新 kind 均 no-op
+- 关键口径:llm reasoning 恒 null(D22,Phase C streamText 后填真值);写失败不阻断;delegated/render 短路不写
+确认:用户离线,编排 agent 代行验收——自治验收,通过。
