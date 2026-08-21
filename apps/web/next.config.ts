@@ -10,6 +10,16 @@ const nextConfig: NextConfig = {
   // 场景自起 server(3110)并存时必须隔离 distDir,否则后者直接退出。
   // 仅测试辅助旋钮,不改变任何运行时合同语义。
   ...(process.env.UI4A_DIST_DIR !== undefined ? { distDir: process.env.UI4A_DIST_DIR } : {}),
+  // _meta 站点(T4 Phase B,spec 决定 6):App Router 以 '_' 开头的目录是私有
+  // 文件夹(不可路由),/_meta/* 经 rewrite 映射到内部 /api/meta/* 处理器。
+  // canonical URL 恒 /_meta/*(业务面 sitemap 不携带 _meta 入口,跨站规则)。
+  async rewrites() {
+    return [
+      { source: '/_meta/.well-known/ui4a.json', destination: '/api/meta/.well-known/ui4a.json' },
+      { source: '/_meta/api/entity', destination: '/api/meta/entity' },
+      { source: '/_meta/api/exec', destination: '/api/meta/exec' },
+    ];
+  },
 };
 
 export default nextConfig;

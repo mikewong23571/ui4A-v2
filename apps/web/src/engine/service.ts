@@ -36,6 +36,7 @@ import {
   approveConfirmation,
   contentVersion,
   deriveSitemap,
+  executeMeta,
   executeWithGates,
   fold,
   project,
@@ -43,21 +44,23 @@ import {
   type Approver,
   type ConfirmationDecision,
   type ConfirmationDeps,
+  type DefinitionSeededDetail,
   type EngineEvent,
   type ExecRequest,
   type ExecuteDeps,
   type FlowDefinition,
   type JudgeLayer,
   type LogEvent,
+  type MetaDeps,
   type ProjectDeps,
   type Sitemap,
+  type SitemapSurface,
   type SirenEntity,
   type SuspendedConfirmation,
 } from '@ui4a/engine';
 import type { EngineSnapshot } from '@ui4a/shared';
 import type { FieldValue } from '@ui4a/shared';
 import { metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
-import type { DefinitionSeededDetail } from '@ui4a/engine';
 
 import { appendEvent, ensureEventsTable, readLog, type DbExecutor, type EventAppend } from '../db/events';
 import { getPool } from '../db/pool';
@@ -73,6 +76,18 @@ export type ExecOutcome =
   | { kind: 'suspended'; entity: SirenEntity; confirmation: SuspendedConfirmation }
   | { kind: 'rejected'; layer: JudgeLayer; reason: string; detail?: unknown };
 
+/** meta 站点 sitemap(定义层交互拓扑:meta rel 面;跨站规则下业务面不携带)。 */
+export interface MetaSitemap {
+  version: string;
+  site: 'meta';
+  surfaces: SitemapSurface[];
+}
+
+/** 定义平面 rel(meta/self 或 meta/ 前缀;HTTP 层的跨站路由键)。 */
+export function isMetaRel(rel: string): boolean {
+  return rel === 'meta/self' || rel.startsWith('meta/');
+}
+
 export interface EngineRuntime {
   /** 当前内存快照(boot/exec/增量 fold 维护;只读视图,不触库——需外部写者进度用 readSnapshot)。 */
   getSnapshot(): EngineSnapshot;
@@ -80,8 +95,12 @@ export interface EngineRuntime {
   readSnapshot(): Promise<EngineSnapshot>;
   /** rel → Siren 实体(含 guard-results 注入);返回前增量 fold 新事件;未知 rel 返回 undefined。 */
   getEntity(rel: string): Promise<SirenEntity | undefined>;
-  /** 应用 sitemap(缓存;版本号 = 内容 hash)。 */
+  /** meta rel → Siren 实体(_meta 站点;href 前缀 /_meta,同引擎同日志)。 */
+  getMetaEntity(rel: string): Promise<SirenEntity | undefined>;
+  /** 应用 sitemap(按活跃定义集内容 hash 缓存;定义激活即重生成)。 */
   getSitemap(): Sitemap;
+  /** meta 站点 sitemap(meta rel 面;按 surfaces 内容 hash 缓存)。 */
+  getMetaSitemap(): MetaSitemap;
   /** 执行动作(串行单 atom):同步外部写者 → 三层裁决 → 事件留痕 → 增量快照 → notify 派发(尽力而为)。 */
   exec(request: ExecRequest): Promise<ExecOutcome>;
 }
@@ -188,6 +207,28 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   const gateDeps = (): ExecuteDeps => ({ flows: activeFlows(), guards, policy });
   const confirmDeps = (): ConfirmationDeps => ({ flows: activeFlows(), guards });
   const projectDeps = (): ProjectDeps => ({ flows: activeFlows(), guards });
+  // meta 平面编排依赖(编辑动词裁决用 lifecycle 常量自举,executeMeta 内部注入;
+  // 激活不变式的注册表缺省 KNOWN_FIELD_TYPES/KNOWN_EFFECT_TYPES)。
+  const metaDeps = (): MetaDeps => ({ guards, policy });
+
+  // meta 站点 sitemap(meta rel 面;定义实体随 definitions 表动态列出)。
+  let metaSitemapCache: { key: string; sitemap: MetaSitemap } | undefined;
+  const currentMetaSitemap = (): MetaSitemap => {
+    const surfaces: SitemapSurface[] = [
+      { rel: 'meta/self', title: 'definition-lifecycle(引擎自举)' },
+      { rel: 'meta/flows', title: '流程定义', collection: true },
+      { rel: 'meta/activations', title: '激活队列', collection: true },
+      ...Object.values(snapshot.definitions ?? {}).map((entry) => ({
+        rel: metaFlowRel(entry.name),
+        title: entry.definition.title ?? entry.name,
+      })),
+    ];
+    const key = contentVersion(surfaces);
+    if (metaSitemapCache?.key === key) return metaSitemapCache.sitemap;
+    const sitemap: MetaSitemap = { version: key, site: 'meta', surfaces };
+    metaSitemapCache = { key, sitemap };
+    return sitemap;
+  };
 
   // sitemap 从快照活跃定义推导,按活跃集内容 hash 缓存(定义不变同对象引用;
   // 定义激活 → 活跃集变化 → 版本号变[S2 根基]——version 本身就是内容 hash)。
@@ -327,7 +368,14 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       // 集合入口链接同样吃快照活跃定义(append 目标随定义激活演进)。
       return withCollectionFlowEntryLinks(entity, activeFlowList());
     },
+    getMetaEntity: async (rel) => {
+      // _meta 站点读路径:同一引擎同一日志(先同步外部写者);href 前缀 /_meta
+      // (站点自洽:留在定义层;引擎 project 的 baseHref 机制,不改投影语义)。
+      await enqueue(state, refreshFromLog);
+      return project(snapshot, rel, { ...projectDeps(), baseHref: '/_meta' });
+    },
     getSitemap: () => currentSitemap(),
+    getMetaSitemap: () => currentMetaSitemap(),
     exec(request) {
       return enqueue(state, async () => {
         // 先同步外部写者进度再裁决(裁决器只见全序日志的最新折叠态);
@@ -345,7 +393,12 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           return execConfirmationDecision(aliased);
         }
 
-        const outcome = executeWithGates(aliased, snapshot, gateDeps());
+        // meta 平面(rel 前缀路由,T4 Phase B):编辑动词/生命周期动词过同一
+        // executeMeta 编排——同一裁决器(lifecycle 常量自举)、同一日志、同一
+        // 串行队列;后续事件落库/投影与业务 exec 共用同一套代码路径。
+        const outcome = isMetaRel(aliased.rel)
+          ? executeMeta(aliased, snapshot, metaDeps())
+          : executeWithGates(aliased, snapshot, gateDeps());
 
         if (outcome.kind === 'rejected') {
           // 拒绝即数据(I6):不改状态,结构化原因入日志;detail 携带 layer,

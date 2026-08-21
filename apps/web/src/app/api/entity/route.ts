@@ -1,9 +1,10 @@
-import { getDb, getEngine } from '../../../engine/service';
+import { getDb, getEngine, isMetaRel } from '../../../engine/service';
 
 // GET /api/entity?rel=… — Siren 实体端点(spec FR3):
 // - 已知 rel(实例或集合)→ 200 四件组装 properties/actions/links/guard-results;
 // - 集合实体经 entities[] 携带子实体与直达 href(B2 点名导航);
 // - 未知 rel → 404;缺 rel → 400;db 不可达(启动失败)→ 503;重放完整性破坏 → 500;
+// - meta/ rel → 404(T4 跨站规则:定义平面须经 /_meta/api/entity,不混站);
 // - 读路径增量 fold(T3 Phase C):返回前同步 worker 等外部写者追加的事件(spec 决定 4)。
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,12 @@ export async function GET(request: Request) {
   const rel = new URL(request.url).searchParams.get('rel');
   if (rel === null || rel === '') {
     return Response.json({ error: '缺少必填查询参数 rel' }, { status: 400 });
+  }
+  if (isMetaRel(rel)) {
+    return Response.json(
+      { error: 'meta/ rel 须经 /_meta/api/entity(跨站规则:进入定义层必须显式意图)' },
+      { status: 404 },
+    );
   }
 
   try {
