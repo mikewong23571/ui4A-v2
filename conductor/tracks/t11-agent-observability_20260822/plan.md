@@ -9,8 +9,8 @@
 
 ## Phase B: 留痕结构化
 
-- [~] Task: chat-turn detail 增结构化 steps(ChatTurnDetail + route 写入 + history 读端旧形状兼容)(TDD)
-- [ ] Task: agent-decision 审计事件(inline llm/rule 每步一条;五要素 detail;fold no-op;写失败不阻断;I5 重放一致)(TDD)
+- [x] Task: chat-turn detail 增结构化 steps(ChatTurnDetail + route 写入 + history 读端旧形状兼容)(TDD) — 8e6a266
+- [~] Task: agent-decision 审计事件(inline llm/rule 每步一条;五要素 detail;fold no-op;写失败不阻断;I5 重放一致)(TDD)
 - [ ] Task: delegation-step detail 增 reasoning 字段(worker;幂等恢复载荷同构)(TDD)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
