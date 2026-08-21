@@ -14,3 +14,16 @@ T10 Phase D Checkpoint 验证报告(自治验收)
 - CI=true pnpm e2e → 33 passed / 11 skipped,零回归(rule 路径 e2e 经 chat.spec/s2 覆盖,定位层软边界不破坏现状)
 - 两层发现实证:目标词命中 app intent → 组内入口优先(单测对照组可证差异);不命中 → 与现状逐字一致
 确认:用户离线,编排 agent 代行验收——自治验收,通过。
+
+---
+
+T10 Phase E Checkpoint + Track 闭环验证报告(自治验收)
+
+阶段范围:全量回归与 demo 走查(无新功能 commit,回归证据如下)
+自动化验证(编排 agent 亲自执行):
+- CI=true pnpm check → 900 passed | 2 skipped(环境性);eslint 0 error(9 warning 为既有存量)
+- CI=true pnpm e2e → 33 passed / 11 skipped,零回归
+- 门控实测(GLM key 在位):RUN_LLM_E2E=1 e2e/llm-smoke.spec.ts → 1 passed(35s,真实 glm 端点,LLM 路径经 app 分组上下文工作正常)
+demo 走查(脚本化等效人工确认):PORT=3100 pnpm dev + curl /.well-known/ui4a.json → applications 3 组(default/publishing/community)各带 intent;publishing={article-drafting,post-status},community={comment-moderation};扁平 flows 与 surfaces 条目均带 app。满足 spec 验收 7(≥2 个 app 分组各带 intent)。
+track 验收对照:spec 验收 1-7 全过(1 check/e2e 绿;2 parse/归一化/app-known 单测;3 I5 application 维度;4 合同测试+bump;5 静态上下文分组+定位层单测;6 全回归零改动通过,D21 机械适配除外;7 走查如上)。
+确认:用户离线,编排 agent 代行验收——自治验收,T10 闭环。
