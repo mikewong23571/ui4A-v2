@@ -12,7 +12,10 @@
  * - running 指示:三点 typing(替代 stock 的裸「●」);
  * - 轨迹步骤卡:step 帧携带的 rel 经 metadata.custom 传入——flow 实例步
  *   (rel 含 flow 或文本含节点迁移「执行 next(」)以 Badge 弱化呈现 rel
- *   (纯展示层,不改 trail.ts 文本)。
+ *   (纯展示层,不改 trail.ts 文本);
+ * - 思考区(T11 Phase C):thinking 帧条目(metadata.custom.thinking = 归步
+ *   步号)渲染为可折叠「思考 · 步骤 N」(Collapsible,默认收起——推理是
+ *   次级信息);与同号步骤消息按到达序相邻。
  */
 import {
   ComposerPrimitive,
@@ -25,13 +28,22 @@ import {
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { SendHorizontal, Square } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, SendHorizontal, Square } from 'lucide-react';
 
 /** 当前消息的 rel(external store 经 convertMessage 的 metadata.custom.rel 传入)。 */
 function useMessageRel(): string | undefined {
   return useAuiState((s) => {
     const value: unknown = s.message.metadata.custom['rel'];
     return typeof value === 'string' && value !== '' ? value : undefined;
+  });
+}
+
+/** 当前消息的思考步号(T11:convertMessage 的 metadata.custom.thinking;非思考条目为 undefined)。 */
+function useMessageThinkingStep(): number | undefined {
+  return useAuiState((s) => {
+    const value: unknown = s.message.metadata.custom['thinking'];
+    return typeof value === 'number' ? value : undefined;
   });
 }
 
@@ -64,7 +76,34 @@ function UserMessage() {
   );
 }
 
+/** 思考区文本部件:推理自述是模型自由文本,直出(不走 Markdown 管线)。 */
+const ThinkingText: TextMessagePartComponent = ({ text }) => (
+  <span className="block whitespace-pre-wrap">{text}</span>
+);
+
+/** 思考区条目(T11 Phase C):llm 步推理自述——次级信息,默认收起,展开读全文。 */
+function ThinkingMessage({ step }: { step: number }) {
+  return (
+    <MessagePrimitive.Root className="flex w-full justify-start">
+      <Collapsible className="max-w-[85%] rounded-lg border border-border px-3 py-1.5">
+        <CollapsibleTrigger className="flex w-full items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground [&[data-state=open]>svg]:rotate-180">
+          <ChevronDown className="h-3 w-3 transition-transform" />
+          思考 · 步骤 {step}
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-1 text-xs text-muted-foreground">
+          <MessagePrimitive.Parts components={{ Text: ThinkingText }} />
+        </CollapsibleContent>
+      </Collapsible>
+    </MessagePrimitive.Root>
+  );
+}
+
 function AssistantMessage() {
+  const thinkingStep = useMessageThinkingStep();
+  // thinking 帧条目:可折叠思考区(与气泡步骤消息按到达序相邻)。
+  if (thinkingStep !== undefined) {
+    return <ThinkingMessage step={thinkingStep} />;
+  }
   return (
     <MessagePrimitive.Root className="flex w-full justify-start">
       <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-muted px-3 py-1.5 text-sm text-foreground">

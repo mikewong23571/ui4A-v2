@@ -4,6 +4,8 @@
  * 帧协议(每帧一条 `data: <json>\n\n`):
  * - {type:'step', message:{role:'assistant',text}, rel?} —— 轨迹一步
  *   (text 为 trail.ts stepToMessage 口径;rel 供 flow 徽章展示);
+ * - {type:'thinking', step, text} —— llm 步推理自述(T11 Phase C:聚合整段
+ *   一次性帧,先于同号 step 帧;rule driver / 端点不返回 reasoning 时零帧);
  * - {type:'final', payload:{sessionId, driver, requestedDriver, outcome,
  *   summary, steps, successes, render?}} —— 回合终帧;
  * - {type:'error', error} —— 服务端兜底(循环异常,200 流内如实报告)。
@@ -37,6 +39,7 @@ export interface ChatFinalPayload {
 
 export type ChatSseFrame =
   | { type: 'step'; message: ChatStepMessage; rel?: string }
+  | { type: 'thinking'; step: number; text: string }
   | { type: 'final'; payload: ChatFinalPayload }
   | { type: 'error'; error: string };
 

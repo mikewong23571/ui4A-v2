@@ -5,7 +5,9 @@
  * 服务端零会话态):
  *
  * - 发送(B1 流式轨迹):POST /api/chat——inline 返回 SSE 流,step 帧逐步
- *   追加 assistant 消息(每步一条,废弃一次性 join);final 帧更新 sessionId
+ *   追加 assistant 消息(每步一条,废弃一次性 join);thinking 帧(T11
+ *   Phase C:llm 步推理自述,先于同号 step 帧)追加为可折叠「思考」区条目
+ *   (默认收起;rule 路径零 thinking 帧);final 帧更新 sessionId
  *   (localStorage 持久化,纯投影)与 render 回执;render 短路/委托派发/
  *   参数错误仍为一次性 JSON(按 content-type 分派);整体超时 120s 如实报错;
  * - 停止(B2):onCancel 挂 AbortController 中止 fetch,追加「已停止(仅中断
@@ -50,6 +52,8 @@ interface ChatUiMessage {
   role: 'user' | 'assistant';
   content: string;
   rel?: string;
+  /** 思考区条目(T11 Phase C):值为归步步号,content 为该步推理自述全文。 */
+  thinking?: number;
 }
 
 /** 一次性 JSON 响应形状(render 短路/兼容路径;inline 已转 SSE)。 */
@@ -85,10 +89,13 @@ function loadSessionId(): string {
 }
 
 function convertMessage(message: ChatUiMessage): ThreadMessageLike {
+  const custom: Record<string, unknown> = {};
+  if (message.rel !== undefined) custom['rel'] = message.rel;
+  if (message.thinking !== undefined) custom['thinking'] = message.thinking;
   return {
     role: message.role,
     content: [{ type: 'text', text: message.content }],
-    ...(message.rel !== undefined ? { metadata: { custom: { rel: message.rel } } } : {}),
+    ...(Object.keys(custom).length > 0 ? { metadata: { custom } } : {}),
   };
 }
 
@@ -195,6 +202,11 @@ export function useChatSession(): ChatSession {
     ]);
   }, []);
 
+  /** thinking 帧(T11 Phase C):推理自述按到达序独立成条,渲染为可折叠思考区。 */
+  const appendThinking = useCallback((step: number, text: string) => {
+    setMessages((prev) => [...prev, { role: 'assistant', content: text, thinking: step }]);
+  }, []);
+
   /** SSE 帧处置:step 逐步追加;final 更新会话/回执;error 如实进消息。 */
   const handleFinal = useCallback(
     (payload: ChatFinalPayload, stepCount: number) => {
@@ -236,10 +248,13 @@ export function useChatSession(): ChatSession {
         });
         const contentType = response.headers.get('content-type') ?? '';
         if (contentType.includes('text/event-stream')) {
-          // inline(B1):SSE 流——每步一条 assistant 消息,逐步呈现。
+          // inline(B1):SSE 流——每步一条 assistant 消息,逐步呈现;thinking
+          // 帧(T11)先于同号 step 帧到达,归步成可折叠思考区(不落 else 误伤)。
           if (response.body === null) throw new Error('SSE 响应缺少 body');
           await readChatSseStream(response.body, signal, (frame) => {
-            if (frame.type === 'step') {
+            if (frame.type === 'thinking') {
+              appendThinking(frame.step, frame.text);
+            } else if (frame.type === 'step') {
               stepCount += 1;
               appendAssistant(frame.message.text, frame.rel);
             } else if (frame.type === 'final') {
@@ -282,7 +297,7 @@ export function useChatSession(): ChatSession {
         setIsRunning(false);
       }
     },
-    [appendAssistant, handleFinal, persistSession],
+    [appendAssistant, appendThinking, handleFinal, persistSession],
   );
 
   const onCancel = useCallback(async () => {

@@ -18,6 +18,10 @@
  *   「独立窗口」window.open('/chat')。三形态同一 ChatPanel 界面。
  *
  * 一次性 JSON 兼容路径(render 短路/委托派发/参数错误)仍覆盖。
+ *
+ * T11 Phase C(思考区):thinking 帧(llm 步推理自述,先于同号 step 帧)
+ * 渲染为可折叠「思考 · 步骤 N」区(默认收起,推理是次级信息);与同号
+ * step 帧交错时按到达序相邻;rule 路径零 thinking 帧,渲染与现状一致。
  * jsdom 无 ResizeObserver(assistant-ui 的 viewport/composer 尺寸观测),桩替换;
  * next/navigation 的 usePathname 桩为 '/'(非 /chat,壳正常渲染)。
  */
@@ -229,6 +233,133 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
     await waitFor(() => {
       expect(screen.getByText(/失败: 聊天循环异常: 爆炸/)).toBeTruthy();
     });
+  });
+});
+
+describe('工作台 · 思考区(T11 Phase C)', () => {
+  it('thinking 帧:渲染为默认收起的「思考」区,点击展开读全文、再点收起', async () => {
+    const frames = [
+      { type: 'thinking', step: 1, text: '先补标题,再推进向导' },
+      { type: 'step', message: { role: 'assistant', text: '导航到 articles' }, rel: 'articles' },
+      {
+        type: 'final',
+        payload: {
+          sessionId: 'sess-think-1',
+          driver: 'llm',
+          requestedDriver: 'auto',
+          outcome: 'done',
+          summary: '目标完成',
+          steps: [],
+          successes: [],
+        },
+      },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    await waitFor(() => {
+      expect(screen.getByText('导航到 articles')).toBeTruthy();
+    });
+    // 默认收起(推理是次级信息):触发器在,正文未进 DOM。
+    const trigger = screen.getByRole('button', { name: /思考 · 步骤 1/ });
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('先补标题,再推进向导')).toBeNull();
+    // thinking 帧不得落入未知帧 else 分支(否则会追加「失败: undefined」)。
+    expect(screen.queryByText(/失败: undefined/)).toBeNull();
+
+    // 展开读全文;再点收起。
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByText('先补标题,再推进向导')).toBeTruthy();
+    fireEvent.click(trigger);
+    expect(screen.queryByText('先补标题,再推进向导')).toBeNull();
+  });
+
+  it('thinking 与 step 帧交错:每步思考区按到达序先于同号步骤消息', async () => {
+    const frames = [
+      { type: 'thinking', step: 1, text: '先补标题,再推进向导' },
+      { type: 'step', message: { role: 'assistant', text: '导航到 articles' }, rel: 'articles' },
+      { type: 'thinking', step: 2, text: '字段已齐,收尾收工' },
+      { type: 'step', message: { role: 'assistant', text: '完成: 目标完成' } },
+      {
+        type: 'final',
+        payload: {
+          sessionId: 'sess-think-2',
+          driver: 'llm',
+          requestedDriver: 'auto',
+          outcome: 'done',
+          summary: '目标完成',
+          steps: [],
+          successes: [],
+        },
+      },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    await waitFor(() => {
+      expect(screen.getByText('完成: 目标完成')).toBeTruthy();
+    });
+    const firstThinking = screen.getByRole('button', { name: /思考 · 步骤 1/ });
+    const firstStep = screen.getByText('导航到 articles');
+    const secondThinking = screen.getByRole('button', { name: /思考 · 步骤 2/ });
+    const secondStep = screen.getByText('完成: 目标完成');
+    // 到达序 = 渲染序:思考1 → 步骤1 → 思考2 → 步骤2。
+    expect(
+      firstThinking.compareDocumentPosition(firstStep) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
+    expect(
+      firstStep.compareDocumentPosition(secondThinking) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
+    expect(
+      secondThinking.compareDocumentPosition(secondStep) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
+  });
+
+  it('rule 路径(零 thinking 帧):不渲染思考区,消息流与现状一致', async () => {
+    const frames = [
+      { type: 'step', message: { role: 'assistant', text: '导航到 articles' }, rel: 'articles' },
+      { type: 'step', message: { role: 'assistant', text: '完成: 目标完成' } },
+      {
+        type: 'final',
+        payload: {
+          sessionId: 'sess-think-rule',
+          driver: 'rule',
+          requestedDriver: 'auto',
+          outcome: 'done',
+          summary: '目标完成',
+          steps: [],
+          successes: [],
+        },
+      },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    await waitFor(() => {
+      expect(screen.getByText('完成: 目标完成')).toBeTruthy();
+    });
+    expect(screen.getByText('导航到 articles')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /思考/ })).toBeNull();
+    expect(screen.queryByText(/失败/)).toBeNull();
   });
 });
 
