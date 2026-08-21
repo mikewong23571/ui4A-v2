@@ -114,6 +114,12 @@ export interface RunAgentOptions {
   channel?: string;
   /** 起始实体 rel(缺省 articles——种子域的入口集合)。 */
   startRel?: string;
+  /**
+   * 流式轨迹回调(T9 Phase B):循环每次 trail.push 后同步调用
+   * (navigate/exec/done/fail 各结局全覆盖)——聊天路由据此逐步推 SSE 帧。
+   * 回调抛错不拦截循环(观测者不得污染协议);调用方自行兜底。
+   */
+  onStep?(step: TrailStep): void;
 }
 
 export type AgentOutcome = 'done' | 'failed' | 'max-steps';

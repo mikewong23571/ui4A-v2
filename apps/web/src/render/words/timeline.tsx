@@ -1,24 +1,17 @@
 'use client';
 /**
- * timeline 词条(T7 Phase B / 选型 §6):react-chrono 渲染事件时间线。
+ * timeline 词条(T9 Phase D):自绘垂直时间线渲染事件流(react-chrono 已退出)。
  *
  * - events = 集合引用的解引用结果(成员 append 序即时间序,零 AI);
- * - 条目标题 = 成员 seq(事件日志口径;缺省用下标);摘要 = 投影字段直出
- *   (与 entity-view 的 memberSummary 同口径,经 shared.memberSummary);
+ * - 条目口径不变:seq 徽章 = 成员 seq(缺省用下标),摘要卡 =
+ *   `rel · 摘要`(投影字段直出,经 shared.memberSummary,与 entity-view 同口径);
  * - 事件流页(/events)与画布共用本词条:原始数据渲染,不经过任何生成路径;
- * - toolbar 缺省关闭:chrono 工具栏按钮是第三方内部控件,无法标注
- *   data-action/data-nav(I3 口径)——骨架零视图杂讯,需要时以
- *   props.toolbar 显式开启。时间点标记(react-chrono 内部 button,
- *   tabindex=-1 不可聚焦)不计入可点元素枚举。
+ * - 纯展示零可点元素(I3 口径:无 button/a/[role=button],白名单随之退出)——
+ *   左侧轨道线 + seq 圆形徽章 + 摘要卡,全部语义令牌,深色可读。
  */
-import { Chrono } from 'react-chrono';
-
 import { asMembers, asOptionalString, memberRelOf, memberSummary, type WordProps } from './shared';
 
-import 'react-chrono/dist/style.css';
-
 export function TimelineWord(props: WordProps) {
-  const toolbar = props.toolbar === true;
   const events = asMembers(props.events, 'timeline', 'events');
   const caption = asOptionalString(props.caption, 'timeline', 'caption');
   const items = events.map((member, index) => {
@@ -26,21 +19,34 @@ export function TimelineWord(props: WordProps) {
     // 卡片标题 = 成员身份(rel)+ 摘要(投影字段直出,零 AI)。
     const rel = memberRelOf(member, index);
     return {
-      title: String(member.properties.seq ?? index + 1),
+      seq: String(member.properties.seq ?? index + 1),
       cardTitle: summary !== '' ? `${rel} · ${summary}` : rel,
     };
   });
 
   return (
     <section data-word="timeline" className="w-full">
-      {caption !== undefined && <h2 className="mb-2 text-sm font-semibold text-zinc-700">{caption}</h2>}
-      <Chrono
-        items={items}
-        mode="vertical"
-        cardHeight={64}
-        fontSizes={{ cardTitle: '0.85rem' }}
-        display={{ toolbar: { enabled: toolbar } }}
-      />
+      {caption !== undefined && (
+        <h2 className="mb-2 text-sm font-semibold text-muted-foreground">{caption}</h2>
+      )}
+      {items.length > 0 && (
+        <ol className="ml-3 border-l border-border">
+          {items.map((item, index) => (
+            <li key={`${item.seq}:${index}`} className="relative pb-4 pl-6 last:pb-0">
+              {/* seq 圆形徽章:跨在轨道线上(aria-hidden,摘要卡已含同等信息) */}
+              <span
+                aria-hidden
+                className="absolute top-1 -left-3 flex size-6 items-center justify-center rounded-full border border-border bg-secondary text-[11px] font-medium text-secondary-foreground tabular-nums"
+              >
+                {item.seq}
+              </span>
+              <div className="rounded-md border border-border bg-card px-3 py-2 text-sm text-card-foreground">
+                {item.cardTitle}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
     </section>
   );
 }

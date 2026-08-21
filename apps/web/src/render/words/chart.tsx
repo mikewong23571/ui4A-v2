@@ -1,9 +1,6 @@
 'use client';
 /**
- * chart 词条(T7 Phase B / 选型 §6):Recharts 柱状图渲染维度聚合计数。
- *
- * 偏差(DECISIONS D13):项目未初始化 shadcn(无 components.json),按
- * tech-stack §6 的回退口径直接用 recharts + 极简 tailwind 样式。
+ * chart 词条(T9 Phase D):Recharts 柱状图渲染维度聚合计数(主题色走语义令牌)。
  *
  * - series = collection+dimension 的解引用结果([{key,count}]);
  * - 数值全部来自实体投影(I2 口径:DOM/aria 与快照对拍);
@@ -20,13 +17,26 @@ export function ChartWord(props: WordProps) {
 
   return (
     <figure data-word="chart" className="w-full" aria-label={`维度计数:${ariaSummary}`}>
-      {caption !== undefined && <figcaption className="mb-2 text-sm font-semibold text-zinc-700">{caption}</figcaption>}
+      {caption !== undefined && (
+        <figcaption className="mb-2 text-sm font-semibold text-muted-foreground">
+          {caption}
+        </figcaption>
+      )}
       {/* 固定尺寸(非 ResponsiveContainer):jsdom/SSR 零测量渲染,确定性输出 */}
-      <BarChart width={480} height={260} data={series} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
-        <XAxis dataKey="key" tick={{ fontSize: 12 }} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={32} />
-        <Bar dataKey="count" name="计数" fill="#2563eb" radius={[3, 3, 0, 0]} />
+      <BarChart
+        width={480}
+        height={260}
+        data={series}
+        margin={{ top: 8, right: 16, bottom: 4, left: 0 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+        <XAxis dataKey="key" tick={{ fontSize: 12, fill: 'var(--color-muted-foreground)' }} />
+        <YAxis
+          allowDecimals={false}
+          tick={{ fontSize: 12, fill: 'var(--color-muted-foreground)' }}
+          width={32}
+        />
+        <Bar dataKey="count" name="计数" fill="var(--color-primary)" radius={[3, 3, 0, 0]} />
       </BarChart>
     </figure>
   );

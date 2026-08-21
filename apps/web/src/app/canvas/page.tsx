@@ -26,8 +26,10 @@ import type { SirenEntity } from '@ui4a/engine';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { execAction, fetchEntity } from '@/components/exec-client';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
-import { createActionGate, type ActionGate, type CanvasClientAction } from '@/render/canvas/action-gate';
+import { createActionGate, type CanvasClientAction } from '@/render/canvas/action-gate';
 import { planSurface } from '@/render/canvas/surface-flow';
 import { ui4aRenderCatalog } from '@/render/canvas/word-catalog';
 import { CATALOG_ID, catalogUrl } from '@/render/registry';
@@ -81,7 +83,8 @@ export default function CanvasPage() {
     try {
       // 1. 目录协商(catalogId 稳定 URI;目录与注册表同源才继续)。
       const catalogResponse = await fetch(catalogUrl);
-      if (!catalogResponse.ok) throw new Error(`GET ${catalogUrl} → HTTP ${catalogResponse.status}`);
+      if (!catalogResponse.ok)
+        throw new Error(`GET ${catalogUrl} → HTTP ${catalogResponse.status}`);
       const catalog = (await catalogResponse.json()) as { catalogId?: string };
       if (catalog.catalogId !== CATALOG_ID) {
         throw new Error(
@@ -97,7 +100,7 @@ export default function CanvasPage() {
       const activeConcern =
         typeof window === 'undefined'
           ? undefined
-          : new URLSearchParams(window.location.search).get('concern') ?? undefined;
+          : (new URLSearchParams(window.location.search).get('concern') ?? undefined);
       const all = [...frozenSpecs, DEMO_SPEC];
       const specs = [
         ...all.filter((spec) => spec.concern === activeConcern),
@@ -160,19 +163,20 @@ export default function CanvasPage() {
   }, [load]);
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8">
+    <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-900">画布</h1>
-        <button
+        <h1 className="text-2xl font-semibold tracking-tight">画布</h1>
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           data-nav="local:canvas-reload"
           onClick={() => void load()}
-          className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100"
         >
           重新载入
-        </button>
+        </Button>
       </div>
-      <p className="mt-1 text-xs text-zinc-500">
+      <p className="mt-1 text-xs text-muted-foreground">
         A2UI surface 宿主 · 目录 {negotiated ? `已协商(${CATALOG_ID})` : '协商中'}
         {loading ? ' · 加载中…' : ` · ${surfaces.length} 个 surface`}
       </p>
@@ -181,13 +185,13 @@ export default function CanvasPage() {
         <p
           role="status"
           data-testid="canvas-notice"
-          className="mt-4 rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-700"
+          className="mt-4 rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground"
         >
           {notice}
         </p>
       )}
       {errors.length > 0 && (
-        <ul className="mt-4 space-y-1 text-sm text-red-600" data-testid="canvas-errors">
+        <ul className="mt-4 space-y-1 text-sm text-destructive" data-testid="canvas-errors">
           {errors.map((error) => (
             <li key={error}>{error}</li>
           ))}
@@ -201,15 +205,16 @@ export default function CanvasPage() {
             data-surface={entry.id}
             data-concern={entry.concern}
             {...(entry.active ? { 'data-active': 'true' } : {})}
-            className={`rounded-lg border p-4 ${
-              entry.active ? 'border-blue-400 ring-2 ring-blue-100' : 'border-zinc-200'
-            }`}
+            className={cn(
+              'rounded-lg border bg-card p-4 text-card-foreground shadow-sm',
+              entry.active && 'border-primary ring-2 ring-ring/20',
+            )}
           >
-            <h2 className="mb-3 text-sm font-semibold text-zinc-500">{entry.id}</h2>
+            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">{entry.id}</h2>
             <A2uiSurface surface={entry.surface} />
           </div>
         ))}
       </section>
-    </main>
+    </div>
   );
 }

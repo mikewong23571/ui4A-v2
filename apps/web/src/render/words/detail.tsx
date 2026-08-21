@@ -1,9 +1,7 @@
 'use client';
 /**
- * detail 词条(T7 Phase B / 选型 §6):实体详情卡(四件组装直出)。
- *
- * 偏差(DECISIONS D13):项目未初始化 shadcn(无 components.json /
- * Sheet/Card 组件源),按选型回退口径用极简 tailwind 卡片实现。
+ * detail 词条(T9 Phase D):实体详情卡(四件组装直出;shadcn 语义令牌,
+ * D13 极简回退口径已随设计基座落地退出)。
  *
  * - entity = 实体引用的解引用结果:properties(rel/node + 扁平 fields)、
  *   actions(ActionRunner,data-action 标注)、links(合同 href → 页面路由);
@@ -12,6 +10,7 @@
 import { entityPageHref } from '../../components/entity-view';
 import { ActionRunner } from '../../components/action-runner';
 import { blockedForRenderer } from '../../components/entity-view';
+import { Badge } from '@/components/ui/badge';
 
 import { asEntity, type WordProps } from './shared';
 
@@ -37,24 +36,27 @@ export function DetailWord(props: WordProps) {
   const scalarProperties = Object.entries(entity.properties).filter(([key]) => key !== 'fields');
 
   return (
-    <article data-word="detail" className="w-full rounded-lg border border-zinc-200 p-4">
-      <h2 className="text-lg font-semibold text-zinc-900">{heading}</h2>
+    <article
+      data-word="detail"
+      className="w-full rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm"
+    >
+      <h2 className="text-lg font-semibold">{heading}</h2>
       <table className="mt-3 w-full border-collapse text-sm">
         <tbody>
           {scalarProperties.map(([key, value]) => (
-            <tr key={key} className="border-b border-zinc-100">
-              <th scope="row" className="py-1 pr-4 text-left font-normal text-zinc-500">
+            <tr key={key} className="border-b border-border">
+              <th scope="row" className="py-1 pr-4 text-left font-normal text-muted-foreground">
                 {key}
               </th>
-              <td className="py-1 text-zinc-800">{String(value)}</td>
+              <td className="py-1">{String(value)}</td>
             </tr>
           ))}
           {Object.keys(fields).length > 0 && (
-            <tr className="border-b border-zinc-100">
-              <th scope="row" className="py-1 pr-4 text-left font-normal text-zinc-500">
+            <tr className="border-b border-border">
+              <th scope="row" className="py-1 pr-4 text-left font-normal text-muted-foreground">
                 fields
               </th>
-              <td className="py-1 text-zinc-800">
+              <td className="py-1">
                 {Object.entries(fields)
                   .map(([name, value]) => `${name}=${String(value)}`)
                   .join(' · ')}
@@ -88,15 +90,19 @@ export function DetailWord(props: WordProps) {
               const target = hrefToRel(link.href);
               return (
                 <li key={`${link.rel.join('/')}:${link.href}`}>
-                  <span className="mr-2 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500">
+                  <Badge variant="secondary" className="mr-2 rounded-md px-1.5 py-0.5 text-[10px]">
                     {link.rel.join('/')}
-                  </span>
+                  </Badge>
                   {target !== null ? (
-                    <a href={entityPageHref(target)} data-nav={link.rel[0]} className="text-blue-600 hover:underline">
+                    <a
+                      href={entityPageHref(target)}
+                      data-nav={link.rel[0]}
+                      className="text-primary hover:underline"
+                    >
                       {target}
                     </a>
                   ) : (
-                    <a href={link.href} className="text-blue-600 hover:underline">
+                    <a href={link.href} className="text-primary hover:underline">
                       {link.href}
                     </a>
                   )}

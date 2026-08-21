@@ -64,6 +64,6 @@ pnpm --filter @ui4a/worker dev &        # Temporal worker(notify + 委托)
 ## 已知限制(走查前应知)
 
 - 事件日志的 actor/principal 为自报口径(D8);Keycloak/真实 SSO 按 GOAL 明文排除(D10);
-- LLM 为 GLM glm-4.7(Chat Completions;`tool_choice:required` 不可用 D7);每步决策 8–20s 属正常;
+- LLM 为 GLM glm-5.3(Chat Completions;`tool_choice:required` 不可用 D7;缺省型号口径 D20);reasoning effort 缺省 max,每步决策时延以实测为准;
 - S3 并发演示的载体是"同标题并发发布"(title-not-taken 世界状态型 guard),不是评论并发(spec 头注有记录);
 - e2e 全量:`CI=true pnpm check && CI=true pnpm e2e`(约 4 分钟,含 43 用例)。

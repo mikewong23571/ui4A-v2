@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 
+import { AppShell } from '@/components/app-shell';
 import { FloatingChat } from '@/components/floating-chat';
 
 import './globals.css';
@@ -17,16 +18,15 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'UI4A',
-  description: 'UI4A — 界面作为合同(占位首页)',
+  description: 'UI4A — 界面作为合同',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="zh-CN" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        {children}
-        {/* 悬浮聊天窗:全站右下角,agent 轨迹的对话入口(arch-brief §8) */}
-        <FloatingChat />
+        {/* aside 槽:assistant 工作台 sidebar(T9 Phase B);收起态为右下 FAB */}
+        <AppShell aside={<FloatingChat />}>{children}</AppShell>
       </body>
     </html>
   );

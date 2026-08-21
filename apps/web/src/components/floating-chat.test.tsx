@@ -1,18 +1,35 @@
 // @vitest-environment jsdom
 /**
- * 悬浮聊天窗测试(T5 Phase B / Task 2 可选小改):委托模式开关——
- * "人类监控成本不随 N 超线性"的最贴合形态:发送后立即回执
+ * assistant 工作台(悬浮聊天)测试。
+ *
+ * T5 Phase B(委托模式):开关打开后发送 mode:'delegated'——发送后立即回执
  * 「已派发委托 <id>,进度见舰队页 /delegations」,委托后台执行,
  * 监控交给舰队页(不在悬浮窗内轮询长任务)。
  *
- * - 默认 inline:POST /api/chat 无 mode 字段,轨迹消息照旧渲染(既有行为);
- * - 委托模式:请求带 mode:'delegated',响应回执进对话(委托 id 短前缀 + 舰队页指路)。
- * jsdom 无 ResizeObserver(assistant-ui 的 viewport/composer 尺寸观测),桩替换。
+ * T9 Phase B(工作台化):
+ * - B1 流式轨迹:inline 响应为 SSE——step 帧逐步追加 assistant 消息
+ *   (每步一条),final 帧更新 sessionId(localStorage 持久化);
+ * - B2 可停止:running 时「停止」可点(onCancel 已接线),点击中止 fetch
+ *   并追加「已停止(仅中断展示,服务端轨迹已在事件日志留痕)」;
+ * - B3 历史:挂载时按 localStorage 的 sessionId 拉 /api/chat/history
+ *   重放回合(goal 作为 user 消息在前);「新会话」清 localStorage + 清空消息;
+ * - B4 三形态壳:FAB(收起)→ 悬浮窗(默认,float 卡片;「分栏」切
+ *   sidebar 右侧分栏 aside,「悬浮」切回;形态记忆 localStorage)→
+ *   「独立窗口」window.open('/chat')。三形态同一 ChatPanel 界面。
+ *
+ * 一次性 JSON 兼容路径(render 短路/委托派发/参数错误)仍覆盖。
+ * jsdom 无 ResizeObserver(assistant-ui 的 viewport/composer 尺寸观测),桩替换;
+ * next/navigation 的 usePathname 桩为 '/'(非 /chat,壳正常渲染)。
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FloatingChat } from './floating-chat';
+
+// usePathname:jsdom 无 AppRouter 上下文;桩为 '/'(工作台壳生效路径)。
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/',
+}));
 
 // assistant-ui 在浏览器用 ResizeObserver(jsdom 未实现;观测性桩足够渲染与交互)。
 class ResizeObserverStub {
@@ -23,12 +40,40 @@ class ResizeObserverStub {
 
 beforeEach(() => {
   vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+  // jsdom 未实现 Element.scrollTo(assistant-ui viewport 自动滚动调用),桩替换。
+  Element.prototype.scrollTo = () => undefined;
 });
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: { 'content-type': 'application/json' },
+  });
+}
+
+/** SSE 响应桩:帧序列一次性入队后关闭(客户端逐帧消费)。 */
+function sseResponse(frames: unknown[]): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const frame of frames) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(frame)}\n\n`));
+      }
+      controller.close();
+    },
+  });
+  return new Response(stream, {
+    status: 200,
+    headers: { 'content-type': 'text/event-stream' },
+  });
+}
+
+/** 永不结束的 SSE 流(停止测试:running 态的确定性来源)。 */
+function hangingSseResponse(): Response {
+  const stream = new ReadableStream<Uint8Array>({ start: () => undefined });
+  return new Response(stream, {
+    status: 200,
+    headers: { 'content-type': 'text/event-stream' },
   });
 }
 
@@ -52,15 +97,16 @@ afterEach(() => {
 
 describe('悬浮聊天窗 · 委托模式(T5 Phase B)', () => {
   it('开启委托开关:请求带 mode=delegated,回执进对话(id 短前缀 + 舰队页指路)', async () => {
-    const fetchMock = vi.fn((_url: string | URL | RequestInfo, _init?: RequestInit) =>
-      Promise.resolve(
+    const fetchMock = vi.fn((...args: [string | URL | RequestInfo, RequestInit?]) => {
+      void args;
+      return Promise.resolve(
         jsonResponse({
           mode: 'delegated',
           delegationId: 'abcdef12-3456-4789-bcde-f0123456789a',
           statusUrl: '/api/delegations/abcdef12-3456-4789-bcde-f0123456789a',
         }),
-      ),
-    );
+      );
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<FloatingChat />);
@@ -76,7 +122,10 @@ describe('悬浮聊天窗 · 委托模式(T5 Phase B)', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
-    const body = JSON.parse((fetchMock.mock.calls[0]![1]! as RequestInit).body as string) as Record<string, unknown>;
+    const body = JSON.parse((fetchMock.mock.calls[0]![1]! as RequestInit).body as string) as Record<
+      string,
+      unknown
+    >;
     expect(body.mode).toBe('delegated');
     expect(body.goal).toEqual({ verb: '发布一篇文章' });
 
@@ -86,9 +135,10 @@ describe('悬浮聊天窗 · 委托模式(T5 Phase B)', () => {
     expect(screen.getByText(/舰队页 \/delegations/)).toBeTruthy();
   });
 
-  it('默认 inline:请求无 mode 字段,轨迹消息照旧(既有行为不动)', async () => {
-    const fetchMock = vi.fn((_url: string | URL | RequestInfo, _init?: RequestInit) =>
-      Promise.resolve(
+  it('一次性 JSON 兼容路径(旧 inline 形状):消息逐条呈现,请求无 mode 字段', async () => {
+    const fetchMock = vi.fn((...args: [string | URL | RequestInfo, RequestInit?]) => {
+      void args;
+      return Promise.resolve(
         jsonResponse({
           sessionId: 'sess-inline',
           driver: 'rule',
@@ -96,8 +146,8 @@ describe('悬浮聊天窗 · 委托模式(T5 Phase B)', () => {
           summary: '目标完成',
           messages: [{ role: 'assistant', text: '导航到 articles' }],
         }),
-      ),
-    );
+      );
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<FloatingChat />);
@@ -107,9 +157,329 @@ describe('悬浮聊天窗 · 委托模式(T5 Phase B)', () => {
     await waitFor(() => {
       expect(screen.getByText('导航到 articles')).toBeTruthy();
     });
-    const body = JSON.parse((fetchMock.mock.calls[0]![1]! as RequestInit).body as string) as Record<string, unknown>;
+    const body = JSON.parse((fetchMock.mock.calls[0]![1]! as RequestInit).body as string) as Record<
+      string,
+      unknown
+    >;
     expect('mode' in body).toBe(false);
     expect(body.goal).toEqual({ verb: '发布一篇文章' });
+  });
+});
+
+describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
+  it('SSE:step 帧逐步各成一条 assistant 消息,final 更新会话标签并持久化', async () => {
+    const frames = [
+      { type: 'step', message: { role: 'assistant', text: '导航到 articles' }, rel: 'articles' },
+      {
+        type: 'step',
+        message: { role: 'assistant', text: '执行 next(article-drafting:main) {"title":"x"}' },
+        rel: 'article-drafting:main',
+      },
+      {
+        type: 'step',
+        message: { role: 'assistant', text: '完成: 目标完成' },
+        rel: 'article-drafting:main',
+      },
+      {
+        type: 'final',
+        payload: {
+          sessionId: 'sess-sse-1',
+          driver: 'rule',
+          requestedDriver: 'auto',
+          outcome: 'done',
+          summary: '目标完成',
+          steps: [],
+          successes: [],
+        },
+      },
+    ];
+    const fetchMock = vi.fn((...args: [string | URL | RequestInfo, RequestInit?]) => {
+      void args;
+      return Promise.resolve(sseResponse(frames));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    // 每步一条(独立气泡),不再是 join('\n') 整坨。
+    await waitFor(() => {
+      expect(screen.getByText('完成: 目标完成')).toBeTruthy();
+    });
+    expect(screen.getByText('导航到 articles')).toBeTruthy();
+    expect(screen.getByText(/执行 next\(article-drafting:main\)/)).toBeTruthy();
+    // final:sessionId 进会话标签(前 8 位)+ localStorage(B1/B3 投影键)。
+    expect(screen.getByText('会话 sess-sse')).toBeTruthy();
+    expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBe('sess-sse-1');
+    // flow 实例步骤的 rel 徽章(弱化呈现;消息文本同含 rel,故用 getAllByText)。
+    expect(screen.getAllByText('article-drafting:main').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('error 帧(服务端兜底)如实进消息', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse([{ type: 'error', error: '聊天循环异常: 爆炸' }]))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    await waitFor(() => {
+      expect(screen.getByText(/失败: 聊天循环异常: 爆炸/)).toBeTruthy();
+    });
+  });
+});
+
+describe('工作台 · 可停止(T9 Phase B / B2)', () => {
+  it('running 时「停止」可点;点击中止并追加「已停止」留痕说明', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(hangingSseResponse())),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    const cancel = (await screen.findByRole('button', {
+      name: '停止',
+    })) as HTMLButtonElement;
+    expect(cancel.disabled).toBe(false);
+    fireEvent.click(cancel);
+
+    await waitFor(() => {
+      expect(screen.getByText('已停止(仅中断展示,服务端轨迹已在事件日志留痕)')).toBeTruthy();
+    });
+    // isRunning 归位:发送按钮回来。
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '发送' })).toBeTruthy();
+    });
+  });
+});
+
+describe('工作台 · 聊天历史(T9 Phase B / B3)', () => {
+  it('挂载按 localStorage 的 sessionId 拉历史并重放(goal 在前,messages 逐条)', async () => {
+    window.localStorage.setItem('ui4a.chat.sessionId', 'sess-hist');
+    const fetchMock = vi.fn((url: string | URL | RequestInfo, init?: RequestInit) => {
+      void init;
+      if (String(url).includes('/api/chat/history')) {
+        return Promise.resolve(
+          jsonResponse({
+            turns: [
+              {
+                seq: 7,
+                ts: '2026-08-21T00:00:00.000Z',
+                sessionId: 'sess-hist',
+                goal: { verb: '发布一篇文章' },
+                outcome: 'done',
+                summary: '目标完成',
+                messages: [
+                  { role: 'assistant', text: '导航到 articles' },
+                  { role: 'assistant', text: '完成: 目标完成' },
+                ],
+                driver: 'rule',
+              },
+            ],
+          }),
+        );
+      }
+      return Promise.resolve(jsonResponse({ error: '未预期请求' }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<FloatingChat />);
+    openChat();
+
+    await waitFor(() => {
+      expect(screen.getByText('完成: 目标完成')).toBeTruthy();
+    });
+    // goal 作为 user 消息在前;轨迹逐条 assistant。
+    expect(screen.getByText('发布一篇文章')).toBeTruthy();
+    expect(screen.getByText('导航到 articles')).toBeTruthy();
+    // 会话标签来自 localStorage(未发新回合;标签只显示前 8 位)。
+    expect(screen.getByText('会话 sess-his')).toBeTruthy();
+    // 只拉了历史,未发聊天请求。
+    expect(
+      fetchMock.mock.calls.every((call) => String(call[0]).includes('/api/chat/history')),
+    ).toBe(true);
+  });
+
+  it('「新会话」清 localStorage + 清空消息(历史仍在日志)', async () => {
+    window.localStorage.setItem('ui4a.chat.sessionId', 'sess-hist');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          jsonResponse({
+            turns: [
+              {
+                seq: 7,
+                ts: '2026-08-21T00:00:00.000Z',
+                sessionId: 'sess-hist',
+                goal: { verb: '发布一篇文章' },
+                outcome: 'done',
+                summary: '目标完成',
+                messages: [{ role: 'assistant', text: '完成: 目标完成' }],
+                driver: 'rule',
+              },
+            ],
+          }),
+        ),
+      ),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    await waitFor(() => {
+      expect(screen.getByText('完成: 目标完成')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '新会话' }));
+
+    expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBeNull();
+    expect(screen.queryByText('完成: 目标完成')).toBeNull();
+    expect(screen.getByText('新会话', { selector: 'span' })).toBeTruthy();
+  });
+
+  it('「历史会话」清单:拉 /api/chat/sessions 呈现,点击进入该会话并重放', async () => {
+    window.localStorage.setItem('ui4a.chat.sessionId', 'sess-cur');
+    const fetchMock = vi.fn((url: string | URL | RequestInfo) => {
+      const href = String(url);
+      if (href.includes('/api/chat/sessions')) {
+        return Promise.resolve(
+          jsonResponse({
+            sessions: [
+              {
+                sessionId: 'sess-old',
+                turns: 2,
+                firstTs: '2026-08-21T08:00:00.000Z',
+                lastTs: '2026-08-21T09:00:00.000Z',
+                lastGoal: '发布旧文章',
+                lastOutcome: 'done',
+              },
+              {
+                sessionId: 'sess-cur',
+                turns: 1,
+                firstTs: '2026-08-22T08:00:00.000Z',
+                lastTs: '2026-08-22T09:00:00.000Z',
+                lastGoal: '发布当前文章',
+                lastOutcome: 'failed',
+              },
+            ],
+          }),
+        );
+      }
+      if (href.includes('sessionId=sess-old')) {
+        return Promise.resolve(
+          jsonResponse({
+            turns: [
+              {
+                seq: 3,
+                ts: '2026-08-21T09:00:00.000Z',
+                sessionId: 'sess-old',
+                goal: { verb: '发布旧文章' },
+                outcome: 'done',
+                summary: '旧目标完成',
+                messages: [{ role: 'assistant', text: '完成: 旧目标完成' }],
+                driver: 'rule',
+              },
+            ],
+          }),
+        );
+      }
+      // 当前会话的挂载历史拉取(空回合)
+      return Promise.resolve(jsonResponse({ turns: [] }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<FloatingChat />);
+    openChat();
+
+    // 打开清单:两行会话,当前会话标注「当前」。
+    fireEvent.click(screen.getByRole('button', { name: '历史会话' }));
+    await waitFor(() => {
+      expect(screen.getByText('发布旧文章')).toBeTruthy();
+    });
+    expect(screen.getByText('发布当前文章')).toBeTruthy();
+    expect(screen.getByText('2 回合')).toBeTruthy();
+    expect(screen.getByText('· 当前')).toBeTruthy();
+
+    // 点击进入 sess-old:持久化 + 重放该会话回合。
+    fireEvent.click(screen.getByText('发布旧文章'));
+    expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBe('sess-old');
+    await waitFor(() => {
+      expect(screen.getByText('完成: 旧目标完成')).toBeTruthy();
+    });
+    expect(screen.getByText('会话 sess-old')).toBeTruthy();
+  });
+});
+
+describe('工作台 · 三形态壳(T9 Phase B / B4)', () => {
+  it('FAB → 悬浮窗(默认,float 卡片,锚点齐);收起回 FAB', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+
+    const { container } = render(<FloatingChat />);
+    // 收起态:FAB。
+    openChat();
+    // 悬浮窗态:fixed 卡片(非 aside 分栏)+ 头部操作(全部带 data-nav,I3)。
+    expect(container.querySelector('aside')).toBeNull();
+    expect(screen.getByPlaceholderText('输入目标…')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '新会话' }).getAttribute('data-nav')).toBe(
+      'local:chat-new',
+    );
+    expect(screen.getByRole('button', { name: '分栏' }).getAttribute('data-nav')).toBe(
+      'local:chat-dock',
+    );
+    expect(screen.getByRole('button', { name: '独立窗口' }).getAttribute('data-nav')).toBe(
+      'local:chat-popout',
+    );
+    expect(screen.getByRole('button', { name: '收起聊天窗' }).getAttribute('data-nav')).toBe(
+      'local:chat-close',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '收起聊天窗' }));
+    expect(screen.queryByPlaceholderText('输入目标…')).toBeNull();
+    expect(screen.getByRole('button', { name: '展开聊天窗' })).toBeTruthy();
+  });
+
+  it('悬浮窗 ⇄ 分栏互切(同一 ChatPanel 界面,形态记忆 localStorage)', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+
+    const { container } = render(<FloatingChat />);
+    openChat();
+    // float → sidebar:「分栏」切换,出现 aside 分栏,头部换成「悬浮」。
+    fireEvent.click(screen.getByRole('button', { name: '分栏' }));
+    expect(container.querySelector('aside')).not.toBeNull();
+    expect(screen.getByRole('button', { name: '悬浮' }).getAttribute('data-nav')).toBe(
+      'local:chat-float',
+    );
+    expect(window.localStorage.getItem('ui4a.chat.mode')).toBe('sidebar');
+    // sidebar → float:「悬浮」切回,aside 消失。
+    fireEvent.click(screen.getByRole('button', { name: '悬浮' }));
+    expect(container.querySelector('aside')).toBeNull();
+    expect(screen.getByRole('button', { name: '分栏' })).toBeTruthy();
+    expect(window.localStorage.getItem('ui4a.chat.mode')).toBe('float');
+    // 形态记忆:sidebar 态收起后重开,直接进 sidebar。
+    fireEvent.click(screen.getByRole('button', { name: '分栏' }));
+    fireEvent.click(screen.getByRole('button', { name: '收起聊天窗' }));
+    openChat();
+    expect(container.querySelector('aside')).not.toBeNull();
+  });
+
+  it('「独立窗口」window.open(/chat) 且本窗收起为 FAB', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    const openMock = vi.fn();
+    window.open = openMock as unknown as typeof window.open;
+
+    render(<FloatingChat />);
+    openChat();
+    fireEvent.click(screen.getByRole('button', { name: '独立窗口' }));
+
+    expect(openMock).toHaveBeenCalledTimes(1);
+    expect(openMock.mock.calls[0]![0]).toBe('/chat');
+    expect(screen.getByRole('button', { name: '展开聊天窗' })).toBeTruthy();
   });
 });
 
@@ -126,14 +496,19 @@ describe('悬浮聊天窗 · render capability(T7 Phase C / S5)', () => {
             outcome: 'done',
             summary: '渲染已生成:articles-by-category',
             messages: [
-              { role: 'assistant', text: `已生成渲染「articles-by-category」(chart,首次凝固)→ 在画布打开:${canvasUrl}` },
+              {
+                role: 'assistant',
+                text: `已生成渲染「articles-by-category」(chart,首次凝固)→ 在画布打开:${canvasUrl}`,
+              },
             ],
             render: {
               concern: 'articles-by-category',
               spec: {
                 concern: 'articles-by-category',
                 component: 'chart',
-                bind: { series: { collection: 'articles', dimension: 'articles.fields.category' } },
+                bind: {
+                  series: { collection: 'articles', dimension: 'articles.fields.category' },
+                },
               },
               frozenNow: true,
               canvasUrl,

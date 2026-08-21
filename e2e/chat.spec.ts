@@ -9,8 +9,11 @@
  *   driver='rule'(无 LLM 网络调用的 e2e 级证据;单测级 auto 回退断言见
  *   packages/agent/src/llm-driver.test.ts);
  * - flow 导航补全:articles → flow 入口链接 → 向导实例(零 startRel 特权)。
- * - 悬浮窗:首页(3100 webServer)按钮可见、可展开(功能走查 HTTP 级由
- *   B4/I1 覆盖;完整 UI 走查留 Phase F 一并做)。
+ * - 悬浮窗:首页(3100 webServer)按钮可见、可展开。
+ *
+ * T9 Phase B:inline 响应改 SSE 流(text/event-stream;step 帧逐步 + final
+ * 终帧)——chat() helper 解析帧并把 step 文本聚回 messages,既有断言口径
+ * 不变;新增:帧序断言(step 先于 final)与「停止」按钮可点的 UI 走查。
  */
 import { createServer } from 'node:http';
 
@@ -27,16 +30,51 @@ interface ChatResponseBody {
   error?: string;
 }
 
+/** SSE 帧(T9 Phase B):step 逐步消息 / final 终帧 / error 兜底。 */
+interface SseFrame {
+  type: 'step' | 'final' | 'error';
+  message?: { role: 'assistant'; text: string };
+  payload?: Omit<ChatResponseBody, 'messages'>;
+  error?: string;
+}
+
+/** 解析 SSE 帧流(`data: <json>` 空行分隔)。 */
+function parseSseFrames(raw: string): SseFrame[] {
+  return raw
+    .split('\n\n')
+    .map((chunk) => chunk.split('\n').find((line) => line.startsWith('data:')))
+    .filter((line): line is string => line !== undefined)
+    .map((line) => JSON.parse(line.slice('data:'.length).trim()) as SseFrame);
+}
+
 async function chat(
   body: Record<string, unknown>,
-): Promise<{ status: number; json: ChatResponseBody; raw: string }> {
+): Promise<{ status: number; json: ChatResponseBody; raw: string; frames: SseFrame[] }> {
   const response = await fetch(`${SCENARIO_BASE}/api/chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
   const raw = await response.text();
-  return { status: response.status, json: JSON.parse(raw) as ChatResponseBody, raw };
+  const contentType = response.headers.get('content-type') ?? '';
+  // T9 Phase B:inline 为 SSE——step 帧聚回 messages,final payload 展开为
+  // json(与旧一次性 JSON 同字段,既有断言口径不变);render/delegated 仍 JSON。
+  if (contentType.includes('text/event-stream')) {
+    const frames = parseSseFrames(raw);
+    const finalFrame = frames.find((frame) => frame.type === 'final');
+    const messages = frames.flatMap((frame) =>
+      frame.type === 'step' && frame.message !== undefined ? [frame.message] : [],
+    );
+    const json = {
+      ...(finalFrame?.payload ?? {}),
+      messages,
+      ...(finalFrame === undefined
+        ? { error: frames.find((frame) => frame.type === 'error')?.error ?? '(无 final 帧)' }
+        : {}),
+    } as ChatResponseBody;
+    return { status: response.status, json, raw, frames };
+  }
+  return { status: response.status, json: JSON.parse(raw) as ChatResponseBody, raw, frames: [] };
 }
 
 async function articleCount(): Promise<number> {
@@ -110,7 +148,7 @@ test('I1:无 GLM_API_KEY → chat auto 回退 rule,B1 完成(文章 2→3)', asy
     async () => {
       expect(await articleCount()).toBe(2);
 
-      const { status, json } = await chat({
+      const { status, json, frames } = await chat({
         sessionId: 'i1-e2e',
         goal: {
           verb: '发布一篇文章',
@@ -131,6 +169,11 @@ test('I1:无 GLM_API_KEY → chat auto 回退 rule,B1 完成(文章 2→3)', asy
       expect(trajectory.match(/执行 next/g)).toHaveLength(3);
       expect(trajectory).toContain('执行 publish');
       expect(trajectory).toContain('完成');
+
+      // T9 Phase B:SSE 帧序——step 帧逐条先于 final 终帧(过程可见性)。
+      expect(frames.length).toBeGreaterThan(1);
+      expect(frames[frames.length - 1]!.type).toBe('final');
+      expect(frames.slice(0, -1).every((frame) => frame.type === 'step')).toBe(true);
 
       expect(await articleCount()).toBe(3);
     },
@@ -182,5 +225,33 @@ test('悬浮聊天窗在首页可见且可展开', async ({ page }) => {
   await expect(button).toBeVisible();
   await button.click();
   await expect(page.getByPlaceholder('输入目标…')).toBeVisible();
+  await expect(page.getByRole('button', { name: '发送' })).toBeVisible();
+});
+
+test('工作台:「停止」running 时可点,点击中断展示并留痕说明(T9 Phase B / B2)', async ({ page }) => {
+  // 拦截 /api/chat 为迟到的 SSE 流:running 窗口的确定性来源(不依赖引擎)。
+  await page.route('**/api/chat', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    try {
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+        body: 'data: {"type":"final","payload":{"sessionId":"e2e-stop","driver":"rule","requestedDriver":"auto","outcome":"done","summary":"晚到","steps":[],"successes":[]}}\n\n',
+      });
+    } catch {
+      // 客户端已中止(停止):fulfill 落空属预期路径。
+    }
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: '展开聊天窗' }).click();
+  await page.getByPlaceholder('输入目标…').fill('发布一篇文章');
+  await page.getByRole('button', { name: '发送' }).click();
+
+  const stop = page.getByRole('button', { name: '停止' });
+  await expect(stop).toBeVisible();
+  await expect(stop, 'running 时停止必须可点(onCancel 已接线)').toBeEnabled();
+  await stop.click();
+  await expect(page.getByText('已停止(仅中断展示,服务端轨迹已在事件日志留痕)')).toBeVisible();
+  // isRunning 归位:发送按钮回来。
   await expect(page.getByRole('button', { name: '发送' })).toBeVisible();
 });

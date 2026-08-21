@@ -6,12 +6,11 @@
  *
  * 1) fuzz:枚举七个页面(首页/事件流/收件箱/实体页/BIOS 激活页/画布/舰队页)
  *    DOM 所有可点元素(button/a/[role=button])→ 每个必有 data-action
- *    (已声明动作)或 data-nav(合同导航/本地视图控件)或属展示类白名单。
- *    白名单口径:react-chrono(timeline 词条)内部控件——时间轴点位等
- *    纯展示组件自带的交互原语,无合同语义(不产生任何提交;词条实现
- *    见 apps/web/src/render/words/timeline.tsx 头注,toolbar 缺省关闭);
- *    Next dev overlay 在 nextjs-portal 影子 DOM 内,document 枚举不可见,
- *    且非应用树产物。每页断言 ≥1 可点元素(防空泛通过)。
+ *    (已声明动作)或 data-nav(合同导航/本地视图控件),零白名单——
+ *    timeline 词条已平替为自绘纯展示实现(T9 Phase D,零交互原语,
+ *    原 react-chrono 内部控件白名单随之退出);Next dev overlay 在
+ *    nextjs-portal 影子 DOM 内,document 枚举不可见,且非应用树产物。
+ *    每页断言 ≥1 可点元素(防空泛通过)。
  *
  * 2) 未声明按钮拒提交——口径:渲染层不产生合同外提交。直接 fetch 的注入
  *    按钮天然绕过渲染层(不属于本断言);可测口径是 React 树内合成路径:
@@ -31,9 +30,17 @@ import { SCENARIO_BASE, withFreshServer } from './server-kit';
 /** fuzz 页面清单(骨架五面 + 实体页;GOAL I3「所有页面」的本站全集)。 */
 const PAGES: { name: string; path: string; ready: string }[] = [
   { name: '首页', path: '/', ready: '[data-testid="situation"]' },
-  { name: '事件流', path: '/events', ready: '[data-word="timeline"], [data-testid="empty-events"]' },
+  {
+    name: '事件流',
+    path: '/events',
+    ready: '[data-word="timeline"], [data-testid="empty-events"]',
+  },
   { name: '收件箱', path: '/entity?rel=inbox', ready: 'a[data-nav="home"]' },
-  { name: '实体页(已发布文章,含动作)', path: '/entity?rel=post:post-welcome', ready: '[data-action]' },
+  {
+    name: '实体页(已发布文章,含动作)',
+    path: '/entity?rel=post:post-welcome',
+    ready: '[data-action]',
+  },
   { name: 'BIOS 激活页', path: '/meta/activations', ready: 'a[data-nav="meta-back"]' },
   { name: '画布', path: '/canvas', ready: '[data-surface]' },
   { name: '舰队页', path: '/delegations', ready: '[data-testid="empty-fleet"], table' },
@@ -45,10 +52,9 @@ interface ClickableProbe {
   text: string;
   action: string | null;
   nav: string | null;
-  whitelisted: boolean;
 }
 
-/** 枚举 DOM 全部可点元素与标注(I3 白名单:timeline 词条内部控件)。 */
+/** 枚举 DOM 全部可点元素与标注(零白名单:timeline 已平替为纯展示)。 */
 async function probeClickables(page: Page): Promise<ClickableProbe[]> {
   return page.evaluate(() =>
     Array.from(document.querySelectorAll('button, a, [role="button"]')).map((element) => ({
@@ -56,8 +62,6 @@ async function probeClickables(page: Page): Promise<ClickableProbe[]> {
       text: (element.textContent ?? '').trim().slice(0, 32),
       action: element.getAttribute('data-action'),
       nav: element.getAttribute('data-nav'),
-      // react-chrono(timeline 词条)内部控件:纯展示组件的交互原语,无合同语义。
-      whitelisted: element.closest('[data-word="timeline"]') !== null,
     })),
   );
 }
@@ -93,7 +97,7 @@ test.beforeEach(() => {
   test.setTimeout(180_000);
 });
 
-test('I3 fuzz:全部页面所有可点元素必映射 data-action/data-nav(白名单:chrono 展示控件)', async ({ page }) => {
+test('I3 fuzz:全部页面所有可点元素必映射 data-action/data-nav(零白名单)', async ({ page }) => {
   await withFreshServer(async () => {
     for (const target of PAGES) {
       await page.goto(`${SCENARIO_BASE}${target.path}`);
@@ -105,7 +109,7 @@ test('I3 fuzz:全部页面所有可点元素必映射 data-action/data-nav(白�
         `${target.name}(${target.path})应存在可点元素(fuzz 非空泛)`,
       ).toBeGreaterThan(0);
       const offenders = clickables.filter(
-        (element) => element.action === null && element.nav === null && !element.whitelisted,
+        (element) => element.action === null && element.nav === null,
       );
       expect(
         offenders,
@@ -117,7 +121,9 @@ test('I3 fuzz:全部页面所有可点元素必映射 data-action/data-nav(白�
   });
 });
 
-test('I3 拒提交:React 树内合成点击未声明按钮 → 零 /api/exec;已声明按钮恰好一次(正控制)', async ({ page }) => {
+test('I3 拒提交:React 树内合成点击未声明按钮 → 零 /api/exec;已声明按钮恰好一次(正控制)', async ({
+  page,
+}) => {
   await withFreshServer(async () => {
     const exec = execCounter(page);
 
@@ -132,9 +138,7 @@ test('I3 拒提交:React 树内合成点击未声明按钮 → 零 /api/exec;已
 
     // b. 正控制:点击已声明 data-action=unpublish → 恰好一次提交(裁决层裁决)。
     await page.click('[data-action="unpublish"]');
-    await expect
-      .poll(() => exec.count(), { timeout: 15_000 })
-      .toBe(1);
+    await expect.poll(() => exec.count(), { timeout: 15_000 }).toBe(1);
     // 执行结果如实呈现(成功后实体刷新为 offline 视图)。
     await expect(page.locator('main')).toContainText('已下线', { timeout: 15_000 });
 

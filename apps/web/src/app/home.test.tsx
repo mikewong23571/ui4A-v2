@@ -9,7 +9,7 @@
  * - 态势投影(T7):stat 数值与实体 count 对拍(待确认 = inbox.count、
  *   文章数 = articles.count、在飞 = delegations running 计数);timeline
  *   最近事件(/api/events 投影,零 AI);
- * - 全站导航(SiteNav):事件流/画布/舰队/BIOS 入口;
+ * - 全站导航(SiteNav,经 AppShell 顶栏):事件流/画布/舰队/BIOS 入口;
  * - 铁律 3:首页是纯导航页,不渲染任何可提交元素(form / type=submit 按钮 /
  *   data-action 按钮;chrono 内部 type=button 控件不构成提交面)。
  */
@@ -18,6 +18,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenEntity } from '@ui4a/engine';
 
+import { AppShell } from '@/components/app-shell';
 import { stubBrowserApis } from '@/test/browser-stubs';
 
 import Home from './page';
@@ -84,10 +85,7 @@ const commentsEntity: SirenEntity = {
 };
 
 /** 确认成员(inbox 子实体;pending confirmation 的投影形状)。 */
-function confirmationMember(
-  id: string,
-  overrides: Record<string, unknown> = {},
-): SirenEntity {
+function confirmationMember(id: string, overrides: Record<string, unknown> = {}): SirenEntity {
   return {
     class: ['confirmation', 'pending'],
     rel: ['item'],
@@ -150,8 +148,18 @@ function mockContract(inbox: SirenEntity = inboxEntity(2)) {
           actions: [],
           links: [],
           entities: [
-            { class: ['delegation'], properties: { rel: 'delegation:a', status: 'running' }, actions: [], links: [] },
-            { class: ['delegation'], properties: { rel: 'delegation:b', status: 'completed' }, actions: [], links: [] },
+            {
+              class: ['delegation'],
+              properties: { rel: 'delegation:a', status: 'running' },
+              actions: [],
+              links: [],
+            },
+            {
+              class: ['delegation'],
+              properties: { rel: 'delegation:b', status: 'completed' },
+              actions: [],
+              links: [],
+            },
           ],
         }),
       );
@@ -160,9 +168,33 @@ function mockContract(inbox: SirenEntity = inboxEntity(2)) {
       return Promise.resolve(
         jsonResponse(200, {
           events: [
-            { seq: 1, kind: 'seed', rel: 'seed:business-domain', action: null, actor: null, principal: null, channel: null },
-            { seq: 2, kind: 'action-executed', rel: 'post:post-welcome', action: 'unpublish', actor: 'human', principal: 'local-user', channel: 'renderer' },
-            { seq: 3, kind: 'delegation-started', rel: 'delegation:a', action: null, actor: 'agent', principal: 'user:mike', channel: null },
+            {
+              seq: 1,
+              kind: 'seed',
+              rel: 'seed:business-domain',
+              action: null,
+              actor: null,
+              principal: null,
+              channel: null,
+            },
+            {
+              seq: 2,
+              kind: 'action-executed',
+              rel: 'post:post-welcome',
+              action: 'unpublish',
+              actor: 'human',
+              principal: 'local-user',
+              channel: 'renderer',
+            },
+            {
+              seq: 3,
+              kind: 'delegation-started',
+              rel: 'delegation:a',
+              action: null,
+              actor: 'agent',
+              principal: 'user:mike',
+              channel: null,
+            },
           ],
         }),
       );
@@ -239,9 +271,9 @@ describe('入口页(首页)', () => {
     await waitFor(() => {
       expect(container.querySelector('a[data-rel="inbox"]')).not.toBeNull();
     });
-    expect(container.querySelector<HTMLAnchorElement>('a[data-rel="inbox"]')!.textContent).toContain(
-      '待确认 0',
-    );
+    expect(
+      container.querySelector<HTMLAnchorElement>('a[data-rel="inbox"]')!.textContent,
+    ).toContain('待确认 0');
   });
 
   it('委托舰队入口(T5 Phase B):链接到 /delegations(并行委托的监控视图)', async () => {
@@ -295,12 +327,18 @@ describe('入口页(首页)', () => {
     });
     // deref 对拍:待确认 = inbox.count(2),文章数 = articles.count(2)
     expect(container.querySelector('[data-testid="stat-pending"]')?.textContent).toContain('2');
-    expect(container.querySelector('[data-testid="stat-pending"]')?.textContent).toContain('待确认');
+    expect(container.querySelector('[data-testid="stat-pending"]')?.textContent).toContain(
+      '待确认',
+    );
     expect(container.querySelector('[data-testid="stat-articles"]')?.textContent).toContain('2');
-    expect(container.querySelector('[data-testid="stat-articles"]')?.textContent).toContain('文章数');
+    expect(container.querySelector('[data-testid="stat-articles"]')?.textContent).toContain(
+      '文章数',
+    );
     // 在飞委托 = delegations 成员 running 计数(1 running / 2 total)
     expect(container.querySelector('[data-testid="stat-running"]')?.textContent).toContain('1');
-    expect(container.querySelector('[data-testid="stat-running"]')?.textContent).toContain('在飞委托');
+    expect(container.querySelector('[data-testid="stat-running"]')?.textContent).toContain(
+      '在飞委托',
+    );
   });
 
   it('态势 timeline:最近事件来自 /api/events 投影(零 AI,尾部窗口)', async () => {
@@ -310,9 +348,9 @@ describe('入口页(首页)', () => {
     // chrono 的卡片在容器挂载后异步渲染:等待内容本身而非仅容器
     //(机器负载下卡片晚于容器出现,读早了 textContent 为空——竞态修复)。
     await waitFor(() => {
-      expect(container.querySelector('[data-testid="situation-timeline"]')?.textContent ?? '').toContain(
-        'action-executed',
-      );
+      expect(
+        container.querySelector('[data-testid="situation-timeline"]')?.textContent ?? '',
+      ).toContain('action-executed');
     });
     const text = container.querySelector('[data-testid="situation-timeline"]')?.textContent ?? '';
     expect(text).toContain('delegation-started');
@@ -320,7 +358,12 @@ describe('入口页(首页)', () => {
 
   it('全站导航(SiteNav):事件流/画布入口可见(data-nav 标注)', async () => {
     vi.stubGlobal('fetch', mockContract());
-    const { container } = render(<Home />);
+    // T9 Phase A:SiteNav 上移至 AppShell 顶栏,随壳断言。
+    const { container } = render(
+      <AppShell>
+        <Home />
+      </AppShell>,
+    );
     await waitFor(() => {
       expect(container.querySelector('a[href*="post%3Apost-welcome"]')).not.toBeNull();
     });

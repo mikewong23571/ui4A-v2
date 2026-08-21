@@ -11,6 +11,17 @@
  */
 import type { ActivationCheck, DefinitionDiff, SirenEntity } from '@ui4a/engine';
 
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+
 import { ActionRunner } from '../action-runner';
 import { blockedForRenderer } from '../entity-view';
 import { DefinitionDiffView } from './diff-render';
@@ -18,7 +29,9 @@ import { execMetaAction, useMetaEntity } from './meta-client';
 
 /** properties.checks 的投影形状(ActivationCheck 列表)。 */
 function checksOf(entity: SirenEntity): ActivationCheck[] {
-  return Array.isArray(entity.properties.checks) ? (entity.properties.checks as ActivationCheck[]) : [];
+  return Array.isArray(entity.properties.checks)
+    ? (entity.properties.checks as ActivationCheck[])
+    : [];
 }
 
 function scalarPairs(entity: SirenEntity): [string, string][] {
@@ -47,96 +60,115 @@ export function ActivationView({ id, entity, onChanged }: ActivationViewProps) {
   const guardMap = new Map((entity['guard-results'] ?? []).map((entry) => [entry.action, entry]));
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-6">
+    <div>
       <nav className="mb-2 text-sm">
-        <a href="/meta/activations" data-nav="meta-activations" className="text-blue-600 hover:underline">
+        <a
+          href="/meta/activations"
+          data-nav="meta-activations"
+          className="text-primary hover:underline"
+        >
           ← 激活队列
         </a>
       </nav>
-      <h1 className="text-2xl font-semibold text-zinc-900">
-        激活 {String(properties.id ?? id)}
-      </h1>
-      <p className="mt-1 text-xs text-zinc-500">
+      <h1 className="text-2xl font-semibold tracking-tight">激活 {String(properties.id ?? id)}</h1>
+      <p className="mt-1 text-xs text-muted-foreground">
         {String(properties.flow ?? '')} · v{String(properties.version ?? '')} · 状态{' '}
         {String(properties.status ?? '')}
       </p>
 
       <section aria-label="属性" className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-700">属性</h2>
-        <table className="w-full border-collapse text-sm">
-          <tbody>
-            {scalarPairs(entity).map(([key, value]) => (
-              <tr key={key} className="border-b border-zinc-100">
-                <th scope="row" className="py-1 pr-4 text-left font-normal text-zinc-500">
-                  {key}
-                </th>
-                <td className="py-1 break-all text-zinc-800">{value}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <h2 className="mb-2 text-sm font-semibold">属性</h2>
+        <div className="rounded-md border bg-card">
+          <Table>
+            <TableBody>
+              {scalarPairs(entity).map(([key, value]) => (
+                <TableRow key={key}>
+                  <th
+                    scope="row"
+                    className="px-3 py-2 text-left align-top font-normal whitespace-nowrap text-muted-foreground"
+                  >
+                    {key}
+                  </th>
+                  <TableCell className="px-3 py-2 break-all whitespace-normal">{value}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </section>
 
       <section aria-label="不变式检查" className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-700">激活不变式({checks.length})</h2>
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500">
-              <th className="py-1 pr-4">检查</th>
-              <th className="py-1 pr-4">结果</th>
-              <th className="py-1">明细</th>
-            </tr>
-          </thead>
-          <tbody>
-            {checks.map((check) => (
-              <tr key={check.name} className="border-b border-zinc-100 align-top">
-                <td className="py-1 pr-4 text-zinc-800">{check.name}</td>
-                <td className={`py-1 pr-4 ${check.pass ? 'text-green-700' : 'text-red-600'}`}>
-                  {check.pass ? '通过' : '失败'}
-                </td>
-                <td className="py-1 break-all text-zinc-600">
-                  {(check.detail ?? []).join('; ')}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <h2 className="mb-2 text-sm font-semibold">激活不变式({checks.length})</h2>
+        <div className="rounded-md border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="px-3 text-muted-foreground">检查</TableHead>
+                <TableHead className="px-3 text-muted-foreground">结果</TableHead>
+                <TableHead className="px-3 text-muted-foreground">明细</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {checks.map((check) => (
+                <TableRow key={check.name}>
+                  <TableCell className="px-3 py-2 align-top">{check.name}</TableCell>
+                  <TableCell className="px-3 py-2 align-top">
+                    <Badge variant={check.pass ? 'secondary' : 'destructive'}>
+                      {check.pass ? '通过' : '失败'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="px-3 py-2 align-top break-all whitespace-normal text-muted-foreground">
+                    {(check.detail ?? []).join('; ')}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </section>
 
       <section aria-label="机械 diff" className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-700">
+        <h2 className="mb-2 text-sm font-semibold">
           机械 diff(基线 v{String(Number(properties.version ?? 1) - 1)} → 候选 v
           {String(properties.version ?? '')})
         </h2>
-        {diff !== undefined ? (
-          <DefinitionDiffView diff={diff} />
-        ) : (
-          <p className="mt-2 text-sm text-zinc-500">本激活无 diff 载荷(diff 字段引入前的旧日志)。</p>
-        )}
+        <Card className="gap-0 overflow-x-auto p-4">
+          {diff !== undefined ? (
+            <DefinitionDiffView diff={diff} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              本激活无 diff 载荷(diff 字段引入前的旧日志)。
+            </p>
+          )}
+        </Card>
       </section>
 
       {entity.actions.length > 0 && (
         <section aria-label="审批" className="mt-6">
-          <h2 className="mb-2 text-sm font-semibold text-zinc-700">审批(actor=human,不委托)</h2>
+          <h2 className="mb-2 text-sm font-semibold">审批(actor=human,不委托)</h2>
           <div className="space-y-4">
             {entity.actions.map((action) => {
               const guard = guardMap.get(action.name);
               return (
-                <ActionRunner
+                <Card
                   key={`${id}:${action.name}:${JSON.stringify(action.fields)}`}
-                  rel={`meta/activation:${id}`}
-                  action={action}
-                  blocked={blockedForRenderer(guard)}
-                  blockReason={guard?.reason}
-                  onExecuted={onChanged}
-                  execFn={execMetaAction}
-                />
+                  className="gap-3 p-4"
+                >
+                  <ActionRunner
+                    rel={`meta/activation:${id}`}
+                    action={action}
+                    blocked={blockedForRenderer(guard)}
+                    blockReason={guard?.reason}
+                    onExecuted={onChanged}
+                    execFn={execMetaAction}
+                  />
+                </Card>
               );
             })}
           </div>
         </section>
       )}
-    </main>
+    </div>
   );
 }
 
@@ -146,23 +178,27 @@ export function ActivationPageBody({ id }: { id: string }) {
 
   if (state === 'error' || state === 'missing') {
     return (
-      <main className="mx-auto w-full max-w-4xl px-4 py-6">
+      <div>
         <nav className="mb-2 text-sm">
-          <a href="/meta/activations" data-nav="meta-activations" className="text-blue-600 hover:underline">
+          <a
+            href="/meta/activations"
+            data-nav="meta-activations"
+            className="text-primary hover:underline"
+          >
             ← 激活队列
           </a>
         </nav>
-        <p className="text-sm text-zinc-700">
+        <p className="text-sm">
           {state === 'missing' ? `激活 "${id}" 不存在(404)。` : '读取激活失败(服务不可用)。'}
         </p>
-      </main>
+      </div>
     );
   }
   if (state === 'loading' || entity === null) {
     return (
-      <main className="mx-auto w-full max-w-4xl px-4 py-6">
-        <p className="text-sm text-zinc-500">加载中…</p>
-      </main>
+      <div>
+        <p className="text-sm text-muted-foreground">加载中…</p>
+      </div>
     );
   }
   return <ActivationView id={id} entity={entity} onChanged={refresh} />;

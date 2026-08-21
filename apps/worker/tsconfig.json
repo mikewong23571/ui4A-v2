@@ -4,7 +4,11 @@
     "types": ["node"],
     // worker 直引 apps/web 的 db/engine 源码(T5 起),类型图随 T7 词条接入
     // 延伸到 web 的 .tsx(react-jsx 仅影响类型解析,不改变 worker 产物)。
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    // web 侧 `@/*` 别名随 T9 shadcn 组件(ui/*)进入类型图;映射回 web/src。
+    "paths": {
+      "@/*": ["../web/src/*"]
+    }
   },
   "include": ["src"]
 }

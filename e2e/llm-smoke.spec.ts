@@ -3,7 +3,7 @@
  *
  * goal B1 不传 fields:三步向导内容(标题/分类/正文)全部由 LLM 按字段语义
  * 自行编写(枚举字段必须落在 enum 内)。跑在真实 GLM coding plan 端点
- * (open.bigmodel.cn/api/coding/paas/v4,模型缺省 glm-4.7)上:
+ * (open.bigmodel.cn/api/coding/paas/v4,模型缺省 glm-5.3,D20)上:
  *
  * ```bash
  * GLM_API_KEY=$(cat ~/.secrets/glm_coding_plan_key) RUN_LLM_E2E=1 \
@@ -39,11 +39,29 @@ test('真实 GLM:B1 目标让 LLM 自编三步内容并发布(文章 2→3)', as
       }),
     });
     expect(response.status).toBe(200);
-    const body = (await response.json()) as {
-      driver: string;
-      outcome: string;
-      summary: string | null;
-      messages: { text: string }[];
+    // T9 Phase B:inline 响应为 SSE 流(step 帧 + final 终帧);final payload
+    // 即回合结果,messages 由各 step 帧文本聚回(与旧一次性 JSON 同口径)。
+    const raw = await response.text();
+    const frames = raw
+      .split('\n\n')
+      .map((chunk) => chunk.split('\n').find((line) => line.startsWith('data:')))
+      .filter((line): line is string => line !== undefined)
+      .map(
+        (line) =>
+          JSON.parse(line.slice('data:'.length).trim()) as {
+            type: string;
+            message?: { text: string };
+            payload?: { driver?: string; outcome?: string; summary?: string | null };
+          },
+      );
+    const finalPayload = frames.find((frame) => frame.type === 'final')?.payload ?? {};
+    const body = {
+      driver: finalPayload.driver,
+      outcome: finalPayload.outcome,
+      summary: finalPayload.summary ?? null,
+      messages: frames.flatMap((frame) =>
+        frame.type === 'step' && frame.message !== undefined ? [frame.message] : [],
+      ),
     };
 
     expect(body.driver).toBe('llm');

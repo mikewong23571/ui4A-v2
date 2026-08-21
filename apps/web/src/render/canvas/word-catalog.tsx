@@ -5,21 +5,18 @@
  *
  * - 目录 = basicCatalog 布局原语 + 我们渲染词汇表的十数据词条
  *   (createSurface 以 catalogId = /api/render/catalog 的稳定 URI 协商);
- * - 词条实现 = createComponentImplementation(官方 API):props schema 用
- *   DynamicValue 联合(字面量 | {path} 数据绑定 | 函数调用),generic binder
- *   把 {path} 解析成渲染器私有数据模型的值 → 转发词条组件(words/);
+ * - 词条实现 = createBinderlessComponentImplementation(官方 API):渲染期
+ *   经 dataContext.resolveDynamicValue 一次性同步解析 {path} 绑定(静态投影
+ *   无响应式消费方;响应式 generic binder 与词条内 store 钩子互通知会死循环,
+ *   见 DECISIONS D18)→ 转发词条组件(words/);
  * - 词条组件零改动:目录层只是 A2UI surface 宿主与词条之间的适配。
  */
 import {
   basicCatalog,
-  createComponentImplementation,
+  createBinderlessComponentImplementation,
   type ReactComponentImplementation,
 } from '@a2ui/react/v0_9';
-import {
-  Catalog,
-  DataBindingSchema,
-  FunctionCallSchema,
-} from '@a2ui/web_core/v0_9';
+import { Catalog, DataBindingSchema, FunctionCallSchema } from '@a2ui/web_core/v0_9';
 import type { ComponentApi } from '@a2ui/web_core/v0_9';
 import { z } from 'zod';
 
@@ -56,7 +53,16 @@ function toWordProps(props: WordRenderProps): WordProps {
   return rest;
 }
 
-/** 词条实现工厂(词名 + props 形状 → ReactComponentImplementation)。 */
+/**
+ * 词条实现工厂(词名 + props 形状 → ReactComponentImplementation)。
+ *
+ * 一次性同步解析(2026-08-22 卡死修复):用 binderless 实现 + resolveDynamicValue
+ * 渲染期直读数据模型,**不建响应式订阅**。依据:本站 surface 是静态投影——
+ * agent 不发 updateDataModel(spec 架构决定 3),action 执行后整面 reload 重建,
+ * 响应式绑定无消费方;而官方 generic binder 的 useSyncExternalStore 与词条内部
+ * 的 store 钩子(如 TanStack useReactTable 渲染期 setOptions)相互通知会形成
+ * render/commit 死循环(实测:canvas 页任意二次状态变更主线程卡死)。
+ */
 function wordImplementation(
   name: string,
   shape: Record<string, z.ZodTypeAny>,
@@ -66,7 +72,20 @@ function wordImplementation(
     name,
     schema: z.object({ ...commonProps, ...shape }).strict(),
   };
-  return createComponentImplementation(api, ({ props }) => <Word {...toWordProps(props as WordRenderProps)} />);
+  return createBinderlessComponentImplementation(api, ({ context }) => {
+    const raw = context.componentModel.properties as Record<string, unknown>;
+    const resolved = Object.fromEntries(
+      Object.entries(raw).map(([key, value]) => [
+        key,
+        // DynamicValue 联合(字面量 | {path} | {call});componentModel.properties
+        // 的存储类型是 unknown,schema 已在 createSurface 协商侧把关。
+        context.dataContext.resolveDynamicValue(
+          value as Parameters<typeof context.dataContext.resolveDynamicValue>[0],
+        ),
+      ]),
+    );
+    return <Word {...toWordProps(resolved as WordRenderProps)} />;
+  });
 }
 
 /** 十词条的 A2UI 实现(props 全 DynamicValue;形状与注册表 bindSchema 同语义)。 */
@@ -103,7 +122,7 @@ const wordImplementations: ReactComponentImplementation[] = [
  * 画布目录:basic 布局原语 + 十数据词条(自定义扩展目录;id 与
  * /api/render/catalog 的 $id/catalogId 同源,createSurface 协商用)。
  */
-export const ui4aRenderCatalog: Catalog<ReactComponentImplementation> = new Catalog(
-  CATALOG_ID,
-  [...basicCatalog.components.values(), ...wordImplementations],
-);
+export const ui4aRenderCatalog: Catalog<ReactComponentImplementation> = new Catalog(CATALOG_ID, [
+  ...basicCatalog.components.values(),
+  ...wordImplementations,
+]);

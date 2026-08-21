@@ -1,20 +1,24 @@
 'use client';
 /**
- * table 词条(T7 Phase B / 选型 §6):TanStack Table 渲染集合成员。
+ * table 词条(T9 Phase D):TanStack Table 渲染集合成员(shadcn Table 令牌)。
  *
  * - rows = 集合引用的解引用结果(成员实体数组);列零硬编码:从成员
  *   properties.fields 键并集派生(首个出现序),追加节点列(properties.node);
  * - 行键 = 成员 rel;caption = 字段引用直出;
  * - 纯只读视图(零可提交元素——动作经 form/detail 词条的已声明 action)。
  */
-import {
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-  type ColumnDef,
-} from '@tanstack/react-table';
+import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table';
 import type { SirenEntity } from '@ui4a/engine';
 import { useMemo } from 'react';
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 import { asMembers, asOptionalString, memberRelOf, type WordProps } from './shared';
 
@@ -47,7 +51,9 @@ export function TableWord(props: WordProps) {
       id: key,
       header: key,
       cell: (context) =>
-        cellText((context.row.original.properties.fields as Record<string, unknown> | undefined)?.[key]),
+        cellText(
+          (context.row.original.properties.fields as Record<string, unknown> | undefined)?.[key],
+        ),
     }));
     derived.push({
       id: 'node',
@@ -62,31 +68,37 @@ export function TableWord(props: WordProps) {
 
   return (
     <figure data-word="table" className="w-full">
-      {caption !== undefined && <figcaption className="mb-2 text-sm font-semibold text-zinc-700">{caption}</figcaption>}
-      <table className="w-full border-collapse text-sm">
-        <thead>
+      {caption !== undefined && (
+        <figcaption className="mb-2 text-sm font-semibold text-muted-foreground">
+          {caption}
+        </figcaption>
+      )}
+      <Table>
+        <TableHeader>
           {table.getHeaderGroups().map((group) => (
-            <tr key={group.id} className="border-b border-zinc-200 text-left text-xs text-zinc-500">
+            <TableRow key={group.id} className="hover:bg-transparent">
               {group.headers.map((header) => (
-                <th key={header.id} className="py-2 pr-4">
-                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                </th>
+                <TableHead key={header.id} className="text-xs text-muted-foreground">
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(header.column.columnDef.header, header.getContext())}
+                </TableHead>
               ))}
-            </tr>
+            </TableRow>
           ))}
-        </thead>
-        <tbody>
+        </TableHeader>
+        <TableBody>
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} data-rel={memberRelOf(row.original, row.index)} className="border-b border-zinc-100">
+            <TableRow key={row.id} data-rel={memberRelOf(row.original, row.index)}>
               {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="py-2 pr-4 text-zinc-800">
+                <TableCell key={cell.id}>
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
+                </TableCell>
               ))}
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </figure>
   );
 }

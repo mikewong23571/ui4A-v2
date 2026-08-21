@@ -1,288 +1,111 @@
 'use client';
 /**
- * 悬浮聊天窗(arch-brief §8 / spec FR7):跨页面悬浮于右下角,点击展开会话;
- * 输入目标 → POST /api/chat → agent 轨迹逐步呈现(导航/执行/被拒原因/完成)。
+ * assistant 工作台壳(T9 Phase B / B4):三形态,同一 ChatPanel 界面——
+ * 1. 收起:右下 FAB(aria-label「展开聊天窗」,data-nav="local:chat-open");
+ * 2. 悬浮窗(默认展开态):右下浮起卡片(经典客服形态,fixed 定位,
+ *    不挤压主内容);头部「分栏」可切换到 sidebar;
+ * 3. sidebar:右侧固定宽度全高面板,与主内容左右分栏——经 AppShell 的
+ *    aside 槽位嵌入 body flex 行(主区 flex-1 让宽,<main> 唯一性由
+ *    AppShell 保持);头部「悬浮」可切回悬浮窗;
+ * 4. 独立窗口:头部「独立窗口」window.open('/chat')(app/chat/page.tsx
+ *    复用同一 ChatPanel;经 localStorage sessionId + /api/chat/history
+ *    与主窗口看同一份会话投影),本窗收起为 FAB。
  *
- * 技术栈:@assistant-ui/react + useExternalStoreRuntime(消息态由本组件持有,
- * 聊天=事件日志的投影;服务端无会话态)。UI 用 Thread/Composer/Message 原语
- * + 本站 tailwind 极简样式(shadcn 风格,刻意不引完整 shadcn 主题)。
- * sessionId 持久化到 localStorage(纯投影,清掉无损);driver 缺省 auto
- * (无 key 自动回退 rule,I1)。
- *
- * 委托模式(T5 Phase B):开关打开后发送 mode:'delegated'——目标派发为
- * Temporal workflow,立即回执「已派发委托 <id>,进度见舰队页 /delegations」;
- * 后台执行的监控交给舰队页(不在悬浮窗内轮询长任务——人类监控成本不随 N
- * 超线性,arch-brief §9.3)。
- *
- * render 回执(T7 Phase C / S5):响应携带 render 载荷(展示意图 → 凝固
- * spec)时,消息呈现生成回执,底部出现「在画布查看」入口(点击带
- * ?concern= 打开画布对应 surface;画布读凝固 spec 渲染)。
+ * 悬浮/分栏的形态选择持久化到 localStorage(ui4a.chat.mode),重开记住上次。
+ * /chat 页内不渲染本壳(该页即工作台本体,避免窗中窗)。
+ * 会话逻辑(SSE 流式轨迹/停止/历史/委托/render 回执)全在
+ * chat-panel.tsx 的 useChatSession + ChatPanel;状态挂在壳上,
+ * 收起/展开/切形态不丢消息。
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 
-import {
-  AssistantRuntimeProvider,
-  ComposerPrimitive,
-  MessagePrimitive,
-  ThreadPrimitive,
-  useExternalStoreRuntime,
-  type AppendMessage,
-  type ThreadMessageLike,
-} from '@assistant-ui/react';
+import { MessageCircle } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
-interface ChatUiMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
+import { ChatPanel, useChatSession } from '@/components/chat-panel';
 
-interface ChatResponse {
-  sessionId: string;
-  driver: 'rule' | 'llm';
-  outcome: 'done' | 'failed' | 'max-steps';
-  summary: string | null;
-  messages: { role: 'assistant'; text: string }[];
-  /** render capability(T7 Phase C / S5):展示意图 → 凝固 spec + 画布入口。 */
-  render?: {
-    concern: string;
-    canvasUrl: string;
-  };
-}
+/** 面板形态(localStorage 持久化;缺省 float——经典客服悬浮窗)。 */
+type ChatMode = 'float' | 'sidebar';
 
-/** /api/chat mode=delegated 的派发回执(T5 Phase B)。 */
-interface DelegatedResponse {
-  mode: 'delegated';
-  delegationId: string;
-  statusUrl: string;
-}
+const MODE_STORAGE_KEY = 'ui4a.chat.mode';
 
-const SESSION_STORAGE_KEY = 'ui4a.chat.sessionId';
-
-function loadSessionId(): string {
+function loadMode(): ChatMode {
   try {
-    return globalThis.localStorage?.getItem(SESSION_STORAGE_KEY) ?? '';
+    return globalThis.localStorage?.getItem(MODE_STORAGE_KEY) === 'sidebar' ? 'sidebar' : 'float';
   } catch {
-    return '';
+    return 'float';
   }
 }
 
-function convertMessage(message: ChatUiMessage): ThreadMessageLike {
-  return { role: message.role, content: [{ type: 'text', text: message.content }] };
-}
-
-// ---- 消息渲染(原语 + 本站样式)----------------------------------------------
-
-function UserMessage() {
-  return (
-    <MessagePrimitive.Root className="flex w-full justify-end">
-      <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-blue-600 px-3 py-1.5 text-sm text-white">
-        <MessagePrimitive.Parts />
-      </div>
-    </MessagePrimitive.Root>
-  );
-}
-
-function AssistantMessage() {
-  return (
-    <MessagePrimitive.Root className="flex w-full justify-start">
-      <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-zinc-100 px-3 py-1.5 text-sm text-zinc-800">
-        <MessagePrimitive.Parts />
-      </div>
-    </MessagePrimitive.Root>
-  );
-}
-
-interface MyThreadProps {
-  delegated: boolean;
-  onToggleDelegated: () => void;
-}
-
-function MyThread({ delegated, onToggleDelegated }: MyThreadProps) {
-  return (
-    <ThreadPrimitive.Root className="flex h-full flex-col">
-      <ThreadPrimitive.Viewport className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
-        <ThreadPrimitive.Empty>
-          <p className="py-8 text-center text-xs text-zinc-400">
-            输入目标委托 agent(走 HTTP 合同),如「发布一篇文章」。
-          </p>
-        </ThreadPrimitive.Empty>
-        <ThreadPrimitive.Messages components={{ UserMessage, AssistantMessage }} />
-      </ThreadPrimitive.Viewport>
-      <ComposerPrimitive.Root className="flex items-center gap-2 border-t border-zinc-200 p-2">
-        <ComposerPrimitive.Input
-          rows={1}
-          placeholder="输入目标…"
-          className="max-h-24 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none"
-        />
-        {/* 委托模式开关(T5 Phase B):on→mode:'delegated' 派发 workflow。 */}
-        <button
-          type="button"
-          aria-label="委托模式"
-          data-nav="local:chat-delegated"
-          aria-pressed={delegated}
-          className={`rounded-lg px-2 py-1.5 text-xs font-medium ${
-            delegated
-              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-              : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-          }`}
-          onClick={onToggleDelegated}
-        >
-          委托
-        </button>
-        <ThreadPrimitive.If running={false}>
-          <ComposerPrimitive.Send data-nav="local:chat-send" className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40">
-            发送
-          </ComposerPrimitive.Send>
-        </ThreadPrimitive.If>
-        <ThreadPrimitive.If running>
-          <ComposerPrimitive.Cancel data-nav="local:chat-cancel" className="rounded-lg bg-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-300">
-            停止
-          </ComposerPrimitive.Cancel>
-        </ThreadPrimitive.If>
-      </ComposerPrimitive.Root>
-    </ThreadPrimitive.Root>
-  );
-}
-
-// ---- 悬浮窗壳 ----------------------------------------------------------------
-
 export function FloatingChat() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatUiMessage[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [sessionId, setSessionId] = useState('');
-  const sessionRef = useRef('');
-  // 委托模式(ref 镜像:onNew 回调零依赖 memo,发送时读 ref 防闭包过期)。
-  const [delegated, setDelegated] = useState(false);
-  const delegatedRef = useRef(false);
-  // 最近一次渲染回执(S5:surface 引用的可点形态——点击在画布打开)。
-  const [lastRender, setLastRender] = useState<ChatResponse['render']>(undefined);
+  // 初始恒定 float(SSR/首帧零闪烁);首次展开时读持久化形态(loadMode 惰性)。
+  const [mode, setMode] = useState<ChatMode>('float');
+  const session = useChatSession();
 
-  useEffect(() => {
-    const stored = loadSessionId();
-    sessionRef.current = stored;
-    setSessionId(stored);
-  }, []);
-
-  const onNew = useCallback(async (message: AppendMessage) => {
-    const part = message.content[0];
-    if (part?.type !== 'text') throw new Error('仅支持文本目标');
-    const goal = part.text.trim();
-    if (goal === '') return;
-
-    setMessages((prev) => [...prev, { role: 'user', content: goal }]);
-    setIsRunning(true);
+  const switchMode = useCallback((next: ChatMode) => {
+    setMode(next);
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          goal: { verb: goal },
-          ...(sessionRef.current !== '' ? { sessionId: sessionRef.current } : {}),
-          ...(delegatedRef.current ? { mode: 'delegated' } : {}),
-        }),
-      });
-      const body = (await response.json()) as ChatResponse & DelegatedResponse & { error?: string };
-      // 委托派发回执:目标已交 workflow 后台执行,监控去舰队页(不在此轮询)。
-      if (body.mode === 'delegated' && typeof body.delegationId === 'string') {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: `已派发委托 ${body.delegationId.replace(/^delegation-/, '').slice(0, 8)}…(后台执行中),进度见舰队页 /delegations`,
-          },
-        ]);
-        return;
-      }
-      if (body.sessionId !== undefined && body.sessionId !== sessionRef.current) {
-        sessionRef.current = body.sessionId;
-        setSessionId(body.sessionId);
-        try {
-          globalThis.localStorage?.setItem(SESSION_STORAGE_KEY, body.sessionId);
-        } catch {
-          // localStorage 不可用(隐私模式等):会话退化为内存态,无损
-        }
-      }
-      // render 回执(S5):展示意图 → 画布入口链接(替换上一条渲染回执)。
-      setLastRender(body.render ?? undefined);
-      const trail =
-        body.messages !== undefined && body.messages.length > 0
-          ? body.messages.map((entry) => entry.text).join('\n')
-          : `失败: ${body.error ?? body.summary ?? `HTTP ${response.status}`}`;
-      setMessages((prev) => [...prev, { role: 'assistant', content: trail }]);
-    } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: `失败: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ]);
-    } finally {
-      setIsRunning(false);
+      globalThis.localStorage?.setItem(MODE_STORAGE_KEY, next);
+    } catch {
+      // localStorage 不可用(隐私模式等):形态退化为内存态,无损
     }
   }, []);
 
-  const toggleDelegated = useCallback(() => {
-    const next = !delegatedRef.current;
-    delegatedRef.current = next;
-    setDelegated(next);
+  const openPanel = useCallback(() => {
+    setMode(loadMode());
+    setOpen(true);
   }, []);
 
-  const runtime = useExternalStoreRuntime({
-    isRunning,
-    messages,
-    convertMessage,
-    onNew,
-  });
+  // 独立窗口(B4):window.open 弹出 /chat(同 sessionId 的历史投影);
+  // 本窗收起为 FAB——两边均可继续,会话是同一份日志投影。
+  const popout = useCallback(() => {
+    window.open('/chat', 'ui4a-chat', 'width=560,height=840');
+    setOpen(false);
+  }, []);
 
-  return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
-      {open ? (
-        <div className="flex h-[28rem] w-[22rem] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl">
-          <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2">
-            <div className="text-sm font-semibold text-zinc-800">
-              UI4A 助手
-              <span className="ml-2 text-[10px] font-normal text-zinc-400">
-                {sessionId === '' ? '新会话' : `会话 ${sessionId.slice(0, 8)}`}
-              </span>
-            </div>
-            <button
-              type="button"
-              aria-label="收起聊天窗"
-              data-nav="local:chat-close"
-              className="rounded-md px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100"
-              onClick={() => setOpen(false)}
-            >
-              收起
-            </button>
-          </div>
-          <div className="min-h-0 flex-1">
-            <AssistantRuntimeProvider runtime={runtime}>
-              <MyThread delegated={delegated} onToggleDelegated={toggleDelegated} />
-            </AssistantRuntimeProvider>
-          </div>
-          {/* render 回执入口(S5):点击在画布打开该 surface(合同导航标注)。 */}
-          {lastRender !== undefined && (
-            <a
-              href={lastRender.canvasUrl}
-              data-nav={`render:${lastRender.concern}`}
-              className="border-t border-zinc-200 px-3 py-2 text-xs font-medium text-blue-600 hover:underline"
-            >
-              在画布查看:{lastRender.concern}
-            </a>
-          )}
-        </div>
-      ) : (
+  if (pathname === '/chat') return null;
+
+  if (!open) {
+    return (
+      <div className="fixed right-4 bottom-4 z-50">
         <button
           type="button"
           aria-label="展开聊天窗"
           data-nav="local:chat-open"
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-xl text-white shadow-lg hover:bg-blue-700"
-          onClick={() => setOpen(true)}
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90"
+          onClick={openPanel}
         >
-          💬
+          <MessageCircle className="h-5 w-5" />
         </button>
-      )}
-    </div>
+      </div>
+    );
+  }
+
+  if (mode === 'float') {
+    return (
+      <div className="fixed right-4 bottom-4 z-50 flex h-[32rem] w-96 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-xl">
+        <ChatPanel
+          variant="float"
+          session={session}
+          onClose={() => setOpen(false)}
+          onPopout={popout}
+          onDock={() => switchMode('sidebar')}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <aside className="sticky top-12 flex h-[calc(100vh-3rem)] w-96 shrink-0 flex-col border-l border-border bg-background">
+      <ChatPanel
+        variant="sidebar"
+        session={session}
+        onClose={() => setOpen(false)}
+        onPopout={popout}
+        onFloat={() => switchMode('float')}
+      />
+    </aside>
   );
 }

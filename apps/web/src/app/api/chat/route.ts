@@ -1,7 +1,15 @@
-import { createDriver, renderSpecFor, resolveDriverKind, runAgent, type AgentGoal } from '@ui4a/agent';
+import {
+  createDriver,
+  renderSpecFor,
+  resolveDriverKind,
+  runAgent,
+  type AgentGoal,
+} from '@ui4a/agent';
 
+import type { ChatTurnDetail } from '../../../chat/history';
 import { resolveStartRel } from '../../../chat/start';
-import { trailToMessages } from '../../../chat/trail';
+import { stepToMessage, trailToMessages } from '../../../chat/trail';
+import { appendEvent } from '../../../db/events';
 import { getDb, getEngine } from '../../../engine/service';
 import { dispatchDelegation } from '../../../temporal/delegation';
 import type { RenderSpec } from '../../../render/spec';
@@ -15,18 +23,27 @@ import { validateSpec } from '../../../render/validator';
 //   零字面校验 → freezeSpec(首冻事件留痕,同 concern 复用首冻)→ 响应携带
 //   render 载荷(spec + 画布入口);零 /api/exec(渲染不是执行,不走循环);
 //   意图未命中/引擎不可达 → 原路交回 agent 循环(诚实失败口径不变);
-// - inline:服务端组装 driver(rule | llm | auto——auto 无 key 回退 rule,I1 机械层),
-//   runAgent 循环过本源 HTTP 合同(actor=agent,principal=user:<sessionId>,
-//   channel=chat)——"agent 走合同"字面成立;
+// - inline(T9 Phase B 起为 SSE 流式,text/event-stream):服务端组装 driver
+//   (rule | llm | auto——auto 无 key 回退 rule,I1 机械层),runAgent 循环过本源
+//   HTTP 合同(actor=agent,principal=user:<sessionId>,channel=chat)——
+//   "agent 走合同"字面成立;onStep 每步推一帧
+//   {type:'step', message:{role:'assistant',text}, rel}(text 为 trail.ts
+//   stepToMessage 口径),结束推 {type:'final', payload:{sessionId, driver,
+//   requestedDriver, outcome, summary, steps, successes}};异常兜底
+//   {type:'error', error};客户端断开仅中断推帧,循环照常跑完(留痕);
+// - 聊天历史(T9 Phase B):inline 回合完成(含 failed/max-steps)后直写一条
+//   chat-turn 事件(rel=chat:<sessionId>,detail 含 goal/outcome/summary/
+//   messages/driver)——与 worker 同一双写者模式;engine fold 忽略该 kind
+//   (纯审计留痕);落库失败 console.error 不阻断响应。GET /api/chat/history
+//   按 sessionId 投影回合序列(服务端零会话态);
 // - delegated(T5 Phase B / spec 架构决定 5):校验 goal → 解析 startRel 与
 //   driverKind(auto 先解析)→ dispatchDelegation 派发 delegationWorkflow
 //   (taskQueue ui4a;baseUrl=自身 origin,worker activity 回环走本源合同)→
 //   响应 {mode:'delegated', delegationId, statusUrl};派发失败(Temporal 不可达)
 //   据实 503——委托没派出去不能假装成功;
 // - 起始 rel 由 sitemap 词级交集解析(客户端行为),缺省 articles;
-// - inline 响应(一次性 JSON,简单可靠):{sessionId, driver(解析后), outcome,
-//   summary, messages(轨迹投影,每步一条), steps, successes}——
-//   B4:LLM 失败(401 等)如实进入 messages/summary,route 不 5xx。
+// - render 短路/参数错误/delegated 仍为一次性 JSON(响应形状不动);
+//   B4:LLM 失败(401 等)如实进入 step 帧文本与 final.summary,route 不 5xx。
 // 服务无会话态:事件日志是真相,聊天会话是客户端投影(localStorage)。
 
 export const dynamic = 'force-dynamic';
@@ -132,7 +149,9 @@ export async function POST(request: Request) {
       const validation = validateSpec(generated);
       if (!validation.valid) {
         // 生成器产出非法 spec 属内部缺陷:如实失败,不落日志不渲染(零字面入口把关)。
-        const summary = validation.errors.map((error) => `${error.path}: ${error.message}`).join('; ');
+        const summary = validation.errors
+          .map((error) => `${error.path}: ${error.message}`)
+          .join('; ');
         return Response.json({
           sessionId,
           driver: resolved,
@@ -205,43 +224,97 @@ export async function POST(request: Request) {
     }
   }
 
-  try {
-    const startRel = await resolveStartRel(baseUrl, goal, (url, init) => fetch(url, init));
-    const result = await runAgent(createDriver(requested), goal, {
-      baseUrl,
-      fetchImpl: (url, init) => fetch(url, init),
-      actor: 'agent',
-      principal: `user:${sessionId}`,
-      channel: 'chat',
-      startRel,
-    });
+  // inline(T9 Phase B):SSE 流式响应——轨迹逐步可见(过程可见性);
+  // 循环在流内跑完,客户端断开只中断推帧,不中断循环(服务端留痕完整)。
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let pushable = true;
+      const send = (frame: Record<string, unknown>): void => {
+        if (!pushable) return;
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(frame)}\n\n`));
+        } catch {
+          // 客户端已断开(停止/关窗):停推帧,循环照常跑完。
+          pushable = false;
+        }
+      };
+      try {
+        const startRel = await resolveStartRel(baseUrl, goal, (url, init) => fetch(url, init));
+        const result = await runAgent(createDriver(requested), goal, {
+          baseUrl,
+          fetchImpl: (url, init) => fetch(url, init),
+          actor: 'agent',
+          principal: `user:${sessionId}`,
+          channel: 'chat',
+          startRel,
+          onStep: (step) => {
+            send({ type: 'step', message: stepToMessage(step), rel: step.rel });
+          },
+        });
 
-    return Response.json({
-      sessionId,
-      driver: resolved,
-      requestedDriver: requested,
-      outcome: result.outcome,
-      summary: result.summary ?? null,
-      messages: trailToMessages(result),
-      steps: result.steps,
-      successes: result.successes,
-    });
-  } catch (error) {
-    // 委托不崩溃:循环与 driver 都不应抛出;此处兜底 5xx→结构化 200 失败。
-    return Response.json({
-      sessionId,
-      driver: resolved,
-      requestedDriver: requested,
-      outcome: 'failed',
-      summary: `聊天循环异常: ${error instanceof Error ? error.message : String(error)}`,
-      messages: [
-        {
-          role: 'assistant',
-          text: `失败: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ],
-      steps: [],
-      successes: [],
-    });
-  }
+        const messages = trailToMessages(result);
+        // max-steps 的上限说明不是轨迹步(无 TrailStep 可挂 onStep),补一帧,
+        // 保持客户端「消息 = 各 step 帧文本」的重建口径与 trailToMessages 等值。
+        for (const extra of messages.slice(result.steps.length)) {
+          send({ type: 'step', message: extra });
+        }
+
+        // 聊天历史(B3):inline 回合完成(含 failed/max-steps)直写 chat-turn
+        // 事件——与 worker 同一双写者模式;engine fold 忽略该 kind。落库失败
+        // 不阻断聊天响应(历史是投影,丢失可从轨迹推知,响应才是合同)。
+        const turnDetail: ChatTurnDetail = {
+          sessionId,
+          goal,
+          outcome: result.outcome,
+          summary: result.summary ?? null,
+          messages,
+          driver: resolved,
+        };
+        try {
+          await appendEvent(getDb(), {
+            kind: 'chat-turn',
+            actor: 'agent',
+            principal: `user:${sessionId}`,
+            channel: 'chat',
+            rel: `chat:${sessionId}`,
+            detail: turnDetail,
+          });
+        } catch (persistError) {
+          console.error('chat-turn 事件落库失败(不阻断聊天响应):', persistError);
+        }
+
+        send({
+          type: 'final',
+          payload: {
+            sessionId,
+            driver: resolved,
+            requestedDriver: requested,
+            outcome: result.outcome,
+            summary: result.summary ?? null,
+            steps: result.steps,
+            successes: result.successes,
+          },
+        });
+      } catch (error) {
+        // 委托不崩溃:循环与 driver 都不应抛出;此处兜底为 error 帧(200 流内)。
+        send({
+          type: 'error',
+          error: `聊天循环异常: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      } finally {
+        try {
+          controller.close();
+        } catch {
+          // 流已被客户端取消:关闭动作无副作用要求。
+        }
+      }
+    },
+  });
+  return new Response(stream, {
+    headers: {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache',
+    },
+  });
 }

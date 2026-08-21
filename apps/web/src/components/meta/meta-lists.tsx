@@ -6,7 +6,17 @@
  * BIOS 详情页。纯导航渲染,零 AI;队列为空是常态而非异常,如实呈现。
  */
 import type { SirenEntity } from '@ui4a/engine';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
+
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 import { useMetaEntity } from './meta-client';
 
@@ -15,6 +25,13 @@ function memberRel(sub: SirenEntity): string | null {
   const query = (sub.href ?? '').split('?')[1] ?? '';
   const match = /(?:^|&)rel=([^&]*)/.exec(query);
   return match === null ? null : decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+/** 定义状态徽标 variant(active 常态;pending-approval 待审高亮;其余轮廓兜底)。 */
+function statusVariant(status: string): ComponentProps<typeof Badge>['variant'] {
+  if (status === 'active') return 'secondary';
+  if (status === 'pending-approval') return 'default';
+  return 'outline';
 }
 
 function BiosShell({
@@ -27,15 +44,15 @@ function BiosShell({
   children: ReactNode;
 }) {
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-6">
+    <div>
       <nav className="mb-2 text-sm">
-        <a href={backTo} data-nav="meta-back" className="text-blue-600 hover:underline">
+        <a href={backTo} data-nav="meta-back" className="text-primary hover:underline">
           ← BIOS
         </a>
       </nav>
-      <h1 className="text-2xl font-semibold text-zinc-900">{title}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
       {children}
-    </main>
+    </div>
   );
 }
 
@@ -45,14 +62,14 @@ export function FlowsListBody() {
   if (state === 'loading') {
     return (
       <BiosShell title="流程定义">
-        <p className="mt-4 text-sm text-zinc-500">加载中…</p>
+        <p className="mt-4 text-sm text-muted-foreground">加载中…</p>
       </BiosShell>
     );
   }
   if (state !== 'ready' || entity === null) {
     return (
       <BiosShell title="流程定义">
-        <p className="mt-4 text-sm text-zinc-700">
+        <p className="mt-4 text-sm">
           {state === 'missing' ? '定义清单不可用(404)。' : '读取定义清单失败(服务不可用)。'}
         </p>
       </BiosShell>
@@ -61,32 +78,43 @@ export function FlowsListBody() {
   const members = entity.entities ?? [];
   return (
     <BiosShell title={`流程定义(${members.length})`}>
-      <table className="mt-4 w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500">
-            <th className="py-1 pr-4">flow</th>
-            <th className="py-1 pr-4">版本</th>
-            <th className="py-1">状态</th>
-          </tr>
-        </thead>
-        <tbody>
-          {members.map((sub) => {
-            const rel = memberRel(sub) ?? '';
-            const name = String(sub.properties.name ?? rel);
-            return (
-              <tr key={rel} className="border-b border-zinc-100">
-                <td className="py-1 pr-4">
-                  <a href={`/meta/flow/${encodeURIComponent(name)}`} data-nav="meta-flow" className="text-blue-600 hover:underline">
-                    {name}
-                  </a>
-                </td>
-                <td className="py-1 pr-4 text-zinc-800">v{String(sub.properties.version ?? '')}</td>
-                <td className="py-1 text-zinc-800">{String(sub.properties.status ?? '')}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="mt-4 rounded-md border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="px-3 text-muted-foreground">flow</TableHead>
+              <TableHead className="px-3 text-muted-foreground">版本</TableHead>
+              <TableHead className="px-3 text-muted-foreground">状态</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {members.map((sub) => {
+              const rel = memberRel(sub) ?? '';
+              const name = String(sub.properties.name ?? rel);
+              const status = String(sub.properties.status ?? '');
+              return (
+                <TableRow key={rel}>
+                  <TableCell className="px-3 py-2">
+                    <a
+                      href={`/meta/flow/${encodeURIComponent(name)}`}
+                      data-nav="meta-flow"
+                      className="text-primary hover:underline"
+                    >
+                      {name}
+                    </a>
+                  </TableCell>
+                  <TableCell className="px-3 py-2">
+                    v{String(sub.properties.version ?? '')}
+                  </TableCell>
+                  <TableCell className="px-3 py-2">
+                    <Badge variant={statusVariant(status)}>{status}</Badge>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
     </BiosShell>
   );
 }
@@ -97,14 +125,14 @@ export function ActivationsQueueBody() {
   if (state === 'loading') {
     return (
       <BiosShell title="激活队列">
-        <p className="mt-4 text-sm text-zinc-500">加载中…</p>
+        <p className="mt-4 text-sm text-muted-foreground">加载中…</p>
       </BiosShell>
     );
   }
   if (state !== 'ready' || entity === null) {
     return (
       <BiosShell title="激活队列">
-        <p className="mt-4 text-sm text-zinc-700">
+        <p className="mt-4 text-sm">
           {state === 'missing' ? '激活队列不可用(404)。' : '读取激活队列失败(服务不可用)。'}
         </p>
       </BiosShell>
@@ -114,23 +142,23 @@ export function ActivationsQueueBody() {
   return (
     <BiosShell title={`激活队列(待审 ${members.length})`}>
       {members.length === 0 ? (
-        <p className="mt-4 text-sm text-zinc-500">队列为空(无待批准的定义激活)。</p>
+        <p className="mt-4 text-sm text-muted-foreground">队列为空(无待批准的定义激活)。</p>
       ) : (
-        <ul className="mt-4 space-y-1 text-sm">
+        <ul className="mt-4 divide-y rounded-md border bg-card text-sm">
           {members.map((sub) => {
             const rel = memberRel(sub) ?? '';
             const id = String(sub.properties.id ?? rel);
             const requestedBy = sub.properties['requested-by'] as
-              | { actor?: string; principal?: string }
-              | undefined;
+              { actor?: string; principal?: string } | undefined;
             return (
               <li key={rel}>
                 <a
                   href={`/meta/activation/${encodeURIComponent(id)}`}
                   data-nav="meta-activation"
-                  className="text-blue-600 hover:underline"
+                  className="block px-3 py-2 break-all text-primary hover:bg-accent hover:underline"
                 >
-                  {id} · {String(sub.properties.flow ?? '')} → v{String(sub.properties.version ?? '')}
+                  {id} · {String(sub.properties.flow ?? '')} → v
+                  {String(sub.properties.version ?? '')}
                   {requestedBy !== undefined
                     ? ` · 提议 ${requestedBy.actor ?? '?'}${requestedBy.principal ?? ''}`
                     : ''}

@@ -32,26 +32,30 @@ const FACES = [
 
 export default function BiosIndex() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-8">
+    <div>
       <nav className="mb-2 text-sm">
-        <a href="/" data-nav="home" className="text-blue-600 hover:underline">
+        <a href="/" data-nav="home" className="text-primary hover:underline">
           ← 首页
         </a>
       </nav>
-      <h1 className="text-2xl font-semibold text-zinc-900">BIOS(定义平面)</h1>
-      <p className="mt-1 text-xs text-zinc-500">
+      <h1 className="text-2xl font-semibold text-foreground">BIOS(定义平面)</h1>
+      <p className="mt-1 text-xs text-muted-foreground">
         内建 UI:修自己的扳手不能是自己造的零件——diff 渲染零 AI,审批不委托。
       </p>
       <ul className="mt-6 space-y-2 text-sm">
         {FACES.map((face) => (
           <li key={face.href}>
-            <a href={face.href} data-nav="meta-face" className="font-medium text-blue-600 hover:underline">
+            <a
+              href={face.href}
+              data-nav="meta-face"
+              className="font-medium text-primary hover:underline"
+            >
               {face.title}
             </a>
-            <span className="ml-2 text-zinc-500">{face.description}</span>
+            <span className="ml-2 text-muted-foreground">{face.description}</span>
           </li>
         ))}
       </ul>
-    </main>
+    </div>
   );
 }

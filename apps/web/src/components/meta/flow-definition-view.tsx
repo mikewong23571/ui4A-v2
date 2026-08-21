@@ -10,6 +10,15 @@
  */
 import type { FieldDefinition, SirenEntity } from '@ui4a/engine';
 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+
 import { useMetaEntity } from './meta-client';
 
 /** 动作声明投影的 fields 属性形状(action-definition 子实体)。 */
@@ -39,7 +48,9 @@ function actionRows(entity: SirenEntity): ActionRow[] {
         to: props.to === undefined ? '' : String(props.to),
         guards: JSON.stringify(props.guards ?? []),
         confirmation:
-          props['requires-confirmation'] === undefined ? '' : String(props['requires-confirmation']),
+          props['requires-confirmation'] === undefined
+            ? ''
+            : String(props['requires-confirmation']),
         effect: JSON.stringify(props.effect ?? []),
         fields: Array.isArray(props.fields) ? (props.fields as FieldDefinition[]) : undefined,
       });
@@ -97,111 +108,124 @@ export function FlowDefinitionView({ rel, entity }: FlowDefinitionViewProps) {
   const rows = actionRows(entity);
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-6">
+    <div>
       <nav className="mb-2 text-sm">
-        <a href="/meta" data-nav="meta-back" className="text-blue-600 hover:underline">
+        <a href="/meta" data-nav="meta-back" className="text-primary hover:underline">
           ← BIOS
         </a>
       </nav>
-      <h1 className="text-2xl font-semibold text-zinc-900">{heading}</h1>
-      <p className="mt-1 text-xs text-zinc-500">{rel}</p>
+      <h1 className="text-2xl font-semibold tracking-tight">{heading}</h1>
+      <p className="mt-1 text-xs text-muted-foreground">{rel}</p>
 
       <section aria-label="属性" className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-700">属性</h2>
-        <table className="w-full border-collapse text-sm">
-          <tbody>
-            {propertyPairs(entity).map(([key, value]) => (
-              <tr key={key} className="border-b border-zinc-100">
-                <th scope="row" className="py-1 pr-4 text-left font-normal text-zinc-500">
-                  {key}
-                </th>
-                <td className="py-1 break-all text-zinc-800">{value}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <h2 className="mb-2 text-sm font-semibold">属性</h2>
+        <div className="rounded-md border bg-card">
+          <Table>
+            <TableBody>
+              {propertyPairs(entity).map(([key, value]) => (
+                <TableRow key={key}>
+                  <th
+                    scope="row"
+                    className="px-3 py-2 text-left align-top font-normal whitespace-nowrap text-muted-foreground"
+                  >
+                    {key}
+                  </th>
+                  <TableCell className="px-3 py-2 break-all whitespace-normal">{value}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </section>
 
       <section aria-label="节点" className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-700">
-          节点({(entity.entities ?? []).length})
-        </h2>
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500">
-              <th className="py-1 pr-4">节点</th>
-              <th className="py-1 pr-4">标题</th>
-              <th className="py-1">动作数</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(entity.entities ?? []).map((node) => (
-              <tr key={String(node.properties.name)} className="border-b border-zinc-100">
-                <td className="py-1 pr-4 text-zinc-800">{String(node.properties.name)}</td>
-                <td className="py-1 pr-4 text-zinc-800">{String(node.properties.title ?? '')}</td>
-                <td className="py-1 text-zinc-800">{(node.entities ?? []).length}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <h2 className="mb-2 text-sm font-semibold">节点({(entity.entities ?? []).length})</h2>
+        <div className="rounded-md border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="px-3 text-muted-foreground">节点</TableHead>
+                <TableHead className="px-3 text-muted-foreground">标题</TableHead>
+                <TableHead className="px-3 text-muted-foreground">动作数</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(entity.entities ?? []).map((node) => (
+                <TableRow key={String(node.properties.name)}>
+                  <TableCell className="px-3 py-2">{String(node.properties.name)}</TableCell>
+                  <TableCell className="px-3 py-2">{String(node.properties.title ?? '')}</TableCell>
+                  <TableCell className="px-3 py-2">{(node.entities ?? []).length}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </section>
 
       <section aria-label="动作" className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-700">动作</h2>
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500">
-              <th className="py-1 pr-4">节点</th>
-              <th className="py-1 pr-4">动作</th>
-              <th className="py-1 pr-4">to</th>
-              <th className="py-1 pr-4">guards</th>
-              <th className="py-1 pr-4">确认</th>
-              <th className="py-1">effect</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={`${row.node}:${row.name}`} className="border-b border-zinc-100">
-                <td className="py-1 pr-4 text-zinc-800">{row.node}</td>
-                <td className="py-1 pr-4 text-zinc-800">{row.name}</td>
-                <td className="py-1 pr-4 text-zinc-800">{row.to}</td>
-                <td className="py-1 pr-4 text-zinc-800">{row.guards}</td>
-                <td className="py-1 pr-4 text-zinc-800">{row.confirmation}</td>
-                <td className="py-1 break-all text-zinc-800">{row.effect}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <h2 className="mb-2 text-sm font-semibold">动作</h2>
+        <div className="rounded-md border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="px-3 text-muted-foreground">节点</TableHead>
+                <TableHead className="px-3 text-muted-foreground">动作</TableHead>
+                <TableHead className="px-3 text-muted-foreground">to</TableHead>
+                <TableHead className="px-3 text-muted-foreground">guards</TableHead>
+                <TableHead className="px-3 text-muted-foreground">确认</TableHead>
+                <TableHead className="px-3 text-muted-foreground">effect</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={`${row.node}:${row.name}`}>
+                  <TableCell className="px-3 py-2 align-top">{row.node}</TableCell>
+                  <TableCell className="px-3 py-2 align-top">{row.name}</TableCell>
+                  <TableCell className="px-3 py-2 align-top">{row.to}</TableCell>
+                  <TableCell className="px-3 py-2 align-top break-all whitespace-normal">
+                    {row.guards}
+                  </TableCell>
+                  <TableCell className="px-3 py-2 align-top">{row.confirmation}</TableCell>
+                  <TableCell className="px-3 py-2 align-top break-all whitespace-normal">
+                    {row.effect}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </section>
 
       {fieldRows(rows).length > 0 && (
         <section aria-label="字段" className="mt-6">
-          <h2 className="mb-2 text-sm font-semibold text-zinc-700">字段</h2>
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500">
-                <th className="py-1 pr-4">动作</th>
-                <th className="py-1 pr-4">字段</th>
-                <th className="py-1 pr-4">类型</th>
-                <th className="py-1 pr-4">必填</th>
-                <th className="py-1">语义</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fieldRows(rows).map((row) => (
-                <tr key={`${row.action}:${row.name}`} className="border-b border-zinc-100">
-                  <td className="py-1 pr-4 text-zinc-800">{row.action}</td>
-                  <td className="py-1 pr-4 text-zinc-800">{row.name}</td>
-                  <td className="py-1 pr-4 text-zinc-800">{row.type}</td>
-                  <td className="py-1 pr-4 text-zinc-800">{row.required}</td>
-                  <td className="py-1 text-zinc-800">{row.semantics}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <h2 className="mb-2 text-sm font-semibold">字段</h2>
+          <div className="rounded-md border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="px-3 text-muted-foreground">动作</TableHead>
+                  <TableHead className="px-3 text-muted-foreground">字段</TableHead>
+                  <TableHead className="px-3 text-muted-foreground">类型</TableHead>
+                  <TableHead className="px-3 text-muted-foreground">必填</TableHead>
+                  <TableHead className="px-3 text-muted-foreground">语义</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fieldRows(rows).map((row) => (
+                  <TableRow key={`${row.action}:${row.name}`}>
+                    <TableCell className="px-3 py-2">{row.action}</TableCell>
+                    <TableCell className="px-3 py-2">{row.name}</TableCell>
+                    <TableCell className="px-3 py-2">{row.type}</TableCell>
+                    <TableCell className="px-3 py-2">{row.required}</TableCell>
+                    <TableCell className="px-3 py-2">{row.semantics}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </section>
       )}
-    </main>
+    </div>
   );
 }
 
@@ -211,23 +235,23 @@ export function FlowDefinitionBody({ rel }: { rel: string }) {
 
   if (state === 'error' || state === 'missing') {
     return (
-      <main className="mx-auto w-full max-w-4xl px-4 py-6">
+      <div>
         <nav className="mb-2 text-sm">
-          <a href="/meta" data-nav="meta-back" className="text-blue-600 hover:underline">
+          <a href="/meta" data-nav="meta-back" className="text-primary hover:underline">
             ← BIOS
           </a>
         </nav>
-        <p className="text-sm text-zinc-700">
+        <p className="text-sm">
           {state === 'missing' ? `定义 "${rel}" 不存在(404)。` : '读取定义失败(服务不可用)。'}
         </p>
-      </main>
+      </div>
     );
   }
   if (state === 'loading' || entity === null) {
     return (
-      <main className="mx-auto w-full max-w-4xl px-4 py-6">
-        <p className="text-sm text-zinc-500">加载中…</p>
-      </main>
+      <div>
+        <p className="text-sm text-muted-foreground">加载中…</p>
+      </div>
     );
   }
   return <FlowDefinitionView rel={rel} entity={entity} />;

@@ -5,7 +5,8 @@
  * 状态/步数/成功数/摘要一眼可扫)。
  *
  * - 列表渲染:GET /api/delegations → 每委托一行(目标/状态/步数/成功/摘要);
- * - 状态色:running 蓝 / completed 绿 / failed 红 / max-steps 琥珀(data-status);
+ * - 状态徽标:running default / completed secondary / failed destructive /
+ *   max-steps outline(shadcn Badge,data-status + data-variant 断言);
  * - 空态:暂无委托;
  * - 自动轮询:每 3s 重拉(舰队页零操作刷新)+ 手动刷新按钮;
  * - 失败态:服务不可用如实提示(不粉饰)。
@@ -88,14 +89,19 @@ describe('委托舰队页(/delegations)', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/delegations');
   });
 
-  it('状态色:running 蓝 / completed 绿 / failed 红 / max-steps 琥珀(data-status)', async () => {
+  it('状态徽标:running/completed/failed/max-steps → Badge variant(data-status 锚点)', async () => {
     vi.stubGlobal(
       'fetch',
       mockFleet([
         row({ id: 'id-running-0000', status: 'running', summary: undefined }),
         row({ id: 'id-completed0', status: 'completed' }),
         row({ id: 'id-failed-000', status: 'failed', summary: undefined, reason: '目标不可达' }),
-        row({ id: 'id-maxsteps00', status: 'max-steps', summary: undefined, reason: '达到步数上限 24' }),
+        row({
+          id: 'id-maxsteps00',
+          status: 'max-steps',
+          summary: undefined,
+          reason: '达到步数上限 24',
+        }),
       ]),
     );
 
@@ -105,15 +111,15 @@ describe('委托舰队页(/delegations)', () => {
       expect(screen.getByText('id-running-0000'.slice(0, 8))).toBeTruthy();
     });
     const expected: [FleetRow['status'], string][] = [
-      ['running', 'text-blue-600'],
-      ['completed', 'text-green-600'],
-      ['failed', 'text-red-600'],
-      ['max-steps', 'text-amber-600'],
+      ['running', 'default'],
+      ['completed', 'secondary'],
+      ['failed', 'destructive'],
+      ['max-steps', 'outline'],
     ];
-    for (const [status, className] of expected) {
-      const cell = document.querySelector(`[data-status="${status}"]`);
-      expect(cell, `状态 ${status} 应有 data-status 单元格`).not.toBeNull();
-      expect(cell!.className).toContain(className);
+    for (const [status, variant] of expected) {
+      const badge = document.querySelector(`[data-status="${status}"]`);
+      expect(badge, `状态 ${status} 应有 data-status 徽标`).not.toBeNull();
+      expect(badge!.getAttribute('data-variant')).toBe(variant);
     }
   });
 

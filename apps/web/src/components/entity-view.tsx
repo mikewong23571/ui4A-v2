@@ -6,9 +6,15 @@
  * - 渲染的一切动作与链接都来自实体投影,本组件不含任何业务分支;
  * - renderer 的 navigate = 把合同 href(/api/entity?rel=…)换算成页面路由 /entity?rel=…;
  * - 谓词投影:guard-results.blocked → 对应动作 disabled + title 原因;
- * - exec 提交 rel 取实体自身 properties.rel(flow: 别名页落在实例 rel 上,直投不绕别名)。
+ * - exec 提交 rel 取实体自身 properties.rel(flow: 别名页落在实例 rel 上,直投不绕别名);
+ * - T9 Phase C:分区卡片化(shadcn Card/Table/Badge),结构锚点不变
+ *   (section[aria-label] / tbody tr / 成员 a / data-rel / data-nav)。
  */
 import type { GuardResultEntry, SirenEntity } from '@ui4a/engine';
+
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 
 import { ActionRunner } from './action-runner';
 
@@ -108,63 +114,79 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
   const members = entity.entities ?? [];
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-6">
+    <div>
       <nav className="mb-2 text-sm">
-        <a href="/" data-nav="home" className="text-blue-600 hover:underline">
+        <a href="/" data-nav="home" className="text-primary hover:underline">
           ← 首页
         </a>
       </nav>
-      <h1 className="text-2xl font-semibold text-zinc-900">{heading}</h1>
-      <p className="mt-1 text-xs text-zinc-500">
+      <h1 className="text-2xl font-semibold tracking-tight">{heading}</h1>
+      <p className="mt-1 text-xs text-muted-foreground">
         {rel}
         {entity.properties.node !== undefined ? ` · 节点 ${String(entity.properties.node)}` : ''}
       </p>
 
       <section aria-label="属性" className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-700">属性</h2>
-        <table className="w-full border-collapse text-sm">
-          <tbody>
-            {Object.entries(entity.properties)
-              .filter(([key]) => key !== 'fields')
-              .map(([key, value]) => (
-                <tr key={key} className="border-b border-zinc-100">
-                  <th scope="row" className="py-1 pr-4 text-left font-normal text-zinc-500">
-                    {key}
+        <h2 className="mb-2 text-sm font-semibold">属性</h2>
+        <div className="rounded-md border bg-card">
+          <Table>
+            <TableBody>
+              {Object.entries(entity.properties)
+                .filter(([key]) => key !== 'fields')
+                .map(([key, value]) => (
+                  <TableRow key={key}>
+                    <th
+                      scope="row"
+                      className="px-3 py-2 text-left align-top font-normal whitespace-nowrap text-muted-foreground"
+                    >
+                      {key}
+                    </th>
+                    <TableCell className="px-3 py-2 break-all whitespace-normal">
+                      {String(value)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              {fieldsSummary(entity.properties.fields) !== '' && (
+                <TableRow>
+                  <th
+                    scope="row"
+                    className="px-3 py-2 text-left align-top font-normal whitespace-nowrap text-muted-foreground"
+                  >
+                    fields
                   </th>
-                  <td className="py-1 text-zinc-800">{String(value)}</td>
-                </tr>
-              ))}
-            {fieldsSummary(entity.properties.fields) !== '' && (
-              <tr className="border-b border-zinc-100">
-                <th scope="row" className="py-1 pr-4 text-left font-normal text-zinc-500">
-                  fields
-                </th>
-                <td className="py-1 text-zinc-800">{fieldsSummary(entity.properties.fields)}</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                  <TableCell className="px-3 py-2 break-all whitespace-normal">
+                    {fieldsSummary(entity.properties.fields)}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </section>
 
       {entity.actions.length > 0 && (
         <section aria-label="动作" className="mt-6">
-          <h2 className="mb-2 text-sm font-semibold text-zinc-700">动作</h2>
+          <h2 className="mb-2 text-sm font-semibold">动作</h2>
           <div className="space-y-4">
             {entity.actions.map((action) => {
               const guard = guardMap.get(action.name);
               return (
-                <ActionRunner
-                  // key 含参数 schema:向导跨节点同名动作(如 next)的 schema 不同,
-                  // 换 key 强制换表单实例——RJSF 内部 formData 是组件态,实例被
-                  // React 复用会把前节点字段漏进本节点提交(additionalProperties:
-                  // false 拒绝)。每个 action schema 一个干净表单。
+                // key 含参数 schema:向导跨节点同名动作(如 next)的 schema 不同,
+                // 换 key 强制换表单实例——RJSF 内部 formData 是组件态,实例被
+                // React 复用会把前节点字段漏进本节点提交(additionalProperties:
+                // false 拒绝)。每个 action schema 一个干净表单。
+                <Card
                   key={`${execRel}:${action.name}:${JSON.stringify(action.fields)}`}
-                  rel={execRel}
-                  action={action}
-                  blocked={blockedForRenderer(guard)}
-                  blockReason={guard?.reason}
-                  onExecuted={onChanged}
-                />
+                  className="gap-3 p-4"
+                >
+                  <ActionRunner
+                    rel={execRel}
+                    action={action}
+                    blocked={blockedForRenderer(guard)}
+                    blockReason={guard?.reason}
+                    onExecuted={onChanged}
+                  />
+                </Card>
               );
             })}
           </div>
@@ -173,58 +195,66 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
 
       {entity.links.length > 0 && (
         <section aria-label="链接" className="mt-6">
-          <h2 className="mb-2 text-sm font-semibold text-zinc-700">链接</h2>
-          <ul className="space-y-1 text-sm">
-            {entity.links.map((link) => {
-              const target = hrefToRel(link.href);
-              return (
-                <li key={`${link.rel.join('/')}:${link.href}`}>
-                  <span className="mr-2 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500">
-                    {link.rel.join('/')}
-                  </span>
-                  {target !== null ? (
-                    <a
-                      href={entityPageHref(target)}
-                      data-rel={target}
-                      data-nav={link.rel[0]}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {target}
-                    </a>
-                  ) : (
-                    <a href={link.href} data-nav="external" className="text-blue-600 hover:underline">
-                      {link.href}
-                    </a>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          <h2 className="mb-2 text-sm font-semibold">链接</h2>
+          <Card className="gap-0 p-4">
+            <ul className="space-y-1 text-sm">
+              {entity.links.map((link) => {
+                const target = hrefToRel(link.href);
+                return (
+                  <li key={`${link.rel.join('/')}:${link.href}`}>
+                    <Badge variant="secondary" className="mr-2 font-mono font-normal">
+                      {link.rel.join('/')}
+                    </Badge>
+                    {target !== null ? (
+                      <a
+                        href={entityPageHref(target)}
+                        data-rel={target}
+                        data-nav={link.rel[0]}
+                        className="break-all text-primary hover:underline"
+                      >
+                        {target}
+                      </a>
+                    ) : (
+                      <a
+                        href={link.href}
+                        data-nav="external"
+                        className="break-all text-primary hover:underline"
+                      >
+                        {link.href}
+                      </a>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
         </section>
       )}
 
       {members.length > 0 && (
         <section aria-label="成员" className="mt-6">
-          <h2 className="mb-2 text-sm font-semibold text-zinc-700">成员({members.length})</h2>
-          <ul className="space-y-1 text-sm">
-            {members.map((sub) => {
-              const target = hrefToRel(sub.href ?? '') ?? String(sub.properties.rel ?? '');
-              return (
-                <li key={target}>
-                  <a
-                    href={entityPageHref(target)}
-                    data-rel={target}
-                    data-nav="item"
-                    className="text-blue-600 hover:underline"
-                  >
-                    {memberSummary(sub)}
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
+          <h2 className="mb-2 text-sm font-semibold">成员({members.length})</h2>
+          <Card className="gap-0 p-4">
+            <ul className="space-y-1 text-sm">
+              {members.map((sub) => {
+                const target = hrefToRel(sub.href ?? '') ?? String(sub.properties.rel ?? '');
+                return (
+                  <li key={target}>
+                    <a
+                      href={entityPageHref(target)}
+                      data-rel={target}
+                      data-nav="item"
+                      className="break-all text-primary hover:underline"
+                    >
+                      {memberSummary(sub)}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
         </section>
       )}
-    </main>
+    </div>
   );
 }

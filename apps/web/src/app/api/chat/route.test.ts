@@ -1,10 +1,19 @@
 /**
- * /api/chat 路由测试(T2 Phase E / Task E2)。
+ * /api/chat 路由测试(T2 Phase E / Task E2;T9 Phase B 起 inline 为 SSE)。
  *
  * 聊天路由在服务端组装 driver 并跑 runAgent(循环过 HTTP 合同,actor=agent,
  * channel=chat)。route 直测经"进程内回环":node:http server 把请求转交给真实
  * route handler(/api/entity、/api/exec、/.well-known/ui4a.json、/api/chat),
  * 聊天路由的 loopback fetch(取 request.url origin)原样命中——不依赖外部 dev server。
+ *
+ * T9 Phase B(SSE 流式 + chat-turn 落日志):
+ * - inline 响应为 text/event-stream:每步一帧 {type:'step', message, rel},
+ *   结束 {type:'final', payload:{sessionId, driver, ..., steps, successes}};
+ *   本文件的 chat() helper 解析 SSE 帧并把 step 文本聚回 messages——既有
+ *   I1/B4 断言(messages 口径)零改动;
+ * - inline 回合完成后直写 chat-turn 事件(rel=chat:<sessionId>,detail 含
+ *   goal/outcome/messages/driver)——双写者留痕,/api/events 可见;
+ * - render 短路/参数错误/delegated 仍为一次性 JSON(形状不动)。
  *
  * 覆盖:
  * - I1(路由级):无 GLM_API_KEY → auto 回退 rule → B1 目标完成,文章计数 +1,
@@ -68,15 +77,63 @@ interface ChatResponseBody {
   error?: string;
 }
 
-async function chat(
-  body: Record<string, unknown>,
-): Promise<{ status: number; json: ChatResponseBody }> {
+/** SSE 帧(T9 Phase B):step 逐步消息 / final 终帧 / error 兜底。 */
+interface SseFrame {
+  type: 'step' | 'final' | 'error';
+  message?: { role: 'assistant'; text: string };
+  rel?: string;
+  payload?: ChatResponseBody;
+  error?: string;
+}
+
+/** 解析 SSE 帧流(`data: <json>` 空行分隔)。 */
+function parseSseFrames(raw: string): SseFrame[] {
+  return raw
+    .split('\n\n')
+    .map((chunk) => chunk.split('\n').find((line) => line.startsWith('data:')))
+    .filter((line): line is string => line !== undefined)
+    .map((line) => JSON.parse(line.slice('data:'.length).trim()) as SseFrame);
+}
+
+/**
+ * POST /api/chat:inline 走 SSE(content-type 分派)——step 帧聚回 messages,
+ * final payload 展开为 json(与旧一次性 JSON 同字段,既有断言零改动);
+ * render/delegated/参数错误仍一次性 JSON,直解析。
+ */
+async function chat(body: Record<string, unknown>): Promise<{
+  status: number;
+  json: ChatResponseBody;
+  raw: string;
+  frames: SseFrame[];
+  contentType: string;
+}> {
   const response = await fetch(`${base}/api/chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
-  return { status: response.status, json: (await response.json()) as ChatResponseBody };
+  const raw = await response.text();
+  const contentType = response.headers.get('content-type') ?? '';
+  if (contentType.includes('text/event-stream')) {
+    const frames = parseSseFrames(raw);
+    const finalFrame = frames.find((frame) => frame.type === 'final');
+    const errorFrame = frames.find((frame) => frame.type === 'error');
+    const messages = frames.flatMap((frame) =>
+      frame.type === 'step' && frame.message !== undefined ? [frame.message] : [],
+    );
+    const json: ChatResponseBody =
+      finalFrame?.payload !== undefined
+        ? { ...finalFrame.payload, messages }
+        : { error: errorFrame?.error ?? '(SSE 流无 final 帧)', messages };
+    return { status: response.status, json, raw, frames, contentType };
+  }
+  return {
+    status: response.status,
+    json: JSON.parse(raw) as ChatResponseBody,
+    raw,
+    frames: [],
+    contentType,
+  };
 }
 
 async function articleCount(): Promise<number> {
@@ -177,6 +234,75 @@ describe('I1(路由级):无 key → auto 回退 rule,B1 完成', () => {
       channel: 'chat',
       principal: 'user:sess-42',
     });
+  });
+
+  it('SSE 帧协议:step 帧逐步先于 final,文本为 stepToMessage 口径', async () => {
+    const { raw, frames, json, contentType } = await chat({
+      goal: {
+        verb: '发布一篇文章',
+        fields: { title: '帧序', category: 'tech', tags: '', body: '正文' },
+      },
+    });
+
+    expect(contentType).toContain('text/event-stream');
+    // 帧序:若干 step → 恰好一条 final 收尾;终帧前无 final。
+    expect(frames.length).toBeGreaterThan(1);
+    expect(frames[frames.length - 1]!.type).toBe('final');
+    expect(frames.slice(0, -1).every((frame) => frame.type === 'step')).toBe(true);
+    // step 帧文本口径与 trail.ts 一致(e2e 同一断言锚点)。
+    const trajectory = frames
+      .filter((frame) => frame.type === 'step')
+      .map((frame) => frame.message!.text)
+      .join('\n');
+    expect(trajectory.match(/执行 next/g)).toHaveLength(3);
+    expect(trajectory).toContain('执行 publish');
+    expect(trajectory).toContain('完成');
+    expect(raw).toContain('data: ');
+    expect(json.outcome).toBe('done');
+  });
+
+  it('chat-turn 落日志(T9 Phase B):inline 回合完成直写事件,rel=chat:<sessionId>', async () => {
+    const { json } = await chat({
+      sessionId: 'sess-turn',
+      goal: {
+        verb: '发布一篇文章',
+        fields: { title: '回合留痕', category: 'essay', tags: '', body: '正文' },
+      },
+    });
+    expect(json.outcome).toBe('done');
+
+    const response = await fetch(`${base}/api/events`);
+    const body = (await response.json()) as {
+      events: {
+        kind: string;
+        rel: string;
+        actor: string;
+        channel: string;
+        principal: string;
+        detail: {
+          sessionId: string;
+          goal: { verb: string };
+          outcome: string;
+          messages: { role: string; text: string }[];
+          driver: string;
+        };
+      }[];
+    };
+    const turns = body.events.filter((event) => event.kind === 'chat-turn');
+    expect(turns).toHaveLength(1);
+    expect(turns[0]).toMatchObject({
+      rel: 'chat:sess-turn',
+      actor: 'agent',
+      channel: 'chat',
+      principal: 'user:sess-turn',
+    });
+    expect(turns[0]!.detail.sessionId).toBe('sess-turn');
+    expect(turns[0]!.detail.goal.verb).toBe('发布一篇文章');
+    expect(turns[0]!.detail.outcome).toBe('done');
+    expect(turns[0]!.detail.driver).toBe('rule');
+    expect(turns[0]!.detail.messages.map((message) => message.text).join('\n')).toContain(
+      '执行 publish',
+    );
   });
 });
 

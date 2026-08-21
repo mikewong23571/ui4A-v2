@@ -12,12 +12,14 @@ import { POST as postExecRoute } from '../exec/route';
 import { POST as postChat } from './route';
 
 // /api/chat mode=delegated(T5 Phase B / Task 1):委托派发路径的路由测试。
-// 与 route.test.ts(inline 既有口径,零改动)互补——本文件只测新增分支:
+// 与 route.test.ts(inline 口径)互补——本文件只测新增分支:
 // - delegated:校验 goal → 派发 delegationWorkflow(dispatch 模块 vi.mock 替身)
 //   → 200 {mode:'delegated', delegationId, statusUrl:'/api/delegations/<id>'};
 // - auto driver 解析后传 rule(无 key;与 inline 的 resolveDriverKind 同口径);
 // - 缺省 mode 仍是 inline(dispatch 不被调用,响应无 delegationId);
 // - 派发失败(Temporal 不可达)→ 503 据实(委托没派出去不能假装成功)。
+// T9 Phase B:inline 对照路径改 SSE 流——helper 解析 final 帧 payload 为 json,
+// delegated/参数错误仍一次性 JSON(形状不动)。
 //
 // 回环:node:http server 转交真实 route handler(与 route.test.ts 同装置),
 // resolveStartRel 的 sitemap/entity 探测经 request.url origin 原样命中。
@@ -40,12 +42,29 @@ async function handler(pathname: string, request: Request): Promise<Response> {
   return Response.json({ error: 'not found' }, { status: 404 });
 }
 
-async function chat(body: Record<string, unknown>): Promise<{ status: number; json: Record<string, unknown> }> {
+async function chat(
+  body: Record<string, unknown>,
+): Promise<{ status: number; json: Record<string, unknown> }> {
   const response = await fetch(`${base}/api/chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
+  const contentType = response.headers.get('content-type') ?? '';
+  // inline(T9 Phase B)为 SSE 流:final 帧 payload 即回合结果(同旧 JSON 字段)。
+  if (contentType.includes('text/event-stream')) {
+    const raw = await response.text();
+    const finalLine = raw
+      .split('\n\n')
+      .map((chunk) => chunk.split('\n').find((line) => line.startsWith('data:')))
+      .filter((line): line is string => line !== undefined)
+      .map((line) => JSON.parse(line.slice('data:'.length).trim()) as Record<string, unknown>)
+      .find((frame) => frame.type === 'final');
+    return {
+      status: response.status,
+      json: (finalLine?.payload ?? {}) as Record<string, unknown>,
+    };
+  }
   return { status: response.status, json: (await response.json()) as Record<string, unknown> };
 }
 
@@ -71,7 +90,9 @@ beforeEach(async () => {
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
   dispatchMock.mockReset();
-  dispatchMock.mockImplementation(async () => ({ delegationId: '11111111-2222-3333-4444-555555555555' }));
+  dispatchMock.mockImplementation(async () => ({
+    delegationId: '11111111-2222-3333-4444-555555555555',
+  }));
 });
 
 afterEach(async () => {

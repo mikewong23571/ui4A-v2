@@ -107,7 +107,7 @@ const chartWord: RenderWordEntry = {
   },
 };
 
-/** 词条:统计卡(Tremor;value = 字段引用,数值来自实体)。 */
+/** 词条:统计卡(shadcn Card;value = 字段引用,数值来自实体)。 */
 const statWord: RenderWordEntry = {
   name: 'stat',
   title: '统计卡',
@@ -123,7 +123,7 @@ const statWord: RenderWordEntry = {
   },
 };
 
-/** 词条:时间线(react-chrono;events = 集合引用,append 序即时间序)。 */
+/** 词条:时间线(自绘垂直时间线;events = 集合引用,append 序即时间序)。 */
 const timelineWord: RenderWordEntry = {
   name: 'timeline',
   title: '时间线',

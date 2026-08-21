@@ -26,7 +26,10 @@ function contentOf(entity: ReturnType<typeof asEntity>): string {
 export function MarkdownWord(props: WordProps) {
   const entity = asEntity(props.entity, 'markdown', 'entity');
   return (
-    <article data-word="markdown" className="prose-sm w-full max-w-none text-zinc-800 [&_h1]:text-xl [&_h1]:font-semibold [&_strong]:font-semibold">
+    <article
+      data-word="markdown"
+      className="prose-sm w-full max-w-none text-foreground [&_h1]:text-xl [&_h1]:font-semibold [&_strong]:font-semibold"
+    >
       <ReactMarkdown>{contentOf(entity)}</ReactMarkdown>
     </article>
   );

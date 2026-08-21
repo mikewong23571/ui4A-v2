@@ -41,39 +41,41 @@ export function EntityPageBody({ rel }: { rel: string }) {
 
   if (rel === '') {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-6">
+      <div>
         <nav className="mb-2 text-sm">
-          <a href="/" data-nav="home" className="text-blue-600 hover:underline">
+          <a href="/" data-nav="home" className="text-primary hover:underline">
             ← 首页
           </a>
         </nav>
-        <p className="text-sm text-zinc-700">缺少 rel 参数。用法:/entity?rel=post:post-welcome。</p>
-      </main>
+        <p className="text-sm text-muted-foreground">
+          缺少 rel 参数。用法:/entity?rel=post:post-welcome。
+        </p>
+      </div>
     );
   }
 
   if (state === 'error' || state === 'missing') {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-6">
+      <div>
         <nav className="mb-2 text-sm">
-          <a href="/" data-nav="home" className="text-blue-600 hover:underline">
+          <a href="/" data-nav="home" className="text-primary hover:underline">
             ← 首页
           </a>
         </nav>
         {state === 'missing' ? (
-          <p className="text-sm text-zinc-700">实体 “{rel}” 不存在(404)。</p>
+          <p className="text-sm text-muted-foreground">实体 “{rel}” 不存在(404)。</p>
         ) : (
-          <p className="text-sm text-zinc-700">读取实体 “{rel}” 失败(服务不可用)。</p>
+          <p className="text-sm text-muted-foreground">读取实体 “{rel}” 失败(服务不可用)。</p>
         )}
-      </main>
+      </div>
     );
   }
 
   if (state === 'loading' || entity === null) {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-6">
+      <div>
         <p className="text-sm text-zinc-500">加载中…</p>
-      </main>
+      </div>
     );
   }
 

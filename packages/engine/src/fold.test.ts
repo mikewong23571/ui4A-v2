@@ -44,7 +44,11 @@ const seedDetail: SeedDetail = {
     'comment:c1': instance('comment:c1', 'comment-moderation', 'pending', {
       body: { value: '好文章', origin: 'intent' },
     }),
-    'article-drafting:main': instance('article-drafting:main', 'article-drafting', 'classification'),
+    'article-drafting:main': instance(
+      'article-drafting:main',
+      'article-drafting',
+      'classification',
+    ),
   },
   collections: { comments: ['comment:c1'] },
 };
@@ -218,6 +222,30 @@ describe('fold 投影', () => {
     expect(() => fold([seedEvent, bogus], { flows })).toThrow(/未知事件 kind/);
   });
 
+  it('chat-turn(T9 Phase B):聊天回合投影被 fold 忽略(纯审计留痕,不改状态)', () => {
+    const chatTurn: LogEvent = {
+      seq: 2,
+      kind: 'chat-turn',
+      rel: 'chat:sess-1',
+      actor: 'agent',
+      principal: 'user:sess-1',
+      channel: 'chat',
+      detail: {
+        sessionId: 'sess-1',
+        goal: { verb: '发布一篇文章' },
+        outcome: 'done',
+        summary: '目标完成',
+        messages: [{ role: 'assistant', text: '完成: 目标完成' }],
+        driver: 'rule',
+      },
+    };
+
+    const before = fold([seedEvent], { flows });
+    const after = fold([seedEvent, chatTurn], { flows });
+
+    expect(after).toEqual(before);
+  });
+
   it('定义漂移:动作未声明于重放位点 → 抛错并带 seq(I5 完整性)', () => {
     const drifted: LogEvent = {
       seq: 2,
@@ -277,7 +305,8 @@ function withSeq(events: readonly EngineEvent[], start: number): LogEvent[] {
 function onlineSuspendApprove(): { online: EngineSnapshot; log: LogEvent[] } {
   const base = fold([seedFromSnapshot], postDeps);
   const suspended = executeWithGates(agentArchive, base, postDeps);
-  if (suspended.kind !== 'suspended') throw new Error(`前置失败:期望 suspended,得到 ${suspended.kind}`);
+  if (suspended.kind !== 'suspended')
+    throw new Error(`前置失败:期望 suspended,得到 ${suspended.kind}`);
 
   const decision = approveConfirmation(
     suspended.snapshot,
@@ -285,7 +314,8 @@ function onlineSuspendApprove(): { online: EngineSnapshot; log: LogEvent[] } {
     { actor: 'human', principal: 'user:mike' },
     postDeps,
   );
-  if (decision.kind !== 'confirmed') throw new Error(`前置失败:期望 confirmed,得到 ${decision.kind}`);
+  if (decision.kind !== 'confirmed')
+    throw new Error(`前置失败:期望 confirmed,得到 ${decision.kind}`);
 
   const log: LogEvent[] = [
     seedFromSnapshot,
@@ -343,11 +373,7 @@ describe('fold — confirmation 事件链', () => {
     );
     if (decision.kind !== 'confirmed') throw new Error('前置失败');
 
-    const log = [
-      seedFromSnapshot,
-      ...withSeq(suspended.events, 2),
-      ...withSeq(decision.events, 3),
-    ];
+    const log = [seedFromSnapshot, ...withSeq(suspended.events, 2), ...withSeq(decision.events, 3)];
     const replayed = fold(log, postDeps);
 
     expect(replayed.instances['post:post-welcome']?.node).toBe('published');
@@ -420,7 +446,8 @@ describe('fold — confirmation 事件链', () => {
 function suspendedOnce(): { log: LogEvent[]; suspended: ReturnType<typeof executeWithGates> } {
   const base = fold([seedFromSnapshot], postDeps);
   const suspended = executeWithGates(agentArchive, base, postDeps);
-  if (suspended.kind !== 'suspended') throw new Error(`前置失败:期望 suspended,得到 ${suspended.kind}`);
+  if (suspended.kind !== 'suspended')
+    throw new Error(`前置失败:期望 suspended,得到 ${suspended.kind}`);
   return { log: [seedFromSnapshot, ...withSeq(suspended.events, 2)], suspended };
 }
 
@@ -449,7 +476,10 @@ describe('fold — notification-delivered(T3 Phase C)', () => {
   it('送达 → 对应 confirmation 标记 notified=true(inbox delivered 计数的数据源)', () => {
     const snapshot = fold([...suspendedOnce().log, deliveredEvent(3)], postDeps);
 
-    expect(snapshot.confirmations?.['confirmation:c1']).toMatchObject({ status: 'pending', notified: true });
+    expect(snapshot.confirmations?.['confirmation:c1']).toMatchObject({
+      status: 'pending',
+      notified: true,
+    });
   });
 
   it('重复送达(同 rel,capability 重试)→ 幂等:不抛错、状态不变', () => {
@@ -485,9 +515,9 @@ describe('fold — notification-delivered(T3 Phase C)', () => {
   });
 
   it('指向未知确认 → 响亮失败(日志完整性,带 seq)', () => {
-    expect(() => fold([seedFromSnapshot, deliveredEvent(2, 'confirmation:ghost')], postDeps)).toThrow(
-      /seq=2/,
-    );
+    expect(() =>
+      fold([seedFromSnapshot, deliveredEvent(2, 'confirmation:ghost')], postDeps),
+    ).toThrow(/seq=2/);
   });
 
   it('增量重放:fold(后段, initial=前段快照) 与全量 fold 同构(I5;web 读路径增量 fold 的根基)', () => {

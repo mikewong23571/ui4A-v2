@@ -26,11 +26,7 @@ import {
   type ConfirmationDecisionDetail,
   type ConfirmationRequestDetail,
 } from './confirmation';
-import {
-  applyDelegationStarted,
-  applyDelegationStep,
-  applyDelegationTerminal,
-} from './delegation';
+import { applyDelegationStarted, applyDelegationStep, applyDelegationTerminal } from './delegation';
 import { applyEffects } from './effects';
 import type { EngineEvent } from './effects';
 import type { ExecRequest } from './judge';
@@ -53,7 +49,9 @@ import { applyRenderSpecFrozen } from './render-spec';
  *  delegation-*(T5 委托事件族:worker delegationWorkflow 的首/步/终事件;
  *  类型先行与 web EventKind 对齐,fold 分支与 delegations 投影见 T5 Phase A Task 2)+
  *  render-spec-frozen(T7 凝固:渲染 spec 按关注点首冻入日志,
- *  fold 分支见 render-spec 模块)。 */
+ *  fold 分支见 render-spec 模块)+
+ *  chat-turn(T9 Phase B:聊天 inline 回合投影,web 聊天路由直写——
+ *  纯审计留痕,fold 不改状态)。 */
 export type LogEventKind =
   | EngineEvent['kind']
   | 'action-rejected'
@@ -65,7 +63,8 @@ export type LogEventKind =
   | 'delegation-completed'
   | 'delegation-failed'
   | 'delegation-max-steps'
-  | 'render-spec-frozen';
+  | 'render-spec-frozen'
+  | 'chat-turn';
 
 /**
  * 存储事件(引擎 EngineEvent + 日志层字段)。
@@ -119,8 +118,7 @@ function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
   for (const [rel, seeded] of Object.entries(detail.instances)) {
     if (instances[rel] !== undefined) continue;
     const bornVersion = seeded.bornVersion ?? snapshot.definitions?.[seeded.flow]?.version;
-    instances[rel] =
-      bornVersion !== undefined ? { ...seeded, bornVersion } : { ...seeded };
+    instances[rel] = bornVersion !== undefined ? { ...seeded, bornVersion } : { ...seeded };
   }
   const collections: Record<string, string[]> = {};
   for (const [name, members] of Object.entries(snapshot.collections)) {
@@ -185,9 +183,7 @@ function applyExecuted(
   }
   const action = node.actions.find((candidate) => candidate.name === request.action);
   if (action === undefined) {
-    throw new Error(
-      `重放失败:${where} 动作未声明于节点 "${node.name}"(定义与日志漂移)`,
-    );
+    throw new Error(`重放失败:${where} 动作未声明于节点 "${node.name}"(定义与日志漂移)`);
   }
 
   try {
@@ -207,10 +203,7 @@ function applyExecuted(
 // ---------------------------------------------------------------------------
 
 /** confirmation-requested 重放:pending 实体物化(不重新裁决策略,载荷即真相)。 */
-function applyConfirmationRequested(
-  snapshot: EngineSnapshot,
-  event: LogEvent,
-): EngineSnapshot {
+function applyConfirmationRequested(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
   const detail = event.detail as Partial<ConfirmationRequestDetail> | undefined;
   if (
     detail === undefined ||
@@ -268,9 +261,7 @@ function applyConfirmationDecision(
     throw new Error(`重放失败:seq=${event.seq} 确认 "${rel}" 不存在(日志与状态漂移)`);
   }
   if (existing.status !== 'pending') {
-    throw new Error(
-      `重放失败:seq=${event.seq} 确认 "${rel}" 已是 ${existing.status}(重复裁决)`,
-    );
+    throw new Error(`重放失败:seq=${event.seq} 确认 "${rel}" 已是 ${existing.status}(重复裁决)`);
   }
   // decidedBy 从 detail 还原(含 principal;与在线 decidedByOf 构造逐字段同构)。
   const decidedBy = detail.decidedBy;
@@ -279,9 +270,7 @@ function applyConfirmationDecision(
     typeof decidedBy !== 'object' ||
     (decidedBy.actor !== 'human' && decidedBy.actor !== 'agent')
   ) {
-    throw new Error(
-      `重放失败:seq=${event.seq} confirmation-${status} 缺少 decidedBy(日志完整性)`,
-    );
+    throw new Error(`重放失败:seq=${event.seq} confirmation-${status} 缺少 decidedBy(日志完整性)`);
   }
   const updated: ConfirmationSnapshot =
     status === 'approved'
@@ -515,7 +504,10 @@ function applyDefinitionSubmitted(snapshot: EngineSnapshot, event: LogEvent): En
 
   return {
     ...snapshot,
-    instances: { ...snapshot.instances, [metaFlowRel(detail.name)]: { ...instance, node: 'draft' } },
+    instances: {
+      ...snapshot.instances,
+      [metaFlowRel(detail.name)]: { ...instance, node: 'draft' },
+    },
     definitions: { ...snapshot.definitions, [detail.name]: { ...entry, status: 'draft' } },
   };
 }
@@ -602,9 +594,7 @@ function applyDefinitionRejected(snapshot: EngineSnapshot, event: LogEvent): Eng
   const activationRel = metaActivationRel(detail.activationId);
   const activation = snapshot.activations?.[activationRel];
   if (activation === undefined || activation.status !== 'pending-approval') {
-    throw new Error(
-      `重放失败:seq=${event.seq} 激活 "${activationRel}" 不存在或已决策(日志完整性)`,
-    );
+    throw new Error(`重放失败:seq=${event.seq} 激活 "${activationRel}" 不存在或已决策(日志完整性)`);
   }
   return {
     ...snapshot,
@@ -648,6 +638,7 @@ function applyDefinitionRejected(snapshot: EngineSnapshot, event: LogEvent): Eng
  *   物化;fail 则回 draft(校验报告即 checks 失败项);
  * - definition-activated / -rejected:approve/reject 落态(版本推进/驳回留痕;
  *   转移由前置 action-executed 重放,此处核对 + 条目与 activation 同步);
+ * - chat-turn(T9 Phase B):聊天回合投影——纯审计留痕,fold 不改状态;
  * - 未知 kind:抛错(日志完整性守卫)。
  *
  * initial(可选):从既有快照继续折叠——web 读路径按 seq 增量 fold 的根基
@@ -748,6 +739,9 @@ export function fold(
       // plan-executed(T6):批量裁决记录——纯标记,状态由同批各步伴随事件
       // (action-executed / confirmation-requested 族)重放,fold 不双算。
       case 'plan-executed':
+      // chat-turn(T9 Phase B):聊天回合投影——纯审计留痕(消息全文在 detail),
+      // 状态与引擎无关,fold 忽略;历史读路径走 /api/chat/history 的日志过滤。
+      case 'chat-turn':
         break;
       default:
         throw new Error(`重放失败:未知事件 kind "${String(event.kind)}"(seq=${event.seq})`);

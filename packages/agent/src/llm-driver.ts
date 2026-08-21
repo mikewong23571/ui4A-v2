@@ -11,7 +11,7 @@
  * - createDriver('auto'):无 key 回退 rule driver(I1 机械层)。
  *
  * GLM coding plan:baseURL open.bigmodel.cn/api/coding/paas/v4,模型名缺省
- * glm-4.7(coding plan 常用旗舰;LLM_MODEL env 可覆盖)。
+ * glm-5.3(coding plan 旗舰,2026-08-14 发布;LLM_MODEL env 可覆盖;D20)。
  */
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, jsonSchema, type LanguageModel, type ToolSet } from 'ai';
@@ -25,8 +25,8 @@ import type { AgentDriver, AgentOperation, DriverContext, FetchLike } from './ty
 /** GLM coding plan 的 OpenAI 兼容端点(中国区)。 */
 export const DEFAULT_LLM_BASE_URL = 'https://open.bigmodel.cn/api/coding/paas/v4';
 
-/** coding plan 常用旗舰模型(LLM_MODEL 可覆盖;验收报告记录选择理由)。 */
-export const DEFAULT_LLM_MODEL = 'glm-4.7';
+/** coding plan 旗舰模型(LLM_MODEL 可覆盖;验收报告记录选择理由;D20)。 */
+export const DEFAULT_LLM_MODEL = 'glm-5.3';
 
 export interface LlmDriverOptions {
   /** 缺省 process.env.GLM_API_KEY。 */
@@ -214,6 +214,9 @@ async function llmDecide(model: LanguageModel, context: DriverContext): Promise<
       system: SYSTEM_PROMPT,
       prompt: buildUserPrompt(context),
       tools: toToolSet(buildToolProjection(context.entity)),
+      // 端点挂死兜底(T9 Phase B):60s 无响应折算 abort 错误,经 catch 如实进
+      // fail reason(B4 口径:失败也是合同的一部分,decide 永不抛异常)。
+      abortSignal: AbortSignal.timeout(60_000),
       // toolChoice 保持缺省 auto:GLM coding 端点对 "required" 挂起不响应
       // (实测 2026-08-21,90s 无返回;default auto 正常产出 tool_calls)。
       // 系统提示词已约束"每轮恰好一个工具调用";无调用时 fail-safe 兜底。

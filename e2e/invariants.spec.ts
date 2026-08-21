@@ -26,12 +26,7 @@
  * s1.spec 覆盖),Temporal 不可达时本文件不跳过(与 s1 互补的口径)。
  */
 import { createRuleDriver, planFor, runAgent } from '@ui4a/agent';
-import type {
-  AgentDriver,
-  DriverContext,
-  SirenEntity,
-  TrailStep,
-} from '@ui4a/agent';
+import type { AgentDriver, DriverContext, SirenEntity, TrailStep } from '@ui4a/agent';
 import { expect, test, type Page } from '@playwright/test';
 
 import { getPool } from '../apps/web/src/db/pool';
@@ -80,7 +75,10 @@ async function execHttp(
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
-  return { status: response.status, json: (await response.json().catch(() => ({}))) as Record<string, unknown> };
+  return {
+    status: response.status,
+    json: (await response.json().catch(() => ({}))) as Record<string, unknown>,
+  };
 }
 
 async function getEntity(rel: string): Promise<EntityShape> {
@@ -329,18 +327,16 @@ test.describe('I2 事实不可发明', () => {
 // ---- I3 交互必背书 ---------------------------------------------------------------
 
 test.describe('I3 交互必背书', () => {
-  /** 可点元素探针(i3.spec 同口径:button/a/[role=button] 的标注枚举)。 */
-  function probeClickables(page: Page): Promise<
-    { tag: string; text: string; action: string | null; nav: string | null; whitelisted: boolean }[]
-  > {
+  /** 可点元素探针(i3 同口径:button/a/[role=button] 的标注枚举,零白名单)。 */
+  function probeClickables(
+    page: Page,
+  ): Promise<{ tag: string; text: string; action: string | null; nav: string | null }[]> {
     return page.evaluate(() =>
       Array.from(document.querySelectorAll('button, a, [role="button"]')).map((element) => ({
         tag: element.tagName.toLowerCase(),
         text: (element.textContent ?? '').trim().slice(0, 32),
         action: element.getAttribute('data-action'),
         nav: element.getAttribute('data-nav'),
-        // react-chrono 内部控件白名单(i3 同口径:纯展示交互原语,无合同语义)。
-        whitelisted: element.closest('[data-word="timeline"]') !== null,
       })),
     );
   }
@@ -349,7 +345,11 @@ test.describe('I3 交互必背书', () => {
     await withFreshServer(async () => {
       const targets = [
         { name: '首页', path: '/', ready: '[data-testid="situation"]' },
-        { name: '实体页(已发布文章,含动作)', path: '/entity?rel=post:post-welcome', ready: '[data-action]' },
+        {
+          name: '实体页(已发布文章,含动作)',
+          path: '/entity?rel=post:post-welcome',
+          ready: '[data-action]',
+        },
       ];
       for (const target of targets) {
         await page.goto(`${SCENARIO_BASE}${target.path}`);
@@ -357,7 +357,7 @@ test.describe('I3 交互必背书', () => {
         const clickables = await probeClickables(page);
         expect(clickables.length, `${target.name} 应存在可点元素(fuzz 非空泛)`).toBeGreaterThan(0);
         const offenders = clickables.filter(
-          (element) => element.action === null && element.nav === null && !element.whitelisted,
+          (element) => element.action === null && element.nav === null,
         );
         expect(
           offenders,
@@ -743,7 +743,10 @@ test.describe('I5 可重放', () => {
         rows = await saveLogRows(pool);
         rels = await enumerateEntityRels(pool);
         onlineWorld = await readWorld(rels);
-        expect(rows.length, '压缩序列应产生非平凡日志(≈26 行:定义/种子/业务/确认/计划/凝固)').toBeGreaterThan(20);
+        expect(
+          rows.length,
+          '压缩序列应产生非平凡日志(≈26 行:定义/种子/业务/确认/计划/凝固)',
+        ).toBeGreaterThan(20);
       });
     } finally {
       await terminateStaleNotifyWorkflows(['c1']);
@@ -780,7 +783,9 @@ test.describe('I5 可重放', () => {
         expect((await getEntity('post:post-welcome')).properties.node).toBe('offline');
         expect((await getEntity('post:first-post')).properties.node).toBe('archived');
         expect((await getEntity('post:i5-plan-article')).properties.node).toBe('published');
-        expect((await getEntity('confirmation:c1')).properties).toMatchObject({ status: 'approved' });
+        expect((await getEntity('confirmation:c1')).properties).toMatchObject({
+          status: 'approved',
+        });
         expect((await getEntity('render-spec:articles-by-category')).class).toContain('frozen');
         // meta 面(跨站规则:须经 /api/meta/entity,readWorld 同口径)。
         const metaFlows = await fetch(`${SCENARIO_BASE}/api/meta/entity?rel=meta%2Fflows`);
@@ -791,9 +796,9 @@ test.describe('I5 可重放', () => {
         expect(events.some((event) => event.kind === 'plan-executed')).toBe(true);
         expect(events.some((event) => event.kind === 'render-spec-frozen')).toBe(true);
         expect(events.some((event) => event.kind === 'confirmation-approved')).toBe(true);
-        expect(events.some((event) => event.kind === 'action-rejected' && event.reason !== null)).toBe(
-          true,
-        );
+        expect(
+          events.some((event) => event.kind === 'action-rejected' && event.reason !== null),
+        ).toBe(true);
       },
       {},
       // 重放相位:fresh 进程但不清库——boot 的 fold 即全量重放本身。

@@ -285,14 +285,15 @@ docker compose up -d --wait
 ### Daily Development
 
 ```bash
-# web dev server(端口固定 3100,见 DECISIONS.md D5)
-PORT=3100 pnpm dev
+# 一键启动 PostgreSQL + Temporal + worker + web
+# PostgreSQL 后台运行;其余进程由 concurrently 管理,Ctrl-C 一起停止
+pnpm dev:all
 
 # 单元/集成测试(vitest,CI=true 单次执行)
 CI=true pnpm vitest run
 
-# worker 空壳进程(心跳日志,Ctrl-C 干净退出)
-pnpm --filter @ui4a/worker dev
+# 需要关闭后台 PostgreSQL 时
+pnpm infra:down
 ```
 
 ### Before Committing

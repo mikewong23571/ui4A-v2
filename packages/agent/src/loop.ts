@@ -75,6 +75,17 @@ export async function runAgent(
   const successes: ExecSuccess[] = [];
   let lastRejection: RejectionRecord | undefined;
 
+  /** 追加轨迹并同步回调(T9 Phase B 流式轨迹;观测者异常吞掉,不污染循环)。 */
+  const pushStep = (step: TrailStep): void => {
+    trail.push(step);
+    try {
+      options.onStep?.(step);
+    } catch {
+      // onStep 是观测钩子(如 SSE 帧推送;客户端断开时 enqueue 会抛)——
+      // 观测失败不得中断协议循环,服务端轨迹照常跑完留痕。
+    }
+  };
+
   for (let step = 1; step <= maxSteps; step += 1) {
     const fetched = await client.getEntity(currentRel);
     if (fetched.entity === undefined) {
@@ -102,11 +113,11 @@ export async function runAgent(
     const op = await driver.decide(context);
 
     if (op.kind === 'done') {
-      trail.push({ step, rel: currentRel, op, outcome: 'done' });
+      pushStep({ step, rel: currentRel, op, outcome: 'done' });
       return { goal, outcome: 'done', summary: op.summary, steps: trail, successes };
     }
     if (op.kind === 'fail') {
-      trail.push({ step, rel: currentRel, op, outcome: 'failed' });
+      pushStep({ step, rel: currentRel, op, outcome: 'failed' });
       return { goal, outcome: 'failed', summary: op.reason, steps: trail, successes };
     }
 
@@ -114,7 +125,7 @@ export async function runAgent(
       const target = await client.getEntity(op.rel);
       if (target.entity !== undefined) {
         currentRel = op.rel;
-        trail.push({
+        pushStep({
           step,
           rel: op.rel,
           op,
@@ -128,7 +139,7 @@ export async function runAgent(
           reason: target.error ?? `实体 "${op.rel}" 不可达`,
         };
         lastRejection = rejection;
-        trail.push({ step, rel: currentRel, op, outcome: 'not-found', rejection });
+        pushStep({ step, rel: currentRel, op, outcome: 'not-found', rejection });
       }
       continue;
     }
@@ -143,7 +154,7 @@ export async function runAgent(
     });
     if (call.ok) {
       successes.push({ rel: currentRel, action: op.action, params: op.params });
-      trail.push({
+      pushStep({
         step,
         rel: currentRel,
         op,
@@ -160,7 +171,7 @@ export async function runAgent(
         detail: call.detail,
       };
       lastRejection = rejection;
-      trail.push({ step, rel: currentRel, op, outcome: 'rejected', rejection });
+      pushStep({ step, rel: currentRel, op, outcome: 'rejected', rejection });
     }
   }
 

@@ -22,9 +22,7 @@ function valueAtPath(source: unknown, segments: readonly string[]): unknown {
   for (const segment of segments) {
     if (current === null || typeof current !== 'object') return undefined;
     const container = current as Record<string, unknown> | unknown[];
-    current = Array.isArray(container)
-      ? container[Number(segment)]
-      : container[segment];
+    current = Array.isArray(container) ? container[Number(segment)] : container[segment];
   }
   return current;
 }
@@ -37,7 +35,9 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 /** 路径展示:数字段括号形式(nodes[0].actions[1].name)。 */
 function displayPath(segments: readonly string[]): string {
   return segments
-    .map((segment, index) => (/^\d+$/.test(segment) ? `[${segment}]` : (index > 0 ? '.' : '') + segment))
+    .map((segment, index) =>
+      /^\d+$/.test(segment) ? `[${segment}]` : (index > 0 ? '.' : '') + segment,
+    )
     .join('')
     .replace(/^\./, '');
 }
@@ -101,7 +101,7 @@ export function diffLines(diff: DefinitionDiff): string[] {
 export function DefinitionDiffView({ diff }: { diff: DefinitionDiff }) {
   const lines = diffLines(diff);
   if (lines.length === 0) {
-    return <p className="mt-2 text-sm text-zinc-500">无差异(候选定义与活跃版本全等)。</p>;
+    return <p className="mt-2 text-sm text-muted-foreground">无差异(候选定义与活跃版本全等)。</p>;
   }
   const deletions = lines.filter((line) => line.startsWith('-')).length;
   const insertions = lines.length - deletions;
@@ -114,7 +114,7 @@ export function DefinitionDiffView({ diff }: { diff: DefinitionDiff }) {
   ].join('\n');
   const [file] = parseDiff(unified);
   return (
-    <div data-bios="diff" className="mt-2 overflow-x-auto text-xs">
+    <div data-bios="diff" className="mt-2 overflow-x-auto rounded-md border text-xs">
       <ReactDiffView diffType="modify" hunks={file?.hunks ?? []} viewType="unified" />
     </div>
   );

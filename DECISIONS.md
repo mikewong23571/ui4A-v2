@@ -138,3 +138,8 @@
 - **路线(依赖序)**:T1 application 实体 + sitemap 分组 + agent 两层发现 → T2 版本显式化 + archive → T3 `/app/<name>` 默认暴露 + scoped chat → T4 meta 可视化(拓扑图 + activation diff)→ T5 角色 archetype + scope 默认。
 - **T1 spec 必须回答的开放问题**:membership 方向(app 持 flow 清单 vs flow 声明归属;单属还是多属);agent 工具面/导航枚举按 app scope 过滤的机械;default application 迁移口径。
 - **明确缓做**:policy 按 app 收口、跨 app 共享/分发、访客身份认证(D8 自报口径延续)、application 级 activation 捆绑。
+
+## D20 默认模型升级 glm-5.3(2026-08-22)
+
+- 用户指示:缺省模型 glm-4.7 → **glm-5.3**(2026-08-14 发布并全量 GLM Coding Plan;同 coding endpoint、1M context、reasoning effort low/high/max 缺省 max)。改动:`DEFAULT_LLM_MODEL`(packages/agent/src/llm-driver.ts)+ llm-smoke/demo-checklist 注释;`LLM_MODEL` env 覆盖口径不变。
+- 本条更新 D7 的缺省型号口径;D7 其余结论(`tool_choice` 必须 auto 不可 required、`provider.chat()` 锁 Chat Completions)继续有效——glm-5.3 的 tool calling 与 reasoning 流行为以 llm-smoke 实测复跑为准;reasoning effort 缺省 max,每步决策时延可能高于 D7 的 8–20s 口径,观测后校准。

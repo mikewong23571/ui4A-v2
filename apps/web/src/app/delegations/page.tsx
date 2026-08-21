@@ -8,7 +8,18 @@
  * - 自动轮询(3s)零操作刷新 + 手动刷新按钮;running 委托会自行推进;
  * - 极简表格,无任何可提交合同元素(委托动作发生在 worker,不经此页)。
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ComponentProps } from 'react';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 /** /api/delegations 的舰队行(时间无关摘要;与后端 DelegationRow 同形)。 */
 interface FleetRow {
@@ -31,12 +42,12 @@ const STATUS_LABEL: Record<FleetRow['status'], string> = {
   'max-steps': '步数上限',
 };
 
-/** 状态色(组件测试以 data-status + class 断言;e2e/走查同锚点)。 */
-const STATUS_COLOR: Record<FleetRow['status'], string> = {
-  running: 'text-blue-600',
-  completed: 'text-green-600',
-  failed: 'text-red-600',
-  'max-steps': 'text-amber-600',
+/** 状态 Badge variant(组件测试以 data-status + data-variant 断言;e2e/走查同锚点)。 */
+const STATUS_VARIANT: Record<FleetRow['status'], ComponentProps<typeof Badge>['variant']> = {
+  running: 'default',
+  completed: 'secondary',
+  failed: 'destructive',
+  'max-steps': 'outline',
 };
 
 /** 目标文本:动词 + 字段值(title/resource 等标量)。 */
@@ -83,64 +94,69 @@ export default function DelegationsPage() {
   const running = (rows ?? []).filter((row) => row.status === 'running').length;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-8">
+    <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-900">委托舰队</h1>
-        <button
+        <h1 className="text-2xl font-semibold tracking-tight">委托舰队</h1>
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           aria-label="刷新"
           data-nav="local:fleet-refresh"
-          className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100"
           onClick={() => void load()}
         >
           刷新
-        </button>
+        </Button>
       </div>
-      <p className="mt-1 text-xs text-zinc-500">
+      <p className="mt-1 text-xs text-muted-foreground">
         委托 = Temporal workflow · 事件日志即轨迹 · 每 {POLL_MS / 1000}s 自动刷新
         {rows !== null ? ` · 执行中 ${running}` : ''}
       </p>
 
-      {failed && <p className="mt-6 text-sm text-red-600">读取舰队失败(服务不可用)。</p>}
-      {!failed && rows === null && <p className="mt-6 text-sm text-zinc-500">加载中…</p>}
+      {failed && <p className="mt-6 text-sm text-destructive">读取舰队失败(服务不可用)。</p>}
+      {!failed && rows === null && <p className="mt-6 text-sm text-muted-foreground">加载中…</p>}
 
       {rows !== null && rows.length === 0 && (
-        <p className="mt-6 text-sm text-zinc-500" data-testid="empty-fleet">
+        <p className="mt-6 text-sm text-muted-foreground" data-testid="empty-fleet">
           暂无委托
         </p>
       )}
 
       {rows !== null && rows.length > 0 && (
-        <table className="mt-6 w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500">
-              <th className="py-2 pr-4">目标</th>
-              <th className="py-2 pr-4">状态</th>
-              <th className="py-2 pr-4">步数</th>
-              <th className="py-2 pr-4">成功</th>
-              <th className="py-2">摘要</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="border-b border-zinc-100 align-top" data-delegation={row.id}>
-                <td className="py-2 pr-4">
-                  <span className="font-medium text-zinc-800">{goalText(row.goal)}</span>
-                  <span className="ml-2 text-xs text-zinc-400">{idBrief(row.id)}</span>
-                </td>
-                <td className="py-2 pr-4">
-                  <span data-status={row.status} className={STATUS_COLOR[row.status]}>
-                    {STATUS_LABEL[row.status]}
-                  </span>
-                </td>
-                <td className="py-2 pr-4 text-zinc-700">{row.steps}</td>
-                <td className="py-2 pr-4 text-zinc-700">{row.successes}</td>
-                <td className="py-2 text-zinc-600">{row.summary ?? row.reason ?? '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="mt-6 rounded-md border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="px-3 text-muted-foreground">目标</TableHead>
+                <TableHead className="px-3 text-muted-foreground">状态</TableHead>
+                <TableHead className="px-3 text-muted-foreground">步数</TableHead>
+                <TableHead className="px-3 text-muted-foreground">成功</TableHead>
+                <TableHead className="px-3 text-muted-foreground">摘要</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id} data-delegation={row.id}>
+                  <TableCell className="px-3 py-2 align-top whitespace-normal">
+                    <span className="font-medium">{goalText(row.goal)}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">{idBrief(row.id)}</span>
+                  </TableCell>
+                  <TableCell className="px-3 py-2 align-top">
+                    <Badge data-status={row.status} variant={STATUS_VARIANT[row.status]}>
+                      {STATUS_LABEL[row.status]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="px-3 py-2 align-top">{row.steps}</TableCell>
+                  <TableCell className="px-3 py-2 align-top">{row.successes}</TableCell>
+                  <TableCell className="px-3 py-2 align-top whitespace-normal text-muted-foreground">
+                    {row.summary ?? row.reason ?? '—'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
-    </main>
+    </div>
   );
 }

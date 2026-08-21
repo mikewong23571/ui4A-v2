@@ -8,20 +8,14 @@
 # 1. 安装依赖(pnpm workspaces:apps/web + apps/worker + packages/*)
 pnpm install
 
-# 2. 起 PostgreSQL(docker compose,宿主 5433;--wait 等 healthcheck)
-docker compose up -d --wait
-
-# 3. 起 Temporal dev server(gRPC 7233,UI 8233;已装 temporal CLI)
-temporal server start-dev --port 7233 --db-filename /tmp/ui4a-temporal.db &
-
-# 4. 起 web(dev 端口固定 3100:3000 被占用,见 DECISIONS.md D5)
-PORT=3100 pnpm dev &
-
-# 5. 起 Temporal worker(notify / 委托执行)
-pnpm --filter @ui4a/worker dev &
+# 2. 一键启动 PostgreSQL + Temporal + worker + web
+# PostgreSQL 后台运行；其余进程由 concurrently 统一管理，Ctrl-C 一起停止
+pnpm dev:all
 ```
 
 打开 <http://localhost:3100>:态势投影(待确认/在飞委托/文章数)+ 事件流 + 各入口;健康检查 `/api/health`。LLM 聊天需 `apps/web/.env.local` 的 `GLM_API_KEY`(来源 `~/.secrets/glm_coding_plan_key`;无 key 自动回退 rule driver)。
+
+停止后如需同时关闭 PostgreSQL，运行 `pnpm infra:down`。
 
 质量门与 E2E:
 

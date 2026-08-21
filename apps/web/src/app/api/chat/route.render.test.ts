@@ -61,12 +61,30 @@ async function chat(
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
+  const contentType = response.headers.get('content-type') ?? '';
+  // inline(T9 Phase B)为 SSE 流:final 帧 payload 即回合结果(同旧 JSON 字段);
+  // render 短路仍为一次性 JSON(形状不动)。
+  if (contentType.includes('text/event-stream')) {
+    const raw = await response.text();
+    const finalFrame = raw
+      .split('\n\n')
+      .map((chunk) => chunk.split('\n').find((line) => line.startsWith('data:')))
+      .filter((line): line is string => line !== undefined)
+      .map((line) => JSON.parse(line.slice('data:'.length).trim()) as Record<string, unknown>)
+      .find((frame) => frame.type === 'final');
+    return {
+      status: response.status,
+      json: (finalFrame?.payload ?? {}) as ChatRenderResponseBody,
+    };
+  }
   return { status: response.status, json: (await response.json()) as ChatRenderResponseBody };
 }
 
 async function eventsOf(): Promise<{ kind: string; actor?: string; principal?: string }[]> {
   const response = await fetch(`${base}/api/events`);
-  const body = (await response.json()) as { events: { kind: string; actor?: string; principal?: string }[] };
+  const body = (await response.json()) as {
+    events: { kind: string; actor?: string; principal?: string }[];
+  };
   return body.events ?? [];
 }
 
@@ -132,10 +150,18 @@ describe('chat render capability:展示意图 → spec 生成 + 凝固', () => {
   });
 
   it('凝固:同 concern 二次请求 → 同 spec(首冻为准),仅一条 frozen 事件', async () => {
-    const first = await chat({ sessionId: 's5-render', driver: 'rule', goal: { verb: '按分类展示文章' } });
+    const first = await chat({
+      sessionId: 's5-render',
+      driver: 'rule',
+      goal: { verb: '按分类展示文章' },
+    });
     expect(first.json.render!.frozenNow).toBe(true);
 
-    const second = await chat({ sessionId: 's5-render', driver: 'rule', goal: { verb: '图表 文章 分类' } });
+    const second = await chat({
+      sessionId: 's5-render',
+      driver: 'rule',
+      goal: { verb: '图表 文章 分类' },
+    });
     expect(second.status).toBe(200);
     expect(second.json.render!.spec).toEqual(first.json.render!.spec);
     expect(second.json.render!.frozenNow).toBe(false);
@@ -150,7 +176,9 @@ describe('chat render capability:展示意图 → spec 生成 + 凝固', () => {
     const body = (await response.json()) as {
       entities: { properties: { concern: string; component: string; bind: unknown } }[];
     };
-    expect(body.entities.some((member) => member.properties.concern === 'articles-by-category')).toBe(true);
+    expect(
+      body.entities.some((member) => member.properties.concern === 'articles-by-category'),
+    ).toBe(true);
   });
 
   it('非展示意图不受影响:发布目标仍走 agent 循环(无 render 载荷)', async () => {

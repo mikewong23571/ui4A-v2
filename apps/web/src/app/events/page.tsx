@@ -1,8 +1,8 @@
 'use client';
 /**
  * 事件流页(T7 Phase B / spec 架构决定 5,骨架路径):/api/events 投影 →
- * timeline 词条(react-chrono,零 AI——原始数据渲染,不经过任何生成路径;
- * 铁律 5 审计通道隔离)。
+ * timeline 词条(T9 起为自绘垂直时间线;零 AI——原始数据渲染,不经过
+ * 任何生成路径;铁律 5 审计通道隔离)。
  *
  * 分页口径(afterSeq,与端点合同一致):端点返回 afterSeq 之后的**全部**
  * 事件;视图每页 PAGE_SIZE 条,超页部分丢弃、经 afterSeq=<已显示尾部 seq>
@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 
-import { SiteNav } from '@/components/site-nav';
+import { Button } from '@/components/ui/button';
 import { eventsToMembers, type LogEventRow } from '@/render/situation';
 import { TimelineWord } from '@/render/words/timeline';
 
@@ -62,18 +62,17 @@ export default function EventsPage() {
   }, [rows]);
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-semibold text-zinc-900">事件流</h1>
-      <p className="mt-1 text-xs text-zinc-500">
-        事件日志只读投影 · timeline 词条(react-chrono)· 零 AI(原始数据渲染)
+    <div>
+      <h1 className="text-2xl font-semibold tracking-tight">事件流</h1>
+      <p className="mt-1 text-xs text-muted-foreground">
+        事件日志只读投影 · timeline 词条 · 零 AI(原始数据渲染)
         {rows !== null ? ` · 已载 ${rows.length} 条` : ''}
       </p>
-      <SiteNav />
 
-      {failed && <p className="mt-6 text-sm text-red-600">读取事件失败(服务不可用)。</p>}
-      {!failed && rows === null && <p className="mt-6 text-sm text-zinc-500">加载中…</p>}
+      {failed && <p className="mt-6 text-sm text-destructive">读取事件失败(服务不可用)。</p>}
+      {!failed && rows === null && <p className="mt-6 text-sm text-muted-foreground">加载中…</p>}
       {rows !== null && rows.length === 0 && (
-        <p className="mt-6 text-sm text-zinc-500" data-testid="empty-events">
+        <p className="mt-6 text-sm text-muted-foreground" data-testid="empty-events">
           暂无事件
         </p>
       )}
@@ -82,17 +81,19 @@ export default function EventsPage() {
         <section aria-label="事件时间线" className="mt-6">
           <TimelineWord events={eventsToMembers(rows)} />
           {!exhausted && (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               data-nav="local:events-more"
               onClick={() => void loadMore()}
-              className="mt-4 rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100"
+              className="mt-4"
             >
               加载更多
-            </button>
+            </Button>
           )}
         </section>
       )}
-    </main>
+    </div>
   );
 }

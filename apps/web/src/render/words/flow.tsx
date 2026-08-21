@@ -34,7 +34,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** 拓扑载荷解析(缺 nodes/edges 或形状非法 → 响亮抛错,缺数据不造数据)。 */
-export function graphPayload(graph: SirenEntity): { nodes: GraphNodeData[]; edges: GraphEdgeData[] } {
+export function graphPayload(graph: SirenEntity): {
+  nodes: GraphNodeData[];
+  edges: GraphEdgeData[];
+} {
   const { nodes, edges } = graph.properties;
   if (!Array.isArray(nodes) || !Array.isArray(edges) || !nodes.every(isRecord)) {
     throw new Error(
@@ -71,9 +74,7 @@ export function layeredLayout(graph: SirenEntity): Map<string, { x: number; y: n
   };
   // 多起点(无入边的节点)BFS 取最小深度;有环/全入边的节点保底深度 0。
   const depths = new Map<string, number>();
-  const roots = nodes
-    .map((node) => node.id)
-    .filter((id) => !edges.some((edge) => edge.to === id));
+  const roots = nodes.map((node) => node.id).filter((id) => !edges.some((edge) => edge.to === id));
   const sources = roots.length > 0 ? roots : nodes.slice(0, 1).map((node) => node.id);
   for (const source of sources) {
     for (const [id, depth] of depthOf(source)) {
@@ -109,8 +110,16 @@ export function FlowWord(props: WordProps) {
   }));
 
   return (
-    <div data-word="flow" className="h-72 w-full rounded-md border border-zinc-200 bg-zinc-50">
-      <ReactFlow nodes={flowNodes} edges={flowEdges} fitView nodesDraggable={false} nodesConnectable={false} elementsSelectable={false} proOptions={{ hideAttribution: true }} />
+    <div data-word="flow" className="h-72 w-full rounded-md border border-border bg-muted/50">
+      <ReactFlow
+        nodes={flowNodes}
+        edges={flowEdges}
+        fitView
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={false}
+        proOptions={{ hideAttribution: true }}
+      />
     </div>
   );
 }

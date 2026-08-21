@@ -20,7 +20,9 @@ import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
  *  delegation-* 为 T5 委托事件族(worker delegationWorkflow 的首/步/终事件,
  *  同一双写者方案;类型先行,engine fold 分支见 T5 Phase A Task 2);
  *  plan-executed 为 T6 批量裁决记录事件(engine executePlan 每计划恰一条);
- *  render-spec-frozen 为 T7 凝固事件(web freezeSpec 首冻恰一条)。 */
+ *  render-spec-frozen 为 T7 凝固事件(web freezeSpec 首冻恰一条);
+ *  chat-turn 为 T9 Phase B 聊天回合投影(web 聊天路由 inline 完成后直写,
+ *  同一双写者方案;engine fold 忽略——纯审计留痕)。 */
 export type EventKind =
   | 'action-executed'
   | 'action-rejected'
@@ -44,7 +46,8 @@ export type EventKind =
   | 'delegation-failed'
   | 'delegation-max-steps'
   | 'plan-executed'
-  | 'render-spec-frozen';
+  | 'render-spec-frozen'
+  | 'chat-turn';
 
 /** 追加事件(引擎 EngineEvent 的日志层超集:引擎不产 seq/ts/reason,由本层分配)。 */
 export interface EventAppend {

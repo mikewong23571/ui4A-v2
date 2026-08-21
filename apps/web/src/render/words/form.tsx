@@ -20,7 +20,11 @@ export function FormWord(props: WordProps) {
   const guardMap = new Map((entity['guard-results'] ?? []).map((entry) => [entry.action, entry]));
 
   if (entity.actions.length === 0) {
-    return <p data-word="form" className="text-sm text-zinc-500">该实体无已声明动作(零可提交元素)。</p>;
+    return (
+      <p data-word="form" className="text-sm text-muted-foreground">
+        该实体无已声明动作(零可提交元素)。
+      </p>
+    );
   }
 
   return (

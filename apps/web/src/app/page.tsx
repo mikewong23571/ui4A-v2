@@ -7,8 +7,7 @@
  *   文章数(articles.count)——数值经 deref 从实体投影取回(态势数字与
  *   实体一致,组件测试对拍);timeline 最近 N 事件(/api/events 投影,
  *   原始数据零 AI 渲染);
- * - 全站导航(SiteNav):收件箱/事件流/画布/舰队/BIOS(发布向导经合同
- *   links 动态进入,零 startRel 特权);
+ * - 全站导航:T9 Phase A 起由 AppShell 顶栏统一提供(各页面不再自引);
  * - 既有走查锚点保留:文章(共 N 篇)/成员链接/flow 入口/收件箱(待确认 N)/
  *   评论队列(待处理 N)(human/s1 e2e 断言);
  * - 铁律 3:首页零可提交元素(无 form / 无可聚焦提交按钮),一切动作
@@ -20,7 +19,8 @@ import { useEffect, useState } from 'react';
 
 import { entityPageHref } from '@/components/entity-view';
 import { fetchEntity } from '@/components/exec-client';
-import { SiteNav } from '@/components/site-nav';
+import { buttonVariants } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { derefSpec, type EntityCache } from '@/render/deref';
 import {
   eventsToMembers,
@@ -123,17 +123,20 @@ export default function Home() {
     situation !== null ? derefSpec(statBinds.articles, situation.cache) : undefined;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-semibold text-zinc-900">{APP_NAME}</h1>
-      <p className="mt-1 text-xs text-zinc-500">v{VERSION} — 界面作为合同(人类路径 renderer)</p>
-      <SiteNav />
+    <div>
+      <h1 className="text-2xl font-semibold tracking-tight">{APP_NAME}</h1>
+      <p className="mt-1 text-xs text-muted-foreground">
+        v{VERSION} — 界面作为合同(人类路径 renderer)
+      </p>
 
-      {failed && <p className="mt-6 text-sm text-red-600">读取合同失败(服务不可用)。</p>}
-      {!failed && articles === null && <p className="mt-6 text-sm text-zinc-500">加载中…</p>}
+      {failed && <p className="mt-6 text-sm text-destructive">读取合同失败(服务不可用)。</p>}
+      {!failed && articles === null && (
+        <p className="mt-6 text-sm text-muted-foreground">加载中…</p>
+      )}
 
       {/* 态势投影(骨架路径:写死绑定,零 AI;数值与实体一致) */}
       <section aria-label="态势投影" className="mt-8" data-testid="situation">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-700">态势</h2>
+        <h2 className="mb-3 text-sm font-semibold">态势</h2>
         <div className="flex flex-wrap gap-4">
           {pendingStat !== undefined && (
             <div data-testid="stat-pending">
@@ -158,94 +161,121 @@ export default function Home() {
 
       {articles !== null && (
         <section aria-label="文章" className="mt-8">
-          <h2 className="mb-2 text-sm font-semibold text-zinc-700">
-            文章(共 {String(articles.properties.count ?? articleMembers.length)} 篇)
-          </h2>
-          <ul className="space-y-1 text-sm">
-            {articleMembers.map((sub) => {
-              const rel = hrefToRel(sub.href ?? '') ?? String(sub.properties.rel ?? '');
-              return (
-                <li key={rel}>
+          <Card className="gap-3 py-4">
+            <CardHeader className="px-4">
+              <CardTitle className="text-sm font-semibold">
+                文章(共 {String(articles.properties.count ?? articleMembers.length)} 篇)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4">
+              <ul className="space-y-1 text-sm">
+                {articleMembers.map((sub) => {
+                  const rel = hrefToRel(sub.href ?? '') ?? String(sub.properties.rel ?? '');
+                  return (
+                    <li key={rel}>
+                      <a
+                        href={entityPageHref(rel)}
+                        data-rel={rel}
+                        data-nav="item"
+                        className="text-primary hover:underline"
+                      >
+                        {memberText(sub)}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+              {wizardEntries.map((rel) => (
+                <p key={rel} className="mt-3 text-sm">
                   <a
                     href={entityPageHref(rel)}
                     data-rel={rel}
-                    data-nav="item"
-                    className="text-blue-600 hover:underline"
+                    data-nav="flow-entry"
+                    className={buttonVariants({ variant: 'outline', size: 'sm' })}
                   >
-                    {memberText(sub)}
+                    + 发布向导入口({rel})
                   </a>
-                </li>
-              );
-            })}
-          </ul>
-          {wizardEntries.map((rel) => (
-            <p key={rel} className="mt-3 text-sm">
-              <a
-                href={entityPageHref(rel)}
-                data-rel={rel}
-                data-nav="flow-entry"
-                className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 font-medium text-blue-700 hover:bg-blue-100"
-              >
-                + 发布向导入口({rel})
-              </a>
-            </p>
-          ))}
+                </p>
+              ))}
+            </CardContent>
+          </Card>
         </section>
       )}
 
       <section aria-label="收件箱" className="mt-8">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-700">收件箱</h2>
-        <p className="text-sm">
-          <a
-            href={entityPageHref('inbox')}
-            data-rel="inbox"
-            data-nav="inbox"
-            className="text-blue-600 hover:underline"
-          >
-            收件箱(待确认 {inboxPending})
-          </a>
-        </p>
+        <Card className="gap-3 py-4">
+          <CardHeader className="px-4">
+            <CardTitle className="text-sm font-semibold">收件箱</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 text-sm">
+            <a
+              href={entityPageHref('inbox')}
+              data-rel="inbox"
+              data-nav="inbox"
+              className="text-primary hover:underline"
+            >
+              收件箱(待确认 {inboxPending})
+            </a>
+          </CardContent>
+        </Card>
       </section>
 
       <section aria-label="评论队列" className="mt-8">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-700">评论审核</h2>
-        <p className="text-sm">
-          <a
-            href={entityPageHref('comments')}
-            data-rel="comments"
-            data-nav="comments"
-            className="text-blue-600 hover:underline"
-          >
-            评论队列(待处理 {pendingCount})
-          </a>
-        </p>
+        <Card className="gap-3 py-4">
+          <CardHeader className="px-4">
+            <CardTitle className="text-sm font-semibold">评论审核</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 text-sm">
+            <a
+              href={entityPageHref('comments')}
+              data-rel="comments"
+              data-nav="comments"
+              className="text-primary hover:underline"
+            >
+              评论队列(待处理 {pendingCount})
+            </a>
+          </CardContent>
+        </Card>
       </section>
 
       {/* 委托舰队入口(T5 Phase B):并行委托的监控视图;纯导航链接,零可提交元素。 */}
       <section aria-label="委托舰队" className="mt-8">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-700">委托舰队</h2>
-        <p className="text-sm">
-          <a
-            href="/delegations"
-            data-rel="delegations"
-            data-nav="delegations"
-            className="text-blue-600 hover:underline"
-          >
-            委托舰队(并行委托监控)
-          </a>
-        </p>
+        <Card className="gap-3 py-4">
+          <CardHeader className="px-4">
+            <CardTitle className="text-sm font-semibold">委托舰队</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 text-sm">
+            <a
+              href="/delegations"
+              data-rel="delegations"
+              data-nav="delegations"
+              className="text-primary hover:underline"
+            >
+              委托舰队(并行委托监控)
+            </a>
+          </CardContent>
+        </Card>
       </section>
 
       {/* BIOS 入口(T4 Phase C):仅一行链接——进入定义层必须显式意图,
           业务站 sitemap 不携带 _meta(跨站规则)。 */}
       <section aria-label="BIOS" className="mt-8">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-700">BIOS</h2>
-        <p className="text-sm">
-          <a href="/meta" data-rel="meta" data-nav="meta" className="text-blue-600 hover:underline">
-            BIOS · 定义平面(定义查看 / 激活队列审批)
-          </a>
-        </p>
+        <Card className="gap-3 py-4">
+          <CardHeader className="px-4">
+            <CardTitle className="text-sm font-semibold">BIOS</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 text-sm">
+            <a
+              href="/meta"
+              data-rel="meta"
+              data-nav="meta"
+              className="text-primary hover:underline"
+            >
+              BIOS · 定义平面(定义查看 / 激活队列审批)
+            </a>
+          </CardContent>
+        </Card>
       </section>
-    </main>
+    </div>
   );
 }

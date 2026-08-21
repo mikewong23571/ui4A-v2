@@ -33,7 +33,7 @@ function KanbanCard({ rel, summary }: { rel: string; summary: string }) {
       {...listeners}
       data-rel={rel}
       style={style}
-      className="cursor-grab touch-none select-none rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-sm"
+      className="cursor-grab touch-none select-none rounded-md border border-border bg-card px-3 py-2 text-sm text-card-foreground shadow-sm"
     >
       {summary !== '' ? summary : rel}
     </li>
@@ -55,9 +55,9 @@ function KanbanColumn({
     <section
       ref={setNodeRef}
       data-column={column}
-      className={`min-w-48 rounded-lg border p-3 ${isOver ? 'border-blue-400 bg-blue-50' : 'border-zinc-200 bg-zinc-50'}`}
+      className={`min-w-48 rounded-lg border p-3 ${isOver ? 'border-primary bg-accent' : 'border-border bg-muted/50'}`}
     >
-      <h3 className="mb-2 text-xs font-semibold text-zinc-500">
+      <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
         {column}({rels.length})
       </h3>
       <ul className="space-y-2">{children}</ul>
@@ -103,7 +103,9 @@ export function KanbanWord(props: WordProps) {
           <KanbanColumn
             key={column}
             column={column}
-            rels={Object.entries(columnOf).filter(([, value]) => value === column).map(([rel]) => rel)}
+            rels={Object.entries(columnOf)
+              .filter(([, value]) => value === column)
+              .map(([rel]) => rel)}
           >
             {Object.entries(columnOf)
               .filter(([, value]) => value === column)
