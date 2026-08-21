@@ -19,6 +19,20 @@ import type { DbExecutor } from '../../web/src/db/events';
 import { appendEvent, ensureEventsTable } from '../../web/src/db/events';
 import { getPool } from '../../web/src/db/pool';
 
+import type { SitemapSummary } from '@ui4a/agent';
+
+import {
+  fetchSitemap,
+  recordDelegationFinish,
+  recordDelegationStart,
+  runAgentStep,
+} from './delegation';
+import type {
+  AgentStepArgs,
+  AgentStepResult,
+  DelegationFinishArgs,
+  DelegationStartArgs,
+} from './workflows';
 import type { NotifyConfirmation } from './workflows';
 
 const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
@@ -88,4 +102,44 @@ export async function notify(
   confirmation: NotifyConfirmation,
 ): Promise<{ seq: number; deduplicated: boolean }> {
   return deliverNotification(workerDb(), confirmation);
+}
+
+// ---------------------------------------------------------------------------
+// delegation activities(T5 Phase A / spec 架构决定 1)
+// ---------------------------------------------------------------------------
+
+/**
+ * delegation activity 注册表(workflow 经 proxyActivities 按名调用):
+ * - startDelegation / finishDelegation:委托首尾事件落 PG(幂等);
+ * - loadSitemap:agent 静态上下文,循环外取一次;
+ * - agentStep:决策+执行合一的单步核心(见 delegation.ts;llm 决策的网络
+ *   调用因此天然在 activity 内,workflow 重放确定性)。
+ */
+export interface DelegationActivities {
+  startDelegation(args: DelegationStartArgs): Promise<{ seq: number; deduplicated: boolean }>;
+  loadSitemap(args: { baseUrl: string }): Promise<SitemapSummary | undefined>;
+  agentStep(args: AgentStepArgs): Promise<AgentStepResult>;
+  finishDelegation(args: DelegationFinishArgs): Promise<{ seq: number; deduplicated: boolean }>;
+}
+
+export async function startDelegation(
+  args: DelegationStartArgs,
+): Promise<{ seq: number; deduplicated: boolean }> {
+  return recordDelegationStart(workerDb(), args);
+}
+
+export async function loadSitemap(args: {
+  baseUrl: string;
+}): Promise<SitemapSummary | undefined> {
+  return fetchSitemap(args.baseUrl, fetch);
+}
+
+export async function agentStep(args: AgentStepArgs): Promise<AgentStepResult> {
+  return runAgentStep({ db: workerDb(), fetchImpl: fetch }, args);
+}
+
+export async function finishDelegation(
+  args: DelegationFinishArgs,
+): Promise<{ seq: number; deduplicated: boolean }> {
+  return recordDelegationFinish(workerDb(), args);
 }

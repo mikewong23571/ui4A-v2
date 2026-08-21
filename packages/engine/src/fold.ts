@@ -43,13 +43,20 @@ import { actionEffects } from './parse';
 /** 日志事件种类:引擎产出(含 T4 定义事件族)+ 日志层三种
  *  (拒绝留痕 I6 / 种子装载 / definition-seeded 定义种子)+
  *  notification-delivered(T3 notify capability 送达事件,worker 第二写者写入;
- *  fold 分支见 Task 2 读路径)。 */
+ *  fold 分支见 Task 2 读路径)+
+ *  delegation-*(T5 委托事件族:worker delegationWorkflow 的首/步/终事件;
+ *  类型先行与 web EventKind 对齐,fold 分支与 delegations 投影见 T5 Phase A Task 2)。 */
 export type LogEventKind =
   | EngineEvent['kind']
   | 'action-rejected'
   | 'notification-delivered'
   | 'seed'
-  | 'definition-seeded';
+  | 'definition-seeded'
+  | 'delegation-started'
+  | 'delegation-step'
+  | 'delegation-completed'
+  | 'delegation-failed'
+  | 'delegation-max-steps';
 
 /**
  * 存储事件(引擎 EngineEvent + 日志层字段)。

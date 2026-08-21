@@ -11,6 +11,8 @@
     "@temporalio/activity": "1.22.0",
     "@temporalio/worker": "1.22.0",
     "@temporalio/workflow": "1.22.0",
+    "@ui4a/agent": "workspace:*",
+    "@ui4a/engine": "workspace:*",
     "@ui4a/shared": "workspace:*",
     "pg": "^8.23.0"
   },

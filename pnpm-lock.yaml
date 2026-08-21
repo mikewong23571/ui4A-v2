@@ -126,6 +126,12 @@ importers:
       '@temporalio/workflow':
         specifier: 1.22.0
         version: 1.22.0
+      '@ui4a/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
+      '@ui4a/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@ui4a/shared':
         specifier: workspace:*
         version: link:../../packages/shared
