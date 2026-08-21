@@ -747,12 +747,27 @@ test.describe('I5 可重放', () => {
           rows.length,
           '压缩序列应产生非平凡日志(≈26 行:定义/种子/业务/确认/计划/凝固)',
         ).toBeGreaterThan(20);
+        // I5 扩展(T10):application 维度入重放输入——日志须含三个
+        // application-seeded(rel=meta/application:<name>,detail 持定义全文)。
+        // 防空转守卫:缺了它们,重放相位的 applications 断言就没有意义。
+        const appSeeds = rows.filter((row) => row.kind === 'application-seeded');
+        expect(appSeeds.map((row) => row.rel)).toEqual([
+          'meta/application:default',
+          'meta/application:publishing',
+          'meta/application:community',
+        ]);
       });
     } finally {
       await terminateStaleNotifyWorkflows(['c1']);
     }
 
     const onlineHash = contentVersion(onlineWorld);
+    // applications 表(application 实体尚无 HTTP 投影面[Phase C 分组投影未落],
+    // 经生产 fold 取,与 enumerateEntityRels 同口径):跨 TRUNCATE 边界的
+    // 回灌保真 + 重放确定性断言锚。
+    const onlineApplicationsHash = contentVersion(
+      fold(await readLog(pool), { flows: businessFlows }).applications ?? {},
+    );
     const onlinePerRel: Record<string, string> = {};
     for (const [rel, entity] of Object.entries(onlineWorld)) {
       onlinePerRel[rel] = contentVersion(entity);
@@ -766,6 +781,12 @@ test.describe('I5 可重放', () => {
       async () => {
         // 回灌保真:重放侧的日志枚举与在线侧完全一致。
         expect(await enumerateEntityRels(pool)).toEqual(rels);
+        // applications 表与在线一致(I5 扩展到 application 维度:内容 hash 一致
+        // = name/title/intent/entry 全文一致,不止键集)。
+        expect(
+          contentVersion(fold(await readLog(pool), { flows: businessFlows }).applications ?? {}),
+          'applications 表:重放后内容 hash 应与在线一致(I5)',
+        ).toBe(onlineApplicationsHash);
 
         const replayWorld = await readWorld(rels);
         // 逐实体一致(不只综合 hash:失败时可定位差异 rel)。

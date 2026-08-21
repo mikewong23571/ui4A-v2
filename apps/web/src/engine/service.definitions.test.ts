@@ -9,6 +9,7 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { contentVersion } from '@ui4a/engine';
 import type { FlowDefinition, LogEvent, SirenEntity } from '@ui4a/engine';
 
 import { businessApplicationList } from '../domain/applications';
@@ -239,6 +240,105 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
       'publishing',
       'community',
     ]);
+  });
+});
+
+describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)', () => {
+  /**
+   * TRUNCATE(空库)→ 原序回灌日志行(显式 seq 保序)→ 修复 bigserial 水位。
+   * 与 e2e/invariants.spec.ts 的 restoreLogRows 同口径:重放的唯一输入是日志。
+   */
+  async function restoreLogRows(rows: readonly LogEvent[]): Promise<void> {
+    await pool.query('TRUNCATE events');
+    for (const row of rows) {
+      await pool.query(
+        `INSERT INTO events (seq, ts, actor, principal, channel, kind, rel, action, params, reason, detail)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11::jsonb)`,
+        [
+          row.seq,
+          row.ts ?? null,
+          row.actor ?? null,
+          row.principal ?? null,
+          row.channel ?? null,
+          row.kind,
+          row.rel ?? null,
+          row.action ?? null,
+          JSON.stringify(row.params ?? {}),
+          row.reason ?? null,
+          row.detail === undefined ? null : JSON.stringify(row.detail),
+        ],
+      );
+    }
+    await pool.query(
+      `SELECT setval(pg_get_serial_sequence('events', 'seq'), (SELECT COALESCE(max(seq), 1) FROM events))`,
+    );
+  }
+
+  it('application-seeded 与定义/业务事件交错的日志:TRUNCATE 原序回灌 → boot 重放与在线全实体 hash 一致,applications 表全文一致', async () => {
+    // ---- 相位 1(在线轨道):boot 种子(定义 → application → 业务)+ 业务
+    //   exec 交错,增量维护快照。 ----
+    const online = await boot();
+    for (const [action, params] of [
+      ['next', { title: 'I5 Replay Article' }],
+      ['next', { category: 'tech', tags: 'i5' }],
+      ['next', { body: 'I5 扩展重放序列的业务产物。' }],
+      ['publish', { title: 'I5 Replay Article' }],
+    ] as const) {
+      const outcome = await online.exec({
+        rel: 'article-drafting:main',
+        action,
+        params,
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'http',
+      });
+      expect(outcome.kind, `${action} 应通过`).toBe('accepted');
+    }
+    const onlineSnapshot = online.getSnapshot();
+
+    // 反空转锚:在线 applications 表先钉在种子常量(独立于"两侧同 fold"的
+    // 对称性)——fold 若丢表/落错内容,本断言先红,保证下面的对比非空转。
+    expect(onlineSnapshot.applications).toEqual(
+      Object.fromEntries(businessApplicationList.map((app) => [app.name, app])),
+    );
+
+    // 导出事件(重放的唯一输入)并守卫混合形状:application-seeded 夹在
+    // definition-seeded 与业务 seed/业务事件之间,detail 持定义全文。
+    const rows = await readLog(pool);
+    expect(rows.slice(0, 7).map((event) => event.kind)).toEqual([
+      'definition-seeded',
+      'definition-seeded',
+      'definition-seeded',
+      'application-seeded',
+      'application-seeded',
+      'application-seeded',
+      'seed',
+    ]);
+    expect(rows.some((event) => event.kind === 'action-executed')).toBe(true);
+    const appSeeds = rows.filter((event) => event.kind === 'application-seeded');
+    expect(appSeeds.map((event) => event.rel)).toEqual([
+      'meta/application:default',
+      'meta/application:publishing',
+      'meta/application:community',
+    ]);
+    for (const [index, app] of businessApplicationList.entries()) {
+      expect(appSeeds[index]?.detail).toEqual({ name: app.name, definition: app });
+    }
+
+    // ---- 相位间:TRUNCATE(空库)→ 原序回灌。 ----
+    await restoreLogRows(rows);
+
+    // ---- 相位 2(重放轨道):reset 单例后走生产 boot——幂等 seed(日志已含
+    //   全部种子,零追加)+ 全量 fold 回灌日志,即 I5 的重放本身。 ----
+    resetEngineForTests();
+    const replayed = await boot();
+    expect(await readLog(pool), '重放 boot 不追加任何事件(种子幂等)').toHaveLength(rows.length);
+
+    // 全实体 hash 一致(I5 主断言,与 service.confirmation 同哲学:重放快照
+    // vs 在线增量快照;applications 表随快照进 hash)。
+    expect(contentVersion(replayed.getSnapshot())).toBe(contentVersion(onlineSnapshot));
+    // applications 表全文一致(name/title/intent/entry 逐字段,不止键集)。
+    expect(replayed.getSnapshot().applications).toEqual(onlineSnapshot.applications);
   });
 });
 
