@@ -157,6 +157,22 @@ export interface FlowDefinition {
   version?: number | string;
 }
 
+/**
+ * application 定义(T10 架构决定 1):归组 flows 的定义平面实体,
+ * intent 为本体(一段话声明"这个应用解决什么";人类与 agent 共读)。
+ * 不持成员清单(membership 由 flow.app 声明,清单派生),避免双重真相。
+ */
+export interface ApplicationDefinition {
+  /** 机器标识(定义实体 rel 的 name 段:`meta/application:<name>`)。 */
+  name: string;
+  /** 人类与 agent 共读的标题。 */
+  title: string;
+  /** 人类与 agent 共读的意图声明(发现层两层发现的第一层依据)。 */
+  intent: string;
+  /** 默认入口(路线 T3 默认页消费;本 track 仅落字段)。 */
+  entry?: string;
+}
+
 // ---------------------------------------------------------------------------
 // 定义语言注册表(meta/registries 的运行时子集)
 // ---------------------------------------------------------------------------
@@ -191,6 +207,9 @@ export const META_FLOW_PREFIX = 'meta/flow:';
 /** 激活实体 rel 前缀(与 confirmation:<id> 同构的确定性命名)。 */
 export const META_ACTIVATION_PREFIX = 'meta/activation:';
 
+/** application 实体 rel 前缀(T10;`meta/application:publishing`)。 */
+export const META_APPLICATION_PREFIX = 'meta/application:';
+
 /** flow 名 → 定义实体 rel。 */
 export function metaFlowRel(name: string): string {
   return `${META_FLOW_PREFIX}${name}`;
@@ -209,6 +228,18 @@ export function metaActivationRel(id: string): string {
 /** 激活实体 rel → id;非前缀返回 undefined。 */
 export function activationIdFromMetaRel(rel: string): string | undefined {
   return rel.startsWith(META_ACTIVATION_PREFIX) ? rel.slice(META_ACTIVATION_PREFIX.length) : undefined;
+}
+
+/** application 名 → 定义实体 rel。 */
+export function metaApplicationRel(name: string): string {
+  return `${META_APPLICATION_PREFIX}${name}`;
+}
+
+/** application 实体 rel → application 名;非 meta/application 前缀返回 undefined。 */
+export function applicationNameFromMetaRel(rel: string): string | undefined {
+  return rel.startsWith(META_APPLICATION_PREFIX)
+    ? rel.slice(META_APPLICATION_PREFIX.length)
+    : undefined;
 }
 
 /** flow 的一条边(动作名即迁移事件名)。 */

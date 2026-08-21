@@ -6,6 +6,7 @@
  * T4 的 meta 平台激活不变式(edge-targets-exist 等)在本层之上叠加。
  */
 import { KNOWN_EFFECT_TYPES, KNOWN_FIELD_TYPES } from '@ui4a/shared';
+import type { ApplicationDefinition } from '@ui4a/shared';
 
 import type {
   ActionDefinition,
@@ -34,6 +35,17 @@ export class FlowParseError extends Error {
   constructor(issues: FlowIssue[]) {
     super(`非法 flow 定义:\n${issues.map((i) => `  - ${i.path}: ${i.message}`).join('\n')}`);
     this.name = 'FlowParseError';
+    this.issues = issues;
+  }
+}
+
+/** application 定义解析失败:携带全部 issues(与 FlowParseError 同构)。 */
+export class AppParseError extends Error {
+  readonly issues: FlowIssue[];
+
+  constructor(issues: FlowIssue[]) {
+    super(`非法 application 定义:\n${issues.map((i) => `  - ${i.path}: ${i.message}`).join('\n')}`);
+    this.name = 'AppParseError';
     this.issues = issues;
   }
 }
@@ -273,5 +285,46 @@ export function parseFlowDefinition(input: unknown): FlowDefinition {
     title: record.title ?? record.name,
     fields: [...(record.fields ?? [])],
     nodes: record.nodes.map(normalizeNode),
+  };
+}
+
+/** application 定义的结构校验(与 structuralIssues 同构:形状级,逐字段收集)。 */
+function applicationStructuralIssues(input: unknown): FlowIssue[] {
+  const issues: FlowIssue[] = [];
+  if (!isRecord(input)) {
+    return [{ path: '(root)', message: 'application 定义必须是对象' }];
+  }
+  if (typeof input.name !== 'string' || input.name === '') {
+    issues.push({ path: 'name', message: 'application name 必须是非空字符串' });
+  }
+  if (typeof input.title !== 'string' || input.title === '') {
+    issues.push({ path: 'title', message: 'title 必须是非空字符串' });
+  }
+  if (typeof input.intent !== 'string' || input.intent === '') {
+    issues.push({ path: 'intent', message: 'intent 必须是非空字符串' });
+  }
+  if (input.entry !== undefined && (typeof input.entry !== 'string' || input.entry === '')) {
+    issues.push({ path: 'entry', message: 'entry 必须是非空字符串' });
+  }
+  return issues;
+}
+
+/**
+ * 解析未知输入为 ApplicationDefinition(T10 架构决定 1):
+ * name/title/intent 必填非空字符串,entry 可选(若存在必须是非空字符串);
+ * 非法时抛 AppParseError(issues 全量携带)。显式值原样保留,不做额外归一化。
+ */
+export function parseApplicationDefinition(input: unknown): ApplicationDefinition {
+  const issues = applicationStructuralIssues(input);
+  if (issues.length > 0) {
+    throw new AppParseError(issues);
+  }
+  // 形状已逐字段校验,单点断言(同 parseFlowDefinition 的 `input as FlowDefinition` 口径)。
+  const record = input as ApplicationDefinition;
+  return {
+    name: record.name,
+    title: record.title,
+    intent: record.intent,
+    ...(record.entry !== undefined ? { entry: record.entry } : {}),
   };
 }

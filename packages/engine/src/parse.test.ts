@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { articleDraftingFlow, minimalFlow, postStatusFlow } from './fixtures';
-import { FlowParseError, parseFlowDefinition, validateFlowDefinition } from './parse';
+import {
+  AppParseError,
+  FlowParseError,
+  parseApplicationDefinition,
+  parseFlowDefinition,
+  validateFlowDefinition,
+} from './parse';
 import type { FlowDefinition } from './types';
 
 /** 深拷贝 + 局部覆盖,构造"被破坏"的 flow 定义(纯 JSON fixture,JSON 往返即可)。 */
@@ -148,5 +154,77 @@ describe('validateFlowDefinition(已类型化定义的语义校验)', () => {
       flowWith(minimalFlow, (d) => ((d.nodes[0].actions[0] as { effect: unknown }).effect = { type: 'spawn' })),
     );
     expect(issues.some((i) => i.path.includes('capability'))).toBe(true);
+  });
+});
+
+describe('parseApplicationDefinition — 规范化', () => {
+  it('合法定义解析通过(含 entry),显式值原样保留', () => {
+    const parsed = parseApplicationDefinition({
+      name: 'publishing',
+      title: '内容发布',
+      intent: '把草稿变成可发布的内容',
+      entry: 'article-drafting',
+    });
+    expect(parsed).toEqual({
+      name: 'publishing',
+      title: '内容发布',
+      intent: '把草稿变成可发布的内容',
+      entry: 'article-drafting',
+    });
+  });
+
+  it('合法定义解析通过(不含 entry)', () => {
+    const parsed = parseApplicationDefinition({
+      name: 'default',
+      title: '默认应用',
+      intent: '无归属 flow 的归一化兜底',
+    });
+    expect(parsed.name).toBe('default');
+    expect(parsed.entry).toBeUndefined();
+  });
+});
+
+describe('parseApplicationDefinition — 拒绝非法定义', () => {
+  it('非对象输入直接拒绝', () => {
+    expect(() => parseApplicationDefinition('not-an-app')).toThrow(AppParseError);
+    expect(() => parseApplicationDefinition(undefined)).toThrow(AppParseError);
+    expect(() => parseApplicationDefinition(['publishing'])).toThrow(AppParseError);
+  });
+
+  it('name/title/intent 缺失或为空字符串逐一被拒,issues 带对应 path', () => {
+    const valid = { name: 'publishing', title: '内容发布', intent: '发布内容' };
+    for (const field of ['name', 'title', 'intent']) {
+      const missing: Record<string, unknown> = { ...valid };
+      delete missing[field];
+      const empty = { ...valid, [field]: '' };
+      for (const input of [missing, empty]) {
+        try {
+          parseApplicationDefinition(input);
+          expect.unreachable('应当抛出 AppParseError');
+        } catch (error) {
+          expect(error).toBeInstanceOf(AppParseError);
+          const issues = (error as AppParseError).issues;
+          expect(issues.some((i) => i.path === field)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('entry 存在时必须是非空字符串', () => {
+    const valid = { name: 'publishing', title: '内容发布', intent: '发布内容' };
+    expect(() => parseApplicationDefinition({ ...valid, entry: '' })).toThrow(/entry/);
+    expect(() => parseApplicationDefinition({ ...valid, entry: 42 })).toThrow(/entry/);
+  });
+
+  it('AppParseError 全量携带 issues,消息风格与 FlowParseError 同构', () => {
+    try {
+      parseApplicationDefinition({ name: '', intent: '发布内容' });
+      expect.unreachable('应当抛出 AppParseError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(AppParseError);
+      expect((error as AppParseError).message).toContain('非法 application 定义:');
+      const issues = (error as AppParseError).issues;
+      expect(issues.map((i) => i.path)).toEqual(['name', 'title']);
+    }
   });
 });
