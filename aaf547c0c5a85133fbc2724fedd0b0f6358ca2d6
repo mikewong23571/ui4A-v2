@@ -3,3 +3,14 @@ T10 Phase D Task 2: rule-driver app 定位层
 改动:packages/agent/src/rule-driver.ts(appLocationDecision + reachableEntryRel 提取)、rule-driver.test.ts(+6 用例)
 插入点:ruleDecide 链 doneDecision 之后、namedResourceDecision 之前。匹配口径:expandVerb(goal.verb) 目标词与 'app.name app.intent' 词级交集;组内 flow 词级交集;入口须 ∈ navigableRels。多命中声明序先到先得,组内落空顺延。无命中/空 applications → 零行为变化(软边界,spec 架构决定 6)。
 验收(编排 agent 亲自复跑):packages/agent 113/113;CI=true pnpm check 900 passed。自治验收。
+
+---
+
+T10 Phase D Checkpoint 验证报告(自治验收)
+
+阶段范围:e4eacf5..HEAD(agent 静态上下文 app 分组 + role/app 槽位 + rule-driver app 定位层)
+自动化验证(编排 agent 亲自执行):
+- CI=true pnpm check → 900 passed | 2 skipped(环境性)
+- CI=true pnpm e2e → 33 passed / 11 skipped,零回归(rule 路径 e2e 经 chat.spec/s2 覆盖,定位层软边界不破坏现状)
+- 两层发现实证:目标词命中 app intent → 组内入口优先(单测对照组可证差异);不命中 → 与现状逐字一致
+确认:用户离线,编排 agent 代行验收——自治验收,通过。
