@@ -1,0 +1,1 @@
+T7 Phase B Task 3: 主页态势投影 + /events 事件流 + SiteNav。态势走骨架静态绑定但过同一 binding-only 剃刀(stat value=字段引用,deref 取值,与实体 count 对拍);事件流 react-chrono 静态绑定零 AI;铁律3断言收窄为真实提交面(form/type=submit/data-action)。注:本任务由 subagent 中途撞限额,编排者接手完成(修 home 铁律3断言、恢复休眠后掉线的 postgres、全量双门 797+28 全绿)。
