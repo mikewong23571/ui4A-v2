@@ -58,3 +58,9 @@
 ## D9 Keycloak 延后至 T5(2026-08-21)
 
 - T3 确认门的 S1/I4 验收断言(actor/principal 入日志、approve 必 human)不依赖 token 基础设施(D8 自报口径已覆盖);Keycloak(RFC 8693 act 链)在 T5 委托实体切片真需要 principal 语义时接入(届时解 D6 镜像问题:brew/tarball 或修代理)。
+
+## D10 Keycloak 不进入 DONE 验收面(2026-08-21,更新 D9)
+
+- GOAL 范围边界明文:"生产化(多租户、部署硬化、压测、**真实 SSO 对接**)显式排除在外";B/S/I 六组验收无一断言 Keycloak。
+- 信任线语义在引擎层已强制(actor-is-human、principal 委托链入日志[D8 自报口径]);S3 断言(并发裁决/崩溃续跑/N 路并行/舰队页)全部由 Temporal 承载,不需要 token 基础设施。
+- 决定:T5 不装 Keycloak;若后续(用户要求或 T8 空间富余)做 token 交换演示,按 D6 预案(brew/tarball)单独立项。
