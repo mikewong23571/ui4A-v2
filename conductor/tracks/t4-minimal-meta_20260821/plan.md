@@ -23,8 +23,8 @@
 
 ## Phase C: 激活队列、机械 diff 与 BIOS 最小面
 
-- [ ] Task: activation 实体投影(checks/diff/artifact)+ deep-object-diff 集成(TDD:diff 是纯数据)
-- [ ] Task: BIOS 页三面(meta/flows 定义查看、激活队列+react-diff-view 渲染+approve/reject[RJSF]、meta/self)(组件测试:diff 零 AI 内建渲染;approve 按钮 actor=human)
+- [x] Task: activation 实体投影(checks/diff/artifact)+ deep-object-diff 集成(TDD:diff 是纯数据) (5856baa)
+- [~] Task: BIOS 页三面(meta/flows 定义查看、激活队列+react-diff-view 渲染+approve/reject[RJSF]、meta/self)(组件测试:diff 零 AI 内建渲染;approve 按钮 actor=human)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase D: S2 全链路 E2E
