@@ -31,5 +31,7 @@
 
 ## Phase D: S2 全链路 E2E
 
-- [ ] Task: S2 E2E(agent 非法定义拒→修正→submit→pending→human BIOS approve→sitemap bump→agent 零 prompt 用新动作 pin;meta approve 拒 agent;在途实例;重放含定义事件;回归 B/S1)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: S2 E2E(agent 非法定义拒→修正→submit→pending→human BIOS approve→sitemap bump→agent 零 prompt 用新动作 pin;meta approve 拒 agent;在途实例;重放含定义事件;回归 B/S1) (c952669)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) (c952669)
+
+[checkpoint: c952669] — 验证报告挂 refs/notes/verification(自治验收,编排代行);CI=true pnpm check 全绿(553,零源码改动)+ CI=true pnpm e2e 22 passed + 1 skipped(18 既有零回归 + S2 4 新用例)×两轮;S2 断言五要素逐条落测(报告见 note)。
