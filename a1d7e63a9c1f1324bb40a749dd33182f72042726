@@ -1,0 +1,27 @@
+Task: T4 Phase B Task 1 — 定义 seed 迁移(定义入事件日志,fold 出活跃定义)
+
+改动:
+- packages/shared/src/state.ts:InstanceSnapshot.bornVersion?(出生版本戳)、
+  EngineSnapshot.definitionVersions?(flow→版本→定义全文历史;引擎产出函数恒携带)。
+- packages/engine/src/meta.ts:activeDefinitionOf(snapshot,name)=历史[活跃指针版本],
+  草稿窗口不随工作副本漂移;decide() approve 沉淀 definitionVersions[vN]。
+- packages/engine/src/fold.ts:definition-seeded/activated 沉淀历史;
+  迁移序回溯盖戳(实例先于定义入日志→definition-seeded 补 bornVersion=迁移版本);
+  initial/applySeed 携带 definitionVersions。
+- packages/engine/src/{effects,confirmation}.ts:快照恒携带 definitionVersions(空表)。
+- apps/web/src/engine/service.ts:seedBootData(定义 seed 先于业务 seed;旧库追加尾部);
+  gateDeps/confirmDeps/projectDeps/activeFlowList 每次从当前快照组装(活跃定义);
+  sitemap 按活跃集 contentVersion 缓存(同内容同引用;激活即新版本号)。
+- apps/web/src/domain/flows.ts:常量降级注释(seed 源+类型来源+顺序锚)。
+
+口径决策(报告):
+- seed 事件形状:每 flow 一条 definition-seeded,detail{name,version:1,status:'active',
+  definition 全文};seeded 即 active,不补 definition-activated(种子是自举地板,
+  非审批链产物;definition-lifecycle 自身不入日志,meta/self 投影)。
+- 活跃定义=definitionVersions[条目.version](仅 approve 移指针);条目.definition
+  在草稿窗口是工作副本,不进业务平面。
+- 既有测试机械适配:快照实例数 7→10(+3 lifecycle 实例);fold 空快照/applyEffects
+  携带表断言补 definitionVersions:{}。
+
+测试:+16(definition-history 8 + service.definitions 8);CI=true pnpm check
+503 全绿;CI=true pnpm e2e 18 过 +1 skip(零回归)。
