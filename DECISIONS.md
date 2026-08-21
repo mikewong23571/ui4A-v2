@@ -98,3 +98,43 @@
 - **L-2(跟进)**:RenderSpec 形状(agent/web 两处)下沉 shared,消除运行时才发现的漂移。
 - **L-3(注记)**:spawn 效果当前只产 spawn-requested 审计事件、无消费者(capability 沙箱后续接入时补)。
 - **铁律 4 范围口径**:field-source-declared / work-product-selection-gated 两条 A.5 全集不变式不在 T4 种子六条内(计划内缺口,后续 track)。
+
+## D16 shadcn/ui 设计基座落地;Tremor 与 react-chrono 计划退出;深色 = 媒体查询翻转(2026-08-21,T9 Phase A)
+
+- **背景**:T7 按 D13 口径绕过 shadcn(chart 直接用 recharts、detail 用极简 tailwind 卡片),stat 词条用 Tremor(@source 扫描 dist 类名)、timeline 用 react-chrono。实测视觉质量与深色一致性不达标(工程工具风基座缺失,各页样式散装)。
+- **决定**:apps/web 正式初始化 shadcn/ui(new-york 风格、CSS 变量版、Tailwind v4 CSS-first `@theme inline`):`components.json` + `cn()` + 十件基础组件(button/card/badge/table/separator/skeleton/scroll-area/collapsible/alert/tooltip)落 `src/components/ui/`;globals.css 定义全套语义令牌(中性灰基底 + 单一蓝色强调 + 小圆角)。**本条平替 D13 的偏差口径**:后续 Phase 词条实现层迁回 shadcn 封装(chart → shadcn Charts 风格封装、detail → Card/Sheet),词条合同(bind schema/目录 JSON/data-word 标注)不变,仅实现层替换。
+- **Tremor / react-chrono 计划退出(Phase D 执行)**:stat 词条平替为 shadcn Card + 语义令牌、timeline 平替为自建列表/表格;届时删 `@tremor/react`、`react-chrono` 依赖与 i3/invariants 的 chrono 白名单口径。本 Phase 只删 globals.css 的 `@source '../../node_modules/@tremor/react/dist'` 行(stat 词条暂时失去部分样式,可接受),依赖保留至 Phase D。
+- **深色策略**:`prefers-color-scheme` 媒体查询翻转 `:root` 语义令牌(demo 级,不引 next-themes,跟随系统);组件内 `dark:` 变体类(Tailwind v4 缺省即媒体查询)口径一致。
+- **页面壳**:AppShell(sticky 顶栏 + 唯一 `<main>` 统一栅格 max-w-5xl)进 layout;SiteNav 上移顶栏(data-nav 六值不变);每页恰好一个 main(i3 fuzz 注入点)由壳提供。
+
+## D17 聊天流式化 + chat-turn 留痕 + 三态工作台(2026-08-22,T9 Phase B)
+
+- **背景**:T2 悬浮聊天为一次性 JSON(floating-chat 原注释「一次性 JSON,简单可靠;流式为加分项」),实测 LLM 回合分钟级无反馈(裸 `●`)、停止按钮 disabled、刷新丢会话。
+- **决定**:
+  - `runAgent` 增 `onStep` 回调,/api/chat inline 路径改 **SSE**(step 帧逐步投影 trail,final 帧收尾;render 短路/参数错误/delegated 仍一次性 JSON);
+  - 新增 `chat-turn` 事件(kind 入 `LogEventKind`,fold no-op 纯留痕):inline 回合完成后直写日志(双写者模式同 worker),**聊天历史 = 日志投影**(`GET /api/chat/history?sessionId=`),服务端仍无会话态;delegated/render 回合不写(轨迹分别在舰队页/凝固事件);
+  - LLM 调用加 60s `AbortSignal.timeout`(GLM 端点挂死折算 fail,B4 口径),客户端 120s 超时 + `onCancel` 真实中止;
+  - 工作台三态:FAB → 右侧 sidebar(与主区分栏,AppShell 加 aside 槽,main 仍唯一)→ `/chat` 独立窗口(共享 sessionId + 历史投影)。
+- **语义影响**:聊天消息文本口径(trailToMessages)不变;事件日志多一种纯审计 kind,I5 重放同构(fold 对 chat-turn 不改状态)。
+
+## D18 画布词条接 A2UI 用一次性同步解析(binderless),不用响应式 generic binder(2026-08-22,T9 卡死修复)
+
+- **背景**:实测 /canvas 任意二次状态变更(重新载入/唤起聊天)即主线程死循环(CDP 采样:TableWord renderWithHooksAgain 反复 + commitMutation/DeletionEffects 深递归)——官方 `createComponentImplementation` 的 GenericBinder 以 useSyncExternalStore 订阅数据模型,与词条内部 store 钩子(TanStack useReactTable 渲染期 setOptions)相互通知形成 render/commit 死循环;tab 切换黑屏同因。
+- **决定**:词条实现改用 `createBinderlessComponentImplementation` + `dataContext.resolveDynamicValue` **渲染期一次性同步解析** {path}/{call} 绑定,不建订阅。依据:本站 surface 是静态投影——agent 不发 updateDataModel(spec 架构决定 3,数据模型渲染器私有),action 执行后整面 reload 重建,响应式绑定零消费方。
+- **语义影响**:零——bind schema/目录协商/数据模型私有口径不变;词条组件仍零改动(目录层适配);画布 reload 行为不变。若未来引入 agent 增量更新数据模型,需重新评估响应式绑定(届时词条内 store 钩子需与 A2UI 订阅隔离)。
+
+## D19 Application 实体与六点演进路线(2026-08-22,架构评审对话)
+
+- **背景**:审查「meta 创建实体是否建立了渐进式披露/遍历图」发现:flow 内有显式图(FlowEdge + sitemap 投影,`packages/engine/src/sitemap.ts`),跨 flow 无声明式载体;「渐进式披露」在文档仅出现一次且无定义(机制实际由处境披露 situatedness 涌现承担:`siren.ts` 只投影当前节点动作面);发现层(sitemap flows 平铺)随「meta 服务个人工作流扩展」的产品定位会持续退化——agent 入口决策退化回 CLI 式能力堆叠(原始问题)。
+- **决定**:
+  1. **不做全局遍历图**——跨 flow 遍历保持超媒体涌现(links + 目标相关性纪律);flow 内状态机图已覆盖真实时序约束,全局图是双重真相且过度约束。
+  2. **渐进式披露正名**:处境披露即本架构的渐进披露,术语表对齐,零代码;引入 application 后披露链完整为 application → flow → node → action,每层只披露下一层入口与意图。
+  3. **引入 application 定义平面实体**:intent 字段是本体(一段话:这个应用解决什么),归组 flows;业务实例不重新归父(可达性经 flow 已有);不做站点分裂(同引擎同 HTTP 面,轻于 `_meta` 模式);经 meta 同一份合同与 lifecycle(draft→approve)编辑。既有 flow 归 default application。
+  4. **版本哲学:定义显式、实例派生**。flow 版本机制已有(activation artifact sha256 + approve 沉淀 definition-versions,`packages/engine/src/meta.ts:423-463`),暴露成可读投影即可;application 版本 = manifest 锁成员 flow 版本(lockfile 模型);业务实例**不建版本表**,历史 = 事件日志投影(audit view)。
+  5. **Archive = 状态迁移,不是删除**:定义侧用 deprecate/archive 动词(sitemap 与发现层排除、href 不死(resource-href-unique)、可 unarchive);实例侧走 field-definition `semantics` 保留 status 约定(投影默认过滤、显式查询可见),平台给约定不给机制;application archive 只摘发现层,成员 flow 深链不死。
+  6. **人类默认暴露**:骨架级路由 `/app/<name>`,从描述符+投影渲染(intent、入口 flow、按 app 过滤的态势、scoped 到该 app 的 agent 入口);默认页形态由描述符 entry 字段声明(管理型 dashboard / 内容型内容优先)。原则:人类不可能提出不存在的问题——默认页让应用在人类感知里存在,尔后才有人与 agent 的应用内协作。
+  7. **meta 可视化是 approval gate 的可用性前提**(approve 永需 actor-is-human:agent 设计的定义,人类看不懂就签不了字,自举循环断在人类身上):优先 flow 拓扑图(FlowEdge 数据现成)+ activation 结构 diff(definition-versions 前后对比);只读投影,编辑仍走合同动词,**不做拖拽式图形编辑**。
+  8. **三层用户场景 = principal scope 默认值,不是三套 UI**:维护者 → meta scope(actor 类已有)、编排者 → app scope、访客 → public scope;三个内置 archetype,**不做通用 RBAC**;骑在 policy 实体(principal/scopes/confirmation/trust-ledger)上,处境披露按 actor 过滤动作面已工作。访客场景要求 sitemap/导航可按 app 收口(application 即发现边界)。
+- **路线(依赖序)**:T1 application 实体 + sitemap 分组 + agent 两层发现 → T2 版本显式化 + archive → T3 `/app/<name>` 默认暴露 + scoped chat → T4 meta 可视化(拓扑图 + activation diff)→ T5 角色 archetype + scope 默认。
+- **T1 spec 必须回答的开放问题**:membership 方向(app 持 flow 清单 vs flow 声明归属;单属还是多属);agent 工具面/导航枚举按 app scope 过滤的机械;default application 迁移口径。
+- **明确缓做**:policy 按 app 收口、跨 app 共享/分发、访客身份认证(D8 自报口径延续)、application 级 activation 捆绑。

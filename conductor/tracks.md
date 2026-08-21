@@ -16,3 +16,7 @@
 - [x] **Track: T7 骨架与渲染切片:词汇表 + binding-only 渲染器 + A2UI 画布 + 骨架五面(S5, I2, I3)** *Link: [tracks/t7-rendering_20260821/index.md](./tracks/t7-rendering_20260821/index.md)*
 
 - [x] **Track: T8 验收收口:不变量持续套件 + 全量重放 + 双执行者 + demo 清单 + 终审 review + DONE 报告** *Link: [tracks/t8-acceptance_20260821/index.md](./tracks/t8-acceptance_20260821/index.md)*
+
+- [x] **Track: T9 前端体验重构:shadcn 设计基座 + 统一页面壳 + 逐页重构 + Tremor/react-chrono 退出** *Link: [tracks/t9-frontend-overhaul_20260821/index.md](./tracks/t9-frontend-overhaul_20260821/index.md)*
+
+- [ ] **Track: T10 Application 切片:定义平面实体 + sitemap 分组投影 + agent 两层发现(D19 路线 T1)** *Link: [tracks/t10-application_20260822/index.md](./tracks/t10-application_20260822/index.md)*
