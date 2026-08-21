@@ -1,0 +1,6 @@
+T10 Phase A Task 3: 激活不变式第七条 app-known
+
+改动:engine/invariants.ts(第七条+registries)、meta.ts(submit 接线)、effects.ts(applications 随行)、shared/state.ts(EngineSnapshot.applications 可选)、invariants.test.ts(+8)、e2e/s2.spec.ts(机械适配)、DECISIONS.md(D21)
+Why:submit 时归一化后的 flow.app 必须指向已激活 application;非法引用拒且留痕(spec 架构决定 3)。过渡期 vacuous pass,Phase B seed 后长牙。
+偏差:spec 红线「S2 断言零改动」与「checks 全量报告第七条」张力 → D21 按 D11 先例机械适配 s2 名单/行数断言。
+验收(编排 agent 亲自复跑):invariants+meta 44/44;CI=true pnpm check 861 passed;playwright e2e/s2.spec.ts 4/4。自治验收。
