@@ -70,3 +70,11 @@
 - **背景(spec 与实现的缺口)**:T5 spec 验收 4 要求「发布×2 不同标题」委托并行**全部完成**;实测第二个发布目标必失败——`publish` 迁到 `done` 终态后单例向导(article-drafting:main)被消费,`flow:article-drafting` 别名指向的实例停在无动作节点,合同上不存在再次发布的路径(read-判-行 agent 无从续)。
 - **决定**:`article-drafting` 的 `publish.to` 由 `done` 改为 **`basic-info`**(发布即回到起草起点,向导循环使用);`basic-info` 增补 `abandon`(放弃 → `done`)以保持「terminal 节点存在且从 initial 可达」的激活不变式(terminal-reachable 对修订后的定义仍过)。同步更新 6 处既有测试的机械期望(domain/flows、engine/service、bornversion、api/contract 单测 + e2e chat/s2)。
 - **语义影响**:B1/I1/B4/kill 续跑的断言零改动(轨迹与 successes 不变);S2 仅机械期望更新(ready 节点动作面未动)。S3-并发/S3-并行的发布载体自此成立。
+
+## D12 A2UI:用官方 SDK(@a2ui/react + @a2ui/web_core),不自实现薄协议层(2026-08-21,T7 Phase A)
+
+- **背景**:T7 spec 架构决定 3——先查 npm 有无官方/A2UI 兼容 SDK,有则用,无则自实现薄协议层(四消息 createSurface/updateComponents/updateDataModel/deleteSurface + surface 管理器),结论无论有无都记 DECISIONS。
+- **调研结论(2026-08-21,npm registry)**:**有官方 SDK**。`@a2ui/web_core`(0.10.6,Google a2ui-team,Apache-2.0,核心库:catalog/surface/组件树/数据模型,依赖 preact-signals/zod)与 `@a2ui/react`(0.10.2,React 渲染器,peer 同版 web_core);另有 `@a2ui/lit`/`@a2ui/angular` 渲染器与 `@a2ui-sdk/types`/`@a2ui-sdk/utils`。协议规范在 a2ui.org(v0.9 与 v1.0 并存;tech-stack 记的 v0.9,SDK 0.10.x 追新规范)。注意:npm 上古老的 `a2ui@1.0.7`(2016,Angular 2 组件库)与 A2UI 协议无关,勿装。自定义扩展目录是 A2UI 一等机制(catalog JSON:$id/catalogId[URI 稳定标识,不承诺运行时下载]+ components{词名: JSON Schema};createSurface 以 catalogId 引用,协商后 surface 生命周期内锁定)。
+- **决定**:Phase B 画布接入用官方 SDK——`@a2ui/react`(渲染器)+ `@a2ui/web_core`(surface 管理/catalog 协商);**不自实现薄协议层**。词汇表注册表即 A2UI 自定义扩展目录:目录 JSON 与注册表同源,经 `/api/render/catalog` 提供,`catalogUrl` 以 URL 引用。
+- **我方强制不因 SDK 改变**(spec 架构决定 3 的两条):a) agent 只发 updateComponents + 实体引用,不发 updateDataModel 数值——数据模型由渲染器从 /api/entity 拉取私有持有(updateDataModel 是渲染器内部操作);b) action 事件渲染器拦截 → 映射实体已声明 action → /api/exec 裁决(合同外按钮无法提交)。
+- **安装时机与回退**:Phase A 只落注册表形状与目录端点骨架(词条组件 lazy 占位 + bindSchema),SDK 依赖在 Phase B 组件接入时安装(避免提前引依赖);若届时集成受阻(如 React 19/Next 16 兼容或目录协商缺口),回退自实现薄协议层(四消息 + surface 管理器,数据与组件分离、组件按路径绑定),并更新本决定。
