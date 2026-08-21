@@ -1,0 +1,6 @@
+T10 Phase C Task 2: sitemap 合同测试 + 生产接线
+
+改动:apps/web/src/engine/service.ts(currentSitemap 透传 applications + 缓存键纳入)、app/.well-known/ui4a.json/route.test.ts(+2 合同用例)
+Why:spec 验收 4——/.well-known/ui4a.json 含 applications 分组,扁平 flows 保留带 app,app 定义变更 version bump。缓存键不透 applications 会使 bump 在长驻 runtime 不成立(热缓存捕获)。
+version bump 构造:service 级真实日志路径(直写 application-seeded → 增量 fold → HTTP GET 取 version),同一 engine 单例热缓存。
+验收(编排 agent 亲自复跑):route.test 6/6;CI=true pnpm check 886 passed;smoke+s2 e2e 6/6。自治验收。
