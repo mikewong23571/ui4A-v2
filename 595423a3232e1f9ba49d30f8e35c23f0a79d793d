@@ -1,0 +1,13 @@
+Task: T7-A2 词汇表注册表 + A2UI 扩展目录形状(DECISIONS D12)
+
+Summary:
+- apps/web/src/render/registry.ts: RenderWordEntry{name,title,description,component(lazy),bindSchema,supportsDimension};RENDER_WORDS 十词条(table/chart/stat/timeline/flow/form/diff/kanban/markdown/detail,顺序即目录展示序);wordOf(name) 词名校验;CATALOG_ID='https://ui4a.dev/render/v1/catalog.json'(URI 稳定标识,不承诺运行时下载——A2UI 惯例);catalogUrl='/api/render/catalog';renderCatalogJson() 目录 JSON($id=catalogId + components 与注册表 bindSchema/description 同源)。
+- apps/web/src/render/words/placeholder.tsx: lazyPlaceholder(name) 惰性占位(返回 Promise<ComponentType>,组件返回 null,displayName 标词名)——Phase B 逐词替换为真实组件(TanStack Table/shadcn Charts/Tremor/react-chrono/React Flow/RJSF/react-diff-view/dnd-kit/react-markdown/shadcn)。
+- apps/web/src/app/api/render/catalog/route.ts: GET 静态目录 JSON(无 db)。
+- DECISIONS.md D12:npm 调研(2026-08-21)确认官方 SDK 存在:@a2ui/web_core 0.10.6 + @a2ui/react 0.10.2(Google a2ui-team,Apache-2.0;规范 a2ui.org v0.9/v1.0);决定 Phase B 画布用官方 SDK,不自实现薄协议层;agent 只发 updateComponents+实体引用(updateDataModel 渲染器私有)、action 拦截→已声明 action→/api/exec 裁决两条我方强制不因 SDK 改变;Phase A 不装 SDK 依赖(组件接入时装),集成受阻回退薄协议层并更新决定。
+
+Why: 词汇表身份 = A2UI 自定义扩展目录(基础目录只有布局原语,数据词条我们补);目录以 JSON URL 引用是 createSurface catalogId 协商的口径;词条组件 Phase B 接入故先 lazy 占位 + bindSchema。
+
+Tests: CI=true pnpm vitest run apps/web/src/render/ apps/web/src/app/api/render/ → 53 passed;CI=true pnpm check 全绿(711 tests)。
+
+Files: apps/web/src/render/registry.ts, apps/web/src/render/registry.test.ts, apps/web/src/render/words/placeholder.tsx, apps/web/src/app/api/render/catalog/{route.ts,route.test.ts}, DECISIONS.md
