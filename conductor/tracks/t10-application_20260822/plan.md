@@ -23,8 +23,8 @@
 
 ## Phase D: agent 两层发现
 
-- [~] Task: agent loop 静态上下文按 app 分组呈现(name+intent+flows)(TDD/合同测试)
-- [ ] Task: rule-driver app 定位层(目标相关性先匹配 app intent → 该 app 内入口优先;不做硬过滤,跨 app links 仍合法)(TDD)
+- [x] Task: agent loop 静态上下文按 app 分组呈现(name+intent+flows)(TDD/合同测试) — a7f0cb7
+- [~] Task: rule-driver app 定位层(目标相关性先匹配 app intent → 该 app 内入口优先;不做硬过滤,跨 app links 仍合法)(TDD)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase E: 全量回归与走查
