@@ -1,0 +1,6 @@
+T11 Phase B Task 3: delegation-step detail 增 reasoning
+
+改动:apps/worker/src/delegation.ts(DelegationStepRecord.reasoning + recordStep/findRecordedStep)、workflows.ts(AgentStepResult.reasoning?)、delegation.test.ts(+3)
+口径:写入恒落(null 兜底);旧事件恢复不补键逐字节一致;新事件恢复原样携带。driver 接口无 reasoning 通道(D22),当前恒 null,Phase C streamText 后经 result.reasoning 自然流出。
+Why:spec 架构决定 3 末段——worker 侧幂等恢复载荷同构扩展,不新增 kind。
+验收(编排 agent 亲自复跑):apps/worker 23 passed | 1 skipped(Temporal 7233 不可达,环境性);CI=true pnpm check 911 passed。自治验收。
