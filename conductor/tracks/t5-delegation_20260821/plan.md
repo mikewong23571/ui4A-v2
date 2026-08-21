@@ -20,4 +20,5 @@
 ## Phase C: S3 全链路 E2E
 
 - [x] Task: S3 E2E(并发同资源一成一拒带原因/kill 续跑/N≥3 并行/舰队页/chat delegated 轮询;回归 22)(c3c5837;链路修复 ee93eb8 多写者水位跳步、b17591a 向导循环化[D11];并发载体以同标题发布对撞实现——评论 approve 对败者是读-判-行竞态,记录于 commit message 与 note)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+[checkpoint: c3c5837] — 验证报告挂 git note(refs/notes/commits 追加 + refs/notes/verification;自治验收,编排代行);CI=true pnpm check 全绿(613,+1 多写者水位回归)+ CI=true pnpm e2e 25 passed/1 skipped(22 既有 + S3×3 零回归;S3 spec 连跑 3 轮稳定);验证期发现并修复:多写者水位跳步(ee93eb8,worker 直写事件被 web 自身 append 跨过 → 委托缺步 → 读路径 500)、发布向导不可循环(b17591a,D11,spec 验收 4 的域前提);S3-并发载体以同标题发布对撞实现(评论 approve 败者为读-判-行竞态,不可稳定断言,偏差记录于 spec 头注与 commit)。
