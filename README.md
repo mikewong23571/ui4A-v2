@@ -5,26 +5,35 @@
 ## 快速开始
 
 ```bash
-# 1. 安装依赖(pnpm workspaces:apps/web + apps/worker + packages/shared)
+# 1. 安装依赖(pnpm workspaces:apps/web + apps/worker + packages/*)
 pnpm install
 
-# 2. 启动 PostgreSQL(docker compose,宿主端口 5433;--wait 等 healthcheck 就绪)
+# 2. 起 PostgreSQL(docker compose,宿主 5433;--wait 等 healthcheck)
 docker compose up -d --wait
 
-# 3. 启动 web dev server(端口固定 3100,见 DECISIONS.md D5:3000 被占用)
-PORT=3100 pnpm dev
+# 3. 起 Temporal dev server(gRPC 7233,UI 8233;已装 temporal CLI)
+temporal server start-dev --port 7233 --db-filename /tmp/ui4a-temporal.db &
+
+# 4. 起 web(dev 端口固定 3100:3000 被占用,见 DECISIONS.md D5)
+PORT=3100 pnpm dev &
+
+# 5. 起 Temporal worker(notify / 委托执行)
+pnpm --filter @ui4a/worker dev &
 ```
 
-打开 <http://localhost:3100> 查看占位首页；健康检查 <http://localhost:3100/api/health> 应返回 `{"status":"ok","db":"ok"}`。（`DATABASE_URL` 有同名默认值，可选地复制 `.env.example` 为 `.env` 覆盖。）
+打开 <http://localhost:3100>:态势投影(待确认/在飞委托/文章数)+ 事件流 + 各入口;健康检查 `/api/health`。LLM 聊天需 `apps/web/.env.local` 的 `GLM_API_KEY`(来源 `~/.secrets/glm_coding_plan_key`;无 key 自动回退 rule driver)。
 
-质量门与 E2E：
+质量门与 E2E:
 
 ```bash
-pnpm check        # typecheck(三 workspace)+ eslint + vitest,任一失败即失败
-CI=true pnpm e2e  # Playwright smoke(自动拉起 3100 dev server,单次执行)
+pnpm check          # typecheck(全 workspace)+ eslint + vitest(821 单测)
+CI=true pnpm e2e    # Playwright 全量(43 用例:B1–B4/S1–S5/I1–I6/双执行者)
+CI=true pnpm e2e invariants   # 不变量套件单跑(I1–I6)
 ```
 
-其他常用命令见 `conductor/workflow.md` 的 Development Commands。
+- **Demo 走查**:[conductor/demo-checklist.md](./conductor/demo-checklist.md)(人工走查脚本,含四个评估点);
+- **DONE 对照**:[conductor/done-report.md](./conductor/done-report.md)(GOAL 逐条证据);
+- 其他常用命令见 `conductor/workflow.md` 的 Development Commands。
 
 ## 必读文档（按顺序，位于 `docs/`）
 

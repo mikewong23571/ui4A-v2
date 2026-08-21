@@ -68,3 +68,7 @@
 | 引擎承载 | Next.js API 层 vs 独立 Hono 服务 | Next.js API 层(AI SDK/RSC 原生集成,demo 单体最简) |
 | demo 级事件存储起步 | PostgreSQL(docker)vs SQLite 起步 | PostgreSQL(GOAL 口径即 PostgreSQL,I5 可重放从第一天就验真) |
 | 包管理 / 仓库形态 | 文档未指定 | pnpm workspaces monorepo(app + worker + shared 三包,谓词共享免费的前提) |
+
+## 实况注记(2026-08-21,T8 收口;实际安装版本)
+
+next 16.3.1 / react 19.2.8 / xstate 5.32.5 / ajv 8.20.0 / zod 4.4.3 / pg 8.23.0 / @temporalio/* 1.22.0 / @cedar-policy/cedar-wasm 4.12.0 / ai 7.0.71 + @ai-sdk/openai 4.0.45 / @assistant-ui/react 0.15.16 / @rjsf/* 6.8.0 / @a2ui/web_core 0.10.6 + @a2ui/react 0.10.2(D12:官方 SDK) / @tanstack/react-table 8.21.3 / recharts 3.10.1 / @tremor/react 3.18.7 / react-chrono 3.3.3 / @xyflow/react 12.11.3 / @dnd-kit/core 6.3.1 / react-markdown 10.1.0 / deep-object-diff 1.1.9 / react-diff-view 3.3.3 / typescript 5.9.3 / tailwindcss 4。测试:vitest 4.1.11 / @playwright/test 1.62.1 / fast-check 4.9.0。运行时:node 24 / pnpm 10 / PostgreSQL 17(docker)/ temporal CLI 1.8.2(start-dev)。
