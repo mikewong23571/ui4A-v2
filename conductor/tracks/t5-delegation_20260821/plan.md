@@ -13,7 +13,7 @@
 ## Phase B: web 集成与舰队页
 
 - [x] Task: /api/chat mode=delegated(dispatch + statusUrl)+ /api/delegations(列表/详情)(TDD)(f9fd37a;数据源=事件日志为主,读路径零 Temporal 依赖)
-- [ ] Task: /delegations 舰队页(极简表格 + 首页入口)(组件测试)
+- [x] Task: /delegations 舰队页(极简表格 + 首页入口)(组件测试)(1c5cd5b;含悬浮窗委托模式开关小改——工作量小,已做)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase C: S3 全链路 E2E
