@@ -19,7 +19,7 @@
 
 ## Phase C: render capability 与 S5
 
-- [ ] Task: 聊天 render 意图 → spec 生成(rule 确定路径:图表词+维度引用;LLM 路径接口)(TDD)
-- [ ] Task: S5 E2E(聊天→chart surface;spec 零字面;数值与快照一致;凝固)
+- [x] Task: 聊天 render 意图 → spec 生成(rule 确定路径:图表词+维度引用;LLM 路径接口)(TDD)(4b3a66d)
+- [~] Task: S5 E2E(聊天→chart surface;spec 零字面;数值与快照一致;凝固)
 - [ ] Task: I3 E2E(fuzz 全页面;未声明按钮拒提交)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
