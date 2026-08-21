@@ -16,8 +16,8 @@
 
 ## Phase C: 思考流(streamText + thinking 帧 + 前端)
 
-- [~] Task: llm-driver streamText 改造(聚合 tool call 语义不变;fail-safe/60s abort/B4 口径保持;onReasoning 回调)(TDD)
-- [ ] Task: SSE thinking 帧(route 管道;rule 路径零帧;客户端断开口径不变)(TDD)
+- [x] Task: llm-driver streamText 改造(聚合 tool call 语义不变;fail-safe/60s abort/B4 口径保持;onReasoning 回调)(TDD) — 846af76
+- [~] Task: SSE thinking 帧(route 管道;rule 路径零帧;客户端断开口径不变)(TDD)
 - [ ] Task: chat-panel 可折叠思考区(thinking 帧渲染;与 step 帧交错正确)(组件测试)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
