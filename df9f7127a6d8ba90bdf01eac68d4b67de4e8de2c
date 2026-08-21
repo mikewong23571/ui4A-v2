@@ -1,0 +1,27 @@
+T3 Phase D / Task D1 — 收件箱 UI(inbox 集合入口 + 通用页确认渲染)
+
+任务:inbox 集合投影入口 + 首页入口 + 通用页渲染确认实体(RJSF approve/reject)。
+
+改动文件:
+- apps/web/src/app/page.tsx:首页并行拉取 /api/entity?rel=inbox,新增收件箱区块
+  (链接文本「收件箱(待确认 N)」,N 取集合投影 count,缺失回退成员计数);
+- apps/web/src/app/home.test.tsx:inbox fixture + 2 新用例(计数 2 / 空 0、入口 href);
+- apps/web/src/components/entity-view.tsx:
+  1) memberSummary 通用回退:无 fields/node 的成员(确认实体)按 properties 展平
+     (标量 key=value + 一层对象 key.sub=value)——目标动作/提议者可见,零硬编码字段名;
+  2) blockedForRenderer(renderer 身份规则):投影 guard-results 无 actor 上下文,
+     actor-is-human fail-closed(engine 口径,siren.test.ts:203);但 renderer 的 exec
+     恒以 actor=human 提交(exec-client HUMAN_CHANNEL)——失败谓词全部为
+     actor-is-human 时解除 disabled;状态类 guard(is-published 等)失败仍禁用。
+- apps/web/src/components/entity-view.test.tsx:确认门 fixtures(approve 推送按钮 /
+  reject RJSF reason 必填,形状镜像 projectConfirmation)+ 4 新用例。
+
+发现并修复的链路 bug:确认实体页 approve/reject 按钮曾被投影的 fail-closed
+guard-results 永久禁用(人类批准路径在 UI 上不可用)。修复在 renderer 层
+(不改 engine 投影语义);真正裁决仍在 exec(agent approve 422,I4 不受影响)。
+
+已知偏差:inbox 成员「时间摘要」不可实现——确认实体投影无时间字段
+(时钟是 capability,事件 ts 只在日志层),Phase D 以 target-action/
+proposed-by/status 摘要呈现。
+
+验证:CI=true pnpm check 全绿(404 tests,+6);Red 先行确认 5 用例失败后转绿。
