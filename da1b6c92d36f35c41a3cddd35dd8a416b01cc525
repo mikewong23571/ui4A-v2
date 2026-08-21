@@ -1,0 +1,11 @@
+T12 Phase A Task 2: render LLM 门控实测
+
+改动:e2e/llm-render.spec.ts(新增门控 spec,唯一文件)
+实测(编排 agent 亲自复跑 1 passed 6.5s):「按分类可视化当前内容」→ LLM 第 1 轮产 content-by-category chart spec(bind: articles × category)→ 过三闸 → 凝固(render-spec-frozen)→ 画布渲染,chart aria-label 维度计数与 /api/entity 快照逐项一致。
+rule miss 确定性:意图零 ascii 词元且无 NOUN_LEXICON 命中 → renderSpecFor 必 miss,响应携带 render 载荷 ⇔ LLM 路径。
+稳定性取舍:形状硬断言立即生效;画布走查非抛出筛查,干净渲染首轮全量断言,上限 5 轮,零过闸/零干净渲染如实失败。
+发现的遗留 bug(subagent 报告,按非目标未修,入 track 遗留清单):
+1. 非聚合词条(kanban/table/timeline)bindSchema 允许可选 dimension,但运行时 asMembers 拒 DimensionCount[]——过闸凝固后画布渲染期抛错且无 per-surface 错误边界,整个 /canvas surfaces 归零。建议:非聚合词条禁 dimension + 画布错误边界。
+2. caption 字段引用成员级路径挂集合实体必 dangling,deref 响亮失败留痕且坏 spec 凝固后每次画布加载都报。建议:prompt 约束 caption 指向集合标量,或 field 可解析性纳入 grounding 核对。
+3. 观察:LLM render 无凝固复用短路,同 concern 重复请求每次付一次生成(可另立优化)。
+验收:spec 验收 2 门控部分闭环。无 key 跳过不红;CI=true pnpm check 948 passed。自治验收。
