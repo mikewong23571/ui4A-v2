@@ -15,5 +15,5 @@
 
 ## Phase C: 终审 review 与处置
 
-- [ ] Task: conductor-review(T3–T7,33802f1..HEAD)+ 处置
-- [ ] Task: tracks 收口 + 最终报告
+- [x] Task: conductor-review(T3–T7,33802f1..HEAD)+ 处置 `b1f3136`
+- [x] Task: tracks 收口 + 最终报告 `b1f3136`
