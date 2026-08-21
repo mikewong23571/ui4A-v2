@@ -52,19 +52,25 @@ export interface PlanExecutedDetail {
 
 export type PlanOutcomeKind = 'plan-completed' | 'plan-rejected' | 'plan-suspended';
 
-export interface PlanOutcome {
-  kind: PlanOutcomeKind;
-  /** 分步结果(截至截断点:拒绝/挂起步含于内,其后步骤不出现)。 */
-  results: PlanStepResult[];
-  /** 终态快照(含已过步骤效果;拒绝/挂起点之后未动)。 */
-  snapshot: EngineSnapshot;
-  /** 各步伴随事件,按步序(拒绝步无伴随事件;不含标记)。 */
-  events: EngineEvent[];
-  /** 批量裁决记录事件(kind=plan-executed;追加在伴随事件之后入日志)。 */
-  record: EngineEvent;
-  /** plan-suspended:挂起步的确认摘录(顶层便捷字段,与 results 尾项同源)。 */
-  confirmation?: SuspendedConfirmation;
-}
+/**
+ * 批量裁决结果(discriminated union;plan-suspended 必携确认摘录)。
+ * 公共字段:results=分步结果(截至截断点:拒绝/挂起步含于内,其后步骤不出现);
+ * snapshot=终态快照(含已过步骤效果,拒绝/挂起点之后未动);events=各步伴随
+ * 事件按步序(拒绝步无伴随事件,不含标记);record=批量裁决记录事件
+ * (kind=plan-executed,追加在伴随事件之后入日志)。
+ */
+export type PlanOutcome =
+  | { kind: 'plan-completed'; results: PlanStepResult[]; snapshot: EngineSnapshot; events: EngineEvent[]; record: EngineEvent }
+  | { kind: 'plan-rejected'; results: PlanStepResult[]; snapshot: EngineSnapshot; events: EngineEvent[]; record: EngineEvent }
+  | {
+      kind: 'plan-suspended';
+      results: PlanStepResult[];
+      snapshot: EngineSnapshot;
+      events: EngineEvent[];
+      record: EngineEvent;
+      /** 挂起步的确认摘录(顶层便捷字段,与 results 尾项同源)。 */
+      confirmation: SuspendedConfirmation;
+    };
 
 /** 计划标记事件的 rel(协议锚点;非实体,fold 不物化)。 */
 export const PLAN_REL = 'plan';
@@ -166,7 +172,12 @@ export function executePlan(
     } satisfies PlanExecutedDetail,
   };
 
-  return confirmation === undefined
-    ? { kind, results, snapshot: current, events, record }
-    : { kind, results, snapshot: current, events, record, confirmation };
+  if (kind === 'plan-suspended' && confirmation !== undefined) {
+    return { kind, results, snapshot: current, events, record, confirmation };
+  }
+  if (kind === 'plan-suspended') {
+    // 不可达(引擎完整性):挂起结论必由挂起步产生,摘录同源存在。
+    throw new Error('executePlan 内部不变式破坏:plan-suspended 缺少确认摘录');
+  }
+  return { kind, results, snapshot: current, events, record };
 }

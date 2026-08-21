@@ -17,6 +17,10 @@
  *   - confirmation:<id> 实体上的 approve/reject 是普通 exec 的声明动作(铁律 5:
  *     审批不委托,guard actor-is-human 在引擎层拒 agent,I4),内部路由到引擎的
  *     人类裁决入口(approveConfirmation/rejectConfirmation),留痕口径与业务动作一致;
+ * - execPlan(T6)= executePlan 批量裁决:整个计划一次入串行队列(单事务),
+ *   逐步裁决、每步吃前步产出快照("不是信任计划,是批量裁决计划");
+ *   落库顺序 = 各步伴随事件 → 拒绝步 action-rejected(detail 带计划步号)→
+ *   plan-executed 标记(一条批量裁决记录);挂起步 notify 派发与 exec 同口径;
  * - 双写者(T3 Phase C / spec 决定 4):worker 直接 appendEvent 同一 PG
  *   (notification-delivered 等)。web 以 lastSeq 追踪已折叠进度:
  *   - 自身 append 后推进 lastSeq(不重折叠自己的事件);
@@ -38,6 +42,7 @@ import {
   deriveSitemap,
   executeMeta,
   executeWithGates,
+  executePlan,
   fold,
   project,
   rejectConfirmation,
@@ -52,6 +57,7 @@ import {
   type JudgeLayer,
   type LogEvent,
   type MetaDeps,
+  type PlanStepResult,
   type ProjectDeps,
   type Sitemap,
   type SitemapSurface,
@@ -82,6 +88,21 @@ export type ExecOutcome =
   | { kind: 'suspended'; entity: SirenEntity; confirmation: SuspendedConfirmation }
   | { kind: 'rejected'; layer: JudgeLayer; reason: string; detail?: unknown };
 
+/**
+ * exec-plan 结果(T6 批量裁决;HTTP 层映射 completed/rejected → 200,
+ * suspended → 202——请求被完整处理,分步报告在 body,拒绝是步级数据)。
+ * entities:受影响实体摘要(executed 步的目标与追加 rel,保序去重)。
+ */
+export type PlanServiceOutcome =
+  | { kind: 'plan-completed'; results: PlanStepResult[]; entities: string[] }
+  | { kind: 'plan-rejected'; results: PlanStepResult[]; entities: string[] }
+  | {
+      kind: 'plan-suspended';
+      results: PlanStepResult[];
+      entities: string[];
+      confirmation: SuspendedConfirmation;
+    };
+
 /** meta 站点 sitemap(定义层交互拓扑:meta rel 面;跨站规则下业务面不携带)。 */
 export interface MetaSitemap {
   version: string;
@@ -109,6 +130,12 @@ export interface EngineRuntime {
   getMetaSitemap(): MetaSitemap;
   /** 执行动作(串行单 atom):同步外部写者 → 三层裁决 → 事件留痕 → 增量快照 → notify 派发(尽力而为)。 */
   exec(request: ExecRequest): Promise<ExecOutcome>;
+  /**
+   * 批量裁决计划(T6):整个计划一次入串行队列(单事务)——同步外部写者 →
+   * executePlan 逐步裁决 → 伴随事件 + 拒绝留痕 + plan-executed 标记一次落库 →
+   * 增量快照 → (挂起时)notify 派发(尽力而为,与 exec 同口径)。
+   */
+  execPlan(steps: readonly ExecRequest[]): Promise<PlanServiceOutcome>;
 }
 
 const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
@@ -494,6 +521,70 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           throw new Error(`exec 后目标实体 "${targetRel}" 不可投影(内部不变式破坏)`);
         }
         return { kind: 'accepted', entity, appended };
+      });
+    },
+    execPlan(steps) {
+      // 单事务:整个计划一次入串行队列(与 exec 无交错;批量裁决是一个 atom)。
+      return enqueue(state, async () => {
+        await refreshFromLog();
+
+        // 步级 flow 别名与 exec 同口径(flow:article-drafting → 唯一实例 rel)。
+        const aliased = steps.map((step) => ({
+          ...step,
+          rel: resolveFlowRelAlias(step.rel, snapshot) ?? step.rel,
+        }));
+
+        const outcome = executePlan(aliased, snapshot, gateDeps());
+
+        // 落库顺序 = 日志顺序:各步伴随事件 → 拒绝步留痕 → 批量裁决记录标记。
+        for (const event of outcome.events) {
+          await appendWithSeq(toAppend(event));
+        }
+        const rejected = outcome.results.find((result) => result.outcome === 'rejected');
+        if (rejected !== undefined && rejected.rejection !== undefined) {
+          const request = aliased[rejected.step - 1]!;
+          await appendWithSeq({
+            kind: 'action-rejected',
+            rel: request.rel,
+            action: request.action,
+            actor: request.actor ?? 'human',
+            principal: request.principal,
+            channel: request.channel,
+            params: paramsWithOrigins(request),
+            reason: rejected.rejection.reason,
+            // 与单步 exec 的 persistRejection 同源形状,另带计划步号(审计链)。
+            detail: {
+              layer: rejected.rejection.layer,
+              judge: rejected.rejection.detail,
+              plan: { step: rejected.step },
+            },
+          });
+        }
+        await appendWithSeq(toAppend(outcome.record));
+        snapshot = outcome.snapshot;
+        applyForeignGaps();
+
+        // entities 摘要:executed 步的目标与追加 rel(保序去重)。
+        const entities: string[] = [];
+        for (const result of outcome.results) {
+          if (result.outcome !== 'executed') continue;
+          if (!entities.includes(result.rel)) entities.push(result.rel);
+          for (const rel of result.appended ?? []) {
+            if (!entities.includes(rel)) entities.push(rel);
+          }
+        }
+
+        if (outcome.kind === 'plan-suspended') {
+          // 挂起步的 notify 派发(尽力而为,fire-and-forget,与 exec 同口径)。
+          void dispatchNotify(outcome.confirmation);
+          return {
+            kind: 'plan-suspended',
+            results: outcome.results,
+            entities,
+            confirmation: outcome.confirmation,
+          };
+        }
+        return { kind: outcome.kind, results: outcome.results, entities };
       });
     },
   };
