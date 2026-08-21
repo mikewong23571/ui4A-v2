@@ -1,0 +1,7 @@
+T11 Phase B Task 2: agent-decision 审计事件
+
+改动:engine/fold.ts(kind+no-op)、db/events.ts(镜像)、chat/decisions.ts(新增,五要素+包装器)、api/chat/route.ts(接线)、agent/llm-driver.ts(导出 buildUserPrompt,逻辑零改动)+ 3 测试文件
+方案:route 层 driver 包装捕获(decide 时刻 prompt 才可得,TrailStep 回推不出),回合完成后统一补写;观测侧缺陷只丢留痕不破 decide 不抛口径。
+口径:llm prompt = system/user 全量;rule prompt = {goal,currentRel,entity,blocked,lastRejection,successes} 结构化摘要;reasoning 恒 null(Phase C 填真值,验收 4 允许)。
+Why:spec 架构决定 3——蒸馏原料 (context→reasoning→op) 决策记录;rule 机械层轨迹是正确答案生成器。
+验收(编排 agent 亲自复跑):fold/replay/route 44/44;CI=true pnpm check 908 passed;chat+invariants e2e 11/11(I5 events=29 含 agent-decision,hash 一致)。自治验收。
