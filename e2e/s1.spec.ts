@@ -25,7 +25,7 @@ import { spawnSync } from 'node:child_process';
 import { expect, test } from '@playwright/test';
 
 import { terminateStaleNotifyWorkflows } from '../apps/web/src/temporal/notify';
-import { SCENARIO_BASE, TEMPORAL_ADDRESS, withWorkerServer } from './server-kit';
+import { SCENARIO_BASE, TEMPORAL_ADDRESS, withFreshServer, withWorkerServer } from './server-kit';
 
 // 本文件全部用例指向场景 server(3110)+ 真 worker。
 test.use({ baseURL: SCENARIO_BASE });
@@ -409,5 +409,39 @@ test('UI 走查:首页收件箱 → 确认页 RJSF 批准 → 文章列表该篇
     await page.goto('/');
     await expect(page.locator('a[data-rel="post:post-welcome"]')).toContainText('archived');
     await expect(page.getByText('收件箱(待确认 0)')).toBeVisible();
+  });
+});
+
+test('B 回归(human archive 直通):human exec archive → 200 立即生效,不挂起', async () => {
+  // spec 验收 6 的显式口径:human 的 high 风险动作不进确认门(Cedar permit
+  // principal.actor=="human")。无需 worker(无挂起即无 notify)。
+  await withFreshServer(async () => {
+    const { status, json } = await exec({
+      rel: 'post:post-welcome',
+      action: 'archive',
+      actor: 'human',
+      principal: HUMAN_PRINCIPAL,
+      channel: 'renderer',
+    });
+    expect(status).toBe(200);
+    expect((json as { entity: EntityShape }).entity.properties).toMatchObject({
+      rel: 'post:post-welcome',
+      node: 'archived',
+    });
+
+    // 未挂起:零确认事件、收件箱为空;直接执行留痕(actor=human)。
+    const events = await getEvents();
+    expect(eventsOf(events, 'confirmation-requested')).toEqual([]);
+    expect((await getEntity('inbox')).properties).toMatchObject({ count: 0 });
+    const executedArchive = events.filter(
+      (event) => event.kind === 'action-executed' && event.action === 'archive',
+    );
+    expect(executedArchive).toHaveLength(1);
+    expect(executedArchive[0]).toMatchObject({
+      rel: 'post:post-welcome',
+      actor: 'human',
+      principal: HUMAN_PRINCIPAL,
+      channel: 'renderer',
+    });
   });
 });
