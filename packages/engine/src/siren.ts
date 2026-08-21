@@ -8,11 +8,12 @@
  */
 import type {
   ConfirmationSnapshot,
+  DefinitionEntry,
   EngineSnapshot,
   GuardEvaluation,
   GuardRegistry,
 } from '@ui4a/shared';
-import { fieldValues } from '@ui4a/shared';
+import { fieldValues, terminalNodes } from '@ui4a/shared';
 
 import {
   CONFIRMATION_APPROVE_ACTION,
@@ -20,6 +21,11 @@ import {
   confirmationRel,
 } from './confirmation';
 import { evaluateGuards } from './judge';
+import {
+  DEFINITION_LIFECYCLE_FLOW,
+  LIFECYCLE_INTERNAL_EDGES,
+} from './lifecycle';
+import { actionEffects } from './parse';
 import { fieldDefinitionsToJsonSchema, mergeFieldDefinitions } from './schema';
 import type { ActionDefinition, FieldDefinition, FlowDefinition } from './types';
 
@@ -246,13 +252,18 @@ function projectInbox(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity 
 
 /**
  * rel → Siren 实体;未知 rel 返回 undefined(HTTP 层映射 404)。
- * 解析顺序:实例 → 业务集合 → 确认实体(confirmation:<id>)→ inbox 视图。
+ * 解析顺序:meta 前缀(定义层显式意图,优先于实例表——lifecycle 实例与定义
+ * 实体同 rel,投影必须是定义视图)→ 实例 → 业务集合 → 确认实体
+ * (confirmation:<id>)→ inbox 视图。
  */
 export function project(
   snapshot: EngineSnapshot,
   rel: string,
   deps: ProjectDeps,
 ): SirenEntity | undefined {
+  if (rel === 'meta/self' || rel.startsWith('meta/')) {
+    return projectMeta(snapshot, rel, deps);
+  }
   const instance = snapshot.instances[rel];
   if (instance !== undefined) {
     return projectInstance(instance, snapshot, deps);
@@ -266,6 +277,161 @@ export function project(
   }
   if (rel === 'inbox') {
     return projectInbox(snapshot, deps);
+  }
+  return undefined;
+}
+
+// ---------------------------------------------------------------------------
+// meta 平面投影(T4:A.2 定义实体形状;进入定义层必须显式意图)
+// ---------------------------------------------------------------------------
+
+/** action-definition 子实体属性(A.2 原样:声明全文,不裁剪)。 */
+function actionDefinitionProperties(action: ActionDefinition): Record<string, unknown> {
+  return {
+    name: action.name,
+    title: action.title,
+    method: action.method ?? 'POST',
+    ...(action.to !== undefined ? { to: action.to } : {}),
+    guards: [...(action.guards ?? [])],
+    ...(action['requires-confirmation'] !== undefined
+      ? { 'requires-confirmation': action['requires-confirmation'] }
+      : {}),
+    effect: actionEffects(action),
+    ...(action.fields !== undefined && action.fields.length > 0 ? { fields: action.fields } : {}),
+  };
+}
+
+/** node-definition 子实体(内嵌 action-definition 子实体)。 */
+function projectNodeDefinition(node: FlowDefinition['nodes'][number]): SirenEntity {
+  return {
+    class: ['meta', 'node-definition'],
+    rel: ['node'],
+    properties: { name: node.name, title: node.title ?? node.name },
+    actions: [],
+    links: [],
+    entities: node.actions.map((action) => ({
+      class: ['meta', 'action-definition'],
+      rel: ['action'],
+      properties: actionDefinitionProperties(action),
+      actions: [],
+      links: [],
+    })),
+  };
+}
+
+/** 状态对应的编辑动词(自举:动作声明取自 lifecycle 常量的对应节点)。 */
+function lifecycleActionsForStatus(status: LifecycleStatus): ActionDefinition[] {
+  const nodeName = status === 'draft' ? 'draft' : status === 'active' ? 'active' : undefined;
+  if (nodeName === undefined) return [];
+  const node = DEFINITION_LIFECYCLE_FLOW.nodes.find((candidate) => candidate.name === nodeName);
+  return node?.actions ?? [];
+}
+
+/** 投影可见的 lifecycle 状态(含瞬态 validating:审计视图,无编辑动作)。 */
+type LifecycleStatus = DefinitionEntry['status'] | 'validating';
+
+/**
+ * 定义实体投影(A.2 原样形状):class meta/flow-definition,properties
+ * {name,version,status,initial,terminal},entities 节点子实体(含
+ * action-definition),actions 编辑动词(按状态取 lifecycle 对应节点声明)。
+ */
+function projectDefinitionEntity(
+  rel: string,
+  properties: Record<string, unknown>,
+  definition: FlowDefinition,
+  status: LifecycleStatus,
+  instance: EngineSnapshot['instances'][string] | undefined,
+  snapshot: EngineSnapshot,
+  deps: ProjectDeps,
+): SirenEntity {
+  const actions = lifecycleActionsForStatus(status);
+  return {
+    class: ['meta', 'flow-definition'],
+    properties: {
+      ...properties,
+      status,
+      initial: definition.initial,
+      terminal: terminalNodes(definition),
+    },
+    entities: definition.nodes.map(projectNodeDefinition),
+    actions: actions.map((action) => toSirenAction(action, [], deps.baseHref)),
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, rel) }],
+    'guard-results':
+      instance !== undefined ? guardResultsFor(actions, instance, snapshot, deps.guards) : [],
+  };
+}
+
+/** meta/self:definition-lifecycle 自身定义的只读视图(+种子 guard 集)。 */
+function projectSelf(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
+  return {
+    class: ['meta', 'flow-definition'],
+    properties: {
+      name: DEFINITION_LIFECYCLE_FLOW.name,
+      version: 1,
+      status: 'active',
+      initial: DEFINITION_LIFECYCLE_FLOW.initial,
+      // validating 的引擎内边参与推导(它无 exec 动作,否则会被误判 terminal)。
+      terminal: terminalNodes(DEFINITION_LIFECYCLE_FLOW, LIFECYCLE_INTERNAL_EDGES),
+      guards: Object.keys(deps.guards),
+    },
+    entities: DEFINITION_LIFECYCLE_FLOW.nodes.map(projectNodeDefinition),
+    actions: [],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'meta/self') }],
+    'guard-results': [],
+  };
+}
+
+/** meta/flow:<name>:definitions 表条目 + lifecycle 实例 → 定义实体。 */
+function projectFlowDefinition(
+  snapshot: EngineSnapshot,
+  name: string,
+  deps: ProjectDeps,
+): SirenEntity | undefined {
+  const entry = snapshot.definitions?.[name];
+  if (entry === undefined) return undefined;
+  const rel = `meta/flow:${name}`;
+  const instance = snapshot.instances[rel];
+  return projectDefinitionEntity(
+    rel,
+    { name: entry.name, version: entry.version, ...(entry.bornBy !== undefined ? { bornBy: entry.bornBy } : {}) },
+    entry.definition,
+    entry.status,
+    instance,
+    snapshot,
+    deps,
+  );
+}
+
+/** meta/flows:全部定义实体的集合(子实体直达)。 */
+function projectFlows(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
+  const entries = Object.values(snapshot.definitions ?? {});
+  const entities = entries.map((entry) => {
+    const projected = projectFlowDefinition(snapshot, entry.name, deps)!;
+    return { ...projected, rel: ['item'], href: entityHref(deps.baseHref, `meta/flow:${entry.name}`) };
+  });
+  return {
+    class: ['collection', 'meta/flows'],
+    properties: { rel: 'meta/flows', count: entries.length },
+    actions: [],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'meta/flows') }],
+    'guard-results': [],
+    entities,
+  };
+}
+
+/**
+ * meta 平面路由(T4 Task 1 覆盖 self/flows/flow:<name>;
+ * activation:<id> 与 activations 随 Task 3/4 落地)。未知 meta rel → undefined。
+ */
+function projectMeta(
+  snapshot: EngineSnapshot,
+  rel: string,
+  deps: ProjectDeps,
+): SirenEntity | undefined {
+  if (rel === 'meta/self') return projectSelf(snapshot, deps);
+  if (rel === 'meta/flows') return projectFlows(snapshot, deps);
+  if (rel.startsWith('meta/flow:')) {
+    return projectFlowDefinition(snapshot, rel.slice('meta/flow:'.length), deps);
   }
   return undefined;
 }

@@ -26,6 +26,10 @@ function fieldToJsonSchema(field: FieldDefinition): Record<string, unknown> {
       schema.type = 'string';
       schema.format = 'date';
       break;
+    case 'json':
+      // 任意 JSON 值(meta 编辑动词的 action-definition 全文等);内层形状
+      // 由专门的 guard(to-exists/guards-registered/effect-known)裁决。
+      break;
     default:
       schema.type = 'string';
   }

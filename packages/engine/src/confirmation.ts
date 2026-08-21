@@ -185,6 +185,9 @@ export function suspendForConfirmation(
       instances: snapshot.instances,
       collections: snapshot.collections,
       confirmations: { ...table, [rel]: confirmation },
+      // T4:definitions/activations 表随行(挂起不改定义平面状态)。
+      definitions: { ...snapshot.definitions },
+      activations: { ...(snapshot.activations ?? {}) },
     },
     events: [event],
     confirmation: {
@@ -461,7 +464,14 @@ export function rejectConfirmation(
 
   return {
     kind: 'confirmed',
-    snapshot: { instances: snapshot.instances, collections: snapshot.collections, confirmations },
+    snapshot: {
+      instances: snapshot.instances,
+      collections: snapshot.collections,
+      confirmations,
+      // T4:definitions/activations 表随行(驳回不改定义平面状态)。
+      definitions: { ...snapshot.definitions },
+      activations: { ...(snapshot.activations ?? {}) },
+    },
     events: [rejectedEvent],
   };
 }

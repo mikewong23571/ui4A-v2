@@ -97,8 +97,11 @@ function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
   return {
     instances,
     collections,
-    // confirmations 表随行(seed 只补实体与集合,不动确认门状态)。
+    // confirmations/definitions/activations 表随行(seed 只补实体与集合,
+    // 不动确认门与定义平面状态;恒物化与在线路径同构)。
     confirmations: { ...snapshot.confirmations },
+    definitions: { ...snapshot.definitions },
+    activations: { ...(snapshot.activations ?? {}) },
   };
 }
 
@@ -282,11 +285,21 @@ export function fold(
 ): EngineSnapshot {
   let snapshot: EngineSnapshot =
     initial === undefined
-      ? { instances: {}, collections: {}, confirmations: {} }
+      ? {
+          instances: {},
+          collections: {},
+          confirmations: {},
+          definitions: {},
+          activations: {},
+        }
       : {
           instances: initial.instances,
           collections: initial.collections,
           confirmations: initial.confirmations ?? {},
+          // T4:definitions/activations 表随行(在线 applyEffects 恒物化,
+          // 重放同构前提是两边形状一致)。
+          definitions: initial.definitions ?? {},
+          activations: initial.activations ?? {},
         };
   for (const event of events) {
     switch (event.kind) {

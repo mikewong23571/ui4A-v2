@@ -5,6 +5,7 @@
  * (spec 架构决定 2),类型若在 engine 会造成 shared→engine 反向依赖。
  * 纯数据、可序列化,web/worker/引擎三方共用。
  */
+import type { ActivationSnapshot, DefinitionEntry } from './definition';
 
 /**
  * 参数/字段值出处(事件日志记录口径,arch-brief §2):
@@ -76,6 +77,14 @@ export interface EngineSnapshot {
    * approved/rejected 的确认保留供审计(不删除)。
    */
   confirmations?: Record<string, ConfirmationSnapshot>;
+  /**
+   * definitions 表(T4):flow 名 → 定义条目(版本/状态/工作副本)。
+   * 可选是为了不破坏既有快照构造点(种子数据、测试 fixture)的类型兼容;
+   * fold/applyEffects 等引擎产出函数恒携带(空表也为 {})。
+   */
+  definitions?: Record<string, DefinitionEntry>;
+  /** 激活实体表(T4):meta/activation:<id> → 激活快照(批准后保留供审计)。 */
+  activations?: Record<string, ActivationSnapshot>;
 }
 
 /** 原始字段值视图(properties 投影用):去掉出处,仅取值。 */

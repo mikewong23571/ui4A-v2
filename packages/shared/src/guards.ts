@@ -19,6 +19,12 @@ export interface GuardContext {
   params: Readonly<Record<string, unknown>>;
   /** 本次 exec 的行为者(exec 裁决时必填;Siren 投影时缺省)。 */
   actor?: 'human' | 'agent';
+  /**
+   * 已注册的 guard 名集合(T4:guards-registered 谓词读它——编辑动词声明的
+   * guard 名必须在注册表内)。由裁决器从 GuardRegistry 派生注入;
+   * 投影路径同样携带(evaluateGuards 统一构造)。
+   */
+  knownGuards?: ReadonlySet<string>;
 }
 
 /** 谓词:纯函数,输入快照与参数,输出布尔。 */

@@ -251,8 +251,9 @@ describe('效果词汇表 — spawn(T2 stub:只记事件不改状态)', () => {
       deps,
     );
     // T3 机械适配:applyEffects 恒携带 confirmations 表(空表也随行),spawn 不改其内容。
+    // T4 机械适配:definitions/activations 表同口径随行。
     expect(JSON.stringify(outcome.snapshot)).toBe(
-      JSON.stringify({ ...seedSnapshot, confirmations: {} }),
+      JSON.stringify({ ...seedSnapshot, confirmations: {}, definitions: {}, activations: {} }),
     );
     expect(outcome.events.map((e) => e.kind)).toEqual(['action-executed', 'spawn-requested']);
     expect(outcome.events[1]).toMatchObject({

@@ -53,7 +53,14 @@ const seedEvent: LogEvent = { seq: 1, kind: 'seed', detail: seedDetail };
 
 describe('fold 投影', () => {
   it('空日志 → 空快照(confirmations 恒为空表)', () => {
-    expect(fold([], { flows })).toEqual({ instances: {}, collections: {}, confirmations: {} });
+    expect(fold([], { flows })).toEqual({
+      instances: {},
+      collections: {},
+      confirmations: {},
+      // T4 机械适配:definitions/activations 恒物化(空表)。
+      definitions: {},
+      activations: {},
+    });
   });
 
   it('seed 事件建立种子实体与集合', () => {

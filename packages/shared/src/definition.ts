@@ -1,0 +1,341 @@
+/**
+ * machine-as-JSON 定义语言(UI4A 引擎的合同层形状)。
+ *
+ * T4 起从 @ui4a/engine 迁入 @ui4a/shared:定义平面(meta)需要把 flow 定义
+ * 作为**数据**存进引擎快照(definitions 表/激活实体),shared 的 guard 谓词
+ * 也要读工作副本与 terminal 推导——类型留在 engine 会造成 shared→engine
+ * 反向依赖。engine/src/types.ts re-export 保持引擎公共面不变(机械适配)。
+ *
+ * 形状以 arch-brief §2(合同层)为准:action-definition 字段
+ * `name/title/method/to/guards/requires-confirmation/effect/fields` 原样;
+ * field-definition 为 RJSF v6 的直接输入(JSON Schema draft-07 派生自这里)。
+ * 这些类型是纯数据(序列化友好),供 web/worker/引擎三方共用。
+ */
+import type { ParamOrigin } from './state';
+
+/** 字段语义(arch-brief §2:四种)。 */
+export type FieldSemantics = 'org-standard' | 'intent' | 'work-product' | 'elicitation';
+
+/**
+ * 字段类型(RJSF 可渲染的表单控件种类 + json)。
+ * `json`:任意 JSON 值(meta 编辑动词的 add-action 携带 action-definition 全文;
+ * RJSF 以 textarea 渲染,schema 层不约束内层形状)。
+ */
+export type FieldType = 'text' | 'textarea' | 'select' | 'number' | 'boolean' | 'date' | 'json';
+
+/**
+ * 字段值来源声明(铁律"事实永不发明":字段值必须声明来源)。
+ * `kind` 覆盖 arch-brief 的六种来源:默认四态(静态/上下文/策略路由/词汇别名)、
+ * 显式意图、起草+选择、引出、查找、效果产出。
+ */
+export interface FieldSource {
+  kind:
+    | 'static'
+    | 'context'
+    | 'policy-route'
+    | 'vocabulary-alias'
+    | 'intent'
+    | 'proposal'
+    | 'elicit'
+    | 'lookup'
+    | 'effect';
+  /** context 来源的取值路径,如 "project.homeRegion"。 */
+  from?: string;
+  /** proposal 来源使用的 capability 名,如 "draft"。 */
+  capability?: string;
+  /** proposal 的草稿数(如 options: 3)。 */
+  options?: number;
+  /** 价值载体字段必须携带 human-required 选择声明(work-product)。 */
+  selection?: 'human-required';
+}
+
+/** field-definition(arch-brief §2 A.2 原样 + select 的候选值)。 */
+export interface FieldDefinition {
+  name: string;
+  type: FieldType;
+  title?: string;
+  description?: string;
+  required?: boolean;
+  semantics?: FieldSemantics;
+  source?: FieldSource;
+  /** select 类型的候选值。 */
+  options?: string[];
+  /** 字符串最小长度(T3:reject 的 reason 必填且非空;RJSF 原生渲染)。 */
+  minLength?: number;
+  /** 默认值(静态来源)。 */
+  default?: unknown;
+  /** 校验失败时的去向:转澄清 session。 */
+  'on-invalid'?: 'clarify';
+  /** 引出策略(elicitation 字段)。 */
+  elicit?: {
+    strategy: string;
+    'max-turns': number;
+    timeout: string;
+  };
+}
+
+/**
+ * 效果词汇表:
+ * - transition:实例节点迁移(目标缺省取 action.to);
+ * - set-field:字段赋值并记录出处;
+ * - append:向集合资源追加新实例(生成 `类型:实例名` rel);
+ * - spawn:能力效果(T2 只产出事件记录,T3 接 Temporal);
+ * - meta-edit(T4):对 definition 工作副本的结构性效果(编辑动词专用;
+ *   载荷来自请求参数,op 与编辑动词同名)。
+ */
+export type EffectDefinition =
+  | { type: 'transition'; to?: string }
+  | {
+      type: 'set-field';
+      field: string;
+      value: unknown;
+      origin?: ParamOrigin;
+    }
+  | {
+      type: 'append';
+      /** 目标集合 rel,如 "articles"。 */
+      collection: string;
+      /** 新实例的资源类型(rel 前缀),缺省取 collection 单数化。 */
+      'resource-type'?: string;
+      /** 新实例受辖的 flow(如 "post-status")。 */
+      flow?: string;
+      /** 显式实例名。 */
+      name?: string;
+      /** 从请求参数取实例名(如 title → slug)。 */
+      'name-from'?: string;
+      /** 复制进新实例的字段白名单,缺省复制全部请求参数。 */
+      fields?: string[];
+      /** 新实例的初始节点(受对应 flow 管辖时),如 "published"。 */
+      node?: string;
+    }
+  | {
+      type: 'spawn';
+      capability: string;
+      bind?: Record<string, unknown>;
+      'on-done'?: string;
+    }
+  | { type: 'meta-edit'; op: MetaEditOp };
+
+/** meta 编辑动词名(A.3 子集;remove 系与 add-field 为 T4 非目标)。 */
+export type MetaEditOp = 'add-node' | 'add-action';
+
+/** action-definition(arch-brief §2 A.2 原样;effect 允许数组以支持组合效果)。 */
+export interface ActionDefinition {
+  name: string;
+  title: string;
+  method?: 'POST';
+  /** 目标节点(transition 缺省目标)。 */
+  to?: string;
+  /** guard 谓词名数组(按声明顺序求值,全部求值)。 */
+  guards?: string[];
+  /** 风险标注(策略性质,T3 才生效;谓词答"状态允许吗",标注答"是否需要确认")。 */
+  'requires-confirmation'?: 'low' | 'medium' | 'high';
+  effect?: EffectDefinition | EffectDefinition[];
+  fields?: FieldDefinition[];
+}
+
+/** node-definition:节点 = 界面 + 动作声明集。 */
+export interface NodeDefinition {
+  name: string;
+  title?: string;
+  /** 节点级字段(进入该界面时采集)。 */
+  fields?: FieldDefinition[];
+  actions: ActionDefinition[];
+}
+
+/**
+ * flow 定义 = machine-as-JSON(XState v5 运行时构造的真相源)。
+ * T2 阶段为代码内 TS 常量;T4 起活跃定义进入事件日志(fold 出)。
+ */
+export interface FlowDefinition {
+  name: string;
+  title?: string;
+  initial: string;
+  nodes: NodeDefinition[];
+  /** 流级字段(整个流程实例携带)。 */
+  fields?: FieldDefinition[];
+  version?: number | string;
+}
+
+// ---------------------------------------------------------------------------
+// 定义语言注册表(meta/registries 的运行时子集)
+// ---------------------------------------------------------------------------
+
+/** 已知字段类型清单(将来由 meta/registries 扩展)。 */
+export const KNOWN_FIELD_TYPES: ReadonlySet<FieldType> = new Set([
+  'text',
+  'textarea',
+  'select',
+  'number',
+  'boolean',
+  'date',
+  'json',
+]);
+
+/** 已知效果类型清单(含 T4 的 meta-edit:lifecycle 自身的编辑动词用它)。 */
+export const KNOWN_EFFECT_TYPES: ReadonlySet<string> = new Set([
+  'transition',
+  'set-field',
+  'append',
+  'spawn',
+  'meta-edit',
+]);
+
+// ---------------------------------------------------------------------------
+// 定义平面 rel 规则与图推导
+// ---------------------------------------------------------------------------
+
+/** 定义实体 rel 前缀(A.2 原样:`meta/flow:post-status`)。 */
+export const META_FLOW_PREFIX = 'meta/flow:';
+
+/** 激活实体 rel 前缀(与 confirmation:<id> 同构的确定性命名)。 */
+export const META_ACTIVATION_PREFIX = 'meta/activation:';
+
+/** flow 名 → 定义实体 rel。 */
+export function metaFlowRel(name: string): string {
+  return `${META_FLOW_PREFIX}${name}`;
+}
+
+/** 定义实体/lifecycle 实例 rel → flow 名;非 meta/flow 前缀返回 undefined。 */
+export function flowNameFromMetaRel(rel: string): string | undefined {
+  return rel.startsWith(META_FLOW_PREFIX) ? rel.slice(META_FLOW_PREFIX.length) : undefined;
+}
+
+/** 激活 id → 激活实体 rel。 */
+export function metaActivationRel(id: string): string {
+  return `${META_ACTIVATION_PREFIX}${id}`;
+}
+
+/** 激活实体 rel → id;非前缀返回 undefined。 */
+export function activationIdFromMetaRel(rel: string): string | undefined {
+  return rel.startsWith(META_ACTIVATION_PREFIX) ? rel.slice(META_ACTIVATION_PREFIX.length) : undefined;
+}
+
+/** flow 的一条边(动作名即迁移事件名)。 */
+export interface FlowEdge {
+  from: string;
+  action: string;
+  to: string;
+}
+
+/** 动作效果里的 transition 目标(effect.to 优先,回退 action.to)。 */
+function transitionTarget(action: ActionDefinition): string | undefined {
+  const effects = Array.isArray(action.effect)
+    ? action.effect
+    : action.effect !== undefined
+      ? [action.effect]
+      : [];
+  const transition = effects.find((effect) => effect.type === 'transition');
+  if (transition !== undefined && transition.type === 'transition') {
+    return transition.to;
+  }
+  return undefined;
+}
+
+/**
+ * flow 的全部边:动作声明的 to(缺省回退单条 transition 效果的 to)。
+ * `extra`:非 exec 动词表达的引擎内边(definition-lifecycle 的 checks-pass/
+ * checks-fail)——仅供 terminal/可达性推导,不进裁决面。
+ */
+export function flowEdges(
+  flow: FlowDefinition,
+  extra: readonly FlowEdge[] = [],
+): FlowEdge[] {
+  const edges: FlowEdge[] = [];
+  for (const node of flow.nodes) {
+    for (const action of node.actions) {
+      const target = action.to ?? transitionTarget(action);
+      if (target !== undefined) {
+        edges.push({ from: node.name, action: action.name, to: target });
+      }
+    }
+  }
+  return [...edges, ...extra];
+}
+
+/** terminal 节点 = 无出边的节点(按声明序)。 */
+export function terminalNodes(flow: FlowDefinition, extra?: readonly FlowEdge[]): string[] {
+  const withOutgoing = new Set(flowEdges(flow, extra).map((edge) => edge.from));
+  return flow.nodes.map((node) => node.name).filter((name) => !withOutgoing.has(name));
+}
+
+/** 从 initial 沿边可达的节点集(BFS;含起点)。 */
+export function reachableNodes(flow: FlowDefinition, extra?: readonly FlowEdge[]): Set<string> {
+  const adjacency = new Map<string, string[]>();
+  for (const edge of flowEdges(flow, extra)) {
+    const list = adjacency.get(edge.from) ?? [];
+    list.push(edge.to);
+    adjacency.set(edge.from, list);
+  }
+  const seen = new Set<string>([flow.initial]);
+  const queue = [flow.initial];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const next of adjacency.get(current) ?? []) {
+      if (!seen.has(next)) {
+        seen.add(next);
+        queue.push(next);
+      }
+    }
+  }
+  return seen;
+}
+
+// ---------------------------------------------------------------------------
+// 定义平面快照形状(definitions 表 + 激活实体)
+// ---------------------------------------------------------------------------
+
+/** definition-lifecycle 的状态集(A.4;validating 为引擎内瞬态,不持久化)。 */
+export type DefinitionStatus =
+  | 'draft'
+  | 'pending-approval'
+  | 'active'
+  | 'rejected'
+  | 'deprecated';
+
+/**
+ * definitions 表条目(T4 Task 1):flow 名 → 版本 + 状态 + 定义内容。
+ * status 与 lifecycle 实例(meta/flow:<name> 的 node)由 meta 模块在线路径
+ * 与 fold 双轨保持一致(一致性由测试断言)。
+ */
+export interface DefinitionEntry {
+  name: string;
+  /** 当前内容版本:活跃内容携带激活时分配的版本号(见 definition-activated)。 */
+  version: number;
+  status: DefinitionStatus;
+  /** 草稿态 = 工作副本;active = 活跃定义。 */
+  definition: FlowDefinition;
+  /** revise 的出生口径:本(候选)内容派生自哪个活跃版本。 */
+  bornBy?: number;
+}
+
+/** 激活不变式检查结果(A.5 种子集;checks 入 activation 实体与事件 detail)。 */
+export interface ActivationCheck {
+  name: string;
+  pass: boolean;
+  /** 失败明细(逐条列出违规位置)。 */
+  detail?: string[];
+}
+
+/**
+ * 激活实体快照(A.2 激活请求形状):pending-approval 物化;approve/reject 的
+ * 目标。artifact 为 definition 内容 hash(T4 用 FNV 短码;sha256 随 versions
+ * 工件落地——Phase B)。
+ */
+export interface ActivationSnapshot {
+  id: string;
+  /** 目标 flow 名。 */
+  flow: string;
+  status: 'pending-approval' | 'approved' | 'rejected';
+  /** 本次激活将分配的版本号(当前活跃版本 + 1)。 */
+  version: number;
+  /** 草稿内容 hash(contentVersion 短码)。 */
+  artifact: string;
+  checks: ActivationCheck[];
+  /** 提交时的完整草稿(approve 时据此激活;fold 的真相载荷)。 */
+  definition: FlowDefinition;
+  requestedBy: { actor: 'human' | 'agent'; principal?: string };
+  /** 审批者(铁律 5"审批不委托":approved 时 actor 必为 human)。 */
+  approvedBy?: { actor: 'human' | 'agent'; principal?: string };
+  rejectedReason?: string;
+}

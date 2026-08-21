@@ -5,6 +5,8 @@
  * + 规范化(默认值补齐:method=POST、guards=[]、fields=[]、effect 数组化)。
  * T4 的 meta 平台激活不变式(edge-targets-exist 等)在本层之上叠加。
  */
+import { KNOWN_EFFECT_TYPES, KNOWN_FIELD_TYPES } from '@ui4a/shared';
+
 import type {
   ActionDefinition,
   EffectDefinition,
@@ -21,16 +23,9 @@ export interface FlowIssue {
 }
 
 /** 已知字段类型注册表(将来由 meta/registries 扩展)。 */
-const FIELD_TYPES: ReadonlySet<FieldType> = new Set([
-  'text',
-  'textarea',
-  'select',
-  'number',
-  'boolean',
-  'date',
-]);
+const FIELD_TYPES: ReadonlySet<FieldType> = KNOWN_FIELD_TYPES;
 
-const EFFECT_TYPES: ReadonlySet<string> = new Set(['transition', 'set-field', 'append', 'spawn']);
+const EFFECT_TYPES: ReadonlySet<string> = KNOWN_EFFECT_TYPES;
 
 /** 解析失败:携带全部 issues(一次性报告,便于定义编辑流展示)。 */
 export class FlowParseError extends Error {

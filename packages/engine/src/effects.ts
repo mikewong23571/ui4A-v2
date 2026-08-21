@@ -5,11 +5,24 @@
  * 不可变产出(应用核心是日志的纯函数,I5 的前提);spawn 在 T2 只产出事件
  * 记录、不改状态(T3 接 Temporal 后由 worker 消费 spawn-requested 事件)。
  */
-import type { EngineSnapshot, FieldValue, ParamOrigin } from '@ui4a/shared';
+import type {
+  DefinitionEntry,
+  EngineSnapshot,
+  FieldValue,
+  MetaEditOp,
+  ParamOrigin,
+} from '@ui4a/shared';
+import { flowNameFromMetaRel } from '@ui4a/shared';
 
 import { canTransition } from './machine';
+import { actionEffects } from './parse';
 import type { ExecRequest } from './judge';
-import type { EffectDefinition, FlowDefinition } from './types';
+import type {
+  ActionDefinition,
+  EffectDefinition,
+  FlowDefinition,
+  NodeDefinition,
+} from './types';
 
 /** 引擎产出的事件(append 到事件日志;seq/ts 由日志层分配——时钟是 capability)。 */
 export interface EngineEvent {
@@ -114,6 +127,78 @@ export function paramsToFields(
   );
 }
 
+// ---------------------------------------------------------------------------
+// meta-edit:编辑动词对 definition 工作副本的结构性效果(T4)
+// ---------------------------------------------------------------------------
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** 规范化 add-action 载荷为 action-definition(与 parse.normalizeAction 同口径)。 */
+function normalizeAddedAction(spec: unknown): ActionDefinition {
+  if (!isRecord(spec)) {
+    throw new Error('add-action 的 action 载荷必须是对象(action-definition)');
+  }
+  if (typeof spec.name !== 'string' || spec.name === '') {
+    throw new Error('add-action 的 action 载荷缺少非空 name');
+  }
+  const action = spec as unknown as ActionDefinition;
+  return {
+    ...action,
+    title: typeof action.title === 'string' ? action.title : action.name,
+    method: action.method ?? 'POST',
+    guards: [...(action.guards ?? [])],
+    fields: [...(action.fields ?? [])],
+    effect: actionEffects(action),
+  };
+}
+
+/**
+ * 对工作副本应用编辑动词(op 载荷 = 请求参数)。纯函数:JSON 克隆后改副本,
+ * 返回新 definitions 表(旧表不动)。非法载荷响亮抛错(schema/guard 层已把
+ * 常见非法挡在前面的残余——引擎完整性守卫,不可达路径)。
+ */
+export function applyMetaEdit(
+  definitions: Readonly<Record<string, DefinitionEntry>>,
+  flowName: string,
+  op: MetaEditOp,
+  params: Readonly<Record<string, unknown>>,
+): Record<string, DefinitionEntry> {
+  const entry = definitions[flowName];
+  if (entry === undefined) {
+    throw new Error(`meta-edit 失败:definitions 表缺少 "${flowName}"(日志与状态漂移)`);
+  }
+  // 工作副本深拷贝:编辑动词永不共享旧定义的内部引用(不可变产出)。
+  const definition: FlowDefinition = JSON.parse(JSON.stringify(entry.definition));
+
+  if (op === 'add-node') {
+    const name = params.name;
+    if (typeof name !== 'string' || name === '') {
+      throw new Error('add-node 缺少非空 name 参数');
+    }
+    const node: NodeDefinition = {
+      name,
+      title: typeof params.title === 'string' && params.title !== '' ? params.title : name,
+      fields: [],
+      actions: [],
+    };
+    definition.nodes = [...definition.nodes, node];
+  } else {
+    const nodeName = params.node;
+    if (typeof nodeName !== 'string' || nodeName === '') {
+      throw new Error('add-action 缺少非空 node 参数');
+    }
+    const node = definition.nodes.find((candidate) => candidate.name === nodeName);
+    if (node === undefined) {
+      throw new Error(`add-action 的目标节点 "${nodeName}" 不在工作副本节点集`);
+    }
+    node.actions = [...node.actions, normalizeAddedAction(params.action)];
+  }
+
+  return { ...definitions, [flowName]: { ...entry, definition } };
+}
+
 /**
  * 应用效果列表。顺序:先落参数字段,再按声明序执行效果;
  * 事件顺序固定 action-executed → entity-appended* → spawn-requested*。
@@ -136,6 +221,11 @@ export function applyEffects(
     [request.rel]: { ...instance, fields: { ...instance.fields, ...paramFields } },
   };
   const collections: Record<string, string[]> = { ...snapshot.collections };
+  // T4:definitions/activations 表随行(与 confirmations 同口径:恒物化,不可变产出)。
+  let definitions: Record<string, DefinitionEntry> = { ...snapshot.definitions };
+  const activations: NonNullable<EngineSnapshot['activations']> = {
+    ...(snapshot.activations ?? {}),
+  };
 
   let to: string | undefined;
   const appendedRels: string[] = [];
@@ -188,6 +278,14 @@ export function applyEffects(
         channel: request.channel,
         params: paramFields,
       });
+    } else if (effect.type === 'meta-edit') {
+      // T4 编辑动词:载荷取请求参数,效果作用于 definition 工作副本(meta-edit
+      // 只声明在 definition-lifecycle 的 draft 节点,rel 恒为 meta/flow:<name>)。
+      const flowName = flowNameFromMetaRel(request.rel);
+      if (flowName === undefined) {
+        throw new Error(`meta-edit 只作用于 meta/flow:<name> 实体(收到 "${request.rel}")`);
+      }
+      definitions = applyMetaEdit(definitions, flowName, effect.op, request.params ?? {});
     } else {
       spawnEvents.push({
         kind: 'spawn-requested',
@@ -216,7 +314,13 @@ export function applyEffects(
   };
 
   return {
-    snapshot: { instances, collections, confirmations: { ...snapshot.confirmations } },
+    snapshot: {
+      instances,
+      collections,
+      confirmations: { ...snapshot.confirmations },
+      definitions,
+      activations,
+    },
     events: [executedEvent, ...appendedEvents, ...spawnEvents],
   };
 }

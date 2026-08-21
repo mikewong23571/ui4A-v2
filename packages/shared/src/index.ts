@@ -16,3 +16,5 @@ export function heartbeatMessage(tick: number): string {
 export * from './state';
 export * from './guards';
 export * from './predicates';
+// 定义语言与定义平面形状(T4:machine-as-JSON 类型迁入,engine re-export 保持公共面)。
+export * from './definition';
