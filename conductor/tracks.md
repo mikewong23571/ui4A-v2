@@ -20,3 +20,5 @@
 - [x] **Track: T9 前端体验重构:shadcn 设计基座 + 统一页面壳 + 逐页重构 + Tremor/react-chrono 退出** *Link: [tracks/t9-frontend-overhaul_20260821/index.md](./tracks/t9-frontend-overhaul_20260821/index.md)*
 
 - [ ] **Track: T10 Application 切片:定义平面实体 + sitemap 分组投影 + agent 两层发现(D19 路线 T1)** *Link: [tracks/t10-application_20260822/index.md](./tracks/t10-application_20260822/index.md)*
+
+- [ ] **Track: T11 agent 可观测性与蒸馏留痕:结构化轨迹 + agent-decision 审计 + 思考流(GLM-5.3 探针)** *Link: [tracks/t11-agent-observability_20260822/index.md](./tracks/t11-agent-observability_20260822/index.md)*
