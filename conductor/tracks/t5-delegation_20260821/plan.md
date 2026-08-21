@@ -19,5 +19,5 @@
 
 ## Phase C: S3 全链路 E2E
 
-- [ ] Task: S3 E2E(并发同资源一成一拒带原因/kill 续跑/N≥3 并行/舰队页/chat delegated 轮询;回归 22)
+- [x] Task: S3 E2E(并发同资源一成一拒带原因/kill 续跑/N≥3 并行/舰队页/chat delegated 轮询;回归 22)(c3c5837;链路修复 ee93eb8 多写者水位跳步、b17591a 向导循环化[D11];并发载体以同标题发布对撞实现——评论 approve 对败者是读-判-行竞态,记录于 commit message 与 note)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
