@@ -19,7 +19,11 @@ function paramsBrief(params: Record<string, unknown> | undefined): string {
   return ` ${JSON.stringify(params)}`;
 }
 
-function stepToMessage(step: TrailStep): ChatMessage {
+/**
+ * 轨迹一步 → 聊天消息(inline 与 delegated 共用:委托详情的 messages 投影
+ * 复用本函数,保证两种模式的轨迹消息逐条等值——T5 spec 验收 6)。
+ */
+export function stepToMessage(step: TrailStep): ChatMessage {
   const { op, outcome } = step;
   switch (op.kind) {
     case 'navigate':
