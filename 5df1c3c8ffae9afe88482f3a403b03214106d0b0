@@ -1,0 +1,6 @@
+T12 Phase B Task 1: 页面级实体缓存模块
+
+改动:apps/web/src/render/entity-cache.ts + entity-cache.test.ts(新增,仅 2 文件;deref.ts 零改动)
+口径:collectionRelOf = rel 首个 ':' 前缀;不含 ':' → 集合自身。已知边界:post:* 实际隶属 articles 集合,前缀推导候选不在缓存则失效 no-op(安全方向不脏读);严格归属推导留 Task 2/3 接入期评估,I2 由 version 全量失效 + 整面 reload 兜底保证。
+Why:spec 架构决定 3——缓存 rel 索引 + version 一致性戳;宁可多失效不可脏读。
+验收(编排 agent 亲自复跑):entity-cache 12/12(零重复 fetch/version 全量失效/精确失效);CI=true pnpm check 960 passed。自治验收。
