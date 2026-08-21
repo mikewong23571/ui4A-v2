@@ -22,6 +22,6 @@
 
 ## Phase D: 收件箱 UI 与 S1 全链路 E2E
 
-- [ ] Task: inbox 集合投影 + 首页入口 + 通用页渲染确认实体(RJSF approve/reject;I3 前置:按钮均背书)
+- [x] Task: inbox 集合投影 + 首页入口 + 通用页渲染确认实体(RJSF approve/reject;I3 前置:按钮均背书)(df9f712)
 - [ ] Task: S1/I4 E2E(agent archive→挂起→notify→inbox 可见→human approve→生效;agent approve 被拒;reject 路径;B1–B3 回归)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
