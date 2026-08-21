@@ -8,11 +8,11 @@
 - [x] Task: confirmation 实体与 approve/reject(TDD:approve 应用原效果+事件链;I4 actor-is-human 拒 agent;reject 带 reason 不生效;重放一致性——confirmation 事件入 fold)(d3df9be)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)(自治验收:CI=true pnpm check 全绿 339 tests;验证报告挂 d3df9be git notes)
 
-## Phase B: Cedar 风险策略接入
+## Phase B: Cedar 风险策略接入 [checkpoint: 94b46f2]
 
 - [x] Task: @cedar-policy/cedar-wasm 集成与 policy.cedar(TDD:策略文本驱动裁决;变更策略文本改变行为;求值原因留痕)(ab6eac3)
-- [ ] Task: web 服务层接线(确认裁决进 exec 流程;202 挂起响应;日志事件与 detail)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: web 服务层接线(确认裁决进 exec 流程;202 挂起响应;日志事件与 detail)(94b46f2)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)(自治验收:CI=true pnpm check 全绿 375 tests(+36);Next dev 实机矩阵 202/200/422 + 重启重放 + 策略文件实机变更改行为;验证报告挂 94b46f2 git notes)
 
 ## Phase C: Temporal worker 与 notify
 
