@@ -337,6 +337,8 @@ export function applyEffects(
       instances,
       collections,
       confirmations: { ...snapshot.confirmations },
+      // T5:delegations 表随行(exec 不产委托;与 confirmations 同口径)。
+      delegations: { ...(snapshot.delegations ?? {}) },
       definitions,
       activations,
       // T4 Phase B:定义版本历史随行(fold/在线同构;内容本函数不改)。

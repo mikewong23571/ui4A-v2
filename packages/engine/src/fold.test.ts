@@ -57,6 +57,8 @@ describe('fold 投影', () => {
       instances: {},
       collections: {},
       confirmations: {},
+      // T5:delegations 表恒物化(空表;worker 委托事件折叠的目标表)。
+      delegations: {},
       // T4 机械适配:definitions/activations 恒物化(空表)。
       definitions: {},
       activations: {},

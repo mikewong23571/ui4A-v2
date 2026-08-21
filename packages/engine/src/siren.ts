@@ -10,6 +10,7 @@ import type {
   ActivationSnapshot,
   ConfirmationSnapshot,
   DefinitionEntry,
+  DelegationSnapshot,
   EngineSnapshot,
   GuardEvaluation,
   GuardRegistry,
@@ -21,6 +22,7 @@ import {
   CONFIRMATION_REJECT_ACTION,
   confirmationRel,
 } from './confirmation';
+import { DELEGATIONS_REL, delegationRel } from './delegation';
 import { evaluateGuards, flowForInstance } from './judge';
 import type { DefinitionVersionTable } from './judge';
 import {
@@ -256,10 +258,55 @@ function projectInbox(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity 
 }
 
 /**
+ * 委托实体投影(T5 / spec 架构决定 2):class [delegation, status],
+ * properties 含 goal/driver-kind/start-rel/principal/status/steps/successes
+ * (+summary/reason);无动作(委托的每步操作走事件日志,不经实体动作面)。
+ */
+function projectDelegation(delegation: DelegationSnapshot, deps: ProjectDeps): SirenEntity {
+  return {
+    class: ['delegation', delegation.status],
+    properties: {
+      id: delegation.id,
+      goal: delegation.goal,
+      'driver-kind': delegation.driverKind,
+      'start-rel': delegation.startRel,
+      ...(delegation.principal !== undefined ? { principal: delegation.principal } : {}),
+      status: delegation.status,
+      steps: delegation.steps,
+      successes: delegation.successes,
+      ...(delegation.summary !== undefined ? { summary: delegation.summary } : {}),
+      ...(delegation.reason !== undefined ? { reason: delegation.reason } : {}),
+    },
+    actions: [],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, delegationRel(delegation.id)) }],
+    'guard-results': [],
+  };
+}
+
+/** delegations 集合投影(舰队页数据源):全部委托的集合实体,子实体直达。 */
+function projectDelegations(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
+  const entries = Object.values(snapshot.delegations ?? {});
+  const entities = entries.map((delegation) => ({
+    ...projectDelegation(delegation, deps),
+    rel: ['item'],
+    href: entityHref(deps.baseHref, delegationRel(delegation.id)),
+  }));
+  return {
+    class: ['collection', DELEGATIONS_REL],
+    properties: { rel: DELEGATIONS_REL, count: entries.length },
+    actions: [],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, DELEGATIONS_REL) }],
+    'guard-results': [],
+    entities,
+  };
+}
+
+/**
  * rel → Siren 实体;未知 rel 返回 undefined(HTTP 层映射 404)。
  * 解析顺序:meta 前缀(定义层显式意图,优先于实例表——lifecycle 实例与定义
  * 实体同 rel,投影必须是定义视图)→ 实例 → 业务集合 → 确认实体
- * (confirmation:<id>)→ inbox 视图。
+ * (confirmation:<id>)→ 委托实体(delegation:<id>)→ inbox 视图 →
+ * delegations 集合视图(T5)。
  */
 export function project(
   snapshot: EngineSnapshot,
@@ -280,8 +327,15 @@ export function project(
   if (confirmation !== undefined) {
     return projectConfirmation(confirmation, snapshot, deps);
   }
+  const delegation = snapshot.delegations?.[rel];
+  if (delegation !== undefined) {
+    return projectDelegation(delegation, deps);
+  }
   if (rel === 'inbox') {
     return projectInbox(snapshot, deps);
+  }
+  if (rel === DELEGATIONS_REL) {
+    return projectDelegations(snapshot, deps);
   }
   return undefined;
 }

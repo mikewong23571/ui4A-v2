@@ -73,6 +73,42 @@ export interface ConfirmationSnapshot {
   notified?: boolean;
 }
 
+/**
+ * 委托目标(镜像 @ui4a/agent 的 AgentGoal——shared 不依赖 agent 包[依赖方向:
+ * agent→engine→shared],结构兼容:worker 侧 AgentGoal 可直赋)。
+ */
+export interface DelegationGoal {
+  /** 目标动词,如「发布」「审核」。 */
+  verb: string;
+  targetRel?: string;
+  resource?: string;
+  fields?: Record<string, unknown>;
+}
+
+/**
+ * 委托实体快照(T5:Temporal workflow 即委托实体;rel = `delegation:<workflowId>`)。
+ * fold 从委托事件族(delegation-started/step/completed|failed|max-steps,
+ * worker delegationWorkflow 经 activity 写入)折叠;steps/successes 为计数口径,
+ * 逐步轨迹在事件日志本身(事件历史即轨迹,arch-brief §4)。
+ */
+export interface DelegationSnapshot {
+  /** 委托 id(Temporal workflowId;rel 为 `delegation:<id>`)。 */
+  id: string;
+  goal: DelegationGoal;
+  driverKind: string;
+  startRel: string;
+  principal?: string;
+  status: 'running' | 'completed' | 'failed' | 'max-steps';
+  /** 已执行步数(delegation-step 事件计数)。 */
+  steps: number;
+  /** 成功执行计数(outcome=executed 的步)。 */
+  successes: number;
+  /** completed 的 summary。 */
+  summary?: string;
+  /** failed / max-steps 的原因。 */
+  reason?: string;
+}
+
 /** 引擎全局快照 = 日志折叠态;guard 只读,效果以不可变方式产出新快照。 */
 export interface EngineSnapshot {
   instances: Record<string, InstanceSnapshot>;
@@ -84,6 +120,12 @@ export interface EngineSnapshot {
    * approved/rejected 的确认保留供审计(不删除)。
    */
   confirmations?: Record<string, ConfirmationSnapshot>;
+  /**
+   * 委托实体表(T5):delegation:<workflowId> → 委托快照(worker 第二写者的
+   * 委托事件折叠;舰队页/delegations 集合投影的数据源)。可选与 confirmations
+   * 同口径:既有快照构造点的类型兼容;fold/applyEffects 恒携带(空表也为 {})。
+   */
+  delegations?: Record<string, DelegationSnapshot>;
   /**
    * definitions 表(T4):flow 名 → 定义条目(版本/状态/工作副本)。
    * 可选是为了不破坏既有快照构造点(种子数据、测试 fixture)的类型兼容;

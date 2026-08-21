@@ -26,6 +26,11 @@ import {
   type ConfirmationDecisionDetail,
   type ConfirmationRequestDetail,
 } from './confirmation';
+import {
+  applyDelegationStarted,
+  applyDelegationStep,
+  applyDelegationTerminal,
+} from './delegation';
 import { applyEffects } from './effects';
 import type { EngineEvent } from './effects';
 import type { ExecRequest } from './judge';
@@ -127,6 +132,8 @@ function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
     // confirmations/definitions/activations 表随行(seed 只补实体与集合,
     // 不动确认门与定义平面状态;恒物化与在线路径同构)。
     confirmations: { ...snapshot.confirmations },
+    // T5:delegations 表随行(seed 不产委托;与 confirmations 同口径)。
+    delegations: { ...(snapshot.delegations ?? {}) },
     definitions: { ...snapshot.definitions },
     activations: { ...(snapshot.activations ?? {}) },
     definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
@@ -620,6 +627,9 @@ function applyDefinitionRejected(snapshot: EngineSnapshot, event: LogEvent): Eng
  * - confirmation-rejected:状态 → rejected(原因保留),原动作永不生效;
  * - notification-delivered:确认标记 notified=true(worker 第二写者的送达事件,
  *   重复幂等;spec 决定 4 双写者方案);
+ * - delegation-started / -step / -completed | -failed | -max-steps(T5):委托
+ *   事件族折叠为 delegations 表(worker delegationWorkflow 的轨迹;step 步号
+ *   连续性在 fold 层强制,缺口即抛错);
  * - seed:合并种子实体(幂等);
  * - definition-seeded(T4):建立 definitions 条目 + lifecycle 实例(幂等);
  * - definition-edited:伴随事件——工作副本已由同批 action-executed 重放
@@ -649,6 +659,7 @@ export function fold(
           instances: {},
           collections: {},
           confirmations: {},
+          delegations: {},
           definitions: {},
           activations: {},
           definitionVersions: {},
@@ -657,6 +668,9 @@ export function fold(
           instances: initial.instances,
           collections: initial.collections,
           confirmations: initial.confirmations ?? {},
+          // T5:delegations 表随行(与 confirmations 同口径:在线恒物化,
+          // 重放同构前提是两边形状一致)。
+          delegations: initial.delegations ?? {},
           // T4:definitions/activations 表随行(在线 applyEffects 恒物化,
           // 重放同构前提是两边形状一致);definitionVersions(T4 Phase B)同口径。
           definitions: initial.definitions ?? {},
@@ -702,6 +716,17 @@ export function fold(
         break;
       case 'notification-delivered':
         snapshot = applyNotificationDelivered(snapshot, event);
+        break;
+      case 'delegation-started':
+        snapshot = applyDelegationStarted(snapshot, event);
+        break;
+      case 'delegation-step':
+        snapshot = applyDelegationStep(snapshot, event);
+        break;
+      case 'delegation-completed':
+      case 'delegation-failed':
+      case 'delegation-max-steps':
+        snapshot = applyDelegationTerminal(snapshot, event, event.kind);
         break;
       case 'action-rejected':
       case 'entity-appended':

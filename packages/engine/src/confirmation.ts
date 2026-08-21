@@ -185,6 +185,8 @@ export function suspendForConfirmation(
       instances: snapshot.instances,
       collections: snapshot.collections,
       confirmations: { ...table, [rel]: confirmation },
+      // T5:delegations 表随行(挂起不产委托;与 definitions 同口径)。
+      delegations: { ...(snapshot.delegations ?? {}) },
       // T4:definitions/activations 表随行(挂起不改定义平面状态)。
       definitions: { ...snapshot.definitions },
       activations: { ...(snapshot.activations ?? {}) },
@@ -473,6 +475,8 @@ export function rejectConfirmation(
       instances: snapshot.instances,
       collections: snapshot.collections,
       confirmations,
+      // T5:delegations 表随行(裁决不产委托;与 definitions 同口径)。
+      delegations: { ...(snapshot.delegations ?? {}) },
       // T4:definitions/activations 表随行(驳回不改定义平面状态)。
       definitions: { ...snapshot.definitions },
       activations: { ...(snapshot.activations ?? {}) },

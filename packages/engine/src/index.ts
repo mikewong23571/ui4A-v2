@@ -15,6 +15,7 @@ export * from './effects';
 export * from './confirmation';
 export * from './execute';
 export * from './fold';
+export * from './delegation';
 export * from './lifecycle';
 export * from './meta';
 export * from './definition-diff';
