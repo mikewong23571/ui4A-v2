@@ -13,6 +13,7 @@
  */
 import { fieldValues, metaActivationRel, metaFlowRel } from '@ui4a/shared';
 import type {
+  ApplicationDefinition,
   ConfirmationSnapshot,
   DefinitionEntry,
   DefinitionStatus,
@@ -51,13 +52,16 @@ import { applyRenderSpecFrozen } from './render-spec';
  *  render-spec-frozen(T7 凝固:渲染 spec 按关注点首冻入日志,
  *  fold 分支见 render-spec 模块)+
  *  chat-turn(T9 Phase B:聊天 inline 回合投影,web 聊天路由直写——
- *  纯审计留痕,fold 不改状态)。 */
+ *  纯审计留痕,fold 不改状态)+
+ *  application-seeded(T10 Phase B:application 定义种子,boot 装载;
+ *  fold 落 applications 表——seeded 即 active,键集 = app-known 已激活集合)。 */
 export type LogEventKind =
   | EngineEvent['kind']
   | 'action-rejected'
   | 'notification-delivered'
   | 'seed'
   | 'definition-seeded'
+  | 'application-seeded'
   | 'delegation-started'
   | 'delegation-step'
   | 'delegation-completed'
@@ -88,6 +92,17 @@ export interface LogEvent extends Omit<EngineEvent, 'kind' | 'rel' | 'action' | 
 export interface SeedDetail {
   instances: Record<string, InstanceSnapshot>;
   collections?: Record<string, string[]>;
+}
+
+/**
+ * application-seeded 事件的 detail 载荷(T10 Phase B;机器可重放:定义全文入日志)。
+ * 与 DefinitionSeededDetail 同哲学(seeded 即 active),但 application 无版本/
+ * 生命周期(本 track 不扩展 meta 动词)——applications 表的存在即激活,
+ * 键集就是 app-known 不变式的已激活集合。
+ */
+export interface ApplicationSeededDetail {
+  name: string;
+  definition: ApplicationDefinition;
 }
 
 /** 由事件参数(带出处)还原 exec 请求的求值输入。 */
@@ -141,6 +156,11 @@ function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
     definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
     // T7:renderSpecs 表随行(seed 不产凝固;与 confirmations 同口径)。
     renderSpecs: { ...(snapshot.renderSpecs ?? {}) },
+    // T10:applications 表随行,但仅在场时携带——缺省不物化为 {}
+    // (app-known 以"表不存在"为过渡期 vacuous pass 信号;与 effects.ts 同口径)。
+    ...(snapshot.applications !== undefined
+      ? { applications: { ...snapshot.applications } }
+      : {}),
   };
 }
 
@@ -196,6 +216,37 @@ function applyExecuted(
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`重放失败:${where} ${message}`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// application-seeded 重放(T10 Phase B;spec 架构决定 4)
+// ---------------------------------------------------------------------------
+
+/**
+ * application-seeded 重放:活跃 app 定义落 applications 表(幂等:已存在跳过)。
+ * seeded 即 active——applications 表的键集即 app-known 不变式的已激活集合;
+ * 本 track 无 app 生命周期动词,表只经本事件增长(不物化 lifecycle 实例,
+ * 与 definition-seeded 的 definitions 表/lifecycle 实例双轨不同)。
+ */
+function applyApplicationSeeded(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
+  const detail = event.detail as Partial<ApplicationSeededDetail> | undefined;
+  if (
+    detail === undefined ||
+    typeof detail !== 'object' ||
+    typeof detail.name !== 'string' ||
+    detail.definition === undefined
+  ) {
+    throw new Error(
+      `重放失败:seq=${event.seq} application-seeded 缺少 detail 载荷(日志完整性)`,
+    );
+  }
+  if (snapshot.applications?.[detail.name] !== undefined) {
+    return snapshot; // 幂等:重复 seed 不覆盖(boot 重放安全)。
+  }
+  return {
+    ...snapshot,
+    applications: { ...(snapshot.applications ?? {}), [detail.name]: detail.definition },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -630,6 +681,8 @@ function applyDefinitionRejected(snapshot: EngineSnapshot, event: LogEvent): Eng
  *   (concern → spec;同 spec 重复幂等,异 spec 抛错——凝固语义);
  * - seed:合并种子实体(幂等);
  * - definition-seeded(T4):建立 definitions 条目 + lifecycle 实例(幂等);
+ * - application-seeded(T10):活跃 app 定义落 applications 表(幂等;
+ *   seeded 即 active,键集 = app-known 已激活集合);
  * - definition-edited:伴随事件——工作副本已由同批 action-executed 重放
  *   (applyEffects 的 meta-edit),fold 不双算;
  * - definition-revised / -deprecated:条目状态落态(转移由前置 action-executed
@@ -678,6 +731,11 @@ export function fold(
           definitionVersions: initial.definitionVersions ?? {},
           // T7:renderSpecs 表随行(凝固表恒物化,同口径)。
           renderSpecs: initial.renderSpecs ?? {},
+          // T10:applications 表随行,但仅在场时携带——缺省不物化为 {}
+          // (app-known 过渡期 vacuous pass 信号;与 applyEffects 同口径)。
+          ...(initial.applications !== undefined
+            ? { applications: initial.applications }
+            : {}),
         };
   for (const event of events) {
     switch (event.kind) {
@@ -686,6 +744,9 @@ export function fold(
         break;
       case 'definition-seeded':
         snapshot = applyDefinitionSeeded(snapshot, event);
+        break;
+      case 'application-seeded':
+        snapshot = applyApplicationSeeded(snapshot, event);
         break;
       case 'definition-edited':
         break;

@@ -6,7 +6,8 @@
  *   (见 engine/service.ts 的 activeDefinitionOf 接线与 domain 注释);
  * - 定义修订/激活走 _meta 平面(executeMeta),常量不再随定义演进更新。
  *
- * 三个 flow 支撑 B1–B3 验收场景:
+ * 三个 flow 支撑 B1–B3 验收场景(T10 起各常量声明 app 归属——membership
+ * 方向 = flow 声明归属,application 不持清单,见 domain/applications.ts):
  * - article-drafting(B1):三步发布向导 → publish 追加文章进 articles 集合;
  * - post-status(B2):published/offline/archived,unpublish 精确下线单篇;
  * - comment-moderation(B3):pending → approved | rejected。
@@ -21,6 +22,7 @@ import type { FlowDefinition } from '@ui4a/engine';
 const articleDrafting: FlowDefinition = {
   name: 'article-drafting',
   title: '文章发布向导',
+  app: 'publishing',
   initial: 'basic-info',
   nodes: [
     {
@@ -104,6 +106,7 @@ const articleDrafting: FlowDefinition = {
 const postStatus: FlowDefinition = {
   name: 'post-status',
   title: '文章状态',
+  app: 'publishing',
   initial: 'published',
   nodes: [
     {
@@ -133,6 +136,7 @@ const postStatus: FlowDefinition = {
 const commentModeration: FlowDefinition = {
   name: 'comment-moderation',
   title: '评论审核',
+  app: 'community',
   initial: 'pending',
   nodes: [
     {

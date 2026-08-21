@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { EngineSnapshot, InstanceSnapshot } from '@ui4a/shared';
+import type { ApplicationDefinition, EngineSnapshot, InstanceSnapshot } from '@ui4a/shared';
 
 import { approveConfirmation, rejectConfirmation } from './confirmation';
 import type { ConfirmationRequestDetail } from './confirmation';
@@ -528,5 +528,92 @@ describe('fold — notification-delivered(T3 Phase C)', () => {
 
     expect(contentVersion(incremental)).toBe(contentVersion(fold(log, postDeps)));
     expect(incremental.confirmations?.['confirmation:c1']?.notified).toBe(true);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// application-seeded(T10 Phase B;spec 架构决定 4):boot seed 的 application
+// 定义事件 —— fold 把活跃 app 定义落 applications 表(seeded 即 active,
+// 键集 = app-known 不变式的已激活集合)。与 definition-seeded 同哲学:
+// 幂等(重复 seed 不覆盖)、缺载荷响亮失败;本 track 无 app 生命周期动词,
+// 表只经本事件增长。
+// ---------------------------------------------------------------------------
+
+const publishingApp: ApplicationDefinition = {
+  name: 'publishing',
+  title: '内容发布',
+  intent: '内容起草与发布',
+};
+
+/** application-seeded 日志事件(boot 装载形状;detail 持定义全文)。 */
+function applicationSeedEvent(seq: number, app: ApplicationDefinition): LogEvent {
+  return {
+    seq,
+    kind: 'application-seeded',
+    rel: `meta/application:${app.name}`,
+    detail: { name: app.name, definition: app },
+  };
+}
+
+describe('fold — application-seeded(T10 Phase B)', () => {
+  it('application-seeded 落 applications 表(seeded 即 active)', () => {
+    const snapshot = fold([applicationSeedEvent(1, publishingApp)], { flows });
+
+    expect(snapshot.applications).toEqual({ publishing: publishingApp });
+  });
+
+  it('幂等:重复 application-seeded 不覆盖先到的定义(boot 重放安全)', () => {
+    const tampered: ApplicationDefinition = { ...publishingApp, intent: '篡改意图' };
+
+    const snapshot = fold(
+      [applicationSeedEvent(1, publishingApp), applicationSeedEvent(2, tampered)],
+      { flows },
+    );
+
+    expect(snapshot.applications?.['publishing']?.intent).toBe('内容起草与发布');
+  });
+
+  it('缺少 detail 载荷 → 响亮失败并带 seq(日志完整性)', () => {
+    const bogus: LogEvent = { seq: 7, kind: 'application-seeded', rel: 'meta/application:x' };
+
+    expect(() => fold([bogus], { flows })).toThrow(/application-seeded 缺少 detail 载荷/);
+  });
+
+  it('无 application 事件的 fold 不物化空表(app-known 过渡期 vacuous pass 语义)', () => {
+    const snapshot = fold([seedEvent], { flows });
+
+    expect(snapshot).not.toHaveProperty('applications');
+  });
+
+  it('业务 seed 在 application-seeded 之后折叠:applications 表随行不丢', () => {
+    const snapshot = fold([applicationSeedEvent(1, publishingApp), { ...seedEvent, seq: 2 }], {
+      flows,
+    });
+
+    expect(snapshot.applications).toEqual({ publishing: publishingApp });
+    expect(snapshot.instances['comment:c1']?.node).toBe('pending');
+  });
+
+  it('增量 fold(initial 携带 applications):表随行不丢(web 读路径的根基)', () => {
+    const base = fold([applicationSeedEvent(1, publishingApp), seedEvent], { flows });
+
+    const continued = fold(
+      [
+        {
+          seq: 3,
+          kind: 'action-executed',
+          rel: 'comment:c1',
+          action: 'approve',
+          actor: 'agent',
+          params: {},
+        },
+      ],
+      { flows },
+      base,
+    );
+
+    expect(continued.applications).toEqual({ publishing: publishingApp });
+    expect(continued.instances['comment:c1']?.node).toBe('approved');
   });
 });

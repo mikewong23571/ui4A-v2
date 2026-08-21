@@ -3,7 +3,9 @@
  *
  * - boot = ensureEventsTable + 幂等 seed(T4 Phase B 起先种定义后种业务:
  *   三个业务 flow 以 definition-seeded 全文入日志[seeded 即 active],旧库
- *   迁移时追加尾部)+ fold(日志)→ 快照;
+ *   迁移时追加尾部;T10 Phase B 起 application 定义以 application-seeded
+ *   同构补种[fold 落 applications 表,app-known 的已激活集合])+
+ *   fold(日志)→ 快照;
  * - 定义解析(T4 Phase B):业务 exec/judge/project/sitemap 一律吃 fold 快照的
  *   活跃定义(activeDefinitionOf:definitions 条目只持活跃指针,内容在
  *   definitionVersions 历史);代码常量仅 seed 源 + sitemap 顺序锚;
@@ -48,6 +50,7 @@ import {
   readRenderSpecsOf,
   rejectConfirmation,
   renderSpecRel,
+  type ApplicationSeededDetail,
   type Approver,
   type ConfirmationDecision,
   type ConfirmationDeps,
@@ -69,7 +72,7 @@ import {
 } from '@ui4a/engine';
 import type { EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
 import type { FieldValue } from '@ui4a/shared';
-import { metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
+import { metaApplicationRel, metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
 
 import {
   appendEvent,
@@ -79,6 +82,7 @@ import {
   type EventAppend,
 } from '../db/events';
 import { getPool } from '../db/pool';
+import { businessApplicationList } from '../domain/applications';
 import { cedarPolicyFromDefaultFile } from '../domain/cedarPolicy';
 import { businessFlows, businessFlowList } from '../domain/flows';
 import { SEED_REL, seedDetail } from '../domain/seed';
@@ -237,6 +241,10 @@ function enqueue<T>(state: EngineGlobalState, run: () => Promise<T>): Promise<T>
  *   自举地板,不是审批链产物,不补 definition-activated)。空库序:定义在前、
  *   业务 seed 在后(fold 出生盖戳天然成立);旧库迁移:定义追加尾部,fold 对
  *   既有实例回溯盖 bornVersion(引擎 fold 的迁移口径);
+ * - application seed 迁移(T10 Phase B,与 flow 定义同构):日志无某 application 的
+ *   application-seeded → 常量定义全文入日志(seeded 即 active;fold 落
+ *   applications 表,键集即 app-known 不变式的已激活集合——default 恒在,
+ *   是不变式长牙的地板)。旧库兼容:既有库无 application 事件 → 尾部补种;
  * - 业务 seed:日志无本种子标识才 append(既有口径)。
  */
 async function seedBootData(db: DbExecutor): Promise<void> {
@@ -253,6 +261,21 @@ async function seedBootData(db: DbExecutor): Promise<void> {
       kind: 'definition-seeded',
       rel: metaFlowRel(flow.name),
       detail: { name: flow.name, version: 1, status: 'active', definition: flow },
+    });
+  }
+  // application 定义与 flow 同构补种(定义在前、业务 seed 在后的空库序不变)。
+  const definedApps = new Set(
+    log
+      .filter((event) => event.kind === 'application-seeded')
+      .map((event) => (event.detail as Partial<ApplicationSeededDetail> | undefined)?.name)
+      .filter((name): name is string => typeof name === 'string'),
+  );
+  for (const app of businessApplicationList) {
+    if (definedApps.has(app.name)) continue;
+    await appendEvent(db, {
+      kind: 'application-seeded',
+      rel: metaApplicationRel(app.name),
+      detail: { name: app.name, definition: app },
     });
   }
   if (!log.some((event) => event.kind === 'seed' && event.rel === SEED_REL)) {

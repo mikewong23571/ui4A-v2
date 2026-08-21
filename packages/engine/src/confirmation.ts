@@ -194,6 +194,11 @@ export function suspendForConfirmation(
       definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
       // T7:renderSpecs 表随行(挂起不产凝固;与 definitions 同口径)。
       renderSpecs: { ...(snapshot.renderSpecs ?? {}) },
+      // T10:applications 表随行,但仅在场时携带——缺省不物化为 {}
+      // (app-known 以"表不存在"为过渡期 vacuous pass 信号;与 effects.ts 同口径)。
+      ...(snapshot.applications !== undefined
+        ? { applications: { ...snapshot.applications } }
+        : {}),
     },
     events: [event],
     confirmation: {
@@ -486,6 +491,11 @@ export function rejectConfirmation(
       definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
       // T7:renderSpecs 表随行(驳回不产凝固;与 definitions 同口径)。
       renderSpecs: { ...(snapshot.renderSpecs ?? {}) },
+      // T10:applications 表随行,但仅在场时携带——缺省不物化为 {}
+      // (app-known 以"表不存在"为过渡期 vacuous pass 信号;与 effects.ts 同口径)。
+      ...(snapshot.applications !== undefined
+        ? { applications: { ...snapshot.applications } }
+        : {}),
     },
     events: [rejectedEvent],
   };

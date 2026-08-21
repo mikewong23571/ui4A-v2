@@ -22,7 +22,9 @@ import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
  *  plan-executed 为 T6 批量裁决记录事件(engine executePlan 每计划恰一条);
  *  render-spec-frozen 为 T7 凝固事件(web freezeSpec 首冻恰一条);
  *  chat-turn 为 T9 Phase B 聊天回合投影(web 聊天路由 inline 完成后直写,
- *  同一双写者方案;engine fold 忽略——纯审计留痕)。 */
+ *  同一双写者方案;engine fold 忽略——纯审计留痕);
+ *  application-seeded 为 T10 Phase B application 定义种子(boot 装载,
+ *  与 engine LogEventKind 对齐——机械适配)。 */
 export type EventKind =
   | 'action-executed'
   | 'action-rejected'
@@ -34,6 +36,7 @@ export type EventKind =
   | 'notification-delivered'
   | 'seed'
   | 'definition-seeded'
+  | 'application-seeded'
   | 'definition-edited'
   | 'definition-submitted'
   | 'definition-activated'

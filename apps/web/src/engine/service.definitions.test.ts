@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { FlowDefinition, LogEvent, SirenEntity } from '@ui4a/engine';
 
+import { businessApplicationList } from '../domain/applications';
 import { businessFlows, businessFlowList } from '../domain/flows';
 import { SEED_REL, seedDetail } from '../domain/seed';
 import { appendEvent, ensureEventsTable, readLog } from '../db/events';
@@ -180,5 +181,116 @@ describe('B1 行为不变(定义来自日志后零回归)', () => {
       expect(surface.rel.startsWith('meta/')).toBe(false);
       expect(surface.rel.startsWith('_meta')).toBe(false);
     }
+  });
+});
+
+
+describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
+  it('default/publishing/community 以 application-seeded 入日志:rel=meta/application:<name>,detail 全文', async () => {
+    await boot();
+    const seeds = (await readLog(pool)).filter((event) => event.kind === 'application-seeded');
+    expect(seeds.map((event) => event.rel)).toEqual([
+      'meta/application:default',
+      'meta/application:publishing',
+      'meta/application:community',
+    ]);
+    for (const [index, app] of businessApplicationList.entries()) {
+      expect(seeds[index]?.detail).toEqual({ name: app.name, definition: app });
+    }
+  });
+
+  it('fold 快照:applications 表落三个已激活定义(app-known 注册表来源)', async () => {
+    const engine = await boot();
+    const applications = engine.getSnapshot().applications;
+    expect(Object.keys(applications ?? {})).toEqual(['default', 'publishing', 'community']);
+    expect(applications?.['publishing']?.intent).toContain('发布');
+    expect(applications?.['community']?.intent).toContain('评论');
+  });
+
+  it('boot 幂等:重复 boot 不再追加 application-seeded(仍 3 条)', async () => {
+    await boot();
+    resetEngineForTests();
+    await boot();
+    const seeds = (await readLog(pool)).filter((event) => event.kind === 'application-seeded');
+    expect(seeds).toHaveLength(3);
+  });
+
+  it('旧库迁移:既有日志(flow 定义 + 业务 seed)无 application 事件 → boot 尾部补种', async () => {
+    // 旧库形态:三个 flow definition-seeded + 业务 seed 已在日志(无 application 事件)。
+    for (const flow of businessFlowList) {
+      await appendEvent(pool, {
+        kind: 'definition-seeded',
+        rel: `meta/flow:${flow.name}`,
+        detail: { name: flow.name, version: 1, status: 'active', definition: flow },
+      });
+    }
+    await appendEvent(pool, { kind: 'seed', rel: SEED_REL, detail: seedDetail });
+
+    const engine = await boot();
+    const log = await readLog(pool);
+    // 补种追加在既有日志尾部(与 flow seed 迁移同哲学;fold 重放天然一致)。
+    expect(log.slice(-3).map((event) => event.kind)).toEqual([
+      'application-seeded',
+      'application-seeded',
+      'application-seeded',
+    ]);
+    expect(Object.keys(engine.getSnapshot().applications ?? {})).toEqual([
+      'default',
+      'publishing',
+      'community',
+    ]);
+  });
+});
+
+describe('app-known 长牙(seed 后 submit 链;T10 架构决定 3)', () => {
+  it('合法归属(publishing)的 flow 提交:checks 七项全过,app-known pass', async () => {
+    const engine = await boot();
+    for (const action of ['revise', 'submit'] as const) {
+      const outcome = await engine.exec({ rel: 'meta/flow:post-status', action, actor: 'agent' });
+      expect(outcome.kind, `${action} 应通过`).toBe('accepted');
+    }
+    const submitted = (await readLog(pool)).find(
+      (event) => event.kind === 'definition-submitted',
+    );
+    expect(submitted?.detail).toMatchObject({ name: 'post-status', passed: true });
+    const checks = (submitted?.detail as { checks: { name: string; pass: boolean }[] }).checks;
+    expect(checks.find((check) => check.name === 'app-known')).toEqual({
+      name: 'app-known',
+      pass: true,
+    });
+  });
+
+  it('app 指向未激活 application → checks-fail 回 draft,app-known 拒因入 definition-submitted 留痕', async () => {
+    // 定义将持续生产且未经策划(D19):一个引用不存在 app 的 post-status 变体
+    // 先入日志(boot 不再补种该 flow),其工作副本 app='nonexistent'。
+    const bogusFlow: FlowDefinition = { ...businessFlows['post-status']!, app: 'nonexistent' };
+    await appendEvent(pool, {
+      kind: 'definition-seeded',
+      rel: 'meta/flow:post-status',
+      detail: { name: 'post-status', version: 1, status: 'active', definition: bogusFlow },
+    });
+    const engine = await boot();
+
+    // submit 动作本身被受理(lifecycle 合法转移);拒绝发生在不变式层:
+    // checks-fail → 回 draft,activation 不生成,拒因随 definition-submitted 留痕。
+    for (const action of ['revise', 'submit'] as const) {
+      const outcome = await engine.exec({ rel: 'meta/flow:post-status', action, actor: 'agent' });
+      expect(outcome.kind, `${action} 应被受理`).toBe('accepted');
+    }
+
+    const snapshot = engine.getSnapshot();
+    expect(snapshot.definitions?.['post-status']?.status).toBe('draft');
+    expect(Object.keys(snapshot.activations ?? {})).toHaveLength(0);
+
+    const submitted = (await readLog(pool)).find(
+      (event) => event.kind === 'definition-submitted',
+    );
+    expect(submitted?.detail).toMatchObject({ name: 'post-status', passed: false });
+    const checks = (
+      submitted?.detail as { checks: { name: string; pass: boolean; detail?: string[] }[] }
+    ).checks;
+    const appKnown = checks.find((check) => check.name === 'app-known');
+    expect(appKnown?.pass).toBe(false);
+    expect(appKnown?.detail?.join('\n')).toContain('nonexistent');
   });
 });
