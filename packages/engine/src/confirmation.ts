@@ -192,6 +192,8 @@ export function suspendForConfirmation(
       activations: { ...(snapshot.activations ?? {}) },
       // T4 Phase B:definitionVersions 同口径随行(内容不改)。
       definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
+      // T7:renderSpecs 表随行(挂起不产凝固;与 definitions 同口径)。
+      renderSpecs: { ...(snapshot.renderSpecs ?? {}) },
     },
     events: [event],
     confirmation: {
@@ -482,6 +484,8 @@ export function rejectConfirmation(
       activations: { ...(snapshot.activations ?? {}) },
       // T4 Phase B:definitionVersions 同口径随行(内容不改)。
       definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
+      // T7:renderSpecs 表随行(驳回不产凝固;与 definitions 同口径)。
+      renderSpecs: { ...(snapshot.renderSpecs ?? {}) },
     },
     events: [rejectedEvent],
   };

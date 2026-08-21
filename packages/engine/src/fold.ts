@@ -44,13 +44,16 @@ import type {
   DefinitionSubmittedDetail,
 } from './meta';
 import { actionEffects } from './parse';
+import { applyRenderSpecFrozen } from './render-spec';
 
 /** 日志事件种类:引擎产出(含 T4 定义事件族)+ 日志层三种
  *  (拒绝留痕 I6 / 种子装载 / definition-seeded 定义种子)+
  *  notification-delivered(T3 notify capability 送达事件,worker 第二写者写入;
  *  fold 分支见 Task 2 读路径)+
  *  delegation-*(T5 委托事件族:worker delegationWorkflow 的首/步/终事件;
- *  类型先行与 web EventKind 对齐,fold 分支与 delegations 投影见 T5 Phase A Task 2)。 */
+ *  类型先行与 web EventKind 对齐,fold 分支与 delegations 投影见 T5 Phase A Task 2)+
+ *  render-spec-frozen(T7 凝固:渲染 spec 按关注点首冻入日志,
+ *  fold 分支见 render-spec 模块)。 */
 export type LogEventKind =
   | EngineEvent['kind']
   | 'action-rejected'
@@ -61,7 +64,8 @@ export type LogEventKind =
   | 'delegation-step'
   | 'delegation-completed'
   | 'delegation-failed'
-  | 'delegation-max-steps';
+  | 'delegation-max-steps'
+  | 'render-spec-frozen';
 
 /**
  * 存储事件(引擎 EngineEvent + 日志层字段)。
@@ -137,6 +141,8 @@ function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
     definitions: { ...snapshot.definitions },
     activations: { ...(snapshot.activations ?? {}) },
     definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
+    // T7:renderSpecs 表随行(seed 不产凝固;与 confirmations 同口径)。
+    renderSpecs: { ...(snapshot.renderSpecs ?? {}) },
   };
 }
 
@@ -630,6 +636,8 @@ function applyDefinitionRejected(snapshot: EngineSnapshot, event: LogEvent): Eng
  * - delegation-started / -step / -completed | -failed | -max-steps(T5):委托
  *   事件族折叠为 delegations 表(worker delegationWorkflow 的轨迹;step 步号
  *   连续性在 fold 层强制,缺口即抛错);
+ * - render-spec-frozen(T7):凝固渲染 spec 物化为 renderSpecs 表
+ *   (concern → spec;同 spec 重复幂等,异 spec 抛错——凝固语义);
  * - seed:合并种子实体(幂等);
  * - definition-seeded(T4):建立 definitions 条目 + lifecycle 实例(幂等);
  * - definition-edited:伴随事件——工作副本已由同批 action-executed 重放
@@ -663,6 +671,7 @@ export function fold(
           definitions: {},
           activations: {},
           definitionVersions: {},
+          renderSpecs: {},
         }
       : {
           instances: initial.instances,
@@ -676,6 +685,8 @@ export function fold(
           definitions: initial.definitions ?? {},
           activations: initial.activations ?? {},
           definitionVersions: initial.definitionVersions ?? {},
+          // T7:renderSpecs 表随行(凝固表恒物化,同口径)。
+          renderSpecs: initial.renderSpecs ?? {},
         };
   for (const event of events) {
     switch (event.kind) {
@@ -727,6 +738,9 @@ export function fold(
       case 'delegation-failed':
       case 'delegation-max-steps':
         snapshot = applyDelegationTerminal(snapshot, event, event.kind);
+        break;
+      case 'render-spec-frozen':
+        snapshot = applyRenderSpecFrozen(snapshot, event);
         break;
       case 'action-rejected':
       case 'entity-appended':

@@ -12,6 +12,7 @@ import type {
   DefinitionEntry,
   DelegationSnapshot,
   EngineSnapshot,
+  FrozenRenderSpec,
   GuardEvaluation,
   GuardRegistry,
 } from '@ui4a/shared';
@@ -30,6 +31,12 @@ import {
   LIFECYCLE_INTERNAL_EDGES,
 } from './lifecycle';
 import { actionEffects } from './parse';
+import {
+  RENDER_SPECS_REL,
+  RENDER_SPEC_REL_PREFIX,
+  readRenderSpecsOf,
+  renderSpecRel,
+} from './render-spec';
 import { fieldDefinitionsToJsonSchema, mergeFieldDefinitions } from './schema';
 import type { ActionDefinition, FieldDefinition, FlowDefinition } from './types';
 
@@ -302,11 +309,50 @@ function projectDelegations(snapshot: EngineSnapshot, deps: ProjectDeps): SirenE
 }
 
 /**
+ * 已凝固渲染 spec 实体投影(T7):properties 含 concern/component/bind/
+ * requested-by;无动作(凝固是数据不是操作,重生/改版走生成路径与
+ * freezeSpec 服务层入口)。bind 原样直出(零字面引用树,渲染器解引用)。
+ */
+function projectRenderSpec(frozen: FrozenRenderSpec, deps: ProjectDeps): SirenEntity {
+  return {
+    class: ['render-spec', 'frozen'],
+    properties: {
+      concern: frozen.concern,
+      component: frozen.component,
+      bind: frozen.bind,
+      'requested-by': frozen.requestedBy,
+    },
+    actions: [],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, renderSpecRel(frozen.concern)) }],
+    'guard-results': [],
+  };
+}
+
+/** render-specs 集合投影(最小:concern 集合;画布经合同查已凝固 spec)。 */
+function projectRenderSpecs(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
+  const entries = readRenderSpecsOf(snapshot);
+  const entities = entries.map((frozen) => ({
+    ...projectRenderSpec(frozen, deps),
+    rel: ['item'],
+    href: entityHref(deps.baseHref, renderSpecRel(frozen.concern)),
+  }));
+  return {
+    class: ['collection', RENDER_SPECS_REL],
+    properties: { rel: RENDER_SPECS_REL, count: entries.length },
+    actions: [],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, RENDER_SPECS_REL) }],
+    'guard-results': [],
+    entities,
+  };
+}
+
+/**
  * rel → Siren 实体;未知 rel 返回 undefined(HTTP 层映射 404)。
  * 解析顺序:meta 前缀(定义层显式意图,优先于实例表——lifecycle 实例与定义
  * 实体同 rel,投影必须是定义视图)→ 实例 → 业务集合 → 确认实体
  * (confirmation:<id>)→ 委托实体(delegation:<id>)→ inbox 视图 →
- * delegations 集合视图(T5)。
+ * delegations 集合视图(T5)→ 已凝固渲染 spec(render-spec:<concern>,
+ * T7)→ render-specs 集合视图(T7)。
  */
 export function project(
   snapshot: EngineSnapshot,
@@ -336,6 +382,14 @@ export function project(
   }
   if (rel === DELEGATIONS_REL) {
     return projectDelegations(snapshot, deps);
+  }
+  if (rel.startsWith(RENDER_SPEC_REL_PREFIX)) {
+    const concern = rel.slice(RENDER_SPEC_REL_PREFIX.length);
+    const frozen = snapshot.renderSpecs?.[concern];
+    return frozen === undefined ? undefined : projectRenderSpec(frozen, deps);
+  }
+  if (rel === RENDER_SPECS_REL) {
+    return projectRenderSpecs(snapshot, deps);
   }
   return undefined;
 }

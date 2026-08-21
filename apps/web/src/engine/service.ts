@@ -45,7 +45,9 @@ import {
   executePlan,
   fold,
   project,
+  readRenderSpecsOf,
   rejectConfirmation,
+  renderSpecRel,
   type Approver,
   type ConfirmationDecision,
   type ConfirmationDeps,
@@ -59,12 +61,13 @@ import {
   type MetaDeps,
   type PlanStepResult,
   type ProjectDeps,
+  type RenderSpecFrozenDetail,
   type Sitemap,
   type SitemapSurface,
   type SirenEntity,
   type SuspendedConfirmation,
 } from '@ui4a/engine';
-import type { EngineSnapshot } from '@ui4a/shared';
+import type { EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
 import type { FieldValue } from '@ui4a/shared';
 import { metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
 
@@ -79,6 +82,9 @@ import { getPool } from '../db/pool';
 import { cedarPolicyFromDefaultFile } from '../domain/cedarPolicy';
 import { businessFlows, businessFlowList } from '../domain/flows';
 import { SEED_REL, seedDetail } from '../domain/seed';
+import type { RenderSpec } from '../render/spec';
+import { validateSpec } from '../render/validator';
+import { wordOf } from '../render/registry';
 import { dispatchNotify } from '../temporal/notify';
 import { resolveFlowRelAlias, withCollectionFlowEntryLinks } from './flow-entry';
 
@@ -115,6 +121,17 @@ export function isMetaRel(rel: string): boolean {
   return rel === 'meta/self' || rel.startsWith('meta/');
 }
 
+/**
+ * 冻结结果:spec 为生效的已凝固 spec;frozen=true 本次首冻(事件已追加),
+ * false = concern 已凝固,返回首冻 spec(首冻为准——"同一关注点永远同一布局")。
+ */
+export interface FreezeSpecResult {
+  concern: string;
+  frozen: boolean;
+  spec: RenderSpec;
+  requestedBy: { actor: 'human' | 'agent'; principal?: string };
+}
+
 export interface EngineRuntime {
   /** 当前内存快照(boot/exec/增量 fold 维护;只读视图,不触库——需外部写者进度用 readSnapshot)。 */
   getSnapshot(): EngineSnapshot;
@@ -136,6 +153,21 @@ export interface EngineRuntime {
    * 增量快照 → (挂起时)notify 派发(尽力而为,与 exec 同口径)。
    */
   execPlan(steps: readonly ExecRequest[]): Promise<PlanServiceOutcome>;
+  /**
+   * 凝固渲染 spec(T7):串行队列内首冻追加 render-spec-frozen 事件并物化
+   * renderSpecs 表;同 concern 二次请求直接返回已凝固(不追加事件)。
+   * 入口校验(不合法抛错、不入日志):零字面校验器 + 词汇表词名 +
+   * concern 键一致(spec.concern === concern)。
+   */
+  freezeSpec(
+    concern: string,
+    spec: RenderSpec,
+    requestedBy?: { actor: 'human' | 'agent'; principal?: string },
+  ): Promise<FreezeSpecResult>;
+  /** 查询已凝固 spec(未凝固 undefined;快照读,不触库)。 */
+  getFrozenSpec(concern: string): RenderSpec | undefined;
+  /** 已凝固 spec 条目列表(日志序)。 */
+  listFrozenSpecs(): FrozenRenderSpec[];
 }
 
 const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
@@ -157,6 +189,17 @@ function paramsWithOrigins(request: ExecRequest): Record<string, FieldValue> {
 
 /** 确认实体 rel 前缀(与 engine confirmationRel 同口径;approve/reject 的路由键)。 */
 const CONFIRMATION_REL_PREFIX = 'confirmation:';
+
+/** 已凝固条目 → RenderSpec(bind 在凝固入口已过零字面校验,仅类型归属)。 */
+function toRenderSpec(frozen: FrozenRenderSpec): RenderSpec {
+  return {
+    concern: frozen.concern,
+    component: frozen.component,
+    // 断言理由:bind 经 freezeSpec 入口的零字面校验器把关后入日志,
+    // 此处从 unknown 归属回 BindTree(渲染模块拥有该类型)。
+    bind: frozen.bind as RenderSpec['bind'],
+  };
+}
 
 // ---- globalThis 单例(见文件头注释)----------------------------------------
 
@@ -587,6 +630,61 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         return { kind: outcome.kind, results: outcome.results, entities };
       });
     },
+    freezeSpec(concern, spec, requestedBy) {
+      return enqueue(state, async () => {
+        await refreshFromLog();
+        // 入口校验(不合法不入日志):零字面剃刀 + 词汇表词名 + concern 键一致。
+        const validation = validateSpec(spec);
+        if (!validation.valid) {
+          const summary = validation.errors.map((error) => `${error.path}: ${error.message}`);
+          throw new Error(`render spec 校验失败:\n${summary.join('\n')}`);
+        }
+        if (spec.concern !== concern) {
+          throw new Error(
+            `凝固键不一致:concern 参数 "${concern}" 与 spec.concern "${spec.concern}" 必须相同`,
+          );
+        }
+        if (wordOf(spec.component) === undefined) {
+          throw new Error(`词条 "${spec.component}" 不在渲染词汇表(目录 /api/render/catalog)`);
+        }
+        const by = requestedBy ?? { actor: 'agent' as const };
+        // 首冻为准:已凝固直接返回(同一关注点永远同一布局,不追加事件)。
+        const existing = snapshot.renderSpecs?.[concern];
+        if (existing !== undefined) {
+          return { concern, frozen: false, spec: toRenderSpec(existing), requestedBy: existing.requestedBy };
+        }
+        const detail: RenderSpecFrozenDetail = {
+          concern,
+          spec: { concern: spec.concern, component: spec.component, bind: spec.bind },
+          requestedBy: by,
+        };
+        const { seq } = await appendEvent(db, {
+          kind: 'render-spec-frozen',
+          rel: renderSpecRel(concern),
+          actor: by.actor,
+          ...(by.principal !== undefined ? { principal: by.principal } : {}),
+          detail,
+        });
+        lastSeq = Math.max(lastSeq, seq);
+        // 在线增量物化(与 fold 同构:同一 applyRenderSpecFrozen)。
+        snapshot = fold(
+          [{ seq, kind: 'render-spec-frozen', rel: renderSpecRel(concern), actor: by.actor, ...(by.principal !== undefined ? { principal: by.principal } : {}), detail }],
+          { flows: businessFlows },
+          snapshot,
+        );
+        applyForeignGaps();
+        const frozen = snapshot.renderSpecs?.[concern];
+        if (frozen === undefined) {
+          throw new Error(`凝固后 renderSpecs 表缺 "${concern}"(内部不变式破坏)`);
+        }
+        return { concern, frozen: true, spec: toRenderSpec(frozen), requestedBy: frozen.requestedBy };
+      });
+    },
+    getFrozenSpec: (concern) => {
+      const frozen = snapshot.renderSpecs?.[concern];
+      return frozen === undefined ? undefined : toRenderSpec(frozen);
+    },
+    listFrozenSpecs: () => readRenderSpecsOf(snapshot),
   };
 }
 

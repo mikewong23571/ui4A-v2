@@ -109,6 +109,23 @@ export interface DelegationSnapshot {
   reason?: string;
 }
 
+/**
+ * 已凝固渲染 spec 快照(T7:render-spec-frozen 事件折叠而来;
+ * rel = `render-spec:<concern>`)。"凝固":按关注点首次生成渲染后缓存,
+ * 同一关注点永远同一布局(保空间记忆锚点);bind 为零字面引用树
+ * (形状由 web 侧零字面校验器把关,引擎按载荷即真相折叠)。
+ */
+export interface FrozenRenderSpec {
+  /** 关注点键(凝固键)。 */
+  concern: string;
+  /** 词汇表词名。 */
+  component: string;
+  /** 绑定树(零字面;载荷即真相,引擎不再重复校验)。 */
+  bind: unknown;
+  /** 首次凝固的请求者(actor=agent 即聊天生成路径)。 */
+  requestedBy: { actor: 'human' | 'agent'; principal?: string };
+}
+
 /** 引擎全局快照 = 日志折叠态;guard 只读,效果以不可变方式产出新快照。 */
 export interface EngineSnapshot {
   instances: Record<string, InstanceSnapshot>;
@@ -143,6 +160,12 @@ export interface EngineSnapshot {
    * fold/applyEffects 等引擎产出函数恒携带(空表也为 {})。
    */
   definitionVersions?: Record<string, Record<number, FlowDefinition>>;
+  /**
+   * 已凝固渲染 spec 表(T7):concern → 已凝固 spec(render-spec-frozen
+   * 事件折叠;首冻为准)。可选与 confirmations 同口径;fold/applyEffects
+   * 等引擎产出函数恒携带(空表也为 {})。
+   */
+  renderSpecs?: Record<string, FrozenRenderSpec>;
 }
 
 /** 原始字段值视图(properties 投影用):去掉出处,仅取值。 */

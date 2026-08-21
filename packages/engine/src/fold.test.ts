@@ -64,6 +64,8 @@ describe('fold 投影', () => {
       activations: {},
       // T4 Phase B:定义版本历史恒物化(空表)。
       definitionVersions: {},
+      // T7:renderSpecs 表恒物化(空表;凝固事件折叠的目标表)。
+      renderSpecs: {},
     });
   });
 

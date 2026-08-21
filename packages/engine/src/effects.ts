@@ -346,6 +346,8 @@ export function applyEffects(
       activations,
       // T4 Phase B:定义版本历史随行(fold/在线同构;内容本函数不改)。
       definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
+      // T7:renderSpecs 表随行(exec 不产凝固;与 confirmations 同口径)。
+      renderSpecs: { ...(snapshot.renderSpecs ?? {}) },
     },
     events: [executedEvent, ...appendedEvents, ...spawnEvents],
   };
