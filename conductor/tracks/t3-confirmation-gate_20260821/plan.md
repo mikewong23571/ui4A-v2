@@ -14,11 +14,11 @@
 - [x] Task: web 服务层接线(确认裁决进 exec 流程;202 挂起响应;日志事件与 detail)(94b46f2)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)(自治验收:CI=true pnpm check 全绿 375 tests(+36);Next dev 实机矩阵 202/200/422 + 重启重放 + 策略文件实机变更改行为;验证报告挂 94b46f2 git notes)
 
-## Phase C: Temporal worker 与 notify
+## Phase C: Temporal worker 与 notify [checkpoint: f390a23]
 
 - [x] Task: worker 真身(@temporalio/worker;notifyWorkflow + notify activity;taskQueue ui4a;心跳改为 worker 启动日志)(TDD:activity 单测——inbox 事件写入)(c09ae38)
-- [ ] Task: web→Temporal 接线(exec 挂起后 startWorkflow;事件流增量:web 读路径按 seq 增量 fold worker 追加的事件)(TDD:双写一致性——worker appendEvent 后 web entity 查询可见)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: web→Temporal 接线(exec 挂起后 startWorkflow;事件流增量:web 读路径按 seq 增量 fold worker 追加的事件)(TDD:双写一致性——worker appendEvent 后 web entity 查询可见)(f390a23)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)(自治验收:CI=true pnpm check 全绿 398 tests(+23);集成测试真 PG+真 Temporal+spawn worker 全链 1.5s;手工等效 curl 202→inbox delivered=1(不需重启);worker SIGTERM 优雅退出无残留;验证报告挂 f390a23 git notes)
 
 ## Phase D: 收件箱 UI 与 S1 全链路 E2E
 
