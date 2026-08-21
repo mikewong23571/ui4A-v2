@@ -1,0 +1,57 @@
+Task: S4 E2E(T6 Phase B / Task 1)——六步一次决策 / 拒绝截断 / 挂起交互
+
+变更摘要:
+- e2e/s4.spec.ts(新,3 用例,withFreshServer 栈;无 worker 依赖——S4 不断言
+  通知送达,notify 派发尽力而为,S1 已覆盖送达链路):
+  1. S4-六步一次决策(GOAL S4 主链路):
+     - agent 侧计划推导全链:GET /.well-known/ui4a.json(读路径)→ planFor
+       (纯函数,零 exec 调用)→ 4 步(next×3 分步带 fields + publish);
+     - 六步口径(t6 spec 架构决定 5):planFor 4 步 + e2e 手工拼 2 步
+       (unpublish + republish 该新文章)。生成器保持纯语义(只从 sitemap
+       推导向导计划,不发明目标后缀);新文章 rel 拼装时确定性可知
+       (publish 的 append effect name-from=title → slugify,slug-clean
+       标题恒等映射,标题 's4-batch-adjudication');
+     - 断言:单次 POST /api/exec-plan → 200 plan=completed,results 6 步全
+       executed(步号/rel/action/appended 逐项);恰一条 plan-executed
+       (rel=plan,actor=agent,detail.kind=plan-completed,detail.steps=6
+       全 executed);伴随 action-executed ×6(actor=agent,action 序列
+       next/next/next/publish/unpublish/republish)+ entity-appended ×1;
+       计划事件族 seq 连续无缺口、标记收尾(单事务);
+     - 一次决策断言:AgentChannel 计数 exec 类 HTTP 调用
+       {execPlan:1, exec:0}(无逐步 /api/exec);业务终态 post published
+       (发布→下线→复发布)、articles 2→3、向导循环回 basic-info(D11)。
+  2. S4-拒绝截断:goal.fields.category='not-a-category'(枚举外)经 planFor
+     原样进计划(生成器不发明事实)→ 200 plan=rejected:第 1 步 executed
+     (to=classification),第 2 步 rejected{layer:schema-invalid, reason:
+     参数不符合动作字段 schema, detail=ajv 错误指认 /category enum};
+     3/4 不出现;留痕:plan-executed(kind=plan-rejected,steps 2 条)+
+     action-executed ×1 + action-rejected ×1(reason + detail.plan.step=2);
+     世界状态:向导停 classification(fields.title 已存)、articles=2、
+     post rel 404。
+  3. S4-挂起交互:planFor 4 步 + archive(新文章,agent 高危)+ 哨兵步
+     unpublish(本身合法——未执行只能因为计划停止,把「后续停止」变成可
+     观测断言)→ 202 plan=suspended:results 5 条(4 executed + 1
+     suspended,confirmation {id:c1,targetRel,targetAction});confirmation:c1
+     实体 pending 物化,文章仍 published;日志 plan-executed(kind=
+     plan-suspended,steps 5)+ confirmation-requested ×1 + 无 unpublish;
+     human 经普通 /api/exec approve(审批不委托)→ archive 生效
+     (action-executed archive actor=human/channel=confirmation +
+     confirmation-approved 留痕),post → archived;计划不自动续跑(仍恰
+     一条 plan-executed,哨兵步始终未执行)。confirmation id 确定性复用
+     c1:场景前后 terminateStaleNotifyWorkflows(['c1']) 清理跨轮残留
+     (与 s1 同口径,Temporal 不可达内部静默兜底)。
+- conductor/tracks/t6-plan-exec_20260821/plan.md:Phase B Task 1 标 [~]。
+
+链路观察(非 bug,不改代码):
+- entity-appended 落库行(toAppend 只映射 kind/rel/action/actor/principal/
+  channel/params/detail/reason)不携带 appendedRel/collection 字段——fold
+  重放不依赖它(状态由 action-executed 重放),e2e 对追加实例的断言经响应
+  分步结果(appended)与集合状态双口径覆盖。
+- 拒绝步位置口径:spec 验收 3 例举「第 4 步 guard 拒」,本次按 track 指令
+  用「第 2 步 schema-invalid」(语义同:中拒截断 + 前序保留 + 后续未执行;
+  各位置截断矩阵已由 Phase A engine/route 单测覆盖)。
+
+测试证据(实施侧亲自跑):
+- CI=true npx playwright test e2e/s4.spec.ts → 3 passed(5.5s);
+- CI=true pnpm check → 658 tests / 75 files 全绿(49.2s);
+- CI=true pnpm e2e → 28 passed + 1 skipped(llm-smoke 门控),1.0m。
