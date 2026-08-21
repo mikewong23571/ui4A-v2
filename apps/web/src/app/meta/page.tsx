@@ -34,7 +34,7 @@ export default function BiosIndex() {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8">
       <nav className="mb-2 text-sm">
-        <a href="/" className="text-blue-600 hover:underline">
+        <a href="/" data-nav="home" className="text-blue-600 hover:underline">
           ← 首页
         </a>
       </nav>
@@ -45,7 +45,7 @@ export default function BiosIndex() {
       <ul className="mt-6 space-y-2 text-sm">
         {FACES.map((face) => (
           <li key={face.href}>
-            <a href={face.href} className="font-medium text-blue-600 hover:underline">
+            <a href={face.href} data-nav="meta-face" className="font-medium text-blue-600 hover:underline">
               {face.title}
             </a>
             <span className="ml-2 text-zinc-500">{face.description}</span>

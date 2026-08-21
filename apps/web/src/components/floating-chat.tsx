@@ -108,6 +108,7 @@ function MyThread({ delegated, onToggleDelegated }: MyThreadProps) {
         <button
           type="button"
           aria-label="委托模式"
+          data-nav="local:chat-delegated"
           aria-pressed={delegated}
           className={`rounded-lg px-2 py-1.5 text-xs font-medium ${
             delegated
@@ -119,12 +120,12 @@ function MyThread({ delegated, onToggleDelegated }: MyThreadProps) {
           委托
         </button>
         <ThreadPrimitive.If running={false}>
-          <ComposerPrimitive.Send className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40">
+          <ComposerPrimitive.Send data-nav="local:chat-send" className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40">
             发送
           </ComposerPrimitive.Send>
         </ThreadPrimitive.If>
         <ThreadPrimitive.If running>
-          <ComposerPrimitive.Cancel className="rounded-lg bg-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-300">
+          <ComposerPrimitive.Cancel data-nav="local:chat-cancel" className="rounded-lg bg-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-300">
             停止
           </ComposerPrimitive.Cancel>
         </ThreadPrimitive.If>
@@ -235,6 +236,7 @@ export function FloatingChat() {
             <button
               type="button"
               aria-label="收起聊天窗"
+              data-nav="local:chat-close"
               className="rounded-md px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100"
               onClick={() => setOpen(false)}
             >
@@ -251,6 +253,7 @@ export function FloatingChat() {
         <button
           type="button"
           aria-label="展开聊天窗"
+          data-nav="local:chat-open"
           className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-xl text-white shadow-lg hover:bg-blue-700"
           onClick={() => setOpen(true)}
         >

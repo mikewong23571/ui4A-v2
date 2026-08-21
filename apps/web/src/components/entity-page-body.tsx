@@ -43,7 +43,7 @@ export function EntityPageBody({ rel }: { rel: string }) {
     return (
       <main className="mx-auto w-full max-w-3xl px-4 py-6">
         <nav className="mb-2 text-sm">
-          <a href="/" className="text-blue-600 hover:underline">
+          <a href="/" data-nav="home" className="text-blue-600 hover:underline">
             ← 首页
           </a>
         </nav>
@@ -56,7 +56,7 @@ export function EntityPageBody({ rel }: { rel: string }) {
     return (
       <main className="mx-auto w-full max-w-3xl px-4 py-6">
         <nav className="mb-2 text-sm">
-          <a href="/" className="text-blue-600 hover:underline">
+          <a href="/" data-nav="home" className="text-blue-600 hover:underline">
             ← 首页
           </a>
         </nav>

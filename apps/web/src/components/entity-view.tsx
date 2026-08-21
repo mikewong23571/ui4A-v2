@@ -110,7 +110,7 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6">
       <nav className="mb-2 text-sm">
-        <a href="/" className="text-blue-600 hover:underline">
+        <a href="/" data-nav="home" className="text-blue-600 hover:underline">
           ← 首页
         </a>
       </nav>
@@ -186,12 +186,13 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
                     <a
                       href={entityPageHref(target)}
                       data-rel={target}
+                      data-nav={link.rel[0]}
                       className="text-blue-600 hover:underline"
                     >
                       {target}
                     </a>
                   ) : (
-                    <a href={link.href} className="text-blue-600 hover:underline">
+                    <a href={link.href} data-nav="external" className="text-blue-600 hover:underline">
                       {link.href}
                     </a>
                   )}
@@ -213,6 +214,7 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
                   <a
                     href={entityPageHref(target)}
                     data-rel={target}
+                    data-nav="item"
                     className="text-blue-600 hover:underline"
                   >
                     {memberSummary(sub)}

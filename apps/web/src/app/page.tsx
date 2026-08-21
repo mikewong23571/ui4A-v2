@@ -100,6 +100,7 @@ export default function Home() {
                   <a
                     href={entityPageHref(rel)}
                     data-rel={rel}
+                    data-nav="item"
                     className="text-blue-600 hover:underline"
                   >
                     {memberText(sub)}
@@ -113,6 +114,7 @@ export default function Home() {
               <a
                 href={entityPageHref(rel)}
                 data-rel={rel}
+                data-nav="flow-entry"
                 className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 font-medium text-blue-700 hover:bg-blue-100"
               >
                 + 发布向导入口({rel})
@@ -128,6 +130,7 @@ export default function Home() {
           <a
             href={entityPageHref('inbox')}
             data-rel="inbox"
+            data-nav="inbox"
             className="text-blue-600 hover:underline"
           >
             收件箱(待确认 {inboxPending})
@@ -141,6 +144,7 @@ export default function Home() {
           <a
             href={entityPageHref('comments')}
             data-rel="comments"
+            data-nav="comments"
             className="text-blue-600 hover:underline"
           >
             评论队列(待处理 {pendingCount})
@@ -156,6 +160,7 @@ export default function Home() {
           <a
             href="/delegations"
             data-rel="delegations"
+            data-nav="delegations"
             className="text-blue-600 hover:underline"
           >
             委托舰队(并行委托监控)
@@ -168,7 +173,7 @@ export default function Home() {
       <section aria-label="BIOS" className="mt-8">
         <h2 className="mb-2 text-sm font-semibold text-zinc-700">BIOS</h2>
         <p className="text-sm">
-          <a href="/meta" data-rel="meta" className="text-blue-600 hover:underline">
+          <a href="/meta" data-rel="meta" data-nav="meta" className="text-blue-600 hover:underline">
             BIOS · 定义平面(定义查看 / 激活队列审批)
           </a>
         </p>

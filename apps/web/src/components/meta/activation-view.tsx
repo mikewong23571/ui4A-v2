@@ -49,7 +49,7 @@ export function ActivationView({ id, entity, onChanged }: ActivationViewProps) {
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-6">
       <nav className="mb-2 text-sm">
-        <a href="/meta/activations" className="text-blue-600 hover:underline">
+        <a href="/meta/activations" data-nav="meta-activations" className="text-blue-600 hover:underline">
           ← 激活队列
         </a>
       </nav>
@@ -148,7 +148,7 @@ export function ActivationPageBody({ id }: { id: string }) {
     return (
       <main className="mx-auto w-full max-w-4xl px-4 py-6">
         <nav className="mb-2 text-sm">
-          <a href="/meta/activations" className="text-blue-600 hover:underline">
+          <a href="/meta/activations" data-nav="meta-activations" className="text-blue-600 hover:underline">
             ← 激活队列
           </a>
         </nav>

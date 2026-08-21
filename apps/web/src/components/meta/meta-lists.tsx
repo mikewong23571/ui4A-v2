@@ -29,7 +29,7 @@ function BiosShell({
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-6">
       <nav className="mb-2 text-sm">
-        <a href={backTo} className="text-blue-600 hover:underline">
+        <a href={backTo} data-nav="meta-back" className="text-blue-600 hover:underline">
           ← BIOS
         </a>
       </nav>
@@ -76,7 +76,7 @@ export function FlowsListBody() {
             return (
               <tr key={rel} className="border-b border-zinc-100">
                 <td className="py-1 pr-4">
-                  <a href={`/meta/flow/${encodeURIComponent(name)}`} className="text-blue-600 hover:underline">
+                  <a href={`/meta/flow/${encodeURIComponent(name)}`} data-nav="meta-flow" className="text-blue-600 hover:underline">
                     {name}
                   </a>
                 </td>
@@ -127,6 +127,7 @@ export function ActivationsQueueBody() {
               <li key={rel}>
                 <a
                   href={`/meta/activation/${encodeURIComponent(id)}`}
+                  data-nav="meta-activation"
                   className="text-blue-600 hover:underline"
                 >
                   {id} · {String(sub.properties.flow ?? '')} → v{String(sub.properties.version ?? '')}
