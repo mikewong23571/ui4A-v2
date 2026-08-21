@@ -2,6 +2,9 @@
  * rule driver:纯启发式决策器(无 LLM,无 key 时的兜底;I1 的机械层)。
  *
  * 目标相关性决策次序(arch-brief §5 原样,逐层带停止条件):
+ * ⓪ app 定位层(T10 架构决定 6,软边界):目标词命中某 app 的 name/intent
+ *   → 该 app 组内与目标词有交集且入口可达的 flow 入口优先;不做硬过滤——
+ *   全部命中 app 都无可选时回退以下现有链(跨 app links 天然合法)。
  * ① 点名的资源:targetRel/resource 出现在 links/子实体里 → navigate 直达;
  *   停止条件:已在点名资源上(落入②)。
  * ② 点名的动作:goal.verb 与 action name/title 词级交集 → exec;
@@ -236,7 +239,44 @@ function execOperation(context: DriverContext, action: SirenAction): AgentOperat
   };
 }
 
-// ---- 四层决策 --------------------------------------------------------------
+// ---- 决策层(⓪ app 定位 + ①–④ 目标相关性)----------------------------------
+
+/** 入口 rel 在当前实体可达时返回其实际 rel(精确命中,或 :别名 后缀命中)。 */
+function reachableEntryRel(
+  candidates: readonly string[],
+  entryRel: string,
+): string | undefined {
+  return (
+    candidates.find((rel) => rel === entryRel) ??
+    // 入口链接的 rel 可能是别名(flow:x),也可能指向实例——两者都试。
+    candidates.find((rel) => rel.endsWith(`:${entryRel.split(':').pop()}`))
+  );
+}
+
+/**
+ * ⓪ app 定位层:目标词(verb 展开词)先匹配 app 的 name/intent,命中则该 app
+ * 组内的 flow/资源入口优先。
+ * 命中口径(确定性):applications 按 sitemap 声明序先到先得,组内 flows 同序;
+ * 组内无可选(与目标词无交集或入口不可达)顺延下一个命中 app;全部落空返回
+ * undefined——不做硬过滤,决策链回退现状,无命中时行为与此前完全一致。
+ */
+function appLocationDecision(
+  context: DriverContext,
+  goalTokens: readonly string[],
+): AgentOperation | undefined {
+  const applications = context.sitemap?.applications;
+  if (applications === undefined || applications.length === 0) return undefined;
+  const candidates = navigableRels(context.entity, context.currentRel);
+  for (const app of applications) {
+    if (!anyTokenInString(goalTokens, `${app.name} ${app.intent}`)) continue;
+    for (const flow of app.flows) {
+      if (!anyTokenInString(goalTokens, `${flow.name} ${flow.title}`)) continue;
+      const entryRel = reachableEntryRel(candidates, `flow:${flow.name}`);
+      if (entryRel !== undefined) return { kind: 'navigate', rel: entryRel };
+    }
+  }
+  return undefined;
+}
 
 /** done 判定:完成类动作成功过,且(队列目标)待处理清零。 */
 function doneDecision(
@@ -353,10 +393,7 @@ function freeRoamDecision(context: DriverContext, goalTokens: readonly string[])
   if (context.sitemap !== undefined) {
     for (const surface of context.sitemap.surfaces) {
       if (!anyTokenInString(hints, `${surface.rel} ${surface.title}`)) continue;
-      const entryRel =
-        candidates.find((rel) => rel === surface.rel) ??
-        // 入口链接的 rel 可能是别名(flow:x),也可能指向实例——两者都试。
-        candidates.find((rel) => rel.endsWith(`:${surface.rel.split(':').pop()}`));
+      const entryRel = reachableEntryRel(candidates, surface.rel);
       if (entryRel !== undefined) return { kind: 'navigate', rel: entryRel };
     }
   }
@@ -375,6 +412,7 @@ function ruleDecide(context: DriverContext): AgentOperation {
   const goalTokens = expandVerb(context.goal.verb);
   return (
     doneDecision(context, goalTokens) ??
+    appLocationDecision(context, goalTokens) ??
     namedResourceDecision(context) ??
     namedActionDecision(context, goalTokens) ??
     flowAdvanceDecision(context, goalTokens) ??

@@ -545,6 +545,148 @@ describe('schema 拒绝后的字段自救', () => {
   });
 });
 
+// ---- ⓪app 定位层(T10 Phase D / Task D2:两层发现,软边界)-------------------
+
+describe('⓪app 定位层(目标词命中 app intent → 组内入口优先)', () => {
+  /** 三个 flow 入口都在 links 上的中转实体(起点集合形态)。 */
+  const flowHub: SirenEntity = {
+    ...collectionEntity({
+      rel: 'articles',
+      members: [{ rel: 'post:post-welcome', flow: 'post-status', node: 'published' }],
+    }),
+    links: [
+      { rel: ['self'], href: '/api/entity?rel=articles' },
+      { rel: ['flow'], href: '/api/entity?rel=flow%3Apost-status' },
+      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting' },
+      { rel: ['flow'], href: '/api/entity?rel=flow%3Acomment-moderation' },
+    ],
+  };
+
+  /** 分组 sitemap:publishing 组内声明序 article-drafting 在前。 */
+  const appSitemap: NonNullable<DriverContext['sitemap']> = {
+    version: 'v-apps',
+    // 扁平 surfaces 声明序故意让 post-status 在前(对照组:无定位层时漫游先中它)。
+    surfaces: [
+      { rel: 'flow:post-status', title: '发布状态管理' },
+      { rel: 'flow:article-drafting', title: '文章发布向导' },
+      { rel: 'flow:comment-moderation', title: '评论审核' },
+    ],
+    applications: [
+      {
+        name: 'publishing',
+        intent: '文章起草与发布管理',
+        flows: [
+          { name: 'article-drafting', title: '文章发布向导' },
+          { name: 'post-status', title: '发布状态管理' },
+        ],
+      },
+      {
+        name: 'community',
+        intent: '评论审核与社区互动',
+        flows: [{ name: 'comment-moderation', title: '评论审核' }],
+      },
+    ],
+  };
+
+  it('目标词命中 publishing intent → 组内声明序在前的 article-drafting 优先(与无定位层的选择不同)', () => {
+    const located = decide(flowHub, { verb: '发布' }, { sitemap: appSitemap });
+    expect(located).toEqual({ kind: 'navigate', rel: 'flow:article-drafting' });
+
+    // 对照:同一实体同一目标,无分组(现状)时自由漫游按扁平 surfaces
+    // 声明序先中 flow:post-status —— 定位层的组内优先改变了选择。
+    const flat = decide(flowHub, { verb: '发布' }, { sitemap: { ...appSitemap, applications: [] } });
+    expect(flat).toEqual({ kind: 'navigate', rel: 'flow:post-status' });
+  });
+
+  it('目标词不命中任何 app intent → 行为与现状逐字一致(回归)', () => {
+    const goal = { verb: '归档' } satisfies AgentGoal;
+    const withApps = decide(flowHub, goal, { sitemap: appSitemap });
+    const withoutApps = decide(flowHub, goal, {
+      sitemap: { ...appSitemap, applications: [] },
+    });
+    expect(withApps).toEqual(withoutApps);
+    expect(withApps.kind).toBe('fail');
+  });
+
+  it('多 app 命中:声明序先到先得,反转顺序结果随之反转(确定性)', () => {
+    const dualHit = [
+      {
+        name: 'publishing',
+        intent: '文章审核与发布',
+        flows: [{ name: 'article-drafting', title: '文章审核向导' }],
+      },
+      {
+        name: 'community',
+        intent: '评论审核与互动',
+        flows: [{ name: 'comment-moderation', title: '评论审核' }],
+      },
+    ];
+    const sitemapOf = (applications: typeof dualHit): NonNullable<DriverContext['sitemap']> => ({
+      version: 'v-dual',
+      surfaces: [],
+      applications,
+    });
+
+    const publishingFirst = decide(
+      flowHub,
+      { verb: '审核' },
+      { sitemap: sitemapOf(dualHit) },
+    );
+    expect(publishingFirst).toEqual({ kind: 'navigate', rel: 'flow:article-drafting' });
+
+    const communityFirst = decide(
+      flowHub,
+      { verb: '审核' },
+      { sitemap: sitemapOf([...dualHit].reverse()) },
+    );
+    expect(communityFirst).toEqual({ kind: 'navigate', rel: 'flow:comment-moderation' });
+  });
+
+  it('先命中的 app 组内无目标相关 flow → 顺延下一个命中 app', () => {
+    const sitemap: NonNullable<DriverContext['sitemap']> = {
+      version: 'v-skip',
+      surfaces: [],
+      applications: [
+        {
+          name: 'publishing',
+          intent: '文章审核与发布',
+          // 组内 flow 与「审核」无词交集 → 本组无可选。
+          flows: [{ name: 'article-drafting', title: '文章起草向导' }],
+        },
+        {
+          name: 'community',
+          intent: '评论审核与互动',
+          flows: [{ name: 'comment-moderation', title: '评论审核' }],
+        },
+      ],
+    };
+    const op = decide(flowHub, { verb: '审核' }, { sitemap });
+    expect(op).toEqual({ kind: 'navigate', rel: 'flow:comment-moderation' });
+  });
+
+  it('组内入口不可达(不在当前实体 links)→ 不幻觉导航,回退现有链', () => {
+    const limitedHub: SirenEntity = {
+      ...collectionEntity({
+        rel: 'articles',
+        members: [{ rel: 'post:post-welcome', flow: 'post-status', node: 'published' }],
+      }),
+      links: [
+        { rel: ['self'], href: '/api/entity?rel=articles' },
+        { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting' },
+      ],
+    };
+    // 「审核」命中 community intent 且组内 title 命中,但入口不可达:
+    // 定位层放弃,自由漫游同样不可达 → fail(软边界,不硬过滤)。
+    const op = decide(limitedHub, { verb: '审核' }, { sitemap: appSitemap });
+    expect(op.kind).toBe('fail');
+  });
+
+  it('已在 flow 实例上(入口不可达)→ 定位层不劫持,落入②点名动作', () => {
+    const op = decide(wizardReady, { verb: '发布', fields: { title: 'T' } }, { sitemap: appSitemap });
+    expect(op).toEqual({ kind: 'exec', action: 'publish', params: { title: 'T' } });
+  });
+});
+
 // ---- 循环握手:rule driver × runAgent(B2 微缩全链路)-----------------------
 
 describe('rule driver 与循环握手(B2 微缩)', () => {
