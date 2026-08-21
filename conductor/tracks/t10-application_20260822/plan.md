@@ -15,15 +15,15 @@
 - [x] Task: 重放一致扩展(app 定义事件参与 fold;I5 重放 hash 一致)(TDD) — 1b9ed95
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — 0cc4d60
 
-## Phase C: sitemap 分组投影
+## Phase C: sitemap 分组投影 [checkpoint: e4eacf5]
 
 - [x] Task: deriveSitemap 增 `applications[]` 分组(name/title/intent/flows)+ flows 条目 app 字段 + surfaces 条目 app 字段;扁平 flows 保留;version hash 行为不变(TDD) — a8d8b12
 - [x] Task: 合同测试(`/.well-known/ui4a.json` 形状;app 定义变更 → version bump)(TDD) — e4eacf5
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — e4eacf5
 
 ## Phase D: agent 两层发现
 
-- [ ] Task: agent loop 静态上下文按 app 分组呈现(name+intent+flows)(TDD/合同测试)
+- [~] Task: agent loop 静态上下文按 app 分组呈现(name+intent+flows)(TDD/合同测试)
 - [ ] Task: rule-driver app 定位层(目标相关性先匹配 app intent → 该 app 内入口优先;不做硬过滤,跨 app links 仍合法)(TDD)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
