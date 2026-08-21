@@ -348,6 +348,12 @@ export function applyEffects(
       definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
       // T7:renderSpecs 表随行(exec 不产凝固;与 confirmations 同口径)。
       renderSpecs: { ...(snapshot.renderSpecs ?? {}) },
+      // T10:applications 表随行,但仅在场时携带——缺省不物化为 {}:
+      // app-known 以"表不存在"为过渡期 vacuous pass 信号,物化空表会
+      // 让检查提前长牙(键集为空,'default' 亦不在)。fold 落表归 Phase B。
+      ...(snapshot.applications !== undefined
+        ? { applications: { ...snapshot.applications } }
+        : {}),
     },
     events: [executedEvent, ...appendedEvents, ...spawnEvents],
   };

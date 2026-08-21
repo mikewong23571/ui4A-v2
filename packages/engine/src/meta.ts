@@ -128,7 +128,7 @@ export interface DefinitionRejectedDetail {
 }
 
 /**
- * definition-submitted:submit 后立即求值六项不变式的落态事件
+ * definition-submitted:submit 后立即求值七项不变式的落态事件
  * (checks-pass → pending-approval + activation 物化;checks-fail → 回 draft,
  * 校验报告即 checks 中的失败项——A.4 原样)。
  */
@@ -228,7 +228,7 @@ function withEntry(
  * meta exec 主入口(编辑动词 + 生命周期动词)。
  *
  * 覆盖:add-node / add-action(applyEffects 的 meta-edit 已改工作副本,此处补
- * 伴随事件 definition-edited)、revise、deprecate、submit(六项不变式 + activation
+ * 伴随事件 definition-edited)、revise、deprecate、submit(七项不变式 + activation
  * 物化/checks-fail 回 draft)、approve / reject(actor-is-human 铁律 5;可经
  * meta/flow:<name> 或 meta/activation:<id> 发起——A.2 把 approve/reject 挂在
  * 激活实体上,裁决仍是 lifecycle 实例同一套三层)。
@@ -303,14 +303,24 @@ export function executeMeta(
   }
 
   if (request.action === 'submit') {
-    // A.4:draft --submit--> validating,引擎内立即求值六项不变式并落态
+    // A.4:draft --submit--> validating,引擎内立即求值七项不变式并落态
     // (validating 是瞬态,不持久化)。checks 全过 → pending-approval +
     // activation 实体;有 fail → 回 draft(校验报告入事件)。
     const entry = entryOf(verdict.snapshot, flowName)!;
+    // app-known(T10)注册表 = 快照 applications 表的键集(已激活 app 名)。
+    // 该表是 Phase B(boot seed/fold 落表)产物:不存在 → 不传
+    // (过渡期 app-known vacuous pass);存在 → 键集即已激活集合。
+    // applyEffects 已随行该表(仅在场时携带,见 effects.ts),故读
+    // verdict.snapshot 与读输入快照等价,与 entry 取数口径一致。
+    const applications =
+      verdict.snapshot.applications === undefined
+        ? undefined
+        : new Set(Object.keys(verdict.snapshot.applications));
     const checks = validateDefinition(entry.definition, {
       guards: deps.guards,
       ...(deps.fieldTypes !== undefined ? { fieldTypes: deps.fieldTypes } : {}),
       ...(deps.effectTypes !== undefined ? { effectTypes: deps.effectTypes } : {}),
+      ...(applications !== undefined ? { applications } : {}),
     });
     const passed = checks.every((check) => check.pass);
     const detail: DefinitionSubmittedDetail = { name: flowName, passed, checks };

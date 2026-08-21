@@ -1,13 +1,14 @@
 /**
- * 激活不变式检查器(T4 Phase A Task 3;arch-brief §10 A.5 种子集)。
+ * 激活不变式检查器(T4 Phase A Task 3;arch-brief §10 A.5 种子集;
+ * T10 Phase A Task 3 增第七条 app-known,spec 架构决定 3)。
  *
- * validateDefinition(draft, registries) → checks:六项逐条、全量报告不短路
+ * validateDefinition(draft, registries) → checks:七项逐条、全量报告不短路
  * (与 guard 求值同口径:每项都要有结果,checks 入 activation 实体与
  * definition-submitted 事件 detail——"非法动作被拒绝、非法定义也应被拒绝"
  * 的定义层落点)。
  *
- * 六项:edge-targets-exist / guards-registered / field-types-known /
- * effect-known / initial-exists / terminal-reachable。
+ * 七项:edge-targets-exist / guards-registered / field-types-known /
+ * effect-known / initial-exists / terminal-reachable / app-known。
  * 纯函数:只读草稿与注册表。
  */
 import type { ActivationCheck, FlowDefinition, GuardRegistry } from '@ui4a/shared';
@@ -22,6 +23,13 @@ export interface DefinitionRegistries {
   fieldTypes?: ReadonlySet<FieldType>;
   /** 已知效果类型;缺省 KNOWN_EFFECT_TYPES。 */
   effectTypes?: ReadonlySet<string>;
+  /**
+   * 已激活 application 名集合(app-known 按键集校验;T10)。
+   * 未提供 → app-known vacuous pass(过渡期语义:Phase B 的 boot seed/fold
+   * 落表前运行时快照没有 application 定义,硬拒会误伤合法提交);
+   * Phase B 后由 seed 保证 'default' 始终激活,本检查长牙。
+   */
+  applications?: ReadonlySet<string>;
 }
 
 interface EffectLike {
@@ -36,7 +44,7 @@ function effectsOf(action: { effect?: unknown }): EffectLike[] {
   return list.filter((e): e is EffectLike => typeof e === 'object' && e !== null);
 }
 
-/** 激活不变式检查器:返回六项检查结果(pass + 失败明细)。 */
+/** 激活不变式检查器:返回七项检查结果(pass + 失败明细)。 */
 export function validateDefinition(
   draft: FlowDefinition,
   registries: DefinitionRegistries,
@@ -116,6 +124,20 @@ export function validateDefinition(
         ? [`terminal(${terminals.join(', ')})均不可从 initial "${draft.initial}" 到达`]
         : undefined;
 
+  // app-known(T10 第七条):归一化后的 draft.app(缺省 → 'default',与
+  // parse 归一化同口径;显式空串属非法引用,parse 不拒、由本检查兜底)
+  // 必须指向已激活 application。registries.applications 未提供时 vacuous
+  // pass(过渡期;落点注释见 DefinitionRegistries.applications)。
+  const appIssues: string[] = [];
+  if (registries.applications !== undefined) {
+    const app = draft.app ?? 'default';
+    if (app === '') {
+      appIssues.push('app: 显式空串不是合法的 application 引用');
+    } else if (!registries.applications.has(app)) {
+      appIssues.push(`app: "${app}" 不是已激活的 application`);
+    }
+  }
+
   return [
     { name: 'edge-targets-exist', pass: edgeIssues.length === 0, ...(edgeIssues.length > 0 ? { detail: edgeIssues } : {}) },
     { name: 'guards-registered', pass: guardIssues.length === 0, ...(guardIssues.length > 0 ? { detail: guardIssues } : {}) },
@@ -123,5 +145,6 @@ export function validateDefinition(
     { name: 'effect-known', pass: effectIssues.length === 0, ...(effectIssues.length > 0 ? { detail: effectIssues } : {}) },
     { name: 'initial-exists', pass: initialExists, ...(initialIssues !== undefined ? { detail: initialIssues } : {}) },
     { name: 'terminal-reachable', pass: terminalIssues === undefined, ...(terminalIssues !== undefined ? { detail: terminalIssues } : {}) },
+    { name: 'app-known', pass: appIssues.length === 0, ...(appIssues.length > 0 ? { detail: appIssues } : {}) },
   ];
 }

@@ -143,3 +143,9 @@
 
 - 用户指示:缺省模型 glm-4.7 → **glm-5.3**(2026-08-14 发布并全量 GLM Coding Plan;同 coding endpoint、1M context、reasoning effort low/high/max 缺省 max)。改动:`DEFAULT_LLM_MODEL`(packages/agent/src/llm-driver.ts)+ llm-smoke/demo-checklist 注释;`LLM_MODEL` env 覆盖口径不变。
 - 本条更新 D7 的缺省型号口径;D7 其余结论(`tool_choice` 必须 auto 不可 required、`provider.chat()` 锁 Chat Completions)继续有效——glm-5.3 的 tool calling 与 reasoning 流行为以 llm-smoke 实测复跑为准;reasoning effort 缺省 max,每步决策时延可能高于 D7 的 8–20s 口径,观测后校准。
+
+## D21 激活不变式六项 → 七项:S2 e2e 精确名单断言机械适配(2026-08-22,T10 Phase A)
+
+- **背景(spec 内部张力)**:T10 spec 架构决定 3 要求第七条不变式 `app-known` 且 checks 全量报告(checks 入 activation 实体与事件 detail);同 spec 红线「B1–B4/S1–S5/I1–I6 既有断言零改动」——两者对 e2e/s2.spec.ts 的 checks 精确名单断言(:383)与 UI 行数断言(:432,`toHaveCount(6)`)不可同时成立。
+- **决定**:按 D11 先例(机械期望更新不算语义改动)处理:s2.spec.ts 名单断言加 `'app-known'`、行数 6→7、注释「六项」→「七项」;submit 链路语义(checks 全过 → pending-approval;fail → 回 draft 留痕)零改动。
+- **过渡期语义**:application 表落库前(Phase B seed 完成前)`app-known` vacuous pass(检查在列表、恒过);Phase B seed 保证 `default` 恒激活后检查长牙。invariants.ts/effects.ts/meta.ts 三处注释已固化此口径。

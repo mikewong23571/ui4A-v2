@@ -5,7 +5,12 @@
  * (spec 架构决定 2),类型若在 engine 会造成 shared→engine 反向依赖。
  * 纯数据、可序列化,web/worker/引擎三方共用。
  */
-import type { ActivationSnapshot, DefinitionEntry, FlowDefinition } from './definition';
+import type {
+  ActivationSnapshot,
+  ApplicationDefinition,
+  DefinitionEntry,
+  FlowDefinition,
+} from './definition';
 
 /**
  * 参数/字段值出处(事件日志记录口径,arch-brief §2):
@@ -160,6 +165,13 @@ export interface EngineSnapshot {
    * fold/applyEffects 等引擎产出函数恒携带(空表也为 {})。
    */
   definitionVersions?: Record<string, Record<number, FlowDefinition>>;
+  /**
+   * application 定义表(T10):app 名 → 应用定义(已激活集合,app-known
+   * 不变式的注册表来源)。Phase A 仅落类型与 submit 接线;Phase B 的
+   * boot seed/fold 负责落表(seed 保证 'default' 恒在)。
+   * 可选与 definitions 同口径:既有快照构造点的类型兼容。
+   */
+  applications?: Record<string, ApplicationDefinition>;
   /**
    * 已凝固渲染 spec 表(T7):concern → 已凝固 spec(render-spec-frozen
    * 事件折叠;首冻为准)。可选与 confirmations 同口径;fold/applyEffects
