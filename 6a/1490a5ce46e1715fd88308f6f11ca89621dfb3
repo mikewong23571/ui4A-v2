@@ -1,0 +1,5 @@
+Phase G event-domain isolation
+Summary: Added core|presentation discriminator to the existing append-only PostgreSQL log with idempotent migration and domain/seq index; expanded Presentation event families; listEvents observes both domains while readLog/toLogEvent mechanically prevent Presentation events from entering Business fold. Legacy fixtures default to core.
+Red evidence: Presentation row returned undefined domain and entered readLog.
+Green evidence: domain/replay DB tests 13 passed; all workspace typechecks; DDL artifact equals runtime DDL; targeted lint/Prettier/diff clean.
+Why: one durable log, two independent folds; Business Snapshot hash cannot be affected by presentation lifecycle.
