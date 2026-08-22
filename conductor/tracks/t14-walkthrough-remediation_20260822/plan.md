@@ -10,8 +10,8 @@
 
 ## Phase B: 画布韧性(#6/#7 + T12 遗留)
 
-- [~] Task: deref 成员级降级(缺字段成员跳过 + 计数标注,零发明;结构性错误仍整面失败)+ per-surface 错误边界(单面抛错不拖死整页)(TDD)
-- [ ] Task: caption grounding 核对 + 非聚合词条禁 dimension(renderSpecGroundingErrors 增 caption 可解析性;kanban/table/timeline bindSchema 去 dimension)(TDD)
+- [x] Task: deref 成员级降级(缺字段成员跳过 + 计数标注,零发明;结构性错误仍整面失败)+ per-surface 错误边界(单面抛错不拖死整页)(TDD) — 97f75b7
+- [~] Task: caption grounding 核对 + 非聚合词条禁 dimension(renderSpecGroundingErrors 增 caption 可解析性;kanban/table/timeline bindSchema 去 dimension)(TDD)
 
 ## Phase C: 人类可读性(#1/#2)
 
