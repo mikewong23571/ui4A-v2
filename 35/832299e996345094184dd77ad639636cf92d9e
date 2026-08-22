@@ -1,0 +1,5 @@
+Phase F Surface action interaction
+Summary: Added stateless live Action Adapter that reloads exact subject, rechecks declaration/guards/schema/dependency, rebuilds action gate, refuses stale/undeclared/batch with zero exec, and returns precise refresh subjects. Surface ActionRunner enables live validation, accessible schema forms with unique IDs/cancel/Escape/focus return, transient high-risk request state, clear requested/executed feedback, and compact interaction-only controls. Added source/member/persistence invariants.
+Red evidence: adapter missing; four new form/high-risk behaviors failed; cross-tsconfig DOM type and legacy fixture expectations exposed integration issues and were corrected without weakening product checks.
+Green evidence: focused 5 files/44 tests; 100-run undeclared-action property test; all workspace typechecks; targeted ESLint/diff clean.
+Safety: member rel not visual index, action schema rechecked before submit, stale action zero POST, no enabled/guardResult/formData/confirmationComplete in persisted Surface/Recipe schemas.
