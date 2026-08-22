@@ -1,0 +1,7 @@
+T16 planning checkpoint
+
+- Feature track for semantic A2UI presentation and Render Sidecar fastpath.
+- 32 user stories, each with explicit user-visible, Safety, real-LLM/browser, replay, accessibility, or human-rubric acceptance.
+- Covers Entity, entities collections, selections, open Flow, bounded multi-level contract graphs, interactive actions, Sidecar invalidation, human optimization, promotion, rollback, explanations, and current thinking/render truth defects.
+- Plan begins with disposable A2UI/Sidecar/graph probes, then Story TDD.
+- No extra skills installed; Conductor catalog contains no A2UI-specific match.
