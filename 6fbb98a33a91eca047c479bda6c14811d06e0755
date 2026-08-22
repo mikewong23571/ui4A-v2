@@ -4,3 +4,14 @@ T13 Phase B Task 2: 版本两版对比 diff 视图
 diff 计算:复用 engine 导出 definitionDiff(transpilePackages 已含 @ui4a/engine,客户端直引;与 submit 时 diff 同 detailedDiff 算法)。
 验收(编排 agent 亲自复跑):flow-definition-view 12/12;s2 e2e 4/4(subagent 报,提交前我已复跑组件测试)。自治验收(带注记)。
 ⚠️ 注记:本次提交时工作区存在外部未提交 WIP(onReasoningDelta 增量推理通道,15 文件,packages/agent+apps/web chat 管线),全量 pnpm check 因该 WIP 的 4 个 chat 路由测试失败而红——非 T13 产物,T13 自身测试全绿。全量门待 WIP 稳定后补验。
+
+---
+
+T13 Phase B Checkpoint 验证报告(自治验收)
+
+阶段范围:4e849fd..HEAD(definition-versions 版本历史投影 + 两版对比 diff 视图)
+自动化验证(编排 agent 亲自执行):
+- 范围测试:meta-project/service.definition-versions/flow-definition-view 31/31;flow-definition-view 12/12;s2 e2e 4/4(含 ③'' 版本对比断言)
+- ⚠️ 全量门注记:Phase B 提交时工作区存在外部并行 WIP(onReasoningDelta),全量 check 曾因此红;该 WIP 已由另一会话提交(24a64ed)后,CI=true pnpm check 复跑 1022 passed 全绿(Phase D 末将再跑全量 e2e 终验)
+- 中途改案记录(e4eaac6 note):版本子实体无 rel/href(rule driver navigableRels 漫游回归),对比数据走内嵌全文
+确认:用户离线,编排 agent 代行验收——自治验收,通过。
