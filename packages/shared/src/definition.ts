@@ -92,7 +92,10 @@ export type EffectDefinition =
   | {
       type: 'set-field';
       field: string;
-      value: unknown;
+      /** 静态值；与 from-param 二选一。 */
+      value?: unknown;
+      /** 从本次已通过 schema 的 action 参数取值。 */
+      'from-param'?: string;
       origin?: ParamOrigin;
     }
   | {
@@ -212,6 +215,15 @@ export interface CapabilityDefinition {
   input?: string;
   /** 输出 schema 描述(可选)。 */
   output?: string;
+  /** 可执行 capability 的结构化输入合同；描述文本 input 保留给人类。 */
+  inputSchema?: Record<string, unknown>;
+  /** 正式 artifact 内容的结构化输出合同。 */
+  outputSchema?: Record<string, unknown>;
+  /** capability 的应用/flow scope；缺省表示定义所属安装面的全部处境。 */
+  scope?: {
+    applications?: string[];
+    flows?: string[];
+  };
 }
 
 // ---------------------------------------------------------------------------

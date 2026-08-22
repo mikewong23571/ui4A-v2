@@ -101,11 +101,19 @@ describe('activeDefinitionOf:活跃指针不随草稿漂移', () => {
     let snapshot = foldFrom([definitionSeedEvent(1, postStatusFlow)]);
     for (const [action, params] of [
       ['revise', {}],
-      ['add-action', { node: 'published', action: { name: 'feature', title: '加精', to: 'archived' } }],
+      [
+        'add-action',
+        { node: 'published', action: { name: 'feature', title: '加精', to: 'archived' } },
+      ],
       ['submit', {}],
     ] as const) {
       const outcome = executeMeta(
-        { rel: 'meta/flow:post-status', action, actor: 'agent', ...(Object.keys(params).length > 0 ? { params } : {}) },
+        {
+          rel: 'meta/flow:post-status',
+          action,
+          actor: 'agent',
+          ...(Object.keys(params).length > 0 ? { params } : {}),
+        },
         snapshot,
         deps,
       );
@@ -122,13 +130,17 @@ describe('activeDefinitionOf:活跃指针不随草稿漂移', () => {
 
     const versions = snapshot.definitionVersions?.['post-status'] ?? {};
     expect(versions[1]).toEqual(postStatusFlow);
-    expect((versions[2] as FlowDefinition).nodes[0]?.actions.map((a) => a.name)).toContain('feature');
+    expect((versions[2] as FlowDefinition).nodes[0]?.actions.map((a) => a.name)).toContain(
+      'feature',
+    );
     expect(activeDefinitionOf(snapshot, 'post-status')).toEqual(versions[2]);
   });
 
   it('全链重放一致(I5):definitionVersions 与 bornVersion 参与在线/重放双轨', () => {
     const seed = definitionSeedEvent(1, articleDraftingFlow);
-    const run = (initial: EngineSnapshot): { snapshot: EngineSnapshot; log: Omit<LogEvent, 'seq'>[] } => {
+    const run = (
+      initial: EngineSnapshot,
+    ): { snapshot: EngineSnapshot; log: Omit<LogEvent, 'seq'>[] } => {
       const log: Omit<LogEvent, 'seq'>[] = [seed];
       let snapshot = fold([seed], { flows: {} }, initial);
       for (const [action, params] of [

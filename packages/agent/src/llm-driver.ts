@@ -134,6 +134,7 @@ export function buildUserPrompt(context: DriverContext): string {
     `## 用户目标\n${JSON.stringify(context.goal)}`,
     `## 结构化会话处境(可修订认知，不是业务事实或 effect 授权)\n${JSON.stringify(context.conversation ?? {}, null, 2)}`,
     `## 当前实体 rel\n${context.currentRel}`,
+    `## 当前 app/scope 的动态 sitemap 处境(actions/capabilities 仅用于发现，执行仍以当前实体合同为准)\n${JSON.stringify(context.sitemap ?? {}, null, 2)}`,
     `## 授权合同观察账本(有界，按最近访问顺序；entity 为完整 Siren 快照)\n${describeObservations(context)}`,
     `## 轨迹(至今)\n${describeTrail(context)}`,
   ];

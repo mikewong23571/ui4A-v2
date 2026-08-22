@@ -5,6 +5,7 @@
  * capability 结果先落状态,guard 再读状态。
  * "按钮的 disabled 与 Agent 看到的 guard 不满足是同一个谓词的两个投影。"
  */
+import type { ActionDefinition } from './definition';
 import type { EngineSnapshot, InstanceSnapshot } from './state';
 
 /**
@@ -17,6 +18,8 @@ export interface GuardContext {
   instance: Readonly<InstanceSnapshot>;
   snapshot: Readonly<EngineSnapshot>;
   params: Readonly<Record<string, unknown>>;
+  /** 当前被裁决的动作声明；通用 provenance guard 用字段 source 读取约束。 */
+  action?: Readonly<ActionDefinition>;
   /** 本次 exec 的行为者(exec 裁决时必填;Siren 投影时缺省)。 */
   actor?: 'human' | 'agent';
   /**

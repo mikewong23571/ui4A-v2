@@ -59,7 +59,12 @@ function metaSnapshot(
     collections: {},
     definitions: {
       // validating 是瞬态,定义条目实际不持久化该状态;投影按审计视图宽容处理。
-      'post-status': { name: 'post-status', version: 1, status: status as DefinitionEntry['status'], definition },
+      'post-status': {
+        name: 'post-status',
+        version: 1,
+        status: status as DefinitionEntry['status'],
+        definition,
+      },
     },
     ...extras,
   };
@@ -89,17 +94,11 @@ describe('meta/self 投影(definition-lifecycle 自身定义,只读)', () => {
   it('只读:无 actions;entities 携带 node-definition(含 action-definition 子实体)', () => {
     const entity = project(metaSnapshot('active'), 'meta/self', deps)!;
     expect(entity.actions).toEqual([]);
-    expect(entity.links).toEqual([
-      { rel: ['self'], href: '/api/entity?rel=meta/self' },
-    ]);
-    const draftNode = entity.entities!.find(
-      (sub) => sub.properties.name === 'draft',
-    );
+    expect(entity.links).toEqual([{ rel: ['self'], href: '/api/entity?rel=meta/self' }]);
+    const draftNode = entity.entities!.find((sub) => sub.properties.name === 'draft');
     expect(draftNode?.class).toEqual(['meta', 'node-definition']);
     expect(draftNode?.rel).toEqual(['node']);
-    const addAction = draftNode?.entities?.find(
-      (sub) => sub.properties.name === 'add-action',
-    );
+    const addAction = draftNode?.entities?.find((sub) => sub.properties.name === 'add-action');
     expect(addAction?.class).toEqual(['meta', 'action-definition']);
     expect(addAction?.properties).toMatchObject({
       name: 'add-action',
@@ -218,7 +217,11 @@ describe('meta/activation:<id> 激活实体投影(A.2 激活请求形状)', () =
       artifact: 'abc123def456',
       checks: [
         { name: 'edge-targets-exist', pass: true },
-        { name: 'guards-registered', pass: false, detail: ['nodes[published].actions[unpublish]: no-such-guard 未注册'] },
+        {
+          name: 'guards-registered',
+          pass: false,
+          detail: ['nodes[published].actions[unpublish]: no-such-guard 未注册'],
+        },
       ],
       definition: cloneFlow(),
       // 机械 diff 纯数据(T4 Phase C):引擎在 submit 时计算,投影原样携带——
@@ -292,7 +295,9 @@ describe('meta/activation:<id> 激活实体投影(A.2 激活请求形状)', () =
   });
 
   it('未知激活 id → undefined;meta/activations = 待审队列(仅 pending)', () => {
-    expect(project(snapshotWith('pending-approval'), 'meta/activation:ghost', deps)).toBeUndefined();
+    expect(
+      project(snapshotWith('pending-approval'), 'meta/activation:ghost', deps),
+    ).toBeUndefined();
     const queue = project(snapshotWith('pending-approval'), 'meta/activations', deps)!;
     expect(queue.class).toEqual(['collection', 'meta/activations']);
     expect(queue.properties).toMatchObject({ rel: 'meta/activations', count: 1 });

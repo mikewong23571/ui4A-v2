@@ -278,11 +278,13 @@ export function applyEffects(
       instances[request.rel] = { ...instances[request.rel]!, fields: {} };
     } else if (effect.type === 'set-field') {
       const origin: ParamOrigin = effect.origin ?? 'effect';
+      const value =
+        effect['from-param'] !== undefined ? request.params?.[effect['from-param']] : effect.value;
       instances[request.rel] = {
         ...instances[request.rel]!,
         fields: {
           ...instances[request.rel]!.fields,
-          [effect.field]: { value: effect.value, origin },
+          [effect.field]: { value, origin },
         },
       };
     } else if (effect.type === 'append') {
@@ -377,6 +379,7 @@ export function applyEffects(
       ...(snapshot.capabilities !== undefined
         ? { capabilities: { ...snapshot.capabilities } }
         : {}),
+      artifacts: { ...(snapshot.artifacts ?? {}) },
     },
     events: [executedEvent, ...appendedEvents, ...spawnEvents],
   };

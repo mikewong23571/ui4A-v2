@@ -42,7 +42,12 @@ export const articleDraftingFlow: FlowDefinition = {
           type: 'textarea',
           required: true,
           semantics: 'work-product',
-          source: { kind: 'proposal', capability: 'draft', options: 3, selection: 'human-required' },
+          source: {
+            kind: 'proposal',
+            capability: 'draft',
+            options: 3,
+            selection: 'human-required',
+          },
         },
       ],
       actions: [{ name: 'next', title: '完成', to: 'ready' }],
@@ -57,7 +62,13 @@ export const articleDraftingFlow: FlowDefinition = {
           to: 'done',
           effect: [
             { type: 'transition' },
-            { type: 'append', collection: 'articles', 'resource-type': 'post', 'name-from': 'title', node: 'published' },
+            {
+              type: 'append',
+              collection: 'articles',
+              'resource-type': 'post',
+              'name-from': 'title',
+              node: 'published',
+            },
           ],
         },
       ],
@@ -184,8 +195,6 @@ export const seedSnapshot: EngineSnapshot = {
 };
 
 /** 测试用 flow 注册表(name → 定义)。 */
-export function flowRegistry(
-  ...flows: FlowDefinition[]
-): Record<string, FlowDefinition> {
+export function flowRegistry(...flows: FlowDefinition[]): Record<string, FlowDefinition> {
   return Object.fromEntries(flows.map((flow) => [flow.name, flow]));
 }

@@ -78,31 +78,30 @@ describe('parseFlowDefinition — 拒绝非法定义', () => {
   });
 
   it('initial 不存在于 nodes 拒绝,issue 带 path', () => {
-    expect(() =>
-      parseFlowDefinition(flowWith(minimalFlow, (d) => (d.initial = 'zzz'))),
-    ).toThrow(/initial/);
+    expect(() => parseFlowDefinition(flowWith(minimalFlow, (d) => (d.initial = 'zzz')))).toThrow(
+      /initial/,
+    );
   });
 
   it('重复节点名拒绝', () => {
     expect(() =>
-      parseFlowDefinition(
-        flowWith(minimalFlow, (d) => (d.nodes[1].name = 'a')),
-      ),
+      parseFlowDefinition(flowWith(minimalFlow, (d) => (d.nodes[1].name = 'a'))),
     ).toThrow(/重复/);
   });
 
   it('action.to 指向不存在的节点拒绝', () => {
     expect(() =>
-      parseFlowDefinition(
-        flowWith(minimalFlow, (d) => (d.nodes[0].actions[0].to = 'ghost')),
-      ),
+      parseFlowDefinition(flowWith(minimalFlow, (d) => (d.nodes[0].actions[0].to = 'ghost'))),
     ).toThrow(/to/);
   });
 
   it('未知 effect 类型拒绝', () => {
     expect(() =>
       parseFlowDefinition(
-        flowWith(minimalFlow, (d) => ((d.nodes[0].actions[0] as { effect: unknown }).effect = [{ type: 'explode' }])),
+        flowWith(
+          minimalFlow,
+          (d) => ((d.nodes[0].actions[0] as { effect: unknown }).effect = [{ type: 'explode' }]),
+        ),
       ),
     ).toThrow(/effect/);
   });
@@ -126,7 +125,9 @@ describe('parseFlowDefinition — 拒绝非法定义', () => {
     ).toThrow(/重复/);
     expect(() =>
       parseFlowDefinition(
-        flowWith(articleDraftingFlow, (d) => d.nodes[0].fields?.push({ name: 'title', type: 'text' })),
+        flowWith(articleDraftingFlow, (d) =>
+          d.nodes[0].fields?.push({ name: 'title', type: 'text' }),
+        ),
       ),
     ).toThrow(/重复/);
   });
@@ -181,7 +182,10 @@ describe('validateFlowDefinition(已类型化定义的语义校验)', () => {
 
   it('spawn effect 缺 capability 报 issue', () => {
     const issues = validateFlowDefinition(
-      flowWith(minimalFlow, (d) => ((d.nodes[0].actions[0] as { effect: unknown }).effect = { type: 'spawn' })),
+      flowWith(
+        minimalFlow,
+        (d) => ((d.nodes[0].actions[0] as { effect: unknown }).effect = { type: 'spawn' }),
+      ),
     );
     expect(issues.some((i) => i.path.includes('capability'))).toBe(true);
   });

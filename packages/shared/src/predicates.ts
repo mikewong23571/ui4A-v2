@@ -52,9 +52,7 @@ export const alwaysTrue: GuardPredicate = () => true;
 
 /** definition-lifecycle 实例且处于给定生命周期状态。 */
 function lifecycleAt(context: GuardContext, status: string): boolean {
-  return (
-    context.instance.flow === 'definition-lifecycle' && context.instance.node === status
-  );
+  return context.instance.flow === 'definition-lifecycle' && context.instance.node === status;
 }
 
 /** lifecycle 实例处于 draft(编辑动词的前置,A.3 is-draft)。 */
@@ -190,6 +188,31 @@ export const noLiveInstances: GuardPredicate = (context) => {
  */
 export const actorIsHuman: GuardPredicate = (context) => context.actor === 'human';
 
+/**
+ * 正式 artifact 引用校验：动作字段以 source.kind=effect + capability 声明
+ * 期望能力；参数必须引用已物化工件，且工件来源实体就是当前实例。
+ * capability 输出仍是独立工件，此 guard 只授权随后 action 保存引用。
+ */
+export const artifactInputValid: GuardPredicate = (context) => {
+  const constrained = (context.action?.fields ?? []).filter(
+    (field) => field.source?.kind === 'effect' && field.source.capability !== undefined,
+  );
+  if (constrained.length === 0) return false;
+  return constrained.every((field) => {
+    const rel = context.params[field.name];
+    // Siren 投影以空参数求值；必填性归 schema 层，参数缺席时不提前阻塞动作。
+    if (rel === undefined) return true;
+    if (typeof rel !== 'string') return false;
+    const artifact = context.snapshot.artifacts?.[rel];
+    return (
+      artifact !== undefined &&
+      artifact.capability === field.source?.capability &&
+      artifact.source.rel === context.instance.rel &&
+      (field.source?.from === undefined || artifact.source.field === field.source.from)
+    );
+  });
+};
+
 /** 种子注册表:名字 → 谓词。meta/registries 的运行时子集。 */
 export const seedGuardRegistry: GuardRegistry = {
   'is-pending': isPending,
@@ -197,6 +220,7 @@ export const seedGuardRegistry: GuardRegistry = {
   'title-not-taken': titleNotTaken,
   'always-true': alwaysTrue,
   'actor-is-human': actorIsHuman,
+  'artifact-input-valid': artifactInputValid,
   // T4 meta 平面(A.3 编辑动词 + is-active)。
   'is-draft': isDraft,
   'is-active': isActive,

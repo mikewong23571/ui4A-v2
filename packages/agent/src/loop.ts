@@ -139,14 +139,13 @@ export async function runAgent(
   try {
     const fetched = await client.getSitemap();
     if (fetched !== undefined) {
-      sitemap = {
+      const full: SitemapSummary = {
         version: fetched.version,
-        surfaces: fetched.surfaces.map((surface) => ({
-          rel: surface.rel,
-          title: surface.title,
-        })),
+        surfaces: fetched.surfaces.map((surface) => ({ ...surface })),
         applications: fetched.applications,
+        capabilities: fetched.capabilities ?? [],
       };
+      sitemap = full;
     }
   } catch {
     sitemap = undefined;
@@ -273,6 +272,30 @@ export async function runAgent(
 
     // 上下文是逐步快照(trail/successes 拷贝):decide 之后循环继续追加,
     // 不应经由引用改写 driver 已见的历史。
+    const entityFlow =
+      typeof fetched.entity.properties.flow === 'string'
+        ? fetched.entity.properties.flow
+        : undefined;
+    const currentApp =
+      options.app ??
+      sitemap?.applications.find((application) =>
+        application.flows.some((flow) => flow.name === entityFlow),
+      )?.name;
+    const scopedSitemap =
+      sitemap === undefined || currentApp === undefined
+        ? sitemap
+        : {
+            ...sitemap,
+            surfaces: sitemap.surfaces.filter(
+              (surface) => surface.app === undefined || surface.app === currentApp,
+            ),
+            applications: sitemap.applications.filter(
+              (application) => application.name === currentApp,
+            ),
+            capabilities: (sitemap.capabilities ?? []).filter((capability) =>
+              capability.scope.applications.includes(currentApp),
+            ),
+          };
     const context: DriverContext = {
       goal,
       conversationMessages: conversationMessages.map((message) => ({ ...message })),
@@ -283,9 +306,9 @@ export async function runAgent(
       successes: [...successes],
       lastRejection,
       observations: [...observations],
-      sitemap,
+      sitemap: scopedSitemap,
       role: options.role,
-      app: options.app,
+      app: currentApp,
     };
     lastRejection = undefined;
     const op = await driver.decide(context, decideSink);

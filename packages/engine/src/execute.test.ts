@@ -121,7 +121,14 @@ describe('executeWithGates — agent + high 挂起路径', () => {
 
   it('suspended 结果携带 confirmation 摘要(id/targetRel/targetAction/params/proposedBy/channel/policyReason)', () => {
     const outcome = executeWithGates(
-      { rel: 'vm:i-abc123', action: 'deploy', params: { note: 'cleanup' }, actor: 'agent', principal: 'user:mike', channel: 'chat' },
+      {
+        rel: 'vm:i-abc123',
+        action: 'deploy',
+        params: { note: 'cleanup' },
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'chat',
+      },
       riskySnapshot,
       deps,
     );

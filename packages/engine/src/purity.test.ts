@@ -18,7 +18,9 @@ const srcDir = dirname(fileURLToPath(import.meta.url));
 
 function librarySources(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts'))
+    .filter(
+      (entry) => entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts'),
+    )
     .map((entry) => join(directory, entry.name));
 }
 
@@ -41,8 +43,8 @@ describe('引擎两栖性(纯 TS,浏览器/服务端零 Node API)', () => {
     }
   });
 
-  it('扫描到的库源覆盖引擎全部模块(21 个非测试源文件;T14 增 meta-bootstrap)', () => {
-    expect(librarySources(srcDir).length).toBe(21);
+  it('扫描到的库源覆盖引擎全部模块(22 个非测试源文件;T15 增 capability-artifact)', () => {
+    expect(librarySources(srcDir).length).toBe(22);
   });
 
   it('公共导出面完整(barrel 可整体导入求值)', () => {

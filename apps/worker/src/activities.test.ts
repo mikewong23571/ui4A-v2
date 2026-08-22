@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { DbExecutor } from '../../web/src/db/events';
 
-import { deliverNotification } from './activities';
+import { deliverNotification, materializeCapabilityArtifact } from './activities';
 import type { NotifyConfirmation } from './workflows';
 
 // notify activity 单测(T3 Phase C / Task 1,TDD 红→绿):
@@ -100,5 +100,51 @@ describe('deliverNotification(幂等)', () => {
     await deliverNotification(db, { ...confirmation, id: 'c2' });
     expect(inserts).toHaveLength(1);
     expect(JSON.parse(String(inserts[0]!.values[8]))).toMatchObject({ notificationId: 'notif:c2' });
+  });
+});
+
+describe('materializeCapabilityArtifact(正式模型工件)', () => {
+  it('worker 只落 capability artifact 事件，携带完整 provenance 并计算内容 hash', async () => {
+    const { db, inserts } = fakeDb(null);
+    const result = await materializeCapabilityArtifact(db, {
+      id: 'summary-a1',
+      capability: 'summarize',
+      source: { rel: 'post:first-post', field: 'body' },
+      model: 'stub-summary-model',
+      outputSchema: { type: 'object', required: ['summary'] },
+      content: { summary: '正式摘要' },
+      createdBy: { actor: 'agent', principal: 'user:mike' },
+    });
+
+    expect(result).toMatchObject({ seq: 7, deduplicated: false });
+    expect(result.contentHash).toMatch(/^sha256:[a-f0-9]{64}$/);
+    const values = inserts[0]!.values;
+    expect(values[3]).toBe('capability-artifact-created');
+    expect(values[4]).toBe('artifact:summary-a1');
+    expect(JSON.parse(String(values[8]))).toEqual({
+      id: 'summary-a1',
+      capability: 'summarize',
+      source: { rel: 'post:first-post', field: 'body' },
+      model: 'stub-summary-model',
+      outputSchema: { type: 'object', required: ['summary'] },
+      content: { summary: '正式摘要' },
+      contentHash: result.contentHash,
+      createdBy: { actor: 'agent', principal: 'user:mike' },
+    });
+  });
+
+  it('同 artifact id 重试不重复写', async () => {
+    const { db, inserts } = fakeDb(6);
+    const result = await materializeCapabilityArtifact(db, {
+      id: 'summary-a1',
+      capability: 'summarize',
+      source: { rel: 'post:first-post', field: 'body' },
+      model: 'stub',
+      outputSchema: { type: 'object' },
+      content: { summary: '正式摘要' },
+      createdBy: { actor: 'agent' },
+    });
+    expect(result).toMatchObject({ seq: 6, deduplicated: true });
+    expect(inserts).toHaveLength(0);
   });
 });

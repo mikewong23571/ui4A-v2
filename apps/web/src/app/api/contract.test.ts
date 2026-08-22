@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 import { contentVersion, fold } from '@ui4a/engine';
 import type { SirenEntity } from '@ui4a/engine';
@@ -172,7 +173,12 @@ describe('B1 投影联动:exec → /api/entity', () => {
     expect(postRes.status).toBe(200);
     const post = (await postRes.json()) as SirenEntity;
     expect(post.properties).toMatchObject({ rel: 'post:new-article', node: 'published' });
-    expect(post.actions.map((action) => action.name)).toEqual(['unpublish', 'archive']);
+    expect(post.actions.map((action) => action.name)).toEqual([
+      'unpublish',
+      'archive',
+      'generate-summary',
+      'save-summary',
+    ]);
   });
 
   it('B2:unpublish 后该篇 offline,另一篇不受影响(精确下线)', async () => {
@@ -209,6 +215,46 @@ describe('sitemap 表面 ↔ entity 端点一致', () => {
       const res = await entity(surface.rel);
       expect(res.status, `集合面 ${surface.rel} 应可达`).toBe(200);
     }
+  });
+
+  it('业务 sitemap 端点披露 action 目录与 capability 定义/scope', async () => {
+    const sitemap = (await (await getSitemap()).json()) as {
+      applications: {
+        name: string;
+        flows: { nodes: { actions: { name: string }[] }[] }[];
+      }[];
+      capabilities: {
+        name: string;
+        title: string;
+        kind: string;
+        intent: string;
+        input?: string;
+        output?: string;
+        scope: { applications: string[]; flows: string[] };
+      }[];
+    };
+
+    const publishing = sitemap.applications.find((app) => app.name === 'publishing');
+    expect(
+      publishing?.flows.flatMap((flow) =>
+        flow.nodes.flatMap((node) => node.actions.map((action) => action.name)),
+      ),
+    ).toContain('publish');
+    expect(sitemap.capabilities.find((capability) => capability.name === 'draft')).toMatchObject({
+      title: '工件起草',
+      kind: 'extract',
+      intent: expect.any(String),
+      input: expect.any(String),
+      output: expect.any(String),
+      scope: { applications: ['publishing'], flows: ['article-drafting'] },
+    });
+  });
+
+  it('chat route 不为测试 action/capability 增加故事专用分支', () => {
+    const source = readFileSync(new URL('./chat/route.ts', import.meta.url), 'utf8');
+    expect(source).not.toContain('action_feature');
+    expect(source).not.toContain('action_generate-summary');
+    expect(source).not.toContain('capability:summarize');
   });
 });
 

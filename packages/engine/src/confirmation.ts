@@ -220,6 +220,7 @@ export function suspendForConfirmation(
       ...(snapshot.capabilities !== undefined
         ? { capabilities: { ...snapshot.capabilities } }
         : {}),
+      artifacts: { ...(snapshot.artifacts ?? {}) },
     },
     events: [event],
     confirmation: {
@@ -536,6 +537,7 @@ export function rejectConfirmation(
       ...(snapshot.capabilities !== undefined
         ? { capabilities: { ...snapshot.capabilities } }
         : {}),
+      artifacts: { ...(snapshot.artifacts ?? {}) },
     },
     events: [rejectedEvent],
   };

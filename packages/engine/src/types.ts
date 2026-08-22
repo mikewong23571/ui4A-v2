@@ -17,6 +17,7 @@ export type {
   NodeDefinition,
   FlowDefinition,
   ApplicationDefinition,
+  CapabilityDefinition,
   FlowEdge,
   DefinitionStatus,
   DefinitionEntry,

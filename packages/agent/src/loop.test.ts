@@ -990,6 +990,26 @@ const groupedSitemapBody = {
       flows: [{ name: 'comment-moderation', title: '评论审核', app: 'community' }],
     },
   ],
+  capabilities: [
+    {
+      name: 'draft',
+      title: '工件起草',
+      kind: 'extract',
+      intent: '生成文章候选草稿',
+      input: '文章字段 schema',
+      output: '候选草稿',
+      inputSchema: { type: 'object', required: ['body'] },
+      outputSchema: { type: 'object', required: ['summary'] },
+      scope: { applications: ['publishing'], flows: ['article-drafting'] },
+    },
+    {
+      name: 'moderate',
+      title: '评论审核建议',
+      kind: 'transform',
+      intent: '识别评论风险',
+      scope: { applications: ['community'], flows: ['comment-moderation'] },
+    },
+  ],
 };
 
 describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
@@ -1008,7 +1028,9 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     expect(sitemap?.applications.map((app) => app.name)).toEqual(['publishing', 'community']);
     const publishing = sitemap?.applications.find((app) => app.name === 'publishing');
     expect(publishing?.intent).toBe('内容起草与发布');
-    expect(publishing?.flows).toEqual([{ name: 'article-drafting', title: '文章发布向导' }]);
+    expect(publishing?.flows).toEqual([
+      { name: 'article-drafting', title: '文章发布向导', actions: [] },
+    ]);
     // 扁平信息保留(向后兼容:既有消费方零改动)。
     expect(sitemap?.surfaces.map((surface) => surface.rel)).toEqual(['articles', 'comments']);
   });
@@ -1025,7 +1047,91 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     const sitemap = driver.contexts[0]!.sitemap;
     expect(sitemap?.version).toBe('v-flat');
     expect(sitemap?.applications).toEqual([]);
+    expect(sitemap?.capabilities).toEqual([]);
     expect(sitemap?.surfaces).toEqual([{ rel: 'articles', title: '文章集合' }]);
+  });
+
+  it('指定 app 后只向 driver 披露该 app 的 surfaces/flows/actions/capabilities', async () => {
+    const sitemap = structuredClone(groupedSitemapBody);
+    (
+      sitemap.applications[0]!.flows[0] as unknown as {
+        nodes: { name: string; actions: unknown[] }[];
+      }
+    ).nodes = [
+      {
+        name: 'published',
+        actions: [{ name: 'feature', title: '新激活动作', guards: [] }],
+      },
+    ];
+    const transport = contractTransport({
+      entities: { articles: articlesEntity },
+      sitemap,
+    });
+    const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
+
+    await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+      app: 'publishing',
+    });
+
+    expect(driver.contexts[0]!.sitemap).toMatchObject({
+      surfaces: [{ rel: 'articles', title: '文章集合' }],
+      applications: [
+        {
+          name: 'publishing',
+          flows: [
+            {
+              name: 'article-drafting',
+              actions: [{ name: 'feature', title: '新激活动作', node: 'published', guards: [] }],
+            },
+          ],
+        },
+      ],
+      capabilities: [
+        {
+          name: 'draft',
+          title: '工件起草',
+          kind: 'extract',
+          inputSchema: { type: 'object', required: ['body'] },
+          outputSchema: { type: 'object', required: ['summary'] },
+          scope: { applications: ['publishing'], flows: ['article-drafting'] },
+        },
+      ],
+    });
+    expect(driver.contexts[0]!.sitemap?.surfaces).not.toContainEqual(
+      expect.objectContaining({ rel: 'comments' }),
+    );
+    expect(driver.contexts[0]!.sitemap?.capabilities).not.toContainEqual(
+      expect.objectContaining({ name: 'moderate' }),
+    );
+  });
+
+  it('未显式指定 app 时，从当前实体 flow 推导 app 并按 capability scope 有界披露', async () => {
+    const drafting = instanceEntity({
+      rel: 'article-drafting:main',
+      flow: 'article-drafting',
+      node: 'basic-info',
+    });
+    const transport = contractTransport({
+      entities: { 'article-drafting:main': drafting },
+      sitemap: groupedSitemapBody,
+    });
+    const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
+
+    await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+      startRel: 'article-drafting:main',
+    });
+
+    expect(driver.contexts[0]!.app).toBe('publishing');
+    expect(driver.contexts[0]!.sitemap?.applications.map((app) => app.name)).toEqual([
+      'publishing',
+    ]);
+    expect(driver.contexts[0]!.sitemap?.capabilities?.map((capability) => capability.name)).toEqual(
+      ['draft'],
+    );
   });
 });
 

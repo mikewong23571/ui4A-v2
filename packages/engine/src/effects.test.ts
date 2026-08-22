@@ -377,6 +377,7 @@ describe('效果词汇表 — spawn(T2 stub:只记事件不改状态)', () => {
         activations: {},
         definitionVersions: {},
         renderSpecs: {},
+        artifacts: {},
       }),
     );
     expect(outcome.events.map((e) => e.kind)).toEqual(['action-executed', 'spawn-requested']);

@@ -179,7 +179,9 @@ function metaContext(
         : {}),
     },
     collections: {},
-    definitions: { 'post-status': { name: 'post-status', version: 1, status: 'draft', definition: draftFlow } },
+    definitions: {
+      'post-status': { name: 'post-status', version: 1, status: 'draft', definition: draftFlow },
+    },
   };
   return {
     instance: snapshot.instances['meta/flow:post-status']!,
@@ -217,22 +219,46 @@ describe('meta 谓词(纯函数,只读快照)', () => {
 
   it('guards-registered:按 knownGuards 键集;未注册/缺上下文 false', () => {
     const known = new Set(['is-pending']);
-    expect(guardsRegistered(metaContext('draft', { action: { guards: ['is-pending'] } }, { knownGuards: known }))).toBe(true);
-    expect(guardsRegistered(metaContext('draft', { action: { guards: ['nope'] } }, { knownGuards: known }))).toBe(false);
-    expect(guardsRegistered(metaContext('draft', { action: { guards: ['is-pending'] } }))).toBe(false);
+    expect(
+      guardsRegistered(
+        metaContext('draft', { action: { guards: ['is-pending'] } }, { knownGuards: known }),
+      ),
+    ).toBe(true);
+    expect(
+      guardsRegistered(
+        metaContext('draft', { action: { guards: ['nope'] } }, { knownGuards: known }),
+      ),
+    ).toBe(false);
+    expect(guardsRegistered(metaContext('draft', { action: { guards: ['is-pending'] } }))).toBe(
+      false,
+    );
     expect(guardsRegistered(metaContext('draft', {}))).toBe(true);
   });
 
   it('effect-known:类型词表;未声明效果 vacuous;未知类型 false', () => {
-    expect(effectKnown(metaContext('draft', { action: { effect: [{ type: 'transition', to: 'offline' }] } }))).toBe(true);
-    expect(effectKnown(metaContext('draft', { action: { effect: { type: 'set-field', field: 'x', value: 1 } } }))).toBe(true);
-    expect(effectKnown(metaContext('draft', { action: { effect: [{ type: 'teleport' }] } }))).toBe(false);
+    expect(
+      effectKnown(
+        metaContext('draft', { action: { effect: [{ type: 'transition', to: 'offline' }] } }),
+      ),
+    ).toBe(true);
+    expect(
+      effectKnown(
+        metaContext('draft', { action: { effect: { type: 'set-field', field: 'x', value: 1 } } }),
+      ),
+    ).toBe(true);
+    expect(effectKnown(metaContext('draft', { action: { effect: [{ type: 'teleport' }] } }))).toBe(
+      false,
+    );
     expect(effectKnown(metaContext('draft', { action: {} }))).toBe(true);
   });
 
   it('action-not-exists:目标节点上同名动作防重复;参数缺席 vacuous', () => {
-    expect(actionNotExists(metaContext('draft', { node: 'published', action: { name: 'pin' } }))).toBe(true);
-    expect(actionNotExists(metaContext('draft', { node: 'published', action: { name: 'unpublish' } }))).toBe(false);
+    expect(
+      actionNotExists(metaContext('draft', { node: 'published', action: { name: 'pin' } })),
+    ).toBe(true);
+    expect(
+      actionNotExists(metaContext('draft', { node: 'published', action: { name: 'unpublish' } })),
+    ).toBe(false);
     expect(actionNotExists(metaContext('draft', {}))).toBe(true);
   });
 

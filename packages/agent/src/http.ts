@@ -8,7 +8,13 @@
  */
 import type { SirenEntity } from '@ui4a/engine';
 
-import type { FetchLike, SitemapApplicationSummary, SitemapSummary } from './types';
+import type {
+  FetchLike,
+  SitemapActionSummary,
+  SitemapApplicationSummary,
+  SitemapCapabilitySummary,
+  SitemapSummary,
+} from './types';
 
 /** exec 请求体(HTTP 合同的 POST 载荷形状)。 */
 export interface ExecPayload {
@@ -100,15 +106,92 @@ function asApplicationSummaries(value: unknown): SitemapApplicationSummary[] {
   for (const entry of value) {
     if (!isPlainObject(entry)) continue;
     if (typeof entry.name !== 'string' || typeof entry.intent !== 'string') continue;
-    const flows = (Array.isArray(entry.flows) ? entry.flows : [])
-      .filter(
-        (flow): flow is { name: string; title: string } =>
-          isPlainObject(flow) && typeof flow.name === 'string' && typeof flow.title === 'string',
-      )
-      .map((flow) => ({ name: flow.name, title: flow.title }));
+    const flows = (Array.isArray(entry.flows) ? entry.flows : []).flatMap((flow) => {
+      if (!isPlainObject(flow) || typeof flow.name !== 'string' || typeof flow.title !== 'string') {
+        return [];
+      }
+      const actions: SitemapActionSummary[] = [];
+      const directActions = Array.isArray(flow.actions) ? flow.actions : [];
+      for (const action of directActions) {
+        if (
+          isPlainObject(action) &&
+          typeof action.name === 'string' &&
+          typeof action.title === 'string' &&
+          typeof action.node === 'string'
+        ) {
+          actions.push({
+            name: action.name,
+            title: action.title,
+            node: action.node,
+            guards: Array.isArray(action.guards)
+              ? action.guards.filter((guard): guard is string => typeof guard === 'string')
+              : [],
+          });
+        }
+      }
+      for (const node of Array.isArray(flow.nodes) ? flow.nodes : []) {
+        if (!isPlainObject(node) || typeof node.name !== 'string') continue;
+        for (const action of Array.isArray(node.actions) ? node.actions : []) {
+          if (
+            !isPlainObject(action) ||
+            typeof action.name !== 'string' ||
+            typeof action.title !== 'string'
+          ) {
+            continue;
+          }
+          actions.push({
+            name: action.name,
+            title: action.title,
+            node: node.name,
+            guards: Array.isArray(action.guards)
+              ? action.guards.filter((guard): guard is string => typeof guard === 'string')
+              : [],
+          });
+        }
+      }
+      return [{ name: flow.name, title: flow.title, actions }];
+    });
     applications.push({ name: entry.name, intent: entry.intent, flows });
   }
   return applications;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === 'string')
+    : [];
+}
+
+function asCapabilitySummaries(value: unknown): SitemapCapabilitySummary[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (
+      !isPlainObject(entry) ||
+      typeof entry.name !== 'string' ||
+      typeof entry.title !== 'string' ||
+      !['transform', 'extract', 'effect'].includes(String(entry.kind)) ||
+      typeof entry.intent !== 'string' ||
+      !isPlainObject(entry.scope)
+    ) {
+      return [];
+    }
+    return [
+      {
+        name: entry.name,
+        title: entry.title,
+        kind: entry.kind as SitemapCapabilitySummary['kind'],
+        intent: entry.intent,
+        ...(typeof entry.input === 'string' ? { input: entry.input } : {}),
+        ...(typeof entry.output === 'string' ? { output: entry.output } : {}),
+        ...(isPlainObject(entry.inputSchema) ? { inputSchema: entry.inputSchema } : {}),
+        ...(isPlainObject(entry.outputSchema) ? { outputSchema: entry.outputSchema } : {}),
+        scope: {
+          applications: stringArray(entry.scope.applications),
+          flows: stringArray(entry.scope.flows),
+        },
+      },
+    ];
+  });
 }
 
 export function createContractClient(baseUrl: string, fetchImpl: FetchLike): ContractClient {
@@ -123,16 +206,21 @@ export function createContractClient(baseUrl: string, fetchImpl: FetchLike): Con
         if (!Array.isArray(body.surfaces)) return undefined;
         const surfaces = body.surfaces
           .filter(
-            (surface): surface is { rel: string; title: string } =>
+            (surface): surface is { rel: string; title: string; app?: string } =>
               isPlainObject(surface) &&
               typeof surface.rel === 'string' &&
               typeof surface.title === 'string',
           )
-          .map((surface) => ({ rel: surface.rel, title: surface.title }));
+          .map((surface) => ({
+            rel: surface.rel,
+            title: surface.title,
+            ...(typeof surface.app === 'string' ? { app: surface.app } : {}),
+          }));
         return {
           version: body.version,
           surfaces,
           applications: asApplicationSummaries(body.applications),
+          capabilities: asCapabilitySummaries(body.capabilities),
         };
       } catch {
         return undefined;

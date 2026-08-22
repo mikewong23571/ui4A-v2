@@ -98,7 +98,7 @@ export function evaluateGuards(
       return { name, pass: false, reason: `guard "${name}" 未注册` };
     }
     try {
-      return { name, pass: predicate({ instance, snapshot, params, actor, knownGuards }) };
+      return { name, pass: predicate({ instance, snapshot, params, action, actor, knownGuards }) };
     } catch (error) {
       return {
         name,
@@ -126,10 +126,7 @@ export function judge(
   }
   const node = flow.nodes.find((candidate) => candidate.name === instance.node);
   if (node === undefined) {
-    return reject(
-      'undeclared',
-      `节点 "${instance.node}" 不在流程 "${flow.name}" 的节点集中`,
-    );
+    return reject('undeclared', `节点 "${instance.node}" 不在流程 "${flow.name}" 的节点集中`);
   }
   const action = node.actions.find((candidate) => candidate.name === request.action);
   if (action === undefined) {

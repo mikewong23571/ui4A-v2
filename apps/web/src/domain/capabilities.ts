@@ -13,5 +13,6 @@ function capability(name: string): CapabilityDefinition {
 }
 
 export const draftCapability = capability('draft');
+export const summarizeCapability = capability('summarize');
 export const notifyCapability = capability('notify');
 export const clarifyCapability = capability('clarify');

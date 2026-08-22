@@ -156,6 +156,14 @@ function projectInstance(
       links.push({ rel: ['collection'], href: entityHref(deps.baseHref, collection) });
     }
   }
+  for (const artifact of Object.values(snapshot.artifacts ?? {})) {
+    if (artifact.source.rel === instance.rel) {
+      links.push({
+        rel: ['artifact', artifact.capability],
+        href: entityHref(deps.baseHref, artifact.rel),
+      });
+    }
+  }
   return {
     class: ['flow-instance', instance.flow],
     properties: {
@@ -187,6 +195,35 @@ function projectCollection(rel: string, snapshot: EngineSnapshot, deps: ProjectD
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, rel) }],
     'guard-results': [],
     entities,
+  };
+}
+
+function projectCapabilityArtifact(
+  rel: string,
+  snapshot: EngineSnapshot,
+  deps: ProjectDeps,
+): SirenEntity | undefined {
+  const artifact = snapshot.artifacts?.[rel];
+  if (artifact === undefined) return undefined;
+  return {
+    class: ['capability-artifact', artifact.capability],
+    properties: {
+      rel,
+      id: artifact.id,
+      capability: artifact.capability,
+      source: artifact.source,
+      model: artifact.model,
+      'output-schema': artifact.outputSchema,
+      content: artifact.content,
+      'content-hash': artifact.contentHash,
+      'created-by': artifact.createdBy,
+    },
+    actions: [],
+    links: [
+      { rel: ['self'], href: entityHref(deps.baseHref, rel) },
+      { rel: ['source'], href: entityHref(deps.baseHref, artifact.source.rel) },
+    ],
+    'guard-results': [],
   };
 }
 
@@ -370,6 +407,7 @@ export function project(
   rel: string,
   deps: ProjectDeps,
 ): SirenEntity | undefined {
+  if (rel.startsWith('artifact:')) return projectCapabilityArtifact(rel, snapshot, deps);
   if (rel === 'meta/self' || rel.startsWith('meta/')) {
     return projectMeta(snapshot, rel, deps);
   }
@@ -743,6 +781,11 @@ function projectCapability(capability: CapabilityDefinition, deps: ProjectDeps):
       intent: capability.intent,
       ...(capability.input !== undefined ? { input: capability.input } : {}),
       ...(capability.output !== undefined ? { output: capability.output } : {}),
+      ...(capability.inputSchema !== undefined ? { 'input-schema': capability.inputSchema } : {}),
+      ...(capability.outputSchema !== undefined
+        ? { 'output-schema': capability.outputSchema }
+        : {}),
+      ...(capability.scope !== undefined ? { scope: capability.scope } : {}),
     },
     actions: [],
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, rel) }],

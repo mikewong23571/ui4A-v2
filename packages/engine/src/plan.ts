@@ -60,8 +60,20 @@ export type PlanOutcomeKind = 'plan-completed' | 'plan-rejected' | 'plan-suspend
  * (kind=plan-executed,追加在伴随事件之后入日志)。
  */
 export type PlanOutcome =
-  | { kind: 'plan-completed'; results: PlanStepResult[]; snapshot: EngineSnapshot; events: EngineEvent[]; record: EngineEvent }
-  | { kind: 'plan-rejected'; results: PlanStepResult[]; snapshot: EngineSnapshot; events: EngineEvent[]; record: EngineEvent }
+  | {
+      kind: 'plan-completed';
+      results: PlanStepResult[];
+      snapshot: EngineSnapshot;
+      events: EngineEvent[];
+      record: EngineEvent;
+    }
+  | {
+      kind: 'plan-rejected';
+      results: PlanStepResult[];
+      snapshot: EngineSnapshot;
+      events: EngineEvent[];
+      record: EngineEvent;
+    }
   | {
       kind: 'plan-suspended';
       results: PlanStepResult[];

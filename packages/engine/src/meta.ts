@@ -175,9 +175,7 @@ export function activeDefinitionOf(
 // ---------------------------------------------------------------------------
 
 /** 激活 id 分配:确定性计数 a1/a2/…(与 confirmation c1/c2 同构)。 */
-export function nextActivationId(
-  activations: Readonly<Record<string, unknown>>,
-): string {
+export function nextActivationId(activations: Readonly<Record<string, unknown>>): string {
   let counter = Object.keys(activations).length + 1;
   while (activations[metaActivationRel(`a${counter}`)] !== undefined) {
     counter += 1;
@@ -202,10 +200,7 @@ function definitionEvent(
 }
 
 /** 定位 lifecycle 实例对应的 definitions 条目(缺任一 → undefined)。 */
-function entryOf(
-  snapshot: EngineSnapshot,
-  flowName: string,
-): DefinitionEntry | undefined {
+function entryOf(snapshot: EngineSnapshot, flowName: string): DefinitionEntry | undefined {
   return snapshot.definitions?.[flowName];
 }
 
@@ -242,9 +237,7 @@ export function executeMeta(
   // (同一谓词的两个投影——激活实体投影挂的是同一批声明的镜像)。
   const activation = activationTargetOf(request, snapshot);
   const judgeRequest: ExecRequest =
-    activation !== undefined
-      ? { ...request, rel: metaFlowRel(activation.flow) }
-      : request;
+    activation !== undefined ? { ...request, rel: metaFlowRel(activation.flow) } : request;
 
   const verdict = executeWithGates(judgeRequest, snapshot, {
     flows: { [DEFINITION_LIFECYCLE]: DEFINITION_LIFECYCLE_FLOW },
@@ -475,10 +468,7 @@ function decide(
         },
         activations,
       },
-      events: [
-        ...verdict.events,
-        definitionEvent(judgeRequest, 'definition-activated', detail),
-      ],
+      events: [...verdict.events, definitionEvent(judgeRequest, 'definition-activated', detail)],
     };
   }
 

@@ -8,6 +8,7 @@
  * - createDriver('auto'|'llm'):缺少配置时返回可恢复 fail,不抛出且不 fallback rule。
  */
 import type { SirenAction } from '@ui4a/engine';
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -156,6 +157,28 @@ describe('LLM 工具调用 → 循环操作映射', () => {
     expect(body).toContain('"navigate"');
     expect(body).toContain('"action_next"');
     expect(body).toContain('"stream":true');
+  });
+
+  it('下一次 prompt/tool build 自动投影实体中新激活的 action，不需要改 driver', async () => {
+    const feature = { ...nextAction, name: 'feature', title: '加精' };
+    const entity = instanceEntity({
+      rel: 'post:first-post',
+      flow: 'post-status',
+      node: 'published',
+      actions: [feature],
+    });
+    const { driver, calls } = llmDriverWith(() =>
+      openaiToolResponse('answer', {
+        content: '当前动作已发现。',
+        sources: [{ rel: 'post:first-post', pointer: '/actions/0' }],
+      }),
+    );
+
+    await driver.decide(context({ currentRel: 'post:first-post', entity }));
+
+    const body = JSON.stringify(calls[0]!.body);
+    expect(body).toContain('action_feature');
+    expect(body).toContain('加精');
   });
 
   it('navigate 工具调用 → navigate', async () => {
@@ -393,6 +416,81 @@ describe('授权合同观察进入 LLM prompt', () => {
     expect(prompt).toContain('欢迎正文');
     expect(prompt).toContain('post:first-post');
     expect(prompt).toContain('post:post-welcome');
+  });
+
+  it('prompt 同时披露目标约束、facts/links/actions/guards 与 app-bounded capability/action 处境', () => {
+    const entity = instanceEntity({
+      rel: 'post:first-post',
+      flow: 'post-status',
+      node: 'published',
+      fields: { title: '第一篇', body: '正文' },
+      actions: [nextAction],
+      collection: 'articles',
+    });
+    const prompt = buildUserPrompt(
+      context({
+        currentRel: 'post:first-post',
+        entity,
+        observations: [{ rel: 'post:first-post', entity }],
+        conversation: {
+          activeGoal: { verb: '保存摘要', targetRel: 'post:first-post' },
+          focus: { currentRel: 'post:first-post' },
+          referents: [],
+          constraints: [{ text: '不要发布', sourceMessageId: 'm1' }],
+        },
+        app: 'publishing',
+        sitemap: {
+          version: 'v-capability',
+          surfaces: [{ rel: 'articles', title: '文章集合' }],
+          applications: [
+            {
+              name: 'publishing',
+              intent: '内容发布',
+              flows: [
+                {
+                  name: 'post-status',
+                  title: '文章状态',
+                  actions: [
+                    { name: 'feature', title: '新激活动作', node: 'published', guards: [] },
+                  ],
+                },
+              ],
+            },
+          ],
+          capabilities: [
+            {
+              name: 'draft',
+              title: '工件起草',
+              kind: 'extract',
+              intent: '生成候选草稿',
+              input: '文章字段 schema',
+              output: '候选草稿',
+              inputSchema: { type: 'object', required: ['body'] },
+              outputSchema: { type: 'object', required: ['summary'] },
+              scope: { applications: ['publishing'], flows: ['post-status'] },
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(prompt).toContain('不要发布');
+    expect(prompt).toContain('"fields"');
+    expect(prompt).toContain('"links"');
+    expect(prompt).toContain('"actions"');
+    expect(prompt).toContain('"guard-results"');
+    expect(prompt).toContain('"feature"');
+    expect(prompt).toContain('"draft"');
+    expect(prompt).toContain('"scope"');
+    expect(prompt).toContain('"inputSchema"');
+    expect(prompt).toContain('"outputSchema"');
+  });
+
+  it('动态 action/capability 发现不在 system prompt 中硬编码故事动作名', () => {
+    const source = readFileSync(new URL('./llm-driver.ts', import.meta.url), 'utf8');
+    expect(source).not.toContain('action_feature');
+    expect(source).not.toContain('action_generate-summary');
+    expect(source).not.toContain('capability:summarize');
   });
 });
 

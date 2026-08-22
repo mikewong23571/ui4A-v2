@@ -24,11 +24,7 @@ const GOAL = { verb: '发布', fields: { title: 't5' } };
 
 let seq = 0;
 
-function event(
-  kind: LogEvent['kind'],
-  detail: unknown,
-  extra: Partial<LogEvent> = {},
-): LogEvent {
+function event(kind: LogEvent['kind'], detail: unknown, extra: Partial<LogEvent> = {}): LogEvent {
   seq += 1;
   return {
     seq,
@@ -89,7 +85,11 @@ describe('fold(委托事件族)', () => {
         event('delegation-step', stepDetail(1, 'navigated')),
         event('delegation-step', stepDetail(2, 'executed')),
         event('delegation-step', stepDetail(3, 'rejected')),
-        event('delegation-completed', { steps: 3, successes: 1, summary: '目标完成: publish 已成功' }),
+        event('delegation-completed', {
+          steps: 3,
+          successes: 1,
+          summary: '目标完成: publish 已成功',
+        }),
       ],
       deps,
     );
@@ -147,15 +147,9 @@ describe('fold(委托事件族)', () => {
 
   it('日志完整性:重复 started / 步号缺口 / 重复步号 / 未知委托的 step / 重复终态 均响亮抛错', () => {
     const started = event('delegation-started', startedDetail());
-    expect(() =>
-      fold(
-        [
-          { ...started },
-          { ...started, seq: started.seq + 1 },
-        ],
-        deps,
-      ),
-    ).toThrow(/重复物化/);
+    expect(() => fold([{ ...started }, { ...started, seq: started.seq + 1 }], deps)).toThrow(
+      /重复物化/,
+    );
 
     seq = 0;
     expect(() =>
@@ -220,11 +214,7 @@ describe('fold(委托事件族)', () => {
   it('快照随行:增量 fold(initial=带委托的快照)与业务事件重放不丢 delegations 表', () => {
     const first = fold([event('delegation-started', startedDetail())], deps);
     seq = 0;
-    const second = fold(
-      [event('delegation-step', stepDetail(1, 'executed'))],
-      deps,
-      first,
-    );
+    const second = fold([event('delegation-step', stepDetail(1, 'executed'))], deps, first);
     expect(second.delegations?.[delegationRel('wf-1')]).toMatchObject({
       status: 'running',
       steps: 1,
@@ -288,9 +278,7 @@ describe('project(delegations 投影)', () => {
       successes: 1,
       summary: '目标完成',
     });
-    expect(entity?.links).toEqual([
-      { rel: ['self'], href: '/api/entity?rel=delegation:wf-1' },
-    ]);
+    expect(entity?.links).toEqual([{ rel: ['self'], href: '/api/entity?rel=delegation:wf-1' }]);
     expect(project(snapshot, delegationRel('nope'), deps)).toBeUndefined();
   });
 });

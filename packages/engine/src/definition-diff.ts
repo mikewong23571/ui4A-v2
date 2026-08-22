@@ -15,10 +15,7 @@ import type { DefinitionDiff, FlowDefinition } from '@ui4a/shared';
  * updated 视角只持新值;旧值由渲染器从 before 按同路径机械取回
  * (数字键即数组下标)。
  */
-export function definitionDiff(
-  before: FlowDefinition,
-  after: FlowDefinition,
-): DefinitionDiff {
+export function definitionDiff(before: FlowDefinition, after: FlowDefinition): DefinitionDiff {
   const { added, deleted, updated } = detailedDiff(before, after);
   return {
     algorithm: 'deep-object-diff',

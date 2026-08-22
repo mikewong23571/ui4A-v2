@@ -91,20 +91,24 @@ describe('三层裁决 — 顺序铁律(arch-brief §3:声明 → guard → sche
 
   it('② guard 不满足 且 schema 也不满足 → layer=guard-failed(schema 层不再执行)', () => {
     const registry: GuardRegistry = { ...testGuards, 'is-pending': () => false };
-    const result = exec('comment:c1', 'approve', { junk: 'schema 也会挂' }, {
-      guards: registry,
-    });
+    const result = exec(
+      'comment:c1',
+      'approve',
+      { junk: 'schema 也会挂' },
+      {
+        guards: registry,
+      },
+    );
     expect(result).toMatchObject({ kind: 'rejected', layer: 'guard-failed' });
   });
 
   it('② 多 guard 全部求值(不短路),任一 false 即拒,原因含谓词名与求值结果', () => {
     const flowWithGuards = JSON.parse(JSON.stringify(commentModerationFlow));
     flowWithGuards.nodes[0].actions[0].guards = ['always-true', 'always-false', 'is-pending'];
-    const result = judge(
-      { rel: 'comment:c1', action: 'approve' },
-      seedSnapshot,
-      { flows: flowRegistry(flowWithGuards), guards: testGuards },
-    );
+    const result = judge({ rel: 'comment:c1', action: 'approve' }, seedSnapshot, {
+      flows: flowRegistry(flowWithGuards),
+      guards: testGuards,
+    });
     expect(result).toMatchObject({ kind: 'rejected', layer: 'guard-failed' });
     if (result.kind !== 'rejected') return;
     const evaluations = result.detail as Array<{ name: string; pass: boolean }>;
@@ -119,11 +123,10 @@ describe('三层裁决 — 顺序铁律(arch-brief §3:声明 → guard → sche
   it('② 未注册的 guard 名 → fail-closed 拒绝,原因注明未注册', () => {
     const flowWithGuards = JSON.parse(JSON.stringify(commentModerationFlow));
     flowWithGuards.nodes[0].actions[0].guards = ['ghost-guard'];
-    const result = judge(
-      { rel: 'comment:c1', action: 'approve' },
-      seedSnapshot,
-      { flows: flowRegistry(flowWithGuards), guards: testGuards },
-    );
+    const result = judge({ rel: 'comment:c1', action: 'approve' }, seedSnapshot, {
+      flows: flowRegistry(flowWithGuards),
+      guards: testGuards,
+    });
     expect(result).toMatchObject({ kind: 'rejected', layer: 'guard-failed' });
     if (result.kind !== 'rejected') return;
     expect(result.reason).toContain('ghost-guard');

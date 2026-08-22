@@ -194,12 +194,7 @@ describe('approveConfirmation — human 生效路径', () => {
   });
 
   it('重复 approve(已 approved)→ rejected:approve 未声明于非 pending 状态', () => {
-    const first = approveConfirmation(
-      suspendedSnapshot(),
-      'c1',
-      { actor: 'human' },
-      deps,
-    );
+    const first = approveConfirmation(suspendedSnapshot(), 'c1', { actor: 'human' }, deps);
     expect(first.kind).toBe('confirmed');
     if (first.kind !== 'confirmed') return;
 
@@ -290,7 +285,13 @@ describe('rejectConfirmation — 驳回路径', () => {
   });
 
   it('agent reject → guard 拒绝(I4 同样适用于驳回)', () => {
-    const decision = rejectConfirmation(suspendedSnapshot(), 'c1', { actor: 'agent' }, '想撤就撤', deps);
+    const decision = rejectConfirmation(
+      suspendedSnapshot(),
+      'c1',
+      { actor: 'agent' },
+      '想撤就撤',
+      deps,
+    );
     expect(decision).toMatchObject({ kind: 'rejected', layer: 'guard-failed' });
     if (decision.kind !== 'rejected') return;
     expect(decision.reason).toContain('actor-is-human');
@@ -305,9 +306,9 @@ describe('rejectConfirmation — 驳回路径', () => {
   });
 
   it('不存在的确认 id / 非 pending 状态 → rejected(undeclared)', () => {
-    expect(rejectConfirmation(suspendedSnapshot(), 'ghost', { actor: 'human' }, 'r', deps)).toMatchObject(
-      { kind: 'rejected', layer: 'undeclared' },
-    );
+    expect(
+      rejectConfirmation(suspendedSnapshot(), 'ghost', { actor: 'human' }, 'r', deps),
+    ).toMatchObject({ kind: 'rejected', layer: 'undeclared' });
 
     const approved = approveConfirmation(suspendedSnapshot(), 'c1', { actor: 'human' }, deps);
     if (approved.kind !== 'confirmed') throw new Error('前置失败');

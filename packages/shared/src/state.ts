@@ -134,6 +134,19 @@ export interface FrozenRenderSpec {
   requestedBy: { actor: 'human' | 'agent'; principal?: string };
 }
 
+/** capability 物化的正式模型工件；独立于业务实例事实，业务字段仅引用 rel。 */
+export interface CapabilityArtifactSnapshot {
+  rel: string;
+  id: string;
+  capability: string;
+  source: { rel: string; field: string };
+  model: string;
+  outputSchema: Record<string, unknown>;
+  content: unknown;
+  contentHash: string;
+  createdBy: { actor: 'human' | 'agent'; principal?: string };
+}
+
 /** 引擎全局快照 = 日志折叠态;guard 只读,效果以不可变方式产出新快照。 */
 export interface EngineSnapshot {
   instances: Record<string, InstanceSnapshot>;
@@ -183,6 +196,8 @@ export interface EngineSnapshot {
    * (表不存在 = 过渡期 vacuous pass 信号)。
    */
   capabilities?: Record<string, CapabilityDefinition>;
+  /** capability-artifact-created 事件物化的正式工件表(rel → artifact)。 */
+  artifacts?: Record<string, CapabilityArtifactSnapshot>;
   /**
    * 已凝固渲染 spec 表(T7):concern → 已凝固 spec(render-spec-frozen
    * 事件折叠;首冻为准)。可选与 confirmations 同口径;fold/applyEffects

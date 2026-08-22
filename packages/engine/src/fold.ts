@@ -43,6 +43,7 @@ import type {
 } from './meta';
 import { actionEffects } from './parse';
 import { applyRenderSpecFrozen } from './render-spec';
+import { applyCapabilityArtifactCreated } from './capability-artifact';
 
 /** 日志事件种类:引擎产出(含 T4 定义事件族)+ 日志层三种
  *  (拒绝留痕 I6 / 种子装载 / definition-seeded 定义种子)+
@@ -76,6 +77,7 @@ export type LogEventKind =
   | 'delegation-failed'
   | 'delegation-max-steps'
   | 'render-spec-frozen'
+  | 'capability-artifact-created'
   | 'chat-turn-started'
   | 'chat-turn-progress'
   | 'chat-turn'
@@ -180,6 +182,7 @@ function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
     definitionVersions: { ...(snapshot.definitionVersions ?? {}) },
     // T7:renderSpecs 表随行(seed 不产凝固;与 confirmations 同口径)。
     renderSpecs: { ...(snapshot.renderSpecs ?? {}) },
+    artifacts: { ...(snapshot.artifacts ?? {}) },
     // T10:applications 表随行,但仅在场时携带——缺省不物化为 {}
     // (app-known 以"表不存在"为过渡期 vacuous pass 信号;与 effects.ts 同口径)。
     ...(snapshot.applications !== undefined ? { applications: { ...snapshot.applications } } : {}),
@@ -775,6 +778,7 @@ export function fold(
           activations: {},
           definitionVersions: {},
           renderSpecs: {},
+          artifacts: {},
         }
       : {
           instances: initial.instances,
@@ -796,6 +800,7 @@ export function fold(
           // T13:capabilities 表随行,与 applications 同口径(仅在场时携带;
           // capability-registered 过渡期 vacuous pass 信号)。
           ...(initial.capabilities !== undefined ? { capabilities: initial.capabilities } : {}),
+          artifacts: initial.artifacts ?? {},
         };
   for (const event of events) {
     switch (event.kind) {
@@ -856,6 +861,9 @@ export function fold(
         break;
       case 'render-spec-frozen':
         snapshot = applyRenderSpecFrozen(snapshot, event);
+        break;
+      case 'capability-artifact-created':
+        snapshot = applyCapabilityArtifactCreated(snapshot, event);
         break;
       case 'action-rejected':
       case 'entity-appended':

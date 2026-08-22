@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  articleDraftingFlow,
-  commentModerationFlow,
-  postStatusFlow,
-} from './fixtures';
+import { articleDraftingFlow, commentModerationFlow, postStatusFlow } from './fixtures';
 import { deriveSitemap } from './sitemap';
-import type { ApplicationDefinition, FlowDefinition } from './types';
+import type { ApplicationDefinition, CapabilityDefinition, FlowDefinition } from './types';
 
 const flows = [articleDraftingFlow, postStatusFlow, commentModerationFlow];
 
@@ -14,7 +10,11 @@ describe('deriveSitemap — 结构', () => {
   it('flows 拓扑:节点(名称/标题)与边(from/action/to)完整', () => {
     const sitemap = deriveSitemap(flows);
     const postStatus = sitemap.flows.find((flow) => flow.name === 'post-status');
-    expect(postStatus).toMatchObject({ name: 'post-status', title: '文章状态', initial: 'published' });
+    expect(postStatus).toMatchObject({
+      name: 'post-status',
+      title: '文章状态',
+      initial: 'published',
+    });
     expect(postStatus?.nodes.map((node) => `${node.name}:${node.title}`)).toEqual([
       'published:已发布',
       'offline:已下线',
@@ -168,10 +168,7 @@ describe('deriveSitemap — application 分组投影(T10 Phase C,spec 架构决�
       intent: '内容起草与发布',
     });
     // 组内 flows 保持扁平表声明序,且与扁平条目同形状(同一投影)。
-    expect(publishing?.flows.map((flow) => flow.name)).toEqual([
-      'article-drafting',
-      'post-status',
-    ]);
+    expect(publishing?.flows.map((flow) => flow.name)).toEqual(['article-drafting', 'post-status']);
     expect(publishing?.flows[0]).toEqual(
       sitemap.flows.find((flow) => flow.name === 'article-drafting'),
     );
@@ -236,5 +233,77 @@ describe('deriveSitemap — application 分组投影(T10 Phase C,spec 架构决�
     // 扁平投影照常:flows/surfaces 归一化 app='default',version 照常产出。
     expect(sitemap.flows.map((flow) => flow.app)).toEqual(['default', 'default', 'default']);
     expect(sitemap.version).toMatch(/^[0-9a-f]{12}$/);
+  });
+});
+
+describe('deriveSitemap — 动态 capability 处境(T15 U14/U17)', () => {
+  const applications: Record<string, ApplicationDefinition> = {
+    publishing: { name: 'publishing', title: '内容发布', intent: '发布内容' },
+    community: { name: 'community', title: '社区互动', intent: '审核评论' },
+  };
+  const capabilities: Record<string, CapabilityDefinition> = {
+    draft: {
+      name: 'draft',
+      title: '工件起草',
+      kind: 'extract',
+      intent: '根据字段语义生成候选草稿',
+      input: '字段 schema 与当前实例',
+      output: '候选草稿工件',
+    },
+    moderate: {
+      name: 'moderate',
+      title: '评论风险识别',
+      kind: 'transform',
+      intent: '识别评论风险并生成审核建议',
+      input: '评论工件',
+      output: '审核建议工件',
+    },
+  };
+  const publishing = { ...articleDraftingFlow, app: 'publishing' };
+  const community = structuredClone({ ...commentModerationFlow, app: 'community' });
+  community.nodes[0]!.actions[0]!.effect = {
+    type: 'spawn',
+    capability: 'moderate',
+  };
+
+  it('注册能力以完整定义摘要进入 sitemap，并从 flow 引用推导 app/flow scope', () => {
+    const sitemap = deriveSitemap([publishing, community], { applications, capabilities });
+
+    expect(sitemap.capabilities).toEqual([
+      {
+        name: 'draft',
+        title: '工件起草',
+        kind: 'extract',
+        intent: '根据字段语义生成候选草稿',
+        input: '字段 schema 与当前实例',
+        output: '候选草稿工件',
+        scope: { applications: ['publishing'], flows: ['article-drafting'] },
+      },
+      {
+        name: 'moderate',
+        title: '评论风险识别',
+        kind: 'transform',
+        intent: '识别评论风险并生成审核建议',
+        input: '评论工件',
+        output: '审核建议工件',
+        scope: { applications: ['community'], flows: ['comment-moderation'] },
+      },
+    ]);
+  });
+
+  it('新增 capability 数据无需改 prompt 即改变下一份 sitemap 内容与版本', () => {
+    const before = deriveSitemap([publishing], {
+      applications,
+      capabilities: { draft: capabilities.draft! },
+    });
+    const after = deriveSitemap([publishing, community], { applications, capabilities });
+
+    expect(before.capabilities.map((capability) => capability.name)).toEqual(['draft']);
+    expect(after.capabilities.map((capability) => capability.name)).toEqual(['draft', 'moderate']);
+    expect(after.version).not.toBe(before.version);
+  });
+
+  it('旧调用方不提供 capability 定义时保持兼容：字段存在但为空', () => {
+    expect(deriveSitemap([publishing], { applications }).capabilities).toEqual([]);
   });
 });

@@ -124,9 +124,7 @@ describe('submit 时引擎侧计算 diff(executeMeta 集成)', () => {
     const { snapshot, log } = pendingApproval();
     const submitted = log.find((event) => event.kind === 'definition-submitted');
     const detail = submitted?.detail as { activation?: { diff?: unknown } };
-    expect(detail.activation?.diff).toEqual(
-      snapshot.activations?.['meta/activation:a1']?.diff,
-    );
+    expect(detail.activation?.diff).toEqual(snapshot.activations?.['meta/activation:a1']?.diff);
 
     // 重放:diff 从载荷还原,不重算(注册表漂移不影响审计数据)。
     const replayed = fold(log, { flows: {} }, seedSnapshot);

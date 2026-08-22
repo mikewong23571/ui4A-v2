@@ -78,7 +78,11 @@ const wizardSeed: LogEvent = {
 describe('executePlan — 全过(plan-completed)', () => {
   it('三步审核计划全过 → kind=plan-completed,results 逐步齐全(step/rel/action/outcome/to)', () => {
     const outcome = executePlan(
-      [agent('comment:c1', 'approve'), agent('comment:c2', 'approve'), agent('comment:c3', 'approve')],
+      [
+        agent('comment:c1', 'approve'),
+        agent('comment:c2', 'approve'),
+        agent('comment:c3', 'approve'),
+      ],
       seedSnapshot,
       deps,
     );
@@ -96,7 +100,11 @@ describe('executePlan — 全过(plan-completed)', () => {
 
   it('全过终态快照:三步全部生效(每步裁决基于前步产出快照)', () => {
     const outcome = executePlan(
-      [agent('comment:c1', 'approve'), agent('comment:c2', 'approve'), agent('comment:c3', 'approve')],
+      [
+        agent('comment:c1', 'approve'),
+        agent('comment:c2', 'approve'),
+        agent('comment:c3', 'approve'),
+      ],
       seedSnapshot,
       deps,
     );
@@ -111,7 +119,10 @@ describe('executePlan — 全过(plan-completed)', () => {
       seedSnapshot,
       deps,
     );
-    expect(outcome.events.map((event) => event.kind)).toEqual(['action-executed', 'action-executed']);
+    expect(outcome.events.map((event) => event.kind)).toEqual([
+      'action-executed',
+      'action-executed',
+    ]);
     expect(outcome.events[0]).toMatchObject({ rel: 'comment:c1', action: 'approve' });
 
     expect(outcome.record).toMatchObject({
@@ -165,7 +176,11 @@ describe('executePlan — 全过(plan-completed)', () => {
 describe('executePlan — 中拒截断(plan-rejected)', () => {
   it('重复步:第二步 undeclared → kind=plan-rejected,rejection 入 results,后续停止', () => {
     const outcome = executePlan(
-      [agent('comment:c1', 'approve'), agent('comment:c1', 'approve'), agent('comment:c2', 'approve')],
+      [
+        agent('comment:c1', 'approve'),
+        agent('comment:c1', 'approve'),
+        agent('comment:c2', 'approve'),
+      ],
       seedSnapshot,
       deps,
     );
@@ -182,7 +197,11 @@ describe('executePlan — 中拒截断(plan-rejected)', () => {
 
   it('append-only:前序效果保留(第 1 步生效),后续步未执行(第 3 步不动)', () => {
     const outcome = executePlan(
-      [agent('comment:c1', 'approve'), agent('comment:c1', 'approve'), agent('comment:c2', 'approve')],
+      [
+        agent('comment:c1', 'approve'),
+        agent('comment:c1', 'approve'),
+        agent('comment:c2', 'approve'),
+      ],
       seedSnapshot,
       deps,
     );
@@ -197,7 +216,8 @@ describe('executePlan — 中拒截断(plan-rejected)', () => {
       ...deps,
       guards: {
         ...seedGuardRegistry,
-        'is-pending': ({ instance }: { instance: { rel: string } }) => instance.rel !== 'comment:c2',
+        'is-pending': ({ instance }: { instance: { rel: string } }) =>
+          instance.rel !== 'comment:c2',
       },
     };
     const outcome = executePlan(
@@ -279,7 +299,9 @@ describe('executePlan — 中挂停止(plan-suspended)', () => {
     // 前序生效 + 挂起效果不应用 + 后续停止。
     expect(outcome.snapshot.instances['comment:c1']?.node).toBe('approved');
     expect(outcome.snapshot.instances['post:post-welcome']?.node).toBe('published');
-    expect(outcome.snapshot.confirmations?.['confirmation:c1']).toMatchObject({ status: 'pending' });
+    expect(outcome.snapshot.confirmations?.['confirmation:c1']).toMatchObject({
+      status: 'pending',
+    });
     expect(outcome.snapshot.instances['comment:c2']?.node).toBe('pending');
   });
 
@@ -316,7 +338,11 @@ describe('executePlan — 边界与纯度', () => {
 
   it('标记事件 actor/principal/channel 取首步(空计划缺省 human)', () => {
     const outcome = executePlan([agent('comment:c1', 'approve')], seedSnapshot, deps);
-    expect(outcome.record).toMatchObject({ actor: 'agent', principal: 'user:mike', channel: 'http' });
+    expect(outcome.record).toMatchObject({
+      actor: 'agent',
+      principal: 'user:mike',
+      channel: 'http',
+    });
     const empty = executePlan([], seedSnapshot, deps);
     expect(empty.record).toMatchObject({ actor: 'human' });
   });
@@ -334,10 +360,7 @@ describe('executePlan — fold 重放一致(I5:plan 事件族参与重放)', () 
       wizardSnapshot,
       deps,
     );
-    const log = [
-      wizardSeed,
-      ...withSeq([...outcome.events, outcome.record], 2),
-    ];
+    const log = [wizardSeed, ...withSeq([...outcome.events, outcome.record], 2)];
     const replayed = fold(log, deps);
     expect(replayed.instances['article-drafting:main']?.node).toBe('done');
     // D24:name-from 回退源实例 title(publish 参数为空)→ post:new-article。
@@ -352,7 +375,10 @@ describe('executePlan — fold 重放一致(I5:plan 事件族参与重放)', () 
       deps,
     );
     expect(outcome.kind).toBe('plan-suspended');
-    const replayed = fold([seedFromSnapshot, ...withSeq([...outcome.events, outcome.record], 2)], deps);
+    const replayed = fold(
+      [seedFromSnapshot, ...withSeq([...outcome.events, outcome.record], 2)],
+      deps,
+    );
     expect(replayed.instances['comment:c1']?.node).toBe('approved');
     expect(replayed.confirmations?.['confirmation:c1']).toMatchObject({ status: 'pending' });
   });

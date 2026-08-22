@@ -105,7 +105,9 @@ export function validateDefinition(
   for (const node of draft.nodes) {
     for (const field of node.fields ?? []) {
       if (!fieldTypes.has(field.type)) {
-        fieldTypeIssues.push(`nodes[${node.name}].fields[${field.name}]: 未知字段类型 "${String(field.type)}"`);
+        fieldTypeIssues.push(
+          `nodes[${node.name}].fields[${field.name}]: 未知字段类型 "${String(field.type)}"`,
+        );
       }
       visitFieldCapabilities(field, `nodes[${node.name}].fields[${field.name}]`);
     }
@@ -117,7 +119,9 @@ export function validateDefinition(
       }
       for (const field of action.fields ?? []) {
         if (!fieldTypes.has(field.type)) {
-          fieldTypeIssues.push(`${where}.fields[${field.name}]: 未知字段类型 "${String(field.type)}"`);
+          fieldTypeIssues.push(
+            `${where}.fields[${field.name}]: 未知字段类型 "${String(field.type)}"`,
+          );
         }
         visitFieldCapabilities(field, `${where}.fields[${field.name}]`);
       }
@@ -158,9 +162,7 @@ export function validateDefinition(
   }
 
   const initialExists = nodeNames.has(draft.initial);
-  const initialIssues = initialExists
-    ? undefined
-    : [`initial "${draft.initial}" 不在节点集`];
+  const initialIssues = initialExists ? undefined : [`initial "${draft.initial}" 不在节点集`];
 
   const terminals = terminalNodes(draft);
   const reachable = reachableNodes(draft);
@@ -187,13 +189,45 @@ export function validateDefinition(
   }
 
   return [
-    { name: 'edge-targets-exist', pass: edgeIssues.length === 0, ...(edgeIssues.length > 0 ? { detail: edgeIssues } : {}) },
-    { name: 'guards-registered', pass: guardIssues.length === 0, ...(guardIssues.length > 0 ? { detail: guardIssues } : {}) },
-    { name: 'field-types-known', pass: fieldTypeIssues.length === 0, ...(fieldTypeIssues.length > 0 ? { detail: fieldTypeIssues } : {}) },
-    { name: 'effect-known', pass: effectIssues.length === 0, ...(effectIssues.length > 0 ? { detail: effectIssues } : {}) },
-    { name: 'initial-exists', pass: initialExists, ...(initialIssues !== undefined ? { detail: initialIssues } : {}) },
-    { name: 'terminal-reachable', pass: terminalIssues === undefined, ...(terminalIssues !== undefined ? { detail: terminalIssues } : {}) },
-    { name: 'app-known', pass: appIssues.length === 0, ...(appIssues.length > 0 ? { detail: appIssues } : {}) },
-    { name: 'capability-registered', pass: capabilityIssues.length === 0, ...(capabilityIssues.length > 0 ? { detail: capabilityIssues } : {}) },
+    {
+      name: 'edge-targets-exist',
+      pass: edgeIssues.length === 0,
+      ...(edgeIssues.length > 0 ? { detail: edgeIssues } : {}),
+    },
+    {
+      name: 'guards-registered',
+      pass: guardIssues.length === 0,
+      ...(guardIssues.length > 0 ? { detail: guardIssues } : {}),
+    },
+    {
+      name: 'field-types-known',
+      pass: fieldTypeIssues.length === 0,
+      ...(fieldTypeIssues.length > 0 ? { detail: fieldTypeIssues } : {}),
+    },
+    {
+      name: 'effect-known',
+      pass: effectIssues.length === 0,
+      ...(effectIssues.length > 0 ? { detail: effectIssues } : {}),
+    },
+    {
+      name: 'initial-exists',
+      pass: initialExists,
+      ...(initialIssues !== undefined ? { detail: initialIssues } : {}),
+    },
+    {
+      name: 'terminal-reachable',
+      pass: terminalIssues === undefined,
+      ...(terminalIssues !== undefined ? { detail: terminalIssues } : {}),
+    },
+    {
+      name: 'app-known',
+      pass: appIssues.length === 0,
+      ...(appIssues.length > 0 ? { detail: appIssues } : {}),
+    },
+    {
+      name: 'capability-registered',
+      pass: capabilityIssues.length === 0,
+      ...(capabilityIssues.length > 0 ? { detail: capabilityIssues } : {}),
+    },
   ];
 }

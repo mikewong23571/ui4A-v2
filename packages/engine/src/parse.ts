@@ -165,11 +165,7 @@ export function validateFlowDefinition(flow: FlowDefinition): FlowIssue[] {
   return issues;
 }
 
-function validateFields(
-  fields: FieldDefinition[],
-  path: string,
-  issues: FlowIssue[],
-): void {
+function validateFields(fields: FieldDefinition[], path: string, issues: FlowIssue[]): void {
   const seen = new Set<string>();
   fields.forEach((field, index) => {
     const fieldPath = `${path}[${field.name ?? index}]`;
@@ -228,6 +224,16 @@ function validateEffects(
     }
     if (effect.type === 'set-field' && (typeof effect.field !== 'string' || effect.field === '')) {
       issues.push({ path: `${effectPath}.field`, message: 'set-field 缺少 field' });
+    }
+    if (effect.type === 'set-field') {
+      const hasValue = Object.prototype.hasOwnProperty.call(effect, 'value');
+      const hasParam = typeof effect['from-param'] === 'string' && effect['from-param'] !== '';
+      if (hasValue === hasParam) {
+        issues.push({
+          path: effectPath,
+          message: 'set-field 必须且只能声明 value 或 from-param 之一',
+        });
+      }
     }
     if (
       effect.type === 'append' &&
@@ -373,6 +379,28 @@ function capabilityStructuralIssues(input: unknown): FlowIssue[] {
   if (input.output !== undefined && (typeof input.output !== 'string' || input.output === '')) {
     issues.push({ path: 'output', message: 'output 必须是非空字符串' });
   }
+  if (input.inputSchema !== undefined && !isRecord(input.inputSchema)) {
+    issues.push({ path: 'inputSchema', message: 'inputSchema 必须是 JSON Schema 对象' });
+  }
+  if (input.outputSchema !== undefined && !isRecord(input.outputSchema)) {
+    issues.push({ path: 'outputSchema', message: 'outputSchema 必须是 JSON Schema 对象' });
+  }
+  if (input.scope !== undefined) {
+    if (!isRecord(input.scope)) {
+      issues.push({ path: 'scope', message: 'scope 必须是对象' });
+    } else {
+      for (const key of ['applications', 'flows'] as const) {
+        const values = input.scope[key];
+        if (
+          values !== undefined &&
+          (!Array.isArray(values) ||
+            values.some((value) => typeof value !== 'string' || value === ''))
+        ) {
+          issues.push({ path: `scope.${key}`, message: `${key} 必须是非空字符串数组` });
+        }
+      }
+    }
+  }
   return issues;
 }
 
@@ -396,5 +424,8 @@ export function parseCapabilityDefinition(input: unknown): CapabilityDefinition 
     intent: record.intent,
     ...(record.input !== undefined ? { input: record.input } : {}),
     ...(record.output !== undefined ? { output: record.output } : {}),
+    ...(record.inputSchema !== undefined ? { inputSchema: record.inputSchema } : {}),
+    ...(record.outputSchema !== undefined ? { outputSchema: record.outputSchema } : {}),
+    ...(record.scope !== undefined ? { scope: record.scope } : {}),
   };
 }

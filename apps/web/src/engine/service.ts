@@ -35,10 +35,14 @@
  * - sitemap 从快照活跃定义纯推导,按活跃集内容 hash 缓存(定义激活即重生成,
  *   版本号=内容 hash,S2 的根基)。
  */
+import { createHash } from 'node:crypto';
+
 import {
   activeDefinitionOf,
+  applyCapabilityArtifactCreated,
   assertMetaBootstrapIntegrity,
   approveConfirmation,
+  canonicalJson,
   contentVersion,
   deriveSitemap,
   executeMeta,
@@ -316,7 +320,8 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   const currentSitemap = (): Sitemap => {
     const flows = activeFlowList();
     const applications = snapshot.applications;
-    const key = contentVersion({ flows, applications });
+    const capabilities = snapshot.capabilities;
+    const key = contentVersion({ flows, applications, capabilities });
     if (sitemapCache?.key === key) return sitemapCache.sitemap;
     const sitemap = deriveSitemap(flows, {
       extraSurfaces: [
@@ -324,6 +329,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         { rel: 'inbox', title: '确认收件箱', collection: true },
       ],
       applications,
+      capabilities,
     });
     sitemapCache = { key, sitemap };
     return sitemap;
@@ -338,7 +344,14 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     principal: event.principal,
     channel: event.channel,
     params: event.params,
-    detail: event.detail,
+    detail:
+      event.kind === 'spawn-requested'
+        ? {
+            capability: event.capability,
+            ...(event.bind !== undefined ? { bind: event.bind } : {}),
+            ...(event['on-done'] !== undefined ? { 'on-done': event['on-done'] } : {}),
+          }
+        : event.detail,
     reason: event.reason,
   });
 
@@ -371,6 +384,66 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       lastSeq = seq;
     }
     return seq;
+  };
+
+  /**
+   * 通用同步 capability materialization：LLM 已按 action schema 生成 output-param，
+   * spawn bind 只声明来源字段与输出参数名；本层把它物化为可重放 artifact。
+   * 不识别 capability/action 业务名，缺少完整声明时保留 spawn 事件但不造工件。
+   */
+  const materializeSpawnArtifacts = async (
+    events: readonly EngineEvent[],
+    request: ExecRequest,
+  ): Promise<void> => {
+    for (const event of events) {
+      if (event.kind !== 'spawn-requested') continue;
+      if (typeof event.capability !== 'string') continue;
+      const sourceField = event.bind?.['source-field'];
+      const outputParam = event.bind?.['output-param'];
+      if (typeof sourceField !== 'string' || typeof outputParam !== 'string') continue;
+      const source = snapshot.instances[request.rel]?.fields[sourceField];
+      const output = request.params?.[outputParam];
+      const capability = snapshot.capabilities?.[event.capability];
+      if (source === undefined || output === undefined || capability === undefined) continue;
+
+      const content = { [outputParam]: output };
+      const canonicalContent = canonicalJson(content);
+      const contentHash = `sha256:${createHash('sha256').update(canonicalContent).digest('hex')}`;
+      const model = process.env.LLM_MODEL?.trim() || 'unconfigured';
+      const id = createHash('sha256')
+        .update(
+          canonicalJson({
+            capability: event.capability,
+            source: { rel: request.rel, field: sourceField },
+            contentHash,
+            model,
+          }),
+        )
+        .digest('hex');
+      const rel = `artifact:${id}`;
+      const detail = {
+        id,
+        capability: event.capability,
+        source: { rel: request.rel, field: sourceField },
+        model,
+        outputSchema: capability.outputSchema ?? { type: 'object' },
+        content,
+        contentHash,
+        createdBy: {
+          actor: request.actor ?? 'human',
+          ...(request.principal !== undefined ? { principal: request.principal } : {}),
+        },
+      };
+      const seq = await appendWithSeq({
+        kind: 'capability-artifact-created',
+        rel,
+        actor: request.actor ?? 'human',
+        principal: request.principal,
+        channel: 'capability',
+        detail,
+      });
+      snapshot = applyCapabilityArtifactCreated(snapshot, { seq, rel, detail });
+    }
   };
 
   /** 把落库窗口内挤进来的外部事件补折进当前快照(幂等清空;所有覆写点之后调用)。 */
@@ -558,6 +631,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           await appendWithSeq(toAppend(event));
         }
         snapshot = outcome.snapshot;
+        await materializeSpawnArtifacts(outcome.events, aliased);
         applyForeignGaps();
 
         // 受影响实体:append 产出新实例时返回新实体,否则返回执行实体的新投影。

@@ -45,7 +45,10 @@ describe('validateDefinition — 合法定义全过', () => {
   it('三个业务域 flow(种子常量)八项全过', () => {
     for (const flow of [articleDraftingFlow, postStatusFlow, commentModerationFlow]) {
       const checks = checksOf(flow);
-      expect(checks.map((c) => c.name), flow.name).toEqual([
+      expect(
+        checks.map((c) => c.name),
+        flow.name,
+      ).toEqual([
         'edge-targets-exist',
         'guards-registered',
         'field-types-known',
@@ -55,7 +58,10 @@ describe('validateDefinition — 合法定义全过', () => {
         'app-known',
         'capability-registered',
       ]);
-      expect(checks.every((c) => c.pass), flow.name).toBe(true);
+      expect(
+        checks.every((c) => c.pass),
+        flow.name,
+      ).toBe(true);
     }
   });
 
@@ -342,7 +348,12 @@ describe('submit — checks 全过 → pending-approval', () => {
     if (withEdit.kind !== 'executed') throw new Error('add-action 应通过');
 
     const submitted = executeMeta(
-      { rel: 'meta/flow:article-drafting', action: 'submit', actor: 'agent', principal: 'user:mike' },
+      {
+        rel: 'meta/flow:article-drafting',
+        action: 'submit',
+        actor: 'agent',
+        principal: 'user:mike',
+      },
       withEdit.snapshot,
       deps,
     );
@@ -367,8 +378,9 @@ describe('submit — checks 全过 → pending-approval', () => {
     expect(activation?.checks.every((c) => c.pass)).toBe(true);
     expect(activation?.artifact).toBe(contentVersion(activation?.definition));
     // 激活载荷 = 提交时的工作副本全文(approve 据此激活;fold 真相)。
-    expect(activation?.definition.nodes.find((n) => n.name === 'ready')?.actions)
-      .toContainEqual(expect.objectContaining({ name: 'pin' }));
+    expect(activation?.definition.nodes.find((n) => n.name === 'ready')?.actions).toContainEqual(
+      expect.objectContaining({ name: 'pin' }),
+    );
 
     // definition-submitted 事件 detail:checks + activation 载荷(机器可重放)。
     const detail = submitted.events[1]!.detail as {
@@ -418,7 +430,13 @@ describe('submit — checks-fail → 回 draft(校验报告入事件)', () => {
         action: 'add-action',
         params: {
           node: 'ready',
-          action: { name: 'pin', title: '置顶', to: 'done', guards: [], effect: [{ type: 'transition', to: 'ghost' }] },
+          action: {
+            name: 'pin',
+            title: '置顶',
+            to: 'done',
+            guards: [],
+            effect: [{ type: 'transition', to: 'ghost' }],
+          },
         },
         actor: 'agent',
       },
@@ -504,7 +522,9 @@ describe('submit — app-known(快照 applications 表接线)', () => {
       deps,
     );
     if (submitted.kind !== 'executed') throw new Error('submit 应通过');
-    expect(submitted.snapshot.instances['meta/flow:article-drafting']?.node).toBe('pending-approval');
+    expect(submitted.snapshot.instances['meta/flow:article-drafting']?.node).toBe(
+      'pending-approval',
+    );
     expect(submitted.snapshot.activations?.['meta/activation:a1']).toMatchObject({
       id: 'a1',
       flow: 'article-drafting',
@@ -521,7 +541,9 @@ describe('submit — app-known(快照 applications 表接线)', () => {
       deps,
     );
     if (submitted.kind !== 'executed') throw new Error('submit 应通过');
-    expect(submitted.snapshot.instances['meta/flow:article-drafting']?.node).toBe('pending-approval');
+    expect(submitted.snapshot.instances['meta/flow:article-drafting']?.node).toBe(
+      'pending-approval',
+    );
     const detail = submitted.events[1]!.detail as {
       checks: Array<{ name: string; pass: boolean }>;
     };
@@ -537,16 +559,25 @@ describe('submit — app-known(快照 applications 表接线)', () => {
 
 describe('submit — capability-registered(快照 capabilities 表接线)', () => {
   const capabilities: Record<string, CapabilityDefinition> = {
-    draft: { name: 'draft', title: '工件起草', kind: 'extract', intent: 'proposal 来源字段的草稿产出' },
+    draft: {
+      name: 'draft',
+      title: '工件起草',
+      kind: 'extract',
+      intent: 'proposal 来源字段的草稿产出',
+    },
     notify: { name: 'notify', title: '确认门送达', kind: 'effect', intent: '挂起确认的通知送达' },
-    clarify: { name: 'clarify', title: '字段澄清', kind: 'extract', intent: 'on-invalid 的意图缺口收敛' },
+    clarify: {
+      name: 'clarify',
+      title: '字段澄清',
+      kind: 'extract',
+      intent: 'on-invalid 的意图缺口收敛',
+    },
   };
 
   /** articleDraftingFlow 的 body 字段引用 proposal capability;篡改为指定名。 */
   function withProposalCapability(capability: string): FlowDefinition {
     const flow: FlowDefinition = JSON.parse(JSON.stringify(articleDraftingFlow));
-    flow.nodes.find((node) => node.name === 'content')!.fields![0]!.source!.capability =
-      capability;
+    flow.nodes.find((node) => node.name === 'content')!.fields![0]!.source!.capability = capability;
     return flow;
   }
 
@@ -584,7 +615,9 @@ describe('submit — capability-registered(快照 capabilities 表接线)', () =
       deps,
     );
     if (submitted.kind !== 'executed') throw new Error('submit 应通过');
-    expect(submitted.snapshot.instances['meta/flow:article-drafting']?.node).toBe('pending-approval');
+    expect(submitted.snapshot.instances['meta/flow:article-drafting']?.node).toBe(
+      'pending-approval',
+    );
     expect(submitted.snapshot.activations?.['meta/activation:a1']).toMatchObject({
       id: 'a1',
       flow: 'article-drafting',
@@ -601,7 +634,9 @@ describe('submit — capability-registered(快照 capabilities 表接线)', () =
       deps,
     );
     if (submitted.kind !== 'executed') throw new Error('submit 应通过');
-    expect(submitted.snapshot.instances['meta/flow:article-drafting']?.node).toBe('pending-approval');
+    expect(submitted.snapshot.instances['meta/flow:article-drafting']?.node).toBe(
+      'pending-approval',
+    );
     const detail = submitted.events[1]!.detail as {
       checks: Array<{ name: string; pass: boolean }>;
     };

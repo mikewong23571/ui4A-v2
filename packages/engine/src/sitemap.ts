@@ -11,6 +11,7 @@
 import type {
   ActionDefinition,
   ApplicationDefinition,
+  CapabilityDefinition,
   FieldDefinition,
   FlowDefinition,
 } from './types';
@@ -77,6 +78,23 @@ export interface SitemapApplication {
   flows: SitemapFlow[];
 }
 
+/** capability 的当前定义摘要与可从活跃 flow 引用机械推导出的适用范围。 */
+export interface SitemapCapability {
+  name: string;
+  title: string;
+  kind: CapabilityDefinition['kind'];
+  intent: string;
+  input?: string;
+  output?: string;
+  inputSchema?: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
+  /** 空数组表示当前活跃 flow 尚未引用该 capability，而不是授予全局 scope。 */
+  scope: {
+    applications: string[];
+    flows: string[];
+  };
+}
+
 export interface Sitemap {
   version: string;
   surfaces: SitemapSurface[];
@@ -84,6 +102,8 @@ export interface Sitemap {
   flows: SitemapFlow[];
   /** 按 app 分组的投影;无 app 定义(applications 缺省)时为空数组。 */
   applications: SitemapApplication[];
+  /** 已注册 capability 目录；scope 来自活跃 flow 的声明引用。 */
+  capabilities: SitemapCapability[];
   generatedAt?: string;
 }
 
@@ -95,6 +115,8 @@ export interface DeriveSitemapOptions {
    * 缺省 → applications 分组为空数组;分组序 = 定义表声明序。
    */
   applications?: Record<string, ApplicationDefinition>;
+  /** 已注册 capability 定义表(snapshot.capabilities 的形状)。 */
+  capabilities?: Record<string, CapabilityDefinition>;
   /** 生成时刻(时钟由调用方注入,保证推导纯函数)。 */
   generatedAt?: string;
 }
@@ -139,6 +161,41 @@ function toSitemapFlow(flow: FlowDefinition): SitemapFlow {
   };
 }
 
+function fieldCapabilityNames(field: FieldDefinition): string[] {
+  const names: string[] = [];
+  if (field.source?.kind === 'proposal' && field.source.capability !== undefined) {
+    names.push(field.source.capability);
+  }
+  if (field['on-invalid'] !== undefined) names.push(field['on-invalid']);
+  return names;
+}
+
+/** 与 activation invariant 同一引用面：proposal/on-invalid/spawn。 */
+function flowCapabilityNames(flow: FlowDefinition): Set<string> {
+  const names = new Set<string>();
+  const visitFields = (fields: readonly FieldDefinition[] | undefined): void => {
+    for (const field of fields ?? []) {
+      for (const name of fieldCapabilityNames(field)) names.add(name);
+    }
+  };
+  visitFields(flow.fields);
+  for (const node of flow.nodes) {
+    visitFields(node.fields);
+    for (const action of node.actions) {
+      visitFields(action.fields);
+      const effects = Array.isArray(action.effect)
+        ? action.effect
+        : action.effect === undefined
+          ? []
+          : [action.effect];
+      for (const effect of effects) {
+        if (effect.type === 'spawn') names.add(effect.capability);
+      }
+    }
+  }
+  return names;
+}
+
 /** 64 位 FNV-1a(BigInt 算术,同步、浏览器/Node 两栖)。 */
 function fnv1a64(input: string): string {
   let hash = 0xcbf29ce484222325n;
@@ -159,7 +216,9 @@ export function canonicalJson(value: unknown): string {
   if (typeof value === 'object' && value !== null) {
     const keys = Object.keys(value as Record<string, unknown>).sort();
     return `{${keys
-      .map((key) => `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`)
+      .map(
+        (key) => `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`,
+      )
       .join(',')}}`;
   }
   return JSON.stringify(value) ?? 'null';
@@ -198,7 +257,12 @@ export function deriveSitemap(
         for (const effect of effects) {
           if (effect.type === 'append' && !seenCollections.has(effect.collection)) {
             seenCollections.add(effect.collection);
-            surfaces.push({ rel: effect.collection, title: effect.collection, collection: true, app });
+            surfaces.push({
+              rel: effect.collection,
+              title: effect.collection,
+              collection: true,
+              app,
+            });
           }
         }
       }
@@ -221,11 +285,44 @@ export function deriveSitemap(
     }),
   );
 
+  const capabilityScopes = new Map<string, { applications: Set<string>; flows: string[] }>();
+  for (const flow of flows) {
+    for (const capability of flowCapabilityNames(flow)) {
+      const scope = capabilityScopes.get(capability) ?? {
+        applications: new Set<string>(),
+        flows: [],
+      };
+      scope.applications.add(flow.app ?? 'default');
+      if (!scope.flows.includes(flow.name)) scope.flows.push(flow.name);
+      capabilityScopes.set(capability, scope);
+    }
+  }
+  const capabilities: SitemapCapability[] = Object.values(options?.capabilities ?? {}).map(
+    (capability) => {
+      const scope = capabilityScopes.get(capability.name);
+      return {
+        name: capability.name,
+        title: capability.title,
+        kind: capability.kind,
+        intent: capability.intent,
+        ...(capability.input !== undefined ? { input: capability.input } : {}),
+        ...(capability.output !== undefined ? { output: capability.output } : {}),
+        ...(capability.inputSchema !== undefined ? { inputSchema: capability.inputSchema } : {}),
+        ...(capability.outputSchema !== undefined ? { outputSchema: capability.outputSchema } : {}),
+        scope: {
+          applications: [...(scope?.applications ?? [])],
+          flows: [...(scope?.flows ?? [])],
+        },
+      };
+    },
+  );
+
   const sitemap: Sitemap = {
-    version: contentVersion({ applications, surfaces, flows: sitemapFlows }),
+    version: contentVersion({ applications, capabilities, surfaces, flows: sitemapFlows }),
     surfaces,
     flows: sitemapFlows,
     applications,
+    capabilities,
   };
   if (options?.generatedAt !== undefined) {
     sitemap.generatedAt = options.generatedAt;

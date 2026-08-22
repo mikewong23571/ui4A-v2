@@ -78,10 +78,7 @@ describe('revise(active → draft,开工作副本)', () => {
       version: 1,
       bornBy: 1,
     });
-    expect(outcome.events.map((e) => e.kind)).toEqual([
-      'action-executed',
-      'definition-revised',
-    ]);
+    expect(outcome.events.map((e) => e.kind)).toEqual(['action-executed', 'definition-revised']);
     expect(outcome.events[1]).toMatchObject({
       kind: 'definition-revised',
       rel: 'meta/flow:post-status',
@@ -110,7 +107,10 @@ describe('revise(active → draft,开工作副本)', () => {
       deps,
     );
     if (outcome.kind !== 'executed') throw new Error('revise 应通过');
-    const log: LogEvent[] = [seedPostStatus, ...outcome.events.map((e, i) => ({ ...e, seq: 10 + i }))];
+    const log: LogEvent[] = [
+      seedPostStatus,
+      ...outcome.events.map((e, i) => ({ ...e, seq: 10 + i })),
+    ];
     expect(fold(log, { flows: {} }, seedSnapshot)).toEqual(outcome.snapshot);
   });
 });
@@ -345,17 +345,21 @@ describe('add-node / add-action(编辑动词 = 普通 exec 语义)', () => {
       { rel: 'comment:c1', action: 'approve' },
       seedSnapshot,
       {
-        flows: { 'comment-moderation': {
-          name: 'comment-moderation',
-          initial: 'pending',
-          nodes: [
-            {
-              name: 'pending',
-              actions: [{ name: 'approve', title: '通过', to: 'approved', guards: ['is-pending'] }],
-            },
-            { name: 'approved', actions: [] },
-          ],
-        } },
+        flows: {
+          'comment-moderation': {
+            name: 'comment-moderation',
+            initial: 'pending',
+            nodes: [
+              {
+                name: 'pending',
+                actions: [
+                  { name: 'approve', title: '通过', to: 'approved', guards: ['is-pending'] },
+                ],
+              },
+              { name: 'approved', actions: [] },
+            ],
+          },
+        },
         guards: { ...seedGuardRegistry, 'is-pending': () => false },
       },
     );
@@ -399,7 +403,14 @@ describe('add-node / add-action(编辑动词 = 普通 exec 语义)', () => {
     // 在线链路的全部事件(seed→revise→add-action→add-node)+ 一条拒绝留痕(no-op)。
     const log: LogEvent[] = [
       seedArticle,
-      { seq: 10, kind: 'action-rejected', rel: 'meta/flow:article-drafting', action: 'add-action', actor: 'agent', reason: 'guard 不满足: to-exists=false' },
+      {
+        seq: 10,
+        kind: 'action-rejected',
+        rel: 'meta/flow:article-drafting',
+        action: 'add-action',
+        actor: 'agent',
+        reason: 'guard 不满足: to-exists=false',
+      },
       ...reviseEvents(),
       ...executed.events.map((e, i) => ({ ...e, seq: 20 + i })),
       ...more.events.map((e, i) => ({ ...e, seq: 30 + i })),
@@ -456,11 +467,11 @@ describe('deprecate(no-live-instances)', () => {
     if (outcome.kind !== 'executed') return;
     expect(outcome.snapshot.instances['meta/flow:post-status']?.node).toBe('deprecated');
     expect(outcome.snapshot.definitions?.['post-status'].status).toBe('deprecated');
-    expect(outcome.events.map((e) => e.kind)).toEqual([
-      'action-executed',
-      'definition-deprecated',
-    ]);
-    const log: LogEvent[] = [seedPostStatus, ...outcome.events.map((e, i) => ({ ...e, seq: 5 + i }))];
+    expect(outcome.events.map((e) => e.kind)).toEqual(['action-executed', 'definition-deprecated']);
+    const log: LogEvent[] = [
+      seedPostStatus,
+      ...outcome.events.map((e, i) => ({ ...e, seq: 5 + i })),
+    ];
     expect(fold(log, { flows: {} }, allArchived)).toEqual(outcome.snapshot);
   });
 });
@@ -502,11 +513,9 @@ describe('lifecycle 自举(DoD 3)', () => {
 
   it('executeMeta 不依赖业务 flow 注册表(deps 只有谓词注册表)', () => {
     const snapshot = seededSnapshot([seedPostStatus]);
-    const outcome = executeMeta(
-      { rel: 'meta/flow:post-status', action: 'revise' },
-      snapshot,
-      { guards: seedGuardRegistry },
-    );
+    const outcome = executeMeta({ rel: 'meta/flow:post-status', action: 'revise' }, snapshot, {
+      guards: seedGuardRegistry,
+    });
     expect(outcome.kind).toBe('executed');
   });
 });

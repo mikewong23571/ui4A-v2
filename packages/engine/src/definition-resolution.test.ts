@@ -68,14 +68,24 @@ function baseSnapshot(): EngineSnapshot {
         bornVersion: 1,
       },
     },
-    definitions: { 'post-status': { name: 'post-status', version: 1, status: 'active', definition: postStatusV1 } },
+    definitions: {
+      'post-status': {
+        name: 'post-status',
+        version: 1,
+        status: 'active',
+        definition: postStatusV1,
+      },
+    },
     definitionVersions: { 'post-status': { 1: postStatusV1 } },
     activations: {},
   };
 }
 
 const activeDeps = (snapshot: EngineSnapshot) => ({
-  flows: { 'post-status': snapshot.definitionVersions!['post-status']![snapshot.definitions!['post-status']!.version]! },
+  flows: {
+    'post-status':
+      snapshot.definitionVersions!['post-status']![snapshot.definitions!['post-status']!.version]!,
+  },
   guards,
   versions: snapshot.definitionVersions,
 });
@@ -113,7 +123,14 @@ describe('judge/投影/transition 按出生版本解析', () => {
   function activatedSnapshot(): EngineSnapshot {
     return {
       ...baseSnapshot(),
-      definitions: { 'post-status': { name: 'post-status', version: 2, status: 'active', definition: postStatusV2 } },
+      definitions: {
+        'post-status': {
+          name: 'post-status',
+          version: 2,
+          status: 'active',
+          definition: postStatusV2,
+        },
+      },
       definitionVersions: { 'post-status': { 1: postStatusV1, 2: postStatusV2 } },
     };
   }
@@ -142,7 +159,11 @@ describe('judge/投影/transition 按出生版本解析', () => {
 
   it('投影按出生版本:在途实例 actions 来自 v1(无 feature)', () => {
     const snapshot = activatedSnapshot();
-    const entity = project(snapshot, 'post:old', { flows: { 'post-status': postStatusV2 }, guards, versions: snapshot.definitionVersions });
+    const entity = project(snapshot, 'post:old', {
+      flows: { 'post-status': postStatusV2 },
+      guards,
+      versions: snapshot.definitionVersions,
+    });
     expect(entity?.actions.map((action) => action.name)).toEqual(['unpublish', 'legacy-pin']);
     expect(entity?.properties).toMatchObject({ node: 'published' });
   });
@@ -155,7 +176,11 @@ describe('judge/投影/transition 按出生版本解析', () => {
         'post:old': { rel: 'post:old', flow: 'post-status', node: 'published', fields: {} },
       },
     };
-    const entity = project(snapshot, 'post:old', { flows: { 'post-status': postStatusV2 }, guards, versions: snapshot.definitionVersions });
+    const entity = project(snapshot, 'post:old', {
+      flows: { 'post-status': postStatusV2 },
+      guards,
+      versions: snapshot.definitionVersions,
+    });
     expect(entity?.actions.map((action) => action.name)).toEqual(['unpublish', 'feature']);
   });
 });
@@ -179,7 +204,10 @@ describe('fold.applyExecuted 以快照定义为主源(常量仅兜底)', () => {
     const log: Omit<LogEvent, 'seq'>[] = [defSeed, businessSeed];
     for (const [action, params] of [
       ['revise', undefined],
-      ['add-action', { node: 'published', action: { name: 'feature', title: '加精', to: 'archived' } }],
+      [
+        'add-action',
+        { node: 'published', action: { name: 'feature', title: '加精', to: 'archived' } },
+      ],
       ['submit', undefined],
       ['approve', undefined],
     ] as const) {

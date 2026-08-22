@@ -10,7 +10,12 @@
  */
 import type { EngineSnapshot, GuardRegistry } from '@ui4a/shared';
 
-import { confirmGate, suspendForConfirmation, type ConfirmationPolicy, type SuspendedConfirmation } from './confirmation';
+import {
+  confirmGate,
+  suspendForConfirmation,
+  type ConfirmationPolicy,
+  type SuspendedConfirmation,
+} from './confirmation';
 import { applyEffects, type EngineEvent } from './effects';
 import { judge, type DefinitionVersionTable, type ExecRequest, type JudgeLayer } from './judge';
 import type { FlowDefinition } from './types';

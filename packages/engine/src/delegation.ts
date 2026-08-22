@@ -78,9 +78,7 @@ export function applyDelegationStarted(snapshot: EngineSnapshot, event: LogEvent
     typeof detail.driverKind !== 'string' ||
     typeof detail.startRel !== 'string'
   ) {
-    throw new Error(
-      `重放失败:seq=${event.seq} delegation-started 缺少 detail 载荷(日志完整性)`,
-    );
+    throw new Error(`重放失败:seq=${event.seq} delegation-started 缺少 detail 载荷(日志完整性)`);
   }
   const rel = event.rel;
   if (rel === undefined || rel !== delegationRel(detail.delegationId)) {
@@ -124,14 +122,14 @@ export function applyDelegationStep(snapshot: EngineSnapshot, event: LogEvent): 
     typeof detail.op.kind !== 'string' ||
     typeof detail.outcome !== 'string'
   ) {
-    throw new Error(
-      `重放失败:seq=${event.seq} delegation-step 缺少 detail 载荷(日志完整性)`,
-    );
+    throw new Error(`重放失败:seq=${event.seq} delegation-step 缺少 detail 载荷(日志完整性)`);
   }
   const rel = event.rel ?? '';
   const existing = snapshot.delegations?.[rel];
   if (existing === undefined) {
-    throw new Error(`重放失败:seq=${event.seq} delegation-step 委托 "${rel}" 不存在(日志与状态漂移)`);
+    throw new Error(
+      `重放失败:seq=${event.seq} delegation-step 委托 "${rel}" 不存在(日志与状态漂移)`,
+    );
   }
   const expected = existing.steps + 1;
   if (detail.step !== expected) {

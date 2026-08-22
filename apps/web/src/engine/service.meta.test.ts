@@ -23,9 +23,7 @@ beforeEach(async () => {
 });
 
 /** 经 service.exec 走 meta 动作(与 /_meta/api/exec 同一入口)。 */
-async function metaExec(
-  request: Parameters<Awaited<ReturnType<typeof getEngine>>['exec']>[0],
-) {
+async function metaExec(request: Parameters<Awaited<ReturnType<typeof getEngine>>['exec']>[0]) {
   const engine = await getEngine(pool);
   return engine.exec(request);
 }
@@ -73,11 +71,14 @@ describe('meta exec 编排(service.exec 的 meta/ 前缀路由)', () => {
         .find((flow) => flow.name === 'post-status')
         ?.nodes.find((node) => node.name === 'published')
         ?.actions.map((action) => action.name),
-    ).toEqual(['unpublish', 'archive']);
+    ).toEqual(['unpublish', 'archive', 'generate-summary', 'save-summary']);
 
     for (const [action, params] of [
       ['revise', undefined],
-      ['add-action', { node: 'published', action: { name: 'feature', title: '加精', to: 'archived' } }],
+      [
+        'add-action',
+        { node: 'published', action: { name: 'feature', title: '加精', to: 'archived' } },
+      ],
       ['submit', undefined],
       ['approve', undefined],
     ] as const) {
@@ -101,7 +102,7 @@ describe('meta exec 编排(service.exec 的 meta/ 前缀路由)', () => {
         .find((flow) => flow.name === 'post-status')
         ?.nodes.find((node) => node.name === 'published')
         ?.actions.map((action) => action.name),
-    ).toEqual(['unpublish', 'archive', 'feature']);
+    ).toEqual(['unpublish', 'archive', 'generate-summary', 'save-summary', 'feature']);
 
     // 业务平面立即可用新动作(同引擎同快照):v1 在途实例按出生定义走完
     // (feature 对其 undeclared,见 service.bornversion.test);出生于 v2 的
@@ -146,7 +147,10 @@ describe('meta exec 编排(service.exec 的 meta/ 前缀路由)', () => {
 
     for (const [action, params] of [
       ['revise', undefined],
-      ['add-action', { node: 'published', action: { name: 'feature', title: '加精', to: 'archived' } }],
+      [
+        'add-action',
+        { node: 'published', action: { name: 'feature', title: '加精', to: 'archived' } },
+      ],
       ['submit', undefined],
       ['approve', undefined],
     ] as const) {
@@ -165,13 +169,14 @@ describe('meta exec 编排(service.exec 的 meta/ 前缀路由)', () => {
 });
 
 describe('capabilities 面(T13 Phase C Task 3;spec 架构决定 3)', () => {
-  it('meta sitemap 携带 capabilities 面:目录集合 + 三个 seed 实体(boot 补种后即在场)', async () => {
+  it('meta sitemap 携带 capabilities 面:目录集合 + 四个 seed 实体(boot 补种后即在场)', async () => {
     const engine = await getEngine(pool);
     const rels = engine.getMetaSitemap().surfaces.map((surface) => surface.rel);
     expect(rels).toEqual(
       expect.arrayContaining([
         'meta/capabilities',
         'meta/capability:draft',
+        'meta/capability:summarize',
         'meta/capability:notify',
         'meta/capability:clarify',
       ]),
@@ -183,13 +188,14 @@ describe('capabilities 面(T13 Phase C Task 3;spec 架构决定 3)', () => {
     expect(collection).toMatchObject({ collection: true });
   });
 
-  it('meta/capabilities 集合投影:三 seed 子实体直达(/_meta href),count=3', async () => {
+  it('meta/capabilities 集合投影:四 seed 子实体直达(/_meta href),count=4', async () => {
     const engine = await getEngine(pool);
     const entity = await engine.getMetaEntity('meta/capabilities');
     expect(entity?.class).toEqual(['collection', 'meta/capabilities']);
-    expect(entity?.properties).toMatchObject({ rel: 'meta/capabilities', count: 3 });
+    expect(entity?.properties).toMatchObject({ rel: 'meta/capabilities', count: 4 });
     expect(entity?.entities?.map((sub) => sub.properties.name)).toEqual([
       'draft',
+      'summarize',
       'notify',
       'clarify',
     ]);

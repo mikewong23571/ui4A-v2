@@ -63,16 +63,18 @@ describe('approve(铁律 5:审批不委托)', () => {
     const { snapshot, log } = pendingApproval();
 
     const approved = executeMeta(
-      { rel: 'meta/flow:article-drafting', action: 'approve', actor: 'human', principal: 'user:mike' },
+      {
+        rel: 'meta/flow:article-drafting',
+        action: 'approve',
+        actor: 'human',
+        principal: 'user:mike',
+      },
       snapshot,
       deps,
     );
     expect(approved.kind).toBe('executed');
     if (approved.kind !== 'executed') return;
-    expect(approved.events.map((e) => e.kind)).toEqual([
-      'action-executed',
-      'definition-activated',
-    ]);
+    expect(approved.events.map((e) => e.kind)).toEqual(['action-executed', 'definition-activated']);
 
     const entry = approved.snapshot.definitions!['article-drafting']!;
     expect(approved.snapshot.instances['meta/flow:article-drafting']?.node).toBe('active');
@@ -80,7 +82,9 @@ describe('approve(铁律 5:审批不委托)', () => {
     expect(entry.version).toBe(2);
     expect(entry.bornBy).toBe(1);
     // 活跃定义 = 草稿内容(pin 已在)。
-    const pin = entry.definition.nodes.find((n) => n.name === 'ready')?.actions.find((a) => a.name === 'pin');
+    const pin = entry.definition.nodes
+      .find((n) => n.name === 'ready')
+      ?.actions.find((a) => a.name === 'pin');
     expect(pin).toMatchObject({ name: 'pin', to: 'done' });
     // activation 实体 → approved(保留审计)。
     expect(approved.snapshot.activations?.['meta/activation:a1']).toMatchObject({
@@ -96,7 +100,9 @@ describe('approve(铁律 5:审批不委托)', () => {
       definition: typeof entry.definition;
     };
     expect(detail).toMatchObject({ name: 'article-drafting', version: 2, activationId: 'a1' });
-    expect(detail.definition.nodes.find((n) => n.name === 'ready')?.actions.map((a) => a.name)).toContain('pin');
+    expect(
+      detail.definition.nodes.find((n) => n.name === 'ready')?.actions.map((a) => a.name),
+    ).toContain('pin');
 
     // sitemap bump 信号:激活内容相对原活跃定义变了,推导版本(内容 hash)即变
     // (definition-activated 事件即重生成信号;web 层 Phase B 消费)。
@@ -107,7 +113,14 @@ describe('approve(铁律 5:审批不委托)', () => {
     // 全生命周期重放一致(I5):含 submit 前的一条拒绝留痕(no-op)。
     const fullLog: LogEvent[] = [
       ...log,
-      { seq: 99, kind: 'action-rejected', rel: 'meta/flow:article-drafting', action: 'approve', actor: 'agent', reason: 'guard 不满足: actor-is-human=false' },
+      {
+        seq: 99,
+        kind: 'action-rejected',
+        rel: 'meta/flow:article-drafting',
+        action: 'approve',
+        actor: 'agent',
+        reason: 'guard 不满足: actor-is-human=false',
+      },
       ...approved.events.map((e, i) => ({ ...e, seq: 100 + i })),
     ];
     expect(fold(fullLog, { flows: {} }, seedSnapshot)).toEqual(approved.snapshot);
@@ -116,7 +129,12 @@ describe('approve(铁律 5:审批不委托)', () => {
   it('agent approve → guard-failed actor-is-human(I4 延伸),状态不变', () => {
     const { snapshot } = pendingApproval();
     const outcome = executeMeta(
-      { rel: 'meta/flow:article-drafting', action: 'approve', actor: 'agent', principal: 'user:mike' },
+      {
+        rel: 'meta/flow:article-drafting',
+        action: 'approve',
+        actor: 'agent',
+        principal: 'user:mike',
+      },
       snapshot,
       deps,
     );
@@ -160,7 +178,11 @@ describe('approve(铁律 5:审批不委托)', () => {
   it('未知 activation rel / 已决策 activation → undeclared', () => {
     const { snapshot } = pendingApproval();
     expect(
-      executeMeta({ rel: 'meta/activation:ghost', action: 'approve', actor: 'human' }, snapshot, deps),
+      executeMeta(
+        { rel: 'meta/activation:ghost', action: 'approve', actor: 'human' },
+        snapshot,
+        deps,
+      ),
     ).toMatchObject({ kind: 'rejected', layer: 'undeclared' });
 
     const approved = executeMeta(
@@ -170,7 +192,11 @@ describe('approve(铁律 5:审批不委托)', () => {
     );
     if (approved.kind !== 'executed') throw new Error('approve 应通过');
     expect(
-      executeMeta({ rel: 'meta/activation:a1', action: 'reject', actor: 'human', params: { reason: '迟了' } }, approved.snapshot, deps),
+      executeMeta(
+        { rel: 'meta/activation:a1', action: 'reject', actor: 'human', params: { reason: '迟了' } },
+        approved.snapshot,
+        deps,
+      ),
     ).toMatchObject({ kind: 'rejected', layer: 'undeclared' });
   });
 });
@@ -179,7 +205,13 @@ describe('reject(reason 必填)', () => {
   it('human reject 带 reason:entry/activation → rejected,原因入事件', () => {
     const { snapshot, log } = pendingApproval();
     const rejected = executeMeta(
-      { rel: 'meta/activation:a1', action: 'reject', actor: 'human', principal: 'user:mike', params: { reason: 'pin 动作不该无 guard' } },
+      {
+        rel: 'meta/activation:a1',
+        action: 'reject',
+        actor: 'human',
+        principal: 'user:mike',
+        params: { reason: 'pin 动作不该无 guard' },
+      },
       snapshot,
       deps,
     );
@@ -213,10 +245,18 @@ describe('reject(reason 必填)', () => {
   it('reason 空/缺 → schema-invalid(schema 层第 3 层)', () => {
     const { snapshot } = pendingApproval();
     expect(
-      executeMeta({ rel: 'meta/activation:a1', action: 'reject', actor: 'human', params: {} }, snapshot, deps),
+      executeMeta(
+        { rel: 'meta/activation:a1', action: 'reject', actor: 'human', params: {} },
+        snapshot,
+        deps,
+      ),
     ).toMatchObject({ kind: 'rejected', layer: 'schema-invalid' });
     expect(
-      executeMeta({ rel: 'meta/activation:a1', action: 'reject', actor: 'human', params: { reason: '' } }, snapshot, deps),
+      executeMeta(
+        { rel: 'meta/activation:a1', action: 'reject', actor: 'human', params: { reason: '' } },
+        snapshot,
+        deps,
+      ),
     ).toMatchObject({ kind: 'rejected', layer: 'schema-invalid' });
   });
 

@@ -13,12 +13,7 @@ import type {
 } from '@ui4a/shared';
 import { metaApplicationRel, metaCapabilityRel, metaFlowRel } from '@ui4a/shared';
 
-import type {
-  ApplicationSeededDetail,
-  CapabilitySeededDetail,
-  LogEvent,
-  SeedDetail,
-} from './fold';
+import type { ApplicationSeededDetail, CapabilitySeededDetail, LogEvent, SeedDetail } from './fold';
 import type { DefinitionSeededDetail } from './meta';
 import {
   parseApplicationDefinition,
@@ -53,7 +48,8 @@ function nonEmptyString(value: unknown, path: string): string {
 function uniqueByName<T extends { name: string }>(rows: T[], path: string): T[] {
   const names = new Set<string>();
   for (const row of rows) {
-    if (names.has(row.name)) throw new Error(`application bundle ${path} 存在重复 name "${row.name}"`);
+    if (names.has(row.name))
+      throw new Error(`application bundle ${path} 存在重复 name "${row.name}"`);
     names.add(row.name);
   }
   return rows;
@@ -72,7 +68,9 @@ function parseSeed(input: unknown): { rel: string; detail: SeedDetail } {
     }
     const instanceRel = nonEmptyString(raw.rel, `seed.instances.${key}.rel`);
     if (instanceRel !== key) {
-      throw new Error(`application bundle seed instance key "${key}" 与 rel "${instanceRel}" 不一致`);
+      throw new Error(
+        `application bundle seed instance key "${key}" 与 rel "${instanceRel}" 不一致`,
+      );
     }
     instances[key] = {
       rel: instanceRel,
@@ -109,12 +107,22 @@ export function parseApplicationBundle(input: unknown): ApplicationBundle {
   if (!Number.isSafeInteger(version) || (version as number) < 1) {
     throw new Error('application bundle bundle.version 必须是正整数');
   }
-  if (!Array.isArray(input.applications) || !Array.isArray(input.capabilities) || !Array.isArray(input.flows)) {
+  if (
+    !Array.isArray(input.applications) ||
+    !Array.isArray(input.capabilities) ||
+    !Array.isArray(input.flows)
+  ) {
     throw new Error('application bundle applications/capabilities/flows 必须是数组');
   }
 
-  const applications = uniqueByName(input.applications.map(parseApplicationDefinition), 'applications');
-  const capabilities = uniqueByName(input.capabilities.map(parseCapabilityDefinition), 'capabilities');
+  const applications = uniqueByName(
+    input.applications.map(parseApplicationDefinition),
+    'applications',
+  );
+  const capabilities = uniqueByName(
+    input.capabilities.map(parseCapabilityDefinition),
+    'capabilities',
+  );
   const flows = uniqueByName(input.flows.map(parseFlowDefinition), 'flows');
   const seed = parseSeed(input.seed);
   const applicationNames = new Set(applications.map((application) => application.name));
@@ -139,7 +147,9 @@ export function parseApplicationBundle(input: unknown): ApplicationBundle {
   for (const [collection, members] of Object.entries(seed.detail.collections ?? {})) {
     for (const member of members) {
       if (seed.detail.instances[member] === undefined) {
-        throw new Error(`application bundle seed collection "${collection}" 引用未知 instance "${member}"`);
+        throw new Error(
+          `application bundle seed collection "${collection}" 引用未知 instance "${member}"`,
+        );
       }
     }
   }
@@ -158,7 +168,9 @@ function bootstrapRel(bundle: ApplicationBundle): string {
   return `meta/bootstrap:${bundle.bundle.name}@${bundle.bundle.version}`;
 }
 
-function receiptInventory(detail: unknown):
+function receiptInventory(
+  detail: unknown,
+):
   | { applications: unknown[]; capabilities: unknown[]; flows: unknown[]; seedRel: string }
   | undefined {
   if (!isRecord(detail) || !isRecord(detail.inventory)) return undefined;
@@ -321,7 +333,9 @@ export function assertMetaBootstrapIntegrity(events: readonly LogEvent[]): void 
 
   const receipts = events.filter((event) => event.kind === 'meta-bootstrap-applied');
   const upgradedRels = new Set(
-    receipts.filter((receipt) => receiptInventory(receipt.detail) !== undefined).map((receipt) => receipt.rel),
+    receipts
+      .filter((receipt) => receiptInventory(receipt.detail) !== undefined)
+      .map((receipt) => receipt.rel),
   );
   for (const receipt of receipts) {
     const inventory = receiptInventory(receipt.detail);
@@ -341,7 +355,11 @@ export function assertMetaBootstrapIntegrity(events: readonly LogEvent[]): void 
     const missingFlows = inventory.flows.filter(
       (name): name is string => typeof name === 'string' && !flowNames.has(name),
     );
-    if (missingApplications.length > 0 || missingCapabilities.length > 0 || missingFlows.length > 0) {
+    if (
+      missingApplications.length > 0 ||
+      missingCapabilities.length > 0 ||
+      missingFlows.length > 0
+    ) {
       throw new Error(
         `runtime 定义缺失: applications=[${missingApplications.join(',')}], capabilities=[${missingCapabilities.join(',')}], flows=[${missingFlows.join(',')}]`,
       );

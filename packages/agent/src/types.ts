@@ -209,18 +209,46 @@ export interface DriverContext {
 export interface SitemapApplicationSummary {
   name: string;
   intent: string;
-  flows: { name: string; title: string }[];
+  flows: SitemapFlowSummary[];
+}
+
+export interface SitemapActionSummary {
+  name: string;
+  title: string;
+  node: string;
+  guards: string[];
+}
+
+export interface SitemapFlowSummary {
+  name: string;
+  title: string;
+  /** 跨节点动作目录仅用于发现；执行时仍以当前实体 actions 为准。 */
+  actions?: SitemapActionSummary[];
+}
+
+export interface SitemapCapabilitySummary {
+  name: string;
+  title: string;
+  kind: 'transform' | 'extract' | 'effect';
+  intent: string;
+  input?: string;
+  output?: string;
+  inputSchema?: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
+  scope: { applications: string[]; flows: string[] };
 }
 
 /** sitemap 中 driver 需要的最小投影(surfaces 的 rel/title + applications 分组)。 */
 export interface SitemapSummary {
   version: string;
-  surfaces: { rel: string; title: string }[];
+  surfaces: { rel: string; title: string; app?: string }[];
   /**
    * 按 app 分组的发现面(T10):agent 先读 intent 定位 app,再在组内选 flow。
    * 端点未提供(旧形状)时解析为空数组;扁平 surfaces 始终保留(向后兼容)。
    */
   applications: SitemapApplicationSummary[];
+  /** 当前 sitemap 注册的 capability 定义摘要；旧端点形状解析为空数组。 */
+  capabilities?: SitemapCapabilitySummary[];
 }
 
 /**

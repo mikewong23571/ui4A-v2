@@ -72,10 +72,9 @@ describe('fold:render-spec-frozen 事件 → renderSpecs 表', () => {
 
   it('detail 缺 concern / spec 缺字段 → 日志完整性抛错', () => {
     expect(() =>
-      fold(
-        [{ seq: 1, kind: 'render-spec-frozen', rel: renderSpecRel('x'), detail: {} }],
-        { flows: {} },
-      ),
+      fold([{ seq: 1, kind: 'render-spec-frozen', rel: renderSpecRel('x'), detail: {} }], {
+        flows: {},
+      }),
     ).toThrow(/日志完整性/);
     expect(() =>
       fold(

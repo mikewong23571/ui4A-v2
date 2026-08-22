@@ -15,11 +15,14 @@
  * 存储层复用 web 的 db 模块(appendEvent/ensureEventsTable 是唯一写入口,
  * 跨 app 相对引用——事件日志是共享底座,不属于任何平面,arch-brief §1)。
  */
+import { createHash } from 'node:crypto';
+
 import type { DbExecutor } from '../../web/src/db/events';
 import { appendEvent, ensureEventsTable } from '../../web/src/db/events';
 import { getPool } from '../../web/src/db/pool';
 
 import type { SitemapSummary } from '@ui4a/agent';
+import { canonicalJson } from '@ui4a/engine';
 
 import {
   fetchSitemap,
@@ -56,15 +59,17 @@ export interface NotificationDeliveredDetail {
 }
 
 /** 幂等键:事件表无业务唯一约束,按 (kind, rel) 精确匹配已送达通知。 */
-function findDelivered(db: DbExecutor, rel: string): Promise<number | null> {
+function findEvent(db: DbExecutor, kind: string, rel: string): Promise<number | null> {
   return db
     .query<{ seq: string | number }>(
       'SELECT seq FROM events WHERE kind = $1 AND rel = $2 LIMIT 1',
-      ['notification-delivered', rel],
+      [kind, rel],
     )
-    .then((result) =>
-      (result.rowCount ?? 0) > 0 ? Number(result.rows[0]!.seq) : null,
-    );
+    .then((result) => ((result.rowCount ?? 0) > 0 ? Number(result.rows[0]!.seq) : null));
+}
+
+function findDelivered(db: DbExecutor, rel: string): Promise<number | null> {
+  return findEvent(db, 'notification-delivered', rel);
 }
 
 /**
@@ -104,6 +109,42 @@ export async function notify(
   return deliverNotification(workerDb(), confirmation);
 }
 
+export interface CapabilityArtifactInput {
+  id: string;
+  capability: string;
+  source: { rel: string; field: string };
+  model: string;
+  outputSchema: Record<string, unknown>;
+  content: unknown;
+  createdBy: { actor: 'human' | 'agent'; principal?: string };
+}
+
+/**
+ * capability runner 的持久化边界。模型调用发生在 activity adapter 外层；
+ * 本函数把已验证输出物化为 append-only artifact，重试按 artifact rel 幂等。
+ */
+export async function materializeCapabilityArtifact(
+  db: DbExecutor,
+  input: CapabilityArtifactInput,
+): Promise<{ seq: number; deduplicated: boolean; contentHash: string }> {
+  await ensureEventsTable(db);
+  const rel = `artifact:${input.id}`;
+  const canonicalContent = canonicalJson(input.content);
+  const contentHash = `sha256:${createHash('sha256').update(canonicalContent).digest('hex')}`;
+  const existing = await findEvent(db, 'capability-artifact-created', rel);
+  if (existing !== null) return { seq: existing, deduplicated: true, contentHash };
+  const detail = { ...input, contentHash };
+  const appended = await appendEvent(db, {
+    kind: 'capability-artifact-created',
+    rel,
+    actor: input.createdBy.actor,
+    principal: input.createdBy.principal,
+    channel: 'capability',
+    detail,
+  });
+  return { seq: appended.seq, deduplicated: false, contentHash };
+}
+
 // ---------------------------------------------------------------------------
 // delegation activities(T5 Phase A / spec 架构决定 1)
 // ---------------------------------------------------------------------------
@@ -128,9 +169,7 @@ export async function startDelegation(
   return recordDelegationStart(workerDb(), args);
 }
 
-export async function loadSitemap(args: {
-  baseUrl: string;
-}): Promise<SitemapSummary | undefined> {
+export async function loadSitemap(args: { baseUrl: string }): Promise<SitemapSummary | undefined> {
   return fetchSitemap(args.baseUrl, fetch);
 }
 
