@@ -1,0 +1,6 @@
+T12 Phase B Task 3: 页面/画布接入页面级实体缓存
+
+改动:components/home-body.tsx + canvas-body.tsx(新增,状态机搬移)、app/page.tsx + canvas/page.tsx(壳化 + provider)+ 4 测试文件(fetch 计数断言)
+D18 兼容:planSurface fetcher 换缓存句柄(签名同形),deref 仍每面一次性快照消费,零订阅;action 后整面 reload 兜底逐字节保留。
+验收(编排 agent 亲自复跑):4 测试文件 24/24(同 rel 零重复 fetch/多 surface 共享/失效口径对拍);CI=true pnpm check 981 passed;s5+i3 e2e 4/4。自治验收。
+Why:spec 架构决定 4——同 rel 二次渲染零重复 fetch,画布多 surface 共享,首屏不变。
