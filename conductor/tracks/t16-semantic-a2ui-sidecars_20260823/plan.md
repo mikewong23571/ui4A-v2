@@ -91,3 +91,7 @@
 - [ ] Task: 回归 `pnpm check`、`CI=true pnpm e2e`、真实 Chat/Presentation LLM Eval、source-governance 和开发栈 live walkthrough
 - [ ] Task: 同步 `GOAL.md`、`conductor/product.md`、`product-guidelines.md`、`tech-stack.md`、`arch-brief.md`、`DECISIONS.md` 与 DONE 报告
 - [ ] Task: Final Phase Verification & Checkpoint (Refer to workflow.md)
+
+## Phase: Review Fixes
+
+- [x] Task: Apply review suggestions — wire the validated Recipe registry into the runtime fastpath and replay human-promoted Recipes across restart — 3bedb27
