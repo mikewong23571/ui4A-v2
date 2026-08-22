@@ -10,9 +10,9 @@
 - [x] Task: disposable provider probe——实测 DeepSeek baseline 的 Chat Completions、流式帧、tool calling、结构化输出、错误体、模型标识与时延；结论进入 DECISIONS/git note，不为端点行为写永久特判 — 42ed23e
 - [x] Task: 建立 story-eval 最小 harness 与版本化报告格式；必须记录真实 driver/model、场景输入、结构化 outcome、业务事件前后差分和人工 rubric，拒绝 exact wording/trace assertions — 7e979f4
 - [x] Task: disposable story spike——只用 DeepSeek baseline 跑 U1/U5/U10/U12，验证多轮 messages/结构化输出/工具选择的 AI SDK 行为并记录失败证据；spike 不直接成为生产实现 — 7e979f4
-- [ ] Task: 记录 T15 superseding 决定(生产 Assistant AI-first、退出 rule fallback、对话上下文来自日志、临时认知/正式 artifact/action 边界、DeepSeek 真实 LLM Eval)，同步待实施的 GOAL/I1 变更说明
+- [x] Task: 记录 T15 superseding 决定(生产 Assistant AI-first、退出 rule fallback、对话上下文来自日志、临时认知/正式 artifact/action 边界、DeepSeek 真实 LLM Eval)，同步待实施的 GOAL/I1 变更说明 — cd70db7
 - [x] Task: 根据 spike 结果细化后续实现触点和 Eval corpus，不改变 U1–U23 的产品验收语义 — 7e979f4
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase B: AI-first runtime 与故障安全(U22)
 
