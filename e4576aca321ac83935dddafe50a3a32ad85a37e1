@@ -1,0 +1,5 @@
+T14 Phase C Task 1: 事件流人类可读投影
+
+改动:situation 增 kind 注册表机械叙事(谁/目标/动作/结果),未知 kind 回退原始字段行;事件成员携 timestamp + 完整 audit;timeline 直出摘要/时间,reason/detail 默认折叠下钻;chat-turn/agent-decision 为回合/步骤级一行摘要;零 AI 源级断言覆盖事件路径。
+Why:walkthrough #1——原始机器字段逐条堆叠不可读,同时保留审计原文一层可达。
+TDD:5 条红相验证;targeted 32/32;CI=true pnpm check 117 files / 1094 tests 全绿。自治验收。
