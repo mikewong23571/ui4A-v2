@@ -29,3 +29,9 @@ Evidence:
 - real deepseek-v4-flash probe: generateText 3/3 + streamText 3/3 tool calls; 2.8-4.3s / 3.8-6.4s
 - pnpm check: 121 files passed, 2 Temporal-dependent files skipped with Temporal stopped; 1134 tests passed, 2 skipped
 - with Temporal running, two pre-existing task-queue integration tests stalled on both existing and fresh server; no related modules changed
+
+\nPost-commit live verification:
+- unified pnpm dev:all loaded the root profile; web, Temporal, and worker started.
+- inline driver=llm query completed with count=2.
+- delegated driverKind=llm query completed in one step with zero successes/mutations.
+- removed exactly 23 test-generated dev-log rows (seq 2588-2610) after an older dev worker consumed Temporal integration-test workflows; append-only trigger was re-enabled immediately.
