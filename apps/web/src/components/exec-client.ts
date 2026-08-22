@@ -63,8 +63,8 @@ export async function execAction(input: {
 }
 
 /** GET /api/entity?rel=…;404 → null(实体不存在),其余非 200 → 抛错。 */
-export async function fetchEntity(rel: string): Promise<SirenEntity | null> {
-  const response = await fetch(`/api/entity?rel=${encodeURIComponent(rel)}`);
+export async function fetchEntity(rel: string, signal?: AbortSignal): Promise<SirenEntity | null> {
+  const response = await fetch(`/api/entity?rel=${encodeURIComponent(rel)}`, { signal });
   if (response.status === 404) return null;
   if (!response.ok) {
     throw new Error(`GET /api/entity?rel=${rel} → HTTP ${response.status}`);

@@ -323,6 +323,45 @@ describe('画布页(A2UI surface 宿主)', () => {
     }
   });
 
+  it('latest-wins:旧 load 晚到不得覆盖新 focus/concern，加载中禁用并发重载', async () => {
+    window.history.pushState({}, '', '/canvas?concern=demo-articles-table');
+    try {
+      const baseMock = mockCanvasContract();
+      let releaseFirst: ((response: Response) => void) | undefined;
+      let catalogCalls = 0;
+      const mock = vi.fn((input: RequestInfo | URL) => {
+        if (String(input) === '/api/render/catalog') {
+          catalogCalls += 1;
+          if (catalogCalls === 1) {
+            return new Promise<Response>((resolve) => {
+              releaseFirst = resolve;
+            });
+          }
+        }
+        return (baseMock as unknown as (value: RequestInfo | URL) => Promise<Response>)(input);
+      });
+      vi.stubGlobal('fetch', mock);
+      const { rerender } = render(<CanvasPage />);
+      await waitFor(() => expect(catalogCalls).toBe(1));
+      expect(screen.getByRole('button', { name: '重新载入' }).hasAttribute('disabled')).toBe(true);
+
+      window.history.pushState({}, '', '/canvas?concern=articles-by-category');
+      rerender(<CanvasPage />);
+      await waitFor(() => {
+        const first = document.querySelector('[data-surface]');
+        expect(first?.getAttribute('data-concern')).toBe('articles-by-category');
+      });
+
+      releaseFirst?.(jsonResponse(200, renderCatalogJson()));
+      await Promise.resolve();
+      expect(document.querySelector('[data-surface]')?.getAttribute('data-concern')).toBe(
+        'articles-by-category',
+      );
+    } finally {
+      window.history.pushState({}, '', '/canvas');
+    }
+  });
+
   it('多 surface 共享页面缓存:同 rel(凝固 chart + 演示 table)零重复 fetch,version 戳一次', async () => {
     const mock = mockCanvasContract();
     vi.stubGlobal('fetch', mock);

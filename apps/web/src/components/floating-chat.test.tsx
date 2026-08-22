@@ -193,7 +193,7 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
     expect(requestBody.sessionId).toMatch(/^[0-9a-f-]+$/i);
     expect(requestBody.turnId).toMatch(/^[0-9a-f-]+$/i);
     expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBe(requestBody.sessionId);
-    fireEvent.click(screen.getByRole('button', { name: '停止' }));
+    fireEvent.click(screen.getByRole('button', { name: '新会话' }));
   });
 
   it('SSE:step 帧逐步各成一条 assistant 消息,final 更新会话标签并持久化', async () => {

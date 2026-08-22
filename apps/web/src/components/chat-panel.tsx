@@ -160,6 +160,9 @@ export function useChatSession(): ChatSession {
   const [lastFocus, setLastFocus] = useState<ChatJsonResponse['focus']>(undefined);
   // 进行中请求的取消柄(B2:onCancel 中止 fetch;整体超时经 AbortSignal.any 合并)。
   const abortRef = useRef<AbortController | null>(null);
+  // 高频 reasoning delta 先在 ref 聚合，每 50ms 至多提交一次 React state。
+  const thinkingDeltaRef = useRef(new Map<number, string>());
+  const thinkingFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [view, setView] = useState<'chat' | 'sessions'>('chat');
   const [sessions, setSessions] = useState<ChatSessionSummary[] | null>(null);
@@ -239,25 +242,47 @@ export function useChatSession(): ChatSession {
     ]);
   }, []);
 
-  /** thinking-delta 帧:推理增量片段——同号思考条目原地累积(无则新建)。 */
-  const appendThinkingDelta = useCallback((step: number, piece: string) => {
+  const flushThinkingDeltas = useCallback(() => {
+    if (thinkingFlushRef.current !== null) clearTimeout(thinkingFlushRef.current);
+    thinkingFlushRef.current = null;
+    const pending = [...thinkingDeltaRef.current.entries()];
+    thinkingDeltaRef.current.clear();
+    if (pending.length === 0) return;
     setMessages((prev) => {
-      for (let index = prev.length - 1; index >= 0; index -= 1) {
-        if (prev[index]!.thinking === step) {
-          const next = [...prev];
-          next[index] = { ...prev[index]!, content: prev[index]!.content + piece };
-          return next;
+      const next = [...prev];
+      for (const [step, text] of pending) {
+        let found = false;
+        for (let index = next.length - 1; index >= 0; index -= 1) {
+          if (next[index]!.thinking === step) {
+            next[index] = { ...next[index]!, content: next[index]!.content + text };
+            found = true;
+            break;
+          }
         }
+        if (!found) next.push({ role: 'assistant', content: text, thinking: step });
       }
-      return [...prev, { role: 'assistant', content: piece, thinking: step }];
+      return next;
     });
   }, []);
+
+  /** thinking-delta 帧:同号先合帧，避免 token 速率直接放大为整棵 thread 重渲染。 */
+  const appendThinkingDelta = useCallback(
+    (step: number, piece: string) => {
+      thinkingDeltaRef.current.set(step, (thinkingDeltaRef.current.get(step) ?? '') + piece);
+      if (thinkingFlushRef.current === null) {
+        thinkingFlushRef.current = setTimeout(flushThinkingDeltas, 50);
+      }
+    },
+    [flushThinkingDeltas],
+  );
 
   /**
    * thinking 帧(T11 Phase C):聚合整段权威终帧——同号条目替换为全文
    * (兼容增量丢失/关闭后补放),无同步号条目时独立成条。
    */
   const appendThinking = useCallback((step: number, text: string) => {
+    // 聚合终帧是权威全文：丢弃尚未提交的同号片段，避免先追加后替换的双渲染。
+    thinkingDeltaRef.current.delete(step);
     setMessages((prev) => {
       for (let index = prev.length - 1; index >= 0; index -= 1) {
         if (prev[index]!.thinking === step) {
@@ -269,6 +294,13 @@ export function useChatSession(): ChatSession {
       return [...prev, { role: 'assistant', content: text, thinking: step }];
     });
   }, []);
+
+  useEffect(
+    () => () => {
+      if (thinkingFlushRef.current !== null) clearTimeout(thinkingFlushRef.current);
+    },
+    [],
+  );
 
   /** SSE 帧处置:step 逐步追加;final 更新会话/回执;error 如实进消息。 */
   const handleFinal = useCallback(
@@ -354,12 +386,14 @@ export function useChatSession(): ChatSession {
             } else if (frame.type === 'thinking') {
               appendThinking(frame.step, frame.text);
             } else if (frame.type === 'step') {
+              flushThinkingDeltas();
               stepCount += 1;
               appendAssistant(frame.message.text, frame.rel);
             } else if (frame.type === 'render') {
               // 渲染回执帧(渲染短路 LLM 路径 SSE 化):处置与 JSON 回执等价。
               handleRenderReceipt(frame.payload);
             } else if (frame.type === 'final') {
+              flushThinkingDeltas();
               handleFinal(frame.payload, stepCount);
             } else if (frame.type === 'error') {
               appendAssistant(`失败: ${frame.error}`);
@@ -403,7 +437,7 @@ export function useChatSession(): ChatSession {
         setIsRunning(false);
       }
     },
-    [appendAssistant, appendThinking, appendThinkingDelta, handleFinal, handleFocus, handleRenderReceipt, persistSession],
+    [appendAssistant, appendThinking, appendThinkingDelta, flushThinkingDeltas, handleFinal, handleFocus, handleRenderReceipt, persistSession],
   );
 
   const onCancel = useCallback(async () => {

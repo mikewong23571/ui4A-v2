@@ -116,12 +116,25 @@ export function createCanvasActionHandler(deps: CanvasActionHandlerDeps) {
 /** 渲染中的 surface 条目(surface 模型进 state:渲染只读 state,不读 ref)。 */
 interface SurfaceEntry {
   id: string;
+  generation: number;
   /** spec 关注点键(data-concern 锚点;chat 回执链接/断言用)。 */
   concern: string;
   /** ?concern= 激活高亮(排最前 + data-active)。 */
   active: boolean;
   surface: SurfaceModel<ReactComponentImplementation>;
   warnings: DerefWarning[];
+}
+
+const CANVAS_LOAD_TIMEOUT_MS = 15_000;
+
+/** 把不支持 signal 的缓存/规划 Promise 纳入本轮取消域，旧轮结果不得落 state。 */
+async function withAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) throw signal.reason;
+  return await new Promise<T>((resolve, reject) => {
+    const abort = (): void => reject(signal.reason);
+    signal.addEventListener('abort', abort, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
+  });
 }
 
 interface SurfaceErrorBoundaryProps {
@@ -177,14 +190,26 @@ export function CanvasBody() {
   const [negotiated, setNegotiated] = useState(false);
   // 重载触发器:拦截门 executed 后重载(gate 闭包经 ref 触发,不经渲染期读)。
   const reloadRef = useRef<() => void>(() => {});
+  const loadGenerationRef = useRef(0);
+  const inFlightRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
+    const generation = loadGenerationRef.current + 1;
+    loadGenerationRef.current = generation;
+    inFlightRef.current?.abort(new DOMException('Superseded by a newer canvas load.', 'AbortError'));
+    const controller = new AbortController();
+    inFlightRef.current = controller;
+    const timeout = setTimeout(
+      () => controller.abort(new DOMException('Canvas load timed out.', 'TimeoutError')),
+      CANVAS_LOAD_TIMEOUT_MS,
+    );
     setLoading(true);
     setErrors([]);
     setNotice(null);
+    setNegotiated(false);
     try {
       // 1. 目录协商(catalogId 稳定 URI;目录与注册表同源才继续)。
-      const catalogResponse = await fetch(catalogUrl);
+      const catalogResponse = await fetch(catalogUrl, { signal: controller.signal });
       if (!catalogResponse.ok)
         throw new Error(`GET ${catalogUrl} → HTTP ${catalogResponse.status}`);
       const catalog = (await catalogResponse.json()) as { catalogId?: string };
@@ -193,12 +218,13 @@ export function CanvasBody() {
           `目录协商失败:服务目录 ${String(catalog.catalogId)} 与本地词汇表 ${CATALOG_ID} 不同源`,
         );
       }
+      if (generation !== loadGenerationRef.current) return;
       setNegotiated(true);
 
       // 2/3. 凝固 spec 列表(合同路径,每轮直取:reload 即新鲜)+ 单例演示;
       // ?concern= 激活的 spec 排最前(S5:聊天 render 回执的画布入口;命中与否
       // 不改变渲染集)。
-      const frozenCollection = await fetchEntity('render-specs');
+      const frozenCollection = await fetchEntity('render-specs', controller.signal);
       const frozenSpecs = frozenCollection !== null ? frozenSpecsOf(frozenCollection) : [];
       // agent/human 共享 focus：稳定 surface id 上替换实体引用；不进入冻结集合。
       const focusSpec: RenderSpec | undefined =
@@ -234,7 +260,7 @@ export function CanvasBody() {
       const planned: { surfaceId: string; concern: string; warnings: DerefWarning[] }[] = [];
       for (const spec of specs) {
         try {
-          const plan = await planSurface(spec, cache.get);
+          const plan = await withAbort(planSurface(spec, cache.get), controller.signal);
           for (const entity of plan.cache.values()) gate.register(entity);
           processor.processMessages(plan.messages);
           planned.push({
@@ -247,25 +273,36 @@ export function CanvasBody() {
         }
       }
 
+      if (generation !== loadGenerationRef.current || controller.signal.aborted) return;
       setSurfaces(
         planned.flatMap(({ surfaceId, concern, warnings }) => {
           const surface = processor.model.surfacesMap.get(surfaceId);
           return surface === undefined
             ? []
-            : [{ id: surfaceId, concern, active: concern === activeConcern, surface, warnings }];
+            : [{ id: surfaceId, generation, concern, active: concern === activeConcern, surface, warnings }];
         }),
       );
       setErrors(failed);
     } catch (error) {
-      setErrors([error instanceof Error ? error.message : String(error)]);
+      if (generation !== loadGenerationRef.current) return;
+      const reason = controller.signal.aborted ? controller.signal.reason : error;
+      if (reason instanceof Error && reason.name === 'AbortError') return;
+      setErrors([reason instanceof Error ? reason.message : String(reason)]);
     } finally {
-      setLoading(false);
+      clearTimeout(timeout);
+      if (generation === loadGenerationRef.current) {
+        inFlightRef.current = null;
+        setLoading(false);
+      }
     }
   }, [cache, concernParam, focusParam]);
 
   useEffect(() => {
     const initial = setTimeout(() => void load(), 0);
-    return () => clearTimeout(initial);
+    return () => {
+      clearTimeout(initial);
+      inFlightRef.current?.abort(new DOMException('Canvas view changed.', 'AbortError'));
+    };
   }, [load]);
 
   // latest-ref:拦截门 executed 后的重载入口(effect 内更新,渲染期零 ref 访问)。
@@ -282,6 +319,7 @@ export function CanvasBody() {
           variant="outline"
           size="sm"
           data-nav="local:canvas-reload"
+          disabled={loading}
           onClick={() => void load()}
         >
           重新载入
@@ -312,7 +350,7 @@ export function CanvasBody() {
       <section aria-label="surfaces" className="mt-6 space-y-8">
         {surfaces.map((entry) => (
           <div
-            key={entry.id}
+            key={`${entry.generation}:${entry.id}`}
             data-surface={entry.id}
             data-concern={entry.concern}
             {...(entry.active ? { 'data-active': 'true' } : {})}
