@@ -1,19 +1,21 @@
 /**
  * 激活不变式检查器(T4 Phase A Task 3;arch-brief §10 A.5 种子集;
- * T10 Phase A Task 3 增第七条 app-known,spec 架构决定 3)。
+ * T10 Phase A Task 3 增第七条 app-known,spec 架构决定 3;
+ * T13 Phase D Task 1 增第八条 capability-registered,spec 架构决定 4)。
  *
- * validateDefinition(draft, registries) → checks:七项逐条、全量报告不短路
+ * validateDefinition(draft, registries) → checks:八项逐条、全量报告不短路
  * (与 guard 求值同口径:每项都要有结果,checks 入 activation 实体与
  * definition-submitted 事件 detail——"非法动作被拒绝、非法定义也应被拒绝"
  * 的定义层落点)。
  *
- * 七项:edge-targets-exist / guards-registered / field-types-known /
- * effect-known / initial-exists / terminal-reachable / app-known。
+ * 八项:edge-targets-exist / guards-registered / field-types-known /
+ * effect-known / initial-exists / terminal-reachable / app-known /
+ * capability-registered。
  * 纯函数:只读草稿与注册表。
  */
 import type { ActivationCheck, FlowDefinition, GuardRegistry } from '@ui4a/shared';
 import { KNOWN_EFFECT_TYPES, KNOWN_FIELD_TYPES, reachableNodes, terminalNodes } from '@ui4a/shared';
-import type { FieldType } from './types';
+import type { FieldDefinition, FieldType } from './types';
 
 /** 检查器依赖的注册表(meta/registries 的运行时子集)。 */
 export interface DefinitionRegistries {
@@ -30,11 +32,20 @@ export interface DefinitionRegistries {
    * Phase B 后由 seed 保证 'default' 始终激活,本检查长牙。
    */
   applications?: ReadonlySet<string>;
+  /**
+   * 已注册 capability 名集合(capability-registered 按键集校验;T13)。
+   * 未提供 → capability-registered vacuous pass(过渡期语义:Phase C 的
+   * boot seed/fold 落表前运行时快照没有 capability 定义,硬拒会误伤合法
+   * 提交);Phase C 后由 seed 保证被引用 capability(draft/notify/clarify)
+   * 始终注册,本检查长牙。
+   */
+  capabilities?: ReadonlySet<string>;
 }
 
 interface EffectLike {
   type: string;
   to?: unknown;
+  capability?: unknown;
 }
 
 /** 动作的效果列表(单/缺省数组化,不规范化——校验看声明原样)。 */
@@ -44,7 +55,7 @@ function effectsOf(action: { effect?: unknown }): EffectLike[] {
   return list.filter((e): e is EffectLike => typeof e === 'object' && e !== null);
 }
 
-/** 激活不变式检查器:返回七项检查结果(pass + 失败明细)。 */
+/** 激活不变式检查器:返回八项检查结果(pass + 失败明细)。 */
 export function validateDefinition(
   draft: FlowDefinition,
   registries: DefinitionRegistries,
@@ -58,12 +69,37 @@ export function validateDefinition(
   const guardIssues: string[] = [];
   const fieldTypeIssues: string[] = [];
   const effectIssues: string[] = [];
+  const capabilityIssues: string[] = [];
+
+  // capability-registered(T13 第八条)的引用点扫描,与 apps/web
+  // capabilities.test.ts 静态保证同一扫描面:field source 为 proposal 时的
+  // source.capability、field 的 on-invalid 澄清标记(类型是字面枚举
+  // 'clarify',但定义是数据,枚举外取值由本检查兜底)、effect spawn 的
+  // capability。elicit.strategy 是引出策略名,不是 capability 引用。
+  // registries.capabilities 未提供时 vacuous pass(过渡期),不扫描。
+  const capabilities = registries.capabilities;
+  const visitFieldCapabilities = (field: FieldDefinition, where: string): void => {
+    if (capabilities === undefined) return;
+    if (field.source?.kind === 'proposal' && field.source.capability !== undefined) {
+      if (!capabilities.has(field.source.capability)) {
+        capabilityIssues.push(
+          `${where}.source: proposal 引用的 capability "${field.source.capability}" 未注册`,
+        );
+      }
+    }
+    if (field['on-invalid'] !== undefined && !capabilities.has(field['on-invalid'])) {
+      capabilityIssues.push(
+        `${where}.on-invalid: 澄清标记引用的 capability "${field['on-invalid']}" 未注册`,
+      );
+    }
+  };
 
   // 流级字段。
   for (const field of draft.fields ?? []) {
     if (!fieldTypes.has(field.type)) {
       fieldTypeIssues.push(`fields[${field.name}]: 未知字段类型 "${String(field.type)}"`);
     }
+    visitFieldCapabilities(field, `fields[${field.name}]`);
   }
 
   for (const node of draft.nodes) {
@@ -71,6 +107,7 @@ export function validateDefinition(
       if (!fieldTypes.has(field.type)) {
         fieldTypeIssues.push(`nodes[${node.name}].fields[${field.name}]: 未知字段类型 "${String(field.type)}"`);
       }
+      visitFieldCapabilities(field, `nodes[${node.name}].fields[${field.name}]`);
     }
     for (const action of node.actions) {
       const where = `nodes[${node.name}].actions[${action.name}]`;
@@ -82,6 +119,7 @@ export function validateDefinition(
         if (!fieldTypes.has(field.type)) {
           fieldTypeIssues.push(`${where}.fields[${field.name}]: 未知字段类型 "${String(field.type)}"`);
         }
+        visitFieldCapabilities(field, `${where}.fields[${field.name}]`);
       }
       for (const guard of action.guards ?? []) {
         if (!guardNames.has(guard)) {
@@ -104,6 +142,16 @@ export function validateDefinition(
           } else if (!nodeNames.has(target)) {
             edgeIssues.push(`${where}.effect: 目标节点 "${target}" 不存在`);
           }
+        }
+        if (
+          effect.type === 'spawn' &&
+          typeof effect.capability === 'string' &&
+          capabilities !== undefined &&
+          !capabilities.has(effect.capability)
+        ) {
+          capabilityIssues.push(
+            `${where}.effect: spawn 引用的 capability "${effect.capability}" 未注册`,
+          );
         }
       }
     }
@@ -146,5 +194,6 @@ export function validateDefinition(
     { name: 'initial-exists', pass: initialExists, ...(initialIssues !== undefined ? { detail: initialIssues } : {}) },
     { name: 'terminal-reachable', pass: terminalIssues === undefined, ...(terminalIssues !== undefined ? { detail: terminalIssues } : {}) },
     { name: 'app-known', pass: appIssues.length === 0, ...(appIssues.length > 0 ? { detail: appIssues } : {}) },
+    { name: 'capability-registered', pass: capabilityIssues.length === 0, ...(capabilityIssues.length > 0 ? { detail: capabilityIssues } : {}) },
   ];
 }

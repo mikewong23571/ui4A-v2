@@ -486,7 +486,7 @@ describe('I5 重放一致:capability 维度(T13 Phase C Task 2;spec 验收 4)', 
 });
 
 describe('app-known 长牙(seed 后 submit 链;T10 架构决定 3)', () => {
-  it('合法归属(publishing)的 flow 提交:checks 七项全过,app-known pass', async () => {
+  it('合法归属(publishing)的 flow 提交:checks 八项全过,app-known pass', async () => {
     const engine = await boot();
     for (const action of ['revise', 'submit'] as const) {
       const outcome = await engine.exec({ rel: 'meta/flow:post-status', action, actor: 'agent' });
@@ -535,5 +535,63 @@ describe('app-known 长牙(seed 后 submit 链;T10 架构决定 3)', () => {
     const appKnown = checks.find((check) => check.name === 'app-known');
     expect(appKnown?.pass).toBe(false);
     expect(appKnown?.detail?.join('\n')).toContain('nonexistent');
+  });
+});
+
+describe('capability-registered 长牙(seed 后 submit 链;T13 架构决定 4)', () => {
+  it('已注册引用(article-drafting 的 proposal draft)的 flow 提交:capability-registered pass', async () => {
+    const engine = await boot();
+    for (const action of ['revise', 'submit'] as const) {
+      const outcome = await engine.exec({ rel: 'meta/flow:article-drafting', action, actor: 'agent' });
+      expect(outcome.kind, `${action} 应通过`).toBe('accepted');
+    }
+    const submitted = (await readLog(pool)).find(
+      (event) => event.kind === 'definition-submitted',
+    );
+    expect(submitted?.detail).toMatchObject({ name: 'article-drafting', passed: true });
+    const checks = (submitted?.detail as { checks: { name: string; pass: boolean }[] }).checks;
+    expect(checks.find((check) => check.name === 'capability-registered')).toEqual({
+      name: 'capability-registered',
+      pass: true,
+    });
+  });
+
+  it('capability 引用未注册 → checks-fail 回 draft,capability-registered 拒因入 definition-submitted 留痕', async () => {
+    // 与 app-known 段同手法:引用不存在 capability 的 post-status 变体先入日志
+    // (boot 不再补种该 flow),其工作副本 spawn.capability='nonexistent'。
+    const bogusFlow: FlowDefinition = JSON.parse(JSON.stringify(businessFlows['post-status']!));
+    bogusFlow.nodes
+      .find((node) => node.name === 'published')!
+      .actions.find((action) => action.name === 'unpublish')!.effect = [
+      { type: 'spawn', capability: 'nonexistent' },
+    ];
+    await appendEvent(pool, {
+      kind: 'definition-seeded',
+      rel: 'meta/flow:post-status',
+      detail: { name: 'post-status', version: 1, status: 'active', definition: bogusFlow },
+    });
+    const engine = await boot();
+
+    // submit 动作本身被受理(lifecycle 合法转移);拒绝发生在不变式层:
+    // checks-fail → 回 draft,activation 不生成,拒因随 definition-submitted 留痕。
+    for (const action of ['revise', 'submit'] as const) {
+      const outcome = await engine.exec({ rel: 'meta/flow:post-status', action, actor: 'agent' });
+      expect(outcome.kind, `${action} 应被受理`).toBe('accepted');
+    }
+
+    const snapshot = engine.getSnapshot();
+    expect(snapshot.definitions?.['post-status']?.status).toBe('draft');
+    expect(Object.keys(snapshot.activations ?? {})).toHaveLength(0);
+
+    const submitted = (await readLog(pool)).find(
+      (event) => event.kind === 'definition-submitted',
+    );
+    expect(submitted?.detail).toMatchObject({ name: 'post-status', passed: false });
+    const checks = (
+      submitted?.detail as { checks: { name: string; pass: boolean; detail?: string[] }[] }
+    ).checks;
+    const capabilityRegistered = checks.find((check) => check.name === 'capability-registered');
+    expect(capabilityRegistered?.pass).toBe(false);
+    expect(capabilityRegistered?.detail?.join('\n')).toContain('nonexistent');
   });
 });

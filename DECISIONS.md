@@ -156,3 +156,10 @@
 - **reasoning 暴露形态(新事实)**:@ai-sdk/openai chat 路径 SDK 层**完全不暴露** reasoning(`result.reasoning` 0 parts、fullStream 0 个 reasoning-* 部件,zod schema 剥离 `reasoning_content`);只能经原始 HTTP 层取——流式用 `includeRawChunks: true` 从 fullStream `raw` 部件解析 `delta.reasoning_content`(T11 Phase C 取数路线即此)。GLM 端点 reasoning **非增量、末尾齐发**(静默 4–9s 后与 tool call 同批到达)——thinking 帧语义 = 整段一次性「留痕回放」,不是实时打字机。
 - **tool calling(auto)复验成立**:6/6 返回 tool call 且与 reasoning 同现;D7 的 `tool_choice` auto + `provider.chat()` 口径在 glm-5.3 继续有效。
 - **时延校准(与 D7/D20 冲突点的裁决)**:小 prompt(615 tokens)简单步实测 4.2–8.5s,低于 D7 的 8–20s 下限;D20「effort max 时延上浮」未在该场景复现(effort 档位端点行为不可证实,SDK 不发 reasoning_effort)。裁决:**8–20s 作为上限口径保留**(大 prompt/长轨迹场景以 llm-smoke 为准),下限校准为「简单步 4–9s」;60s abort 兜底继续宽裕。
+
+## D23 激活不变式第八条 capability-registered(2026-08-22,T13 Phase D)
+
+- **背景**:arch-brief §10 A.5 种子集本含 `capability-registered`,T4 落地六项时未含;T13 引入 capability 定义面(draft/notify/clarify seed + capability-seeded 入日志 + snapshot.capabilities)后具备落地条件。
+- **决定**:第八条 `capability-registered` 照抄 app-known(T10)模式——`DefinitionRegistries.capabilities?` 可选,未提供 vacuous pass(过渡期),提供时全部引用必须 ∈ 已注册集;submit 拒且留痕走既有 checks-fail 路径。**引用点口径**:field `source.kind='proposal'` 的 capability、effect `type='spawn'` 的 capability、field `'on-invalid'` 标记(定义是数据,枚举外取值由本检查兜底);`elicit.strategy` 是策略名非 capability 名,不算引用点。扫描面与 `apps/web/src/domain/capabilities.test.ts` 静态保证同源。
+- **机械适配(D21 先例)**:e2e/s2.spec.ts checks 名单 + UI 行数 7→8。
+- **归后续**:`capability-schema-compatible`(spawn bind 与能力输入 schema 相容)——需 input schema 真实化,随 capability 沙箱专项。

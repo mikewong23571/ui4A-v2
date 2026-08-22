@@ -1,15 +1,22 @@
 /**
- * 激活不变式检查器(T4 Phase A Task 3,TDD 红→绿;T10 Phase A Task 3 增第七条)。
+ * 激活不变式检查器(T4 Phase A Task 3,TDD 红→绿;T10 Phase A Task 3 增第七条;
+ * T13 Phase D Task 1 增第八条 capability-registered)。
  *
- * A.5 种子集(spec 架构决定 4)+ T10 spec 架构决定 3,七项逐条:
+ * A.5 种子集(spec 架构决定 4)+ T10 spec 架构决定 3 + T13 spec 架构决定 4,
+ * 八项逐条:
  *   edge-targets-exist / guards-registered / field-types-known / effect-known /
- *   initial-exists / terminal-reachable / app-known。
+ *   initial-exists / terminal-reachable / app-known / capability-registered。
  * submit 时全跑:checks 全过 → pending-approval(activation 实体);
  * 有 fail → 回 draft + 校验报告入事件(definition-submitted detail)。
  */
 import { describe, expect, it } from 'vitest';
 
-import type { ApplicationDefinition, EngineSnapshot, FlowDefinition } from '@ui4a/shared';
+import type {
+  ApplicationDefinition,
+  CapabilityDefinition,
+  EngineSnapshot,
+  FlowDefinition,
+} from '@ui4a/shared';
 import { metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
 
 import {
@@ -35,7 +42,7 @@ function byName(checks: ReturnType<typeof validateDefinition>) {
 }
 
 describe('validateDefinition — 合法定义全过', () => {
-  it('三个业务域 flow(种子常量)六项全过', () => {
+  it('三个业务域 flow(种子常量)八项全过', () => {
     for (const flow of [articleDraftingFlow, postStatusFlow, commentModerationFlow]) {
       const checks = checksOf(flow);
       expect(checks.map((c) => c.name), flow.name).toEqual([
@@ -46,12 +53,13 @@ describe('validateDefinition — 合法定义全过', () => {
         'initial-exists',
         'terminal-reachable',
         'app-known',
+        'capability-registered',
       ]);
       expect(checks.every((c) => c.pass), flow.name).toBe(true);
     }
   });
 
-  it('definition-lifecycle 常量自举:自身通过自身的六项不变式', () => {
+  it('definition-lifecycle 常量自举:自身通过自身的八项不变式', () => {
     // lifecycle 的编辑动词声明(guards 引用 meta 谓词)在种子注册表里可解析。
     const checks = checksOf(DEFINITION_LIFECYCLE_FLOW);
     expect(checks.every((c) => c.pass)).toBe(true);
@@ -200,6 +208,93 @@ describe('validateDefinition — app-known(T10 第七条)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// capability-registered(T13 第八条;spec 架构决定 4):flow 定义的全部
+// capability 引用(field source proposal.capability、effect spawn.capability、
+// field on-invalid 澄清标记——扫描面与 capabilities.test.ts 的静态保证同源)
+// 必须指向已注册 capability;capabilities 注册表未提供 → vacuous pass(过渡期)。
+// ---------------------------------------------------------------------------
+
+describe('validateDefinition — capability-registered(T13 第八条)', () => {
+  const registered: ReadonlySet<string> = new Set(['draft', 'notify', 'clarify']);
+  const withCapabilities = { ...registries, capabilities: registered };
+
+  function capabilityFlow(mutate: (flow: FlowDefinition) => void): FlowDefinition {
+    const flow: FlowDefinition = JSON.parse(JSON.stringify(postStatusFlow));
+    mutate(flow);
+    return flow;
+  }
+
+  it('capabilities 提供且引用命中(proposal/spawn/on-invalid 三引用点)→ pass', () => {
+    const flow = capabilityFlow((f) => {
+      f.fields = [
+        { name: 'body', type: 'textarea', source: { kind: 'proposal', capability: 'draft' } },
+        { name: 'note', type: 'text', 'on-invalid': 'clarify' },
+      ];
+      f.nodes[0]!.actions[0]!.effect = [{ type: 'spawn', capability: 'notify' }];
+    });
+    const check = byName(validateDefinition(flow, withCapabilities))['capability-registered'];
+    expect(check.pass).toBe(true);
+    expect(check.detail).toBeUndefined();
+  });
+
+  it('proposal 来源引用未注册 capability → fail,detail 列违规', () => {
+    const flow = capabilityFlow((f) => {
+      f.nodes[0]!.fields = [
+        { name: 'body', type: 'textarea', source: { kind: 'proposal', capability: 'nonexistent' } },
+      ];
+    });
+    const check = byName(validateDefinition(flow, withCapabilities))['capability-registered'];
+    expect(check.pass).toBe(false);
+    expect(check.detail?.join('\n')).toContain('nonexistent');
+  });
+
+  it('spawn 效果引用未注册 capability → fail', () => {
+    const flow = capabilityFlow((f) => {
+      f.nodes[0]!.actions[0]!.effect = [{ type: 'spawn', capability: 'nonexistent' }];
+    });
+    const check = byName(validateDefinition(flow, withCapabilities))['capability-registered'];
+    expect(check.pass).toBe(false);
+    expect(check.detail?.join('\n')).toContain('nonexistent');
+  });
+
+  it('on-invalid 澄清标记指向未注册 capability → fail(字面枚举外的数据层取值,由本检查兜底)', () => {
+    const flow = capabilityFlow((f) => {
+      // 'on-invalid' 类型是字面枚举 'clarify',但定义是数据(编辑动词收 JSON),
+      // 数据层可携带枚举外取值——as never 与 field-types-known 用例同手法。
+      f.fields = [{ name: 'note', type: 'text', 'on-invalid': 'nonexistent' as never }];
+    });
+    const check = byName(validateDefinition(flow, withCapabilities))['capability-registered'];
+    expect(check.pass).toBe(false);
+    expect(check.detail?.join('\n')).toContain('nonexistent');
+  });
+
+  it('多个违规逐条入 detail(全量报告不短路)', () => {
+    const flow = capabilityFlow((f) => {
+      f.fields = [
+        { name: 'body', type: 'textarea', source: { kind: 'proposal', capability: 'ghost-1' } },
+      ];
+      f.nodes[0]!.actions[0]!.effect = [{ type: 'spawn', capability: 'ghost-2' }];
+    });
+    const check = byName(validateDefinition(flow, withCapabilities))['capability-registered'];
+    expect(check.pass).toBe(false);
+    expect(check.detail).toHaveLength(2);
+    expect(check.detail?.join('\n')).toContain('ghost-1');
+    expect(check.detail?.join('\n')).toContain('ghost-2');
+  });
+
+  it('未提供 capabilities(过渡期)→ vacuous pass,且检查仍在 checks 列表', () => {
+    const flow = capabilityFlow((f) => {
+      f.nodes[0]!.actions[0]!.effect = [{ type: 'spawn', capability: 'nonexistent' }];
+    });
+    const checks = checksOf(flow);
+    const check = byName(checks)['capability-registered'];
+    expect(check, 'capability-registered 应始终出现在 checks 列表').toBeDefined();
+    expect(check.pass).toBe(true);
+    expect(check.detail).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // submit 集成:checks 全过 → pending-approval(activation 实体);
 // checks-fail → 回 draft + 校验报告入事件。
 // ---------------------------------------------------------------------------
@@ -283,7 +378,7 @@ describe('submit — checks 全过 → pending-approval', () => {
       activation: { id: string; version: number };
     };
     expect(detail).toMatchObject({ name: 'article-drafting', passed: true });
-    expect(detail.checks).toHaveLength(7);
+    expect(detail.checks).toHaveLength(8);
     expect(detail.activation).toMatchObject({ id: 'a1', version: 2 });
 
     // fold 全链一致(I5)。
@@ -431,5 +526,85 @@ describe('submit — app-known(快照 applications 表接线)', () => {
       checks: Array<{ name: string; pass: boolean }>;
     };
     expect(detail.checks.find((c) => c.name === 'app-known')?.pass).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// submit — capability-registered 接线:快照 capabilities 表(Phase C 落表)
+// 存在 → 键集作已注册 capability 注册表;不存在 → vacuous pass。
+// 注意:与 app-known 集成段同口径,此处不做 fold 一致性断言。
+// ---------------------------------------------------------------------------
+
+describe('submit — capability-registered(快照 capabilities 表接线)', () => {
+  const capabilities: Record<string, CapabilityDefinition> = {
+    draft: { name: 'draft', title: '工件起草', kind: 'extract', intent: 'proposal 来源字段的草稿产出' },
+    notify: { name: 'notify', title: '确认门送达', kind: 'effect', intent: '挂起确认的通知送达' },
+    clarify: { name: 'clarify', title: '字段澄清', kind: 'extract', intent: 'on-invalid 的意图缺口收敛' },
+  };
+
+  /** articleDraftingFlow 的 body 字段引用 proposal capability;篡改为指定名。 */
+  function withProposalCapability(capability: string): FlowDefinition {
+    const flow: FlowDefinition = JSON.parse(JSON.stringify(articleDraftingFlow));
+    flow.nodes.find((node) => node.name === 'content')!.fields![0]!.source!.capability =
+      capability;
+    return flow;
+  }
+
+  it('capability 引用未注册 → checks-fail 回 draft,capability-registered 留痕,activation 不生成', () => {
+    const { snapshot } = draftFlow(withProposalCapability('nonexistent'));
+    const withCapabilities: EngineSnapshot = { ...snapshot, capabilities };
+    const submitted = executeMeta(
+      { rel: 'meta/flow:article-drafting', action: 'submit', actor: 'agent' },
+      withCapabilities,
+      deps,
+    );
+    expect(submitted.kind).toBe('executed');
+    if (submitted.kind !== 'executed') return;
+    // checks-fail 既有通道:实例/条目回 draft,无 activation 实体。
+    expect(submitted.snapshot.instances['meta/flow:article-drafting']?.node).toBe('draft');
+    expect(submitted.snapshot.definitions?.['article-drafting'].status).toBe('draft');
+    expect(submitted.snapshot.activations).toEqual({});
+
+    const detail = submitted.events[1]!.detail as {
+      passed: boolean;
+      checks: Array<{ name: string; pass: boolean; detail?: string[] }>;
+    };
+    expect(detail.passed).toBe(false);
+    const failed = detail.checks.filter((c) => !c.pass);
+    expect(failed.map((c) => c.name)).toEqual(['capability-registered']);
+    expect(failed[0]?.detail?.join('\n')).toContain('nonexistent');
+  });
+
+  it('capability 引用已注册(article-drafting 的 draft)→ 正常入 pending-approval(activation 物化)', () => {
+    const { snapshot } = draftFlow(articleDraftingFlow);
+    const withCapabilities: EngineSnapshot = { ...snapshot, capabilities };
+    const submitted = executeMeta(
+      { rel: 'meta/flow:article-drafting', action: 'submit', actor: 'agent' },
+      withCapabilities,
+      deps,
+    );
+    if (submitted.kind !== 'executed') throw new Error('submit 应通过');
+    expect(submitted.snapshot.instances['meta/flow:article-drafting']?.node).toBe('pending-approval');
+    expect(submitted.snapshot.activations?.['meta/activation:a1']).toMatchObject({
+      id: 'a1',
+      flow: 'article-drafting',
+      status: 'pending-approval',
+    });
+  });
+
+  it('快照无 capabilities 表(过渡期)→ capability-registered vacuous pass,submit 不受阻', () => {
+    // capability 即使指向未注册名,无表即不校验(Phase C 落表后长牙)。
+    const { snapshot } = draftFlow(withProposalCapability('nonexistent'));
+    const submitted = executeMeta(
+      { rel: 'meta/flow:article-drafting', action: 'submit', actor: 'agent' },
+      snapshot,
+      deps,
+    );
+    if (submitted.kind !== 'executed') throw new Error('submit 应通过');
+    expect(submitted.snapshot.instances['meta/flow:article-drafting']?.node).toBe('pending-approval');
+    const detail = submitted.events[1]!.detail as {
+      checks: Array<{ name: string; pass: boolean }>;
+    };
+    expect(detail.checks.find((c) => c.name === 'capability-registered')?.pass).toBe(true);
   });
 });

@@ -4,7 +4,7 @@
  * S2 断言原文五要素,逐条落测:
  * ① 非法定义被拒且留痕(agent add-action to 不存在节点 → 422 guard 层,
  *    /api/events action-rejected 带原因);
- * ② 修正(to: done)→ submit → checks 七项过 → pending-approval(activation
+ * ② 修正(to: done)→ submit → checks 八项过 → pending-approval(activation
  *    实体含机械 diff[新增 pin 可见]与 checks);
  * ③ 机械 diff 上人类批准:BIOS 页 /meta/activations → 详情 diff 可见 →
  *    approve(actor=human)→ definition-activated 留痕;
@@ -353,7 +353,7 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     });
     expect(rejectedEvents[0].reason).toContain('to-exists');
 
-    // ---- ② 修正:to: done → 通过;submit → checks 七项过 → pending-approval ----
+    // ---- ② 修正:to: done → 通过;submit → checks 八项过 → pending-approval ----
     const good = await runAgent(
       agentDriver,
       { verb: '加动作', resource: 'article-drafting', fields: pinOnReady('done') },
@@ -370,7 +370,7 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     expect(submit.outcome, `轨迹:${JSON.stringify(opKinds(submit.steps))}`).toBe('done');
     expect(submit.successes.map((entry) => entry.action)).toEqual(['submit']);
 
-    // activation 实体:pending-approval + checks 七项全过 + 机械 diff(纯数据)
+    // activation 实体:pending-approval + checks 八项全过 + 机械 diff(纯数据)
     const activation = await getMetaEntity('meta/activation:a1');
     expect(activation.properties).toMatchObject({
       id: 'a1',
@@ -382,6 +382,7 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     const checks = activation.properties.checks as { name: string; pass: boolean }[];
     expect(checks.map((check) => check.name).sort()).toEqual([
       'app-known',
+      'capability-registered',
       'edge-targets-exist',
       'effect-known',
       'field-types-known',
@@ -427,11 +428,11 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     );
     await page.click('a[href="/meta/activation/a1"]');
 
-    // 详情:checks 七行全过;机械 diff 可见且含 pin(react-diff-view 内建渲染,验收 6)
+    // 详情:checks 八行全过;机械 diff 可见且含 pin(react-diff-view 内建渲染,验收 6)
     await expect(page.getByRole('heading', { name: '激活 a1' })).toBeVisible();
     const checkRows = page.locator('section[aria-label="不变式检查"] tbody tr');
-    await expect(checkRows).toHaveCount(7);
-    for (let index = 0; index < 7; index += 1) {
+    await expect(checkRows).toHaveCount(8);
+    for (let index = 0; index < 8; index += 1) {
       await expect(checkRows.nth(index)).toContainText('通过');
     }
     const diffSection = page.locator('section[aria-label="机械 diff"]');
