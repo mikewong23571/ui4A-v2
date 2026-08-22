@@ -1,0 +1,7 @@
+T13 Phase B Task 1: definition-versions 版本历史投影
+
+改动:engine/siren.ts(版本子实体投影 + versionSummariesOf 等)、meta-project.test.ts(+5)、web/engine/service.definition-versions.test.ts(新增,PG 集成 4 例)、flow-definition-view.tsx(版本区 + class 过滤)、flow-topology.ts(node-definition class 过滤)
+中途改案记录:初版版本参数化 rel(meta/flow:<name>@v + href)单测全绿但 S2 e2e 红——rule driver navigableRels 把子实体 href 纳入导航候选,agent 漫游至 max-steps 而非 failed(s2.spec.ts:338);packages/agent 禁触,撤 href 改内嵌全文,版本子实体无 rel/actions,决策面零新增。口径钉在 siren.ts 注释与测试。
+Why:spec 架构决定 2——D19-4「版本机制已有,暴露成可读投影即可」。
+验收(编排 agent 亲自复跑):3 文件 31/31;CI=true pnpm check 1006 passed;s2 e2e 4/4。自治验收。
+Task 2 注意:对比交互在 BIOS 页面层按 class=definition-version 子实体取数据,不要把 href 加回投影。
