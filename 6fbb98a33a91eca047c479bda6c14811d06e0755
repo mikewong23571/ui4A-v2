@@ -1,0 +1,6 @@
+T13 Phase B Task 2: 版本两版对比 diff 视图
+
+改动:flow-definition-view.tsx(VersionCompare + VersionRow.definition 内嵌全文)、测试(+4 用例三视角:added=pin/deleted=retire/updated=标题)、e2e/s2.spec.ts(仅新增 ③'' 断言)
+diff 计算:复用 engine 导出 definitionDiff(transpilePackages 已含 @ui4a/engine,客户端直引;与 submit 时 diff 同 detailedDiff 算法)。
+验收(编排 agent 亲自复跑):flow-definition-view 12/12;s2 e2e 4/4(subagent 报,提交前我已复跑组件测试)。自治验收(带注记)。
+⚠️ 注记:本次提交时工作区存在外部未提交 WIP(onReasoningDelta 增量推理通道,15 文件,packages/agent+apps/web chat 管线),全量 pnpm check 因该 WIP 的 4 个 chat 路由测试失败而红——非 T13 产物,T13 自身测试全绿。全量门待 WIP 稳定后补验。
