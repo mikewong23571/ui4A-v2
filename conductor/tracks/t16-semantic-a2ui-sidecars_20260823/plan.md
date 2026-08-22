@@ -22,14 +22,14 @@
 - [x] Task: Source governance——Chat prompt/history 不含完整 catalog/Surface/dependency；chat route 无展示关键词或业务名规划分支 — 83ed2de
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 83ed2de
 
-## Phase C: Render Situation、Data Lens 与 Surface Tree 合同
+## Phase C: Render Situation、Data Lens 与 Surface Tree 合同 [checkpoint: fc1213d]
 
 - [x] Task: TS5 TDD——在共享协议定义 RenderSituation roots/intent/audience/budget 与受限 self/members/selection/relations/flow/graph Lens；schema/property tests先红 — fc1213d
 - [x] Task: 授权合同图 resolver——逐边 principal/policy 过滤，强制 maxDepth/maxNodes，对 direct/member/relation/nested 四类泄露 fuzz 为 0 — fc1213d
 - [x] Task: TS9 TDD——定义 identity/status/primary-content/metadata/relation 语义角色和高质量 generic fallback；禁止 entity type → page/component 映射 — fc1213d
 - [x] Task: TS10 TDD——normalized Surface Tree、layout/slot/repeat/word nodes、binding-only validator、dependency manifest 和 deterministic hash — fc1213d
 - [x] Task: Pure kernel boundary——按 Phase A 决定落入现有 package/module 或新 presentation package，保持无 React/AI SDK/DB/环境依赖 — fc1213d
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — fc1213d
 
 ## Phase D: Application Scenario/Recipe 预生成
 
