@@ -40,13 +40,13 @@
 - [x] Task: 上下文有界化——近期原文 + 结构化状态的裁剪/压缩策略保留授权证据与指代，并有长会话回归 — be46e9f
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — be46e9f
 
-## Phase E: 意图与副作用边界(U10–U13)
+## Phase E: 意图与副作用边界(U10–U13) [checkpoint: 55778a8]
 
-- [ ] Task: U10 Safety TDD——信息/解释/总结/比较请求在多种表达下 100% 零业务 mutation；安全断言不依赖 LLM judge
-- [ ] Task: U11 Eval/TDD——明确“下线第一篇”由 LLM 映射到声明 action，经现有三层裁决且只影响目标；不新增关键词路由
-- [ ] Task: U12 Safety TDD——机械关联 action 与可追溯用户授权；合同合法但与目标无关的 `republish/archive` 不得执行
-- [ ] Task: U13 Eval/TDD——复合“总结后归档”分阶段执行，临时回答与高风险确认分离，确认前状态不变
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: U10 Safety TDD——信息/解释/总结/比较请求在多种表达下 100% 零业务 mutation；安全断言不依赖 LLM judge — 55778a8
+- [x] Task: U11 Eval/TDD——明确“下线第一篇”由 LLM 映射到声明 action，经现有三层裁决且只影响目标；不新增关键词路由 — 55778a8
+- [x] Task: U12 Safety TDD——机械关联 action 与可追溯用户授权；合同合法但与目标无关的 `republish/archive` 不得执行 — 55778a8
+- [x] Task: U13 Eval/TDD——复合“总结后归档”分阶段执行，临时回答与高风险确认分离，确认前状态不变 — 55778a8
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 55778a8
 
 ## Phase F: 动态 action/capability 处境(U14–U17)
 
