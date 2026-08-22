@@ -7,7 +7,8 @@
  * - 提交统一走 POST /api/exec(actor=human, principal=local-user, channel=renderer);
  * - 拒绝如实呈现(layer/reason),成功回调刷新;
  * - guard-results 的谓词投影:blocked → 按钮 disabled + title 显原因;
- * - 铁律 3 组件级断言:渲染出的 form/button 全部映射已声明 action,零合同外可提交元素;
+ * - 铁律 3 组件级断言:业务 form/button 全部映射已声明 action;
+ *   展开/取消单独标记为 presentation interaction,不伪装成业务 action;
  * - links[]/entities[] 渲染为 renderer 导航链接(/entity?rel=…)。
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -181,12 +182,35 @@ const inboxEntity: SirenEntity = {
 // ---- harness -----------------------------------------------------------------
 
 function mockFetch(status: number, body: unknown) {
-  return vi.fn().mockResolvedValue(
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { 'content-type': 'application/json' },
-    }),
-  );
+  return vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if ((init?.method ?? 'GET') === 'GET' && url.startsWith('/api/entity?rel=')) {
+      const rel = new URL(url, 'http://ui4a.test').searchParams.get('rel') ?? '';
+      const supplied =
+        typeof body === 'object' && body !== null && 'entity' in body
+          ? (body as { entity: SirenEntity }).entity
+          : wizardEntity;
+      return Promise.resolve(
+        new Response(JSON.stringify({ ...supplied, properties: { ...supplied.properties, rel } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+  });
+}
+
+function execCallsOf(mock: ReturnType<typeof vi.fn>): Array<[string, RequestInit]> {
+  return mock.mock.calls.filter(
+    ([input, init]) =>
+      String(input) === '/api/exec' && (init as RequestInit | undefined)?.method === 'POST',
+  ) as Array<[string, RequestInit]>;
 }
 
 afterEach(() => {
@@ -235,8 +259,8 @@ describe('ActionRunner:actions → RJSF 表单/按钮', () => {
     fireEvent.change(screen.getByLabelText(/正文/), { target: { value: '正文内容' } });
     fireEvent.click(screen.getByRole('button', { name: '发布' }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    await waitFor(() => expect(execCallsOf(fetchMock)).toHaveLength(1));
+    const [url, init] = execCallsOf(fetchMock)[0]!;
     expect(url).toBe('/api/exec');
     expect(init.method).toBe('POST');
     expect(JSON.parse(String(init.body))).toEqual({
@@ -257,16 +281,14 @@ describe('ActionRunner:actions → RJSF 表单/按钮', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '重置' }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(JSON.parse(String((fetchMock.mock.calls[0] as [string, RequestInit])[1]!.body))).toEqual(
-      {
-        rel: 'post:post-welcome',
-        action: 'reset',
-        actor: 'human',
-        principal: 'local-user',
-        channel: 'renderer',
-      },
-    );
+    await waitFor(() => expect(execCallsOf(fetchMock)).toHaveLength(1));
+    expect(JSON.parse(String(execCallsOf(fetchMock)[0]![1].body))).toEqual({
+      rel: 'post:post-welcome',
+      action: 'reset',
+      actor: 'human',
+      principal: 'local-user',
+      channel: 'renderer',
+    });
   });
 
   it('拒绝如实呈现 layer 与 reason,不触发成功回调', async () => {
@@ -335,13 +357,14 @@ describe('EntityView:实体四件组装渲染', () => {
     const { container } = render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);
 
     const declared = new Set(wizardEntity.actions.map((action) => action.name));
-    const submittables = [
+    const businessControls = [
       ...container.querySelectorAll<HTMLFormElement>('form'),
-      ...container.querySelectorAll<HTMLButtonElement>('button'),
+      ...container.querySelectorAll<HTMLButtonElement>('button[data-action]'),
     ];
-    // publish(RJSF 表单 + 提交按钮)+ reset(按钮);表单经容器背书,按钮直接背书
-    expect(submittables.length).toBe(3);
-    for (const element of submittables) {
+    // publish(RJSF 表单 + 提交按钮)+ reset(按钮);展开/取消是
+    // presentation interaction，不伪装成业务 action。
+    expect(businessControls.length).toBe(3);
+    for (const element of businessControls) {
       const endorsed =
         element.dataset.action ??
         (element.closest('[data-action]') as HTMLElement | null)?.dataset.action;
@@ -349,6 +372,11 @@ describe('EntityView:实体四件组装渲染', () => {
         true,
       );
     }
+    expect(
+      [...container.querySelectorAll<HTMLElement>('[data-presentation-action]')].map(
+        (element) => element.dataset.presentationAction,
+      ),
+    ).toEqual(['open-form', 'cancel-form']);
   });
 
   it('links[] 渲染为 renderer 导航链接(/entity?rel=…)', () => {
@@ -443,7 +471,7 @@ describe('EntityView:实体四件组装渲染', () => {
     // step1:填 title → 下一步
     fireEvent.change(screen.getByLabelText(/title/), { target: { value: '第三篇' } });
     fireEvent.click(screen.getByRole('button', { name: '下一步' }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(execCallsOf(fetchMock)).toHaveLength(1));
 
     // exec 成功后页面刷新为 step2 的实体投影(rerender 同一组件树)
     view.rerender(<EntityView rel="article-drafting:main" entity={stepTwo} />);
@@ -451,11 +479,9 @@ describe('EntityView:实体四件组装渲染', () => {
     // step2:选 category → 下一步;提交参数不得携带 step1 的 title
     fireEvent.change(screen.getByLabelText(/category/), { target: { value: '0' } });
     fireEvent.click(screen.getByRole('button', { name: '下一步' }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(execCallsOf(fetchMock)).toHaveLength(2));
 
-    const body = JSON.parse(
-      String((fetchMock.mock.calls[1] as [string, RequestInit])[1]!.body),
-    ) as Record<string, unknown>;
+    const body = JSON.parse(String(execCallsOf(fetchMock)[1]![1].body)) as Record<string, unknown>;
     expect(body.action).toBe('next');
     expect(body.params).toEqual({ category: 'tech' });
   });
@@ -514,10 +540,10 @@ describe('ActionRunner:实例字段预填(T14 Phase A,#4)', () => {
     fireEvent.change(screen.getByLabelText(/正文/), { target: { value: '正文内容' } });
     fireEvent.click(screen.getByRole('button', { name: '发布' }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const body = JSON.parse(
-      String((fetchMock.mock.calls[0] as [string, RequestInit])[1]!.body),
-    ) as { params: Record<string, unknown> };
+    await waitFor(() => expect(execCallsOf(fetchMock)).toHaveLength(1));
+    const body = JSON.parse(String(execCallsOf(fetchMock)[0]![1].body)) as {
+      params: Record<string, unknown>;
+    };
     expect(body.params.title).toBe('草稿标题');
     expect(body.params.body).toBe('正文内容');
   });
@@ -531,10 +557,10 @@ describe('ActionRunner:实例字段预填(T14 Phase A,#4)', () => {
     fireEvent.change(screen.getByLabelText(/正文/), { target: { value: '正文' } });
     fireEvent.click(screen.getByRole('button', { name: '发布' }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const body = JSON.parse(
-      String((fetchMock.mock.calls[0] as [string, RequestInit])[1]!.body),
-    ) as { params: Record<string, unknown> };
+    await waitFor(() => expect(execCallsOf(fetchMock)).toHaveLength(1));
+    const body = JSON.parse(String(execCallsOf(fetchMock)[0]![1].body)) as {
+      params: Record<string, unknown>;
+    };
     expect(body.params.title).toBe('改过的标题');
   });
 
@@ -551,10 +577,10 @@ describe('ActionRunner:实例字段预填(T14 Phase A,#4)', () => {
 
     expect((screen.getByLabelText(/文章标题/) as HTMLInputElement).value).toBe('草稿标题');
     fireEvent.click(screen.getByRole('button', { name: '发布' }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const body = JSON.parse(
-      String((fetchMock.mock.calls[0] as [string, RequestInit])[1]!.body),
-    ) as { params: Record<string, unknown> };
+    await waitFor(() => expect(execCallsOf(fetchMock)).toHaveLength(1));
+    const body = JSON.parse(String(execCallsOf(fetchMock)[0]![1].body)) as {
+      params: Record<string, unknown>;
+    };
     expect(body.params).toEqual({ title: '草稿标题' });
   });
 });
@@ -608,7 +634,7 @@ describe('EntityView:确认实体与 inbox 集合渲染', () => {
 
     const approve = screen.getByRole('button', { name: '批准' }) as HTMLButtonElement;
     expect(approve.dataset.action).toBe('approve');
-    const reason = container.querySelector<HTMLTextAreaElement>('#root_reason');
+    const reason = container.querySelector<HTMLTextAreaElement>('textarea[required]');
     expect(reason).not.toBeNull();
     expect(reason!.hasAttribute('required')).toBe(true);
     // 提交面铁律 3:两个可提交元素分别背书 approve/reject

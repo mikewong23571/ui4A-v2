@@ -81,6 +81,7 @@ export function DetailWord(props: WordProps) {
                 key={`${execRel}:${action.name}:${JSON.stringify(action.fields)}`}
                 rel={execRel}
                 action={action}
+                live
                 blocked={blockedForRenderer(guard)}
                 blockReason={guard?.reason}
               />

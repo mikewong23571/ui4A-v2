@@ -2,9 +2,11 @@
 /**
  * ActionRunner:单个 Siren action 的 :form runner 渲染(arch-brief §7)。
  *
- * - 有 fields(参数 schema 属性非空)→ RJSF v6 表单,schema 即 action.fields
+ * - 有 fields(参数 schema 属性非空)→ 可取消、可重开的 RJSF v6 inline 表单,
+ *   schema 即 action.fields；打开/取消是零业务事件的 presentation interaction;
  *   (draft-07,引擎 schema.ts 派生;零硬编码字段——字段集完全由合同声明);
- * - 无 fields → 推送按钮;两条路径都 POST /api/exec,身份固定 human/local-user/renderer;
+ * - 无 fields → 推送按钮；high-risk 先显式标记“已请求、未执行”，二次确认才
+ *   POST /api/exec；业务提交身份固定 human/local-user/renderer;
  * - guard-results 的 blocked 投影为 disabled + title 原因(谓词两投影之一,另一投影给 agent);
  * - 拒绝如实呈现([layer] reason · detail),成功回调 onExecuted 供上层刷新实体;
  * - 铁律 3:本组件渲染的每个 form/button 都带 data-action=<已声明动作名>,
@@ -17,15 +19,24 @@
  *   (field-definition 的人话标题),缺省回退机器名。
  */
 import Form from '@rjsf/core';
-import { useState, type ComponentType, type ReactNode } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ComponentType,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 
 import type { SirenAction } from '@ui4a/engine';
 
 import { Button } from '@/components/ui/button';
 
 import { execAction } from './exec-client';
-import type { ExecClientResult } from './exec-client';
+import { fetchEntity, type ExecClientResult } from './exec-client';
 import { rjsfValidator } from './rjsf-validator';
+import { createSurfaceActionAdapter } from '@/render/presentation/action-adapter';
 
 /** 参数 schema 是否声明了字段(空 schema 走推送按钮路径)。 */
 function schemaHasFields(schema: SirenAction['fields']): boolean {
@@ -178,6 +189,8 @@ export interface ActionRunnerProps {
   execFn?: ExecFn;
   /** 当前实体的实例字段值(同名动作字段预填;缺省=无预填,如 _meta 动作)。 */
   prefill?: Record<string, unknown>;
+  /** Surface hosts enable live declaration/guard/schema revalidation before business submit. */
+  live?: boolean;
 }
 
 export function ActionRunner({
@@ -188,21 +201,99 @@ export function ActionRunner({
   onExecuted,
   execFn = execAction,
   prefill,
+  live = false,
 }: ActionRunnerProps) {
+  const hasFields = schemaHasFields(action.fields);
+  const highRisk = action['requires-confirmation'] === 'high';
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [interaction, setInteraction] = useState<'closed' | 'form' | 'requested' | 'executed'>(
+    hasFields ? 'form' : 'closed',
+  );
+  const [pendingParams, setPendingParams] = useState<Record<string, unknown> | undefined>();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const formRegionRef = useRef<HTMLDivElement>(null);
+  const focusFormOnOpen = useRef(false);
+  const formRegionId = useId();
+
+  useEffect(() => {
+    if (interaction !== 'form' || !focusFormOnOpen.current) return;
+    focusFormOnOpen.current = false;
+    const region = formRegionRef.current as unknown as {
+      querySelector(selector: string): { focus(): void } | null;
+    } | null;
+    region?.querySelector('input:not([type="hidden"]), select, textarea')?.focus();
+  }, [interaction]);
+
+  function openForm(): void {
+    focusFormOnOpen.current = true;
+    setInteraction('form');
+  }
+
+  function restoreTrigger(): void {
+    setInteraction('closed');
+    setPendingParams(undefined);
+    setFailure(null);
+    (triggerRef.current as unknown as { focus(): void } | null)?.focus();
+  }
+
+  function requestHighRisk(params?: Record<string, unknown>): void {
+    setPendingParams(params);
+    setFailure(null);
+    setInteraction('requested');
+  }
 
   async function submit(params?: Record<string, unknown>): Promise<void> {
     setSubmitting(true);
     setFailure(null);
-    const result = await execFn({ rel, action: action.name, params });
-    setSubmitting(false);
-    if (result.ok) {
-      onExecuted?.(rel);
+    try {
+      const result =
+        live && execFn === execAction
+          ? await createSurfaceActionAdapter({ fetchEntity, exec: execAction })
+              .submit({
+                subject: rel,
+                action: action.name,
+                params,
+                expected: { actionSchema: action.fields },
+              })
+              .then((outcome): ExecClientResult =>
+                outcome.outcome === 'executed'
+                  ? { ok: true, entity: outcome.entity }
+                  : {
+                      ok: false,
+                      status: outcome.status ?? 409,
+                      layer: outcome.code,
+                      reason: outcome.reason,
+                    },
+              )
+          : await execFn({ rel, action: action.name, params });
+      if (result.ok) {
+        if (highRisk) setInteraction('executed');
+        onExecuted?.(rel);
+        return;
+      }
+      const detail = result.detail !== undefined ? ` · ${JSON.stringify(result.detail)}` : '';
+      setFailure(`[${result.layer}] ${result.reason}${detail}`);
+    } catch (error) {
+      setFailure(`[network] ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function handleFormSubmit(params?: Record<string, unknown>): void {
+    if (highRisk) {
+      requestHighRisk(params);
       return;
     }
-    const detail = result.detail !== undefined ? ` · ${JSON.stringify(result.detail)}` : '';
-    setFailure(`[${result.layer}] ${result.reason}${detail}`);
+    void submit(params);
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    if (event.key !== 'Escape' || submitting || interaction === 'closed') return;
+    event.preventDefault();
+    event.stopPropagation();
+    restoreTrigger();
   }
 
   const disabled = blocked || submitting;
@@ -214,7 +305,7 @@ export function ActionRunner({
       </p>
     ) : null;
 
-  if (!schemaHasFields(action.fields)) {
+  if (!hasFields && !highRisk) {
     return (
       // data-action 只在可提交元素本体(铁律 3 背书唯一挂点;外包装不带,
       // 避免 e2e/探针命中容器时落点在按钮之外)。
@@ -237,28 +328,165 @@ export function ActionRunner({
     );
   }
 
+  if (!hasFields) {
+    return (
+      <div className="flex flex-col gap-2" onKeyDown={handleKeyDown}>
+        <div>
+          <Button
+            ref={triggerRef}
+            type="button"
+            variant="outline"
+            size="sm"
+            data-presentation-action="request-risk"
+            aria-expanded={interaction === 'requested'}
+            disabled={disabled}
+            title={hint}
+            onClick={() => requestHighRisk()}
+          >
+            {action.title}
+          </Button>
+        </div>
+        {interaction === 'requested' && (
+          <RiskRequest
+            action={action}
+            disabled={disabled}
+            submitting={submitting}
+            onConfirm={() => void submit(pendingParams)}
+            onCancel={restoreTrigger}
+          />
+        )}
+        {interaction === 'executed' && <ExecutedStatus action={action} />}
+        {failureNode}
+      </div>
+    );
+  }
+
   return (
-    // form 路径:RJSF 的 <form> 元素本身不带背书属性(库不转发 data-*),
-    // 背书挂在包裹容器上(铁律 3 审计 closest('[data-action]') 口径)。
-    <div data-action={action.name} className="flex flex-col">
-      <Form
-        schema={action.fields}
-        validator={rjsfValidator}
-        // 实例字段预填(#4):同名标量字段以实例值起手,提交仍以用户确认的参数为准。
-        formData={initialFormData(action.fields, prefill)}
-        templates={{ FieldTemplate: RjsfFieldTemplate, FieldErrorTemplate: RjsfFieldErrorTemplate }}
-        className={FORM_CONTROL_STYLES}
-        // 只提交当前 action schema 声明过的字段(铁律 3 的提交面):
-        // omitExtraData 剥离一切 schema 外键,liveOmit 在编辑期即保持剥离。
-        omitExtraData
-        liveOmit
-        onSubmit={({ formData }) => void submit(formData as Record<string, unknown> | undefined)}
-      >
-        <Button type="submit" size="sm" data-action={action.name} disabled={disabled} title={hint}>
-          {action.title}
+    <div className="flex flex-col gap-2" onKeyDown={handleKeyDown}>
+      <div>
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="outline"
+          size="sm"
+          data-presentation-action="open-form"
+          aria-controls={formRegionId}
+          aria-expanded={interaction === 'form'}
+          disabled={disabled}
+          title={hint}
+          onClick={openForm}
+        >
+          填写{action.title}参数
         </Button>
-      </Form>
+      </div>
+      {interaction === 'form' && (
+        <div ref={formRegionRef} id={formRegionId} data-action={action.name}>
+          <Form
+            idPrefix={`action_${rel}_${action.name}_${formRegionId}`.replaceAll(
+              /[^A-Za-z0-9_-]/g,
+              '_',
+            )}
+            schema={action.fields}
+            validator={rjsfValidator}
+            // 实例字段预填(#4):同名标量字段以实例值起手,提交仍以用户确认的参数为准。
+            formData={initialFormData(action.fields, prefill)}
+            templates={{
+              FieldTemplate: RjsfFieldTemplate,
+              FieldErrorTemplate: RjsfFieldErrorTemplate,
+            }}
+            className={FORM_CONTROL_STYLES}
+            // 只提交当前 action schema 声明过的字段(铁律 3 的提交面):
+            // omitExtraData 剥离一切 schema 外键,liveOmit 在编辑期即保持剥离。
+            omitExtraData
+            liveOmit
+            onSubmit={({ formData }) =>
+              handleFormSubmit(formData as Record<string, unknown> | undefined)
+            }
+          >
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="submit"
+                size="sm"
+                data-action={action.name}
+                disabled={disabled}
+                title={hint}
+              >
+                {action.title}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-presentation-action="cancel-form"
+                disabled={submitting}
+                onClick={restoreTrigger}
+              >
+                取消
+              </Button>
+            </div>
+          </Form>
+        </div>
+      )}
+      {interaction === 'requested' && (
+        <RiskRequest
+          action={action}
+          disabled={disabled}
+          submitting={submitting}
+          onConfirm={() => void submit(pendingParams)}
+          onCancel={restoreTrigger}
+        />
+      )}
+      {interaction === 'executed' && <ExecutedStatus action={action} />}
       {failureNode}
     </div>
+  );
+}
+
+function RiskRequest({
+  action,
+  disabled,
+  submitting,
+  onConfirm,
+  onCancel,
+}: {
+  action: SirenAction;
+  disabled: boolean;
+  submitting: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm">
+      <p role="status">已请求“{action.title}”，尚未执行。</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          data-action={action.name}
+          disabled={disabled}
+          onClick={onConfirm}
+        >
+          确认并执行{action.title}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-presentation-action="cancel-request"
+          disabled={submitting}
+          onClick={onCancel}
+        >
+          取消请求
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ExecutedStatus({ action }: { action: SirenAction }) {
+  return (
+    <p role="status" className="text-sm text-muted-foreground">
+      已执行“{action.title}”。
+    </p>
   );
 }
