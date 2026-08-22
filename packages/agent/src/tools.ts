@@ -1,8 +1,8 @@
 /**
  * 工具投影生成器(arch-brief §6"两层工具",选型 §1.1):
  *
- * - **固定协议动词 5 个**:navigate(rel)/ exec(action, params)/ clarify(fields)/
- *   render(spec)/ done(summary)——循环协议的工具面;
+ * - **固定协议动词 6 个**:navigate(rel)/ exec(action, params)/ clarify(fields)/
+ *   render(spec)/ done(summary)/ fail(reason,evidence)——循环协议的工具面;
  * - **每状态动态动作工具**:当前实体 actions[] 逐个生成工具(action_ 前缀),
  *   字段 schema(action.fields,JSON Schema draft-07)原样内联为参数;
  * - guard 求值结果嵌 description("blocked: <谓词名> 失败"——拒绝即教育);
@@ -122,6 +122,22 @@ export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
       parameters: objectSchema({ summary: { type: 'string', description: '完成总结' } }, [
         'summary',
       ]),
+    },
+    {
+      name: 'fail',
+      description:
+        '合同无法完成目标时调用。reason 说明缺失的 capability/action；evidence 列出已查看的实体、动作或拒绝，禁止用导航循环代替失败。',
+      parameters: objectSchema(
+        {
+          reason: { type: 'string', description: '无法完成目标的合同原因' },
+          evidence: {
+            type: 'array',
+            items: { type: 'string' },
+            description: '支持判断的实体、动作或拒绝证据',
+          },
+        },
+        ['reason'],
+      ),
     },
   ];
 

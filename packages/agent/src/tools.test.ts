@@ -1,6 +1,6 @@
 /**
  * 工具投影生成器形状测试(T2 Phase E / Task E1,arch-brief §6):
- * - 固定动词 5 个:navigate/exec/clarify/render/done 始终在列;
+ * - 固定动词 6 个:navigate/exec/clarify/render/done/fail 始终在列;
  * - 动态动作工具:当前实体 actions[] 逐个生成(字段 schema 内联参数);
  * - guard-results blocked 的动作 description 写明 "blocked: <谓词名> 失败";
  * - navigate 的 rel 从 links(+子实体)生成 enum。
@@ -38,11 +38,11 @@ const wizardEntity = instanceEntity({
   collection: 'articles',
 });
 
-describe('固定动词 5 个', () => {
-  it('navigate/exec/clarify/render/done 全部在投影中,名称唯一', () => {
+describe('固定动词 6 个', () => {
+  it('navigate/exec/clarify/render/done/fail 全部在投影中,名称唯一', () => {
     const tools = buildToolProjection(wizardEntity);
     const names = tools.map((tool) => tool.name);
-    for (const verb of ['navigate', 'exec', 'clarify', 'render', 'done']) {
+    for (const verb of ['navigate', 'exec', 'clarify', 'render', 'done', 'fail']) {
       expect(names, `动词 ${verb} 应在工具列表`).toContain(verb);
     }
     expect(new Set(names).size).toBe(names.length);
@@ -72,6 +72,16 @@ describe('固定动词 5 个', () => {
     expect(parameters.properties.action.enum).toEqual(['next']);
     expect(parameters.properties.params).toBeDefined();
     expect(parameters.required).toEqual(['action']);
+  });
+
+  it('fail 要求 reason,并允许字符串 evidence', () => {
+    const fail = buildToolProjection(wizardEntity).find((tool) => tool.name === 'fail')!;
+    const parameters = fail.parameters as {
+      required: string[];
+      properties: { evidence: { items: { type: string } } };
+    };
+    expect(parameters.required).toEqual(['reason']);
+    expect(parameters.properties.evidence.items.type).toBe('string');
   });
 
   it('clarify/render 保留动词:description 声明 T2 未实现、禁止调用', () => {

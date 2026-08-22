@@ -199,6 +199,20 @@ describe('B4:失败如实呈现(委托不崩溃)', () => {
 });
 
 describe('fail-safe:模型输出不合法', () => {
+  it('显式 fail 工具映射 reason/evidence,作为合同能力缺失的正常出口', async () => {
+    const { driver } = llmDriverWith(() =>
+      openaiToolResponse('fail', {
+        reason: 'articles 合同没有 delete action',
+        evidence: ['articles actions=(无)', 'post:first-post actions=republish'],
+      }),
+    );
+    await expect(driver.decide(context())).resolves.toEqual({
+      kind: 'fail',
+      reason: 'articles 合同没有 delete action',
+      evidence: ['articles actions=(无)', 'post:first-post actions=republish'],
+    });
+  });
+
   it('无工具调用(纯文本回复)→ fail 附模型文本', async () => {
     const { driver } = llmDriverWith(() => openaiTextResponse('我认为应该…'));
 

@@ -5,7 +5,7 @@
  * - navigate:立即取目标实体,成功则切换当前 rel;404 记 not-found 并回流;
  * - exec:POST /api/exec;2xx 记 executed 并入 successes;4xx/网络故障记 rejected 并回流;
  * - done / fail:终止。
- * 终止:done、fail、maxSteps、起始实体不可得。
+ * 终止:done、fail、机械停滞、maxSteps、起始实体不可得。
  * 拒绝即数据(I6):lastRejection 只影响紧接着的下一步(消费即清)。
  * 循环零智能:不解释拒绝、不判断完成——决策全在 driver。
  */
@@ -77,6 +77,9 @@ export async function runAgent(
   const trail: TrailStep[] = [];
   const successes: ExecSuccess[] = [];
   let lastRejection: RejectionRecord | undefined;
+  // 同一合同处境第三次出现且期间没有成功 exec，说明 driver 正在机械绕圈。
+  // 循环不猜业务完成条件，只对完全相同的可观察状态做协议级有限性保护。
+  const stateVisits = new Map<string, number>();
 
   /** 追加轨迹并同步回调(T9 Phase B 流式轨迹;观测者异常吞掉,不污染循环)。 */
   const pushStep = (step: TrailStep): void => {
@@ -122,6 +125,36 @@ export async function runAgent(
         steps: trail,
         successes,
       };
+    }
+
+    const stateSignature = JSON.stringify({
+      rel: currentRel,
+      actions: fetched.entity.actions.map((action) => action.name).sort(),
+      successes: successes.length,
+      rejection:
+        lastRejection === undefined
+          ? null
+          : {
+              rel: lastRejection.rel,
+              action: lastRejection.action ?? null,
+              layer: lastRejection.layer ?? null,
+            },
+    });
+    const visits = (stateVisits.get(stateSignature) ?? 0) + 1;
+    stateVisits.set(stateSignature, visits);
+    if (visits >= 3) {
+      const evidence = [
+        `重复处境:${currentRel}`,
+        `可用动作:${fetched.entity.actions.map((action) => action.name).join(',') || '(无)'}`,
+        `已成功执行:${successes.length}`,
+      ];
+      const op = {
+        kind: 'fail' as const,
+        reason: `检测到无进展导航循环；当前合同未暴露完成目标所需的可执行能力`,
+        evidence,
+      };
+      pushStep({ step, rel: currentRel, op, outcome: 'failed' });
+      return { goal, outcome: 'failed', summary: op.reason, steps: trail, successes };
     }
 
     // 上下文是逐步快照(trail/successes 拷贝):decide 之后循环继续追加,

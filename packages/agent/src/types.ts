@@ -29,7 +29,7 @@ export type AgentOperation =
   | { kind: 'navigate'; rel: string }
   | { kind: 'exec'; action: string; params?: Record<string, unknown> }
   | { kind: 'done'; summary: string }
-  | { kind: 'fail'; reason: string };
+  | { kind: 'fail'; reason: string; evidence?: string[] };
 
 /**
  * 一次拒绝(navigate 不可达记 layer 'not-found';exec 拒绝携带合同的结构化原因)。

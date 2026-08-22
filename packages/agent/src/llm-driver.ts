@@ -81,6 +81,7 @@ const SYSTEM_PROMPT = [
   '4. 字段值按语义构造:枚举字段必须取 enum 内的值;标题/正文等 intent 字段按目标意图编写;不要发明合同外的值。',
   '5. clarify 与 render 是保留动词且当前未实现:禁止调用;缺字段值时按规则 4 自行构造。',
   '6. 完成判定:目标对应的完成类动作(如 publish)成功执行过之后才调用 done,并用 summary 总结;不得提前 done。',
+  '7. 当前合同没有完成目标所需的 action/capability 时调用 fail(reason,evidence),明确缺口与已查看证据;禁止在实体间重复导航。',
 ].join('\n');
 
 /**
@@ -201,6 +202,20 @@ function mapToolCall(toolName: string, input: unknown): AgentOperation {
       return {
         kind: 'done',
         summary: typeof summary === 'string' && summary !== '' ? summary : '目标完成',
+      };
+    }
+    case 'fail': {
+      const reason = isPlainObject(input) ? input.reason : undefined;
+      const evidence = isPlainObject(input) ? input.evidence : undefined;
+      if (typeof reason !== 'string' || reason === '') {
+        return invalidOutput('fail 缺少字符串参数 reason');
+      }
+      return {
+        kind: 'fail',
+        reason,
+        ...(Array.isArray(evidence) && evidence.every((entry) => typeof entry === 'string')
+          ? { evidence }
+          : {}),
       };
     }
     default:

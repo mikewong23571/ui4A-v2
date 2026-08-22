@@ -148,20 +148,69 @@ describe('循环终止', () => {
   });
 
   it('超过 maxSteps 终止,结局为 max-steps', async () => {
-    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const actionable = instanceEntity({
+      rel: 'article-drafting:main',
+      flow: 'article-drafting',
+      node: 'basic-info',
+      actions: [
+        {
+          name: 'next',
+          title: '下一步',
+          method: 'POST',
+          href: '/api/exec',
+          fields: { type: 'object', properties: {}, additionalProperties: true },
+        },
+      ],
+      collection: 'articles',
+    });
+    const transport = contractTransport({
+      entities: { 'article-drafting:main': actionable },
+      execResponses: Array.from({ length: 5 }, () => jsonResponse({ entity: actionable })),
+    });
     const driver = new ScriptedDriver(
-      Array.from({ length: 10 }, () => ({ kind: 'navigate', rel: 'articles' }) as AgentOperation),
+      Array.from(
+        { length: 10 },
+        (_, index) => ({ kind: 'exec', action: 'next', params: { title: `文章${index}` } }) as AgentOperation,
+      ),
     );
 
     const result = await runAgent(driver, GOAL, {
       baseUrl: BASE,
       fetchImpl: transport.fetch,
+      startRel: 'article-drafting:main',
       maxSteps: 5,
     });
 
     expect(result.outcome).toBe('max-steps');
     expect(result.steps).toHaveLength(5);
-    expect(result.steps.every((step) => step.outcome === 'navigated')).toBe(true);
+    expect(result.steps.every((step) => step.outcome === 'executed')).toBe(true);
+  });
+
+  it('同一无进展合同处境第三次出现时机械失败,不等到 maxSteps', async () => {
+    const transport = contractTransport({
+      entities: { articles: articlesEntity, 'post:post-welcome': postWelcomeEntity },
+    });
+    const driver = new ScriptedDriver([
+      { kind: 'navigate', rel: 'post:post-welcome' },
+      { kind: 'navigate', rel: 'articles' },
+      { kind: 'navigate', rel: 'post:post-welcome' },
+      { kind: 'navigate', rel: 'articles' },
+      { kind: 'navigate', rel: 'post:post-welcome' },
+    ]);
+
+    const result = await runAgent(driver, { verb: '删除所有文章' }, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+      maxSteps: 24,
+    });
+
+    expect(result.outcome).toBe('failed');
+    expect(result.steps).toHaveLength(5);
+    expect(result.steps.at(-1)?.op).toMatchObject({
+      kind: 'fail',
+      reason: expect.stringContaining('无进展导航循环'),
+      evidence: expect.arrayContaining(['重复处境:articles']),
+    });
   });
 
   it('起始实体不可得(404)立即失败并说明 rel', async () => {
