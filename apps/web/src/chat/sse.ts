@@ -4,8 +4,13 @@
  * 帧协议(每帧一条 `data: <json>\n\n`):
  * - {type:'step', message:{role:'assistant',text}, rel?} —— 轨迹一步
  *   (text 为 trail.ts stepToMessage 口径;rel 供 flow 徽章展示);
+ * - {type:'thinking-delta', step, text} —— 推理增量片段(逐 raw chunk 到达
+ *   即推;客户端同号原地累积);
  * - {type:'thinking', step, text} —— llm 步推理自述(T11 Phase C:聚合整段
- *   一次性帧,先于同号 step 帧;rule driver / 端点不返回 reasoning 时零帧);
+ *   权威终帧,先于同号 step 帧;到达时替换同号累积;rule driver / 端点不返回
+ *   reasoning 时零帧);
+ * - {type:'render', payload} —— 渲染回执帧(渲染短路 LLM 路径 SSE 化:
+ *   payload 与一次性 JSON 回执同形状,rule 命中路径仍走 JSON);
  * - {type:'final', payload:{sessionId, driver, requestedDriver, outcome,
  *   summary, steps, successes, render?}} —— 回合终帧;
  * - {type:'error', error} —— 服务端兜底(循环异常,200 流内如实报告)。
@@ -37,9 +42,29 @@ export interface ChatFinalPayload {
   };
 }
 
+/** render 帧载荷(渲染短路 LLM 路径的回执;与一次性 JSON 回执同形状)。 */
+export interface ChatRenderPayload {
+  sessionId: string;
+  driver: 'rule' | 'llm';
+  requestedDriver: 'rule' | 'llm' | 'auto';
+  outcome: string;
+  summary: string;
+  messages: { role: 'assistant'; text: string }[];
+  steps: [];
+  successes: [];
+  render: {
+    concern: string;
+    spec: unknown;
+    frozenNow: boolean;
+    canvasUrl: string;
+  };
+}
+
 export type ChatSseFrame =
   | { type: 'step'; message: ChatStepMessage; rel?: string }
+  | { type: 'thinking-delta'; step: number; text: string }
   | { type: 'thinking'; step: number; text: string }
+  | { type: 'render'; payload: ChatRenderPayload }
   | { type: 'final'; payload: ChatFinalPayload }
   | { type: 'error'; error: string };
 

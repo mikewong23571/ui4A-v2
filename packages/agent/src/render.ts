@@ -30,6 +30,7 @@ import { streamText } from 'ai';
 
 import { createLlmChatModel, type LlmDriverOptions } from './llm-driver';
 import { asciiTokens } from './match';
+import { extractRawReasoning, readRawDelta } from './raw-reasoning';
 
 // ---- 类型 --------------------------------------------------------------------
 
@@ -346,6 +347,7 @@ export function renderSpecGroundingErrors(
 export async function generateRenderSpecWithLlm(
   input: BuildRenderPromptInput,
   options: LlmDriverOptions = {},
+  hooks: { onReasoningDelta?: (piece: string) => void } = {},
 ): Promise<GeneratedRenderSpec | undefined> {
   // I1:无 key 跳过 LLM 路径(空串同缺省——显式空压过 .env.local,e2e 口径)。
   const apiKey = options.apiKey ?? process.env.GLM_API_KEY;
@@ -357,6 +359,9 @@ export async function generateRenderSpecWithLlm(
       // 端点挂死兜底:60s 无响应流被 abort(下文 'abort' 部件),经 catch 化为
       // undefined(与 llm-driver 的 B4 口径同族:失败如实,绝不抛出)。
       abortSignal: AbortSignal.timeout(60_000),
+      // 原始 SSE chunk 进 fullStream(type 'raw'):reasoning 增量只在这一层
+      // 暴露(D22 同因;渲染路径流式思考的观测通道)。
+      includeRawChunks: true,
     });
     let text = '';
     for await (const part of result.fullStream) {
@@ -364,6 +369,20 @@ export async function generateRenderSpecWithLlm(
         case 'text-delta':
           text += part.text;
           break;
+        case 'raw': {
+          const delta = readRawDelta(part.rawValue);
+          if (delta !== null) {
+            const piece = extractRawReasoning(delta);
+            if (piece !== null) {
+              try {
+                hooks.onReasoningDelta?.(piece);
+              } catch {
+                // 观测者不得污染生成路径(fail-safe 口径同 llm-driver sink)。
+              }
+            }
+          }
+          break;
+        }
         case 'error':
           // 端点错误(401 等)以 error 部件到达(非抛出)——转交 catch 统一折算。
           throw part.error;

@@ -293,7 +293,16 @@ async function llmDecide(
           const delta = readRawDelta(part.rawValue);
           if (delta !== null) {
             const piece = extractRawReasoning(delta);
-            if (piece !== null) reasoning += piece;
+            if (piece !== null) {
+              reasoning += piece;
+              try {
+                // 增量通道:片段到达即转发(当前 GLM 末尾齐发 D22,增量与聚合
+                // 几乎同刻;管线为真流式就绪)。聚合终态见流末 onReasoning。
+                sink?.onReasoningDelta?.(piece);
+              } catch {
+                // 观测者不得污染协议(同 onReasoning 口径)。
+              }
+            }
           }
           break;
         }

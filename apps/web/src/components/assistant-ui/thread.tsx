@@ -8,7 +8,9 @@
  * 合同锚点(悬浮聊天 e2e/jsdom 断言依赖,不可改):
  * - 输入框 placeholder「输入目标…」;发送/停止按钮文本与
  *   data-nav="local:chat-send|chat-cancel";委托模式开关 aria-label「委托模式」
- *   + aria-pressed + data-nav="local:chat-delegated";
+ *   + aria-pressed + data-nav="local:chat-delegated";思考过程开关
+ *   aria-label「思考过程」+ aria-pressed + data-nav="local:chat-thinking"
+ *   (off = 思考条目经 runtime 过滤,不进消息区);
  * - running 指示:三点 typing(替代 stock 的裸「●」);
  * - 轨迹步骤卡:step 帧携带的 rel 经 metadata.custom 传入——flow 实例步
  *   (rel 含 flow 或文本含节点迁移「执行 next(」)以 Badge 弱化呈现 rel
@@ -29,7 +31,7 @@ import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, SendHorizontal, Square } from 'lucide-react';
+import { Brain, ChevronDown, SendHorizontal, Square } from 'lucide-react';
 
 /** 当前消息的 rel(external store 经 convertMessage 的 metadata.custom.rel 传入)。 */
 function useMessageRel(): string | undefined {
@@ -129,9 +131,17 @@ function TypingIndicator() {
 export interface ChatThreadProps {
   delegated: boolean;
   onToggleDelegated: () => void;
+  /** 思考过程可见性(用户开关;关闭 = 思考条目经 runtime 过滤,不进消息区)。 */
+  showThinking: boolean;
+  onToggleShowThinking: () => void;
 }
 
-export function ChatThread({ delegated, onToggleDelegated }: ChatThreadProps) {
+export function ChatThread({
+  delegated,
+  onToggleDelegated,
+  showThinking,
+  onToggleShowThinking,
+}: ChatThreadProps) {
   return (
     <ThreadPrimitive.Root className="flex h-full min-h-0 flex-col">
       <ThreadPrimitive.Viewport className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
@@ -162,6 +172,19 @@ export function ChatThread({ delegated, onToggleDelegated }: ChatThreadProps) {
           onClick={onToggleDelegated}
         >
           委托
+        </Button>
+        {/* 思考过程开关:off→思考条目不渲染(runtime 过滤,state 保留可回看)。 */}
+        <Button
+          type="button"
+          variant={showThinking ? 'default' : 'secondary'}
+          size="sm"
+          aria-label="思考过程"
+          data-nav="local:chat-thinking"
+          aria-pressed={showThinking}
+          onClick={onToggleShowThinking}
+        >
+          <Brain className="h-3.5 w-3.5" />
+          思考
         </Button>
         <ThreadPrimitive.If running={false}>
           <ComposerPrimitive.Send asChild>

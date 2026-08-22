@@ -21,7 +21,9 @@
  * - 故响应携带 render 载荷 ⇔ 走了 LLM fallthrough(rule 路径不可能产出)。
  *
  * 断言(每次凝固载荷必过——「若凝固则形状合法」立即失败,不重试):
- * 1. 响应为 JSON render 载荷(非 SSE 普通循环)+ 凝固留痕(render-spec-frozen
+ * 1. 响应为 SSE render 帧(渲染 LLM 路径 inline 已 SSE 化:thinking-delta
+ *    增量 + render 帧回执,载荷与旧 JSON 回执同形;final 帧 = 诚实失败交回
+ *    普通循环)+ 凝固留痕(render-spec-frozen
  *    事件 detail.spec 与载荷一致、requestedBy.actor=agent);
  * 2. spec.component 取自词汇表(/api/render/catalog,D12 同源)+ bind 递归零
  *    字面(validateSpec;bindSchema 校验与画布 planSurface 同源,画布干净渲染
@@ -180,27 +182,33 @@ test('真实 GLM:rule miss 展示意图 → LLM 产 spec → 过闸凝固 → �
       const elapsedMs = Date.now() - startedAt;
       const contentType = response.headers.get('content-type') ?? '';
 
-      // 诚实失败口径:LLM 未过闸(解析/校验/端点)→ 原路交回普通循环(SSE 流),
-      // 如实记录后进入下一轮(不留半成品 spec,不凝固)。
-      if (!contentType.includes('application/json')) {
+      // 渲染路径 SSE 化(inline):render 帧 = 过闸回执(载荷与旧 JSON 同形);
+      // final 帧 = 诚实失败交回普通循环(不留半成品 spec,不凝固),如实记录
+      // 后进入下一轮。防御性保留 JSON 分支(非 inline 形态/未来回归)。
+      let json: ChatRenderResponse | undefined;
+      if (contentType.includes('text/event-stream')) {
         const raw = await response.text();
-        const finalFrame = raw
+        const frames = raw
           .split('\n\n')
           .map((chunk) => chunk.split('\n').find((line) => line.startsWith('data:')))
           .filter((line): line is string => line !== undefined)
-          .map((line) => JSON.parse(line.slice('data:'.length).trim()) as SseFinalFrame)
-          .find((frame) => frame.type === 'final');
-        roundReports.push(
-          `#${round} 交回普通循环(${elapsedMs}ms):outcome=${finalFrame?.payload?.outcome ?? '?'} ` +
-            `summary=${finalFrame?.payload?.summary ?? ''}`,
-        );
-        continue;
+          .map((line) => JSON.parse(line.slice('data:'.length).trim()) as SseFinalFrame);
+        const renderFrame = frames.find((frame) => frame.type === 'render');
+        if (renderFrame === undefined) {
+          const finalFrame = frames.find((frame) => frame.type === 'final');
+          roundReports.push(
+            `#${round} 交回普通循环(${elapsedMs}ms):outcome=${finalFrame?.payload?.outcome ?? '?'} ` +
+              `summary=${finalFrame?.payload?.summary ?? ''}`,
+          );
+          continue;
+        }
+        json = renderFrame.payload as ChatRenderResponse;
+      } else {
+        json = (await response.json()) as ChatRenderResponse;
       }
-
-      const json = (await response.json()) as ChatRenderResponse;
       if (json.render === undefined) {
         roundReports.push(
-          `#${round} JSON 无 render 载荷(${elapsedMs}ms):${json.outcome} ${json.summary ?? ''}`,
+          `#${round} 响应无 render 载荷(${elapsedMs}ms):${json.outcome} ${json.summary ?? ''}`,
         );
         continue;
       }

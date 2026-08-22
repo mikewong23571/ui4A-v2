@@ -367,6 +367,40 @@ describe('streamText 聚合与 reasoning 通道(T11 Phase C)', () => {
     expect(seen).toEqual(['先核对目标,再收尾。']);
   });
 
+  it('onReasoningDelta 逐片回调 + onReasoning 聚合终态一次(增量通道与审计通道并存)', async () => {
+    const { driver } = llmDriverWith(() =>
+      openaiToolResponse('done', { summary: 'ok' }, { reasoning: ['先核对目标', ',再收尾。'] }),
+    );
+    const deltas: string[] = [];
+    const full: string[] = [];
+
+    const op = await driver.decide(context(), {
+      onReasoning: (text) => full.push(text),
+      onReasoningDelta: (piece) => deltas.push(piece),
+    });
+
+    expect(op).toEqual({ kind: 'done', summary: 'ok' });
+    expect(deltas).toEqual(['先核对目标', ',再收尾。']);
+    expect(full).toEqual(['先核对目标,再收尾。']);
+  });
+
+  it('onReasoningDelta 抛错 → decide 不抛,聚合回调仍达(观测者不得污染协议)', async () => {
+    const { driver } = llmDriverWith(() =>
+      openaiToolResponse('done', { summary: 'ok' }, { reasoning: ['自述'] }),
+    );
+    const full: string[] = [];
+
+    const op = await driver.decide(context(), {
+      onReasoning: (text) => full.push(text),
+      onReasoningDelta: () => {
+        throw new Error('观测者爆炸');
+      },
+    });
+
+    expect(op).toEqual({ kind: 'done', summary: 'ok' });
+    expect(full).toEqual(['自述']);
+  });
+
   it('fail-safe 决策同样携带 reasoning(输出不合法时自述仍是蒸馏原料)', async () => {
     const { driver } = llmDriverWith(() =>
       openaiToolResponse('teleport', { to: 'moon' }, { reasoning: ['想直接瞬移过去'] }),

@@ -362,8 +362,184 @@ describe('工作台 · 思考区(T11 Phase C)', () => {
       expect(screen.getByText('完成: 目标完成')).toBeTruthy();
     });
     expect(screen.getByText('导航到 articles')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /思考/ })).toBeNull();
+    // 思考条目零(「思考 · 步骤 N」触发器;与 composer 的「思考过程」开关区分)。
+    expect(screen.queryByRole('button', { name: /思考 · 步骤/ })).toBeNull();
     expect(screen.queryByText(/失败/)).toBeNull();
+  });
+});
+
+describe('工作台 · 思考增量与渲染回执帧', () => {
+  const finalFrame = (sessionId: string) => ({
+    type: 'final',
+    payload: {
+      sessionId,
+      driver: 'llm' as const,
+      requestedDriver: 'auto' as const,
+      outcome: 'done' as const,
+      summary: '目标完成',
+      steps: [],
+      successes: [],
+    },
+  });
+
+  it('thinking-delta 同号原地累积成单条;thinking 终帧以全文替换(权威终帧)', async () => {
+    const frames = [
+      { type: 'thinking-delta', step: 1, text: '先补标题' },
+      { type: 'thinking-delta', step: 1, text: ',再推进向导' },
+      { type: 'thinking', step: 1, text: '先补标题,再推进向导(聚合全文)' },
+      { type: 'step', message: { role: 'assistant', text: '导航到 articles' }, rel: 'articles' },
+      finalFrame('sess-delta-1'),
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    await waitFor(() => {
+      expect(screen.getByText('导航到 articles')).toBeTruthy();
+    });
+    // 同号增量合并为单条思考条目(非每片段一条)。
+    const triggers = screen.getAllByRole('button', { name: /思考 · 步骤 1/ });
+    expect(triggers).toHaveLength(1);
+    fireEvent.click(triggers[0]!);
+    // 终帧全文替换累积(权威;兼容丢增量)。
+    expect(screen.getByText('先补标题,再推进向导(聚合全文)')).toBeTruthy();
+    expect(screen.queryByText(/先补标题$/)).toBeNull();
+  });
+
+  it('仅增量无终帧:条目文本 = 片段拼接(流中断时仍可读)', async () => {
+    const frames = [
+      { type: 'thinking-delta', step: 1, text: '片段一' },
+      { type: 'thinking-delta', step: 1, text: '片段二' },
+      { type: 'step', message: { role: 'assistant', text: '完成: 目标完成' } },
+      finalFrame('sess-delta-2'),
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    await waitFor(() => {
+      expect(screen.getByText('完成: 目标完成')).toBeTruthy();
+    });
+    const trigger = screen.getByRole('button', { name: /思考 · 步骤 1/ });
+    fireEvent.click(trigger);
+    expect(screen.getByText('片段一片段二')).toBeTruthy();
+  });
+
+  it('render 帧(渲染 LLM 路径 SSE 化):回执消息 + 画布入口 + 即达即跳(与 JSON 回执等价)', async () => {
+    const canvasUrl = '/canvas?concern=articles-by-category';
+    const frames = [
+      { type: 'thinking-delta', step: 1, text: '先看词汇表' },
+      {
+        type: 'render',
+        payload: {
+          sessionId: 'sess-render-sse',
+          driver: 'llm',
+          requestedDriver: 'auto',
+          outcome: 'done',
+          summary: '渲染已生成:articles-by-category',
+          messages: [
+            {
+              role: 'assistant',
+              text: `已生成渲染「articles-by-category」(chart,首次凝固)→ 在画布打开:${canvasUrl}`,
+            },
+          ],
+          steps: [],
+          successes: [],
+          render: {
+            concern: 'articles-by-category',
+            spec: {
+              concern: 'articles-by-category',
+              component: 'chart',
+              bind: { series: { collection: 'articles', dimension: 'articles.fields.category' } },
+            },
+            frozenNow: true,
+            canvasUrl,
+          },
+        },
+      },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('可视化文章分类');
+
+    await waitFor(() => {
+      expect(screen.getByText(/已生成渲染「articles-by-category」/)).toBeTruthy();
+    });
+    const link = screen.getByRole('link', { name: /在画布查看/ }) as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe(canvasUrl);
+    expect(routerPushMock).toHaveBeenCalledWith(canvasUrl);
+  });
+
+  it('思考开关:默认开启;关闭 → 思考条目不渲染且持久化,重开即回', async () => {
+    const frames = [
+      { type: 'thinking', step: 1, text: '先补标题,再推进向导' },
+      { type: 'step', message: { role: 'assistant', text: '导航到 articles' }, rel: 'articles' },
+      finalFrame('sess-toggle-1'),
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    const toggle = screen.getByRole('button', { name: '思考过程' });
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /思考 · 步骤 1/ })).toBeTruthy();
+    });
+
+    // 关闭:条目即刻消失(state 保留),localStorage 落 '0'。
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.queryByRole('button', { name: /思考 · 步骤/ })).toBeNull();
+    expect(window.localStorage.getItem('ui4a.chat.thinking')).toBe('0');
+
+    // 重开:条目回来(消息未丢)。
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: /思考 · 步骤 1/ })).toBeTruthy();
+    expect(window.localStorage.getItem('ui4a.chat.thinking')).toBe('1');
+  });
+
+  it('思考开关持久化:localStorage 置 0 起步 → 初始关闭,思考条目不进消息区', async () => {
+    window.localStorage.setItem('ui4a.chat.thinking', '0');
+    const frames = [
+      { type: 'thinking', step: 1, text: '先补标题' },
+      { type: 'step', message: { role: 'assistant', text: '完成: 目标完成' } },
+      finalFrame('sess-toggle-2'),
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    const toggle = screen.getByRole('button', { name: '思考过程' });
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    await waitFor(() => {
+      expect(screen.getByText('完成: 目标完成')).toBeTruthy();
+    });
+    expect(screen.queryByRole('button', { name: /思考 · 步骤/ })).toBeNull();
   });
 });
 

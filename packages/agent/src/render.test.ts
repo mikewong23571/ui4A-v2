@@ -379,6 +379,71 @@ describe('generateRenderSpecWithLlm:LLM 生成路径(T12;脚本化传输,零网�
     ).resolves.toBeUndefined();
   });
 
+  it('reasoning_content 增量经 onReasoningDelta 逐片转发;解析结果不变', async () => {
+    // D22 同因:SDK 剥离 reasoning_content,增量只能从 raw 部件解析
+    // (includeRawChunks;与 llm-driver 共用 raw-reasoning 解析器)。
+    const specJson = JSON.stringify({
+      concern: 'articles-board',
+      component: 'kanban',
+      bind: { columns: { collection: 'articles' } },
+    });
+    const transport = createScriptedTransport(() =>
+      sseResponse([
+        chunk({ reasoning_content: '先看词汇表' }),
+        chunk({ reasoning_content: ',再定词条。' }),
+        chunk({ role: 'assistant', content: specJson }),
+        chunk({}, 'stop'),
+      ]),
+    );
+    const deltas: string[] = [];
+
+    const spec = await generateRenderSpecWithLlm(
+      input,
+      { apiKey: 'test-key', fetchImpl: transport.fetch },
+      { onReasoningDelta: (piece) => deltas.push(piece) },
+    );
+
+    expect(spec).toEqual({
+      concern: 'articles-board',
+      component: 'kanban',
+      bind: { columns: { collection: 'articles' } },
+    });
+    expect(deltas).toEqual(['先看词汇表', ',再定词条。']);
+  });
+
+  it('onReasoningDelta 抛错 → 结果不受影响(fail-safe 口径,观测者不得污染生成路径)', async () => {
+    const transport = createScriptedTransport(() =>
+      sseResponse([
+        chunk({ reasoning_content: '自述' }),
+        chunk({
+          role: 'assistant',
+          content: JSON.stringify({
+            concern: 'articles-list',
+            component: 'table',
+            bind: { rows: { collection: 'articles' } },
+          }),
+        }),
+        chunk({}, 'stop'),
+      ]),
+    );
+
+    const spec = await generateRenderSpecWithLlm(
+      input,
+      { apiKey: 'test-key', fetchImpl: transport.fetch },
+      {
+        onReasoningDelta: () => {
+          throw new Error('观测者爆炸');
+        },
+      },
+    );
+
+    expect(spec).toEqual({
+      concern: 'articles-list',
+      component: 'table',
+      bind: { rows: { collection: 'articles' } },
+    });
+  });
+
   it('端点 401 → undefined(端点失败同口径:不抛异常,交回普通循环)', async () => {
     const transport = createScriptedTransport(() =>
       jsonResponse({ error: { code: '1002', message: '令牌无效或已过期' } }, 401),

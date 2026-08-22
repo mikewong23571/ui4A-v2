@@ -33,9 +33,10 @@ interface ChatResponseBody {
 }
 
 /** SSE 帧(T9 Phase B):step 逐步消息 / final 终帧 / error 兜底;
- * T11 Phase C 增 thinking 帧(llm 步推理自述;rule 路径零帧,仅作类型容错)。 */
+ * T11 Phase C 增 thinking 帧(llm 步推理自述;rule 路径零帧,仅作类型容错);
+ * 本轮增 thinking-delta(推理增量)与 render(渲染 LLM 路径 SSE 化的回执帧)。 */
 interface SseFrame {
-  type: 'step' | 'final' | 'error' | 'thinking';
+  type: 'step' | 'final' | 'error' | 'thinking' | 'thinking-delta' | 'render';
   message?: { role: 'assistant'; text: string };
   step?: number;
   text?: string;
@@ -223,6 +224,31 @@ test('B4:坏 key → 401 原文进对话,route 不 5xx;同 session 再发一次�
   } finally {
     await stub.close();
   }
+});
+
+test('渲染路径 SSE 化兜底:展示意图 rule miss + 无 key → 同流交回 agent 循环(零 render 帧)', async () => {
+  await withFreshServer(
+    async () => {
+      // 「看看」是展示意图词(hasDisplayIntent 命中)但无集合词 → rule 模板
+      // miss;无 key → LLM 路径跳过(I1)→ SSE 流内交回普通 agent 循环。
+      const { status, frames, raw } = await chat({
+        sessionId: 'render-sse-fallback',
+        goal: { verb: '看看站点地图' },
+      });
+
+      expect(status).toBe(200);
+      // 诚实失败口径:不产 render 回执帧,不留半成品。
+      expect(raw).not.toContain('"type":"render"');
+      expect(frames.filter((frame) => frame.type === 'render')).toHaveLength(0);
+      // 无 LLM → 零思考增量帧。
+      expect(frames.filter((frame) => frame.type === 'thinking-delta')).toHaveLength(0);
+      // 循环兜底:frame 序列 = step 帧 + final 终帧(与常规 inline 同构)。
+      expect(frames[frames.length - 1]!.type).toBe('final');
+      expect(frames.some((frame) => frame.type === 'step')).toBe(true);
+    },
+    // 显式空 key:e2e 进程零 LLM 凭证(rule 确定路径,I1 口径)
+    { GLM_API_KEY: '' },
+  );
 });
 
 // ---- 悬浮窗可见性(3100 webServer,首页无引擎依赖)---------------------------

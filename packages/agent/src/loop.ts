@@ -91,8 +91,9 @@ export async function runAgent(
 
   // 推理自述观测通道(T11 Phase C):llm 步 decide 产出 reasoning 时由 driver
   // 回调一次(聚合整段);rule driver 零回调。异常吞掉口径同 onStep。
+  // 增量通道(onReasoningDelta)同構:两通道任一存在即构造 sink。
   const decideSink =
-    options.onReasoning === undefined
+    options.onReasoning === undefined && options.onReasoningDelta === undefined
       ? undefined
       : {
           onReasoning: (text: string): void => {
@@ -100,6 +101,13 @@ export async function runAgent(
               options.onReasoning?.(text);
             } catch {
               // 观测者不得污染协议循环(同 pushStep 口径)。
+            }
+          },
+          onReasoningDelta: (piece: string): void => {
+            try {
+              options.onReasoningDelta?.(piece);
+            } catch {
+              // 同上:增量观测失败不拦截循环。
             }
           },
         };

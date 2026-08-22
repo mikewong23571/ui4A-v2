@@ -15,6 +15,7 @@ import {
 import type { ChatTurnDetail } from '../../../chat/history';
 import { wrapDriverForAudit, type AgentDecisionDetail } from '../../../chat/decisions';
 import { resolveStartRel } from '../../../chat/start';
+import type { ChatRenderPayload } from '../../../chat/sse';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
 import { appendEvent } from '../../../db/events';
 import { getDb, getEngine, type EngineRuntime } from '../../../engine/service';
@@ -37,17 +38,21 @@ import { validateWordBind } from '../../../render/word-bind';
 //   (glm-5.3,60s abort)→ parseRenderResponse(fail-safe)→ 同一零字面
 //   校验器 + 处境核对(集合/字段真实性)+ 词条形状 bindSchema → freezeSpec
 //   凝固留痕 → 响应(形状不变);解析失败/校验失败/端点失败 → 原路交回普通
-//   agent 循环(不留半成品 spec,不凝固);
+//   agent 循环(不留半成品 spec,不凝固);LLM 路径 inline 模式已 SSE 化
+//   (sseRenderResponse):思考增量 thinking-delta + render 帧回执(与 JSON
+//   回执同形),过闸失败同流交回循环;delegated 模式保持阻塞 JSON;
 // - inline(T9 Phase B 起为 SSE 流式,text/event-stream):服务端组装 driver
 //   (rule | llm | auto——auto 无 key 回退 rule,I1 机械层),runAgent 循环过本源
 //   HTTP 合同(actor=agent,principal=user:<sessionId>,channel=chat)——
 //   "agent 走合同"字面成立;onStep 每步推一帧
 //   {type:'step', message:{role:'assistant',text}, rel}(text 为 trail.ts
 //   stepToMessage 口径);llm 步 decide 产推理自述时先于同号 step 帧推一帧
-//   {type:'thinking', step, text}(T11 Phase C / 架构决定 4:聚合整段一次性
-//   帧——D22 GLM reasoning 末尾齐发,非打字机;step 与对应 step 帧同号,
+//   {type:'thinking', step, text}(T11 Phase C / 架构决定 4:聚合整段权威
+//   终帧——D22 GLM reasoning 末尾齐发,非打字机;step 与对应 step 帧同号,
 //   便于客户端归步;rule driver / 端点不返回 reasoning → 零 thinking 帧,
-//   rule 路径帧序列与现状逐帧一致),结束推 {type:'final', payload:{sessionId,
+//   rule 路径帧序列与现状逐帧一致);增量通道 {type:'thinking-delta',
+//   step, text} 逐 raw chunk 即推(与聚合几乎同刻,管线为真流式就绪),
+//   结束推 {type:'final', payload:{sessionId,
 //   driver, requestedDriver, outcome, summary, steps, successes}};异常兜底
 //   {type:'error', error};客户端断开仅中断推帧,循环照常跑完(留痕);
 // - 聊天历史(T9 Phase B):inline 回合完成(含 failed/max-steps)后直写一条
@@ -70,7 +75,8 @@ import { validateWordBind } from '../../../render/word-bind';
 //   响应 {mode:'delegated', delegationId, statusUrl};派发失败(Temporal 不可达)
 //   据实 503——委托没派出去不能假装成功;
 // - 起始 rel 由 sitemap 词级交集解析(客户端行为),缺省 articles;
-// - render 短路/参数错误/delegated 仍为一次性 JSON(响应形状不动);
+// - 一次性 JSON 仅剩:rule 命中 render 短路(瞬时)/参数错误/delegated;
+//   LLM render 路径(inline)与 inline 循环同为 SSE;thinking/render 帧见上。
 //   B4:LLM 失败(401 等)如实进入 step 帧文本与 final.summary,route 不 5xx。
 // 服务无会话态:事件日志是真相,聊天会话是客户端投影(localStorage)。
 
@@ -139,16 +145,17 @@ function renderWordSummaries(): RenderWordSummary[] {
 }
 
 /**
- * 凝固 + render 载荷响应(rule/LLM 两路径共用;响应形状自 T7 以来不变)。
- * spec 须已过零字面校验;freezeSpec 入口复校(校验器 + 词汇表词名,双闸口径)。
+ * 凝固 + render 回执载荷(rule 命中 JSON 与 LLM 路径 SSE render 帧共用;
+ * 形状自 T7 以来不变)。spec 须已过零字面校验;freezeSpec 入口复校
+ * (校验器 + 词汇表词名,双闸口径)。
  */
-async function respondWithFrozenSpec(
+async function frozenRenderPayload(
   engine: EngineRuntime,
   generated: GeneratedRenderSpec,
   sessionId: string,
   requested: 'rule' | 'llm' | 'auto',
   resolved: 'rule' | 'llm',
-): Promise<Response> {
+): Promise<ChatRenderPayload> {
   // 断言理由:validateSpec 已确认形状(引用节点 + 结构容器),Record 与
   // BindTree 的差异仅是类型层收窄,运行时形状已收敛。
   const spec = generated as unknown as RenderSpec;
@@ -158,7 +165,7 @@ async function respondWithFrozenSpec(
   });
   const concern = frozen.spec.concern;
   const canvasUrl = `/canvas?concern=${encodeURIComponent(concern)}`;
-  return Response.json({
+  return {
     sessionId,
     driver: resolved,
     requestedDriver: requested,
@@ -175,7 +182,18 @@ async function respondWithFrozenSpec(
     steps: [],
     successes: [],
     render: { concern, spec: frozen.spec, frozenNow: frozen.frozen, canvasUrl },
-  });
+  };
+}
+
+/** rule 命中路径的 JSON 回执包装(瞬时响应,形状不动)。 */
+async function respondWithFrozenSpec(
+  engine: EngineRuntime,
+  generated: GeneratedRenderSpec,
+  sessionId: string,
+  requested: 'rule' | 'llm' | 'auto',
+  resolved: 'rule' | 'llm',
+): Promise<Response> {
+  return Response.json(await frozenRenderPayload(engine, generated, sessionId, requested, resolved));
 }
 
 /**
@@ -188,6 +206,207 @@ function llmSpecPassesGates(spec: GeneratedRenderSpec, sitemap: RenderSitemapCon
   if (!validateSpec(spec).valid) return false;
   if (renderSpecGroundingErrors(spec, sitemap).length > 0) return false;
   return validateWordBind(spec.bind, spec.component).valid;
+}
+
+/**
+ * SSE 响应壳(inline 常规路径与渲染路径 SSE 化共用):send 包装(客户端断开
+ * 停推帧,服务端循环照常跑完)、异常兜底 error 帧、finally close——各路径
+ * 只关心帧序列本身。
+ */
+function sseResponse(start: (send: (frame: Record<string, unknown>) => void) => Promise<void>): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let pushable = true;
+      const send = (frame: Record<string, unknown>): void => {
+        if (!pushable) return;
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(frame)}\n\n`));
+        } catch {
+          // 客户端已断开(停止/关窗):停推帧,循环照常跑完。
+          pushable = false;
+        }
+      };
+      try {
+        await start(send);
+      } catch (error) {
+        // 委托不崩溃:循环与 driver 都不应抛出;此处兜底为 error 帧(200 流内)。
+        send({
+          type: 'error',
+          error: `聊天循环异常: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      } finally {
+        try {
+          controller.close();
+        } catch {
+          // 流已被客户端取消:关闭动作无副作用要求。
+        }
+      }
+    },
+  });
+  return new Response(stream, {
+    headers: {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache',
+    },
+  });
+}
+
+/**
+ * inline 循环的流内执行(inline 常规路径与渲染路径过闸失败的兜底共用):
+ * resolveStartRel → runAgent(thinking-delta/thinking/step 帧)→ 冗余步帧 →
+ * agent-decision/chat-turn 落库 → final 帧。
+ */
+async function streamAgentLoop(args: {
+  send: (frame: Record<string, unknown>) => void;
+  goal: AgentGoal;
+  sessionId: string;
+  requested: 'rule' | 'llm' | 'auto';
+  resolved: 'rule' | 'llm';
+  baseUrl: string;
+}): Promise<void> {
+  const { send, goal, sessionId, requested, resolved, baseUrl } = args;
+  const startRel = await resolveStartRel(baseUrl, goal, (url, init) => fetch(url, init));
+  // agent-decision 审计(T11 Phase B):包装 driver 在 decide 时刻捕获
+  // (prompt/reasoning/op)——决策输入只存在于 decide 时的 DriverContext,
+  // 执行后的 TrailStep 回推不出 prompt(捕获方案见 chat/decisions.ts)。
+  const decisions: AgentDecisionDetail[] = [];
+  // 已发 step 帧计数:thinking 帧的步号 = 计数 + 1(decide 先于 trail.push,
+  // 回调时第 N 步的 step 帧尚未发出)——与对应 step 帧同号,便于客户端归步。
+  let stepFramesSent = 0;
+  const result = await runAgent(
+    wrapDriverForAudit(createDriver(requested), resolved, (detail) => decisions.push(detail)),
+    goal,
+    {
+      baseUrl,
+      fetchImpl: (url, init) => fetch(url, init),
+      actor: 'agent',
+      principal: `user:${sessionId}`,
+      channel: 'chat',
+      startRel,
+      // thinking 帧(T11 Phase C / 架构决定 4):llm 步的推理自述聚合整段
+      // 权威终帧(D22 末尾齐发),先于同号 step 帧;增量通道 thinking-delta
+      // 逐片段即推(当前与聚合几乎同刻,管线为真流式就绪);rule driver
+      // 零回调 → 零帧(rule 路径帧序列与现状逐帧一致)。
+      onReasoning: (text) => {
+        send({ type: 'thinking', step: stepFramesSent + 1, text });
+      },
+      onReasoningDelta: (piece) => {
+        send({ type: 'thinking-delta', step: stepFramesSent + 1, text: piece });
+      },
+      onStep: (step) => {
+        stepFramesSent += 1;
+        send({ type: 'step', message: stepToMessage(step), rel: step.rel });
+      },
+    },
+  );
+
+  const messages = trailToMessages(result);
+  // max-steps 的上限说明不是轨迹步(无 TrailStep 可挂 onStep),补一帧,
+  // 保持客户端「消息 = 各 step 帧文本」的重建口径与 trailToMessages 等值。
+  for (const extra of messages.slice(result.steps.length)) {
+    send({ type: 'step', message: extra });
+  }
+
+  // agent-decision 落库:inline 每步决策一条,与 chat-turn 同源同值
+  // (actor/principal/channel);先于回合投影写入(决策在先,回合在后)。
+  // 落库失败 console.error 不阻断响应(同 chat-turn 口径:审计是投影)。
+  try {
+    for (const detail of decisions) {
+      await appendEvent(getDb(), {
+        kind: 'agent-decision',
+        actor: 'agent',
+        principal: `user:${sessionId}`,
+        channel: 'chat',
+        rel: `chat:${sessionId}`,
+        detail,
+      });
+    }
+  } catch (persistError) {
+    console.error('agent-decision 事件落库失败(不阻断聊天响应):', persistError);
+  }
+
+  // 聊天历史(B3):inline 回合完成(含 failed/max-steps)直写 chat-turn
+  // 事件——与 worker 同一双写者模式;engine fold 忽略该 kind。落库失败
+  // 不阻断聊天响应(历史是投影,丢失可从轨迹推知,响应才是合同)。
+  // T11 Phase B:detail 增结构化 steps(result.steps 原样)——messages
+  // 是人读投影,steps 是机器可读原料(架构决定 2)。
+  const turnDetail: ChatTurnDetail = {
+    sessionId,
+    goal,
+    outcome: result.outcome,
+    summary: result.summary ?? null,
+    messages,
+    steps: result.steps,
+    driver: resolved,
+  };
+  try {
+    await appendEvent(getDb(), {
+      kind: 'chat-turn',
+      actor: 'agent',
+      principal: `user:${sessionId}`,
+      channel: 'chat',
+      rel: `chat:${sessionId}`,
+      detail: turnDetail,
+    });
+  } catch (persistError) {
+    console.error('chat-turn 事件落库失败(不阻断聊天响应):', persistError);
+  }
+
+  send({
+    type: 'final',
+    payload: {
+      sessionId,
+      driver: resolved,
+      requestedDriver: requested,
+      outcome: result.outcome,
+      summary: result.summary ?? null,
+      steps: result.steps,
+      successes: result.successes,
+    },
+  });
+}
+
+/**
+ * 渲染短路 LLM 路径的 SSE 化(inline 模式):思考增量(thinking-delta,
+ * 单次生成步号恒 1)+ render 帧回执(与 JSON 回执同形,客户端处置等价);
+ * 过闸失败/引擎异常同流交回 agent 循环(诚实失败口径不变:不留半成品
+ * spec,不凝固)。delegated 模式不走此路(委托派发的阻塞 JSON 口径不变)。
+ */
+function sseRenderResponse(args: {
+  engine: EngineRuntime;
+  sitemap: RenderSitemapContext;
+  goal: AgentGoal;
+  sessionId: string;
+  requested: 'rule' | 'llm' | 'auto';
+  resolved: 'rule' | 'llm';
+  baseUrl: string;
+}): Response {
+  const { engine, sitemap, goal, sessionId, requested, resolved, baseUrl } = args;
+  return sseResponse(async (send) => {
+    let handled = false;
+    try {
+      const llmGenerated = await generateRenderSpecWithLlm(
+        { intent: goal.verb, sitemap, words: renderWordSummaries() },
+        {},
+        {
+          onReasoningDelta: (piece) => {
+            send({ type: 'thinking-delta', step: 1, text: piece });
+          },
+        },
+      );
+      if (llmGenerated !== undefined && llmSpecPassesGates(llmGenerated, sitemap)) {
+        const payload = await frozenRenderPayload(engine, llmGenerated, sessionId, requested, resolved);
+        send({ type: 'render', payload });
+        handled = true;
+      }
+    } catch {
+      // 引擎/凝固故障:如实交回 agent 循环(同旧 JSON 路径的外层 catch 口径)。
+    }
+    if (!handled) {
+      await streamAgentLoop({ send, goal, sessionId, requested, resolved, baseUrl });
+    }
+  });
 }
 
 export async function POST(request: Request) {
@@ -228,10 +447,12 @@ export async function POST(request: Request) {
     );
   }
 
-  // render capability(T7 Phase C / S5;T12 Phase A 起含 LLM fallthrough):
-  // 展示类意图 → spec 生成 + 凝固。先于 inline/delegated 分派:渲染说明不是
-  // 委托任务,也不进执行循环。引擎不可达/意图未命中/LLM 路径任一失败 →
-  // 原路交回下方既分派(诚实失败口径不变)。
+  // render capability(T7 Phase C / S5;T12 Phase A 起含 LLM fallthrough;
+  // 本轮起 LLM 路径 inline 模式 SSE 化):展示类意图 → spec 生成 + 凝固。
+  // 先于 inline/delegated 分派:渲染说明不是委托任务,也不进执行循环。
+  // rule 命中 → 瞬时 JSON(形状自 T7 不变);rule miss 的展示意图:inline
+  // 走 SSE(思考增量 + render 帧,过闸失败同流交回循环),delegated 保持
+  // 阻塞 JSON(委托 UX 不变)。引擎不可达 → 原路交回下方既分派(口径不变)。
   try {
     const engine = await getEngine(getDb());
     const sitemap = engine.getSitemap();
@@ -257,17 +478,21 @@ export async function POST(request: Request) {
       return await respondWithFrozenSpec(engine, generated, sessionId, requested, resolved);
     }
     // T12(架构决定 1):rule miss 的展示意图 → LLM fallthrough。仅展示意图
-    // 进入(非展示意图直落既分派);generateRenderSpecWithLlm 内部无 key 跳过
-    // (I1)、端点/解析失败 undefined(fail-safe);把关失败同样交回普通循环
-    // (不留半成品 spec,不凝固)。
+    // 进入(非展示意图直落既分派);inline 模式 SSE 化(思考增量 + render 帧,
+    // 无 key 跳过 I1、端点/解析失败 undefined → 流内交回 agent 循环);
+    // delegated 模式保持阻塞 JSON → 失败原样落委托派发。
     if (hasDisplayIntent(goal.verb)) {
-      const llmGenerated = await generateRenderSpecWithLlm({
-        intent: goal.verb,
-        sitemap,
-        words: renderWordSummaries(),
-      });
-      if (llmGenerated !== undefined && llmSpecPassesGates(llmGenerated, sitemap)) {
-        return await respondWithFrozenSpec(engine, llmGenerated, sessionId, requested, resolved);
+      if (mode === 'delegated') {
+        const llmGenerated = await generateRenderSpecWithLlm({
+          intent: goal.verb,
+          sitemap,
+          words: renderWordSummaries(),
+        });
+        if (llmGenerated !== undefined && llmSpecPassesGates(llmGenerated, sitemap)) {
+          return await respondWithFrozenSpec(engine, llmGenerated, sessionId, requested, resolved);
+        }
+      } else {
+        return sseRenderResponse({ engine, sitemap, goal, sessionId, requested, resolved, baseUrl });
       }
     }
   } catch {
@@ -305,136 +530,8 @@ export async function POST(request: Request) {
 
   // inline(T9 Phase B):SSE 流式响应——轨迹逐步可见(过程可见性);
   // 循环在流内跑完,客户端断开只中断推帧,不中断循环(服务端留痕完整)。
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      let pushable = true;
-      const send = (frame: Record<string, unknown>): void => {
-        if (!pushable) return;
-        try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(frame)}\n\n`));
-        } catch {
-          // 客户端已断开(停止/关窗):停推帧,循环照常跑完。
-          pushable = false;
-        }
-      };
-      try {
-        const startRel = await resolveStartRel(baseUrl, goal, (url, init) => fetch(url, init));
-        // agent-decision 审计(T11 Phase B):包装 driver 在 decide 时刻捕获
-        // (prompt/reasoning/op)——决策输入只存在于 decide 时的 DriverContext,
-        // 执行后的 TrailStep 回推不出 prompt(捕获方案见 chat/decisions.ts)。
-        const decisions: AgentDecisionDetail[] = [];
-        // 已发 step 帧计数:thinking 帧的步号 = 计数 + 1(decide 先于 trail.push,
-        // 回调时第 N 步的 step 帧尚未发出)——与对应 step 帧同号,便于客户端归步。
-        let stepFramesSent = 0;
-        const result = await runAgent(
-          wrapDriverForAudit(createDriver(requested), resolved, (detail) =>
-            decisions.push(detail),
-          ),
-          goal,
-          {
-            baseUrl,
-            fetchImpl: (url, init) => fetch(url, init),
-            actor: 'agent',
-            principal: `user:${sessionId}`,
-            channel: 'chat',
-            startRel,
-            // thinking 帧(T11 Phase C / 架构决定 4):llm 步的推理自述聚合整段
-            // 一次性推送(D22 末尾齐发),先于同号 step 帧;rule driver 零回调
-            // → 零帧(帧序列与现状逐帧一致)。
-            onReasoning: (text) => {
-              send({ type: 'thinking', step: stepFramesSent + 1, text });
-            },
-            onStep: (step) => {
-              stepFramesSent += 1;
-              send({ type: 'step', message: stepToMessage(step), rel: step.rel });
-            },
-          },
-        );
-
-        const messages = trailToMessages(result);
-        // max-steps 的上限说明不是轨迹步(无 TrailStep 可挂 onStep),补一帧,
-        // 保持客户端「消息 = 各 step 帧文本」的重建口径与 trailToMessages 等值。
-        for (const extra of messages.slice(result.steps.length)) {
-          send({ type: 'step', message: extra });
-        }
-
-        // agent-decision 落库:inline 每步决策一条,与 chat-turn 同源同值
-        // (actor/principal/channel);先于回合投影写入(决策在先,回合在后)。
-        // 落库失败 console.error 不阻断响应(同 chat-turn 口径:审计是投影)。
-        try {
-          for (const detail of decisions) {
-            await appendEvent(getDb(), {
-              kind: 'agent-decision',
-              actor: 'agent',
-              principal: `user:${sessionId}`,
-              channel: 'chat',
-              rel: `chat:${sessionId}`,
-              detail,
-            });
-          }
-        } catch (persistError) {
-          console.error('agent-decision 事件落库失败(不阻断聊天响应):', persistError);
-        }
-
-        // 聊天历史(B3):inline 回合完成(含 failed/max-steps)直写 chat-turn
-        // 事件——与 worker 同一双写者模式;engine fold 忽略该 kind。落库失败
-        // 不阻断聊天响应(历史是投影,丢失可从轨迹推知,响应才是合同)。
-        // T11 Phase B:detail 增结构化 steps(result.steps 原样)——messages
-        // 是人读投影,steps 是机器可读原料(架构决定 2)。
-        const turnDetail: ChatTurnDetail = {
-          sessionId,
-          goal,
-          outcome: result.outcome,
-          summary: result.summary ?? null,
-          messages,
-          steps: result.steps,
-          driver: resolved,
-        };
-        try {
-          await appendEvent(getDb(), {
-            kind: 'chat-turn',
-            actor: 'agent',
-            principal: `user:${sessionId}`,
-            channel: 'chat',
-            rel: `chat:${sessionId}`,
-            detail: turnDetail,
-          });
-        } catch (persistError) {
-          console.error('chat-turn 事件落库失败(不阻断聊天响应):', persistError);
-        }
-
-        send({
-          type: 'final',
-          payload: {
-            sessionId,
-            driver: resolved,
-            requestedDriver: requested,
-            outcome: result.outcome,
-            summary: result.summary ?? null,
-            steps: result.steps,
-            successes: result.successes,
-          },
-        });
-      } catch (error) {
-        // 委托不崩溃:循环与 driver 都不应抛出;此处兜底为 error 帧(200 流内)。
-        send({
-          type: 'error',
-          error: `聊天循环异常: ${error instanceof Error ? error.message : String(error)}`,
-        });
-      } finally {
-        try {
-          controller.close();
-        } catch {
-          // 流已被客户端取消:关闭动作无副作用要求。
-        }
-      }
-    },
-  });
-  return new Response(stream, {
-    headers: {
-      'content-type': 'text/event-stream; charset=utf-8',
-      'cache-control': 'no-cache',
-    },
+  // 帧序列与审计/落库口径全在 streamAgentLoop(与渲染路径 SSE 化共用)。
+  return sseResponse(async (send) => {
+    await streamAgentLoop({ send, goal, sessionId, requested, resolved, baseUrl });
   });
 }

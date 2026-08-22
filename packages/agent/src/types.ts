@@ -121,6 +121,11 @@ export interface SitemapSummary {
  */
 export interface DecideSink {
   onReasoning?(text: string): void;
+  /**
+   * 增量回调:reasoning 片段到达即转发(逐 raw chunk,与聚合回调并存)。
+   * 聚合 onReasoning 仍是权威终态(审计口径);观测者异常同样不得污染协议。
+   */
+  onReasoningDelta?(piece: string): void;
 }
 
 /**
@@ -163,6 +168,12 @@ export interface RunAgentOptions {
    * 与 onStep 同口径:回调抛错不拦截循环。
    */
   onReasoning?(text: string): void;
+  /**
+   * 推理增量回调:reasoning 片段到达即转发(逐 raw chunk)。当前 GLM 端
+   * 末尾齐发(D22),增量与聚合几乎同刻;管线为真流式就绪。聚合通道
+   * (onReasoning/审计)语义不变;抛错不拦截循环口径同上。
+   */
+  onReasoningDelta?(piece: string): void;
 }
 
 export type AgentOutcome = 'done' | 'failed' | 'max-steps';

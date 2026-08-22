@@ -62,7 +62,7 @@ interface ChatRenderResponseBody {
 
 async function chat(
   body: Record<string, unknown>,
-): Promise<{ status: number; json: ChatRenderResponseBody }> {
+): Promise<{ status: number; json: ChatRenderResponseBody; raw: string }> {
   const response = await fetch(`${base}/api/chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -70,21 +70,35 @@ async function chat(
   });
   const contentType = response.headers.get('content-type') ?? '';
   // inline(T9 Phase B)为 SSE 流:final 帧 payload 即回合结果(同旧 JSON 字段);
-  // render 短路仍为一次性 JSON(形状不动)。
+  // 渲染 LLM 路径已 SSE 化:render 帧载荷即回执(与 JSON 同形);rule 命中
+  // 仍为一次性 JSON(形状不动)。
   if (contentType.includes('text/event-stream')) {
     const raw = await response.text();
-    const finalFrame = raw
+    const frames = raw
       .split('\n\n')
       .map((chunk) => chunk.split('\n').find((line) => line.startsWith('data:')))
       .filter((line): line is string => line !== undefined)
-      .map((line) => JSON.parse(line.slice('data:'.length).trim()) as Record<string, unknown>)
-      .find((frame) => frame.type === 'final');
+      .map((line) => JSON.parse(line.slice('data:'.length).trim()) as Record<string, unknown>);
+    const renderFrame = frames.find((frame) => frame.type === 'render');
+    if (renderFrame !== undefined) {
+      return {
+        status: response.status,
+        json: renderFrame.payload as ChatRenderResponseBody,
+        raw,
+      };
+    }
+    const finalFrame = frames.find((frame) => frame.type === 'final');
     return {
       status: response.status,
       json: (finalFrame?.payload ?? {}) as ChatRenderResponseBody,
+      raw,
     };
   }
-  return { status: response.status, json: (await response.json()) as ChatRenderResponseBody };
+  return {
+    status: response.status,
+    json: (await response.json()) as ChatRenderResponseBody,
+    raw: '',
+  };
 }
 
 async function eventsOf(): Promise<{ kind: string; actor?: string; principal?: string }[]> {
@@ -210,10 +224,14 @@ type RenderLlmStub = Server & { port(): number; calls: string[] };
 
 /**
  * 脚本化 render LLM 桩(SSE 流式;与 route.test.ts 的 LLM 桩同传输形态):
- * 任何请求回一段 chat.completion.chunk 序列(content = text),请求体原文留痕
+ * 任何请求回一段 chat.completion.chunk 序列(content = text;可选 reasoning
+ * 片段先行——断言渲染路径 SSE 化的 thinking-delta 增量帧),请求体原文留痕
  * (断言处境披露:prompt 须携带意图 + sitemap 集合面 + 词汇表)。
  */
-function createRenderLlmStub(text: string): Promise<RenderLlmStub> {
+function createRenderLlmStub(
+  text: string,
+  options: { reasoning?: string[] } = {},
+): Promise<RenderLlmStub> {
   return new Promise((resolve) => {
     const calls: string[] = [];
     const chunk = (delta: Record<string, unknown>, finishReason: string | null = null) =>
@@ -232,7 +250,12 @@ function createRenderLlmStub(text: string): Promise<RenderLlmStub> {
         res.statusCode = 200;
         res.setHeader('content-type', 'text/event-stream');
         res.end(
-          `${[chunk({ role: 'assistant', content: text }), chunk({}, 'stop'), 'data: [DONE]'].join('\n\n')}\n\n`,
+          `${[
+            ...(options.reasoning ?? []).map((piece) => chunk({ reasoning_content: piece })),
+            chunk({ role: 'assistant', content: text }),
+            chunk({}, 'stop'),
+            'data: [DONE]',
+          ].join('\n\n')}\n\n`,
         );
       });
     }) as RenderLlmStub;
@@ -257,19 +280,20 @@ describe('T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthro
     else process.env.LLM_BASE_URL = envBase;
   });
 
-  it('LLM 产 kanban spec → 同一零字面校验 → 凝固 → 响应 render 载荷(bind 零字面,component 取自词汇表)', async () => {
+  it('LLM 产 kanban spec → 同一零字面校验 → 凝固 → SSE render 帧(思考增量先行;bind 零字面,component 取自词汇表)', async () => {
     const stub = await createRenderLlmStub(
       JSON.stringify({
         concern: 'articles-board',
         component: 'kanban',
         bind: { columns: { collection: 'articles' } },
       }),
+      { reasoning: ['先看词汇表', ',再定词条。'] },
     );
     try {
       process.env.GLM_API_KEY = 'test-key';
       process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
 
-      const { status, json } = await chat({
+      const { status, json, raw } = await chat({
         sessionId: 't12-llm-render',
         driver: 'rule',
         // rule miss:展示意图命中(展示),但"飞船"不在名词词表/sitemap 集合面。
@@ -292,6 +316,19 @@ describe('T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthro
       expect(json.render!.canvasUrl).toBe('/canvas?concern=articles-board');
       // 渲染走生成路径,不经 agent 循环(零 /api/exec)。
       expect(json.steps).toEqual([]);
+
+      // 渲染路径 SSE 化:thinking-delta 增量帧(步号恒 1)先于 render 帧。
+      const deltaFrames = raw
+        .split('\n\n')
+        .map((chunk) => chunk.split('\n').find((line) => line.startsWith('data:')))
+        .filter((line): line is string => line !== undefined)
+        .map((line) => JSON.parse(line.slice('data:'.length).trim()) as Record<string, unknown>);
+      const deltaIndex = deltaFrames.findIndex((frame) => frame.type === 'thinking-delta');
+      const renderIndex = deltaFrames.findIndex((frame) => frame.type === 'render');
+      expect(deltaIndex, 'SSE 流含 thinking-delta 增量帧').toBeGreaterThanOrEqual(0);
+      expect(renderIndex, 'SSE 流含 render 回执帧').toBeGreaterThanOrEqual(0);
+      expect(deltaIndex, '思考增量先于 render 帧').toBeLessThan(renderIndex);
+      expect(deltaFrames[deltaIndex]).toMatchObject({ step: 1, text: '先看词汇表' });
 
       // LLM 恰被调一次;prompt 处境披露(意图 + sitemap 集合面 + 词汇表词名)。
       expect(stub.calls).toHaveLength(1);

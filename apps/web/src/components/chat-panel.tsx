@@ -5,11 +5,12 @@
  * 服务端零会话态):
  *
  * - 发送(B1 流式轨迹):POST /api/chat——inline 返回 SSE 流,step 帧逐步
- *   追加 assistant 消息(每步一条,废弃一次性 join);thinking 帧(T11
- *   Phase C:llm 步推理自述,先于同号 step 帧)追加为可折叠「思考」区条目
- *   (默认收起;rule 路径零 thinking 帧);final 帧更新 sessionId
- *   (localStorage 持久化,纯投影)与 render 回执;render 短路/委托派发/
- *   参数错误仍为一次性 JSON(按 content-type 分派);整体超时 120s 如实报错;
+ *   追加 assistant 消息(每步一条,废弃一次性 join);thinking-delta 帧
+ *   (推理增量)同号原地累积,thinking 帧(T11 Phase C)为聚合权威终帧,
+ *   先于同号 step 帧到达并替换累积(归步成可折叠「思考」区,默认收起;
+ *   rule 路径零思考帧);render 帧(渲染短路 LLM 路径 SSE 化)与一次性
+ *   JSON 回执同形处置;final 帧更新 sessionId(localStorage 持久化,纯投影)
+ *   与 render 回执;整体超时 120s 如实报错;
  * - 停止(B2):onCancel 挂 AbortController 中止 fetch,追加「已停止(仅中断
  *   展示,服务端轨迹已在事件日志留痕)」——循环在服务端跑完并落 chat-turn;
  * - 历史(B3):挂载时按 localStorage 的 sessionId 拉 /api/chat/history,
@@ -35,6 +36,7 @@ import {
 } from '@assistant-ui/react';
 
 import type { ChatSessionSummary, ChatTurn } from '@/chat/history';
+import type { ChatRenderPayload } from '@/chat/sse';
 import { anySignal, readChatSseStream, timeoutSignal, type ChatFinalPayload } from '@/chat/sse';
 import { ChatThread } from '@/components/assistant-ui/thread';
 import { Button } from '@/components/ui/button';
@@ -80,6 +82,17 @@ interface DelegatedResponse {
 
 const SESSION_STORAGE_KEY = 'ui4a.chat.sessionId';
 
+/** 思考过程可见性开关的持久化键('0' = 关闭;缺省/其他 = 开启)。 */
+const THINKING_STORAGE_KEY = 'ui4a.chat.thinking';
+
+function loadThinkingPreference(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(THINKING_STORAGE_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
 /** 客户端整体超时(B1):超此如实报错进消息(服务端 LLM 单步 60s 兜底)。 */
 const REQUEST_TIMEOUT_MS = 120_000;
 
@@ -106,8 +119,11 @@ export interface ChatSession {
   sessionId: string;
   isRunning: boolean;
   delegated: boolean;
+  /** 思考过程可见性(用户开关,持久化;关闭 = 思考条目不渲染,state 保留)。 */
+  showThinking: boolean;
   lastRender: { concern: string; canvasUrl: string } | undefined;
   toggleDelegated: () => void;
+  toggleShowThinking: () => void;
   startNewSession: () => void;
   runtime: ReturnType<typeof useExternalStoreRuntime>;
   /** 会话清单视图(T9 补):'chat' 会话态 / 'sessions' 清单态。 */
@@ -131,6 +147,10 @@ export function useChatSession(): ChatSession {
   // 委托模式(ref 镜像:onNew 回调零依赖 memo,发送时读 ref 防闭包过期)。
   const [delegated, setDelegated] = useState(false);
   const delegatedRef = useRef(false);
+  // 思考过程可见性(用户开关):关闭时思考条目不渲染(消息保留在 state,
+  // 重开即回——纯展示层过滤)。持久化 ui4a.chat.thinking,缺省开启;与委托
+  // 开关同住壳层(悬浮/分栏形态切换 ChatPanel 重挂载,状态在壳上不丢)。
+  const [showThinking, setShowThinking] = useState(loadThinkingPreference);
   // 最近一次渲染回执(S5:surface 引用的可点形态——点击在画布打开)。
   const [lastRender, setLastRender] = useState<ChatJsonResponse['render']>(undefined);
   // 进行中请求的取消柄(B2:onCancel 中止 fetch;整体超时经 AbortSignal.any 合并)。
@@ -205,9 +225,35 @@ export function useChatSession(): ChatSession {
     ]);
   }, []);
 
-  /** thinking 帧(T11 Phase C):推理自述按到达序独立成条,渲染为可折叠思考区。 */
+  /** thinking-delta 帧:推理增量片段——同号思考条目原地累积(无则新建)。 */
+  const appendThinkingDelta = useCallback((step: number, piece: string) => {
+    setMessages((prev) => {
+      for (let index = prev.length - 1; index >= 0; index -= 1) {
+        if (prev[index]!.thinking === step) {
+          const next = [...prev];
+          next[index] = { ...prev[index]!, content: prev[index]!.content + piece };
+          return next;
+        }
+      }
+      return [...prev, { role: 'assistant', content: piece, thinking: step }];
+    });
+  }, []);
+
+  /**
+   * thinking 帧(T11 Phase C):聚合整段权威终帧——同号条目替换为全文
+   * (兼容增量丢失/关闭后补放),无同步号条目时独立成条。
+   */
   const appendThinking = useCallback((step: number, text: string) => {
-    setMessages((prev) => [...prev, { role: 'assistant', content: text, thinking: step }]);
+    setMessages((prev) => {
+      for (let index = prev.length - 1; index >= 0; index -= 1) {
+        if (prev[index]!.thinking === step) {
+          const next = [...prev];
+          next[index] = { role: 'assistant', content: text, thinking: step };
+          return next;
+        }
+      }
+      return [...prev, { role: 'assistant', content: text, thinking: step }];
+    });
   }, []);
 
   /** SSE 帧处置:step 逐步追加;final 更新会话/回执;error 如实进消息。 */
@@ -221,6 +267,20 @@ export function useChatSession(): ChatSession {
           payload.outcome === 'failed' ? `失败: ${payload.summary}` : payload.summary,
         );
       }
+    },
+    [appendAssistant, persistSession],
+  );
+
+  /**
+   * 渲染回执处置(render 帧与一次性 JSON 回执同形):会话持久化 + 画布入口
+   * (lastRender,即达即跳/手动链接共用)+ 回执消息。auto-nav 经 setLastRender
+   * 触发,两路(帧/JSON)零差别。
+   */
+  const handleRenderReceipt = useCallback(
+    (payload: ChatRenderPayload) => {
+      persistSession(payload.sessionId);
+      setLastRender(payload.render);
+      for (const entry of payload.messages) appendAssistant(entry.text);
     },
     [appendAssistant, persistSession],
   );
@@ -255,16 +315,22 @@ export function useChatSession(): ChatSession {
           // 帧(T11)先于同号 step 帧到达,归步成可折叠思考区(不落 else 误伤)。
           if (response.body === null) throw new Error('SSE 响应缺少 body');
           await readChatSseStream(response.body, signal, (frame) => {
-            if (frame.type === 'thinking') {
+            if (frame.type === 'thinking-delta') {
+              appendThinkingDelta(frame.step, frame.text);
+            } else if (frame.type === 'thinking') {
               appendThinking(frame.step, frame.text);
             } else if (frame.type === 'step') {
               stepCount += 1;
               appendAssistant(frame.message.text, frame.rel);
+            } else if (frame.type === 'render') {
+              // 渲染回执帧(渲染短路 LLM 路径 SSE 化):处置与 JSON 回执等价。
+              handleRenderReceipt(frame.payload);
             } else if (frame.type === 'final') {
               handleFinal(frame.payload, stepCount);
-            } else {
+            } else if (frame.type === 'error') {
               appendAssistant(`失败: ${frame.error}`);
             }
+            // 未知帧类型:忽略(协议前向兼容——旧客户端对新帧零误伤口径)。
           });
           return;
         }
@@ -300,7 +366,7 @@ export function useChatSession(): ChatSession {
         setIsRunning(false);
       }
     },
-    [appendAssistant, appendThinking, handleFinal, persistSession],
+    [appendAssistant, appendThinking, appendThinkingDelta, handleFinal, handleRenderReceipt, persistSession],
   );
 
   const onCancel = useCallback(async () => {
@@ -311,6 +377,19 @@ export function useChatSession(): ChatSession {
     const next = !delegatedRef.current;
     delegatedRef.current = next;
     setDelegated(next);
+  }, []);
+
+  /** 思考过程可见性开关:持久化到 localStorage(隐私模式退化为内存态,无损)。 */
+  const toggleShowThinking = useCallback(() => {
+    setShowThinking((prev) => {
+      const next = !prev;
+      try {
+        globalThis.localStorage?.setItem(THINKING_STORAGE_KEY, next ? '1' : '0');
+      } catch {
+        // 同上
+      }
+      return next;
+    });
   }, []);
 
   // 新会话(B3):清 localStorage + 清空消息;历史仍在事件日志(审计不丢),
@@ -367,7 +446,9 @@ export function useChatSession(): ChatSession {
 
   const runtime = useExternalStoreRuntime({
     isRunning,
-    messages,
+    // 思考开关关闭时过滤思考条目(state 保留,重开即回;纯展示层过滤,
+    // 不动 thread 组件树)。
+    messages: showThinking ? messages : messages.filter((entry) => entry.thinking === undefined),
     convertMessage,
     onNew,
     onCancel,
@@ -377,8 +458,10 @@ export function useChatSession(): ChatSession {
     sessionId,
     isRunning,
     delegated,
+    showThinking,
     lastRender,
     toggleDelegated,
+    toggleShowThinking,
     startNewSession,
     runtime,
     view,
@@ -601,7 +684,12 @@ export function ChatPanel({
           <SessionList session={session} />
         ) : (
           <AssistantRuntimeProvider runtime={session.runtime}>
-            <ChatThread delegated={session.delegated} onToggleDelegated={session.toggleDelegated} />
+            <ChatThread
+              delegated={session.delegated}
+              onToggleDelegated={session.toggleDelegated}
+              showThinking={session.showThinking}
+              onToggleShowThinking={session.toggleShowThinking}
+            />
           </AssistantRuntimeProvider>
         )}
       </div>
