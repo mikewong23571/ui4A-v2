@@ -176,10 +176,15 @@ test('I1:无 GLM_API_KEY → chat auto 回退 rule,B1 完成(文章 2→3)', asy
       expect(trajectory).toContain('执行 publish');
       expect(trajectory).toContain('完成');
 
-      // T9 Phase B:SSE 帧序——step 帧逐条先于 final 终帧(过程可见性)。
+      // T14:session 首帧先确立可恢复回合；step/focus 过程帧均先于 final。
       expect(frames.length).toBeGreaterThan(1);
       expect(frames[frames.length - 1]!.type).toBe('final');
-      expect(frames.slice(0, -1).every((frame) => frame.type === 'step')).toBe(true);
+      expect(frames[0]!.type).toBe('session');
+      expect(
+        frames
+          .slice(0, -1)
+          .every((frame) => frame.type === 'session' || frame.type === 'step' || frame.type === 'focus'),
+      ).toBe(true);
       // T11 Phase C(spec 验收 5 前半):rule driver 无 reasoning → 零 thinking
       // 帧,rule 路径帧序列与现状逐帧一致。
       expect(frames.filter((frame) => frame.type === 'thinking')).toHaveLength(0);
