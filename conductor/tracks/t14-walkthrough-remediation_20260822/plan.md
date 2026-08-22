@@ -35,8 +35,8 @@
 
 ## Phase G: chat 持久性与画布活性（#13/#14）
 
-- [ ] Task: turn-started/progress/final 追加式投影覆盖 inline/render/delegated/failed；session 首帧 + 刷新恢复/未完成轮询 TDD
-- [ ] Task: reasoning delta 合帧 + canvas latest-wins cancel/timeout + reload 并发门 + boundary 重置 TDD
+- [x] Task: turn-started/progress/final 追加式投影覆盖 inline/render/delegated/failed；session 首帧 + 刷新恢复/未完成轮询 TDD — e6ae9b8
+- [x] Task: reasoning delta 合帧 + canvas latest-wins cancel/timeout + reload 并发门 + boundary 重置 TDD — 941650d
 
 ## Phase H: 增补统一验收（#8–#14）
 
