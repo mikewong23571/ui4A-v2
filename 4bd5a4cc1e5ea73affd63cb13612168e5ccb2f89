@@ -1,0 +1,7 @@
+T14 Phase A Task 2: 表单预填 + label 人话化
+
+改动:action-runner.tsx(prefill prop + initialFormData)、entity-view.tsx(属性表过滤/人话 label)、domain/flows.ts(seed 人话标题+description)+ 2 测试文件
+预填链路:/api/entity 投影 → entity.properties.fields → prefill → initialFormData(schema 声明内且标量)→ RJSF formData;origin 不动,提交以用户确认为准。
+label 机制:RJSF 缺省优先 schema.title(引擎已透传 field-definition.title),seed 补齐即生效。
+Why:walkthrough #3(title 双 label 撞名)、#4(publish 重复索要 title 不预填不解释)。
+验收(编排 agent 亲自复跑):32/32;CI=true pnpm check 1087 passed;human+s1 e2e 9/9。自治验收。
