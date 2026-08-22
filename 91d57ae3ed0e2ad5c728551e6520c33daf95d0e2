@@ -1,0 +1,6 @@
+T13 Phase A Task 1: BIOS flow 拓扑推导
+
+改动:components/meta/flow-topology.ts + 测试(新增,仅 2 文件;flow.tsx 未触碰零回归面)
+输入形状:meta/flow 投影实体(BIOS 页已持有;meta/self 同投影形状两面复用);投影 actionDefinitionProperties 是声明全文,还原后 flowEdges 推导含 to 缺省回退。
+Why:spec 架构决定 1——拓扑数据现成,布局确定性复用 T7。
+验收(编排 agent 亲自复跑):flow-topology 5/5 + 词条 3/3;CI=true pnpm check 987 passed。自治验收。
