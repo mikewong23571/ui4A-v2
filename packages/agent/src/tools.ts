@@ -30,6 +30,22 @@ export interface ToolDescriptor {
   parameters: Record<string, unknown>;
 }
 
+const AUTHORIZATION_SCHEMA = objectSchema(
+  {
+    sourceMessageId: {
+      type: 'string',
+      minLength: 1,
+      description: '被引用的 append-only user message id',
+    },
+    quote: {
+      type: 'string',
+      minLength: 1,
+      description: '该 user message 中逐字复制的显式 effect 授权片段',
+    },
+  },
+  ['sourceMessageId', 'quote'],
+);
+
 function objectSchema(
   properties: Record<string, unknown>,
   required: string[],
@@ -39,6 +55,25 @@ function objectSchema(
     properties,
     required,
     additionalProperties: false,
+  };
+}
+
+/** 动态 action 保留原字段 schema，只增加协议级授权证据字段。 */
+function withEffectAuthorization(schema: Record<string, unknown>): Record<string, unknown> {
+  const properties =
+    typeof schema.properties === 'object' &&
+    schema.properties !== null &&
+    !Array.isArray(schema.properties)
+      ? (schema.properties as Record<string, unknown>)
+      : {};
+  const required = Array.isArray(schema.required)
+    ? schema.required.filter((entry): entry is string => typeof entry === 'string')
+    : [];
+  return {
+    ...schema,
+    type: 'object',
+    properties: { ...properties, authorization: AUTHORIZATION_SCHEMA },
+    required: [...new Set([...required, 'authorization'])],
   };
 }
 
@@ -84,10 +119,15 @@ export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
       name: 'answer',
       description:
         '基于授权合同观察生成临时对话回答，不产生业务副作用。阅读、总结、比较、解释' +
-        '直接使用此协议出口，不需要 application action/capability；sources 必须引用观察中的事实。',
+        '直接使用此协议出口，不需要 application action/capability；sources 必须引用观察中的事实。' +
+        '复合目标中回答后仍需执行后续业务动作时设置 continue=true。',
       parameters: objectSchema(
         {
           content: { type: 'string', description: '面向用户的自然语言回答' },
+          continue: {
+            type: 'boolean',
+            description: '复合目标中回答后仍需执行后续业务动作时设为 true',
+          },
           sources: {
             type: 'array',
             description: '回答依据的合同事实引用；信息不足的回答可引用已检查的字段容器',
@@ -109,7 +149,9 @@ export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
     },
     {
       name: 'exec',
-      description: '执行当前实体的动作(通用通道;优先使用具体动作工具 action_*)。',
+      description:
+        '执行当前实体的动作(通用通道;优先使用具体动作工具 action_*)。' +
+        'authorization 必须引用一条 user message 的逐字原话，不能引用 Assistant 推断。',
       parameters: objectSchema(
         {
           action: {
@@ -124,8 +166,9 @@ export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
             description: '动作参数(按动作字段 schema)',
             additionalProperties: true,
           },
+          authorization: AUTHORIZATION_SCHEMA,
         },
-        ['action'],
+        ['action', 'authorization'],
       ),
     },
     {
@@ -146,8 +189,9 @@ export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
               ['rel', 'action'],
             ),
           },
+          authorization: AUTHORIZATION_SCHEMA,
         },
-        ['steps'],
+        ['steps', 'authorization'],
       ),
     },
     {
@@ -208,8 +252,10 @@ export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
     const blockedNote = failed.length > 0 ? ` — blocked: ${failed.join(', ')} 失败` : '';
     tools.push({
       name: `${ACTION_TOOL_PREFIX}${action.name}`,
-      description: `[${action.title}] 执行当前实体的动作 "${action.name}"${blockedNote}`,
-      parameters: action.fields,
+      description:
+        `[${action.title}] 执行当前实体的动作 "${action.name}"${blockedNote}。` +
+        'authorization 必须引用 user 的逐字授权原话。',
+      parameters: withEffectAuthorization(action.fields),
     });
   }
 

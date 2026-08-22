@@ -349,18 +349,17 @@ async function appendConversationContext(args: {
   });
 }
 
-async function loadAgentConversation(
-  sessionId: string,
-  currentMessageId: string,
-): Promise<{
+async function loadAgentConversation(sessionId: string): Promise<{
   messages: AgentConversationMessage[];
   context: AgentConversationContext;
 }> {
   const view = conversationView(await readLog(getDb()), sessionId);
   return {
-    messages: view.recentMessages
-      .filter((message) => message.messageId !== currentMessageId)
-      .map(({ role, content }) => ({ role, content })),
+    messages: view.recentMessages.map(({ messageId, role, content }) => ({
+      messageId,
+      role,
+      content,
+    })),
     context: {
       ...(view.context.activeGoal !== null ? { activeGoal: view.context.activeGoal } : {}),
       ...(view.context.focus !== null
@@ -378,6 +377,13 @@ async function loadAgentConversation(
         : {}),
       ...(view.context.constraints.length > 0
         ? { constraints: view.context.constraints.map((constraint) => ({ ...constraint })) }
+        : {}),
+      ...(view.context.authorizedEffects.length > 0
+        ? {
+            authorizedEffects: view.context.authorizedEffects.map((authorization) => ({
+              ...authorization,
+            })),
+          }
         : {}),
       ...(view.context.pendingClarification !== null
         ? {
@@ -446,6 +452,7 @@ async function streamAgentLoop(args: {
       startRel,
       conversationMessages,
       conversation,
+      requireEffectAuthorization: true,
       // thinking 帧(T11 Phase C / 架构决定 4):llm 步的推理自述聚合整段
       // 权威终帧(D22 末尾齐发),先于同号 step 帧;增量通道 thinking-delta
       // 逐片段即推(当前与聚合几乎同刻,管线为真流式就绪);
@@ -543,7 +550,7 @@ async function streamAgentLoop(args: {
       await appendConversationContext({
         sessionId,
         basedOnSeq: assistantSeq,
-        sourceMessageIds: [`${turnId}:user`, assistantMessageId],
+        sourceMessageIds: [turnId, assistantMessageId],
         patch: {
           activeGoal: result.continuation,
           pendingClarification: {
@@ -706,7 +713,7 @@ export async function POST(request: Request) {
     configurationFailure = `LLM 不可用: ${error.message}。配置后可重试。`;
   }
 
-  const userMessageId = `${turnId}:user`;
+  const userMessageId = turnId;
   await appendConversationMessage({
     sessionId,
     turnId,
@@ -714,7 +721,7 @@ export async function POST(request: Request) {
     role: 'user',
     content: goal.verb,
   });
-  const agentConversation = await loadAgentConversation(sessionId, userMessageId);
+  const agentConversation = await loadAgentConversation(sessionId);
 
   await appendChatProjection('chat-turn-started', sessionId, {
     sessionId,

@@ -13,9 +13,11 @@
  * 循环零智能:不解释拒绝、不判断完成——决策全在 driver。
  */
 import { createContractClient } from './http';
+import { authorizeEffects, type ProposedEffect } from './authorization';
 import type {
   AgentDriver,
   AgentGoal,
+  AgentOperation,
   AgentRunResult,
   ConversationContext,
   ContractObservation,
@@ -84,6 +86,13 @@ function copyConversation(
     ...(context.constraints !== undefined
       ? { constraints: context.constraints.map((constraint) => ({ ...constraint })) }
       : {}),
+    ...(context.authorizedEffects !== undefined
+      ? {
+          authorizedEffects: context.authorizedEffects.map((authorization) => ({
+            ...authorization,
+          })),
+        }
+      : {}),
     ...(context.pendingClarification !== undefined
       ? {
           pendingClarification:
@@ -151,6 +160,28 @@ export async function runAgent(
   // 同一合同处境第三次出现且期间没有成功 exec，说明 driver 正在机械绕圈。
   // 循环不猜业务完成条件，只对完全相同的可观察状态做协议级有限性保护。
   const stateVisits = new Map<string, number>();
+
+  /** effect gate 拒绝是协议数据：记轨迹、回流 driver，但绝不触发 POST。 */
+  const authorize = (
+    op: Extract<AgentOperation, { kind: 'exec' | 'exec-plan' }>,
+    effects: ProposedEffect[],
+  ): RejectionRecord | undefined => {
+    if (options.requireEffectAuthorization !== true) return undefined;
+    const result = authorizeEffects({
+      authorization: op.authorization,
+      effects,
+      messages: conversationMessages,
+      conversation,
+    });
+    if (result.ok) return undefined;
+    return {
+      rel: effects.length === 1 ? effects[0]!.rel : currentRel,
+      action: op.kind === 'exec' ? op.action : 'exec-plan',
+      layer: 'effect-authorization',
+      reason: `effect 授权拒绝: ${result.reason}`,
+      detail: { code: result.code },
+    };
+  };
 
   /** 最新快照替换同 rel 的旧观察，并把账本裁成有界的最近不同实体集合。 */
   const observe = (entity: SirenEntity): void => {
@@ -265,6 +296,7 @@ export async function runAgent(
     }
     if (op.kind === 'answer') {
       pushStep({ step, rel: currentRel, op, outcome: 'answered' });
+      if (op.continue === true) continue;
       return {
         goal,
         outcome: 'answered',
@@ -314,6 +346,23 @@ export async function runAgent(
     }
 
     if (op.kind === 'exec-plan') {
+      const effects = op.steps.map(({ rel, action }) => ({
+        rel,
+        action,
+        entity: observations.find((observation) => observation.rel === rel)?.entity,
+      }));
+      const authorizationRejection = authorize(op, effects);
+      if (authorizationRejection !== undefined) {
+        lastRejection = authorizationRejection;
+        pushStep({
+          step,
+          rel: currentRel,
+          op,
+          outcome: 'rejected',
+          rejection: authorizationRejection,
+        });
+        continue;
+      }
       const call = await client.execPlan({
         steps: op.steps,
         actor,
@@ -340,6 +389,21 @@ export async function runAgent(
       };
       lastRejection = rejection;
       pushStep({ step, rel: currentRel, op, outcome: 'rejected', rejection });
+      continue;
+    }
+
+    const authorizationRejection = authorize(op, [
+      { rel: currentRel, action: op.action, entity: fetched.entity },
+    ]);
+    if (authorizationRejection !== undefined) {
+      lastRejection = authorizationRejection;
+      pushStep({
+        step,
+        rel: currentRel,
+        op,
+        outcome: 'rejected',
+        rejection: authorizationRejection,
+      });
       continue;
     }
 

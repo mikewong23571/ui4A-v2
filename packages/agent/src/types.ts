@@ -30,6 +30,8 @@ export interface AgentGoal {
  * 协议只消费已投影且有界的 role + content。
  */
 export interface ConversationMessage {
+  /** append-only 日志中的稳定消息 id；effect gate 启用时 user message 必须提供。 */
+  messageId?: string;
   role: 'user' | 'assistant';
   content: string;
 }
@@ -51,20 +53,39 @@ export interface ConversationConstraint {
   sourceMessageId: string;
 }
 
+/** 由会话日志投影的显式副作用授权；不由 driver 生成。 */
+export interface ConversationAuthorizedEffect {
+  rel: string;
+  action: string;
+  sourceMessageId: string;
+  status: 'active' | 'consumed' | 'revoked';
+}
+
 /**
- * 由 append-only 会话日志重建的可修订认知处境。这些字段帮助 LLM 继续目标、
- * 解析指代和遵守用户约束；它们本身不授权任何 effect。
+ * 由 append-only 会话日志重建的可修订认知处境。目标、focus、指代和约束
+ * 不授权 effect；只有带 user-message provenance 的 active authorizedEffects
+ * 可作为机械授权门的结构化输入。
  */
 export interface ConversationContext {
   activeGoal?: AgentGoal | null;
   focus?: ConversationFocus | null;
   referents?: ConversationReferent[];
   constraints?: ConversationConstraint[];
+  authorizedEffects?: ConversationAuthorizedEffect[];
   pendingClarification?: {
     question: string;
     continuation: AgentGoal;
     sourceMessageIds: string[];
   } | null;
+}
+
+/**
+ * driver 为 effect 提供的可追溯证据。quote 必须是 sourceMessageId
+ * 所指 user message 中的逐字片段；它只是索引，不能由 LLM 自行创造授权。
+ */
+export interface EffectAuthorization {
+  sourceMessageId: string;
+  quote: string;
 }
 
 /** 回答事实来源:实体 rel + 指向授权 Siren 快照的 JSON Pointer。 */
@@ -85,12 +106,19 @@ export interface ContractObservation {
 /** 循环每步产出的操作(协议动词;决策全在 driver)。 */
 export type AgentOperation =
   | { kind: 'navigate'; rel: string }
-  | { kind: 'answer'; content: string; sources: FactRef[] }
+  | { kind: 'answer'; content: string; sources: FactRef[]; continue?: boolean }
   | { kind: 'clarify'; question: string; continuation: AgentGoal }
-  | { kind: 'exec'; action: string; params?: Record<string, unknown> }
+  | {
+      kind: 'exec';
+      action: string;
+      params?: Record<string, unknown>;
+      authorization?: EffectAuthorization;
+    }
   | {
       kind: 'exec-plan';
       steps: { rel: string; action: string; params?: Record<string, unknown> }[];
+      /** 整份计划共用的原话授权证据；gate 会对每个 step 分别核对。 */
+      authorization?: EffectAuthorization;
     }
   | { kind: 'done'; summary: string }
   | { kind: 'fail'; reason: string; evidence?: string[] };
@@ -233,6 +261,11 @@ export interface RunAgentOptions {
   conversationMessages?: ConversationMessage[];
   /** 上层从同一日志重建的结构化会话处境。 */
   conversation?: ConversationContext;
+  /**
+   * 产品 Assistant 开启后，exec/exec-plan 在任何 POST 前必须通过
+   * user-message 原话 + 合同 action/target 机械授权门。协议 fixture 缺省关闭。
+   */
+  requireEffectAuthorization?: boolean;
   /** 缺省 'agent'(agent 走合同,事件日志可区分双执行者)。 */
   actor?: 'human' | 'agent';
   principal?: string;

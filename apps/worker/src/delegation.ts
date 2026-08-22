@@ -23,7 +23,7 @@
  *   落库前被杀 → 重试重执行(引擎单 atom 串行,重复 exec 被状态机拒绝并
  *   留痕——拒绝也是合同的一部分,委托不崩溃)。
  */
-import { createContractClient, createDriver, summarizeEntity } from '@ui4a/agent';
+import { authorizeEffects, createContractClient, createDriver, summarizeEntity } from '@ui4a/agent';
 import type {
   AgentDriver,
   AgentOperation,
@@ -67,6 +67,8 @@ export interface AgentStepDeps {
   fetchImpl: FetchLike;
   /** 仅供协议测试注入 scripted/mock driver；产品缺省始终构造 llm。 */
   driver?: AgentDriver;
+  /** 缺省:产品 driver 开启，scripted/mock 注入关闭。 */
+  requireEffectAuthorization?: boolean;
 }
 
 /** 委托实体 rel(rel=delegation:<workflowId>;与 engine 投影的 delegationRel 同口径)。 */
@@ -233,6 +235,13 @@ export async function runAgentStep(
   // 上下文是逐步快照(trail/successes 拷贝传入,与 runAgent 同口径)。
   const context: DriverContext = {
     goal: args.goal,
+    conversationMessages: [
+      {
+        messageId: `delegation:${args.delegationId}:goal`,
+        role: 'user',
+        content: args.goal.verb,
+      },
+    ],
     currentRel: args.currentRel,
     entity: fetched.entity,
     trail: [...args.trail],
@@ -299,6 +308,27 @@ export async function runAgentStep(
   }
 
   if (op.kind === 'exec-plan') {
+    if (deps.requireEffectAuthorization ?? deps.driver === undefined) {
+      const authorization = authorizeEffects({
+        authorization: op.authorization,
+        effects: op.steps.map((step) => ({ rel: step.rel, action: step.action })),
+        messages: context.conversationMessages ?? [],
+      });
+      if (!authorization.ok) {
+        const rejection: RejectionRecord = {
+          rel: args.currentRel,
+          action: 'exec-plan',
+          layer: 'effect-authorization',
+          reason: `effect 授权拒绝: ${authorization.reason}`,
+        };
+        return recordStep(deps.db, args, {
+          op,
+          outcome: 'rejected',
+          rejection,
+          ...decisionExtra,
+        });
+      }
+    }
     const call = await client.execPlan({
       steps: op.steps,
       actor: 'agent',
@@ -318,6 +348,28 @@ export async function runAgentStep(
       reason: call.reason ?? `exec-plan 被拒(HTTP ${call.status})`,
     };
     return recordStep(deps.db, args, { op, outcome: 'rejected', rejection, ...decisionExtra });
+  }
+
+  if (deps.requireEffectAuthorization ?? deps.driver === undefined) {
+    const authorization = authorizeEffects({
+      authorization: op.authorization,
+      effects: [{ rel: args.currentRel, action: op.action, entity: fetched.entity }],
+      messages: context.conversationMessages ?? [],
+    });
+    if (!authorization.ok) {
+      const rejection: RejectionRecord = {
+        rel: args.currentRel,
+        action: op.action,
+        layer: 'effect-authorization',
+        reason: `effect 授权拒绝: ${authorization.reason}`,
+      };
+      return recordStep(deps.db, args, {
+        op,
+        outcome: 'rejected',
+        rejection,
+        ...decisionExtra,
+      });
+    }
   }
 
   const call = await client.exec({

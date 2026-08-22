@@ -577,6 +577,29 @@ describe('授权观察 → 推理 → 临时 answer(U1–U4)', () => {
       'post:third',
     ]);
   });
+
+  it('复合目标的 answer continue=true 保留消息步并继续下一次决策', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const first = {
+      kind: 'answer' as const,
+      content: '先给出摘要。',
+      sources: [{ rel: 'articles', pointer: '/entities/0/properties/fields' }],
+      continue: true,
+    };
+    const final = {
+      kind: 'answer' as const,
+      content: '后续阶段已完成。',
+      sources: [{ rel: 'articles', pointer: '/properties/count' }],
+    };
+
+    const result = await runAgent(new ScriptedDriver([first, final]), GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+    });
+
+    expect(result.outcome).toBe('answered');
+    expect(result.steps.map((step) => step.op)).toEqual([first, final]);
+  });
 });
 
 describe('exec 操作与拒绝即数据', () => {
@@ -695,6 +718,175 @@ describe('exec 操作与拒绝即数据', () => {
     expect(step.rejection?.reason).toContain('ECONNREFUSED');
     expect(driver.contexts[1]!.lastRejection?.reason).toContain('ECONNREFUSED');
     expect(result.successes).toEqual([]);
+  });
+});
+
+describe('意图到副作用授权门(U10–U12)', () => {
+  const actionable = instanceEntity({
+    rel: 'post:first-post',
+    flow: 'post-status',
+    node: 'published',
+    fields: { title: '第一篇' },
+    actions: [
+      {
+        name: 'unpublish',
+        title: '下线',
+        method: 'POST',
+        href: '/api/exec',
+        fields: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'archive',
+        title: '归档',
+        method: 'POST',
+        href: '/api/exec',
+        fields: { type: 'object', properties: {}, additionalProperties: false },
+      },
+    ],
+  });
+
+  it('只读请求中误选合同合法 action 会在 POST 前被机械拦截', async () => {
+    const transport = contractTransport({
+      entities: { 'post:first-post': actionable },
+      execResponses: [jsonResponse({ entity: actionable })],
+    });
+    const driver = new ScriptedDriver([
+      {
+        kind: 'exec',
+        action: 'archive',
+        authorization: { sourceMessageId: 'm1', quote: '总结第一篇文章' },
+      },
+      { kind: 'fail', reason: '未获授权' },
+    ]);
+
+    const result = await runAgent(
+      driver,
+      { verb: '总结第一篇文章' },
+      {
+        baseUrl: BASE,
+        fetchImpl: transport.fetch,
+        startRel: 'post:first-post',
+        requireEffectAuthorization: true,
+        conversationMessages: [{ messageId: 'm1', role: 'user', content: '总结第一篇文章' }],
+      },
+    );
+
+    expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(0);
+    expect(result.successes).toEqual([]);
+    expect(result.steps[0]).toMatchObject({
+      outcome: 'rejected',
+      rejection: { layer: 'effect-authorization', action: 'archive' },
+    });
+  });
+
+  it('明确原话“下线第一篇”可以授权 unpublish', async () => {
+    const transport = contractTransport({
+      entities: { 'post:first-post': actionable },
+      execResponses: [jsonResponse({ entity: actionable })],
+    });
+    const authorization = { sourceMessageId: 'm1', quote: '下线第一篇' };
+    const driver = new ScriptedDriver([
+      { kind: 'exec', action: 'unpublish', authorization },
+      { kind: 'done', summary: '已下线' },
+    ]);
+
+    const result = await runAgent(
+      driver,
+      { verb: '下线第一篇' },
+      {
+        baseUrl: BASE,
+        fetchImpl: transport.fetch,
+        startRel: 'post:first-post',
+        requireEffectAuthorization: true,
+        conversationMessages: [{ messageId: 'm1', role: 'user', content: '请下线第一篇，谢谢' }],
+      },
+    );
+
+    expect(result.outcome).toBe('done');
+    expect(result.successes).toEqual([
+      { rel: 'post:first-post', action: 'unpublish', params: undefined },
+    ]);
+    expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(1);
+  });
+
+  it.each([
+    ['错误 quote', { sourceMessageId: 'm1', quote: '下线第二篇' }, 'unpublish', 'post:first-post'],
+    ['错误 action', { sourceMessageId: 'm1', quote: '下线第一篇' }, 'archive', 'post:first-post'],
+    [
+      '错误 target',
+      { sourceMessageId: 'm1', quote: '下线第一篇' },
+      'unpublish',
+      'post:second-post',
+    ],
+  ])('%s 证据不会发出 POST', async (_name, authorization, action, rel) => {
+    const target =
+      rel === 'post:first-post'
+        ? actionable
+        : instanceEntity({
+            rel,
+            flow: 'post-status',
+            node: 'published',
+            fields: { title: '第二篇' },
+            actions: actionable.actions,
+          });
+    const transport = contractTransport({
+      entities: { [rel]: target },
+      execResponses: [jsonResponse({ entity: target })],
+    });
+    const driver = new ScriptedDriver([
+      { kind: 'exec', action, authorization },
+      { kind: 'fail', reason: '拦截后终止' },
+    ]);
+
+    await runAgent(
+      driver,
+      { verb: '下线第一篇' },
+      {
+        baseUrl: BASE,
+        fetchImpl: transport.fetch,
+        startRel: rel,
+        requireEffectAuthorization: true,
+        conversationMessages: [{ messageId: 'm1', role: 'user', content: '请下线第一篇，谢谢' }],
+      },
+    );
+
+    expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(0);
+  });
+
+  it('exec-plan 的计划级原话必须逐 step 授权，否则整份计划零 POST', async () => {
+    const transport = contractTransport({
+      entities: { 'post:first-post': actionable },
+      execResponses: [jsonResponse({ plan: 'completed', results: [], entities: [] })],
+    });
+    const driver = new ScriptedDriver([
+      {
+        kind: 'exec-plan',
+        steps: [
+          { rel: 'post:first-post', action: 'unpublish' },
+          { rel: 'post:first-post', action: 'archive' },
+        ],
+        authorization: { sourceMessageId: 'm1', quote: '下线第一篇' },
+      },
+      { kind: 'fail', reason: '计划未获完整授权' },
+    ]);
+
+    const result = await runAgent(
+      driver,
+      { verb: '下线第一篇' },
+      {
+        baseUrl: BASE,
+        fetchImpl: transport.fetch,
+        startRel: 'post:first-post',
+        requireEffectAuthorization: true,
+        conversationMessages: [{ messageId: 'm1', role: 'user', content: '请下线第一篇' }],
+      },
+    );
+
+    expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(0);
+    expect(result.steps[0]).toMatchObject({
+      outcome: 'rejected',
+      rejection: { layer: 'effect-authorization', action: 'exec-plan' },
+    });
   });
 });
 

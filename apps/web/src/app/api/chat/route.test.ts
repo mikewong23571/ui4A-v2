@@ -46,6 +46,11 @@ const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost
 
 let server: Server;
 let base = '';
+const PUBLISH_TEST_GOAL = '对 article-drafting:main 执行 next 并 publish，发布一篇文章';
+const PUBLISH_TEST_AUTHORIZATION = {
+  sourceMessageId: 'route-test-turn',
+  quote: PUBLISH_TEST_GOAL,
+} as const;
 
 async function handler(pathname: string, request: Request): Promise<Response> {
   if (pathname === '/api/entity') return getEntityRoute(request);
@@ -91,7 +96,11 @@ function createScriptedLlmStub(): Promise<Server & { port(): number }> {
         calls === 1
           ? {
               name: 'exec',
-              args: { action: 'next', params: { title: 'LLM 决策的标题' } },
+              args: {
+                action: 'next',
+                params: { title: 'LLM 决策的标题' },
+                authorization: PUBLISH_TEST_AUTHORIZATION,
+              },
               reasoning: '先补标题,再推进向导',
             }
           : { name: 'done', args: { summary: 'LLM 完成' }, reasoning: '字段已齐,收尾收工' };
@@ -126,13 +135,38 @@ function createPublishingLlmStub(): Promise<Server & { port(): number }> {
   return new Promise((resolve) => {
     let calls = 0;
     const operations = [
-      { name: 'exec', args: { action: 'next', params: { title: 'LLM 发布标题' } } },
       {
         name: 'exec',
-        args: { action: 'next', params: { category: 'tech', tags: 'chat' } },
+        args: {
+          action: 'next',
+          params: { title: 'LLM 发布标题' },
+          authorization: PUBLISH_TEST_AUTHORIZATION,
+        },
       },
-      { name: 'exec', args: { action: 'next', params: { body: 'LLM 发布正文' } } },
-      { name: 'exec', args: { action: 'publish', params: { title: 'LLM 发布标题' } } },
+      {
+        name: 'exec',
+        args: {
+          action: 'next',
+          params: { category: 'tech', tags: 'chat' },
+          authorization: PUBLISH_TEST_AUTHORIZATION,
+        },
+      },
+      {
+        name: 'exec',
+        args: {
+          action: 'next',
+          params: { body: 'LLM 发布正文' },
+          authorization: PUBLISH_TEST_AUTHORIZATION,
+        },
+      },
+      {
+        name: 'exec',
+        args: {
+          action: 'publish',
+          params: { title: 'LLM 发布标题' },
+          authorization: PUBLISH_TEST_AUTHORIZATION,
+        },
+      },
       { name: 'done', args: { summary: 'LLM 完成发布' } },
     ];
     const chunk = (delta: Record<string, unknown>, finishReason: string | null = null) =>
@@ -222,7 +256,7 @@ async function chat(body: Record<string, unknown>): Promise<{
   const response = await fetch(`${base}/api/chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ turnId: 'route-test-turn', ...body }),
   });
   const raw = await response.text();
   const contentType = response.headers.get('content-type') ?? '';
@@ -310,7 +344,7 @@ describe('T15 U22:product chat runtime is AI-first', () => {
   });
 
   it('rejects the removed product rule driver without creating events', async () => {
-    const response = await chat({ goal: { verb: '发布一篇文章' }, driver: 'rule' });
+    const response = await chat({ goal: { verb: PUBLISH_TEST_GOAL }, driver: 'rule' });
 
     expect(response.status).toBe(400);
     expect(response.json.error).toContain('rule driver 已退出产品运行时');
@@ -327,7 +361,7 @@ describe('T15 U22:product chat runtime is AI-first', () => {
       const before = await articleCount();
       const response = await chat({
         sessionId: `u22-${driver ?? 'default'}`,
-        goal: { verb: '发布一篇文章' },
+        goal: { verb: PUBLISH_TEST_GOAL },
         ...(driver === undefined ? {} : { driver }),
       });
 
@@ -362,7 +396,7 @@ describe('T15 U22:product chat runtime is AI-first', () => {
     const response = await chat({
       sessionId: 'u22-delegated-unavailable',
       mode: 'delegated',
-      goal: { verb: '发布一篇文章' },
+      goal: { verb: PUBLISH_TEST_GOAL },
     });
 
     expect(response.status).toBe(503);
@@ -402,7 +436,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
 
     const { status, json } = await chat({
       goal: {
-        verb: '发布一篇文章',
+        verb: PUBLISH_TEST_GOAL,
         fields: {
           title: 'chat 的第三篇',
           category: 'tech',
@@ -428,7 +462,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
     await chat({
       sessionId: 'sess-42',
       goal: {
-        verb: '发布一篇文章',
+        verb: PUBLISH_TEST_GOAL,
         fields: { title: '留痕', category: 'essay', tags: '', body: '正文' },
       },
     });
@@ -453,7 +487,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
   it('SSE 帧协议:step 帧逐步先于 final,文本为 stepToMessage 口径', async () => {
     const { raw, frames, json, contentType } = await chat({
       goal: {
-        verb: '发布一篇文章',
+        verb: PUBLISH_TEST_GOAL,
         fields: { title: '帧序', category: 'tech', tags: '', body: '正文' },
       },
     });
@@ -490,7 +524,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
     const { json } = await chat({
       sessionId: 'sess-turn',
       goal: {
-        verb: '发布一篇文章',
+        verb: PUBLISH_TEST_GOAL,
         fields: { title: '回合留痕', category: 'essay', tags: '', body: '正文' },
       },
     });
@@ -522,7 +556,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
       principal: 'user:sess-turn',
     });
     expect(turns[0]!.detail.sessionId).toBe('sess-turn');
-    expect(turns[0]!.detail.goal.verb).toBe('发布一篇文章');
+    expect(turns[0]!.detail.goal.verb).toBe(PUBLISH_TEST_GOAL);
     expect(turns[0]!.detail.outcome).toBe('done');
     expect(turns[0]!.detail.driver).toBe('llm');
     expect(turns[0]!.detail.messages.map((message) => message.text).join('\n')).toContain(
@@ -534,7 +568,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
     const { json } = await chat({
       sessionId: 'sess-steps',
       goal: {
-        verb: '发布一篇文章',
+        verb: PUBLISH_TEST_GOAL,
         fields: { title: '结构化留痕', category: 'tech', tags: '', body: '正文' },
       },
     });
@@ -636,7 +670,7 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
         sessionId: 'sess-decision-llm',
         driver: 'llm',
         goal: {
-          verb: '发布一篇文章',
+          verb: PUBLISH_TEST_GOAL,
           fields: { title: 't', category: 'tech', tags: '', body: 'b' },
         },
       });
@@ -661,13 +695,14 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
         kind: 'exec',
         action: 'next',
         params: { title: 'LLM 决策的标题' },
+        authorization: PUBLISH_TEST_AUTHORIZATION,
       });
       expect(decisions[1]!.detail.op).toEqual({ kind: 'done', summary: 'LLM 完成' });
       // prompt 全量(架构决定 3:训练提取免回放重建)——system 为协议核心原文,
       // user 内嵌目标 JSON;端点不返回 reasoning 时如实 null(验收 4)。
       const prompt = decisions[0]!.detail.prompt as { system: string; user: string };
       expect(prompt.system).toContain('UI4A 合同 agent');
-      expect(prompt.user).toContain('发布一篇文章');
+      expect(prompt.user).toContain(PUBLISH_TEST_GOAL);
     } finally {
       await new Promise<void>((resolve) => stub.close(() => resolve()));
     }
@@ -695,7 +730,7 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
         sessionId: 'sess-decision-fail',
         driver: 'llm',
         goal: {
-          verb: '发布一篇文章',
+          verb: PUBLISH_TEST_GOAL,
           fields: { title: '写失败', category: 'essay', tags: '', body: '正文' },
         },
       });
@@ -753,7 +788,7 @@ describe('T11 Phase C Task 2:thinking 帧(SSE 推理自述管道)', () => {
         sessionId: 'sess-thinking-llm',
         driver: 'llm',
         goal: {
-          verb: '发布一篇文章',
+          verb: PUBLISH_TEST_GOAL,
           fields: { title: 't', category: 'tech', tags: '', body: 'b' },
         },
       });
@@ -809,7 +844,7 @@ describe('B4(路由级):坏 key → 401 原文进对话,route 不 5xx', () => {
   it('llm driver 401 → 200 响应携带失败轨迹与 401 原文', async () => {
     const before = await articleCount();
     const { status, json } = await chat({
-      goal: { verb: '发布一篇文章' },
+      goal: { verb: PUBLISH_TEST_GOAL },
       driver: 'llm',
     });
 
@@ -824,10 +859,14 @@ describe('B4(路由级):坏 key → 401 原文进对话,route 不 5xx', () => {
   });
 
   it('同一 session 再发一次:循环存活,行为一致', async () => {
-    const first = await chat({ goal: { verb: '发布一篇文章' }, sessionId: 'b4', driver: 'llm' });
+    const first = await chat({ goal: { verb: PUBLISH_TEST_GOAL }, sessionId: 'b4', driver: 'llm' });
     expect(first.status).toBe(200);
 
-    const second = await chat({ goal: { verb: '发布一篇文章' }, sessionId: 'b4', driver: 'llm' });
+    const second = await chat({
+      goal: { verb: PUBLISH_TEST_GOAL },
+      sessionId: 'b4',
+      driver: 'llm',
+    });
     expect(second.status).toBe(200);
     expect(second.json.outcome).toBe('failed');
     expect(JSON.stringify(second.json)).toContain('401');

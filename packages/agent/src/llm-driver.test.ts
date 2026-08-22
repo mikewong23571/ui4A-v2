@@ -136,13 +136,19 @@ function llmDriverWith(responder: (url: string, init?: RequestInit) => Response)
 
 describe('LLM 工具调用 → 循环操作映射', () => {
   it('动态动作工具调用 → exec(参数即动作字段值)', async () => {
+    const authorization = { sourceMessageId: 'm1', quote: '发布这篇文章' };
     const { driver, calls } = llmDriverWith(() =>
-      openaiToolResponse('action_next', { title: 'LLM 编的标题' }),
+      openaiToolResponse('action_next', { title: 'LLM 编的标题', authorization }),
     );
 
     const op = await driver.decide(context());
 
-    expect(op).toEqual({ kind: 'exec', action: 'next', params: { title: 'LLM 编的标题' } });
+    expect(op).toEqual({
+      kind: 'exec',
+      action: 'next',
+      params: { title: 'LLM 编的标题' },
+      authorization,
+    });
     expect(calls).toHaveLength(1);
     expect(calls[0]!.url).toContain('/chat/completions');
     // 请求体携带工具投影(固定动词 + 动态动作工具);stream:true 标记流式传输(T11 Phase C)。
@@ -182,13 +188,19 @@ describe('LLM 工具调用 → 循环操作映射', () => {
   });
 
   it('通用 exec 工具调用 → exec(action + params)', async () => {
+    const authorization = { sourceMessageId: 'm1', quote: '发布这篇文章' };
     const { driver } = llmDriverWith(() =>
-      openaiToolResponse('exec', { action: 'next', params: { title: '通用通道' } }),
+      openaiToolResponse('exec', {
+        action: 'next',
+        params: { title: '通用通道' },
+        authorization,
+      }),
     );
     await expect(driver.decide(context())).resolves.toEqual({
       kind: 'exec',
       action: 'next',
       params: { title: '通用通道' },
+      authorization,
     });
   });
 
@@ -197,9 +209,27 @@ describe('LLM 工具调用 → 循环操作映射', () => {
       { rel: 'article-drafting:main', action: 'next', params: { title: '批量测试' } },
       { rel: 'article-drafting:main', action: 'publish', params: { title: '批量测试' } },
     ];
-    const { driver } = llmDriverWith(() => openaiToolResponse('exec_plan', { steps }));
+    const authorization = { sourceMessageId: 'm1', quote: '一次走完发布向导' };
+    const { driver } = llmDriverWith(() =>
+      openaiToolResponse('exec_plan', { steps, authorization }),
+    );
 
-    await expect(driver.decide(context())).resolves.toEqual({ kind: 'exec-plan', steps });
+    await expect(driver.decide(context())).resolves.toEqual({
+      kind: 'exec-plan',
+      steps,
+      authorization,
+    });
+  });
+
+  it('exec/exec_plan/dynamic action 缺授权证据时 fail-safe', async () => {
+    for (const [tool, input] of [
+      ['exec', { action: 'next', params: {} }],
+      ['exec_plan', { steps: [{ rel: 'article-drafting:main', action: 'next' }] }],
+      ['action_next', { title: '无授权' }],
+    ] as const) {
+      const { driver } = llmDriverWith(() => openaiToolResponse(tool, input));
+      await expect(driver.decide(context())).resolves.toMatchObject({ kind: 'fail' });
+    }
   });
 });
 
@@ -406,6 +436,22 @@ describe('多轮会话进入 LLM messages', () => {
     expect(messages.at(-1)?.content).toContain('不保存');
   });
 
+  it('effect 引用只暴露有 id 的 user 原话，SDK 历史消息仍只有 role/content', () => {
+    const messages = buildLlmMessages(
+      context({
+        conversationMessages: [
+          { messageId: 'm1', role: 'user', content: '下线第一篇' },
+          { messageId: 'a1', role: 'assistant', content: '我可以帮你归档第一篇' },
+        ],
+      }),
+    );
+
+    expect(messages[0]).toEqual({ role: 'user', content: '下线第一篇' });
+    expect(messages[1]).toEqual({ role: 'assistant', content: '我可以帮你归档第一篇' });
+    expect(messages.at(-1)?.content).toContain('m1: "下线第一篇"');
+    expect(messages.at(-1)?.content).not.toContain('a1:');
+  });
+
   it('实际 Chat Completions 请求使用 system + role-preserving messages', async () => {
     const { driver, calls } = llmDriverWith(() =>
       openaiToolResponse('answer', {
@@ -555,12 +601,14 @@ describe('SYSTEM_PROMPT role/app 上下文槽位(T10 Phase D)', () => {
 
 describe('streamText 聚合与 reasoning 通道(T11 Phase C)', () => {
   it('tool call arguments 分片到达 → SDK 聚合后映射语义不变', async () => {
+    const authorization = { sourceMessageId: 'm1', quote: '发布这篇文章' };
+    const rawInput = JSON.stringify({ title: '分片标题', authorization });
     const { driver } = llmDriverWith(() =>
       openaiToolResponse(
         'action_next',
-        { title: '分片标题' },
+        { title: '分片标题', authorization },
         {
-          argumentChunks: ['{"title":"分片', '标题"}'],
+          argumentChunks: [rawInput.slice(0, 24), rawInput.slice(24)],
         },
       ),
     );
@@ -569,6 +617,7 @@ describe('streamText 聚合与 reasoning 通道(T11 Phase C)', () => {
       kind: 'exec',
       action: 'next',
       params: { title: '分片标题' },
+      authorization,
     });
   });
 

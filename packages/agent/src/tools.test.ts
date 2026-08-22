@@ -76,7 +76,7 @@ describe('固定协议动词', () => {
     expect(parameters.required).toEqual(['rel']);
   });
 
-  it('done 要求 summary;exec 枚举当前实体动作名', () => {
+  it('done 要求 summary;exec 枚举当前实体动作名并要求授权证据', () => {
     const tools = buildToolProjection(wizardEntity);
     const done = tools.find((tool) => tool.name === 'done')!;
     expect((done.parameters as { required: string[] }).required).toEqual(['summary']);
@@ -88,7 +88,14 @@ describe('固定协议动词', () => {
     };
     expect(parameters.properties.action.enum).toEqual(['next']);
     expect(parameters.properties.params).toBeDefined();
-    expect(parameters.required).toEqual(['action']);
+    expect(parameters.required).toEqual(['action', 'authorization']);
+    expect(parameters).toHaveProperty('properties.authorization');
+
+    const execPlan = tools.find((tool) => tool.name === 'exec_plan')!;
+    expect((execPlan.parameters as { required: string[] }).required).toEqual([
+      'steps',
+      'authorization',
+    ]);
   });
 
   it('fail 要求 reason,并允许字符串 evidence', () => {
@@ -121,13 +128,20 @@ describe('固定协议动词', () => {
 });
 
 describe('动态动作工具', () => {
-  it('当前实体 actions[] 逐个生成工具(action_ 前缀),字段 schema 内联参数', () => {
+  it('当前实体 actions[] 逐个生成工具(action_ 前缀),保留字段并要求授权证据', () => {
     const tools = buildToolProjection(wizardEntity);
     const actionTool = tools.find((tool) => tool.name === 'action_next')!;
     expect(actionTool).toBeDefined();
     expect(actionTool.description).toContain('下一步');
     expect(actionTool.description).toContain('next');
-    expect(actionTool.parameters).toEqual(nextAction.fields);
+    expect(actionTool.parameters).toMatchObject({
+      properties: {
+        title: { type: 'string', title: '标题' },
+        authorization: { type: 'object' },
+      },
+      required: ['title', 'authorization'],
+      additionalProperties: false,
+    });
   });
 
   it('guard-results blocked 的动作 description 写明 "blocked: <谓词名> 失败"', () => {

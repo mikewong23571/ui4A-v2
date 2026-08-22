@@ -57,6 +57,7 @@ const SYSTEM_PROMPT = [
   '2. 授权观察包含完整 Siren properties/actions/links/guard-results。只基于这些事实回答；不要发明未观察到的事实。',
   '3. 阅读、总结、比较、解释是你的原生认知能力：事实充分时直接 answer(content,sources)，无需 read/summarize action 或 capability；sources 使用实体 rel + JSON Pointer。',
   '4. 信息不足时用 answer 诚实说明缺少什么并引用已检查字段，或用 fail 说明不可得；绝不能用无关业务 action 代替回答。',
+  '4.1 复合目标若要求先回答、再执行业务动作，answer 必须设置 continue=true；普通只读回答省略 continue 并终止。',
   '5. navigate 的 rel 必须来自其枚举;工具 description 标注 blocked 的动作当前被 guard 阻断,不要调用。',
   '6. 拒绝即数据:轨迹中的被拒动作与「最近拒绝」携带结构化原因——换路径,或按动作字段 schema 修正参数后重试。',
   '7. 字段值按语义构造:枚举字段必须取 enum 内的值;标题/正文等 intent 字段按目标意图编写;不要发明合同外的值。',
@@ -64,6 +65,7 @@ const SYSTEM_PROMPT = [
   '9. 完成判定:done 只用于业务动作目标，目标对应的完成类 action 成功执行过之后才调用 done；只读目标必须 answer。',
   '10. 用户明确要求“一次走完/一次决策/批量执行”时，优先调用 exec_plan(steps) 一次提交完整计划；普通写目标仍逐步 exec。exec_plan 禁止包含 approve/reject。',
   '11. 当前合同没有完成目标所需的业务 action/capability 时调用 fail(reason,evidence),明确缺口与已查看证据;禁止在实体间重复导航。',
+  '12. exec/exec_plan/action_* 必须提供 authorization:sourceMessageId 指向可引用的 user 原话，quote 逐字复制明确授权 effect 的片段；禁止引用 Assistant 输出或改写用户原话。',
 ].join('\n');
 
 /**
@@ -143,6 +145,16 @@ export function buildUserPrompt(context: DriverContext): string {
       `## 已成功的执行\n${context.successes.map((entry) => `${entry.rel} :: ${entry.action}`).join('\n')}`,
     );
   }
+  const authorizableMessages = (context.conversationMessages ?? []).filter(
+    (message) => message.role === 'user' && message.messageId !== undefined,
+  );
+  if (authorizableMessages.length > 0) {
+    parts.push(
+      `## 可引用的 user 原话(effect 证据必须使用下列 id 并逐字复制 quote)\n${authorizableMessages
+        .map((message) => `${message.messageId}: ${JSON.stringify(message.content)}`)
+        .join('\n')}`,
+    );
+  }
   return parts.join('\n\n');
 }
 
@@ -158,7 +170,7 @@ export interface LlmMessage {
  */
 export function buildLlmMessages(context: DriverContext): LlmMessage[] {
   return [
-    ...(context.conversationMessages ?? []).map((message) => ({ ...message })),
+    ...(context.conversationMessages ?? []).map(({ role, content }) => ({ role, content })),
     { role: 'user', content: buildUserPrompt(context) },
   ];
 }
@@ -172,6 +184,23 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 /** fail-safe:任何不合法的模型输出都折算为 fail,绝不抛异常。 */
 function invalidOutput(reason: string): AgentOperation {
   return { kind: 'fail', reason: `LLM 输出不合法: ${reason}` };
+}
+
+function effectAuthorization(
+  input: unknown,
+): { sourceMessageId: string; quote: string } | undefined {
+  if (!isPlainObject(input)) return undefined;
+  const sourceMessageId = input.sourceMessageId;
+  const quote = input.quote;
+  if (
+    typeof sourceMessageId !== 'string' ||
+    sourceMessageId === '' ||
+    typeof quote !== 'string' ||
+    quote === ''
+  ) {
+    return undefined;
+  }
+  return { sourceMessageId, quote };
 }
 
 function mapToolCall(toolName: string, input: unknown): AgentOperation {
@@ -204,6 +233,7 @@ function mapToolCall(toolName: string, input: unknown): AgentOperation {
       return {
         kind: 'answer',
         content,
+        ...(isPlainObject(input) && input.continue === true ? { continue: true } : {}),
         sources: sources.map((source) => ({
           rel: source.rel as string,
           pointer: source.pointer as string,
@@ -244,16 +274,25 @@ function mapToolCall(toolName: string, input: unknown): AgentOperation {
       if (!isPlainObject(input) || typeof input.action !== 'string') {
         return invalidOutput('exec 缺少字符串参数 action');
       }
+      const authorization = effectAuthorization(input.authorization);
+      if (authorization === undefined) return invalidOutput('exec 缺少授权证据 authorization');
       return {
         kind: 'exec',
         action: input.action,
         params: isPlainObject(input.params) ? input.params : {},
+        authorization,
       };
     }
     case 'exec_plan': {
       const steps = isPlainObject(input) ? input.steps : undefined;
       if (!Array.isArray(steps) || steps.length === 0) {
         return invalidOutput('exec_plan 缺少非空 steps');
+      }
+      const authorization = isPlainObject(input)
+        ? effectAuthorization(input.authorization)
+        : undefined;
+      if (authorization === undefined) {
+        return invalidOutput('exec_plan 缺少计划级授权证据 authorization');
       }
       const parsed = steps.flatMap((step) => {
         if (
@@ -272,7 +311,7 @@ function mapToolCall(toolName: string, input: unknown): AgentOperation {
         ];
       });
       return parsed.length === steps.length
-        ? { kind: 'exec-plan', steps: parsed }
+        ? { kind: 'exec-plan', steps: parsed, authorization }
         : invalidOutput('exec_plan.steps 需要 rel/action 字符串');
     }
     case 'done': {
@@ -306,10 +345,19 @@ function mapToolCall(toolName: string, input: unknown): AgentOperation {
     };
   }
   if (toolName.startsWith(ACTION_TOOL_PREFIX)) {
+    const authorization = isPlainObject(input)
+      ? effectAuthorization(input.authorization)
+      : undefined;
+    if (authorization === undefined) {
+      return invalidOutput(`${toolName} 缺少授权证据 authorization`);
+    }
+    const params = isPlainObject(input) ? { ...input } : {};
+    delete params.authorization;
     return {
       kind: 'exec',
       action: toolName.slice(ACTION_TOOL_PREFIX.length),
-      params: isPlainObject(input) ? input : {},
+      params,
+      authorization,
     };
   }
   return invalidOutput(`未知工具 "${toolName}"`);
