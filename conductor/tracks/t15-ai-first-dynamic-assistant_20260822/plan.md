@@ -21,13 +21,13 @@
 - [x] Task: U22 real-runtime verification——真实 LLM 路径记录 driver/model；故障注入只验证诚实失败与安全，不模拟智能成功 — a72d9fa
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — a72d9fa
 
-## Phase C: 授权观察与临时回答(U1–U4)
+## Phase C: 授权观察与临时回答(U1–U4) [checkpoint: 5384e03]
 
 - [x] Task: U1 Eval/TDD——“总结第一篇文章”及变体先红；实现完整授权 properties 观察、来源引用和临时 answer，摘要忠于 `post:first-post` 且零 mutation — d306b18
 - [x] Task: U2 Eval/TDD——事实问答直接使用合同属性，不要求 read/count action，不把 `done` 绑定到成功写动作 — d306b18
 - [x] Task: U3 Eval/TDD——跨实体读取、来源隔离、比较/归纳；输出可变但事实覆盖和引用可核对 — d306b18
-- [~] Task: U4 Eval/TDD——缺正文时诚实说明信息缺口，不按标题编造、不误执行状态 action
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: U4 Eval/TDD——缺正文时诚实说明信息缺口，不按标题编造、不误执行状态 action — d306b18 / 5384e03
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 5384e03
 
 ## Phase D: Event-sourced 多轮目标形成(U5–U9)
 
