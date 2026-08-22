@@ -14,15 +14,15 @@
 - [x] Task: 两版对比 diff 视图(任选两版 → deep-object-diff 机械 diff,复用 diff-render 三视角;组件测试 + e2e:S2 流激活 v2 后 v1 vs v2 对比)(TDD) — 6fbb98a
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — 6fbb98a
 
-## Phase C: capability 定义面
+## Phase C: capability 定义面 [checkpoint: ab48d33]
 
 - [x] Task: CapabilityDefinition 类型 + parse(name/title/kind/intent 必填,kind ∈ transform|extract|effect;rel 前缀 meta/capability:)(TDD) — 584efeb
 - [x] Task: capability-seeded 入日志 + fold 落 snapshot.capabilities(seed draft/notify/clarify ≥3,以全仓引用盘点为准;boot 补种;I5 重放一致;EventKind 镜像 + 表随行)(TDD) — 8313e37
 - [x] Task: BIOS capabilities 投影(/meta/capabilities 列表 + /meta/capability/<name> 详情;meta sitemap 携带;业务 sitemap 不含;组件测试 + e2e)(TDD) — ab48d33
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — ab48d33
 
 ## Phase D: capability-registered 不变式 + 全量回归
 
-- [ ] Task: 激活不变式第八条 capability-registered(全部引用点盘点;未注册拒且留痕;registries 可选 + vacuous 过渡;s2 checks 名单机械适配 7→8)(TDD)
+- [~] Task: 激活不变式第八条 capability-registered(全部引用点盘点;未注册拒且留痕;registries 可选 + vacuous 过渡;s2 checks 名单机械适配 7→8)(TDD)
 - [ ] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增用例)+ demo 走查(拓扑图/版本对比/capabilities 页脚本化确认)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
