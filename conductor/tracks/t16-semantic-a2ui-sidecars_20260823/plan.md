@@ -13,14 +13,14 @@
 - [x] Task: 将 probe 结论写入 `DECISIONS.md`，确认 pure presentation kernel 位置、Recipe Registry/Sidecar store、event families、fingerprint 和 candidate/promoted lifecycle；技术栈偏差先更新 `tech-stack.md` — 27c57d7
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 27c57d7
 
-## Phase B: Chat 正确性、薄协议与 Plane 隔离
+## Phase B: Chat 正确性、薄协议与 Plane 隔离 [checkpoint: 83ed2de]
 
 - [x] Task: S2/TS1 Red→Green——SSE/客户端 identity 扩展为 `(turnId, step)`，修复 thinking/receipt 跨回合覆盖并验证刷新恢复 — 83ed2de
 - [x] Task: S3/TS2 Red→Green——删除“render 未实现”过期提示；Chat 只见薄能力，Presentation Agent 读取实时 catalog/content-type；Markdown 三层回答通过真实 LLM Eval — 83ed2de
 - [x] Task: TS3 Red→Green——定义 versioned PresentationRequest/Receipt；Chat schema 禁止 Surface/component/bind/dependency，Direct Navigation/Flow Transition 共用协议 — 83ed2de
 - [x] Task: TS4 Red→Green——Presentation Broker requestId 幂等、重新授权、Situation 构建、异步 receipt 与 Chat answer/failure 隔离 — 83ed2de
 - [x] Task: Source governance——Chat prompt/history 不含完整 catalog/Surface/dependency；chat route 无展示关键词或业务名规划分支 — 83ed2de
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 83ed2de
 
 ## Phase C: Render Situation、Data Lens 与 Surface Tree 合同
 
