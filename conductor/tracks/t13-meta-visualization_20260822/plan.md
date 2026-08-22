@@ -17,8 +17,8 @@
 ## Phase C: capability 定义面
 
 - [x] Task: CapabilityDefinition 类型 + parse(name/title/kind/intent 必填,kind ∈ transform|extract|effect;rel 前缀 meta/capability:)(TDD) — 584efeb
-- [~] Task: capability-seeded 入日志 + fold 落 snapshot.capabilities(seed draft/notify/clarify ≥3,以全仓引用盘点为准;boot 补种;I5 重放一致;EventKind 镜像 + 表随行)(TDD)
-- [ ] Task: BIOS capabilities 投影(/meta/capabilities 列表 + /meta/capability/<name> 详情;meta sitemap 携带;业务 sitemap 不含;组件测试 + e2e)(TDD)
+- [x] Task: capability-seeded 入日志 + fold 落 snapshot.capabilities(seed draft/notify/clarify ≥3,以全仓引用盘点为准;boot 补种;I5 重放一致;EventKind 镜像 + 表随行)(TDD) — 8313e37
+- [~] Task: BIOS capabilities 投影(/meta/capabilities 列表 + /meta/capability/<name> 详情;meta sitemap 携带;业务 sitemap 不含;组件测试 + e2e)(TDD)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase D: capability-registered 不变式 + 全量回归
