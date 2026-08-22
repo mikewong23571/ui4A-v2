@@ -11,6 +11,7 @@
  *   reasoning 时零帧);
  * - {type:'render', payload} —— 渲染回执帧(渲染短路 LLM 路径 SSE 化:
  *   payload 与一次性 JSON 回执同形状,rule 命中路径仍走 JSON);
+ * - {type:'heartbeat'} —— 长回合连接保活(不产生消息,只刷新客户端空闲计时);
  * - {type:'final', payload:{sessionId, driver, requestedDriver, outcome,
  *   summary, steps, successes, render?}} —— 回合终帧;
  * - {type:'error', error} —— 服务端兜底(循环异常,200 流内如实报告)。
@@ -62,6 +63,7 @@ export interface ChatRenderPayload {
 
 export type ChatSseFrame =
   | { type: 'focus'; rel: string }
+  | { type: 'heartbeat' }
   | { type: 'step'; message: ChatStepMessage; rel?: string }
   | { type: 'thinking-delta'; step: number; text: string }
   | { type: 'thinking'; step: number; text: string }
@@ -93,6 +95,33 @@ export function timeoutSignal(ms: number): AbortSignal {
   // Node 侧(timer 有 unref)不拖累进程退出;浏览器无此方法。
   (timer as { unref?: () => void }).unref?.();
   return controller.signal;
+}
+
+/**
+ * 可续期的空闲超时。与固定总时长不同，每个有效 SSE 帧（含 heartbeat）都会
+ * touch；因此持续产出超过 120s 的正常回合不会被误杀，真正静默才中止。
+ */
+export function createIdleTimeout(ms: number): {
+  signal: AbortSignal;
+  touch: () => void;
+  dispose: () => void;
+} {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const touch = (): void => {
+    if (controller.signal.aborted) return;
+    if (timer !== undefined) clearTimeout(timer);
+    timer = setTimeout(() => {
+      controller.abort(new DOMException('The stream was idle too long.', 'TimeoutError'));
+    }, ms);
+    (timer as { unref?: () => void }).unref?.();
+  };
+  const dispose = (): void => {
+    if (timer !== undefined) clearTimeout(timer);
+    timer = undefined;
+  };
+  touch();
+  return { signal: controller.signal, touch, dispose };
 }
 
 /** 逐帧读取 SSE 流;signal 中止时取消读取并以 signal.reason 抛出。 */

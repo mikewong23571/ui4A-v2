@@ -37,7 +37,7 @@ import {
 
 import type { ChatSessionSummary, ChatTurn } from '@/chat/history';
 import type { ChatRenderPayload } from '@/chat/sse';
-import { anySignal, readChatSseStream, timeoutSignal, type ChatFinalPayload } from '@/chat/sse';
+import { anySignal, createIdleTimeout, readChatSseStream, type ChatFinalPayload } from '@/chat/sse';
 import { ChatThread } from '@/components/assistant-ui/thread';
 import { Button } from '@/components/ui/button';
 import {
@@ -94,8 +94,8 @@ function loadThinkingPreference(): boolean {
   }
 }
 
-/** 客户端整体超时(B1):超此如实报错进消息(服务端 LLM 单步 60s 兜底)。 */
-const REQUEST_TIMEOUT_MS = 120_000;
+/** 客户端流空闲超时:有效帧/heartbeat 会续期，不再把总时长误判为超时。 */
+const STREAM_IDLE_TIMEOUT_MS = 120_000;
 
 function loadSessionId(): string {
   try {
@@ -306,7 +306,8 @@ export function useChatSession(): ChatSession {
       setIsRunning(true);
       const controller = new AbortController();
       abortRef.current = controller;
-      const signal = anySignal([controller.signal, timeoutSignal(REQUEST_TIMEOUT_MS)]);
+      const idleTimeout = createIdleTimeout(STREAM_IDLE_TIMEOUT_MS);
+      const signal = anySignal([controller.signal, idleTimeout.signal]);
       let stepCount = 0;
       try {
         const response = await fetch('/api/chat', {
@@ -319,13 +320,17 @@ export function useChatSession(): ChatSession {
           }),
           signal,
         });
+        idleTimeout.touch();
         const contentType = response.headers.get('content-type') ?? '';
         if (contentType.includes('text/event-stream')) {
           // inline(B1):SSE 流——每步一条 assistant 消息,逐步呈现;thinking
           // 帧(T11)先于同号 step 帧到达,归步成可折叠思考区(不落 else 误伤)。
           if (response.body === null) throw new Error('SSE 响应缺少 body');
           await readChatSseStream(response.body, signal, (frame) => {
-            if (frame.type === 'focus') {
+            idleTimeout.touch();
+            if (frame.type === 'heartbeat') {
+              return;
+            } else if (frame.type === 'focus') {
               handleFocus(frame.rel);
             } else if (frame.type === 'thinking-delta') {
               appendThinkingDelta(frame.step, frame.text);
@@ -370,11 +375,12 @@ export function useChatSession(): ChatSession {
           // B2 停止:仅中断展示;服务端循环跑完,轨迹经 chat-turn 事件留痕。
           appendAssistant('已停止(仅中断展示,服务端轨迹已在事件日志留痕)');
         } else if (name === 'TimeoutError') {
-          appendAssistant('失败: 请求超时(120s 未收到完整响应;服务端轨迹仍在事件日志留痕)');
+          appendAssistant('失败: 连接空闲超时(120s 未收到任何进展或心跳;服务端轨迹仍在事件日志留痕)');
         } else {
           appendAssistant(`失败: ${error instanceof Error ? error.message : String(error)}`);
         }
       } finally {
+        idleTimeout.dispose();
         abortRef.current = null;
         setIsRunning(false);
       }

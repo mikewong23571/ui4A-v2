@@ -228,6 +228,9 @@ function sseResponse(start: (send: (frame: Record<string, unknown>) => void) => 
           pushable = false;
         }
       };
+      // 中间无模型 token 时仍证明连接活着；客户端把它视为续期信号而非业务消息。
+      const heartbeat = setInterval(() => send({ type: 'heartbeat' }), 15_000);
+      (heartbeat as { unref?: () => void }).unref?.();
       try {
         await start(send);
       } catch (error) {
@@ -237,6 +240,7 @@ function sseResponse(start: (send: (frame: Record<string, unknown>) => void) => 
           error: `聊天循环异常: ${error instanceof Error ? error.message : String(error)}`,
         });
       } finally {
+        clearInterval(heartbeat);
         try {
           controller.close();
         } catch {
