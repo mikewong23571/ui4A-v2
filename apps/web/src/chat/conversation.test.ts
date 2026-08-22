@@ -78,7 +78,7 @@ describe('event-sourced conversation context', () => {
         messageId: 'm4',
         role: 'assistant',
         content: '我会只在对话中总结。',
-        provenance: { kind: 'assistant-output', model: 'deepseek-v4-flash' },
+        provenance: { kind: 'assistant-output', model: 'configured-model' },
       }),
     ];
 
@@ -107,7 +107,7 @@ describe('event-sourced conversation context', () => {
         basedOnSeq: 1,
         provenance: {
           kind: 'llm-interpretation',
-          model: 'deepseek-v4-flash',
+          model: 'configured-model',
           sourceMessageIds: ['m1'],
         },
         patch: {
@@ -137,7 +137,7 @@ describe('event-sourced conversation context', () => {
         basedOnSeq: 3,
         provenance: {
           kind: 'llm-interpretation',
-          model: 'deepseek-v4-flash',
+          model: 'configured-model',
           sourceMessageIds: ['m1', 'm3'],
         },
         patch: {
@@ -163,7 +163,7 @@ describe('event-sourced conversation context', () => {
       updatedAtSeq: 4,
       provenance: {
         kind: 'llm-interpretation',
-        model: 'deepseek-v4-flash',
+        model: 'configured-model',
         sourceMessageIds: ['m1', 'm3'],
       },
     });
@@ -182,7 +182,7 @@ describe('event-sourced conversation context', () => {
         basedOnSeq: 1,
         provenance: {
           kind: 'llm-interpretation',
-          model: 'deepseek-v4-flash',
+          model: 'configured-model',
           sourceMessageIds: ['m1'],
         },
         patch: {
@@ -203,7 +203,7 @@ describe('event-sourced conversation context', () => {
         basedOnSeq: 3,
         provenance: {
           kind: 'llm-interpretation',
-          model: 'deepseek-v4-flash',
+          model: 'configured-model',
           sourceMessageIds: ['m1', 'm3'],
         },
         patch: {
@@ -269,7 +269,7 @@ describe('event-sourced conversation context', () => {
         messageId: 'm4',
         role: 'assistant',
         content: '这篇文章用于验证正文阅读链路。',
-        provenance: { kind: 'assistant-output', model: 'deepseek-v4-flash' },
+        provenance: { kind: 'assistant-output', model: 'configured-model' },
       }),
     ];
 
@@ -327,7 +327,7 @@ describe('event-sourced conversation context', () => {
         messageId: 'm2',
         role: 'assistant',
         content: '第二条',
-        provenance: { kind: 'assistant-output', model: 'deepseek-v4-flash' },
+        provenance: { kind: 'assistant-output', model: 'configured-model' },
       }),
       message(3, {
         turnId: 'turn-2',
