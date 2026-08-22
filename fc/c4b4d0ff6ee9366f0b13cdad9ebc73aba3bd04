@@ -1,0 +1,6 @@
+Task: T16 User Sidecar storage/projection probe
+Summary: Compared serving/replay storage options and selected the append-only event log plus independent pure Presentation fold and rebuildable principal-first PostgreSQL projection. Defined durable user-level keys, events, versions, dependencies, fingerprints, indexes, CAS/idempotency, and replay isolation.
+Files: conductor/tracks/t16-semantic-a2ui-sidecars_20260823/spikes/sidecar-storage-probe.md
+Why: Preserve one durable truth while meeting cross-session fastpath, isolation, replay, concurrency, and performance requirements.
+Verification: read-only PostgreSQL CTE resolved Chat A/B, Canvas, and direct entry to usc_01@2 without Session in lookup; Business hash isolation probe documented; Prettier and diff checks passed.
+Boundary: shared serializable types; engine presentation pure kernel; web DB and Broker adapters; no new workspace package.
