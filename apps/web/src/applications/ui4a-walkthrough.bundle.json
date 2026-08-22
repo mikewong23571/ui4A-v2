@@ -1,0 +1,471 @@
+{
+  "schema": "https://ui4a.dev/application-bundle/v1",
+  "bundle": {
+    "name": "ui4a-walkthrough",
+    "version": 1
+  },
+  "applications": [
+    {
+      "name": "default",
+      "title": "默认应用",
+      "intent": "归一化兜底:未显式声明归属的 flow 统一落在这里(parse 缺省 app=default)。boot seed 保证其始终激活,是 app-known 不变式的地板——不承载具体业务语义。"
+    },
+    {
+      "name": "publishing",
+      "title": "内容发布",
+      "intent": "内容起草与发布:三步向导起草文章并发布,发布后管理其状态(下线/归档/重新发布)。"
+    },
+    {
+      "name": "community",
+      "title": "社区互动",
+      "intent": "评论与社区互动:读者评论进入审核队列,经人工裁决通过或驳回。"
+    }
+  ],
+  "capabilities": [
+    {
+      "name": "draft",
+      "title": "工件起草",
+      "kind": "extract",
+      "intent": "价值载体字段的草稿工件起草:proposal 来源字段(如文章正文)由本能力产出候选草稿,经 human-required 选择门裁决后落字段(事实永不发明:出处记 proposal)。",
+      "input": "字段语义与上下文工件(字段 schema、当前实例字段值、选项数 options)。",
+      "output": "草稿工件候选集(options 份,供人类选择;arch-brief 第七层:artifact in → artifact out)。"
+    },
+    {
+      "name": "notify",
+      "title": "确认门送达",
+      "kind": "effect",
+      "intent": "确认挂起后的通知送达:把 pending 确认提议送达人类收件箱并留痕(notification-delivered 事件;arch-brief §9.1「notify 是第一个 capability」,Temporal notifyWorkflow 承载,worker 第二写者写入)。",
+      "input": "挂起确认实体工件(confirmation 快照:目标 rel/动作/提议者/策略原因)。",
+      "output": "送达留痕工件(notif:<id> 通知 + notification-delivered 事件,确认标记 notified)。"
+    },
+    {
+      "name": "clarify",
+      "title": "字段澄清",
+      "kind": "extract",
+      "intent": "意图型字段的澄清收敛:提交校验失败且字段声明 on-invalid: clarify 时,把拒绝转澄清 session,收敛到 schema 满足(第九层:clarify 是 capability不是聊天;机械兜底 = 表单,AI 只改善问的质量)。",
+      "input": "悬挂字段与校验失败现场工件(字段 schema、ajv 错误、当前实体快照)。",
+      "output": "满足 schema 的字段值工件(出处记 elicited:session-N;意图型失败路由给人)。"
+    }
+  ],
+  "flows": [
+    {
+      "name": "article-drafting",
+      "title": "文章发布向导",
+      "app": "publishing",
+      "initial": "basic-info",
+      "nodes": [
+        {
+          "name": "basic-info",
+          "title": "基本信息",
+          "fields": [
+            {
+              "name": "title",
+              "type": "text",
+              "required": true,
+              "semantics": "intent",
+              "title": "文章标题"
+            }
+          ],
+          "actions": [
+            {
+              "name": "next",
+              "title": "下一步",
+              "to": "classification",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "classification"
+                }
+              ]
+            },
+            {
+              "name": "abandon",
+              "title": "放弃",
+              "to": "done",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "done"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "classification",
+          "title": "分类",
+          "fields": [
+            {
+              "name": "category",
+              "type": "select",
+              "required": true,
+              "options": [
+                "tech",
+                "essay",
+                "review"
+              ],
+              "semantics": "org-standard",
+              "title": "分类",
+              "source": {
+                "kind": "static"
+              }
+            },
+            {
+              "name": "tags",
+              "type": "text",
+              "semantics": "intent",
+              "title": "标签"
+            }
+          ],
+          "actions": [
+            {
+              "name": "next",
+              "title": "下一步",
+              "to": "content",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "content"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "content",
+          "title": "正文",
+          "fields": [
+            {
+              "name": "body",
+              "type": "textarea",
+              "required": true,
+              "semantics": "work-product",
+              "title": "正文",
+              "source": {
+                "kind": "proposal",
+                "capability": "draft",
+                "options": 3,
+                "selection": "human-required"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "name": "next",
+              "title": "完成编辑",
+              "to": "ready",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "ready"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "ready",
+          "title": "就绪",
+          "actions": [
+            {
+              "name": "publish",
+              "title": "发布",
+              "to": "basic-info",
+              "guards": [
+                "title-not-taken"
+              ],
+              "fields": [
+                {
+                  "name": "title",
+                  "type": "text",
+                  "required": true,
+                  "semantics": "intent",
+                  "title": "文章标题",
+                  "description": "用于生成文章地址(slug),与前序所填一致"
+                }
+              ],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "basic-info"
+                },
+                {
+                  "type": "append",
+                  "collection": "articles",
+                  "resource-type": "post",
+                  "flow": "post-status",
+                  "name-from": "title",
+                  "node": "published"
+                }
+              ],
+              "method": "POST"
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "done",
+          "title": "完成",
+          "actions": [],
+          "fields": []
+        }
+      ],
+      "fields": []
+    },
+    {
+      "name": "post-status",
+      "title": "文章状态",
+      "app": "publishing",
+      "initial": "published",
+      "nodes": [
+        {
+          "name": "published",
+          "title": "已发布",
+          "actions": [
+            {
+              "name": "unpublish",
+              "title": "下线",
+              "to": "offline",
+              "guards": [
+                "is-published"
+              ],
+              "method": "POST",
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "offline"
+                }
+              ]
+            },
+            {
+              "name": "archive",
+              "title": "归档",
+              "to": "archived",
+              "guards": [
+                "is-published"
+              ],
+              "requires-confirmation": "high",
+              "method": "POST",
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "archived"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "offline",
+          "title": "已下线",
+          "actions": [
+            {
+              "name": "republish",
+              "title": "重新发布",
+              "to": "published",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "published"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "archived",
+          "title": "已归档",
+          "actions": [],
+          "fields": []
+        }
+      ],
+      "fields": []
+    },
+    {
+      "name": "comment-moderation",
+      "title": "评论审核",
+      "app": "community",
+      "initial": "pending",
+      "nodes": [
+        {
+          "name": "pending",
+          "title": "待处理",
+          "actions": [
+            {
+              "name": "approve",
+              "title": "通过",
+              "to": "approved",
+              "guards": [
+                "is-pending"
+              ],
+              "method": "POST",
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "approved"
+                }
+              ]
+            },
+            {
+              "name": "reject",
+              "title": "驳回",
+              "to": "rejected",
+              "guards": [
+                "is-pending"
+              ],
+              "method": "POST",
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "rejected"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "approved",
+          "title": "已通过",
+          "actions": [],
+          "fields": []
+        },
+        {
+          "name": "rejected",
+          "title": "已驳回",
+          "actions": [],
+          "fields": []
+        }
+      ],
+      "fields": []
+    }
+  ],
+  "seed": {
+    "rel": "seed:business-domain",
+    "detail": {
+      "instances": {
+        "post:post-welcome": {
+          "rel": "post:post-welcome",
+          "flow": "post-status",
+          "node": "published",
+          "fields": {
+            "title": {
+              "value": "欢迎来到 UI4A",
+              "origin": "default"
+            },
+            "category": {
+              "value": "tech",
+              "origin": "default"
+            },
+            "body": {
+              "value": "欢迎使用 UI4A。这篇文章介绍同一份合同如何同时服务人类界面与 agent。",
+              "origin": "default"
+            }
+          }
+        },
+        "post:first-post": {
+          "rel": "post:first-post",
+          "flow": "post-status",
+          "node": "published",
+          "fields": {
+            "title": {
+              "value": "第一篇",
+              "origin": "default"
+            },
+            "category": {
+              "value": "essay",
+              "origin": "default"
+            },
+            "body": {
+              "value": "这是第一篇完整文章，用来验证具体查看、正文阅读和跨刷新恢复链路。",
+              "origin": "default"
+            }
+          }
+        },
+        "comment:c1": {
+          "rel": "comment:c1",
+          "flow": "comment-moderation",
+          "node": "pending",
+          "fields": {
+            "body": {
+              "value": "好文章",
+              "origin": "default"
+            }
+          }
+        },
+        "comment:c2": {
+          "rel": "comment:c2",
+          "flow": "comment-moderation",
+          "node": "pending",
+          "fields": {
+            "body": {
+              "value": "学习了",
+              "origin": "default"
+            }
+          }
+        },
+        "comment:c3": {
+          "rel": "comment:c3",
+          "flow": "comment-moderation",
+          "node": "pending",
+          "fields": {
+            "body": {
+              "value": "期待下一篇",
+              "origin": "default"
+            }
+          }
+        },
+        "comment:c4": {
+          "rel": "comment:c4",
+          "flow": "comment-moderation",
+          "node": "approved",
+          "fields": {
+            "body": {
+              "value": "赞",
+              "origin": "default"
+            }
+          }
+        },
+        "article-drafting:main": {
+          "rel": "article-drafting:main",
+          "flow": "article-drafting",
+          "node": "basic-info",
+          "fields": {}
+        }
+      },
+      "collections": {
+        "articles": [
+          "post:post-welcome",
+          "post:first-post"
+        ],
+        "comments": [
+          "comment:c1",
+          "comment:c2",
+          "comment:c3",
+          "comment:c4"
+        ]
+      }
+    }
+  }
+}

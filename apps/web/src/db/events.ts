@@ -42,6 +42,7 @@ export type EventKind =
   | 'definition-seeded'
   | 'application-seeded'
   | 'capability-seeded'
+  | 'meta-bootstrap-applied'
   | 'definition-edited'
   | 'definition-submitted'
   | 'definition-activated'

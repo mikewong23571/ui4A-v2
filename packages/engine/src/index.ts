@@ -20,6 +20,7 @@ export * from './delegation';
 export * from './render-spec';
 export * from './lifecycle';
 export * from './meta';
+export * from './meta-bootstrap';
 export * from './definition-diff';
 export * from './invariants';
 export * from './siren';

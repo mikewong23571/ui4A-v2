@@ -69,6 +69,7 @@ export type LogEventKind =
   | 'definition-seeded'
   | 'application-seeded'
   | 'capability-seeded'
+  | 'meta-bootstrap-applied'
   | 'delegation-started'
   | 'delegation-step'
   | 'delegation-completed'
@@ -873,6 +874,8 @@ export function fold(
       // agent-decision(T11 Phase B):inline 每步决策审计(step/driver/prompt/
       // reasoning/op 在 detail)——纯留痕,fold 忽略,与 chat-turn 同口径。
       case 'agent-decision':
+      // meta-bootstrap-applied:应用制品安装 receipt；状态由同批 seed 事件物化。
+      case 'meta-bootstrap-applied':
         break;
       default:
         throw new Error(`重放失败:未知事件 kind "${String(event.kind)}"(seq=${event.seq})`);
