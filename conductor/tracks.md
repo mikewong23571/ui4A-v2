@@ -28,3 +28,5 @@
 - [x] **Track: T13 meta 可视化 + capability 定义面:flow 拓扑图 + definition-versions 两版对比 + capability 注册表与 capability-registered(D19 路线 T4)** *Link: [tracks/t13-meta-visualization_20260822/index.md](./tracks/t13-meta-visualization_20260822/index.md)*
 
 - [x] **Track: T14 walkthrough 修复:数据契约 + 画布韧性 + 人类可读性(walkthrough 问题 #1–#14)** *Link: [tracks/t14-walkthrough-remediation_20260822/index.md](./tracks/t14-walkthrough-remediation_20260822/index.md)*
+
+- [ ] **Track: T15 AI-first 动态助手:多轮理解、合同治理与 U1–U22 用户故事 Eval 闭环** *Link: [tracks/t15-ai-first-dynamic-assistant_20260822/index.md](./tracks/t15-ai-first-dynamic-assistant_20260822/index.md)*
