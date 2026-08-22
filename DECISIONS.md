@@ -163,3 +163,9 @@
 - **决定**:第八条 `capability-registered` 照抄 app-known(T10)模式——`DefinitionRegistries.capabilities?` 可选,未提供 vacuous pass(过渡期),提供时全部引用必须 ∈ 已注册集;submit 拒且留痕走既有 checks-fail 路径。**引用点口径**:field `source.kind='proposal'` 的 capability、effect `type='spawn'` 的 capability、field `'on-invalid'` 标记(定义是数据,枚举外取值由本检查兜底);`elicit.strategy` 是策略名非 capability 名,不算引用点。扫描面与 `apps/web/src/domain/capabilities.test.ts` 静态保证同源。
 - **机械适配(D21 先例)**:e2e/s2.spec.ts checks 名单 + UI 行数 7→8。
 - **归后续**:`capability-schema-compatible`(spawn bind 与能力输入 schema 相容)——需 input schema 真实化,随 capability 沙箱专项。
+
+## D24 append 效果合并源实例字段(2026-08-22,T14 Phase A;变更引擎语义)
+
+- **背景(walkthrough 问题 #5)**:`paramsToFields` 只取请求参数——向导前序步骤经 set-field 落在实例上的字段(category/tags)在 publish 的 append 时静默丢失(post:walkthrough 实证无 category),B1 e2e 无字段保真断言故一直绿。
+- **决定**:append 的新实体字段 = **源实例 fields ∪ 请求参数(参数覆盖同名)**,每字段保留各自 origin(铁律 4 不破:值皆有出处);`fields` 白名单语义不变(从合并集取)。机制层正解:「向导收集 → 后续动作消费」的自然写法天然正确。
+- **兼容**:I5 重放消费事件载荷/快照语义,引擎在线语义变更不改既有日志重放(重放测试验证);B1 e2e 补「发布文章 category/tags 与向导所填一致」断言(agent/human 两路)。
