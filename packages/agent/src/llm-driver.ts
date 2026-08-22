@@ -4,7 +4,7 @@
  * - 决策由 LLM 产出:OpenAI 兼容 tool calling(Vercel AI SDK streamText,T11
  *   Phase C 自流式改造:聚合出最终 tool call 后语义与非流式完全一致——
  *   mapToolCall/fail-safe/60s abort/B4 错误折算原样);
- * - prompt = 目标 + 轨迹 + 最近拒绝(拒绝即数据)+ 当前实体摘要;
+ * - prompt = 目标 + 轨迹 + 最近拒绝(拒绝即数据)+ 有界完整授权实体观察;
  * - SYSTEM_PROMPT 只装不变协议核心;role/app 上下文槽位(T10)从
  *   DriverContext 数据注入,空槽 = 现状(零行为变化);
  * - 工具列表 = buildToolProjection(固定动词 5 + 动态动作工具,guard 嵌
@@ -21,10 +21,8 @@
  */
 import { createOpenAI } from '@ai-sdk/openai';
 import { jsonSchema, streamText, type LanguageModel, type ToolSet } from 'ai';
-import type { SirenEntity } from '@ui4a/engine';
 
 import { LlmConfigurationError, resolveLlmConfig, type LlmConfigOverrides } from './llm-config';
-import { summarizeEntity } from './loop';
 import { extractRawReasoning, readRawDelta } from './raw-reasoning';
 import { ACTION_TOOL_PREFIX, buildToolProjection, isReservedVerb } from './tools';
 import type { AgentDriver, AgentOperation, DecideSink, DriverContext, FetchLike } from './types';
@@ -52,16 +50,19 @@ function resolveSettings(options: LlmDriverOptions): ResolvedLlmSettings {
 }
 
 const SYSTEM_PROMPT = [
-  '你是 UI4A 合同 agent:通过调用工具操作超媒体合同(HTTP 合同)完成用户委托的目标。',
+  '你是 UI4A 合同 agent，也是 AI-first 合同助手:读取授权超媒体合同、动态理解用户目标，并通过协议工具回答或安全执行。',
   '规则:',
   '1. 每轮必须且只能输出一个工具调用;合法动作集就是当前工具列表(处境披露)。',
-  '2. navigate 的 rel 必须来自其枚举;工具 description 标注 blocked 的动作当前被 guard 阻断,不要调用。',
-  '3. 拒绝即数据:轨迹中的被拒动作与「最近拒绝」携带结构化原因——换路径,或按动作字段 schema 修正参数后重试。',
-  '4. 字段值按语义构造:枚举字段必须取 enum 内的值;标题/正文等 intent 字段按目标意图编写;不要发明合同外的值。',
-  '5. clarify 与 render 是保留动词且当前未实现:禁止调用;缺字段值时按规则 4 自行构造。',
-  '6. 完成判定:目标对应的完成类动作(如 publish)成功执行过之后才调用 done,并用 summary 总结;不得提前 done。',
-  '7. 用户明确要求“一次走完/一次决策/批量执行”时，优先调用 exec_plan(steps) 一次提交完整计划；普通目标仍逐步 exec。exec_plan 禁止包含 approve/reject。',
-  '8. 当前合同没有完成目标所需的 action/capability 时调用 fail(reason,evidence),明确缺口与已查看证据;禁止在实体间重复导航。',
+  '2. 授权观察包含完整 Siren properties/actions/links/guard-results。只基于这些事实回答；不要发明未观察到的事实。',
+  '3. 阅读、总结、比较、解释是你的原生认知能力：事实充分时直接 answer(content,sources)，无需 read/summarize action 或 capability；sources 使用实体 rel + JSON Pointer。',
+  '4. 信息不足时用 answer 诚实说明缺少什么并引用已检查字段，或用 fail 说明不可得；绝不能用无关业务 action 代替回答。',
+  '5. navigate 的 rel 必须来自其枚举;工具 description 标注 blocked 的动作当前被 guard 阻断,不要调用。',
+  '6. 拒绝即数据:轨迹中的被拒动作与「最近拒绝」携带结构化原因——换路径,或按动作字段 schema 修正参数后重试。',
+  '7. 字段值按语义构造:枚举字段必须取 enum 内的值;标题/正文等 intent 字段按目标意图编写;不要发明合同外的值。',
+  '8. clarify 与 render 是保留动词且当前未实现:禁止调用;缺字段值时按规则 7 自行构造。',
+  '9. 完成判定:done 只用于业务动作目标，目标对应的完成类 action 成功执行过之后才调用 done；只读目标必须 answer。',
+  '10. 用户明确要求“一次走完/一次决策/批量执行”时，优先调用 exec_plan(steps) 一次提交完整计划；普通写目标仍逐步 exec。exec_plan 禁止包含 approve/reject。',
+  '11. 当前合同没有完成目标所需的业务 action/capability 时调用 fail(reason,evidence),明确缺口与已查看证据;禁止在实体间重复导航。',
 ].join('\n');
 
 /**
@@ -87,24 +88,12 @@ export function buildSystemPrompt(slots: SystemPromptSlots = {}): string {
   return `${SYSTEM_PROMPT}\n\n## 角色与应用上下文\n${lines.join('\n')}`;
 }
 
-/** 当前实体摘要:供 prompt 的紧凑投影(不内联全部子实体)。 */
-function describeEntity(entity: SirenEntity): string {
-  const summary = summarizeEntity(entity);
-  const subRels = (entity.entities ?? [])
-    .map((sub) => (typeof sub.properties.rel === 'string' ? sub.properties.rel : ''))
-    .filter((rel) => rel !== '');
-  const linkRels = entity.links
-    .map((link) => decodeURIComponent(/[?&]rel=([^&]+)/.exec(link.href)?.[1] ?? ''))
-    .filter((rel) => rel !== '');
-  const blocked = (entity['guard-results'] ?? [])
-    .filter((entry) => entry.blocked)
-    .map((entry) => entry.action);
-  return [
-    `- rel: ${summary.rel}(class: ${summary.class.join(', ')}${summary.node !== undefined ? `, node: ${summary.node}` : ''}${summary.count !== undefined ? `, count: ${summary.count}` : ''})`,
-    `- 动作: ${summary.actions.join(', ') || '(无)'}`,
-    ...(blocked.length > 0 ? [`- guard 阻断: ${blocked.join(', ')}`] : []),
-    `- 可导航 rel: ${[...new Set([...linkRels, ...subRels])].join(', ') || '(无)'}`,
-  ].join('\n');
+/** 完整授权观察:循环已按数量有界；旧调用方缺账本时至少披露当前实体。 */
+function describeObservations(context: DriverContext): string {
+  const observations = context.observations ?? [
+    { rel: context.currentRel, entity: context.entity },
+  ];
+  return JSON.stringify(observations, null, 2);
 }
 
 function describeTrail(context: DriverContext): string {
@@ -114,13 +103,15 @@ function describeTrail(context: DriverContext): string {
       const op =
         step.op.kind === 'navigate'
           ? `navigate → ${step.op.rel}`
-          : step.op.kind === 'exec'
-            ? `exec ${step.op.action} ${JSON.stringify(step.op.params ?? {})}`
-            : step.op.kind === 'exec-plan'
-              ? `exec-plan ${JSON.stringify(step.op.steps)}`
-              : step.op.kind === 'done'
-                ? `done ${step.op.summary}`
-                : `fail ${step.op.reason}`;
+          : step.op.kind === 'answer'
+            ? `answer ${step.op.content} sources=${JSON.stringify(step.op.sources)}`
+            : step.op.kind === 'exec'
+              ? `exec ${step.op.action} ${JSON.stringify(step.op.params ?? {})}`
+              : step.op.kind === 'exec-plan'
+                ? `exec-plan ${JSON.stringify(step.op.steps)}`
+                : step.op.kind === 'done'
+                  ? `done ${step.op.summary}`
+                  : `fail ${step.op.reason}`;
       const note = step.rejection !== undefined ? `(拒绝: ${step.rejection.reason})` : '';
       return `${step.step}. [${step.rel}] ${op} ⇒ ${step.outcome} ${note}`;
     })
@@ -136,7 +127,8 @@ function describeTrail(context: DriverContext): string {
 export function buildUserPrompt(context: DriverContext): string {
   const parts = [
     `## 用户目标\n${JSON.stringify(context.goal)}`,
-    `## 当前实体\n${describeEntity(context.entity)}`,
+    `## 当前实体 rel\n${context.currentRel}`,
+    `## 授权合同观察账本(有界，按最近访问顺序；entity 为完整 Siren 快照)\n${describeObservations(context)}`,
     `## 轨迹(至今)\n${describeTrail(context)}`,
   ];
   if (context.lastRejection !== undefined) {
@@ -168,6 +160,34 @@ function mapToolCall(toolName: string, input: unknown): AgentOperation {
       return typeof rel === 'string' && rel !== ''
         ? { kind: 'navigate', rel }
         : invalidOutput('navigate 缺少字符串参数 rel');
+    }
+    case 'answer': {
+      const content = isPlainObject(input) ? input.content : undefined;
+      const sources = isPlainObject(input) ? input.sources : undefined;
+      if (typeof content !== 'string' || content === '') {
+        return invalidOutput('answer 缺少字符串参数 content');
+      }
+      if (
+        !Array.isArray(sources) ||
+        !sources.every(
+          (source) =>
+            isPlainObject(source) &&
+            typeof source.rel === 'string' &&
+            source.rel !== '' &&
+            typeof source.pointer === 'string' &&
+            source.pointer.startsWith('/'),
+        )
+      ) {
+        return invalidOutput('answer.sources 需要 rel 与 JSON Pointer');
+      }
+      return {
+        kind: 'answer',
+        content,
+        sources: sources.map((source) => ({
+          rel: source.rel as string,
+          pointer: source.pointer as string,
+        })),
+      };
     }
     case 'exec': {
       if (!isPlainObject(input) || typeof input.action !== 'string') {

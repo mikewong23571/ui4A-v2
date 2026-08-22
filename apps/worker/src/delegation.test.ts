@@ -383,6 +383,36 @@ describe('runAgentStep(scripted protocol driver,决策+执行合一)', () => {
     expect(failResult.op).toMatchObject({ kind: 'fail' });
     expect(missingDb.inserts).toHaveLength(0);
   });
+
+  it('driver 决策 answer → answered 留痕且零业务 POST', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const { db, inserts } = fakeDb();
+    const answer = {
+      kind: 'answer' as const,
+      content: '当前共有 2 篇文章。',
+      sources: [{ rel: 'articles', pointer: '/properties/count' }],
+    };
+
+    const result = await runAgentStep(
+      { db, fetchImpl: transport.fetch, driver: new ScriptedDriver([answer]) },
+      {
+        delegationId: 'wf-answer',
+        step: 1,
+        goal: { verb: '当前有几篇文章' },
+        driverKind: 'llm',
+        baseUrl: BASE,
+        ...BASE_STATE,
+      },
+    );
+
+    expect(result).toEqual({ op: answer, outcome: 'answered' });
+    expect(transport.calls.filter((call) => call.method === 'POST')).toEqual([]);
+    expect(JSON.parse(String(inserts[0]!.values[8]))).toMatchObject({
+      step: 1,
+      op: answer,
+      outcome: 'answered',
+    });
+  });
 });
 
 describe('runAgentStep(幂等恢复)', () => {

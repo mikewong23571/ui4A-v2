@@ -33,6 +33,8 @@ export function stepToMessage(step: TrailStep): ChatMessage {
             role: 'assistant',
             text: `导航失败(${op.rel}): ${step.rejection?.reason ?? '不可达'}`,
           };
+    case 'answer':
+      return { role: 'assistant', text: op.content };
     case 'exec':
       return outcome === 'executed'
         ? {

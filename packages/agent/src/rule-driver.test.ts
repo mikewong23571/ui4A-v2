@@ -368,9 +368,7 @@ describe('④自由漫游(沿 links 走到有交集处)', () => {
   it('sitemap surfaces:目标词命中表面标题且入口在 links 上 → 沿入口进入(零特权导航)', () => {
     const articles = collectionEntity({
       rel: 'articles',
-      members: [
-        { rel: 'post:post-welcome', flow: 'post-status', node: 'published' },
-      ],
+      members: [{ rel: 'post:post-welcome', flow: 'post-status', node: 'published' }],
     });
     const entity: SirenEntity = {
       ...articles,
@@ -379,16 +377,20 @@ describe('④自由漫游(沿 links 走到有交集处)', () => {
         { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting' },
       ],
     };
-    const op = decide(entity, { verb: '发布' }, {
-      sitemap: {
-        version: 'v1',
-        surfaces: [
-          { rel: 'flow:article-drafting', title: '文章发布向导' },
-          { rel: 'flow:post-status', title: '文章状态' },
-        ],
-        applications: [],
+    const op = decide(
+      entity,
+      { verb: '发布' },
+      {
+        sitemap: {
+          version: 'v1',
+          surfaces: [
+            { rel: 'flow:article-drafting', title: '文章发布向导' },
+            { rel: 'flow:post-status', title: '文章状态' },
+          ],
+          applications: [],
+        },
       },
-    });
+    );
     // 目标"发布"与表面标题"文章发布向导"词级交集 → 进入 flow 入口链接
     expect(op).toEqual({ kind: 'navigate', rel: 'flow:article-drafting' });
   });
@@ -396,17 +398,19 @@ describe('④自由漫游(沿 links 走到有交集处)', () => {
   it('sitemap 命中但入口不在当前实体 links 上 → 不据此导航(退回普通漫游)', () => {
     const articles = collectionEntity({
       rel: 'articles',
-      members: [
-        { rel: 'post:post-welcome', flow: 'post-status', node: 'published' },
-      ],
+      members: [{ rel: 'post:post-welcome', flow: 'post-status', node: 'published' }],
     });
-    const op = decide(articles, { verb: '发布' }, {
-      sitemap: {
-        version: 'v1',
-        surfaces: [{ rel: 'flow:article-drafting', title: '文章发布向导' }],
-        applications: [],
+    const op = decide(
+      articles,
+      { verb: '发布' },
+      {
+        sitemap: {
+          version: 'v1',
+          surfaces: [{ rel: 'flow:article-drafting', title: '文章发布向导' }],
+          applications: [],
+        },
       },
-    });
+    );
     // articles 上无 flow 入口链接也无词交集链接 → fail(不幻觉导航)
     expect(op.kind).toBe('fail');
   });
@@ -594,7 +598,11 @@ describe('⓪app 定位层(目标词命中 app intent → 组内入口优先)', 
 
     // 对照:同一实体同一目标,无分组(现状)时自由漫游按扁平 surfaces
     // 声明序先中 flow:post-status —— 定位层的组内优先改变了选择。
-    const flat = decide(flowHub, { verb: '发布' }, { sitemap: { ...appSitemap, applications: [] } });
+    const flat = decide(
+      flowHub,
+      { verb: '发布' },
+      { sitemap: { ...appSitemap, applications: [] } },
+    );
     expect(flat).toEqual({ kind: 'navigate', rel: 'flow:post-status' });
   });
 
@@ -627,11 +635,7 @@ describe('⓪app 定位层(目标词命中 app intent → 组内入口优先)', 
       applications,
     });
 
-    const publishingFirst = decide(
-      flowHub,
-      { verb: '审核' },
-      { sitemap: sitemapOf(dualHit) },
-    );
+    const publishingFirst = decide(flowHub, { verb: '审核' }, { sitemap: sitemapOf(dualHit) });
     expect(publishingFirst).toEqual({ kind: 'navigate', rel: 'flow:article-drafting' });
 
     const communityFirst = decide(
@@ -682,7 +686,11 @@ describe('⓪app 定位层(目标词命中 app intent → 组内入口优先)', 
   });
 
   it('已在 flow 实例上(入口不可达)→ 定位层不劫持,落入②点名动作', () => {
-    const op = decide(wizardReady, { verb: '发布', fields: { title: 'T' } }, { sitemap: appSitemap });
+    const op = decide(
+      wizardReady,
+      { verb: '发布', fields: { title: 'T' } },
+      { sitemap: appSitemap },
+    );
     expect(op).toEqual({ kind: 'exec', action: 'publish', params: { title: 'T' } });
   });
 });

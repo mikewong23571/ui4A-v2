@@ -286,6 +286,10 @@ export async function runAgentStep(
     return recordStep(deps.db, args, { op, outcome: 'not-found', rejection, ...decisionExtra });
   }
 
+  if (op.kind === 'answer') {
+    return recordStep(deps.db, args, { op, outcome: 'answered', ...decisionExtra });
+  }
+
   if (op.kind === 'exec-plan') {
     const call = await client.execPlan({
       steps: op.steps,

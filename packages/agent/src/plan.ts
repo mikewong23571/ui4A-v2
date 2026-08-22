@@ -52,7 +52,10 @@ function schemaFieldNames(action: SitemapAction): string[] {
 }
 
 /** 目标字段字典 → 该动作 schema 声明的子集(分步组参:只带声明过的,不发明)。 */
-function paramsFor(action: SitemapAction, fields: Record<string, unknown> | undefined): Record<string, unknown> {
+function paramsFor(
+  action: SitemapAction,
+  fields: Record<string, unknown> | undefined,
+): Record<string, unknown> {
   const params: Record<string, unknown> = {};
   if (fields === undefined) return params;
   for (const name of schemaFieldNames(action)) {
@@ -75,7 +78,11 @@ function isCompletion(action: SitemapAction, goalTokens: readonly string[]): boo
  * 从 flow 形状推导向导计划:initial 沿推进链走到终点 + 终点完成动作。
  * 返回 undefined 表示该 flow 不构成向导计划(无推进步,或终点无完成动作)。
  */
-function wizardPlan(flow: SitemapFlow, goal: AgentGoal, goalTokens: readonly string[]): PlanProposal | undefined {
+function wizardPlan(
+  flow: SitemapFlow,
+  goal: AgentGoal,
+  goalTokens: readonly string[],
+): PlanProposal | undefined {
   const rel = `flow:${flow.name}`;
   const steps: PlanStep[] = [];
   const visited = new Set<string>();

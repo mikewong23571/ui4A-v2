@@ -38,14 +38,31 @@ const wizardEntity = instanceEntity({
   collection: 'articles',
 });
 
-describe('固定动词 6 个', () => {
-  it('navigate/exec/clarify/render/done/fail 全部在投影中,名称唯一', () => {
+describe('固定协议动词', () => {
+  it('navigate/answer/exec/clarify/render/done/fail 全部在投影中,名称唯一', () => {
     const tools = buildToolProjection(wizardEntity);
     const names = tools.map((tool) => tool.name);
-    for (const verb of ['navigate', 'exec', 'clarify', 'render', 'done', 'fail']) {
+    for (const verb of ['navigate', 'answer', 'exec', 'clarify', 'render', 'done', 'fail']) {
       expect(names, `动词 ${verb} 应在工具列表`).toContain(verb);
     }
     expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('answer 是协议级只读出口,要求 content 与 rel + JSON Pointer 来源', () => {
+    const answer = buildToolProjection(wizardEntity).find((tool) => tool.name === 'answer')!;
+    expect(answer.description).toContain('临时对话回答');
+    expect(answer.description).toContain('不产生业务副作用');
+
+    const parameters = answer.parameters as {
+      required: string[];
+      properties: {
+        sources: { items: { required: string[]; properties: Record<string, unknown> } };
+      };
+    };
+    expect(parameters.required).toEqual(['content', 'sources']);
+    expect(parameters.properties.sources.items.required).toEqual(['rel', 'pointer']);
+    expect(parameters.properties.sources.items.properties).toHaveProperty('rel');
+    expect(parameters.properties.sources.items.properties).toHaveProperty('pointer');
   });
 
   it('navigate 的 rel 参数从 links 生成 enum(排除 self)', () => {

@@ -2,7 +2,7 @@
  * agent 包公共类型:循环协议的操作词汇、driver 插件接口、轨迹记录。
  *
  * 口径(arch-brief §5/§6):
- * - 每步三种操作 navigate / exec / done(fail 为协议性失败出口);
+ * - 协议区分只读 answer、导航、业务执行与终止出口;
  * - done 由"完成类动作成功过"相对目标判定——判定在 driver,不在循环;
  * - 拒绝即数据:被拒 exec 与不可达 navigate 都以 RejectionRecord 回流下一步上下文;
  * - 循环零智能:它只搬运实体、执行操作、记录轨迹。
@@ -24,9 +24,25 @@ export interface AgentGoal {
   fields?: Record<string, unknown>;
 }
 
+/** 回答事实来源:实体 rel + 指向授权 Siren 快照的 JSON Pointer。 */
+export interface FactRef {
+  rel: string;
+  pointer: string;
+}
+
+/**
+ * 一次授权合同观察。entity 是 HTTP 合同已经按 principal 过滤后的完整 Siren
+ * 快照；Agent 只能基于这些观察回答，不能把模型输出反向当成合同事实。
+ */
+export interface ContractObservation {
+  rel: string;
+  entity: SirenEntity;
+}
+
 /** 循环每步产出的操作(协议动词;决策全在 driver)。 */
 export type AgentOperation =
   | { kind: 'navigate'; rel: string }
+  | { kind: 'answer'; content: string; sources: FactRef[] }
   | { kind: 'exec'; action: string; params?: Record<string, unknown> }
   | {
       kind: 'exec-plan';
@@ -70,7 +86,15 @@ export interface TrailStep {
   /** 操作发生(或目标)的实体 rel。 */
   rel: string;
   op: AgentOperation;
-  outcome: 'done' | 'failed' | 'navigated' | 'not-found' | 'executed' | 'suspended' | 'rejected';
+  outcome:
+    | 'answered'
+    | 'done'
+    | 'failed'
+    | 'navigated'
+    | 'not-found'
+    | 'executed'
+    | 'suspended'
+    | 'rejected';
   entity?: EntitySummary;
   rejection?: RejectionRecord;
 }
@@ -83,6 +107,11 @@ export interface DriverContext {
   trail: TrailStep[];
   successes: ExecSuccess[];
   lastRejection?: RejectionRecord;
+  /**
+   * 本轮 run 已读取的有界授权观察，按最近访问顺序排列。循环按 rel 去重并
+   * 刷新快照；可选是为旧的外部协议 fixture 保持源码兼容，runAgent 始终提供。
+   */
+  observations?: ContractObservation[];
   /**
    * 应用 sitemap(版本级缓存结构的最外层,架构规定它是 agent 的静态上下文):
    * surfaces 的 rel/title 供自由漫游层把目标动词映射到可达表面(flow 入口);
@@ -147,6 +176,8 @@ export interface RunAgentOptions {
   fetchImpl: FetchLike;
   /** 步数上限(终止条件之一;缺省 24)。 */
   maxSteps?: number;
+  /** 授权观察账本最多保留的不同实体数(缺省 8，最小 1)。 */
+  maxObservations?: number;
   /** 缺省 'agent'(agent 走合同,事件日志可区分双执行者)。 */
   actor?: 'human' | 'agent';
   principal?: string;
@@ -180,7 +211,7 @@ export interface RunAgentOptions {
   onReasoningDelta?(piece: string): void;
 }
 
-export type AgentOutcome = 'done' | 'failed' | 'suspended' | 'max-steps';
+export type AgentOutcome = 'answered' | 'done' | 'failed' | 'suspended' | 'max-steps';
 
 /** 一次 runAgent 的完整结果:结局 + 可断言的轨迹。 */
 export interface AgentRunResult {
@@ -188,6 +219,8 @@ export interface AgentRunResult {
   outcome: AgentOutcome;
   /** done/suspended 的 summary / failed 的 reason / max-steps 的说明。 */
   summary?: string;
+  /** answered 时回答所引用的授权合同事实。 */
+  sources?: FactRef[];
   steps: TrailStep[];
   successes: ExecSuccess[];
 }

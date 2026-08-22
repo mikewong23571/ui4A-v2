@@ -10,7 +10,13 @@
 import type { SirenAction } from '@ui4a/engine';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { buildSystemPrompt, createDriver, createLlmDriver, resolveDriverKind } from './llm-driver';
+import {
+  buildSystemPrompt,
+  buildUserPrompt,
+  createDriver,
+  createLlmDriver,
+  resolveDriverKind,
+} from './llm-driver';
 import {
   createScriptedTransport,
   instanceEntity,
@@ -161,6 +167,19 @@ describe('LLM 工具调用 → 循环操作映射', () => {
     });
   });
 
+  it('answer 工具调用 → answer(content + FactRef sources 原样)', async () => {
+    const sources = [{ rel: 'post:first-post', pointer: '/properties/fields/body' }];
+    const { driver } = llmDriverWith(() =>
+      openaiToolResponse('answer', { content: '这是一篇验收文章。', sources }),
+    );
+
+    await expect(driver.decide(context())).resolves.toEqual({
+      kind: 'answer',
+      content: '这是一篇验收文章。',
+      sources,
+    });
+  });
+
   it('通用 exec 工具调用 → exec(action + params)', async () => {
     const { driver } = llmDriverWith(() =>
       openaiToolResponse('exec', { action: 'next', params: { title: '通用通道' } }),
@@ -260,6 +279,72 @@ describe('fail-safe:模型输出不合法', () => {
     const { driver } = llmDriverWith(() => openaiToolResponse('navigate', {}));
     const op = await driver.decide(context());
     expect(op.kind).toBe('fail');
+  });
+
+  it('answer 缺 content 或来源不是 rel + JSON Pointer → fail-safe fail', async () => {
+    for (const args of [
+      { sources: [] },
+      { content: '无来源', sources: [{ rel: 'post:first-post', pointer: 'properties/body' }] },
+    ]) {
+      const { driver } = llmDriverWith(() => openaiToolResponse('answer', args));
+      const op = await driver.decide(context());
+      expect(op.kind).toBe('fail');
+    }
+  });
+});
+
+describe('授权合同观察进入 LLM prompt', () => {
+  it('当前实体的完整 properties.fields 正文与 count 可见,不再压成 action-only 摘要', () => {
+    const entity = instanceEntity({
+      rel: 'post:first-post',
+      flow: 'post-status',
+      node: 'published',
+      fields: {
+        title: '第一篇',
+        body: '这是第一篇完整文章，用来验证具体查看、正文阅读和跨刷新恢复链路。',
+      },
+    });
+    const prompt = buildUserPrompt(
+      context({
+        currentRel: 'post:first-post',
+        entity,
+        observations: [{ rel: 'post:first-post', entity }],
+      }),
+    );
+
+    expect(prompt).toContain('这是第一篇完整文章');
+    expect(prompt).toContain('"fields"');
+    expect(prompt).toContain('"body"');
+  });
+
+  it('比较任务能看到有界观察账本中的两个实体及各自正文', () => {
+    const first = instanceEntity({
+      rel: 'post:first-post',
+      flow: 'post-status',
+      node: 'published',
+      fields: { title: '第一篇', body: '第一篇正文' },
+    });
+    const welcome = instanceEntity({
+      rel: 'post:post-welcome',
+      flow: 'post-status',
+      node: 'published',
+      fields: { title: '欢迎', body: '欢迎正文' },
+    });
+    const prompt = buildUserPrompt(
+      context({
+        currentRel: 'post:post-welcome',
+        entity: welcome,
+        observations: [
+          { rel: 'post:first-post', entity: first },
+          { rel: 'post:post-welcome', entity: welcome },
+        ],
+      }),
+    );
+
+    expect(prompt).toContain('第一篇正文');
+    expect(prompt).toContain('欢迎正文');
+    expect(prompt).toContain('post:first-post');
+    expect(prompt).toContain('post:post-welcome');
   });
 });
 

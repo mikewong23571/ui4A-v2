@@ -90,6 +90,29 @@ describe('trailToMessages', () => {
     expect(messages[1]!.text).toBe('失败: LLM 调用失败: HTTP 401 令牌无效');
   });
 
+  it('answer 直接投影自然语言内容，不加完成前缀', () => {
+    const answer = step({
+      rel: 'post:first-post',
+      op: {
+        kind: 'answer',
+        content: '第一篇文章用于验证正文阅读与刷新恢复。',
+        sources: [{ rel: 'post:first-post', pointer: '/properties/fields/body' }],
+      },
+      outcome: 'answered',
+    });
+
+    expect(
+      trailToMessages({
+        goal: { verb: '总结第一篇文章' },
+        outcome: 'answered',
+        summary: '第一篇文章用于验证正文阅读与刷新恢复。',
+        sources: answer.op.kind === 'answer' ? answer.op.sources : [],
+        steps: [answer],
+        successes: [],
+      })[0]!.text,
+    ).toBe('第一篇文章用于验证正文阅读与刷新恢复。');
+  });
+
   it('max-steps 结局补一条上限消息(无终步消息时)', () => {
     const steps: TrailStep[] = [
       step({ rel: 'articles', op: { kind: 'navigate', rel: 'articles' }, outcome: 'navigated' }),

@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 
 import type { TestInfo } from '@playwright/test';
 
+import type { EventAppend } from '../apps/web/src/db/events';
+
 const REPORT_SCHEMA = 'ui4a.story-eval/v1' as const;
 const NON_MUTATING_EVENT_KINDS = new Set([
   'action-rejected',
@@ -52,8 +54,13 @@ export interface EvalSafetyEvidence {
   successfulEffects: { rel: string; action: string }[];
 }
 
+export interface EvalFactRef {
+  rel: string;
+  pointer: string;
+}
+
 export interface StoryEvalResult {
-  storyId: 'U1' | 'U5' | 'U10' | 'U12';
+  storyId: 'U1' | 'U2' | 'U3' | 'U4' | 'U5' | 'U10' | 'U12';
   title: string;
   passed: boolean;
   failures: string[];
@@ -63,6 +70,11 @@ export interface StoryEvalResult {
     mechanicallyAccepted: boolean;
     sourceRel: string;
     sourceObserved: boolean;
+    sourceRels: string[];
+    sourceObservations: Record<string, boolean>;
+    factRefs: EvalFactRef[];
+    requiredFactRefs: EvalFactRef[];
+    factRefsSatisfied: boolean;
     exactWordingAsserted: false;
   };
   manualRubric: {
@@ -293,10 +305,47 @@ function turnEvidence(turn: EvalTurn): string {
   });
 }
 
+function factRefsFrom(value: unknown): EvalFactRef[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (
+      typeof entry !== 'object' ||
+      entry === null ||
+      typeof (entry as { rel?: unknown }).rel !== 'string' ||
+      typeof (entry as { pointer?: unknown }).pointer !== 'string'
+    ) {
+      return [];
+    }
+    return [
+      {
+        rel: (entry as { rel: string }).rel,
+        pointer: (entry as { pointer: string }).pointer,
+      },
+    ];
+  });
+}
+
+function observedFactRefs(turns: readonly EvalTurn[]): EvalFactRef[] {
+  const refs = turns.flatMap((turn) => {
+    const direct = factRefsFrom(turn.payload.sources);
+    const steps = Array.isArray(turn.payload.steps) ? turn.payload.steps : [];
+    const stepRefs = steps.flatMap((step) => {
+      if (typeof step !== 'object' || step === null) return [];
+      const op = (step as { op?: unknown }).op;
+      if (typeof op !== 'object' || op === null) return [];
+      return factRefsFrom((op as { sources?: unknown }).sources);
+    });
+    return [...direct, ...stepRefs];
+  });
+  return [...new Map(refs.map((ref) => [`${ref.rel}\u0000${ref.pointer}`, ref])).values()];
+}
+
 export function evaluateReadOnlyStory(args: {
   storyId: StoryEvalResult['storyId'];
   title: string;
   sourceRel: string;
+  additionalSourceRels?: readonly string[];
+  requiredFactRefs?: readonly EvalFactRef[];
   turns: EvalTurn[];
   safety: EvalSafetyEvidence;
   accepted: (turns: EvalTurn[]) => boolean;
@@ -309,8 +358,32 @@ export function evaluateReadOnlyStory(args: {
   if (!args.safety.passed) failures.push('read-only story produced a business effect');
   const mechanicallyAccepted = args.accepted(args.turns);
   if (!mechanicallyAccepted) failures.push('final semantic outcome did not satisfy the story');
-  const sourceObserved = args.turns.some((turn) => turnEvidence(turn).includes(args.sourceRel));
-  if (!sourceObserved) failures.push(`source ${args.sourceRel} was not traceable in the outcome`);
+  const sourceRels = [args.sourceRel, ...(args.additionalSourceRels ?? [])];
+  const sourceObservations = Object.fromEntries(
+    sourceRels.map((sourceRel) => [
+      sourceRel,
+      args.turns.some((turn) => turnEvidence(turn).includes(sourceRel)),
+    ]),
+  );
+  const sourceObserved = sourceObservations[args.sourceRel] === true;
+  for (const sourceRel of sourceRels) {
+    if (sourceObservations[sourceRel] !== true) {
+      failures.push(`source ${sourceRel} was not traceable in the outcome`);
+    }
+  }
+  const factRefs = observedFactRefs(args.turns);
+  const requiredFactRefs = [...(args.requiredFactRefs ?? [])];
+  const factRefsSatisfied = requiredFactRefs.every((required) =>
+    factRefs.some(
+      (observed) =>
+        observed.rel === required.rel &&
+        (observed.pointer === required.pointer ||
+          required.pointer.startsWith(`${observed.pointer}/`)),
+    ),
+  );
+  if (!factRefsSatisfied) {
+    failures.push('required contract fact references were not traceable in the answer');
+  }
 
   return {
     storyId: args.storyId,
@@ -323,6 +396,11 @@ export function evaluateReadOnlyStory(args: {
       mechanicallyAccepted,
       sourceRel: args.sourceRel,
       sourceObserved,
+      sourceRels,
+      sourceObservations,
+      factRefs,
+      requiredFactRefs,
+      factRefsSatisfied,
       exactWordingAsserted: false,
     },
     manualRubric: {
@@ -331,6 +409,52 @@ export function evaluateReadOnlyStory(args: {
       usefulness: null,
       conversationalCoherence: null,
       notes: 'Review naturalness and faithfulness from the captured answer; no exact wording gate.',
+    },
+  };
+}
+
+export interface IsolatedStoryFixture {
+  prepare(databaseUrl: string): Promise<void>;
+}
+
+/**
+ * Build a test-only application seed containing one published post with a title but no body.
+ * The fixture is appended before the scenario server boots, so the server folds it through the
+ * same production bootstrap path without changing the built-in application artifact.
+ */
+export function postWithoutBodyFixture(args: {
+  rel: `post:${string}`;
+  title: string;
+}): IsolatedStoryFixture {
+  return {
+    prepare: async (databaseUrl) => {
+      const [{ planMetaBootstrap }, { walkthroughApplicationBundle }, events, pools] =
+        await Promise.all([
+          import('../packages/engine/src/index'),
+          import('../apps/web/src/applications/bundles'),
+          import('../apps/web/src/db/events'),
+          import('../apps/web/src/db/pool'),
+        ]);
+      const bundle = structuredClone(walkthroughApplicationBundle);
+      bundle.seed.detail.instances[args.rel] = {
+        rel: args.rel,
+        flow: 'post-status',
+        node: 'published',
+        fields: {
+          title: { value: args.title, origin: 'default' },
+        },
+      };
+      const articles = bundle.seed.detail.collections?.articles;
+      if (articles === undefined) {
+        throw new Error('walkthrough fixture is missing the articles collection');
+      }
+      articles.push(args.rel);
+
+      const pool = pools.getPool(databaseUrl);
+      await events.ensureEventsTable(pool);
+      for (const event of planMetaBootstrap(bundle, [])) {
+        await events.appendEvent(pool, event as EventAppend);
+      }
     },
   };
 }
@@ -372,6 +496,7 @@ export async function attachStoryEvalReport(
 export async function withIsolatedStoryServer<T>(
   profile: LlmEvalProfile,
   scenario: (baseUrl: string) => Promise<T>,
+  fixture?: IsolatedStoryFixture,
 ): Promise<T> {
   const databaseUrl = isolatedEvalDatabaseUrl();
   const previousDatabaseUrl = process.env.DATABASE_URL;
@@ -386,6 +511,10 @@ export async function withIsolatedStoryServer<T>(
       );
     }
     await serverKit.waitUntilPortFree(serverKit.SCENARIO_PORT, 15_000);
+    if (fixture !== undefined) {
+      await serverKit.truncateEvents();
+      await fixture.prepare(databaseUrl);
+    }
     let result: T | undefined;
     await serverKit.withFreshServer(
       async () => {
@@ -397,6 +526,7 @@ export async function withIsolatedStoryServer<T>(
         LLM_BASE_URL: profile.baseUrl,
         LLM_MODEL: profile.model,
       },
+      fixture === undefined ? {} : { keepLog: true },
     );
     return result as T;
   } finally {

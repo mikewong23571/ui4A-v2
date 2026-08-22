@@ -20,7 +20,7 @@
  * signal 报错,而测试桩的手造流不会;显式 cancel 让两种来源行为一致,
  * 读完以 signal.reason 抛出(AbortError / TimeoutError 由调用方折算文案)。
  */
-import type { AgentOutcome, ExecSuccess, TrailStep } from '@ui4a/agent';
+import type { AgentOutcome, ExecSuccess, FactRef, TrailStep } from '@ui4a/agent';
 
 /** step 帧的 assistant 消息(trail.ts stepToMessage 口径)。 */
 export interface ChatStepMessage {
@@ -31,12 +31,13 @@ export interface ChatStepMessage {
 /** final 帧载荷(inline 回合的完整结果投影)。 */
 export interface ChatFinalPayload {
   sessionId: string;
-  driver: 'rule' | 'llm';
-  requestedDriver: 'rule' | 'llm' | 'auto';
+  driver: 'llm';
+  requestedDriver: 'llm' | 'auto';
   outcome: AgentOutcome;
   summary: string | null;
   steps: TrailStep[];
   successes: ExecSuccess[];
+  sources?: FactRef[];
   render?: {
     concern: string;
     canvasUrl: string;
@@ -46,8 +47,8 @@ export interface ChatFinalPayload {
 /** render 帧载荷(渲染短路 LLM 路径的回执;与一次性 JSON 回执同形状)。 */
 export interface ChatRenderPayload {
   sessionId: string;
-  driver: 'rule' | 'llm';
-  requestedDriver: 'rule' | 'llm' | 'auto';
+  driver: 'llm';
+  requestedDriver: 'llm' | 'auto';
   outcome: string;
   summary: string;
   messages: { role: 'assistant'; text: string }[];

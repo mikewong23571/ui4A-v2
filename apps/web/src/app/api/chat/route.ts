@@ -424,6 +424,7 @@ async function streamAgentLoop(args: {
       summary: result.summary ?? null,
       steps: result.steps,
       successes: result.successes,
+      ...(result.sources !== undefined ? { sources: result.sources } : {}),
     },
   });
 }

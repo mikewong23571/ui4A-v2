@@ -1,8 +1,8 @@
 /**
  * 工具投影生成器(arch-brief §6"两层工具",选型 §1.1):
  *
- * - **固定协议动词 7 个**:navigate(rel)/ exec(action, params)/ exec_plan(steps)/ clarify(fields)/
- *   render(spec)/ done(summary)/ fail(reason,evidence)——循环协议的工具面;
+ * - **固定协议动词**:navigate(rel)/ answer(content,sources)/ exec(action, params)/
+ *   exec_plan(steps)/ clarify(fields)/ render(spec)/ done(summary)/ fail(reason,evidence);
  * - **每状态动态动作工具**:当前实体 actions[] 逐个生成工具(action_ 前缀),
  *   字段 schema(action.fields,JSON Schema draft-07)原样内联为参数;
  * - guard 求值结果嵌 description("blocked: <谓词名> 失败"——拒绝即教育);
@@ -77,6 +77,33 @@ export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
           },
         },
         ['rel'],
+      ),
+    },
+    {
+      name: 'answer',
+      description:
+        '基于授权合同观察生成临时对话回答，不产生业务副作用。阅读、总结、比较、解释' +
+        '直接使用此协议出口，不需要 application action/capability；sources 必须引用观察中的事实。',
+      parameters: objectSchema(
+        {
+          content: { type: 'string', description: '面向用户的自然语言回答' },
+          sources: {
+            type: 'array',
+            description: '回答依据的合同事实引用；信息不足的回答可引用已检查的字段容器',
+            items: objectSchema(
+              {
+                rel: { type: 'string', description: '来源实体 rel' },
+                pointer: {
+                  type: 'string',
+                  pattern: '^/',
+                  description: '来源 Siren 实体中的 JSON Pointer，如 /properties/fields/body',
+                },
+              },
+              ['rel', 'pointer'],
+            ),
+          },
+        },
+        ['content', 'sources'],
       ),
     },
     {

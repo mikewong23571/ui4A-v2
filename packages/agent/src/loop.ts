@@ -2,6 +2,7 @@
  * agent 循环协议(arch-brief §6:「循环是协议,driver 是插件」)。
  *
  * 每步:取当前实体 → driver.decide → 执行操作:
+ * - answer:直接返回基于授权观察的临时回答，零 HTTP 写入;
  * - navigate:立即取目标实体,成功则切换当前 rel;404 记 not-found 并回流;
  * - exec:POST /api/exec;200 记 executed 并入 successes;202 记 suspended 并终止等待人类;
  *   4xx/网络故障记 rejected 并回流;
@@ -15,6 +16,7 @@ import type {
   AgentDriver,
   AgentGoal,
   AgentRunResult,
+  ContractObservation,
   DriverContext,
   EntitySummary,
   ExecSuccess,
@@ -26,6 +28,7 @@ import type {
 import type { SirenEntity } from '@ui4a/engine';
 
 const DEFAULT_MAX_STEPS = 24;
+const DEFAULT_MAX_OBSERVATIONS = 8;
 const DEFAULT_START_REL = 'articles';
 const DEFAULT_CHANNEL = 'http';
 
@@ -50,6 +53,7 @@ export async function runAgent(
 ): Promise<AgentRunResult> {
   const client = createContractClient(options.baseUrl, options.fetchImpl);
   const maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
+  const maxObservations = Math.max(1, options.maxObservations ?? DEFAULT_MAX_OBSERVATIONS);
   const actor = options.actor ?? 'agent';
   const channel = options.channel ?? DEFAULT_CHANNEL;
 
@@ -77,10 +81,22 @@ export async function runAgent(
   let currentRel = options.startRel ?? DEFAULT_START_REL;
   const trail: TrailStep[] = [];
   const successes: ExecSuccess[] = [];
+  const observations: ContractObservation[] = [];
   let lastRejection: RejectionRecord | undefined;
   // 同一合同处境第三次出现且期间没有成功 exec，说明 driver 正在机械绕圈。
   // 循环不猜业务完成条件，只对完全相同的可观察状态做协议级有限性保护。
   const stateVisits = new Map<string, number>();
+
+  /** 最新快照替换同 rel 的旧观察，并把账本裁成有界的最近不同实体集合。 */
+  const observe = (entity: SirenEntity): void => {
+    const rel = typeof entity.properties.rel === 'string' ? entity.properties.rel : '';
+    const prior = observations.findIndex((entry) => entry.rel === rel);
+    if (prior >= 0) observations.splice(prior, 1);
+    observations.push({ rel, entity });
+    if (observations.length > maxObservations) {
+      observations.splice(0, observations.length - maxObservations);
+    }
+  };
 
   /** 追加轨迹并同步回调(T9 Phase B 流式轨迹;观测者异常吞掉,不污染循环)。 */
   const pushStep = (step: TrailStep): void => {
@@ -127,6 +143,7 @@ export async function runAgent(
         successes,
       };
     }
+    observe(fetched.entity);
 
     const stateSignature = JSON.stringify({
       rel: currentRel,
@@ -167,6 +184,7 @@ export async function runAgent(
       trail: [...trail],
       successes: [...successes],
       lastRejection,
+      observations: [...observations],
       sitemap,
       role: options.role,
       app: options.app,
@@ -177,6 +195,17 @@ export async function runAgent(
     if (op.kind === 'done') {
       pushStep({ step, rel: currentRel, op, outcome: 'done' });
       return { goal, outcome: 'done', summary: op.summary, steps: trail, successes };
+    }
+    if (op.kind === 'answer') {
+      pushStep({ step, rel: currentRel, op, outcome: 'answered' });
+      return {
+        goal,
+        outcome: 'answered',
+        summary: op.content,
+        sources: op.sources,
+        steps: trail,
+        successes,
+      };
     }
     if (op.kind === 'fail') {
       pushStep({ step, rel: currentRel, op, outcome: 'failed' });

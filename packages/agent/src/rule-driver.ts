@@ -242,10 +242,7 @@ function execOperation(context: DriverContext, action: SirenAction): AgentOperat
 // ---- 决策层(⓪ app 定位 + ①–④ 目标相关性)----------------------------------
 
 /** 入口 rel 在当前实体可达时返回其实际 rel(精确命中,或 :别名 后缀命中)。 */
-function reachableEntryRel(
-  candidates: readonly string[],
-  entryRel: string,
-): string | undefined {
+function reachableEntryRel(candidates: readonly string[], entryRel: string): string | undefined {
   return (
     candidates.find((rel) => rel === entryRel) ??
     // 入口链接的 rel 可能是别名(flow:x),也可能指向实例——两者都试。
