@@ -1,0 +1,1 @@
+T14 Phase F: specific viewing resolves a collection member, emits focus receipts during direct and agent navigation, and projects a temporary detail surface without freezing layout. Evidence: 78 focused tests plus web and agent typechecks.
