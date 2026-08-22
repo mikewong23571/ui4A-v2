@@ -1,0 +1,5 @@
+Phase C functional implementation: bounded Situation, authorized Lens, semantic Surface Tree
+Summary: Added strict shared RenderSituation/DataLens schema with hard budgets and recursive Session rejection; pure engine graph resolver with per-root/per-edge authorization and target/count-free truncation receipts; normalized multi-region Surface Tree with semantic roles, binding-only validator, isolated subtree diagnostics, catalog/dependency checks, canonical serialize/restore/hash, and catalog-driven generic fallback without class/type/business routing.
+Red evidence: shared parser tests 16 failures before implementation; lens and surface tests failed on missing modules/exports.
+Green evidence: root rerun 4 files/51 tests passed; shared+engine typecheck; targeted ESLint/Prettier/diff clean. Agent evidence included 100-run unauthorized graph fuzz and full engine 397 tests.
+Why: Establish the pure, serializable Presentation kernel before Recipe generation, storage, A2UI compilation, or React integration; keep authorization and binding correctness mechanical without encoding pages.
