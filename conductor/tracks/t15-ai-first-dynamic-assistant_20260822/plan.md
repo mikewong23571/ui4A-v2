@@ -76,3 +76,4 @@
 ## Phase: Review Fixes
 
 - [x] Task: Apply review suggestion——同步 `product-guidelines.md` 中仍残留的“零智能完整”旧口径为 AI-first 诚实降级 — dcb9552
+- [x] Task: Apply review suggestion——移除会话测试 fixture 中的真实 baseline 模型名，保持 provider-neutral 源码治理 — 02e7dc8
