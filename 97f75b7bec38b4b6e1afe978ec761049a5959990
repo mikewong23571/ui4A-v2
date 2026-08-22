@@ -1,0 +1,5 @@
+T14 Phase B Task 1: canvas 成员级降级 + surface 错误隔离
+
+改动:deref 对集合成员缺维度字段改为跳过并返回结构化 warning;surface-flow 透传诊断;canvas 在对应 surface 标注缺字段与成员 rel;每个 A2UI surface 增独立 ErrorBoundary。
+Why:walkthrough #6/#7 与 T12 遗留——单条历史脏数据或单组件渲染异常不再拖死整面,同时不造默认事实。
+TDD:先新增/改写 4 条失败断言,再实现;targeted 37/37;CI=true pnpm check 117 files / 1089 tests 全绿。coverage 工具未安装(@vitest/coverage-v8),未引入新依赖。自治验收。
