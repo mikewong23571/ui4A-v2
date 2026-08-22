@@ -1,0 +1,5 @@
+Task: T16 Phase A architecture decisions
+Summary: Recorded D27 and refined the track architecture with the confirmed Chat/Presentation boundary, existing-workspace pure kernel location, normalized Surface/A2UI compiler boundary, Recipe lifecycle, event-log plus rebuildable projection store, user-only Sidecar key, CAS/idempotency, hierarchical dependencies, and fastpath order. Linked all spike evidence.
+Files: DECISIONS.md; conductor/tracks/t16-semantic-a2ui-sidecars_20260823/architecture.md; index.md
+Why: Convert disposable probe findings into binding implementation constraints before production code.
+Verification: Prettier and git diff checks passed. No tech-stack deviation or new dependency was introduced.
