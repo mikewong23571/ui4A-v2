@@ -29,16 +29,16 @@
 - [x] Task: U4 Eval/TDD——缺正文时诚实说明信息缺口，不按标题编造、不误执行状态 action — d306b18 / 5384e03
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 5384e03
 
-## Phase D: Event-sourced 多轮目标形成(U5–U9)
+## Phase D: Event-sourced 多轮目标形成(U5–U9) [checkpoint: be46e9f]
 
-- [ ] Task: 会话上下文红测——原始 user/assistant 内容 append-only 留痕，结构化 activeGoal/referents/constraints/pending clarification/authorized effects 可从日志重建
-- [ ] Task: U5 Eval/TDD——省略对象的后续“总结一下”延续上一轮 focus/指代
-- [ ] Task: U6 Eval/TDD——用户纠正替换当前指代，旧对象零副作用，原始消息不可改写
-- [ ] Task: U7 Eval/TDD——补充“自己总结、不保存”合并进原目标而非成为独立任务
-- [ ] Task: U8 Eval/TDD——歧义请求进入自然澄清/只定位，不从可用 action 猜业务意图
-- [ ] Task: U9 Eval/TDD——刷新、重连和同 session 恢复后“继续刚才那个”重建同一活动目标和约束
-- [ ] Task: 上下文有界化——近期原文 + 结构化状态的裁剪/压缩策略保留授权证据与指代，并有长会话回归
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: 会话上下文红测——原始 user/assistant 内容 append-only 留痕，结构化 activeGoal/referents/constraints/pending clarification/authorized effects 可从日志重建 — be46e9f
+- [x] Task: U5 Eval/TDD——省略对象的后续“总结一下”延续上一轮 focus/指代 — be46e9f
+- [x] Task: U6 Eval/TDD——用户纠正替换当前指代，旧对象零副作用，原始消息不可改写 — be46e9f
+- [x] Task: U7 Eval/TDD——补充“自己总结、不保存”合并进原目标而非成为独立任务 — be46e9f
+- [x] Task: U8 Eval/TDD——歧义请求进入自然澄清/只定位，不从可用 action 猜业务意图 — be46e9f
+- [x] Task: U9 Eval/TDD——刷新、重连和同 session 恢复后“继续刚才那个”重建同一活动目标和约束 — be46e9f
+- [x] Task: 上下文有界化——近期原文 + 结构化状态的裁剪/压缩策略保留授权证据与指代，并有长会话回归 — be46e9f
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — be46e9f
 
 ## Phase E: 意图与副作用边界(U10–U13)
 
