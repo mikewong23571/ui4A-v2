@@ -50,7 +50,7 @@
 - [x] Task: S9–S11 real Eval——Recipe/miss 路径形成可用多区域 Surface，不断言固定 word/顺序，局部失败保留已验证区域 — 117d58a
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 107fdbc
 
-## Phase F: Surface Action 交互与安全
+## Phase F: Surface Action 交互与安全 [checkpoint: 3583229]
 
 - [x] Task: S13/TS12 Red→Green——无字段 action group 实时 declaration/guard 复核、精确 rel/action 提交与 Surface 刷新 — 3583229
 - [x] Task: S14/TS12 Red→Green——字段 action 的 Dialog/Drawer/inline schema form、焦点回收、取消零事件、extra-data 剥离和拒绝呈现 — 3583229
@@ -58,7 +58,7 @@
 - [x] Task: S16 Red→Green——Entities 成员 action 在排序/筛选后仍绑定真实 rel；未声明 batch 零入口 — 3583229
 - [x] Task: S17 Red→Green——过期 action dependency 使子树 stale，零 POST 且只读区域继续可用 — 3583229
 - [x] Task: Interaction invariants——fuzz 全部可提交元素映射当前授权 action；Recipe/Sidecar 不缓存 guard、enabled 或 formData — 3583229
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 3583229
 
 ## Phase G: 用户级 Sidecar、fastpath 与局部失效
 
