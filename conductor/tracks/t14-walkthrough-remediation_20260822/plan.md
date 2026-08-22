@@ -21,3 +21,23 @@
 ## Phase D: 统一验收(唯一 checkpoint) [checkpoint: 391a419]
 
 - [x] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e`)+ walkthrough 复验 #1–#7(dev 库重置 + 脚本化复走 US-1/US-2/US-13/US-14)+ checkpoint git note + tracks.md 勾选 — 391a419
+
+## Phase E: Application-as-Data 自举（#12）
+
+- [~] Task: disposable probe + 应用制品/meta bootstrap 合同 TDD（业务 application/flow/capability/seed 迁出 TS；安装留痕、幂等、重放、旧库兼容）
+- [ ] Task: runtime 从 fold 快照枚举定义，移除 `businessFlowList`/`businessFlows` 生产 fallback 与 article 特权 imports；缺定义响亮失败
+
+## Phase F: agent 与共享处境闭环（#8–#11）
+
+- [ ] Task: 单实体阅读解析 + binding-only detail focus；navigate focus SSE 驱动画布临时 surface（零 freeze/零业务事件）
+- [ ] Task: 显式 fail 工具 + 无能力/重复处境停滞检测 + failed/chat-turn 审计（合同外目标有限步零副作用）
+- [ ] Task: SSE 固定 deadline 改 idle timeout/heartbeat 生命周期，区分人工停止与空闲超时
+
+## Phase G: chat 持久性与画布活性（#13/#14）
+
+- [ ] Task: turn-started/progress/final 追加式投影覆盖 inline/render/delegated/failed；session 首帧 + 刷新恢复/未完成轮询 TDD
+- [ ] Task: reasoning delta 合帧 + canvas latest-wins cancel/timeout + reload 并发门 + boundary 重置 TDD
+
+## Phase H: 增补统一验收（#8–#14）
+
+- [ ] Task: targeted + `CI=true pnpm check` + `CI=true pnpm e2e`；真实浏览器复验查看第一篇/删除失败/focus/刷新恢复/画布压力；checkpoint git note + tracks.md 勾选

@@ -44,6 +44,53 @@ walkthrough(2026-08-22,14 则用户故事)暴露七条问题,归为一条主线�
 - D19 路线剩余棒次(/app/<name>、角色 archetype);
 - 流程模拟器(定义即数据的通用 happy-path 遍历,之前讨论的第四道防线——若 Phase A 余量允许单独立项,本 track 不含)。
 
+## 2026-08-22 walkthrough 续修增补（#8–#14）
+
+首轮 #1–#7 验收后继续真实 walkthrough，暴露的不是孤立字段问题，而是三条尚未
+闭环的产品主张：agent 与人类没有共享当前处境；应用仍由 Web 代码特权出生；聊天
+与画布在刷新、长流和竞态下不具备持续性。用户要求继续在本 track 自主修复，不等待
+人工确认。
+
+### 增补架构决定
+
+1. **应用从 meta 自举（#12）**：TS 只保留通用 kernel、schema/parser、lifecycle
+   与安装器；publishing/community 的 application、flow、capability、初始实体和集合
+   迁入独立、可版本化的数据制品。空库由 meta bootstrap 安装该制品并留下带制品
+   identity/version 的审计事件；业务 runtime 只从 fold 快照枚举活跃定义，定义缺失
+   响亮失败，不再以 `businessFlowList` 回退。不能以“把 TS 改成 JSON、仍由 service
+   逐条特权 append”冒充 meta 自举。
+2. **agent 终态与共享 focus（#8/#9/#11）**：具体查看意图解析到集合成员并打开
+   binding-only detail；协议增加合法 `fail(reason,evidence)` 终态及重复处境停滞检测；
+   每次成功 navigate 通过 SSE focus 帧只发布 rel，画布跟随同一临时 focus surface，
+   不产生凝固事件和业务副作用。
+3. **SSE 生命周期（#10）**：固定 120 秒 wall-clock deadline 改为每个有效帧续期的
+   idle timeout；人工停止、空闲超时、停止等待分别使用不同终态。服务端 heartbeat
+   只证明连接活性，不冒充业务进展。
+4. **chat 是可恢复日志投影（#13）**：有效请求先落 turn-started 并立即把 session/turn
+   identity 发给客户端；可见 step/render 进度增量留痕；终态以 chat-turn 收口。刷新后
+   history 合并同一 turn 的 started/progress/final，未完成回合继续轮询直到终态。render、
+   delegated、failed 与 inline 不得再有“不入历史”的旁路。
+5. **画布负载治理（#14）**：聊天 reasoning delta 合帧，避免每 token 触发整棵消息树
+   重渲染；canvas load 采用 latest-wins、可取消和有界超时，禁止并发 reload 的旧结果
+   回写；surface 错误边界随新 load 重置。数据/目录请求迟滞必须进入可重试错误态，
+   不能永久显示“加载中”。
+
+### 增补验收标准
+
+1. 仓库中不再存在以 TS 常量声明 article/publishing 业务定义的生产入口；应用数据制品
+   经 meta bootstrap 安装，事件可完整重放；runtime 删除代码 fallback 后全量测试仍绿。
+2. 「我要看看第一篇文章」有限步内 focus 到 `post:first-post`，画布显示该实体已有
+   title/category/body 等事实；没有 body 时如实显示缺失，不退回集合列表。
+3. 「删除所有文章」有限步内 failed、零 exec/零副作用、零重复导航；失败原因包含合同
+   未声明 delete/remove 的证据。
+4. 活跃 SSE 超过旧 120 秒边界仍可继续；真正连续静默才 idle timeout；每个成功
+   navigate 后画布在有限延迟内更新 focus。
+5. 任意有效 chat 回合在发送后立即刷新，user goal 与已到达进度仍可见；服务端完成后
+   同一 turn 原位收口，不重复成两回合；rule-render 与 delegated 同样可恢复。
+6. reasoning 高频分片、快速 concern 切换和连续 reload 压测下页面仍可交互；旧 load
+   不覆盖新 concern，超时有明确错误和重新载入入口，恢复后 boundary 不保持旧错误。
+7. `CI=true pnpm check`、`CI=true pnpm e2e` 与新增浏览器复验全部通过。
+
 ## 施工上下文(自包含:subagent 无需再做 discovery)
 
 **模块地图(精确触点)**:

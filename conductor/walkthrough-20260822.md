@@ -205,3 +205,37 @@ agent navigate → post:first-post
 这里的 `focus` 是临时处境，不是凝固布局：不产生 `render-spec-frozen`，不把实体内容塞进 SSE，只传实体引用；renderer 继续从合同端点/实体缓存取事实。快速连续导航应更新同一个 focus surface，而不是为每一步新增画布卡片。人类主动点选实体也应写入同一套 focus 模型，保证双方共享一个“当前对象”。可以提供暂停跟随，但默认跟随正在执行的 inline agent。
 
 新增验收应覆盖：每个成功 navigate 帧后画布在有限延迟内显示对应实体；exec/done 不误切 focus；显示值与 `/api/entity?rel=…` 快照一致；导航循环在人类界面上可观察；focus 更新零业务副作用、零凝固事件。严重度高，建议与 #8（单实体阅读）、#9（失败出口）、#10（SSE 生命周期）合并为“agent 处境与人类界面闭环”新 track。
+
+## T14 之后补充问题：业务应用仍由 TS 特权出生（#12）
+
+`flows.ts`、`applications.ts`、`capabilities.ts` 与 `seed.ts` 仍编译进 article/
+publishing/community 的完整业务定义。boot 虽把全文写入日志、日常运行优先使用活跃
+定义，但 `service.ts` 仍负责枚举这些常量、在空库逐条 append，并在定义缺失时回退
+代码常量。因此当前只做到“启动后应用是数据”，没有做到“应用从安装开始就是数据”。
+
+期望：TS 只保留 meta kernel 与通用解析/执行机制；业务应用以独立版本化制品经 meta
+bootstrap 安装，安装本身有 identity/version/actor 审计且幂等；runtime 只枚举 fold
+快照中的活跃定义，缺失即失败。单纯改文件扩展名但保留 service 特权补种不算修复。
+
+## T14 之后补充问题：聊天投影不能跨刷新存活（#13）
+
+客户端只在 final/render 回执到达后才把 sessionId 写 localStorage；服务端也只在 inline
+循环完整结束后写 `chat-turn`。rule render、delegated 是历史旁路，在途回合刷新时 user
+goal、thinking 与 steps 都只存在 React state，立即丢失。即“事件日志是真相”与用户
+实际看到的聊天记录不一致。
+
+期望：请求开始即形成可恢复 turn identity，session 立即交付客户端；可见进度追加留痕，
+所有模式统一以 final 收口。history 能把 started/progress/final 合并为一个回合，并在刷新
+后持续追踪尚未完成的服务端执行。
+
+## T14 之后补充问题：聊天长流与画布竞态造成真实卡死（#14）
+
+新鲜 `/canvas` 探针响应和 DOM 均正常，但卡死集中发生在长聊天/导航期间：每个
+`thinking-delta` 都复制 messages 并触发 assistant-ui 重渲染；画布 `load()` 对快速
+concern 变化、手工 reload 和动作后 reload 没有取消、代次或超时，旧异步结果可覆盖新
+结果；surface error boundary 以稳定 id 复用，重新载入后仍可能保持旧错误态。三者叠加
+会让主线程长时间不可交互或永远停在“加载中”。
+
+期望：reasoning 分片按短窗口合帧；canvas load latest-wins、可取消、有界超时并阻止并发
+reload；新 load 重置 boundary。压力验收必须覆盖高频 delta、快速 concern 切换、连续
+reload 与迟滞请求，不能再用一次 fresh-page RTT 证明“没有卡死”。
