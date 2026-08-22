@@ -4,8 +4,8 @@
 
 ## Phase A: flow 拓扑图(只读)
 
-- [~] Task: 拓扑数据推导 + 布局复用(flowEdges → graph 形状;layeredLayout 复用或抽取共享;TDD:布局确定性单测——同输入同坐标)
-- [ ] Task: BIOS 拓扑图组件 + 页面接入(/meta/flow/<name> 与 /meta/self 增只读拓扑,节点 title + 边 action 名;无编辑交互;组件测试 + e2e 可见断言)
+- [x] Task: 拓扑数据推导 + 布局复用(flowEdges → graph 形状;layeredLayout 复用或抽取共享;TDD:布局确定性单测——同输入同坐标) — 91d57ae
+- [~] Task: BIOS 拓扑图组件 + 页面接入(/meta/flow/<name> 与 /meta/self 增只读拓扑,节点 title + 边 action 名;无编辑交互;组件测试 + e2e 可见断言)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: definition-versions 可读投影 + 两版对比
