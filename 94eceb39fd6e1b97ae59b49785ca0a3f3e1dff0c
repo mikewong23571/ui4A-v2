@@ -1,0 +1,17 @@
+T14 Phase I autonomous verification
+
+Scope: closed walkthrough US-1–US-14 gaps covering flow field cleanup, suspended 202 terminal semantics, post-exec canvas refresh, readable confirmations, exec-plan rejection detail, meta-aware chat/canvas routing and nested schemas, discovery-only authorization boundary, and isolated Vitest database.
+
+Automated evidence:
+- CI=true pnpm check: 119 files passed, 2 Temporal-gated skipped; 1127 tests passed, 2 skipped.
+- CI=true pnpm e2e: 36 passed, 14 environment-gated skipped.
+- Isolated DB probe: chat route test left dev events count unchanged (11 before/after).
+
+Autonomous browser verification:
+- meta/flow:post-status rendered active v1 through /_meta with no 404.
+- post:first-post rendered complete body before and after refresh.
+- ambiguous comment intent kept pending count 3 -> 3.
+- /events showed 42-event human/agent audit including action-executed, action-rejected, agent-decision, and chat-turn.
+- no browser console errors.
+
+Application left running via pnpm dev:all on web 3100, Temporal 7233, UI 8233.
