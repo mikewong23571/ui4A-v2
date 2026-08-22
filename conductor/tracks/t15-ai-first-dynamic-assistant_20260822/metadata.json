@@ -2,7 +2,7 @@
   "id": "t15-ai-first-dynamic-assistant_20260822",
   "type": "feature",
   "status": "new",
-  "title": "T15 AI-first 动态助手:多轮理解、合同治理与 U1-U22 用户故事 Eval 闭环",
+  "title": "T15 AI-first 动态助手:多轮理解、合同治理与 U1-U23 用户故事 Eval 闭环",
   "created_at": "2026-08-22T21:59:49+08:00",
   "approved_by": "user (AI-first direction, real LLM story eval, rule driver exits product runtime)"
 }

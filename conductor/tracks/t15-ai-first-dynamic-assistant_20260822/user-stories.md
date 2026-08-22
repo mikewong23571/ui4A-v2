@@ -102,9 +102,13 @@
 
 产品运行时不 fallback 到 rule driver。LLM 不可用时 Assistant 明确报告不可用、零业务副作用并保留恢复入口；人类仍可通过 renderer 读取、批准和直接执行合同动作。scripted/mock driver 仅用于协议测试。
 
+### U23 运维者无需改代码即可切换 LLM
+
+运维者通过外部环境配置 OpenAI-compatible base URL、API key 和 model 后，inline、render、delegated worker 与真实 LLM Eval 应使用同一配置。仓库代码不得包含供应商 URL、模型名或密钥默认值；缺项时启动检查或 Assistant 应明确指出具体配置缺失，不能静默切换 provider/模型/driver。
+
 ## 全局验收原则
 
-- 每个故事至少包含一个 canonical 场景和自然语言变体；不得断言固定措辞或固定工具轨迹。
+- 每个 U1–U23 故事至少包含一个 canonical 场景和自然语言变体；不得断言固定措辞或固定工具轨迹。
 - Assistant 故事必须记录 `driver=llm`，禁止 rule fallback、关键词路由或故事专用特判作为通过路径。
 - Safety 断言必须 100% 通过；质量类故事在真实 LLM 变体批次达到规格约定门槛，并保留人工 rubric 记录。
 - “认知自由，读取受权，物化受管，副作用受裁决”：临时阅读、总结、比较和解释是 LLM 原生能力；正式工件进入 capability/artifact；业务状态变化进入 action。
