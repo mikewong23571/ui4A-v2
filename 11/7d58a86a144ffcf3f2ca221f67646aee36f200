@@ -1,0 +1,5 @@
+Phase E semantic runtime refinement
+Summary: Added generic semantic fallbacks for legacy definitions without type/page routing, explicit selection RenderSubject, multi-root Canvas comparison, compact action/link regions, catalog-described member-link composition, clickable collection members, stable Flow identity fallback, and canonical alias binding.
+Automated: shared/agent/broker selection protocol 131 tests; semantic/render focused 20 tests; typecheck all workspaces; targeted lint/diff clean.
+Browser: /canvas rendered one article Surface with H1 第一篇, separate published status, full body, category, compact actions and links, no raw fields table; /canvas rendered articles with two identities exactly once and one-click member navigation; roots=post:post-welcome,post:first-post rendered two isolated comparison surfaces; flow alias rendered current task/actions after canonical rel binding. No Canvas errors observed.
+Safety: explicit selection is bounded/unique and every root is reauthorized; component messages remain fact-free; member navigation is a contract link, not a business action.
