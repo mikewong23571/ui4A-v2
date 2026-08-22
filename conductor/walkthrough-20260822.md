@@ -122,3 +122,19 @@
 | 5 | US-1 | **数据丢失 bug(非文案)**:向导第二步选的 category/tags 发布后在文章上完全消失——实证 `post:walkthrough` 实体 fields 只有 `{"title": "walkthrough 初体验"}`,无 category(seed 文章有)。根因:`effects.ts` append 效果的 `paramsToFields(request, effect.fields)` **只复制本次 exec 请求参数**;publish 动作只声明 title 字段,分类步收集的 category/tags 经 set-field 落在向导实例(article-drafting:main)上,append 不从源实例字段取值。e2e 断言缺口:B1 各测试只断言文章出现与状态,从未断言 category/tags 落在新文章上,所以一直绿。 | append 效果合并源实例字段(参数优先、实例字段兜底,origin 各自留痕,不破铁律 4);或定义层声明字段映射。修后补 e2e 断言:发布文章的 category/tags 与向导所填一致。 | **高**(B1 主链路静默丢数据;「事实永不发明」的对偶——事实被静默丢弃) | 立项:append 效果源实例字段合并 + B1 断言补强(与 #4 的预填方案一并设计) |
 | 6 | US-2/US-13 | **#5 的下游爆点 + 画布韧性缺口**:chat 发布(US-2)同路径丢 category(实证同一 append 机制,agent/人类两路都中);随后 `/canvas` 上 S5 时代凝固的 articles-by-category chart 对**每个成员**解引用 `fields.category`,撞上无该字段的成员 → deref 闸(I2 缺数据不造数据)**整面响亮失败**:「bind.series 维度路径 "fields.category" 在成员 #2(post:walkthrough)上不存在」。闸的行为正确(拒绝发明数据),但:①一个成员缺字段 → 整个 surface 挂掉,错误文案面向开发者而非用户;②与 T12 遗留 bug(非聚合词条 dimension 错位/caption dangling/无 per-surface 错误边界)同族——现已从「实测发现」升级为「walkthrough 实锤」。 | 根因修 #5 即解;韧性另立:deref 成员级失败降级为「该成员跳过 + 面内如实标注」(或直接失败但 per-surface 错误边界,一个面挂不拖死整页);错误文案给用户行动指引(哪条数据缺什么、去哪修)。 | **高**(画布在主路径上直接不可用;且证明凝固 spec 对数据漂移零韧性) | 立项:画布 deref 韧性与错误边界(与 T12 遗留三 bug 并案;根因依赖 #5) |
 | 7 | US-13 | **合同无数据修复通道 + 「假卡死」体验**:探针实测 /canvas 页面本身响应正常(headless Chromium + CDP,evalRTT 1-3ms,零页面错误,聊天面板在画布页使用亦不卡)——用户感知的「卡死」实为 chart surface 每轮重载必失败的卡死感(「重新载入」治不了数据病)。且 unpublish 不能救:成员仍在 articles 集合中(offline 不移除成员),deref 依旧踩缺字段成员。即:合同里没有任何动作能修复/移除一条坏数据(无 remove、无字段订正、archive 也不移集合),画布被一条坏成员永久劫持,除非 DB 重置或 #6 韧性落地。 | 短期:per-member 降级(#6)让画布对坏成员免疫;中期:flow 定义层补「数据订正」类动作先例(或集合成员的 remove 语义);认知:「重新载入」按钮在错误持续存在时应如实表达「问题不在加载,在数据」。 | 高(用户把数据病误诊为系统卡死,信任折损大;且暴露合同无自救通道) | 并入 #6 画布韧性 track(错误态表达 + per-member 降级);数据订正动作另记架构 backlog |
+
+## T14 修复复验（2026-08-22）
+
+以 `e2e/t14-walkthrough.spec.ts` 在重置后的 dev 库脚本化复走 US-1 / US-2 / US-13 / US-14；同一场景内先由 renderer 发布、再由 chat 合同发布，随后验证 table/chart 凝固与 `/events` 共享审计日志。结果：
+
+| 问题 | 复验结果 |
+|---|---|
+| #1 | `/events` 每条均显示机械摘要与时间戳；原始 audit 默认折叠且可展开；human/agent/chat-turn/agent-decision 均可辨。 |
+| #2 | 首页采用「运行概览」「执行中委托」「委托监控」「定义管理」，执行中委托带口径说明。 |
+| #3 | 向导表单使用「文章标题」等 field title，属性表不再把纯展示机器字段与表单撞名。 |
+| #4 | ready 页 title 自动预填前序值，并说明其 slug 用途；无需重复输入即可发布。 |
+| #5 | human/agent 两路发布后的文章均保留 category/tags；append 来源与重放回归通过。 |
+| #6 | 缺字段成员改为跳过并面内声明，结构错误与渲染异常按 surface 隔离；caption/dimension 双闸通过针对性回归。 |
+| #7 | 坏成员不再永久劫持整张画布，重载保持其余数据稳定；通用数据订正/remove 动作仍按原 spec 作为独立架构 backlog，不伪装为本 track 已提供。 |
+
+验收证据：`CI=true pnpm check`（118 files / 1095 tests）；`CI=true pnpm e2e`（46 passed / 4 gated skips）；T14 walkthrough 场景 1/1；真实 GLM 的 rule-miss「按分类可视化当前内容」路径 1/1，通过 grounding/bind 闸后凝固并在画布渲染。
