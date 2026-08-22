@@ -1,0 +1,4 @@
+Phase E test migration
+Issue: full check exposed ten T7 Canvas assertions that deliberately expected the removed fixed detail/demo/frozen-surface behavior. They were obsolete product expectations, not implementation regressions.
+Change: replaced them with six semantic runtime tests for Entity hierarchy, collection member navigation, explicit selection, catalog fail-closed, reload/cache reuse, and latest-navigation wins.
+Verification: focused Canvas 6/6; clean pnpm check 152 files/1322 tests; typecheck and lint passed.
