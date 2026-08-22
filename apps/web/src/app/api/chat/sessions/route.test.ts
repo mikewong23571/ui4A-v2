@@ -96,15 +96,23 @@ afterEach(async () => {
 });
 
 describe('聊天会话清单投影(T9)', () => {
-  const envKey = process.env.GLM_API_KEY;
+  const envKey = process.env.LLM_API_KEY;
+  const envBase = process.env.LLM_BASE_URL;
+  const envModel = process.env.LLM_MODEL;
 
   beforeEach(() => {
-    delete process.env.GLM_API_KEY; // auto → rule(确定性零外网)
+    delete process.env.LLM_API_KEY; // auto → rule(确定性零外网)
+    delete process.env.LLM_BASE_URL;
+    delete process.env.LLM_MODEL;
   });
 
   afterEach(() => {
-    if (envKey === undefined) delete process.env.GLM_API_KEY;
-    else process.env.GLM_API_KEY = envKey;
+    if (envKey === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = envKey;
+    if (envBase === undefined) delete process.env.LLM_BASE_URL;
+    else process.env.LLM_BASE_URL = envBase;
+    if (envModel === undefined) delete process.env.LLM_MODEL;
+    else process.env.LLM_MODEL = envModel;
   });
 
   it('多会话分组聚合:turns 计数、末回合摘要、lastTs 倒序', async () => {

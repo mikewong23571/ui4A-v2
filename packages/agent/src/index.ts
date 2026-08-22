@@ -5,6 +5,7 @@
  * 纯 TS 两栖;HTTP 客户端经 fetchImpl 注入;LLM 传输同样可注入(单测零网络)。
  */
 export * from './types';
+export * from './llm-config';
 export * from './http';
 export * from './loop';
 export * from './match';

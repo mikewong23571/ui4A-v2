@@ -1,12 +1,12 @@
 /**
- * T11 Phase A — GLM-5.3 实测探针内核(e2e/glm-probe.spec.ts 复用)。
+ * T11 Phase A 实测探针内核(e2e/glm-probe.spec.ts 为历史文件名)。
  *
- * 实测 glm-5.3 经 @ai-sdk/openai chat provider(Chat Completions,D7)的:
- * reasoning 暴露形态(SDK 层 parts vs 原始 HTTP 层字段)、tool calling 行为
- * (auto 模式)、每步决策时延。结论决定 T11 thinking 帧格式并校准 D7/D20。
+ * 本模块最初用于 T11 的 GLM-5.3 校准；T15 U23 将运行时探针扩展为任意
+ * OpenAI-compatible profile，同时保留原始文件/type 名以兼容历史调用方。
  *
- * 与 llm-driver 的关系:端点/模型解析口径一致(同 GLM_API_KEY/LLM_BASE_URL/
- * LLM_MODEL env、同 provider.chat() 锁 Chat Completions、同 buildSystemPrompt
+ * T15 U23 起与 llm-driver 共用 provider-neutral 配置合同:只接受完整的
+ * LLM_API_KEY/LLM_BASE_URL/LLM_MODEL profile，不再携带供应商默认值。
+ * 两者同 provider.chat() 锁 Chat Completions、同 buildSystemPrompt
  * 协议核心、同固定动词工具形态),但本模块独立发起 generateText/streamText
  * 调用;llm-driver 的 streamText 决策取数(Phase C)与本探针共用
  * raw-reasoning.ts 的 raw 部件解析,两处口径逐字节一致。
@@ -16,19 +16,14 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, jsonSchema, streamText, type LanguageModel, type ToolSet } from 'ai';
 
-import { DEFAULT_LLM_BASE_URL, DEFAULT_LLM_MODEL, buildSystemPrompt } from './llm-driver';
+import { buildSystemPrompt } from './llm-driver';
+import { resolveLlmConfig, type LlmConfigOverrides } from './llm-config';
 import { extractRawReasoning, readRawDelta } from './raw-reasoning';
 
 /** 单次调用的 abort 兜底缺省值(推理模型 effort max 时单步可能远超 60s)。 */
 export const DEFAULT_PROBE_ABORT_MS = 150_000;
 
-export interface GlmProbeOptions {
-  /** 缺省 process.env.GLM_API_KEY。 */
-  apiKey?: string;
-  /** 缺省 process.env.LLM_BASE_URL ?? DEFAULT_LLM_BASE_URL。 */
-  baseURL?: string;
-  /** 缺省 process.env.LLM_MODEL ?? DEFAULT_LLM_MODEL。 */
-  model?: string;
+export interface GlmProbeOptions extends LlmConfigOverrides {
   /** 缺省 DEFAULT_PROBE_ABORT_MS。 */
   abortMs?: number;
 }
@@ -42,6 +37,8 @@ export interface GlmProbeToolCall {
 export interface GlmProbeObservation {
   mode: 'generateText' | 'streamText';
   model: string;
+  /** 本次请求实际使用的 OpenAI-compatible endpoint。 */
+  baseURL: string;
   /** 端到端墙钟时延(发起 → 响应完整返回/流收尾;出错时为出错时刻)。 */
   latencyMs: number;
   /** 调用错误(端点/abort/解析;无则 null)——探针如实记录,由 spec 断言。 */
@@ -108,22 +105,23 @@ function createRecordingFetch(capture: RawCapture) {
   };
 }
 
-/** 端点/模型解析与 llm-driver.resolveSettings 同口径 + 记录型 fetch(探针专属)。 */
+/** 与产品 runtime 共用配置解析，仅额外注入探针的记录型 fetch。 */
 function createProbeModel(options: GlmProbeOptions): {
   model: LanguageModel;
   modelId: string;
+  baseURL: string;
   capture: RawCapture;
 } {
-  const modelId = options.model ?? process.env.LLM_MODEL ?? DEFAULT_LLM_MODEL;
+  const config = resolveLlmConfig(options);
   const capture: RawCapture = { jsonBody: undefined };
   const provider = createOpenAI({
-    baseURL: options.baseURL ?? process.env.LLM_BASE_URL ?? DEFAULT_LLM_BASE_URL,
-    apiKey: options.apiKey ?? process.env.GLM_API_KEY ?? '',
+    baseURL: config.baseURL,
+    apiKey: config.apiKey,
     fetch: createRecordingFetch(capture),
   });
-  // GLM coding plan 只有 chat/completions:显式 .chat() 锁 Chat Completions(D7)。
-  const model: LanguageModel = provider.chat(modelId);
-  return { model, modelId, capture };
+  // Baseline 端点均以 OpenAI-compatible Chat Completions 接入。
+  const model: LanguageModel = provider.chat(config.model);
+  return { model, modelId: config.model, baseURL: config.baseURL, capture };
 }
 
 /**
@@ -210,11 +208,12 @@ function serializeUsage(usage: unknown): Record<string, unknown> | null {
 export async function runGenerateProbe(
   options: GlmProbeOptions = {},
 ): Promise<GlmProbeObservation> {
-  const { model, modelId, capture } = createProbeModel(options);
+  const { model, modelId, baseURL, capture } = createProbeModel(options);
   const startedAt = Date.now();
   const base: GlmProbeObservation = {
     mode: 'generateText',
     model: modelId,
+    baseURL,
     latencyMs: 0,
     error: null,
     sdkReasoningPartCount: 0,
@@ -240,7 +239,7 @@ export async function runGenerateProbe(
       system: buildSystemPrompt({}),
       prompt: PROBE_USER_PROMPT,
       tools: probeToolSet(),
-      // toolChoice 缺省 auto(D7:required 在 GLM 端点挂死);探针同样不传。
+      // 使用 OpenAI-compatible 协议的默认 auto，不附加供应商专用参数。
       abortSignal: AbortSignal.timeout(options.abortMs ?? DEFAULT_PROBE_ABORT_MS),
     });
     base.latencyMs = Date.now() - startedAt;
@@ -268,11 +267,12 @@ export async function runGenerateProbe(
  * SSE chunk 同步对照,回答「reasoning 在哪一层暴露、首字节多快到」。
  */
 export async function runStreamProbe(options: GlmProbeOptions = {}): Promise<GlmProbeObservation> {
-  const { model, modelId } = createProbeModel(options);
+  const { model, modelId, baseURL } = createProbeModel(options);
   const startedAt = Date.now();
   const base: GlmProbeObservation = {
     mode: 'streamText',
     model: modelId,
+    baseURL,
     latencyMs: 0,
     error: null,
     sdkReasoningPartCount: 0,
@@ -430,10 +430,10 @@ export function formatProbeReport(observations: GlmProbeObservation[]): string {
   const stream = observations.filter((entry) => entry.mode === 'streamText');
   const first = observations[0];
   const lines = [
-    '## GLM-5.3 探针实测报告(T11 Phase A)',
+    '## OpenAI-compatible LLM 探针实测报告',
     '',
     `- 时间: ${new Date().toISOString()}`,
-    `- 模型: ${first !== undefined ? first.model : '(无观测)'};端点: ${process.env.LLM_BASE_URL ?? DEFAULT_LLM_BASE_URL}(provider.chat,Chat Completions)`,
+    `- 模型: ${first !== undefined ? first.model : '(无观测)'};端点: ${first !== undefined ? first.baseURL : '(无观测)'}(provider.chat,Chat Completions)`,
     `- 样本: generateText ×${generate.length},streamText ×${stream.length}`,
     '',
     '### 1. reasoning 暴露形态',

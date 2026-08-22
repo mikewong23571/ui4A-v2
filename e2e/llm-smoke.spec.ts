@@ -1,12 +1,12 @@
 /**
- * T2 Phase E / Task E4 — 真实 GLM 冒烟(RUN_LLM_E2E 门控,默认 skip)。
+ * T2 Phase E / Task E4 — 真实 LLM 冒烟(RUN_LLM_E2E + provider profile 门控,默认 skip)。
  *
  * goal B1 不传 fields:三步向导内容(标题/分类/正文)全部由 LLM 按字段语义
- * 自行编写(枚举字段必须落在 enum 内)。跑在真实 GLM coding plan 端点
- * (open.bigmodel.cn/api/coding/paas/v4,模型缺省 glm-5.3,D20)上:
+ * 自行编写(枚举字段必须落在 enum 内)。provider endpoint/model 均由环境显式提供:
  *
  * ```bash
- * GLM_API_KEY=$(cat ~/.secrets/glm_coding_plan_key) RUN_LLM_E2E=1 \
+ * LLM_API_KEY=... LLM_BASE_URL=https://provider.example/v1 LLM_MODEL=provider-model \
+ *   RUN_LLM_E2E=1 \
  *   CI=true pnpm exec playwright test e2e/llm-smoke.spec.ts
  * ```
  *
@@ -16,13 +16,19 @@ import { expect, test } from '@playwright/test';
 
 import { SCENARIO_BASE, withFreshServer } from './server-kit';
 
-test.skip(!process.env.RUN_LLM_E2E, 'RUN_LLM_E2E 未设置(真实 GLM 冒烟,默认 skip)');
+test.skip(
+  !process.env.RUN_LLM_E2E ||
+    !process.env.LLM_API_KEY ||
+    !process.env.LLM_BASE_URL ||
+    !process.env.LLM_MODEL,
+  'RUN_LLM_E2E 或 LLM provider profile 未完整设置(真实 LLM 冒烟,默认 skip)',
+);
 
 test.beforeEach(() => {
   test.setTimeout(420_000);
 });
 
-test('真实 GLM:B1 目标让 LLM 自编三步内容并发布(文章 2→3)', async () => {
+test('真实 LLM:B1 目标让 LLM 自编三步内容并发布(文章 2→3)', async () => {
   await withFreshServer(async () => {
     const before = (await (await fetch(`${SCENARIO_BASE}/api/entity?rel=articles`)).json()) as {
       properties: { count: number };

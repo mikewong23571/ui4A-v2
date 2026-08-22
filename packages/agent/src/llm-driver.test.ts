@@ -20,6 +20,12 @@ import {
 } from './testkit';
 import type { AgentGoal, DriverContext, FetchLike } from './types';
 
+const TEST_LLM_CONFIG = {
+  apiKey: 'test-key',
+  baseURL: 'https://provider.test/v1',
+  model: 'test-model',
+} as const;
+
 const nextAction: SirenAction = {
   name: 'next',
   title: '下一步',
@@ -117,7 +123,7 @@ function openaiTextResponse(text: string): Response {
 function llmDriverWith(responder: (url: string, init?: RequestInit) => Response) {
   const transport = createScriptedTransport(responder);
   return {
-    driver: createLlmDriver({ apiKey: 'test-key', fetchImpl: transport.fetch }),
+    driver: createLlmDriver({ ...TEST_LLM_CONFIG, fetchImpl: transport.fetch }),
     calls: transport.calls,
   };
 }
@@ -197,7 +203,7 @@ describe('B4:失败如实呈现(委托不崩溃)', () => {
     const failing: FetchLike = async () => {
       throw new Error('fetch failed: connection refused');
     };
-    const driver = createLlmDriver({ apiKey: 'k', fetchImpl: failing });
+    const driver = createLlmDriver({ ...TEST_LLM_CONFIG, fetchImpl: failing });
 
     const op = await driver.decide(context());
 
@@ -258,16 +264,28 @@ describe('fail-safe:模型输出不合法', () => {
   });
 });
 
-describe('createDriver 工厂(auto 回退 = I1 机械层)', () => {
-  const envKey = process.env.GLM_API_KEY;
+describe('createDriver 工厂(provider-neutral config)', () => {
+  const env = {
+    key: process.env.LLM_API_KEY,
+    baseURL: process.env.LLM_BASE_URL,
+    model: process.env.LLM_MODEL,
+  };
 
   beforeEach(() => {
-    delete process.env.GLM_API_KEY;
+    delete process.env.LLM_API_KEY;
+    delete process.env.LLM_BASE_URL;
+    delete process.env.LLM_MODEL;
   });
 
   afterEach(() => {
-    if (envKey === undefined) delete process.env.GLM_API_KEY;
-    else process.env.GLM_API_KEY = envKey;
+    for (const [name, value] of Object.entries({
+      LLM_API_KEY: env.key,
+      LLM_BASE_URL: env.baseURL,
+      LLM_MODEL: env.model,
+    })) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
   });
 
   it('auto 无 key → rule driver(决策与 rule driver 完全一致,零 LLM 调用)', async () => {
@@ -280,9 +298,9 @@ describe('createDriver 工厂(auto 回退 = I1 机械层)', () => {
   });
 
   it('auto 有 key → llm driver(决策走 LLM 传输)', async () => {
-    expect(resolveDriverKind('auto', { apiKey: 'k' })).toBe('llm');
+    expect(resolveDriverKind('auto', TEST_LLM_CONFIG)).toBe('llm');
     const driver = createDriver('auto', {
-      apiKey: 'k',
+      ...TEST_LLM_CONFIG,
       fetchImpl: async () => openaiToolResponse('done', { summary: 'LLM 通道' }),
     });
     await expect(driver.decide(context())).resolves.toEqual({
@@ -291,20 +309,13 @@ describe('createDriver 工厂(auto 回退 = I1 机械层)', () => {
     });
   });
 
-  it('显式 llm 无 key 仍构造 LLM driver(空 key 由端点裁决,如实 401)', async () => {
+  it('显式 llm 配置缺项时在网络调用前失败', () => {
     expect(resolveDriverKind('llm')).toBe('llm');
-    const driver = createDriver('llm', {
-      fetchImpl: async () => jsonResponse({ error: { message: 'no api key' } }, 401),
-    });
-    const op = await driver.decide(context());
-    expect(op.kind).toBe('fail');
-    if (op.kind === 'fail') {
-      expect(op.reason).toContain('401');
-    }
+    expect(() => createDriver('llm')).toThrow('LLM_API_KEY, LLM_BASE_URL, LLM_MODEL');
   });
 
   it('rule 恒为 rule driver', () => {
-    expect(resolveDriverKind('rule', { apiKey: 'k' })).toBe('rule');
+    expect(resolveDriverKind('rule', TEST_LLM_CONFIG)).toBe('rule');
   });
 });
 

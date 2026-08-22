@@ -119,15 +119,23 @@ afterEach(async () => {
 // ---- 场景 -------------------------------------------------------------------
 
 describe('聊天历史投影(T9 Phase B)', () => {
-  const envKey = process.env.GLM_API_KEY;
+  const envKey = process.env.LLM_API_KEY;
+  const envBase = process.env.LLM_BASE_URL;
+  const envModel = process.env.LLM_MODEL;
 
   beforeEach(() => {
-    delete process.env.GLM_API_KEY; // auto → rule(确定性零外网)
+    delete process.env.LLM_API_KEY; // auto → rule(确定性零外网)
+    delete process.env.LLM_BASE_URL;
+    delete process.env.LLM_MODEL;
   });
 
   afterEach(() => {
-    if (envKey === undefined) delete process.env.GLM_API_KEY;
-    else process.env.GLM_API_KEY = envKey;
+    if (envKey === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = envKey;
+    if (envBase === undefined) delete process.env.LLM_BASE_URL;
+    else process.env.LLM_BASE_URL = envBase;
+    if (envModel === undefined) delete process.env.LLM_MODEL;
+    else process.env.LLM_MODEL = envModel;
   });
 
   it('inline 回合落 chat-turn → history 按 sessionId 读回(goal/messages 原样,seq 升序)', async () => {
@@ -205,9 +213,7 @@ describe('聊天历史投影(T9 Phase B)', () => {
     // steps 是机器可读原料(messages 仍是人读投影,口径不变)。
     expect(steps.length).toBeGreaterThan(0);
     expect(steps).toHaveLength(messages.length);
-    expect(steps[0]!.op.kind, '首步是协议操作(navigate 或直接 exec)').toMatch(
-      /^(navigate|exec)$/,
-    );
+    expect(steps[0]!.op.kind, '首步是协议操作(navigate 或直接 exec)').toMatch(/^(navigate|exec)$/);
     expect(steps[steps.length - 1]!.op.kind).toBe('done');
     expect(
       steps.every((step) => typeof step.step === 'number' && typeof step.rel === 'string'),

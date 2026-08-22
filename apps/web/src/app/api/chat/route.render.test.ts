@@ -8,10 +8,10 @@
  * 真 PG:凝固是引擎写路径,合同级断言走 /api/events 与 /api/entity)。
  *
  * T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthrough(mock
- * LLM 桩经 GLM_API_KEY + LLM_BASE_URL 注入)——buildRenderPrompt(词汇表 +
+ * LLM 桩经 LLM_API_KEY + LLM_BASE_URL + LLM_MODEL 注入)——buildRenderPrompt(词汇表 +
  * sitemap 处境)→ streamText → parseRenderResponse(fail-safe)→ 同一零字面
  * 校验 + 处境核对 + 词条形状 → 凝固 → 响应;解析失败/零字面违规/假字段 →
- * 原路交回普通循环(不凝固);无 key 跳过 LLM 路径(I1,rule 路径完整)。
+ * 原路交回普通循环(不凝固);无完整 LLM 配置时跳过 LLM 路径(I1,rule 路径完整)。
  */
 import { createServer, type Server } from 'node:http';
 
@@ -291,14 +291,17 @@ function closeStub(stub: RenderLlmStub): Promise<void> {
 }
 
 describe('T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthrough(mock LLM)', () => {
-  const envKey = process.env.GLM_API_KEY;
+  const envKey = process.env.LLM_API_KEY;
   const envBase = process.env.LLM_BASE_URL;
+  const envModel = process.env.LLM_MODEL;
 
   afterEach(() => {
-    if (envKey === undefined) delete process.env.GLM_API_KEY;
-    else process.env.GLM_API_KEY = envKey;
+    if (envKey === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = envKey;
     if (envBase === undefined) delete process.env.LLM_BASE_URL;
     else process.env.LLM_BASE_URL = envBase;
+    if (envModel === undefined) delete process.env.LLM_MODEL;
+    else process.env.LLM_MODEL = envModel;
   });
 
   it('LLM 产 kanban spec → 同一零字面校验 → 凝固 → SSE render 帧(思考增量先行;bind 零字面,component 取自词汇表)', async () => {
@@ -311,8 +314,9 @@ describe('T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthro
       { reasoning: ['先看词汇表', ',再定词条。'] },
     );
     try {
-      process.env.GLM_API_KEY = 'test-key';
+      process.env.LLM_API_KEY = 'test-key';
       process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+      process.env.LLM_MODEL = 'test-model';
 
       const { status, json, raw } = await chat({
         sessionId: 't12-llm-render',
@@ -370,8 +374,9 @@ describe('T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthro
   it('三拒之一:LLM 产非法 JSON → 解析失败,原路交回普通 agent 循环(不凝固)', async () => {
     const stub = await createRenderLlmStub('抱歉,我无法生成渲染说明。');
     try {
-      process.env.GLM_API_KEY = 'test-key';
+      process.env.LLM_API_KEY = 'test-key';
       process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+      process.env.LLM_MODEL = 'test-model';
 
       const { status, json } = await chat({
         sessionId: 't12-llm-bad-json',
@@ -402,8 +407,9 @@ describe('T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthro
       }),
     );
     try {
-      process.env.GLM_API_KEY = 'test-key';
+      process.env.LLM_API_KEY = 'test-key';
       process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+      process.env.LLM_MODEL = 'test-model';
 
       const { status, json } = await chat({
         sessionId: 't12-llm-literal',
@@ -431,8 +437,9 @@ describe('T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthro
       }),
     );
     try {
-      process.env.GLM_API_KEY = 'test-key';
+      process.env.LLM_API_KEY = 'test-key';
       process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+      process.env.LLM_MODEL = 'test-model';
 
       const { status, json } = await chat({
         sessionId: 't12-llm-ghost',
@@ -456,8 +463,9 @@ describe('T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthro
       '{"concern":"articles-board","component":"kanban","bind":{"columns":{"collection":"articles"}}}',
     );
     try {
-      delete process.env.GLM_API_KEY;
-      process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+      delete process.env.LLM_API_KEY;
+      delete process.env.LLM_BASE_URL;
+      delete process.env.LLM_MODEL;
 
       // rule 路径完整:展示意图命中词表 → chart spec 凝固(与无 LLM 时逐字节一致)。
       const ruleHit = await chat({

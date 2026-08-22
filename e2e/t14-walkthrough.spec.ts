@@ -217,6 +217,6 @@ test('US-1/2/13/14:双执行者发布 → 稳定渲染 → 可读审计，#1–#
       await disclosures.first().locator('summary').click();
       await expect(disclosures.first()).toHaveAttribute('open', '');
     },
-    { GLM_API_KEY: '' },
+    { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
   );
 });

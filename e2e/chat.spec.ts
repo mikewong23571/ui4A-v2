@@ -1,10 +1,10 @@
 /**
  * T2 Phase E / Task E3 — chat 合同 E2E:B4(坏 key)、I1(无 key)、flow 导航补全。
  *
- * - B4:GLM_API_KEY=invalid + 显式 driver 'llm' + LLM_BASE_URL 指向本地 401 桩
+ * - B4:provider-neutral LLM 配置 + 显式 driver 'llm' + LLM_BASE_URL 指向本地 401 桩
  *   (确定性,零外网依赖;真实端点 401 形状同构)→ chat 响应包含 401 与错误原文,
  *   route 不 5xx;同一 session 再发一次行为一致(循环存活,委托不崩溃);
- * - I1:GLM_API_KEY=''(显式空,压过 .env.local)→ auto 回退 rule →
+ * - I1:LLM 配置三项显式清空(压过 .env.local)→ auto 回退 rule →
  *   B1 目标(fields 经 goal 传入)→ 文章计数 2→3,轨迹含三步填充 + publish,
  *   driver='rule'(无 LLM 网络调用的 e2e 级证据;单测级 auto 回退断言见
  *   packages/agent/src/llm-driver.test.ts);
@@ -149,7 +149,7 @@ test('flow 导航补全:articles → flow 入口链接 → 向导实例(零 star
   });
 });
 
-test('I1:无 GLM_API_KEY → chat auto 回退 rule,B1 完成(文章 2→3)', async () => {
+test('I1:无 LLM 配置 → chat auto 回退 rule,B1 完成(文章 2→3)', async () => {
   await withFreshServer(
     async () => {
       expect(await articleCount()).toBe(2);
@@ -183,7 +183,9 @@ test('I1:无 GLM_API_KEY → chat auto 回退 rule,B1 完成(文章 2→3)', asy
       expect(
         frames
           .slice(0, -1)
-          .every((frame) => frame.type === 'session' || frame.type === 'step' || frame.type === 'focus'),
+          .every(
+            (frame) => frame.type === 'session' || frame.type === 'step' || frame.type === 'focus',
+          ),
       ).toBe(true);
       // T11 Phase C(spec 验收 5 前半):rule driver 无 reasoning → 零 thinking
       // 帧,rule 路径帧序列与现状逐帧一致。
@@ -191,8 +193,8 @@ test('I1:无 GLM_API_KEY → chat auto 回退 rule,B1 完成(文章 2→3)', asy
 
       expect(await articleCount()).toBe(3);
     },
-    // 显式空 key:进程 env 优先于 .env.local —— e2e 进程零 LLM 凭证
-    { GLM_API_KEY: '' },
+    // 显式空配置:进程 env 优先于 .env.local —— e2e 进程无 LLM profile
+    { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
   );
 });
 
@@ -224,7 +226,11 @@ test('B4:坏 key → 401 原文进对话,route 不 5xx;同 session 再发一次�
 
         // 顺带:同 server 上 rule 通道不受坏 key 影响(auto 显式空 key 时同样成立)
       },
-      { GLM_API_KEY: 'invalid-key', LLM_BASE_URL: `${stub.url()}/v4` },
+      {
+        LLM_API_KEY: 'invalid-key',
+        LLM_BASE_URL: `${stub.url()}/v4`,
+        LLM_MODEL: 'test-model',
+      },
     );
   } finally {
     await stub.close();
@@ -251,8 +257,8 @@ test('渲染路径 SSE 化兜底:展示意图 rule miss + 无 key → 同流交�
       expect(frames[frames.length - 1]!.type).toBe('final');
       expect(frames.some((frame) => frame.type === 'step')).toBe(true);
     },
-    // 显式空 key:e2e 进程零 LLM 凭证(rule 确定路径,I1 口径)
-    { GLM_API_KEY: '' },
+    // 显式空配置:e2e 进程无 LLM profile(rule 确定路径,I1 口径)
+    { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
   );
 });
 

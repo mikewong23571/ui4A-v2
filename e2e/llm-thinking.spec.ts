@@ -1,7 +1,7 @@
 /**
- * T11 Phase D — 真实 GLM 门控:思考流与留痕(RUN_LLM_E2E + GLM_API_KEY 双门控,默认 skip)。
+ * T11 Phase D — 真实 LLM 门控:思考流与留痕(RUN_LLM_E2E + provider profile 门控,默认 skip)。
  *
- * spec 验收 4/5 的门控实测部分(真实 glm-5.3 端点,D20;reasoning 末尾齐发,D22):
+ * spec 验收 4/5 的门控实测部分(provider profile 由环境提供):
  * 1. thinking 帧:llm 回合 SSE 流 ≥1 条 {type:'thinking', step, text},text 非空,
  *    且先于同号 step 帧(step 帧不带步号字段,"同号" = 第 N 条 step 帧——route.ts
  *    以已发 step 帧计数 + 1 给 thinking 编步);
@@ -19,7 +19,7 @@
  * 全程含 server 冷启动约两分钟,超时给足(llm-smoke 同口径)。
  *
  * ```bash
- * GLM_API_KEY=$(cat ~/.secrets/glm_coding_plan_key) RUN_LLM_E2E=1 \
+ * LLM_API_KEY=... LLM_BASE_URL=... LLM_MODEL=... RUN_LLM_E2E=1 \
  *   CI=true pnpm exec playwright test e2e/llm-thinking.spec.ts
  * ```
  *
@@ -30,8 +30,11 @@ import { expect, test } from '@playwright/test';
 import { SCENARIO_BASE, withFreshServer } from './server-kit';
 
 test.skip(
-  !process.env.RUN_LLM_E2E || !process.env.GLM_API_KEY,
-  'RUN_LLM_E2E/GLM_API_KEY 未设置(真实 GLM 思考流门控,默认 skip)',
+  !process.env.RUN_LLM_E2E ||
+    !process.env.LLM_API_KEY ||
+    !process.env.LLM_BASE_URL ||
+    !process.env.LLM_MODEL,
+  'RUN_LLM_E2E 或 LLM provider profile 未完整设置(真实 LLM 思考流门控,默认 skip)',
 );
 
 // UI 与 API 同打场景 server(3110):同一回合、同一事件日志。

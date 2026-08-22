@@ -16,7 +16,7 @@
  * - render 短路/参数错误/delegated 仍为一次性 JSON(形状不动)。
  *
  * 覆盖:
- * - I1(路由级):无 GLM_API_KEY → auto 回退 rule → B1 目标完成,文章计数 +1,
+ * - I1(路由级):无完整 LLM 配置 → auto 回退 rule → B1 目标完成,文章计数 +1,
  *   轨迹消息含三步填充 + publish;
  * - B4(路由级):坏 key + 显式 llm → 401 错误原文进对话,route 不 5xx;
  * - T11 Phase B:chat-turn detail 含结构化 steps(与 trail 逐条等值);
@@ -231,15 +231,23 @@ afterEach(async () => {
 // ---- 场景 -------------------------------------------------------------------
 
 describe('I1(路由级):无 key → auto 回退 rule,B1 完成', () => {
-  const envKey = process.env.GLM_API_KEY;
+  const envKey = process.env.LLM_API_KEY;
+  const envBase = process.env.LLM_BASE_URL;
+  const envModel = process.env.LLM_MODEL;
 
   beforeEach(() => {
-    delete process.env.GLM_API_KEY;
+    delete process.env.LLM_API_KEY;
+    delete process.env.LLM_BASE_URL;
+    delete process.env.LLM_MODEL;
   });
 
   afterEach(() => {
-    if (envKey === undefined) delete process.env.GLM_API_KEY;
-    else process.env.GLM_API_KEY = envKey;
+    if (envKey === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = envKey;
+    if (envBase === undefined) delete process.env.LLM_BASE_URL;
+    else process.env.LLM_BASE_URL = envBase;
+    if (envModel === undefined) delete process.env.LLM_MODEL;
+    else process.env.LLM_MODEL = envModel;
   });
 
   it('auto → rule:发布目标三步填充 + publish,文章计数 2→3', async () => {
@@ -427,19 +435,23 @@ describe('I1(路由级):无 key → auto 回退 rule,B1 完成', () => {
 });
 
 describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', () => {
-  const envKey = process.env.GLM_API_KEY;
+  const envKey = process.env.LLM_API_KEY;
   const envBase = process.env.LLM_BASE_URL;
+  const envModel = process.env.LLM_MODEL;
 
   beforeEach(() => {
-    delete process.env.GLM_API_KEY;
+    delete process.env.LLM_API_KEY;
     delete process.env.LLM_BASE_URL;
+    delete process.env.LLM_MODEL;
   });
 
   afterEach(() => {
-    if (envKey === undefined) delete process.env.GLM_API_KEY;
-    else process.env.GLM_API_KEY = envKey;
+    if (envKey === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = envKey;
     if (envBase === undefined) delete process.env.LLM_BASE_URL;
     else process.env.LLM_BASE_URL = envBase;
+    if (envModel === undefined) delete process.env.LLM_MODEL;
+    else process.env.LLM_MODEL = envModel;
   });
 
   /** agent-decision 事件行(只取本测试关心的字段)。 */
@@ -524,8 +536,9 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
   it('llm 回合(mock 端点):每步一条,prompt 为 system/user 全量原文,reasoning 填真值(T11 Phase C)', async () => {
     const stub = await createScriptedLlmStub();
     try {
-      process.env.GLM_API_KEY = 'test-key';
+      process.env.LLM_API_KEY = 'test-key';
       process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+      process.env.LLM_MODEL = 'test-model';
 
       const { json } = await chat({
         sessionId: 'sess-decision-llm',
@@ -613,26 +626,31 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
 });
 
 describe('T11 Phase C Task 2:thinking 帧(SSE 推理自述管道)', () => {
-  const envKey = process.env.GLM_API_KEY;
+  const envKey = process.env.LLM_API_KEY;
   const envBase = process.env.LLM_BASE_URL;
+  const envModel = process.env.LLM_MODEL;
 
   beforeEach(() => {
-    delete process.env.GLM_API_KEY;
+    delete process.env.LLM_API_KEY;
     delete process.env.LLM_BASE_URL;
+    delete process.env.LLM_MODEL;
   });
 
   afterEach(() => {
-    if (envKey === undefined) delete process.env.GLM_API_KEY;
-    else process.env.GLM_API_KEY = envKey;
+    if (envKey === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = envKey;
     if (envBase === undefined) delete process.env.LLM_BASE_URL;
     else process.env.LLM_BASE_URL = envBase;
+    if (envModel === undefined) delete process.env.LLM_MODEL;
+    else process.env.LLM_MODEL = envModel;
   });
 
   it('llm 回合(mock 端点产 reasoning):thinking 帧携整段自述,先于同号 step 帧', async () => {
     const stub = await createScriptedLlmStub();
     try {
-      process.env.GLM_API_KEY = 'test-key';
+      process.env.LLM_API_KEY = 'test-key';
       process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+      process.env.LLM_MODEL = 'test-model';
 
       const { json, frames } = await chat({
         sessionId: 'sess-thinking-llm',
@@ -694,21 +712,25 @@ describe('T11 Phase C Task 2:thinking 帧(SSE 推理自述管道)', () => {
 });
 
 describe('B4(路由级):坏 key → 401 原文进对话,route 不 5xx', () => {
-  const envKey = process.env.GLM_API_KEY;
+  const envKey = process.env.LLM_API_KEY;
   const envBase = process.env.LLM_BASE_URL;
+  const envModel = process.env.LLM_MODEL;
   let stub: Server & { port(): number };
 
   beforeEach(async () => {
     stub = await createUnauthorizedStub();
-    process.env.GLM_API_KEY = 'invalid-key';
+    process.env.LLM_API_KEY = 'invalid-key';
     process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+    process.env.LLM_MODEL = 'test-model';
   });
 
   afterEach(async () => {
-    if (envKey === undefined) delete process.env.GLM_API_KEY;
-    else process.env.GLM_API_KEY = envKey;
+    if (envKey === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = envKey;
     if (envBase === undefined) delete process.env.LLM_BASE_URL;
     else process.env.LLM_BASE_URL = envBase;
+    if (envModel === undefined) delete process.env.LLM_MODEL;
+    else process.env.LLM_MODEL = envModel;
     await new Promise<void>((resolve) => stub.close(() => resolve()));
   });
 

@@ -53,7 +53,11 @@ const SITEMAP: RenderSitemapContext = {
 const SITEMAP_WITHOUT_CATEGORY: RenderSitemapContext = {
   surfaces: SITEMAP.surfaces,
   flows: [
-    { name: 'article-drafting', title: '文章发布向导', nodes: [{ name: 'basic-info', fields: [{ name: 'title' }] }] },
+    {
+      name: 'article-drafting',
+      title: '文章发布向导',
+      nodes: [{ name: 'basic-info', fields: [{ name: 'title' }] }],
+    },
   ],
 };
 
@@ -229,7 +233,8 @@ describe('parseRenderResponse:fail-safe 解析(mock 口径)', () => {
   });
 
   it('包裹在散文中的 JSON 代码块 → 提取', () => {
-    const text = '好的,渲染说明如下:\n```json\n{"concern":"articles-list","component":"table","bind":{"rows":{"collection":"articles"}}}\n```\n请查收';
+    const text =
+      '好的,渲染说明如下:\n```json\n{"concern":"articles-list","component":"table","bind":{"rows":{"collection":"articles"}}}\n```\n请查收';
     expect(parseRenderResponse(text)).toEqual({
       concern: 'articles-list',
       component: 'table',
@@ -306,7 +311,11 @@ describe('renderSpecGroundingErrors:LLM 产 spec 的处境核对(T12;事实不�
 
   it('collection 不在 sitemap 集合面 → 违规(不发明集合)', () => {
     const errors = renderSpecGroundingErrors(
-      { concern: 'ships-board', component: 'kanban', bind: { columns: { collection: 'spaceships' } } },
+      {
+        concern: 'ships-board',
+        component: 'kanban',
+        bind: { columns: { collection: 'spaceships' } },
+      },
       SITEMAP,
     );
     expect(errors).toHaveLength(1);
@@ -382,6 +391,11 @@ describe('renderSpecGroundingErrors:LLM 产 spec 的处境核对(T12;事实不�
 });
 
 describe('generateRenderSpecWithLlm:LLM 生成路径(T12;脚本化传输,零网络)', () => {
+  const config = {
+    apiKey: 'test-key',
+    baseURL: 'https://provider.test/v1',
+    model: 'test-model',
+  } as const;
   const input: BuildRenderPromptInput = {
     intent: '展示飞船列表',
     sitemap: SITEMAP,
@@ -406,7 +420,7 @@ describe('generateRenderSpecWithLlm:LLM 生成路径(T12;脚本化传输,零网�
     );
 
     const spec = await generateRenderSpecWithLlm(input, {
-      apiKey: 'test-key',
+      ...config,
       fetchImpl: transport.fetch,
     });
 
@@ -431,7 +445,7 @@ describe('generateRenderSpecWithLlm:LLM 生成路径(T12;脚本化传输,零网�
     );
 
     const spec = await generateRenderSpecWithLlm(input, {
-      apiKey: 'test-key',
+      ...config,
       fetchImpl: transport.fetch,
     });
 
@@ -443,10 +457,12 @@ describe('generateRenderSpecWithLlm:LLM 生成路径(T12;脚本化传输,零网�
   });
 
   it('非法 JSON 文本 → undefined(fail-safe,调用方交回普通循环)', async () => {
-    const transport = createScriptedTransport(() => openaiTextResponse('抱歉,我无法生成渲染说明。'));
+    const transport = createScriptedTransport(() =>
+      openaiTextResponse('抱歉,我无法生成渲染说明。'),
+    );
 
     await expect(
-      generateRenderSpecWithLlm(input, { apiKey: 'test-key', fetchImpl: transport.fetch }),
+      generateRenderSpecWithLlm(input, { ...config, fetchImpl: transport.fetch }),
     ).resolves.toBeUndefined();
   });
 
@@ -470,7 +486,7 @@ describe('generateRenderSpecWithLlm:LLM 生成路径(T12;脚本化传输,零网�
 
     const spec = await generateRenderSpecWithLlm(
       input,
-      { apiKey: 'test-key', fetchImpl: transport.fetch },
+      { ...config, fetchImpl: transport.fetch },
       { onReasoningDelta: (piece) => deltas.push(piece) },
     );
 
@@ -500,7 +516,7 @@ describe('generateRenderSpecWithLlm:LLM 生成路径(T12;脚本化传输,零网�
 
     const spec = await generateRenderSpecWithLlm(
       input,
-      { apiKey: 'test-key', fetchImpl: transport.fetch },
+      { ...config, fetchImpl: transport.fetch },
       {
         onReasoningDelta: () => {
           throw new Error('观测者爆炸');
@@ -521,13 +537,19 @@ describe('generateRenderSpecWithLlm:LLM 生成路径(T12;脚本化传输,零网�
     );
 
     await expect(
-      generateRenderSpecWithLlm(input, { apiKey: 'test-key', fetchImpl: transport.fetch }),
+      generateRenderSpecWithLlm(input, { ...config, fetchImpl: transport.fetch }),
     ).resolves.toBeUndefined();
   });
 
-  it('无 key → undefined 且零传输调用(I1:跳过 LLM 路径,rule 路径完整)', async () => {
-    const envKey = process.env.GLM_API_KEY;
-    delete process.env.GLM_API_KEY;
+  it('配置不完整 → undefined 且零传输调用', async () => {
+    const env = {
+      key: process.env.LLM_API_KEY,
+      baseURL: process.env.LLM_BASE_URL,
+      model: process.env.LLM_MODEL,
+    };
+    delete process.env.LLM_API_KEY;
+    delete process.env.LLM_BASE_URL;
+    delete process.env.LLM_MODEL;
     try {
       const transport = createScriptedTransport(() => {
         throw new Error('不应发起 LLM 调用');
@@ -538,8 +560,14 @@ describe('generateRenderSpecWithLlm:LLM 生成路径(T12;脚本化传输,零网�
       ).resolves.toBeUndefined();
       expect(transport.calls).toHaveLength(0);
     } finally {
-      if (envKey === undefined) delete process.env.GLM_API_KEY;
-      else process.env.GLM_API_KEY = envKey;
+      for (const [name, value] of Object.entries({
+        LLM_API_KEY: env.key,
+        LLM_BASE_URL: env.baseURL,
+        LLM_MODEL: env.model,
+      })) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
     }
   });
 });

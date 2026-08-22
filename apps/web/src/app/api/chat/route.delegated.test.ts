@@ -100,15 +100,23 @@ afterEach(async () => {
 });
 
 describe('mode=delegated(委托派发)', () => {
-  const envKey = process.env.GLM_API_KEY;
+  const envKey = process.env.LLM_API_KEY;
+  const envBase = process.env.LLM_BASE_URL;
+  const envModel = process.env.LLM_MODEL;
 
   beforeEach(() => {
-    delete process.env.GLM_API_KEY;
+    delete process.env.LLM_API_KEY;
+    delete process.env.LLM_BASE_URL;
+    delete process.env.LLM_MODEL;
   });
 
   afterEach(() => {
-    if (envKey === undefined) delete process.env.GLM_API_KEY;
-    else process.env.GLM_API_KEY = envKey;
+    if (envKey === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = envKey;
+    if (envBase === undefined) delete process.env.LLM_BASE_URL;
+    else process.env.LLM_BASE_URL = envBase;
+    if (envModel === undefined) delete process.env.LLM_MODEL;
+    else process.env.LLM_MODEL = envModel;
   });
 
   it('派发成功 → 200 {mode, delegationId, statusUrl},auto 解析 rule 后传入', async () => {
@@ -155,17 +163,25 @@ describe('mode=delegated(委托派发)', () => {
 });
 
 describe('mode 缺省与形状校验(inline 既有行为不动)', () => {
-  const envKey = process.env.GLM_API_KEY;
+  const envKey = process.env.LLM_API_KEY;
+  const envBase = process.env.LLM_BASE_URL;
+  const envModel = process.env.LLM_MODEL;
 
   beforeEach(() => {
     // inline 对照需要 auto→rule 的确定性(与 route.test.ts 的 I1 口径一致:
     // 显式清 key,防宿主 env 泄漏改变 driver 解析)。
-    delete process.env.GLM_API_KEY;
+    delete process.env.LLM_API_KEY;
+    delete process.env.LLM_BASE_URL;
+    delete process.env.LLM_MODEL;
   });
 
   afterEach(() => {
-    if (envKey === undefined) delete process.env.GLM_API_KEY;
-    else process.env.GLM_API_KEY = envKey;
+    if (envKey === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = envKey;
+    if (envBase === undefined) delete process.env.LLM_BASE_URL;
+    else process.env.LLM_BASE_URL = envBase;
+    if (envModel === undefined) delete process.env.LLM_MODEL;
+    else process.env.LLM_MODEL = envModel;
   });
 
   it('缺省 mode → inline 路径:dispatch 不被调用,响应无 delegationId/statusUrl', async () => {

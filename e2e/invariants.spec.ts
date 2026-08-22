@@ -2,8 +2,8 @@
  * T8 Phase A / Task 1 — 不变量套件 I1–I6(GOAL「不变量」表的收拢,持续运行口径)。
  *
  * 每条不变量一个命名 describe;断言核心**复用**既有 spec 的逻辑而非重写:
- * - I1(零智能完整):显式删除 e2e 进程的 GLM_API_KEY + spawn server 注入空 key
- *   (进程无 key 即零 LLM 网络调用的证据)→ 一条场景内跑 B1/B2/B3(baseline
+ * - I1(零智能完整):显式删除 e2e 进程的 LLM 配置三项 + spawn server 注入空配置
+ *   (进程无 LLM profile 即零 LLM 网络调用的证据)→ 一条场景内跑 B1/B2/B3(baseline
  *   的 runAgent 合同路径核心)+ 表单版 S1(agent HTTP 挂起 → 人类 RJSF 批准,
  *   s1 UI 走查核心;无需 worker——inbox 投影列出全部 pending,送达断言属
  *   s1 的 notify 链路)+ 哑渲染(态势/事件流页数据断言);
@@ -143,13 +143,19 @@ test.beforeEach(() => {
 // ---- I1 零智能完整 --------------------------------------------------------------
 
 test.describe('I1 零智能完整', () => {
-  test('显式撤销 GLM_API_KEY:B1/B2/B3(agent 合同)+ 表单版 S1 + 哑渲染全过', async ({ page }) => {
+  test('显式撤销 LLM 配置:B1/B2/B3(agent 合同)+ 表单版 S1 + 哑渲染全过', async ({ page }) => {
     test.setTimeout(240_000);
-    // 显式撤销:e2e 进程删除 key(断言为证);spawn server 注入空 key压过
-    // .env.local(进程 env 优先)。进程无 key → 全程零 LLM 网络调用可证。
-    const hadKey = process.env.GLM_API_KEY;
-    delete process.env.GLM_API_KEY;
-    expect(process.env.GLM_API_KEY, 'e2e 进程必须显式无 key').toBeUndefined();
+    // 显式撤销:e2e 进程删除配置三项(断言为证);spawn server 注入空配置压过
+    // .env.local(进程 env 优先)。进程无 LLM profile → 全程零 LLM 网络调用可证。
+    const hadKey = process.env.LLM_API_KEY;
+    const hadBase = process.env.LLM_BASE_URL;
+    const hadModel = process.env.LLM_MODEL;
+    delete process.env.LLM_API_KEY;
+    delete process.env.LLM_BASE_URL;
+    delete process.env.LLM_MODEL;
+    expect(process.env.LLM_API_KEY, 'e2e 进程必须显式无 LLM key').toBeUndefined();
+    expect(process.env.LLM_BASE_URL, 'e2e 进程必须显式无 LLM base URL').toBeUndefined();
+    expect(process.env.LLM_MODEL, 'e2e 进程必须显式无 LLM model').toBeUndefined();
     try {
       await terminateStaleNotifyWorkflows(['c1']);
       await withFreshServer(
@@ -262,14 +268,17 @@ test.describe('I1 零智能完整', () => {
           await expect(page.locator('[data-word="timeline"]')).toBeVisible();
           await expect(page.locator('[data-word="timeline"]')).toContainText('publish');
         },
-        // spawn server 的显式空 key(压过 apps/web/.env.local)。
-        { GLM_API_KEY: '' },
+        // spawn server 的显式空配置(压过 apps/web/.env.local)。
+        { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
       );
     } finally {
       // 单 worker 串行复用进程:恢复现场,不污染后续 spec(llm-smoke 等)。
-      if (hadKey !== undefined) {
-        process.env.GLM_API_KEY = hadKey;
-      }
+      if (hadKey === undefined) delete process.env.LLM_API_KEY;
+      else process.env.LLM_API_KEY = hadKey;
+      if (hadBase === undefined) delete process.env.LLM_BASE_URL;
+      else process.env.LLM_BASE_URL = hadBase;
+      if (hadModel === undefined) delete process.env.LLM_MODEL;
+      else process.env.LLM_MODEL = hadModel;
       await terminateStaleNotifyWorkflows(['c1']);
     }
   });

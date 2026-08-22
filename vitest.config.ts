@@ -19,7 +19,14 @@ export default defineConfig({
     exclude: ['e2e/**', '**/node_modules/**', '**/dist/**'],
     // 单测不得 TRUNCATE 本地开发库。global setup 幂等创建独立库，现有 DB
     // 集成测试继续按文件串行自清理；CI 可用 TEST_DATABASE_URL 覆盖目标。
-    env: { DATABASE_URL: TEST_DATABASE_URL },
+    // 普通单元/集成测试不得因本机 .env.local 意外调用真实模型。真实 LLM
+    // baseline/story eval 由门控 Playwright 命令显式注入完整 profile。
+    env: {
+      DATABASE_URL: TEST_DATABASE_URL,
+      LLM_API_KEY: '',
+      LLM_BASE_URL: '',
+      LLM_MODEL: '',
+    },
     globalSetup: ['./vitest.global-setup.ts'],
     fileParallelism: false,
   },

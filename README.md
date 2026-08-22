@@ -8,12 +8,14 @@
 # 1. 安装依赖(pnpm workspaces:apps/web + apps/worker + packages/*)
 pnpm install
 
-# 2. 一键启动 PostgreSQL + Temporal + worker + web
+# 2. 可选：在根目录 .env.local 中配置 LLM_API_KEY、LLM_BASE_URL 和 LLM_MODEL
+
+# 3. 一键启动 PostgreSQL + Temporal + worker + web
 # PostgreSQL 后台运行；其余进程由 concurrently 统一管理，Ctrl-C 一起停止
 pnpm dev:all
 ```
 
-打开 <http://localhost:3100>:态势投影(待确认/在飞委托/文章数)+ 事件流 + 各入口;健康检查 `/api/health`。LLM 聊天需 `apps/web/.env.local` 的 `GLM_API_KEY`(来源 `~/.secrets/glm_coding_plan_key`;无 key 自动回退 rule driver)。
+打开 <http://localhost:3100>:态势投影(待确认/在飞委托/文章数)+ 事件流 + 各入口;健康检查 `/api/health`。`pnpm dev:all` 会加载根目录中 gitignored 的 `.env.local`，并将其中配置同时传递给 web 和 worker。外部已设置的环境变量优先，可用 `pnpm env:verify-dev` 在不输出变量值的前提下验证传递链路。
 
 停止后如需同时关闭 PostgreSQL，运行 `pnpm infra:down`。
 

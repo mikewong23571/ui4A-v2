@@ -16,34 +16,21 @@
  *   zod strip),只能 includeRawChunks 后从 fullStream 的 raw 部件解析
  *   delta.reasoning_content 累积;GLM 末尾齐发(非打字机),聚合整段后经
  *   DecideSink 一次性回调;端点不返回则零回调(如实缺席);
- * - createDriver('auto'):无 key 回退 rule driver(I1 机械层)。
- *
- * GLM coding plan:baseURL open.bigmodel.cn/api/coding/paas/v4,模型名缺省
- * glm-5.3(coding plan 旗舰,2026-08-14 发布;LLM_MODEL env 可覆盖;D20)。
+ * - provider profile 仅从 LLM_API_KEY/LLM_BASE_URL/LLM_MODEL 或测试注入解析,
+ *   源码不携带供应商 endpoint/model 默认值。
  */
 import { createOpenAI } from '@ai-sdk/openai';
 import { jsonSchema, streamText, type LanguageModel, type ToolSet } from 'ai';
 import type { SirenEntity } from '@ui4a/engine';
 
 import { createRuleDriver } from './rule-driver';
+import { hasLlmConfig, resolveLlmConfig, type LlmConfigOverrides } from './llm-config';
 import { summarizeEntity } from './loop';
 import { extractRawReasoning, readRawDelta } from './raw-reasoning';
 import { ACTION_TOOL_PREFIX, buildToolProjection, isReservedVerb } from './tools';
 import type { AgentDriver, AgentOperation, DecideSink, DriverContext, FetchLike } from './types';
 
-/** GLM coding plan 的 OpenAI 兼容端点(中国区)。 */
-export const DEFAULT_LLM_BASE_URL = 'https://open.bigmodel.cn/api/coding/paas/v4';
-
-/** coding plan 旗舰模型(LLM_MODEL 可覆盖;验收报告记录选择理由;D20)。 */
-export const DEFAULT_LLM_MODEL = 'glm-5.3';
-
-export interface LlmDriverOptions {
-  /** 缺省 process.env.GLM_API_KEY。 */
-  apiKey?: string;
-  /** 缺省 process.env.LLM_BASE_URL ?? DEFAULT_LLM_BASE_URL。 */
-  baseURL?: string;
-  /** 缺省 process.env.LLM_MODEL ?? DEFAULT_LLM_MODEL。 */
-  model?: string;
+export interface LlmDriverOptions extends LlmConfigOverrides {
   /** 注入传输(单测脚本化;缺省真实 fetch)。 */
   fetchImpl?: FetchLike;
 }
@@ -58,10 +45,9 @@ interface ResolvedLlmSettings {
 }
 
 function resolveSettings(options: LlmDriverOptions): ResolvedLlmSettings {
+  const config = resolveLlmConfig(options);
   return {
-    apiKey: options.apiKey ?? process.env.GLM_API_KEY ?? '',
-    baseURL: options.baseURL ?? process.env.LLM_BASE_URL ?? DEFAULT_LLM_BASE_URL,
-    model: options.model ?? process.env.LLM_MODEL ?? DEFAULT_LLM_MODEL,
+    ...config,
     ...(options.fetchImpl !== undefined ? { fetchImpl: options.fetchImpl } : {}),
   };
 }
@@ -375,9 +361,8 @@ async function llmDecide(
 
 /**
  * LLM chat 模型工厂(T12 抽出,llm driver 与 render LLM 路径共用客户端口径):
- * OpenAI 兼容端点 + provider.chat() 锁 Chat Completions(GLM coding plan 只有
- * chat/completions;provider(id) 缺省走 Responses API)。空 key 也构造:显式
- * llm 时由端点裁决(401 如实回流,B4);auto/无 key 的回退在各自工厂层。
+ * OpenAI 兼容端点 + provider.chat() 锁 Chat Completions。profile 缺项时
+ * 在网络调用前抛 LlmConfigurationError;端点错误仍由 driver 折算为 fail。
  * fetch 适配:SDK 传输签名(string|URL|Request)收敛为本包的 FetchLike(string)。
  */
 export function createLlmChatModel(options: LlmDriverOptions = {}): LanguageModel {
@@ -395,20 +380,19 @@ export function createLlmChatModel(options: LlmDriverOptions = {}): LanguageMode
   return provider.chat(settings.model);
 }
 
-/** LLM driver 工厂:OpenAI 兼容端点(缺省 GLM coding plan)+ 注入传输。 */
+/** LLM driver 工厂:外部配置的 OpenAI 兼容端点 + 可注入传输。 */
 export function createLlmDriver(options: LlmDriverOptions = {}): AgentDriver {
   const model = createLlmChatModel(options);
   return { decide: (context, sink) => llmDecide(model, context, sink) };
 }
 
-/** 解析实际 driver 类型(auto:无 key → rule,I1 回退)。 */
+/** 解析实际 driver 类型(auto 的 rule fallback 将由 T15 U22 移出产品 runtime)。 */
 export function resolveDriverKind(
   kind: DriverKind,
   options: LlmDriverOptions = {},
 ): 'rule' | 'llm' {
   if (kind === 'rule') return 'rule';
-  const apiKey = options.apiKey ?? process.env.GLM_API_KEY;
-  if (kind === 'auto' && !apiKey) return 'rule';
+  if (kind === 'auto' && !hasLlmConfig(options)) return 'rule';
   return 'llm';
 }
 

@@ -55,7 +55,8 @@ async function articlesByCategory(): Promise<{ counts: Map<string, number>; memb
   const counts = new Map<string, number>();
   for (const member of body.entities) {
     const category = member.properties.fields?.category;
-    if (typeof category !== 'string') throw new Error(`成员 ${member.properties.rel} 缺 category 字段(快照形状意外)`);
+    if (typeof category !== 'string')
+      throw new Error(`成员 ${member.properties.rel} 缺 category 字段(快照形状意外)`);
     counts.set(category, (counts.get(category) ?? 0) + 1);
   }
   return { counts, members: body.entities.length };
@@ -73,7 +74,10 @@ test.beforeEach(() => {
   test.setTimeout(180_000);
 });
 
-test('S5:聊天"按分类展示文章" → 零字面 spec → 画布 chart 与快照逐项一致 → 凝固', async ({ page }) => {  await withFreshServer(
+test('S5:聊天"按分类展示文章" → 零字面 spec → 画布 chart 与快照逐项一致 → 凝固', async ({
+  page,
+}) => {
+  await withFreshServer(
     async () => {
       // ---- a) agent 路径(chat API,rule driver)→ render spec 生成 ----------
       const first = await chatDisplayArticles();
@@ -149,13 +153,12 @@ test('S5:聊天"按分类展示文章" → 零字面 spec → 画布 chart 与�
 
       // 凝固稳定:重载画布,同一布局同一数值(空间记忆锚点不动)。
       await page.reload();
-      await expect(page.locator('[data-surface="articles-by-category"] [data-word="chart"]')).toHaveAttribute(
-        'aria-label',
-        expectedLabel,
-      );
+      await expect(
+        page.locator('[data-surface="articles-by-category"] [data-word="chart"]'),
+      ).toHaveAttribute('aria-label', expectedLabel);
     },
-    // 显式空 key:e2e 进程零 LLM 凭证(rule 确定路径,I1 口径)
-    { GLM_API_KEY: '' },
+    // 显式空配置:e2e 进程无 LLM profile(rule 确定路径,I1 口径)
+    { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
   );
 });
 
@@ -183,9 +186,9 @@ test('S5 附:展示意图的第二形态——"展示文章列表" → table 词
       expect(json.render!.canvasUrl).toBe('/canvas?concern=articles-list');
 
       // 画布:table surface 渲染集合成员(标题来自实体快照,零发明)。
-      const articles = (await (
-        await fetch(`${SCENARIO_BASE}/api/entity?rel=articles`)
-      ).json()) as { entities: { properties: { fields: { title?: unknown } } }[] };
+      const articles = (await (await fetch(`${SCENARIO_BASE}/api/entity?rel=articles`)).json()) as {
+        entities: { properties: { fields: { title?: unknown } } }[];
+      };
       const titles = articles.entities
         .map((member) => member.properties.fields?.title)
         .filter((title): title is string => typeof title === 'string');
@@ -199,11 +202,13 @@ test('S5 附:展示意图的第二形态——"展示文章列表" → table 词
         await expect(surface.locator('[data-word="table"]')).toContainText(title);
       }
     },
-    { GLM_API_KEY: '' },
+    { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
   );
 });
 
-test('S5 附:render 回执即达即跳——悬浮聊天发送展示意图 → 自动导航画布并激活(同屏协同)', async ({ page }) => {
+test('S5 附:render 回执即达即跳——悬浮聊天发送展示意图 → 自动导航画布并激活(同屏协同)', async ({
+  page,
+}) => {
   await withFreshServer(
     async () => {
       await page.goto(`${SCENARIO_BASE}/`);
@@ -222,6 +227,6 @@ test('S5 附:render 回执即达即跳——悬浮聊天发送展示意图 → �
       await expect(page.getByText(/已生成渲染「articles-by-category」/)).toBeVisible();
       await expect(page.getByRole('link', { name: /在画布查看/ })).toBeVisible();
     },
-    { GLM_API_KEY: '' },
+    { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
   );
 });

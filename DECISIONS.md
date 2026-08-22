@@ -169,3 +169,10 @@
 - **背景(walkthrough 问题 #5)**:`paramsToFields` 只取请求参数——向导前序步骤经 set-field 落在实例上的字段(category/tags)在 publish 的 append 时静默丢失(post:walkthrough 实证无 category),B1 e2e 无字段保真断言故一直绿。
 - **决定**:append 的新实体字段 = **源实例 fields ∪ 请求参数(参数覆盖同名)**,每字段保留各自 origin(铁律 4 不破:值皆有出处);`fields` 白名单语义不变(从合并集取)。机制层正解:「向导收集 → 后续动作消费」的自然写法天然正确。
 - **兼容**:I5 重放消费事件载荷/快照语义,引擎在线语义变更不改既有日志重放(重放测试验证);B1 e2e 补「发布文章 category/tags 与向导所填一致」断言(agent/human 两路)。
+
+## D25 LLM 配置外置 + DeepSeek T15 baseline(2026-08-22,T15 Phase A)
+
+- **方向**:T15 改为 AI-first。生产 Assistant 的 provider 不是代码默认值；统一由 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 三项完整 profile 提供。Web、Worker、render、probe 与 story Eval 复用同一解析器；缺项在网络前结构化失败。D20 的 glm-5.3 缺省模型与 D22 的端点观测保留为历史，但不再是 runtime fallback。
+- **本地传播**:根级 gitignored `.env.local` 是 `pnpm dev:all` 的本地配置入口，provider-neutral loader 将外部环境优先地传给 Temporal、Worker 与 Web；`.env.example` 只含空占位符。普通 Vitest 显式使用空 profile，防止本机配置意外触发真实调用；真实 LLM 只由门控 Eval 显式开启。
+- **首个 baseline**:`deepseek-v4-flash` @ `https://cpa.styleofwong.cn/v1`(OpenAI-compatible Chat Completions)。真实 probe generateText×3 / streamText×3 均成功，6/6 返回 `exec` tool call；非流式 2.8–4.3s，流式全程 3.8–6.4s。SDK reasoning parts 为 0，但原始响应/stream raw chunks 提供 `reasoning_content`；流式 reasoning 与 tool call 接近同批到达。该观测只校准通用取数，不引入 provider 特判。
+- **密钥口径**:真实 key 只存在于外部环境或 gitignored 本地文件，不进入源码、提交、日志、Eval 报告或 git notes。

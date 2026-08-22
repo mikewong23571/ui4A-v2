@@ -6,7 +6,7 @@
  * dev server(端口 3110,独立 distDir)→ 结束杀进程组。差异:支持向 spawned
  * server 注入额外 env(B4 的坏 key、I1 的显式空 key、冒烟的真实 key)。
  * 注意:apps/web/.env.local 若存在会被 Next 加载,但进程 env 优先——
- * 显式注入 GLM_API_KEY=''(空串)即可实现"无 key"环境(I1)。
+ * 显式清空 LLM_API_KEY/LLM_BASE_URL/LLM_MODEL 即可实现"无 LLM 配置"环境(I1)。
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';

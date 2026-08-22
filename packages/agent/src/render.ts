@@ -30,6 +30,7 @@ import { streamText } from 'ai';
 import type { SirenEntity } from '@ui4a/engine';
 
 import { createLlmChatModel, type LlmDriverOptions } from './llm-driver';
+import { hasLlmConfig } from './llm-config';
 import { asciiTokens } from './match';
 import { extractRawReasoning, readRawDelta } from './raw-reasoning';
 
@@ -200,13 +201,14 @@ export function renderSpecFor(
   if (!hasDisplayIntent(intent)) return undefined;
   const collection = collectionOf(intent, sitemap);
   if (collection === undefined) return undefined;
-  const dimensionWordHit = Object.keys(DIMENSION_LEXICON).some((word) => tokenInString(word, intent));
+  const dimensionWordHit = Object.keys(DIMENSION_LEXICON).some((word) =>
+    tokenInString(word, intent),
+  );
   const dimensionField = dimensionFieldOf(intent, sitemap);
   if (dimensionWordHit && dimensionField === undefined) return undefined;
 
-  const concern = dimensionField !== undefined
-    ? `${collection}-by-${dimensionField}`
-    : `${collection}-list`;
+  const concern =
+    dimensionField !== undefined ? `${collection}-by-${dimensionField}` : `${collection}-list`;
   const existing = frozen.find((entry) => entry.concern === concern);
   if (
     existing !== undefined &&
@@ -266,7 +268,10 @@ export function buildRenderPrompt(input: BuildRenderPromptInput): string {
     ),
   ];
   const words = input.words
-    .map((word) => `- ${word.name}:${word.description}\n  bindSchema: ${JSON.stringify(word.bindSchema)}`)
+    .map(
+      (word) =>
+        `- ${word.name}:${word.description}\n  bindSchema: ${JSON.stringify(word.bindSchema)}`,
+    )
     .join('\n');
   return [
     `你是 UI4A 的 render capability:把用户的展示意图转成 binding-only 渲染说明(JSON)。`,
@@ -290,7 +295,8 @@ export function buildRenderPrompt(input: BuildRenderPromptInput): string {
  */
 export function parseRenderResponse(text: string): GeneratedRenderSpec | undefined {
   const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(text);
-  const candidate = fenced !== null ? fenced[1]! : text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
+  const candidate =
+    fenced !== null ? fenced[1]! : text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
   if (!candidate.trim().startsWith('{')) return undefined;
   let parsed: unknown;
   try {
@@ -397,9 +403,8 @@ export async function generateRenderSpecWithLlm(
   options: LlmDriverOptions = {},
   hooks: { onReasoningDelta?: (piece: string) => void } = {},
 ): Promise<GeneratedRenderSpec | undefined> {
-  // I1:无 key 跳过 LLM 路径(空串同缺省——显式空压过 .env.local,e2e 口径)。
-  const apiKey = options.apiKey ?? process.env.GLM_API_KEY;
-  if (apiKey === undefined || apiKey === '') return undefined;
+  // 配置不完整时不发起外部请求；上层决定如何向用户呈现不可用状态。
+  if (!hasLlmConfig(options)) return undefined;
   try {
     const result = streamText({
       model: createLlmChatModel(options),

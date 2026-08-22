@@ -1,13 +1,13 @@
 /**
- * T12 Phase A / Task 2 — 真实 GLM 门控:render LLM 路径实测
- * (RUN_LLM_E2E + GLM_API_KEY 双门控,默认 skip;与 llm-smoke/llm-thinking 同模式)。
+ * T12 Phase A / Task 2 — 真实 LLM 门控:render 路径实测
+ * (RUN_LLM_E2E + provider profile 门控,默认 skip;与 llm-smoke/llm-thinking 同模式)。
  *
  * spec 验收 2 的门控部分:rule miss 的展示意图经 LLM 路径产 spec、过校验
- * (零字面 + 处境核对 + bindSchema)、凝固留痕、画布渲染。真实 glm-5.3 端点
- * (D20;简单步 4-9s[D22],render 为单次生成,超时给足)。
+ * (零字面 + 处境核对 + bindSchema)、凝固留痕、画布渲染。provider profile
+ * 由环境提供;render 为单次生成,超时给足。
  *
  * ```bash
- * GLM_API_KEY=$(cat ~/.secrets/glm_coding_plan_key) RUN_LLM_E2E=1 \
+ * LLM_API_KEY=... LLM_BASE_URL=... LLM_MODEL=... RUN_LLM_E2E=1 \
  *   CI=true pnpm exec playwright test e2e/llm-render.spec.ts
  * ```
  *
@@ -33,7 +33,7 @@
  *    (aria-label 维度计数,s5 的 I2 手法,期望值从 /api/entity 快照动态计算)。
  *
  * 稳定性口径(实测后选择「每轮硬断言 + 有界重试」):
- * - 探测(2026-08,真实 glm-5.3):本意图 11 个 chat 回合 100% 过三闸(5 次
+ * - 历史探测(2026-08,glm-5.3):本意图 11 个 chat 回合 100% 过三闸(5 次
  *   fresh 生成,其余同 concern 凝固复用);fresh 生成 2/5 附加 caption 字段引用
  *   (成员级路径挂在集合实体上,画布 plan 期 deref 响亮失败:canvas-errors 留痕
  *   「字段路径 fields.category 在实体 articles 上不存在」,本 concern surface 不
@@ -54,8 +54,11 @@ import { validateSpec } from '../apps/web/src/render/validator';
 import { SCENARIO_BASE, withFreshServer } from './server-kit';
 
 test.skip(
-  !process.env.RUN_LLM_E2E || !process.env.GLM_API_KEY,
-  'RUN_LLM_E2E/GLM_API_KEY 未设置(真实 GLM render 门控,默认 skip)',
+  !process.env.RUN_LLM_E2E ||
+    !process.env.LLM_API_KEY ||
+    !process.env.LLM_BASE_URL ||
+    !process.env.LLM_MODEL,
+  'RUN_LLM_E2E 或 LLM provider profile 未完整设置(真实 GLM render 门控,默认 skip)',
 );
 
 test.beforeEach(() => {
@@ -247,9 +250,10 @@ test('真实 GLM:rule miss 展示意图 → LLM 产 spec → 过闸凝固 → �
       const errorsBefore = pageErrors.length;
       await page.goto(`${SCENARIO_BASE}${render.canvasUrl}`);
       const surface = page.locator(`[data-concern="${render.concern}"]`);
-      const surfaceVisible = await surface
-        .waitFor({ timeout: 30_000 })
-        .then(() => true, () => false);
+      const surfaceVisible = await surface.waitFor({ timeout: 30_000 }).then(
+        () => true,
+        () => false,
+      );
       const canvasErrorItems = await page
         .locator('[data-testid="canvas-errors"] li')
         .allTextContents();
@@ -261,7 +265,12 @@ test('真实 GLM:rule miss 展示意图 → LLM 产 spec → 过闸凝固 → �
         ? await surface.locator(`[data-word="${spec.component}"]`).count()
         : 0;
 
-      if (!surfaceVisible || wordCount === 0 || ownPlanErrors.length > 0 || newPageErrors.length > 0) {
+      if (
+        !surfaceVisible ||
+        wordCount === 0 ||
+        ownPlanErrors.length > 0 ||
+        newPageErrors.length > 0
+      ) {
         roundReports.push(
           `#${round} 过闸但画布未干净渲染(${elapsedMs}ms):${render.concern}/${spec.component} ` +
             `bind=${JSON.stringify(spec.bind)} surface=${surfaceVisible} word=${wordCount} ` +

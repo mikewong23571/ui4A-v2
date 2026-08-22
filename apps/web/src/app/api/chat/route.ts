@@ -38,16 +38,16 @@ import { validateWordBind } from '../../../render/word-bind';
 //   零字面校验 → freezeSpec(首冻事件留痕,同 concern 复用首冻)→ 响应携带
 //   render 载荷(spec + 画布入口);零 /api/exec(渲染不是执行,不走循环);
 //   意图未命中/引擎不可达 → 原路交回 agent 循环(诚实失败口径不变);
-//   T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthrough(无 key
-//   跳过,I1)——buildRenderPrompt(词汇表 + sitemap 处境)→ streamText
-//   (glm-5.3,60s abort)→ parseRenderResponse(fail-safe)→ 同一零字面
+//   T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthrough(配置
+//   不完整时跳过)——buildRenderPrompt(词汇表 + sitemap 处境)→ streamText
+//   (环境配置模型,60s abort)→ parseRenderResponse(fail-safe)→ 同一零字面
 //   校验器 + 处境核对(集合/字段真实性)+ 词条形状 bindSchema → freezeSpec
 //   凝固留痕 → 响应(形状不变);解析失败/校验失败/端点失败 → 原路交回普通
 //   agent 循环(不留半成品 spec,不凝固);LLM 路径 inline 模式已 SSE 化
 //   (sseRenderResponse):思考增量 thinking-delta + render 帧回执(与 JSON
 //   回执同形),过闸失败同流交回循环;delegated 模式保持阻塞 JSON;
 // - inline(T9 Phase B 起为 SSE 流式,text/event-stream):服务端组装 driver
-//   (rule | llm | auto——auto 无 key 回退 rule,I1 机械层),runAgent 循环过本源
+//   (rule | llm | auto;T15 将移除产品 runtime 的 rule fallback),runAgent 循环过本源
 //   HTTP 合同(actor=agent,principal=user:<sessionId>,channel=chat)——
 //   "agent 走合同"字面成立;onStep 每步推一帧
 //   {type:'step', message:{role:'assistant',text}, rel}(text 为 trail.ts
