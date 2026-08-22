@@ -45,6 +45,9 @@ function activeBundle(snapshot: EngineSnapshot): ApplicationBundle {
 
 /** Fire-and-forget by contract: generation never blocks Application activation or Chat. */
 export function scheduleRecipesForSnapshot(snapshot: EngineSnapshot): void {
+  // Unit/integration suites inject short-lived Chat LLM stubs; background pre-generation must not
+  // consume those transports. Coordinator behavior is tested directly and production/dev schedules.
+  if (process.env.NODE_ENV === 'test' && process.env.T16_RECIPE_PREGEN_TEST !== '1') return;
   const scheduled = coordinator().schedule(activeBundle(snapshot));
   void scheduled.completion;
 }
