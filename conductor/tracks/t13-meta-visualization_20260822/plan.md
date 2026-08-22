@@ -21,8 +21,8 @@
 - [x] Task: BIOS capabilities 投影(/meta/capabilities 列表 + /meta/capability/<name> 详情;meta sitemap 携带;业务 sitemap 不含;组件测试 + e2e)(TDD) — ab48d33
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — ab48d33
 
-## Phase D: capability-registered 不变式 + 全量回归
+## Phase D: capability-registered 不变式 + 全量回归 [checkpoint: d9081ba]
 
 - [x] Task: 激活不变式第八条 capability-registered(全部引用点盘点;未注册拒且留痕;registries 可选 + vacuous 过渡;s2 checks 名单机械适配 7→8)(TDD) — d9081ba
-- [~] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增用例)+ demo 走查(拓扑图/版本对比/capabilities 页脚本化确认)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增用例)+ demo 走查(拓扑图/版本对比/capabilities 页脚本化确认) — 证据挂 d9081ba note(check 1073 / e2e 45+4skip / curl 走查)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — d9081ba
