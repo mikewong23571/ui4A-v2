@@ -51,6 +51,8 @@ export interface EntityCacheHandle {
    * 回链优先,无前缀推导兜底);其他 rel 不动。
    */
   invalidateAfterExec(rel: string, entity?: SirenEntity): void;
+  /** 单 rel 失效(别名页:页面入口 rel ≠ exec 实例 rel 时同步失效页面 rel)。 */
+  invalidate(rel: string): void;
 }
 
 function createHandle(fetcher: EntityFetcher, versionFetcher: () => Promise<string>) {
@@ -70,6 +72,7 @@ function createHandle(fetcher: EntityFetcher, versionFetcher: () => Promise<stri
       const backlink = entity !== undefined ? collectionBacklinkOf(entity) : undefined;
       cache.invalidateAfterExec(rel, backlink !== undefined ? { collection: backlink } : undefined);
     },
+    invalidate: (rel) => cache.invalidate(rel),
   };
   return handle;
 }

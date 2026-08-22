@@ -113,6 +113,15 @@ export class PageEntityCache {
     }
   }
 
+  /**
+   * 单 rel 失效(别名页场景:页面入口 rel ≠ exec 实例 rel 时,exec 只覆盖
+   * 实例 rel,页面 rel 的旧投影须由接线点显式失效,否则重拉命中旧缓存)。
+   */
+  invalidate(rel: string): void {
+    this.entities.delete(rel);
+    this.inflight.delete(rel);
+  }
+
   /** deref 消费的缓存视图(rel → 实体;消费侧只读,写入只能经 get 填充)。 */
   snapshot(): EntityCache {
     return this.entities;

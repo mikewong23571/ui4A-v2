@@ -70,6 +70,7 @@ function realHandle(fetcher: (rel: string) => Promise<SirenEntity | null>): Enti
       const backlink = entity !== undefined ? collectionBacklinkOf(entity) : undefined;
       cache.invalidateAfterExec(rel, backlink !== undefined ? { collection: backlink } : undefined);
     },
+    invalidate: (rel) => cache.invalidate(rel),
   };
 }
 
@@ -125,6 +126,7 @@ describe('createCanvasActionHandler:exec 后精确失效 + 整面 reload', () =>
     const handle: EntityCacheHandle = {
       get: async () => null,
       invalidateAfterExec,
+      invalidate: vi.fn(),
     };
     const notify = vi.fn();
     const reload = vi.fn();
@@ -152,6 +154,7 @@ describe('createCanvasActionHandler:exec 后精确失效 + 整面 reload', () =>
     const handle: EntityCacheHandle = {
       get: async () => null,
       invalidateAfterExec,
+      invalidate: vi.fn(),
     };
     const notify = vi.fn();
     const reload = vi.fn();

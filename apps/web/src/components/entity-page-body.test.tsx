@@ -158,6 +158,35 @@ describe('EntityPageBody:页面级缓存接入', () => {
     expect(callsOf('articles')).toHaveLength(2);
   });
 
+  it('别名页(flow: 入口 rel ≠ 实例 rel):exec 后页面 rel 同步失效,新鲜投影上屏(B1 向导回归)', async () => {
+    // 页面 rel 是 flow 别名(flow:post-status),实体自身 rel 是实例(post:post-welcome);
+    // exec 直投实例 rel(entity-view:直投不绕别名)——页面 rel 的缓存条目必须一并失效,
+    // 否则 tick 重拉命中旧缓存,向导停在旧节点(e2e human/dual-executor B1 回归)。
+    const entities = {
+      'flow:post-status': instance('post:post-welcome', '第一版'),
+    };
+    const { fetcher, callsOf } = countingFetcher(entities);
+    const versionFetcher = vi.fn(async () => 'v1');
+    vi.stubGlobal('fetch', stubExecOk(instance('post:post-welcome', '第二版')));
+
+    render(
+      <EntityCacheProvider fetcher={fetcher} versionFetcher={versionFetcher}>
+        <EntityPageBody rel="flow:post-status" />
+      </EntityCacheProvider>,
+    );
+    await screen.findByRole('heading', { name: '第一版' });
+    expect(callsOf('flow:post-status')).toHaveLength(1);
+
+    // exec 成功(提交实例 rel post:post-welcome)→ 服务端投影已变(第二版)。
+    entities['flow:post-status'] = instance('post:post-welcome', '第二版');
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+    await screen.findByRole('heading', { name: '第二版' });
+
+    // 页面 rel(别名)失效重取;version 不重取。
+    expect(callsOf('flow:post-status')).toHaveLength(2);
+    expect(versionFetcher).toHaveBeenCalledTimes(1);
+  });
+
   it('exec 拒绝 → 如实呈现且不失效不重取(诚实失败口径不变)', async () => {
     const entities = { 'post:post-welcome': instance('post:post-welcome', '第一版') };
     const { fetcher, callsOf } = countingFetcher(entities);

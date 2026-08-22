@@ -91,6 +91,10 @@ export function EntityPageBody({ rel }: { rel: string }) {
         // exec 成功 → 精确失效(当前 rel + 真实所属 collection,回链优先);
         // tick 重拉 = 整面 reload 兜底(spec 架构决定 3)。
         cache.invalidateAfterExec(execRel, entity);
+        // 别名页(flow:<name> 入口 → 实例 <flow>:main):exec 直投实例 rel
+        // (entity-view:直投不绕别名),页面 rel 的缓存条目须一并失效,
+        // 否则 tick 重拉命中旧投影(B1 向导停步回归)。
+        if (execRel !== rel) cache.invalidate(rel);
         setTick((n) => n + 1);
       }}
     />
