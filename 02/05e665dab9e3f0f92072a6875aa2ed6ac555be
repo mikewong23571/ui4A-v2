@@ -1,0 +1,5 @@
+Task: T16 Red baseline
+Summary: Reproduced and documented the fixed focus-to-detail rule, single-component RenderSpec, raw field dump, step-only thinking identity, stale Markdown/render claims, Chat-owned render planning, keyword routing, and session-derived persistence risk. Linked every defect to closing stories.
+Files: conductor/tracks/t16-semantic-a2ui-sidecars_20260823/baseline.md; index.md
+Why: Preserve falsifiable pre-change evidence without turning defective behavior into permanent expected-output tests.
+Verification: focused Vitest render/chat/agent suite 77 passed; source anchors recorded; prettier and git diff checks passed.
