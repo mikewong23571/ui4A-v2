@@ -1,0 +1,5 @@
+Task: T16 S1-S32/TS1-TS18 evidence schema
+Summary: Added a versioned evidence model that records canonical/variant identity, semantic outcome, mechanical safety, business event deltas, Chat and Presentation LLM call counts, fastpath hit path, dependency validation, browser completion, timing, and engineering/human rubrics. Added contract tests for complete story inventories and separate quality/safety aggregation.
+Files: e2e/t16-evidence.ts; packages/agent/src/t16-evidence.test.ts
+Why: T16 acceptance must measure dynamic AI quality without turning model outputs into exact rule-based traces, while retaining deterministic safety and effect gates.
+Verification: CI=true pnpm vitest run packages/agent/src/t16-evidence.test.ts (3 passed); prettier check after formatting; git diff --check.
