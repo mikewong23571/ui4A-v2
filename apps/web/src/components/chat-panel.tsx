@@ -83,6 +83,7 @@ interface DelegatedResponse {
 }
 
 const SESSION_STORAGE_KEY = 'ui4a.chat.sessionId';
+const PENDING_SESSION_STORAGE_KEY = 'ui4a.chat.pendingSessionId';
 
 /** 思考过程可见性开关的持久化键('0' = 关闭;缺省/其他 = 开启)。 */
 const THINKING_STORAGE_KEY = 'ui4a.chat.thinking';
@@ -178,6 +179,15 @@ export function useChatSession(): ChatSession {
     }
   }, []);
 
+  const markSessionPending = useCallback((next: string | null) => {
+    try {
+      if (next === null) globalThis.localStorage?.removeItem(PENDING_SESSION_STORAGE_KEY);
+      else globalThis.localStorage?.setItem(PENDING_SESSION_STORAGE_KEY, next);
+    } catch {
+      // 隐私模式退化为 history 中 running 状态轮询。
+    }
+  }, []);
+
   /** 拉取指定会话的历史回合并重放进消息列表(goal 作为 user 消息在前)。 */
   const restoreSession = useCallback((stored: string) => {
     if (stored === '') return;
@@ -203,7 +213,14 @@ export function useChatSession(): ChatSession {
           const running = turns.some((turn) => turn.status === 'running');
           setIsRunning(running);
           // 已保存 session 但日志尚空也可能是刷新撞在 POST 首写之前，继续追投影。
-          if (running || turns.length === 0) poll = setTimeout(load, 1_000);
+          let pendingLocally = false;
+          try {
+            pendingLocally = globalThis.localStorage?.getItem(PENDING_SESSION_STORAGE_KEY) === stored;
+          } catch {
+            // 无本地标记时只依据服务端 running 真相。
+          }
+          if (!running && turns.some((turn) => turn.status === 'final')) markSessionPending(null);
+          if (running || (turns.length === 0 && pendingLocally)) poll = setTimeout(load, 1_000);
         })
         .catch(() => {
           if (!cancelled) poll = setTimeout(load, 1_000);
@@ -215,7 +232,7 @@ export function useChatSession(): ChatSession {
       cancelled = true;
       if (poll !== undefined) clearTimeout(poll);
     };
-  }, []);
+  }, [markSessionPending]);
 
   // 挂载:恢复 localStorage 的 sessionId 并重放历史(B3;历史 = chat-turn 投影)。
   // setSessionId 经 0ms 定时器出 effect 同步路径(react-hooks/set-state-in-effect;
@@ -306,6 +323,7 @@ export function useChatSession(): ChatSession {
   const handleFinal = useCallback(
     (payload: ChatFinalPayload, stepCount: number) => {
       persistSession(payload.sessionId);
+      markSessionPending(null);
       // 零轨迹步的失败(如起始实体不可得):步帧为空,以 final.summary 补一条,
       // 与旧一次性 JSON 客户端的兜底口径一致。
       if (stepCount === 0 && payload.summary !== null && payload.summary !== '') {
@@ -314,7 +332,7 @@ export function useChatSession(): ChatSession {
         );
       }
     },
-    [appendAssistant, persistSession],
+    [appendAssistant, markSessionPending, persistSession],
   );
 
   /**
@@ -325,11 +343,12 @@ export function useChatSession(): ChatSession {
   const handleRenderReceipt = useCallback(
     (payload: ChatRenderPayload) => {
       persistSession(payload.sessionId);
+      markSessionPending(null);
       setLastFocus(undefined);
       setLastRender(payload.render);
       for (const entry of payload.messages) appendAssistant(entry.text);
     },
-    [appendAssistant, persistSession],
+    [appendAssistant, markSessionPending, persistSession],
   );
 
   const handleFocus = useCallback((rel: string) => {
@@ -347,6 +366,7 @@ export function useChatSession(): ChatSession {
       const activeSession = sessionRef.current || crypto.randomUUID();
       const turnId = crypto.randomUUID();
       persistSession(activeSession);
+      markSessionPending(activeSession);
 
       setMessages((prev) => [...prev, { role: 'user', content: goal }]);
       setIsRunning(true);
@@ -396,6 +416,7 @@ export function useChatSession(): ChatSession {
               flushThinkingDeltas();
               handleFinal(frame.payload, stepCount);
             } else if (frame.type === 'error') {
+              markSessionPending(null);
               appendAssistant(`失败: ${frame.error}`);
             }
             // 未知帧类型:忽略(协议前向兼容——旧客户端对新帧零误伤口径)。
@@ -407,18 +428,21 @@ export function useChatSession(): ChatSession {
         const body = (await response.json()) as ChatJsonResponse & DelegatedResponse;
         if (body.mode === 'delegated' && typeof body.delegationId === 'string') {
           if (body.sessionId !== undefined) persistSession(body.sessionId);
+          markSessionPending(null);
           appendAssistant(
             `已派发委托 ${body.delegationId.replace(/^delegation-/, '').slice(0, 8)}…(后台执行中),进度见委托监控页 /delegations`,
           );
           return;
         }
         if (body.sessionId !== undefined) persistSession(body.sessionId);
+        markSessionPending(null);
         // render 回执(S5):展示意图 → 画布入口链接(替换上一条渲染回执)。
         setLastRender(body.render ?? undefined);
         setLastFocus(body.focus ?? undefined);
         if (body.messages !== undefined && body.messages.length > 0) {
           for (const entry of body.messages) appendAssistant(entry.text);
         } else {
+          markSessionPending(null);
           appendAssistant(`失败: ${body.error ?? body.summary ?? `HTTP ${response.status}`}`);
         }
       } catch (error) {
@@ -437,7 +461,7 @@ export function useChatSession(): ChatSession {
         setIsRunning(false);
       }
     },
-    [appendAssistant, appendThinking, appendThinkingDelta, flushThinkingDeltas, handleFinal, handleFocus, handleRenderReceipt, persistSession],
+    [appendAssistant, appendThinking, appendThinkingDelta, flushThinkingDeltas, handleFinal, handleFocus, handleRenderReceipt, markSessionPending, persistSession],
   );
 
   const onCancel = useCallback(async () => {
@@ -475,6 +499,7 @@ export function useChatSession(): ChatSession {
     setView('chat');
     try {
       globalThis.localStorage?.removeItem(SESSION_STORAGE_KEY);
+      globalThis.localStorage?.removeItem(PENDING_SESSION_STORAGE_KEY);
     } catch {
       // 同上:隐私模式退化,无损
     }

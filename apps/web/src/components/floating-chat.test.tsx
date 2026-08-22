@@ -193,6 +193,7 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
     expect(requestBody.sessionId).toMatch(/^[0-9a-f-]+$/i);
     expect(requestBody.turnId).toMatch(/^[0-9a-f-]+$/i);
     expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBe(requestBody.sessionId);
+    expect(window.localStorage.getItem('ui4a.chat.pendingSessionId')).toBe(requestBody.sessionId);
     fireEvent.click(screen.getByRole('button', { name: '新会话' }));
   });
 
