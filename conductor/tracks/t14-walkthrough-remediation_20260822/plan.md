@@ -40,4 +40,4 @@
 
 ## Phase H: 增补统一验收（#8–#14）
 
-- [ ] Task: targeted + `CI=true pnpm check` + `CI=true pnpm e2e`；真实浏览器复验查看第一篇/删除失败/focus/刷新恢复/画布压力；checkpoint git note + tracks.md 勾选
+- [x] Task: targeted + `CI=true pnpm check` + `CI=true pnpm e2e`；真实浏览器复验查看第一篇/删除失败/focus/刷新恢复/画布压力；checkpoint git note + tracks.md 勾选 — check 120/1115；e2e 36/14 gated；live browser PASS

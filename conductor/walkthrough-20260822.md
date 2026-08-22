@@ -239,3 +239,17 @@ concern 变化、手工 reload 和动作后 reload 没有取消、代次或超�
 期望：reasoning 分片按短窗口合帧；canvas load latest-wins、可取消、有界超时并阻止并发
 reload；新 load 重置 boundary。压力验收必须覆盖高频 delta、快速 concern 切换、连续
 reload 与迟滞请求，不能再用一次 fresh-page RTT 证明“没有卡死”。
+
+## T14 增补修复复验（#8–#14，2026-08-22）
+
+| 问题 | 复验结果 |
+|---|---|
+| #8 | 「我要看看第一篇文章」解析为 `post:first-post`，聊天跳转 `/canvas?focus=post%3Afirst-post`；`agent-focus` detail 从合同解引用并显示完整 body，零 freeze。 |
+| #9 | LLM 工具面新增 `fail(reason,evidence)`；真实「删除所有文章」在 4 步内明确报告合同无 delete capability，文章仍为 4，未擅自下线/归档；重复合同处境另有机械停滞闸。 |
+| #10 | 客户端改为 120s 空闲超时，每帧续期；服务端 15s heartbeat。活跃总时长不再被固定 120s deadline 误杀，人工停止与空闲超时文案分离。 |
+| #11 | 成功 navigate 先发 focus SSE，主画布复用同一个临时 detail surface 跟随实体；真实删除目标导航时画布随 `post:post-welcome` 更新。 |
+| #12 | publishing/community 的 application/flow/capability/seed 全文迁入版本化 JSON bundle；generic meta bootstrap 解析、校验、幂等安装并留 receipt，runtime 只从 fold 快照枚举，TS 兼容模块仅由制品派生。 |
+| #13 | 客户端在 POST 前持久化 session/turn；日志追加 started/progress/final，history 合并 running/final 并轮询在途回合。真实刷新后原 goal/reply 与第一篇正文均恢复。 |
+| #14 | reasoning delta 50ms 合帧；canvas load latest-wins、Abort、15s timeout、加载中禁 reload，并以 generation key 重置 boundary；迟到旧 load 测试无法覆盖新 concern。 |
+
+最终证据：`CI=true pnpm check`（120 files / 1115 tests）通过；`CI=true pnpm e2e`（36 passed / 14 环境门控 skips）通过；应用内真实浏览器完成第一篇 focus/body、跨刷新恢复、删除能力诚实失败与画布跟随，页面无 console error。应用由 `pnpm dev:all` 统一入口保持运行（web 3100 / Temporal 7233 / UI 8233）。
