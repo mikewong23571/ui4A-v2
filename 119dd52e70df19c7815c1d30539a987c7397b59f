@@ -1,0 +1,5 @@
+T12 Phase B 回归修复:别名页缓存失效
+
+根因:Task 2 的精确失效只覆盖 execRel(实例 rel)+ 所属 collection;flow 别名页(flow:article-drafting → article-drafting:main,exec 直投实例 rel 不绕别名)的页面 rel 缓存条目残留,tick 重拉命中旧投影——Task 2/3 的组件测试均以 页面 rel == execRel 构造,未覆盖别名场景,e2e B1 向导(human/dual-executor)暴露。
+修复:invalidate(rel) 单 rel 失效 + EntityPageBody 别名同步失效;回归用例(别名页 exec → 页面 rel 重取上屏第二版)先入测试套件。
+验收(编排 agent 亲自执行):Red 复现 → Green;CI=true pnpm check 982 passed;human+dual-executor e2e 6 passed 1 skipped(门控)。自治修复(验收失败修复尝试 #1,成功)。
