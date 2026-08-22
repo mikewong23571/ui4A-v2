@@ -2,3 +2,8 @@ Phase G compatibility correction
 Issue: adding event domain as the first INSERT parameter broke worker fake-DB protocol tests that intentionally inspect the established actor/principal/channel/kind/rel/action/params/reason/detail order; Presentation API expectation also still asserted pre-Sidecar fallback.
 Fix: domain remains a real DB column but is appended as the tenth INSERT parameter, preserving every existing writer contract; direct presentation test now expects ready Sidecar URL.
 Verification: worker activities/delegation, presentation route and events suites 38/38 passed; all workspace typechecks.
+
+Phase G autonomous verification checkpoint
+Automated: pnpm check passed with isolated Temporal: 159 Vitest files, 1352 tests; all workspace typechecks; ESLint 0 errors/6 pre-existing warnings. Focused Sidecar/domain/DB/Broker/Canvas suites green, including concurrent writes, replay rebuild, dependency invalidation, request lifecycle and <500ms same-user cross-request hit.
+Compatibility correction retained all existing worker writer parameter positions. Presentation domain never enters Business readLog; service high-water query filters core.
+Autonomous confirmation: accepted under conductor/workflow.md authorization.
