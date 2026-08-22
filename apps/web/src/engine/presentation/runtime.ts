@@ -1,15 +1,18 @@
 import {
   contentVersion,
   dependencyDecision,
+  instantiateRecipeSurface,
   planGenericSurface,
   sidecarKeyFingerprint,
   validateSurfaceTree,
   type SidecarDependency,
+  type ApplicationRenderRecipe,
+  type ApplicationRenderRecipeCandidate,
   type UserSidecarKey,
 } from '@ui4a/engine';
 import type { PresentationRequest } from '@ui4a/shared';
 
-import { appendEvent } from '../../db/events';
+import { appendEvent, listEvents } from '../../db/events';
 import {
   appendSidecarCommand,
   ensurePresentationTables,
@@ -25,6 +28,7 @@ import {
 import { getDb, getEngine } from '../service';
 import { RENDER_WORDS } from '../../render/registry';
 import { semanticHintsOf } from './situation';
+import { currentRecipeCoordinator } from './recipes-runtime';
 
 const runtimeKey = Symbol.for('ui4a.presentation-broker');
 
@@ -111,6 +115,47 @@ function surfaceUrl(sidecarId: string, request: PresentationRequest): string {
     : `/canvas?${reference}&roots=${encodeURIComponent(request.subject.selection.join(','))}`;
 }
 
+function record(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+async function hydratePromotedRecipes(): Promise<void> {
+  const coordinator = currentRecipeCoordinator();
+  for (const event of await listEvents(getDb())) {
+    if (event.domain !== 'presentation' || event.kind !== 'render-recipe-promoted') continue;
+    const detail = record(event.detail);
+    if (typeof detail?.commandId !== 'string' || record(detail.candidate) === undefined) continue;
+    try {
+      coordinator.promote(
+        detail.candidate as unknown as ApplicationRenderRecipeCandidate,
+        detail.commandId,
+        'human',
+      );
+    } catch {
+      // An invalid durable candidate remains auditable but is never available as a fastpath.
+    }
+  }
+}
+
+function recipeFor(request: PresentationRequest): ApplicationRenderRecipe | undefined {
+  if (typeof request.subject !== 'string') return undefined;
+  return Object.values(currentRecipeCoordinator().registry().recipes)
+    .filter(
+      (recipe) =>
+        recipe.status !== 'stale' &&
+        recipe.key.intent === request.intent &&
+        recipe.key.catalogVersion === PRESENTATION_SURFACE_CATALOG.version &&
+        recipe.slots.length === 1 &&
+        recipe.slots[0]?.name === 'subject',
+    )
+    .sort((left, right) => {
+      const status = Number(right.status === 'promoted') - Number(left.status === 'promoted');
+      return status !== 0 ? status : right.version - left.version;
+    })[0];
+}
+
 async function appendLifecycle(
   kind: 'presentation-requested' | 'presentation-resolved' | 'presentation-failed',
   request: PresentationRequest,
@@ -143,7 +188,48 @@ export function getPresentationBroker(): WebPresentationBroker {
     resolve: async (request, situation) => {
       const key = durableKey(request);
       const sidecar = await findActiveSidecar(getDb(), key);
-      if (sidecar === undefined) return { kind: 'miss' };
+      if (sidecar === undefined) {
+        await hydratePromotedRecipes();
+        const recipe = recipeFor(request);
+        if (recipe === undefined || typeof request.subject !== 'string') return { kind: 'miss' };
+        const surface = instantiateRecipeSurface(recipe, { subject: request.subject });
+        const validation = validateSurfaceTree(surface, PRESENTATION_SURFACE_CATALOG);
+        if (!validation.valid) return { kind: 'miss' };
+        const sidecarId = `sidecar:${sidecarKeyFingerprint(key).replace(/^fnv1a64:/, '')}`;
+        const previous = (await loadPresentationSnapshot(getDb())).sidecars[sidecarId];
+        const version = {
+          surface: validation.surface,
+          dependencies: currentDependencies(situation),
+          provenance: { kind: 'application-recipe' as const, ref: recipe.id },
+          changedPaths: [] as string[],
+          recipeRef: { id: recipe.id, version: recipe.version },
+        };
+        const persisted = await appendSidecarCommand(
+          getDb(),
+          previous === undefined
+            ? {
+                kind: 'instantiate',
+                eventId: `${request.requestId}:recipe:event`,
+                commandId: `${request.requestId}:recipe`,
+                sidecarId,
+                key,
+                version,
+              }
+            : {
+                kind: 'revise',
+                eventId: `${request.requestId}:recipe-repair:event`,
+                commandId: `${request.requestId}:recipe-repair`,
+                sidecarId,
+                baseVersion: previous.activeVersion,
+                version,
+              },
+        );
+        return {
+          kind: 'ready',
+          sidecar: { id: sidecarId, version: persisted.aggregate.activeVersion },
+          surfaceUrl: surfaceUrl(sidecarId, request),
+        };
+      }
       const active = sidecar.versions[sidecar.activeVersion]!;
       const validation = validateSurfaceTree(active.surface, PRESENTATION_SURFACE_CATALOG);
       if (!validation.valid) {

@@ -8,15 +8,18 @@ import {
   ensurePresentationTables,
   findActiveSidecar,
 } from '../../db/presentation';
-import { listEvents } from '../../db/events';
+import { appendEvent, listEvents } from '../../db/events';
 import { getDb, getEngine, resetEngineForTests } from '../service';
 import { getPresentationBroker, resetPresentationBrokerForTests } from './runtime';
+import { resetRecipeCoordinatorForTests } from './recipes-runtime';
+import { PRESENTATION_SURFACE_CATALOG } from './catalog';
 
 beforeEach(async () => {
   await ensurePresentationTables(getDb());
   await getDb().query('TRUNCATE events, presentation_user_sidecars');
   resetEngineForTests();
   resetPresentationBrokerForTests();
+  resetRecipeCoordinatorForTests();
 });
 
 describe('durable user Sidecar fastpath', () => {
@@ -122,5 +125,95 @@ describe('durable user Sidecar fastpath', () => {
       .filter(({ domain }) => domain === 'presentation')
       .map(({ kind }) => kind);
     expect(kinds).toEqual(expect.arrayContaining(['user-sidecar-staled', 'user-sidecar-revised']));
+  });
+
+  it('replays a human-promoted Recipe after restart and instantiates it before generic planning', async () => {
+    const candidate = {
+      key: {
+        application: 'runtime',
+        applicationVersion: '1',
+        scenario: 'human-promoted',
+        subjectShape: 'entity',
+        intent: 'review',
+        catalogVersion: PRESENTATION_SURFACE_CATALOG.version,
+      },
+      slots: [{ name: 'subject', kind: 'entity' as const }],
+      surfaceTemplate: {
+        schemaVersion: 1 as const,
+        root: {
+          kind: 'word' as const,
+          id: 'identity',
+          role: 'identity' as const,
+          word: 'heading',
+          bindings: {
+            value: {
+              kind: 'property' as const,
+              subject: '$slot:subject',
+              path: 'properties.fields.title',
+            },
+          },
+          dependencies: [
+            {
+              kind: 'entity' as const,
+              subject: '$slot:subject',
+              version: '$runtime',
+              paths: ['properties.fields.title'],
+            },
+            {
+              kind: 'catalog' as const,
+              subject: PRESENTATION_SURFACE_CATALOG.id,
+              version: PRESENTATION_SURFACE_CATALOG.version,
+            },
+          ],
+          provenance: [{ kind: 'human-patch' as const, ref: 'sidecar:source' }],
+        },
+      },
+      dependencies: [
+        {
+          kind: 'catalog' as const,
+          subject: PRESENTATION_SURFACE_CATALOG.id,
+          version: PRESENTATION_SURFACE_CATALOG.version,
+        },
+      ],
+      provenance: { model: 'human-promotion', generatedAt: 'human-approved-candidate' },
+    };
+    await appendEvent(getDb(), {
+      domain: 'presentation',
+      kind: 'render-recipe-promoted',
+      rel: 'recipe:durable',
+      principal: 'user:local',
+      channel: 'presentation',
+      detail: {
+        eventId: 'promotion:event',
+        commandId: 'promotion:command',
+        candidate,
+      },
+    });
+
+    const receipt = await getPresentationBroker().present(
+      completePresentationRequest(
+        { subject: 'post:first-post', intent: 'review', delivery: 'canvas' },
+        { requestId: 'recipe:request', principal: 'user:local', sourceMessageIds: [] },
+      ),
+    );
+    expect(receipt).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
+    await expect(
+      findActiveSidecar(getDb(), {
+        principal: 'user:local',
+        policyScope: 'local-demo',
+        subject: 'post:first-post',
+        intent: 'review',
+        deviceClass: 'any',
+      }),
+    ).resolves.toMatchObject({
+      versions: {
+        1: {
+          provenance: { kind: 'application-recipe' },
+          surface: {
+            root: { bindings: { value: { subject: 'post:first-post' } } },
+          },
+        },
+      },
+    });
   });
 });

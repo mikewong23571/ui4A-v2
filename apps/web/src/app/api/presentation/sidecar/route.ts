@@ -180,6 +180,8 @@ export async function POST(request: Request): Promise<Response> {
           sidecarVersion: current.activeVersion,
           recipeId: recipe.id,
           recipeVersion: recipe.version,
+          commandId: `promotion:${id}`,
+          candidate: promoted.candidate,
           diff: promoted.diff,
         },
       });

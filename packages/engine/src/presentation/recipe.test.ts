@@ -4,6 +4,7 @@ import type { SurfaceCatalog, SurfaceTree } from './surface';
 import {
   createRecipeRegistry,
   deterministicRecipeKey,
+  instantiateRecipeSurface,
   promoteRecipe,
   registerRecipeCandidate,
   resolveRecipe,
@@ -139,5 +140,23 @@ describe('Application Recipe validation and registry', () => {
     expect(
       resolveRecipe(compatible, registered.recipe.key, candidate().dependencies),
     ).toBeDefined();
+  });
+
+  it('instantiates declared subject slots without copying factual values into the Recipe', () => {
+    const registered = registerRecipeCandidate(createRecipeRegistry(), candidate(), catalog, 'g:1');
+    const instantiated = instantiateRecipeSurface(registered.recipe, {
+      subject: 'post:first-post',
+    });
+    expect(instantiated.root).toMatchObject({
+      kind: 'word',
+      bindings: { value: { subject: 'post:first-post' } },
+      dependencies: expect.arrayContaining([
+        expect.objectContaining({ subject: 'post:first-post' }),
+      ]),
+    });
+    expect(JSON.stringify(instantiated)).not.toContain('private body');
+    expect(() =>
+      instantiateRecipeSurface(registered.recipe, { subject: 'post:first-post', extra: 'x' }),
+    ).toThrow(/undeclared/i);
   });
 });

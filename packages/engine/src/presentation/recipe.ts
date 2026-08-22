@@ -374,3 +374,91 @@ export function rollbackRecipePromotion(
     activePromotedByKey: { ...registry.activePromotedByKey, [fingerprint]: targetId },
   };
 }
+
+function bindRecipeSubject(subject: string, slots: Readonly<Record<string, string>>): string {
+  if (!subject.startsWith('$slot:')) return subject;
+  const value = slots[subject.slice('$slot:'.length)];
+  if (value === undefined) throw new Error(`recipe slot "${subject}" is unbound`);
+  return value;
+}
+
+function instantiateRecipeNode(
+  node: SurfaceTree['root'],
+  slots: Readonly<Record<string, string>>,
+): SurfaceTree['root'] {
+  const dependencies = node.dependencies.map((dependency) =>
+    dependency.kind === 'entity'
+      ? {
+          ...dependency,
+          subject: bindRecipeSubject(dependency.subject, slots),
+          version: dependency.version === '$runtime' ? '$runtime' : dependency.version,
+        }
+      : { ...dependency },
+  );
+  const base = {
+    id: node.id,
+    role: node.role,
+    dependencies,
+    provenance: node.provenance.map((entry) => ({ ...entry })),
+  };
+  if (node.kind === 'layout') {
+    return {
+      ...base,
+      kind: 'layout',
+      layout: node.layout,
+      children: node.children.map((child) => instantiateRecipeNode(child, slots)),
+    };
+  }
+  if (node.kind === 'slot') {
+    return {
+      ...base,
+      kind: 'slot',
+      name: node.name,
+      child: instantiateRecipeNode(node.child, slots),
+    };
+  }
+  if (node.kind === 'repeat') {
+    return {
+      ...base,
+      kind: 'repeat',
+      source: { ...node.source, subject: bindRecipeSubject(node.source.subject, slots) },
+      item: instantiateRecipeNode(node.item, slots),
+    };
+  }
+  if (node.kind === 'word') {
+    return {
+      ...base,
+      kind: 'word',
+      word: node.word,
+      bindings: Object.fromEntries(
+        Object.entries(node.bindings).map(([name, binding]) => [
+          name,
+          binding.kind === 'item'
+            ? { ...binding }
+            : { ...binding, subject: bindRecipeSubject(binding.subject, slots) },
+        ]),
+      ),
+    };
+  }
+  return {
+    ...base,
+    kind: 'diagnostic',
+    code: node.code,
+    ...(node.failedNodeId === undefined ? {} : { failedNodeId: node.failedNodeId }),
+  };
+}
+
+/** Instantiate only declared Recipe slots; factual values remain binding-only. */
+export function instantiateRecipeSurface(
+  recipe: ApplicationRenderRecipe,
+  slots: Readonly<Record<string, string>>,
+): SurfaceTree {
+  const declared = new Set(recipe.slots.map(({ name }) => name));
+  if (Object.keys(slots).some((name) => !declared.has(name))) {
+    throw new Error('recipe instantiation contains an undeclared slot');
+  }
+  for (const name of declared) {
+    if (slots[name] === undefined) throw new Error(`recipe slot "${name}" is unbound`);
+  }
+  return { schemaVersion: 1, root: instantiateRecipeNode(recipe.surfaceTemplate.root, slots) };
+}
