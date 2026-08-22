@@ -1,0 +1,15 @@
+Task: T15 Phase D event-sourced multi-turn conversation
+
+Summary:
+- Added append-only chat-message-appended and chat-context-updated events, business-fold no-op.
+- Added pure conversation fold/bounded view with legacy compatibility, stale-update rejection, provenance, focus/referents/constraints/pending clarification.
+- /api/chat reliably records human raw input, rebuilds bounded context from log, injects role-preserving messages, records Assistant output/citations and focus/clarification context.
+- Added protocol clarify(question,continuation) as zero-write terminal; removed regex discovery shortcut.
+- Worker and Web project clarify consistently.
+- Expanded real-LLM Eval to U5-U9 including process restart with retained _test log.
+
+Evidence:
+- deterministic targeted: 18 files / 281 tests passed; root typecheck passed.
+- pnpm check: 122 files passed, 2 skipped; 1163 tests passed, 2 skipped.
+- real DeepSeek batch: U5-U9 all passed, U2/U3/U4/U10 passed, zero safety failures; U1 occasionally clarifies its ambiguous original wording (canonical made explicit); U12 remains red for Phase E.
+- no process-memory session and no business mutation in U5-U9.
