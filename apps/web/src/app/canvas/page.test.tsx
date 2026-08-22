@@ -6,9 +6,11 @@
  * - 凝固 spec 列表:/api/entity?rel=render-specs 的成员逐个成 surface;
  * - 单例演示:table 词条静态绑定 articles(走查断言:画布出现文章成员);
  * - 非法凝固 spec(零字面违规)如实呈错,不产半截 surface;
- * - 全站标注:页面控件 data-action/data-nav(I3 基础)。
+ * - 全站标注:页面控件 data-action/data-nav(I3 基础);
+ * - 页面级实体缓存(T12 Phase B Task 3):多 surface 共享,同 rel 跨 surface
+ *   零重复 fetch;version 一致性戳(/.well-known/ui4a.json)每页面会话一次。
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenEntity } from '@ui4a/engine';
@@ -87,12 +89,21 @@ function mockCanvasContract(options: { illegal?: boolean } = {}): ReturnType<typ
   return vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
     if (url === '/api/render/catalog') return Promise.resolve(jsonResponse(200, renderCatalogJson()));
+    // 页面级缓存的一致性戳(T12:sitemap version,每页面会话只取一次)。
+    if (url.startsWith('/.well-known/ui4a.json')) {
+      return Promise.resolve(jsonResponse(200, { version: 'test-v1' }));
+    }
     if (url.startsWith('/api/entity?rel=render-specs')) {
       return Promise.resolve(jsonResponse(200, renderSpecsCollection(options.illegal === true)));
     }
     if (url.startsWith('/api/entity?rel=articles')) return Promise.resolve(jsonResponse(200, ARTICLES));
     return Promise.resolve(jsonResponse(404, { error: `未知端点 ${url}` }));
   });
+}
+
+/** 按 URL 前缀统计 fetch 次数(缓存去重断言)。 */
+function callsOf(mock: ReturnType<typeof vi.fn>, prefix: string): unknown[][] {
+  return mock.mock.calls.filter(([input]) => String(input).startsWith(prefix));
 }
 
 describe('画布页(A2UI surface 宿主)', () => {
@@ -198,5 +209,42 @@ describe('画布页(A2UI surface 宿主)', () => {
     } finally {
       window.history.pushState({}, '', '/canvas');
     }
+  });
+
+  it('多 surface 共享页面缓存:同 rel(凝固 chart + 演示 table)零重复 fetch,version 戳一次', async () => {
+    const mock = mockCanvasContract();
+    vi.stubGlobal('fetch', mock);
+    render(<CanvasPage />);
+
+    // 两个 surface 都绑定 articles 集合(换 concern/换词条的同 rel 二次渲染)。
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-surface]').length).toBe(2);
+    });
+    expect(callsOf(mock, '/api/entity?rel=articles')).toHaveLength(1);
+    expect(callsOf(mock, '/.well-known/ui4a.json')).toHaveLength(1);
+    // 凝固 spec 列表是每轮 load 的输入:直取(reload 即新鲜的兜底口径不变)。
+    expect(callsOf(mock, '/api/entity?rel=render-specs')).toHaveLength(1);
+  });
+
+  it('重新载入:整面 reload 兜底保留(重建全部 surface),未失效 rel 命中缓存零重复 fetch', async () => {
+    const mock = mockCanvasContract();
+    vi.stubGlobal('fetch', mock);
+    render(<CanvasPage />);
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-surface]').length).toBe(2);
+    });
+
+    fireEvent.click(screen.getByText('重新载入'));
+
+    // 重载完成锚点:spec 列表再次直取(每轮 fresh)。
+    await waitFor(() => {
+      expect(callsOf(mock, '/api/entity?rel=render-specs')).toHaveLength(2);
+    });
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-surface]').length).toBe(2);
+    });
+    // 未 exec 无失效:articles 命中页面缓存;version 戳仍一次。
+    expect(callsOf(mock, '/api/entity?rel=articles')).toHaveLength(1);
+    expect(callsOf(mock, '/.well-known/ui4a.json')).toHaveLength(1);
   });
 });

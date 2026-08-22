@@ -127,10 +127,14 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-/** 按合同 URL 分发的 fetch mock(articles/comments/inbox/delegations/events)。 */
+/** 按合同 URL 分发的 fetch mock(articles/comments/inbox/delegations/events + 一致性戳)。 */
 function mockContract(inbox: SirenEntity = inboxEntity(2)) {
   return vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
+    // 页面级实体缓存的一致性戳(T12 Phase B:sitemap version,每页面会话取一次)。
+    if (url.startsWith('/.well-known/ui4a.json')) {
+      return Promise.resolve(jsonResponse(200, { version: 'test-v1' }));
+    }
     if (url.startsWith('/api/entity?rel=articles')) {
       return Promise.resolve(jsonResponse(200, articlesEntity));
     }
