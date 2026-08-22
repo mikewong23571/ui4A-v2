@@ -51,14 +51,23 @@ const words: Readonly<Record<string, A2uiWordAdapter>> = {
   controls: {
     component: 'detail',
     bindings: { actions: { prop: 'entity', transform: 'actions-entity' } },
+    props: { mode: 'actions' },
   },
   references: {
     component: 'detail',
     bindings: { links: { prop: 'entity', transform: 'links-entity' } },
+    props: { mode: 'links' },
   },
   collection: {
     component: 'table',
     bindings: { entities: { prop: 'rows', transform: 'value' } },
+  },
+  'member-link': {
+    component: 'entity-link',
+    bindings: {
+      label: { prop: 'label', transform: 'value' },
+      rel: { prop: 'rel', transform: 'value' },
+    },
   },
 };
 

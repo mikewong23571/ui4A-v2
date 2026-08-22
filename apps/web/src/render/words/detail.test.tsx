@@ -22,7 +22,15 @@ function detailEntity(): ReturnType<typeof articlesCollection> {
       title: '已发布',
       fields: { title: '欢迎来到 UI4A', category: 'tech' },
     },
-    actions: [{ name: 'unpublish', title: '下线', method: 'POST', href: '/api/exec', fields: { type: 'object', properties: {} } }],
+    actions: [
+      {
+        name: 'unpublish',
+        title: '下线',
+        method: 'POST',
+        href: '/api/exec',
+        fields: { type: 'object', properties: {} },
+      },
+    ],
     links: [{ rel: ['collection'], href: '/api/entity?rel=articles' }],
     'guard-results': [],
   };
@@ -51,8 +59,18 @@ describe('detail 词条', () => {
   });
 
   it('entity 非实体 → 响亮抛错', () => {
-    expect(() => render(<DetailWord entity="post:post-welcome" />)).toThrow(
-      /detail 的 entity/,
-    );
+    expect(() => render(<DetailWord entity="post:post-welcome" />)).toThrow(/detail 的 entity/);
+  });
+
+  it('actions/links 语义模式只呈现对应交互，不重复原始属性表', async () => {
+    const { container, rerender } = render(<DetailWord entity={detailEntity()} mode="actions" />);
+    expect(await screen.findByRole('button', { name: '下线' })).toBeTruthy();
+    expect(container.querySelector('table')).toBeNull();
+    expect(screen.queryByText('articles')).toBeNull();
+
+    rerender(<DetailWord entity={detailEntity()} mode="links" />);
+    expect(screen.getByText('articles')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '下线' })).toBeNull();
+    expect(container.querySelector('table')).toBeNull();
   });
 });

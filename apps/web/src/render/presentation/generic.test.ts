@@ -40,4 +40,15 @@ describe('generic Presentation runtime plan', () => {
     expect(data).toContain('essay');
     expect(data).not.toContain('已发布');
   });
+
+  it('binds a Flow alias request to the canonical entity rel returned by Siren', () => {
+    const flow = {
+      ...post,
+      properties: { ...post.properties, rel: 'article-drafting:main' },
+    };
+    const plan = planGenericPresentationSurface('flow:article-drafting', flow, 'definition-v1');
+    expect(plan.bundle.issues).toEqual([]);
+    expect(JSON.stringify(plan.surface)).toContain('article-drafting:main');
+    expect(JSON.stringify(plan.surface)).not.toContain('$slot');
+  });
 });

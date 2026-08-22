@@ -124,7 +124,7 @@ function describeTrail(context: DriverContext): string {
             : step.op.kind === 'clarify'
               ? `clarify ${step.op.question} continuation=${JSON.stringify(step.op.continuation)}`
               : step.op.kind === 'present'
-                ? `present ${step.op.subject} intent=${JSON.stringify(step.op.intent)} delivery=${step.op.delivery}`
+                ? `present ${JSON.stringify(step.op.subject)} intent=${JSON.stringify(step.op.intent)} delivery=${step.op.delivery}`
                 : step.op.kind === 'exec'
                   ? `exec ${step.op.action} ${JSON.stringify(step.op.params ?? {})}`
                   : step.op.kind === 'exec-plan'
@@ -295,9 +295,19 @@ function mapToolCall(toolName: string, input: unknown): AgentOperation {
     case 'present': {
       if (!isPlainObject(input)) return invalidOutput('present 参数必须是对象');
       const { subject, intent, constraints, delivery } = input;
-      if (typeof subject !== 'string' || subject === '') {
-        return invalidOutput('present 缺少字符串参数 subject');
-      }
+      const parsedSubject =
+        typeof subject === 'string' && subject !== ''
+          ? subject
+          : isPlainObject(subject) &&
+              Array.isArray(subject.selection) &&
+              subject.selection.length > 0 &&
+              subject.selection.length <= 32 &&
+              subject.selection.every((rel) => typeof rel === 'string' && rel !== '') &&
+              new Set(subject.selection).size === subject.selection.length
+            ? { selection: subject.selection as string[] }
+            : undefined;
+      if (parsedSubject === undefined)
+        return invalidOutput('present.subject 必须是 rel 或显式 selection');
       if (typeof intent !== 'string' || intent === '') {
         return invalidOutput('present 缺少字符串参数 intent');
       }
@@ -313,7 +323,7 @@ function mapToolCall(toolName: string, input: unknown): AgentOperation {
       }
       return {
         kind: 'present',
-        subject,
+        subject: parsedSubject,
         intent,
         ...(constraints !== undefined ? { constraints } : {}),
         delivery,

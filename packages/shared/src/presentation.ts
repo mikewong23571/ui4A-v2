@@ -14,7 +14,7 @@ export type PresentationReceiptStatus = 'ready' | 'pending' | 'fallback' | 'fail
  * Presentation starts from one contract rel. Selection and graph traversal remain an intent for the
  * Broker to turn into a bounded, reauthorized Situation; this string grants no access by itself.
  */
-export type RenderSubject = string;
+export type RenderSubject = string | { selection: string[] };
 
 /** Natural-language/user preference hint. Complex planning data belongs in Presentation. */
 export type RenderConstraint = string;
@@ -305,8 +305,23 @@ function parseIntentRecord(value: Record<string, unknown>): PresentationIntent {
     throw new Error('Presentation delivery must be inline, canvas or auto');
   }
   const constraints = parseConstraints(value.constraints);
+  let subject: RenderSubject;
+  if (typeof value.subject === 'string') {
+    subject = requiredString(value.subject, 'Presentation subject');
+  } else {
+    assertRecord(value.subject, 'Presentation subject');
+    assertExactKeys(value.subject, ['selection'], 'Presentation subject');
+    const selection = stringArray(value.subject.selection, 'Presentation subject selection', false);
+    if (
+      selection.length > MAX_DATA_LENS_SELECTORS ||
+      new Set(selection).size !== selection.length
+    ) {
+      throw new Error('Presentation subject selection is duplicate or over budget');
+    }
+    subject = { selection };
+  }
   return {
-    subject: requiredString(value.subject, 'Presentation subject'),
+    subject,
     intent: requiredString(value.intent, 'Presentation intent'),
     ...(constraints === undefined ? {} : { constraints }),
     delivery,

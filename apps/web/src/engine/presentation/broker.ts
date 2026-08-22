@@ -6,8 +6,8 @@ import {
 import type { PresentationReceipt, PresentationRequest } from '@ui4a/shared';
 
 interface AuthorizedRoot {
-  rel: string;
-  entity: unknown;
+  rels: string[];
+  entities: unknown[];
   policyScope: string;
 }
 
@@ -56,9 +56,17 @@ export function createWebPresentationBroker(
       return runPresentationBroker(request, {
         store,
         authorize: async (candidate) => {
-          const entity = await dependencies.getEntity(candidate.subject, candidate.principal);
-          if (entity === undefined) throw new Error('subject unavailable');
-          return { rel: candidate.subject, entity, policyScope: 'contract' };
+          const rels =
+            typeof candidate.subject === 'string'
+              ? [candidate.subject]
+              : candidate.subject.selection;
+          const entities = await Promise.all(
+            rels.map((rel) => dependencies.getEntity(rel, candidate.principal)),
+          );
+          if (entities.some((entity) => entity === undefined)) {
+            throw new Error('subject unavailable');
+          }
+          return { rels, entities, policyScope: 'contract' };
         },
         buildSituation: async (_candidate, authorization) => authorization,
         resolve: async () => ({ kind: 'miss' }),
@@ -69,7 +77,10 @@ export function createWebPresentationBroker(
           }),
         recover: async ({ request: candidate }) => ({
           kind: 'fallback',
-          surfaceUrl: `/canvas?focus=${encodeURIComponent(candidate.subject)}`,
+          surfaceUrl:
+            typeof candidate.subject === 'string'
+              ? `/canvas?focus=${encodeURIComponent(candidate.subject)}`
+              : `/canvas?roots=${encodeURIComponent(candidate.subject.selection.join(','))}`,
         }),
       });
     },

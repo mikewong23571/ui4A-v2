@@ -57,13 +57,14 @@ export function planGenericPresentationSurface(
   entityVersion: string,
 ): GenericPresentationPlan {
   const entities = entityMap(entity);
-  const surface = planGenericSurface(subject, entity, PRESENTATION_SURFACE_CATALOG, {
+  const boundSubject = relOf(entity) ?? subject;
+  const surface = planGenericSurface(boundSubject, entity, PRESENTATION_SURFACE_CATALOG, {
     entityVersion,
     semanticHints: semanticHintsOf(entity),
     provenanceRef: `generic:${subject}`,
   });
   const bundle = compileSurfaceTree(surface, {
-    surfaceId: `presentation-${encodeURIComponent(subject)}`,
+    surfaceId: `presentation-${encodeURIComponent(boundSubject)}`,
     catalog: PRESENTATION_SURFACE_CATALOG,
     catalogAdapter: UI4A_A2UI_CATALOG_ADAPTER,
     expectedCatalogFingerprint: UI4A_A2UI_CATALOG_ADAPTER.fingerprint,

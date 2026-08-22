@@ -317,6 +317,14 @@ describe('generic semantic fallback planner', () => {
     expect(serialized).not.toContain('properties.title');
     expect(serialized).toContain('"role":"actions"');
     expect(serialized).toContain('"role":"relation"');
+    if (surface.root.kind !== 'layout') throw new Error('generic surface must be layout');
+    expect(surface.root.children.map(({ role }) => role)).toEqual([
+      'identity',
+      'status',
+      'primary-content',
+      'actions',
+      'relation',
+    ]);
   });
 
   it('never consults entity class/type to choose a page or component', () => {

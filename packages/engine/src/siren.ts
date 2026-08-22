@@ -51,6 +51,18 @@ export interface SirenFieldPresentation {
   contentMediaType?: string;
 }
 
+function fallbackPresentationRole(
+  fieldName: string,
+): NonNullable<FieldDefinition['presentation']>['role'] {
+  const normalized = fieldName.toLowerCase();
+  if (['title', 'name', 'label', 'identity'].includes(normalized)) return 'identity';
+  if (['body', 'content', 'description', 'summary'].includes(normalized)) {
+    return 'primary-content';
+  }
+  if (['status', 'state'].includes(normalized)) return 'status';
+  return 'metadata';
+}
+
 /** Siren action(字段为参数 JSON Schema——RJSF 与 agent 共同输入)。 */
 export interface SirenAction {
   name: string;
@@ -157,15 +169,26 @@ function projectInstance(
   const flow = flowForInstance(deps, instance);
   const node = flow?.nodes.find((candidate) => candidate.name === instance.node);
   const fieldDefinitions = mergeFieldDefinitions(flow?.fields ?? [], node?.fields ?? []);
-  const fieldPresentations: SirenFieldPresentation[] = fieldDefinitions.map((field) => ({
-    path: `properties.fields.${field.name}`,
-    title: field.title ?? field.name,
-    ...(field.presentation === undefined ? {} : { role: field.presentation.role }),
-    ...(field.contentMediaType === undefined ? {} : { contentMediaType: field.contentMediaType }),
-  }));
   const fields = fieldValues(instance.fields);
-  const identityField = fieldDefinitions.find((field) => field.presentation?.role === 'identity');
-  const explicitIdentity = identityField === undefined ? undefined : fields[identityField.name];
+  const definitionsByName = new Map(fieldDefinitions.map((field) => [field.name, field]));
+  const presentationFieldNames = [
+    ...fieldDefinitions.map((field) => field.name),
+    ...Object.keys(fields).filter((name) => !definitionsByName.has(name)),
+  ];
+  const fieldPresentations: SirenFieldPresentation[] = presentationFieldNames.map((name) => {
+    const field = definitionsByName.get(name);
+    return {
+      path: `properties.fields.${name}`,
+      title: field?.title ?? name,
+      role: field?.presentation?.role ?? fallbackPresentationRole(name),
+      ...(field?.contentMediaType === undefined
+        ? {}
+        : { contentMediaType: field.contentMediaType }),
+    };
+  });
+  const identityPresentation = fieldPresentations.find((field) => field.role === 'identity');
+  const identityName = identityPresentation?.path.split('.').at(-1);
+  const explicitIdentity = identityName === undefined ? undefined : fields[identityName];
   const actions = node?.actions ?? [];
   const links: SirenLink[] = [{ rel: ['self'], href: entityHref(deps.baseHref, instance.rel) }];
   // 成员反查所属集合(导航回链)。
@@ -189,7 +212,7 @@ function projectInstance(
       flow: instance.flow,
       node: instance.node,
       title: node?.title ?? instance.node,
-      identity: explicitIdentity ?? instance.rel,
+      identity: explicitIdentity ?? flow?.title ?? instance.rel,
       status: instance.node,
       fields,
       presentation: { fields: fieldPresentations },

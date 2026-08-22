@@ -23,6 +23,10 @@ function hrefToRel(href: string): string | null {
 
 export function DetailWord(props: WordProps) {
   const entity = asEntity(props.entity, 'detail', 'entity');
+  const mode = props.mode ?? 'full';
+  if (mode !== 'full' && mode !== 'actions' && mode !== 'links') {
+    throw new Error(`detail 的 mode 必须是 full/actions/links,得到 ${String(mode)}`);
+  }
   const heading =
     typeof entity.properties.title === 'string' && entity.properties.title !== ''
       ? entity.properties.title
@@ -40,33 +44,35 @@ export function DetailWord(props: WordProps) {
       data-word="detail"
       className="w-full rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm"
     >
-      <h2 className="text-lg font-semibold">{heading}</h2>
-      <table className="mt-3 w-full border-collapse text-sm">
-        <tbody>
-          {scalarProperties.map(([key, value]) => (
-            <tr key={key} className="border-b border-border">
-              <th scope="row" className="py-1 pr-4 text-left font-normal text-muted-foreground">
-                {key}
-              </th>
-              <td className="py-1">{String(value)}</td>
-            </tr>
-          ))}
-          {Object.keys(fields).length > 0 && (
-            <tr className="border-b border-border">
-              <th scope="row" className="py-1 pr-4 text-left font-normal text-muted-foreground">
-                fields
-              </th>
-              <td className="py-1">
-                {Object.entries(fields)
-                  .map(([name, value]) => `${name}=${String(value)}`)
-                  .join(' · ')}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      {mode === 'full' && <h2 className="text-lg font-semibold">{heading}</h2>}
+      {mode === 'full' && (
+        <table className="mt-3 w-full border-collapse text-sm">
+          <tbody>
+            {scalarProperties.map(([key, value]) => (
+              <tr key={key} className="border-b border-border">
+                <th scope="row" className="py-1 pr-4 text-left font-normal text-muted-foreground">
+                  {key}
+                </th>
+                <td className="py-1">{String(value)}</td>
+              </tr>
+            ))}
+            {Object.keys(fields).length > 0 && (
+              <tr className="border-b border-border">
+                <th scope="row" className="py-1 pr-4 text-left font-normal text-muted-foreground">
+                  fields
+                </th>
+                <td className="py-1">
+                  {Object.entries(fields)
+                    .map(([name, value]) => `${name}=${String(value)}`)
+                    .join(' · ')}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
 
-      {entity.actions.length > 0 && execRel !== '' && (
+      {mode !== 'links' && entity.actions.length > 0 && execRel !== '' && (
         <section aria-label="动作" className="mt-4 space-y-4">
           {entity.actions.map((action) => {
             const guard = guardMap.get(action.name);
@@ -83,7 +89,7 @@ export function DetailWord(props: WordProps) {
         </section>
       )}
 
-      {entity.links.length > 0 && (
+      {mode !== 'actions' && entity.links.length > 0 && (
         <section aria-label="链接" className="mt-4">
           <ul className="space-y-1 text-sm">
             {entity.links.map((link) => {

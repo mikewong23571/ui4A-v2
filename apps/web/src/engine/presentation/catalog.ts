@@ -29,5 +29,13 @@ export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
       roles: ['relation'],
       bindings: { entities: { sources: ['entities'], required: true } },
     },
+    'member-link': {
+      roles: ['identity'],
+      pattern: 'member-link',
+      bindings: {
+        label: { sources: ['item'], required: true },
+        rel: { sources: ['item'], required: true },
+      },
+    },
   },
 };

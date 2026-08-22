@@ -24,6 +24,7 @@ import { CATALOG_ID } from '../registry';
 import { ChartWord } from '../words/chart';
 import { DetailWord } from '../words/detail';
 import { DiffWord } from '../words/diff';
+import { EntityLinkWord } from '../words/entity-link';
 import { FlowWord } from '../words/flow';
 import { FormWord } from '../words/form';
 import { KanbanWord } from '../words/kanban';
@@ -115,7 +116,16 @@ const wordImplementations: ReactComponentImplementation[] = [
   wordImplementation('diff', { entity: dynamic(z.any()) }, DiffWord),
   wordImplementation('kanban', { columns: dynamic(z.array(z.any())) }, KanbanWord),
   wordImplementation('markdown', { entity: dynamic(z.any()) }, MarkdownWord),
-  wordImplementation('detail', { entity: dynamic(z.any()) }, DetailWord),
+  wordImplementation(
+    'detail',
+    { entity: dynamic(z.any()), mode: z.enum(['full', 'actions', 'links']).optional() },
+    DetailWord,
+  ),
+  wordImplementation(
+    'entity-link',
+    { label: dynamic(z.string()), rel: dynamic(z.string()) },
+    EntityLinkWord,
+  ),
 ];
 
 /**

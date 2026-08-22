@@ -89,6 +89,8 @@ export interface SurfaceCatalogBinding {
 export interface SurfaceCatalogWord {
   roles: SemanticRegionRole[];
   bindings: Record<string, SurfaceCatalogBinding>;
+  /** Optional semantic composition pattern; never a React/component name. */
+  pattern?: 'member-link';
 }
 
 export interface SurfaceCatalog {
@@ -199,11 +201,12 @@ export function validateSurfaceCatalog(value: unknown): SurfaceCatalogValidation
     if (
       !nonEmptyString(word) ||
       !isRecord(definition) ||
-      !hasExactKeys(definition, ['roles', 'bindings']) ||
+      !hasExactKeys(definition, ['roles', 'bindings', 'pattern']) ||
       !Array.isArray(definition.roles) ||
       definition.roles.length === 0 ||
       !definition.roles.every((role) => nonEmptyString(role) && ROLE_SET.has(role)) ||
-      !isRecord(definition.bindings)
+      !isRecord(definition.bindings) ||
+      (definition.pattern !== undefined && definition.pattern !== 'member-link')
     ) {
       errors.push(`catalog word "${word}" is invalid`);
       continue;
@@ -783,7 +786,18 @@ const GENERIC_STRUCTURAL_PROPERTY_PATHS = new Set([
   'properties.identity',
   'properties.status',
   'properties.presentation',
+  'properties.flow',
 ]);
+
+const GENERIC_ROLE_ORDER: Readonly<Record<SemanticRegionRole, number>> = {
+  identity: 0,
+  status: 1,
+  'primary-content': 2,
+  metadata: 3,
+  actions: 4,
+  relation: 5,
+  diagnostic: 6,
+};
 
 function catalogDependency(catalog: SurfaceCatalog): SurfaceDependency {
   return { kind: 'catalog', subject: catalog.id, version: catalog.version };
@@ -928,6 +942,7 @@ export function planGenericSurface(
     if (
       !plannedPaths.has(path) &&
       !path.startsWith('properties.fields.') &&
+      !path.startsWith('properties.presentation.') &&
       !GENERIC_STRUCTURAL_PROPERTY_PATHS.has(path)
     ) {
       regions.push({ role: 'metadata', binding: { kind: 'property', subject, path } });
@@ -940,6 +955,8 @@ export function planGenericSurface(
   if (entity.links.length > 0) {
     regions.push({ role: 'relation', binding: { kind: 'links', subject } });
   }
+
+  regions.sort((left, right) => GENERIC_ROLE_ORDER[left.role] - GENERIC_ROLE_ORDER[right.role]);
 
   const children = regions.map(({ role, binding }, index) =>
     genericSlot(
@@ -957,14 +974,31 @@ export function planGenericSurface(
       entity.entities.every((member) => readPath(member, 'properties.identity') !== undefined)
         ? 'properties.identity'
         : 'properties.rel';
-    const item = genericWord(
-      `word-${repeatIndex}-item`,
-      'identity',
-      { kind: 'item', path: itemIdentityPath },
-      catalog,
-      options.entityVersion,
-      provenanceRef,
+    const memberLink = Object.entries(catalog.words).find(
+      ([, definition]) => definition.pattern === 'member-link',
     );
+    const item: SurfaceNode =
+      memberLink === undefined
+        ? genericWord(
+            `word-${repeatIndex}-item`,
+            'identity',
+            { kind: 'item', path: itemIdentityPath },
+            catalog,
+            options.entityVersion,
+            provenanceRef,
+          )
+        : {
+            kind: 'word',
+            id: `word-${repeatIndex}-item`,
+            role: 'identity',
+            word: memberLink[0],
+            bindings: {
+              label: { kind: 'item', path: itemIdentityPath },
+              rel: { kind: 'item', path: 'properties.rel' },
+            },
+            dependencies: [catalogDependency(catalog)],
+            provenance: genericProvenance(provenanceRef),
+          };
     const repeat: SurfaceRepeatNode = {
       kind: 'repeat',
       id: `repeat-${repeatIndex}`,

@@ -221,9 +221,24 @@ export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
       parameters: objectSchema(
         {
           subject: {
-            type: 'string',
-            minLength: 1,
-            description: '需要呈现的已观察实体、集合或 flow rel',
+            oneOf: [
+              { type: 'string', minLength: 1 },
+              {
+                type: 'object',
+                properties: {
+                  selection: {
+                    type: 'array',
+                    minItems: 1,
+                    maxItems: 32,
+                    uniqueItems: true,
+                    items: { type: 'string', minLength: 1 },
+                  },
+                },
+                required: ['selection'],
+                additionalProperties: false,
+              },
+            ],
+            description: '需要呈现的已观察 rel，或显式 selection rel 数组',
           },
           intent: {
             type: 'string',

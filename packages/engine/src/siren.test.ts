@@ -117,11 +117,36 @@ describe('project — 实例实体(四件组装:properties/actions/links/guard-r
     expect(JSON.stringify(entity?.properties.presentation)).not.toContain('tech');
   });
 
-  it('无显式 identity 角色时稳定回退 rel，不把节点 title 当身份', () => {
+  it('无显式角色时按通用字段语义回退，不把节点 title 当身份', () => {
     const entity = project(seedSnapshot, 'post:post-welcome', deps);
-    expect(entity?.properties.identity).toBe('post:post-welcome');
+    expect(entity?.properties.identity).toBe('Welcome to UI4A');
     expect(entity?.properties.identity).not.toBe(entity?.properties.title);
     expect(entity?.properties.status).toBe('published');
+    expect(entity?.properties.presentation).toMatchObject({
+      fields: expect.arrayContaining([
+        expect.objectContaining({ path: 'properties.fields.title', role: 'identity' }),
+        expect.objectContaining({ path: 'properties.fields.category', role: 'metadata' }),
+      ]),
+    });
+  });
+
+  it('无身份字段的开放 Flow 以 flow 标题作为稳定身份，不使用当前节点标题', () => {
+    const entity = project(
+      {
+        ...seedSnapshot,
+        instances: {
+          ...seedSnapshot.instances,
+          'article-drafting:main': {
+            ...seedSnapshot.instances['article-drafting:main']!,
+            fields: {},
+          },
+        },
+      },
+      'article-drafting:main',
+      deps,
+    );
+    expect(entity?.properties.identity).toBe(articleDraftingFlow.title);
+    expect(entity?.properties.identity).not.toBe(entity?.properties.title);
   });
 
   it('actions:name/title/method=POST/href=/api/exec,fields 为 JSON Schema(select 枚举)', () => {

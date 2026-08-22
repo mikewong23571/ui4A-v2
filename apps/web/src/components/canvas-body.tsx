@@ -173,6 +173,7 @@ export function CanvasBody() {
   // → 挂载 effect 重跑,整面重载(render 回执即达即跳在画布上的二次渲染)。
   const concernParam = useSearchParams().get('concern') ?? undefined;
   const focusParam = useSearchParams().get('focus') ?? undefined;
+  const rootsParam = useSearchParams().get('roots') ?? undefined;
   const focusRefreshParam = useSearchParams().get('refresh') ?? undefined;
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -233,10 +234,29 @@ export function CanvasBody() {
       // 不改变渲染集)。
       const frozenCollection = await fetchEntity('render-specs', controller.signal);
       const frozenSpecs = frozenCollection !== null ? frozenSpecsOf(frozenCollection) : [];
-      const requestedFocus = focusParam ?? (concernParam === undefined ? 'articles' : undefined);
+      const selectedRoots =
+        rootsParam === undefined
+          ? []
+          : [
+              ...new Set(
+                rootsParam
+                  .split(',')
+                  .map((rel) => rel.trim())
+                  .filter(Boolean),
+              ),
+            ].slice(0, 32);
+      const requestedFocuses =
+        selectedRoots.length > 0
+          ? selectedRoots
+          : [focusParam ?? (concernParam === undefined ? 'articles' : undefined)].filter(
+              (rel): rel is string => rel !== undefined,
+            );
       const activeConcern =
-        requestedFocus === undefined ? concernParam : `presentation:${requestedFocus}`;
-      const specs = frozenSpecs.filter((spec) => spec.concern === activeConcern);
+        requestedFocuses.length === 0 ? concernParam : `presentation:${requestedFocuses[0]}`;
+      const specs =
+        requestedFocuses.length === 0
+          ? frozenSpecs.filter((spec) => spec.concern === activeConcern)
+          : [];
 
       // 4. 拦截门 + MessageProcessor(每轮重载重建,白名单随数据模型重建);
       // 实体取数经页面缓存:同 rel 跨 surface 零重复 fetch。
@@ -254,7 +274,7 @@ export function CanvasBody() {
 
       const failed: string[] = [];
       const planned: { surfaceId: string; concern: string; warnings: DerefWarning[] }[] = [];
-      if (requestedFocus !== undefined) {
+      for (const requestedFocus of requestedFocuses) {
         try {
           const entity = await withAbort(cache.get(requestedFocus), controller.signal);
           if (entity === null) throw new Error(`实体 "${requestedFocus}" 不存在`);
@@ -298,7 +318,10 @@ export function CanvasBody() {
                   id: surfaceId,
                   generation,
                   concern,
-                  active: concern === activeConcern,
+                  active:
+                    requestedFocuses.length > 0
+                      ? concern.startsWith('presentation:')
+                      : concern === activeConcern,
                   surface,
                   warnings,
                 },
@@ -318,7 +341,7 @@ export function CanvasBody() {
         setLoading(false);
       }
     }
-  }, [cache, concernParam, focusParam, focusRefreshParam]);
+  }, [cache, concernParam, focusParam, focusRefreshParam, rootsParam]);
 
   useEffect(() => {
     const initial = setTimeout(() => void load(), 0);
@@ -370,7 +393,10 @@ export function CanvasBody() {
         </ul>
       )}
 
-      <section aria-label="surfaces" className="mt-6 space-y-8">
+      <section
+        aria-label="surfaces"
+        className={cn('mt-6 gap-6', rootsParam === undefined ? 'space-y-8' : 'grid lg:grid-cols-2')}
+      >
         {surfaces.map((entry) => (
           <div
             key={`${entry.generation}:${entry.id}`}

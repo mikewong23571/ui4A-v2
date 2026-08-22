@@ -53,4 +53,19 @@ describe('web Presentation Broker adapter', () => {
     });
     expect(plan).not.toHaveBeenCalled();
   });
+
+  it('reauthorizes every explicit selection root and returns one Canvas selection URL', async () => {
+    const getEntity = vi.fn(async (rel: string) => ({ properties: { rel } }));
+    const broker = createWebPresentationBroker({ getEntity });
+    const selection = completePresentationRequest(
+      { subject: { selection: ['post:a', 'post:b'] }, intent: 'compare', delivery: 'canvas' },
+      { requestId: 'selection:1', principal: 'user:local', sourceMessageIds: [] },
+    );
+
+    await expect(broker.present(selection)).resolves.toMatchObject({
+      status: 'fallback',
+      surfaceUrl: '/canvas?roots=post%3Aa%2Cpost%3Ab',
+    });
+    expect(getEntity).toHaveBeenCalledTimes(2);
+  });
 });

@@ -56,6 +56,27 @@ describe('thin presentation protocol', () => {
     }
   });
 
+  it('supports an explicit bounded selection subject without Session identity', () => {
+    expect(
+      parsePresentationIntent({
+        subject: { selection: ['post:a', 'post:b'] },
+        intent: 'compare',
+        delivery: 'canvas',
+      }),
+    ).toEqual({
+      subject: { selection: ['post:a', 'post:b'] },
+      intent: 'compare',
+      delivery: 'canvas',
+    });
+    expect(() =>
+      parsePresentationIntent({
+        subject: { selection: ['post:a', 'post:a'] },
+        intent: 'compare',
+        delivery: 'canvas',
+      }),
+    ).toThrow(/duplicate/i);
+  });
+
   it.each(['surface', 'component', 'bind', 'dependency', 'sessionId'])(
     'rejects forbidden presentation payload key %s at every protocol boundary',
     (forbidden) => {
