@@ -1,0 +1,7 @@
+T13 自治闭环总结(审计入口;编排 agent 代行验收,2026-08-22)
+
+做了什么:① BIOS flow 拓扑图(/meta/flow/<name> 与 /meta/self,flowEdges 推导 + T7 layeredLayout 确定性布局复用,ReactFlow 只读配置零编辑);② definition-versions 可读投影(版本子实体:版本号/active 标记/激活来源/全文内嵌)+ 任选两版机械 diff 对比(复用 engine definitionDiff 与 diff-render 三视角);③ capability 定义面(CapabilityDefinition{transform|extract|effect} + capability-seeded 入日志 + fold 落 snapshot.capabilities,draft/notify/clarify seed,I5 重放一致,BIOS /meta/capabilities 列表+详情,业务 sitemap 零入口);④ 激活不变式第八条 capability-registered(D23;引用点=proposal/spawn/on-invalid,s2 checks 名单机械适配 7→8)。
+降级/回滚:无回滚。机械适配(D21 先例):s2 checks 名单/行数 7→8、meta sitemap route.test 精确名单 + 拓扑/版本对比/capabilities 断言(仅新增)。中途改案:版本子实体不加 rel/href(rule driver navigableRels 漫游回归,S2 e2e 抓出),对比数据走内嵌全文(e4eaac6 note)。
+环境事件:Phase B 期间检出外部并行 WIP(onReasoningDelta 15 文件),T13 提交严格隔离未触碰;该 WIP 由另一会话提交(24a64ed)后全量门恢复。3100 残留 dev server 被 kill 一次(本仓,可重启)。
+遗留:capability-schema-compatible 不变式(bind 与输入 schema 相容,需 input schema 真实化)+ capability 沙箱/真实执行(arch-brief 洞 #7)→ 后续专项;capability meta 编辑动词(add-capability 等)归后续;e2e/invariants enumerateEntityRels 未枚举 capability rel(纯函数投影不破,后续可补锚);D19 路线剩余:/app/<name> 默认页(T3)、角色 archetype(T5)。
+终态证据:CI=true pnpm check 1073 passed;CI=true pnpm e2e 45 passed / 4 skipped;工作区干净(.zcode/ 为外部会话未跟踪目录,按约束未删未提交)。
