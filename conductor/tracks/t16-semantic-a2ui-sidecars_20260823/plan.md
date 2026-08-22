@@ -60,7 +60,7 @@
 - [x] Task: Interaction invariants——fuzz 全部可提交元素映射当前授权 action；Recipe/Sidecar 不缓存 guard、enabled 或 formData — 3583229
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 3583229
 
-## Phase G: 用户级 Sidecar、fastpath 与局部失效
+## Phase G: 用户级 Sidecar、fastpath 与局部失效 [checkpoint: ab4b47e]
 
 - [x] Task: TS13 Red→Green——独立 Presentation events/fold：User cache/pinned、versions/active pointer/provenance；Business Snapshot hash 不变，schema/key 无 sessionId — 61356d5
 - [x] Task: TS14/S18 Red→Green——跨 Chat Session/Canvas/direct page 命中同一 User Sidecar，重新授权/解引用，两个 LLM call count=0，目标 ≤500ms — 61356d5
@@ -69,7 +69,7 @@
 - [x] Task: S22 Red→Green——dependency DAG 子树级 reused/replanned、原子切换、有界 Presentation context 和 receipt — 61356d5
 - [x] Task: S23/TS4 Red→Green——Chat/Presentation/LLM 故障隔离；User Sidecar/Recipe hit 可用，新规划诚实失败且零 rule fallback/effect — 61356d5
 - [x] Task: 并发/replay/property tests——跨窗口 optimistic baseVersion、非冲突 patch 合并/冲突拒绝、写入重试幂等、stale race 和全量重放一致 — 61356d5
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — ab4b47e
 
 ## Phase H: 人类优化、User Memory 与 Shared Recipe
 
