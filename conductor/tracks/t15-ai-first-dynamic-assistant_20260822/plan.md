@@ -4,10 +4,10 @@
 
 ## Phase A: DeepSeek baseline 配置、Eval 合同与 disposable spike
 
-- [ ] Task: U23 配置 baseline——清点 GLM 专用 env/常量/文档与 Web/Worker 环境分叉；写 failing tests 证明源码默认 provider、供应商 key 名、缺项静默回退和 inline/delegated 配置漂移
-- [ ] Task: U23 provider-first implementation——provider-neutral `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` 解析与配置错误类型；删除硬编码 endpoint/model 和 GLM 专用 runtime key；统一 dev 启动向 Web/Worker 传递 gitignored 环境
-- [ ] Task: U23 DeepSeek profile verification——外部环境配置 `https://cpa.styleofwong.cn/v1` + `deepseek-v4-flash` 后，inline/render/delegated/probe 解析为同一 profile；`.env.example` 仅占位，源码/日志/报告 secret scan 通过
-- [ ] Task: disposable provider probe——实测 DeepSeek baseline 的 Chat Completions、流式帧、tool calling、结构化输出、错误体、模型标识与时延；结论进入 DECISIONS/git note，不为端点行为写永久特判
+- [x] Task: U23 配置 baseline——清点 GLM 专用 env/常量/文档与 Web/Worker 环境分叉；写 failing tests 证明源码默认 provider、供应商 key 名、缺项静默回退和 inline/delegated 配置漂移 — 42ed23e
+- [x] Task: U23 provider-first implementation——provider-neutral `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` 解析与配置错误类型；删除硬编码 endpoint/model 和 GLM 专用 runtime key；统一 dev 启动向 Web/Worker 传递 gitignored 环境 — 42ed23e
+- [x] Task: U23 DeepSeek profile verification——外部环境配置 `https://cpa.styleofwong.cn/v1` + `deepseek-v4-flash` 后，inline/render/delegated/probe 解析为同一 profile；`.env.example` 仅占位，源码/日志/报告 secret scan 通过 — 42ed23e
+- [x] Task: disposable provider probe——实测 DeepSeek baseline 的 Chat Completions、流式帧、tool calling、结构化输出、错误体、模型标识与时延；结论进入 DECISIONS/git note，不为端点行为写永久特判 — 42ed23e
 - [ ] Task: 建立 story-eval 最小 harness 与版本化报告格式；必须记录真实 driver/model、场景输入、结构化 outcome、业务事件前后差分和人工 rubric，拒绝 exact wording/trace assertions
 - [ ] Task: disposable story spike——只用 DeepSeek baseline 跑 U1/U5/U10/U12，验证多轮 messages/结构化输出/工具选择的 AI SDK 行为并记录失败证据；spike 不直接成为生产实现
 - [ ] Task: 记录 T15 superseding 决定(生产 Assistant AI-first、退出 rule fallback、对话上下文来自日志、临时认知/正式 artifact/action 边界、DeepSeek 真实 LLM Eval)，同步待实施的 GOAL/I1 变更说明
