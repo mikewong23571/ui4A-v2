@@ -140,6 +140,8 @@ describe('Presentation Agent context boundary', () => {
     expect(prompt).not.toContain('user:alice');
     expect(prompt).not.toContain('session:secret');
     expect(prompt).toContain('binding-only');
+    expect(prompt).toContain('"kind":"layout"');
+    expect(prompt).toContain('"kind":"property"');
   });
 
   it('rejects over-budget examples before transport', async () => {

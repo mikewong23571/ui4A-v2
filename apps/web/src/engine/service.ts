@@ -85,6 +85,10 @@ import {
 } from '../db/events';
 import { getPool } from '../db/pool';
 import { installedApplicationBundles } from '../applications/bundles';
+import {
+  resetRecipeCoordinatorForTests,
+  scheduleRecipesForSnapshot,
+} from './presentation/recipes-runtime';
 import { cedarPolicyFromDefaultFile } from '../domain/cedarPolicy';
 import type { RenderSpec } from '../render/spec';
 import { validateSpec } from '../render/validator';
@@ -261,6 +265,9 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   const events: LogEvent[] = await readLog(db);
   assertMetaBootstrapIntegrity(events);
   let snapshot = fold(events, { flows: {} });
+  // Application/Flow/Catalog activation 的旁路预生成；配置/模型失败只进入
+  // Presentation coordinator failure，不阻断 boot 或业务引擎。
+  scheduleRecipesForSnapshot(snapshot);
   // 已折叠进度(seq 高水位):自身 append 推进;读路径/exec 开头按此增量 fold 外部写者。
   let lastSeq = events.length > 0 ? events[events.length - 1]!.seq : 0;
   const state = engineState();
@@ -670,6 +677,9 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           await appendWithSeq(toAppend(event));
         }
         snapshot = outcome.snapshot;
+        if (outcome.events.some((event) => event.kind === 'definition-activated')) {
+          scheduleRecipesForSnapshot(snapshot);
+        }
         await materializeSpawnArtifacts(outcome.events, aliased, artifactModel);
         applyForeignGaps();
 
@@ -852,4 +862,5 @@ export function resetEngineForTests(): void {
   state.boot = null;
   state.bootDb = null;
   state.tail = Promise.resolve();
+  resetRecipeCoordinatorForTests();
 }
