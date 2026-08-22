@@ -10,7 +10,7 @@
 - [x] Task: Application Recipe probe——从 Application/Flow 定义机械枚举 overview/inspect/browse/current-task/confirmation/artifact 场景，用独立 Presentation context 生成参数化 Recipe，验证零 live facts/principal/sessionId — 44502cf
 - [x] Task: User Sidecar probe——比较同一日志独立 Presentation projection、派生存储和 cache index 的 replay/失效/性能；验证跨 Session 命中与 Business Snapshot hash 不变 — fcc4b4d
 - [x] Task: Flow/graph probe——用 article-drafting + post-status + artifact/confirmation 构造有界 Lens，测量 prompt、解引用、层级 Recipe 和局部失效触点 — 44502cf
-- [ ] Task: 将 probe 结论写入 `DECISIONS.md`，确认 pure presentation kernel 位置、Recipe Registry/Sidecar store、event families、fingerprint 和 candidate/promoted lifecycle；技术栈偏差先更新 `tech-stack.md`
+- [x] Task: 将 probe 结论写入 `DECISIONS.md`，确认 pure presentation kernel 位置、Recipe Registry/Sidecar store、event families、fingerprint 和 candidate/promoted lifecycle；技术栈偏差先更新 `tech-stack.md` — 27c57d7
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase B: Chat 正确性、薄协议与 Plane 隔离
