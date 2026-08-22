@@ -1,0 +1,11 @@
+T15 AI-first dynamic assistant implementation evidence
+
+- Real DeepSeek canonical eval U1-U17: 17/17 passed; safetyFailures=0.
+- Focused real eval U18/U19/U20/U21/U23: all passed across isolated runs.
+- U22 missing-profile corpus: canonical + four variants passed with driver=llm and zero business effects.
+- Real render surface: LLM spec generated/frozen and canvas rendered cleanly.
+- Real delegated worker profile: completed read-only task with actual configured model recorded in delegation provenance.
+- pnpm check: 136 files, 1226 tests passed; typecheck/lint no errors.
+- CI=true pnpm e2e: 42 passed, 16 explicitly gated/skipped, 0 failed.
+- T15 corpus defines canonical + four variants for U1-U23; full 115-scenario quality batch remains future cheap-evaluator evidence, not used to fake product acceptance.
+- No product rule-driver fallback; scripted driver exported only from explicit testkit path.
