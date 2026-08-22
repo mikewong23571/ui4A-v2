@@ -6,7 +6,7 @@
 ## Phase A: 数据契约修复(#5/#4/#3)
 
 - [x] Task: append 效果合并源实例字段(参数优先、实例兜底、origin 各自留痕;DECISIONS D24;I5 重放一致)+ B1 断言补强(agent/human 两路 e2e 断言发布文章 category/tags)(TDD) — a836dda
-- [~] Task: exec 表单预填与 label 人话化(动作字段与实例字段同名预填;publish title 补 description;表单 label 取 field-definition.title,seed 补人话标题;属性表机器名过滤)(TDD)
+- [x] Task: exec 表单预填与 label 人话化(动作字段与实例字段同名预填;publish title 补 description;表单 label 取 field-definition.title,seed 补人话标题;属性表机器名过滤)(TDD) — 4bd5a4c
 
 ## Phase B: 画布韧性(#6/#7 + T12 遗留)
 
