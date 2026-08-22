@@ -235,6 +235,15 @@ describe('exec:三层裁决 → 事件 → 增量快照', () => {
     ]);
     expect(snapshot.instances['article-drafting:main']?.node).toBe('basic-info');
 
+    // D24 合并语义:向导三步经 set-field/参数落在实例上的 category/tags/body
+    // 随 publish 并入新文章(origin 各自留痕);title 为 publish 参数。
+    expect(snapshot.instances['post:new-article']?.fields).toEqual({
+      title: { value: 'New Article', origin: 'intent' },
+      category: { value: 'tech', origin: 'intent' },
+      tags: { value: 'ui4a', origin: 'intent' },
+      body: { value: '正文内容', origin: 'intent' },
+    });
+
     // 事件对:action-executed + entity-appended(appended/collection 不落列,
     // Phase B 日志口径——fold 由 flow 定义重推导;此断言验证事件顺序与种类)。
     const tail = (await logEvents()).slice(-2);
@@ -244,6 +253,12 @@ describe('exec:三层裁决 → 事件 → 增量快照', () => {
       action: 'publish',
     });
     expect(tail[1]).toMatchObject({ rel: 'article-drafting:main', action: 'publish' });
+
+    // I5:含 append 合并语义的在线快照与日志重放同构(合并集由重放重推导,
+    // entity-appended 载荷不携带字段,fold 不读它)。
+    expect(contentVersion(fold(await logEvents(), { flows: businessFlows }))).toBe(
+      contentVersion(snapshot),
+    );
   });
 });
 

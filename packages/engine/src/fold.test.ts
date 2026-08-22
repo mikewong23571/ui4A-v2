@@ -166,6 +166,61 @@ describe('fold 投影', () => {
     expect(snapshot.collections.articles).toEqual(['post:hello-world']);
   });
 
+  it('重放合并语义(D24):append 合并集由已重放的源实例字段重建,entity-appended 载荷不携带字段', () => {
+    // 源实例经前序事件重放已带 category/tags(origin 各异);publish 只带 title。
+    // entity-appended 是伴随事件(fold 不读其字段载荷)——合并集由同批
+    // action-executed 重放经同一 applyEffects 重推导,与在线路径同构(I5)。
+    const stepped: LogEvent[] = [
+      seedEvent,
+      {
+        seq: 2,
+        kind: 'action-executed',
+        rel: 'article-drafting:main',
+        action: 'next',
+        actor: 'human',
+        params: {
+          category: { value: 'tech', origin: 'proposal' },
+          tags: { value: 'w', origin: 'effect' },
+        },
+      },
+      {
+        seq: 3,
+        kind: 'action-executed',
+        rel: 'article-drafting:main',
+        action: 'next',
+        actor: 'human',
+        params: { body: { value: '正文', origin: 'intent' } },
+      },
+      {
+        seq: 4,
+        kind: 'action-executed',
+        rel: 'article-drafting:main',
+        action: 'publish',
+        actor: 'human',
+        params: { title: { value: 'Hello World', origin: 'intent' } },
+        appended: ['post:hello-world'],
+      },
+      {
+        seq: 5,
+        kind: 'entity-appended',
+        rel: 'article-drafting:main',
+        action: 'publish',
+        actor: 'human',
+        appendedRel: 'post:hello-world',
+        collection: 'articles',
+      },
+    ];
+
+    const snapshot = fold(stepped, { flows });
+
+    expect(snapshot.instances['post:hello-world']?.fields).toEqual({
+      title: { value: 'Hello World', origin: 'intent' },
+      category: { value: 'tech', origin: 'proposal' },
+      tags: { value: 'w', origin: 'effect' },
+      body: { value: '正文', origin: 'intent' },
+    });
+  });
+
   it('action-rejected 不改状态但保留在日志序列中(I6)', () => {
     const approve: LogEvent = {
       seq: 2,

@@ -101,9 +101,15 @@ export type EffectDefinition =
       flow?: string;
       /** 显式实例名。 */
       name?: string;
-      /** 从请求参数取实例名(如 title → slug)。 */
+      /**
+       * 从合并后参数口径取实例名(如 title → slug;D24:请求参数优先,
+       * 源实例同名字段兜底)。
+       */
       'name-from'?: string;
-      /** 复制进新实例的字段白名单,缺省复制全部请求参数。 */
+      /**
+       * 复制进新实例的字段白名单,缺省复制整个合并集(D24:源实例 fields ∪
+       * 请求参数,参数覆盖同名,各字段 origin 保留);声明时从合并集取白名单。
+       */
       fields?: string[];
       /** 新实例的初始节点(受对应 flow 管辖时),如 "published"。 */
       node?: string;

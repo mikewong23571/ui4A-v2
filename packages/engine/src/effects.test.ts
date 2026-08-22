@@ -235,6 +235,99 @@ describe('效果词汇表 — append(生成 `类型:实例名` rel)', () => {
   });
 });
 
+describe('效果词汇表 — append 合并源实例字段(D24:fields = 源实例 ∪ 请求参数)', () => {
+  // 向导实例已带前序步骤字段(origin 各异,模拟 set-field/param 混合落痕)。
+  const wizardSnapshot = {
+    ...seedSnapshot,
+    instances: {
+      ...seedSnapshot.instances,
+      'article-drafting:main': {
+        ...seedSnapshot.instances['article-drafting:main']!,
+        node: 'ready',
+        fields: {
+          title: { value: 'Draft Title', origin: 'intent' as const },
+          category: { value: 'essay', origin: 'proposal' as const },
+          tags: { value: 'wizard', origin: 'effect' as const },
+        },
+      },
+    },
+  };
+
+  const appendEffect = {
+    type: 'append' as const,
+    collection: 'articles',
+    'resource-type': 'post',
+    'name-from': 'title',
+    node: 'published',
+    flow: 'post-status',
+  };
+
+  it('请求参数缺失的字段从源实例合并(walkthrough #5:category/tags 不再丢失,origin 原样保留)', () => {
+    const outcome = applyEffects(
+      exec('publish', 'article-drafting:main', { title: 'My Post' }),
+      [appendEffect],
+      wizardSnapshot,
+      deps,
+    );
+    expect(outcome.snapshot.instances['post:my-post']?.fields).toEqual({
+      title: { value: 'My Post', origin: 'intent' },
+      category: { value: 'essay', origin: 'proposal' },
+      tags: { value: 'wizard', origin: 'effect' },
+    });
+  });
+
+  it('参数覆盖同名字段:值与 origin 均按 originOf(实例字段只兜底不抢位)', () => {
+    const outcome = applyEffects(
+      {
+        ...exec('publish', 'article-drafting:main', { title: 'My Post', category: 'tech' }),
+        paramOrigins: { category: 'elicited' },
+      },
+      [appendEffect],
+      wizardSnapshot,
+      deps,
+    );
+    const fields = outcome.snapshot.instances['post:my-post']?.fields;
+    expect(fields?.category).toEqual({ value: 'tech', origin: 'elicited' });
+    expect(fields?.tags).toEqual({ value: 'wizard', origin: 'effect' });
+  });
+
+  it('fields 白名单从合并集取(实例字段经白名单入新实体;未列名不带)', () => {
+    const outcome = applyEffects(
+      exec('publish', 'article-drafting:main', { title: 'My Post' }),
+      [{ ...appendEffect, fields: ['title', 'category'] }],
+      wizardSnapshot,
+      deps,
+    );
+    expect(outcome.snapshot.instances['post:my-post']?.fields).toEqual({
+      title: { value: 'My Post', origin: 'intent' },
+      category: { value: 'essay', origin: 'proposal' },
+    });
+  });
+
+  it('白名单含合并集缺失的字段时跳过(不发明值,I2)', () => {
+    const outcome = applyEffects(
+      exec('publish', 'article-drafting:main', { title: 'My Post' }),
+      [{ ...appendEffect, fields: ['title', 'ghost'] }],
+      wizardSnapshot,
+      deps,
+    );
+    expect(outcome.snapshot.instances['post:my-post']?.fields).toEqual({
+      title: { value: 'My Post', origin: 'intent' },
+    });
+  });
+
+  it('name-from 取合并口径:参数缺省时回退源实例同名字段(参数优先)', () => {
+    const outcome = applyEffects(
+      exec('publish', 'article-drafting:main', {}),
+      [appendEffect],
+      wizardSnapshot,
+      deps,
+    );
+    expect(outcome.snapshot.instances['post:draft-title']).toBeDefined();
+    expect(outcome.snapshot.collections.articles).toContain('post:draft-title');
+  });
+});
+
 describe('效果词汇表 — spawn(T2 stub:只记事件不改状态)', () => {
   it('产出 spawn-requested 事件,携带 capability/bind/on-done;快照实例不变', () => {
     const outcome = applyEffects(

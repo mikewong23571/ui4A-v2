@@ -145,18 +145,19 @@ describe('executePlan — 全过(plan-completed)', () => {
     expect(outcome.kind).toBe('plan-completed');
     // 第 2 步能通过裁决,证明第 1 步的迁移已入后步快照(逐步模拟,非并行)。
     expect(outcome.snapshot.instances['article-drafting:main']?.node).toBe('done');
-    // fixtures 的 publish 未声明 title 字段(参数为空)→ 追加名落 slug 兜底 'item'。
-    expect(outcome.snapshot.instances['post:item']).toMatchObject({
-      rel: 'post:item',
+    // D24 机械适配:publish 参数为空 → name-from 回退源实例字段 title
+    // (第 1 步已落入实例)→ 追加名取实例标题 slug,不再落 'item' 兜底。
+    expect(outcome.snapshot.instances['post:new-article']).toMatchObject({
+      rel: 'post:new-article',
       flow: 'article-drafting',
       node: 'published',
     });
-    expect(outcome.snapshot.collections.articles).toContain('post:item');
+    expect(outcome.snapshot.collections.articles).toContain('post:new-article');
     expect(outcome.results[3]).toMatchObject({
       step: 4,
       action: 'publish',
       outcome: 'executed',
-      appended: ['post:item'],
+      appended: ['post:new-article'],
     });
   });
 });
@@ -339,7 +340,8 @@ describe('executePlan — fold 重放一致(I5:plan 事件族参与重放)', () 
     ];
     const replayed = fold(log, deps);
     expect(replayed.instances['article-drafting:main']?.node).toBe('done');
-    expect(replayed.instances['post:item']).toMatchObject({ node: 'published' });
+    // D24:name-from 回退源实例 title(publish 参数为空)→ post:new-article。
+    expect(replayed.instances['post:new-article']).toMatchObject({ node: 'published' });
     expect(replayed.collections.articles).toEqual(outcome.snapshot.collections.articles);
   });
 

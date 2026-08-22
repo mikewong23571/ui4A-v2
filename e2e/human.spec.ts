@@ -86,6 +86,19 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
     await expect(created).toBeVisible();
     await expect(created).toContainText('published');
 
+    // B1 字段保真(D24):向导分类步所填 category/tags 经 set-field 落在向导
+    // 实例上,publish 只带 title 参数——合并语义下必须出现在发布文章实体上。
+    const createdRel = await created.getAttribute('data-rel');
+    const entityResponse = await fetch(
+      `${SCENARIO_BASE}/api/entity?rel=${encodeURIComponent(createdRel ?? '')}`,
+    );
+    expect(entityResponse.status).toBe(200);
+    const entity = (await entityResponse.json()) as {
+      properties: { fields?: Record<string, unknown> };
+    };
+    expect(entity.properties.fields?.category).toBe('tech');
+    expect(entity.properties.fields?.tags).toBe('human-e2e');
+
     // 日志留痕:publish 由 human 执行,principal/channel 为 renderer 口径
     const events = await getEvents();
     const publishes = executed(events, 'publish');

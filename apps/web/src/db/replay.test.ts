@@ -269,11 +269,19 @@ describe('I5 重放一致性(真 PG)', () => {
     expect(hashReplay).toBe(hashOnline);
 
     // 具体终态抽查(不只信 hash):新文章落位、向导完结、评论过审、出处保留。
+    // D24 机械适配:append 合并源实例字段——向导前序步骤落在实例上的
+    // category/tags/body 随 publish 并入新文章(origin 各自留痕:tags 为
+    // proposal,其余 intent;title 为 publish 参数覆盖同名字段)。
     expect(replayed.instances['post:hello-world']).toEqual({
       rel: 'post:hello-world',
       flow: 'article-drafting',
       node: 'published',
-      fields: { title: { value: 'Hello World', origin: 'intent' } },
+      fields: {
+        title: { value: 'Hello World', origin: 'intent' },
+        category: { value: 'tech', origin: 'intent' },
+        tags: { value: 'ai', origin: 'proposal' },
+        body: { value: '正文', origin: 'intent' },
+      },
     });
     expect(replayed.instances['article-drafting:main']?.node).toBe('done');
     expect(replayed.instances['comment:c1']?.node).toBe('approved');

@@ -191,6 +191,12 @@ test('B1 委托发布:agent 三步向导发布文章,计数 2→3', async () => 
     expect(created, '新文章应出现在 articles 子实体中').toBeDefined();
     expect(created!.properties.node).toBe('published');
 
+    // B1 字段保真(D24):分类步所填 category/tags 经 set-field 落在向导实例上,
+    // publish 请求只带 title——合并语义下发布文章实体必须携带二者(值一致)。
+    const createdFields = created!.properties.fields as Record<string, unknown>;
+    expect(createdFields.category).toBe('tech');
+    expect(createdFields.tags).toBe('agent');
+
     // 日志留痕:publish 由 agent 执行,带 principal
     const events = await getEvents();
     const publishes = executedEvents(events, 'publish');

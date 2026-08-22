@@ -112,17 +112,18 @@ function resourceType(effect: Extract<EffectDefinition, { type: 'append' }>): st
   return collection.endsWith('s') ? collection.slice(0, -1) : collection;
 }
 
-/** 确定性命名:显式 name > name-from 参数 slug > 集合名+序号;冲突递增后缀。 */
+/** 确定性命名:显式 name > name-from 合并口径 slug > 集合名+序号;冲突递增后缀。
+ *  name-from 取值(D24):合并后参数口径——请求参数优先,源实例同名字段兜底。 */
 function instanceName(
   effect: Extract<EffectDefinition, { type: 'append' }>,
-  request: ExecRequest,
+  mergedFields: Readonly<Record<string, FieldValue>>,
   instances: EngineSnapshot['instances'],
   type: string,
 ): string {
   const base =
     effect.name ??
     (effect['name-from'] !== undefined
-      ? slugify(String(request.params?.[effect['name-from']] ?? ''))
+      ? slugify(String(mergedFields[effect['name-from']]?.value ?? ''))
       : `${type}-${Object.keys(instances).length + 1}`);
   if (instances[`${type}:${base}`] === undefined) return base;
   let counter = 2;
@@ -142,6 +143,22 @@ export function paramsToFields(
   return Object.fromEntries(
     filtered.map(([name, value]) => [name, { value, origin: originOf(request, name) }]),
   );
+}
+
+/**
+ * append 的新实体字段(D24):源实例 fields ∪ 请求参数(参数覆盖同名)。
+ * 请求参数已在效果应用前落入源实例(见 applyEffects 前段,origin 按 originOf),
+ * 故合并集 = 源实例当前字段——实例字段原 origin 保留,同名参数已覆盖。
+ * `fields` 白名单语义不变:声明时从合并集取白名单(缺失名跳过,不发明值)。
+ */
+function mergedAppendFields(
+  merged: Readonly<Record<string, FieldValue>>,
+  whitelist?: string[],
+): Record<string, FieldValue> {
+  const entries = Object.entries(merged);
+  const filtered =
+    whitelist === undefined ? entries : entries.filter(([name]) => whitelist.includes(name));
+  return Object.fromEntries(filtered);
 }
 
 // ---------------------------------------------------------------------------
@@ -274,7 +291,10 @@ export function applyEffects(
       };
     } else if (effect.type === 'append') {
       const type = resourceType(effect);
-      const name = instanceName(effect, request, instances, type);
+      // D24 合并口径:源实例当前字段 = 源实例 fields ∪ 请求参数(参数已于效果
+      // 应用前落入实例并覆盖同名);name-from 同口径(参数优先,实例字段兜底)。
+      const source = instances[request.rel]!;
+      const name = instanceName(effect, source.fields, instances, type);
       const rel = `${type}:${name}`;
       const flowName = effect.flow ?? instance.flow;
       // 出生版本戳(T4 Phase B):新实例出生于目标 flow 定义的当前活跃版本
@@ -284,7 +304,7 @@ export function applyEffects(
         rel,
         flow: flowName,
         node: effect.node ?? deps.flows[flowName]?.initial ?? instance.node,
-        fields: paramsToFields(request, effect.fields),
+        fields: mergedAppendFields(source.fields, effect.fields),
         ...(bornVersion !== undefined ? { bornVersion } : {}),
       };
       collections[effect.collection] = [...(collections[effect.collection] ?? []), rel];
@@ -298,6 +318,8 @@ export function applyEffects(
         actor: request.actor ?? 'human',
         principal: request.principal,
         channel: request.channel,
+        // 载荷仍只带请求参数(留痕):entity-appended 是伴随事件,fold 不读它——
+        // 合并集由同批 action-executed 重放经同一 applyEffects 重推导(I5 同构)。
         params: paramFields,
       });
     } else if (effect.type === 'meta-edit') {
