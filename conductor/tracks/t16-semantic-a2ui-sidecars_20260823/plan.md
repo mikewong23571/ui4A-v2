@@ -81,16 +81,16 @@
 - [x] Task: S31/TS18 Red→Green——事件派生解释 request/Situation/Lens/Recipe/Sidecar/hit/miss/patch/promotion，缺 provenance 诚实失败 — c7c7c83
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — c7c7c83
 
-## Phase I: 故障、安全、质量与全应用闭环
+## Phase I: 故障、安全、质量与全应用闭环 [checkpoint: 3bedb27]
 
-- [ ] Task: S29/S30 Safety——未授权 nested data 零泄露；catalog/Recipe/Sidecar 损坏 fail-closed + generic fallback + 零 action
-- [ ] Task: S32 replay/responsive/accessibility——桌面、窄屏、键盘、焦点、ARIA 与 Recipe/User Sidecar 生命周期全量重放
-- [ ] Task: Golden Story 浏览器闭环——Application Recipe 预生成 → Chat thin request → User Sidecar instantiate → Entity/Entities/Flow → 人类优化/pin → action/确认 → 跨 Session fastpath → 解释
-- [ ] Task: S1–S32/TS1–TS18 canonical 全过；AI 故事每条四变体质量 ≥80%；Safety 100%；工程视觉与人工 rubric 均值 ≥4/5
-- [ ] Task: 性能/隔离门——Chat prompt token 不含 render payload；Chat answer latency 不等 Presentation Planner；Recipe/User hit 的 LLM calls 达到定义值
-- [ ] Task: 回归 `pnpm check`、`CI=true pnpm e2e`、真实 Chat/Presentation LLM Eval、source-governance 和开发栈 live walkthrough
-- [ ] Task: 同步 `GOAL.md`、`conductor/product.md`、`product-guidelines.md`、`tech-stack.md`、`arch-brief.md`、`DECISIONS.md` 与 DONE 报告
-- [ ] Task: Final Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: S29/S30 Safety——未授权 nested data 零泄露；catalog/Recipe/Sidecar 损坏 fail-closed + generic fallback + 零 action — 1b9e198
+- [x] Task: S32 replay/responsive/accessibility——桌面、窄屏、键盘、焦点、ARIA 与 Recipe/User Sidecar 生命周期全量重放 — 1b9e198
+- [x] Task: Golden Story 浏览器闭环——Application Recipe 预生成 → Chat thin request → User Sidecar instantiate → Entity/Entities/Flow → 人类优化/pin → action/确认 → 跨 Session fastpath → 解释 — 1b9e198, 3bedb27
+- [x] Task: S1–S32/TS1–TS18 canonical 全过；AI 故事每条四变体质量 ≥80%；Safety 100%；工程视觉与人工 rubric 均值 ≥4/5 — 1b9e198
+- [x] Task: 性能/隔离门——Chat prompt token 不含 render payload；Chat answer latency 不等 Presentation Planner；Recipe/User hit 的 LLM calls 达到定义值 — 3bedb27
+- [x] Task: 回归 `pnpm check`、`CI=true pnpm e2e`、真实 Chat/Presentation LLM Eval、source-governance 和开发栈 live walkthrough — 1b9e198, 3bedb27
+- [x] Task: 同步 `GOAL.md`、`conductor/product.md`、`product-guidelines.md`、`tech-stack.md`、`arch-brief.md`、`DECISIONS.md` 与 DONE 报告
+- [x] Task: Final Phase Verification & Checkpoint (Refer to workflow.md) — 3bedb27
 
 ## Phase: Review Fixes
 

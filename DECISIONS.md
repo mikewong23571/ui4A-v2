@@ -224,3 +224,7 @@
 - **技术栈结论**:继续使用现有 PostgreSQL、`@a2ui/web_core@0.10.6` 与
   `@a2ui/react@0.10.2`，Phase A 未发现依赖或 runtime 选型偏差，因此无需先改
   `conductor/tech-stack.md`。
+- **终审补充**:Application Recipe 不能只停留在 validator/内存 registry。live Broker 在
+  User Sidecar miss 后必须先实例化 promoted/candidate Recipe，再进入 generic/planner；human
+  promotion 事件保存去用户化 candidate，使新进程可重建共享 fastpath。否则“设为团队默认”只是
+  装饰性交互，违反 S9/S27。

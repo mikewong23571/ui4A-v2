@@ -25,6 +25,8 @@
 | 审批是人的特权 | approve 永远 actor-is-human;确认门呈现完整上下文(actor / principal / 信道) |
 | 拒绝留痕 | 每个被拒动作在日志中带原因,且可作为下一步决策上下文获取 |
 | 通道隔离 | 骨架路径(事件流 / diff / 收件箱)静态绑定组件,不经 AI;生成路径只在画布 |
+| 呈现旁路 | Chat 只持有薄 request/receipt 与 Sidecar 引用；Recipe/Sidecar 规划、缓存、解释和失败不占用或改写 Chat 语义上下文 |
+| 人类优化分级 | 即时预览、个人 Sidecar、共享 Recipe 是三个不同承诺；共享晋升必须先机械参数化/diff，再由 human 确认 |
 
 ## 视觉与骨架
 
@@ -32,7 +34,7 @@
 - **骨架五面**:主页(运行概览: stat + timeline)/ 收件箱(kanban / table)/ 事件流(timeline)/ 定义管理(diff + flow)/ 画布(全词汇表);
 - **渲染词汇表 MVP 前十词**:table / chart / stat / timeline / flow / form / diff / kanban / markdown / detail;
 - **机械 diff**:deep-object-diff + react-diff-view 呈现,可读性优先;
-- **画布协议**:A2UI(数据与组件分离、客户端渲染器拥有数据模型、action 事件拦截后映射到已声明 action)。
+- **画布协议**:语义 Surface Tree 编译为 A2UI(数据与组件分离、客户端渲染器拥有数据模型、action 事件拦截后映射到已声明 action)；不得以 Entity 类型硬编码页面或把原始 fields dump 当主体验。
 
 ## 人工评估观察点(持续记录,不计入验收)
 

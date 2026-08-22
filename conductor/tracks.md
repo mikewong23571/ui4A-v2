@@ -31,4 +31,4 @@
 
 - [x] **Track: T15 AI-first 动态助手:多轮理解、合同治理与 U1–U23 用户故事 Eval 闭环** *Link: [tracks/t15-ai-first-dynamic-assistant_20260822/index.md](./tracks/t15-ai-first-dynamic-assistant_20260822/index.md)*
 
-- [~] **Track: T16 Presentation Plane:Chat 薄 Request、Application Recipe 预生成、用户级跨 Session Sidecar fastpath、A2UI/Action/人类优化与 S1–S32/TS1–TS18 验收** *Link: [tracks/t16-semantic-a2ui-sidecars_20260823/index.md](./tracks/t16-semantic-a2ui-sidecars_20260823/index.md)*
+- [x] **Track: T16 Presentation Plane:Chat 薄 Request、Application Recipe 预生成、用户级跨 Session Sidecar fastpath、A2UI/Action/人类优化与 S1–S32/TS1–TS18 验收** *Link: [tracks/t16-semantic-a2ui-sidecars_20260823/index.md](./tracks/t16-semantic-a2ui-sidecars_20260823/index.md)*

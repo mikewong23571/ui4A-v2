@@ -112,6 +112,29 @@ durable elicitation 的 runner 阶梯(第九层)可从传统表单到高级模�
 
 assistant 是客服插件形态**悬浮窗**:跨页面悬浮,点击展开聊天;用户输入目标,agent 逐步汇报轨迹(导航、回答、执行、拒绝原因、完成);**聊天界面就是事件日志的投影层**(第五层)，原始消息与结构化会话状态同源重建。三投影(选型 1.1):**renderer 给人、HTTP 给脚本、tools/MCP 给模型**——同一合同,三种消费。聊天窗升格为"人类注意力的唯一入口"(第九层):目标形成、途中澄清、确认批准、草稿选择,全部作为对话到达。provider profile 仅由外部 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 完整提供；default/auto 都解析为 LLM，缺项、端点错误或超时诚实失败且零业务副作用。
 
+### 8.1 Presentation Sidecar 旁路
+
+T16 将 generative presentation 从 Chat context 拆为旁路：Chat 只发
+`PresentationRequest(subject,intent,constraints,delivery)` 并保存 receipt id；独立 Plane 执行
+Situation/Lens 授权、Recipe/Sidecar fastpath、Surface planning 和 A2UI compilation。持久化对象是
+binding-only semantic Surface，不是 hydrated facts 或 SDK model。
+
+```text
+packages/shared/presentation     thin request/receipt
+packages/engine/presentation     pure lens/surface/recipe/sidecar/patch folds
+packages/agent                   bounded Presentation and Revision LLM adapters
+apps/web/src/db/presentation     append-only projection adapter
+apps/web/src/engine/presentation Broker, Recipe pregen and fastpath
+apps/web/src/render/presentation deterministic A2UI compile/hydrate
+```
+
+查找顺序固定为 user pinned/cache → promoted/candidate Application Recipe → generic → runtime
+planner。每次命中仍重新授权、校验依赖并实时解引用。Sidecar key 是用户级
+`(principal,policyScope,subject,intent,deviceClass)`，禁止 sessionId。自然语言和直接操作只产生
+受限 semantic patch；共享 Recipe 必须去用户化、机械 diff、human promotion，并能从 Presentation
+事件重建。Presentation fold 与 Business fold 分离，任何 Presentation event 误入 Business fold
+都 fail-closed。
+
 ## 9. 五条垂直切片(第五部,施工顺序)
 
 1. **确认门切片**:agent 执行高危动作 → guard 挂起 → pending 实体化 → notification capability 送达 → 人类在推送上 approve → 事件留痕带 actor/principal。一次验证 guard 第三语义、确认实体、出站能力、委托模型四个论点。构成(README):Cedar 风险策略 + guard 挂起语义 + Temporal notify activity + RJSF 渲染 pending 实体 + 收件箱。GOAL S1 断言:动作未生效挂起 → human approve(actor=human)→ 生效,日志含 actor/principal/信道。

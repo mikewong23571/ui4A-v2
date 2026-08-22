@@ -102,11 +102,15 @@ UI4A 将这条路径压缩为:
 
 ## 成功标准(DONE 的定义)
 
-以下场景套件、T15 U1–U23 真实 LLM Story Eval 与不变量全部通过,外加一次人工 demo 走查。
+以下场景套件、T15 U1–U23、T16 S1–S32 真实 LLM/浏览器 Story Eval 与不变量全部通过,外加一次人工 demo 走查。
 
 ### AI-first 用户故事
 
 Assistant 的自然语言理解、多轮目标形成、授权事实阅读、总结/比较/解释、动态 action/capability 发现与副作用授权，以 `tracks/t15-ai-first-dynamic-assistant_20260822/user-stories.md` 为准。真实 LLM Eval 是动态能力证据；rule/scripted driver 仅用于协议测试。
+
+### Presentation Plane
+
+Chat Agent 只决定是否呈现、呈现哪个 subject 和 intent；完整 catalog、Surface、bindings 与依赖不进入 Chat 上下文。Application 激活后预生成参数化 Recipe，运行时按 user pinned/cache → promoted/candidate Recipe → generic → Presentation Agent 的顺序解析。Sidecar 只保存 binding-only 展示结构和 provenance，按用户跨 Session 复用；业务事实、guard 和 action 始终实时读取并由引擎裁决。
 
 ### 参考 Assistant 组合合同
 

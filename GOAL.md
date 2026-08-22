@@ -9,7 +9,7 @@
 
 ## DONE 的定义
 
-以下业务场景、切片场景、T15 AI-first 用户故事 Eval 与不变量全部通过，外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
+以下业务场景、切片场景、T15 AI-first 用户故事 Eval、T16 Presentation 用户故事与不变量全部通过，外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
 
 ### AI-first 用户故事
 
@@ -21,6 +21,10 @@ Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能�
 - **多轮上下文来自日志**：user/assistant 原话 append-only 保存，同时从日志投影有界的 `activeGoal`、focus、referents、constraints、待澄清项和 effect authorization；刷新或恢复不依赖进程内会话真相。
 - **副作用需要原话授权**：执行必须引用 user message id 与逐字 quote，并与目标实体/action 关联；事件链保留声明、guard、schema、确认和 human decision，Assistant 只能据此解释“为什么执行”。
 - **配置即部署数据**：`LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 由外部环境完整提供，产品没有供应商、端点、模型或 driver fallback。缺项/失败时诚实失败，正式模型工件也不得以占位模型部分写入。
+
+### Presentation 用户故事
+
+呈现以 `conductor/tracks/t16-semantic-a2ui-sidecars_20260823/user-stories.md` 的 S1–S32 为准。Chat 只发薄 `PresentationRequest`；Application Recipe 和独立 Presentation Agent 产生 binding-only Surface；用户级 Sidecar 跨 Session 命中并重新授权、解引用。个人优化只有经参数化、机械 diff 和 human approval 才可晋升共享 Recipe。Recipe/Sidecar/patch/promotion 事件独立重放，不进入 Business Snapshot。
 
 ### 基线场景（业务平面，继承自已验证 demo）
 
@@ -39,7 +43,7 @@ Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能�
 | S2 | 最小 meta | agent 经 `_meta` 提交"新增一条边"：缺 guard 的非法定义**被拒且留痕** → 修正 → 人类在**机械 diff** 上批准 → sitemap 重生成 → **agent 下一步即可用新动作，无任何 prompt 改动** |
 | S3 | 委托实体 | 两个 agent 并发操作同一资源：一个成功、一个拿到带原因的拒绝（裁决器即并发控制）；杀掉执行中的委托，新 agent 从实体**续跑** |
 | S4 | plan-exec | 六步向导在一次决策内完成，轨迹为一条批量裁决记录，每步裁决可见 |
-| S5 | 渲染 | 聊天说"按分类展示文章" → A2UI surface 渲染图表；**渲染 spec 中不含任何字面数值，全部为实体引用** |
+| S5 | 渲染 | 用户目标经薄呈现请求得到语义 A2UI Surface；**Surface 中不含事实字面值，事实实时解引用，交互重新按合同裁决** |
 
 ### 不变量（铁律的自动化形式，持续运行，违反即迭代无效）
 

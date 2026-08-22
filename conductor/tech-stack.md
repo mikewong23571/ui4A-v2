@@ -28,6 +28,7 @@
 | 流程图渲染 | **React Flow** | XState 图谱可直接喂 |
 | 渲染协议(画布) | **A2UI(Google, v0.9)** | 数据与组件分离;我们侧强制 binding-only + action 拦截 |
 | LLM Assistant | AI SDK + OpenAI-compatible Chat Completions | AI-first;真实 LLM 是产品智能主体，scripted/mock driver 仅用于协议测试 |
+| Presentation Plane | UI4A semantic Surface kernel + A2UI runtime + PostgreSQL projection | Application Recipe 预生成；用户级 Sidecar/版本/patch/promotion 独立事件重放；Chat 只见薄 request/receipt |
 
 ### 渲染词汇表组件(注册为 A2UI 扩展目录,MVP 前十词)
 
@@ -64,3 +65,5 @@ T15 首个真实 baseline 是 OpenAI-compatible `deepseek-v4-flash` profile；�
 ## 实况注记(2026-08-21,T8 收口;实际安装版本)
 
 next 16.3.1 / react 19.2.8 / xstate 5.32.5 / ajv 8.20.0 / zod 4.4.3 / pg 8.23.0 / @temporalio/* 1.22.0 / @cedar-policy/cedar-wasm 4.12.0 / ai 7.0.71 + @ai-sdk/openai 4.0.45 / @assistant-ui/react 0.15.16 / @rjsf/* 6.8.0 / @a2ui/web_core 0.10.6 + @a2ui/react 0.10.2(D12:官方 SDK) / @tanstack/react-table 8.21.3 / recharts 3.10.1 / @tremor/react 3.18.7 / react-chrono 3.3.3 / @xyflow/react 12.11.3 / @dnd-kit/core 6.3.1 / react-markdown 10.1.0 / deep-object-diff 1.1.9 / react-diff-view 3.3.3 / typescript 5.9.3 / tailwindcss 4。测试:vitest 4.1.11 / @playwright/test 1.62.1 / fast-check 4.9.0。运行时:node 24 / pnpm 10 / PostgreSQL 17(docker)/ temporal CLI 1.8.2(start-dev)。
+
+T16 没有新增 workspace 或基础设施依赖：pure kernel 仍在 `packages/engine/src/presentation/`，LLM adapters 在 `packages/agent`，PostgreSQL/Broker adapters 与 A2UI host 在 `apps/web`。
