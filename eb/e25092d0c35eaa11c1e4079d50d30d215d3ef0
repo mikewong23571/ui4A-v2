@@ -1,0 +1,4 @@
+Phase D isolation correction
+Issue: service boot pre-generation inherited short-lived Chat LLM test profiles and consumed the injected route stub concurrently, causing seven unrelated Chat protocol failures. This also demonstrated why Presentation work must never affect Chat outcome/context.
+Fix: automatic snapshot scheduling is disabled only under NODE_ENV=test unless T16_RECIPE_PREGEN_TEST=1; coordinator behavior remains directly tested, while dev/production schedules normally.
+Verification: focused Chat route + coordinator rerun 20/20 passed. No product fallback or runtime behavior changed.
