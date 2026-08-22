@@ -1,6 +1,8 @@
 # T16 用户故事 — 语义化 A2UI 呈现与 Render Sidecar
 
 > 故事只规定用户结果、Safety 和可审计证据，不规定固定 A2UI 组件、DOM 顺序、模型措辞或工具轨迹。每条故事必须同时满足列出的验收标准才算关闭。
+>
+> Chat 只通过薄 Presentation Request/Receipt 委托旁路 Presentation Plane；Application Recipe 提前生成典型场景协议，持久化 Sidecar 只按用户跨 Session 保存，任何 Sidecar key/schema 不得包含 sessionId。
 
 ## A. 合同理解与正确性
 
@@ -99,14 +101,15 @@
 
 ### S9 首次生成 Surface
 
-Entity 没有可用 Sidecar 时，Agent 应根据当前目标生成 binding-only A2UI Surface Tree。
+Entity 没有可用 User Sidecar 时，Broker 应优先实例化已验证的 Application Recipe；Recipe 也缺失时才由独立 Presentation Agent 根据当前目标生成 binding-only A2UI Surface Tree。
 
 验收标准：
 
-- 报告 `sidecar=miss`，并记录真实 driver/model。
+- 报告 User Sidecar/Application Recipe/generic/planner 的实际命中路径。
 - Surface 至少覆盖完成当前用户任务所需的信息与交互。
 - factual bind 中无正文、数量、状态等裸字面；validator 100% 通过。
-- 生成失败时回退高质量通用 renderer，不输出半成品 Surface。
+- Application Recipe 命中时 Presentation LLM 调用为 0；动态生成记录独立 Presentation driver/model。
+- 生成失败时 Chat answer 保持成功并回退高质量通用 renderer，不输出半成品 Surface。
 
 ### S10 同一 Subject 的不同 Intent
 
@@ -137,7 +140,8 @@ Agent 需要同时呈现正文、元数据和动作时，应组合多个区域�
 验收标准：
 
 - 新定义只经 meta 激活进入 sitemap/Siren。
-- 下一次真实 LLM planning 自动发现新语义和 action schema。
+- 激活后 Scenario Enumerator 自动产生/失效相关 descriptor，并异步生成新 Application Recipe；失败不阻断激活。
+- 下一次真实 Presentation LLM planning 自动发现新语义和 action schema。
 - 通用 fallback 仍可读、可操作；无专用组件也不能退化为不可用。
 - source scan 中没有新实体名、action 名或 prompt example 特判。
 
@@ -200,13 +204,14 @@ Sidecar 保存后，定义删除或阻断了其中一个 action。
 
 ## E. Sidecar 与 fastpath
 
-### S18 单 Entity fastpath
+### S18 用户级跨 Session Entity fastpath
 
-用户再次以同一 intent 查看此前成功呈现的 Entity。
+用户在 Chat Session A 首次成功呈现 Entity，关闭后在 Session B、Canvas 或直接 Entity 页面以同一 intent 再次查看。
 
 验收标准：
 
-- 命中相同 personal/shared Sidecar，首屏前 LLM call count=0。
+- 所有入口命中相同 User Sidecar id/version；持久化 key/schema 中无 sessionId。
+- 首屏前 Chat/Presentation LLM call count 均为 0。
 - 重新授权并解引用当前 Entity，旧事实不会从 Sidecar 泄露。
 - 本地基准首个可用 Surface ≤500ms。
 - render receipt 记录 sidecar id/version 和 dependency validation。
@@ -265,6 +270,7 @@ Sidecar 保存后集合新增或删除成员，用户再次浏览集合。
 - 新自然语言规划诚实失败，保留当前可用 Surface。
 - 不 fallback 到 rule driver，不删除已有 Sidecar。
 - 零业务副作用。
+- Chat Agent 正常而 Presentation Agent 失败时，Chat answer 必须继续成功；Application Recipe 命中仍可呈现。
 
 ## F. 人类优化与生命周期
 
@@ -287,30 +293,30 @@ Sidecar 保存后集合新增或删除成员，用户再次浏览集合。
 
 - 直接操作转换为受限语义 patch，不保存 CSS、像素事实或任意代码。
 - 操作后 keyboard/ARIA 仍通过。
-- 刷新前 Session 状态稳定，用户可一键恢复。
+- 未提交 preview 可暂存在当前 UI；提交后的结果立即写入用户级 Sidecar，用户可一键恢复。
 - 高频拖动可以合并，但最终 durable 版本必须确定。
 
-### S26 保存个人 Sidecar
+### S26 保存用户级 Sidecar
 
 用户选择“以后我都这样看”。
 
 验收标准：
 
-- 新 Personal Sidecar 绑定 principal/policy scope，其他用户不可命中。
+- 新 User Sidecar 绑定 principal/policy scope，retention 从 cache 变为 pinned，其他用户不可命中。
 - 保存是 Render Sidecar 域事件，不写业务 Entity 字段。
-- 下次相同 Situation 命中 fastpath，显示当前事实。
+- 任意后续 Session/Canvas/直接页面的相同 Situation 命中同一 fastpath，显示当前事实。
 - UI 清楚显示已保存、版本号和撤销入口。
 
-### S27 晋升共享 View
+### S27 User Sidecar 晋升 Application Recipe
 
 用户选择“设为团队默认”。
 
 验收标准：
 
-- 系统展示个人版本与当前共享版本的结构 diff。
+- 系统先参数化 subject slots、移除 principal/Entity 值，再展示候选 Recipe 与当前 promoted Recipe 的结构 diff。
 - 产生 pending promotion；确认前其他用户不受影响。
 - 只有 actor=human 可 approve；批准后生成新共享版本。
-- shared Sidecar 可按 definition/catalog version 回退。
+- promoted Application Recipe 可按 definition/catalog version 回退。
 
 ### S28 回退渲染版本
 
