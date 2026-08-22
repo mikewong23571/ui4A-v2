@@ -24,8 +24,8 @@
 
 ## Phase E: Application-as-Data 自举（#12）
 
-- [~] Task: disposable probe + 应用制品/meta bootstrap 合同 TDD（业务 application/flow/capability/seed 迁出 TS；安装留痕、幂等、重放、旧库兼容）
-- [ ] Task: runtime 从 fold 快照枚举定义，移除 `businessFlowList`/`businessFlows` 生产 fallback 与 article 特权 imports；缺定义响亮失败
+- [x] Task: disposable probe + 应用制品/meta bootstrap 合同 TDD（业务 application/flow/capability/seed 迁出 TS；安装留痕、幂等、重放、旧库兼容） — 650ed67
+- [~] Task: runtime 从 fold 快照枚举定义，移除 `businessFlowList`/`businessFlows` 生产 fallback 与 article 特权 imports；缺定义响亮失败
 
 ## Phase F: agent 与共享处境闭环（#8–#11）
 
