@@ -4,3 +4,14 @@ T13 Phase A Task 2: BIOS 只读拓扑图
 只读口径:nodesDraggable/Connectable/elementsSelectable=false;缩放平移保留;拓扑区零按钮(e2e 断言)。
 Why:spec 架构决定 1 + 验收 2——人类审批者看得懂状态机才签得了字(D19-7)。
 验收(编排 agent 亲自复跑):meta 组件 33/33;CI=true pnpm check 992 passed;s2 e2e 4/4。自治验收。
+
+---
+
+T13 Phase A Checkpoint 验证报告(自治验收)
+
+阶段范围:c8fdccd..HEAD(flow 拓扑推导模块 + BIOS 只读拓扑图两页接入)
+自动化验证(编排 agent 亲自执行):
+- CI=true pnpm check → 992 passed | 2 skipped(环境性)
+- CI=true pnpm e2e → 33 passed / 14 skipped,零回归
+- 拓扑实证:组件层(布局确定性/mock 捕获载荷)+ e2e s2 主链路 ③' 段(真实浏览器:节点 title、边 publish/pin 标注、零编辑按钮)
+确认:用户离线,编排 agent 代行验收——自治验收,通过。
