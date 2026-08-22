@@ -10,8 +10,8 @@ const NAV_ITEMS: { label: string; href: string; nav: string }[] = [
   { label: '收件箱', href: '/entity?rel=inbox', nav: 'inbox' },
   { label: '事件流', href: '/events', nav: 'events' },
   { label: '画布', href: '/canvas', nav: 'canvas' },
-  { label: '舰队', href: '/delegations', nav: 'delegations' },
-  { label: 'BIOS', href: '/meta', nav: 'meta' },
+  { label: '委托监控', href: '/delegations', nav: 'delegations' },
+  { label: '定义管理', href: '/meta', nav: 'meta' },
 ];
 
 export function SiteNav() {

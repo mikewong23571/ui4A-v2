@@ -96,7 +96,7 @@ export default function DelegationsPage() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">委托舰队</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">委托监控</h1>
         <Button
           type="button"
           variant="outline"
@@ -109,11 +109,11 @@ export default function DelegationsPage() {
         </Button>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        委托 = Temporal workflow · 事件日志即轨迹 · 每 {POLL_MS / 1000}s 自动刷新
+        每条委托由工作流持续执行,事件日志保留完整轨迹 · 每 {POLL_MS / 1000}s 自动刷新
         {rows !== null ? ` · 执行中 ${running}` : ''}
       </p>
 
-      {failed && <p className="mt-6 text-sm text-destructive">读取舰队失败(服务不可用)。</p>}
+      {failed && <p className="mt-6 text-sm text-destructive">读取委托列表失败(服务不可用)。</p>}
       {!failed && rows === null && <p className="mt-6 text-sm text-muted-foreground">加载中…</p>}
 
       {rows !== null && rows.length === 0 && (

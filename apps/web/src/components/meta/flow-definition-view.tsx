@@ -237,7 +237,7 @@ export function FlowDefinitionView({ rel, entity }: FlowDefinitionViewProps) {
     <div>
       <nav className="mb-2 text-sm">
         <a href="/meta" data-nav="meta-back" className="text-primary hover:underline">
-          ← BIOS
+          ← 定义管理
         </a>
       </nav>
       <h1 className="text-2xl font-semibold tracking-tight">{heading}</h1>
@@ -401,7 +401,7 @@ export function FlowDefinitionBody({ rel }: { rel: string }) {
       <div>
         <nav className="mb-2 text-sm">
           <a href="/meta" data-nav="meta-back" className="text-primary hover:underline">
-            ← BIOS
+            ← 定义管理
           </a>
         </nav>
         <p className="text-sm">

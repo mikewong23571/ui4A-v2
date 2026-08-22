@@ -48,7 +48,7 @@ function BiosShell({
     <div>
       <nav className="mb-2 text-sm">
         <a href={backTo} data-nav="meta-back" className="text-primary hover:underline">
-          ← BIOS
+          ← 定义管理
         </a>
       </nav>
       <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>

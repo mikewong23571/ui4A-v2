@@ -160,7 +160,7 @@ export function situationStatBinds(): SituationStatBinds {
   };
 }
 
-/** 在飞委托 = delegations 集合成员 status=running 计数(集合投影,零 AI)。 */
+/** 执行中委托 = delegations 集合成员 status=running 计数(集合投影,零 AI)。 */
 export function runningDelegationsOf(fleet: SirenEntity): number {
   return (fleet.entities ?? []).filter((member) => member.properties.status === 'running').length;
 }

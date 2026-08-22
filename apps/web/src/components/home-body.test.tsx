@@ -123,6 +123,10 @@ describe('HomeBody:页面级缓存接入', () => {
     expect(screen.getByText(/欢迎来到 UI4A/)).toBeTruthy();
     expect(document.querySelector('[data-testid="stat-articles"]')?.textContent).toContain('1');
     expect(document.querySelector('[data-testid="stat-running"]')?.textContent).toContain('1');
+    expect(document.querySelector('[data-testid="stat-running"]')?.textContent).toContain(
+      '执行中委托',
+    );
+    expect(screen.getByTestId('stat-running-help').textContent).toContain('已派发且尚未完成');
   });
 
   it('同 rel 二次渲染(同 provider 内卸载重挂)零重复 fetch;事件投影每轮直取', async () => {

@@ -339,7 +339,7 @@ export function useChatSession(): ChatSession {
         const body = (await response.json()) as ChatJsonResponse & DelegatedResponse;
         if (body.mode === 'delegated' && typeof body.delegationId === 'string') {
           appendAssistant(
-            `已派发委托 ${body.delegationId.replace(/^delegation-/, '').slice(0, 8)}…(后台执行中),进度见舰队页 /delegations`,
+            `已派发委托 ${body.delegationId.replace(/^delegation-/, '').slice(0, 8)}…(后台执行中),进度见委托监控页 /delegations`,
           );
           return;
         }

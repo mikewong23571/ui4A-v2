@@ -140,7 +140,7 @@ describe('悬浮聊天窗 · 委托模式(T5 Phase B)', () => {
     await waitFor(() => {
       expect(screen.getByText(/已派发委托 abcdef12/)).toBeTruthy();
     });
-    expect(screen.getByText(/舰队页 \/delegations/)).toBeTruthy();
+    expect(screen.getByText(/委托监控页 \/delegations/)).toBeTruthy();
   });
 
   it('一次性 JSON 兼容路径(旧 inline 形状):消息逐条呈现,请求无 mode 字段', async () => {

@@ -280,7 +280,7 @@ describe('入口页(首页)', () => {
     ).toContain('待确认 0');
   });
 
-  it('委托舰队入口(T5 Phase B):链接到 /delegations(并行委托的监控视图)', async () => {
+  it('委托监控入口:链接到 /delegations,使用与页面标题一致的人话', async () => {
     vi.stubGlobal('fetch', mockContract());
     const { container } = render(<Home />);
     await waitFor(() => {
@@ -288,7 +288,8 @@ describe('入口页(首页)', () => {
     });
     const fleet = container.querySelector<HTMLAnchorElement>('a[data-rel="delegations"]');
     expect(fleet).not.toBeNull();
-    expect(fleet!.textContent).toContain('委托舰队');
+    expect(fleet!.textContent).toContain('委托监控');
+    expect(fleet!.textContent).not.toContain('舰队');
   });
 
   it('BIOS 入口:仅一行链接到 /meta(人类显式意图,进入定义层;T4 Phase C)', async () => {
@@ -299,7 +300,7 @@ describe('入口页(首页)', () => {
     });
     const bios = container.querySelector<HTMLAnchorElement>('a[data-rel="meta"]');
     expect(bios).not.toBeNull();
-    expect(bios!.textContent).toContain('BIOS');
+    expect(bios!.textContent).toContain('定义管理');
   });
 
   it('铁律 3:纯导航首页不渲染任何可提交元素(零 form / 零提交按钮 / 零 data-action)', async () => {
@@ -322,7 +323,7 @@ describe('入口页(首页)', () => {
     expect(container.querySelectorAll('[data-action]')).toHaveLength(0);
   });
 
-  it('态势投影(T7):stat 数值与实体对拍——待确认=inbox.count、文章数=articles.count、在飞=running 计数', async () => {
+  it('运行概览:stat 数值与实体对拍,执行中委托带口径说明', async () => {
     vi.stubGlobal('fetch', mockContract(inboxEntity(2)));
     const { container } = render(<Home />);
 
@@ -338,11 +339,15 @@ describe('入口页(首页)', () => {
     expect(container.querySelector('[data-testid="stat-articles"]')?.textContent).toContain(
       '文章数',
     );
-    // 在飞委托 = delegations 成员 running 计数(1 running / 2 total)
+    // 执行中委托 = delegations 成员 running 计数(1 running / 2 total)
     expect(container.querySelector('[data-testid="stat-running"]')?.textContent).toContain('1');
     expect(container.querySelector('[data-testid="stat-running"]')?.textContent).toContain(
-      '在飞委托',
+      '执行中委托',
     );
+    expect(screen.getByTestId('stat-running-help').textContent).toContain(
+      '已派发且尚未完成',
+    );
+    expect(container.textContent).not.toContain('在飞委托');
   });
 
   it('态势 timeline:最近事件来自 /api/events 投影(零 AI,尾部窗口)', async () => {
@@ -373,5 +378,7 @@ describe('入口页(首页)', () => {
     });
     expect(container.querySelector('a[data-nav="events"]')?.getAttribute('href')).toBe('/events');
     expect(container.querySelector('a[data-nav="canvas"]')?.getAttribute('href')).toBe('/canvas');
+    expect(container.querySelector('a[data-nav="delegations"]')?.textContent).toBe('委托监控');
+    expect(container.querySelector('a[data-nav="meta"]')?.textContent).toBe('定义管理');
   });
 });

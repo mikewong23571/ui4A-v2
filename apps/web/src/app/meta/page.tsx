@@ -9,7 +9,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'BIOS · UI4A',
+  title: '定义管理 · UI4A',
 };
 
 const FACES = [
@@ -43,9 +43,9 @@ export default function BiosIndex() {
           ← 首页
         </a>
       </nav>
-      <h1 className="text-2xl font-semibold text-foreground">BIOS(定义平面)</h1>
+      <h1 className="text-2xl font-semibold text-foreground">定义管理</h1>
       <p className="mt-1 text-xs text-muted-foreground">
-        内建 UI:修自己的扳手不能是自己造的零件——diff 渲染零 AI,审批不委托。
+        内部名称：BIOS · 查看并裁决流程与能力定义 · diff 渲染零 AI,审批不委托。
       </p>
       <ul className="mt-6 space-y-2 text-sm">
         {FACES.map((face) => (

@@ -10,7 +10,7 @@
  * - 取数经 useEntityCache().get(rel + sitemap version 一致性戳):同页会话内
  *   同 rel 零重复 fetch;version 变全量失效,exec 精确失效(Task 2 口径);
  * - 态势投影(spec 架构决定 5,骨架路径:写死绑定,零 AI,审计通道隔离):
- *   stat 待确认(inbox.count)/ 在飞委托(delegations running 计数)/
+ *   stat 待确认(inbox.count)/ 执行中委托(delegations running 计数)/
  *   文章数(articles.count)——数值经 deref 从实体投影取回(态势数字与
  *   实体一致,组件测试对拍);deref 视图 = 本次取回实体的渲染期快照
  *   (现取现填,零响应式订阅);timeline 最近 N 事件(/api/events 投影,
@@ -145,8 +145,8 @@ export function HomeBody() {
       )}
 
       {/* 态势投影(骨架路径:写死绑定,零 AI;数值与实体一致) */}
-      <section aria-label="态势投影" className="mt-8" data-testid="situation">
-        <h2 className="mb-3 text-sm font-semibold">态势</h2>
+      <section aria-label="运行概览" className="mt-8" data-testid="situation">
+        <h2 className="mb-3 text-sm font-semibold">运行概览</h2>
         <div className="flex flex-wrap gap-4">
           {pendingStat !== undefined && (
             <div data-testid="stat-pending">
@@ -154,7 +154,13 @@ export function HomeBody() {
             </div>
           )}
           <div data-testid="stat-running">
-            <StatWord value={situation?.running ?? 0} label="在飞委托" />
+            <StatWord value={situation?.running ?? 0} label="执行中委托" />
+            <p
+              data-testid="stat-running-help"
+              className="mt-1 max-w-40 text-xs text-muted-foreground"
+            >
+              已派发且尚未完成的委托数量
+            </p>
           </div>
           {articlesStat !== undefined && (
             <div data-testid="stat-articles">
@@ -249,10 +255,10 @@ export function HomeBody() {
       </section>
 
       {/* 委托舰队入口(T5 Phase B):并行委托的监控视图;纯导航链接,零可提交元素。 */}
-      <section aria-label="委托舰队" className="mt-8">
+      <section aria-label="委托监控" className="mt-8">
         <Card className="gap-3 py-4">
           <CardHeader className="px-4">
-            <CardTitle className="text-sm font-semibold">委托舰队</CardTitle>
+            <CardTitle className="text-sm font-semibold">委托监控</CardTitle>
           </CardHeader>
           <CardContent className="px-4 text-sm">
             <a
@@ -261,7 +267,7 @@ export function HomeBody() {
               data-nav="delegations"
               className="text-primary hover:underline"
             >
-              委托舰队(并行委托监控)
+              委托监控：查看并行委托的执行状态
             </a>
           </CardContent>
         </Card>
@@ -269,10 +275,10 @@ export function HomeBody() {
 
       {/* BIOS 入口(T4 Phase C):仅一行链接——进入定义层必须显式意图,
           业务站 sitemap 不携带 _meta(跨站规则)。 */}
-      <section aria-label="BIOS" className="mt-8">
+      <section aria-label="定义管理" className="mt-8">
         <Card className="gap-3 py-4">
           <CardHeader className="px-4">
-            <CardTitle className="text-sm font-semibold">BIOS</CardTitle>
+            <CardTitle className="text-sm font-semibold">定义管理</CardTitle>
           </CardHeader>
           <CardContent className="px-4 text-sm">
             <a
@@ -281,7 +287,7 @@ export function HomeBody() {
               data-nav="meta"
               className="text-primary hover:underline"
             >
-              BIOS · 定义平面(定义查看 / 激活队列审批)
+              定义管理：查看流程、能力与激活审批
             </a>
           </CardContent>
         </Card>

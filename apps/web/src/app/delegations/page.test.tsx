@@ -77,6 +77,8 @@ describe('委托舰队页(/delegations)', () => {
     await waitFor(() => {
       expect(screen.getByText(/舰队首航/)).toBeTruthy();
     });
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('委托监控');
+    expect(screen.getByText(/每 3s 自动刷新/).textContent).toContain('执行中');
     for (const header of ['目标', '状态', '步数', '成功', '摘要']) {
       expect(screen.getByText(header)).toBeTruthy();
     }
@@ -138,7 +140,7 @@ describe('委托舰队页(/delegations)', () => {
     );
     render(<DelegationsPage />);
     await waitFor(() => {
-      expect(screen.getByText(/读取舰队失败/)).toBeTruthy();
+      expect(screen.getByText(/读取委托列表失败/)).toBeTruthy();
     });
   });
 
