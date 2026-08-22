@@ -24,3 +24,5 @@
 - [x] **Track: T11 agent 可观测性与蒸馏留痕:结构化轨迹 + agent-decision 审计 + 思考流(GLM-5.3 探针)** *Link: [tracks/t11-agent-observability_20260822/index.md](./tracks/t11-agent-observability_20260822/index.md)*
 
 - [x] **Track: T12 渲染增强:render LLM 路径接线 + 页面级实体缓存** *Link: [tracks/t12-render-llm-cache_20260822/index.md](./tracks/t12-render-llm-cache_20260822/index.md)*
+
+- [ ] **Track: T13 meta 可视化 + capability 定义面:flow 拓扑图 + definition-versions 两版对比 + capability 注册表与 capability-registered(D19 路线 T4)** *Link: [tracks/t13-meta-visualization_20260822/index.md](./tracks/t13-meta-visualization_20260822/index.md)*
