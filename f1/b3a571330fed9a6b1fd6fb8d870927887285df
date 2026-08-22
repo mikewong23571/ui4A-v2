@@ -1,0 +1,5 @@
+Phase E semantic contract slice
+Summary: FieldDefinition gained component-free presentation roles and optional contentMediaType; parsing/schema projection validate and expose them. Siren now projects declaration-only field presentation metadata plus separate business identity/status while retaining node title compatibility. Publishing marks title identity, body primary-content, category metadata; body intentionally has no Markdown media type.
+Red evidence: five semantic projection assertions failed before implementation.
+Green evidence: agent reported 36 files/479 tests; shared+engine typechecks, focused lint/Prettier/diff clean. post:first-post projects identity=第一篇 and status=published from its birth definition, while presentation metadata contains paths/declarations only.
+Why: Generic rendering must consume application semantics rather than class/type page rules or mistake node labels for entity identity.
