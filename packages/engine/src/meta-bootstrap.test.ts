@@ -115,6 +115,20 @@ describe('meta application bundle bootstrap', () => {
     expect(migrated.at(-1)?.detail).toMatchObject({
       installed: { applications: 1, capabilities: 1, flows: 0, seed: false },
     });
+
+    const legacyReceipt = {
+      ...installed.at(-1)!,
+      detail: { bundle: { name: 'test-app', version: 1 }, installed: {} },
+    } as LogEvent;
+    const upgraded = planMetaBootstrap(bundle, [...installed.slice(0, -1), legacyReceipt]);
+    expect(upgraded.map((event) => event.kind)).toEqual(['meta-bootstrap-applied']);
+    expect(() =>
+      assertMetaBootstrapIntegrity([
+        ...installed.slice(0, -1),
+        legacyReceipt,
+        { ...upgraded[0]!, seq: 99 } as LogEvent,
+      ]),
+    ).not.toThrow();
   });
 
   it('拒绝 flow 指向未安装 application、seed 指向未知 flow 的制品', () => {

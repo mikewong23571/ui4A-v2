@@ -158,6 +158,27 @@ function bootstrapRel(bundle: ApplicationBundle): string {
   return `meta/bootstrap:${bundle.bundle.name}@${bundle.bundle.version}`;
 }
 
+function receiptInventory(detail: unknown):
+  | { applications: unknown[]; capabilities: unknown[]; flows: unknown[]; seedRel: string }
+  | undefined {
+  if (!isRecord(detail) || !isRecord(detail.inventory)) return undefined;
+  const inventory = detail.inventory;
+  if (
+    !Array.isArray(inventory.applications) ||
+    !Array.isArray(inventory.capabilities) ||
+    !Array.isArray(inventory.flows) ||
+    typeof inventory.seedRel !== 'string'
+  ) {
+    return undefined;
+  }
+  return {
+    applications: inventory.applications,
+    capabilities: inventory.capabilities,
+    flows: inventory.flows,
+    seedRel: inventory.seedRel,
+  };
+}
+
 /**
  * 依据已有日志规划最小安装事件集。receipt 在场即整包幂等；无 receipt 的旧库按
  * 每类稳定 identity 补缺项，最后写 receipt，把迁移收口为可审计的 meta 动作。
@@ -167,7 +188,14 @@ export function planMetaBootstrap(
   existing: readonly LogEvent[],
 ): MetaBootstrapEvent[] {
   const receiptRel = bootstrapRel(bundle);
-  if (existing.some((event) => event.kind === 'meta-bootstrap-applied' && event.rel === receiptRel)) {
+  if (
+    existing.some(
+      (event) =>
+        event.kind === 'meta-bootstrap-applied' &&
+        event.rel === receiptRel &&
+        receiptInventory(event.detail) !== undefined,
+    )
+  ) {
     return [];
   }
   const applications = new Set(
@@ -291,26 +319,18 @@ export function assertMetaBootstrapIntegrity(events: readonly LogEvent[]): void 
     events.filter((event) => event.kind === 'seed').map((event) => event.rel),
   );
 
-  for (const receipt of events.filter((event) => event.kind === 'meta-bootstrap-applied')) {
-    const detail = receipt.detail as
-      | {
-          inventory?: {
-            applications?: unknown;
-            capabilities?: unknown;
-            flows?: unknown;
-            seedRel?: unknown;
-          };
-        }
-      | undefined;
-    const inventory = detail?.inventory;
-    if (
-      inventory === undefined ||
-      !Array.isArray(inventory.applications) ||
-      !Array.isArray(inventory.capabilities) ||
-      !Array.isArray(inventory.flows) ||
-      typeof inventory.seedRel !== 'string'
-    ) {
-      throw new Error(`meta bootstrap receipt "${receipt.rel ?? ''}" 缺少完整 inventory`);
+  const receipts = events.filter((event) => event.kind === 'meta-bootstrap-applied');
+  const upgradedRels = new Set(
+    receipts.filter((receipt) => receiptInventory(receipt.detail) !== undefined).map((receipt) => receipt.rel),
+  );
+  for (const receipt of receipts) {
+    const inventory = receiptInventory(receipt.detail);
+    if (inventory === undefined) {
+      // 早期 receipt 没有 inventory；同 rel 的升级 receipt 在场即可安全兼容。
+      if (!upgradedRels.has(receipt.rel)) {
+        throw new Error(`meta bootstrap receipt "${receipt.rel ?? ''}" 缺少完整 inventory`);
+      }
+      continue;
     }
     const missingApplications = inventory.applications.filter(
       (name): name is string => typeof name === 'string' && !applicationNames.has(name),
