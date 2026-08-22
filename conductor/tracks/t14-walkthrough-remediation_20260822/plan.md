@@ -41,3 +41,7 @@
 ## Phase H: 增补统一验收（#8–#14）
 
 - [x] Task: targeted + `CI=true pnpm check` + `CI=true pnpm e2e`；真实浏览器复验查看第一篇/删除失败/focus/刷新恢复/画布压力；checkpoint git note + tracks.md 勾选 — check 120/1115；e2e 36/14 gated；live browser PASS
+
+## Phase I: 用户故事全链路续修（#15–#22） [checkpoint: 94eceb3]
+
+- [x] Task: 修复向导字段清理、202 挂起终态、动作后 focus 刷新、confirmation 可读性、exec-plan 拒绝明细、meta 聊天/画布自举、发现意图零副作用与 Vitest 开发库隔离；重走 US-1–US-14 并统一回归 — 94eceb3
