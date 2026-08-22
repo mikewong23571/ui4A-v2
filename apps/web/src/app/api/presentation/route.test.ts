@@ -34,8 +34,9 @@ describe('POST /api/presentation', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       requestId: 'direct:1',
-      status: 'fallback',
-      surfaceUrl: '/canvas?focus=post%3Afirst-post',
+      status: 'ready',
+      sidecar: { version: 1 },
+      surfaceUrl: expect.stringContaining('/canvas?sidecar='),
     });
   });
 

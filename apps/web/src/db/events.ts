@@ -188,11 +188,10 @@ export async function appendEvent(
   event: EventAppend,
 ): Promise<{ seq: number; ts: Date }> {
   const result = await db.query<{ seq: string | number; ts: Date }>(
-    `INSERT INTO events (domain, actor, principal, channel, kind, rel, action, params, reason, detail)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10::jsonb)
+    `INSERT INTO events (actor, principal, channel, kind, rel, action, params, reason, detail, domain)
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9::jsonb, $10)
      RETURNING seq, ts`,
     [
-      event.domain ?? 'core',
       event.actor ?? null,
       event.principal ?? null,
       event.channel ?? null,
@@ -202,6 +201,7 @@ export async function appendEvent(
       JSON.stringify(event.params ?? {}),
       event.reason ?? null,
       event.detail === undefined ? null : JSON.stringify(event.detail),
+      event.domain ?? 'core',
     ],
   );
   const row = result.rows[0];
