@@ -308,6 +308,34 @@ describe('renderSpecGroundingErrors:LLM 产 spec 的处境核对(T12;事实不�
       ),
     ).toEqual([]);
   });
+
+  it('caption 只接受可证明存在的集合标量引用,成员级 dangling 字段拒绝', () => {
+    expect(
+      renderSpecGroundingErrors(
+        {
+          concern: 'articles-list',
+          component: 'table',
+          bind: { rows: { collection: 'articles' }, caption: { field: 'articles.rel' } },
+        },
+        SITEMAP,
+      ),
+    ).toEqual([]);
+
+    const errors = renderSpecGroundingErrors(
+      {
+        concern: 'articles-list',
+        component: 'table',
+        bind: {
+          rows: { collection: 'articles' },
+          caption: { field: 'articles.fields.title' },
+        },
+      },
+      SITEMAP,
+    );
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('caption');
+    expect(errors[0]).toContain('articles.fields.title');
+  });
 });
 
 describe('generateRenderSpecWithLlm:LLM 生成路径(T12;脚本化传输,零网络)', () => {

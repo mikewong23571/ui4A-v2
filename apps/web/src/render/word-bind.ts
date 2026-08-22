@@ -39,9 +39,15 @@ export function validateWordBind(bind: unknown, word: string): SpecValidation {
     };
   }
   if (validatorOf(entry)(bind)) return { valid: true };
-  const errors = (validatorOf(entry).errors ?? []).map<SpecError>((failure) => ({
-    path: failure.instancePath === '' ? 'bind' : `bind${failure.instancePath}`,
-    message: `${failure.message ?? '形状不满足词条 bindSchema'}(${word})`,
-  }));
+  const errors = (validatorOf(entry).errors ?? []).map<SpecError>((failure) => {
+    const extraProperty =
+      failure.keyword === 'additionalProperties' && 'additionalProperty' in failure.params
+        ? ` "${String(failure.params.additionalProperty)}"`
+        : '';
+    return {
+      path: failure.instancePath === '' ? 'bind' : `bind${failure.instancePath}`,
+      message: `${failure.message ?? '形状不满足词条 bindSchema'}${extraProperty}(${word})`,
+    };
+  });
   return { valid: false, errors };
 }

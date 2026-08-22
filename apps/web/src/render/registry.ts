@@ -58,21 +58,23 @@ const fieldNode = {
   additionalProperties: false,
 } as const;
 
-/** 集合引用节点:`{collection: "<rel>"}`,可选 dimension 维度声明。 */
+/** 非聚合集合引用节点:`{collection: "<rel>"}`。 */
 const collectionNode = {
   type: 'object',
   required: ['collection'],
-  properties: {
-    collection: { type: 'string', minLength: 1 },
-    dimension: { type: 'string', pattern: '^[^.]+\\..+$' },
-  },
+  properties: { collection: { type: 'string', minLength: 1 } },
   additionalProperties: false,
 } as const;
 
 /** 集合引用节点(维度必填——聚合数据源词条用)。 */
 const dimensionedCollectionNode = {
-  ...collectionNode,
+  type: 'object',
   required: ['collection', 'dimension'],
+  properties: {
+    collection: { type: 'string', minLength: 1 },
+    dimension: { type: 'string', pattern: '^[^.]+\\..+$' },
+  },
+  additionalProperties: false,
 } as const;
 
 /** 词条:表格(TanStack Table;rows = 集合引用,成员实体为行)。 */

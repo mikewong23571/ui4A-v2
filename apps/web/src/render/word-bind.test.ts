@@ -75,6 +75,23 @@ describe('词条 bindSchema 校验', () => {
     expect(validateWordBind({ columns: { collection: 'comments' } }, 'kanban')).toEqual({ valid: true });
   });
 
+  it('非聚合词条 table/timeline/kanban 禁止 dimension,避免运行时收到聚合条目', () => {
+    const cases = [
+      ['table', { rows: { collection: 'articles', dimension: 'articles.fields.category' } }],
+      ['timeline', { events: { collection: 'events', dimension: 'events.kind' } }],
+      ['kanban', { columns: { collection: 'comments', dimension: 'comments.fields.status' } }],
+    ] as const;
+    for (const [word, bind] of cases) {
+      const result = validateWordBind(bind, word);
+      expect(result.valid, word).toBe(false);
+      if (!result.valid) {
+        expect(
+          result.errors.some((error) => `${error.path} ${error.message}`.includes('dimension')),
+        ).toBe(true);
+      }
+    }
+  });
+
   it('未知词名 → 校验失败(错误带词名)', () => {
     const result = validateWordBind({ rows: { collection: 'articles' } }, 'nope');
     expect(result.valid).toBe(false);

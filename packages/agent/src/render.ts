@@ -286,9 +286,11 @@ export function parseRenderResponse(text: string): GeneratedRenderSpec | undefin
  * (词表命中 + sitemap 声明核对);LLM 路径显式核对同一不变式:collection
  * 引用必须是 sitemap 集合面、dimension 字段必须在流程节点声明(与
  * dimensionFieldOf 同为"全局声明过"口径;维度格式与 rel 前缀一致性由
- * 零字面校验器先把关——本函数假定 spec 已过 validateSpec)。ref/field
- * 指向实例级 rel(非 sitemap 面),其真实性由解引用器渲染时把关
- * (第二道闸),不在此核对。返回违规清单(空 = 通过),不抛错。
+ * 零字面校验器先把关——本函数假定 spec 已过 validateSpec)。普通 ref/field
+ * 指向实例级 rel(非 sitemap 面),其真实性由解引用器渲染时把关;caption
+ * 是例外:只接受可由 sitemap 与集合投影合同共同证明存在的 `<collection>.rel`
+ * 字符串,避免成员级路径挂到集合实体后凝固为永久 dangling spec。
+ * 返回违规清单(空 = 通过),不抛错。
  */
 export function renderSpecGroundingErrors(
   spec: GeneratedRenderSpec,
@@ -311,6 +313,18 @@ export function renderSpecGroundingErrors(
     if (typeof node !== 'object' || node === null) return;
     // 断言理由:上方已排除 null/数组,object 即 JSON 对象(Record 收窄)。
     const record = node as Record<string, unknown>;
+    if (path.endsWith('.caption') && typeof record.field === 'string') {
+      const separator = record.field.indexOf('.');
+      const rel = separator > 0 ? record.field.slice(0, separator) : '';
+      const fieldPath = separator > 0 ? record.field.slice(separator + 1) : '';
+      if (!collections.has(rel) || fieldPath !== 'rel') {
+        errors.push(
+          `${path}: caption 引用 "${record.field}" 不可由 sitemap 集合投影解析` +
+            '(应指向 "<collection>.rel",不得把成员字段路径挂到集合实体)',
+        );
+      }
+      return;
+    }
     if (typeof record.collection === 'string') {
       // 已过零字面校验的 collection 节点是干净的引用节点(无混入键)。
       if (!collections.has(record.collection)) {
