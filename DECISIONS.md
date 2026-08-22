@@ -185,3 +185,42 @@
 - **effect authorization 与解释**:每次 agent `exec/exec-plan` 必须引用 append-only user `sourceMessageId` 和逐字 quote，并与目标 rel/action 对齐。成功事件保留 declaration、guards、schema、confirmation policy 与授权索引；human decision 和最终事件继续同链。执行解释只从事件投影生成，授权缺失或伪造时标记 `authorization-error`，不得补造理由。
 - **正式模型工件**:外部 `LLM_MODEL` 在任何 action/spawn/artifact 业务事件写入前预检；缺项返回 503 且不产生半成品，禁止 `model: unconfigured`。provider profile 仍只有 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 三项外部部署数据，无供应商默认值。
 - **验收纪律**:确定性测试只守权限、事实、授权、副作用、审计和重放；Assistant 动态用户故事必须使用配置的真实 LLM，scripted/mock 结果不能冒充语义能力证据。
+
+## D27 T16 Presentation Plane、A2UI Surface 与用户级 Sidecar(2026-08-23)
+
+- **平面边界**:Chat Agent 只发 versioned `PresentationRequest` 并消费
+  `PresentationReceipt`，决定“是否呈现、呈现什么”；完整 catalog、Surface Tree、bindings、
+  dependency DAG 和 hydration data 只进入独立 Presentation Plane。Chat answer 与
+  Presentation planning 独立完成，展示失败不得改写已成立的 Chat outcome。
+- **pure kernel 位置**:不新增 workspace package。serializable 协议放
+  `packages/shared/src/presentation.ts`；纯 fold/validator/canonicalization/compiler/dependency/
+  invalidation/patch-CAS 放 `packages/engine/src/presentation/`，但使用独立 export 与
+  `PresentationSnapshot`，不得进入 Business fold/`EngineSnapshot`；PostgreSQL 与 Broker adapter
+  分别位于 `apps/web/src/db/presentation.ts` 和 `apps/web/src/engine/presentation/`。
+- **A2UI 边界**:持久化 UI4A 自有 normalized binding-only Surface Tree 与 dependency manifest，
+  不持久化 SDK model 或 hydrated facts。运行时校验、重新授权、解引用后编译并 replay 新鲜
+  A2UI v0.9 messages。SDK 没有 component delete、serializer 或独立 catalog version，因此
+  catalog 以使用词条 schema 的内容 fingerprint 兼容；结构变化原子替换 Surface/子树。D18 的
+  binderless 自定义词条在本 Track 先以受影响 Surface rebuild 保证正确性。
+- **Recipe 生命周期**:Application/Flow 激活后由纯 Scenario Enumerator 按结构机械产生
+  descriptor，再由独立 Presentation Agent 生成参数化 candidate Recipe。descriptor/Recipe
+  禁止 principal、sessionId、用户偏好与 live facts；`publishing@1` 当前机械清单为 15 个场景。
+  candidate 只有通过 binding/catalog/dependency 校验才可作低优先级 fastpath；human-only
+  promotion 产生 immutable promoted version，旧兼容版本继续服务，不兼容版本立即 stale。
+- **Sidecar 真相与 fastpath**:仍以现有 append-only `events` 为唯一 durable truth，但
+  Presentation event families 由独立 pure fold 重放，并服务于可删除重建的
+  `presentation_user_sidecars` current projection。User Sidecar durable key 固定为
+  `(principal, policyScope, subject, intent, deviceClass)`，没有 sessionId/turnId/route；Session
+  只能持有 active receipt/pointer 和未提交 UI state。查找顺序为 user pinned → user cache →
+  promoted Recipe → validated candidate → generic → runtime planner。
+- **事件与并发**:`eventId` 保证单事件幂等，`commandId` 保证命令重试幂等；Sidecar version
+  immutable，写入以 `baseVersion` CAS，回退只移动 active pointer。Presentation events 与派生投影
+  可同事务提交；投影损坏由事件重建。Presentation 事件路由错误进入 Business fold 必须继续
+  fail-closed，正确隔离时 Business Snapshot hash 字节不变。
+- **依赖与层级**:fingerprint 区分值与结构。字段值、普通状态和集合 membership 走实时
+  rehydrate；field/action schema、definition、catalog、policy 不兼容才 invalidate。Flow 使用稳定
+  Shell + CurrentTask/Context/Output/History 子树，集合使用 shell + repeat/item Recipe，graph 父级
+  只存 child reference/edge receipt，不复制子事实；完整新子树验证后才原子切 active pointer。
+- **技术栈结论**:继续使用现有 PostgreSQL、`@a2ui/web_core@0.10.6` 与
+  `@a2ui/react@0.10.2`，Phase A 未发现依赖或 runtime 选型偏差，因此无需先改
+  `conductor/tech-stack.md`。

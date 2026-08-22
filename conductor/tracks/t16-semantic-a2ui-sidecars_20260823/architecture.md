@@ -213,12 +213,15 @@ They may share PostgreSQL append-only storage but fold into a separate Presentat
 
 ## Module Boundaries
 
+Phase A probes confirmed the smallest acyclic boundary inside the existing workspaces; T16 does
+not create a new package:
+
 ```text
-packages/shared
+packages/shared/src/presentation.ts
   serializable request/receipt/situation/lens/recipe/sidecar/event types
 
-pure presentation kernel (location confirmed by Phase A spike)
-  schema, validator, compiler, dependency DAG, invalidation, fold, patch
+packages/engine/src/presentation/
+  pure schema, validator, canonicalization, dependency DAG, invalidation, fold, patch/CAS decision
 
 packages/agent
   thin request choice, Presentation Agent adapter, bounded prompt, explanation
@@ -233,7 +236,9 @@ apps/web/src/components
   inline/canvas hosts, direct manipulation, diff/promotion/revert UI
 ```
 
-Creating a new workspace package is not assumed. Phase A must compare a pure module under existing packages with a dedicated presentation package and choose the smallest boundary without cycles.
+A dedicated workspace package is deferred until the kernel has an independent non-engine consumer.
+The Presentation snapshot remains a separate export and must never enter the Business fold or
+`EngineSnapshot`.
 
 ## Governance Tests
 
