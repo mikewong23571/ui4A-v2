@@ -1,6 +1,12 @@
 /** Version of the thin Chat/runtime to Presentation Plane protocol. */
 export const PRESENTATION_PROTOCOL_VERSION = 1 as const;
 
+/** Version and hard safety ceilings for the serialized Situation passed to Presentation. */
+export const PRESENTATION_SITUATION_VERSION = 1 as const;
+export const MAX_RENDER_SITUATION_DEPTH = 8;
+export const MAX_RENDER_SITUATION_NODES = 256;
+export const MAX_DATA_LENS_SELECTORS = 32;
+
 export type PresentationDelivery = 'inline' | 'canvas' | 'auto';
 export type PresentationReceiptStatus = 'ready' | 'pending' | 'fallback' | 'failed';
 
@@ -52,6 +58,46 @@ export interface TrustedPresentationRequestContext {
   sourceMessageIds: string[];
 }
 
+export interface PresentationEntityRef {
+  rel: string;
+}
+
+export type FlowLensRegion = 'current-node' | 'context' | 'outputs' | 'history';
+
+/**
+ * A deliberately closed navigation vocabulary. Roots carry explicit selection; relations are
+ * names from the already-authorized Siren contract, never predicates or an arbitrary query.
+ */
+export type DataLens =
+  | { kind: 'self' }
+  | { kind: 'members' }
+  | { kind: 'selection' }
+  | { kind: 'relations'; relations: string[] }
+  | { kind: 'flow'; include: FlowLensRegion[] }
+  | { kind: 'graph'; relations: string[] };
+
+export interface RenderAudience {
+  principal: string;
+  policyScope: string;
+  role?: string;
+  deviceClass?: string;
+}
+
+export interface RenderBudget {
+  maxDepth: number;
+  maxNodes: number;
+}
+
+/** Serializable, authorization-neutral input to bounded Presentation graph construction. */
+export interface RenderSituation {
+  schemaVersion: typeof PRESENTATION_SITUATION_VERSION;
+  roots: PresentationEntityRef[];
+  intent: string;
+  lens: DataLens;
+  audience: RenderAudience;
+  budget: RenderBudget;
+}
+
 const FORBIDDEN_PROTOCOL_KEYS = new Set([
   'surface',
   'component',
@@ -82,6 +128,23 @@ function assertExactKeys(
   }
 }
 
+const SESSION_IDENTIFIER_KEYS = new Set(['session', 'sessionid', 'sessionkey']);
+
+function assertNoSessionIdentifiers(value: unknown, label: string): void {
+  if (Array.isArray(value)) {
+    for (const entry of value) assertNoSessionIdentifiers(entry, label);
+    return;
+  }
+  if (!isRecord(value)) return;
+  for (const [key, entry] of Object.entries(value)) {
+    const normalizedKey = key.toLowerCase().replaceAll(/[-_]/g, '');
+    if (SESSION_IDENTIFIER_KEYS.has(normalizedKey)) {
+      throw new Error(`${label} contains forbidden session identifier "${key}"`);
+    }
+    assertNoSessionIdentifiers(entry, label);
+  }
+}
+
 function requiredString(value: unknown, label: string): string {
   if (typeof value !== 'string' || value.trim() === '') {
     throw new Error(`${label} must be a non-empty string`);
@@ -94,6 +157,140 @@ function stringArray(value: unknown, label: string, allowEmpty: boolean): string
     throw new Error(`${label} must be ${allowEmpty ? 'an' : 'a non-empty'} array`);
   }
   return value.map((entry, index) => requiredString(entry, `${label}[${index}]`));
+}
+
+function boundedUniqueStringArray(value: unknown, label: string): string[] {
+  const entries = stringArray(value, label, false);
+  if (entries.length > MAX_DATA_LENS_SELECTORS) {
+    throw new Error(`${label} exceeds ${MAX_DATA_LENS_SELECTORS} selectors`);
+  }
+  if (new Set(entries).size !== entries.length) {
+    throw new Error(`${label} entries must be unique`);
+  }
+  return entries;
+}
+
+function boundedPositiveInteger(value: unknown, maximum: number, label: string): number {
+  if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > maximum) {
+    throw new Error(`${label} must be a positive integer no greater than ${maximum}`);
+  }
+  return value as number;
+}
+
+/** Parse one closed Data Lens variant. The result contains no executable/query expression. */
+export function parseDataLens(value: unknown): DataLens {
+  assertNoSessionIdentifiers(value, 'Data lens');
+  assertRecord(value, 'Data lens');
+  const kind = value.kind;
+  switch (kind) {
+    case 'self':
+    case 'members':
+    case 'selection':
+      assertExactKeys(value, ['kind'], 'Data lens');
+      return { kind };
+    case 'relations':
+    case 'graph': {
+      assertExactKeys(value, ['kind', 'relations'], 'Data lens');
+      return { kind, relations: boundedUniqueStringArray(value.relations, 'Data lens relations') };
+    }
+    case 'flow': {
+      assertExactKeys(value, ['kind', 'include'], 'Data lens');
+      if (!Array.isArray(value.include) || value.include.length === 0) {
+        throw new Error('Data lens flow include must be a non-empty array');
+      }
+      const allowed = new Set<FlowLensRegion>(['current-node', 'context', 'outputs', 'history']);
+      const include = value.include.map((entry, index) => {
+        if (typeof entry !== 'string' || !allowed.has(entry as FlowLensRegion)) {
+          throw new Error(`Data lens flow include[${index}] is invalid`);
+        }
+        return entry as FlowLensRegion;
+      });
+      if (new Set(include).size !== include.length) {
+        throw new Error('Data lens flow include entries must be unique');
+      }
+      return { kind, include };
+    }
+    default:
+      throw new Error(`Data lens kind "${String(kind)}" is invalid`);
+  }
+}
+
+/** Strictly parse the versioned, bounded Situation accepted by Presentation graph builders. */
+export function parseRenderSituation(value: unknown): RenderSituation {
+  assertNoSessionIdentifiers(value, 'Render situation');
+  assertRecord(value, 'Render situation');
+  assertExactKeys(
+    value,
+    ['schemaVersion', 'roots', 'intent', 'lens', 'audience', 'budget'],
+    'Render situation',
+  );
+  if (value.schemaVersion !== PRESENTATION_SITUATION_VERSION) {
+    throw new Error(`Unsupported Render situation version "${String(value.schemaVersion)}"`);
+  }
+
+  if (!Array.isArray(value.roots) || value.roots.length === 0) {
+    throw new Error('Render situation roots must be a non-empty array');
+  }
+  const roots = value.roots.map((root, index): PresentationEntityRef => {
+    assertRecord(root, `Render situation roots[${index}]`);
+    assertExactKeys(root, ['rel'], `Render situation roots[${index}]`);
+    return { rel: requiredString(root.rel, `Render situation roots[${index}].rel`) };
+  });
+  if (new Set(roots.map((root) => root.rel)).size !== roots.length) {
+    throw new Error('Render situation roots must be unique');
+  }
+
+  assertRecord(value.audience, 'Render situation audience');
+  assertExactKeys(
+    value.audience,
+    ['principal', 'policyScope', 'role', 'deviceClass'],
+    'Render situation audience',
+  );
+  const audience: RenderAudience = {
+    principal: requiredString(value.audience.principal, 'Render situation audience principal'),
+    policyScope: requiredString(
+      value.audience.policyScope,
+      'Render situation audience policyScope',
+    ),
+    ...(value.audience.role === undefined
+      ? {}
+      : { role: requiredString(value.audience.role, 'Render situation audience role') }),
+    ...(value.audience.deviceClass === undefined
+      ? {}
+      : {
+          deviceClass: requiredString(
+            value.audience.deviceClass,
+            'Render situation audience deviceClass',
+          ),
+        }),
+  };
+
+  assertRecord(value.budget, 'Render situation budget');
+  assertExactKeys(value.budget, ['maxDepth', 'maxNodes'], 'Render situation budget');
+  const budget: RenderBudget = {
+    maxDepth: boundedPositiveInteger(
+      value.budget.maxDepth,
+      MAX_RENDER_SITUATION_DEPTH,
+      'Render situation budget maxDepth',
+    ),
+    maxNodes: boundedPositiveInteger(
+      value.budget.maxNodes,
+      MAX_RENDER_SITUATION_NODES,
+      'Render situation budget maxNodes',
+    ),
+  };
+  if (roots.length > budget.maxNodes) {
+    throw new Error('Render situation roots exceed budget maxNodes');
+  }
+
+  return {
+    schemaVersion: PRESENTATION_SITUATION_VERSION,
+    roots,
+    intent: requiredString(value.intent, 'Render situation intent'),
+    lens: parseDataLens(value.lens),
+    audience,
+    budget,
+  };
 }
 
 function parseConstraints(value: unknown): RenderConstraint[] | undefined {
