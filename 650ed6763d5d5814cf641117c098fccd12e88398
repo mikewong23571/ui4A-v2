@@ -1,0 +1,5 @@
+Task: Application bundle meta bootstrap contract
+Summary: moved walkthrough business application/flow/capability/seed definitions into a versioned JSON artifact; added generic parse/cross-reference validation and idempotent meta bootstrap event planning with an auditable receipt; retained domain modules only as test fixture adapters.
+Files: packages/engine/src/meta-bootstrap.ts, packages/engine/src/meta-bootstrap.test.ts, packages/engine/src/fold.ts, packages/engine/src/index.ts, apps/web/src/applications/*, apps/web/src/domain/{applications,capabilities,flows,seed}.ts, apps/web/src/db/events.ts
+Why: application-as-data must begin at installation; the Web service/kernel must not encode article as privileged TypeScript business truth.
+Evidence: CI=true pnpm vitest run packages/engine/src/meta-bootstrap.test.ts apps/web/src/domain/flows.test.ts apps/web/src/domain/applications.test.ts apps/web/src/domain/capabilities.test.ts; engine/web typecheck.
