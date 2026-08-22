@@ -904,6 +904,29 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
       ]),
     );
 
+    // T13 Phase C:capabilities 面进 meta sitemap(目录集合 + 三个 seed 实体)
+    expect(metaSitemap.surfaces.map((surface) => surface.rel)).toEqual(
+      expect.arrayContaining([
+        'meta/capabilities',
+        'meta/capability:draft',
+        'meta/capability:notify',
+        'meta/capability:clarify',
+      ]),
+    );
+    // 业务 sitemap 不含 capability 入口(capability 面只在 meta 站;上方精确名单同证)
+    expect(
+      sitemap.surfaces.every((surface) => !surface.rel.includes('capability')),
+      '业务 sitemap 不得出现 capability 入口',
+    ).toBe(true);
+    // meta/capabilities 集合投影:三个 seed 成员直达
+    const capabilities = await getMetaEntity('meta/capabilities');
+    expect(capabilities.properties).toMatchObject({ count: 3 });
+    expect((capabilities.entities ?? []).map((sub) => sub.properties.name).sort()).toEqual([
+      'clarify',
+      'draft',
+      'notify',
+    ]);
+
     // 业务端点对 meta rel 404(跨站不混,双向)
     expect(
       (await fetch(`${SCENARIO_BASE}/api/entity?rel=${encodeURIComponent('meta/flows')}`)).status,
@@ -936,5 +959,15 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
     const response = await page.goto('/meta/activations');
     expect(response?.status()).toBe(200);
     await expect(page.getByText('队列为空(无待批准的定义激活)。')).toBeVisible();
+
+    // BIOS capabilities 页(T13 Phase C):三个 seed 可见,链接进详情(属性投影可读)
+    const capsResponse = await page.goto('/meta/capabilities');
+    expect(capsResponse?.status()).toBe(200);
+    for (const name of ['draft', 'notify', 'clarify']) {
+      await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
+    }
+    await page.getByRole('link', { name: 'draft', exact: true }).click();
+    await expect(page).toHaveURL(/\/meta\/capability\/draft$/);
+    await expect(page.getByText('extract', { exact: true })).toBeVisible();
   });
 });

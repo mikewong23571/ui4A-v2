@@ -1,6 +1,7 @@
 'use client';
 /**
- * BIOS 列表面(T4 Phase C):meta/flows 定义清单与 meta/activations 激活队列。
+ * BIOS 列表面(T4 Phase C):meta/flows 定义清单与 meta/activations 激活队列;
+ * T13 Phase C 增 meta/capabilities 能力目录。
  *
  * 读 /_meta/api/entity(同引擎同日志;进入定义层是显式意图),成员链接进
  * BIOS 详情页。纯导航渲染,零 AI;队列为空是常态而非异常,如实呈现。
@@ -168,6 +169,69 @@ export function ActivationsQueueBody() {
           })}
         </ul>
       )}
+    </BiosShell>
+  );
+}
+
+/** 能力目录(T13 Phase C):meta/capabilities 成员逐条 → /meta/capability/<name>。 */
+export function CapabilitiesListBody() {
+  const { entity, state } = useMetaEntity('meta/capabilities');
+  if (state === 'loading') {
+    return (
+      <BiosShell title="能力目录">
+        <p className="mt-4 text-sm text-muted-foreground">加载中…</p>
+      </BiosShell>
+    );
+  }
+  if (state !== 'ready' || entity === null) {
+    return (
+      <BiosShell title="能力目录">
+        <p className="mt-4 text-sm">
+          {state === 'missing' ? '能力目录不可用(404)。' : '读取能力目录失败(服务不可用)。'}
+        </p>
+      </BiosShell>
+    );
+  }
+  const members = entity.entities ?? [];
+  return (
+    <BiosShell title={`能力目录(${members.length})`}>
+      <div className="mt-4 rounded-md border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="px-3 text-muted-foreground">capability</TableHead>
+              <TableHead className="px-3 text-muted-foreground">kind</TableHead>
+              <TableHead className="px-3 text-muted-foreground">intent</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {members.map((sub) => {
+              const rel = memberRel(sub) ?? '';
+              const name = String(sub.properties.name ?? rel);
+              const kind = String(sub.properties.kind ?? '');
+              return (
+                <TableRow key={rel}>
+                  <TableCell className="px-3 py-2">
+                    <a
+                      href={`/meta/capability/${encodeURIComponent(name)}`}
+                      data-nav="meta-capability"
+                      className="text-primary hover:underline"
+                    >
+                      {name}
+                    </a>
+                  </TableCell>
+                  <TableCell className="px-3 py-2">
+                    <Badge variant="outline">{kind}</Badge>
+                  </TableCell>
+                  <TableCell className="px-3 py-2">
+                    {String(sub.properties.intent ?? '')}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
     </BiosShell>
   );
 }

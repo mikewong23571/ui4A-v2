@@ -345,7 +345,8 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   // 激活不变式的注册表缺省 KNOWN_FIELD_TYPES/KNOWN_EFFECT_TYPES)。
   const metaDeps = (): MetaDeps => ({ guards, policy });
 
-  // meta 站点 sitemap(meta rel 面;定义实体随 definitions 表动态列出)。
+  // meta 站点 sitemap(meta rel 面;定义实体随 definitions 表动态列出,
+  // capability 实体随 capabilities 表动态列出[T13 Phase C]——两面同进缓存键)。
   let metaSitemapCache: { key: string; sitemap: MetaSitemap } | undefined;
   const currentMetaSitemap = (): MetaSitemap => {
     const surfaces: SitemapSurface[] = [
@@ -355,6 +356,11 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       ...Object.values(snapshot.definitions ?? {}).map((entry) => ({
         rel: metaFlowRel(entry.name),
         title: entry.definition.title ?? entry.name,
+      })),
+      { rel: 'meta/capabilities', title: '能力目录', collection: true },
+      ...Object.values(snapshot.capabilities ?? {}).map((capability) => ({
+        rel: metaCapabilityRel(capability.name),
+        title: capability.title,
       })),
     ];
     const key = contentVersion(surfaces);

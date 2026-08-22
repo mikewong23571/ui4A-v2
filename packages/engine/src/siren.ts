@@ -8,6 +8,7 @@
  */
 import type {
   ActivationSnapshot,
+  CapabilityDefinition,
   ConfirmationSnapshot,
   DefinitionEntry,
   DelegationSnapshot,
@@ -16,7 +17,7 @@ import type {
   GuardEvaluation,
   GuardRegistry,
 } from '@ui4a/shared';
-import { fieldValues, metaActivationRel, terminalNodes } from '@ui4a/shared';
+import { fieldValues, META_CAPABILITY_PREFIX, metaActivationRel, terminalNodes } from '@ui4a/shared';
 
 import {
   CONFIRMATION_APPROVE_ACTION,
@@ -708,7 +709,54 @@ function projectActivations(snapshot: EngineSnapshot, deps: ProjectDeps): SirenE
 }
 
 /**
- * meta 平面路由:self / flows / flow:<name> / activation:<id> / activations。
+ * capability 定义实体投影(T13 Phase C;spec 架构决定 3):class
+ * meta/capability-definition,properties 属性表形状 {name,title,kind,intent}
+ * (+可选 input/output,缺省不出现——形状稳定口径与 confirmation 投影同)。
+ * 只读:无动作、guard-results 空(编辑动词归后续,spec 架构决定 5 口径)。
+ */
+function projectCapability(capability: CapabilityDefinition, deps: ProjectDeps): SirenEntity {
+  const rel = `${META_CAPABILITY_PREFIX}${capability.name}`;
+  return {
+    class: ['meta', 'capability-definition'],
+    properties: {
+      name: capability.name,
+      title: capability.title,
+      kind: capability.kind,
+      intent: capability.intent,
+      ...(capability.input !== undefined ? { input: capability.input } : {}),
+      ...(capability.output !== undefined ? { output: capability.output } : {}),
+    },
+    actions: [],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, rel) }],
+    'guard-results': [],
+  };
+}
+
+/**
+ * meta/capabilities:capability 目录集合(子实体直达)。capabilities 表缺省
+ * (过渡期,seed 前的老快照)→ 空目录 count 0——面恒在场,成员随表列出
+ * (与 meta/flows 集合同口径)。
+ */
+function projectCapabilities(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
+  const entries = Object.values(snapshot.capabilities ?? {});
+  const entities = entries.map((capability) => ({
+    ...projectCapability(capability, deps),
+    rel: ['item'],
+    href: entityHref(deps.baseHref, `${META_CAPABILITY_PREFIX}${capability.name}`),
+  }));
+  return {
+    class: ['collection', 'meta/capabilities'],
+    properties: { rel: 'meta/capabilities', count: entries.length },
+    actions: [],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'meta/capabilities') }],
+    'guard-results': [],
+    entities,
+  };
+}
+
+/**
+ * meta 平面路由:self / flows / flow:<name> / activation:<id> / activations /
+ * capabilities / capability:<name>(T13 Phase C)。
  * 未知 meta rel → undefined(HTTP 层映射 404)。
  */
 function projectMeta(
@@ -719,12 +767,17 @@ function projectMeta(
   if (rel === 'meta/self') return projectSelf(snapshot, deps);
   if (rel === 'meta/flows') return projectFlows(snapshot, deps);
   if (rel === 'meta/activations') return projectActivations(snapshot, deps);
+  if (rel === 'meta/capabilities') return projectCapabilities(snapshot, deps);
   if (rel.startsWith('meta/flow:')) {
     return projectFlowDefinition(snapshot, rel.slice('meta/flow:'.length), deps);
   }
   if (rel.startsWith('meta/activation:')) {
     const activation = snapshot.activations?.[rel];
     return activation === undefined ? undefined : projectActivation(activation, snapshot, deps);
+  }
+  if (rel.startsWith(META_CAPABILITY_PREFIX)) {
+    const capability = snapshot.capabilities?.[rel.slice(META_CAPABILITY_PREFIX.length)];
+    return capability === undefined ? undefined : projectCapability(capability, deps);
   }
   return undefined;
 }

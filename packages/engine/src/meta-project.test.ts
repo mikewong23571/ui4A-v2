@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 
 import type {
   ActivationSnapshot,
+  CapabilityDefinition,
   DefinitionEntry,
   EngineSnapshot,
   GuardRegistry,
@@ -416,5 +417,87 @@ describe('meta/flow:<name> 版本历史投影(T13 Phase B Task 1;spec 架构决�
     const snapshot = versionedSnapshot();
     expect(project(snapshot, 'meta/flow:post-status@1', deps)).toBeUndefined();
     expect(project(snapshot, 'meta/flow:ghost@1', deps)).toBeUndefined();
+  });
+});
+
+// capability 投影夹具(T13 Phase C Task 3;两个 describe 共用:实体 + 集合)。
+const draftCapability: CapabilityDefinition = {
+  name: 'draft',
+  title: '工件起草',
+  kind: 'extract',
+  intent: '价值载体字段的草稿工件起草。',
+  input: '字段语义与上下文工件。',
+  output: '草稿工件候选集。',
+};
+const notifyCapability: CapabilityDefinition = {
+  name: 'notify',
+  title: '确认门送达',
+  kind: 'effect',
+  intent: '确认挂起后的通知送达。',
+};
+
+/** capability 快照:capabilities 表两条目(一条全量字段、一条缺省可选字段)。 */
+function capabilitySnapshot(): EngineSnapshot {
+  return {
+    instances: {},
+    collections: {},
+    capabilities: { draft: draftCapability, notify: notifyCapability },
+  };
+}
+
+describe('meta/capability:<name> 投影(T13 Phase C Task 3;spec 架构决定 3)', () => {
+  it('属性表形状:class meta/capability-definition,properties {name,title,kind,intent,input,output}', () => {
+    const entity = project(capabilitySnapshot(), 'meta/capability:draft', deps)!;
+    expect(entity.class).toEqual(['meta', 'capability-definition']);
+    expect(entity.properties).toEqual({
+      name: 'draft',
+      title: '工件起草',
+      kind: 'extract',
+      intent: '价值载体字段的草稿工件起草。',
+      input: '字段语义与上下文工件。',
+      output: '草稿工件候选集。',
+    });
+  });
+
+  it('只读:无动作、guard-results 空;links 仅 self', () => {
+    const entity = project(capabilitySnapshot(), 'meta/capability:draft', deps)!;
+    expect(entity.actions).toEqual([]);
+    expect(entity['guard-results']).toEqual([]);
+    expect(entity.links).toEqual([
+      { rel: ['self'], href: '/api/entity?rel=meta/capability:draft' },
+    ]);
+  });
+
+  it('可选 input/output 缺省不出现(形状稳定口径,同 confirmation 投影)', () => {
+    const entity = project(capabilitySnapshot(), 'meta/capability:notify', deps)!;
+    expect(entity.properties).toEqual({
+      name: 'notify',
+      title: '确认门送达',
+      kind: 'effect',
+      intent: '确认挂起后的通知送达。',
+    });
+  });
+
+  it('未知 capability 名 → undefined(HTTP 层映射 404)', () => {
+    expect(project(capabilitySnapshot(), 'meta/capability:ghost', deps)).toBeUndefined();
+  });
+});
+
+describe('meta/capabilities 集合投影', () => {
+  it('全部 capability 为子实体(rel=item + 直达 href),properties 含 count', () => {
+    const entity = project(capabilitySnapshot(), 'meta/capabilities', deps)!;
+    expect(entity.class).toEqual(['collection', 'meta/capabilities']);
+    expect(entity.properties).toMatchObject({ rel: 'meta/capabilities', count: 2 });
+    expect(entity.entities).toHaveLength(2);
+    expect(entity.entities![0]!.rel).toEqual(['item']);
+    expect(entity.entities![0]!.href).toBe('/api/entity?rel=meta/capability:draft');
+    expect(entity.entities![0]!.properties).toMatchObject({ name: 'draft', kind: 'extract' });
+  });
+
+  it('capabilities 表缺省(过渡期)→ 空目录 count 0(面在场,成员为空)', () => {
+    const entity = project({ instances: {}, collections: {} }, 'meta/capabilities', deps)!;
+    expect(entity.class).toEqual(['collection', 'meta/capabilities']);
+    expect(entity.properties).toMatchObject({ rel: 'meta/capabilities', count: 0 });
+    expect(entity.entities).toEqual([]);
   });
 });

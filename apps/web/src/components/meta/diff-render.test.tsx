@@ -131,6 +131,8 @@ describe('铁律 5:BIOS 渲染路径零 AI(源级断言)', () => {
     'activation-view.tsx',
     'flow-definition-view.tsx',
     'flow-topology-view.tsx',
+    'capability-definition-view.tsx',
+    'meta-lists.tsx',
     'meta-client.ts',
   ];
 

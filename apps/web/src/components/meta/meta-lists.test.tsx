@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SirenEntity } from '@ui4a/engine';
 
 import { ActivationsQueueBody } from './meta-lists';
+import { CapabilitiesListBody } from './meta-lists';
 import { FlowsListBody } from './meta-lists';
 
 const flowsEntity: SirenEntity = {
@@ -71,6 +72,42 @@ const emptyActivations: SirenEntity = {
   entities: [],
 };
 
+const capabilitiesEntity: SirenEntity = {
+  class: ['collection', 'meta/capabilities'],
+  properties: { rel: 'meta/capabilities', count: 2 },
+  actions: [],
+  links: [{ rel: ['self'], href: '/_meta/api/entity?rel=meta/capabilities' }],
+  'guard-results': [],
+  entities: [
+    {
+      class: ['meta', 'capability-definition'],
+      rel: ['item'],
+      href: '/_meta/api/entity?rel=meta/capability:draft',
+      properties: {
+        name: 'draft',
+        title: '工件起草',
+        kind: 'extract',
+        intent: '价值载体字段的草稿工件起草。',
+      },
+      actions: [],
+      links: [],
+    },
+    {
+      class: ['meta', 'capability-definition'],
+      rel: ['item'],
+      href: '/_meta/api/entity?rel=meta/capability:notify',
+      properties: {
+        name: 'notify',
+        title: '确认门送达',
+        kind: 'effect',
+        intent: '确认挂起后的通知送达。',
+      },
+      actions: [],
+      links: [],
+    },
+  ],
+};
+
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status: 200,
@@ -125,5 +162,34 @@ describe('ActivationsQueueBody(激活队列面)', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(emptyActivations)));
     render(<ActivationsQueueBody />);
     await waitFor(() => expect(screen.getByText(/队列为空/)).toBeTruthy());
+  });
+});
+
+describe('CapabilitiesListBody(能力目录面,T13 Phase C Task 3)', () => {
+  it('成员逐条链接到 /meta/capability/<name>,kind/intent 可见;请求打 /_meta/api/entity', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/_meta/api/entity?rel=meta%2Fcapabilities')) {
+        return Promise.resolve(jsonResponse(capabilitiesEntity));
+      }
+      return Promise.resolve(jsonResponse({ error: `未知端点 ${url}` }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = render(<CapabilitiesListBody />);
+    await waitFor(() =>
+      expect(container.querySelector('a[href="/meta/capability/draft"]')).not.toBeNull(),
+    );
+    expect(fetchMock.mock.calls[0]![0]).toBe('/_meta/api/entity?rel=meta%2Fcapabilities');
+    expect(container.querySelector('a[href="/meta/capability/notify"]')).not.toBeNull();
+    expect(screen.getByText(/extract/)).toBeTruthy();
+    expect(screen.getByText(/effect/)).toBeTruthy();
+    expect(screen.getByText(/价值载体字段的草稿工件起草。/)).toBeTruthy();
+  });
+
+  it('读取失败:如实呈现错误(不造数据)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+    render(<CapabilitiesListBody />);
+    await waitFor(() => expect(screen.getByText(/读取能力目录失败/)).toBeTruthy());
   });
 });

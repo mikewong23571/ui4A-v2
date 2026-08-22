@@ -24,6 +24,11 @@ const FACES = [
     description: 'meta/activations:待批准的定义激活(机械 diff + checks + approve/reject)',
   },
   {
+    href: '/meta/capabilities',
+    title: '能力目录',
+    description: 'meta/capabilities:已注册 capability 定义(kind/intent/input/output)',
+  },
+  {
     href: '/meta/self',
     title: 'meta/self',
     description: 'definition-lifecycle 自身定义(引擎自举的状态机)',

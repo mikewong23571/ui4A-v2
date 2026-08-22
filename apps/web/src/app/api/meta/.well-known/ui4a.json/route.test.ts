@@ -7,7 +7,8 @@ import { resetEngineForTests } from '../../../../../engine/service';
 import { GET } from './route';
 
 // /_meta/.well-known/ui4a.json 契约测试(T4 Phase B Task 2,TDD 红→绿):
-// meta 站点 sitemap——meta rel 面(self/flows/activations + 每个定义实体),
+// meta 站点 sitemap——meta rel 面(self/flows/activations/capabilities +
+// 每个定义实体 + 每个 capability 实体[T13 Phase C]),
 // agent 进入定义层的第一跳(显式意图,业务站 sitemap 不携带任何 _meta 入口)。
 const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');
 
@@ -18,7 +19,7 @@ beforeEach(async () => {
 });
 
 describe('GET /_meta/.well-known/ui4a.json', () => {
-  it('200:meta rel 面齐备(self/flows/activations + 三个定义实体),版本为内容 hash 短码', async () => {
+  it('200:meta rel 面齐备(self/flows/activations + 三个定义实体 + capabilities 目录与三个 seed),版本为内容 hash 短码', async () => {
     const res = await GET();
     expect(res.status).toBe(200);
     const sitemap = (await res.json()) as {
@@ -35,6 +36,10 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
       'meta/flow:article-drafting',
       'meta/flow:post-status',
       'meta/flow:comment-moderation',
+      'meta/capabilities',
+      'meta/capability:draft',
+      'meta/capability:notify',
+      'meta/capability:clarify',
     ]);
   });
 });

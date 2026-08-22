@@ -163,3 +163,55 @@ describe('meta exec 编排(service.exec 的 meta/ 前缀路由)', () => {
     expect(replayed.definitions?.['post-status']?.version).toBe(2);
   });
 });
+
+describe('capabilities 面(T13 Phase C Task 3;spec 架构决定 3)', () => {
+  it('meta sitemap 携带 capabilities 面:目录集合 + 三个 seed 实体(boot 补种后即在场)', async () => {
+    const engine = await getEngine(pool);
+    const rels = engine.getMetaSitemap().surfaces.map((surface) => surface.rel);
+    expect(rels).toEqual(
+      expect.arrayContaining([
+        'meta/capabilities',
+        'meta/capability:draft',
+        'meta/capability:notify',
+        'meta/capability:clarify',
+      ]),
+    );
+    // capabilities 面进缓存键:目录内容参与内容 hash(与 flows 面同口径)。
+    const collection = engine
+      .getMetaSitemap()
+      .surfaces.find((surface) => surface.rel === 'meta/capabilities');
+    expect(collection).toMatchObject({ collection: true });
+  });
+
+  it('meta/capabilities 集合投影:三 seed 子实体直达(/_meta href),count=3', async () => {
+    const engine = await getEngine(pool);
+    const entity = await engine.getMetaEntity('meta/capabilities');
+    expect(entity?.class).toEqual(['collection', 'meta/capabilities']);
+    expect(entity?.properties).toMatchObject({ rel: 'meta/capabilities', count: 3 });
+    expect(entity?.entities?.map((sub) => sub.properties.name)).toEqual([
+      'draft',
+      'notify',
+      'clarify',
+    ]);
+    expect(entity?.entities?.[0]?.href).toBe('/_meta/api/entity?rel=meta/capability:draft');
+  });
+
+  it('meta/capability:<name> 实体投影:属性表形状(kind/intent/input/output 可见),只读零动作;未知名 → undefined', async () => {
+    const engine = await getEngine(pool);
+    const entity = await engine.getMetaEntity('meta/capability:draft');
+    expect(entity?.class).toEqual(['meta', 'capability-definition']);
+    expect(entity?.properties).toMatchObject({
+      name: 'draft',
+      title: '工件起草',
+      kind: 'extract',
+    });
+    expect(typeof entity?.properties.intent).toBe('string');
+    expect(typeof entity?.properties.input).toBe('string');
+    expect(typeof entity?.properties.output).toBe('string');
+    expect(entity?.actions).toEqual([]);
+    expect(entity?.links).toEqual([
+      { rel: ['self'], href: '/_meta/api/entity?rel=meta/capability:draft' },
+    ]);
+    expect(await engine.getMetaEntity('meta/capability:ghost')).toBeUndefined();
+  });
+});
