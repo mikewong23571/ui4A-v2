@@ -31,14 +31,14 @@
 - [x] Task: Pure kernel boundary——按 Phase A 决定落入现有 package/module 或新 presentation package，保持无 React/AI SDK/DB/环境依赖 — fc1213d
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — fc1213d
 
-## Phase D: Application Scenario/Recipe 预生成
+## Phase D: Application Scenario/Recipe 预生成 [checkpoint: ebe2509]
 
 - [x] Task: TS6 Red→Green——Scenario Enumerator 从 Application/Flow/Entity/action/confirmation/artifact 语义确定性产生 descriptor，不选择组件、不含业务关键词 — c1f5611
 - [x] Task: TS7 Red→Green——独立 Presentation Agent prompt/context 与 Recipe template/slot/provenance；Recipe factual literal/principal/sessionId 为 0 — c1f5611
 - [x] Task: Recipe validator/compiler——definition/catalog/dependency validation，非法 candidate fail-closed 且不阻断 Application activation — c1f5611
 - [x] Task: TS8 Red→Green——candidate/promoted/stale/version Registry、确定性 key、受影响依赖扫描、后台 retry/regeneration 和兼容旧版本连续服务 — c1f5611
 - [x] Task: S12 real Eval——新 Entity/Flow/action 激活后零 Renderer/chat prompt 改动即可产生新 descriptor/Recipe；source governance 全绿 — 17b13cc
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — ebe2509
 
 ## Phase E: A2UI Runtime 与 Entity/Entities/Flow/Graph
 
