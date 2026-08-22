@@ -1,0 +1,6 @@
+Phase E semantic Canvas runtime
+Summary: Added Siren Situation adapter using per-edge authorization with sanitized private hydration maps and stable collection/Flow subtree keys; generic runtime turns semantic hints into validated Surface Trees and A2UI bundles; Canvas focus/default now uses semantic Presentation instead of fixed detail/demo mapping, while legacy concern rendering remains compatibility-only. Generic fallback suppresses protocol structural duplicates and uses member identity when declared.
+Red evidence: Situation and generic runtime tests failed on missing modules; fixed Canvas focus had no semantic runtime.
+Green evidence: situation 3 tests, generic runtime 1 test, Canvas/compiler set 9 tests, engine surface 10 tests; web/engine typechecks.
+Safety: unauthorized embedded members and counts are removed from private hydration; public graph is fact-free; A2UI component messages contain no article facts.
+Why: Close the user-visible raw field dump and fixed focus-to-detail path without creating entity-type pages.
