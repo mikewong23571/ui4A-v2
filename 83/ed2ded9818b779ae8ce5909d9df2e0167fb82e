@@ -5,3 +5,9 @@ Why: Keep Chat semantic and Presentation planning contexts independent while ret
 Red evidence: 10 step-1 turns collapsed into one thinking item; route frames lacked turnId; stale prompt/tool claims; forbidden protocol payloads accepted; present absent from loop; worker union failed typecheck; legacy Chat route owned keyword/catalog rendering.
 Green evidence: focused Phase B 12 files/159 tests passed plus Presentation API 2 tests; typecheck all workspaces; targeted ESLint/Prettier/diff clean. Real deepseek-v4-flash: S3 correctly reported chat supported, live catalog markdown registered, body content type undeclared; real composite present flow navigated, emitted pending+honest fallback receipt, answered from authorized body, and stored only presentationRequestIds. Zero business effects.
 Operational note: full-suite notification probe initially polluted dev with orphan seq 2737 due a concurrently running worker; exact row was recoverably quarantined in events_quarantine_t15_20260823, then app health/entity replay returned 200.
+
+Phase B autonomous verification
+Automated: pnpm check passed after isolating Temporal from the development worker: 142 Vitest files, 1243 tests; all workspace typechecks; ESLint 0 errors/6 pre-existing warnings. Focused Presentation/Chat/worker suite 159 tests plus API tests passed.
+Real model: configured deepseek-v4-flash correctly answered Markdown at all three layers; a composite request navigated to post:first-post, issued the thin present tool, received pending then honest generic fallback receipt, and independently answered the body with sources. Chat-turn persisted only presentationRequestIds, and business event delta was zero.
+Scripted manual equivalent: /api/presentation accepted the same request for direct origin; forbidden Session/Surface/component/bind/dependency keys returned 400; app health and articles replay returned 200.
+Autonomous confirmation: accepted under conductor/workflow.md authorization.
