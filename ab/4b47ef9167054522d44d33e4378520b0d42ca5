@@ -1,0 +1,4 @@
+Phase G compatibility correction
+Issue: adding event domain as the first INSERT parameter broke worker fake-DB protocol tests that intentionally inspect the established actor/principal/channel/kind/rel/action/params/reason/detail order; Presentation API expectation also still asserted pre-Sidecar fallback.
+Fix: domain remains a real DB column but is appended as the tenth INSERT parameter, preserving every existing writer contract; direct presentation test now expects ready Sidecar URL.
+Verification: worker activities/delegation, presentation route and events suites 38/38 passed; all workspace typechecks.
