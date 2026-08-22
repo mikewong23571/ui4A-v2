@@ -1,0 +1,5 @@
+T13 Phase C Task 1: CapabilityDefinition 类型 + parse
+
+改动:shared/definition.ts(CapabilityKind/CapabilityDefinition/rel 前缀与辅助函数)、engine/parse.ts(parseCapabilityDefinition + CapabilityParseError)+ 2 测试文件(+11)
+Why:spec 架构决定 3——capability 目录定义面,T10 application 先例同构。
+验收(编排 agent 亲自复跑):parse+shared 61/61;CI=true pnpm check 1032 passed。自治验收。
