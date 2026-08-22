@@ -15,7 +15,7 @@
 - [x] Task: 页面/画布接入(page.tsx 临时 cache 替换;画布多 surface 共享;同 rel 二次渲染零重复 fetch)(TDD/组件测试) — 02f4596(别名页回归修复 119dd52)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — 119dd52
 
-## Phase C: 全量回归与走查
+## Phase C: 全量回归与走查 [checkpoint: 119dd52]
 
-- [~] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增)+ demo 走查(连续展示同集合不同视图、动作后数据 freshness)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增)+ demo 走查(连续展示同集合不同视图、动作后数据 freshness) — 证据挂 119dd52 note(check 982 / e2e 33+14skip / curl 走查 table+chart+freshness)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — 119dd52
