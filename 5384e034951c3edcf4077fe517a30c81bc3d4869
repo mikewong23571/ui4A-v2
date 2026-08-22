@@ -1,0 +1,1 @@
+Correction to T15 Phase C Eval: collection sub-entity facts and direct entity facts are equivalent authorized Siren observations. U1/U3 latest DeepSeek run passed; U4 latest response correctly reported missing body with zero mutation and direct title-only source. The evaluator no longer requires a fixed navigation/reference granularity.
