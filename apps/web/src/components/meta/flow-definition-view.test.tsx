@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
 /**
- * BIOS 定义查看面(T4 Phase C Task 2;T13 Phase A 增拓扑区;spec 架构决定 7/1):
+ * BIOS 定义查看面(T4 Phase C Task 2;T13 Phase A 增拓扑区;Phase B 增版本历史区,
+ * Task 2 增两版对比;spec 架构决定 7/1/2):
  * - meta/flow:<name>:拓扑区(只读图)+ 属性(name/version/status/initial/
  *   terminal)+ 节点表 + 动作表(name/to/guards/requires-confirmation/effect)+
  *   字段表——全部来自 Siren 投影,零业务分支、零 AI;
  * - meta/self 复用同一组件(definition-lifecycle 的状态机视图:拓扑 + 节点/动作
  *   表 + 种子 guard 集)。
  */
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { SirenEntity } from '@ui4a/engine';
+import type { FlowDefinition, SirenEntity } from '@ui4a/engine';
 
 import { stubBrowserApis } from '@/test/browser-stubs';
 
@@ -21,6 +22,44 @@ import { FlowDefinitionView } from './flow-definition-view';
 stubBrowserApis();
 
 // ---- fixtures(形状与 projectFlowDefinition / projectSelf 投影一致)---------
+
+// T13 Phase B Task 2:版本子实体 properties.definition 内嵌全文——v1 → v2 的
+// 机械差异覆盖三视角:added(v2 新增动作 pin)/ deleted(v1 的 retire 动作整组
+// 删除)/ updated(标题修订)。
+const postStatusV1: FlowDefinition = {
+  name: 'post-status',
+  title: '文章状态',
+  initial: 'published',
+  nodes: [
+    {
+      name: 'published',
+      title: '已发布',
+      actions: [{ name: 'archive', title: '归档', to: 'archived' }],
+    },
+    {
+      name: 'offline',
+      title: '下线',
+      actions: [{ name: 'retire', title: '退役', to: 'archived' }],
+    },
+  ],
+};
+
+const postStatusV2: FlowDefinition = {
+  name: 'post-status',
+  title: '文章状态(修订)',
+  initial: 'published',
+  nodes: [
+    {
+      name: 'published',
+      title: '已发布',
+      actions: [
+        { name: 'archive', title: '归档', to: 'archived' },
+        { name: 'pin', title: '置顶', to: 'offline' },
+      ],
+    },
+    { name: 'offline', title: '下线', actions: [] },
+  ],
+};
 
 const postStatusEntity: SirenEntity = {
   class: ['meta', 'flow-definition'],
@@ -69,12 +108,17 @@ const postStatusEntity: SirenEntity = {
       entities: [],
     },
     // T13 Phase B:版本历史摘要子实体(与节点子实体同级,按 class 各表其区;
-    // 投影另内嵌 properties.definition 该版全文,Task 2 用——本组件不读,
-    // fixture 从略;有意无 href:子实体 href 会进 agent 可导航候选)。
+    // properties.definition 内嵌该版全文——两版对比(Task 2)的数据源;
+    // 有意无 href:子实体 href 会进 agent 可导航候选)。
     {
       class: ['meta', 'definition-version'],
       rel: ['version'],
-      properties: { version: 1, status: 'superseded', source: 'definition-seeded' },
+      properties: {
+        version: 1,
+        status: 'superseded',
+        source: 'definition-seeded',
+        definition: postStatusV1,
+      },
       actions: [],
       links: [],
     },
@@ -87,6 +131,7 @@ const postStatusEntity: SirenEntity = {
         source: 'definition-activated',
         activation: 'a2',
         'decided-by': { actor: 'human', principal: 'local-user' },
+        definition: postStatusV2,
       },
       actions: [],
       links: [],
@@ -252,5 +297,83 @@ describe('FlowDefinitionView(定义查看,纯文本表格)', () => {
   it('meta/self:无版本历史区(lifecycle 引擎常量自举,无 definitionVersions)', () => {
     const { container } = render(<FlowDefinitionView rel="meta/self" entity={selfEntity} />);
     expect(container.querySelector('section[aria-label="版本历史"]')).toBeNull();
+  });
+});
+
+describe('版本两版对比(T13 Phase B Task 2;spec 架构决定 2 后半)', () => {
+  // 单版本投影(种子态,只有 v1):版本区有表,但无可比对的第二版。
+  const singleVersionEntity: SirenEntity = {
+    ...postStatusEntity,
+    entities: (postStatusEntity.entities ?? []).filter(
+      (sub) => !(sub.class.includes('definition-version') && sub.properties.version === 2),
+    ),
+  };
+
+  /** 版本历史区内的 diff 单元格文本(unified 行的 +/- 两侧,同 diff-render 测试口径)。 */
+  function diffCells(section: HTMLElement, selector: string): string {
+    return [...section.querySelectorAll(selector)].map((node) => node.textContent ?? '').join('\n');
+  }
+
+  it('对比入口:基线/对比两个下拉,选项为版本号;未选齐两版不出 diff', () => {
+    const { container } = render(
+      <FlowDefinitionView rel="meta/flow:post-status" entity={postStatusEntity} />,
+    );
+    const section = container.querySelector<HTMLElement>('section[aria-label="版本历史"]')!;
+    const base = within(section).getByLabelText('基线版本');
+    const candidate = within(section).getByLabelText('对比版本');
+    expect(within(base).getAllByRole('option').map((option) => option.textContent)).toEqual([
+      '选择版本',
+      'v1',
+      'v2',
+    ]);
+    expect(within(candidate).getAllByRole('option').map((option) => option.textContent)).toEqual([
+      '选择版本',
+      'v1',
+      'v2',
+    ]);
+    // 初始未选择:不渲染 diff。
+    expect(section.querySelector('[data-bios="diff"]')).toBeNull();
+  });
+
+  it('选 v1×v2:机械 diff 三视角(added 含新动作 pin/deleted 含 retire/updated 标题成对)', () => {
+    const { container } = render(
+      <FlowDefinitionView rel="meta/flow:post-status" entity={postStatusEntity} />,
+    );
+    const section = container.querySelector<HTMLElement>('section[aria-label="版本历史"]')!;
+    fireEvent.change(within(section).getByLabelText('基线版本'), { target: { value: '1' } });
+    fireEvent.change(within(section).getByLabelText('对比版本'), { target: { value: '2' } });
+    expect(section.querySelector('[data-bios="diff"]')).not.toBeNull();
+    const inserts = diffCells(section, '.diff-code-insert');
+    const deletes = diffCells(section, '.diff-code-delete');
+    // added 视角:v2 新增动作 pin 的逐字段路径与值。
+    expect(inserts).toContain('nodes[0].actions[1].name = "pin"');
+    expect(inserts).toContain('nodes[0].actions[1].title = "置顶"');
+    // deleted 视角:v1 的 retire 动作整组删除(数组级删除行,旧值从 v1 全文取回)。
+    expect(deletes).toContain('nodes[1].actions');
+    expect(deletes).toContain('"name":"retire"');
+    // updated 视角:标题新旧值成对(- 旧值 / + 新值)。
+    expect(deletes).toContain('title = "文章状态"');
+    expect(inserts).toContain('title = "文章状态(修订)"');
+  });
+
+  it('同版对比(v1×v1)不出 diff(对比须为两个不同版本)', () => {
+    const { container } = render(
+      <FlowDefinitionView rel="meta/flow:post-status" entity={postStatusEntity} />,
+    );
+    const section = container.querySelector<HTMLElement>('section[aria-label="版本历史"]')!;
+    fireEvent.change(within(section).getByLabelText('基线版本'), { target: { value: '1' } });
+    fireEvent.change(within(section).getByLabelText('对比版本'), { target: { value: '1' } });
+    expect(section.querySelector('[data-bios="diff"]')).toBeNull();
+  });
+
+  it('单版本:版本表仍在,但无对比入口(下拉不出现)', () => {
+    const { container } = render(
+      <FlowDefinitionView rel="meta/flow:post-status" entity={singleVersionEntity} />,
+    );
+    const section = container.querySelector<HTMLElement>('section[aria-label="版本历史"]')!;
+    expect(section).not.toBeNull();
+    expect([...section.querySelectorAll('tbody tr')]).toHaveLength(1);
+    expect(within(section).queryByLabelText('基线版本')).toBeNull();
+    expect(within(section).queryByLabelText('对比版本')).toBeNull();
   });
 });

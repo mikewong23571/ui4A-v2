@@ -2,18 +2,28 @@
 /**
  * BIOS 定义查看面(T4 Phase C;spec 架构决定 7):flow 定义的纯文本/表格视图;
  * T13 Phase A(spec 架构决定 1)在表格之上增只读拓扑图;T13 Phase B(spec
- * 架构决定 2)增版本历史区。
+ * 架构决定 2)增版本历史区,Task 2 增两版对比(机械 diff)。
  *
  * - meta/flow:<name> 与 meta/self 共用(同一 flow-definition 投影形状):
  *   拓扑区(FlowTopologyView,只读 React Flow)+ 属性表 + 版本历史区(版本号/
- *   状态徽标/激活来源;meta/self 无版本表,不出区)+ 节点表 + 动作表
+ *   状态徽标/激活来源 + 两版对比;meta/self 无版本表,不出区)+ 节点表 + 动作表
  *   (name/to/guards/requires-confirmation/effect)+ 字段表——全部来自
  *   Siren 投影,零业务分支;
  * - 子实体按 class 各表其区:node-definition 进节点/动作/拓扑,
- *   definition-version 进版本历史区;
- * - 渲染零 AI(铁律 5):机械投影,不引入任何 AI/LLM 依赖。
+ *   definition-version 进版本历史区;两版对比的数据取自版本子实体
+ *   properties.definition 内嵌全文(版本子实体有意无 href——href 会进
+ *   agent 可导航候选),不新辟版本端点;
+ * - 渲染零 AI(铁律 5):机械投影 + 机械 diff(引擎 definitionDiff 同一算法),
+ *   不引入任何 AI/LLM 依赖。
  */
-import type { FieldDefinition, SirenEntity } from '@ui4a/engine';
+import { useState } from 'react';
+
+import {
+  definitionDiff,
+  type FieldDefinition,
+  type FlowDefinition,
+  type SirenEntity,
+} from '@ui4a/engine';
 
 import { Badge } from '@/components/ui/badge';
 import {
@@ -25,6 +35,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
+import { DefinitionDiffView } from './diff-render';
 import { FlowTopologyView } from './flow-topology-view';
 import { useMetaEntity } from './meta-client';
 
@@ -111,14 +122,19 @@ interface VersionRow {
   status: string;
   /** 来源文本:种子 / 激活 <id> · 审批者(投影口径的展示映射,同 fieldRows 的「必填」)。 */
   source: string;
+  /** 该版定义全文(投影 properties.definition 内嵌;两版对比的 diff 输入)。 */
+  definition: FlowDefinition | undefined;
 }
 
 function versionRows(entity: SirenEntity): VersionRow[] {
   return subEntitiesOf(entity, 'definition-version')
     .map((sub) => {
       const props = sub.properties;
-      // 断言理由:decided-by 由投影按 {actor, principal?} 形状写入(同 meta-lists 的 requested-by)。
+      // 断言理由:decided-by 由投影按 {actor, principal?} 形状写入(同 meta-lists 的 requested-by);
+      // definition 由投影内嵌该版 FlowDefinition 全文(版本子实体有意无 href,按版本取
+      // 定义只走此内嵌通道,缺省即不可比对——不造数据)。
       const decidedBy = props['decided-by'] as { actor?: string; principal?: string } | undefined;
+      const definition = props.definition as FlowDefinition | undefined;
       let source = '';
       if (props.source === 'definition-seeded') {
         source = '种子';
@@ -128,9 +144,75 @@ function versionRows(entity: SirenEntity): VersionRow[] {
           source += ` · ${decidedBy.actor ?? ''}${decidedBy.principal ? `(${decidedBy.principal})` : ''}`;
         }
       }
-      return { version: Number(props.version ?? 0), status: String(props.status ?? ''), source };
+      return { version: Number(props.version ?? 0), status: String(props.status ?? ''), source, definition };
     })
     .sort((a, b) => a.version - b.version);
+}
+
+/**
+ * 两版对比(只读;T13 Phase B Task 2):两个下拉选基线/对比版本,机械 diff
+ * 复用 DefinitionDiffView(added/deleted/updated 三视角,diff 计算即引擎
+ * definitionDiff 同一 deep-object-diff 算法,零 AI)。同版或缺全文不比。
+ */
+function VersionCompare({ versions }: { versions: readonly VersionRow[] }) {
+  const [base, setBase] = useState<number | undefined>(undefined);
+  const [candidate, setCandidate] = useState<number | undefined>(undefined);
+  const baseRow = versions.find((row) => row.version === base);
+  const candidateRow = versions.find((row) => row.version === candidate);
+  const diff =
+    base !== undefined &&
+    candidate !== undefined &&
+    base !== candidate &&
+    baseRow?.definition !== undefined &&
+    candidateRow?.definition !== undefined
+      ? definitionDiff(baseRow.definition, candidateRow.definition)
+      : undefined;
+
+  return (
+    <div data-compare="versions" className="mt-3">
+      <div className="flex items-center gap-4 text-sm">
+        <label className="flex items-center gap-2">
+          <span className="text-muted-foreground">基线版本</span>
+          <select
+            aria-label="基线版本"
+            data-compare="base"
+            className="rounded-md border bg-background px-2 py-1"
+            value={base ?? ''}
+            onChange={(event) =>
+              setBase(event.target.value === '' ? undefined : Number(event.target.value))
+            }
+          >
+            <option value="">选择版本</option>
+            {versions.map((row) => (
+              <option key={row.version} value={row.version}>
+                v{row.version}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2">
+          <span className="text-muted-foreground">对比版本</span>
+          <select
+            aria-label="对比版本"
+            data-compare="candidate"
+            className="rounded-md border bg-background px-2 py-1"
+            value={candidate ?? ''}
+            onChange={(event) =>
+              setCandidate(event.target.value === '' ? undefined : Number(event.target.value))
+            }
+          >
+            <option value="">选择版本</option>
+            {versions.map((row) => (
+              <option key={row.version} value={row.version}>
+                v{row.version}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {diff !== undefined && <DefinitionDiffView diff={diff} />}
+    </div>
+  );
 }
 
 export interface FlowDefinitionViewProps {
@@ -148,6 +230,8 @@ export function FlowDefinitionView({ rel, entity }: FlowDefinitionViewProps) {
   const rows = actionRows(entity);
   const nodes = subEntitiesOf(entity, 'node-definition');
   const versions = versionRows(entity);
+  // 可比对版本 = 投影内嵌 definition 全文的版本行(缺全文不可比对,不造数据)。
+  const comparableVersions = versions.filter((row) => row.definition !== undefined);
 
   return (
     <div>
@@ -212,6 +296,8 @@ export function FlowDefinitionView({ rel, entity }: FlowDefinitionViewProps) {
               </TableBody>
             </Table>
           </div>
+          {/* 两版对比:≥2 版且全文内嵌才出入口(单版/无版本不比;缺全文不造数据)。 */}
+          {comparableVersions.length >= 2 && <VersionCompare versions={comparableVersions} />}
         </section>
       )}
 

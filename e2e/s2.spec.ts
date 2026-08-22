@@ -481,6 +481,19 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     await expect(selfTopology).toBeVisible();
     await expect(selfTopology).toContainText('待批准');
 
+    // ---- ③'' 版本两版对比(T13 Phase B 验收 3):版本区 v1/v2 可见,选 v1×v2 →
+    // 机械 diff 含 pin(v2 新增动作;只读对比,数据来自版本子实体嵌入全文)----
+    await page.goto('/meta/flow/article-drafting');
+    const versionSection = page.locator('section[aria-label="版本历史"]');
+    await expect(versionSection).toBeVisible();
+    await expect(versionSection.locator('tr[data-version="1"]')).toBeVisible();
+    await expect(versionSection.locator('tr[data-version="2"]')).toBeVisible();
+    await versionSection.locator('select[data-compare="base"]').selectOption('1');
+    await versionSection.locator('select[data-compare="candidate"]').selectOption('2');
+    const versionDiff = versionSection.locator('[data-bios="diff"]');
+    await expect(versionDiff).toBeVisible();
+    await expect(versionDiff).toContainText('pin');
+
     // ---- ④ sitemap 重生成(version 变化;ready 节点 action schema 含 pin)------
     const sitemapAfter = await getSitemap();
     expect(sitemapAfter.version).not.toBe(sitemapBefore.version);
