@@ -8,14 +8,14 @@
 - [x] Task: 门控实测(glm-5.3 真实端点:rule miss 意图 → spec → 凝固 → 画布渲染;RUN_LLM_E2E 口径) — da1b6c9
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — da1b6c9
 
-## Phase B: 页面级实体缓存
+## Phase B: 页面级实体缓存 [checkpoint: 119dd52]
 
 - [x] Task: 缓存模块(rel 索引 + sitemap version 一致性戳;version 变全量失效)(TDD) — 5df1c3c
 - [x] Task: 精确失效接线(exec 成功 → 当前 rel + 所属 collection 失效;整面 reload 兜底保留)(TDD) — 61540f3
-- [x] Task: 页面/画布接入(page.tsx 临时 cache 替换;画布多 surface 共享;同 rel 二次渲染零重复 fetch)(TDD/组件测试) — 02f4596
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: 页面/画布接入(page.tsx 临时 cache 替换;画布多 surface 共享;同 rel 二次渲染零重复 fetch)(TDD/组件测试) — 02f4596(别名页回归修复 119dd52)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) — 119dd52
 
 ## Phase C: 全量回归与走查
 
-- [ ] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增)+ demo 走查(连续展示同集合不同视图、动作后数据 freshness)
+- [~] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增)+ demo 走查(连续展示同集合不同视图、动作后数据 freshness)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
