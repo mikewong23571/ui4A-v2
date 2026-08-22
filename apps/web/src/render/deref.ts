@@ -4,8 +4,8 @@
  * 客户端渲染器拥有数据模型:从 /api/entity 拉取被引用实体进缓存,再经
  * 本函数把 spec 的引用树解成词条组件的 props。聚合(分组计数)在此做:
  * collection + dimension → [{key, count}](chart 数据源),spec 只声明
- * 维度引用。缺引用/缺字段响亮抛错——事实永不发明(铁律 4),不静默
- * 造默认值。
+ * 维度引用。结构性缺引用/缺字段响亮抛错;集合成员缺维度字段时跳过该
+ * 成员并返回诊断——不造默认值,也不让单条历史脏数据拖死整面。
  */
 import type { SirenEntity } from '@ui4a/engine';
 
@@ -18,6 +18,20 @@ export type EntityCache = Map<string, SirenEntity>;
 export interface DimensionCount {
   key: string;
   count: number;
+}
+
+/** 集合聚合时的数据质量诊断(画布在对应 surface 内机械呈现)。 */
+export interface DerefWarning {
+  collection: string;
+  fieldPath: string;
+  skipped: number;
+  members: string[];
+}
+
+/** spec 解引用结果:词条 props + 不改变事实值的成员跳过诊断。 */
+export interface DerefSpecResult {
+  props: { [key: string]: DerefValue };
+  warnings: DerefWarning[];
 }
 
 /** 解引用输出(与 bind 树同构;引用节点换成实体/值/聚合结果)。 */
@@ -40,9 +54,14 @@ function walkPath(source: unknown, path: readonly string[]): unknown {
 }
 
 /** 解析单节点(bind 必须已过零字面校验;结构违规在运行时响亮失败)。 */
-function derefNode(bind: BindTree, cache: EntityCache, where: string): DerefValue {
+function derefNode(
+  bind: BindTree,
+  cache: EntityCache,
+  where: string,
+  warnings?: DerefWarning[],
+): DerefValue {
   if (Array.isArray(bind)) {
-    return bind.map((child, index) => derefNode(child, cache, `${where}[${index}]`));
+    return bind.map((child, index) => derefNode(child, cache, `${where}[${index}]`, warnings));
   }
   if (typeof bind !== 'object' || bind === null || Array.isArray(bind)) {
     throw new Error(`解引用失败:${where} 是裸字面载荷(spec 未过零字面校验)`);
@@ -104,29 +123,35 @@ function derefNode(bind: BindTree, cache: EntityCache, where: string): DerefValu
     if (parsed === undefined) {
       throw new Error(`解引用失败:${where} 维度声明格式非法 "${dimension}"`);
     }
-    // 分组计数:维度 path 对每个成员求值,缺路径响亮失败(不静默丢成员);
-    // 组序 = 维度值在成员序上的首次出现序(集合 append 序,确定性)。
+    // 分组计数:维度 path 对每个成员求值;成员级缺路径跳过并留诊断,
+    // 不造「未分类」等默认事实。组序 = 维度值在成员序上的首次出现序。
     const groups = new Map<string, number>();
+    const skippedMembers: string[] = [];
     members.forEach((member, index) => {
       const value = walkPath(member.properties, parsed.path);
       if (value === undefined) {
         const rawRel = member.properties.rel;
-        throw new Error(
-          `解引用失败:${where} 维度路径 "${parsed.path.join('.')}" 在成员 #${index}(${
-            typeof rawRel === 'string' ? rawRel : `#${index}`
-          })上不存在(缺数据,不造数据)`,
-        );
+        skippedMembers.push(typeof rawRel === 'string' ? rawRel : `#${index}`);
+        return;
       }
       const key = String(value);
       groups.set(key, (groups.get(key) ?? 0) + 1);
     });
+    if (skippedMembers.length > 0) {
+      warnings?.push({
+        collection: record.collection,
+        fieldPath: parsed.path.join('.'),
+        skipped: skippedMembers.length,
+        members: skippedMembers,
+      });
+    }
     return [...groups.entries()].map(([key, count]) => ({ key, count }));
   }
 
   // 结构字典:逐键递归(props 形状与 bind 同构)。
   const props: { [key: string]: DerefValue } = {};
   for (const [key, child] of Object.entries(record)) {
-    props[key] = derefNode(child as BindTree, cache, `${where}.${key}`);
+    props[key] = derefNode(child as BindTree, cache, `${where}.${key}`, warnings);
   }
   return props;
 }
@@ -138,10 +163,16 @@ export function deref(bind: BindTree, cache: EntityCache): DerefValue {
 
 /** spec 级解引用:整个 bind → 词条组件 props。 */
 export function derefSpec(spec: RenderSpec, cache: EntityCache): { [key: string]: DerefValue } {
-  const props = derefNode(spec.bind, cache, 'bind');
+  return derefSpecWithDiagnostics(spec, cache).props;
+}
+
+/** spec 级解引用并返回成员跳过诊断,供 surface 就地标注数据质量问题。 */
+export function derefSpecWithDiagnostics(spec: RenderSpec, cache: EntityCache): DerefSpecResult {
+  const warnings: DerefWarning[] = [];
+  const props = derefNode(spec.bind, cache, 'bind', warnings);
   if (typeof props !== 'object' || props === null || Array.isArray(props)) {
     // 顶层 bind 是引用/数组时包成 {value: …}:props 恒为字典,组件入口稳定。
-    return { value: props };
+    return { props: { value: props }, warnings };
   }
-  return props as { [key: string]: DerefValue };
+  return { props: props as { [key: string]: DerefValue }, warnings };
 }

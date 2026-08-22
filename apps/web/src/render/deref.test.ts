@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest';
 import type { SirenEntity } from '@ui4a/engine';
 
 import { dimensionRef, entityRef, fieldRef, type RenderSpec } from './spec';
-import { deref, derefSpec, type EntityCache } from './deref';
+import { deref, derefSpec, derefSpecWithDiagnostics, type EntityCache } from './deref';
 
 // 解引用器(T7 Phase A Task 1 / spec 架构决定 2):纯函数
 // (bind 树, entityCache) → props;聚合(分组计数)在解引用器内做,
-// spec 只声明维度引用。缺引用/缺字段响亮抛错(事实永不发明)。
+// spec 只声明维度引用。结构缺陷响亮抛错;成员缺维度字段跳过并留诊断。
 
 function entity(rel: string, properties: Record<string, unknown>): SirenEntity {
-  return { class: ['instance'], properties, actions: [], links: [] };
+  return { class: ['instance'], properties: { rel, ...properties }, actions: [], links: [] };
 }
 
 function collection(rel: string, members: SirenEntity[]): SirenEntity {
@@ -106,10 +106,10 @@ describe('解引用器:引用节点', () => {
     ]);
   });
 
-  it('dimension path 全员缺失 → 响亮失败(不静默置零;事实永不发明)', () => {
-    expect(() =>
+  it('dimension path 全员缺失 → 跳过全部成员且不造默认组', () => {
+    expect(
       deref({ collection: 'posts', dimension: dimensionRef('posts', 'meta.category') }, fixtureCache()),
-    ).toThrow(/meta\.category|meta/);
+    ).toEqual([]);
   });
 
   it('dimension 分组保持首次出现顺序(集合 append 序,确定性)', () => {
@@ -170,7 +170,7 @@ describe('解引用器:响亮失败(事实永不发明)', () => {
     );
   });
 
-  it('dimension path 在某成员缺失 → throw(不静默丢成员)', () => {
+  it('dimension path 在某成员缺失 → 跳过该成员并给出可行动诊断', () => {
     const cache = new Map<string, SirenEntity>([
       [
         'posts',
@@ -180,9 +180,23 @@ describe('解引用器:响亮失败(事实永不发明)', () => {
         ]),
       ],
     ]);
-    expect(() =>
-      deref({ collection: 'posts', dimension: dimensionRef('posts', 'category') }, cache),
-    ).toThrow(/category/);
+    const result = derefSpecWithDiagnostics(
+      {
+        concern: 'posts-by-category',
+        component: 'chart',
+        bind: { series: { collection: 'posts', dimension: dimensionRef('posts', 'category') } },
+      },
+      cache,
+    );
+    expect(result.props.series).toEqual([{ key: 'x', count: 1 }]);
+    expect(result.warnings).toEqual([
+      {
+        collection: 'posts',
+        fieldPath: 'category',
+        skipped: 1,
+        members: ['b'],
+      },
+    ]);
   });
 
   it('collection 实体无 entities(非集合)→ throw', () => {

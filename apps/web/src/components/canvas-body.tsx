@@ -32,7 +32,14 @@ import { MessageProcessor } from '@a2ui/web_core/v0_9';
 import type { SurfaceModel } from '@a2ui/web_core/v0_9';
 import type { SirenEntity } from '@ui4a/engine';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Component,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import { cn } from '@/lib/utils';
 import {
@@ -43,6 +50,7 @@ import {
 import { planSurface } from '@/render/canvas/surface-flow';
 import { ui4aRenderCatalog } from '@/render/canvas/word-catalog';
 import { CATALOG_ID, catalogUrl } from '@/render/registry';
+import type { DerefWarning } from '@/render/deref';
 import type { RenderSpec } from '@/render/spec';
 
 import { useEntityCache, type EntityCacheHandle } from './entity-cache-provider';
@@ -113,6 +121,47 @@ interface SurfaceEntry {
   /** ?concern= 激活高亮(排最前 + data-active)。 */
   active: boolean;
   surface: SurfaceModel<ReactComponentImplementation>;
+  warnings: DerefWarning[];
+}
+
+interface SurfaceErrorBoundaryProps {
+  surfaceId: string;
+  children: ReactNode;
+}
+
+interface SurfaceErrorBoundaryState {
+  error?: string;
+}
+
+/** 隔离单个 A2UI surface 的渲染期异常,保留同页其余 surface。 */
+export class SurfaceErrorBoundary extends Component<
+  SurfaceErrorBoundaryProps,
+  SurfaceErrorBoundaryState
+> {
+  state: SurfaceErrorBoundaryState = {};
+
+  static getDerivedStateFromError(error: unknown): SurfaceErrorBoundaryState {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+
+  render(): ReactNode {
+    if (this.state.error !== undefined) {
+      return (
+        <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+          surface {this.props.surfaceId} 渲染失败：{this.state.error}。请检查该 surface
+          的数据绑定后重新载入。
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/** 成员缺字段诊断的人类可读机械投影。 */
+function warningText(warning: DerefWarning): string {
+  return `${warning.skipped} 条成员因缺字段 ${warning.fieldPath} 未纳入：${warning.members.join(
+    '、',
+  )}。请补齐该字段后重新载入。`;
 }
 
 export function CanvasBody() {
@@ -172,24 +221,28 @@ export function CanvasBody() {
       );
 
       const failed: string[] = [];
-      const planned: { surfaceId: string; concern: string }[] = [];
+      const planned: { surfaceId: string; concern: string; warnings: DerefWarning[] }[] = [];
       for (const spec of specs) {
         try {
           const plan = await planSurface(spec, cache.get);
           for (const entity of plan.cache.values()) gate.register(entity);
           processor.processMessages(plan.messages);
-          planned.push({ surfaceId: plan.surfaceId, concern: spec.concern });
+          planned.push({
+            surfaceId: plan.surfaceId,
+            concern: spec.concern,
+            warnings: plan.warnings,
+          });
         } catch (error) {
           failed.push(`${spec.concern}:${error instanceof Error ? error.message : String(error)}`);
         }
       }
 
       setSurfaces(
-        planned.flatMap(({ surfaceId, concern }) => {
+        planned.flatMap(({ surfaceId, concern, warnings }) => {
           const surface = processor.model.surfacesMap.get(surfaceId);
           return surface === undefined
             ? []
-            : [{ id: surfaceId, concern, active: concern === activeConcern, surface }];
+            : [{ id: surfaceId, concern, active: concern === activeConcern, surface, warnings }];
         }),
       );
       setErrors(failed);
@@ -259,7 +312,19 @@ export function CanvasBody() {
             )}
           >
             <h2 className="mb-3 text-sm font-semibold text-muted-foreground">{entry.id}</h2>
-            <A2uiSurface surface={entry.surface} />
+            {entry.warnings.map((warning, index) => (
+              <p
+                key={`${warning.collection}:${warning.fieldPath}:${index}`}
+                role="status"
+                data-testid="surface-warning"
+                className="mb-3 rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm text-foreground"
+              >
+                {warningText(warning)}
+              </p>
+            ))}
+            <SurfaceErrorBoundary surfaceId={entry.id}>
+              <A2uiSurface surface={entry.surface} />
+            </SurfaceErrorBoundary>
           </div>
         ))}
       </section>

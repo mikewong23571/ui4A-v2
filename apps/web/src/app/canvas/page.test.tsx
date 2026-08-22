@@ -91,7 +91,9 @@ function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
 
-function mockCanvasContract(options: { illegal?: boolean } = {}): ReturnType<typeof vi.fn> {
+function mockCanvasContract(
+  options: { illegal?: boolean; missingCategory?: boolean } = {},
+): ReturnType<typeof vi.fn> {
   return vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
     if (url === '/api/render/catalog') return Promise.resolve(jsonResponse(200, renderCatalogJson()));
@@ -102,7 +104,25 @@ function mockCanvasContract(options: { illegal?: boolean } = {}): ReturnType<typ
     if (url.startsWith('/api/entity?rel=render-specs')) {
       return Promise.resolve(jsonResponse(200, renderSpecsCollection(options.illegal === true)));
     }
-    if (url.startsWith('/api/entity?rel=articles')) return Promise.resolve(jsonResponse(200, ARTICLES));
+    if (url.startsWith('/api/entity?rel=articles')) {
+      const articles = options.missingCategory
+        ? {
+            ...ARTICLES,
+            entities: ARTICLES.entities?.map((member, index) =>
+              index === 1
+                ? {
+                    ...member,
+                    properties: {
+                      ...member.properties,
+                      fields: { title: '第一篇' },
+                    },
+                  }
+                : member,
+            ),
+          }
+        : ARTICLES;
+      return Promise.resolve(jsonResponse(200, articles));
+    }
     return Promise.resolve(jsonResponse(404, { error: `未知端点 ${url}` }));
   });
 }
@@ -147,6 +167,21 @@ describe('画布页(A2UI surface 宿主)', () => {
     await waitFor(() => {
       expect(screen.getByText('欢迎来到 UI4A')).toBeTruthy();
     });
+    expect(document.querySelectorAll('[data-surface]').length).toBe(2);
+  });
+
+  it('维度字段缺失成员被跳过并在对应 surface 标注,其余成员继续渲染', async () => {
+    vi.stubGlobal('fetch', mockCanvasContract({ missingCategory: true }));
+    render(<CanvasPage />);
+
+    await waitFor(() => {
+      const chart = document.querySelector('[data-word="chart"]');
+      expect(chart?.getAttribute('aria-label')).toContain('tech=1');
+    });
+    const warning = screen.getByTestId('surface-warning');
+    expect(warning.textContent).toContain('1 条成员');
+    expect(warning.textContent).toContain('fields.category');
+    expect(warning.textContent).toContain('post:first-post');
     expect(document.querySelectorAll('[data-surface]').length).toBe(2);
   });
 

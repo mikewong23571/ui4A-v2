@@ -47,6 +47,7 @@ describe('surface 规划', () => {
 
     expect(plan.surfaceId).toBe('articles-table');
     expect(plan.messages).toHaveLength(3);
+    expect(plan.warnings).toEqual([]);
     const [create, data, components] = plan.messages as unknown as [
       Record<string, { surfaceId: string; catalogId?: string; path?: string; value?: unknown; components?: unknown[] }>,
       Record<string, { surfaceId: string; catalogId?: string; path?: string; value?: unknown; components?: unknown[] }>,

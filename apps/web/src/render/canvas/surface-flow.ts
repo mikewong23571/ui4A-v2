@@ -12,7 +12,11 @@
  */
 import type { SirenEntity } from '@ui4a/engine';
 
-import { derefSpec, type EntityCache } from '../deref';
+import {
+  derefSpecWithDiagnostics,
+  type DerefWarning,
+  type EntityCache,
+} from '../deref';
 import { CATALOG_ID } from '../registry';
 import { ENTITY_REF_PREFIX, parseFieldRef, type BindTree, type RenderSpec } from '../spec';
 import { validateSpec } from '../validator';
@@ -34,6 +38,7 @@ export interface SurfacePlan {
   surfaceId: string;
   messages: A2uiCanvasMessage[];
   cache: EntityCache;
+  warnings: DerefWarning[];
 }
 
 /** bind 树引用的全部 rel(去重,首见序;fetch 清单)。 */
@@ -101,7 +106,7 @@ export async function planSurface(spec: RenderSpec, fetchEntity: FetchEntityFn):
     cache.set(rel, entity);
   }
 
-  const props = derefSpec(spec, cache);
+  const { props, warnings } = derefSpecWithDiagnostics(spec, cache);
   const surfaceId = surfaceIdOf(spec.concern);
   const propsPath = `/concerns/${surfaceId}/props`;
   // A2UI surface 的组件树根组件 id 固定为 'root'(A2uiSurface 渲染入口)。
@@ -116,6 +121,7 @@ export async function planSurface(spec: RenderSpec, fetchEntity: FetchEntityFn):
     spec,
     surfaceId,
     cache,
+    warnings,
     messages: [
       { version: 'v0.9', createSurface: { surfaceId, catalogId: CATALOG_ID } },
       { version: 'v0.9', updateDataModel: { surfaceId, path: propsPath, value: props } },

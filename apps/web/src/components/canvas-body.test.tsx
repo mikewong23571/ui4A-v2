@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * 画布动作处理的页面级缓存接线测试(T12 Phase B Task 3 / spec 架构决定 3、验收 5)。
  *
@@ -8,6 +9,7 @@
  *
  * 缓存语义用真实 PageEntityCache 对拍(计数 fetcher),不 mock 失效口径本身。
  */
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SirenEntity } from '@ui4a/engine';
@@ -15,7 +17,7 @@ import type { SirenEntity } from '@ui4a/engine';
 import { createActionGate, type CanvasClientAction, type GateExecFn } from '@/render/canvas/action-gate';
 import { collectionBacklinkOf, PageEntityCache } from '@/render/entity-cache';
 
-import { createCanvasActionHandler } from './canvas-body';
+import { createCanvasActionHandler, SurfaceErrorBoundary } from './canvas-body';
 import type { EntityCacheHandle } from './entity-cache-provider';
 
 /** 已声明 publish 动作的实例(links 携带 collection 回链,引擎成员反查口径)。 */
@@ -166,5 +168,29 @@ describe('createCanvasActionHandler:exec 后精确失效 + 整面 reload', () =>
     expect(invalidateAfterExec).not.toHaveBeenCalled();
     expect(reload).not.toHaveBeenCalled();
     expect(notify).toHaveBeenCalledWith('裁决层拒绝:[policy] deny');
+  });
+});
+
+describe('SurfaceErrorBoundary:surface 级渲染隔离', () => {
+  it('单 surface 渲染抛错时只替换该槽位,相邻 surface 继续显示', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    function BrokenSurface(): never {
+      throw new Error('chart payload invalid');
+    }
+
+    render(
+      <div>
+        <SurfaceErrorBoundary surfaceId="broken-chart">
+          <BrokenSurface />
+        </SurfaceErrorBoundary>
+        <p>相邻 surface 正常</p>
+      </div>,
+    );
+
+    expect(screen.getByText('相邻 surface 正常')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('broken-chart');
+    expect(screen.getByRole('alert').textContent).toContain('chart payload invalid');
+    expect(screen.getByRole('alert').textContent).toContain('重新载入');
+    consoleError.mockRestore();
   });
 });
