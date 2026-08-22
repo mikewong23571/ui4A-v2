@@ -71,15 +71,15 @@
 - [x] Task: 并发/replay/property tests——跨窗口 optimistic baseVersion、非冲突 patch 合并/冲突拒绝、写入重试幂等、stale race 和全量重放一致 — 61356d5
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — ab4b47e
 
-## Phase H: 人类优化、User Memory 与 Shared Recipe
+## Phase H: 人类优化、User Memory 与 Shared Recipe [checkpoint: c7c7c83]
 
-- [ ] Task: S24/TS16 Red→Green——Chat 自然语言只产生 thin Revision Request；Presentation Agent 输出引用 user message/baseVersion 的语义 Patch，事实不变
-- [ ] Task: S25/TS16 Red→Green——拖动/折叠/兼容词条切换绕过 Chat 直接产生同构 Patch，键盘/ARIA 稳定且可撤销
-- [ ] Task: S26 Red→Green——User cache → pinned、principal/policy 隔离、跨 Session fastpath、版本反馈和回退入口
-- [ ] Task: S27/TS17 Red→Green——User Sidecar 参数化/去用户化 → candidate Recipe → mechanical diff → human-only promotion → promoted version
-- [ ] Task: S28 Red→Green——active pointer rollback、历史不可变、业务 hash 不变、目标版本重新校验
-- [ ] Task: S31/TS18 Red→Green——事件派生解释 request/Situation/Lens/Recipe/Sidecar/hit/miss/patch/promotion，缺 provenance 诚实失败
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: S24/TS16 Red→Green——Chat 自然语言只产生 thin Revision Request；Presentation Agent 输出引用 user message/baseVersion 的语义 Patch，事实不变 — c7c7c83
+- [x] Task: S25/TS16 Red→Green——拖动/折叠/兼容词条切换绕过 Chat 直接产生同构 Patch，键盘/ARIA 稳定且可撤销 — c7c7c83
+- [x] Task: S26 Red→Green——User cache → pinned、principal/policy 隔离、跨 Session fastpath、版本反馈和回退入口 — c7c7c83
+- [x] Task: S27/TS17 Red→Green——User Sidecar 参数化/去用户化 → candidate Recipe → mechanical diff → human-only promotion → promoted version — c7c7c83
+- [x] Task: S28 Red→Green——active pointer rollback、历史不可变、业务 hash 不变、目标版本重新校验 — c7c7c83
+- [x] Task: S31/TS18 Red→Green——事件派生解释 request/Situation/Lens/Recipe/Sidecar/hit/miss/patch/promotion，缺 provenance 诚实失败 — c7c7c83
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — c7c7c83
 
 ## Phase I: 故障、安全、质量与全应用闭环
 
