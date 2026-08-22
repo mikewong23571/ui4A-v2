@@ -1,0 +1,31 @@
+Task: T15 U23 provider-neutral LLM configuration and DeepSeek baseline
+
+Summary:
+- Added strict LLM_API_KEY/LLM_BASE_URL/LLM_MODEL resolution with no provider defaults.
+- Unified root .env.local propagation to web and worker through pnpm dev:all.
+- Migrated active Web/E2E gates from GLM-specific key naming.
+- Generalized probe reporting and isolated ordinary Vitest runs from ambient real-LLM config.
+- Recorded D25 and local configuration guidance.
+
+Key files:
+packages/agent/src/llm-config.ts
+packages/agent/src/llm-driver.ts
+packages/agent/src/llm-probe.ts
+packages/agent/src/render.ts
+scripts/with-local-env.mjs
+scripts/verify-dev-env.mjs
+vitest.config.ts
+.env.example
+README.md
+DECISIONS.md
+
+Why:
+LLM provider selection is deployment data. T15 requires DeepSeek as the first real baseline without hardcoded endpoint/model/key or divergent web/worker profiles.
+
+Evidence:
+- targeted: 9 files / 104 tests passed
+- agent and web typecheck passed
+- pnpm env:verify-dev passed
+- real deepseek-v4-flash probe: generateText 3/3 + streamText 3/3 tool calls; 2.8-4.3s / 3.8-6.4s
+- pnpm check: 121 files passed, 2 Temporal-dependent files skipped with Temporal stopped; 1134 tests passed, 2 skipped
+- with Temporal running, two pre-existing task-queue integration tests stalled on both existing and fresh server; no related modules changed
