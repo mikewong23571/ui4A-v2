@@ -6,7 +6,10 @@ import {
 import {
   createRecipeRegistry,
   enumerateApplicationScenarios,
+  promoteRecipe,
   registerRecipeCandidate,
+  type ApplicationRenderRecipe,
+  type ApplicationRenderRecipeCandidate,
   type ApplicationBundle,
   type RecipeRegistry,
   type ScenarioDescriptor,
@@ -30,6 +33,11 @@ export interface RecipeCoordinator {
   registry(): RecipeRegistry;
   failures(): RecipeGenerationFailure[];
   retryFailures(): void;
+  promote(
+    candidate: ApplicationRenderRecipeCandidate,
+    commandId: string,
+    actor: 'human' | 'agent',
+  ): ApplicationRenderRecipe;
 }
 
 interface RecipeCoordinatorDependencies {
@@ -203,6 +211,16 @@ export function createRecipeCoordinator(
     retryFailures() {
       for (const key of generationFailures.keys()) seen.delete(key);
       generationFailures.clear();
+    },
+    promote(candidate, commandId, actor) {
+      const registered = registerRecipeCandidate(
+        registryState,
+        candidate,
+        dependencies.catalog,
+        commandId,
+      );
+      registryState = promoteRecipe(registered.registry, registered.recipe.id, actor);
+      return registryState.recipes[registered.recipe.id]!;
     },
   };
 }

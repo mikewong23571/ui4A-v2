@@ -18,3 +18,4 @@ export * from './tools';
 export * from './llm-driver';
 export * from './llm-probe';
 export * from './presentation-agent';
+export * from './presentation-revision';

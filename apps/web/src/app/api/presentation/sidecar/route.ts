@@ -1,5 +1,20 @@
 import { getDb } from '../../../../engine/service';
-import { ensurePresentationTables, getSidecarById } from '../../../../db/presentation';
+import {
+  appendSidecarCommand,
+  ensurePresentationTables,
+  getSidecarById,
+  loadPresentationSnapshot,
+} from '../../../../db/presentation';
+import { appendEvent } from '../../../../db/events';
+import {
+  applyRenderPatch,
+  createRenderPatchTarget,
+  explainSidecarPresentation,
+  normalizeDirectRenderPatch,
+  promoteUserSidecarCandidate,
+} from '@ui4a/engine';
+import { PRESENTATION_SURFACE_CATALOG } from '../../../../engine/presentation/catalog';
+import { currentRecipeCoordinator } from '../../../../engine/presentation/recipes-runtime';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +28,18 @@ export async function GET(request: Request): Promise<Response> {
   await ensurePresentationTables(getDb());
   const sidecar = await getSidecarById(getDb(), sidecarId, LOCAL_PRESENTATION_PRINCIPAL);
   if (sidecar === undefined) return Response.json({ error: 'Sidecar not found' }, { status: 404 });
+  if (new URL(request.url).searchParams.get('explain') === '1') {
+    try {
+      return Response.json({
+        explanation: explainSidecarPresentation(await loadPresentationSnapshot(getDb()), sidecarId),
+      });
+    } catch (error) {
+      return Response.json(
+        { error: error instanceof Error ? error.message : String(error) },
+        { status: 422 },
+      );
+    }
+  }
   const active = sidecar.versions[sidecar.activeVersion]!;
   return Response.json({
     sidecar: {
@@ -20,9 +47,185 @@ export async function GET(request: Request): Promise<Response> {
       version: sidecar.activeVersion,
       key: sidecar.key,
       surface: active.surface,
+      view: active.view ?? { collapsedNodeIds: [], densityByNodeId: {} },
       dependencies: active.dependencies,
       retention: active.retention,
       provenance: active.provenance,
     },
   });
+}
+
+export async function POST(request: Request): Promise<Response> {
+  const body = (await request.json().catch(() => undefined)) as
+    | {
+        sidecarId?: unknown;
+        action?: unknown;
+        targetVersion?: unknown;
+        actor?: unknown;
+        interactionId?: unknown;
+        operations?: unknown;
+      }
+    | undefined;
+  if (
+    body === undefined ||
+    typeof body.sidecarId !== 'string' ||
+    body.sidecarId === '' ||
+    !['pin', 'revert', 'patch', 'promotion-preview', 'promote'].includes(String(body.action)) ||
+    body.actor !== 'human'
+  ) {
+    return Response.json({ error: 'human Sidecar lifecycle request is invalid' }, { status: 400 });
+  }
+  await ensurePresentationTables(getDb());
+  const current = await getSidecarById(getDb(), body.sidecarId, LOCAL_PRESENTATION_PRINCIPAL);
+  if (current === undefined) return Response.json({ error: 'Sidecar not found' }, { status: 404 });
+  if (
+    body.action === 'revert' &&
+    (typeof body.targetVersion !== 'number' ||
+      !Number.isInteger(body.targetVersion) ||
+      body.targetVersion < 1)
+  ) {
+    return Response.json({ error: 'targetVersion must be a positive integer' }, { status: 400 });
+  }
+
+  if (body.action === 'patch') {
+    try {
+      const active = current.versions[current.activeVersion]!;
+      const patch = normalizeDirectRenderPatch({
+        sidecarId: current.id,
+        baseVersion: current.activeVersion,
+        interactionId: body.interactionId,
+        operations: body.operations,
+      });
+      const target = createRenderPatchTarget(active.surface);
+      target.collapsedNodeIds = [...(active.view?.collapsedNodeIds ?? [])];
+      target.densityByNodeId = { ...(active.view?.densityByNodeId ?? {}) };
+      target.retention = active.retention;
+      const applied = applyRenderPatch(
+        target,
+        patch,
+        PRESENTATION_SURFACE_CATALOG,
+        current.activeVersion,
+      );
+      if (!applied.ok) return Response.json({ error: applied.reason }, { status: 409 });
+      const id = crypto.randomUUID();
+      const result = await appendSidecarCommand(getDb(), {
+        kind: 'revise',
+        eventId: `event:${id}`,
+        commandId: `command:${id}`,
+        sidecarId: current.id,
+        baseVersion: current.activeVersion,
+        version: {
+          surface: applied.target.surface,
+          view: {
+            collapsedNodeIds: applied.target.collapsedNodeIds,
+            densityByNodeId: applied.target.densityByNodeId,
+          },
+          dependencies: active.dependencies,
+          provenance: { kind: 'human-patch', ref: String(body.interactionId) },
+          changedPaths: applied.changedPaths,
+          ...(active.recipeRef === undefined ? {} : { recipeRef: active.recipeRef }),
+        },
+      });
+      const next = result.aggregate.versions[result.aggregate.activeVersion]!;
+      return Response.json({
+        sidecar: {
+          id: result.aggregate.id,
+          version: result.aggregate.activeVersion,
+          retention: next.retention,
+          rootNodeId: next.surface.root.id,
+          view: next.view ?? { collapsedNodeIds: [], densityByNodeId: {} },
+        },
+      });
+    } catch (error) {
+      return Response.json(
+        { error: error instanceof Error ? error.message : String(error) },
+        { status: 409 },
+      );
+    }
+  }
+
+  if (body.action === 'promotion-preview' || body.action === 'promote') {
+    try {
+      const promoted = promoteUserSidecarCandidate(current, {
+        application: 'runtime',
+        applicationVersion: '1',
+        scenario: 'human-promoted',
+        subjectShape: typeof current.key.subject === 'string' ? 'entity' : 'selection',
+        intent: current.key.intent,
+        catalog: PRESENTATION_SURFACE_CATALOG,
+        dependencies: [
+          {
+            kind: 'catalog',
+            subject: PRESENTATION_SURFACE_CATALOG.id,
+            version: PRESENTATION_SURFACE_CATALOG.version,
+          },
+        ],
+      });
+      if (body.action === 'promotion-preview') return Response.json({ diff: promoted.diff });
+      const id = crypto.randomUUID();
+      const recipe = currentRecipeCoordinator().promote(
+        promoted.candidate,
+        `promotion:${id}`,
+        'human',
+      );
+      await appendEvent(getDb(), {
+        domain: 'presentation',
+        kind: 'render-recipe-promoted',
+        rel: recipe.id,
+        principal: LOCAL_PRESENTATION_PRINCIPAL,
+        channel: 'presentation',
+        detail: {
+          eventId: `event:${id}`,
+          sidecarId: current.id,
+          sidecarVersion: current.activeVersion,
+          recipeId: recipe.id,
+          recipeVersion: recipe.version,
+          diff: promoted.diff,
+        },
+      });
+      return Response.json({
+        recipe: { id: recipe.id, version: recipe.version, status: recipe.status },
+        diff: promoted.diff,
+      });
+    } catch (error) {
+      return Response.json(
+        { error: error instanceof Error ? error.message : String(error) },
+        { status: 409 },
+      );
+    }
+  }
+  const id = crypto.randomUUID();
+  const command =
+    body.action === 'pin'
+      ? {
+          kind: 'pin' as const,
+          eventId: `event:${id}`,
+          commandId: `command:${id}`,
+          sidecarId: current.id,
+          baseVersion: current.activeVersion,
+        }
+      : {
+          kind: 'revert' as const,
+          eventId: `event:${id}`,
+          commandId: `command:${id}`,
+          sidecarId: current.id,
+          activeVersion: current.activeVersion,
+          targetVersion: body.targetVersion as number,
+        };
+  try {
+    const result = await appendSidecarCommand(getDb(), command);
+    const active = result.aggregate.versions[result.aggregate.activeVersion]!;
+    return Response.json({
+      sidecar: {
+        id: result.aggregate.id,
+        version: result.aggregate.activeVersion,
+        retention: active.retention,
+      },
+    });
+  } catch (error) {
+    return Response.json(
+      { error: error instanceof Error ? error.message : String(error) },
+      { status: 409 },
+    );
+  }
 }

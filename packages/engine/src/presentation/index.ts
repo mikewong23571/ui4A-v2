@@ -1,5 +1,7 @@
 export * from './broker';
 export * from './lens';
+export * from './patch';
+export * from './promotion';
 export * from './recipe';
 export * from './resolver';
 export * from './scenario';

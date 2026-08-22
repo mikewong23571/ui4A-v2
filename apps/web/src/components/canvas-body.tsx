@@ -182,6 +182,17 @@ export function CanvasBody() {
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  const [sidecarMeta, setSidecarMeta] = useState<{
+    id: string;
+    version: number;
+    retention: 'cache' | 'pinned';
+    rootNodeId: string;
+    view: {
+      collapsedNodeIds: string[];
+      densityByNodeId: Record<string, 'compact' | 'comfortable' | 'spacious'>;
+    };
+  }>();
+  const [promotionPending, setPromotionPending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [negotiated, setNegotiated] = useState(false);
   // 重载触发器:拦截门 executed 后重载(gate 闭包经 ref 触发,不经渲染期读)。
@@ -207,6 +218,7 @@ export function CanvasBody() {
     setLoading(true);
     setErrors([]);
     setNotice(null);
+    setSidecarMeta(undefined);
     setNegotiated(false);
     try {
       // 1. 目录协商(catalogId 稳定 URI;目录与注册表同源才继续)。
@@ -296,7 +308,17 @@ export function CanvasBody() {
           throw new Error(`Sidecar ${resolvedSidecarId} → HTTP ${response.status}`);
         }
         const body = (await response.json()) as {
-          sidecar?: { key?: { subject?: unknown }; surface?: SurfaceTree };
+          sidecar?: {
+            id?: unknown;
+            version?: unknown;
+            retention?: unknown;
+            key?: { subject?: unknown };
+            surface?: SurfaceTree;
+            view?: {
+              collapsedNodeIds?: unknown;
+              densityByNodeId?: unknown;
+            };
+          };
         };
         if (
           body.sidecar?.key?.subject !== requestedFocuses[0] ||
@@ -305,6 +327,33 @@ export function CanvasBody() {
           throw new Error('Sidecar subject/surface does not match the requested focus');
         }
         sidecarSurface = body.sidecar.surface;
+        if (
+          typeof body.sidecar.id === 'string' &&
+          typeof body.sidecar.version === 'number' &&
+          (body.sidecar.retention === 'cache' || body.sidecar.retention === 'pinned')
+        ) {
+          setSidecarMeta({
+            id: body.sidecar.id,
+            version: body.sidecar.version,
+            retention: body.sidecar.retention,
+            rootNodeId: body.sidecar.surface.root.id,
+            view: {
+              collapsedNodeIds: Array.isArray(body.sidecar.view?.collapsedNodeIds)
+                ? body.sidecar.view.collapsedNodeIds.filter(
+                    (value): value is string => typeof value === 'string',
+                  )
+                : [],
+              densityByNodeId:
+                typeof body.sidecar.view?.densityByNodeId === 'object' &&
+                body.sidecar.view.densityByNodeId !== null
+                  ? (body.sidecar.view.densityByNodeId as Record<
+                      string,
+                      'compact' | 'comfortable' | 'spacious'
+                    >)
+                  : {},
+            },
+          });
+        }
       }
 
       // 4. 拦截门 + MessageProcessor(每轮重载重建,白名单随数据模型重建);
@@ -403,6 +452,134 @@ export function CanvasBody() {
     };
   }, [load]);
 
+  const mutateSidecar = useCallback(
+    async (action: 'pin' | 'revert'): Promise<void> => {
+      if (sidecarMeta === undefined) return;
+      const response = await fetch('/api/presentation/sidecar', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          sidecarId: sidecarMeta.id,
+          action,
+          actor: 'human',
+          ...(action === 'revert' ? { targetVersion: sidecarMeta.version - 1 } : {}),
+        }),
+      });
+      const body = (await response.json()) as {
+        sidecar?: { id: string; version: number; retention: 'cache' | 'pinned' };
+        error?: string;
+      };
+      if (!response.ok || body.sidecar === undefined) {
+        setNotice(`Sidecar ${action} 失败:${body.error ?? `HTTP ${response.status}`}`);
+        return;
+      }
+      setSidecarMeta((current) =>
+        current === undefined ? undefined : { ...current, ...body.sidecar },
+      );
+      setNotice(
+        action === 'pin'
+          ? `已保存为个人视图 · v${body.sidecar.version}`
+          : `已恢复 Sidecar v${body.sidecar.version}`,
+      );
+      if (action === 'revert') void load();
+    },
+    [load, sidecarMeta],
+  );
+
+  const patchSidecar = useCallback(
+    async (kind: 'collapse' | 'density'): Promise<void> => {
+      if (sidecarMeta === undefined) return;
+      const collapsed = sidecarMeta.view.collapsedNodeIds.includes(sidecarMeta.rootNodeId);
+      const currentDensity = sidecarMeta.view.densityByNodeId[sidecarMeta.rootNodeId];
+      const operations =
+        kind === 'collapse'
+          ? [{ kind, nodeId: sidecarMeta.rootNodeId, collapsed: !collapsed }]
+          : [
+              {
+                kind,
+                nodeId: sidecarMeta.rootNodeId,
+                density: currentDensity === 'compact' ? 'spacious' : 'compact',
+              },
+            ];
+      const response = await fetch('/api/presentation/sidecar', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          sidecarId: sidecarMeta.id,
+          action: 'patch',
+          actor: 'human',
+          interactionId: `canvas:${kind}:${crypto.randomUUID()}`,
+          operations,
+        }),
+      });
+      const body = (await response.json()) as {
+        sidecar?: typeof sidecarMeta;
+        error?: string;
+      };
+      if (!response.ok || body.sidecar === undefined) {
+        setNotice(`视图调整失败:${body.error ?? `HTTP ${response.status}`}`);
+        return;
+      }
+      setSidecarMeta(body.sidecar);
+      setNotice(`视图已调整 · v${body.sidecar.version} · 可恢复上一版本`);
+    },
+    [sidecarMeta],
+  );
+
+  const explainSidecar = useCallback(async (): Promise<void> => {
+    if (sidecarMeta === undefined) return;
+    const response = await fetch(
+      `/api/presentation/sidecar?sidecarId=${encodeURIComponent(sidecarMeta.id)}&explain=1`,
+    );
+    const body = (await response.json()) as {
+      explanation?: { provenance?: { kind?: string; ref?: string }; dependencyIds?: string[] };
+      error?: string;
+    };
+    if (!response.ok || body.explanation === undefined) {
+      setNotice(`无法解释当前呈现:${body.error ?? `HTTP ${response.status}`}`);
+      return;
+    }
+    setNotice(
+      `这样展示是因为 ${body.explanation.provenance?.kind ?? 'unknown'}:${
+        body.explanation.provenance?.ref ?? 'unknown'
+      }，依赖 ${body.explanation.dependencyIds?.length ?? 0} 项。`,
+    );
+  }, [sidecarMeta]);
+
+  const promoteSidecar = useCallback(
+    async (confirm: boolean): Promise<void> => {
+      if (sidecarMeta === undefined) return;
+      const response = await fetch('/api/presentation/sidecar', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          sidecarId: sidecarMeta.id,
+          action: confirm ? 'promote' : 'promotion-preview',
+          actor: 'human',
+        }),
+      });
+      const body = (await response.json()) as {
+        diff?: { fromSidecarVersion?: number };
+        recipe?: { id?: string; version?: number };
+        error?: string;
+      };
+      if (!response.ok) {
+        setNotice(`团队默认处理失败:${body.error ?? `HTTP ${response.status}`}`);
+        return;
+      }
+      if (!confirm) {
+        setPromotionPending(true);
+        setNotice(
+          `将把个人视图 v${body.diff?.fromSidecarVersion ?? '?'} 参数化为团队默认，请确认。`,
+        );
+      } else {
+        setPromotionPending(false);
+        setNotice(`已设为团队默认 · ${body.recipe?.id ?? 'recipe'} v${body.recipe?.version ?? 1}`);
+      }
+    },
+    [sidecarMeta],
+  );
+
   // latest-ref:拦截门 executed 后的重载入口(effect 内更新,渲染期零 ref 访问)。
   useEffect(() => {
     reloadRef.current = () => void load();
@@ -437,6 +614,84 @@ export function CanvasBody() {
           {notice}
         </p>
       )}
+      {sidecarMeta !== undefined && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs">
+          <span>
+            个人呈现 · v{sidecarMeta.version} ·{' '}
+            {sidecarMeta.retention === 'pinned' ? '已固定' : '缓存'}
+          </span>
+          {sidecarMeta.retention === 'cache' && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-presentation-action="pin-sidecar"
+              onClick={() => void mutateSidecar('pin')}
+            >
+              以后都这样看
+            </Button>
+          )}
+          {sidecarMeta.version > 1 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-presentation-action="revert-sidecar"
+              onClick={() => void mutateSidecar('revert')}
+            >
+              恢复上一版本
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-pressed={sidecarMeta.view.collapsedNodeIds.includes(sidecarMeta.rootNodeId)}
+            data-presentation-action="collapse-sidecar"
+            onClick={() => void patchSidecar('collapse')}
+          >
+            {sidecarMeta.view.collapsedNodeIds.includes(sidecarMeta.rootNodeId)
+              ? '展开视图'
+              : '收起视图'}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-presentation-action="density-sidecar"
+            onClick={() => void patchSidecar('density')}
+          >
+            切换疏密
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => void explainSidecar()}>
+            为什么这样展示
+          </Button>
+          {!promotionPending ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => void promoteSidecar(false)}
+            >
+              设为团队默认
+            </Button>
+          ) : (
+            <>
+              <Button type="button" size="sm" onClick={() => void promoteSidecar(true)}>
+                确认团队默认
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setPromotionPending(false)}
+              >
+                取消
+              </Button>
+            </>
+          )}
+        </div>
+      )}
       {errors.length > 0 && (
         <ul className="mt-4 space-y-1 text-sm text-destructive" data-testid="canvas-errors">
           {errors.map((error) => (
@@ -458,6 +713,8 @@ export function CanvasBody() {
             className={cn(
               'rounded-lg border bg-card p-4 text-card-foreground shadow-sm',
               entry.active && 'border-primary ring-2 ring-ring/20',
+              sidecarMeta?.view.densityByNodeId[sidecarMeta.rootNodeId] === 'compact' && 'p-2',
+              sidecarMeta?.view.densityByNodeId[sidecarMeta.rootNodeId] === 'spacious' && 'p-8',
             )}
           >
             <h2 className="mb-3 text-sm font-semibold text-muted-foreground">{entry.id}</h2>
@@ -471,9 +728,13 @@ export function CanvasBody() {
                 {warningText(warning)}
               </p>
             ))}
-            <SurfaceErrorBoundary surfaceId={entry.id}>
-              <A2uiSurface surface={entry.surface} />
-            </SurfaceErrorBoundary>
+            {sidecarMeta?.view.collapsedNodeIds.includes(sidecarMeta.rootNodeId) ? (
+              <p className="text-sm text-muted-foreground">此视图已收起，可在上方重新展开。</p>
+            ) : (
+              <SurfaceErrorBoundary surfaceId={entry.id}>
+                <A2uiSurface surface={entry.surface} />
+              </SurfaceErrorBoundary>
+            )}
           </div>
         ))}
       </section>

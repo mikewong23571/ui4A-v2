@@ -23,6 +23,10 @@ export interface SidecarDependency {
 
 export interface SidecarVersionInput {
   surface: SurfaceTree;
+  view?: {
+    collapsedNodeIds: string[];
+    densityByNodeId: Record<string, 'compact' | 'comfortable' | 'spacious'>;
+  };
   dependencies: SidecarDependency[];
   provenance: SurfaceProvenance;
   changedPaths: string[];
@@ -193,6 +197,14 @@ function interveningPaths(aggregate: UserSidecarAggregate, baseVersion: number):
 function cloneInput(input: SidecarVersionInput): SidecarVersionInput {
   return {
     ...input,
+    ...(input.view === undefined
+      ? {}
+      : {
+          view: {
+            collapsedNodeIds: [...input.view.collapsedNodeIds],
+            densityByNodeId: { ...input.view.densityByNodeId },
+          },
+        }),
     dependencies: input.dependencies.map((dependency) => ({
       ...dependency,
       pointers: [...dependency.pointers],
