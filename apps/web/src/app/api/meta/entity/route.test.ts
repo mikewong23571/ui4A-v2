@@ -21,9 +21,7 @@ beforeEach(async () => {
 
 describe('GET /_meta/api/entity', () => {
   it('meta/flows:200,定义集合三实体,子实体直达 /_meta href', async () => {
-    const res = await GET(
-      new Request('http://localhost:3100/_meta/api/entity?rel=meta/flows'),
-    );
+    const res = await GET(new Request('http://localhost:3100/_meta/api/entity?rel=meta/flows'));
 
     expect(res.status).toBe(200);
     const entity = (await res.json()) as {
@@ -77,6 +75,8 @@ describe('GET /_meta/api/entity', () => {
     expect(published?.entities?.map((action) => action.properties.name)).toEqual([
       'unpublish',
       'archive',
+      'generate-summary',
+      'save-summary',
     ]);
     // 活跃态编辑动词:A.4 active 节点声明(revise/deprecate)。
     expect(entity.actions.map((action) => action.name)).toEqual(['revise', 'deprecate']);
@@ -85,11 +85,10 @@ describe('GET /_meta/api/entity', () => {
 
   it('跨站规则:非 meta rel → 404;缺 rel → 400;未知 meta rel → 404', async () => {
     expect(
-      (await GET(new Request('http://localhost:3100/_meta/api/entity?rel=post:post-welcome'))).status,
+      (await GET(new Request('http://localhost:3100/_meta/api/entity?rel=post:post-welcome')))
+        .status,
     ).toBe(404);
-    expect(
-      (await GET(new Request('http://localhost:3100/_meta/api/entity'))).status,
-    ).toBe(400);
+    expect((await GET(new Request('http://localhost:3100/_meta/api/entity'))).status).toBe(400);
     expect(
       (await GET(new Request('http://localhost:3100/_meta/api/entity?rel=meta/flow:nope'))).status,
     ).toBe(404);

@@ -21,7 +21,7 @@
 import type { Sitemap, SitemapAction, SitemapFlow } from '@ui4a/engine';
 
 import { anyTokenInString, expandVerb } from './match';
-import { ADVANCE_TOKENS } from './rule-driver';
+import { ADVANCE_TOKENS } from './progress';
 import type { AgentGoal } from './types';
 
 /** exec-plan 的步形状(POST /api/exec-plan 的 steps 元素;身份字段由调用方补)。 */

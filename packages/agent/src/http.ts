@@ -24,6 +24,7 @@ export interface ExecPayload {
   actor?: 'human' | 'agent';
   principal?: string;
   channel?: string;
+  authorization?: { sourceMessageId: string; quote: string };
 }
 
 export interface EntityFetchResult {
@@ -60,6 +61,7 @@ export interface ContractClient {
     actor?: 'human' | 'agent';
     principal?: string;
     channel?: string;
+    authorization?: { sourceMessageId: string; quote: string };
   }): Promise<ExecPlanCallResult>;
   /** sitemap(/.well-known/ui4a.json);不可得时返回 undefined,不抛(循环按数据降级)。 */
   getSitemap(): Promise<SitemapSummary | undefined>;

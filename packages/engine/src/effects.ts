@@ -226,7 +226,7 @@ export function applyMetaEdit(
 }
 
 /**
- * 应用效果列表。顺序:先落参数字段,再按声明序执行效果;
+ * 应用效果列表。顺序:先落声明为持久的参数字段,再按声明序执行效果;
  * 事件顺序固定 action-executed → entity-appended* → spawn-requested*。
  */
 export function applyEffects(
@@ -240,11 +240,23 @@ export function applyEffects(
     throw new Error(`实例 "${request.rel}" 不存在,无法应用效果`);
   }
 
-  // 参数按声明字段落入实例(schema 层已拒多余参数,此处整包写入)。
-  const paramFields = paramsToFields(request);
+  // 参数默认按声明字段落入实例；persist:false 的 action 输入只留在事件/effect，
+  // 例如正式 capability 输出不能先伪装成源实体字段再物化为 artifact。
+  const flow = flowForInstance(deps, instance);
+  const action = flow?.nodes
+    .find((node) => node.name === instance.node)
+    ?.actions.find((candidate) => candidate.name === request.action);
+  const transientFields = new Set(
+    (action?.fields ?? []).filter((field) => field.persist === false).map((field) => field.name),
+  );
+  const submittedParamFields = paramsToFields(request);
+  const persistentParamFields = paramsToFields(
+    request,
+    Object.keys(request.params ?? {}).filter((name) => !transientFields.has(name)),
+  );
   const instances: EngineSnapshot['instances'] = {
     ...snapshot.instances,
-    [request.rel]: { ...instance, fields: { ...instance.fields, ...paramFields } },
+    [request.rel]: { ...instance, fields: { ...instance.fields, ...persistentParamFields } },
   };
   const collections: Record<string, string[]> = { ...snapshot.collections };
   // T4:definitions/activations 表随行(与 confirmations 同口径:恒物化,不可变产出)。
@@ -318,7 +330,7 @@ export function applyEffects(
         channel: request.channel,
         // 载荷仍只带请求参数(留痕):entity-appended 是伴随事件,fold 不读它——
         // 合并集由同批 action-executed 重放经同一 applyEffects 重推导(I5 同构)。
-        params: paramFields,
+        params: submittedParamFields,
       });
     } else if (effect.type === 'meta-edit') {
       // T4 编辑动词:载荷取请求参数,效果作用于 definition 工作副本(meta-edit
@@ -350,7 +362,7 @@ export function applyEffects(
     actor: request.actor ?? 'human',
     principal: request.principal,
     channel: request.channel,
-    params: paramFields,
+    params: submittedParamFields,
     ...(to !== undefined ? { to } : {}),
     ...(appendedRels.length > 0 ? { appended: appendedRels } : {}),
   };

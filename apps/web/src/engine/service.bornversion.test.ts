@@ -104,7 +104,12 @@ describe('在途实例按出生定义走完(激活不迁移在途)', () => {
 
     // 旧文章(出生于 v1):feature 不可见/不可执行,unpublish 照常。
     const oldPost = (await engine.getEntity('post:post-welcome')) as SirenEntity;
-    expect(oldPost.actions.map((action) => action.name)).toEqual(['unpublish', 'archive']);
+    expect(oldPost.actions.map((action) => action.name)).toEqual([
+      'unpublish',
+      'archive',
+      'generate-summary',
+      'save-summary',
+    ]);
     const oldFeature = await engine.exec({
       rel: 'post:post-welcome',
       action: 'feature',

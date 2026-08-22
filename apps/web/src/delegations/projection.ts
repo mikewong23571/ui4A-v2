@@ -25,6 +25,7 @@ export type DelegationStatus = 'running' | 'completed' | 'failed' | 'max-steps';
 export interface DelegationRow {
   id: string;
   goal: DelegationGoal;
+  model?: string;
   status: DelegationStatus;
   steps: number;
   successes: number;
@@ -81,12 +82,7 @@ function requiredNumber(properties: Record<string, unknown>, key: string): numbe
 
 function requiredStatus(properties: Record<string, unknown>): DelegationStatus {
   const value = properties.status;
-  if (
-    value !== 'running' &&
-    value !== 'completed' &&
-    value !== 'failed' &&
-    value !== 'max-steps'
-  ) {
+  if (value !== 'running' && value !== 'completed' && value !== 'failed' && value !== 'max-steps') {
     throw new Error(`委托投影字段 "status" 非法: ${String(value)}(引擎投影漂移)`);
   }
   return value;
@@ -104,6 +100,7 @@ export function toDelegationRow(sub: SirenEntity): DelegationRow {
     // 双重断言理由:goal.verb 已校验为非空字符串,其余键(targetRel/resource/
     // fields)是 engine DelegationGoal 的原样投影;TS 无法从 Record 收窄到接口。
     goal: goal as unknown as DelegationGoal,
+    ...(typeof properties.model === 'string' ? { model: properties.model } : {}),
     status: requiredStatus(properties),
     steps: requiredNumber(properties, 'steps'),
     successes: requiredNumber(properties, 'successes'),
@@ -130,9 +127,7 @@ export function projectDelegationDetail(
   let currentRel = startRel;
   for (const event of [...events].sort((a, b) => a.seq - b.seq)) {
     if (event.kind !== 'delegation-step') continue;
-    const detail = event.detail as
-      | (Partial<DelegationTrailStep> & Record<string, unknown>)
-      | null;
+    const detail = event.detail as (Partial<DelegationTrailStep> & Record<string, unknown>) | null;
     if (
       detail === null ||
       typeof detail.step !== 'number' ||

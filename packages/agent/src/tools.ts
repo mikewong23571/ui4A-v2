@@ -15,7 +15,7 @@
  */
 import type { SirenEntity } from '@ui4a/engine';
 
-import { navigableRels } from './rule-driver';
+import { navigableRels } from './navigation';
 
 /** 动作工具名前缀(避免与固定动词撞名,映射时剥掉)。 */
 export const ACTION_TOOL_PREFIX = 'action_';

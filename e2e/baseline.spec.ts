@@ -15,7 +15,8 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
 
-import { createRuleDriver, runAgent } from '@ui4a/agent';
+import { runAgent } from '@ui4a/agent';
+import { createRuleDriver } from '@ui4a/agent/testkit/rule-driver';
 import type { SirenEntity, TrailStep } from '@ui4a/agent';
 import { expect, test } from '@playwright/test';
 

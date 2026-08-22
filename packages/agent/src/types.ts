@@ -7,7 +7,7 @@
  * - 拒绝即数据:被拒 exec 与不可达 navigate 都以 RejectionRecord 回流下一步上下文;
  * - 循环零智能:它只搬运实体、执行操作、记录轨迹。
  */
-import type { SirenEntity } from '@ui4a/engine';
+import type { ExecutionAuditRecord, SirenEntity } from '@ui4a/engine';
 
 /** 注入的 fetch 实现(测试脚本化 / 服务端与浏览器真实 fetch 双用;两栖关键)。 */
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
@@ -77,6 +77,8 @@ export interface ConversationContext {
     continuation: AgentGoal;
     sourceMessageIds: string[];
   } | null;
+  /** 从 append-only 事件链机械投影的有界执行审计；不是模型推断。 */
+  executionAudit?: ExecutionAuditRecord[];
 }
 
 /**

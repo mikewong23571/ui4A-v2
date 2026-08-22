@@ -45,6 +45,7 @@ describe('三层裁决 — 通过路径', () => {
       kind: 'accepted',
       // T3 机械适配:accepted 结果携带动作声明(确认门读 requires-confirmation 标注)。
       action: commentModerationFlow.nodes[0].actions.find((a) => a.name === 'approve'),
+      guards: [{ name: 'is-pending', pass: true }],
       effects: [{ type: 'transition', to: 'approved' }],
       schema: expect.objectContaining({ type: 'object' }),
     });

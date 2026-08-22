@@ -130,6 +130,7 @@ export async function recordDelegationStart(
       delegationId: args.delegationId,
       goal: args.goal,
       driverKind: args.driverKind,
+      ...(args.model !== undefined ? { model: args.model } : {}),
       startRel: args.startRel,
       ...(args.principal !== undefined ? { principal: args.principal } : {}),
     },
@@ -215,6 +216,20 @@ export async function runAgentStep(
   args: AgentStepArgs,
 ): Promise<AgentStepResult> {
   await ensureEventsTable(deps.db);
+  // 防御 Temporal 并发/重试窗口：step 1 在写步事件前再次幂等确保首事件在场。
+  // workflow 的 start activity 仍是正常路径；这里保证 append-only 日志不会出现
+  // delegation-step 先于或缺失 delegation-started，避免读侧重放整体 500。
+  if (args.step === 1 && deps.driver === undefined) {
+    const model = process.env.LLM_MODEL?.trim();
+    await recordDelegationStart(deps.db, {
+      delegationId: args.delegationId,
+      goal: args.goal,
+      driverKind: args.driverKind,
+      ...(model ? { model } : {}),
+      startRel: args.currentRel,
+      principal: args.principal,
+    });
+  }
   const recovered = await findRecordedStep(deps.db, args.delegationId, args.step);
   if (recovered !== undefined) {
     return recovered;

@@ -104,6 +104,8 @@ export interface DelegationSnapshot {
   id: string;
   goal: DelegationGoal;
   driverKind: string;
+  /** 实际 worker 外部 profile 选择的模型；不含 base URL 或凭证。 */
+  model?: string;
   startRel: string;
   principal?: string;
   status: 'running' | 'completed' | 'failed' | 'max-steps';

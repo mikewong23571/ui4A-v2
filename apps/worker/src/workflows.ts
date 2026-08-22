@@ -92,6 +92,7 @@ export interface DelegationStartArgs {
   delegationId: string;
   goal: AgentGoal;
   driverKind: DelegationDriverKind;
+  model?: string;
   startRel: string;
   principal?: string;
 }

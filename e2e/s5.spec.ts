@@ -3,7 +3,7 @@
  *
  * 断言(GOAL 原文:「聊天说"按分类展示文章" → A2UI surface 渲染图表;
  * 渲染 spec 中不含任何字面数值,全部为实体引用」):
- * a) agent 路径(chat API,rule driver)发"按分类展示文章" → 响应携带
+ * a) AI-first chat API 发"按分类展示文章" → 响应携带
  *    render spec(chart 词条);spec 递归零字面(复用零字面校验器断言,
  *    全实体引用:collection + dimension 字段引用);
  * b) 画布(Playwright 打开 /canvas)出现 chart surface,渲染数值与
@@ -18,6 +18,13 @@ import { expect, test } from '@playwright/test';
 import { validateSpec } from '../apps/web/src/render/validator';
 
 import { SCENARIO_BASE, withFreshServer } from './server-kit';
+
+/** 配置合同完整但不会被确定性 binding-only render 命中路径调用。 */
+const UNUSED_LLM_PROFILE = {
+  LLM_API_KEY: 'e2e-unused-key',
+  LLM_BASE_URL: 'http://127.0.0.1:9/v1',
+  LLM_MODEL: 'e2e-unused-model',
+};
 
 interface ChatRenderResponse {
   sessionId: string;
@@ -38,7 +45,7 @@ async function chatDisplayArticles(): Promise<{ status: number; json: ChatRender
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       sessionId: 's5-e2e',
-      driver: 'rule',
+      driver: 'auto',
       goal: { verb: '按分类展示文章' },
     }),
   });
@@ -79,11 +86,11 @@ test('S5:聊天"按分类展示文章" → 零字面 spec → 画布 chart 与�
 }) => {
   await withFreshServer(
     async () => {
-      // ---- a) agent 路径(chat API,rule driver)→ render spec 生成 ----------
+      // ---- a) AI-first chat 路径 → binding-only render spec 生成 ---------
       const first = await chatDisplayArticles();
       expect(first.status).toBe(200);
       expect(first.json.outcome, JSON.stringify(first.json.messages)).toBe('done');
-      expect(first.json.driver).toBe('rule');
+      expect(first.json.driver).toBe('llm');
       expect(first.json.render).toBeDefined();
 
       const spec = first.json.render!.spec;
@@ -157,76 +164,70 @@ test('S5:聊天"按分类展示文章" → 零字面 spec → 画布 chart 与�
         page.locator('[data-surface="articles-by-category"] [data-word="chart"]'),
       ).toHaveAttribute('aria-label', expectedLabel);
     },
-    // 显式空配置:e2e 进程无 LLM profile(rule 确定路径,I1 口径)
-    { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
+    // 完整但不可达的 profile：该机械 binding-only render 命中路径不得调用模型。
+    UNUSED_LLM_PROFILE,
   );
 });
 
 test('S5 附:展示意图的第二形态——"展示文章列表" → table 词条,成员与快照一致', async ({ page }) => {
-  await withFreshServer(
-    async () => {
-      const response = await fetch(`${SCENARIO_BASE}/api/chat`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: 's5-e2e-table',
-          driver: 'rule',
-          goal: { verb: '展示文章列表' },
-        }),
-      });
-      const json = (await response.json()) as ChatRenderResponse;
-      expect(response.status).toBe(200);
-      // 无维度词 → table 词条(集合直列),同样零字面。
-      expect(json.render!.spec).toEqual({
-        concern: 'articles-list',
-        component: 'table',
-        bind: { rows: { collection: 'articles' } },
-      });
-      expect(validateSpec(json.render!.spec)).toEqual({ valid: true });
-      expect(json.render!.canvasUrl).toBe('/canvas?concern=articles-list');
+  await withFreshServer(async () => {
+    const response = await fetch(`${SCENARIO_BASE}/api/chat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 's5-e2e-table',
+        driver: 'auto',
+        goal: { verb: '展示文章列表' },
+      }),
+    });
+    const json = (await response.json()) as ChatRenderResponse;
+    expect(response.status).toBe(200);
+    // 无维度词 → table 词条(集合直列),同样零字面。
+    expect(json.render!.spec).toEqual({
+      concern: 'articles-list',
+      component: 'table',
+      bind: { rows: { collection: 'articles' } },
+    });
+    expect(validateSpec(json.render!.spec)).toEqual({ valid: true });
+    expect(json.render!.canvasUrl).toBe('/canvas?concern=articles-list');
 
-      // 画布:table surface 渲染集合成员(标题来自实体快照,零发明)。
-      const articles = (await (await fetch(`${SCENARIO_BASE}/api/entity?rel=articles`)).json()) as {
-        entities: { properties: { fields: { title?: unknown } } }[];
-      };
-      const titles = articles.entities
-        .map((member) => member.properties.fields?.title)
-        .filter((title): title is string => typeof title === 'string');
-      expect(titles.length).toBe(articles.entities.length);
+    // 画布:table surface 渲染集合成员(标题来自实体快照,零发明)。
+    const articles = (await (await fetch(`${SCENARIO_BASE}/api/entity?rel=articles`)).json()) as {
+      entities: { properties: { fields: { title?: unknown } } }[];
+    };
+    const titles = articles.entities
+      .map((member) => member.properties.fields?.title)
+      .filter((title): title is string => typeof title === 'string');
+    expect(titles.length).toBe(articles.entities.length);
 
-      await page.goto(`${SCENARIO_BASE}/canvas?concern=articles-list`);
-      const surface = page.locator('[data-surface="articles-list"]');
-      await expect(surface).toBeVisible();
-      await expect(surface.locator('[data-word="table"]')).toBeVisible();
-      for (const title of titles) {
-        await expect(surface.locator('[data-word="table"]')).toContainText(title);
-      }
-    },
-    { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
-  );
+    await page.goto(`${SCENARIO_BASE}/canvas?concern=articles-list`);
+    const surface = page.locator('[data-surface="articles-list"]');
+    await expect(surface).toBeVisible();
+    await expect(surface.locator('[data-word="table"]')).toBeVisible();
+    for (const title of titles) {
+      await expect(surface.locator('[data-word="table"]')).toContainText(title);
+    }
+  }, UNUSED_LLM_PROFILE);
 });
 
 test('S5 附:render 回执即达即跳——悬浮聊天发送展示意图 → 自动导航画布并激活(同屏协同)', async ({
   page,
 }) => {
-  await withFreshServer(
-    async () => {
-      await page.goto(`${SCENARIO_BASE}/`);
-      await page.getByRole('button', { name: '展开聊天窗' }).click();
-      await page.getByPlaceholder('输入目标…').fill('按分类展示文章');
-      await page.getByRole('button', { name: '发送' }).click();
+  await withFreshServer(async () => {
+    await page.goto(`${SCENARIO_BASE}/`);
+    await page.getByRole('button', { name: '展开聊天窗' }).click();
+    await page.getByPlaceholder('输入目标…').fill('按分类展示文章');
+    await page.getByRole('button', { name: '发送' }).click();
 
-      // 回执即达即跳:URL 自动切到画布(客户端软导航——main 内容区切换,
-      // 悬浮面板在 root layout 不重挂载)。
-      await expect(page).toHaveURL(/\/canvas\?concern=articles-by-category$/);
-      const surface = page.locator('[data-surface="articles-by-category"]');
-      await expect(surface).toBeVisible();
-      await expect(surface).toHaveAttribute('data-active', 'true');
+    // 回执即达即跳:URL 自动切到画布(客户端软导航——main 内容区切换,
+    // 悬浮面板在 root layout 不重挂载)。
+    await expect(page).toHaveURL(/\/canvas\?concern=articles-by-category$/);
+    const surface = page.locator('[data-surface="articles-by-category"]');
+    await expect(surface).toBeVisible();
+    await expect(surface).toHaveAttribute('data-active', 'true');
 
-      // 同屏协同:面板保持打开,回执消息与手动回入口链接仍在。
-      await expect(page.getByText(/已生成渲染「articles-by-category」/)).toBeVisible();
-      await expect(page.getByRole('link', { name: /在画布查看/ })).toBeVisible();
-    },
-    { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
-  );
+    // 同屏协同:面板保持打开,回执消息与手动回入口链接仍在。
+    await expect(page.getByText(/已生成渲染「articles-by-category」/)).toBeVisible();
+    await expect(page.getByRole('link', { name: /在画布查看/ })).toBeVisible();
+  }, UNUSED_LLM_PROFILE);
 });

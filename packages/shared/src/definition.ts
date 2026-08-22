@@ -58,6 +58,8 @@ export interface FieldDefinition {
   required?: boolean;
   semantics?: FieldSemantics;
   source?: FieldSource;
+  /** false 表示 action 输入只进入事件/effect，不写回当前实例字段。缺省 true。 */
+  persist?: boolean;
   /** select 类型的候选值。 */
   options?: string[];
   /** 字符串最小长度(T3:reject 的 reason 必填且非空;RJSF 原生渲染)。 */

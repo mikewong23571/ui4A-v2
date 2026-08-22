@@ -24,6 +24,7 @@ import type {
 } from '../../../chat/history';
 import { wrapDriverForAudit, type AgentDecisionDetail } from '../../../chat/decisions';
 import { conversationView } from '../../../chat/conversation';
+import { executionAuditContext } from '../../../chat/audit-context';
 import { hasExplicitMetaIntent, resolveStartRel } from '../../../chat/start';
 import type { ChatRenderPayload } from '../../../chat/sse';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
@@ -353,7 +354,9 @@ async function loadAgentConversation(sessionId: string): Promise<{
   messages: AgentConversationMessage[];
   context: AgentConversationContext;
 }> {
-  const view = conversationView(await readLog(getDb()), sessionId);
+  const events = await readLog(getDb());
+  const view = conversationView(events, sessionId);
+  const executionAudit = executionAuditContext(events, `user:${sessionId}`);
   return {
     messages: view.recentMessages.map(({ messageId, role, content }) => ({
       messageId,
@@ -394,6 +397,7 @@ async function loadAgentConversation(sessionId: string): Promise<{
             },
           }
         : {}),
+      ...(executionAudit.length > 0 ? { executionAudit } : {}),
     },
   };
 }

@@ -15,7 +15,8 @@
  */
 import { spawnSync } from 'node:child_process';
 
-import { createRuleDriver, runAgent } from '@ui4a/agent';
+import { runAgent } from '@ui4a/agent';
+import { createRuleDriver } from '@ui4a/agent/testkit/rule-driver';
 import type { TrailStep } from '@ui4a/agent';
 import { expect, test } from '@playwright/test';
 
@@ -84,8 +85,13 @@ function assertDualActors(
   const executed = executedOf(events, action);
   const byAgent = executed.filter((event) => event.actor === 'agent');
   const byHuman = executed.filter((event) => event.actor === 'human');
-  expect(byAgent.length, `${action} 应有 actor=agent 的执行(agent 合同路径)`).toBeGreaterThanOrEqual(1);
-  expect(byHuman.length, `${action} 应有 actor=human 的执行(renderer 路径)`).toBeGreaterThanOrEqual(1);
+  expect(
+    byAgent.length,
+    `${action} 应有 actor=agent 的执行(agent 合同路径)`,
+  ).toBeGreaterThanOrEqual(1);
+  expect(byHuman.length, `${action} 应有 actor=human 的执行(renderer 路径)`).toBeGreaterThanOrEqual(
+    1,
+  );
   expect(
     byAgent.every((event) => event.principal === AGENT_PRINCIPAL),
     'agent 足迹的 principal 应为 agent 身份',
@@ -171,7 +177,9 @@ test('B1 双执行者:agent 合同发布 + human 表单发布,同一日志两类
   });
 });
 
-test('B2 双执行者:agent 合同下线 post-welcome + human 表单下线 first-post,各自精确', async ({ page }) => {
+test('B2 双执行者:agent 合同下线 post-welcome + human 表单下线 first-post,各自精确', async ({
+  page,
+}) => {
   await withFreshServer(async () => {
     // ---- agent 路径(合同:子实体链接直达)--------------------------------
     const agentRun = await runAgent(
@@ -208,7 +216,9 @@ test('B2 双执行者:agent 合同下线 post-welcome + human 表单下线 first
   });
 });
 
-test('B3 双执行者:agent 合同 approve c1 + human 表单 approve c2/c3,同一日志清零 pending', async ({ page }) => {
+test('B3 双执行者:agent 合同 approve c1 + human 表单 approve c2/c3,同一日志清零 pending', async ({
+  page,
+}) => {
   await withFreshServer(async () => {
     // ---- agent 路径(合同:直接 exec approve)-----------------------------
     const agentApprove = await execHttp({
@@ -230,7 +240,9 @@ test('B3 双执行者:agent 合同 approve c1 + human 表单 approve c2/c3,同�
       await expect(page.getByText('节点 approved')).toBeVisible();
     }
     await page.goto('/entity?rel=comments');
-    await expect(page.locator('section[aria-label="成员"] a', { hasText: 'pending' })).toHaveCount(0);
+    await expect(page.locator('section[aria-label="成员"] a', { hasText: 'pending' })).toHaveCount(
+      0,
+    );
 
     // ---- 同一日志:approve 两类执行者(1+2),c4 零处理痕迹 ---------------
     const comments = await getEntity('comments');

@@ -56,6 +56,7 @@ const SYSTEM_PROMPT = [
   '1. 每轮必须且只能输出一个工具调用;合法动作集就是当前工具列表(处境披露)。',
   '2. 授权观察包含完整 Siren properties/actions/links/guard-results。只基于这些事实回答；不要发明未观察到的事实。',
   '3. 阅读、总结、比较、解释是你的原生认知能力：事实充分时直接 answer(content,sources)，无需 read/summarize action 或 capability；sources 使用实体 rel + JSON Pointer。',
+  '3.1 临时对话回答与正式工件严格分离：只有用户明确要求保存、持久化或生成正式工件时，才可调用 capability/effect action；“总结一下”“你自己总结”只授权原生 answer，不授权生成或保存 artifact。',
   '4. 信息不足时用 answer 诚实说明缺少什么并引用已检查字段，或用 fail 说明不可得；绝不能用无关业务 action 代替回答。',
   '4.1 复合目标若要求先回答、再执行业务动作，answer 必须设置 continue=true；普通只读回答省略 continue 并终止。',
   '5. navigate 的 rel 必须来自其枚举;工具 description 标注 blocked 的动作当前被 guard 阻断,不要调用。',
@@ -130,14 +131,20 @@ function describeTrail(context: DriverContext): string {
  * 发送的 prompt 必须经本函数构造,重建才与实际发送逐字节一致。
  */
 export function buildUserPrompt(context: DriverContext): string {
+  const { executionAudit, ...derivedConversation } = context.conversation ?? {};
   const parts = [
     `## 用户目标\n${JSON.stringify(context.goal)}`,
-    `## 结构化会话处境(可修订认知，不是业务事实或 effect 授权)\n${JSON.stringify(context.conversation ?? {}, null, 2)}`,
+    `## 结构化会话处境(可修订认知，不是业务事实或 effect 授权)\n${JSON.stringify(derivedConversation, null, 2)}`,
     `## 当前实体 rel\n${context.currentRel}`,
     `## 当前 app/scope 的动态 sitemap 处境(actions/capabilities 仅用于发现，执行仍以当前实体合同为准)\n${JSON.stringify(context.sitemap ?? {}, null, 2)}`,
     `## 授权合同观察账本(有界，按最近访问顺序；entity 为完整 Siren 快照)\n${describeObservations(context)}`,
     `## 轨迹(至今)\n${describeTrail(context)}`,
   ];
+  if (executionAudit !== undefined && executionAudit.length > 0) {
+    parts.push(
+      `## 执行审计处境(事件日志机械投影，不是模型推断；integrity 错误不得补造理由)\n${JSON.stringify(executionAudit, null, 2)}`,
+    );
+  }
   if (context.lastRejection !== undefined) {
     parts.push(`## 最近拒绝(上一步被拒,拒绝即数据)\n${JSON.stringify(context.lastRejection)}`);
   }

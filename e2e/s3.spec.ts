@@ -50,6 +50,14 @@ import {
   withWorkerStack,
 } from './server-kit';
 
+test.skip(
+  !process.env.RUN_LLM_E2E ||
+    !process.env.LLM_API_KEY ||
+    !process.env.LLM_BASE_URL ||
+    !process.env.LLM_MODEL,
+  'S3 delegated Assistant E2E 需要显式 RUN_LLM_E2E 与完整 provider profile',
+);
+
 // 本文件全部用例指向场景 server(3110)+ 真 worker。
 test.use({ baseURL: SCENARIO_BASE });
 
@@ -153,7 +161,7 @@ async function getEvents(): Promise<LoggedEvent[]> {
   return ((await response.json()) as { events: LoggedEvent[] }).events;
 }
 
-/** /api/chat mode=delegated 派发(悬浮窗同一合同入口;rule driver 确定性)。 */
+/** /api/chat mode=delegated 派发(悬浮窗同一 AI-first 合同入口)。 */
 async function dispatchDelegation(
   goal: Record<string, unknown>,
   sessionId: string,
@@ -161,7 +169,7 @@ async function dispatchDelegation(
   const response = await fetch(`${SCENARIO_BASE}/api/chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ goal, mode: 'delegated', driver: 'rule', sessionId }),
+    body: JSON.stringify({ goal, mode: 'delegated', driver: 'auto', sessionId }),
   });
   expect(response.status, 'delegated 派发应 200(Temporal 可达)').toBe(200);
   const body = (await response.json()) as { mode: string; delegationId: string; statusUrl: string };

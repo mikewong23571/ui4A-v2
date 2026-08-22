@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { contentVersion, fold } from '@ui4a/engine';
 
@@ -15,6 +15,7 @@ import { getEngine, resetEngineForTests } from './service';
 // 外部追加的事件**不需重启**立即可见;与 web 自身 exec 交错不损坏快照(I5)。
 const CONNECTION_STRING = process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a';
 const pool = getPool(CONNECTION_STRING);
+const originalLlmModel = process.env.LLM_MODEL;
 
 const agentArchive = {
   rel: 'post:post-welcome',
@@ -40,8 +41,14 @@ beforeEach(async () => {
   resetEngineForTests();
 });
 
+afterEach(() => {
+  if (originalLlmModel === undefined) delete process.env.LLM_MODEL;
+  else process.env.LLM_MODEL = originalLlmModel;
+});
+
 describe('双写一致性:worker 侧 appendEvent 后 web 读路径立即可见', () => {
   it('generate action → 同步物化正式 artifact 并回链源实体；业务字段仍不写', async () => {
+    process.env.LLM_MODEL = 'service-integration-model';
     const engine = await getEngine(pool);
     const bodyBefore = (await engine.readSnapshot()).instances['post:first-post']?.fields.body;
 

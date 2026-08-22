@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ensureEventsTable } from '../../../db/events';
 import { getPool } from '../../../db/pool';
@@ -14,6 +14,7 @@ import { POST } from './route';
 const REAL_DATABASE_URL = process.env.DATABASE_URL;
 const BAD_URL = 'postgres://ui4a:ui4a@localhost:5999/ui4a';
 const pool = getPool(REAL_DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');
+const originalLlmModel = process.env.LLM_MODEL;
 
 function post(body: unknown, url = 'http://localhost:3100/api/exec'): Request {
   return new Request(url, {
@@ -51,7 +52,35 @@ beforeEach(async () => {
   resetEngineForTests();
 });
 
+afterEach(() => {
+  if (originalLlmModel === undefined) delete process.env.LLM_MODEL;
+  else process.env.LLM_MODEL = originalLlmModel;
+});
+
 describe('POST /api/exec', () => {
+  it('正式模型工件缺少 LLM_MODEL → 503 且无 action/spawn/artifact 半成品事件', async () => {
+    delete process.env.LLM_MODEL;
+
+    const res = await POST(
+      post({
+        rel: 'post:first-post',
+        action: 'generate-summary',
+        params: { summary: '不应写入' },
+        actor: 'agent',
+        principal: 'user:mike',
+      }),
+    );
+
+    expect(res.status).toBe(503);
+    expect((await res.json()) as { error: string }).toMatchObject({
+      error: expect.stringContaining('LLM_MODEL'),
+    });
+    const partial = await pool.query<{ kind: string }>(
+      "SELECT kind FROM events WHERE kind IN ('action-executed', 'spawn-requested', 'capability-artifact-created')",
+    );
+    expect(partial.rows).toEqual([]);
+  });
+
   it('通过:approve → 200 {entity},新节点 approved', async () => {
     const res = await POST(
       post({

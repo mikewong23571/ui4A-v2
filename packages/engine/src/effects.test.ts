@@ -388,6 +388,52 @@ describe('效果词汇表 — spawn(T2 stub:只记事件不改状态)', () => {
       'on-done': 'summarized',
     });
   });
+
+  it('persist:false action 输入进入事件和 spawn，但不冒充源实例业务字段', () => {
+    const postFlow = structuredClone(postStatusFlow);
+    postFlow.nodes
+      .find((node) => node.name === 'published')!
+      .actions.push({
+        name: 'generate-summary',
+        title: '生成正式摘要',
+        guards: [],
+        fields: [
+          {
+            name: 'summary',
+            type: 'textarea',
+            semantics: 'work-product',
+            persist: false,
+          },
+        ],
+        effect: {
+          type: 'spawn',
+          capability: 'summarize',
+          bind: { 'source-field': 'body', 'output-param': 'summary' },
+        },
+      });
+    const outcome = applyEffects(
+      exec('generate-summary', 'post:post-welcome', { summary: '正式摘要内容' }),
+      [
+        {
+          type: 'spawn',
+          capability: 'summarize',
+          bind: { 'source-field': 'body', 'output-param': 'summary' },
+        },
+      ],
+      seedSnapshot,
+      { flows: flowRegistry(articleDraftingFlow, postFlow, commentModerationFlow) },
+    );
+
+    expect(outcome.snapshot.instances['post:post-welcome']?.fields.summary).toBeUndefined();
+    expect(outcome.events[0]).toMatchObject({
+      kind: 'action-executed',
+      params: { summary: { value: '正式摘要内容', origin: 'intent' } },
+    });
+    expect(outcome.events[1]).toMatchObject({
+      kind: 'spawn-requested',
+      capability: 'summarize',
+    });
+  });
 });
 
 describe('效果应用 — 纯函数性', () => {

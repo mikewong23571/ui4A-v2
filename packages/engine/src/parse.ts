@@ -179,6 +179,9 @@ function validateFields(fields: FieldDefinition[], path: string, issues: FlowIss
     if (!FIELD_TYPES.has(field.type)) {
       issues.push({ path: `${fieldPath}.type`, message: `未知字段类型 "${String(field.type)}"` });
     }
+    if (field.persist !== undefined && typeof field.persist !== 'boolean') {
+      issues.push({ path: `${fieldPath}.persist`, message: 'persist 必须是 boolean' });
+    }
     if (field.type === 'select' && (!field.options || field.options.length === 0)) {
       issues.push({
         path: `${fieldPath}.options`,

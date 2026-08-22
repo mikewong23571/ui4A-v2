@@ -23,6 +23,11 @@ export interface ExecRequest {
   actor?: 'human' | 'agent';
   principal?: string;
   channel?: string;
+  /**
+   * 上游机械 effect gate 已核验的用户原话索引。引擎不据此放行动作；它只随
+   * 裁决事件留痕，审计投影会再次对 append-only user message 做引用校验。
+   */
+  authorization?: { sourceMessageId: string; quote: string };
 }
 
 export type JudgeLayer = 'undeclared' | 'guard-failed' | 'schema-invalid';
@@ -35,6 +40,8 @@ export type JudgeResult =
       action: ActionDefinition;
       effects: EffectDefinition[];
       schema: Record<string, unknown>;
+      /** 已按声明顺序求值且全部通过的 guard 结果，供成功审计留痕。 */
+      guards: GuardEvaluation[];
     }
   | { kind: 'rejected'; layer: JudgeLayer; reason: string; detail?: unknown };
 
@@ -162,5 +169,5 @@ export function judge(
     return reject('schema-invalid', '参数不符合动作字段 schema', validate.errors);
   }
 
-  return { kind: 'accepted', action, effects: actionEffects(action), schema };
+  return { kind: 'accepted', action, effects: actionEffects(action), schema, guards: guardResults };
 }

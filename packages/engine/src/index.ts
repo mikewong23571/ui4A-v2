@@ -19,6 +19,7 @@ export * from './fold';
 export * from './delegation';
 export * from './render-spec';
 export * from './capability-artifact';
+export * from './execution-audit';
 export * from './lifecycle';
 export * from './meta';
 export * from './meta-bootstrap';

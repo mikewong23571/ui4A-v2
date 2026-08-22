@@ -324,6 +324,7 @@ function projectDelegation(delegation: DelegationSnapshot, deps: ProjectDeps): S
       id: delegation.id,
       goal: delegation.goal,
       'driver-kind': delegation.driverKind,
+      ...(delegation.model !== undefined ? { model: delegation.model } : {}),
       'start-rel': delegation.startRel,
       ...(delegation.principal !== undefined ? { principal: delegation.principal } : {}),
       status: delegation.status,

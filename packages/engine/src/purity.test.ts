@@ -43,8 +43,8 @@ describe('引擎两栖性(纯 TS,浏览器/服务端零 Node API)', () => {
     }
   });
 
-  it('扫描到的库源覆盖引擎全部模块(22 个非测试源文件;T15 增 capability-artifact)', () => {
-    expect(librarySources(srcDir).length).toBe(22);
+  it('扫描到的库源覆盖引擎全部模块(23 个非测试源文件;T15 增 execution-audit)', () => {
+    expect(librarySources(srcDir).length).toBe(23);
   });
 
   it('公共导出面完整(barrel 可整体导入求值)', () => {

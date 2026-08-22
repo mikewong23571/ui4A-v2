@@ -98,6 +98,16 @@ export type ExecOutcome =
   | { kind: 'suspended'; entity: SirenEntity; confirmation: SuspendedConfirmation }
   | { kind: 'rejected'; layer: JudgeLayer; reason: string; detail?: unknown };
 
+/** 正式模型工件缺少部署 profile；调用方应映射为可恢复 503，而非内部错误。 */
+export class LlmArtifactConfigurationError extends Error {
+  readonly code = 'LLM_CONFIGURATION';
+
+  constructor() {
+    super('正式模型工件需要外部配置 LLM_MODEL；未写入任何业务事件，请配置后重试');
+    this.name = 'LlmArtifactConfigurationError';
+  }
+}
+
 /**
  * exec-plan 结果(T6 批量裁决;HTTP 层映射 completed/rejected → 200,
  * suspended → 202——请求被完整处理,分步报告在 body,拒绝是步级数据)。
@@ -394,6 +404,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   const materializeSpawnArtifacts = async (
     events: readonly EngineEvent[],
     request: ExecRequest,
+    model: string | undefined,
   ): Promise<void> => {
     for (const event of events) {
       if (event.kind !== 'spawn-requested') continue;
@@ -405,11 +416,13 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       const output = request.params?.[outputParam];
       const capability = snapshot.capabilities?.[event.capability];
       if (source === undefined || output === undefined || capability === undefined) continue;
+      if (model === undefined) {
+        throw new Error('正式工件 materialization 缺少已预检的 LLM_MODEL(内部不变式破坏)');
+      }
 
       const content = { [outputParam]: output };
       const canonicalContent = canonicalJson(content);
       const contentHash = `sha256:${createHash('sha256').update(canonicalContent).digest('hex')}`;
-      const model = process.env.LLM_MODEL?.trim() || 'unconfigured';
       const id = createHash('sha256')
         .update(
           canonicalJson({
@@ -444,6 +457,31 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       });
       snapshot = applyCapabilityArtifactCreated(snapshot, { seq, rel, detail });
     }
+  };
+
+  /**
+   * 只对确实会物化正式工件的 spawn 要求模型 profile。必须在 append outcome.events
+   * 之前调用，避免 action-executed/spawn-requested 已写而 artifact 未写的半成品。
+   */
+  const artifactModelFor = (
+    events: readonly EngineEvent[],
+    request: ExecRequest,
+  ): string | undefined => {
+    const materializes = events.some((event) => {
+      if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') return false;
+      const sourceField = event.bind?.['source-field'];
+      const outputParam = event.bind?.['output-param'];
+      if (typeof sourceField !== 'string' || typeof outputParam !== 'string') return false;
+      return (
+        snapshot.instances[request.rel]?.fields[sourceField] !== undefined &&
+        request.params?.[outputParam] !== undefined &&
+        snapshot.capabilities?.[event.capability] !== undefined
+      );
+    });
+    if (!materializes) return undefined;
+    const model = process.env.LLM_MODEL?.trim();
+    if (model === undefined || model === '') throw new LlmArtifactConfigurationError();
+    return model;
   };
 
   /** 把落库窗口内挤进来的外部事件补折进当前快照(幂等清空;所有覆写点之后调用)。 */
@@ -627,11 +665,12 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           return { kind: 'suspended', entity, confirmation: outcome.confirmation };
         }
 
+        const artifactModel = artifactModelFor(outcome.events, aliased);
         for (const event of outcome.events) {
           await appendWithSeq(toAppend(event));
         }
         snapshot = outcome.snapshot;
-        await materializeSpawnArtifacts(outcome.events, aliased);
+        await materializeSpawnArtifacts(outcome.events, aliased, artifactModel);
         applyForeignGaps();
 
         // 受影响实体:append 产出新实例时返回新实体,否则返回执行实体的新投影。

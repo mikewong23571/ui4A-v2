@@ -18,6 +18,7 @@ import {
 } from './confirmation';
 import { applyEffects, type EngineEvent } from './effects';
 import { judge, type DefinitionVersionTable, type ExecRequest, type JudgeLayer } from './judge';
+import type { ExecutionJudgmentDetail } from './execution-audit';
 import type { FlowDefinition } from './types';
 
 /** 编排依赖:flow 注册表 + guard 注册表 + 确认策略(缺省内置,Phase B 注入 Cedar)。 */
@@ -56,10 +57,27 @@ export function executeWithGates(
   }
 
   const gate = confirmGate(request, verdict.action, deps.policy);
+  const execution: ExecutionJudgmentDetail = {
+    ...(request.authorization !== undefined ? { authorization: { ...request.authorization } } : {}),
+    declaration: { passed: true },
+    guards: verdict.guards.map((guard) => ({ ...guard })),
+    schema: { passed: true },
+    confirmation: {
+      required: gate.required,
+      status: gate.required ? 'pending' : 'not-required',
+      policy: gate.policy,
+      reason: gate.reason,
+    },
+  };
   if (gate.required) {
+    const suspended = suspendForConfirmation(request, verdict.action, gate, snapshot);
     return {
       kind: 'suspended',
-      ...suspendForConfirmation(request, verdict.action, gate, snapshot),
+      ...suspended,
+      events: suspended.events.map((event) => ({
+        ...event,
+        detail: { ...(event.detail as Record<string, unknown>), execution },
+      })),
     };
   }
 
@@ -67,5 +85,13 @@ export function executeWithGates(
     flows: deps.flows,
     versions: deps.versions,
   });
-  return { kind: 'executed', ...outcome };
+  return {
+    kind: 'executed',
+    ...outcome,
+    events: outcome.events.map((event) =>
+      event.kind === 'action-executed'
+        ? { ...event, detail: { ...(event.detail as Record<string, unknown>), execution } }
+        : event,
+    ),
+  };
 }

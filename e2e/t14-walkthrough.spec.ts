@@ -9,6 +9,14 @@ import { expect, test } from '@playwright/test';
 
 import { SCENARIO_BASE, withFreshServer } from './server-kit';
 
+test.skip(
+  !process.env.RUN_LLM_E2E ||
+    !process.env.LLM_API_KEY ||
+    !process.env.LLM_BASE_URL ||
+    !process.env.LLM_MODEL,
+  'T14 Assistant walkthrough 需要显式 RUN_LLM_E2E 与完整 provider profile',
+);
+
 test.use({ baseURL: SCENARIO_BASE });
 test.describe.configure({ mode: 'serial' });
 test.setTimeout(240_000);
@@ -31,7 +39,7 @@ interface LoggedEvent {
 }
 
 interface ChatFinalPayload {
-  driver: 'rule' | 'llm';
+  driver: 'llm';
   outcome: 'done' | 'failed' | 'max-steps';
 }
 
@@ -77,7 +85,7 @@ async function publishViaChat(): Promise<ChatFrame[]> {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       sessionId: 't14-walkthrough-agent',
-      driver: 'rule',
+      driver: 'auto',
       goal: {
         verb: '发布一篇文章',
         fields: {
@@ -100,7 +108,7 @@ async function requestRender(verb: string): Promise<RenderResponse> {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       sessionId: `t14-render-${verb}`,
-      driver: 'rule',
+      driver: 'auto',
       goal: { verb },
     }),
   });
@@ -109,114 +117,111 @@ async function requestRender(verb: string): Promise<RenderResponse> {
 }
 
 test('US-1/2/13/14:双执行者发布 → 稳定渲染 → 可读审计，#1–#7 闭环', async ({ page }) => {
-  await withFreshServer(
-    async () => {
-      // US-1:renderer 路径。首页与字段先用人话；ready 页复用前序 title。
-      await page.goto('/');
-      await expect(page.getByRole('heading', { name: '运行概览' })).toBeVisible();
-      await expect(page.getByText('执行中委托')).toBeVisible();
-      await expect(page.getByTestId('stat-running-help')).toHaveText('已派发且尚未完成的委托数量');
+  await withFreshServer(async () => {
+    // US-1:renderer 路径。首页与字段先用人话；ready 页复用前序 title。
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: '运行概览' })).toBeVisible();
+    await expect(page.getByText('执行中委托')).toBeVisible();
+    await expect(page.getByTestId('stat-running-help')).toHaveText('已派发且尚未完成的委托数量');
 
-      await page.click('a[data-rel="flow:article-drafting"]');
-      await page.fill('#root_title', 'walkthrough-human');
-      await page.getByRole('button', { name: '下一步' }).click();
-      await page.selectOption('#root_category', 'tech');
-      await page.fill('#root_tags', 'human-walkthrough');
-      await page.getByRole('button', { name: '下一步' }).click();
-      await page.fill('#root_body', 'T14 walkthrough human renderer 路径。');
-      await page.getByRole('button', { name: '完成编辑' }).click();
+    await page.click('a[data-rel="flow:article-drafting"]');
+    await page.fill('#root_title', 'walkthrough-human');
+    await page.getByRole('button', { name: '下一步' }).click();
+    await page.selectOption('#root_category', 'tech');
+    await page.fill('#root_tags', 'human-walkthrough');
+    await page.getByRole('button', { name: '下一步' }).click();
+    await page.fill('#root_body', 'T14 walkthrough human renderer 路径。');
+    await page.getByRole('button', { name: '完成编辑' }).click();
 
-      await expect(page.locator('h1')).toHaveText('就绪');
-      await expect(page.getByLabel('文章标题')).toHaveValue('walkthrough-human');
-      await expect(page.getByText(/用于生成文章地址/)).toBeVisible();
-      await page.getByRole('button', { name: '发布' }).click();
-      await expect(page.locator('h1')).toHaveText('基本信息');
+    await expect(page.locator('h1')).toHaveText('就绪');
+    await expect(page.getByLabel('文章标题')).toHaveValue('walkthrough-human');
+    await expect(page.getByText(/用于生成文章地址/)).toBeVisible();
+    await page.getByRole('button', { name: '发布' }).click();
+    await expect(page.locator('h1')).toHaveText('基本信息');
 
-      const afterHuman = await articles();
-      const humanArticle = afterHuman.entities.find(
-        (entity) => entity.properties.fields?.title === 'walkthrough-human',
-      );
-      expect(humanArticle?.properties.fields).toMatchObject({
-        category: 'tech',
-        tags: 'human-walkthrough',
-      });
+    const afterHuman = await articles();
+    const humanArticle = afterHuman.entities.find(
+      (entity) => entity.properties.fields?.title === 'walkthrough-human',
+    );
+    expect(humanArticle?.properties.fields).toMatchObject({
+      category: 'tech',
+      tags: 'human-walkthrough',
+    });
 
-      // US-2:agent 经 chat 合同走同一条发布 flow，保留逐步帧与审计事件。
-      const frames = await publishViaChat();
-      expect(frames.length).toBeGreaterThan(1);
-      expect(frames.at(-1)?.type).toBe('final');
-      expect(frames.at(-1)?.payload).toMatchObject({ driver: 'rule', outcome: 'done' });
+    // US-2:agent 经 chat 合同走同一条发布 flow，保留逐步帧与审计事件。
+    const frames = await publishViaChat();
+    expect(frames.length).toBeGreaterThan(1);
+    expect(frames.at(-1)?.type).toBe('final');
+    expect(frames.at(-1)?.payload).toMatchObject({ driver: 'llm', outcome: 'done' });
 
-      const afterAgent = await articles();
-      expect(afterAgent.properties.count).toBe(4);
-      const agentArticle = afterAgent.entities.find(
-        (entity) => entity.properties.fields?.title === 'walkthrough-agent',
-      );
-      expect(agentArticle?.properties.fields).toMatchObject({
-        category: 'essay',
-        tags: 'agent-walkthrough',
-      });
+    const afterAgent = await articles();
+    expect(afterAgent.properties.count).toBe(4);
+    const agentArticle = afterAgent.entities.find(
+      (entity) => entity.properties.fields?.title === 'walkthrough-agent',
+    );
+    expect(agentArticle?.properties.fields).toMatchObject({
+      category: 'essay',
+      tags: 'agent-walkthrough',
+    });
 
-      const sharedLog = await events();
-      const publishActors = sharedLog
-        .filter((event) => event.kind === 'action-executed' && event.action === 'publish')
-        .map((event) => event.actor);
-      expect(publishActors).toEqual(expect.arrayContaining(['human', 'agent']));
-      expect(sharedLog.some((event) => event.kind === 'agent-decision')).toBe(true);
-      expect(sharedLog.some((event) => event.kind === 'chat-turn')).toBe(true);
+    const sharedLog = await events();
+    const publishActors = sharedLog
+      .filter((event) => event.kind === 'action-executed' && event.action === 'publish')
+      .map((event) => event.actor);
+    expect(publishActors).toEqual(expect.arrayContaining(['human', 'agent']));
+    expect(sharedLog.some((event) => event.kind === 'agent-decision')).toBe(true);
+    expect(sharedLog.some((event) => event.kind === 'chat-turn')).toBe(true);
 
-      // US-13:table/chart 两种词条均从同一集合生成；新增成员字段完整，chart
-      // 无坏成员警告，重载后凝固 surface 与数据计数保持稳定。
-      const tableRender = await requestRender('展示文章列表');
-      expect(tableRender).toMatchObject({
-        outcome: 'done',
-        render: { concern: 'articles-list', spec: { component: 'table' } },
-      });
-      const chartRender = await requestRender('按分类展示文章');
-      expect(chartRender).toMatchObject({
-        outcome: 'done',
-        render: { concern: 'articles-by-category', spec: { component: 'chart' } },
-      });
+    // US-13:table/chart 两种词条均从同一集合生成；新增成员字段完整，chart
+    // 无坏成员警告，重载后凝固 surface 与数据计数保持稳定。
+    const tableRender = await requestRender('展示文章列表');
+    expect(tableRender).toMatchObject({
+      outcome: 'done',
+      render: { concern: 'articles-list', spec: { component: 'table' } },
+    });
+    const chartRender = await requestRender('按分类展示文章');
+    expect(chartRender).toMatchObject({
+      outcome: 'done',
+      render: { concern: 'articles-by-category', spec: { component: 'chart' } },
+    });
 
-      await page.goto(chartRender.render!.canvasUrl);
-      const chart = page.locator('[data-surface="articles-by-category"] [data-word="chart"]');
-      await expect(chart).toHaveAttribute('aria-label', '维度计数:tech=2, essay=2');
-      await expect(page.getByTestId('surface-warning')).toHaveCount(0);
-      await expect(page.getByTestId('canvas-errors')).toHaveCount(0);
-      await page.reload();
-      await expect(chart).toHaveAttribute('aria-label', '维度计数:tech=2, essay=2');
+    await page.goto(chartRender.render!.canvasUrl);
+    const chart = page.locator('[data-surface="articles-by-category"] [data-word="chart"]');
+    await expect(chart).toHaveAttribute('aria-label', '维度计数:tech=2, essay=2');
+    await expect(page.getByTestId('surface-warning')).toHaveCount(0);
+    await expect(page.getByTestId('canvas-errors')).toHaveCount(0);
+    await page.reload();
+    await expect(chart).toHaveAttribute('aria-label', '维度计数:tech=2, essay=2');
 
-      // US-14:/events 逐页展开完整共享日志；每条有时间、机械摘要、默认
-      // 折叠的原始审计层，human/agent/chat/decision 均可辨。
-      const totalEvents = (await events()).length;
-      await page.goto('/events');
-      const disclosures = page.locator('details[data-nav="local:event-detail"]');
-      await expect(disclosures.first()).toBeVisible();
-      for (let pageIndex = 0; pageIndex < 10; pageIndex += 1) {
-        const loadMore = page.getByRole('button', { name: '加载更多' });
-        if ((await loadMore.count()) === 0) break;
-        const before = await disclosures.count();
-        await loadMore.click();
-        await expect(disclosures).not.toHaveCount(before);
-      }
-      await expect(disclosures).toHaveCount(totalEvents);
-      await expect(page.locator('[data-word="timeline"] time')).toHaveCount(totalEvents);
-      await expect(
-        page.locator('[data-word="timeline"] p', { hasText: '执行「publish」' }).first(),
-      ).toBeVisible();
-      await expect(
-        page.locator('[data-word="timeline"] p', { hasText: '聊天回合' }).first(),
-      ).toBeVisible();
-      await expect(
-        page.locator('[data-word="timeline"] p', { hasText: '步决策(rule)' }).first(),
-      ).toBeVisible();
-      const auditText = (await disclosures.allTextContents()).join('\n');
-      expect(auditText).toContain('"actor": "human"');
-      expect(auditText).toContain('"actor": "agent"');
-      expect(auditText).toContain('"detail"');
-      await disclosures.first().locator('summary').click();
-      await expect(disclosures.first()).toHaveAttribute('open', '');
-    },
-    { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
-  );
+    // US-14:/events 逐页展开完整共享日志；每条有时间、机械摘要、默认
+    // 折叠的原始审计层，human/agent/chat/decision 均可辨。
+    const totalEvents = (await events()).length;
+    await page.goto('/events');
+    const disclosures = page.locator('details[data-nav="local:event-detail"]');
+    await expect(disclosures.first()).toBeVisible();
+    for (let pageIndex = 0; pageIndex < 10; pageIndex += 1) {
+      const loadMore = page.getByRole('button', { name: '加载更多' });
+      if ((await loadMore.count()) === 0) break;
+      const before = await disclosures.count();
+      await loadMore.click();
+      await expect(disclosures).not.toHaveCount(before);
+    }
+    await expect(disclosures).toHaveCount(totalEvents);
+    await expect(page.locator('[data-word="timeline"] time')).toHaveCount(totalEvents);
+    await expect(
+      page.locator('[data-word="timeline"] p', { hasText: '执行「publish」' }).first(),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-word="timeline"] p', { hasText: '聊天回合' }).first(),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-word="timeline"] p', { hasText: '步决策(llm)' }).first(),
+    ).toBeVisible();
+    const auditText = (await disclosures.allTextContents()).join('\n');
+    expect(auditText).toContain('"actor": "human"');
+    expect(auditText).toContain('"actor": "agent"');
+    expect(auditText).toContain('"detail"');
+    await disclosures.first().locator('summary').click();
+    await expect(disclosures.first()).toHaveAttribute('open', '');
+  });
 });

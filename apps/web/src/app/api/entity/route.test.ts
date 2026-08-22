@@ -70,7 +70,12 @@ describe('GET /api/entity', () => {
       node: 'published',
       title: '已发布',
     });
-    expect(entity.actions.map((action) => action.name)).toEqual(['unpublish', 'archive']);
+    expect(entity.actions.map((action) => action.name)).toEqual([
+      'unpublish',
+      'archive',
+      'generate-summary',
+      'save-summary',
+    ]);
     expect(entity.actions.every((action) => action.href === '/api/exec')).toBe(true);
     const unpublish = entity['guard-results']?.find((entry) => entry.action === 'unpublish');
     expect(unpublish).toMatchObject({

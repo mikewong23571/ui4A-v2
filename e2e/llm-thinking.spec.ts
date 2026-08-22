@@ -78,7 +78,7 @@ interface LoggedEvent {
 /** agent-decision detail(chat/decisions.ts 的 AgentDecisionDetail 镜像)。 */
 interface AgentDecisionDetail {
   step: number;
-  driver: 'rule' | 'llm';
+  driver: 'llm';
   prompt: { system: string; user: string };
   reasoning: string | null;
   op: { kind: string };
@@ -86,7 +86,7 @@ interface AgentDecisionDetail {
 
 /** chat-turn detail(chat/history.ts 的 ChatTurnDetail 消费面子集)。 */
 interface ChatTurnDetail {
-  driver: 'rule' | 'llm';
+  driver: 'llm';
   outcome: string;
   steps: { step: number; rel: string; op: { kind: string }; outcome: string }[];
 }

@@ -19,7 +19,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
-    "e2e": "CI=true playwright test"
+    "e2e": "CI=true playwright test",
+    "eval:t15": "CI=true playwright test --config=playwright.story-eval.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

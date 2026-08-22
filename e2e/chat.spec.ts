@@ -1,21 +1,18 @@
 /**
- * T2 Phase E / Task E3 — chat 合同 E2E:B4(坏 key)、I1(无 key)、flow 导航补全。
+ * T2 Phase E / Task E3 — chat 合同 E2E:B4(坏 key)、U22(无 key安全)、flow 导航补全。
  *
  * - B4:provider-neutral LLM 配置 + 显式 driver 'llm' + LLM_BASE_URL 指向本地 401 桩
  *   (确定性,零外网依赖;真实端点 401 形状同构)→ chat 响应包含 401 与错误原文,
  *   route 不 5xx;同一 session 再发一次行为一致(循环存活,委托不崩溃);
- * - I1:LLM 配置三项显式清空(压过 .env.local)→ auto 回退 rule →
- *   B1 目标(fields 经 goal 传入)→ 文章计数 2→3,轨迹含三步填充 + publish,
- *   driver='rule'(无 LLM 网络调用的 e2e 级证据;单测级 auto 回退断言见
- *   packages/agent/src/llm-driver.test.ts);
+ * - U22:LLM 配置三项显式清空(压过 .env.local)→ auto 仍解析为 llm，
+ *   Assistant 诚实失败且文章集合与业务事件保持不变；
  * - flow 导航补全:articles → flow 入口链接 → 向导实例(零 startRel 特权)。
  * - 悬浮窗:首页(3100 webServer)按钮可见、可展开。
  *
  * T9 Phase B:inline 响应改 SSE 流(text/event-stream;step 帧逐步 + final
  * 终帧)——chat() helper 解析帧并把 step 文本聚回 messages,既有断言口径
  * 不变;新增:帧序断言(step 先于 final)与「停止」按钮可点的 UI 走查。
- * T11 Phase C:rule 路径断言零 thinking 帧且不炸(spec 验收 5 前半;thinking
- * 帧为 llm 步推理自述,rule driver 零回调零帧)。
+ * T11 Phase C:thinking 帧为 LLM 推理自述；配置缺失时自然零帧。
  */
 import { createServer } from 'node:http';
 
@@ -25,7 +22,7 @@ import { SCENARIO_BASE, withFreshServer } from './server-kit';
 
 interface ChatResponseBody {
   sessionId: string;
-  driver: 'rule' | 'llm';
+  driver: 'llm';
   outcome: 'done' | 'failed' | 'max-steps';
   summary: string | null;
   messages: { role: 'assistant'; text: string }[];
@@ -149,7 +146,7 @@ test('flow 导航补全:articles → flow 入口链接 → 向导实例(零 star
   });
 });
 
-test('I1:无 LLM 配置 → chat auto 回退 rule,B1 完成(文章 2→3)', async () => {
+test('U22:无 LLM 配置 → chat auto 诚实失败、零业务副作用', async () => {
   await withFreshServer(
     async () => {
       expect(await articleCount()).toBe(2);
@@ -168,13 +165,10 @@ test('I1:无 LLM 配置 → chat auto 回退 rule,B1 完成(文章 2→3)', asyn
       });
 
       expect(status).toBe(200);
-      expect(json.driver, 'auto 在无 key 环境必须解析为 rule').toBe('rule');
-      expect(json.outcome, JSON.stringify(json.messages)).toBe('done');
-
-      const trajectory = json.messages.map((message) => message.text).join('\n');
-      expect(trajectory.match(/执行 next/g)).toHaveLength(3);
-      expect(trajectory).toContain('执行 publish');
-      expect(trajectory).toContain('完成');
+      expect(json.driver, 'auto 在无 key 环境仍必须解析为 llm').toBe('llm');
+      expect(json.outcome, JSON.stringify(json.messages)).toBe('failed');
+      expect(json.summary).toContain('LLM 不可用');
+      expect(json.summary).toContain('配置后可重试');
 
       // T14:session 首帧先确立可恢复回合；step/focus 过程帧均先于 final。
       expect(frames.length).toBeGreaterThan(1);
@@ -187,11 +181,10 @@ test('I1:无 LLM 配置 → chat auto 回退 rule,B1 完成(文章 2→3)', asyn
             (frame) => frame.type === 'session' || frame.type === 'step' || frame.type === 'focus',
           ),
       ).toBe(true);
-      // T11 Phase C(spec 验收 5 前半):rule driver 无 reasoning → 零 thinking
-      // 帧,rule 路径帧序列与现状逐帧一致。
+      // 配置缺失发生在模型调用前，因此没有伪造的 thinking 帧。
       expect(frames.filter((frame) => frame.type === 'thinking')).toHaveLength(0);
 
-      expect(await articleCount()).toBe(3);
+      expect(await articleCount()).toBe(2);
     },
     // 显式空配置:进程 env 优先于 .env.local —— e2e 进程无 LLM profile
     { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
@@ -224,7 +217,7 @@ test('B4:坏 key → 401 原文进对话,route 不 5xx;同 session 再发一次�
         expect(second.json.outcome).toBe('failed');
         expect(second.raw).toContain('401');
 
-        // 顺带:同 server 上 rule 通道不受坏 key 影响(auto 显式空 key 时同样成立)
+        // 同一 server 上不存在 rule 旁路；失败始终来自当前 LLM profile。
       },
       {
         LLM_API_KEY: 'invalid-key',
@@ -240,8 +233,7 @@ test('B4:坏 key → 401 原文进对话,route 不 5xx;同 session 再发一次�
 test('渲染路径 SSE 化兜底:展示意图 rule miss + 无 key → 同流交回 agent 循环(零 render 帧)', async () => {
   await withFreshServer(
     async () => {
-      // 「看看」是展示意图词(hasDisplayIntent 命中)但无集合词 → rule 模板
-      // miss;无 key → LLM 路径跳过(I1)→ SSE 流内交回普通 agent 循环。
+      // 「看看」是展示意图但无 key；AI-first 配置闸先诚实失败，不走机械 render。
       const { status, frames, raw } = await chat({
         sessionId: 'render-sse-fallback',
         goal: { verb: '看看站点地图' },
@@ -257,7 +249,7 @@ test('渲染路径 SSE 化兜底:展示意图 rule miss + 无 key → 同流交�
       expect(frames[frames.length - 1]!.type).toBe('final');
       expect(frames.some((frame) => frame.type === 'step')).toBe(true);
     },
-    // 显式空配置:e2e 进程无 LLM profile(rule 确定路径,I1 口径)
+    // 显式空配置:e2e 进程无 LLM profile(U22 故障安全口径)
     { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
   );
 });

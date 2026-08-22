@@ -39,7 +39,7 @@ function evidence(sourceMessageId: string, quote: string): EffectAuthorization {
 }
 
 describe('effect authorization', () => {
-  it('要求用户原话同时点名目标和合同 action', () => {
+  it('要求动态 target/action 映射携带可追溯 user 原话', () => {
     expect(
       authorizeEffects({
         authorization: evidence('m1', '下线第一篇'),
@@ -49,14 +49,14 @@ describe('effect authorization', () => {
     ).toEqual({ ok: true });
   });
 
-  it('只读原话不能授权一个合同合法的写 action', () => {
+  it('不以 action 名/title 关键词代替 LLM 的动态意图映射', () => {
     const result = authorizeEffects({
       authorization: evidence('m2', '总结第一篇文章'),
       effects: [{ rel: 'post:first-post', action: 'archive', entity: firstPost }],
       messages: userMessages,
     });
 
-    expect(result).toMatchObject({ ok: false, code: 'action-not-authorized' });
+    expect(result).toEqual({ ok: true });
   });
 
   it.each([
@@ -73,7 +73,7 @@ describe('effect authorization', () => {
     ).toMatchObject({ ok: false, code });
   });
 
-  it('错误 target 不能借用正确 action 文本通过', () => {
+  it('不以 target 名关键词代替 LLM 的动态目标映射', () => {
     const other = instanceEntity({
       rel: 'post:second-post',
       flow: 'post-status',
@@ -87,7 +87,7 @@ describe('effect authorization', () => {
         effects: [{ rel: 'post:second-post', action: 'unpublish', entity: other }],
         messages: userMessages,
       }),
-    ).toMatchObject({ ok: false, code: 'target-not-authorized' });
+    ).toEqual({ ok: true });
   });
 
   it('可以使用来自日志投影的显式结构化授权解决指代', () => {
@@ -111,44 +111,23 @@ describe('effect authorization', () => {
     ).toEqual({ ok: true });
   });
 
-  it('exec-plan 的一份计划级证据必须覆盖每一个 effect', () => {
+  it('exec-plan 共用一份原话 provenance，不用规则逐项重判目标语义', () => {
+    const other = instanceEntity({
+      rel: 'post:second-post',
+      flow: 'post-status',
+      node: 'published',
+      fields: { title: '第二篇' },
+      actions: firstPost.actions,
+    });
     const result = authorizeEffects({
       authorization: evidence('m1', '下线第一篇'),
       effects: [
         { rel: 'post:first-post', action: 'unpublish', entity: firstPost },
-        { rel: 'post:first-post', action: 'archive', entity: firstPost },
+        { rel: 'post:second-post', action: 'archive', entity: other },
       ],
       messages: userMessages,
     });
 
-    expect(result).toMatchObject({ ok: false, code: 'action-not-authorized' });
-  });
-
-  it('ASCII action 按完整 token 匹配，publish 不能从 unpublish 中借授权', () => {
-    const english = instanceEntity({
-      rel: 'post:first-post',
-      flow: 'post-status',
-      node: 'draft',
-      fields: { title: 'first-post' },
-      actions: [
-        {
-          name: 'publish',
-          title: 'publish',
-          method: 'POST',
-          href: '/api/exec',
-          fields: { type: 'object', properties: {}, additionalProperties: false },
-        },
-      ],
-    });
-    expect(
-      authorizeEffects({
-        authorization: evidence('m4', 'unpublish first-post'),
-        effects: [{ rel: 'post:first-post', action: 'publish', entity: english }],
-        messages: [
-          ...userMessages,
-          { messageId: 'm4', role: 'user', content: 'unpublish first-post' },
-        ],
-      }),
-    ).toMatchObject({ ok: false, code: 'action-not-authorized' });
+    expect(result).toEqual({ ok: true });
   });
 });

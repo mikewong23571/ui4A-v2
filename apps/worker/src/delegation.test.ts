@@ -381,7 +381,8 @@ describe('runAgentStep(scripted protocol driver,决策+执行合一)', () => {
     );
     expect(failResult.outcome).toBe('failed');
     expect(failResult.op).toMatchObject({ kind: 'fail' });
-    expect(missingDb.inserts).toHaveLength(0);
+    expect(missingDb.inserts).toHaveLength(1);
+    expect(missingDb.inserts[0]!.values[3]).toBe('delegation-started');
   });
 
   it('driver 决策 answer → answered 留痕且零业务 POST', async () => {

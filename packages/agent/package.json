@@ -3,11 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "UI4A agent 循环协议与 rule driver:循环是协议,driver 是插件(arch-brief §6)。纯 TS 两栖,HTTP 客户端经 fetchImpl 注入(测试脚本化/真实 fetch 双用)。",
+  "description": "UI4A AI-first agent 循环协议、LLM driver 与合同工具投影；legacy driver 仅供显式 testkit 协议测试。",
   "exports": {
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./testkit/rule-driver": {
+      "types": "./src/rule-driver.ts",
+      "default": "./src/rule-driver.ts"
     }
   },
   "scripts": {

@@ -19,7 +19,7 @@ beforeEach(async () => {
 });
 
 describe('GET /_meta/.well-known/ui4a.json', () => {
-  it('200:meta rel 面齐备(self/flows/activations + 三个定义实体 + capabilities 目录与三个 seed),版本为内容 hash 短码', async () => {
+  it('200:meta rel 面齐备(self/flows/activations + 三个定义实体 + capabilities 目录与四个 seed),版本为内容 hash 短码', async () => {
     const res = await GET();
     expect(res.status).toBe(200);
     const sitemap = (await res.json()) as {
@@ -38,6 +38,7 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
       'meta/flow:comment-moderation',
       'meta/capabilities',
       'meta/capability:draft',
+      'meta/capability:summarize',
       'meta/capability:notify',
       'meta/capability:clarify',
     ]);

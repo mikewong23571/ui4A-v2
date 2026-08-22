@@ -24,7 +24,7 @@ export function parseExecBody(body: unknown): ParsedBody | ParseError {
   if (!isPlainObject(body)) {
     return { ok: false, error: '请求体必须是 JSON 对象' };
   }
-  const { rel, action, params, actor, principal, channel } = body;
+  const { rel, action, params, actor, principal, channel, authorization } = body;
   if (typeof rel !== 'string' || rel === '') {
     return { ok: false, error: 'rel 必须是非空字符串' };
   }
@@ -43,10 +43,39 @@ export function parseExecBody(body: unknown): ParsedBody | ParseError {
   if (channel !== undefined && typeof channel !== 'string') {
     return { ok: false, error: 'channel 必须是字符串' };
   }
+  const parsedAuthorization = parseAuthorization(authorization);
+  if (parsedAuthorization === null) {
+    return {
+      ok: false,
+      error: 'authorization 必须是 {sourceMessageId: 非空字符串, quote: 非空字符串}',
+    };
+  }
   return {
     ok: true,
-    request: { rel, action, params, actor, principal, channel: channel ?? 'http' },
+    request: {
+      rel,
+      action,
+      params,
+      actor,
+      principal,
+      channel: channel ?? 'http',
+      ...(parsedAuthorization !== undefined ? { authorization: parsedAuthorization } : {}),
+    },
   };
+}
+
+function parseAuthorization(value: unknown): ExecRequest['authorization'] | undefined | null {
+  if (value === undefined) return undefined;
+  if (
+    !isPlainObject(value) ||
+    typeof value.sourceMessageId !== 'string' ||
+    value.sourceMessageId === '' ||
+    typeof value.quote !== 'string' ||
+    value.quote === ''
+  ) {
+    return null;
+  }
+  return { sourceMessageId: value.sourceMessageId, quote: value.quote };
 }
 
 /** 拒绝层 → HTTP 状态:声明性缺失 400,语义不满足 422。 */
@@ -62,10 +91,7 @@ export function rejectionStatus(layer: 'undeclared' | 'guard-failed' | 'schema-i
 const PLAN_LEVEL_KEYS = ['actor', 'principal', 'channel'] as const;
 
 /** 校验单个身份字段(actor/principal/channel),返回错误消息或 undefined。 */
-function identityError(
-  key: (typeof PLAN_LEVEL_KEYS)[number],
-  value: unknown,
-): string | undefined {
+function identityError(key: (typeof PLAN_LEVEL_KEYS)[number], value: unknown): string | undefined {
   if (value === undefined) return undefined;
   if (key === 'actor' && value !== 'human' && value !== 'agent') {
     return `${key} 必须是 "human" | "agent"`;
@@ -98,6 +124,13 @@ export function parsePlanBody(body: unknown): ParsedPlanBody {
     principal: body.principal as ExecRequest['principal'],
     channel: body.channel as ExecRequest['channel'],
   };
+  const planAuthorization = parseAuthorization(body.authorization);
+  if (planAuthorization === null) {
+    return {
+      ok: false,
+      error: 'authorization 必须是 {sourceMessageId: 非空字符串, quote: 非空字符串}',
+    };
+  }
   const { steps } = body;
   if (!Array.isArray(steps)) {
     return { ok: false, error: 'steps 必须是非空数组' };
@@ -124,6 +157,14 @@ export function parsePlanBody(body: unknown): ParsedPlanBody {
       const error = identityError(key, step[key]);
       if (error !== undefined) return { ok: false, error: `steps[${index}].${error}` };
     }
+    const stepAuthorization = parseAuthorization(step.authorization);
+    if (stepAuthorization === null) {
+      return {
+        ok: false,
+        error: `steps[${index}].authorization 必须是 {sourceMessageId: 非空字符串, quote: 非空字符串}`,
+      };
+    }
+    const authorization = stepAuthorization ?? planAuthorization;
     parsedSteps.push({
       rel: step.rel,
       action: step.action,
@@ -131,6 +172,7 @@ export function parsePlanBody(body: unknown): ParsedPlanBody {
       actor: (step.actor as ExecRequest['actor']) ?? defaults.actor,
       principal: (step.principal as ExecRequest['principal']) ?? defaults.principal,
       channel: (step.channel as ExecRequest['channel']) ?? defaults.channel ?? 'http',
+      ...(authorization !== undefined ? { authorization } : {}),
     });
   }
   return { ok: true, steps: parsedSteps };

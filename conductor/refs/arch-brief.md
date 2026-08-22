@@ -69,6 +69,10 @@ TS 映射(选型 §3):动作声明 → Cedar 策略 + JSON Schema(Ajv)校验 →
 
 操作记录 = append-only 事件日志;当前 UI 状态 = 日志折叠后的物化状态;chat history = 日志的定制投影(第三层)。demo 印证:引擎侧一份 append-only 日志,聊天 session 存浏览器 localStorage 是纯投影,清掉无损。一条日志两个层面:对象层状态迁移 + meta 层定义事件 + capability 产物共用,可回答"这篇文章为什么是 archived"的跨层因果(第六层)。重放确定性:引擎物理上只能经 capability 接触外界,**日志 + capability 产物 = 完整重放输入,应用核心是日志的纯函数**;任何依赖时间的逻辑必须是时钟 capability 的 **tick 提议**,不许后台线程改状态(第七层)。验收(GOAL I5):从空库重放,实体状态 hash 与重放前一致。已知洞 #8:双层日志的重放与存储成本未测量。
 
+T15 将聊天正式纳入同一事件溯源口径：user/assistant 原话按 role、session/turn、message id 和顺序 append-only 保存；服务端从日志投影有界近期原文以及结构化 `activeGoal`、focus/history、referents、constraints、pending clarification、authorized effects 和最近结果。结构化状态可被后续原话修订，但不得回写或替换原始消息；刷新、重连和 delegated 恢复均从日志重建，不建立进程内第二真相。
+
+执行审计同样是事件投影：effect 请求携带 user `sourceMessageId + quote`，服务层按 principal、时序和原文再次核验；成功事件记录 action declaration、guards、schema、confirmation policy 和授权索引，随后的人类确认与最终业务事件继续同链。`execution-audit` 只能从这些事件解释“谁授权了什么、为何允许、谁确认、发生了什么”；找不到授权时输出 `authorization-error`，禁止反向编造原因。
+
 ## 5. B1–B3 基线场景(T2 验收脚本)
 
 正典第五部实测表 + GOAL 断言。总口径(GOAL):**每个场景由两种执行者各跑一遍——人类走 renderer,agent 走合同(tools/HTTP),同一套场景,同一份日志**。
@@ -84,9 +88,11 @@ TS 映射(选型 §3):动作声明 → Cedar 策略 + JSON Schema(Ajv)校验 →
 
 **AI-first agent 执行循环**(T15 supersede 第二层历史实现):真实 LLM driver 根据 sitemap、授权实体事实、会话上下文与轨迹动态理解目标；生产 Assistant 不再以 rule driver 兜底。scripted/mock driver 仅验证循环协议。模型缺失或失败时诚实失败且零副作用，人工 renderer 保持可用。裁决器治理副作用，不替代模型认知。
 
-生产接口形态(选型 1.1,两层工具):**固定协议动词 5 个**:`navigate(rel)` / `exec(action, params)` / `clarify(fields)` / `render(spec)` / `done(summary)`;**每状态动态动作工具**:当前实体 `actions[]` 逐个生成工具,字段 schema 内联进参数,guard 求值结果嵌进 description("blocked: is-pending 失败"——拒绝即教育);navigate 的 rel 参数从实体 `links` 生成枚举。**合法动作集就是工具列表——处境披露的 tool 形态,作用域自动继承**。HTTP 合同是唯一真相,tools/MCP 是投影。
+生产接口形态(选型 1.1,两层工具):固定协议出口为 `navigate` / `answer` / `exec` / `exec_plan` / `clarify` / `render` / `done` / `fail`;每状态动态动作工具由当前实体 `actions[]` 逐个生成，字段 schema 内联进参数，guard 求值结果嵌进 description。`navigate` 的 rel 来自实体 links/子实体；LLM prompt 同时披露完整授权 facts、links、actions、guard-results、app-scoped sitemap capabilities 与会话约束。HTTP 合同是唯一真相,tools/MCP 是投影；合法 action 只代表“合同当前允许”，不能替代 user effect authorization。
 
-**clarify 是 capability 不是聊天**(第九层,规格原样):
+**认知自由，读取受权，物化受管，副作用受裁决**：对当前授权 facts 的阅读、临时总结、比较和解释是 LLM 原生能力，直接经 `answer` 返回，不注册 `read/summarize/compare/explain` action。需要跨会话复用、结构化 schema、重试、成本或审计的模型输出才进入 capability，物化为带 source/model/schema/content hash 的 artifact；将 artifact 写回业务字段或改变节点仍需独立 action、guard/schema 与确认。正式模型工件在任何 action/spawn 事件写入前要求外部 `LLM_MODEL`，禁止 `unconfigured` 半成品。
+
+**两种 clarify 不混用**：普通对话中的歧义澄清是 Agent 协议终态，不产生 artifact，也不要求 application capability；只有需要 durable、schema-driven elicitation 的正式字段收敛才使用 application `clarify` capability(第九层规格):
 
 ```
 capability: clarify
@@ -96,15 +102,15 @@ capability: clarify
 终止条件: schema 满足 | max-turns | timeout
 ```
 
-chat 是一个函数:输入悬挂字段,输出满足 schema 的值。触发双层:主动(实体投影携带字段语义,agent 见 elicitation 字段直接开澄清)与被动(提交校验失败且字段声明 `:on-invalid :clarify`,引擎把拒绝转澄清 session)。失败回流路由:**状态型失败(非法迁移)回 agent,意图型失败(缺 intent 字段)路由给人**;出处记作 `elicited:session-N`。structured output(AI SDK `generateObject`)即现成机制。
+正式 elicitation 的输入是悬挂字段，输出是满足 schema 的值。触发双层:主动(实体投影携带字段语义,agent 见 elicitation 字段直接开澄清)与被动(提交校验失败且字段声明 `:on-invalid :clarify`,引擎把拒绝转澄清 session)。失败回流路由:**状态型失败(非法迁移)回 agent,意图型失败(缺 intent 字段)路由给人**;出处记作 `elicited:session-N`。
 
 ## 7. :form runner 与哑路径
 
-runner 阶梯(第九层):**`:form`(渲染成表单/推送按钮,零智能,永远可用)→ `:rule`(规则生成问题与选项)→ `:ai`(高级模型对话)**。"最哑的澄清就是传统表单本身"。表单从实体 `actions[]` 的 fields 生成;**field-definition(含 semantics/source/on-invalid/elicit)就是 RJSF v6 的输入**(JSON Schema draft-07 + Ajv,RJSF 直接吃)。渲染词汇表 `form` 词条绑定 schema:`{schema: action.fields, data}`。澄清应答权本身可再委托(例行分叉 assistant 代答,真分叉升级到人)。
+durable elicitation 的 runner 阶梯(第九层)可从传统表单到高级模型对话；它描述 capability 的执行策略，不是产品 Assistant 的 driver fallback。"最哑的澄清就是传统表单本身"。表单从实体 `actions[]` 的 fields 生成;**field-definition(含 semantics/source/on-invalid/elicit)就是 RJSF v6 的输入**(JSON Schema draft-07 + Ajv,RJSF 直接吃)。渲染词汇表 `form` 词条绑定 schema:`{schema: action.fields, data}`。Assistant 不可用时保留表单/renderer 控制面，但不伪装完成自然语言任务。
 
 ## 8. 悬浮聊天与三投影
 
-assistant 是客服插件形态**悬浮窗**:跨页面悬浮,点击展开聊天;用户输入目标,agent 逐步汇报轨迹(导航、执行、拒绝原因、完成);右上角历史 session 与 LLM 设置;**聊天界面就是事件日志的投影层**(第五层)。三投影(选型 1.1):**renderer 给人、HTTP 给脚本、tools/MCP 给模型**——同一合同,三种消费。聊天窗升格为"人类注意力的唯一入口"(第九层):目标形成、途中澄清、确认批准、草稿选择,全部作为对话到达。
+assistant 是客服插件形态**悬浮窗**:跨页面悬浮,点击展开聊天;用户输入目标,agent 逐步汇报轨迹(导航、回答、执行、拒绝原因、完成);**聊天界面就是事件日志的投影层**(第五层)，原始消息与结构化会话状态同源重建。三投影(选型 1.1):**renderer 给人、HTTP 给脚本、tools/MCP 给模型**——同一合同,三种消费。聊天窗升格为"人类注意力的唯一入口"(第九层):目标形成、途中澄清、确认批准、草稿选择,全部作为对话到达。provider profile 仅由外部 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 完整提供；default/auto 都解析为 LLM，缺项、端点错误或超时诚实失败且零业务副作用。
 
 ## 9. 五条垂直切片(第五部,施工顺序)
 

@@ -45,7 +45,7 @@
 
 ## D7 环境注记:GLM 端点行为(2026-08-21)
 
-- 模型:缺省 `glm-4.7`(env `LLM_MODEL` 可覆盖);tool calling 工作正常。
+- **历史观测，生产默认值已由 D25 废止**。当时测试 profile 使用 `glm-4.7`；当前 runtime 必须从外部完整 profile 读取模型，不得把本条型号当 fallback。
 - **`tool_choice: "required"` 在 GLM Chat Completion 端点挂起不响应**(90s+ 无返回)——必须用缺省 `auto`;已修复于 commit `004e3db`,后续任何 LLM 调用不得再传 required。
 - `@ai-sdk/openai` 缺省走 Responses API,接 GLM 必须显式 `provider.chat()` 锁定 Chat Completions 协议。
 - 推理模型每步决策 8–20s;agent 循环步数上限要考虑真实时延(当前 24 步)。
@@ -139,10 +139,10 @@
 - **T1 spec 必须回答的开放问题**:membership 方向(app 持 flow 清单 vs flow 声明归属;单属还是多属);agent 工具面/导航枚举按 app scope 过滤的机械;default application 迁移口径。
 - **明确缓做**:policy 按 app 收口、跨 app 共享/分发、访客身份认证(D8 自报口径延续)、application 级 activation 捆绑。
 
-## D20 默认模型升级 glm-5.3(2026-08-22)
+## D20 [历史，D25 已 supersede]曾用默认模型升级 glm-5.3(2026-08-22)
 
-- 用户指示:缺省模型 glm-4.7 → **glm-5.3**(2026-08-14 发布并全量 GLM Coding Plan;同 coding endpoint、1M context、reasoning effort low/high/max 缺省 max)。改动:`DEFAULT_LLM_MODEL`(packages/agent/src/llm-driver.ts)+ llm-smoke/demo-checklist 注释;`LLM_MODEL` env 覆盖口径不变。
-- 本条更新 D7 的缺省型号口径;D7 其余结论(`tool_choice` 必须 auto 不可 required、`provider.chat()` 锁 Chat Completions)继续有效——glm-5.3 的 tool calling 与 reasoning 流行为以 llm-smoke 实测复跑为准;reasoning effort 缺省 max,每步决策时延可能高于 D7 的 8–20s 口径,观测后校准。
+- **历史决定，已被 D25 supersede**。当时曾把代码默认模型从 glm-4.7 升至 glm-5.3；T15 已删除生产默认 endpoint/model/key，当前不得恢复 `DEFAULT_LLM_MODEL` 或任何隐式 provider fallback。
+- D7/D20 的端点兼容与时延观测仍可作为历史探针证据，但不再定义部署配置。
 
 ## D21 激活不变式六项 → 七项:S2 e2e 精确名单断言机械适配(2026-08-22,T10 Phase A)
 
@@ -172,7 +172,16 @@
 
 ## D25 LLM 配置外置 + DeepSeek T15 baseline(2026-08-22,T15 Phase A)
 
-- **方向**:T15 改为 AI-first。生产 Assistant 的 provider 不是代码默认值；统一由 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 三项完整 profile 提供。Web、Worker、render、probe 与 story Eval 复用同一解析器；缺项在网络前结构化失败。D20 的 glm-5.3 缺省模型与 D22 的端点观测保留为历史，但不再是 runtime fallback。
+- **方向**:T15 改为 AI-first。生产 Assistant 的 provider 不是代码默认值；统一由 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 三项完整 profile 提供。Web、Worker、render、probe 与 story Eval 复用同一解析器；缺项在网络前结构化失败。D20 的历史模型选择与 D22 的端点观测仅保留为探针记录，不再定义 runtime 配置。
 - **本地传播**:根级 gitignored `.env.local` 是 `pnpm dev:all` 的本地配置入口，provider-neutral loader 将外部环境优先地传给 Temporal、Worker 与 Web；`.env.example` 只含空占位符。普通 Vitest 显式使用空 profile，防止本机配置意外触发真实调用；真实 LLM 只由门控 Eval 显式开启。
 - **首个 baseline**:`deepseek-v4-flash` @ `https://cpa.styleofwong.cn/v1`(OpenAI-compatible Chat Completions)。真实 probe generateText×3 / streamText×3 均成功，6/6 返回 `exec` tool call；非流式 2.8–4.3s，流式全程 3.8–6.4s。SDK reasoning parts 为 0，但原始响应/stream raw chunks 提供 `reasoning_content`；流式 reasoning 与 tool call 接近同批到达。该观测只校准通用取数，不引入 provider 特判。
 - **密钥口径**:真实 key 只存在于外部环境或 gitignored 本地文件，不进入源码、提交、日志、Eval 报告或 git notes。
+
+## D26 T15 AI-first Assistant 边界与可解释副作用(2026-08-23)
+
+- **生产智能主体**:default/auto 与显式 llm 都解析为真实 LLM。rule driver 退出产品公共面，只能从显式 testkit 子路径用于循环协议测试；缺少配置、端点失败或超时都返回可恢复失败，零业务副作用，renderer/审批/人工合同操作保持可用。
+- **会话是真实日志的投影**:user/assistant 原话携带 role、session/turn、message id 与顺序 append-only 保存；下一轮同时消费有界近期原文和从日志重建的 `activeGoal`、focus、referents、constraints、pending clarification、authorized effects 与最近结果。结构化投影可修订，原话不可改写；刷新、重连和 delegated 恢复不依赖进程内 session 真相。
+- **认知与能力分界**:读取当前 principal 已授权的合同事实，以及临时回答、总结、比较、解释，是 LLM 原生能力，不注册认知 action/capability。需要持久化、共享、重试、schema、成本或审计的模型输出才物化为 capability artifact；写回业务字段或改变状态必须另走 action、guard/schema 与必要确认。
+- **effect authorization 与解释**:每次 agent `exec/exec-plan` 必须引用 append-only user `sourceMessageId` 和逐字 quote，并与目标 rel/action 对齐。成功事件保留 declaration、guards、schema、confirmation policy 与授权索引；human decision 和最终事件继续同链。执行解释只从事件投影生成，授权缺失或伪造时标记 `authorization-error`，不得补造理由。
+- **正式模型工件**:外部 `LLM_MODEL` 在任何 action/spawn/artifact 业务事件写入前预检；缺项返回 503 且不产生半成品，禁止 `model: unconfigured`。provider profile 仍只有 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 三项外部部署数据，无供应商默认值。
+- **验收纪律**:确定性测试只守权限、事实、授权、副作用、审计和重放；Assistant 动态用户故事必须使用配置的真实 LLM，scripted/mock 结果不能冒充语义能力证据。

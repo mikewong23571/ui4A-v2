@@ -301,6 +301,7 @@
                   "type": "textarea",
                   "required": true,
                   "semantics": "work-product",
+                  "persist": false,
                   "title": "正式摘要",
                   "source": {
                     "kind": "proposal",

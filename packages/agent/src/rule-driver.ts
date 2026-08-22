@@ -1,5 +1,6 @@
 /**
- * rule driver:纯启发式决策器(无 LLM,无 key 时的兜底;I1 的机械层)。
+ * legacy rule driver:纯启发式协议测试 fixture。产品 runtime 不导入、不 fallback，
+ * 仅通过 @ui4a/agent/testkit/rule-driver 的显式测试子路径提供。
  *
  * 目标相关性决策次序(arch-brief §5 原样,逐层带停止条件):
  * ⓪ app 定位层(T10 架构决定 6,软边界):目标词命中某 app 的 name/intent
@@ -27,21 +28,9 @@
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { anyTokenInString, asciiTokens, expandVerb } from './match';
+import { navigableRels, relFromHref } from './navigation';
+import { ADVANCE_TOKENS } from './progress';
 import type { AgentDriver, AgentGoal, AgentOperation, DriverContext } from './types';
-
-/** 流程推进词(③:向导/表单类流程的前进动作;plan 生成器共用同一词表)。 */
-export const ADVANCE_TOKENS = [
-  'next',
-  '下一步',
-  'continue',
-  '继续',
-  'submit',
-  '提交',
-  'save',
-  '保存',
-  'finish',
-  '完成',
-];
 
 /** 队列类目标特征词(③/ done 判定按队列语义处理)。 */
 const QUEUE_HINTS = ['审核', 'approve', 'moderate', 'review', '队列', 'queue', '处理'];
@@ -62,30 +51,6 @@ function isInstanceEntity(entity: SirenEntity): boolean {
 
 function isCollectionEntity(entity: SirenEntity): boolean {
   return entity.class.includes('collection');
-}
-
-/** href → rel 参数(/api/entity?rel=post%3Ax → post:x)。 */
-function relFromHref(href: string | undefined): string | undefined {
-  if (href === undefined) return undefined;
-  const match = /[?&]rel=([^&]+)/.exec(href);
-  return match === null ? undefined : decodeURIComponent(match[1]!);
-}
-
-/** 实体上可导航的 rel 候选(links 的 rel= 与子实体),排除当前 rel,保序去重。 */
-export function navigableRels(entity: SirenEntity, currentRel: string): string[] {
-  const candidates: string[] = [];
-  const push = (rel: string | undefined): void => {
-    if (rel === undefined || rel === '' || rel === currentRel) return;
-    if (!candidates.includes(rel)) candidates.push(rel);
-  };
-  for (const link of entity.links) {
-    push(relFromHref(link.href));
-  }
-  for (const sub of entity.entities ?? []) {
-    const rel = sub.properties.rel;
-    push(typeof rel === 'string' ? rel : relFromHref(sub.href));
-  }
-  return candidates;
 }
 
 /** guard-results 里被阻断的动作名(拒绝即教育:不再直投)。 */

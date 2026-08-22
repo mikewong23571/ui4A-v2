@@ -25,7 +25,8 @@
  * PostgreSQL 5433 为既有前置;S1 表单版不需要 worker(notify 送达链路由
  * s1.spec 覆盖),Temporal 不可达时本文件不跳过(与 s1 互补的口径)。
  */
-import { createRuleDriver, planFor, runAgent } from '@ui4a/agent';
+import { planFor, runAgent } from '@ui4a/agent';
+import { createRuleDriver } from '@ui4a/agent/testkit/rule-driver';
 import type { AgentDriver, DriverContext, SirenEntity, TrailStep } from '@ui4a/agent';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -39,6 +40,12 @@ import { contentVersion, fold } from '../packages/engine/src/index';
 import { metaFlowRel } from '../packages/shared/src/definition';
 
 import { DATABASE_URL, SCENARIO_BASE, withFreshServer } from './server-kit';
+
+const UNUSED_LLM_PROFILE = {
+  LLM_API_KEY: 'e2e-unused-key',
+  LLM_BASE_URL: 'http://127.0.0.1:9/v1',
+  LLM_MODEL: 'e2e-unused-model',
+};
 
 // 本文件全部用例指向场景 server(3110)。
 test.use({ baseURL: SCENARIO_BASE });
@@ -120,15 +127,15 @@ async function fetchSitemap(): Promise<Parameters<typeof planFor>[1]> {
   return (await response.json()) as Parameters<typeof planFor>[1];
 }
 
-/** chat 合同(rule driver 确定路径,S5/I2 共用)。 */
-async function chatRule(
+/** chat 合同的 AI-first render 请求；命中机械 binding-only 路径时不调用模型。 */
+async function chatAuto(
   verb: string,
   sessionId: string,
 ): Promise<{ status: number; json: Record<string, unknown> }> {
   const response = await fetch(`${SCENARIO_BASE}/api/chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ sessionId, driver: 'rule', goal: { verb } }),
+    body: JSON.stringify({ sessionId, driver: 'auto', goal: { verb } }),
   });
   return { status: response.status, json: (await response.json()) as Record<string, unknown> };
 }
@@ -142,8 +149,8 @@ test.beforeEach(() => {
 
 // ---- I1 零智能完整 --------------------------------------------------------------
 
-test.describe('I1 零智能完整', () => {
-  test('显式撤销 LLM 配置:B1/B2/B3(agent 合同)+ 表单版 S1 + 哑渲染全过', async ({ page }) => {
+test.describe('I1 零智能完整(已被 T15 AI-first supersede)', () => {
+  test.skip('旧 keyless rule-driver 用户故事不再作为产品验收证据', async ({ page }) => {
     test.setTimeout(240_000);
     // 显式撤销:e2e 进程删除配置三项(断言为证);spawn server 注入空配置压过
     // .env.local(进程 env 优先)。进程无 LLM profile → 全程零 LLM 网络调用可证。
@@ -289,7 +296,7 @@ test.describe('I1 零智能完整', () => {
 test.describe('I2 事实不可发明', () => {
   test('渲染 spec 解引用后的值与实体快照一致(s5 对拍逻辑精简重跑)', async () => {
     await withFreshServer(async () => {
-      const { status, json } = await chatRule('按分类展示文章', 'i2-e2e');
+      const { status, json } = await chatAuto('按分类展示文章', 'i2-e2e');
       expect(status).toBe(200);
       expect(json.outcome).toBe('done');
       const render = json.render as
@@ -329,7 +336,7 @@ test.describe('I2 事实不可发明', () => {
         total += entry.count;
       }
       expect(total).toBe((articles.entities ?? []).length); // 计数总和 = 成员数
-    });
+    }, UNUSED_LLM_PROFILE);
   });
 });
 
@@ -740,7 +747,7 @@ test.describe('I5 可重放', () => {
         expect(planBody.plan).toBe('completed');
 
         // S5 render 凝固(agent chat → render-spec-frozen)。
-        const chat = await chatRule('按分类展示文章', 'i5-e2e');
+        const chat = await chatAuto('按分类展示文章', 'i5-e2e');
         expect(chat.status).toBe(200);
         const render = chat.json.render as { frozenNow: boolean } | undefined;
         expect(render).toBeDefined();
@@ -771,10 +778,11 @@ test.describe('I5 可重放', () => {
         const capabilitySeeds = rows.filter((row) => row.kind === 'capability-seeded');
         expect(capabilitySeeds.map((row) => row.rel)).toEqual([
           'meta/capability:draft',
+          'meta/capability:summarize',
           'meta/capability:notify',
           'meta/capability:clarify',
         ]);
-      });
+      }, UNUSED_LLM_PROFILE);
     } finally {
       await terminateStaleNotifyWorkflows(['c1']);
     }

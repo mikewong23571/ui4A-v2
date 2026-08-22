@@ -105,7 +105,51 @@ function copyConversation(
                 },
         }
       : {}),
+    ...(context.executionAudit !== undefined
+      ? {
+          executionAudit: context.executionAudit.map((record) => ({
+            ...record,
+            authorization: record.authorization === null ? null : { ...record.authorization },
+            judgment: {
+              declaration: { ...record.judgment.declaration },
+              guards: record.judgment.guards.map((guard) => ({ ...guard })),
+              schema: { ...record.judgment.schema },
+            },
+            confirmation: {
+              ...record.confirmation,
+              ...('decidedBy' in record.confirmation && record.confirmation.decidedBy !== undefined
+                ? { decidedBy: { ...record.confirmation.decidedBy } }
+                : {}),
+            },
+            eventSeqs: [...record.eventSeqs],
+          })),
+        }
+      : {}),
   };
+}
+
+function entityFlowNames(entity: SirenEntity): Set<string> {
+  const names = new Set<string>();
+  const visit = (candidate: SirenEntity): void => {
+    const flow = candidate.properties.flow;
+    if (typeof flow === 'string') names.add(flow);
+    for (const child of candidate.entities ?? []) visit(child);
+  };
+  visit(entity);
+  return names;
+}
+
+/** Infer one unambiguous app from the current entity or its embedded collection members. */
+function inferEntityApplication(
+  sitemap: SitemapSummary | undefined,
+  entity: SirenEntity,
+): string | undefined {
+  if (sitemap === undefined) return undefined;
+  const flowNames = entityFlowNames(entity);
+  const applications = sitemap.applications.filter((application) =>
+    application.flows.some((flow) => flowNames.has(flow.name)),
+  );
+  return applications.length === 1 ? applications[0]!.name : undefined;
 }
 
 export async function runAgent(
@@ -272,15 +316,16 @@ export async function runAgent(
 
     // 上下文是逐步快照(trail/successes 拷贝):decide 之后循环继续追加,
     // 不应经由引用改写 driver 已见的历史。
-    const entityFlow =
-      typeof fetched.entity.properties.flow === 'string'
-        ? fetched.entity.properties.flow
-        : undefined;
-    const currentApp =
-      options.app ??
-      sitemap?.applications.find((application) =>
-        application.flows.some((flow) => flow.name === entityFlow),
-      )?.name;
+    const currentApp = options.app ?? inferEntityApplication(sitemap, fetched.entity);
+    const currentEntityFlows = entityFlowNames(fetched.entity);
+    const currentAppFlows = new Set(
+      sitemap?.applications
+        .find((application) => application.name === currentApp)
+        ?.flows.map((flow) => flow.name) ?? [],
+    );
+    const applicableEntityFlows = [...currentEntityFlows].filter((flow) =>
+      currentAppFlows.has(flow),
+    );
     const scopedSitemap =
       sitemap === undefined || currentApp === undefined
         ? sitemap
@@ -292,8 +337,11 @@ export async function runAgent(
             applications: sitemap.applications.filter(
               (application) => application.name === currentApp,
             ),
-            capabilities: (sitemap.capabilities ?? []).filter((capability) =>
-              capability.scope.applications.includes(currentApp),
+            capabilities: (sitemap.capabilities ?? []).filter(
+              (capability) =>
+                capability.scope.applications.includes(currentApp) &&
+                (applicableEntityFlows.length === 0 ||
+                  capability.scope.flows.some((flow) => applicableEntityFlows.includes(flow))),
             ),
           };
     const context: DriverContext = {
@@ -391,6 +439,7 @@ export async function runAgent(
         actor,
         principal: options.principal,
         channel,
+        authorization: op.authorization,
       });
       if (call.outcome === 'completed') {
         successes.push(...op.steps.map(({ rel, action, params }) => ({ rel, action, params })));
@@ -437,6 +486,7 @@ export async function runAgent(
       actor,
       principal: options.principal,
       channel,
+      authorization: op.authorization,
     });
     if (call.ok) {
       successes.push({ rel: currentRel, action: op.action, params: op.params });

@@ -15,6 +15,13 @@
 
 Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能力发现，以 `conductor/tracks/t15-ai-first-dynamic-assistant_20260822/user-stories.md` 的 U1–U23 为准。验收必须运行配置的真实 LLM；rule/scripted driver 只能证明协议机制，不能证明 Assistant 用户故事成立。
 
+产品边界：
+
+- **原生认知不是 capability**：读取已授权合同事实并临时回答、总结、比较、解释，由 LLM 直接完成；只有需要持久化、共享、重试或审计的模型结果才物化为 capability artifact，业务状态变化始终由 action 承担。
+- **多轮上下文来自日志**：user/assistant 原话 append-only 保存，同时从日志投影有界的 `activeGoal`、focus、referents、constraints、待澄清项和 effect authorization；刷新或恢复不依赖进程内会话真相。
+- **副作用需要原话授权**：执行必须引用 user message id 与逐字 quote，并与目标实体/action 关联；事件链保留声明、guard、schema、确认和 human decision，Assistant 只能据此解释“为什么执行”。
+- **配置即部署数据**：`LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 由外部环境完整提供，产品没有供应商、端点、模型或 driver fallback。缺项/失败时诚实失败，正式模型工件也不得以占位模型部分写入。
+
 ### 基线场景（业务平面，继承自已验证 demo）
 
 | # | 场景 | 断言 |

@@ -29,6 +29,7 @@ export interface DelegationStartedDetail {
   delegationId: string;
   goal: DelegationGoal;
   driverKind: string;
+  model?: string;
   startRel: string;
   principal?: string;
 }
@@ -93,6 +94,7 @@ export function applyDelegationStarted(snapshot: EngineSnapshot, event: LogEvent
     id: detail.delegationId,
     goal: detail.goal,
     driverKind: detail.driverKind,
+    ...(typeof detail.model === 'string' ? { model: detail.model } : {}),
     startRel: detail.startRel,
     ...(typeof detail.principal === 'string' ? { principal: detail.principal } : {}),
     status: 'running',

@@ -237,16 +237,41 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
             const prompt =
               [...(body.messages ?? [])].reverse().find((message) => message.role === 'user')
                 ?.content ?? '';
+            const ledgerText = prompt
+              .split('## 授权合同观察账本(有界，按最近访问顺序；entity 为完整 Siren 快照)\n')[1]
+              ?.split('\n\n## 轨迹(至今)')[0];
+            let currentNode: string | undefined;
+            if (ledgerText !== undefined) {
+              const ledger = JSON.parse(ledgerText) as {
+                entity?: { properties?: { node?: unknown } };
+              }[];
+              const node = ledger.at(-1)?.entity?.properties?.node;
+              if (typeof node === 'string') currentNode = node;
+            }
+            const authorizedExec = (
+              action: string,
+              params: Record<string, unknown>,
+            ): [string, Record<string, unknown>] => [
+              'exec',
+              {
+                action,
+                params,
+                authorization: {
+                  sourceMessageId: `delegation:${workflowId}:goal`,
+                  quote: '发布',
+                },
+              },
+            ];
             const operation = prompt.includes(':: publish')
               ? ['done', { summary: '文章已发布' }]
-              : prompt.includes('node: ready')
-                ? ['exec', { action: 'publish', params: { title: articleTitle } }]
-                : prompt.includes('node: content')
-                  ? ['exec', { action: 'next', params: { body: 'kill 续跑验证正文' } }]
-                  : prompt.includes('node: classification')
-                    ? ['exec', { action: 'next', params: { category: 'tech', tags: 't5' } }]
-                    : prompt.includes('node: basic-info')
-                      ? ['exec', { action: 'next', params: { title: articleTitle } }]
+              : currentNode === 'ready'
+                ? authorizedExec('publish', { title: articleTitle })
+                : currentNode === 'content'
+                  ? authorizedExec('next', { body: 'kill 续跑验证正文' })
+                  : currentNode === 'classification'
+                    ? authorizedExec('next', { category: 'tech', tags: 't5' })
+                    : currentNode === 'basic-info'
+                      ? authorizedExec('next', { title: articleTitle })
                       : ['navigate', { rel: 'flow:article-drafting' }];
             res.writeHead(200, { 'content-type': 'text/event-stream' });
             res.end(llmToolResponse(operation[0] as string, operation[1]));

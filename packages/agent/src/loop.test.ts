@@ -721,7 +721,7 @@ describe('exec 操作与拒绝即数据', () => {
   });
 });
 
-describe('意图到副作用授权门(U10–U12)', () => {
+describe('副作用来源与目标授权门(U10–U12)', () => {
   const actionable = instanceEntity({
     rel: 'post:first-post',
     flow: 'post-status',
@@ -745,7 +745,7 @@ describe('意图到副作用授权门(U10–U12)', () => {
     ],
   });
 
-  it('只读请求中误选合同合法 action 会在 POST 前被机械拦截', async () => {
+  it('协议门不以 action 关键词规则替代 LLM 意图映射，只验证原话来源与目标', async () => {
     const transport = contractTransport({
       entities: { 'post:first-post': actionable },
       execResponses: [jsonResponse({ entity: actionable })],
@@ -771,11 +771,13 @@ describe('意图到副作用授权门(U10–U12)', () => {
       },
     );
 
-    expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(0);
-    expect(result.successes).toEqual([]);
+    expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(1);
+    expect(result.successes).toEqual([
+      { rel: 'post:first-post', action: 'archive', params: undefined },
+    ]);
     expect(result.steps[0]).toMatchObject({
-      outcome: 'rejected',
-      rejection: { layer: 'effect-authorization', action: 'archive' },
+      outcome: 'executed',
+      op: { kind: 'exec', action: 'archive' },
     });
   });
 
@@ -809,16 +811,10 @@ describe('意图到副作用授权门(U10–U12)', () => {
     expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(1);
   });
 
-  it.each([
-    ['错误 quote', { sourceMessageId: 'm1', quote: '下线第二篇' }, 'unpublish', 'post:first-post'],
-    ['错误 action', { sourceMessageId: 'm1', quote: '下线第一篇' }, 'archive', 'post:first-post'],
-    [
-      '错误 target',
-      { sourceMessageId: 'm1', quote: '下线第一篇' },
-      'unpublish',
-      'post:second-post',
-    ],
-  ])('%s 证据不会发出 POST', async (_name, authorization, action, rel) => {
+  it('伪造 quote 不会发出 POST', async () => {
+    const authorization = { sourceMessageId: 'm1', quote: '下线第二篇' };
+    const action = 'unpublish';
+    const rel = 'post:first-post';
     const target =
       rel === 'post:first-post'
         ? actionable
@@ -853,7 +849,7 @@ describe('意图到副作用授权门(U10–U12)', () => {
     expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(0);
   });
 
-  it('exec-plan 的计划级原话必须逐 step 授权，否则整份计划零 POST', async () => {
+  it('exec-plan 的计划级原话逐 step 绑定同一目标，action 语义由动态决策负责', async () => {
     const transport = contractTransport({
       entities: { 'post:first-post': actionable },
       execResponses: [jsonResponse({ plan: 'completed', results: [], entities: [] })],
@@ -882,10 +878,10 @@ describe('意图到副作用授权门(U10–U12)', () => {
       },
     );
 
-    expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(0);
+    expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(1);
     expect(result.steps[0]).toMatchObject({
-      outcome: 'rejected',
-      rejection: { layer: 'effect-authorization', action: 'exec-plan' },
+      outcome: 'executed',
+      op: { kind: 'exec-plan' },
     });
   });
 });
@@ -1131,6 +1127,45 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     ]);
     expect(driver.contexts[0]!.sitemap?.capabilities?.map((capability) => capability.name)).toEqual(
       ['draft'],
+    );
+  });
+
+  it('集合成员只落在一个 app 时，从嵌入 flow 推导 app 并排除同 app 的无关 flow capability', async () => {
+    const sitemap = {
+      ...structuredClone(groupedSitemapBody),
+      applications: groupedSitemapBody.applications.map((application) =>
+        application.name === 'publishing'
+          ? {
+              ...application,
+              flows: [
+                ...application.flows,
+                { name: 'post-status', title: '文章状态', app: 'publishing' },
+              ],
+            }
+          : application,
+      ),
+      capabilities: [
+        ...groupedSitemapBody.capabilities,
+        {
+          name: 'summarize',
+          title: '正式摘要',
+          kind: 'transform',
+          intent: '生成正式文章摘要',
+          scope: { applications: ['publishing'], flows: ['post-status'] },
+        },
+      ],
+    };
+    const transport = contractTransport({ entities: { articles: articlesEntity }, sitemap });
+    const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
+
+    await runAgent(driver, GOAL, { baseUrl: BASE, fetchImpl: transport.fetch });
+
+    expect(driver.contexts[0]!.app).toBe('publishing');
+    expect(driver.contexts[0]!.sitemap?.applications.map((app) => app.name)).toEqual([
+      'publishing',
+    ]);
+    expect(driver.contexts[0]!.sitemap?.capabilities?.map((capability) => capability.name)).toEqual(
+      ['summarize'],
     );
   });
 });

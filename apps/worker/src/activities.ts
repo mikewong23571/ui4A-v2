@@ -21,7 +21,7 @@ import type { DbExecutor } from '../../web/src/db/events';
 import { appendEvent, ensureEventsTable } from '../../web/src/db/events';
 import { getPool } from '../../web/src/db/pool';
 
-import type { SitemapSummary } from '@ui4a/agent';
+import { resolveLlmConfig, type SitemapSummary } from '@ui4a/agent';
 import { canonicalJson } from '@ui4a/engine';
 
 import {
@@ -166,7 +166,7 @@ export interface DelegationActivities {
 export async function startDelegation(
   args: DelegationStartArgs,
 ): Promise<{ seq: number; deduplicated: boolean }> {
-  return recordDelegationStart(workerDb(), args);
+  return recordDelegationStart(workerDb(), { ...args, model: resolveLlmConfig().model });
 }
 
 export async function loadSitemap(args: { baseUrl: string }): Promise<SitemapSummary | undefined> {

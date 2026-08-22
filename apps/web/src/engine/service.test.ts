@@ -363,7 +363,12 @@ describe('投影与 sitemap 接线', () => {
     ]);
 
     const post = (await engine.getEntity('post:post-welcome')) as SirenEntity;
-    expect(post.actions.map((action) => action.name)).toEqual(['unpublish', 'archive']);
+    expect(post.actions.map((action) => action.name)).toEqual([
+      'unpublish',
+      'archive',
+      'generate-summary',
+      'save-summary',
+    ]);
 
     expect(await engine.getEntity('nope')).toBeUndefined();
   });
