@@ -90,6 +90,25 @@ const EVENT_NARRATIVE_REGISTRY: Readonly<Record<string, EventNarrator>> = {
   'delegation-max-steps': staticNarrator('执行委托', '达到步数上限'),
   'plan-executed': staticNarrator('批量执行计划', '已完成'),
   'render-spec-frozen': staticNarrator('凝固渲染说明', '已保存'),
+  'meta-bootstrap-applied': staticNarrator('安装应用制品', '已完成'),
+  'chat-turn-started': (row) => {
+    const goal = detailRecord(row).goal;
+    const verb =
+      typeof goal === 'object' && goal !== null && !Array.isArray(goal) &&
+      typeof (goal as Record<string, unknown>).verb === 'string'
+        ? (goal as Record<string, unknown>).verb
+        : '未标注目标';
+    return { verb: `开始聊天回合「${verb}」`, result: '执行中' };
+  },
+  'chat-turn-progress': (row) => {
+    const step = detailRecord(row).step;
+    const number =
+      typeof step === 'object' && step !== null && !Array.isArray(step) &&
+      typeof (step as Record<string, unknown>).step === 'number'
+        ? ` ${(step as Record<string, unknown>).step}`
+        : '';
+    return { verb: `记录聊天进展${number}`, result: '已保存' };
+  },
   'chat-turn': (row) => {
     const detail = detailRecord(row);
     const goal = detail.goal;

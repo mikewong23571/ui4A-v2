@@ -90,15 +90,20 @@ describe('事件日志成员适配(timeline 词条输入)', () => {
   it('未知 kind 回退原始字段行;chat-turn/agent-decision 形成回合级摘要', () => {
     const members = eventsToMembers([
       { seq: 1, kind: 'mystery-event', rel: 'x', action: 'probe', actor: null, principal: null, channel: null },
-      { seq: 2, kind: 'chat-turn', rel: 'chat:s1', action: null, actor: 'agent', principal: 'user:s1', channel: 'chat', detail: { goal: { verb: '发布' }, outcome: 'done', steps: [{ step: 1 }] } },
-      { seq: 3, kind: 'agent-decision', rel: 'chat:s1', action: null, actor: 'agent', principal: 'user:s1', channel: 'chat', detail: { step: 1, driver: 'rule', op: { kind: 'navigate', rel: 'articles' } } },
+      { seq: 2, kind: 'chat-turn-started', rel: 'chat:s1', action: null, actor: 'agent', principal: 'user:s1', channel: 'chat', detail: { goal: { verb: '发布' } } },
+      { seq: 3, kind: 'chat-turn-progress', rel: 'chat:s1', action: null, actor: 'agent', principal: 'user:s1', channel: 'chat', detail: { step: { step: 1 } } },
+      { seq: 4, kind: 'chat-turn', rel: 'chat:s1', action: null, actor: 'agent', principal: 'user:s1', channel: 'chat', detail: { goal: { verb: '发布' }, outcome: 'done', steps: [{ step: 1 }] } },
+      { seq: 5, kind: 'agent-decision', rel: 'chat:s1', action: null, actor: 'agent', principal: 'user:s1', channel: 'chat', detail: { step: 1, driver: 'rule', op: { kind: 'navigate', rel: 'articles' } } },
     ]);
     expect(members[0]!.properties.summary).toContain('kind=mystery-event');
     expect(members[0]!.properties.summary).toContain('rel=x');
-    expect(members[1]!.properties.summary).toContain('聊天回合「发布」');
-    expect(members[1]!.properties.summary).toContain('已完成');
-    expect(members[2]!.properties.summary).toContain('第 1 步决策(rule)');
-    expect(members[2]!.properties.summary).toContain('navigate');
+    expect(members[1]!.properties.summary).toContain('开始聊天回合「发布」');
+    expect(members[1]!.properties.summary).toContain('执行中');
+    expect(members[2]!.properties.summary).toContain('记录聊天进展 1');
+    expect(members[3]!.properties.summary).toContain('聊天回合「发布」');
+    expect(members[3]!.properties.summary).toContain('已完成');
+    expect(members[4]!.properties.summary).toContain('第 1 步决策(rule)');
+    expect(members[4]!.properties.summary).toContain('navigate');
   });
 
   it('最近 N 事件:取尾部保 seq 序(append 序即时间序)', () => {
