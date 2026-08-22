@@ -10,8 +10,8 @@
 
 ## Phase B: definition-versions 可读投影 + 两版对比
 
-- [~] Task: 版本历史投影(meta 平面暴露 definitionVersions:版本号/状态/激活来源;/meta/flow/<name> 版本区)(TDD)
-- [ ] Task: 两版对比 diff 视图(任选两版 → deep-object-diff 机械 diff,复用 diff-render 三视角;组件测试 + e2e:S2 流激活 v2 后 v1 vs v2 对比)(TDD)
+- [x] Task: 版本历史投影(meta 平面暴露 definitionVersions:版本号/状态/激活来源;/meta/flow/<name> 版本区)(TDD) — e4eaac6
+- [~] Task: 两版对比 diff 视图(任选两版 → deep-object-diff 机械 diff,复用 diff-render 三视角;组件测试 + e2e:S2 流激活 v2 后 v1 vs v2 对比)(TDD)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase C: capability 定义面
