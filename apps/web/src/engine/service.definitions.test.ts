@@ -8,6 +8,7 @@
  * 真库(docker PG);beforeEach TRUNCATE + reset 后重 seed,测试自清理。
  */
 import { beforeEach, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 import { contentVersion } from '@ui4a/engine';
 import type { FlowDefinition, LogEvent, SirenEntity } from '@ui4a/engine';
@@ -39,6 +40,15 @@ beforeEach(async () => {
 });
 
 describe('boot:定义 seed 迁移(空库)', () => {
+  it('生产 service 只依赖应用制品安装器，不导入业务 TS fallback', () => {
+    const source = readFileSync(new URL('./service.ts', import.meta.url), 'utf8');
+    expect(source).not.toMatch(/domain\/(?:flows|applications|capabilities|seed)/);
+    expect(source).not.toContain('businessFlowList');
+    expect(source).not.toContain('businessFlows');
+    expect(source).toContain('planMetaBootstrap');
+    expect(source).toContain('fold(events, { flows: {} })');
+  });
+
   it('三 flow definition-seeded 入日志:rel=meta/flow:<name>,detail 全文 + active v1', async () => {
     await boot();
     const seeds = await definitionSeeds();
@@ -79,6 +89,20 @@ describe('boot:定义 seed 迁移(空库)', () => {
     resetEngineForTests();
     await boot();
     expect(await definitionSeeds()).toHaveLength(3);
+  });
+});
+
+describe('runtime 定义完整性（日志是唯一真相）', () => {
+  it('安装 receipt 在场但 flow 定义缺失时 boot 响亮失败，不回退代码定义', async () => {
+    const bundleLog = await (async () => {
+      await boot();
+      return readLog(pool);
+    })();
+    const corrupted = bundleLog.filter((event) => event.kind !== 'definition-seeded');
+    await restoreLogRows(corrupted);
+    resetEngineForTests();
+
+    await expect(boot()).rejects.toThrow(/runtime 定义缺失.*article-drafting|post-status/);
   });
 });
 
@@ -230,14 +254,13 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
 
     const engine = await boot();
     const log = await readLog(pool);
-    // 补种追加在既有日志尾部(与 flow seed 迁移同哲学;fold 重放天然一致)。
-    // (T13:capability 补种按 boot 序跟在 application 补种之后,占用日志
-    // 最末三条——application 种子因此落在尾部倒数第 4–6 条。)
-    expect(log.slice(-6, -3).map((event) => event.kind)).toEqual([
+    // meta bundle 安装器只补缺项；receipt 收口迁移，不依赖脆弱的尾部切片。
+    expect(log.filter((event) => event.kind === 'application-seeded').map((event) => event.kind)).toEqual([
       'application-seeded',
       'application-seeded',
       'application-seeded',
     ]);
+    expect(log.at(-1)?.kind).toBe('meta-bootstrap-applied');
     expect(Object.keys(engine.getSnapshot().applications ?? {})).toEqual([
       'default',
       'publishing',
@@ -297,13 +320,13 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
 
     const engine = await boot();
     const log = await readLog(pool);
-    // 补种追加在既有日志尾部(与 flow/application seed 迁移同哲学;
-    // fold 重放天然一致)。
-    expect(log.slice(-3).map((event) => event.kind)).toEqual([
+    // meta bundle 安装器只补 capability 缺项，最后以 receipt 收口。
+    expect(log.filter((event) => event.kind === 'capability-seeded').map((event) => event.kind)).toEqual([
       'capability-seeded',
       'capability-seeded',
       'capability-seeded',
     ]);
+    expect(log.at(-1)?.kind).toBe('meta-bootstrap-applied');
     expect(Object.keys(engine.getSnapshot().capabilities ?? {})).toEqual([
       'draft',
       'notify',
@@ -345,7 +368,7 @@ async function restoreLogRows(rows: readonly LogEvent[]): Promise<void> {
 
 describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)', () => {
   it('application-seeded 与定义/业务事件交错的日志:TRUNCATE 原序回灌 → boot 重放与在线全实体 hash 一致,applications 表全文一致', async () => {
-    // ---- 相位 1(在线轨道):boot 种子(定义 → application → 业务)+ 业务
+    // ---- 相位 1(在线轨道):meta bundle(app → capability → flow → 业务)+ 业务
     //   exec 交错,增量维护快照。 ----
     const online = await boot();
     for (const [action, params] of [
@@ -372,22 +395,20 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
       Object.fromEntries(businessApplicationList.map((app) => [app.name, app])),
     );
 
-    // 导出事件(重放的唯一输入)并守卫混合形状:application-seeded 夹在
-    // definition-seeded 与业务 seed/业务事件之间,detail 持定义全文。
-    // (T13:capability-seeded 按 boot 序插在 application 种子与业务 seed
-    // 之间——定义 → application → capability → 业务的空库序不变。)
+    // 导出事件(重放的唯一输入)并守卫 meta bundle 安装序与 receipt。
     const rows = await readLog(pool);
-    expect(rows.slice(0, 10).map((event) => event.kind)).toEqual([
-      'definition-seeded',
-      'definition-seeded',
-      'definition-seeded',
+    expect(rows.slice(0, 11).map((event) => event.kind)).toEqual([
       'application-seeded',
       'application-seeded',
       'application-seeded',
       'capability-seeded',
       'capability-seeded',
       'capability-seeded',
+      'definition-seeded',
+      'definition-seeded',
+      'definition-seeded',
       'seed',
+      'meta-bootstrap-applied',
     ]);
     expect(rows.some((event) => event.kind === 'action-executed')).toBe(true);
     const appSeeds = rows.filter((event) => event.kind === 'application-seeded');
@@ -419,7 +440,7 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
 
 describe('I5 重放一致:capability 维度(T13 Phase C Task 2;spec 验收 4)', () => {
   it('capability-seeded 与定义/业务事件交错的日志:TRUNCATE 原序回灌 → boot 重放与在线全实体 hash 一致,capabilities 表全文一致', async () => {
-    // ---- 相位 1(在线轨道):boot 种子(定义 → application → capability →
+    // ---- 相位 1(在线轨道):meta bundle(app → capability → flow →
     //   业务)+ 业务 exec 交错,增量维护快照。 ----
     const online = await boot();
     for (const [action, params] of [
@@ -446,15 +467,14 @@ describe('I5 重放一致:capability 维度(T13 Phase C Task 2;spec 验收 4)', 
       Object.fromEntries(businessCapabilityList.map((capability) => [capability.name, capability])),
     );
 
-    // 导出事件(重放的唯一输入)并守卫混合形状:capability-seeded 夹在
-    // application-seeded 与业务 seed 之间,detail 持定义全文。
+    // 导出事件(重放的唯一输入)并守卫 capability 定义全文与安装顺序。
     const rows = await readLog(pool);
-    expect(rows.slice(6, 10).map((event) => event.kind)).toEqual([
+    expect(rows.slice(3, 6).map((event) => event.kind)).toEqual([
       'capability-seeded',
       'capability-seeded',
       'capability-seeded',
-      'seed',
     ]);
+    expect(rows[10]?.kind).toBe('meta-bootstrap-applied');
     expect(rows.some((event) => event.kind === 'action-executed')).toBe(true);
     const capabilitySeeds = rows.filter((event) => event.kind === 'capability-seeded');
     expect(capabilitySeeds.map((event) => event.rel)).toEqual([

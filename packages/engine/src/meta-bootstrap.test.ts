@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { LogEvent } from './fold';
 import {
   APPLICATION_BUNDLE_SCHEMA,
+  assertMetaBootstrapIntegrity,
   parseApplicationBundle,
   planMetaBootstrap,
 } from './meta-bootstrap';
@@ -77,8 +78,19 @@ describe('meta application bundle bootstrap', () => {
       detail: {
         bundle: { name: 'test-app', version: 1 },
         installed: { applications: 2, capabilities: 1, flows: 1, seed: true },
+        inventory: {
+          applications: ['default', 'publishing'],
+          capabilities: ['draft'],
+          flows: ['post-status'],
+          seedRel: 'seed:test-app',
+        },
       },
     });
+    const stored = events.map((event, index) => ({ ...event, seq: index + 1 })) as LogEvent[];
+    expect(() => assertMetaBootstrapIntegrity(stored)).not.toThrow();
+    expect(() =>
+      assertMetaBootstrapIntegrity(stored.filter((event) => event.kind !== 'definition-seeded')),
+    ).toThrow(/runtime 定义缺失.*post-status/);
   });
 
   it('同版本 receipt 在场时幂等；旧库部分种子在场时只补缺项再写 receipt', () => {

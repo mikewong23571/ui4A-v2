@@ -259,7 +259,75 @@ export function planMetaBootstrap(
         flows: flowCount,
         seed: !seedPresent,
       },
+      inventory: {
+        applications: bundle.applications.map((application) => application.name),
+        capabilities: bundle.capabilities.map((capability) => capability.name),
+        flows: bundle.flows.map((flow) => flow.name),
+        seedRel: bundle.seed.rel,
+      },
     },
   });
   return events;
+}
+
+/** receipt 声明的安装清单必须能由日志本身完全证明；否则拒绝以代码制品回填。 */
+export function assertMetaBootstrapIntegrity(events: readonly LogEvent[]): void {
+  const applicationNames = new Set(
+    events
+      .filter((event) => event.kind === 'application-seeded')
+      .map((event) => (event.detail as Partial<ApplicationSeededDetail> | undefined)?.name),
+  );
+  const capabilityNames = new Set(
+    events
+      .filter((event) => event.kind === 'capability-seeded')
+      .map((event) => (event.detail as Partial<CapabilitySeededDetail> | undefined)?.name),
+  );
+  const flowNames = new Set(
+    events
+      .filter((event) => event.kind === 'definition-seeded')
+      .map((event) => (event.detail as Partial<DefinitionSeededDetail> | undefined)?.name),
+  );
+  const seedRels = new Set(
+    events.filter((event) => event.kind === 'seed').map((event) => event.rel),
+  );
+
+  for (const receipt of events.filter((event) => event.kind === 'meta-bootstrap-applied')) {
+    const detail = receipt.detail as
+      | {
+          inventory?: {
+            applications?: unknown;
+            capabilities?: unknown;
+            flows?: unknown;
+            seedRel?: unknown;
+          };
+        }
+      | undefined;
+    const inventory = detail?.inventory;
+    if (
+      inventory === undefined ||
+      !Array.isArray(inventory.applications) ||
+      !Array.isArray(inventory.capabilities) ||
+      !Array.isArray(inventory.flows) ||
+      typeof inventory.seedRel !== 'string'
+    ) {
+      throw new Error(`meta bootstrap receipt "${receipt.rel ?? ''}" 缺少完整 inventory`);
+    }
+    const missingApplications = inventory.applications.filter(
+      (name): name is string => typeof name === 'string' && !applicationNames.has(name),
+    );
+    const missingCapabilities = inventory.capabilities.filter(
+      (name): name is string => typeof name === 'string' && !capabilityNames.has(name),
+    );
+    const missingFlows = inventory.flows.filter(
+      (name): name is string => typeof name === 'string' && !flowNames.has(name),
+    );
+    if (missingApplications.length > 0 || missingCapabilities.length > 0 || missingFlows.length > 0) {
+      throw new Error(
+        `runtime 定义缺失: applications=[${missingApplications.join(',')}], capabilities=[${missingCapabilities.join(',')}], flows=[${missingFlows.join(',')}]`,
+      );
+    }
+    if (!seedRels.has(inventory.seedRel)) {
+      throw new Error(`runtime seed 缺失: "${inventory.seedRel}"`);
+    }
+  }
 }

@@ -1,16 +1,12 @@
 /**
  * 引擎服务层:单例 engine runtime,把纯引擎(裁决/效果/投影)接到 PG 事件日志。
  *
- * - boot = ensureEventsTable + 幂等 seed(T4 Phase B 起先种定义后种业务:
- *   三个业务 flow 以 definition-seeded 全文入日志[seeded 即 active],旧库
- *   迁移时追加尾部;T10 Phase B 起 application 定义以 application-seeded
- *   同构补种[fold 落 applications 表,app-known 的已激活集合];T13 Phase C
- *   起 capability 定义以 capability-seeded 同构补种[fold 落 capabilities
- *   表,capability-registered 的已注册集合])+
+ * - boot = ensureEventsTable + meta application-bundle 幂等安装（具体业务定义来自
+ *   独立数据制品，kernel 只做解析/校验/事件规划）+
  *   fold(日志)→ 快照;
  * - 定义解析(T4 Phase B):业务 exec/judge/project/sitemap 一律吃 fold 快照的
  *   活跃定义(activeDefinitionOf:definitions 条目只持活跃指针,内容在
- *   definitionVersions 历史);代码常量仅 seed 源 + sitemap 顺序锚;
+ *   definitionVersions 历史);生产运行无代码业务定义 fallback;
  * - exec(T3 Phase B 起)= executeWithGates:三层裁决(声明→guard→schema)→
  *   确认裁决(Cedar 策略,policy.cedar 文本驱动)→ 效果应用;
  *   - 拒绝:appendEvent(action-rejected,reason+detail{layer})不改状态;
@@ -41,6 +37,7 @@
  */
 import {
   activeDefinitionOf,
+  assertMetaBootstrapIntegrity,
   approveConfirmation,
   contentVersion,
   deriveSitemap,
@@ -48,16 +45,14 @@ import {
   executeWithGates,
   executePlan,
   fold,
+  planMetaBootstrap,
   project,
   readRenderSpecsOf,
   rejectConfirmation,
   renderSpecRel,
-  type ApplicationSeededDetail,
   type Approver,
-  type CapabilitySeededDetail,
   type ConfirmationDecision,
   type ConfirmationDeps,
-  type DefinitionSeededDetail,
   type EngineEvent,
   type ExecRequest,
   type ExecuteDeps,
@@ -75,7 +70,7 @@ import {
 } from '@ui4a/engine';
 import type { EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
 import type { FieldValue } from '@ui4a/shared';
-import { metaApplicationRel, metaCapabilityRel, metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
+import { metaCapabilityRel, metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
 
 import {
   appendEvent,
@@ -85,11 +80,8 @@ import {
   type EventAppend,
 } from '../db/events';
 import { getPool } from '../db/pool';
-import { businessApplicationList } from '../domain/applications';
-import { businessCapabilityList } from '../domain/capabilities';
+import { installedApplicationBundles } from '../applications/bundles';
 import { cedarPolicyFromDefaultFile } from '../domain/cedarPolicy';
-import { businessFlows, businessFlowList } from '../domain/flows';
-import { SEED_REL, seedDetail } from '../domain/seed';
 import type { RenderSpec } from '../render/spec';
 import { validateSpec } from '../render/validator';
 import { wordOf } from '../render/registry';
@@ -238,80 +230,23 @@ function enqueue<T>(state: EngineGlobalState, run: () => Promise<T>): Promise<T>
   return result;
 }
 
-/**
- * boot 种子装载(T4 Phase B 起,幂等):
- * - 定义 seed 迁移(spec 架构决定 5):日志无某业务 flow 的 definition-seeded →
- *   常量定义以 machine-as-JSON 全文入日志(seeded 即 active,v1——种子是 boot
- *   自举地板,不是审批链产物,不补 definition-activated)。空库序:定义在前、
- *   业务 seed 在后(fold 出生盖戳天然成立);旧库迁移:定义追加尾部,fold 对
- *   既有实例回溯盖 bornVersion(引擎 fold 的迁移口径);
- * - application seed 迁移(T10 Phase B,与 flow 定义同构):日志无某 application 的
- *   application-seeded → 常量定义全文入日志(seeded 即 active;fold 落
- *   applications 表,键集即 app-known 不变式的已激活集合——default 恒在,
- *   是不变式长牙的地板)。旧库兼容:既有库无 application 事件 → 尾部补种;
- * - capability seed 迁移(T13 Phase C,与 application 同构):日志无某 capability 的
- *   capability-seeded → 常量定义全文入日志(seeded 即 registered;fold 落
- *   capabilities 表,键集即 capability-registered 不变式[Phase D]的已注册
- *   集合)。旧库兼容:既有库无 capability 事件 → 尾部补种;
- * - 业务 seed:日志无本种子标识才 append(既有口径)。
- */
-async function seedBootData(db: DbExecutor): Promise<void> {
-  const log = await readLog(db);
-  const definedFlows = new Set(
-    log
-      .filter((event) => event.kind === 'definition-seeded')
-      .map((event) => (event.detail as Partial<DefinitionSeededDetail> | undefined)?.name)
-      .filter((name): name is string => typeof name === 'string'),
-  );
-  for (const flow of businessFlowList) {
-    if (definedFlows.has(flow.name)) continue;
-    await appendEvent(db, {
-      kind: 'definition-seeded',
-      rel: metaFlowRel(flow.name),
-      detail: { name: flow.name, version: 1, status: 'active', definition: flow },
-    });
-  }
-  // application 定义与 flow 同构补种(定义在前、业务 seed 在后的空库序不变)。
-  const definedApps = new Set(
-    log
-      .filter((event) => event.kind === 'application-seeded')
-      .map((event) => (event.detail as Partial<ApplicationSeededDetail> | undefined)?.name)
-      .filter((name): name is string => typeof name === 'string'),
-  );
-  for (const app of businessApplicationList) {
-    if (definedApps.has(app.name)) continue;
-    await appendEvent(db, {
-      kind: 'application-seeded',
-      rel: metaApplicationRel(app.name),
-      detail: { name: app.name, definition: app },
-    });
-  }
-  // capability 定义与 application 同构补种(定义在前、业务 seed 在后的空库序不变)。
-  const definedCapabilities = new Set(
-    log
-      .filter((event) => event.kind === 'capability-seeded')
-      .map((event) => (event.detail as Partial<CapabilitySeededDetail> | undefined)?.name)
-      .filter((name): name is string => typeof name === 'string'),
-  );
-  for (const capability of businessCapabilityList) {
-    if (definedCapabilities.has(capability.name)) continue;
-    await appendEvent(db, {
-      kind: 'capability-seeded',
-      rel: metaCapabilityRel(capability.name),
-      detail: { name: capability.name, definition: capability },
-    });
-  }
-  if (!log.some((event) => event.kind === 'seed' && event.rel === SEED_REL)) {
-    await appendEvent(db, { kind: 'seed', rel: SEED_REL, detail: seedDetail });
+/** 应用从 meta 自举：通用安装器消费版本化数据制品，service 不认识任何业务名。 */
+async function bootstrapApplicationBundles(db: DbExecutor): Promise<void> {
+  for (const bundle of installedApplicationBundles) {
+    const log = await readLog(db);
+    for (const event of planMetaBootstrap(bundle, log)) {
+      await appendEvent(db, event);
+    }
   }
 }
 
 async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   await ensureEventsTable(db);
-  await seedBootData(db);
+  await bootstrapApplicationBundles(db);
 
   const events: LogEvent[] = await readLog(db);
-  let snapshot = fold(events, { flows: businessFlows });
+  assertMetaBootstrapIntegrity(events);
+  let snapshot = fold(events, { flows: {} });
   // 已折叠进度(seq 高水位):自身 append 推进;读路径/exec 开头按此增量 fold 外部写者。
   let lastSeq = events.length > 0 ? events[events.length - 1]!.seq : 0;
   const state = engineState();
@@ -320,7 +255,10 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   // 活跃定义 = definitionVersions[条目当前版本](activeDefinitionOf):草稿窗口
   // 的工作副本不进业务平面;每快照演进后重算(定义激活即自动切换)。
   const activeFlowList = (): FlowDefinition[] =>
-    businessFlowList.map((seed) => activeDefinitionOf(snapshot, seed.name) ?? seed);
+    Object.keys(snapshot.definitions ?? {}).flatMap((name) => {
+      const active = activeDefinitionOf(snapshot, name);
+      return active === undefined ? [] : [active];
+    });
   const activeFlows = (): Record<string, FlowDefinition> =>
     Object.fromEntries(activeFlowList().map((flow) => [flow.name, flow]));
   // 出生版本注册表(在途实例按出生定义走完):definitions 历史原样注入。
@@ -437,7 +375,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     if (foreignGaps.length === 0) return;
     const gaps = foreignGaps;
     foreignGaps = [];
-    snapshot = fold(gaps, { flows: businessFlows }, snapshot);
+    snapshot = fold(gaps, { flows: {} }, snapshot);
   };
 
   /**
@@ -463,7 +401,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     // lastSeq),先折保持时序;若先折 fresh,遗留 gap 与 fresh 中相邻的
     // 委托步号会触发折叠层「步号不连续」响亮报错且确定性复发(终审 M-1)。
     applyForeignGaps();
-    snapshot = fold(fresh, { flows: businessFlows }, snapshot);
+    snapshot = fold(fresh, { flows: {} }, snapshot);
     lastSeq = Math.max(lastSeq, fresh[fresh.length - 1]!.seq);
   };
 
@@ -734,7 +672,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         // 在线增量物化(与 fold 同构:同一 applyRenderSpecFrozen)。
         snapshot = fold(
           [{ seq, kind: 'render-spec-frozen', rel: renderSpecRel(concern), actor: by.actor, ...(by.principal !== undefined ? { principal: by.principal } : {}), detail }],
-          { flows: businessFlows },
+          { flows: {} },
           snapshot,
         );
         applyForeignGaps();
