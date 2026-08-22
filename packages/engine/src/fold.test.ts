@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ApplicationDefinition, EngineSnapshot, InstanceSnapshot } from '@ui4a/shared';
+import type { ApplicationDefinition, CapabilityDefinition, EngineSnapshot, InstanceSnapshot } from '@ui4a/shared';
 
 import { approveConfirmation, rejectConfirmation } from './confirmation';
 import type { ConfirmationRequestDetail } from './confirmation';
@@ -637,6 +637,93 @@ describe('fold — application-seeded(T10 Phase B)', () => {
     );
 
     expect(continued.applications).toEqual({ publishing: publishingApp });
+    expect(continued.instances['comment:c1']?.node).toBe('approved');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// capability-seeded(T13 Phase C;spec 架构决定 3):boot seed 的 capability
+// 定义事件 —— fold 把已注册 capability 定义落 capabilities 表(seeded 即
+// registered,键集 = capability-registered 不变式的注册表来源)。与
+// application-seeded 同哲学:幂等(重复 seed 不覆盖)、缺载荷响亮失败、
+// 不物化空表;本 track 无 capability 生命周期动词,表只经本事件增长。
+// ---------------------------------------------------------------------------
+
+const draftCapability: CapabilityDefinition = {
+  name: 'draft',
+  title: '工件起草',
+  kind: 'extract',
+  intent: '价值载体字段的草稿工件起草(proposal 来源)。',
+};
+
+/** capability-seeded 日志事件(boot 装载形状;detail 持定义全文)。 */
+function capabilitySeedEvent(seq: number, capability: CapabilityDefinition): LogEvent {
+  return {
+    seq,
+    kind: 'capability-seeded',
+    rel: `meta/capability:${capability.name}`,
+    detail: { name: capability.name, definition: capability },
+  };
+}
+
+describe('fold — capability-seeded(T13 Phase C)', () => {
+  it('capability-seeded 落 capabilities 表(seeded 即 registered)', () => {
+    const snapshot = fold([capabilitySeedEvent(1, draftCapability)], { flows });
+
+    expect(snapshot.capabilities).toEqual({ draft: draftCapability });
+  });
+
+  it('幂等:重复 capability-seeded 不覆盖先到的定义(boot 重放安全)', () => {
+    const tampered: CapabilityDefinition = { ...draftCapability, intent: '篡改意图' };
+
+    const snapshot = fold(
+      [capabilitySeedEvent(1, draftCapability), capabilitySeedEvent(2, tampered)],
+      { flows },
+    );
+
+    expect(snapshot.capabilities?.['draft']?.intent).toBe('价值载体字段的草稿工件起草(proposal 来源)。');
+  });
+
+  it('缺少 detail 载荷 → 响亮失败并带 seq(日志完整性)', () => {
+    const bogus: LogEvent = { seq: 7, kind: 'capability-seeded', rel: 'meta/capability:x' };
+
+    expect(() => fold([bogus], { flows })).toThrow(/capability-seeded 缺少 detail 载荷/);
+  });
+
+  it('无 capability 事件的 fold 不物化空表(与 applications 同口径的过渡期语义)', () => {
+    const snapshot = fold([seedEvent], { flows });
+
+    expect(snapshot).not.toHaveProperty('capabilities');
+  });
+
+  it('业务 seed 在 capability-seeded 之后折叠:capabilities 表随行不丢', () => {
+    const snapshot = fold([capabilitySeedEvent(1, draftCapability), { ...seedEvent, seq: 2 }], {
+      flows,
+    });
+
+    expect(snapshot.capabilities).toEqual({ draft: draftCapability });
+    expect(snapshot.instances['comment:c1']?.node).toBe('pending');
+  });
+
+  it('增量 fold(initial 携带 capabilities):表随行不丢(web 读路径的根基)', () => {
+    const base = fold([capabilitySeedEvent(1, draftCapability), seedEvent], { flows });
+
+    const continued = fold(
+      [
+        {
+          seq: 3,
+          kind: 'action-executed',
+          rel: 'comment:c1',
+          action: 'approve',
+          actor: 'agent',
+          params: {},
+        },
+      ],
+      { flows },
+      base,
+    );
+
+    expect(continued.capabilities).toEqual({ draft: draftCapability });
     expect(continued.instances['comment:c1']?.node).toBe('approved');
   });
 });

@@ -4,7 +4,9 @@
  * - boot = ensureEventsTable + 幂等 seed(T4 Phase B 起先种定义后种业务:
  *   三个业务 flow 以 definition-seeded 全文入日志[seeded 即 active],旧库
  *   迁移时追加尾部;T10 Phase B 起 application 定义以 application-seeded
- *   同构补种[fold 落 applications 表,app-known 的已激活集合])+
+ *   同构补种[fold 落 applications 表,app-known 的已激活集合];T13 Phase C
+ *   起 capability 定义以 capability-seeded 同构补种[fold 落 capabilities
+ *   表,capability-registered 的已注册集合])+
  *   fold(日志)→ 快照;
  * - 定义解析(T4 Phase B):业务 exec/judge/project/sitemap 一律吃 fold 快照的
  *   活跃定义(activeDefinitionOf:definitions 条目只持活跃指针,内容在
@@ -52,6 +54,7 @@ import {
   renderSpecRel,
   type ApplicationSeededDetail,
   type Approver,
+  type CapabilitySeededDetail,
   type ConfirmationDecision,
   type ConfirmationDeps,
   type DefinitionSeededDetail,
@@ -72,7 +75,7 @@ import {
 } from '@ui4a/engine';
 import type { EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
 import type { FieldValue } from '@ui4a/shared';
-import { metaApplicationRel, metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
+import { metaApplicationRel, metaCapabilityRel, metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
 
 import {
   appendEvent,
@@ -83,6 +86,7 @@ import {
 } from '../db/events';
 import { getPool } from '../db/pool';
 import { businessApplicationList } from '../domain/applications';
+import { businessCapabilityList } from '../domain/capabilities';
 import { cedarPolicyFromDefaultFile } from '../domain/cedarPolicy';
 import { businessFlows, businessFlowList } from '../domain/flows';
 import { SEED_REL, seedDetail } from '../domain/seed';
@@ -245,6 +249,10 @@ function enqueue<T>(state: EngineGlobalState, run: () => Promise<T>): Promise<T>
  *   application-seeded → 常量定义全文入日志(seeded 即 active;fold 落
  *   applications 表,键集即 app-known 不变式的已激活集合——default 恒在,
  *   是不变式长牙的地板)。旧库兼容:既有库无 application 事件 → 尾部补种;
+ * - capability seed 迁移(T13 Phase C,与 application 同构):日志无某 capability 的
+ *   capability-seeded → 常量定义全文入日志(seeded 即 registered;fold 落
+ *   capabilities 表,键集即 capability-registered 不变式[Phase D]的已注册
+ *   集合)。旧库兼容:既有库无 capability 事件 → 尾部补种;
  * - 业务 seed:日志无本种子标识才 append(既有口径)。
  */
 async function seedBootData(db: DbExecutor): Promise<void> {
@@ -276,6 +284,21 @@ async function seedBootData(db: DbExecutor): Promise<void> {
       kind: 'application-seeded',
       rel: metaApplicationRel(app.name),
       detail: { name: app.name, definition: app },
+    });
+  }
+  // capability 定义与 application 同构补种(定义在前、业务 seed 在后的空库序不变)。
+  const definedCapabilities = new Set(
+    log
+      .filter((event) => event.kind === 'capability-seeded')
+      .map((event) => (event.detail as Partial<CapabilitySeededDetail> | undefined)?.name)
+      .filter((name): name is string => typeof name === 'string'),
+  );
+  for (const capability of businessCapabilityList) {
+    if (definedCapabilities.has(capability.name)) continue;
+    await appendEvent(db, {
+      kind: 'capability-seeded',
+      rel: metaCapabilityRel(capability.name),
+      detail: { name: capability.name, definition: capability },
     });
   }
   if (!log.some((event) => event.kind === 'seed' && event.rel === SEED_REL)) {

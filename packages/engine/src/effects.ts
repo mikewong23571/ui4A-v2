@@ -354,6 +354,11 @@ export function applyEffects(
       ...(snapshot.applications !== undefined
         ? { applications: { ...snapshot.applications } }
         : {}),
+      // T13:capabilities 表随行,与 applications 同口径(仅在场时携带;
+      // capability-registered 以"表不存在"为过渡期 vacuous pass 信号)。
+      ...(snapshot.capabilities !== undefined
+        ? { capabilities: { ...snapshot.capabilities } }
+        : {}),
     },
     events: [executedEvent, ...appendedEvents, ...spawnEvents],
   };

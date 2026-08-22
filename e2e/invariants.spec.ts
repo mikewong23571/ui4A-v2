@@ -756,6 +756,15 @@ test.describe('I5 可重放', () => {
           'meta/application:publishing',
           'meta/application:community',
         ]);
+        // I5 扩展(T13):capability 维度入重放输入——日志须含三个
+        // capability-seeded(rel=meta/capability:<name>,detail 持定义全文)。
+        // 防空转守卫与 application 维度同口径。
+        const capabilitySeeds = rows.filter((row) => row.kind === 'capability-seeded');
+        expect(capabilitySeeds.map((row) => row.rel)).toEqual([
+          'meta/capability:draft',
+          'meta/capability:notify',
+          'meta/capability:clarify',
+        ]);
       });
     } finally {
       await terminateStaleNotifyWorkflows(['c1']);
@@ -767,6 +776,11 @@ test.describe('I5 可重放', () => {
     // 回灌保真 + 重放确定性断言锚。
     const onlineApplicationsHash = contentVersion(
       fold(await readLog(pool), { flows: businessFlows }).applications ?? {},
+    );
+    // capabilities 表(T13;与 applications 同口径,经生产 fold 取):
+    // 跨 TRUNCATE 边界的回灌保真 + 重放确定性断言锚。
+    const onlineCapabilitiesHash = contentVersion(
+      fold(await readLog(pool), { flows: businessFlows }).capabilities ?? {},
     );
     const onlinePerRel: Record<string, string> = {};
     for (const [rel, entity] of Object.entries(onlineWorld)) {
@@ -787,6 +801,12 @@ test.describe('I5 可重放', () => {
           contentVersion(fold(await readLog(pool), { flows: businessFlows }).applications ?? {}),
           'applications 表:重放后内容 hash 应与在线一致(I5)',
         ).toBe(onlineApplicationsHash);
+        // capabilities 表与在线一致(I5 扩展到 capability 维度:内容 hash 一致
+        // = name/title/kind/intent/input/output 全文一致,不止键集)。
+        expect(
+          contentVersion(fold(await readLog(pool), { flows: businessFlows }).capabilities ?? {}),
+          'capabilities 表:重放后内容 hash 应与在线一致(I5)',
+        ).toBe(onlineCapabilitiesHash);
 
         const replayWorld = await readWorld(rels);
         // 逐实体一致(不只综合 hash:失败时可定位差异 rel)。

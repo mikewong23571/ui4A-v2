@@ -13,6 +13,7 @@ import { contentVersion } from '@ui4a/engine';
 import type { FlowDefinition, LogEvent, SirenEntity } from '@ui4a/engine';
 
 import { businessApplicationList } from '../domain/applications';
+import { businessCapabilityList } from '../domain/capabilities';
 import { businessFlows, businessFlowList } from '../domain/flows';
 import { SEED_REL, seedDetail } from '../domain/seed';
 import { appendEvent, ensureEventsTable, readLog } from '../db/events';
@@ -230,7 +231,9 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
     const engine = await boot();
     const log = await readLog(pool);
     // 补种追加在既有日志尾部(与 flow seed 迁移同哲学;fold 重放天然一致)。
-    expect(log.slice(-3).map((event) => event.kind)).toEqual([
+    // (T13:capability 补种按 boot 序跟在 application 补种之后,占用日志
+    // 最末三条——application 种子因此落在尾部倒数第 4–6 条。)
+    expect(log.slice(-6, -3).map((event) => event.kind)).toEqual([
       'application-seeded',
       'application-seeded',
       'application-seeded',
@@ -243,37 +246,104 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
   });
 });
 
-describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)', () => {
-  /**
-   * TRUNCATE(空库)→ 原序回灌日志行(显式 seq 保序)→ 修复 bigserial 水位。
-   * 与 e2e/invariants.spec.ts 的 restoreLogRows 同口径:重放的唯一输入是日志。
-   */
-  async function restoreLogRows(rows: readonly LogEvent[]): Promise<void> {
-    await pool.query('TRUNCATE events');
-    for (const row of rows) {
-      await pool.query(
-        `INSERT INTO events (seq, ts, actor, principal, channel, kind, rel, action, params, reason, detail)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11::jsonb)`,
-        [
-          row.seq,
-          row.ts ?? null,
-          row.actor ?? null,
-          row.principal ?? null,
-          row.channel ?? null,
-          row.kind,
-          row.rel ?? null,
-          row.action ?? null,
-          JSON.stringify(row.params ?? {}),
-          row.reason ?? null,
-          row.detail === undefined ? null : JSON.stringify(row.detail),
-        ],
-      );
+describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
+  it('draft/notify/clarify 以 capability-seeded 入日志:rel=meta/capability:<name>,detail 全文', async () => {
+    await boot();
+    const seeds = (await readLog(pool)).filter((event) => event.kind === 'capability-seeded');
+    expect(seeds.map((event) => event.rel)).toEqual([
+      'meta/capability:draft',
+      'meta/capability:notify',
+      'meta/capability:clarify',
+    ]);
+    for (const [index, capability] of businessCapabilityList.entries()) {
+      expect(seeds[index]?.detail).toEqual({ name: capability.name, definition: capability });
     }
+  });
+
+  it('fold 快照:capabilities 表落三个已注册定义(capability-registered 注册表来源)', async () => {
+    const engine = await boot();
+    const capabilities = engine.getSnapshot().capabilities;
+    expect(Object.keys(capabilities ?? {})).toEqual(['draft', 'notify', 'clarify']);
+    expect(capabilities?.['draft']?.kind).toBe('extract');
+    expect(capabilities?.['notify']?.kind).toBe('effect');
+  });
+
+  it('boot 幂等:重复 boot 不再追加 capability-seeded(仍 3 条)', async () => {
+    await boot();
+    resetEngineForTests();
+    await boot();
+    const seeds = (await readLog(pool)).filter((event) => event.kind === 'capability-seeded');
+    expect(seeds).toHaveLength(3);
+  });
+
+  it('旧库迁移:既有日志(flow 定义 + application + 业务 seed)无 capability 事件 → boot 尾部补种', async () => {
+    // 旧库形态(T10 落定后):flow definition-seeded + application-seeded +
+    // 业务 seed 已在日志(无 capability 事件)。
+    for (const flow of businessFlowList) {
+      await appendEvent(pool, {
+        kind: 'definition-seeded',
+        rel: `meta/flow:${flow.name}`,
+        detail: { name: flow.name, version: 1, status: 'active', definition: flow },
+      });
+    }
+    for (const app of businessApplicationList) {
+      await appendEvent(pool, {
+        kind: 'application-seeded',
+        rel: `meta/application:${app.name}`,
+        detail: { name: app.name, definition: app },
+      });
+    }
+    await appendEvent(pool, { kind: 'seed', rel: SEED_REL, detail: seedDetail });
+
+    const engine = await boot();
+    const log = await readLog(pool);
+    // 补种追加在既有日志尾部(与 flow/application seed 迁移同哲学;
+    // fold 重放天然一致)。
+    expect(log.slice(-3).map((event) => event.kind)).toEqual([
+      'capability-seeded',
+      'capability-seeded',
+      'capability-seeded',
+    ]);
+    expect(Object.keys(engine.getSnapshot().capabilities ?? {})).toEqual([
+      'draft',
+      'notify',
+      'clarify',
+    ]);
+  });
+});
+
+/**
+ * TRUNCATE(空库)→ 原序回灌日志行(显式 seq 保序)→ 修复 bigserial 水位。
+ * 与 e2e/invariants.spec.ts 的 restoreLogRows 同口径:重放的唯一输入是日志。
+ * (application/capability 两个 I5 维度共用,T13 提升至文件作用域。)
+ */
+async function restoreLogRows(rows: readonly LogEvent[]): Promise<void> {
+  await pool.query('TRUNCATE events');
+  for (const row of rows) {
     await pool.query(
-      `SELECT setval(pg_get_serial_sequence('events', 'seq'), (SELECT COALESCE(max(seq), 1) FROM events))`,
+      `INSERT INTO events (seq, ts, actor, principal, channel, kind, rel, action, params, reason, detail)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11::jsonb)`,
+      [
+        row.seq,
+        row.ts ?? null,
+        row.actor ?? null,
+        row.principal ?? null,
+        row.channel ?? null,
+        row.kind,
+        row.rel ?? null,
+        row.action ?? null,
+        JSON.stringify(row.params ?? {}),
+        row.reason ?? null,
+        row.detail === undefined ? null : JSON.stringify(row.detail),
+      ],
     );
   }
+  await pool.query(
+    `SELECT setval(pg_get_serial_sequence('events', 'seq'), (SELECT COALESCE(max(seq), 1) FROM events))`,
+  );
+}
 
+describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)', () => {
   it('application-seeded 与定义/业务事件交错的日志:TRUNCATE 原序回灌 → boot 重放与在线全实体 hash 一致,applications 表全文一致', async () => {
     // ---- 相位 1(在线轨道):boot 种子(定义 → application → 业务)+ 业务
     //   exec 交错,增量维护快照。 ----
@@ -304,14 +374,19 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
 
     // 导出事件(重放的唯一输入)并守卫混合形状:application-seeded 夹在
     // definition-seeded 与业务 seed/业务事件之间,detail 持定义全文。
+    // (T13:capability-seeded 按 boot 序插在 application 种子与业务 seed
+    // 之间——定义 → application → capability → 业务的空库序不变。)
     const rows = await readLog(pool);
-    expect(rows.slice(0, 7).map((event) => event.kind)).toEqual([
+    expect(rows.slice(0, 10).map((event) => event.kind)).toEqual([
       'definition-seeded',
       'definition-seeded',
       'definition-seeded',
       'application-seeded',
       'application-seeded',
       'application-seeded',
+      'capability-seeded',
+      'capability-seeded',
+      'capability-seeded',
       'seed',
     ]);
     expect(rows.some((event) => event.kind === 'action-executed')).toBe(true);
@@ -339,6 +414,74 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
     expect(contentVersion(replayed.getSnapshot())).toBe(contentVersion(onlineSnapshot));
     // applications 表全文一致(name/title/intent/entry 逐字段,不止键集)。
     expect(replayed.getSnapshot().applications).toEqual(onlineSnapshot.applications);
+  });
+});
+
+describe('I5 重放一致:capability 维度(T13 Phase C Task 2;spec 验收 4)', () => {
+  it('capability-seeded 与定义/业务事件交错的日志:TRUNCATE 原序回灌 → boot 重放与在线全实体 hash 一致,capabilities 表全文一致', async () => {
+    // ---- 相位 1(在线轨道):boot 种子(定义 → application → capability →
+    //   业务)+ 业务 exec 交错,增量维护快照。 ----
+    const online = await boot();
+    for (const [action, params] of [
+      ['next', { title: 'I5 Capability Article' }],
+      ['next', { category: 'tech', tags: 'i5' }],
+      ['next', { body: 'I5 capability 维度重放序列的业务产物。' }],
+      ['publish', { title: 'I5 Capability Article' }],
+    ] as const) {
+      const outcome = await online.exec({
+        rel: 'article-drafting:main',
+        action,
+        params,
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'http',
+      });
+      expect(outcome.kind, `${action} 应通过`).toBe('accepted');
+    }
+    const onlineSnapshot = online.getSnapshot();
+
+    // 反空转锚:在线 capabilities 表先钉在种子常量(独立于"两侧同 fold"的
+    // 对称性)——fold 若丢表/落错内容,本断言先红,保证下面的对比非空转。
+    expect(onlineSnapshot.capabilities).toEqual(
+      Object.fromEntries(businessCapabilityList.map((capability) => [capability.name, capability])),
+    );
+
+    // 导出事件(重放的唯一输入)并守卫混合形状:capability-seeded 夹在
+    // application-seeded 与业务 seed 之间,detail 持定义全文。
+    const rows = await readLog(pool);
+    expect(rows.slice(6, 10).map((event) => event.kind)).toEqual([
+      'capability-seeded',
+      'capability-seeded',
+      'capability-seeded',
+      'seed',
+    ]);
+    expect(rows.some((event) => event.kind === 'action-executed')).toBe(true);
+    const capabilitySeeds = rows.filter((event) => event.kind === 'capability-seeded');
+    expect(capabilitySeeds.map((event) => event.rel)).toEqual([
+      'meta/capability:draft',
+      'meta/capability:notify',
+      'meta/capability:clarify',
+    ]);
+    for (const [index, capability] of businessCapabilityList.entries()) {
+      expect(capabilitySeeds[index]?.detail).toEqual({
+        name: capability.name,
+        definition: capability,
+      });
+    }
+
+    // ---- 相位间:TRUNCATE(空库)→ 原序回灌。 ----
+    await restoreLogRows(rows);
+
+    // ---- 相位 2(重放轨道):reset 单例后走生产 boot——幂等 seed(日志已含
+    //   全部种子,零追加)+ 全量 fold 回灌日志,即 I5 的重放本身。 ----
+    resetEngineForTests();
+    const replayed = await boot();
+    expect(await readLog(pool), '重放 boot 不追加任何事件(种子幂等)').toHaveLength(rows.length);
+
+    // 全实体 hash 一致(I5 主断言;capabilities 表随快照进 hash)。
+    expect(contentVersion(replayed.getSnapshot())).toBe(contentVersion(onlineSnapshot));
+    // capabilities 表全文一致(name/title/kind/intent/input/output 逐字段,不止键集)。
+    expect(replayed.getSnapshot().capabilities).toEqual(onlineSnapshot.capabilities);
   });
 });
 

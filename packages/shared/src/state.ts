@@ -8,6 +8,7 @@
 import type {
   ActivationSnapshot,
   ApplicationDefinition,
+  CapabilityDefinition,
   DefinitionEntry,
   FlowDefinition,
 } from './definition';
@@ -172,6 +173,14 @@ export interface EngineSnapshot {
    * 可选与 definitions 同口径:既有快照构造点的类型兼容。
    */
   applications?: Record<string, ApplicationDefinition>;
+  /**
+   * capability 定义表(T13):capability 名 → 能力定义(已注册集合,
+   * capability-registered 不变式[Phase D]的注册表来源)。boot seed
+   * (capability-seeded)落表;与 applications 同口径——可选是为了不破坏
+   * 既有快照构造点(种子数据、测试 fixture)的类型兼容,缺省不物化为 {}
+   * (表不存在 = 过渡期 vacuous pass 信号)。
+   */
+  capabilities?: Record<string, CapabilityDefinition>;
   /**
    * 已凝固渲染 spec 表(T7):concern → 已凝固 spec(render-spec-frozen
    * 事件折叠;首冻为准)。可选与 confirmations 同口径;fold/applyEffects

@@ -14,6 +14,7 @@
 import { fieldValues, metaActivationRel, metaFlowRel } from '@ui4a/shared';
 import type {
   ApplicationDefinition,
+  CapabilityDefinition,
   ConfirmationSnapshot,
   DefinitionEntry,
   DefinitionStatus,
@@ -56,7 +57,10 @@ import { applyRenderSpecFrozen } from './render-spec';
  *  agent-decision(T11 Phase B:inline 路径每步决策一条审计,与 chat-turn 同源;
  *  纯留痕,fold 不改状态)+
  *  application-seeded(T10 Phase B:application 定义种子,boot 装载;
- *  fold 落 applications 表——seeded 即 active,键集 = app-known 已激活集合)。 */
+ *  fold 落 applications 表——seeded 即 active,键集 = app-known 已激活集合)+
+ *  capability-seeded(T13 Phase C:capability 定义种子,boot 装载;
+ *  fold 落 capabilities 表——seeded 即 registered,键集 =
+ *  capability-registered 已注册集合)。 */
 export type LogEventKind =
   | EngineEvent['kind']
   | 'action-rejected'
@@ -64,6 +68,7 @@ export type LogEventKind =
   | 'seed'
   | 'definition-seeded'
   | 'application-seeded'
+  | 'capability-seeded'
   | 'delegation-started'
   | 'delegation-step'
   | 'delegation-completed'
@@ -106,6 +111,17 @@ export interface SeedDetail {
 export interface ApplicationSeededDetail {
   name: string;
   definition: ApplicationDefinition;
+}
+
+/**
+ * capability-seeded 事件的 detail 载荷(T13 Phase C;机器可重放:定义全文入日志)。
+ * 与 ApplicationSeededDetail 同哲学(seeded 即 registered),capability 无版本/
+ * 生命周期(本 track 不扩展 meta 动词)——capabilities 表的存在即注册,
+ * 键集就是 capability-registered 不变式(Phase D)的已注册集合。
+ */
+export interface CapabilitySeededDetail {
+  name: string;
+  definition: CapabilityDefinition;
 }
 
 /** 由事件参数(带出处)还原 exec 请求的求值输入。 */
@@ -163,6 +179,11 @@ function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
     // (app-known 以"表不存在"为过渡期 vacuous pass 信号;与 effects.ts 同口径)。
     ...(snapshot.applications !== undefined
       ? { applications: { ...snapshot.applications } }
+      : {}),
+    // T13:capabilities 表随行,与 applications 同口径(仅在场时携带,
+    // 缺省不物化为 {}——capability-registered 的过渡期 vacuous pass 信号)。
+    ...(snapshot.capabilities !== undefined
+      ? { capabilities: { ...snapshot.capabilities } }
       : {}),
   };
 }
@@ -249,6 +270,38 @@ function applyApplicationSeeded(snapshot: EngineSnapshot, event: LogEvent): Engi
   return {
     ...snapshot,
     applications: { ...(snapshot.applications ?? {}), [detail.name]: detail.definition },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// capability-seeded 重放(T13 Phase C;spec 架构决定 3)
+// ---------------------------------------------------------------------------
+
+/**
+ * capability-seeded 重放:已注册 capability 定义落 capabilities 表
+ * (幂等:已存在跳过)。seeded 即 registered——capabilities 表的键集即
+ * capability-registered 不变式(Phase D)的已注册集合;本 track 无
+ * capability 生命周期动词,表只经本事件增长(与 application-seeded
+ * 同哲学:不物化 lifecycle 实例)。
+ */
+function applyCapabilitySeeded(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
+  const detail = event.detail as Partial<CapabilitySeededDetail> | undefined;
+  if (
+    detail === undefined ||
+    typeof detail !== 'object' ||
+    typeof detail.name !== 'string' ||
+    detail.definition === undefined
+  ) {
+    throw new Error(
+      `重放失败:seq=${event.seq} capability-seeded 缺少 detail 载荷(日志完整性)`,
+    );
+  }
+  if (snapshot.capabilities?.[detail.name] !== undefined) {
+    return snapshot; // 幂等:重复 seed 不覆盖(boot 重放安全)。
+  }
+  return {
+    ...snapshot,
+    capabilities: { ...(snapshot.capabilities ?? {}), [detail.name]: detail.definition },
   };
 }
 
@@ -686,6 +739,8 @@ function applyDefinitionRejected(snapshot: EngineSnapshot, event: LogEvent): Eng
  * - definition-seeded(T4):建立 definitions 条目 + lifecycle 实例(幂等);
  * - application-seeded(T10):活跃 app 定义落 applications 表(幂等;
  *   seeded 即 active,键集 = app-known 已激活集合);
+ * - capability-seeded(T13):已注册 capability 定义落 capabilities 表(幂等;
+ *   seeded 即 registered,键集 = capability-registered 已注册集合);
  * - definition-edited:伴随事件——工作副本已由同批 action-executed 重放
  *   (applyEffects 的 meta-edit),fold 不双算;
  * - definition-revised / -deprecated:条目状态落态(转移由前置 action-executed
@@ -740,6 +795,11 @@ export function fold(
           ...(initial.applications !== undefined
             ? { applications: initial.applications }
             : {}),
+          // T13:capabilities 表随行,与 applications 同口径(仅在场时携带;
+          // capability-registered 过渡期 vacuous pass 信号)。
+          ...(initial.capabilities !== undefined
+            ? { capabilities: initial.capabilities }
+            : {}),
         };
   for (const event of events) {
     switch (event.kind) {
@@ -751,6 +811,9 @@ export function fold(
         break;
       case 'application-seeded':
         snapshot = applyApplicationSeeded(snapshot, event);
+        break;
+      case 'capability-seeded':
+        snapshot = applyCapabilitySeeded(snapshot, event);
         break;
       case 'definition-edited':
         break;

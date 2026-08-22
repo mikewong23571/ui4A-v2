@@ -199,6 +199,11 @@ export function suspendForConfirmation(
       ...(snapshot.applications !== undefined
         ? { applications: { ...snapshot.applications } }
         : {}),
+      // T13:capabilities 表随行,与 applications 同口径(仅在场时携带;
+      // capability-registered 以"表不存在"为过渡期 vacuous pass 信号)。
+      ...(snapshot.capabilities !== undefined
+        ? { capabilities: { ...snapshot.capabilities } }
+        : {}),
     },
     events: [event],
     confirmation: {
@@ -495,6 +500,11 @@ export function rejectConfirmation(
       // (app-known 以"表不存在"为过渡期 vacuous pass 信号;与 effects.ts 同口径)。
       ...(snapshot.applications !== undefined
         ? { applications: { ...snapshot.applications } }
+        : {}),
+      // T13:capabilities 表随行,与 applications 同口径(仅在场时携带;
+      // capability-registered 以"表不存在"为过渡期 vacuous pass 信号)。
+      ...(snapshot.capabilities !== undefined
+        ? { capabilities: { ...snapshot.capabilities } }
         : {}),
     },
     events: [rejectedEvent],

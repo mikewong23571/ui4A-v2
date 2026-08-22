@@ -26,6 +26,8 @@ import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
  *  agent-decision 为 T11 Phase B inline 每步决策审计(与 chat-turn 同源同值,
  *  engine fold 忽略——纯留痕);
  *  application-seeded 为 T10 Phase B application 定义种子(boot 装载,
+ *  与 engine LogEventKind 对齐——机械适配);
+ *  capability-seeded 为 T13 Phase C capability 定义种子(boot 装载,
  *  与 engine LogEventKind 对齐——机械适配)。 */
 export type EventKind =
   | 'action-executed'
@@ -39,6 +41,7 @@ export type EventKind =
   | 'seed'
   | 'definition-seeded'
   | 'application-seeded'
+  | 'capability-seeded'
   | 'definition-edited'
   | 'definition-submitted'
   | 'definition-activated'
