@@ -101,6 +101,31 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
     expect(nodeOf(articleDraftingFlow, 'done').actions).toEqual([]);
   });
 
+  it('向导字段的人话标题与 publish 的 slug 说明(T14 Phase A:label 取 field title)', () => {
+    // 表单 label 取 field-definition 的 title(RJSF 缺省:schema.title 优先,
+    // 缺省回退机器名)——seed 逐字段补齐人话标题,machine name 不变。
+    expect(nodeOf(articleDraftingFlow, 'basic-info').fields).toEqual([
+      expect.objectContaining({ name: 'title', title: '文章标题' }),
+    ]);
+    expect(nodeOf(articleDraftingFlow, 'classification').fields).toEqual([
+      expect.objectContaining({ name: 'category', title: '分类' }),
+      expect.objectContaining({ name: 'tags', title: '标签' }),
+    ]);
+    expect(nodeOf(articleDraftingFlow, 'content').fields).toEqual([
+      expect.objectContaining({ name: 'body', title: '正文' }),
+    ]);
+    // publish 的 title 是 slug 来源(name-from):预填实例值 + description 说明
+    // 「为何再要一次 title」(#4)。
+    const publish = nodeOf(articleDraftingFlow, 'ready').actions[0]!;
+    expect(publish.fields).toEqual([
+      expect.objectContaining({
+        name: 'title',
+        title: '文章标题',
+        description: '用于生成文章地址(slug),与前序所填一致',
+      }),
+    ]);
+  });
+
   it('post-status:published 有 unpublish/archive,offline 有 republish,archived 终态', () => {
     expect(postStatusFlow.initial).toBe('published');
 

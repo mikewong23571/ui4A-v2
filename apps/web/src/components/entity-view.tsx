@@ -9,6 +9,9 @@
  * - exec 提交 rel 取实体自身 properties.rel(flow: 别名页落在实例 rel 上,直投不绕别名);
  * - T9 Phase C:分区卡片化(shadcn Card/Table/Badge),结构锚点不变
  *   (section[aria-label] / tbody tr / 成员 a / data-rel / data-nav)。
+ * - T14 Phase A(#3/#4):属性表人话口径——title 投影不上表(h1 已呈现),
+ *   字段值行的业务字段名映射中文标签(未知名原样,零发明),rel/flow/node
+ *   合同标识保留机器名;properties.fields 作为 ActionRunner 的预填取值源。
  */
 import type { GuardResultEntry, SirenEntity } from '@ui4a/engine';
 
@@ -33,12 +36,30 @@ export function entityPageHref(rel: string): string {
 /**
  * 字段键值对的展示文本。properties.fields 是投影后的扁平形状
  * `{ name: value }`(engine fieldValues 已剥离开出处——出处只在事件日志里)。
+ * 字段名经 fieldDisplayLabel 人话化(#3:机器字段名不直接上屏)。
  */
 function fieldsSummary(fields: unknown): string {
   if (typeof fields !== 'object' || fields === null) return '';
   return Object.entries(fields as Record<string, unknown>)
-    .map(([name, value]) => `${name}=${String(value)}`)
+    .map(([name, value]) => `${fieldDisplayLabel(name)}=${String(value)}`)
     .join(' · ');
+}
+
+/**
+ * 属性表字段名的人话标签(T14 Phase A,#3):已知业务字段映射中文标题。
+ * 未知名原样呈现——零发明:renderer 不替合同造标签;rel/flow/node 是合同
+ * 标识(实体地址与状态机词汇),不在此表、保留机器名原样。
+ */
+const FIELD_DISPLAY_LABELS: Readonly<Record<string, string>> = {
+  title: '文章标题',
+  category: '分类',
+  tags: '标签',
+  body: '正文',
+};
+
+/** 字段名的展示标签:已知业务字段取人话标题,未知原样。 */
+function fieldDisplayLabel(name: string): string {
+  return FIELD_DISPLAY_LABELS[name] ?? name;
 }
 
 /** 展平一个 properties 值:标量 → `key=value`;一层对象 → `key.sub=value`。 */
@@ -112,6 +133,11 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
       ? entity.properties.title
       : rel;
   const members = entity.entities ?? [];
+  // 实例字段值(properties.fields 扁平形状):同名动作字段预填的取值源(#4)。
+  const prefillFields =
+    typeof entity.properties.fields === 'object' && entity.properties.fields !== null
+      ? (entity.properties.fields as Record<string, unknown>)
+      : undefined;
 
   return (
     <div>
@@ -132,7 +158,9 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
           <Table>
             <TableBody>
               {Object.entries(entity.properties)
-                .filter(([key]) => key !== 'fields')
+                // fields 单独成行(值人话化);title 是节点标题的纯展示投影,
+                // h1 已呈现、不再上表(#3:与表单字段 title 撞名的根因)。
+                .filter(([key]) => key !== 'fields' && key !== 'title')
                 .map(([key, value]) => (
                   <TableRow key={key}>
                     <th
@@ -152,7 +180,7 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
                     scope="row"
                     className="px-3 py-2 text-left align-top font-normal whitespace-nowrap text-muted-foreground"
                   >
-                    fields
+                    字段值
                   </th>
                   <TableCell className="px-3 py-2 break-all whitespace-normal">
                     {fieldsSummary(entity.properties.fields)}
@@ -185,6 +213,7 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
                     blocked={blockedForRenderer(guard)}
                     blockReason={guard?.reason}
                     onExecuted={onChanged}
+                    prefill={prefillFields}
                   />
                 </Card>
               );

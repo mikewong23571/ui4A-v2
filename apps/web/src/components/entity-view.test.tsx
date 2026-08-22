@@ -458,6 +458,131 @@ describe('EntityView:实体四件组装渲染', () => {
   });
 });
 
+// ---- T14 Phase A:人话 label / 预填 / 属性表口径(#3/#4 表单与属性表侧)---------
+
+/** seed 口径的 publish:field-definition 的 title/description 已由引擎派生进 schema。 */
+const seedPublishAction: SirenAction = {
+  name: 'publish',
+  title: '发布',
+  method: 'POST',
+  href: '/api/exec',
+  fields: {
+    $schema: 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+    properties: {
+      title: {
+        type: 'string',
+        title: '文章标题',
+        description: '用于生成文章地址(slug),与前序所填一致',
+      },
+    },
+    required: ['title'],
+    additionalProperties: false,
+  },
+};
+
+describe('ActionRunner:人话 label 与字段说明(T14 Phase A,#3/#4 表单侧)', () => {
+  it('字段 label 取 schema.title 的人话标题,机器名不上屏;description 呈现为字段说明', () => {
+    vi.stubGlobal('fetch', mockFetch(200, { entity: wizardEntity }));
+    render(<ActionRunner rel="article-drafting:main" action={seedPublishAction} />);
+
+    expect(screen.getByLabelText(/文章标题/)).toBeTruthy();
+    // 机器字段名不作为 label 上屏(label 位已被人话标题占据)
+    expect(screen.queryByLabelText(/^title$/)).toBeNull();
+    expect(screen.getByText(/用于生成文章地址/)).toBeTruthy();
+  });
+});
+
+describe('ActionRunner:实例字段预填(T14 Phase A,#4)', () => {
+  it('动作字段与实例字段同名 → 表单以实例值预填;实例没有的字段不预填', () => {
+    vi.stubGlobal('fetch', mockFetch(200, { entity: wizardEntity }));
+    render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);
+
+    // wizardEntity.fields = { title: '草稿标题' };publishAction 声明 title/category/body
+    expect((screen.getByLabelText(/标题/) as HTMLInputElement).value).toBe('草稿标题');
+    expect((screen.getByLabelText(/正文/) as HTMLTextAreaElement).value).toBe('');
+  });
+
+  it('预填只欠确认:补齐其余必填直接提交,同名字段参数 = 实例值', async () => {
+    const fetchMock = mockFetch(200, { entity: wizardEntity });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);
+
+    fireEvent.change(screen.getByLabelText(/正文/), { target: { value: '正文内容' } });
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const body = JSON.parse(
+      String((fetchMock.mock.calls[0] as [string, RequestInit])[1]!.body),
+    ) as { params: Record<string, unknown> };
+    expect(body.params.title).toBe('草稿标题');
+    expect(body.params.body).toBe('正文内容');
+  });
+
+  it('预填值可被改写:提交以用户确认的参数为准', async () => {
+    const fetchMock = mockFetch(200, { entity: wizardEntity });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);
+
+    fireEvent.change(screen.getByLabelText(/标题/), { target: { value: '改过的标题' } });
+    fireEvent.change(screen.getByLabelText(/正文/), { target: { value: '正文' } });
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const body = JSON.parse(
+      String((fetchMock.mock.calls[0] as [string, RequestInit])[1]!.body),
+    ) as { params: Record<string, unknown> };
+    expect(body.params.title).toBe('改过的标题');
+  });
+
+  it('预填只取 schema 声明的标量字段(合同外键与非标量值不进表单)', async () => {
+    const fetchMock = mockFetch(200, { entity: wizardEntity });
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <ActionRunner
+        rel="article-drafting:main"
+        action={seedPublishAction}
+        prefill={{ title: '草稿标题', category: 'tech', meta: { nested: 1 } }}
+      />,
+    );
+
+    expect((screen.getByLabelText(/文章标题/) as HTMLInputElement).value).toBe('草稿标题');
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const body = JSON.parse(
+      String((fetchMock.mock.calls[0] as [string, RequestInit])[1]!.body),
+    ) as { params: Record<string, unknown> };
+    expect(body.params).toEqual({ title: '草稿标题' });
+  });
+});
+
+describe('EntityView:属性表人话口径(T14 Phase A,#3 属性表侧)', () => {
+  it('title 投影不再上表(h1 已呈现);rel/flow/node 合同标识保留原样', () => {
+    const { container } = render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);
+    const section = container.querySelector('section[aria-label="属性"]');
+    expect(section).not.toBeNull();
+    const headers = [...(section?.querySelectorAll('th') ?? [])].map((th) => th.textContent);
+    expect(headers).not.toContain('title');
+    expect(headers).not.toContain('fields');
+    expect(headers).toEqual(expect.arrayContaining(['rel', 'flow', 'node', '字段值']));
+    // 节点标题投影仍是页面主标题(属性表不再重复)
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('就绪');
+  });
+
+  it('实例字段值以人话标签呈现;未知字段名原样(零发明,不造标签)', () => {
+    const entity: SirenEntity = {
+      ...wizardEntity,
+      properties: {
+        ...wizardEntity.properties,
+        fields: { title: '草稿标题', mystery: 'x' },
+      },
+    };
+    render(<EntityView rel="article-drafting:main" entity={entity} />);
+
+    expect(screen.getByText('文章标题=草稿标题 · mystery=x')).toBeTruthy();
+  });
+});
+
 // ---- 确认门渲染(T3 Phase D / Task D1)--------------------------------------
 
 describe('EntityView:确认实体与 inbox 集合渲染', () => {

@@ -28,7 +28,10 @@ const articleDrafting: FlowDefinition = {
     {
       name: 'basic-info',
       title: '基本信息',
-      fields: [{ name: 'title', type: 'text', required: true, semantics: 'intent' }],
+      // 字段 title 是人话 label 位(RJSF 优先取 schema.title);machine name 不变。
+      fields: [
+        { name: 'title', type: 'text', required: true, semantics: 'intent', title: '文章标题' },
+      ],
       actions: [
         { name: 'next', title: '下一步', to: 'classification' },
         // 放弃起草 → done:向导循环化(publish 回到 basic-info)后保持可达终态。
@@ -45,9 +48,10 @@ const articleDrafting: FlowDefinition = {
           required: true,
           options: ['tech', 'essay', 'review'],
           semantics: 'org-standard',
+          title: '分类',
           source: { kind: 'static' },
         },
-        { name: 'tags', type: 'text', semantics: 'intent' },
+        { name: 'tags', type: 'text', semantics: 'intent', title: '标签' },
       ],
       actions: [{ name: 'next', title: '下一步', to: 'content' }],
     },
@@ -60,6 +64,7 @@ const articleDrafting: FlowDefinition = {
           type: 'textarea',
           required: true,
           semantics: 'work-product',
+          title: '正文',
           source: {
             kind: 'proposal',
             capability: 'draft',
@@ -82,8 +87,19 @@ const articleDrafting: FlowDefinition = {
           // 目标必失败)。done 终态改由 basic-info 的 abandon 保持可达。
           to: 'basic-info',
           guards: ['title-not-taken'],
-          // 发布参数只需 title(slug 来源);向导前序步骤的字段已落在实例上。
-          fields: [{ name: 'title', type: 'text', required: true, semantics: 'intent' }],
+          // 发布参数只需 title(slug 来源);向导前序步骤的字段已落在实例上,
+          // renderer 以实例值预填本字段(T14),用户确认而非重输——description
+          // 说明「为何再要一次 title」。
+          fields: [
+            {
+              name: 'title',
+              type: 'text',
+              required: true,
+              semantics: 'intent',
+              title: '文章标题',
+              description: '用于生成文章地址(slug),与前序所填一致',
+            },
+          ],
           effect: [
             { type: 'transition' },
             {

@@ -12,6 +12,9 @@
  * - T9 Phase C:按钮走 shadcn Button;RJSF 只做模板层样式包装
  *   (FieldTemplate/字段错误样式 + 控件后代选择器外观),控件 id/原生
  *   select/textarea/label 关联/required 零改动。
+ * - T14 Phase A(#4):prefill(当前实体实例字段值)同名预填 schema 声明的
+ *   标量字段,用户确认而非重输;label 由 RJSF 缺省取 schema.title
+ *   (field-definition 的人话标题),缺省回退机器名。
  */
 import Form from '@rjsf/core';
 import { useState, type ComponentType, type ReactNode } from 'react';
@@ -28,6 +31,30 @@ import { rjsfValidator } from './rjsf-validator';
 function schemaHasFields(schema: SirenAction['fields']): boolean {
   const properties = schema.properties as Record<string, unknown> | undefined;
   return properties !== undefined && Object.keys(properties).length > 0;
+}
+
+/**
+ * 实例字段预填(T14 Phase A,#4):动作字段与当前实体 fields 同名时,以实例值
+ * 作为表单初始值——用户确认而非重输。只取 schema 声明过、且实例值为标量
+ * (string/number/boolean)的字段:合同外键交给 additionalProperties:false,
+ * 非标量值不猜控件表示(零发明)。预填不改动值出处:提交仍以用户确认的
+ * 参数为准,origin 由引擎按参数口径留痕。
+ */
+function initialFormData(
+  schema: SirenAction['fields'],
+  prefill: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (prefill === undefined) return undefined;
+  const properties = schema.properties as Record<string, unknown> | undefined;
+  if (properties === undefined) return undefined;
+  const data: Record<string, unknown> = {};
+  for (const name of Object.keys(properties)) {
+    const value = prefill[name];
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      data[name] = value;
+    }
+  }
+  return Object.keys(data).length > 0 ? data : undefined;
 }
 
 // ---- RJSF 模板层样式包装(T9 Phase C)-------------------------------------------
@@ -149,6 +176,8 @@ export interface ActionRunnerProps {
   onExecuted?: (rel: string) => void;
   /** 提交函数(缺省业务端 /api/exec;_meta 站点动作注入 meta 客户端)。 */
   execFn?: ExecFn;
+  /** 当前实体的实例字段值(同名动作字段预填;缺省=无预填,如 _meta 动作)。 */
+  prefill?: Record<string, unknown>;
 }
 
 export function ActionRunner({
@@ -158,6 +187,7 @@ export function ActionRunner({
   blockReason,
   onExecuted,
   execFn = execAction,
+  prefill,
 }: ActionRunnerProps) {
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -214,6 +244,8 @@ export function ActionRunner({
       <Form
         schema={action.fields}
         validator={rjsfValidator}
+        // 实例字段预填(#4):同名标量字段以实例值起手,提交仍以用户确认的参数为准。
+        formData={initialFormData(action.fields, prefill)}
         templates={{ FieldTemplate: RjsfFieldTemplate, FieldErrorTemplate: RjsfFieldErrorTemplate }}
         className={FORM_CONTROL_STYLES}
         // 只提交当前 action schema 声明过的字段(铁律 3 的提交面):
