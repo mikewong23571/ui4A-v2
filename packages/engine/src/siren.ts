@@ -494,7 +494,7 @@ function projectSelf(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
   };
 }
 
-/** meta/flow:<name>:definitions 表条目 + lifecycle 实例 → 定义实体。 */
+/** meta/flow:<name>:definitions 表条目 + lifecycle 实例 → 定义实体(+版本历史摘要子实体)。 */
 function projectFlowDefinition(
   snapshot: EngineSnapshot,
   name: string,
@@ -504,7 +504,7 @@ function projectFlowDefinition(
   if (entry === undefined) return undefined;
   const rel = `meta/flow:${name}`;
   const instance = snapshot.instances[rel];
-  return projectDefinitionEntity(
+  const entity = projectDefinitionEntity(
     rel,
     { name: entry.name, version: entry.version, ...(entry.bornBy !== undefined ? { bornBy: entry.bornBy } : {}) },
     entry.definition,
@@ -513,6 +513,112 @@ function projectFlowDefinition(
     snapshot,
     deps,
   );
+  // 版本历史摘要子实体(T13 Phase B)排在节点子实体之后——子实体按 class
+  // 各表其区(node-definition / definition-version),properties 的 A.2 形状不动。
+  return {
+    ...entity,
+    entities: [
+      ...(entity.entities ?? []),
+      ...versionSummariesOf(snapshot, entry).map(projectVersionSummary),
+    ],
+  };
+}
+
+/**
+ * 版本历史摘要(T13 Phase B;definitionVersions + activations 两表推导):
+ * - 版本号升序;status:active = 条目活跃指针(最后激活版),其余 superseded
+ *   (flow 级 draft/deprecated 是条目状态,在 properties.status,不进版本区);
+ * - source = 沉淀本版的事件口径:approved 激活在场 → definition-activated
+ *   (携带激活 id 与审批者,与 definition-activated 事件的 detail 同口径),
+ *   否则 definition-seeded(boot 种子);
+ * - definition = 该版定义全文(KB 级 JSON,体积可控——按版本取定义的读取
+ *   路径即内嵌于此,两版对比 Task 2 取两版子实体即可,无需另开端点);
+ * - 历史表缺项(老日志/fixture 快照):回退条目活跃指针,单版本 active、
+ *   无 source(来源不可证,不造数据);definition 回退条目工作副本——与
+ *   activeDefinitionOf 的回退同口径(seed 后未编辑时与活跃内容同文)。
+ */
+interface DefinitionVersionSummary {
+  version: number;
+  status: 'active' | 'superseded';
+  source?: 'definition-seeded' | 'definition-activated';
+  activationId?: string;
+  decidedBy?: ActivationSnapshot['approvedBy'];
+  definition: FlowDefinition;
+}
+
+/** 沉淀某版本的 approved 激活(definition-activated 来源;无则为种子版)。 */
+function approvedActivationOf(
+  snapshot: EngineSnapshot,
+  name: string,
+  version: number,
+): ActivationSnapshot | undefined {
+  return Object.values(snapshot.activations ?? {}).find(
+    (candidate) =>
+      candidate.flow === name && candidate.version === version && candidate.status === 'approved',
+  );
+}
+
+function versionSummariesOf(
+  snapshot: EngineSnapshot,
+  entry: DefinitionEntry,
+): DefinitionVersionSummary[] {
+  const table = snapshot.definitionVersions?.[entry.name] ?? {};
+  const versions = Object.keys(table)
+    .map((key) => Number(key))
+    .sort((a, b) => a - b);
+  if (versions.length === 0) {
+    return [{ version: entry.version, status: 'active', definition: entry.definition }];
+  }
+  return versions.map((version) => {
+    const definition = table[version];
+    if (definition === undefined) {
+      // 版本号枚举自该表,键必在场(同 meta.ts withEntry 的响亮失败口径)。
+      throw new Error(`definitionVersions 表缺 "${entry.name}" v${version}(引擎内部一致性)`);
+    }
+    const activation = approvedActivationOf(snapshot, entry.name, version);
+    const summary: DefinitionVersionSummary = {
+      version,
+      status: version === entry.version ? 'active' : 'superseded',
+      source: activation === undefined ? 'definition-seeded' : 'definition-activated',
+      definition,
+    };
+    if (activation !== undefined) {
+      summary.activationId = activation.id;
+      if (activation.approvedBy !== undefined) {
+        summary.decidedBy = activation.approvedBy;
+      }
+    }
+    return summary;
+  });
+}
+
+/** 摘要 → properties(缺省字段不出现,形状稳定口径与 confirmation 投影同;definition 大块置后)。 */
+function versionSummaryProperties(summary: DefinitionVersionSummary): Record<string, unknown> {
+  return {
+    version: summary.version,
+    status: summary.status,
+    ...(summary.source !== undefined ? { source: summary.source } : {}),
+    ...(summary.activationId !== undefined ? { activation: summary.activationId } : {}),
+    ...(summary.decidedBy !== undefined ? { 'decided-by': summary.decidedBy } : {}),
+    definition: summary.definition,
+  };
+}
+
+/**
+ * definition-version 摘要子实体(rel=version)。
+ * 有意不挂 href:rule driver 的 navigableRels 把子实体 href 纳入 agent 可导航
+ * 候选——版本实体是 BIOS 数据面,不是 agent 决策面(S2 实测:版本 href 会让
+ * 非法提案被拒后的 agent 在定义实体与版本实体间漫游至 max-steps,而非终局
+ * failed)。按版本取定义走 properties.definition 内嵌全文,无独立版本 rel。
+ */
+function projectVersionSummary(summary: DefinitionVersionSummary): SirenEntity {
+  return {
+    class: ['meta', 'definition-version'],
+    rel: ['version'],
+    properties: versionSummaryProperties(summary),
+    actions: [],
+    links: [],
+  };
 }
 
 /** meta/flows:全部定义实体的集合(子实体直达)。 */

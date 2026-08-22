@@ -1,16 +1,21 @@
 'use client';
 /**
  * BIOS 定义查看面(T4 Phase C;spec 架构决定 7):flow 定义的纯文本/表格视图;
- * T13 Phase A(spec 架构决定 1)在表格之上增只读拓扑图。
+ * T13 Phase A(spec 架构决定 1)在表格之上增只读拓扑图;T13 Phase B(spec
+ * 架构决定 2)增版本历史区。
  *
  * - meta/flow:<name> 与 meta/self 共用(同一 flow-definition 投影形状):
- *   拓扑区(FlowTopologyView,只读 React Flow)+ 属性表 + 节点表 + 动作表
+ *   拓扑区(FlowTopologyView,只读 React Flow)+ 属性表 + 版本历史区(版本号/
+ *   状态徽标/激活来源;meta/self 无版本表,不出区)+ 节点表 + 动作表
  *   (name/to/guards/requires-confirmation/effect)+ 字段表——全部来自
  *   Siren 投影,零业务分支;
+ * - 子实体按 class 各表其区:node-definition 进节点/动作/拓扑,
+ *   definition-version 进版本历史区;
  * - 渲染零 AI(铁律 5):机械投影,不引入任何 AI/LLM 依赖。
  */
 import type { FieldDefinition, SirenEntity } from '@ui4a/engine';
 
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -22,6 +27,11 @@ import {
 
 import { FlowTopologyView } from './flow-topology-view';
 import { useMetaEntity } from './meta-client';
+
+/** 按 class 标记选子实体(Siren 子实体惯例:节点/版本各表其区)。 */
+function subEntitiesOf(entity: SirenEntity, marker: string): SirenEntity[] {
+  return (entity.entities ?? []).filter((sub) => sub.class.includes(marker));
+}
 
 /** 动作声明投影的 fields 属性形状(action-definition 子实体)。 */
 type ActionFields = FieldDefinition[] | undefined;
@@ -40,7 +50,7 @@ interface ActionRow {
 /** 从 node-definition 子实体展平动作行(声明顺序即渲染顺序)。 */
 function actionRows(entity: SirenEntity): ActionRow[] {
   const rows: ActionRow[] = [];
-  for (const node of entity.entities ?? []) {
+  for (const node of subEntitiesOf(entity, 'node-definition')) {
     for (const action of node.entities ?? []) {
       const props = action.properties as Record<string, unknown>;
       rows.push({
@@ -95,6 +105,34 @@ function propertyPairs(entity: SirenEntity): [string, string][] {
   });
 }
 
+/** 版本历史行(definition-version 摘要子实体;版本序排列)。 */
+interface VersionRow {
+  version: number;
+  status: string;
+  /** 来源文本:种子 / 激活 <id> · 审批者(投影口径的展示映射,同 fieldRows 的「必填」)。 */
+  source: string;
+}
+
+function versionRows(entity: SirenEntity): VersionRow[] {
+  return subEntitiesOf(entity, 'definition-version')
+    .map((sub) => {
+      const props = sub.properties;
+      // 断言理由:decided-by 由投影按 {actor, principal?} 形状写入(同 meta-lists 的 requested-by)。
+      const decidedBy = props['decided-by'] as { actor?: string; principal?: string } | undefined;
+      let source = '';
+      if (props.source === 'definition-seeded') {
+        source = '种子';
+      } else if (props.source === 'definition-activated') {
+        source = `激活 ${String(props.activation ?? '')}`;
+        if (decidedBy !== undefined) {
+          source += ` · ${decidedBy.actor ?? ''}${decidedBy.principal ? `(${decidedBy.principal})` : ''}`;
+        }
+      }
+      return { version: Number(props.version ?? 0), status: String(props.status ?? ''), source };
+    })
+    .sort((a, b) => a.version - b.version);
+}
+
 export interface FlowDefinitionViewProps {
   rel: string;
   entity: SirenEntity;
@@ -108,6 +146,8 @@ export function FlowDefinitionView({ rel, entity }: FlowDefinitionViewProps) {
       ? properties.title
       : String(properties.name ?? rel);
   const rows = actionRows(entity);
+  const nodes = subEntitiesOf(entity, 'node-definition');
+  const versions = versionRows(entity);
 
   return (
     <div>
@@ -145,8 +185,38 @@ export function FlowDefinitionView({ rel, entity }: FlowDefinitionViewProps) {
         </div>
       </section>
 
+      {versions.length > 0 && (
+        <section aria-label="版本历史" className="mt-6">
+          <h2 className="mb-2 text-sm font-semibold">版本历史</h2>
+          <div className="rounded-md border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="px-3 text-muted-foreground">版本</TableHead>
+                  <TableHead className="px-3 text-muted-foreground">状态</TableHead>
+                  <TableHead className="px-3 text-muted-foreground">来源</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {versions.map((row) => (
+                  <TableRow key={row.version} data-version={row.version}>
+                    <TableCell className="px-3 py-2">v{row.version}</TableCell>
+                    <TableCell className="px-3 py-2">
+                      <Badge variant={row.status === 'active' ? 'secondary' : 'outline'}>
+                        {row.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-3 py-2">{row.source}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </section>
+      )}
+
       <section aria-label="节点" className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold">节点({(entity.entities ?? []).length})</h2>
+        <h2 className="mb-2 text-sm font-semibold">节点({nodes.length})</h2>
         <div className="rounded-md border bg-card">
           <Table>
             <TableHeader>
@@ -157,7 +227,7 @@ export function FlowDefinitionView({ rel, entity }: FlowDefinitionViewProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(entity.entities ?? []).map((node) => (
+              {nodes.map((node) => (
                 <TableRow key={String(node.properties.name)}>
                   <TableCell className="px-3 py-2">{String(node.properties.name)}</TableCell>
                   <TableCell className="px-3 py-2">{String(node.properties.title ?? '')}</TableCell>

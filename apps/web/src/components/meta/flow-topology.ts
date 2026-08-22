@@ -75,7 +75,15 @@ function flowDefinitionOf(entity: SirenEntity): FlowDefinition {
       'flow 拓扑推导:实体不是 flow-definition 投影(缺 name/initial 属性或节点子实体)',
     );
   }
-  return { name, initial, nodes: entity.entities.map(nodeDefinitionOf) };
+  // 子实体按 class 选择:节点声明(node-definition)之外还有版本摘要
+  // (definition-version,T13 Phase B)——拓扑只还原节点,版本子实体不参与。
+  return {
+    name,
+    initial,
+    nodes: entity.entities
+      .filter((sub) => sub.class.includes('node-definition'))
+      .map(nodeDefinitionOf),
+  };
 }
 
 /**

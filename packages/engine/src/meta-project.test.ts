@@ -44,6 +44,7 @@ const deps = {
 function metaSnapshot(
   status: DefinitionEntry['status'] | 'validating',
   definition: ReturnType<typeof cloneFlow> = cloneFlow(),
+  extras?: Partial<EngineSnapshot>,
 ): EngineSnapshot {
   return {
     instances: {
@@ -59,6 +60,7 @@ function metaSnapshot(
       // validating 是瞬态,定义条目实际不持久化该状态;投影按审计视图宽容处理。
       'post-status': { name: 'post-status', version: 1, status: status as DefinitionEntry['status'], definition },
     },
+    ...extras,
   };
 }
 
@@ -300,5 +302,119 @@ describe('meta/activation:<id> 激活实体投影(A.2 激活请求形状)', () =
       activations: { 'meta/activation:a1': activationSnapshot('approved') },
     };
     expect(project(decidedOnly, 'meta/activations', deps)!.properties).toMatchObject({ count: 0 });
+  });
+});
+
+describe('meta/flow:<name> 版本历史投影(T13 Phase B Task 1;spec 架构决定 2)', () => {
+  /** v2 内容:在 v1 克隆上加 pin 动作(模拟 add-action 后的激活内容)。 */
+  function v2Flow(): ReturnType<typeof cloneFlow> {
+    const flow = cloneFlow();
+    const published = flow.nodes.find((node) => node.name === 'published')!;
+    published.actions = [
+      ...published.actions,
+      { name: 'pin', title: '置顶', to: 'published', effect: [{ type: 'transition' as const }] },
+    ];
+    return flow;
+  }
+
+  /** 两版快照:v1 种子 + v2 经 a1 激活(approved;decidedBy human)。 */
+  function versionedSnapshot(): EngineSnapshot {
+    const v1 = cloneFlow();
+    const v2 = v2Flow();
+    return metaSnapshot('active', v2, {
+      definitions: {
+        'post-status': { name: 'post-status', version: 2, status: 'active', definition: v2 },
+      },
+      definitionVersions: { 'post-status': { 1: v1, 2: v2 } },
+      activations: {
+        'meta/activation:a1': {
+          id: 'a1',
+          flow: 'post-status',
+          status: 'approved',
+          version: 2,
+          artifact: 'abc123def456',
+          checks: [],
+          definition: v2,
+          requestedBy: { actor: 'agent', principal: 'user:mike' },
+          approvedBy: { actor: 'human', principal: 'local-user' },
+        },
+      },
+    });
+  }
+
+  /** definition-version 摘要子实体(class 选择;版本历史区数据源)。 */
+  function versionSubEntities(entity: SirenEntity): SirenEntity[] {
+    return (entity.entities ?? []).filter((sub) => sub.class.includes('definition-version'));
+  }
+
+  it('版本摘要子实体:版本号升序;active 随活跃指针(v2),v1 superseded;来源=种子/激活事件;全文内嵌', () => {
+    const snapshot = versionedSnapshot();
+    const table = snapshot.definitionVersions!['post-status']!;
+    const entity = project(snapshot, 'meta/flow:post-status', deps)!;
+    const versions = versionSubEntities(entity);
+    expect(versions.map((sub) => sub.properties.version)).toEqual([1, 2]);
+    expect(versions[0]!.rel).toEqual(['version']);
+    expect(versions[0]!.properties).toEqual({
+      version: 1,
+      status: 'superseded',
+      source: 'definition-seeded',
+      definition: table[1],
+    });
+    expect(versions[1]!.properties).toEqual({
+      version: 2,
+      status: 'active',
+      source: 'definition-activated',
+      activation: 'a1',
+      'decided-by': { actor: 'human', principal: 'local-user' },
+      definition: table[2],
+    });
+    // 无 href(铁口径):版本子实体是 BIOS 数据面,rule driver 的 navigableRels
+    // 会把子实体 href 当 agent 可导航候选——按版本取定义走 properties.definition
+    // 内嵌全文(KB 级,体积可控;两版对比 Task 2 取两版子实体即可)。
+    expect(versions[0]!.href).toBeUndefined();
+    expect(versions[1]!.href).toBeUndefined();
+    // 只读:无动作、无 guard-results(历史不可编辑,编辑仍走合同动词)。
+    expect(versions[1]!.actions).toEqual([]);
+    expect(versions[1]!['guard-results']).toBeUndefined();
+  });
+
+  it('种子态(仅 v1 无激活):单版本子实体,active + source definition-seeded + 种子全文', () => {
+    const seeded = metaSnapshot('active', cloneFlow(), {
+      definitionVersions: { 'post-status': { 1: cloneFlow() } },
+    });
+    const entity = project(seeded, 'meta/flow:post-status', deps)!;
+    const versions = versionSubEntities(entity);
+    expect(versions).toHaveLength(1);
+    expect(versions[0]!.properties).toEqual({
+      version: 1,
+      status: 'active',
+      source: 'definition-seeded',
+      definition: seeded.definitionVersions!['post-status']![1],
+    });
+  });
+
+  it('历史表缺项(老日志/fixture 快照):回退条目活跃指针与条目定义,单版本 active、无 source 字段', () => {
+    const snapshot = metaSnapshot('active');
+    const entity = project(snapshot, 'meta/flow:post-status', deps)!;
+    const versions = versionSubEntities(entity);
+    expect(versions).toHaveLength(1);
+    expect(versions[0]!.properties).toEqual({
+      version: 1,
+      status: 'active',
+      // 回退口径与 activeDefinitionOf 同:条目 definition(seed 后未编辑时与活跃内容同文)。
+      definition: snapshot.definitions!['post-status']!.definition,
+    });
+  });
+
+  it('节点子实体不受版本子实体影响(节点表/拓扑按 class 选择的前提)', () => {
+    const entity = project(versionedSnapshot(), 'meta/flow:post-status', deps)!;
+    const nodes = (entity.entities ?? []).filter((sub) => sub.class.includes('node-definition'));
+    expect(nodes.map((sub) => sub.properties.name)).toEqual(['published', 'offline', 'archived']);
+  });
+
+  it('无独立版本 rel(meta/flow:<name>@<v> 按未知名 → undefined):读取走 flow 实体内嵌全文', () => {
+    const snapshot = versionedSnapshot();
+    expect(project(snapshot, 'meta/flow:post-status@1', deps)).toBeUndefined();
+    expect(project(snapshot, 'meta/flow:ghost@1', deps)).toBeUndefined();
   });
 });

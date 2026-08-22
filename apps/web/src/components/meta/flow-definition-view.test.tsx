@@ -26,7 +26,7 @@ const postStatusEntity: SirenEntity = {
   class: ['meta', 'flow-definition'],
   properties: {
     name: 'post-status',
-    version: 1,
+    version: 2,
     status: 'active',
     initial: 'published',
     terminal: ['offline', 'archived'],
@@ -67,6 +67,29 @@ const postStatusEntity: SirenEntity = {
       actions: [],
       links: [],
       entities: [],
+    },
+    // T13 Phase B:版本历史摘要子实体(与节点子实体同级,按 class 各表其区;
+    // 投影另内嵌 properties.definition 该版全文,Task 2 用——本组件不读,
+    // fixture 从略;有意无 href:子实体 href 会进 agent 可导航候选)。
+    {
+      class: ['meta', 'definition-version'],
+      rel: ['version'],
+      properties: { version: 1, status: 'superseded', source: 'definition-seeded' },
+      actions: [],
+      links: [],
+    },
+    {
+      class: ['meta', 'definition-version'],
+      rel: ['version'],
+      properties: {
+        version: 2,
+        status: 'active',
+        source: 'definition-activated',
+        activation: 'a2',
+        'decided-by': { actor: 'human', principal: 'local-user' },
+      },
+      actions: [],
+      links: [],
     },
   ],
 };
@@ -192,5 +215,42 @@ describe('FlowDefinitionView(定义查看,纯文本表格)', () => {
     // meta/self 同形投影:拓扑区同样渲染(definition-lifecycle 节点 title)。
     const topology = container.querySelector<HTMLElement>('section[aria-label="拓扑"]')!;
     expect(topology.textContent).toContain('待批准');
+  });
+
+  it('版本历史区(T13 Phase B):版本号/状态徽标/来源,按版本序排列', () => {
+    const { container } = render(
+      <FlowDefinitionView rel="meta/flow:post-status" entity={postStatusEntity} />,
+    );
+    const section = container.querySelector<HTMLElement>('section[aria-label="版本历史"]')!;
+    expect(section).not.toBeNull();
+    const rows = [...section.querySelectorAll('tbody tr')];
+    expect(rows).toHaveLength(2);
+    // v1:superseded,来源种子(definition-seeded)。
+    expect(rows[0]!.textContent).toContain('v1');
+    expect(rows[0]!.textContent).toContain('superseded');
+    expect(rows[0]!.textContent).toContain('种子');
+    // v2:active 徽标,来源激活事件(激活 id + 审批者)。
+    expect(rows[1]!.textContent).toContain('v2');
+    expect(rows[1]!.textContent).toContain('active');
+    expect(rows[1]!.textContent).toContain('激活 a2');
+    expect(rows[1]!.textContent).toContain('human');
+  });
+
+  it('版本子实体不泄进节点表/动作表(按 class 各表其区)', () => {
+    const { container } = render(
+      <FlowDefinitionView rel="meta/flow:post-status" entity={postStatusEntity} />,
+    );
+    // 节点表计数与行仍只是真实节点(版本子实体混入前为 2)。
+    const nodeSection = container.querySelector<HTMLElement>('section[aria-label="节点"]')!;
+    expect(nodeSection.querySelector('h2')!.textContent).toBe('节点(2)');
+    expect(nodeSection.querySelectorAll('tbody tr')).toHaveLength(2);
+    // 动作表只有 archive 一行(v1/v2 版本行不得出现)。
+    const actionSection = container.querySelector<HTMLElement>('section[aria-label="动作"]')!;
+    expect(actionSection.querySelectorAll('tbody tr')).toHaveLength(1);
+  });
+
+  it('meta/self:无版本历史区(lifecycle 引擎常量自举,无 definitionVersions)', () => {
+    const { container } = render(<FlowDefinitionView rel="meta/self" entity={selfEntity} />);
+    expect(container.querySelector('section[aria-label="版本历史"]')).toBeNull();
   });
 });
