@@ -34,19 +34,19 @@ const layouts = {
 
 const words: Readonly<Record<string, A2uiWordAdapter>> = {
   heading: {
-    component: 'Text',
-    bindings: { value: { prop: 'text', transform: 'value' } },
-    props: { variant: 'h1' },
+    component: 'semantic-text',
+    bindings: { value: { prop: 'value', transform: 'value' } },
+    props: { variant: 'heading' },
   },
   prose: {
-    component: 'Text',
-    bindings: { value: { prop: 'text', transform: 'value' } },
-    props: { variant: 'body' },
+    component: 'semantic-text',
+    bindings: { value: { prop: 'value', transform: 'value' } },
+    props: { variant: 'prose' },
   },
   state: {
-    component: 'Text',
-    bindings: { value: { prop: 'text', transform: 'value' } },
-    props: { variant: 'caption' },
+    component: 'semantic-text',
+    bindings: { value: { prop: 'value', transform: 'value' } },
+    props: { variant: 'status' },
   },
   controls: {
     component: 'detail',

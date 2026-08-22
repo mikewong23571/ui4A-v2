@@ -89,8 +89,28 @@ function wordImplementation(
   });
 }
 
+/** Plain semantic text avoids Basic Text's implicit Markdown renderer contract. */
+function SemanticTextWord(props: WordProps) {
+  const value = String(props.value ?? '');
+  if (props.variant === 'heading') {
+    return <h1 className="text-2xl font-semibold tracking-tight">{value}</h1>;
+  }
+  if (props.variant === 'status') {
+    return <em className="text-sm not-italic text-muted-foreground">{value}</em>;
+  }
+  return <p className="whitespace-pre-wrap leading-7">{value}</p>;
+}
+
 /** 十词条的 A2UI 实现(props 全 DynamicValue;形状与注册表 bindSchema 同语义)。 */
 const wordImplementations: ReactComponentImplementation[] = [
+  wordImplementation(
+    'semantic-text',
+    {
+      value: dynamic(z.union([z.string(), z.number(), z.boolean()])),
+      variant: z.enum(['heading', 'prose', 'status']),
+    },
+    SemanticTextWord,
+  ),
   wordImplementation(
     'table',
     { rows: dynamic(z.array(z.any())), caption: dynamic(z.string()).optional() },

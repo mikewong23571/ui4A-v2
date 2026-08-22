@@ -57,24 +57,24 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
 
     // 第一步 basic-info:title(text)
     await expect(page.locator('h1')).toHaveText('基本信息');
-    await page.fill('#root_title', '人类的第三篇');
-    await page.getByRole('button', { name: '下一步' }).click();
+    await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第三篇');
+    await page.getByRole('button', { name: '下一步', exact: true }).click();
 
     // 第二步 classification:category(select 下拉)+ tags(text)
     await expect(page.locator('h1')).toHaveText('分类');
-    await page.selectOption('#root_category', 'tech');
-    await page.fill('#root_tags', 'human-e2e');
-    await page.getByRole('button', { name: '下一步' }).click();
+    await page.getByRole('combobox', { name: /分类/ }).selectOption('tech');
+    await page.getByRole('textbox', { name: /标签/ }).fill('human-e2e');
+    await page.getByRole('button', { name: '下一步', exact: true }).click();
 
     // 第三步 content:body(textarea 文本域)
     await expect(page.locator('h1')).toHaveText('正文');
-    await page.fill('#root_body', '第三篇正文:由人类经三步向导发布。');
-    await page.getByRole('button', { name: '完成编辑' }).click();
+    await page.getByRole('textbox', { name: /正文/ }).fill('第三篇正文:由人类经三步向导发布。');
+    await page.getByRole('button', { name: '完成编辑', exact: true }).click();
 
     // ready 节点:publish 表单(slug 来源 title)→ 发布
     await expect(page.locator('h1')).toHaveText('就绪');
-    await page.fill('#root_title', '人类的第三篇');
-    await page.getByRole('button', { name: '发布' }).click();
+    await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第三篇');
+    await page.getByRole('button', { name: '发布', exact: true }).click();
 
     // 向导循环语义(D11):发布后回到基本信息(起草下一篇),不再是 done 终态
     await expect(page.locator('h1')).toHaveText('基本信息');

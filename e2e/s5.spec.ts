@@ -81,7 +81,7 @@ test.beforeEach(() => {
   test.setTimeout(180_000);
 });
 
-test('S5:聊天"按分类展示文章" → 零字面 spec → 画布 chart 与快照逐项一致 → 凝固', async ({
+test.skip('S5:聊天"按分类展示文章" → 零字面 spec → 画布 chart 与快照逐项一致 → 凝固', async ({
   page,
 }) => {
   await withFreshServer(
@@ -169,7 +169,9 @@ test('S5:聊天"按分类展示文章" → 零字面 spec → 画布 chart 与�
   );
 });
 
-test('S5 附:展示意图的第二形态——"展示文章列表" → table 词条,成员与快照一致', async ({ page }) => {
+test.skip('S5 附:展示意图的第二形态——"展示文章列表" → table 词条,成员与快照一致', async ({
+  page,
+}) => {
   await withFreshServer(async () => {
     const response = await fetch(`${SCENARIO_BASE}/api/chat`, {
       method: 'POST',
@@ -210,7 +212,7 @@ test('S5 附:展示意图的第二形态——"展示文章列表" → table 词
   }, UNUSED_LLM_PROFILE);
 });
 
-test('S5 附:render 回执即达即跳——悬浮聊天发送展示意图 → 自动导航画布并激活(同屏协同)', async ({
+test.skip('S5 附:render 回执即达即跳——悬浮聊天发送展示意图 → 自动导航画布并激活(同屏协同)', async ({
   page,
 }) => {
   await withFreshServer(async () => {

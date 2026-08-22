@@ -626,6 +626,7 @@ export function CanvasBody() {
               variant="outline"
               size="sm"
               data-presentation-action="pin-sidecar"
+              data-nav="presentation:pin-sidecar"
               onClick={() => void mutateSidecar('pin')}
             >
               以后都这样看
@@ -637,6 +638,7 @@ export function CanvasBody() {
               variant="outline"
               size="sm"
               data-presentation-action="revert-sidecar"
+              data-nav="presentation:revert-sidecar"
               onClick={() => void mutateSidecar('revert')}
             >
               恢复上一版本
@@ -648,6 +650,7 @@ export function CanvasBody() {
             size="sm"
             aria-pressed={sidecarMeta.view.collapsedNodeIds.includes(sidecarMeta.rootNodeId)}
             data-presentation-action="collapse-sidecar"
+            data-nav="presentation:collapse-sidecar"
             onClick={() => void patchSidecar('collapse')}
           >
             {sidecarMeta.view.collapsedNodeIds.includes(sidecarMeta.rootNodeId)
@@ -659,11 +662,18 @@ export function CanvasBody() {
             variant="outline"
             size="sm"
             data-presentation-action="density-sidecar"
+            data-nav="presentation:density-sidecar"
             onClick={() => void patchSidecar('density')}
           >
             切换疏密
           </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={() => void explainSidecar()}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            data-nav="presentation:explain-sidecar"
+            onClick={() => void explainSidecar()}
+          >
             为什么这样展示
           </Button>
           {!promotionPending ? (
@@ -671,19 +681,27 @@ export function CanvasBody() {
               type="button"
               variant="ghost"
               size="sm"
+              data-nav="presentation:preview-promotion"
               onClick={() => void promoteSidecar(false)}
             >
               设为团队默认
             </Button>
           ) : (
             <>
-              <Button type="button" size="sm" onClick={() => void promoteSidecar(true)}>
+              <Button
+                type="button"
+                size="sm"
+                data-nav="presentation:confirm-promotion"
+                onClick={() => void promoteSidecar(true)}
+              >
                 确认团队默认
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
+                data-presentation-action="cancel-promotion"
+                data-nav="presentation:cancel-promotion"
                 onClick={() => setPromotionPending(false)}
               >
                 取消

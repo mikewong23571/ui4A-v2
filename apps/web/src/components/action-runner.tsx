@@ -338,6 +338,7 @@ export function ActionRunner({
             variant="outline"
             size="sm"
             data-presentation-action="request-risk"
+            data-nav={`presentation:request-risk:${action.name}`}
             aria-expanded={interaction === 'requested'}
             disabled={disabled}
             title={hint}
@@ -370,6 +371,7 @@ export function ActionRunner({
           variant="outline"
           size="sm"
           data-presentation-action="open-form"
+          data-nav={`presentation:open-form:${action.name}`}
           aria-controls={formRegionId}
           aria-expanded={interaction === 'form'}
           disabled={disabled}
@@ -418,6 +420,7 @@ export function ActionRunner({
                 variant="outline"
                 size="sm"
                 data-presentation-action="cancel-form"
+                data-nav={`presentation:cancel-form:${action.name}`}
                 disabled={submitting}
                 onClick={restoreTrigger}
               >
@@ -473,6 +476,7 @@ function RiskRequest({
           variant="outline"
           size="sm"
           data-presentation-action="cancel-request"
+          data-nav={`presentation:cancel-request:${action.name}`}
           disabled={submitting}
           onClick={onCancel}
         >

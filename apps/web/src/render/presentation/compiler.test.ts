@@ -181,7 +181,7 @@ describe('normalized Surface Tree to A2UI v0.9 compiler', () => {
         expect.objectContaining({ id: 'root', component: 'Column' }),
         expect.objectContaining({ component: 'Row' }),
         expect.objectContaining({ component: 'List' }),
-        expect.objectContaining({ component: 'Text', variant: 'h1' }),
+        expect.objectContaining({ component: 'semantic-text', variant: 'heading' }),
       ]),
     );
     expect(componentJson).not.toContain('First post');
@@ -215,7 +215,9 @@ describe('normalized Surface Tree to A2UI v0.9 compiler', () => {
     const listSubscription = list.subscribe(() => undefined);
     const itemSubscription = item.subscribe(() => undefined);
     expect(list.snapshot.children).toHaveLength(2);
-    expect(item.snapshot.text).toBe('First post');
+    expect((item.snapshot as unknown as { value: unknown }).value).toEqual({
+      path: 'properties/fields/title',
+    });
     listSubscription.unsubscribe();
     itemSubscription.unsubscribe();
   });

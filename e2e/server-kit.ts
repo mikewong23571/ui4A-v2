@@ -21,7 +21,11 @@ export const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@lo
 export type ScenarioEnv = Record<string, string>;
 
 export async function truncateEvents(): Promise<void> {
-  await getPool(DATABASE_URL).query('TRUNCATE events');
+  const pool = getPool(DATABASE_URL);
+  await pool.query('TRUNCATE events');
+  await pool.query('TRUNCATE presentation_user_sidecars').catch((error: unknown) => {
+    if ((error as { code?: string }).code !== '42P01') throw error;
+  });
 }
 
 export async function waitUntilHealthy(baseUrl: string, timeoutMs: number): Promise<void> {

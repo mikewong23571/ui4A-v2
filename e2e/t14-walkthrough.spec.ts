@@ -125,18 +125,18 @@ test('US-1/2/13/14:双执行者发布 → 稳定渲染 → 可读审计，#1–#
     await expect(page.getByTestId('stat-running-help')).toHaveText('已派发且尚未完成的委托数量');
 
     await page.click('a[data-rel="flow:article-drafting"]');
-    await page.fill('#root_title', 'walkthrough-human');
-    await page.getByRole('button', { name: '下一步' }).click();
-    await page.selectOption('#root_category', 'tech');
-    await page.fill('#root_tags', 'human-walkthrough');
-    await page.getByRole('button', { name: '下一步' }).click();
-    await page.fill('#root_body', 'T14 walkthrough human renderer 路径。');
-    await page.getByRole('button', { name: '完成编辑' }).click();
+    await page.getByRole('textbox', { name: /文章标题/ }).fill('walkthrough-human');
+    await page.getByRole('button', { name: '下一步', exact: true }).click();
+    await page.getByRole('combobox', { name: /分类/ }).selectOption('tech');
+    await page.getByRole('textbox', { name: /标签/ }).fill('human-walkthrough');
+    await page.getByRole('button', { name: '下一步', exact: true }).click();
+    await page.getByRole('textbox', { name: /正文/ }).fill('T14 walkthrough human renderer 路径。');
+    await page.getByRole('button', { name: '完成编辑', exact: true }).click();
 
     await expect(page.locator('h1')).toHaveText('就绪');
     await expect(page.getByLabel('文章标题')).toHaveValue('walkthrough-human');
     await expect(page.getByText(/用于生成文章地址/)).toBeVisible();
-    await page.getByRole('button', { name: '发布' }).click();
+    await page.getByRole('button', { name: '发布', exact: true }).click();
     await expect(page.locator('h1')).toHaveText('基本信息');
 
     const afterHuman = await articles();

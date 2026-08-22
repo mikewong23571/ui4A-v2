@@ -346,9 +346,9 @@ test('reject 路径:human reject 带 reason → 原动作永不生效,事件 con
     // 原动作永不生效:文章仍 published,日志无 archive 执行痕迹。
     expect((await getEntity('post:post-welcome')).properties.node).toBe('published');
     const events = await getEvents();
-    expect(events.filter((event) => event.kind === 'action-executed' && event.action === 'archive')).toEqual(
-      [],
-    );
+    expect(
+      events.filter((event) => event.kind === 'action-executed' && event.action === 'archive'),
+    ).toEqual([]);
 
     // 事件:confirmation-rejected(reason 入日志)。
     const rejected = eventsOf(events, 'confirmation-rejected');
@@ -396,7 +396,10 @@ test('UI 走查:首页收件箱 → 确认页 RJSF 批准 → 文章列表该篇
     // 确认页:批准按钮可用(renderer 恒为 human);驳回的 reason 必填(RJSF)。
     const approve = page.getByRole('button', { name: '批准' });
     await expect(approve).toBeEnabled();
-    await expect(page.locator('#root_reason')).toHaveAttribute('required', '');
+    await expect(page.getByRole('textbox', { name: /reason|原因/i })).toHaveAttribute(
+      'required',
+      '',
+    );
     await approve.click();
 
     // exec 成功 → 实体重投影:确认转 approved,动作区(批准/驳回)消失。

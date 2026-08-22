@@ -151,18 +151,18 @@ test('B1 双执行者:agent 合同发布 + human 表单发布,同一日志两类
     await page.goto('/');
     await page.click('a[data-rel="flow:article-drafting"]');
     await expect(page.locator('h1')).toHaveText('基本信息');
-    await page.fill('#root_title', '人类的第四篇');
-    await page.getByRole('button', { name: '下一步' }).click();
+    await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第四篇');
+    await page.getByRole('button', { name: '下一步', exact: true }).click();
     await expect(page.locator('h1')).toHaveText('分类');
-    await page.selectOption('#root_category', 'essay');
-    await page.fill('#root_tags', 'dual-human');
-    await page.getByRole('button', { name: '下一步' }).click();
+    await page.getByRole('combobox', { name: /分类/ }).selectOption('essay');
+    await page.getByRole('textbox', { name: /标签/ }).fill('dual-human');
+    await page.getByRole('button', { name: '下一步', exact: true }).click();
     await expect(page.locator('h1')).toHaveText('正文');
-    await page.fill('#root_body', '人类经 renderer 表单发布。');
-    await page.getByRole('button', { name: '完成编辑' }).click();
+    await page.getByRole('textbox', { name: /正文/ }).fill('人类经 renderer 表单发布。');
+    await page.getByRole('button', { name: '完成编辑', exact: true }).click();
     await expect(page.locator('h1')).toHaveText('就绪');
-    await page.fill('#root_title', '人类的第四篇');
-    await page.getByRole('button', { name: '发布' }).click();
+    await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第四篇');
+    await page.getByRole('button', { name: '发布', exact: true }).click();
     await expect(page.locator('h1')).toHaveText('基本信息');
 
     // ---- 同一日志:publish 由两类执行者各执行一次,各自正确 ----------------

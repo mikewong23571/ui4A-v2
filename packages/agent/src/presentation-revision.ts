@@ -35,11 +35,12 @@ export interface PresentationRevisionAgentOptions extends LlmDriverOptions {
 }
 
 function extractJson(text: string): unknown {
-  const trimmed = text
-    .trim()
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/, '');
-  return JSON.parse(trimmed);
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(text);
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  const candidate = fenced?.[1] ?? (start >= 0 && end >= start ? text.slice(start, end + 1) : '');
+  if (candidate.length === 0 || candidate.length > 64_000) return undefined;
+  return JSON.parse(candidate);
 }
 
 /** The model receives binding-only structure and catalog compatibility, never live fact values. */
@@ -48,7 +49,13 @@ export function buildPresentationRevisionPrompt(input: PresentationRevisionInput
   return [
     'Translate the human instruction into semantic Render Patch operations.',
     'Return only JSON: {"operations":[...]}. Never return CSS, code, facts, bindings or a Surface.',
-    'Allowed operations: move, collapse, density, compatible-word, pin.',
+    'Allowed exact operation shapes (no extra fields):',
+    '- {"kind":"collapse","nodeId":"<existing-node-id>","collapsed":true|false}',
+    '- {"kind":"density","nodeId":"<existing-node-id>","density":"compact|comfortable|spacious"}',
+    '- {"kind":"move","nodeId":"<existing-node-id>","toParentId":"<layout-id>","toIndex":0}',
+    '- {"kind":"compatible-word","nodeId":"<word-node-id>","word":"<catalog-word>"}',
+    '- {"kind":"pin","retention":"cache|pinned"}',
+    'Use density spacious to emphasize content and collapse true to hide a region.',
     JSON.stringify({
       instruction: request.instruction,
       surface: input.surface,

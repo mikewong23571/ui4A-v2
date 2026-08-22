@@ -20,7 +20,8 @@
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "e2e": "CI=true playwright test",
-    "eval:t15": "CI=true playwright test --config=playwright.story-eval.config.ts"
+    "eval:t15": "CI=true playwright test --config=playwright.story-eval.config.ts",
+    "eval:t16": "CI=true playwright test --config=playwright.t16-eval.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

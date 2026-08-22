@@ -48,7 +48,7 @@ describe('Presentation Revision Agent boundary', () => {
   it('turns model JSON into a versioned semantic Patch with user-message provenance', () => {
     expect(
       parsePresentationRevision(
-        '{"operations":[{"kind":"density","nodeId":"body","density":"spacious"}]}',
+        'Here is the patch:\n```json\n{"operations":[{"kind":"density","nodeId":"body","density":"spacious"}]}\n```',
         request,
       ),
     ).toMatchObject({

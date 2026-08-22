@@ -3,13 +3,19 @@ import {
   dependencyDecision,
   planGenericSurface,
   sidecarKeyFingerprint,
+  validateSurfaceTree,
   type SidecarDependency,
   type UserSidecarKey,
 } from '@ui4a/engine';
 import type { PresentationRequest } from '@ui4a/shared';
 
 import { appendEvent } from '../../db/events';
-import { appendSidecarCommand, findActiveSidecar } from '../../db/presentation';
+import {
+  appendSidecarCommand,
+  ensurePresentationTables,
+  findActiveSidecar,
+  loadPresentationSnapshot,
+} from '../../db/presentation';
 import { PRESENTATION_SURFACE_CATALOG } from './catalog';
 import {
   createWebPresentationBroker,
@@ -139,6 +145,19 @@ export function getPresentationBroker(): WebPresentationBroker {
       const sidecar = await findActiveSidecar(getDb(), key);
       if (sidecar === undefined) return { kind: 'miss' };
       const active = sidecar.versions[sidecar.activeVersion]!;
+      const validation = validateSurfaceTree(active.surface, PRESENTATION_SURFACE_CATALOG);
+      if (!validation.valid) {
+        await appendSidecarCommand(getDb(), {
+          kind: 'stale',
+          eventId: `${request.requestId}:surface-invalid:event`,
+          commandId: `${request.requestId}:surface-invalid`,
+          sidecarId: sidecar.id,
+          activeVersion: sidecar.activeVersion,
+          dependencyIds: ['catalog:semantic'],
+          reason: 'surface-invalid',
+        }).catch(() => undefined);
+        return { kind: 'miss' };
+      }
       const decision = dependencyDecision(active.dependencies, currentDependencies(situation));
       if (!decision.valid) {
         await appendSidecarCommand(getDb(), {
@@ -168,19 +187,33 @@ export function getPresentationBroker(): WebPresentationBroker {
         semanticHints: semanticHintsOf(entity),
         provenanceRef: `request:${request.requestId}`,
       });
-      const persisted = await appendSidecarCommand(getDb(), {
-        kind: 'instantiate',
-        eventId: `${request.requestId}:instantiate:event`,
-        commandId: `${request.requestId}:instantiate`,
-        sidecarId,
-        key,
-        version: {
-          surface,
-          dependencies: currentDependencies(situation),
-          provenance: { kind: 'generic-fallback', ref: `request:${request.requestId}` },
-          changedPaths: [],
-        },
-      });
+      const version = {
+        surface,
+        dependencies: currentDependencies(situation),
+        provenance: { kind: 'generic-fallback' as const, ref: `request:${request.requestId}` },
+        changedPaths: [] as string[],
+      };
+      const previous = (await loadPresentationSnapshot(getDb())).sidecars[sidecarId];
+      const persisted = await appendSidecarCommand(
+        getDb(),
+        previous === undefined
+          ? {
+              kind: 'instantiate',
+              eventId: `${request.requestId}:instantiate:event`,
+              commandId: `${request.requestId}:instantiate`,
+              sidecarId,
+              key,
+              version,
+            }
+          : {
+              kind: 'revise',
+              eventId: `${request.requestId}:repair:event`,
+              commandId: `${request.requestId}:repair`,
+              sidecarId,
+              baseVersion: previous.activeVersion,
+              version,
+            },
+      );
       return {
         kind: 'ready',
         sidecar: { id: sidecarId, version: persisted.aggregate.activeVersion },
@@ -190,6 +223,7 @@ export function getPresentationBroker(): WebPresentationBroker {
   });
   scope[runtimeKey] = {
     async present(request) {
+      await ensurePresentationTables(getDb());
       await appendLifecycle('presentation-requested', request, {
         subject: request.subject,
         intent: request.intent,
