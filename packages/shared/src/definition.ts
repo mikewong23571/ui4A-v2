@@ -179,6 +179,29 @@ export interface ApplicationDefinition {
   entry?: string;
 }
 
+/** capability 类别(arch-brief 第七层三类动词:转换/提取/效应)。 */
+export type CapabilityKind = 'transform' | 'extract' | 'effect';
+
+/**
+ * capability 定义(T13 架构决定 3;与 application 同构,T10 先例):
+ * 定义平面的能力目录条目,artifact in → artifact out。
+ * 不持结构化 schema(input/output 仅为描述文本,schema 真实化归后续)。
+ */
+export interface CapabilityDefinition {
+  /** 机器标识(定义实体 rel 的 name 段:`meta/capability:<name>`)。 */
+  name: string;
+  /** 人类与 agent 共读的标题。 */
+  title: string;
+  /** 能力类别(转换/提取/效应)。 */
+  kind: CapabilityKind;
+  /** 人类与 agent 共读的意图声明(一句话:这个能力做什么)。 */
+  intent: string;
+  /** 输入 schema 描述(可选)。 */
+  input?: string;
+  /** 输出 schema 描述(可选)。 */
+  output?: string;
+}
+
 // ---------------------------------------------------------------------------
 // 定义语言注册表(meta/registries 的运行时子集)
 // ---------------------------------------------------------------------------
@@ -216,6 +239,9 @@ export const META_ACTIVATION_PREFIX = 'meta/activation:';
 /** application 实体 rel 前缀(T10;`meta/application:publishing`)。 */
 export const META_APPLICATION_PREFIX = 'meta/application:';
 
+/** capability 实体 rel 前缀(T13;`meta/capability:draft`)。 */
+export const META_CAPABILITY_PREFIX = 'meta/capability:';
+
 /** flow 名 → 定义实体 rel。 */
 export function metaFlowRel(name: string): string {
   return `${META_FLOW_PREFIX}${name}`;
@@ -245,6 +271,18 @@ export function metaApplicationRel(name: string): string {
 export function applicationNameFromMetaRel(rel: string): string | undefined {
   return rel.startsWith(META_APPLICATION_PREFIX)
     ? rel.slice(META_APPLICATION_PREFIX.length)
+    : undefined;
+}
+
+/** capability 名 → 定义实体 rel。 */
+export function metaCapabilityRel(name: string): string {
+  return `${META_CAPABILITY_PREFIX}${name}`;
+}
+
+/** capability 实体 rel → capability 名;非 meta/capability 前缀返回 undefined。 */
+export function capabilityNameFromMetaRel(rel: string): string | undefined {
+  return rel.startsWith(META_CAPABILITY_PREFIX)
+    ? rel.slice(META_CAPABILITY_PREFIX.length)
     : undefined;
 }
 

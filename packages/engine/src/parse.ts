@@ -7,7 +7,7 @@
  * T4 的 meta 平台激活不变式(edge-targets-exist 等)在本层之上叠加。
  */
 import { KNOWN_EFFECT_TYPES, KNOWN_FIELD_TYPES } from '@ui4a/shared';
-import type { ApplicationDefinition } from '@ui4a/shared';
+import type { ApplicationDefinition, CapabilityDefinition } from '@ui4a/shared';
 
 import type {
   ActionDefinition,
@@ -47,6 +47,17 @@ export class AppParseError extends Error {
   constructor(issues: FlowIssue[]) {
     super(`非法 application 定义:\n${issues.map((i) => `  - ${i.path}: ${i.message}`).join('\n')}`);
     this.name = 'AppParseError';
+    this.issues = issues;
+  }
+}
+
+/** capability 定义解析失败:携带全部 issues(与 AppParseError 同构)。 */
+export class CapabilityParseError extends Error {
+  readonly issues: FlowIssue[];
+
+  constructor(issues: FlowIssue[]) {
+    super(`非法 capability 定义:\n${issues.map((i) => `  - ${i.path}: ${i.message}`).join('\n')}`);
+    this.name = 'CapabilityParseError';
     this.issues = issues;
   }
 }
@@ -332,5 +343,58 @@ export function parseApplicationDefinition(input: unknown): ApplicationDefinitio
     title: record.title,
     intent: record.intent,
     ...(record.entry !== undefined ? { entry: record.entry } : {}),
+  };
+}
+
+/** capability 类别注册表(arch-brief 第七层三类动词:转换/提取/效应)。 */
+const CAPABILITY_KINDS: ReadonlySet<string> = new Set(['transform', 'extract', 'effect']);
+
+/** capability 定义的结构校验(与 applicationStructuralIssues 同构:形状级,逐字段收集)。 */
+function capabilityStructuralIssues(input: unknown): FlowIssue[] {
+  const issues: FlowIssue[] = [];
+  if (!isRecord(input)) {
+    return [{ path: '(root)', message: 'capability 定义必须是对象' }];
+  }
+  if (typeof input.name !== 'string' || input.name === '') {
+    issues.push({ path: 'name', message: 'capability name 必须是非空字符串' });
+  }
+  if (typeof input.title !== 'string' || input.title === '') {
+    issues.push({ path: 'title', message: 'title 必须是非空字符串' });
+  }
+  if (typeof input.kind !== 'string' || !CAPABILITY_KINDS.has(input.kind)) {
+    issues.push({ path: 'kind', message: 'kind 必须是 transform/extract/effect 之一' });
+  }
+  if (typeof input.intent !== 'string' || input.intent === '') {
+    issues.push({ path: 'intent', message: 'intent 必须是非空字符串' });
+  }
+  if (input.input !== undefined && (typeof input.input !== 'string' || input.input === '')) {
+    issues.push({ path: 'input', message: 'input 必须是非空字符串' });
+  }
+  if (input.output !== undefined && (typeof input.output !== 'string' || input.output === '')) {
+    issues.push({ path: 'output', message: 'output 必须是非空字符串' });
+  }
+  return issues;
+}
+
+/**
+ * 解析未知输入为 CapabilityDefinition(T13 架构决定 3,与 parseApplicationDefinition 同构):
+ * name/title/kind/intent 必填非空字符串,kind 必须 ∈ transform/extract/effect;
+ * input/output 可选(若存在必须是非空字符串);非法时抛 CapabilityParseError
+ * (issues 全量携带)。显式值原样保留,不做额外归一化。
+ */
+export function parseCapabilityDefinition(input: unknown): CapabilityDefinition {
+  const issues = capabilityStructuralIssues(input);
+  if (issues.length > 0) {
+    throw new CapabilityParseError(issues);
+  }
+  // 形状已逐字段校验,单点断言(同 parseApplicationDefinition 口径)。
+  const record = input as CapabilityDefinition;
+  return {
+    name: record.name,
+    title: record.title,
+    kind: record.kind,
+    intent: record.intent,
+    ...(record.input !== undefined ? { input: record.input } : {}),
+    ...(record.output !== undefined ? { output: record.output } : {}),
   };
 }

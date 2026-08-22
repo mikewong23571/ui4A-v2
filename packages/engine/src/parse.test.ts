@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { articleDraftingFlow, minimalFlow, postStatusFlow } from './fixtures';
 import {
   AppParseError,
+  CapabilityParseError,
   FlowParseError,
   parseApplicationDefinition,
+  parseCapabilityDefinition,
   parseFlowDefinition,
   validateFlowDefinition,
 } from './parse';
@@ -253,6 +255,95 @@ describe('parseApplicationDefinition — 拒绝非法定义', () => {
       expect((error as AppParseError).message).toContain('非法 application 定义:');
       const issues = (error as AppParseError).issues;
       expect(issues.map((i) => i.path)).toEqual(['name', 'title']);
+    }
+  });
+});
+
+describe('parseCapabilityDefinition — 规范化', () => {
+  it('三类 kind 逐一解析通过(含 input/output),显式值原样保留', () => {
+    for (const kind of ['transform', 'extract', 'effect'] as const) {
+      const parsed = parseCapabilityDefinition({
+        name: 'draft',
+        title: '起草',
+        kind,
+        intent: '把意图变成候选草稿',
+        input: '意图文本',
+        output: '候选草稿集',
+      });
+      expect(parsed).toEqual({
+        name: 'draft',
+        title: '起草',
+        kind,
+        intent: '把意图变成候选草稿',
+        input: '意图文本',
+        output: '候选草稿集',
+      });
+    }
+  });
+
+  it('合法定义解析通过(不含 input/output)', () => {
+    const parsed = parseCapabilityDefinition({
+      name: 'notify',
+      title: '通知',
+      kind: 'effect',
+      intent: '向人类发送确认请求',
+    });
+    expect(parsed.name).toBe('notify');
+    expect(parsed.input).toBeUndefined();
+    expect(parsed.output).toBeUndefined();
+  });
+});
+
+describe('parseCapabilityDefinition — 拒绝非法定义', () => {
+  it('非对象输入直接拒绝', () => {
+    expect(() => parseCapabilityDefinition('not-a-capability')).toThrow(CapabilityParseError);
+    expect(() => parseCapabilityDefinition(undefined)).toThrow(CapabilityParseError);
+    expect(() => parseCapabilityDefinition(['draft'])).toThrow(CapabilityParseError);
+  });
+
+  it('name/title/kind/intent 缺失或为空字符串逐一被拒,issues 带对应 path', () => {
+    const valid = { name: 'draft', title: '起草', kind: 'transform', intent: '生成草稿' };
+    for (const field of ['name', 'title', 'kind', 'intent']) {
+      const missing: Record<string, unknown> = { ...valid };
+      delete missing[field];
+      const empty = { ...valid, [field]: '' };
+      for (const input of [missing, empty]) {
+        try {
+          parseCapabilityDefinition(input);
+          expect.unreachable('应当抛出 CapabilityParseError');
+        } catch (error) {
+          expect(error).toBeInstanceOf(CapabilityParseError);
+          const issues = (error as CapabilityParseError).issues;
+          expect(issues.some((i) => i.path === field)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('非法 kind 拒绝(不在 transform/extract/effect 中)', () => {
+    const valid = { name: 'draft', title: '起草', kind: 'transform', intent: '生成草稿' };
+    for (const kind of ['explode', 'TRANSFORM', 42]) {
+      expect(() => parseCapabilityDefinition({ ...valid, kind })).toThrow(/kind/);
+    }
+  });
+
+  it('input/output 存在时必须是非空字符串', () => {
+    const valid = { name: 'draft', title: '起草', kind: 'transform', intent: '生成草稿' };
+    expect(() => parseCapabilityDefinition({ ...valid, input: '' })).toThrow(/input/);
+    expect(() => parseCapabilityDefinition({ ...valid, input: 42 })).toThrow(/input/);
+    expect(() => parseCapabilityDefinition({ ...valid, output: '' })).toThrow(/output/);
+    expect(() => parseCapabilityDefinition({ ...valid, output: null })).toThrow(/output/);
+  });
+
+  it('CapabilityParseError 全量携带 issues,消息风格与 AppParseError 同构', () => {
+    try {
+      parseCapabilityDefinition({ name: '', kind: 'explode' });
+      expect.unreachable('应当抛出 CapabilityParseError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(CapabilityParseError);
+      expect((error as CapabilityParseError).message).toContain('非法 capability 定义:');
+      const issues = (error as CapabilityParseError).issues;
+      expect(issues.map((i) => i.path)).toEqual(['name', 'title', 'kind', 'intent']);
     }
   });
 });
