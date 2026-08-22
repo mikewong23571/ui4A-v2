@@ -2,7 +2,7 @@
 
 > 依据 `spec.md`、`user-stories.md` 与 `conductor/workflow.md`。方法:Story-first Eval/TDD；每个 U1–U23 故事先建立失败 baseline，再实现通用机制。确定性测试只守合同与 safety，真实 LLM Eval 验收动态能力。状态:`[ ]` / `[~]` / `[x]`(完成时附 SHA)。
 
-## Phase A: DeepSeek baseline 配置、Eval 合同与 disposable spike
+## Phase A: DeepSeek baseline 配置、Eval 合同与 disposable spike [checkpoint: 2bcd6dc]
 
 - [x] Task: U23 配置 baseline——清点 GLM 专用 env/常量/文档与 Web/Worker 环境分叉；写 failing tests 证明源码默认 provider、供应商 key 名、缺项静默回退和 inline/delegated 配置漂移 — 42ed23e
 - [x] Task: U23 provider-first implementation——provider-neutral `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` 解析与配置错误类型；删除硬编码 endpoint/model 和 GLM 专用 runtime key；统一 dev 启动向 Web/Worker 传递 gitignored 环境 — 42ed23e
@@ -12,7 +12,7 @@
 - [x] Task: disposable story spike——只用 DeepSeek baseline 跑 U1/U5/U10/U12，验证多轮 messages/结构化输出/工具选择的 AI SDK 行为并记录失败证据；spike 不直接成为生产实现 — 7e979f4
 - [x] Task: 记录 T15 superseding 决定(生产 Assistant AI-first、退出 rule fallback、对话上下文来自日志、临时认知/正式 artifact/action 边界、DeepSeek 真实 LLM Eval)，同步待实施的 GOAL/I1 变更说明 — cd70db7
 - [x] Task: 根据 spike 结果细化后续实现触点和 Eval corpus，不改变 U1–U23 的产品验收语义 — 7e979f4
-- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 2bcd6dc
 
 ## Phase B: AI-first runtime 与故障安全(U22)
 
