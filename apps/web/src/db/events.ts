@@ -62,10 +62,27 @@ export type EventKind =
   | 'chat-turn'
   | 'chat-message-appended'
   | 'chat-context-updated'
-  | 'agent-decision';
+  | 'agent-decision'
+  | 'presentation-requested'
+  | 'presentation-resolved'
+  | 'presentation-failed'
+  | 'render-recipe-generated'
+  | 'render-recipe-validated'
+  | 'render-recipe-promoted'
+  | 'render-recipe-staled'
+  | 'user-sidecar-instantiated'
+  | 'user-sidecar-revised'
+  | 'user-sidecar-pinned'
+  | 'user-sidecar-staled'
+  | 'user-sidecar-reverted'
+  | 'user-sidecar-evicted'
+  | 'render-feedback-recorded';
+
+export type EventDomain = 'core' | 'presentation';
 
 /** 追加事件(引擎 EngineEvent 的日志层超集:引擎不产 seq/ts/reason,由本层分配)。 */
 export interface EventAppend {
+  domain?: EventDomain;
   kind: EventKind;
   actor?: 'human' | 'agent';
   principal?: string;
@@ -82,6 +99,8 @@ export interface EventAppend {
 
 /** 读回的存储事件(行形状;ts 统一 ISO 字符串,便于 JSON 直出)。 */
 export interface StoredEvent {
+  /** Legacy in-memory fixtures omit domain and are interpreted as core. DB rows always provide it. */
+  domain?: EventDomain;
   seq: number;
   ts: string;
   actor: 'human' | 'agent' | null;
@@ -112,6 +131,7 @@ export const EVENTS_DDL = `
 CREATE TABLE IF NOT EXISTS events (
   seq       BIGSERIAL PRIMARY KEY,
   ts        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  domain    TEXT NOT NULL DEFAULT 'core',
   actor     TEXT,
   principal TEXT,
   channel   TEXT,
@@ -123,7 +143,10 @@ CREATE TABLE IF NOT EXISTS events (
   detail    JSONB
 );
 
+ALTER TABLE events ADD COLUMN IF NOT EXISTS domain TEXT NOT NULL DEFAULT 'core';
+
 CREATE INDEX IF NOT EXISTS events_seq_asc ON events (seq);
+CREATE INDEX IF NOT EXISTS events_domain_seq_asc ON events (domain, seq);
 
 -- append-only 强制:行级触发器拒绝 UPDATE/DELETE。
 -- TRUNCATE 不触发行级触发器,保留为测试/运维清库口(测试自清理依赖它)。
@@ -165,10 +188,11 @@ export async function appendEvent(
   event: EventAppend,
 ): Promise<{ seq: number; ts: Date }> {
   const result = await db.query<{ seq: string | number; ts: Date }>(
-    `INSERT INTO events (actor, principal, channel, kind, rel, action, params, reason, detail)
-     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9::jsonb)
+    `INSERT INTO events (domain, actor, principal, channel, kind, rel, action, params, reason, detail)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10::jsonb)
      RETURNING seq, ts`,
     [
+      event.domain ?? 'core',
       event.actor ?? null,
       event.principal ?? null,
       event.channel ?? null,
@@ -191,6 +215,7 @@ export async function appendEvent(
 /** 读取事件(只读,seq 升序;afterSeq 分页:返回 seq 严格大于 afterSeq 的事件)。 */
 export async function listEvents(db: DbExecutor, afterSeq = 0): Promise<StoredEvent[]> {
   const result = await db.query<{
+    domain: EventDomain;
     seq: string | number;
     ts: Date;
     actor: 'human' | 'agent' | null;
@@ -203,11 +228,12 @@ export async function listEvents(db: DbExecutor, afterSeq = 0): Promise<StoredEv
     reason: string | null;
     detail: unknown;
   }>(
-    `SELECT seq, ts, actor, principal, channel, kind, rel, action, params, reason, detail
+    `SELECT seq, ts, domain, actor, principal, channel, kind, rel, action, params, reason, detail
      FROM events WHERE seq > $1 ORDER BY seq ASC`,
     [afterSeq],
   );
   return result.rows.map((row) => ({
+    domain: row.domain,
     seq: Number(row.seq),
     ts: new Date(row.ts).toISOString(),
     actor: row.actor,
@@ -227,10 +253,14 @@ export type { PoolClient };
 
 /** 存储事件 → 引擎 fold 的 LogEvent(null 归一为 undefined;ts 保留 ISO 字符串)。 */
 export function toLogEvent(event: StoredEvent): LogEvent {
+  if (event.domain !== undefined && event.domain !== 'core') {
+    throw new Error(`Presentation event "${event.kind}" cannot enter the Business fold`);
+  }
   return {
     seq: event.seq,
     ts: event.ts,
-    kind: event.kind,
+    // domain=core is the storage-level discriminator; Presentation kinds are rejected above.
+    kind: event.kind as LogEvent['kind'],
     rel: event.rel ?? undefined,
     action: event.action ?? undefined,
     actor: event.actor ?? undefined,
@@ -245,5 +275,5 @@ export function toLogEvent(event: StoredEvent): LogEvent {
 /** 读出日志并归一为引擎可折叠形状(seq 升序;afterSeq 分页)。 */
 export async function readLog(db: DbExecutor, afterSeq = 0): Promise<LogEvent[]> {
   const stored = await listEvents(db, afterSeq);
-  return stored.map(toLogEvent);
+  return stored.filter((event) => (event.domain ?? 'core') === 'core').map(toLogEvent);
 }

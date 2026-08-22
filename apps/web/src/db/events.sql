@@ -5,6 +5,7 @@
 CREATE TABLE IF NOT EXISTS events (
   seq       BIGSERIAL PRIMARY KEY,
   ts        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  domain    TEXT NOT NULL DEFAULT 'core',
   actor     TEXT,
   principal TEXT,
   channel   TEXT,
@@ -16,7 +17,10 @@ CREATE TABLE IF NOT EXISTS events (
   detail    JSONB
 );
 
+ALTER TABLE events ADD COLUMN IF NOT EXISTS domain TEXT NOT NULL DEFAULT 'core';
+
 CREATE INDEX IF NOT EXISTS events_seq_asc ON events (seq);
+CREATE INDEX IF NOT EXISTS events_domain_seq_asc ON events (domain, seq);
 
 -- append-only 强制:行级触发器拒绝 UPDATE/DELETE。
 -- TRUNCATE 不触发行级触发器,保留为测试/运维清库口(测试自清理依赖它)。

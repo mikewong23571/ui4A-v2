@@ -6,7 +6,14 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { getPool } from './pool';
 
-import { EVENTS_DDL, appendEvent, ensureEventsTable, listEvents, type StoredEvent } from './events';
+import {
+  EVENTS_DDL,
+  appendEvent,
+  ensureEventsTable,
+  listEvents,
+  readLog,
+  type StoredEvent,
+} from './events';
 
 // T2 Phase B Task 1(TDD 红→绿):events 表与 appendEvent。
 // 前置:`docker compose up -d --wait`(postgres:17-alpine,宿主端口 5433)。
@@ -134,5 +141,21 @@ describe('listEvents', () => {
 
     const afterFirst = await listEvents(pool, all[0]!.seq);
     expect(afterFirst.map((event) => event.rel)).toEqual(['seed:test-2', 'seed:test-3']);
+  });
+
+  it('Presentation domain shares the append-only log but never enters Business readLog', async () => {
+    await appendEvent(pool, { kind: 'seed', rel: 'seed:business' });
+    await appendEvent(pool, {
+      domain: 'presentation',
+      kind: 'presentation-requested',
+      rel: 'presentation:req-1',
+      channel: 'presentation',
+    });
+
+    expect((await listEvents(pool)).map(({ domain, kind }) => ({ domain, kind }))).toEqual([
+      { domain: 'core', kind: 'seed' },
+      { domain: 'presentation', kind: 'presentation-requested' },
+    ]);
+    expect((await readLog(pool)).map(({ kind }) => kind)).toEqual(['seed']);
   });
 });
