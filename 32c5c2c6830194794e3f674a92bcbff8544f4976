@@ -1,0 +1,1 @@
+T14 Phase E compatibility hardening: inventory-less early receipts are upgraded by an append-only receipt; integrity accepts legacy only when a valid same-rel upgrade exists. Evidence: focused meta bootstrap test and engine typecheck.
