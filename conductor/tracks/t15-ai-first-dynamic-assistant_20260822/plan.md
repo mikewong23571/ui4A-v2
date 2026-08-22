@@ -72,3 +72,7 @@
 - [x] Task: 同步 `GOAL.md`、`conductor/product.md`、`conductor/refs/arch-brief.md`、`DECISIONS.md` 与 DONE 报告，明确 T15 supersede 的旧 AI-optional/I1 口径 — b80efbc
 - [x] Task: 真实 walkthrough——复走总结第一篇、多轮纠正、不保存约束、歧义澄清、明确下线、复合总结归档、新 action/capability 激活、inline/render/delegated provider profile 与 LLM 故障安全 — b80efbc
 - [x] Task: Final Phase Verification & Checkpoint (Refer to workflow.md) — b80efbc
+
+## Phase: Review Fixes
+
+- [x] Task: Apply review suggestion——同步 `product-guidelines.md` 中仍残留的“零智能完整”旧口径为 AI-first 诚实降级 — dcb9552
