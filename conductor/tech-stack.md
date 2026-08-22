@@ -27,29 +27,21 @@
 | 机械 diff | **deep-object-diff**(备选 TerminusDB JSON Diff & Patch)+ **react-diff-view** | diff 是纯数据 → 渲染零 AI |
 | 流程图渲染 | **React Flow** | XState 图谱可直接喂 |
 | 渲染协议(画布) | **A2UI(Google, v0.9)** | 数据与组件分离;我们侧强制 binding-only + action 拦截 |
-| LLM driver | AI SDK `generateText/step` + 自定义 rule 循环 | 双 driver 架构不变;provider 无关 |
+| LLM Assistant | AI SDK + OpenAI-compatible Chat Completions | AI-first;真实 LLM 是产品智能主体，scripted/mock driver 仅用于协议测试 |
 
 ### 渲染词汇表组件(注册为 A2UI 扩展目录,MVP 前十词)
 
 `table`(TanStack Table)/ `chart`(shadcn Charts, Recharts 3)/ `stat`(Tremor)/ `timeline`(react-chrono)/ `flow`(React Flow)/ `form`(RJSF)/ `diff`(deep-object-diff + react-diff-view)/ `kanban`(dnd-kit)/ `markdown`(react-markdown / Streamdown)/ `detail`(shadcn Sheet/Card);后期:`calendar`(FullCalendar)、`map`(MapLibre)。
 
-## LLM Provider 接入(已定)
+## LLM Provider 接入(外部配置)
 
-**Provider**:GLM Coding Plan(智谱 BigModel)。提供的端点:
+运行时只接受完整的 provider-neutral profile:`LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL`。代码不内置供应商 endpoint、模型名、key 或隐式默认 provider；Web、Worker、render、probe 与 Story Eval 复用同一解析口径。开发环境由根级 gitignored `.env.local` 经 `pnpm dev:all` 传给 Web/Worker，外部环境优先。
 
-| 协议 | Base URL | 是否使用 |
-|---|---|---|
-| **OpenAI Chat Completion** | `https://open.bigmodel.cn/api/coding/paas/v4` | ✅ **暂时只兼容这个** |
-| Anthropic Message | `https://open.bigmodel.cn/api/anthropic` | ❌ 暂不兼容 |
-| OpenAI Response | `https://open.bigmodel.cn/api/v1` | ❌ 暂不兼容 |
-
-**API Key**:本地文件 `/Users/mike/.secrets/glm_coding_plan_key`(在仓库外;运行时读取,严禁把 key 拷入仓库、写入日志或提交)。
-
-接入方式:AI SDK 用 OpenAI 兼容 provider(`createOpenAI({ baseURL: 'https://open.bigmodel.cn/api/coding/paas/v4', apiKey })`);B4 场景(无效 API key 的 401 如实进入对话)即以这套端点为验证对象。
+T15 首个真实 baseline 是 OpenAI-compatible `deepseek-v4-flash` profile；具体 endpoint/model 值属于部署配置。后续可切换其他被测模型，并可单独引入廉价 LLM judge，但 judge 不替代机械 safety gate。
 
 ## Agent 侧接口(不自造线协议)
 
-1. **固定协议动词**(≈5 个,全应用通用):`navigate(rel)` / `exec(action, params)` / `clarify(fields)` / `render(spec)` / `done(summary)`;
+1. **协议结果/动词**:T15 将区分只读 `answer(content,sources)`、导航/澄清、业务 `exec/exec-plan`、副作用完成 `done` 与诚实 `fail`;阅读/总结/比较/解释不是 application capability;
 2. **每状态动态生成的动作工具**:当前实体 `actions[]` 逐个生成工具,字段 schema 内联,guard 求值结果嵌进 description(拒绝即教育);`navigate` 的 rel 从实体 `links` 生成枚举;
 3. HTTP 合同是唯一真相,tools/MCP 是投影;同一合同可再包一层 MCP server 供外部 agent 零成本操作。
 

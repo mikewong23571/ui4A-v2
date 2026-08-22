@@ -15,7 +15,11 @@ HTTP 合同是唯一真相:renderer 给人、HTTP 给脚本、tools/MCP 给模�
 
 ## 成功标准(DONE 的定义)
 
-以下场景套件与不变量全部自动化通过(E2E),外加一次人工 demo 走查。
+以下场景套件、T15 U1–U23 真实 LLM Story Eval 与不变量全部通过,外加一次人工 demo 走查。
+
+### AI-first 用户故事
+
+Assistant 的自然语言理解、多轮目标形成、授权事实阅读、总结/比较/解释、动态 action/capability 发现与副作用授权，以 `tracks/t15-ai-first-dynamic-assistant_20260822/user-stories.md` 为准。真实 LLM Eval 是动态能力证据；rule/scripted driver 仅用于协议测试。
 
 ### 基线场景(业务平面,继承自已验证 demo)
 
@@ -40,16 +44,17 @@ HTTP 合同是唯一真相:renderer 给人、HTTP 给脚本、tools/MCP 给模�
 
 | # | 不变量 | 验证方式 |
 |---|---|---|
-| I1 | 零智能完整 | 撤销全部 LLM key:B1–B3、表单版 S1、哑渲染仍全部通过 |
+| I1 | AI-first 动态助手 | 配置真实 LLM 后 U1–U23 达到 Story Eval 门槛；生产 Assistant 无 rule fallback |
 | I2 | 事实不可发明 | property test:渲染 spec 解引用后的值与实体快照一致 |
 | I3 | 交互必背书 | fuzz 所有可点元素:提交必映射到已声明 action,合同外按钮无法提交 |
 | I4 | 审批不委托 | 以 agent 身份执行 approve 必被拒 |
 | I5 | 可重放 | 从空库重放事件日志,实体状态 hash 与重放前一致 |
 | I6 | 拒绝留痕 | 每个被拒动作在日志中带原因,且可作为下一步决策上下文获取 |
+| I7 | 模型故障安全 | LLM 缺失/失败/超时时诚实失败且零业务副作用；人工 renderer、审批和合同操作仍可用 |
 
 ## 五条铁律(不可违背)
 
-1. **AI-optional**:机械层零智能时必须完整工作;AI 只改善体验,不承担正确性(三处 AI,三处哑兜底);
+1. **AI-first、机械治理**:LLM 负责理解、对话与规划;机械层负责事实、权限、裁决、确认、审计和重放。模型不可用时诚实失败且零副作用,人工 renderer 保持可用;不以 rule driver 复刻智能;
 2. **binding-only**:模型只发引用不发内容——渲染器从实体缓存解引用,模型发不出一个数字;
 3. **交互必须 action 背书**:任何可点的按钮必须绑定到已声明 action,提交经引擎裁决;
 4. **事实永不发明**:字段的值来源必须声明(默认/查找/引出/效果产出/意图/起草+选择),agent 猜只对价值载体字段合法且过选择门;

@@ -82,7 +82,7 @@ TS 映射(选型 §3):动作声明 → Cedar 策略 + JSON Schema(Ajv)校验 →
 
 ## 6. driver 架构
 
-**同一 agent 执行循环,双 driver 一键互换**(第二层):LLM driver(OpenAI 兼容,`sitemap 前缀 + 轨迹 + 当前实体`构造 prompt)与规则 driver(目标感知启发式,无 key 时兜底);未配 key 自动回退内置启发式。裁决器是插件,循环是协议。
+**AI-first agent 执行循环**(T15 supersede 第二层历史实现):真实 LLM driver 根据 sitemap、授权实体事实、会话上下文与轨迹动态理解目标；生产 Assistant 不再以 rule driver 兜底。scripted/mock driver 仅验证循环协议。模型缺失或失败时诚实失败且零副作用，人工 renderer 保持可用。裁决器治理副作用，不替代模型认知。
 
 生产接口形态(选型 1.1,两层工具):**固定协议动词 5 个**:`navigate(rel)` / `exec(action, params)` / `clarify(fields)` / `render(spec)` / `done(summary)`;**每状态动态动作工具**:当前实体 `actions[]` 逐个生成工具,字段 schema 内联进参数,guard 求值结果嵌进 description("blocked: is-pending 失败"——拒绝即教育);navigate 的 rel 参数从实体 `links` 生成枚举。**合法动作集就是工具列表——处境披露的 tool 形态,作用域自动继承**。HTTP 合同是唯一真相,tools/MCP 是投影。
 
@@ -164,13 +164,13 @@ active --deprecate--> deprecated
 
 ## 11. 五条铁律(README 表述 + 正典出处)
 
-1. **AI-optional**:机械层零智能时必须完整工作;AI 只改善体验,不承担正确性(三处 AI 三处哑兜底)。(第九层:"机械层必须在零智能时完整工作;智能层只改善体验,不承担正确性"。AI 三处:driver/clarify runner/价值字段起草。)
+1. **AI-first、机械治理**(T15 supersede AI-optional):LLM 是 Assistant 的理解、对话、总结、比较、解释与规划主体；机械层承担事实、权限、裁决、确认、审计和重放。模型不可用时诚实失败且零副作用，人工 renderer 保持可用；不以 rule driver 复刻智能。历史正典的“AI 不承担正确性”保留为“LLM 输出不是业务真相、副作用必须机械裁决”，不再推导为无 AI 自动完成同一任务。
 2. **binding-only**:模型只发引用不发内容——渲染器从实体缓存解引用,**字面意义上发不出一个数字**。(第十层:"模型只发引用,不发内容";交互层"选,不是画"。)
 3. **交互必须 action 背书**:任何可点按钮必须绑定到已声明 action,提交经引擎裁决。(第十层:"装样子可以,骗点击不行"。)
 4. **事实永不发明**:字段值来源必须声明(默认/查找/引出/效果产出/意图/起草+选择),agent 猜只对价值载体字段合法且过选择门。(第九层铁律其一,activation invariant `field-source-declared`。)
 5. **审批不委托**:`approve` 永远 actor-is-human;审计渲染(事件流、机械 diff)路径零 AI。(A.4:"定义变更的裁决权不进入渐进信任的白名单——assistant 可以提议一切,批准权不可委托";第十层事件流"渲染路径零 AI"。)
 
-GOAL 的自动化不变量:I1 撤销全部 LLM key 后 B1–B3 仍过;I2 渲染 spec 解引用值与实体快照一致;I3 fuzz 可点元素必映射已声明 action;I4 agent 身份执行 approve 必被拒;I5 可重放;I6 拒绝留痕且可作下一步上下文。
+GOAL 的自动化不变量:I1 真实 LLM 的 U1–U23 Story Eval 达标且生产无 rule fallback;I2 渲染 spec 解引用值与实体快照一致;I3 fuzz 可点元素必映射已声明 action;I4 agent 身份执行 approve 必被拒;I5 可重放;I6 拒绝留痕且可作下一步上下文;I7 模型故障诚实且零副作用、人工控制面可用。
 
 ## 12. 术语表
 
@@ -196,5 +196,5 @@ GOAL 的自动化不变量:I1 撤销全部 LLM key 后 B1–B3 仍过;I2 渲染 
 **关键文件路径**:
 - 正典:`/Users/mike/projs/playground/ui4A-v2/docs/UI4A-v2(重排版):界面作为合同,应用作为数据,能力作为边界.md`(注意全角标点文件名)
 - 选型:`/Users/mike/projs/playground/ui4A-v2/docs/UI4A-技术选型.md`(§1.1 工具投影、§3 自写增量五项、§6 渲染词汇表与 A2UI 接线、§7 检索来源)
-- 验收:`/Users/mike/projs/playground/ui4A-v2/GOAL.md`(B1–B4/S1–S5/I1–I6)
+- 验收:`/Users/mike/projs/playground/ui4A-v2/GOAL.md`(B1–B4/S1–S5/I1–I7 + T15 U1–U23)
 - 决策:`/Users/mike/projs/playground/ui4A-v2/DECISIONS.md`(D1 Next.js API 层、D2 PG 从第一天、D3 pnpm workspaces 布局、D4 temporal start-dev、D5 端口 3100、D6 docker 代理异常注记)

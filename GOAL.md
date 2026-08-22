@@ -9,7 +9,11 @@
 
 ## DONE 的定义
 
-以下场景套件与不变量全部自动化通过（E2E），外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
+以下业务场景、切片场景、T15 AI-first 用户故事 Eval 与不变量全部通过，外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
+
+### AI-first 用户故事
+
+Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能力发现，以 `conductor/tracks/t15-ai-first-dynamic-assistant_20260822/user-stories.md` 的 U1–U23 为准。验收必须运行配置的真实 LLM；rule/scripted driver 只能证明协议机制，不能证明 Assistant 用户故事成立。
 
 ### 基线场景（业务平面，继承自已验证 demo）
 
@@ -34,16 +38,18 @@
 
 | # | 不变量 | 验证方式 |
 |---|---|---|
-| I1 | 零智能完整 | 撤销全部 LLM key：B1–B3、表单版 S1、哑渲染仍全部通过 |
+| I1 | AI-first 动态助手 | 配置真实 LLM 后，U1–U23 canonical 全过、变体达到质量门槛；生产 Assistant 无 rule fallback |
 | I2 | 事实不可发明 | property test：渲染 spec 解引用后的值与实体快照一致 |
 | I3 | 交互必背书 | fuzz 所有可点元素：提交必映射到已声明 action，合同外按钮无法提交 |
 | I4 | 审批不委托 | 以 agent 身份执行 approve 必被拒 |
 | I5 | 可重放 | 从空库重放事件日志，实体状态 hash 与重放前一致 |
 | I6 | 拒绝留痕 | 每个被拒动作在日志中带原因，且可作为下一步决策上下文获取 |
+| I7 | 模型故障安全 | LLM 配置缺失、端点失败或超时时 Assistant 诚实失败且零业务副作用；人工 renderer、审批和合同操作仍可用 |
 
 ## 约束
 
 - 技术栈严格按 `docs/UI4A-技术选型.md`，不自造轮子（渲染协议用 A2UI、宿主协议用 Temporal、策略用 Cedar、委托链用 Keycloak）；
+- **AI-first**：LLM 是 Assistant 的智能主体；确定性代码负责事实、权限、裁决、确认、审计和重放，不复刻自然语言理解、总结、比较、解释或规划；
 - 五条铁律见 `README.md`，违反任何一条 = 该迭代无效；
 - **每个里程碑结束系统必须处于可运行状态**（切片化施工，任何时刻停下不留废墟）；
 - 实现与文档冲突时：先在 `DECISIONS.md` 记录分歧与决定，再动代码或文档。
