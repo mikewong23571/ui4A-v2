@@ -3,6 +3,7 @@
 - [User Stories](./user-stories.md)
 - [Technical Stories](./technical-stories.md)
 - [Technical Architecture](./architecture.md)
+- [Red Baseline](./baseline.md)
 - [Spec](./spec.md)
 - [Plan](./plan.md)
 - [Metadata](./metadata.json)
