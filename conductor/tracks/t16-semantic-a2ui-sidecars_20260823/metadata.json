@@ -1,0 +1,8 @@
+{
+  "id": "t16-semantic-a2ui-sidecars_20260823",
+  "type": "feature",
+  "status": "new",
+  "title": "T16 语义化 A2UI 呈现与 Render Sidecar fastpath",
+  "created_at": "2026-08-23T01:46:00+08:00",
+  "approved_by": "autonomous orchestration (user requested explicit user-story acceptance and a new track)"
+}

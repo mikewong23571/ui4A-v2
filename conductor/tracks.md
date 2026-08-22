@@ -30,3 +30,5 @@
 - [x] **Track: T14 walkthrough 修复:数据契约 + 画布韧性 + 人类可读性(walkthrough 问题 #1–#14)** *Link: [tracks/t14-walkthrough-remediation_20260822/index.md](./tracks/t14-walkthrough-remediation_20260822/index.md)*
 
 - [x] **Track: T15 AI-first 动态助手:多轮理解、合同治理与 U1–U23 用户故事 Eval 闭环** *Link: [tracks/t15-ai-first-dynamic-assistant_20260822/index.md](./tracks/t15-ai-first-dynamic-assistant_20260822/index.md)*
+
+- [ ] **Track: T16 语义化 A2UI 呈现与 Render Sidecar fastpath:Entity/Entities/Flow/多层合同图、可交互 action、人类优化与 S1–S32 验收** *Link: [tracks/t16-semantic-a2ui-sidecars_20260823/index.md](./tracks/t16-semantic-a2ui-sidecars_20260823/index.md)*
