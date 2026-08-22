@@ -11,11 +11,11 @@
 ## Phase B: 画布韧性(#6/#7 + T12 遗留)
 
 - [x] Task: deref 成员级降级(缺字段成员跳过 + 计数标注,零发明;结构性错误仍整面失败)+ per-surface 错误边界(单面抛错不拖死整页)(TDD) — 97f75b7
-- [~] Task: caption grounding 核对 + 非聚合词条禁 dimension(renderSpecGroundingErrors 增 caption 可解析性;kanban/table/timeline bindSchema 去 dimension)(TDD)
+- [x] Task: caption grounding 核对 + 非聚合词条禁 dimension(renderSpecGroundingErrors 增 caption 可解析性;kanban/table/timeline bindSchema 去 dimension)(TDD) — fb8f47f
 
 ## Phase C: 人类可读性(#1/#2)
 
-- [ ] Task: 事件流可读投影(kind 注册表驱动的机械叙事摘要 + 时间戳 + detail 折叠下钻;chat-turn/agent-decision 回合级折叠;零 AI 源级断言同步)(TDD)
+- [~] Task: 事件流可读投影(kind 注册表驱动的机械叙事摘要 + 时间戳 + detail 折叠下钻;chat-turn/agent-decision 回合级折叠;零 AI 源级断言同步)(TDD)
 - [ ] Task: 文案人话化(stat 卡「执行中委托」+ 说明;导航/标题词汇走查统一)(TDD)
 
 ## Phase D: 统一验收(唯一 checkpoint)
