@@ -19,6 +19,12 @@ import { renderCatalogJson } from '@/render/registry';
 
 import CanvasPage from './page';
 
+// useSearchParams:jsdom 无 AppRouter 上下文;桩读真实 window.location
+// (与本文件 pushState 设址手法一致——concern 变化经 rerender 反映)。
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -206,6 +212,38 @@ describe('画布页(A2UI surface 宿主)', () => {
       const surfaces = [...document.querySelectorAll('[data-surface]')];
       expect(surfaces[0]!.getAttribute('data-concern')).toBe('articles-by-category');
       expect(surfaces.every((node) => node.getAttribute('data-active') === null)).toBe(true);
+    } finally {
+      window.history.pushState({}, '', '/canvas');
+    }
+  });
+
+  it('?concern= 同路由变化(不重挂载)→ 重载:高亮迁移到新 surface(render 回执即达即跳在画布上的二次渲染)', async () => {
+    window.history.pushState({}, '', '/canvas?concern=demo-articles-table');
+    try {
+      const mock = mockCanvasContract();
+      vi.stubGlobal('fetch', mock);
+      const { rerender } = render(<CanvasPage />);
+      await waitFor(() => {
+        expect(document.querySelectorAll('[data-surface]').length).toBe(2);
+      });
+      let surfaces = [...document.querySelectorAll('[data-surface]')];
+      expect(surfaces[0]!.getAttribute('data-concern')).toBe('demo-articles-table');
+      expect(surfaces[0]!.getAttribute('data-active')).toBe('true');
+
+      // 软导航换 concern(同路由不重挂载):spec 列表重新直取(新回执的
+      // spec 立即可见)+ 激活排序/高亮迁移。
+      window.history.pushState({}, '', '/canvas?concern=articles-by-category');
+      rerender(<CanvasPage />);
+      await waitFor(() => {
+        expect(callsOf(mock, '/api/entity?rel=render-specs')).toHaveLength(2);
+      });
+      await waitFor(() => {
+        surfaces = [...document.querySelectorAll('[data-surface]')];
+        expect(surfaces[0]!.getAttribute('data-concern')).toBe('articles-by-category');
+        expect(surfaces[0]!.getAttribute('data-active')).toBe('true');
+        expect(surfaces[1]!.getAttribute('data-concern')).toBe('demo-articles-table');
+        expect(surfaces[1]!.getAttribute('data-active')).toBeNull();
+      });
     } finally {
       window.history.pushState({}, '', '/canvas');
     }

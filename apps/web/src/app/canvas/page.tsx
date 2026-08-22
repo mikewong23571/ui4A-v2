@@ -6,13 +6,19 @@
  * fetch;跨页面不共享);目录协商、surface 规划与动作接线在 CanvasBody
  * (组件级可测,见 components/canvas-body.tsx)。
  */
+import { Suspense } from 'react';
+
 import { CanvasBody } from '@/components/canvas-body';
 import { EntityCacheProvider } from '@/components/entity-cache-provider';
 
 export default function CanvasPage() {
   return (
     <EntityCacheProvider>
-      <CanvasBody />
+      {/* Suspense:CanvasBody 经 useSearchParams 读 ?concern=(App Router 静态
+          预渲染的边界要求;渲染期读参数,不阻断数据流)。 */}
+      <Suspense>
+        <CanvasBody />
+      </Suspense>
     </EntityCacheProvider>
   );
 }

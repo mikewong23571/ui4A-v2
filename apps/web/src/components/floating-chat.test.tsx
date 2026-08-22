@@ -31,8 +31,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FloatingChat } from './floating-chat';
 
 // usePathname:jsdom 无 AppRouter 上下文;桩为 '/'(工作台壳生效路径)。
+// useRouter:同上;push 桩经 vi.hoisted 提取(render 回执即达即跳的断言锚点)。
+const { routerPushMock } = vi.hoisted(() => ({ routerPushMock: vi.fn() }));
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
+  useRouter: () => ({ push: routerPushMock }),
 }));
 
 // assistant-ui 在浏览器用 ResizeObserver(jsdom 未实现;观测性桩足够渲染与交互)。
@@ -46,6 +49,7 @@ beforeEach(() => {
   vi.stubGlobal('ResizeObserver', ResizeObserverStub);
   // jsdom 未实现 Element.scrollTo(assistant-ui viewport 自动滚动调用),桩替换。
   Element.prototype.scrollTo = () => undefined;
+  routerPushMock.mockClear();
 });
 
 function jsonResponse(body: unknown): Response {
@@ -661,6 +665,59 @@ describe('悬浮聊天窗 · render capability(T7 Phase C / S5)', () => {
     const link = screen.getByRole('link', { name: /在画布查看/ }) as HTMLAnchorElement;
     expect(link.getAttribute('href')).toBe(canvasUrl);
     expect(link.getAttribute('data-nav')).toBe('render:articles-by-category');
+  });
+
+  it('render 回执即达即跳:router.push 到画布 URL(与点击入口等价);地址已在目标则零导航', async () => {
+    const canvasUrl = '/canvas?concern=articles-by-category';
+    const receipt = (text: string) =>
+      jsonResponse({
+        sessionId: 'sess-render-nav',
+        driver: 'rule',
+        outcome: 'done',
+        summary: '渲染已生成',
+        messages: [{ role: 'assistant', text }],
+        render: {
+          concern: 'articles-by-category',
+          spec: {
+            concern: 'articles-by-category',
+            component: 'chart',
+            bind: { series: { collection: 'articles', dimension: 'articles.fields.category' } },
+          },
+          frozenNow: true,
+          canvasUrl,
+        },
+      });
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(receipt('已生成渲染「articles-by-category」(chart,首次凝固)'))
+        .mockResolvedValueOnce(receipt('已生成渲染「articles-by-category」(chart,复用已凝固布局)')),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('按分类展示文章');
+
+    await waitFor(() => {
+      expect(screen.getByText(/首次凝固/)).toBeTruthy();
+    });
+    // 即达即跳:回执到达 → 编程式客户端导航(与点击「在画布查看」同一条路;
+    // main 内容区切画布,悬浮面板在 root layout 不重挂载)。
+    expect(routerPushMock).toHaveBeenCalledTimes(1);
+    expect(routerPushMock).toHaveBeenCalledWith(canvasUrl);
+
+    // 去重守卫:地址已在目标(重复请求同一渲染)→ 零导航,不重复入历史。
+    window.history.pushState({}, '', canvasUrl);
+    try {
+      sendGoal('按分类展示文章');
+      await waitFor(() => {
+        expect(screen.getByText(/复用已凝固布局/)).toBeTruthy();
+      });
+      expect(routerPushMock).toHaveBeenCalledTimes(1);
+    } finally {
+      window.history.pushState({}, '', '/');
+    }
   });
 
   it('普通响应(无 render 载荷)→ 不渲染画布入口链接', async () => {

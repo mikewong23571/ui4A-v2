@@ -15,8 +15,10 @@
  * - 历史(B3):挂载时按 localStorage 的 sessionId 拉 /api/chat/history,
  *   各回合 messages 重放进消息列表(goal 作为 user 消息在前);「新会话」
  *   清 localStorage + 清空消息(历史仍在日志,审计不丢);
- * - render 回执(S5):「在画布查看:<concern>」链接(data-nav="render:<concern>",
- *   普通 href——不在画布时主窗口导航过去,sidebar 与画布同屏即协同);
+ * - render 回执(S5):回执即达即跳——router.push 客户端导航到画布 URL
+ *   (与点击链接同路:main 内容区切换,面板不重挂载;已在目标地址则跳过);
+ *   底部保留「在画布查看:<concern>」链接(data-nav="render:<concern>",
+ *   手动回入口,不在画布时主窗口导航过去,sidebar 与画布同屏即协同);
  * - 委托模式(T5 Phase B):开关打开后发送 mode:'delegated',立即回执
  *   「已派发委托 <id前8位>…(后台执行中),进度见舰队页 /delegations」。
  *
@@ -46,6 +48,7 @@ import {
   X,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 /** 面板内消息(rel 为轨迹步的实体 rel:flow 徽章展示用,见 thread.tsx)。 */
 interface ChatUiMessage {
@@ -479,6 +482,20 @@ export function ChatPanel({
   onDock,
   onFloat,
 }: ChatPanelProps) {
+  const router = useRouter();
+  // render 回执即达即跳:与点击底部「在画布查看」等价的编程式客户端导航
+  // (main 内容区切画布,本面板在 root layout 侧不重挂载,同屏协同);目标与
+  // 当前地址相同(重复回执)则跳过——不重复入历史。仅 onNew 的一次性 JSON
+  // 路径会 setLastRender,历史回放/刷新不触发。
+  const lastRender = session.lastRender;
+  useEffect(() => {
+    if (lastRender === undefined) return;
+    if (`${window.location.pathname}${window.location.search}` === lastRender.canvasUrl) {
+      return;
+    }
+    router.push(lastRender.canvasUrl);
+  }, [lastRender, router]);
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
       <div className="flex items-center justify-between border-b border-border px-3 py-2">

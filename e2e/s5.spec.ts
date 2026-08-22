@@ -202,3 +202,26 @@ test('S5 附:展示意图的第二形态——"展示文章列表" → table 词
     { GLM_API_KEY: '' },
   );
 });
+
+test('S5 附:render 回执即达即跳——悬浮聊天发送展示意图 → 自动导航画布并激活(同屏协同)', async ({ page }) => {
+  await withFreshServer(
+    async () => {
+      await page.goto(`${SCENARIO_BASE}/`);
+      await page.getByRole('button', { name: '展开聊天窗' }).click();
+      await page.getByPlaceholder('输入目标…').fill('按分类展示文章');
+      await page.getByRole('button', { name: '发送' }).click();
+
+      // 回执即达即跳:URL 自动切到画布(客户端软导航——main 内容区切换,
+      // 悬浮面板在 root layout 不重挂载)。
+      await expect(page).toHaveURL(/\/canvas\?concern=articles-by-category$/);
+      const surface = page.locator('[data-surface="articles-by-category"]');
+      await expect(surface).toBeVisible();
+      await expect(surface).toHaveAttribute('data-active', 'true');
+
+      // 同屏协同:面板保持打开,回执消息与手动回入口链接仍在。
+      await expect(page.getByText(/已生成渲染「articles-by-category」/)).toBeVisible();
+      await expect(page.getByRole('link', { name: /在画布查看/ })).toBeVisible();
+    },
+    { GLM_API_KEY: '' },
+  );
+});

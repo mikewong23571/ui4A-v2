@@ -31,6 +31,7 @@ import type { ReactComponentImplementation } from '@a2ui/react/v0_9';
 import { MessageProcessor } from '@a2ui/web_core/v0_9';
 import type { SurfaceModel } from '@a2ui/web_core/v0_9';
 import type { SirenEntity } from '@ui4a/engine';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';
@@ -116,6 +117,9 @@ interface SurfaceEntry {
 
 export function CanvasBody() {
   const cache = useEntityCache();
+  // ?concern= 经 hook 读取(同路由软导航不重挂载):concern 变化 → load 重建
+  // → 挂载 effect 重跑,整面重载(render 回执即达即跳在画布上的二次渲染)。
+  const concernParam = useSearchParams().get('concern') ?? undefined;
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
@@ -142,13 +146,11 @@ export function CanvasBody() {
       setNegotiated(true);
 
       // 2/3. 凝固 spec 列表(合同路径,每轮直取:reload 即新鲜)+ 单例演示;
-      // ?concern= 激活的 spec 排最前(S5:悬浮聊天的画布入口;命中与否不改变渲染集)。
+      // ?concern= 激活的 spec 排最前(S5:聊天 render 回执的画布入口;命中与否
+      // 不改变渲染集)。
       const frozenCollection = await fetchEntity('render-specs');
       const frozenSpecs = frozenCollection !== null ? frozenSpecsOf(frozenCollection) : [];
-      const activeConcern =
-        typeof window === 'undefined'
-          ? undefined
-          : (new URLSearchParams(window.location.search).get('concern') ?? undefined);
+      const activeConcern = concernParam;
       const all = [...frozenSpecs, DEMO_SPEC];
       const specs = [
         ...all.filter((spec) => spec.concern === activeConcern),
@@ -196,7 +198,7 @@ export function CanvasBody() {
     } finally {
       setLoading(false);
     }
-  }, [cache]);
+  }, [cache, concernParam]);
 
   useEffect(() => {
     const initial = setTimeout(() => void load(), 0);
