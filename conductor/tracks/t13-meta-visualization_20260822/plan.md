@@ -23,6 +23,6 @@
 
 ## Phase D: capability-registered 不变式 + 全量回归
 
-- [~] Task: 激活不变式第八条 capability-registered(全部引用点盘点;未注册拒且留痕;registries 可选 + vacuous 过渡;s2 checks 名单机械适配 7→8)(TDD)
-- [ ] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增用例)+ demo 走查(拓扑图/版本对比/capabilities 页脚本化确认)
+- [x] Task: 激活不变式第八条 capability-registered(全部引用点盘点;未注册拒且留痕;registries 可选 + vacuous 过渡;s2 checks 名单机械适配 7→8)(TDD) — d9081ba
+- [~] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e` 既有零回归 + 新增用例)+ demo 走查(拓扑图/版本对比/capabilities 页脚本化确认)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
