@@ -1,0 +1,6 @@
+T13 Phase C Task 2: capability-seeded 入日志 + fold 落表
+
+改动:domain/capabilities.ts(新增 3 seed)+ service.ts(补种)+ fold.ts(kind+落表)+ state.ts/events.ts/effects.ts/confirmation.ts(字段/镜像/随行)+ I5 测试扩展(service.definitions + e2e/invariants)
+引用盘点:生产引用 = draft(proposal source,flows.ts:65)、notify(T3 送达)、clarify(on-invalid 声明点);fixture 引用(summarize 等)非 seed 义务。静态覆盖测试防空转。
+Why:spec 架构决定 3——capability 目录定义面,T10 application 先例逐点同构。
+验收(编排 agent 亲自复跑):3 文件 58/58;CI=true pnpm check 1046 passed;invariants e2e 6/6(I5 events=32 含 capability-seeded×3,hash 一致)。自治验收。
