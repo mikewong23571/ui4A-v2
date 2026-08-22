@@ -44,6 +44,7 @@ import { planSurface } from '@/render/canvas/surface-flow';
 import { ui4aRenderCatalog } from '@/render/canvas/word-catalog';
 import { CATALOG_ID, catalogUrl } from '@/render/registry';
 import type { DerefWarning } from '@/render/deref';
+import { planGenericPresentationSurface } from '@/render/presentation/generic';
 import type { RenderSpec } from '@/render/spec';
 
 import { useEntityCache, type EntityCacheHandle } from './entity-cache-provider';
@@ -53,13 +54,6 @@ import { Button } from './ui/button';
 // 注:@a2ui/react 0.10.2 声明的 ./styles/structural.css 在包内缺失(打包缺口);
 // basic 原语样式经 useBasicCatalogStyles 运行时注入(adoptedStyleSheets),
 // 词条样式走本站 tailwind——无需额外 CSS 引入。
-
-/** 单例演示 spec(table 词条:articles 集合;写死绑定,零 AI)。 */
-const DEMO_SPEC: RenderSpec = {
-  concern: 'demo-articles-table',
-  component: 'table',
-  bind: { rows: { collection: 'articles' } },
-};
 
 /** 从 render-specs 集合实体提取凝固 spec(properties 直出,零特权端点)。 */
 function frozenSpecsOf(collection: SirenEntity): RenderSpec[] {
@@ -223,26 +217,26 @@ export function CanvasBody() {
       if (generation !== loadGenerationRef.current) return;
       setNegotiated(true);
 
-      // 2/3. 凝固 spec 列表(合同路径,每轮直取:reload 即新鲜)+ 单例演示;
+      const sitemapResponse = await fetch('/.well-known/ui4a.json', {
+        signal: controller.signal,
+      });
+      if (!sitemapResponse.ok) {
+        throw new Error(`GET /.well-known/ui4a.json → HTTP ${sitemapResponse.status}`);
+      }
+      const sitemap = (await sitemapResponse.json()) as { version?: unknown };
+      if (typeof sitemap.version !== 'string' || sitemap.version === '') {
+        throw new Error('sitemap 响应缺 version');
+      }
+
+      // 2/3. focus/default 走语义 Surface Tree；旧 concern 只保留兼容读取。
       // ?concern= 激活的 spec 排最前(S5:聊天 render 回执的画布入口;命中与否
       // 不改变渲染集)。
       const frozenCollection = await fetchEntity('render-specs', controller.signal);
       const frozenSpecs = frozenCollection !== null ? frozenSpecsOf(frozenCollection) : [];
-      // agent/human 共享 focus：稳定 surface id 上替换实体引用；不进入冻结集合。
-      const focusSpec: RenderSpec | undefined =
-        focusParam === undefined
-          ? undefined
-          : {
-              concern: 'agent-focus',
-              component: 'detail',
-              bind: { entity: { ref: `entity:${focusParam}` } },
-            };
-      const activeConcern = focusSpec !== undefined ? focusSpec.concern : concernParam;
-      const all = [...(focusSpec !== undefined ? [focusSpec] : []), ...frozenSpecs, DEMO_SPEC];
-      const specs = [
-        ...all.filter((spec) => spec.concern === activeConcern),
-        ...all.filter((spec) => spec.concern !== activeConcern),
-      ];
+      const requestedFocus = focusParam ?? (concernParam === undefined ? 'articles' : undefined);
+      const activeConcern =
+        requestedFocus === undefined ? concernParam : `presentation:${requestedFocus}`;
+      const specs = frozenSpecs.filter((spec) => spec.concern === activeConcern);
 
       // 4. 拦截门 + MessageProcessor(每轮重载重建,白名单随数据模型重建);
       // 实体取数经页面缓存:同 rel 跨 surface 零重复 fetch。
@@ -260,6 +254,24 @@ export function CanvasBody() {
 
       const failed: string[] = [];
       const planned: { surfaceId: string; concern: string; warnings: DerefWarning[] }[] = [];
+      if (requestedFocus !== undefined) {
+        try {
+          const entity = await withAbort(cache.get(requestedFocus), controller.signal);
+          if (entity === null) throw new Error(`实体 "${requestedFocus}" 不存在`);
+          const plan = planGenericPresentationSurface(requestedFocus, entity, sitemap.version);
+          for (const hydrated of plan.entities.values()) gate.register(hydrated);
+          processor.processMessages(plan.bundle.messages);
+          planned.push({
+            surfaceId: plan.bundle.surfaceId,
+            concern: `presentation:${requestedFocus}`,
+            warnings: [],
+          });
+        } catch (error) {
+          failed.push(
+            `presentation:${requestedFocus}:${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
       for (const spec of specs) {
         try {
           const plan = await withAbort(planSurface(spec, cache.get), controller.signal);

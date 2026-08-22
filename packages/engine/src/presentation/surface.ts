@@ -776,6 +776,15 @@ function scalarPropertyPaths(value: unknown, prefix: string): string[] {
   });
 }
 
+const GENERIC_STRUCTURAL_PROPERTY_PATHS = new Set([
+  'properties.rel',
+  'properties.node',
+  'properties.title',
+  'properties.identity',
+  'properties.status',
+  'properties.presentation',
+]);
+
 function catalogDependency(catalog: SurfaceCatalog): SurfaceDependency {
   return { kind: 'catalog', subject: catalog.id, version: catalog.version };
 }
@@ -916,7 +925,11 @@ export function planGenericSurface(
     }
   }
   for (const path of scalarPropertyPaths(entity.properties, 'properties').sort()) {
-    if (!plannedPaths.has(path) && !path.startsWith('properties.fields.')) {
+    if (
+      !plannedPaths.has(path) &&
+      !path.startsWith('properties.fields.') &&
+      !GENERIC_STRUCTURAL_PROPERTY_PATHS.has(path)
+    ) {
       regions.push({ role: 'metadata', binding: { kind: 'property', subject, path } });
       plannedPaths.add(path);
     }
@@ -939,10 +952,15 @@ export function planGenericSurface(
   if (entity.entities !== undefined) {
     const repeatIndex = children.length;
     const source: Extract<SurfaceBinding, { kind: 'entities' }> = { kind: 'entities', subject };
+    const itemIdentityPath =
+      entity.entities.length > 0 &&
+      entity.entities.every((member) => readPath(member, 'properties.identity') !== undefined)
+        ? 'properties.identity'
+        : 'properties.rel';
     const item = genericWord(
       `word-${repeatIndex}-item`,
       'identity',
-      { kind: 'item', path: 'properties.rel' },
+      { kind: 'item', path: itemIdentityPath },
       catalog,
       options.entityVersion,
       provenanceRef,

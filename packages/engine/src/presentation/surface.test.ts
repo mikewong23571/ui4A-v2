@@ -314,6 +314,7 @@ describe('generic semantic fallback planner', () => {
     expect(serialized).not.toContain('Node label must not become identity');
     expect(serialized).not.toContain('A factual value');
     expect(serialized).not.toContain('do-something');
+    expect(serialized).not.toContain('properties.title');
     expect(serialized).toContain('"role":"actions"');
     expect(serialized).toContain('"role":"relation"');
   });
