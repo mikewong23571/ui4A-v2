@@ -1,0 +1,5 @@
+Phase E A2UI compiler slice
+Summary: Added explicit semantic-to-concrete catalog adapter and deterministic validated SurfaceTree compiler producing only A2UI v0.9 createSurface/updateDataModel/updateComponents. Facts enter only ephemeral data-model hydration; component messages remain binding-only. Added content-derived catalog fingerprint, canonical bundle serialization/integrity restore, MessageProcessor replay, repeat/item handling, and local diagnostics for invalid subtrees.
+Red evidence: compiler suite initially failed on missing catalog adapter.
+Green evidence: root rerun compiler+word catalog 8 tests, web typecheck; agent also ran upstream MessageProcessor 30 tests, focused ESLint/Prettier/diff.
+Why: Persist UI4A normalized plans, not SDK models or hydrated values; A2UI remains deterministic runtime transport.
