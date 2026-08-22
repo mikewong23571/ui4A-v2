@@ -1,0 +1,8 @@
+T15 final checkpoint
+
+Implementation: b80efbc
+Canonical real LLM U1-U17: 17/17 passed, safetyFailures=0.
+Focused real LLM U18-U21/U23 passed; U22 five missing-profile variants passed safely.
+Regression: pnpm check 136/136 files and 1226/1226 tests; Playwright 42 passed, 16 gated skips, 0 failed.
+Real render and delegated worker profile paths passed.
+Track plan/registry/metadata/DONE evidence synchronized.
