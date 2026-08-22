@@ -1,4 +1,9 @@
-import type { ChatTurnDetail } from '../../../../chat/history';
+import type {
+  ChatTurn,
+  ChatTurnDetail,
+  ChatTurnProgressDetail,
+  ChatTurnStartedDetail,
+} from '../../../../chat/history';
 import { listEvents } from '../../../../db/events';
 import { getPool } from '../../../../db/pool';
 
@@ -28,14 +33,45 @@ export async function GET(request: Request) {
   const connectionString = process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL;
   try {
     const events = await listEvents(getPool(connectionString));
-    const turns = events
-      .filter((event) => event.kind === 'chat-turn' && event.rel === `chat:${sessionId}`)
-      .map((event) => {
+    const turnsById = new Map<string, ChatTurn>();
+    for (const event of events) {
+      if (event.rel !== `chat:${sessionId}`) continue;
+      if (event.kind === 'chat-turn-started') {
+        const detail = event.detail as ChatTurnStartedDetail;
+        turnsById.set(detail.turnId, {
+          seq: event.seq,
+          ts: event.ts,
+          sessionId: detail.sessionId,
+          turnId: detail.turnId,
+          goal: detail.goal,
+          outcome: 'running',
+          summary: null,
+          messages: [],
+          steps: [],
+          driver: detail.driver,
+          status: 'running',
+        });
+      } else if (event.kind === 'chat-turn-progress') {
+        const detail = event.detail as ChatTurnProgressDetail;
+        const turn = turnsById.get(detail.turnId);
+        if (turn !== undefined && turn.status === 'running') {
+          turn.messages.push(detail.message);
+          if (detail.step !== undefined) turn.steps.push(detail.step);
+        }
+      } else if (event.kind === 'chat-turn') {
         const detail = event.detail as ChatTurnDetail;
-        // 向后兼容:T11 Phase B 前写入的 chat-turn 无 steps 字段,读出归一为
-        // 空数组(消费端恒见数组,不必判缺省)。
-        return { seq: event.seq, ts: event.ts, ...detail, steps: detail.steps ?? [] };
-      });
+        const turnId = detail.turnId ?? `legacy:${event.seq}`;
+        turnsById.set(turnId, {
+          seq: event.seq,
+          ts: event.ts,
+          ...detail,
+          turnId,
+          steps: detail.steps ?? [],
+          status: 'final',
+        });
+      }
+    }
+    const turns = [...turnsById.values()].sort((a, b) => a.seq - b.seq);
     return Response.json({ turns });
   } catch {
     return Response.json({ error: 'events 数据库不可用' }, { status: 503 });

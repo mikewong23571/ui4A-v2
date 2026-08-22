@@ -13,7 +13,11 @@ import {
   type RenderWordSummary,
 } from '@ui4a/agent';
 
-import type { ChatTurnDetail } from '../../../chat/history';
+import type {
+  ChatTurnDetail,
+  ChatTurnProgressDetail,
+  ChatTurnStartedDetail,
+} from '../../../chat/history';
 import { wrapDriverForAudit, type AgentDecisionDetail } from '../../../chat/decisions';
 import { resolveStartRel } from '../../../chat/start';
 import type { ChatRenderPayload } from '../../../chat/sse';
@@ -87,6 +91,7 @@ interface ParsedChatBody {
   ok: true;
   goal: AgentGoal;
   sessionId: string;
+  turnId: string;
   driver: 'rule' | 'llm' | 'auto';
   mode: 'inline' | 'delegated';
 }
@@ -104,7 +109,7 @@ function parseBody(body: unknown): ParsedChatBody | ParseError {
   if (!isPlainObject(body)) {
     return { ok: false, error: '请求体必须是 JSON 对象' };
   }
-  const { goal, sessionId, driver, mode } = body;
+  const { goal, sessionId, turnId, driver, mode } = body;
   if (!isPlainObject(goal) || typeof goal.verb !== 'string' || goal.verb === '') {
     return { ok: false, error: 'goal 必须是 {verb: 非空字符串, …}' };
   }
@@ -119,6 +124,9 @@ function parseBody(body: unknown): ParsedChatBody | ParseError {
   if (sessionId !== undefined && typeof sessionId !== 'string') {
     return { ok: false, error: 'sessionId 必须是字符串' };
   }
+  if (turnId !== undefined && typeof turnId !== 'string') {
+    return { ok: false, error: 'turnId 必须是字符串' };
+  }
   if (driver !== undefined && driver !== 'rule' && driver !== 'llm' && driver !== 'auto') {
     return { ok: false, error: 'driver 必须是 "rule" | "llm" | "auto"' };
   }
@@ -131,6 +139,7 @@ function parseBody(body: unknown): ParsedChatBody | ParseError {
     // Record<string,unknown> 与 AgentGoal 结构不重叠是 TS 的保守判断,运行时形状已收敛。
     goal: goal as unknown as AgentGoal,
     sessionId: sessionId ?? crypto.randomUUID(),
+    turnId: turnId ?? crypto.randomUUID(),
     driver: driver ?? 'auto',
     mode: mode ?? 'inline',
   };
@@ -257,6 +266,25 @@ function sseResponse(start: (send: (frame: Record<string, unknown>) => void) => 
   });
 }
 
+async function appendChatProjection(
+  kind: 'chat-turn-started' | 'chat-turn-progress' | 'chat-turn',
+  sessionId: string,
+  detail: ChatTurnStartedDetail | ChatTurnProgressDetail | ChatTurnDetail,
+): Promise<void> {
+  try {
+    await appendEvent(getDb(), {
+      kind,
+      actor: 'agent',
+      principal: `user:${sessionId}`,
+      channel: 'chat',
+      rel: `chat:${sessionId}`,
+      detail,
+    });
+  } catch (persistError) {
+    console.error(`${kind} 事件落库失败(不阻断聊天响应):`, persistError);
+  }
+}
+
 /**
  * inline 循环的流内执行(inline 常规路径与渲染路径过闸失败的兜底共用):
  * resolveStartRel → runAgent(thinking-delta/thinking/step 帧)→ 冗余步帧 →
@@ -266,11 +294,13 @@ async function streamAgentLoop(args: {
   send: (frame: Record<string, unknown>) => void;
   goal: AgentGoal;
   sessionId: string;
+  turnId: string;
   requested: 'rule' | 'llm' | 'auto';
   resolved: 'rule' | 'llm';
   baseUrl: string;
 }): Promise<void> {
-  const { send, goal, sessionId, requested, resolved, baseUrl } = args;
+  const { send, goal, sessionId, turnId, requested, resolved, baseUrl } = args;
+  send({ type: 'session', sessionId, turnId });
   const startRel = await resolveStartRel(baseUrl, goal, (url, init) => fetch(url, init));
   // agent-decision 审计(T11 Phase B):包装 driver 在 decide 时刻捕获
   // (prompt/reasoning/op)——决策输入只存在于 decide 时的 DriverContext,
@@ -279,6 +309,7 @@ async function streamAgentLoop(args: {
   // 已发 step 帧计数:thinking 帧的步号 = 计数 + 1(decide 先于 trail.push,
   // 回调时第 N 步的 step 帧尚未发出)——与对应 step 帧同号,便于客户端归步。
   let stepFramesSent = 0;
+  let progressWrite = Promise.resolve();
   const result = await runAgent(
     wrapDriverForAudit(createDriver(requested), resolved, (detail) => decisions.push(detail)),
     goal,
@@ -304,7 +335,16 @@ async function streamAgentLoop(args: {
         if (step.op.kind === 'navigate' && step.outcome === 'navigated') {
           send({ type: 'focus', rel: step.rel });
         }
-        send({ type: 'step', message: stepToMessage(step), rel: step.rel });
+        const message = stepToMessage(step);
+        send({ type: 'step', message, rel: step.rel });
+        progressWrite = progressWrite.then(() =>
+          appendChatProjection('chat-turn-progress', sessionId, {
+            sessionId,
+            turnId,
+            message,
+            step,
+          }),
+        );
       },
     },
   );
@@ -314,7 +354,11 @@ async function streamAgentLoop(args: {
   // 保持客户端「消息 = 各 step 帧文本」的重建口径与 trailToMessages 等值。
   for (const extra of messages.slice(result.steps.length)) {
     send({ type: 'step', message: extra });
+    progressWrite = progressWrite.then(() =>
+      appendChatProjection('chat-turn-progress', sessionId, { sessionId, turnId, message: extra }),
+    );
   }
+  await progressWrite;
 
   // agent-decision 落库:inline 每步决策一条,与 chat-turn 同源同值
   // (actor/principal/channel);先于回合投影写入(决策在先,回合在后)。
@@ -341,6 +385,7 @@ async function streamAgentLoop(args: {
   // 是人读投影,steps 是机器可读原料(架构决定 2)。
   const turnDetail: ChatTurnDetail = {
     sessionId,
+    turnId,
     goal,
     outcome: result.outcome,
     summary: result.summary ?? null,
@@ -348,18 +393,7 @@ async function streamAgentLoop(args: {
     steps: result.steps,
     driver: resolved,
   };
-  try {
-    await appendEvent(getDb(), {
-      kind: 'chat-turn',
-      actor: 'agent',
-      principal: `user:${sessionId}`,
-      channel: 'chat',
-      rel: `chat:${sessionId}`,
-      detail: turnDetail,
-    });
-  } catch (persistError) {
-    console.error('chat-turn 事件落库失败(不阻断聊天响应):', persistError);
-  }
+  await appendChatProjection('chat-turn', sessionId, turnDetail);
 
   send({
     type: 'final',
@@ -386,12 +420,14 @@ function sseRenderResponse(args: {
   sitemap: RenderSitemapContext;
   goal: AgentGoal;
   sessionId: string;
+  turnId: string;
   requested: 'rule' | 'llm' | 'auto';
   resolved: 'rule' | 'llm';
   baseUrl: string;
 }): Response {
-  const { engine, sitemap, goal, sessionId, requested, resolved, baseUrl } = args;
+  const { engine, sitemap, goal, sessionId, turnId, requested, resolved, baseUrl } = args;
   return sseResponse(async (send) => {
+    send({ type: 'session', sessionId, turnId });
     let handled = false;
     try {
       const llmGenerated = await generateRenderSpecWithLlm(
@@ -406,13 +442,23 @@ function sseRenderResponse(args: {
       if (llmGenerated !== undefined && llmSpecPassesGates(llmGenerated, sitemap)) {
         const payload = await frozenRenderPayload(engine, llmGenerated, sessionId, requested, resolved);
         send({ type: 'render', payload });
+        await appendChatProjection('chat-turn', sessionId, {
+          sessionId,
+          turnId,
+          goal,
+          outcome: 'done',
+          summary: payload.summary,
+          messages: payload.messages,
+          steps: [],
+          driver: resolved,
+        });
         handled = true;
       }
     } catch {
       // 引擎/凝固故障:如实交回 agent 循环(同旧 JSON 路径的外层 catch 口径)。
     }
     if (!handled) {
-      await streamAgentLoop({ send, goal, sessionId, requested, resolved, baseUrl });
+      await streamAgentLoop({ send, goal, sessionId, turnId, requested, resolved, baseUrl });
     }
   });
 }
@@ -430,7 +476,7 @@ export async function POST(request: Request) {
     return Response.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { goal, sessionId, driver: requested, mode } = parsed;
+  const { goal, sessionId, turnId, driver: requested, mode } = parsed;
   // baseUrl 口径(终审 M-2):delegated 派发的 workflow args.baseUrl 不信任
   // 请求 Host 头(可被调用方控制,进 workflow 会让 worker 以服务端身份持续
   // 回环抓取任意 origin)。APP_ORIGIN 显式覆盖;否则仅放行本机 Host(dev/
@@ -454,6 +500,14 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+
+  await appendChatProjection('chat-turn-started', sessionId, {
+    sessionId,
+    turnId,
+    goal,
+    driver: resolved,
+    mode,
+  });
 
   // render capability(T7 Phase C / S5;T12 Phase A 起含 LLM fallthrough;
   // 本轮起 LLM 路径 inline 模式 SSE 化):展示类意图 → spec 生成 + 凝固。
@@ -480,17 +534,28 @@ export async function POST(request: Request) {
             : undefined;
         const label = typeof title === 'string' && title !== '' ? title : rel;
         const canvasUrl = `/canvas?focus=${encodeURIComponent(rel)}`;
-        return Response.json({
+        const payload = {
           sessionId,
           driver: resolved,
           requestedDriver: requested,
           outcome: 'done',
           summary: `查看具体实体 ${label}`,
-          messages: [{ role: 'assistant', text: `正在查看「${label}」→ 在画布打开:${canvasUrl}` }],
+          messages: [{ role: 'assistant' as const, text: `正在查看「${label}」→ 在画布打开:${canvasUrl}` }],
           steps: [],
           successes: [],
           focus: { rel, canvasUrl },
+        };
+        await appendChatProjection('chat-turn', sessionId, {
+          sessionId,
+          turnId,
+          goal,
+          outcome: 'done',
+          summary: payload.summary,
+          messages: payload.messages,
+          steps: [],
+          driver: resolved,
         });
+        return Response.json(payload);
       }
     }
     const generated = renderSpecFor(goal.verb, sitemap, engine.listFrozenSpecs());
@@ -501,18 +566,41 @@ export async function POST(request: Request) {
         const summary = validation.errors
           .map((error) => `${error.path}: ${error.message}`)
           .join('; ');
-        return Response.json({
+        const payload = {
           sessionId,
           driver: resolved,
           requestedDriver: requested,
           outcome: 'failed',
           summary: `生成的渲染说明未过零字面校验: ${summary}`,
-          messages: [{ role: 'assistant', text: `失败: 生成的渲染说明未过零字面校验: ${summary}` }],
+          messages: [{ role: 'assistant' as const, text: `失败: 生成的渲染说明未过零字面校验: ${summary}` }],
           steps: [],
           successes: [],
+        };
+        await appendChatProjection('chat-turn', sessionId, {
+          sessionId,
+          turnId,
+          goal,
+          outcome: 'failed',
+          summary: payload.summary,
+          messages: payload.messages,
+          steps: [],
+          driver: resolved,
         });
+        return Response.json(payload);
       }
-      return await respondWithFrozenSpec(engine, generated, sessionId, requested, resolved);
+      const response = await respondWithFrozenSpec(engine, generated, sessionId, requested, resolved);
+      const payload = (await response.clone().json()) as ChatRenderPayload;
+      await appendChatProjection('chat-turn', sessionId, {
+        sessionId,
+        turnId,
+        goal,
+        outcome: 'done',
+        summary: payload.summary,
+        messages: payload.messages,
+        steps: [],
+        driver: resolved,
+      });
+      return response;
     }
     // T12(架构决定 1):rule miss 的展示意图 → LLM fallthrough。仅展示意图
     // 进入(非展示意图直落既分派);inline 模式 SSE 化(思考增量 + render 帧,
@@ -526,10 +614,22 @@ export async function POST(request: Request) {
           words: renderWordSummaries(),
         });
         if (llmGenerated !== undefined && llmSpecPassesGates(llmGenerated, sitemap)) {
-          return await respondWithFrozenSpec(engine, llmGenerated, sessionId, requested, resolved);
+          const response = await respondWithFrozenSpec(engine, llmGenerated, sessionId, requested, resolved);
+          const payload = (await response.clone().json()) as ChatRenderPayload;
+          await appendChatProjection('chat-turn', sessionId, {
+            sessionId,
+            turnId,
+            goal,
+            outcome: 'done',
+            summary: payload.summary,
+            messages: payload.messages,
+            steps: [],
+            driver: resolved,
+          });
+          return response;
         }
       } else {
-        return sseRenderResponse({ engine, sitemap, goal, sessionId, requested, resolved, baseUrl });
+        return sseRenderResponse({ engine, sitemap, goal, sessionId, turnId, requested, resolved, baseUrl });
       }
     }
   } catch {
@@ -548,17 +648,44 @@ export async function POST(request: Request) {
         principal: `user:${sessionId}`,
         baseUrl,
       });
+      const message = {
+        role: 'assistant' as const,
+        text: `已派发委托 ${delegationId.replace(/^delegation-/, '').slice(0, 8)}…(后台执行中),进度见委托监控页 /delegations`,
+      };
+      await appendChatProjection('chat-turn', sessionId, {
+        sessionId,
+        turnId,
+        goal,
+        outcome: 'done',
+        summary: `委托已派发:${delegationId}`,
+        messages: [message],
+        steps: [],
+        driver: resolved,
+      });
       return Response.json({
         mode: 'delegated',
         delegationId,
         statusUrl: `/api/delegations/${delegationId}`,
+        sessionId,
       });
     } catch (error) {
       // 派发失败据实 503(委托未出发;与 inline 的"失败也是 200"不同——
       // 这里连循环都没开始,客户端必须知道派发本身未成)。
+      const summary = `委托派发失败: ${error instanceof Error ? error.message : String(error)}`;
+      await appendChatProjection('chat-turn', sessionId, {
+        sessionId,
+        turnId,
+        goal,
+        outcome: 'failed',
+        summary,
+        messages: [{ role: 'assistant', text: `失败: ${summary}` }],
+        steps: [],
+        driver: resolved,
+      });
       return Response.json(
         {
-          error: `委托派发失败: ${error instanceof Error ? error.message : String(error)}`,
+          sessionId,
+          error: summary,
         },
         { status: 503 },
       );
@@ -569,6 +696,6 @@ export async function POST(request: Request) {
   // 循环在流内跑完,客户端断开只中断推帧,不中断循环(服务端留痕完整)。
   // 帧序列与审计/落库口径全在 streamAgentLoop(与渲染路径 SSE 化共用)。
   return sseResponse(async (send) => {
-    await streamAgentLoop({ send, goal, sessionId, requested, resolved, baseUrl });
+    await streamAgentLoop({ send, goal, sessionId, turnId, requested, resolved, baseUrl });
   });
 }

@@ -79,6 +79,7 @@ interface ChatJsonResponse {
 interface DelegatedResponse {
   mode?: 'delegated';
   delegationId?: string;
+  sessionId?: string;
 }
 
 const SESSION_STORAGE_KEY = 'ui4a.chat.sessionId';
@@ -178,29 +179,38 @@ export function useChatSession(): ChatSession {
   const restoreSession = useCallback((stored: string) => {
     if (stored === '') return;
     let cancelled = false;
-    fetch(`/api/chat/history?sessionId=${encodeURIComponent(stored)}`)
-      .then(async (response) => {
-        if (!response.ok) return { turns: [] };
-        return (await response.json()) as { turns?: ChatTurn[] };
-      })
-      .then((body) => {
-        if (cancelled) return;
-        const replayed: ChatUiMessage[] = [];
-        for (const turn of body.turns ?? []) {
-          replayed.push({ role: 'user', content: turn.goal.verb });
-          for (const entry of turn.messages) {
-            replayed.push({ role: 'assistant', content: entry.text });
+    let poll: ReturnType<typeof setTimeout> | undefined;
+    const load = (): void => {
+      fetch(`/api/chat/history?sessionId=${encodeURIComponent(stored)}`)
+        .then(async (response) => {
+          if (!response.ok) return { turns: [] };
+          return (await response.json()) as { turns?: ChatTurn[] };
+        })
+        .then((body) => {
+          if (cancelled) return;
+          const turns = body.turns ?? [];
+          const replayed: ChatUiMessage[] = [];
+          for (const turn of turns) {
+            replayed.push({ role: 'user', content: turn.goal.verb });
+            for (const entry of turn.messages) {
+              replayed.push({ role: 'assistant', content: entry.text });
+            }
           }
-        }
-        setMessages(replayed);
-      })
-      .catch(() => {
-        // 历史拉取失败不阻断聊天(投影缺失,日志仍是真相):按空态起步,
-        // 会话标签仍就位(localStorage 的 sessionId 有效,下回合照常续写)。
-      });
+          setMessages(replayed);
+          const running = turns.some((turn) => turn.status === 'running');
+          setIsRunning(running);
+          // 已保存 session 但日志尚空也可能是刷新撞在 POST 首写之前，继续追投影。
+          if (running || turns.length === 0) poll = setTimeout(load, 1_000);
+        })
+        .catch(() => {
+          if (!cancelled) poll = setTimeout(load, 1_000);
+        });
+    };
+    load();
     // 卸载/切换会话时作废旧拉取(竞态口径:后到者不覆盖新会话)。
     return () => {
       cancelled = true;
+      if (poll !== undefined) clearTimeout(poll);
     };
   }, []);
 
@@ -302,6 +312,10 @@ export function useChatSession(): ChatSession {
       const goal = part.text.trim();
       if (goal === '') return;
 
+      const activeSession = sessionRef.current || crypto.randomUUID();
+      const turnId = crypto.randomUUID();
+      persistSession(activeSession);
+
       setMessages((prev) => [...prev, { role: 'user', content: goal }]);
       setIsRunning(true);
       const controller = new AbortController();
@@ -315,7 +329,8 @@ export function useChatSession(): ChatSession {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             goal: { verb: goal },
-            ...(sessionRef.current !== '' ? { sessionId: sessionRef.current } : {}),
+            sessionId: activeSession,
+            turnId,
             ...(delegatedRef.current ? { mode: 'delegated' } : {}),
           }),
           signal,
@@ -328,7 +343,9 @@ export function useChatSession(): ChatSession {
           if (response.body === null) throw new Error('SSE 响应缺少 body');
           await readChatSseStream(response.body, signal, (frame) => {
             idleTimeout.touch();
-            if (frame.type === 'heartbeat') {
+            if (frame.type === 'session') {
+              persistSession(frame.sessionId);
+            } else if (frame.type === 'heartbeat') {
               return;
             } else if (frame.type === 'focus') {
               handleFocus(frame.rel);
@@ -355,6 +372,7 @@ export function useChatSession(): ChatSession {
         // 一次性 JSON:委托派发回执 / render 短路 / 参数错误 / 兼容旧 inline 形状。
         const body = (await response.json()) as ChatJsonResponse & DelegatedResponse;
         if (body.mode === 'delegated' && typeof body.delegationId === 'string') {
+          if (body.sessionId !== undefined) persistSession(body.sessionId);
           appendAssistant(
             `已派发委托 ${body.delegationId.replace(/^delegation-/, '').slice(0, 8)}…(后台执行中),进度见委托监控页 /delegations`,
           );

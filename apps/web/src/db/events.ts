@@ -56,6 +56,8 @@ export type EventKind =
   | 'delegation-max-steps'
   | 'plan-executed'
   | 'render-spec-frozen'
+  | 'chat-turn-started'
+  | 'chat-turn-progress'
   | 'chat-turn'
   | 'agent-decision';
 

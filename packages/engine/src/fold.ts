@@ -76,6 +76,8 @@ export type LogEventKind =
   | 'delegation-failed'
   | 'delegation-max-steps'
   | 'render-spec-frozen'
+  | 'chat-turn-started'
+  | 'chat-turn-progress'
   | 'chat-turn'
   | 'agent-decision';
 
@@ -871,6 +873,8 @@ export function fold(
       // chat-turn(T9 Phase B):聊天回合投影——纯审计留痕(消息全文在 detail),
       // 状态与引擎无关,fold 忽略;历史读路径走 /api/chat/history 的日志过滤。
       case 'chat-turn':
+      case 'chat-turn-started':
+      case 'chat-turn-progress':
       // agent-decision(T11 Phase B):inline 每步决策审计(step/driver/prompt/
       // reasoning/op 在 detail)——纯留痕,fold 忽略,与 chat-turn 同口径。
       case 'agent-decision':

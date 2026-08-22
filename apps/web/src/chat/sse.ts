@@ -62,6 +62,7 @@ export interface ChatRenderPayload {
 }
 
 export type ChatSseFrame =
+  | { type: 'session'; sessionId: string; turnId: string }
   | { type: 'focus'; rel: string }
   | { type: 'heartbeat' }
   | { type: 'step'; message: ChatStepMessage; rel?: string }

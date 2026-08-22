@@ -48,6 +48,7 @@ interface HistoryTurn {
   seq: number;
   ts: string;
   sessionId: string;
+  turnId: string;
   goal: { verb: string };
   outcome: string;
   summary: string | null;
@@ -59,6 +60,7 @@ interface HistoryTurn {
     outcome: string;
   }[];
   driver: string;
+  status: 'running' | 'final';
 }
 
 async function history(
@@ -151,6 +153,45 @@ describe('聊天历史投影(T9 Phase B)', () => {
     const { status, json } = await history('?sessionId=sess-ghost');
     expect(status).toBe(200);
     expect(json.turns).toEqual([]);
+  });
+
+  it('started + progress 在 final 前即可恢复为 running 回合，刷新不丢在途消息', async () => {
+    await appendEvent(pool, {
+      kind: 'chat-turn-started',
+      actor: 'agent',
+      principal: 'user:sess-running',
+      channel: 'chat',
+      rel: 'chat:sess-running',
+      detail: {
+        sessionId: 'sess-running',
+        turnId: 'turn-running',
+        goal: { verb: '删除所有文章' },
+        driver: 'rule',
+        mode: 'inline',
+      },
+    });
+    await appendEvent(pool, {
+      kind: 'chat-turn-progress',
+      actor: 'agent',
+      principal: 'user:sess-running',
+      channel: 'chat',
+      rel: 'chat:sess-running',
+      detail: {
+        sessionId: 'sess-running',
+        turnId: 'turn-running',
+        message: { role: 'assistant', text: '导航到 articles' },
+      },
+    });
+
+    const { json } = await history('?sessionId=sess-running');
+    expect(json.turns).toMatchObject([
+      {
+        turnId: 'turn-running',
+        status: 'running',
+        goal: { verb: '删除所有文章' },
+        messages: [{ role: 'assistant', text: '导航到 articles' }],
+      },
+    ]);
   });
 
   it('回合读出携带结构化 steps(T11 Phase B):与 messages 并存', async () => {

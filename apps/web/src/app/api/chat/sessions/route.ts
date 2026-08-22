@@ -1,4 +1,4 @@
-import type { ChatSessionSummary, ChatTurnDetail } from '../../../../chat/history';
+import type { ChatSessionSummary, ChatTurnDetail, ChatTurnStartedDetail } from '../../../../chat/history';
 import { listEvents } from '../../../../db/events';
 import { getPool } from '../../../../db/pool';
 
@@ -18,12 +18,21 @@ export async function GET() {
   try {
     const events = await listEvents(getPool(connectionString));
     const bySession = new Map<string, ChatSessionSummary>();
+    const seenTurns = new Set<string>();
     for (const event of events) {
-      if (event.kind !== 'chat-turn' || event.rel === null || !event.rel.startsWith('chat:')) {
+      if (
+        (event.kind !== 'chat-turn' && event.kind !== 'chat-turn-started') ||
+        event.rel === null ||
+        !event.rel.startsWith('chat:')
+      ) {
         continue;
       }
-      const detail = event.detail as ChatTurnDetail;
+      const detail = event.detail as ChatTurnDetail | ChatTurnStartedDetail;
       const sessionId = detail.sessionId ?? event.rel.slice('chat:'.length);
+      const turnId = detail.turnId ?? `legacy:${event.seq}`;
+      const turnKey = `${sessionId}:${turnId}`;
+      const firstForTurn = !seenTurns.has(turnKey);
+      seenTurns.add(turnKey);
       const ts = event.ts;
       const existing = bySession.get(sessionId);
       if (existing === undefined) {
@@ -33,14 +42,17 @@ export async function GET() {
           firstTs: ts,
           lastTs: ts,
           lastGoal: detail.goal?.verb ?? '',
-          lastOutcome: detail.outcome ?? '',
+          lastOutcome: event.kind === 'chat-turn-started' ? 'running' : (detail as ChatTurnDetail).outcome ?? '',
         });
       } else {
         // listEvents 按 seq 升序:后见即更新(末回合口径)。
-        existing.turns += 1;
+        if (firstForTurn) existing.turns += 1;
         existing.lastTs = ts;
         existing.lastGoal = detail.goal?.verb ?? existing.lastGoal;
-        existing.lastOutcome = detail.outcome ?? existing.lastOutcome;
+        existing.lastOutcome =
+          event.kind === 'chat-turn-started'
+            ? 'running'
+            : (detail as ChatTurnDetail).outcome ?? existing.lastOutcome;
       }
     }
     const sessions = [...bySession.values()].sort((a, b) => b.lastTs.localeCompare(a.lastTs));

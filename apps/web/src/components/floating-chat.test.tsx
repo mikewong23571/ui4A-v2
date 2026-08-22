@@ -175,6 +175,27 @@ describe('悬浮聊天窗 · 委托模式(T5 Phase B)', () => {
 });
 
 describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
+  it('请求发出前即生成并持久化 session/turn 标识，刷新可从 started 投影续接', async () => {
+    const fetchMock = vi.fn((...args: [string | URL | RequestInfo, RequestInit?]) => {
+      void args;
+      return Promise.resolve(hangingSseResponse());
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('长时间处理');
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const requestBody = JSON.parse(
+      (fetchMock.mock.calls[0]![1] as RequestInit).body as string,
+    ) as { sessionId?: string; turnId?: string };
+    expect(requestBody.sessionId).toMatch(/^[0-9a-f-]+$/i);
+    expect(requestBody.turnId).toMatch(/^[0-9a-f-]+$/i);
+    expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBe(requestBody.sessionId);
+    fireEvent.click(screen.getByRole('button', { name: '停止' }));
+  });
+
   it('SSE:step 帧逐步各成一条 assistant 消息,final 更新会话标签并持久化', async () => {
     const frames = [
       { type: 'step', message: { role: 'assistant', text: '导航到 articles' }, rel: 'articles' },

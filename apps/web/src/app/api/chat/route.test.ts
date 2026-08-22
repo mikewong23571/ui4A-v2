@@ -135,7 +135,7 @@ interface ChatResponseBody {
 /** SSE 帧(T9 Phase B):step 逐步消息 / final 终帧 / error 兜底;
  * T11 Phase C 增 thinking 帧(llm 步推理自述,聚合整段一次性)。 */
 interface SseFrame {
-  type: 'step' | 'final' | 'error' | 'thinking';
+  type: 'session' | 'focus' | 'step' | 'final' | 'error' | 'thinking';
   message?: { role: 'assistant'; text: string };
   rel?: string;
   step?: number;
@@ -306,7 +306,11 @@ describe('I1(路由级):无 key → auto 回退 rule,B1 完成', () => {
     // 帧序:若干 step → 恰好一条 final 收尾;终帧前无 final。
     expect(frames.length).toBeGreaterThan(1);
     expect(frames[frames.length - 1]!.type).toBe('final');
-    expect(frames.slice(0, -1).every((frame) => frame.type === 'step')).toBe(true);
+    expect(
+      frames
+        .slice(0, -1)
+        .every((frame) => frame.type === 'step' || frame.type === 'session' || frame.type === 'focus'),
+    ).toBe(true);
     // step 帧文本口径与 trail.ts 一致(e2e 同一断言锚点)。
     const trajectory = frames
       .filter((frame) => frame.type === 'step')
@@ -631,7 +635,7 @@ describe('T11 Phase C Task 2:thinking 帧(SSE 推理自述管道)', () => {
 
       // 帧型序列(D22:reasoning 末尾齐发 → 整段一次性帧,逐步决策前推送即
       // 「先于同号 step 帧」):每步 thinking → step,final 收尾。
-      expect(frames.map((frame) => frame.type)).toEqual([
+      expect(frames.filter((frame) => frame.type !== 'session').map((frame) => frame.type)).toEqual([
         'thinking',
         'step',
         'thinking',
@@ -670,7 +674,11 @@ describe('T11 Phase C Task 2:thinking 帧(SSE 推理自述管道)', () => {
     // rule driver 无 reasoning → 零回调零帧;帧序列保持「若干 step + final」。
     expect(frames.filter((frame) => frame.type === 'thinking')).toHaveLength(0);
     expect(frames.length).toBeGreaterThan(1);
-    expect(frames.slice(0, -1).every((frame) => frame.type === 'step')).toBe(true);
+    expect(
+      frames
+        .slice(0, -1)
+        .every((frame) => frame.type === 'step' || frame.type === 'session' || frame.type === 'focus'),
+    ).toBe(true);
     expect(frames[frames.length - 1]!.type).toBe('final');
   });
 });

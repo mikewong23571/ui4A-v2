@@ -12,6 +12,8 @@ import type { ChatMessage } from './trail';
 /** chat-turn 事件的 detail 载荷(chat 路由写入端与 history 读端同一形状)。 */
 export interface ChatTurnDetail {
   sessionId: string;
+  /** 同 session 内一轮的稳定标识；旧事件缺省时由 seq 兼容生成。 */
+  turnId?: string;
   goal: AgentGoal;
   outcome: AgentOutcome;
   summary: string | null;
@@ -27,9 +29,26 @@ export interface ChatTurnDetail {
 }
 
 /** history 端点返回的回合(seq/ts 由日志层分配)。 */
-export interface ChatTurn extends ChatTurnDetail {
+export interface ChatTurn extends Omit<ChatTurnDetail, 'outcome'> {
   seq: number;
   ts: string;
+  status: 'running' | 'final';
+  outcome: AgentOutcome | 'running';
+}
+
+export interface ChatTurnStartedDetail {
+  sessionId: string;
+  turnId: string;
+  goal: AgentGoal;
+  driver: 'rule' | 'llm';
+  mode: 'inline' | 'delegated';
+}
+
+export interface ChatTurnProgressDetail {
+  sessionId: string;
+  turnId: string;
+  message: ChatMessage;
+  step?: TrailStep;
 }
 
 /** sessions 端点返回的会话清单行(chat-turn 事件按 sessionId 分组的投影)。 */
