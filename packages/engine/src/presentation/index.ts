@@ -1,6 +1,8 @@
 export * from './broker';
 export * from './lens';
 export * from './recipe';
+export * from './resolver';
 export * from './scenario';
+export * from './sidecar';
 export * from './surface';
 export type { PresentationIntent } from '@ui4a/shared';

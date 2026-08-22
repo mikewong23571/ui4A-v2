@@ -1,6 +1,24 @@
-import { createWebPresentationBroker, type WebPresentationBroker } from './broker';
+import {
+  contentVersion,
+  dependencyDecision,
+  planGenericSurface,
+  sidecarKeyFingerprint,
+  type SidecarDependency,
+  type UserSidecarKey,
+} from '@ui4a/engine';
+import type { PresentationRequest } from '@ui4a/shared';
+
+import { appendEvent } from '../../db/events';
+import { appendSidecarCommand, findActiveSidecar } from '../../db/presentation';
+import { PRESENTATION_SURFACE_CATALOG } from './catalog';
+import {
+  createWebPresentationBroker,
+  type AuthorizedRoot,
+  type WebPresentationBroker,
+} from './broker';
 import { getDb, getEngine } from '../service';
 import { RENDER_WORDS } from '../../render/registry';
+import { semanticHintsOf } from './situation';
 
 const runtimeKey = Symbol.for('ui4a.presentation-broker');
 
@@ -8,12 +26,185 @@ interface PresentationGlobal {
   [runtimeKey]?: WebPresentationBroker;
 }
 
+function durableKey(request: PresentationRequest): UserSidecarKey {
+  return {
+    principal: request.principal,
+    policyScope: 'local-demo',
+    subject: request.subject,
+    intent: request.intent,
+    deviceClass: 'any',
+  };
+}
+
+function currentDependencies(root: AuthorizedRoot): SidecarDependency[] {
+  const entity = root.entities[0] as {
+    class?: unknown;
+    properties?: Record<string, unknown>;
+    actions?: unknown;
+    links?: unknown;
+    entities?: Array<{ properties?: Record<string, unknown> }>;
+  };
+  const rel = root.rels[0]!;
+  const contract = contentVersion({
+    class: entity.class,
+    presentation: entity.properties?.presentation,
+    actions: entity.actions,
+    links: entity.links,
+  });
+  const dependencies: SidecarDependency[] = [
+    {
+      id: `entity:${rel}`,
+      subtreeId: 'root',
+      kind: 'entity-contract',
+      ref: rel,
+      pointers: ['$contract'],
+      mode: 'invalidate',
+      fingerprint: contract,
+      optional: false,
+    },
+    {
+      id: 'catalog:semantic',
+      subtreeId: 'root',
+      kind: 'catalog',
+      ref: PRESENTATION_SURFACE_CATALOG.id,
+      pointers: ['$catalog'],
+      mode: 'invalidate',
+      fingerprint: PRESENTATION_SURFACE_CATALOG.version,
+      optional: false,
+    },
+    {
+      id: 'policy:local-demo',
+      subtreeId: 'root',
+      kind: 'policy',
+      ref: 'local-demo',
+      pointers: ['$policy'],
+      mode: 'invalidate',
+      fingerprint: 'local-demo',
+      optional: false,
+    },
+  ];
+  if (Array.isArray(entity.entities)) {
+    dependencies.push({
+      id: `members:${rel}`,
+      subtreeId: 'members',
+      kind: 'collection-membership',
+      ref: rel,
+      pointers: ['$entities'],
+      mode: 'rehydrate',
+      fingerprint: contentVersion(entity.entities.map((member) => member.properties?.rel)),
+      optional: false,
+    });
+  }
+  return dependencies;
+}
+
+function surfaceUrl(sidecarId: string, request: PresentationRequest): string {
+  const reference = `sidecar=${encodeURIComponent(sidecarId)}`;
+  return typeof request.subject === 'string'
+    ? `/canvas?${reference}&focus=${encodeURIComponent(request.subject)}`
+    : `/canvas?${reference}&roots=${encodeURIComponent(request.subject.selection.join(','))}`;
+}
+
+async function appendLifecycle(
+  kind: 'presentation-requested' | 'presentation-resolved' | 'presentation-failed',
+  request: PresentationRequest,
+  detail: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await appendEvent(getDb(), {
+      domain: 'presentation',
+      kind,
+      rel: `presentation:${request.requestId}`,
+      principal: request.principal,
+      channel: 'presentation',
+      detail: {
+        eventId: `${request.requestId}:${kind}`,
+        requestId: request.requestId,
+        ...detail,
+      },
+    });
+  } catch (error) {
+    if ((error as { code?: string }).code !== '23505') throw error;
+  }
+}
+
 /** Process adapter; the Broker store becomes durable/rebuildable in T16 Phase G. */
 export function getPresentationBroker(): WebPresentationBroker {
   const scope = globalThis as typeof globalThis & PresentationGlobal;
-  scope[runtimeKey] ??= createWebPresentationBroker({
+  if (scope[runtimeKey] !== undefined) return scope[runtimeKey];
+  const delegate = createWebPresentationBroker({
     getEntity: async (rel) => (await getEngine(getDb())).getEntity(rel),
+    resolve: async (request, situation) => {
+      const key = durableKey(request);
+      const sidecar = await findActiveSidecar(getDb(), key);
+      if (sidecar === undefined) return { kind: 'miss' };
+      const active = sidecar.versions[sidecar.activeVersion]!;
+      const decision = dependencyDecision(active.dependencies, currentDependencies(situation));
+      if (!decision.valid) {
+        await appendSidecarCommand(getDb(), {
+          kind: 'stale',
+          eventId: `${request.requestId}:stale:event`,
+          commandId: `${request.requestId}:stale`,
+          sidecarId: sidecar.id,
+          activeVersion: sidecar.activeVersion,
+          dependencyIds: decision.replanned,
+          reason: 'dependency-changed',
+        }).catch(() => undefined);
+        return { kind: 'miss' };
+      }
+      return {
+        kind: 'ready',
+        sidecar: { id: sidecar.id, version: sidecar.activeVersion },
+        surfaceUrl: surfaceUrl(sidecar.id, request),
+      };
+    },
+    plan: async (request, situation) => {
+      if (typeof request.subject !== 'string') throw new Error('selection planning unavailable');
+      const entity = situation.entities[0] as Parameters<typeof planGenericSurface>[1];
+      const key = durableKey(request);
+      const sidecarId = `sidecar:${sidecarKeyFingerprint(key).replace(/^fnv1a64:/, '')}`;
+      const surface = planGenericSurface(request.subject, entity, PRESENTATION_SURFACE_CATALOG, {
+        entityVersion: currentDependencies(situation)[0]!.fingerprint,
+        semanticHints: semanticHintsOf(entity),
+        provenanceRef: `request:${request.requestId}`,
+      });
+      const persisted = await appendSidecarCommand(getDb(), {
+        kind: 'instantiate',
+        eventId: `${request.requestId}:instantiate:event`,
+        commandId: `${request.requestId}:instantiate`,
+        sidecarId,
+        key,
+        version: {
+          surface,
+          dependencies: currentDependencies(situation),
+          provenance: { kind: 'generic-fallback', ref: `request:${request.requestId}` },
+          changedPaths: [],
+        },
+      });
+      return {
+        kind: 'ready',
+        sidecar: { id: sidecarId, version: persisted.aggregate.activeVersion },
+        surfaceUrl: surfaceUrl(sidecarId, request),
+      };
+    },
   });
+  scope[runtimeKey] = {
+    async present(request) {
+      await appendLifecycle('presentation-requested', request, {
+        subject: request.subject,
+        intent: request.intent,
+        delivery: request.delivery,
+        sourceMessageIds: request.sourceMessageIds,
+      });
+      const receipt = await delegate.present(request);
+      await appendLifecycle(
+        receipt.status === 'failed' ? 'presentation-failed' : 'presentation-resolved',
+        request,
+        { receipt },
+      );
+      return receipt;
+    },
+  };
   return scope[runtimeKey];
 }
 

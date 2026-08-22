@@ -242,8 +242,18 @@ export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
           },
           intent: {
             type: 'string',
-            minLength: 1,
-            description: '面向用户任务的语义呈现意图，不包含组件选择或布局实现',
+            enum: [
+              'read',
+              'browse',
+              'compare',
+              'edit',
+              'explain-actions',
+              'workspace',
+              'review',
+              'inspect',
+              'revise',
+            ],
+            description: '稳定语义呈现意图，不包含组件选择、布局实现或用户原话复述',
           },
           constraints: {
             type: 'array',

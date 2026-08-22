@@ -5,7 +5,7 @@ import {
 } from '@ui4a/engine';
 import type { PresentationReceipt, PresentationRequest } from '@ui4a/shared';
 
-interface AuthorizedRoot {
+export interface AuthorizedRoot {
   rels: string[];
   entities: unknown[];
   policyScope: string;
@@ -14,6 +14,10 @@ interface AuthorizedRoot {
 interface WebPresentationBrokerDependencies {
   getEntity(rel: string, principal: string): Promise<unknown | undefined>;
   plan?(
+    request: PresentationRequest,
+    situation: AuthorizedRoot,
+  ): Promise<PresentationBrokerResolution>;
+  resolve?(
     request: PresentationRequest,
     situation: AuthorizedRoot,
   ): Promise<PresentationBrokerResolution>;
@@ -69,7 +73,7 @@ export function createWebPresentationBroker(
           return { rels, entities, policyScope: 'contract' };
         },
         buildSituation: async (_candidate, authorization) => authorization,
-        resolve: async () => ({ kind: 'miss' }),
+        resolve: dependencies.resolve ?? (async () => ({ kind: 'miss' })),
         plan:
           dependencies.plan ??
           (async () => {

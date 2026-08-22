@@ -506,7 +506,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
    */
   const refreshFromLog = async (): Promise<void> => {
     const result = await db.query<{ max_seq: string | number | null }>(
-      'SELECT max(seq) AS max_seq FROM events',
+      "SELECT max(seq) AS max_seq FROM events WHERE domain='core'",
     );
     const maxSeq = Number(result.rows[0]?.max_seq ?? 0);
     if (maxSeq <= lastSeq) {

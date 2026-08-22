@@ -30,7 +30,7 @@ import { A2uiSurface } from '@a2ui/react/v0_9';
 import type { ReactComponentImplementation } from '@a2ui/react/v0_9';
 import { MessageProcessor } from '@a2ui/web_core/v0_9';
 import type { SurfaceModel } from '@a2ui/web_core/v0_9';
-import type { SirenEntity } from '@ui4a/engine';
+import type { SirenEntity, SurfaceTree } from '@ui4a/engine';
 import { useSearchParams } from 'next/navigation';
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
@@ -44,7 +44,10 @@ import { planSurface } from '@/render/canvas/surface-flow';
 import { ui4aRenderCatalog } from '@/render/canvas/word-catalog';
 import { CATALOG_ID, catalogUrl } from '@/render/registry';
 import type { DerefWarning } from '@/render/deref';
-import { planGenericPresentationSurface } from '@/render/presentation/generic';
+import {
+  hydratePresentationSurface,
+  planGenericPresentationSurface,
+} from '@/render/presentation/generic';
 import type { RenderSpec } from '@/render/spec';
 
 import { useEntityCache, type EntityCacheHandle } from './entity-cache-provider';
@@ -174,6 +177,7 @@ export function CanvasBody() {
   const concernParam = useSearchParams().get('concern') ?? undefined;
   const focusParam = useSearchParams().get('focus') ?? undefined;
   const rootsParam = useSearchParams().get('roots') ?? undefined;
+  const sidecarParam = useSearchParams().get('sidecar') ?? undefined;
   const focusRefreshParam = useSearchParams().get('refresh') ?? undefined;
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -257,6 +261,51 @@ export function CanvasBody() {
         requestedFocuses.length === 0
           ? frozenSpecs.filter((spec) => spec.concern === activeConcern)
           : [];
+      let resolvedSidecarId = sidecarParam;
+      if (
+        resolvedSidecarId === undefined &&
+        focusParam !== undefined &&
+        requestedFocuses.length === 1
+      ) {
+        const response = await fetch('/api/presentation', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            schemaVersion: 1,
+            requestId: crypto.randomUUID(),
+            principal: 'user:local',
+            subject: requestedFocuses[0],
+            intent: 'read',
+            delivery: 'canvas',
+            sourceMessageIds: [],
+          }),
+          signal: controller.signal,
+        });
+        if (response.ok) {
+          const receipt = (await response.json()) as { sidecar?: { id?: unknown } };
+          if (typeof receipt.sidecar?.id === 'string') resolvedSidecarId = receipt.sidecar.id;
+        }
+      }
+      let sidecarSurface: SurfaceTree | undefined;
+      if (resolvedSidecarId !== undefined && requestedFocuses.length === 1) {
+        const response = await fetch(
+          `/api/presentation/sidecar?sidecarId=${encodeURIComponent(resolvedSidecarId)}`,
+          { signal: controller.signal },
+        );
+        if (!response.ok) {
+          throw new Error(`Sidecar ${resolvedSidecarId} → HTTP ${response.status}`);
+        }
+        const body = (await response.json()) as {
+          sidecar?: { key?: { subject?: unknown }; surface?: SurfaceTree };
+        };
+        if (
+          body.sidecar?.key?.subject !== requestedFocuses[0] ||
+          body.sidecar.surface === undefined
+        ) {
+          throw new Error('Sidecar subject/surface does not match the requested focus');
+        }
+        sidecarSurface = body.sidecar.surface;
+      }
 
       // 4. 拦截门 + MessageProcessor(每轮重载重建,白名单随数据模型重建);
       // 实体取数经页面缓存:同 rel 跨 surface 零重复 fetch。
@@ -278,7 +327,10 @@ export function CanvasBody() {
         try {
           const entity = await withAbort(cache.get(requestedFocus), controller.signal);
           if (entity === null) throw new Error(`实体 "${requestedFocus}" 不存在`);
-          const plan = planGenericPresentationSurface(requestedFocus, entity, sitemap.version);
+          const plan =
+            sidecarSurface === undefined
+              ? planGenericPresentationSurface(requestedFocus, entity, sitemap.version)
+              : hydratePresentationSurface(requestedFocus, sidecarSurface, entity);
           for (const hydrated of plan.entities.values()) gate.register(hydrated);
           processor.processMessages(plan.bundle.messages);
           planned.push({
@@ -341,7 +393,7 @@ export function CanvasBody() {
         setLoading(false);
       }
     }
-  }, [cache, concernParam, focusParam, focusRefreshParam, rootsParam]);
+  }, [cache, concernParam, focusParam, focusRefreshParam, rootsParam, sidecarParam]);
 
   useEffect(() => {
     const initial = setTimeout(() => void load(), 0);

@@ -21,7 +21,7 @@ function relOf(entity: SirenEntity): string | undefined {
   return typeof rel === 'string' ? rel : undefined;
 }
 
-function entityMap(root: SirenEntity): Map<string, SirenEntity> {
+export function presentationEntityMap(root: SirenEntity): Map<string, SirenEntity> {
   const result = new Map<string, SirenEntity>();
   const visit = (entity: SirenEntity): void => {
     const rel = relOf(entity);
@@ -56,7 +56,7 @@ export function planGenericPresentationSurface(
   entity: SirenEntity,
   entityVersion: string,
 ): GenericPresentationPlan {
-  const entities = entityMap(entity);
+  const entities = presentationEntityMap(entity);
   const boundSubject = relOf(entity) ?? subject;
   const surface = planGenericSurface(boundSubject, entity, PRESENTATION_SURFACE_CATALOG, {
     entityVersion,
@@ -65,6 +65,22 @@ export function planGenericPresentationSurface(
   });
   const bundle = compileSurfaceTree(surface, {
     surfaceId: `presentation-${encodeURIComponent(boundSubject)}`,
+    catalog: PRESENTATION_SURFACE_CATALOG,
+    catalogAdapter: UI4A_A2UI_CATALOG_ADAPTER,
+    expectedCatalogFingerprint: UI4A_A2UI_CATALOG_ADAPTER.fingerprint,
+    deref: (binding) => derefFrom(entities, binding),
+  });
+  return { surface, bundle, entities };
+}
+
+export function hydratePresentationSurface(
+  subject: string,
+  surface: SurfaceTree,
+  entity: SirenEntity,
+): GenericPresentationPlan {
+  const entities = presentationEntityMap(entity);
+  const bundle = compileSurfaceTree(surface, {
+    surfaceId: `presentation-${encodeURIComponent(subject)}`,
     catalog: PRESENTATION_SURFACE_CATALOG,
     catalogAdapter: UI4A_A2UI_CATALOG_ADAPTER,
     expectedCatalogFingerprint: UI4A_A2UI_CATALOG_ADAPTER.fingerprint,
