@@ -14,12 +14,12 @@
 - [x] Task: 根据 spike 结果细化后续实现触点和 Eval corpus，不改变 U1–U23 的产品验收语义 — 7e979f4
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 2bcd6dc
 
-## Phase B: AI-first runtime 与故障安全(U22)
+## Phase B: AI-first runtime 与故障安全(U22) [checkpoint: a72d9fa]
 
-- [ ] Task: U22 failing acceptance——默认/auto、inline、delegated 在 LLM 缺失或失败时均无 rule fallback、零业务 mutation、错误可恢复；renderer 人工路径继续可用
-- [ ] Task: U22 implementation——rule driver 退出产品 runtime 与 UI 选择面；保留 scoped scripted/mock protocol fixtures，清理 rule 作为 Assistant 成功证据的测试
-- [ ] Task: U22 real-runtime verification——真实 LLM 路径记录 driver/model；故障注入只验证诚实失败与安全，不模拟智能成功
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: U22 failing acceptance——默认/auto、inline、delegated 在 LLM 缺失或失败时均无 rule fallback、零业务 mutation、错误可恢复；renderer 人工路径继续可用 — a72d9fa
+- [x] Task: U22 implementation——rule driver 退出产品 runtime 与 UI 选择面；保留 scoped scripted/mock protocol fixtures，清理 rule 作为 Assistant 成功证据的测试 — a72d9fa
+- [x] Task: U22 real-runtime verification——真实 LLM 路径记录 driver/model；故障注入只验证诚实失败与安全，不模拟智能成功 — a72d9fa
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — a72d9fa
 
 ## Phase C: 授权观察与临时回答(U1–U4)
 
