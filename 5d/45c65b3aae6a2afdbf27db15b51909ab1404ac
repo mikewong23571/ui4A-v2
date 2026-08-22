@@ -1,0 +1,6 @@
+Task: T16 A2UI disposable probe
+Summary: Verified installed A2UI v0.9 support for multi-component trees, layouts, typed slots, repeat, reactive data, component upsert, events, and replay. Documented missing component-delete/serializer/catalog-version APIs and the current binderless-word limitation.
+Files: conductor/tracks/t16-semantic-a2ui-sidecars_20260823/spikes/a2ui-probe.md
+Why: Fix the runtime boundary from observed SDK behavior before committing to a persisted protocol.
+Verification: installed A2UI upstream tests 112 passed; repository A2UI integration tests 10 passed; Prettier and diff checks passed.
+Decision input: persist UI4A normalized binding-only Surface Trees; compile/replay fresh A2UI messages; fingerprint catalog contents; atomically replace structural subtrees.
