@@ -1,31 +1,12 @@
-/**
- * render 意图 → spec 生成器测试(T7 Phase C / spec 架构决定 4,S5)。
- *
- * rule 确定路径(renderSpecFor,纯函数):
- * - 词级匹配:展示/图表词 + 双语名词词表(文章→articles)→ chart/table 词条;
- * - 零字面:bind 只有实体引用(collection+dimension),维度引用真实字段
- *   (字段名必须在 sitemap 流程声明中出现——发明字段 = 事实不可发明);
- * - 凝固路径:同 concern 已凝固 → 直接复用首冻 spec(不重新生成);
- * - 未命中(非展示意图/集合不在 sitemap/维度字段未声明)→ undefined,
- *   交回普通 agent 循环(拒绝即数据,不猜)。
- * LLM 路径接口:buildRenderPrompt(目录+sitemap 上下文)+ parseRenderResponse
- * (fail-safe JSON 解析;零字面把关在 freezeSpec 入口)。
- * T12 Phase A(架构决定 1):hasDisplayIntent(展示意图闸门)+
- * renderSpecGroundingErrors(处境核对:集合 ∈ sitemap 面、维度字段已声明)+
- * generateRenderSpecWithLlm(streamText 生成;无 key 跳过 I1,失败一律 undefined)。
- */
+/** Independent Presentation-Agent prompt, parser, grounding, and transport tests. */
 import { describe, expect, it } from 'vitest';
 
 import {
   buildRenderPrompt,
-  entityFocusForDisplayIntent,
   generateRenderSpecWithLlm,
-  hasDisplayIntent,
   parseRenderResponse,
-  renderSpecFor,
   renderSpecGroundingErrors,
   type BuildRenderPromptInput,
-  type FrozenSpecEntry,
   type RenderSitemapContext,
 } from './render';
 import { createScriptedTransport, jsonResponse } from './testkit';
@@ -48,145 +29,6 @@ const SITEMAP: RenderSitemapContext = {
     },
   ],
 };
-
-/** 无 category 字段声明的 sitemap(维度引用真实字段的反例)。 */
-const SITEMAP_WITHOUT_CATEGORY: RenderSitemapContext = {
-  surfaces: SITEMAP.surfaces,
-  flows: [
-    {
-      name: 'article-drafting',
-      title: '文章发布向导',
-      nodes: [{ name: 'basic-info', fields: [{ name: 'title' }] }],
-    },
-  ],
-};
-
-describe('renderSpecFor:rule 确定路径(词级匹配 → 零字面 spec)', () => {
-  it('"我要看看第一篇文章" 优先解析标题命中的具体成员，而不是集合 table', () => {
-    expect(
-      entityFocusForDisplayIntent('我要看看第一篇文章', {
-        class: ['collection', 'articles'],
-        properties: { rel: 'articles', count: 2 },
-        actions: [],
-        links: [],
-        entities: [
-          {
-            class: ['flow-instance'],
-            rel: ['item'],
-            properties: {
-              rel: 'post:post-welcome',
-              fields: { title: '欢迎来到 UI4A' },
-            },
-            actions: [],
-            links: [],
-          },
-          {
-            class: ['flow-instance'],
-            rel: ['item'],
-            properties: { rel: 'post:first-post', fields: { title: '第一篇' } },
-            actions: [],
-            links: [],
-          },
-        ],
-      }),
-    ).toBe('post:first-post');
-  });
-
-  it('普通"展示文章列表"不解析具体 focus', () => {
-    expect(
-      entityFocusForDisplayIntent('展示文章列表', {
-        class: ['collection', 'articles'],
-        properties: { rel: 'articles', count: 0 },
-        actions: [],
-        links: [],
-        entities: [],
-      }),
-    ).toBeUndefined();
-  });
-
-  it('"按分类展示文章" → chart 词条:articles 按 category 维度聚合', () => {
-    expect(renderSpecFor('按分类展示文章', SITEMAP, [])).toEqual({
-      concern: 'articles-by-category',
-      component: 'chart',
-      bind: { series: { collection: 'articles', dimension: 'articles.fields.category' } },
-    });
-  });
-
-  it('"图表 文章 分类"(词序无关)→ 同一 chart spec(同 concern 即同布局)', () => {
-    expect(renderSpecFor('图表 文章 分类', SITEMAP, [])).toEqual(
-      renderSpecFor('按分类展示文章', SITEMAP, []),
-    );
-  });
-
-  it('英文词元同样命中:show articles by category', () => {
-    expect(renderSpecFor('show articles by category', SITEMAP, [])).toEqual({
-      concern: 'articles-by-category',
-      component: 'chart',
-      bind: { series: { collection: 'articles', dimension: 'articles.fields.category' } },
-    });
-  });
-
-  it('"展示文章列表"(无维度词)→ table 词条', () => {
-    expect(renderSpecFor('展示文章列表', SITEMAP, [])).toEqual({
-      concern: 'articles-list',
-      component: 'table',
-      bind: { rows: { collection: 'articles' } },
-    });
-  });
-
-  it('评论集合同样可渲染(show comments → table)', () => {
-    expect(renderSpecFor('列出评论', SITEMAP, [])).toEqual({
-      concern: 'comments-list',
-      component: 'table',
-      bind: { rows: { collection: 'comments' } },
-    });
-  });
-
-  it('凝固路径:同 concern 已凝固 → 直接复用首冻 spec(不重新生成)', () => {
-    const frozen: FrozenSpecEntry[] = [
-      {
-        concern: 'articles-by-category',
-        component: 'chart',
-        bind: { series: { collection: 'articles', dimension: 'articles.fields.status' } },
-      },
-    ];
-    const spec = renderSpecFor('按分类展示文章', SITEMAP, frozen);
-    expect(spec).toEqual(frozen[0]);
-  });
-
-  it('非展示意图("发布一篇文章")→ undefined(交回普通循环)', () => {
-    expect(renderSpecFor('发布一篇文章', SITEMAP, [])).toBeUndefined();
-  });
-
-  it('展示意图但集合不在 sitemap("展示飞船列表")→ undefined(不猜集合)', () => {
-    expect(renderSpecFor('展示飞船列表', SITEMAP, [])).toBeUndefined();
-  });
-
-  it('维度词命中但字段未在 sitemap 流程声明 → undefined(不发明字段)', () => {
-    expect(renderSpecFor('按分类展示文章', SITEMAP_WITHOUT_CATEGORY, [])).toBeUndefined();
-  });
-
-  it('生成的 spec 递归零字面(bind 只有引用节点;白名单口径同 validator)', () => {
-    const spec = renderSpecFor('按分类展示文章', SITEMAP, []);
-    expect(spec).toBeDefined();
-    // 引用节点(ref/field/collection[+dimension])的字符串值是"指向哪"的
-    // 声明(validator 白名单键);结构容器的值必须仍是引用节点/容器。
-    const walk = (node: unknown): void => {
-      if (Array.isArray(node)) {
-        node.forEach(walk);
-        return;
-      }
-      if (typeof node === 'object' && node !== null) {
-        const record = node as Record<string, unknown>;
-        if ('ref' in record || 'field' in record || 'collection' in record) return;
-        for (const value of Object.values(record)) walk(value);
-        return;
-      }
-      throw new Error(`裸字面载荷:${String(node)}`);
-    };
-    walk(spec!.bind);
-  });
-});
 
 describe('buildRenderPrompt:LLM 路径上下文组装', () => {
   const words = [
@@ -281,19 +123,6 @@ function chunk(delta: Record<string, unknown>, finishReason: string | null = nul
 function openaiTextResponse(text: string): Response {
   return sseResponse([chunk({ role: 'assistant', content: text }), chunk({}, 'stop')]);
 }
-
-describe('hasDisplayIntent:展示意图闸门(T12;renderSpecFor 入口闸与 LLM fallthrough 前置闸共用)', () => {
-  it('展示/图表词命中 → true(中英双语)', () => {
-    expect(hasDisplayIntent('展示飞船列表')).toBe(true);
-    expect(hasDisplayIntent('把数据可视化一下')).toBe(true);
-    expect(hasDisplayIntent('show articles')).toBe(true);
-  });
-
-  it('非展示意图 → false(发布/保存不进 render 路径)', () => {
-    expect(hasDisplayIntent('发布一篇文章')).toBe(false);
-    expect(hasDisplayIntent('save the draft')).toBe(false);
-  });
-});
 
 describe('renderSpecGroundingErrors:LLM 产 spec 的处境核对(T12;事实不可发明)', () => {
   it('collection ∈ sitemap 集合面 + dimension 字段已声明 → 零违规', () => {

@@ -4,6 +4,7 @@
  * 每步:取当前实体 → driver.decide → 执行操作:
  * - answer:直接返回基于授权观察的临时回答，零 HTTP 写入;
  * - clarify:返回待澄清问题与原目标延续，终止本次 run 且零 HTTP 写入;
+ * - present:把薄呈现意图交给 runtime 后继续 Chat 循环，零业务 HTTP 写入;
  * - navigate:立即取目标实体,成功则切换当前 rel;404 记 not-found 并回流;
  * - exec:POST /api/exec;200 记 executed 并入 successes;202 记 suspended 并终止等待人类;
  *   4xx/网络故障记 rejected 并回流;
@@ -357,6 +358,8 @@ export async function runAgent(
       sitemap: scopedSitemap,
       role: options.role,
       app: currentApp,
+      chatMarkdown: options.chatMarkdown,
+      presentationMarkdown: options.presentationMarkdown,
     };
     lastRejection = undefined;
     const op = await driver.decide(context, decideSink);
@@ -391,6 +394,22 @@ export async function runAgent(
     if (op.kind === 'fail') {
       pushStep({ step, rel: currentRel, op, outcome: 'failed' });
       return { goal, outcome: 'failed', summary: op.reason, steps: trail, successes };
+    }
+
+    if (op.kind === 'present') {
+      const intent = {
+        subject: op.subject,
+        intent: op.intent,
+        ...(op.constraints !== undefined ? { constraints: [...op.constraints] } : {}),
+        delivery: op.delivery,
+      };
+      pushStep({ step, rel: currentRel, op, outcome: 'presentation-requested' });
+      try {
+        options.onPresentation?.(intent);
+      } catch {
+        // Presentation 是旁路；调用方观测/调度失败不得改写 Chat outcome。
+      }
+      continue;
     }
 
     if (op.kind === 'navigate') {

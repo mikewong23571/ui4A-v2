@@ -2,17 +2,17 @@
  * /api/chat SSE 帧协议(T9 Phase B / B1)的客户端读取器。
  *
  * 帧协议(每帧一条 `data: <json>\n\n`):
- * - {type:'step', message:{role:'assistant',text}, rel?} —— 轨迹一步
+ * - {type:'step', turnId, message:{role:'assistant',text}, rel?} —— 轨迹一步
  *   (text 为 trail.ts stepToMessage 口径;rel 供 flow 徽章展示);
- * - {type:'thinking-delta', step, text} —— 推理增量片段(逐 raw chunk 到达
+ * - {type:'thinking-delta', turnId, step, text} —— 推理增量片段(逐 raw chunk 到达
  *   即推;客户端同号原地累积);
- * - {type:'thinking', step, text} —— llm 步推理自述(T11 Phase C:聚合整段
+ * - {type:'thinking', turnId, step, text} —— llm 步推理自述(T11 Phase C:聚合整段
  *   权威终帧,先于同号 step 帧;到达时替换同号累积;rule driver / 端点不返回
  *   reasoning 时零帧);
- * - {type:'render', payload} —— 渲染回执帧(渲染短路 LLM 路径 SSE 化:
+ * - {type:'render', turnId, payload} —— 渲染回执帧(渲染短路 LLM 路径 SSE 化:
  *   payload 与一次性 JSON 回执同形状,rule 命中路径仍走 JSON);
  * - {type:'heartbeat'} —— 长回合连接保活(不产生消息,只刷新客户端空闲计时);
- * - {type:'final', payload:{sessionId, driver, requestedDriver, outcome,
+ * - {type:'final', turnId, payload:{sessionId, turnId, driver, requestedDriver, outcome,
  *   summary, steps, successes, render?}} —— 回合终帧;
  * - {type:'error', error} —— 服务端兜底(循环异常,200 流内如实报告)。
  *
@@ -21,6 +21,7 @@
  * 读完以 signal.reason 抛出(AbortError / TimeoutError 由调用方折算文案)。
  */
 import type { AgentOutcome, ExecSuccess, FactRef, TrailStep } from '@ui4a/agent';
+import type { PresentationReceipt } from '@ui4a/shared';
 
 /** step 帧的 assistant 消息(trail.ts stepToMessage 口径)。 */
 export interface ChatStepMessage {
@@ -31,6 +32,7 @@ export interface ChatStepMessage {
 /** final 帧载荷(inline 回合的完整结果投影)。 */
 export interface ChatFinalPayload {
   sessionId: string;
+  turnId: string;
   driver: 'llm';
   requestedDriver: 'llm' | 'auto';
   outcome: AgentOutcome;
@@ -38,6 +40,7 @@ export interface ChatFinalPayload {
   steps: TrailStep[];
   successes: ExecSuccess[];
   sources?: FactRef[];
+  presentationRequestIds?: string[];
   render?: {
     concern: string;
     canvasUrl: string;
@@ -47,6 +50,7 @@ export interface ChatFinalPayload {
 /** render 帧载荷(渲染短路 LLM 路径的回执;与一次性 JSON 回执同形状)。 */
 export interface ChatRenderPayload {
   sessionId: string;
+  turnId: string;
   driver: 'llm';
   requestedDriver: 'llm' | 'auto';
   outcome: string;
@@ -64,13 +68,14 @@ export interface ChatRenderPayload {
 
 export type ChatSseFrame =
   | { type: 'session'; sessionId: string; turnId: string }
-  | { type: 'focus'; rel: string; refresh?: boolean }
+  | { type: 'focus'; turnId: string; rel: string; refresh?: boolean }
   | { type: 'heartbeat' }
-  | { type: 'step'; message: ChatStepMessage; rel?: string }
-  | { type: 'thinking-delta'; step: number; text: string }
-  | { type: 'thinking'; step: number; text: string }
-  | { type: 'render'; payload: ChatRenderPayload }
-  | { type: 'final'; payload: ChatFinalPayload }
+  | { type: 'step'; turnId: string; message: ChatStepMessage; rel?: string }
+  | { type: 'thinking-delta'; turnId: string; step: number; text: string }
+  | { type: 'thinking'; turnId: string; step: number; text: string }
+  | { type: 'render'; turnId: string; payload: ChatRenderPayload }
+  | { type: 'presentation'; turnId: string; payload: PresentationReceipt }
+  | { type: 'final'; turnId: string; payload: ChatFinalPayload }
   | { type: 'error'; error: string };
 
 /** AbortSignal.any 的便携版(jsdom 等环境可能缺该静态方法)。 */

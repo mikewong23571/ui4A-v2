@@ -6,7 +6,7 @@
  *
  * - 发送(B1 流式轨迹):POST /api/chat——inline 返回 SSE 流,step 帧逐步
  *   追加 assistant 消息(每步一条,废弃一次性 join);thinking-delta 帧
- *   (推理增量)同号原地累积,thinking 帧(T11 Phase C)为聚合权威终帧,
+ *   (推理增量)按 `(turnId, step)` 原地累积,thinking 帧为聚合权威终帧,
  *   先于同号 step 帧到达并替换累积(归步成可折叠「思考」区,默认收起;
  *   rule 路径零思考帧);render 帧(渲染短路 LLM 路径 SSE 化)与一次性
  *   JSON 回执同形处置;final 帧更新 sessionId(localStorage 持久化,纯投影)
@@ -57,8 +57,8 @@ interface ChatUiMessage {
   role: 'user' | 'assistant';
   content: string;
   rel?: string;
-  /** 思考区条目(T11 Phase C):值为归步步号,content 为该步推理自述全文。 */
-  thinking?: number;
+  /** 思考区条目以回合 + 步号唯一标识，content 为该步推理自述全文。 */
+  thinking?: { turnId: string; step: number };
 }
 
 /** 一次性 JSON 响应形状(render 短路/兼容路径;inline 已转 SSE)。 */
@@ -110,7 +110,10 @@ function loadSessionId(): string {
 function convertMessage(message: ChatUiMessage): ThreadMessageLike {
   const custom: Record<string, unknown> = {};
   if (message.rel !== undefined) custom['rel'] = message.rel;
-  if (message.thinking !== undefined) custom['thinking'] = message.thinking;
+  if (message.thinking !== undefined) {
+    custom['thinking'] = message.thinking.step;
+    custom['thinkingTurnId'] = message.thinking.turnId;
+  }
   return {
     role: message.role,
     content: [{ type: 'text', text: message.content }],
@@ -125,6 +128,8 @@ export interface ChatSession {
   /** 思考过程可见性(用户开关,持久化;关闭 = 思考条目不渲染,state 保留)。 */
   showThinking: boolean;
   lastRender: { concern: string; canvasUrl: string } | undefined;
+  /** Thin Presentation receipt target; full Surface never enters Chat state. */
+  lastPresentation: { canvasUrl: string } | undefined;
   /** agent 当前查看的实体引用（临时共享处境，不是凝固布局）。 */
   lastFocus: { rel: string; canvasUrl: string } | undefined;
   toggleDelegated: () => void;
@@ -159,11 +164,14 @@ export function useChatSession(): ChatSession {
   // 最近一次渲染回执(S5:surface 引用的可点形态——点击在画布打开)。
   const [lastRender, setLastRender] = useState<ChatJsonResponse['render']>(undefined);
   const [lastFocus, setLastFocus] = useState<ChatJsonResponse['focus']>(undefined);
+  const [lastPresentation, setLastPresentation] = useState<{ canvasUrl: string }>();
   const focusRevisionRef = useRef(0);
   // 进行中请求的取消柄(B2:onCancel 中止 fetch;整体超时经 AbortSignal.any 合并)。
   const abortRef = useRef<AbortController | null>(null);
   // 高频 reasoning delta 先在 ref 聚合，每 50ms 至多提交一次 React state。
-  const thinkingDeltaRef = useRef(new Map<number, string>());
+  const thinkingDeltaRef = useRef(
+    new Map<string, { identity: { turnId: string; step: number }; text: string }>(),
+  );
   const thinkingFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [view, setView] = useState<'chat' | 'sessions'>('chat');
@@ -204,6 +212,8 @@ export function useChatSession(): ChatSession {
           .then((body) => {
             if (cancelled) return;
             const turns = body.turns ?? [];
+            // thinking 是流内可见性而非 chat-turn 持久化内容：刷新明确只恢复
+            // 用户/Assistant 消息，不推测或把旧 reasoning 挂到任一回合。
             const replayed: ChatUiMessage[] = [];
             for (const turn of turns) {
               replayed.push({ role: 'user', content: turn.goal.verb });
@@ -272,16 +282,19 @@ export function useChatSession(): ChatSession {
     if (pending.length === 0) return;
     setMessages((prev) => {
       const next = [...prev];
-      for (const [step, text] of pending) {
+      for (const [, { identity, text }] of pending) {
         let found = false;
         for (let index = next.length - 1; index >= 0; index -= 1) {
-          if (next[index]!.thinking === step) {
+          if (
+            next[index]!.thinking?.turnId === identity.turnId &&
+            next[index]!.thinking?.step === identity.step
+          ) {
             next[index] = { ...next[index]!, content: next[index]!.content + text };
             found = true;
             break;
           }
         }
-        if (!found) next.push({ role: 'assistant', content: text, thinking: step });
+        if (!found) next.push({ role: 'assistant', content: text, thinking: identity });
       }
       return next;
     });
@@ -289,8 +302,13 @@ export function useChatSession(): ChatSession {
 
   /** thinking-delta 帧:同号先合帧，避免 token 速率直接放大为整棵 thread 重渲染。 */
   const appendThinkingDelta = useCallback(
-    (step: number, piece: string) => {
-      thinkingDeltaRef.current.set(step, (thinkingDeltaRef.current.get(step) ?? '') + piece);
+    (turnId: string, step: number, piece: string) => {
+      const key = `${turnId}:${step}`;
+      const pending = thinkingDeltaRef.current.get(key);
+      thinkingDeltaRef.current.set(key, {
+        identity: { turnId, step },
+        text: (pending?.text ?? '') + piece,
+      });
       if (thinkingFlushRef.current === null) {
         thinkingFlushRef.current = setTimeout(flushThinkingDeltas, 50);
       }
@@ -302,18 +320,18 @@ export function useChatSession(): ChatSession {
    * thinking 帧(T11 Phase C):聚合整段权威终帧——同号条目替换为全文
    * (兼容增量丢失/关闭后补放),无同步号条目时独立成条。
    */
-  const appendThinking = useCallback((step: number, text: string) => {
+  const appendThinking = useCallback((turnId: string, step: number, text: string) => {
     // 聚合终帧是权威全文：丢弃尚未提交的同号片段，避免先追加后替换的双渲染。
-    thinkingDeltaRef.current.delete(step);
+    thinkingDeltaRef.current.delete(`${turnId}:${step}`);
     setMessages((prev) => {
       for (let index = prev.length - 1; index >= 0; index -= 1) {
-        if (prev[index]!.thinking === step) {
+        if (prev[index]!.thinking?.turnId === turnId && prev[index]!.thinking?.step === step) {
           const next = [...prev];
-          next[index] = { role: 'assistant', content: text, thinking: step };
+          next[index] = { role: 'assistant', content: text, thinking: { turnId, step } };
           return next;
         }
       }
-      return [...prev, { role: 'assistant', content: text, thinking: step }];
+      return [...prev, { role: 'assistant', content: text, thinking: { turnId, step } }];
     });
   }, []);
 
@@ -402,6 +420,9 @@ export function useChatSession(): ChatSession {
           if (response.body === null) throw new Error('SSE 响应缺少 body');
           await readChatSseStream(response.body, signal, (frame) => {
             idleTimeout.touch();
+            // 新协议所有回合帧均携 turnId。旧服务端帧没有 turnId 时绑定到
+            // 当前请求以保持兼容；显式属于其他回合的迟到帧直接丢弃。
+            if ('turnId' in frame && frame.turnId !== turnId) return;
             if (frame.type === 'session') {
               persistSession(frame.sessionId);
             } else if (frame.type === 'heartbeat') {
@@ -409,17 +430,26 @@ export function useChatSession(): ChatSession {
             } else if (frame.type === 'focus') {
               handleFocus(frame.rel, frame.refresh === true);
             } else if (frame.type === 'thinking-delta') {
-              appendThinkingDelta(frame.step, frame.text);
+              appendThinkingDelta(turnId, frame.step, frame.text);
             } else if (frame.type === 'thinking') {
-              appendThinking(frame.step, frame.text);
+              appendThinking(turnId, frame.step, frame.text);
             } else if (frame.type === 'step') {
               flushThinkingDeltas();
               stepCount += 1;
               appendAssistant(frame.message.text, frame.rel);
             } else if (frame.type === 'render') {
+              if (frame.payload.turnId !== undefined && frame.payload.turnId !== turnId) return;
               // 渲染回执帧(渲染短路 LLM 路径 SSE 化):处置与 JSON 回执等价。
               handleRenderReceipt(frame.payload);
+            } else if (frame.type === 'presentation') {
+              if (
+                (frame.payload.status === 'ready' || frame.payload.status === 'fallback') &&
+                frame.payload.surfaceUrl !== undefined
+              ) {
+                setLastPresentation({ canvasUrl: frame.payload.surfaceUrl });
+              }
             } else if (frame.type === 'final') {
+              if (frame.payload.turnId !== undefined && frame.payload.turnId !== turnId) return;
               flushThinkingDeltas();
               handleFinal(frame.payload, stepCount);
             } else if (frame.type === 'error') {
@@ -510,6 +540,9 @@ export function useChatSession(): ChatSession {
   // 旧会话经「历史会话」清单随时可回读。
   const startNewSession = useCallback(() => {
     abortRef.current?.abort();
+    if (thinkingFlushRef.current !== null) clearTimeout(thinkingFlushRef.current);
+    thinkingFlushRef.current = null;
+    thinkingDeltaRef.current.clear();
     sessionRef.current = '';
     setSessionId('');
     setMessages([]);
@@ -545,6 +578,9 @@ export function useChatSession(): ChatSession {
       setView('chat');
       if (next === sessionRef.current) return;
       abortRef.current?.abort();
+      if (thinkingFlushRef.current !== null) clearTimeout(thinkingFlushRef.current);
+      thinkingFlushRef.current = null;
+      thinkingDeltaRef.current.clear();
       setIsRunning(false);
       sessionRef.current = next;
       setSessionId(next);
@@ -578,6 +614,7 @@ export function useChatSession(): ChatSession {
     showThinking,
     lastRender,
     lastFocus,
+    lastPresentation,
     toggleDelegated,
     toggleShowThinking,
     startNewSession,
@@ -703,6 +740,14 @@ export function ChatPanel({
     if (`${window.location.pathname}${window.location.search}` === lastFocus.canvasUrl) return;
     router.push(lastFocus.canvasUrl);
   }, [lastFocus, router]);
+  const lastPresentation = session.lastPresentation;
+  useEffect(() => {
+    if (lastPresentation === undefined) return;
+    if (`${window.location.pathname}${window.location.search}` === lastPresentation.canvasUrl) {
+      return;
+    }
+    router.push(lastPresentation.canvasUrl);
+  }, [lastPresentation, router]);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">

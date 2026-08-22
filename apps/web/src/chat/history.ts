@@ -25,6 +25,8 @@ export interface ChatTurnDetail {
    * 飞轮)。向后兼容:T11 前写入的旧事件无此字段,history 读端归一为空数组。
    */
   steps: TrailStep[];
+  /** Chat history retains only thin Presentation request references, never Surface/catalog data. */
+  presentationRequestIds?: string[];
   driver: 'rule' | 'llm';
 }
 

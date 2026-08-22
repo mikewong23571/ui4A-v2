@@ -24,6 +24,7 @@ import type {
   AgentOperation,
   DecideSink,
   DriverContext,
+  PresentationIntent,
   TrailStep,
 } from './types';
 
@@ -348,6 +349,39 @@ describe('循环终止', () => {
     expect(result.summary).toContain('ghost');
     expect(result.steps).toEqual([]);
     expect(driver.contexts).toHaveLength(0);
+  });
+});
+
+describe('薄 Presentation 请求', () => {
+  it('present 作为旁路意图交给 runtime，Chat 循环可继续独立回答且零业务 POST', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const presentation: PresentationIntent = {
+      subject: 'articles',
+      intent: '浏览全部文章',
+      constraints: ['正文摘要优先'],
+      delivery: 'canvas',
+    };
+    const driver = new ScriptedDriver([
+      { kind: 'present', ...presentation },
+      { kind: 'answer', content: '已请求在画布中浏览文章。', sources: [] },
+    ]);
+    const requested: PresentationIntent[] = [];
+
+    const result = await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+      onPresentation(intent) {
+        requested.push(intent);
+      },
+    });
+
+    expect(result.outcome).toBe('answered');
+    expect(result.steps.map((step) => step.outcome)).toEqual([
+      'presentation-requested',
+      'answered',
+    ]);
+    expect(requested).toEqual([presentation]);
+    expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(0);
   });
 });
 
@@ -1171,7 +1205,7 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
 });
 
 describe('role/app 上下文槽位:数据注入路径(T10 Phase D)', () => {
-  it('RunAgentOptions 提供 role/app → 每步 DriverContext 原样携带', async () => {
+  it('RunAgentOptions 提供 role/app/chatMarkdown → 每步 DriverContext 原样携带', async () => {
     const transport = contractTransport({ entities: { articles: articlesEntity } });
     const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
 
@@ -1180,10 +1214,12 @@ describe('role/app 上下文槽位:数据注入路径(T10 Phase D)', () => {
       fetchImpl: transport.fetch,
       role: '内容审核员',
       app: 'community',
+      chatMarkdown: true,
     });
 
     expect(driver.contexts[0]!.role).toBe('内容审核员');
     expect(driver.contexts[0]!.app).toBe('community');
+    expect(driver.contexts[0]!.chatMarkdown).toBe(true);
   });
 
   it('空槽(未提供)→ DriverContext 的 role/app 缺席(零行为变化)', async () => {
@@ -1194,6 +1230,7 @@ describe('role/app 上下文槽位:数据注入路径(T10 Phase D)', () => {
 
     expect(driver.contexts[0]!.role).toBeUndefined();
     expect(driver.contexts[0]!.app).toBeUndefined();
+    expect(driver.contexts[0]!.chatMarkdown).toBeUndefined();
   });
 });
 

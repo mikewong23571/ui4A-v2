@@ -1,6 +1,6 @@
 /**
  * 工具投影生成器形状测试(T2 Phase E / Task E1,arch-brief §6):
- * - 固定动词 6 个:navigate/exec/clarify/render/done/fail 始终在列;
+ * - 固定动词包含薄 present 请求，不把 Surface 或 catalog 暴露给 Chat;
  * - 动态动作工具:当前实体 actions[] 逐个生成(字段 schema 内联参数);
  * - guard-results blocked 的动作 description 写明 "blocked: <谓词名> 失败";
  * - navigate 的 rel 从 links(+子实体)生成 enum。
@@ -39,12 +39,13 @@ const wizardEntity = instanceEntity({
 });
 
 describe('固定协议动词', () => {
-  it('navigate/answer/exec/clarify/render/done/fail 全部在投影中,名称唯一', () => {
+  it('navigate/answer/exec/clarify/present/done/fail 全部在投影中,名称唯一', () => {
     const tools = buildToolProjection(wizardEntity);
     const names = tools.map((tool) => tool.name);
-    for (const verb of ['navigate', 'answer', 'exec', 'clarify', 'render', 'done', 'fail']) {
+    for (const verb of ['navigate', 'answer', 'exec', 'clarify', 'present', 'done', 'fail']) {
       expect(names, `动词 ${verb} 应在工具列表`).toContain(verb);
     }
+    expect(names).not.toContain('render');
     expect(new Set(names).size).toBe(names.length);
   });
 
@@ -119,11 +120,27 @@ describe('固定协议动词', () => {
     ]);
   });
 
-  it('render 仍为保留动词', () => {
-    const render = buildToolProjection(wizardEntity).find(
-      (candidate) => candidate.name === 'render',
+  it('present 只让模型提供薄呈现意图，运行态字段和 Surface 载荷不进入 Chat 工具', () => {
+    const present = buildToolProjection(wizardEntity).find(
+      (candidate) => candidate.name === 'present',
     )!;
-    expect(render.description).toContain('未实现');
+    expect(present.description).toContain('Presentation Plane');
+    expect(present.description).toContain('实时 catalog');
+
+    const parameters = present.parameters as {
+      required: string[];
+      properties: Record<string, unknown>;
+    };
+    expect(parameters.required).toEqual(['subject', 'intent', 'delivery']);
+    expect(Object.keys(parameters.properties).sort()).toEqual([
+      'constraints',
+      'delivery',
+      'intent',
+      'subject',
+    ]);
+    expect(JSON.stringify(parameters)).not.toMatch(
+      /requestId|principal|sourceMessageIds|surface|component|bind|dependenc|catalog/i,
+    );
   });
 });
 

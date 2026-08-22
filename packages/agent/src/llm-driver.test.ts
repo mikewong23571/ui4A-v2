@@ -210,6 +210,25 @@ describe('LLM 工具调用 → 循环操作映射', () => {
     });
   });
 
+  it('present 工具调用只映射模型提供的薄呈现意图', async () => {
+    const { driver } = llmDriverWith(() =>
+      openaiToolResponse('present', {
+        subject: 'post:first-post',
+        intent: '阅读正文并突出文章身份',
+        constraints: ['正文优先', '动作收纳'],
+        delivery: 'canvas',
+      }),
+    );
+
+    await expect(driver.decide(context())).resolves.toEqual({
+      kind: 'present',
+      subject: 'post:first-post',
+      intent: '阅读正文并突出文章身份',
+      constraints: ['正文优先', '动作收纳'],
+      delivery: 'canvas',
+    });
+  });
+
   it('通用 exec 工具调用 → exec(action + params)', async () => {
     const authorization = { sourceMessageId: 'm1', quote: '发布这篇文章' };
     const { driver } = llmDriverWith(() =>
@@ -334,7 +353,7 @@ describe('fail-safe:模型输出不合法', () => {
     });
   });
 
-  it('clarify 缺问题或原目标延续时 fail-safe；render 仍为保留动词', async () => {
+  it('clarify 缺问题或原目标延续时 fail-safe；旧 render 工具不可调用', async () => {
     for (const args of [{ continuation: GOAL }, { question: '需要澄清' }]) {
       const { driver } = llmDriverWith(() => openaiToolResponse('clarify', args));
       await expect(driver.decide(context())).resolves.toMatchObject({ kind: 'fail' });
@@ -343,7 +362,7 @@ describe('fail-safe:模型输出不合法', () => {
     const { driver } = llmDriverWith(() => openaiToolResponse('render', {}));
     const op = await driver.decide(context());
     expect(op.kind).toBe('fail');
-    if (op.kind === 'fail') expect(op.reason).toContain('未实现');
+    if (op.kind === 'fail') expect(op.reason).toContain('未知工具');
   });
 
   it('navigate 参数缺 rel → fail-safe fail', async () => {
@@ -670,20 +689,29 @@ describe('SYSTEM_PROMPT role/app 上下文槽位(T10 Phase D)', () => {
   });
 
   it('槽位值在场:协议核心原样为前缀,role/app 以数据行追加', () => {
-    const prompt = buildSystemPrompt({ role: '内容审核员', app: 'community' });
+    const prompt = buildSystemPrompt({
+      role: '内容审核员',
+      app: 'community',
+      chatMarkdown: true,
+    });
     expect(prompt.startsWith(buildSystemPrompt())).toBe(true);
     expect(prompt).toContain('内容审核员');
     expect(prompt).toContain('community');
+    expect(prompt).toContain('聊天 Markdown renderer: supported');
+    expect(buildSystemPrompt({ chatMarkdown: false })).toContain(
+      '聊天 Markdown renderer: unsupported',
+    );
   });
 
   it('槽位值经 DriverContext 注入 LLM 请求的 system prompt', async () => {
     const { driver, calls } = llmDriverWith(() => openaiToolResponse('done', { summary: 'ok' }));
 
-    await driver.decide(context({ role: '内容审核员', app: 'community' }));
+    await driver.decide(context({ role: '内容审核员', app: 'community', chatMarkdown: true }));
 
     const system = systemPromptOf(calls);
     expect(system).toContain('内容审核员');
     expect(system).toContain('community');
+    expect(system).toContain('聊天 Markdown renderer: supported');
   });
 
   it('空槽 decide:请求的 system prompt 与协议核心逐字节一致(零行为变化)', async () => {

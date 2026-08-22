@@ -209,6 +209,7 @@ function createPublishingLlmStub(): Promise<Server & { port(): number }> {
 
 interface ChatResponseBody {
   sessionId?: string;
+  turnId?: string;
   driver?: string;
   requestedDriver?: string;
   outcome?: string;
@@ -223,6 +224,7 @@ interface ChatResponseBody {
  * T11 Phase C 增 thinking 帧(llm 步推理自述,聚合整段一次性)。 */
 interface SseFrame {
   type: 'session' | 'focus' | 'step' | 'final' | 'error' | 'thinking';
+  turnId?: string;
   message?: { role: 'assistant'; text: string };
   rel?: string;
   refresh?: boolean;
@@ -801,6 +803,7 @@ describe('T11 Phase C Task 2:thinking 帧(SSE 推理自述管道)', () => {
         ['thinking', 'focus', 'step', 'thinking', 'step', 'final'],
       );
       const thinking = frames.filter((frame) => frame.type === 'thinking');
+      expect(thinking.every((frame) => frame.turnId === 'route-test-turn')).toBe(true);
       // 整段聚合:与脚本桩的 reasoning_content 逐字等值,步号从 1 递增。
       expect(thinking.map((frame) => [frame.step, frame.text])).toEqual([
         [1, '先补标题,再推进向导'],
@@ -809,6 +812,10 @@ describe('T11 Phase C Task 2:thinking 帧(SSE 推理自述管道)', () => {
       // step 号与对应 step 帧一致(便于客户端归步):第 N 条 thinking 紧贴
       // 第 N 条 step 之前。
       const stepFrames = frames.filter((frame) => frame.type === 'step');
+      expect(stepFrames.every((frame) => frame.turnId === 'route-test-turn')).toBe(true);
+      const final = frames.find((frame) => frame.type === 'final');
+      expect(final?.turnId).toBe('route-test-turn');
+      expect(final?.payload?.turnId).toBe('route-test-turn');
       thinking.forEach((frame, index) => {
         expect(frames.indexOf(frame)).toBeLessThan(frames.indexOf(stepFrames[index]!));
       });

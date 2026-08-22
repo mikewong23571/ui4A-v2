@@ -27,3 +27,5 @@ export * from './definition-diff';
 export * from './invariants';
 export * from './siren';
 export * from './sitemap';
+// 独立 Presentation Plane 的纯编排/校验基座；不进入 Business fold。
+export * from './presentation/index';

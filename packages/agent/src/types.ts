@@ -7,7 +7,9 @@
  * - 拒绝即数据:被拒 exec 与不可达 navigate 都以 RejectionRecord 回流下一步上下文;
  * - 循环零智能:它只搬运实体、执行操作、记录轨迹。
  */
-import type { ExecutionAuditRecord, SirenEntity } from '@ui4a/engine';
+import type { ExecutionAuditRecord, PresentationIntent, SirenEntity } from '@ui4a/engine';
+
+export type { PresentationIntent } from '@ui4a/engine';
 
 /** 注入的 fetch 实现(测试脚本化 / 服务端与浏览器真实 fetch 双用;两栖关键)。 */
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
@@ -105,11 +107,16 @@ export interface ContractObservation {
   entity: SirenEntity;
 }
 
+/**
+ * Chat 模型决定的最小呈现意图。requestId、principal、sourceMessageIds 和授权处境
+ * 由调用 runtime 在交给 Presentation Broker 时补齐；模型永远不提供这些字段。
+ */
 /** 循环每步产出的操作(协议动词;决策全在 driver)。 */
 export type AgentOperation =
   | { kind: 'navigate'; rel: string }
   | { kind: 'answer'; content: string; sources: FactRef[]; continue?: boolean }
   | { kind: 'clarify'; question: string; continuation: AgentGoal }
+  | ({ kind: 'present' } & PresentationIntent)
   | {
       kind: 'exec';
       action: string;
@@ -163,6 +170,7 @@ export interface TrailStep {
   outcome:
     | 'answered'
     | 'clarification-needed'
+    | 'presentation-requested'
     | 'done'
     | 'failed'
     | 'navigated'
@@ -205,6 +213,10 @@ export interface DriverContext {
    */
   role?: string;
   app?: string;
+  /** Host 注入的聊天 renderer 能力事实；缺省时 Agent 不得猜测。 */
+  chatMarkdown?: boolean;
+  /** Presentation Plane 注入的当前 catalog 摘要；不是完整 catalog payload。 */
+  presentationMarkdown?: boolean;
 }
 
 /** application 分组的 agent 投影:两层发现第一层(name + intent + 组内 flow 摘要)。 */
@@ -309,6 +321,10 @@ export interface RunAgentOptions {
    */
   role?: string;
   app?: string;
+  /** 当前聊天 renderer 是否支持 Markdown；由 host 运行时提供，不在 prompt 写死。 */
+  chatMarkdown?: boolean;
+  /** 当前 Presentation catalog 是否含 Markdown word；由 Plane 动态投影。 */
+  presentationMarkdown?: boolean;
   /**
    * 流式轨迹回调(T9 Phase B):循环每次 trail.push 后同步调用
    * (navigate/exec/done/fail 各结局全覆盖)——聊天路由据此逐步推 SSE 帧。
@@ -327,6 +343,11 @@ export interface RunAgentOptions {
    * (onReasoning/审计)语义不变;抛错不拦截循环口径同上。
    */
   onReasoningDelta?(piece: string): void;
+  /**
+   * Chat 模型请求呈现时同步交出薄意图。调用方负责补 requestId、principal 与来源消息，
+   * 并异步委托 Presentation Broker；回调异常不影响 Chat outcome。
+   */
+  onPresentation?(intent: PresentationIntent): void;
 }
 
 export type AgentOutcome =

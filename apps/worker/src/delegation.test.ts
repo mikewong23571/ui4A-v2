@@ -414,6 +414,36 @@ describe('runAgentStep(scripted protocol driver,决策+执行合一)', () => {
       outcome: 'answered',
     });
   });
+
+  it('driver 决策 present → 旁路请求留痕且零业务 POST', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const { db, inserts } = fakeDb();
+    const present = {
+      kind: 'present' as const,
+      subject: 'articles',
+      intent: 'browse articles',
+      delivery: 'canvas' as const,
+    };
+
+    const result = await runAgentStep(
+      { db, fetchImpl: transport.fetch, driver: new ScriptedDriver([present]) },
+      {
+        delegationId: 'wf-present',
+        step: 1,
+        goal: { verb: '浏览文章' },
+        driverKind: 'llm',
+        baseUrl: BASE,
+        ...BASE_STATE,
+      },
+    );
+
+    expect(result).toEqual({ op: present, outcome: 'presentation-requested' });
+    expect(transport.calls.filter((call) => call.method === 'POST')).toEqual([]);
+    expect(JSON.parse(String(inserts[0]!.values[8]))).toMatchObject({
+      op: present,
+      outcome: 'presentation-requested',
+    });
+  });
 });
 
 describe('runAgentStep(幂等恢复)', () => {

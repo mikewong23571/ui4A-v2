@@ -113,6 +113,28 @@ describe('trailToMessages', () => {
     ).toBe('第一篇文章用于验证正文阅读与刷新恢复。');
   });
 
+  it('present 只投影旁路准备状态，不冒充业务完成', () => {
+    const message = trailToMessages({
+      goal: { verb: '看看第一篇' },
+      outcome: 'answered',
+      steps: [
+        step({
+          rel: 'post:first-post',
+          op: {
+            kind: 'present',
+            subject: 'post:first-post',
+            intent: 'read article',
+            delivery: 'canvas',
+          },
+          outcome: 'presentation-requested',
+        }),
+      ],
+      successes: [],
+    }).at(0);
+
+    expect(message?.text).toBe('正在准备「post:first-post」的呈现');
+  });
+
   it('max-steps 结局补一条上限消息(无终步消息时)', () => {
     const steps: TrailStep[] = [
       step({ rel: 'articles', op: { kind: 'navigate', rel: 'articles' }, outcome: 'navigated' }),

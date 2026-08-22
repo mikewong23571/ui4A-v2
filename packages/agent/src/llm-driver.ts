@@ -25,7 +25,7 @@ import { jsonSchema, streamText, type LanguageModel, type ToolSet } from 'ai';
 
 import { LlmConfigurationError, resolveLlmConfig, type LlmConfigOverrides } from './llm-config';
 import { extractRawReasoning, readRawDelta } from './raw-reasoning';
-import { ACTION_TOOL_PREFIX, buildToolProjection, isReservedVerb } from './tools';
+import { ACTION_TOOL_PREFIX, buildToolProjection } from './tools';
 import type { AgentDriver, AgentOperation, DecideSink, DriverContext, FetchLike } from './types';
 
 export interface LlmDriverOptions extends LlmConfigOverrides {
@@ -62,7 +62,9 @@ const SYSTEM_PROMPT = [
   '5. navigate 的 rel 必须来自其枚举;工具 description 标注 blocked 的动作当前被 guard 阻断,不要调用。',
   '6. 拒绝即数据:轨迹中的被拒动作与「最近拒绝」携带结构化原因——换路径,或按动作字段 schema 修正参数后重试。',
   '7. 字段值按语义构造:枚举字段必须取 enum 内的值;标题/正文等 intent 字段按目标意图编写;不要发明合同外的值。',
-  '8. 当用户的目标或对象存在影响正确性的歧义时，调用 clarify(question,continuation)；这是对话协议终态，不是 application capability。render 仍未实现，禁止调用。',
+  '8. 当用户的目标或对象存在影响正确性的歧义时，调用 clarify(question,continuation)；这是对话协议终态，不是 application capability。',
+  '8.1 需要界面呈现时调用 present(subject,intent,constraints,delivery)。只描述呈现对象与意图，不输出 Surface、component、binding、dependency 或事实值；独立 Presentation Plane 将基于实时 catalog 和重新授权后的事实规划。present 是旁路请求，不替代 answer。',
+  '8.2 Markdown 是三层独立事实：聊天 Markdown renderer、Presentation catalog 的实时词条、业务字段 content type 声明。必须分别依据当前可用证据回答，不得互相推断，也不得把 catalog 状态写死在回答中。',
   '9. 完成判定:done 只用于业务动作目标，目标对应的完成类 action 成功执行过之后才调用 done；只读目标必须 answer。',
   '10. 用户明确要求“一次走完/一次决策/批量执行”时，优先调用 exec_plan(steps) 一次提交完整计划；普通写目标仍逐步 exec。exec_plan 禁止包含 approve/reject。',
   '11. 当前合同没有完成目标所需的业务 action/capability 时调用 fail(reason,evidence),明确缺口与已查看证据;禁止在实体间重复导航。',
@@ -77,6 +79,8 @@ const SYSTEM_PROMPT = [
 export interface SystemPromptSlots {
   role?: string;
   app?: string;
+  chatMarkdown?: boolean;
+  presentationMarkdown?: boolean;
 }
 
 /**
@@ -87,6 +91,14 @@ export function buildSystemPrompt(slots: SystemPromptSlots = {}): string {
   const lines = [
     ...(slots.role !== undefined && slots.role !== '' ? [`- 角色: ${slots.role}`] : []),
     ...(slots.app !== undefined && slots.app !== '' ? [`- 应用: ${slots.app}`] : []),
+    ...(slots.chatMarkdown !== undefined
+      ? [`- 聊天 Markdown renderer: ${slots.chatMarkdown ? 'supported' : 'unsupported'}`]
+      : []),
+    ...(slots.presentationMarkdown !== undefined
+      ? [
+          `- Presentation catalog Markdown word: ${slots.presentationMarkdown ? 'registered' : 'not-registered'}`,
+        ]
+      : []),
   ];
   if (lines.length === 0) return SYSTEM_PROMPT;
   return `${SYSTEM_PROMPT}\n\n## 角色与应用上下文\n${lines.join('\n')}`;
@@ -111,13 +123,15 @@ function describeTrail(context: DriverContext): string {
             ? `answer ${step.op.content} sources=${JSON.stringify(step.op.sources)}`
             : step.op.kind === 'clarify'
               ? `clarify ${step.op.question} continuation=${JSON.stringify(step.op.continuation)}`
-              : step.op.kind === 'exec'
-                ? `exec ${step.op.action} ${JSON.stringify(step.op.params ?? {})}`
-                : step.op.kind === 'exec-plan'
-                  ? `exec-plan ${JSON.stringify(step.op.steps)}`
-                  : step.op.kind === 'done'
-                    ? `done ${step.op.summary}`
-                    : `fail ${step.op.reason}`;
+              : step.op.kind === 'present'
+                ? `present ${step.op.subject} intent=${JSON.stringify(step.op.intent)} delivery=${step.op.delivery}`
+                : step.op.kind === 'exec'
+                  ? `exec ${step.op.action} ${JSON.stringify(step.op.params ?? {})}`
+                  : step.op.kind === 'exec-plan'
+                    ? `exec-plan ${JSON.stringify(step.op.steps)}`
+                    : step.op.kind === 'done'
+                      ? `done ${step.op.summary}`
+                      : `fail ${step.op.reason}`;
       const note = step.rejection !== undefined ? `(拒绝: ${step.rejection.reason})` : '';
       return `${step.step}. [${step.rel}] ${op} ⇒ ${step.outcome} ${note}`;
     })
@@ -278,6 +292,33 @@ function mapToolCall(toolName: string, input: unknown): AgentOperation {
         },
       };
     }
+    case 'present': {
+      if (!isPlainObject(input)) return invalidOutput('present 参数必须是对象');
+      const { subject, intent, constraints, delivery } = input;
+      if (typeof subject !== 'string' || subject === '') {
+        return invalidOutput('present 缺少字符串参数 subject');
+      }
+      if (typeof intent !== 'string' || intent === '') {
+        return invalidOutput('present 缺少字符串参数 intent');
+      }
+      if (
+        constraints !== undefined &&
+        (!Array.isArray(constraints) ||
+          !constraints.every((constraint) => typeof constraint === 'string' && constraint !== ''))
+      ) {
+        return invalidOutput('present.constraints 必须是非空字符串数组');
+      }
+      if (delivery !== 'inline' && delivery !== 'canvas' && delivery !== 'auto') {
+        return invalidOutput('present.delivery 必须是 inline、canvas 或 auto');
+      }
+      return {
+        kind: 'present',
+        subject,
+        intent,
+        ...(constraints !== undefined ? { constraints } : {}),
+        delivery,
+      };
+    }
     case 'exec': {
       if (!isPlainObject(input) || typeof input.action !== 'string') {
         return invalidOutput('exec 缺少字符串参数 action');
@@ -346,12 +387,6 @@ function mapToolCall(toolName: string, input: unknown): AgentOperation {
     default:
       break;
   }
-  if (isReservedVerb(toolName)) {
-    return {
-      kind: 'fail',
-      reason: `LLM 调用了保留动词 ${toolName}(协议尚未实现)`,
-    };
-  }
   if (toolName.startsWith(ACTION_TOOL_PREFIX)) {
     const authorization = isPlainObject(input)
       ? effectAuthorization(input.authorization)
@@ -414,7 +449,12 @@ async function llmDecide(
     // 审计可用同两个纯函数重建实际模型输入，不丢失原始会话 role。
     const result = streamText({
       model,
-      system: buildSystemPrompt({ role: context.role, app: context.app }),
+      system: buildSystemPrompt({
+        role: context.role,
+        app: context.app,
+        chatMarkdown: context.chatMarkdown,
+        presentationMarkdown: context.presentationMarkdown,
+      }),
       messages: buildLlmMessages(context),
       tools: toToolSet(buildToolProjection(context.entity)),
       // 端点挂死兜底(T9 Phase B):60s 无响应流被 abort(下文 'abort' 部件),

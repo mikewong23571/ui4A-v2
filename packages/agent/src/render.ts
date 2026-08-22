@@ -1,37 +1,8 @@
-/**
- * render 意图 → spec 生成器(T7 Phase C / spec 架构决定 4:S5 的生成路径;
- * T12 Phase A 起接线 LLM fallthrough,spec 架构决定 1)。
- *
- * rule 确定路径(renderSpecFor):纯函数、词级匹配、零 LLM 依赖(I1)。
- * - 意图词级匹配:展示/图表词 + 双语名词词表(文章→articles)命中 sitemap
- *   集合面 → chart(带维度词)/table 词条 spec;
- * - 零字面:bind 只产引用节点(collection+dimension),维度引用真实字段
- *   (字段名必须在 sitemap 流程节点声明中出现——"事实不可发明",解引用器
- *   对假字段响亮失败是第二道闸);
- * - 维度路径 `<collection>.fields.<name>`:实体投影把实例字段嵌在
- *   properties.fields 下(engine siren 口径),dimension 是成员级 field-ref;
- * - 凝固路径:同 concern 已凝固 → 直接复用首冻 spec(同一关注点永远同一
- *   布局;首冻由 web 侧 freezeSpec 落 render-spec-frozen 事件);
- * - 未命中(非展示意图/集合不在 sitemap/维度字段未声明)→ undefined,
- *   交回普通 agent 循环——不猜、不半吊子。
- *
- * LLM 路径(T12 架构决定 1;chat 路由 render 短路内 rule miss 后的 fallthrough):
- * - buildRenderPrompt(词汇表+sitemap 处境披露)+ parseRenderResponse(fail-safe
- *   JSON 提取)是纯函数接口;generateRenderSpecWithLlm 把它们接上 streamText
- *   (客户端构造复用 llm-driver 的 createLlmChatModel,60s abort 同 decide
- *   口径)——无 key 跳过(I1),端点/解析失败一律 undefined,绝不抛;
- * - hasDisplayIntent 是 fallthrough 的前置闸(与 renderSpecFor 入口闸同词表):
- *   非展示意图直落普通循环,不打扰 LLM;
- * - renderSpecGroundingErrors 把 rule 路径由构造保证的"引用真实"(集合 ∈
- *   sitemap 集合面、维度字段已声明)显式化为 LLM 产出的核对;零字面/词条
- *   形状的最终把关在 web 侧校验器与 freezeSpec 入口(分层把关,不在本包重复)。
- */
+/** Independent Presentation-Agent prompt and fail-safe binding-only response parser. */
 import { streamText } from 'ai';
-import type { SirenEntity } from '@ui4a/engine';
 
 import { createLlmChatModel, type LlmDriverOptions } from './llm-driver';
 import { hasLlmConfig } from './llm-config';
-import { asciiTokens } from './match';
 import { extractRawReasoning, readRawDelta } from './raw-reasoning';
 
 // ---- 类型 --------------------------------------------------------------------
@@ -49,13 +20,6 @@ export interface GeneratedRenderSpec {
   bind: Record<string, unknown>;
 }
 
-/** 已凝固 spec 条目(engine listFrozenSpecs 的结构子集;凝固路径数据源)。 */
-export interface FrozenSpecEntry {
-  concern: string;
-  component: string;
-  bind: unknown;
-}
-
 /**
  * sitemap 的结构子集(engine Sitemap 可直接代入):集合面 + 流程节点字段
  * 声明(维度字段的真实性依据)。
@@ -67,172 +31,6 @@ export interface RenderSitemapContext {
     title?: string;
     nodes: readonly { name: string; fields?: readonly { name: string }[] }[];
   }[];
-}
-
-// ---- 词表(双语,与 match.ts 的 VERB_LEXICON 同风格)--------------------------
-
-/** 展示类意图词(命中其一才进生成路径;否则交回普通循环)。 */
-const DISPLAY_TOKENS = [
-  '展示',
-  '显示',
-  '列出',
-  '列表',
-  '看看',
-  '查看',
-  '可视化',
-  '图表',
-  'show',
-  'list',
-  'view',
-  'chart',
-  'graph',
-  'table',
-] as const;
-
-/** 名词词表:中文集合名 → 集合 rel(ascii 名直接与 surface rel 词元匹配)。 */
-const NOUN_LEXICON: Readonly<Record<string, string>> = {
-  文章: 'articles',
-  评论: 'comments',
-};
-
-/** 维度词表:分类词 → 维度字段名(字段须在 sitemap 流程声明)。 */
-const DIMENSION_LEXICON: Readonly<Record<string, string>> = {
-  分类: 'category',
-  类别: 'category',
-  category: 'category',
-};
-
-// ---- 词级匹配原语 ------------------------------------------------------------
-
-function tokenInString(token: string, target: string): boolean {
-  if (/^[a-z0-9]+$/.test(token)) return asciiTokens(target).includes(token);
-  return token.length >= 2 && target.includes(token);
-}
-
-// ---- 生成路径 ----------------------------------------------------------------
-
-/** 意图命中的集合 rel(sitemap 集合面 + 双语名词词表;未命中 undefined)。 */
-function collectionOf(intent: string, sitemap: RenderSitemapContext): string | undefined {
-  const collections = sitemap.surfaces
-    .filter((surface) => surface.collection === true)
-    .map((surface) => surface.rel);
-  if (collections.length === 0) return undefined;
-  // ascii 词元:show articles → 'articles'(集合 rel 去尾 s 的单数同样命中)。
-  const tokens = asciiTokens(intent);
-  const byAscii = collections.find(
-    (rel) => tokens.includes(rel) || tokens.includes(rel.replace(/s$/, '')),
-  );
-  if (byAscii !== undefined) return byAscii;
-  // 中文名词:文章 → 'articles'(词表映射后仍须在 sitemap 集合面内)。
-  const byLexicon = Object.entries(NOUN_LEXICON).find(([noun]) => intent.includes(noun));
-  if (byLexicon === undefined) return undefined;
-  return collections.includes(byLexicon[1]) ? byLexicon[1] : undefined;
-}
-
-/** 意图命中的维度字段名(词表命中 + sitemap 流程节点确有声明;否则 undefined)。 */
-function dimensionFieldOf(intent: string, sitemap: RenderSitemapContext): string | undefined {
-  const hit = Object.entries(DIMENSION_LEXICON).find(([word]) => tokenInString(word, intent));
-  if (hit === undefined) return undefined;
-  const field = hit[1];
-  const declared = sitemap.flows.some((flow) =>
-    flow.nodes.some((node) => (node.fields ?? []).some((entry) => entry.name === field)),
-  );
-  // sitemap 不携带 flow→collection 的 append 边,字段级验证以"全局声明过"为
-  // 准;假字段在解引用器响亮失败(deref 对缺路径零容忍)——两道闸都不可绕。
-  return declared ? field : undefined;
-}
-
-/**
- * 展示意图判定(DISPLAY_TOKENS 词级命中;renderSpecFor 入口闸与 chat 路由
- * LLM fallthrough 的前置闸共用——非展示意图不打扰 LLM,直落普通循环)。
- */
-export function hasDisplayIntent(intent: string): boolean {
-  return DISPLAY_TOKENS.some((token) => tokenInString(token, intent));
-}
-
-/**
- * 具体查看意图 → collection 成员 rel。优先匹配实体真实 title，其次识别明确
- * 序号；普通“展示/列表”不擅自选成员。返回的仍只是引用，内容由 renderer 解引用。
- */
-export function entityFocusForDisplayIntent(
-  intent: string,
-  collection: SirenEntity,
-): string | undefined {
-  if (!hasDisplayIntent(intent) || !collection.class.includes('collection')) return undefined;
-  const members = (collection.entities ?? []).flatMap((entity) => {
-    const rel = entity.properties.rel;
-    const fields = entity.properties.fields;
-    const title =
-      typeof fields === 'object' && fields !== null && !Array.isArray(fields)
-        ? (fields as Record<string, unknown>).title
-        : undefined;
-    return typeof rel === 'string'
-      ? [{ rel, title: typeof title === 'string' ? title.trim() : '' }]
-      : [];
-  });
-  const byTitle = [...members]
-    .filter((member) => member.title.length >= 2 && intent.includes(member.title))
-    .sort((left, right) => right.title.length - left.title.length)[0];
-  if (byTitle !== undefined) return byTitle.rel;
-
-  const ordinal = [
-    { pattern: /(?:第[一1](?:篇|个)|\bfirst\b)/i, index: 0 },
-    { pattern: /(?:第[二2](?:篇|个)|\bsecond\b)/i, index: 1 },
-    { pattern: /(?:第[三3](?:篇|个)|\bthird\b)/i, index: 2 },
-  ].find((candidate) => candidate.pattern.test(intent));
-  return ordinal === undefined ? undefined : members[ordinal.index]?.rel;
-}
-
-/**
- * rule 确定路径:意图 + sitemap + 已凝固清单 → 渲染说明(纯函数)。
- *
- * - 维度词命中且字段已声明 → chart(collection+dimension 聚合);
- * - 无维度词 → table(集合直列);
- * - 维度词命中但字段未声明 → undefined(用户点名了维度却无真实字段可引,
- *   如实拒绝交回普通循环——不静默降级,不发明字段);
- * - 已凝固同 concern → 复用首冻 spec(凝固语义,不重新生成);
- * - 非展示意图/集合未命中 → undefined(交回普通循环)。
- */
-export function renderSpecFor(
-  intent: string,
-  sitemap: RenderSitemapContext,
-  frozen: readonly FrozenSpecEntry[],
-): GeneratedRenderSpec | undefined {
-  if (!hasDisplayIntent(intent)) return undefined;
-  const collection = collectionOf(intent, sitemap);
-  if (collection === undefined) return undefined;
-  const dimensionWordHit = Object.keys(DIMENSION_LEXICON).some((word) =>
-    tokenInString(word, intent),
-  );
-  const dimensionField = dimensionFieldOf(intent, sitemap);
-  if (dimensionWordHit && dimensionField === undefined) return undefined;
-
-  const concern =
-    dimensionField !== undefined ? `${collection}-by-${dimensionField}` : `${collection}-list`;
-  const existing = frozen.find((entry) => entry.concern === concern);
-  if (
-    existing !== undefined &&
-    typeof existing.bind === 'object' &&
-    existing.bind !== null &&
-    !Array.isArray(existing.bind)
-  ) {
-    // 凝固路径:复用首冻 spec(形状异常的凝固条目视同未凝固,交回生成——
-    // 零字面/词条形状的把关仍在 freezeSpec 入口与渲染规划流)。
-    return {
-      concern: existing.concern,
-      component: existing.component,
-      bind: existing.bind as Record<string, unknown>,
-    };
-  }
-
-  if (dimensionField !== undefined) {
-    return {
-      concern,
-      component: 'chart',
-      bind: { series: { collection, dimension: `${collection}.fields.${dimensionField}` } },
-    };
-  }
-  return { concern, component: 'table', bind: { rows: { collection } } };
 }
 
 // ---- LLM 路径接口 -------------------------------------------------------------
@@ -291,7 +89,7 @@ export function buildRenderPrompt(input: BuildRenderPromptInput): string {
 
 /**
  * 解析 LLM 的 render 回复(fail-safe:任何不合法输出都返回 undefined,
- * 绝不抛异常)。零字面与词条形状的最终把关在 freezeSpec 入口(web 校验器)。
+ * 绝不抛异常)。零字面与词条形状由独立 Presentation validator 最终把关。
  */
 export function parseRenderResponse(text: string): GeneratedRenderSpec | undefined {
   const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(text);
@@ -319,13 +117,12 @@ export function parseRenderResponse(text: string): GeneratedRenderSpec | undefin
   };
 }
 
-// ---- LLM 路径生成(T12 架构决定 1;chat 路由 rule miss 的 fallthrough)-------
+// ---- Presentation Agent 生成与处境核对 -----------------------------------
 
 /**
- * LLM 产 spec 的处境核对(纯函数)。rule 路径的"引用真实"由构造保证
- * (词表命中 + sitemap 声明核对);LLM 路径显式核对同一不变式:collection
+ * Presentation Agent 产 spec 的处境核对(纯函数):collection
  * 引用必须是 sitemap 集合面、dimension 字段必须在流程节点声明(与
- * dimensionFieldOf 同为"全局声明过"口径;维度格式与 rel 前缀一致性由
+ * 字段按"全局声明过"口径核对;维度格式与 rel 前缀一致性由
  * 零字面校验器先把关——本函数假定 spec 已过 validateSpec)。普通 ref/field
  * 指向实例级 rel(非 sitemap 面),其真实性由解引用器渲染时把关;caption
  * 是例外:只接受可由 sitemap 与集合投影合同共同证明存在的 `<collection>.rel`
@@ -372,7 +169,7 @@ export function renderSpecGroundingErrors(
       }
       if (typeof record.dimension === 'string') {
         // 维度路径 "<collection>.fields.<name>":字段名取末段(全局声明口径
-        // 同 dimensionFieldOf);格式非法由零字面校验器先拒,到不了这里。
+        // 按全局声明口径检查；格式非法由零字面校验器先拒,到不了这里。
         const fieldName = record.dimension.split('.').pop() ?? '';
         if (!declaredFields.has(fieldName)) {
           errors.push(`${path}: 维度字段 "${fieldName}" 未在 sitemap 流程节点声明(事实不可发明)`);
@@ -389,14 +186,13 @@ export function renderSpecGroundingErrors(
 }
 
 /**
- * LLM 生成路径(chat 路由 render 短路内 rule miss 后的 fallthrough):
+ * 独立 Presentation Agent 生成路径:
  * buildRenderPrompt(词汇表 + sitemap 处境披露)→ streamText(provider.chat
  * 锁 Chat Completions,D7;60s abort 与 llm-driver decide 同口径[D17/D22];
  * 零工具调用,不涉及 tool_choice)→ parseRenderResponse(fail-safe)。
  * 零字面/处境/词条形状的把关在调用方(web 校验器,分层不重复)。
- * fail-safe:无 key(I1,跳过 LLM 路径,rule 路径完整)/端点错误/abort/
- * 解析失败一律 undefined,绝不抛异常——调用方原路交回普通 agent 循环
- * (诚实失败口径不变,不留半成品 spec,不凝固)。
+ * fail-safe:无完整 profile、端点错误、abort 或解析失败一律 undefined，绝不抛异常；
+ * 调用方返回诚实 Presentation failure，并保留机械 generic renderer。
  */
 export async function generateRenderSpecWithLlm(
   input: BuildRenderPromptInput,

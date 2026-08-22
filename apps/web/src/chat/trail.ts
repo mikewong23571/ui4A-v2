@@ -37,6 +37,8 @@ export function stepToMessage(step: TrailStep): ChatMessage {
       return { role: 'assistant', text: op.content };
     case 'clarify':
       return { role: 'assistant', text: op.question };
+    case 'present':
+      return { role: 'assistant', text: `正在准备「${op.subject}」的呈现` };
     case 'exec':
       return outcome === 'executed'
         ? {

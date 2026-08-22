@@ -264,6 +264,63 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
 });
 
 describe('工作台 · 思考区(T11 Phase C)', () => {
+  it('连续十回合的步骤 1 以 turnId 隔离，旧回合 reasoning 不被覆盖或迁移', async () => {
+    const fetchMock = vi.fn((_url: string | URL | RequestInfo, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as {
+        sessionId: string;
+        turnId: string;
+        goal: { verb: string };
+      };
+      const index = Number(body.goal.verb.replace('问题 ', ''));
+      return Promise.resolve(
+        sseResponse([
+          { type: 'session', sessionId: body.sessionId, turnId: body.turnId },
+          {
+            type: 'thinking',
+            turnId: body.turnId,
+            step: 1,
+            text: `第 ${index} 回合 reasoning`,
+          },
+          {
+            type: 'step',
+            turnId: body.turnId,
+            message: { role: 'assistant', text: `第 ${index} 回合回答` },
+          },
+          {
+            type: 'final',
+            turnId: body.turnId,
+            payload: {
+              sessionId: body.sessionId,
+              driver: 'llm',
+              requestedDriver: 'auto',
+              outcome: 'done',
+              summary: `第 ${index} 回合回答`,
+              steps: [],
+              successes: [],
+            },
+          },
+        ]),
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<FloatingChat />);
+    openChat();
+
+    for (let index = 1; index <= 10; index += 1) {
+      sendGoal(`问题 ${index}`);
+      await waitFor(() => expect(screen.getByText(`第 ${index} 回合回答`)).toBeTruthy());
+      await waitFor(() => expect(screen.getByRole('button', { name: '发送' })).toBeTruthy());
+    }
+
+    const thinking = screen.getAllByRole('button', { name: /思考 · 步骤 1/ });
+    expect(thinking).toHaveLength(10);
+    thinking.forEach((trigger) => fireEvent.click(trigger));
+    for (let index = 1; index <= 10; index += 1) {
+      expect(screen.getByText(`第 ${index} 回合 reasoning`)).toBeTruthy();
+    }
+  });
+
   it('thinking 帧:渲染为默认收起的「思考」区,点击展开读全文、再点收起', async () => {
     const frames = [
       { type: 'thinking', step: 1, text: '先补标题,再推进向导' },
@@ -508,6 +565,50 @@ describe('工作台 · 思考增量与渲染回执帧', () => {
     expect(routerPushMock).toHaveBeenCalledWith(canvasUrl);
   });
 
+  it('丢弃显式属于其他 turnId 的迟到 render 回执，避免跨回合导航', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string | URL | RequestInfo, init?: RequestInit) => {
+        const request = JSON.parse(String(init?.body)) as { sessionId: string; turnId: string };
+        return Promise.resolve(
+          sseResponse([
+            { type: 'session', sessionId: request.sessionId, turnId: request.turnId },
+            {
+              type: 'render',
+              turnId: request.turnId,
+              payload: {
+                sessionId: request.sessionId,
+                turnId: 'another-turn',
+                driver: 'llm',
+                requestedDriver: 'auto',
+                outcome: 'done',
+                summary: '错误回合的回执',
+                messages: [{ role: 'assistant', text: '不应出现的回执' }],
+                steps: [],
+                successes: [],
+                render: {
+                  concern: 'wrong-turn',
+                  spec: {},
+                  frozenNow: true,
+                  canvasUrl: '/canvas?concern=wrong-turn',
+                },
+              },
+            },
+          ]),
+        );
+      }),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('展示文章');
+
+    await waitFor(() => expect(screen.getByRole('button', { name: '发送' })).toBeTruthy());
+    expect(screen.queryByText('不应出现的回执')).toBeNull();
+    expect(screen.queryByRole('link', { name: /在画布查看/ })).toBeNull();
+    expect(routerPushMock).not.toHaveBeenCalled();
+  });
+
   it('思考开关:默认开启;关闭 → 思考条目不渲染且持久化,重开即回', async () => {
     const frames = [
       { type: 'thinking', step: 1, text: '先补标题,再推进向导' },
@@ -594,6 +695,56 @@ describe('工作台 · 可停止(T9 Phase B / B2)', () => {
 });
 
 describe('工作台 · 聊天历史(T9 Phase B / B3)', () => {
+  it('刷新恢复明确只重放持久化消息，不恢复 thinking 且不把 reasoning 错挂到后续回合', async () => {
+    window.localStorage.setItem('ui4a.chat.sessionId', 'sess-refresh-policy');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          jsonResponse({
+            turns: [
+              {
+                seq: 1,
+                ts: '2026-08-23T00:00:00.000Z',
+                sessionId: 'sess-refresh-policy',
+                turnId: 'turn-one',
+                goal: { verb: '问题一' },
+                outcome: 'done',
+                status: 'final',
+                summary: '回答一',
+                messages: [{ role: 'assistant', text: '回答一' }],
+                steps: [],
+                driver: 'llm',
+              },
+              {
+                seq: 2,
+                ts: '2026-08-23T00:01:00.000Z',
+                sessionId: 'sess-refresh-policy',
+                turnId: 'turn-two',
+                goal: { verb: '问题二' },
+                outcome: 'done',
+                status: 'final',
+                summary: '回答二',
+                messages: [{ role: 'assistant', text: '回答二' }],
+                steps: [],
+                driver: 'llm',
+              },
+            ],
+          }),
+        ),
+      ),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+
+    await waitFor(() => expect(screen.getByText('回答二')).toBeTruthy());
+    expect(screen.getByText('问题一')).toBeTruthy();
+    expect(screen.getByText('回答一')).toBeTruthy();
+    expect(screen.getByText('问题二')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /思考 · 步骤/ })).toBeNull();
+  });
+
   it('挂载按 localStorage 的 sessionId 拉历史并重放(goal 在前,messages 逐条)', async () => {
     window.localStorage.setItem('ui4a.chat.sessionId', 'sess-hist');
     const fetchMock = vi.fn((url: string | URL | RequestInfo, init?: RequestInit) => {

@@ -2,13 +2,13 @@
  * 工具投影生成器(arch-brief §6"两层工具",选型 §1.1):
  *
  * - **固定协议动词**:navigate(rel)/ answer(content,sources)/ exec(action, params)/
- *   exec_plan(steps)/ clarify(question,continuation)/ render(spec)/ done(summary)/
+ *   exec_plan(steps)/ clarify(question,continuation)/ present(subject,intent,…)/ done(summary)/
  *   fail(reason,evidence);
  * - **每状态动态动作工具**:当前实体 actions[] 逐个生成工具(action_ 前缀),
  *   字段 schema(action.fields,JSON Schema draft-07)原样内联为参数;
  * - guard 求值结果嵌 description("blocked: <谓词名> 失败"——拒绝即教育);
  * - navigate 的 rel 参数从实体 links(含子实体直达)生成枚举;
- * - clarify 是 Agent 协议级终态，不是 application capability；render 仍是保留动词。
+ * - clarify 是 Agent 协议级终态；present 只传递展示意图，规划属于 Presentation Plane。
  *
  * 输出是框架无关的 ToolDescriptor(纯 JSON Schema 载体):llm-driver 经
  * ai sdk 的 jsonSchema() 接线;HTTP 合同是唯一真相,tools/MCP 是投影。
@@ -19,9 +19,6 @@ import { navigableRels } from './navigation';
 
 /** 动作工具名前缀(避免与固定动词撞名,映射时剥掉)。 */
 export const ACTION_TOOL_PREFIX = 'action_';
-
-/** 保留动词:渲染词汇表尚未接入 Agent 协议。 */
-const RESERVED_VERBS = ['render'] as const;
 
 export interface ToolDescriptor {
   name: string;
@@ -216,9 +213,36 @@ export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
       ),
     },
     {
-      name: 'render',
-      description: '保留动词:T2 未实现渲染词汇表,禁止调用。',
-      parameters: objectSchema({ spec: { type: 'string' } }, ['spec']),
+      name: 'present',
+      description:
+        '向独立 Presentation Plane 请求旁路呈现。模型只描述 subject、intent、constraints 和 ' +
+        'delivery；runtime 添加 requestId、principal 与来源消息。Presentation Plane 使用实时 catalog ' +
+        '和授权事实规划，Chat 不提供 Surface、component、binding、dependency 或事实值。',
+      parameters: objectSchema(
+        {
+          subject: {
+            type: 'string',
+            minLength: 1,
+            description: '需要呈现的已观察实体、集合或 flow rel',
+          },
+          intent: {
+            type: 'string',
+            minLength: 1,
+            description: '面向用户任务的语义呈现意图，不包含组件选择或布局实现',
+          },
+          constraints: {
+            type: 'array',
+            items: { type: 'string', minLength: 1 },
+            description: '可选的人类偏好或展示约束，不包含事实值和实现细节',
+          },
+          delivery: {
+            type: 'string',
+            enum: ['inline', 'canvas', 'auto'],
+            description: '期望的呈现位置',
+          },
+        },
+        ['subject', 'intent', 'delivery'],
+      ),
     },
     {
       name: 'done',
@@ -260,9 +284,4 @@ export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
   }
 
   return tools;
-}
-
-/** 保留动词集合(供 driver 做 fail-safe 判定)。 */
-export function isReservedVerb(toolName: string): boolean {
-  return (RESERVED_VERBS as readonly string[]).includes(toolName);
 }

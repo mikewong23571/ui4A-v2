@@ -322,6 +322,16 @@ export async function runAgentStep(
     });
   }
 
+  if (op.kind === 'present') {
+    // Delegation 记录同一薄意图，Presentation Broker 由宿主异步消费；此步不执行
+    // 业务 POST，也不让展示失败改变委托的业务终态。
+    return recordStep(deps.db, args, {
+      op,
+      outcome: 'presentation-requested',
+      ...decisionExtra,
+    });
+  }
+
   if (op.kind === 'exec-plan') {
     if (deps.requireEffectAuthorization ?? deps.driver === undefined) {
       const authorization = authorizeEffects({
