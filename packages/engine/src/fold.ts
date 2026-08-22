@@ -79,6 +79,8 @@ export type LogEventKind =
   | 'chat-turn-started'
   | 'chat-turn-progress'
   | 'chat-turn'
+  | 'chat-message-appended'
+  | 'chat-context-updated'
   | 'agent-decision';
 
 /**
@@ -866,6 +868,10 @@ export function fold(
       case 'chat-turn':
       case 'chat-turn-started':
       case 'chat-turn-progress':
+      // T15:raw dialogue 与 derived conversation context 是 append-only 审计事实；
+      // 专用 conversation fold 消费它们，业务引擎快照保持不变。
+      case 'chat-message-appended':
+      case 'chat-context-updated':
       // agent-decision(T11 Phase B):inline 每步决策审计(step/driver/prompt/
       // reasoning/op 在 detail)——纯留痕,fold 忽略,与 chat-turn 同口径。
       case 'agent-decision':

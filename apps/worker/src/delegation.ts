@@ -290,6 +290,14 @@ export async function runAgentStep(
     return recordStep(deps.db, args, { op, outcome: 'answered', ...decisionExtra });
   }
 
+  if (op.kind === 'clarify') {
+    return recordStep(deps.db, args, {
+      op,
+      outcome: 'clarification-needed',
+      ...decisionExtra,
+    });
+  }
+
   if (op.kind === 'exec-plan') {
     const call = await client.execPlan({
       steps: op.steps,

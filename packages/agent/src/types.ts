@@ -24,6 +24,49 @@ export interface AgentGoal {
   fields?: Record<string, unknown>;
 }
 
+/**
+ * 会话原文的最小投影。它只表示用户和 Assistant 曾经说过什么，
+ * 不是业务事实或执行授权。时序/session/provenance 由上层日志保留，Agent
+ * 协议只消费已投影且有界的 role + content。
+ */
+export interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/** 当前/历史 focus 的机械投影，不由 LLM 快照覆盖业务状态。 */
+export interface ConversationFocus {
+  currentRel?: string;
+  history?: { rel: string; sourceMessageId?: string }[];
+}
+
+export interface ConversationReferent {
+  text: string;
+  rel: string;
+  sourceMessageId: string;
+}
+
+export interface ConversationConstraint {
+  text: string;
+  sourceMessageId: string;
+}
+
+/**
+ * 由 append-only 会话日志重建的可修订认知处境。这些字段帮助 LLM 继续目标、
+ * 解析指代和遵守用户约束；它们本身不授权任何 effect。
+ */
+export interface ConversationContext {
+  activeGoal?: AgentGoal | null;
+  focus?: ConversationFocus | null;
+  referents?: ConversationReferent[];
+  constraints?: ConversationConstraint[];
+  pendingClarification?: {
+    question: string;
+    continuation: AgentGoal;
+    sourceMessageIds: string[];
+  } | null;
+}
+
 /** 回答事实来源:实体 rel + 指向授权 Siren 快照的 JSON Pointer。 */
 export interface FactRef {
   rel: string;
@@ -43,6 +86,7 @@ export interface ContractObservation {
 export type AgentOperation =
   | { kind: 'navigate'; rel: string }
   | { kind: 'answer'; content: string; sources: FactRef[] }
+  | { kind: 'clarify'; question: string; continuation: AgentGoal }
   | { kind: 'exec'; action: string; params?: Record<string, unknown> }
   | {
       kind: 'exec-plan';
@@ -88,6 +132,7 @@ export interface TrailStep {
   op: AgentOperation;
   outcome:
     | 'answered'
+    | 'clarification-needed'
     | 'done'
     | 'failed'
     | 'navigated'
@@ -102,6 +147,10 @@ export interface TrailStep {
 /** driver 决策上下文(循环是协议,driver 是插件——这是插件的全部视野)。 */
 export interface DriverContext {
   goal: AgentGoal;
+  /** 有界的近期原文，保留 user/assistant role 和时序。 */
+  conversationMessages?: ConversationMessage[];
+  /** 由日志投影的活动目标、focus、指代与用户约束。 */
+  conversation?: ConversationContext;
   currentRel: string;
   entity: SirenEntity;
   trail: TrailStep[];
@@ -178,6 +227,12 @@ export interface RunAgentOptions {
   maxSteps?: number;
   /** 授权观察账本最多保留的不同实体数(缺省 8，最小 1)。 */
   maxObservations?: number;
+  /** 最多向 driver 披露的近期 user/assistant 原文数(缺省 12，最小 0)。 */
+  maxConversationMessages?: number;
+  /** 上层从 append-only 日志投影的会话原文；循环只裁剪，不改写。 */
+  conversationMessages?: ConversationMessage[];
+  /** 上层从同一日志重建的结构化会话处境。 */
+  conversation?: ConversationContext;
   /** 缺省 'agent'(agent 走合同,事件日志可区分双执行者)。 */
   actor?: 'human' | 'agent';
   principal?: string;
@@ -211,7 +266,8 @@ export interface RunAgentOptions {
   onReasoningDelta?(piece: string): void;
 }
 
-export type AgentOutcome = 'answered' | 'done' | 'failed' | 'suspended' | 'max-steps';
+export type AgentOutcome =
+  'answered' | 'clarification-needed' | 'done' | 'failed' | 'suspended' | 'max-steps';
 
 /** 一次 runAgent 的完整结果:结局 + 可断言的轨迹。 */
 export interface AgentRunResult {
@@ -221,6 +277,8 @@ export interface AgentRunResult {
   summary?: string;
   /** answered 时回答所引用的授权合同事实。 */
   sources?: FactRef[];
+  /** clarification-needed 时供下一轮合并用户补充的原目标延续。 */
+  continuation?: AgentGoal;
   steps: TrailStep[];
   successes: ExecSuccess[];
 }

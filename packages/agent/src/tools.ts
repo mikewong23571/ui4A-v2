@@ -2,12 +2,13 @@
  * 工具投影生成器(arch-brief §6"两层工具",选型 §1.1):
  *
  * - **固定协议动词**:navigate(rel)/ answer(content,sources)/ exec(action, params)/
- *   exec_plan(steps)/ clarify(fields)/ render(spec)/ done(summary)/ fail(reason,evidence);
+ *   exec_plan(steps)/ clarify(question,continuation)/ render(spec)/ done(summary)/
+ *   fail(reason,evidence);
  * - **每状态动态动作工具**:当前实体 actions[] 逐个生成工具(action_ 前缀),
  *   字段 schema(action.fields,JSON Schema draft-07)原样内联为参数;
  * - guard 求值结果嵌 description("blocked: <谓词名> 失败"——拒绝即教育);
  * - navigate 的 rel 参数从实体 links(含子实体直达)生成枚举;
- * - clarify/render 是保留动词:T2 未实现 capability,description 声明禁止调用。
+ * - clarify 是 Agent 协议级终态，不是 application capability；render 仍是保留动词。
  *
  * 输出是框架无关的 ToolDescriptor(纯 JSON Schema 载体):llm-driver 经
  * ai sdk 的 jsonSchema() 接线;HTTP 合同是唯一真相,tools/MCP 是投影。
@@ -19,8 +20,8 @@ import { navigableRels } from './rule-driver';
 /** 动作工具名前缀(避免与固定动词撞名,映射时剥掉)。 */
 export const ACTION_TOOL_PREFIX = 'action_';
 
-/** 保留动词:T2 不实现 clarify capability / 渲染词汇表(Phase F/T7)。 */
-const RESERVED_VERBS = ['clarify', 'render'] as const;
+/** 保留动词:渲染词汇表尚未接入 Agent 协议。 */
+const RESERVED_VERBS = ['render'] as const;
 
 export interface ToolDescriptor {
   name: string;
@@ -152,11 +153,23 @@ export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
     {
       name: 'clarify',
       description:
-        '保留动词:T2 未实现 clarify capability,禁止调用。' +
-        '缺少字段值时,请按字段语义自行构造合理值(枚举字段必须取 enum 内的值)。',
-      parameters: objectSchema({ fields: { type: 'array', items: { type: 'string' } } }, [
-        'fields',
-      ]),
+        '协议级澄清出口，不是 application capability，不产生业务副作用。' +
+        '只在目标或对象存在影响正确性的歧义时调用；continuation 保留待继续的原目标。',
+      parameters: objectSchema(
+        {
+          question: { type: 'string', description: '向用户提出的单个明确问题' },
+          continuation: objectSchema(
+            {
+              verb: { type: 'string', description: '待继续的原目标动词/意图' },
+              targetRel: { type: 'string' },
+              resource: { type: 'string' },
+              fields: { type: 'object', additionalProperties: true },
+            },
+            ['verb'],
+          ),
+        },
+        ['question', 'continuation'],
+      ),
     },
     {
       name: 'render',

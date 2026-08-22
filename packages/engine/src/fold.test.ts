@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ApplicationDefinition, CapabilityDefinition, EngineSnapshot, InstanceSnapshot } from '@ui4a/shared';
+import type {
+  ApplicationDefinition,
+  CapabilityDefinition,
+  EngineSnapshot,
+  InstanceSnapshot,
+} from '@ui4a/shared';
 
 import { approveConfirmation, rejectConfirmation } from './confirmation';
 import type { ConfirmationRequestDetail } from './confirmation';
@@ -71,6 +76,25 @@ describe('fold 投影', () => {
       // T7:renderSpecs 表恒物化(空表;凝固事件折叠的目标表)。
       renderSpecs: {},
     });
+  });
+
+  it('conversation 审计事件不改变业务快照', () => {
+    const events: LogEvent[] = [
+      {
+        seq: 1,
+        kind: 'chat-message-appended',
+        rel: 'chat:sess-main',
+        detail: { sessionId: 'sess-main', role: 'user', content: '总结第一篇文章' },
+      },
+      {
+        seq: 2,
+        kind: 'chat-context-updated',
+        rel: 'chat:sess-main',
+        detail: { sessionId: 'sess-main', basedOnSeq: 1, activeGoal: { verb: '总结' } },
+      },
+    ];
+
+    expect(fold(events, { flows })).toEqual(fold([], { flows }));
   });
 
   it('seed 事件建立种子实体与集合', () => {
@@ -609,7 +633,6 @@ describe('fold — notification-delivered(T3 Phase C)', () => {
   });
 });
 
-
 // ---------------------------------------------------------------------------
 // application-seeded(T10 Phase B;spec 架构决定 4):boot seed 的 application
 // 定义事件 —— fold 把活跃 app 定义落 applications 表(seeded 即 active,
@@ -736,7 +759,9 @@ describe('fold — capability-seeded(T13 Phase C)', () => {
       { flows },
     );
 
-    expect(snapshot.capabilities?.['draft']?.intent).toBe('价值载体字段的草稿工件起草(proposal 来源)。');
+    expect(snapshot.capabilities?.['draft']?.intent).toBe(
+      '价值载体字段的草稿工件起草(proposal 来源)。',
+    );
   });
 
   it('缺少 detail 载荷 → 响亮失败并带 seq(日志完整性)', () => {

@@ -9,6 +9,9 @@ import {
   resolveLlmConfig,
   runAgent,
   type AgentGoal,
+  type ConversationContext as AgentConversationContext,
+  type ConversationMessage as AgentConversationMessage,
+  type FactRef,
   type GeneratedRenderSpec,
   type RenderSitemapContext,
   type RenderWordSummary,
@@ -20,10 +23,11 @@ import type {
   ChatTurnStartedDetail,
 } from '../../../chat/history';
 import { wrapDriverForAudit, type AgentDecisionDetail } from '../../../chat/decisions';
-import { hasExplicitMetaIntent, isDiscoveryOnlyIntent, resolveStartRel } from '../../../chat/start';
+import { conversationView } from '../../../chat/conversation';
+import { hasExplicitMetaIntent, resolveStartRel } from '../../../chat/start';
 import type { ChatRenderPayload } from '../../../chat/sse';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
-import { appendEvent } from '../../../db/events';
+import { appendEvent, readLog } from '../../../db/events';
 import { getDb, getEngine, type EngineRuntime } from '../../../engine/service';
 import { dispatchDelegation } from '../../../temporal/delegation';
 import { RENDER_WORDS } from '../../../render/registry';
@@ -293,6 +297,101 @@ async function appendChatProjection(
   }
 }
 
+async function appendConversationMessage(args: {
+  sessionId: string;
+  turnId: string;
+  messageId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  model?: string;
+  citations?: FactRef[];
+}): Promise<number> {
+  const appended = await appendEvent(getDb(), {
+    kind: 'chat-message-appended',
+    actor: args.role === 'user' ? 'human' : 'agent',
+    principal: `user:${args.sessionId}`,
+    channel: 'chat',
+    rel: `chat:${args.sessionId}`,
+    detail: {
+      sessionId: args.sessionId,
+      turnId: args.turnId,
+      messageId: args.messageId,
+      role: args.role,
+      content: args.content,
+      provenance:
+        args.role === 'user'
+          ? { kind: 'user-input' as const }
+          : { kind: 'assistant-output' as const, ...(args.model ? { model: args.model } : {}) },
+      ...(args.citations !== undefined ? { citations: args.citations } : {}),
+    },
+  });
+  return appended.seq;
+}
+
+async function appendConversationContext(args: {
+  sessionId: string;
+  basedOnSeq: number;
+  sourceMessageIds: string[];
+  patch: Record<string, unknown>;
+}): Promise<void> {
+  await appendEvent(getDb(), {
+    kind: 'chat-context-updated',
+    actor: 'agent',
+    principal: `user:${args.sessionId}`,
+    channel: 'chat',
+    rel: `chat:${args.sessionId}`,
+    detail: {
+      sessionId: args.sessionId,
+      basedOnSeq: args.basedOnSeq,
+      provenance: { kind: 'mechanical-projection', sourceMessageIds: args.sourceMessageIds },
+      patch: args.patch,
+    },
+  });
+}
+
+async function loadAgentConversation(
+  sessionId: string,
+  currentMessageId: string,
+): Promise<{
+  messages: AgentConversationMessage[];
+  context: AgentConversationContext;
+}> {
+  const view = conversationView(await readLog(getDb()), sessionId);
+  return {
+    messages: view.recentMessages
+      .filter((message) => message.messageId !== currentMessageId)
+      .map(({ role, content }) => ({ role, content })),
+    context: {
+      ...(view.context.activeGoal !== null ? { activeGoal: view.context.activeGoal } : {}),
+      ...(view.context.focus !== null
+        ? {
+            focus: {
+              ...(view.context.focus.currentRel !== null
+                ? { currentRel: view.context.focus.currentRel }
+                : {}),
+              history: view.context.focus.history.map((entry) => ({ ...entry })),
+            },
+          }
+        : {}),
+      ...(view.context.referents.length > 0
+        ? { referents: view.context.referents.map((referent) => ({ ...referent })) }
+        : {}),
+      ...(view.context.constraints.length > 0
+        ? { constraints: view.context.constraints.map((constraint) => ({ ...constraint })) }
+        : {}),
+      ...(view.context.pendingClarification !== null
+        ? {
+            pendingClarification: {
+              question: view.context.pendingClarification.question,
+              continuation: view.context.pendingClarification.continuation,
+              sourceMessageIds: [...view.context.pendingClarification.sourceMessageIds],
+            },
+          }
+        : {}),
+    },
+  };
+}
+
 /**
  * inline 循环的流内执行(inline 常规路径与渲染路径过闸失败的兜底共用):
  * resolveStartRel → runAgent(thinking-delta/thinking/step 帧)→ 冗余步帧 →
@@ -306,8 +405,20 @@ async function streamAgentLoop(args: {
   requested: 'llm' | 'auto';
   resolved: 'llm';
   baseUrl: string;
+  conversationMessages: AgentConversationMessage[];
+  conversation: AgentConversationContext;
 }): Promise<void> {
-  const { send, goal, sessionId, turnId, requested, resolved, baseUrl } = args;
+  const {
+    send,
+    goal,
+    sessionId,
+    turnId,
+    requested,
+    resolved,
+    baseUrl,
+    conversationMessages,
+    conversation,
+  } = args;
   send({ type: 'session', sessionId, turnId });
   const startRel = await resolveStartRel(
     baseUrl,
@@ -333,6 +444,8 @@ async function streamAgentLoop(args: {
       principal: `user:${sessionId}`,
       channel: 'chat',
       startRel,
+      conversationMessages,
+      conversation,
       // thinking 帧(T11 Phase C / 架构决定 4):llm 步的推理自述聚合整段
       // 权威终帧(D22 末尾齐发),先于同号 step 帧;增量通道 thinking-delta
       // 逐片段即推(当前与聚合几乎同刻,管线为真流式就绪);
@@ -414,6 +527,35 @@ async function streamAgentLoop(args: {
   };
   await appendChatProjection('chat-turn', sessionId, turnDetail);
 
+  const assistantMessageId = `${turnId}:assistant`;
+  const assistantContent = result.summary ?? '';
+  if (assistantContent !== '') {
+    const assistantSeq = await appendConversationMessage({
+      sessionId,
+      turnId,
+      messageId: assistantMessageId,
+      role: 'assistant',
+      content: assistantContent,
+      model: process.env.LLM_MODEL,
+      citations: result.sources,
+    });
+    if (result.outcome === 'clarification-needed' && result.continuation !== undefined) {
+      await appendConversationContext({
+        sessionId,
+        basedOnSeq: assistantSeq,
+        sourceMessageIds: [`${turnId}:user`, assistantMessageId],
+        patch: {
+          activeGoal: result.continuation,
+          pendingClarification: {
+            question: assistantContent,
+            continuation: result.continuation,
+            sourceMessageIds: [assistantMessageId],
+          },
+        },
+      });
+    }
+  }
+
   send({
     type: 'final',
     payload: {
@@ -444,8 +586,21 @@ function sseRenderResponse(args: {
   requested: 'llm' | 'auto';
   resolved: 'llm';
   baseUrl: string;
+  conversationMessages: AgentConversationMessage[];
+  conversation: AgentConversationContext;
 }): Response {
-  const { engine, sitemap, goal, sessionId, turnId, requested, resolved, baseUrl } = args;
+  const {
+    engine,
+    sitemap,
+    goal,
+    sessionId,
+    turnId,
+    requested,
+    resolved,
+    baseUrl,
+    conversationMessages,
+    conversation,
+  } = args;
   return sseResponse(async (send) => {
     send({ type: 'session', sessionId, turnId });
     let handled = false;
@@ -484,7 +639,17 @@ function sseRenderResponse(args: {
       // 引擎/凝固故障:如实交回 agent 循环(同旧 JSON 路径的外层 catch 口径)。
     }
     if (!handled) {
-      await streamAgentLoop({ send, goal, sessionId, turnId, requested, resolved, baseUrl });
+      await streamAgentLoop({
+        send,
+        goal,
+        sessionId,
+        turnId,
+        requested,
+        resolved,
+        baseUrl,
+        conversationMessages,
+        conversation,
+      });
     }
   });
 }
@@ -541,6 +706,16 @@ export async function POST(request: Request) {
     configurationFailure = `LLM 不可用: ${error.message}。配置后可重试。`;
   }
 
+  const userMessageId = `${turnId}:user`;
+  await appendConversationMessage({
+    sessionId,
+    turnId,
+    messageId: userMessageId,
+    role: 'user',
+    content: goal.verb,
+  });
+  const agentConversation = await loadAgentConversation(sessionId, userMessageId);
+
   await appendChatProjection('chat-turn-started', sessionId, {
     sessionId,
     turnId,
@@ -552,7 +727,17 @@ export async function POST(request: Request) {
   if (configurationFailure !== undefined) {
     if (mode === 'inline') {
       return sseResponse(async (send) => {
-        await streamAgentLoop({ send, goal, sessionId, turnId, requested, resolved, baseUrl });
+        await streamAgentLoop({
+          send,
+          goal,
+          sessionId,
+          turnId,
+          requested,
+          resolved,
+          baseUrl,
+          conversationMessages: agentConversation.messages,
+          conversation: agentConversation.context,
+        });
       });
     }
     const messages = [{ role: 'assistant' as const, text: `失败: ${configurationFailure}` }];
@@ -580,46 +765,6 @@ export async function POST(request: Request) {
       },
       { status: 503 },
     );
-  }
-
-  // 歧义发现意图只定位入口，不替用户选择 approve/reject/delete 等写动作。
-  // 这是人类权威边界，不交给概率模型自由解释。
-  if (mode === 'inline' && isDiscoveryOnlyIntent(goal.verb)) {
-    const rel = await resolveStartRel(
-      baseUrl,
-      goal,
-      (url, init) => fetch(url, init),
-      baseUrl.endsWith('/_meta') ? 'meta/flows' : 'articles',
-    );
-    const canvasUrl = `/canvas?focus=${encodeURIComponent(rel)}`;
-    const summary = `已定位 ${rel}；未执行具体动作`;
-    const messages = [
-      {
-        role: 'assistant' as const,
-        text: `已打开相关入口 ${rel}；你尚未指定通过、驳回等具体动作，因此没有修改数据。`,
-      },
-    ];
-    await appendChatProjection('chat-turn', sessionId, {
-      sessionId,
-      turnId,
-      goal,
-      outcome: 'done',
-      summary,
-      messages,
-      steps: [],
-      driver: resolved,
-    });
-    return Response.json({
-      sessionId,
-      driver: resolved,
-      requestedDriver: requested,
-      outcome: 'done',
-      summary,
-      messages,
-      steps: [],
-      successes: [],
-      focus: { rel, canvasUrl },
-    });
   }
 
   // render capability(T7 Phase C / S5;T12 Phase A 起含 LLM fallthrough;
@@ -669,6 +814,27 @@ export async function POST(request: Request) {
           messages: payload.messages,
           steps: [],
           driver: resolved,
+        });
+        const assistantMessageId = `${turnId}:assistant`;
+        const assistantSeq = await appendConversationMessage({
+          sessionId,
+          turnId,
+          messageId: assistantMessageId,
+          role: 'assistant',
+          content: payload.messages[0]!.text,
+          model: process.env.LLM_MODEL,
+        });
+        await appendConversationContext({
+          sessionId,
+          basedOnSeq: assistantSeq,
+          sourceMessageIds: [userMessageId, assistantMessageId],
+          patch: {
+            focus: {
+              currentRel: rel,
+              history: [{ rel, sourceMessageId: assistantMessageId }],
+            },
+            referents: [{ text: label, rel, sourceMessageId: assistantMessageId }],
+          },
         });
         return Response.json(payload);
       }
@@ -767,6 +933,8 @@ export async function POST(request: Request) {
           requested,
           resolved,
           baseUrl,
+          conversationMessages: agentConversation.messages,
+          conversation: agentConversation.context,
         });
       }
     }
@@ -839,6 +1007,16 @@ export async function POST(request: Request) {
   // 循环在流内跑完,客户端断开只中断推帧,不中断循环(服务端留痕完整)。
   // 帧序列与审计/落库口径全在 streamAgentLoop(与渲染路径 SSE 化共用)。
   return sseResponse(async (send) => {
-    await streamAgentLoop({ send, goal, sessionId, turnId, requested, resolved, baseUrl });
+    await streamAgentLoop({
+      send,
+      goal,
+      sessionId,
+      turnId,
+      requested,
+      resolved,
+      baseUrl,
+      conversationMessages: agentConversation.messages,
+      conversation: agentConversation.context,
+    });
   });
 }

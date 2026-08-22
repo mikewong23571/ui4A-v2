@@ -11,6 +11,7 @@ import type { SirenAction } from '@ui4a/engine';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  buildLlmMessages,
   buildSystemPrompt,
   buildUserPrompt,
   createDriver,
@@ -23,7 +24,7 @@ import {
   jsonResponse,
   type RecordedCall,
 } from './testkit';
-import type { AgentGoal, DriverContext, FetchLike } from './types';
+import type { AgentGoal, ConversationContext, DriverContext, FetchLike } from './types';
 
 const TEST_LLM_CONFIG = {
   apiKey: 'test-key',
@@ -264,15 +265,32 @@ describe('fail-safe:模型输出不合法', () => {
     expect(op.kind).toBe('fail');
   });
 
-  it('保留动词 clarify/render(T2 未实现)→ fail-safe fail', async () => {
-    for (const verb of ['clarify', 'render']) {
-      const { driver } = llmDriverWith(() => openaiToolResponse(verb, {}));
-      const op = await driver.decide(context());
-      expect(op.kind, `调用 ${verb} 应 fail-safe`).toBe('fail');
-      if (op.kind === 'fail') {
-        expect(op.reason).toContain('未实现');
-      }
+  it('clarify 映射为带原目标延续的协议级终态', async () => {
+    const continuation = { verb: '总结用户指定的文章' };
+    const { driver } = llmDriverWith(() =>
+      openaiToolResponse('clarify', {
+        question: '你指的是第一篇还是欢迎文章？',
+        continuation,
+      }),
+    );
+
+    await expect(driver.decide(context())).resolves.toEqual({
+      kind: 'clarify',
+      question: '你指的是第一篇还是欢迎文章？',
+      continuation,
+    });
+  });
+
+  it('clarify 缺问题或原目标延续时 fail-safe；render 仍为保留动词', async () => {
+    for (const args of [{ continuation: GOAL }, { question: '需要澄清' }]) {
+      const { driver } = llmDriverWith(() => openaiToolResponse('clarify', args));
+      await expect(driver.decide(context())).resolves.toMatchObject({ kind: 'fail' });
     }
+
+    const { driver } = llmDriverWith(() => openaiToolResponse('render', {}));
+    const op = await driver.decide(context());
+    expect(op.kind).toBe('fail');
+    if (op.kind === 'fail') expect(op.reason).toContain('未实现');
   });
 
   it('navigate 参数缺 rel → fail-safe fail', async () => {
@@ -345,6 +363,78 @@ describe('授权合同观察进入 LLM prompt', () => {
     expect(prompt).toContain('欢迎正文');
     expect(prompt).toContain('post:first-post');
     expect(prompt).toContain('post:post-welcome');
+  });
+});
+
+describe('多轮会话进入 LLM messages', () => {
+  const conversation: ConversationContext = {
+    activeGoal: { verb: '总结第一篇文章', targetRel: 'post:first-post' },
+    focus: {
+      currentRel: 'post:first-post',
+      history: [{ rel: 'articles' }, { rel: 'post:first-post', sourceMessageId: 'm1' }],
+    },
+    referents: [
+      { text: '第一篇', rel: 'post:first-post', sourceMessageId: 'm1' },
+      { text: '它', rel: 'post:first-post', sourceMessageId: 'm3' },
+    ],
+    constraints: [
+      { text: '只在对话中回答', sourceMessageId: 'm3' },
+      { text: '不保存', sourceMessageId: 'm3' },
+    ],
+  };
+
+  it('原始 user/assistant 内容保留 role 与顺序，处境作为末尾 user message 输入', () => {
+    const messages = buildLlmMessages(
+      context({
+        conversationMessages: [
+          { role: 'user', content: '总结一下第一篇文章' },
+          { role: 'assistant', content: '我已定位到第一篇文章。' },
+          { role: 'user', content: '你自己总结就行，不用保存。' },
+        ],
+        conversation,
+      }),
+    );
+
+    expect(messages.slice(0, 3)).toEqual([
+      { role: 'user', content: '总结一下第一篇文章' },
+      { role: 'assistant', content: '我已定位到第一篇文章。' },
+      { role: 'user', content: '你自己总结就行，不用保存。' },
+    ]);
+    expect(messages.at(-1)?.role).toBe('user');
+    expect(messages.at(-1)?.content).toContain('"activeGoal"');
+    expect(messages.at(-1)?.content).toContain('post:first-post');
+    expect(messages.at(-1)?.content).toContain('不保存');
+  });
+
+  it('实际 Chat Completions 请求使用 system + role-preserving messages', async () => {
+    const { driver, calls } = llmDriverWith(() =>
+      openaiToolResponse('answer', {
+        content: '这是一篇验收文章。',
+        sources: [{ rel: 'post:first-post', pointer: '/properties/fields/body' }],
+      }),
+    );
+    await driver.decide(
+      context({
+        conversationMessages: [
+          { role: 'user', content: '总结第一篇' },
+          { role: 'assistant', content: '你希望保存吗？' },
+          { role: 'user', content: '不保存' },
+        ],
+        conversation,
+      }),
+    );
+
+    const messages = calls[0]?.body?.messages as { role: string; content: string }[];
+    expect(messages.map(({ role }) => role)).toEqual([
+      'system',
+      'user',
+      'assistant',
+      'user',
+      'user',
+    ]);
+    expect(messages[1]?.content).toBe('总结第一篇');
+    expect(messages[2]?.content).toBe('你希望保存吗？');
+    expect(messages[3]?.content).toBe('不保存');
   });
 });
 

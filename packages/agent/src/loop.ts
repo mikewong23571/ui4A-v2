@@ -3,6 +3,7 @@
  *
  * 每步:取当前实体 → driver.decide → 执行操作:
  * - answer:直接返回基于授权观察的临时回答，零 HTTP 写入;
+ * - clarify:返回待澄清问题与原目标延续，终止本次 run 且零 HTTP 写入;
  * - navigate:立即取目标实体,成功则切换当前 rel;404 记 not-found 并回流;
  * - exec:POST /api/exec;200 记 executed 并入 successes;202 记 suspended 并终止等待人类;
  *   4xx/网络故障记 rejected 并回流;
@@ -16,6 +17,7 @@ import type {
   AgentDriver,
   AgentGoal,
   AgentRunResult,
+  ConversationContext,
   ContractObservation,
   DriverContext,
   EntitySummary,
@@ -29,6 +31,7 @@ import type { SirenEntity } from '@ui4a/engine';
 
 const DEFAULT_MAX_STEPS = 24;
 const DEFAULT_MAX_OBSERVATIONS = 8;
+const DEFAULT_MAX_CONVERSATION_MESSAGES = 12;
 const DEFAULT_START_REL = 'articles';
 const DEFAULT_CHANNEL = 'http';
 
@@ -46,6 +49,56 @@ export function summarizeEntity(entity: SirenEntity): EntitySummary {
   };
 }
 
+function copyGoal(goal: AgentGoal): AgentGoal {
+  return {
+    ...goal,
+    ...(goal.fields !== undefined ? { fields: { ...goal.fields } } : {}),
+  };
+}
+
+/** 防止 driver 通过可变引用改写上层的会话投影。 */
+function copyConversation(
+  context: ConversationContext | undefined,
+): ConversationContext | undefined {
+  if (context === undefined) return undefined;
+  return {
+    ...(context.activeGoal !== undefined
+      ? { activeGoal: context.activeGoal === null ? null : copyGoal(context.activeGoal) }
+      : {}),
+    ...(context.focus !== undefined
+      ? {
+          focus:
+            context.focus === null
+              ? null
+              : {
+                  ...context.focus,
+                  ...(context.focus.history !== undefined
+                    ? { history: context.focus.history.map((entry) => ({ ...entry })) }
+                    : {}),
+                },
+        }
+      : {}),
+    ...(context.referents !== undefined
+      ? { referents: context.referents.map((referent) => ({ ...referent })) }
+      : {}),
+    ...(context.constraints !== undefined
+      ? { constraints: context.constraints.map((constraint) => ({ ...constraint })) }
+      : {}),
+    ...(context.pendingClarification !== undefined
+      ? {
+          pendingClarification:
+            context.pendingClarification === null
+              ? null
+              : {
+                  question: context.pendingClarification.question,
+                  continuation: copyGoal(context.pendingClarification.continuation),
+                  sourceMessageIds: [...context.pendingClarification.sourceMessageIds],
+                },
+        }
+      : {}),
+  };
+}
+
 export async function runAgent(
   driver: AgentDriver,
   goal: AgentGoal,
@@ -54,6 +107,18 @@ export async function runAgent(
   const client = createContractClient(options.baseUrl, options.fetchImpl);
   const maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
   const maxObservations = Math.max(1, options.maxObservations ?? DEFAULT_MAX_OBSERVATIONS);
+  const requestedConversationLimit =
+    options.maxConversationMessages ?? DEFAULT_MAX_CONVERSATION_MESSAGES;
+  const maxConversationMessages = Number.isFinite(requestedConversationLimit)
+    ? Math.max(0, Math.floor(requestedConversationLimit))
+    : DEFAULT_MAX_CONVERSATION_MESSAGES;
+  const providedConversationMessages = options.conversationMessages ?? [];
+  const conversationMessages = (
+    maxConversationMessages === 0
+      ? []
+      : providedConversationMessages.slice(-maxConversationMessages)
+  ).map((message) => ({ ...message }));
+  const conversation = copyConversation(options.conversation);
   const actor = options.actor ?? 'agent';
   const channel = options.channel ?? DEFAULT_CHANNEL;
 
@@ -179,6 +244,8 @@ export async function runAgent(
     // 不应经由引用改写 driver 已见的历史。
     const context: DriverContext = {
       goal,
+      conversationMessages: conversationMessages.map((message) => ({ ...message })),
+      conversation: copyConversation(conversation),
       currentRel,
       entity: fetched.entity,
       trail: [...trail],
@@ -203,6 +270,17 @@ export async function runAgent(
         outcome: 'answered',
         summary: op.content,
         sources: op.sources,
+        steps: trail,
+        successes,
+      };
+    }
+    if (op.kind === 'clarify') {
+      pushStep({ step, rel: currentRel, op, outcome: 'clarification-needed' });
+      return {
+        goal,
+        outcome: 'clarification-needed',
+        summary: op.question,
+        continuation: op.continuation,
         steps: trail,
         successes,
       };

@@ -267,6 +267,18 @@ export async function delegationWorkflow(
       });
       return { delegationId, outcome: 'completed', steps, successes, summary };
     }
+    if (result.op.kind === 'clarify') {
+      const summary = result.op.question;
+      await finishDelegation({
+        delegationId,
+        outcome: 'completed',
+        steps,
+        successes,
+        principal: args.principal,
+        summary,
+      });
+      return { delegationId, outcome: 'completed', steps, successes, summary };
+    }
     if (result.op.kind === 'done') {
       const summary = result.op.summary;
       await finishDelegation({

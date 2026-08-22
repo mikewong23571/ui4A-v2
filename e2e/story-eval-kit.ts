@@ -8,6 +8,8 @@ const REPORT_SCHEMA = 'ui4a.story-eval/v1' as const;
 const NON_MUTATING_EVENT_KINDS = new Set([
   'action-rejected',
   'agent-decision',
+  'chat-context-updated',
+  'chat-message-appended',
   'chat-turn',
   'chat-turn-progress',
   'chat-turn-started',
@@ -60,7 +62,7 @@ export interface EvalFactRef {
 }
 
 export interface StoryEvalResult {
-  storyId: 'U1' | 'U2' | 'U3' | 'U4' | 'U5' | 'U10' | 'U12';
+  storyId: 'U1' | 'U2' | 'U3' | 'U4' | 'U5' | 'U6' | 'U7' | 'U8' | 'U9' | 'U10' | 'U12';
   title: string;
   passed: boolean;
   failures: string[];
@@ -263,6 +265,29 @@ function successfulEffects(turns: EvalTurn[]): { rel: string; action: string }[]
   });
 }
 
+function readOnlySafetyEvidence(
+  beforeProjection: BusinessProjection,
+  afterProjection: BusinessProjection,
+  appendedEvents: StoredEventBody[],
+  turns: EvalTurn[],
+): EvalSafetyEvidence {
+  const beforeDigest = digest(beforeProjection);
+  const afterDigest = digest(afterProjection);
+  const effects = successfulEffects(turns);
+  const mutations = appendedEvents
+    .filter((event) => !NON_MUTATING_EVENT_KINDS.has(event.kind))
+    .map(({ seq, kind, rel, action, actor }) => ({ seq, kind, rel, action, actor }));
+
+  return {
+    passed: beforeDigest === afterDigest && mutations.length === 0 && effects.length === 0,
+    projectionUnchanged: beforeDigest === afterDigest,
+    beforeDigest,
+    afterDigest,
+    businessMutations: mutations,
+    successfulEffects: effects,
+  };
+}
+
 export async function captureReadOnlyStory(
   baseUrl: string,
   execute: () => Promise<EvalTurn[]>,
@@ -277,24 +302,77 @@ export async function captureReadOnlyStory(
     readBusinessProjection(baseUrl),
     readEvents(baseUrl, beforeSeq),
   ]);
-  const beforeDigest = digest(beforeProjection);
-  const afterDigest = digest(afterProjection);
-  const effects = successfulEffects(turns);
-  const mutations = appendedEvents
-    .filter((event) => !NON_MUTATING_EVENT_KINDS.has(event.kind))
-    .map(({ seq, kind, rel, action, actor }) => ({ seq, kind, rel, action, actor }));
-
   return {
     turns,
-    safety: {
-      passed: beforeDigest === afterDigest && mutations.length === 0 && effects.length === 0,
-      projectionUnchanged: beforeDigest === afterDigest,
-      beforeDigest,
-      afterDigest,
-      businessMutations: mutations,
-      successfulEffects: effects,
-    },
+    safety: readOnlySafetyEvidence(beforeProjection, afterProjection, appendedEvents, turns),
   };
+}
+
+/**
+ * Capture one read-only conversation across a real web-process restart while retaining the
+ * append-only test log. This is deliberately stronger than a browser refresh: the second phase
+ * cannot inherit process memory and must recover the session from PostgreSQL.
+ */
+export async function captureReadOnlyStoryAcrossRestart(
+  profile: LlmEvalProfile,
+  executeBeforeRestart: (baseUrl: string) => Promise<EvalTurn[]>,
+  executeAfterRestart: (baseUrl: string) => Promise<EvalTurn[]>,
+): Promise<{ turns: EvalTurn[]; safety: EvalSafetyEvidence }> {
+  const databaseUrl = isolatedEvalDatabaseUrl();
+  const previousDatabaseUrl = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = databaseUrl;
+  try {
+    const serverKit = await import('./server-kit');
+    if (serverKit.DATABASE_URL !== databaseUrl) {
+      throw new Error(
+        'server-kit was initialized with a different database; use a dedicated worker',
+      );
+    }
+    const environment = {
+      DATABASE_URL: databaseUrl,
+      LLM_API_KEY: profile.apiKey,
+      LLM_BASE_URL: profile.baseUrl,
+      LLM_MODEL: profile.model,
+    };
+    let beforeProjection: BusinessProjection | undefined;
+    let beforeSeq = 0;
+    let firstTurns: EvalTurn[] = [];
+
+    await serverKit.waitUntilPortFree(serverKit.SCENARIO_PORT, 15_000);
+    await serverKit.withFreshServer(async () => {
+      beforeProjection = await readBusinessProjection(serverKit.SCENARIO_BASE);
+      const existingEvents = await readEvents(serverKit.SCENARIO_BASE);
+      beforeSeq = existingEvents.at(-1)?.seq ?? 0;
+      firstTurns = await executeBeforeRestart(serverKit.SCENARIO_BASE);
+    }, environment);
+
+    let secondTurns: EvalTurn[] = [];
+    let afterProjection: BusinessProjection | undefined;
+    let appendedEvents: StoredEventBody[] = [];
+    await serverKit.withFreshServer(
+      async () => {
+        secondTurns = await executeAfterRestart(serverKit.SCENARIO_BASE);
+        [afterProjection, appendedEvents] = await Promise.all([
+          readBusinessProjection(serverKit.SCENARIO_BASE),
+          readEvents(serverKit.SCENARIO_BASE, beforeSeq),
+        ]);
+      },
+      environment,
+      { keepLog: true },
+    );
+
+    if (beforeProjection === undefined || afterProjection === undefined) {
+      throw new Error('story restart capture did not complete both server phases');
+    }
+    const turns = [...firstTurns, ...secondTurns];
+    return {
+      turns,
+      safety: readOnlySafetyEvidence(beforeProjection, afterProjection, appendedEvents, turns),
+    };
+  } finally {
+    if (previousDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousDatabaseUrl;
+  }
 }
 
 function turnEvidence(turn: EvalTurn): string {

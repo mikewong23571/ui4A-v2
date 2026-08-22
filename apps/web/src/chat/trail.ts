@@ -35,6 +35,8 @@ export function stepToMessage(step: TrailStep): ChatMessage {
           };
     case 'answer':
       return { role: 'assistant', text: op.content };
+    case 'clarify':
+      return { role: 'assistant', text: op.question };
     case 'exec':
       return outcome === 'executed'
         ? {

@@ -5,7 +5,7 @@
  * 双写者模式)→ GET /api/chat/history 按 sessionId 过滤投影为本类型序列
  * (seq 升序)。服务端零会话态:会话是客户端对日志的投影。
  */
-import type { AgentGoal, AgentOutcome, TrailStep } from '@ui4a/agent';
+import type { AgentGoal, AgentOutcome, FactRef, TrailStep } from '@ui4a/agent';
 
 import type { ChatMessage } from './trail';
 
@@ -49,6 +49,94 @@ export interface ChatTurnProgressDetail {
   turnId: string;
   message: ChatMessage;
   step?: TrailStep;
+}
+
+/**
+ * 不可变对话原话的出处。用户输入与 Assistant 最终输出是新的权威事件；
+ * legacy-chat-turn 仅用于从 T15 前的完成回合恢复有限上下文。
+ */
+export interface ChatMessageProvenance {
+  kind: 'user-input' | 'assistant-output' | 'legacy-chat-turn';
+  model?: string;
+}
+
+/** chat-message-appended:只保存用户/Assistant 原话，不承载 thinking/progress。 */
+export interface ChatMessageAppendedDetail {
+  sessionId: string;
+  turnId: string;
+  messageId: string;
+  role: 'user' | 'assistant';
+  /** 原始内容；投影不得 trim、摘要或改写。 */
+  content: string;
+  provenance: ChatMessageProvenance;
+  /** Assistant 回答引用的授权合同事实；用户原话通常没有。 */
+  citations?: FactRef[];
+}
+
+export interface ConversationReferent {
+  text: string;
+  rel: string;
+  sourceMessageId: string;
+}
+
+export interface ConversationConstraint {
+  text: string;
+  sourceMessageId: string;
+}
+
+export interface ConversationFocusEntry {
+  rel: string;
+  sourceMessageId?: string;
+}
+
+export interface ConversationFocus {
+  currentRel: string | null;
+  history: ConversationFocusEntry[];
+}
+
+export interface PendingClarification {
+  question: string;
+  /** 澄清回复到达后应继续的目标，不把回复误当成新任务。 */
+  continuation: AgentGoal;
+  sourceMessageIds: string[];
+}
+
+/**
+ * 副作用授权的会话骨架。它只是后续机械授权门的输入，不自行执行 action，
+ * sourceMessageId 必须指向一条保留的用户原话。
+ */
+export interface AuthorizedEffect {
+  rel: string;
+  action: string;
+  sourceMessageId: string;
+  status: 'active' | 'consumed' | 'revoked';
+}
+
+export interface ConversationContextPatch {
+  activeGoal?: AgentGoal | null;
+  focus?: ConversationFocus | null;
+  referents?: ConversationReferent[];
+  constraints?: ConversationConstraint[];
+  pendingClarification?: PendingClarification | null;
+  authorizedEffects?: AuthorizedEffect[];
+}
+
+/** derived context 的出处；它是可修订解释，不是用户原话或业务事实。 */
+export interface ChatContextProvenance {
+  kind: 'llm-interpretation' | 'mechanical-projection';
+  sourceMessageIds: string[];
+  model?: string;
+}
+
+/**
+ * chat-context-updated:对结构化会话状态的部分更新。basedOnSeq 是并发版本，
+ * 较旧解释即使晚到也不能覆盖已接受的新解释。
+ */
+export interface ChatContextUpdatedDetail {
+  sessionId: string;
+  basedOnSeq: number;
+  provenance: ChatContextProvenance;
+  patch: ConversationContextPatch;
 }
 
 /** sessions 端点返回的会话清单行(chat-turn 事件按 sessionId 分组的投影)。 */

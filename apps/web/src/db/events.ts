@@ -59,6 +59,8 @@ export type EventKind =
   | 'chat-turn-started'
   | 'chat-turn-progress'
   | 'chat-turn'
+  | 'chat-message-appended'
+  | 'chat-context-updated'
   | 'agent-decision';
 
 /** 追加事件(引擎 EngineEvent 的日志层超集:引擎不产 seq/ts/reason,由本层分配)。 */

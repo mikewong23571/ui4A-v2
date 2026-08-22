@@ -864,6 +864,72 @@ describe('role/app 上下文槽位:数据注入路径(T10 Phase D)', () => {
   });
 });
 
+describe('有界多轮会话与结构化处境', () => {
+  it('RunAgentOptions 只把最近 N 条原文按 role 传入每步，不改写输入', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
+    const messages = [
+      { role: 'user' as const, content: '看看第一篇' },
+      { role: 'assistant' as const, content: '已定位第一篇' },
+      { role: 'user' as const, content: '总结一下' },
+    ];
+    const snapshot = structuredClone(messages);
+
+    await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+      conversationMessages: messages,
+      maxConversationMessages: 2,
+      conversation: {
+        activeGoal: { verb: '总结第一篇', targetRel: 'post:first-post' },
+        focus: {
+          currentRel: 'post:first-post',
+          history: [{ rel: 'articles' }, { rel: 'post:first-post', sourceMessageId: 'm1' }],
+        },
+        referents: [{ text: '它', rel: 'post:first-post', sourceMessageId: 'm3' }],
+        constraints: [{ text: '不保存', sourceMessageId: 'm3' }],
+      },
+    });
+
+    expect(driver.contexts[0]?.conversationMessages).toEqual(messages.slice(-2));
+    expect(driver.contexts[0]?.conversation).toEqual({
+      activeGoal: { verb: '总结第一篇', targetRel: 'post:first-post' },
+      focus: {
+        currentRel: 'post:first-post',
+        history: [{ rel: 'articles' }, { rel: 'post:first-post', sourceMessageId: 'm1' }],
+      },
+      referents: [{ text: '它', rel: 'post:first-post', sourceMessageId: 'm3' }],
+      constraints: [{ text: '不保存', sourceMessageId: 'm3' }],
+    });
+    expect(messages).toEqual(snapshot);
+  });
+});
+
+describe('clarify 协议终态', () => {
+  it('澄清终止本次 run，保留原目标延续且零 HTTP 写入', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const continuation = { verb: '总结用户指定的文章' };
+    const driver = new ScriptedDriver([
+      { kind: 'clarify', question: '你指的是哪一篇文章？', continuation },
+      { kind: 'fail', reason: '不应进入下一步' },
+    ]);
+
+    const result = await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+    });
+
+    expect(result).toMatchObject({
+      outcome: 'clarification-needed',
+      summary: '你指的是哪一篇文章？',
+      continuation,
+    });
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0]).toMatchObject({ outcome: 'clarification-needed' });
+    expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(0);
+  });
+});
+
 // ---- onReasoning 推理自述回调(T11 Phase C / 架构决定 4)--------------------
 
 /** 模拟 llm driver 的 reasoning 产出:decide 时经 sink 回调聚合整段自述。 */

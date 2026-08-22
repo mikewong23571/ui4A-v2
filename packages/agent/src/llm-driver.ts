@@ -4,7 +4,8 @@
  * - 决策由 LLM 产出:OpenAI 兼容 tool calling(Vercel AI SDK streamText,T11
  *   Phase C 自流式改造:聚合出最终 tool call 后语义与非流式完全一致——
  *   mapToolCall/fail-safe/60s abort/B4 错误折算原样);
- * - prompt = 目标 + 轨迹 + 最近拒绝(拒绝即数据)+ 有界完整授权实体观察;
+ * - messages = 有界近期 user/assistant 原文 + 结构化会话处境 + 目标/轨迹/
+ *   最近拒绝/有界完整授权实体观察；原文 role 不被压成单个 prompt;
  * - SYSTEM_PROMPT 只装不变协议核心;role/app 上下文槽位(T10)从
  *   DriverContext 数据注入,空槽 = 现状(零行为变化);
  * - 工具列表 = buildToolProjection(固定动词 5 + 动态动作工具,guard 嵌
@@ -59,7 +60,7 @@ const SYSTEM_PROMPT = [
   '5. navigate 的 rel 必须来自其枚举;工具 description 标注 blocked 的动作当前被 guard 阻断,不要调用。',
   '6. 拒绝即数据:轨迹中的被拒动作与「最近拒绝」携带结构化原因——换路径,或按动作字段 schema 修正参数后重试。',
   '7. 字段值按语义构造:枚举字段必须取 enum 内的值;标题/正文等 intent 字段按目标意图编写;不要发明合同外的值。',
-  '8. clarify 与 render 是保留动词且当前未实现:禁止调用;缺字段值时按规则 7 自行构造。',
+  '8. 当用户的目标或对象存在影响正确性的歧义时，调用 clarify(question,continuation)；这是对话协议终态，不是 application capability。render 仍未实现，禁止调用。',
   '9. 完成判定:done 只用于业务动作目标，目标对应的完成类 action 成功执行过之后才调用 done；只读目标必须 answer。',
   '10. 用户明确要求“一次走完/一次决策/批量执行”时，优先调用 exec_plan(steps) 一次提交完整计划；普通写目标仍逐步 exec。exec_plan 禁止包含 approve/reject。',
   '11. 当前合同没有完成目标所需的业务 action/capability 时调用 fail(reason,evidence),明确缺口与已查看证据;禁止在实体间重复导航。',
@@ -105,13 +106,15 @@ function describeTrail(context: DriverContext): string {
           ? `navigate → ${step.op.rel}`
           : step.op.kind === 'answer'
             ? `answer ${step.op.content} sources=${JSON.stringify(step.op.sources)}`
-            : step.op.kind === 'exec'
-              ? `exec ${step.op.action} ${JSON.stringify(step.op.params ?? {})}`
-              : step.op.kind === 'exec-plan'
-                ? `exec-plan ${JSON.stringify(step.op.steps)}`
-                : step.op.kind === 'done'
-                  ? `done ${step.op.summary}`
-                  : `fail ${step.op.reason}`;
+            : step.op.kind === 'clarify'
+              ? `clarify ${step.op.question} continuation=${JSON.stringify(step.op.continuation)}`
+              : step.op.kind === 'exec'
+                ? `exec ${step.op.action} ${JSON.stringify(step.op.params ?? {})}`
+                : step.op.kind === 'exec-plan'
+                  ? `exec-plan ${JSON.stringify(step.op.steps)}`
+                  : step.op.kind === 'done'
+                    ? `done ${step.op.summary}`
+                    : `fail ${step.op.reason}`;
       const note = step.rejection !== undefined ? `(拒绝: ${step.rejection.reason})` : '';
       return `${step.step}. [${step.rel}] ${op} ⇒ ${step.outcome} ${note}`;
     })
@@ -127,6 +130,7 @@ function describeTrail(context: DriverContext): string {
 export function buildUserPrompt(context: DriverContext): string {
   const parts = [
     `## 用户目标\n${JSON.stringify(context.goal)}`,
+    `## 结构化会话处境(可修订认知，不是业务事实或 effect 授权)\n${JSON.stringify(context.conversation ?? {}, null, 2)}`,
     `## 当前实体 rel\n${context.currentRel}`,
     `## 授权合同观察账本(有界，按最近访问顺序；entity 为完整 Siren 快照)\n${describeObservations(context)}`,
     `## 轨迹(至今)\n${describeTrail(context)}`,
@@ -140,6 +144,23 @@ export function buildUserPrompt(context: DriverContext): string {
     );
   }
   return parts.join('\n\n');
+}
+
+/** LLM 输入消息的最小形状；不向公共 Agent 协议泄漏 AI SDK 类型。 */
+export interface LlmMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/**
+ * 唯一的 LLM messages 组装入口：保留上层已裁剪原文的 role/顺序，再追加当前
+ * 合同处境作为一条 user message。不从原文推导业务事实，也不改写原文。
+ */
+export function buildLlmMessages(context: DriverContext): LlmMessage[] {
+  return [
+    ...(context.conversationMessages ?? []).map((message) => ({ ...message })),
+    { role: 'user', content: buildUserPrompt(context) },
+  ];
 }
 
 // ---- 工具调用 → 循环操作映射 ------------------------------------------------
@@ -187,6 +208,36 @@ function mapToolCall(toolName: string, input: unknown): AgentOperation {
           rel: source.rel as string,
           pointer: source.pointer as string,
         })),
+      };
+    }
+    case 'clarify': {
+      const question = isPlainObject(input) ? input.question : undefined;
+      const continuation = isPlainObject(input) ? input.continuation : undefined;
+      if (typeof question !== 'string' || question === '') {
+        return invalidOutput('clarify 缺少字符串参数 question');
+      }
+      if (
+        !isPlainObject(continuation) ||
+        typeof continuation.verb !== 'string' ||
+        continuation.verb === ''
+      ) {
+        return invalidOutput('clarify 缺少原目标延续 continuation.verb');
+      }
+      const fields = continuation.fields;
+      if (fields !== undefined && !isPlainObject(fields)) {
+        return invalidOutput('clarify continuation.fields 必须是对象');
+      }
+      return {
+        kind: 'clarify',
+        question,
+        continuation: {
+          verb: continuation.verb,
+          ...(typeof continuation.targetRel === 'string'
+            ? { targetRel: continuation.targetRel }
+            : {}),
+          ...(typeof continuation.resource === 'string' ? { resource: continuation.resource } : {}),
+          ...(fields !== undefined ? { fields } : {}),
+        },
       };
     }
     case 'exec': {
@@ -251,7 +302,7 @@ function mapToolCall(toolName: string, input: unknown): AgentOperation {
   if (isReservedVerb(toolName)) {
     return {
       kind: 'fail',
-      reason: `LLM 调用了保留动词 ${toolName}(T2 未实现 clarify/render capability)`,
+      reason: `LLM 调用了保留动词 ${toolName}(协议尚未实现)`,
     };
   }
   if (toolName.startsWith(ACTION_TOOL_PREFIX)) {
@@ -303,12 +354,12 @@ async function llmDecide(
   sink?: DecideSink,
 ): Promise<AgentOperation> {
   try {
-    // 注意:system/prompt 必须经 buildSystemPrompt/buildUserPrompt 构造——
-    // T11 Phase B 的 agent-decision 审计按同二函数重建全量 prompt 落库。
+    // 注意:system/messages 必须经 buildSystemPrompt/buildLlmMessages 构造——
+    // 审计可用同两个纯函数重建实际模型输入，不丢失原始会话 role。
     const result = streamText({
       model,
       system: buildSystemPrompt({ role: context.role, app: context.app }),
-      prompt: buildUserPrompt(context),
+      messages: buildLlmMessages(context),
       tools: toToolSet(buildToolProjection(context.entity)),
       // 端点挂死兜底(T9 Phase B):60s 无响应流被 abort(下文 'abort' 部件),
       // 经 catch 如实进 fail reason(B4 口径:失败也是合同的一部分,decide 永不抛异常)。

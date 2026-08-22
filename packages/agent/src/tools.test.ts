@@ -101,12 +101,22 @@ describe('固定协议动词', () => {
     expect(parameters.properties.evidence.items.type).toBe('string');
   });
 
-  it('clarify/render 保留动词:description 声明 T2 未实现、禁止调用', () => {
+  it('clarify 是协议级澄清出口，携带问题与原目标延续', () => {
     const tools = buildToolProjection(wizardEntity);
-    for (const name of ['clarify', 'render']) {
-      const tool = tools.find((candidate) => candidate.name === name)!;
-      expect(tool.description).toContain('未实现');
-    }
+    const clarify = tools.find((candidate) => candidate.name === 'clarify')!;
+    expect(clarify.description).toContain('协议级');
+    expect(clarify.description).toContain('不是 application capability');
+    expect((clarify.parameters as { required: string[] }).required).toEqual([
+      'question',
+      'continuation',
+    ]);
+  });
+
+  it('render 仍为保留动词', () => {
+    const render = buildToolProjection(wizardEntity).find(
+      (candidate) => candidate.name === 'render',
+    )!;
+    expect(render.description).toContain('未实现');
   });
 });
 
