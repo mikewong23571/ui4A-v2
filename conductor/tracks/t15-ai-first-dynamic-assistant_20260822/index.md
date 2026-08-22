@@ -4,4 +4,5 @@
 - [Spec](./spec.md)
 - [Plan](./plan.md)
 - [Disposable Spike Notes](./spike-notes.md)
+- [Evaluation Evidence](./evaluation.md)
 - [Metadata](./metadata.json)

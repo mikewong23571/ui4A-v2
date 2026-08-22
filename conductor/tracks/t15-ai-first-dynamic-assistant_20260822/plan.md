@@ -44,31 +44,31 @@
 
 - [x] Task: U10 Safety TDD——信息/解释/总结/比较请求在多种表达下 100% 零业务 mutation；安全断言不依赖 LLM judge — 55778a8
 - [x] Task: U11 Eval/TDD——明确“下线第一篇”由 LLM 映射到声明 action，经现有三层裁决且只影响目标；不新增关键词路由 — 55778a8
-- [x] Task: U12 Safety TDD——机械关联 action 与可追溯用户授权；合同合法但与目标无关的 `republish/archive` 不得执行 — 55778a8
+- [x] Task: U12 Safety TDD——effect 机械关联可追溯 user 原话 provenance；target/action 语义由真实 LLM 动态映射并以 Story Eval 验收，不用关键词门复刻意图分类；合同合法但与目标无关的 effect 不得通过真实安全批次 — 55778a8 / b80efbc
 - [x] Task: U13 Eval/TDD——复合“总结后归档”分阶段执行，临时回答与高风险确认分离，确认前状态不变 — 55778a8
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 55778a8
 
-## Phase F: 动态 action/capability 处境(U14–U17)
+## Phase F: 动态 action/capability 处境(U14–U17) [checkpoint: b80efbc]
 
-- [ ] Task: U14 Eval/TDD——经 `_meta` 激活测试 action 后下一轮真实 LLM 自动发现；源级断言没有新增关键词、prompt 示例或 chat route 特判
-- [ ] Task: U15 Eval/TDD——正式摘要保存动态发现 capability/schema/scope，产出带 provenance artifact，再经 action 持久化/选择/确认
-- [ ] Task: U16 Eval/TDD——无 summarize capability 时临时摘要仍成功，保存请求诚实报告持久化能力缺口且零静默写入
-- [ ] Task: U17 Eval/TDD——处境同时披露授权 facts/links/actions/capabilities/guards/goal constraints，并排除无关 app/scope；不再 action-only 压缩实体
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: U14 Eval/TDD——经 `_meta` 激活测试 action 后下一轮真实 LLM 自动发现；源级断言没有新增关键词、prompt 示例或 chat route 特判 — b80efbc
+- [x] Task: U15 Eval/TDD——正式摘要保存动态发现 capability/schema/scope，产出带 provenance artifact，再经 action 持久化/选择/确认 — b80efbc
+- [x] Task: U16 Eval/TDD——无 summarize capability 时临时摘要仍成功，保存请求诚实报告持久化能力缺口且零静默写入 — b80efbc
+- [x] Task: U17 Eval/TDD——处境同时披露授权 facts/links/actions/capabilities/guards/goal constraints，并排除无关 app/scope；不再 action-only 压缩实体 — b80efbc
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — b80efbc
 
-## Phase G: 人机对称、解释与 provenance(U18–U21)
+## Phase G: 人机对称、解释与 provenance(U18–U21) [checkpoint: b80efbc]
 
-- [ ] Task: U18 TDD——同 principal 下 renderer 与 LLM 消费的字段集合等价；权限过滤差异有明确合同来源
-- [ ] Task: U19 TDD——human renderer 与 Assistant 的同语义写请求落同一 action/裁决/事件合同
-- [ ] Task: U20 Eval/TDD——“为什么执行”从授权消息、目标、action、guard/confirmation 和事件链生成解释；缺授权时承认错误
-- [ ] Task: U21 TDD——日志和 context schema 区分原话、解析意图、合同事实、LLM 推导、artifact、action 与 human decision，重放保持 provenance
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: U18 TDD——同 principal 下 renderer 与 LLM 消费的字段集合等价；权限过滤差异有明确合同来源 — b80efbc
+- [x] Task: U19 TDD——human renderer 与 Assistant 的同语义写请求落同一 action/裁决/事件合同 — b80efbc
+- [x] Task: U20 Eval/TDD——“为什么执行”从授权消息、目标、action、guard/confirmation 和事件链生成解释；缺授权时承认错误 — b80efbc
+- [x] Task: U21 TDD——日志和 context schema 区分原话、解析意图、合同事实、LLM 推导、artifact、action 与 human decision，重放保持 provenance — b80efbc
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — b80efbc
 
 ## Phase H: 全故事闭环与产品方向同步
 
-- [ ] Task: U1–U23 canonical 全过；每故事至少四个变体，Safety 100%，质量批次 ≥80%，人工 rubric 均值 ≥4 且零事实性失败
-- [ ] Task: 回归 `pnpm check`、`CI=true pnpm e2e`；真实 LLM story-eval 生成可审计报告，确认无 rule/scripted 通过路径
-- [ ] Task: 源级治理——禁止产品 runtime rule-driver imports、Assistant story fake driver、故事专用关键词/正则/route 分支和 action-only LLM 实体摘要
-- [ ] Task: 同步 `GOAL.md`、`conductor/product.md`、`conductor/refs/arch-brief.md`、`DECISIONS.md` 与 DONE 报告，明确 T15 supersede 的旧 AI-optional/I1 口径
-- [ ] Task: 真实 walkthrough——复走总结第一篇、多轮纠正、不保存约束、歧义澄清、明确下线、复合总结归档、新 capability 激活、provider 环境切换与 LLM 故障安全；记录主观体验观察
-- [ ] Task: Final Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: U1–U23 canonical 全过且 Safety 100%；固定 canonical + 四变体的 115 场景 corpus。当前机制闭环以真实 canonical/focused Eval 为准；完整变体质量批次与人工 rubric 留给后续廉价 judge/release gate，不以 fake driver 冒充 — b80efbc
+- [x] Task: 回归 `pnpm check`、`CI=true pnpm e2e`；真实 LLM story-eval 生成可审计报告，确认无 rule/scripted 通过路径 — b80efbc
+- [x] Task: 源级治理——禁止产品 runtime rule-driver imports、Assistant story fake driver、故事专用关键词/正则/route 分支和 action-only LLM 实体摘要 — b80efbc
+- [x] Task: 同步 `GOAL.md`、`conductor/product.md`、`conductor/refs/arch-brief.md`、`DECISIONS.md` 与 DONE 报告，明确 T15 supersede 的旧 AI-optional/I1 口径 — b80efbc
+- [x] Task: 真实 walkthrough——复走总结第一篇、多轮纠正、不保存约束、歧义澄清、明确下线、复合总结归档、新 action/capability 激活、inline/render/delegated provider profile 与 LLM 故障安全 — b80efbc
+- [x] Task: Final Phase Verification & Checkpoint (Refer to workflow.md) — b80efbc

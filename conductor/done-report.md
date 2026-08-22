@@ -15,7 +15,7 @@ T15 修正了旧报告把“AI 可选”解释为“无模型也由 rule driver 
 | Provider 配置 | `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` 全部外置；缺项诚实失败且零副作用；正式工件不允许占位模型半写 | `packages/agent/src/llm-config.ts`、`apps/web/src/engine/service.ts` |
 | 验收 | 安全边界确定性测试必须 100%；动态语义由真实 LLM Eval 验收，不以固定措辞、固定轨迹或 fake driver 冒充 | [T15 spec](./tracks/t15-ai-first-dynamic-assistant_20260822/spec.md) 的 Story Eval Contract |
 
-本 addendum 同步产品方向与已实现机制，不单独宣称 T15 最终 Story Eval/walkthrough 已完成；最终结果与证据由 T15 track checkpoint 收口。
+T15 checkpoint `b80efbc` 已完成最终 Story Eval/walkthrough；可复核结果见 [T15 Evaluation Evidence](./tracks/t15-ai-first-dynamic-assistant_20260822/evaluation.md)。
 
 ## 基线场景(业务平面)
 
