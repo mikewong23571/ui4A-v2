@@ -1,0 +1,6 @@
+T13 Phase A Task 2: BIOS 只读拓扑图
+
+改动:meta/flow-topology-view.tsx(新增组件)、flow-definition-view.tsx(接入)、3 测试文件适配+新增、diff-render.test.tsx(零 AI 名单)、e2e/s2.spec.ts(仅新增 ③' 拓扑断言)
+只读口径:nodesDraggable/Connectable/elementsSelectable=false;缩放平移保留;拓扑区零按钮(e2e 断言)。
+Why:spec 架构决定 1 + 验收 2——人类审批者看得懂状态机才签得了字(D19-7)。
+验收(编排 agent 亲自复跑):meta 组件 33/33;CI=true pnpm check 992 passed;s2 e2e 4/4。自治验收。
