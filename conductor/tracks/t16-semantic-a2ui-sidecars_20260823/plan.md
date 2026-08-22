@@ -6,8 +6,8 @@
 
 - [x] Task: 建立 S1–S32/TS1–TS18 evidence schema；记录 canonical/变体、Safety、Chat/Presentation LLM calls、Recipe/Sidecar hit、依赖校验、浏览器任务和人工 rubric — b16758c
 - [x] Task: Red baseline——复现固定 `focus → detail`、单组件 RenderSpec、原始字段转储、thinking 跨 turn 错挂、Markdown/render 过期回答、Chat context 携带渲染复杂度和 Session 级缓存风险 — 0205e66
-- [ ] Task: A2UI disposable probe——验证当前 SDK 对多组件 Surface、layout、slot/repeat、增量 update、事件回调、序列化/恢复和 catalog version 的真实能力；spike 不直接并入生产
-- [ ] Task: Application Recipe probe——从 Application/Flow 定义机械枚举 overview/inspect/browse/current-task/confirmation/artifact 场景，用独立 Presentation context 生成参数化 Recipe，验证零 live facts/principal/sessionId
+- [x] Task: A2UI disposable probe——验证当前 SDK 对多组件 Surface、layout、slot/repeat、增量 update、事件回调、序列化/恢复和 catalog version 的真实能力；spike 不直接并入生产 — 5d45c65
+- [~] Task: Application Recipe probe——从 Application/Flow 定义机械枚举 overview/inspect/browse/current-task/confirmation/artifact 场景，用独立 Presentation context 生成参数化 Recipe，验证零 live facts/principal/sessionId
 - [ ] Task: User Sidecar probe——比较同一日志独立 Presentation projection、派生存储和 cache index 的 replay/失效/性能；验证跨 Session 命中与 Business Snapshot hash 不变
 - [ ] Task: Flow/graph probe——用 article-drafting + post-status + artifact/confirmation 构造有界 Lens，测量 prompt、解引用、层级 Recipe 和局部失效触点
 - [ ] Task: 将 probe 结论写入 `DECISIONS.md`，确认 pure presentation kernel 位置、Recipe Registry/Sidecar store、event families、fingerprint 和 candidate/promoted lifecycle；技术栈偏差先更新 `tech-stack.md`
