@@ -464,6 +464,23 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
       decidedBy: { actor: 'human', principal: HUMAN_PRINCIPAL },
     });
 
+    // ---- ③' BIOS 拓扑图(T13 验收 2):/meta/flow/<name> 与 /meta/self 只读拓扑可见
+    await page.goto('/meta/flow/article-drafting');
+    const topology = page.locator('section[aria-label="拓扑"]');
+    await expect(topology).toBeVisible();
+    // 节点标注 title;边标注 action 名(v2 已激活:ready 节点 publish/pin 双边)。
+    await expect(topology).toContainText('基本信息');
+    await expect(topology).toContainText('就绪');
+    await expect(topology).toContainText('publish');
+    await expect(topology).toContainText('pin');
+    // 只读口径:拓扑区不提供任何编辑入口(无拖拽连线 handle 交互按钮)。
+    await expect(topology.locator('button')).toHaveCount(0);
+    // /meta/self 同形投影:definition-lifecycle 拓扑同样渲染。
+    await page.goto('/meta/self');
+    const selfTopology = page.locator('section[aria-label="拓扑"]');
+    await expect(selfTopology).toBeVisible();
+    await expect(selfTopology).toContainText('待批准');
+
     // ---- ④ sitemap 重生成(version 变化;ready 节点 action schema 含 pin)------
     const sitemapAfter = await getSitemap();
     expect(sitemapAfter.version).not.toBe(sitemapBefore.version);

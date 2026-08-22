@@ -1,12 +1,13 @@
 'use client';
 /**
- * BIOS 定义查看面(T4 Phase C;spec 架构决定 7):flow 定义的纯文本/表格视图。
+ * BIOS 定义查看面(T4 Phase C;spec 架构决定 7):flow 定义的纯文本/表格视图;
+ * T13 Phase A(spec 架构决定 1)在表格之上增只读拓扑图。
  *
  * - meta/flow:<name> 与 meta/self 共用(同一 flow-definition 投影形状):
- *   属性表 + 节点表 + 动作表(name/to/guards/requires-confirmation/effect)+
- *   字段表——全部来自 Siren 投影,零业务分支;不做 Stately/React Flow 可视化
- *   (T7 非目标),状态机以表格文本呈现;
- * - 渲染零 AI(铁律 5):机械表格,不引入任何 AI/LLM 依赖。
+ *   拓扑区(FlowTopologyView,只读 React Flow)+ 属性表 + 节点表 + 动作表
+ *   (name/to/guards/requires-confirmation/effect)+ 字段表——全部来自
+ *   Siren 投影,零业务分支;
+ * - 渲染零 AI(铁律 5):机械投影,不引入任何 AI/LLM 依赖。
  */
 import type { FieldDefinition, SirenEntity } from '@ui4a/engine';
 
@@ -19,6 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
+import { FlowTopologyView } from './flow-topology-view';
 import { useMetaEntity } from './meta-client';
 
 /** 动作声明投影的 fields 属性形状(action-definition 子实体)。 */
@@ -116,6 +118,11 @@ export function FlowDefinitionView({ rel, entity }: FlowDefinitionViewProps) {
       </nav>
       <h1 className="text-2xl font-semibold tracking-tight">{heading}</h1>
       <p className="mt-1 text-xs text-muted-foreground">{rel}</p>
+
+      <section aria-label="拓扑" className="mt-6">
+        <h2 className="mb-2 text-sm font-semibold">拓扑</h2>
+        <FlowTopologyView entity={entity} />
+      </section>
 
       <section aria-label="属性" className="mt-6">
         <h2 className="mb-2 text-sm font-semibold">属性</h2>

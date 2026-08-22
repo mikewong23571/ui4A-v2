@@ -6,9 +6,11 @@
  * (workflow Step 2:Phase 变更逐文件覆盖)。
  */
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenEntity } from '@ui4a/engine';
+
+import { stubBrowserApis } from '@/test/browser-stubs';
 
 import { ActivationPageBody } from './activation-view';
 import { FlowDefinitionBody } from './flow-definition-view';
@@ -22,7 +24,13 @@ function jsonResponse(status: number, body: unknown): Response {
 
 const flowEntity: SirenEntity = {
   class: ['meta', 'flow-definition'],
-  properties: { name: 'post-status', version: 1, status: 'active', initial: 'published', terminal: ['archived'] },
+  properties: {
+    name: 'post-status',
+    version: 1,
+    status: 'active',
+    initial: 'published',
+    terminal: ['archived'],
+  },
   actions: [],
   links: [{ rel: ['self'], href: '/_meta/api/entity?rel=meta/flow:post-status' }],
   'guard-results': [],
@@ -52,6 +60,12 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+beforeEach(() => {
+  // FlowDefinitionBody 的拓扑区含 React Flow(jsdom 缺 ResizeObserver 等浏览器
+  // API);afterEach 的 unstubAllGlobals 会清桩,逐用例重注(同 flow 词条口径)。
+  stubBrowserApis();
+});
+
 describe('ActivationPageBody(取数状态机)', () => {
   it('ready:已决策激活渲染审计视图(approved-by 留痕,无审批按钮)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, approvedActivation)));
@@ -61,10 +75,7 @@ describe('ActivationPageBody(取数状态机)', () => {
   });
 
   it('404 → missing 提示(激活不存在)', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(jsonResponse(404, { error: '实体不存在' })),
-    );
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(404, { error: '实体不存在' })));
     render(<ActivationPageBody id="ghost" />);
     await waitFor(() => expect(screen.getByText(/不存在/)).toBeTruthy());
   });
@@ -87,10 +98,7 @@ describe('FlowDefinitionBody(取数状态机)', () => {
   });
 
   it('404 → missing 提示(定义不存在)', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(jsonResponse(404, { error: '实体不存在' })),
-    );
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(404, { error: '实体不存在' })));
     render(<FlowDefinitionBody rel="meta/flow:ghost" />);
     await waitFor(() => expect(screen.getByText(/定义 "meta\/flow:ghost" 不存在/)).toBeTruthy());
   });
