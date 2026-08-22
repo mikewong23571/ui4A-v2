@@ -92,6 +92,7 @@
               "type": "text",
               "required": true,
               "semantics": "intent",
+              "presentation": { "role": "identity" },
               "title": "文章标题"
             }
           ],
@@ -137,6 +138,7 @@
               "required": true,
               "options": ["tech", "essay", "review"],
               "semantics": "org-standard",
+              "presentation": { "role": "metadata" },
               "title": "分类",
               "source": {
                 "kind": "static"
@@ -175,6 +177,7 @@
               "type": "textarea",
               "required": true,
               "semantics": "work-product",
+              "presentation": { "role": "primary-content" },
               "title": "正文",
               "source": {
                 "kind": "proposal",
@@ -216,6 +219,7 @@
                   "type": "text",
                   "required": true,
                   "semantics": "intent",
+                  "presentation": { "role": "identity" },
                   "title": "文章标题",
                   "description": "用于生成文章地址(slug),与前序所填一致"
                 }
@@ -256,6 +260,27 @@
       "title": "文章状态",
       "app": "publishing",
       "initial": "published",
+      "fields": [
+        {
+          "name": "title",
+          "type": "text",
+          "title": "文章标题",
+          "presentation": { "role": "identity" }
+        },
+        {
+          "name": "body",
+          "type": "textarea",
+          "title": "正文",
+          "presentation": { "role": "primary-content" }
+        },
+        {
+          "name": "category",
+          "type": "select",
+          "options": ["tech", "essay", "review"],
+          "title": "分类",
+          "presentation": { "role": "metadata" }
+        }
+      ],
       "nodes": [
         {
           "name": "published",
@@ -374,8 +399,7 @@
           "actions": [],
           "fields": []
         }
-      ],
-      "fields": []
+      ]
     },
     {
       "name": "comment-moderation",

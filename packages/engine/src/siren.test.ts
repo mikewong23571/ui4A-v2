@@ -38,6 +38,92 @@ describe('project — 实例实体(四件组装:properties/actions/links/guard-r
     ]);
   });
 
+  it('从实例出生定义投影 identity/status 与不携带事实的字段呈现元数据', () => {
+    const semanticV1 = {
+      ...postStatusFlow,
+      version: 1,
+      fields: [
+        {
+          name: 'title',
+          type: 'text' as const,
+          title: '文章标题',
+          presentation: { role: 'identity' as const },
+        },
+        {
+          name: 'body',
+          type: 'textarea' as const,
+          title: '正文',
+          presentation: { role: 'primary-content' as const },
+          contentMediaType: 'text/plain',
+        },
+        {
+          name: 'category',
+          type: 'text' as const,
+          title: '分类',
+          presentation: { role: 'metadata' as const },
+        },
+      ],
+    };
+    const semanticV2 = { ...postStatusFlow, version: 2, fields: [] };
+    const snapshot: EngineSnapshot = {
+      ...seedSnapshot,
+      instances: {
+        ...seedSnapshot.instances,
+        'post:post-welcome': {
+          ...seedSnapshot.instances['post:post-welcome']!,
+          bornVersion: 1,
+        },
+      },
+    };
+
+    const entity = project(snapshot, 'post:post-welcome', {
+      flows: { 'post-status': semanticV2 },
+      versions: { 'post-status': { 1: semanticV1, 2: semanticV2 } },
+      guards: seedGuardRegistry,
+    });
+
+    expect(entity?.properties).toMatchObject({
+      title: '已发布',
+      identity: 'Welcome to UI4A',
+      status: 'published',
+      presentation: {
+        fields: [
+          {
+            path: 'properties.fields.title',
+            title: '文章标题',
+            role: 'identity',
+          },
+          {
+            path: 'properties.fields.body',
+            title: '正文',
+            role: 'primary-content',
+            contentMediaType: 'text/plain',
+          },
+          {
+            path: 'properties.fields.category',
+            title: '分类',
+            role: 'metadata',
+          },
+        ],
+      },
+    });
+    expect(entity?.properties.presentation).not.toEqual(
+      expect.objectContaining({
+        title: 'Welcome to UI4A',
+        category: 'tech',
+      }),
+    );
+    expect(JSON.stringify(entity?.properties.presentation)).not.toContain('Welcome to UI4A');
+    expect(JSON.stringify(entity?.properties.presentation)).not.toContain('tech');
+  });
+
+  it('无显式 identity 角色时稳定回退 rel，不把节点 title 当身份', () => {
+    const entity = project(seedSnapshot, 'post:post-welcome', deps);
+    expect(entity?.properties.identity).toBe('post:post-welcome');
+    expect(entity?.properties.identity).not.toBe(entity?.properties.title);
+    expect(entity?.properties.status).toBe('published');
+  });
+
   it('actions:name/title/method=POST/href=/api/exec,fields 为 JSON Schema(select 枚举)', () => {
     const entity = project(seedSnapshot, 'article-drafting:main', deps);
     const next = entity?.actions.find((action) => action.name === 'next');

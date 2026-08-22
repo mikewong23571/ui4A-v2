@@ -73,4 +73,22 @@ describe('fieldDefinitionsToJsonSchema(JSON Schema draft-07,RJSF 直接输入)',
     expect(properties.reason).toMatchObject({ type: 'string', minLength: 1 });
     expect(schema.required).toEqual(['reason']);
   });
+
+  it('contentMediaType 作为 JSON Schema 内容类型投影，呈现角色不混入输入 schema', () => {
+    const schema = fieldDefinitionsToJsonSchema([
+      {
+        name: 'body',
+        type: 'textarea',
+        presentation: { role: 'primary-content' },
+        contentMediaType: 'text/markdown',
+      },
+    ]);
+
+    expect(schema.properties.body).toMatchObject({
+      type: 'string',
+      format: 'textarea',
+      contentMediaType: 'text/markdown',
+    });
+    expect(schema.properties.body).not.toHaveProperty('presentation');
+  });
 });

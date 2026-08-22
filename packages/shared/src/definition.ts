@@ -16,6 +16,10 @@ import type { ParamOrigin } from './state';
 /** 字段语义(arch-brief §2:四种)。 */
 export type FieldSemantics = 'org-standard' | 'intent' | 'work-product' | 'elicitation';
 
+/** 字段在通用呈现中的应用语义，不携带布局或组件选择。 */
+export type FieldPresentationRole =
+  'identity' | 'status' | 'primary-content' | 'metadata' | 'relation';
+
 /**
  * 字段类型(RJSF 可渲染的表单控件种类 + json)。
  * `json`:任意 JSON 值(meta 编辑动词的 add-action 携带 action-definition 全文;
@@ -57,6 +61,12 @@ export interface FieldDefinition {
   description?: string;
   required?: boolean;
   semantics?: FieldSemantics;
+  /** 提供给 Presentation Plane 的语义角色；不是 CSS/组件指令。 */
+  presentation?: {
+    role: FieldPresentationRole;
+  };
+  /** JSON Schema contentMediaType；只有显式声明才可承诺 Markdown 等内容格式。 */
+  contentMediaType?: string;
   source?: FieldSource;
   /** false 表示 action 输入只进入事件/effect，不写回当前实例字段。缺省 true。 */
   persist?: boolean;

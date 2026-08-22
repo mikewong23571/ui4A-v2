@@ -29,6 +29,14 @@ const FIELD_TYPES: ReadonlySet<FieldType> = KNOWN_FIELD_TYPES;
 
 const EFFECT_TYPES: ReadonlySet<string> = KNOWN_EFFECT_TYPES;
 
+const FIELD_PRESENTATION_ROLES: ReadonlySet<string> = new Set([
+  'identity',
+  'status',
+  'primary-content',
+  'metadata',
+  'relation',
+]);
+
 /** 解析失败:携带全部 issues(一次性报告,便于定义编辑流展示)。 */
 export class FlowParseError extends Error {
   readonly issues: FlowIssue[];
@@ -115,6 +123,7 @@ export function validateFlowDefinition(flow: FlowDefinition): FlowIssue[] {
   }
 
   const flowFieldNames = new Set((flow.fields ?? []).map((f) => f.name));
+  validateFields(flow.fields ?? [], 'fields', issues);
   flow.nodes.forEach((node) => {
     validateFields(node.fields ?? [], `nodes[${node.name}].fields`, issues);
 
@@ -181,6 +190,26 @@ function validateFields(fields: FieldDefinition[], path: string, issues: FlowIss
     }
     if (field.persist !== undefined && typeof field.persist !== 'boolean') {
       issues.push({ path: `${fieldPath}.persist`, message: 'persist 必须是 boolean' });
+    }
+    if (
+      field.presentation !== undefined &&
+      (typeof field.presentation !== 'object' ||
+        field.presentation === null ||
+        !FIELD_PRESENTATION_ROLES.has(field.presentation.role))
+    ) {
+      issues.push({
+        path: `${fieldPath}.presentation.role`,
+        message: '未知字段呈现角色',
+      });
+    }
+    if (
+      field.contentMediaType !== undefined &&
+      (typeof field.contentMediaType !== 'string' || field.contentMediaType.trim() === '')
+    ) {
+      issues.push({
+        path: `${fieldPath}.contentMediaType`,
+        message: 'contentMediaType 必须是非空字符串',
+      });
     }
     if (field.type === 'select' && (!field.options || field.options.length === 0)) {
       issues.push({

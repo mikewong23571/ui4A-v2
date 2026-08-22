@@ -43,6 +43,14 @@ import {
 import { fieldDefinitionsToJsonSchema, mergeFieldDefinitions } from './schema';
 import type { ActionDefinition, FieldDefinition, FlowDefinition } from './types';
 
+export interface SirenFieldPresentation {
+  /** Binding path into this Siren entity. It is a reference, never a copied field value. */
+  path: string;
+  title: string;
+  role?: NonNullable<FieldDefinition['presentation']>['role'];
+  contentMediaType?: string;
+}
+
 /** Siren action(字段为参数 JSON Schema——RJSF 与 agent 共同输入)。 */
 export interface SirenAction {
   name: string;
@@ -148,6 +156,16 @@ function projectInstance(
 ): SirenEntity {
   const flow = flowForInstance(deps, instance);
   const node = flow?.nodes.find((candidate) => candidate.name === instance.node);
+  const fieldDefinitions = mergeFieldDefinitions(flow?.fields ?? [], node?.fields ?? []);
+  const fieldPresentations: SirenFieldPresentation[] = fieldDefinitions.map((field) => ({
+    path: `properties.fields.${field.name}`,
+    title: field.title ?? field.name,
+    ...(field.presentation === undefined ? {} : { role: field.presentation.role }),
+    ...(field.contentMediaType === undefined ? {} : { contentMediaType: field.contentMediaType }),
+  }));
+  const fields = fieldValues(instance.fields);
+  const identityField = fieldDefinitions.find((field) => field.presentation?.role === 'identity');
+  const explicitIdentity = identityField === undefined ? undefined : fields[identityField.name];
   const actions = node?.actions ?? [];
   const links: SirenLink[] = [{ rel: ['self'], href: entityHref(deps.baseHref, instance.rel) }];
   // 成员反查所属集合(导航回链)。
@@ -171,7 +189,10 @@ function projectInstance(
       flow: instance.flow,
       node: instance.node,
       title: node?.title ?? instance.node,
-      fields: fieldValues(instance.fields),
+      identity: explicitIdentity ?? instance.rel,
+      status: instance.node,
+      fields,
+      presentation: { fields: fieldPresentations },
     },
     actions: actions.map((action) => toSirenAction(action, node?.fields ?? [], deps.baseHref)),
     links,

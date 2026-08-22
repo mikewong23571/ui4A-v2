@@ -62,6 +62,29 @@ describe('parseFlowDefinition — 规范化', () => {
     expect(parsed.nodes[0].actions[1]['requires-confirmation']).toBe('high');
     expect(parsed.nodes[0].actions[1].guards).toEqual([]);
   });
+
+  it('保留字段的呈现语义与 contentMediaType', () => {
+    const parsed = parseFlowDefinition({
+      ...minimalFlow,
+      fields: [
+        {
+          name: 'body',
+          type: 'textarea',
+          title: '正文',
+          presentation: { role: 'primary-content' },
+          contentMediaType: 'text/markdown',
+        },
+      ],
+    });
+
+    expect(parsed.fields).toEqual([
+      expect.objectContaining({
+        name: 'body',
+        presentation: { role: 'primary-content' },
+        contentMediaType: 'text/markdown',
+      }),
+    ]);
+  });
 });
 
 describe('parseFlowDefinition — 拒绝非法定义', () => {
@@ -130,6 +153,22 @@ describe('parseFlowDefinition — 拒绝非法定义', () => {
         ),
       ),
     ).toThrow(/重复/);
+  });
+
+  it('拒绝未知呈现角色和空 contentMediaType', () => {
+    expect(() =>
+      parseFlowDefinition({
+        ...minimalFlow,
+        fields: [{ name: 'title', type: 'text', presentation: { role: 'hero-banner' } }],
+      }),
+    ).toThrow(/presentation.*role/);
+
+    expect(() =>
+      parseFlowDefinition({
+        ...minimalFlow,
+        fields: [{ name: 'body', type: 'textarea', contentMediaType: '' }],
+      }),
+    ).toThrow(/contentMediaType/);
   });
 
   it('FlowParseError 携带结构化 issues(path + message)', () => {

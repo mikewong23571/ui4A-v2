@@ -39,6 +39,7 @@ function fieldToJsonSchema(field: FieldDefinition): Record<string, unknown> {
   if (field.description !== undefined) schema.description = field.description;
   if (field.minLength !== undefined) schema.minLength = field.minLength;
   if (field.default !== undefined) schema.default = field.default;
+  if (field.contentMediaType !== undefined) schema.contentMediaType = field.contentMediaType;
   return schema;
 }
 

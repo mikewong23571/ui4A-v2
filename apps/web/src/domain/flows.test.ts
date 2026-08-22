@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { contentVersion, fold, parseFlowDefinition } from '@ui4a/engine';
+import { contentVersion, fold, parseFlowDefinition, project } from '@ui4a/engine';
 import { seedGuardRegistry } from '@ui4a/shared';
 
 import {
@@ -35,6 +35,62 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
       'post-status',
       'comment-moderation',
     ]);
+  });
+
+  it('post-status 声明文章字段的呈现语义，正文不虚构 Markdown content type', () => {
+    expect(postStatusFlow.fields).toEqual([
+      expect.objectContaining({
+        name: 'title',
+        presentation: { role: 'identity' },
+      }),
+      expect.objectContaining({
+        name: 'body',
+        presentation: { role: 'primary-content' },
+      }),
+      expect.objectContaining({
+        name: 'category',
+        presentation: { role: 'metadata' },
+      }),
+    ]);
+    expect(postStatusFlow.fields?.find((field) => field.name === 'body')).not.toHaveProperty(
+      'contentMediaType',
+    );
+  });
+
+  it('应用制品中的第一篇以文章标题为身份，节点仅作状态', () => {
+    const snapshot = fold([{ seq: 1, kind: 'seed', rel: SEED_REL, detail: seedDetail }], {
+      flows: businessFlows,
+    });
+    const entity = project(snapshot, 'post:first-post', {
+      flows: businessFlows,
+      guards: seedGuardRegistry,
+    });
+
+    expect(entity?.properties).toMatchObject({
+      identity: '第一篇',
+      title: '已发布',
+      status: 'published',
+      presentation: {
+        fields: [
+          expect.objectContaining({
+            path: 'properties.fields.title',
+            role: 'identity',
+          }),
+          expect.objectContaining({
+            path: 'properties.fields.body',
+            role: 'primary-content',
+          }),
+          expect.objectContaining({
+            path: 'properties.fields.category',
+            role: 'metadata',
+          }),
+        ],
+      },
+    });
+    const presentation = JSON.stringify(entity?.properties.presentation);
+    expect(presentation).not.toContain('第一篇');
+    expect(presentation).not.toContain('essay');
+    expect(presentation).not.toContain('text/markdown');
   });
 
   it('article-drafting:三步向导,每步一个推进动作,publish 追加文章并迁移向导', () => {
