@@ -2,7 +2,7 @@
 
 > 依据 `spec.md`、`user-stories.md`、`technical-stories.md`、`architecture.md` 与 `conductor/workflow.md`。采用 spike-informed Story TDD：Chat 只委托薄 Presentation Request；Application 预生成 Recipe；用户级 Sidecar 跨 Session fastpath；确定性测试守事实和交互，真实 LLM/浏览器/人工 rubric 验收动态呈现。
 
-## Phase A: Disposable spikes、Red baseline 与架构决定
+## Phase A: Disposable spikes、Red baseline 与架构决定 [checkpoint: 27c57d7]
 
 - [x] Task: 建立 S1–S32/TS1–TS18 evidence schema；记录 canonical/变体、Safety、Chat/Presentation LLM calls、Recipe/Sidecar hit、依赖校验、浏览器任务和人工 rubric — b16758c
 - [x] Task: Red baseline——复现固定 `focus → detail`、单组件 RenderSpec、原始字段转储、thinking 跨 turn 错挂、Markdown/render 过期回答、Chat context 携带渲染复杂度和 Session 级缓存风险 — 0205e66
@@ -11,7 +11,7 @@
 - [x] Task: User Sidecar probe——比较同一日志独立 Presentation projection、派生存储和 cache index 的 replay/失效/性能；验证跨 Session 命中与 Business Snapshot hash 不变 — fcc4b4d
 - [x] Task: Flow/graph probe——用 article-drafting + post-status + artifact/confirmation 构造有界 Lens，测量 prompt、解引用、层级 Recipe 和局部失效触点 — 44502cf
 - [x] Task: 将 probe 结论写入 `DECISIONS.md`，确认 pure presentation kernel 位置、Recipe Registry/Sidecar store、event families、fingerprint 和 candidate/promoted lifecycle；技术栈偏差先更新 `tech-stack.md` — 27c57d7
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 27c57d7
 
 ## Phase B: Chat 正确性、薄协议与 Plane 隔离
 
