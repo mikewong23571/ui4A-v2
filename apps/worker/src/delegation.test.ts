@@ -1,15 +1,18 @@
 import type { QueryResult, QueryResultRow } from 'pg';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
-import type { AgentDriver, AgentOperation, DecideSink, DriverContext, FetchLike } from '@ui4a/agent';
+import type {
+  AgentDriver,
+  AgentOperation,
+  DecideSink,
+  DriverContext,
+  FetchLike,
+} from '@ui4a/agent';
 
 import type { DbExecutor } from '../../web/src/db/events';
 
-import {
-  applyStepToState,
-  type DelegationLoopState,
-} from './workflows';
+import { applyStepToState, type DelegationDriverKind, type DelegationLoopState } from './workflows';
 import {
   DELEGATION_CHANNEL,
   recordDelegationFinish,
@@ -28,7 +31,7 @@ import {
 // - 首尾事件:startDelegation / finishDelegation 幂等(kind+rel 查重);
 // - T11(验收 6):delegation-step detail 恒携带 reasoning 字段——driver 经
 //   DecideSink 产出推理自述时填真值(llm 路径,Phase C streamText 起),无自述
-//   (rule/脚本 driver)落库 null;幂等恢复载荷同构扩展,旧形状事件(无
+//   (scripted/mock driver)落库 null;幂等恢复载荷同构扩展,旧形状事件(无
 //   reasoning 字段)读出兼容。
 // 真 Temporal + 真 worker 链路由 kill 续跑集成测试覆盖(delegation.kill.integration.test.ts)。
 const BASE = 'http://contract.test';
@@ -106,6 +109,14 @@ class ScriptedDriver implements AgentDriver {
   }
 }
 
+class ThrowingDriver implements AgentDriver {
+  constructor(private readonly error: Error) {}
+
+  decide(): AgentOperation {
+    throw this.error;
+  }
+}
+
 interface FakeDbOptions {
   /** 已落库的 delegation-step 事件(幂等恢复路径的存量)。 */
   stepEvents?: { step: number; result: AgentStepResult }[];
@@ -158,7 +169,49 @@ function fakeDb(options: FakeDbOptions = {}) {
 
 const BASE_STATE: DelegationLoopState = { currentRel: 'articles', trail: [], successes: [] };
 
-describe('runAgentStep(rule driver,决策+执行合一)', () => {
+describe('U22 delegated AI-first runtime', () => {
+  it('产品委托类型只接受 llm，不再提供 rule 运行时选项', () => {
+    expectTypeOf<DelegationDriverKind>().toEqualTypeOf<'llm'>();
+  });
+
+  it('模型端点失败折算为单步可恢复 fail，保留步审计且不调用业务 exec', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const { db, inserts } = fakeDb();
+
+    const result = await runAgentStep(
+      {
+        db,
+        fetchImpl: transport.fetch,
+        driver: new ThrowingDriver(new Error('model endpoint unavailable')),
+      },
+      {
+        delegationId: 'wf-u22-failure',
+        step: 1,
+        goal: { verb: '总结第一篇文章' },
+        driverKind: 'llm',
+        baseUrl: BASE,
+        ...BASE_STATE,
+      },
+    );
+
+    expect(result).toMatchObject({
+      op: {
+        kind: 'fail',
+        reason: expect.stringContaining('model endpoint unavailable'),
+      },
+      outcome: 'failed',
+    });
+    expect(transport.calls.filter((call) => call.method === 'POST')).toEqual([]);
+    expect(inserts).toHaveLength(1);
+    expect(JSON.parse(String(inserts[0]!.values[8]))).toMatchObject({
+      step: 1,
+      op: { kind: 'fail' },
+      outcome: 'failed',
+    });
+  });
+});
+
+describe('runAgentStep(scripted protocol driver,决策+执行合一)', () => {
   it('① 点名资源:navigate 直达,outcome=navigated,delegation-step 事件携带 op 与实体摘要', async () => {
     const transport = contractTransport({
       entities: { articles: articlesEntity, 'post:post-welcome': postWelcomeEntity },
@@ -166,12 +219,16 @@ describe('runAgentStep(rule driver,决策+执行合一)', () => {
     const { db, inserts } = fakeDb();
 
     const result = await runAgentStep(
-      { db, fetchImpl: transport.fetch },
+      {
+        db,
+        fetchImpl: transport.fetch,
+        driver: new ScriptedDriver([{ kind: 'navigate', rel: 'post:post-welcome' }]),
+      },
       {
         delegationId: 'wf-1',
         step: 1,
         goal: GOAL,
-        driverKind: 'rule',
+        driverKind: 'llm',
         baseUrl: BASE,
         principal: 'user:mike',
         ...BASE_STATE,
@@ -196,7 +253,7 @@ describe('runAgentStep(rule driver,决策+执行合一)', () => {
       step: 1,
       op: { kind: 'navigate', rel: 'post:post-welcome' },
       outcome: 'navigated',
-      // T11:reasoning 恒落库;rule 路径无推理自述,恒 null。
+      // T11:reasoning 恒落库;脚本路径无推理自述,恒 null。
       reasoning: null,
       entitySummary: {
         rel: 'post:post-welcome',
@@ -215,12 +272,16 @@ describe('runAgentStep(rule driver,决策+执行合一)', () => {
     const { db, inserts } = fakeDb();
 
     const result = await runAgentStep(
-      { db, fetchImpl: transport.fetch },
+      {
+        db,
+        fetchImpl: transport.fetch,
+        driver: new ScriptedDriver([{ kind: 'exec', action: 'unpublish', params: {} }]),
+      },
       {
         delegationId: 'wf-1',
         step: 1,
         goal: GOAL,
-        driverKind: 'rule',
+        driverKind: 'llm',
         baseUrl: BASE,
         principal: 'user:mike',
         currentRel: 'post:post-welcome',
@@ -232,9 +293,9 @@ describe('runAgentStep(rule driver,决策+执行合一)', () => {
     expect(result.op).toEqual({ kind: 'exec', action: 'unpublish', params: {} });
     expect(result.outcome).toBe('executed');
     expect(result.entitySummary).toMatchObject({ rel: 'post:post-welcome' });
-    expect(transport.calls.some((call) => call.method === 'POST' && call.url === `${BASE}/api/exec`)).toBe(
-      true,
-    );
+    expect(
+      transport.calls.some((call) => call.method === 'POST' && call.url === `${BASE}/api/exec`),
+    ).toBe(true);
     expect(inserts).toHaveLength(1);
     expect(JSON.parse(String(inserts[0]!.values[8]))).toMatchObject({
       step: 1,
@@ -246,19 +307,21 @@ describe('runAgentStep(rule driver,决策+执行合一)', () => {
   it('exec 被拒 → outcome=rejected,rejection 携带 layer/reason(拒绝即数据)', async () => {
     const transport = contractTransport({
       entities: { 'post:post-welcome': postWelcomeEntity },
-      execResponses: [
-        jsonResponse({ layer: 'guard-failed', reason: 'is-published=false' }, 403),
-      ],
+      execResponses: [jsonResponse({ layer: 'guard-failed', reason: 'is-published=false' }, 403)],
     });
     const { db } = fakeDb();
 
     const result = await runAgentStep(
-      { db, fetchImpl: transport.fetch },
+      {
+        db,
+        fetchImpl: transport.fetch,
+        driver: new ScriptedDriver([{ kind: 'exec', action: 'unpublish', params: {} }]),
+      },
       {
         delegationId: 'wf-1',
         step: 2,
         goal: GOAL,
-        driverKind: 'rule',
+        driverKind: 'llm',
         baseUrl: BASE,
         currentRel: 'post:post-welcome',
         trail: [],
@@ -276,7 +339,7 @@ describe('runAgentStep(rule driver,决策+执行合一)', () => {
   });
 
   it('driver 决策 done → outcome=done;决策 fail(实体不可得)→ 不写步事件直接 fail 出口', async () => {
-    // done:脚本 driver 注入(activity 的 driver 可注入,单测无需真 rule 决策)。
+    // done:脚本 driver 注入(activity 的 driver 可注入,单测无需真实模型决策)。
     const doneTransport = contractTransport({ entities: { articles: articlesEntity } });
     const doneDb = fakeDb();
     const doneResult = await runAgentStep(
@@ -289,7 +352,7 @@ describe('runAgentStep(rule driver,决策+执行合一)', () => {
         delegationId: 'wf-2',
         step: 1,
         goal: { verb: '任意' },
-        driverKind: 'rule',
+        driverKind: 'llm',
         baseUrl: BASE,
         ...BASE_STATE,
       },
@@ -311,7 +374,7 @@ describe('runAgentStep(rule driver,决策+执行合一)', () => {
         delegationId: 'wf-2',
         step: 1,
         goal: { verb: '任意' },
-        driverKind: 'rule',
+        driverKind: 'llm',
         baseUrl: BASE,
         ...BASE_STATE,
       },
@@ -337,7 +400,7 @@ describe('runAgentStep(幂等恢复)', () => {
         delegationId: 'wf-3',
         step: 3,
         goal: GOAL,
-        driverKind: 'rule',
+        driverKind: 'llm',
         baseUrl: BASE,
         ...BASE_STATE,
       },
@@ -355,15 +418,18 @@ describe('runAgentStep(幂等恢复)', () => {
     });
 
     const result = await runAgentStep(
-      { db, fetchImpl: transport.fetch },
+      {
+        db,
+        fetchImpl: transport.fetch,
+        driver: new ScriptedDriver([{ kind: 'fail', reason: '无路可走' }]),
+      },
       {
         delegationId: 'wf-3',
         step: 1,
         goal: { verb: '任意' },
-        driverKind: 'rule',
+        driverKind: 'llm',
         baseUrl: BASE,
         ...BASE_STATE,
-        // driver 缺省 rule:articles 上无目标相关动作 → fail(freeRoam 无路)。
       },
     );
 
@@ -373,7 +439,7 @@ describe('runAgentStep(幂等恢复)', () => {
 });
 
 describe('delegation-step reasoning 留痕(T11 / 验收 6)', () => {
-  it('detail 恒携带 reasoning 字段:driver 未产自述(rule/脚本)→ 落库 null', async () => {
+  it('detail 恒携带 reasoning 字段:driver 未产自述(scripted/mock)→ 落库 null', async () => {
     const transport = contractTransport({ entities: { articles: articlesEntity } });
     const { db, inserts } = fakeDb();
 
@@ -387,7 +453,7 @@ describe('delegation-step reasoning 留痕(T11 / 验收 6)', () => {
         delegationId: 'wf-r1',
         step: 1,
         goal: { verb: '任意' },
-        driverKind: 'rule',
+        driverKind: 'llm',
         baseUrl: BASE,
         ...BASE_STATE,
       },
@@ -449,7 +515,7 @@ describe('delegation-step reasoning 留痕(T11 / 验收 6)', () => {
         delegationId: 'wf-r2',
         step: 2,
         goal: GOAL,
-        driverKind: 'rule',
+        driverKind: 'llm',
         baseUrl: BASE,
         currentRel: 'post:post-welcome',
         trail: [],
@@ -483,7 +549,7 @@ describe('delegation-step reasoning 留痕(T11 / 验收 6)', () => {
         delegationId: 'wf-r3',
         step: 4,
         goal: GOAL,
-        driverKind: 'rule',
+        driverKind: 'llm',
         baseUrl: BASE,
         ...BASE_STATE,
       },
@@ -517,7 +583,11 @@ describe('applyStepToState(循环状态推导,runAgent 语义对齐)', () => {
     });
     expect(state.currentRel).toBe('post:post-welcome');
     expect(state.trail).toHaveLength(1);
-    expect(state.trail[0]).toMatchObject({ step: 1, rel: 'post:post-welcome', outcome: 'navigated' });
+    expect(state.trail[0]).toMatchObject({
+      step: 1,
+      rel: 'post:post-welcome',
+      outcome: 'navigated',
+    });
     expect(state.successes).toEqual([]);
     expect(state.lastRejection).toBeUndefined();
   });
@@ -538,7 +608,12 @@ describe('applyStepToState(循环状态推导,runAgent 语义对齐)', () => {
     const rejected = applyStepToState(executed, 3, {
       op: { kind: 'exec', action: 'archive' },
       outcome: 'rejected',
-      rejection: { rel: 'post:post-welcome', action: 'archive', layer: 'guard-failed', reason: 'x' },
+      rejection: {
+        rel: 'post:post-welcome',
+        action: 'archive',
+        layer: 'guard-failed',
+        reason: 'x',
+      },
     });
     expect(rejected.lastRejection).toMatchObject({ layer: 'guard-failed' });
     expect(rejected.successes).toHaveLength(1);
@@ -560,7 +635,7 @@ describe('委托首尾事件(幂等)', () => {
     const result = await recordDelegationStart(db, {
       delegationId: 'wf-4',
       goal: GOAL,
-      driverKind: 'rule',
+      driverKind: 'llm',
       startRel: 'articles',
       principal: 'user:mike',
     });
@@ -573,7 +648,7 @@ describe('委托首尾事件(幂等)', () => {
     expect(JSON.parse(String(values[8]))).toEqual({
       delegationId: 'wf-4',
       goal: GOAL,
-      driverKind: 'rule',
+      driverKind: 'llm',
       startRel: 'articles',
       principal: 'user:mike',
     });
@@ -586,7 +661,7 @@ describe('委托首尾事件(幂等)', () => {
     const result = await recordDelegationStart(db, {
       delegationId: 'wf-4',
       goal: GOAL,
-      driverKind: 'rule',
+      driverKind: 'llm',
       startRel: 'articles',
     });
     expect(result).toEqual({ seq: 6, deduplicated: true });
@@ -597,22 +672,25 @@ describe('委托首尾事件(幂等)', () => {
     ['completed', { summary: '目标完成: publish 已成功' }],
     ['failed', { reason: '无路可走' }],
     ['max-steps', { reason: '达到步数上限 24 未收到 done/fail' }],
-  ] as const)('recordDelegationFinish(%s) 写对应终态事件(kind + steps/successes 载荷)', async (outcome, extra) => {
-    const { db, inserts } = fakeDb();
-    await recordDelegationFinish(db, {
-      delegationId: 'wf-5',
-      outcome,
-      steps: 4,
-      successes: 1,
-      ...extra,
-    });
-    const values = inserts[0]!.values;
-    expect(values[3]).toBe(`delegation-${outcome}`);
-    expect(values[4]).toBe('delegation:wf-5');
-    expect(JSON.parse(String(values[8]))).toEqual({ steps: 4, successes: 1, ...extra });
-    if (outcome === 'failed') {
-      // failed 的 reason 同时入日志 reason 列(审计可读;fold 以 detail 为准)。
-      expect(values[7]).toBe('无路可走');
-    }
-  });
+  ] as const)(
+    'recordDelegationFinish(%s) 写对应终态事件(kind + steps/successes 载荷)',
+    async (outcome, extra) => {
+      const { db, inserts } = fakeDb();
+      await recordDelegationFinish(db, {
+        delegationId: 'wf-5',
+        outcome,
+        steps: 4,
+        successes: 1,
+        ...extra,
+      });
+      const values = inserts[0]!.values;
+      expect(values[3]).toBe(`delegation-${outcome}`);
+      expect(values[4]).toBe('delegation:wf-5');
+      expect(JSON.parse(String(values[8]))).toEqual({ steps: 4, successes: 1, ...extra });
+      if (outcome === 'failed') {
+        // failed 的 reason 同时入日志 reason 列(审计可读;fold 以 detail 为准)。
+        expect(values[7]).toBe('无路可走');
+      }
+    },
+  );
 });

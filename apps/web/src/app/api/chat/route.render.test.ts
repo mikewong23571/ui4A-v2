@@ -138,10 +138,29 @@ afterEach(async () => {
 });
 
 describe('chat render capability:展示意图 → spec 生成 + 凝固', () => {
+  const envKey = process.env.LLM_API_KEY;
+  const envBase = process.env.LLM_BASE_URL;
+  const envModel = process.env.LLM_MODEL;
+
+  beforeEach(() => {
+    process.env.LLM_API_KEY = 'test-key';
+    process.env.LLM_BASE_URL = 'http://127.0.0.1:1/v1';
+    process.env.LLM_MODEL = 'test-model';
+  });
+
+  afterEach(() => {
+    if (envKey === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = envKey;
+    if (envBase === undefined) delete process.env.LLM_BASE_URL;
+    else process.env.LLM_BASE_URL = envBase;
+    if (envModel === undefined) delete process.env.LLM_MODEL;
+    else process.env.LLM_MODEL = envModel;
+  });
+
   it('"我要看看第一篇文章" → 具体实体 focus，零集合 render freeze/零 exec', async () => {
     const { status, json } = await chat({
       sessionId: 'read-first-post',
-      driver: 'rule',
+      driver: 'auto',
       goal: { verb: '我要看看第一篇文章' },
     });
 
@@ -161,13 +180,13 @@ describe('chat render capability:展示意图 → spec 生成 + 凝固', () => {
   it('"按分类展示文章" → chart spec(零字面)+ 首冻事件 + 画布入口;零 exec', async () => {
     const { status, json } = await chat({
       sessionId: 's5-render',
-      driver: 'rule',
+      driver: 'auto',
       goal: { verb: '按分类展示文章' },
     });
 
     expect(status).toBe(200);
     expect(json.outcome).toBe('done');
-    expect(json.driver).toBe('rule');
+    expect(json.driver).toBe('llm');
     expect(json.render).toBeDefined();
     expect(json.render!.concern).toBe('articles-by-category');
     expect(json.render!.spec).toEqual({
@@ -194,14 +213,14 @@ describe('chat render capability:展示意图 → spec 生成 + 凝固', () => {
   it('凝固:同 concern 二次请求 → 同 spec(首冻为准),仅一条 frozen 事件', async () => {
     const first = await chat({
       sessionId: 's5-render',
-      driver: 'rule',
+      driver: 'auto',
       goal: { verb: '按分类展示文章' },
     });
     expect(first.json.render!.frozenNow).toBe(true);
 
     const second = await chat({
       sessionId: 's5-render',
-      driver: 'rule',
+      driver: 'auto',
       goal: { verb: '图表 文章 分类' },
     });
     expect(second.status).toBe(200);
@@ -213,7 +232,7 @@ describe('chat render capability:展示意图 → spec 生成 + 凝固', () => {
   });
 
   it('凝固 spec 经合同可查:/api/entity?rel=render-specs 携带该成员', async () => {
-    await chat({ sessionId: 's5-render', driver: 'rule', goal: { verb: '按分类展示文章' } });
+    await chat({ sessionId: 's5-render', driver: 'auto', goal: { verb: '按分类展示文章' } });
     const response = await fetch(`${base}/api/entity?rel=render-specs`);
     const body = (await response.json()) as {
       entities: { properties: { concern: string; component: string; bind: unknown } }[];
@@ -221,21 +240,6 @@ describe('chat render capability:展示意图 → spec 生成 + 凝固', () => {
     expect(
       body.entities.some((member) => member.properties.concern === 'articles-by-category'),
     ).toBe(true);
-  });
-
-  it('非展示意图不受影响:发布目标仍走 agent 循环(无 render 载荷)', async () => {
-    const { status, json } = await chat({
-      sessionId: 's5-render',
-      driver: 'rule',
-      goal: {
-        verb: '发布一篇文章',
-        fields: { title: '渲染路由旁路检查', category: 'tech', tags: '', body: '正文' },
-      },
-    });
-    expect(status).toBe(200);
-    expect(json.render).toBeUndefined();
-    expect(json.outcome).toBe('done');
-    expect((json.steps ?? []).length).toBeGreaterThan(0);
   });
 });
 
@@ -320,7 +324,7 @@ describe('T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthro
 
       const { status, json, raw } = await chat({
         sessionId: 't12-llm-render',
-        driver: 'rule',
+        driver: 'auto',
         // rule miss:展示意图命中(展示),但"飞船"不在名词词表/sitemap 集合面。
         goal: { verb: '展示飞船列表' },
       });
@@ -380,15 +384,16 @@ describe('T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthro
 
       const { status, json } = await chat({
         sessionId: 't12-llm-bad-json',
-        driver: 'rule',
+        driver: 'auto',
         goal: { verb: '展示飞船列表' },
       });
 
-      // 交回普通循环:SSE final 帧到达(rule driver 对未匹配意图如实 fail),无 render 载荷。
+      // 交回普通 LLM 循环:SSE final 帧到达，无 render 载荷。
       expect(status).toBe(200);
       expect(json.render).toBeUndefined();
       expect(typeof json.outcome).toBe('string');
-      expect(stub.calls).toHaveLength(1);
+      // 首次用于 render 生成；解析拒绝后再由同一 LLM 进入普通 agent 循环。
+      expect(stub.calls).toHaveLength(2);
       // 不留半成品 spec:零凝固、零 exec。
       const events = await eventsOf();
       expect(events.filter((event) => event.kind === 'render-spec-frozen')).toHaveLength(0);
@@ -413,7 +418,7 @@ describe('T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthro
 
       const { status, json } = await chat({
         sessionId: 't12-llm-literal',
-        driver: 'rule',
+        driver: 'auto',
         goal: { verb: '展示飞船列表' },
       });
 
@@ -443,7 +448,7 @@ describe('T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthro
 
       const { status, json } = await chat({
         sessionId: 't12-llm-ghost',
-        driver: 'rule',
+        driver: 'auto',
         goal: { verb: '展示飞船列表' },
       });
 
@@ -458,40 +463,23 @@ describe('T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthro
     }
   });
 
-  it('I1:无 key 跳过 LLM 路径——rule 命中照常凝固;rule miss 直落普通循环(LLM 零调用)', async () => {
-    const stub = await createRenderLlmStub(
-      '{"concern":"articles-board","component":"kanban","bind":{"columns":{"collection":"articles"}}}',
-    );
-    try {
-      delete process.env.LLM_API_KEY;
-      delete process.env.LLM_BASE_URL;
-      delete process.env.LLM_MODEL;
+  it('U22:无 LLM 配置时展示意图诚实失败，不走确定性 chat render 短路', async () => {
+    delete process.env.LLM_API_KEY;
+    delete process.env.LLM_BASE_URL;
+    delete process.env.LLM_MODEL;
 
-      // rule 路径完整:展示意图命中词表 → chart spec 凝固(与无 LLM 时逐字节一致)。
-      const ruleHit = await chat({
-        sessionId: 't12-i1',
-        driver: 'rule',
-        goal: { verb: '按分类展示文章' },
-      });
-      expect(ruleHit.status).toBe(200);
-      expect(ruleHit.json.render).toBeDefined();
-      expect(ruleHit.json.render!.spec).toEqual({
-        concern: 'articles-by-category',
-        component: 'chart',
-        bind: { series: { collection: 'articles', dimension: 'articles.fields.category' } },
-      });
+    const unavailable = await chat({
+      sessionId: 't15-u22-render',
+      driver: 'auto',
+      goal: { verb: '按分类展示文章' },
+    });
 
-      // rule miss:无 key → LLM 路径不触发,直落普通 agent 循环。
-      const miss = await chat({
-        sessionId: 't12-i1',
-        driver: 'rule',
-        goal: { verb: '展示飞船列表' },
-      });
-      expect(miss.json.render).toBeUndefined();
-      expect(typeof miss.json.outcome).toBe('string');
-      expect(stub.calls).toHaveLength(0);
-    } finally {
-      await closeStub(stub);
-    }
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.json).toMatchObject({ driver: 'llm', outcome: 'failed' });
+    expect(unavailable.json.summary).toContain('LLM 不可用');
+    expect(unavailable.json.render).toBeUndefined();
+    const events = await eventsOf();
+    expect(events.filter((event) => event.kind === 'render-spec-frozen')).toHaveLength(0);
+    expect(events.filter((event) => event.kind === 'action-executed')).toHaveLength(0);
   });
 });

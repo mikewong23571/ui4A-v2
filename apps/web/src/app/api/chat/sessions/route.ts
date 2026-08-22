@@ -1,4 +1,8 @@
-import type { ChatSessionSummary, ChatTurnDetail, ChatTurnStartedDetail } from '../../../../chat/history';
+import type {
+  ChatSessionSummary,
+  ChatTurnDetail,
+  ChatTurnStartedDetail,
+} from '../../../../chat/history';
 import { listEvents } from '../../../../db/events';
 import { getPool } from '../../../../db/pool';
 
@@ -42,7 +46,10 @@ export async function GET() {
           firstTs: ts,
           lastTs: ts,
           lastGoal: detail.goal?.verb ?? '',
-          lastOutcome: event.kind === 'chat-turn-started' ? 'running' : (detail as ChatTurnDetail).outcome ?? '',
+          lastOutcome:
+            event.kind === 'chat-turn-started'
+              ? 'running'
+              : ((detail as ChatTurnDetail).outcome ?? ''),
         });
       } else {
         // listEvents 按 seq 升序:后见即更新(末回合口径)。
@@ -52,7 +59,7 @@ export async function GET() {
         existing.lastOutcome =
           event.kind === 'chat-turn-started'
             ? 'running'
-            : (detail as ChatTurnDetail).outcome ?? existing.lastOutcome;
+            : ((detail as ChatTurnDetail).outcome ?? existing.lastOutcome);
       }
     }
     const sessions = [...bySession.values()].sort((a, b) => b.lastTs.localeCompare(a.lastTs));

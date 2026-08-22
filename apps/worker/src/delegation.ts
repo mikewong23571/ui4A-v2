@@ -3,7 +3,7 @@
  *
  * 复用方式(最小侵入,@ui4a/agent 既有公共面零改动):不改造 runAgent 为可注入
  * executor——runAgent 是一体 async 循环,无法在 Temporal 的逐步 activity 边界
- * 停顿;改为复用其全部构件:createDriver(rule|llm 工厂;llm 读 env)、
+ * 停顿;改为复用其全部构件:createDriver(llm 工厂;配置来自外部 env)、
  * createContractClient(/api/entity+/api/exec+sitemap 的 fetch 封装)、
  * summarizeEntity、轨迹/拒绝/上下文类型。本模块把 runAgent 的循环体拆成
  * **单步可调用**形态(runAgentStep),语义逐条对齐:
@@ -26,6 +26,7 @@
 import { createContractClient, createDriver, summarizeEntity } from '@ui4a/agent';
 import type {
   AgentDriver,
+  AgentOperation,
   DriverContext,
   FetchLike,
   RejectionRecord,
@@ -57,14 +58,14 @@ export const DELEGATION_CHANNEL = 'delegation';
  */
 export interface DelegationStepRecord extends AgentStepResult {
   step: number;
-  /** 推理自述:llm 路径为 driver 产出的聚合整段;rule 路径与端点不返回时恒 null。 */
+  /** 推理自述:llm 路径为 driver 产出的聚合整段;scripted/mock 路径恒 null。 */
   reasoning: string | null;
 }
 
 export interface AgentStepDeps {
   db: DbExecutor;
   fetchImpl: FetchLike;
-  /** 测试注入脚本 driver;缺省按 args.driverKind 构造(rule 纯函数 / llm 读 env)。 */
+  /** 仅供协议测试注入 scripted/mock driver；产品缺省始终构造 llm。 */
   driver?: AgentDriver;
 }
 
@@ -239,16 +240,22 @@ export async function runAgentStep(
     lastRejection: args.lastRejection,
     sitemap: args.sitemap,
   };
-  const driver = deps.driver ?? createDriver(args.driverKind);
+  const driver = deps.driver ?? createDriver('llm');
   // 推理自述捕获(T11 Phase C):llm driver 决策产出 reasoning 时经 sink 回调
-  // 一次(聚合整段,D22);rule/脚本 driver 零回调,reasoning 保持 null。
+  // 一次(聚合整段,D22);scripted/mock driver 零回调,reasoning 保持 null。
   let reasoning: string | null = null;
-  const op = await driver.decide(context, {
-    onReasoning: (text) => {
-      reasoning = text;
-    },
-  });
-  // reasoning 仅在产生时挂键(条件 spread):rule 路径结果形状与 T11 前逐键一致;
+  let op: AgentOperation;
+  try {
+    op = await driver.decide(context, {
+      onReasoning: (text) => {
+        reasoning = text;
+      },
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : '未知模型错误';
+    op = { kind: 'fail', reason: `LLM 委托失败: ${detail}。可重试。` };
+  }
+  // reasoning 仅在产生时挂键(条件 spread):无 reasoning 时结果形状与 T11 前逐键一致;
   // recordStep 落库恒写 reasoning 字段(无则 null,DelegationStepRecord 口径)。
   const decisionExtra = reasoning !== null ? { reasoning } : {};
 

@@ -1,9 +1,8 @@
 /**
  * GET /api/chat/history 路由测试(T9 Phase B / B3)。
  *
- * 历史 = chat-turn 事件的日志投影(服务端零会话态)。测试经进程内回环跑
- * 真实链路:POST /api/chat(inline,SSE 流跑完 → 路由直写 chat-turn)→
- * GET /api/chat/history?sessionId=… 读回回合序列。
+ * 历史 = chat-turn 事件的日志投影(服务端零会话态)。测试直接给定
+ * 回合事件，再经 GET /api/chat/history?sessionId=… 读回序列。
  *
  * 覆盖:
  * - 已落回合:按 sessionId 过滤,goal/outcome/messages/driver 原样返回,
@@ -19,12 +18,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { appendEvent, ensureEventsTable } from '../../../../db/events';
 import { getPool } from '../../../../db/pool';
-import { resetEngineForTests } from '../../../../engine/service';
-
-import { GET as getSitemapRoute } from '../../../.well-known/ui4a.json/route';
-import { GET as getEntityRoute } from '../../entity/route';
-import { POST as postExecRoute } from '../../exec/route';
-import { POST as postChat } from '../route';
 import { GET as getHistory } from './route';
 
 const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');
@@ -35,11 +28,6 @@ let server: Server;
 let base = '';
 
 async function handler(pathname: string, request: Request): Promise<Response> {
-  if (pathname === '/api/entity') return getEntityRoute(request);
-  if (pathname === '/api/exec') return postExecRoute(request);
-  // sitemap 路由无查询参数(签名零参)
-  if (pathname === '/.well-known/ui4a.json') return getSitemapRoute();
-  if (pathname === '/api/chat') return postChat(request);
   if (pathname === '/api/chat/history') return getHistory(request);
   return Response.json({ error: 'not found' }, { status: 404 });
 }
@@ -73,26 +61,46 @@ async function history(
   };
 }
 
-/** 跑完一个 inline 回合(SSE 流整体读尽,chat-turn 在 final 前落库)。 */
+/** 投影路由测试直接给定已完成的 AI-first 回合事件，不模拟模型决策。 */
 async function runChatTurn(sessionId: string, verb: string): Promise<void> {
-  const response = await fetch(`${base}/api/chat`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
+  await appendEvent(pool, {
+    kind: 'chat-turn',
+    actor: 'agent',
+    principal: `user:${sessionId}`,
+    channel: 'chat',
+    rel: `chat:${sessionId}`,
+    detail: {
       sessionId,
-      goal: {
-        verb,
-        fields: { title: `历史-${verb}`, category: 'tech', tags: '', body: '正文' },
-      },
-    }),
+      turnId: crypto.randomUUID(),
+      goal: { verb },
+      outcome: 'done',
+      summary: '已发布',
+      messages: [
+        { role: 'assistant', text: '执行 publish(flow:article-drafting)' },
+        { role: 'assistant', text: '完成: 已发布' },
+      ],
+      steps: [
+        {
+          step: 1,
+          rel: 'flow:article-drafting',
+          op: { kind: 'exec', action: 'publish', params: { title: verb } },
+          outcome: 'executed',
+        },
+        {
+          step: 2,
+          rel: 'flow:article-drafting',
+          op: { kind: 'done', summary: '已发布' },
+          outcome: 'done',
+        },
+      ],
+      driver: 'llm',
+    },
   });
-  await response.text();
 }
 
 beforeEach(async () => {
   await ensureEventsTable(pool);
   await pool.query('TRUNCATE events');
-  resetEngineForTests();
   server = createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`);
     const chunks: Buffer[] = [];
@@ -119,25 +127,6 @@ afterEach(async () => {
 // ---- 场景 -------------------------------------------------------------------
 
 describe('聊天历史投影(T9 Phase B)', () => {
-  const envKey = process.env.LLM_API_KEY;
-  const envBase = process.env.LLM_BASE_URL;
-  const envModel = process.env.LLM_MODEL;
-
-  beforeEach(() => {
-    delete process.env.LLM_API_KEY; // auto → rule(确定性零外网)
-    delete process.env.LLM_BASE_URL;
-    delete process.env.LLM_MODEL;
-  });
-
-  afterEach(() => {
-    if (envKey === undefined) delete process.env.LLM_API_KEY;
-    else process.env.LLM_API_KEY = envKey;
-    if (envBase === undefined) delete process.env.LLM_BASE_URL;
-    else process.env.LLM_BASE_URL = envBase;
-    if (envModel === undefined) delete process.env.LLM_MODEL;
-    else process.env.LLM_MODEL = envModel;
-  });
-
   it('inline 回合落 chat-turn → history 按 sessionId 读回(goal/messages 原样,seq 升序)', async () => {
     await runChatTurn('sess-h1', '发布一篇文章');
     await runChatTurn('sess-h1', '发布另一篇文章');
@@ -152,7 +141,7 @@ describe('聊天历史投影(T9 Phase B)', () => {
     expect(turns[0]!.goal.verb).toBe('发布一篇文章');
     expect(turns[1]!.goal.verb).toBe('发布另一篇文章');
     expect(turns[0]!.outcome).toBe('done');
-    expect(turns[0]!.driver).toBe('rule');
+    expect(turns[0]!.driver).toBe('llm');
     expect(turns[0]!.messages.map((message) => message.text).join('\n')).toContain('执行 publish');
     expect(turns.every((turn) => turn.sessionId === 'sess-h1')).toBe(true);
   });
@@ -174,7 +163,7 @@ describe('聊天历史投影(T9 Phase B)', () => {
         sessionId: 'sess-running',
         turnId: 'turn-running',
         goal: { verb: '删除所有文章' },
-        driver: 'rule',
+        driver: 'llm',
         mode: 'inline',
       },
     });

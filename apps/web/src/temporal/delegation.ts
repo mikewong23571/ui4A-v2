@@ -21,13 +21,13 @@ import { Client, Connection } from '@temporalio/client';
 /** worker 侧 taskQueue 会合点(与 apps/worker/src/main.ts 同一常量)。 */
 const TASK_QUEUE = 'ui4a';
 
-/** delegationWorkflow 的 driver 极小集(worker 侧 DelegationDriverKind 镜像)。 */
-export type DelegationDriverKind = 'rule' | 'llm';
+/** 产品委托仅派发真实 LLM driver(worker 侧同口径)。 */
+export type DelegationDriverKind = 'llm';
 
 /** 派发参数(镜像 worker 的 DelegationWorkflowArgs;delegationId 由本层生成)。 */
 export interface DelegationDispatchArgs {
   goal: AgentGoal;
-  /** auto 已在上层解析(rule|llm;inline 的 resolveDriverKind 同口径)。 */
+  /** auto/default 已在上层收敛为 llm；不允许 rule fallback。 */
   driverKind: DelegationDriverKind;
   /** 引擎合同本源(activity 内 fetch /api/entity+/api/exec 的回环本源)。 */
   baseUrl: string;

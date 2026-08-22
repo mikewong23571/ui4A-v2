@@ -38,7 +38,37 @@ const WORKER_DIR = path.join(
  * 重试即在未前进的状态上干净重执行(避免"引擎已应用而步事件未记"的窄窗)。
  */
 const EXEC_PACE_MS = 500;
-const TASK_QUEUE = 'ui4a';
+const TASK_QUEUE = `ui4a-delegation-kill-${process.pid}`;
+
+function llmToolResponse(toolName: string, args: unknown): string {
+  const chunk = {
+    id: 'chatcmpl-delegation-kill-test',
+    object: 'chat.completion.chunk',
+    created: 1_755_700_000,
+    model: 'delegation-protocol-test',
+    choices: [
+      {
+        index: 0,
+        delta: {
+          tool_calls: [
+            {
+              index: 0,
+              id: 'call_1',
+              type: 'function',
+              function: { name: toolName, arguments: JSON.stringify(args) },
+            },
+          ],
+        },
+        finish_reason: null,
+      },
+    ],
+  };
+  const finish = {
+    ...chunk,
+    choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }],
+  };
+  return `data: ${JSON.stringify(chunk)}\n\ndata: ${JSON.stringify(finish)}\n\ndata: [DONE]\n\n`;
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -90,9 +120,17 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
 
   /** 起真 worker(独立进程组;测试内可整组 SIGKILL/SIGTERM)。 */
   function spawnWorker(): ChildProcess {
-    const child = spawn('pnpm', ['exec', 'tsx', 'src/main.ts'], {
+    const child = spawn('pnpm', ['exec', 'tsx', 'src/delegation-test-worker.fixture.ts'], {
       cwd: WORKER_DIR,
-      env: { ...process.env, TEMPORAL_ADDRESS, DATABASE_URL: CONNECTION_STRING },
+      env: {
+        ...process.env,
+        TEMPORAL_ADDRESS,
+        DATABASE_URL: CONNECTION_STRING,
+        DELEGATION_TEST_TASK_QUEUE: TASK_QUEUE,
+        LLM_API_KEY: 'delegation-protocol-test-key',
+        LLM_BASE_URL: `${baseUrl}/v1`,
+        LLM_MODEL: 'delegation-protocol-test',
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: true,
     });
@@ -158,7 +196,9 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
     kinds: string[];
     steps: RecordedStep[];
   }> {
-    const events = (await readLog(pool)).filter((event) => event.rel === `delegation:${workflowId}`);
+    const events = (await readLog(pool)).filter(
+      (event) => event.rel === `delegation:${workflowId}`,
+    );
     const steps: RecordedStep[] = [];
     for (const event of events) {
       if (event.kind !== 'delegation-step') continue;
@@ -173,7 +213,10 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
     client = new Client({ connection });
 
     // 清理上一轮可能的残留实例(同 workflowId 重跑安全;本测试用时间戳 id,防御性)。
-    await client.workflow.getHandle(workflowId).terminate('stale cleanup').catch(() => undefined);
+    await client.workflow
+      .getHandle(workflowId)
+      .terminate('stale cleanup')
+      .catch(() => undefined);
 
     // 测试进程内引擎真身:boot(幂等 seed)后挂最小 HTTP 适配器。
     await ensureEventsTable(pool);
@@ -185,6 +228,30 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
       void (async () => {
         const url = new URL(req.url ?? '/', 'http://127.0.0.1');
         try {
+          if (req.method === 'POST' && url.pathname === '/v1/chat/completions') {
+            const chunks: Buffer[] = [];
+            for await (const chunk of req) chunks.push(chunk as Buffer);
+            const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
+              messages?: { role?: string; content?: string }[];
+            };
+            const prompt =
+              [...(body.messages ?? [])].reverse().find((message) => message.role === 'user')
+                ?.content ?? '';
+            const operation = prompt.includes(':: publish')
+              ? ['done', { summary: '文章已发布' }]
+              : prompt.includes('node: ready')
+                ? ['exec', { action: 'publish', params: { title: articleTitle } }]
+                : prompt.includes('node: content')
+                  ? ['exec', { action: 'next', params: { body: 'kill 续跑验证正文' } }]
+                  : prompt.includes('node: classification')
+                    ? ['exec', { action: 'next', params: { category: 'tech', tags: 't5' } }]
+                    : prompt.includes('node: basic-info')
+                      ? ['exec', { action: 'next', params: { title: articleTitle } }]
+                      : ['navigate', { rel: 'flow:article-drafting' }];
+            res.writeHead(200, { 'content-type': 'text/event-stream' });
+            res.end(llmToolResponse(operation[0] as string, operation[1]));
+            return;
+          }
           if (req.method === 'GET' && url.pathname === '/.well-known/ui4a.json') {
             res.writeHead(200, { 'content-type': 'application/json' });
             res.end(JSON.stringify(engine.getSitemap()));
@@ -265,7 +332,10 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
     if (worker !== null) {
       await stopWorker(worker);
     }
-    await client?.workflow.getHandle(workflowId).terminate('test cleanup').catch(() => undefined);
+    await client?.workflow
+      .getHandle(workflowId)
+      .terminate('test cleanup')
+      .catch(() => undefined);
     await new Promise<void>((resolve) => {
       server?.close(() => resolve());
     });
@@ -288,7 +358,7 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
         args: [
           {
             goal,
-            driverKind: 'rule',
+            driverKind: 'llm',
             startRel: 'articles',
             principal: 'user:kill-test',
             maxSteps: 24,

@@ -2,8 +2,8 @@
  * GET /api/chat/sessions 路由测试(T9 会话清单)。
  *
  * 清单 = chat-turn 事件按 sessionId 分组的日志投影(与 history 同一真相源,
- * 服务端零会话态)。测试经进程内回环跑真实链路(与 history/route.test.ts
- * 同方案):POST /api/chat(inline 落 chat-turn)→ GET /api/chat/sessions。
+ * 服务端零会话态)。测试直接给定回合事件，再经 GET /api/chat/sessions
+ * 验证分组投影。
  *
  * 覆盖:
  * - 多会话分组聚合:turns 计数、lastGoal/lastOutcome 取末回合、lastTs 倒序;
@@ -13,14 +13,8 @@ import { createServer, type Server } from 'node:http';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { ensureEventsTable } from '../../../../db/events';
+import { appendEvent, ensureEventsTable } from '../../../../db/events';
 import { getPool } from '../../../../db/pool';
-import { resetEngineForTests } from '../../../../engine/service';
-
-import { GET as getSitemapRoute } from '../../../.well-known/ui4a.json/route';
-import { GET as getEntityRoute } from '../../entity/route';
-import { POST as postExecRoute } from '../../exec/route';
-import { POST as postChat } from '../route';
 import { GET as getSessions } from './route';
 
 const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');
@@ -29,11 +23,7 @@ let server: Server;
 let base = '';
 
 async function handler(pathname: string, request: Request): Promise<Response> {
-  if (pathname === '/api/entity') return getEntityRoute(request);
-  if (pathname === '/api/exec') return postExecRoute(request);
-  // sitemap 路由无查询参数(签名零参)
-  if (pathname === '/.well-known/ui4a.json') return getSitemapRoute();
-  if (pathname === '/api/chat') return postChat(request);
+  void request;
   if (pathname === '/api/chat/sessions') return getSessions();
   return Response.json({ error: 'not found' }, { status: 404 });
 }
@@ -52,26 +42,30 @@ async function sessions(): Promise<{ status: number; json: { sessions?: SessionR
   return { status: response.status, json: (await response.json()) as { sessions?: SessionRow[] } };
 }
 
-/** 跑完一个 inline 回合(SSE 流整体读尽,chat-turn 在 final 前落库)。 */
+/** 投影测试直接给定已完成的 AI-first 回合事件。 */
 async function runChatTurn(sessionId: string, verb: string): Promise<void> {
-  const response = await fetch(`${base}/api/chat`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
+  await appendEvent(pool, {
+    kind: 'chat-turn',
+    actor: 'agent',
+    principal: `user:${sessionId}`,
+    channel: 'chat',
+    rel: `chat:${sessionId}`,
+    detail: {
       sessionId,
-      goal: {
-        verb,
-        fields: { title: `清单-${verb}`, category: 'tech', tags: '', body: '正文' },
-      },
-    }),
+      turnId: crypto.randomUUID(),
+      goal: { verb },
+      outcome: 'done',
+      summary: '已完成',
+      messages: [{ role: 'assistant', text: '完成: 已完成' }],
+      steps: [],
+      driver: 'llm',
+    },
   });
-  await response.text();
 }
 
 beforeEach(async () => {
   await ensureEventsTable(pool);
   await pool.query('TRUNCATE events');
-  resetEngineForTests();
   server = createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`);
     const chunks: Buffer[] = [];
@@ -96,25 +90,6 @@ afterEach(async () => {
 });
 
 describe('聊天会话清单投影(T9)', () => {
-  const envKey = process.env.LLM_API_KEY;
-  const envBase = process.env.LLM_BASE_URL;
-  const envModel = process.env.LLM_MODEL;
-
-  beforeEach(() => {
-    delete process.env.LLM_API_KEY; // auto → rule(确定性零外网)
-    delete process.env.LLM_BASE_URL;
-    delete process.env.LLM_MODEL;
-  });
-
-  afterEach(() => {
-    if (envKey === undefined) delete process.env.LLM_API_KEY;
-    else process.env.LLM_API_KEY = envKey;
-    if (envBase === undefined) delete process.env.LLM_BASE_URL;
-    else process.env.LLM_BASE_URL = envBase;
-    if (envModel === undefined) delete process.env.LLM_MODEL;
-    else process.env.LLM_MODEL = envModel;
-  });
-
   it('多会话分组聚合:turns 计数、末回合摘要、lastTs 倒序', async () => {
     await runChatTurn('sess-a', '发布第一篇文章');
     await runChatTurn('sess-b', '发布第二篇文章');

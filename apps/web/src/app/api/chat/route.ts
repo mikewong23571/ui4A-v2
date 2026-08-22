@@ -3,9 +3,10 @@ import {
   entityFocusForDisplayIntent,
   generateRenderSpecWithLlm,
   hasDisplayIntent,
+  LlmConfigurationError,
   renderSpecFor,
   renderSpecGroundingErrors,
-  resolveDriverKind,
+  resolveLlmConfig,
   runAgent,
   type AgentGoal,
   type GeneratedRenderSpec,
@@ -34,28 +35,28 @@ import { validateWordBind } from '../../../render/word-bind';
 // - 请求 {goal: {verb, targetRel?, resource?, fields?}, sessionId?, driver?,
 //   mode?: 'inline'|'delegated'};mode 缺省 inline(既有行为与测试零改动);
 // - render capability(T7 Phase C / S5):展示类意图(按分类展示文章)先于
-//   inline/delegated 分派短路——renderSpecFor(rule 确定路径)产零字面 spec →
+//   inline/delegated 分派短路——renderSpecFor(机械生成路径)产零字面 spec →
 //   零字面校验 → freezeSpec(首冻事件留痕,同 concern 复用首冻)→ 响应携带
 //   render 载荷(spec + 画布入口);零 /api/exec(渲染不是执行,不走循环);
 //   意图未命中/引擎不可达 → 原路交回 agent 循环(诚实失败口径不变);
-//   T12 Phase A(架构决定 1):rule miss 的展示意图 → LLM fallthrough(配置
-//   不完整时跳过)——buildRenderPrompt(词汇表 + sitemap 处境)→ streamText
+//   T12 Phase A(架构决定 1):机械生成未命中的展示意图 → LLM
+//   fallthrough——buildRenderPrompt(词汇表 + sitemap 处境)→ streamText
 //   (环境配置模型,60s abort)→ parseRenderResponse(fail-safe)→ 同一零字面
 //   校验器 + 处境核对(集合/字段真实性)+ 词条形状 bindSchema → freezeSpec
 //   凝固留痕 → 响应(形状不变);解析失败/校验失败/端点失败 → 原路交回普通
 //   agent 循环(不留半成品 spec,不凝固);LLM 路径 inline 模式已 SSE 化
 //   (sseRenderResponse):思考增量 thinking-delta + render 帧回执(与 JSON
 //   回执同形),过闸失败同流交回循环;delegated 模式保持阻塞 JSON;
-// - inline(T9 Phase B 起为 SSE 流式,text/event-stream):服务端组装 driver
-//   (rule | llm | auto;T15 将移除产品 runtime 的 rule fallback),runAgent 循环过本源
+// - inline(T9 Phase B 起为 SSE 流式,text/event-stream):服务端只组装
+//   LLM driver(default/auto 均是 llm),runAgent 循环过本源
 //   HTTP 合同(actor=agent,principal=user:<sessionId>,channel=chat)——
 //   "agent 走合同"字面成立;onStep 每步推一帧
 //   {type:'step', message:{role:'assistant',text}, rel}(text 为 trail.ts
 //   stepToMessage 口径);llm 步 decide 产推理自述时先于同号 step 帧推一帧
 //   {type:'thinking', step, text}(T11 Phase C / 架构决定 4:聚合整段权威
 //   终帧——D22 GLM reasoning 末尾齐发,非打字机;step 与对应 step 帧同号,
-//   便于客户端归步;rule driver / 端点不返回 reasoning → 零 thinking 帧,
-//   rule 路径帧序列与现状逐帧一致);增量通道 {type:'thinking-delta',
+//   便于客户端归步;端点不返回 reasoning 时零 thinking 帧);
+//   增量通道 {type:'thinking-delta',
 //   step, text} 逐 raw chunk 即推(与聚合几乎同刻,管线为真流式就绪),
 //   结束推 {type:'final', payload:{sessionId,
 //   driver, requestedDriver, outcome, summary, steps, successes}};异常兜底
@@ -70,7 +71,7 @@ import { validateWordBind } from '../../../render/word-bind';
 //   agent-decision 事件(rel/actor/principal/channel 与 chat-turn 同源同值,
 //   detail 五要素 step/driver/prompt/reasoning/op——llm 的 prompt 为 system/user
 //   全量原文、reasoning 为聚合整段自述(Phase C 起填真值;端点不返回时如实
-//   null);rule 的 prompt 为决策输入结构化摘要),
+//   null),
 //   先于 chat-turn 落库;engine fold 忽略该 kind(纯留痕,I5 重放 hash 不变),
 //   落库失败 console.error 不阻断响应(同 chat-turn 口径);delegated/render
 //   短路回合不写(轨迹分别在舰队页/凝固事件,口径同 chat-turn);
@@ -80,7 +81,7 @@ import { validateWordBind } from '../../../render/word-bind';
 //   响应 {mode:'delegated', delegationId, statusUrl};派发失败(Temporal 不可达)
 //   据实 503——委托没派出去不能假装成功;
 // - 起始 rel 由 sitemap 词级交集解析(客户端行为),缺省 articles;
-// - 一次性 JSON 仅剩:rule 命中 render 短路(瞬时)/参数错误/delegated;
+// - 一次性 JSON 仅剩:机械 render 命中短路(瞬时)/参数错误/delegated;
 //   LLM render 路径(inline)与 inline 循环同为 SSE;thinking/render 帧见上。
 //   B4:LLM 失败(401 等)如实进入 step 帧文本与 final.summary,route 不 5xx。
 // 服务无会话态:事件日志是真相,聊天会话是客户端投影(localStorage)。
@@ -92,7 +93,7 @@ interface ParsedChatBody {
   goal: AgentGoal;
   sessionId: string;
   turnId: string;
-  driver: 'rule' | 'llm' | 'auto';
+  driver: 'llm' | 'auto';
   mode: 'inline' | 'delegated';
 }
 
@@ -127,8 +128,11 @@ function parseBody(body: unknown): ParsedChatBody | ParseError {
   if (turnId !== undefined && typeof turnId !== 'string') {
     return { ok: false, error: 'turnId 必须是字符串' };
   }
-  if (driver !== undefined && driver !== 'rule' && driver !== 'llm' && driver !== 'auto') {
-    return { ok: false, error: 'driver 必须是 "rule" | "llm" | "auto"' };
+  if (driver === 'rule') {
+    return { ok: false, error: 'rule driver 已退出产品运行时；driver 仅支持 "llm" | "auto"' };
+  }
+  if (driver !== undefined && driver !== 'llm' && driver !== 'auto') {
+    return { ok: false, error: 'driver 必须是 "llm" | "auto"' };
   }
   if (mode !== undefined && mode !== 'inline' && mode !== 'delegated') {
     return { ok: false, error: 'mode 必须是 "inline" | "delegated"' };
@@ -163,8 +167,8 @@ async function frozenRenderPayload(
   engine: EngineRuntime,
   generated: GeneratedRenderSpec,
   sessionId: string,
-  requested: 'rule' | 'llm' | 'auto',
-  resolved: 'rule' | 'llm',
+  requested: 'llm' | 'auto',
+  resolved: 'llm',
 ): Promise<ChatRenderPayload> {
   // 断言理由:validateSpec 已确认形状(引用节点 + 结构容器),Record 与
   // BindTree 的差异仅是类型层收窄,运行时形状已收敛。
@@ -200,8 +204,8 @@ async function respondWithFrozenSpec(
   engine: EngineRuntime,
   generated: GeneratedRenderSpec,
   sessionId: string,
-  requested: 'rule' | 'llm' | 'auto',
-  resolved: 'rule' | 'llm',
+  requested: 'llm' | 'auto',
+  resolved: 'llm',
 ): Promise<Response> {
   return Response.json(
     await frozenRenderPayload(engine, generated, sessionId, requested, resolved),
@@ -299,8 +303,8 @@ async function streamAgentLoop(args: {
   goal: AgentGoal;
   sessionId: string;
   turnId: string;
-  requested: 'rule' | 'llm' | 'auto';
-  resolved: 'rule' | 'llm';
+  requested: 'llm' | 'auto';
+  resolved: 'llm';
   baseUrl: string;
 }): Promise<void> {
   const { send, goal, sessionId, turnId, requested, resolved, baseUrl } = args;
@@ -331,8 +335,8 @@ async function streamAgentLoop(args: {
       startRel,
       // thinking 帧(T11 Phase C / 架构决定 4):llm 步的推理自述聚合整段
       // 权威终帧(D22 末尾齐发),先于同号 step 帧;增量通道 thinking-delta
-      // 逐片段即推(当前与聚合几乎同刻,管线为真流式就绪);rule driver
-      // 零回调 → 零帧(rule 路径帧序列与现状逐帧一致)。
+      // 逐片段即推(当前与聚合几乎同刻,管线为真流式就绪);
+      // 端点无 reasoning 回调时自然零帧。
       onReasoning: (text) => {
         send({ type: 'thinking', step: stepFramesSent + 1, text });
       },
@@ -436,8 +440,8 @@ function sseRenderResponse(args: {
   goal: AgentGoal;
   sessionId: string;
   turnId: string;
-  requested: 'rule' | 'llm' | 'auto';
-  resolved: 'rule' | 'llm';
+  requested: 'llm' | 'auto';
+  resolved: 'llm';
   baseUrl: string;
 }): Response {
   const { engine, sitemap, goal, sessionId, turnId, requested, resolved, baseUrl } = args;
@@ -503,7 +507,7 @@ export async function POST(request: Request) {
   // 回环抓取任意 origin)。APP_ORIGIN 显式覆盖;否则仅放行本机 Host(dev/
   // e2e 都在 localhost),非本机且未配置 → 拒绝 delegated 派发。
   const requestUrl = new URL(request.url);
-  const resolved = resolveDriverKind(requested);
+  const resolved = 'llm' as const;
   let baseUrl: string;
   if (mode !== 'delegated') {
     baseUrl = requestUrl.origin;
@@ -525,6 +529,17 @@ export async function POST(request: Request) {
     baseUrl = `${baseUrl.replace(/\/$/, '')}/_meta`;
   }
 
+  // AI-first 产品边界:缺少模型配置时不进入任何确定性 chat
+  // 短路(render/focus/discovery),也不派发注定失败的委托。inline
+  // 仍经标准 agent 流输出可恢复 fail；delegated 以 JSON 据实拒绝。
+  let configurationFailure: string | undefined;
+  try {
+    resolveLlmConfig();
+  } catch (error) {
+    if (!(error instanceof LlmConfigurationError)) throw error;
+    configurationFailure = `LLM 不可用: ${error.message}。配置后可重试。`;
+  }
+
   await appendChatProjection('chat-turn-started', sessionId, {
     sessionId,
     turnId,
@@ -532,6 +547,39 @@ export async function POST(request: Request) {
     driver: resolved,
     mode,
   });
+
+  if (configurationFailure !== undefined) {
+    if (mode === 'inline') {
+      return sseResponse(async (send) => {
+        await streamAgentLoop({ send, goal, sessionId, turnId, requested, resolved, baseUrl });
+      });
+    }
+    const messages = [{ role: 'assistant' as const, text: `失败: ${configurationFailure}` }];
+    await appendChatProjection('chat-turn', sessionId, {
+      sessionId,
+      turnId,
+      goal,
+      outcome: 'failed',
+      summary: configurationFailure,
+      messages,
+      steps: [],
+      driver: resolved,
+    });
+    return Response.json(
+      {
+        sessionId,
+        driver: resolved,
+        requestedDriver: requested,
+        outcome: 'failed',
+        summary: configurationFailure,
+        messages,
+        steps: [],
+        successes: [],
+        error: configurationFailure,
+      },
+      { status: 503 },
+    );
+  }
 
   // 歧义发现意图只定位入口，不替用户选择 approve/reject/delete 等写动作。
   // 这是人类权威边界，不交给概率模型自由解释。

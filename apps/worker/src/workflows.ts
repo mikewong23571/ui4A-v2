@@ -58,8 +58,8 @@ export async function notifyWorkflow(confirmation: NotifyConfirmation): Promise<
 // delegationWorkflow(T5 Phase A:委托实体 = workflow)
 // ---------------------------------------------------------------------------
 
-/** 委托 driver 极小集(spec 架构决定 1:llm 直传已有 driver 配置,行为与 inline 等价)。 */
-export type DelegationDriverKind = 'rule' | 'llm';
+/** 产品委托只运行真实 LLM；scripted/mock driver 仅能经 activity 测试依赖注入。 */
+export type DelegationDriverKind = 'llm';
 
 /** delegationWorkflow 参数(起点集合/合同本源/步数上限;goal 即 @ui4a/agent 的 AgentGoal)。 */
 export interface DelegationWorkflowArgs {
@@ -139,7 +139,7 @@ export interface AgentStepResult {
   /**
    * 推理自述(T11 / spec 架构决定 3;审计留痕,非循环状态——applyStepToState
    * 不消费):llm driver 决策时经 DecideSink 回调捕获(Phase C streamText 改造
-   * 起填真值);rule 路径与端点不返回时不产生(落库恒 null)。幂等恢复载荷与
+   * 起填真值);scripted/mock 路径与端点不返回时不产生(落库恒 null)。幂等恢复载荷与
    * detail 同构:旧事件无此字段,恢复结果同样不带。
    */
   reasoning?: string | null;
@@ -227,7 +227,7 @@ export async function delegationWorkflow(
   await startDelegation({
     delegationId,
     goal: args.goal,
-    driverKind: args.driverKind,
+    driverKind: 'llm',
     startRel,
     principal: args.principal,
   });
@@ -240,7 +240,7 @@ export async function delegationWorkflow(
       delegationId,
       step,
       goal: args.goal,
-      driverKind: args.driverKind,
+      driverKind: 'llm',
       baseUrl: args.baseUrl,
       principal: args.principal,
       sitemap,

@@ -23,8 +23,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { jsonSchema, streamText, type LanguageModel, type ToolSet } from 'ai';
 import type { SirenEntity } from '@ui4a/engine';
 
-import { createRuleDriver } from './rule-driver';
-import { hasLlmConfig, resolveLlmConfig, type LlmConfigOverrides } from './llm-config';
+import { LlmConfigurationError, resolveLlmConfig, type LlmConfigOverrides } from './llm-config';
 import { summarizeEntity } from './loop';
 import { extractRawReasoning, readRawDelta } from './raw-reasoning';
 import { ACTION_TOOL_PREFIX, buildToolProjection, isReservedVerb } from './tools';
@@ -35,7 +34,7 @@ export interface LlmDriverOptions extends LlmConfigOverrides {
   fetchImpl?: FetchLike;
 }
 
-export type DriverKind = 'rule' | 'llm' | 'auto';
+export type DriverKind = 'llm' | 'auto';
 
 interface ResolvedLlmSettings {
   apiKey: string;
@@ -386,19 +385,27 @@ export function createLlmDriver(options: LlmDriverOptions = {}): AgentDriver {
   return { decide: (context, sink) => llmDecide(model, context, sink) };
 }
 
-/** 解析实际 driver 类型(auto 的 rule fallback 将由 T15 U22 移出产品 runtime)。 */
-export function resolveDriverKind(
-  kind: DriverKind,
-  options: LlmDriverOptions = {},
-): 'rule' | 'llm' {
-  if (kind === 'rule') return 'rule';
-  if (kind === 'auto' && !hasLlmConfig(options)) return 'rule';
+/** 解析实际 driver 类型:auto 是 AI-first 别名,不依据部署配置改变产品语义。 */
+export function resolveDriverKind(kind: DriverKind): 'llm' {
+  void kind;
   return 'llm';
 }
 
-/** 双 driver 一键互换的工厂(rule / llm / auto)。 */
+function unavailableLlmDriver(error: LlmConfigurationError): AgentDriver {
+  const reason = `LLM 不可用: ${error.message}。配置后可重试。`;
+  return { decide: () => ({ kind: 'fail', reason }) };
+}
+
+/**
+ * Driver 工厂:auto/default 与 llm 始终走 AI-first 路径。缺少完整 profile
+ * 是可恢复的 Assistant 结果,不抛异常、更不 fallback 到 rule。
+ */
 export function createDriver(kind: DriverKind, options: LlmDriverOptions = {}): AgentDriver {
-  return resolveDriverKind(kind, options) === 'rule'
-    ? createRuleDriver()
-    : createLlmDriver(options);
+  resolveDriverKind(kind);
+  try {
+    return createLlmDriver(options);
+  } catch (error) {
+    if (error instanceof LlmConfigurationError) return unavailableLlmDriver(error);
+    throw error;
+  }
 }

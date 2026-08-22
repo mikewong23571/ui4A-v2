@@ -8,9 +8,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 //   不能假装成功;notify 是 fire-and-forget,语义不同);
 // - 失败不缓存连接:下次派发重连(Temporal 恢复后自愈)。
 const { startMock, connectMock } = vi.hoisted(() => ({
-  startMock: vi.fn(
-    async (_workflow: string, _options?: Record<string, unknown>) => ({ workflowId: 'delegation-stub' }),
-  ),
+  startMock: vi.fn(async (workflow: string, options?: Record<string, unknown>) => {
+    void workflow;
+    void options;
+    return { workflowId: 'delegation-stub' };
+  }),
   connectMock: vi.fn(async () => ({ connection: true })),
 }));
 
@@ -30,7 +32,7 @@ import {
 
 const args: DelegationDispatchArgs = {
   goal: { verb: '发布一篇文章', fields: { title: '舰队首航' } },
-  driverKind: 'rule',
+  driverKind: 'llm',
   startRel: 'articles',
   principal: 'user:sess-1',
   baseUrl: 'http://127.0.0.1:3100',
@@ -40,9 +42,11 @@ beforeEach(() => {
   startMock.mockClear();
   connectMock.mockClear();
   connectMock.mockImplementation(async () => ({ connection: true }));
-  startMock.mockImplementation(
-    async (_workflow: string, _options?: Record<string, unknown>) => ({ workflowId: 'delegation-stub' }),
-  );
+  startMock.mockImplementation(async (workflow: string, options?: Record<string, unknown>) => {
+    void workflow;
+    void options;
+    return { workflowId: 'delegation-stub' };
+  });
   resetTemporalDelegationClientForTests();
 });
 

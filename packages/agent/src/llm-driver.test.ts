@@ -5,13 +5,12 @@
  * - 坏 key → 401 错误原文如实进入 fail reason(B4 的委托不崩溃前提);
  * - 模型输出不合法(无工具调用/未知工具/保留动词)→ fail-safe 返回 fail;
  * - reasoning 经 raw 部件(delta.reasoning_content)解析累积,sink 一次性回调(D22);
- * - createDriver('auto'):无 key 回退 rule driver(I1 机械层)。
+ * - createDriver('auto'|'llm'):缺少配置时返回可恢复 fail,不抛出且不 fallback rule。
  */
 import type { SirenAction } from '@ui4a/engine';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { buildSystemPrompt, createDriver, createLlmDriver, resolveDriverKind } from './llm-driver';
-import { createRuleDriver } from './rule-driver';
 import {
   createScriptedTransport,
   instanceEntity,
@@ -288,17 +287,21 @@ describe('createDriver 工厂(provider-neutral config)', () => {
     }
   });
 
-  it('auto 无 key → rule driver(决策与 rule driver 完全一致,零 LLM 调用)', async () => {
-    expect(resolveDriverKind('auto')).toBe('rule');
+  it('auto 无配置仍解析为 llm,并返回明确且可恢复的不可用结果', async () => {
+    expect(resolveDriverKind('auto')).toBe('llm');
     const driver = createDriver('auto');
-    const ctx = context();
-    await expect(Promise.resolve(driver.decide(ctx))).resolves.toEqual(
-      createRuleDriver().decide(ctx),
-    );
+    const op = await driver.decide(context());
+
+    expect(op.kind).toBe('fail');
+    if (op.kind === 'fail') {
+      expect(op.reason).toContain('LLM 不可用');
+      expect(op.reason).toContain('LLM_API_KEY, LLM_BASE_URL, LLM_MODEL');
+      expect(op.reason).toContain('配置后可重试');
+    }
   });
 
   it('auto 有 key → llm driver(决策走 LLM 传输)', async () => {
-    expect(resolveDriverKind('auto', TEST_LLM_CONFIG)).toBe('llm');
+    expect(resolveDriverKind('auto')).toBe('llm');
     const driver = createDriver('auto', {
       ...TEST_LLM_CONFIG,
       fetchImpl: async () => openaiToolResponse('done', { summary: 'LLM 通道' }),
@@ -309,13 +312,15 @@ describe('createDriver 工厂(provider-neutral config)', () => {
     });
   });
 
-  it('显式 llm 配置缺项时在网络调用前失败', () => {
+  it('显式 llm 配置缺项时返回可恢复 fail,不向调用方抛异常', async () => {
     expect(resolveDriverKind('llm')).toBe('llm');
-    expect(() => createDriver('llm')).toThrow('LLM_API_KEY, LLM_BASE_URL, LLM_MODEL');
-  });
+    const driver = createDriver('llm');
+    const op = await driver.decide(context());
 
-  it('rule 恒为 rule driver', () => {
-    expect(resolveDriverKind('rule', TEST_LLM_CONFIG)).toBe('rule');
+    expect(op).toEqual({
+      kind: 'fail',
+      reason: 'LLM 不可用: LLM 配置缺失: LLM_API_KEY, LLM_BASE_URL, LLM_MODEL。配置后可重试。',
+    });
   });
 });
 

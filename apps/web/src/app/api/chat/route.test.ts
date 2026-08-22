@@ -120,6 +120,59 @@ function createScriptedLlmStub(): Promise<Server & { port(): number }> {
   });
 }
 
+/** AI-first B1 route fixture: the transport is scripted, while every decision
+ * still traverses the production LLM driver/tool protocol. */
+function createPublishingLlmStub(): Promise<Server & { port(): number }> {
+  return new Promise((resolve) => {
+    let calls = 0;
+    const operations = [
+      { name: 'exec', args: { action: 'next', params: { title: 'LLM 发布标题' } } },
+      {
+        name: 'exec',
+        args: { action: 'next', params: { category: 'tech', tags: 'chat' } },
+      },
+      { name: 'exec', args: { action: 'next', params: { body: 'LLM 发布正文' } } },
+      { name: 'exec', args: { action: 'publish', params: { title: 'LLM 发布标题' } } },
+      { name: 'done', args: { summary: 'LLM 完成发布' } },
+    ];
+    const chunk = (delta: Record<string, unknown>, finishReason: string | null = null) =>
+      `data: ${JSON.stringify({
+        id: 'chatcmpl-publish',
+        object: 'chat.completion.chunk',
+        created: 1755700000,
+        model: 'test-model',
+        choices: [{ index: 0, delta, finish_reason: finishReason }],
+      })}`;
+    const stub = createServer((_req, res) => {
+      const operation = operations[Math.min(calls, operations.length - 1)]!;
+      calls += 1;
+      res.statusCode = 200;
+      res.setHeader('content-type', 'text/event-stream');
+      res.end(
+        `${[
+          chunk({
+            tool_calls: [
+              {
+                index: 0,
+                id: `call_${calls}`,
+                type: 'function',
+                function: {
+                  name: operation.name,
+                  arguments: JSON.stringify(operation.args),
+                },
+              },
+            ],
+          }),
+          chunk({}, 'tool_calls'),
+          'data: [DONE]',
+        ].join('\n\n')}\n\n`,
+      );
+    }) as Server & { port(): number };
+    stub.port = () => (stub.address() as { port: number }).port;
+    stub.listen(0, '127.0.0.1', () => resolve(stub));
+  });
+}
+
 interface ChatResponseBody {
   sessionId?: string;
   driver?: string;
@@ -200,6 +253,12 @@ async function articleCount(): Promise<number> {
   return ((await response.json()) as { properties: { count: number } }).properties.count;
 }
 
+async function eventKinds(): Promise<string[]> {
+  const response = await fetch(`${base}/api/events`);
+  const body = (await response.json()) as { events: { kind: string }[] };
+  return body.events.map((event) => event.kind);
+}
+
 beforeEach(async () => {
   await ensureEventsTable(pool);
   await pool.query('TRUNCATE events');
@@ -230,7 +289,7 @@ afterEach(async () => {
 
 // ---- 场景 -------------------------------------------------------------------
 
-describe('I1(路由级):无 key → auto 回退 rule,B1 完成', () => {
+describe('T15 U22:product chat runtime is AI-first', () => {
   const envKey = process.env.LLM_API_KEY;
   const envBase = process.env.LLM_BASE_URL;
   const envModel = process.env.LLM_MODEL;
@@ -250,7 +309,95 @@ describe('I1(路由级):无 key → auto 回退 rule,B1 完成', () => {
     else process.env.LLM_MODEL = envModel;
   });
 
-  it('auto → rule:发布目标三步填充 + publish,文章计数 2→3', async () => {
+  it('rejects the removed product rule driver without creating events', async () => {
+    const response = await chat({ goal: { verb: '发布一篇文章' }, driver: 'rule' });
+
+    expect(response.status).toBe(400);
+    expect(response.json.error).toContain('rule driver 已退出产品运行时');
+    expect(await eventKinds()).toEqual([]);
+  });
+
+  it.each([
+    ['default', undefined],
+    ['auto', 'auto'],
+    ['llm', 'llm'],
+  ] as const)(
+    '%s request reports missing LLM config and never mutates business state',
+    async (_, driver) => {
+      const before = await articleCount();
+      const response = await chat({
+        sessionId: `u22-${driver ?? 'default'}`,
+        goal: { verb: '发布一篇文章' },
+        ...(driver === undefined ? {} : { driver }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.contentType).toContain('text/event-stream');
+      expect(response.json).toMatchObject({
+        driver: 'llm',
+        requestedDriver: driver ?? 'auto',
+        outcome: 'failed',
+      });
+      expect(response.json.summary).toContain('LLM 不可用');
+      expect(response.json.summary).toContain('LLM_API_KEY, LLM_BASE_URL, LLM_MODEL');
+      expect(response.json.summary).toContain('配置后可重试');
+      expect(await articleCount()).toBe(before);
+      expect(await eventKinds()).not.toContain('action-executed');
+    },
+  );
+
+  it('does not bypass an unavailable LLM through a deterministic chat render shortcut', async () => {
+    const response = await chat({
+      sessionId: 'u22-render-unavailable',
+      goal: { verb: '按分类展示文章' },
+    });
+
+    expect(response.json).toMatchObject({ driver: 'llm', outcome: 'failed' });
+    expect(response.json.summary).toContain('LLM 不可用');
+    expect(await eventKinds()).not.toContain('render-spec-frozen');
+    expect(await eventKinds()).not.toContain('action-executed');
+  });
+
+  it('rejects delegated work before dispatch when the LLM profile is unavailable', async () => {
+    const response = await chat({
+      sessionId: 'u22-delegated-unavailable',
+      mode: 'delegated',
+      goal: { verb: '发布一篇文章' },
+    });
+
+    expect(response.status).toBe(503);
+    expect(response.contentType).toContain('application/json');
+    expect(response.json).toMatchObject({ driver: 'llm', outcome: 'failed' });
+    expect(response.json.error).toContain('LLM 不可用');
+    expect(await eventKinds()).not.toContain('delegation-requested');
+    expect(await eventKinds()).not.toContain('action-executed');
+  });
+});
+
+describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
+  const envKey = process.env.LLM_API_KEY;
+  const envBase = process.env.LLM_BASE_URL;
+  const envModel = process.env.LLM_MODEL;
+  let stub: Server & { port(): number };
+
+  beforeEach(async () => {
+    stub = await createPublishingLlmStub();
+    process.env.LLM_API_KEY = 'test-key';
+    process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+    process.env.LLM_MODEL = 'test-model';
+  });
+
+  afterEach(async () => {
+    if (envKey === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = envKey;
+    if (envBase === undefined) delete process.env.LLM_BASE_URL;
+    else process.env.LLM_BASE_URL = envBase;
+    if (envModel === undefined) delete process.env.LLM_MODEL;
+    else process.env.LLM_MODEL = envModel;
+    await new Promise<void>((resolve) => stub.close(() => resolve()));
+  });
+
+  it('default/auto → llm:发布目标三步填充 + publish,文章计数 2→3', async () => {
     expect(await articleCount()).toBe(2);
 
     const { status, json } = await chat({
@@ -260,13 +407,13 @@ describe('I1(路由级):无 key → auto 回退 rule,B1 完成', () => {
           title: 'chat 的第三篇',
           category: 'tech',
           tags: 'chat',
-          body: '第三篇正文:由 chat 路由(rule 回退)发布。',
+          body: '第三篇正文:由 chat 路由(LLM)发布。',
         },
       },
     });
 
     expect(status).toBe(200);
-    expect(json.driver).toBe('rule');
+    expect(json.driver).toBe('llm');
     expect(json.outcome, JSON.stringify(json.messages)).toBe('done');
 
     const trajectory = (json.messages ?? []).map((message) => message.text).join('\n');
@@ -377,7 +524,7 @@ describe('I1(路由级):无 key → auto 回退 rule,B1 完成', () => {
     expect(turns[0]!.detail.sessionId).toBe('sess-turn');
     expect(turns[0]!.detail.goal.verb).toBe('发布一篇文章');
     expect(turns[0]!.detail.outcome).toBe('done');
-    expect(turns[0]!.detail.driver).toBe('rule');
+    expect(turns[0]!.detail.driver).toBe('llm');
     expect(turns[0]!.detail.messages.map((message) => message.text).join('\n')).toContain(
       '执行 publish',
     );
@@ -478,61 +625,6 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
     );
   }
 
-  it('rule 回合:每步一条,五要素齐全,prompt 为决策输入的结构化摘要', async () => {
-    const { json } = await chat({
-      sessionId: 'sess-decision-rule',
-      driver: 'rule',
-      goal: {
-        verb: '发布一篇文章',
-        fields: { title: '决策留痕', category: 'tech', tags: '', body: '正文' },
-      },
-    });
-    expect(json.outcome).toBe('done');
-    expect(json.driver).toBe('rule');
-
-    const decisions = await decisionsOf('sess-decision-rule');
-    const steps = (json.steps ?? []) as { op: unknown }[];
-    // 每步决策恰一条(蒸馏原料:机械层轨迹是正确答案生成器)。
-    expect(decisions.length).toBeGreaterThan(0);
-    expect(decisions).toHaveLength(steps.length);
-    decisions.forEach((event, index) => {
-      expect(event).toMatchObject({
-        actor: 'agent',
-        channel: 'chat',
-        principal: 'user:sess-decision-rule',
-      });
-      expect(event.detail.step).toBe(index + 1);
-      expect(event.detail.driver).toBe('rule');
-      expect(event.detail.reasoning).toBeNull();
-      // op 与回合 trail 逐步等值(同一决策的两种投影:审计事件 + chat-turn steps)。
-      expect(event.detail.op).toEqual(steps[index]!.op);
-      // rule driver 无自然语言 prompt:存决策输入的结构化摘要(口径见 decisions.ts)。
-      const prompt = event.detail.prompt as {
-        goal: { verb: string };
-        currentRel: string;
-        entity: { rel: string; actions: string[] };
-        blocked: string[];
-        successes: unknown[];
-      };
-      expect(prompt.goal.verb).toBe('发布一篇文章');
-      expect(typeof prompt.currentRel).toBe('string');
-      expect(typeof prompt.entity.rel).toBe('string');
-      expect(Array.isArray(prompt.entity.actions)).toBe(true);
-      expect(Array.isArray(prompt.blocked)).toBe(true);
-      expect(Array.isArray(prompt.successes)).toBe(true);
-    });
-
-    // 写入序:决策审计先于回合投影(chat-turn)落库。
-    const response = await fetch(`${base}/api/events`);
-    const body = (await response.json()) as {
-      events: { kind: string; rel: string; seq: number }[];
-    };
-    const turn = body.events.find(
-      (event) => event.kind === 'chat-turn' && event.rel === 'chat:sess-decision-rule',
-    );
-    expect(Math.max(...decisions.map((event) => event.seq))).toBeLessThan(turn?.seq ?? 0);
-  });
-
   it('llm 回合(mock 端点):每步一条,prompt 为 system/user 全量原文,reasoning 填真值(T11 Phase C)', async () => {
     const stub = await createScriptedLlmStub();
     try {
@@ -582,6 +674,10 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
   });
 
   it('agent-decision 落库失败不阻断响应(同 chat-turn 口径)', async () => {
+    const stub = await createScriptedLlmStub();
+    process.env.LLM_API_KEY = 'test-key';
+    process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+    process.env.LLM_MODEL = 'test-model';
     // 注入 PG 触发器让 agent-decision 的 INSERT 抛错(其它 kind 不受影响)——
     // 审计写失败只 console.error,回合照常完成且 chat-turn 仍落库。
     await pool.query(`
@@ -597,7 +693,7 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
     try {
       const { status, json } = await chat({
         sessionId: 'sess-decision-fail',
-        driver: 'rule',
+        driver: 'llm',
         goal: {
           verb: '发布一篇文章',
           fields: { title: '写失败', category: 'essay', tags: '', body: '正文' },
@@ -617,6 +713,7 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
         ),
       ).toBe(true);
     } finally {
+      await new Promise<void>((resolve) => stub.close(() => resolve()));
       await pool.query(`
         DROP TRIGGER IF EXISTS test_reject_agent_decision ON events;
         DROP FUNCTION IF EXISTS test_reject_agent_decision;
@@ -684,31 +781,6 @@ describe('T11 Phase C Task 2:thinking 帧(SSE 推理自述管道)', () => {
       await new Promise<void>((resolve) => stub.close(() => resolve()));
     }
   });
-
-  it('rule 回合:零 thinking 帧,帧序列与现状逐帧一致', async () => {
-    const { json, frames } = await chat({
-      sessionId: 'sess-thinking-rule',
-      driver: 'rule',
-      goal: {
-        verb: '发布一篇文章',
-        fields: { title: '零帧', category: 'tech', tags: '', body: '正文' },
-      },
-    });
-    expect(json.outcome).toBe('done');
-    expect(json.driver).toBe('rule');
-
-    // rule driver 无 reasoning → 零回调零帧;帧序列保持「若干 step + final」。
-    expect(frames.filter((frame) => frame.type === 'thinking')).toHaveLength(0);
-    expect(frames.length).toBeGreaterThan(1);
-    expect(
-      frames
-        .slice(0, -1)
-        .every(
-          (frame) => frame.type === 'step' || frame.type === 'session' || frame.type === 'focus',
-        ),
-    ).toBe(true);
-    expect(frames[frames.length - 1]!.type).toBe('final');
-  });
 });
 
 describe('B4(路由级):坏 key → 401 原文进对话,route 不 5xx', () => {
@@ -735,6 +807,7 @@ describe('B4(路由级):坏 key → 401 原文进对话,route 不 5xx', () => {
   });
 
   it('llm driver 401 → 200 响应携带失败轨迹与 401 原文', async () => {
+    const before = await articleCount();
     const { status, json } = await chat({
       goal: { verb: '发布一篇文章' },
       driver: 'llm',
@@ -746,6 +819,8 @@ describe('B4(路由级):坏 key → 401 原文进对话,route 不 5xx', () => {
     const trajectory = JSON.stringify(json);
     expect(trajectory).toContain('401');
     expect(trajectory).toContain('令牌无效或已过期');
+    expect(await articleCount()).toBe(before);
+    expect(await eventKinds()).not.toContain('action-executed');
   });
 
   it('同一 session 再发一次:循环存活,行为一致', async () => {
