@@ -1,0 +1,6 @@
+T13 Phase C Task 3: BIOS capabilities 投影(列表+详情)
+
+改动:engine/siren.ts(capability 投影+路由)、service.ts(meta sitemap 携带)、meta-lists.tsx、capability-definition-view.tsx(新增)、app/meta/capabilities/ + capability/[name]/(新页)、meta/page.tsx(入口)、diff-render.test.tsx(零 AI 名单)、s2.spec.ts(仅新增)、api/meta well-known route.test.ts(精确名单机械适配,D21 先例,已申报)
+Why:spec 架构决定 3 + 验收 4——capability 目录人类/agent 可发现;跨站规则不破(业务 sitemap 无 capability 入口)。
+验收(编排 agent 亲自复跑):meta 相关 86/86;CI=true pnpm check 1060 passed;s2 e2e 4/4。自治验收。
+遗留:e2e/invariants enumerateEntityRels 未枚举 capability rel(I5 世界态对比不覆盖新投影,纯函数投影不破)——Phase D 回归时评估补锚。
