@@ -18,6 +18,6 @@
 - [x] Task: 事件流可读投影(kind 注册表驱动的机械叙事摘要 + 时间戳 + detail 折叠下钻;chat-turn/agent-decision 回合级折叠;零 AI 源级断言同步)(TDD) — e4576ac
 - [x] Task: 文案人话化(stat 卡「执行中委托」+ 说明;导航/标题词汇走查统一)(TDD) — f66e39f
 
-## Phase D: 统一验收(唯一 checkpoint)
+## Phase D: 统一验收(唯一 checkpoint) [checkpoint: 391a419]
 
-- [~] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e`)+ walkthrough 复验 #1–#7(dev 库重置 + 脚本化复走 US-1/US-2/US-13/US-14)+ checkpoint git note + tracks.md 勾选
+- [x] Task: 全量回归(`CI=true pnpm check` + `CI=true pnpm e2e`)+ walkthrough 复验 #1–#7(dev 库重置 + 脚本化复走 US-1/US-2/US-13/US-14)+ checkpoint git note + tracks.md 勾选 — 391a419
