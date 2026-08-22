@@ -15,8 +15,8 @@
 
 ## Phase C: 人类可读性(#1/#2)
 
-- [~] Task: 事件流可读投影(kind 注册表驱动的机械叙事摘要 + 时间戳 + detail 折叠下钻;chat-turn/agent-decision 回合级折叠;零 AI 源级断言同步)(TDD)
-- [ ] Task: 文案人话化(stat 卡「执行中委托」+ 说明;导航/标题词汇走查统一)(TDD)
+- [x] Task: 事件流可读投影(kind 注册表驱动的机械叙事摘要 + 时间戳 + detail 折叠下钻;chat-turn/agent-decision 回合级折叠;零 AI 源级断言同步)(TDD) — e4576ac
+- [~] Task: 文案人话化(stat 卡「执行中委托」+ 说明;导航/标题词汇走查统一)(TDD)
 
 ## Phase D: 统一验收(唯一 checkpoint)
 
