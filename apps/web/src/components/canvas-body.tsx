@@ -169,6 +169,7 @@ export function CanvasBody() {
   // ?concern= 经 hook 读取(同路由软导航不重挂载):concern 变化 → load 重建
   // → 挂载 effect 重跑,整面重载(render 回执即达即跳在画布上的二次渲染)。
   const concernParam = useSearchParams().get('concern') ?? undefined;
+  const focusParam = useSearchParams().get('focus') ?? undefined;
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
@@ -199,8 +200,17 @@ export function CanvasBody() {
       // 不改变渲染集)。
       const frozenCollection = await fetchEntity('render-specs');
       const frozenSpecs = frozenCollection !== null ? frozenSpecsOf(frozenCollection) : [];
-      const activeConcern = concernParam;
-      const all = [...frozenSpecs, DEMO_SPEC];
+      // agent/human 共享 focus：稳定 surface id 上替换实体引用；不进入冻结集合。
+      const focusSpec: RenderSpec | undefined =
+        focusParam === undefined
+          ? undefined
+          : {
+              concern: 'agent-focus',
+              component: 'detail',
+              bind: { entity: { ref: `entity:${focusParam}` } },
+            };
+      const activeConcern = focusSpec !== undefined ? focusSpec.concern : concernParam;
+      const all = [...(focusSpec !== undefined ? [focusSpec] : []), ...frozenSpecs, DEMO_SPEC];
       const specs = [
         ...all.filter((spec) => spec.concern === activeConcern),
         ...all.filter((spec) => spec.concern !== activeConcern),
@@ -251,7 +261,7 @@ export function CanvasBody() {
     } finally {
       setLoading(false);
     }
-  }, [cache, concernParam]);
+  }, [cache, concernParam, focusParam]);
 
   useEffect(() => {
     const initial = setTimeout(() => void load(), 0);

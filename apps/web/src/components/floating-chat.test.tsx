@@ -795,6 +795,72 @@ describe('工作台 · 三形态壳(T9 Phase B / B4)', () => {
 });
 
 describe('悬浮聊天窗 · render capability(T7 Phase C / S5)', () => {
+  it('具体查看 focus 回执 → 当前对象入口 + router.push 到临时画布 focus', async () => {
+    const canvasUrl = '/canvas?focus=post%3Afirst-post';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          jsonResponse({
+            sessionId: 'sess-focus',
+            driver: 'rule',
+            outcome: 'done',
+            messages: [{ role: 'assistant', text: '正在查看「第一篇」' }],
+            focus: { rel: 'post:first-post', canvasUrl },
+          }),
+        ),
+      ),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('我要看看第一篇文章');
+
+    await waitFor(() => expect(screen.getByText('正在查看「第一篇」')).toBeTruthy());
+    const link = screen.getByRole('link', { name: /当前查看:post:first-post/ });
+    expect(link.getAttribute('href')).toBe(canvasUrl);
+    expect(link.getAttribute('data-nav')).toBe('focus:post:first-post');
+    expect(routerPushMock).toHaveBeenCalledWith(canvasUrl);
+  });
+
+  it('navigate 成功的 SSE focus 帧实时更新同一个画布 focus', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse([
+            { type: 'focus', rel: 'post:first-post' },
+            {
+              type: 'step',
+              rel: 'post:first-post',
+              message: { role: 'assistant', text: '导航到 post:first-post' },
+            },
+            {
+              type: 'final',
+              payload: {
+                sessionId: 'sess-focus-stream',
+                driver: 'llm',
+                requestedDriver: 'auto',
+                outcome: 'done',
+                summary: '目标完成',
+                steps: [],
+                successes: [],
+              },
+            },
+          ]),
+        ),
+      ),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('查看第一篇');
+    await waitFor(() =>
+      expect(routerPushMock).toHaveBeenCalledWith('/canvas?focus=post%3Afirst-post'),
+    );
+    expect(screen.getByRole('link', { name: /当前查看:post:first-post/ })).toBeTruthy();
+  });
+
   it('响应携带 render 载荷 → 对话呈现生成回执 + 画布入口链接(data-nav)', async () => {
     const canvasUrl = '/canvas?concern=articles-by-category';
     vi.stubGlobal(

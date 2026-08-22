@@ -27,6 +27,7 @@
  *   形状的最终把关在 web 侧校验器与 freezeSpec 入口(分层把关,不在本包重复)。
  */
 import { streamText } from 'ai';
+import type { SirenEntity } from '@ui4a/engine';
 
 import { createLlmChatModel, type LlmDriverOptions } from './llm-driver';
 import { asciiTokens } from './match';
@@ -146,6 +147,39 @@ function dimensionFieldOf(intent: string, sitemap: RenderSitemapContext): string
  */
 export function hasDisplayIntent(intent: string): boolean {
   return DISPLAY_TOKENS.some((token) => tokenInString(token, intent));
+}
+
+/**
+ * 具体查看意图 → collection 成员 rel。优先匹配实体真实 title，其次识别明确
+ * 序号；普通“展示/列表”不擅自选成员。返回的仍只是引用，内容由 renderer 解引用。
+ */
+export function entityFocusForDisplayIntent(
+  intent: string,
+  collection: SirenEntity,
+): string | undefined {
+  if (!hasDisplayIntent(intent) || !collection.class.includes('collection')) return undefined;
+  const members = (collection.entities ?? []).flatMap((entity) => {
+    const rel = entity.properties.rel;
+    const fields = entity.properties.fields;
+    const title =
+      typeof fields === 'object' && fields !== null && !Array.isArray(fields)
+        ? (fields as Record<string, unknown>).title
+        : undefined;
+    return typeof rel === 'string'
+      ? [{ rel, title: typeof title === 'string' ? title.trim() : '' }]
+      : [];
+  });
+  const byTitle = [...members]
+    .filter((member) => member.title.length >= 2 && intent.includes(member.title))
+    .sort((left, right) => right.title.length - left.title.length)[0];
+  if (byTitle !== undefined) return byTitle.rel;
+
+  const ordinal = [
+    { pattern: /(?:第[一1](?:篇|个)|\bfirst\b)/i, index: 0 },
+    { pattern: /(?:第[二2](?:篇|个)|\bsecond\b)/i, index: 1 },
+    { pattern: /(?:第[三3](?:篇|个)|\bthird\b)/i, index: 2 },
+  ].find((candidate) => candidate.pattern.test(intent));
+  return ordinal === undefined ? undefined : members[ordinal.index]?.rel;
 }
 
 /**

@@ -71,6 +71,7 @@ interface ChatJsonResponse {
     concern: string;
     canvasUrl: string;
   };
+  focus?: { rel: string; canvasUrl: string };
   error?: string;
 }
 
@@ -122,6 +123,8 @@ export interface ChatSession {
   /** 思考过程可见性(用户开关,持久化;关闭 = 思考条目不渲染,state 保留)。 */
   showThinking: boolean;
   lastRender: { concern: string; canvasUrl: string } | undefined;
+  /** agent 当前查看的实体引用（临时共享处境，不是凝固布局）。 */
+  lastFocus: { rel: string; canvasUrl: string } | undefined;
   toggleDelegated: () => void;
   toggleShowThinking: () => void;
   startNewSession: () => void;
@@ -153,6 +156,7 @@ export function useChatSession(): ChatSession {
   const [showThinking, setShowThinking] = useState(loadThinkingPreference);
   // 最近一次渲染回执(S5:surface 引用的可点形态——点击在画布打开)。
   const [lastRender, setLastRender] = useState<ChatJsonResponse['render']>(undefined);
+  const [lastFocus, setLastFocus] = useState<ChatJsonResponse['focus']>(undefined);
   // 进行中请求的取消柄(B2:onCancel 中止 fetch;整体超时经 AbortSignal.any 合并)。
   const abortRef = useRef<AbortController | null>(null);
 
@@ -279,11 +283,17 @@ export function useChatSession(): ChatSession {
   const handleRenderReceipt = useCallback(
     (payload: ChatRenderPayload) => {
       persistSession(payload.sessionId);
+      setLastFocus(undefined);
       setLastRender(payload.render);
       for (const entry of payload.messages) appendAssistant(entry.text);
     },
     [appendAssistant, persistSession],
   );
+
+  const handleFocus = useCallback((rel: string) => {
+    setLastRender(undefined);
+    setLastFocus({ rel, canvasUrl: `/canvas?focus=${encodeURIComponent(rel)}` });
+  }, []);
 
   const onNew = useCallback(
     async (message: AppendMessage) => {
@@ -315,7 +325,9 @@ export function useChatSession(): ChatSession {
           // 帧(T11)先于同号 step 帧到达,归步成可折叠思考区(不落 else 误伤)。
           if (response.body === null) throw new Error('SSE 响应缺少 body');
           await readChatSseStream(response.body, signal, (frame) => {
-            if (frame.type === 'thinking-delta') {
+            if (frame.type === 'focus') {
+              handleFocus(frame.rel);
+            } else if (frame.type === 'thinking-delta') {
               appendThinkingDelta(frame.step, frame.text);
             } else if (frame.type === 'thinking') {
               appendThinking(frame.step, frame.text);
@@ -346,6 +358,7 @@ export function useChatSession(): ChatSession {
         if (body.sessionId !== undefined) persistSession(body.sessionId);
         // render 回执(S5):展示意图 → 画布入口链接(替换上一条渲染回执)。
         setLastRender(body.render ?? undefined);
+        setLastFocus(body.focus ?? undefined);
         if (body.messages !== undefined && body.messages.length > 0) {
           for (const entry of body.messages) appendAssistant(entry.text);
         } else {
@@ -366,7 +379,7 @@ export function useChatSession(): ChatSession {
         setIsRunning(false);
       }
     },
-    [appendAssistant, appendThinking, appendThinkingDelta, handleFinal, handleRenderReceipt, persistSession],
+    [appendAssistant, appendThinking, appendThinkingDelta, handleFinal, handleFocus, handleRenderReceipt, persistSession],
   );
 
   const onCancel = useCallback(async () => {
@@ -400,6 +413,7 @@ export function useChatSession(): ChatSession {
     setSessionId('');
     setMessages([]);
     setLastRender(undefined);
+    setLastFocus(undefined);
     setView('chat');
     try {
       globalThis.localStorage?.removeItem(SESSION_STORAGE_KEY);
@@ -439,6 +453,7 @@ export function useChatSession(): ChatSession {
       }
       setMessages([]);
       setLastRender(undefined);
+      setLastFocus(undefined);
       restoreSession(next);
     },
     [restoreSession],
@@ -460,6 +475,7 @@ export function useChatSession(): ChatSession {
     delegated,
     showThinking,
     lastRender,
+    lastFocus,
     toggleDelegated,
     toggleShowThinking,
     startNewSession,
@@ -578,6 +594,12 @@ export function ChatPanel({
     }
     router.push(lastRender.canvasUrl);
   }, [lastRender, router]);
+  const lastFocus = session.lastFocus;
+  useEffect(() => {
+    if (lastFocus === undefined) return;
+    if (`${window.location.pathname}${window.location.search}` === lastFocus.canvasUrl) return;
+    router.push(lastFocus.canvasUrl);
+  }, [lastFocus, router]);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
@@ -702,6 +724,15 @@ export function ChatPanel({
           className="border-t border-border px-3 py-2 text-xs font-medium text-primary hover:underline"
         >
           在画布查看:{session.lastRender.concern}
+        </Link>
+      )}
+      {session.lastFocus !== undefined && (
+        <Link
+          href={session.lastFocus.canvasUrl}
+          data-nav={`focus:${session.lastFocus.rel}`}
+          className="border-t border-border px-3 py-2 text-xs font-medium text-primary hover:underline"
+        >
+          当前查看:{session.lastFocus.rel}
         </Link>
       )}
     </div>

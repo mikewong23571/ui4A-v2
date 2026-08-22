@@ -61,6 +61,22 @@ const ARTICLES: SirenEntity = {
   ],
 };
 
+const FIRST_POST: SirenEntity = {
+  class: ['flow-instance', 'post-status'],
+  rel: ['self'],
+  properties: {
+    rel: 'post:first-post',
+    node: 'published',
+    fields: {
+      title: '第一篇',
+      category: 'essay',
+      body: '这是第一篇完整文章，用来验证具体查看和正文阅读。',
+    },
+  },
+  actions: [],
+  links: [],
+};
+
 /** 凝固 spec 集合(chart 词条:articles 按分类聚合)。 */
 function renderSpecsCollection(withIllegal: boolean): SirenEntity {
   const frozen = (concern: string, component: string, bind: unknown): SirenEntity => ({
@@ -123,6 +139,9 @@ function mockCanvasContract(
         : ARTICLES;
       return Promise.resolve(jsonResponse(200, articles));
     }
+    if (url.startsWith('/api/entity?rel=post%3Afirst-post')) {
+      return Promise.resolve(jsonResponse(200, FIRST_POST));
+    }
     return Promise.resolve(jsonResponse(404, { error: `未知端点 ${url}` }));
   });
 }
@@ -133,6 +152,26 @@ function callsOf(mock: ReturnType<typeof vi.fn>, prefix: string): unknown[][] {
 }
 
 describe('画布页(A2UI surface 宿主)', () => {
+  it('?focus= 以临时 detail surface 查看具体实体正文，不写入凝固列表', async () => {
+    window.history.pushState({}, '', '/canvas?focus=post%3Afirst-post');
+    try {
+      const mock = mockCanvasContract();
+      vi.stubGlobal('fetch', mock);
+      render(<CanvasPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/这是第一篇完整文章/)).toBeTruthy();
+      });
+      const focus = document.querySelector('[data-concern="agent-focus"]');
+      expect(focus?.getAttribute('data-active')).toBe('true');
+      expect(focus?.querySelector('[data-word="detail"]')).not.toBeNull();
+      expect(callsOf(mock, '/api/entity?rel=post%3Afirst-post')).toHaveLength(1);
+      expect(callsOf(mock, '/api/entity?rel=render-specs')).toHaveLength(1);
+    } finally {
+      window.history.pushState({}, '', '/canvas');
+    }
+  });
+
   it('目录协商 + 凝固 spec(chart)+ 单例演示(table)→ surface 渲染词条内容', async () => {
     vi.stubGlobal('fetch', mockCanvasContract());
     render(<CanvasPage />);

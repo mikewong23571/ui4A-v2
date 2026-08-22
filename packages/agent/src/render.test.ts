@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildRenderPrompt,
+  entityFocusForDisplayIntent,
   generateRenderSpecWithLlm,
   hasDisplayIntent,
   parseRenderResponse,
@@ -57,6 +58,48 @@ const SITEMAP_WITHOUT_CATEGORY: RenderSitemapContext = {
 };
 
 describe('renderSpecFor:rule 确定路径(词级匹配 → 零字面 spec)', () => {
+  it('"我要看看第一篇文章" 优先解析标题命中的具体成员，而不是集合 table', () => {
+    expect(
+      entityFocusForDisplayIntent('我要看看第一篇文章', {
+        class: ['collection', 'articles'],
+        properties: { rel: 'articles', count: 2 },
+        actions: [],
+        links: [],
+        entities: [
+          {
+            class: ['flow-instance'],
+            rel: ['item'],
+            properties: {
+              rel: 'post:post-welcome',
+              fields: { title: '欢迎来到 UI4A' },
+            },
+            actions: [],
+            links: [],
+          },
+          {
+            class: ['flow-instance'],
+            rel: ['item'],
+            properties: { rel: 'post:first-post', fields: { title: '第一篇' } },
+            actions: [],
+            links: [],
+          },
+        ],
+      }),
+    ).toBe('post:first-post');
+  });
+
+  it('普通"展示文章列表"不解析具体 focus', () => {
+    expect(
+      entityFocusForDisplayIntent('展示文章列表', {
+        class: ['collection', 'articles'],
+        properties: { rel: 'articles', count: 0 },
+        actions: [],
+        links: [],
+        entities: [],
+      }),
+    ).toBeUndefined();
+  });
+
   it('"按分类展示文章" → chart 词条:articles 按 category 维度聚合', () => {
     expect(renderSpecFor('按分类展示文章', SITEMAP, [])).toEqual({
       concern: 'articles-by-category',

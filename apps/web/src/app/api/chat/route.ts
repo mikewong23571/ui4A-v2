@@ -1,5 +1,6 @@
 import {
   createDriver,
+  entityFocusForDisplayIntent,
   generateRenderSpecWithLlm,
   hasDisplayIntent,
   renderSpecFor,
@@ -296,6 +297,9 @@ async function streamAgentLoop(args: {
       },
       onStep: (step) => {
         stepFramesSent += 1;
+        if (step.op.kind === 'navigate' && step.outcome === 'navigated') {
+          send({ type: 'focus', rel: step.rel });
+        }
         send({ type: 'step', message: stepToMessage(step), rel: step.rel });
       },
     },
@@ -456,6 +460,35 @@ export async function POST(request: Request) {
   try {
     const engine = await getEngine(getDb());
     const sitemap = engine.getSitemap();
+    // 具体阅读优先于集合 render：从真实集合成员解析 title/序号，只回 focus rel。
+    // focus 是临时共享处境，不 freeze、不把实体内容塞进响应。
+    if (hasDisplayIntent(goal.verb)) {
+      for (const surface of sitemap.surfaces.filter((candidate) => candidate.collection === true)) {
+        const collection = await engine.getEntity(surface.rel);
+        if (collection === undefined) continue;
+        const rel = entityFocusForDisplayIntent(goal.verb, collection);
+        if (rel === undefined) continue;
+        const member = collection.entities?.find((candidate) => candidate.properties.rel === rel);
+        const memberFields = member?.properties.fields;
+        const title =
+          typeof memberFields === 'object' && memberFields !== null && !Array.isArray(memberFields)
+            ? (memberFields as Record<string, unknown>).title
+            : undefined;
+        const label = typeof title === 'string' && title !== '' ? title : rel;
+        const canvasUrl = `/canvas?focus=${encodeURIComponent(rel)}`;
+        return Response.json({
+          sessionId,
+          driver: resolved,
+          requestedDriver: requested,
+          outcome: 'done',
+          summary: `查看具体实体 ${label}`,
+          messages: [{ role: 'assistant', text: `正在查看「${label}」→ 在画布打开:${canvasUrl}` }],
+          steps: [],
+          successes: [],
+          focus: { rel, canvasUrl },
+        });
+      }
+    }
     const generated = renderSpecFor(goal.verb, sitemap, engine.listFrozenSpecs());
     if (generated !== undefined) {
       const validation = validateSpec(generated);

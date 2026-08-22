@@ -58,6 +58,7 @@ interface ChatRenderResponseBody {
   messages?: { role: string; text: string }[];
   steps?: unknown[];
   render?: RenderPayload;
+  focus?: { rel: string; canvasUrl: string };
 }
 
 async function chat(
@@ -137,6 +138,26 @@ afterEach(async () => {
 });
 
 describe('chat render capability:展示意图 → spec 生成 + 凝固', () => {
+  it('"我要看看第一篇文章" → 具体实体 focus，零集合 render freeze/零 exec', async () => {
+    const { status, json } = await chat({
+      sessionId: 'read-first-post',
+      driver: 'rule',
+      goal: { verb: '我要看看第一篇文章' },
+    });
+
+    expect(status).toBe(200);
+    expect(json.outcome).toBe('done');
+    expect(json.focus).toEqual({
+      rel: 'post:first-post',
+      canvasUrl: '/canvas?focus=post%3Afirst-post',
+    });
+    expect(json.render).toBeUndefined();
+    expect(json.messages?.[0]?.text).toContain('第一篇');
+    const events = await eventsOf();
+    expect(events.filter((event) => event.kind === 'render-spec-frozen')).toHaveLength(0);
+    expect(events.filter((event) => event.kind === 'action-executed')).toHaveLength(0);
+  });
+
   it('"按分类展示文章" → chart spec(零字面)+ 首冻事件 + 画布入口;零 exec', async () => {
     const { status, json } = await chat({
       sessionId: 's5-render',

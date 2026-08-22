@@ -61,6 +61,7 @@ export interface ChatRenderPayload {
 }
 
 export type ChatSseFrame =
+  | { type: 'focus'; rel: string }
   | { type: 'step'; message: ChatStepMessage; rel?: string }
   | { type: 'thinking-delta'; step: number; text: string }
   | { type: 'thinking'; step: number; text: string }
