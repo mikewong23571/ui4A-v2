@@ -40,7 +40,7 @@
 - [x] Task: S12 real Eval——新 Entity/Flow/action 激活后零 Renderer/chat prompt 改动即可产生新 descriptor/Recipe；source governance 全绿 — 17b13cc
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — ebe2509
 
-## Phase E: A2UI Runtime 与 Entity/Entities/Flow/Graph
+## Phase E: A2UI Runtime 与 Entity/Entities/Flow/Graph [checkpoint: 107fdbc]
 
 - [x] Task: TS10 Red→Green——Surface Tree 经 A2UI processor、compile/serialize/restore、deref 和 React runtime 一致；未知 word/裸事实交互前拒绝 — cf85b95
 - [x] Task: S4/TS9 Red→Green——高质量单 Entity fallback：正确身份/状态/正文/元数据/动作/关系层次，退出原始 fields 转储 — 117d58a
@@ -48,7 +48,7 @@
 - [x] Task: S7/S20/TS11 Red→Green——开放 Flow stable shell + node/context/output/history child Sidecars，transition 只刷新必要子树 — 117d58a
 - [x] Task: S8/TS11 Red→Green——多层 graph Lens、预算、逐边授权、progressive disclosure、父子不复制事实和原子 subtree replacement — 3dfbcd1
 - [x] Task: S9–S11 real Eval——Recipe/miss 路径形成可用多区域 Surface，不断言固定 word/顺序，局部失败保留已验证区域 — 117d58a
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) — 107fdbc
 
 ## Phase F: Surface Action 交互与安全
 
