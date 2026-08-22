@@ -134,6 +134,9 @@ describe('铁律 5:BIOS 渲染路径零 AI(源级断言)', () => {
     'capability-definition-view.tsx',
     'meta-lists.tsx',
     'meta-client.ts',
+    '../../app/events/page.tsx',
+    '../../render/situation.ts',
+    '../../render/words/timeline.tsx',
   ];
 
   it('渲染路径源文件不 import 任何 AI/LLM/agent 模块', () => {

@@ -25,16 +25,19 @@ afterEach(() => {
 
 interface EventRow {
   seq: number;
+  ts?: string;
   kind: string;
   rel: string | null;
   action: string | null;
   actor: string | null;
   principal: string | null;
   channel: string | null;
+  reason?: string | null;
+  detail?: unknown;
 }
 
 function row(seq: number, kind = 'action-executed', rel = 'post:post-welcome'): EventRow {
-  return { seq, kind, rel, action: 'unpublish', actor: 'human', principal: 'local-user', channel: 'renderer' };
+  return { seq, ts: `2026-08-22T01:${String(seq).padStart(2, '0')}:00.000Z`, kind, rel, action: 'unpublish', actor: 'human', principal: 'local-user', channel: 'renderer' };
 }
 
 /** 每次调用产出新 Response(body 只能读一次;mock 必须逐次新造)。 */
@@ -45,9 +48,9 @@ function jsonResponse(body: unknown): Response {
 describe('事件流页(/events,timeline 零 AI)', () => {
   it('/api/events 投影 → 时间线条目与事件逐条一致(小批即尾部,无分页按钮)', async () => {
     const events: EventRow[] = [
-      { seq: 1, kind: 'seed', rel: 'seed:business-domain', action: null, actor: null, principal: null, channel: null },
+      { seq: 1, ts: '2026-08-22T01:00:00.000Z', kind: 'seed', rel: 'seed:business-domain', action: null, actor: null, principal: null, channel: null },
       row(2, 'action-executed', 'post:post-welcome'),
-      { seq: 3, kind: 'render-spec-frozen', rel: 'render-spec:articles-by-category', action: null, actor: 'agent', principal: null, channel: null },
+      { seq: 3, ts: '2026-08-22T01:03:00.000Z', kind: 'render-spec-frozen', rel: 'render-spec:articles-by-category', action: null, actor: 'agent', principal: null, channel: null },
     ];
     vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({ events }))));
     const { container } = render(<EventsPage />);
@@ -63,8 +66,29 @@ describe('事件流页(/events,timeline 零 AI)', () => {
       if (event.rel !== null) expect(text).toContain(event.rel);
     }
     expect(text).toContain('unpublish');
+    expect(text).toContain('执行「unpublish」');
+    expect(container.querySelectorAll('time')).toHaveLength(3);
+    expect(container.querySelectorAll('details:not([open])')).toHaveLength(3);
     // 回包 ≤ PAGE_SIZE → 尾部已到,无分页按钮
     expect(screen.queryByRole('button', { name: '加载更多' })).toBeNull();
+  });
+
+  it('拒绝原因与 detail 在折叠审计层保留,摘要行直接给出结果', async () => {
+    const events: EventRow[] = [
+      {
+        ...row(1, 'action-rejected', 'post:p1'),
+        action: 'archive',
+        reason: '高风险动作需要人类确认',
+        detail: { layer: 'policy', policy: 'high-risk-confirm' },
+      },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ events })));
+    const { container } = render(<EventsPage />);
+
+    await waitFor(() => expect(container.textContent).toContain('已拒绝：高风险动作需要人类确认'));
+    const disclosure = container.querySelector('details');
+    expect(disclosure?.hasAttribute('open')).toBe(false);
+    expect(disclosure?.textContent).toContain('high-risk-confirm');
   });
 
   it('分页 afterSeq:首批超页 → 加载更多经尾部 seq 重取增量窗口', async () => {

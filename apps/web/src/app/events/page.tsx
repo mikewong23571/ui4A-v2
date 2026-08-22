@@ -1,8 +1,8 @@
 'use client';
 /**
  * 事件流页(T7 Phase B / spec 架构决定 5,骨架路径):/api/events 投影 →
- * timeline 词条(T9 起为自绘垂直时间线;零 AI——原始数据渲染,不经过
- * 任何生成路径;铁律 5 审计通道隔离)。
+ * timeline 词条(T9 起为自绘垂直时间线;零 AI——机械叙事摘要 + 可折叠
+ * 原始审计层,不经过任何生成路径;铁律 5 审计通道隔离)。
  *
  * 分页口径(afterSeq,与端点合同一致):端点返回 afterSeq 之后的**全部**
  * 事件;视图每页 PAGE_SIZE 条,超页部分丢弃、经 afterSeq=<已显示尾部 seq>
@@ -65,7 +65,7 @@ export default function EventsPage() {
     <div>
       <h1 className="text-2xl font-semibold tracking-tight">事件流</h1>
       <p className="mt-1 text-xs text-muted-foreground">
-        事件日志只读投影 · timeline 词条 · 零 AI(原始数据渲染)
+        事件日志只读投影 · timeline 词条 · 零 AI(机械摘要 + 原始审计下钻)
         {rows !== null ? ` · 已载 ${rows.length} 条` : ''}
       </p>
 

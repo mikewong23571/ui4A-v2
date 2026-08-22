@@ -65,18 +65,40 @@ describe('态势 stat 绑定(静态,零 AI)', () => {
 });
 
 describe('事件日志成员适配(timeline 词条输入)', () => {
-  it('LogEvent 行 → Siren 成员形状(seq/kind/rel/action 原样直出,零发明)', () => {
+  it('LogEvent 行 → 机械叙事摘要 + 时间戳 + 原始审计载荷,零发明', () => {
     const members = eventsToMembers([
-      { seq: 1, kind: 'seed', rel: 'seed:business-domain', action: null, actor: null, principal: null, channel: null },
-      { seq: 2, kind: 'action-executed', rel: 'post:post-welcome', action: 'unpublish', actor: 'human', principal: 'local-user', channel: 'renderer' },
+      { seq: 1, ts: '2026-08-22T01:00:00.000Z', kind: 'seed', rel: 'seed:business-domain', action: null, actor: null, principal: null, channel: null },
+      { seq: 2, ts: '2026-08-22T01:01:00.000Z', kind: 'action-executed', rel: 'post:post-welcome', action: 'unpublish', actor: 'human', principal: 'local-user', channel: 'renderer', reason: null, detail: { layer: 'flow' } },
     ]);
     expect(members).toHaveLength(2);
     expect(members[0]!.properties.seq).toBe(1);
     expect(members[0]!.properties.kind).toBe('seed');
     expect(members[1]!.properties.action).toBe('unpublish');
     expect(members[1]!.properties.actor).toBe('human');
+    expect(members[1]!.properties.summary).toBe(
+      '人类(local-user) · post:post-welcome · 执行「unpublish」 · 已完成',
+    );
+    expect(members[1]!.properties.timestamp).toBe('2026-08-22T01:01:00.000Z');
+    expect(members[1]!.properties.audit).toMatchObject({
+      kind: 'action-executed',
+      detail: { layer: 'flow' },
+    });
     // 成员形状满足 timeline 词条的 asMembers 约束(properties 字典在)
     expect(typeof members[0]!.properties).toBe('object');
+  });
+
+  it('未知 kind 回退原始字段行;chat-turn/agent-decision 形成回合级摘要', () => {
+    const members = eventsToMembers([
+      { seq: 1, kind: 'mystery-event', rel: 'x', action: 'probe', actor: null, principal: null, channel: null },
+      { seq: 2, kind: 'chat-turn', rel: 'chat:s1', action: null, actor: 'agent', principal: 'user:s1', channel: 'chat', detail: { goal: { verb: '发布' }, outcome: 'done', steps: [{ step: 1 }] } },
+      { seq: 3, kind: 'agent-decision', rel: 'chat:s1', action: null, actor: 'agent', principal: 'user:s1', channel: 'chat', detail: { step: 1, driver: 'rule', op: { kind: 'navigate', rel: 'articles' } } },
+    ]);
+    expect(members[0]!.properties.summary).toContain('kind=mystery-event');
+    expect(members[0]!.properties.summary).toContain('rel=x');
+    expect(members[1]!.properties.summary).toContain('聊天回合「发布」');
+    expect(members[1]!.properties.summary).toContain('已完成');
+    expect(members[2]!.properties.summary).toContain('第 1 步决策(rule)');
+    expect(members[2]!.properties.summary).toContain('navigate');
   });
 
   it('最近 N 事件:取尾部保 seq 序(append 序即时间序)', () => {

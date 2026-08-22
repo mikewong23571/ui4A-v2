@@ -67,4 +67,26 @@ describe('timeline 词条', () => {
   it('events 非实体数组 → 响亮抛错', () => {
     expect(() => render(<TimelineWord events={42} />)).toThrow(/timeline 的 events/);
   });
+
+  it('事件叙事投影:摘要 + 时间戳直出,原始 reason/detail 默认折叠可下钻', () => {
+    const member = eventMember(7, 'action-rejected', 'post:p1', 'archive');
+    member.properties.summary = 'Agent(user:mike) · post:p1 · 执行「archive」 · 已拒绝：需要确认';
+    member.properties.timestamp = '2026-08-22T01:02:03.000Z';
+    member.properties.audit = {
+      kind: 'action-rejected',
+      reason: '需要确认',
+      detail: { layer: 'policy' },
+    };
+    const { container } = render(<TimelineWord events={[member]} />);
+
+    expect(container.textContent).toContain('执行「archive」');
+    expect(container.querySelector('time')?.getAttribute('dateTime')).toBe(
+      '2026-08-22T01:02:03.000Z',
+    );
+    const disclosure = container.querySelector('details');
+    expect(disclosure?.hasAttribute('open')).toBe(false);
+    expect(disclosure?.textContent).toContain('需要确认');
+    expect(disclosure?.textContent).toContain('policy');
+    expect(disclosure?.getAttribute('data-nav')).toBe('local:event-detail');
+  });
 });
