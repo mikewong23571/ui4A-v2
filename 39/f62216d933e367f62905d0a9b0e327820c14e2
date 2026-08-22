@@ -1,0 +1,14 @@
+Task: T15 Phase F dynamic capability discovery and formal artifacts
+
+Summary:
+- Sitemap/Agent context dynamically project active action and scoped capability catalogs with schemas.
+- Added capability-artifact-created event/state/Siren projection, provenance, SHA-256 content hash, replay/idempotency.
+- Added generic artifact-input-valid guard and artifact-backed set-field effect with high confirmation.
+- Added summarize capability plus generate-summary/save-summary declared actions.
+- Added generic synchronous spawn materializer using source-field/output-param bind; source entity receives artifact link; business field stores only artifact ref after confirmation.
+- Expanded real Eval U14-U17.
+
+Evidence:
+- focused discovery/artifact suite: 340 tests passed; workspace typecheck passed.
+- pnpm check: 125 files passed, 2 skipped; 1203 tests passed, 2 skipped.
+- latest pre-materializer real batch showed U17 complete context and U16 safety; U14/U15 remained red, therefore Phase F is not yet marked complete pending post-materializer real rerun.
