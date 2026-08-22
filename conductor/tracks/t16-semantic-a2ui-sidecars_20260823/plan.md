@@ -52,12 +52,12 @@
 
 ## Phase F: Surface Action 交互与安全
 
-- [ ] Task: S13/TS12 Red→Green——无字段 action group 实时 declaration/guard 复核、精确 rel/action 提交与 Surface 刷新
-- [ ] Task: S14/TS12 Red→Green——字段 action 的 Dialog/Drawer/inline schema form、焦点回收、取消零事件、extra-data 剥离和拒绝呈现
-- [ ] Task: S15 Red→Green——high-risk action pending/approve/reject 全链，明确区分 requested/executed
-- [ ] Task: S16 Red→Green——Entities 成员 action 在排序/筛选后仍绑定真实 rel；未声明 batch 零入口
-- [ ] Task: S17 Red→Green——过期 action dependency 使子树 stale，零 POST 且只读区域继续可用
-- [ ] Task: Interaction invariants——fuzz 全部可提交元素映射当前授权 action；Recipe/Sidecar 不缓存 guard、enabled 或 formData
+- [x] Task: S13/TS12 Red→Green——无字段 action group 实时 declaration/guard 复核、精确 rel/action 提交与 Surface 刷新 — 3583229
+- [x] Task: S14/TS12 Red→Green——字段 action 的 Dialog/Drawer/inline schema form、焦点回收、取消零事件、extra-data 剥离和拒绝呈现 — 3583229
+- [x] Task: S15 Red→Green——high-risk action pending/approve/reject 全链，明确区分 requested/executed — 3583229
+- [x] Task: S16 Red→Green——Entities 成员 action 在排序/筛选后仍绑定真实 rel；未声明 batch 零入口 — 3583229
+- [x] Task: S17 Red→Green——过期 action dependency 使子树 stale，零 POST 且只读区域继续可用 — 3583229
+- [x] Task: Interaction invariants——fuzz 全部可提交元素映射当前授权 action；Recipe/Sidecar 不缓存 guard、enabled 或 formData — 3583229
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase G: 用户级 Sidecar、fastpath 与局部失效
