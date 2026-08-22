@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { resolveStartRel } from './start';
+import { hasExplicitMetaIntent, isDiscoveryOnlyIntent, resolveStartRel } from './start';
 import type { FetchLike } from '@ui4a/agent';
 
 const BASE = 'http://contract.test';
@@ -69,6 +69,36 @@ describe('resolveStartRel', () => {
     ).resolves.toBe('comments');
   });
 
+  it('完整标题优先于更早的宽泛词级交集', async () => {
+    const transport = scriptedFetch((url) => {
+      if (url.includes('well-known')) return jsonResponse(SITEMAP);
+      if (url.includes('rel=flow%3Apost-status')) return jsonResponse({ class: ['flow-instance'] });
+      if (url.includes('rel=flow%3Aarticle-drafting'))
+        return jsonResponse({ class: ['flow-instance'] });
+      return jsonResponse({ error: 'x' }, 404);
+    });
+
+    await expect(
+      resolveStartRel(BASE, { verb: '给文章状态 flow 加一个置顶动作' }, transport.fetch),
+    ).resolves.toBe('flow:post-status');
+  });
+
+  it('批准确认目标 → 确认收件箱，而不是误入文章发布向导', async () => {
+    const withInbox = {
+      ...SITEMAP,
+      surfaces: [...SITEMAP.surfaces, { rel: 'inbox', title: '确认收件箱', collection: true }],
+    };
+    const transport = scriptedFetch((url) => {
+      if (url.includes('well-known')) return jsonResponse(withInbox);
+      if (url.includes('rel=inbox')) return jsonResponse({ class: ['collection'] });
+      return jsonResponse({ error: 'x' }, 404);
+    });
+
+    await expect(
+      resolveStartRel(BASE, { verb: '帮我批准刚才那个确认' }, transport.fetch),
+    ).resolves.toBe('inbox');
+  });
+
   it('无词级交集(如下线点名)→ 回落 articles,且只发一次 sitemap 请求', async () => {
     // 实体探测一律 404:'post-welcome' 的词元 post 与 flow:post-status 有词级交集,
     // 但该 flow 别名不可达(多实例)→ 跳过;其余表面无交集 → 兜底 articles。
@@ -88,5 +118,31 @@ describe('resolveStartRel', () => {
     await expect(resolveStartRel(BASE, { verb: '发布' }, transport.fetch)).resolves.toBe(
       'articles',
     );
+  });
+
+  it('调用方可为独立合同站声明自己的兜底入口', async () => {
+    const transport = scriptedFetch(() => jsonResponse({ error: 'x' }, 500));
+    await expect(
+      resolveStartRel(`${BASE}/_meta`, { verb: '修订 flow 定义' }, transport.fetch, 'meta/flows'),
+    ).resolves.toBe('meta/flows');
+  });
+});
+
+describe('hasExplicitMetaIntent', () => {
+  it('仅显式定义变更越界到 _meta，普通业务 flow 目标仍留在业务站', () => {
+    expect(hasExplicitMetaIntent('给文章状态 flow 加一个置顶动作')).toBe(true);
+    expect(hasExplicitMetaIntent('经 _meta 修订文章状态')).toBe(true);
+    expect(hasExplicitMetaIntent('把文章发布向导一次走完')).toBe(false);
+    expect(hasExplicitMetaIntent('把 first-post 置顶')).toBe(false);
+  });
+});
+
+describe('isDiscoveryOnlyIntent', () => {
+  it('歧义“处理某类事”只定位；明确动作继续进入执行循环', () => {
+    expect(isDiscoveryOnlyIntent('我想处理评论区的事')).toBe(true);
+    expect(isDiscoveryOnlyIntent('帮我找评论审核入口')).toBe(true);
+    expect(isDiscoveryOnlyIntent('我要看看第一篇文章')).toBe(false);
+    expect(isDiscoveryOnlyIntent('审核所有待处理评论')).toBe(false);
+    expect(isDiscoveryOnlyIntent('把 first-post 归档')).toBe(false);
   });
 });

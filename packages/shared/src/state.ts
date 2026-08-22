@@ -68,6 +68,8 @@ export interface ConfirmationSnapshot {
   /** 策略标识与原因(策略标注的判定留痕,Phase B Cedar 决策与此同构)。 */
   policy?: string;
   policyReason?: string;
+  /** 提案时动作声明的风险级别；随确认实体持久化，终态仍可审计。 */
+  riskLevel?: 'low' | 'medium' | 'high';
   /** 审批者(铁律 5"审批不委托":approved 时 actor 必为 human)。 */
   approvedBy?: { actor: 'human' | 'agent'; principal?: string };
   /** 驳回原因(human reject 必填)。 */

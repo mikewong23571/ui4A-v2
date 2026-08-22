@@ -166,6 +166,16 @@ describe('LLM 工具调用 → 循环操作映射', () => {
       params: { title: '通用通道' },
     });
   });
+
+  it('exec_plan 工具调用 → 单个批量操作，步骤原样保留', async () => {
+    const steps = [
+      { rel: 'article-drafting:main', action: 'next', params: { title: '批量测试' } },
+      { rel: 'article-drafting:main', action: 'publish', params: { title: '批量测试' } },
+    ];
+    const { driver } = llmDriverWith(() => openaiToolResponse('exec_plan', { steps }));
+
+    await expect(driver.decide(context())).resolves.toEqual({ kind: 'exec-plan', steps });
+  });
 });
 
 describe('B4:失败如实呈现(委托不崩溃)', () => {
@@ -355,9 +365,13 @@ describe('SYSTEM_PROMPT role/app 上下文槽位(T10 Phase D)', () => {
 describe('streamText 聚合与 reasoning 通道(T11 Phase C)', () => {
   it('tool call arguments 分片到达 → SDK 聚合后映射语义不变', async () => {
     const { driver } = llmDriverWith(() =>
-      openaiToolResponse('action_next', { title: '分片标题' }, {
-        argumentChunks: ['{"title":"分片', '标题"}'],
-      }),
+      openaiToolResponse(
+        'action_next',
+        { title: '分片标题' },
+        {
+          argumentChunks: ['{"title":"分片', '标题"}'],
+        },
+      ),
     );
 
     await expect(driver.decide(context())).resolves.toEqual({

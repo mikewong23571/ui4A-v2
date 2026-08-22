@@ -138,6 +138,7 @@ interface SseFrame {
   type: 'session' | 'focus' | 'step' | 'final' | 'error' | 'thinking';
   message?: { role: 'assistant'; text: string };
   rel?: string;
+  refresh?: boolean;
   step?: number;
   text?: string;
   payload?: ChatResponseBody;
@@ -309,7 +310,9 @@ describe('I1(路由级):无 key → auto 回退 rule,B1 完成', () => {
     expect(
       frames
         .slice(0, -1)
-        .every((frame) => frame.type === 'step' || frame.type === 'session' || frame.type === 'focus'),
+        .every(
+          (frame) => frame.type === 'step' || frame.type === 'session' || frame.type === 'focus',
+        ),
     ).toBe(true);
     // step 帧文本口径与 trail.ts 一致(e2e 同一断言锚点)。
     const trajectory = frames
@@ -319,6 +322,11 @@ describe('I1(路由级):无 key → auto 回退 rule,B1 完成', () => {
     expect(trajectory.match(/执行 next/g)).toHaveLength(3);
     expect(trajectory).toContain('执行 publish');
     expect(trajectory).toContain('完成');
+    const refreshFocuses = frames.filter(
+      (frame) => frame.type === 'focus' && frame.refresh === true,
+    );
+    expect(refreshFocuses).toHaveLength(4);
+    expect(refreshFocuses.at(-1)?.rel).toBe('flow:article-drafting');
     expect(raw).toContain('data: ');
     expect(json.outcome).toBe('done');
   });
@@ -404,15 +412,17 @@ describe('I1(路由级):无 key → auto 回退 rule,B1 完成', () => {
     expect(steps.length).toBeGreaterThan(0);
     // done 结局无 max-steps 补条:steps 与 messages 一步一条对应。
     expect(steps).toHaveLength(messages.length);
-    expect(steps[0]!.op.kind, '首步是协议操作(navigate 或直接 exec)').toMatch(
-      /^(navigate|exec)$/,
-    );
+    expect(steps[0]!.op.kind, '首步是协议操作(navigate 或直接 exec)').toMatch(/^(navigate|exec)$/);
     expect(steps[steps.length - 1]!.op.kind).toBe('done');
-    expect(steps.filter((step) => step.op.kind === 'exec' && step.op.action === 'next')).toHaveLength(3);
-    expect(steps.some((step) => step.op.kind === 'exec' && step.op.action === 'publish')).toBe(true);
-    expect(steps.every((step) => typeof step.step === 'number' && typeof step.rel === 'string')).toBe(
+    expect(
+      steps.filter((step) => step.op.kind === 'exec' && step.op.action === 'next'),
+    ).toHaveLength(3);
+    expect(steps.some((step) => step.op.kind === 'exec' && step.op.action === 'publish')).toBe(
       true,
     );
+    expect(
+      steps.every((step) => typeof step.step === 'number' && typeof step.rel === 'string'),
+    ).toBe(true);
   });
 });
 
@@ -502,7 +512,9 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
 
     // 写入序:决策审计先于回合投影(chat-turn)落库。
     const response = await fetch(`${base}/api/events`);
-    const body = (await response.json()) as { events: { kind: string; rel: string; seq: number }[] };
+    const body = (await response.json()) as {
+      events: { kind: string; rel: string; seq: number }[];
+    };
     const turn = body.events.find(
       (event) => event.kind === 'chat-turn' && event.rel === 'chat:sess-decision-rule',
     );
@@ -635,13 +647,9 @@ describe('T11 Phase C Task 2:thinking 帧(SSE 推理自述管道)', () => {
 
       // 帧型序列(D22:reasoning 末尾齐发 → 整段一次性帧,逐步决策前推送即
       // 「先于同号 step 帧」):每步 thinking → step,final 收尾。
-      expect(frames.filter((frame) => frame.type !== 'session').map((frame) => frame.type)).toEqual([
-        'thinking',
-        'step',
-        'thinking',
-        'step',
-        'final',
-      ]);
+      expect(frames.filter((frame) => frame.type !== 'session').map((frame) => frame.type)).toEqual(
+        ['thinking', 'focus', 'step', 'thinking', 'step', 'final'],
+      );
       const thinking = frames.filter((frame) => frame.type === 'thinking');
       // 整段聚合:与脚本桩的 reasoning_content 逐字等值,步号从 1 递增。
       expect(thinking.map((frame) => [frame.step, frame.text])).toEqual([
@@ -652,7 +660,7 @@ describe('T11 Phase C Task 2:thinking 帧(SSE 推理自述管道)', () => {
       // 第 N 条 step 之前。
       const stepFrames = frames.filter((frame) => frame.type === 'step');
       thinking.forEach((frame, index) => {
-        expect(frames.indexOf(frame)).toBe(frames.indexOf(stepFrames[index]!) - 1);
+        expect(frames.indexOf(frame)).toBeLessThan(frames.indexOf(stepFrames[index]!));
       });
     } finally {
       await new Promise<void>((resolve) => stub.close(() => resolve()));
@@ -677,7 +685,9 @@ describe('T11 Phase C Task 2:thinking 帧(SSE 推理自述管道)', () => {
     expect(
       frames
         .slice(0, -1)
-        .every((frame) => frame.type === 'step' || frame.type === 'session' || frame.type === 'focus'),
+        .every(
+          (frame) => frame.type === 'step' || frame.type === 'session' || frame.type === 'focus',
+        ),
     ).toBe(true);
     expect(frames[frames.length - 1]!.type).toBe('final');
   });

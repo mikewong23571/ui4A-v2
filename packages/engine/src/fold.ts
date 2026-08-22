@@ -180,14 +180,10 @@ function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
     renderSpecs: { ...(snapshot.renderSpecs ?? {}) },
     // T10:applications 表随行,但仅在场时携带——缺省不物化为 {}
     // (app-known 以"表不存在"为过渡期 vacuous pass 信号;与 effects.ts 同口径)。
-    ...(snapshot.applications !== undefined
-      ? { applications: { ...snapshot.applications } }
-      : {}),
+    ...(snapshot.applications !== undefined ? { applications: { ...snapshot.applications } } : {}),
     // T13:capabilities 表随行,与 applications 同口径(仅在场时携带,
     // 缺省不物化为 {}——capability-registered 的过渡期 vacuous pass 信号)。
-    ...(snapshot.capabilities !== undefined
-      ? { capabilities: { ...snapshot.capabilities } }
-      : {}),
+    ...(snapshot.capabilities !== undefined ? { capabilities: { ...snapshot.capabilities } } : {}),
   };
 }
 
@@ -263,9 +259,7 @@ function applyApplicationSeeded(snapshot: EngineSnapshot, event: LogEvent): Engi
     typeof detail.name !== 'string' ||
     detail.definition === undefined
   ) {
-    throw new Error(
-      `重放失败:seq=${event.seq} application-seeded 缺少 detail 载荷(日志完整性)`,
-    );
+    throw new Error(`重放失败:seq=${event.seq} application-seeded 缺少 detail 载荷(日志完整性)`);
   }
   if (snapshot.applications?.[detail.name] !== undefined) {
     return snapshot; // 幂等:重复 seed 不覆盖(boot 重放安全)。
@@ -295,9 +289,7 @@ function applyCapabilitySeeded(snapshot: EngineSnapshot, event: LogEvent): Engin
     typeof detail.name !== 'string' ||
     detail.definition === undefined
   ) {
-    throw new Error(
-      `重放失败:seq=${event.seq} capability-seeded 缺少 detail 载荷(日志完整性)`,
-    );
+    throw new Error(`重放失败:seq=${event.seq} capability-seeded 缺少 detail 载荷(日志完整性)`);
   }
   if (snapshot.capabilities?.[detail.name] !== undefined) {
     return snapshot; // 幂等:重复 seed 不覆盖(boot 重放安全)。
@@ -346,6 +338,9 @@ function applyConfirmationRequested(snapshot: EngineSnapshot, event: LogEvent): 
     status: 'pending',
     ...(typeof detail.policy === 'string' ? { policy: detail.policy } : {}),
     ...(typeof detail.policyReason === 'string' ? { policyReason: detail.policyReason } : {}),
+    ...(detail.riskLevel === 'low' || detail.riskLevel === 'medium' || detail.riskLevel === 'high'
+      ? { riskLevel: detail.riskLevel }
+      : {}),
   };
   return {
     ...snapshot,
@@ -795,14 +790,10 @@ export function fold(
           renderSpecs: initial.renderSpecs ?? {},
           // T10:applications 表随行,但仅在场时携带——缺省不物化为 {}
           // (app-known 过渡期 vacuous pass 信号;与 applyEffects 同口径)。
-          ...(initial.applications !== undefined
-            ? { applications: initial.applications }
-            : {}),
+          ...(initial.applications !== undefined ? { applications: initial.applications } : {}),
           // T13:capabilities 表随行,与 applications 同口径(仅在场时携带;
           // capability-registered 过渡期 vacuous pass 信号)。
-          ...(initial.capabilities !== undefined
-            ? { capabilities: initial.capabilities }
-            : {}),
+          ...(initial.capabilities !== undefined ? { capabilities: initial.capabilities } : {}),
         };
   for (const event of events) {
     switch (event.kind) {

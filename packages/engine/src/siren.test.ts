@@ -190,7 +190,12 @@ describe('project — confirmation 实体(spec 架构决定 2)', () => {
     expect(names).toEqual(['approve', 'reject']);
 
     const reject = entity?.actions[1];
-    expect(reject).toMatchObject({ name: 'reject', title: '驳回', method: 'POST', href: '/api/exec' });
+    expect(reject).toMatchObject({
+      name: 'reject',
+      title: '驳回',
+      method: 'POST',
+      href: '/api/exec',
+    });
     expect(reject?.fields).toMatchObject({
       type: 'object',
       required: ['reason'],
@@ -248,6 +253,8 @@ describe('project — inbox 集合(spec 架构决定 5)', () => {
     expect(item?.href).toBe('/api/entity?rel=confirmation:c1');
     expect(item?.properties).toMatchObject({
       'target-action': 'archive',
+      'risk-level': 'high',
+      'policy-reason': expect.stringContaining('需人类确认'),
       status: 'pending',
     });
     expect(item?.actions.map((action) => action.name)).toEqual(['approve', 'reject']);

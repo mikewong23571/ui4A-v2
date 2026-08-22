@@ -200,7 +200,11 @@ describe('sitemap 表面 ↔ entity 端点一致', () => {
     };
 
     const collections = sitemap.surfaces.filter((surface) => surface.collection);
-    expect(collections.map((surface) => surface.rel).sort()).toEqual(['articles', 'comments']);
+    expect(collections.map((surface) => surface.rel).sort()).toEqual([
+      'articles',
+      'comments',
+      'inbox',
+    ]);
     for (const surface of collections) {
       const res = await entity(surface.rel);
       expect(res.status, `集合面 ${surface.rel} 应可达`).toBe(200);

@@ -159,6 +159,7 @@ export function useChatSession(): ChatSession {
   // 最近一次渲染回执(S5:surface 引用的可点形态——点击在画布打开)。
   const [lastRender, setLastRender] = useState<ChatJsonResponse['render']>(undefined);
   const [lastFocus, setLastFocus] = useState<ChatJsonResponse['focus']>(undefined);
+  const focusRevisionRef = useRef(0);
   // 进行中请求的取消柄(B2:onCancel 中止 fetch;整体超时经 AbortSignal.any 合并)。
   const abortRef = useRef<AbortController | null>(null);
   // 高频 reasoning delta 先在 ref 聚合，每 50ms 至多提交一次 React state。
@@ -189,50 +190,54 @@ export function useChatSession(): ChatSession {
   }, []);
 
   /** 拉取指定会话的历史回合并重放进消息列表(goal 作为 user 消息在前)。 */
-  const restoreSession = useCallback((stored: string) => {
-    if (stored === '') return;
-    let cancelled = false;
-    let poll: ReturnType<typeof setTimeout> | undefined;
-    const load = (): void => {
-      fetch(`/api/chat/history?sessionId=${encodeURIComponent(stored)}`)
-        .then(async (response) => {
-          if (!response.ok) return { turns: [] };
-          return (await response.json()) as { turns?: ChatTurn[] };
-        })
-        .then((body) => {
-          if (cancelled) return;
-          const turns = body.turns ?? [];
-          const replayed: ChatUiMessage[] = [];
-          for (const turn of turns) {
-            replayed.push({ role: 'user', content: turn.goal.verb });
-            for (const entry of turn.messages) {
-              replayed.push({ role: 'assistant', content: entry.text });
+  const restoreSession = useCallback(
+    (stored: string) => {
+      if (stored === '') return;
+      let cancelled = false;
+      let poll: ReturnType<typeof setTimeout> | undefined;
+      const load = (): void => {
+        fetch(`/api/chat/history?sessionId=${encodeURIComponent(stored)}`)
+          .then(async (response) => {
+            if (!response.ok) return { turns: [] };
+            return (await response.json()) as { turns?: ChatTurn[] };
+          })
+          .then((body) => {
+            if (cancelled) return;
+            const turns = body.turns ?? [];
+            const replayed: ChatUiMessage[] = [];
+            for (const turn of turns) {
+              replayed.push({ role: 'user', content: turn.goal.verb });
+              for (const entry of turn.messages) {
+                replayed.push({ role: 'assistant', content: entry.text });
+              }
             }
-          }
-          setMessages(replayed);
-          const running = turns.some((turn) => turn.status === 'running');
-          setIsRunning(running);
-          // 已保存 session 但日志尚空也可能是刷新撞在 POST 首写之前，继续追投影。
-          let pendingLocally = false;
-          try {
-            pendingLocally = globalThis.localStorage?.getItem(PENDING_SESSION_STORAGE_KEY) === stored;
-          } catch {
-            // 无本地标记时只依据服务端 running 真相。
-          }
-          if (!running && turns.some((turn) => turn.status === 'final')) markSessionPending(null);
-          if (running || (turns.length === 0 && pendingLocally)) poll = setTimeout(load, 1_000);
-        })
-        .catch(() => {
-          if (!cancelled) poll = setTimeout(load, 1_000);
-        });
-    };
-    load();
-    // 卸载/切换会话时作废旧拉取(竞态口径:后到者不覆盖新会话)。
-    return () => {
-      cancelled = true;
-      if (poll !== undefined) clearTimeout(poll);
-    };
-  }, [markSessionPending]);
+            setMessages(replayed);
+            const running = turns.some((turn) => turn.status === 'running');
+            setIsRunning(running);
+            // 已保存 session 但日志尚空也可能是刷新撞在 POST 首写之前，继续追投影。
+            let pendingLocally = false;
+            try {
+              pendingLocally =
+                globalThis.localStorage?.getItem(PENDING_SESSION_STORAGE_KEY) === stored;
+            } catch {
+              // 无本地标记时只依据服务端 running 真相。
+            }
+            if (!running && turns.some((turn) => turn.status === 'final')) markSessionPending(null);
+            if (running || (turns.length === 0 && pendingLocally)) poll = setTimeout(load, 1_000);
+          })
+          .catch(() => {
+            if (!cancelled) poll = setTimeout(load, 1_000);
+          });
+      };
+      load();
+      // 卸载/切换会话时作废旧拉取(竞态口径:后到者不覆盖新会话)。
+      return () => {
+        cancelled = true;
+        if (poll !== undefined) clearTimeout(poll);
+      };
+    },
+    [markSessionPending],
+  );
 
   // 挂载:恢复 localStorage 的 sessionId 并重放历史(B3;历史 = chat-turn 投影)。
   // setSessionId 经 0ms 定时器出 effect 同步路径(react-hooks/set-state-in-effect;
@@ -351,9 +356,11 @@ export function useChatSession(): ChatSession {
     [appendAssistant, markSessionPending, persistSession],
   );
 
-  const handleFocus = useCallback((rel: string) => {
+  const handleFocus = useCallback((rel: string, refresh = false) => {
     setLastRender(undefined);
-    setLastFocus({ rel, canvasUrl: `/canvas?focus=${encodeURIComponent(rel)}` });
+    if (refresh) focusRevisionRef.current += 1;
+    const refreshQuery = refresh ? `&refresh=${focusRevisionRef.current}` : '';
+    setLastFocus({ rel, canvasUrl: `/canvas?focus=${encodeURIComponent(rel)}${refreshQuery}` });
   }, []);
 
   const onNew = useCallback(
@@ -400,7 +407,7 @@ export function useChatSession(): ChatSession {
             } else if (frame.type === 'heartbeat') {
               return;
             } else if (frame.type === 'focus') {
-              handleFocus(frame.rel);
+              handleFocus(frame.rel, frame.refresh === true);
             } else if (frame.type === 'thinking-delta') {
               appendThinkingDelta(frame.step, frame.text);
             } else if (frame.type === 'thinking') {
@@ -451,7 +458,9 @@ export function useChatSession(): ChatSession {
           // B2 停止:仅中断展示;服务端循环跑完,轨迹经 chat-turn 事件留痕。
           appendAssistant('已停止(仅中断展示,服务端轨迹已在事件日志留痕)');
         } else if (name === 'TimeoutError') {
-          appendAssistant('失败: 连接空闲超时(120s 未收到任何进展或心跳;服务端轨迹仍在事件日志留痕)');
+          appendAssistant(
+            '失败: 连接空闲超时(120s 未收到任何进展或心跳;服务端轨迹仍在事件日志留痕)',
+          );
         } else {
           appendAssistant(`失败: ${error instanceof Error ? error.message : String(error)}`);
         }
@@ -461,7 +470,17 @@ export function useChatSession(): ChatSession {
         setIsRunning(false);
       }
     },
-    [appendAssistant, appendThinking, appendThinkingDelta, flushThinkingDeltas, handleFinal, handleFocus, handleRenderReceipt, markSessionPending, persistSession],
+    [
+      appendAssistant,
+      appendThinking,
+      appendThinkingDelta,
+      flushThinkingDeltas,
+      handleFinal,
+      handleFocus,
+      handleRenderReceipt,
+      markSessionPending,
+      persistSession,
+    ],
   );
 
   const onCancel = useCallback(async () => {
@@ -584,6 +603,7 @@ function tsBrief(iso: string): string {
 const OUTCOME_LABEL: Record<string, string> = {
   done: '完成',
   failed: '失败',
+  suspended: '待确认',
   'max-steps': '步数上限',
 };
 

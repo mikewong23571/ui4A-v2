@@ -319,7 +319,10 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     const key = contentVersion({ flows, applications });
     if (sitemapCache?.key === key) return sitemapCache.sitemap;
     const sitemap = deriveSitemap(flows, {
-      extraSurfaces: [{ rel: 'comments', title: '评论', collection: true }],
+      extraSurfaces: [
+        { rel: 'comments', title: '评论', collection: true },
+        { rel: 'inbox', title: '确认收件箱', collection: true },
+      ],
       applications,
     });
     sitemapCache = { key, sitemap };
@@ -652,7 +655,12 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         // 首冻为准:已凝固直接返回(同一关注点永远同一布局,不追加事件)。
         const existing = snapshot.renderSpecs?.[concern];
         if (existing !== undefined) {
-          return { concern, frozen: false, spec: toRenderSpec(existing), requestedBy: existing.requestedBy };
+          return {
+            concern,
+            frozen: false,
+            spec: toRenderSpec(existing),
+            requestedBy: existing.requestedBy,
+          };
         }
         const detail: RenderSpecFrozenDetail = {
           concern,
@@ -671,7 +679,16 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         });
         // 在线增量物化(与 fold 同构:同一 applyRenderSpecFrozen)。
         snapshot = fold(
-          [{ seq, kind: 'render-spec-frozen', rel: renderSpecRel(concern), actor: by.actor, ...(by.principal !== undefined ? { principal: by.principal } : {}), detail }],
+          [
+            {
+              seq,
+              kind: 'render-spec-frozen',
+              rel: renderSpecRel(concern),
+              actor: by.actor,
+              ...(by.principal !== undefined ? { principal: by.principal } : {}),
+              detail,
+            },
+          ],
           { flows: {} },
           snapshot,
         );
@@ -680,7 +697,12 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         if (frozen === undefined) {
           throw new Error(`凝固后 renderSpecs 表缺 "${concern}"(内部不变式破坏)`);
         }
-        return { concern, frozen: true, spec: toRenderSpec(frozen), requestedBy: frozen.requestedBy };
+        return {
+          concern,
+          frozen: true,
+          spec: toRenderSpec(frozen),
+          requestedBy: frozen.requestedBy,
+        };
       });
     },
     getFrozenSpec: (concern) => {

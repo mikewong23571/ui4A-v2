@@ -1,7 +1,7 @@
 /**
  * 工具投影生成器(arch-brief §6"两层工具",选型 §1.1):
  *
- * - **固定协议动词 6 个**:navigate(rel)/ exec(action, params)/ clarify(fields)/
+ * - **固定协议动词 7 个**:navigate(rel)/ exec(action, params)/ exec_plan(steps)/ clarify(fields)/
  *   render(spec)/ done(summary)/ fail(reason,evidence)——循环协议的工具面;
  * - **每状态动态动作工具**:当前实体 actions[] 逐个生成工具(action_ 前缀),
  *   字段 schema(action.fields,JSON Schema draft-07)原样内联为参数;
@@ -98,6 +98,28 @@ export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
           },
         },
         ['action'],
+      ),
+    },
+    {
+      name: 'exec_plan',
+      description:
+        '一次批量裁决多步动作。仅当用户明确要求“一次走完/一次决策/批量执行”时使用；每步仍由引擎逐条裁决，禁止用于 approve/reject 审批。',
+      parameters: objectSchema(
+        {
+          steps: {
+            type: 'array',
+            minItems: 1,
+            items: objectSchema(
+              {
+                rel: { type: 'string', description: '每步目标实体 rel' },
+                action: { type: 'string', description: '动作名' },
+                params: { type: 'object', additionalProperties: true },
+              },
+              ['rel', 'action'],
+            ),
+          },
+        },
+        ['steps'],
       ),
     },
     {

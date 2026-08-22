@@ -32,14 +32,7 @@ import { MessageProcessor } from '@a2ui/web_core/v0_9';
 import type { SurfaceModel } from '@a2ui/web_core/v0_9';
 import type { SirenEntity } from '@ui4a/engine';
 import { useSearchParams } from 'next/navigation';
-import {
-  Component,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 import {
@@ -160,7 +153,10 @@ export class SurfaceErrorBoundary extends Component<
   render(): ReactNode {
     if (this.state.error !== undefined) {
       return (
-        <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+        <div
+          role="alert"
+          className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+        >
           surface {this.props.surfaceId} 渲染失败：{this.state.error}。请检查该 surface
           的数据绑定后重新载入。
         </div>
@@ -183,6 +179,7 @@ export function CanvasBody() {
   // → 挂载 effect 重跑,整面重载(render 回执即达即跳在画布上的二次渲染)。
   const concernParam = useSearchParams().get('concern') ?? undefined;
   const focusParam = useSearchParams().get('focus') ?? undefined;
+  const focusRefreshParam = useSearchParams().get('refresh') ?? undefined;
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
@@ -194,9 +191,14 @@ export function CanvasBody() {
   const inFlightRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
+    // chat 是画布缓存之外的执行者；refresh 表明合同刚发生写入，影响范围
+    // 可能包含追加集合等多个 rel，故在本代 load 开始前清空页面缓存。
+    if (focusRefreshParam !== undefined) cache.invalidateAll();
     const generation = loadGenerationRef.current + 1;
     loadGenerationRef.current = generation;
-    inFlightRef.current?.abort(new DOMException('Superseded by a newer canvas load.', 'AbortError'));
+    inFlightRef.current?.abort(
+      new DOMException('Superseded by a newer canvas load.', 'AbortError'),
+    );
     const controller = new AbortController();
     inFlightRef.current = controller;
     const timeout = setTimeout(
@@ -279,7 +281,16 @@ export function CanvasBody() {
           const surface = processor.model.surfacesMap.get(surfaceId);
           return surface === undefined
             ? []
-            : [{ id: surfaceId, generation, concern, active: concern === activeConcern, surface, warnings }];
+            : [
+                {
+                  id: surfaceId,
+                  generation,
+                  concern,
+                  active: concern === activeConcern,
+                  surface,
+                  warnings,
+                },
+              ];
         }),
       );
       setErrors(failed);
@@ -295,7 +306,7 @@ export function CanvasBody() {
         setLoading(false);
       }
     }
-  }, [cache, concernParam, focusParam]);
+  }, [cache, concernParam, focusParam, focusRefreshParam]);
 
   useEffect(() => {
     const initial = setTimeout(() => void load(), 0);

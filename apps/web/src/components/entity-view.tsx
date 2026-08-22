@@ -57,9 +57,50 @@ const FIELD_DISPLAY_LABELS: Readonly<Record<string, string>> = {
   body: '正文',
 };
 
+const PROPERTY_DISPLAY_LABELS: Readonly<Record<string, string>> = {
+  'target-rel': '目标对象',
+  'target-action': '待执行动作',
+  params: '动作参数',
+  'proposed-by': '提议者',
+  channel: '提议渠道',
+  'risk-level': '风险等级',
+  policy: '确认策略',
+  'policy-reason': '挂起原因',
+  status: '状态',
+  notified: '通知已送达',
+};
+
 /** 字段名的展示标签:已知业务字段取人话标题,未知原样。 */
 function fieldDisplayLabel(name: string): string {
   return FIELD_DISPLAY_LABELS[name] ?? name;
+}
+
+function propertyDisplayLabel(name: string): string {
+  return PROPERTY_DISPLAY_LABELS[name] ?? name;
+}
+
+function propertyDisplayValue(name: string, value: unknown): string {
+  if (name === 'params' && typeof value === 'object' && value !== null) {
+    const entries = Object.entries(value as Record<string, unknown>);
+    return entries.length === 0
+      ? '无'
+      : entries.map(([key, entry]) => `${fieldDisplayLabel(key)}=${String(entry)}`).join(' · ');
+  }
+  if (name === 'proposed-by' && typeof value === 'object' && value !== null) {
+    const proposed = value as Record<string, unknown>;
+    return [proposed.actor, proposed.principal].filter(Boolean).map(String).join(' · ');
+  }
+  if (name === 'risk-level') {
+    return value === 'high'
+      ? '高'
+      : value === 'medium'
+        ? '中'
+        : value === 'low'
+          ? '低'
+          : String(value);
+  }
+  if (typeof value === 'object' && value !== null) return JSON.stringify(value);
+  return String(value);
 }
 
 /** 展平一个 properties 值:标量 → `key=value`;一层对象 → `key.sub=value`。 */
@@ -167,10 +208,10 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
                       scope="row"
                       className="px-3 py-2 text-left align-top font-normal whitespace-nowrap text-muted-foreground"
                     >
-                      {key}
+                      {propertyDisplayLabel(key)}
                     </th>
                     <TableCell className="px-3 py-2 break-all whitespace-normal">
-                      {String(value)}
+                      {propertyDisplayValue(key, value)}
                     </TableCell>
                   </TableRow>
                 ))}

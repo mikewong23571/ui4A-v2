@@ -69,7 +69,42 @@ export const DEFINITION_LIFECYCLE_FLOW: FlowDefinition = {
               type: 'json',
               required: true,
               semantics: 'intent',
-              description: 'action-definition 全文(A.2 形状:name/title/to/guards/effect/fields)',
+              description: 'action-definition 全文；必须传 JSON 对象，不得传序列化字符串',
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', minLength: 1 },
+                  title: { type: 'string', minLength: 1 },
+                  method: { type: 'string', enum: ['POST'] },
+                  to: { type: 'string', minLength: 1 },
+                  guards: { type: 'array', items: { type: 'string' } },
+                  'requires-confirmation': {
+                    type: 'string',
+                    enum: ['low', 'medium', 'high'],
+                  },
+                  effect: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        type: {
+                          type: 'string',
+                          enum: ['transition', 'clear-fields', 'set-field', 'append', 'spawn'],
+                        },
+                        to: { type: 'string' },
+                        field: { type: 'string' },
+                        value: {},
+                        origin: { type: 'string' },
+                      },
+                      required: ['type'],
+                      additionalProperties: true,
+                    },
+                  },
+                  fields: { type: 'array', items: { type: 'object' } },
+                },
+                required: ['name', 'title'],
+                additionalProperties: false,
+              },
             },
           ],
           effect: [{ type: 'meta-edit', op: 'add-action' }],

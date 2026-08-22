@@ -3,7 +3,8 @@
  *
  * 每步:取当前实体 → driver.decide → 执行操作:
  * - navigate:立即取目标实体,成功则切换当前 rel;404 记 not-found 并回流;
- * - exec:POST /api/exec;2xx 记 executed 并入 successes;4xx/网络故障记 rejected 并回流;
+ * - exec:POST /api/exec;200 记 executed 并入 successes;202 记 suspended 并终止等待人类;
+ *   4xx/网络故障记 rejected 并回流;
  * - done / fail:终止。
  * 终止:done、fail、机械停滞、maxSteps、起始实体不可得。
  * 拒绝即数据(I6):lastRejection 只影响紧接着的下一步(消费即清)。
@@ -205,6 +206,36 @@ export async function runAgent(
       continue;
     }
 
+    if (op.kind === 'exec-plan') {
+      const call = await client.execPlan({
+        steps: op.steps,
+        actor,
+        principal: options.principal,
+        channel,
+      });
+      if (call.outcome === 'completed') {
+        successes.push(...op.steps.map(({ rel, action, params }) => ({ rel, action, params })));
+        pushStep({ step, rel: currentRel, op, outcome: 'executed' });
+        continue;
+      }
+      if (call.outcome === 'suspended') {
+        const confirmationRel = call.confirmationRel ?? 'confirmation:(unknown)';
+        const summary = `批量计划已挂起，等待人类在 ${confirmationRel} 确认`;
+        pushStep({ step, rel: currentRel, op, outcome: 'suspended' });
+        return { goal, outcome: 'suspended', summary, steps: trail, successes };
+      }
+      const rejection: RejectionRecord = {
+        rel: currentRel,
+        action: 'exec-plan',
+        layer: 'plan',
+        reason: call.reason ?? `exec-plan 被拒(HTTP ${call.status})`,
+        ...(call.detail !== undefined ? { detail: call.detail } : {}),
+      };
+      lastRejection = rejection;
+      pushStep({ step, rel: currentRel, op, outcome: 'rejected', rejection });
+      continue;
+    }
+
     const call = await client.exec({
       rel: currentRel,
       action: op.action,
@@ -222,6 +253,11 @@ export async function runAgent(
         outcome: 'executed',
         ...(call.entity !== undefined ? { entity: summarizeEntity(call.entity) } : {}),
       });
+    } else if (call.suspended === true) {
+      const confirmationRel = call.confirmationRel ?? 'confirmation:(unknown)';
+      const summary = `动作 ${op.action}(${currentRel}) 已挂起，等待人类在 ${confirmationRel} 确认`;
+      pushStep({ step, rel: currentRel, op, outcome: 'suspended' });
+      return { goal, outcome: 'suspended', summary, steps: trail, successes };
     } else {
       const rejection: RejectionRecord = {
         rel: currentRel,

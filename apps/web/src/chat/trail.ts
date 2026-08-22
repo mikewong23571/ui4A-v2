@@ -39,10 +39,24 @@ export function stepToMessage(step: TrailStep): ChatMessage {
             role: 'assistant',
             text: `执行 ${op.action}(${step.rel})${paramsBrief(op.params)}`,
           }
-        : {
-            role: 'assistant',
-            text: `被拒 ${op.action}(${step.rel}): ${step.rejection?.reason ?? '未知原因'}`,
-          };
+        : outcome === 'suspended'
+          ? {
+              role: 'assistant',
+              text: `已挂起 ${op.action}(${step.rel})，等待人类确认`,
+            }
+          : {
+              role: 'assistant',
+              text: `被拒 ${op.action}(${step.rel}): ${step.rejection?.reason ?? '未知原因'}`,
+            };
+    case 'exec-plan':
+      return outcome === 'executed'
+        ? { role: 'assistant', text: `一次批量裁决 ${op.steps.length} 步` }
+        : outcome === 'suspended'
+          ? { role: 'assistant', text: `批量计划已挂起，等待人类确认` }
+          : {
+              role: 'assistant',
+              text: `批量计划被拒: ${step.rejection?.reason ?? '未知原因'}`,
+            };
     case 'done':
       return { role: 'assistant', text: `完成: ${op.summary}` };
     case 'fail':

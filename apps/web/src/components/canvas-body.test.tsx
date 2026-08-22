@@ -14,7 +14,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { SirenEntity } from '@ui4a/engine';
 
-import { createActionGate, type CanvasClientAction, type GateExecFn } from '@/render/canvas/action-gate';
+import {
+  createActionGate,
+  type CanvasClientAction,
+  type GateExecFn,
+} from '@/render/canvas/action-gate';
 import { collectionBacklinkOf, PageEntityCache } from '@/render/entity-cache';
 
 import { createCanvasActionHandler, SurfaceErrorBoundary } from './canvas-body';
@@ -73,6 +77,7 @@ function realHandle(fetcher: (rel: string) => Promise<SirenEntity | null>): Enti
       cache.invalidateAfterExec(rel, backlink !== undefined ? { collection: backlink } : undefined);
     },
     invalidate: (rel) => cache.invalidate(rel),
+    invalidateAll: () => cache.invalidateAll(),
   };
 }
 
@@ -129,6 +134,7 @@ describe('createCanvasActionHandler:exec 后精确失效 + 整面 reload', () =>
       get: async () => null,
       invalidateAfterExec,
       invalidate: vi.fn(),
+      invalidateAll: vi.fn(),
     };
     const notify = vi.fn();
     const reload = vi.fn();
@@ -157,6 +163,7 @@ describe('createCanvasActionHandler:exec 后精确失效 + 整面 reload', () =>
       get: async () => null,
       invalidateAfterExec,
       invalidate: vi.fn(),
+      invalidateAll: vi.fn(),
     };
     const notify = vi.fn();
     const reload = vi.fn();

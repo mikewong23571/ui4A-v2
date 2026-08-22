@@ -84,6 +84,7 @@
             {
               "name": "abandon",
               "title": "放弃",
+              "collect-node-fields": false,
               "to": "done",
               "method": "POST",
               "guards": [],
@@ -105,11 +106,7 @@
               "name": "category",
               "type": "select",
               "required": true,
-              "options": [
-                "tech",
-                "essay",
-                "review"
-              ],
+              "options": ["tech", "essay", "review"],
               "semantics": "org-standard",
               "title": "分类",
               "source": {
@@ -183,9 +180,7 @@
               "name": "publish",
               "title": "发布",
               "to": "basic-info",
-              "guards": [
-                "title-not-taken"
-              ],
+              "guards": ["title-not-taken"],
               "fields": [
                 {
                   "name": "title",
@@ -208,6 +203,9 @@
                   "flow": "post-status",
                   "name-from": "title",
                   "node": "published"
+                },
+                {
+                  "type": "clear-fields"
                 }
               ],
               "method": "POST"
@@ -238,9 +236,7 @@
               "name": "unpublish",
               "title": "下线",
               "to": "offline",
-              "guards": [
-                "is-published"
-              ],
+              "guards": ["is-published"],
               "method": "POST",
               "fields": [],
               "effect": [
@@ -254,9 +250,7 @@
               "name": "archive",
               "title": "归档",
               "to": "archived",
-              "guards": [
-                "is-published"
-              ],
+              "guards": ["is-published"],
               "requires-confirmation": "high",
               "method": "POST",
               "fields": [],
@@ -314,9 +308,7 @@
               "name": "approve",
               "title": "通过",
               "to": "approved",
-              "guards": [
-                "is-pending"
-              ],
+              "guards": ["is-pending"],
               "method": "POST",
               "fields": [],
               "effect": [
@@ -330,9 +322,7 @@
               "name": "reject",
               "title": "驳回",
               "to": "rejected",
-              "guards": [
-                "is-pending"
-              ],
+              "guards": ["is-pending"],
               "method": "POST",
               "fields": [],
               "effect": [
@@ -455,16 +445,8 @@
         }
       },
       "collections": {
-        "articles": [
-          "post:post-welcome",
-          "post:first-post"
-        ],
-        "comments": [
-          "comment:c1",
-          "comment:c2",
-          "comment:c3",
-          "comment:c4"
-        ]
+        "articles": ["post:post-welcome", "post:first-post"],
+        "comments": ["comment:c1", "comment:c2", "comment:c3", "comment:c4"]
       }
     }
   }

@@ -28,6 +28,10 @@ export interface AgentGoal {
 export type AgentOperation =
   | { kind: 'navigate'; rel: string }
   | { kind: 'exec'; action: string; params?: Record<string, unknown> }
+  | {
+      kind: 'exec-plan';
+      steps: { rel: string; action: string; params?: Record<string, unknown> }[];
+    }
   | { kind: 'done'; summary: string }
   | { kind: 'fail'; reason: string; evidence?: string[] };
 
@@ -66,7 +70,7 @@ export interface TrailStep {
   /** 操作发生(或目标)的实体 rel。 */
   rel: string;
   op: AgentOperation;
-  outcome: 'done' | 'failed' | 'navigated' | 'not-found' | 'executed' | 'rejected';
+  outcome: 'done' | 'failed' | 'navigated' | 'not-found' | 'executed' | 'suspended' | 'rejected';
   entity?: EntitySummary;
   rejection?: RejectionRecord;
 }
@@ -176,13 +180,13 @@ export interface RunAgentOptions {
   onReasoningDelta?(piece: string): void;
 }
 
-export type AgentOutcome = 'done' | 'failed' | 'max-steps';
+export type AgentOutcome = 'done' | 'failed' | 'suspended' | 'max-steps';
 
 /** 一次 runAgent 的完整结果:结局 + 可断言的轨迹。 */
 export interface AgentRunResult {
   goal: AgentGoal;
   outcome: AgentOutcome;
-  /** done 的 summary / failed 的 reason / max-steps 的说明。 */
+  /** done/suspended 的 summary / failed 的 reason / max-steps 的说明。 */
   summary?: string;
   steps: TrailStep[];
   successes: ExecSuccess[];

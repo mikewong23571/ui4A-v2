@@ -29,15 +29,32 @@ export interface EntityFetchResult {
 export interface ExecCallResult {
   status: number;
   ok: boolean;
+  suspended?: boolean;
   entity?: SirenEntity;
+  confirmationRel?: string;
   layer?: string;
   reason?: string;
   detail?: unknown;
 }
 
+export interface ExecPlanCallResult {
+  status: number;
+  outcome: 'completed' | 'rejected' | 'suspended';
+  reason?: string;
+  /** 引擎逐步裁决报告；拒绝即数据，driver 需要看到具体失败步。 */
+  detail?: unknown;
+  confirmationRel?: string;
+}
+
 export interface ContractClient {
   getEntity(rel: string): Promise<EntityFetchResult>;
   exec(payload: ExecPayload): Promise<ExecCallResult>;
+  execPlan(payload: {
+    steps: { rel: string; action: string; params?: Record<string, unknown> }[];
+    actor?: 'human' | 'agent';
+    principal?: string;
+    channel?: string;
+  }): Promise<ExecPlanCallResult>;
   /** sitemap(/.well-known/ui4a.json);不可得时返回 undefined,不抛(循环按数据降级)。 */
   getSitemap(): Promise<SitemapSummary | undefined>;
 }
@@ -155,6 +172,21 @@ export function createContractClient(baseUrl: string, fetchImpl: FetchLike): Con
             return { status: response.status, ok: true, entity };
           }
         }
+        if (
+          response.status === 202 &&
+          isPlainObject(body) &&
+          body.status === 'suspended' &&
+          isPlainObject(body.confirmation) &&
+          typeof body.confirmation.rel === 'string'
+        ) {
+          return {
+            status: response.status,
+            ok: false,
+            suspended: true,
+            confirmationRel: body.confirmation.rel,
+            detail: body.confirmation,
+          };
+        }
         return {
           status: response.status,
           ok: false,
@@ -167,6 +199,61 @@ export function createContractClient(baseUrl: string, fetchImpl: FetchLike): Con
           status: 0,
           ok: false,
           reason: `exec 请求失败: ${error instanceof Error ? error.message : String(error)}`,
+        };
+      }
+    },
+    async execPlan(payload): Promise<ExecPlanCallResult> {
+      try {
+        const response = await fetchImpl(`${root}/api/exec-plan`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const body = await readJson(response);
+        if (isPlainObject(body)) {
+          if (response.status === 200 && body.plan === 'completed') {
+            return { status: response.status, outcome: 'completed' };
+          }
+          if (response.status === 200 && body.plan === 'rejected') {
+            const results = Array.isArray(body.results) ? body.results : [];
+            const rejected = results.find(
+              (result) => isPlainObject(result) && result.outcome === 'rejected',
+            );
+            const reason =
+              isPlainObject(rejected) && typeof rejected.reason === 'string'
+                ? rejected.reason
+                : '计划中有步骤被拒绝';
+            return {
+              status: response.status,
+              outcome: 'rejected',
+              reason,
+              detail: { results },
+            };
+          }
+          if (
+            response.status === 202 &&
+            body.plan === 'suspended' &&
+            isPlainObject(body.confirmation)
+          ) {
+            return {
+              status: response.status,
+              outcome: 'suspended',
+              ...(typeof body.confirmation.rel === 'string'
+                ? { confirmationRel: body.confirmation.rel }
+                : {}),
+            };
+          }
+        }
+        return {
+          status: response.status,
+          outcome: 'rejected',
+          reason: errorMessage(body, `exec-plan 被拒(HTTP ${response.status})`),
+        };
+      } catch (error) {
+        return {
+          status: 0,
+          outcome: 'rejected',
+          reason: `exec-plan 请求失败: ${error instanceof Error ? error.message : String(error)}`,
         };
       }
     },

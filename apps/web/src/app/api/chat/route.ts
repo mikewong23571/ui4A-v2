@@ -19,7 +19,7 @@ import type {
   ChatTurnStartedDetail,
 } from '../../../chat/history';
 import { wrapDriverForAudit, type AgentDecisionDetail } from '../../../chat/decisions';
-import { resolveStartRel } from '../../../chat/start';
+import { hasExplicitMetaIntent, isDiscoveryOnlyIntent, resolveStartRel } from '../../../chat/start';
 import type { ChatRenderPayload } from '../../../chat/sse';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
 import { appendEvent } from '../../../db/events';
@@ -203,7 +203,9 @@ async function respondWithFrozenSpec(
   requested: 'rule' | 'llm' | 'auto',
   resolved: 'rule' | 'llm',
 ): Promise<Response> {
-  return Response.json(await frozenRenderPayload(engine, generated, sessionId, requested, resolved));
+  return Response.json(
+    await frozenRenderPayload(engine, generated, sessionId, requested, resolved),
+  );
 }
 
 /**
@@ -223,7 +225,9 @@ function llmSpecPassesGates(spec: GeneratedRenderSpec, sitemap: RenderSitemapCon
  * 停推帧,服务端循环照常跑完)、异常兜底 error 帧、finally close——各路径
  * 只关心帧序列本身。
  */
-function sseResponse(start: (send: (frame: Record<string, unknown>) => void) => Promise<void>): Response {
+function sseResponse(
+  start: (send: (frame: Record<string, unknown>) => void) => Promise<void>,
+): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -301,7 +305,12 @@ async function streamAgentLoop(args: {
 }): Promise<void> {
   const { send, goal, sessionId, turnId, requested, resolved, baseUrl } = args;
   send({ type: 'session', sessionId, turnId });
-  const startRel = await resolveStartRel(baseUrl, goal, (url, init) => fetch(url, init));
+  const startRel = await resolveStartRel(
+    baseUrl,
+    goal,
+    (url, init) => fetch(url, init),
+    baseUrl.endsWith('/_meta') ? 'meta/flows' : 'articles',
+  );
   // agent-decision 审计(T11 Phase B):包装 driver 在 decide 时刻捕获
   // (prompt/reasoning/op)——决策输入只存在于 decide 时的 DriverContext,
   // 执行后的 TrailStep 回推不出 prompt(捕获方案见 chat/decisions.ts)。
@@ -334,6 +343,12 @@ async function streamAgentLoop(args: {
         stepFramesSent += 1;
         if (step.op.kind === 'navigate' && step.outcome === 'navigated') {
           send({ type: 'focus', rel: step.rel });
+        } else if (step.op.kind === 'exec' && step.outcome === 'executed') {
+          // navigate 帧展示动作前处境；执行成功后显式刷新同一 rel，让共享
+          // 画布立即切到动作后的合同投影，避免“完成了但仍显示旧状态”。
+          send({ type: 'focus', rel: step.rel, refresh: true });
+        } else if (step.op.kind === 'exec-plan' && step.outcome === 'executed') {
+          send({ type: 'focus', rel: step.rel, refresh: true });
         }
         const message = stepToMessage(step);
         send({ type: 'step', message, rel: step.rel });
@@ -440,7 +455,13 @@ function sseRenderResponse(args: {
         },
       );
       if (llmGenerated !== undefined && llmSpecPassesGates(llmGenerated, sitemap)) {
-        const payload = await frozenRenderPayload(engine, llmGenerated, sessionId, requested, resolved);
+        const payload = await frozenRenderPayload(
+          engine,
+          llmGenerated,
+          sessionId,
+          requested,
+          resolved,
+        );
         send({ type: 'render', payload });
         await appendChatProjection('chat-turn', sessionId, {
           sessionId,
@@ -500,6 +521,9 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  if (hasExplicitMetaIntent(goal.verb)) {
+    baseUrl = `${baseUrl.replace(/\/$/, '')}/_meta`;
+  }
 
   await appendChatProjection('chat-turn-started', sessionId, {
     sessionId,
@@ -508,6 +532,46 @@ export async function POST(request: Request) {
     driver: resolved,
     mode,
   });
+
+  // 歧义发现意图只定位入口，不替用户选择 approve/reject/delete 等写动作。
+  // 这是人类权威边界，不交给概率模型自由解释。
+  if (mode === 'inline' && isDiscoveryOnlyIntent(goal.verb)) {
+    const rel = await resolveStartRel(
+      baseUrl,
+      goal,
+      (url, init) => fetch(url, init),
+      baseUrl.endsWith('/_meta') ? 'meta/flows' : 'articles',
+    );
+    const canvasUrl = `/canvas?focus=${encodeURIComponent(rel)}`;
+    const summary = `已定位 ${rel}；未执行具体动作`;
+    const messages = [
+      {
+        role: 'assistant' as const,
+        text: `已打开相关入口 ${rel}；你尚未指定通过、驳回等具体动作，因此没有修改数据。`,
+      },
+    ];
+    await appendChatProjection('chat-turn', sessionId, {
+      sessionId,
+      turnId,
+      goal,
+      outcome: 'done',
+      summary,
+      messages,
+      steps: [],
+      driver: resolved,
+    });
+    return Response.json({
+      sessionId,
+      driver: resolved,
+      requestedDriver: requested,
+      outcome: 'done',
+      summary,
+      messages,
+      steps: [],
+      successes: [],
+      focus: { rel, canvasUrl },
+    });
+  }
 
   // render capability(T7 Phase C / S5;T12 Phase A 起含 LLM fallthrough;
   // 本轮起 LLM 路径 inline 模式 SSE 化):展示类意图 → spec 生成 + 凝固。
@@ -540,7 +604,9 @@ export async function POST(request: Request) {
           requestedDriver: requested,
           outcome: 'done',
           summary: `查看具体实体 ${label}`,
-          messages: [{ role: 'assistant' as const, text: `正在查看「${label}」→ 在画布打开:${canvasUrl}` }],
+          messages: [
+            { role: 'assistant' as const, text: `正在查看「${label}」→ 在画布打开:${canvasUrl}` },
+          ],
           steps: [],
           successes: [],
           focus: { rel, canvasUrl },
@@ -572,7 +638,9 @@ export async function POST(request: Request) {
           requestedDriver: requested,
           outcome: 'failed',
           summary: `生成的渲染说明未过零字面校验: ${summary}`,
-          messages: [{ role: 'assistant' as const, text: `失败: 生成的渲染说明未过零字面校验: ${summary}` }],
+          messages: [
+            { role: 'assistant' as const, text: `失败: 生成的渲染说明未过零字面校验: ${summary}` },
+          ],
           steps: [],
           successes: [],
         };
@@ -588,7 +656,13 @@ export async function POST(request: Request) {
         });
         return Response.json(payload);
       }
-      const response = await respondWithFrozenSpec(engine, generated, sessionId, requested, resolved);
+      const response = await respondWithFrozenSpec(
+        engine,
+        generated,
+        sessionId,
+        requested,
+        resolved,
+      );
       const payload = (await response.clone().json()) as ChatRenderPayload;
       await appendChatProjection('chat-turn', sessionId, {
         sessionId,
@@ -614,7 +688,13 @@ export async function POST(request: Request) {
           words: renderWordSummaries(),
         });
         if (llmGenerated !== undefined && llmSpecPassesGates(llmGenerated, sitemap)) {
-          const response = await respondWithFrozenSpec(engine, llmGenerated, sessionId, requested, resolved);
+          const response = await respondWithFrozenSpec(
+            engine,
+            llmGenerated,
+            sessionId,
+            requested,
+            resolved,
+          );
           const payload = (await response.clone().json()) as ChatRenderPayload;
           await appendChatProjection('chat-turn', sessionId, {
             sessionId,
@@ -629,7 +709,16 @@ export async function POST(request: Request) {
           return response;
         }
       } else {
-        return sseRenderResponse({ engine, sitemap, goal, sessionId, turnId, requested, resolved, baseUrl });
+        return sseRenderResponse({
+          engine,
+          sitemap,
+          goal,
+          sessionId,
+          turnId,
+          requested,
+          resolved,
+          baseUrl,
+        });
       }
     }
   } catch {
@@ -640,7 +729,12 @@ export async function POST(request: Request) {
   // 轨迹/状态经事件日志(/api/delegations/<id>)查询,与 inline 的消息语义等价。
   if (mode === 'delegated') {
     try {
-      const startRel = await resolveStartRel(baseUrl, goal, (url, init) => fetch(url, init));
+      const startRel = await resolveStartRel(
+        baseUrl,
+        goal,
+        (url, init) => fetch(url, init),
+        baseUrl.endsWith('/_meta') ? 'meta/flows' : 'articles',
+      );
       const { delegationId } = await dispatchDelegation({
         goal,
         driverKind: resolved,

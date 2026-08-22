@@ -12,35 +12,35 @@
 - 步骤:`/` → 点「文章发布向导」→ 三步表单逐字段填 → 发布 → 回首页。
 - 预期:文章计数 2→3,新文章 `published`;发布后向导回到第一步(循环语义,D11)。
 - 观察:表单字段与 schema 是否对得上人话?第三步正文有 draft 起草候选吗(proposal 来源的体验)?循环回第一步是否符合直觉?
-- 结果:______
+- 结果:通过。renderer 四步发布后文章保留 title/category/tags/body；发布后向导回到 basic-info，字段已清空，放弃动作不再重复采集 title。
 
 ### US-2 agent 发布文章(B1·合同)
 
 - 步骤:右下角聊天:「帮我发布一篇文章,标题《界面即合同读后感》,分类 tech」。
 - 预期:逐步 step 帧(LLM 路径每步前有「思考 · 步骤 N」可展开)→ 发布成功;首页出现该文。
 - 观察:每步 4–9s 的等待感如何?思考区内容对建立信任有帮助还是噪音?步骤文本是否看得懂 agent 在干嘛?
-- 结果:______
+- 结果:通过。真实 LLM 从发布入口完成 next×3 + publish；画布随成功动作刷新，新增文章没有继承上一轮人类 tags。
 
 ### US-3 点名下线(B2)
 
 - 步骤:聊天:「把 post-welcome 下线」。
 - 预期:该篇 `offline`,另一篇不受影响。
 - 观察:agent 是直接命中还是绕路?下线后列表/详情状态刷新是否及时(T12 缓存失效的体感)?
-- 结果:______
+- 结果:通过。点名 `post-welcome` 后执行 unpublish，聊天与共享画布同步显示 offline。
 
 ### US-4 审核队列(B3)
 
 - 步骤:聊天:「审核所有待处理评论」(或 UI 逐条点)。
 - 预期:pending 清零,事件留痕。
 - 观察:批量操作 agent 是逐条 exec 还是 plan 一次裁决?UI 路径下队列计数刷新是否顺?
-- 结果:______
+- 结果:通过但发现并修复歧义授权缺口。明确“审核所有待处理评论”可逐条处理；“我想处理评论区的事”现在只定位 comments，不再擅自通过评论。
 
 ### US-5 失败呈现(B4/I1/I6)
 
 - 步骤:聊天发个完不成的目标(如「删除所有文章」——无此动作)。
 - 预期:如实 fail,说人话,不崩溃、不编造。
 - 观察:失败原因可读吗?换个说法重试时 agent 有没有用上次的拒绝上下文(I6)?
-- 结果:______
+- 结果:通过。删除目标在 4 步内以 fail 明确报告合同无 delete capability，文章零删除、零替代性下线/归档。
 
 ## 第二幕:裁决与信任
 
@@ -49,44 +49,44 @@
 - 步骤:聊天:「把 first-post 归档」→ 挂起(不生效)→ 首页收件箱出现确认 → 点进去看风险标注与原因 → 批准 → 生效。
 - 预期:动作挂起为 pending 实体;human approve(actor=human)后生效;日志含 actor/principal/channel。
 - 观察:**确认疲劳**——批准页给的信息够不够做决定?挂起原因是否人话?notify 送达延迟可接受吗?
-- 结果:______
+- 结果:通过。archive 仅生成一条 confirmation 并以 suspended 终止，不再把 HTTP 202 当拒绝重试。
 
 ### US-7 审批不委托(I4)
 
 - 步骤:聊天:「帮我批准刚才那个确认」。
 - 预期:agent 身份 approve 被引擎拒绝(422 留痕),确认仍 pending。
 - 观察:拒绝是否如实呈现,而非被 agent 粉饰?
-- 结果:______
+- 结果:通过。agent 从 inbox 定位 confirmation 后因 actor-is-human 在工具投影阶段止步；人类审批页显示目标、风险、策略与原因，批准后动作消失且状态 approved。
 
 ### US-8 plan-exec 一次决策(S4)
 
 - 步骤:聊天:「把文章发布向导一次走完:填标题《批量测试》、分类 essay、正文随意,然后发布」。
 - 预期:LLM 可能产出 exec-plan——一条批量裁决记录,多步一次决策完成。
 - 观察:轨迹里每步裁决是否可见?与普通逐步 loop 的体感差异?
-- 结果:______
+- 结果:通过（含一次拒绝即数据修复）。真实 LLM 使用 exec-plan；首轮字段名猜错后前序步骤按 append-only 语义保留，HTTP 客户端现把具体失败步报告回流，续步发布成功；`plan-executed` 逐步摘要可审计。
 
 ## 第三幕:自举——系统改自己的定义
 
 ### US-9 agent 改 flow + 人类 BIOS 审批(S2,重头)
 
-- 步骤:聊天:「给文章状态 flow 加一个置顶(pin)动作,发布后可置顶」→ agent 经 `_meta` revise → submit → 你去 `/meta/activations` → 点进详情:拓扑图 + 机械 diff + 八项不变式 checks → 批准 → 再回聊天「把 first-post 置顶」。
+- 步骤:聊天:「给文章状态 flow 加一个置顶(pin)动作,发布后可置顶」→ agent 经 `_meta` revise → submit → 你去 `/meta/activations` → 点进详情:拓扑图 + 机械 diff + 八项不变式 checks → 批准 → 验证存量 `first-post` 仍按出生版本 v1 不出现 pin；再发布 v2 文章并聊天置顶。
 - 预期:activation pending → 批准后 sitemap 版本变;agent 零 prompt 改动直接用新动作。
 - 观察:**diff 可读性**——拓扑图 + diff 一起够不够签字?app-known / capability-registered 两条新 checks 是否自解释?批准后 agent 无缝用新动作的「自举感」如何?
-- 结果:______
+- 结果:通过。agent 从 meta sitemap 精确定位 post-status，revise/add-action/submit 全走合同；人类批准 a1 后 sitemap 变为 v2。存量 first-post 诚实保持 v1，新生 after-v2 无 prompt 改动即发现并执行 pin，`pinned=true`。
 
 ### US-10 版本考古(T13)
 
 - 步骤:`/meta/flow/article-drafting` 版本历史区:选 v1 × 当前版本对比。
 - 预期:三视角 diff(added/deleted/updated)正确呈现历次变更。
 - 观察:这个对比对「系统是数据」的叙事有说服力吗?缺什么(时间/作者/激活链接)?
-- 结果:______
+- 结果:通过。版本历史显示 v1 superseded、v2 active、激活作者与 a1；v1→v2 对比准确列出 pin 的 7 条 added 变更。
 
 ### US-11 capability 发现(T13)
 
 - 步骤:`/meta/capabilities` 看 draft/notify/clarify 三能力详情。
 - 预期:类别(extract/effect)、intent、input/output 可读。
 - 观察:现在能回答「这个系统有哪些能力、各干什么」了吗?哪类能力的描述还太虚?
-- 结果:______
+- 结果:通过。draft/notify/clarify 三项均显示 kind、intent；目录已能回答能力清单与用途，input/output 仍可在详情页下钻。
 
 ## 第四幕:发现层与渲染
 
@@ -95,21 +95,21 @@
 - 步骤:看 `/.well-known/ui4a.json` 的 applications 三组;聊天说「我想处理评论区的事」。
 - 预期:rule 定位层命中 community intent → 组内入口优先(评论审核)。
 - 观察:分组语义符合直觉吗?intent 文案对 agent 选路有区分度吗?
-- 结果:______
+- 结果:通过。sitemap 显示 default/publishing/community 三组；“我想处理评论区的事”命中 comments 入口并明确“未执行具体动作”。
 
 ### US-13 渲染两形态 + LLM 渲染(T12)
 
 - 步骤:聊天依次:「展示文章列表」→「按分类展示文章」→「按分类可视化当前内容」(rule miss,LLM 产 spec)→ `/canvas` 看凝固结果。
 - 预期:table → chart → LLM chart;同集合二次渲染更快(页面缓存);凝固事件留痕。
 - 观察:**凝固稳定性**——刷新 `/canvas` 后渲染是否一致?LLM 产的 spec 与 rule 产的质量差距?
-- 结果:______
+- 结果:通过。table=`articles-list`、rule chart=`articles-by-category`、LLM chart=`content-by-category` 均凝固；刷新后两张 chart 稳定复现、无 surface 错误，table 含 body。
 
 ### US-14 日志审计(双执行者同一日志)
 
 - 步骤:`curl localhost:3100/api/events`(或 `| jq`)看本场足迹:human(表单)与 agent(chat)的 action-executed 并存、agent-decision 每步留痕(含 reasoning)、chat-turn、被拒事件带原因。
 - 预期:同一份日志,两类 actor 足迹可辨、因果可追。
 - 观察:能不能回答「这篇文章为什么是 archived」这类跨层因果?留痕太多还是太少?
-- 结果:______
+- 结果:通过。原始日志与 `/events` 机械投影可区分 human/agent，覆盖 action-executed、action-rejected(reason/detail)、agent-decision(reasoning)、chat-turn、definition-activated、render-spec-frozen 与 plan-executed；因果可由 confirmation/activation/turn rel 串联。
 
 ## 问题归集(walkthrough 后填)
 
@@ -252,4 +252,29 @@ reload 与迟滞请求，不能再用一次 fresh-page RTT 证明“没有卡死
 | #13 | 客户端在 POST 前持久化 session/turn；日志追加 started/progress/final，history 合并 running/final 并轮询在途回合。真实刷新后原 goal/reply 与第一篇正文均恢复。 |
 | #14 | reasoning delta 50ms 合帧；canvas load latest-wins、Abort、15s timeout、加载中禁 reload，并以 generation key 重置 boundary；迟到旧 load 测试无法覆盖新 concern。 |
 
-最终证据：`CI=true pnpm check`（120 files / 1115 tests）通过；`CI=true pnpm e2e`（36 passed / 14 环境门控 skips）通过；应用内真实浏览器完成第一篇 focus/body、跨刷新恢复、删除能力诚实失败与画布跟随，页面无 console error。应用由 `pnpm dev:all` 统一入口保持运行（web 3100 / Temporal 7233 / UI 8233）。
+最终证据：`CI=true pnpm check`（121 files：119 passed / 2 Temporal 门控 skipped；1129 tests：1127 passed / 2 skipped）通过；`CI=true pnpm e2e`（36 passed / 14 环境门控 skipped）通过；应用内真实浏览器完成第一篇 focus/body、跨刷新恢复、删除能力诚实失败与画布跟随，页面无 console error。应用由 `pnpm dev:all` 统一入口保持运行（web 3100 / Temporal 7233 / UI 8233）。
+
+## T14 用户故事全链路续修（#15–#22，2026-08-22）
+
+继续按 US-1–US-14 真实走查后，修复了此前“单点验收通过、相邻故事仍断裂”的八个问题：
+
+| # | 现象 | 机制修复 | 复验 |
+|---|---|---|---|
+| 15 | 放弃向导仍收集当前节点字段；发布后旧字段残留并污染下一篇，首步再次出现重复 title。 | action 增 `collect-node-fields:false`；effect 增通用 `clear-fields`，publish 完成后清空 flow 实例字段。 | 人类与 agent 连续发布互不继承 title/category/tags/body。 |
+| 16 | agent 成功执行动作后，聊天显示成功但共享画布仍是动作前快照。 | 成功 exec/exec-plan 发 `focus(refresh=true)`；客户端把 refresh 代次写入 URL，Canvas 绕过实体缓存并 latest-wins。 | 下线、发布、置顶后画布在同一 rel 原位刷新。 |
+| 17 | HTTP 202 挂起被当拒绝继续重试，可能生成重复 confirmation。 | agent HTTP/loop 增 `suspended` 终态，202 立即收口并报告确认实体。 | archive 只生成一条 confirmation，不再重复导航或执行。 |
+| 18 | confirmation 详情只暴露机器字段；终态后风险信息消失。 | Siren 投影增加人类可读目标、风险、策略、原因；fold 保留 risk/policy/reason。 | pending 与 approved 页面都能说明“确认什么、为何高风险、依据何策略”。 |
+| 19 | exec-plan 只回“HTTP 拒绝”，模型看不到具体失败步，无法可靠续步。 | HTTP client 保留 plan detail，loop 把失败步骤与原因写入 `lastRejection.detail`。 | 错字段/缺字段失败能定位到精确 step，已成功前缀不伪回滚。 |
+| 20 | meta 聊天起点误入业务站；add-action 的 JSON 被模型序列化成字符串；`agent-focus` 读取 `meta/*` 却请求业务 `/api/entity`，报 404。 | 显式定义意图切 `/_meta`；精确 surface title 优先；JSON field 下发嵌套 schema；exec client 对 `meta/*` 自动选 `/_meta/api/entity|exec`。 | flow 修订、提交、审批、v2 动态动作全链通过；`meta/flow:post-status` 画布详情可读，不再 404。 |
+| 21 | “我想处理评论区的事”被模型解释为批准评论，越过人类授权。 | 发现型歧义意图在机械层只 focus 入口、零 exec；明确“审核/通过/驳回”才进入写循环；具体阅读意图不被该闸误拦截。 | 模糊表达只打开 comments 并明确未修改；“我要看看第一篇文章”仍 focus `post:first-post`。 |
+| 22 | Vitest DB 测试直接 `TRUNCATE` 本地开发库，运行 check 会抹掉 walkthrough 日志并制造运行中状态漂移。 | Vitest 固定使用幂等创建的 `ui4a_test`，允许 `TEST_DATABASE_URL` 覆盖；文件级 DB 测试继续串行。 | 单独运行 chat route DB 测试前后开发库事件数均为 11；完整 check 不再触碰 dev 日志。 |
+
+其中 #20 的原则是“缺数据不造数据，但必须到正确的合同本源取数据”：业务实体仍走
+`/api/entity`，`meta/*` 只走 `/_meta/api/entity`。此前 404 不是定义缺失，而是 renderer
+把定义实体发到了错误的业务端点；修复没有补假实体或增加 fallback。
+
+续修最终证据：完整 `check` 与 `e2e` 口径同上；浏览器分别验证
+`meta/flow:post-status` 从 `/_meta` 投影为 active v1（零 404），以及刷新后的
+`post:first-post` 仍显示完整 body。新鲜日志共 42 条，包含 human/agent 两类
+`action-executed`、10 条 `agent-decision`、3 个完整 `chat-turn` 与 1 条带原因的
+`action-rejected`；`/events` 机械摘要可逐层下钻。歧义评论意图执行前后 pending 均为 3。

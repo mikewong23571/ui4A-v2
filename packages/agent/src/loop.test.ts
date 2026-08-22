@@ -147,6 +147,122 @@ describe('循环终止', () => {
     expect(result.steps[0]!.outcome).toBe('failed');
   });
 
+  it('exec 202 是挂起而非拒绝：单次提案后停止等待人类确认', async () => {
+    const actionable = instanceEntity({
+      rel: 'post:first-post',
+      flow: 'post-status',
+      node: 'published',
+      actions: [
+        {
+          name: 'archive',
+          title: '归档',
+          method: 'POST',
+          href: '/api/exec',
+          fields: { type: 'object', properties: {}, additionalProperties: false },
+        },
+      ],
+      collection: 'articles',
+    });
+    const transport = contractTransport({
+      entities: { 'post:first-post': actionable },
+      execResponses: [
+        jsonResponse({ status: 'suspended', confirmation: { rel: 'confirmation:c1' } }, 202),
+      ],
+    });
+    const driver = new ScriptedDriver([
+      { kind: 'exec', action: 'archive', params: {} },
+      { kind: 'exec', action: 'archive', params: {} },
+    ]);
+
+    const result = await runAgent(
+      driver,
+      { verb: '把 first-post 归档' },
+      {
+        baseUrl: BASE,
+        fetchImpl: transport.fetch,
+        startRel: 'post:first-post',
+      },
+    );
+
+    expect(result.outcome).toBe('suspended');
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0]?.outcome).toBe('suspended');
+    expect(result.successes).toEqual([]);
+    expect(result.summary).toContain('confirmation:c1');
+    expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(1);
+  });
+
+  it('exec-plan 一次 HTTP 裁决完整计划，并把分步成功纳入 done 原料', async () => {
+    const steps = [
+      { rel: 'article-drafting:main', action: 'next', params: { title: '批量测试' } },
+      { rel: 'article-drafting:main', action: 'publish', params: { title: '批量测试' } },
+    ];
+    const transport = contractTransport({
+      entities: { articles: articlesEntity },
+      execResponses: [jsonResponse({ plan: 'completed', results: [], entities: [] })],
+    });
+    const driver = new ScriptedDriver([
+      { kind: 'exec-plan', steps },
+      { kind: 'done', summary: '批量完成' },
+    ]);
+
+    const result = await runAgent(
+      driver,
+      { verb: '一次走完发布向导' },
+      {
+        baseUrl: BASE,
+        fetchImpl: transport.fetch,
+      },
+    );
+
+    expect(result.outcome).toBe('done');
+    expect(result.steps.map((step) => step.op.kind)).toEqual(['exec-plan', 'done']);
+    expect(result.successes).toEqual(steps);
+    const posts = transport.calls.filter((call) => call.method === 'POST');
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.url).toBe(`${BASE}/api/exec-plan`);
+  });
+
+  it('exec-plan 拒绝把失败步的 reason 与逐步报告回流给下一轮', async () => {
+    const results = [
+      { step: 1, rel: 'article-drafting:main', action: 'next', outcome: 'executed' },
+      {
+        step: 2,
+        rel: 'article-drafting:main',
+        action: 'next',
+        outcome: 'rejected',
+        reason: '参数不符合动作字段 schema',
+        detail: {
+          layer: 'schema-invalid',
+          judge: [{ message: "must have required property 'body'" }],
+        },
+      },
+    ];
+    const transport = contractTransport({
+      entities: { articles: articlesEntity },
+      execResponses: [jsonResponse({ plan: 'rejected', results, entities: [] })],
+    });
+    const driver = new ScriptedDriver([
+      {
+        kind: 'exec-plan',
+        steps: [{ rel: 'article-drafting:main', action: 'next', params: { content: '正文' } }],
+      },
+      { kind: 'fail', reason: '已收到具体拒绝' },
+    ]);
+
+    await runAgent(
+      driver,
+      { verb: '一次走完发布向导' },
+      { baseUrl: BASE, fetchImpl: transport.fetch },
+    );
+
+    expect(driver.contexts[1]?.lastRejection).toMatchObject({
+      layer: 'plan',
+      reason: '参数不符合动作字段 schema',
+      detail: { results },
+    });
+  });
+
   it('超过 maxSteps 终止,结局为 max-steps', async () => {
     const actionable = instanceEntity({
       rel: 'article-drafting:main',
@@ -170,7 +286,8 @@ describe('循环终止', () => {
     const driver = new ScriptedDriver(
       Array.from(
         { length: 10 },
-        (_, index) => ({ kind: 'exec', action: 'next', params: { title: `文章${index}` } }) as AgentOperation,
+        (_, index) =>
+          ({ kind: 'exec', action: 'next', params: { title: `文章${index}` } }) as AgentOperation,
       ),
     );
 
@@ -198,11 +315,15 @@ describe('循环终止', () => {
       { kind: 'navigate', rel: 'post:post-welcome' },
     ]);
 
-    const result = await runAgent(driver, { verb: '删除所有文章' }, {
-      baseUrl: BASE,
-      fetchImpl: transport.fetch,
-      maxSteps: 24,
-    });
+    const result = await runAgent(
+      driver,
+      { verb: '删除所有文章' },
+      {
+        baseUrl: BASE,
+        fetchImpl: transport.fetch,
+        maxSteps: 24,
+      },
+    );
 
     expect(result.outcome).toBe('failed');
     expect(result.steps).toHaveLength(5);
@@ -680,11 +801,15 @@ describe('onReasoning 推理自述回调(T11 Phase C)', () => {
     const transport = contractTransport({ entities: { articles: articlesEntity } });
     const seen: string[] = [];
 
-    const result = await runAgent(createRuleDriver(), { verb: 'zzqqx 无交集' }, {
-      baseUrl: BASE,
-      fetchImpl: transport.fetch,
-      onReasoning: (text) => seen.push(text),
-    });
+    const result = await runAgent(
+      createRuleDriver(),
+      { verb: 'zzqqx 无交集' },
+      {
+        baseUrl: BASE,
+        fetchImpl: transport.fetch,
+        onReasoning: (text) => seen.push(text),
+      },
+    );
 
     // 自由漫游无路 → fail 收尾;全程 reasoning 回调零次。
     expect(result.outcome).toBe('failed');

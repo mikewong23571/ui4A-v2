@@ -122,6 +122,12 @@ export class PageEntityCache {
     this.inflight.delete(rel);
   }
 
+  /** 外部执行者改写范围未知时全量失效；仅作用于当前页面生命周期。 */
+  invalidateAll(): void {
+    this.entities.clear();
+    this.inflight.clear();
+  }
+
   /** deref 消费的缓存视图(rel → 实体;消费侧只读,写入只能经 get 填充)。 */
   snapshot(): EntityCache {
     return this.entities;

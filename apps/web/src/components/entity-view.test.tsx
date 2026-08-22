@@ -147,6 +147,9 @@ function confirmationEntity(overrides: Record<string, unknown> = {}): SirenEntit
       params: {},
       'proposed-by': { actor: 'agent', principal: 'user:mike' },
       channel: 'e2e',
+      'risk-level': 'high',
+      policy: 'cedar:confirm-high-risk',
+      'policy-reason': '高风险动作由 agent 提议，需人类确认',
       status: 'pending',
       notified: true,
       ...overrides,
@@ -589,9 +592,7 @@ describe('EntityView:确认实体与 inbox 集合渲染', () => {
   it('inbox 成员:确认条目含目标动作与提议者,逐条链接到 /entity?rel=confirmation:<id>', () => {
     const { container } = render(<EntityView rel="inbox" entity={inboxEntity} />);
 
-    const anchor = container.querySelector<HTMLAnchorElement>(
-      'a[href*="confirmation%3Ac1"]',
-    );
+    const anchor = container.querySelector<HTMLAnchorElement>('a[href*="confirmation%3Ac1"]');
     expect(anchor).not.toBeNull();
     expect(anchor!.textContent).toContain('target-action=archive');
     expect(anchor!.textContent).toContain('proposed-by.actor=agent');
@@ -601,7 +602,9 @@ describe('EntityView:确认实体与 inbox 集合渲染', () => {
   });
 
   it('确认实体页:批准为推送按钮、驳回为 RJSF 表单且 reason 必填', () => {
-    const { container } = render(<EntityView rel="confirmation:c1" entity={confirmationEntity()} />);
+    const { container } = render(
+      <EntityView rel="confirmation:c1" entity={confirmationEntity()} />,
+    );
 
     const approve = screen.getByRole('button', { name: '批准' }) as HTMLButtonElement;
     expect(approve.dataset.action).toBe('approve');
@@ -611,6 +614,19 @@ describe('EntityView:确认实体与 inbox 集合渲染', () => {
     // 提交面铁律 3:两个可提交元素分别背书 approve/reject
     expect(container.querySelectorAll('[data-action="approve"]').length).toBeGreaterThan(0);
     expect(container.querySelectorAll('[data-action="reject"]').length).toBeGreaterThan(0);
+  });
+
+  it('确认实体页机械呈现人话风险、挂起原因与提议者，不输出 [object Object]', () => {
+    const { container } = render(
+      <EntityView rel="confirmation:c1" entity={confirmationEntity()} />,
+    );
+
+    expect(screen.getByText('风险等级')).toBeTruthy();
+    expect(screen.getByText('高')).toBeTruthy();
+    expect(screen.getByText('挂起原因')).toBeTruthy();
+    expect(screen.getByText('高风险动作由 agent 提议，需人类确认')).toBeTruthy();
+    expect(screen.getByText('agent · user:mike')).toBeTruthy();
+    expect(container.textContent).not.toContain('[object Object]');
   });
 
   it('renderer 身份规则:投影 fail-closed 的 actor-is-human 不禁用批准/驳回(人类路径)', () => {

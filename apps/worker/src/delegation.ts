@@ -76,11 +76,7 @@ export function delegationRel(delegationId: string): string {
 // ---- 事件落库(kind+rel 查重幂等;与 notify activity 同方案)----------------
 
 /** (kind, rel) 存在性检查:首尾事件每委托至多一条。 */
-async function findEventSeq(
-  db: DbExecutor,
-  kind: string,
-  rel: string,
-): Promise<number | null> {
+async function findEventSeq(db: DbExecutor, kind: string, rel: string): Promise<number | null> {
   const result = await db.query<{ seq: string | number }>(
     'SELECT seq FROM events WHERE kind = $1 AND rel = $2 LIMIT 1',
     [kind, rel],
@@ -283,6 +279,28 @@ export async function runAgentStep(
     return recordStep(deps.db, args, { op, outcome: 'not-found', rejection, ...decisionExtra });
   }
 
+  if (op.kind === 'exec-plan') {
+    const call = await client.execPlan({
+      steps: op.steps,
+      actor: 'agent',
+      principal: args.principal,
+      channel: DELEGATION_CHANNEL,
+    });
+    if (call.outcome === 'completed') {
+      return recordStep(deps.db, args, { op, outcome: 'executed', ...decisionExtra });
+    }
+    if (call.outcome === 'suspended') {
+      return recordStep(deps.db, args, { op, outcome: 'suspended', ...decisionExtra });
+    }
+    const rejection: RejectionRecord = {
+      rel: args.currentRel,
+      action: 'exec-plan',
+      layer: 'plan',
+      reason: call.reason ?? `exec-plan 被拒(HTTP ${call.status})`,
+    };
+    return recordStep(deps.db, args, { op, outcome: 'rejected', rejection, ...decisionExtra });
+  }
+
   const call = await client.exec({
     rel: args.currentRel,
     action: op.action,
@@ -298,6 +316,9 @@ export async function runAgentStep(
       ...(call.entity !== undefined ? { entitySummary: summarizeEntity(call.entity) } : {}),
       ...decisionExtra,
     });
+  }
+  if (call.suspended === true) {
+    return recordStep(deps.db, args, { op, outcome: 'suspended', ...decisionExtra });
   }
   const rejection: RejectionRecord = {
     rel: args.currentRel,

@@ -189,7 +189,12 @@ export function applyStepToState(
             ...state.successes,
             { rel: state.currentRel, action: result.op.action, params: result.op.params },
           ]
-        : state.successes,
+        : result.op.kind === 'exec-plan' && result.outcome === 'executed'
+          ? [
+              ...state.successes,
+              ...result.op.steps.map(({ rel, action, params }) => ({ rel, action, params })),
+            ]
+          : state.successes,
     lastRejection: result.rejection,
   };
 }
@@ -252,19 +257,52 @@ export async function delegationWorkflow(
 
     if (result.op.kind === 'done') {
       const summary = result.op.summary;
-      await finishDelegation({ delegationId, outcome: 'completed', steps, successes, principal: args.principal, summary });
+      await finishDelegation({
+        delegationId,
+        outcome: 'completed',
+        steps,
+        successes,
+        principal: args.principal,
+        summary,
+      });
       return { delegationId, outcome: 'completed', steps, successes, summary };
     }
     if (result.op.kind === 'fail') {
       const reason = result.op.reason;
-      await finishDelegation({ delegationId, outcome: 'failed', steps, successes, principal: args.principal, reason });
+      await finishDelegation({
+        delegationId,
+        outcome: 'failed',
+        steps,
+        successes,
+        principal: args.principal,
+        reason,
+      });
       return { delegationId, outcome: 'failed', steps, successes, reason };
+    }
+    if (result.outcome === 'suspended') {
+      const summary = '动作已挂起，等待人类在收件箱确认';
+      await finishDelegation({
+        delegationId,
+        outcome: 'completed',
+        steps,
+        successes,
+        principal: args.principal,
+        summary,
+      });
+      return { delegationId, outcome: 'completed', steps, successes, summary };
     }
   }
 
   const steps = state.trail.length;
   const successes = state.successes.length;
   const reason = `达到步数上限 ${maxSteps} 未收到 done/fail`;
-  await finishDelegation({ delegationId, outcome: 'max-steps', steps, successes, principal: args.principal, reason });
+  await finishDelegation({
+    delegationId,
+    outcome: 'max-steps',
+    steps,
+    successes,
+    principal: args.principal,
+    reason,
+  });
   return { delegationId, outcome: 'max-steps', steps, successes, reason };
 }

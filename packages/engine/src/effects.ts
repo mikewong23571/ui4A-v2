@@ -1,5 +1,5 @@
 /**
- * 效果词汇表应用器:transition / set-field / append / spawn(stub)。
+ * 效果词汇表应用器:transition / clear-fields / set-field / append / spawn(stub)。
  *
  * 纯函数:输入请求 + 裁决通过的效果列表 + 旧快照 → 新快照 + 待追加事件列表。
  * 不可变产出(应用核心是日志的纯函数,I5 的前提);spawn 在 T2 只产出事件
@@ -19,12 +19,7 @@ import { actionEffects } from './parse';
 import { flowForInstance } from './judge';
 import type { DefinitionVersionTable } from './judge';
 import type { ExecRequest } from './judge';
-import type {
-  ActionDefinition,
-  EffectDefinition,
-  FlowDefinition,
-  NodeDefinition,
-} from './types';
+import type { ActionDefinition, EffectDefinition, FlowDefinition, NodeDefinition } from './types';
 
 /** 引擎产出的事件(append 到事件日志;seq/ts 由日志层分配——时钟是 capability)。 */
 export interface EngineEvent {
@@ -88,10 +83,7 @@ export interface EffectDeps {
 }
 
 /** 参数出处:显式声明优先,缺省 intent(直接意图提交)。 */
-function originOf(
-  request: ExecRequest,
-  name: string,
-): ParamOrigin {
+function originOf(request: ExecRequest, name: string): ParamOrigin {
   return request.paramOrigins?.[name] ?? 'intent';
 }
 
@@ -280,6 +272,10 @@ export function applyEffects(
       }
       to = target;
       instances[request.rel] = { ...instances[request.rel]!, node: target };
+    } else if (effect.type === 'clear-fields') {
+      // 循环型向导完成后显式清空工作实例，避免下一轮继承上一轮事实。
+      // 是否清理由定义声明；引擎不按动作名或目标节点猜业务语义。
+      instances[request.rel] = { ...instances[request.rel]!, fields: {} };
     } else if (effect.type === 'set-field') {
       const origin: ParamOrigin = effect.origin ?? 'effect';
       instances[request.rel] = {

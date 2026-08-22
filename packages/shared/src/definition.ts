@@ -64,6 +64,8 @@ export interface FieldDefinition {
   minLength?: number;
   /** 默认值(静态来源)。 */
   default?: unknown;
+  /** json 字段可选的内层 JSON Schema；缺省仍表示任意 JSON 值。 */
+  schema?: Record<string, unknown>;
   /** 校验失败时的去向:转澄清 session。 */
   'on-invalid'?: 'clarify';
   /** 引出策略(elicitation 字段)。 */
@@ -77,6 +79,7 @@ export interface FieldDefinition {
 /**
  * 效果词汇表:
  * - transition:实例节点迁移(目标缺省取 action.to);
+ * - clear-fields:清空当前实例字段(循环向导开始下一轮时显式声明);
  * - set-field:字段赋值并记录出处;
  * - append:向集合资源追加新实例(生成 `类型:实例名` rel);
  * - spawn:能力效果(T2 只产出事件记录,T3 接 Temporal);
@@ -85,6 +88,7 @@ export interface FieldDefinition {
  */
 export type EffectDefinition =
   | { type: 'transition'; to?: string }
+  | { type: 'clear-fields' }
   | {
       type: 'set-field';
       field: string;
@@ -138,6 +142,8 @@ export interface ActionDefinition {
   'requires-confirmation'?: 'low' | 'medium' | 'high';
   effect?: EffectDefinition | EffectDefinition[];
   fields?: FieldDefinition[];
+  /** 是否采集当前节点字段；缺省 true。取消类动作应显式关闭。 */
+  'collect-node-fields'?: boolean;
 }
 
 /** node-definition:节点 = 界面 + 动作声明集。 */
@@ -226,6 +232,7 @@ export const KNOWN_FIELD_TYPES: ReadonlySet<FieldType> = new Set([
 /** 已知效果类型清单(含 T4 的 meta-edit:lifecycle 自身的编辑动词用它)。 */
 export const KNOWN_EFFECT_TYPES: ReadonlySet<string> = new Set([
   'transition',
+  'clear-fields',
   'set-field',
   'append',
   'spawn',
@@ -265,7 +272,9 @@ export function metaActivationRel(id: string): string {
 
 /** 激活实体 rel → id;非前缀返回 undefined。 */
 export function activationIdFromMetaRel(rel: string): string | undefined {
-  return rel.startsWith(META_ACTIVATION_PREFIX) ? rel.slice(META_ACTIVATION_PREFIX.length) : undefined;
+  return rel.startsWith(META_ACTIVATION_PREFIX)
+    ? rel.slice(META_ACTIVATION_PREFIX.length)
+    : undefined;
 }
 
 /** application 名 → 定义实体 rel。 */
@@ -318,10 +327,7 @@ function transitionTarget(action: ActionDefinition): string | undefined {
  * `extra`:非 exec 动词表达的引擎内边(definition-lifecycle 的 checks-pass/
  * checks-fail)——仅供 terminal/可达性推导,不进裁决面。
  */
-export function flowEdges(
-  flow: FlowDefinition,
-  extra: readonly FlowEdge[] = [],
-): FlowEdge[] {
+export function flowEdges(flow: FlowDefinition, extra: readonly FlowEdge[] = []): FlowEdge[] {
   const edges: FlowEdge[] = [];
   for (const node of flow.nodes) {
     for (const action of node.actions) {
@@ -367,12 +373,7 @@ export function reachableNodes(flow: FlowDefinition, extra?: readonly FlowEdge[]
 // ---------------------------------------------------------------------------
 
 /** definition-lifecycle 的状态集(A.4;validating 为引擎内瞬态,不持久化)。 */
-export type DefinitionStatus =
-  | 'draft'
-  | 'pending-approval'
-  | 'active'
-  | 'rejected'
-  | 'deprecated';
+export type DefinitionStatus = 'draft' | 'pending-approval' | 'active' | 'rejected' | 'deprecated';
 
 /**
  * definitions 表条目(T4 Task 1):flow 名 → 版本 + 状态 + 定义内容。

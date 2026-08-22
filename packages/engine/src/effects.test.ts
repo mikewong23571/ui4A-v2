@@ -83,7 +83,12 @@ describe('效果词汇表 — transition', () => {
 
   it('实例不存在抛错', () => {
     expect(() =>
-      applyEffects(exec('go', 'ghost:rel'), [{ type: 'transition', to: 'approved' }], seedSnapshot, deps),
+      applyEffects(
+        exec('go', 'ghost:rel'),
+        [{ type: 'transition', to: 'approved' }],
+        seedSnapshot,
+        deps,
+      ),
     ).toThrow(/不存在/);
   });
 });
@@ -119,11 +124,11 @@ describe('效果词汇表 — set-field', () => {
 describe('效果词汇表 — append(生成 `类型:实例名` rel)', () => {
   it('从 name-from 参数 slug 生成新实例并入集合,字段带出处复制', () => {
     const outcome = applyEffects(
-      exec(
-        'publish',
-        'article-drafting:main',
-        { title: 'New Article', category: 'tech', tags: 'x' },
-      ),
+      exec('publish', 'article-drafting:main', {
+        title: 'New Article',
+        category: 'tech',
+        tags: 'x',
+      }),
       [
         { type: 'transition', to: 'done' },
         {
@@ -325,6 +330,22 @@ describe('效果词汇表 — append 合并源实例字段(D24:fields = 源实�
     );
     expect(outcome.snapshot.instances['post:draft-title']).toBeDefined();
     expect(outcome.snapshot.collections.articles).toContain('post:draft-title');
+  });
+
+  it('append 后 clear-fields 只清空循环工作实例，新文章保留本轮完整字段', () => {
+    const outcome = applyEffects(
+      exec('publish', 'article-drafting:main', { title: 'My Post' }),
+      [appendEffect, { type: 'clear-fields' }],
+      wizardSnapshot,
+      deps,
+    );
+
+    expect(outcome.snapshot.instances['post:my-post']?.fields).toEqual({
+      title: { value: 'My Post', origin: 'intent' },
+      category: { value: 'essay', origin: 'proposal' },
+      tags: { value: 'wizard', origin: 'effect' },
+    });
+    expect(outcome.snapshot.instances['article-drafting:main']?.fields).toEqual({});
   });
 });
 

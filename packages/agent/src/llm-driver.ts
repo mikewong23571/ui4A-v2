@@ -29,13 +29,7 @@ import { createRuleDriver } from './rule-driver';
 import { summarizeEntity } from './loop';
 import { extractRawReasoning, readRawDelta } from './raw-reasoning';
 import { ACTION_TOOL_PREFIX, buildToolProjection, isReservedVerb } from './tools';
-import type {
-  AgentDriver,
-  AgentOperation,
-  DecideSink,
-  DriverContext,
-  FetchLike,
-} from './types';
+import type { AgentDriver, AgentOperation, DecideSink, DriverContext, FetchLike } from './types';
 
 /** GLM coding plan 的 OpenAI 兼容端点(中国区)。 */
 export const DEFAULT_LLM_BASE_URL = 'https://open.bigmodel.cn/api/coding/paas/v4';
@@ -81,7 +75,8 @@ const SYSTEM_PROMPT = [
   '4. 字段值按语义构造:枚举字段必须取 enum 内的值;标题/正文等 intent 字段按目标意图编写;不要发明合同外的值。',
   '5. clarify 与 render 是保留动词且当前未实现:禁止调用;缺字段值时按规则 4 自行构造。',
   '6. 完成判定:目标对应的完成类动作(如 publish)成功执行过之后才调用 done,并用 summary 总结;不得提前 done。',
-  '7. 当前合同没有完成目标所需的 action/capability 时调用 fail(reason,evidence),明确缺口与已查看证据;禁止在实体间重复导航。',
+  '7. 用户明确要求“一次走完/一次决策/批量执行”时，优先调用 exec_plan(steps) 一次提交完整计划；普通目标仍逐步 exec。exec_plan 禁止包含 approve/reject。',
+  '8. 当前合同没有完成目标所需的 action/capability 时调用 fail(reason,evidence),明确缺口与已查看证据;禁止在实体间重复导航。',
 ].join('\n');
 
 /**
@@ -136,9 +131,11 @@ function describeTrail(context: DriverContext): string {
           ? `navigate → ${step.op.rel}`
           : step.op.kind === 'exec'
             ? `exec ${step.op.action} ${JSON.stringify(step.op.params ?? {})}`
-            : step.op.kind === 'done'
-              ? `done ${step.op.summary}`
-              : `fail ${step.op.reason}`;
+            : step.op.kind === 'exec-plan'
+              ? `exec-plan ${JSON.stringify(step.op.steps)}`
+              : step.op.kind === 'done'
+                ? `done ${step.op.summary}`
+                : `fail ${step.op.reason}`;
       const note = step.rejection !== undefined ? `(拒绝: ${step.rejection.reason})` : '';
       return `${step.step}. [${step.rel}] ${op} ⇒ ${step.outcome} ${note}`;
     })
@@ -196,6 +193,31 @@ function mapToolCall(toolName: string, input: unknown): AgentOperation {
         action: input.action,
         params: isPlainObject(input.params) ? input.params : {},
       };
+    }
+    case 'exec_plan': {
+      const steps = isPlainObject(input) ? input.steps : undefined;
+      if (!Array.isArray(steps) || steps.length === 0) {
+        return invalidOutput('exec_plan 缺少非空 steps');
+      }
+      const parsed = steps.flatMap((step) => {
+        if (
+          !isPlainObject(step) ||
+          typeof step.rel !== 'string' ||
+          typeof step.action !== 'string'
+        ) {
+          return [];
+        }
+        return [
+          {
+            rel: step.rel,
+            action: step.action,
+            ...(isPlainObject(step.params) ? { params: step.params } : {}),
+          },
+        ];
+      });
+      return parsed.length === steps.length
+        ? { kind: 'exec-plan', steps: parsed }
+        : invalidOutput('exec_plan.steps 需要 rel/action 字符串');
     }
     case 'done': {
       const summary = isPlainObject(input) ? input.summary : undefined;

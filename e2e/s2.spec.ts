@@ -877,6 +877,7 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
       'flow:article-drafting',
       'flow:comment-moderation',
       'flow:post-status',
+      'inbox',
     ]);
 
     // 业务实体 links 不携带 /_meta href

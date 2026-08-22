@@ -22,20 +22,64 @@ function goalText(goal: AgentGoal): string {
   return [goal.verb, goal.resource, goal.targetRel].filter(Boolean).join(' ');
 }
 
+/**
+ * 定义面必须由用户显式意图进入。业务目标里出现 flow 不足以越界；只有
+ * `_meta`，或“修改/修订/新增 flow 定义/动作”这类自举表达才切换合同本源。
+ */
+export function hasExplicitMetaIntent(verb: string): boolean {
+  if (verb.includes('_meta')) return true;
+  const mentionsDefinition = /(?:flow|流程|定义)/i.test(verb);
+  const requestsMutation =
+    /(?:修改|修订|变更|新增|添加|加一个|加上|移除|删除).*(?:动作|节点|字段|flow|流程|定义)/i.test(
+      verb,
+    );
+  return mentionsDefinition && requestsMutation;
+}
+
+/**
+ * 只表达“想处理某类事情”而未授权具体写动作时，只做发现/定位。避免把
+ * “处理评论区”擅自解释为通过、驳回或批量修改。
+ */
+export function isDiscoveryOnlyIntent(verb: string): boolean {
+  const discoveryShape =
+    /(?:我想处理|带我处理|去处理|处理|帮我找).*(?:的事|相关|入口|在哪里|在哪儿)?[。！!？?]*$/i.test(
+      verb.trim(),
+    );
+  const explicitMutation =
+    /(?:^审核|通过|批准|驳回|拒绝|删除|发布|下线|归档|置顶|修改|新增|执行)/i.test(verb);
+  return discoveryShape && !explicitMutation;
+}
+
 /** 解析聊天的起始实体 rel(sitemap 词级交集 + 可达探测;兜底 articles)。 */
 export async function resolveStartRel(
   baseUrl: string,
   goal: AgentGoal,
   fetchImpl: FetchLike,
+  defaultStartRel = DEFAULT_START_REL,
 ): Promise<string> {
   try {
     const response = await fetchImpl(`${baseUrl}/.well-known/ui4a.json`);
-    if (!response.ok) return DEFAULT_START_REL;
+    if (!response.ok) return defaultStartRel;
     const sitemap = (await response.json()) as { surfaces?: SitemapSurface[] };
     const surfaces = sitemap.surfaces ?? [];
     const text = goalText(goal);
 
-    for (const surface of surfaces) {
+    // 先探测标题被目标完整点名的表面，再退化到词级交集；否则“文章状态”
+    // 会因共享“文章”一词被更早的“文章发布向导”截走。
+    const ordered = surfaces
+      .map((surface, index) => ({
+        surface,
+        index,
+        exactTitle:
+          typeof surface.title === 'string' && surface.title !== '' && text.includes(surface.title),
+      }))
+      .sort(
+        (left, right) =>
+          Number(right.exactTitle) - Number(left.exactTitle) || left.index - right.index,
+      )
+      .map(({ surface }) => surface);
+
+    for (const surface of ordered) {
       const label = `${surface.rel} ${surface.title ?? ''}`;
       if (!overlaps(text, label)) continue;
       const probe = await fetchImpl(`${baseUrl}/api/entity?rel=${encodeURIComponent(surface.rel)}`);
@@ -43,8 +87,8 @@ export async function resolveStartRel(
       await probe.arrayBuffer().catch(() => undefined);
       if (probe.ok) return surface.rel;
     }
-    return DEFAULT_START_REL;
+    return defaultStartRel;
   } catch {
-    return DEFAULT_START_REL; // 机械层兜底:合同不可读也能从入口集合起步
+    return defaultStartRel; // 机械层兜底:合同不可读也能从入口集合起步
   }
 }

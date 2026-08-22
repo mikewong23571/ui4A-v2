@@ -187,9 +187,10 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
     sendGoal('长时间处理');
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const requestBody = JSON.parse(
-      (fetchMock.mock.calls[0]![1] as RequestInit).body as string,
-    ) as { sessionId?: string; turnId?: string };
+    const requestBody = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string) as {
+      sessionId?: string;
+      turnId?: string;
+    };
     expect(requestBody.sessionId).toMatch(/^[0-9a-f-]+$/i);
     expect(requestBody.turnId).toMatch(/^[0-9a-f-]+$/i);
     expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBe(requestBody.sessionId);
@@ -881,6 +882,48 @@ describe('悬浮聊天窗 · render capability(T7 Phase C / S5)', () => {
       expect(routerPushMock).toHaveBeenCalledWith('/canvas?focus=post%3Afirst-post'),
     );
     expect(screen.getByRole('link', { name: /当前查看:post:first-post/ })).toBeTruthy();
+  });
+
+  it('exec 后 refresh focus 即使 rel 相同也换 URL，驱动画布读取动作后状态', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse([
+            { type: 'focus', rel: 'post:first-post' },
+            { type: 'focus', rel: 'post:first-post', refresh: true },
+            {
+              type: 'step',
+              rel: 'post:first-post',
+              message: { role: 'assistant', text: '执行 unpublish(post:first-post)' },
+            },
+            {
+              type: 'final',
+              payload: {
+                sessionId: 'sess-focus-refresh',
+                driver: 'llm',
+                requestedDriver: 'auto',
+                outcome: 'done',
+                summary: '目标完成',
+                steps: [],
+                successes: [],
+              },
+            },
+          ]),
+        ),
+      ),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('下线第一篇');
+
+    await waitFor(() =>
+      expect(routerPushMock).toHaveBeenCalledWith('/canvas?focus=post%3Afirst-post&refresh=1'),
+    );
+    expect(
+      screen.getByRole('link', { name: /当前查看:post:first-post/ }).getAttribute('href'),
+    ).toBe('/canvas?focus=post%3Afirst-post&refresh=1');
   });
 
   it('响应携带 render 载荷 → 对话呈现生成回执 + 画布入口链接(data-nav)', async () => {

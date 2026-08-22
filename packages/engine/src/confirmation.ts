@@ -21,7 +21,13 @@ import Ajv from 'ajv';
 
 import { applyEffects, paramsToFields } from './effects';
 import type { EngineEvent } from './effects';
-import { evaluateGuards, flowForInstance, type DefinitionVersionTable, type ExecRequest, type JudgeLayer } from './judge';
+import {
+  evaluateGuards,
+  flowForInstance,
+  type DefinitionVersionTable,
+  type ExecRequest,
+  type JudgeLayer,
+} from './judge';
 import { actionEffects } from './parse';
 import { fieldDefinitionsToJsonSchema } from './schema';
 import type { ActionDefinition, FlowDefinition } from './types';
@@ -111,6 +117,7 @@ export interface ConfirmationRequestDetail {
   targetAction: string;
   policy: string;
   policyReason: string;
+  riskLevel?: 'low' | 'medium' | 'high';
   /** 原请求全文(arch-brief §3:确认链路留痕提议者 actor/principal/信道)。 */
   request: ExecRequest;
 }
@@ -156,6 +163,9 @@ export function suspendForConfirmation(
     targetAction: request.action,
     policy: verdict.policy,
     policyReason: verdict.reason,
+    ...(action['requires-confirmation'] !== undefined
+      ? { riskLevel: action['requires-confirmation'] }
+      : {}),
     request,
   };
   const event: EngineEvent = {
@@ -173,11 +183,17 @@ export function suspendForConfirmation(
     targetRel: request.rel,
     targetAction: request.action,
     ...(Object.keys(paramFields).length > 0 ? { params: paramFields } : {}),
-    proposedBy: { actor, ...(request.principal !== undefined ? { principal: request.principal } : {}) },
+    proposedBy: {
+      actor,
+      ...(request.principal !== undefined ? { principal: request.principal } : {}),
+    },
     ...(request.channel !== undefined ? { channel: request.channel } : {}),
     status: 'pending',
     policy: verdict.policy,
     policyReason: verdict.reason,
+    ...(action['requires-confirmation'] !== undefined
+      ? { riskLevel: action['requires-confirmation'] }
+      : {}),
   };
 
   return {
@@ -213,7 +229,10 @@ export function suspendForConfirmation(
       params: Object.fromEntries(
         Object.entries(paramFields).map(([name, entry]) => [name, entry.value]),
       ),
-      proposedBy: { actor, ...(request.principal !== undefined ? { principal: request.principal } : {}) },
+      proposedBy: {
+        actor,
+        ...(request.principal !== undefined ? { principal: request.principal } : {}),
+      },
       ...(request.channel !== undefined ? { channel: request.channel } : {}),
       policyReason: verdict.reason,
     },
@@ -242,9 +261,7 @@ export const CONFIRMATION_REJECT_ACTION: ActionDefinition = {
   name: 'reject',
   title: '驳回',
   guards: ['actor-is-human'],
-  fields: [
-    { name: 'reason', type: 'textarea', required: true, minLength: 1, semantics: 'intent' },
-  ],
+  fields: [{ name: 'reason', type: 'textarea', required: true, minLength: 1, semantics: 'intent' }],
 };
 
 /** confirmation-approved / confirmation-rejected 事件的 detail 载荷。 */
@@ -294,7 +311,8 @@ function adjudicateStatus(
   confirmation: ConfirmationSnapshot | undefined,
   id: string,
   actionName: string,
-): { ok: true; confirmation: ConfirmationSnapshot } | { ok: false; decision: ConfirmationDecision } {
+):
+  { ok: true; confirmation: ConfirmationSnapshot } | { ok: false; decision: ConfirmationDecision } {
   if (confirmation === undefined) {
     return {
       ok: false,
@@ -366,7 +384,13 @@ export function approveConfirmation(
   if (!statusCheck.ok) return statusCheck.decision;
   const confirmation = statusCheck.confirmation;
 
-  const guardFailed = guardCheck(CONFIRMATION_APPROVE_ACTION, confirmation, snapshot, approver, deps.guards);
+  const guardFailed = guardCheck(
+    CONFIRMATION_APPROVE_ACTION,
+    confirmation,
+    snapshot,
+    approver,
+    deps.guards,
+  );
   if (guardFailed !== undefined) return guardFailed;
 
   // 定位目标动作(与 fold.applyExecuted 同口径:按实例当前节点查声明;
@@ -449,7 +473,13 @@ export function rejectConfirmation(
   if (!statusCheck.ok) return statusCheck.decision;
   const confirmation = statusCheck.confirmation;
 
-  const guardFailed = guardCheck(CONFIRMATION_REJECT_ACTION, confirmation, snapshot, approver, deps.guards);
+  const guardFailed = guardCheck(
+    CONFIRMATION_REJECT_ACTION,
+    confirmation,
+    snapshot,
+    approver,
+    deps.guards,
+  );
   if (guardFailed !== undefined) return guardFailed;
 
   // schema 层:reason 必填且非空(与 judge 的字段校验同一口径)。

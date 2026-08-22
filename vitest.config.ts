@@ -2,6 +2,9 @@ import path from 'node:path';
 
 import { defineConfig } from 'vitest/config';
 
+const TEST_DATABASE_URL =
+  process.env.TEST_DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a_test';
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -14,8 +17,10 @@ export default defineConfig({
     // e2e/ 是 Playwright 专属目录(*.spec.ts);vitest 只收应用单测(*.test.ts)。
     // 覆盖 exclude 会替换默认值,故须一并保留 node_modules/dist 的默认排除。
     exclude: ['e2e/**', '**/node_modules/**', '**/dist/**'],
-    // DB 集成测试(events/replay)共用同一个 docker PG 库并以 TRUNCATE 自清理
-    // (DECISIONS.md D2:不引 testcontainers),文件级并行会互相清库——串行执行。
+    // 单测不得 TRUNCATE 本地开发库。global setup 幂等创建独立库，现有 DB
+    // 集成测试继续按文件串行自清理；CI 可用 TEST_DATABASE_URL 覆盖目标。
+    env: { DATABASE_URL: TEST_DATABASE_URL },
+    globalSetup: ['./vitest.global-setup.ts'],
     fileParallelism: false,
   },
 });

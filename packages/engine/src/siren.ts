@@ -17,7 +17,12 @@ import type {
   GuardEvaluation,
   GuardRegistry,
 } from '@ui4a/shared';
-import { fieldValues, META_CAPABILITY_PREFIX, metaActivationRel, terminalNodes } from '@ui4a/shared';
+import {
+  fieldValues,
+  META_CAPABILITY_PREFIX,
+  metaActivationRel,
+  terminalNodes,
+} from '@ui4a/shared';
 
 import {
   CONFIRMATION_APPROVE_ACTION,
@@ -27,10 +32,7 @@ import {
 import { DELEGATIONS_REL, delegationRel } from './delegation';
 import { evaluateGuards, flowForInstance } from './judge';
 import type { DefinitionVersionTable } from './judge';
-import {
-  DEFINITION_LIFECYCLE_FLOW,
-  LIFECYCLE_INTERNAL_EDGES,
-} from './lifecycle';
+import { DEFINITION_LIFECYCLE_FLOW, LIFECYCLE_INTERNAL_EDGES } from './lifecycle';
 import { actionEffects } from './parse';
 import {
   RENDER_SPECS_REL,
@@ -100,12 +102,15 @@ function toSirenAction(
   nodeFields: readonly FieldDefinition[],
   base: string | undefined,
 ): SirenAction {
+  const collectedNodeFields = action['collect-node-fields'] === false ? [] : nodeFields;
   const sirenAction: SirenAction = {
     name: action.name,
     title: action.title,
     method: action.method ?? 'POST',
     href: execHref(base),
-    fields: fieldDefinitionsToJsonSchema(mergeFieldDefinitions(nodeFields, action.fields ?? [])),
+    fields: fieldDefinitionsToJsonSchema(
+      mergeFieldDefinitions(collectedNodeFields, action.fields ?? []),
+    ),
   };
   if (action['requires-confirmation'] !== undefined) {
     sirenAction['requires-confirmation'] = action['requires-confirmation'];
@@ -144,9 +149,7 @@ function projectInstance(
   const flow = flowForInstance(deps, instance);
   const node = flow?.nodes.find((candidate) => candidate.name === instance.node);
   const actions = node?.actions ?? [];
-  const links: SirenLink[] = [
-    { rel: ['self'], href: entityHref(deps.baseHref, instance.rel) },
-  ];
+  const links: SirenLink[] = [{ rel: ['self'], href: entityHref(deps.baseHref, instance.rel) }];
   // 成员反查所属集合(导航回链)。
   for (const [collection, members] of Object.entries(snapshot.collections)) {
     if (members.includes(instance.rel)) {
@@ -162,20 +165,14 @@ function projectInstance(
       title: node?.title ?? instance.node,
       fields: fieldValues(instance.fields),
     },
-    actions: actions.map((action) =>
-      toSirenAction(action, node?.fields ?? [], deps.baseHref),
-    ),
+    actions: actions.map((action) => toSirenAction(action, node?.fields ?? [], deps.baseHref)),
     links,
     'guard-results': guardResultsFor(actions, instance, snapshot, deps.guards),
   };
 }
 
 /** 集合实体投影:entities[] 子实体(嵌入投影 + 直达 href)。 */
-function projectCollection(
-  rel: string,
-  snapshot: EngineSnapshot,
-  deps: ProjectDeps,
-): SirenEntity {
+function projectCollection(rel: string, snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
   const members = snapshot.collections[rel] ?? [];
   const entities = members.flatMap((member) => {
     const instance = snapshot.instances[member];
@@ -212,6 +209,11 @@ function projectConfirmation(
     ? [CONFIRMATION_APPROVE_ACTION, CONFIRMATION_REJECT_ACTION]
     : [];
   const target = snapshot.instances[confirmation.targetRel];
+  const targetFlow = target === undefined ? undefined : flowForInstance(deps, target);
+  const targetNode = targetFlow?.nodes.find((node) => node.name === target?.node);
+  const targetAction = targetNode?.actions.find(
+    (action) => action.name === confirmation.targetAction,
+  );
   const guardResults =
     pending && target !== undefined
       ? guardResultsFor(confirmationActions, target, snapshot, deps.guards)
@@ -225,6 +227,14 @@ function projectConfirmation(
       params: fieldValues(confirmation.params ?? {}),
       'proposed-by': confirmation.proposedBy,
       ...(confirmation.channel !== undefined ? { channel: confirmation.channel } : {}),
+      ...(confirmation.riskLevel !== undefined ||
+      targetAction?.['requires-confirmation'] !== undefined
+        ? { 'risk-level': confirmation.riskLevel ?? targetAction?.['requires-confirmation'] }
+        : {}),
+      ...(confirmation.policy !== undefined ? { policy: confirmation.policy } : {}),
+      ...(confirmation.policyReason !== undefined
+        ? { 'policy-reason': confirmation.policyReason }
+        : {}),
       status: confirmation.status,
       // 送达状态(T3 Phase C:notification-delivered 折叠而来;仅已送达时注入,
       // 保持未送达实体的 properties 形状稳定)。
@@ -507,7 +517,11 @@ function projectFlowDefinition(
   const instance = snapshot.instances[rel];
   const entity = projectDefinitionEntity(
     rel,
-    { name: entry.name, version: entry.version, ...(entry.bornBy !== undefined ? { bornBy: entry.bornBy } : {}) },
+    {
+      name: entry.name,
+      version: entry.version,
+      ...(entry.bornBy !== undefined ? { bornBy: entry.bornBy } : {}),
+    },
     entry.definition,
     entry.status,
     instance,
@@ -627,7 +641,11 @@ function projectFlows(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity 
   const entries = Object.values(snapshot.definitions ?? {});
   const entities = entries.map((entry) => {
     const projected = projectFlowDefinition(snapshot, entry.name, deps)!;
-    return { ...projected, rel: ['item'], href: entityHref(deps.baseHref, `meta/flow:${entry.name}`) };
+    return {
+      ...projected,
+      rel: ['item'],
+      href: entityHref(deps.baseHref, `meta/flow:${entry.name}`),
+    };
   });
   return {
     class: ['collection', 'meta/flows'],

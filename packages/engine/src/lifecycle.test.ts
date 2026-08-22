@@ -85,6 +85,7 @@ describe('definition-lifecycle 常量(A.4 原样,timeout/expired 除外)', () =>
     expect(fields.map((f) => f.name)).toEqual(['node', 'action']);
     expect(fields[0]).toMatchObject({ name: 'node', type: 'text', required: true });
     expect(fields[1]).toMatchObject({ name: 'action', type: 'json', required: true });
+    expect(fields[1]?.schema).toMatchObject({ type: 'object', required: ['name', 'title'] });
   });
 
   it('approve/reject 声明于 pending-approval:actor-is-human(铁律 5),reject 的 reason 必填且非空', () => {

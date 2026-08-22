@@ -18,7 +18,11 @@ export type ExecClientResult =
   | { ok: true; entity: SirenEntity }
   | { ok: false; status: number; layer: string; reason: string; detail?: unknown };
 
-/** 提交一个已声明动作(POST /api/exec);空 params 不上送(与 agent 侧一致)。 */
+function contractPrefix(rel: string): '' | '/_meta' {
+  return rel.startsWith('meta/') ? '/_meta' : '';
+}
+
+/** 提交一个已声明动作；meta rel 留在定义合同站，业务 rel 留在业务站。 */
 export async function execAction(input: {
   rel: string;
   action: string;
@@ -30,7 +34,7 @@ export async function execAction(input: {
       input.params !== undefined && Object.keys(input.params).length > 0
         ? { params: input.params }
         : {};
-    response = await fetch('/api/exec', {
+    response = await fetch(`${contractPrefix(input.rel)}/api/exec`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ rel: input.rel, action: input.action, ...params, ...HUMAN_CHANNEL }),
@@ -62,12 +66,13 @@ export async function execAction(input: {
   };
 }
 
-/** GET /api/entity?rel=…;404 → null(实体不存在),其余非 200 → 抛错。 */
+/** GET 合同实体；meta rel 留在定义合同站。404 → null，其余非 200 → 抛错。 */
 export async function fetchEntity(rel: string, signal?: AbortSignal): Promise<SirenEntity | null> {
-  const response = await fetch(`/api/entity?rel=${encodeURIComponent(rel)}`, { signal });
+  const endpoint = `${contractPrefix(rel)}/api/entity?rel=${encodeURIComponent(rel)}`;
+  const response = await fetch(endpoint, { signal });
   if (response.status === 404) return null;
   if (!response.ok) {
-    throw new Error(`GET /api/entity?rel=${rel} → HTTP ${response.status}`);
+    throw new Error(`GET ${endpoint} → HTTP ${response.status}`);
   }
   return (await response.json()) as SirenEntity;
 }

@@ -28,7 +28,9 @@ function fieldToJsonSchema(field: FieldDefinition): Record<string, unknown> {
       break;
     case 'json':
       // 任意 JSON 值(meta 编辑动词的 action-definition 全文等);内层形状
-      // 由专门的 guard(to-exists/guards-registered/effect-known)裁决。
+      // 缺省由专门 guard 裁决；声明 schema 时同时向人类表单与 agent 工具
+      // 披露结构，避免把对象误序列化成字符串。
+      Object.assign(schema, field.schema ?? {});
       break;
     default:
       schema.type = 'string';
@@ -41,9 +43,7 @@ function fieldToJsonSchema(field: FieldDefinition): Record<string, unknown> {
 }
 
 /** 字段定义集 → 参数 object schema(严格合同:拒绝多余参数)。 */
-export function fieldDefinitionsToJsonSchema(
-  fields: readonly FieldDefinition[],
-): {
+export function fieldDefinitionsToJsonSchema(fields: readonly FieldDefinition[]): {
   $schema: string;
   type: 'object';
   properties: Record<string, Record<string, unknown>>;

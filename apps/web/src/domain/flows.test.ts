@@ -95,7 +95,14 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
         'name-from': 'title',
         node: 'published',
       },
+      { type: 'clear-fields' },
     ]);
+
+    expect(
+      nodeOf(articleDraftingFlow, 'basic-info').actions.find((a) => a.name === 'abandon'),
+    ).toMatchObject({
+      'collect-node-fields': false,
+    });
 
     // done 为终态(无动作;经 abandon 可达)。
     expect(nodeOf(articleDraftingFlow, 'done').actions).toEqual([]);

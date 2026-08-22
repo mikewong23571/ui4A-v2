@@ -21,7 +21,8 @@ const VERB_LEXICON: Readonly<Record<string, readonly string[]>> = {
   审核: ['approve', 'moderate', 'review'],
   处理: ['approve', 'moderate'],
   通过: ['approve'],
-  批准: ['approve'],
+  批准: ['approve', '确认'],
+  确认: ['approve', '批准'],
   驳回: ['reject'],
   拒绝: ['reject'],
 };
