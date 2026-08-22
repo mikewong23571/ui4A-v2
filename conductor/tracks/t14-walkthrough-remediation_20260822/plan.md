@@ -29,9 +29,9 @@
 
 ## Phase F: agent 与共享处境闭环（#8–#11）
 
-- [~] Task: 单实体阅读解析 + binding-only detail focus；navigate focus SSE 驱动画布临时 surface（零 freeze/零业务事件）
-- [ ] Task: 显式 fail 工具 + 无能力/重复处境停滞检测 + failed/chat-turn 审计（合同外目标有限步零副作用）
-- [ ] Task: SSE 固定 deadline 改 idle timeout/heartbeat 生命周期，区分人工停止与空闲超时
+- [x] Task: 单实体阅读解析 + binding-only detail focus；navigate focus SSE 驱动画布临时 surface（零 freeze/零业务事件） — 86b7e87
+- [x] Task: 显式 fail 工具 + 无能力/重复处境停滞检测 + failed/chat-turn 审计（合同外目标有限步零副作用） — 03a70f1
+- [x] Task: SSE 固定 deadline 改 idle timeout/heartbeat 生命周期，区分人工停止与空闲超时 — 9320577
 
 ## Phase G: chat 持久性与画布活性（#13/#14）
 
