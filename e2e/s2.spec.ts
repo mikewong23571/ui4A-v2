@@ -386,6 +386,7 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
       'capability-registered',
       'edge-targets-exist',
       'effect-known',
+      'executor-profile-valid',
       'field-types-known',
       'guards-registered',
       'initial-exists',
@@ -433,8 +434,8 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     // 详情:checks 八行全过;机械 diff 可见且含 pin(react-diff-view 内建渲染,验收 6)
     await expect(page.getByRole('heading', { name: '激活 a1' })).toBeVisible();
     const checkRows = page.locator('section[aria-label="不变式检查"] tbody tr');
-    await expect(checkRows).toHaveCount(9);
-    for (let index = 0; index < 9; index += 1) {
+    await expect(checkRows).toHaveCount(10);
+    for (let index = 0; index < 10; index += 1) {
       await expect(checkRows.nth(index)).toContainText('通过');
     }
     const diffSection = page.locator('section[aria-label="机械 diff"]');
@@ -875,11 +876,14 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
     const sitemap = await getSitemap();
     expect(sitemap.surfaces.map((surface) => surface.rel).sort()).toEqual([
       'articles',
+      'capability-runs',
       'comments',
       'flow:article-drafting',
       'flow:comment-moderation',
       'flow:post-status',
+      'flow:software-change',
       'inbox',
+      'software-changes',
     ]);
 
     // 业务实体 links 不携带 /_meta href
@@ -908,25 +912,27 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
       ]),
     );
 
-    // T13 Phase C:capabilities 面进 meta sitemap(目录集合 + 三个 seed 实体)
+    // T13/T18:capability 定义面进 meta sitemap；业务面可另有 Run 资源。
     expect(metaSitemap.surfaces.map((surface) => surface.rel)).toEqual(
       expect.arrayContaining([
         'meta/capabilities',
         'meta/capability:draft',
         'meta/capability:notify',
         'meta/capability:clarify',
+        'meta/capability:coding.execute',
       ]),
     );
-    // 业务 sitemap 不含 capability 入口(capability 面只在 meta 站;上方精确名单同证)
+    // 业务 sitemap 不得泄漏 capability definition 的 meta rel。
     expect(
-      sitemap.surfaces.every((surface) => !surface.rel.includes('capability')),
-      '业务 sitemap 不得出现 capability 入口',
+      sitemap.surfaces.every((surface) => !surface.rel.startsWith('meta/')),
+      '业务 sitemap 不得出现 meta 入口',
     ).toBe(true);
-    // meta/capabilities 集合投影:三个 seed 成员直达
+    // meta/capabilities 集合投影:四个 seed 成员直达
     const capabilities = await getMetaEntity('meta/capabilities');
-    expect(capabilities.properties).toMatchObject({ count: 3 });
+    expect(capabilities.properties).toMatchObject({ count: 4 });
     expect((capabilities.entities ?? []).map((sub) => sub.properties.name).sort()).toEqual([
       'clarify',
+      'coding.execute',
       'draft',
       'notify',
     ]);

@@ -1,19 +1,25 @@
 /**
  * 激活不变式检查器(T4 Phase A Task 3;arch-brief §10 A.5 种子集;
  * T10 Phase A Task 3 增第七条 app-known,spec 架构决定 3;
- * T13 Phase D Task 1 增第八条 capability-registered,spec 架构决定 4)。
+ * T13 Phase D Task 1 增第八条 capability-registered,spec 架构决定 4;
+ * T18 Phase E 增 executor-profile-valid)。
  *
- * validateDefinition(draft, registries) → checks:九项逐条、全量报告不短路
+ * validateDefinition(draft, registries) → checks:十项逐条、全量报告不短路
  * (与 guard 求值同口径:每项都要有结果,checks 入 activation 实体与
  * definition-submitted 事件 detail——"非法动作被拒绝、非法定义也应被拒绝"
  * 的定义层落点)。
  *
- * 九项:edge-targets-exist / guards-registered / field-types-known /
+ * 十项:edge-targets-exist / guards-registered / field-types-known /
  * effect-known / initial-exists / terminal-reachable / app-known /
- * capability-registered / submission-policy-valid。
+ * capability-registered / executor-profile-valid / submission-policy-valid。
  * 纯函数:只读草稿与注册表。
  */
-import type { ActivationCheck, FlowDefinition, GuardRegistry } from '@ui4a/shared';
+import type {
+  ActivationCheck,
+  CapabilityDefinition,
+  FlowDefinition,
+  GuardRegistry,
+} from '@ui4a/shared';
 import { KNOWN_EFFECT_TYPES, KNOWN_FIELD_TYPES, reachableNodes, terminalNodes } from '@ui4a/shared';
 import type { FieldDefinition, FieldType } from './types';
 import { validateSubmissionPolicy } from './submission/policy';
@@ -41,6 +47,9 @@ export interface DefinitionRegistries {
    * 始终注册,本检查长牙。
    */
   capabilities?: ReadonlySet<string>;
+  /** Capability definitions and configured executor profile classes (T18). */
+  capabilityDefinitions?: Readonly<Record<string, CapabilityDefinition>>;
+  executorProfiles?: ReadonlyMap<string, string>;
 }
 
 interface EffectLike {
@@ -56,7 +65,7 @@ function effectsOf(action: { effect?: unknown }): EffectLike[] {
   return list.filter((e): e is EffectLike => typeof e === 'object' && e !== null);
 }
 
-/** 激活不变式检查器:返回九项检查结果(pass + 失败明细)。 */
+/** 激活不变式检查器:返回十项检查结果(pass + 失败明细)。 */
 export function validateDefinition(
   draft: FlowDefinition,
   registries: DefinitionRegistries,
@@ -71,6 +80,7 @@ export function validateDefinition(
   const fieldTypeIssues: string[] = [];
   const effectIssues: string[] = [];
   const capabilityIssues: string[] = [];
+  const executorProfileIssues: string[] = [];
   const submissionIssues: string[] = [];
 
   if (draft.submission?.mode === 'none' && draft.nodes.some((node) => node.actions.length > 0)) {
@@ -176,6 +186,26 @@ export function validateDefinition(
             `${where}.effect: spawn 引用的 capability "${effect.capability}" 未注册`,
           );
         }
+        if (
+          effect.type === 'spawn' &&
+          typeof effect.capability === 'string' &&
+          registries.capabilityDefinitions !== undefined &&
+          registries.executorProfiles !== undefined
+        ) {
+          const requirement = registries.capabilityDefinitions[effect.capability]?.executor;
+          if (requirement !== undefined) {
+            const configuredClass = registries.executorProfiles.get(requirement.profile);
+            if (configuredClass === undefined) {
+              executorProfileIssues.push(
+                `${where}.effect: executor profile "${requirement.profile}" 未配置`,
+              );
+            } else if (configuredClass !== requirement.class) {
+              executorProfileIssues.push(
+                `${where}.effect: executor profile "${requirement.profile}" class 应为 "${requirement.class}"，实际为 "${configuredClass}"`,
+              );
+            }
+          }
+        }
       }
     }
   }
@@ -247,6 +277,11 @@ export function validateDefinition(
       name: 'capability-registered',
       pass: capabilityIssues.length === 0,
       ...(capabilityIssues.length > 0 ? { detail: capabilityIssues } : {}),
+    },
+    {
+      name: 'executor-profile-valid',
+      pass: executorProfileIssues.length === 0,
+      ...(executorProfileIssues.length > 0 ? { detail: executorProfileIssues } : {}),
     },
     {
       name: 'submission-policy-valid',

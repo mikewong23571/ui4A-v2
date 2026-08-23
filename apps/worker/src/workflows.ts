@@ -91,7 +91,8 @@ export interface CodingCapabilityActivities {
 
 const codingPrepare = proxyActivities<Pick<CodingCapabilityActivities, 'prepareCodingRun'>>({
   startToCloseTimeout: '1 minute',
-  retry: { maximumAttempts: 3 },
+  // Provider/profile preflight failures are terminal and already persisted.
+  retry: { maximumAttempts: 1 },
 });
 const codingExecute = proxyActivities<Pick<CodingCapabilityActivities, 'executeCodingRun'>>({
   startToCloseTimeout: '1 hour',
@@ -107,7 +108,20 @@ const codingFinalize = proxyActivities<Pick<CodingCapabilityActivities, 'finaliz
 export async function codingCapabilityWorkflow(
   args: CodingCapabilityWorkflowArgs,
 ): Promise<CodingExecutionResult> {
-  const prepared = await codingPrepare.prepareCodingRun(args);
+  let prepared: CodingPreparedResult;
+  try {
+    prepared = await codingPrepare.prepareCodingRun(args);
+  } catch (error) {
+    const outcome: CodingExecutionResult = {
+      status: 'failed',
+      code: 'prepare-failed',
+      reason: error instanceof Error ? error.message : String(error),
+    };
+    // prepare persists the terminal Run before throwing; callback the declared
+    // source action so the Business Flow cannot remain stuck in running.
+    await codingFinalize.finalizeCodingRun({ context: args, outcome });
+    return outcome;
+  }
   const outcome = await codingExecute.executeCodingRun({ context: args, prepared });
   await codingFinalize.finalizeCodingRun({ context: args, outcome });
   return outcome;

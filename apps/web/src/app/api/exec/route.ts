@@ -5,6 +5,7 @@ import {
   LlmArtifactConfigurationError,
 } from '../../../engine/service';
 import { executeCapabilityRunAction, isCapabilityRunRel } from '../../../engine/capability-runs';
+import { finalizeCapabilitySource } from '../../../engine/capability-source-callback';
 
 import { parseExecBody, rejectionStatus } from '../exec-request';
 
@@ -55,9 +56,18 @@ export async function POST(request: Request) {
         resolvedRequest,
         request.headers.get('x-ui4a-policy-scope') ?? 'development',
       );
-      return outcome.kind === 'accepted'
-        ? Response.json({ entity: outcome.entity })
-        : Response.json({ layer: 'guard-failed', reason: outcome.reason }, { status: 422 });
+      if (outcome.kind !== 'accepted') {
+        return Response.json({ layer: 'guard-failed', reason: outcome.reason }, { status: 422 });
+      }
+      const runId = resolvedRequest.rel.slice('capability-run:'.length);
+      const finalized = await finalizeCapabilitySource(db, runId);
+      if (!finalized.ok) {
+        return Response.json(
+          { layer: finalized.layer ?? 'guard-failed', reason: finalized.reason },
+          { status: finalized.status },
+        );
+      }
+      return Response.json({ entity: outcome.entity, source: finalized.entity });
     }
     const engine = await getEngine(db);
     const outcome = await engine.exec(resolvedRequest);

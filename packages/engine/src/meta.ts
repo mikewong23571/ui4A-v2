@@ -42,6 +42,7 @@ export interface MetaDeps {
   /** 激活不变式的注册表(字段/效果类型覆盖);guards 复用本 deps 的注册表。 */
   fieldTypes?: DefinitionRegistries['fieldTypes'];
   effectTypes?: DefinitionRegistries['effectTypes'];
+  executorProfiles?: DefinitionRegistries['executorProfiles'];
 }
 
 /** meta exec 结果(与业务 exec 同构:executed / suspended / rejected)。 */
@@ -323,6 +324,10 @@ export function executeMeta(
       ...(deps.effectTypes !== undefined ? { effectTypes: deps.effectTypes } : {}),
       ...(applications !== undefined ? { applications } : {}),
       ...(capabilities !== undefined ? { capabilities } : {}),
+      ...(verdict.snapshot.capabilities !== undefined
+        ? { capabilityDefinitions: verdict.snapshot.capabilities }
+        : {}),
+      ...(deps.executorProfiles !== undefined ? { executorProfiles: deps.executorProfiles } : {}),
     });
     const passed = checks.every((check) => check.pass);
     const detail: DefinitionSubmittedDetail = { name: flowName, passed, checks };

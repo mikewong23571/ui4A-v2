@@ -172,7 +172,7 @@ export async function executeCodexTask(
     env: controlledEnvironment(input.profile),
     config: {
       max_turns: input.profile.maxTurns ?? input.task.budget.maxTurns,
-      features: { web_search: input.profile.networkPolicy !== 'none' },
+      web_search: input.profile.networkPolicy === 'none' ? 'disabled' : 'live',
     },
   });
   const threadOptions: ThreadOptions = {

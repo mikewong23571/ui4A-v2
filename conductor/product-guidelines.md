@@ -29,6 +29,7 @@
 | 人类优化分级 | 即时预览、个人 Sidecar、共享 Recipe 是三个不同承诺；共享晋升必须先机械参数化/diff，再由 human 确认 |
 | 原生认知不物化 | 阅读、总结、比较、解释默认只产生带来源的临时回答；没有明确业务字段/action 时不得自动升级为 artifact |
 | 外置 App authoring | 产品 Chat 不内置 App 生成器；外置 Agent 可提候选 Bundle，UI4A 只负责 meta 校验、diff、批准、激活与重放 |
+| Coding Agent 是执行器 | 软件变更由业务 action 启动并形成独立 Capability Run；进度、命令、文件、测试和 raw 轨迹可下钻。成功只形成待审结果，Agent 不能自批，accept 不暗示 merge/deploy |
 
 ## 视觉与骨架
 

@@ -2,6 +2,17 @@
 
 > 原报告生成于 2026-08-21(T1–T8)。T15/T16/D28 addendum supersede 旧 AI、渲染和摘要口径；旧测试数量与旧 I1 仅是历史快照。当前验收以 `GOAL.md`、`DECISIONS.md`、T15/T16 Story Eval 和最新命令输出为准。
 
+## T18 Coding Capability Executor Host（2026-08-23）
+
+- `coding.execute` 以独立 Capability Run 承载通用 Coding Agent；Application 只声明 Flow/action
+  与 executor requirement，Provider/repository/workspace/env/sandbox 由部署 registry 治理。
+- Codex SDK reference adapter 在 5 个 disposable repository 自然语言任务中 5/5 成功，Safety
+  100%；Claude/Gemini 只作 normalized SPI fixture，Hermes 零 runtime/dependency/config。
+- UI4A-owned worktree、content-addressed raw/patch/trajectory、Temporal SIGKILL/cancel/prepare-fail、
+  human-only result CAS 与 source callback 均有独立证据；主 checkout 和 Active truth 零变化。
+- Human accept 只记录 `merged=false/deployed=false/activated=false` receipt；后续 main-branch/PR/
+  deployment 应另建 Track。关闭报告见 [T18 DONE](./tracks/t18-coding-capability-executors_20260823/DONE.md)。
+
 ## T17 External Agent CLI 与 Governed Draft Ingress（2026-08-23）
 
 - 可安装 `ui4a` CLI 从任意 cwd 完成 doctor/discovery/read/action/plan/Bundle/Draft/audit；
@@ -100,5 +111,7 @@ DONE = demo 质量 ✅;生产化(多租户/部署硬化/压测/真实 SSO)显式
 | t9–t14 | 前端基座、Application 分组、Agent 可观测性、渲染增强、Meta 可视化与 walkthrough 修复 | [x] |
 | t15-ai-first | 真实 LLM、多轮日志状态、原生认知、授权与 U1–U23 | [x] |
 | t16-presentation | 薄协议、Recipe、用户 Sidecar、semantic A2UI、人类优化与 S1–S32 | [x] |
+| t17-external-agent-cli-drafts | 外部 Agent CLI、Governed Draft、SubmissionPolicy 与 human apply | [x] |
+| t18-coding-capability-executors | Coding Agent executor、Capability Run、隔离 worktree、Codex 与结果治理 | [x] |
 
 历史测试总量(T8 快照):821 单测 + 43 E2E(42 过 + 1 真实 LLM 门控)。当前数量与结果必须现场运行 `pnpm check`、`CI=true pnpm e2e` 及门控 Story Eval 获取，不复用本快照。

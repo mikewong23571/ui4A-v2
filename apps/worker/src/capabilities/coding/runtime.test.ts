@@ -152,7 +152,7 @@ describe('segmented coding capability runtime', () => {
           claim: {
             status: 'completed' as const,
             summary: 'done',
-            tests: ['node --test'],
+            tests: ['node --test: 1 passed, 0 failed'],
             changedFiles: ['src/sum.js'],
           },
         };

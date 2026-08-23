@@ -101,6 +101,7 @@ import {
   preflightCapabilityExecutor,
   preflightCodingResultDecision,
 } from './capability-runs';
+import { codingExecutorProfileRegistryFromEnvironment } from './coding-executor-config';
 
 /** exec 结果(discriminated union;HTTP 层据此映射 200/202/4xx)。 */
 export type ExecOutcome =
@@ -311,7 +312,11 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   const projectDeps = (): ProjectDeps => ({ flows: activeFlows(), guards, versions: versions() });
   // meta 平面编排依赖(编辑动词裁决用 lifecycle 常量自举,executeMeta 内部注入;
   // 激活不变式的注册表缺省 KNOWN_FIELD_TYPES/KNOWN_EFFECT_TYPES)。
-  const metaDeps = (): MetaDeps => ({ guards, policy });
+  const metaDeps = (): MetaDeps => ({
+    guards,
+    policy,
+    executorProfiles: codingExecutorProfileRegistryFromEnvironment(),
+  });
 
   // meta 站点 sitemap(meta rel 面;定义实体随 definitions 表动态列出,
   // capability 实体随 capabilities 表动态列出[T13 Phase C]——两面同进缓存键)。
@@ -758,7 +763,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
             (instance === undefined
               ? undefined
               : activeDefinitionOf(snapshot, instance.flow)?.app) ?? 'default';
-          await createAndDispatchCapabilityRun(db, {
+          const run = await createAndDispatchCapabilityRun(db, {
             sourceSeq: seq,
             sourceRel: aliased.rel,
             sourceAction: aliased.action,
@@ -770,6 +775,38 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
             onErrorAction: event['on-error'],
             baseUrl: process.env.UI4A_PUBLIC_BASE_URL ?? 'http://localhost:3100',
           });
+          if (run.status === 'failed') {
+            const callbackAction = run.source.onErrorAction;
+            if (callbackAction === undefined) {
+              throw new Error('failed capability dispatch has no declared on-error action');
+            }
+            const callback = executeWithGates(
+              {
+                rel: run.source.rel,
+                action: callbackAction,
+                actor: 'agent',
+                principal: `system:capability:${run.runId}`,
+                channel: 'capability-callback',
+                params: {
+                  runId: run.runId,
+                  reason: run.failure?.reason ?? 'capability dispatch failed',
+                },
+              },
+              snapshot,
+              gateDeps(),
+            );
+            if (callback.kind !== 'executed') {
+              throw new Error(
+                `failed capability dispatch callback rejected: ${
+                  callback.kind === 'rejected' ? callback.reason : 'confirmation suspended'
+                }`,
+              );
+            }
+            for (const callbackEvent of callback.events) {
+              await appendWithSeq(toAppend(callbackEvent));
+            }
+            snapshot = callback.snapshot;
+          }
         }
         applyForeignGaps();
 

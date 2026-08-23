@@ -12,7 +12,7 @@ UI4A is a pnpm/TypeScript monorepo implementing “interface as contract”: hum
 
 ## System and Application Map
 
-There are three deployable applications, one shared event log, and three architectural planes:
+There are four runnable applications, one shared event log, and four architectural planes:
 
 ```text
 human UI / agent / script
@@ -31,6 +31,7 @@ apps/cli ──HTTP/Siren/meta──► apps/web
 - **Business plane:** application instances, flows, actions, and projections.
 - **Definition plane (`_meta`):** Flow definitions are revised, validated, diffed, and activated through the same engine and log. Application creation is not an in-product workflow; a future external Agent may submit candidate bundles through meta contracts.
 - **Capability plane:** durable interaction with external systems. Temporal workflows coordinate work; activities perform I/O.
+- **Presentation plane:** binding-only Recipe/Sidecar/Surface planning and A2UI hydration; it is a replayable sidecar, never business truth.
 
 PostgreSQL is the source of truth. Current state, chat history, delegations, inbox entries, and UI entities are projections of the event log. Temporal owns durable execution history, not business truth. Never introduce a second authoritative state store.
 
@@ -43,13 +44,14 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 - `src/engine/`: server-side composition boundary. `service.ts` connects the pure engine to PostgreSQL, Cedar, render specs, application bundles, and Temporal dispatch. It serializes execution, incrementally folds new events, and serves business and meta projections. `flow-entry.ts` owns `flow:<name>` entry aliases and collection links.
 - `src/db/`: PostgreSQL pool, schema, append/read operations, and replay tests. `events.ts` is the event-log write/read boundary. The worker currently reuses this adapter; do not create a competing writer abstraction casually.
 - `src/db/drafts.ts`: Draft-domain events, immutable SHA-256 payloads, rebuildable projection, CAS, and transactional acceptance.
+- `src/db/capability-runs.ts`: Capability Run events, content-addressed raw/result payloads, owner/scope queries, cursors, and rebuildable projections.
 - `src/engine/drafts.ts`: Siren Draft/activation projection, validation/diff adapter, and human-only atomic Flow apply.
 - `src/domain/`: built-in domain helpers, predicates/flows used for bootstrap or testing, capability declarations, and Cedar policy loading. Production definition truth must still come from activated event-log artifacts.
 - `src/render/`: deterministic A2UI compilation and hydration. `presentation/` compiles semantic Surface Trees; `deref.ts` and the entity cache resolve live facts; `canvas/` hosts surfaces; `words/` contains concrete vocabulary renderers.
 - `src/engine/presentation/`: Presentation Broker, Application Recipe generation/registry, user-level Sidecar fastpath, dependency validation, and receipt production.
 - `src/db/presentation.ts`: replayable Presentation events and the rebuildable user Sidecar projection. It is separate from the Business fold.
 - `src/chat/`: chat-session start, SSE streaming, history, trail, and decision projection. Chat is an event-log projection and an agent entry point, not an alternate command path.
-- `src/temporal/`: web-side Temporal clients for notification and delegation dispatch.
+- `src/temporal/`: web-side Temporal clients for notification, delegation, and Coding Capability dispatch/cancellation.
 - `src/delegations/`: delegation-list projection helpers; read status from engine projections, not directly from Temporal.
 - `src/components/`: React composition. `meta/` contains definition-plane views; `assistant-ui/` adapts chat UI; `ui/` holds local primitives. Page components should orchestrate existing domain/render modules rather than absorb business rules.
 - `src/test/`: shared browser/jsdom stubs only. Keep feature tests next to their subjects.
@@ -57,9 +59,10 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 ### `apps/worker` — Durable Work and I/O
 
 - `src/main.ts`: Temporal connection, task queue registration, process lifecycle, and graceful shutdown.
-- `src/workflows.ts`: deterministic workflow orchestration for notification and delegation. Workflow code must not use Node APIs, fetch, random values, wall-clock reads, or database access.
+- `src/workflows.ts`: deterministic orchestration for notification, delegation, and segmented Coding Capability Runs. Workflow code must not use Node APIs, fetch, random values, wall-clock reads, or database access.
 - `src/activities.ts`: I/O-capable activity registration and event-log writes; retries must be idempotent.
 - `src/delegation.ts`: one durable agent step, HTTP contract calls, driver execution, sitemap loading, and delegation event recording.
+- `src/capabilities/coding/`: provider adapters, repository registry, UI4A-owned Git worktrees, execution/result collection, compatibility fixtures, and Temporal kill/cancel evidence. Provider code stays behind this boundary.
 - `src/banner.ts`: process messages only.
 
 ### `apps/cli` — External Agent Reference Client
@@ -111,6 +114,8 @@ Prefer extending a nearby pattern. When a change crosses rows, keep the pure con
 - **Action-backed interaction:** every functional control maps to a declared action and passes engine judgment.
 - **No invented facts:** field values carry declared sources; work-product proposals require the selection gate.
 - **Human-only approval:** `approve` rejects `actor=agent`; audit and mechanical-diff rendering use no AI.
+- **Coding results are proposals:** Coding Agents write only an authorized UI4A-owned worktree. Result acceptance rechecks base/path/test/artifact integrity and records a human receipt; it never implies merge, push, deploy, or activation.
+- **Server-owned executor selection:** application contracts name an executor class/profile requirement. Requests cannot choose provider, binary, model, cwd, sandbox, or unsafe mode; missing profiles fail before workspace mutation and never fall back.
 - Rejections are events with actionable reasons, not exceptional missing data.
 - Every execution uses declaration → guard → schema order. Do not reorder or duplicate this judgment in UI code.
 - Workflows orchestrate; activities perform I/O. Event writes and activities must tolerate retry/replay.
@@ -127,6 +132,7 @@ Prefer extending a nearby pattern. When a change crosses rows, keep the pure con
 - `CI=true pnpm e2e invariants` — focused invariant suite; use current GOAL for I1–I7 semantics.
 - `pnpm format:check` / `pnpm format` — check or apply Prettier formatting.
 - `pnpm cli:build` / `pnpm eval:t17` — build the CLI and run T17 protocol/safety evidence.
+- `pnpm eval:t18` — run the real Codex canonical-plus-four-variant corpus in disposable repositories; requires local Codex authentication.
 
 Vitest uses the isolated database at `localhost:5433/ui4a_test` unless `TEST_DATABASE_URL` overrides it. Do not point tests at the development database. Port 3100 is intentional; do not kill an unrelated service on port 3000.
 

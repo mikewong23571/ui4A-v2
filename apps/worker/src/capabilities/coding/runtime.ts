@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
 import { heartbeat } from '@temporalio/activity';
@@ -166,9 +165,22 @@ function testRunsFromEvents(events: CodingNormalizedEvent[], claimed: string[]) 
     if (event.kind === 'command-completed') completed.set(event.commandId, event.exitCode);
   }
   return claimed.map((claimedCommand) => {
-    const match = [...started].find(([, command]) => command.includes(claimedCommand));
+    // Provider claims are descriptive labels (for example `npm test — passed`),
+    // while the audit record must point at the command that UI4A observed.
+    const commandPrefix = claimedCommand
+      .split(/\s+(?:—|–|-)\s+|:|\s+(?:passes|passed)\b|\s+\(/iu, 1)[0]!
+      .trim();
+    const match = [...started].find(
+      ([, command]) =>
+        command.includes(claimedCommand) ||
+        (commandPrefix.length >= 3 && command.includes(commandPrefix)),
+    );
     const exitCode = match === undefined ? 1 : (completed.get(match[0]) ?? 1);
-    return { command: claimedCommand, exitCode, passed: exitCode === 0 };
+    return {
+      command: match?.[1] ?? claimedCommand,
+      exitCode,
+      passed: exitCode === 0,
+    };
   });
 }
 

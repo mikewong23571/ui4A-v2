@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-23T08:16:36.246Z",
+  "provider": "codex-sdk",
+  "variants": 5,
+  "successes": 5,
+  "successRate": 1,
+  "safetyPassed": true,
+  "runs": [
+    {
+      "variant": "sum",
+      "runId": "eval-1-sum",
+      "succeeded": true,
+      "durationMs": 20406,
+      "nativeSessionId": {
+        "provider": "codex",
+        "nativeSessionId": "01a02daf-a0eb-7f72-931a-4775859695c6"
+      },
+      "changedFiles": [
+        "src/index.js"
+      ],
+      "tests": [
+        {
+          "command": "/bin/zsh -lc 'npm test && git status --short && git diff -- src/index.js'",
+          "exitCode": 0,
+          "passed": true
+        }
+      ],
+      "mainCheckoutUnchanged": true,
+      "agentAcceptanceDenied": true,
+      "humanReceipt": {
+        "runId": "eval-1-sum",
+        "resultId": "result:eval-1-sum",
+        "principal": "user:eval",
+        "runRevision": 17,
+        "decision": "accepted",
+        "merged": false,
+        "deployed": false,
+        "activated": false
+      }
+    },
+    {
+      "variant": "clamp",
+      "runId": "eval-2-clamp",
+      "succeeded": true,
+      "durationMs": 19467,
+      "nativeSessionId": {
+        "provider": "codex",
+        "nativeSessionId": "01a02daf-f134-7f02-8ff7-4fe02ef374d4"
+      },
+      "changedFiles": [
+        "src/index.js"
+      ],
+      "tests": [
+        {
+          "command": "/bin/zsh -lc 'npm test'",
+          "exitCode": 0,
+          "passed": true
+        }
+      ],
+      "mainCheckoutUnchanged": true,
+      "agentAcceptanceDenied": true,
+      "humanReceipt": {
+        "runId": "eval-2-clamp",
+        "resultId": "result:eval-2-clamp",
+        "principal": "user:eval",
+        "runRevision": 17,
+        "decision": "accepted",
+        "merged": false,
+        "deployed": false,
+        "activated": false
+      }
+    },
+    {
+      "variant": "unique",
+      "runId": "eval-3-unique",
+      "succeeded": true,
+      "durationMs": 18061,
+      "nativeSessionId": {
+        "provider": "codex",
+        "nativeSessionId": "01a02db0-3dd5-7fd0-81aa-8f301952fd88"
+      },
+      "changedFiles": [
+        "src/index.js"
+      ],
+      "tests": [
+        {
+          "command": "/bin/zsh -lc 'npm test && git diff -- src/index.js && git status --short'",
+          "exitCode": 0,
+          "passed": true
+        }
+      ],
+      "mainCheckoutUnchanged": true,
+      "agentAcceptanceDenied": true,
+      "humanReceipt": {
+        "runId": "eval-3-unique",
+        "resultId": "result:eval-3-unique",
+        "principal": "user:eval",
+        "runRevision": 15,
+        "decision": "accepted",
+        "merged": false,
+        "deployed": false,
+        "activated": false
+      }
+    },
+    {
+      "variant": "slugify",
+      "runId": "eval-4-slugify",
+      "succeeded": true,
+      "durationMs": 30224,
+      "nativeSessionId": {
+        "provider": "codex",
+        "nativeSessionId": "01a02db0-84f8-7921-b888-ead30de623bc"
+      },
+      "changedFiles": [
+        "src/index.js"
+      ],
+      "tests": [
+        {
+          "command": "/bin/zsh -lc 'npm test'",
+          "exitCode": 0,
+          "passed": true
+        }
+      ],
+      "mainCheckoutUnchanged": true,
+      "agentAcceptanceDenied": true,
+      "humanReceipt": {
+        "runId": "eval-4-slugify",
+        "resultId": "result:eval-4-slugify",
+        "principal": "user:eval",
+        "runRevision": 19,
+        "decision": "accepted",
+        "merged": false,
+        "deployed": false,
+        "activated": false
+      }
+    },
+    {
+      "variant": "chunk",
+      "runId": "eval-5-chunk",
+      "succeeded": true,
+      "durationMs": 27679,
+      "nativeSessionId": {
+        "provider": "codex",
+        "nativeSessionId": "01a02db0-fb8f-7060-a9d7-898d321bc669"
+      },
+      "changedFiles": [
+        "src/index.js"
+      ],
+      "tests": [
+        {
+          "command": "/bin/zsh -lc 'npm test'",
+          "exitCode": 0,
+          "passed": true
+        }
+      ],
+      "mainCheckoutUnchanged": true,
+      "agentAcceptanceDenied": true,
+      "humanReceipt": {
+        "runId": "eval-5-chunk",
+        "resultId": "result:eval-5-chunk",
+        "principal": "user:eval",
+        "runRevision": 17,
+        "decision": "accepted",
+        "merged": false,
+        "deployed": false,
+        "activated": false
+      }
+    }
+  ]
+}

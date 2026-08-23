@@ -763,7 +763,7 @@ test.describe('I5 可重放', () => {
           rows.length,
           '压缩序列应产生非平凡日志(≈26 行:定义/种子/业务/确认/计划/凝固)',
         ).toBeGreaterThan(20);
-        // I5 扩展(T10):application 维度入重放输入——日志须含三个
+        // I5 扩展(T10/T18):application 维度入重放输入——日志须含四个
         // application-seeded(rel=meta/application:<name>,detail 持定义全文)。
         // 防空转守卫:缺了它们,重放相位的 applications 断言就没有意义。
         const appSeeds = rows.filter((row) => row.kind === 'application-seeded');
@@ -771,8 +771,9 @@ test.describe('I5 可重放', () => {
           'meta/application:default',
           'meta/application:publishing',
           'meta/application:community',
+          'meta/application:development',
         ]);
-        // I5 扩展(T13):capability 维度入重放输入——日志须含三个
+        // I5 扩展(T13/T18):capability 维度入重放输入——日志须含四个
         // capability-seeded(rel=meta/capability:<name>,detail 持定义全文)。
         // 防空转守卫与 application 维度同口径。
         const capabilitySeeds = rows.filter((row) => row.kind === 'capability-seeded');
@@ -780,6 +781,7 @@ test.describe('I5 可重放', () => {
           'meta/capability:draft',
           'meta/capability:notify',
           'meta/capability:clarify',
+          'meta/capability:coding.execute',
         ]);
       }, UNUSED_LLM_PROFILE);
     } finally {

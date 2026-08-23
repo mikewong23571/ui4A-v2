@@ -106,7 +106,7 @@ UI4A 将这条路径压缩为:
 
 ## 成功标准(DONE 的定义)
 
-以下场景套件、T15 U1–U23、T16 S1–S32 真实 LLM/浏览器 Story Eval 与不变量全部通过,外加一次人工 demo 走查。
+以下场景套件、T15 U1–U23、T16 S1–S32、T17 U1–U24 与 T18 U1–U22 Story Eval 及不变量全部通过,外加一次人工 demo 走查。
 
 ### AI-first 用户故事
 
@@ -119,6 +119,15 @@ Chat Agent 只决定是否呈现、呈现哪个 subject 和 intent；完整 cata
 ### App 创建边界
 
 当前产品不在内置 Chat 中创建完整 App。候选方向是由应用外置 Agent 理解需求、整理用户故事并起草 Application Bundle，再通过 UI4A meta 合同提交；UI4A 负责机械 schema/invariant 校验、版本 diff、human approval、激活、审计和 replay。内置 `create-app` 向导、页面设计器和 rule-based App 生成器不属于当前 DONE。
+
+### Coding Capability Executor
+
+通用 Coding Agent 可以作为应用能力的执行器，但不成为 Application 的业务真相或第二条写路径。
+`coding.execute` 由软件变更 Flow 的声明 action 启动；服务端 profile 选择真实 provider，UI4A
+创建隔离 worktree，Temporal 保存 durable Run，事件日志保存有界 raw/normalized 轨迹和
+content-addressed result。成功只把 Flow 推进到 `review-ready`。Agent 接受结果必被拒绝；人类
+接受前重新验证 base、路径、tests 与 hash，首切片只记录 receipt，不 merge/push/deploy/activate。
+Codex 是 reference adapter；Claude/Gemini 仅验证 SPI 兼容；Hermes 只作为分层设计参考。
 
 ### 参考 Assistant 组合合同
 

@@ -181,18 +181,27 @@ function redactPayload(
   value: unknown,
   policy: CodingRedactionPolicy,
   workspacePath?: string,
+  secretValues = policy.secretNames
+    .map((name) => process.env[name])
+    .filter((secret): secret is string => secret !== undefined && secret.length >= 4),
 ): unknown {
-  if (Array.isArray(value)) return value.map((item) => redactPayload(item, policy, workspacePath));
+  if (Array.isArray(value))
+    return value.map((item) => redactPayload(item, policy, workspacePath, secretValues));
   if (typeof value === 'string') {
-    return workspacePath !== undefined && policy.redactHostPaths
-      ? value.replaceAll(workspacePath, 'workspace://')
-      : value;
+    let redacted =
+      workspacePath !== undefined && policy.redactHostPaths
+        ? value.replaceAll(workspacePath, 'workspace://')
+        : value;
+    for (const secret of secretValues) redacted = redacted.replaceAll(secret, '[REDACTED]');
+    return redacted;
   }
   if (typeof value !== 'object' || value === null) return value;
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>).map(([key, child]) => [
       key,
-      policy.secretNames.includes(key) ? '[REDACTED]' : redactPayload(child, policy, workspacePath),
+      policy.secretNames.some((name) => name.toLowerCase() === key.toLowerCase())
+        ? '[REDACTED]'
+        : redactPayload(child, policy, workspacePath, secretValues),
     ]),
   );
 }

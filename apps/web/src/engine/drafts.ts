@@ -32,6 +32,7 @@ import {
 } from '../db/drafts';
 import { appendEvent, readLog, type DbExecutor } from '../db/events';
 import type { EngineRuntime } from './service';
+import { codingExecutorProfileRegistryFromEnvironment } from './coding-executor-config';
 
 const DRAFT_REL_PREFIX = 'draft:';
 const DRAFT_ACTIVATION_PREFIX = 'meta/activation:draft-';
@@ -299,6 +300,8 @@ function registries(snapshot: ReturnType<EngineRuntime['getSnapshot']>) {
     guards: seedGuardRegistry,
     applications: new Set(Object.keys(snapshot.applications ?? {})),
     capabilities: new Set(Object.keys(snapshot.capabilities ?? {})),
+    capabilityDefinitions: snapshot.capabilities ?? {},
+    executorProfiles: codingExecutorProfileRegistryFromEnvironment(),
   };
 }
 

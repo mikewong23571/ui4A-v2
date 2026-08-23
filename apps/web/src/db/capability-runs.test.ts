@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CapabilityRunCommand } from '@ui4a/engine';
 
@@ -48,6 +48,8 @@ beforeEach(async () => {
   await pool.query('TRUNCATE capability_run_projection, capability_payloads, events');
 });
 
+afterEach(() => vi.unstubAllEnvs());
+
 describe('Capability Run persistence', () => {
   it('persists an isolated domain, idempotent command and rebuildable projection', async () => {
     const first = await appendCapabilityRunCommand(pool, create);
@@ -65,6 +67,7 @@ describe('Capability Run persistence', () => {
   });
 
   it('content-addresses redacted raw frames and enforces owner scope', async () => {
+    vi.stubEnv('API_KEY', 'secret-value');
     await appendCapabilityRunCommand(pool, create);
     const raw = await appendCapabilityRawEvent(pool, {
       runId: 'run-1',
@@ -74,7 +77,8 @@ describe('Capability Run persistence', () => {
       cursor: '1',
       payload: {
         command: 'echo $API_KEY',
-        API_KEY: 'secret-value',
+        api_key: 'secret-value',
+        message: 'provider leaked secret-value in output',
         cwd: '/private/tmp/workspace/src',
       },
       workspacePath: '/private/tmp/workspace',

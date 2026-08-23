@@ -155,6 +155,21 @@ Flow Draft 的 human approval 在同一 PostgreSQL 事务追加
 checks 与审批 provenance；旧实例保留 bornVersion，新实例读取新 active pointer。CLI 无 LLM、
 approve/reject、身份 flag 或 raw write；local demo 身份仍按 D8/D10 明示为 self-reported。
 
+### 8.4 Coding Capability Executor Host
+
+T18 将 Coding Agent 放在 Capability Plane 的 executor boundary，而不是 Chat Agent、Delegation 或
+Application 内核。软件变更 action 产生 `capability-run:<id>`；Web 预检服务端 profile 后派发
+Temporal `prepare → execute/resume → finalize`，Worker 创建 UI4A-owned Git worktree 并调用
+Provider adapter。Codex SDK 是 reference adapter；normalized contract、Flow、Run 和 Renderer
+不出现 Provider 分支，Claude/Gemini 形状只作兼容 fixture，Hermes 零 runtime/dependency。
+
+Capability 事件使用独立 `domain='capability'`；raw events、patch 和 trajectory 进入 SHA-256
+内容寻址 payload，Run projection 可重建且不参与 Business hash。请求只给 repositoryRef/base/
+task envelope，仓库绝对路径、allowed paths、sandbox、env 与 Provider 都由部署 registry 决定。
+执行成功只产生 review-ready proposal；人类 accept 前重新验证 base CAS、路径、tests 与 artifact
+hash，Agent accept 机械拒绝。首切片的接受回执固定 `merged=false/deployed=false/activated=false`。
+Capability definition 的 executor requirement 还必须通过 profile existence/class activation invariant。
+
 ## 9. 五条垂直切片(第五部,施工顺序)
 
 1. **确认门切片**:agent 执行高危动作 → guard 挂起 → pending 实体化 → notification capability 送达 → 人类在推送上 approve → 事件留痕带 actor/principal。一次验证 guard 第三语义、确认实体、出站能力、委托模型四个论点。构成(README):Cedar 风险策略 + guard 挂起语义 + Temporal notify activity + RJSF 渲染 pending 实体 + 收件箱。GOAL S1 断言:动作未生效挂起 → human approve(actor=human)→ 生效,日志含 actor/principal/信道。

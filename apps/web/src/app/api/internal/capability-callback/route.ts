@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { getCapabilityRunInternal } from '../../../../db/capability-runs';
-import { getDb, getEngine } from '../../../../engine/service';
+import { getDb } from '../../../../engine/service';
+import { finalizeCapabilitySource } from '../../../../engine/capability-source-callback';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,51 +32,11 @@ export async function POST(request: Request) {
   }
   const runId = (body as { runId: string }).runId;
   const db = getDb();
-  const run = await getCapabilityRunInternal(db, runId);
-  if (run === undefined)
-    return Response.json({ error: 'capability run not found' }, { status: 404 });
-  const engine = await getEngine(db);
-  const existing = await engine.getEntity(run.source.rel);
-  const fields = existing?.properties.fields as Record<string, unknown> | undefined;
-  if (
-    fields?.runId === runId &&
-    ['review-ready', 'implementation-failed'].includes(String(existing?.properties.node))
-  ) {
-    return Response.json({ entity: existing, deduplicated: true });
-  }
-  const succeeded = run.status === 'succeeded' && run.result !== undefined;
-  const terminalFailure =
-    run.status === 'failed' || run.status === 'cancelled' || run.status === 'stale';
-  if (!succeeded && !terminalFailure) {
-    return Response.json(
-      { error: `capability run is not callback-terminal (${run.status})` },
-      { status: 409 },
-    );
-  }
-  const action = succeeded ? run.source.onDoneAction : run.source.onErrorAction;
-  if (action === undefined)
-    return Response.json({ error: 'declared callback action is missing' }, { status: 409 });
-  const outcome = await engine.exec({
-    rel: run.source.rel,
-    action,
-    actor: 'agent',
-    principal: `system:capability:${runId}`,
-    channel: 'capability-callback',
-    params: succeeded
-      ? { runId, resultId: run.result!.resultId }
-      : {
-          runId,
-          reason: run.failure?.reason ?? run.terminalReason ?? `capability run ${run.status}`,
-        },
-  });
-  if (outcome.kind !== 'accepted') {
-    return Response.json(
-      {
-        layer: outcome.kind === 'rejected' ? outcome.layer : 'guard-failed',
-        reason: outcome.kind === 'rejected' ? outcome.reason : 'callback suspended',
-      },
-      { status: 422 },
-    );
-  }
-  return Response.json({ entity: outcome.entity, deduplicated: false });
+  const outcome = await finalizeCapabilitySource(db, runId);
+  return outcome.ok
+    ? Response.json({ entity: outcome.entity, deduplicated: outcome.deduplicated })
+    : Response.json(
+        { error: outcome.reason, ...(outcome.layer === undefined ? {} : { layer: outcome.layer }) },
+        { status: outcome.status },
+      );
 }

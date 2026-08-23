@@ -20,7 +20,12 @@ import {
 } from '../db/capability-runs';
 import { ensureEventsTable } from '../db/events';
 import { getPool } from '../db/pool';
-import { enrichEntityWithCapabilityRuns, getCapabilityRunEntity } from './capability-runs';
+import { dispatchCodingCapability } from '../temporal/capability';
+import {
+  enrichEntityWithCapabilityRuns,
+  executeCapabilityRunAction,
+  getCapabilityRunEntity,
+} from './capability-runs';
 import { getEngine, resetEngineForTests } from './service';
 
 const pool = getPool(process.env.DATABASE_URL!);
@@ -117,6 +122,65 @@ describe('coding capability dispatch and Siren projection', () => {
     expect(
       await listCapabilityRuns(pool, { principal: 'local-user', policyScope: 'development' }),
     ).toEqual([]);
+  });
+
+  it('closes the source Flow when Temporal dispatch fails after the action event', async () => {
+    vi.mocked(dispatchCodingCapability).mockRejectedValueOnce(new Error('Temporal unavailable'));
+    const engine = await getEngine(pool);
+    const outcome = await engine.exec({
+      rel: 'software-change:main',
+      action: 'start-implementation',
+      actor: 'human',
+      principal: 'local-user',
+      params: {
+        repositoryRef: 'repo-fixture',
+        baseRevision: 'a'.repeat(40),
+        goal: 'x',
+        constraints: [],
+        acceptanceCriteria: ['test'],
+        allowedPaths: ['src'],
+      },
+    });
+    expect(outcome.kind).toBe('accepted');
+    expect(outcome.kind === 'accepted' && outcome.entity.properties.node).toBe(
+      'implementation-failed',
+    );
+    expect(
+      await listCapabilityRuns(pool, { principal: 'local-user', policyScope: 'development' }),
+    ).toEqual([expect.objectContaining({ status: 'failed' })]);
+  });
+
+  it('persists human cancellation instead of relying on an executor terminal event', async () => {
+    const engine = await getEngine(pool);
+    await engine.exec({
+      rel: 'software-change:main',
+      action: 'start-implementation',
+      actor: 'human',
+      principal: 'local-user',
+      params: {
+        repositoryRef: 'repo-fixture',
+        baseRevision: 'a'.repeat(40),
+        goal: 'x',
+        constraints: [],
+        acceptanceCriteria: ['test'],
+        allowedPaths: ['src'],
+      },
+    });
+    const run = (
+      await listCapabilityRuns(pool, { principal: 'local-user', policyScope: 'development' })
+    )[0]!;
+    const outcome = await executeCapabilityRunAction(
+      pool,
+      {
+        rel: `capability-run:${run.runId}`,
+        action: 'cancel',
+        actor: 'human',
+        principal: 'local-user',
+      },
+      'development',
+    );
+    expect(outcome.kind).toBe('accepted');
+    expect(outcome.kind === 'accepted' && outcome.entity.properties.status).toBe('cancelled');
   });
 
   it('denies Agent acceptance and records a human no-merge decision receipt', async () => {

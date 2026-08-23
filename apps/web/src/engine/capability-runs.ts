@@ -31,17 +31,16 @@ import {
 } from '../db/capability-runs';
 import type { DbExecutor } from '../db/events';
 import { cancelCodingCapability, dispatchCodingCapability } from '../temporal/capability';
+import { codingExecutorProfilesFromEnvironment } from './coding-executor-config';
 
 export const CAPABILITY_RUNS_REL = 'capability-runs';
 const CAPABILITY_RUN_PREFIX = 'capability-run:';
 const runFile = promisify(execFile);
 
 function profileFromEnvironment(name: string): CodingExecutorProfile {
-  const raw = process.env.UI4A_CODING_EXECUTOR_PROFILES;
-  if (raw === undefined) throw new Error('UI4A_CODING_EXECUTOR_PROFILES is not configured');
-  const parsed = JSON.parse(raw) as unknown;
-  if (!Array.isArray(parsed)) throw new Error('coding executor profiles must be an array');
-  const profile = (parsed as CodingExecutorProfile[]).find((candidate) => candidate.name === name);
+  const profile = codingExecutorProfilesFromEnvironment().find(
+    (candidate) => candidate.name === name,
+  );
   if (profile === undefined) throw new Error(`coding executor profile ${name} is missing`);
   return profile;
 }
@@ -280,7 +279,7 @@ export async function enrichEntityWithCapabilityRuns(
 }
 
 export async function executeCapabilityRunAction(
-  db: DbExecutor,
+  db: ConnectableDb,
   request: ExecRequest,
   policyScope: string,
 ): Promise<{ kind: 'accepted'; entity: SirenEntity } | { kind: 'rejected'; reason: string }> {
@@ -292,8 +291,19 @@ export async function executeCapabilityRunAction(
   const runId = request.rel.slice(CAPABILITY_RUN_PREFIX.length);
   const run = await getCapabilityRun(db, runId, principal, policyScope);
   if (run === undefined) return { kind: 'rejected', reason: 'capability run not found' };
+  if (!['queued', 'preparing', 'running', 'waiting-approval'].includes(run.status)) {
+    return { kind: 'rejected', reason: `capability run cannot cancel from ${run.status}` };
+  }
   await cancelCodingCapability(runId);
-  return { kind: 'accepted', entity: runEntity(run) };
+  const cancelled = await appendCapabilityRunCommand(db, {
+    kind: 'cancel',
+    runId,
+    expectedRevision: run.revision,
+    commandId: `cancel:${runId}`,
+    eventId: `event:cancel:${runId}`,
+    reason: 'cancelled by human action',
+  });
+  return { kind: 'accepted', entity: runEntity(cancelled.aggregate) };
 }
 
 export function isCapabilityRunRel(rel: string): boolean {

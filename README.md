@@ -34,6 +34,10 @@ pnpm dev:all
 - App 创建暂不在产品 Chat 内闭环。候选方向是外置 Agent 起草 Application Bundle，再通过 meta 合同接受机械校验、diff、human approval、激活和 replay。
 - `ui4a` CLI 已作为协议参考客户端落地。外部 Agent 可发现/读取/操作合同，并把 Flow 候选
   提交为系统内 Governed Draft；CLI 不含 LLM，也没有审批、身份伪造或 raw write 入口。
+- `coding.execute` 将通用 Coding Agent 作为受治理 capability executor：Application 只声明
+  软件变更 Flow；服务端选择 profile，UI4A 创建隔离 worktree，Temporal 持久运行，原始轨迹与
+  patch/test result 留在 Capability Run。Codex 是 reference adapter；结果仍需人类接受，且首切片
+  不 merge、push、deploy 或 activate。Hermes 仅是架构参考，不是运行时依赖。
 
 ## 文档权威顺序
 
@@ -85,6 +89,7 @@ CI=true pnpm e2e                   # Playwright 全量套件
 pnpm eval:t15                      # opt-in T15 真实 LLM Story Eval
 pnpm eval:t16                      # opt-in T16 真实 LLM Story Eval
 pnpm eval:t17                      # CLI/Draft safety、性能与 external-Agent evidence
+pnpm eval:t18                      # 真实 Codex 5-variant Coding Capability Eval
 pnpm format:check                  # Prettier
 ```
 

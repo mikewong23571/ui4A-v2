@@ -164,7 +164,11 @@ describe('POST /api/exec', () => {
       'SELECT actor, principal, channel FROM events WHERE kind = $1 ORDER BY seq DESC LIMIT 1',
       ['action-executed'],
     );
-    expect(rows.rows[0]).toMatchObject({ actor: 'human', principal: null, channel: 'http' });
+    expect(rows.rows[0]).toMatchObject({
+      actor: 'human',
+      principal: 'local-user',
+      channel: 'http',
+    });
   });
 
   it('db 不可达 → 503 JSON,不抛 500', async () => {

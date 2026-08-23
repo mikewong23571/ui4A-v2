@@ -65,51 +65,51 @@ describe('enumerateApplicationScenarios', () => {
       'confirmation-review',
     ]);
     expect(first[0]).toEqual({
-      key: 'publishing@1/application-overview',
+      key: 'publishing@2/application-overview',
       kind: 'application-overview',
       subjectShape: 'application:publishing',
       intent: 'overview',
-      definitionRefs: ['application:publishing@1', 'flow:article-drafting@1', 'flow:post-status@1'],
+      definitionRefs: ['application:publishing@2', 'flow:article-drafting@2', 'flow:post-status@2'],
       slots: ['subject.rel'],
-      versions: { enumerator: SCENARIO_ENUMERATOR_VERSION, application: '1' },
+      versions: { enumerator: SCENARIO_ENUMERATOR_VERSION, application: '2' },
     });
     expect(first).toContainEqual({
-      key: 'publishing@1/article-drafting@1/current-task/ready',
+      key: 'publishing@2/article-drafting@2/current-task/ready',
       kind: 'current-task',
       subjectShape: 'flow-instance:article-drafting',
       intent: 'continue-current-task',
-      definitionRefs: ['flow:article-drafting@1#node/ready'],
+      definitionRefs: ['flow:article-drafting@2#node/ready'],
       slots: ['subject.rel', 'subject.node'],
       versions: {
         enumerator: SCENARIO_ENUMERATOR_VERSION,
-        application: '1',
-        flow: '1',
+        application: '2',
+        flow: '2',
       },
     });
     expect(first).toContainEqual({
-      key: 'publishing@1/article-drafting@1/collection-browse/articles',
+      key: 'publishing@2/article-drafting@2/collection-browse/articles',
       kind: 'collection-browse',
       subjectShape: 'collection:articles',
       intent: 'browse-members',
-      definitionRefs: ['flow:article-drafting@1#node/ready/action/publish/effect/append'],
+      definitionRefs: ['flow:article-drafting@2#node/ready/action/publish/effect/append'],
       slots: ['subject.rel', 'members'],
       versions: {
         enumerator: SCENARIO_ENUMERATOR_VERSION,
-        application: '1',
-        flow: '1',
+        application: '2',
+        flow: '2',
       },
     });
     expect(first).toContainEqual({
-      key: 'publishing@1/post-status@1/confirmation-review/archive',
+      key: 'publishing@2/post-status@2/confirmation-review/archive',
       kind: 'confirmation-review',
       subjectShape: 'confirmation:pending',
       intent: 'review-proposed-effect',
-      definitionRefs: ['flow:post-status@1#node/published/action/archive'],
+      definitionRefs: ['flow:post-status@2#node/published/action/archive'],
       slots: ['subject.rel', 'target.rel', 'target.action'],
       versions: {
         enumerator: SCENARIO_ENUMERATOR_VERSION,
-        application: '1',
-        flow: '1',
+        application: '2',
+        flow: '2',
       },
     });
   });

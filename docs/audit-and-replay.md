@@ -4,7 +4,7 @@
 
 - `/events` shows the global append-only timeline. Expand “查看原始详情” to inspect the ungenerated audit payload.
 - `/chat` shows conversations and the session list. It replays user/Assistant messages, not the full audit payload.
-- Temporal UI at `http://localhost:8233` shows notification and delegation workflow histories.
+- Temporal UI at `http://localhost:8233` shows notification, delegation, and Capability Run workflow histories.
 
 The current UI does not yet provide a session-scoped raw-trajectory page. Use the event API when one session must be isolated.
 
@@ -55,6 +55,13 @@ dereference immutable `draft_payloads`; ordinary audit/list responses do not inc
 payloads. Human acceptance writes one core `definition-candidate-applied` event and one
 `draft-accepted` event in the same transaction, preventing a half-activation.
 
+Coding execution uses `domain='capability'`. `capability-run:<id>` is the owner/scope-authorized summary;
+normalized progress, raw chunk receipts, patch, trajectory, test observations, profile/session provenance,
+and source Flow links remain separate from the Business fold. Raw payloads live in immutable
+`capability_payloads` and are dereferenced only by exact authorized reads. A succeeded Run is still a
+proposal: Agent acceptance is rejected, while a human accept/reject event stores a non-merge receipt after
+base/path/test/hash revalidation.
+
 ## Replay rules
 
 1. Preserve event order and stable event/command identifiers.
@@ -62,3 +69,5 @@ payloads. Human acceptance writes one core `definition-candidate-applied` event 
 3. Compare per-entity and aggregate hashes before and after replay.
 4. Keep human approval, model decisions, mechanical validation, and business effects as distinct provenance.
 5. Never infer missing reasoning, authorization, or facts during replay.
+6. Rebuild Capability Run projections from capability events and re-hash payloads; never treat a provider's
+   final prose, projection row, or Temporal status as the accepted code result.

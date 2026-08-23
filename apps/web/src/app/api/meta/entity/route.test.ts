@@ -20,7 +20,7 @@ beforeEach(async () => {
 });
 
 describe('GET /_meta/api/entity', () => {
-  it('meta/flows:200,定义集合三实体,子实体直达 /_meta href', async () => {
+  it('meta/flows:200,定义集合四实体,子实体直达 /_meta href', async () => {
     const res = await GET(new Request('http://localhost:3100/_meta/api/entity?rel=meta/flows'));
 
     expect(res.status).toBe(200);
@@ -31,11 +31,12 @@ describe('GET /_meta/api/entity', () => {
       links: { rel: string[]; href: string }[];
     };
     expect(entity.class).toEqual(['collection', 'meta/flows']);
-    expect(entity.properties).toEqual({ rel: 'meta/flows', count: 3 });
+    expect(entity.properties).toEqual({ rel: 'meta/flows', count: 4 });
     expect(entity.entities.map((sub) => sub.properties.name)).toEqual([
       'article-drafting',
       'post-status',
       'comment-moderation',
+      'software-change',
     ]);
     expect(entity.entities[1]?.href).toBe('/_meta/api/entity?rel=meta/flow:post-status');
     expect(entity.links).toEqual([{ rel: ['self'], href: '/_meta/api/entity?rel=meta/flows' }]);

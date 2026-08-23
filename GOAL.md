@@ -9,7 +9,7 @@
 
 ## DONE 的定义
 
-以下业务场景、切片场景、T15 AI-first 用户故事 Eval、T16 Presentation 用户故事与不变量全部通过，外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
+以下业务与切片场景、T15 AI-first、T16 Presentation、T17 External Agent Draft、T18 Coding Capability 用户故事 Eval 及不变量全部通过，外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
 
 ### AI-first 用户故事
 

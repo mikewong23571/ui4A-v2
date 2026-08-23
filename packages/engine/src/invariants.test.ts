@@ -3,9 +3,10 @@
  * T13 Phase D Task 1 增第八条 capability-registered)。
  *
  * A.5 种子集(spec 架构决定 4)+ T10 spec 架构决定 3 + T13 spec 架构决定 4,
- * 八项逐条:
+ * 十项逐条:
  *   edge-targets-exist / guards-registered / field-types-known / effect-known /
- *   initial-exists / terminal-reachable / app-known / capability-registered。
+ *   initial-exists / terminal-reachable / app-known / capability-registered /
+ *   executor-profile-valid / submission-policy-valid。
  * submit 时全跑:checks 全过 → pending-approval(activation 实体);
  * 有 fail → 回 draft + 校验报告入事件(definition-submitted detail)。
  */
@@ -42,7 +43,7 @@ function byName(checks: ReturnType<typeof validateDefinition>) {
 }
 
 describe('validateDefinition — 合法定义全过', () => {
-  it('三个业务域 flow(种子常量)八项全过', () => {
+  it('三个业务域 flow(种子常量)十项全过', () => {
     for (const flow of [articleDraftingFlow, postStatusFlow, commentModerationFlow]) {
       const checks = checksOf(flow);
       expect(
@@ -57,6 +58,7 @@ describe('validateDefinition — 合法定义全过', () => {
         'terminal-reachable',
         'app-known',
         'capability-registered',
+        'executor-profile-valid',
         'submission-policy-valid',
       ]);
       expect(
@@ -66,10 +68,70 @@ describe('validateDefinition — 合法定义全过', () => {
     }
   });
 
-  it('definition-lifecycle 常量自举:自身通过自身的八项不变式', () => {
+  it('definition-lifecycle 常量自举:自身通过自身的十项不变式', () => {
     // lifecycle 的编辑动词声明(guards 引用 meta 谓词)在种子注册表里可解析。
     const checks = checksOf(DEFINITION_LIFECYCLE_FLOW);
     expect(checks.every((c) => c.pass)).toBe(true);
+  });
+});
+
+describe('validateDefinition — executor-profile-valid(T18)', () => {
+  const capability: CapabilityDefinition = {
+    name: 'coding.execute',
+    title: 'Coding executor',
+    kind: 'effect',
+    intent: 'Implement a governed software change.',
+    executor: { class: 'coding-agent', profile: 'codex-default' },
+  };
+  const flow: FlowDefinition = {
+    name: 'software-change',
+    initial: 'ready',
+    nodes: [
+      {
+        name: 'ready',
+        actions: [
+          {
+            name: 'start',
+            title: 'Start',
+            to: 'done',
+            effect: [{ type: 'spawn', capability: 'coding.execute' }],
+          },
+        ],
+      },
+      { name: 'done', actions: [] },
+    ],
+  };
+  const base = {
+    ...registries,
+    capabilities: new Set(['coding.execute']),
+    capabilityDefinitions: { 'coding.execute': capability },
+  };
+
+  it('accepts a configured profile with the required executor class', () => {
+    const check = byName(
+      validateDefinition(flow, {
+        ...base,
+        executorProfiles: new Map([['codex-default', 'coding-agent']]),
+      }),
+    )['executor-profile-valid'];
+    expect(check).toEqual({ name: 'executor-profile-valid', pass: true });
+  });
+
+  it('rejects missing and class-mismatched profiles with stable detail', () => {
+    const missing = byName(validateDefinition(flow, { ...base, executorProfiles: new Map() }))[
+      'executor-profile-valid'
+    ];
+    expect(missing.pass).toBe(false);
+    expect(missing.detail?.join('\n')).toContain('codex-default');
+
+    const mismatch = byName(
+      validateDefinition(flow, {
+        ...base,
+        executorProfiles: new Map([['codex-default', 'browser-agent']]),
+      }),
+    )['executor-profile-valid'];
+    expect(mismatch.pass).toBe(false);
+    expect(mismatch.detail?.join('\n')).toContain('coding-agent');
   });
 });
 
@@ -391,7 +453,7 @@ describe('submit — checks 全过 → pending-approval', () => {
       activation: { id: string; version: number };
     };
     expect(detail).toMatchObject({ name: 'article-drafting', passed: true });
-    expect(detail.checks).toHaveLength(9);
+    expect(detail.checks).toHaveLength(10);
     expect(detail.activation).toMatchObject({ id: 'a1', version: 2 });
 
     // fold 全链一致(I5)。

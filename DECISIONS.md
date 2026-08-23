@@ -293,3 +293,7 @@
 - **Callback 与审批**:worker 通过受部署 secret 保护的 internal callback route 执行 source Flow 已声明
   `implementation-succeeded|failed` action，principal 为 `system:capability:<runId>`；guard 读取 principal
   fail-closed。Execution resource grant 与 human result accept/reject 是两条事件链，均不可委托给 Coding Agent。
+- **激活与结果验真**:引用 executor capability 的 Flow 除 capability-registered 外，还必须通过
+  `executor-profile-valid`（profile 存在且 class 匹配）；缺配置不能激活新版本。Provider 的 final
+  tests/changedFiles 只是 claim，Run 结果只采用 UI4A 实际观察的命令 exit code 与 Git diff。人类
+  accept 再做 base/path/hash/test CAS，并固定产生非 merge/deploy/activate receipt。
