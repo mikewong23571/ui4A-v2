@@ -1,0 +1,5 @@
+T17 planning artifacts
+
+Created External Agent CLI + Governed Draft Ingress track. Scope: two command families (business operations over existing Siren/exec and application improvement through Draft); contract-controlled draft/direct/none SubmissionPolicy; system-internal invalid/repairable Drafts; human-only approval; first slice improves one existing publishing Flow.
+Artifacts: spec, U1-U24 user stories, TS1-TS20 technical stories, candidate architecture with seven spike decisions, six-phase Story-TDD plan, metadata/index/registry, GOAL link.
+Verification: JSON metadata parsed; 24 user stories, 20 technical stories, 48 pending phase tasks; targeted Prettier and document governance 3/3 passed.
