@@ -323,3 +323,20 @@
 - **Agent 创建 Agent**:Agent 可以起草 Prompt、schemas、runtime requirements、policies、examples 和
   Eval corpus，但结果只能进入 T17 Governed Draft；activation 需要全量 invariants、真实 Eval、
   mechanical authored/effective diff 和 human-only decision。Agent/system self-approval 永久拒绝。
+
+## D32 Meta Human Control Plane(2026-08-23,T20 Phase A)
+
+- **发现与路由**:`/_meta/.well-known/ui4a.json` 是人类控制台的入口真相；`/meta` 不再维护
+  product rel 清单。canonical 人类深链为 `/meta/entity?rel=<encoded>&scope=<authorized>`，旧友好
+  路由只保留兼容。Renderer 按 Siren class/shape 注册；冲突 fail-closed，未知合法实体走 generic
+  collection/detail fallback。
+- **Scope 口径**:URL scope 只是请求，服务端以 credential adapter 的 allowed scopes 重新求交并对
+  sitemap/list/exact/exec 一致裁决。当前 demo 继续明示 D8/D10 的 self-reported identity，不冒充真实
+  SSO；browser 不发送 principal/actor/authorization header，任意未知 scope 拒绝。
+- **人类治理边界**:Application 保持只读；Agent Definition 与 Draft 只渲染当前 Siren actions。
+  action 前重读 exact entity，internal callback/identity/scope 覆盖永不暴露。审批、diff、checks、Eval、
+  provenance 和 replay 全部零 AI，Presentation Sidecar 不进入治理决定。
+- **性能与增长**:collection 使用 embedded summary，禁止成员 N+1；exact tabs 共享 revision-aware cache。
+  新 surface 自动进入 dashboard，特化体验只需 registry registration，不修改 shell/router。
+- **技术栈**:复用 Next.js App Router、现有 shadcn/RJSF/React Flow/diff 组件和 Siren client；不增加
+  package、state store、router、数据库表或事件族，因此无需改变 `conductor/tech-stack.md`。
