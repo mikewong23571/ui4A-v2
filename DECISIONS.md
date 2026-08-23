@@ -340,3 +340,28 @@
   新 surface 自动进入 dashboard，特化体验只需 registry registration，不修改 shell/router。
 - **技术栈**:复用 Next.js App Router、现有 shadcn/RJSF/React Flow/diff 组件和 Siren client；不增加
   package、state store、router、数据库表或事件族，因此无需改变 `conductor/tech-stack.md`。
+
+## D33 Assistant 双焦点事实与 LLM 协议约束(2026-08-23,T21 Phase A)
+
+- **三个位置概念**:`currentRel` 只表示本次 Agent 决策读取的合同实体，不再冒充客户端页面。
+  系统独立保留最近成功 Agent navigation/Presentation 的 `lastNavigation`，以及当前 user message
+  发送时某个客户端实际观察到的 `clientView`。两者携各自 provenance 同时进入 LLM；机械层不选择
+  “更正确”的一个、不自动对齐，也不从冲突推导用户意图。
+- **原子与重放**:`clientView` 作为可选字段与 user 原话同写一个不可变
+  `chat-message-appended`；当前消息缺失就明确 unknown，不能沿用旧窗口观察或用最近导航猜测。
+  成功 navigate 或 ready/fallback Presentation receipt 追加幂等 `chat-navigation-completed` core
+  事件；失败/pending/superseded/exec refresh 不移动 `lastNavigation`。两项事实从同一 append-only log
+  纯重建，Business fold/hash 不变。
+- **客户端边界**:client instance 只在 hook 生命周期内稳定；每次发送同步读取真实
+  `pathname + search`，仅从 `rel/focus/roots` 等协议参数机械解出 subject。客户端 route/subject
+  不是授权事实，不能扩大 entity observation、tools、principal、action 或 effect authorization。
+- **AI-first 决策**:合同 discovery 的 `resolveStartRel` 不被 client view 机械改写。LLM 同时看到
+  contract location、`lastNavigation`、`clientView`，自主选择 answer/clarify/navigate/present；产品
+  代码禁止按“看看/列表/详情”等关键词、正则、固定工具轨迹或 rule driver 复刻意图。
+- **协议 envelope**:真实 `deepseek-v4-flash` disposable probe 证明 provider-native
+  `toolChoice:'required'` 可用且未复现历史 GLM hang。生产每次 decision 使用 required；无调用、未知
+  工具或非法参数最多进行一次相同事实/工具下的真实 LLM repair。拒绝文本永不由非 LLM 代码转换
+  为 operation；第二次仍非法则诚实失败且零业务 mutation。
+- **Presentation 顺序**:Chat answer 与 Presentation planning 继续独立。可用异步 receipt 必须先持久化
+  completion 再对客户端可见；SSE 跟踪 jobs 到 settled，避免客户端已跳转而下一 turn 尚无可重放
+  navigation。T21 不新增 package、数据库表、状态库或 Provider，因此不修改技术栈。

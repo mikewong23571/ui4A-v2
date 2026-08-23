@@ -11,6 +11,8 @@
 - [Red Baseline](./baseline.md)
 - [Disposable LLM Protocol Probe](./llm-probe.md)
 - [Disposable Dual-Focus Contract Probe](./contract-probe.md)
+- [Technical Stories](./technical-stories.md)
+- [Architecture](./architecture.md)
 - [Implementation Plan](./plan.md)
 
 当前状态：`in_progress`。本 Track 不改变 Business action、guard、schema 或文章数据，不引入第二权威
