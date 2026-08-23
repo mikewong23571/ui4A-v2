@@ -155,21 +155,18 @@ export function draftEditorSchema(
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/** Merge structured issue-field edits without deleting untouched optional sibling contracts. */
+/** Replace focused issue roots (including deletion) while preserving unrelated candidate roots. */
 export function mergeDraftEditorData(
   original: Record<string, unknown>,
   edited: Record<string, unknown>,
+  issuePaths: readonly string[] = [],
 ): Record<string, unknown> {
-  const merged = { ...original };
-  for (const [key, value] of Object.entries(edited)) {
-    merged[key] =
-      isRecord(value) && isRecord(original[key])
-        ? mergeDraftEditorData(original[key], value)
-        : value;
+  const focusedRoots = new Set(issuePaths.flatMap((path) => pointerRoot(path) ?? []));
+  if (focusedRoots.size === 0) return { ...edited };
+  const merged: Record<string, unknown> = { ...original };
+  for (const root of focusedRoots) {
+    if (Object.hasOwn(edited, root)) merged[root] = edited[root];
+    else delete merged[root];
   }
   return merged;
 }

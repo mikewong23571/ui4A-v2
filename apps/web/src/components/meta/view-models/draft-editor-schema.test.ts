@@ -45,7 +45,15 @@ describe('Draft structured editor schema', () => {
             policySchema: { type: 'boolean' },
           },
         },
-        { contracts: { inputSchema: { type: 'string' } } },
+        {
+          contracts: {
+            inputSchema: { type: 'string' },
+            outputSchema: { type: 'string' },
+            contextSchema: { type: 'array' },
+            policySchema: { type: 'boolean' },
+          },
+        },
+        ['/contracts/inputSchema'],
       ),
     ).toEqual({
       contracts: {
@@ -55,5 +63,11 @@ describe('Draft structured editor schema', () => {
         policySchema: { type: 'boolean' },
       },
     });
+  });
+
+  it('deletes an invalid focused root omitted by the structured closed schema', () => {
+    expect(
+      mergeDraftEditorData({ name: 'writer', unexpected: { unsafe: true } }, {}, ['/unexpected']),
+    ).toEqual({ name: 'writer' });
   });
 });

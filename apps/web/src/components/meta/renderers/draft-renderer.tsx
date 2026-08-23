@@ -74,7 +74,7 @@ function DraftPayloadEditor({
       params: {
         commandId: `ui:${rel}:${version}:revise`,
         baseVersion: version,
-        payload: mergeDraftEditorData(original, formData),
+        payload: mergeDraftEditorData(original, formData, issuePaths),
       },
     });
     setSubmitting(false);
