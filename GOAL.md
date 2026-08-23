@@ -26,6 +26,20 @@ Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能�
 
 呈现以 `conductor/tracks/t16-semantic-a2ui-sidecars_20260823/user-stories.md` 的 S1–S32 为准。Chat 只发薄 `PresentationRequest`；Application Recipe 和独立 Presentation Agent 产生 binding-only Surface；用户级 Sidecar 跨 Session 命中并重新授权、解引用。个人优化只有经参数化、机械 diff 和 human approval 才可晋升共享 Recipe。Recipe/Sidecar/patch/promotion 事件独立重放，不进入 Business Snapshot。
 
+### App 创建边界
+
+当前阶段**不在产品运行时内闭环“通过 Chat 创建一个全新 App”**。UI4A 应提供可被外部工具消费的 Application/Flow/Entity/Action/Guard/Policy 定义合同、机械校验、diff、激活和 replay 基础，但不增加内置 `create-app` 对话向导、页面设计器或业务关键词编排。
+
+候选方向是由**应用外置 Agent**完成需求理解、用户故事整理和 Application Bundle 起草，再通过 UI4A 的 meta 协议提交候选定义；UI4A 继续负责确定性的 schema/invariant 检查、版本 diff、human approval、激活、审计和重放。外置 Agent 可以更换或独立部署，其认知能力不成为应用运行时的一部分。
+
+在该方向形成独立用户故事和验收 Track 之前，DONE 不要求：
+
+- 产品内创建、编辑或废弃 Application 的完整交互闭环；
+- Chat 自动把一句需求扩写为完整 App/Flow/Policy 并直接激活；
+- 为 App 创建过程内置固定表单、固定页面或 rule-based 生成器。
+
+已有 publishing/community Application 的运行、发现、操作与呈现仍属于当前 DONE；“创建新 App”属于后续外置 Agent 集成范围。
+
 ### 基线场景（业务平面，继承自已验证 demo）
 
 | # | 场景 | 断言 |
