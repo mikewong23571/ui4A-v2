@@ -3,3 +3,9 @@ T21 Phase D executable governance
 Extended source governance to require provider-native toolChoice required plus bounded second LLM attempt and to reject parsing/mapToolCall of text output. Existing guards continue to reject display phrase branches and rule runtime.
 
 Validation: 5 governance tests passed; formatting/diff checks.
+
+Phase D autonomous verification report
+
+Agent LLM/loop/runtime/source governance plus Chat route/Presentation tests => 6 files, 122 tests passed. Full workspace typecheck and git diff checks passed.
+
+Real configured-model smoke t21-d-smoke-1787501974216 sent clientView=/canvas?focus=articles and asked location. HTTP 200, outcome answered, correct articles client location, no focus/presentation/effect. This validates provider-required production transport after implementation.
