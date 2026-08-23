@@ -1,0 +1,5 @@
+T21 Phase C Green: governed navigation completion and dual-focus prompt input
+
+Made Agent onStep observers sequentially awaitable; successful navigate now persists completion before focus. Presentation jobs persist ready/fallback completion before receipt, remain independent of Chat final, and settle before stream close. Route projects current-message clientView and replayed lastNavigation into DriverContext; prompt labels currentRel as contract read location and discloses both facts separately.
+
+Validation: 6 focused files, 122 tests passed; engine/agent/web typechecks; T16 Presentation source governance updated for final-before-settled semantics; Prettier and diff checks.
