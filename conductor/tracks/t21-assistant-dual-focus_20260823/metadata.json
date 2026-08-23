@@ -1,9 +1,9 @@
 {
   "id": "t21-assistant-dual-focus_20260823",
   "type": "bug",
-  "status": "in_progress",
+  "status": "completed",
   "title": "T21 Assistant 双焦点事实与 AI-first Presentation 一致性",
   "created_at": "2026-08-23T15:29:12Z",
-  "updated_at": "2026-08-23T15:33:00Z",
+  "updated_at": "2026-08-23T16:59:58Z",
   "approved_by": "user (preserve lastNavigation and clientView as separate facts visible to the LLM)"
 }
