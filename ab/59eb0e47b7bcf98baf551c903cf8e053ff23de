@@ -1,0 +1,5 @@
+T21 Phase C Green: client-visible view reporting
+
+Added pure route-to-subject capture for rel/focus/roots, unknown behavior, receipt matching, hook-lifetime client identity, synchronous real window location reporting on every Chat send, route validation, and atomic persistence inside the user message event. No useSearchParams/Suspense expansion, phrase routing, page inventory, or authority path.
+
+Validation: client-view/floating-chat/route/conversation => 4 files, 66 tests passed; @ui4a/web typecheck; Prettier and git diff checks.
