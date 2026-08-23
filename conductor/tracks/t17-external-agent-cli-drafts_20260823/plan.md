@@ -57,13 +57,17 @@
 - [x] Task: CLI interruption/resume——进程退出、另一 cwd/Agent 读取同 Draft/activation，watch cursor 续接且零重复 mutation (e6c81ee)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (e6c81ee)
 
-## Phase F: 真实第三方 Agent Eval、安全、文档与全应用闭环
+## Phase F: 真实第三方 Agent Eval、安全、文档与全应用闭环 [checkpoint: c7f5acc]
 
-- [ ] Task: U24 real Agent corpus——canonical + 4 自然语言变体，只提供 CLI help/credential/endpoint；质量成功率 ≥80%，不固定模型/命令/补丁/措辞
-- [ ] Task: Safety corpus 100%——未审批写入、Agent approval、request-side bypass、none 写入口、stale overwrite、未授权泄露、raw write、secret output 全零
-- [ ] Task: Performance/budget——doctor/read 延迟、bounded lists、Draft payload/count/retention、watch backpressure 和 replay time 有明确 demo 门槛
-- [ ] Task: Companion skill——CLI 工作后使用 skill-creator 生成可选 Codex skill；文档保持 agent-neutral，skill 只说明命令顺序、安全和示例
-- [ ] Task: 回归 `pnpm check`、`CI=true pnpm e2e`、CLI fixture/live smoke、Draft replay/concurrency、source governance 和 real Agent Eval
-- [ ] Task: 同步 `GOAL.md`、`DECISIONS.md`、product/guidelines/tech-stack/arch-brief、runtime/audit docs、AGENTS/README 和 DONE 报告
-- [ ] Task: Principal review——重点审查 CLI 是否成为第二协议、Draft 是否污染 Active truth、Agent approval/bypass、atomic apply、auth/redaction 和新 App scope creep
-- [ ] Task: Final Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: U24 real Agent corpus——canonical + 4 自然语言变体，只提供 CLI help/credential/endpoint；质量成功率 ≥80%，不固定模型/命令/补丁/措辞 (c7f5acc)
+- [x] Task: Safety corpus 100%——未审批写入、Agent approval、request-side bypass、none 写入口、stale overwrite、未授权泄露、raw write、secret output 全零 (c7f5acc)
+- [x] Task: Performance/budget——doctor/read 延迟、bounded lists、Draft payload/count/retention、watch backpressure 和 replay time 有明确 demo 门槛 (c7f5acc)
+- [x] Task: Companion skill——CLI 工作后使用 skill-creator 生成可选 Codex skill；文档保持 agent-neutral，skill 只说明命令顺序、安全和示例 (c7f5acc)
+- [x] Task: 回归 `pnpm check`、`CI=true pnpm e2e`、CLI fixture/live smoke、Draft replay/concurrency、source governance 和 real Agent Eval (c7f5acc)
+- [x] Task: 同步 `GOAL.md`、`DECISIONS.md`、product/guidelines/tech-stack/arch-brief、runtime/audit docs、AGENTS/README 和 DONE 报告 (c7f5acc)
+- [x] Task: Principal review——重点审查 CLI 是否成为第二协议、Draft 是否污染 Active truth、Agent approval/bypass、atomic apply、auth/redaction 和新 App scope creep (c7f5acc)
+- [x] Task: Final Phase Verification & Checkpoint (Refer to workflow.md) (c7f5acc)
+
+## Review Fixes
+
+- [x] Task: Apply Principal review fixes for payload isolation, policy scope, mutation serialization, event integrity, CLI failure semantics and Temporal test isolation (c7f5acc)
