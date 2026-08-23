@@ -386,6 +386,31 @@ describe('薄 Presentation 请求', () => {
 });
 
 describe('navigate 操作', () => {
+  it('同一用户回合可在 navigate 后进行新的 LLM decision 并以 answer 结束', async () => {
+    const transport = contractTransport({
+      entities: { articles: articlesEntity, 'post:post-welcome': postWelcomeEntity },
+    });
+    const driver = new ScriptedDriver([
+      { kind: 'navigate', rel: 'post:post-welcome' },
+      {
+        kind: 'answer',
+        content: '现在展示欢迎文章。',
+        sources: [{ rel: 'post:post-welcome', pointer: '/properties/fields' }],
+      },
+    ]);
+
+    const result = await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+    });
+
+    expect(result.outcome).toBe('answered');
+    expect(result.steps.map((step) => step.outcome)).toEqual(['navigated', 'answered']);
+    expect(driver.contexts).toHaveLength(2);
+    expect(driver.contexts[1]?.currentRel).toBe('post:post-welcome');
+    expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(0);
+  });
+
   it('navigate 成功后下一步的当前实体即目标;轨迹记录目标实体摘要', async () => {
     const transport = contractTransport({
       entities: { articles: articlesEntity, 'post:post-welcome': postWelcomeEntity },
