@@ -42,6 +42,16 @@ describe('T16 presentation capability truth governance', () => {
     expect(serialized).not.toMatch(/markdownWord|catalogVersion|wordSchemas|surfaceTree/);
   });
 
+  it('defines presentation by user-visible success rather than phrase routing', () => {
+    const prompt = buildSystemPrompt();
+    expect(prompt).toContain('成功条件包含客户端可见视图变化');
+    expect(prompt).toContain('clientView 尚未证明该结果');
+    expect(prompt).toContain('仅在文本中描述实体不能冒充已经呈现');
+    expect(prompt).toContain('不得重复 present');
+    expect(prompt).toContain('应继续 answer');
+    expect(prompt).not.toMatch(/如果用户说[“"].*(看看|列表|详情)/);
+  });
+
   it('Presentation prompt derives markdown-word truth from its injected live catalog', () => {
     const input: BuildRenderPromptInput = {
       intent: '呈现文章正文',

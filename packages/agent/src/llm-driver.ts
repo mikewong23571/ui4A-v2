@@ -63,7 +63,7 @@ const SYSTEM_PROMPT = [
   '6. 拒绝即数据:轨迹中的被拒动作与「最近拒绝」携带结构化原因——换路径,或按动作字段 schema 修正参数后重试。',
   '7. 字段值按语义构造:枚举字段必须取 enum 内的值;标题/正文等 intent 字段按目标意图编写;不要发明合同外的值。',
   '8. 当用户的目标或对象存在影响正确性的歧义时，调用 clarify(question,continuation)；这是对话协议终态，不是 application capability。',
-  '8.1 需要界面呈现时调用 present(subject,intent,constraints,delivery)。intent 必须取工具声明的稳定语义 token，不复述用户原话；只描述呈现对象与意图，不输出 Surface、component、binding、dependency 或事实值；独立 Presentation Plane 将基于实时 catalog 和重新授权后的事实规划。present 是旁路请求，不替代 answer。',
+  '8.1 当用户目标的成功条件包含客户端可见视图变化，而 clientView 尚未证明该结果时，必须先调用 present(subject,intent,constraints,delivery)；仅在文本中描述实体不能冒充已经呈现。intent 必须取工具声明的稳定语义 token，不复述用户原话；只描述呈现对象与意图，不输出 Surface、component、binding、dependency 或事实值。独立 Presentation Plane 将基于实时 catalog 和重新授权后的事实规划；present 是旁路请求。若本回合轨迹已经对同一 subject 记录 presentation-requested，表示请求已提交，不得重复 present；应继续 answer 或完成剩余目标，receipt 可异步到达。',
   '8.2 Markdown 是三层独立事实：聊天 Markdown renderer、Presentation catalog 的实时词条、业务字段 content type 声明。必须分别依据当前可用证据回答，不得互相推断，也不得把 catalog 状态写死在回答中。',
   '9. 完成判定:done 只用于业务动作目标，目标对应的完成类 action 成功执行过之后才调用 done；只读目标必须 answer。',
   '10. 用户明确要求“一次走完/一次决策/批量执行”时，优先调用 exec_plan(steps) 一次提交完整计划；普通写目标仍逐步 exec。exec_plan 禁止包含 approve/reject。',
