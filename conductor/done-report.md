@@ -2,6 +2,16 @@
 
 > 原报告生成于 2026-08-21(T1–T8)。T15/T16/D28 addendum supersede 旧 AI、渲染和摘要口径；旧测试数量与旧 I1 仅是历史快照。当前验收以 `GOAL.md`、`DECISIONS.md`、T15/T16 Story Eval 和最新命令输出为准。
 
+## T17 External Agent CLI 与 Governed Draft Ingress（2026-08-23）
+
+- 可安装 `ui4a` CLI 从任意 cwd 完成 doctor/discovery/read/action/plan/Bundle/Draft/audit；
+  JSON envelope、exit code、redaction、分页和 GET/HEAD escape hatch 稳定。
+- Draft 使用独立 event domain、immutable SHA-256 payload 与 rebuildable projection；invalid
+  candidate 可在系统内修复，CAS/idempotency/rebase/terminal/replay 由 pure kernel 治理。
+- Flow candidate 经 validate/diff/submit 后等待人类；Agent approval 被 CLI、service 和 pure fold
+  拒绝，human apply 与 Draft accepted 同事务，born version 与 sitemap 演进可重放。
+- 真实外部 Agent 只使用 CLI help/endpoint 完成 canonical + variants；机械 Safety 门独立运行。
+
 ## T15 AI-first superseding addendum(2026-08-23)
 
 T15 修正了旧报告把“AI 可选”解释为“无模型也由 rule driver 自动完成同一自然语言任务”的方向。当前产品合同如下：

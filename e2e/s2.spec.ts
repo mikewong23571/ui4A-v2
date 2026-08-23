@@ -384,12 +384,12 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     expect(checks.map((check) => check.name).sort()).toEqual([
       'app-known',
       'capability-registered',
-      'submission-policy-valid',
       'edge-targets-exist',
       'effect-known',
       'field-types-known',
       'guards-registered',
       'initial-exists',
+      'submission-policy-valid',
       'terminal-reachable',
     ]);
     expect(checks.every((check) => check.pass)).toBe(true);
@@ -433,8 +433,8 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     // 详情:checks 八行全过;机械 diff 可见且含 pin(react-diff-view 内建渲染,验收 6)
     await expect(page.getByRole('heading', { name: '激活 a1' })).toBeVisible();
     const checkRows = page.locator('section[aria-label="不变式检查"] tbody tr');
-    await expect(checkRows).toHaveCount(8);
-    for (let index = 0; index < 8; index += 1) {
+    await expect(checkRows).toHaveCount(9);
+    for (let index = 0; index < 9; index += 1) {
       await expect(checkRows.nth(index)).toContainText('通过');
     }
     const diffSection = page.locator('section[aria-label="机械 diff"]');

@@ -16,8 +16,14 @@ import { Client, Connection } from '@temporalio/client';
 
 import type { SuspendedConfirmation } from '@ui4a/engine';
 
-/** worker 侧 taskQueue 会合点(与 apps/worker/src/main.ts 同一常量)。 */
-const TASK_QUEUE = 'ui4a';
+/** worker 侧 taskQueue 会合点；测试使用隔离 queue，缺省仍为 ui4a。 */
+function taskQueue(): string {
+  return process.env.UI4A_TASK_QUEUE ?? 'ui4a';
+}
+
+function workflowId(id: string): string {
+  return `${process.env.UI4A_WORKFLOW_PREFIX ?? 'notify'}-${id}`;
+}
 
 /** Temporal dev server 地址(DECISIONS.md D4;env 可覆盖)。 */
 function temporalAddress(): string {
@@ -74,13 +80,13 @@ export async function dispatchNotify(confirmation: SuspendedConfirmation): Promi
     const client = await temporalClient();
     await client.workflow.start('notifyWorkflow', {
       args: [notifyWorkflowArgs(confirmation)],
-      taskQueue: TASK_QUEUE,
-      workflowId: `notify-${confirmation.id}`,
+      taskQueue: taskQueue(),
+      workflowId: workflowId(confirmation.id),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(
-      `[ui4a] notify 派发失败(尽力而为,挂起不受影响;workflowId=notify-${confirmation.id}): ${message}`,
+      `[ui4a] notify 派发失败(尽力而为,挂起不受影响;workflowId=${workflowId(confirmation.id)}): ${message}`,
     );
   }
 }
@@ -106,7 +112,7 @@ export async function terminateStaleNotifyWorkflows(ids: readonly string[]): Pro
   }
   for (const id of ids) {
     await client.workflow
-      .getHandle(`notify-${id}`)
+      .getHandle(workflowId(id))
       .terminate('stale cleanup')
       .catch(() => undefined);
   }

@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
+import { CliError } from './envelope.js';
+
 export interface CliConfig {
   baseUrl: string;
   token?: string;
@@ -56,13 +58,28 @@ export async function loadConfig(
   flags: ConfigFlags,
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<CliConfig> {
-  const file = await readConfig(flags.configPath ?? defaultConfigPath(env));
+  let file: ConfigFile;
+  try {
+    file = await readConfig(flags.configPath ?? defaultConfigPath(env));
+  } catch (error) {
+    throw new CliError(
+      'CONFIG',
+      `cannot read UI4A config: ${error instanceof Error ? error.message : String(error)}`,
+      3,
+    );
+  }
   const rawBase = flags.baseUrl ?? env.UI4A_BASE_URL ?? file.baseUrl ?? 'http://localhost:3100';
   const token = flags.token ?? env.UI4A_TOKEN ?? file.token;
   const principal = env.UI4A_PRINCIPAL ?? file.principal ?? 'local-user';
   const policyScope = env.UI4A_POLICY_SCOPE ?? file.policyScope ?? 'publishing';
+  let baseUrl: string;
+  try {
+    baseUrl = cleanUrl(rawBase);
+  } catch (error) {
+    throw new CliError('CONFIG', error instanceof Error ? error.message : String(error), 3);
+  }
   return {
-    baseUrl: cleanUrl(rawBase),
+    baseUrl,
     ...(token === undefined || token === '' ? {} : { token }),
     principal,
     policyScope,
@@ -98,4 +115,3 @@ export async function loadConfig(
     },
   };
 }
-

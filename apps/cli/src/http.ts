@@ -5,9 +5,13 @@ const MAX_RESPONSE_BYTES = 1024 * 1024;
 
 function statusError(status: number, body: unknown): CliError {
   const message =
-    typeof body === 'object' && body !== null && typeof (body as { error?: unknown }).error === 'string'
+    typeof body === 'object' &&
+    body !== null &&
+    typeof (body as { error?: unknown }).error === 'string'
       ? String((body as { error: string }).error)
-      : typeof body === 'object' && body !== null && typeof (body as { reason?: unknown }).reason === 'string'
+      : typeof body === 'object' &&
+          body !== null &&
+          typeof (body as { reason?: unknown }).reason === 'string'
         ? String((body as { reason: string }).reason)
         : `UI4A returned HTTP ${status}`;
   if (status === 401 || status === 403) return new CliError('AUTH', message, 4, status, body);
@@ -30,7 +34,8 @@ export class Ui4aHttpClient {
       'x-ui4a-policy-scope': this.config.policyScope,
     });
     if (write) headers.set('content-type', 'application/json');
-    if (this.config.token !== undefined) headers.set('authorization', `Bearer ${this.config.token}`);
+    if (this.config.token !== undefined)
+      headers.set('authorization', `Bearer ${this.config.token}`);
     return headers;
   }
 

@@ -19,7 +19,9 @@ import type { AgentGoal } from '@ui4a/agent';
 import { Client, Connection } from '@temporalio/client';
 
 /** worker 侧 taskQueue 会合点(与 apps/worker/src/main.ts 同一常量)。 */
-const TASK_QUEUE = 'ui4a';
+function taskQueue(): string {
+  return process.env.UI4A_TASK_QUEUE ?? 'ui4a';
+}
 
 /** 产品委托仅派发真实 LLM driver(worker 侧同口径)。 */
 export type DelegationDriverKind = 'llm';
@@ -69,7 +71,7 @@ export async function dispatchDelegation(
   const client = await temporalClient();
   await client.workflow.start('delegationWorkflow', {
     args: [args],
-    taskQueue: TASK_QUEUE,
+    taskQueue: taskQueue(),
     workflowId: delegationId,
   });
   return { delegationId };

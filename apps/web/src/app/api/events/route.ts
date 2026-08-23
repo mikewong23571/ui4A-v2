@@ -19,7 +19,7 @@ function parseAfterSeq(raw: string | null): number | null {
 }
 
 function parseLimit(raw: string | null): number | null {
-  if (raw === null) return 20;
+  if (raw === null) return 100;
   const value = Number(raw);
   if (!Number.isInteger(value) || value < 1 || value > 100) return null;
   return value;
@@ -39,6 +39,15 @@ export async function GET(request: Request) {
   if (domain !== null && !['core', 'presentation', 'draft'].includes(domain)) {
     return Response.json({ error: 'domain 必须是 core|presentation|draft' }, { status: 400 });
   }
+  const headerPrincipal = request.headers.get('x-ui4a-principal');
+  const queryPrincipal = url.searchParams.get('principal');
+  if (headerPrincipal !== null && queryPrincipal !== null && headerPrincipal !== queryPrincipal) {
+    return Response.json(
+      { error: 'principal filter cannot exceed credential scope' },
+      { status: 403 },
+    );
+  }
+  const principal = headerPrincipal ?? queryPrincipal;
 
   const connectionString = process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL;
   try {
@@ -46,9 +55,7 @@ export async function GET(request: Request) {
       ...(domain === null ? {} : { domain: domain as 'core' | 'presentation' | 'draft' }),
       ...(url.searchParams.get('rel') === null ? {} : { rel: url.searchParams.get('rel')! }),
       ...(url.searchParams.get('kind') === null ? {} : { kind: url.searchParams.get('kind')! }),
-      ...(url.searchParams.get('principal') === null
-        ? {}
-        : { principal: url.searchParams.get('principal')! }),
+      ...(principal === null ? {} : { principal }),
       limit: limit + 1,
     });
     const hasMore = rows.length > limit;
@@ -58,7 +65,7 @@ export async function GET(request: Request) {
       page: {
         limit,
         hasMore,
-        nextAfterSeq: hasMore ? events.at(-1)?.seq ?? afterSeq : null,
+        nextAfterSeq: hasMore ? (events.at(-1)?.seq ?? afterSeq) : null,
       },
     });
   } catch {

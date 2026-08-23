@@ -96,6 +96,25 @@ describe('GET /api/events', () => {
     expect(body.events).toHaveLength(1);
   });
 
+  it('credential principal scopes audit results and cannot be overridden', async () => {
+    await appendEvent(pool, { kind: 'seed', rel: 'seed:a', principal: 'user:a' });
+    await appendEvent(pool, { kind: 'seed', rel: 'seed:b', principal: 'user:b' });
+    const scoped = await GET(
+      new Request('http://localhost:3100/api/events?afterSeq=0', {
+        headers: { 'x-ui4a-principal': 'user:a' },
+      }),
+    );
+    expect((await scoped.json()) as { events: ApiEvent[] }).toMatchObject({
+      events: [{ rel: 'seed:a' }],
+    });
+    const override = await GET(
+      new Request('http://localhost:3100/api/events?principal=user:b', {
+        headers: { 'x-ui4a-principal': 'user:a' },
+      }),
+    );
+    expect(override.status).toBe(403);
+  });
+
   it('非法 afterSeq → 400 结构化错误', async () => {
     for (const bad of ['?afterSeq=abc', '?afterSeq=-1', '?afterSeq=1.5']) {
       const res = await GET(request(bad));

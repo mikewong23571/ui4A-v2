@@ -22,11 +22,16 @@ export function parseArgs(argv: string[]): ParsedArgs {
     else if (arg.startsWith('--')) {
       const name = arg.slice(2);
       if (FORBIDDEN_FLAGS.has(name)) {
-        throw new CliError('USAGE', `--${name} is forbidden; identity and policy are server-owned`, 2);
+        throw new CliError(
+          'USAGE',
+          `--${name} is forbidden; identity and policy are server-owned`,
+          2,
+        );
       }
       const next = argv[index + 1];
       if (GLOBAL_VALUE.has(name)) {
-        if (next === undefined || next.startsWith('--')) throw new CliError('USAGE', `--${name} requires a value`, 2);
+        if (next === undefined || next.startsWith('--'))
+          throw new CliError('USAGE', `--${name} requires a value`, 2);
         index += 1;
         if (name === 'base-url') result.baseUrl = next;
         else if (name === 'token') result.token = next;
@@ -53,6 +58,7 @@ export function flagNumber(args: ParsedArgs, name: string, fallback?: number): n
   const raw = flagString(args, name);
   if (raw === undefined) return fallback;
   const value = Number(raw);
-  if (!Number.isInteger(value) || value < 0) throw new CliError('USAGE', `--${name} must be a non-negative integer`, 2);
+  if (!Number.isInteger(value) || value < 0)
+    throw new CliError('USAGE', `--${name} must be a non-negative integer`, 2);
   return value;
 }

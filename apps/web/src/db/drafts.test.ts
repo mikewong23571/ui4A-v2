@@ -79,14 +79,25 @@ describe('Draft persistence', () => {
       validation: { valid: false, issues: [] },
     };
     await appendDraftCommand(pool, revise, nextPayload);
+    const stored = await pool.query<{ detail: { version: { validation: unknown } } }>(
+      "SELECT detail FROM events WHERE domain='draft' AND kind='draft-revised'",
+    );
+    expect(stored.rows[0]?.detail.version.validation).not.toHaveProperty('value');
+    expect(JSON.stringify(stored.rows[0]?.detail)).not.toContain('"nodes"');
     await expect(
-      appendDraftCommand(pool, { ...revise, eventId: 'event:loser', commandId: 'loser' }, nextPayload),
+      appendDraftCommand(
+        pool,
+        { ...revise, eventId: 'event:loser', commandId: 'loser' },
+        nextPayload,
+      ),
     ).rejects.toThrow('conflict');
 
     await pool.query('TRUNCATE draft_projection');
     expect(await listDrafts(pool, { owner: 'user:mike', policyScope: 'publishing' })).toEqual([]);
     await rebuildDraftProjection(pool);
-    expect(await listDrafts(pool, { owner: 'user:mike', policyScope: 'publishing' })).toHaveLength(1);
+    expect(await listDrafts(pool, { owner: 'user:mike', policyScope: 'publishing' })).toHaveLength(
+      1,
+    );
   });
 
   it('does not disclose another owner or policy scope', async () => {
@@ -96,4 +107,3 @@ describe('Draft persistence', () => {
     expect(await listDrafts(pool, { owner: 'user:other', policyScope: 'publishing' })).toEqual([]);
   });
 });
-

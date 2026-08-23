@@ -186,6 +186,8 @@ export interface EngineRuntime {
   getFrozenSpec(concern: string): RenderSpec | undefined;
   /** 已凝固 spec 条目列表(日志序)。 */
   listFrozenSpecs(): FrozenRenderSpec[];
+  /** Serialize an external adapter mutation with core exec/meta mutations. */
+  runExclusive<T>(run: () => Promise<T>): Promise<T>;
 }
 
 const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
@@ -841,6 +843,11 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       return frozen === undefined ? undefined : toRenderSpec(frozen);
     },
     listFrozenSpecs: () => readRenderSpecsOf(snapshot),
+    runExclusive: (run) =>
+      enqueue(state, async () => {
+        await refreshFromLog();
+        return run();
+      }),
   };
 }
 

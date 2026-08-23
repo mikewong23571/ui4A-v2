@@ -143,6 +143,18 @@ contract，起草完整 Application Bundle；UI4A 只接受候选定义，并执
 invariant、diff、human approval、activation、audit 和 replay。外置 Agent 不获得绕过 meta
 裁决的写路径，其模型、记忆和编排方式也不成为 UI4A 内核协议。
 
+### 8.3 External Agent CLI 与 Governed Draft Ingress
+
+T17 把 `ui4a` 定义为 HTTP/Siren/meta 的可安装参考客户端，不是新协议或 Agent runtime。
+外部候选经 `meta/drafts` 与 `draft:<id>` actions 进入独立 Draft domain；payload 以 SHA-256
+内容寻址保存，`draft_projection` 可从事件重建。`SubmissionPolicy(draft|direct|none)` 由激活
+合同与 scope 决定，请求不能覆盖；Presentation Sidecar 不进入 Draft。
+
+Flow Draft 的 human approval 在同一 PostgreSQL 事务追加
+`definition-candidate-applied` 与 `draft-accepted`。core event 独立重放完整定义、版本、diff、
+checks 与审批 provenance；旧实例保留 bornVersion，新实例读取新 active pointer。CLI 无 LLM、
+approve/reject、身份 flag 或 raw write；local demo 身份仍按 D8/D10 明示为 self-reported。
+
 ## 9. 五条垂直切片(第五部,施工顺序)
 
 1. **确认门切片**:agent 执行高危动作 → guard 挂起 → pending 实体化 → notification capability 送达 → 人类在推送上 approve → 事件留痕带 actor/principal。一次验证 guard 第三语义、确认实体、出站能力、委托模型四个论点。构成(README):Cedar 风险策略 + guard 挂起语义 + Temporal notify activity + RJSF 渲染 pending 实体 + 收件箱。GOAL S1 断言:动作未生效挂起 → human approve(actor=human)→ 生效,日志含 actor/principal/信道。

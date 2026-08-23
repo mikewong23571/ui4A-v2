@@ -141,4 +141,3 @@ describe('Draft kernel', () => {
     expect(inspectJsonBudget({ value: 'x'.repeat(20), maxBytes: 5 }).valid).toBe(false);
   });
 });
-

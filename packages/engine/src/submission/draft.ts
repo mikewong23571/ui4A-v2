@@ -164,7 +164,11 @@ function cloneValidation(validation: DraftValidation): DraftValidation {
   };
 }
 
-function cloneVersion(input: VersionInput, version: number, basedOnVersion: number | null): DraftVersion {
+function cloneVersion(
+  input: VersionInput,
+  version: number,
+  basedOnVersion: number | null,
+): DraftVersion {
   return {
     version,
     basedOnVersion,
@@ -214,14 +218,18 @@ function foldOne(snapshot: DraftSnapshot, event: DraftEvent): DraftSnapshot {
         terminalReason: undefined,
       };
     } else {
-      if (event.activeVersion !== aggregate.activeVersion) throw new Error('draft version conflict');
+      if (event.activeVersion !== aggregate.activeVersion)
+        throw new Error('draft version conflict');
       if (event.kind === 'draft-validated') {
         const current = aggregate.versions[aggregate.activeVersion]!;
         aggregate = {
           ...aggregate,
           versions: {
             ...aggregate.versions,
-            [aggregate.activeVersion]: { ...current, validation: cloneValidation(event.validation) },
+            [aggregate.activeVersion]: {
+              ...current,
+              validation: cloneValidation(event.validation),
+            },
           },
           status: event.validation.valid ? 'ready' : 'invalid',
         };
@@ -293,17 +301,42 @@ function commandToEvent(command: DraftCommand): DraftEvent {
         },
       };
     case 'validate':
-      return { ...base, kind: 'draft-validated', activeVersion: command.activeVersion, validation: command.validation };
+      return {
+        ...base,
+        kind: 'draft-validated',
+        activeVersion: command.activeVersion,
+        validation: command.validation,
+      };
     case 'submit':
-      return { ...base, kind: 'draft-submitted', activeVersion: command.activeVersion, activation: command.activation };
+      return {
+        ...base,
+        kind: 'draft-submitted',
+        activeVersion: command.activeVersion,
+        activation: command.activation,
+      };
     case 'stale':
-      return { ...base, kind: 'draft-staled', activeVersion: command.activeVersion, reason: command.reason };
+      return {
+        ...base,
+        kind: 'draft-staled',
+        activeVersion: command.activeVersion,
+        reason: command.reason,
+      };
     case 'abandon':
-      return { ...base, kind: 'draft-abandoned', activeVersion: command.activeVersion, ...(command.reason === undefined ? {} : { reason: command.reason }) };
+      return {
+        ...base,
+        kind: 'draft-abandoned',
+        activeVersion: command.activeVersion,
+        ...(command.reason === undefined ? {} : { reason: command.reason }),
+      };
     case 'accept':
       return { ...base, kind: 'draft-accepted', activeVersion: command.activeVersion };
     case 'reject':
-      return { ...base, kind: 'draft-rejected', activeVersion: command.activeVersion, reason: command.reason };
+      return {
+        ...base,
+        kind: 'draft-rejected',
+        activeVersion: command.activeVersion,
+        reason: command.reason,
+      };
     case 'expire':
       return { ...base, kind: 'draft-expired', activeVersion: command.activeVersion };
   }

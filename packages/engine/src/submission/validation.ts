@@ -45,11 +45,13 @@ export function validateFlowDraft(
 }
 
 /** Full structural diff and deterministic fingerprint; no model or renderer participates. */
-export function mechanicalFlowDiff(before: unknown, after: unknown): {
+export function mechanicalFlowDiff(
+  before: unknown,
+  after: unknown,
+): {
   diff: ReturnType<typeof definitionDiff>;
   hash: string;
 } {
   const diff = definitionDiff(parseFlowDefinition(before), parseFlowDefinition(after));
   return { diff, hash: payloadFingerprint(diff) };
 }
-

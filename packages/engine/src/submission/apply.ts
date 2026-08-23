@@ -33,6 +33,9 @@ export function applyDefinitionCandidate(
   snapshot: EngineSnapshot,
   detail: DefinitionCandidateAppliedDetail,
 ): EngineSnapshot {
+  if (detail.schemaVersion !== 1 || detail.commandId === '') {
+    throw new Error('candidate event envelope is invalid');
+  }
   if (detail.decidedBy.actor !== 'human') throw new Error('candidate approval must be human');
   const entry = snapshot.definitions?.[detail.name];
   if (entry === undefined) throw new Error(`candidate target ${detail.name} does not exist`);
@@ -41,10 +44,22 @@ export function applyDefinitionCandidate(
   }
   if (detail.version !== detail.baseVersion + 1) throw new Error('candidate version is not next');
   if (detail.definition.name !== detail.name) throw new Error('candidate target/name mismatch');
+  if (!/^sha256:[0-9a-f]{64}$/.test(detail.payloadHash)) {
+    throw new Error('candidate payload hash is invalid');
+  }
+  if (detail.artifact !== contentVersion(detail.definition)) {
+    throw new Error('candidate artifact hash mismatch');
+  }
   if (detail.checks.some((check) => !check.pass)) throw new Error('candidate checks did not pass');
   const lifecycle = snapshot.instances[metaFlowRel(detail.name)];
   if (lifecycle === undefined || lifecycle.node !== 'active') {
     throw new Error('candidate target lifecycle is not active');
+  }
+  if (snapshot.definitionVersions?.[detail.name]?.[detail.version] !== undefined) {
+    throw new Error('candidate version already exists');
+  }
+  if (snapshot.activations?.[metaActivationRel(detail.activationId)] !== undefined) {
+    throw new Error('candidate activation already exists');
   }
   const activation: ActivationSnapshot = {
     id: detail.activationId,

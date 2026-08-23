@@ -14,7 +14,7 @@ import { NativeConnection, Worker } from '@temporalio/worker';
 import * as activities from './activities';
 import { shutdownBanner, startupBanner } from './banner';
 
-const TASK_QUEUE = 'ui4a';
+const TASK_QUEUE = process.env.UI4A_TASK_QUEUE ?? 'ui4a';
 const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? 'localhost:7233';
 
 async function main(): Promise<void> {

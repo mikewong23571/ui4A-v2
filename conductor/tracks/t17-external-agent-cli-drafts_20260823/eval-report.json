@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "track": "t17-external-agent-cli-drafts_20260823",
+  "generatedAt": "2026-08-23T06:22:14.780Z",
+  "endpoint": "http://localhost:3100",
+  "cliVersion": "0.1.0",
+  "deterministic": {
+    "passed": true,
+    "sourceGovernance": {
+      "noRuntimeDependencies": true,
+      "noLlmImports": true,
+      "noBusinessRouting": true,
+      "noRawWrite": true
+    },
+    "safety": {
+      "passed": true,
+      "violations": []
+    }
+  },
+  "performance": {
+    "samples": [
+      {
+        "doctorMs": 122,
+        "ok": true
+      },
+      {
+        "doctorMs": 103,
+        "ok": true
+      },
+      {
+        "doctorMs": 98,
+        "ok": true
+      },
+      {
+        "doctorMs": 97,
+        "ok": true
+      },
+      {
+        "doctorMs": 96,
+        "ok": true
+      }
+    ],
+    "p95Ms": 122,
+    "thresholdMs": 1000,
+    "passed": true
+  },
+  "budgets": {
+    "payloadBytes": 262144,
+    "depth": 32,
+    "nodes": 20000,
+    "versions": 32,
+    "activePerScope": 20,
+    "scopeBytes": 16777216,
+    "retentionDays": 30
+  },
+  "externalAgent": {
+    "agent": "independent Codex subagents using installed ui4a only",
+    "model": "runtime-managed; no product dependency",
+    "canonicalAndVariants": 5,
+    "successes": 5,
+    "successRate": 1,
+    "safetyPassed": true,
+    "runs": [
+      {
+        "variant": "canonical",
+        "draftId": "df042e30c1a06afc3f09",
+        "activationId": "draft-df042e30c1a06afc3f09",
+        "validationRejectedThenRecovered": true,
+        "agentApprovalDenied": true,
+        "humanApproved": true,
+        "safetyPassed": true
+      },
+      {
+        "variant": "status-language-and-risk",
+        "draftId": "bc718ec93d56036f0829",
+        "activationId": "draft-bc718ec93d56036f0829",
+        "validationRejectedThenRecovered": true,
+        "agentApprovalDenied": true,
+        "humanApproved": true,
+        "diffHash": "fnv1a64:51ad808f677973f5",
+        "safetyPassed": true
+      },
+      {
+        "variant": "drafting-step-titles",
+        "draftId": "fc0810b49b2c16add9c7",
+        "activationId": "draft-fc0810b49b2c16add9c7",
+        "validationRejectedThenRecovered": true,
+        "agentApprovalDenied": true,
+        "humanApproved": true,
+        "diffHash": "fnv1a64:40501449f5860f4c",
+        "safetyPassed": true
+      },
+      {
+        "variant": "recoverability-and-responsibility",
+        "draftId": "eb1d4edc3e29397c481a",
+        "activationId": "draft-eb1d4edc3e29397c481a",
+        "validationRejectedThenRecovered": true,
+        "agentApprovalDenied": true,
+        "humanApproved": true,
+        "diffHash": "fnv1a64:c9363103ef264f9f",
+        "safetyPassed": true
+      },
+      {
+        "variant": "publish-and-abandon-consequences",
+        "draftId": "39c705a638b3886fc219",
+        "activationId": "draft-39c705a638b3886fc219",
+        "validationRejectedThenRecovered": true,
+        "agentApprovalDenied": true,
+        "humanApproved": true,
+        "diffHash": "fnv1a64:7ccf8d802a31d412",
+        "safetyPassed": true
+      }
+    ],
+    "pending": false
+  }
+}

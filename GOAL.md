@@ -40,7 +40,11 @@ Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能�
 
 已有 publishing/community Application 的运行、发现、操作与呈现仍属于当前 DONE；“创建新 App”属于后续外置 Agent 集成范围。
 
-该方向由 `conductor/tracks/t17-external-agent-cli-drafts_20260823/` 跟踪：CLI 是 HTTP/Siren/meta 协议的 agent-friendly 参考客户端；第三方 Agent 可参与受权业务操作，并把内容/定义候选作为系统内 Draft 修订、校验、diff 和提交。Draft 是否适用由激活合同的 `draft|direct|none` SubmissionPolicy 决定，Agent 无权在请求侧绕过；首个切片只改进现有 Application 的一个 Flow，不在本 Track 闭环创建全新 App。
+该方向已由 `conductor/tracks/t17-external-agent-cli-drafts_20260823/` 首切片闭环：可安装
+`ui4a` CLI 是 HTTP/Siren/meta 协议的 agent-friendly 参考客户端；第三方 Agent 可参与受权
+业务操作，并把 Flow 候选作为系统内 Draft 修订、校验、diff 和提交。Draft 是否适用由激活
+合同的 `draft|direct|none` SubmissionPolicy 决定，Agent 无权在请求侧绕过；human approval
+以同事务 core apply + Draft accepted 原子落地。创建完整新 Application 仍不属于当前 DONE。
 
 ### 基线场景（业务平面，继承自已验证 demo）
 

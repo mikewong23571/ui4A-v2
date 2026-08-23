@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EngineSnapshot, FlowDefinition } from '@ui4a/shared';
 
+import { contentVersion } from '../sitemap';
 import { applyDefinitionCandidate } from './apply';
 
 const current: FlowDefinition = {
@@ -20,7 +21,13 @@ function snapshot(): EngineSnapshot {
         node: 'active',
         fields: {},
       },
-      'post:old': { rel: 'post:old', flow: 'post-status', node: 'published', fields: {}, bornVersion: 1 },
+      'post:old': {
+        rel: 'post:old',
+        flow: 'post-status',
+        node: 'published',
+        fields: {},
+        bornVersion: 1,
+      },
     },
     collections: {},
     definitions: {
@@ -44,9 +51,9 @@ describe('atomic definition candidate apply fold', () => {
       activationId: 'draft-d1',
       draftId: 'd1',
       draftVersion: 2,
-      payloadHash: 'sha256:a',
+      payloadHash: `sha256:${'a'.repeat(64)}`,
       policyScope: 'publishing',
-      artifact: 'artifact:a',
+      artifact: contentVersion(next),
       definition: next,
       checks: [],
       requestedBy: { actor: 'agent', principal: 'user:mike' },
@@ -72,9 +79,9 @@ describe('atomic definition candidate apply fold', () => {
       activationId: 'draft-d1',
       draftId: 'd1',
       draftVersion: 1,
-      payloadHash: 'sha256:a',
+      payloadHash: `sha256:${'a'.repeat(64)}`,
       policyScope: 'publishing',
-      artifact: 'artifact:a',
+      artifact: contentVersion(current),
       definition: current,
       checks: [],
       requestedBy: { actor: 'agent' as const },

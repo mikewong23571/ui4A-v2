@@ -16,6 +16,14 @@ curl -fsS http://localhost:3100/api/chat/sessions
 curl -fsS 'http://localhost:3100/api/chat/history?sessionId=<session-id>'
 ```
 
+The event endpoint is bounded (`limit` 1–100, default 100) and supports `domain`, `rel`, `kind`,
+and `principal` filters. It returns `page.hasMore` and `page.nextAfterSeq`. Equivalent CLI reads:
+
+```bash
+ui4a --json audit session <session-id> --after-seq 0 --limit 20
+ui4a --json audit draft <draft-id> --after-seq 0 --limit 20
+```
+
 Example session filter:
 
 ```bash
@@ -41,6 +49,11 @@ Visible `thinking` is a live SSE projection. Refresh restores durable messages b
 Business events include declared effects, rejections, confirmation decisions, plan execution, definition lifecycle, and capability/delegation state. Presentation events include request/receipt, Recipe promotion, Sidecar instantiate/revise/pin/stale/revert, and hydration decisions.
 
 Both families may share the PostgreSQL table, but `domain='presentation'` events must never enter the Business fold. Misrouting fails closed. Rebuilding the Sidecar projection must not change the Business Snapshot hash.
+
+Draft events use `domain='draft'` and fold into Draft aggregates only. Exact authorized reads
+dereference immutable `draft_payloads`; ordinary audit/list responses do not include candidate
+payloads. Human acceptance writes one core `definition-candidate-applied` event and one
+`draft-accepted` event in the same transaction, preventing a half-activation.
 
 ## Replay rules
 

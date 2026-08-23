@@ -20,10 +20,7 @@ import { getEngine, resetEngineForTests } from './service';
 // 7233 不可达(如 CI)→ 整个 describe 跳过并说明,不挂 CI;编排者环境已运行。
 const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? 'localhost:7233';
 const CONNECTION_STRING = process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a';
-const WORKER_DIR = path.join(
-  fileURLToPath(new URL('../../../..', import.meta.url)),
-  'apps/worker',
-);
+const WORKER_DIR = path.join(fileURLToPath(new URL('../../../..', import.meta.url)), 'apps/worker');
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -53,9 +50,7 @@ function temporalHostPort(): { host: string; port: number } {
 const { host: temporalHost, port: temporalPort } = temporalHostPort();
 const temporalUp = await isPortOpen(temporalHost, temporalPort);
 if (!temporalUp) {
-  console.warn(
-    `[ui4a] Temporal dev server 不可达(${TEMPORAL_ADDRESS}),notify 集成测试跳过`,
-  );
+  console.warn(`[ui4a] Temporal dev server 不可达(${TEMPORAL_ADDRESS}),notify 集成测试跳过`);
 }
 
 const agentArchive = {
@@ -71,6 +66,8 @@ describe.skipIf(!temporalUp)('S1 notify 真链路(web→Temporal→worker→PG�
   const pool = getPool(CONNECTION_STRING);
   let worker: ChildProcess | null = null;
   let prevDispatchFlag: string | undefined;
+  let prevTaskQueue: string | undefined;
+  let prevWorkflowPrefix: string | undefined;
 
   /** 等待 worker 启动横幅(Worker.create 成功、即将 run;超时/早退即失败)。 */
   async function waitForWorkerBanner(child: ChildProcess, timeoutMs: number): Promise<void> {
@@ -99,14 +96,21 @@ describe.skipIf(!temporalUp)('S1 notify 真链路(web→Temporal→worker→PG�
   beforeAll(async () => {
     // 测试进程内开启派发(缺省 VITEST 下关闭)。
     prevDispatchFlag = process.env.UI4A_NOTIFY_DISPATCH;
+    prevTaskQueue = process.env.UI4A_TASK_QUEUE;
+    prevWorkflowPrefix = process.env.UI4A_WORKFLOW_PREFIX;
     process.env.UI4A_NOTIFY_DISPATCH = 'on';
+    process.env.UI4A_TASK_QUEUE = `ui4a-test-notify-${process.pid}`;
+    process.env.UI4A_WORKFLOW_PREFIX = `notify-test-${process.pid}`;
 
     // 清理上一轮可能残留的 stuck workflow(同 workflowId 的在跑实例会让 start 报
     // already-started——终止后 completed/terminated 状态可安全重用 workflowId)。
     const connection = await Connection.connect({ address: TEMPORAL_ADDRESS });
     const client = new Client({ connection });
     for (const id of ['c1', 'c2', 'c3']) {
-      await client.workflow.getHandle(`notify-${id}`).terminate('stale cleanup').catch(() => undefined);
+      await client.workflow
+        .getHandle(`${process.env.UI4A_WORKFLOW_PREFIX}-${id}`)
+        .terminate('stale cleanup')
+        .catch(() => undefined);
     }
 
     // 起真 worker(独立进程组;afterAll 整组 SIGTERM 优雅回收)。
@@ -137,6 +141,10 @@ describe.skipIf(!temporalUp)('S1 notify 真链路(web→Temporal→worker→PG�
     } else {
       process.env.UI4A_NOTIFY_DISPATCH = prevDispatchFlag;
     }
+    if (prevTaskQueue === undefined) delete process.env.UI4A_TASK_QUEUE;
+    else process.env.UI4A_TASK_QUEUE = prevTaskQueue;
+    if (prevWorkflowPrefix === undefined) delete process.env.UI4A_WORKFLOW_PREFIX;
+    else process.env.UI4A_WORKFLOW_PREFIX = prevWorkflowPrefix;
     // 杀掉测试 spawn 的 worker(整组 SIGTERM;5s 未退 SIGKILL 兜底)。
     if (worker !== null && worker.pid !== undefined) {
       const exited = new Promise<void>((resolve) => {

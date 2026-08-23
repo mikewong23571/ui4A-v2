@@ -34,7 +34,9 @@ describe('ui4a CLI contract', () => {
     );
     expect(config.baseUrl).toBe('http://flag.example');
     expect(config.sources).toMatchObject({ baseUrl: 'flag', token: 'flag' });
-    expect(JSON.stringify(redact({ token: config.token, nested: { authorization: 'x' } }))).not.toContain('secret');
+    expect(
+      JSON.stringify(redact({ token: config.token, nested: { authorization: 'x' } })),
+    ).not.toContain('secret');
   });
 
   it('doctor is successful without auth and reports local-demo honestly', async () => {
@@ -44,9 +46,24 @@ describe('ui4a CLI contract', () => {
       return response({ protocolVersion: '1', version: 'abc', applications: [], flows: [] });
     });
     const config = await loadConfig({ configPath: '/definitely/missing' }, {});
-    const result = await runCommand(parseArgs(['--json', 'doctor']), new Ui4aHttpClient(config, fetcher));
+    const result = await runCommand(
+      parseArgs(['--json', 'doctor']),
+      new Ui4aHttpClient(config, fetcher),
+    );
     expect(result).toMatchObject({ ok: true, command: 'doctor', meta: { protocolVersion: '1' } });
-    expect(result.data).toMatchObject({ auth: { mode: 'self-reported-local-demo', configured: false } });
+    expect(result.data).toMatchObject({
+      auth: { mode: 'self-reported-local-demo', configured: false },
+    });
+  });
+
+  it('doctor returns a network failure when every protocol endpoint is unreachable', async () => {
+    const fetcher = vi.fn<typeof fetch>(async () => {
+      throw new Error('connection refused');
+    });
+    const config = await loadConfig({ configPath: '/definitely/missing' }, {});
+    await expect(
+      runCommand(parseArgs(['--json', 'doctor']), new Ui4aHttpClient(config, fetcher)),
+    ).rejects.toMatchObject({ code: 'NETWORK', exitCode: 8, retryable: true });
   });
 
   it('actions dry-run follows live Siren and performs no write', async () => {
@@ -68,7 +85,11 @@ describe('ui4a CLI contract', () => {
   it('raw request rejects writes and cross-origin targets', async () => {
     const config = await loadConfig({ configPath: '/definitely/missing' }, {});
     const client = new Ui4aHttpClient(config, vi.fn<typeof fetch>());
-    await expect(client.request('/api/exec', { method: 'POST', rawRead: true })).rejects.toThrow('GET and HEAD');
-    await expect(client.request('https://outside.example/data', { rawRead: true })).rejects.toThrow('cross-origin');
+    await expect(client.request('/api/exec', { method: 'POST', rawRead: true })).rejects.toThrow(
+      'GET and HEAD',
+    );
+    await expect(client.request('https://outside.example/data', { rawRead: true })).rejects.toThrow(
+      'cross-origin',
+    );
   });
 });

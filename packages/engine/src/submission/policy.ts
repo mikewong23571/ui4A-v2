@@ -75,4 +75,3 @@ export function resolveSubmissionPolicy(
           : `submission mode ${policy.mode}`;
   return { policy: { ...policy }, evidence, allowed, reason };
 }
-

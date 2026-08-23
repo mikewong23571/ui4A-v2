@@ -36,8 +36,9 @@ export async function POST(request: Request) {
   try {
     const db = getDb();
     const engine = await getEngine(db);
+    const policyScope = request.headers.get('x-ui4a-policy-scope') ?? 'publishing';
     const outcome = isDraftMetaRel(parsed.request.rel)
-      ? await executeDraftMeta(db, engine, parsed.request)
+      ? await executeDraftMeta(db, engine, parsed.request, { policyScope })
       : await engine.exec(parsed.request);
     if (outcome.kind === 'accepted') {
       return Response.json({ entity: outcome.entity });

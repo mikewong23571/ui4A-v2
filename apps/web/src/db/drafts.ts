@@ -3,7 +3,6 @@ import { createHash } from 'node:crypto';
 import {
   applyDraftCommand,
   canonicalJson,
-  createDraftSnapshot,
   foldDraftEvents,
   inspectJsonBudget,
   type DraftCommand,
@@ -14,12 +13,7 @@ import type { DraftAggregate } from '@ui4a/shared';
 import { DRAFT_LIMITS } from '@ui4a/shared';
 import type { PoolClient } from 'pg';
 
-import {
-  appendEvent,
-  ensureEventsTable,
-  type DbExecutor,
-  type EventAppend,
-} from './events';
+import { appendEvent, ensureEventsTable, type DbExecutor, type EventAppend } from './events';
 
 export const DRAFT_DDL = `
 CREATE TABLE IF NOT EXISTS draft_payloads (
@@ -134,7 +128,10 @@ async function storePayload(db: DbExecutor, payload: unknown, expectedHash: stri
     'SELECT payload FROM draft_payloads WHERE payload_hash=$1',
     [hash],
   );
-  if (stored.rows[0] === undefined || canonicalJson(stored.rows[0].payload) !== canonicalJson(payload)) {
+  if (
+    stored.rows[0] === undefined ||
+    canonicalJson(stored.rows[0].payload) !== canonicalJson(payload)
+  ) {
     throw new Error('draft payload integrity failure');
   }
 }

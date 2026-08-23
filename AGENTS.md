@@ -12,7 +12,7 @@ UI4A is a pnpm/TypeScript monorepo implementing “interface as contract”: hum
 
 ## System and Application Map
 
-There are two deployable applications, one shared event log, and three architectural planes:
+There are three deployable applications, one shared event log, and three architectural planes:
 
 ```text
 human UI / agent / script
@@ -25,6 +25,7 @@ apps/web routes + service
                           └──► activities ──► web HTTP and/or event log
 
 packages/shared ◄── packages/engine ◄── packages/agent
+apps/cli ──HTTP/Siren/meta──► apps/web
 ```
 
 - **Business plane:** application instances, flows, actions, and projections.
@@ -41,6 +42,8 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 - `src/applications/`: installable application data. `ui4a-walkthrough.bundle.json` is the built-in application artifact; `bundles.ts` parses and registers bundles. Put application definitions here rather than hard-coding production flows into services.
 - `src/engine/`: server-side composition boundary. `service.ts` connects the pure engine to PostgreSQL, Cedar, render specs, application bundles, and Temporal dispatch. It serializes execution, incrementally folds new events, and serves business and meta projections. `flow-entry.ts` owns `flow:<name>` entry aliases and collection links.
 - `src/db/`: PostgreSQL pool, schema, append/read operations, and replay tests. `events.ts` is the event-log write/read boundary. The worker currently reuses this adapter; do not create a competing writer abstraction casually.
+- `src/db/drafts.ts`: Draft-domain events, immutable SHA-256 payloads, rebuildable projection, CAS, and transactional acceptance.
+- `src/engine/drafts.ts`: Siren Draft/activation projection, validation/diff adapter, and human-only atomic Flow apply.
 - `src/domain/`: built-in domain helpers, predicates/flows used for bootstrap or testing, capability declarations, and Cedar policy loading. Production definition truth must still come from activated event-log artifacts.
 - `src/render/`: deterministic A2UI compilation and hydration. `presentation/` compiles semantic Surface Trees; `deref.ts` and the entity cache resolve live facts; `canvas/` hosts surfaces; `words/` contains concrete vocabulary renderers.
 - `src/engine/presentation/`: Presentation Broker, Application Recipe generation/registry, user-level Sidecar fastpath, dependency validation, and receipt production.
@@ -58,6 +61,13 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 - `src/activities.ts`: I/O-capable activity registration and event-log writes; retries must be idempotent.
 - `src/delegation.ts`: one durable agent step, HTTP contract calls, driver execution, sitemap loading, and delegation event recording.
 - `src/banner.ts`: process messages only.
+
+### `apps/cli` — External Agent Reference Client
+
+- Owns the installable `ui4a` binary, config/redaction, stable JSON/error envelopes, bounded reads,
+  business action adapters, Bundle export, Draft commands, audit, and GET/HEAD escape hatch.
+- It consumes only HTTP/Siren/meta. It must not import `apps/web`, connect to PostgreSQL/Temporal,
+  embed an LLM or business routing, expose approval, or accept identity/SubmissionPolicy overrides.
 
 ### `packages/shared` — Cross-Runtime Contracts
 
@@ -116,6 +126,7 @@ Prefer extending a nearby pattern. When a change crosses rows, keep the pure con
 - `CI=true pnpm e2e` — Playwright suite with a clean server and one CI worker.
 - `CI=true pnpm e2e invariants` — focused invariant suite; use current GOAL for I1–I7 semantics.
 - `pnpm format:check` / `pnpm format` — check or apply Prettier formatting.
+- `pnpm cli:build` / `pnpm eval:t17` — build the CLI and run T17 protocol/safety evidence.
 
 Vitest uses the isolated database at `localhost:5433/ui4a_test` unless `TEST_DATABASE_URL` overrides it. Do not point tests at the development database. Port 3100 is intentional; do not kill an unrelated service on port 3000.
 

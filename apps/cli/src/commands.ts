@@ -72,7 +72,8 @@ async function jsonFlagOrFile(
 ): Promise<unknown> {
   const raw = flagString(args, inline);
   const path = flagString(args, file);
-  if (raw !== undefined && path !== undefined) throw new CliError('USAGE', `use only --${inline} or --${file}`, 2);
+  if (raw !== undefined && path !== undefined)
+    throw new CliError('USAGE', `use only --${inline} or --${file}`, 2);
   if (raw === undefined && path === undefined) {
     if (required) throw new CliError('USAGE', `--${inline} or --${file} is required`, 2);
     return {};
@@ -80,7 +81,11 @@ async function jsonFlagOrFile(
   try {
     return JSON.parse(raw ?? (await readFile(resolve(path!), 'utf8')));
   } catch (error) {
-    throw new CliError('USAGE', `invalid JSON: ${error instanceof Error ? error.message : String(error)}`, 2);
+    throw new CliError(
+      'USAGE',
+      `invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+      2,
+    );
   }
 }
 
@@ -102,7 +107,10 @@ function envelope(
   protocolVersion?: string,
   page?: { nextCursor: string | number | null; hasMore?: boolean },
 ): SuccessEnvelope {
-  return success(command, data, { ...(protocolVersion === undefined ? {} : { protocolVersion }), ...(page === undefined ? {} : { page }) });
+  return success(command, data, {
+    ...(protocolVersion === undefined ? {} : { protocolVersion }),
+    ...(page === undefined ? {} : { page }),
+  });
 }
 
 async function doctor(client: Ui4aHttpClient): Promise<SuccessEnvelope> {
@@ -116,10 +124,24 @@ async function doctor(client: Ui4aHttpClient): Promise<SuccessEnvelope> {
     try {
       const result = await client.get(path);
       probes[name] = { reachable: true, status: result.status };
-      if (record(result.data) && typeof result.data.protocolVersion === 'string') protocolVersion = result.data.protocolVersion;
+      if (record(result.data) && typeof result.data.protocolVersion === 'string')
+        protocolVersion = result.data.protocolVersion;
     } catch (error) {
-      probes[name] = { reachable: false, error: error instanceof Error ? error.message : String(error) };
+      probes[name] = {
+        reachable: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
+  }
+  if (Object.values(probes).every((probe) => record(probe) && probe.reachable === false)) {
+    throw new CliError(
+      'NETWORK',
+      'UI4A endpoint is unreachable',
+      8,
+      undefined,
+      { endpoint: client.config.baseUrl, probes },
+      true,
+    );
   }
   return envelope(
     'doctor',
@@ -148,7 +170,8 @@ async function apps(args: ParsedArgs, client: Ui4aHttpClient): Promise<SuccessEn
     const name = args.words[2];
     if (name === undefined) throw new CliError('USAGE', 'apps show requires a name', 2);
     const found = (map.applications ?? []).find((row) => row.name === name);
-    if (found === undefined) throw new CliError('NOT_FOUND', `application ${name} not found`, 5, 404);
+    if (found === undefined)
+      throw new CliError('NOT_FOUND', `application ${name} not found`, 5, 404);
     return envelope('apps.show', found, map.protocolVersion);
   }
   throw new CliError('USAGE', 'apps supports list|show', 2);
@@ -171,7 +194,8 @@ async function flows(args: ParsedArgs, client: Ui4aHttpClient): Promise<SuccessE
 async function entities(args: ParsedArgs, client: Ui4aHttpClient): Promise<SuccessEnvelope> {
   const verb = args.words[1];
   const rel = args.words[2];
-  if (!['get', 'resolve'].includes(verb ?? '') || rel === undefined) throw new CliError('USAGE', 'entities get|resolve requires rel', 2);
+  if (!['get', 'resolve'].includes(verb ?? '') || rel === undefined)
+    throw new CliError('USAGE', 'entities get|resolve requires rel', 2);
   const response = await client.get(entityPath(rel, client.config));
   return envelope(`entities.${verb}`, response.data);
 }
@@ -182,7 +206,8 @@ async function catalog(client: Ui4aHttpClient): Promise<SuccessEnvelope> {
 }
 
 function actionRows(entity: unknown): Record<string, unknown>[] {
-  if (!record(entity) || !Array.isArray(entity.actions)) throw new CliError('PROTOCOL', 'Entity has no Siren actions array', 9);
+  if (!record(entity) || !Array.isArray(entity.actions))
+    throw new CliError('PROTOCOL', 'Entity has no Siren actions array', 9);
   return entity.actions.filter(record);
 }
 
@@ -197,18 +222,30 @@ async function actions(args: ParsedArgs, client: Ui4aHttpClient): Promise<Succes
   const name = args.words[3];
   if (name === undefined) throw new CliError('USAGE', 'actions exec requires action name', 2);
   const declaration = rows.find((row) => row.name === name);
-  if (declaration === undefined) throw new CliError('JUDGMENT', `action ${name} is not declared`, 6);
+  if (declaration === undefined)
+    throw new CliError('JUDGMENT', `action ${name} is not declared`, 6);
   const params = await jsonFlagOrFile(args, 'params', 'params-file');
   if (
     (name === 'approve' || name === 'reject') &&
     (rel.startsWith('confirmation:') || rel.startsWith('meta/activation:'))
   ) {
-    throw new CliError('APPROVAL_FORBIDDEN', 'Agent CLI cannot approve or reject human decisions', 4);
+    throw new CliError(
+      'APPROVAL_FORBIDDEN',
+      'Agent CLI cannot approve or reject human decisions',
+      4,
+    );
   }
   if (args.flags['dry-run'] === true) {
-    return envelope('actions.exec', { dryRun: true, rel, action: declaration, params, effect: 'not executed' });
+    return envelope('actions.exec', {
+      dryRun: true,
+      rel,
+      action: declaration,
+      params,
+      effect: 'not executed',
+    });
   }
-  const path = rel.startsWith('meta/') || rel.startsWith('draft:') ? '/_meta/api/exec' : '/api/exec';
+  const path =
+    rel.startsWith('meta/') || rel.startsWith('draft:') ? '/_meta/api/exec' : '/api/exec';
   const response = await client.post(path, {
     rel,
     action: name,
@@ -236,12 +273,17 @@ async function plans(args: ParsedArgs, client: Ui4aHttpClient): Promise<SuccessE
 
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (record(value)) return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`).join(',')}}`;
+  if (record(value))
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`)
+      .join(',')}}`;
   return JSON.stringify(value) ?? 'null';
 }
 
 function definitionBundle(value: unknown): Record<string, unknown> {
-  if (!record(value) || value.schema !== 'https://ui4a.dev/application-definition-bundle/v1') throw new CliError('SCHEMA', 'unsupported definition Bundle schema', 6);
+  if (!record(value) || value.schema !== 'https://ui4a.dev/application-definition-bundle/v1')
+    throw new CliError('SCHEMA', 'unsupported definition Bundle schema', 6);
   for (const key of ['bundle', 'applications', 'capabilities', 'flows', 'policies', 'provenance']) {
     if (!(key in value)) throw new CliError('SCHEMA', `definition Bundle missing ${key}`, 6);
   }
@@ -251,10 +293,14 @@ function definitionBundle(value: unknown): Record<string, unknown> {
 function structuralDiff(before: unknown, after: unknown, path = ''): Record<string, unknown>[] {
   if (canonical(before) === canonical(after)) return [];
   if (Array.isArray(before) && Array.isArray(after)) {
-    return Array.from({ length: Math.max(before.length, after.length) }, (_, index) => structuralDiff(before[index], after[index], `${path}/${index}`)).flat();
+    return Array.from({ length: Math.max(before.length, after.length) }, (_, index) =>
+      structuralDiff(before[index], after[index], `${path}/${index}`),
+    ).flat();
   }
   if (record(before) && record(after)) {
-    return [...new Set([...Object.keys(before), ...Object.keys(after)])].sort().flatMap((key) => structuralDiff(before[key], after[key], `${path}/${key}`));
+    return [...new Set([...Object.keys(before), ...Object.keys(after)])]
+      .sort()
+      .flatMap((key) => structuralDiff(before[key], after[key], `${path}/${key}`));
   }
   return [{ path: path || '/', before: before ?? null, after: after ?? null }];
 }
@@ -269,21 +315,39 @@ async function bundles(args: ParsedArgs, client: Ui4aHttpClient): Promise<Succes
     const properties = record(entity.properties) ? entity.properties : {};
     const bundle = definitionBundle(properties.bundle);
     const output = flagString(args, 'out');
-    if (output !== undefined) await writeFile(resolve(output), `${JSON.stringify(bundle, null, 2)}\n`, 'utf8');
-    return envelope('bundles.export', { bundle, ...(output === undefined ? {} : { path: resolve(output), bytes: Buffer.byteLength(JSON.stringify(bundle)) }) });
+    if (output !== undefined)
+      await writeFile(resolve(output), `${JSON.stringify(bundle, null, 2)}\n`, 'utf8');
+    return envelope('bundles.export', {
+      bundle,
+      ...(output === undefined
+        ? {}
+        : { path: resolve(output), bytes: Buffer.byteLength(JSON.stringify(bundle)) }),
+    });
   }
   if (verb === 'validate') {
     const file = flagString(args, 'file', true)!;
     const parsed = definitionBundle(JSON.parse(await readFile(resolve(file), 'utf8')) as unknown);
-    return envelope('bundles.validate', { valid: true, hash: `sha256:${createHash('sha256').update(canonical(parsed)).digest('hex')}`, bundle: parsed.bundle });
+    return envelope('bundles.validate', {
+      valid: true,
+      hash: `sha256:${createHash('sha256').update(canonical(parsed)).digest('hex')}`,
+      bundle: parsed.bundle,
+    });
   }
   if (verb === 'diff') {
     const beforePath = flagString(args, 'before', true)!;
     const afterPath = flagString(args, 'after', true)!;
-    const before = definitionBundle(JSON.parse(await readFile(resolve(beforePath), 'utf8')) as unknown);
-    const after = definitionBundle(JSON.parse(await readFile(resolve(afterPath), 'utf8')) as unknown);
+    const before = definitionBundle(
+      JSON.parse(await readFile(resolve(beforePath), 'utf8')) as unknown,
+    );
+    const after = definitionBundle(
+      JSON.parse(await readFile(resolve(afterPath), 'utf8')) as unknown,
+    );
     const changes = structuralDiff(before, after);
-    return envelope('bundles.diff', { changed: changes.length > 0, changes, hash: `sha256:${createHash('sha256').update(canonical(changes)).digest('hex')}` });
+    return envelope('bundles.diff', {
+      changed: changes.length > 0,
+      changes,
+      hash: `sha256:${createHash('sha256').update(canonical(changes)).digest('hex')}`,
+    });
   }
   throw new CliError('USAGE', 'bundles supports export|validate|diff', 2);
 }
@@ -293,7 +357,14 @@ function draftRel(value: string): string {
 }
 
 async function draftExec(client: Ui4aHttpClient, rel: string, actionName: string, params: unknown) {
-  return client.post('/_meta/api/exec', { rel, action: actionName, params, actor: 'agent', principal: client.config.principal, channel: 'cli' });
+  return client.post('/_meta/api/exec', {
+    rel,
+    action: actionName,
+    params,
+    actor: 'agent',
+    principal: client.config.principal,
+    channel: 'cli',
+  });
 }
 
 async function drafts(args: ParsedArgs, client: Ui4aHttpClient): Promise<SuccessEnvelope> {
@@ -304,8 +375,17 @@ async function drafts(args: ParsedArgs, client: Ui4aHttpClient): Promise<Success
     const rows = Array.isArray(entity.entities) ? entity.entities : [];
     const status = flagString(args, 'status');
     const limit = Math.min(flagNumber(args, 'limit', 20)!, 100);
-    const filtered = rows.filter((row) => status === undefined || (record(row) && record(row.properties) && row.properties.status === status)).slice(0, limit);
-    return envelope('drafts.list', filtered, undefined, { nextCursor: null, hasMore: rows.length > filtered.length });
+    const filtered = rows
+      .filter(
+        (row) =>
+          status === undefined ||
+          (record(row) && record(row.properties) && row.properties.status === status),
+      )
+      .slice(0, limit);
+    return envelope('drafts.list', filtered, undefined, {
+      nextCursor: null,
+      hasMore: rows.length > filtered.length,
+    });
   }
   if (verb === 'create') {
     const payload = await jsonFlagOrFile(args, 'payload', 'payload-file', true);
@@ -323,29 +403,59 @@ async function drafts(args: ParsedArgs, client: Ui4aHttpClient): Promise<Success
   const rel = draftRel(id);
   if (verb === 'get' || verb === 'diff') {
     const response = await client.get(entityPath(rel, client.config));
-    return envelope(`drafts.${verb}`, verb === 'diff' && record(response.data) && record(response.data.properties) ? response.data.properties.diff : response.data);
+    return envelope(
+      `drafts.${verb}`,
+      verb === 'diff' && record(response.data) && record(response.data.properties)
+        ? response.data.properties.diff
+        : response.data,
+    );
   }
   if (verb === 'watch') {
     const after = flagNumber(args, 'after-seq', 0)!;
-    const response = await client.get(`/api/events?${new URLSearchParams({ domain: 'draft', rel, afterSeq: String(after), limit: String(Math.min(flagNumber(args, 'limit', 20)!, 100)) })}`);
+    const response = await client.get(
+      `/api/events?${new URLSearchParams({ domain: 'draft', rel, afterSeq: String(after), limit: String(Math.min(flagNumber(args, 'limit', 20)!, 100)) })}`,
+    );
     const body = dataOf(response);
-    return envelope('drafts.watch', body.events ?? [], undefined, record(body.page) ? { nextCursor: (body.page.nextAfterSeq as string | number | null) ?? null, hasMore: body.page.hasMore as boolean | undefined } : undefined);
+    return envelope(
+      'drafts.watch',
+      body.events ?? [],
+      undefined,
+      record(body.page)
+        ? {
+            nextCursor: (body.page.nextAfterSeq as string | number | null) ?? null,
+            hasMore: body.page.hasMore as boolean | undefined,
+          }
+        : undefined,
+    );
   }
   const idempotency = commandId(args);
   if (verb === 'revise') {
     const payload = await jsonFlagOrFile(args, 'payload', 'payload-file', true);
     const response = await draftExec(client, rel, 'revise', {
       commandId: idempotency,
-      baseVersion: flagNumber(args, 'base-version') ?? (() => { throw new CliError('USAGE', '--base-version is required', 2); })(),
-      ...(flagString(args, 'target-base-version') === undefined ? {} : { targetBaseVersion: flagString(args, 'target-base-version') }),
+      baseVersion:
+        flagNumber(args, 'base-version') ??
+        (() => {
+          throw new CliError('USAGE', '--base-version is required', 2);
+        })(),
+      ...(flagString(args, 'target-base-version') === undefined
+        ? {}
+        : { targetBaseVersion: flagString(args, 'target-base-version') }),
       payload,
     });
     return envelope('drafts.revise', response.data);
   }
-  if (!['validate', 'submit', 'abandon'].includes(verb ?? '')) throw new CliError('USAGE', 'drafts supports create|get|list|revise|validate|diff|submit|watch|abandon', 2);
+  if (!['validate', 'submit', 'abandon'].includes(verb ?? ''))
+    throw new CliError(
+      'USAGE',
+      'drafts supports create|get|list|revise|validate|diff|submit|watch|abandon',
+      2,
+    );
   const response = await draftExec(client, rel, verb!, {
     commandId: idempotency,
-    ...(verb === 'abandon' && flagString(args, 'reason') !== undefined ? { reason: flagString(args, 'reason') } : {}),
+    ...(verb === 'abandon' && flagString(args, 'reason') !== undefined
+      ? { reason: flagString(args, 'reason') }
+      : {}),
   });
   return envelope(`drafts.${verb}`, response.data);
 }
@@ -353,10 +463,16 @@ async function drafts(args: ParsedArgs, client: Ui4aHttpClient): Promise<Success
 async function activations(args: ParsedArgs, client: Ui4aHttpClient): Promise<SuccessEnvelope> {
   const verb = args.words[1];
   const rel = args.words[2];
-  if (rel === undefined || !['get', 'watch'].includes(verb ?? '')) throw new CliError('USAGE', 'activations get|watch requires rel', 2);
-  if (verb === 'get') return envelope('activations.get', (await client.get(entityPath(rel, client.config))).data);
-  const draft = rel.startsWith(DRAFT_ACTIVATION_PREFIX) ? `draft:${rel.slice(DRAFT_ACTIVATION_PREFIX.length)}` : rel;
-  const response = await client.get(`/api/events?${new URLSearchParams({ rel: draft, afterSeq: String(flagNumber(args, 'after-seq', 0)!), limit: String(Math.min(flagNumber(args, 'limit', 20)!, 100)) })}`);
+  if (rel === undefined || !['get', 'watch'].includes(verb ?? ''))
+    throw new CliError('USAGE', 'activations get|watch requires rel', 2);
+  if (verb === 'get')
+    return envelope('activations.get', (await client.get(entityPath(rel, client.config))).data);
+  const draft = rel.startsWith(DRAFT_ACTIVATION_PREFIX)
+    ? `draft:${rel.slice(DRAFT_ACTIVATION_PREFIX.length)}`
+    : rel;
+  const response = await client.get(
+    `/api/events?${new URLSearchParams({ rel: draft, afterSeq: String(flagNumber(args, 'after-seq', 0)!), limit: String(Math.min(flagNumber(args, 'limit', 20)!, 100)) })}`,
+  );
   return envelope('activations.watch', response.data);
 }
 
@@ -365,24 +481,46 @@ const DRAFT_ACTIVATION_PREFIX = 'meta/activation:draft-';
 async function audit(args: ParsedArgs, client: Ui4aHttpClient): Promise<SuccessEnvelope> {
   const anchor = args.words[1];
   const value = args.words[2];
-  if (value === undefined || !['session', 'entity', 'definition', 'draft'].includes(anchor ?? '')) throw new CliError('USAGE', 'audit requires session|entity|definition|draft and id', 2);
-  const rel = anchor === 'session' ? `chat:${value}` : anchor === 'definition' ? `meta/flow:${value}` : anchor === 'draft' ? draftRel(value) : value;
-  const query = new URLSearchParams({ rel, afterSeq: String(flagNumber(args, 'after-seq', 0)!), limit: String(Math.min(flagNumber(args, 'limit', 20)!, 100)) });
+  if (value === undefined || !['session', 'entity', 'definition', 'draft'].includes(anchor ?? ''))
+    throw new CliError('USAGE', 'audit requires session|entity|definition|draft and id', 2);
+  const rel =
+    anchor === 'session'
+      ? `chat:${value}`
+      : anchor === 'definition'
+        ? `meta/flow:${value}`
+        : anchor === 'draft'
+          ? draftRel(value)
+          : value;
+  const query = new URLSearchParams({
+    rel,
+    afterSeq: String(flagNumber(args, 'after-seq', 0)!),
+    limit: String(Math.min(flagNumber(args, 'limit', 20)!, 100)),
+  });
   const response = await client.get(`/api/events?${query}`);
   const body = dataOf(response);
   const page = record(body.page) ? body.page : {};
-  return envelope(`audit.${anchor}`, body.events ?? [], undefined, { nextCursor: (page.nextAfterSeq as string | number | null) ?? null, hasMore: page.hasMore as boolean | undefined });
+  return envelope(`audit.${anchor}`, body.events ?? [], undefined, {
+    nextCursor: (page.nextAfterSeq as string | number | null) ?? null,
+    hasMore: page.hasMore as boolean | undefined,
+  });
 }
 
 async function rawRequest(args: ParsedArgs, client: Ui4aHttpClient): Promise<SuccessEnvelope> {
   const verb = args.words[1]?.toUpperCase();
   const path = args.words[2];
-  if ((verb !== 'GET' && verb !== 'HEAD') || path === undefined) throw new CliError('USAGE', 'request supports get|head and requires path', 2);
+  if ((verb !== 'GET' && verb !== 'HEAD') || path === undefined)
+    throw new CliError('USAGE', 'request supports get|head and requires path', 2);
   const response = await client.request(path, { method: verb, rawRead: true });
-  return envelope(`request.${verb.toLowerCase()}`, { status: response.status, body: response.data });
+  return envelope(`request.${verb.toLowerCase()}`, {
+    status: response.status,
+    body: response.data,
+  });
 }
 
-export async function runCommand(args: ParsedArgs, client: Ui4aHttpClient): Promise<SuccessEnvelope> {
+export async function runCommand(
+  args: ParsedArgs,
+  client: Ui4aHttpClient,
+): Promise<SuccessEnvelope> {
   const noun = args.words[0];
   if (noun === 'doctor') return doctor(client);
   if (noun === 'apps') return apps(args, client);
