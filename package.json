@@ -22,6 +22,9 @@
     "e2e": "CI=true playwright test",
     "eval:t15": "CI=true playwright test --config=playwright.story-eval.config.ts",
     "eval:t16": "CI=true playwright test --config=playwright.t16-eval.config.ts"
+    ,"cli:build": "pnpm --filter @ui4a/cli build"
+    ,"cli:pack": "pnpm --filter @ui4a/cli pack"
+    ,"eval:t17": "node scripts/t17-eval.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

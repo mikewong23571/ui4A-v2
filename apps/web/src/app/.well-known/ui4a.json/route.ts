@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const engine = await getEngine(getDb());
-    return Response.json(engine.getSitemap());
+    return Response.json({ protocolVersion: '1', ...engine.getSitemap() });
   } catch {
     return Response.json({ error: 'sitemap 数据库不可用' }, { status: 503 });
   }
