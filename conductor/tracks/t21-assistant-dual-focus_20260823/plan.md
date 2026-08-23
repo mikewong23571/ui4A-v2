@@ -16,8 +16,8 @@
 
 - [x] Task: Red TDD——定义 `lastNavigation` 与 `clientView` 的类型、provenance、unknown、客户端实例隔离和不可互相覆盖语义 e27cef7
 - [x] Task: Green——在现有 Chat/Agent 边界实现最小共享合同，不新增存储或破坏 `shared ← engine ← agent` 853cc5e
-- [ ] Task: Red TDD——覆盖 navigation、Presentation receipt、client observation 的 append-only fold、乱序、重复、刷新和空投影重放
-- [ ] Task: Green——实现双事实事件及纯投影；验证 Business Snapshot hash 不变，客户端观察不能扩大读取或 effect authorization
+- [x] Task: Red TDD——覆盖 navigation、Presentation receipt、client observation 的 append-only fold、乱序、重复、刷新和空投影重放 60900de
+- [~] Task: Green——实现双事实事件及纯投影；验证 Business Snapshot hash 不变，客户端观察不能扩大读取或 effect authorization
 - [ ] Task: 增加 source-governance 测试，阻止双事实再次折叠成单个 `currentRel`，并阻止客户端 route 成为业务授权来源
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
