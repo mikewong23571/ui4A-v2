@@ -34,7 +34,7 @@
 
 - [x] Task: Red TDD——Prompt 明确区分合同读取位置、`lastNavigation`、`clientView` 和 Presentation subject；“每次决策一个调用”不得被模型误解成“每个用户回合只能一个调用” 68b72eb
 - [x] Task: Green——向 LLM 披露有界双事实和 provenance，保留其自主选择 `answer`、`clarify`、`navigate` 或 `present` 的能力 a9c543b
-- [~] Task: Red TDD——验证同一用户回合可完成 Presentation/navigation 后继续 answer，且每个 LLM decision 仍只有一个协议调用
+- [x] Task: Red TDD——验证同一用户回合可完成 Presentation/navigation 后继续 answer，且每个 LLM decision 仍只有一个协议调用 0633570
 - [ ] Task: Red TDD——注入 text-only、未知工具、无效参数和 provider error；验证选定的强制工具/有界 LLM repair 策略
 - [ ] Task: Green——实现 probe 证明可行的最小协议修复；禁止正则、关键词、文本转操作和 rule driver fallback，修复失败诚实终止
 - [ ] Task: 增加产品源码治理测试，阻止“看看/列表/详情”等短语进入 Chat Route、Agent driver 或客户端导航分支
