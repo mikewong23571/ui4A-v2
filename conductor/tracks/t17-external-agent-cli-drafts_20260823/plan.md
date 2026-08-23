@@ -36,16 +36,16 @@
 - [x] Task: Replay/concurrency integration——全量/增量 fold、projection truncate/rebuild、两 writer CAS、重试幂等、Active/Draft hash 一致 (7a98351)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (7a98351)
 
-## Phase D: TypeScript `ui4a` CLI 基座、读取与业务操作
+## Phase D: TypeScript `ui4a` CLI 基座、读取与业务操作 [checkpoint: 13fa010]
 
-- [ ] Task: TS1/TS2/TS19 Red→Green——`apps/cli` workspace、`bin:ui4a`、help、versioned JSON/error envelope、exit codes、config/auth precedence、redaction 和 doctor
-- [ ] Task: U2–U5/TS3 Red→Green——apps/flows/entities/catalog/audit discover-resolve-read，bounded limit/cursor/afterSeq 和 unauthorized zero leakage
-- [ ] Task: U4/TS4 Red→Green——versioned canonical Bundle export；round-trip/hash/source governance，无 facts/session/Sidecar/secrets
-- [ ] Task: U6/U8/U9/U10/TS5 Red→Green——actions list/exec、plans submit、direct/suspended/rejected、schema params、confirmation reference 和 retry
-- [ ] Task: TS6 Red→Green——同认证的 `request get|head` raw escape hatch；跨 origin/大响应/redirect/write verbs fail-closed
-- [ ] Task: U23 packaging——README、install-local/PATH、从 `/tmp` 运行 command-v/help/doctor/fixture/live read smoke
-- [ ] Task: CLI governance——无 LLM/prompt/业务名/自动改进命令；JSON stdout 纯净；所有写命令在 help 中标明 effect/dry-run/approval 后果
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: TS1/TS2/TS19 Red→Green——`apps/cli` workspace、`bin:ui4a`、help、versioned JSON/error envelope、exit codes、config/auth precedence、redaction 和 doctor (13fa010)
+- [x] Task: U2–U5/TS3 Red→Green——apps/flows/entities/catalog/audit discover-resolve-read，bounded limit/cursor/afterSeq 和 unauthorized zero leakage (13fa010)
+- [x] Task: U4/TS4 Red→Green——versioned canonical Bundle export；round-trip/hash/source governance，无 facts/session/Sidecar/secrets (13fa010)
+- [x] Task: U6/U8/U9/U10/TS5 Red→Green——actions list/exec、plans submit、direct/suspended/rejected、schema params、confirmation reference 和 retry (13fa010)
+- [x] Task: TS6 Red→Green——同认证的 `request get|head` raw escape hatch；跨 origin/大响应/redirect/write verbs fail-closed (13fa010)
+- [x] Task: U23 packaging——README、install-local/PATH、从 `/tmp` 运行 command-v/help/doctor/fixture/live read smoke (13fa010)
+- [x] Task: CLI governance——无 LLM/prompt/业务名/自动改进命令；JSON stdout 纯净；所有写命令在 help 中标明 effect/dry-run/approval 后果 (13fa010)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (13fa010)
 
 ## Phase E: Draft CLI 与现有 Application 改进 Golden Story
 
