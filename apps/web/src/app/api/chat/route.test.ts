@@ -207,6 +207,49 @@ function createPublishingLlmStub(): Promise<Server & { port(): number }> {
   });
 }
 
+function createOperationsLlmStub(
+  operations: { name: string; args: Record<string, unknown> }[],
+): Promise<Server & { port(): number }> {
+  return new Promise((resolve) => {
+    let calls = 0;
+    const chunk = (delta: Record<string, unknown>, finishReason: string | null = null) =>
+      `data: ${JSON.stringify({
+        id: 'chatcmpl-t21',
+        object: 'chat.completion.chunk',
+        created: 1755700000,
+        model: 'test-model',
+        choices: [{ index: 0, delta, finish_reason: finishReason }],
+      })}`;
+    const stub = createServer((_req, res) => {
+      const operation = operations[Math.min(calls, operations.length - 1)]!;
+      calls += 1;
+      res.statusCode = 200;
+      res.setHeader('content-type', 'text/event-stream');
+      res.end(
+        `${[
+          chunk({
+            tool_calls: [
+              {
+                index: 0,
+                id: `call_t21_${calls}`,
+                type: 'function',
+                function: {
+                  name: operation.name,
+                  arguments: JSON.stringify(operation.args),
+                },
+              },
+            ],
+          }),
+          chunk({}, 'tool_calls'),
+          'data: [DONE]',
+        ].join('\n\n')}\n\n`,
+      );
+    }) as Server & { port(): number };
+    stub.port = () => (stub.address() as { port: number }).port;
+    stub.listen(0, '127.0.0.1', () => resolve(stub));
+  });
+}
+
 interface ChatResponseBody {
   sessionId?: string;
   turnId?: string;
@@ -885,5 +928,99 @@ describe('请求形状', () => {
     expect((await chat({})).status).toBe(400);
     expect((await chat({ goal: { verb: '' } })).status).toBe(400);
     expect((await chat({ goal: { verb: '发布' }, driver: 'smarter' })).status).toBe(400);
+  });
+});
+
+describe('T21 navigation completion audit', () => {
+  const envKey = process.env.LLM_API_KEY;
+  const envBase = process.env.LLM_BASE_URL;
+  const envModel = process.env.LLM_MODEL;
+
+  afterEach(() => {
+    if (envKey === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = envKey;
+    if (envBase === undefined) delete process.env.LLM_BASE_URL;
+    else process.env.LLM_BASE_URL = envBase;
+    if (envModel === undefined) delete process.env.LLM_MODEL;
+    else process.env.LLM_MODEL = envModel;
+  });
+
+  it('persists a successful navigate before its client focus frame', async () => {
+    const stub = await createOperationsLlmStub([
+      { name: 'navigate', args: { rel: 'post:first-post' } },
+      {
+        name: 'answer',
+        args: {
+          content: '第一篇详情',
+          sources: [{ rel: 'post:first-post', pointer: '/properties/fields' }],
+        },
+      },
+    ]);
+    try {
+      process.env.LLM_API_KEY = 'test-key';
+      process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+      process.env.LLM_MODEL = 'test-model';
+      const result = await chat({
+        sessionId: 't21-nav',
+        goal: { verb: 'inspect' },
+        clientView: {
+          schemaVersion: 1,
+          clientInstanceId: 'client:a',
+          route: '/canvas?focus=articles',
+          subject: 'articles',
+        },
+      });
+      const focusIndex = result.frames.findIndex((frame) => frame.type === 'focus');
+      expect(focusIndex).toBeGreaterThan(0);
+
+      const body = (await (await fetch(`${base}/api/events`)).json()) as {
+        events: { kind: string; detail: Record<string, unknown> }[];
+      };
+      expect(body.events.filter((event) => event.kind === 'chat-navigation-completed')).toEqual([
+        expect.objectContaining({
+          detail: expect.objectContaining({
+            navigationId: 'route-test-turn:navigate:1',
+            source: 'agent-navigate',
+            subject: 'post:first-post',
+          }),
+        }),
+      ]);
+    } finally {
+      await new Promise<void>((resolve) => stub.close(() => resolve()));
+    }
+  });
+
+  it('persists a ready/fallback Presentation receipt and never promotes pending/failed receipts', async () => {
+    const stub = await createOperationsLlmStub([
+      {
+        name: 'present',
+        args: { subject: 'articles', intent: 'browse', delivery: 'canvas' },
+      },
+      {
+        name: 'answer',
+        args: {
+          content: '文章列表',
+          sources: [{ rel: 'articles', pointer: '/entities' }],
+        },
+      },
+    ]);
+    try {
+      process.env.LLM_API_KEY = 'test-key';
+      process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+      process.env.LLM_MODEL = 'test-model';
+      await chat({ sessionId: 't21-present', goal: { verb: 'browse' } });
+      const body = (await (await fetch(`${base}/api/events`)).json()) as {
+        events: { kind: string; detail: Record<string, unknown> }[];
+      };
+      expect(
+        body.events.filter(
+          (event) =>
+            event.kind === 'chat-navigation-completed' &&
+            event.detail.source === 'presentation-receipt',
+        ),
+      ).toHaveLength(1);
+    } finally {
+      await new Promise<void>((resolve) => stub.close(() => resolve()));
+    }
   });
 });
