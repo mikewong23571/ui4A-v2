@@ -6,6 +6,13 @@
  * 它不读取数据库、不调用 LLM，也不改变任何业务实体状态。
  */
 import type { AgentGoal, FactRef } from '@ui4a/agent';
+import {
+  parseClientViewReport,
+  parseNavigationCompletion,
+  type ClientViewFact,
+  type ClientViewReport,
+  type LastNavigationFact,
+} from '@ui4a/shared';
 
 import type {
   AuthorizedEffect,
@@ -32,6 +39,7 @@ export interface ConversationMessage {
   content: string;
   provenance: ChatMessageProvenance;
   citations?: FactRef[];
+  clientView?: ClientViewReport;
 }
 
 export interface ConversationContext {
@@ -52,12 +60,16 @@ export interface ConversationState {
   sessionId: string;
   messages: ConversationMessage[];
   context: ConversationContext;
+  clientView: ClientViewFact | null;
+  lastNavigation: LastNavigationFact | null;
 }
 
 export interface ConversationView {
   sessionId: string;
   recentMessages: ConversationMessage[];
   context: ConversationContext;
+  clientView: ClientViewFact | null;
+  lastNavigation: LastNavigationFact | null;
   truncatedMessageCount: number;
 }
 
@@ -99,14 +111,30 @@ function belongsToSession(event: ConversationEvent, sessionId: string): boolean 
 
 function isMessageDetail(value: unknown): value is ChatMessageAppendedDetail {
   if (!isRecord(value) || !isRecord(value.provenance)) return false;
-  return (
+  const base =
     typeof value.sessionId === 'string' &&
     typeof value.turnId === 'string' &&
     typeof value.messageId === 'string' &&
     (value.role === 'user' || value.role === 'assistant') &&
     typeof value.content === 'string' &&
-    (value.provenance.kind === 'user-input' || value.provenance.kind === 'assistant-output')
-  );
+    (value.provenance.kind === 'user-input' || value.provenance.kind === 'assistant-output');
+  if (!base) return false;
+  if (value.clientView === undefined) return true;
+  if (value.role !== 'user') return false;
+  try {
+    parseClientViewReport(value.clientView);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function parsedNavigationDetail(value: unknown) {
+  try {
+    return parseNavigationCompletion(value);
+  } catch {
+    return undefined;
+  }
 }
 
 function isContextDetail(value: unknown): value is ChatContextUpdatedDetail {
@@ -196,6 +224,9 @@ function rawMessage(
     ...(detail.citations !== undefined
       ? { citations: detail.citations.map((citation) => ({ ...citation })) }
       : {}),
+    ...(detail.clientView === undefined
+      ? {}
+      : { clientView: parseClientViewReport(detail.clientView) }),
   };
 }
 
@@ -258,7 +289,10 @@ export function foldConversation(
   );
   const messages: ConversationMessage[] = [];
   const seenMessageIds = new Set<string>();
+  const seenNavigationIds = new Set<string>();
   let context = emptyContext();
+  let clientView: ClientViewFact | null = null;
+  let lastNavigation: LastNavigationFact | null = null;
 
   const append = (item: ConversationMessage): void => {
     if (seenMessageIds.has(item.messageId)) return;
@@ -270,7 +304,26 @@ export function foldConversation(
     if (!belongsToSession(event, sessionId)) continue;
 
     if (event.kind === 'chat-message-appended' && isMessageDetail(event.detail)) {
-      append(rawMessage(event, event.detail));
+      const item = rawMessage(event, event.detail);
+      append(item);
+      if (item.role === 'user') {
+        clientView =
+          item.clientView === undefined
+            ? null
+            : {
+                ...item.clientView,
+                sourceMessageId: item.messageId,
+                observedAtSeq: item.seq,
+              };
+      }
+      continue;
+    }
+
+    if (event.kind === 'chat-navigation-completed') {
+      const detail = parsedNavigationDetail(event.detail);
+      if (detail === undefined || seenNavigationIds.has(detail.navigationId)) continue;
+      seenNavigationIds.add(detail.navigationId);
+      lastNavigation = { ...detail, completedAtSeq: event.seq };
       continue;
     }
 
@@ -298,7 +351,7 @@ export function foldConversation(
     }
   }
 
-  return { sessionId, messages, context };
+  return { sessionId, messages, context, clientView, lastNavigation };
 }
 
 /**
@@ -320,6 +373,8 @@ export function conversationView(
     sessionId,
     recentMessages,
     context: state.context,
+    clientView: state.clientView,
+    lastNavigation: state.lastNavigation,
     truncatedMessageCount: state.messages.length - recentMessages.length,
   };
 }

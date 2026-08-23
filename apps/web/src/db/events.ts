@@ -102,6 +102,7 @@ export type EventKind =
   | 'chat-turn'
   | 'chat-message-appended'
   | 'chat-context-updated'
+  | 'chat-navigation-completed'
   | 'agent-decision'
   | 'presentation-requested'
   | 'presentation-resolved'

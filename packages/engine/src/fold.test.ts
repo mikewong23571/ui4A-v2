@@ -93,6 +93,22 @@ describe('fold 投影', () => {
         rel: 'chat:sess-main',
         detail: { sessionId: 'sess-main', basedOnSeq: 1, activeGoal: { verb: '总结' } },
       },
+      {
+        seq: 3,
+        kind: 'chat-navigation-completed',
+        rel: 'chat:sess-main',
+        detail: {
+          schemaVersion: 1,
+          sessionId: 'sess-main',
+          navigationId: 'turn-1:navigate:1',
+          source: 'agent-navigate',
+          turnId: 'turn-1',
+          subject: 'post:first-post',
+          route: '/canvas?focus=post%3Afirst-post',
+          sourceMessageIds: ['message:1'],
+          step: 1,
+        },
+      },
     ];
 
     expect(fold(events, { flows })).toEqual(fold([], { flows }));

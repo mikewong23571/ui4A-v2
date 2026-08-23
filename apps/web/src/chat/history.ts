@@ -6,6 +6,7 @@
  * (seq 升序)。服务端零会话态:会话是客户端对日志的投影。
  */
 import type { AgentGoal, AgentOutcome, FactRef, TrailStep } from '@ui4a/agent';
+import type { ClientViewReport, NavigationCompletion } from '@ui4a/shared';
 
 import type { ChatMessage } from './trail';
 
@@ -73,7 +74,12 @@ export interface ChatMessageAppendedDetail {
   provenance: ChatMessageProvenance;
   /** Assistant 回答引用的授权合同事实；用户原话通常没有。 */
   citations?: FactRef[];
+  /** 当前 user 原话发送时的客户端观察；不授权事实读取或 effect。 */
+  clientView?: ClientViewReport;
 }
+
+/** 成功 Agent navigate 或可用 Presentation receipt 的独立完成事实。 */
+export type ChatNavigationCompletedDetail = NavigationCompletion;
 
 export interface ConversationReferent {
   text: string;
