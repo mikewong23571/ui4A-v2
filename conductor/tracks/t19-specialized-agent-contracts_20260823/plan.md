@@ -54,11 +54,11 @@
 - [x] Task: U26 version/replay——registry bump、新旧 Run birth version、parallel activation CAS 和空投影重建 (d64e93e)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (d64e93e)
 
-## Phase G: 全量验收、文档与终审
+## Phase G: 全量验收、文档与终审 [checkpoint: 5a2c023]
 
-- [~] Task: U1–U26 user-story matrix 全量闭环；Coding/Writing/Authoring 三条真实 Golden Story
-- [ ] Task: Safety 100%、performance/budget、prompt/template/payload limits、retention 和 failure recovery
-- [ ] Task: 回归 `pnpm check`、`CI=true pnpm e2e`、真实 Temporal、real Agent Evals 和 source governance
-- [ ] Task: 同步 GOAL/DECISIONS/product/tech/arch/runtime/audit/AGENTS/README/DONE
-- [ ] Task: Principal review——三层本体、Prompt 权限、Runtime 泄漏、Host 特化分支、自批、birth/replay 与 scope creep
-- [ ] Task: Final Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: U1–U26 user-story matrix 全量闭环；Coding/Writing/Authoring 三条真实 Golden Story (c02a656)
+- [x] Task: Safety 100%、performance/budget、prompt/template/payload limits、retention 和 failure recovery (5a2c023)
+- [x] Task: 回归 `pnpm check`、`CI=true pnpm e2e`、真实 Temporal、real Agent Evals 和 source governance (5a2c023)
+- [x] Task: 同步 GOAL/DECISIONS/product/tech/arch/runtime/audit/AGENTS/README/DONE (c02a656)
+- [x] Task: Principal review——三层本体、Prompt 权限、Runtime 泄漏、Host 特化分支、自批、birth/replay 与 scope creep (5a2c023)
+- [x] Task: Final Phase Verification & Checkpoint (Refer to workflow.md) (5a2c023)
