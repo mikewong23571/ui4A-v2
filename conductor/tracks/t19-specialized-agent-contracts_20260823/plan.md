@@ -11,14 +11,14 @@
 - [x] Task: 将决定先写入 DECISIONS/tech-stack，明确 Capability→AgentDefinition→RuntimeProfile 三层 (e6f157d)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (e6f157d)
 
-## Phase B: Shared AgentDefinition 与 pure kernels
+## Phase B: Shared AgentDefinition 与 pure kernels [checkpoint: 03893ed]
 
-- [~] Task: TS1/TS2 Red→Green——AgentDefinition/Prompt/Policy/Task/Result wire contracts、parser、limits、canonical hash
-- [~] Task: TS3 Red→Green——versioned derivation resolver、flatten、缺父/循环/禁止覆盖与 property tests
-- [~] Task: TS4 Red→Green——activation invariants 全量 checks、runtime/tools/verifier/eval/binding validation
-- [~] Task: TS5 Red→Green——generic Agent Run lifecycle、needs-input/grants/result proposal、cursor/restart/idempotency/CAS
-- [~] Task: Pure/source governance——generic modules 零 coding/writing/provider/Node/DB/Temporal；JSDoc 与覆盖率 >80%
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: TS1/TS2 Red→Green——AgentDefinition/Prompt/Policy/Task/Result wire contracts、parser、limits、canonical hash (03893ed)
+- [x] Task: TS3 Red→Green——versioned derivation resolver、flatten、缺父/循环/禁止覆盖与 property tests (03893ed)
+- [x] Task: TS4 Red→Green——activation invariants 全量 checks、runtime/tools/verifier/eval/binding validation (03893ed)
+- [x] Task: TS5 Red→Green——generic Agent Run lifecycle、needs-input/grants/result proposal、cursor/restart/idempotency/CAS (03893ed)
+- [x] Task: Pure/source governance——generic modules 零 coding/writing/provider/Node/DB/Temporal；JSDoc 与覆盖率 >80% (03893ed)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (03893ed)
 
 ## Phase C: Definition persistence、Meta Draft 与 registry
 
