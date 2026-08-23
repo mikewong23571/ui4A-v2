@@ -45,7 +45,220 @@ function context(
   return event(seq, 'chat-context-updated', { sessionId, ...detail }, `chat:${sessionId}`);
 }
 
+function navigation(
+  seq: number,
+  detail: Record<string, unknown>,
+  sessionId = 'sess-main',
+): StoredEvent {
+  return event(
+    seq,
+    'chat-navigation-completed' as StoredEvent['kind'],
+    { sessionId, ...detail },
+    `chat:${sessionId}`,
+  );
+}
+
 describe('event-sourced conversation context', () => {
+  it('keeps the current user message client view separate from navigation history', () => {
+    const firstView = {
+      schemaVersion: 1 as const,
+      clientInstanceId: 'client:a',
+      route: '/canvas?focus=post%3Afirst-post',
+      subject: 'post:first-post',
+    };
+    const folded = foldConversation(
+      [
+        message(1, {
+          turnId: 'turn-1',
+          messageId: 'm1',
+          role: 'user',
+          content: '总共有几篇？',
+          provenance: { kind: 'user-input' },
+          clientView: firstView,
+        }),
+        navigation(2, {
+          schemaVersion: 1,
+          navigationId: 'turn-0:navigate:1',
+          source: 'agent-navigate',
+          turnId: 'turn-0',
+          subject: 'articles',
+          route: '/canvas?focus=articles',
+          sourceMessageIds: ['m0'],
+          step: 1,
+        }),
+      ],
+      'sess-main',
+    );
+
+    expect(folded.clientView).toEqual({
+      ...firstView,
+      sourceMessageId: 'm1',
+      observedAtSeq: 1,
+    });
+    expect(folded.lastNavigation).toMatchObject({
+      navigationId: 'turn-0:navigate:1',
+      subject: 'articles',
+      completedAtSeq: 2,
+    });
+    expect(folded.messages[0]?.clientView).toEqual(firstView);
+  });
+
+  it('treats a later user message without client view as unknown instead of carrying forward', () => {
+    const folded = foldConversation(
+      [
+        message(1, {
+          turnId: 'turn-1',
+          messageId: 'm1',
+          role: 'user',
+          content: '第一窗口',
+          provenance: { kind: 'user-input' },
+          clientView: {
+            schemaVersion: 1,
+            clientInstanceId: 'client:a',
+            route: '/canvas?focus=post%3Afirst-post',
+            subject: 'post:first-post',
+          },
+        }),
+        message(2, {
+          turnId: 'turn-2',
+          messageId: 'm2',
+          role: 'user',
+          content: '没有客户端观察',
+          provenance: { kind: 'user-input' },
+        }),
+      ],
+      'sess-main',
+    );
+
+    expect(folded.clientView).toBeNull();
+    expect(folded.messages[0]?.clientView).toMatchObject({ clientInstanceId: 'client:a' });
+    expect(folded.messages[1]?.clientView).toBeUndefined();
+  });
+
+  it('keeps concurrent client observations immutable and selects the current message instance', () => {
+    const folded = foldConversation(
+      [
+        message(2, {
+          turnId: 'turn-b',
+          messageId: 'm-b',
+          role: 'user',
+          content: '窗口 B',
+          provenance: { kind: 'user-input' },
+          clientView: {
+            schemaVersion: 1,
+            clientInstanceId: 'client:b',
+            route: '/canvas?focus=articles',
+            subject: 'articles',
+          },
+        }),
+        message(1, {
+          turnId: 'turn-a',
+          messageId: 'm-a',
+          role: 'user',
+          content: '窗口 A',
+          provenance: { kind: 'user-input' },
+          clientView: {
+            schemaVersion: 1,
+            clientInstanceId: 'client:a',
+            route: '/canvas?focus=post%3Afirst-post',
+            subject: 'post:first-post',
+          },
+        }),
+      ],
+      'sess-main',
+    );
+
+    expect(folded.messages.map((item) => item.clientView?.clientInstanceId)).toEqual([
+      'client:a',
+      'client:b',
+    ]);
+    expect(folded.clientView?.clientInstanceId).toBe('client:b');
+  });
+
+  it('folds successful navigation by seq, ignores duplicate ids and isolates sessions', () => {
+    const folded = foldConversation(
+      [
+        navigation(4, {
+          schemaVersion: 1,
+          navigationId: 'nav:a',
+          source: 'agent-navigate',
+          turnId: 'turn-duplicate',
+          subject: 'post:should-not-win',
+          route: '/canvas?focus=post%3Ashould-not-win',
+          sourceMessageIds: ['m-duplicate'],
+          step: 1,
+        }),
+        navigation(2, {
+          schemaVersion: 1,
+          navigationId: 'nav:a',
+          source: 'agent-navigate',
+          turnId: 'turn-a',
+          subject: 'post:first-post',
+          route: '/canvas?focus=post%3Afirst-post',
+          sourceMessageIds: ['m-a'],
+          step: 1,
+        }),
+        navigation(3, {
+          schemaVersion: 1,
+          navigationId: 'nav:b',
+          source: 'presentation-receipt',
+          turnId: 'turn-b',
+          subject: 'articles',
+          route: '/canvas?focus=articles',
+          sourceMessageIds: ['m-b'],
+          presentationRequestId: 'turn-b:presentation:1',
+        }),
+        navigation(
+          5,
+          {
+            schemaVersion: 1,
+            navigationId: 'nav:other',
+            source: 'agent-navigate',
+            turnId: 'turn-other',
+            subject: 'post:other',
+            route: '/canvas?focus=post%3Aother',
+            sourceMessageIds: ['m-other'],
+            step: 1,
+          },
+          'sess-other',
+        ),
+      ],
+      'sess-main',
+    );
+
+    expect(folded.lastNavigation).toMatchObject({
+      navigationId: 'nav:b',
+      source: 'presentation-receipt',
+      subject: 'articles',
+      completedAtSeq: 3,
+    });
+  });
+
+  it('does not derive successful navigation from pending, failed or not-found evidence', () => {
+    const folded = foldConversation(
+      [
+        event(1, 'presentation-resolved', {
+          sessionId: 'sess-main',
+          requestId: 'presentation:pending',
+          status: 'pending',
+        }),
+        event(2, 'presentation-failed', {
+          sessionId: 'sess-main',
+          requestId: 'presentation:failed',
+          status: 'failed',
+        }),
+        event(3, 'chat-turn-progress', {
+          sessionId: 'sess-main',
+          step: { op: { kind: 'navigate', rel: 'post:missing' }, outcome: 'not-found' },
+        }),
+      ],
+      'sess-main',
+    );
+
+    expect(folded.lastNavigation).toBeNull();
+    expect(folded.clientView).toBeNull();
+  });
+
   it('按 seq 重建 user/assistant 原话，并隔离其他 session', () => {
     const events = [
       message(3, {
