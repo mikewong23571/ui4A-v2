@@ -1,0 +1,1 @@
+T17 Phase E: exposed full Draft CLI lifecycle, hardened request-side policy/identity bypass, added explicit direct and none policy contracts, kept Draft/Sidecar domains isolated, and ran the complete installed-CLI Golden Story through human approval and cross-cwd resume. Autonomous verification: 51 focused tests, all workspace typechecks, and live CLI evidence passed.
