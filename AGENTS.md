@@ -4,7 +4,7 @@
 
 UI4A is a pnpm/TypeScript monorepo implementing “interface as contract”: humans and agents operate the same Siren entities, actions, links, guards, and schemas. Read these before changing architecture:
 
-1. `GOAL.md` — current product scope, T15/T16 story contracts, and invariants I1–I7.
+1. `GOAL.md` — current product scope, completed T15–T19 story contracts, and invariants I1–I7.
 2. `conductor/refs/arch-brief.md` — implementation-oriented architecture and terminology.
 3. `DECISIONS.md` — binding technical decisions; record a new decision before deviating.
 4. The active `conductor/tracks/<track>/spec.md` and `plan.md` for tracked feature work.
@@ -12,7 +12,7 @@ UI4A is a pnpm/TypeScript monorepo implementing “interface as contract”: hum
 
 ## System and Application Map
 
-There are four runnable applications, one shared event log, and four architectural planes:
+There are three deployable workspace applications (`web`, `worker`, `cli`), six installed product Applications (`default`, `publishing`, `community`, `development`, `editorial`, `governance`), one shared event log, and four architectural planes:
 
 ```text
 human UI / agent / script
@@ -53,7 +53,7 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 - `src/engine/presentation/`: Presentation Broker, Application Recipe generation/registry, user-level Sidecar fastpath, dependency validation, and receipt production.
 - `src/db/presentation.ts`: replayable Presentation events and the rebuildable user Sidecar projection. It is separate from the Business fold.
 - `src/chat/`: chat-session start, SSE streaming, history, trail, and decision projection. Chat is an event-log projection and an agent entry point, not an alternate command path.
-- `src/temporal/`: web-side Temporal clients for notification, delegation, and Coding Capability dispatch/cancellation.
+- `src/temporal/`: web-side Temporal clients for notification, delegation, legacy Coding Capability dispatch, and canonical Agent Run dispatch/cancellation.
 - `src/delegations/`: delegation-list projection helpers; read status from engine projections, not directly from Temporal.
 - `src/components/`: React composition. `meta/` contains definition-plane views; `assistant-ui/` adapts chat UI; `ui/` holds local primitives. Page components should orchestrate existing domain/render modules rather than absorb business rules.
 - `src/test/`: shared browser/jsdom stubs only. Keep feature tests next to their subjects.

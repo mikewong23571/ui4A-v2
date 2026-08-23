@@ -1,6 +1,6 @@
 # UI4A v2 — DONE 对照报告
 
-> 原报告生成于 2026-08-21(T1–T8)。T15/T16/D28 addendum supersede 旧 AI、渲染和摘要口径；旧测试数量与旧 I1 仅是历史快照。当前验收以 `GOAL.md`、`DECISIONS.md`、T15/T16 Story Eval 和最新命令输出为准。
+> 原报告生成于 2026-08-21(T1–T8)。T15–T19 与 D28 addendum supersede 旧 AI、渲染、摘要、外部 Agent、Coding Executor 和 Agent specialization 口径；旧测试数量与旧 I1 仅是历史快照。当前验收以 `GOAL.md`、`DECISIONS.md`、T15–T19 Story Eval 和最新命令输出为准。
 
 ## T19 Specialized Agent Contracts（2026-08-23）
 
@@ -88,16 +88,16 @@ T16 关闭报告见 [T16 DONE](./tracks/t16-semantic-a2ui-sidecars_20260823/DONE
 | I2 | Surface 只保存 binding，显示值与实时授权实体一致 | ✅ | Presentation Surface/compiler/property tests + T16 Golden Story；旧 RenderSpec 对拍仅作历史证据 |
 | I3 | fuzz 可点元素必映射已声明 action,合同外按钮无法提交 | ✅ | `e2e/i3.spec.ts`(七页全量 fuzz + 未声明按钮零 /api/exec)+ `I3 交互必背书 › 抽 2 页…` |
 | I4 | 以 agent 身份执行 approve 必被拒 | ✅ | s1 + `I4 审批不委托…`(422 actor-is-human 留痕);meta approve 同口径(s2) |
-| I5 | 从空库重放事件日志,实体状态 hash 一致 | ✅ | `I5 可重放 › 完整压缩场景序列 → TRUNCATE 回灌重放 → 全实体 hash 一致`(在线 hash=c341491028a5,22 rels/27 events,三轮确定);另有局部重放单测(T2 replay/s2) |
+| I5 | 从空库重放事件日志,实体状态 hash 一致 | ✅ | `I5 可重放 › 完整压缩场景序列 → TRUNCATE 回灌重放 → 全实体 hash 一致`（T19 关闭现场：online hash `25d94642f1d2`、30 rels、53 events）；另有 Business、Presentation、Draft、Capability Run、Agent Definition/Run 局部重放测试 |
 | I6 | 每个被拒动作日志带原因,可作下一步决策上下文 | ✅ | `I6 拒绝留痕 › …lastRejection.reason 逐字一致`;各 spec 拒绝断言遍布 |
 | I7 | LLM 缺失/失败/超时诚实失败且零业务副作用；人工控制面可用 | ✅(机械安全面) | U22 route/unit/E2E；真实 LLM 质量仍归 I1 Story Eval |
 
 ## GOAL 约束核对
 
-- 技术栈严格按选型:XState/Postgres/Siren/Cedar/Keycloak[^1]/Temporal/AI SDK+assistant-ui/A2UI/RJSF/shadcn(Tailwind4)全部实装;实际版本见 `tech-stack.md` 实况注记;唯一自造 = 选型 §3 列的五层胶(投影/裁决/效果映射/guard 桥/definition-lifecycle)。
+- 技术栈严格按选型:XState/Postgres/Siren/Cedar/Keycloak[^1]/Temporal/AI SDK+assistant-ui/A2UI/RJSF/shadcn(Tailwind4)全部实装;实际版本见 `tech-stack.md` 实况注记。UI4A 自有增量包括 Siren 投影/裁决/效果/guard/definition lifecycle，以及后续已记录的 Presentation、Draft、Agent Definition/Run pure kernels 与 application adapters；未重复实现 Provider、workflow、schema、policy 或 UI 基础设施。
 - 五条铁律:T15 起第一条为 AI-first、机械治理；确定性系统不复刻认知，但继续守 facts/effects/approval/audit/replay。
-- 每个里程碑可运行:T1–T7 各 track 收口时双门全绿(见各 track plan checkpoint)。
-- 实现与文档冲突 → DECISIONS.md:D1–D12 全记录(含 Keycloak 延后、S3 载体偏差、A2UI SDK 采用)。
+- 每个里程碑可运行:T1–T19 各 track 收口时按其风险运行质量门、真实 Eval 与必要的 Temporal/浏览器验收（见各 track checkpoint/DONE）。
+- 实现与文档冲突 → `DECISIONS.md` D1–D31 持续记录；后续决定显式 supersede 旧口径。
 
 [^1]: Keycloak 按 GOAL"真实 SSO 对接显式排除"与 D10 不进入 DONE 验收面;信任线语义由引擎 actor-is-human + principal 委托链(自报口径 D8)承担。
 
