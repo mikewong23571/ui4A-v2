@@ -266,3 +266,30 @@
   verification 保留为部署 adapter，不把本地自报证据写成强认证。
 - **可选 companion skill**:只在 CLI 合同稳定并通过独立 cwd smoke 后生成；skill 仅教授发现、
   修订、验证和安全顺序，产品/CLI 文档保持 agent-neutral，任何 Agent 不依赖该 skill 仍可使用。
+
+## D30 Coding Capability Executor Host(2026-08-23,T18 Phase A)
+
+- **本体边界**:`coding.execute` 是 effect capability；一次执行是独立
+  `capability-run:<id>`，不是现有 Delegation。Delegation 继续表示 Assistant 经 UI4A contract
+  操作应用；Capability Run 表示外部 executor 在授权 workspace 产出 artifact。Hermes 仅提供
+  Runtime/Workspace/session/trajectory/双审批的架构启发，源码、依赖、配置与测试不得调用 Hermes。
+- **Reference executor**:生产 reference adapter 使用 `@openai/codex-sdk@0.149.0`。真实 probe
+  start 26.8s、resume 16.1s、SDK start 27.9s，均在 disposable Git repo 完成修改和测试；同一
+  thread 可 resume。`codex exec --json` 仅作诊断/fixture。SDK structured final 仍从
+  `agent_message.text` 二次 parse/schema validate；UI4A 自己汇总 normalized events/result。
+- **Provider 失败与环境**:Claude Code 2.1.238 的 stream-json/session/permission/error 形状已 probe，
+  但本机未登录，因此只作为 compatibility fixture，不冒充真实成功。Provider 缺失/未认证不得
+  fallback。Codex 默认个人环境使微型任务输入约 93k tokens；生产必须使用专用受控 env/profile，
+  不继承个人 plugins/skills。取消由 UI4A intent + child exit 合成，不能依赖 Provider terminal event。
+- **Workspace ownership**:UI4A repository registry 以 stable ref 映射授权绝对路径/scope；请求只给
+  ref/base。UI4A 创建唯一 branch/worktree、固定 base、allowed paths 与 lease，Provider 只收到已解析
+  cwd。首切片保留 worktree 至 human decision，accept 只记 receipt，不 merge/push/deploy。
+- **事件与载荷**:继续复用 `events`，新增独立 `capability` domain 和 pure fold；raw JSONL/stderr、
+  result/patch/trajectory 使用 SHA-256 content-addressed payloads，projection 可删除重建。单 chunk
+  64 KiB、单 Run 4 MiB/2000 events，超限摘要化并留 truncation receipt；Business hash 不变。
+- **Temporal**:采用 prepare → execute/resume → finalize 三 activity workflow。execute 是 heartbeat/
+  cancellation-aware 长 activity；重试从 Run projection 的 native session/workspace/cursor resume，
+  不支持 resume 时记录 restart boundary 后重新观察 workspace。command/event/result 全部幂等。
+- **Callback 与审批**:worker 通过受部署 secret 保护的 internal callback route 执行 source Flow 已声明
+  `implementation-succeeded|failed` action，principal 为 `system:capability:<runId>`；guard 读取 principal
+  fail-closed。Execution resource grant 与 human result accept/reject 是两条事件链，均不可委托给 Coding Agent。

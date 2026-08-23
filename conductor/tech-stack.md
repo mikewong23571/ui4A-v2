@@ -32,6 +32,7 @@
 | Presentation Plane | UI4A semantic Surface kernel + A2UI runtime + PostgreSQL projection | Application Recipe 预生成；用户级 Sidecar/版本/patch/promotion 独立事件重放；Chat 只见薄 request/receipt |
 | 外置 App Authoring | 外部 Agent + UI4A meta HTTP contracts | Agent 起草 Bundle；UI4A 负责机械校验、diff、human approval、激活、审计和 replay；不进入产品 Chat runtime |
 | Agent CLI | TypeScript/Node `apps/cli`，native fetch + `tsc` | `ui4a` 是 HTTP/Siren/meta 的稳定 JSON 参考客户端；无内置 LLM、无 Web 内部依赖 |
+| Coding Capability Executor | `@openai/codex-sdk@0.149.0` + Temporal + Git worktree | Codex 是首个真实 reference adapter；Provider/Workspace 分层，Hermes 仅作设计参考 |
 
 ### 渲染词汇表组件(注册为 A2UI 扩展目录,MVP 前十词)
 
@@ -74,3 +75,7 @@ T16 没有新增 workspace 或基础设施依赖：pure kernel 仍在 `packages/
 T17 新增 `apps/cli` workspace，但没有新增第三方运行时依赖：Node native `fetch` 访问合同，
 `tsc` 生成可安装的 `ui4a` binary；Draft 继续复用 PostgreSQL append-only `events`，并增加
 immutable payload 与 rebuildable projection 表。
+
+T18 在 worker 增加官方 Codex SDK 作为唯一真实 Coding Executor 依赖；CLI JSONL 与
+Claude/Gemini-style streams 只做 adapter fixtures。Git worktree、Temporal、PostgreSQL 和现有
+artifact/Siren 基础继续复用，不引入 Hermes、Agent gateway 或新基础设施。

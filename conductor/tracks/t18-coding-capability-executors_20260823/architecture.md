@@ -1,4 +1,4 @@
-# T18 Architecture — Candidate Before Phase A Probes
+# T18 Architecture — Accepted After Phase A Probes
 
 ## Boundary
 
@@ -95,13 +95,12 @@ Adopt: Runtime/Workspace separation, resume handle, worktree isolation, profile/
 execution approval separate from result approval. Reject: Hermes dependency, gateway, global memory, skill
 self-modification, Bot Mode, provider routing and agent-owned workspace. Source governance enforces the boundary.
 
-## Phase A Decisions Required
+## Accepted Decisions
 
-1. Codex SDK vs JSONL process for production adapter.
-2. Capability events in shared events `domain='capability'` vs dedicated table.
-3. Raw trajectory inline vs content-addressed chunks and exact budgets.
-4. Temporal long activity vs child workflow/activity segmentation.
-5. Repository registry/config shape and local-demo fixture policy.
-6. Callback action correlation and system actor authorization.
-7. Worktree retention/cleanup after terminal and human decision.
-
+1. `@openai/codex-sdk@0.149.0` production reference；JSONL CLI is fixture/diagnostic.
+2. Shared events `domain='capability'` + independent fold/projection.
+3. SHA-256 content-addressed raw/result chunks；64 KiB chunk，4 MiB/2000 event Run budget.
+4. prepare → heartbeat execute/resume → finalize segmented Temporal workflow.
+5. External repository registry maps stable ref/path/scope；request never supplies cwd/path.
+6. Secret-protected internal callback executes declared Flow action as system principal.
+7. UI4A-owned worktree retained through human decision；first slice never merges/pushes/deploys.
