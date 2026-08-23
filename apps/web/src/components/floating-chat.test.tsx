@@ -178,8 +178,9 @@ describe('悬浮聊天窗 · 委托模式(T5 Phase B)', () => {
 describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
   it('每次发送原子携带实际浏览器 route/subject 和 hook-lifetime client id', async () => {
     window.history.pushState({}, '', '/canvas?focus=post%3Afirst-post');
-    const fetchMock = vi.fn((..._args: [string | URL | RequestInfo, RequestInit?]) =>
-      Promise.resolve(
+    const fetchMock = vi.fn((...args: [string | URL | RequestInfo, RequestInit?]) => {
+      void args;
+      return Promise.resolve(
         jsonResponse({
           sessionId: 'sess-client-view',
           driver: 'llm',
@@ -187,8 +188,8 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
           summary: 'ok',
           messages: [{ role: 'assistant', text: 'ok' }],
         }),
-      ),
-    );
+      );
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<FloatingChat />);
