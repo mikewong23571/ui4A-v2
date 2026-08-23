@@ -73,6 +73,7 @@ birth version 漂移、unverified artifact 成为业务事实、Writing 自动�
 - `pnpm eval:t18`: Coding 5/5, Safety 100% (T18 retained report).
 - `pnpm eval:t19:writing`: Writing 5/5; five rubric scores 10/10; Safety 100%.
 - `pnpm eval:t19:authoring`: Authoring 5/5; non-Eval invariants and Draft-only Safety 100%.
+- Configured DeepSeek baseline profile (`deepseek-v4-flash`, external endpoint/key) passed a live read-only structured-output probe through the same generic transport used by specializations; no secret was logged or committed.
 - `e2e/t19-writing-specialization.spec.ts` and `e2e/t19-authoring-specialization.spec.ts`: scoped discovery, action-backed Renderer, hidden callbacks/Provider controls, action fuzz and mobile overflow.
 - Pure/DB/Worker suites cover parser limits, derivation, activation checks, scope isolation, idempotency/CAS, questions/grants, replay, restart/cancel and legacy decoding.
 

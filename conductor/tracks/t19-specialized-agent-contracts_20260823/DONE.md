@@ -19,7 +19,7 @@ T19 is complete. UI4A now treats specialized Agents as versioned contracts execu
 - `pnpm check`: all type checks/lint gates passed; 227 test files passed and 3 opt-in files skipped.
 - `CI=true pnpm e2e`: 42 passed, 22 intentionally gated/skipped, 0 failed.
 - Real Temporal Host integration: 5/5 kill/resume, cancellation, clarification and resource-approval stories passed.
+- The externally configured DeepSeek baseline passed a live structured-output specialization transport probe.
 - Principal review: no remaining findings; see `review.md`.
 
 Authoritative story mapping and report links are in `evidence.md`. Test counts are this closure snapshot only; future verification uses the commands themselves.
-
