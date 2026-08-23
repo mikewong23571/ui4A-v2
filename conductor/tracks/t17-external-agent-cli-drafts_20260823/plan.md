@@ -47,15 +47,15 @@
 - [x] Task: CLI governance——无 LLM/prompt/业务名/自动改进命令；JSON stdout 纯净；所有写命令在 help 中标明 effect/dry-run/approval 后果 (13fa010)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (13fa010)
 
-## Phase E: Draft CLI 与现有 Application 改进 Golden Story
+## Phase E: Draft CLI 与现有 Application 改进 Golden Story [checkpoint: e6c81ee]
 
-- [ ] Task: U11–U18/TS19 Red→Green——drafts create/get/list/revise/validate/diff/submit/watch/abandon 命令和 stable JSON shapes
-- [ ] Task: U19 Red→Green——CLI 无 `--no-draft`/actor-human/approve/raw-write；请求注入不能覆盖服务端 SubmissionPolicy
-- [ ] Task: U20/U21 Red→Green——同一 CLI 证明 explicit direct action 与 derived `none` Entity；两者均不误建 Draft
-- [ ] Task: U22 Red→Green——Sidecar optimization 与业务/定义 Draft 事件、列表、apply 和 replay 完全隔离
-- [ ] Task: Golden Story deterministic browser/CLI E2E——export publishing → invalid Draft → repair → validate → diff → submit → Agent approval denied → human approve → sitemap/new-instance/replay
-- [ ] Task: CLI interruption/resume——进程退出、另一 cwd/Agent 读取同 Draft/activation，watch cursor 续接且零重复 mutation
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: U11–U18/TS19 Red→Green——drafts create/get/list/revise/validate/diff/submit/watch/abandon 命令和 stable JSON shapes (e6c81ee)
+- [x] Task: U19 Red→Green——CLI 无 `--no-draft`/actor-human/approve/raw-write；请求注入不能覆盖服务端 SubmissionPolicy (e6c81ee)
+- [x] Task: U20/U21 Red→Green——同一 CLI 证明 explicit direct action 与 derived `none` Entity；两者均不误建 Draft (e6c81ee)
+- [x] Task: U22 Red→Green——Sidecar optimization 与业务/定义 Draft 事件、列表、apply 和 replay 完全隔离 (e6c81ee)
+- [x] Task: Golden Story deterministic browser/CLI E2E——export publishing → invalid Draft → repair → validate → diff → submit → Agent approval denied → human approve → sitemap/new-instance/replay (e6c81ee)
+- [x] Task: CLI interruption/resume——进程退出、另一 cwd/Agent 读取同 Draft/activation，watch cursor 续接且零重复 mutation (e6c81ee)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (e6c81ee)
 
 ## Phase F: 真实第三方 Agent Eval、安全、文档与全应用闭环
 
