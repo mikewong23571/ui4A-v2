@@ -1,0 +1,1 @@
+T20 refinement after lint/visual browser verification: deterministic action-scoped command ids, native scope form, Agent Definition grid min-width containment, Draft renderer precedence over agent-definition kind token, and expanded browser regression coverage. Verification: lint 0 errors; focused Vitest 17/17; T20 Playwright 7/7.
