@@ -2,16 +2,16 @@
 
 > 依据 `spec.md`、`user-stories.md`、`technical-stories.md`、`architecture.md` 与 `conductor/workflow.md`。采用 spike-informed Story TDD：CLI/engine 的确定性机制先红后绿；真实第三方 Agent Eval 只验收动态可用性，不替代 Safety。
 
-## Phase A: Red baseline、disposable probes 与架构决定
+## Phase A: Red baseline、disposable probes 与架构决定 [checkpoint: f5cf303]
 
-- [ ] Task: 建立 U1–U24/TS1–TS20 evidence schema、traceability matrix 和 canonical Golden Story；记录 CLI version/commands、Agent/model、Draft/Activation IDs、validation/diff、Active hash、events、Safety 和 rubric
-- [ ] Task: Red baseline——证明当前第三方 Agent 必须拼接 curl/端点、候选制品留在系统外、Application/Flow 写入无通用 Draft、request 可自报 actor/principal、Application Bundle 无候选原子 apply
-- [ ] Task: CLI disposable probe——用最小 TypeScript binary 从 `/tmp` 完成 doctor/sitemap/entity/action/audit，比较 JSON envelope、分页、错误码、配置和安装方式；spike 不直接成为生产 CLI
-- [ ] Task: Draft storage probe——比较 shared event domain 与独立 append-only table、inline payload 与内容寻址 payload；测 replay、projection rebuild、大小预算、owner/policy lookup 和 Business hash
-- [ ] Task: Atomic apply probe——对现有 publishing Flow 候选比较单 apply event 与事务性既有事件组，验证 definition history、birth version、sitemap、replay 和失败原子性
-- [ ] Task: Real external-Agent usability probe——只给真实 Agent `ui4a --help`、目标和 scoped endpoint，观察 discover/export/repair/diff/submit 缺口；不把 spike prompt/trace 写进产品规则
-- [ ] Task: 将结论写入全局 `DECISIONS.md`，冻结 CLI envelope/runtime、Draft event/store、SubmissionPolicy inheritance、atomic apply、auth demo 边界和 companion skill 范围；技术栈偏差先更新 `tech-stack.md`
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: 建立 U1–U24/TS1–TS20 evidence schema、traceability matrix 和 canonical Golden Story；记录 CLI version/commands、Agent/model、Draft/Activation IDs、validation/diff、Active hash、events、Safety 和 rubric (f5cf303)
+- [x] Task: Red baseline——证明当前第三方 Agent 必须拼接 curl/端点、候选制品留在系统外、Application/Flow 写入无通用 Draft、request 可自报 actor/principal、Application Bundle 无候选原子 apply (f5cf303)
+- [x] Task: CLI disposable probe——用最小 TypeScript binary 从 `/tmp` 完成 doctor/sitemap/entity/action/audit，比较 JSON envelope、分页、错误码、配置和安装方式；spike 不直接成为生产 CLI (f5cf303)
+- [x] Task: Draft storage probe——比较 shared event domain 与独立 append-only table、inline payload 与内容寻址 payload；测 replay、projection rebuild、大小预算、owner/policy lookup 和 Business hash (f5cf303)
+- [x] Task: Atomic apply probe——对现有 publishing Flow 候选比较单 apply event 与事务性既有事件组，验证 definition history、birth version、sitemap、replay 和失败原子性 (f5cf303)
+- [x] Task: Real external-Agent usability probe——只给真实 Agent `ui4a --help`、目标和 scoped endpoint，观察 discover/export/repair/diff/submit 缺口；不把 spike prompt/trace 写进产品规则 (f5cf303)
+- [x] Task: 将结论写入全局 `DECISIONS.md`，冻结 CLI envelope/runtime、Draft event/store、SubmissionPolicy inheritance、atomic apply、auth demo 边界和 companion skill 范围；技术栈偏差先更新 `tech-stack.md` (f5cf303)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (f5cf303)
 
 ## Phase B: Shared SubmissionPolicy、Draft schema 与 pure kernel
 
