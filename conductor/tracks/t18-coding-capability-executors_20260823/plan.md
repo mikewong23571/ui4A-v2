@@ -38,15 +38,15 @@
 - [x] Task: Real Codex fixture smoke——真实安装/认证在 disposable repo 完成 edit/test/result，主 repo 零影响 (ee3cd19)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (ee3cd19)
 
-## Phase E: Capability schema、Siren、Flow 与 Renderer
+## Phase E: Capability schema、Siren、Flow 与 Renderer [checkpoint: b6014e2]
 
-- [ ] Task: TS12 Red→Green——CapabilityDefinition executor requirements/profile、parser/meta/sitemap/export 与 activation invariant
-- [ ] Task: TS13 Red→Green——capability-runs collection/exact/raw/artifact Siren resources 和 start/cancel/retry links/actions
-- [ ] Task: TS14 Red→Green——development Application/software-change Flow、coding.execute、异步 start 与 callback success/failure
-- [ ] Task: TS15 Red→Green——human accept/reject/stale receipt；Agent decision 100% 拒绝；零 merge/push/deploy
-- [ ] Task: TS16 Red→Green——Entity/Canvas progress、files/tests/result/raw trajectory 展示与移动端/action invariants
-- [ ] Task: Golden Story deterministic HTTP/Renderer——start → progress → result → Agent accept denied → human decision → replay
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: TS12 Red→Green——CapabilityDefinition executor requirements/profile、parser/meta/sitemap/export 与 activation invariant (b6014e2)
+- [x] Task: TS13 Red→Green——capability-runs collection/exact/raw/artifact Siren resources 和 start/cancel/retry links/actions (b6014e2)
+- [x] Task: TS14 Red→Green——development Application/software-change Flow、coding.execute、异步 start 与 callback success/failure (b6014e2)
+- [x] Task: TS15 Red→Green——human accept/reject/stale receipt；Agent decision 100% 拒绝；零 merge/push/deploy (b6014e2)
+- [x] Task: TS16 Red→Green——Entity/Canvas progress、files/tests/result/raw trajectory 展示与移动端/action invariants (b6014e2)
+- [x] Task: Golden Story deterministic HTTP/Renderer——start → progress → result → Agent accept denied → human decision → replay (b6014e2)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (b6014e2)
 
 ## Phase F: Real Story Eval、安全、文档与闭环
 
