@@ -5,7 +5,7 @@
 
 ## Phase A: Red Baseline 与 Disposable Probes
 
-- [ ] Task: 建立 U1–U8、Golden Story、Safety 和 evidence schema，记录 `lastNavigation`、`clientView`、LLM decisions、Presentation receipts、客户端 URL、事件增量及 Business Snapshot hash
+- [x] Task: 建立 U1–U8、Golden Story、Safety 和 evidence schema，记录 `lastNavigation`、`clientView`、LLM decisions、Presentation receipts、客户端 URL、事件增量及 Business Snapshot hash 7ac1349
 - [ ] Task: 用当前开发栈复现并自动化“详情 → 数量 → 列表 → 当前在哪”红线，证明 Agent `currentRel`、最近导航和客户端可见页面发生分叉
 - [ ] Task: 运行 disposable LLM protocol probe，比较当前 provider 的 `toolChoice:auto`、强制工具调用和有界 LLM repair；记录延迟、成功率、无调用及异常形状，probe 代码不进入产品实现
 - [ ] Task: 对双事实事件形状、客户端实例、刷新、直接页面进入、异步 Presentation receipt 和重放做 disposable contract probe
