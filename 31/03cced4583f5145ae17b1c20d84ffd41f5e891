@@ -1,0 +1,4 @@
+D28 product correction
+
+Removed summarize capability and generate-summary/save-summary actions from the publishing application. Summary remains a native Assistant answer; persistence requests now fail honestly because no contract exists.
+Verification: pnpm check 164 files/1367 tests passed; focused Playwright S2/I3-I6/T16 Golden 9 passed, 2 superseded skips.
