@@ -8,5 +8,5 @@
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)
 
-当前状态：`new`。本 Track 不改变 Business action、guard、schema 或文章数据，不引入第二权威
+当前状态：`in_progress`。本 Track 不改变 Business action、guard、schema 或文章数据，不引入第二权威
 状态存储，也不让客户端观察扩大 principal 的读取或 effect authorization。
