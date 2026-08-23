@@ -8,8 +8,13 @@ import {
   type ConversationMessage as AgentConversationMessage,
   type FactRef,
 } from '@ui4a/agent';
-import { completePresentationRequest } from '@ui4a/shared';
-import { parseClientViewReport, type ClientViewReport } from '@ui4a/shared';
+import {
+  CHAT_VIEW_PROTOCOL_VERSION,
+  completePresentationRequest,
+  parseClientViewReport,
+  type ClientViewReport,
+  type NavigationCompletion,
+} from '@ui4a/shared';
 
 import type {
   ChatTurnDetail,
@@ -276,9 +281,22 @@ async function appendConversationContext(args: {
   });
 }
 
+async function appendNavigationCompletion(completion: NavigationCompletion): Promise<void> {
+  await appendEvent(getDb(), {
+    kind: 'chat-navigation-completed',
+    actor: 'agent',
+    principal: `user:${completion.sessionId}`,
+    channel: 'chat',
+    rel: `chat:${completion.sessionId}`,
+    detail: completion,
+  });
+}
+
 async function loadAgentConversation(sessionId: string): Promise<{
   messages: AgentConversationMessage[];
   context: AgentConversationContext;
+  clientView: ReturnType<typeof conversationView>['clientView'];
+  lastNavigation: ReturnType<typeof conversationView>['lastNavigation'];
 }> {
   const events = await readLog(getDb());
   const view = conversationView(events, sessionId);
@@ -289,6 +307,8 @@ async function loadAgentConversation(sessionId: string): Promise<{
       role,
       content,
     })),
+    clientView: view.clientView,
+    lastNavigation: view.lastNavigation,
     context: {
       ...(view.context.activeGoal !== null ? { activeGoal: view.context.activeGoal } : {}),
       ...(view.context.focus !== null
@@ -343,6 +363,8 @@ async function streamAgentLoop(args: {
   baseUrl: string;
   conversationMessages: AgentConversationMessage[];
   conversation: AgentConversationContext;
+  clientView: ReturnType<typeof conversationView>['clientView'];
+  lastNavigation: ReturnType<typeof conversationView>['lastNavigation'];
 }): Promise<void> {
   const {
     send,
@@ -354,6 +376,8 @@ async function streamAgentLoop(args: {
     baseUrl,
     conversationMessages,
     conversation,
+    clientView,
+    lastNavigation,
   } = args;
   send({ type: 'session', sessionId, turnId });
   const startRel = await resolveStartRel(
@@ -371,7 +395,7 @@ async function streamAgentLoop(args: {
   let stepFramesSent = 0;
   let presentationCount = 0;
   const presentationRequestIds: string[] = [];
-  let progressWrite = Promise.resolve();
+  const presentationJobs: Promise<void>[] = [];
   const result = await runAgent(
     wrapDriverForAudit(createDriver(requested), resolved, (detail) => decisions.push(detail)),
     goal,
@@ -384,6 +408,8 @@ async function streamAgentLoop(args: {
       startRel,
       conversationMessages,
       conversation,
+      clientView,
+      lastNavigation,
       requireEffectAuthorization: true,
       chatMarkdown: true,
       presentationMarkdown: getPresentationCapabilities().markdownWord,
@@ -410,13 +436,43 @@ async function streamAgentLoop(args: {
           turnId,
           payload: { schemaVersion: 1, requestId: request.requestId, status: 'pending' },
         });
-        void getPresentationBroker()
+        const job = getPresentationBroker()
           .present(request)
-          .then((payload) => send({ type: 'presentation', turnId, payload }));
+          .then(async (payload) => {
+            if (
+              (payload.status === 'ready' || payload.status === 'fallback') &&
+              payload.surfaceUrl !== undefined
+            ) {
+              await appendNavigationCompletion({
+                schemaVersion: CHAT_VIEW_PROTOCOL_VERSION,
+                navigationId: `${request.requestId}:presentation-navigation`,
+                source: 'presentation-receipt',
+                sessionId,
+                turnId,
+                subject: request.subject,
+                route: payload.surfaceUrl,
+                sourceMessageIds: [...request.sourceMessageIds],
+                presentationRequestId: request.requestId,
+              });
+            }
+            send({ type: 'presentation', turnId, payload });
+          });
+        presentationJobs.push(job);
       },
-      onStep: (step) => {
+      onStep: async (step) => {
         stepFramesSent += 1;
         if (step.op.kind === 'navigate' && step.outcome === 'navigated') {
+          await appendNavigationCompletion({
+            schemaVersion: CHAT_VIEW_PROTOCOL_VERSION,
+            navigationId: `${turnId}:navigate:${step.step}`,
+            source: 'agent-navigate',
+            sessionId,
+            turnId,
+            subject: step.rel,
+            route: `/canvas?focus=${encodeURIComponent(step.rel)}`,
+            sourceMessageIds: [turnId],
+            step: step.step,
+          });
           send({ type: 'focus', turnId, rel: step.rel });
         } else if (step.op.kind === 'exec' && step.outcome === 'executed') {
           // navigate 帧展示动作前处境；执行成功后显式刷新同一 rel，让共享
@@ -427,14 +483,12 @@ async function streamAgentLoop(args: {
         }
         const message = stepToMessage(step);
         send({ type: 'step', turnId, message, rel: step.rel });
-        progressWrite = progressWrite.then(() =>
-          appendChatProjection('chat-turn-progress', sessionId, {
-            sessionId,
-            turnId,
-            message,
-            step,
-          }),
-        );
+        await appendChatProjection('chat-turn-progress', sessionId, {
+          sessionId,
+          turnId,
+          message,
+          step,
+        });
       },
     },
   );
@@ -444,11 +498,12 @@ async function streamAgentLoop(args: {
   // 保持客户端「消息 = 各 step 帧文本」的重建口径与 trailToMessages 等值。
   for (const extra of messages.slice(result.steps.length)) {
     send({ type: 'step', turnId, message: extra });
-    progressWrite = progressWrite.then(() =>
-      appendChatProjection('chat-turn-progress', sessionId, { sessionId, turnId, message: extra }),
-    );
+    await appendChatProjection('chat-turn-progress', sessionId, {
+      sessionId,
+      turnId,
+      message: extra,
+    });
   }
-  await progressWrite;
 
   // agent-decision 落库:inline 每步决策一条,与 chat-turn 同源同值
   // (actor/principal/channel);先于回合投影写入(决策在先,回合在后)。
@@ -531,6 +586,7 @@ async function streamAgentLoop(args: {
       ...(presentationRequestIds.length > 0 ? { presentationRequestIds } : {}),
     },
   });
+  await Promise.allSettled(presentationJobs);
 }
 
 export async function POST(request: Request) {
@@ -617,6 +673,8 @@ export async function POST(request: Request) {
           baseUrl,
           conversationMessages: agentConversation.messages,
           conversation: agentConversation.context,
+          clientView: agentConversation.clientView,
+          lastNavigation: agentConversation.lastNavigation,
         });
       });
     }
@@ -722,6 +780,8 @@ export async function POST(request: Request) {
       baseUrl,
       conversationMessages: agentConversation.messages,
       conversation: agentConversation.context,
+      clientView: agentConversation.clientView,
+      lastNavigation: agentConversation.lastNavigation,
     });
   });
 }

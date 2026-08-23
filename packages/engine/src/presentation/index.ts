@@ -7,4 +7,4 @@ export * from './resolver';
 export * from './scenario';
 export * from './sidecar';
 export * from './surface';
-export type { PresentationIntent } from '@ui4a/shared';
+export type { ClientViewFact, LastNavigationFact, PresentationIntent } from '@ui4a/shared';

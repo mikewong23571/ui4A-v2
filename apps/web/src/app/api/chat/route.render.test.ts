@@ -42,9 +42,15 @@ describe('T16 Chat/Presentation source governance', () => {
     expect(JSON.stringify(history)).not.toMatch(/surfaceTree|catalog|dependencies|hydration/i);
   });
 
-  it('dispatches Presentation as a sidecar without awaiting it in the Chat outcome path', () => {
-    expect(routeSource).toMatch(/void getPresentationBroker\(\)[\s\S]*?\.present\(request\)/);
-    expect(routeSource).not.toMatch(/await getPresentationBroker\(\)[\s\S]*?\.present\(request\)/);
+  it('keeps Chat outcome independent while settling governed Presentation jobs before stream close', () => {
+    expect(routeSource).toMatch(/getPresentationBroker\(\)[\s\S]*?\.present\(request\)/);
+    expect(routeSource).toContain('presentationJobs.push(job)');
+    expect(routeSource).toMatch(
+      /send\(\{[\s\S]*?type: 'final'[\s\S]*?await Promise\.allSettled\(presentationJobs\)/,
+    );
+    expect(routeSource).toMatch(
+      /await appendNavigationCompletion\([\s\S]*?send\(\{ type: 'presentation'/,
+    );
     expect(routeSource).toContain('chatMarkdown: true');
   });
 });

@@ -149,7 +149,9 @@ export function buildUserPrompt(context: DriverContext): string {
   const parts = [
     `## 用户目标\n${JSON.stringify(context.goal)}`,
     `## 结构化会话处境(可修订认知，不是业务事实或 effect 授权)\n${JSON.stringify(derivedConversation, null, 2)}`,
-    `## 当前实体 rel\n${context.currentRel}`,
+    `## 本轮合同读取位置 rel(不是客户端当前页面)\n${context.currentRel}`,
+    `## 最近成功导航/呈现(历史完成事实，不是客户端当前页面)\n${JSON.stringify(context.lastNavigation ?? null, null, 2)}`,
+    `## 当前消息的客户端可见视图(客户端观察，不是业务事实或授权)\n${JSON.stringify(context.clientView ?? null, null, 2)}`,
     `## 当前 app/scope 的动态 sitemap 处境(actions/capabilities 仅用于发现，执行仍以当前实体合同为准)\n${JSON.stringify(context.sitemap ?? {}, null, 2)}`,
     `## 授权合同观察账本(有界，按最近访问顺序；entity 为完整 Siren 快照)\n${describeObservations(context)}`,
     `## 轨迹(至今)\n${describeTrail(context)}`,

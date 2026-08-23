@@ -7,7 +7,13 @@
  * - 拒绝即数据:被拒 exec 与不可达 navigate 都以 RejectionRecord 回流下一步上下文;
  * - 循环零智能:它只搬运实体、执行操作、记录轨迹。
  */
-import type { ExecutionAuditRecord, PresentationIntent, SirenEntity } from '@ui4a/engine';
+import type {
+  ClientViewFact,
+  ExecutionAuditRecord,
+  LastNavigationFact,
+  PresentationIntent,
+  SirenEntity,
+} from '@ui4a/engine';
 
 export type { PresentationIntent } from '@ui4a/engine';
 
@@ -189,6 +195,10 @@ export interface DriverContext {
   conversationMessages?: ConversationMessage[];
   /** 由日志投影的活动目标、focus、指代与用户约束。 */
   conversation?: ConversationContext;
+  /** 当前 user message 携带的客户端观察；不是合同事实或授权。 */
+  clientView?: ClientViewFact | null;
+  /** 最近成功 Agent/Presentation navigation 的日志投影；不是当前页面。 */
+  lastNavigation?: LastNavigationFact | null;
   currentRel: string;
   entity: SirenEntity;
   trail: TrailStep[];
@@ -303,6 +313,8 @@ export interface RunAgentOptions {
   conversationMessages?: ConversationMessage[];
   /** 上层从同一日志重建的结构化会话处境。 */
   conversation?: ConversationContext;
+  clientView?: ClientViewFact | null;
+  lastNavigation?: LastNavigationFact | null;
   /**
    * 产品 Assistant 开启后，exec/exec-plan 在任何 POST 前必须通过
    * user-message 原话 + 合同 action/target 机械授权门。协议 fixture 缺省关闭。
@@ -326,11 +338,11 @@ export interface RunAgentOptions {
   /** 当前 Presentation catalog 是否含 Markdown word；由 Plane 动态投影。 */
   presentationMarkdown?: boolean;
   /**
-   * 流式轨迹回调(T9 Phase B):循环每次 trail.push 后同步调用
+   * 流式轨迹回调(T9 Phase B):循环每次 trail.push 后按顺序等待调用
    * (navigate/exec/done/fail 各结局全覆盖)——聊天路由据此逐步推 SSE 帧。
    * 回调抛错不拦截循环(观测者不得污染协议);调用方自行兜底。
    */
-  onStep?(step: TrailStep): void;
+  onStep?(step: TrailStep): unknown | Promise<unknown>;
   /**
    * 推理自述回调(T11 Phase C):llm 步的 decide 产出 reasoning 时回调一次
    * (聚合整段,非打字机——D22:GLM reasoning 末尾齐发);rule driver 零回调。

@@ -239,10 +239,10 @@ export async function runAgent(
   };
 
   /** 追加轨迹并同步回调(T9 Phase B 流式轨迹;观测者异常吞掉,不污染循环)。 */
-  const pushStep = (step: TrailStep): void => {
+  const pushStep = async (step: TrailStep): Promise<void> => {
     trail.push(step);
     try {
-      options.onStep?.(step);
+      await options.onStep?.(step);
     } catch {
       // onStep 是观测钩子(如 SSE 帧推送;客户端断开时 enqueue 会抛)——
       // 观测失败不得中断协议循环,服务端轨迹照常跑完留痕。
@@ -311,7 +311,7 @@ export async function runAgent(
         reason: `检测到无进展导航循环；当前合同未暴露完成目标所需的可执行能力`,
         evidence,
       };
-      pushStep({ step, rel: currentRel, op, outcome: 'failed' });
+      await pushStep({ step, rel: currentRel, op, outcome: 'failed' });
       return { goal, outcome: 'failed', summary: op.reason, steps: trail, successes };
     }
 
@@ -349,6 +349,8 @@ export async function runAgent(
       goal,
       conversationMessages: conversationMessages.map((message) => ({ ...message })),
       conversation: copyConversation(conversation),
+      clientView: options.clientView === undefined ? undefined : options.clientView,
+      lastNavigation: options.lastNavigation === undefined ? undefined : options.lastNavigation,
       currentRel,
       entity: fetched.entity,
       trail: [...trail],
@@ -365,11 +367,11 @@ export async function runAgent(
     const op = await driver.decide(context, decideSink);
 
     if (op.kind === 'done') {
-      pushStep({ step, rel: currentRel, op, outcome: 'done' });
+      await pushStep({ step, rel: currentRel, op, outcome: 'done' });
       return { goal, outcome: 'done', summary: op.summary, steps: trail, successes };
     }
     if (op.kind === 'answer') {
-      pushStep({ step, rel: currentRel, op, outcome: 'answered' });
+      await pushStep({ step, rel: currentRel, op, outcome: 'answered' });
       if (op.continue === true) continue;
       return {
         goal,
@@ -381,7 +383,7 @@ export async function runAgent(
       };
     }
     if (op.kind === 'clarify') {
-      pushStep({ step, rel: currentRel, op, outcome: 'clarification-needed' });
+      await pushStep({ step, rel: currentRel, op, outcome: 'clarification-needed' });
       return {
         goal,
         outcome: 'clarification-needed',
@@ -392,7 +394,7 @@ export async function runAgent(
       };
     }
     if (op.kind === 'fail') {
-      pushStep({ step, rel: currentRel, op, outcome: 'failed' });
+      await pushStep({ step, rel: currentRel, op, outcome: 'failed' });
       return { goal, outcome: 'failed', summary: op.reason, steps: trail, successes };
     }
 
@@ -403,7 +405,7 @@ export async function runAgent(
         ...(op.constraints !== undefined ? { constraints: [...op.constraints] } : {}),
         delivery: op.delivery,
       };
-      pushStep({ step, rel: currentRel, op, outcome: 'presentation-requested' });
+      await pushStep({ step, rel: currentRel, op, outcome: 'presentation-requested' });
       try {
         options.onPresentation?.(intent);
       } catch {
@@ -416,7 +418,7 @@ export async function runAgent(
       const target = await client.getEntity(op.rel);
       if (target.entity !== undefined) {
         currentRel = op.rel;
-        pushStep({
+        await pushStep({
           step,
           rel: op.rel,
           op,
@@ -430,7 +432,7 @@ export async function runAgent(
           reason: target.error ?? `实体 "${op.rel}" 不可达`,
         };
         lastRejection = rejection;
-        pushStep({ step, rel: currentRel, op, outcome: 'not-found', rejection });
+        await pushStep({ step, rel: currentRel, op, outcome: 'not-found', rejection });
       }
       continue;
     }
@@ -444,7 +446,7 @@ export async function runAgent(
       const authorizationRejection = authorize(op, effects);
       if (authorizationRejection !== undefined) {
         lastRejection = authorizationRejection;
-        pushStep({
+        await pushStep({
           step,
           rel: currentRel,
           op,
@@ -462,13 +464,13 @@ export async function runAgent(
       });
       if (call.outcome === 'completed') {
         successes.push(...op.steps.map(({ rel, action, params }) => ({ rel, action, params })));
-        pushStep({ step, rel: currentRel, op, outcome: 'executed' });
+        await pushStep({ step, rel: currentRel, op, outcome: 'executed' });
         continue;
       }
       if (call.outcome === 'suspended') {
         const confirmationRel = call.confirmationRel ?? 'confirmation:(unknown)';
         const summary = `批量计划已挂起，等待人类在 ${confirmationRel} 确认`;
-        pushStep({ step, rel: currentRel, op, outcome: 'suspended' });
+        await pushStep({ step, rel: currentRel, op, outcome: 'suspended' });
         return { goal, outcome: 'suspended', summary, steps: trail, successes };
       }
       const rejection: RejectionRecord = {
@@ -479,7 +481,7 @@ export async function runAgent(
         ...(call.detail !== undefined ? { detail: call.detail } : {}),
       };
       lastRejection = rejection;
-      pushStep({ step, rel: currentRel, op, outcome: 'rejected', rejection });
+      await pushStep({ step, rel: currentRel, op, outcome: 'rejected', rejection });
       continue;
     }
 
@@ -488,7 +490,7 @@ export async function runAgent(
     ]);
     if (authorizationRejection !== undefined) {
       lastRejection = authorizationRejection;
-      pushStep({
+      await pushStep({
         step,
         rel: currentRel,
         op,
@@ -509,7 +511,7 @@ export async function runAgent(
     });
     if (call.ok) {
       successes.push({ rel: currentRel, action: op.action, params: op.params });
-      pushStep({
+      await pushStep({
         step,
         rel: currentRel,
         op,
@@ -519,7 +521,7 @@ export async function runAgent(
     } else if (call.suspended === true) {
       const confirmationRel = call.confirmationRel ?? 'confirmation:(unknown)';
       const summary = `动作 ${op.action}(${currentRel}) 已挂起，等待人类在 ${confirmationRel} 确认`;
-      pushStep({ step, rel: currentRel, op, outcome: 'suspended' });
+      await pushStep({ step, rel: currentRel, op, outcome: 'suspended' });
       return { goal, outcome: 'suspended', summary, steps: trail, successes };
     } else {
       const rejection: RejectionRecord = {
@@ -531,7 +533,7 @@ export async function runAgent(
         detail: call.detail,
       };
       lastRejection = rejection;
-      pushStep({ step, rel: currentRel, op, outcome: 'rejected', rejection });
+      await pushStep({ step, rel: currentRel, op, outcome: 'rejected', rejection });
     }
   }
 
