@@ -97,6 +97,7 @@ export function evaluateGuards(
   params: Readonly<Record<string, unknown>>,
   guards: GuardRegistry,
   actor?: 'human' | 'agent',
+  principal?: string,
 ): GuardEvaluation[] {
   const knownGuards = new Set(Object.keys(guards));
   return (action.guards ?? []).map((name) => {
@@ -105,7 +106,10 @@ export function evaluateGuards(
       return { name, pass: false, reason: `guard "${name}" 未注册` };
     }
     try {
-      return { name, pass: predicate({ instance, snapshot, params, action, actor, knownGuards }) };
+      return {
+        name,
+        pass: predicate({ instance, snapshot, params, action, actor, principal, knownGuards }),
+      };
     } catch (error) {
       return {
         name,
@@ -152,6 +156,7 @@ export function judge(
     params,
     deps.guards,
     request.actor,
+    request.principal,
   );
   const failed = guardResults.filter((result) => !result.pass);
   if (failed.length > 0) {

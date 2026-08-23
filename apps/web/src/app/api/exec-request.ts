@@ -43,6 +43,9 @@ export function parseExecBody(body: unknown): ParsedBody | ParseError {
   if (principal !== undefined && typeof principal !== 'string') {
     return { ok: false, error: 'principal 必须是字符串' };
   }
+  if (typeof principal === 'string' && principal.startsWith('system:')) {
+    return { ok: false, error: 'system principal 只能由内部受认证 callback 构造' };
+  }
   if (channel !== undefined && typeof channel !== 'string') {
     return { ok: false, error: 'channel 必须是字符串' };
   }

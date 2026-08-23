@@ -34,6 +34,7 @@ import type {
 } from '@ui4a/agent';
 
 import type { DelegationActivities, NotifyActivities } from './activities';
+import type { CodingTask, WorkspaceHandle, CodingResult } from '@ui4a/shared';
 
 /** 确认摘要(workflow 参数;镜像于 apps/web/src/temporal/notify.ts 的 NotifyWorkflowArgs)。 */
 export interface NotifyConfirmation {
@@ -52,6 +53,64 @@ const { notify } = proxyActivities<NotifyActivities>({
 /** 送达一条确认通知:单 activity,幂等;同名 workflowId 重跑安全。 */
 export async function notifyWorkflow(confirmation: NotifyConfirmation): Promise<void> {
   await notify(confirmation);
+}
+
+// ---------------------------------------------------------------------------
+// codingCapabilityWorkflow(T18:Capability Run != Delegation)
+// ---------------------------------------------------------------------------
+
+export interface CodingCapabilityWorkflowArgs {
+  runId: string;
+  principal: string;
+  policyScope: string;
+  profileName: string;
+  task: CodingTask;
+  baseUrl: string;
+}
+
+export interface CodingPreparedResult {
+  workspace: WorkspaceHandle;
+}
+
+export type CodingExecutionResult =
+  | { status: 'succeeded'; result: CodingResult }
+  | { status: 'failed'; code: string; reason: string }
+  | { status: 'cancelled'; reason: string };
+
+export interface CodingCapabilityActivities {
+  prepareCodingRun(args: CodingCapabilityWorkflowArgs): Promise<CodingPreparedResult>;
+  executeCodingRun(args: {
+    context: CodingCapabilityWorkflowArgs;
+    prepared: CodingPreparedResult;
+  }): Promise<CodingExecutionResult>;
+  finalizeCodingRun(args: {
+    context: CodingCapabilityWorkflowArgs;
+    outcome: CodingExecutionResult;
+  }): Promise<void>;
+}
+
+const codingPrepare = proxyActivities<Pick<CodingCapabilityActivities, 'prepareCodingRun'>>({
+  startToCloseTimeout: '1 minute',
+  retry: { maximumAttempts: 3 },
+});
+const codingExecute = proxyActivities<Pick<CodingCapabilityActivities, 'executeCodingRun'>>({
+  startToCloseTimeout: '1 hour',
+  heartbeatTimeout: '15 seconds',
+  retry: { maximumAttempts: 3 },
+});
+const codingFinalize = proxyActivities<Pick<CodingCapabilityActivities, 'finalizeCodingRun'>>({
+  startToCloseTimeout: '30 seconds',
+  retry: { maximumAttempts: 5 },
+});
+
+/** Durable segmented Coding Capability execution with idempotent callback finalization. */
+export async function codingCapabilityWorkflow(
+  args: CodingCapabilityWorkflowArgs,
+): Promise<CodingExecutionResult> {
+  const prepared = await codingPrepare.prepareCodingRun(args);
+  const outcome = await codingExecute.executeCodingRun({ context: args, prepared });
+  await codingFinalize.finalizeCodingRun({ context: args, outcome });
+  return outcome;
 }
 
 // ---------------------------------------------------------------------------

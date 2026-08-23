@@ -188,6 +188,10 @@ export const noLiveInstances: GuardPredicate = (context) => {
  */
 export const actorIsHuman: GuardPredicate = (context) => context.actor === 'human';
 
+/** Internal capability callbacks use a deployment-authenticated system principal. */
+export const principalIsCapabilitySystem: GuardPredicate = (context) =>
+  context.principal?.startsWith('system:capability:') === true;
+
 /**
  * 正式 artifact 引用校验：动作字段以 source.kind=effect + capability 声明
  * 期望能力；参数必须引用已物化工件，且工件来源实体就是当前实例。
@@ -220,6 +224,7 @@ export const seedGuardRegistry: GuardRegistry = {
   'title-not-taken': titleNotTaken,
   'always-true': alwaysTrue,
   'actor-is-human': actorIsHuman,
+  'principal-is-capability-system': principalIsCapabilitySystem,
   'artifact-input-valid': artifactInputValid,
   // T4 meta 平面(A.3 编辑动词 + is-active)。
   'is-draft': isDraft,

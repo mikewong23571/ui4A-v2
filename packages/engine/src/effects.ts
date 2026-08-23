@@ -61,6 +61,7 @@ export interface EngineEvent {
   capability?: string;
   bind?: Record<string, unknown>;
   'on-done'?: string;
+  'on-error'?: string;
   /**
    * confirmation-*:结构化载荷(ConfirmationRequestDetail / ConfirmationDecisionDetail,
    * 见 confirmation.ts;与日志层 LogEvent.detail 同一落点)。
@@ -351,6 +352,7 @@ export function applyEffects(
         capability: effect.capability,
         bind: effect.bind,
         'on-done': effect['on-done'],
+        'on-error': effect['on-error'],
       });
     }
   }

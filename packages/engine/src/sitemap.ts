@@ -94,6 +94,7 @@ export interface SitemapCapability {
     applications: string[];
     flows: string[];
   };
+  executor?: CapabilityDefinition['executor'];
 }
 
 export interface Sitemap {
@@ -146,7 +147,9 @@ function toSitemapFlow(flow: FlowDefinition): SitemapFlow {
     name: node.name,
     title: node.title ?? node.name,
     fields: [...(node.fields ?? [])],
-    actions: node.actions.map((action) => toActionSummary(action, node.fields ?? [])),
+    actions: node.actions
+      .filter((action) => action.internal === undefined)
+      .map((action) => toActionSummary(action, node.fields ?? [])),
   }));
   const edges: SitemapEdge[] = flow.nodes.flatMap((node) =>
     node.actions
@@ -315,6 +318,7 @@ export function deriveSitemap(
           applications: [...(scope?.applications ?? [])],
           flows: [...(scope?.flows ?? [])],
         },
+        ...(capability.executor === undefined ? {} : { executor: capability.executor }),
       };
     },
   );

@@ -4,6 +4,7 @@ import {
   isMetaRel,
   LlmArtifactConfigurationError,
 } from '../../../engine/service';
+import { executeCapabilityRunAction, isCapabilityRunRel } from '../../../engine/capability-runs';
 
 import { parseExecBody, rejectionStatus } from '../exec-request';
 
@@ -42,8 +43,24 @@ export async function POST(request: Request) {
   }
 
   try {
-    const engine = await getEngine(getDb());
-    const outcome = await engine.exec(parsed.request);
+    const db = getDb();
+    const resolvedRequest = {
+      ...parsed.request,
+      principal:
+        parsed.request.principal ?? request.headers.get('x-ui4a-principal') ?? 'local-user',
+    };
+    if (isCapabilityRunRel(resolvedRequest.rel)) {
+      const outcome = await executeCapabilityRunAction(
+        db,
+        resolvedRequest,
+        request.headers.get('x-ui4a-policy-scope') ?? 'development',
+      );
+      return outcome.kind === 'accepted'
+        ? Response.json({ entity: outcome.entity })
+        : Response.json({ layer: 'guard-failed', reason: outcome.reason }, { status: 422 });
+    }
+    const engine = await getEngine(db);
+    const outcome = await engine.exec(resolvedRequest);
     if (outcome.kind === 'accepted') {
       return Response.json({ entity: outcome.entity });
     }

@@ -139,6 +139,7 @@ export type EffectDefinition =
       capability: string;
       bind?: Record<string, unknown>;
       'on-done'?: string;
+      'on-error'?: string;
     }
   | { type: 'meta-edit'; op: MetaEditOp };
 
@@ -162,6 +163,8 @@ export interface ActionDefinition {
   'collect-node-fields'?: boolean;
   /** Server-owned external write ingress policy; requests cannot override it. */
   submission?: SubmissionPolicy;
+  /** Executable by the internal capability bridge but hidden from normal Siren controls. */
+  internal?: 'capability-callback';
 }
 
 /** node-definition:节点 = 界面 + 动作声明集。 */
@@ -241,6 +244,12 @@ export interface CapabilityDefinition {
   scope?: {
     applications?: string[];
     flows?: string[];
+  };
+  /** Deployment-resolved executor requirement; Provider details remain server profile data. */
+  executor?: {
+    class: string;
+    profile: string;
+    requiredFeatures?: string[];
   };
 }
 

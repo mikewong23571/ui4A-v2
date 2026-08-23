@@ -57,6 +57,19 @@ export type EventKind =
   | 'draft-accepted'
   | 'draft-rejected'
   | 'draft-expired'
+  | 'capability-run-created'
+  | 'capability-run-preparing'
+  | 'capability-run-started'
+  | 'capability-run-cursor-advanced'
+  | 'capability-run-restarted'
+  | 'capability-run-approval-requested'
+  | 'capability-run-resumed'
+  | 'capability-run-succeeded'
+  | 'capability-run-failed'
+  | 'capability-run-cancelled'
+  | 'capability-run-staled'
+  | 'capability-raw-chunk-recorded'
+  | 'capability-normalized-event-recorded'
   | 'definition-rejected'
   | 'definition-revised'
   | 'definition-deprecated'
@@ -88,7 +101,7 @@ export type EventKind =
   | 'user-sidecar-evicted'
   | 'render-feedback-recorded';
 
-export type EventDomain = 'core' | 'presentation' | 'draft';
+export type EventDomain = 'core' | 'presentation' | 'draft' | 'capability';
 
 /** 追加事件(引擎 EngineEvent 的日志层超集:引擎不产 seq/ts/reason,由本层分配)。 */
 export interface EventAppend {

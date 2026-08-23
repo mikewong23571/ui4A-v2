@@ -46,6 +46,7 @@ export interface WorkspaceHandle {
   branch: string;
   leaseId: string;
   allowedPaths: string[];
+  mainCheckoutFingerprint: string;
 }
 
 /** Durable provider session handle. Provider-private fields are opaque provenance only. */

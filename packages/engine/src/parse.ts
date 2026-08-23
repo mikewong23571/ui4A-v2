@@ -81,7 +81,10 @@ function submissionIssue(value: unknown, path: string): FlowIssue | undefined {
   }
   for (const key of ['actors', 'scopes'] as const) {
     const rows = value[key];
-    if (rows !== undefined && (!Array.isArray(rows) || rows.some((row) => typeof row !== 'string'))) {
+    if (
+      rows !== undefined &&
+      (!Array.isArray(rows) || rows.some((row) => typeof row !== 'string'))
+    ) {
       return { path: `${path}.${key}`, message: `${key} 必须是字符串数组` };
     }
   }
@@ -124,8 +127,17 @@ function structuralIssues(input: unknown): FlowIssue[] {
     if (Array.isArray(node.actions)) {
       node.actions.forEach((action, actionIndex) => {
         if (!isRecord(action)) return;
-        const issue = submissionIssue(action.submission, `nodes[${index}].actions[${actionIndex}].submission`);
+        const issue = submissionIssue(
+          action.submission,
+          `nodes[${index}].actions[${actionIndex}].submission`,
+        );
         if (issue !== undefined) issues.push(issue);
+        if (action.internal !== undefined && action.internal !== 'capability-callback') {
+          issues.push({
+            path: `nodes[${index}].actions[${actionIndex}].internal`,
+            message: 'internal 只允许 capability-callback',
+          });
+        }
       });
     }
   });
@@ -459,6 +471,28 @@ function capabilityStructuralIssues(input: unknown): FlowIssue[] {
       }
     }
   }
+  if (input.executor !== undefined) {
+    if (!isRecord(input.executor)) {
+      issues.push({ path: 'executor', message: 'executor 必须是对象' });
+    } else {
+      if (typeof input.executor.class !== 'string' || input.executor.class === '') {
+        issues.push({ path: 'executor.class', message: 'executor.class 必须是非空字符串' });
+      }
+      if (typeof input.executor.profile !== 'string' || input.executor.profile === '') {
+        issues.push({ path: 'executor.profile', message: 'executor.profile 必须是非空字符串' });
+      }
+      if (
+        input.executor.requiredFeatures !== undefined &&
+        (!Array.isArray(input.executor.requiredFeatures) ||
+          input.executor.requiredFeatures.some((feature) => typeof feature !== 'string'))
+      ) {
+        issues.push({
+          path: 'executor.requiredFeatures',
+          message: 'executor.requiredFeatures 必须是字符串数组',
+        });
+      }
+    }
+  }
   return issues;
 }
 
@@ -485,5 +519,6 @@ export function parseCapabilityDefinition(input: unknown): CapabilityDefinition 
     ...(record.inputSchema !== undefined ? { inputSchema: record.inputSchema } : {}),
     ...(record.outputSchema !== undefined ? { outputSchema: record.outputSchema } : {}),
     ...(record.scope !== undefined ? { scope: record.scope } : {}),
+    ...(record.executor !== undefined ? { executor: record.executor } : {}),
   };
 }

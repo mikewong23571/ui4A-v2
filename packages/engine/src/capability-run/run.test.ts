@@ -27,6 +27,7 @@ const base = {
     redaction: { secretNames: [], redactHostPaths: true },
   },
   principal: 'user:mike',
+  policyScope: 'development',
   source: { rel: 'change:1', action: 'start-implementation', eventId: 'business:1' },
   profileName: 'default',
 };
@@ -61,6 +62,7 @@ describe('capability run aggregate', () => {
           branch: 'ui4a/run-1',
           leaseId: 'l1',
           allowedPaths: ['src'],
+          mainCheckoutFingerprint: `sha256:${'3'.repeat(64)}`,
         },
         handle: { schemaVersion: 1, runId: base.runId, profileName: 'default', workspaceId: 'w1' },
       }),

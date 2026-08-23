@@ -29,6 +29,7 @@ describe('application seed 常量(T10)', () => {
       'default',
       'publishing',
       'community',
+      'development',
     ]);
   });
 
@@ -43,10 +44,9 @@ describe('application seed 常量(T10)', () => {
       const app = flow.app;
       expect(app, `flow "${flow.name}" 应声明归属 app`).toBeDefined();
       if (app === undefined) continue;
-      expect(
-        seeded.has(app),
-        `flow "${flow.name}" 归属的 app "${app}" 应由 boot seed 激活`,
-      ).toBe(true);
+      expect(seeded.has(app), `flow "${flow.name}" 归属的 app "${app}" 应由 boot seed 激活`).toBe(
+        true,
+      );
     }
   });
 

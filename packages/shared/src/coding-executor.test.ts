@@ -36,6 +36,7 @@ describe('coding executor wire contract', () => {
       branch: 'ui4a/run-1',
       leaseId: 'lease:run-1',
       allowedPaths: task.allowedPaths,
+      mainCheckoutFingerprint: `sha256:${'3'.repeat(64)}`,
     };
     const event: CodingNormalizedEvent = {
       schemaVersion: 1,

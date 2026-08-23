@@ -14,6 +14,8 @@ export interface CapabilityRunSource {
   rel: string;
   action: string;
   eventId: string;
+  onDoneAction?: string;
+  onErrorAction?: string;
 }
 
 export interface CapabilityRun {
@@ -21,6 +23,7 @@ export interface CapabilityRun {
   revision: number;
   status: CapabilityRunStatus;
   principal: string;
+  policyScope: string;
   source: CapabilityRunSource;
   profileName: string;
   task: CodingTask;
@@ -56,6 +59,7 @@ export type CapabilityRunCommand =
       kind: 'create';
       task: CodingTask;
       principal: string;
+      policyScope: string;
       source: CapabilityRunSource;
       profileName: string;
     })
@@ -100,6 +104,7 @@ export type CapabilityRunEvent =
       kind: 'capability-run-created';
       task: CodingTask;
       principal: string;
+      policyScope: string;
       source: CapabilityRunSource;
       profileName: string;
     })
@@ -183,6 +188,7 @@ function foldOne(
       revision: 1,
       status: 'queued',
       principal: event.principal,
+      policyScope: event.policyScope,
       source: { ...event.source },
       profileName: event.profileName,
       task: event.task,
@@ -330,6 +336,7 @@ function commandToEvent(command: CapabilityRunCommand): CapabilityRunEvent {
         kind: 'capability-run-created',
         task: command.task,
         principal: command.principal,
+        policyScope: command.policyScope,
         source: command.source,
         profileName: command.profileName,
       };

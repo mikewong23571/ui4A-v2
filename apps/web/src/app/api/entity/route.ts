@@ -1,4 +1,9 @@
 import { getDb, getEngine, isMetaRel } from '../../../engine/service';
+import {
+  enrichEntityWithCapabilityRuns,
+  getCapabilityRunEntity,
+  isCapabilityRunRel,
+} from '../../../engine/capability-runs';
 
 // GET /api/entity?rel=… — Siren 实体端点(spec FR3):
 // - 已知 rel(实例或集合)→ 200 四件组装 properties/actions/links/guard-results;
@@ -22,8 +27,17 @@ export async function GET(request: Request) {
   }
 
   try {
-    const engine = await getEngine(getDb());
-    const entity = await engine.getEntity(rel);
+    const db = getDb();
+    const principal = request.headers.get('x-ui4a-principal') ?? 'local-user';
+    const policyScope = request.headers.get('x-ui4a-policy-scope') ?? 'development';
+    const engine = await getEngine(db);
+    const projected = isCapabilityRunRel(rel)
+      ? await getCapabilityRunEntity(db, rel, principal, policyScope)
+      : await engine.getEntity(rel);
+    const entity =
+      projected === undefined || isCapabilityRunRel(rel)
+        ? projected
+        : await enrichEntityWithCapabilityRuns(db, projected, principal, policyScope);
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });
     }
@@ -34,7 +48,8 @@ export async function GET(request: Request) {
     //(与 /api/exec 同口径;产品指南:如实,不粉饰)。
     const err = error as { code?: string; message?: string };
     const dbFailure =
-      typeof err.code === 'string' && /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
+      typeof err.code === 'string' &&
+      /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
     const message = error instanceof Error ? error.message : String(error);
     return Response.json(
       dbFailure ? { error: 'entity 数据库不可用' } : { error: `entity 读取失败: ${message}` },

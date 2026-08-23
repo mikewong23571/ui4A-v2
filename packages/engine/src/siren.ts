@@ -192,7 +192,7 @@ function projectInstance(
   const identityPresentation = fieldPresentations.find((field) => field.role === 'identity');
   const identityName = identityPresentation?.path.split('.').at(-1);
   const explicitIdentity = identityName === undefined ? undefined : fields[identityName];
-  const actions = node?.actions ?? [];
+  const actions = (node?.actions ?? []).filter((action) => action.internal === undefined);
   const links: SirenLink[] = [{ rel: ['self'], href: entityHref(deps.baseHref, instance.rel) }];
   // 成员反查所属集合(导航回链)。
   for (const [collection, members] of Object.entries(snapshot.collections)) {
@@ -834,6 +834,7 @@ function projectCapability(capability: CapabilityDefinition, deps: ProjectDeps):
         ? { 'output-schema': capability.outputSchema }
         : {}),
       ...(capability.scope !== undefined ? { scope: capability.scope } : {}),
+      ...(capability.executor !== undefined ? { executor: capability.executor } : {}),
     },
     actions: [],
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, rel) }],

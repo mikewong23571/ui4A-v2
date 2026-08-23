@@ -95,6 +95,7 @@ import { validateSpec } from '../render/validator';
 import { wordOf } from '../render/registry';
 import { dispatchNotify } from '../temporal/notify';
 import { resolveFlowRelAlias, withCollectionFlowEntryLinks } from './flow-entry';
+import { createAndDispatchCapabilityRun, preflightCapabilityExecutor } from './capability-runs';
 
 /** exec 结果(discriminated union;HTTP 层据此映射 200/202/4xx)。 */
 export type ExecOutcome =
@@ -351,6 +352,8 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       extraSurfaces: [
         { rel: 'comments', title: '评论', collection: true },
         { rel: 'inbox', title: '确认收件箱', collection: true },
+        { rel: 'software-changes', title: '软件变更', collection: true, app: 'development' },
+        { rel: 'capability-runs', title: '能力执行', collection: true, app: 'development' },
       ],
       applications,
       capabilities,
@@ -374,6 +377,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
             capability: event.capability,
             ...(event.bind !== undefined ? { bind: event.bind } : {}),
             ...(event['on-done'] !== undefined ? { 'on-done': event['on-done'] } : {}),
+            ...(event['on-error'] !== undefined ? { 'on-error': event['on-error'] } : {}),
           }
         : event.detail,
     reason: event.reason,
@@ -684,13 +688,42 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
 
         const artifactModel = artifactModelFor(outcome.events, aliased);
         for (const event of outcome.events) {
-          await appendWithSeq(toAppend(event));
+          if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
+          const capability = snapshot.capabilities?.[event.capability];
+          if (capability !== undefined) preflightCapabilityExecutor(capability);
+        }
+        const spawned: { event: EngineEvent; seq: number }[] = [];
+        for (const event of outcome.events) {
+          const seq = await appendWithSeq(toAppend(event));
+          if (event.kind === 'spawn-requested') spawned.push({ event, seq });
         }
         snapshot = outcome.snapshot;
         if (outcome.events.some((event) => event.kind === 'definition-activated')) {
           scheduleRecipesForSnapshot(snapshot);
         }
         await materializeSpawnArtifacts(outcome.events, aliased, artifactModel);
+        for (const { event, seq } of spawned) {
+          if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
+          const capability = snapshot.capabilities?.[event.capability];
+          if (capability?.executor?.class !== 'coding-agent') continue;
+          const instance = snapshot.instances[aliased.rel];
+          const policyScope =
+            (instance === undefined
+              ? undefined
+              : activeDefinitionOf(snapshot, instance.flow)?.app) ?? 'default';
+          await createAndDispatchCapabilityRun(db, {
+            sourceSeq: seq,
+            sourceRel: aliased.rel,
+            sourceAction: aliased.action,
+            principal: aliased.principal ?? 'local-user',
+            policyScope,
+            params: aliased.params ?? {},
+            capability,
+            onDoneAction: event['on-done'],
+            onErrorAction: event['on-error'],
+            baseUrl: process.env.UI4A_PUBLIC_BASE_URL ?? 'http://localhost:3100',
+          });
+        }
         applyForeignGaps();
 
         // 受影响实体:append 产出新实例时返回新实体,否则返回执行实体的新投影。
