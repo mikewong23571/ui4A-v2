@@ -3,3 +3,7 @@ T21 Phase E four-variant real browser gate
 Added four Chinese/English natural-language sequences and user-result scoring for detail, count-with-detail-stability, visible collection, and current-location answer. The first batch exposed missing cross-surface navigation; 0c00494 fixed it dynamically. A second batch recorded one honest answer timeout after the list was already visible; scoring was corrected to the approved user-visible result while preserving the failure in history. Final full rerun passed.
 
 Final command: RUN_LLM_EVAL=1 node scripts/with-local-env.mjs pnpm exec playwright test e2e/t21-golden.spec.ts -g four natural-language variants --workers=1 => 1 passed in 4.0m; 4/4 user-result sequences.
+
+T21 full validation report
+
+pnpm check: typecheck/lint/test passed; Vitest 241 files passed + 3 skipped, 1674 tests passed + 3 skipped. CI=true pnpm e2e: 43 passed, 31 gated skips in 2.3m. Real canonical: 1 passed in 46.0s. Real four variants: final 4/4 user-result batch passed in 4.0m. Live stack reloaded through pnpm dev:all; CLI health/business/meta and render-specs all 200; browser /canvas?focus=articles rendered one A2UI surface with both articles.
