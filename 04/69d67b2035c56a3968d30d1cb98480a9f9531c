@@ -1,0 +1,1 @@
+T18 Phase B: provider-neutral wire contracts, pure Capability Run lifecycle/fold/revision/cursor/idempotency/restart, server-owned profile resolution without fallback, workspace policy and human-only result decision. Verification: focused 28 tests, shared/engine typechecks and targeted formatting passed; purity recursively scans all engine modules.
