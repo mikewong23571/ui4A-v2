@@ -1,18 +1,32 @@
+import { createHash } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
 import {
+  canonicalJson,
   contentVersion,
+  decideCodingResult,
   type CapabilityRun,
   type ExecRequest,
   type SirenEntity,
 } from '@ui4a/engine';
-import type { CapabilityDefinition, CodingExecutorProfile, CodingTask } from '@ui4a/shared';
+import type {
+  ActionDefinition,
+  CapabilityDefinition,
+  CodingExecutorProfile,
+  CodingTask,
+  EngineSnapshot,
+} from '@ui4a/shared';
 
 import {
   appendCapabilityRunCommand,
   findCapabilityRunsBySource,
   getCapabilityRun,
+  getCapabilityRunInternal,
   listCapabilityNormalizedEvents,
   listCapabilityRawReceipts,
   listCapabilityRuns,
+  readCapabilityPayload,
   type ConnectableDb,
 } from '../db/capability-runs';
 import type { DbExecutor } from '../db/events';
@@ -20,6 +34,7 @@ import { cancelCodingCapability, dispatchCodingCapability } from '../temporal/ca
 
 export const CAPABILITY_RUNS_REL = 'capability-runs';
 const CAPABILITY_RUN_PREFIX = 'capability-run:';
+const runFile = promisify(execFile);
 
 function profileFromEnvironment(name: string): CodingExecutorProfile {
   const raw = process.env.UI4A_CODING_EXECUTOR_PROFILES;
@@ -283,4 +298,102 @@ export async function executeCapabilityRunAction(
 
 export function isCapabilityRunRel(rel: string): boolean {
   return rel === CAPABILITY_RUNS_REL || rel.startsWith(CAPABILITY_RUN_PREFIX);
+}
+
+function payloadHash(payload: unknown): string {
+  return `sha256:${createHash('sha256').update(canonicalJson(payload)).digest('hex')}`;
+}
+
+function repositoryPath(repositoryRef: string, policyScope: string): string {
+  const raw = process.env.UI4A_CODING_REPOSITORIES;
+  if (raw === undefined) throw new Error('UI4A_CODING_REPOSITORIES is not configured');
+  const registry = JSON.parse(raw) as Record<string, { path?: unknown; scopes?: unknown }>;
+  const entry = registry[repositoryRef];
+  if (
+    entry === undefined ||
+    typeof entry.path !== 'string' ||
+    !Array.isArray(entry.scopes) ||
+    !entry.scopes.includes(policyScope)
+  ) {
+    throw new Error('repositoryRef is not authorized for result decision');
+  }
+  return entry.path;
+}
+
+/** Revalidate an Application result decision before its transition event is appended. */
+export async function preflightCodingResultDecision(
+  db: DbExecutor,
+  snapshot: EngineSnapshot,
+  request: ExecRequest,
+  action: ActionDefinition,
+) {
+  if (action.decision === undefined) return undefined;
+  const instance = snapshot.instances[request.rel];
+  const runId = instance?.fields.runId?.value;
+  const resultId = instance?.fields.resultId?.value;
+  if (typeof runId !== 'string' || typeof resultId !== 'string') {
+    return {
+      decision: 'denied' as const,
+      code: 'result-stale',
+      reason: 'source entity has no linked coding result',
+    };
+  }
+  const run = await getCapabilityRunInternal(db, runId);
+  if (run?.result === undefined || run.status !== 'succeeded') {
+    return {
+      decision: 'denied' as const,
+      code: 'result-stale',
+      reason: 'coding result is not available',
+    };
+  }
+  if (request.principal === undefined || request.principal !== run.principal) {
+    return {
+      decision: 'denied' as const,
+      code: 'human-required',
+      reason: 'decision principal does not own the run',
+    };
+  }
+  const [patch, trajectory] = await Promise.all([
+    readCapabilityPayload(db, run.result.patch.hash),
+    readCapabilityPayload(db, run.result.trajectory.hash),
+  ]);
+  if (patch === undefined || trajectory === undefined) {
+    return {
+      decision: 'denied' as const,
+      code: 'artifact-integrity-failed',
+      reason: 'coding result payload is missing',
+    };
+  }
+  const path = repositoryPath(run.task.repositoryRef, run.policyScope);
+  const currentBaseRevision = (
+    await runFile('git', ['-C', path, 'rev-parse', 'HEAD'], {
+      timeout: 5_000,
+      env: {
+        PATH: process.env.PATH ?? '/usr/bin:/bin',
+        NODE_ENV: process.env.NODE_ENV ?? 'production',
+      },
+    })
+  ).stdout.trim();
+  return decideCodingResult({
+    actor: request.actor ?? 'human',
+    principal: request.principal,
+    requestedDecision: action.decision === 'accept-capability-result' ? 'accept' : 'reject',
+    ...(typeof request.params?.reason === 'string'
+      ? { rejectionReason: request.params.reason }
+      : {}),
+    runId,
+    runRevision: run.revision,
+    expectedRunRevision: run.revision,
+    result: run.result,
+    expectedResultId: resultId,
+    currentBaseRevision,
+    allowedPaths: run.task.allowedPaths,
+    requiredTests: run.result.testRuns.map((test) => test.command),
+    verified: {
+      patchHash: payloadHash(patch),
+      trajectoryHash: payloadHash(trajectory),
+      changedFiles: run.result.changedFiles,
+      testRuns: run.result.testRuns,
+    },
+  });
 }

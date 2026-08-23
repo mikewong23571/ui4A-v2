@@ -138,6 +138,16 @@ function structuralIssues(input: unknown): FlowIssue[] {
             message: 'internal 只允许 capability-callback',
           });
         }
+        if (
+          action.decision !== undefined &&
+          action.decision !== 'accept-capability-result' &&
+          action.decision !== 'reject-capability-result'
+        ) {
+          issues.push({
+            path: `nodes[${index}].actions[${actionIndex}].decision`,
+            message: 'decision 必须是 accept-capability-result/reject-capability-result',
+          });
+        }
       });
     }
   });

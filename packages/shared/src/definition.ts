@@ -165,6 +165,8 @@ export interface ActionDefinition {
   submission?: SubmissionPolicy;
   /** Executable by the internal capability bridge but hidden from normal Siren controls. */
   internal?: 'capability-callback';
+  /** Human business decision requiring Capability Result revalidation before effects. */
+  decision?: 'accept-capability-result' | 'reject-capability-result';
 }
 
 /** node-definition:节点 = 界面 + 动作声明集。 */

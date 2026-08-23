@@ -526,6 +526,7 @@
             {
               "name": "accept-implementation",
               "title": "接受实施结果",
+              "decision": "accept-capability-result",
               "to": "accepted",
               "guards": ["actor-is-human"],
               "fields": [],
@@ -534,6 +535,7 @@
             {
               "name": "reject-implementation",
               "title": "驳回实施结果",
+              "decision": "reject-capability-result",
               "to": "rejected",
               "guards": ["actor-is-human"],
               "fields": [

@@ -84,6 +84,7 @@ import {
   type EventAppend,
 } from '../db/events';
 import { getPool } from '../db/pool';
+import { ensureCapabilityRunTables } from '../db/capability-runs';
 import { installedApplicationBundles } from '../applications/bundles';
 import {
   resetRecipeCoordinatorForTests,
@@ -95,7 +96,11 @@ import { validateSpec } from '../render/validator';
 import { wordOf } from '../render/registry';
 import { dispatchNotify } from '../temporal/notify';
 import { resolveFlowRelAlias, withCollectionFlowEntryLinks } from './flow-entry';
-import { createAndDispatchCapabilityRun, preflightCapabilityExecutor } from './capability-runs';
+import {
+  createAndDispatchCapabilityRun,
+  preflightCapabilityExecutor,
+  preflightCodingResultDecision,
+} from './capability-runs';
 
 /** exec 结果(discriminated union;HTTP 层据此映射 200/202/4xx)。 */
 export type ExecOutcome =
@@ -263,6 +268,7 @@ async function bootstrapApplicationBundles(db: DbExecutor): Promise<void> {
 
 async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   await ensureEventsTable(db);
+  await ensureCapabilityRunTables(db);
   await bootstrapApplicationBundles(db);
 
   const events: LogEvent[] = await readLog(db);
@@ -686,22 +692,63 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           return { kind: 'suspended', entity, confirmation: outcome.confirmation };
         }
 
-        const artifactModel = artifactModelFor(outcome.events, aliased);
-        for (const event of outcome.events) {
+        let effectiveEvents = outcome.events;
+        const decisionInstance = snapshot.instances[aliased.rel];
+        const decisionFlow =
+          decisionInstance === undefined
+            ? undefined
+            : activeDefinitionOf(snapshot, decisionInstance.flow);
+        const decisionAction = decisionFlow?.nodes
+          .find((node) => node.name === decisionInstance?.node)
+          ?.actions.find((action) => action.name === aliased.action);
+        if (decisionAction?.decision !== undefined) {
+          const decision = await preflightCodingResultDecision(
+            db,
+            snapshot,
+            aliased,
+            decisionAction,
+          );
+          if (
+            decision !== undefined &&
+            (decision.decision === 'denied' || decision.decision === 'stale')
+          ) {
+            return persistRejection(aliased, {
+              layer: 'guard-failed',
+              reason: decision.reason,
+              detail: decision,
+            });
+          }
+          if (decision !== undefined) {
+            effectiveEvents = outcome.events.map((event) =>
+              event.kind === 'action-executed'
+                ? {
+                    ...event,
+                    detail: {
+                      ...(event.detail as Record<string, unknown>),
+                      codingDecision: decision.receipt,
+                    },
+                  }
+                : event,
+            );
+          }
+        }
+
+        const artifactModel = artifactModelFor(effectiveEvents, aliased);
+        for (const event of effectiveEvents) {
           if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
           const capability = snapshot.capabilities?.[event.capability];
           if (capability !== undefined) preflightCapabilityExecutor(capability);
         }
         const spawned: { event: EngineEvent; seq: number }[] = [];
-        for (const event of outcome.events) {
+        for (const event of effectiveEvents) {
           const seq = await appendWithSeq(toAppend(event));
           if (event.kind === 'spawn-requested') spawned.push({ event, seq });
         }
         snapshot = outcome.snapshot;
-        if (outcome.events.some((event) => event.kind === 'definition-activated')) {
+        if (effectiveEvents.some((event) => event.kind === 'definition-activated')) {
           scheduleRecipesForSnapshot(snapshot);
         }
-        await materializeSpawnArtifacts(outcome.events, aliased, artifactModel);
+        await materializeSpawnArtifacts(effectiveEvents, aliased, artifactModel);
         for (const { event, seq } of spawned) {
           if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
           const capability = snapshot.capabilities?.[event.capability];
@@ -727,7 +774,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         applyForeignGaps();
 
         // 受影响实体:append 产出新实例时返回新实体,否则返回执行实体的新投影。
-        const appended = outcome.events[0]?.appended ?? [];
+        const appended = effectiveEvents[0]?.appended ?? [];
         const targetRel = appended.length > 0 ? appended[appended.length - 1]! : aliased.rel;
         const entity = project(snapshot, targetRel, projectDeps());
         if (entity === undefined) {

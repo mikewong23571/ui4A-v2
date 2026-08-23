@@ -37,13 +37,16 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
       'meta/application:default',
       'meta/application:publishing',
       'meta/application:community',
+      'meta/application:development',
       'meta/flow:article-drafting',
       'meta/flow:post-status',
       'meta/flow:comment-moderation',
+      'meta/flow:software-change',
       'meta/capabilities',
       'meta/capability:draft',
       'meta/capability:notify',
       'meta/capability:clarify',
+      'meta/capability:coding.execute',
       'meta/drafts',
     ]);
   });

@@ -44,6 +44,7 @@ describe('GET /.well-known/ui4a.json', () => {
         'flow:article-drafting',
         'flow:post-status',
         'flow:comment-moderation',
+        'flow:software-change',
         'articles',
         'comments',
       ]),
@@ -52,6 +53,7 @@ describe('GET /.well-known/ui4a.json', () => {
       'article-drafting',
       'post-status',
       'comment-moderation',
+      'software-change',
     ]);
     expect(sitemap.flows[0]?.initial).toBe('basic-info');
   });
@@ -104,22 +106,23 @@ describe('GET /.well-known/ui4a.json', () => {
       'default',
       'publishing',
       'community',
+      'development',
     ]);
     const publishing = sitemap.applications.find((app) => app.name === 'publishing');
     expect(publishing).toMatchObject({ title: '内容发布' });
     expect(publishing?.intent).toContain('内容起草与发布');
-    expect(publishing?.flows.map((flow) => flow.name)).toEqual([
-      'article-drafting',
-      'post-status',
-    ]);
+    expect(publishing?.flows.map((flow) => flow.name)).toEqual(['article-drafting', 'post-status']);
     const community = sitemap.applications.find((app) => app.name === 'community');
     expect(community?.flows.map((flow) => flow.name)).toEqual(['comment-moderation']);
+    const development = sitemap.applications.find((app) => app.name === 'development');
+    expect(development?.flows.map((flow) => flow.name)).toEqual(['software-change']);
 
     // 扁平 flows 索引保留(向后兼容),条目带归一化后的 app 归属。
     expect(sitemap.flows.map((flow) => `${flow.name}:${flow.app}`)).toEqual([
       'article-drafting:publishing',
       'post-status:publishing',
       'comment-moderation:community',
+      'software-change:development',
     ]);
   });
 
