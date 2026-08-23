@@ -1,0 +1,5 @@
+T21 Phase A Task 4: disposable dual-focus contract probe
+
+Compared legacy ConversationFocus reuse, two dedicated events, and a hybrid contract. Selected immutable clientView inside the user chat-message event plus dedicated successful chat-navigation-completed events. The fold exposes independent current-message clientView and latest successful lastNavigation facts; missing client view stays unknown, async ready/fallback receipts persist before becoming client-visible.
+
+No product/repository probe edits or DB mutations. contract-probe.md records alternatives, atomicity/replay rationale, code touchpoints, and required Red-to-Green tests.
