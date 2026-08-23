@@ -1,0 +1,5 @@
+T21 Phase A Task 2: automated Red baseline
+
+Captured a fresh five-turn real deepseek-v4-flash session against the running local stack. The SSE reducer showed no focus or ready Presentation receipt, U1 stayed on articles, list/location turns failed on text-only output, and the audit prompt had empty structured context with no lastNavigation/clientView. Added baseline.md and linked it from the Track index.
+
+Validation: real /api/chat session t21-red-1787499451381; governed CLI audit with jq assertions; Prettier check; git diff --check. No /api/exec calls or business mutation.
