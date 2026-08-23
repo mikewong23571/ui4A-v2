@@ -30,12 +30,12 @@
 
 ## Phase D: Generic Agent Host 与 Coding specialization migration
 
-- [ ] Task: TS9 Red→Green——typed Prompt compiler、data delimiters、实际 messages/prompt hash provenance
-- [ ] Task: TS10/TS11 Red→Green——Runtime registry feature negotiation 与 tool/resource grant intersection、零 fallback/override
-- [ ] Task: TS12 Red→Green——generic Temporal workflow、questions/grant signals、kill/cancel/restart/callback idempotency
-- [ ] Task: TS13 Red→Green——output schema、artifact/verifier evidence 与 Application proposal bridge
-- [ ] Task: TS14 Red→Green——迁移 coding-agent@1；保留 T18 wire/event/API compatibility 或明确 version adapter
-- [ ] Task: T18 regression——deterministic corpus、real Codex 5 variants、Safety/no-merge/main checkout 全绿
+- [~] Task: TS9 Red→Green——typed Prompt compiler、data delimiters、实际 messages/prompt hash provenance
+- [~] Task: TS10/TS11 Red→Green——Runtime registry feature negotiation 与 tool/resource grant intersection、零 fallback/override
+- [~] Task: TS12 Red→Green——generic Temporal workflow、questions/grant signals、kill/cancel/restart/callback idempotency
+- [~] Task: TS13 Red→Green——output schema、artifact/verifier evidence 与 Application proposal bridge
+- [~] Task: TS14 Red→Green——迁移 coding-agent@1；保留 T18 wire/event/API compatibility 或明确 version adapter
+- [~] Task: T18 regression——deterministic corpus、real Codex 5 variants、Safety/no-merge/main checkout 全绿
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase E: Writing specialization vertical slice
