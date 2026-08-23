@@ -47,6 +47,16 @@ export type EventKind =
   | 'definition-edited'
   | 'definition-submitted'
   | 'definition-activated'
+  | 'definition-candidate-applied'
+  | 'draft-created'
+  | 'draft-revised'
+  | 'draft-validated'
+  | 'draft-submitted'
+  | 'draft-staled'
+  | 'draft-abandoned'
+  | 'draft-accepted'
+  | 'draft-rejected'
+  | 'draft-expired'
   | 'definition-rejected'
   | 'definition-revised'
   | 'definition-deprecated'
@@ -78,7 +88,7 @@ export type EventKind =
   | 'user-sidecar-evicted'
   | 'render-feedback-recorded';
 
-export type EventDomain = 'core' | 'presentation';
+export type EventDomain = 'core' | 'presentation' | 'draft';
 
 /** 追加事件(引擎 EngineEvent 的日志层超集:引擎不产 seq/ts/reason,由本层分配)。 */
 export interface EventAppend {
@@ -213,7 +223,38 @@ export async function appendEvent(
 }
 
 /** 读取事件(只读,seq 升序;afterSeq 分页:返回 seq 严格大于 afterSeq 的事件)。 */
-export async function listEvents(db: DbExecutor, afterSeq = 0): Promise<StoredEvent[]> {
+export async function listEvents(
+  db: DbExecutor,
+  afterSeq = 0,
+  options?: {
+    domain?: EventDomain;
+    rel?: string;
+    kind?: string;
+    principal?: string;
+    limit?: number;
+  },
+): Promise<StoredEvent[]> {
+  const limit = options?.limit;
+  if (limit !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > 101)) {
+    throw new Error('event limit must be an integer between 1 and 101');
+  }
+  const values: unknown[] = [afterSeq];
+  const where = ['seq > $1'];
+  if (options?.domain !== undefined) {
+    values.push(options.domain);
+    where.push(`domain = $${values.length}`);
+  }
+  for (const [column, value] of [
+    ['rel', options?.rel],
+    ['kind', options?.kind],
+    ['principal', options?.principal],
+  ] as const) {
+    if (value !== undefined) {
+      values.push(value);
+      where.push(`${column} = $${values.length}`);
+    }
+  }
+  const limitSql = limit === undefined ? '' : ` LIMIT $${values.push(limit)}`;
   const result = await db.query<{
     domain: EventDomain;
     seq: string | number;
@@ -229,8 +270,8 @@ export async function listEvents(db: DbExecutor, afterSeq = 0): Promise<StoredEv
     detail: unknown;
   }>(
     `SELECT seq, ts, domain, actor, principal, channel, kind, rel, action, params, reason, detail
-     FROM events WHERE seq > $1 ORDER BY seq ASC`,
-    [afterSeq],
+     FROM events WHERE ${where.join(' AND ')} ORDER BY seq ASC${limitSql}`,
+    values,
   );
   return result.rows.map((row) => ({
     domain: row.domain,
@@ -274,6 +315,5 @@ export function toLogEvent(event: StoredEvent): LogEvent {
 
 /** 读出日志并归一为引擎可折叠形状(seq 升序;afterSeq 分页)。 */
 export async function readLog(db: DbExecutor, afterSeq = 0): Promise<LogEvent[]> {
-  const stored = await listEvents(db, afterSeq);
-  return stored.filter((event) => (event.domain ?? 'core') === 'core').map(toLogEvent);
+  return (await listEvents(db, afterSeq, { domain: 'core' })).map(toLogEvent);
 }

@@ -1,3 +1,5 @@
+import { contentVersion } from '@ui4a/engine';
+
 import { getDb, getEngine } from '../../../../../engine/service';
 
 // GET /_meta/.well-known/ui4a.json — meta 站点 sitemap 端点(T4 Phase B,spec 决定 6):
@@ -11,7 +13,12 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const engine = await getEngine(getDb());
-    return Response.json(engine.getMetaSitemap());
+    const current = engine.getMetaSitemap();
+    const surfaces = [
+      ...current.surfaces,
+      { rel: 'meta/drafts', title: 'Governed Drafts', collection: true },
+    ];
+    return Response.json({ protocolVersion: '1', ...current, version: contentVersion(surfaces), surfaces });
   } catch {
     return Response.json({ error: 'meta sitemap 数据库不可用' }, { status: 503 });
   }

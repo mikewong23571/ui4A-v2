@@ -136,7 +136,7 @@ export interface MetaSitemap {
 
 /** 定义平面 rel(meta/self 或 meta/ 前缀;HTTP 层的跨站路由键)。 */
 export function isMetaRel(rel: string): boolean {
-  return rel === 'meta/self' || rel.startsWith('meta/');
+  return rel === 'meta/self' || rel.startsWith('meta/') || rel.startsWith('draft:');
 }
 
 /**
@@ -312,6 +312,11 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       { rel: 'meta/self', title: 'definition-lifecycle(引擎自举)' },
       { rel: 'meta/flows', title: '流程定义', collection: true },
       { rel: 'meta/activations', title: '激活队列', collection: true },
+      { rel: 'meta/applications', title: '应用定义', collection: true },
+      ...Object.values(snapshot.applications ?? {}).map((application) => ({
+        rel: `meta/application:${application.name}`,
+        title: application.title,
+      })),
       ...Object.values(snapshot.definitions ?? {}).map((entry) => ({
         rel: metaFlowRel(entry.name),
         title: entry.definition.title ?? entry.name,
@@ -523,6 +528,9 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     // 委托步号会触发折叠层「步号不连续」响亮报错且确定性复发(终审 M-1)。
     applyForeignGaps();
     snapshot = fold(fresh, { flows: {} }, snapshot);
+    if (fresh.some((event) => event.kind === 'definition-candidate-applied')) {
+      scheduleRecipesForSnapshot(snapshot);
+    }
     lastSeq = Math.max(lastSeq, fresh[fresh.length - 1]!.seq);
   };
 

@@ -33,6 +33,10 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
       'meta/self',
       'meta/flows',
       'meta/activations',
+      'meta/applications',
+      'meta/application:default',
+      'meta/application:publishing',
+      'meta/application:community',
       'meta/flow:article-drafting',
       'meta/flow:post-status',
       'meta/flow:comment-moderation',
@@ -40,6 +44,7 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
       'meta/capability:draft',
       'meta/capability:notify',
       'meta/capability:clarify',
+      'meta/drafts',
     ]);
   });
 });

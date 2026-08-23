@@ -1,4 +1,5 @@
 import { getDb, getEngine, isMetaRel } from '../../../../engine/service';
+import { getDraftMetaEntity, isDraftMetaRel } from '../../../../engine/drafts';
 
 // GET /_meta/api/entity?rel=… — meta 站点 Siren 实体端点(T4 Phase B,spec 决定 6):
 // - rel 以 meta/ 前缀路由到同一引擎的 meta 投影(同日志同串行队列;快照即真相);
@@ -21,8 +22,15 @@ export async function GET(request: Request) {
   }
 
   try {
-    const engine = await getEngine(getDb());
-    const entity = await engine.getMetaEntity(rel);
+    const db = getDb();
+    const engine = await getEngine(db);
+    const url = new URL(request.url);
+    const principal = request.headers.get('x-ui4a-principal') ?? 'local-user';
+    const policyScope =
+      request.headers.get('x-ui4a-policy-scope') ?? url.searchParams.get('policyScope') ?? 'publishing';
+    const entity = isDraftMetaRel(rel)
+      ? await getDraftMetaEntity(db, engine, rel, principal, policyScope)
+      : await engine.getMetaEntity(rel);
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });
     }
