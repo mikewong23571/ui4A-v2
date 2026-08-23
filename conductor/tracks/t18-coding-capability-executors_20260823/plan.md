@@ -20,14 +20,14 @@
 - [x] Task: Pure kernel/source governance——零 Node/DB/HTTP/Temporal/Provider/Hermes；公共函数 JSDoc 与覆盖率 >80% (0469d67)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (0469d67)
 
-## Phase C: Capability persistence、workspace 与 Temporal runtime
+## Phase C: Capability persistence、workspace 与 Temporal runtime [checkpoint: d0630ad]
 
-- [ ] Task: TS5 Red→Green——append-only capability persistence、raw/result content addressing、projection/indexes/rebuild/owner-scope isolation
-- [ ] Task: TS6 Red→Green——repository registry 与 Git worktree manager；unique branch/lease/snapshot/diff/retention
-- [ ] Task: TS7 Red→Green——Temporal capability workflow、heartbeat/cancel/retry/timeout/kill-resume 与 process cleanup
-- [ ] Task: TS8 Red→Green——result/trajectory artifact materialization 与声明 callback action bridge；失败零半状态
-- [ ] Task: Replay/concurrency/budget integration——projection rebuild、two-run isolation、duplicate callback/result、raw backpressure
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: TS5 Red→Green——append-only capability persistence、raw/result content addressing、projection/indexes/rebuild/owner-scope isolation (d0630ad)
+- [x] Task: TS6 Red→Green——repository registry 与 Git worktree manager；unique branch/lease/snapshot/diff/retention (d0630ad)
+- [x] Task: TS7 Red→Green——Temporal capability workflow、heartbeat/cancel/retry/timeout/kill-resume 与 process cleanup (d0630ad)
+- [x] Task: TS8 Red→Green——result/trajectory artifact materialization 与声明 callback action bridge；失败零半状态 (d0630ad)
+- [x] Task: Replay/concurrency/budget integration——projection rebuild、two-run isolation、duplicate callback/result、raw backpressure (d0630ad)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (d0630ad)
 
 ## Phase D: Executor adapters 与真实 Codex
 
