@@ -60,6 +60,11 @@ export function MetaActions({
       <div className="grid gap-3 lg:grid-cols-2">
         {actions.map((action) => {
           const guard = guards.get(action.name);
+          const commandId = prefill?.commandId;
+          const actionPrefill =
+            typeof commandId === 'string'
+              ? { ...prefill, commandId: `${commandId}:${action.name}` }
+              : prefill;
           return (
             <Card key={action.name} className="min-w-0 p-4">
               <ActionRunner
@@ -67,7 +72,7 @@ export function MetaActions({
                 action={action}
                 blocked={guard?.blocked === true}
                 blockReason={guard?.reason}
-                prefill={prefill}
+                prefill={actionPrefill}
                 execFn={(input) => execMetaAction({ ...input, scope })}
                 onExecuted={onChanged}
               />

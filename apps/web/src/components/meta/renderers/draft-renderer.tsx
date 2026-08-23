@@ -1,7 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
-
 import type { SirenEntity } from '@ui4a/engine';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -57,10 +55,7 @@ export function DraftRenderer({
   onChanged?: () => void;
 }) {
   const view = draftViewModel(entity);
-  const commandId = useMemo(
-    () => `ui:${view.id}:${view.version}:${Date.now().toString(36)}`,
-    [view.id, view.version],
-  );
+  const commandId = `ui:${view.id}:${view.version}`;
   const activation =
     typeof entity.properties.activation === 'string' ? entity.properties.activation : undefined;
   return (

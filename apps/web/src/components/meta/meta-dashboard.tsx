@@ -20,7 +20,6 @@ export function MetaDashboard({ requestedScope }: { requestedScope?: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    setState('loading');
     void fetchMetaSitemap(requestedScope)
       .then((next) => {
         if (cancelled) return;
@@ -59,24 +58,32 @@ export function MetaDashboard({ requestedScope }: { requestedScope?: string }) {
           </p>
         </div>
         {sitemap !== null && (
-          <div className="w-full shrink-0 space-y-2 sm:w-56">
-            <label htmlFor="meta-scope" className="text-xs font-medium text-muted-foreground">
-              当前 Scope
-            </label>
-            <select
-              id="meta-scope"
-              value={sitemap.effectiveScope}
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              onChange={(event) => {
-                window.location.assign(`/meta?scope=${encodeURIComponent(event.target.value)}`);
-              }}
-            >
-              {sitemap.authorizedScopes.map((scope) => (
-                <option key={scope} value={scope}>
-                  {scope}
-                </option>
-              ))}
-            </select>
+          <div className="w-full shrink-0 space-y-2 sm:w-64">
+            <form action="/meta" method="get" className="flex items-end gap-2">
+              <div className="min-w-0 flex-1">
+                <label htmlFor="meta-scope" className="text-xs font-medium text-muted-foreground">
+                  当前 Scope
+                </label>
+                <select
+                  id="meta-scope"
+                  name="scope"
+                  defaultValue={sitemap.effectiveScope}
+                  className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  {sitemap.authorizedScopes.map((scope) => (
+                    <option key={scope} value={scope}>
+                      {scope}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="submit"
+                className="h-10 rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                切换
+              </button>
+            </form>
             {sitemap.authorizationMode === 'self-reported-local-demo' && (
               <p className="text-xs text-amber-700 dark:text-amber-300">
                 本地演示身份：Scope 由服务端 allowlist 约束，不代表生产 SSO。
