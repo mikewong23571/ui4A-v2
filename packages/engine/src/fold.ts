@@ -44,6 +44,10 @@ import type {
 import { actionEffects } from './parse';
 import { applyRenderSpecFrozen } from './render-spec';
 import { applyCapabilityArtifactCreated } from './capability-artifact';
+import {
+  applyDefinitionCandidate,
+  type DefinitionCandidateAppliedDetail,
+} from './submission/apply';
 
 /** 日志事件种类:引擎产出(含 T4 定义事件族)+ 日志层三种
  *  (拒绝留痕 I6 / 种子装载 / definition-seeded 定义种子)+
@@ -68,6 +72,7 @@ export type LogEventKind =
   | 'notification-delivered'
   | 'seed'
   | 'definition-seeded'
+  | 'definition-candidate-applied'
   | 'application-seeded'
   | 'capability-seeded'
   | 'meta-bootstrap-applied'
@@ -829,6 +834,12 @@ export function fold(
         break;
       case 'definition-activated':
         snapshot = applyDefinitionActivated(snapshot, event);
+        break;
+      case 'definition-candidate-applied':
+        snapshot = applyDefinitionCandidate(
+          snapshot,
+          event.detail as DefinitionCandidateAppliedDetail,
+        );
         break;
       case 'definition-rejected':
         snapshot = applyDefinitionRejected(snapshot, event);

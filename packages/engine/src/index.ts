@@ -24,8 +24,10 @@ export * from './lifecycle';
 export * from './meta';
 export * from './meta-bootstrap';
 export * from './definition-diff';
+export * from './definition-bundle';
 export * from './invariants';
 export * from './siren';
 export * from './sitemap';
+export * from './submission/index';
 // 独立 Presentation Plane 的纯编排/校验基座；不进入 Business fold。
 export * from './presentation/index';
