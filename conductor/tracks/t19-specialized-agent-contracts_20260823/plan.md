@@ -1,15 +1,15 @@
 # T19 Specialized Agent Contracts — Plan
 
-## Phase A: Red baseline、spikes 与架构决定
+## Phase A: Red baseline、spikes 与架构决定 [checkpoint: e6f157d]
 
-- [~] Task: 冻结 U1–U26/TS1–TS20 evidence schema、Coding/Writing/Agent-authoring Golden Stories 和 Safety corpus
-- [~] Task: Red baseline——证明 T18 Host/Run/Task/Result 与 coding 名称、Git workspace 和 verifier 耦合
-- [~] Task: AgentDefinition spike——比较独立定义、单层 extends 与 mixin；验证 flatten/birth-version/cycle/diff
-- [~] Task: Prompt contract spike——比较 typed blocks/bindings、Mustache-style 文本和 Provider 原生模板；验证 privilege separation/hash
-- [~] Task: Run migration spike——比较 capability-run 原位演进、agent-run compatibility projection 与新事件族；证明单一真相
-- [~] Task: Writing runtime spike——验证 document workspace、source/citation/render evidence 和真实 Provider structured result
-- [ ] Task: 将决定先写入 DECISIONS/tech-stack，明确 Capability→AgentDefinition→RuntimeProfile 三层
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: 冻结 U1–U26/TS1–TS20 evidence schema、Coding/Writing/Agent-authoring Golden Stories 和 Safety corpus (e6f157d)
+- [x] Task: Red baseline——证明 T18 Host/Run/Task/Result 与 coding 名称、Git workspace 和 verifier 耦合 (e6f157d)
+- [x] Task: AgentDefinition spike——比较独立定义、单层 extends 与 mixin；验证 flatten/birth-version/cycle/diff (e6f157d)
+- [x] Task: Prompt contract spike——比较 typed blocks/bindings、Mustache-style 文本和 Provider 原生模板；验证 privilege separation/hash (e6f157d)
+- [x] Task: Run migration spike——比较 capability-run 原位演进、agent-run compatibility projection 与新事件族；证明单一真相 (e6f157d)
+- [x] Task: Writing runtime spike——验证 document workspace、source/citation/render evidence 和真实 Provider structured result (e6f157d)
+- [x] Task: 将决定先写入 DECISIONS/tech-stack，明确 Capability→AgentDefinition→RuntimeProfile 三层 (e6f157d)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (e6f157d)
 
 ## Phase B: Shared AgentDefinition 与 pure kernels
 
