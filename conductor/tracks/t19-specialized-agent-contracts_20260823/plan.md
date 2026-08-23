@@ -56,7 +56,7 @@
 
 ## Phase G: 全量验收、文档与终审
 
-- [ ] Task: U1–U26 user-story matrix 全量闭环；Coding/Writing/Authoring 三条真实 Golden Story
+- [~] Task: U1–U26 user-story matrix 全量闭环；Coding/Writing/Authoring 三条真实 Golden Story
 - [ ] Task: Safety 100%、performance/budget、prompt/template/payload limits、retention 和 failure recovery
 - [ ] Task: 回归 `pnpm check`、`CI=true pnpm e2e`、真实 Temporal、real Agent Evals 和 source governance
 - [ ] Task: 同步 GOAL/DECISIONS/product/tech/arch/runtime/audit/AGENTS/README/DONE
