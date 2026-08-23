@@ -1,0 +1,5 @@
+T21 Phase B source governance
+
+Added executable guards that keep clientView/lastNavigation as separate projections, reject phrase-driven display/navigation branches, keep client facts out of authorization/tools/start-rel discovery, and preserve no-rule production runtime.
+
+Validation: pnpm vitest run packages/agent/src/t21-source-governance.test.ts => 4 passed; Prettier and git diff checks.
