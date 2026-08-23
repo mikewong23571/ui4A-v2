@@ -8,6 +8,7 @@
 - [Specification](./spec.md)
 - [User Stories](./user-stories.md)
 - [Acceptance Evidence Contract](./evidence.md)
+- [Red Baseline](./baseline.md)
 - [Implementation Plan](./plan.md)
 
 当前状态：`in_progress`。本 Track 不改变 Business action、guard、schema 或文章数据，不引入第二权威
