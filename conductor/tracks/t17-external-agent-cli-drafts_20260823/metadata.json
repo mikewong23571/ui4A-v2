@@ -1,0 +1,9 @@
+{
+  "id": "t17-external-agent-cli-drafts_20260823",
+  "type": "feature",
+  "status": "new",
+  "title": "T17 External Agent CLI 与 Governed Draft Ingress",
+  "created_at": "2026-08-23T13:06:48+08:00",
+  "updated_at": "2026-08-23T13:06:48+08:00",
+  "approved_by": "user (external Agent CLI, business operations, default Draft ingress with contract-controlled direct/none opt-out)"
+}
