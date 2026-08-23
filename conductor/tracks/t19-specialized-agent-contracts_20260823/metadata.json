@@ -1,9 +1,9 @@
 {
   "id": "t19-specialized-agent-contracts_20260823",
   "type": "feature",
-  "status": "new",
+  "status": "in-progress",
   "title": "T19 Specialized Agent Contracts",
   "created_at": "2026-08-23T17:05:00+08:00",
-  "updated_at": "2026-08-23T17:05:00+08:00",
+  "updated_at": "2026-08-23T17:12:00+08:00",
   "approved_by": "user (specialized agents derive from a base agent through prompt, task/result, runtime and policy contracts)"
 }
