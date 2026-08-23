@@ -74,6 +74,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function submissionIssue(value: unknown, path: string): FlowIssue | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value) || !['draft', 'direct', 'none'].includes(String(value.mode))) {
+    return { path, message: 'submission.mode 必须是 draft/direct/none' };
+  }
+  for (const key of ['actors', 'scopes'] as const) {
+    const rows = value[key];
+    if (rows !== undefined && (!Array.isArray(rows) || rows.some((row) => typeof row !== 'string'))) {
+      return { path: `${path}.${key}`, message: `${key} 必须是字符串数组` };
+    }
+  }
+  return undefined;
+}
+
 /** 结构校验:形状对不对(字段类型级)。 */
 function structuralIssues(input: unknown): FlowIssue[] {
   const issues: FlowIssue[] = [];
@@ -90,6 +104,8 @@ function structuralIssues(input: unknown): FlowIssue[] {
   if (input.app !== undefined && typeof input.app !== 'string') {
     issues.push({ path: 'app', message: 'app 必须是字符串' });
   }
+  const flowSubmission = submissionIssue(input.submission, 'submission');
+  if (flowSubmission !== undefined) issues.push(flowSubmission);
   if (!Array.isArray(input.nodes) || input.nodes.length === 0) {
     issues.push({ path: 'nodes', message: 'nodes 必须是非空数组' });
     return issues;
@@ -104,6 +120,13 @@ function structuralIssues(input: unknown): FlowIssue[] {
     }
     if (!Array.isArray(node.actions)) {
       issues.push({ path: `nodes[${index}].actions`, message: 'actions 必须是数组' });
+    }
+    if (Array.isArray(node.actions)) {
+      node.actions.forEach((action, actionIndex) => {
+        if (!isRecord(action)) return;
+        const issue = submissionIssue(action.submission, `nodes[${index}].actions[${actionIndex}].submission`);
+        if (issue !== undefined) issues.push(issue);
+      });
     }
   });
   return issues;
@@ -361,6 +384,8 @@ function applicationStructuralIssues(input: unknown): FlowIssue[] {
   if (input.entry !== undefined && (typeof input.entry !== 'string' || input.entry === '')) {
     issues.push({ path: 'entry', message: 'entry 必须是非空字符串' });
   }
+  const submission = submissionIssue(input.submission, 'submission');
+  if (submission !== undefined) issues.push(submission);
   return issues;
 }
 
@@ -381,6 +406,7 @@ export function parseApplicationDefinition(input: unknown): ApplicationDefinitio
     title: record.title,
     intent: record.intent,
     ...(record.entry !== undefined ? { entry: record.entry } : {}),
+    ...(record.submission !== undefined ? { submission: record.submission } : {}),
   };
 }
 

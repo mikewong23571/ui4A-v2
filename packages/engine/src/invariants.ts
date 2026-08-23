@@ -3,19 +3,20 @@
  * T10 Phase A Task 3 增第七条 app-known,spec 架构决定 3;
  * T13 Phase D Task 1 增第八条 capability-registered,spec 架构决定 4)。
  *
- * validateDefinition(draft, registries) → checks:八项逐条、全量报告不短路
+ * validateDefinition(draft, registries) → checks:九项逐条、全量报告不短路
  * (与 guard 求值同口径:每项都要有结果,checks 入 activation 实体与
  * definition-submitted 事件 detail——"非法动作被拒绝、非法定义也应被拒绝"
  * 的定义层落点)。
  *
- * 八项:edge-targets-exist / guards-registered / field-types-known /
+ * 九项:edge-targets-exist / guards-registered / field-types-known /
  * effect-known / initial-exists / terminal-reachable / app-known /
- * capability-registered。
+ * capability-registered / submission-policy-valid。
  * 纯函数:只读草稿与注册表。
  */
 import type { ActivationCheck, FlowDefinition, GuardRegistry } from '@ui4a/shared';
 import { KNOWN_EFFECT_TYPES, KNOWN_FIELD_TYPES, reachableNodes, terminalNodes } from '@ui4a/shared';
 import type { FieldDefinition, FieldType } from './types';
+import { validateSubmissionPolicy } from './submission/policy';
 
 /** 检查器依赖的注册表(meta/registries 的运行时子集)。 */
 export interface DefinitionRegistries {
@@ -55,7 +56,7 @@ function effectsOf(action: { effect?: unknown }): EffectLike[] {
   return list.filter((e): e is EffectLike => typeof e === 'object' && e !== null);
 }
 
-/** 激活不变式检查器:返回八项检查结果(pass + 失败明细)。 */
+/** 激活不变式检查器:返回九项检查结果(pass + 失败明细)。 */
 export function validateDefinition(
   draft: FlowDefinition,
   registries: DefinitionRegistries,
@@ -70,6 +71,11 @@ export function validateDefinition(
   const fieldTypeIssues: string[] = [];
   const effectIssues: string[] = [];
   const capabilityIssues: string[] = [];
+  const submissionIssues: string[] = [];
+
+  if (draft.submission?.mode === 'none' && draft.nodes.some((node) => node.actions.length > 0)) {
+    submissionIssues.push('flow submission none cannot expose write actions');
+  }
 
   // capability-registered(T13 第八条)的引用点扫描,与 apps/web
   // capabilities.test.ts 静态保证同一扫描面:field source 为 proposal 时的
@@ -113,6 +119,19 @@ export function validateDefinition(
     }
     for (const action of node.actions) {
       const where = `nodes[${node.name}].actions[${action.name}]`;
+      if (action.submission?.mode === 'none') {
+        submissionIssues.push(`${where}.submission: none action cannot be exposed`);
+      }
+      if (action.submission !== undefined) {
+        submissionIssues.push(
+          ...validateSubmissionPolicy(action.submission, {
+            declaredAction: true,
+            hasSchema: true,
+            hasAuthorization: true,
+            risk: action['requires-confirmation'] ?? 'low',
+          }).map((issue) => `${where}.submission: ${issue}`),
+        );
+      }
       // 边目标:action.to 与 transition 效果的 to 都必须落在节点集。
       if (action.to !== undefined && !nodeNames.has(action.to)) {
         edgeIssues.push(`${where}.to: 目标节点 "${action.to}" 不存在`);
@@ -228,6 +247,11 @@ export function validateDefinition(
       name: 'capability-registered',
       pass: capabilityIssues.length === 0,
       ...(capabilityIssues.length > 0 ? { detail: capabilityIssues } : {}),
+    },
+    {
+      name: 'submission-policy-valid',
+      pass: submissionIssues.length === 0,
+      ...(submissionIssues.length > 0 ? { detail: submissionIssues } : {}),
     },
   ];
 }

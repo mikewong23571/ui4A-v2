@@ -39,6 +39,7 @@ export interface SitemapAction {
   guards: string[];
   'requires-confirmation'?: 'low' | 'medium' | 'high';
   fields: Record<string, unknown>;
+  submission?: ActionDefinition['submission'];
 }
 
 export interface SitemapNode {
@@ -136,6 +137,7 @@ function toActionSummary(
   if (action['requires-confirmation'] !== undefined) {
     summary['requires-confirmation'] = action['requires-confirmation'];
   }
+  if (action.submission !== undefined) summary.submission = action.submission;
   return summary;
 }
 

@@ -128,7 +128,7 @@ export interface DefinitionRejectedDetail {
 }
 
 /**
- * definition-submitted:submit 后立即求值八项不变式的落态事件
+ * definition-submitted:submit 后立即求值全部不变式的落态事件
  * (checks-pass → pending-approval + activation 物化;checks-fail → 回 draft,
  * 校验报告即 checks 中的失败项——A.4 原样)。
  */
@@ -223,7 +223,7 @@ function withEntry(
  * meta exec 主入口(编辑动词 + 生命周期动词)。
  *
  * 覆盖:add-node / add-action(applyEffects 的 meta-edit 已改工作副本,此处补
- * 伴随事件 definition-edited)、revise、deprecate、submit(八项不变式 + activation
+ * 伴随事件 definition-edited)、revise、deprecate、submit(全部不变式 + activation
  * 物化/checks-fail 回 draft)、approve / reject(actor-is-human 铁律 5;可经
  * meta/flow:<name> 或 meta/activation:<id> 发起——A.2 把 approve/reject 挂在
  * 激活实体上,裁决仍是 lifecycle 实例同一套三层)。
@@ -296,7 +296,7 @@ export function executeMeta(
   }
 
   if (request.action === 'submit') {
-    // A.4:draft --submit--> validating,引擎内立即求值八项不变式并落态
+    // A.4:draft --submit--> validating,引擎内立即求值全部不变式并落态
     // (validating 是瞬态,不持久化)。checks 全过 → pending-approval +
     // activation 实体;有 fail → 回 draft(校验报告入事件)。
     const entry = entryOf(verdict.snapshot, flowName)!;

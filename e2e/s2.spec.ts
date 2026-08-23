@@ -384,6 +384,7 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     expect(checks.map((check) => check.name).sort()).toEqual([
       'app-known',
       'capability-registered',
+      'submission-policy-valid',
       'edge-targets-exist',
       'effect-known',
       'field-types-known',

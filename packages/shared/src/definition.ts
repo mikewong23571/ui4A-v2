@@ -12,6 +12,7 @@
  * 这些类型是纯数据(序列化友好),供 web/worker/引擎三方共用。
  */
 import type { ParamOrigin } from './state';
+import type { SubmissionPolicy } from './submission';
 
 /** 字段语义(arch-brief §2:四种)。 */
 export type FieldSemantics = 'org-standard' | 'intent' | 'work-product' | 'elicitation';
@@ -159,6 +160,8 @@ export interface ActionDefinition {
   fields?: FieldDefinition[];
   /** 是否采集当前节点字段；缺省 true。取消类动作应显式关闭。 */
   'collect-node-fields'?: boolean;
+  /** Server-owned external write ingress policy; requests cannot override it. */
+  submission?: SubmissionPolicy;
 }
 
 /** node-definition:节点 = 界面 + 动作声明集。 */
@@ -188,6 +191,8 @@ export interface FlowDefinition {
    * application 不持成员清单(避免双重真相),membership 由本字段聚合推导。
    */
   app?: string;
+  /** Candidate definition/content ingress defaults to Draft unless explicitly tightened. */
+  submission?: SubmissionPolicy;
 }
 
 /**
@@ -204,6 +209,7 @@ export interface ApplicationDefinition {
   intent: string;
   /** 默认入口(路线 T3 默认页消费;本 track 仅落字段)。 */
   entry?: string;
+  submission?: SubmissionPolicy;
 }
 
 /** capability 类别(arch-brief 第七层三类动词:转换/提取/效应)。 */

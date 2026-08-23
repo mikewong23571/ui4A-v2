@@ -260,6 +260,7 @@
             {
               "name": "unpublish",
               "title": "下线",
+              "submission": { "mode": "direct", "actors": ["agent", "human"] },
               "to": "offline",
               "guards": ["is-published"],
               "method": "POST",
@@ -331,6 +332,7 @@
             {
               "name": "approve",
               "title": "通过",
+              "submission": { "mode": "direct", "actors": ["agent", "human"] },
               "to": "approved",
               "guards": ["is-pending"],
               "method": "POST",
@@ -345,6 +347,7 @@
             {
               "name": "reject",
               "title": "驳回",
+              "submission": { "mode": "direct", "actors": ["agent", "human"] },
               "to": "rejected",
               "guards": ["is-pending"],
               "method": "POST",

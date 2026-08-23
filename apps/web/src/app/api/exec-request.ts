@@ -25,6 +25,9 @@ export function parseExecBody(body: unknown): ParsedBody | ParseError {
     return { ok: false, error: '请求体必须是 JSON 对象' };
   }
   const { rel, action, params, actor, principal, channel, authorization } = body;
+  if (body.mode !== undefined || body.submissionMode !== undefined || body.noDraft !== undefined) {
+    return { ok: false, error: 'SubmissionPolicy 由服务端合同决定，请求不得覆盖' };
+  }
   if (typeof rel !== 'string' || rel === '') {
     return { ok: false, error: 'rel 必须是非空字符串' };
   }

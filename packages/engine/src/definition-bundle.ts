@@ -118,8 +118,25 @@ export function exportDefinitionBundle(
     capabilities,
     flows,
     policies: [
-      { subject: `application:${applicationName}`, submission: { mode: 'draft' } },
-      ...flows.map((flow) => ({ subject: `flow:${flow.name}`, submission: { mode: 'draft' as const } })),
+      {
+        subject: `application:${applicationName}`,
+        submission: application.submission ?? { mode: 'draft' },
+      },
+      ...flows.flatMap((flow) => [
+        { subject: `flow:${flow.name}`, submission: flow.submission ?? { mode: 'draft' as const } },
+        ...flow.nodes.flatMap((node) =>
+          node.actions.flatMap((action) =>
+            action.submission === undefined
+              ? []
+              : [
+                  {
+                    subject: `flow:${flow.name}/node:${node.name}/action:${action.name}`,
+                    submission: action.submission,
+                  },
+                ],
+          ),
+        ),
+      ]),
     ],
     provenance: {
       source: 'active-definition-log',
@@ -128,4 +145,3 @@ export function exportDefinitionBundle(
     },
   };
 }
-

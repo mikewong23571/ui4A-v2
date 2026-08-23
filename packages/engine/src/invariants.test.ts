@@ -57,6 +57,7 @@ describe('validateDefinition — 合法定义全过', () => {
         'terminal-reachable',
         'app-known',
         'capability-registered',
+        'submission-policy-valid',
       ]);
       expect(
         checks.every((c) => c.pass),
@@ -390,7 +391,7 @@ describe('submit — checks 全过 → pending-approval', () => {
       activation: { id: string; version: number };
     };
     expect(detail).toMatchObject({ name: 'article-drafting', passed: true });
-    expect(detail.checks).toHaveLength(8);
+    expect(detail.checks).toHaveLength(9);
     expect(detail.activation).toMatchObject({ id: 'a1', version: 2 });
 
     // fold 全链一致(I5)。

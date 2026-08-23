@@ -72,6 +72,7 @@ export interface SirenAction {
   href: string;
   fields: Record<string, unknown>;
   'requires-confirmation'?: 'low' | 'medium' | 'high';
+  submission?: ActionDefinition['submission'];
 }
 
 /** guard 求值结果逐项注入的条目(每个 action 一条,含 blocked 原因)。
@@ -136,6 +137,7 @@ function toSirenAction(
   if (action['requires-confirmation'] !== undefined) {
     sirenAction['requires-confirmation'] = action['requires-confirmation'];
   }
+  if (action.submission !== undefined) sirenAction.submission = action.submission;
   return sirenAction;
 }
 
