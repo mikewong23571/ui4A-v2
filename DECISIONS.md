@@ -240,3 +240,29 @@
 - **UI 后果**:Entity/Canvas 不再显示“生成正式摘要工件”“保存正式摘要引用”及其参数表单。
   T15 U15/U16 的最新故事定义取代原先正式摘要工件实验；通用 artifact/capability 基础设施保留，
   但不再由摘要场景消费。
+
+## D29 External Agent CLI 与 Governed Draft Ingress(2026-08-23,T17 Phase A)
+
+- **协议边界**:`ui4a` 是 HTTP/Siren/meta 的 TypeScript/Node 参考客户端，不是第二协议，
+  不含 LLM、prompt、业务关键词或 `improve` 黑盒命令。JSON envelope 固定
+  `schemaVersion:1`，stdout 在 `--json` 下只含结果；诊断走 stderr；配置优先级为
+  flag → `UI4A_*` env → XDG user config。命令退出码区分 usage/config/auth/not-found/
+  judgment/conflict/network/protocol。
+- **Draft 真相与存储**:Draft lifecycle 事件与 Business/Presentation 共用 append-only
+  `events` 表，但使用独立 `draft` domain 和 pure fold；`draft_projection` 只是可删除重建的
+  查询投影。payload 进入 immutable content-addressed `draft_payloads`，事件只存
+  `sha256:<64hex>`；这避免每次 Flow revision 在日志重复整包，并保持 exact read 完整性校验。
+  首期只收 JSON，canonical payload 上限 256 KiB、深度 32、节点 20,000、每 Draft 32 版、
+  每 principal/scope 20 个非终态、同 scope 16 MiB，非终态 30 天后以事件过期。
+- **SubmissionPolicy**:policy 随激活合同声明，最具体的 Entity/Action 可收紧父级；`none` 是
+  吸收式拒绝，`direct` 只允许显式低风险 action 且仍需 schema/guard/授权；外部可写但未声明
+  缺省 `draft`，衍生/聚合/审计/协议投影缺省 `none`。请求中的 actor/principal/mode 不能覆盖策略。
+- **原子 apply**:首个 slice 只接受 `flow-definition` Draft。human approval 在同一 PG 事务内
+  重新读取 core 日志、校验 base/current/registries，追加一个完整 validated change-set core event
+  与 `draft-accepted` event；失败不提交任一事件。该事件必须能独立重放定义版本、审批 provenance
+  与 active pointer，保证 birth version、sitemap bump 和失败零半激活。
+- **身份边界**:T17 不引入 Keycloak。local demo 仍按 D8/D10 明示为 self-reported，CLI 禁止
+  `--actor human`、`--principal admin`、`--no-draft`；服务端始终拒绝 Agent approval。生产 token
+  verification 保留为部署 adapter，不把本地自报证据写成强认证。
+- **可选 companion skill**:只在 CLI 合同稳定并通过独立 cwd smoke 后生成；skill 仅教授发现、
+  修订、验证和安全顺序，产品/CLI 文档保持 agent-neutral，任何 Agent 不依赖该 skill 仍可使用。

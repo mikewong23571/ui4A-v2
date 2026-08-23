@@ -1,6 +1,7 @@
-# T17 Technical Architecture — Candidate
+# T17 Technical Architecture — Accepted
 
-> 本文是 Phase A spike 前的候选架构，不是已锁定决定。CLI envelope、Draft storage、Bundle apply 原子性和真实第三方 Agent 可用性必须经 probe 后写入全局 `DECISIONS.md`，再进入实现。
+> Phase A disposable probes 已完成，决定冻结于全局 D29。本文保留候选方案的推导，
+> 下面“Phase A Open Decisions”已由“Accepted Decisions”取代。
 
 ## 1. Boundary
 
@@ -152,7 +153,9 @@ draft-expired
 
 All include eventId/commandId/draftId, owner and provenance. A pure fold produces Draft aggregates and lookup indexes. PostgreSQL projection is rebuildable and may index principal/policyScope/kind/target/status/updatedSeq.
 
-Open decision for Phase A: Draft events may share the current `events` table under a distinct domain or use a dedicated append-only table. The choice must prove replay ordering, transaction boundaries, Business hash isolation and operational simplicity; convenience alone is insufficient.
+Draft events share the current `events` table under `domain='draft'`。完整 payload 存入 immutable
+content-addressed `draft_payloads`，事件只存 SHA-256；`draft_projection` 可删除重建。该模式复用
+Presentation 已验证的 domain/fold/projection 结构，同时避免完整 Flow 每版重复进入日志。
 
 ## 7. Siren/Meta Interface
 
@@ -183,12 +186,14 @@ The first slice modifies one existing Flow inside an Application. Approval must:
 6. mark Draft accepted with activation and target version references;
 7. invalidate affected Recipe/Sidecar dependencies and regenerate asynchronously.
 
-Phase A must compare two options:
+Phase A compared two options:
 
 - one `candidate-applied` event carrying the validated change set;
 - transactionally append existing definition/activation events plus an apply receipt.
 
-The selected approach must preserve existing fold compatibility, in-flight birth versions and replay determinism. Creating a new Application Bundle atomically is deferred until this slice is proven.
+选择单个 `definition-candidate-applied` core event，与 `draft-accepted` 在同一 PostgreSQL 事务
+提交。完整 validated change set 可独立重放 active pointer、版本历史和 approved activation；
+无需在 Draft 之外复制 definition draft/pending 状态。Creating a new Application Bundle atomically is deferred until this slice is proven.
 
 ## 9. CLI Command Surface
 
@@ -248,14 +253,12 @@ It does not receive source code, action names, Draft IDs or repair hints. Eviden
 
 Scripted callers may prove protocol mechanics but do not prove U24.
 
-## 12. Phase A Open Decisions
+## 12. Accepted Decisions
 
-1. Draft events in shared domain vs dedicated append-only table.
-2. Payload inline vs content-addressed reference and exact budgets.
-3. Atomic apply event vs grouped existing events.
-4. SubmissionPolicy location and inheritance across Resource/Entity/Action.
-5. CLI JSON envelope compatibility/version policy.
-6. Local-demo identity vs first token-verifying server adapter.
-7. Whether CLI ships a Codex companion skill in this Track; any skill must remain optional and CLI docs agent-neutral.
-
-No implementation begins until probe results are recorded in `DECISIONS.md` and any tech-stack deviation is synchronized.
+1. Shared `events` table + isolated `draft` domain + independent pure fold.
+2. SHA-256 content-addressed JSON payloads; 256 KiB/depth 32/node 20k/version 32 budgets.
+3. One core `definition-candidate-applied` change set + same-transaction `draft-accepted`.
+4. Server-owned SubmissionPolicy; `none` absorbing, explicit governed direct, writable default draft.
+5. CLI envelope `schemaVersion:1` and exit-code taxonomy frozen by D29.
+6. Local demo remains visibly self-reported; production credential adapter is not falsely claimed.
+7. Companion Codex skill ships only after CLI smoke and remains optional/agent-neutral.

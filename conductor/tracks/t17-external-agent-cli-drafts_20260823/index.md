@@ -8,5 +8,7 @@
 - [Technical Stories](./technical-stories.md)
 - [Technical Architecture](./architecture.md)
 - [Implementation Plan](./plan.md)
+- [Acceptance Evidence](./evidence.md)
+- [Phase A Probe Record](./spikes.md)
 
-当前状态：`new`。首个纵向切片闭环“第三方 Agent 改进现有 Application 的一个 Flow”；创建全新 App 保留为后续扩展，但所有核心协议必须从第一天避免专用化。
+当前状态：`in-progress`。首个纵向切片闭环“第三方 Agent 改进现有 Application 的一个 Flow”；创建全新 App 保留为后续扩展，但所有核心协议必须从第一天避免专用化。
