@@ -25,16 +25,16 @@
 - [x] Task: Pure kernel source governance——无 DB/HTTP/React/Temporal/env/业务关键词；公共函数 JSDoc 与覆盖率 >80% (19152ca)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (19152ca)
 
-## Phase C: Draft persistence、Siren Meta resources 与审批桥
+## Phase C: Draft persistence、Siren Meta resources 与审批桥 [checkpoint: 7a98351]
 
-- [ ] Task: TS14 Red→Green——按 Phase A 决定实现 append-only Draft persistence、PostgreSQL projection、owner/policy/status indexes 和 projection rebuild
-- [ ] Task: U11/U12/U15/U17/TS15 Red→Green——`meta/drafts` 与 `draft:<id>` Siren 投影；create/revise/validate/diff/submit/abandon 全走声明 action + `/_meta/api/exec`
-- [ ] Task: U15/U16/TS16 Red→Green——ready submit → pending activation；Agent approve/reject 100% 拒绝；human decision 与 Draft 双向 provenance
-- [ ] Task: U16/U18/TS17 Red→Green——批准时重新授权/校验/CAS，原子应用现有 publishing Flow candidate，失败无半激活并转 stale
-- [ ] Task: TS18 Red→Green——definition 变化局部 stale Draft/Recipe/Sidecar，历史不可变，rebase/regeneration receipt 可审计
-- [ ] Task: U7/U13/U15 Safety integration——invalid/ready/pending Draft 均不改变 Active Entity、集合计数、sitemap 或 Presentation fastpath
-- [ ] Task: Replay/concurrency integration——全量/增量 fold、projection truncate/rebuild、两 writer CAS、重试幂等、Active/Draft hash 一致
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: TS14 Red→Green——按 Phase A 决定实现 append-only Draft persistence、PostgreSQL projection、owner/policy/status indexes 和 projection rebuild (7a98351)
+- [x] Task: U11/U12/U15/U17/TS15 Red→Green——`meta/drafts` 与 `draft:<id>` Siren 投影；create/revise/validate/diff/submit/abandon 全走声明 action + `/_meta/api/exec` (7a98351)
+- [x] Task: U15/U16/TS16 Red→Green——ready submit → pending activation；Agent approve/reject 100% 拒绝；human decision 与 Draft 双向 provenance (7a98351)
+- [x] Task: U16/U18/TS17 Red→Green——批准时重新授权/校验/CAS，原子应用现有 publishing Flow candidate，失败无半激活并转 stale (7a98351)
+- [x] Task: TS18 Red→Green——definition 变化局部 stale Draft/Recipe/Sidecar，历史不可变，rebase/regeneration receipt 可审计 (7a98351)
+- [x] Task: U7/U13/U15 Safety integration——invalid/ready/pending Draft 均不改变 Active Entity、集合计数、sitemap 或 Presentation fastpath (7a98351)
+- [x] Task: Replay/concurrency integration——全量/增量 fold、projection truncate/rebuild、两 writer CAS、重试幂等、Active/Draft hash 一致 (7a98351)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (7a98351)
 
 ## Phase D: TypeScript `ui4a` CLI 基座、读取与业务操作
 
