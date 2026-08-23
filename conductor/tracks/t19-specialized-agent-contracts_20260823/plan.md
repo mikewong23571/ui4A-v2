@@ -40,10 +40,10 @@
 
 ## Phase E: Writing specialization vertical slice
 
-- [ ] Task: TS15 Red→Green——WritingBrief/WritingResult、document workspace、source/citation/render verifier
-- [ ] Task: 声明并激活 writing-agent@1，Application Capability/Flow 只引用 specialization，不绑定 Provider
-- [ ] Task: Renderer——brief form、Run progress/questions、document/citations/render receipt、human accept/reject，移动端/action fuzz
-- [ ] Task: Real Writing Agent Eval——canonical + 4 variants ≥80%，引用/代码仓库/自动发布 Safety 100%
+- [~] Task: TS15 Red→Green——WritingBrief/WritingResult、document workspace、source/citation/render verifier
+- [~] Task: 声明并激活 writing-agent@1，Application Capability/Flow 只引用 specialization，不绑定 Provider
+- [~] Task: Renderer——brief form、Run progress/questions、document/citations/render receipt、human accept/reject，移动端/action fuzz
+- [~] Task: Real Writing Agent Eval——canonical + 4 variants ≥80%，引用/代码仓库/自动发布 Safety 100%
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase F: Agent-authored specialization
