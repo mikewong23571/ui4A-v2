@@ -10,8 +10,16 @@ export const metadata: Metadata = {
 export default async function MetaControlPlanePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ scope?: string }>;
+  searchParams?: Promise<{ scope?: string; query?: string; filter?: string }>;
 } = {}) {
-  const scope = (await searchParams)?.scope;
-  return <MetaDashboard requestedScope={scope} />;
+  const params = await searchParams;
+  const filter =
+    params?.filter === 'pending' || params?.filter === 'invalid' ? params.filter : 'all';
+  return (
+    <MetaDashboard
+      requestedScope={params?.scope}
+      initialQuery={params?.query}
+      initialFilter={filter}
+    />
+  );
 }

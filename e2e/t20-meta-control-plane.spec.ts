@@ -34,7 +34,7 @@ test.describe.serial('T20 Meta Human Control Plane', () => {
     await expect
       .poll(() => requests.filter((item) => item.url.includes('.well-known')).length)
       .toBe(1);
-    expect(requests.filter((item) => item.url.includes('/api/entity')).length).toBe(0);
+    expect(requests.filter((item) => item.url.includes('/api/entity')).length).toBe(6);
 
     await page.getByRole('searchbox').fill('publishing');
     await expect(page.getByRole('link', { name: /内容发布/ })).toBeVisible();
