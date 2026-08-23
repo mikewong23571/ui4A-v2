@@ -21,14 +21,14 @@
 - [x] Task: 增加 source-governance 测试，阻止双事实再次折叠成单个 `currentRel`，并阻止客户端 route 成为业务授权来源 746c78d
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 746c78d
 
-## Phase C: Chat、Canvas 与 Presentation 接线
+## Phase C: Chat、Canvas 与 Presentation 接线 [checkpoint: 75ed8ee]
 
 - [x] Task: Red TDD——客户端每次发送消息时上报有界 `clientView`；覆盖 Canvas focus、Sidecar receipt、集合、详情、直接页面和 unknown 979880e
 - [x] Task: Green——在 Next.js 当前版本约束下实现客户端观察采集与 Route 校验；不解析自然语言，不增加页面清单 ab59eb0
 - [x] Task: Red TDD——成功 navigation 与可用 Presentation receipt 更新 `lastNavigation`；失败、pending、superseded receipt 不得冒充成功 e284cbd
 - [x] Task: Green——接入 SSE、异步 Broker receipt 和 conversation projection，使下一轮 LLM 同时获得两个事实 a9c543b
 - [x] Task: Red→Green——刷新、重连、切换历史会话和并发客户端保持各自 `clientView`，同时从日志恢复 `lastNavigation` 75ed8ee
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 75ed8ee
 
 ## Phase D: AI-first 决策与协议韧性
 
