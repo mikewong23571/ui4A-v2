@@ -1,0 +1,5 @@
+T21 Phase A Task 3: disposable real-LLM protocol probe
+
+Compared toolChoice auto, required, and one bounded required repair using the configured deepseek-v4-flash adapter. Auto succeeded 2/2; required succeeded without the historical GLM hang; an injected text-only failure was repaired by a second real LLM decision without parsing text. Recorded the bounded required-plus-one-repair recommendation in llm-probe.md.
+
+No repository probe code retained, no credentials printed, no UI4A business HTTP calls or mutations. Latencies: auto 5136/3104ms, required 2382ms, repair 6301ms.
