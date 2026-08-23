@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { draftEditorSchema } from './draft-editor-schema';
+import { draftEditorSchema, mergeDraftEditorData } from './draft-editor-schema';
 
 describe('Draft structured editor schema', () => {
   it('exposes issue-repair fields for Agent Definitions without raw JSON editing', () => {
@@ -30,6 +30,29 @@ describe('Draft structured editor schema', () => {
       properties: {
         name: { type: 'string' },
         nodes: { type: 'array', items: { type: 'object' } },
+      },
+    });
+  });
+
+  it('preserves untouched optional contract schemas when submitting one structured repair', () => {
+    expect(
+      mergeDraftEditorData(
+        {
+          contracts: {
+            inputSchema: { type: 'object' },
+            outputSchema: { type: 'string' },
+            contextSchema: { type: 'array' },
+            policySchema: { type: 'boolean' },
+          },
+        },
+        { contracts: { inputSchema: { type: 'string' } } },
+      ),
+    ).toEqual({
+      contracts: {
+        inputSchema: { type: 'string' },
+        outputSchema: { type: 'string' },
+        contextSchema: { type: 'array' },
+        policySchema: { type: 'boolean' },
       },
     });
   });

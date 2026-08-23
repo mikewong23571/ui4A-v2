@@ -144,7 +144,9 @@ describe('Agent Run HTTP contract', () => {
         body: JSON.stringify({ rel: 'agent-run:http-run', action: 'cancel' }),
       }),
     );
-    expect(rejected.status).toBe(422);
-    await expect(rejected.json()).resolves.toMatchObject({ reason: 'agent run not found' });
+    expect(rejected.status).toBe(403);
+    await expect(rejected.json()).resolves.toMatchObject({
+      error: expect.stringContaining('not authorized'),
+    });
   });
 });

@@ -52,6 +52,8 @@ export const AGENT_DEFINITION_EDITOR_SCHEMA: EditorSchema = {
       properties: {
         inputSchema: { type: 'object', title: 'Input JSON Schema', additionalProperties: true },
         outputSchema: { type: 'object', title: 'Output JSON Schema', additionalProperties: true },
+        contextSchema: { type: 'object', title: 'Context JSON Schema', additionalProperties: true },
+        policySchema: { type: 'object', title: 'Policy JSON Schema', additionalProperties: true },
       },
       additionalProperties: false,
     },
@@ -151,4 +153,23 @@ export function draftEditorSchema(
       ? complete.required.filter((key) => typeof key === 'string' && issueRoots.has(key))
       : [],
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Merge structured issue-field edits without deleting untouched optional sibling contracts. */
+export function mergeDraftEditorData(
+  original: Record<string, unknown>,
+  edited: Record<string, unknown>,
+): Record<string, unknown> {
+  const merged = { ...original };
+  for (const [key, value] of Object.entries(edited)) {
+    merged[key] =
+      isRecord(value) && isRecord(original[key])
+        ? mergeDraftEditorData(original[key], value)
+        : value;
+  }
+  return merged;
 }

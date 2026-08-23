@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/card';
 import { rjsfValidator } from '@/components/rjsf-validator';
 
 import { execMetaAction, useMetaEntity } from '../meta-client';
-import { draftEditorSchema } from '../view-models/draft-editor-schema';
+import { draftEditorSchema, mergeDraftEditorData } from '../view-models/draft-editor-schema';
 import { draftViewModel } from '../view-models/draft';
 import { browserHrefForContractHref, MetaActions, RawContract } from './common';
 
@@ -74,7 +74,7 @@ function DraftPayloadEditor({
       params: {
         commandId: `ui:${rel}:${version}:revise`,
         baseVersion: version,
-        payload: { ...original, ...formData },
+        payload: mergeDraftEditorData(original, formData),
       },
     });
     setSubmitting(false);

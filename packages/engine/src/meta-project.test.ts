@@ -131,6 +131,7 @@ describe('meta/flow:<name> 投影(A.2 定义实体)', () => {
     expect(entity.actions.map((a) => a.name)).toEqual(['add-node', 'add-action', 'submit']);
     expect(entity.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=meta/flow:post-status' },
+      { rel: ['application'], href: '/api/entity?rel=meta/application:default' },
     ]);
   });
 
