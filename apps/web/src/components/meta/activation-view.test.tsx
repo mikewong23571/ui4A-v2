@@ -5,8 +5,7 @@
  * - checks 列表逐项显示(名称 + 通过/失败 + 失败明细);
  * - 机械 diff 用内建 react-diff-view 渲染(不经过被审批者的任何渲染器);
  * - approve/reject 是已声明动作(RJSF:reject reason 必填),提交走
- *   /_meta/api/exec 且 actor=human(铁律 5:审批不委托——renderer 恒以人类
- *   身份提交,agent 侧 approve 在引擎层被拒);
+ *   /_meta/api/exec；浏览器不提交身份，服务端注入 human principal(铁律 5);
  * - 已决策(approved/rejected)是审计视图:无审批动作。
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -52,7 +51,9 @@ const diff: DefinitionDiff = {
     name: 'article-drafting',
     title: '文章发布向导',
     initial: 'basic-info',
-    nodes: [{ name: 'ready', title: '就绪', actions: [{ name: 'publish', title: '发布', to: 'done' }] }],
+    nodes: [
+      { name: 'ready', title: '就绪', actions: [{ name: 'publish', title: '发布', to: 'done' }] },
+    ],
   },
   after: {
     name: 'article-drafting',
@@ -70,7 +71,9 @@ const diff: DefinitionDiff = {
     ],
   },
   changed: {
-    added: { nodes: { 0: { actions: { 1: { name: 'pin', title: '置顶', to: 'done', guards: [] } } } } },
+    added: {
+      nodes: { 0: { actions: { 1: { name: 'pin', title: '置顶', to: 'done', guards: [] } } } },
+    },
     deleted: {},
     updated: {},
   },
@@ -103,7 +106,9 @@ function activationEntity(
       ],
       diff,
       'requested-by': { actor: 'agent', principal: 'user:mike' },
-      ...(status === 'approved' ? { 'approved-by': { actor: 'human', principal: 'user:mike' } } : {}),
+      ...(status === 'approved'
+        ? { 'approved-by': { actor: 'human', principal: 'user:mike' } }
+        : {}),
       ...(status === 'rejected' ? { 'rejected-reason': '理由' } : {}),
       ...overrides,
     },
@@ -166,54 +171,49 @@ describe('ActivationView(BIOS 激活详情)', () => {
     expect(inserts.join('\n')).toContain('pin');
   });
 
-  it('approve 提交走 /_meta/api/exec 且 actor=human(铁律 5:审批不委托)', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse(200, { entity: activationEntity('approved') }),
-    );
+  it('approve 先重读当前 action 再走 /_meta/api/exec，身份由服务端注入', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, activationEntity('pending-approval')))
+      .mockResolvedValueOnce(jsonResponse(200, { entity: activationEntity('approved') }));
     vi.stubGlobal('fetch', fetchMock);
     render(<ActivationView id="a1" entity={activationEntity('pending-approval')} />);
 
     fireEvent.click(screen.getByRole('button', { name: '批准' }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/_meta/api/entity?rel=meta%2Factivation%3Aa1');
+    const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(url).toBe('/_meta/api/exec');
     expect(init.method).toBe('POST');
     expect(JSON.parse(String(init.body))).toEqual({
       rel: 'meta/activation:a1',
       action: 'approve',
-      actor: 'human',
-      principal: 'local-user',
-      channel: 'bios',
     });
   });
 
   it('reject reason 必填:空原因提交被 RJSF 拦截(不发请求),填写后带 reason 提交', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse(200, { entity: activationEntity('rejected') }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, activationEntity('pending-approval')))
+      .mockResolvedValueOnce(jsonResponse(200, { entity: activationEntity('rejected') }));
     vi.stubGlobal('fetch', fetchMock);
     render(<ActivationView id="a1" entity={activationEntity('pending-approval')} />);
 
     // 空原因:RJSF required 校验拦截,不产生任何请求。
     fireEvent.click(screen.getByRole('button', { name: '驳回' }));
-    await waitFor(() =>
-      expect(screen.getByText(/reason|原因|required/i)).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText(/reason|原因|required/i)).toBeTruthy());
     expect(fetchMock).not.toHaveBeenCalled();
 
     // 填写原因后提交:params.reason + actor=human。
     fireEvent.change(screen.getByLabelText(/原因/), { target: { value: 'pin 动作不该无 guard' } });
     fireEvent.click(screen.getByRole('button', { name: '驳回' }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toEqual({
       rel: 'meta/activation:a1',
       action: 'reject',
       params: { reason: 'pin 动作不该无 guard' },
-      actor: 'human',
-      principal: 'local-user',
-      channel: 'bios',
     });
   });
 
