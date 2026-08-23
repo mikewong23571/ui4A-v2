@@ -10,15 +10,15 @@
 - [x] Task: 将决定写入 `DECISIONS.md`，先同步技术栈；Hermes 启发与 zero-runtime boundary 明确入决策 (d969ae1)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (d969ae1)
 
-## Phase B: Shared contract 与 pure Capability Run kernel
+## Phase B: Shared contract 与 pure Capability Run kernel [checkpoint: 0469d67]
 
-- [ ] Task: TS1 Red→Green——CodingTask/Workspace/RunHandle/raw+normalized events/result/budget/redaction versioned contract
-- [ ] Task: TS2 Red→Green——run lifecycle、commands/events/fold、cursor、terminal、eventId/commandId 幂等与 restart boundary
-- [ ] Task: TS3 Red→Green——Executor Registry/Profile resolution、probe compatibility、request override 100% 拒绝和无 fallback
-- [ ] Task: TS4 Red→Green——repository/base/allowedPaths/lease/result CAS policy；path traversal/property tests
-- [ ] Task: Result decision Red→Green——artifact integrity、changed paths、test policy、human-only、stale/reject/accept receipt
-- [ ] Task: Pure kernel/source governance——零 Node/DB/HTTP/Temporal/Provider/Hermes；公共函数 JSDoc 与覆盖率 >80%
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: TS1 Red→Green——CodingTask/Workspace/RunHandle/raw+normalized events/result/budget/redaction versioned contract (0469d67)
+- [x] Task: TS2 Red→Green——run lifecycle、commands/events/fold、cursor、terminal、eventId/commandId 幂等与 restart boundary (0469d67)
+- [x] Task: TS3 Red→Green——Executor Registry/Profile resolution、probe compatibility、request override 100% 拒绝和无 fallback (0469d67)
+- [x] Task: TS4 Red→Green——repository/base/allowedPaths/lease/result CAS policy；path traversal/property tests (0469d67)
+- [x] Task: Result decision Red→Green——artifact integrity、changed paths、test policy、human-only、stale/reject/accept receipt (0469d67)
+- [x] Task: Pure kernel/source governance——零 Node/DB/HTTP/Temporal/Provider/Hermes；公共函数 JSDoc 与覆盖率 >80% (0469d67)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (0469d67)
 
 ## Phase C: Capability persistence、workspace 与 Temporal runtime
 
