@@ -10,4 +10,4 @@
 - [Acceptance Evidence Contract](./evidence.md)
 - [Implementation Plan](./plan.md)
 
-当前状态：`new`。本 Track 不创建完整 Application Bundle，不改变 Meta 业务真相、审批权限或事件模型；它补齐同一合同面向人类的发现、理解和治理路径。
+当前状态：`in-progress`。本 Track 不创建完整 Application Bundle，不改变 Meta 业务真相、审批权限或事件模型；它补齐同一合同面向人类的发现、理解和治理路径。
