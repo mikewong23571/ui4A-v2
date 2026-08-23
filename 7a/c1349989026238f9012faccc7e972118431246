@@ -1,0 +1,5 @@
+T21 Phase A Task 1: acceptance contract
+
+Created user-stories.md with U1-U8 and the four-turn Golden Story, plus evidence.md with t21-evidence/v1, dual-focus provenance, real-LLM/browser/Safety gates, event deltas, and Business Snapshot hashes. Updated the Track index. The contract evaluates user-visible outcomes without fixing model wording or tool trajectory.
+
+Validation: pnpm exec prettier --check conductor/tracks/t21-assistant-dual-focus_20260823/user-stories.md conductor/tracks/t21-assistant-dual-focus_20260823/evidence.md conductor/tracks/t21-assistant-dual-focus_20260823/plan.md; git diff --check.
