@@ -19,3 +19,4 @@ export * from './llm-driver';
 export * from './llm-probe';
 export * from './presentation-agent';
 export * from './presentation-revision';
+export * from './specialization/index';

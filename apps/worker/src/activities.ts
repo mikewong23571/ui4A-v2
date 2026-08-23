@@ -21,6 +21,7 @@ import { cancellationSignal } from '@temporalio/activity';
 import type { DbExecutor } from '../../web/src/db/events';
 import { appendEvent, ensureEventsTable } from '../../web/src/db/events';
 import { getPool } from '../../web/src/db/pool';
+import { appendAgentRunCommand, getAgentRun } from '../../web/src/db/agent-runs';
 
 import { resolveLlmConfig, type SitemapSummary } from '@ui4a/agent';
 import { canonicalJson } from '@ui4a/engine';
@@ -48,6 +49,21 @@ import {
   parseExecutorProfiles,
   prepareCodingRunWithDeps,
 } from './capabilities/coding/runtime';
+import {
+  collectCodingAgentRunWithDeps,
+  executeCodingAgentRunWithDeps,
+  finalizeCodingAgentRunWithDeps,
+  prepareCodingAgentRunWithDeps,
+  verifyCodingAgentRun,
+  type CodingAgentAdapterDeps,
+} from './agents/coding';
+import type {
+  AgentExecuteActivityArgs,
+  AgentFinalizeInput,
+  AgentResolutionRecord,
+  AgentRunWorkflowArgs,
+  AgentSuspensionRecord,
+} from './agents/host/contracts';
 
 const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
 
@@ -174,6 +190,124 @@ export async function finalizeCodingRun(args: {
   if (!response.ok) {
     throw new Error(`coding callback failed: HTTP ${response.status} ${await response.text()}`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Generic Agent Host activities (T19; additive beside the T18 compatibility activities)
+// ---------------------------------------------------------------------------
+
+function codingAgentAdapterDeps(): CodingAgentAdapterDeps {
+  const legacy = codingRuntimeDeps();
+  return {
+    ...legacy,
+    callbackBaseUrl: process.env.UI4A_PUBLIC_BASE_URL,
+    callbackToken: process.env.UI4A_CAPABILITY_CALLBACK_TOKEN,
+  };
+}
+
+function agentTaskKind(context: AgentRunWorkflowArgs): string | undefined {
+  const payload = context.task.payload;
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return undefined;
+  return typeof payload.kind === 'string' ? payload.kind : undefined;
+}
+
+function requireCodingAgent(context: AgentRunWorkflowArgs): void {
+  const kind = agentTaskKind(context);
+  if (kind !== 'coding-task') {
+    throw new Error(`no Agent specialization adapter is registered for ${kind ?? 'unknown task'}`);
+  }
+}
+
+/** Select the birth-pinned specialization; task parameters cannot choose a Provider adapter. */
+export async function prepareAgentRun(args: AgentRunWorkflowArgs) {
+  requireCodingAgent(args);
+  return prepareCodingAgentRunWithDeps(args, codingAgentAdapterDeps());
+}
+
+export async function executeAgentRun(args: AgentExecuteActivityArgs) {
+  requireCodingAgent(args.context);
+  return executeCodingAgentRunWithDeps(args, codingAgentAdapterDeps());
+}
+
+export async function collectAgentRun(args: Parameters<typeof collectCodingAgentRunWithDeps>[0]) {
+  requireCodingAgent(args.context);
+  return collectCodingAgentRunWithDeps(args, codingAgentAdapterDeps());
+}
+
+export async function verifyAgentRun(args: Parameters<typeof verifyCodingAgentRun>[0]) {
+  requireCodingAgent(args.context);
+  return verifyCodingAgentRun(args);
+}
+
+async function currentNativeRun(context: AgentRunWorkflowArgs) {
+  const run = await getAgentRun(workerDb(), context.runId, context.principal, context.policyScope);
+  if (run === undefined) throw new Error('native agent run does not exist or is not authorized');
+  return run;
+}
+
+export async function recordAgentRunSuspension(
+  input: AgentSuspensionRecord,
+): Promise<{ deduplicated: boolean }> {
+  requireCodingAgent(input.context);
+  const run = await currentNativeRun(input.context);
+  const applied = await appendAgentRunCommand(
+    workerDb(),
+    input.suspension.status === 'needs-input'
+      ? {
+          kind: 'ask-question',
+          runId: input.context.runId,
+          expectedRevision: run.revision,
+          commandId: input.idempotencyKey,
+          eventId: `event:${input.idempotencyKey}`,
+          question: input.suspension.question,
+        }
+      : {
+          kind: 'request-resource-grant',
+          runId: input.context.runId,
+          expectedRevision: run.revision,
+          commandId: input.idempotencyKey,
+          eventId: `event:${input.idempotencyKey}`,
+          request: input.suspension.request,
+        },
+  );
+  return { deduplicated: applied.event === undefined };
+}
+
+export async function recordAgentRunResolution(
+  input: AgentResolutionRecord,
+): Promise<{ deduplicated: boolean }> {
+  requireCodingAgent(input.context);
+  const run = await currentNativeRun(input.context);
+  const applied = await appendAgentRunCommand(
+    workerDb(),
+    input.resolution.kind === 'question-answer'
+      ? {
+          kind: 'answer-question',
+          runId: input.context.runId,
+          expectedRevision: run.revision,
+          commandId: input.idempotencyKey,
+          eventId: `event:${input.idempotencyKey}`,
+          questionId: input.resolution.questionId,
+          answeredBy: input.resolution.answeredBy,
+          answer: input.resolution.answer,
+        }
+      : {
+          kind: 'decide-resource-grant',
+          runId: input.context.runId,
+          expectedRevision: run.revision,
+          commandId: input.idempotencyKey,
+          eventId: `event:${input.idempotencyKey}`,
+          requestId: input.resolution.requestId,
+          decision: input.resolution.decision,
+        },
+    'human',
+  );
+  return { deduplicated: applied.event === undefined };
+}
+
+export async function finalizeAgentRun(input: AgentFinalizeInput): Promise<void> {
+  requireCodingAgent(input.context);
+  return finalizeCodingAgentRunWithDeps(input, codingAgentAdapterDeps());
 }
 
 export interface CapabilityArtifactInput {

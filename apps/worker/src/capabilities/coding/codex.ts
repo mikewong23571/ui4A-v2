@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { promisify } from 'node:util';
 
 import { Codex, type CodexOptions, type ThreadEvent, type ThreadOptions } from '@openai/codex-sdk';
@@ -36,17 +37,36 @@ export interface CodexExecutionOutput {
   usage?: unknown;
 }
 
+/** Server-compiled, provider-neutral Prompt supplied by a versioned Agent Definition. */
+export interface CodexCompiledPrompt {
+  compiledHash: string;
+  messages: Array<{
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+  }>;
+}
+
+/** Hash-only provenance emitted at the exact Provider dispatch boundary. */
+export interface CodexPromptDispatchReceipt {
+  compiledHash: string;
+  sentPromptHash: string;
+  messageCount: number;
+}
+
 export interface CodexExecutionInput {
   runId: string;
   task: CodingTask;
   profile: CodingExecutorProfile;
   workspace: { id: string; path: string };
+  /** Optional T19 specialization Prompt. Omission preserves the T18 Prompt byte-for-byte. */
+  compiledPrompt?: CodexCompiledPrompt;
   nativeSessionId?: string;
   signal?: AbortSignal;
 }
 
 export interface CodexExecutionDeps {
   createClient?: (options: CodexOptions) => CodexSdkLike;
+  onPromptDispatched?: (receipt: CodexPromptDispatchReceipt) => Promise<void>;
   onRaw: (event: unknown, cursor: string) => Promise<void>;
   onNormalized: (event: CodingNormalizedEvent) => Promise<void>;
 }
@@ -111,6 +131,18 @@ function promptFor(task: CodingTask): string {
     'Do not push, merge, deploy, change another checkout, or approve the result.',
     'Run the relevant tests and return the required structured result.',
   ].join('\n\n');
+}
+
+/** Deterministic projection used when the Codex SDK only accepts one string input. */
+export function serializeCodexCompiledPrompt(prompt: CodexCompiledPrompt): string {
+  return prompt.messages
+    .flatMap((message, index) => [
+      `<<<UI4A_COMPILED_MESSAGE_V1 role=${JSON.stringify(message.role)}>>>`,
+      message.content,
+      '<<<END_UI4A_COMPILED_MESSAGE_V1>>>',
+      ...(index === prompt.messages.length - 1 ? [] : ['']),
+    ])
+    .join('\n');
 }
 
 const CLAIM_SCHEMA = {
@@ -200,7 +232,18 @@ export async function executeCodexTask(
     } as CodingNormalizedEvent);
   };
   try {
-    const streamed = await thread.runStreamed(promptFor(input.task), {
+    const dispatchedPrompt =
+      input.compiledPrompt === undefined
+        ? promptFor(input.task)
+        : serializeCodexCompiledPrompt(input.compiledPrompt);
+    if (input.compiledPrompt !== undefined) {
+      await deps.onPromptDispatched?.({
+        compiledHash: input.compiledPrompt.compiledHash,
+        sentPromptHash: `sha256:${createHash('sha256').update(dispatchedPrompt).digest('hex')}`,
+        messageCount: input.compiledPrompt.messages.length,
+      });
+    }
+    const streamed = await thread.runStreamed(dispatchedPrompt, {
       outputSchema: CLAIM_SCHEMA,
       signal: input.signal,
     });

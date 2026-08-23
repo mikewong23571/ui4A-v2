@@ -4,6 +4,11 @@ import {
   getCapabilityRunEntity,
   isCapabilityRunRel,
 } from '../../../engine/capability-runs';
+import {
+  enrichEntityWithAgentRuns,
+  getAgentRunEntity,
+  isAgentRunRel,
+} from '../../../engine/agent-runs';
 
 // GET /api/entity?rel=… — Siren 实体端点(spec FR3):
 // - 已知 rel(实例或集合)→ 200 四件组装 properties/actions/links/guard-results;
@@ -33,11 +38,17 @@ export async function GET(request: Request) {
     const engine = await getEngine(db);
     const projected = isCapabilityRunRel(rel)
       ? await getCapabilityRunEntity(db, rel, principal, policyScope)
-      : await engine.getEntity(rel);
-    const entity =
-      projected === undefined || isCapabilityRunRel(rel)
+      : isAgentRunRel(rel)
+        ? await getAgentRunEntity(db, rel, principal, policyScope)
+        : await engine.getEntity(rel);
+    const capabilityEnriched =
+      projected === undefined || isCapabilityRunRel(rel) || isAgentRunRel(rel)
         ? projected
         : await enrichEntityWithCapabilityRuns(db, projected, principal, policyScope);
+    const entity =
+      capabilityEnriched === undefined || isCapabilityRunRel(rel) || isAgentRunRel(rel)
+        ? capabilityEnriched
+        : await enrichEntityWithAgentRuns(db, capabilityEnriched, principal, policyScope);
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });
     }

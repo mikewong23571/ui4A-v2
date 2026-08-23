@@ -831,6 +831,7 @@ test('重放一致:S2 全链事件 TRUNCATE 原序回灌 → 活跃定义 v2 含
   const db = getPool(DATABASE_URL);
   for (const row of rows) {
     await appendEvent(db, {
+      domain: row.domain ?? 'core',
       kind: row.kind,
       actor: row.actor ?? undefined,
       principal: row.principal ?? undefined,

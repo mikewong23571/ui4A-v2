@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { CodingExecutorProfile, CodingNormalizedEvent, CodingTask } from '@ui4a/shared';
 
-import { executeCodexTask, probeCodexExecutor, type CodexSdkLike } from './codex';
+import {
+  executeCodexTask,
+  probeCodexExecutor,
+  serializeCodexCompiledPrompt,
+  type CodexSdkLike,
+} from './codex';
 
 const task: CodingTask = {
   schemaVersion: 1,
@@ -54,6 +59,115 @@ function sdk(events: unknown[], threadId = 'thread-1'): CodexSdkLike {
 }
 
 describe('Codex reference executor adapter', () => {
+  it('uses an optional server-compiled Prompt without changing the legacy default Prompt', async () => {
+    const client = sdk([
+      { type: 'thread.started', thread_id: 'thread-prompt' },
+      {
+        type: 'item.completed',
+        item: {
+          id: 'msg-prompt',
+          type: 'agent_message',
+          text: JSON.stringify({
+            status: 'completed',
+            summary: 'done',
+            tests: [],
+            changedFiles: [],
+          }),
+        },
+      },
+    ]);
+    const compiledPrompt = {
+      compiledHash: `sha256:${'7'.repeat(64)}`,
+      messages: [
+        { role: 'system' as const, content: 'Sealed system contract.' },
+        { role: 'user' as const, content: 'Typed task data.' },
+      ],
+    };
+    const dispatched = vi.fn(async () => undefined);
+    expect(serializeCodexCompiledPrompt(compiledPrompt)).toBe(
+      [
+        '<<<UI4A_COMPILED_MESSAGE_V1 role="system">>>',
+        'Sealed system contract.',
+        '<<<END_UI4A_COMPILED_MESSAGE_V1>>>',
+        '',
+        '<<<UI4A_COMPILED_MESSAGE_V1 role="user">>>',
+        'Typed task data.',
+        '<<<END_UI4A_COMPILED_MESSAGE_V1>>>',
+      ].join('\n'),
+    );
+    await executeCodexTask(
+      {
+        runId: 'run-prompt',
+        task,
+        profile,
+        workspace: { id: 'w-prompt', path: '/tmp/worktree' },
+        compiledPrompt,
+      },
+      {
+        createClient: () => client,
+        onPromptDispatched: dispatched,
+        onRaw: async () => undefined,
+        onNormalized: async () => undefined,
+      },
+    );
+    expect(dispatched).toHaveBeenCalledWith({
+      compiledHash: compiledPrompt.compiledHash,
+      sentPromptHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+      messageCount: 2,
+    });
+    const thread = vi.mocked(client.startThread).mock.results[0]?.value;
+    expect(thread?.runStreamed).toHaveBeenCalledWith(
+      [
+        '<<<UI4A_COMPILED_MESSAGE_V1 role="system">>>',
+        'Sealed system contract.',
+        '<<<END_UI4A_COMPILED_MESSAGE_V1>>>',
+        '',
+        '<<<UI4A_COMPILED_MESSAGE_V1 role="user">>>',
+        'Typed task data.',
+        '<<<END_UI4A_COMPILED_MESSAGE_V1>>>',
+      ].join('\n'),
+      expect.objectContaining({ outputSchema: expect.any(Object) }),
+    );
+
+    const legacy = sdk([
+      { type: 'thread.started', thread_id: 'thread-legacy-prompt' },
+      {
+        type: 'item.completed',
+        item: {
+          id: 'msg-legacy-prompt',
+          type: 'agent_message',
+          text: JSON.stringify({
+            status: 'completed',
+            summary: 'done',
+            tests: [],
+            changedFiles: [],
+          }),
+        },
+      },
+    ]);
+    await executeCodexTask(
+      { runId: 'run-legacy-prompt', task, profile, workspace: { id: 'w', path: '/tmp/worktree' } },
+      {
+        createClient: () => legacy,
+        onRaw: async () => undefined,
+        onNormalized: async () => undefined,
+      },
+    );
+    const legacyThread = vi.mocked(legacy.startThread).mock.results[0]?.value;
+    expect(legacyThread?.runStreamed).toHaveBeenCalledWith(
+      [
+        'Complete the following authorized coding task inside the current workspace.',
+        'Goal: implement sum',
+        'Constraints:\n- small change',
+        'Acceptance criteria:\n- tests pass',
+        'Allowed paths:\n- src\n- test',
+        'Do not push, merge, deploy, change another checkout, or approve the result.',
+        'Run the relevant tests and return the required structured result.',
+      ].join('\n\n'),
+      expect.any(Object),
+    );
+  });
+
   it('preflights binary/auth and reports unavailable without fallback', async () => {
     const available = await probeCodexExecutor(
       'default',

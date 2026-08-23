@@ -498,6 +498,7 @@ test.describe('I5 可重放', () => {
   interface SavedEventRow {
     seq: number;
     ts: string;
+    domain: string;
     actor: string | null;
     principal: string | null;
     channel: string | null;
@@ -513,6 +514,7 @@ test.describe('I5 可重放', () => {
     const result = await db.query<{
       seq: string | number;
       ts: Date;
+      domain: string;
       actor: string | null;
       principal: string | null;
       channel: string | null;
@@ -523,11 +525,12 @@ test.describe('I5 可重放', () => {
       reason: string | null;
       detail: unknown;
     }>(
-      'SELECT seq, ts, actor, principal, channel, kind, rel, action, params, reason, detail FROM events ORDER BY seq ASC',
+      'SELECT seq, ts, domain, actor, principal, channel, kind, rel, action, params, reason, detail FROM events ORDER BY seq ASC',
     );
     return result.rows.map((row) => ({
       seq: Number(row.seq),
       ts: new Date(row.ts).toISOString(),
+      domain: row.domain,
       actor: row.actor,
       principal: row.principal,
       channel: row.channel,
@@ -545,11 +548,12 @@ test.describe('I5 可重放', () => {
     await db.query('TRUNCATE events');
     for (const row of rows) {
       await db.query(
-        `INSERT INTO events (seq, ts, actor, principal, channel, kind, rel, action, params, reason, detail)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11::jsonb)`,
+        `INSERT INTO events (seq, ts, domain, actor, principal, channel, kind, rel, action, params, reason, detail)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12::jsonb)`,
         [
           row.seq,
           row.ts,
+          row.domain,
           row.actor,
           row.principal,
           row.channel,

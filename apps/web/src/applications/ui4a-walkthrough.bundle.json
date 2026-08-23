@@ -94,6 +94,7 @@
       "executor": {
         "class": "coding-agent",
         "profile": "default",
+        "agentDefinition": "coding-agent@1",
         "requiredFeatures": ["resume", "structured-events", "workspace-write"]
       }
     }

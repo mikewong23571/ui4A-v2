@@ -6,6 +6,7 @@ import {
 } from '../../../engine/service';
 import { executeCapabilityRunAction, isCapabilityRunRel } from '../../../engine/capability-runs';
 import { finalizeCapabilitySource } from '../../../engine/capability-source-callback';
+import { executeAgentRunAction, isAgentRunRel } from '../../../engine/agent-runs';
 
 import { parseExecBody, rejectionStatus } from '../exec-request';
 
@@ -68,6 +69,17 @@ export async function POST(request: Request) {
         );
       }
       return Response.json({ entity: outcome.entity, source: finalized.entity });
+    }
+    if (isAgentRunRel(resolvedRequest.rel)) {
+      const outcome = await executeAgentRunAction(
+        db,
+        resolvedRequest,
+        request.headers.get('x-ui4a-policy-scope') ?? 'development',
+      );
+      if (outcome.kind !== 'accepted') {
+        return Response.json({ layer: 'guard-failed', reason: outcome.reason }, { status: 422 });
+      }
+      return Response.json({ entity: outcome.entity });
     }
     const engine = await getEngine(db);
     const outcome = await engine.exec(resolvedRequest);

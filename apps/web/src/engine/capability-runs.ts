@@ -14,6 +14,7 @@ import type {
   ActionDefinition,
   CapabilityDefinition,
   CodingExecutorProfile,
+  CodingResult,
   CodingTask,
   EngineSnapshot,
 } from '@ui4a/shared';
@@ -29,6 +30,7 @@ import {
   readCapabilityPayload,
   type ConnectableDb,
 } from '../db/capability-runs';
+import { getAgentRunInternal, readAgentRunPayload } from '../db/agent-runs';
 import type { DbExecutor } from '../db/events';
 import { cancelCodingCapability, dispatchCodingCapability } from '../temporal/capability';
 import { codingExecutorProfilesFromEnvironment } from './coding-executor-config';
@@ -37,7 +39,7 @@ export const CAPABILITY_RUNS_REL = 'capability-runs';
 const CAPABILITY_RUN_PREFIX = 'capability-run:';
 const runFile = promisify(execFile);
 
-function profileFromEnvironment(name: string): CodingExecutorProfile {
+export function codingExecutorProfileFromEnvironment(name: string): CodingExecutorProfile {
   const profile = codingExecutorProfilesFromEnvironment().find(
     (candidate) => candidate.name === name,
   );
@@ -50,7 +52,7 @@ export function preflightCapabilityExecutor(
 ): CodingExecutorProfile | undefined {
   const requirement = capability.executor;
   if (requirement === undefined) return undefined;
-  const profile = profileFromEnvironment(requirement.profile);
+  const profile = codingExecutorProfileFromEnvironment(requirement.profile);
   if (profile.executorClass !== requirement.class)
     throw new Error('executor profile class mismatch');
   if (profile.providerId !== 'codex')
@@ -65,7 +67,7 @@ function stringArray(value: unknown, name: string): string[] {
   return [...value] as string[];
 }
 
-function taskFromParams(
+export function codingTaskFromCapabilityParams(
   params: Record<string, unknown>,
   profile: CodingExecutorProfile,
 ): CodingTask {
@@ -122,7 +124,7 @@ export async function createAndDispatchCapabilityRun(
     throw new Error(`capability ${input.capability.name} has no coding executor requirement`);
   }
   const profile = preflightCapabilityExecutor(input.capability)!;
-  const task = taskFromParams(input.params, profile);
+  const task = codingTaskFromCapabilityParams(input.params, profile);
   const runId = `r${input.sourceSeq.toString(36)}-${contentVersion({
     source: input.sourceRel,
     capability: input.capability.name,
@@ -348,25 +350,62 @@ export async function preflightCodingResultDecision(
       reason: 'source entity has no linked coding result',
     };
   }
-  const run = await getCapabilityRunInternal(db, runId);
-  if (run?.result === undefined || run.status !== 'succeeded') {
+  const legacyRun = await getCapabilityRunInternal(db, runId);
+  const nativeRun = legacyRun === undefined ? await getAgentRunInternal(db, runId) : undefined;
+  const nativeTaskPayload = nativeRun?.task.payload;
+  const nativeTask =
+    typeof nativeTaskPayload === 'object' &&
+    nativeTaskPayload !== null &&
+    !Array.isArray(nativeTaskPayload) &&
+    nativeTaskPayload.kind === 'coding-task' &&
+    typeof nativeTaskPayload.codingTask === 'object' &&
+    nativeTaskPayload.codingTask !== null &&
+    !Array.isArray(nativeTaskPayload.codingTask)
+      ? (nativeTaskPayload.codingTask as unknown as CodingTask)
+      : undefined;
+  const nativeResultPayload = nativeRun?.result?.payload;
+  const nativeResult =
+    typeof nativeResultPayload === 'object' &&
+    nativeResultPayload !== null &&
+    !Array.isArray(nativeResultPayload) &&
+    typeof nativeResultPayload.codingResult === 'object' &&
+    nativeResultPayload.codingResult !== null &&
+    !Array.isArray(nativeResultPayload.codingResult)
+      ? (nativeResultPayload.codingResult as unknown as CodingResult)
+      : undefined;
+  const result = legacyRun?.result ?? nativeResult;
+  const owner = legacyRun?.principal ?? nativeRun?.principal;
+  const runRevision = legacyRun?.revision ?? nativeRun?.revision;
+  const policyScope = legacyRun?.policyScope ?? nativeRun?.policyScope;
+  const task = legacyRun?.task ?? nativeTask;
+  const succeeded =
+    (legacyRun?.status === 'succeeded' && legacyRun.result !== undefined) ||
+    (nativeRun?.status === 'succeeded' && nativeResult !== undefined);
+  if (!succeeded || result === undefined || task === undefined || policyScope === undefined) {
     return {
       decision: 'denied' as const,
       code: 'result-stale',
       reason: 'coding result is not available',
     };
   }
-  if (request.principal === undefined || request.principal !== run.principal) {
+  if (request.principal === undefined || request.principal !== owner) {
     return {
       decision: 'denied' as const,
       code: 'human-required',
       reason: 'decision principal does not own the run',
     };
   }
-  const [patch, trajectory] = await Promise.all([
-    readCapabilityPayload(db, run.result.patch.hash),
-    readCapabilityPayload(db, run.result.trajectory.hash),
-  ]);
+  const [patch, trajectory] = await Promise.all(
+    legacyRun === undefined
+      ? [
+          readAgentRunPayload(db, result.patch.hash),
+          readAgentRunPayload(db, result.trajectory.hash),
+        ]
+      : [
+          readCapabilityPayload(db, result.patch.hash),
+          readCapabilityPayload(db, result.trajectory.hash),
+        ],
+  );
   if (patch === undefined || trajectory === undefined) {
     return {
       decision: 'denied' as const,
@@ -374,7 +413,7 @@ export async function preflightCodingResultDecision(
       reason: 'coding result payload is missing',
     };
   }
-  const path = repositoryPath(run.task.repositoryRef, run.policyScope);
+  const path = repositoryPath(task.repositoryRef, policyScope);
   const currentBaseRevision = (
     await runFile('git', ['-C', path, 'rev-parse', 'HEAD'], {
       timeout: 5_000,
@@ -392,18 +431,18 @@ export async function preflightCodingResultDecision(
       ? { rejectionReason: request.params.reason }
       : {}),
     runId,
-    runRevision: run.revision,
-    expectedRunRevision: run.revision,
-    result: run.result,
+    runRevision: runRevision!,
+    expectedRunRevision: runRevision!,
+    result,
     expectedResultId: resultId,
     currentBaseRevision,
-    allowedPaths: run.task.allowedPaths,
-    requiredTests: run.result.testRuns.map((test) => test.command),
+    allowedPaths: task.allowedPaths,
+    requiredTests: result.testRuns.map((test) => test.command),
     verified: {
       patchHash: payloadHash(patch),
       trajectoryHash: payloadHash(trajectory),
-      changedFiles: run.result.changedFiles,
-      testRuns: run.result.testRuns,
+      changedFiles: result.changedFiles,
+      testRuns: result.testRuns,
     },
   });
 }

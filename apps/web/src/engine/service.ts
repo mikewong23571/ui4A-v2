@@ -85,8 +85,13 @@ import {
 } from '../db/events';
 import { getPool } from '../db/pool';
 import { ensureCapabilityRunTables } from '../db/capability-runs';
-import { ensureAgentDefinitionTables } from '../db/agent-definitions';
+import {
+  ensureAgentDefinitionTables,
+  installSeedAgentDefinition,
+  rebuildAgentDefinitionProjection,
+} from '../db/agent-definitions';
 import { installedApplicationBundles } from '../applications/bundles';
+import { installedAgentDefinitions } from '../applications/agent-definitions';
 import {
   resetRecipeCoordinatorForTests,
   scheduleRecipesForSnapshot,
@@ -102,6 +107,11 @@ import {
   preflightCapabilityExecutor,
   preflightCodingResultDecision,
 } from './capability-runs';
+import {
+  createAndDispatchAgentRun,
+  prepareNativeAgentDispatch,
+  type PreparedNativeAgentDispatch,
+} from './native-agent-dispatch';
 import { codingExecutorProfileRegistryFromEnvironment } from './coding-executor-config';
 
 /** exec 结果(discriminated union;HTTP 层据此映射 200/202/4xx)。 */
@@ -268,11 +278,26 @@ async function bootstrapApplicationBundles(db: DbExecutor): Promise<void> {
   }
 }
 
+/** Install repository-owned Agent Definition versions without impersonating a human approver. */
+async function bootstrapAgentDefinitions(db: DbExecutor): Promise<void> {
+  for (const definition of installedAgentDefinitions) {
+    await installSeedAgentDefinition(db, {
+      principal: 'local-user',
+      policyScope: 'development',
+      source: definition.source,
+      artifact: definition.artifact,
+      evalEvidence: definition.evaluation,
+    });
+  }
+}
+
 async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   await ensureEventsTable(db);
   await ensureCapabilityRunTables(db);
   await ensureAgentDefinitionTables(db);
+  await rebuildAgentDefinitionProjection(db);
   await bootstrapApplicationBundles(db);
+  await bootstrapAgentDefinitions(db);
 
   const events: LogEvent[] = await readLog(db);
   assertMetaBootstrapIntegrity(events);
@@ -366,6 +391,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         { rel: 'comments', title: '评论', collection: true },
         { rel: 'inbox', title: '确认收件箱', collection: true },
         { rel: 'software-changes', title: '软件变更', collection: true, app: 'development' },
+        { rel: 'agent-runs', title: 'Agent Runs', collection: true, app: 'development' },
         { rel: 'capability-runs', title: '能力执行', collection: true, app: 'development' },
       ],
       applications,
@@ -741,42 +767,76 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         }
 
         const artifactModel = artifactModelFor(effectiveEvents, aliased);
+        const sourceInstance = snapshot.instances[aliased.rel];
+        const spawnPolicyScope =
+          (sourceInstance === undefined
+            ? undefined
+            : activeDefinitionOf(snapshot, sourceInstance.flow)?.app) ?? 'default';
+        const spawnPrincipal = aliased.principal ?? 'local-user';
+        const preparedNativeRuns = new Map<EngineEvent, PreparedNativeAgentDispatch>();
         for (const event of effectiveEvents) {
           if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
           const capability = snapshot.capabilities?.[event.capability];
-          if (capability !== undefined) preflightCapabilityExecutor(capability);
+          if (capability === undefined) continue;
+          if (capability.executor?.agentDefinition !== undefined) {
+            preparedNativeRuns.set(
+              event,
+              await prepareNativeAgentDispatch(db, {
+                principal: spawnPrincipal,
+                policyScope: spawnPolicyScope,
+                params: aliased.params ?? {},
+                capability,
+              }),
+            );
+          } else {
+            preflightCapabilityExecutor(capability);
+          }
         }
-        const spawned: { event: EngineEvent; seq: number }[] = [];
+        const spawned: {
+          event: EngineEvent;
+          seq: number;
+          prepared?: PreparedNativeAgentDispatch;
+        }[] = [];
         for (const event of effectiveEvents) {
           const seq = await appendWithSeq(toAppend(event));
-          if (event.kind === 'spawn-requested') spawned.push({ event, seq });
+          if (event.kind === 'spawn-requested') {
+            const prepared = preparedNativeRuns.get(event);
+            spawned.push({ event, seq, ...(prepared === undefined ? {} : { prepared }) });
+          }
         }
         snapshot = outcome.snapshot;
         if (effectiveEvents.some((event) => event.kind === 'definition-activated')) {
           scheduleRecipesForSnapshot(snapshot);
         }
         await materializeSpawnArtifacts(effectiveEvents, aliased, artifactModel);
-        for (const { event, seq } of spawned) {
+        for (const { event, seq, prepared } of spawned) {
           if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
           const capability = snapshot.capabilities?.[event.capability];
-          if (capability?.executor?.class !== 'coding-agent') continue;
-          const instance = snapshot.instances[aliased.rel];
-          const policyScope =
-            (instance === undefined
-              ? undefined
-              : activeDefinitionOf(snapshot, instance.flow)?.app) ?? 'default';
-          const run = await createAndDispatchCapabilityRun(db, {
-            sourceSeq: seq,
-            sourceRel: aliased.rel,
-            sourceAction: aliased.action,
-            principal: aliased.principal ?? 'local-user',
-            policyScope,
-            params: aliased.params ?? {},
-            capability,
-            onDoneAction: event['on-done'],
-            onErrorAction: event['on-error'],
-            baseUrl: process.env.UI4A_PUBLIC_BASE_URL ?? 'http://localhost:3100',
-          });
+          if (capability?.executor === undefined) continue;
+          const run =
+            prepared === undefined
+              ? await createAndDispatchCapabilityRun(db, {
+                  sourceSeq: seq,
+                  sourceRel: aliased.rel,
+                  sourceAction: aliased.action,
+                  principal: spawnPrincipal,
+                  policyScope: spawnPolicyScope,
+                  params: aliased.params ?? {},
+                  capability,
+                  onDoneAction: event['on-done'],
+                  onErrorAction: event['on-error'],
+                  baseUrl: process.env.UI4A_PUBLIC_BASE_URL ?? 'http://localhost:3100',
+                })
+              : await createAndDispatchAgentRun(db, {
+                  prepared,
+                  sourceSeq: seq,
+                  sourceRel: aliased.rel,
+                  sourceAction: aliased.action,
+                  principal: spawnPrincipal,
+                  policyScope: spawnPolicyScope,
+                  onDoneAction: event['on-done'],
+                  onErrorAction: event['on-error'],
+                });
           if (run.status === 'failed') {
             const callbackAction = run.source.onErrorAction;
             if (callbackAction === undefined) {

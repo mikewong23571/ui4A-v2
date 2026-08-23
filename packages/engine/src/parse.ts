@@ -485,11 +485,30 @@ function capabilityStructuralIssues(input: unknown): FlowIssue[] {
     if (!isRecord(input.executor)) {
       issues.push({ path: 'executor', message: 'executor 必须是对象' });
     } else {
+      const executorFields = new Set(['class', 'profile', 'agentDefinition', 'requiredFeatures']);
+      for (const key of Object.keys(input.executor)) {
+        if (!executorFields.has(key)) {
+          issues.push({
+            path: `executor.${key}`,
+            message: `executor.${key} 是部署字段或未知字段，不能进入 Application 合同`,
+          });
+        }
+      }
       if (typeof input.executor.class !== 'string' || input.executor.class === '') {
         issues.push({ path: 'executor.class', message: 'executor.class 必须是非空字符串' });
       }
       if (typeof input.executor.profile !== 'string' || input.executor.profile === '') {
         issues.push({ path: 'executor.profile', message: 'executor.profile 必须是非空字符串' });
+      }
+      if (
+        input.executor.agentDefinition !== undefined &&
+        (typeof input.executor.agentDefinition !== 'string' ||
+          !/^[a-z][a-z0-9-]*@[1-9][0-9]*$/.test(input.executor.agentDefinition))
+      ) {
+        issues.push({
+          path: 'executor.agentDefinition',
+          message: 'executor.agentDefinition 必须是 exact name@positive-version ref',
+        });
       }
       if (
         input.executor.requiredFeatures !== undefined &&

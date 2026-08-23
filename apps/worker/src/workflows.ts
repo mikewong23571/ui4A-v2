@@ -21,7 +21,15 @@
  * @ui4a/agent 运行时代码(仅 import type);activities 只经 proxyActivities
  * 的接口引用(import type)。
  */
-import { proxyActivities, workflowInfo } from '@temporalio/workflow';
+import {
+  CancellationScope,
+  condition,
+  defineSignal,
+  isCancellation,
+  proxyActivities,
+  setHandler,
+  workflowInfo,
+} from '@temporalio/workflow';
 
 import type {
   AgentGoal,
@@ -35,6 +43,25 @@ import type {
 
 import type { DelegationActivities, NotifyActivities } from './activities';
 import type { CodingTask, WorkspaceHandle, CodingResult } from '@ui4a/shared';
+import type {
+  AgentExecutionNeedsInput,
+  AgentExecutionWaitingApproval,
+  AgentQuestionAnswerSignal,
+  AgentResourceDecisionSignal,
+  AgentResumeResolution,
+  AgentRunActivities,
+  AgentRunWorkflowArgs,
+  AgentRunWorkflowResult,
+} from './agents/host/contracts';
+import {
+  matchQuestionAnswer,
+  matchResourceDecision,
+  resolutionIdempotencyKey,
+  suspensionIdempotencyKey,
+  type AgentQuestionAnswerInbox,
+  type AgentResourceDecisionInbox,
+} from './agents/host/protocol';
+import { agentRunFinalizeIdempotencyKey } from './agents/host/finalize';
 
 /** 确认摘要(workflow 参数;镜像于 apps/web/src/temporal/notify.ts 的 NotifyWorkflowArgs)。 */
 export interface NotifyConfirmation {
@@ -125,6 +152,194 @@ export async function codingCapabilityWorkflow(
   const outcome = await codingExecute.executeCodingRun({ context: args, prepared });
   await codingFinalize.finalizeCodingRun({ context: args, outcome });
   return outcome;
+}
+
+// ---------------------------------------------------------------------------
+// agentRunWorkflow(T19:generic Host; additive beside the T18 compatibility workflow)
+// ---------------------------------------------------------------------------
+
+export type {
+  AgentQuestionAnswerSignal,
+  AgentResourceDecisionSignal,
+  AgentRunActivities,
+  AgentRunWorkflowArgs,
+  AgentRunWorkflowResult,
+};
+
+/** Answer the currently pending question. The resolution is persisted by an activity before resume. */
+export const answerAgentQuestionSignal =
+  defineSignal<[AgentQuestionAnswerSignal]>('answerAgentQuestion');
+
+/** Decide one requested per-Run resource grant. This does not approve the terminal result. */
+export const decideAgentResourceGrantSignal = defineSignal<[AgentResourceDecisionSignal]>(
+  'decideAgentResourceGrant',
+);
+
+const agentPrepare = proxyActivities<Pick<AgentRunActivities, 'prepareAgentRun'>>({
+  startToCloseTimeout: '1 minute',
+  retry: { maximumAttempts: 1 },
+});
+const agentExecute = proxyActivities<Pick<AgentRunActivities, 'executeAgentRun'>>({
+  startToCloseTimeout: '1 hour',
+  heartbeatTimeout: '15 seconds',
+  retry: { maximumAttempts: 3 },
+});
+const agentCollectVerify = proxyActivities<
+  Pick<AgentRunActivities, 'collectAgentRun' | 'verifyAgentRun'>
+>({
+  startToCloseTimeout: '5 minutes',
+  retry: { maximumAttempts: 3 },
+});
+const agentSuspend = proxyActivities<
+  Pick<AgentRunActivities, 'recordAgentRunSuspension' | 'recordAgentRunResolution'>
+>({
+  startToCloseTimeout: '30 seconds',
+  retry: { maximumAttempts: 5 },
+});
+const agentFinalize = proxyActivities<Pick<AgentRunActivities, 'finalizeAgentRun'>>({
+  startToCloseTimeout: '30 seconds',
+  retry: { maximumAttempts: 5 },
+});
+
+function failureReason(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function awaitQuestionAnswer(
+  context: AgentRunWorkflowArgs,
+  suspension: AgentExecutionNeedsInput,
+  answers: AgentQuestionAnswerInbox,
+): Promise<AgentResumeResolution> {
+  await condition(() => matchQuestionAnswer(suspension, answers) !== undefined);
+  const resolution = matchQuestionAnswer(suspension, answers);
+  if (resolution === undefined)
+    throw new Error('question answer disappeared from Workflow history');
+  await agentSuspend.recordAgentRunResolution({
+    context,
+    suspension,
+    resolution,
+    idempotencyKey: resolutionIdempotencyKey(context.runId, suspension),
+  });
+  return resolution;
+}
+
+async function awaitResourceDecision(
+  context: AgentRunWorkflowArgs,
+  suspension: AgentExecutionWaitingApproval,
+  decisions: AgentResourceDecisionInbox,
+): Promise<AgentResumeResolution> {
+  await condition(() => matchResourceDecision(suspension, decisions) !== undefined);
+  const resolution = matchResourceDecision(suspension, decisions);
+  if (resolution === undefined)
+    throw new Error('resource decision disappeared from Workflow history');
+  await agentSuspend.recordAgentRunResolution({
+    context,
+    suspension,
+    resolution,
+    idempotencyKey: resolutionIdempotencyKey(context.runId, suspension),
+  });
+  return resolution;
+}
+
+async function runAgentHost(args: AgentRunWorkflowArgs): Promise<AgentRunWorkflowResult> {
+  if (!Number.isInteger(args.limits.maxSuspensions) || args.limits.maxSuspensions < 0) {
+    return {
+      status: 'failed',
+      code: 'invalid-host-limits',
+      reason: 'maxSuspensions must be a non-negative integer',
+    };
+  }
+
+  const answers: Record<string, AgentQuestionAnswerSignal> = {};
+  const decisions: Record<string, AgentResourceDecisionSignal> = {};
+  setHandler(answerAgentQuestionSignal, (answer) => {
+    answers[answer.questionId] ??= answer;
+  });
+  setHandler(decideAgentResourceGrantSignal, (decision) => {
+    decisions[decision.requestId] ??= decision;
+  });
+
+  let phase = 'prepare';
+  try {
+    const prepared = await agentPrepare.prepareAgentRun(args);
+    let resolution: AgentResumeResolution | undefined;
+    let suspensions = 0;
+
+    while (true) {
+      phase = 'execute';
+      const execution = await agentExecute.executeAgentRun({
+        context: args,
+        prepared,
+        ...(resolution === undefined ? {} : { resolution }),
+      });
+      resolution = undefined;
+
+      if (execution.status === 'failed' || execution.status === 'cancelled') return execution;
+      if (execution.status === 'completed') {
+        phase = 'collect';
+        const collected = await agentCollectVerify.collectAgentRun({
+          context: args,
+          prepared,
+          execution,
+        });
+        phase = 'verify';
+        return agentCollectVerify.verifyAgentRun({ context: args, collected });
+      }
+
+      suspensions += 1;
+      if (suspensions > args.limits.maxSuspensions) {
+        return {
+          status: 'failed',
+          code: 'suspension-limit-exceeded',
+          reason: `agent run exceeded ${args.limits.maxSuspensions} suspensions`,
+        };
+      }
+      phase = 'suspend';
+      await agentSuspend.recordAgentRunSuspension({
+        context: args,
+        suspension: execution,
+        idempotencyKey: suspensionIdempotencyKey(args.runId, execution),
+      });
+      resolution =
+        execution.status === 'needs-input'
+          ? await awaitQuestionAnswer(args, execution, answers)
+          : await awaitResourceDecision(args, execution, decisions);
+    }
+  } catch (error) {
+    if (isCancellation(error)) throw error;
+    return { status: 'failed', code: `${phase}-failed`, reason: failureReason(error) };
+  }
+}
+
+/**
+ * Generic durable Agent Host.
+ *
+ * All activities receive the same birth-pinned context. Questions and grant requests suspend in
+ * Workflow history, but their pending/resolution events are persisted through idempotent activities.
+ * A cancellation receives a non-cancellable terminal callback before the Workflow remains CANCELLED.
+ */
+export async function agentRunWorkflow(
+  args: AgentRunWorkflowArgs,
+): Promise<AgentRunWorkflowResult> {
+  try {
+    const outcome = await runAgentHost(args);
+    await agentFinalize.finalizeAgentRun({
+      context: args,
+      outcome,
+      idempotencyKey: agentRunFinalizeIdempotencyKey(args.runId),
+    });
+    return outcome;
+  } catch (error) {
+    if (!isCancellation(error)) throw error;
+    await CancellationScope.nonCancellable(() =>
+      agentFinalize.finalizeAgentRun({
+        context: args,
+        outcome: { status: 'cancelled', reason: failureReason(error) },
+        idempotencyKey: agentRunFinalizeIdempotencyKey(args.runId),
+      }),
+    );
+    throw error;
+  }
 }
 
 // ---------------------------------------------------------------------------

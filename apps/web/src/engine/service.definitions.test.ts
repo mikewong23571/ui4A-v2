@@ -305,6 +305,11 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
     ]);
     expect(capabilities?.['draft']?.kind).toBe('extract');
     expect(capabilities?.['notify']?.kind).toBe('effect');
+    expect(capabilities?.['coding.execute']?.executor).toMatchObject({
+      class: 'coding-agent',
+      profile: 'default',
+      agentDefinition: 'coding-agent@1',
+    });
   });
 
   it('业务 sitemap 动态携带 capability 定义摘要，scope 从活跃 flow 引用推导', async () => {
@@ -323,6 +328,9 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
       applications: [],
       flows: [],
     });
+    expect(
+      sitemap.capabilities.find((capability) => capability.name === 'coding.execute')?.executor,
+    ).toMatchObject({ agentDefinition: 'coding-agent@1' });
   });
 
   it('boot 幂等:重复 boot 不再追加 capability-seeded(仍 4 条)', async () => {

@@ -9,6 +9,7 @@ import {
   ensureAgentDefinitionTables,
   getActiveAgentDefinition,
   getAgentDefinitionVersion,
+  installSeedAgentDefinition,
   listAgentDefinitionVersions,
   prepareAgentDefinitionActivation,
   readAgentDefinitionPayload,
@@ -103,6 +104,35 @@ beforeEach(async () => {
 });
 
 describe('Agent Definition persistence', () => {
+  it('installs a built-in definition idempotently with explicit non-human seed provenance', async () => {
+    const source = definition(1);
+    const input = {
+      principal: 'local-user',
+      policyScope: 'development',
+      source,
+      artifact: resolveAgentDefinition(source, new Map()),
+      evalEvidence: { passed: true, score: 1 } as JsonValue,
+    };
+
+    const first = await installSeedAgentDefinition(pool, input);
+    const retry = await installSeedAgentDefinition(pool, input);
+
+    expect(first.ref).toBe('writing-agent@1');
+    expect(retry).toEqual(first);
+    expect(
+      (await getActiveAgentDefinition(pool, 'writing-agent', 'local-user', 'development'))?.version,
+    ).toMatchObject({ status: 'active', registeredActor: 'system:bootstrap' });
+    const stored = await pool.query<{ actor: string; detail: Record<string, unknown> }>(
+      `SELECT actor,detail FROM events WHERE domain='agent-definition' ORDER BY seq`,
+    );
+    expect(stored.rows).toHaveLength(2);
+    expect(stored.rows.every((row) => row.actor === 'agent')).toBe(true);
+    expect(stored.rows[1]?.detail).toMatchObject({
+      actor: 'system:bootstrap',
+      provenance: { kind: 'system-seed' },
+    });
+  });
+
   it('stores source, flattened, Prompt, and Eval content by hash and isolates exact versions', async () => {
     const registered = await registerAgentDefinitionVersion(pool, registration(1, 0));
 

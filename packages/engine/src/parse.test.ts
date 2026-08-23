@@ -335,6 +335,28 @@ describe('parseCapabilityDefinition — 规范化', () => {
     expect(parsed.input).toBeUndefined();
     expect(parsed.output).toBeUndefined();
   });
+
+  it('保留 exact Agent Definition ref，Provider 仍只属于部署 profile', () => {
+    const parsed = parseCapabilityDefinition({
+      name: 'coding.execute',
+      title: '执行代码任务',
+      kind: 'effect',
+      intent: '运行特化 Coding Agent',
+      executor: {
+        class: 'coding-agent',
+        profile: 'default',
+        agentDefinition: 'coding-agent@1',
+        requiredFeatures: ['resume'],
+      },
+    });
+
+    expect(parsed.executor).toEqual({
+      class: 'coding-agent',
+      profile: 'default',
+      agentDefinition: 'coding-agent@1',
+      requiredFeatures: ['resume'],
+    });
+  });
 });
 
 describe('parseCapabilityDefinition — 拒绝非法定义', () => {
@@ -376,6 +398,38 @@ describe('parseCapabilityDefinition — 拒绝非法定义', () => {
     expect(() => parseCapabilityDefinition({ ...valid, input: 42 })).toThrow(/input/);
     expect(() => parseCapabilityDefinition({ ...valid, output: '' })).toThrow(/output/);
     expect(() => parseCapabilityDefinition({ ...valid, output: null })).toThrow(/output/);
+  });
+
+  it.each(['coding-agent', 'coding-agent@0', 'coding-agent@latest', '@1'])(
+    '拒绝非 exact version Agent Definition ref: %s',
+    (agentDefinition) => {
+      expect(() =>
+        parseCapabilityDefinition({
+          name: 'coding.execute',
+          title: '执行代码任务',
+          kind: 'effect',
+          intent: '运行特化 Coding Agent',
+          executor: { class: 'coding-agent', profile: 'default', agentDefinition },
+        }),
+      ).toThrow(/agentDefinition/);
+    },
+  );
+
+  it('拒绝 Application executor 中的 Provider/模型部署字段', () => {
+    expect(() =>
+      parseCapabilityDefinition({
+        name: 'coding.execute',
+        title: '执行代码任务',
+        kind: 'effect',
+        intent: '运行特化 Coding Agent',
+        executor: {
+          class: 'coding-agent',
+          profile: 'default',
+          agentDefinition: 'coding-agent@1',
+          provider: 'codex',
+        },
+      }),
+    ).toThrow(/executor.provider/);
   });
 
   it('CapabilityParseError 全量携带 issues,消息风格与 AppParseError 同构', () => {

@@ -202,6 +202,7 @@ describe('sitemap 表面 ↔ entity 端点一致', () => {
 
     const collections = sitemap.surfaces.filter((surface) => surface.collection);
     expect(collections.map((surface) => surface.rel).sort()).toEqual([
+      'agent-runs',
       'articles',
       'capability-runs',
       'comments',

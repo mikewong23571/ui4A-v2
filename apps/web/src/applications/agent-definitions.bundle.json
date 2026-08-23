@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "definitions": [
+    {
+      "schemaVersion": 1,
+      "ref": "base-agent@1",
+      "name": "base-agent",
+      "version": 1,
+      "intent": "Complete one authorized task within explicit runtime, tool, resource, and result contracts.",
+      "prompt": {
+        "schemaVersion": 1,
+        "blocks": [
+          {
+            "id": "base-authority",
+            "role": "system",
+            "purpose": "authority",
+            "literal": "You are operating inside UI4A. Use only the supplied grants. Return proposed work and evidence; never approve, activate, publish, merge, push, or deploy it yourself.",
+            "sealed": true
+          }
+        ]
+      },
+      "contracts": {
+        "inputSchema": { "type": "object" },
+        "outputSchema": { "type": "object" }
+      },
+      "runtimeRequirements": {
+        "class": "general-agent",
+        "features": ["structured-events"]
+      },
+      "policies": {
+        "tools": { "allowed": [] },
+        "context": { "allowedSources": [], "maxItems": 0 },
+        "resources": { "allowed": [] },
+        "artifacts": {
+          "allowedMediaTypes": ["application/json"],
+          "maxCount": 8,
+          "maxBytes": 1048576
+        }
+      },
+      "evaluationPolicy": {
+        "verifiers": ["schema"],
+        "evalSuiteRefs": ["eval:base-agent@1"],
+        "minimumScore": 1
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "ref": "coding-agent@1",
+      "name": "coding-agent",
+      "version": 1,
+      "extends": "base-agent@1",
+      "specialize": {
+        "replace": {
+          "intent": "Implement an authorized software change in a UI4A-owned isolated Git worktree and return independently verifiable code, test, and trajectory evidence.",
+          "contracts": {
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "kind": { "const": "coding-task" },
+                "codingTask": { "type": "object" },
+                "compiledPrompt": {
+                  "type": "object",
+                  "properties": {
+                    "messages": { "type": "array" },
+                    "compiledHash": { "type": "string" }
+                  },
+                  "required": ["messages", "compiledHash"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["kind", "codingTask", "compiledPrompt"],
+              "additionalProperties": false
+            },
+            "outputSchema": {
+              "type": "object",
+              "properties": { "codingResult": { "type": "object" } },
+              "required": ["codingResult"],
+              "additionalProperties": false
+            }
+          },
+          "runtimeRequirements": {
+            "class": "coding-agent",
+            "features": ["resume", "structured-events", "workspace-write"]
+          },
+          "policies": {
+            "tools": { "allowed": ["filesystem", "git", "shell"] },
+            "context": { "allowedSources": ["repository"], "maxItems": 16 },
+            "resources": { "allowed": ["repository"] },
+            "artifacts": {
+              "allowedMediaTypes": ["application/json", "application/x-ndjson", "text/x-diff"],
+              "maxCount": 64,
+              "maxBytes": 4194304
+            }
+          },
+          "evaluationPolicy": {
+            "verifiers": ["git-diff", "test-observation"],
+            "evalSuiteRefs": ["eval:t18-real-codex@1"],
+            "minimumScore": 1
+          }
+        },
+        "appendPromptBlocks": [
+          {
+            "id": "coding-method",
+            "role": "system",
+            "purpose": "instruction",
+            "literal": "Work from the requested base revision in the isolated worktree. Inspect before editing, stay within allowed paths, run the stated acceptance tests, and report the observed result. Do not commit or operate the main checkout."
+          },
+          {
+            "id": "coding-task",
+            "role": "user",
+            "purpose": "task-data",
+            "binding": {
+              "source": "task",
+              "pointer": "/codingTask",
+              "encoding": "json-delimited",
+              "required": true
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "evaluation": {
+    "base-agent@1": {
+      "kind": "system-seed-evidence",
+      "suite": "eval:base-agent@1",
+      "passed": true,
+      "score": 1
+    },
+    "coding-agent@1": {
+      "kind": "system-seed-evidence",
+      "suite": "eval:t18-real-codex@1",
+      "passed": true,
+      "score": 1,
+      "source": "conductor/tracks/t18-coding-capability-executors_20260823/eval-report.json"
+    }
+  }
+}

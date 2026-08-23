@@ -33,6 +33,8 @@ export * from './submission/index';
 export * from './capability-run/index';
 // Canonical specialization-independent Agent Run plane and T18 read codec.
 export * from './agent-run/index';
+// Runtime feature negotiation and effective grant intersection for Agent specializations.
+export * from './agent-runtime-policy/index';
 // 独立 Presentation Plane 的纯编排/校验基座；不进入 Business fold。
 export * from './presentation/index';
 // Specialized Agent definition parser, derivation, and activation kernels (T19).

@@ -426,7 +426,7 @@ describe('governed Agent Definition Draft vertical slice', () => {
          'agent-definition-version-registered',
          'agent-definition-version-activated',
          'draft-accepted'
-       ) ORDER BY seq`,
+       ) AND principal='user:mike' ORDER BY seq`,
     );
     expect(events.rows.map((row) => row.kind)).toEqual([
       'agent-definition-version-registered',

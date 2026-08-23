@@ -13,6 +13,7 @@
  */
 import type { ParamOrigin } from './state';
 import type { SubmissionPolicy } from './submission';
+import type { AgentDefinitionRef } from './agent-definition';
 
 /** 字段语义(arch-brief §2:四种)。 */
 export type FieldSemantics = 'org-standard' | 'intent' | 'work-product' | 'elicitation';
@@ -251,6 +252,8 @@ export interface CapabilityDefinition {
   executor?: {
     class: string;
     profile: string;
+    /** Exact specialization birth version; absent capabilities remain on the T18 legacy path. */
+    agentDefinition?: AgentDefinitionRef;
     requiredFeatures?: string[];
   };
 }
