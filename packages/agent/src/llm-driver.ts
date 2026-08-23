@@ -447,9 +447,116 @@ function toToolSet(descriptors: ReturnType<typeof buildToolProjection>): ToolSet
   return tools;
 }
 
+interface DecisionAttempt {
+  op: AgentOperation;
+  protocolFailure?: string;
+  reasoning?: string;
+}
+
+function repairMessage(protocolFailure: string): LlmMessage {
+  return {
+    role: 'user',
+    content: [
+      '## 协议修复',
+      `上一次模型输出未通过协议校验，错误类别：${protocolFailure}。`,
+      '请基于同一用户目标、授权事实与当前工具重新自主决定。必须只调用一个当前工具；不要复述或解析上一次被拒绝的普通文本。',
+    ].join('\n'),
+  };
+}
+
+function protocolFailureOf(op: AgentOperation): string | undefined {
+  if (op.kind !== 'fail' || !op.reason.startsWith('LLM 输出不合法: ')) return undefined;
+  const reason = op.reason.slice('LLM 输出不合法: '.length);
+  if (reason.startsWith('未输出工具调用')) return '未输出工具调用';
+  return reason.replace(/\(.*/s, '').slice(0, 200);
+}
+
+/** One provider decision attempt. It validates the envelope but never chooses a tool for the LLM. */
+async function llmDecisionAttempt(
+  model: LanguageModel,
+  context: DriverContext,
+  sink?: DecideSink,
+  protocolFailure?: string,
+): Promise<DecisionAttempt> {
+  // 注意:system/messages 必须经 buildSystemPrompt/buildLlmMessages 构造——
+  // 审计可用同两个纯函数重建首次输入；repair 只追加有界校验类别。
+  const result = streamText({
+    model,
+    system: buildSystemPrompt({
+      role: context.role,
+      app: context.app,
+      chatMarkdown: context.chatMarkdown,
+      presentationMarkdown: context.presentationMarkdown,
+    }),
+    messages: [
+      ...buildLlmMessages(context),
+      ...(protocolFailure === undefined ? [] : [repairMessage(protocolFailure)]),
+    ],
+    tools: toToolSet(buildToolProjection(context.entity)),
+    toolChoice: 'required',
+    abortSignal: AbortSignal.timeout(60_000),
+    includeRawChunks: true,
+  });
+  let text = '';
+  let reasoning = '';
+  const calls: { toolName: string; input: unknown }[] = [];
+  for await (const part of result.fullStream) {
+    switch (part.type) {
+      case 'text-delta':
+        text += part.text;
+        break;
+      case 'tool-call':
+        calls.push({ toolName: part.toolName, input: part.input });
+        break;
+      case 'raw': {
+        const delta = readRawDelta(part.rawValue);
+        if (delta !== null) {
+          const piece = extractRawReasoning(delta);
+          if (piece !== null) {
+            reasoning += piece;
+            try {
+              sink?.onReasoningDelta?.(piece);
+            } catch {
+              // Observability cannot change the protocol outcome.
+            }
+          }
+        }
+        break;
+      }
+      case 'error':
+        throw part.error;
+      case 'abort':
+        throw new Error(part.reason ?? 'LLM 调用被中止');
+      default:
+        break;
+    }
+  }
+  const op =
+    calls.length === 0
+      ? invalidOutput(`未输出工具调用(模型文本: ${text.slice(0, 200) || '(空)'})`)
+      : calls.length > 1
+        ? invalidOutput(`输出多个工具调用(${calls.map((call) => call.toolName).join(',')})`)
+        : mapToolCall(calls[0]!.toolName, calls[0]!.input);
+  const failure = protocolFailureOf(op);
+  return {
+    op,
+    ...(failure === undefined ? {} : { protocolFailure: failure }),
+    ...(reasoning === '' ? {} : { reasoning }),
+  };
+}
+
+function emitAttemptReasoning(attempt: DecisionAttempt, sink?: DecideSink): void {
+  if (attempt.reasoning === undefined) return;
+  try {
+    sink?.onReasoning?.(attempt.reasoning);
+  } catch {
+    // Observability cannot change the protocol outcome.
+  }
+}
+
 /**
- * 单次 LLM 决策(streamText):消费 fullStream 聚合出最终 tool call 与 reasoning,
- * 映射为循环操作;端点/流式错误与 abort 经 catch 折算 fail(B4),decide 永不抛异常。
+ * One autonomous decision plus at most one real-LLM protocol repair. Provider failures remain
+ * honest terminal failures; rejected text is never converted into an operation.
  */
 async function llmDecide(
   model: LanguageModel,
@@ -457,81 +564,14 @@ async function llmDecide(
   sink?: DecideSink,
 ): Promise<AgentOperation> {
   try {
-    // 注意:system/messages 必须经 buildSystemPrompt/buildLlmMessages 构造——
-    // 审计可用同两个纯函数重建实际模型输入，不丢失原始会话 role。
-    const result = streamText({
-      model,
-      system: buildSystemPrompt({
-        role: context.role,
-        app: context.app,
-        chatMarkdown: context.chatMarkdown,
-        presentationMarkdown: context.presentationMarkdown,
-      }),
-      messages: buildLlmMessages(context),
-      tools: toToolSet(buildToolProjection(context.entity)),
-      // 端点挂死兜底(T9 Phase B):60s 无响应流被 abort(下文 'abort' 部件),
-      // 经 catch 如实进 fail reason(B4 口径:失败也是合同的一部分,decide 永不抛异常)。
-      abortSignal: AbortSignal.timeout(60_000),
-      // toolChoice 保持缺省 auto:GLM coding 端点对 "required" 挂起不响应
-      // (实测 2026-08-21,90s 无返回;default auto 正常产出 tool_calls)。
-      // 系统提示词已约束"每轮恰好一个工具调用";无调用时 fail-safe 兜底。
-      // 原始 SSE chunk 进 fullStream(type 'raw'):reasoning 只在这一层暴露(D22)。
-      includeRawChunks: true,
-    });
-    let text = '';
-    let reasoning = '';
-    let call: { toolName: string; input: unknown } | undefined;
-    for await (const part of result.fullStream) {
-      switch (part.type) {
-        case 'text-delta':
-          text += part.text;
-          break;
-        case 'tool-call':
-          // 系统提示词约束单调用;多调用时取首个(与 generateText 的 toolCalls[0] 同口径)。
-          if (call === undefined) call = { toolName: part.toolName, input: part.input };
-          break;
-        case 'raw': {
-          const delta = readRawDelta(part.rawValue);
-          if (delta !== null) {
-            const piece = extractRawReasoning(delta);
-            if (piece !== null) {
-              reasoning += piece;
-              try {
-                // 增量通道:片段到达即转发(当前 GLM 末尾齐发 D22,增量与聚合
-                // 几乎同刻;管线为真流式就绪)。聚合终态见流末 onReasoning。
-                sink?.onReasoningDelta?.(piece);
-              } catch {
-                // 观测者不得污染协议(同 onReasoning 口径)。
-              }
-            }
-          }
-          break;
-        }
-        case 'error':
-          // 端点错误(401 等)以 error 部件到达(非抛出)——原样转交 catch,
-          // statusCode/responseBody 附着在错误对象上,B4 折算口径不变。
-          throw part.error;
-        case 'abort':
-          // 60s 兜底触发:abort 部件的 reason 是 AbortSignal.reason 的序列化文本。
-          throw new Error(part.reason ?? 'LLM 调用被中止');
-        default:
-          break;
-      }
+    const first = await llmDecisionAttempt(model, context, sink);
+    if (first.protocolFailure === undefined) {
+      emitAttemptReasoning(first, sink);
+      return first.op;
     }
-    const op =
-      call === undefined
-        ? invalidOutput(`未输出工具调用(模型文本: ${text.slice(0, 200) || '(空)'})`)
-        : mapToolCall(call.toolName, call.input);
-    if (reasoning !== '') {
-      try {
-        // 聚合后一次性回调(D22:GLM reasoning 末尾齐发,非打字机);fail-safe
-        // 决策的自述同样携带(蒸馏原料)。观测者异常吞掉:decide 永不抛异常。
-        sink?.onReasoning?.(reasoning);
-      } catch {
-        // 观测者不得污染协议(同 loop onStep 口径)。
-      }
-    }
-    return op;
+    const repaired = await llmDecisionAttempt(model, context, sink, first.protocolFailure);
+    emitAttemptReasoning(repaired.reasoning === undefined ? first : repaired, sink);
+    return repaired.op;
   } catch (error) {
     return { kind: 'fail', reason: llmErrorToReason(error) };
   }
