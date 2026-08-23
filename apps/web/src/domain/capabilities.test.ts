@@ -58,7 +58,7 @@ function referencedCapabilities(flow: FlowDefinition): string[] {
 }
 
 describe('capability seed 常量(T13)', () => {
-  it('draft/summarize/notify/clarify 均通过 parseCapabilityDefinition 校验且 intent 在场', () => {
+  it('draft/notify/clarify 均通过 parseCapabilityDefinition 校验且 intent 在场', () => {
     for (const capability of businessCapabilityList) {
       expect(() => parseCapabilityDefinition(capability)).not.toThrow();
       expect(capability.title.length).toBeGreaterThan(0);
@@ -66,23 +66,15 @@ describe('capability seed 常量(T13)', () => {
     }
     expect(businessCapabilityList.map((capability) => capability.name)).toEqual([
       'draft',
-      'summarize',
       'notify',
       'clarify',
     ]);
+    expect(businessCapabilityList.some((capability) => capability.name === 'summarize')).toBe(
+      false,
+    );
   });
 
-  it('summarize 声明正式 artifact 的 schema 与 publishing/post-status scope', () => {
-    const summarize = businessCapabilityList.find((capability) => capability.name === 'summarize');
-    expect(summarize).toMatchObject({
-      kind: 'transform',
-      inputSchema: { type: 'object' },
-      outputSchema: { type: 'object', required: ['summary'] },
-      scope: { applications: ['publishing'], flows: ['post-status'] },
-    });
-  });
-
-  it('三类 kind 覆盖引用语义:draft/clarify=extract(模型背书提取),notify=effect(效应)', () => {
+  it('两类 kind 覆盖引用语义:draft/clarify=extract(模型背书提取),notify=effect(效应)', () => {
     expect(draftCapability.kind).toBe('extract');
     expect(notifyCapability.kind).toBe('effect');
     expect(clarifyCapability.kind).toBe('extract');

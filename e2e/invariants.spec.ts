@@ -778,7 +778,6 @@ test.describe('I5 可重放', () => {
         const capabilitySeeds = rows.filter((row) => row.kind === 'capability-seeded');
         expect(capabilitySeeds.map((row) => row.rel)).toEqual([
           'meta/capability:draft',
-          'meta/capability:summarize',
           'meta/capability:notify',
           'meta/capability:clarify',
         ]);

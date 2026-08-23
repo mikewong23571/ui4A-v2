@@ -228,3 +228,14 @@
   User Sidecar miss 后必须先实例化 promoted/candidate Recipe，再进入 generic/planner；human
   promotion 事件保存去用户化 candidate，使新进程可重建共享 fastpath。否则“设为团队默认”只是
   装饰性交互，违反 S9/S27。
+
+## D28 摘要保持 Assistant 原生认知，不进入应用工件模型(2026-08-23)
+
+- **决定**:publishing Application 删除 `summarize` capability，以及 `generate-summary`、
+  `save-summary` 两个文章 action。文章的“总结”始终由 Assistant 基于授权正文直接 `answer`。
+- **边界**:当前应用不提供摘要持久化；用户要求保存、共享或写回摘要时，Assistant 诚实报告
+  缺少对应 action/capability，零 artifact、零业务字段写入。未来若产品真的需要“文章摘要”字段，
+  应先定义该业务字段及其写入治理，而不是把一次认知回答自动升级成通用工件。
+- **UI 后果**:Entity/Canvas 不再显示“生成正式摘要工件”“保存正式摘要引用”及其参数表单。
+  T15 U15/U16 的最新故事定义取代原先正式摘要工件实验；通用 artifact/capability 基础设施保留，
+  但不再由摘要场景消费。

@@ -880,7 +880,7 @@ export function postWithoutBodyFixture(args: {
  * capability is scoped to publishing/post-status; an unrelated community capability is present
  * so U17 can prove that the Assistant situation does not broadcast cross-scope tools.
  */
-export function formalSummaryFixture(
+export function boundedContextFixture(
   options: {
     seedSessionId?: string;
   } = {},
@@ -888,9 +888,6 @@ export function formalSummaryFixture(
   return {
     prepare: async (databaseUrl) => {
       await prepareWalkthroughFixture(databaseUrl, async (bundle) => {
-        if (!bundle.capabilities.some((capability) => capability.name === 'summarize')) {
-          throw new Error('walkthrough fixture misses the production summarize capability');
-        }
         bundle.capabilities.push({
           name: 'moderate-comments',
           title: '评论风险识别',
@@ -898,13 +895,6 @@ export function formalSummaryFixture(
           intent: '只为社区评论生成审核建议。',
           scope: { applications: ['community'], flows: ['comment-moderation'] },
         });
-        const flow = bundle.flows.find((candidate) => candidate.name === 'post-status');
-        const published = flow?.nodes.find((candidate) => candidate.name === 'published');
-        if (published === undefined)
-          throw new Error('walkthrough fixture misses post-status/published');
-        if (!published.actions.some((action) => action.name === 'save-summary')) {
-          throw new Error('walkthrough fixture misses the production save-summary action');
-        }
       });
 
       if (options.seedSessionId === undefined) return;

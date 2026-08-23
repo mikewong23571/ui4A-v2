@@ -31,35 +31,6 @@
       "output": "草稿工件候选集(options 份,供人类选择;arch-brief 第七层:artifact in → artifact out)。"
     },
     {
-      "name": "summarize",
-      "title": "正式文章摘要",
-      "kind": "transform",
-      "intent": "把当前文章正文转换为可审计的正式摘要工件；临时对话摘要不调用本能力。",
-      "input": "文章实体正文引用。",
-      "output": "带来源、模型、输出 schema 和内容 hash 的摘要 artifact。",
-      "inputSchema": {
-        "type": "object",
-        "required": ["source"],
-        "properties": {
-          "source": {
-            "type": "object",
-            "required": ["rel", "field"],
-            "properties": {
-              "rel": { "type": "string" },
-              "field": { "const": "body" }
-            }
-          }
-        }
-      },
-      "outputSchema": {
-        "type": "object",
-        "required": ["summary"],
-        "properties": { "summary": { "type": "string", "minLength": 1 } },
-        "additionalProperties": false
-      },
-      "scope": { "applications": ["publishing"], "flows": ["post-status"] }
-    },
-    {
       "name": "notify",
       "title": "确认门送达",
       "kind": "effect",
@@ -312,60 +283,6 @@
                 {
                   "type": "transition",
                   "to": "archived"
-                }
-              ]
-            },
-            {
-              "name": "generate-summary",
-              "title": "生成正式摘要工件",
-              "method": "POST",
-              "guards": [],
-              "fields": [
-                {
-                  "name": "summary",
-                  "type": "textarea",
-                  "required": true,
-                  "semantics": "work-product",
-                  "persist": false,
-                  "title": "正式摘要",
-                  "source": {
-                    "kind": "proposal",
-                    "capability": "summarize",
-                    "options": 1,
-                    "selection": "human-required"
-                  }
-                }
-              ],
-              "effect": [
-                {
-                  "type": "spawn",
-                  "capability": "summarize",
-                  "bind": { "source-field": "body", "output-param": "summary" }
-                }
-              ]
-            },
-            {
-              "name": "save-summary",
-              "title": "保存正式摘要引用",
-              "method": "POST",
-              "guards": ["artifact-input-valid"],
-              "requires-confirmation": "high",
-              "fields": [
-                {
-                  "name": "summaryArtifact",
-                  "type": "text",
-                  "required": true,
-                  "semantics": "work-product",
-                  "title": "摘要工件",
-                  "source": { "kind": "effect", "capability": "summarize", "from": "body" }
-                }
-              ],
-              "effect": [
-                {
-                  "type": "set-field",
-                  "field": "summaryArtifact",
-                  "from-param": "summaryArtifact",
-                  "origin": "effect"
                 }
               ]
             }

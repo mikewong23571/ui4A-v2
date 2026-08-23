@@ -173,12 +173,7 @@ describe('B1 投影联动:exec → /api/entity', () => {
     expect(postRes.status).toBe(200);
     const post = (await postRes.json()) as SirenEntity;
     expect(post.properties).toMatchObject({ rel: 'post:new-article', node: 'published' });
-    expect(post.actions.map((action) => action.name)).toEqual([
-      'unpublish',
-      'archive',
-      'generate-summary',
-      'save-summary',
-    ]);
+    expect(post.actions.map((action) => action.name)).toEqual(['unpublish', 'archive']);
   });
 
   it('B2:unpublish 后该篇 offline,另一篇不受影响(精确下线)', async () => {

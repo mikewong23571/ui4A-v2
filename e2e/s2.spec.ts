@@ -591,18 +591,10 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     // 对照:seed 的 v1 出生文章(post-welcome)无 pin(在途按出生定义)。
     const newPost = await getEntity('post:s2-pinned-article');
     expect(newPost.properties).toMatchObject({ node: 'published' });
-    expect(newPost.actions.map((action) => action.name)).toEqual([
-      'unpublish',
-      'archive',
-      'generate-summary',
-      'save-summary',
-      'pin',
-    ]);
+    expect(newPost.actions.map((action) => action.name)).toEqual(['unpublish', 'archive', 'pin']);
     expect((await getEntity('post:post-welcome')).actions.map((action) => action.name)).toEqual([
       'unpublish',
       'archive',
-      'generate-summary',
-      'save-summary',
     ]);
 
     // 新目标「置顶」:目标动词只表达意图;pin 由 driver 经合同动态发现并 exec。
@@ -865,7 +857,7 @@ test('重放一致:S2 全链事件 TRUNCATE 原序回灌 → 活跃定义 v2 含
     // 派生文章与在途向导按事件重放一致(pinned 状态、出生动作面)
     expect(before.post).toMatchObject({
       node: 'published',
-      actions: ['unpublish', 'archive', 'generate-summary', 'save-summary', 'pin'],
+      actions: ['unpublish', 'archive', 'pin'],
     });
     expect((before.post as { fields: Record<string, unknown> }).fields.pinned).toBe(true);
     expect(before.wizard).toMatchObject({ node: 'basic-info', actions: ['next', 'abandon'] });
@@ -929,14 +921,13 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
       sitemap.surfaces.every((surface) => !surface.rel.includes('capability')),
       '业务 sitemap 不得出现 capability 入口',
     ).toBe(true);
-    // meta/capabilities 集合投影:四个 seed 成员直达
+    // meta/capabilities 集合投影:三个 seed 成员直达
     const capabilities = await getMetaEntity('meta/capabilities');
-    expect(capabilities.properties).toMatchObject({ count: 4 });
+    expect(capabilities.properties).toMatchObject({ count: 3 });
     expect((capabilities.entities ?? []).map((sub) => sub.properties.name).sort()).toEqual([
       'clarify',
       'draft',
       'notify',
-      'summarize',
     ]);
 
     // 业务端点对 meta rel 404(跨站不混,双向)

@@ -21,7 +21,7 @@ function publishingBundle() {
 }
 
 describe('Application Recipe coordinator', () => {
-  it('schedules the 15 publishing scenarios without blocking activation', async () => {
+  it('schedules the 13 publishing scenarios without blocking activation', async () => {
     let release!: () => void;
     const blocked = new Promise<void>((resolve) => {
       release = resolve;
@@ -38,12 +38,12 @@ describe('Application Recipe coordinator', () => {
     const coordinator = createRecipeCoordinator({ agent, catalog: PRESENTATION_SURFACE_CATALOG });
     const scheduled = coordinator.schedule(publishingBundle());
 
-    expect(scheduled.scheduled).toBe(15);
+    expect(scheduled.scheduled).toBe(13);
     expect(generate).not.toHaveBeenCalled();
     release();
     await scheduled.completion;
-    expect(generate).toHaveBeenCalledTimes(15);
-    expect(coordinator.failures()).toHaveLength(15);
+    expect(generate).toHaveBeenCalledTimes(13);
+    expect(coordinator.failures()).toHaveLength(13);
   });
 
   it('deduplicates the same activation inventory and retries failed generation explicitly', async () => {
@@ -61,9 +61,9 @@ describe('Application Recipe coordinator', () => {
     expect(duplicate.scheduled).toBe(0);
     coordinator.retryFailures();
     const retried = coordinator.schedule(bundle);
-    expect(retried.scheduled).toBe(15);
+    expect(retried.scheduled).toBe(13);
     await retried.completion;
-    expect(generate).toHaveBeenCalledTimes(30);
+    expect(generate).toHaveBeenCalledTimes(26);
   });
 
   it('registers mechanically valid candidates while preserving failures independently', async () => {
@@ -142,6 +142,6 @@ describe('Application Recipe coordinator', () => {
     await scheduled.completion;
 
     expect(coordinator.failures()).toHaveLength(1);
-    expect(Object.keys(coordinator.registry().recipes)).toHaveLength(14);
+    expect(Object.keys(coordinator.registry().recipes)).toHaveLength(12);
   });
 });

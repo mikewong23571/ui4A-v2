@@ -208,15 +208,6 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
         guards: ['is-published'],
         'requires-confirmation': 'high',
       }),
-      expect.objectContaining({
-        name: 'generate-summary',
-        effect: [expect.objectContaining({ type: 'spawn', capability: 'summarize' })],
-      }),
-      expect.objectContaining({
-        name: 'save-summary',
-        guards: ['artifact-input-valid'],
-        'requires-confirmation': 'high',
-      }),
     ]);
 
     const offline = nodeOf(postStatusFlow, 'offline');
@@ -248,12 +239,7 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
         }
       }
     }
-    expect([...referenced].sort()).toEqual([
-      'artifact-input-valid',
-      'is-pending',
-      'is-published',
-      'title-not-taken',
-    ]);
+    expect([...referenced].sort()).toEqual(['is-pending', 'is-published', 'title-not-taken']);
     for (const name of referenced) {
       expect(seedGuardRegistry[name], `guard "${name}" 应已注册`).toBeDefined();
     }

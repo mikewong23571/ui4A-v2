@@ -75,8 +75,6 @@ describe('GET /_meta/api/entity', () => {
     expect(published?.entities?.map((action) => action.properties.name)).toEqual([
       'unpublish',
       'archive',
-      'generate-summary',
-      'save-summary',
     ]);
     // 活跃态编辑动词:A.4 active 节点声明(revise/deprecate)。
     expect(entity.actions.map((action) => action.name)).toEqual(['revise', 'deprecate']);

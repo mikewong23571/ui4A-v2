@@ -267,12 +267,11 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
 });
 
 describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
-  it('draft/summarize/notify/clarify 以 capability-seeded 入日志:rel=meta/capability:<name>,detail 全文', async () => {
+  it('draft/notify/clarify 以 capability-seeded 入日志:rel=meta/capability:<name>,detail 全文', async () => {
     await boot();
     const seeds = (await readLog(pool)).filter((event) => event.kind === 'capability-seeded');
     expect(seeds.map((event) => event.rel)).toEqual([
       'meta/capability:draft',
-      'meta/capability:summarize',
       'meta/capability:notify',
       'meta/capability:clarify',
     ]);
@@ -281,10 +280,10 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
     }
   });
 
-  it('fold 快照:capabilities 表落四个已注册定义(capability-registered 注册表来源)', async () => {
+  it('fold 快照:capabilities 表落三个已注册定义(capability-registered 注册表来源)', async () => {
     const engine = await boot();
     const capabilities = engine.getSnapshot().capabilities;
-    expect(Object.keys(capabilities ?? {})).toEqual(['draft', 'summarize', 'notify', 'clarify']);
+    expect(Object.keys(capabilities ?? {})).toEqual(['draft', 'notify', 'clarify']);
     expect(capabilities?.['draft']?.kind).toBe('extract');
     expect(capabilities?.['notify']?.kind).toBe('effect');
   });
@@ -307,12 +306,12 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
     });
   });
 
-  it('boot 幂等:重复 boot 不再追加 capability-seeded(仍 4 条)', async () => {
+  it('boot 幂等:重复 boot 不再追加 capability-seeded(仍 3 条)', async () => {
     await boot();
     resetEngineForTests();
     await boot();
     const seeds = (await readLog(pool)).filter((event) => event.kind === 'capability-seeded');
-    expect(seeds).toHaveLength(4);
+    expect(seeds).toHaveLength(3);
   });
 
   it('旧库迁移:既有日志(flow 定义 + application + 业务 seed)无 capability 事件 → boot 尾部补种', async () => {
@@ -339,11 +338,10 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
     // meta bundle 安装器只补 capability 缺项，最后以 receipt 收口。
     expect(
       log.filter((event) => event.kind === 'capability-seeded').map((event) => event.kind),
-    ).toEqual(['capability-seeded', 'capability-seeded', 'capability-seeded', 'capability-seeded']);
+    ).toEqual(['capability-seeded', 'capability-seeded', 'capability-seeded']);
     expect(log.at(-1)?.kind).toBe('meta-bootstrap-applied');
     expect(Object.keys(engine.getSnapshot().capabilities ?? {})).toEqual([
       'draft',
-      'summarize',
       'notify',
       'clarify',
     ]);
@@ -412,11 +410,10 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
 
     // 导出事件(重放的唯一输入)并守卫 meta bundle 安装序与 receipt。
     const rows = await readLog(pool);
-    expect(rows.slice(0, 12).map((event) => event.kind)).toEqual([
+    expect(rows.slice(0, 11).map((event) => event.kind)).toEqual([
       'application-seeded',
       'application-seeded',
       'application-seeded',
-      'capability-seeded',
       'capability-seeded',
       'capability-seeded',
       'capability-seeded',
@@ -485,18 +482,12 @@ describe('I5 重放一致:capability 维度(T13 Phase C Task 2;spec 验收 4)', 
 
     // 导出事件(重放的唯一输入)并守卫 capability 定义全文与安装顺序。
     const rows = await readLog(pool);
-    expect(rows.slice(3, 7).map((event) => event.kind)).toEqual([
-      'capability-seeded',
-      'capability-seeded',
-      'capability-seeded',
-      'capability-seeded',
-    ]);
-    expect(rows[11]?.kind).toBe('meta-bootstrap-applied');
+    expect(rows.filter((event) => event.kind === 'capability-seeded')).toHaveLength(3);
+    expect(rows.some((event) => event.kind === 'meta-bootstrap-applied')).toBe(true);
     expect(rows.some((event) => event.kind === 'action-executed')).toBe(true);
     const capabilitySeeds = rows.filter((event) => event.kind === 'capability-seeded');
     expect(capabilitySeeds.map((event) => event.rel)).toEqual([
       'meta/capability:draft',
-      'meta/capability:summarize',
       'meta/capability:notify',
       'meta/capability:clarify',
     ]);

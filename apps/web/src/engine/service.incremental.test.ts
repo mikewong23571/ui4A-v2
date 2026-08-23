@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { contentVersion, fold } from '@ui4a/engine';
 
@@ -15,7 +15,6 @@ import { getEngine, resetEngineForTests } from './service';
 // 外部追加的事件**不需重启**立即可见;与 web 自身 exec 交错不损坏快照(I5)。
 const CONNECTION_STRING = process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a';
 const pool = getPool(CONNECTION_STRING);
-const originalLlmModel = process.env.LLM_MODEL;
 
 const agentArchive = {
   rel: 'post:post-welcome',
@@ -41,58 +40,7 @@ beforeEach(async () => {
   resetEngineForTests();
 });
 
-afterEach(() => {
-  if (originalLlmModel === undefined) delete process.env.LLM_MODEL;
-  else process.env.LLM_MODEL = originalLlmModel;
-});
-
 describe('双写一致性:worker 侧 appendEvent 后 web 读路径立即可见', () => {
-  it('generate action → 同步物化正式 artifact 并回链源实体；业务字段仍不写', async () => {
-    process.env.LLM_MODEL = 'service-integration-model';
-    const engine = await getEngine(pool);
-    const bodyBefore = (await engine.readSnapshot()).instances['post:first-post']?.fields.body;
-
-    const generated = await engine.exec({
-      rel: 'post:first-post',
-      action: 'generate-summary',
-      params: { summary: '正式摘要' },
-      actor: 'agent',
-      principal: 'user:mike',
-    });
-    expect(generated.kind).toBe('accepted');
-    expect(
-      (await readLog(pool)).find(
-        (event) =>
-          event.kind === 'spawn-requested' &&
-          event.rel === 'post:first-post' &&
-          event.action === 'generate-summary',
-      ),
-    ).toMatchObject({
-      detail: {
-        capability: 'summarize',
-        bind: { 'source-field': 'body', 'output-param': 'summary' },
-      },
-    });
-
-    const artifactEvent = (await readLog(pool)).find(
-      (event) => event.kind === 'capability-artifact-created',
-    );
-    expect(artifactEvent?.rel).toMatch(/^artifact:/);
-    const artifactRel = artifactEvent?.rel;
-    if (artifactRel === undefined) throw new Error('正式 artifact 事件缺少 rel');
-    const artifact = await engine.getEntity(artifactRel);
-    expect(artifact?.properties).toMatchObject({
-      capability: 'summarize',
-      source: { rel: 'post:first-post', field: 'body' },
-      content: { summary: '正式摘要' },
-    });
-    const post = await engine.getEntity('post:first-post');
-    expect(post?.links.some((link) => link.href.includes(artifactRel))).toBe(true);
-    const after = await engine.readSnapshot();
-    expect(after.instances['post:first-post']?.fields.body).toEqual(bodyBefore);
-    expect(after.instances['post:first-post']?.fields.summaryArtifact).toBeUndefined();
-  });
-
   it('getEntity 增量 fold worker 的 notification-delivered:inbox delivered 计数 + confirmation notified(不需重启)', async () => {
     const engine = await getEngine(pool);
     await engine.exec(agentArchive); // web 写:confirmation-requested(c1 挂起)

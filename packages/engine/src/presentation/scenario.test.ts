@@ -42,12 +42,12 @@ function descriptorsForPublishing(): ScenarioDescriptor[] {
 }
 
 describe('enumerateApplicationScenarios', () => {
-  it('mechanically produces the stable 15-scenario publishing inventory', () => {
+  it('mechanically produces the stable 13-scenario publishing inventory', () => {
     const first = descriptorsForPublishing();
     const second = descriptorsForPublishing();
 
     expect(second).toEqual(first);
-    expect(first).toHaveLength(15);
+    expect(first).toHaveLength(13);
     expect(new Set(first.map(({ key }) => key)).size).toBe(first.length);
     expect(first.map(({ kind }) => kind)).toEqual([
       'application-overview',
@@ -63,8 +63,6 @@ describe('enumerateApplicationScenarios', () => {
       'current-task',
       'collection-browse',
       'confirmation-review',
-      'confirmation-review',
-      'artifact-inspect',
     ]);
     expect(first[0]).toEqual({
       key: 'publishing@1/application-overview',
@@ -112,23 +110,6 @@ describe('enumerateApplicationScenarios', () => {
         enumerator: SCENARIO_ENUMERATOR_VERSION,
         application: '1',
         flow: '1',
-      },
-    });
-    expect(first).toContainEqual({
-      key: 'publishing@1/post-status@1/artifact-inspect/summarize',
-      kind: 'artifact-inspect',
-      subjectShape: 'capability-artifact:summarize',
-      intent: 'inspect-provenance-and-output',
-      definitionRefs: [
-        'flow:post-status@1#node/published/action/generate-summary',
-        'capability:summarize@1',
-      ],
-      slots: ['subject.rel', 'source.rel'],
-      versions: {
-        enumerator: SCENARIO_ENUMERATOR_VERSION,
-        application: '1',
-        flow: '1',
-        capability: '1',
       },
     });
   });

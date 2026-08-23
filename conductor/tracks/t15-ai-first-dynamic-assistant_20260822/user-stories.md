@@ -66,13 +66,13 @@
 
 维护者经 `_meta` 激活新 action 后，Assistant 应从更新的 sitemap/entity 合同发现并使用它；不允许为该 action 增加关键词、system-prompt 规则或聊天路由特判。
 
-### U15 正式模型工件使用 capability
+### U15 摘要不物化为应用工件
 
-“为第一篇文章生成摘要并保存”应动态发现适用 capability、输入输出 schema、scope 与选择/确认要求，生成带 provenance 的摘要工件后再由 action 持久化。
+摘要是 Assistant 基于授权正文形成的临时认知结果，不注册 `summarize` capability，不生成摘要 artifact，也不向文章暴露“生成工件/保存引用”动作。用户要求保存时应诚实说明当前应用没有摘要持久化合同，且零业务写入。
 
 ### U16 临时回答与正式工件分离
 
-没有 `summarize` capability 时，“总结给我看”仍可由 LLM 临时回答；“保存摘要”必须诚实说明缺少持久化 capability/action，不能静默写入。
+“总结给我看”始终由 LLM 临时回答；“保存摘要”必须诚实说明缺少持久化 capability/action，不能静默写入。
 
 ### U17 处境披露完整且有界
 

@@ -71,7 +71,7 @@ describe('meta exec 编排(service.exec 的 meta/ 前缀路由)', () => {
         .find((flow) => flow.name === 'post-status')
         ?.nodes.find((node) => node.name === 'published')
         ?.actions.map((action) => action.name),
-    ).toEqual(['unpublish', 'archive', 'generate-summary', 'save-summary']);
+    ).toEqual(['unpublish', 'archive']);
 
     for (const [action, params] of [
       ['revise', undefined],
@@ -102,7 +102,7 @@ describe('meta exec 编排(service.exec 的 meta/ 前缀路由)', () => {
         .find((flow) => flow.name === 'post-status')
         ?.nodes.find((node) => node.name === 'published')
         ?.actions.map((action) => action.name),
-    ).toEqual(['unpublish', 'archive', 'generate-summary', 'save-summary', 'feature']);
+    ).toEqual(['unpublish', 'archive', 'feature']);
 
     // 业务平面立即可用新动作(同引擎同快照):v1 在途实例按出生定义走完
     // (feature 对其 undeclared,见 service.bornversion.test);出生于 v2 的
@@ -169,14 +169,13 @@ describe('meta exec 编排(service.exec 的 meta/ 前缀路由)', () => {
 });
 
 describe('capabilities 面(T13 Phase C Task 3;spec 架构决定 3)', () => {
-  it('meta sitemap 携带 capabilities 面:目录集合 + 四个 seed 实体(boot 补种后即在场)', async () => {
+  it('meta sitemap 携带 capabilities 面:目录集合 + 三个 seed 实体(boot 补种后即在场)', async () => {
     const engine = await getEngine(pool);
     const rels = engine.getMetaSitemap().surfaces.map((surface) => surface.rel);
     expect(rels).toEqual(
       expect.arrayContaining([
         'meta/capabilities',
         'meta/capability:draft',
-        'meta/capability:summarize',
         'meta/capability:notify',
         'meta/capability:clarify',
       ]),
@@ -188,14 +187,13 @@ describe('capabilities 面(T13 Phase C Task 3;spec 架构决定 3)', () => {
     expect(collection).toMatchObject({ collection: true });
   });
 
-  it('meta/capabilities 集合投影:四 seed 子实体直达(/_meta href),count=4', async () => {
+  it('meta/capabilities 集合投影:三 seed 子实体直达(/_meta href),count=3', async () => {
     const engine = await getEngine(pool);
     const entity = await engine.getMetaEntity('meta/capabilities');
     expect(entity?.class).toEqual(['collection', 'meta/capabilities']);
-    expect(entity?.properties).toMatchObject({ rel: 'meta/capabilities', count: 4 });
+    expect(entity?.properties).toMatchObject({ rel: 'meta/capabilities', count: 3 });
     expect(entity?.entities?.map((sub) => sub.properties.name)).toEqual([
       'draft',
-      'summarize',
       'notify',
       'clarify',
     ]);

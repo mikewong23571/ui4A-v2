@@ -19,3 +19,10 @@ Human optimization now produces versioned semantic patches, supports pin/revert 
 Principal review found one High issue: Recipe generation/promotion existed, but the live Broker still fell directly to generic rendering and shared promotion was process-local. Commit `3bedb27` added exact slot instantiation, Recipe-before-generic resolution and durable human-promotion replay. Focused and full suites passed after the fix. No Critical or High findings remain.
 
 The engineering and user-facing browser rubric are both at least 4/5 for hierarchy, readability, task focus, action clarity, narrow-screen behavior and recovery feedback.
+
+## Post-closure product correction
+
+D28 removes summary artifactization from the publishing Application. `summarize`,
+`generate-summary`, and `save-summary` are no longer part of the live contract; temporary summaries
+remain native Assistant answers, while persistence requests fail honestly until a real business
+field/action is designed.
