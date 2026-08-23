@@ -3,3 +3,9 @@ T21 Phase A Task 5: detailed architecture and binding decision
 Added TS1-TS12, the hybrid dual-focus architecture, expected file boundaries, async Presentation ordering, provider-native required plus one LLM repair policy, executable no-keyword governance, and D33. currentRel, lastNavigation, and clientView are now explicitly separate concepts; client facts cannot authorize reads/effects or enter Business fold.
 
 Validation: Prettier check and git diff --check. No dependency or tech-stack change.
+
+Phase A autonomous verification report
+
+Automated: pnpm exec prettier --check DECISIONS.md conductor/tracks/t21-assistant-dual-focus_20260823/*.md; pnpm vitest run packages/agent/src/llm-driver.test.ts apps/web/src/chat/conversation.test.ts apps/web/src/components/floating-chat.test.tsx apps/web/src/app/api/chat/route.test.ts => 4 files, 92 tests passed.
+
+Scripted manual equivalent: installed CLI doctor confirmed health/business/meta HTTP 200; fresh real-LLM Red session and governed audit captured the intended pre-fix failure with zero business action; git diff --check passed. Autonomous acceptance per conductor/workflow.md; system remains running.
