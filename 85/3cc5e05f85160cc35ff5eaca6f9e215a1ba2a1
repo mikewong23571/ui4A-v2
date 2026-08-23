@@ -1,0 +1,5 @@
+T21 Phase B Green: shared dual-focus contracts
+
+Implemented versioned bounded ClientViewReport/Fact and NavigationCompletion/LastNavigationFact contracts, exported a reusable RenderSubject parser, rejected authority-bearing keys and non-same-origin routes, and required source-specific navigation provenance. No store or dependency added.
+
+Green validation: pnpm vitest run packages/shared/src/chat-view.test.ts packages/shared/src/presentation.test.ts => 2 files, 35 tests passed; pnpm --filter @ui4a/shared typecheck; Prettier check; git diff --check.
