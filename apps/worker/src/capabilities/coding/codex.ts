@@ -1,8 +1,4 @@
-import { execFile } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { promisify } from 'node:util';
-
-import { Codex, type CodexOptions, type ThreadEvent, type ThreadOptions } from '@openai/codex-sdk';
+import type { CodexOptions } from '@openai/codex-sdk';
 
 import type {
   CodingExecutorDescriptor,
@@ -11,18 +7,17 @@ import type {
   CodingTask,
 } from '@ui4a/shared';
 
-export interface CodexThreadLike {
-  readonly id: string | null;
-  runStreamed(
-    input: string,
-    options?: { outputSchema?: unknown; signal?: AbortSignal },
-  ): Promise<{ events: AsyncGenerator<unknown> }>;
-}
+import {
+  CodexTransportCancelledError,
+  executeCodexStructured,
+  probeCodexTransport,
+  serializeCodexMessages,
+  type CodexPromptDispatchReceipt as HostCodexPromptDispatchReceipt,
+  type CodexSdkLike,
+  type CodexTransportProgress,
+} from '../../agents/host/codex-transport';
 
-export interface CodexSdkLike {
-  startThread(options?: ThreadOptions): CodexThreadLike;
-  resumeThread(id: string, options?: ThreadOptions): CodexThreadLike;
-}
+export type { CodexSdkLike } from '../../agents/host/codex-transport';
 
 export interface CodexTaskClaim {
   status: 'completed' | 'failed';
@@ -46,12 +41,7 @@ export interface CodexCompiledPrompt {
   }>;
 }
 
-/** Hash-only provenance emitted at the exact Provider dispatch boundary. */
-export interface CodexPromptDispatchReceipt {
-  compiledHash: string;
-  sentPromptHash: string;
-  messageCount: number;
-}
+export type CodexPromptDispatchReceipt = HostCodexPromptDispatchReceipt;
 
 export interface CodexExecutionInput {
   runId: string;
@@ -78,47 +68,22 @@ export class CodingExecutorCancelledError extends Error {
   }
 }
 
-const runFile = promisify(execFile);
-
-/** Fast Provider/auth preflight. An unavailable selected profile never falls back. */
+/** Compatibility-shaped Provider/auth preflight backed by the shared Codex transport probe. */
 export async function probeCodexExecutor(
   profileName: string,
   binary = process.env.UI4A_CODEX_BIN ?? 'codex',
-  execute: typeof runFile = runFile,
+  execute?: Parameters<typeof probeCodexTransport>[1],
 ): Promise<CodingExecutorDescriptor> {
-  try {
-    const version = (await execute(binary, ['--version'], { timeout: 5_000 })).stdout.trim();
-    await execute(binary, ['login', 'status'], { timeout: 5_000 });
-    return {
-      schemaVersion: 1,
-      profileName,
-      available: true,
-      taskSchemaVersions: [1],
-      features: ['resume', 'structured-events', 'workspace-write', 'cancel'],
-      version,
-    };
-  } catch (error) {
-    return {
-      schemaVersion: 1,
-      profileName,
-      available: false,
-      taskSchemaVersions: [1],
-      features: [],
-      reason: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-function controlledEnvironment(profile: CodingExecutorProfile): Record<string, string> {
-  const environment: Record<string, string> = {
-    PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
-    LANG: 'C.UTF-8',
+  const probe = await probeCodexTransport(binary, execute);
+  return {
+    schemaVersion: 1,
+    profileName,
+    available: probe.available,
+    taskSchemaVersions: [1],
+    features: probe.available ? ['resume', 'structured-events', 'workspace-write', 'cancel'] : [],
+    ...(probe.version === undefined ? {} : { version: probe.version }),
+    ...(probe.reason === undefined ? {} : { reason: probe.reason }),
   };
-  for (const name of profile.envAllowlist) {
-    const value = process.env[name];
-    if (value !== undefined) environment[name] = value;
-  }
-  return environment;
 }
 
 function promptFor(task: CodingTask): string {
@@ -133,16 +98,9 @@ function promptFor(task: CodingTask): string {
   ].join('\n\n');
 }
 
-/** Deterministic projection used when the Codex SDK only accepts one string input. */
+/** Stable alias retained for T18 callers and evidence. */
 export function serializeCodexCompiledPrompt(prompt: CodexCompiledPrompt): string {
-  return prompt.messages
-    .flatMap((message, index) => [
-      `<<<UI4A_COMPILED_MESSAGE_V1 role=${JSON.stringify(message.role)}>>>`,
-      message.content,
-      '<<<END_UI4A_COMPILED_MESSAGE_V1>>>',
-      ...(index === prompt.messages.length - 1 ? [] : ['']),
-    ])
-    .join('\n');
+  return serializeCodexMessages(prompt.messages);
 }
 
 const CLAIM_SCHEMA = {
@@ -157,13 +115,7 @@ const CLAIM_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-function parseClaim(text: string): CodexTaskClaim {
-  let value: unknown;
-  try {
-    value = JSON.parse(text);
-  } catch {
-    throw new Error('Codex final response is not valid structured JSON');
-  }
+function parseClaim(value: unknown): CodexTaskClaim {
   const candidate = value as Partial<CodexTaskClaim> | null;
   if (
     candidate === null ||
@@ -185,11 +137,38 @@ type CodingNormalizedPayload = CodingNormalizedEvent extends infer Event
     : never
   : never;
 
+function normalizedPayload(event: CodexTransportProgress): CodingNormalizedPayload {
+  switch (event.kind) {
+    case 'run-started':
+      return { kind: 'run-started', nativeSessionId: event.nativeSessionId };
+    case 'command-started':
+      return { kind: 'command-started', commandId: event.commandId, summary: event.summary };
+    case 'command-completed':
+      return { kind: 'command-completed', commandId: event.commandId, exitCode: event.exitCode };
+    case 'files-changed':
+      return { kind: 'files-changed', files: event.files };
+    case 'message-received': {
+      let summary = event.summary;
+      try {
+        const value = JSON.parse(event.summary) as { summary?: unknown };
+        if (typeof value.summary === 'string') summary = value.summary;
+      } catch {
+        // Progress text is non-authoritative; the transport already parsed the final result.
+      }
+      return { kind: 'progress-reported', message: summary };
+    }
+    case 'run-failed':
+      return { kind: 'run-failed', code: event.code, reason: event.reason };
+    case 'provider-event':
+      return { kind: 'provider-event', providerDetail: event.providerDetail };
+  }
+}
+
 function eventId(runId: string, sequence: number): string {
   return `${runId}:normalized:${sequence}`;
 }
 
-/** Execute or resume one Codex thread and map its provider stream to UI4A normalized events. */
+/** Coding specialization wrapper over the shared streamed/structured Codex transport. */
 export async function executeCodexTask(
   input: CodexExecutionInput,
   deps: CodexExecutionDeps,
@@ -198,107 +177,54 @@ export async function executeCodexTask(
   if (input.profile.sandbox !== 'workspace-write') {
     throw new Error('Codex coding executor requires the server-owned workspace-write sandbox');
   }
-  if (input.signal?.aborted === true) throw new CodingExecutorCancelledError();
-  const clientFactory = deps.createClient ?? ((options) => new Codex(options));
-  const client = clientFactory({
-    env: controlledEnvironment(input.profile),
-    config: {
-      max_turns: input.profile.maxTurns ?? input.task.budget.maxTurns,
-      web_search: input.profile.networkPolicy === 'none' ? 'disabled' : 'live',
-    },
-  });
-  const threadOptions: ThreadOptions = {
-    workingDirectory: input.workspace.path,
-    sandboxMode: 'workspace-write',
-    approvalPolicy: 'never',
-    networkAccessEnabled: input.profile.networkPolicy !== 'none',
-  };
-  const thread =
-    input.nativeSessionId === undefined
-      ? client.startThread(threadOptions)
-      : client.resumeThread(input.nativeSessionId, threadOptions);
+  const compiledPrompt = input.compiledPrompt;
+  const messages = compiledPrompt?.messages ?? [
+    { role: 'user' as const, content: promptFor(input.task) },
+  ];
   let sequence = 0;
-  let nativeSessionId = input.nativeSessionId;
-  let claim: CodexTaskClaim | undefined;
-  let usage: unknown;
-  const emit = async (value: CodingNormalizedPayload): Promise<void> => {
-    sequence += 1;
-    await deps.onNormalized({
-      ...value,
-      schemaVersion: 1,
-      eventId: eventId(input.runId, sequence),
-      runId: input.runId,
-      sequence,
-    } as CodingNormalizedEvent);
-  };
   try {
-    const dispatchedPrompt =
-      input.compiledPrompt === undefined
-        ? promptFor(input.task)
-        : serializeCodexCompiledPrompt(input.compiledPrompt);
-    if (input.compiledPrompt !== undefined) {
-      await deps.onPromptDispatched?.({
-        compiledHash: input.compiledPrompt.compiledHash,
-        sentPromptHash: `sha256:${createHash('sha256').update(dispatchedPrompt).digest('hex')}`,
-        messageCount: input.compiledPrompt.messages.length,
-      });
-    }
-    const streamed = await thread.runStreamed(dispatchedPrompt, {
-      outputSchema: CLAIM_SCHEMA,
-      signal: input.signal,
-    });
-    let rawSequence = 0;
-    for await (const unknownEvent of streamed.events) {
-      rawSequence += 1;
-      await deps.onRaw(unknownEvent, `${rawSequence}`);
-      const event = unknownEvent as ThreadEvent;
-      if (event.type === 'thread.started') {
-        nativeSessionId = event.thread_id;
-        await emit({ kind: 'run-started', nativeSessionId });
-      } else if (event.type === 'item.started' && event.item.type === 'command_execution') {
-        await emit({
-          kind: 'command-started',
-          commandId: event.item.id,
-          summary: event.item.command.slice(0, 500),
-        });
-      } else if (event.type === 'item.completed' && event.item.type === 'command_execution') {
-        await emit({
-          kind: 'command-completed',
-          commandId: event.item.id,
-          exitCode: event.item.exit_code ?? (event.item.status === 'completed' ? 0 : 1),
-        });
-      } else if (event.type === 'item.completed' && event.item.type === 'file_change') {
-        await emit({
-          kind: 'files-changed',
-          files: event.item.changes.map((change) => change.path),
-        });
-      } else if (event.type === 'item.completed' && event.item.type === 'agent_message') {
-        claim = parseClaim(event.item.text);
-        await emit({ kind: 'progress-reported', message: claim.summary });
-      } else if (event.type === 'turn.failed') {
-        await emit({
-          kind: 'run-failed',
-          code: 'provider-turn-failed',
-          reason: event.error.message,
-        });
-        throw new Error(event.error.message);
-      } else if (event.type === 'error') {
-        await emit({ kind: 'run-failed', code: 'provider-stream-error', reason: event.message });
-        throw new Error(event.message);
-      } else {
-        if (event.type === 'turn.completed') usage = event.usage;
-        await emit({ kind: 'provider-event', providerDetail: { type: event.type } });
-      }
-    }
+    const output = await executeCodexStructured(
+      {
+        runId: input.runId,
+        messages,
+        compiledHash: compiledPrompt?.compiledHash ?? 'legacy:t18',
+        outputSchema: CLAIM_SCHEMA,
+        workingDirectory: input.workspace.path,
+        ...(compiledPrompt === undefined ? { serializedPrompt: promptFor(input.task) } : {}),
+        profile: {
+          providerId: input.profile.providerId,
+          envAllowlist: input.profile.envAllowlist,
+          networkPolicy: input.profile.networkPolicy,
+          maxTurns: input.profile.maxTurns ?? input.task.budget.maxTurns,
+        },
+        ...(input.nativeSessionId === undefined ? {} : { nativeSessionId: input.nativeSessionId }),
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+      },
+      {
+        ...(deps.createClient === undefined ? {} : { createClient: deps.createClient }),
+        ...(compiledPrompt === undefined || deps.onPromptDispatched === undefined
+          ? {}
+          : { onPromptDispatched: deps.onPromptDispatched }),
+        onRaw: deps.onRaw,
+        onProgress: async (progress) => {
+          sequence += 1;
+          await deps.onNormalized({
+            ...normalizedPayload(progress),
+            schemaVersion: 1,
+            eventId: eventId(input.runId, sequence),
+            runId: input.runId,
+            sequence,
+          } as CodingNormalizedEvent);
+        },
+      },
+    );
+    return {
+      nativeSessionId: output.nativeSessionId,
+      claim: parseClaim(output.result),
+      ...(output.usage === undefined ? {} : { usage: output.usage }),
+    };
   } catch (error) {
-    if (input.signal !== undefined && input.signal.aborted) {
-      throw new CodingExecutorCancelledError();
-    }
+    if (error instanceof CodexTransportCancelledError) throw new CodingExecutorCancelledError();
     throw error;
   }
-  nativeSessionId ??= thread.id ?? undefined;
-  if (nativeSessionId === undefined) throw new Error('Codex stream did not provide a thread id');
-  if (claim === undefined)
-    throw new Error('Codex stream did not provide a validated final result claim');
-  return { nativeSessionId, claim, ...(usage === undefined ? {} : { usage }) };
 }

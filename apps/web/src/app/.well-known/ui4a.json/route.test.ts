@@ -54,6 +54,7 @@ describe('GET /.well-known/ui4a.json', () => {
       'post-status',
       'comment-moderation',
       'software-change',
+      'writing-request',
     ]);
     expect(sitemap.flows[0]?.initial).toBe('basic-info');
   });
@@ -107,6 +108,7 @@ describe('GET /.well-known/ui4a.json', () => {
       'publishing',
       'community',
       'development',
+      'editorial',
     ]);
     const publishing = sitemap.applications.find((app) => app.name === 'publishing');
     expect(publishing).toMatchObject({ title: '内容发布' });
@@ -123,6 +125,7 @@ describe('GET /.well-known/ui4a.json', () => {
       'post-status:publishing',
       'comment-moderation:community',
       'software-change:development',
+      'writing-request:editorial',
     ]);
   });
 

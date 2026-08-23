@@ -26,3 +26,5 @@ export * from './submission';
 export * from './coding-executor';
 // Versioned specialized Agent definition/task/result protocol (T19).
 export * from './agent-definition';
+// Source-grounded Writing Agent specialization contracts and protocol limits.
+export * from './writing-agent';

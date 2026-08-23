@@ -12,6 +12,7 @@ interface InstalledAgentDefinition {
   source: AgentDefinitionSource;
   artifact: FlattenedAgentDefinitionArtifact;
   evaluation: JsonValue;
+  policyScopes: readonly string[];
 }
 
 const definitions = new Map<
@@ -29,9 +30,14 @@ export const installedAgentDefinitions: readonly InstalledAgentDefinition[] =
     if (evaluation === undefined) {
       throw new Error(`built-in Agent Definition ${source.ref} has no evaluation evidence`);
     }
+    const policyScopes = artifact.policyScopes[source.ref as keyof typeof artifact.policyScopes];
+    if (policyScopes === undefined || policyScopes.length === 0) {
+      throw new Error(`built-in Agent Definition ${source.ref} has no policy scope`);
+    }
     return {
       source,
       artifact: resolved,
       evaluation: JSON.parse(JSON.stringify(evaluation)) as JsonValue,
+      policyScopes,
     };
   });

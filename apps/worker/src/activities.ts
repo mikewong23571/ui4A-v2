@@ -57,6 +57,15 @@ import {
   verifyCodingAgentRun,
   type CodingAgentAdapterDeps,
 } from './agents/coding';
+import {
+  collectWritingAgentRunWithDeps,
+  executeWritingAgentRunWithDeps,
+  finalizeWritingAgentRunWithDeps,
+  parseDocumentAgentProfiles,
+  prepareWritingAgentRunWithDeps,
+  verifyWritingAgentRun,
+  type WritingAgentAdapterDeps,
+} from './agents/writing';
 import type {
   AgentExecuteActivityArgs,
   AgentFinalizeInput,
@@ -205,38 +214,64 @@ function codingAgentAdapterDeps(): CodingAgentAdapterDeps {
   };
 }
 
+function writingAgentAdapterDeps(): WritingAgentAdapterDeps {
+  const workspaceRoot = process.env.UI4A_DOCUMENT_WORKSPACE_ROOT;
+  const profiles = process.env.UI4A_DOCUMENT_AGENT_PROFILES;
+  if (workspaceRoot === undefined || profiles === undefined) {
+    throw new Error(
+      'writing-agent requires UI4A_DOCUMENT_WORKSPACE_ROOT and UI4A_DOCUMENT_AGENT_PROFILES',
+    );
+  }
+  return {
+    db: workerDb(),
+    workspaceRoot,
+    profiles: parseDocumentAgentProfiles(profiles),
+    callbackBaseUrl: process.env.UI4A_PUBLIC_BASE_URL,
+    callbackToken: process.env.UI4A_CAPABILITY_CALLBACK_TOKEN,
+  };
+}
+
 function agentTaskKind(context: AgentRunWorkflowArgs): string | undefined {
   const payload = context.task.payload;
   if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return undefined;
   return typeof payload.kind === 'string' ? payload.kind : undefined;
 }
 
-function requireCodingAgent(context: AgentRunWorkflowArgs): void {
+export type AgentSpecializationAdapter = 'coding' | 'writing';
+
+/** Select only the birth-compiled task kind; Provider/profile fields are never task-controlled. */
+export function specializationAdapterForTask(
+  context: AgentRunWorkflowArgs,
+): AgentSpecializationAdapter {
   const kind = agentTaskKind(context);
-  if (kind !== 'coding-task') {
-    throw new Error(`no Agent specialization adapter is registered for ${kind ?? 'unknown task'}`);
-  }
+  if (kind === 'coding-task') return 'coding';
+  if (kind === 'writing-task') return 'writing';
+  throw new Error(`no Agent specialization adapter is registered for ${kind ?? 'unknown task'}`);
 }
 
 /** Select the birth-pinned specialization; task parameters cannot choose a Provider adapter. */
 export async function prepareAgentRun(args: AgentRunWorkflowArgs) {
-  requireCodingAgent(args);
-  return prepareCodingAgentRunWithDeps(args, codingAgentAdapterDeps());
+  return specializationAdapterForTask(args) === 'coding'
+    ? prepareCodingAgentRunWithDeps(args, codingAgentAdapterDeps())
+    : prepareWritingAgentRunWithDeps(args, writingAgentAdapterDeps());
 }
 
 export async function executeAgentRun(args: AgentExecuteActivityArgs) {
-  requireCodingAgent(args.context);
-  return executeCodingAgentRunWithDeps(args, codingAgentAdapterDeps());
+  return specializationAdapterForTask(args.context) === 'coding'
+    ? executeCodingAgentRunWithDeps(args, codingAgentAdapterDeps())
+    : executeWritingAgentRunWithDeps(args, writingAgentAdapterDeps());
 }
 
 export async function collectAgentRun(args: Parameters<typeof collectCodingAgentRunWithDeps>[0]) {
-  requireCodingAgent(args.context);
-  return collectCodingAgentRunWithDeps(args, codingAgentAdapterDeps());
+  return specializationAdapterForTask(args.context) === 'coding'
+    ? collectCodingAgentRunWithDeps(args, codingAgentAdapterDeps())
+    : collectWritingAgentRunWithDeps(args, writingAgentAdapterDeps());
 }
 
 export async function verifyAgentRun(args: Parameters<typeof verifyCodingAgentRun>[0]) {
-  requireCodingAgent(args.context);
-  return verifyCodingAgentRun(args);
+  return specializationAdapterForTask(args.context) === 'coding'
+    ? verifyCodingAgentRun(args)
+    : verifyWritingAgentRun(args);
 }
 
 async function currentNativeRun(context: AgentRunWorkflowArgs) {
@@ -248,7 +283,7 @@ async function currentNativeRun(context: AgentRunWorkflowArgs) {
 export async function recordAgentRunSuspension(
   input: AgentSuspensionRecord,
 ): Promise<{ deduplicated: boolean }> {
-  requireCodingAgent(input.context);
+  specializationAdapterForTask(input.context);
   const run = await currentNativeRun(input.context);
   const applied = await appendAgentRunCommand(
     workerDb(),
@@ -276,7 +311,7 @@ export async function recordAgentRunSuspension(
 export async function recordAgentRunResolution(
   input: AgentResolutionRecord,
 ): Promise<{ deduplicated: boolean }> {
-  requireCodingAgent(input.context);
+  specializationAdapterForTask(input.context);
   const run = await currentNativeRun(input.context);
   const applied = await appendAgentRunCommand(
     workerDb(),
@@ -306,8 +341,9 @@ export async function recordAgentRunResolution(
 }
 
 export async function finalizeAgentRun(input: AgentFinalizeInput): Promise<void> {
-  requireCodingAgent(input.context);
-  return finalizeCodingAgentRunWithDeps(input, codingAgentAdapterDeps());
+  return specializationAdapterForTask(input.context) === 'coding'
+    ? finalizeCodingAgentRunWithDeps(input, codingAgentAdapterDeps())
+    : finalizeWritingAgentRunWithDeps(input, writingAgentAdapterDeps());
 }
 
 export interface CapabilityArtifactInput {

@@ -17,13 +17,7 @@ export async function finalizeAgentRunSource(
   const engine = await getEngine(db);
   const existing = await engine.getEntity(run.source.rel);
   const fields = existing?.properties.fields as Record<string, unknown> | undefined;
-  if (
-    existing !== undefined &&
-    fields?.runId === runId &&
-    ['review-ready', 'implementation-failed', 'completed', 'failed'].includes(
-      String(existing.properties.node),
-    )
-  ) {
+  if (existing !== undefined && fields?.runId === runId) {
     return { ok: true, entity: existing, deduplicated: true };
   }
   const succeeded = run.status === 'succeeded' && run.result !== undefined;

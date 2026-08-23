@@ -57,6 +57,7 @@ describe('boot:定义 seed 迁移(空库)', () => {
       'meta/flow:post-status',
       'meta/flow:comment-moderation',
       'meta/flow:software-change',
+      'meta/flow:writing-request',
     ]);
     for (const [index, flow] of businessFlowList.entries()) {
       expect(seeds[index]?.detail).toEqual({
@@ -85,11 +86,11 @@ describe('boot:定义 seed 迁移(空库)', () => {
     }
   });
 
-  it('boot 幂等:重复 boot 不再追加 definition-seeded(仍 4 条)', async () => {
+  it('boot 幂等:重复 boot 不再追加 definition-seeded(仍 5 条)', async () => {
     await boot();
     resetEngineForTests();
     await boot();
-    expect(await definitionSeeds()).toHaveLength(4);
+    expect(await definitionSeeds()).toHaveLength(5);
   });
 });
 
@@ -114,7 +115,7 @@ describe('旧库迁移(业务 seed 在前,定义追加尾部)', () => {
 
     const log = await readLog(pool);
     expect(log[0]?.kind).toBe('seed');
-    expect(log.filter((event) => event.kind === 'definition-seeded')).toHaveLength(4);
+    expect(log.filter((event) => event.kind === 'definition-seeded')).toHaveLength(5);
 
     const snapshot = (await boot()).getSnapshot();
     expect(snapshot.instances['post:post-welcome']?.bornVersion).toBe(1);
@@ -212,7 +213,7 @@ describe('B1 行为不变(定义来自日志后零回归)', () => {
 });
 
 describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
-  it('四个 application 以 application-seeded 入日志:rel=meta/application:<name>,detail 全文', async () => {
+  it('五个 application 以 application-seeded 入日志:rel=meta/application:<name>,detail 全文', async () => {
     await boot();
     const seeds = (await readLog(pool)).filter((event) => event.kind === 'application-seeded');
     expect(seeds.map((event) => event.rel)).toEqual([
@@ -220,13 +221,14 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
       'meta/application:publishing',
       'meta/application:community',
       'meta/application:development',
+      'meta/application:editorial',
     ]);
     for (const [index, app] of businessApplicationList.entries()) {
       expect(seeds[index]?.detail).toEqual({ name: app.name, definition: app });
     }
   });
 
-  it('fold 快照:applications 表落四个已激活定义(app-known 注册表来源)', async () => {
+  it('fold 快照:applications 表落五个已激活定义(app-known 注册表来源)', async () => {
     const engine = await boot();
     const applications = engine.getSnapshot().applications;
     expect(Object.keys(applications ?? {})).toEqual([
@@ -234,17 +236,18 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
       'publishing',
       'community',
       'development',
+      'editorial',
     ]);
     expect(applications?.['publishing']?.intent).toContain('发布');
     expect(applications?.['community']?.intent).toContain('评论');
   });
 
-  it('boot 幂等:重复 boot 不再追加 application-seeded(仍 4 条)', async () => {
+  it('boot 幂等:重复 boot 不再追加 application-seeded(仍 5 条)', async () => {
     await boot();
     resetEngineForTests();
     await boot();
     const seeds = (await readLog(pool)).filter((event) => event.kind === 'application-seeded');
-    expect(seeds).toHaveLength(4);
+    expect(seeds).toHaveLength(5);
   });
 
   it('旧库迁移:既有日志(flow 定义 + 业务 seed)无 application 事件 → boot 尾部补种', async () => {
@@ -268,6 +271,7 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
       'application-seeded',
       'application-seeded',
       'application-seeded',
+      'application-seeded',
     ]);
     expect(log.at(-1)?.kind).toBe('meta-bootstrap-applied');
     expect(Object.keys(engine.getSnapshot().applications ?? {})).toEqual([
@@ -275,12 +279,13 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
       'publishing',
       'community',
       'development',
+      'editorial',
     ]);
   });
 });
 
 describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
-  it('四个 capability 以 capability-seeded 入日志:rel=meta/capability:<name>,detail 全文', async () => {
+  it('五个 capability 以 capability-seeded 入日志:rel=meta/capability:<name>,detail 全文', async () => {
     await boot();
     const seeds = (await readLog(pool)).filter((event) => event.kind === 'capability-seeded');
     expect(seeds.map((event) => event.rel)).toEqual([
@@ -288,13 +293,14 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
       'meta/capability:notify',
       'meta/capability:clarify',
       'meta/capability:coding.execute',
+      'meta/capability:writing.compose',
     ]);
     for (const [index, capability] of businessCapabilityList.entries()) {
       expect(seeds[index]?.detail).toEqual({ name: capability.name, definition: capability });
     }
   });
 
-  it('fold 快照:capabilities 表落四个已注册定义(capability-registered 注册表来源)', async () => {
+  it('fold 快照:capabilities 表落五个已注册定义(capability-registered 注册表来源)', async () => {
     const engine = await boot();
     const capabilities = engine.getSnapshot().capabilities;
     expect(Object.keys(capabilities ?? {})).toEqual([
@@ -302,6 +308,7 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
       'notify',
       'clarify',
       'coding.execute',
+      'writing.compose',
     ]);
     expect(capabilities?.['draft']?.kind).toBe('extract');
     expect(capabilities?.['notify']?.kind).toBe('effect');
@@ -331,14 +338,20 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
     expect(
       sitemap.capabilities.find((capability) => capability.name === 'coding.execute')?.executor,
     ).toMatchObject({ agentDefinition: 'coding-agent@1' });
+    expect(
+      sitemap.capabilities.find((capability) => capability.name === 'writing.compose'),
+    ).toMatchObject({
+      scope: { applications: ['editorial'], flows: ['writing-request'] },
+      executor: { agentDefinition: 'writing-agent@1', profile: 'editorial-default' },
+    });
   });
 
-  it('boot 幂等:重复 boot 不再追加 capability-seeded(仍 4 条)', async () => {
+  it('boot 幂等:重复 boot 不再追加 capability-seeded(仍 5 条)', async () => {
     await boot();
     resetEngineForTests();
     await boot();
     const seeds = (await readLog(pool)).filter((event) => event.kind === 'capability-seeded');
-    expect(seeds).toHaveLength(4);
+    expect(seeds).toHaveLength(5);
   });
 
   it('旧库迁移:既有日志(flow 定义 + application + 业务 seed)无 capability 事件 → boot 尾部补种', async () => {
@@ -365,13 +378,20 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
     // meta bundle 安装器只补 capability 缺项，最后以 receipt 收口。
     expect(
       log.filter((event) => event.kind === 'capability-seeded').map((event) => event.kind),
-    ).toEqual(['capability-seeded', 'capability-seeded', 'capability-seeded', 'capability-seeded']);
+    ).toEqual([
+      'capability-seeded',
+      'capability-seeded',
+      'capability-seeded',
+      'capability-seeded',
+      'capability-seeded',
+    ]);
     expect(log.at(-1)?.kind).toBe('meta-bootstrap-applied');
     expect(Object.keys(engine.getSnapshot().capabilities ?? {})).toEqual([
       'draft',
       'notify',
       'clarify',
       'coding.execute',
+      'writing.compose',
     ]);
   });
 });
@@ -438,7 +458,8 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
 
     // 导出事件(重放的唯一输入)并守卫 meta bundle 安装序与 receipt。
     const rows = await readLog(pool);
-    expect(rows.slice(0, 14).map((event) => event.kind)).toEqual([
+    expect(rows.slice(0, 17).map((event) => event.kind)).toEqual([
+      'application-seeded',
       'application-seeded',
       'application-seeded',
       'application-seeded',
@@ -447,6 +468,8 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
       'capability-seeded',
       'capability-seeded',
       'capability-seeded',
+      'capability-seeded',
+      'definition-seeded',
       'definition-seeded',
       'definition-seeded',
       'definition-seeded',
@@ -461,6 +484,7 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
       'meta/application:publishing',
       'meta/application:community',
       'meta/application:development',
+      'meta/application:editorial',
     ]);
     for (const [index, app] of businessApplicationList.entries()) {
       expect(appSeeds[index]?.detail).toEqual({ name: app.name, definition: app });
@@ -514,7 +538,7 @@ describe('I5 重放一致:capability 维度(T13 Phase C Task 2;spec 验收 4)', 
 
     // 导出事件(重放的唯一输入)并守卫 capability 定义全文与安装顺序。
     const rows = await readLog(pool);
-    expect(rows.filter((event) => event.kind === 'capability-seeded')).toHaveLength(4);
+    expect(rows.filter((event) => event.kind === 'capability-seeded')).toHaveLength(5);
     expect(rows.some((event) => event.kind === 'meta-bootstrap-applied')).toBe(true);
     expect(rows.some((event) => event.kind === 'action-executed')).toBe(true);
     const capabilitySeeds = rows.filter((event) => event.kind === 'capability-seeded');
@@ -523,6 +547,7 @@ describe('I5 重放一致:capability 维度(T13 Phase C Task 2;spec 验收 4)', 
       'meta/capability:notify',
       'meta/capability:clarify',
       'meta/capability:coding.execute',
+      'meta/capability:writing.compose',
     ]);
     for (const [index, capability] of businessCapabilityList.entries()) {
       expect(capabilitySeeds[index]?.detail).toEqual({

@@ -15,3 +15,5 @@ function application(name: string): ApplicationDefinition {
 export const defaultApplication = application('default');
 export const publishingApplication = application('publishing');
 export const communityApplication = application('community');
+export const developmentApplication = application('development');
+export const editorialApplication = application('editorial');

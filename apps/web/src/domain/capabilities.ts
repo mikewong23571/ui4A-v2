@@ -15,3 +15,5 @@ function capability(name: string): CapabilityDefinition {
 export const draftCapability = capability('draft');
 export const notifyCapability = capability('notify');
 export const clarifyCapability = capability('clarify');
+export const codingExecuteCapability = capability('coding.execute');
+export const writingComposeCapability = capability('writing.compose');

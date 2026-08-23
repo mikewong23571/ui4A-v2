@@ -274,4 +274,60 @@ describe('Agent Run Siren', () => {
       ),
     ).resolves.toMatchObject({ kind: 'rejected', reason: expect.stringContaining('not declared') });
   });
+
+  it('links a completed Writing Run to its source and content-addressed artifacts', async () => {
+    let run = (await appendAgentRunCommand(pool, createNative())).aggregate;
+    for (const command of [
+      { kind: 'prepare' as const, eventId: 'event:artifact:prepare' },
+      { kind: 'start' as const, eventId: 'event:artifact:start' },
+    ]) {
+      run = (
+        await appendAgentRunCommand(pool, {
+          ...command,
+          commandId: command.eventId.replace('event:', 'command:'),
+          runId: run.runId,
+          expectedRevision: run.revision,
+        })
+      ).aggregate;
+    }
+    await appendAgentRunCommand(pool, {
+      kind: 'succeed',
+      runId: run.runId,
+      expectedRevision: run.revision,
+      eventId: 'event:artifact:succeed',
+      commandId: 'command:artifact:succeed',
+      result: {
+        schemaVersion: 1,
+        contract: birth.resultContract,
+        resultId: 'writing-result-1',
+        payload: { writingResult: { summary: 'Draft ready.' } },
+        artifacts: [
+          {
+            ref: 'artifact:writing-result-1',
+            hash: `sha256:${'a'.repeat(64)}`,
+            mediaType: 'text/markdown',
+            sizeBytes: 128,
+          },
+        ],
+        evidence: [],
+        proposedEffects: [],
+      },
+    });
+
+    const entity = await getAgentRunEntity(
+      pool,
+      'agent-run:native-entity',
+      'user:mike',
+      'publishing',
+    );
+    expect(entity?.links).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ rel: ['source'] }),
+        {
+          rel: ['artifact'],
+          href: '/api/entity?rel=artifact%3Awriting-result-1',
+        },
+      ]),
+    );
+  });
 });

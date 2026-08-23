@@ -134,6 +134,10 @@ function runEntity(
             },
           ]
         : []),
+      ...(run.result?.artifacts ?? []).map((artifact) => ({
+        rel: ['artifact'],
+        href: `/api/entity?rel=${encodeURIComponent(artifact.ref)}`,
+      })),
     ],
     'guard-results': [],
   };

@@ -19,3 +19,5 @@ function flow(name: string): FlowDefinition {
 export const articleDraftingFlow = flow('article-drafting');
 export const postStatusFlow = flow('post-status');
 export const commentModerationFlow = flow('comment-moderation');
+export const softwareChangeFlow = flow('software-change');
+export const writingRequestFlow = flow('writing-request');

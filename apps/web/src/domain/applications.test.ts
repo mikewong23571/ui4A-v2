@@ -30,6 +30,7 @@ describe('application seed 常量(T10)', () => {
       'publishing',
       'community',
       'development',
+      'editorial',
     ]);
   });
 

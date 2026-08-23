@@ -13,7 +13,7 @@ import {
 import { SEED_REL, seedDetail } from './seed';
 
 // 种子业务域合同测试(spec 架构决定 5 / FR3):
-// - 四个 flow 常量 machine-as-JSON 合法(parseFlowDefinition 全量校验);
+// - 五个 flow 常量 machine-as-JSON 合法(parseFlowDefinition 全量校验);
 // - 形状满足 B1(三步向导+publish append)、B2(unpublish/archive/republish)、
 //   B3(approve/reject 带 is-pending);
 // - seed 载荷 = 2 文章 + 4 评论(3 pending + 1 approved)+ 发布向导实例;
@@ -26,7 +26,7 @@ function nodeOf(flow: ReturnType<typeof parseFlowDefinition>, name: string) {
 }
 
 describe('种子 flow 常量(machine-as-JSON)', () => {
-  it('四个 flow 均通过 parseFlowDefinition 校验并进入注册表', () => {
+  it('五个 flow 均通过 parseFlowDefinition 校验并进入注册表', () => {
     for (const flow of businessFlowList) {
       expect(() => parseFlowDefinition(flow)).not.toThrow();
     }
@@ -35,6 +35,7 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
       'post-status',
       'comment-moderation',
       'software-change',
+      'writing-request',
     ]);
   });
 
@@ -303,18 +304,20 @@ describe('种子数据(seed 事件载荷)', () => {
       articles: ['post:post-welcome', 'post:first-post'],
       comments: ['comment:c1', 'comment:c2', 'comment:c3', 'comment:c4'],
       'software-changes': ['software-change:main'],
+      'writing-requests': ['writing-request:main'],
     });
-    expect(Object.keys(instances)).toHaveLength(8);
+    expect(Object.keys(instances)).toHaveLength(9);
   });
 
   it('seed 事件折叠出种子快照;重复 seed 折叠幂等(不翻倍)', () => {
     const seedEvent = { seq: 1, kind: 'seed' as const, rel: SEED_REL, detail: seedDetail };
     const snapshot = fold([seedEvent], { flows: businessFlows });
 
-    expect(Object.keys(snapshot.instances)).toHaveLength(8);
+    expect(Object.keys(snapshot.instances)).toHaveLength(9);
     expect(snapshot.collections.articles).toHaveLength(2);
     expect(snapshot.collections.comments).toHaveLength(4);
     expect(snapshot.collections['software-changes']).toHaveLength(1);
+    expect(snapshot.collections['writing-requests']).toHaveLength(1);
 
     const doubled = fold([seedEvent, { ...seedEvent, seq: 2 }], { flows: businessFlows });
     expect(contentVersion(doubled)).toBe(contentVersion(snapshot));

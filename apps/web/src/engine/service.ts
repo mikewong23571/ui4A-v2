@@ -281,13 +281,15 @@ async function bootstrapApplicationBundles(db: DbExecutor): Promise<void> {
 /** Install repository-owned Agent Definition versions without impersonating a human approver. */
 async function bootstrapAgentDefinitions(db: DbExecutor): Promise<void> {
   for (const definition of installedAgentDefinitions) {
-    await installSeedAgentDefinition(db, {
-      principal: 'local-user',
-      policyScope: 'development',
-      source: definition.source,
-      artifact: definition.artifact,
-      evalEvidence: definition.evaluation,
-    });
+    for (const policyScope of definition.policyScopes) {
+      await installSeedAgentDefinition(db, {
+        principal: 'local-user',
+        policyScope,
+        source: definition.source,
+        artifact: definition.artifact,
+        evalEvidence: definition.evaluation,
+      });
+    }
   }
 }
 
@@ -391,6 +393,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         { rel: 'comments', title: '评论', collection: true },
         { rel: 'inbox', title: '确认收件箱', collection: true },
         { rel: 'software-changes', title: '软件变更', collection: true, app: 'development' },
+        { rel: 'writing-requests', title: '写作请求', collection: true, app: 'editorial' },
         { rel: 'agent-runs', title: 'Agent Runs', collection: true, app: 'development' },
         { rel: 'capability-runs', title: '能力执行', collection: true, app: 'development' },
       ],

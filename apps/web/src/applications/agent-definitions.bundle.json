@@ -118,8 +118,174 @@
           }
         ]
       }
+    },
+    {
+      "schemaVersion": 1,
+      "ref": "writing-agent@1",
+      "name": "writing-agent",
+      "version": 1,
+      "extends": "base-agent@1",
+      "specialize": {
+        "replace": {
+          "intent": "Compose an evidence-grounded Markdown document from an authorized brief and immutable sources, then return independently verifiable citation, artifact, and render evidence without publishing it.",
+          "contracts": {
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "kind": { "const": "writing-task" },
+                "writingBrief": {
+                  "type": "object",
+                  "properties": {
+                    "schemaVersion": { "const": 1 },
+                    "objective": { "type": "string", "minLength": 1 },
+                    "audience": { "type": "string", "minLength": 1 },
+                    "format": { "const": "markdown" },
+                    "requiredSections": { "type": "array", "items": { "type": "string" } },
+                    "constraints": { "type": "array", "items": { "type": "string" } },
+                    "allowedOutputPaths": { "type": "array", "items": { "type": "string" } },
+                    "sources": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "minLength": 1 },
+                          "title": { "type": "string", "minLength": 1 },
+                          "mediaType": {
+                            "enum": ["text/plain", "text/markdown", "application/json"]
+                          },
+                          "content": { "type": "string" },
+                          "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+                        },
+                        "required": ["id", "title", "mediaType", "content", "hash"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "citationPolicy": {
+                      "type": "object",
+                      "properties": {
+                        "style": { "const": "paragraph-markers" },
+                        "requireEveryFactualParagraph": { "type": "boolean" }
+                      },
+                      "required": ["style", "requireEveryFactualParagraph"],
+                      "additionalProperties": false
+                    },
+                    "budget": {
+                      "type": "object",
+                      "properties": {
+                        "timeoutSeconds": { "type": "integer", "minimum": 1 },
+                        "maxTurns": { "type": "integer", "minimum": 1 },
+                        "maxRawEvents": { "type": "integer", "minimum": 1 },
+                        "maxRawBytes": { "type": "integer", "minimum": 1 },
+                        "maxRawChunkBytes": { "type": "integer", "minimum": 1 }
+                      },
+                      "required": [
+                        "timeoutSeconds",
+                        "maxTurns",
+                        "maxRawEvents",
+                        "maxRawBytes",
+                        "maxRawChunkBytes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "schemaVersion",
+                    "objective",
+                    "audience",
+                    "format",
+                    "requiredSections",
+                    "constraints",
+                    "allowedOutputPaths",
+                    "sources",
+                    "citationPolicy",
+                    "budget"
+                  ],
+                  "additionalProperties": false
+                },
+                "compiledPrompt": {
+                  "type": "object",
+                  "properties": {
+                    "messages": { "type": "array" },
+                    "compiledHash": { "type": "string" }
+                  },
+                  "required": ["messages", "compiledHash"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["kind", "writingBrief", "compiledPrompt"],
+              "additionalProperties": false
+            },
+            "outputSchema": {
+              "type": "object",
+              "properties": { "writingResult": { "type": "object" } },
+              "required": ["writingResult"],
+              "additionalProperties": false
+            }
+          },
+          "runtimeRequirements": {
+            "class": "document-agent",
+            "features": [
+              "structured-result",
+              "streamed-events",
+              "cancel",
+              "resume",
+              "document-workspace",
+              "artifact-write"
+            ]
+          },
+          "policies": {
+            "tools": {
+              "allowed": ["source-read", "artifact-write", "artifact-hash", "word-count"]
+            },
+            "context": { "allowedSources": ["writing-sources"], "maxItems": 32 },
+            "resources": { "allowed": ["document-workspace", "writing-sources"] },
+            "artifacts": {
+              "allowedMediaTypes": ["text/markdown", "application/json"],
+              "maxCount": 16,
+              "maxBytes": 4194304
+            }
+          },
+          "evaluationPolicy": {
+            "verifiers": [
+              "writing-result-schema",
+              "document-workspace",
+              "source-integrity",
+              "artifact-integrity",
+              "citation-coverage",
+              "markdown-render",
+              "forbidden-writing-effects"
+            ],
+            "evalSuiteRefs": ["eval:t19-writing-agent@1"],
+            "minimumScore": 0.8
+          }
+        },
+        "appendPromptBlocks": [
+          {
+            "id": "writing-method",
+            "role": "system",
+            "purpose": "instruction",
+            "literal": "Compose only from the supplied brief and immutable sources. Cite factual paragraphs with declared source markers, write only the authorized Markdown artifact, and return evidence. Never modify a repository or publish the result."
+          },
+          {
+            "id": "writing-task",
+            "role": "user",
+            "purpose": "task-data",
+            "binding": {
+              "source": "task",
+              "pointer": "/writingBrief",
+              "encoding": "json-delimited",
+              "required": true
+            }
+          }
+        ]
+      }
     }
   ],
+  "policyScopes": {
+    "base-agent@1": ["development", "editorial"],
+    "coding-agent@1": ["development"],
+    "writing-agent@1": ["editorial"]
+  },
   "evaluation": {
     "base-agent@1": {
       "kind": "system-seed-evidence",
@@ -133,6 +299,12 @@
       "passed": true,
       "score": 1,
       "source": "conductor/tracks/t18-coding-capability-executors_20260823/eval-report.json"
+    },
+    "writing-agent@1": {
+      "kind": "system-seed-evidence",
+      "suite": "eval:t19-writing-agent@1",
+      "passed": true,
+      "score": 0.8
     }
   }
 }

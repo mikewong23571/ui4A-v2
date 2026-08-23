@@ -1,6 +1,75 @@
 import type { AgentRuntimeProfile } from '@ui4a/engine';
 import type { CodingExecutorProfile } from '@ui4a/shared';
 
+export interface DocumentAgentDeploymentProfile {
+  name: string;
+  runtimeClass: 'document-agent';
+  providerId: string;
+  transport: 'sdk';
+  model: string;
+  endpoint?: string;
+  apiKeyEnv: string;
+  artifactBackend: 'isolated-document-workspace';
+  timeoutSeconds: number;
+  maxTurns: number;
+  envAllowlist: string[];
+  networkPolicy: 'none' | 'source-only';
+}
+
+function object(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function nonEmptyString(value: unknown, where: string): string {
+  if (typeof value !== 'string' || value.trim() === '') throw new Error(`${where} is required`);
+  return value;
+}
+
+function positiveInteger(value: unknown, where: string): number {
+  if (!Number.isSafeInteger(value) || (value as number) <= 0) {
+    throw new Error(`${where} must be a positive integer`);
+  }
+  return value as number;
+}
+
+function stringArray(value: unknown, where: string): string[] {
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+    throw new Error(`${where} must be a string array`);
+  }
+  return [...value] as string[];
+}
+
+function parseDocumentAgentProfile(value: unknown, index: number): DocumentAgentDeploymentProfile {
+  const where = `UI4A_DOCUMENT_AGENT_PROFILES[${index}]`;
+  if (!object(value)) throw new Error(`${where} must be an object`);
+  if (value.runtimeClass !== 'document-agent') {
+    throw new Error(`${where}.runtimeClass must be document-agent`);
+  }
+  if (value.transport !== 'sdk') throw new Error(`${where}.transport must be sdk`);
+  if (value.artifactBackend !== 'isolated-document-workspace') {
+    throw new Error(`${where}.artifactBackend must be isolated-document-workspace`);
+  }
+  if (value.networkPolicy !== 'none' && value.networkPolicy !== 'source-only') {
+    throw new Error(`${where}.networkPolicy must be none or source-only`);
+  }
+  return {
+    name: nonEmptyString(value.name, `${where}.name`),
+    runtimeClass: value.runtimeClass,
+    providerId: nonEmptyString(value.providerId, `${where}.providerId`),
+    transport: value.transport,
+    model: nonEmptyString(value.model, `${where}.model`),
+    ...(value.endpoint === undefined
+      ? {}
+      : { endpoint: nonEmptyString(value.endpoint, `${where}.endpoint`) }),
+    apiKeyEnv: nonEmptyString(value.apiKeyEnv, `${where}.apiKeyEnv`),
+    artifactBackend: value.artifactBackend,
+    timeoutSeconds: positiveInteger(value.timeoutSeconds, `${where}.timeoutSeconds`),
+    maxTurns: positiveInteger(value.maxTurns, `${where}.maxTurns`),
+    envAllowlist: stringArray(value.envAllowlist, `${where}.envAllowlist`),
+    networkPolicy: value.networkPolicy,
+  };
+}
+
 /**
  * Adapt the deployed T18 Coding profile into the generic T19 Runtime registry.
  *
@@ -24,5 +93,42 @@ export function codingProfileAsAgentRuntime(profile: CodingExecutorProfile): Age
     ...(profile.providerId === 'codex'
       ? {}
       : { unavailableReason: `coding executor provider ${profile.providerId} is unavailable` }),
+  };
+}
+
+/** Resolve one exact document runtime from deployment configuration; no default or fallback exists. */
+export function documentAgentProfileFromEnvironment(name: string): DocumentAgentDeploymentProfile {
+  const raw = process.env.UI4A_DOCUMENT_AGENT_PROFILES;
+  if (raw === undefined) throw new Error(`document-agent profile ${name} is not configured`);
+  const parsed = JSON.parse(raw) as unknown;
+  if (!Array.isArray(parsed)) throw new Error('UI4A_DOCUMENT_AGENT_PROFILES must be an array');
+  const profiles = parsed.map(parseDocumentAgentProfile);
+  const matches = profiles.filter((profile) => profile.name === name);
+  if (matches.length !== 1) {
+    throw new Error(`document-agent profile ${name} must resolve exactly once`);
+  }
+  return matches[0]!;
+}
+
+/** Project private Provider configuration into the provider-neutral Runtime negotiation record. */
+export function documentProfileAsAgentRuntime(
+  profile: DocumentAgentDeploymentProfile,
+): AgentRuntimeProfile {
+  return {
+    ref: profile.name,
+    version: 1,
+    runtimeClass: profile.runtimeClass,
+    features: [
+      'structured-result',
+      'streamed-events',
+      'cancel',
+      'resume',
+      'document-workspace',
+      'artifact-write',
+    ],
+    tools: ['source-read', 'artifact-write', 'artifact-hash', 'word-count'],
+    resourceBackends: ['document-workspace', 'writing-sources'],
+    providerAdapterRef: 'document-agent-runtime@1',
+    available: true,
   };
 }

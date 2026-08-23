@@ -7,20 +7,115 @@ import {
   type AgentRun,
   type AgentRunBirthReferences,
   type AgentRunJson,
+  type AgentRuntimeProfile,
   type AgentTaskEnvelope,
 } from '@ui4a/engine';
-import type { CapabilityDefinition, CodingTask } from '@ui4a/shared';
+import {
+  assertWritingBrief,
+  WRITING_AGENT_LIMITS,
+  WRITING_AGENT_SCHEMA_VERSION,
+  type CapabilityDefinition,
+  type CodingTask,
+} from '@ui4a/shared';
 
 import { getAgentDefinitionVersion } from '../db/agent-definitions';
 import { appendAgentRunCommand, type ConnectableDb } from '../db/agent-runs';
 import { dispatchAgentRun } from '../temporal/agent-run';
-import { codingProfileAsAgentRuntime } from './agent-runtime-config';
+import {
+  codingProfileAsAgentRuntime,
+  documentAgentProfileFromEnvironment,
+  documentProfileAsAgentRuntime,
+} from './agent-runtime-config';
 import {
   codingExecutorProfileFromEnvironment,
   codingTaskFromCapabilityParams,
 } from './capability-runs';
 
 const MAX_SUSPENSIONS = 8;
+
+interface NativeSpecializationTaskMapping {
+  runtimeProfile: AgentRuntimeProfile;
+  promptInput: AgentRunJson;
+}
+
+interface NativeSpecializationTaskMapper {
+  definitionRef: string;
+  runtimeClass: string;
+  map(profileName: string, params: Record<string, unknown>): NativeSpecializationTaskMapping;
+}
+
+function stringParam(params: Record<string, unknown>, name: string): string {
+  const value = params[name];
+  if (typeof value !== 'string' || value.trim() === '') throw new Error(`${name} is required`);
+  return value;
+}
+
+function stringListParam(params: Record<string, unknown>, name: string): string[] {
+  const value = params[name];
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+    throw new Error(`${name} must be a string array`);
+  }
+  return [...value];
+}
+
+const nativeSpecializationTaskMappers: readonly NativeSpecializationTaskMapper[] = [
+  {
+    definitionRef: 'coding-agent@1',
+    runtimeClass: 'coding-agent',
+    map: (profileName, params) => {
+      const deployed = codingExecutorProfileFromEnvironment(profileName);
+      const codingTask: CodingTask = codingTaskFromCapabilityParams(params, deployed);
+      return {
+        runtimeProfile: codingProfileAsAgentRuntime(deployed),
+        promptInput: asRunJson({ kind: 'coding-task', codingTask }),
+      };
+    },
+  },
+  {
+    definitionRef: 'writing-agent@1',
+    runtimeClass: 'document-agent',
+    map: (profileName, params) => {
+      const deployed = documentAgentProfileFromEnvironment(profileName);
+      const writingBrief = assertWritingBrief({
+        schemaVersion: WRITING_AGENT_SCHEMA_VERSION,
+        objective: stringParam(params, 'objective'),
+        audience: stringParam(params, 'audience'),
+        format: 'markdown',
+        requiredSections: stringListParam(params, 'requiredSections'),
+        constraints: stringListParam(params, 'constraints'),
+        allowedOutputPaths: ['out/document.md'],
+        sources: params.sources,
+        citationPolicy: {
+          style: 'paragraph-markers',
+          requireEveryFactualParagraph: true,
+        },
+        budget: {
+          timeoutSeconds: deployed.timeoutSeconds,
+          maxTurns: deployed.maxTurns,
+          maxRawEvents: WRITING_AGENT_LIMITS.maxRawEvents,
+          maxRawBytes: WRITING_AGENT_LIMITS.maxRawBytes,
+          maxRawChunkBytes: WRITING_AGENT_LIMITS.maxRawChunkBytes,
+        },
+      });
+      return {
+        runtimeProfile: documentProfileAsAgentRuntime(deployed),
+        promptInput: asRunJson({ kind: 'writing-task', writingBrief }),
+      };
+    },
+  },
+] as const;
+
+function specializationTaskMapper(definitionRef: string, runtimeClass: string) {
+  const matches = nativeSpecializationTaskMappers.filter(
+    (mapper) => mapper.definitionRef === definitionRef && mapper.runtimeClass === runtimeClass,
+  );
+  if (matches.length !== 1) {
+    throw new Error(
+      `no exact task mapper for Agent Definition ${definitionRef} and runtime class ${runtimeClass}`,
+    );
+  }
+  return matches[0]!;
+}
 
 export interface PreparedNativeAgentDispatch {
   capabilityName: string;
@@ -71,8 +166,12 @@ export async function prepareNativeAgentDispatch(
   if (view === undefined || view.version.status !== 'active') {
     throw new Error(`Agent Definition ${executor.agentDefinition} is not active in this scope`);
   }
-  const codingProfile = codingExecutorProfileFromEnvironment(executor.profile);
-  const runtimeProfile = codingProfileAsAgentRuntime(codingProfile);
+  const runtimeClass = view.flattened.definition.runtimeRequirements.class;
+  const mapping = specializationTaskMapper(view.version.ref, runtimeClass).map(
+    executor.profile,
+    input.params,
+  );
+  const runtimeProfile = mapping.runtimeProfile;
   const requiredFeatures = [
     ...new Set([
       ...view.flattened.definition.runtimeRequirements.features,
@@ -81,7 +180,7 @@ export async function prepareNativeAgentDispatch(
   ];
   const resolution = resolveAgentRuntimeProfile({
     requirement: {
-      runtimeClass: view.flattened.definition.runtimeRequirements.class,
+      runtimeClass,
       requiredFeatures,
       requiredTools: view.flattened.definition.policies.tools.allowed,
       requiredResourceBackends: view.flattened.definition.policies.resources.allowed,
@@ -96,8 +195,7 @@ export async function prepareNativeAgentDispatch(
     );
   }
 
-  const codingTask: CodingTask = codingTaskFromCapabilityParams(input.params, codingProfile);
-  const promptInput = { kind: 'coding-task', codingTask };
+  const promptInput = mapping.promptInput;
   const compiledPrompt = compileSpecializedPrompt({
     definition: view.flattened.definition,
     task: promptInput,
@@ -115,7 +213,7 @@ export async function prepareNativeAgentDispatch(
     view.flattened.definition.contracts.outputSchema,
   );
   const taskPayload = asRunJson({
-    ...promptInput,
+    ...(promptInput as Record<string, AgentRunJson>),
     compiledPrompt: {
       messages: compiledPrompt.messages,
       compiledHash: compiledPrompt.compiledHash,

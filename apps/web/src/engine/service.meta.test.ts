@@ -187,16 +187,17 @@ describe('capabilities 面(T13 Phase C Task 3;spec 架构决定 3)', () => {
     expect(collection).toMatchObject({ collection: true });
   });
 
-  it('meta/capabilities 集合投影:四个 seed 子实体直达(/_meta href),count=4', async () => {
+  it('meta/capabilities 集合投影:五个 seed 子实体直达(/_meta href),count=5', async () => {
     const engine = await getEngine(pool);
     const entity = await engine.getMetaEntity('meta/capabilities');
     expect(entity?.class).toEqual(['collection', 'meta/capabilities']);
-    expect(entity?.properties).toMatchObject({ rel: 'meta/capabilities', count: 4 });
+    expect(entity?.properties).toMatchObject({ rel: 'meta/capabilities', count: 5 });
     expect(entity?.entities?.map((sub) => sub.properties.name)).toEqual([
       'draft',
       'notify',
       'clarify',
       'coding.execute',
+      'writing.compose',
     ]);
     expect(entity?.entities?.[0]?.href).toBe('/_meta/api/entity?rel=meta/capability:draft');
   });

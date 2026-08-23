@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { DbExecutor } from '../../web/src/db/events';
 
-import { deliverNotification, materializeCapabilityArtifact } from './activities';
+import {
+  deliverNotification,
+  materializeCapabilityArtifact,
+  specializationAdapterForTask,
+} from './activities';
+import type { AgentRunWorkflowArgs } from './agents/host/contracts';
 import type { NotifyConfirmation } from './workflows';
 
 // notify activity 单测(T3 Phase C / Task 1,TDD 红→绿):
@@ -146,5 +151,20 @@ describe('materializeCapabilityArtifact(正式模型工件)', () => {
     });
     expect(result).toMatchObject({ seq: 6, deduplicated: true });
     expect(inserts).toHaveLength(0);
+  });
+});
+
+describe('generic Agent Host specialization selector', () => {
+  const context = (kind: string): AgentRunWorkflowArgs =>
+    ({
+      task: { payload: { kind } },
+    }) as unknown as AgentRunWorkflowArgs;
+
+  it('selects coding and Writing adapters by server-compiled task kind', () => {
+    expect(specializationAdapterForTask(context('coding-task'))).toBe('coding');
+    expect(specializationAdapterForTask(context('writing-task'))).toBe('writing');
+    expect(() => specializationAdapterForTask(context('research-task'))).toThrow(
+      /no Agent specialization adapter/i,
+    );
   });
 });

@@ -208,6 +208,7 @@ describe('sitemap 表面 ↔ entity 端点一致', () => {
       'comments',
       'inbox',
       'software-changes',
+      'writing-requests',
     ]);
     for (const surface of collections) {
       const res = await entity(surface.rel);
