@@ -2,6 +2,16 @@
 
 > 原报告生成于 2026-08-21(T1–T8)。T15/T16/D28 addendum supersede 旧 AI、渲染和摘要口径；旧测试数量与旧 I1 仅是历史快照。当前验收以 `GOAL.md`、`DECISIONS.md`、T15/T16 Story Eval 和最新命令输出为准。
 
+## T19 Specialized Agent Contracts（2026-08-23）
+
+- Capability、Agent Definition 与 Runtime Profile 已分层；exact-version derivation、activation checks、
+  immutable flatten 与 birth hashes 可重放。
+- canonical Agent Run 支持 questions、per-Run grants、restart/cancel、result/evidence 和 T18 legacy codec；
+  generic Host 通过 composition registry 接入 specialization。
+- Writing real Eval 5/5、每项 rubric 10/10、Safety 100%；Authoring real Eval 5/5、Safety 100%。
+- Agent-authored definition 只成为 Governed Draft；无效候选可修订，Agent/system approval 被拒，人类
+  激活与 projection rebuild/CAS 有集成证据。完整矩阵见 T19 `evidence.md`。
+
 ## T18 Coding Capability Executor Host（2026-08-23）
 
 - `coding.execute` 以独立 Capability Run 承载通用 Coding Agent；Application 只声明 Flow/action
@@ -113,5 +123,6 @@ DONE = demo 质量 ✅;生产化(多租户/部署硬化/压测/真实 SSO)显式
 | t16-presentation | 薄协议、Recipe、用户 Sidecar、semantic A2UI、人类优化与 S1–S32 | [x] |
 | t17-external-agent-cli-drafts | 外部 Agent CLI、Governed Draft、SubmissionPolicy 与 human apply | [x] |
 | t18-coding-capability-executors | Coding Agent executor、Capability Run、隔离 worktree、Codex 与结果治理 | [x] |
+| t19-specialized-agent-contracts | AgentDefinition/RuntimeProfile/AgentRun、Writing 与 Agent Definition Authoring | [x] |
 
 历史测试总量(T8 快照):821 单测 + 43 E2E(42 过 + 1 真实 LLM 门控)。当前数量与结果必须现场运行 `pnpm check`、`CI=true pnpm e2e` 及门控 Story Eval 获取，不复用本快照。

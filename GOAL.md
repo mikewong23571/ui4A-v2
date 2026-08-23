@@ -9,7 +9,7 @@
 
 ## DONE 的定义
 
-以下业务与切片场景、T15 AI-first、T16 Presentation、T17 External Agent Draft、T18 Coding Capability 用户故事 Eval 及不变量全部通过，外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
+以下业务与切片场景、T15 AI-first、T16 Presentation、T17 External Agent Draft、T18 Coding Capability、T19 Specialized Agent Contracts 用户故事 Eval 及不变量全部通过，外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
 
 ### AI-first 用户故事
 
@@ -54,6 +54,15 @@ Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能�
 accept/reject。Codex 是首个真实 reference executor；Hermes 只提供 Runtime/Workspace/session/
 trajectory/approval 分层启发，不进入依赖或产品运行时。Coding Agent 无权直接 merge、activate、
 deploy 或批准自己的结果。
+
+### Specialized Agent Contracts
+
+`conductor/tracks/t19-specialized-agent-contracts_20260823/` 将业务 Capability、版本化
+Agent Definition 与部署 Runtime Profile 分层。Coding 与 Writing 是同一 Agent Host 上的两个真实
+specialization，但分别保留 Git/test 与 document/source/citation/render 合同。Agent Definition
+Author 可以根据自然语言起草 Prompt、Task/Result schema、runtime/policy、examples 和 Eval corpus；
+结果只能进入系统内 Governed Draft。无效但有界的候选保留为可修订 Draft，Agent/system 无权批准，
+只有 human approval 能激活新版本；旧 Run 始终固定出生时 definition/prompt/runtime hashes。
 
 ### 基线场景（业务平面，继承自已验证 demo）
 

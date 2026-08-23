@@ -62,6 +62,16 @@ and source Flow links remain separate from the Business fold. Raw payloads live 
 proposal: Agent acceptance is rejected, while a human accept/reject event stores a non-merge receipt after
 base/path/test/hash revalidation.
 
+Canonical specialized execution uses the Agent Run event family and `agent-run:<id>` Siren projection. Each Run
+stores birth-pinned definition, Prompt, runtime profile, task/result contract hashes, source action, cursor,
+questions/grant decisions, result/evidence/artifact references, restarts, cancellation, and terminal callback.
+Raw Provider frames are content-addressed and visible only through exact owner/scope-authorized reads. Legacy T18
+Capability Runs are decoded into this model for compatibility; their old wire endpoints remain available.
+
+Agent Definition authoring results additionally link to an `agent-definition` Draft. Provider validation claims are
+audit data, not authority: the Draft service independently recalculates parse/invariant checks, diff, and Eval
+availability. Invalid candidates remain revisable; only a human approval event can register and activate a version.
+
 ## Replay rules
 
 1. Preserve event order and stable event/command identifiers.
@@ -71,3 +81,5 @@ base/path/test/hash revalidation.
 5. Never infer missing reasoning, authorization, or facts during replay.
 6. Rebuild Capability Run projections from capability events and re-hash payloads; never treat a provider's
    final prose, projection row, or Temporal status as the accepted code result.
+7. Rebuild Agent Definition, Agent Run, and Draft projections independently; an old Run keeps its birth version
+   even when a newer definition becomes active.

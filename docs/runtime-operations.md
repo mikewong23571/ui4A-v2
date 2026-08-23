@@ -46,6 +46,8 @@ pnpm eval:t15
 pnpm eval:t16
 pnpm eval:t17
 pnpm eval:t18
+pnpm eval:t19:writing
+pnpm eval:t19:authoring
 ```
 
 ## Coding executor profile
@@ -64,6 +66,21 @@ UI4A_PUBLIC_BASE_URL=http://localhost:3100
 `pnpm eval:t18` uses disposable repositories, the isolated test database, and the installed/authenticated
 Codex SDK/CLI. It records `eval-report.json`; it never points the executor at this repository. Missing
 profile, provider, authentication, or repository registration fails without fallback or workspace writes.
+
+## Writing and Agent Definition Authoring profiles
+
+These specializations are configured separately from Chat and Coding. Applications expose only class/profile
+requirements; deployment owns model, endpoint, credential environment name, roots, and budgets.
+
+```text
+UI4A_DOCUMENT_AGENT_PROFILES=[{"name":"editorial-default","runtimeClass":"document-agent","providerId":"codex","transport":"sdk","model":"<deployment-model>","apiKeyEnv":"LLM_API_KEY","artifactBackend":"isolated-document-workspace","timeoutSeconds":240,"maxTurns":18,"envAllowlist":["PATH","HOME","CODEX_HOME"],"networkPolicy":"none"}]
+UI4A_DOCUMENT_WORKSPACE_ROOT=/absolute/ui4a-document-workspaces
+UI4A_AGENT_AUTHORING_PROFILES=[{"name":"authoring-default","runtimeClass":"agent-definition-authoring","providerId":"codex","transport":"sdk","model":"<deployment-model>","apiKeyEnv":"LLM_API_KEY","timeoutSeconds":240,"maxTurns":18,"envAllowlist":["PATH","HOME","CODEX_HOME"],"networkPolicy":"none"}]
+UI4A_AGENT_AUTHORING_RUNTIME_ROOT=/absolute/ui4a-authoring-runs
+```
+
+An optional `endpoint` belongs only in these server-owned profiles. Writing allows only the isolated document
+workspace and never publishes. Authoring uses a read-only empty runtime and only creates a Governed Draft.
 
 ## External Agent CLI
 
@@ -91,6 +108,8 @@ Vitest uses the isolated `ui4a_test` database unless `TEST_DATABASE_URL` overrid
 - `domain='capability'` Run events are truth; `capability_payloads` stores immutable raw/patch/trajectory
   payloads and `capability_run_projection` is rebuildable. UI4A-owned worktrees are retained through the
   human result decision; acceptance records a receipt and does not modify the main checkout.
+- Canonical Agent Run and Agent Definition events are truth for specialized execution and registry versions;
+  their projections are rebuildable. An old Run retains its birth-pinned definition/prompt/runtime references.
 - Local quarantine tables named `events_quarantine_*` or `presentation_user_sidecars_quarantine_*` are recoverable maintenance snapshots; inspect them before dropping them.
 - Temporal integration tests use isolated `UI4A_TASK_QUEUE`/`UI4A_WORKFLOW_PREFIX`; do not run a
   test worker on the development queue.

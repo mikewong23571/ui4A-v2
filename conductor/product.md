@@ -106,7 +106,7 @@ UI4A 将这条路径压缩为:
 
 ## 成功标准(DONE 的定义)
 
-以下场景套件、T15 U1–U23、T16 S1–S32、T17 U1–U24 与 T18 U1–U22 Story Eval 及不变量全部通过,外加一次人工 demo 走查。
+以下场景套件、T15 U1–U23、T16 S1–S32、T17 U1–U24、T18 U1–U22 与 T19 U1–U26 Story Eval 及不变量全部通过,外加一次人工 demo 走查。
 
 ### AI-first 用户故事
 
@@ -128,6 +128,17 @@ Chat Agent 只决定是否呈现、呈现哪个 subject 和 intent；完整 cata
 content-addressed result。成功只把 Flow 推进到 `review-ready`。Agent 接受结果必被拒绝；人类
 接受前重新验证 base、路径、tests 与 hash，首切片只记录 receipt，不 merge/push/deploy/activate。
 Codex 是 reference adapter；Claude/Gemini 仅验证 SPI 兼容；Hermes 只作为分层设计参考。
+
+### Specialized Agent Contracts
+
+Capability 说明应用想完成什么，Agent Definition 说明专业 Agent 的 Prompt、Task/Result、runtime
+requirements 与 policy，Runtime Profile 说明部署在哪里执行。三者独立版本化，Application 不携带
+Provider/endpoint/key。`coding-agent@1` 与 `writing-agent@1` 证明同一 Host 可承载不同 workspace、
+资源和验收方式，而不是把所有任务压成一个巨大 optional schema。
+
+`agent-definition-author@1` 可以从自然语言生成候选 Definition、examples 和 Eval corpus，但结果只进入
+T17 Draft。系统独立重算 parse/invariants/diff/Eval；无效候选保留为可修订 Draft，Agent/system 的
+approve 永久拒绝，人类激活使用 CAS。该机制是受治理的“Agent 创建 Agent”，不是自修改或自授权。
 
 ### 参考 Assistant 组合合同
 

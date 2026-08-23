@@ -170,6 +170,25 @@ task envelope，仓库绝对路径、allowed paths、sandbox、env 与 Provider 
 hash，Agent accept 机械拒绝。首切片的接受回执固定 `merged=false/deployed=false/activated=false`。
 Capability definition 的 executor requirement 还必须通过 profile existence/class activation invariant。
 
+### 8.5 Specialized Agent Definition 与 canonical Agent Run
+
+T19 把 `CapabilityDefinition → AgentDefinition@version → RuntimeProfile` 作为三个独立控制点。
+Agent Definition 持久化 provider-neutral typed Prompt blocks/bindings、Task/Result JSON Schema、runtime
+features 以及 tool/context/resource/artifact/Eval policy；激活时解析 exact-version parent 并 flatten，
+Run 出生时固定 source/parent/flattened/prompt/runtime/task/result hashes。
+
+`apps/worker/src/agents/host` 只实现 generic lifecycle、suspension/restart/finalize 与 structured
+transport。composition registry 将 `coding-task`、`writing-task`、`agent-definition-authoring-task`
+绑定到各自 adapter；新增 specialization 贡献一个 binding 与专业 backend/verifier，不修改 Host 状态机。
+新执行写 canonical Agent Run events；T18 capability-run 通过 versioned legacy codec/presenter 兼容，
+不能成为第二个 native truth。
+
+Writing 的 writable root 只有 `out/`，source bytes 留在 Task data；系统重算 source/artifact hashes、
+citation coverage、forbidden effects 和 Pandoc render。Authoring 使用空的 read-only runtime，返回
+structured candidate/examples/Eval corpus；有界但机械校验失败的结果仍进入 `agent-definition` Draft。
+Draft validation/diff/Eval 与 Agent claim 分离，Agent/system 不能 approve，human activation 才能推进
+active pointer。
+
 ## 9. 五条垂直切片(第五部,施工顺序)
 
 1. **确认门切片**:agent 执行高危动作 → guard 挂起 → pending 实体化 → notification capability 送达 → 人类在推送上 approve → 事件留痕带 actor/principal。一次验证 guard 第三语义、确认实体、出站能力、委托模型四个论点。构成(README):Cedar 风险策略 + guard 挂起语义 + Temporal notify activity + RJSF 渲染 pending 实体 + 收件箱。GOAL S1 断言:动作未生效挂起 → human approve(actor=human)→ 生效,日志含 actor/principal/信道。

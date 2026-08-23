@@ -38,6 +38,9 @@ pnpm dev:all
   软件变更 Flow；服务端选择 profile，UI4A 创建隔离 worktree，Temporal 持久运行，原始轨迹与
   patch/test result 留在 Capability Run。Codex 是 reference adapter；结果仍需人类接受，且首切片
   不 merge、push、deploy 或 activate。Hermes 仅是架构参考，不是运行时依赖。
+- T19 将 executor 推广为版本化 Specialized Agent Contracts：`coding-agent@1`、
+  `writing-agent@1` 与 `agent-definition-author@1` 共享 generic Agent Run/Temporal Host，但拥有不同
+  Task/Result、runtime、resource backend 和 verifier。Authoring 的输出只进入 Draft，不能自批或自激活。
 
 ## 文档权威顺序
 
@@ -75,7 +78,8 @@ packages/shared ◄── packages/engine ◄── packages/agent
 - `packages/engine`：纯业务内核与 pure Presentation kernel。
 - `packages/agent`：AI-first Agent 协议、LLM driver、Presentation/Revision adapters；scripted/rule driver 仅是测试 fixture。
 - `apps/web`：HTTP 合同、PostgreSQL adapters、运行时编排、Chat、Renderer、Meta BIOS 和 Canvas。
-- `apps/worker`：Temporal workflows 与 I/O activities。
+- `apps/worker`：Temporal workflows 与 I/O activities；`src/agents/host` 是 generic lifecycle/transport，
+  `coding`、`writing`、`authoring` 是通过 composition registry 接入的 specialization adapters。
 - `apps/cli`：可安装的 `ui4a` binary、稳定 JSON envelope、发现/读取/业务动作/Draft/audit 命令。
 - `apps/web/src/applications`：可安装 Application Bundle；不要在 route/service 中硬编码业务 Flow。
 
@@ -90,6 +94,8 @@ pnpm eval:t15                      # opt-in T15 真实 LLM Story Eval
 pnpm eval:t16                      # opt-in T16 真实 LLM Story Eval
 pnpm eval:t17                      # CLI/Draft safety、性能与 external-Agent evidence
 pnpm eval:t18                      # 真实 Codex 5-variant Coding Capability Eval
+pnpm eval:t19:writing              # 真实 Writing 5-variant + rubric + Safety Eval
+pnpm eval:t19:authoring            # 真实 Agent Definition Authoring 5-variant Eval
 pnpm format:check                  # Prettier
 ```
 

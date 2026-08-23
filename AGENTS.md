@@ -45,7 +45,9 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 - `src/db/`: PostgreSQL pool, schema, append/read operations, and replay tests. `events.ts` is the event-log write/read boundary. The worker currently reuses this adapter; do not create a competing writer abstraction casually.
 - `src/db/drafts.ts`: Draft-domain events, immutable SHA-256 payloads, rebuildable projection, CAS, and transactional acceptance.
 - `src/db/capability-runs.ts`: Capability Run events, content-addressed raw/result payloads, owner/scope queries, cursors, and rebuildable projections.
+- `src/db/agent-definitions.ts` and `src/db/agent-runs.ts`: append-only specialized definition/version registry and canonical Agent Run persistence. Legacy T18 Capability Runs are compatibility input, not a second native run model.
 - `src/engine/drafts.ts`: Siren Draft/activation projection, validation/diff adapter, and human-only atomic Flow apply.
+- `src/engine/agent-definitions.ts`, `native-agent-dispatch.ts`, and `agent-definition-authoring.ts`: activation registries, exact specialization task mapping, birth-pinned dispatch, and the result-to-Governed-Draft bridge. They must not accept Provider/profile overrides from requests.
 - `src/domain/`: built-in domain helpers, predicates/flows used for bootstrap or testing, capability declarations, and Cedar policy loading. Production definition truth must still come from activated event-log artifacts.
 - `src/render/`: deterministic A2UI compilation and hydration. `presentation/` compiles semantic Surface Trees; `deref.ts` and the entity cache resolve live facts; `canvas/` hosts surfaces; `words/` contains concrete vocabulary renderers.
 - `src/engine/presentation/`: Presentation Broker, Application Recipe generation/registry, user-level Sidecar fastpath, dependency validation, and receipt production.
@@ -59,10 +61,14 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 ### `apps/worker` — Durable Work and I/O
 
 - `src/main.ts`: Temporal connection, task queue registration, process lifecycle, and graceful shutdown.
-- `src/workflows.ts`: deterministic orchestration for notification, delegation, and segmented Coding Capability Runs. Workflow code must not use Node APIs, fetch, random values, wall-clock reads, or database access.
-- `src/activities.ts`: I/O-capable activity registration and event-log writes; retries must be idempotent.
+- `src/workflows.ts`: deterministic orchestration for notification, delegation, legacy Coding Capability Runs, and canonical Agent Runs. Workflow code must not use Node APIs, fetch, random values, wall-clock reads, or database access.
+- `src/activities.ts`: I/O-capable activity registration and the specialization composition registry. Add a specialization as one binding; do not spread task-kind branches across Host lifecycle functions.
 - `src/delegation.ts`: one durable agent step, HTTP contract calls, driver execution, sitemap loading, and delegation event recording.
 - `src/capabilities/coding/`: provider adapters, repository registry, UI4A-owned Git worktrees, execution/result collection, compatibility fixtures, and Temporal kill/cancel evidence. Provider code stays behind this boundary.
+- `src/agents/host/`: generic lifecycle, suspension signals, restart boundaries, finalize protocol, and structured Codex transport. It must not contain business capability names or specialization semantics.
+- `src/agents/coding/`: CodingTask/CodingResult adapter over the generic Host and Git workspace backend; T18 wire compatibility remains in `src/capabilities/coding/`.
+- `src/agents/writing/`: WritingBrief/WritingResult adapter, non-Git document workspace, immutable sources, citation, forbidden-effect, artifact, and Pandoc render verification.
+- `src/agents/authoring/`: structured-only read-only runtime that drafts Agent Definitions, examples, and Eval cases. Invalid bounded candidates are results for Draft governance; only malformed envelopes fail before ingress.
 - `src/banner.ts`: process messages only.
 
 ### `apps/cli` — External Agent Reference Client
@@ -116,6 +122,7 @@ Prefer extending a nearby pattern. When a change crosses rows, keep the pure con
 - **Human-only approval:** `approve` rejects `actor=agent`; audit and mechanical-diff rendering use no AI.
 - **Coding results are proposals:** Coding Agents write only an authorized UI4A-owned worktree. Result acceptance rechecks base/path/test/artifact integrity and records a human receipt; it never implies merge, push, deploy, or activation.
 - **Server-owned executor selection:** application contracts name an executor class/profile requirement. Requests cannot choose provider, binary, model, cwd, sandbox, or unsafe mode; missing profiles fail before workspace mutation and never fall back.
+- **Specialized definitions are proposals:** definitions are content-addressed, exact-version and birth-pinned. Agent-authored candidates enter T17 Drafts; only a human may activate them.
 - Rejections are events with actionable reasons, not exceptional missing data.
 - Every execution uses declaration → guard → schema order. Do not reorder or duplicate this judgment in UI code.
 - Workflows orchestrate; activities perform I/O. Event writes and activities must tolerate retry/replay.
@@ -133,6 +140,7 @@ Prefer extending a nearby pattern. When a change crosses rows, keep the pure con
 - `pnpm format:check` / `pnpm format` — check or apply Prettier formatting.
 - `pnpm cli:build` / `pnpm eval:t17` — build the CLI and run T17 protocol/safety evidence.
 - `pnpm eval:t18` — run the real Codex canonical-plus-four-variant corpus in disposable repositories; requires local Codex authentication.
+- `pnpm eval:t19:writing` / `pnpm eval:t19:authoring` — run the real five-variant Writing and Agent Definition Authoring gates; each requires at least 4/5 and Safety 100%.
 
 Vitest uses the isolated database at `localhost:5433/ui4a_test` unless `TEST_DATABASE_URL` overrides it. Do not point tests at the development database. Port 3100 is intentional; do not kill an unrelated service on port 3000.
 

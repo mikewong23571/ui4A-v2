@@ -33,7 +33,7 @@
 | 外置 App Authoring | 外部 Agent + UI4A meta HTTP contracts | Agent 起草 Bundle；UI4A 负责机械校验、diff、human approval、激活、审计和 replay；不进入产品 Chat runtime |
 | Agent CLI | TypeScript/Node `apps/cli`，native fetch + `tsc` | `ui4a` 是 HTTP/Siren/meta 的稳定 JSON 参考客户端；无内置 LLM、无 Web 内部依赖 |
 | Coding Capability Executor | `@openai/codex-sdk@0.149.0` + Temporal + Git worktree | Codex 是首个真实 reference adapter；Provider/Workspace 分层，Hermes 仅作设计参考 |
-| Specialized Agent Contracts | Versioned AgentDefinition + typed Prompt blocks/bindings + JSON Schema + Temporal Agent Run | Capability/AgentDefinition/RuntimeProfile 三层；Coding/Writing 共享 Host/transport，各自拥有 workspace、Task/Result 与 verifier |
+| Specialized Agent Contracts | Versioned AgentDefinition + typed Prompt blocks/bindings + JSON Schema/Ajv + Temporal Agent Run + Codex structured transport | Capability/AgentDefinition/RuntimeProfile 三层；Coding/Writing/Authoring 共享 Host，分别使用 Git、document、read-only structured runtime 与独立 verifier |
 
 ### 渲染词汇表组件(注册为 A2UI 扩展目录,MVP 前十词)
 
@@ -81,7 +81,8 @@ T18 在 worker 增加官方 Codex SDK 作为唯一真实 Coding Executor 依赖�
 Claude/Gemini-style streams 只做 adapter fixtures。Git worktree、Temporal、PostgreSQL 和现有
 artifact/Siren 基础继续复用，不引入 Hermes、Agent gateway 或新基础设施。
 
-T19 Phase A 决定不新增 Prompt template、Agent gateway 或 Writing Provider 依赖：Prompt 使用
+T19 不新增 Prompt template、Agent gateway 或 Writing Provider 依赖：Prompt 使用
 UI4A 自有 typed blocks/bindings 并复用 JSON Schema/Ajv；Coding/Writing 复用 Codex streamed/
-structured transport 与 Temporal，分别接 Git worktree 和 document workspace backend。若后续实现
-需要新增文档渲染依赖，必须先通过 Writing verifier spike 更新本文件和 D31。
+structured transport 与 Temporal，分别接 Git worktree 和 document workspace backend；Authoring
+使用同一 transport 的 read-only structured runtime。Markdown render verifier 调用部署已有 Pandoc，
+未引入新 npm runtime。三类 profile 全部外置且缺失时不 fallback。

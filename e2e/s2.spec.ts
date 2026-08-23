@@ -876,15 +876,19 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
     // 业务 sitemap:导航枚举不含任何 meta 面(进入定义层必须显式意图)
     const sitemap = await getSitemap();
     expect(sitemap.surfaces.map((surface) => surface.rel).sort()).toEqual([
+      'agent-runs',
       'articles',
       'capability-runs',
       'comments',
+      'flow:agent-definition-authoring',
       'flow:article-drafting',
       'flow:comment-moderation',
       'flow:post-status',
       'flow:software-change',
+      'flow:writing-request',
       'inbox',
       'software-changes',
+      'writing-requests',
     ]);
 
     // 业务实体 links 不携带 /_meta href
@@ -921,6 +925,8 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
         'meta/capability:notify',
         'meta/capability:clarify',
         'meta/capability:coding.execute',
+        'meta/capability:writing.compose',
+        'meta/capability:agent-definition.author',
       ]),
     );
     // 业务 sitemap 不得泄漏 capability definition 的 meta rel。
@@ -928,14 +934,16 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
       sitemap.surfaces.every((surface) => !surface.rel.startsWith('meta/')),
       '业务 sitemap 不得出现 meta 入口',
     ).toBe(true);
-    // meta/capabilities 集合投影:四个 seed 成员直达
+    // meta/capabilities 集合投影:全部已安装 seed 成员直达
     const capabilities = await getMetaEntity('meta/capabilities');
-    expect(capabilities.properties).toMatchObject({ count: 4 });
+    expect(capabilities.properties).toMatchObject({ count: 6 });
     expect((capabilities.entities ?? []).map((sub) => sub.properties.name).sort()).toEqual([
+      'agent-definition.author',
       'clarify',
       'coding.execute',
       'draft',
       'notify',
+      'writing.compose',
     ]);
 
     // 业务端点对 meta rel 404(跨站不混,双向)
