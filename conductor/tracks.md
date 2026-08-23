@@ -42,3 +42,5 @@
 - [x] **Track: T19 Specialized Agent Contracts:基础 Agent 经 Prompt、Task/Result、Runtime/Tool/Policy 合同派生 Coding/Writing 等特化 Agent，并支持 Agent Definition Draft、人类激活与 U1–U26/TS1–TS20 验收** *Link: [tracks/t19-specialized-agent-contracts_20260823/index.md](./tracks/t19-specialized-agent-contracts_20260823/index.md)*
 
 - [x] **Track: T20 Meta Human Control Plane:Meta sitemap 驱动发现、Application/Agent Definition/Draft 人类治理闭环、优雅任务视图、scope/action 安全与 U1–U22/TS1–TS18 验收** *Link: [tracks/t20-meta-human-control-plane_20260823/index.md](./tracks/t20-meta-human-control-plane_20260823/index.md)*
+
+- [ ] **Track: T21 Assistant 双焦点事实与 AI-first Presentation 一致性:保留 lastNavigation/clientView、LLM 冲突理解、多步呈现回答与协议失败安全** *Link: [tracks/t21-assistant-dual-focus_20260823/index.md](./tracks/t21-assistant-dual-focus_20260823/index.md)*
