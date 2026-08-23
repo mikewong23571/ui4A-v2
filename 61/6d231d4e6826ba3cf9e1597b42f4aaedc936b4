@@ -1,0 +1,1 @@
+T20 final Principal follow-up: focused issue roots use replace/delete semantics; unrelated candidate roots survive; optional Agent contract schemas are explicit; deletion and sibling-preservation tests pass. Verification: Web typecheck, 5 schema tests, structured invalid-Draft Playwright.
