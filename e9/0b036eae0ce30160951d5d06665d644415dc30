@@ -1,0 +1,3 @@
+T21 documentation and acceptance closure
+
+Synchronized GOAL, product, README, architecture brief and audit/replay docs with D33 dual-focus semantics, provider-required repair, dynamic authorized-surface navigation and event provenance. Added acceptance-report.md and DONE.md with exact automated, CI, real-LLM/browser, Safety and live-stack evidence. Tech stack unchanged.
