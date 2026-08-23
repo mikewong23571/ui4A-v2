@@ -1,0 +1,1 @@
+T17 Phase A: froze the evidence schema, red baseline, disposable CLI/storage/atomic-apply probes, and D29. Autonomous verification: probe commands completed from /tmp; focused documentation and JSON checks passed; no spike code entered production.
