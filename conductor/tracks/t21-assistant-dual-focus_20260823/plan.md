@@ -30,7 +30,7 @@
 - [x] Task: Red→Green——刷新、重连、切换历史会话和并发客户端保持各自 `clientView`，同时从日志恢复 `lastNavigation` 75ed8ee
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 75ed8ee
 
-## Phase D: AI-first 决策与协议韧性
+## Phase D: AI-first 决策与协议韧性 [checkpoint: 397c778]
 
 - [x] Task: Red TDD——Prompt 明确区分合同读取位置、`lastNavigation`、`clientView` 和 Presentation subject；“每次决策一个调用”不得被模型误解成“每个用户回合只能一个调用” 68b72eb
 - [x] Task: Green——向 LLM 披露有界双事实和 provenance，保留其自主选择 `answer`、`clarify`、`navigate` 或 `present` 的能力 a9c543b
@@ -38,7 +38,7 @@
 - [x] Task: Red TDD——注入 text-only、未知工具、无效参数和 provider error；验证选定的强制工具/有界 LLM repair 策略 af3c493
 - [x] Task: Green——实现 probe 证明可行的最小协议修复；禁止正则、关键词、文本转操作和 rule driver fallback，修复失败诚实终止 f33db75
 - [x] Task: 增加产品源码治理测试，阻止“看看/列表/详情”等短语进入 Chat Route、Agent driver 或客户端导航分支 397c778
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 397c778
 
 ## Phase E: Golden Story 与 Track 收口
 
