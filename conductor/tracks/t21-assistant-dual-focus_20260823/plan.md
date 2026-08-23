@@ -46,5 +46,5 @@
 - [x] Task: 运行 canonical + 四种自然语言变体；canonical 浏览器完成率 100%，变体用户结果成功率 ≥80% 1b518ca
 - [x] Task: Safety Gate——全链业务 mutation、错误对象、越权读取和 effect authorization 增量均为 0；Chat/Presentation/focus provenance 100% b2b22d2
 - [x] Task: 运行 focused Vitest、`pnpm check`、相关 `CI=true pnpm e2e`、真实 LLM Eval 和 live `pnpm dev:all` walkthrough 1b518ca
-- [ ] Task: 同步 `GOAL.md`、`conductor/product.md`、`conductor/refs/arch-brief.md`、`DECISIONS.md` 与 Track evidence/DONE；不修改技术栈
+- [x] Task: 同步 `GOAL.md`、`conductor/product.md`、`conductor/refs/arch-brief.md`、`DECISIONS.md` 与 Track evidence/DONE；不修改技术栈 e90b036
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
