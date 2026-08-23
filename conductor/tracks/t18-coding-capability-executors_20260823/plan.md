@@ -1,14 +1,14 @@
 # T18 Coding Capability Executor Host — Plan
 
-## Phase A: Red baseline、disposable probes 与架构决定
+## Phase A: Red baseline、disposable probes 与架构决定 [checkpoint: d969ae1]
 
-- [ ] Task: 建立 U1–U22/TS1–TS18 evidence schema、Safety corpus 和真实 Codex canonical + 4 variants Golden Story
-- [ ] Task: Red baseline——证明 `spawn-requested` 无通用 executor dispatch、Delegation 语义不适用、无 capability-run/workspace/result approval
-- [ ] Task: Codex disposable probe——在 `/tmp` fixture repo 比较 SDK 与 `codex exec --json` 的 start/events/result/resume/cancel/错误/认证/权限
-- [ ] Task: Workspace probe——比较 UI4A-owned worktree、agent-owned worktree 与容器边界；验证 main checkout hash、并发、base CAS、路径限制和清理
-- [ ] Task: Persistence/Temporal probe——比较 capability domain/dedicated table、raw chunk storage、long activity/segmented workflow、heartbeat/cancel/kill-resume
-- [ ] Task: 将决定写入 `DECISIONS.md`，先同步技术栈；Hermes 启发与 zero-runtime boundary 明确入决策
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: 建立 U1–U22/TS1–TS18 evidence schema、Safety corpus 和真实 Codex canonical + 4 variants Golden Story (d969ae1)
+- [x] Task: Red baseline——证明 `spawn-requested` 无通用 executor dispatch、Delegation 语义不适用、无 capability-run/workspace/result approval (d969ae1)
+- [x] Task: Codex disposable probe——在 `/tmp` fixture repo 比较 SDK 与 `codex exec --json` 的 start/events/result/resume/cancel/错误/认证/权限 (d969ae1)
+- [x] Task: Workspace probe——比较 UI4A-owned worktree、agent-owned worktree 与容器边界；验证 main checkout hash、并发、base CAS、路径限制和清理 (d969ae1)
+- [x] Task: Persistence/Temporal probe——比较 capability domain/dedicated table、raw chunk storage、long activity/segmented workflow、heartbeat/cancel/kill-resume (d969ae1)
+- [x] Task: 将决定写入 `DECISIONS.md`，先同步技术栈；Hermes 启发与 zero-runtime boundary 明确入决策 (d969ae1)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (d969ae1)
 
 ## Phase B: Shared contract 与 pure Capability Run kernel
 
@@ -57,4 +57,3 @@
 - [ ] Task: 同步 GOAL/DECISIONS/product/tech/arch/runtime/audit/AGENTS/README/DONE；记录 Hermes 仅为设计参考
 - [ ] Task: Principal review——Executor/Workspace 分层、Provider 泄漏、sandbox/secret、双审批、resume/idempotency、主 checkout 与 scope creep
 - [ ] Task: Final Phase Verification & Checkpoint (Refer to workflow.md)
-
