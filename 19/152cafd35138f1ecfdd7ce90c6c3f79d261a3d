@@ -1,0 +1,1 @@
+T17 Phase B: added shared SubmissionPolicy and Draft contracts, pure lifecycle/event fold/CAS/idempotency/budget kernel, validation adapter, mechanical diff, and atomic candidate apply fold. Autonomous verification: 49 focused tests plus shared/engine typecheck passed.
