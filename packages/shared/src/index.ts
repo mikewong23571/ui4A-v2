@@ -22,3 +22,5 @@ export * from './definition';
 export * from './presentation';
 // External-agent write ingress policy and governed Draft wire contracts.
 export * from './submission';
+// Provider-neutral Coding Capability Executor wire contracts.
+export * from './coding-executor';

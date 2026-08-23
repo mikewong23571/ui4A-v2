@@ -17,11 +17,11 @@ import * as engine from './index';
 const srcDir = dirname(fileURLToPath(import.meta.url));
 
 function librarySources(directory: string): string[] {
-  return readdirSync(directory, { withFileTypes: true })
-    .filter(
-      (entry) => entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts'),
-    )
-    .map((entry) => join(directory, entry.name));
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return librarySources(path);
+    return entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts') ? [path] : [];
+  });
 }
 
 const NODE_MODULE_PATTERN =
@@ -43,8 +43,8 @@ describe('引擎两栖性(纯 TS,浏览器/服务端零 Node API)', () => {
     }
   });
 
-  it('扫描到的库源覆盖引擎全部模块(24 个顶层非测试源文件;T17 增 definition-bundle)', () => {
-    expect(librarySources(srcDir).length).toBe(24);
+  it('扫描到的库源覆盖引擎全部模块(44 个非测试源文件;T18 递归覆盖子模块)', () => {
+    expect(librarySources(srcDir).length).toBe(44);
   });
 
   it('公共导出面完整(barrel 可整体导入求值)', () => {
