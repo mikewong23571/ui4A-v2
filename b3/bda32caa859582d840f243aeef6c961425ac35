@@ -1,0 +1,1 @@
+T20 final review follow-up: wire issue-focused structured RJSF repair, preserve optional Agent contract schemas with recursive merge, and align backlink/scope rejection expectations. Default Draft Golden Story no longer requires raw JSON. Verification: Web typecheck; focused Vitest 52/52; T20 Playwright 8/8.
