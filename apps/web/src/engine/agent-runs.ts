@@ -15,6 +15,7 @@ import {
   listAgentRuns,
   type ConnectableDb,
 } from '../db/agent-runs';
+import { findDraftsBySource } from '../db/drafts';
 
 export const AGENT_RUNS_REL = 'agent-runs';
 const AGENT_RUN_PREFIX = 'agent-run:';
@@ -104,7 +105,7 @@ function runSummary(run: AgentRun): SirenEntity {
 
 function runEntity(
   run: AgentRun,
-  details: { raw: Record<string, unknown>[]; resultRef?: string },
+  details: { raw: Record<string, unknown>[]; resultRef?: string; draftRels: string[] },
 ): SirenEntity {
   return {
     class: ['agent-run', run.status, run.birth.kind],
@@ -150,6 +151,10 @@ function runEntity(
         rel: ['artifact'],
         href: `/api/entity?rel=${encodeURIComponent(artifact.ref)}`,
       })),
+      ...details.draftRels.map((draftRel) => ({
+        rel: ['draft'],
+        href: `/_meta/api/entity?rel=${encodeURIComponent(draftRel)}`,
+      })),
     ],
     'guard-results': [],
   };
@@ -180,11 +185,20 @@ export async function getAgentRunEntity(
   if (!rel.startsWith(AGENT_RUN_PREFIX)) return undefined;
   const run = await getAgentRun(db, rel.slice(AGENT_RUN_PREFIX.length), principal, policyScope);
   if (run === undefined) return undefined;
-  const [raw, resultRef] = await Promise.all([
+  const [raw, resultRef, drafts] = await Promise.all([
     listAgentRunRawReceipts(db, run.runId),
     getAgentRunResultRef(db, run.runId),
+    findDraftsBySource(db, {
+      owner: principal,
+      policyScope,
+      source: `${AGENT_RUN_PREFIX}${run.runId}`,
+    }),
   ]);
-  return runEntity(run, { raw, ...(resultRef === undefined ? {} : { resultRef }) });
+  return runEntity(run, {
+    raw,
+    ...(resultRef === undefined ? {} : { resultRef }),
+    draftRels: drafts.map((draft) => `draft:${draft.id}`),
+  });
 }
 
 export async function enrichEntityWithAgentRuns(
@@ -298,13 +312,21 @@ export async function executeAgentRunAction(
   const command = commandForAction(run, request);
   if ('error' in command) return { kind: 'rejected', reason: command.error };
   const updated = await appendAgentRunCommand(db, command, 'human');
-  const raw = await listAgentRunRawReceipts(db, updated.aggregate.runId);
-  const resultRef = await getAgentRunResultRef(db, updated.aggregate.runId);
+  const [raw, resultRef, drafts] = await Promise.all([
+    listAgentRunRawReceipts(db, updated.aggregate.runId),
+    getAgentRunResultRef(db, updated.aggregate.runId),
+    findDraftsBySource(db, {
+      owner: request.principal,
+      policyScope,
+      source: `${AGENT_RUN_PREFIX}${updated.aggregate.runId}`,
+    }),
+  ]);
   return {
     kind: 'accepted',
     entity: runEntity(updated.aggregate, {
       raw,
       ...(resultRef === undefined ? {} : { resultRef }),
+      draftRels: drafts.map((draft) => `draft:${draft.id}`),
     }),
   };
 }

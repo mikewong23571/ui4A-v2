@@ -84,6 +84,8 @@ const EntityCacheContext = createContext<EntityCacheHandle | null>(null);
 
 export interface EntityCacheProviderProps {
   children: ReactNode;
+  /** Optional policy scope carried by cross-plane Definition/Run navigation. */
+  scope?: string;
   /** 实体取数(缺省 /api/entity;测试注入计数 fetcher)。挂载后固定。 */
   fetcher?: EntityFetcher;
   /** version 取数(缺省 /.well-known/ui4a.json;测试注入)。挂载后固定。 */
@@ -92,11 +94,14 @@ export interface EntityCacheProviderProps {
 
 export function EntityCacheProvider({
   children,
-  fetcher = fetchEntity,
+  scope,
+  fetcher,
   versionFetcher = fetchSitemapVersion,
 }: EntityCacheProviderProps) {
   // 句柄与 provider 同生同灭(useState 惰性初始化 = 每挂载恰一次)。
-  const [handle] = useState(() => createHandle(fetcher, versionFetcher));
+  const [handle] = useState(() =>
+    createHandle(fetcher ?? ((rel) => fetchEntity(rel, undefined, scope)), versionFetcher),
+  );
   return <EntityCacheContext.Provider value={handle}>{children}</EntityCacheContext.Provider>;
 }
 

@@ -618,6 +618,13 @@ function projectFlowDefinition(
   // 各表其区(node-definition / definition-version),properties 的 A.2 形状不动。
   return {
     ...entity,
+    links: [
+      ...entity.links,
+      {
+        rel: ['application'],
+        href: entityHref(deps.baseHref, `meta/application:${entry.definition.app ?? 'default'}`),
+      },
+    ],
     entities: [
       ...(entity.entities ?? []),
       ...versionSummariesOf(snapshot, entry).map(projectVersionSummary),
@@ -818,8 +825,17 @@ function projectActivations(snapshot: EngineSnapshot, deps: ProjectDeps): SirenE
  * (+可选 input/output,缺省不出现——形状稳定口径与 confirmation 投影同)。
  * 只读:无动作、guard-results 空(编辑动词归后续,spec 架构决定 5 口径)。
  */
-function projectCapability(capability: CapabilityDefinition, deps: ProjectDeps): SirenEntity {
+function projectCapability(
+  snapshot: EngineSnapshot,
+  capability: CapabilityDefinition,
+  deps: ProjectDeps,
+): SirenEntity {
   const rel = `${META_CAPABILITY_PREFIX}${capability.name}`;
+  const applications = Object.keys(snapshot.applications ?? {}).filter((name) =>
+    exportDefinitionBundle(snapshot, name).capabilities.some(
+      (candidate) => candidate.name === capability.name,
+    ),
+  );
   return {
     class: ['meta', 'capability-definition'],
     properties: {
@@ -837,7 +853,13 @@ function projectCapability(capability: CapabilityDefinition, deps: ProjectDeps):
       ...(capability.executor !== undefined ? { executor: capability.executor } : {}),
     },
     actions: [],
-    links: [{ rel: ['self'], href: entityHref(deps.baseHref, rel) }],
+    links: [
+      { rel: ['self'], href: entityHref(deps.baseHref, rel) },
+      ...applications.map((name) => ({
+        rel: ['application'],
+        href: entityHref(deps.baseHref, `meta/application:${name}`),
+      })),
+    ],
     'guard-results': [],
   };
 }
@@ -850,7 +872,7 @@ function projectCapability(capability: CapabilityDefinition, deps: ProjectDeps):
 function projectCapabilities(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
   const entries = Object.values(snapshot.capabilities ?? {});
   const entities = entries.map((capability) => ({
-    ...projectCapability(capability, deps),
+    ...projectCapability(snapshot, capability, deps),
     rel: ['item'],
     href: entityHref(deps.baseHref, `${META_CAPABILITY_PREFIX}${capability.name}`),
   }));
@@ -958,7 +980,7 @@ function projectMeta(
   }
   if (rel.startsWith(META_CAPABILITY_PREFIX)) {
     const capability = snapshot.capabilities?.[rel.slice(META_CAPABILITY_PREFIX.length)];
-    return capability === undefined ? undefined : projectCapability(capability, deps);
+    return capability === undefined ? undefined : projectCapability(snapshot, capability, deps);
   }
   return undefined;
 }

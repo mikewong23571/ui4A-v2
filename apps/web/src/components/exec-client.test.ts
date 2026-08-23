@@ -20,9 +20,15 @@ describe('合同站路由', () => {
 
     await fetchEntity('meta/flow:post-status');
     await fetchEntity('post:first-post');
+    await fetchEntity('meta/agent-definition:author@1', undefined, 'governance');
+    await fetchEntity('draft:d1', undefined, 'governance');
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/_meta/api/entity?rel=meta%2Fflow%3Apost-status');
     expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/entity?rel=post%3Afirst-post');
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(
+      '/_meta/api/entity?rel=meta%2Fagent-definition%3Aauthor%401&scope=governance',
+    );
+    expect(fetchMock.mock.calls[3]?.[0]).toBe('/_meta/api/entity?rel=draft%3Ad1&scope=governance');
   });
 
   it('meta action 写入 /_meta，身份仍是 renderer human', async () => {
@@ -44,5 +50,18 @@ describe('合同站路由', () => {
       principal: 'local-user',
       channel: 'renderer',
     });
+  });
+
+  it('cross-plane human action carries the selected scope in the server-judged URL', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ entity }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await execAction({ rel: 'agent-run:r1', action: 'cancel', scope: 'governance' });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/exec?scope=governance');
   });
 });

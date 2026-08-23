@@ -7,6 +7,7 @@ import {
 import { executeCapabilityRunAction, isCapabilityRunRel } from '../../../engine/capability-runs';
 import { finalizeCapabilitySource } from '../../../engine/capability-source-callback';
 import { executeAgentRunAction, isAgentRunRel } from '../../../engine/agent-runs';
+import { metaContextFromRequest } from '../../../engine/meta-authorization';
 
 import { parseExecBody, rejectionStatus } from '../exec-request';
 
@@ -46,17 +47,18 @@ export async function POST(request: Request) {
 
   try {
     const db = getDb();
+    const engine = await getEngine(db);
+    const context = metaContextFromRequest(
+      request,
+      Object.keys(engine.getSnapshot().applications ?? {}),
+      'development',
+    );
     const resolvedRequest = {
       ...parsed.request,
-      principal:
-        parsed.request.principal ?? request.headers.get('x-ui4a-principal') ?? 'local-user',
+      principal: parsed.request.principal ?? context.principal,
     };
     if (isCapabilityRunRel(resolvedRequest.rel)) {
-      const outcome = await executeCapabilityRunAction(
-        db,
-        resolvedRequest,
-        request.headers.get('x-ui4a-policy-scope') ?? 'development',
-      );
+      const outcome = await executeCapabilityRunAction(db, resolvedRequest, context.effectiveScope);
       if (outcome.kind !== 'accepted') {
         return Response.json({ layer: 'guard-failed', reason: outcome.reason }, { status: 422 });
       }
@@ -71,17 +73,12 @@ export async function POST(request: Request) {
       return Response.json({ entity: outcome.entity, source: finalized.entity });
     }
     if (isAgentRunRel(resolvedRequest.rel)) {
-      const outcome = await executeAgentRunAction(
-        db,
-        resolvedRequest,
-        request.headers.get('x-ui4a-policy-scope') ?? 'development',
-      );
+      const outcome = await executeAgentRunAction(db, resolvedRequest, context.effectiveScope);
       if (outcome.kind !== 'accepted') {
         return Response.json({ layer: 'guard-failed', reason: outcome.reason }, { status: 422 });
       }
       return Response.json({ entity: outcome.entity });
     }
-    const engine = await getEngine(db);
     const outcome = await engine.exec(resolvedRequest);
     if (outcome.kind === 'accepted') {
       return Response.json({ entity: outcome.entity });
@@ -116,6 +113,9 @@ export async function POST(request: Request) {
       typeof err.code === 'string' &&
       /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
     const message = error instanceof Error ? error.message : String(error);
+    if (/not authorized|conflicting/.test(message)) {
+      return Response.json({ error: message }, { status: 403 });
+    }
     return Response.json(
       dbFailure ? { error: 'exec 数据库不可用' } : { error: `exec 引擎内部错误: ${message}` },
       { status: dbFailure ? 503 : 500 },

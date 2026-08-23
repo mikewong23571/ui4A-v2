@@ -21,6 +21,10 @@ describe('Meta request scope authorization', () => {
     expect(resolveMetaRequestContext({ authorizedScopes: allowed }).effectiveScope).toBe(
       'publishing',
     );
+    expect(
+      resolveMetaRequestContext({ authorizedScopes: allowed, defaultScope: 'development' })
+        .effectiveScope,
+    ).toBe('development');
     expect(() =>
       resolveMetaRequestContext({
         requestedScope: 'governance',

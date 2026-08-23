@@ -82,6 +82,12 @@ describe('GET /_meta/api/entity', () => {
     // 活跃态编辑动词:A.4 active 节点声明(revise/deprecate)。
     expect(entity.actions.map((action) => action.name)).toEqual(['revise', 'deprecate']);
     expect(entity.actions[0]?.href).toBe('/_meta/api/exec');
+    expect(
+      (entity as unknown as { links: { rel: string[]; href: string }[] }).links,
+    ).toContainEqual({
+      rel: ['application'],
+      href: '/_meta/api/entity?rel=meta/application:publishing',
+    });
   });
 
   it('跨站规则:非 meta rel → 404;缺 rel → 400;未知 meta rel → 404', async () => {

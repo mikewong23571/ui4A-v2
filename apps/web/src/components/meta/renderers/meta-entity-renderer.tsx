@@ -15,11 +15,13 @@ const registry = createMetaRendererRegistry([
 ]);
 
 export function MetaEntityRenderer({
+  rel,
   entity,
   scope,
   descriptorTitle,
   onChanged,
 }: {
+  rel?: string;
   entity: SirenEntity;
   scope: string;
   descriptorTitle?: string;
@@ -34,6 +36,7 @@ export function MetaEntityRenderer({
   return (
     <GenericMetaRenderer
       entity={entity}
+      rel={rel}
       scope={scope}
       descriptorTitle={descriptorTitle}
       onChanged={onChanged}

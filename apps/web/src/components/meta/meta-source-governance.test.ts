@@ -25,7 +25,9 @@ describe('Meta renderer executable governance', () => {
   it('browser Meta exec omits actor/principal and performs a fresh exact read first', () => {
     expect(clientSource).not.toContain('BIOS_CHANNEL');
     expect(clientSource).not.toMatch(/actor:\s*['"]human/);
-    expect(clientSource).toContain('await fetchMetaEntity(input.rel, input.scope)');
+    expect(clientSource).toContain(
+      'await fetchMetaEntity(input.rel, input.scope, { fresh: true })',
+    );
     expect(clientSource).toContain("!action.name.includes('callback')");
   });
 });

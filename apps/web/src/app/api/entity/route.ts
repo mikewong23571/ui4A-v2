@@ -9,6 +9,7 @@ import {
   getAgentRunEntity,
   isAgentRunRel,
 } from '../../../engine/agent-runs';
+import { metaContextFromRequest } from '../../../engine/meta-authorization';
 
 // GET /api/entity?rel=… — Siren 实体端点(spec FR3):
 // - 已知 rel(实例或集合)→ 200 四件组装 properties/actions/links/guard-results;
@@ -33,9 +34,14 @@ export async function GET(request: Request) {
 
   try {
     const db = getDb();
-    const principal = request.headers.get('x-ui4a-principal') ?? 'local-user';
-    const policyScope = request.headers.get('x-ui4a-policy-scope') ?? 'development';
     const engine = await getEngine(db);
+    const context = metaContextFromRequest(
+      request,
+      Object.keys(engine.getSnapshot().applications ?? {}),
+      'development',
+    );
+    const principal = context.principal;
+    const policyScope = context.effectiveScope;
     const projected = isCapabilityRunRel(rel)
       ? await getCapabilityRunEntity(db, rel, principal, policyScope)
       : isAgentRunRel(rel)
@@ -62,6 +68,9 @@ export async function GET(request: Request) {
       typeof err.code === 'string' &&
       /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
     const message = error instanceof Error ? error.message : String(error);
+    if (/not authorized|conflicting/.test(message)) {
+      return Response.json({ error: message }, { status: 403 });
+    }
     return Response.json(
       dbFailure ? { error: 'entity 数据库不可用' } : { error: `entity 读取失败: ${message}` },
       { status: dbFailure ? 503 : 500 },

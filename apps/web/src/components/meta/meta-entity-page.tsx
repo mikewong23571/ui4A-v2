@@ -3,21 +3,31 @@
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
-import { useMetaEntity, useMetaSitemap } from './meta-client';
+import { useMetaEntity, useMetaSitemap, type MetaSitemapState } from './meta-client';
 import { MetaEntityRenderer } from './renderers/meta-entity-renderer';
 
-export function MetaEntityPage({ rel, scope }: { rel: string; scope: string }) {
-  const { entity, state, refresh } = useMetaEntity(rel, scope);
-  const { sitemap } = useMetaSitemap(scope);
-  if (state === 'loading')
-    return (
-      <div aria-label="正在加载合同" className="space-y-4">
-        <Skeleton className="h-8 w-2/3" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  if (state === 'missing')
+function LoadingContract() {
+  return (
+    <div aria-label="正在加载合同" className="space-y-4">
+      <Skeleton className="h-8 w-2/3" />
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-64 w-full" />
+    </div>
+  );
+}
+
+function MetaEntityResource({
+  rel,
+  scope,
+  sitemap,
+}: {
+  rel: string;
+  scope: string;
+  sitemap: NonNullable<MetaSitemapState['sitemap']>;
+}) {
+  const { entity, state, refresh } = useMetaEntity(rel, scope, sitemap.version);
+  if (state === 'loading') return <LoadingContract />;
+  if (state === 'missing') {
     return (
       <Card role="alert" className="p-6">
         <h1 className="text-xl font-semibold">合同不存在或当前 Scope 不可见</h1>
@@ -26,7 +36,8 @@ export function MetaEntityPage({ rel, scope }: { rel: string; scope: string }) {
         </p>
       </Card>
     );
-  if (state === 'error' || entity === null)
+  }
+  if (state === 'error' || entity === null) {
     return (
       <Card role="alert" className="border-destructive/40 p-6">
         <h1 className="text-xl font-semibold">读取合同失败</h1>
@@ -35,14 +46,32 @@ export function MetaEntityPage({ rel, scope }: { rel: string; scope: string }) {
         </p>
       </Card>
     );
+  }
   return (
     <div data-testid="meta-content-ready">
       <MetaEntityRenderer
+        rel={rel}
         entity={entity}
         scope={scope}
-        descriptorTitle={sitemap?.surfaces.find((surface) => surface.rel === rel)?.title}
+        descriptorTitle={sitemap.surfaces.find((surface) => surface.rel === rel)?.title}
         onChanged={refresh}
       />
     </div>
   );
+}
+
+export function MetaEntityPage({ rel, scope }: { rel: string; scope: string }) {
+  const { sitemap, state } = useMetaSitemap(scope);
+  if (state === 'loading') return <LoadingContract />;
+  if (state === 'error' || sitemap === null) {
+    return (
+      <Card role="alert" className="border-destructive/40 p-6">
+        <h1 className="text-xl font-semibold">读取授权 Meta sitemap 失败</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          当前 Scope 未获授权或服务不可用。URL 已保留，可以刷新恢复。
+        </p>
+      </Card>
+    );
+  }
+  return <MetaEntityResource rel={rel} scope={scope} sitemap={sitemap} />;
 }

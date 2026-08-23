@@ -344,4 +344,17 @@ describe('POST /api/exec — 确认门(T3 Phase B)', () => {
     );
     expect(suspended.rows[0]).toMatchObject({ n: 0 });
   });
+
+  it('cross-plane action scope is server-revalidated before execution', async () => {
+    const response = await POST(
+      post(
+        { rel: 'post:post-welcome', action: 'unpublish', actor: 'human' },
+        'http://localhost:3100/api/exec?scope=root-admin',
+      ),
+    );
+    expect(response.status).toBe(403);
+    expect(
+      await pool.query("SELECT COUNT(*)::int AS n FROM events WHERE kind='action-executed'"),
+    ).toMatchObject({ rows: [{ n: 0 }] });
+  });
 });

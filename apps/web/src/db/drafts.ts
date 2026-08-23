@@ -380,6 +380,24 @@ export async function listDrafts(
   return result.rows.map((row) => row.aggregate);
 }
 
+/** Bounded reverse lookup used by the human Run → governed Draft relationship view. */
+export async function findDraftsBySource(
+  db: ConnectableDb,
+  input: { owner: string; policyScope: string; source: string },
+): Promise<DraftAggregate[]> {
+  await ensureDraftTables(db);
+  const drafts = await listDrafts(db, {
+    owner: input.owner,
+    policyScope: input.policyScope,
+    limit: 100,
+  });
+  return drafts.filter((draft) =>
+    Object.values(draft.versions).some((version) =>
+      version.provenance.sources.includes(input.source),
+    ),
+  );
+}
+
 export async function rebuildDraftProjection(db: ConnectableDb): Promise<void> {
   await ensureDraftTables(db);
   await withTransaction(db, async (client) => {

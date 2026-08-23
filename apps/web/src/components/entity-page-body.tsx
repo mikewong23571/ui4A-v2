@@ -19,7 +19,7 @@ import { EntityView } from './entity-view';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
-export function EntityPageBody({ rel }: { rel: string }) {
+export function EntityPageBody({ rel, scope }: { rel: string; scope?: string }) {
   const cache = useEntityCache();
   const [tick, setTick] = useState(0);
   const [entity, setEntity] = useState<SirenEntity | null>(null);
@@ -86,6 +86,7 @@ export function EntityPageBody({ rel }: { rel: string }) {
   return (
     <EntityView
       rel={rel}
+      scope={scope}
       entity={entity}
       onChanged={(execRel) => {
         // exec 成功 → 精确失效(当前 rel + 真实所属 collection,回链优先);

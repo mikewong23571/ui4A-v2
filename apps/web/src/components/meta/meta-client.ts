@@ -17,6 +17,8 @@ import type { MetaSitemapDocument } from './meta-surfaces';
 
 const sitemapInflight = new Map<string, Promise<MetaSitemapDocument>>();
 const entityInflight = new Map<string, Promise<SirenEntity | null>>();
+const entityCache = new Map<string, SirenEntity>();
+const MAX_ENTITY_CACHE_ENTRIES = 128;
 
 function scopedEndpoint(path: string, scope?: string): string {
   if (scope === undefined || scope.length === 0) return path;
@@ -51,7 +53,7 @@ export async function execMetaAction(input: {
 }): Promise<ExecClientResult> {
   let response: Response;
   try {
-    const current = await fetchMetaEntity(input.rel, input.scope);
+    const current = await fetchMetaEntity(input.rel, input.scope, { fresh: true });
     const declared = current?.actions.find(
       (action) =>
         action.name === input.action &&
@@ -86,6 +88,7 @@ export async function execMetaAction(input: {
 
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (response.ok && body.entity !== undefined) {
+    invalidateMetaEntity(input.rel, input.scope);
     return { ok: true, entity: body.entity as SirenEntity };
   }
   return {
@@ -103,8 +106,18 @@ export async function execMetaAction(input: {
 }
 
 /** GET /_meta/api/entity?rel=…;404 → null(实体不存在),其余非 200 → 抛错。 */
-export async function fetchMetaEntity(rel: string, scope?: string): Promise<SirenEntity | null> {
+export async function fetchMetaEntity(
+  rel: string,
+  scope?: string,
+  options: { revision?: string; fresh?: boolean } = {},
+): Promise<SirenEntity | null> {
   const endpoint = scopedEndpoint(`/_meta/api/entity?rel=${encodeURIComponent(rel)}`, scope);
+  const cacheKey =
+    options.revision === undefined ? undefined : `${scope ?? ''}\0${options.revision}\0${rel}`;
+  if (options.fresh !== true && cacheKey !== undefined) {
+    const cached = entityCache.get(cacheKey);
+    if (cached !== undefined) return cached;
+  }
   const existing = entityInflight.get(endpoint);
   if (existing !== undefined) return existing;
   const pending = (async () => {
@@ -113,13 +126,29 @@ export async function fetchMetaEntity(rel: string, scope?: string): Promise<Sire
     if (!response.ok) {
       throw new Error(`GET /_meta/api/entity?rel=${rel} → HTTP ${response.status}`);
     }
-    return (await response.json()) as SirenEntity;
+    const entity = (await response.json()) as SirenEntity;
+    if (cacheKey !== undefined) {
+      entityCache.set(cacheKey, entity);
+      if (entityCache.size > MAX_ENTITY_CACHE_ENTRIES) {
+        const oldest = entityCache.keys().next().value as string | undefined;
+        if (oldest !== undefined) entityCache.delete(oldest);
+      }
+    }
+    return entity;
   })();
   entityInflight.set(endpoint, pending);
   try {
     return await pending;
   } finally {
     entityInflight.delete(endpoint);
+  }
+}
+
+function invalidateMetaEntity(rel: string, scope?: string): void {
+  const prefix = `${scope ?? ''}\0`;
+  const suffix = `\0${rel}`;
+  for (const key of entityCache.keys()) {
+    if (key.startsWith(prefix) && key.endsWith(suffix)) entityCache.delete(key);
   }
 }
 
@@ -160,7 +189,7 @@ export function useMetaSitemap(scope?: string): MetaSitemapState {
   return { sitemap, state };
 }
 
-export function useMetaEntity(rel: string, scope?: string): MetaEntityState {
+export function useMetaEntity(rel: string, scope?: string, revision?: string): MetaEntityState {
   const [tick, setTick] = useState(0);
   const [entity, setEntity] = useState<SirenEntity | null>(null);
   const [state, setState] = useState<MetaEntityState['state']>('loading');
@@ -169,7 +198,7 @@ export function useMetaEntity(rel: string, scope?: string): MetaEntityState {
     let cancelled = false;
     const load = async () => {
       try {
-        const next = await fetchMetaEntity(rel, scope);
+        const next = await fetchMetaEntity(rel, scope, { revision, fresh: tick > 0 });
         if (cancelled) return;
         setEntity(next);
         setState(next === null ? 'missing' : 'ready');
@@ -181,7 +210,7 @@ export function useMetaEntity(rel: string, scope?: string): MetaEntityState {
     return () => {
       cancelled = true;
     };
-  }, [rel, scope, tick]);
+  }, [rel, revision, scope, tick]);
 
   return { entity, state, refresh: () => setTick((n) => n + 1) };
 }

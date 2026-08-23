@@ -19,7 +19,7 @@ export type ExecClientResult =
   | { ok: false; status: number; layer: string; reason: string; detail?: unknown };
 
 function contractPrefix(rel: string): '' | '/_meta' {
-  return rel.startsWith('meta/') ? '/_meta' : '';
+  return rel.startsWith('meta/') || rel.startsWith('draft:') ? '/_meta' : '';
 }
 
 /** 提交一个已声明动作；meta rel 留在定义合同站，业务 rel 留在业务站。 */
@@ -27,6 +27,7 @@ export async function execAction(input: {
   rel: string;
   action: string;
   params?: Record<string, unknown>;
+  scope?: string;
 }): Promise<ExecClientResult> {
   let response: Response;
   try {
@@ -34,11 +35,16 @@ export async function execAction(input: {
       input.params !== undefined && Object.keys(input.params).length > 0
         ? { params: input.params }
         : {};
-    response = await fetch(`${contractPrefix(input.rel)}/api/exec`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ rel: input.rel, action: input.action, ...params, ...HUMAN_CHANNEL }),
-    });
+    response = await fetch(
+      `${contractPrefix(input.rel)}/api/exec${
+        input.scope === undefined ? '' : `?scope=${encodeURIComponent(input.scope)}`
+      }`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ rel: input.rel, action: input.action, ...params, ...HUMAN_CHANNEL }),
+      },
+    );
   } catch (error) {
     return {
       ok: false,
@@ -67,8 +73,14 @@ export async function execAction(input: {
 }
 
 /** GET 合同实体；meta rel 留在定义合同站。404 → null，其余非 200 → 抛错。 */
-export async function fetchEntity(rel: string, signal?: AbortSignal): Promise<SirenEntity | null> {
-  const endpoint = `${contractPrefix(rel)}/api/entity?rel=${encodeURIComponent(rel)}`;
+export async function fetchEntity(
+  rel: string,
+  signal?: AbortSignal,
+  scope?: string,
+): Promise<SirenEntity | null> {
+  const endpoint = `${contractPrefix(rel)}/api/entity?rel=${encodeURIComponent(rel)}${
+    scope === undefined ? '' : `&scope=${encodeURIComponent(scope)}`
+  }`;
   const response = await fetch(endpoint, { signal });
   if (response.status === 404) return null;
   if (!response.ok) {

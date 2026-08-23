@@ -94,4 +94,19 @@ describe('Meta browser client', () => {
     expect(result).toMatchObject({ ok: false, layer: 'stale-action' });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it('reuses a revision-aware exact entity across sequential section remounts but fresh reads bypass it', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(exact), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchMetaEntity('draft:cache-test', 'governance', { revision: 'sitemap-v1' });
+    await fetchMetaEntity('draft:cache-test', 'governance', { revision: 'sitemap-v1' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await fetchMetaEntity('draft:cache-test', 'governance', {
+      revision: 'sitemap-v1',
+      fresh: true,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

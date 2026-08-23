@@ -664,6 +664,20 @@ describe('EntityView:确认实体与 inbox 集合渲染', () => {
     expect(reject.disabled).toBe(false);
   });
 
+  it('cross-plane links preserve the authorized policy scope', () => {
+    const entity = confirmationEntity();
+    entity.links = [
+      {
+        rel: ['agent-definition'],
+        href: '/_meta/api/entity?rel=meta%2Fagent-definition%3Aauthor%401',
+      },
+    ];
+    render(<EntityView rel="agent-run:r1" scope="governance" entity={entity} />);
+    expect(
+      screen.getByRole('link', { name: 'meta/agent-definition:author@1' }).getAttribute('href'),
+    ).toBe('/meta/entity?rel=meta%2Fagent-definition%3Aauthor%401&scope=governance');
+  });
+
   it('状态类 guard 失败仍禁用(renderer 身份规则只解除 actor-is-human)', () => {
     const entity = confirmationEntity({
       'target-action': 'unpublish',

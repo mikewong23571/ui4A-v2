@@ -27,17 +27,21 @@ function DisplayValue({ value }: { value: unknown }) {
 
 export function GenericMetaRenderer({
   entity,
+  rel: requestedRel,
   scope,
   descriptorTitle,
   onChanged,
 }: {
   entity: SirenEntity;
+  rel?: string;
   scope: string;
   descriptorTitle?: string;
   onChanged?: () => void;
 }) {
-  const rel = typeof entity.properties.rel === 'string' ? entity.properties.rel : '';
+  const rel =
+    typeof entity.properties.rel === 'string' ? entity.properties.rel : (requestedRel ?? '');
   const members = entity.entities ?? [];
+  const safeProperties = redactMetaValue(entity.properties) as Record<string, unknown>;
   return (
     <div className="space-y-6">
       <header className="space-y-3 border-b pb-5">
@@ -111,7 +115,7 @@ export function GenericMetaRenderer({
           合同事实
         </h2>
         <dl className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2">
-          {Object.entries(entity.properties).map(([key, value]) => (
+          {Object.entries(safeProperties).map(([key, value]) => (
             <div key={key} className="min-w-0 bg-card p-3">
               <dt className="text-xs font-medium text-muted-foreground">{key}</dt>
               <dd className="mt-1 text-sm">

@@ -115,6 +115,12 @@ describe('GET /api/entity', () => {
     expect(body.error).toContain('rel');
   });
 
+  it('cross-plane scope is server-validated and unknown widening is rejected', async () => {
+    expect((await GET(request('?rel=articles&scope=governance'))).status).toBe(200);
+    const forged = await GET(request('?rel=articles&scope=root-admin'));
+    expect(forged.status).toBe(403);
+  });
+
   it('db 不可达 → 503 JSON,不抛 500', async () => {
     process.env.DATABASE_URL = BAD_URL;
     try {

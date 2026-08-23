@@ -21,9 +21,10 @@ export default function EntityPage({
 }) {
   const params = use(searchParams);
   const rel = typeof params.rel === 'string' ? params.rel : '';
+  const scope = typeof params.scope === 'string' ? params.scope : undefined;
   return (
-    <EntityCacheProvider>
-      <EntityPageBody rel={rel} />
+    <EntityCacheProvider scope={scope}>
+      <EntityPageBody rel={rel} scope={scope} />
     </EntityCacheProvider>
   );
 }

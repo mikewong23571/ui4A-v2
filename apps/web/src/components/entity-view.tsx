@@ -20,6 +20,7 @@ import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 
 import { ActionRunner } from './action-runner';
+import { execAction } from './exec-client';
 
 /** 从合同 href 提取 rel(只认 /api/entity?rel=…;其余 href 无 rel 可提)。 */
 function hrefToRel(href: string): string | null {
@@ -29,8 +30,11 @@ function hrefToRel(href: string): string | null {
 }
 
 /** 页面导航 href(renderer 内路由 = /entity?rel=…)。 */
-export function entityPageHref(rel: string): string {
-  return `/entity?rel=${encodeURIComponent(rel)}`;
+export function entityPageHref(rel: string, scope?: string): string {
+  const page = rel.startsWith('meta/') || rel.startsWith('draft:') ? '/meta/entity' : '/entity';
+  return `${page}?rel=${encodeURIComponent(rel)}${
+    scope === undefined ? '' : `&scope=${encodeURIComponent(scope)}`
+  }`;
 }
 
 /**
@@ -158,12 +162,13 @@ export function blockedForRenderer(entry: GuardResultEntry | undefined): boolean
 export interface EntityViewProps {
   /** 页面请求的 rel(标题与缺省用途)。 */
   rel: string;
+  scope?: string;
   entity: SirenEntity;
   /** 任一动作 exec 成功后的刷新回调(参数 = 实际提交的实例 rel)。 */
   onChanged?: (rel: string) => void;
 }
 
-export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
+export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
   const guardMap = new Map((entity['guard-results'] ?? []).map((entry) => [entry.action, entry]));
   const execRel =
     typeof entity.properties.rel === 'string' && entity.properties.rel !== ''
@@ -255,6 +260,7 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
                     blockReason={guard?.reason}
                     onExecuted={onChanged}
                     prefill={prefillFields}
+                    execFn={(input) => execAction({ ...input, scope })}
                   />
                 </Card>
               );
@@ -277,7 +283,7 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
                     </Badge>
                     {target !== null ? (
                       <a
-                        href={entityPageHref(target)}
+                        href={entityPageHref(target, scope)}
                         data-rel={target}
                         data-nav={link.rel[0]}
                         className="break-all text-primary hover:underline"
@@ -311,7 +317,7 @@ export function EntityView({ rel, entity, onChanged }: EntityViewProps) {
                 return (
                   <li key={target}>
                     <a
-                      href={entityPageHref(target)}
+                      href={entityPageHref(target, scope)}
                       data-rel={target}
                       data-nav="item"
                       className="break-all text-primary hover:underline"

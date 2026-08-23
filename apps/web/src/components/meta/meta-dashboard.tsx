@@ -53,7 +53,12 @@ export function MetaDashboard({
         const results = await Promise.allSettled(
           descriptors.map(
             async (descriptor) =>
-              [descriptor.rel, await fetchMetaEntity(descriptor.rel, next.effectiveScope)] as const,
+              [
+                descriptor.rel,
+                await fetchMetaEntity(descriptor.rel, next.effectiveScope, {
+                  revision: next.version,
+                }),
+              ] as const,
           ),
         );
         if (cancelled) return;

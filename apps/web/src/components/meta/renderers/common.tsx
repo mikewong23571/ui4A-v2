@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ActionRunner } from '@/components/action-runner';
+import { blockedForRenderer } from '@/components/entity-view';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
@@ -33,7 +34,9 @@ export function browserHrefForContractHref(href: string, scope: string): string 
   const url = new URL(href, 'http://ui4a.local');
   if (url.origin !== 'http://ui4a.local' || url.pathname !== '/api/entity') return null;
   const rel = url.searchParams.get('rel');
-  return rel === null ? null : `/entity?rel=${encodeURIComponent(rel)}`;
+  return rel === null
+    ? null
+    : `/entity?rel=${encodeURIComponent(rel)}&scope=${encodeURIComponent(scope)}`;
 }
 
 export function MetaActions({
@@ -41,15 +44,18 @@ export function MetaActions({
   rel,
   scope,
   prefill,
+  excludeActions = [],
   onChanged,
 }: {
   entity: SirenEntity;
   rel: string;
   scope: string;
   prefill?: Record<string, unknown>;
+  excludeActions?: string[];
   onChanged?: () => void;
 }) {
-  const actions = publicMetaActions(entity);
+  const excluded = new Set(excludeActions);
+  const actions = publicMetaActions(entity).filter((action) => !excluded.has(action.name));
   if (actions.length === 0) return null;
   const guards = new Map((entity['guard-results'] ?? []).map((guard) => [guard.action, guard]));
   return (
@@ -70,7 +76,7 @@ export function MetaActions({
               <ActionRunner
                 rel={rel}
                 action={action}
-                blocked={guard?.blocked === true}
+                blocked={blockedForRenderer(guard)}
                 blockReason={guard?.reason}
                 prefill={actionPrefill}
                 execFn={(input) => execMetaAction({ ...input, scope })}

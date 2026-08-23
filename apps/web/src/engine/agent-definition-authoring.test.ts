@@ -33,6 +33,7 @@ import { getPool } from '../db/pool';
 import { dispatchAgentRun } from '../temporal/agent-run';
 import { agentDefinitionDraftRegistryPort } from './agent-definitions';
 import { finalizeAgentRunSource } from './agent-run-source-callback';
+import { getAgentRunEntity } from './agent-runs';
 import { executeDraftMeta, getDraftMetaEntity } from './drafts';
 import { getEngine, resetEngineForTests } from './service';
 
@@ -311,6 +312,16 @@ describe('Agent-authored Agent Definition governance', () => {
       kind: 'agent-definition',
       target: 'support-triage',
       status: 'ready',
+    });
+    const runEntity = await getAgentRunEntity(
+      pool,
+      `agent-run:${run.runId}`,
+      'local-user',
+      'governance',
+    );
+    expect(runEntity?.links).toContainEqual({
+      rel: ['draft'],
+      href: `/_meta/api/entity?rel=${encodeURIComponent(`draft:${drafts[0]!.id}`)}`,
     });
     expect(
       await getActiveAgentDefinition(pool, 'support-triage', 'local-user', 'governance'),

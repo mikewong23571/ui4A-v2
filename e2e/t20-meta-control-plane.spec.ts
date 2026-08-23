@@ -71,10 +71,16 @@ test.describe.serial('T20 Meta Human Control Plane', () => {
     await expect(page.getByRole('heading', { name: '封闭权威' })).toBeVisible();
     await expect(page.getByRole('heading', { name: '数据绑定' })).toBeVisible();
     await expect(page.getByRole('heading', { name: '部署要求' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'runs' })).toHaveAttribute('href', /agent-runs/);
+    await expect(page.getByRole('link', { name: 'runs' })).toHaveAttribute(
+      'href',
+      /agent-runs.*scope=governance/,
+    );
     await expect(page.getByText(/Provider profile 与 credential/)).toBeVisible();
     await expect(page.getByText(/sk-[A-Za-z0-9]{8}|apiKey|LLM_API_KEY/)).toHaveCount(0);
     await screenshot(page, testInfo, 'agent-definition-desktop-1440x900');
+    await page.getByRole('link', { name: 'runs' }).click();
+    await expect(page).toHaveURL(/\/entity\?rel=agent-runs&scope=governance/);
+    await expect(page.getByRole('heading', { name: 'agent-runs' })).toBeVisible();
   });
 
   test('future surface uses safe generic renderer without dashboard branches', async ({ page }) => {
@@ -131,6 +137,7 @@ test.describe.serial('T20 Meta Human Control Plane', () => {
   test('invalid Draft workbench prioritizes blockers, checks and evidence', async ({
     page,
   }, testInfo) => {
+    let revised = false;
     await page.route('**/_meta/.well-known/ui4a.json**', async (route) => {
       await route.fulfill({
         json: {
@@ -147,7 +154,7 @@ test.describe.serial('T20 Meta Human Control Plane', () => {
     await page.route('**/_meta/api/entity?**', async (route) => {
       await route.fulfill({
         json: {
-          class: ['meta', 'draft', 'agent-definition', 'invalid'],
+          class: ['meta', 'draft', 'agent-definition', revised ? 'ready' : 'invalid'],
           properties: {
             rel: 'draft:fixture',
             id: 'fixture',
@@ -155,19 +162,180 @@ test.describe.serial('T20 Meta Human Control Plane', () => {
             policyScope: 'governance',
             kind: 'agent-definition',
             target: 'writer',
-            status: 'invalid',
+            status: revised ? 'ready' : 'invalid',
+            version: revised ? 2 : 1,
+            maxVersion: revised ? 2 : 1,
+            validation: {
+              valid: revised,
+              issues: revised
+                ? []
+                : [
+                    {
+                      code: 'eval-required',
+                      path: '/evaluationPolicy',
+                      message: 'Eval required',
+                    },
+                  ],
+            },
+            checks: [
+              revised
+                ? { name: 'eval', pass: true }
+                : { name: 'eval', pass: false, detail: ['missing evidence'] },
+            ],
+            evaluation: revised
+              ? { refs: ['eval:writer'], missing: [] }
+              : { refs: ['eval:writer'], missing: ['eval:writer'] },
+            provenance: { actor: 'agent', principal: 'local-user', sources: ['agent-run:r1'] },
+            payload: revised
+              ? {
+                  schemaVersion: 1,
+                  name: 'writer',
+                  version: 1,
+                  intent: 'Needs evaluation policy',
+                  evaluationPolicy: { minimumScore: 0.8 },
+                }
+              : {
+                  schemaVersion: 1,
+                  name: 'writer',
+                  version: 1,
+                  intent: 'Needs evaluation policy',
+                },
+          },
+          actions: [
+            {
+              name: 'revise',
+              title: 'Revise',
+              method: 'POST',
+              href: '/_meta/api/exec',
+              fields: {
+                type: 'object',
+                properties: {
+                  commandId: { type: 'string' },
+                  baseVersion: { type: 'number' },
+                  payload: {},
+                },
+                required: ['commandId', 'baseVersion', 'payload'],
+                additionalProperties: false,
+              },
+            },
+          ],
+          links: [],
+          'guard-results': [],
+        },
+      });
+    });
+    await page.route('**/_meta/api/exec**', async (route) => {
+      const body = route.request().postDataJSON() as {
+        rel: string;
+        action: string;
+        params: { baseVersion: number; payload: unknown };
+      };
+      expect(body).toMatchObject({
+        rel: 'draft:fixture',
+        action: 'revise',
+        params: {
+          baseVersion: 1,
+          payload: {
+            name: 'writer',
+            evaluationPolicy: { minimumScore: 0.8 },
+          },
+        },
+      });
+      revised = true;
+      await route.fulfill({ json: { entity: { properties: { status: 'ready' } } } });
+    });
+    await page.goto('/meta/entity?rel=draft%3Afixture&scope=governance');
+    await expect(page.getByText('1 个阻塞问题')).toBeVisible();
+    await expect(page.getByRole('alert').getByText('Eval required')).toBeVisible();
+    await expect(page.getByText('FAIL', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Minimum score')).toBeVisible();
+    await screenshot(page, testInfo, 'invalid-draft-desktop-1440x900');
+    await page.getByLabel('Minimum score').fill('0.8');
+    await page.getByRole('button', { name: '保存修订' }).click();
+    await expect.poll(() => revised).toBe(true);
+    await expect(page.getByText('ready', { exact: true })).toBeVisible();
+  });
+
+  test('pending Draft decision is keyboard-completable and current-action backed', async ({
+    page,
+  }) => {
+    let executed = false;
+    const activation = {
+      class: ['meta', 'activation', 'pending-approval'],
+      properties: {
+        rel: 'meta/activation:draft:pending',
+        version: 1,
+        status: 'pending-approval',
+      },
+      actions: [
+        {
+          name: 'approve',
+          title: 'Approve',
+          method: 'POST',
+          href: '/_meta/api/exec',
+          fields: {
+            type: 'object',
+            properties: { commandId: { type: 'string', minLength: 1 } },
+            required: ['commandId'],
+            additionalProperties: false,
+          },
+        },
+      ],
+      links: [],
+      'guard-results': [
+        {
+          action: 'approve',
+          blocked: true,
+          reason: 'actor-is-human is evaluated from authenticated request context',
+          guards: [{ name: 'actor-is-human', pass: false }],
+        },
+      ],
+    };
+    await page.route('**/_meta/.well-known/ui4a.json**', async (route) => {
+      await route.fulfill({
+        json: {
+          protocolVersion: '1',
+          version: 'pending-v1',
+          site: 'meta',
+          effectiveScope: 'governance',
+          authorizedScopes: ['governance'],
+          authorizationMode: 'self-reported-local-demo',
+          surfaces: [{ rel: 'draft:pending', title: 'Pending writer' }],
+        },
+      });
+    });
+    await page.route('**/_meta/api/entity?**', async (route) => {
+      const rel = new URL(route.request().url()).searchParams.get('rel');
+      if (rel === 'meta/activation:draft:pending') {
+        await route.fulfill({
+          json: executed
+            ? {
+                ...activation,
+                class: ['meta', 'activation', 'accepted'],
+                properties: { ...activation.properties, status: 'accepted' },
+                actions: [],
+                'guard-results': [],
+              }
+            : activation,
+        });
+        return;
+      }
+      await route.fulfill({
+        json: {
+          class: ['meta', 'draft', 'agent-definition', executed ? 'accepted' : 'pending-approval'],
+          properties: {
+            rel: 'draft:pending',
+            id: 'pending',
+            owner: 'local-user',
+            policyScope: 'governance',
+            kind: 'agent-definition',
+            target: 'writer',
+            status: executed ? 'accepted' : 'pending-approval',
             version: 1,
             maxVersion: 1,
-            validation: {
-              valid: false,
-              issues: [
-                { code: 'eval-required', path: '/evaluationPolicy', message: 'Eval required' },
-              ],
-            },
-            checks: [{ name: 'eval', pass: false, detail: ['missing evidence'] }],
-            evaluation: { refs: ['eval:writer'], missing: ['eval:writer'] },
-            provenance: { actor: 'agent', principal: 'local-user', sources: ['agent-run:r1'] },
-            payload: { name: 'writer' },
+            validation: { valid: true, issues: [] },
+            checks: [{ name: 'eval', pass: true }],
+            activation: 'meta/activation:draft:pending',
           },
           actions: [],
           links: [],
@@ -175,11 +343,37 @@ test.describe.serial('T20 Meta Human Control Plane', () => {
         },
       });
     });
-    await page.goto('/meta/entity?rel=draft%3Afixture&scope=governance');
-    await expect(page.getByText('1 个阻塞问题')).toBeVisible();
-    await expect(page.getByRole('alert').getByText('Eval required')).toBeVisible();
-    await expect(page.getByText('FAIL', { exact: true })).toBeVisible();
-    await screenshot(page, testInfo, 'invalid-draft-desktop-1440x900');
+    await page.route('**/_meta/api/exec**', async (route) => {
+      const body = route.request().postDataJSON() as { rel: string; action: string };
+      expect(body).toMatchObject({ rel: 'meta/activation:draft:pending', action: 'approve' });
+      expect(body).not.toHaveProperty('actor');
+      expect(body).not.toHaveProperty('principal');
+      executed = true;
+      await route.fulfill({ json: { entity: { ...activation, actions: [] } } });
+    });
+
+    await page.goto('/meta/entity?rel=draft%3Apending&scope=governance');
+    await expect(page.getByRole('button', { name: 'Approve', exact: true })).toBeEnabled();
+    const declared = await page
+      .locator('[data-action]')
+      .evaluateAll((nodes) => [...new Set(nodes.map((node) => node.getAttribute('data-action')))]);
+    expect(declared).toEqual(['approve']);
+
+    for (let index = 0; index < 40; index += 1) {
+      if (
+        (await page.evaluate(() => document.activeElement?.getAttribute('data-action'))) ===
+        'approve'
+      ) {
+        break;
+      }
+      await page.keyboard.press('Tab');
+    }
+    expect(await page.evaluate(() => document.activeElement?.getAttribute('data-action'))).toBe(
+      'approve',
+    );
+    await page.keyboard.press('Enter');
+    await expect.poll(() => executed).toBe(true);
+    await expect(page.getByText('accepted', { exact: true })).toBeVisible();
   });
 
   test('scope forgery fails and mobile pages have no page-level overflow', async ({
