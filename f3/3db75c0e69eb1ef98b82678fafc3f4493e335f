@@ -1,0 +1,5 @@
+T21 Phase D Green: provider-required bounded protocol repair
+
+Every production Assistant attempt now uses provider-native toolChoice required. A missing call, multiple calls, unknown tool or invalid args receives at most one second real LLM attempt with the same bounded facts/tools and only the validation class. Rejected text is not included or converted. Provider errors remain terminal. Full reasoning emits once for the selected/repaired attempt.
+
+Validation: llm-driver/runtime/source governance 51 tests; route/Presentation/loop 70 tests; agent and web typechecks; formatting/diff checks.
