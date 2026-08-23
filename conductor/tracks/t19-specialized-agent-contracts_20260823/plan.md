@@ -22,10 +22,10 @@
 
 ## Phase C: Definition persistence、Meta Draft 与 registry
 
-- [ ] Task: TS6 Red→Green——definition/template/eval append-only events、content-addressed payload、rebuildable registry/version projection
-- [ ] Task: TS7 Red→Green——T17 Draft 增 agent-definition kind、validation/diff/submit/human-only atomic activation
-- [ ] Task: TS8 Red→Green——Meta exact/list/version/activation Siren 与业务 specialization discovery、跨站/scope isolation
-- [ ] Task: Definition concurrency/replay——duplicate/stale/parallel approval、empty projection rebuild、birth hash
+- [~] Task: TS6 Red→Green——definition/template/eval append-only events、content-addressed payload、rebuildable registry/version projection
+- [~] Task: TS7 Red→Green——T17 Draft 增 agent-definition kind、validation/diff/submit/human-only atomic activation
+- [~] Task: TS8 Red→Green——Meta exact/list/version/activation Siren 与业务 specialization discovery、跨站/scope isolation
+- [~] Task: Definition concurrency/replay——duplicate/stale/parallel approval、empty projection rebuild、birth hash
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase D: Generic Agent Host 与 Coding specialization migration
