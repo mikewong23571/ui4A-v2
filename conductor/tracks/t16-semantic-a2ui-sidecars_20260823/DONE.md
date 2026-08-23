@@ -8,7 +8,7 @@ Human optimization now produces versioned semantic patches, supports pin/revert 
 
 ## Acceptance Evidence
 
-- `pnpm check`: 164 test files, 1,370 tests passed; typecheck passed; lint passed with 0 errors and 6 pre-existing warnings.
+- `pnpm check`: passed at closure and again after D28. Exact test totals belong to command output, not this report; typecheck and lint had no errors.
 - `CI=true pnpm e2e`: 39 passed, 22 explicitly skipped opt-in/superseded suites; exit 0. Business replay hash matched before/after; T16 Golden Story passed on desktop, narrow viewport and keyboard focus.
 - `pnpm eval:t16` with configured `deepseek-v4-flash`: S1/S3 canonical-plus-four language variants and S24 five revision phrasings passed; safety evidence reported zero business mutations.
 - Story routing governance maps every S1–S32 canonical story to deterministic and/or browser evidence; AI stories require at least four variants.

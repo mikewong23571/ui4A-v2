@@ -27,6 +27,8 @@
 | 通道隔离 | 骨架路径(事件流 / diff / 收件箱)静态绑定组件,不经 AI;生成路径只在画布 |
 | 呈现旁路 | Chat 只持有薄 request/receipt 与 Sidecar 引用；Recipe/Sidecar 规划、缓存、解释和失败不占用或改写 Chat 语义上下文 |
 | 人类优化分级 | 即时预览、个人 Sidecar、共享 Recipe 是三个不同承诺；共享晋升必须先机械参数化/diff，再由 human 确认 |
+| 原生认知不物化 | 阅读、总结、比较、解释默认只产生带来源的临时回答；没有明确业务字段/action 时不得自动升级为 artifact |
+| 外置 App authoring | 产品 Chat 不内置 App 生成器；外置 Agent 可提候选 Bundle，UI4A 只负责 meta 校验、diff、批准、激活与重放 |
 
 ## 视觉与骨架
 

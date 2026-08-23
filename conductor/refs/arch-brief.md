@@ -2,6 +2,7 @@
 
 > 蒸馏自正典 `docs/UI4A-v2(重排版):界面作为合同,应用作为数据,能力作为边界.md`(v2.6,805 行),辅以 `README.md`、`docs/UI4A-技术选型.md`、`GOAL.md`、`DECISIONS.md`。所有 JSON 与编号规则为原样引用,出处以"(第 N 层)/(附录 A.x)/(README)/(GOAL)"标注。
 > **用途**:实施 subagent 的上下文入口。需要更多细节时再回读正典对应章节(注意全角标点文件名)。
+> **当前性规则**:本简报同时保留历史推导和当前实现；遇到冲突时以 `GOAL.md` 与较新的 `DECISIONS.md` 为准。T15 已 supersede AI-optional/rule fallback，T16 已 supersede render capability/concern 凝固，D28 已删除 publishing 摘要工件。
 
 ## 1. 分层总览
 
@@ -135,13 +136,20 @@ planner。每次命中仍重新授权、校验依赖并实时解引用。Sidecar
 事件重建。Presentation fold 与 Business fold 分离，任何 Presentation event 误入 Business fold
 都 fail-closed。
 
+### 8.2 外置 App Authoring Agent 边界
+
+Application 创建暂不进入产品 Chat runtime。外置 Agent 可以读取定义语言、用户故事和 meta
+contract，起草完整 Application Bundle；UI4A 只接受候选定义，并执行确定性的 parse、schema、
+invariant、diff、human approval、activation、audit 和 replay。外置 Agent 不获得绕过 meta
+裁决的写路径，其模型、记忆和编排方式也不成为 UI4A 内核协议。
+
 ## 9. 五条垂直切片(第五部,施工顺序)
 
 1. **确认门切片**:agent 执行高危动作 → guard 挂起 → pending 实体化 → notification capability 送达 → 人类在推送上 approve → 事件留痕带 actor/principal。一次验证 guard 第三语义、确认实体、出站能力、委托模型四个论点。构成(README):Cedar 风险策略 + guard 挂起语义 + Temporal notify activity + RJSF 渲染 pending 实体 + 收件箱。GOAL S1 断言:动作未生效挂起 → human approve(actor=human)→ 生效,日志含 actor/principal/信道。
 2. **最小 meta 切片**:flow 定义从源码常量挪进事件日志(XState machine-as-JSON),加定义编辑流和激活 guard;"非法动作被拒绝、非法定义也应被拒绝"从原则变成测试用例。S2 断言:非法定义被拒且留痕 → 修正 → 机械 diff 上人类批准 → sitemap 重生成 → agent 下一步即可用新动作,**无任何 prompt 改动**。
 3. **委托实体切片**:agent 执行从浏览器 Promise 链挪进引擎流程实例(Temporal workflow 即委托实体):N 路并行、崩溃续跑、舰队队列页。验证"裁决器即并发控制"(两个 agent 抢同一条评论,一个成功一个拿到 is-pending 失败)与人类监控成本不随 N 超线性。
 4. **plan-exec 切片**:agent 一次决策输出整段计划,引擎**一次事务里逐步模拟**——每步仍做完整三层裁决,通过则提交,被拒则分步报告。"不是信任计划,是批量裁决计划。"
-5. **骨架与渲染切片**:widget+画布、组件词汇表、render capability(实体缓存+关注点→绑定说明)、主页改态势投影(待处理/在飞/最近事件)。验证 binding-only 与注入防御。
+5. **骨架与渲染切片**:历史 T7 先验证词汇表、binding-only 与 action 背书；当前 T16 使用薄 Presentation Request、Application Recipe、用户级 Sidecar、semantic Surface Tree 和 A2UI hydration，取代 render capability/concern 凝固。
 
 **尚未解决的洞(九条,按严重度)**:①安全权限(剩确认疲劳实证、范围配置 UX、注入有界化未消除且 meta 对注入有放大效应——`_meta` 审批 guard 是必需品);②意图缺口实证;③标准化卡位(独创性窗口一两年);④表达力边界(自由画布/多人协作无解);⑤零数据(缓存命中未测);⑥定义迁移实操;⑦capability 沙箱真实性("不要假装 eval 加正则过滤等于安全");⑧双层日志成本;⑨生成式渲染信任边界(binding-only 未实测、diff 疲劳)。
 
@@ -207,7 +215,7 @@ GOAL 的自动化不变量:I1 真实 LLM 的 U1–U23 Story Eval 达标且生产
 - **裁决**:引擎对每次 exec 的三层校验(声明→guard→schema);"裁决器就是并发控制"。
 - **委托(principal/actor)**:权限主体始终是人(principal),行为者是人类会话或 assistant 角色(actor);OAuth RFC 8693 `act` claim。
 - **背书**:交互元素必须由已声明 action 担保;引申"模型背书的能力"(提取类,产出是模型的承诺而非事实)。
-- **凝固**:按关注点首次生成渲染后缓存,同一关注点永远同一布局(保空间记忆锚点)。
+- **Sidecar fastpath**:按 principal/policyScope/subject/intent/device 保存 binding-only 用户呈现版本；每次命中重新授权、校验依赖并解引用当前事实。它 supersede 历史 concern 凝固模型。
 - **处境披露(situatedness)**:能力只在被实体 action 引用时出现,作用域从超媒体结构继承——对比 function-calling 的全局广播。
 - **提议权**:真实世界对应用没有写权限只有提议权;人类填表、agent 动作、LLM 产出、时钟 tick 都是提议,过同一裁决器。
 - **工件(artifact)**:能力的通用货币(file/text/document-pdf/table/image/embed),内容寻址、入日志、业务实体只存引用。

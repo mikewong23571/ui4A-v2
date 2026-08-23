@@ -1,5 +1,17 @@
 # Project Context
 
+## Authority
+
+Use current documents in this order:
+
+1. [`../GOAL.md`](../GOAL.md) — current scope and DONE.
+2. [`../DECISIONS.md`](../DECISIONS.md) — binding decisions; later decisions supersede earlier ones.
+3. Product, guidelines, tech stack, and [`refs/arch-brief.md`](./refs/arch-brief.md) — current explanatory projection.
+4. Active Track spec/plan — bounded implementation contract.
+5. Completed Tracks, spikes, walkthroughs, and `../docs/` — historical evidence; they may describe superseded behavior.
+
+Do not revive AI-optional rule fallback, concern-key render freezing, summary artifacts, or in-product App creation from historical documents.
+
 ## Definition
 
 -   [Product Definition](./product.md)
@@ -10,6 +22,8 @@
 
 -   [Workflow](./workflow.md)
 -   [Code Style Guides](./code_styleguides/)
+-   [Runtime Operations](../docs/runtime-operations.md)
+-   [Audit and Replay](../docs/audit-and-replay.md)
 
 ## Tracks
 

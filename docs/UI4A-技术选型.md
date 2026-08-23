@@ -1,5 +1,7 @@
 # UI4A 技术选型：全部用社区轮子
 
+> **历史选型调研。** 依赖选择仍有参考价值，但本文中的双 driver、rule fallback、render capability/tool-rendering 和 concern-key 缓存不是当前产品协议。现行实现以 `conductor/tech-stack.md`、T15 AI-first、T16 Presentation Recipe/User Sidecar 和 `DECISIONS.md` D27–D28 为准。
+
 > 原则：架构概念映射到现成的、被社区认可的框架与组件；UI4A 的增量只留在**没人做过的那一层**（Siren 投影 + 三层裁决 + 平面组装）。
 > 检索时间：2026-08。所有选型均验证过当前维护状态。
 

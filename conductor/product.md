@@ -36,7 +36,7 @@ LLM 时代的主要生产力提升,不是把软件更快地写出来,而是让�
 **Chatable 不等于在应用旁边添加聊天框,也不等于应用预定义 Agent 的能力清单。**它意味着应用协议足够完整,使外部智能助手能够围绕应用自由理解、推理、交流和行动。下面只是用户故事示例,不是 Agent 的能力边界:
 
 - **应用理解**:用户可以直接问“这个应用是做什么的”“它能帮我完成什么”;LLM 从 application intent、sitemap、flows 和当前 scope 解释应用目的、能力与边界,用户不必先读产品手册;
-- **事实认知**:用户可以询问应用中的授权事实;LLM 基于这些事实回答、总结、比较、归纳和解释,并保留来源。临时衍生知识不要求业务 action/capability,也不反向成为业务真相;需要持久化、共享、重试或审计时才物化为带 provenance 的 capability artifact;
+- **事实认知**:用户可以询问应用中的授权事实;LLM 基于这些事实回答、总结、比较、归纳和解释,并保留来源。临时衍生知识不要求业务 action/capability,也不反向成为业务真相。是否持久化必须先有明确业务字段和 action 合同；publishing 的摘要不物化为 artifact;
 - **流程引导**:用户可以说“带我走一遍发布流程”;AI 按应用声明的真实 flow 逐步解释当前步骤、所需输入和后续影响,由 renderer 呈现结构化表单与选项,而不是凭 prompt 编造一份教程;
 - **委托操作**:用户表达目标、约束和授权;AI 读取应用当前事实与能力、追问缺失信息、执行真实 action/flow 并报告结果;人类只在需要判断和承担责任的地方介入。
 
@@ -112,6 +112,10 @@ Assistant 的自然语言理解、多轮目标形成、授权事实阅读、总�
 
 Chat Agent 只决定是否呈现、呈现哪个 subject 和 intent；完整 catalog、Surface、bindings 与依赖不进入 Chat 上下文。Application 激活后预生成参数化 Recipe，运行时按 user pinned/cache → promoted/candidate Recipe → generic → Presentation Agent 的顺序解析。Sidecar 只保存 binding-only 展示结构和 provenance，按用户跨 Session 复用；业务事实、guard 和 action 始终实时读取并由引擎裁决。
 
+### App 创建边界
+
+当前产品不在内置 Chat 中创建完整 App。候选方向是由应用外置 Agent 理解需求、整理用户故事并起草 Application Bundle，再通过 UI4A meta 合同提交；UI4A 负责机械 schema/invariant 校验、版本 diff、human approval、激活、审计和 replay。内置 `create-app` 向导、页面设计器和 rule-based App 生成器不属于当前 DONE。
+
 ### 参考 Assistant 组合合同
 
 以下条目约束本仓库提供的参考 Assistant 如何消费 UI4A protocol,不定义外部 agent 的完整能力边界:
@@ -139,7 +143,7 @@ Chat Agent 只决定是否呈现、呈现哪个 subject 和 intent；完整 cata
 | S2 | 最小 meta | agent 经 `_meta` 提交"新增一条边":缺 guard 的非法定义被拒且留痕 → 修正 → 人类在机械 diff 上批准 → sitemap 重生成 → agent 下一步即可用新动作,无任何 prompt 改动 |
 | S3 | 委托实体 | 两个 agent 并发操作同一资源:一个成功、一个拿到带原因的拒绝(裁决器即并发控制);杀掉执行中的委托,新 agent 从实体续跑 |
 | S4 | plan-exec | 六步向导在一次决策内完成,轨迹为一条批量裁决记录,每步裁决可见 |
-| S5 | 渲染 | 聊天说"按分类展示文章" → A2UI surface 渲染图表;渲染 spec 中不含任何字面数值,全部为实体引用 |
+| S5 | 渲染 | 薄 Presentation Request → Recipe/User Sidecar fastpath → binding-only semantic Surface → A2UI 实时解引用；交互重新按当前合同裁决 |
 
 ### 不变量(铁律的自动化形式,持续运行,违反即迭代无效)
 

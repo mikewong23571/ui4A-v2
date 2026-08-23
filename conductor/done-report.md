@@ -1,6 +1,6 @@
 # UI4A v2 — DONE 对照报告
 
-> 原报告生成于 2026-08-21(T1–T8)。2026-08-23 增加 T15 AI-first superseding addendum；旧测试数量与旧 I1 仅是历史快照，不再代表当前 DONE 口径。当前验收以 `GOAL.md`、T15 U1–U23 Story Eval 和最新命令输出为准。
+> 原报告生成于 2026-08-21(T1–T8)。T15/T16/D28 addendum supersede 旧 AI、渲染和摘要口径；旧测试数量与旧 I1 仅是历史快照。当前验收以 `GOAL.md`、`DECISIONS.md`、T15/T16 Story Eval 和最新命令输出为准。
 
 ## T15 AI-first superseding addendum(2026-08-23)
 
@@ -10,12 +10,25 @@ T15 修正了旧报告把“AI 可选”解释为“无模型也由 rule driver 
 |---|---|---|
 | Assistant runtime | default/auto/llm 均为真实 LLM；产品无 rule fallback，scripted/mock 只做协议测试 | `packages/agent/src/llm-driver.ts`、`runtime-governance.test.ts`、`e2e/chat.spec.ts` U22 |
 | 多轮上下文 | 原始 user/assistant 消息 append-only；活动目标、focus、指代、约束、待澄清项和授权证据从日志有界投影 | `apps/web/src/chat/conversation.ts`、`packages/agent/src/types.ts` |
-| 认知/能力边界 | 临时阅读、回答、总结、比较、解释是 LLM 原生能力；正式结果才成为 capability artifact，状态变化另走 action | T15 U1–U4/U15–U17；`packages/engine/src/capability-artifact.ts` |
+| 认知/能力边界 | 阅读、回答、总结、比较、解释是 LLM 原生能力；只有应用先声明明确业务字段/action 时才允许持久化。D28 删除 publishing 摘要 artifact/actions | T15 U1–U4/U15–U17；D28 |
 | 副作用授权 | agent effect 引用 user message id + 逐字 quote；事件记录 declaration/guards/schema/confirmation，解释只从事件链生成 | `packages/agent/src/authorization.ts`、`packages/engine/src/execution-audit.ts` |
 | Provider 配置 | `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` 全部外置；缺项诚实失败且零副作用；正式工件不允许占位模型半写 | `packages/agent/src/llm-config.ts`、`apps/web/src/engine/service.ts` |
 | 验收 | 安全边界确定性测试必须 100%；动态语义由真实 LLM Eval 验收，不以固定措辞、固定轨迹或 fake driver 冒充 | [T15 spec](./tracks/t15-ai-first-dynamic-assistant_20260822/spec.md) 的 Story Eval Contract |
 
 T15 checkpoint `b80efbc` 已完成最终 Story Eval/walkthrough；可复核结果见 [T15 Evaluation Evidence](./tracks/t15-ai-first-dynamic-assistant_20260822/evaluation.md)。
+
+## T16 Presentation 与 D28 addendum(2026-08-23)
+
+| 主题 | 当前口径 | 实现/证据入口 |
+|---|---|---|
+| Chat/Presentation | Chat 只发 subject/intent/constraints/delivery；完整 Surface/catalog/dependencies 不进入 Chat history | T16 spec；`packages/shared/src/presentation.ts` |
+| Runtime fastpath | user pinned/cache → promoted/candidate Recipe → generic → planner；每次重新授权和解引用 | `apps/web/src/engine/presentation/runtime.ts` |
+| User memory | Sidecar 按 principal/policyScope/subject/intent/device 跨 Session 保存，禁止 sessionId | `packages/engine/src/presentation/sidecar.ts` |
+| Human optimization | semantic patch、pin/revert、机械 diff、human-only Recipe promotion | T16 Golden Story |
+| 摘要 | Assistant 原生临时回答；publishing 无 summarize capability、生成工件或保存引用 action | D28；built-in Application Bundle |
+| App 创建 | 不在产品 Chat 内闭环；候选方向为外置 Agent 起草 Bundle、UI4A meta 治理 | `GOAL.md` App 创建边界 |
+
+T16 关闭报告见 [T16 DONE](./tracks/t16-semantic-a2ui-sidecars_20260823/DONE.md)。测试数量不再抄入报告，以 `pnpm check`、`CI=true pnpm e2e` 和 opt-in Story Eval 的现场输出为准。
 
 ## 基线场景(业务平面)
 
@@ -34,14 +47,14 @@ T15 checkpoint `b80efbc` 已完成最终 Story Eval/walkthrough；可复核结�
 | S2 | 非法定义拒且留痕→修正→机械 diff 人批→sitemap 重生成→agent 零 prompt 用新动作 | ✅ | `e2e/s2.spec.ts` 五要素逐条映射(拒 to-exists 留痕→修正→BIOS diff 批准→version bump→同会话动态发现 pin);定义入事件日志(T4 Phase B);在途实例按出生版本 |
 | S3 | 并发一成一拒带原因;杀掉执行中委托续跑 | ✅ | `e2e/s3.spec.ts`(同标题并发发布:title-not-taken 世界状态型 guard,载体偏差记录于 spec 头注;SIGKILL worker→Temporal 恢复→步事件无缺口;3 委托并行+舰队页);engine kill 集成测试(T5 Phase A) |
 | S4 | 六步向导一次决策,一条批量裁决记录,每步裁决可见 | ✅ | `e2e/s4.spec.ts`(六步单次 exec-plan;恰一条 plan-executed;exec 调用计数=1;拒绝截断;挂起交互);真实 GLM 计划冒烟曾跑通(T6 Phase B) |
-| S5 | 聊天→A2UI surface 图表;spec 零字面全实体引用 | ✅ | `e2e/s5.spec.ts`(官方 @a2ui SDK surface;validateSpec 零字面断言;数值与实体快照逐项对拍;凝固);渲染词汇表十词条 + 骨架五面 |
+| S5 | 薄 Presentation Request → Recipe/用户 Sidecar → binding-only semantic Surface → A2UI 实时解引用 | ✅ | T16 Golden Story；Surface/compiler/Sidecar/action tests。旧 `e2e/s5.spec.ts` concern 凝固故事已 supersede |
 
 ## 不变量(持续运行)
 
 | # | 不变量 | 结果 | 证据(e2e/invariants.spec.ts 命名套件) |
 |---|---|---|---|
 | I1 | 配置真实 LLM 后 U1–U23 达到 Story Eval 门槛；生产 Assistant 无 rule fallback | 以 T15 最终 Eval 为准 | 旧 `I1 零智能完整` 已 supersede；协议 fixture 不再是 Assistant 能力证据 |
-| I2 | 渲染 spec 解引用后的值与实体快照一致 | ✅ | property test(T7 Phase A,150 runs)+ `I2 事实不可发明 › 渲染 spec 解引用…`(生产 derefSpec 对拍)+ s5 e2e |
+| I2 | Surface 只保存 binding，显示值与实时授权实体一致 | ✅ | Presentation Surface/compiler/property tests + T16 Golden Story；旧 RenderSpec 对拍仅作历史证据 |
 | I3 | fuzz 可点元素必映射已声明 action,合同外按钮无法提交 | ✅ | `e2e/i3.spec.ts`(七页全量 fuzz + 未声明按钮零 /api/exec)+ `I3 交互必背书 › 抽 2 页…` |
 | I4 | 以 agent 身份执行 approve 必被拒 | ✅ | s1 + `I4 审批不委托…`(422 actor-is-human 留痕);meta approve 同口径(s2) |
 | I5 | 从空库重放事件日志,实体状态 hash 一致 | ✅ | `I5 可重放 › 完整压缩场景序列 → TRUNCATE 回灌重放 → 全实体 hash 一致`(在线 hash=c341491028a5,22 rels/27 events,三轮确定);另有局部重放单测(T2 replay/s2) |
@@ -74,5 +87,8 @@ DONE = demo 质量 ✅;生产化(多租户/部署硬化/压测/真实 SSO)显式
 | t6-plan-exec | 批量裁决 executePlan(S4) | [x] |
 | t7-rendering | 词汇表+binding-only+A2UI+骨架五面(S5,I2,I3) | [x] |
 | t8-acceptance | 不变量套件+全量重放+双执行者+demo 清单+DONE 报告+终审 | [x](本报告) |
+| t9–t14 | 前端基座、Application 分组、Agent 可观测性、渲染增强、Meta 可视化与 walkthrough 修复 | [x] |
+| t15-ai-first | 真实 LLM、多轮日志状态、原生认知、授权与 U1–U23 | [x] |
+| t16-presentation | 薄协议、Recipe、用户 Sidecar、semantic A2UI、人类优化与 S1–S32 | [x] |
 
 历史测试总量(T8 快照):821 单测 + 43 E2E(42 过 + 1 真实 LLM 门控)。当前数量与结果必须现场运行 `pnpm check`、`CI=true pnpm e2e` 及门控 Story Eval 获取，不复用本快照。

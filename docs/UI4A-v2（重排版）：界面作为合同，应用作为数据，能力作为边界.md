@@ -1,5 +1,7 @@
 # UI4A v2：界面作为合同，应用作为数据，能力作为边界
 
+> **历史架构论证，不是当前运行合同。** 本文保留设计演进和问题推导；其中 AI-optional、生产 rule fallback、`render capability`、concern 凝固等方案已被 T15/T16 和 `DECISIONS.md` D27–D28 supersede。当前权威顺序是 `GOAL.md` → `DECISIONS.md` → `conductor/product*.md` → `conductor/refs/arch-brief.md`。App 创建当前也不在产品内闭环，候选方向是外置 Agent 起草 Bundle、UI4A 负责机械治理。
+
 > 本文是《UI4A：面向 Agent 的界面，一种应用架构的反转》（v1）的修订版。
 > 本版为**重排版**（v2.6）：内容与 v2.5 逐字一致，只动组织——导览开路、五部成册、修订史沉底。各轮修订的来龙去脉，见文末"修订史"。
 

@@ -204,7 +204,8 @@
   binderless 自定义词条在本 Track 先以受影响 Surface rebuild 保证正确性。
 - **Recipe 生命周期**:Application/Flow 激活后由纯 Scenario Enumerator 按结构机械产生
   descriptor，再由独立 Presentation Agent 生成参数化 candidate Recipe。descriptor/Recipe
-  禁止 principal、sessionId、用户偏好与 live facts；`publishing@1` 当前机械清单为 15 个场景。
+  禁止 principal、sessionId、用户偏好与 live facts；D28 删除摘要 capability/actions 后，
+  `publishing@1` 当前机械清单为 13 个场景。
   candidate 只有通过 binding/catalog/dependency 校验才可作低优先级 fastpath；human-only
   promotion 产生 immutable promoted version，旧兼容版本继续服务，不兼容版本立即 stale。
 - **Sidecar 真相与 fastpath**:仍以现有 append-only `events` 为唯一 durable truth，但

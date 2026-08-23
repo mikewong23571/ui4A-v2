@@ -3,6 +3,7 @@
 > 来源:`docs/UI4A-技术选型.md`(2026-08 检索验证)。
 > 原则:全部用社区轮子,不自造;UI4A 的增量只留在没人做过的那一层(Siren 投影 + 三层裁决 + 平面组装)。
 > 约束:GOAL.md 明确"技术栈严格按选型文档,不自造轮子"。
+> 当前协议以本文件与 `DECISIONS.md` 为准；原始选型文档中的 rule fallback、render capability/tool-rendering 和 concern cache 已 supersede。
 
 ## 总栈决定
 
@@ -29,6 +30,7 @@
 | 渲染协议(画布) | **A2UI(Google, v0.9)** | 数据与组件分离;我们侧强制 binding-only + action 拦截 |
 | LLM Assistant | AI SDK + OpenAI-compatible Chat Completions | AI-first;真实 LLM 是产品智能主体，scripted/mock driver 仅用于协议测试 |
 | Presentation Plane | UI4A semantic Surface kernel + A2UI runtime + PostgreSQL projection | Application Recipe 预生成；用户级 Sidecar/版本/patch/promotion 独立事件重放；Chat 只见薄 request/receipt |
+| 外置 App Authoring | 外部 Agent + UI4A meta HTTP contracts | Agent 起草 Bundle；UI4A 负责机械校验、diff、human approval、激活、审计和 replay；不进入产品 Chat runtime |
 
 ### 渲染词汇表组件(注册为 A2UI 扩展目录,MVP 前十词)
 
