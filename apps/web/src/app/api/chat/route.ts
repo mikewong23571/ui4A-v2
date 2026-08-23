@@ -9,6 +9,7 @@ import {
   type FactRef,
 } from '@ui4a/agent';
 import { completePresentationRequest } from '@ui4a/shared';
+import { parseClientViewReport, type ClientViewReport } from '@ui4a/shared';
 
 import type {
   ChatTurnDetail,
@@ -85,6 +86,7 @@ interface ParsedChatBody {
   turnId: string;
   driver: 'llm' | 'auto';
   mode: 'inline' | 'delegated';
+  clientView?: ClientViewReport;
 }
 
 interface ParseError {
@@ -100,7 +102,7 @@ function parseBody(body: unknown): ParsedChatBody | ParseError {
   if (!isPlainObject(body)) {
     return { ok: false, error: '请求体必须是 JSON 对象' };
   }
-  const { goal, sessionId, turnId, driver, mode } = body;
+  const { goal, sessionId, turnId, driver, mode, clientView } = body;
   if (!isPlainObject(goal) || typeof goal.verb !== 'string' || goal.verb === '') {
     return { ok: false, error: 'goal 必须是 {verb: 非空字符串, …}' };
   }
@@ -127,6 +129,17 @@ function parseBody(body: unknown): ParsedChatBody | ParseError {
   if (mode !== undefined && mode !== 'inline' && mode !== 'delegated') {
     return { ok: false, error: 'mode 必须是 "inline" | "delegated"' };
   }
+  let parsedClientView: ClientViewReport | undefined;
+  if (clientView !== undefined) {
+    try {
+      parsedClientView = parseClientViewReport(clientView);
+    } catch (error) {
+      return {
+        ok: false,
+        error: `clientView 无效: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
   return {
     ok: true,
     // 双重断言理由:goal 的 verb/targetRel/resource/fields 各键已在上文逐键校验,
@@ -136,6 +149,7 @@ function parseBody(body: unknown): ParsedChatBody | ParseError {
     turnId: turnId ?? crypto.randomUUID(),
     driver: driver ?? 'auto',
     mode: mode ?? 'inline',
+    ...(parsedClientView === undefined ? {} : { clientView: parsedClientView }),
   };
 }
 
@@ -216,6 +230,7 @@ async function appendConversationMessage(args: {
   content: string;
   model?: string;
   citations?: FactRef[];
+  clientView?: ClientViewReport;
 }): Promise<number> {
   const appended = await appendEvent(getDb(), {
     kind: 'chat-message-appended',
@@ -234,6 +249,7 @@ async function appendConversationMessage(args: {
           ? { kind: 'user-input' as const }
           : { kind: 'assistant-output' as const, ...(args.model ? { model: args.model } : {}) },
       ...(args.citations !== undefined ? { citations: args.citations } : {}),
+      ...(args.clientView === undefined ? {} : { clientView: args.clientView }),
     },
   });
   return appended.seq;
@@ -530,7 +546,7 @@ export async function POST(request: Request) {
     return Response.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { goal, sessionId, turnId, driver: requested, mode } = parsed;
+  const { goal, sessionId, turnId, driver: requested, mode, clientView } = parsed;
   // baseUrl 口径(终审 M-2):delegated 派发的 workflow args.baseUrl 不信任
   // 请求 Host 头(可被调用方控制,进 workflow 会让 worker 以服务端身份持续
   // 回环抓取任意 origin)。APP_ORIGIN 显式覆盖;否则仅放行本机 Host(dev/
@@ -576,6 +592,7 @@ export async function POST(request: Request) {
     messageId: userMessageId,
     role: 'user',
     content: goal.verb,
+    ...(clientView === undefined ? {} : { clientView }),
   });
   const agentConversation = await loadAgentConversation(sessionId);
 

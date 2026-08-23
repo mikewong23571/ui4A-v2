@@ -36,6 +36,7 @@ import {
 } from '@assistant-ui/react';
 
 import type { ChatSessionSummary, ChatTurn } from '@/chat/history';
+import { clientViewReportForLocation, type ActivePresentationView } from '@/chat/client-view';
 import type { ChatRenderPayload } from '@/chat/sse';
 import { anySignal, createIdleTimeout, readChatSseStream, type ChatFinalPayload } from '@/chat/sse';
 import { ChatThread } from '@/components/assistant-ui/thread';
@@ -164,7 +165,12 @@ export function useChatSession(): ChatSession {
   // 最近一次渲染回执(S5:surface 引用的可点形态——点击在画布打开)。
   const [lastRender, setLastRender] = useState<ChatJsonResponse['render']>(undefined);
   const [lastFocus, setLastFocus] = useState<ChatJsonResponse['focus']>(undefined);
-  const [lastPresentation, setLastPresentation] = useState<{ canvasUrl: string }>();
+  const [lastPresentation, setLastPresentation] = useState<{
+    canvasUrl: string;
+    requestId: string;
+  }>();
+  const lastPresentationRef = useRef<ActivePresentationView | undefined>(undefined);
+  const clientInstanceIdRef = useRef<string | undefined>(undefined);
   const focusRevisionRef = useRef(0);
   // 进行中请求的取消柄(B2:onCancel 中止 fetch;整体超时经 AbortSignal.any 合并)。
   const abortRef = useRef<AbortController | null>(null);
@@ -390,6 +396,17 @@ export function useChatSession(): ChatSession {
 
       const activeSession = sessionRef.current || crypto.randomUUID();
       const turnId = crypto.randomUUID();
+      clientInstanceIdRef.current ??= crypto.randomUUID();
+      let clientView;
+      try {
+        clientView = clientViewReportForLocation(
+          clientInstanceIdRef.current,
+          `${window.location.pathname}${window.location.search}`,
+          lastPresentationRef.current,
+        );
+      } catch {
+        // An unreportable route makes this turn's client view unknown; Chat remains available.
+      }
       persistSession(activeSession);
       markSessionPending(activeSession);
 
@@ -408,6 +425,7 @@ export function useChatSession(): ChatSession {
             goal: { verb: goal },
             sessionId: activeSession,
             turnId,
+            ...(clientView === undefined ? {} : { clientView }),
             ...(delegatedRef.current ? { mode: 'delegated' } : {}),
           }),
           signal,
@@ -446,7 +464,15 @@ export function useChatSession(): ChatSession {
                 (frame.payload.status === 'ready' || frame.payload.status === 'fallback') &&
                 frame.payload.surfaceUrl !== undefined
               ) {
-                setLastPresentation({ canvasUrl: frame.payload.surfaceUrl });
+                const active = {
+                  requestId: frame.payload.requestId,
+                  surfaceUrl: frame.payload.surfaceUrl,
+                };
+                lastPresentationRef.current = active;
+                setLastPresentation({
+                  requestId: active.requestId,
+                  canvasUrl: active.surfaceUrl,
+                });
               }
             } else if (frame.type === 'final') {
               if (frame.payload.turnId !== undefined && frame.payload.turnId !== turnId) return;
@@ -548,6 +574,8 @@ export function useChatSession(): ChatSession {
     setMessages([]);
     setLastRender(undefined);
     setLastFocus(undefined);
+    setLastPresentation(undefined);
+    lastPresentationRef.current = undefined;
     setView('chat');
     try {
       globalThis.localStorage?.removeItem(SESSION_STORAGE_KEY);

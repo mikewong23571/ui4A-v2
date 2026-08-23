@@ -178,7 +178,7 @@ describe('悬浮聊天窗 · 委托模式(T5 Phase B)', () => {
 describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
   it('每次发送原子携带实际浏览器 route/subject 和 hook-lifetime client id', async () => {
     window.history.pushState({}, '', '/canvas?focus=post%3Afirst-post');
-    const fetchMock = vi.fn(() =>
+    const fetchMock = vi.fn((..._args: [string | URL | RequestInfo, RequestInit?]) =>
       Promise.resolve(
         jsonResponse({
           sessionId: 'sess-client-view',
@@ -211,7 +211,10 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
     const second = JSON.parse(String(fetchMock.mock.calls[1]![1]?.body)) as {
       clientView?: { clientInstanceId: string; route: string; subject?: string };
     };
-    expect(second.clientView).toMatchObject({ route: '/canvas?focus=articles', subject: 'articles' });
+    expect(second.clientView).toMatchObject({
+      route: '/canvas?focus=articles',
+      subject: 'articles',
+    });
     expect(second.clientView?.clientInstanceId).toBe(first.clientView?.clientInstanceId);
   });
 

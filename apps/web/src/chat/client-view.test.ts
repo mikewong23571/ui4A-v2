@@ -22,7 +22,7 @@ describe('T21 client view capture', () => {
     ).toMatchObject({ subject: { selection: ['post:a', 'post:b'] } });
   });
 
-  it.each(['/', '/canvas', '/canvas?concern=legacy']) (
+  it.each(['/', '/canvas', '/canvas?concern=legacy'])(
     'keeps subject unknown when route %s does not prove one',
     (route) => {
       expect(clientViewReportForLocation('client:a', route)).toEqual({
@@ -38,11 +38,11 @@ describe('T21 client view capture', () => {
       requestId: 'turn:1:presentation:1',
       surfaceUrl: '/canvas?sidecar=sidecar%3A1&focus=articles',
     };
+    expect(clientViewReportForLocation('client:a', receipt.surfaceUrl, receipt)).toMatchObject({
+      presentationRequestId: receipt.requestId,
+    });
     expect(
-      clientViewReportForLocation('client:a', receipt.surfaceUrl, receipt),
-    ).toMatchObject({ presentationRequestId: receipt.requestId });
-    expect(clientViewReportForLocation('client:a', '/canvas?focus=post%3Aa', receipt)).not.toHaveProperty(
-      'presentationRequestId',
-    );
+      clientViewReportForLocation('client:a', '/canvas?focus=post%3Aa', receipt),
+    ).not.toHaveProperty('presentationRequestId');
   });
 });
