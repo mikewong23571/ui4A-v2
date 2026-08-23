@@ -37,7 +37,7 @@
 - [x] Task: Red TDD——验证同一用户回合可完成 Presentation/navigation 后继续 answer，且每个 LLM decision 仍只有一个协议调用 0633570
 - [x] Task: Red TDD——注入 text-only、未知工具、无效参数和 provider error；验证选定的强制工具/有界 LLM repair 策略 af3c493
 - [x] Task: Green——实现 probe 证明可行的最小协议修复；禁止正则、关键词、文本转操作和 rule driver fallback，修复失败诚实终止 f33db75
-- [ ] Task: 增加产品源码治理测试，阻止“看看/列表/详情”等短语进入 Chat Route、Agent driver 或客户端导航分支
+- [x] Task: 增加产品源码治理测试，阻止“看看/列表/详情”等短语进入 Chat Route、Agent driver 或客户端导航分支 397c778
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase E: Golden Story 与 Track 收口
