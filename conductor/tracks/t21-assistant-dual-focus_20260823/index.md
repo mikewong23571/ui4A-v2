@@ -14,6 +14,8 @@
 - [Technical Stories](./technical-stories.md)
 - [Architecture](./architecture.md)
 - [Mechanical Safety Report](./safety.md)
+- [Acceptance Report](./acceptance-report.md)
+- [DONE](./DONE.md)
 - [Implementation Plan](./plan.md)
 
 当前状态：`in_progress`。本 Track 不改变 Business action、guard、schema 或文章数据，不引入第二权威

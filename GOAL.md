@@ -9,7 +9,7 @@
 
 ## DONE 的定义
 
-以下业务与切片场景、T15 AI-first、T16 Presentation、T17 External Agent Draft、T18 Coding Capability、T19 Specialized Agent Contracts、T20 Meta Human Control Plane 用户故事 Eval 及不变量全部通过，外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
+以下业务与切片场景、T15 AI-first、T16 Presentation、T17 External Agent Draft、T18 Coding Capability、T19 Specialized Agent Contracts、T20 Meta Human Control Plane、T21 Assistant 双焦点一致性用户故事 Eval 及不变量全部通过，外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
 
 ### AI-first 用户故事
 
@@ -18,13 +18,22 @@ Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能�
 产品边界：
 
 - **原生认知不是 capability**：读取已授权合同事实并临时回答、总结、比较、解释，由 LLM 直接完成；只有需要持久化、共享、重试或审计的模型结果才物化为 capability artifact，业务状态变化始终由 action 承担。
-- **多轮上下文来自日志**：user/assistant 原话 append-only 保存，同时从日志投影有界的 `activeGoal`、focus、referents、constraints、待澄清项和 effect authorization；刷新或恢复不依赖进程内会话真相。
+- **多轮上下文来自日志**：user/assistant 原话 append-only 保存，同时从日志投影有界的 `activeGoal`、referents、constraints、待澄清项和 effect authorization。T21 另保留最近成功导航 `lastNavigation` 与当前 user message 携带的客户端观察 `clientView`；两者同时进入 LLM 且不互相覆盖，刷新或恢复不依赖进程内会话真相。
 - **副作用需要原话授权**：执行必须引用 user message id 与逐字 quote，并与目标实体/action 关联；事件链保留声明、guard、schema、确认和 human decision，Assistant 只能据此解释“为什么执行”。
 - **配置即部署数据**：`LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 由外部环境完整提供，产品没有供应商、端点、模型或 driver fallback。缺项/失败时诚实失败，正式模型工件也不得以占位模型部分写入。
 
 ### Presentation 用户故事
 
 呈现以 `conductor/tracks/t16-semantic-a2ui-sidecars_20260823/user-stories.md` 的 S1–S32 为准。Chat 只发薄 `PresentationRequest`；Application Recipe 和独立 Presentation Agent 产生 binding-only Surface；用户级 Sidecar 跨 Session 命中并重新授权、解引用。个人优化只有经参数化、机械 diff 和 human approval 才可晋升共享 Recipe。Recipe/Sidecar/patch/promotion 事件独立重放，不进入 Business Snapshot。
+
+### Assistant 双焦点一致性
+
+`conductor/tracks/t21-assistant-dual-focus_20260823/` 的 U1–U8 约束参考 Assistant：`currentRel`
+只表示本轮合同读取位置；最近成功 navigate/Presentation 作为 `lastNavigation` 重放，用户发送消息
+时的实际 route/subject 作为不可变 `clientView`。LLM 同时理解两者并自主决定 answer/clarify/
+navigate/present，机械层不得用关键词、URL 或 rule driver 替代意图。一个用户回合可有多个单工具
+decision；Provider 用 required tool envelope，非法输出最多进行一次真实 LLM repair，禁止把文本解析
+成 operation。
 
 ### App 创建边界
 

@@ -72,6 +72,12 @@ TS 映射(选型 §3):动作声明 → Cedar 策略 + JSON Schema(Ajv)校验 →
 
 T15 将聊天正式纳入同一事件溯源口径：user/assistant 原话按 role、session/turn、message id 和顺序 append-only 保存；服务端从日志投影有界近期原文以及结构化 `activeGoal`、focus/history、referents、constraints、pending clarification、authorized effects 和最近结果。结构化状态可被后续原话修订，但不得回写或替换原始消息；刷新、重连和 delegated 恢复均从日志重建，不建立进程内第二真相。
 
+T21 将历史 `focus/currentRel` 歧义拆开：`currentRel` 只是本轮合同读取位置；成功 Agent navigate 或
+ready/fallback Presentation receipt 追加 `chat-navigation-completed` 并纯投影 `lastNavigation`；用户原话
+事件原子携带该客户端发送瞬间的 `clientView`。LLM 同时看到三者与 provenance，机械层不选择
+“正确页面”、不改写 `resolveStartRel`，也不按自然语言关键词路由。授权 sitemap surfaces 进入动态
+navigate enum，使任意合法起点可由 LLM 自主恢复到其他 surface。
+
 执行审计同样是事件投影：effect 请求携带 user `sourceMessageId + quote`，服务层按 principal、时序和原文再次核验；成功事件记录 action declaration、guards、schema、confirmation policy 和授权索引，随后的人类确认与最终业务事件继续同链。`execution-audit` 只能从这些事件解释“谁授权了什么、为何允许、谁确认、发生了什么”；找不到授权时输出 `authorization-error`，禁止反向编造原因。
 
 ## 5. B1–B3 基线场景(T2 验收脚本)
@@ -201,6 +207,15 @@ self-reported identity。Application、Flow、Capability、Agent Definition、Ru
 保留 scope/birth ref。Action submit 绕过 revision cache 重读 exact entity，过滤 internal callback，
 然后进入原裁决端点。Draft invalid repair 使用 issue-path-focused RJSF，raw contract 仅作审计下钻；
 approve/reject、diff、checks、Eval 与 provenance 零 AI。
+
+### 8.7 Assistant 双焦点与协议韧性
+
+客户端在发送消息时读取真实 pathname/search，并只从 `rel/focus/roots` 机械解出 subject；该观察不
+携 principal、action、参数或授权。成功导航事实与客户端观察在 Conversation fold 中独立重放，当前
+消息缺观察即 unknown，不沿用旧窗口。Chat 可在一次用户回合内执行多个 LLM decision；每个 decision
+仍只有一个工具调用。生产调用使用 provider-native `toolChoice: required`，协议非法时至多追加一个只
+包含校验类别的真实 LLM repair；拒绝文本永不由代码解析为 operation。Presentation job 可晚于 Chat
+final，但 ready/fallback receipt 必须先持久化 completion，再对客户端可见，SSE 在 jobs settled 后关闭。
 
 ## 9. 五条垂直切片(第五部,施工顺序)
 

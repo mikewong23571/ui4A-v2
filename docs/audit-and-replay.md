@@ -35,14 +35,19 @@ curl -fsS 'http://localhost:3100/api/events?afterSeq=0' |
 
 | Kind | Raw evidence |
 |---|---|
-| `chat-message-appended` | User or Assistant original text and provenance |
+| `chat-message-appended` | User or Assistant original text and provenance; user messages may atomically carry bounded `clientView` |
 | `chat-turn-started` | Goal, mode, driver, sessionId, and turnId |
 | `agent-decision` | Exact system/user prompt, model reasoning when exposed, chosen protocol operation, and step |
 | `chat-turn-progress` | Step rel, operation, outcome, sources, and visible message |
 | `chat-context-updated` | Mechanically projected active goal, focus, referents, constraints, and effect authorization |
+| `chat-navigation-completed` | Successful Agent navigate or ready/fallback Presentation target, route, turn/step/request provenance |
 | `chat-turn` | Final outcome, summary, steps, successes, and Presentation request references |
 
 Visible `thinking` is a live SSE projection. Refresh restores durable messages but deliberately does not attach old thinking to a later turn. The durable `agent-decision.detail.reasoning` field is the audit source when the configured provider returned reasoning; otherwise it is `null`.
+
+T21 keeps `lastNavigation` and the current message's `clientView` separate. A missing client report is unknown and
+never inherits an older window's view. Neither fact grants entity access, action authority or effect authorization;
+the Business fold ignores navigation-completion events.
 
 ## Business and Presentation separation
 

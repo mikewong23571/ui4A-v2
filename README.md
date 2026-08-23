@@ -44,6 +44,9 @@ pnpm dev:all
 - T20 将既有 Meta 合同投影为 sitemap 驱动的人类控制台：Application、Agent Definition、Draft
   使用任务优先视图；未知 class 安全兜底；Scope、实时 action、人类审批、diff/Eval/replay 仍由
   机械协议治理，默认任务不要求阅读或编辑 raw JSON。
+- T21 让 Assistant 同时理解最近成功导航 `lastNavigation` 与当前消息的客户端可见事实
+  `clientView`；合同读取位置不再冒充页面。界面目标由真实 LLM 选择薄 Presentation/navigation，
+  没有关键词路由；工具协议使用 required envelope 和至多一次真实 LLM repair。
 
 ## 文档权威顺序
 

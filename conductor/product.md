@@ -106,7 +106,7 @@ UI4A 将这条路径压缩为:
 
 ## 成功标准(DONE 的定义)
 
-以下场景套件、T15 U1–U23、T16 S1–S32、T17 U1–U24、T18 U1–U22、T19 U1–U26 与 T20 U1–U22 Story Eval 及不变量全部通过,外加一次人工 demo 走查。
+以下场景套件、T15 U1–U23、T16 S1–S32、T17 U1–U24、T18 U1–U22、T19 U1–U26、T20 U1–U22 与 T21 U1–U8 Story Eval 及不变量全部通过,外加一次人工 demo 走查。
 
 ### AI-first 用户故事
 
@@ -154,6 +154,10 @@ diff/checks/Eval/provenance 与 human-only approval。控制台零 LLM/Sidecar �
 - LLM 可直接读取和处理当前 principal 已授权的 Siren facts，并用 `answer`/`clarify` 完成临时对话；认知动词不要求 application capability。
 - 正式、可复用的模型产物进入带 source/model/schema/content-hash provenance 的 capability artifact；写回字段或迁移状态必须另走声明 action 与必要确认。
 - 每条 user/assistant 原话 append-only 留痕；下一轮同时消费有界近期原文与从日志重建的活动目标、指代、约束、待澄清项和授权证据。
+- `currentRel` 是合同读取位置，不是页面。最近成功 navigation/Presentation 与当前消息的客户端可见
+  route/subject 分别作为 `lastNavigation`、`clientView` 入日志和 prompt；机械层不裁定冲突或改写意图。
+- 一个用户回合可以有多个单工具 LLM decision。Provider-native required 约束协议 envelope；非法输出
+  最多由同一真实 LLM repair 一次，非 LLM 代码不得把文本转换为操作。
 - effect authorization 必须引用 user message id 与逐字原话；执行事件记录 declaration → guards → schema → confirmation，解释从事件投影生成，缺少授权时不得补造理由。
 - provider profile 仅由外部 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 提供。缺项、端点错误或超时都诚实失败且零业务副作用，不切换模型或 driver。
 
