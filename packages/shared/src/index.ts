@@ -20,6 +20,8 @@ export * from './predicates';
 export * from './definition';
 // Chat/runtime 与独立 Presentation Plane 之间的 versioned thin protocol。
 export * from './presentation';
+// Browser-observed view and server navigation facts remain separate from Business truth.
+export * from './chat-view';
 // External-agent write ingress policy and governed Draft wire contracts.
 export * from './submission';
 // Provider-neutral Coding Capability Executor wire contracts.

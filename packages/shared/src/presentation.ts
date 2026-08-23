@@ -299,29 +299,28 @@ function parseConstraints(value: unknown): RenderConstraint[] | undefined {
   return value.map((entry, index) => requiredString(entry, `Presentation constraint[${index}]`));
 }
 
+/** Parse one binding-only subject reference for Presentation-adjacent protocols. */
+export function parseRenderSubject(value: unknown): RenderSubject {
+  if (typeof value === 'string') {
+    return requiredString(value, 'Presentation subject');
+  }
+  assertRecord(value, 'Presentation subject');
+  assertExactKeys(value, ['selection'], 'Presentation subject');
+  const selection = stringArray(value.selection, 'Presentation subject selection', false);
+  if (selection.length > MAX_DATA_LENS_SELECTORS || new Set(selection).size !== selection.length) {
+    throw new Error('Presentation subject selection is duplicate or over budget');
+  }
+  return { selection };
+}
+
 function parseIntentRecord(value: Record<string, unknown>): PresentationIntent {
   const delivery = value.delivery;
   if (delivery !== 'inline' && delivery !== 'canvas' && delivery !== 'auto') {
     throw new Error('Presentation delivery must be inline, canvas or auto');
   }
   const constraints = parseConstraints(value.constraints);
-  let subject: RenderSubject;
-  if (typeof value.subject === 'string') {
-    subject = requiredString(value.subject, 'Presentation subject');
-  } else {
-    assertRecord(value.subject, 'Presentation subject');
-    assertExactKeys(value.subject, ['selection'], 'Presentation subject');
-    const selection = stringArray(value.subject.selection, 'Presentation subject selection', false);
-    if (
-      selection.length > MAX_DATA_LENS_SELECTORS ||
-      new Set(selection).size !== selection.length
-    ) {
-      throw new Error('Presentation subject selection is duplicate or over budget');
-    }
-    subject = { selection };
-  }
   return {
-    subject,
+    subject: parseRenderSubject(value.subject),
     intent: requiredString(value.intent, 'Presentation intent'),
     ...(constraints === undefined ? {} : { constraints }),
     delivery,
