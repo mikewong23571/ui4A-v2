@@ -1,0 +1,5 @@
+T21 Phase A Task 5: detailed architecture and binding decision
+
+Added TS1-TS12, the hybrid dual-focus architecture, expected file boundaries, async Presentation ordering, provider-native required plus one LLM repair policy, executable no-keyword governance, and D33. currentRel, lastNavigation, and clientView are now explicitly separate concepts; client facts cannot authorize reads/effects or enter Business fold.
+
+Validation: Prettier check and git diff --check. No dependency or tech-stack change.
