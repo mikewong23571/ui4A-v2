@@ -104,3 +104,84 @@ test('U1–U7 Golden Story keeps clientView and lastNavigation honest across det
     ),
   ).toEqual([]);
 });
+
+const variants = [
+  [
+    '在画布里打开标题为《第一篇》的文章',
+    '文章一共多少篇？',
+    '切换到全部文章视图',
+    '当前画布展示什么？',
+  ],
+  [
+    '展示《第一篇》这篇文章的详情',
+    '现在总计有多少文章？',
+    '让我浏览文章集合',
+    '我此刻看到的是哪个视图？',
+  ],
+  [
+    'Open the article titled 第一篇 on the canvas',
+    'How many articles are there?',
+    'Show the article list',
+    'Which subject is visible now?',
+  ],
+  [
+    '我想在画布阅读标题叫第一篇的内容',
+    '全部文章数量是多少？',
+    '把界面换成文章列表',
+    '告诉我当前所在的页面',
+  ],
+] as const;
+
+test('U1–U7 four natural-language variants meet the user-result quality gate', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(600_000);
+  const results: { variant: number; passed: boolean; summaries: Array<string | null> }[] = [];
+
+  for (const [index, inputs] of variants.entries()) {
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.getByRole('button', { name: '展开聊天窗' }).click();
+
+    await send(page, inputs[0]);
+    await expect(page).toHaveURL(/\/canvas\?.*focus=post%3Afirst-post/, { timeout: 90_000 });
+    const detailUrl = page.url();
+    let turns = await waitForTurns(page, 1);
+
+    await send(page, inputs[1]);
+    turns = await waitForTurns(page, 2);
+    const countPassed =
+      turns[1]?.outcome === 'answered' &&
+      /2\s*篇|共有\s*2|2 articles/i.test(turns[1]?.summary ?? '');
+    const detailStayed = page.url() === detailUrl;
+
+    await send(page, inputs[2]);
+    await expect(page).toHaveURL(/\/canvas\?.*focus=articles(?:&|$)/, { timeout: 90_000 });
+    turns = await waitForTurns(page, 3);
+    const listPassed =
+      turns[2]?.steps.some((step) => step.op.kind === 'present') === true &&
+      /focus=articles(?:&|$)/.test(page.url());
+
+    await send(page, inputs[3]);
+    turns = await waitForTurns(page, 4);
+    const locationPassed =
+      turns[3]?.outcome === 'answered' &&
+      /articles|文章集合|文章列表/i.test(turns[3]?.summary ?? '');
+    results.push({
+      variant: index + 1,
+      passed: countPassed && detailStayed && listPassed && locationPassed,
+      summaries: turns.map((turn) => turn.summary),
+    });
+  }
+
+  await testInfo.attach('t21-variant-evidence.json', {
+    body: Buffer.from(
+      JSON.stringify({ model: process.env.LLM_MODEL, inputs: variants, results }, null, 2),
+    ),
+    contentType: 'application/json',
+  });
+  expect(results.filter((result) => result.passed).length / results.length).toBeGreaterThanOrEqual(
+    0.8,
+  );
+});
