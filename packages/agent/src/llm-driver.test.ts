@@ -530,6 +530,46 @@ describe('多轮会话进入 LLM messages', () => {
     ],
   };
 
+  it('并列披露合同读取位置、最近导航和当前客户端视图及各自 provenance', () => {
+    const prompt = buildUserPrompt(
+      context({
+        currentRel: 'articles',
+        lastNavigation: {
+          schemaVersion: 1,
+          navigationId: 'turn:a:navigate:1',
+          source: 'agent-navigate',
+          sessionId: 'session:a',
+          turnId: 'turn:a',
+          subject: 'post:first-post',
+          route: '/canvas?focus=post%3Afirst-post',
+          sourceMessageIds: ['message:a'],
+          step: 1,
+          completedAtSeq: 10,
+        },
+        clientView: {
+          schemaVersion: 1,
+          clientInstanceId: 'client:b',
+          route: '/canvas?focus=articles',
+          subject: 'articles',
+          sourceMessageId: 'message:b',
+          observedAtSeq: 12,
+        },
+      }),
+    );
+
+    expect(prompt).toContain('本轮合同读取位置 rel(不是客户端当前页面)\narticles');
+    expect(prompt).toContain('最近成功导航/呈现(历史完成事实，不是客户端当前页面)');
+    expect(prompt).toContain('"navigationId": "turn:a:navigate:1"');
+    expect(prompt).toContain('当前消息的客户端可见视图(客户端观察，不是业务事实或授权)');
+    expect(prompt).toContain('"clientInstanceId": "client:b"');
+  });
+
+  it('客户端或导航事实缺失时显式披露 null，不从 currentRel 猜测', () => {
+    const prompt = buildUserPrompt(context({ currentRel: 'articles' }));
+    expect(prompt).toMatch(/最近成功导航\/呈现[^\n]*\nnull/);
+    expect(prompt).toMatch(/当前消息的客户端可见视图[^\n]*\nnull/);
+  });
+
   it('原始 user/assistant 内容保留 role 与顺序，处境作为末尾 user message 输入', () => {
     const messages = buildLlmMessages(
       context({
