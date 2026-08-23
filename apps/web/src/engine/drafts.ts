@@ -183,6 +183,9 @@ function draftSummary(aggregate: DraftAggregate): SirenEntity {
       status: aggregate.status,
       version: aggregate.activeVersion,
       baseVersion: aggregate.baseVersion,
+      owner: aggregate.owner,
+      policyScope: aggregate.policyScope,
+      expiresAt: aggregate.expiresAt,
     },
     actions: [],
     links: [],
@@ -273,6 +276,7 @@ async function projectExactDraft(
       provenance: version.provenance,
       activation: aggregate.activation,
       terminalReason: aggregate.terminalReason,
+      expiresAt: aggregate.expiresAt,
       ...(diff === undefined ? {} : { diff }),
       ...(checks === undefined ? {} : { checks }),
       ...(evaluation === undefined ? {} : { evaluation }),
@@ -309,6 +313,13 @@ async function projectExactDraft(
               href: `/_meta/api/entity?rel=${encodeURIComponent(aggregate.activation)}`,
             },
           ]),
+      ...version.provenance.sources.map((source) => ({
+        rel: ['source'],
+        href:
+          source.startsWith('meta/') || source.startsWith('draft:')
+            ? `/_meta/api/entity?rel=${encodeURIComponent(source)}`
+            : `/api/entity?rel=${encodeURIComponent(source)}`,
+      })),
     ],
     'guard-results': [],
   };

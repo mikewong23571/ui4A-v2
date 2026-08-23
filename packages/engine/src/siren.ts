@@ -872,14 +872,28 @@ function projectApplication(
   const application = snapshot.applications?.[name];
   if (application === undefined) return undefined;
   const rel = `meta/application:${name}`;
+  const bundle = exportDefinitionBundle(snapshot, name);
   return {
     class: ['meta', 'application-definition'],
     properties: {
       ...application,
-      bundle: exportDefinitionBundle(snapshot, name),
+      status: 'active',
+      version: bundle.bundle.version,
+      bundle,
     },
     actions: [],
-    links: [{ rel: ['self'], href: entityHref(deps.baseHref, rel) }],
+    links: [
+      { rel: ['self'], href: entityHref(deps.baseHref, rel) },
+      { rel: ['collection'], href: entityHref(deps.baseHref, 'meta/applications') },
+      ...bundle.flows.map((flow) => ({
+        rel: ['flow'],
+        href: entityHref(deps.baseHref, `meta/flow:${flow.name}`),
+      })),
+      ...bundle.capabilities.map((capability) => ({
+        rel: ['capability'],
+        href: entityHref(deps.baseHref, `${META_CAPABILITY_PREFIX}${capability.name}`),
+      })),
+    ],
     'guard-results': [],
   };
 }
@@ -891,11 +905,28 @@ function projectApplications(snapshot: EngineSnapshot, deps: ProjectDeps): Siren
     properties: { rel: 'meta/applications', count: names.length },
     actions: [],
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'meta/applications') }],
-    entities: names.map((name) => ({
-      ...projectApplication(snapshot, name, deps)!,
-      rel: ['item'],
-      href: entityHref(deps.baseHref, `meta/application:${name}`),
-    })),
+    entities: names.map((name) => {
+      const application = snapshot.applications![name]!;
+      const bundle = exportDefinitionBundle(snapshot, name);
+      return {
+        class: ['meta', 'application-definition-summary'],
+        properties: {
+          name,
+          title: application.title,
+          intent: application.intent,
+          status: 'active',
+          version: bundle.bundle.version,
+          flowCount: bundle.flows.length,
+          capabilityCount: bundle.capabilities.length,
+          policyCount: bundle.policies.length,
+        },
+        actions: [],
+        links: [],
+        'guard-results': [],
+        rel: ['item'],
+        href: entityHref(deps.baseHref, `meta/application:${name}`),
+      };
+    }),
     'guard-results': [],
   };
 }

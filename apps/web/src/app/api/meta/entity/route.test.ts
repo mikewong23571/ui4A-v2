@@ -103,4 +103,21 @@ describe('GET /_meta/api/entity', () => {
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain('_meta');
   });
+
+  it('scope is server-revalidated and effective scope is returned as provenance', async () => {
+    const accepted = await GET(
+      new Request(
+        'http://localhost:3100/_meta/api/entity?rel=meta%2Fagent-definitions&scope=governance',
+      ),
+    );
+    expect(accepted.status).toBe(200);
+    expect(accepted.headers.get('x-ui4a-effective-scope')).toBe('governance');
+
+    const forged = await GET(
+      new Request(
+        'http://localhost:3100/_meta/api/entity?rel=meta%2Fagent-definitions&scope=root-admin',
+      ),
+    );
+    expect(forged.status).toBe(403);
+  });
 });

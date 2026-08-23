@@ -5,6 +5,7 @@ import {
   getAgentDefinitionMetaEntity,
   isAgentDefinitionMetaRel,
 } from '../../../../engine/agent-definitions';
+import { metaContextFromRequest } from '../../../../engine/meta-authorization';
 
 // GET /_meta/api/entity?rel=… — meta 站点 Siren 实体端点(T4 Phase B,spec 决定 6):
 // - rel 以 meta/ 前缀路由到同一引擎的 meta 投影(同日志同串行队列;快照即真相);
@@ -29,34 +30,40 @@ export async function GET(request: Request) {
   try {
     const db = getDb();
     const engine = await getEngine(db);
-    const url = new URL(request.url);
-    const principal = request.headers.get('x-ui4a-principal') ?? 'local-user';
-    const policyScope =
-      request.headers.get('x-ui4a-policy-scope') ??
-      url.searchParams.get('policyScope') ??
-      'publishing';
+    const context = metaContextFromRequest(
+      request,
+      Object.keys(engine.getSnapshot().applications ?? {}),
+    );
     const entity = isDraftMetaRel(rel)
       ? await getDraftMetaEntity(
           db,
           engine,
           rel,
-          principal,
-          policyScope,
+          context.principal,
+          context.effectiveScope,
           agentDefinitionDraftRegistryPort,
         )
       : isAgentDefinitionMetaRel(rel)
-        ? await getAgentDefinitionMetaEntity(db, rel, principal, policyScope)
+        ? await getAgentDefinitionMetaEntity(db, rel, context.principal, context.effectiveScope)
         : await engine.getMetaEntity(rel);
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });
     }
-    return Response.json(entity);
+    return Response.json(entity, {
+      headers: {
+        'x-ui4a-effective-scope': context.effectiveScope,
+        'x-ui4a-authorization-mode': context.authorizationMode,
+      },
+    });
   } catch (error) {
     const err = error as { code?: string; message?: string };
     const dbFailure =
       typeof err.code === 'string' &&
       /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
     const message = error instanceof Error ? error.message : String(error);
+    if (/not authorized|conflicting/.test(message)) {
+      return Response.json({ error: message }, { status: 403 });
+    }
     return Response.json(
       dbFailure
         ? { error: 'meta entity 数据库不可用' }

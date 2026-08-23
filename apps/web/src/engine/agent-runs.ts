@@ -91,6 +91,12 @@ function runSummary(run: AgentRun): SirenEntity {
     links: [
       { rel: ['self'], href: `/api/entity?rel=${AGENT_RUN_PREFIX}${run.runId}` },
       { rel: ['source'], href: `/api/entity?rel=${encodeURIComponent(run.source.rel)}` },
+      {
+        rel: ['agent-definition'],
+        href: `/_meta/api/entity?rel=${encodeURIComponent(
+          `meta/agent-definition:${run.birth.definition.ref}`,
+        )}`,
+      },
     ],
     'guard-results': [],
   };
@@ -126,6 +132,12 @@ function runEntity(
       { rel: ['self'], href: `/api/entity?rel=${AGENT_RUN_PREFIX}${run.runId}` },
       { rel: ['collection'], href: `/api/entity?rel=${AGENT_RUNS_REL}` },
       { rel: ['source'], href: `/api/entity?rel=${encodeURIComponent(run.source.rel)}` },
+      {
+        rel: ['agent-definition'],
+        href: `/_meta/api/entity?rel=${encodeURIComponent(
+          `meta/agent-definition:${run.birth.definition.ref}`,
+        )}`,
+      },
       ...(run.birth.kind === 'legacy-t18-reconstructed'
         ? [
             {

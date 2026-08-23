@@ -13,30 +13,67 @@ import type { SirenEntity } from '@ui4a/engine';
 import { useEffect, useState } from 'react';
 
 import type { ExecClientResult } from '../exec-client';
+import type { MetaSitemapDocument } from './meta-surfaces';
 
-/** BIOS 人类操作者的固定身份(actor=human;与 e2e 断言的日志口径一致)。 */
-export const BIOS_CHANNEL = {
-  actor: 'human',
-  principal: 'local-user',
-  channel: 'bios',
-} as const;
+const sitemapInflight = new Map<string, Promise<MetaSitemapDocument>>();
+const entityInflight = new Map<string, Promise<SirenEntity | null>>();
+
+function scopedEndpoint(path: string, scope?: string): string {
+  if (scope === undefined || scope.length === 0) return path;
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}scope=${encodeURIComponent(scope)}`;
+}
+
+/** Read the authorized Meta inventory and effective-scope provenance. */
+export async function fetchMetaSitemap(scope?: string): Promise<MetaSitemapDocument> {
+  const endpoint = scopedEndpoint('/_meta/.well-known/ui4a.json', scope);
+  const existing = sitemapInflight.get(endpoint);
+  if (existing !== undefined) return existing;
+  const pending = (async () => {
+    const response = await fetch(endpoint);
+    if (!response.ok) throw new Error(`GET Meta sitemap → HTTP ${response.status}`);
+    return (await response.json()) as MetaSitemapDocument;
+  })();
+  sitemapInflight.set(endpoint, pending);
+  try {
+    return await pending;
+  } finally {
+    sitemapInflight.delete(endpoint);
+  }
+}
 
 /** 提交一个已声明的 meta 动作(POST /_meta/api/exec);空 params 不上送。 */
 export async function execMetaAction(input: {
   rel: string;
   action: string;
   params?: Record<string, unknown>;
+  scope?: string;
 }): Promise<ExecClientResult> {
   let response: Response;
   try {
+    const current = await fetchMetaEntity(input.rel, input.scope);
+    const declared = current?.actions.find(
+      (action) =>
+        action.name === input.action &&
+        action.href === '/_meta/api/exec' &&
+        !action.name.includes('callback'),
+    );
+    if (declared === undefined) {
+      return {
+        ok: false,
+        status: 409,
+        layer: 'stale-action',
+        reason: `动作 ${input.action} 已不存在或不是公开 Meta action，请刷新后重试。`,
+      };
+    }
     const params =
       input.params !== undefined && Object.keys(input.params).length > 0
         ? { params: input.params }
         : {};
-    response = await fetch('/_meta/api/exec', {
+    response = await fetch(scopedEndpoint('/_meta/api/exec', input.scope), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ rel: input.rel, action: input.action, ...params, ...BIOS_CHANNEL }),
+      body: JSON.stringify({ rel: input.rel, action: input.action, ...params }),
     });
   } catch (error) {
     return {
@@ -66,13 +103,24 @@ export async function execMetaAction(input: {
 }
 
 /** GET /_meta/api/entity?rel=…;404 → null(实体不存在),其余非 200 → 抛错。 */
-export async function fetchMetaEntity(rel: string): Promise<SirenEntity | null> {
-  const response = await fetch(`/_meta/api/entity?rel=${encodeURIComponent(rel)}`);
-  if (response.status === 404) return null;
-  if (!response.ok) {
-    throw new Error(`GET /_meta/api/entity?rel=${rel} → HTTP ${response.status}`);
+export async function fetchMetaEntity(rel: string, scope?: string): Promise<SirenEntity | null> {
+  const endpoint = scopedEndpoint(`/_meta/api/entity?rel=${encodeURIComponent(rel)}`, scope);
+  const existing = entityInflight.get(endpoint);
+  if (existing !== undefined) return existing;
+  const pending = (async () => {
+    const response = await fetch(endpoint);
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`GET /_meta/api/entity?rel=${rel} → HTTP ${response.status}`);
+    }
+    return (await response.json()) as SirenEntity;
+  })();
+  entityInflight.set(endpoint, pending);
+  try {
+    return await pending;
+  } finally {
+    entityInflight.delete(endpoint);
   }
-  return (await response.json()) as SirenEntity;
 }
 
 /**
@@ -85,7 +133,34 @@ export interface MetaEntityState {
   refresh: () => void;
 }
 
-export function useMetaEntity(rel: string): MetaEntityState {
+export interface MetaSitemapState {
+  sitemap: MetaSitemapDocument | null;
+  state: 'loading' | 'ready' | 'error';
+}
+
+/** Scope-aware sitemap state for generic deep links and human titles. */
+export function useMetaSitemap(scope?: string): MetaSitemapState {
+  const [sitemap, setSitemap] = useState<MetaSitemapDocument | null>(null);
+  const [state, setState] = useState<MetaSitemapState['state']>('loading');
+  useEffect(() => {
+    let cancelled = false;
+    void fetchMetaSitemap(scope)
+      .then((next) => {
+        if (cancelled) return;
+        setSitemap(next);
+        setState('ready');
+      })
+      .catch(() => {
+        if (!cancelled) setState('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [scope]);
+  return { sitemap, state };
+}
+
+export function useMetaEntity(rel: string, scope?: string): MetaEntityState {
   const [tick, setTick] = useState(0);
   const [entity, setEntity] = useState<SirenEntity | null>(null);
   const [state, setState] = useState<MetaEntityState['state']>('loading');
@@ -94,7 +169,7 @@ export function useMetaEntity(rel: string): MetaEntityState {
     let cancelled = false;
     const load = async () => {
       try {
-        const next = await fetchMetaEntity(rel);
+        const next = await fetchMetaEntity(rel, scope);
         if (cancelled) return;
         setEntity(next);
         setState(next === null ? 'missing' : 'ready');
@@ -106,7 +181,7 @@ export function useMetaEntity(rel: string): MetaEntityState {
     return () => {
       cancelled = true;
     };
-  }, [rel, tick]);
+  }, [rel, scope, tick]);
 
   return { entity, state, refresh: () => setTick((n) => n + 1) };
 }

@@ -51,9 +51,7 @@ describe('POST /_meta/api/exec', () => {
   });
 
   it('非法定义:add-action(to 指向不存在节点)→ 422 且 /api/events 留痕带原因(DoD 3)', async () => {
-    await POST(
-      post({ rel: 'meta/flow:article-drafting', action: 'revise', actor: 'agent' }),
-    );
+    await POST(post({ rel: 'meta/flow:article-drafting', action: 'revise', actor: 'agent' }));
     const res = await POST(
       post({
         rel: 'meta/flow:article-drafting',
@@ -88,18 +86,10 @@ describe('POST /_meta/api/exec', () => {
     expect((await POST(post({ rel: 'meta/flow:post-status' }))).status).toBe(400);
     expect((await POST(post({ rel: 1, action: 'revise' }))).status).toBe(400);
     expect(
-      (
-        await POST(
-          post({ rel: 'meta/flow:post-status', action: 'revise', actor: 'robot' }),
-        )
-      ).status,
+      (await POST(post({ rel: 'meta/flow:post-status', action: 'revise', actor: 'robot' }))).status,
     ).toBe(400);
     expect(
-      (
-        await POST(
-          post({ rel: 'meta/flow:post-status', action: 'revise', principal: 42 }),
-        )
-      ).status,
+      (await POST(post({ rel: 'meta/flow:post-status', action: 'revise', principal: 42 }))).status,
     ).toBe(400);
   });
 
@@ -116,5 +106,25 @@ describe('POST /_meta/api/exec', () => {
     expect(business.status).toBe(404);
     const body = (await business.json()) as { error: string };
     expect(body.error).toContain('_meta');
+  });
+
+  it('browser-style request gets server-owned human identity and forged scope is rejected', async () => {
+    const accepted = await POST(
+      new Request('http://localhost:3100/_meta/api/exec?scope=publishing', {
+        method: 'POST',
+        body: JSON.stringify({ rel: 'meta/flow:post-status', action: 'revise' }),
+      }),
+    );
+    expect(accepted.status).toBe(200);
+    const event = (await listEvents(pool)).at(-1);
+    expect(event).toMatchObject({ actor: 'human', principal: 'local-user', channel: 'bios' });
+
+    const forged = await POST(
+      new Request('http://localhost:3100/_meta/api/exec?scope=root-admin', {
+        method: 'POST',
+        body: JSON.stringify({ rel: 'meta/flow:post-status', action: 'revise' }),
+      }),
+    );
+    expect(forged.status).toBe(403);
   });
 });

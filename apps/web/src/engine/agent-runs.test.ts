@@ -148,6 +148,7 @@ describe('Agent Run Siren', () => {
         expect.anything(),
         expect.anything(),
         expect.anything(),
+        expect.objectContaining({ rel: ['agent-definition'] }),
         expect.objectContaining({ rel: ['legacy-capability-run'] }),
       ],
     });

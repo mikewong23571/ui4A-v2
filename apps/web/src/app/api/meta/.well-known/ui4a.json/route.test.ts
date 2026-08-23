@@ -20,15 +20,25 @@ beforeEach(async () => {
 
 describe('GET /_meta/.well-known/ui4a.json', () => {
   it('200:meta rel 面齐备并包含 Agent Definition registry，版本为内容 hash 短码', async () => {
-    const res = await GET();
+    const res = await GET(
+      new Request('http://localhost:3100/_meta/.well-known/ui4a.json?scope=governance'),
+    );
     expect(res.status).toBe(200);
     const sitemap = (await res.json()) as {
       version: string;
       site: string;
       surfaces: { rel: string; title: string; collection?: boolean }[];
+      effectiveScope: string;
+      authorizedScopes: string[];
+      authorizationMode: string;
     };
     expect(sitemap.version).toMatch(/^[0-9a-f]{12}$/);
     expect(sitemap.site).toBe('meta');
+    expect(sitemap.effectiveScope).toBe('governance');
+    expect(sitemap.authorizedScopes).toEqual(
+      expect.arrayContaining(['publishing', 'development', 'editorial', 'governance']),
+    );
+    expect(sitemap.authorizationMode).toBe('self-reported-local-demo');
     const stableSurfaces = sitemap.surfaces
       .map((surface) => surface.rel)
       .filter((rel) => !rel.startsWith('meta/agent-definition:'));
@@ -59,5 +69,12 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
       'meta/drafts',
       'meta/agent-definitions',
     ]);
+  });
+
+  it('rejects a forged URL scope instead of silently widening or falling back', async () => {
+    const response = await GET(
+      new Request('http://localhost:3100/_meta/.well-known/ui4a.json?scope=root-admin'),
+    );
+    expect(response.status).toBe(403);
   });
 });

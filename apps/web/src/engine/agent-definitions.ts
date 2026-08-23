@@ -225,6 +225,7 @@ function definitionEntity(
         href: `/_meta/api/entity?rel=${encodeURIComponent(AGENT_DEFINITIONS_REL)}`,
       },
       { rel: ['drafts'], href: '/_meta/api/entity?rel=meta%2Fdrafts' },
+      { rel: ['runs'], href: '/api/entity?rel=agent-runs' },
     ],
     'guard-results': [],
   };
