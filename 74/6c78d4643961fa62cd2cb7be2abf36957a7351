@@ -3,3 +3,9 @@ T21 Phase B source governance
 Added executable guards that keep clientView/lastNavigation as separate projections, reject phrase-driven display/navigation branches, keep client facts out of authorization/tools/start-rel discovery, and preserve no-rule production runtime.
 
 Validation: pnpm vitest run packages/agent/src/t21-source-governance.test.ts => 4 passed; Prettier and git diff checks.
+
+Phase B autonomous verification report
+
+Focused validation: shared chat-view/presentation, web conversation, engine fold, and T21 source governance => 5 files, 87 tests passed. @ui4a/shared, @ui4a/engine, and @ui4a/web typechecks passed; git diff --check passed.
+
+Scripted manual equivalent: fold tests prove chat-navigation-completed leaves Business snapshot byte-equivalent; missing current client view remains null; successful navigation replay is idempotent and session-isolated. No new table, dependency, or authority path.
