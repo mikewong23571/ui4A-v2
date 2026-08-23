@@ -46,6 +46,15 @@ Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能�
 合同的 `draft|direct|none` SubmissionPolicy 决定，Agent 无权在请求侧绕过；human approval
 以同事务 core apply + Draft accepted 原子落地。创建完整新 Application 仍不属于当前 DONE。
 
+### Coding Capability Executor
+
+`conductor/tracks/t18-coding-capability-executors_20260823/` 跟踪通用 Coding Agent 作为
+`coding.execute` capability executor 的闭环：Application Flow 只声明业务节点与能力；UI4A
+治理 executor profile、隔离 workspace、durable run、预算、轨迹、result artifact 和 human
+accept/reject。Codex 是首个真实 reference executor；Hermes 只提供 Runtime/Workspace/session/
+trajectory/approval 分层启发，不进入依赖或产品运行时。Coding Agent 无权直接 merge、activate、
+deploy 或批准自己的结果。
+
 ### 基线场景（业务平面，继承自已验证 demo）
 
 | # | 场景 | 断言 |

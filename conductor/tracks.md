@@ -36,3 +36,5 @@
 - [x] **Track: T16 Presentation Plane:Chat 薄 Request、Application Recipe 预生成、用户级跨 Session Sidecar fastpath、A2UI/Action/人类优化与 S1–S32/TS1–TS18 验收** *Link: [tracks/t16-semantic-a2ui-sidecars_20260823/index.md](./tracks/t16-semantic-a2ui-sidecars_20260823/index.md)*
 
 - [x] **Track: T17 External Agent CLI 与 Governed Draft Ingress:第三方 Agent 业务操作、应用完善、SubmissionPolicy、系统内 Draft 缓冲、human approval 与 U1–U24/TS1–TS20 验收** *Link: [tracks/t17-external-agent-cli-drafts_20260823/index.md](./tracks/t17-external-agent-cli-drafts_20260823/index.md)*
+
+- [ ] **Track: T18 Coding Capability Executor Host:通用 Coding Agent 执行器、workspace backend、capability-run、Codex reference、结果治理与 U1–U22/TS1–TS18 验收** *Link: [tracks/t18-coding-capability-executors_20260823/index.md](./tracks/t18-coding-capability-executors_20260823/index.md)*
