@@ -39,6 +39,7 @@ export interface CodexStructuredInput {
   compiledHash: string;
   outputSchema: unknown;
   workingDirectory: string;
+  sandboxMode?: 'read-only' | 'workspace-write';
   /** Compatibility-only byte string for definitions born before typed Prompt messages existed. */
   serializedPrompt?: string;
   profile: CodexTransportProfile;
@@ -169,7 +170,7 @@ export async function executeCodexStructured(
     ...(input.profile.model === undefined ? {} : { model: input.profile.model }),
     workingDirectory: input.workingDirectory,
     skipGitRepoCheck: true,
-    sandboxMode: 'workspace-write',
+    sandboxMode: input.sandboxMode ?? 'workspace-write',
     approvalPolicy: 'never',
     networkAccessEnabled: input.profile.networkPolicy !== 'none',
   };
@@ -203,7 +204,9 @@ export async function executeCodexStructured(
         await deps.onProgress({
           kind: 'command-started',
           commandId: event.item.id,
-          summary: event.item.command.slice(0, 500),
+          // Effect verification needs the complete executable command. Truncating a heredoc before
+          // its delimiter makes artifact text indistinguishable from shell code.
+          summary: event.item.command,
         });
       } else if (event.type === 'item.completed' && event.item.type === 'command_execution') {
         await deps.onProgress({

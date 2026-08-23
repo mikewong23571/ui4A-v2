@@ -279,12 +279,155 @@
           }
         ]
       }
+    },
+    {
+      "schemaVersion": 1,
+      "ref": "agent-definition-author@1",
+      "name": "agent-definition-author",
+      "version": 1,
+      "extends": "base-agent@1",
+      "specialize": {
+        "replace": {
+          "intent": "Turn a natural-language specialization request and the bounded Agent Definition registry contract into a mechanically reviewable Agent Definition Draft, examples, and Eval corpus without approving or activating it.",
+          "contracts": {
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "kind": { "const": "agent-definition-authoring-task" },
+                "authoringBrief": {
+                  "type": "object",
+                  "properties": {
+                    "schemaVersion": { "const": 1 },
+                    "description": { "type": "string", "minLength": 1 },
+                    "requestedRef": { "type": "string" },
+                    "constraints": { "type": "array", "items": { "type": "string" } },
+                    "registry": {
+                      "type": "object",
+                      "properties": {
+                        "runtimeClasses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": { "type": "string" },
+                              "features": { "type": "array", "items": { "type": "string" } }
+                            },
+                            "required": ["name", "features"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "tools": { "type": "array", "items": { "type": "string" } },
+                        "resources": { "type": "array", "items": { "type": "string" } },
+                        "contextSources": { "type": "array", "items": { "type": "string" } },
+                        "verifiers": { "type": "array", "items": { "type": "string" } },
+                        "baseDefinitions": { "type": "array", "items": { "type": "object" } }
+                      },
+                      "required": [
+                        "runtimeClasses",
+                        "tools",
+                        "resources",
+                        "contextSources",
+                        "verifiers",
+                        "baseDefinitions"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "budget": {
+                      "type": "object",
+                      "properties": {
+                        "timeoutSeconds": { "type": "integer", "minimum": 1 },
+                        "maxTurns": { "type": "integer", "minimum": 1 },
+                        "maxRawEvents": { "type": "integer", "minimum": 1 },
+                        "maxRawBytes": { "type": "integer", "minimum": 1 },
+                        "maxRawChunkBytes": { "type": "integer", "minimum": 1 }
+                      },
+                      "required": [
+                        "timeoutSeconds",
+                        "maxTurns",
+                        "maxRawEvents",
+                        "maxRawBytes",
+                        "maxRawChunkBytes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["schemaVersion", "description", "constraints", "registry", "budget"],
+                  "additionalProperties": false
+                },
+                "compiledPrompt": {
+                  "type": "object",
+                  "properties": {
+                    "messages": { "type": "array" },
+                    "compiledHash": { "type": "string" }
+                  },
+                  "required": ["messages", "compiledHash"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["kind", "authoringBrief", "compiledPrompt"],
+              "additionalProperties": false
+            },
+            "outputSchema": {
+              "type": "object",
+              "properties": {
+                "authoringResult": { "type": "object" }
+              },
+              "required": ["authoringResult"],
+              "additionalProperties": false
+            }
+          },
+          "runtimeRequirements": {
+            "class": "agent-definition-authoring",
+            "features": ["structured-result", "streamed-events", "cancel", "resume"]
+          },
+          "policies": {
+            "tools": { "allowed": [] },
+            "context": { "allowedSources": [], "maxItems": 0 },
+            "resources": { "allowed": [] },
+            "artifacts": {
+              "allowedMediaTypes": ["application/json"],
+              "maxCount": 16,
+              "maxBytes": 4194304
+            }
+          },
+          "evaluationPolicy": {
+            "verifiers": [
+              "agent-definition-source-parse",
+              "agent-definition-non-eval-invariants",
+              "agent-definition-eval-corpus-proposed",
+              "agent-definition-draft-only"
+            ],
+            "evalSuiteRefs": ["eval:t19-agent-definition-author@1"],
+            "minimumScore": 0.8
+          }
+        },
+        "appendPromptBlocks": [
+          {
+            "id": "agent-definition-authoring-method",
+            "role": "system",
+            "purpose": "instruction",
+            "literal": "Draft a provider-neutral Agent Definition from the supplied request. Include typed Prompt blocks, input/output schemas, runtime requirements, least-privilege policies, examples, and a bounded Eval corpus. You cannot approve or activate this output; it must enter the governed Draft lifecycle for mechanical checks, diff, Eval evidence, and a human decision."
+          },
+          {
+            "id": "agent-definition-authoring-task",
+            "role": "user",
+            "purpose": "task-data",
+            "binding": {
+              "source": "task",
+              "pointer": "/authoringBrief",
+              "encoding": "json-delimited",
+              "required": true
+            }
+          }
+        ]
+      }
     }
   ],
   "policyScopes": {
-    "base-agent@1": ["development", "editorial"],
+    "base-agent@1": ["development", "editorial", "governance"],
     "coding-agent@1": ["development"],
-    "writing-agent@1": ["editorial"]
+    "writing-agent@1": ["editorial"],
+    "agent-definition-author@1": ["governance"]
   },
   "evaluation": {
     "base-agent@1": {
@@ -304,7 +447,15 @@
       "kind": "system-seed-evidence",
       "suite": "eval:t19-writing-agent@1",
       "passed": true,
-      "score": 0.8
+      "score": 1,
+      "source": "conductor/tracks/t19-specialized-agent-contracts_20260823/writing-eval-report.json"
+    },
+    "agent-definition-author@1": {
+      "kind": "system-seed-evidence",
+      "suite": "eval:t19-agent-definition-author@1",
+      "passed": true,
+      "score": 1,
+      "source": "conductor/tracks/t19-specialized-agent-contracts_20260823/authoring-eval-report.json"
     }
   }
 }

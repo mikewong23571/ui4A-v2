@@ -204,6 +204,9 @@ async function projectExactDraft(
           snapshot.definitions?.[aggregate.target]?.version ?? -1
         ];
   let diff: unknown;
+  let checks: AgentDefinitionActivationCheck[] | undefined;
+  let evaluation:
+    { refs: string[]; payloads: Record<string, JsonValue>; missing: string[] } | undefined;
   if (current !== undefined && aggregate.kind === 'flow-definition') {
     try {
       diff = mechanicalFlowDiff(current, payload);
@@ -219,6 +222,16 @@ async function projectExactDraft(
         policyScope: aggregate.policyScope,
       });
       const validation = validateAgentCandidate(payload, aggregate.target, registry);
+      checks = validation.checks;
+      const evalRefs = validation.artifact?.definition.evaluationPolicy.evalSuiteRefs ?? [];
+      const evalPayloads: Record<string, JsonValue> = {};
+      const missing: string[] = [];
+      for (const ref of evalRefs) {
+        const evidence = registry.evalEvidencePayloads.get(ref);
+        if (evidence === undefined) missing.push(ref);
+        else evalPayloads[ref] = evidence;
+      }
+      evaluation = { refs: [...evalRefs], payloads: evalPayloads, missing };
       if (validation.valid && validation.value !== undefined && validation.artifact !== undefined) {
         const beforeRef =
           aggregate.target === undefined ? undefined : registry.activeByName.get(aggregate.target);
@@ -261,6 +274,8 @@ async function projectExactDraft(
       activation: aggregate.activation,
       terminalReason: aggregate.terminalReason,
       ...(diff === undefined ? {} : { diff }),
+      ...(checks === undefined ? {} : { checks }),
+      ...(evaluation === undefined ? {} : { evaluation }),
       submissionPolicy: resolveSubmissionPolicy({
         actor: 'agent',
         writable: true,
@@ -325,6 +340,7 @@ export async function getDraftMetaEntity(
               commandId: COMMAND_ID,
               payload: {},
               schemaRef: { type: 'string' },
+              sources: { type: 'array', items: { type: 'string' }, maxItems: 64 },
             },
             ['kind', 'target', 'policyScope', 'commandId', 'payload'],
           ),
@@ -498,6 +514,7 @@ export async function executeDraftMeta(
     const policyScope = stringParam(request, 'policyScope');
     const commandId = stringParam(request, 'commandId');
     const payload = request.params?.payload;
+    const sources = request.params?.sources;
     if (
       (kind !== 'flow-definition' && kind !== 'agent-definition') ||
       target === undefined ||
@@ -506,6 +523,14 @@ export async function executeDraftMeta(
       payload === undefined
     ) {
       return rejected('schema-invalid', 'kind/target/policyScope/commandId/payload are required');
+    }
+    if (
+      sources !== undefined &&
+      (!Array.isArray(sources) ||
+        sources.length > 64 ||
+        sources.some((source) => typeof source !== 'string' || source.length === 0))
+    ) {
+      return rejected('schema-invalid', 'sources must be at most 64 non-empty references');
     }
     if (policyScope !== context.policyScope) {
       return rejected('guard-failed', 'request policy scope does not match credential scope');
@@ -561,7 +586,7 @@ export async function executeDraftMeta(
           actor: request.actor,
           principal: request.principal,
           commandId,
-          sources: [],
+          sources: sources === undefined ? [] : [...(sources as string[])],
         },
         validation: persistedValidation(validation),
         expiresAt: new Date(Date.now() + DRAFT_LIMITS.retentionDays * 86_400_000).toISOString(),
@@ -581,11 +606,16 @@ export async function executeDraftMeta(
       : undefined;
   if (draftId === undefined) return rejected('undeclared', 'not a Draft resource');
   const found = await getDraftByOwner(db, draftId, request.principal);
-  if (found === undefined)
-    return rejected('undeclared', 'Draft is not authorized or does not exist');
+  if (found === undefined) {
+    const outcome = rejected('undeclared', 'Draft is not authorized or does not exist');
+    await rejectionEvent(db, request, outcome);
+    return outcome;
+  }
   const { aggregate, payload } = found;
   if (aggregate.policyScope !== context.policyScope) {
-    return rejected('undeclared', 'Draft is not authorized or does not exist');
+    const outcome = rejected('undeclared', 'Draft is not authorized or does not exist');
+    await rejectionEvent(db, request, outcome);
+    return outcome;
   }
   const commandId = stringParam(request, 'commandId');
 

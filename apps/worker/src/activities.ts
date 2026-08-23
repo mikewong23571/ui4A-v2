@@ -50,6 +50,15 @@ import {
   prepareCodingRunWithDeps,
 } from './capabilities/coding/runtime';
 import {
+  collectAgentAuthoringRunWithDeps,
+  executeAgentAuthoringRunWithDeps,
+  finalizeAgentAuthoringRunWithDeps,
+  parseAgentAuthoringProfiles,
+  prepareAgentAuthoringRunWithDeps,
+  verifyAgentAuthoringRun,
+  type AgentAuthoringAdapterDeps,
+} from './agents/authoring';
+import {
   collectCodingAgentRunWithDeps,
   executeCodingAgentRunWithDeps,
   finalizeCodingAgentRunWithDeps,
@@ -67,11 +76,15 @@ import {
   type WritingAgentAdapterDeps,
 } from './agents/writing';
 import type {
+  AgentCollectedResult,
   AgentExecuteActivityArgs,
+  AgentExecutionResult,
   AgentFinalizeInput,
+  AgentPreparedResult,
   AgentResolutionRecord,
   AgentRunWorkflowArgs,
   AgentSuspensionRecord,
+  AgentVerificationResult,
 } from './agents/host/contracts';
 
 const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
@@ -231,47 +244,106 @@ function writingAgentAdapterDeps(): WritingAgentAdapterDeps {
   };
 }
 
+function agentAuthoringAdapterDeps(): AgentAuthoringAdapterDeps {
+  const runtimeRoot = process.env.UI4A_AGENT_AUTHORING_RUNTIME_ROOT;
+  const profiles = process.env.UI4A_AGENT_AUTHORING_PROFILES;
+  if (runtimeRoot === undefined || profiles === undefined) {
+    throw new Error(
+      'Agent authoring requires UI4A_AGENT_AUTHORING_RUNTIME_ROOT and UI4A_AGENT_AUTHORING_PROFILES',
+    );
+  }
+  return {
+    db: workerDb(),
+    runtimeRoot,
+    profiles: parseAgentAuthoringProfiles(profiles),
+    callbackBaseUrl: process.env.UI4A_PUBLIC_BASE_URL,
+    callbackToken: process.env.UI4A_CAPABILITY_CALLBACK_TOKEN,
+  };
+}
+
 function agentTaskKind(context: AgentRunWorkflowArgs): string | undefined {
   const payload = context.task.payload;
   if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return undefined;
   return typeof payload.kind === 'string' ? payload.kind : undefined;
 }
 
-export type AgentSpecializationAdapter = 'coding' | 'writing';
+export type AgentSpecializationAdapter = 'coding' | 'writing' | 'authoring';
+
+type AgentCollectActivityArgs = Parameters<typeof collectCodingAgentRunWithDeps>[0];
+type AgentVerifyActivityArgs = Parameters<typeof verifyCodingAgentRun>[0];
+
+interface AgentSpecializationBinding {
+  name: AgentSpecializationAdapter;
+  taskKind: string;
+  prepare(args: AgentRunWorkflowArgs): Promise<AgentPreparedResult>;
+  execute(args: AgentExecuteActivityArgs): Promise<AgentExecutionResult>;
+  collect(args: AgentCollectActivityArgs): Promise<AgentCollectedResult>;
+  verify(args: AgentVerifyActivityArgs): AgentVerificationResult;
+  finalize(input: AgentFinalizeInput): Promise<void>;
+}
+
+/** Composition registry: adding a specialization contributes one adapter object, not Host branches. */
+const agentSpecializationBindings: readonly AgentSpecializationBinding[] = [
+  {
+    name: 'coding',
+    taskKind: 'coding-task',
+    prepare: (args) => prepareCodingAgentRunWithDeps(args, codingAgentAdapterDeps()),
+    execute: (args) => executeCodingAgentRunWithDeps(args, codingAgentAdapterDeps()),
+    collect: (args) => collectCodingAgentRunWithDeps(args, codingAgentAdapterDeps()),
+    verify: verifyCodingAgentRun,
+    finalize: (input) => finalizeCodingAgentRunWithDeps(input, codingAgentAdapterDeps()),
+  },
+  {
+    name: 'writing',
+    taskKind: 'writing-task',
+    prepare: (args) => prepareWritingAgentRunWithDeps(args, writingAgentAdapterDeps()),
+    execute: (args) => executeWritingAgentRunWithDeps(args, writingAgentAdapterDeps()),
+    collect: (args) => collectWritingAgentRunWithDeps(args, writingAgentAdapterDeps()),
+    verify: verifyWritingAgentRun,
+    finalize: (input) => finalizeWritingAgentRunWithDeps(input, writingAgentAdapterDeps()),
+  },
+  {
+    name: 'authoring',
+    taskKind: 'agent-definition-authoring-task',
+    prepare: (args) => prepareAgentAuthoringRunWithDeps(args, agentAuthoringAdapterDeps()),
+    execute: (args) => executeAgentAuthoringRunWithDeps(args, agentAuthoringAdapterDeps()),
+    collect: (args) => collectAgentAuthoringRunWithDeps(args, agentAuthoringAdapterDeps()),
+    verify: verifyAgentAuthoringRun,
+    finalize: (input) => finalizeAgentAuthoringRunWithDeps(input, agentAuthoringAdapterDeps()),
+  },
+];
+
+function specializationBindingForTask(context: AgentRunWorkflowArgs): AgentSpecializationBinding {
+  const kind = agentTaskKind(context);
+  const matches = agentSpecializationBindings.filter((binding) => binding.taskKind === kind);
+  if (matches.length !== 1) {
+    throw new Error(`no Agent specialization adapter is registered for ${kind ?? 'unknown task'}`);
+  }
+  return matches[0]!;
+}
 
 /** Select only the birth-compiled task kind; Provider/profile fields are never task-controlled. */
 export function specializationAdapterForTask(
   context: AgentRunWorkflowArgs,
 ): AgentSpecializationAdapter {
-  const kind = agentTaskKind(context);
-  if (kind === 'coding-task') return 'coding';
-  if (kind === 'writing-task') return 'writing';
-  throw new Error(`no Agent specialization adapter is registered for ${kind ?? 'unknown task'}`);
+  return specializationBindingForTask(context).name;
 }
 
 /** Select the birth-pinned specialization; task parameters cannot choose a Provider adapter. */
 export async function prepareAgentRun(args: AgentRunWorkflowArgs) {
-  return specializationAdapterForTask(args) === 'coding'
-    ? prepareCodingAgentRunWithDeps(args, codingAgentAdapterDeps())
-    : prepareWritingAgentRunWithDeps(args, writingAgentAdapterDeps());
+  return specializationBindingForTask(args).prepare(args);
 }
 
 export async function executeAgentRun(args: AgentExecuteActivityArgs) {
-  return specializationAdapterForTask(args.context) === 'coding'
-    ? executeCodingAgentRunWithDeps(args, codingAgentAdapterDeps())
-    : executeWritingAgentRunWithDeps(args, writingAgentAdapterDeps());
+  return specializationBindingForTask(args.context).execute(args);
 }
 
-export async function collectAgentRun(args: Parameters<typeof collectCodingAgentRunWithDeps>[0]) {
-  return specializationAdapterForTask(args.context) === 'coding'
-    ? collectCodingAgentRunWithDeps(args, codingAgentAdapterDeps())
-    : collectWritingAgentRunWithDeps(args, writingAgentAdapterDeps());
+export async function collectAgentRun(args: AgentCollectActivityArgs) {
+  return specializationBindingForTask(args.context).collect(args);
 }
 
-export async function verifyAgentRun(args: Parameters<typeof verifyCodingAgentRun>[0]) {
-  return specializationAdapterForTask(args.context) === 'coding'
-    ? verifyCodingAgentRun(args)
-    : verifyWritingAgentRun(args);
+export async function verifyAgentRun(args: AgentVerifyActivityArgs) {
+  return specializationBindingForTask(args.context).verify(args);
 }
 
 async function currentNativeRun(context: AgentRunWorkflowArgs) {
@@ -341,9 +413,7 @@ export async function recordAgentRunResolution(
 }
 
 export async function finalizeAgentRun(input: AgentFinalizeInput): Promise<void> {
-  return specializationAdapterForTask(input.context) === 'coding'
-    ? finalizeCodingAgentRunWithDeps(input, codingAgentAdapterDeps())
-    : finalizeWritingAgentRunWithDeps(input, writingAgentAdapterDeps());
+  return specializationBindingForTask(input.context).finalize(input);
 }
 
 export interface CapabilityArtifactInput {

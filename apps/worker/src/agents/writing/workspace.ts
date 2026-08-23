@@ -239,11 +239,41 @@ function verifyCitations(brief: WritingBrief, result: WritingResult, markdown: s
   }
 }
 
-const forbiddenCommand =
-  /(?:^|[\s;&|])(git|curl|wget|ssh|scp|npm|pnpm|yarn|bun)(?:[\s;&|]|$)|\b(push|merge|deploy|publish|activate)\b/iu;
+const forbiddenExecutable =
+  /(?:^|[\n;&|()])\s*(?:(?:command|exec|sudo)\s+)?(?:env(?:\s+[A-Za-z_][A-Za-z0-9_]*=[^\s;&|]+)*\s+)?(?:\/[A-Za-z0-9_.-]+)*\/?(git|curl|wget|ssh|scp|npm|pnpm|yarn|bun)(?=\s|[;&|()]|$)/iu;
+const forbiddenUi4aEffect =
+  /(?:^|[\n;&|()])\s*(?:\/[A-Za-z0-9_.-]+)*\/?ui4a\s+(?:[^\n;&|]+\s)?(push|merge|deploy|publish|activate|approve)(?=\s|[;&|()]|$)/iu;
+
+/** Remove heredoc payloads so sourced commands in Markdown remain data, not observed effects. */
+function executableCommand(command: string): string {
+  let output = command;
+  const declaration = /<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1/gu;
+  let match: RegExpExecArray | null;
+  while ((match = declaration.exec(output)) !== null) {
+    const bodyStart = output.indexOf('\n', match.index + match[0].length);
+    if (bodyStart < 0) return output;
+    const terminator = new RegExp(`\\n[ \\t]*${match[2]}(?=\\r?\\n|["']?\\s*$)`, 'u');
+    const tail = output.slice(bodyStart);
+    const end = terminator.exec(tail);
+    // Missing terminator is fail-closed: the command may be truncated or malformed.
+    if (end === null) return output;
+    const bodyEnd = bodyStart + end.index;
+    output = `${output.slice(0, bodyStart + 1)}[UI4A_HEREDOC_DATA]${output.slice(bodyEnd)}`;
+    declaration.lastIndex = bodyStart + '[UI4A_HEREDOC_DATA]'.length;
+  }
+  const wrapped = /^(?:\/[A-Za-z0-9_.-]+)*\/(?:zsh|bash|sh)\s+-lc\s+(['"])([\s\S]*)\1\s*$/u.exec(
+    output.trim(),
+  );
+  return wrapped?.[2] ?? output;
+}
+
+function isForbiddenCommand(command: string): boolean {
+  const executable = executableCommand(command);
+  return forbiddenExecutable.test(executable) || forbiddenUi4aEffect.test(executable);
+}
 
 function verifyCommands(commands: string[]): void {
-  const command = commands.find((candidate) => forbiddenCommand.test(candidate));
+  const command = commands.find(isForbiddenCommand);
   if (command !== undefined) throw new Error(`forbidden writing effect observed: ${command}`);
 }
 

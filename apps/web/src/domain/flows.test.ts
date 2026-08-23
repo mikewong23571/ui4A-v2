@@ -36,6 +36,7 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
       'comment-moderation',
       'software-change',
       'writing-request',
+      'agent-definition-authoring',
     ]);
   });
 
@@ -305,19 +306,21 @@ describe('种子数据(seed 事件载荷)', () => {
       comments: ['comment:c1', 'comment:c2', 'comment:c3', 'comment:c4'],
       'software-changes': ['software-change:main'],
       'writing-requests': ['writing-request:main'],
+      'agent-definition-requests': ['agent-definition-request:main'],
     });
-    expect(Object.keys(instances)).toHaveLength(9);
+    expect(Object.keys(instances)).toHaveLength(10);
   });
 
   it('seed 事件折叠出种子快照;重复 seed 折叠幂等(不翻倍)', () => {
     const seedEvent = { seq: 1, kind: 'seed' as const, rel: SEED_REL, detail: seedDetail };
     const snapshot = fold([seedEvent], { flows: businessFlows });
 
-    expect(Object.keys(snapshot.instances)).toHaveLength(9);
+    expect(Object.keys(snapshot.instances)).toHaveLength(10);
     expect(snapshot.collections.articles).toHaveLength(2);
     expect(snapshot.collections.comments).toHaveLength(4);
     expect(snapshot.collections['software-changes']).toHaveLength(1);
     expect(snapshot.collections['writing-requests']).toHaveLength(1);
+    expect(snapshot.collections['agent-definition-requests']).toHaveLength(1);
 
     const doubled = fold([seedEvent, { ...seedEvent, seq: 2 }], { flows: businessFlows });
     expect(contentVersion(doubled)).toBe(contentVersion(snapshot));

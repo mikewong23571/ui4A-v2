@@ -25,7 +25,9 @@
     "cli:build": "pnpm --filter @ui4a/cli build",
     "cli:pack": "pnpm --filter @ui4a/cli pack",
     "eval:t17": "node scripts/t17-eval.mjs",
-    "eval:t18": "pnpm exec tsx scripts/t18-real-eval.ts"
+    "eval:t18": "pnpm exec tsx scripts/t18-real-eval.ts",
+    "eval:t19:writing": "pnpm exec tsx scripts/t19-writing-real-eval.ts",
+    "eval:t19:authoring": "pnpm exec tsx scripts/t19-authoring-real-eval.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

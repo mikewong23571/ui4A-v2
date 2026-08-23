@@ -11,6 +11,9 @@ import {
   type AgentTaskEnvelope,
 } from '@ui4a/engine';
 import {
+  AGENT_AUTHORING_LIMITS,
+  AGENT_AUTHORING_SCHEMA_VERSION,
+  assertAgentAuthoringBrief,
   assertWritingBrief,
   WRITING_AGENT_LIMITS,
   WRITING_AGENT_SCHEMA_VERSION,
@@ -18,14 +21,17 @@ import {
   type CodingTask,
 } from '@ui4a/shared';
 
-import { getAgentDefinitionVersion } from '../db/agent-definitions';
+import { getAgentDefinitionVersion, readAgentDefinitionRegistry } from '../db/agent-definitions';
 import { appendAgentRunCommand, type ConnectableDb } from '../db/agent-runs';
 import { dispatchAgentRun } from '../temporal/agent-run';
 import {
+  agentAuthoringProfileFromEnvironment,
+  authoringProfileAsAgentRuntime,
   codingProfileAsAgentRuntime,
   documentAgentProfileFromEnvironment,
   documentProfileAsAgentRuntime,
 } from './agent-runtime-config';
+import { agentRegistryConfigurationFromEnvironment } from './agent-definitions';
 import {
   codingExecutorProfileFromEnvironment,
   codingTaskFromCapabilityParams,
@@ -41,7 +47,11 @@ interface NativeSpecializationTaskMapping {
 interface NativeSpecializationTaskMapper {
   definitionRef: string;
   runtimeClass: string;
-  map(profileName: string, params: Record<string, unknown>): NativeSpecializationTaskMapping;
+  map(
+    profileName: string,
+    params: Record<string, unknown>,
+    context: { db: ConnectableDb; principal: string; policyScope: string },
+  ): NativeSpecializationTaskMapping | Promise<NativeSpecializationTaskMapping>;
 }
 
 function stringParam(params: Record<string, unknown>, name: string): string {
@@ -100,6 +110,52 @@ const nativeSpecializationTaskMappers: readonly NativeSpecializationTaskMapper[]
       return {
         runtimeProfile: documentProfileAsAgentRuntime(deployed),
         promptInput: asRunJson({ kind: 'writing-task', writingBrief }),
+      };
+    },
+  },
+  {
+    definitionRef: 'agent-definition-author@1',
+    runtimeClass: 'agent-definition-authoring',
+    map: async (profileName, params, context) => {
+      const deployed = agentAuthoringProfileFromEnvironment(profileName);
+      const [registry, configuration] = await Promise.all([
+        readAgentDefinitionRegistry(context.db, context.principal, context.policyScope),
+        Promise.resolve(agentRegistryConfigurationFromEnvironment()),
+      ]);
+      const baseDefinitions = [...registry.activeByName.values()]
+        .map((ref) => registry.definitions.get(ref)?.source)
+        .filter((source): source is NonNullable<typeof source> => source !== undefined);
+      const authoringBrief = assertAgentAuthoringBrief({
+        schemaVersion: AGENT_AUTHORING_SCHEMA_VERSION,
+        description: stringParam(params, 'description'),
+        constraints: [
+          'Return a Draft proposal only.',
+          'Do not request approval, activation, Provider overrides, or undeclared resources.',
+        ],
+        registry: {
+          runtimeClasses: [...configuration.activationRegistries.runtimeClasses].map(
+            ([name, features]) => ({ name, features: [...features] }),
+          ),
+          tools: [...configuration.activationRegistries.tools],
+          resources: [...configuration.activationRegistries.resources],
+          contextSources: [...configuration.activationRegistries.contextSources],
+          verifiers: [...configuration.activationRegistries.verifiers],
+          baseDefinitions,
+        },
+        budget: {
+          timeoutSeconds: deployed.timeoutSeconds,
+          maxTurns: deployed.maxTurns,
+          maxRawEvents: AGENT_AUTHORING_LIMITS.maxRawEvents,
+          maxRawBytes: AGENT_AUTHORING_LIMITS.maxRawBytes,
+          maxRawChunkBytes: AGENT_AUTHORING_LIMITS.maxRawChunkBytes,
+        },
+      });
+      return {
+        runtimeProfile: authoringProfileAsAgentRuntime(deployed),
+        promptInput: asRunJson({
+          kind: 'agent-definition-authoring-task',
+          authoringBrief,
+        }),
       };
     },
   },
@@ -167,9 +223,10 @@ export async function prepareNativeAgentDispatch(
     throw new Error(`Agent Definition ${executor.agentDefinition} is not active in this scope`);
   }
   const runtimeClass = view.flattened.definition.runtimeRequirements.class;
-  const mapping = specializationTaskMapper(view.version.ref, runtimeClass).map(
+  const mapping = await specializationTaskMapper(view.version.ref, runtimeClass).map(
     executor.profile,
     input.params,
+    { db, principal: input.principal, policyScope: input.policyScope },
   );
   const runtimeProfile = mapping.runtimeProfile;
   const requiredFeatures = [

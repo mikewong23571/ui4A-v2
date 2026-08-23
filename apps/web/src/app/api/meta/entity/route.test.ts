@@ -31,13 +31,14 @@ describe('GET /_meta/api/entity', () => {
       links: { rel: string[]; href: string }[];
     };
     expect(entity.class).toEqual(['collection', 'meta/flows']);
-    expect(entity.properties).toEqual({ rel: 'meta/flows', count: 5 });
+    expect(entity.properties).toEqual({ rel: 'meta/flows', count: 6 });
     expect(entity.entities.map((sub) => sub.properties.name)).toEqual([
       'article-drafting',
       'post-status',
       'comment-moderation',
       'software-change',
       'writing-request',
+      'agent-definition-authoring',
     ]);
     expect(entity.entities[1]?.href).toBe('/_meta/api/entity?rel=meta/flow:post-status');
     expect(entity.links).toEqual([{ rel: ['self'], href: '/_meta/api/entity?rel=meta/flows' }]);

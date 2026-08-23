@@ -1,6 +1,7 @@
 import type { SirenEntity } from '@ui4a/engine';
 
 import { getAgentRunInternal, type ConnectableDb } from '../db/agent-runs';
+import { materializeDeclaredAgentDefinitionDraft } from './agent-definition-authoring';
 import { getEngine } from './service';
 
 export type AgentRunSourceCallbackResult =
@@ -33,6 +34,9 @@ export async function finalizeAgentRunSource(
   if (action === undefined) {
     return { ok: false, status: 409, reason: 'declared callback action is missing' };
   }
+  const materialized = succeeded
+    ? await materializeDeclaredAgentDefinitionDraft(db, engine, run)
+    : undefined;
   const outcome = await engine.exec({
     rel: run.source.rel,
     action,
@@ -40,7 +44,11 @@ export async function finalizeAgentRunSource(
     principal: `system:capability:${runId}`,
     channel: 'agent-run-callback',
     params: succeeded
-      ? { runId, resultId: run.result!.resultId }
+      ? {
+          runId,
+          resultId: run.result!.resultId,
+          ...(materialized === undefined ? {} : { draftRel: materialized.draftRel }),
+        }
       : {
           runId,
           reason: run.failure?.reason ?? run.terminalReason ?? `agent run ${run.status}`,

@@ -70,6 +70,7 @@ describe('capability seed 常量(T13)', () => {
       'clarify',
       'coding.execute',
       'writing.compose',
+      'agent-definition.author',
     ]);
     expect(businessCapabilityList.some((capability) => capability.name === 'summarize')).toBe(
       false,

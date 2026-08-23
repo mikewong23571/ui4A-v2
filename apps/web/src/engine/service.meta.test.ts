@@ -191,13 +191,14 @@ describe('capabilities 面(T13 Phase C Task 3;spec 架构决定 3)', () => {
     const engine = await getEngine(pool);
     const entity = await engine.getMetaEntity('meta/capabilities');
     expect(entity?.class).toEqual(['collection', 'meta/capabilities']);
-    expect(entity?.properties).toMatchObject({ rel: 'meta/capabilities', count: 5 });
+    expect(entity?.properties).toMatchObject({ rel: 'meta/capabilities', count: 6 });
     expect(entity?.entities?.map((sub) => sub.properties.name)).toEqual([
       'draft',
       'notify',
       'clarify',
       'coding.execute',
       'writing.compose',
+      'agent-definition.author',
     ]);
     expect(entity?.entities?.[0]?.href).toBe('/_meta/api/entity?rel=meta/capability:draft');
   });

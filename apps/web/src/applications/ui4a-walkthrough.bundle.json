@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "ui4a-walkthrough",
-    "version": 3
+    "version": 4
   },
   "applications": [
     {
@@ -29,6 +29,11 @@
       "name": "editorial",
       "title": "编辑写作",
       "intent": "把有来源约束的写作 Brief 交给 Writing Agent，查看进度、文档、引用与渲染证据，再由人类接受或驳回；接受不等于发布。"
+    },
+    {
+      "name": "governance",
+      "title": "Agent 治理",
+      "intent": "把自然语言专业化需求交给 Agent Definition Author，生成可机械验证的定义 Draft、示例和 Eval corpus；只有人类审批才能激活版本。"
     }
   ],
   "capabilities": [
@@ -163,6 +168,42 @@
           "document-workspace",
           "artifact-write"
         ]
+      }
+    },
+    {
+      "name": "agent-definition.author",
+      "title": "起草专业 Agent",
+      "kind": "effect",
+      "intent": "依据自然语言目标和 Agent Definition Meta 合同生成 Prompt、schemas、runtime requirements、policies、examples 与 Eval corpus；结果只进入 Draft。",
+      "input": "description；定义 schema、registry context、输出边界和预算由服务器注入。",
+      "output": "AgentDefinition Draft candidate、examples、Eval corpus 与机械 Safety evidence；不批准、不激活。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string", "minLength": 1 }
+        },
+        "required": ["description"],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "object" },
+          "examples": { "type": "array" },
+          "evalCorpus": { "type": "array" }
+        },
+        "required": ["source", "examples", "evalCorpus"],
+        "additionalProperties": false
+      },
+      "scope": {
+        "applications": ["governance"],
+        "flows": ["agent-definition-authoring"]
+      },
+      "executor": {
+        "class": "agent-definition-authoring",
+        "profile": "authoring-default",
+        "agentDefinition": "agent-definition-author@1",
+        "requiredFeatures": ["structured-result", "streamed-events", "cancel", "resume"]
       }
     }
   ],
@@ -800,10 +841,121 @@
         { "name": "rejected", "title": "已驳回", "actions": [], "fields": [] }
       ],
       "fields": []
+    },
+    {
+      "name": "agent-definition-authoring",
+      "title": "专业 Agent 起草",
+      "app": "governance",
+      "initial": "request-ready",
+      "nodes": [
+        {
+          "name": "request-ready",
+          "title": "描述专业 Agent",
+          "fields": [],
+          "actions": [
+            {
+              "name": "start-authoring",
+              "title": "生成 Agent Definition Draft",
+              "to": "authoring-running",
+              "guards": [],
+              "fields": [
+                {
+                  "name": "description",
+                  "type": "textarea",
+                  "title": "专业 Agent 需求",
+                  "required": true,
+                  "semantics": "intent",
+                  "persist": false,
+                  "minLength": 1
+                }
+              ],
+              "effect": [
+                { "type": "transition", "to": "authoring-running" },
+                {
+                  "type": "spawn",
+                  "capability": "agent-definition.author",
+                  "on-done": "authoring-succeeded",
+                  "on-error": "authoring-failed-callback"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "authoring-running",
+          "title": "正在起草",
+          "fields": [],
+          "actions": [
+            {
+              "name": "authoring-succeeded",
+              "title": "起草成功回调",
+              "internal": "capability-callback",
+              "agent-result-bridge": { "kind": "agent-definition-draft" },
+              "to": "draft-ready",
+              "guards": ["principal-is-capability-system"],
+              "fields": [
+                { "name": "runId", "type": "text", "required": true },
+                { "name": "resultId", "type": "text", "required": true },
+                { "name": "draftRel", "type": "text", "required": true }
+              ],
+              "effect": [{ "type": "transition", "to": "draft-ready" }]
+            },
+            {
+              "name": "authoring-failed-callback",
+              "title": "起草失败回调",
+              "internal": "capability-callback",
+              "to": "authoring-failed",
+              "guards": ["principal-is-capability-system"],
+              "fields": [
+                { "name": "runId", "type": "text", "required": true },
+                { "name": "reason", "type": "textarea", "required": true }
+              ],
+              "effect": [{ "type": "transition", "to": "authoring-failed" }]
+            }
+          ]
+        },
+        {
+          "name": "draft-ready",
+          "title": "定义 Draft 已生成",
+          "fields": [],
+          "actions": [
+            {
+              "name": "author-another",
+              "title": "起草另一个 Agent",
+              "to": "request-ready",
+              "guards": ["actor-is-human"],
+              "fields": [],
+              "effect": [
+                { "type": "transition", "to": "request-ready" },
+                { "type": "clear-fields" }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "authoring-failed",
+          "title": "起草失败",
+          "fields": [],
+          "actions": [
+            {
+              "name": "retry-authoring",
+              "title": "重新描述需求",
+              "to": "request-ready",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                { "type": "transition", "to": "request-ready" },
+                { "type": "clear-fields" }
+              ]
+            }
+          ]
+        }
+      ],
+      "fields": []
     }
   ],
   "seed": {
-    "rel": "seed:business-domain-v3",
+    "rel": "seed:business-domain-v4",
     "detail": {
       "instances": {
         "post:post-welcome": {
@@ -905,13 +1057,20 @@
           "flow": "writing-request",
           "node": "brief-draft",
           "fields": {}
+        },
+        "agent-definition-request:main": {
+          "rel": "agent-definition-request:main",
+          "flow": "agent-definition-authoring",
+          "node": "request-ready",
+          "fields": {}
         }
       },
       "collections": {
         "articles": ["post:post-welcome", "post:first-post"],
         "comments": ["comment:c1", "comment:c2", "comment:c3", "comment:c4"],
         "software-changes": ["software-change:main"],
-        "writing-requests": ["writing-request:main"]
+        "writing-requests": ["writing-request:main"],
+        "agent-definition-requests": ["agent-definition-request:main"]
       }
     }
   }

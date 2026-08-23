@@ -13,12 +13,15 @@ describe('built-in Writing specialization and editorial Application', () => {
         policyScopes,
       })),
     ).toEqual([
-      { ref: 'base-agent@1', policyScopes: ['development', 'editorial'] },
+      { ref: 'base-agent@1', policyScopes: ['development', 'editorial', 'governance'] },
       { ref: 'coding-agent@1', policyScopes: ['development'] },
       { ref: 'writing-agent@1', policyScopes: ['editorial'] },
+      { ref: 'agent-definition-author@1', policyScopes: ['governance'] },
     ]);
 
-    const writing = installedAgentDefinitions.at(-1)!;
+    const writing = installedAgentDefinitions.find(
+      ({ source }) => source.ref === 'writing-agent@1',
+    )!;
     expect(writing.artifact.definition).toMatchObject({
       ref: 'writing-agent@1',
       runtimeRequirements: {

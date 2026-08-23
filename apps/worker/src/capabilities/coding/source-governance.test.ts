@@ -23,7 +23,7 @@ describe('coding capability source governance', () => {
     const source = await productionSource();
     expect(source).not.toMatch(/\b(?:exec|spawn)\s*\(/u);
     expect(source).not.toMatch(/shell\s*:\s*true|danger-full-access|bypass|--yolo/iu);
-    expect(source).toContain("sandboxMode: 'workspace-write'");
+    expect(source).toContain("sandboxMode: input.sandboxMode ?? 'workspace-write'");
     expect(source).toContain("approvalPolicy: 'never'");
   });
 });

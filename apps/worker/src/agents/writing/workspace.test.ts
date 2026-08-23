@@ -101,7 +101,11 @@ describe('document-workspace', () => {
       brief,
       claim,
       collected,
-      observedCommands: ['wc -w out/article.md', 'shasum -a 256 out/article.md'],
+      observedCommands: [
+        'wc -w out/article.md',
+        'shasum -a 256 out/article.md',
+        `/bin/zsh -lc "cat > out/article.md <<'EOF'\nRun pnpm install. The API does not publish.\nEOF"`,
+      ],
     });
 
     expect(collected.artifact).toMatchObject({ path: 'out/article.md', hash: hash(markdown) });
@@ -227,7 +231,9 @@ describe('document-workspace', () => {
           changedPaths: ['out/article.md'],
           sourceManifest: prepared.sourceManifest,
         },
-        observedCommands: ['git status', 'curl https://example.com', 'ui4a publish'],
+        observedCommands: [
+          `/bin/zsh -lc "cat > out/article.md <<'EOF'\nThe API does not publish.\nEOF\ncurl https://example.com"`,
+        ],
       }),
     ).rejects.toThrow(/forbidden writing effect/i);
   });

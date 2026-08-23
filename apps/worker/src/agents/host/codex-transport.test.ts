@@ -33,11 +33,12 @@ const messages = [
 describe('generic Codex structured transport', () => {
   it('owns provider streaming, structured JSON, dispatch hashes, and generic progress', async () => {
     vi.stubEnv('WRITING_TEST_KEY', 'deployment-secret');
+    const observedCommand = `wc -w out/article.md # ${'x'.repeat(600)}`;
     const client = sdk([
       { type: 'thread.started', thread_id: 'thread-7' },
       {
         type: 'item.started',
-        item: { id: 'cmd-1', type: 'command_execution', command: 'wc -w out/article.md' },
+        item: { id: 'cmd-1', type: 'command_execution', command: observedCommand },
       },
       {
         type: 'item.completed',
@@ -104,6 +105,11 @@ describe('generic Codex structured transport', () => {
       'message-received',
       'provider-event',
     ]);
+    expect(progress).toHaveBeenCalledWith({
+      kind: 'command-started',
+      commandId: 'cmd-1',
+      summary: observedCommand,
+    });
     expect(dispatched).toHaveBeenCalledWith({
       compiledHash: `sha256:${'7'.repeat(64)}`,
       sentPromptHash: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
@@ -131,6 +137,40 @@ describe('generic Codex structured transport', () => {
   it('serializes provider-neutral messages identically to the T18 compatibility adapter', () => {
     expect(serializeCodexMessages(messages)).toContain(
       '<<<UI4A_COMPILED_MESSAGE_V1 role="system">>>',
+    );
+  });
+
+  it('uses a server-owned read-only sandbox for structured-only specializations', async () => {
+    const client = sdk([
+      { type: 'thread.started', thread_id: 'thread-read-only' },
+      {
+        type: 'item.completed',
+        item: { id: 'message', type: 'agent_message', text: '{"status":"completed"}' },
+      },
+    ]);
+    await executeCodexStructured(
+      {
+        runId: 'agent-run:read-only',
+        messages,
+        compiledHash: `sha256:${'6'.repeat(64)}`,
+        outputSchema: { type: 'object' },
+        workingDirectory: '/tmp/structured-only',
+        sandboxMode: 'read-only',
+        profile: {
+          providerId: 'codex',
+          envAllowlist: ['PATH'],
+          networkPolicy: 'none',
+          maxTurns: 4,
+        },
+      },
+      {
+        createClient: () => client,
+        onRaw: async () => undefined,
+        onProgress: async () => undefined,
+      },
+    );
+    expect(client.startThread).toHaveBeenCalledWith(
+      expect.objectContaining({ sandboxMode: 'read-only', networkAccessEnabled: false }),
     );
   });
 

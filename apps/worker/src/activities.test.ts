@@ -163,6 +163,9 @@ describe('generic Agent Host specialization selector', () => {
   it('selects coding and Writing adapters by server-compiled task kind', () => {
     expect(specializationAdapterForTask(context('coding-task'))).toBe('coding');
     expect(specializationAdapterForTask(context('writing-task'))).toBe('writing');
+    expect(specializationAdapterForTask(context('agent-definition-authoring-task'))).toBe(
+      'authoring',
+    );
     expect(() => specializationAdapterForTask(context('research-task'))).toThrow(
       /no Agent specialization adapter/i,
     );
