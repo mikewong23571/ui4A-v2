@@ -13,17 +13,17 @@
 - [x] Task: 将结论写入全局 `DECISIONS.md`，冻结 CLI envelope/runtime、Draft event/store、SubmissionPolicy inheritance、atomic apply、auth demo 边界和 companion skill 范围；技术栈偏差先更新 `tech-stack.md` (f5cf303)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (f5cf303)
 
-## Phase B: Shared SubmissionPolicy、Draft schema 与 pure kernel
+## Phase B: Shared SubmissionPolicy、Draft schema 与 pure kernel [checkpoint: 19152ca]
 
-- [ ] Task: U19–U21/TS7 Red→Green——`draft|direct|none` shared contract、默认/继承/actor-scope 求值和 activation invariants；request-side override fuzz 100% 拒绝
-- [ ] Task: U11/TS8 Red→Green——exact Draft envelope、kind/target/base/payload hash/schema/provenance/validation/status/version/retention 与预算；payload invalid 可入、envelope invalid fail-closed
-- [ ] Task: U12/U17/U18/TS9 Red→Green——Draft lifecycle 状态机、immutable versions、fork/rebase/abandon/terminal 规则
-- [ ] Task: TS10 Red→Green——Draft commands/events/pure fold、eventId/commandId 幂等、active pointer、lookup indexes 和 Business Snapshot isolation
-- [ ] Task: U12/U18/TS11 Red→Green——baseVersion CAS、payload hash、冲突检测、stale/rebase property tests 和 deterministic retry
-- [ ] Task: U13/TS12 Red→Green——复用 Application Bundle parser/schema/invariants/registries 的 validation adapter 与稳定 issue shape
-- [ ] Task: U14/TS13 Red→Green——canonical mechanical diff，覆盖 App/Flow/node/field/action/guard/effect 增删改，零 LLM
-- [ ] Task: Pure kernel source governance——无 DB/HTTP/React/Temporal/env/业务关键词；公共函数 JSDoc 与覆盖率 >80%
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: U19–U21/TS7 Red→Green——`draft|direct|none` shared contract、默认/继承/actor-scope 求值和 activation invariants；request-side override fuzz 100% 拒绝 (19152ca)
+- [x] Task: U11/TS8 Red→Green——exact Draft envelope、kind/target/base/payload hash/schema/provenance/validation/status/version/retention 与预算；payload invalid 可入、envelope invalid fail-closed (19152ca)
+- [x] Task: U12/U17/U18/TS9 Red→Green——Draft lifecycle 状态机、immutable versions、fork/rebase/abandon/terminal 规则 (19152ca)
+- [x] Task: TS10 Red→Green——Draft commands/events/pure fold、eventId/commandId 幂等、active pointer、lookup indexes 和 Business Snapshot isolation (19152ca)
+- [x] Task: U12/U18/TS11 Red→Green——baseVersion CAS、payload hash、冲突检测、stale/rebase property tests 和 deterministic retry (19152ca)
+- [x] Task: U13/TS12 Red→Green——复用 Application Bundle parser/schema/invariants/registries 的 validation adapter 与稳定 issue shape (19152ca)
+- [x] Task: U14/TS13 Red→Green——canonical mechanical diff，覆盖 App/Flow/node/field/action/guard/effect 增删改，零 LLM (19152ca)
+- [x] Task: Pure kernel source governance——无 DB/HTTP/React/Temporal/env/业务关键词；公共函数 JSDoc 与覆盖率 >80% (19152ca)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (19152ca)
 
 ## Phase C: Draft persistence、Siren Meta resources 与审批桥
 
