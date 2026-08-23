@@ -91,9 +91,15 @@ function failedGuardNames(entity: SirenEntity, action: string): string[] {
 }
 
 /** 实体 → 工具投影(固定动词 + 动态动作工具;顺序:动词在前,动作随后)。 */
-export function buildToolProjection(entity: SirenEntity): ToolDescriptor[] {
+export function buildToolProjection(
+  entity: SirenEntity,
+  authorizedSurfaceRels: readonly string[] = [],
+): ToolDescriptor[] {
   const currentRel = typeof entity.properties.rel === 'string' ? entity.properties.rel : '';
   const rels = navigableRels(entity, currentRel);
+  for (const rel of authorizedSurfaceRels) {
+    if (rel !== '' && rel !== currentRel && !rels.includes(rel)) rels.push(rel);
+  }
 
   const tools: ToolDescriptor[] = [
     {

@@ -492,7 +492,12 @@ async function llmDecisionAttempt(
       ...buildLlmMessages(context),
       ...(protocolFailure === undefined ? [] : [repairMessage(protocolFailure)]),
     ],
-    tools: toToolSet(buildToolProjection(context.entity)),
+    tools: toToolSet(
+      buildToolProjection(
+        context.entity,
+        context.sitemap?.surfaces.map((surface) => surface.rel) ?? [],
+      ),
+    ),
     toolChoice: 'required',
     abortSignal: AbortSignal.timeout(60_000),
     includeRawChunks: true,

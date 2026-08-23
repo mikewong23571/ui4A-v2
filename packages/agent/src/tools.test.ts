@@ -77,6 +77,23 @@ describe('固定协议动词', () => {
     expect(parameters.required).toEqual(['rel']);
   });
 
+  it('合并当前授权 sitemap surfaces，使任意合法起点仍可动态发现其他 surface', () => {
+    const isolated = instanceEntity({
+      rel: 'flow:article-drafting',
+      flow: 'article-drafting',
+      node: 'basic-info',
+      actions: [nextAction],
+    });
+    const navigate = buildToolProjection(isolated, [
+      'flow:article-drafting',
+      'articles',
+      'flow:post-status',
+    ]).find((tool) => tool.name === 'navigate')!;
+    const parameters = navigate.parameters as { properties: { rel: { enum?: string[] } } };
+
+    expect(parameters.properties.rel.enum).toEqual(['articles', 'flow:post-status']);
+  });
+
   it('done 要求 summary;exec 枚举当前实体动作名并要求授权证据', () => {
     const tools = buildToolProjection(wizardEntity);
     const done = tools.find((tool) => tool.name === 'done')!;
