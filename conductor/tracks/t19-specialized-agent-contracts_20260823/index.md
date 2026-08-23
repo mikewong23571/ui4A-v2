@@ -11,6 +11,8 @@ Writing 等特化 Agent。Agent 可以起草新的 Agent Definition，但不能�
 - [Architecture](./architecture.md)
 - [Implementation Plan](./plan.md)
 - [Acceptance Evidence Contract](./evidence.md)
+- [Story Corpus](./story-corpus.md)
+- [Phase A Spikes](./spikes/)
 
 当前状态：`in-progress`。T18 保持为 Coding Agent specialization v1 的已验证基础；T19 不删除代码特化
 契约，而是把它们纳入可定义、可版本化、可 Draft、可验收的通用 Agent Host。

@@ -297,3 +297,29 @@
   `executor-profile-valid`（profile 存在且 class 匹配）；缺配置不能激活新版本。Provider 的 final
   tests/changedFiles 只是 claim，Run 结果只采用 UI4A 实际观察的命令 exit code 与 Git diff。人类
   accept 再做 base/path/hash/test CAS，并固定产生非 merge/deploy/activate receipt。
+
+## D31 Specialized Agent Contracts(2026-08-23,T19 Phase A)
+
+- **三层本体**:`CapabilityDefinition` 只表达 Application 要完成的业务工作；版本化
+  `AgentDefinition` 表达专业 Prompt、Task/Result、Runtime features、Tool/Resource/Artifact/Eval
+  policy；`RuntimeProfile` 是部署侧 Provider、环境和资源 backend。Application/任务不得选择
+  Provider、endpoint、binary、credential 或扩大 profile grants。
+- **特化与继承**:root Agent Definition 可独立存在；v1 只支持一个 exact-version parent，激活时
+  flatten 为 immutable artifact。child 使用封闭 section replace allowlist 与 append-only unique
+  Prompt blocks；拒绝 floating parent、arbitrary deep merge、mixins、缺父和 cycle。Run 固定 source/
+  parent/flattened/prompt hashes，父定义后续升级不改变既有 child 或 Run。
+- **Prompt 合同**:定义真相是 provider-neutral typed role/block/binding；动态 task/context 值占完整
+  data block，以 schema pointer + JSON-delimited encoding 注入，不能进入 sealed system authority。
+  拒绝 Mustache 字符串插值和 Provider-native template 作为持久化真相。Prompt 指导认知，不授予
+  tool/resource/identity/approval；实际 provider-neutral messages 与实际发送 provenance 都要 hash。
+- **Run 迁移**:不修改旧 `capability-run-*` 的 wire 语义，也不复制第二套永久 runtime。新增单一
+  canonical Agent Run fold/projection：旧 T18 events 经 versioned legacy codec upcast，新 Run 写
+  `agent-run-*` native events；旧 `capability-run:<id>` HTTP/Siren 与 `codingCapabilityWorkflow` 作为
+  compatibility presenter/facade 保留。新 Run 固定 definition/prompt/runtime/task/result birth refs。
+- **Specialization 边界**:CodingTask/CodingResult/Git worktree/test verifier 保留为 `coding-agent@1`
+  adapter，不弱化成大量 optional generic fields。Writing Agent 复用同一 Agent Host、Codex streamed/
+  structured transport 和 lifecycle，但使用独立 `document-workspace`、WritingBrief/WritingResult、
+  source/citation/render verifiers。Writing 不需要新的 Provider transport。
+- **Agent 创建 Agent**:Agent 可以起草 Prompt、schemas、runtime requirements、policies、examples 和
+  Eval corpus，但结果只能进入 T17 Governed Draft；activation 需要全量 invariants、真实 Eval、
+  mechanical authored/effective diff 和 human-only decision。Agent/system self-approval 永久拒绝。
