@@ -253,8 +253,13 @@ export async function acceptDraftWithCoreEvent(
     client: DbExecutor;
     aggregate: DraftAggregate;
     payload: unknown;
-  }) => Promise<EventAppend>,
-): Promise<{ aggregate: DraftAggregate; coreSeq?: number; draftSeq?: number }> {
+  }) => Promise<EventAppend | AtomicCoreMutationPlan>,
+): Promise<{
+  aggregate: DraftAggregate;
+  coreSeq?: number;
+  coreSeqs?: number[];
+  draftSeq?: number;
+}> {
   await ensureDraftTables(db);
   return withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(740937)');
@@ -278,10 +283,18 @@ export async function acceptDraftWithCoreEvent(
     if (payload === undefined || payloadSha256(payload) !== payloadHash) {
       throw new Error('draft payload integrity failure');
     }
-    const coreEvent = await buildCoreEvent({ client, aggregate, payload });
+    const coreMutation = await buildCoreEvent({ client, aggregate, payload });
     const result = applyDraftCommand(snapshot, command);
     const event = result.events[0]!;
-    const core = await appendEvent(client, coreEvent);
+    const coreEvents = 'events' in coreMutation ? coreMutation.events : [coreMutation];
+    if (coreEvents.length === 0) throw new Error('draft acceptance requires a core event');
+    const coreSeqs: number[] = [];
+    for (const coreEvent of coreEvents) {
+      coreSeqs.push((await appendEvent(client, coreEvent)).seq);
+    }
+    if ('applyProjection' in coreMutation && coreMutation.applyProjection !== undefined) {
+      await coreMutation.applyProjection({ client, seqs: coreSeqs });
+    }
     const draft = await appendEvent(client, {
       domain: 'draft',
       kind: event.kind,
@@ -293,8 +306,19 @@ export async function acceptDraftWithCoreEvent(
     });
     const accepted = result.snapshot.drafts[command.draftId]!;
     await upsertProjection(client, accepted, draft.seq);
-    return { aggregate: accepted, coreSeq: core.seq, draftSeq: draft.seq };
+    return {
+      aggregate: accepted,
+      coreSeq: coreSeqs[0],
+      coreSeqs,
+      draftSeq: draft.seq,
+    };
   });
+}
+
+/** Multi-event core mutation applied atomically before the Draft acceptance event. */
+export interface AtomicCoreMutationPlan {
+  events: EventAppend[];
+  applyProjection?: (input: { client: DbExecutor; seqs: number[] }) => Promise<void>;
 }
 
 export async function getDraft(

@@ -85,6 +85,7 @@ import {
 } from '../db/events';
 import { getPool } from '../db/pool';
 import { ensureCapabilityRunTables } from '../db/capability-runs';
+import { ensureAgentDefinitionTables } from '../db/agent-definitions';
 import { installedApplicationBundles } from '../applications/bundles';
 import {
   resetRecipeCoordinatorForTests,
@@ -270,6 +271,7 @@ async function bootstrapApplicationBundles(db: DbExecutor): Promise<void> {
 async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   await ensureEventsTable(db);
   await ensureCapabilityRunTables(db);
+  await ensureAgentDefinitionTables(db);
   await bootstrapApplicationBundles(db);
 
   const events: LogEvent[] = await readLog(db);

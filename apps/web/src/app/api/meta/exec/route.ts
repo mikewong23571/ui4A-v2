@@ -1,5 +1,6 @@
 import { getDb, getEngine, isMetaRel } from '../../../../engine/service';
 import { executeDraftMeta, isDraftMetaRel } from '../../../../engine/drafts';
+import { agentDefinitionDraftRegistryPort } from '../../../../engine/agent-definitions';
 
 import { parseExecBody, rejectionStatus } from '../../exec-request';
 
@@ -38,7 +39,10 @@ export async function POST(request: Request) {
     const engine = await getEngine(db);
     const policyScope = request.headers.get('x-ui4a-policy-scope') ?? 'publishing';
     const outcome = isDraftMetaRel(parsed.request.rel)
-      ? await executeDraftMeta(db, engine, parsed.request, { policyScope })
+      ? await executeDraftMeta(db, engine, parsed.request, {
+          policyScope,
+          agentDefinitions: agentDefinitionDraftRegistryPort,
+        })
       : await engine.exec(parsed.request);
     if (outcome.kind === 'accepted') {
       return Response.json({ entity: outcome.entity });
@@ -65,12 +69,15 @@ export async function POST(request: Request) {
   } catch (error) {
     const err = error as { code?: string; message?: string };
     const dbFailure =
-      typeof err.code === 'string' && /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
+      typeof err.code === 'string' &&
+      /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
     const message = error instanceof Error ? error.message : String(error);
     const conflict = /conflict|stale|version changed/.test(message);
     const tooLarge = /payload rejected|byte limit|count limit/.test(message);
     return Response.json(
-      dbFailure ? { error: 'meta exec 数据库不可用' } : { error: `meta exec 引擎内部错误: ${message}` },
+      dbFailure
+        ? { error: 'meta exec 数据库不可用' }
+        : { error: `meta exec 引擎内部错误: ${message}` },
       { status: dbFailure ? 503 : conflict ? 409 : tooLarge ? 413 : 500 },
     );
   }

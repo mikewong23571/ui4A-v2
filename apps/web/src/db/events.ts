@@ -70,6 +70,9 @@ export type EventKind =
   | 'capability-run-staled'
   | 'capability-raw-chunk-recorded'
   | 'capability-normalized-event-recorded'
+  | 'agent-definition-version-registered'
+  | 'agent-definition-version-activated'
+  | 'agent-definition-version-deprecated'
   | 'definition-rejected'
   | 'definition-revised'
   | 'definition-deprecated'
@@ -101,7 +104,7 @@ export type EventKind =
   | 'user-sidecar-evicted'
   | 'render-feedback-recorded';
 
-export type EventDomain = 'core' | 'presentation' | 'draft' | 'capability';
+export type EventDomain = 'core' | 'presentation' | 'draft' | 'capability' | 'agent-definition';
 
 /** 追加事件(引擎 EngineEvent 的日志层超集:引擎不产 seq/ts/reason,由本层分配)。 */
 export interface EventAppend {

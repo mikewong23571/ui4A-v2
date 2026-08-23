@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { contentVersion } from '@ui4a/engine';
-import type { FlowDefinition } from '@ui4a/shared';
+import type { AgentDefinition, AgentDefinitionRef, FlowDefinition } from '@ui4a/shared';
 
 import { ensureDraftTables } from '../db/drafts';
 import { ensureEventsTable } from '../db/events';
 import { getPool } from '../db/pool';
 import { getEngine, resetEngineForTests } from './service';
-import { executeDraftMeta, getDraftMetaEntity } from './drafts';
+import {
+  executeDraftMeta,
+  getDraftMetaEntity,
+  type AgentDefinitionDraftRegistryPort,
+} from './drafts';
 
 const pool = getPool(process.env.DATABASE_URL!);
 
@@ -151,5 +155,351 @@ describe('governed Flow Draft vertical slice', () => {
     expect(
       (await getDraftMetaEntity(pool, engine, draftRel, 'user:mike', 'publishing'))?.properties,
     ).toMatchObject({ status: 'accepted' });
+  });
+});
+
+function baseAgent(overrides: Partial<AgentDefinition> = {}): AgentDefinition {
+  return {
+    schemaVersion: 1,
+    ref: 'base-agent@1',
+    name: 'base-agent',
+    version: 1,
+    intent: 'Complete authorized work',
+    prompt: {
+      schemaVersion: 1,
+      blocks: [
+        {
+          id: 'authority',
+          role: 'system',
+          purpose: 'authority',
+          literal: 'Stay within grants.',
+          sealed: true,
+        },
+        {
+          id: 'objective',
+          role: 'user',
+          purpose: 'task-data',
+          binding: {
+            source: 'task',
+            pointer: '/objective',
+            encoding: 'json-delimited',
+            required: true,
+          },
+        },
+      ],
+    },
+    contracts: {
+      inputSchema: {
+        type: 'object',
+        properties: { objective: { type: 'string' } },
+      },
+      outputSchema: { type: 'object' },
+    },
+    runtimeRequirements: { class: 'general-agent', features: ['streaming'] },
+    policies: {
+      tools: { allowed: ['read'] },
+      context: { allowedSources: ['entity'], maxItems: 20 },
+      resources: { allowed: ['entity'] },
+      artifacts: { allowedMediaTypes: ['text/plain'], maxCount: 5, maxBytes: 10_000 },
+    },
+    evaluationPolicy: { verifiers: ['schema'], evalSuiteRefs: ['eval:base@1'] },
+    ...overrides,
+  };
+}
+
+function agentDefinitionPort(): AgentDefinitionDraftRegistryPort & {
+  activeByName: Map<string, AgentDefinitionRef>;
+  activations: unknown[];
+  projectionSeqs: number[][];
+} {
+  const active = baseAgent();
+  const definitions = new Map([[active.ref, { status: 'active' as const, source: active }]]);
+  const activeByName = new Map([['base-agent', active.ref]]);
+  const activations: unknown[] = [];
+  const projectionSeqs: number[][] = [];
+  return {
+    activeByName,
+    activations,
+    projectionSeqs,
+    async readSnapshot() {
+      return {
+        definitions,
+        activeByName,
+        activationRegistries: {
+          runtimeClasses: new Map([['general-agent', new Set(['streaming'])]]),
+          tools: new Set(['read']),
+          resources: new Set(['entity']),
+          contextSources: new Set(['entity']),
+          verifiers: new Set(['schema']),
+          evalEvidence: new Map([
+            ['eval:base@1', { passed: true, score: 1, artifactHash: `sha256:${'a'.repeat(64)}` }],
+          ]),
+        },
+        evalEvidencePayloads: new Map([
+          [
+            'eval:base@1',
+            {
+              suiteRef: 'eval:base@1',
+              passed: true,
+              score: 1,
+              artifactHash: `sha256:${'a'.repeat(64)}`,
+            },
+          ],
+        ]),
+      };
+    },
+    async prepareAtomicActivation(input) {
+      activations.push(input);
+      return {
+        events: [
+          {
+            domain: 'agent-definition',
+            kind: 'agent-definition-version-registered',
+            rel: `meta/agent-definition:${input.artifact.ref}`,
+            actor: 'human',
+            principal: input.decidedBy.principal,
+            detail: { draftId: input.draftId, flattenedHash: input.artifact.flattenedHash },
+          },
+          {
+            domain: 'agent-definition',
+            kind: 'agent-definition-version-activated',
+            rel: `meta/agent-definition:${input.artifact.ref}`,
+            actor: 'human',
+            principal: input.decidedBy.principal,
+            detail: { draftId: input.draftId, ref: input.artifact.ref },
+          },
+        ],
+        async applyProjection({ seqs }) {
+          projectionSeqs.push(seqs);
+        },
+      };
+    },
+  };
+}
+
+describe('governed Agent Definition Draft vertical slice', () => {
+  it('creates invalid candidates, revises them to ready and exposes authored/effective diff', async () => {
+    const engine = await getEngine(pool);
+    const registry = agentDefinitionPort();
+    const context = { policyScope: 'development', agentDefinitions: registry };
+    const invalid = await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel: 'meta/drafts',
+        action: 'create',
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'cli',
+        params: {
+          kind: 'agent-definition',
+          target: 'review-agent',
+          policyScope: 'development',
+          commandId: 'agent:create',
+          payload: { name: 'review-agent' },
+        },
+      },
+      context,
+    );
+    expect(invalid.kind === 'accepted' && invalid.entity.properties.status).toBe('invalid');
+    const rel = invalid.kind === 'accepted' ? String(invalid.entity.properties.rel) : '';
+
+    const candidate = baseAgent({
+      ref: 'review-agent@1',
+      name: 'review-agent',
+      intent: 'Review a governed work product',
+    });
+    const revised = await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel,
+        action: 'revise',
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'cli',
+        params: { commandId: 'agent:revise', baseVersion: 1, payload: candidate },
+      },
+      context,
+    );
+    expect(revised.kind === 'accepted' && revised.entity.properties).toMatchObject({
+      status: 'ready',
+      diff: {
+        authored: { before: null, after: { ref: 'review-agent@1' } },
+        effective: { before: null, after: { ref: 'review-agent@1' } },
+      },
+    });
+    expect(
+      await getDraftMetaEntity(pool, engine, rel, 'user:other', 'development', registry),
+    ).toBeUndefined();
+  });
+
+  it('rejects Agent and system self-approval then atomically hands a human decision to the registry port', async () => {
+    const engine = await getEngine(pool);
+    const registry = agentDefinitionPort();
+    const context = { policyScope: 'development', agentDefinitions: registry };
+    const candidate = baseAgent({ ref: 'review-agent@1', name: 'review-agent' });
+    const created = await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel: 'meta/drafts',
+        action: 'create',
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'cli',
+        params: {
+          kind: 'agent-definition',
+          target: 'review-agent',
+          policyScope: 'development',
+          commandId: 'agent:approval:create',
+          payload: candidate,
+        },
+      },
+      context,
+    );
+    const rel = created.kind === 'accepted' ? String(created.entity.properties.rel) : '';
+    const submitted = await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel,
+        action: 'submit',
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'cli',
+        params: { commandId: 'agent:approval:submit' },
+      },
+      context,
+    );
+    const activation =
+      submitted.kind === 'accepted' ? String(submitted.entity.properties.activation) : '';
+
+    for (const actor of ['agent', 'system'] as const) {
+      const denied = await executeDraftMeta(
+        pool,
+        engine,
+        {
+          rel: activation,
+          action: 'approve',
+          actor: actor as 'agent',
+          principal: 'user:mike',
+          channel: 'cli',
+          params: { commandId: `agent:approval:${actor}` },
+        },
+        context,
+      );
+      expect(denied).toMatchObject({ kind: 'rejected', reason: 'actor-is-human=false' });
+    }
+
+    const approved = await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel: activation,
+        action: 'approve',
+        actor: 'human',
+        principal: 'user:mike',
+        channel: 'human-renderer',
+        params: { commandId: 'agent:approval:human' },
+      },
+      context,
+    );
+    expect(approved.kind === 'accepted' && approved.entity.properties.status).toBe('accepted');
+    expect(registry.activations).toHaveLength(1);
+    expect(registry.activations[0]).toMatchObject({
+      source: { ref: 'review-agent@1' },
+      artifact: { ref: 'review-agent@1' },
+      evalEvidence: {
+        refs: ['eval:base@1'],
+        payloads: { 'eval:base@1': { passed: true, score: 1 } },
+      },
+      requestedBy: { actor: 'agent', principal: 'user:mike' },
+      decidedBy: { actor: 'human', principal: 'user:mike' },
+      diff: { authored: { before: null }, effective: { before: null } },
+    });
+    expect(registry.projectionSeqs).toHaveLength(1);
+    expect(registry.projectionSeqs[0]).toHaveLength(2);
+    const events = await pool.query<{ kind: string }>(
+      `SELECT kind FROM events
+       WHERE kind IN (
+         'agent-definition-version-registered',
+         'agent-definition-version-activated',
+         'draft-accepted'
+       ) ORDER BY seq`,
+    );
+    expect(events.rows.map((row) => row.kind)).toEqual([
+      'agent-definition-version-registered',
+      'agent-definition-version-activated',
+      'draft-accepted',
+    ]);
+  });
+
+  it('fails closed and marks the Draft stale when the active base changes before approval', async () => {
+    const engine = await getEngine(pool);
+    const registry = agentDefinitionPort();
+    const context = { policyScope: 'development', agentDefinitions: registry };
+    const candidate = baseAgent({
+      ref: 'base-agent@2',
+      version: 2,
+      intent: 'Updated intent',
+    });
+    const created = await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel: 'meta/drafts',
+        action: 'create',
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'cli',
+        params: {
+          kind: 'agent-definition',
+          target: 'base-agent',
+          policyScope: 'development',
+          commandId: 'agent:stale:create',
+          payload: candidate,
+        },
+      },
+      context,
+    );
+    const rel = created.kind === 'accepted' ? String(created.entity.properties.rel) : '';
+    const submitted = await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel,
+        action: 'submit',
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'cli',
+        params: { commandId: 'agent:stale:submit' },
+      },
+      context,
+    );
+    const activation =
+      submitted.kind === 'accepted' ? String(submitted.entity.properties.activation) : '';
+    registry.activeByName.set('base-agent', 'base-agent@2');
+
+    await expect(
+      executeDraftMeta(
+        pool,
+        engine,
+        {
+          rel: activation,
+          action: 'approve',
+          actor: 'human',
+          principal: 'user:mike',
+          channel: 'human-renderer',
+          params: { commandId: 'agent:stale:approve' },
+        },
+        context,
+      ),
+    ).rejects.toThrow('stale');
+    expect(
+      (await getDraftMetaEntity(pool, engine, rel, 'user:mike', 'development', registry))
+        ?.properties.status,
+    ).toBe('stale');
+    expect(registry.activations).toHaveLength(0);
   });
 });

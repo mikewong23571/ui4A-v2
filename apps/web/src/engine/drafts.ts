@@ -3,21 +3,32 @@ import { createHash } from 'node:crypto';
 import {
   contentVersion,
   fold,
+  mechanicalAgentDefinitionDiff,
   mechanicalFlowDiff,
+  resolveRegisteredAgentDefinition,
   resolveSubmissionPolicy,
   validateDefinition,
+  validateAgentDefinitionDraft,
   validateFlowDraft,
+  type AgentDefinitionActivationCheck,
+  type AgentDefinitionActivationRegistries,
+  type AgentDefinitionSourceRegistry,
   type DefinitionCandidateAppliedDetail,
   type ExecRequest,
   type JudgeLayer,
+  type MechanicalAgentDefinitionDiff,
   type SirenAction,
   type SirenEntity,
 } from '@ui4a/engine';
 import {
   DRAFT_LIMITS,
   seedGuardRegistry,
+  type AgentDefinitionRef,
+  type AgentDefinitionSource,
   type DraftAggregate,
   type DraftValidation,
+  type FlattenedAgentDefinitionArtifact,
+  type JsonValue,
 } from '@ui4a/shared';
 
 import {
@@ -28,6 +39,7 @@ import {
   getDraftByOwner,
   listDrafts,
   payloadSha256,
+  type AtomicCoreMutationPlan,
   type ConnectableDb,
 } from '../db/drafts';
 import { appendEvent, readLog, type DbExecutor } from '../db/events';
@@ -37,6 +49,51 @@ import { codingExecutorProfileRegistryFromEnvironment } from './coding-executor-
 const DRAFT_REL_PREFIX = 'draft:';
 const DRAFT_ACTIVATION_PREFIX = 'meta/activation:draft-';
 const FLOW_SCHEMA_REF = 'ui4a://flow-definition/v1';
+const AGENT_DEFINITION_SCHEMA_REF = 'ui4a://agent-definition/v1';
+
+export interface AgentDefinitionDraftRegistrySnapshot {
+  definitions: AgentDefinitionSourceRegistry;
+  activeByName: ReadonlyMap<string, AgentDefinitionRef>;
+  activationRegistries: AgentDefinitionActivationRegistries;
+  evalEvidencePayloads: ReadonlyMap<string, JsonValue>;
+}
+
+export interface AgentDefinitionDraftEvalEvidence {
+  [key: string]: JsonValue;
+  refs: string[];
+  payloads: Record<string, JsonValue>;
+}
+
+export interface AgentDefinitionDraftActivationInput {
+  client: DbExecutor;
+  commandId: string;
+  draftId: string;
+  draftVersion: number;
+  owner: string;
+  policyScope: string;
+  expectedBaseRef?: AgentDefinitionRef;
+  payloadHash: string;
+  schemaRef: string;
+  source: AgentDefinitionSource;
+  artifact: FlattenedAgentDefinitionArtifact;
+  evalEvidence: AgentDefinitionDraftEvalEvidence;
+  checks: AgentDefinitionActivationCheck[];
+  diff: MechanicalAgentDefinitionDiff;
+  requestedBy: { actor: 'human' | 'agent'; principal: string };
+  decidedBy: { actor: 'human'; principal: string };
+}
+
+/** Narrow adapter boundary: persistence owns registry locks/CAS and returns its append-only event. */
+export interface AgentDefinitionDraftRegistryPort {
+  readSnapshot(input: {
+    db: DbExecutor;
+    owner: string;
+    policyScope: string;
+  }): Promise<AgentDefinitionDraftRegistrySnapshot>;
+  prepareAtomicActivation(
+    input: AgentDefinitionDraftActivationInput,
+  ): Promise<AtomicCoreMutationPlan>;
+}
 
 export type DraftMetaOutcome =
   | { kind: 'accepted'; entity: SirenEntity }
@@ -137,6 +194,7 @@ async function projectExactDraft(
   engine: EngineRuntime,
   aggregate: DraftAggregate,
   payload: unknown,
+  agentDefinitions?: AgentDefinitionDraftRegistryPort,
 ): Promise<SirenEntity> {
   const snapshot = await engine.readSnapshot();
   const current =
@@ -149,6 +207,34 @@ async function projectExactDraft(
   if (current !== undefined && aggregate.kind === 'flow-definition') {
     try {
       diff = mechanicalFlowDiff(current, payload);
+    } catch {
+      diff = undefined;
+    }
+  }
+  if (aggregate.kind === 'agent-definition' && agentDefinitions !== undefined) {
+    try {
+      const registry = await agentDefinitions.readSnapshot({
+        db,
+        owner: aggregate.owner,
+        policyScope: aggregate.policyScope,
+      });
+      const validation = validateAgentCandidate(payload, aggregate.target, registry);
+      if (validation.valid && validation.value !== undefined && validation.artifact !== undefined) {
+        const beforeRef =
+          aggregate.target === undefined ? undefined : registry.activeByName.get(aggregate.target);
+        const beforeEntry =
+          beforeRef === undefined ? undefined : registry.definitions.get(beforeRef);
+        const beforeArtifact =
+          beforeRef === undefined
+            ? undefined
+            : resolveRegisteredAgentDefinition(beforeRef, registry.definitions);
+        diff = mechanicalAgentDefinitionDiff({
+          ...(beforeEntry === undefined ? {} : { beforeSource: beforeEntry.source }),
+          afterSource: validation.value,
+          ...(beforeArtifact === undefined ? {} : { beforeEffective: beforeArtifact.definition }),
+          afterEffective: validation.artifact.definition,
+        });
+      }
     } catch {
       diff = undefined;
     }
@@ -193,7 +279,11 @@ async function projectExactDraft(
         : [
             {
               rel: ['target'],
-              href: `/_meta/api/entity?rel=${encodeURIComponent(`meta/flow:${aggregate.target}`)}`,
+              href: `/_meta/api/entity?rel=${encodeURIComponent(
+                aggregate.kind === 'agent-definition'
+                  ? `meta/agent-definition:${aggregate.target}`
+                  : `meta/flow:${aggregate.target}`,
+              )}`,
             },
           ]),
       ...(aggregate.activation === undefined
@@ -215,6 +305,7 @@ export async function getDraftMetaEntity(
   rel: string,
   principal: string,
   policyScope: string,
+  agentDefinitions?: AgentDefinitionDraftRegistryPort,
 ): Promise<SirenEntity | undefined> {
   await ensureDraftTables(db);
   if (rel === 'meta/drafts') {
@@ -228,12 +319,12 @@ export async function getDraftMetaEntity(
           'Create Draft',
           schema(
             {
-              kind: { type: 'string', enum: ['flow-definition'] },
+              kind: { type: 'string', enum: ['flow-definition', 'agent-definition'] },
               target: { type: 'string', minLength: 1 },
               policyScope: { type: 'string', minLength: 1 },
               commandId: COMMAND_ID,
               payload: {},
-              schemaRef: { type: 'string', default: FLOW_SCHEMA_REF },
+              schemaRef: { type: 'string' },
             },
             ['kind', 'target', 'policyScope', 'commandId', 'payload'],
           ),
@@ -281,7 +372,7 @@ export async function getDraftMetaEntity(
         : [],
     };
   }
-  return projectExactDraft(db, engine, found.aggregate, found.payload);
+  return projectExactDraft(db, engine, found.aggregate, found.payload, agentDefinitions);
 }
 
 function rejected(layer: JudgeLayer, reason: string, detail?: unknown): DraftMetaOutcome {
@@ -305,7 +396,41 @@ function registries(snapshot: ReturnType<EngineRuntime['getSnapshot']>) {
   };
 }
 
-function persistedValidation(validation: ReturnType<typeof validateFlowDraft>): DraftValidation {
+function validateAgentCandidate(
+  payload: unknown,
+  target: string | undefined,
+  registry: AgentDefinitionDraftRegistrySnapshot,
+): ReturnType<typeof validateAgentDefinitionDraft> {
+  const validation = validateAgentDefinitionDraft(payload, {
+    definitions: registry.definitions,
+    activationRegistries: registry.activationRegistries,
+  });
+  if (validation.value === undefined) return validation;
+  const issues = [...validation.issues];
+  if (target === undefined || validation.value.name !== target) {
+    issues.push({
+      code: 'target-name-mismatch',
+      path: '/name',
+      message: `candidate name ${validation.value.name} does not match target ${target ?? '(missing)'}`,
+    });
+  }
+  const activeRef = target === undefined ? undefined : registry.activeByName.get(target);
+  const activeVersion =
+    activeRef === undefined ? 0 : Number(activeRef.slice(activeRef.lastIndexOf('@') + 1));
+  if (validation.value.version !== activeVersion + 1) {
+    issues.push({
+      code: 'version-not-next',
+      path: '/version',
+      message: `candidate version ${validation.value.version} is not next after ${activeVersion}`,
+    });
+  }
+  return { ...validation, valid: validation.valid && issues.length === 0, issues };
+}
+
+function persistedValidation(
+  validation:
+    ReturnType<typeof validateFlowDraft> | ReturnType<typeof validateAgentDefinitionDraft>,
+): DraftValidation {
   return {
     valid: validation.valid,
     issues: validation.issues,
@@ -334,10 +459,11 @@ async function projectForOwner(
   engine: EngineRuntime,
   draftId: string,
   owner: string,
+  agentDefinitions?: AgentDefinitionDraftRegistryPort,
 ): Promise<SirenEntity> {
   const found = await getDraftByOwner(db, draftId, owner);
   if (found === undefined) throw new Error('draft disappeared after command');
-  return projectExactDraft(db, engine, found.aggregate, found.payload);
+  return projectExactDraft(db, engine, found.aggregate, found.payload, agentDefinitions);
 }
 
 /** Server adapter for declared Draft/activation Siren actions. */
@@ -345,7 +471,7 @@ export async function executeDraftMeta(
   db: ConnectableDb,
   engine: EngineRuntime,
   request: ExecRequest,
-  context: { policyScope: string },
+  context: { policyScope: string; agentDefinitions?: AgentDefinitionDraftRegistryPort },
 ): Promise<DraftMetaOutcome> {
   if (request.actor === undefined || request.principal === undefined || request.principal === '') {
     return rejected('guard-failed', 'Draft operations require an explicit resolved actor context');
@@ -373,7 +499,7 @@ export async function executeDraftMeta(
     const commandId = stringParam(request, 'commandId');
     const payload = request.params?.payload;
     if (
-      kind !== 'flow-definition' ||
+      (kind !== 'flow-definition' && kind !== 'agent-definition') ||
       target === undefined ||
       policyScope === undefined ||
       commandId === undefined ||
@@ -384,16 +510,33 @@ export async function executeDraftMeta(
     if (policyScope !== context.policyScope) {
       return rejected('guard-failed', 'request policy scope does not match credential scope');
     }
-    const snapshot = await engine.readSnapshot();
-    const entry = snapshot.definitions?.[target];
-    if (entry === undefined)
-      return rejected('guard-failed', 'target flow is not authorized or does not exist');
-    const activeDefinition =
-      snapshot.definitionVersions?.[target]?.[entry.version] ?? entry.definition;
-    if ((activeDefinition.app ?? 'default') !== context.policyScope) {
-      return rejected('guard-failed', 'target flow is outside the credential policy scope');
+    let validation:
+      ReturnType<typeof validateFlowDraft> | ReturnType<typeof validateAgentDefinitionDraft>;
+    let baseVersion: string | undefined;
+    if (kind === 'flow-definition') {
+      const snapshot = await engine.readSnapshot();
+      const entry = snapshot.definitions?.[target];
+      if (entry === undefined)
+        return rejected('guard-failed', 'target flow is not authorized or does not exist');
+      const activeDefinition =
+        snapshot.definitionVersions?.[target]?.[entry.version] ?? entry.definition;
+      if ((activeDefinition.app ?? 'default') !== context.policyScope) {
+        return rejected('guard-failed', 'target flow is outside the credential policy scope');
+      }
+      validation = validateFlowDraft(payload, registries(snapshot));
+      baseVersion = String(entry.version);
+    } else {
+      if (context.agentDefinitions === undefined) {
+        return rejected('guard-failed', 'Agent Definition registry is unavailable');
+      }
+      const registry = await context.agentDefinitions.readSnapshot({
+        db,
+        owner: request.principal,
+        policyScope,
+      });
+      validation = validateAgentCandidate(payload, target, registry);
+      baseVersion = registry.activeByName.get(target);
     }
-    const validation = validateFlowDraft(payload, registries(snapshot));
     const id = createHash('sha256')
       .update(`${request.principal}\0${policyScope}\0${commandId}`)
       .digest('hex')
@@ -407,11 +550,13 @@ export async function executeDraftMeta(
         draftId: id,
         owner: request.principal,
         policyScope,
-        draftKind: 'flow-definition',
+        draftKind: kind,
         target,
-        baseVersion: String(entry.version),
+        ...(baseVersion === undefined ? {} : { baseVersion }),
         payloadHash: payloadSha256(payload),
-        schemaRef: stringParam(request, 'schemaRef') ?? FLOW_SCHEMA_REF,
+        schemaRef:
+          stringParam(request, 'schemaRef') ??
+          (kind === 'flow-definition' ? FLOW_SCHEMA_REF : AGENT_DEFINITION_SCHEMA_REF),
         provenance: {
           actor: request.actor,
           principal: request.principal,
@@ -423,7 +568,10 @@ export async function executeDraftMeta(
       },
       payload,
     );
-    return { kind: 'accepted', entity: await projectForOwner(db, engine, id, request.principal) };
+    return {
+      kind: 'accepted',
+      entity: await projectForOwner(db, engine, id, request.principal, context.agentDefinitions),
+    };
   }
 
   const draftId = request.rel.startsWith(DRAFT_REL_PREFIX)
@@ -470,6 +618,7 @@ export async function executeDraftMeta(
           request.rel,
           request.principal,
           aggregate.policyScope,
+          context.agentDefinitions,
         ))!,
       };
     }
@@ -486,56 +635,126 @@ export async function executeDraftMeta(
             activeVersion: aggregate.activeVersion,
           },
           async ({ client, aggregate: locked, payload: lockedPayload }) => {
-            if (locked.kind !== 'flow-definition' || locked.target === undefined)
-              throw new Error('unsupported Draft kind');
-            await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
-              `flow:${locked.target}`,
-            ]);
-            const core = fold(await readLog(client), { flows: {} });
-            const entry = core.definitions?.[locked.target];
-            if (entry === undefined || String(entry.version) !== locked.baseVersion)
-              throw new Error('draft stale: target version changed');
-            const validation = validateFlowDraft(lockedPayload, registries(core));
-            if (!validation.valid || validation.value === undefined)
-              throw new Error('draft is no longer valid');
-            if ((validation.value.app ?? 'default') !== locked.policyScope) {
-              throw new Error('draft target moved outside policy scope');
+            if (locked.target === undefined) throw new Error('Draft target is missing');
+            if (locked.kind === 'flow-definition') {
+              await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
+                `flow:${locked.target}`,
+              ]);
+              const core = fold(await readLog(client), { flows: {} });
+              const entry = core.definitions?.[locked.target];
+              if (entry === undefined || String(entry.version) !== locked.baseVersion)
+                throw new Error('draft stale: target version changed');
+              const validation = validateFlowDraft(lockedPayload, registries(core));
+              if (!validation.valid || validation.value === undefined)
+                throw new Error('draft is no longer valid');
+              if ((validation.value.app ?? 'default') !== locked.policyScope) {
+                throw new Error('draft target moved outside policy scope');
+              }
+              const checks = validateDefinition(validation.value, registries(core));
+              const active =
+                core.definitionVersions?.[locked.target]?.[entry.version] ?? entry.definition;
+              const mechanical = mechanicalFlowDiff(active, validation.value);
+              const detail: DefinitionCandidateAppliedDetail = {
+                schemaVersion: 1,
+                commandId,
+                name: locked.target,
+                baseVersion: entry.version,
+                version: entry.version + 1,
+                activationId: `draft-${draftId}`,
+                draftId,
+                draftVersion: locked.activeVersion,
+                payloadHash: locked.versions[locked.activeVersion]!.payloadHash,
+                policyScope: locked.policyScope,
+                artifact: contentVersion(validation.value),
+                definition: validation.value,
+                checks,
+                diff: mechanical.diff,
+                requestedBy: {
+                  actor: locked.versions[locked.activeVersion]!.provenance.actor,
+                  principal: locked.owner,
+                },
+                decidedBy: { actor: 'human', principal: request.principal },
+              };
+              return {
+                domain: 'core',
+                kind: 'definition-candidate-applied',
+                rel: `meta/flow:${locked.target}`,
+                action: 'approve-draft',
+                actor: 'human',
+                principal: request.principal,
+                channel: request.channel,
+                detail,
+              };
             }
-            const checks = validateDefinition(validation.value, registries(core));
-            const active =
-              core.definitionVersions?.[locked.target]?.[entry.version] ?? entry.definition;
-            const mechanical = mechanicalFlowDiff(active, validation.value);
-            const detail: DefinitionCandidateAppliedDetail = {
-              schemaVersion: 1,
+            if (locked.kind !== 'agent-definition' || context.agentDefinitions === undefined) {
+              throw new Error('unsupported Draft kind');
+            }
+            const registry = await context.agentDefinitions.readSnapshot({
+              db: client,
+              owner: locked.owner,
+              policyScope: locked.policyScope,
+            });
+            const currentRef = registry.activeByName.get(locked.target);
+            if (currentRef !== locked.baseVersion) {
+              throw new Error(
+                `draft stale: base ${locked.baseVersion ?? '(none)'}, current ${currentRef ?? '(none)'}`,
+              );
+            }
+            const validation = validateAgentCandidate(lockedPayload, locked.target, registry);
+            if (
+              !validation.valid ||
+              validation.value === undefined ||
+              validation.artifact === undefined ||
+              validation.checks === undefined
+            ) {
+              throw new Error('draft is no longer valid');
+            }
+            const beforeEntry =
+              currentRef === undefined ? undefined : registry.definitions.get(currentRef);
+            const beforeArtifact =
+              currentRef === undefined
+                ? undefined
+                : resolveRegisteredAgentDefinition(currentRef, registry.definitions);
+            const mechanical = mechanicalAgentDefinitionDiff({
+              ...(beforeEntry === undefined ? {} : { beforeSource: beforeEntry.source }),
+              afterSource: validation.value,
+              ...(beforeArtifact === undefined
+                ? {}
+                : { beforeEffective: beforeArtifact.definition }),
+              afterEffective: validation.artifact.definition,
+            });
+            const evalRefs = validation.artifact.definition.evaluationPolicy.evalSuiteRefs;
+            const evalPayloads: Record<string, JsonValue> = {};
+            for (const ref of evalRefs) {
+              const evidence = registry.evalEvidencePayloads.get(ref);
+              if (evidence === undefined) {
+                throw new Error(
+                  `draft is no longer valid: eval evidence ${ref} payload is missing`,
+                );
+              }
+              evalPayloads[ref] = evidence;
+            }
+            return context.agentDefinitions.prepareAtomicActivation({
+              client,
               commandId,
-              name: locked.target,
-              baseVersion: entry.version,
-              version: entry.version + 1,
-              activationId: `draft-${draftId}`,
               draftId,
               draftVersion: locked.activeVersion,
-              payloadHash: locked.versions[locked.activeVersion]!.payloadHash,
+              owner: locked.owner,
               policyScope: locked.policyScope,
-              artifact: contentVersion(validation.value),
-              definition: validation.value,
-              checks,
-              diff: mechanical.diff,
+              ...(currentRef === undefined ? {} : { expectedBaseRef: currentRef }),
+              payloadHash: locked.versions[locked.activeVersion]!.payloadHash,
+              schemaRef: locked.versions[locked.activeVersion]!.schemaRef,
+              source: validation.value,
+              artifact: validation.artifact,
+              evalEvidence: { refs: evalRefs, payloads: evalPayloads },
+              checks: validation.checks,
+              diff: mechanical,
               requestedBy: {
                 actor: locked.versions[locked.activeVersion]!.provenance.actor,
                 principal: locked.owner,
               },
-              decidedBy: { actor: 'human', principal: request.principal },
-            };
-            return {
-              domain: 'core',
-              kind: 'definition-candidate-applied',
-              rel: `meta/flow:${locked.target}`,
-              action: 'approve-draft',
-              actor: 'human',
-              principal: request.principal,
-              channel: request.channel,
-              detail,
-            };
+              decidedBy: { actor: 'human', principal: request.principal! },
+            });
           },
         ),
       );
@@ -556,12 +775,21 @@ export async function executeDraftMeta(
     await engine.readSnapshot();
     return {
       kind: 'accepted',
-      entity: await projectForOwner(db, engine, accepted.aggregate.id, request.principal),
+      entity: await projectForOwner(
+        db,
+        engine,
+        accepted.aggregate.id,
+        request.principal,
+        context.agentDefinitions,
+      ),
     };
   }
 
   if (request.action === 'diff') {
-    return { kind: 'accepted', entity: await projectExactDraft(db, engine, aggregate, payload) };
+    return {
+      kind: 'accepted',
+      entity: await projectExactDraft(db, engine, aggregate, payload, context.agentDefinitions),
+    };
   }
   if (commandId === undefined) return rejected('schema-invalid', 'commandId is required');
   if (request.action === 'revise') {
@@ -569,8 +797,21 @@ export async function executeDraftMeta(
     const nextPayload = request.params?.payload;
     if (!Number.isInteger(baseVersion) || nextPayload === undefined)
       return rejected('schema-invalid', 'baseVersion and payload are required');
-    const snapshot = await engine.readSnapshot();
-    const validation = validateFlowDraft(nextPayload, registries(snapshot));
+    let validation:
+      ReturnType<typeof validateFlowDraft> | ReturnType<typeof validateAgentDefinitionDraft>;
+    if (aggregate.kind === 'flow-definition') {
+      const snapshot = await engine.readSnapshot();
+      validation = validateFlowDraft(nextPayload, registries(snapshot));
+    } else if (aggregate.kind === 'agent-definition' && context.agentDefinitions !== undefined) {
+      const registry = await context.agentDefinitions.readSnapshot({
+        db,
+        owner: aggregate.owner,
+        policyScope: aggregate.policyScope,
+      });
+      validation = validateAgentCandidate(nextPayload, aggregate.target, registry);
+    } else {
+      return rejected('guard-failed', 'Draft validator is unavailable');
+    }
     await appendDraftCommand(
       db,
       {
@@ -590,20 +831,42 @@ export async function executeDraftMeta(
       nextPayload,
     );
   } else if (request.action === 'validate') {
-    const snapshot = await engine.readSnapshot();
-    const current =
-      aggregate.target === undefined ? undefined : snapshot.definitions?.[aggregate.target];
-    if (current !== undefined && String(current.version) !== aggregate.baseVersion) {
+    let staleReason: string | undefined;
+    let validation:
+      ReturnType<typeof validateFlowDraft> | ReturnType<typeof validateAgentDefinitionDraft>;
+    if (aggregate.kind === 'flow-definition') {
+      const snapshot = await engine.readSnapshot();
+      const current =
+        aggregate.target === undefined ? undefined : snapshot.definitions?.[aggregate.target];
+      if (current !== undefined && String(current.version) !== aggregate.baseVersion) {
+        staleReason = `base ${aggregate.baseVersion}, current ${current.version}`;
+      }
+      validation = validateFlowDraft(payload, registries(snapshot));
+    } else if (aggregate.kind === 'agent-definition' && context.agentDefinitions !== undefined) {
+      const registry = await context.agentDefinitions.readSnapshot({
+        db,
+        owner: aggregate.owner,
+        policyScope: aggregate.policyScope,
+      });
+      const current =
+        aggregate.target === undefined ? undefined : registry.activeByName.get(aggregate.target);
+      if (current !== aggregate.baseVersion) {
+        staleReason = `base ${aggregate.baseVersion ?? '(none)'}, current ${current ?? '(none)'}`;
+      }
+      validation = validateAgentCandidate(payload, aggregate.target, registry);
+    } else {
+      return rejected('guard-failed', 'Draft validator is unavailable');
+    }
+    if (staleReason !== undefined) {
       await appendDraftCommand(db, {
         kind: 'stale',
         eventId: `event:${commandId}`,
         commandId,
         draftId,
         activeVersion: aggregate.activeVersion,
-        reason: `base ${aggregate.baseVersion}, current ${current.version}`,
+        reason: staleReason,
       });
     } else {
-      const validation = validateFlowDraft(payload, registries(snapshot));
       await appendDraftCommand(db, {
         kind: 'validate',
         eventId: `event:${commandId}`,
@@ -640,7 +903,7 @@ export async function executeDraftMeta(
   }
   return {
     kind: 'accepted',
-    entity: await projectForOwner(db, engine, draftId, request.principal),
+    entity: await projectForOwner(db, engine, draftId, request.principal, context.agentDefinitions),
   };
 }
 

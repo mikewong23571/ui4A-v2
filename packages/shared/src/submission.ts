@@ -21,10 +21,7 @@ export interface SubmissionPolicyDecision {
 }
 
 export type DraftKind =
-  | 'entity-create'
-  | 'entity-patch'
-  | 'application-bundle'
-  | 'flow-definition';
+  'entity-create' | 'entity-patch' | 'application-bundle' | 'flow-definition' | 'agent-definition';
 
 export type DraftStatus =
   | 'editing'
@@ -94,4 +91,3 @@ export const DRAFT_LIMITS = {
   maxScopeBytes: 16 * 1024 * 1024,
   retentionDays: 30,
 } as const;
-

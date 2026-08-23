@@ -19,7 +19,7 @@ beforeEach(async () => {
 });
 
 describe('GET /_meta/.well-known/ui4a.json', () => {
-  it('200:meta rel 面齐备(self/flows/activations + 三个定义实体 + capabilities 目录与三个 seed),版本为内容 hash 短码', async () => {
+  it('200:meta rel 面齐备并包含 Agent Definition registry，版本为内容 hash 短码', async () => {
     const res = await GET();
     expect(res.status).toBe(200);
     const sitemap = (await res.json()) as {
@@ -29,7 +29,10 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
     };
     expect(sitemap.version).toMatch(/^[0-9a-f]{12}$/);
     expect(sitemap.site).toBe('meta');
-    expect(sitemap.surfaces.map((surface) => surface.rel)).toEqual([
+    const stableSurfaces = sitemap.surfaces
+      .map((surface) => surface.rel)
+      .filter((rel) => !rel.startsWith('meta/agent-definition:'));
+    expect(stableSurfaces).toEqual([
       'meta/self',
       'meta/flows',
       'meta/activations',
@@ -48,6 +51,7 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
       'meta/capability:clarify',
       'meta/capability:coding.execute',
       'meta/drafts',
+      'meta/agent-definitions',
     ]);
   });
 });

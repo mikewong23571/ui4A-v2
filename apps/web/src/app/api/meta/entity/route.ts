@@ -1,5 +1,10 @@
 import { getDb, getEngine, isMetaRel } from '../../../../engine/service';
 import { getDraftMetaEntity, isDraftMetaRel } from '../../../../engine/drafts';
+import {
+  agentDefinitionDraftRegistryPort,
+  getAgentDefinitionMetaEntity,
+  isAgentDefinitionMetaRel,
+} from '../../../../engine/agent-definitions';
 
 // GET /_meta/api/entity?rel=… — meta 站点 Siren 实体端点(T4 Phase B,spec 决定 6):
 // - rel 以 meta/ 前缀路由到同一引擎的 meta 投影(同日志同串行队列;快照即真相);
@@ -27,10 +32,21 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const principal = request.headers.get('x-ui4a-principal') ?? 'local-user';
     const policyScope =
-      request.headers.get('x-ui4a-policy-scope') ?? url.searchParams.get('policyScope') ?? 'publishing';
+      request.headers.get('x-ui4a-policy-scope') ??
+      url.searchParams.get('policyScope') ??
+      'publishing';
     const entity = isDraftMetaRel(rel)
-      ? await getDraftMetaEntity(db, engine, rel, principal, policyScope)
-      : await engine.getMetaEntity(rel);
+      ? await getDraftMetaEntity(
+          db,
+          engine,
+          rel,
+          principal,
+          policyScope,
+          agentDefinitionDraftRegistryPort,
+        )
+      : isAgentDefinitionMetaRel(rel)
+        ? await getAgentDefinitionMetaEntity(db, rel, principal, policyScope)
+        : await engine.getMetaEntity(rel);
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });
     }
@@ -38,7 +54,8 @@ export async function GET(request: Request) {
   } catch (error) {
     const err = error as { code?: string; message?: string };
     const dbFailure =
-      typeof err.code === 'string' && /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
+      typeof err.code === 'string' &&
+      /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
     const message = error instanceof Error ? error.message : String(error);
     return Response.json(
       dbFailure
