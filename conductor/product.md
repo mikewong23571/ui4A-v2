@@ -106,7 +106,7 @@ UI4A 将这条路径压缩为:
 
 ## 成功标准(DONE 的定义)
 
-以下场景套件、T15 U1–U23、T16 S1–S32、T17 U1–U24、T18 U1–U22 与 T19 U1–U26 Story Eval 及不变量全部通过,外加一次人工 demo 走查。
+以下场景套件、T15 U1–U23、T16 S1–S32、T17 U1–U24、T18 U1–U22、T19 U1–U26 与 T20 U1–U22 Story Eval 及不变量全部通过,外加一次人工 demo 走查。
 
 ### AI-first 用户故事
 
@@ -139,6 +139,13 @@ Provider/endpoint/key。`coding-agent@1` 与 `writing-agent@1` 证明同一 Host
 `agent-definition-author@1` 可以从自然语言生成候选 Definition、examples 和 Eval corpus，但结果只进入
 T17 Draft。系统独立重算 parse/invariants/diff/Eval；无效候选保留为可修订 Draft，Agent/system 的
 approve 永久拒绝，人类激活使用 CAS。该机制是受治理的“Agent 创建 Agent”，不是自修改或自授权。
+
+### Meta Human Control Plane
+
+Meta sitemap 是定义控制台的发现真相；人类从 `/meta` 浏览授权的 Application、Flow、Capability、
+Agent Definition、Draft 和 Activation。Renderer registry 只按 Siren class/shape 选择特化视图，
+未知合法实体安全兜底。Application 保持只读；Agent Definition/Draft 决策只使用实时 action、机械
+diff/checks/Eval/provenance 与 human-only approval。控制台零 LLM/Sidecar 依赖，不成为第二定义平面。
 
 ### 参考 Assistant 组合合同
 

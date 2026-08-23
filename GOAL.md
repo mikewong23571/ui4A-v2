@@ -9,7 +9,7 @@
 
 ## DONE 的定义
 
-以下业务与切片场景、T15 AI-first、T16 Presentation、T17 External Agent Draft、T18 Coding Capability、T19 Specialized Agent Contracts 用户故事 Eval 及不变量全部通过，外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
+以下业务与切片场景、T15 AI-first、T16 Presentation、T17 External Agent Draft、T18 Coding Capability、T19 Specialized Agent Contracts、T20 Meta Human Control Plane 用户故事 Eval 及不变量全部通过，外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
 
 ### AI-first 用户故事
 
@@ -63,6 +63,15 @@ specialization，但分别保留 Git/test 与 document/source/citation/render �
 Author 可以根据自然语言起草 Prompt、Task/Result schema、runtime/policy、examples 和 Eval corpus；
 结果只能进入系统内 Governed Draft。无效但有界的候选保留为可修订 Draft，Agent/system 无权批准，
 只有 human approval 能激活新版本；旧 Run 始终固定出生时 definition/prompt/runtime hashes。
+
+### Meta Human Control Plane
+
+`conductor/tracks/t20-meta-human-control-plane_20260823/` 把 Meta sitemap、Application、Agent
+Definition、Draft/Activation 合同投影为完整的人类治理控制台。`/meta` 动态发现当前授权面；
+未知合法 class 走安全 generic fallback，Application/Agent Definition/Draft 使用任务优先特化视图。
+Scope 由服务端重新裁决，所有功能控件来自当前 Siren action 并在提交前重读 exact entity；审批、
+diff、checks、Eval、来源和 replay 全程零 AI。当前 local demo 身份仍按 D8/D10 明示为自报口径，
+不冒充生产 SSO；完整 Application 创建仍在产品范围之外。
 
 ### 基线场景（业务平面，继承自已验证 demo）
 

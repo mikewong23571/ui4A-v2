@@ -72,6 +72,11 @@ Agent Definition authoring results additionally link to an `agent-definition` Dr
 audit data, not authority: the Draft service independently recalculates parse/invariant checks, diff, and Eval
 availability. Invalid candidates remain revisable; only a human approval event can register and activate a version.
 
+The Meta Human Control Plane is only a projection of these records. Application/Flow/Capability,
+Definition/Run/Draft links preserve exact birth refs and effective scope. Renderer actions are never replay input:
+the browser rereads the current entity, the server judges the action, and only resulting append-only events become
+truth. Rebuilding projections must preserve the view-model facts, links, hashes, status, and human decision state.
+
 ## Replay rules
 
 1. Preserve event order and stable event/command identifiers.

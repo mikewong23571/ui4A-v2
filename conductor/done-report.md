@@ -1,6 +1,16 @@
 # UI4A v2 — DONE 对照报告
 
-> 原报告生成于 2026-08-21(T1–T8)。T15–T19 与 D28 addendum supersede 旧 AI、渲染、摘要、外部 Agent、Coding Executor 和 Agent specialization 口径；旧测试数量与旧 I1 仅是历史快照。当前验收以 `GOAL.md`、`DECISIONS.md`、T15–T19 Story Eval 和最新命令输出为准。
+> 原报告生成于 2026-08-21(T1–T8)。T15–T20 与 D28 addendum supersede 旧 AI、渲染、摘要、外部 Agent、Coding Executor、Agent specialization 和 Meta BIOS 口径；旧测试数量与旧 I1 仅是历史快照。当前验收以 `GOAL.md`、`DECISIONS.md`、T15–T20 Story Eval 和最新命令输出为准。
+
+## T20 Meta Human Control Plane（2026-08-23）
+
+- `/meta` 从授权 sitemap 动态发现 7 个顶层面；未来 class 零 dashboard 分支进入 generic fallback。
+- Application、Agent Definition、Draft 使用任务优先视图；invalid repair 是 issue-focused structured
+  RJSF，raw contract 默认收起。Definition/Run/Draft 与 Application/Flow/Capability 链接双向保留 scope。
+- Browser 不提交身份，动作前 fresh-read；server 复核 scope，Agent approval/未知 scope/callback/伪造
+  action 全拒。人类决定后 activation 与 Draft 工作台同步刷新。
+- 桌面/390px、键盘审批、搜索筛选、no-N+1、p95、重放和完整质量门证据见 T20
+  `acceptance-report.md`；Principal review 无剩余 High/Medium。
 
 ## T19 Specialized Agent Contracts（2026-08-23）
 
@@ -96,7 +106,7 @@ T16 关闭报告见 [T16 DONE](./tracks/t16-semantic-a2ui-sidecars_20260823/DONE
 
 - 技术栈严格按选型:XState/Postgres/Siren/Cedar/Keycloak[^1]/Temporal/AI SDK+assistant-ui/A2UI/RJSF/shadcn(Tailwind4)全部实装;实际版本见 `tech-stack.md` 实况注记。UI4A 自有增量包括 Siren 投影/裁决/效果/guard/definition lifecycle，以及后续已记录的 Presentation、Draft、Agent Definition/Run pure kernels 与 application adapters；未重复实现 Provider、workflow、schema、policy 或 UI 基础设施。
 - 五条铁律:T15 起第一条为 AI-first、机械治理；确定性系统不复刻认知，但继续守 facts/effects/approval/audit/replay。
-- 每个里程碑可运行:T1–T19 各 track 收口时按其风险运行质量门、真实 Eval 与必要的 Temporal/浏览器验收（见各 track checkpoint/DONE）。
+- 每个里程碑可运行:T1–T20 各 track 收口时按其风险运行质量门、真实 Eval 与必要的 Temporal/浏览器验收（见各 track checkpoint/DONE）。
 - 实现与文档冲突 → `DECISIONS.md` D1–D31 持续记录；后续决定显式 supersede 旧口径。
 
 [^1]: Keycloak 按 GOAL"真实 SSO 对接显式排除"与 D10 不进入 DONE 验收面;信任线语义由引擎 actor-is-human + principal 委托链(自报口径 D8)承担。
@@ -124,5 +134,6 @@ DONE = demo 质量 ✅;生产化(多租户/部署硬化/压测/真实 SSO)显式
 | t17-external-agent-cli-drafts | 外部 Agent CLI、Governed Draft、SubmissionPolicy 与 human apply | [x] |
 | t18-coding-capability-executors | Coding Agent executor、Capability Run、隔离 worktree、Codex 与结果治理 | [x] |
 | t19-specialized-agent-contracts | AgentDefinition/RuntimeProfile/AgentRun、Writing 与 Agent Definition Authoring | [x] |
+| t20-meta-human-control-plane | sitemap 驱动 Meta 控制台、Application/Agent Definition/Draft 人类治理 | [x] |
 
 历史测试总量(T8 快照):821 单测 + 43 E2E(42 过 + 1 真实 LLM 门控)。当前数量与结果必须现场运行 `pnpm check`、`CI=true pnpm e2e` 及门控 Story Eval 获取，不复用本快照。

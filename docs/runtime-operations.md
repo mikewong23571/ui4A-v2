@@ -19,6 +19,18 @@ The managed command starts PostgreSQL through Docker Compose and runs Temporal, 
 
 Stop Web/Worker/Temporal together with `Ctrl-C`. PostgreSQL intentionally remains available; stop it with `pnpm infra:down`.
 
+## Meta Human Control Plane
+
+Open `http://localhost:3100/meta`. The page reads `/_meta/.well-known/ui4a.json`, shows the server-
+authorized scope selector, and discovers all collection/self surfaces dynamically. Human deep links use
+`/meta/entity?rel=<encoded>&scope=<authorized>`; unknown scope returns 403 and cross-scope exact reads remain
+indistinguishable from absence. The local demo visibly reports `self-reported-local-demo`; it is not SSO.
+
+Application is read-only. Draft/Activation controls come from the current Siren entity, reread before POST,
+and never accept browser actor/principal overrides. Invalid Draft repair is a structured issue-focused RJSF
+form; raw contract remains a collapsed audit view. If a decision reports stale/CAS conflict, retain the URL,
+refresh the entity, review the new diff/checks, and decide again.
+
 ## LLM profile
 
 The runtime accepts one complete provider-neutral profile from the environment:

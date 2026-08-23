@@ -4,7 +4,7 @@
 
 UI4A is a pnpm/TypeScript monorepo implementing “interface as contract”: humans and agents operate the same Siren entities, actions, links, guards, and schemas. Read these before changing architecture:
 
-1. `GOAL.md` — current product scope, completed T15–T19 story contracts, and invariants I1–I7.
+1. `GOAL.md` — current product scope, completed T15–T20 story contracts, and invariants I1–I7.
 2. `conductor/refs/arch-brief.md` — implementation-oriented architecture and terminology.
 3. `DECISIONS.md` — binding technical decisions; record a new decision before deviating.
 4. The active `conductor/tracks/<track>/spec.md` and `plan.md` for tracked feature work.
@@ -29,7 +29,7 @@ apps/cli ──HTTP/Siren/meta──► apps/web
 ```
 
 - **Business plane:** application instances, flows, actions, and projections.
-- **Definition plane (`_meta`):** Flow definitions are revised, validated, diffed, and activated through the same engine and log. Application creation is not an in-product workflow; a future external Agent may submit candidate bundles through meta contracts.
+- **Definition plane (`_meta`):** Flow definitions, Applications, Agent Definitions, Drafts, and Activations share a sitemap/Siren contract. The deterministic Meta Human Control Plane renders authorized governance; Application creation is not an in-product workflow.
 - **Capability plane:** durable interaction with external systems. Temporal workflows coordinate work; activities perform I/O.
 - **Presentation plane:** binding-only Recipe/Sidecar/Surface planning and A2UI hydration; it is a replayable sidecar, never business truth.
 
@@ -55,7 +55,7 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 - `src/chat/`: chat-session start, SSE streaming, history, trail, and decision projection. Chat is an event-log projection and an agent entry point, not an alternate command path.
 - `src/temporal/`: web-side Temporal clients for notification, delegation, legacy Coding Capability dispatch, and canonical Agent Run dispatch/cancellation.
 - `src/delegations/`: delegation-list projection helpers; read status from engine projections, not directly from Temporal.
-- `src/components/`: React composition. `meta/` contains definition-plane views; `assistant-ui/` adapts chat UI; `ui/` holds local primitives. Page components should orchestrate existing domain/render modules rather than absorb business rules.
+- `src/components/`: React composition. `meta/` owns sitemap descriptors, the scope-aware client/cache, class renderer registry, generic fallback, Application/Agent Definition/Draft view models, and deterministic governance views; `assistant-ui/` adapts chat UI; `ui/` holds local primitives. Meta routes must not restore a hardcoded surface inventory or render functional controls outside current Siren actions.
 - `src/test/`: shared browser/jsdom stubs only. Keep feature tests next to their subjects.
 
 ### `apps/worker` — Durable Work and I/O
@@ -123,6 +123,7 @@ Prefer extending a nearby pattern. When a change crosses rows, keep the pure con
 - **Coding results are proposals:** Coding Agents write only an authorized UI4A-owned worktree. Result acceptance rechecks base/path/test/artifact integrity and records a human receipt; it never implies merge, push, deploy, or activation.
 - **Server-owned executor selection:** application contracts name an executor class/profile requirement. Requests cannot choose provider, binary, model, cwd, sandbox, or unsafe mode; missing profiles fail before workspace mutation and never fall back.
 - **Specialized definitions are proposals:** definitions are content-addressed, exact-version and birth-pinned. Agent-authored candidates enter T17 Drafts; only a human may activate them.
+- **Meta UI is a projection, not a second authority:** discovery comes from the authorized Meta sitemap; renderer selection comes from Siren class; cross-plane links retain scope; every submit performs a fresh action read. Raw contract is audit-only, not the default human task path.
 - Rejections are events with actionable reasons, not exceptional missing data.
 - Every execution uses declaration → guard → schema order. Do not reorder or duplicate this judgment in UI code.
 - Workflows orchestrate; activities perform I/O. Event writes and activities must tolerate retry/replay.

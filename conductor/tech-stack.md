@@ -34,6 +34,7 @@
 | Agent CLI | TypeScript/Node `apps/cli`，native fetch + `tsc` | `ui4a` 是 HTTP/Siren/meta 的稳定 JSON 参考客户端；无内置 LLM、无 Web 内部依赖 |
 | Coding Capability Executor | `@openai/codex-sdk@0.149.0` + Temporal + Git worktree | Codex 是首个真实 reference adapter；Provider/Workspace 分层，Hermes 仅作设计参考 |
 | Specialized Agent Contracts | Versioned AgentDefinition + typed Prompt blocks/bindings + JSON Schema/Ajv + Temporal Agent Run + Codex structured transport | Capability/AgentDefinition/RuntimeProfile 三层；Coding/Writing/Authoring 共享 Host，分别使用 Git、document、read-only structured runtime 与独立 verifier |
+| Meta Human Control Plane | Next.js App Router + Siren sitemap/entities + shadcn + RJSF + existing diff/graph components | class registry + generic fallback；scope/action 服务端复核；审批渲染零 AI；无新依赖 |
 
 ### 渲染词汇表组件(注册为 A2UI 扩展目录,MVP 前十词)
 
@@ -86,3 +87,7 @@ UI4A 自有 typed blocks/bindings 并复用 JSON Schema/Ajv；Coding/Writing 复
 structured transport 与 Temporal，分别接 Git worktree 和 document workspace backend；Authoring
 使用同一 transport 的 read-only structured runtime。Markdown render verifier 调用部署已有 Pandoc，
 未引入新 npm runtime。三类 profile 全部外置且缺失时不 fallback。
+
+T20 不新增 npm 或基础设施依赖：复用 Next.js、Siren、shadcn、RJSF、现有 diff/graph 组件与
+PostgreSQL 投影。Meta dashboard 使用授权 sitemap + bounded collection summaries，exact entity 采用
+scope/sitemap-version cache；action 始终 bypass cache 重读。控制台没有 AI/Presentation 依赖。

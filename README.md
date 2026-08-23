@@ -20,7 +20,7 @@ pnpm dev:all
 - 应用：http://localhost:3100
 - Canvas：http://localhost:3100/canvas
 - 事件与原始轨迹：http://localhost:3100/events
-- Meta BIOS：http://localhost:3100/meta
+- Meta Human Control Plane：http://localhost:3100/meta
 - Temporal UI：http://localhost:8233
 - 健康检查：http://localhost:3100/api/health
 
@@ -41,6 +41,9 @@ pnpm dev:all
 - T19 将 executor 推广为版本化 Specialized Agent Contracts：`coding-agent@1`、
   `writing-agent@1` 与 `agent-definition-author@1` 共享 generic Agent Run/Temporal Host，但拥有不同
   Task/Result、runtime、resource backend 和 verifier。Authoring 的输出只进入 Draft，不能自批或自激活。
+- T20 将既有 Meta 合同投影为 sitemap 驱动的人类控制台：Application、Agent Definition、Draft
+  使用任务优先视图；未知 class 安全兜底；Scope、实时 action、人类审批、diff/Eval/replay 仍由
+  机械协议治理，默认任务不要求阅读或编辑 raw JSON。
 
 ## 文档权威顺序
 
@@ -77,7 +80,7 @@ packages/shared ◄── packages/engine ◄── packages/agent
 - `packages/shared`：跨运行时定义和协议。
 - `packages/engine`：纯业务内核与 pure Presentation kernel。
 - `packages/agent`：AI-first Agent 协议、LLM driver、Presentation/Revision adapters；scripted/rule driver 仅是测试 fixture。
-- `apps/web`：HTTP 合同、PostgreSQL adapters、运行时编排、Chat、Renderer、Meta BIOS 和 Canvas。
+- `apps/web`：HTTP 合同、PostgreSQL adapters、运行时编排、Chat、Renderer、Meta Human Control Plane 和 Canvas。
 - `apps/worker`：Temporal workflows 与 I/O activities；`src/agents/host` 是 generic lifecycle/transport，
   `coding`、`writing`、`authoring` 是通过 composition registry 接入的 specialization adapters。
 - `apps/cli`：可安装的 `ui4a` binary、稳定 JSON envelope、发现/读取/业务动作/Draft/audit 命令。

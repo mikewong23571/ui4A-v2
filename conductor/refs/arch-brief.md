@@ -189,6 +189,19 @@ structured candidate/examples/Eval corpus；有界但机械校验失败的结果
 Draft validation/diff/Eval 与 Agent claim 分离，Agent/system 不能 approve，human activation 才能推进
 active pointer。
 
+### 8.6 Meta Human Control Plane
+
+T20 将 Meta sitemap + Siren entities/actions/links 投影为确定性人类控制台。`/meta` 不保存 surface
+清单；dashboard 读取授权 sitemap 与 bounded collection summaries，canonical deep link 为
+`/meta/entity?rel=<encoded>&scope=<authorized>`。Renderer registry 只按 class/shape 匹配，冲突
+fail-closed，未知合法实体走 generic fallback。
+
+Scope URL 只是请求，服务端对 sitemap/list/exact/action 一致重新裁决；当前 local demo 明示
+self-reported identity。Application、Flow、Capability、Agent Definition、Run 和 Draft 的跨平面链接
+保留 scope/birth ref。Action submit 绕过 revision cache 重读 exact entity，过滤 internal callback，
+然后进入原裁决端点。Draft invalid repair 使用 issue-path-focused RJSF，raw contract 仅作审计下钻；
+approve/reject、diff、checks、Eval 与 provenance 零 AI。
+
 ## 9. 五条垂直切片(第五部,施工顺序)
 
 1. **确认门切片**:agent 执行高危动作 → guard 挂起 → pending 实体化 → notification capability 送达 → 人类在推送上 approve → 事件留痕带 actor/principal。一次验证 guard 第三语义、确认实体、出站能力、委托模型四个论点。构成(README):Cedar 风险策略 + guard 挂起语义 + Temporal notify activity + RJSF 渲染 pending 实体 + 收件箱。GOAL S1 断言:动作未生效挂起 → human approve(actor=human)→ 生效,日志含 actor/principal/信道。

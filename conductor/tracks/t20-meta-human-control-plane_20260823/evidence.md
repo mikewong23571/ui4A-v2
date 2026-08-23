@@ -1,5 +1,9 @@
 # T20 Acceptance Evidence Contract
 
+> Closure results are recorded in [`acceptance-report.md`](./acceptance-report.md); tracked visual
+> artifacts are under [`screenshots/`](./screenshots/). This file remains the evidence schema and
+> non-waivable gate contract.
+
 ## Story Record
 
 Each U1–U22 record must identify:

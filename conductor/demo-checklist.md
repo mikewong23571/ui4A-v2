@@ -69,21 +69,35 @@ pnpm dev:all
 4. 以 Agent 身份尝试 approve 该 Draft 应被拒并留痕；人类批准后 registry version 更新，原 Agent Run 的 birth refs 不变。
 5. Temporal UI 中三类执行都应使用 canonical Agent Run Host；Coding、Writing、Authoring 分别显示 Git、document、read-only structured runtime 的不同证据。
 
-## 7. 原始轨迹(1 分钟)
+## 7. T20 Meta Human Control Plane(3 分钟)
+
+1. 打开 `/meta?scope=governance`：应看到 7 个授权面、Scope、搜索与 pending/invalid 快捷筛选；
+   页面不得依赖硬编码入口。
+2. 进入 Applications → 内容发布：30 秒内说出 intent、一个 Flow、一个 Capability，并沿 backlink
+   返回；页面只读且 raw Bundle 默认收起。
+3. 打开 `agent-definition-author@1`：60 秒内区分封闭权威、数据绑定、runtime、tools/resources 与
+   Eval；进入 Runs 后返回 exact birth Definition，Scope 保持 governance。
+4. 打开一个 invalid Agent Definition Draft：阻塞字段结构化预填，不编辑 raw JSON；修订后重新
+   validate/submit。Agent approve 应被拒；human approve/reject 前重读当前 action，决定后 Draft
+   工作台立即刷新。
+5. 用 390px viewport 复查 dashboard/Application/Agent Definition/Draft：无页面级横向溢出，键盘可
+   完成搜索、导航、修订和审批。
+
+## 8. 原始轨迹(1 分钟)
 
 1. 完成一次 Chat 后打开 `/events`。
 2. 找到 `chat:<sessionId>` 相关事件，展开“查看原始详情”。
 3. 检查 `chat-message-appended → chat-turn-started → agent-decision → chat-turn-progress → chat-turn`。
 4. `agent-decision` 应包含实际 prompt、reasoning（provider 提供时）与最终协议 operation；缺失 reasoning 必须为 `null`，不得补造。
 
-## 8. 观察记录区(走查时填写)
+## 9. 观察记录区(走查时填写)
 
 - 确认疲劳:
 - 澄清对话收敛体验(如聊天中字段澄清):
 - 机械 diff 可读性:
 - Sidecar 稳定性:
 
-## 9. 已知限制(走查前应知)
+## 10. 已知限制(走查前应知)
 
 - 事件日志的 actor/principal 为自报口径(D8);Keycloak/真实 SSO 按 GOAL 明文排除(D10);
 - LLM provider/model 完全由外部 profile 决定；reasoning 是否可见取决于 provider，实际模型和每步时延以事件证据为准;
