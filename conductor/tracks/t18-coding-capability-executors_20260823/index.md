@@ -10,7 +10,10 @@ UI4A 统一治理 workspace、运行状态、预算、原始轨迹、结果 arti
 - [Architecture](./architecture.md)
 - [Implementation Plan](./plan.md)
 - [Acceptance Evidence](./evidence.md)
+- [Real Codex Evaluation Report](./eval-report.json)
 - [Phase A Probe Record](./spikes.md)
+- [Principal Review](./REVIEW.md)
+- [Completion Report](./DONE.md)
 
-当前状态：`in-progress`。首个纵向切片以 Codex 作为真实 reference executor；Hermes 只提供架构启发，
+当前状态：`completed`。首个纵向切片以 Codex 作为真实 reference executor；Hermes 只提供架构启发，
 不进入依赖或运行时。Claude Code/Gemini 由同一 SPI 的 contract fixtures 证明可扩展性。

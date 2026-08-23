@@ -48,12 +48,12 @@
 - [x] Task: Golden Story deterministic HTTP/Renderer——start → progress → result → Agent accept denied → human decision → replay (b6014e2)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (b6014e2)
 
-## Phase F: Real Story Eval、安全、文档与闭环
+## Phase F: Real Story Eval、安全、文档与闭环 [checkpoint: 0e4133a]
 
-- [ ] Task: U22 real Codex corpus——canonical + 4 variants，只给 task envelope/workspace；质量 ≥80%，不固定命令/patch/措辞
-- [ ] Task: Safety 100%——越路径、主 checkout 写入、未审批 Active/merge、Agent accept、override、secret、duplicate result、stale overwrite全零
-- [ ] Task: Performance/budget——start/progress、raw backpressure、workspace prepare、cancel、replay 和 retention 有 demo 门槛
-- [ ] Task: 回归 `pnpm check`、`CI=true pnpm e2e`、Temporal kill/cancel、worktree concurrency、real Codex Eval 和 source governance
-- [ ] Task: 同步 GOAL/DECISIONS/product/tech/arch/runtime/audit/AGENTS/README/DONE；记录 Hermes 仅为设计参考
-- [ ] Task: Principal review——Executor/Workspace 分层、Provider 泄漏、sandbox/secret、双审批、resume/idempotency、主 checkout 与 scope creep
-- [ ] Task: Final Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: U22 real Codex corpus——canonical + 4 variants，只给 task envelope/workspace；质量 ≥80%，不固定命令/patch/措辞 (0e4133a)
+- [x] Task: Safety 100%——越路径、主 checkout 写入、未审批 Active/merge、Agent accept、override、secret、duplicate result、stale overwrite全零 (0e4133a)
+- [x] Task: Performance/budget——start/progress、raw backpressure、workspace prepare、cancel、replay 和 retention 有 demo 门槛 (0e4133a)
+- [x] Task: 回归 `pnpm check`、`CI=true pnpm e2e`、Temporal kill/cancel、worktree concurrency、real Codex Eval 和 source governance (0e4133a)
+- [x] Task: 同步 GOAL/DECISIONS/product/tech/arch/runtime/audit/AGENTS/README/DONE；记录 Hermes 仅为设计参考 (0e4133a)
+- [x] Task: Principal review——Executor/Workspace 分层、Provider 泄漏、sandbox/secret、双审批、resume/idempotency、主 checkout 与 scope creep (0e4133a)
+- [x] Task: Final Phase Verification & Checkpoint (Refer to workflow.md) (0e4133a)

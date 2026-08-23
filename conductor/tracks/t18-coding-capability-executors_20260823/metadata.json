@@ -1,9 +1,9 @@
 {
   "id": "t18-coding-capability-executors_20260823",
   "type": "feature",
-  "status": "in-progress",
+  "status": "completed",
   "title": "T18 Coding Capability Executor Host",
   "created_at": "2026-08-23T15:00:00+08:00",
-  "updated_at": "2026-08-23T15:00:00+08:00",
+  "updated_at": "2026-08-23T16:52:00+08:00",
   "approved_by": "user (track plus complete user-story closure; Coding Agent is a capability executor; Hermes is design reference only)"
 }
