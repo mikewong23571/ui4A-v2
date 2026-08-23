@@ -24,3 +24,5 @@ export * from './presentation';
 export * from './submission';
 // Provider-neutral Coding Capability Executor wire contracts.
 export * from './coding-executor';
+// Versioned specialized Agent definition/task/result protocol (T19).
+export * from './agent-definition';

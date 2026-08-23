@@ -43,8 +43,19 @@ describe('引擎两栖性(纯 TS,浏览器/服务端零 Node API)', () => {
     }
   });
 
-  it('扫描到的库源覆盖引擎全部模块(44 个非测试源文件;T18 递归覆盖子模块)', () => {
-    expect(librarySources(srcDir).length).toBe(44);
+  it('递归扫描覆盖新增的 capability、agent-definition 与 agent-run 子模块', () => {
+    const sources = librarySources(srcDir).map((file) => file.slice(srcDir.length + 1));
+    expect(sources).toEqual(
+      expect.arrayContaining([
+        'capability-run/run.ts',
+        'agent-definition/parse.ts',
+        'agent-definition/derive.ts',
+        'agent-definition/invariants.ts',
+        'agent-run/run.ts',
+        'agent-run/legacy-capability-run.ts',
+      ]),
+    );
+    expect(new Set(sources).size).toBe(sources.length);
   });
 
   it('公共导出面完整(barrel 可整体导入求值)', () => {
