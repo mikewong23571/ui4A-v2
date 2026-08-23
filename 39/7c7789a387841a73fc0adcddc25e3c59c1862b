@@ -1,0 +1,5 @@
+T21 Phase D executable governance
+
+Extended source governance to require provider-native toolChoice required plus bounded second LLM attempt and to reject parsing/mapToolCall of text output. Existing guards continue to reject display phrase branches and rule runtime.
+
+Validation: 5 governance tests passed; formatting/diff checks.
