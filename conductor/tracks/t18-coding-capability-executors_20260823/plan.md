@@ -29,14 +29,14 @@
 - [x] Task: Replay/concurrency/budget integration——projection rebuild、two-run isolation、duplicate callback/result、raw backpressure (d0630ad)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (d0630ad)
 
-## Phase D: Executor adapters 与真实 Codex
+## Phase D: Executor adapters 与真实 Codex [checkpoint: ee3cd19]
 
-- [ ] Task: TS9 Red→Green——safe subprocess/SDK transport、argv/env/cwd、JSONL、bounds、redaction、process-group cancel
-- [ ] Task: TS10 Red→Green——Codex probe/start/resume/cancel/collect adapter 与 normalized event mapping
-- [ ] Task: TS11 Red→Green——Claude/Gemini-style fixture adapters 证明 SPI 可替换与 unknown passthrough
-- [ ] Task: Provider failure/cancel/restart integration——missing auth/binary、timeout、invalid JSONL、worker kill、native resume/restart receipt
-- [ ] Task: Real Codex fixture smoke——真实安装/认证在 disposable repo 完成 edit/test/result，主 repo 零影响
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: TS9 Red→Green——safe subprocess/SDK transport、argv/env/cwd、JSONL、bounds、redaction、process-group cancel (ee3cd19)
+- [x] Task: TS10 Red→Green——Codex probe/start/resume/cancel/collect adapter 与 normalized event mapping (ee3cd19)
+- [x] Task: TS11 Red→Green——Claude/Gemini-style fixture adapters 证明 SPI 可替换与 unknown passthrough (ee3cd19)
+- [x] Task: Provider failure/cancel/restart integration——missing auth/binary、timeout、invalid JSONL、worker kill、native resume/restart receipt (ee3cd19)
+- [x] Task: Real Codex fixture smoke——真实安装/认证在 disposable repo 完成 edit/test/result，主 repo 零影响 (ee3cd19)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (ee3cd19)
 
 ## Phase E: Capability schema、Siren、Flow 与 Renderer
 
