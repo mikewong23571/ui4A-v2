@@ -23,7 +23,7 @@ import {
 } from '../../../../web/src/db/capability-runs';
 import type { DbExecutor } from '../../../../web/src/db/events';
 
-import { executeCodexTask, type CodexExecutionOutput } from './codex';
+import { executeCodexTask, probeCodexExecutor, type CodexExecutionOutput } from './codex';
 import {
   collectGitWorkspace,
   parseRepositoryRegistry,
@@ -55,6 +55,7 @@ export interface CodingRuntimeDeps {
   profiles: CodingExecutorProfile[];
   execute?: typeof executeCodexTask;
   heartbeat?: (details: unknown) => void;
+  probe?: (profileName: string) => Promise<{ available: boolean; reason?: string }>;
 }
 
 function profileOf(profiles: CodingExecutorProfile[], name: string): CodingExecutorProfile {
@@ -99,6 +100,19 @@ export async function prepareCodingRunWithDeps(
   deps: CodingRuntimeDeps,
 ): Promise<PreparedCodingRun> {
   profileOf(deps.profiles, context.profileName);
+  const descriptor = await (deps.probe ?? probeCodexExecutor)(context.profileName);
+  if (!descriptor.available) {
+    await command(deps, context, (current) => ({
+      kind: 'fail',
+      runId: context.runId,
+      expectedRevision: current.revision,
+      commandId: `preflight-failed:${context.runId}`,
+      eventId: `event:preflight-failed:${context.runId}`,
+      code: 'provider-unavailable',
+      reason: descriptor.reason ?? 'coding executor unavailable',
+    }));
+    throw new Error(descriptor.reason ?? 'coding executor unavailable');
+  }
   let run = await currentRun(deps.db, context);
   if (run.status === 'queued') {
     run = await command(deps, context, (current) => ({

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { CodingExecutorProfile, CodingNormalizedEvent, CodingTask } from '@ui4a/shared';
 
-import { executeCodexTask, type CodexSdkLike } from './codex';
+import { executeCodexTask, probeCodexExecutor, type CodexSdkLike } from './codex';
 
 const task: CodingTask = {
   schemaVersion: 1,
@@ -54,6 +54,25 @@ function sdk(events: unknown[], threadId = 'thread-1'): CodexSdkLike {
 }
 
 describe('Codex reference executor adapter', () => {
+  it('preflights binary/auth and reports unavailable without fallback', async () => {
+    const available = await probeCodexExecutor(
+      'default',
+      'codex',
+      vi.fn(async (_binary, args) => ({
+        stdout: args[0] === '--version' ? 'codex 1.0\n' : '',
+        stderr: '',
+      })) as never,
+    );
+    expect(available).toMatchObject({ available: true, version: 'codex 1.0' });
+    const unavailable = await probeCodexExecutor(
+      'default',
+      'missing',
+      vi.fn(async () => {
+        throw new Error('not found');
+      }) as never,
+    );
+    expect(unavailable).toMatchObject({ available: false, reason: 'not found' });
+  });
   it('normalizes typed SDK events and validates the final provider claim', async () => {
     const client = sdk([
       { type: 'thread.started', thread_id: 'thread-1' },

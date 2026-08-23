@@ -112,6 +112,7 @@ describe('segmented coding capability runtime', () => {
       workspaceRoot: data.root,
       profiles: [profile],
       heartbeat: () => undefined,
+      probe: async () => ({ available: true }),
       execute: async (input: CodexExecutionInput, callbacks: CodexExecutionDeps) => {
         await callbacks.onRaw({ type: 'thread.started', thread_id: 'thread-1' }, '1');
         await callbacks.onNormalized({

@@ -1,6 +1,14 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
 import { Codex, type CodexOptions, type ThreadEvent, type ThreadOptions } from '@openai/codex-sdk';
 
-import type { CodingExecutorProfile, CodingNormalizedEvent, CodingTask } from '@ui4a/shared';
+import type {
+  CodingExecutorDescriptor,
+  CodingExecutorProfile,
+  CodingNormalizedEvent,
+  CodingTask,
+} from '@ui4a/shared';
 
 export interface CodexThreadLike {
   readonly id: string | null;
@@ -47,6 +55,37 @@ export class CodingExecutorCancelledError extends Error {
   constructor() {
     super('coding executor cancelled by UI4A');
     this.name = 'CodingExecutorCancelledError';
+  }
+}
+
+const runFile = promisify(execFile);
+
+/** Fast Provider/auth preflight. An unavailable selected profile never falls back. */
+export async function probeCodexExecutor(
+  profileName: string,
+  binary = process.env.UI4A_CODEX_BIN ?? 'codex',
+  execute: typeof runFile = runFile,
+): Promise<CodingExecutorDescriptor> {
+  try {
+    const version = (await execute(binary, ['--version'], { timeout: 5_000 })).stdout.trim();
+    await execute(binary, ['login', 'status'], { timeout: 5_000 });
+    return {
+      schemaVersion: 1,
+      profileName,
+      available: true,
+      taskSchemaVersions: [1],
+      features: ['resume', 'structured-events', 'workspace-write', 'cancel'],
+      version,
+    };
+  } catch (error) {
+    return {
+      schemaVersion: 1,
+      profileName,
+      available: false,
+      taskSchemaVersions: [1],
+      features: [],
+      reason: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
