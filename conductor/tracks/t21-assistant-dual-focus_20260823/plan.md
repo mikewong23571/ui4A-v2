@@ -9,7 +9,7 @@
 - [x] Task: 用当前开发栈复现并自动化“详情 → 数量 → 列表 → 当前在哪”红线，证明 Agent `currentRel`、最近导航和客户端可见页面发生分叉 b50a929
 - [x] Task: 运行 disposable LLM protocol probe，比较当前 provider 的 `toolChoice:auto`、强制工具调用和有界 LLM repair；记录延迟、成功率、无调用及异常形状，probe 代码不进入产品实现 4350be1
 - [x] Task: 对双事实事件形状、客户端实例、刷新、直接页面进入、异步 Presentation receipt 和重放做 disposable contract probe 82d1dcc
-- [ ] Task: 根据 probes 编写 `user-stories.md`、`technical-stories.md`、`architecture.md`，并在 `DECISIONS.md` 记录双事实、不机械裁定冲突和协议修复边界
+- [x] Task: 根据 probes 编写 `user-stories.md`、`technical-stories.md`、`architecture.md`，并在 `DECISIONS.md` 记录双事实、不机械裁定冲突和协议修复边界 ee0f922
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase B: 双事实合同与事件投影
