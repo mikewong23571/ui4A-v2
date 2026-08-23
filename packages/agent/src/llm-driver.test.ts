@@ -306,6 +306,48 @@ describe('B4:失败如实呈现(委托不崩溃)', () => {
 });
 
 describe('fail-safe:模型输出不合法', () => {
+  it('text-only 首次输出只触发一次真实 LLM repair，不机械转换原文本', async () => {
+    let attempts = 0;
+    const rejectedText = '这里是普通文本，不是协议调用';
+    const { driver, calls } = llmDriverWith(() => {
+      attempts += 1;
+      return attempts === 1
+        ? openaiTextResponse(rejectedText)
+        : openaiToolResponse('answer', {
+            content: '修复后的协议回答',
+            sources: [{ rel: 'articles', pointer: '/properties/count' }],
+          });
+    });
+
+    await expect(driver.decide(context())).resolves.toMatchObject({
+      kind: 'answer',
+      content: '修复后的协议回答',
+    });
+    expect(calls).toHaveLength(2);
+    expect(calls.every((call) => JSON.stringify(call.body).includes('"tool_choice":"required"'))).toBe(
+      true,
+    );
+    const repairBody = JSON.stringify(calls[1]?.body);
+    expect(repairBody).toContain('协议修复');
+    expect(repairBody).toContain('未输出工具调用');
+    expect(repairBody).not.toContain(rejectedText);
+  });
+
+  it('未知工具或无效参数第二次仍非法时有界失败，不进行第三次调用', async () => {
+    let attempts = 0;
+    const { driver, calls } = llmDriverWith(() => {
+      attempts += 1;
+      return attempts === 1
+        ? openaiToolResponse('teleport', { to: 'moon' })
+        : openaiToolResponse('answer', { content: '' });
+    });
+
+    const op = await driver.decide(context());
+    expect(op.kind).toBe('fail');
+    if (op.kind === 'fail') expect(op.reason).toContain('LLM 输出不合法');
+    expect(calls).toHaveLength(2);
+  });
+
   it('显式 fail 工具映射 reason/evidence,作为合同能力缺失的正常出口', async () => {
     const { driver } = llmDriverWith(() =>
       openaiToolResponse('fail', {
