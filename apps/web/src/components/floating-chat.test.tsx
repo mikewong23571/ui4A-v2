@@ -100,6 +100,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   window.localStorage.clear();
+  window.history.replaceState({}, '', '/');
   vi.restoreAllMocks();
 });
 
@@ -175,6 +176,45 @@ describe('悬浮聊天窗 · 委托模式(T5 Phase B)', () => {
 });
 
 describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
+  it('每次发送原子携带实际浏览器 route/subject 和 hook-lifetime client id', async () => {
+    window.history.pushState({}, '', '/canvas?focus=post%3Afirst-post');
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        jsonResponse({
+          sessionId: 'sess-client-view',
+          driver: 'llm',
+          outcome: 'answered',
+          summary: 'ok',
+          messages: [{ role: 'assistant', text: 'ok' }],
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('当前页面是什么？');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    const first = JSON.parse(String(fetchMock.mock.calls[0]![1]?.body)) as {
+      clientView?: { clientInstanceId: string; route: string; subject?: string };
+    };
+    expect(first.clientView).toMatchObject({
+      route: '/canvas?focus=post%3Afirst-post',
+      subject: 'post:first-post',
+    });
+    expect(first.clientView?.clientInstanceId).toMatch(/^[0-9a-f-]+$/i);
+
+    window.history.pushState({}, '', '/canvas?focus=articles');
+    sendGoal('再看一次');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const second = JSON.parse(String(fetchMock.mock.calls[1]![1]?.body)) as {
+      clientView?: { clientInstanceId: string; route: string; subject?: string };
+    };
+    expect(second.clientView).toMatchObject({ route: '/canvas?focus=articles', subject: 'articles' });
+    expect(second.clientView?.clientInstanceId).toBe(first.clientView?.clientInstanceId);
+  });
+
   it('请求发出前即生成并持久化 session/turn 标识，刷新可从 started 投影续接', async () => {
     const fetchMock = vi.fn((...args: [string | URL | RequestInfo, RequestInit?]) => {
       void args;
