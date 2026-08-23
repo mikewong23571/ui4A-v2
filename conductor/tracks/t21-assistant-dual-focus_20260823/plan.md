@@ -12,14 +12,14 @@
 - [x] Task: 根据 probes 编写 `user-stories.md`、`technical-stories.md`、`architecture.md`，并在 `DECISIONS.md` 记录双事实、不机械裁定冲突和协议修复边界 ee0f922
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) ee0f922
 
-## Phase B: 双事实合同与事件投影
+## Phase B: 双事实合同与事件投影 [checkpoint: 746c78d]
 
 - [x] Task: Red TDD——定义 `lastNavigation` 与 `clientView` 的类型、provenance、unknown、客户端实例隔离和不可互相覆盖语义 e27cef7
 - [x] Task: Green——在现有 Chat/Agent 边界实现最小共享合同，不新增存储或破坏 `shared ← engine ← agent` 853cc5e
 - [x] Task: Red TDD——覆盖 navigation、Presentation receipt、client observation 的 append-only fold、乱序、重复、刷新和空投影重放 60900de
 - [x] Task: Green——实现双事实事件及纯投影；验证 Business Snapshot hash 不变，客户端观察不能扩大读取或 effect authorization 69e8fc3
 - [x] Task: 增加 source-governance 测试，阻止双事实再次折叠成单个 `currentRel`，并阻止客户端 route 成为业务授权来源 746c78d
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 746c78d
 
 ## Phase C: Chat、Canvas 与 Presentation 接线
 
