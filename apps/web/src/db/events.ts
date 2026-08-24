@@ -163,6 +163,36 @@ export interface DbExecutor {
   ): Promise<QueryResult<R>>;
 }
 
+/** Pool-like database boundary for a real single-client transaction. */
+export interface ConnectableDb extends DbExecutor {
+  connect?: () => Promise<PoolClient>;
+}
+
+/**
+ * Execute against one acquired PG client. Plain test executors without `connect` stay supported,
+ * but Pool callers never issue BEGIN/COMMIT through unrelated `Pool.query` connections.
+ */
+export async function withDatabaseTransaction<T>(
+  db: ConnectableDb,
+  run: (client: DbExecutor) => Promise<T>,
+): Promise<T> {
+  if (db.connect === undefined) return run(db);
+  const client = await db.connect();
+  let began = false;
+  try {
+    await client.query('BEGIN');
+    began = true;
+    const value = await run(client);
+    await client.query('COMMIT');
+    return value;
+  } catch (error) {
+    if (began) await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 /** 幂等 DDL(与 events.sql 迁移工件逐字一致,由 events.test.ts 强制)。 */
 export const EVENTS_DDL = `
 -- events:append-only 事件日志(arch-brief §4 事件溯源;I5/I6 的底座)。
@@ -251,6 +281,18 @@ export async function appendEvent(
   }
   // bigserial 经 pg 驱动以字符串返回(bigint 超 JS 安全整数;demo 规模下 Number 足够)。
   return { seq: Number(row.seq), ts: row.ts };
+}
+
+/** Append one command's event batch atomically and return the allocated sequence numbers. */
+export function appendEventBatch(
+  db: ConnectableDb,
+  events: readonly EventAppend[],
+): Promise<Array<{ seq: number; ts: Date }>> {
+  return withDatabaseTransaction(db, async (client) => {
+    const appended: Array<{ seq: number; ts: Date }> = [];
+    for (const event of events) appended.push(await appendEvent(client, event));
+    return appended;
+  });
 }
 
 /** 读取事件(只读,seq 升序;afterSeq 分页:返回 seq 严格大于 afterSeq 的事件)。 */

@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { contentVersion } from '@ui4a/engine';
+import { contentVersion, fold } from '@ui4a/engine';
 import type { AgentDefinition, AgentDefinitionRef, FlowDefinition } from '@ui4a/shared';
 
-import { ensureDraftTables } from '../db/drafts';
-import { ensureEventsTable } from '../db/events';
+import { ensureDraftTables, getDraft, rebuildDraftProjection } from '../db/drafts';
+import { ensureEventsTable, listEvents, readLog } from '../db/events';
 import { getPool } from '../db/pool';
+import { businessFlows } from '../domain/flows';
 import { getEngine, resetEngineForTests } from './service';
 import {
   executeDraftMeta,
@@ -23,6 +24,119 @@ beforeEach(async () => {
 });
 
 describe('governed Flow Draft vertical slice', () => {
+  it('concurrent human accept/reject has one terminal winner, audited loser, and rebuild parity', async () => {
+    const engine = await getEngine(pool);
+    const current = engine.getSnapshot().definitionVersions?.['post-status']?.[1] as FlowDefinition;
+    const created = await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel: 'meta/drafts',
+        action: 'create',
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'cli',
+        params: {
+          kind: 'flow-definition',
+          target: 'post-status',
+          policyScope: 'publishing',
+          commandId: 'concurrent:create',
+          payload: { name: 'post-status' },
+        },
+      },
+      { policyScope: 'publishing' },
+    );
+    expect(created.kind).toBe('accepted');
+    const draftRel = created.kind === 'accepted' ? String(created.entity.properties.rel) : '';
+    await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel: draftRel,
+        action: 'revise',
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'cli',
+        params: {
+          commandId: 'concurrent:revise',
+          baseVersion: 1,
+          payload: { ...current, title: 'Concurrent candidate' },
+        },
+      },
+      { policyScope: 'publishing' },
+    );
+    const submitted = await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel: draftRel,
+        action: 'submit',
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'cli',
+        params: { commandId: 'concurrent:submit' },
+      },
+      { policyScope: 'publishing' },
+    );
+    expect(submitted.kind).toBe('accepted');
+    const activation =
+      submitted.kind === 'accepted' ? String(submitted.entity.properties.activation) : '';
+
+    const settled = await Promise.allSettled([
+      executeDraftMeta(
+        pool,
+        engine,
+        {
+          rel: activation,
+          action: 'approve',
+          actor: 'human',
+          principal: 'user:mike',
+          channel: 'human-renderer',
+          params: { commandId: 'concurrent:approve' },
+        },
+        { policyScope: 'publishing' },
+      ),
+      executeDraftMeta(
+        pool,
+        engine,
+        {
+          rel: activation,
+          action: 'reject',
+          actor: 'human',
+          principal: 'user:mike',
+          channel: 'human-renderer',
+          params: { commandId: 'concurrent:reject', reason: 'concurrent loser' },
+        },
+        { policyScope: 'publishing' },
+      ),
+    ]);
+
+    expect(settled.filter(({ status }) => status === 'rejected')).toHaveLength(0);
+    const outcomes = settled.flatMap((result) =>
+      result.status === 'fulfilled' ? [result.value] : [],
+    );
+    expect(outcomes.filter(({ kind }) => kind === 'accepted')).toHaveLength(1);
+    expect(outcomes.filter(({ kind }) => kind === 'rejected')).toHaveLength(1);
+
+    const events = await listEvents(pool);
+    expect(
+      events.filter(({ kind }) => kind === 'draft-accepted' || kind === 'draft-rejected'),
+    ).toHaveLength(1);
+    expect(events.filter(({ kind }) => kind === 'action-rejected')).toHaveLength(1);
+    const stored = await getDraft(pool, draftRel.slice('draft:'.length), 'user:mike', 'publishing');
+    expect(stored?.aggregate.status).toMatch(/accepted|rejected/);
+    const beforeRebuild = stored?.aggregate;
+    await pool.query('TRUNCATE draft_projection');
+    await rebuildDraftProjection(pool);
+    expect(
+      (await getDraft(pool, draftRel.slice('draft:'.length), 'user:mike', 'publishing'))?.aggregate,
+    ).toEqual(beforeRebuild);
+    await engine.readSnapshot();
+    expect(contentVersion(engine.getSnapshot())).toBe(
+      contentVersion(fold(await readLog(pool), { flows: businessFlows })),
+    );
+  });
+
   it('rejects target and request scopes outside credential policy scope', async () => {
     const engine = await getEngine(pool);
     const request = {

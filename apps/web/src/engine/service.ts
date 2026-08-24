@@ -75,7 +75,13 @@ import type { EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
 import type { FieldValue } from '@ui4a/shared';
 import { metaCapabilityRel, metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
 
-import { appendEvent, readLog, type DbExecutor, type EventAppend } from '../db/events';
+import {
+  appendEventBatch,
+  readLog,
+  type ConnectableDb,
+  type DbExecutor,
+  type EventAppend,
+} from '../db/events';
 import { assertApplicationBootstrapReady, prepareDatabaseForApplication } from '../db/migrations';
 import { getPool } from '../db/pool';
 import {
@@ -273,6 +279,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   scheduleRecipesForSnapshot(snapshot);
   // 已折叠进度(seq 高水位):自身 append 推进;读路径/exec 开头按此增量 fold 外部写者。
   let lastSeq = events.length > 0 ? events[events.length - 1]!.seq : 0;
+  let committedCoreCount = events.length;
   const state = engineState();
 
   // ---- 定义解析(T4 Phase B:fold 快照即真相,代码常量仅 seed 源+顺序锚)----
@@ -423,16 +430,28 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
    */
   let foreignGaps: LogEvent[] = [];
 
-  /** 追加并返回自身 seq(自身事件不进增量 fold;调用方用它做在线物化)。 */
-  const appendWithSeq = async (event: EventAppend): Promise<number> => {
-    const { seq } = await appendEvent(db, event);
-    if (seq > lastSeq) {
-      const gap = (await readLog(db, lastSeq)).filter((entry) => entry.seq < seq);
+  /** Atomically append one command batch and collect already-committed lower foreign sequences. */
+  const appendBatchWithSeq = async (batch: readonly EventAppend[]): Promise<number[]> => {
+    if (batch.length === 0) return [];
+    const appended = await appendEventBatch(db as ConnectableDb, batch);
+    const seqs = appended.map(({ seq }) => seq);
+    const own = new Set(seqs);
+    const highest = Math.max(...seqs);
+    committedCoreCount += seqs.length;
+    if (highest > lastSeq) {
+      const gap = (await readLog(db, lastSeq)).filter(
+        (entry) => entry.seq < highest && !own.has(entry.seq),
+      );
       foreignGaps.push(...gap);
-      lastSeq = seq;
+      committedCoreCount += gap.length;
+      lastSeq = highest;
     }
-    return seq;
+    return seqs;
   };
+
+  /** Append one event through the same real-client transaction boundary used by command batches. */
+  const appendWithSeq = async (event: EventAppend): Promise<number> =>
+    (await appendBatchWithSeq([event]))[0]!;
 
   /**
    * 通用同步 capability materialization：LLM 已按 action schema 生成 output-param，
@@ -531,23 +550,32 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     snapshot = fold(gaps, { flows: {} }, snapshot);
   };
 
-  /**
-   * 增量 fold 外部写者(worker)追加的事件:PG max(seq) 高于 lastSeq 时,
-   * readLog(afterSeq=lastSeq) 按序折进快照。必须在串行队列内调用
-   * (与 exec 无交错);fold(initial=当前快照)与全量重放同构(I5)。
-   */
+  /** Incrementally fold committed suffixes; rebuild if commit order reveals a late lower seq. */
   const refreshFromLog = async (): Promise<void> => {
-    const result = await db.query<{ max_seq: string | number | null }>(
-      "SELECT max(seq) AS max_seq FROM events WHERE domain='core'",
-    );
+    const result = await db.query<{
+      max_seq: string | number | null;
+      event_count: string | number;
+    }>("SELECT max(seq) AS max_seq, count(*) AS event_count FROM events WHERE domain='core'");
     const maxSeq = Number(result.rows[0]?.max_seq ?? 0);
-    if (maxSeq <= lastSeq) {
+    const eventCount = Number(result.rows[0]?.event_count ?? 0);
+    if (eventCount === committedCoreCount) {
       applyForeignGaps(); // 上一队列操作若中途抛错可能遗留未补折的外部事件
       return;
     }
-    const fresh = await readLog(db, lastSeq);
-    if (fresh.length === 0) {
-      applyForeignGaps();
+    const fresh = maxSeq > lastSeq ? await readLog(db, lastSeq) : [];
+    const expectedFresh = eventCount - committedCoreCount;
+    if (expectedFresh < 0 || fresh.length !== expectedFresh) {
+      // PostgreSQL sequences are allocation order, not commit order. A transaction may commit a
+      // lower seq after this process has already observed and applied a higher one. Folding that
+      // late event after the current snapshot would reorder history, so rebuild from sorted truth.
+      const complete = await readLog(db);
+      snapshot = fold(complete, { flows: {} });
+      foreignGaps = [];
+      committedCoreCount = complete.length;
+      lastSeq = complete.at(-1)?.seq ?? 0;
+      if (complete.some((event) => event.kind === 'definition-candidate-applied')) {
+        scheduleRecipesForSnapshot(snapshot);
+      }
       return;
     }
     // 先折遗留 foreignGaps 再折 fresh:gaps 构造上恒更旧(seq < 收集时的
@@ -558,6 +586,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     if (fresh.some((event) => event.kind === 'definition-candidate-applied')) {
       scheduleRecipesForSnapshot(snapshot);
     }
+    committedCoreCount += fresh.length;
     lastSeq = Math.max(lastSeq, fresh[fresh.length - 1]!.seq);
   };
 
@@ -615,9 +644,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       return persistRejection(request, decision);
     }
 
-    for (const event of decision.events) {
-      await appendWithSeq(toAppend(event));
-    }
+    await appendBatchWithSeq(decision.events.map(toAppend));
     snapshot = decision.snapshot;
     applyForeignGaps();
 
@@ -687,9 +714,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         if (outcome.kind === 'suspended') {
           // 挂起(非拒绝):confirmation-requested 落库(detail 含 Cedar 策略 id
           // 与原因,spec 验收 5),pending 实体物化进快照,业务状态不动。
-          for (const event of outcome.events) {
-            await appendWithSeq(toAppend(event));
-          }
+          await appendBatchWithSeq(outcome.events.map(toAppend));
           snapshot = outcome.snapshot;
           applyForeignGaps();
           const rel = `confirmation:${outcome.confirmation.id}`;
@@ -775,8 +800,9 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           seq: number;
           prepared?: PreparedNativeAgentDispatch;
         }[] = [];
-        for (const event of effectiveEvents) {
-          const seq = await appendWithSeq(toAppend(event));
+        const effectiveSeqs = await appendBatchWithSeq(effectiveEvents.map(toAppend));
+        for (const [index, event] of effectiveEvents.entries()) {
+          const seq = effectiveSeqs[index]!;
           if (event.kind === 'spawn-requested') {
             const prepared = preparedNativeRuns.get(event);
             spawned.push({ event, seq, ...(prepared === undefined ? {} : { prepared }) });
@@ -842,9 +868,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
                 }`,
               );
             }
-            for (const callbackEvent of callback.events) {
-              await appendWithSeq(toAppend(callbackEvent));
-            }
+            await appendBatchWithSeq(callback.events.map(toAppend));
             snapshot = callback.snapshot;
           }
         }
@@ -874,13 +898,11 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         const outcome = executePlan(aliased, snapshot, gateDeps());
 
         // 落库顺序 = 日志顺序:各步伴随事件 → 拒绝步留痕 → 批量裁决记录标记。
-        for (const event of outcome.events) {
-          await appendWithSeq(toAppend(event));
-        }
+        const batch = outcome.events.map(toAppend);
         const rejected = outcome.results.find((result) => result.outcome === 'rejected');
         if (rejected !== undefined && rejected.rejection !== undefined) {
           const request = aliased[rejected.step - 1]!;
-          await appendWithSeq(
+          batch.push(
             toAppend({
               ...actionRejectedEvent(request, rejected.rejection, {
                 plan: { step: rejected.step },
@@ -889,7 +911,8 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
             }),
           );
         }
-        await appendWithSeq(toAppend(outcome.record));
+        batch.push(toAppend(outcome.record));
+        await appendBatchWithSeq(batch);
         snapshot = outcome.snapshot;
         applyForeignGaps();
 

@@ -4,7 +4,7 @@ import { contentVersion, fold } from '@ui4a/engine';
 import type { LogEvent } from '@ui4a/engine';
 
 import { businessFlows } from '../domain/flows';
-import { ensureEventsTable, readLog } from '../db/events';
+import { ensureEventsTable, readLog, type DbExecutor } from '../db/events';
 import { getPool } from '../db/pool';
 
 import { getEngine, resetEngineForTests } from './service';
@@ -125,6 +125,104 @@ describe('exec 挂起(agent + high → Cedar 拦截)', () => {
 });
 
 describe('human approve(经普通 exec)', () => {
+  it('rolls back every core event when a multi-event decision append fails', async () => {
+    let armed = false;
+    const shouldFail = (sqlText: string, values?: readonly unknown[]): boolean =>
+      armed &&
+      sqlText.includes('INSERT INTO events') &&
+      values?.[3] === 'action-executed' &&
+      values?.[4] === 'post:post-welcome' &&
+      values?.[5] === 'archive';
+    const failingDb = {
+      query: async (sqlText: string, values?: readonly unknown[]) => {
+        if (shouldFail(sqlText, values)) throw new Error('simulated append crash');
+        return pool.query(sqlText, values as unknown[] | undefined);
+      },
+      connect: async () => {
+        const client = await pool.connect();
+        return {
+          query: async (sqlText: string, values?: readonly unknown[]) => {
+            if (shouldFail(sqlText, values)) throw new Error('simulated append crash');
+            return client.query(sqlText, values as unknown[] | undefined);
+          },
+          release: () => client.release(),
+        };
+      },
+    } as unknown as DbExecutor;
+    const engine = await getEngine(failingDb);
+    const suspended = await engine.exec(agentArchive);
+    expect(suspended.kind).toBe('suspended');
+    armed = true;
+
+    await expect(
+      engine.exec({
+        rel: 'confirmation:c1',
+        action: 'approve',
+        params: {},
+        actor: 'human',
+        principal: 'user:approver',
+      }),
+    ).rejects.toThrow('simulated append crash');
+
+    const afterFailure = await logEvents();
+    expect(
+      afterFailure.filter(
+        ({ kind, rel }) => kind === 'confirmation-approved' && rel === 'confirmation:c1',
+      ),
+    ).toHaveLength(0);
+    expect(
+      afterFailure.filter(
+        ({ kind, rel, action }) =>
+          kind === 'action-executed' && rel === 'post:post-welcome' && action === 'archive',
+      ),
+    ).toHaveLength(0);
+
+    resetEngineForTests();
+    const restarted = await getEngine(pool);
+    expect(restarted.getSnapshot().confirmations?.['confirmation:c1']?.status).toBe('pending');
+    expect(restarted.getSnapshot().instances['post:post-welcome']?.node).toBe('published');
+  });
+
+  it('同一 pending confirmation 并发 approve/reject:恰一终态、一拒绝且重放一致', async () => {
+    const id = await suspendArchive();
+    const engine = await getEngine(pool);
+
+    const outcomes = await Promise.all([
+      engine.exec({
+        rel: `confirmation:${id}`,
+        action: 'approve',
+        params: {},
+        actor: 'human',
+        principal: 'user:approver',
+      }),
+      engine.exec({
+        rel: `confirmation:${id}`,
+        action: 'reject',
+        params: { reason: 'concurrent rejection' },
+        actor: 'human',
+        principal: 'user:approver',
+      }),
+    ]);
+
+    expect(outcomes.filter(({ kind }) => kind === 'accepted')).toHaveLength(1);
+    expect(outcomes.filter(({ kind }) => kind === 'rejected')).toHaveLength(1);
+    const events = await logEvents();
+    expect(
+      events.filter(
+        ({ kind }) => kind === 'confirmation-approved' || kind === 'confirmation-rejected',
+      ),
+    ).toHaveLength(1);
+    expect(
+      events.filter(({ kind, rel }) => kind === 'action-rejected' && rel === `confirmation:${id}`),
+    ).toHaveLength(1);
+    expect(engine.getSnapshot().confirmations?.[`confirmation:${id}`]?.status).toMatch(
+      /approved|rejected/,
+    );
+    expect(contentVersion(engine.getSnapshot())).toBe(
+      contentVersion(fold(events, { flows: businessFlows })),
+    );
+  });
+
   it('approve → 目标动作生效,事件链 confirmation-approved + action-executed(委托语义)', async () => {
     const id = await suspendArchive();
     const engine = await getEngine(pool);
@@ -314,9 +412,7 @@ describe('reject(带必填 reason)', () => {
 
     // 确认仍 pending(两次失败审批不消耗状态)。
     expect(engine.getSnapshot().confirmations?.[`confirmation:${id}`]?.status).toBe('pending');
-    expect(
-      (await logEvents()).filter((event) => event.kind === 'action-rejected'),
-    ).toHaveLength(2);
+    expect((await logEvents()).filter((event) => event.kind === 'action-rejected')).toHaveLength(2);
   });
 });
 

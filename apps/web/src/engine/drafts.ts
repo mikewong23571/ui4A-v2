@@ -479,6 +479,18 @@ async function rejectionEvent(db: DbExecutor, request: ExecRequest, outcome: Dra
   });
 }
 
+async function concurrentDecisionRejection(
+  db: DbExecutor,
+  request: ExecRequest,
+  error: unknown,
+): Promise<DraftMetaOutcome | undefined> {
+  const message = error instanceof Error ? error.message : String(error);
+  if (!/draft is (?:not pending|terminal)|draft version conflict/.test(message)) return undefined;
+  const outcome = rejected('guard-failed', `draft decision conflict: ${message}`);
+  await rejectionEvent(db, request, outcome);
+  return outcome;
+}
+
 async function projectForOwner(
   db: DbExecutor,
   engine: EngineRuntime,
@@ -640,14 +652,20 @@ export async function executeDraftMeta(
     if (request.action === 'reject') {
       const reason = stringParam(request, 'reason');
       if (reason === undefined) return rejected('schema-invalid', 'reason is required');
-      await appendDraftCommand(db, {
-        kind: 'reject',
-        eventId: `event:${commandId}`,
-        commandId,
-        draftId,
-        activeVersion: aggregate.activeVersion,
-        reason,
-      });
+      try {
+        await appendDraftCommand(db, {
+          kind: 'reject',
+          eventId: `event:${commandId}`,
+          commandId,
+          draftId,
+          activeVersion: aggregate.activeVersion,
+          reason,
+        });
+      } catch (error) {
+        const conflict = await concurrentDecisionRejection(db, request, error);
+        if (conflict !== undefined) return conflict;
+        throw error;
+      }
       return {
         kind: 'accepted',
         entity: (await getDraftMetaEntity(
@@ -798,6 +816,8 @@ export async function executeDraftMeta(
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      const conflict = await concurrentDecisionRejection(db, request, error);
+      if (conflict !== undefined) return conflict;
       if (/stale|version changed/.test(message)) {
         await appendDraftCommand(db, {
           kind: 'stale',
