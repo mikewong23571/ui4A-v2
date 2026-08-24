@@ -63,7 +63,7 @@
 - [ ] 禁止呈现为 GA、production SLA 或 LTS
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) c609262
 
-## Phase C: Keycloak 与可信身份链
+## Phase C: Keycloak 与可信身份链 [checkpoint: 1df38a0]
 
 - [x] Task: Red TDD——建立 authentication negative corpus ee3d44a
 - [ ] 覆盖 missing/expired/wrong issuer/audience/signature Token
@@ -97,9 +97,9 @@
 - [x] Bearer 禁止明文 HTTP，OIDC/JWKS 禁止 redirect，单进程 session store 有界
 - [x] canonical config、固定 realm/client/scope 与 Secret refs 完全一致
 - [x] 对 agent/service human-only approval 保留可审计拒绝证据，补齐 CLI 403 与 session restart 负例
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
-- [ ] 仅要求 Golden Story、CLI/Agent 合同主路径与负向身份 corpus 通过
-- [ ] 列出未纳入的 route/callback；不以“全面 route auth 已完成”作为 v0.1 gate
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 1df38a0
+- [x] 仅要求 Golden Story、CLI/Agent 合同主路径与负向身份 corpus 通过
+- [x] 列出未纳入的 route/callback；不以“全面 route auth 已完成”作为 v0.1 gate
 
 ## Phase D: 显式迁移、单副本重放和健康语义
 
