@@ -1,0 +1,7 @@
+D35 experimental Agent credential wiring Red.
+
+Defined the bounded Golden Story surface only: canonical Agent OIDC config, same-origin allowlisted Bearer fetch, authenticated business sitemap, one inline Chat token exchange per turn, and Worker Activity-local Client Credentials. Durable delegation remains token-free and uses Worker service identity.
+
+Main-agent Red proof: five files collected 64 tests with 47 existing cases passing and 17 expected behavior failures plus the missing bounded-fetch module. Failures are limited to absent config fields, sitemap trust, Chat exchange/session wiring, Worker activity composition, and the planned fetch wrapper. No DB or network was used.
+
+Tokens and client Secrets are prohibited from Temporal args, workflow history, events, SSE, Activity results, errors, and logs. Other routes remain documented outside the experimental OIDC acceptance surface.
