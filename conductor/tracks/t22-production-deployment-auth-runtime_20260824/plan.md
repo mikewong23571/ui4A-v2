@@ -155,11 +155,11 @@
 - [ ] one-shot container mode 与 trusted host daemon mode
 - [ ] 与 generic Host lifecycle 和 specialization verifier 分离
 - [ ] Secret 仅在 authorized Run 生命周期可见
-- [ ] Task: Red→Green——K8s Job Backend
+- [~] Task: Red→Green——K8s Job Backend
 - [ ] per-Run Job/Pod、fixed image/ServiceAccount/resources/network/workspace
 - [ ] watch、heartbeat、cancel、TTL、eviction 和 duplicate callback
 - [ ] human decision 前保留 Coding workspace
-- [ ] Task: Red→Green——Host Runner Backend
+- [~] Task: Red→Green——Host Runner Backend
 - [ ] server-owned registry、identity、heartbeat、lease 和 fixed roots
 - [ ] disconnect、cancel、duplicate delivery 与 invalid path
 - [ ] 禁止向更宽权限 backend fallback
