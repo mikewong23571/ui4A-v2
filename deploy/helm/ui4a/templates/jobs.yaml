@@ -48,7 +48,12 @@ spec:
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
-            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 70
+            runAsGroup: 70
+            capabilities:
+              drop: [ALL]
       volumes:
         - name: bootstrap-sql
           configMap: { name: ui4a-postgres-bootstrap }
@@ -95,7 +100,7 @@ spec:
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
-            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+            {{- include "ui4a.nodeContainerSecurityContext" . | nindent 12 }}
       volumes:
         - name: state-secrets
           secret: { secretName: {{ .Values.secrets.existingSecretName | quote }} }
@@ -135,7 +140,7 @@ spec:
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
-            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+            {{- include "ui4a.nodeContainerSecurityContext" . | nindent 12 }}
 ---
 apiVersion: batch/v1
 kind: Job

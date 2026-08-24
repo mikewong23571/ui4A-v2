@@ -429,6 +429,16 @@ function ui4aNodeSecurityContext() {
   };
 }
 
+function vendorNonRootSecurityContext(uid: number, gid: number) {
+  return {
+    allowPrivilegeEscalation: false,
+    capabilities: { drop: ['ALL'] },
+    readOnlyRootFilesystem: true,
+    runAsUser: uid,
+    runAsGroup: gid,
+  };
+}
+
 function container(name: string, image: string, options: UnknownRecord = {}): UnknownRecord {
   return {
     name,
@@ -921,6 +931,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         ],
         livenessProbe: tcpProbe(7233, 20),
         readinessProbe: { exec: { command: ['temporal', 'operator', 'cluster', 'health'] } },
+        securityContext: vendorNonRootSecurityContext(1000, 1000),
       },
       {
         automountServiceAccountToken: true,
@@ -951,6 +962,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         volumeMounts: [{ name: 'tmp', mountPath: '/tmp' }],
         livenessProbe: httpProbe('/', 8080),
         readinessProbe: tcpProbe(8080),
+        securityContext: vendorNonRootSecurityContext(1000, 1000),
       },
       {
         automountServiceAccountToken: true,
@@ -1174,6 +1186,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
           { name: 'bootstrap-sql', mountPath: '/opt/ui4a', readOnly: true },
           stateSecretMount,
         ],
+        securityContext: vendorNonRootSecurityContext(70, 70),
       },
       {
         automountServiceAccountToken: true,
@@ -1195,7 +1208,10 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         '-ec',
         'TEMPORAL_SCHEMA_PASSWORD="$(cat /run/secrets/temporal-schema-password)"; temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal setup-schema -v 0.0 && temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal update-schema -d /etc/temporal/schema/postgresql/v12/temporal/versioned && temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal_visibility setup-schema -v 0.0 && exec temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal_visibility update-schema -d /etc/temporal/schema/postgresql/v12/visibility/versioned',
       ],
-      { volumeMounts: [stateSecretMount] },
+      {
+        volumeMounts: [stateSecretMount],
+        securityContext: vendorNonRootSecurityContext(1000, 1000),
+      },
       {
         automountServiceAccountToken: true,
         initContainers: dependencyGates(values, ['postgres-bootstrap']),
@@ -1213,7 +1229,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         '-ec',
         'temporal operator namespace describe --namespace ui4a --address temporal:7233 >/dev/null 2>&1 || exec temporal operator namespace create --namespace ui4a --address temporal:7233 --retention 72h',
       ],
-      {},
+      { securityContext: vendorNonRootSecurityContext(1000, 1000) },
       {
         automountServiceAccountToken: true,
         initContainers: dependencyGates(values, ['temporal']),
@@ -1335,6 +1351,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
                 ...secretEnvironment,
                 command: ['pg_dump', '--format=custom', '--file=/backups/ui4a.dump', 'ui4a'],
                 volumeMounts: [{ name: 'backup-data', mountPath: '/backups' }],
+                securityContext: vendorNonRootSecurityContext(70, 70),
               }),
             ],
             {

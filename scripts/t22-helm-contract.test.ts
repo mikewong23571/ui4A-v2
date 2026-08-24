@@ -532,7 +532,6 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       }
       for (const [kind, name] of [
         ['StatefulSet', 'postgres'],
-        ['Deployment', 'temporal'],
         ['Deployment', 'keycloak'],
         ['Deployment', 'web'],
         ['Deployment', 'worker'],
@@ -543,6 +542,32 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
         expect(primary?.readinessProbe, `${kind}/${name}`).toBeTruthy();
         expect(primary?.livenessProbe).not.toEqual(primary?.readinessProbe);
       }
+    });
+
+    it('pins verified vendor-image numeric identities without assigning Keycloak speculatively', async () => {
+      const { resources } = (await renderer()).renderUi4aChart(genericValues());
+      for (const [kind, name] of [
+        ['Deployment', 'temporal'],
+        ['Deployment', 'temporal-ui'],
+        ['Job', 'temporal-schema'],
+        ['Job', 'temporal-namespace'],
+      ] as const) {
+        expect(
+          record(primaryContainer(workload(resources, kind, name)).securityContext),
+        ).toMatchObject({ runAsUser: 1000, runAsGroup: 1000 });
+      }
+      for (const [kind, name] of [
+        ['Job', 'postgres-bootstrap'],
+        ['CronJob', 'backup'],
+      ] as const) {
+        expect(
+          record(primaryContainer(workload(resources, kind, name)).securityContext),
+        ).toMatchObject({ runAsUser: 70, runAsGroup: 70 });
+      }
+      expect(
+        record(primaryContainer(workload(resources, 'Deployment', 'keycloak')).securityContext)
+          .runAsUser,
+      ).toBeUndefined();
     });
 
     it('pins every UI4A Node container to the image numeric uid and leaves external images alone', async () => {
@@ -572,7 +597,6 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       }
       for (const [kind, name] of [
         ['StatefulSet', 'postgres'],
-        ['Deployment', 'temporal'],
         ['Deployment', 'keycloak'],
       ] as const) {
         expect(

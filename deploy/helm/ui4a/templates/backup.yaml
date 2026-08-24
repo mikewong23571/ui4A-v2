@@ -37,7 +37,12 @@ spec:
               resources:
                 {{- include "ui4a.resources" . | nindent 16 }}
               securityContext:
-                {{- include "ui4a.containerSecurityContext" . | nindent 16 }}
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsUser: 70
+                runAsGroup: 70
+                capabilities:
+                  drop: [ALL]
           volumes:
             - name: backup-data
               persistentVolumeClaim: { claimName: backup-data }

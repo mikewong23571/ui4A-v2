@@ -45,7 +45,7 @@ spec:
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
-            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+            {{- include "ui4a.nodeContainerSecurityContext" . | nindent 12 }}
       volumes:
         - name: temporal-static-config
           configMap: { name: ui4a-temporal-static }
@@ -99,7 +99,7 @@ spec:
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
-            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+            {{- include "ui4a.nodeContainerSecurityContext" . | nindent 12 }}
       volumes:
         - { name: tmp, emptyDir: {} }
 ---
