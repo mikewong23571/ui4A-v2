@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "trackId": "t22-production-deployment-auth-runtime_20260824",
+  "observedAt": "2026-08-24T02:59:18.580Z",
+  "keycloak": {
+    "version": "26.7.1",
+    "imageDigest": "sha256:f1f1f01e472c8a78df40d8f2a49a925274eda4d3d80d5f6edbb5c880ee3c01c6",
+    "distributionSha256": "d3bb3da0e4bf574db0c857f92b272da90575dc97aa26c41329c9d4399200974c",
+    "mode": "disposable-start-dev"
+  },
+  "flows": {
+    "authorizationCodePkce": {
+      "status": "passed",
+      "codeChallengeMethod": "S256"
+    },
+    "clientCredentials": {
+      "status": "passed"
+    },
+    "standardTokenExchange": {
+      "status": "passed",
+      "standard": "RFC 8693 internal-to-internal"
+    },
+    "actDelegation": {
+      "status": "passed",
+      "stability": "experimental",
+      "detail": "may_act pre-authorization present; exchanged act=false; exchanged may_act=false"
+    },
+    "publicClientExchange": {
+      "status": "passed",
+      "expectedRejection": true
+    }
+  },
+  "boundary": {
+    "istio": ["issuer-signature-audience", "coarse-route-policy"],
+    "application": [
+      "actor-principal-scope-derivation",
+      "delegation-chain-validation",
+      "human-only-approval",
+      "action-guard-schema",
+      "event-audit"
+    ]
+  },
+  "imageDistribution": {
+    "manifestProbe": "passed",
+    "containerdPull": "blocked",
+    "reason": "containerd rewrote the HTTP Nexus quay API root to HTTPS; HTTPS returned HTTP 400",
+    "fallbackProbe": "official distribution tarball passed"
+  },
+  "sources": [
+    "https://www.keycloak.org/downloads",
+    "https://www.keycloak.org/server/containers",
+    "https://www.keycloak.org/securing-apps/token-exchange",
+    "https://www.keycloak.org/securing-apps/specifications"
+  ]
+}

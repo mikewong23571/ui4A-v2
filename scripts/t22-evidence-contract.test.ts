@@ -192,4 +192,70 @@ describe('T22 executable acceptance contract', () => {
       ]),
     );
   });
+
+  it('records disposable Keycloak protocol results and the delegation stability boundary', () => {
+    const probeJsonPath = trackFile('auth-probe.json');
+    const probeMarkdownPath = trackFile('auth-probe.md');
+    expect(existsSync(probeJsonPath), 'auth-probe.json must exist').toBe(true);
+    expect(existsSync(probeMarkdownPath), 'auth-probe.md must exist').toBe(true);
+    if (!existsSync(probeJsonPath) || !existsSync(probeMarkdownPath)) return;
+
+    const probeText = readFileSync(probeJsonPath, 'utf8');
+    const probe = JSON.parse(probeText) as {
+      schemaVersion: number;
+      keycloak: {
+        version: string;
+        imageDigest: string;
+        mode: string;
+      };
+      flows: {
+        authorizationCodePkce: { status: string; codeChallengeMethod: string };
+        clientCredentials: { status: string };
+        standardTokenExchange: { status: string; standard: string };
+        actDelegation: { status: string; stability: string };
+        publicClientExchange: { status: string; expectedRejection: boolean };
+      };
+      boundary: {
+        istio: string[];
+        application: string[];
+      };
+      sources: string[];
+    };
+
+    expect(probe.schemaVersion).toBe(1);
+    expect(probe.keycloak.version).toBe('26.7.1');
+    expect(probe.keycloak.imageDigest).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(probe.keycloak.mode).toBe('disposable-start-dev');
+    expect(probe.flows.authorizationCodePkce).toEqual({
+      status: 'passed',
+      codeChallengeMethod: 'S256',
+    });
+    expect(probe.flows.clientCredentials.status).toBe('passed');
+    expect(probe.flows.standardTokenExchange).toEqual({
+      status: 'passed',
+      standard: 'RFC 8693 internal-to-internal',
+    });
+    expect(probe.flows.actDelegation.stability).toBe('experimental');
+    expect(['passed', 'blocked']).toContain(probe.flows.actDelegation.status);
+    expect(probe.flows.publicClientExchange).toEqual({
+      status: 'passed',
+      expectedRejection: true,
+    });
+    expect(probe.boundary.istio).toEqual(
+      expect.arrayContaining(['issuer-signature-audience', 'coarse-route-policy']),
+    );
+    expect(probe.boundary.application).toEqual(
+      expect.arrayContaining([
+        'actor-principal-scope-derivation',
+        'delegation-chain-validation',
+        'human-only-approval',
+      ]),
+    );
+    expect(probe.sources.every((source) => source.startsWith('https://www.keycloak.org/'))).toBe(
+      true,
+    );
+    expect(probeText).not.toMatch(
+      /probe-admin-password|probe-human-password|probe-agent-secret|access_token|refresh_token/,
+    );
+  });
 });

@@ -13,6 +13,8 @@ all-in-one 中重复部署、认证、恢复和验证的首个试验性版本。
 - [Red Acceptance Baseline](./acceptance-baseline.json)
 - [Mothership Platform Probe](./platform-probe.md)
 - [Mothership Platform Facts](./platform-probe.json)
+- [Disposable Keycloak Probe](./auth-probe.md)
+- [Disposable Keycloak Facts](./auth-probe.json)
 - [Implementation Plan](./plan.md)
 
 当前状态：`in_progress`。目标发布为 `v0.1.0-experimental.1`，不宣称 GA、正式 SLA 或当前两 Worker
