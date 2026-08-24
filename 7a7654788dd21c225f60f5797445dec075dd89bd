@@ -1,0 +1,38 @@
+Task: Green — unified production config parsing and startup preflight
+
+Summary:
+- Added a platform-neutral, strict TypeScript production deployment config and parser in @ui4a/shared.
+- Enforces canonical {settings,secrets} separation, recursive unknown-field rejection, HTTPS/host/realm/callback consistency, PostgreSQL/Temporal/TLS limits, immutable digest-pinned Runtime images, bounded workspaces/repositories, sealed server-owned specialization profiles, and complete Secret references.
+- Added Compose environment/file and Helm values normalization into the same canonical parser.
+- Added explicit Web and Worker startup preflight gated only by UI4A_DEPLOYMENT_PROFILE=production; NODE_ENV is intentionally ignored so Next builds and local demo remain usable.
+- Connected Worker production startup to canonical Temporal address, namespace, task queue, and identity.
+- Added safe .env.example variable names without credentials.
+
+Files:
+- .env.example
+- packages/shared/src/index.ts
+- packages/shared/src/production-deployment-config.ts
+- packages/shared/src/production-deployment-config.test.ts
+- apps/web/src/instrumentation.ts
+- apps/web/src/production-deployment-preflight.ts
+- apps/web/src/production-deployment-preflight.test.ts
+- apps/worker/src/main.ts
+- apps/worker/src/production-deployment-preflight.ts
+- apps/worker/src/production-deployment-preflight.test.ts
+
+Why:
+Compose and Kubernetes must not develop divergent configuration semantics. A single fail-closed contract catches invalid production identity, state, TLS, and Runtime settings before Web readiness or Worker Temporal connection while preserving the explicit local demo path.
+
+Verification:
+- Focused Vitest: 3 files passed, 48 tests passed.
+- @ui4a/shared typecheck: passed.
+- @ui4a/web typecheck: passed.
+- @ui4a/worker typecheck: passed.
+- Focused ESLint: passed.
+- Prettier check on supported changed source files: passed.
+- git diff --check: passed.
+
+Security/evidence:
+- Error messages contain configuration paths/reasons, never serialized config or Secret values.
+- Settings serialization is asserted not to contain any Secret value.
+- Production rejects demo identity, localhost/loopback fallbacks, default Temporal namespace, wildcard audience, floating Runtime images, root workspaces, request-controlled overrides, and wider-backend fallback.
