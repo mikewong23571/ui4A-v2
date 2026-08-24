@@ -187,6 +187,7 @@ spec:
       automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       initContainers:
+        {{- include "ui4a.trustInit" . | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "migration") | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "realm-bootstrap") | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal-namespace") | nindent 8 }}
@@ -240,6 +241,7 @@ spec:
       automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       initContainers:
+        {{- include "ui4a.trustInit" . | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "migration") | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "realm-bootstrap") | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal-namespace") | nindent 8 }}
@@ -293,6 +295,7 @@ spec:
       automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       initContainers:
+        {{- include "ui4a.trustInit" . | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "pki-init") | nindent 8 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}

@@ -1,3 +1,5 @@
+{{- $postgresUid := 70 }}
+{{- $postgresGid := 70 }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -19,7 +21,41 @@ spec:
       automountServiceAccountToken: false
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       securityContext:
-        {{- include "ui4a.podSecurityContext" . | nindent 8 }}
+        seccompProfile: { type: RuntimeDefault }
+      initContainers:
+        - name: postgres-tls-handoff
+          image: {{ .Values.images.runner | quote }}
+          imagePullPolicy: IfNotPresent
+          command: [/bin/sh, -ec]
+          args:
+            - >-
+              set -eu;
+              root=/var/lib/ui4a/ca/root-ca.crt;
+              cert=/var/lib/ui4a/ca/postgres/server.crt;
+              key=/var/lib/ui4a/ca/postgres/server.key;
+              openssl x509 -in "$cert" -noout -checkhost {{ printf "postgres.%s.svc.cluster.local" .Values.namespace.name | quote }};
+              openssl verify -CAfile "$root" "$cert";
+              openssl x509 -in "$cert" -pubkey -noout | openssl pkey -pubin -outform DER > /tmp/cert.pub;
+              openssl pkey -in "$key" -pubout -outform DER > /tmp/key.pub;
+              cmp /tmp/cert.pub /tmp/key.pub;
+              install -o {{ $postgresUid }} -g {{ $postgresGid }} -m 0644 "$root" /var/run/ui4a/postgres-tls/root-ca.crt;
+              install -o {{ $postgresUid }} -g {{ $postgresGid }} -m 0644 "$cert" /var/run/ui4a/postgres-tls/server.crt;
+              install -o {{ $postgresUid }} -g {{ $postgresGid }} -m 0600 "$key" /var/run/ui4a/postgres-tls/server.key;
+              chmod 0600 /var/run/ui4a/postgres-tls/server.key;
+              test "$(stat -c %a /var/run/ui4a/postgres-tls/server.key)" = 600
+          volumeMounts:
+            - { name: pki-data, mountPath: /var/lib/ui4a/ca, readOnly: true }
+            - { name: postgres-tls, mountPath: /var/run/ui4a/postgres-tls }
+            - { name: tls-handoff-tmp, mountPath: /tmp }
+          resources:
+            {{- include "ui4a.resources" . | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 0
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [CHOWN, DAC_READ_SEARCH, FOWNER]
       containers:
         - name: postgres
           image: {{ .Values.images.postgres | quote }}
@@ -28,11 +64,11 @@ spec:
             - -c
             - ssl=on
             - -c
-            - ssl_cert_file=/var/lib/ui4a/ca/postgres/server.crt
+            - ssl_cert_file=/var/run/ui4a/postgres-tls/server.crt
             - -c
-            - ssl_key_file=/var/lib/ui4a/ca/postgres/server.key
+            - ssl_key_file=/var/run/ui4a/postgres-tls/server.key
             - -c
-            - ssl_ca_file=/var/lib/ui4a/ca/root-ca.crt
+            - ssl_ca_file=/var/run/ui4a/postgres-tls/root-ca.crt
           env:
             - { name: POSTGRES_USER, value: postgres }
             - { name: POSTGRES_DB, value: postgres }
@@ -44,7 +80,7 @@ spec:
             - { name: backup-data, mountPath: /backups }
             - { name: postgres-run, mountPath: /run/postgresql }
             - { name: tmp, mountPath: /tmp }
-            - { name: pki-data, mountPath: /var/lib/ui4a/ca, readOnly: true }
+            - { name: postgres-tls, mountPath: /var/run/ui4a/postgres-tls, readOnly: true }
             - { name: postgres-bootstrap-password, mountPath: /run/secrets/postgres-bootstrap-password, subPath: postgres-bootstrap-password, readOnly: true }
           livenessProbe:
             exec: { command: [pg_isready, -U, postgres] }
@@ -61,6 +97,8 @@ spec:
           persistentVolumeClaim: { claimName: backup-data }
         - name: pki-data
           persistentVolumeClaim: { claimName: pki-data }
+        - { name: postgres-tls, emptyDir: {} }
+        - { name: tls-handoff-tmp, emptyDir: {} }
         - { name: postgres-run, emptyDir: {} }
         - { name: tmp, emptyDir: {} }
         - name: postgres-bootstrap-password

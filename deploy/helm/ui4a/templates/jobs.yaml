@@ -169,6 +169,7 @@ spec:
             - { name: UI4A_PKI_ROOT, value: /var/lib/ui4a/ca }
             - { name: UI4A_HOST, value: {{ .Values.hosts.web | quote }} }
             - { name: KEYCLOAK_HOST, value: {{ .Values.hosts.keycloak | quote }} }
+            - { name: UI4A_POSTGRES_HOST, value: {{ printf "postgres.%s.svc.cluster.local" .Values.namespace.name | quote }} }
           volumeMounts:
             - { name: pki-data, mountPath: /var/lib/ui4a/ca }
             - { name: deployment-settings, mountPath: /run/ui4a/settings.json, subPath: settings.json, readOnly: true }
@@ -224,6 +225,7 @@ spec:
           securityContext:
             {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
       initContainers:
+        {{- include "ui4a.trustInit" . | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres-bootstrap") | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "pki-init") | nindent 8 }}
       volumes:
@@ -267,6 +269,7 @@ spec:
           securityContext:
             {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
       initContainers:
+        {{- include "ui4a.trustInit" . | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "keycloak") | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "pki-init") | nindent 8 }}
       volumes:

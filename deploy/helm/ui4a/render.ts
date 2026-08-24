@@ -386,6 +386,10 @@ const resources = {
   limits: { cpu: '1', memory: '1Gi' },
 };
 
+// postgres:17-alpine defines the postgres account as uid=70,gid=70. The root handoff init
+// copies the 0600 runtime key to this identity before the image entrypoint drops privileges.
+const POSTGRES_17_ALPINE_IDENTITY = Object.freeze({ uid: 70, gid: 70 });
+
 function container(name: string, image: string, options: UnknownRecord = {}): UnknownRecord {
   return {
     name,
@@ -620,7 +624,7 @@ function productionEnvironment(extra: UnknownRecord[] = []): UnknownRecord[] {
       name: 'UI4A_DEPLOYMENT_SECRETS_FILE',
       value: '/run/secrets/ui4a-deployment-secrets',
     },
-    { name: 'NODE_EXTRA_CA_CERTS', value: '/var/lib/ui4a/ca/root-ca.crt' },
+    { name: 'NODE_EXTRA_CA_CERTS', value: '/var/run/ui4a/trust/ca-bundle.crt' },
     ...extra,
   ];
 }
@@ -639,6 +643,7 @@ const productionVolumeMounts = [
     readOnly: true,
   },
   { name: 'pki-data', mountPath: '/var/lib/ui4a/ca', readOnly: true },
+  { name: 'combined-trust', mountPath: '/var/run/ui4a/trust', readOnly: true },
 ] as const;
 
 function productionVolumes(secretName: string): UnknownRecord[] {
@@ -652,7 +657,37 @@ function productionVolumes(secretName: string): UnknownRecord[] {
       },
     },
     { name: 'pki-data', persistentVolumeClaim: { claimName: 'pki-data' } },
+    {
+      name: 'panel-ca',
+      configMap: { name: 'ui4a-panel-ca', items: [{ key: 'ca.crt', path: 'ca.crt' }] },
+    },
+    { name: 'combined-trust', emptyDir: {} },
   ];
+}
+
+const TRUST_INIT_SCRIPT = [
+  'set -eu',
+  'runtime=/var/lib/ui4a/ca/root-ca.crt',
+  'panel=/var/run/ui4a/panel-ca/ca.crt',
+  'output=/var/run/ui4a/trust/ca-bundle.crt',
+  'openssl x509 -in "$runtime" -noout -checkend 0',
+  'openssl verify -CAfile "$runtime" "$runtime"',
+  'openssl x509 -in "$panel" -noout -checkend 0',
+  'openssl verify -CAfile "$panel" "$panel"',
+  'cat /var/lib/ui4a/ca/root-ca.crt /var/run/ui4a/panel-ca/ca.crt > /var/run/ui4a/trust/ca-bundle.crt.tmp',
+  'chmod 0444 /var/run/ui4a/trust/ca-bundle.crt.tmp',
+  'mv /var/run/ui4a/trust/ca-bundle.crt.tmp /var/run/ui4a/trust/ca-bundle.crt',
+].join('; ');
+
+function trustInit(values: Ui4aHelmValues): UnknownRecord {
+  return container('trust-init', values.images.runner, {
+    command: ['/bin/sh', '-ec', TRUST_INIT_SCRIPT],
+    volumeMounts: [
+      { name: 'pki-data', mountPath: '/var/lib/ui4a/ca', readOnly: true },
+      { name: 'panel-ca', mountPath: '/var/run/ui4a/panel-ca', readOnly: true },
+      { name: 'combined-trust', mountPath: '/var/run/ui4a/trust' },
+    ],
+  });
 }
 
 function stateSecretVolume(secretName: string): UnknownRecord {
@@ -667,6 +702,7 @@ function dependencyGates(values: Ui4aHelmValues, dependencies: readonly string[]
 
 function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
   const namespace = values.namespace.name;
+  const postgresHost = `postgres.${namespace}.svc.cluster.local`;
   const secretEnvironment = {
     envFrom: [{ secretRef: { name: values.secrets.existingSecretName } }],
   };
@@ -688,11 +724,11 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
               '-c',
               'ssl=on',
               '-c',
-              'ssl_cert_file=/var/lib/ui4a/ca/postgres/server.crt',
+              'ssl_cert_file=/var/run/ui4a/postgres-tls/server.crt',
               '-c',
-              'ssl_key_file=/var/lib/ui4a/ca/postgres/server.key',
+              'ssl_key_file=/var/run/ui4a/postgres-tls/server.key',
               '-c',
-              'ssl_ca_file=/var/lib/ui4a/ca/root-ca.crt',
+              'ssl_ca_file=/var/run/ui4a/postgres-tls/root-ca.crt',
             ],
             env: [
               { name: 'POSTGRES_USER', value: 'postgres' },
@@ -708,7 +744,11 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
               { name: 'backup-data', mountPath: '/backups' },
               { name: 'postgres-run', mountPath: '/run/postgresql' },
               { name: 'tmp', mountPath: '/tmp' },
-              { name: 'pki-data', mountPath: '/var/lib/ui4a/ca', readOnly: true },
+              {
+                name: 'postgres-tls',
+                mountPath: '/var/run/ui4a/postgres-tls',
+                readOnly: true,
+              },
               {
                 name: 'postgres-bootstrap-password',
                 mountPath: '/run/secrets/postgres-bootstrap-password',
@@ -721,10 +761,48 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
           }),
         ],
         {
+          securityContext: { seccompProfile: { type: 'RuntimeDefault' } },
+          initContainers: [
+            container('postgres-tls-handoff', values.images.runner, {
+              command: [
+                '/bin/sh',
+                '-ec',
+                [
+                  'set -eu',
+                  'root=/var/lib/ui4a/ca/root-ca.crt',
+                  'cert=/var/lib/ui4a/ca/postgres/server.crt',
+                  'key=/var/lib/ui4a/ca/postgres/server.key',
+                  `openssl x509 -in "$cert" -noout -checkhost ${postgresHost}`,
+                  'openssl verify -CAfile "$root" "$cert"',
+                  'openssl x509 -in "$cert" -pubkey -noout | openssl pkey -pubin -outform DER > /tmp/cert.pub',
+                  'openssl pkey -in "$key" -pubout -outform DER > /tmp/key.pub',
+                  'cmp /tmp/cert.pub /tmp/key.pub',
+                  `install -o ${POSTGRES_17_ALPINE_IDENTITY.uid} -g ${POSTGRES_17_ALPINE_IDENTITY.gid} -m 0644 "$root" /var/run/ui4a/postgres-tls/root-ca.crt`,
+                  `install -o ${POSTGRES_17_ALPINE_IDENTITY.uid} -g ${POSTGRES_17_ALPINE_IDENTITY.gid} -m 0644 "$cert" /var/run/ui4a/postgres-tls/server.crt`,
+                  `install -o ${POSTGRES_17_ALPINE_IDENTITY.uid} -g ${POSTGRES_17_ALPINE_IDENTITY.gid} -m 0600 "$key" /var/run/ui4a/postgres-tls/server.key`,
+                  'chmod 0600 /var/run/ui4a/postgres-tls/server.key',
+                  'test "$(stat -c %a /var/run/ui4a/postgres-tls/server.key)" = 600',
+                ].join('; '),
+              ],
+              volumeMounts: [
+                { name: 'pki-data', mountPath: '/var/lib/ui4a/ca', readOnly: true },
+                { name: 'postgres-tls', mountPath: '/var/run/ui4a/postgres-tls' },
+                { name: 'tls-handoff-tmp', mountPath: '/tmp' },
+              ],
+              securityContext: {
+                allowPrivilegeEscalation: false,
+                runAsUser: 0,
+                capabilities: { drop: ['ALL'], add: ['CHOWN', 'DAC_READ_SEARCH', 'FOWNER'] },
+                readOnlyRootFilesystem: true,
+              },
+            }),
+          ],
           volumes: [
             { name: 'postgres-data', persistentVolumeClaim: { claimName: 'postgres-data' } },
             { name: 'backup-data', persistentVolumeClaim: { claimName: 'backup-data' } },
             { name: 'pki-data', persistentVolumeClaim: { claimName: 'pki-data' } },
+            { name: 'postgres-tls', emptyDir: {} },
+            { name: 'tls-handoff-tmp', emptyDir: {} },
             { name: 'postgres-run', emptyDir: {} },
             { name: 'tmp', emptyDir: {} },
             {
@@ -890,12 +968,15 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       },
       {
         automountServiceAccountToken: true,
-        initContainers: dependencyGates(values, [
-          'migration',
-          'realm-bootstrap',
-          'temporal-namespace',
-          'pki-init',
-        ]),
+        initContainers: [
+          trustInit(values),
+          ...dependencyGates(values, [
+            'migration',
+            'realm-bootstrap',
+            'temporal-namespace',
+            'pki-init',
+          ]),
+        ],
         volumes: [
           ...productionVolumes(values.secrets.existingSecretName),
           { name: 'tmp', emptyDir: {} },
@@ -925,11 +1006,10 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       },
       {
         automountServiceAccountToken: true,
-        initContainers: dependencyGates(values, [
-          'migration',
-          'realm-bootstrap',
-          'temporal-namespace',
-        ]),
+        initContainers: [
+          trustInit(values),
+          ...dependencyGates(values, ['migration', 'realm-bootstrap', 'temporal-namespace']),
+        ],
         volumes: [
           ...productionVolumes(values.secrets.existingSecretName),
           { name: 'tmp', emptyDir: {} },
@@ -961,7 +1041,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       },
       {
         automountServiceAccountToken: true,
-        initContainers: dependencyGates(values, ['pki-init']),
+        initContainers: [trustInit(values), ...dependencyGates(values, ['pki-init'])],
         volumes: [
           ...productionVolumes(values.secrets.existingSecretName),
           { name: 'tmp', emptyDir: {} },
@@ -1057,6 +1137,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
           { name: 'UI4A_PKI_ROOT', value: '/var/lib/ui4a/ca' },
           { name: 'UI4A_HOST', value: values.hosts.web },
           { name: 'KEYCLOAK_HOST', value: values.hosts.keycloak },
+          { name: 'UI4A_POSTGRES_HOST', value: postgresHost },
         ],
         volumeMounts: [
           ...productionVolumeMounts.filter(({ name }) => name !== 'pki-data'),
@@ -1084,7 +1165,10 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       },
       {
         automountServiceAccountToken: true,
-        initContainers: dependencyGates(values, ['postgres-bootstrap', 'pki-init']),
+        initContainers: [
+          trustInit(values),
+          ...dependencyGates(values, ['postgres-bootstrap', 'pki-init']),
+        ],
         volumes: [
           ...productionVolumes(values.secrets.existingSecretName),
           { name: 'tmp', emptyDir: {} },
@@ -1115,7 +1199,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       },
       {
         automountServiceAccountToken: true,
-        initContainers: dependencyGates(values, ['keycloak', 'pki-init']),
+        initContainers: [trustInit(values), ...dependencyGates(values, ['keycloak', 'pki-init'])],
         volumes: [
           ...productionVolumes(values.secrets.existingSecretName),
           { name: 'tmp', emptyDir: {} },

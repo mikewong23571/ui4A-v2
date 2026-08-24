@@ -14,9 +14,11 @@ Before installing, create these server-owned inputs in namespace {{ .Values.name
    deploy/compose/temporal-config.yaml and deploy/compose/temporal-dynamicconfig.yaml.
 5. ConfigMap ui4a-realm-import with key realm-import.json sourced from
    deploy/keycloak/realm-import.json.
-6. The retained pki-data volume populated with root-ca.crt and PostgreSQL server.crt/server.key;
+6. External ConfigMap ui4a-panel-ca with key ca.crt containing the trusted Panel root CA. The chart
+   references this ConfigMap but never renders its certificate material.
+7. The retained pki-data volume populated with root-ca.crt and PostgreSQL server.crt/server.key;
    the database certificate must cover the configured PostgreSQL service hostname.
-7. TLS credential Secret {{ .Values.istio.tlsCredentialName }} in the ingress gateway's configured
+8. TLS credential Secret {{ .Values.istio.tlsCredentialName }} in the ingress gateway's configured
    credential namespace.
 
 Replace every example image digest, hostname and StorageClass (or select explicit static retained

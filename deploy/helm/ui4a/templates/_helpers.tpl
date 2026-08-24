@@ -37,13 +37,14 @@ nodeSelector:
 - { name: UI4A_DEPLOYMENT_PROFILE, value: production }
 - { name: UI4A_DEPLOYMENT_SETTINGS_FILE, value: /run/ui4a/settings.json }
 - { name: UI4A_DEPLOYMENT_SECRETS_FILE, value: /run/secrets/ui4a-deployment-secrets }
-- { name: NODE_EXTRA_CA_CERTS, value: /var/lib/ui4a/ca/root-ca.crt }
+- { name: NODE_EXTRA_CA_CERTS, value: /var/run/ui4a/trust/ca-bundle.crt }
 {{- end -}}
 
 {{- define "ui4a.productionMounts" -}}
 - { name: deployment-settings, mountPath: /run/ui4a/settings.json, subPath: settings.json, readOnly: true }
 - { name: deployment-secrets, mountPath: /run/secrets/ui4a-deployment-secrets, subPath: ui4a-deployment-secrets, readOnly: true }
 - { name: pki-data, mountPath: /var/lib/ui4a/ca, readOnly: true }
+- { name: combined-trust, mountPath: /var/run/ui4a/trust, readOnly: true }
 {{- end -}}
 
 {{- define "ui4a.productionVolumes" -}}
@@ -53,6 +54,36 @@ nodeSelector:
   secret: { secretName: {{ .Values.secrets.existingSecretName | quote }} }
 - name: pki-data
   persistentVolumeClaim: { claimName: pki-data }
+- name: panel-ca
+  configMap:
+    name: ui4a-panel-ca
+    items: [{ key: ca.crt, path: ca.crt }]
+- { name: combined-trust, emptyDir: {} }
+{{- end -}}
+
+{{- define "ui4a.trustInit" -}}
+- name: trust-init
+  image: {{ .Values.images.runner | quote }}
+  imagePullPolicy: IfNotPresent
+  command: [/bin/sh, -ec]
+  args:
+    - >-
+      set -eu;
+      openssl x509 -in /var/lib/ui4a/ca/root-ca.crt -noout -checkend 0;
+      openssl verify -CAfile /var/lib/ui4a/ca/root-ca.crt /var/lib/ui4a/ca/root-ca.crt;
+      openssl x509 -in /var/run/ui4a/panel-ca/ca.crt -noout -checkend 0;
+      openssl verify -CAfile /var/run/ui4a/panel-ca/ca.crt /var/run/ui4a/panel-ca/ca.crt;
+      cat /var/lib/ui4a/ca/root-ca.crt /var/run/ui4a/panel-ca/ca.crt > /var/run/ui4a/trust/ca-bundle.crt.tmp;
+      chmod 0444 /var/run/ui4a/trust/ca-bundle.crt.tmp;
+      mv /var/run/ui4a/trust/ca-bundle.crt.tmp /var/run/ui4a/trust/ca-bundle.crt
+  volumeMounts:
+    - { name: pki-data, mountPath: /var/lib/ui4a/ca, readOnly: true }
+    - { name: panel-ca, mountPath: /var/run/ui4a/panel-ca, readOnly: true }
+    - { name: combined-trust, mountPath: /var/run/ui4a/trust }
+  resources:
+    {{- include "ui4a.resources" . | nindent 4 }}
+  securityContext:
+    {{- include "ui4a.containerSecurityContext" . | nindent 4 }}
 {{- end -}}
 
 {{- define "ui4a.waitFor" -}}
