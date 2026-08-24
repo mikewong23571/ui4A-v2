@@ -1,0 +1,22 @@
+Task: 对 mothership 集群执行只读生产前探测
+
+Summary:
+- Captured machine-readable and human-readable live facts for the target K8s/Istio cluster.
+- Recorded three Ready nodes, versions/resources/taints, absent StorageClass/PV/PVC, three unused 100 GiB data disks, existing ingress NodePorts/Gateways, PKI inventory, internal image source reachability, and repository ownership constraints.
+- Added executable assertions preventing the plan from claiming unavailable storage or images.
+
+Files:
+- conductor/tracks/t22-production-deployment-auth-runtime_20260824/{platform-probe.json,platform-probe.md,index.md,plan.md}
+- scripts/t22-evidence-contract.test.ts
+
+Why:
+The deployment design must match the real air-gapped cluster rather than generic Kubernetes assumptions. In particular, no StorageClass exists and direct Docker Hub access fails.
+
+Safety:
+All cluster commands were read-only get/version/list/auth-can-i operations. Proxy variables were unset for internal endpoints. No namespace, image, Secret, volume, or workload was created or changed.
+
+Verification:
+- Red: focused contract failed because platform-probe.json was absent.
+- Green: ./node_modules/.bin/vitest run --config vitest.t22-contract.config.mts => 5/5 passed.
+- Prettier, JSON parse, and git diff --check passed.
+- Nexus manifest probes: Node/PostgreSQL/Temporal Server/Keycloak available; Temporal UI cold-cache probe timed out; Runner image build required.
