@@ -19,7 +19,7 @@
 - [x] 验证 Keycloak Authorization Code + PKCE、CLI Bearer 和 Client Credentials
 - [x] 验证 RFC 8693 Token Exchange 与 `act` claim
 - [x] 比较应用 JWT 验证与 Istio RequestAuthentication 职责
-- [ ] Task: 运行 disposable Runtime Backend 探针
+- [~] Task: 运行 disposable Runtime Backend 探针
 - [ ] 验证 Temporal Worker 创建、观察和取消 K8s Job
 - [ ] 验证 one-shot Runner 与 host daemon 的统一 task envelope
 - [ ] 验证 workspace、result、cancel、timeout 和 disconnect recovery

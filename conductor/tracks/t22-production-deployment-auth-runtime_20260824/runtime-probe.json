@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "trackId": "t22-production-deployment-auth-runtime_20260824",
+  "observedAt": "2026-08-24T03:03:47.569Z",
+  "envelope": {
+    "schemaVersion": 1,
+    "serverOwned": ["backend", "profile", "image", "workspace", "resources", "networkPolicy"],
+    "requestForbidden": ["backend", "image", "cwd", "provider", "model", "env"]
+  },
+  "host": {
+    "oneShot": "passed",
+    "daemon": "passed",
+    "disconnect": "passed",
+    "cancel": "passed"
+  },
+  "kubernetes": {
+    "rbacCanCreateJobs": true,
+    "jobCreateWatch": "passed",
+    "jobResult": "passed",
+    "jobCancel": "passed",
+    "namespaceCleanup": "passed",
+    "probeImage": "docker.io/flannel/flannel:v0.26.1"
+  },
+  "lifecycle": {
+    "timeout": "passed",
+    "duplicateDelivery": "passed",
+    "restartBoundary": "passed"
+  },
+  "decision": {
+    "runnerApplication": "apps/agent-runner",
+    "modes": ["oneshot", "daemon"],
+    "sharedCanonicalResult": true
+  }
+}

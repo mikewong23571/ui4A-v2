@@ -258,4 +258,69 @@ describe('T22 executable acceptance contract', () => {
       /probe-admin-password|probe-human-password|probe-agent-secret|access_token|refresh_token/,
     );
   });
+
+  it('records equivalent disposable Kubernetes and host Runner lifecycle probes', () => {
+    const probeJsonPath = trackFile('runtime-probe.json');
+    const probeMarkdownPath = trackFile('runtime-probe.md');
+    expect(existsSync(probeJsonPath), 'runtime-probe.json must exist').toBe(true);
+    expect(existsSync(probeMarkdownPath), 'runtime-probe.md must exist').toBe(true);
+    if (!existsSync(probeJsonPath) || !existsSync(probeMarkdownPath)) return;
+
+    const probeText = readFileSync(probeJsonPath, 'utf8');
+    const probe = JSON.parse(probeText) as {
+      schemaVersion: number;
+      envelope: {
+        schemaVersion: number;
+        serverOwned: string[];
+        requestForbidden: string[];
+      };
+      host: Record<string, string>;
+      kubernetes: Record<string, string | boolean>;
+      lifecycle: Record<string, string>;
+      decision: {
+        runnerApplication: string;
+        modes: string[];
+        sharedCanonicalResult: boolean;
+      };
+    };
+
+    expect(probe.schemaVersion).toBe(1);
+    expect(probe.envelope.schemaVersion).toBe(1);
+    expect(probe.envelope.serverOwned).toEqual(
+      expect.arrayContaining([
+        'backend',
+        'profile',
+        'image',
+        'workspace',
+        'resources',
+        'networkPolicy',
+      ]),
+    );
+    expect(probe.envelope.requestForbidden).toEqual(
+      expect.arrayContaining(['backend', 'image', 'cwd', 'provider', 'model', 'env']),
+    );
+    expect(probe.host).toMatchObject({
+      oneShot: 'passed',
+      daemon: 'passed',
+      disconnect: 'passed',
+      cancel: 'passed',
+    });
+    expect(probe.kubernetes).toMatchObject({
+      jobCreateWatch: 'passed',
+      jobResult: 'passed',
+      jobCancel: 'passed',
+      namespaceCleanup: 'passed',
+    });
+    expect(probe.lifecycle).toMatchObject({
+      timeout: 'passed',
+      duplicateDelivery: 'passed',
+      restartBoundary: 'passed',
+    });
+    expect(probe.decision).toEqual({
+      runnerApplication: 'apps/agent-runner',
+      modes: ['oneshot', 'daemon'],
+      sharedCanonicalResult: true,
+    });
+    expect(probeText).not.toMatch(/apiKey|privateKey|clientSecret|accessToken/);
+  });
 });
