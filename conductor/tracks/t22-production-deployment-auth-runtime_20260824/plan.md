@@ -207,7 +207,7 @@
 - [x] 不覆盖 Mattermost、Headlamp 或 unrelated K8s files
 - [x] UI4A 与 mothership-setup 分别提交并记录双方 SHA
 - [ ] Task: 执行真实集群部署
-- [ ] pre-pull 并验证全部 image digests
+- [x] pre-pull 并验证全部 image digests（mothership `b4c6c27`）
 - [ ] 创建 PV/namespace/Secrets 并部署 state services
 - [ ] 执行 migration/realm import-or-check，部署单副本 Web/Worker/Runner
 - [ ] 应用 Istio resources 并验证 Pods、Jobs、PV/PVC、sidecars 和 readiness
