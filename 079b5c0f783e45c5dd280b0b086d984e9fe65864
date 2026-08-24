@@ -1,0 +1,7 @@
+D35 fixed realm OAuth scope correction.
+
+The initial realm import now declares static UI4A permission and policy client scopes and assigns exact default and optional sets to Web Agent and API clients. This enables real browser, Client Credentials, and Token Exchange access tokens to carry scopes required by the application verifier without adding roles, synchronization, or online reconciliation.
+
+Existing realm compatibility checks validate client assignments using the normal clients GET and still never access or mutate client-scope endpoints. Drift fails closed with no repair.
+
+Main-agent verification: two realm files passed 27 of 27; scoped Prettier and git diff check passed; delegated strict TypeScript passed.
