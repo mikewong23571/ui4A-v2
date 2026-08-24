@@ -1,0 +1,90 @@
+{
+  "realm": "ui4a",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "ui4a-web",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "serviceAccountsEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["{{UI4A_ORIGIN}}/api/auth/callback"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "{{UI4A_ORIGIN}}/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "ui4a-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "ui4a-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "ui4a-agent-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "ui4a-agent",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ],
+      "secret": "{{secret:oidc-client-secret}}"
+    },
+    {
+      "clientId": "ui4a-agent",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "standard.token.exchange.enabled": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "ui4a-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "ui4a-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ],
+      "secret": "{{secret:ui4a-agent-client-secret}}"
+    },
+    {
+      "clientId": "ui4a-api",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "directAccessGrantsEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "username": "ui4a-experiment-human",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "{{secret:ui4a-experiment-human-password}}",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

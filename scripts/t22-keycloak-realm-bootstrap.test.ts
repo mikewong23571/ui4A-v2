@@ -165,7 +165,7 @@ class ImportOrSkipKeycloakAdmin {
     }
 
     return jsonResponse({ error: 'unexpected_admin_path', path: url.pathname }, 404);
-  }) as typeof fetch;
+  }) as typeof fetch & { mockClear(): void };
 
   clearTraffic(): void {
     this.requests.length = 0;
@@ -177,6 +177,7 @@ class ImportOrSkipKeycloakAdmin {
 async function execute(
   fake: ImportOrSkipKeycloakAdmin,
   mode: 'check' | 'apply' = 'apply',
+  resolveSecret: (reference: string) => string = secret,
 ): Promise<BootstrapResult> {
   const module = await bootstrapModule();
   const admin = module.createKeycloakAdminClient({
@@ -190,7 +191,7 @@ async function execute(
     admin,
     realmImport: realmImport(),
     publicOrigin,
-    resolveSecret: secret,
+    resolveSecret,
     mode,
   });
 }
@@ -231,15 +232,20 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
 
   it('--check reports an absent realm without importing it', async () => {
     const fake = new ImportOrSkipKeycloakAdmin();
+    const resolveSecret = vi.fn(secret);
 
-    await expect(execute(fake, 'check')).resolves.toMatchObject({ outcome: 'absent' });
+    await expect(execute(fake, 'check', resolveSecret)).resolves.toMatchObject({
+      outcome: 'absent',
+    });
     expect(fake.realm).toBeUndefined();
     expect(fake.mutations).toHaveLength(0);
+    expect(resolveSecret).not.toHaveBeenCalled();
   });
 
   it('--apply imports an absent realm with one full RealmRepresentation POST', async () => {
     const fake = new ImportOrSkipKeycloakAdmin();
-    const result = await execute(fake, 'apply');
+    const resolveSecret = vi.fn(secret);
+    const result = await execute(fake, 'apply', resolveSecret);
 
     expect(result).toMatchObject({ outcome: 'imported' });
     expect(fake.mutations).toHaveLength(1);
@@ -257,14 +263,20 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
     expect(JSON.stringify(imported)).toContain(fixturePassword);
     expect(JSON.stringify(imported)).not.toMatch(/\{\{UI4A_ORIGIN\}\}|\{\{secret:/);
     expect(JSON.stringify(result)).not.toMatch(/__test_only_|access_token/i);
+    expect(resolveSecret.mock.calls.map(([reference]) => reference).sort()).toEqual([
+      'oidc-client-secret',
+      'ui4a-agent-client-secret',
+      'ui4a-experiment-human-password',
+    ]);
   });
 
   it('checks an existing compatible realm and skips without mutation', async () => {
     const fake = new ImportOrSkipKeycloakAdmin();
     await execute(fake, 'apply');
     fake.clearTraffic();
+    const resolveSecret = vi.fn(secret);
 
-    const result = await execute(fake, 'apply');
+    const result = await execute(fake, 'apply', resolveSecret);
 
     expect(result).toMatchObject({ outcome: 'skip' });
     expect(fake.mutations).toHaveLength(0);
@@ -272,6 +284,7 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
     expect(
       fake.requests.some((request) => new URL(request.url).pathname.endsWith('/clients')),
     ).toBe(true);
+    expect(resolveSecret).not.toHaveBeenCalled();
   });
 
   it('is idempotent: the second run checks and skips', async () => {
@@ -303,6 +316,15 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
       },
     ],
     [
+      'Web audience drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const web = fake.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
+        web.protocolMappers = web.protocolMappers?.filter(
+          ({ config }) => config?.['included.client.audience'] !== 'ui4a-agent',
+        );
+      },
+    ],
+    [
       'Agent exchange drift',
       (fake: ImportOrSkipKeycloakAdmin) => {
         const agent = fake.clients.find(({ clientId }) => clientId === 'ui4a-agent')!;
@@ -321,12 +343,14 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
     await execute(fake, 'apply');
     drift(fake);
     fake.clearTraffic();
+    const resolveSecret = vi.fn(secret);
 
-    await expect(execute(fake, 'apply')).rejects.toMatchObject({
+    await expect(execute(fake, 'apply', resolveSecret)).rejects.toMatchObject({
       code: 'KEYCLOAK_REALM_INCOMPATIBLE',
     });
     expect(fake.mutations).toHaveLength(0);
     expect(mutationRequests(fake)).toHaveLength(1); // Admin token request only.
+    expect(resolveSecret).not.toHaveBeenCalled();
   });
 
   it('never reads or mutates users, profiles, passwords, roles, or client scopes', async () => {
@@ -366,6 +390,39 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
 });
 
 describe('T22 Keycloak Admin network boundary', () => {
+  it('rejects non-HTTPS Keycloak and public origins before network access', async () => {
+    const module = await bootstrapModule();
+    const fake = new ImportOrSkipKeycloakAdmin();
+
+    expect(() =>
+      module.createKeycloakAdminClient({
+        baseUrl: 'http://auth.ui4a.mothership.internal',
+        adminUsername: 'ui4a-bootstrap-admin',
+        adminPassword,
+        fetch: fake.fetch,
+        timeoutMs: 100,
+      }),
+    ).toThrowError(expect.objectContaining({ code: 'KEYCLOAK_REALM_IMPORT_INVALID' }));
+
+    const admin = module.createKeycloakAdminClient({
+      baseUrl: keycloakOrigin,
+      adminUsername: 'ui4a-bootstrap-admin',
+      adminPassword,
+      fetch: fake.fetch,
+      timeoutMs: 100,
+    });
+    await expect(
+      module.bootstrapKeycloakRealm({
+        admin,
+        realmImport: realmImport(),
+        publicOrigin: 'http://ui4a.mothership.internal',
+        resolveSecret: secret,
+        mode: 'check',
+      }),
+    ).rejects.toMatchObject({ code: 'KEYCLOAK_REALM_IMPORT_INVALID' });
+    expect(fake.fetch).not.toHaveBeenCalled();
+  });
+
   it('uses same-origin Admin paths, rejects redirects, and attaches a timeout signal', async () => {
     const fake = new ImportOrSkipKeycloakAdmin();
     await execute(fake, 'check');

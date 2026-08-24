@@ -97,6 +97,18 @@ describe('T22 experimental Keycloak realm import contract', () => {
     expect(web.redirectUris).toEqual(['{{UI4A_ORIGIN}}/api/auth/callback']);
     expect(web.attributes?.['post.logout.redirect.uris']).toBe('{{UI4A_ORIGIN}}/*');
     expect(web.secret).toBe('{{secret:oidc-client-secret}}');
+    expect(
+      web.protocolMappers
+        ?.filter(
+          ({ protocol, protocolMapper, config }) =>
+            protocol === 'openid-connect' &&
+            protocolMapper === 'oidc-audience-mapper' &&
+            config['access.token.claim'] === 'true' &&
+            config['id.token.claim'] === 'false',
+        )
+        .map(({ config }) => config['included.client.audience'])
+        .sort(),
+    ).toEqual(['ui4a-agent', 'ui4a-api']);
   });
 
   it('configures Agent client credentials, Standard Token Exchange, and API audience', () => {
