@@ -163,11 +163,11 @@
 - [x] server-owned registry、identity、heartbeat、lease 和 fixed roots
 - [x] disconnect、cancel、duplicate delivery 与 invalid path
 - [x] 禁止向更宽权限 backend fallback
-- [ ] Task: 运行双后端等价 corpus
-- [ ] Coding、Writing 和 Agent Definition Authoring canonical tasks
-- [ ] 对齐 Agent Run、artifact、verification 和 human decision
-- [ ] Provider unavailable 时零 fallback
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: 运行双后端等价 corpus ae25036
+- [x] Coding、Writing 和 Agent Definition Authoring canonical tasks
+- [x] 对齐 Agent Run、artifact、verification 和 human decision
+- [x] Provider unavailable 时零 fallback
+- [~] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase G: Docker Compose all-in-one
 
