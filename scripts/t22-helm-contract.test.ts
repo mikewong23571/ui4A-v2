@@ -13,7 +13,9 @@ function helmTemplateSource(): string {
   const templatesRoot = resolve(chartRoot, 'templates');
   if (!existsSync(templatesRoot)) return '';
   return readdirSync(templatesRoot, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.yaml'))
+    .filter(
+      (entry) => entry.isFile() && (entry.name.endsWith('.yaml') || entry.name.endsWith('.tpl')),
+    )
     .map((entry) => readFileSync(resolve(entry.parentPath, entry.name), 'utf8'))
     .join('\n---\n');
 }
@@ -32,6 +34,7 @@ interface GenericHelmValues {
   schemaVersion: 1;
   namespace: { create: true; name: string; istioInjection: true };
   experimental: { highAvailability: false; replicas: 1 };
+  scheduling: { nodeSelector: Record<string, string> };
   hosts: { web: string; keycloak: string };
   images: Record<string, string>;
   imagePullPolicy: 'IfNotPresent';
@@ -65,6 +68,7 @@ interface GenericHelmValues {
     tlsCredentialName: string;
     oidcIssuer: string;
     oidcAudience: string;
+    jwksUri: string;
   };
 }
 
@@ -92,6 +96,7 @@ function genericValues(): GenericHelmValues {
     schemaVersion: 1,
     namespace: { create: true, name: 'ui4a-system', istioInjection: true },
     experimental: { highAvailability: false, replicas: 1 },
+    scheduling: { nodeSelector: {} },
     hosts: { web: webHost, keycloak: keycloakHost },
     images: {
       postgres: `registry.internal.test/postgres@${digest('1')}`,
@@ -126,6 +131,8 @@ function genericValues(): GenericHelmValues {
       tlsCredentialName: 'ui4a-internal-tls',
       oidcIssuer: `https://${keycloakHost}/realms/ui4a`,
       oidcAudience: 'ui4a-api',
+      jwksUri:
+        'http://keycloak.ui4a-system.svc.cluster.local:8080/realms/ui4a/protocol/openid-connect/certs',
     },
   };
 }
@@ -386,6 +393,28 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       }
     });
 
+    it('applies one server-owned nodeSelector to every state, UI4A and admin workload', async () => {
+      const values = genericValues();
+      values.scheduling.nodeSelector = { 'node-role.kubernetes.io/ui4a': 'true' };
+      const { resources } = (await renderer()).renderUi4aChart(values);
+      const workloads = resources.filter(({ kind }) =>
+        ['Deployment', 'StatefulSet', 'Job', 'CronJob'].includes(kind),
+      );
+
+      for (const resource of workloads) {
+        expect(
+          podSpec(resource).nodeSelector,
+          `${resource.kind}/${resource.metadata.name}`,
+        ).toEqual(values.scheduling.nodeSelector);
+      }
+      const templates = helmTemplateSource();
+      expect(templates).toMatch(/nodeSelector:/);
+      expect(templates).toMatch(/Values\.scheduling\.nodeSelector/);
+      expect(readFileSync(resolve(chartRoot, 'values.yaml'), 'utf8')).toMatch(
+        /scheduling:\s*\n\s+nodeSelector:\s*\{\}/,
+      );
+    });
+
     it('supports replaceable StorageClass claims and explicit static retained volumes', async () => {
       const render = (await renderer()).renderUi4aChart;
       const dynamic = render(genericValues()).resources;
@@ -448,9 +477,18 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       expect(JSON.stringify(virtualServices)).toContain(values.istio.gateway);
       expect(authnText).toContain(values.istio.oidcIssuer);
       expect(authnText).toContain(values.istio.oidcAudience);
-      expect(authzText).toContain('/api/auth/*');
-      expect(authzText).toContain('requestPrincipals');
-      expect(authzText).toContain('*');
+      expect(authnText).toContain(values.istio.jwksUri);
+      expect(authzText).not.toContain('requestPrincipals');
+      expect(authzText).toContain('/api/internal/*');
+      expect(authzText).toContain(
+        `cluster.local/ns/${values.namespace.name}/sa/${values.serviceAccounts.worker}`,
+      );
+      expect(JSON.stringify(virtualServices)).toContain('directResponse');
+      expect(JSON.stringify(virtualServices)).toContain('/api/internal/');
+      const templates = helmTemplateSource();
+      expect(templates).toMatch(/jwksUri:\s*\{\{\s*\.Values\.istio\.jwksUri/);
+      expect(templates).not.toMatch(/requestPrincipals/);
+      expect(templates).toMatch(/notPaths:\s*\[['"]\/api\/internal\/\*['"]\]/);
     });
 
     it('keeps Secret material outside manifests and reduced render evidence', async () => {

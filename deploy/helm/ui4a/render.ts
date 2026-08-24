@@ -58,6 +58,7 @@ export interface Ui4aHelmValues {
   schemaVersion: 1;
   namespace: { create: true; name: string; istioInjection: true };
   experimental: { highAvailability: false; replicas: 1 };
+  scheduling: { nodeSelector: Record<string, string> };
   hosts: { web: string; keycloak: string };
   images: Record<ImageKey, string>;
   imagePullPolicy: 'IfNotPresent';
@@ -70,6 +71,7 @@ export interface Ui4aHelmValues {
     tlsCredentialName: string;
     oidcIssuer: string;
     oidcAudience: string;
+    jwksUri: string;
   };
 }
 
@@ -175,11 +177,31 @@ function httpsUrl(value: unknown, path: string): string {
   return result;
 }
 
+function httpUrl(value: unknown, path: string): string {
+  const result = string(value, path);
+  let url: URL;
+  try {
+    url = new URL(result);
+  } catch {
+    return fail(path, 'must be an absolute HTTP(S) URL');
+  }
+  if (
+    !['http:', 'https:'].includes(url.protocol) ||
+    url.username !== '' ||
+    url.password !== '' ||
+    url.hash !== ''
+  ) {
+    fail(path, 'must be an absolute HTTP(S) URL without credentials or fragment');
+  }
+  return result;
+}
+
 function parseValues(input: unknown): Ui4aHelmValues {
   const root = exactObject(input, 'values', [
     'schemaVersion',
     'namespace',
     'experimental',
+    'scheduling',
     'hosts',
     'images',
     'imagePullPolicy',
@@ -206,6 +228,21 @@ function parseValues(input: unknown): Ui4aHelmValues {
   ]);
   exactLiteral(experimental.highAvailability, false, 'values.experimental.highAvailability');
   exactLiteral(experimental.replicas, 1, 'values.experimental.replicas');
+
+  const scheduling = exactObject(root.scheduling, 'values.scheduling', ['nodeSelector']);
+  const rawNodeSelector = object(scheduling.nodeSelector, 'values.scheduling.nodeSelector');
+  const nodeSelector = Object.fromEntries(
+    Object.entries(rawNodeSelector).map(([key, value]) => {
+      if (key === '' || key.length > 253 || key.includes('\0')) {
+        fail(`values.scheduling.nodeSelector.${key}`, 'has an invalid key');
+      }
+      const parsed = string(value, `values.scheduling.nodeSelector.${key}`);
+      if (parsed.length > 63) {
+        fail(`values.scheduling.nodeSelector.${key}`, 'value must not exceed 63 characters');
+      }
+      return [key, parsed];
+    }),
+  );
 
   const hosts = exactObject(root.hosts, 'values.hosts', ['web', 'keycloak']);
   const webHost = dnsName(hosts.web, 'values.hosts.web');
@@ -291,6 +328,7 @@ function parseValues(input: unknown): Ui4aHelmValues {
     'tlsCredentialName',
     'oidcIssuer',
     'oidcAudience',
+    'jwksUri',
   ]);
   const oidcIssuer = httpsUrl(istio.oidcIssuer, 'values.istio.oidcIssuer');
   if (new URL(oidcIssuer).hostname !== keycloakHost) {
@@ -301,6 +339,7 @@ function parseValues(input: unknown): Ui4aHelmValues {
     schemaVersion: 1,
     namespace: { create: true, name: namespaceName, istioInjection: true },
     experimental: { highAvailability: false, replicas: 1 },
+    scheduling: { nodeSelector },
     hosts: { web: webHost, keycloak: keycloakHost },
     images,
     imagePullPolicy: 'IfNotPresent',
@@ -313,6 +352,7 @@ function parseValues(input: unknown): Ui4aHelmValues {
       tlsCredentialName: name(istio.tlsCredentialName, 'values.istio.tlsCredentialName'),
       oidcIssuer,
       oidcAudience: name(istio.oidcAudience, 'values.istio.oidcAudience'),
+      jwksUri: httpUrl(istio.jwksUri, 'values.istio.jwksUri'),
     },
   };
 }
@@ -376,6 +416,7 @@ function selector(name: string) {
 function podTemplate(
   name: string,
   serviceAccountName: string,
+  nodeSelector: Record<string, string>,
   containers: UnknownRecord[],
   options: UnknownRecord = {},
 ) {
@@ -384,6 +425,7 @@ function podTemplate(
     spec: {
       serviceAccountName,
       automountServiceAccountToken: false,
+      nodeSelector,
       securityContext: { runAsNonRoot: true, seccompProfile: { type: 'RuntimeDefault' } },
       containers,
       ...options,
@@ -395,6 +437,7 @@ function deployment(
   namespace: string,
   name: string,
   serviceAccount: string,
+  nodeSelector: Record<string, string>,
   image: string,
   containerOptions: UnknownRecord,
   podOptions: UnknownRecord = {},
@@ -410,6 +453,7 @@ function deployment(
       template: podTemplate(
         name,
         serviceAccount,
+        nodeSelector,
         [container(name, image, containerOptions)],
         podOptions,
       ),
@@ -421,6 +465,7 @@ function job(
   namespace: string,
   name: string,
   serviceAccount: string,
+  nodeSelector: Record<string, string>,
   image: string,
   command: string[],
   options: UnknownRecord = {},
@@ -436,6 +481,7 @@ function job(
       template: podTemplate(
         name,
         serviceAccount,
+        nodeSelector,
         [container(name, image, { command, ...options })],
         { restartPolicy: 'Never', ...podOptions },
       ),
@@ -532,6 +578,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       template: podTemplate(
         'postgres',
         values.serviceAccounts.postgres,
+        values.scheduling.nodeSelector,
         [
           container('postgres', values.images.postgres, {
             ...secretEnvironment,
@@ -551,17 +598,25 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
   };
 
   const deployments = [
-    deployment(namespace, 'temporal', values.serviceAccounts.temporal, values.images.temporal, {
-      ...secretEnvironment,
-      args: ['start'],
-      ports: [{ name: 'grpc', containerPort: 7233 }],
-      livenessProbe: tcpProbe(7233, 20),
-      readinessProbe: { exec: { command: ['temporal', 'operator', 'cluster', 'health'] } },
-    }),
+    deployment(
+      namespace,
+      'temporal',
+      values.serviceAccounts.temporal,
+      values.scheduling.nodeSelector,
+      values.images.temporal,
+      {
+        ...secretEnvironment,
+        args: ['start'],
+        ports: [{ name: 'grpc', containerPort: 7233 }],
+        livenessProbe: tcpProbe(7233, 20),
+        readinessProbe: { exec: { command: ['temporal', 'operator', 'cluster', 'health'] } },
+      },
+    ),
     deployment(
       namespace,
       'temporal-ui',
       values.serviceAccounts.temporal,
+      values.scheduling.nodeSelector,
       values.images.temporalUi,
       {
         ports: [{ name: 'http', containerPort: 8080 }],
@@ -569,23 +624,38 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         readinessProbe: tcpProbe(8080),
       },
     ),
-    deployment(namespace, 'keycloak', values.serviceAccounts.keycloak, values.images.keycloak, {
-      ...secretEnvironment,
-      args: ['start'],
-      ports: [{ name: 'http', containerPort: 8080 }],
-      livenessProbe: httpProbe('/health/live', 9000),
-      readinessProbe: httpProbe('/health/ready', 9000),
-    }),
-    deployment(namespace, 'web', values.serviceAccounts.web, values.images.web, {
-      ...secretEnvironment,
-      ports: [{ name: 'http', containerPort: 3100 }],
-      livenessProbe: httpProbe('/live', 3100),
-      readinessProbe: httpProbe('/ready', 3100),
-    }),
+    deployment(
+      namespace,
+      'keycloak',
+      values.serviceAccounts.keycloak,
+      values.scheduling.nodeSelector,
+      values.images.keycloak,
+      {
+        ...secretEnvironment,
+        args: ['start'],
+        ports: [{ name: 'http', containerPort: 8080 }],
+        livenessProbe: httpProbe('/health/live', 9000),
+        readinessProbe: httpProbe('/health/ready', 9000),
+      },
+    ),
+    deployment(
+      namespace,
+      'web',
+      values.serviceAccounts.web,
+      values.scheduling.nodeSelector,
+      values.images.web,
+      {
+        ...secretEnvironment,
+        ports: [{ name: 'http', containerPort: 3100 }],
+        livenessProbe: httpProbe('/live', 3100),
+        readinessProbe: httpProbe('/ready', 3100),
+      },
+    ),
     deployment(
       namespace,
       'worker',
       values.serviceAccounts.worker,
+      values.scheduling.nodeSelector,
       values.images.worker,
       {
         ...secretEnvironment,
@@ -599,6 +669,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       namespace,
       'runner',
       values.serviceAccounts.runner,
+      values.scheduling.nodeSelector,
       values.images.runner,
       {
         ...secretEnvironment,
@@ -617,6 +688,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       namespace,
       'postgres-bootstrap',
       values.serviceAccounts.admin,
+      values.scheduling.nodeSelector,
       values.images.postgres,
       ['psql', '-v', 'ON_ERROR_STOP=1', '-f', '/opt/ui4a/bootstrap-roles.sql'],
       {
@@ -629,6 +701,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       namespace,
       'temporal-schema',
       values.serviceAccounts.admin,
+      values.scheduling.nodeSelector,
       values.images.temporalAdminTools,
       ['temporal-sql-tool', 'setup-and-update-schema'],
       secretEnvironment,
@@ -637,6 +710,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       namespace,
       'temporal-namespace',
       values.serviceAccounts.admin,
+      values.scheduling.nodeSelector,
       values.images.temporalAdminTools,
       ['temporal', 'operator', 'namespace', 'create-or-check', 'ui4a'],
     ),
@@ -644,6 +718,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       namespace,
       'pki-init',
       values.serviceAccounts.admin,
+      values.scheduling.nodeSelector,
       values.images.runner,
       ['node', 'dist/pki-init.js'],
       { volumeMounts: [{ name: 'pki-data', mountPath: '/var/lib/ui4a/ca' }] },
@@ -653,6 +728,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       namespace,
       'migration',
       values.serviceAccounts.admin,
+      values.scheduling.nodeSelector,
       values.images.worker,
       ['node', 'dist/t22-migrate.js'],
       secretEnvironment,
@@ -661,6 +737,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       namespace,
       'realm-bootstrap',
       values.serviceAccounts.admin,
+      values.scheduling.nodeSelector,
       values.images.worker,
       ['node', 'dist/t22-keycloak-realm-bootstrap.js', '--apply'],
       {
@@ -695,6 +772,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
           template: podTemplate(
             'backup',
             values.serviceAccounts.backup,
+            values.scheduling.nodeSelector,
             [
               container('backup', values.images.postgres, {
                 ...secretEnvironment,
@@ -787,7 +865,13 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       spec: {
         hosts: [values.hosts.web],
         gateways: [values.istio.gateway],
-        http: [{ route: [{ destination: { host: 'web', port: { number: 3100 } } }] }],
+        http: [
+          {
+            match: [{ uri: { prefix: '/api/internal/' } }],
+            directResponse: { status: 404 },
+          },
+          { route: [{ destination: { host: 'web', port: { number: 3100 } } }] },
+        ],
       },
     },
     {
@@ -806,7 +890,13 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       metadata: metadata('ui4a-web-jwt', namespace),
       spec: {
         selector: { matchLabels: selector('web') },
-        jwtRules: [{ issuer: values.istio.oidcIssuer, audiences: [values.istio.oidcAudience] }],
+        jwtRules: [
+          {
+            issuer: values.istio.oidcIssuer,
+            audiences: [values.istio.oidcAudience],
+            jwksUri: values.istio.jwksUri,
+          },
+        ],
       },
     },
     {
@@ -817,8 +907,17 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         selector: { matchLabels: selector('web') },
         action: 'ALLOW',
         rules: [
-          { to: [{ operation: { paths: ['/api/auth/*'] } }] },
-          { from: [{ source: { requestPrincipals: ['*'] } }] },
+          { to: [{ operation: { notPaths: ['/api/internal/*'] } }] },
+          {
+            from: [
+              {
+                source: {
+                  principals: [`cluster.local/ns/${namespace}/sa/${values.serviceAccounts.worker}`],
+                },
+              },
+            ],
+            to: [{ operation: { paths: ['/api/internal/*'] } }],
+          },
         ],
       },
     },

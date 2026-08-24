@@ -25,3 +25,10 @@ readOnlyRootFilesystem: true
 capabilities:
   drop: [ALL]
 {{- end -}}
+
+{{- define "ui4a.nodeSelector" -}}
+{{- with .Values.scheduling.nodeSelector }}
+nodeSelector:
+{{ toYaml . | nindent 2 }}
+{{- end }}
+{{- end -}}

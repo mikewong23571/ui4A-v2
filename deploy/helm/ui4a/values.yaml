@@ -9,6 +9,9 @@ experimental:
   highAvailability: false
   replicas: 1
 
+scheduling:
+  nodeSelector: {}
+
 hosts:
   web: ui4a.internal.test
   keycloak: auth.ui4a.internal.test
@@ -56,3 +59,4 @@ istio:
   tlsCredentialName: ui4a-internal-tls
   oidcIssuer: https://auth.ui4a.internal.test/realms/ui4a
   oidcAudience: ui4a-api
+  jwksUri: http://keycloak.ui4a-system.svc.cluster.local:8080/realms/ui4a/protocol/openid-connect/certs

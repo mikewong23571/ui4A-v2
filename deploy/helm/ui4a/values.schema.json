@@ -6,6 +6,7 @@
     "schemaVersion",
     "namespace",
     "experimental",
+    "scheduling",
     "hosts",
     "images",
     "imagePullPolicy",
@@ -34,6 +35,21 @@
       "properties": {
         "highAvailability": { "const": false },
         "replicas": { "const": 1 }
+      }
+    },
+    "scheduling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeSelector"],
+      "properties": {
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 63
+          }
+        }
       }
     },
     "hosts": {
@@ -144,12 +160,13 @@
     "istio": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["gateway", "tlsCredentialName", "oidcIssuer", "oidcAudience"],
+      "required": ["gateway", "tlsCredentialName", "oidcIssuer", "oidcAudience", "jwksUri"],
       "properties": {
         "gateway": { "$ref": "#/definitions/name" },
         "tlsCredentialName": { "$ref": "#/definitions/name" },
         "oidcIssuer": { "type": "string", "format": "uri", "pattern": "^https://" },
-        "oidcAudience": { "$ref": "#/definitions/name" }
+        "oidcAudience": { "$ref": "#/definitions/name" },
+        "jwksUri": { "type": "string", "format": "uri", "pattern": "^https?://" }
       }
     }
   },

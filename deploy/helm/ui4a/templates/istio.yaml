@@ -25,6 +25,9 @@ spec:
   hosts: [{{ .Values.hosts.web | quote }}]
   gateways: [{{ .Values.istio.gateway | quote }}]
   http:
+    - match:
+        - uri: { prefix: /api/internal/ }
+      directResponse: { status: 404 }
     - route:
         - destination: { host: web, port: { number: 3100 } }
 ---
@@ -55,6 +58,7 @@ spec:
   jwtRules:
     - issuer: {{ .Values.istio.oidcIssuer | quote }}
       audiences: [{{ .Values.istio.oidcAudience | quote }}]
+      jwksUri: {{ .Values.istio.jwksUri | quote }}
 ---
 apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
@@ -69,6 +73,10 @@ spec:
   action: ALLOW
   rules:
     - to:
-        - operation: { paths: ['/api/auth/*'] }
+        - operation: { notPaths: ['/api/internal/*'] }
     - from:
-        - source: { requestPrincipals: ['*'] }
+        - source:
+            principals:
+              - {{ printf "cluster.local/ns/%s/sa/%s" .Values.namespace.name .Values.serviceAccounts.worker | quote }}
+      to:
+        - operation: { paths: ['/api/internal/*'] }

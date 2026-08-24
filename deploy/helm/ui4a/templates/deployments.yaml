@@ -17,6 +17,7 @@ spec:
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.temporal | quote }}
       automountServiceAccountToken: false
+      {{- include "ui4a.nodeSelector" . | nindent 6 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
@@ -56,6 +57,7 @@ spec:
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.temporal | quote }}
       automountServiceAccountToken: false
+      {{- include "ui4a.nodeSelector" . | nindent 6 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
@@ -92,6 +94,7 @@ spec:
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.keycloak | quote }}
       automountServiceAccountToken: false
+      {{- include "ui4a.nodeSelector" . | nindent 6 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
@@ -132,6 +135,7 @@ spec:
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.web | quote }}
       automountServiceAccountToken: false
+      {{- include "ui4a.nodeSelector" . | nindent 6 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
@@ -170,6 +174,7 @@ spec:
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.worker | quote }}
       automountServiceAccountToken: true
+      {{- include "ui4a.nodeSelector" . | nindent 6 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
@@ -208,6 +213,7 @@ spec:
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.runner | quote }}
       automountServiceAccountToken: false
+      {{- include "ui4a.nodeSelector" . | nindent 6 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:

@@ -17,6 +17,7 @@ spec:
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.postgres | quote }}
       automountServiceAccountToken: false
+      {{- include "ui4a.nodeSelector" . | nindent 6 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:

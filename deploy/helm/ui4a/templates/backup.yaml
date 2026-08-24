@@ -21,6 +21,7 @@ spec:
         spec:
           serviceAccountName: {{ .Values.serviceAccounts.backup | quote }}
           automountServiceAccountToken: false
+          {{- include "ui4a.nodeSelector" . | nindent 10 }}
           restartPolicy: Never
           securityContext:
             {{- include "ui4a.podSecurityContext" . | nindent 12 }}
