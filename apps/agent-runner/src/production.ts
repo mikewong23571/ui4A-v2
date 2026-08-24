@@ -213,6 +213,27 @@ function parseAgentResult(event: Record<string, unknown>): unknown | undefined {
   }
 }
 
+function codexWorkspaceEnvironment(workspaceRoot: string): Record<string, string> {
+  const canonicalRoot = resolve(workspaceRoot);
+  const codexHome = resolve(join(canonicalRoot, '.codex'));
+  const codexHomeRelative = relative(canonicalRoot, codexHome);
+  if (
+    !isAbsolute(workspaceRoot) ||
+    workspaceRoot !== canonicalRoot ||
+    codexHomeRelative === '' ||
+    codexHomeRelative.startsWith('..') ||
+    isAbsolute(codexHomeRelative)
+  ) {
+    throw new Error('runner_execution_failed');
+  }
+  return {
+    PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
+    LANG: 'C.UTF-8',
+    HOME: canonicalRoot,
+    CODEX_HOME: codexHome,
+  };
+}
+
 async function executeCodex(input: {
   delivery: RunnerDelivery;
   request: CompiledCodexRequest;
@@ -230,17 +251,26 @@ async function executeCodex(input: {
   if (apiKey === undefined || apiKey === '') throw new Error('runner_execution_failed');
   const secretValues = Object.values(input.configuration.secrets).filter((value) => value !== '');
   if (containsSecret(input.request, secretValues)) throw new Error('runner_execution_failed');
+  const workspaceRoot = input.delivery.execution.workspace.rootRef;
   const client = input.createClient({
-    baseUrl: settings.llm.baseUrl,
     apiKey,
-    env: {
-      PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
-      LANG: 'C.UTF-8',
+    config: {
+      model_provider: 'ui4a',
+      model_providers: {
+        ui4a: {
+          name: 'UI4A Production',
+          base_url: settings.llm.baseUrl,
+          env_key: 'CODEX_API_KEY',
+          wire_api: 'responses',
+          supports_websockets: false,
+        },
+      },
     },
+    env: codexWorkspaceEnvironment(workspaceRoot),
   });
   const thread = client.startThread({
     model: settings.llm.model,
-    workingDirectory: input.delivery.execution.workspace.rootRef,
+    workingDirectory: workspaceRoot,
     skipGitRepoCheck: true,
     sandboxMode: input.request.sandboxMode,
     approvalPolicy: 'never',

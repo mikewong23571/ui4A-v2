@@ -257,8 +257,23 @@ describe('Agent Runner production composition', () => {
     expect(transport.clientOptions).toEqual([
       {
         apiKey,
-        baseUrl: 'https://llm.mothership.internal/v1',
-        env: expect.objectContaining({ LANG: 'C.UTF-8' }),
+        config: {
+          model_provider: 'ui4a',
+          model_providers: {
+            ui4a: {
+              name: 'UI4A Production',
+              base_url: 'https://llm.mothership.internal/v1',
+              env_key: 'CODEX_API_KEY',
+              wire_api: 'responses',
+              supports_websockets: false,
+            },
+          },
+        },
+        env: expect.objectContaining({
+          LANG: 'C.UTF-8',
+          HOME: '/srv/ui4a/workspaces/writing',
+          CODEX_HOME: '/srv/ui4a/workspaces/writing/.codex',
+        }),
       },
     ]);
     expect(transport.threadOptions).toEqual([
@@ -401,6 +416,31 @@ describe('Agent Runner production composition', () => {
       },
     });
     expect(transport.createClient).toHaveBeenCalledOnce();
+    expect(transport.clientOptions).toEqual([
+      {
+        apiKey,
+        config: {
+          model_provider: 'ui4a',
+          model_providers: {
+            ui4a: {
+              name: 'UI4A Production',
+              base_url: 'https://llm.mothership.internal/v1',
+              env_key: 'CODEX_API_KEY',
+              wire_api: 'responses',
+              supports_websockets: false,
+            },
+          },
+        },
+        env: expect.objectContaining({
+          LANG: 'C.UTF-8',
+          HOME: '/workspaces/writing/run:writing:1/agent',
+          CODEX_HOME: '/workspaces/writing/run:writing:1/agent/.codex',
+        }),
+      },
+    ]);
+    expect(transport.clientOptions[0]).not.toHaveProperty('baseUrl');
+    expect(transport.clientOptions[0]?.env?.HOME).not.toMatch(/^\/tmp(?:\/|$)/u);
+    expect(transport.clientOptions[0]?.env?.CODEX_HOME).not.toMatch(/^\/tmp(?:\/|$)/u);
     expect(transport.threadOptions).toEqual([
       expect.objectContaining({
         workingDirectory: '/workspaces/writing/run:writing:1/agent',
