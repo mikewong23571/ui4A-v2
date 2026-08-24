@@ -124,18 +124,18 @@
 
 ## Phase E: PostgreSQL、Temporal、持久化与灾备合同
 
-- [~] Task: Red TDD——定义 stateful deployment 与 restore fixtures
-- [ ] 覆盖 PostgreSQL、Temporal、Keycloak、events、payloads 和 workflow history
-- [ ] 覆盖 Coding/Writing/Authoring artifacts 与实验 CA
-- [ ] Task: 实现 PostgreSQL 17 deployment contract
+- [x] Task: Red TDD——定义 stateful deployment 与 restore fixtures 8db59ea
+- [x] 覆盖 PostgreSQL、Temporal、Keycloak、events、payloads 和 workflow history
+- [x] 覆盖 Coding/Writing/Authoring artifacts 与实验 CA
+- [~] Task: 实现 PostgreSQL 17 deployment contract
 - [ ] K8s static PV/selected provisioner 与 Compose named volume
 - [ ] migration/runtime/backup roles、resources、probes 和 backup Job
 - [ ] 不声称未经验证 HA
-- [ ] Task: Red→Green——Temporal production config
+- [~] Task: Red→Green——Temporal production config
 - [ ] 可配置 address、namespace、task queue、identity 和 connection options
 - [ ] Temporal Server 使用 PostgreSQL persistence
 - [ ] Worker graceful drain、independent test queue 和 restart recovery
-- [ ] Task: 实现 backup/restore commands
+- [~] Task: 实现 backup/restore commands
 - [ ] PostgreSQL consistent backup、Keycloak DB/共享 realm 文件数据与 Temporal 的直接 restore
 - [ ] workspace/artifact archive 和根 CA/私钥/certificate 直接 backup
 - [ ] 默认隔离恢复而不是破坏 current state
