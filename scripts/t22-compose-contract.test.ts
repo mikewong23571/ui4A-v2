@@ -302,6 +302,11 @@ describe('T22 Docker Compose all-in-one contract', () => {
       'service_completed_successfully',
     );
     expect(dependency(stack, 'realm-bootstrap', 'keycloak')).toBe('service_healthy');
+    expect(dependency(stack, 'realm-bootstrap', 'edge')).toBe('service_healthy');
+    expect(dependency(stack, 'edge', 'pki-init')).toBe('service_completed_successfully');
+    expect(dependency(stack, 'edge', 'web')).toBeUndefined();
+    expect(dependency(stack, 'edge', 'keycloak')).toBeUndefined();
+    expect(dependency(stack, 'edge', 'runner')).toBeUndefined();
     expect(dependency(stack, 'migration', 'postgres-bootstrap')).toBe(
       'service_completed_successfully',
     );
@@ -326,6 +331,18 @@ describe('T22 Docker Compose all-in-one contract', () => {
       expect(service?.healthcheck?.retries, name).toBeGreaterThan(0);
     }
     for (const name of initServices) expect(stack.services[name]?.restart, name).toBe('no');
+  });
+
+  it('uses dependency-aware readiness for Web and Worker without conflating process liveness', async () => {
+    const stack = await renderedStack();
+
+    for (const name of ['web', 'worker'] as const) {
+      const probe = stack.services[name]?.healthcheck?.test.join(' ') ?? '';
+      expect(probe, name).toContain(`/ready`);
+      expect(probe, name).not.toContain(`/live`);
+    }
+    // Runner readiness remains owned by its deployment audit and is intentionally unchanged here.
+    expect(stack.services.runner?.healthcheck?.test.join(' ')).toContain('/live');
   });
 
   it('mounts canonical settings as config and deployment Secrets as Compose Secrets', async () => {
@@ -414,8 +431,8 @@ describe('T22 Docker Compose all-in-one contract', () => {
     });
     expect(edge?.volumes).toContain('experiment-ca:/var/lib/ui4a/ca:ro');
     expect(dependency(stack, 'edge', 'pki-init')).toBe('service_completed_successfully');
-    expect(dependency(stack, 'edge', 'web')).toBe('service_healthy');
-    expect(dependency(stack, 'edge', 'keycloak')).toBe('service_healthy');
+    expect(dependency(stack, 'edge', 'web')).toBeUndefined();
+    expect(dependency(stack, 'edge', 'keycloak')).toBeUndefined();
     expect(dependency(stack, 'web', 'pki-init')).toBe('service_completed_successfully');
     expect(dependency(stack, 'keycloak', 'pki-init')).toBe('service_completed_successfully');
     expect(stack.services.web?.ports ?? []).toEqual([]);
@@ -465,26 +482,76 @@ describe('T22 Docker Compose all-in-one contract', () => {
     expect(dependency(stack, 'runner', 'pki-init')).toBe('service_completed_successfully');
     expect(dependency(stack, 'migration', 'pki-init')).toBe('service_completed_successfully');
     expect(dependency(stack, 'worker', 'edge')).toBe('service_healthy');
-    expect(dependency(stack, 'edge', 'runner')).toBe('service_healthy');
+    expect(dependency(stack, 'edge', 'runner')).toBeUndefined();
     expect(
       JSON.stringify({ worker: worker?.environment, runner: runner?.environment }),
     ).not.toMatch(/Bearer |runner-token|authorization/i);
   });
 
-  it('routes only exact /deliver through the Runner and retains Web as the UI4A fallback', async () => {
+  it('routes only the declared UI4A surface and rejects internal or deferred routes by default', async () => {
     const stack = await renderedStack();
     const routing = (stack.configs['ui4a-edge-routing'] as { content?: string }).content ?? '';
     const delivery = routing.indexOf('handle /deliver');
     const runner = routing.indexOf('reverse_proxy runner:3102');
-    const fallback = routing.indexOf('handle {', runner + 1);
-    const web = routing.indexOf('reverse_proxy web:3100', fallback);
 
     expect(delivery).toBeGreaterThan(0);
     expect(runner).toBeGreaterThan(delivery);
-    expect(fallback).toBeGreaterThan(runner);
-    expect(web).toBeGreaterThan(fallback);
     expect(routing).not.toContain('handle_path /deliver*');
-    expect(stack.services.edge?.networks?.default?.aliases).toContain('ui4a.mothership.internal');
+    expect(routing).toContain('@ui4aPublic');
+    expect(routing).toContain('@ui4aAuthenticated');
+    for (const path of [
+      '/.well-known/ui4a.json',
+      '/api/entity',
+      '/api/exec',
+      '/api/exec-plan',
+      '/api/chat',
+      '/_meta/api/entity',
+      '/_meta/api/exec',
+    ]) {
+      expect(routing, path).toContain(path);
+    }
+    for (const path of [
+      '/api/internal/',
+      '/api/events',
+      '/api/chat/history',
+      '/api/chat/sessions',
+      '/api/delegations',
+      '/api/presentation',
+      '/api/meta/',
+      '/_meta/.well-known/ui4a.json',
+    ]) {
+      expect(routing, path).not.toContain(path);
+    }
+    expect(routing).not.toMatch(/handle\s*\{\s*reverse_proxy web:3100/s);
+    expect(routing).toMatch(/handle\s*\{\s*respond 404\s*\}/s);
+    expect(stack.services.edge?.networks?.default?.aliases).toEqual([
+      'ui4a.mothership.internal',
+      'auth.ui4a.mothership.internal',
+    ]);
+  });
+
+  it('keeps Keycloak Admin bootstrap on an un-published internal TLS listener', async () => {
+    const stack = await renderedStack();
+    const routing = (stack.configs['ui4a-edge-routing'] as { content?: string }).content ?? '';
+    const realmBootstrap = stack.services['realm-bootstrap'];
+    const publicListener = routing.indexOf('https://{$KEYCLOAK_HOST}:8443');
+    const internalListener = routing.indexOf('https://{$KEYCLOAK_HOST}:9443');
+    const publicRouting = routing.slice(publicListener, internalListener);
+
+    expect(realmBootstrap?.environment).toMatchObject({
+      UI4A_KEYCLOAK_ADMIN_ORIGIN: 'https://auth.ui4a.mothership.internal:9443',
+    });
+    expect(publicListener).toBeGreaterThan(0);
+    expect(internalListener).toBeGreaterThan(publicListener);
+    expect(publicRouting).toContain('/realms/ui4a/protocol/openid-connect/token');
+    expect(publicRouting).not.toContain('/realms/master/');
+    expect(publicRouting).not.toContain('/admin/');
+    expect(routing.slice(internalListener)).toContain(
+      '/realms/master/protocol/openid-connect/token',
+    );
+    expect(routing.slice(internalListener)).toContain('/admin/realms*');
+    expect(stack.services.edge?.ports).toEqual(['127.0.0.1:8443:8443']);
+    expect(stack.services.edge?.ports?.join(' ')).not.toContain('9443');
   });
 
   it('records the Compose TLS origin that operator settings must use', () => {
@@ -510,6 +577,9 @@ describe('T22 Docker Compose all-in-one contract', () => {
     expect(compose).toContain('handle /deliver {');
     expect(compose).toContain('reverse_proxy runner:3102');
     expect(compose).toContain('- ${UI4A_HOST:-ui4a.mothership.internal}');
+    expect(compose).toContain('- ${KEYCLOAK_HOST:-auth.ui4a.mothership.internal}');
+    expect(compose).toContain('UI4A_KEYCLOAK_ADMIN_ORIGIN:');
+    expect(compose).not.toMatch(/fetch\('http:\/\/127\.0\.0\.1:310[01]\/live'/);
     expect(compose).not.toMatch(/Bearer |runner-token|authorization/i);
   });
 

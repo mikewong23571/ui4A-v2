@@ -14,6 +14,7 @@ import {
 const realmImportPath = 'deploy/keycloak/realm-import.json';
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const realmImportEnvironmentVariable = 'UI4A_REALM_IMPORT_FILE';
+const adminOriginEnvironmentVariable = 'UI4A_KEYCLOAK_ADMIN_ORIGIN';
 const maximumRealmImportBytes = 1024 * 1024;
 
 function readRealmImport(environment: NodeJS.ProcessEnv): RealmImportRepresentation {
@@ -74,6 +75,29 @@ async function main(): Promise<void> {
       'The configured issuer does not identify the configured realm.',
     );
   }
+  let adminOrigin: URL;
+  try {
+    adminOrigin = new URL(process.env[adminOriginEnvironmentVariable] ?? issuer.origin);
+  } catch {
+    throw new KeycloakBootstrapError(
+      'KEYCLOAK_REALM_IMPORT_INVALID',
+      'The Keycloak Admin origin is invalid.',
+    );
+  }
+  if (
+    adminOrigin.protocol !== 'https:' ||
+    adminOrigin.hostname !== settings.keycloak.host ||
+    adminOrigin.pathname !== '/' ||
+    adminOrigin.search !== '' ||
+    adminOrigin.hash !== '' ||
+    adminOrigin.username !== '' ||
+    adminOrigin.password !== ''
+  ) {
+    throw new KeycloakBootstrapError(
+      'KEYCLOAK_REALM_IMPORT_INVALID',
+      'The Keycloak Admin origin is invalid.',
+    );
+  }
   const adminPassword = config.secrets[settings.keycloak.bootstrapAdminPasswordRef];
   if (adminPassword === undefined) {
     throw new KeycloakBootstrapError(
@@ -89,7 +113,7 @@ async function main(): Promise<void> {
 
   const realmImport = readRealmImport(process.env);
   const admin = createKeycloakAdminClient({
-    baseUrl: issuer.origin,
+    baseUrl: adminOrigin.origin,
     adminUsername: settings.keycloak.bootstrapAdminUser,
     adminPassword,
     fetch,

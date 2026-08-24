@@ -148,14 +148,82 @@ https://{$UI4A_HOST}:8443 {
   handle /deliver {
     reverse_proxy runner:3102
   }
-  handle {
+
+  @ui4aPublic {
+    method GET HEAD
+    path / /canvas /chat /delegations /entity /events /meta /meta/* /_next/* /favicon.ico /file.svg /globe.svg /next.svg /vercel.svg /window.svg /live /version /api/health /api/render/catalog /auth/login /api/auth/callback
+  }
+  handle @ui4aPublic {
     reverse_proxy web:3100
+  }
+
+  @ui4aPublicWrite {
+    method POST
+    path /auth/logout
+  }
+  handle @ui4aPublicWrite {
+    reverse_proxy web:3100
+  }
+
+  @ui4aAuthenticatedRead {
+    method GET HEAD
+    path /.well-known/ui4a.json /api/entity /_meta/api/entity
+  }
+  handle @ui4aAuthenticatedRead {
+    reverse_proxy web:3100
+  }
+
+  @ui4aAuthenticatedWrite {
+    method POST
+    path /api/exec /api/exec-plan /api/chat /_meta/api/exec
+  }
+  handle @ui4aAuthenticatedWrite {
+    reverse_proxy web:3100
+  }
+
+  handle {
+    respond 404
   }
 }
 
 https://{$KEYCLOAK_HOST}:8443 {
   tls /var/lib/ui4a/ca/keycloak/tls.crt /var/lib/ui4a/ca/keycloak/tls.key
-  reverse_proxy keycloak:8080
+
+  @keycloakProtocolRead {
+    method GET HEAD
+    path /realms/ui4a/protocol/openid-connect/auth /realms/ui4a/protocol/openid-connect/certs /realms/ui4a/login-actions/* /resources/*
+  }
+  handle @keycloakProtocolRead {
+    reverse_proxy keycloak:8080
+  }
+
+  @keycloakProtocolWrite {
+    method POST
+    path /realms/ui4a/protocol/openid-connect/token /realms/ui4a/protocol/openid-connect/revoke /realms/ui4a/login-actions/*
+  }
+  handle @keycloakProtocolWrite {
+    reverse_proxy keycloak:8080
+  }
+
+  handle {
+    respond 404
+  }
+}
+
+https://{$KEYCLOAK_HOST}:9443 {
+  tls /var/lib/ui4a/ca/keycloak/tls.crt /var/lib/ui4a/ca/keycloak/tls.key
+
+  @keycloakAdmin {
+    method GET POST
+    path /realms/master/protocol/openid-connect/token /admin/realms*
+  }
+  handle @keycloakAdmin {
+    reverse_proxy keycloak:8080
+  }
+
+  handle {
+    respond 404
+  }
 }
 
 https://127.0.0.1:8443 {
@@ -377,6 +445,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           KC_HEALTH_ENABLED: 'true',
           KC_HTTP_ENABLED: 'true',
           KC_PROXY_HEADERS: 'xforwarded',
+          KC_HOSTNAME: 'https://auth.ui4a.mothership.internal:8443',
         },
         secrets: [
           stateSecretMount('keycloak-database-password'),
@@ -392,10 +461,11 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         ]),
       },
       'realm-bootstrap': runtimeService(images.worker, 'no', {
-        depends_on: dependencies({ keycloak: 'service_healthy' }),
+        depends_on: dependencies({ keycloak: 'service_healthy', edge: 'service_healthy' }),
         environment: {
           ...canonicalRuntimeEnvironment,
           UI4A_REALM_IMPORT_FILE: '/opt/ui4a/realm-import.json',
+          UI4A_KEYCLOAK_ADMIN_ORIGIN: 'https://auth.ui4a.mothership.internal:9443',
         },
         command: ['node', 'dist/t22-keycloak-realm-bootstrap.js', '--apply'],
         volumes: [
@@ -437,7 +507,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           'CMD',
           'node',
           '-e',
-          "fetch('http://127.0.0.1:3100/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:3100/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]),
         volumes: ['experiment-ca:/var/lib/ui4a/ca:ro'],
       }),
@@ -457,7 +527,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           'CMD',
           'node',
           '-e',
-          "fetch('http://127.0.0.1:3101/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:3101/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]),
         volumes: ['experiment-ca:/var/lib/ui4a/ca:ro'],
       }),
@@ -506,9 +576,6 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         tmpfs: [runtimeTmpfs],
         depends_on: dependencies({
           'pki-init': 'service_completed_successfully',
-          web: 'service_healthy',
-          keycloak: 'service_healthy',
-          runner: 'service_healthy',
         }),
         healthcheck: health([
           'CMD',
@@ -534,7 +601,11 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         ],
         volumes: ['experiment-ca:/var/lib/ui4a/ca:ro'],
         ports: ['127.0.0.1:8443:8443'],
-        networks: { default: { aliases: ['ui4a.mothership.internal'] } },
+        networks: {
+          default: {
+            aliases: ['ui4a.mothership.internal', 'auth.ui4a.mothership.internal'],
+          },
+        },
         command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile'],
       },
     },

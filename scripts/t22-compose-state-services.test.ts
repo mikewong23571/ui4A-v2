@@ -221,7 +221,11 @@ describe('T22 executable Compose state services', () => {
       KC_DB_URL_DATABASE: 'keycloak',
       KC_DB_USERNAME: 'keycloak_runtime',
       KC_HEALTH_ENABLED: 'true',
+      KC_HOSTNAME: 'https://auth.ui4a.mothership.internal:8443',
     });
+    expect(JSON.stringify(keycloak)).not.toMatch(
+      /hostname-strict=false|KC_HOSTNAME_STRICT.*false/i,
+    );
     expect(keycloak?.secrets).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: 'keycloak-database-password' }),
