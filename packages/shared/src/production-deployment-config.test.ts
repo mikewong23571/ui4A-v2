@@ -151,6 +151,45 @@ function deletePath(candidate: unknown, path: string) {
 }
 
 describe('T22 production deployment config contract', () => {
+  it('requires an independently referenced browser-session authentication secret', () => {
+    const candidate = validInput();
+    Object.assign(candidate.settings.auth.oidc, {
+      sessionSecretRef: 'oidc-session-secret',
+    });
+    candidate.secrets['oidc-session-secret'] = '__test_only_oidc_session__';
+
+    const parsed = parseProductionDeploymentConfig(candidate);
+
+    expect(parsed.settings.auth.oidc.sessionSecretRef).toBe('oidc-session-secret');
+    expect(JSON.stringify(parsed.settings)).not.toContain('__test_only_oidc_session__');
+  });
+
+  it('rejects a missing or client-credential-reused browser-session secret', () => {
+    const missing = validInput();
+    expectInvalid(missing, /sessionSecretRef/);
+
+    const reusedRef = validInput();
+    Object.assign(reusedRef.settings.auth.oidc, {
+      sessionSecretRef: reusedRef.settings.auth.oidc.clientSecretRef,
+    });
+    expectInvalid(reusedRef, /sessionSecretRef|must differ|reuse/i);
+
+    const reusedMaterial = validInput();
+    Object.assign(reusedMaterial.settings.auth.oidc, {
+      sessionSecretRef: 'oidc-session-secret',
+    });
+    reusedMaterial.secrets['oidc-session-secret'] =
+      reusedMaterial.secrets[reusedMaterial.settings.auth.oidc.clientSecretRef]!;
+    expectInvalid(reusedMaterial, /sessionSecretRef|must differ|reuse/i);
+
+    const reusedClientId = validInput();
+    Object.assign(reusedClientId.settings.auth.oidc, {
+      sessionSecretRef: 'oidc-session-secret',
+    });
+    reusedClientId.secrets['oidc-session-secret'] = reusedClientId.settings.auth.oidc.clientId;
+    expectInvalid(reusedClientId, /sessionSecretRef|must differ|reuse/i);
+  });
+
   it.each(['compose', 'kubernetes'])('accepts the %s deployment mode', (deploymentMode) => {
     const candidate = validInput();
     candidate.settings.deploymentMode = deploymentMode;
