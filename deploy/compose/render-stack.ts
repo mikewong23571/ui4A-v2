@@ -64,14 +64,14 @@ export interface ComposeStack {
 const digestImagePattern = /^[a-zA-Z0-9][a-zA-Z0-9._/:~-]*@sha256:[0-9a-f]{64}$/;
 const canonicalRuntimeEnvironment = Object.freeze({
   UI4A_DEPLOYMENT_PROFILE: 'production',
-  UI4A_DEPLOYMENT_SETTINGS_FILE: '/run/ui4a/settings.json',
-  UI4A_DEPLOYMENT_SECRETS_FILE: '/run/secrets/ui4a-deployment-secrets',
+  UI4A_DEPLOYMENT_SETTINGS_FILE: '/var/run/ui4a/runtime-config/settings.json',
+  UI4A_DEPLOYMENT_SECRETS_FILE: '/var/run/ui4a/runtime-config/deployment-secrets.json',
   NODE_EXTRA_CA_CERTS: '/var/lib/ui4a/ca/root-ca.crt',
 });
 const canonicalConfigMount = Object.freeze({
   source: 'ui4a-deployment-settings',
   target: '/run/ui4a/settings.json',
-  mode: 0o444,
+  mode: 0o400,
 });
 const canonicalSecretMount = Object.freeze({
   source: 'ui4a-deployment-secrets',
@@ -79,6 +79,8 @@ const canonicalSecretMount = Object.freeze({
   mode: 0o400,
 });
 const runtimeTmpfs = '/tmp:rw,noexec,nosuid,size=64m';
+const runtimeConfigRoot = '/var/run/ui4a/runtime-config';
+const runtimeConfigReadOnlyVolume = `runtime-config:${runtimeConfigRoot}:ro`;
 const stateSecretNames = [
   'postgres-bootstrap-password',
   'ui4a-migration-password',
@@ -323,8 +325,6 @@ function runtimeService(
     read_only: true,
     tmpfs: [runtimeTmpfs],
     environment: { ...canonicalRuntimeEnvironment },
-    configs: [{ ...canonicalConfigMount }],
-    secrets: [{ ...canonicalSecretMount }],
     ...overrides,
   };
 }
@@ -471,8 +471,27 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '200 OK' <&3",
         ]),
       },
+      'config-init': runtimeService(images.worker, 'no', {
+        user: '0:0',
+        environment: {},
+        configs: [
+          {
+            source: 'ui4a-config-init',
+            target: '/opt/ui4a/config-init.mjs',
+            mode: 0o444,
+          },
+          { ...canonicalConfigMount },
+        ],
+        secrets: [{ ...canonicalSecretMount }, stateSecretMount('capability-callback-token')],
+        volumes: [`runtime-config:${runtimeConfigRoot}`],
+        command: ['node', '/opt/ui4a/config-init.mjs'],
+      }),
       'realm-bootstrap': runtimeService(images.worker, 'no', {
-        depends_on: dependencies({ keycloak: 'service_healthy', edge: 'service_healthy' }),
+        depends_on: dependencies({
+          'config-init': 'service_completed_successfully',
+          keycloak: 'service_healthy',
+          edge: 'service_healthy',
+        }),
         environment: {
           ...canonicalRuntimeEnvironment,
           UI4A_REALM_IMPORT_FILE: '/opt/ui4a/realm-import.json',
@@ -483,15 +502,17 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           'realm-data:/var/lib/ui4a/realm',
           'experiment-ca:/var/lib/ui4a/ca:ro',
           `${input.realmFile}:/opt/ui4a/realm-import.json:ro`,
+          runtimeConfigReadOnlyVolume,
         ],
       }),
       migration: runtimeService(images.worker, 'no', {
         depends_on: dependencies({
+          'config-init': 'service_completed_successfully',
           'postgres-bootstrap': 'service_completed_successfully',
           'pki-init': 'service_completed_successfully',
         }),
         command: ['node', 'dist/t22-migrate.js'],
-        volumes: ['experiment-ca:/var/lib/ui4a/ca:ro'],
+        volumes: ['experiment-ca:/var/lib/ui4a/ca:ro', runtimeConfigReadOnlyVolume],
       }),
       'pki-init': runtimeService(images.runner, 'no', {
         user: '0:0',
@@ -505,10 +526,13 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           UI4A_POSTGRES_HOST: 'postgres',
         },
         command: ['node', 'dist/main.js', 'pki-init'],
+        configs: [{ ...canonicalConfigMount }],
+        secrets: [{ ...canonicalSecretMount }],
         volumes: ['experiment-ca:/var/lib/ui4a/ca'],
       }),
       web: runtimeService(images.web, 'unless-stopped', {
         depends_on: dependencies({
+          'config-init': 'service_completed_successfully',
           'pki-init': 'service_completed_successfully',
           migration: 'service_completed_successfully',
           'realm-bootstrap': 'service_completed_successfully',
@@ -516,19 +540,19 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         }),
         environment: {
           ...canonicalRuntimeEnvironment,
-          UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: '/run/secrets/capability-callback-token',
+          UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: `${runtimeConfigRoot}/capability-callback-token`,
         },
-        secrets: [{ ...canonicalSecretMount }, stateSecretMount('capability-callback-token')],
         healthcheck: health([
           'CMD',
           'node',
           '-e',
           "fetch('http://127.0.0.1:3100/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]),
-        volumes: ['experiment-ca:/var/lib/ui4a/ca:ro'],
+        volumes: ['experiment-ca:/var/lib/ui4a/ca:ro', runtimeConfigReadOnlyVolume],
       }),
       worker: runtimeService(images.worker, 'unless-stopped', {
         depends_on: dependencies({
+          'config-init': 'service_completed_successfully',
           migration: 'service_completed_successfully',
           'realm-bootstrap': 'service_completed_successfully',
           'temporal-namespace': 'service_completed_successfully',
@@ -536,22 +560,24 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         }),
         environment: {
           ...canonicalRuntimeEnvironment,
-          UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: '/run/secrets/capability-callback-token',
+          UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: `${runtimeConfigRoot}/capability-callback-token`,
           UI4A_RUNNER_IMAGE: images.runner,
           UI4A_HOST_RUNNER_ORIGINS:
             '{"compose-container-runner":"https://ui4a.mothership.internal:8443","compose-host-runner":"https://ui4a.mothership.internal:9444"}',
         },
-        secrets: [{ ...canonicalSecretMount }, stateSecretMount('capability-callback-token')],
         healthcheck: health([
           'CMD',
           'node',
           '-e',
           "fetch('http://127.0.0.1:3101/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]),
-        volumes: ['experiment-ca:/var/lib/ui4a/ca:ro'],
+        volumes: ['experiment-ca:/var/lib/ui4a/ca:ro', runtimeConfigReadOnlyVolume],
       }),
       runner: runtimeService(images.runner, 'unless-stopped', {
-        depends_on: dependencies({ 'pki-init': 'service_completed_successfully' }),
+        depends_on: dependencies({
+          'config-init': 'service_completed_successfully',
+          'pki-init': 'service_completed_successfully',
+        }),
         environment: {
           ...canonicalRuntimeEnvironment,
           UI4A_RUNNER_ID: 'compose-container-runner',
@@ -568,11 +594,15 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           'experiment-ca:/var/lib/ui4a/ca:ro',
           'runner-workspaces:/workspaces',
           'runner-artifacts:/artifacts',
+          runtimeConfigReadOnlyVolume,
         ],
       }),
       'host-runner': runtimeService(images.runner, 'unless-stopped', {
         profiles: ['host-runner'],
-        depends_on: dependencies({ 'pki-init': 'service_completed_successfully' }),
+        depends_on: dependencies({
+          'config-init': 'service_completed_successfully',
+          'pki-init': 'service_completed_successfully',
+        }),
         environment: {
           ...canonicalRuntimeEnvironment,
           UI4A_RUNNER_ID: 'compose-host-runner',
@@ -589,6 +619,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           'experiment-ca:/var/lib/ui4a/ca:ro',
           'runner-workspaces:/workspaces',
           'runner-artifacts:/artifacts',
+          runtimeConfigReadOnlyVolume,
         ],
       }),
       edge: {
@@ -641,10 +672,12 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         'experiment-ca',
         'runner-workspaces',
         'runner-artifacts',
+        'runtime-config',
       ].map((name) => [name, retainedVolume(name)]),
     ),
     configs: {
       'ui4a-deployment-settings': { file: input.settingsFile },
+      'ui4a-config-init': { file: 'deploy/compose/config-init.mjs' },
       'ui4a-edge-routing': { content: edgeRouting },
       'temporal-static-config': { file: 'deploy/compose/temporal-config.yaml' },
       'temporal-dynamic-config': { file: 'deploy/compose/temporal-dynamicconfig.yaml' },

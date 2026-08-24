@@ -17,6 +17,7 @@ const coreServices = [
   'temporal-namespace',
   'temporal-ui',
   'keycloak',
+  'config-init',
   'realm-bootstrap',
   'migration',
   'web',
@@ -46,6 +47,7 @@ const initServices = [
   'realm-bootstrap',
   'migration',
   'pki-init',
+  'config-init',
 ] as const;
 
 const volumeNames = [
@@ -55,6 +57,7 @@ const volumeNames = [
   'experiment-ca',
   'runner-workspaces',
   'runner-artifacts',
+  'runtime-config',
 ] as const;
 
 interface StackContract {
@@ -88,7 +91,7 @@ interface StackContract {
     up: string[];
     down: string[];
     clean: { command: string[]; confirmation: string; removesVolumes: true };
-    backupHook: { contractRef: string; command: string[] };
+    backupHook: { contractRef: string; command: string[]; privateArtifacts: string[] };
     restoreHook: { isolatedTargetRequired: true; command: string[] };
   };
   dualRuntime: {
@@ -368,7 +371,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
     expect(stack.services.runner?.healthcheck?.test.join(' ')).toContain('/live');
   });
 
-  it('mounts canonical settings as config and deployment Secrets as Compose Secrets', async () => {
+  it('mounts canonical sources only into root copy-init and PKI bootstrap', async () => {
     const stack = await renderedStack();
 
     expect(stack.configs['ui4a-deployment-settings']).toEqual({
@@ -381,15 +384,23 @@ describe('T22 Docker Compose all-in-one contract', () => {
       const service = stack.services[name];
       expect(service?.environment).toMatchObject({
         UI4A_DEPLOYMENT_PROFILE: 'production',
-        UI4A_DEPLOYMENT_SETTINGS_FILE: '/run/ui4a/settings.json',
-        UI4A_DEPLOYMENT_SECRETS_FILE: '/run/secrets/ui4a-deployment-secrets',
+        UI4A_DEPLOYMENT_SETTINGS_FILE: '/var/run/ui4a/runtime-config/settings.json',
+        UI4A_DEPLOYMENT_SECRETS_FILE: '/var/run/ui4a/runtime-config/deployment-secrets.json',
       });
-      expect(service?.configs).toContainEqual({
+      expect(service?.configs ?? []).not.toContainEqual(
+        expect.objectContaining({ source: 'ui4a-deployment-settings' }),
+      );
+      expect(service?.secrets ?? []).not.toContainEqual(
+        expect.objectContaining({ source: 'ui4a-deployment-secrets' }),
+      );
+    }
+    for (const name of ['config-init', 'pki-init']) {
+      expect(stack.services[name]?.configs).toContainEqual({
         source: 'ui4a-deployment-settings',
         target: '/run/ui4a/settings.json',
-        mode: 0o444,
+        mode: 0o400,
       });
-      expect(service?.secrets).toContainEqual({
+      expect(stack.services[name]?.secrets).toContainEqual({
         source: 'ui4a-deployment-secrets',
         target: 'ui4a-deployment-secrets',
         mode: 0o400,
@@ -405,23 +416,81 @@ describe('T22 Docker Compose all-in-one contract', () => {
     });
     for (const name of ['web', 'worker']) {
       expect(stack.services[name]?.environment).toMatchObject({
-        UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: '/run/secrets/capability-callback-token',
+        UI4A_CAPABILITY_CALLBACK_TOKEN_FILE:
+          '/var/run/ui4a/runtime-config/capability-callback-token',
       });
-      expect(stack.services[name]?.secrets).toContainEqual({
-        source: 'capability-callback-token',
-        target: 'capability-callback-token',
-        mode: 0o400,
-      });
+      expect(stack.services[name]?.secrets ?? []).not.toContainEqual(
+        expect.objectContaining({ source: 'capability-callback-token' }),
+      );
     }
     for (const name of ['migration', 'realm-bootstrap', 'runner', 'host-runner']) {
       expect(stack.services[name]?.environment).not.toHaveProperty(
         'UI4A_CAPABILITY_CALLBACK_TOKEN_FILE',
       );
-      expect(stack.services[name]?.secrets).not.toContainEqual(
+      expect(stack.services[name]?.secrets ?? []).not.toContainEqual(
         expect.objectContaining({ source: 'capability-callback-token' }),
       );
     }
+    expect(stack.services['config-init']?.secrets).toContainEqual({
+      source: 'capability-callback-token',
+      target: 'capability-callback-token',
+      mode: 0o400,
+    });
     expect(JSON.stringify(stack)).not.toContain('__private_callback_material__');
+  });
+
+  it('hands rootless bind-backed inputs to every Node consumer without widening source modes', async () => {
+    const stack = await renderedStack();
+    const init = stack.services['config-init'];
+    const consumers = ['migration', 'realm-bootstrap', 'web', 'worker', 'runner', 'host-runner'];
+    const runtimeRoot = '/var/run/ui4a/runtime-config';
+
+    expect(init).toMatchObject({
+      image: renderInput().images.worker,
+      user: '0:0',
+      restart: 'no',
+      read_only: true,
+      command: ['node', '/opt/ui4a/config-init.mjs'],
+    });
+    expect(init?.configs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: 'ui4a-config-init',
+          target: '/opt/ui4a/config-init.mjs',
+        }),
+        expect.objectContaining({ source: 'ui4a-deployment-settings' }),
+      ]),
+    );
+    expect(init?.secrets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'ui4a-deployment-secrets' }),
+        expect.objectContaining({ source: 'capability-callback-token' }),
+      ]),
+    );
+    expect(init?.volumes).toContain(`runtime-config:${runtimeRoot}`);
+    expect(stack.configs['ui4a-config-init']).toEqual({ file: 'deploy/compose/config-init.mjs' });
+
+    for (const name of consumers) {
+      const service = stack.services[name];
+      expect(service?.user, name).toBe('1000:1000');
+      expect(dependency(stack, name, 'config-init'), name).toBe('service_completed_successfully');
+      expect(service?.environment, name).toMatchObject({
+        UI4A_DEPLOYMENT_SETTINGS_FILE: `${runtimeRoot}/settings.json`,
+        UI4A_DEPLOYMENT_SECRETS_FILE: `${runtimeRoot}/deployment-secrets.json`,
+      });
+      expect(service?.volumes, name).toContain(`runtime-config:${runtimeRoot}:ro`);
+      expect(service?.configs ?? [], name).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ source: 'ui4a-deployment-settings' })]),
+      );
+      expect(service?.secrets ?? [], name).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ source: 'ui4a-deployment-secrets' })]),
+      );
+    }
+    for (const name of ['web', 'worker']) {
+      expect(stack.services[name]?.environment).toMatchObject({
+        UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: `${runtimeRoot}/capability-callback-token`,
+      });
+    }
   });
 
   it('does not serialize Secret material or request-selected Runtime overrides', async () => {
@@ -797,6 +866,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
 
     expect(lifecycle.backupHook).toMatchObject({
       contractRef: 'deploy/postgres/backup-contract.json',
+      privateArtifacts: ['runtime-config'],
     });
     expect(lifecycle.backupHook.command.join(' ')).toMatch(/backup.+compose/i);
     expect(lifecycle.restoreHook.isolatedTargetRequired).toBe(true);

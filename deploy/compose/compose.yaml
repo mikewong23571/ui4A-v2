@@ -197,6 +197,32 @@ services:
       timeout: 3s
       retries: 12
 
+  config-init:
+    image: ${UI4A_WORKER_IMAGE:-ui4a/worker@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: 'no'
+    user: '0:0'
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
+    configs:
+      - source: ui4a-config-init
+        target: /opt/ui4a/config-init.mjs
+        mode: 0444
+      - source: ui4a-deployment-settings
+        target: /run/ui4a/settings.json
+        mode: 0400
+    secrets:
+      - &ui4a-source-secret
+        source: ui4a-deployment-secrets
+        target: ui4a-deployment-secrets
+        mode: 0400
+      - source: capability-callback-token
+        target: capability-callback-token
+        mode: 0400
+    volumes:
+      - runtime-config:/var/run/ui4a/runtime-config
+    command: [node, /opt/ui4a/config-init.mjs]
+
   realm-bootstrap:
     image: ${UI4A_WORKER_IMAGE:-ui4a/worker@sha256:0000000000000000000000000000000000000000000000000000000000000000}
     pull_policy: missing
@@ -204,31 +230,26 @@ services:
     user: '1000:1000'
     read_only: true
     tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
-    depends_on:
-      keycloak:
-        condition: service_healthy
-      edge:
-        condition: service_healthy
     environment:
       <<: &ui4a-production-environment
         UI4A_DEPLOYMENT_PROFILE: production
-        UI4A_DEPLOYMENT_SETTINGS_FILE: /run/ui4a/settings.json
-        UI4A_DEPLOYMENT_SECRETS_FILE: /run/secrets/ui4a-deployment-secrets
+        UI4A_DEPLOYMENT_SETTINGS_FILE: /var/run/ui4a/runtime-config/settings.json
+        UI4A_DEPLOYMENT_SECRETS_FILE: /var/run/ui4a/runtime-config/deployment-secrets.json
         NODE_EXTRA_CA_CERTS: /var/lib/ui4a/ca/root-ca.crt
       UI4A_REALM_IMPORT_FILE: /opt/ui4a/realm-import.json
       UI4A_KEYCLOAK_ADMIN_ORIGIN: https://${KEYCLOAK_HOST:-auth.ui4a.mothership.internal}:9443
-    configs: &ui4a-production-config
-      - source: ui4a-deployment-settings
-        target: /run/ui4a/settings.json
-        mode: 0444
-    secrets: &ui4a-production-secret
-      - source: ui4a-deployment-secrets
-        target: ui4a-deployment-secrets
-        mode: 0400
     volumes:
       - realm-data:/var/lib/ui4a/realm
       - experiment-ca:/var/lib/ui4a/ca:ro
       - ../keycloak/realm-import.json:/opt/ui4a/realm-import.json:ro
+      - runtime-config:/var/run/ui4a/runtime-config:ro
+    depends_on:
+      config-init:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+      edge:
+        condition: service_healthy
     command: [node, dist/t22-keycloak-realm-bootstrap.js, --apply]
 
   migration:
@@ -239,15 +260,16 @@ services:
     read_only: true
     tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
     depends_on:
+      config-init:
+        condition: service_completed_successfully
       postgres-bootstrap:
         condition: service_completed_successfully
       pki-init:
         condition: service_completed_successfully
     environment: *ui4a-production-environment
-    configs: *ui4a-production-config
-    secrets: *ui4a-production-secret
     volumes:
       - experiment-ca:/var/lib/ui4a/ca:ro
+      - runtime-config:/var/run/ui4a/runtime-config:ro
     command: [node, dist/t22-migrate.js]
 
   pki-init:
@@ -265,8 +287,12 @@ services:
       UI4A_HOST: ${UI4A_HOST:-ui4a.mothership.internal}
       KEYCLOAK_HOST: ${KEYCLOAK_HOST:-auth.ui4a.mothership.internal}
       UI4A_POSTGRES_HOST: ${UI4A_POSTGRES_HOST:-postgres}
-    configs: *ui4a-production-config
-    secrets: *ui4a-production-secret
+    configs:
+      - source: ui4a-deployment-settings
+        target: /run/ui4a/settings.json
+        mode: 0400
+    secrets:
+      - *ui4a-source-secret
     volumes:
       - experiment-ca:/var/lib/ui4a/ca
     command: [node, dist/main.js, pki-init]
@@ -279,6 +305,8 @@ services:
     read_only: true
     tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
     depends_on:
+      config-init:
+        condition: service_completed_successfully
       pki-init:
         condition: service_completed_successfully
       migration:
@@ -289,17 +317,10 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *ui4a-production-environment
-      UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: /run/secrets/capability-callback-token
-    configs: *ui4a-production-config
-    secrets:
-      - source: ui4a-deployment-secrets
-        target: ui4a-deployment-secrets
-        mode: 0400
-      - source: capability-callback-token
-        target: capability-callback-token
-        mode: 0400
+      UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: /var/run/ui4a/runtime-config/capability-callback-token
     volumes:
       - experiment-ca:/var/lib/ui4a/ca:ro
+      - runtime-config:/var/run/ui4a/runtime-config:ro
     healthcheck:
       test:
         - CMD
@@ -319,6 +340,8 @@ services:
     read_only: true
     tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
     depends_on:
+      config-init:
+        condition: service_completed_successfully
       migration:
         condition: service_completed_successfully
       realm-bootstrap:
@@ -329,19 +352,12 @@ services:
         condition: service_healthy
     environment:
       <<: *ui4a-production-environment
-      UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: /run/secrets/capability-callback-token
+      UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: /var/run/ui4a/runtime-config/capability-callback-token
       UI4A_RUNNER_IMAGE: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
       UI4A_HOST_RUNNER_ORIGINS: '{"compose-container-runner":"https://${UI4A_HOST:-ui4a.mothership.internal}:8443","compose-host-runner":"https://${UI4A_HOST:-ui4a.mothership.internal}:9444"}'
-    configs: *ui4a-production-config
-    secrets:
-      - source: ui4a-deployment-secrets
-        target: ui4a-deployment-secrets
-        mode: 0400
-      - source: capability-callback-token
-        target: capability-callback-token
-        mode: 0400
     volumes:
       - experiment-ca:/var/lib/ui4a/ca:ro
+      - runtime-config:/var/run/ui4a/runtime-config:ro
     healthcheck:
       test:
         - CMD
@@ -361,18 +377,19 @@ services:
     read_only: true
     tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
     depends_on:
+      config-init:
+        condition: service_completed_successfully
       pki-init:
         condition: service_completed_successfully
     environment:
       <<: *ui4a-production-environment
       UI4A_RUNNER_ID: compose-container-runner
       UI4A_RUNNER_IMAGE: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
-    configs: *ui4a-production-config
-    secrets: *ui4a-production-secret
     volumes: &runner-volumes
       - experiment-ca:/var/lib/ui4a/ca:ro
       - runner-workspaces:/workspaces
       - runner-artifacts:/artifacts
+      - runtime-config:/var/run/ui4a/runtime-config:ro
     command: [node, dist/main.js, daemon]
     healthcheck: &runner-healthcheck
       test:
@@ -394,14 +411,14 @@ services:
     read_only: true
     tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
     depends_on:
+      config-init:
+        condition: service_completed_successfully
       pki-init:
         condition: service_completed_successfully
     environment:
       <<: *ui4a-production-environment
       UI4A_RUNNER_ID: compose-host-runner
       UI4A_RUNNER_IMAGE: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
-    configs: *ui4a-production-config
-    secrets: *ui4a-production-secret
     volumes: *runner-volumes
     command: [node, dist/main.js, daemon]
     healthcheck: *runner-healthcheck
@@ -443,6 +460,8 @@ services:
       retries: 12
 
 configs:
+  ui4a-config-init:
+    file: ./config-init.mjs
   ui4a-deployment-settings:
     file: ${UI4A_DEPLOYMENT_SETTINGS_FILE:-./stack-contract.json}
   ui4a-edge-routing:
@@ -589,3 +608,5 @@ volumes:
     labels: { io.ui4a.volume: runner-workspaces, io.ui4a.retention: retain-on-ordinary-down }
   runner-artifacts:
     labels: { io.ui4a.volume: runner-artifacts, io.ui4a.retention: retain-on-ordinary-down }
+  runtime-config:
+    labels: { io.ui4a.volume: runtime-config, io.ui4a.retention: retain-on-ordinary-down }

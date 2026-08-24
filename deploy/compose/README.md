@@ -25,3 +25,11 @@ preflight output separately records `releaseGitSha` and `operatorGitSha` with th
 operator HEAD remains separate provenance and must never replace the release identity. Story
 execution remains a separate operator-authorized step described by `acceptance-contract.json`; the
 acceptance runner does not automatically start, stop, clean, or delete the Compose project.
+
+Rootless Compose presents bind-backed configs and secrets as container-root-owned files even when
+the source files remain operator-private `0600`. The `config-init` one-shot therefore copies only
+the canonical settings, deployment Secret JSON, and callback token into the retained
+`runtime-config` volume with `0400` files owned by UID/GID 1000. Web, Worker, migration, realm
+bootstrap, and both Runner services mount that handoff read-only and still execute as UID/GID 1000.
+Ordinary `down` retains this private volume; include `runtime-config` only in private backup
+artifacts, and remove it only through the explicitly confirmed `compose:t22 clean` workflow.
