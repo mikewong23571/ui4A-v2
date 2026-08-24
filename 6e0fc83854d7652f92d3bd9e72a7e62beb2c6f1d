@@ -1,0 +1,22 @@
+Task: Red TDD — define production OCI image contract
+
+Summary:
+- Added a static, offline Vitest contract for Web, Worker, and Agent Runner production images.
+- Defines Worker compiled build/start, Node 24 and pnpm 10.32.1, multi-stage/non-root images, health checks, OCI provenance labels, read-only root filesystems, bounded writable paths, build-context hygiene, Runner Git/Pandoc/Codex pins, and smoke/metadata/SBOM/vulnerability commands.
+- Does not require Docker, a registry, or network access to establish Red evidence.
+
+Files:
+- scripts/t22-image-contract.test.ts
+
+Why:
+The repository had no Dockerfiles or .dockerignore and Worker only had a tsx development entry. The contract fixes the expected production artifact shape before image implementation.
+
+Red verification:
+CI=true pnpm exec vitest run --config vitest.t22-contract.config.mts scripts/t22-image-contract.test.ts
+
+Expected result observed: 1 failed file, 8 failed tests.
+- Worker build/start scripts missing.
+- Web/Worker/Runner Dockerfiles missing.
+- .dockerignore missing.
+- deploy/oci/image-contract.json missing.
+- All failures were deterministic repository-contract gaps; no syntax, Docker daemon, network, or registry error occurred.
