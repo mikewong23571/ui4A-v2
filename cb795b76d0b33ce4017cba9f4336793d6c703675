@@ -1,0 +1,1 @@
+T22 Phase H Runner composition: Kubernetes one-shot delivery-file adapter reuses the production sealed processor and Codex executor; daemon remains honestly not-ready. Verified 73 Runner tests, typecheck, build, lint, format, and compiled failure smoke.
