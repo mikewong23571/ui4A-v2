@@ -1,0 +1,44 @@
+Task: Green — production OCI images
+
+Summary:
+- Added reproducible multi-stage Node 24.13.0/pnpm 10.32.1 Dockerfiles for Web, Worker, and Agent Runner.
+- Added Next 16 standalone output, monorepo tracing, an offline production build config, and removed build-time Google Fonts access in favor of system sans/mono fallbacks.
+- Added Worker esbuild production artifacts (dist/main.js and independently bundled deterministic dist/workflows.js), compiled start path, liveness/version metadata, and production runtime dependencies.
+- Added a minimal Agent Runner daemon with liveness/version plus an honest exit-78 unavailable oneshot boundary until Phase F.
+- Added non-root/read-only-root-compatible health contracts, bounded writable paths, OCI provenance labels, .dockerignore hygiene, and deploy/oci/image-contract.json.
+- Runner image verifies Git 2.39.x, Pandoc 2.17.x, and Codex SDK 0.149.0. Worker image keeps only the linux/amd64 Temporal core bridge.
+
+Files:
+- .dockerignore
+- deploy/oci/image-contract.json
+- apps/web/Dockerfile, next.config.ts, tsconfig.build.json, layout/font fallback, /live route and test
+- apps/worker/Dockerfile, build.mjs, package.json, main.ts, runtime-health.ts and test
+- apps/agent-runner/Dockerfile, package/tsconfig files, runtime/main and tests
+- eslint.config.mjs
+- pnpm-lock.yaml
+
+Automated verification (orchestrator rerun):
+- Vitest: 4 files passed, 14 tests passed, including OCI contract 8/8.
+- @ui4a/agent-runner typecheck and production build passed.
+- @ui4a/worker typecheck and esbuild production build passed; emitted dist/main.js and dist/workflows.js.
+- @ui4a/web typecheck and Next standalone production build passed with 16 static pages and /live dynamic route.
+- Focused ESLint and Prettier passed; git diff --check passed.
+
+Live image evidence (built before this commit, labels intentionally bind build-base SHA 98bf7b1 and must be rebuilt after commit/final release):
+- ui4a/web@sha256:e0b42eb600e4012036b55ffc0025e849285669d9bc3b2ef33632d4822d7a5dfc
+- ui4a/worker@sha256:1206a5be4e78c096857a2f7ef93a500b77526e7f06d6bee8719b58190caaa6cd
+- ui4a/agent-runner@sha256:e1e7608d541cc22c12972036bb1e30bd3c7d31a003d3db9a8b5796afe476440f
+- All inspect as User=node with v0.1.0-experimental.1, matching revision/build date labels, and experimental channel.
+- Web and Runner started with read-only root plus only declared tmpfs mounts; /live returned matching release metadata.
+- Worker --version succeeded with read-only root. A controlled Temporal dev server proved Worker RUNNING, production workflow bundle loading, and /live; temporary server/container were stopped and port 7233 was clear.
+- Runner contained Git 2.39.5, Pandoc 2.17.1.1, Codex SDK 0.149.0, and no source/Dockerfile in /app.
+
+SBOM/vulnerability gate (honest blocked evidence):
+- Host has no syft, grype, or Docker Scout.
+- Internal daocloud syft manifest cold-cache timed out and tags returned HTTP 403/not in allowlist.
+- Internal daocloud grype manifest/tags returned HTTP 403/not in allowlist.
+- docker-hosted/docker-quay catalogs contain neither tool.
+- No SBOM or vulnerability result is claimed. Exact syft/grype commands are part of image-contract.json and remain a Phase J release gate.
+
+Operational disclosure:
+- During iterative builds, the delegated implementation executed docker builder prune --force before the orchestrator's no-prune instruction arrived. It removed 4.588GB of rebuildable BuildKit cache only; no image, container, volume, PostgreSQL data, or unrelated source was deleted. Current free space was 2.5GB/96% used after rebuild.
