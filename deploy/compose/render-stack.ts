@@ -556,14 +556,10 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           XDG_CONFIG_HOME: '/tmp/caddy-config',
           XDG_DATA_HOME: '/tmp/caddy-data',
         },
-        configs: [
-          {
-            source: 'ui4a-edge-routing',
-            target: '/etc/caddy/Caddyfile',
-            mode: 0o444,
-          },
+        volumes: [
+          'experiment-ca:/var/lib/ui4a/ca:ro',
+          `${edgeRoutingFile}:/etc/caddy/Caddyfile:ro`,
         ],
-        volumes: ['experiment-ca:/var/lib/ui4a/ca:ro'],
         ports: ['127.0.0.1:8443:8443'],
         networks: {
           default: {
@@ -587,7 +583,6 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
     configs: {
       'ui4a-deployment-settings': { file: input.settingsFile },
       'ui4a-config-init': { file: 'deploy/compose/config-init.mjs' },
-      'ui4a-edge-routing': { file: edgeRoutingFile },
       'temporal-static-config': { file: 'deploy/compose/temporal-config.yaml' },
       'temporal-dynamic-config': { file: 'deploy/compose/temporal-dynamicconfig.yaml' },
     },

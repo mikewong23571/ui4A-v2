@@ -221,11 +221,7 @@ async function renderedStack(): Promise<ComposeStack> {
   return renderer.renderComposeStack(renderInput());
 }
 
-function renderedConfigSource(stack: ComposeStack, name: string): string {
-  const file = stack.configs[name]?.file;
-  if (file === undefined) throw new Error(`Compose config ${name} must be file-backed`);
-  return requiredSource(file);
-}
+const edgeRoutingSource = (): string => requiredSource('deploy/compose/edge-routing.caddy');
 
 function dependency(
   stack: ComposeStack,
@@ -555,6 +551,10 @@ describe('T22 Docker Compose all-in-one contract', () => {
       ports: ['127.0.0.1:8443:8443'],
     });
     expect(edge?.volumes).toContain('experiment-ca:/var/lib/ui4a/ca:ro');
+    expect(edge?.volumes).toContain('deploy/compose/edge-routing.caddy:/etc/caddy/Caddyfile:ro');
+    expect(edge?.configs ?? []).not.toContainEqual(
+      expect.objectContaining({ source: 'ui4a-edge-routing' }),
+    );
     expect(dependency(stack, 'edge', 'pki-init')).toBe('service_completed_successfully');
     expect(dependency(stack, 'edge', 'web')).toBeUndefined();
     expect(dependency(stack, 'edge', 'keycloak')).toBeUndefined();
@@ -565,7 +565,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
 
   it('routes both canonical internal hosts over persisted leaf certificates', async () => {
     const stack = await renderedStack();
-    const routing = renderedConfigSource(stack, 'ui4a-edge-routing');
+    const routing = edgeRoutingSource();
 
     expect(routing).toContain('https://{$UI4A_HOST}:8443');
     expect(routing).toContain('tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key');
@@ -618,7 +618,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
     const worker = stack.services.worker;
     const containerRunner = stack.services.runner;
     const hostRunner = stack.services['host-runner'];
-    const routing = renderedConfigSource(stack, 'ui4a-edge-routing');
+    const routing = edgeRoutingSource();
 
     expect(contract.dualRuntime).toEqual({
       fallback: false,
@@ -663,7 +663,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
 
   it('routes only the declared UI4A surface and rejects internal or deferred routes by default', async () => {
     const stack = await renderedStack();
-    const routing = renderedConfigSource(stack, 'ui4a-edge-routing');
+    const routing = edgeRoutingSource();
     const delivery = routing.indexOf('handle /deliver');
     const runner = routing.indexOf('reverse_proxy runner:3102');
 
@@ -705,7 +705,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
 
   it('keeps Keycloak Admin bootstrap on an un-published internal TLS listener', async () => {
     const stack = await renderedStack();
-    const routing = renderedConfigSource(stack, 'ui4a-edge-routing');
+    const routing = edgeRoutingSource();
     const realmBootstrap = stack.services['realm-bootstrap'];
     const publicListener = routing.indexOf('https://{$KEYCLOAK_HOST}:8443');
     const internalListener = routing.indexOf('https://{$KEYCLOAK_HOST}:9443');
@@ -749,7 +749,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
     expect(compose).toContain('UI4A_RUNNER_ID: compose-host-runner');
     expect(compose).toContain('UI4A_HOST_RUNNER_ORIGINS:');
     expect(compose).toContain('NODE_EXTRA_CA_CERTS: /var/lib/ui4a/ca/root-ca.crt');
-    expect(compose).toContain('file: ./edge-routing.caddy');
+    expect(compose).toContain('./edge-routing.caddy:/etc/caddy/Caddyfile:ro');
     expect(routing).toContain('handle /deliver {');
     expect(routing).toContain('reverse_proxy runner:3102');
     expect(compose).toContain('- ${UI4A_HOST:-ui4a.mothership.internal}');

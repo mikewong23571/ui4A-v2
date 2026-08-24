@@ -456,12 +456,9 @@ services:
       HOME: /tmp
       XDG_CONFIG_HOME: /tmp/caddy-config
       XDG_DATA_HOME: /tmp/caddy-data
-    configs:
-      - source: ui4a-edge-routing
-        target: /etc/caddy/Caddyfile
-        mode: 0444
     volumes:
       - experiment-ca:/var/lib/ui4a/ca:ro
+      - ./edge-routing.caddy:/etc/caddy/Caddyfile:ro
     ports:
       - ${UI4A_EDGE_BIND_ADDRESS:-127.0.0.1}:${UI4A_EDGE_HTTPS_PORT:-8443}:8443
     networks:
@@ -481,8 +478,6 @@ configs:
     file: ./config-init.mjs
   ui4a-deployment-settings:
     file: ${UI4A_DEPLOYMENT_SETTINGS_FILE:-./stack-contract.json}
-  ui4a-edge-routing:
-    file: ./edge-routing.caddy
   temporal-static-config:
     file: ./temporal-config.yaml
   temporal-dynamic-config:
