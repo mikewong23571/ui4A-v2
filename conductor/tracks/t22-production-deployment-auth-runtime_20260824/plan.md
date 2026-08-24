@@ -145,7 +145,7 @@
 - [ ] 记录实际 RPO/RTO（Phase I 真实 drill）
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) cc8e414
 
-## Phase F: 双后端 Agent Runtime
+## Phase F: 双后端 Agent Runtime [checkpoint: ae25036]
 
 - [x] Task: Red TDD——定义统一 Runtime Backend SPI f891fa5
 - [x] immutable Run/birth references 与 prepare/execute/collect/verify/finalize
@@ -167,7 +167,7 @@
 - [x] Coding、Writing 和 Agent Definition Authoring canonical tasks
 - [x] 对齐 Agent Run、artifact、verification 和 human decision
 - [x] Provider unavailable 时零 fallback
-- [~] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) ae25036
 
 ## Phase G: Docker Compose all-in-one
 
