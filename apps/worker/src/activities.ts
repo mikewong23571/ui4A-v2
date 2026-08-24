@@ -87,8 +87,10 @@ import {
   parseDocumentAgentProfiles,
   prepareWritingAgentRunWithDeps,
   verifyWritingAgentRun,
+  writingPreparedWorkspaceRoot,
   type WritingAgentAdapterDeps,
 } from './agents/writing';
+import { composeProductionWritingAgent } from './agents/writing/production';
 import type {
   AgentCollectedResult,
   AgentExecuteActivityArgs,
@@ -507,10 +509,18 @@ function remoteCodingExecutor(input: {
   };
 }
 
-function runtimeSpecializationPorts(): Record<
-  AgentSpecializationAdapter,
-  ProductionRuntimeSpecializationPort
-> {
+function runtimeSpecializationPorts(
+  config: ProductionDeploymentConfig,
+): Record<AgentSpecializationAdapter, ProductionRuntimeSpecializationPort> {
+  const productionWriting = composeProductionWritingAgent(config);
+  const writingDeps: WritingAgentAdapterDeps = {
+    db: workerDb(process.env, config),
+    workspaceRoot: productionWriting.workspaceRoot,
+    profiles: productionWriting.profiles,
+    probe: productionWriting.probe,
+    callbackBaseUrl: process.env.UI4A_PUBLIC_BASE_URL,
+    callbackToken: process.env.UI4A_CAPABILITY_CALLBACK_TOKEN,
+  };
   return {
     coding: {
       taskKind: 'coding-task',
@@ -530,19 +540,26 @@ function runtimeSpecializationPorts(): Record<
     },
     writing: {
       taskKind: 'writing-task',
-      prepare: (context) => prepareWritingAgentRunWithDeps(context, writingAgentAdapterDeps()),
-      executeProduction: async (input) =>
-        executeWritingAgentRunWithDeps(
+      prepare: (context) => prepareWritingAgentRunWithDeps(context, writingDeps),
+      executeProduction: async (input) => {
+        const workspaceRoot = writingPreparedWorkspaceRoot(input.prepared);
+        if (workspaceRoot !== productionWriting.workspaceRootForRun(input.context.runId)) {
+          throw new Error('production_writing_workspace_mismatch');
+        }
+        return executeWritingAgentRunWithDeps(
           { context: input.context, prepared: input.prepared },
           {
-            ...writingAgentAdapterDeps(),
-            probe: async () => ({ available: true }),
-            execute: remoteStructuredExecutor(input),
+            ...writingDeps,
+            execute: remoteStructuredExecutor({
+              ...input,
+              profile: { ...input.profile, workspaceRoot },
+            }),
           },
-        ),
-      collect: (input) => collectWritingAgentRunWithDeps(input, writingAgentAdapterDeps()),
+        );
+      },
+      collect: (input) => collectWritingAgentRunWithDeps(input, writingDeps),
       verify: verifyWritingAgentRun,
-      finalize: (input) => finalizeWritingAgentRunWithDeps(input, writingAgentAdapterDeps()),
+      finalize: (input) => finalizeWritingAgentRunWithDeps(input, writingDeps),
     },
     authoring: {
       taskKind: 'agent-definition-authoring-task',
@@ -628,7 +645,7 @@ function productionAgentRunActivities(config: ProductionDeploymentConfig) {
       'trusted-host': transport,
       ...(kubernetesTransport === undefined ? {} : { 'kubernetes-job': kubernetesTransport }),
     },
-    specializations: runtimeSpecializationPorts(),
+    specializations: runtimeSpecializationPorts(config),
   });
 }
 

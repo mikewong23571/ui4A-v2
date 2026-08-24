@@ -235,6 +235,11 @@ function parsePrepared(value: AgentRunJson): WritingPreparedState {
   return value as unknown as WritingPreparedState;
 }
 
+/** Read the mechanically prepared per-Run workspace for sealed remote Runtime delivery. */
+export function writingPreparedWorkspaceRoot(prepared: AgentPreparedResult): string {
+  return parsePrepared(prepared.state).workspace.workingDirectory;
+}
+
 function parseCompleted(value: AgentRunJson): WritingCompletedState {
   if (
     !record(value) ||

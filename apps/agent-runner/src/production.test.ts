@@ -102,7 +102,7 @@ function kubernetesDelivery() {
   const value = delivery();
   value.execution.profileId = 'writing-k8s';
   (value.execution as { backend: string }).backend = 'kubernetes-job';
-  value.execution.workspace.rootRef = '/workspaces/writing';
+  value.execution.workspace.rootRef = '/workspaces/writing/run:writing:1/agent';
   return value;
 }
 
@@ -401,10 +401,34 @@ describe('Agent Runner production composition', () => {
       },
     });
     expect(transport.createClient).toHaveBeenCalledOnce();
+    expect(transport.threadOptions).toEqual([
+      expect.objectContaining({
+        workingDirectory: '/workspaces/writing/run:writing:1/agent',
+      }),
+    ]);
     expect(created!.backendReadiness()).toEqual({ registered: true, deliveryAvailable: false });
     await expect(created!.authorizeDelivery({ headers: {} } as IncomingMessage)).resolves.toBe(
       false,
     );
+  });
+
+  it.each([
+    ['canonical base instead of a per-Run root', '/workspaces/writing'],
+    ['another Run root', '/workspaces/writing/run:other/agent'],
+    ['normalized escape', '/workspaces/writing/run:writing:1/agent/../../other'],
+    ['absolute escape', '/tmp/run:writing:1/agent'],
+  ])('rejects Kubernetes workspace %s before SDK construction', async (_label, rootRef) => {
+    const transport = sdk();
+    const created = createProductionRunnerComposition(kubernetesEnvironment(), {
+      loadConfiguration: () => kubernetesConfiguration(),
+      createClient: transport.createClient,
+      scheduleTimeout: () => () => undefined,
+    });
+    const input = kubernetesDelivery();
+    input.execution.workspace.rootRef = rootRef;
+
+    await expect(created!.processor.execute(input)).rejects.toThrow('runner_execution_failed');
+    expect(transport.createClient).not.toHaveBeenCalled();
   });
 
   it.each([

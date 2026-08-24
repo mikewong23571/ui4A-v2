@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { parseApplicationBundle } from '@ui4a/engine';
+import type { ProductionDeploymentConfig } from '@ui4a/shared';
+
 vi.mock('../temporal/agent-run', () => ({
   dispatchAgentRun: vi.fn(async ({ runId }: { runId: string }) => ({
     workflowId: `agent-${runId}`,
@@ -21,7 +24,9 @@ import { getPool } from '../db/pool';
 import { dispatchAgentRun } from '../temporal/agent-run';
 import { enrichEntityWithAgentRuns } from './agent-runs';
 import { finalizeAgentRunSource } from './agent-run-source-callback';
+import { prepareNativeAgentDispatch } from './native-agent-dispatch';
 import { getEngine, resetEngineForTests } from './service';
+import applicationBundle from '../applications/ui4a-walkthrough.bundle.json';
 
 const pool = getPool(process.env.DATABASE_URL!);
 const profile = {
@@ -91,6 +96,30 @@ function writingRequest() {
       ],
     },
   };
+}
+
+function productionWritingConfig(): ProductionDeploymentConfig {
+  return {
+    settings: {
+      llm: {
+        baseUrl: 'https://llm.internal/v1',
+        model: 'production-model',
+        apiKeyRef: 'llm-api-key',
+      },
+      runtime: {
+        defaultProfiles: { writing: 'writing-k8s' },
+        profiles: [
+          {
+            id: 'writing-k8s',
+            specialization: 'writing',
+            backend: 'kubernetes',
+            workspaceRoot: '/workspaces/writing',
+            timeoutSeconds: 900,
+          },
+        ],
+      },
+    },
+  } as unknown as ProductionDeploymentConfig;
 }
 
 beforeEach(async () => {
@@ -232,6 +261,33 @@ describe('native Agent dispatch from an Application capability', () => {
       ),
     ).toBe(true);
     expect(dispatchAgentRun).toHaveBeenCalledOnce();
+  });
+
+  it('pins the canonical production writing default in birth without legacy profile input', async () => {
+    delete process.env.UI4A_DOCUMENT_AGENT_PROFILES;
+    await getEngine(pool);
+    const capability = parseApplicationBundle(applicationBundle).capabilities.find(
+      ({ name }) => name === 'writing.compose',
+    )!;
+
+    const prepared = await prepareNativeAgentDispatch(pool, {
+      principal: 'local-user',
+      policyScope: 'editorial',
+      params: writingRequest().params,
+      capability,
+      productionConfig: productionWritingConfig(),
+    });
+
+    expect(prepared.profileName).toBe('writing-k8s');
+    expect(prepared.birth.runtime).toMatchObject({
+      profileName: 'writing-k8s',
+      adapterVersion: 'document-agent-runtime@1',
+    });
+    expect(prepared.task.payload).not.toMatchObject({
+      backend: expect.anything(),
+      provider: expect.anything(),
+      model: expect.anything(),
+    });
   });
 
   it('fails before the Writing Flow transition when the server-owned profile is missing', async () => {

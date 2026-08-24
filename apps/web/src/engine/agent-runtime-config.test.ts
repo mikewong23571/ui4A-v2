@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CodingExecutorProfile } from '@ui4a/shared';
+import type { CodingExecutorProfile, ProductionDeploymentConfig } from '@ui4a/shared';
 
 import {
   codingProfileAsAgentRuntime,
   documentAgentProfileFromEnvironment,
+  documentAgentProfileFromProductionConfig,
   documentProfileAsAgentRuntime,
 } from './agent-runtime-config';
 
@@ -37,6 +38,43 @@ describe('T18 Coding profile compatibility adapter', () => {
 });
 
 describe('document-agent deployment profile', () => {
+  it('mechanically selects the canonical production default without legacy environment input', () => {
+    delete process.env.UI4A_DOCUMENT_AGENT_PROFILES;
+    const config = {
+      settings: {
+        llm: {
+          baseUrl: 'https://llm.internal/v1',
+          model: 'production-model',
+          apiKeyRef: 'llm-api-key',
+        },
+        runtime: {
+          defaultProfiles: { writing: 'writing-k8s' },
+          profiles: [
+            {
+              id: 'writing-k8s',
+              specialization: 'writing',
+              backend: 'kubernetes',
+              workspaceRoot: '/workspaces/writing',
+              timeoutSeconds: 900,
+            },
+          ],
+        },
+      },
+    } as unknown as ProductionDeploymentConfig;
+
+    expect(documentAgentProfileFromProductionConfig(config)).toMatchObject({
+      name: 'writing-k8s',
+      runtimeClass: 'document-agent',
+      providerId: 'codex',
+      model: 'production-model',
+      endpoint: 'https://llm.internal/v1',
+      apiKeyEnv: 'llm-api-key',
+      timeoutSeconds: 900,
+      artifactBackend: 'isolated-document-workspace',
+      networkPolicy: 'none',
+    });
+  });
+
   it('parses one exact server-owned profile and exposes only a provider-neutral runtime receipt', () => {
     process.env.UI4A_DOCUMENT_AGENT_PROFILES = JSON.stringify([
       {

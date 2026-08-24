@@ -1,5 +1,9 @@
 import type { AgentRuntimeProfile } from '@ui4a/engine';
-import type { CodingExecutorProfile } from '@ui4a/shared';
+import type {
+  CodingExecutorProfile,
+  ProductionDeploymentConfig,
+  ProductionRuntimeProfile,
+} from '@ui4a/shared';
 
 export interface DocumentAgentDeploymentProfile {
   name: string;
@@ -28,6 +32,19 @@ export interface AgentAuthoringDeploymentProfile {
   maxTurns: number;
   envAllowlist: string[];
   networkPolicy: 'none';
+}
+
+const PRODUCTION_WRITING_MAX_TURNS = 16;
+
+function exactProductionWritingProfile(
+  config: ProductionDeploymentConfig,
+): ProductionRuntimeProfile {
+  const id = config.settings.runtime.defaultProfiles.writing;
+  const matches = config.settings.runtime.profiles.filter(
+    (profile) => profile.id === id && profile.specialization === 'writing',
+  );
+  if (matches.length !== 1) throw new Error('production_writing_profile_invalid');
+  return matches[0]!;
 }
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -150,6 +167,27 @@ export function documentAgentProfileFromEnvironment(name: string): DocumentAgent
     throw new Error(`document-agent profile ${name} must resolve exactly once`);
   }
   return matches[0]!;
+}
+
+/** Adapt the server-owned canonical production default into the existing Writing contract. */
+export function documentAgentProfileFromProductionConfig(
+  config: ProductionDeploymentConfig,
+): DocumentAgentDeploymentProfile {
+  const profile = exactProductionWritingProfile(config);
+  return {
+    name: profile.id,
+    runtimeClass: 'document-agent',
+    providerId: 'codex',
+    transport: 'sdk',
+    model: config.settings.llm.model,
+    endpoint: config.settings.llm.baseUrl,
+    apiKeyEnv: config.settings.llm.apiKeyRef,
+    artifactBackend: 'isolated-document-workspace',
+    timeoutSeconds: profile.timeoutSeconds,
+    maxTurns: PRODUCTION_WRITING_MAX_TURNS,
+    envAllowlist: [],
+    networkPolicy: 'none',
+  };
 }
 
 /** Project private Provider configuration into the provider-neutral Runtime negotiation record. */

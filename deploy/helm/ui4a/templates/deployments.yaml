@@ -292,6 +292,7 @@ spec:
             {{- include "ui4a.productionMounts" . | nindent 12 }}
             - { name: tmp, mountPath: /tmp }
             - { name: worker-state, mountPath: /var/lib/ui4a }
+            - { name: runtime-data, mountPath: /workspaces }
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
@@ -300,3 +301,5 @@ spec:
         {{- include "ui4a.productionVolumes" . | nindent 8 }}
         - { name: tmp, emptyDir: {} }
         - { name: worker-state, emptyDir: {} }
+        - name: runtime-data
+          persistentVolumeClaim: { claimName: runtime-data }

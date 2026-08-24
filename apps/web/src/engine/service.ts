@@ -781,6 +781,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
             ? undefined
             : activeDefinitionOf(snapshot, sourceInstance.flow)?.app) ?? 'default';
         const spawnPrincipal = aliased.principal ?? 'local-user';
+        const productionConfig = runWebProductionDeploymentPreflight();
         const preparedNativeRuns = new Map<EngineEvent, PreparedNativeAgentDispatch>();
         for (const event of effectiveEvents) {
           if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
@@ -794,6 +795,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
                 policyScope: spawnPolicyScope,
                 params: aliased.params ?? {},
                 capability,
+                ...(productionConfig === undefined ? {} : { productionConfig }),
               }),
             );
           } else {

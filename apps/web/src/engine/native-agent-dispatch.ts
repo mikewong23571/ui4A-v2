@@ -19,6 +19,7 @@ import {
   WRITING_AGENT_SCHEMA_VERSION,
   type CapabilityDefinition,
   type CodingTask,
+  type ProductionDeploymentConfig,
 } from '@ui4a/shared';
 
 import { getAgentDefinitionVersion, readAgentDefinitionRegistry } from '../db/agent-definitions';
@@ -29,6 +30,7 @@ import {
   authoringProfileAsAgentRuntime,
   codingProfileAsAgentRuntime,
   documentAgentProfileFromEnvironment,
+  documentAgentProfileFromProductionConfig,
   documentProfileAsAgentRuntime,
 } from './agent-runtime-config';
 import { agentRegistryConfigurationFromEnvironment } from './agent-definitions';
@@ -50,7 +52,12 @@ interface NativeSpecializationTaskMapper {
   map(
     profileName: string,
     params: Record<string, unknown>,
-    context: { db: ConnectableDb; principal: string; policyScope: string },
+    context: {
+      db: ConnectableDb;
+      principal: string;
+      policyScope: string;
+      productionConfig?: ProductionDeploymentConfig;
+    },
   ): NativeSpecializationTaskMapping | Promise<NativeSpecializationTaskMapping>;
 }
 
@@ -84,8 +91,11 @@ const nativeSpecializationTaskMappers: readonly NativeSpecializationTaskMapper[]
   {
     definitionRef: 'writing-agent@1',
     runtimeClass: 'document-agent',
-    map: (profileName, params) => {
-      const deployed = documentAgentProfileFromEnvironment(profileName);
+    map: (profileName, params, context) => {
+      const deployed =
+        context.productionConfig === undefined
+          ? documentAgentProfileFromEnvironment(profileName)
+          : documentAgentProfileFromProductionConfig(context.productionConfig);
       const writingBrief = assertWritingBrief({
         schemaVersion: WRITING_AGENT_SCHEMA_VERSION,
         objective: stringParam(params, 'objective'),
@@ -207,6 +217,7 @@ export async function prepareNativeAgentDispatch(
     policyScope: string;
     params: Record<string, unknown>;
     capability: CapabilityDefinition;
+    productionConfig?: ProductionDeploymentConfig;
   },
 ): Promise<PreparedNativeAgentDispatch> {
   const executor = input.capability.executor;
@@ -226,7 +237,12 @@ export async function prepareNativeAgentDispatch(
   const mapping = await specializationTaskMapper(view.version.ref, runtimeClass).map(
     executor.profile,
     input.params,
-    { db, principal: input.principal, policyScope: input.policyScope },
+    {
+      db,
+      principal: input.principal,
+      policyScope: input.policyScope,
+      ...(input.productionConfig === undefined ? {} : { productionConfig: input.productionConfig }),
+    },
   );
   const runtimeProfile = mapping.runtimeProfile;
   const requiredFeatures = [
@@ -242,7 +258,10 @@ export async function prepareNativeAgentDispatch(
       requiredTools: view.flattened.definition.policies.tools.allowed,
       requiredResourceBackends: view.flattened.definition.policies.resources.allowed,
     },
-    policyProfile: { ref: executor.profile, version: 1 },
+    policyProfile: {
+      ref: input.productionConfig === undefined ? executor.profile : runtimeProfile.ref,
+      version: 1,
+    },
     profiles: [runtimeProfile],
   });
   if (!resolution.ok) throw new Error(resolution.reason);

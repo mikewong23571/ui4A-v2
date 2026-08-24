@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { lstatSync, readFileSync } from 'node:fs';
 import type { IncomingMessage } from 'node:http';
-import { isAbsolute } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 
 import { Codex, type CodexOptions, type ThreadOptions } from '@openai/codex-sdk';
 import {
@@ -170,10 +170,27 @@ function matchingProfile(
   const profile = matches[0]!;
   const expectedBackend = profile.backend === 'host' ? 'trusted-host' : 'kubernetes-job';
   const expectedImage = profile.backend === 'host' ? runnerImage : profile.image;
+  const workspaceRoot = delivery.execution.workspace.rootRef;
+  let workspaceMatches = workspaceRoot === profile.workspaceRoot;
+  if (profile.backend === 'kubernetes') {
+    if (!/^[A-Za-z0-9:_-]{1,128}$/u.test(delivery.request.runId)) {
+      throw new Error('runner_execution_failed');
+    }
+    const base = resolve(profile.workspaceRoot);
+    const expected = resolve(join(base, delivery.request.runId, 'agent'));
+    const child = relative(base, expected);
+    workspaceMatches =
+      isAbsolute(workspaceRoot) &&
+      workspaceRoot === resolve(workspaceRoot) &&
+      workspaceRoot === expected &&
+      child !== '' &&
+      !child.startsWith('..') &&
+      !isAbsolute(child);
+  }
   if (
     delivery.execution.backend !== expectedBackend ||
     delivery.execution.image !== expectedImage ||
-    delivery.execution.workspace.rootRef !== profile.workspaceRoot ||
+    !workspaceMatches ||
     delivery.execution.resources.cpu !== profile.resources.cpu ||
     delivery.execution.resources.memory !== profile.resources.memory ||
     delivery.execution.resources.timeoutMs !== profile.timeoutSeconds * 1_000 ||
@@ -223,7 +240,7 @@ async function executeCodex(input: {
   });
   const thread = client.startThread({
     model: settings.llm.model,
-    workingDirectory: input.profile.workspaceRoot,
+    workingDirectory: input.delivery.execution.workspace.rootRef,
     skipGitRepoCheck: true,
     sandboxMode: input.request.sandboxMode,
     approvalPolicy: 'never',

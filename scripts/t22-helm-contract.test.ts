@@ -375,6 +375,11 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       ).toBe(false);
       workload(resources, 'ServiceAccount', values.serviceAccounts.runner);
       workload(resources, 'PersistentVolumeClaim', 'runtime-data');
+      expect(mountPaths(workerContainer)).toContain('/workspaces');
+      expect(list(podSpec(worker).volumes).map(record)).toContainEqual({
+        name: 'runtime-data',
+        persistentVolumeClaim: { claimName: 'runtime-data' },
+      });
       for (const resource of [web, worker]) {
         const callback = list(primaryContainer(resource).env)
           .map(record)
