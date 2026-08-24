@@ -37,7 +37,7 @@
 
 ## Phase B: 生产配置、构建和版本基座
 
-- [ ] Task: Red TDD——定义生产配置 schema
+- [x] Task: Red TDD——定义生产配置 schema 72d54d1
 - [ ] 覆盖 auth/deployment mode、PostgreSQL、Temporal、Keycloak、TLS 和 Runtime
 - [ ] 覆盖缺项、非法 URL、空 Secret、危险默认值和 profile override
 - [ ] 证明 production 下 demo identity 和 localhost fallback 会失败
