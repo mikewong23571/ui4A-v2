@@ -76,10 +76,10 @@ spec:
       annotations: { sidecar.istio.io/inject: 'false' }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       initContainers:
-        {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres-bootstrap") | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres-bootstrap" "apiToken" true) | nindent 8 }}
       restartPolicy: Never
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
@@ -102,6 +102,7 @@ spec:
           securityContext:
             {{- include "ui4a.temporalContainerSecurityContext" . | nindent 12 }}
       volumes:
+        {{- include "ui4a.dependencyApiTokenVolume" . | nindent 8 }}
         - name: state-secrets
           secret: { secretName: {{ .Values.secrets.existingSecretName | quote }} }
 ---

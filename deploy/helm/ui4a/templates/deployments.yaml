@@ -16,10 +16,10 @@ spec:
       labels: { app.kubernetes.io/name: temporal, app.kubernetes.io/instance: ui4a }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.temporal | quote }}
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       initContainers:
-        {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal-schema") | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal-schema" "apiToken" true) | nindent 8 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
@@ -47,6 +47,7 @@ spec:
           securityContext:
             {{- include "ui4a.temporalContainerSecurityContext" . | nindent 12 }}
       volumes:
+        {{- include "ui4a.dependencyApiTokenVolume" . | nindent 8 }}
         - name: temporal-static-config
           configMap: { name: ui4a-temporal-static }
         - name: temporal-dynamic-config

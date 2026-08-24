@@ -663,7 +663,11 @@ async function waitJob() {
 void (services[dependency] ? waitService(services[dependency]) : waitJob());
 `.trim();
 
-function dependencyGate(values: Ui4aHelmValues, dependency: string): UnknownRecord {
+function dependencyGate(
+  values: Ui4aHelmValues,
+  dependency: string,
+  apiToken = false,
+): UnknownRecord {
   return container(`wait-for-${dependency}`, values.images.worker, {
     command: ['node', '-e', WAIT_FOR_DEPENDENCY_SCRIPT],
     env: [
@@ -674,8 +678,37 @@ function dependencyGate(values: Ui4aHelmValues, dependency: string): UnknownReco
         value: '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt',
       },
     ],
+    ...(apiToken
+      ? {
+          volumeMounts: [
+            {
+              name: 'dependency-api-token',
+              mountPath: '/var/run/secrets/kubernetes.io/serviceaccount',
+              readOnly: true,
+            },
+          ],
+        }
+      : {}),
     securityContext: ui4aNodeSecurityContext(),
   });
+}
+
+function dependencyApiTokenVolume(): UnknownRecord {
+  return {
+    name: 'dependency-api-token',
+    projected: {
+      defaultMode: 0o644,
+      sources: [
+        { serviceAccountToken: { path: 'token', expirationSeconds: 3600 } },
+        {
+          configMap: {
+            name: 'kube-root-ca.crt',
+            items: [{ key: 'ca.crt', path: 'ca.crt' }],
+          },
+        },
+      ],
+    },
+  };
 }
 
 function productionEnvironment(extra: UnknownRecord[] = []): UnknownRecord[] {
@@ -759,8 +792,12 @@ function stateSecretVolume(secretName: string): UnknownRecord {
 
 const stateSecretMount = { name: 'state-secrets', mountPath: '/run/secrets', readOnly: true };
 
-function dependencyGates(values: Ui4aHelmValues, dependencies: readonly string[]) {
-  return dependencies.map((dependency) => dependencyGate(values, dependency));
+function dependencyGates(
+  values: Ui4aHelmValues,
+  dependencies: readonly string[],
+  apiToken = false,
+) {
+  return dependencies.map((dependency) => dependencyGate(values, dependency, apiToken));
 }
 
 function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
@@ -934,8 +971,8 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         securityContext: vendorNonRootSecurityContext(1000, 1000, false),
       },
       {
-        automountServiceAccountToken: true,
-        initContainers: dependencyGates(values, ['temporal-schema']),
+        automountServiceAccountToken: false,
+        initContainers: dependencyGates(values, ['temporal-schema'], true),
         volumes: [
           { name: 'temporal-static-config', configMap: { name: 'ui4a-temporal-static' } },
           { name: 'temporal-dynamic-config', configMap: { name: 'ui4a-temporal-dynamic' } },
@@ -947,6 +984,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
             },
           },
           { name: 'tmp', emptyDir: {} },
+          dependencyApiTokenVolume(),
         ],
       },
     ),
@@ -1224,9 +1262,9 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         securityContext: vendorNonRootSecurityContext(1000, 1000, false),
       },
       {
-        automountServiceAccountToken: true,
-        initContainers: dependencyGates(values, ['postgres-bootstrap']),
-        volumes: [stateSecretVolume(values.secrets.existingSecretName)],
+        automountServiceAccountToken: false,
+        initContainers: dependencyGates(values, ['postgres-bootstrap'], true),
+        volumes: [stateSecretVolume(values.secrets.existingSecretName), dependencyApiTokenVolume()],
       },
     ),
     job(

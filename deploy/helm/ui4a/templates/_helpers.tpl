@@ -127,8 +127,23 @@ nodeSelector:
     - { name: UI4A_WAIT_FOR, value: {{ .dependency | quote }} }
     - { name: UI4A_NAMESPACE, value: {{ .root.Values.namespace.name | quote }} }
     - { name: NODE_EXTRA_CA_CERTS, value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt }
+  {{- if .apiToken }}
+  volumeMounts:
+    - { name: dependency-api-token, mountPath: /var/run/secrets/kubernetes.io/serviceaccount, readOnly: true }
+  {{- end }}
   resources:
     {{- include "ui4a.resources" .root | nindent 4 }}
   securityContext:
     {{- include "ui4a.nodeContainerSecurityContext" .root | nindent 4 }}
+{{- end -}}
+
+{{- define "ui4a.dependencyApiTokenVolume" -}}
+- name: dependency-api-token
+  projected:
+    defaultMode: 0644
+    sources:
+      - serviceAccountToken: { path: token, expirationSeconds: 3600 }
+      - configMap:
+          name: kube-root-ca.crt
+          items: [{ key: ca.crt, path: ca.crt }]
 {{- end -}}

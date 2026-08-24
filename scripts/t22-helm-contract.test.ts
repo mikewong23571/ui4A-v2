@@ -570,6 +570,42 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       ).toBeUndefined();
     });
 
+    it('mounts Kubernetes API credentials only into Temporal wait init containers', async () => {
+      const { resources } = (await renderer()).renderUi4aChart(genericValues());
+      for (const [kind, name] of [
+        ['Deployment', 'temporal'],
+        ['Job', 'temporal-schema'],
+      ] as const) {
+        const workloadResource = workload(resources, kind, name);
+        const pod = podSpec(workloadResource);
+        const wait = list(pod.initContainers).map(record).at(0)!;
+        const primary = primaryContainer(workloadResource);
+        expect(pod.automountServiceAccountToken, `${kind}/${name}`).toBe(false);
+        expect(list(wait.volumeMounts).map((entry) => record(entry).name)).toContain(
+          'dependency-api-token',
+        );
+        expect(list(primary.volumeMounts ?? []).map((entry) => record(entry).name)).not.toContain(
+          'dependency-api-token',
+        );
+        expect(list(pod.volumes).map(record)).toContainEqual(
+          expect.objectContaining({
+            name: 'dependency-api-token',
+            projected: expect.objectContaining({ sources: expect.any(Array) }),
+          }),
+        );
+      }
+      for (const [kind, name] of [
+        ['Deployment', 'temporal-ui'],
+        ['Job', 'temporal-namespace'],
+      ] as const) {
+        const pod = podSpec(workload(resources, kind, name));
+        expect(pod.automountServiceAccountToken, `${kind}/${name}`).toBe(false);
+        expect(JSON.stringify(primaryContainer(workload(resources, kind, name)))).not.toContain(
+          '/var/run/secrets/kubernetes.io/serviceaccount',
+        );
+      }
+    });
+
     it('pins every UI4A Node container to the image numeric uid and leaves external images alone', async () => {
       const { resources } = (await renderer()).renderUi4aChart(genericValues());
       for (const [kind, name] of [
