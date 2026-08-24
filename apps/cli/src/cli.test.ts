@@ -5,6 +5,7 @@ import { HELP, runCommand } from './commands.js';
 import { loadConfig } from './config.js';
 import { redact } from './envelope.js';
 import { Ui4aHttpClient } from './http.js';
+import { CLI_RELEASE_CHANNEL, CLI_RELEASE_TAG, CLI_VERSION, cliVersionLine } from './release.js';
 
 function response(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -14,6 +15,14 @@ function response(body: unknown, status = 200): Response {
 }
 
 describe('ui4a CLI contract', () => {
+  it('reports the canonical experimental identity without loading endpoint config', () => {
+    expect(parseArgs(['--version'])).toMatchObject({ version: true, words: [] });
+    expect(CLI_VERSION).toBe('0.1.0-experimental.1');
+    expect(CLI_RELEASE_TAG).toBe('v0.1.0-experimental.1');
+    expect(CLI_RELEASE_CHANNEL).toBe('experimental');
+    expect(cliVersionLine()).toBe('ui4a v0.1.0-experimental.1 (experimental)');
+  });
+
   it('documents composable resources and omits approval commands', () => {
     expect(HELP).toContain('apps list');
     expect(HELP).toContain('drafts create');

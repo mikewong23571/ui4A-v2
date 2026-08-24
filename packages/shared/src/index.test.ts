@@ -7,8 +7,8 @@ describe('@ui4a/shared 占位导出', () => {
     expect(APP_NAME).toBe('UI4A');
   });
 
-  it('VERSION 为 "0.1.0"', () => {
-    expect(VERSION).toBe('0.1.0');
+  it('VERSION 为 canonical experimental semver', () => {
+    expect(VERSION).toBe('0.1.0-experimental.1');
   });
 });
 

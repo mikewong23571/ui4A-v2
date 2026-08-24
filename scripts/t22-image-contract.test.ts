@@ -85,7 +85,9 @@ describe('T22 production OCI image contract', () => {
       schemaVersion: number;
       release: {
         version: string;
+        tag: string;
         channel: string;
+        support: Record<string, boolean>;
         buildArgs: string[];
         labels: string[];
       };
@@ -94,7 +96,7 @@ describe('T22 production OCI image contract', () => {
         {
           dockerfile: string;
           entrypoint: string[];
-          health: { command: string[]; endpoint?: string };
+          health: { command: string[]; endpoint?: string; versionEndpoint?: string };
           runAsNonRoot: boolean;
           readOnlyRootFilesystem: boolean;
           writablePaths: string[];
@@ -105,8 +107,10 @@ describe('T22 production OCI image contract', () => {
     expect(contract.schemaVersion).toBe(1);
     expect(contract.release).toEqual(
       expect.objectContaining({
-        version: 'v0.1.0-experimental.1',
+        version: '0.1.0-experimental.1',
+        tag: 'v0.1.0-experimental.1',
         channel: 'experimental',
+        support: { ga: false, productionReady: false, sla: false, lts: false },
         buildArgs: ['UI4A_VERSION', 'UI4A_GIT_SHA', 'UI4A_BUILD_DATE'],
         labels: expect.arrayContaining([
           'org.opencontainers.image.version',
@@ -123,6 +127,7 @@ describe('T22 production OCI image contract', () => {
       expect(image?.dockerfile, name).toBe(dockerfile);
       expect(image?.entrypoint.length, name).toBeGreaterThan(0);
       expect(image?.health.command.length, name).toBeGreaterThan(0);
+      expect(image?.health.versionEndpoint, name).toBe('/version');
       expect(image?.runAsNonRoot, name).toBe(true);
       expect(image?.readOnlyRootFilesystem, name).toBe(true);
       expect(image?.writablePaths.length, name).toBeGreaterThan(0);

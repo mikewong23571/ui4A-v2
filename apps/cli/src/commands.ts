@@ -7,8 +7,9 @@ import { flagNumber, flagString } from './args.js';
 import type { CliConfig } from './config.js';
 import { CLI_VERSION, CliError, success, type SuccessEnvelope } from './envelope.js';
 import { Ui4aHttpClient } from './http.js';
+import { CLI_RELEASE_TAG } from './release.js';
 
-export const HELP = `ui4a ${CLI_VERSION} — UI4A HTTP/Siren/meta reference client
+export const HELP = `ui4a ${CLI_RELEASE_TAG} (experimental) — UI4A HTTP/Siren/meta reference client
 
 Usage: ui4a [--json] [--base-url URL] <noun> <verb> [arguments]
 

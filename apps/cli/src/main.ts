@@ -4,6 +4,7 @@ import { HELP, runCommand } from './commands.js';
 import { loadConfig } from './config.js';
 import { CliError, failure, redact } from './envelope.js';
 import { Ui4aHttpClient } from './http.js';
+import { cliVersionLine } from './release.js';
 
 async function main(): Promise<void> {
   let command = 'unknown';
@@ -12,6 +13,10 @@ async function main(): Promise<void> {
     const args = parseArgs(process.argv.slice(2));
     json = args.json;
     command = args.words.slice(0, 2).join('.') || 'help';
+    if (args.version) {
+      process.stdout.write(`${cliVersionLine()}\n`);
+      return;
+    }
     if (args.help || args.words.length === 0) {
       process.stdout.write(HELP);
       return;

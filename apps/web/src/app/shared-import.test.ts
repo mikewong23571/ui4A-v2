@@ -8,7 +8,7 @@ describe('apps/web 对 @ui4a/shared 的引用通路', () => {
     expect(APP_NAME).toBe('UI4A');
   });
 
-  it('VERSION 可导入且为 "0.1.0"', () => {
-    expect(VERSION).toBe('0.1.0');
+  it('VERSION 可导入且为 canonical experimental semver', () => {
+    expect(VERSION).toBe('0.1.0-experimental.1');
   });
 });

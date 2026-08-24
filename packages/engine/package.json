@@ -1,6 +1,6 @@
 {
   "name": "@ui4a/engine",
-  "version": "0.1.0",
+  "version": "0.1.0-experimental.1",
   "private": true,
   "type": "module",
   "description": "UI4A 引擎核心:machine-as-JSON 类型、三层裁决、效果词汇表、Siren 投影、sitemap 推导。纯 TS,浏览器/服务端两栖,零 Node API。",

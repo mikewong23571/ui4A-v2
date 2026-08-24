@@ -1,13 +1,11 @@
 import { createServer, type Server } from 'node:http';
 
+import { releaseMetadata } from '@ui4a/shared';
+
+export const WORKER_COMPONENT = 'ui4a-worker';
+
 export function workerReleaseMetadata(environment: NodeJS.ProcessEnv = process.env) {
-  return {
-    component: 'ui4a-worker' as const,
-    version: environment.UI4A_VERSION ?? 'v0.1.0-experimental.1-dev',
-    gitSha: environment.UI4A_GIT_SHA ?? 'unknown',
-    buildDate: environment.UI4A_BUILD_DATE ?? 'unknown',
-    channel: 'experimental' as const,
-  };
+  return releaseMetadata(WORKER_COMPONENT, environment);
 }
 
 export function workerLivePayload(environment: NodeJS.ProcessEnv = process.env) {
@@ -22,13 +20,15 @@ export async function startWorkerHealthServer(
     throw new Error('UI4A_WORKER_HEALTH_PORT must be an integer from 1 to 65535');
   }
   const server = createServer((request, response) => {
-    if (request.method !== 'GET' || request.url !== '/live') {
+    if (request.method !== 'GET' || !['/live', '/version'].includes(request.url ?? '')) {
       response.writeHead(404, { 'content-type': 'application/json; charset=utf-8' });
       response.end('{"status":"not-found"}\n');
       return;
     }
     response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-    response.end(`${JSON.stringify(workerLivePayload(environment))}\n`);
+    response.end(
+      `${JSON.stringify(request.url === '/version' ? workerReleaseMetadata(environment) : workerLivePayload(environment))}\n`,
+    );
   });
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);

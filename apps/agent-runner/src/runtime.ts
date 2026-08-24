@@ -1,22 +1,27 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
 export const RUNNER_COMPONENT = 'ui4a-agent-runner';
+const RUNNER_VERSION = '0.1.0-experimental.1' as const;
+const RUNNER_TAG = `v${RUNNER_VERSION}` as const;
 
-export interface ReleaseMetadata {
-  component: typeof RUNNER_COMPONENT;
-  version: string;
-  gitSha: string;
-  buildDate: string;
-  channel: 'experimental';
-}
-
-export function releaseMetadata(environment: NodeJS.ProcessEnv = process.env): ReleaseMetadata {
+export function releaseMetadata(environment: NodeJS.ProcessEnv = process.env) {
+  const injectedVersion = environment.UI4A_VERSION?.trim();
+  if (injectedVersion !== undefined && injectedVersion !== RUNNER_VERSION) {
+    throw new Error(`UI4A_VERSION must match canonical release ${RUNNER_VERSION}`);
+  }
   return {
     component: RUNNER_COMPONENT,
-    version: environment.UI4A_VERSION ?? 'v0.1.0-experimental.1-dev',
-    gitSha: environment.UI4A_GIT_SHA ?? 'unknown',
-    buildDate: environment.UI4A_BUILD_DATE ?? 'unknown',
-    channel: 'experimental',
+    version: RUNNER_VERSION,
+    tag: RUNNER_TAG,
+    channel: 'experimental' as const,
+    support: {
+      ga: false,
+      productionReady: false,
+      sla: false,
+      lts: false,
+    } as const,
+    gitSha: environment.UI4A_GIT_SHA?.trim() || 'unknown',
+    buildDate: environment.UI4A_BUILD_DATE?.trim() || 'unknown',
   };
 }
 

@@ -3,6 +3,7 @@ import { CliError } from './envelope.js';
 export interface ParsedArgs {
   json: boolean;
   help: boolean;
+  version: boolean;
   baseUrl?: string;
   token?: string;
   configPath?: string;
@@ -14,11 +15,12 @@ const GLOBAL_VALUE = new Set(['base-url', 'token', 'config']);
 const FORBIDDEN_FLAGS = new Set(['actor', 'principal', 'no-draft', 'approve', 'reject']);
 
 export function parseArgs(argv: string[]): ParsedArgs {
-  const result: ParsedArgs = { json: false, help: false, words: [], flags: {} };
+  const result: ParsedArgs = { json: false, help: false, version: false, words: [], flags: {} };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]!;
     if (arg === '--json') result.json = true;
     else if (arg === '--help' || arg === '-h') result.help = true;
+    else if (arg === '--version' || arg === '-V') result.version = true;
     else if (arg.startsWith('--')) {
       const name = arg.slice(2);
       if (FORBIDDEN_FLAGS.has(name)) {

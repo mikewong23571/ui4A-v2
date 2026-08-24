@@ -1,8 +1,15 @@
 {
   "schemaVersion": 1,
   "release": {
-    "version": "v0.1.0-experimental.1",
+    "version": "0.1.0-experimental.1",
+    "tag": "v0.1.0-experimental.1",
     "channel": "experimental",
+    "support": {
+      "ga": false,
+      "productionReady": false,
+      "sla": false,
+      "lts": false
+    },
     "buildArgs": ["UI4A_VERSION", "UI4A_GIT_SHA", "UI4A_BUILD_DATE"],
     "labels": [
       "org.opencontainers.image.version",
@@ -21,7 +28,8 @@
           "-e",
           "fetch('http://127.0.0.1:3100/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
         ],
-        "endpoint": "/live"
+        "endpoint": "/live",
+        "versionEndpoint": "/version"
       },
       "runAsNonRoot": true,
       "readOnlyRootFilesystem": true,
@@ -36,7 +44,8 @@
           "-e",
           "fetch('http://127.0.0.1:3101/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
         ],
-        "endpoint": "/live"
+        "endpoint": "/live",
+        "versionEndpoint": "/version"
       },
       "runAsNonRoot": true,
       "readOnlyRootFilesystem": true,
@@ -51,7 +60,8 @@
           "-e",
           "fetch('http://127.0.0.1:3102/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
         ],
-        "endpoint": "/live"
+        "endpoint": "/live",
+        "versionEndpoint": "/version"
       },
       "runAsNonRoot": true,
       "readOnlyRootFilesystem": true,

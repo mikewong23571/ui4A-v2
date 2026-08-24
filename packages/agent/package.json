@@ -1,6 +1,6 @@
 {
   "name": "@ui4a/agent",
-  "version": "0.1.0",
+  "version": "0.1.0-experimental.1",
   "private": true,
   "type": "module",
   "description": "UI4A AI-first agent 循环协议、LLM driver 与合同工具投影；legacy driver 仅供显式 testkit 协议测试。",

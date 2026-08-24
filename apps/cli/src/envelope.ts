@@ -1,5 +1,8 @@
+import { CLI_VERSION } from './release.js';
+
+export { CLI_VERSION } from './release.js';
+
 export const CLI_SCHEMA_VERSION = 1 as const;
-export const CLI_VERSION = '0.1.0';
 
 export interface PageEnvelope {
   nextCursor: string | number | null;
