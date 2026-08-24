@@ -147,7 +147,7 @@
 
 ## Phase F: 双后端 Agent Runtime
 
-- [ ] Task: Red TDD——定义统一 Runtime Backend SPI
+- [~] Task: Red TDD——定义统一 Runtime Backend SPI
 - [ ] immutable Run/birth references 与 prepare/execute/collect/verify/finalize
 - [ ] heartbeat、lease、cancel、timeout、restart boundary 和 canonical result
 - [ ] 拒绝 request backend/image/cwd/provider/model/env override
