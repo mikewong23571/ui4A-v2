@@ -9,6 +9,13 @@
       "clients": ["ui4a-web", "ui4a-agent", "ui4a-api"]
     }
   },
+  "stateServices": {
+    "postgresMajor": 17,
+    "temporalServerVersion": "1.31.2",
+    "keycloakVersion": "26.7.1",
+    "temporalStaticConfig": "deploy/compose/temporal-config.yaml",
+    "temporalDynamicConfig": "deploy/compose/temporal-dynamicconfig.yaml"
+  },
   "references": {
     "composeFile": "deploy/compose/compose.yaml",
     "renderer": "deploy/compose/render-stack.ts",

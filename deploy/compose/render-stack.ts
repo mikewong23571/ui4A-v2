@@ -42,6 +42,7 @@ export interface ComposeService {
   user?: string;
   read_only?: boolean;
   tmpfs?: string[];
+  entrypoint?: string[];
   command?: string[];
 }
 
@@ -76,6 +77,50 @@ const canonicalSecretMount = Object.freeze({
   mode: 0o400,
 });
 const runtimeTmpfs = '/tmp:rw,noexec,nosuid,size=64m';
+const stateSecretNames = [
+  'postgres-bootstrap-password',
+  'ui4a-migration-password',
+  'ui4a-runtime-password',
+  'keycloak-database-password',
+  'keycloak-bootstrap-admin-password',
+  'temporal-schema-password',
+  'temporal-runtime-password',
+  'postgres-backup-password',
+] as const;
+
+function stateSecretMount(name: (typeof stateSecretNames)[number]) {
+  return { source: name, target: name, mode: 0o400 };
+}
+
+function siblingSecretFile(deploymentSecretsFile: string, name: string): string {
+  const separator = deploymentSecretsFile.lastIndexOf('/');
+  return `${deploymentSecretsFile.slice(0, separator + 1)}${name}`;
+}
+
+const postgresBootstrapCommand = [
+  'export PGPASSWORD="$$(cat /run/secrets/postgres-bootstrap-password)";',
+  'exec psql -v ON_ERROR_STOP=1',
+  '-v ui4a_migration_password="$$(cat /run/secrets/ui4a-migration-password)"',
+  '-v ui4a_runtime_password="$$(cat /run/secrets/ui4a-runtime-password)"',
+  '-v keycloak_runtime_password="$$(cat /run/secrets/keycloak-database-password)"',
+  '-v temporal_schema_password="$$(cat /run/secrets/temporal-schema-password)"',
+  '-v temporal_runtime_password="$$(cat /run/secrets/temporal-runtime-password)"',
+  '-v postgres_backup_password="$$(cat /run/secrets/postgres-backup-password)"',
+  '-f /opt/ui4a/bootstrap-roles.sql',
+].join(' ');
+
+const temporalSchemaCommand = [
+  'TEMPORAL_SCHEMA_PASSWORD="$$(cat /run/secrets/temporal-schema-password)";',
+  'temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal setup-schema -v 0.0 &&',
+  'temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal update-schema -d /etc/temporal/schema/postgresql/v12/temporal/versioned &&',
+  'temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal_visibility setup-schema -v 0.0 &&',
+  'exec temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal_visibility update-schema -d /etc/temporal/schema/postgresql/v12/visibility/versioned',
+].join(' ');
+
+const temporalServerCommand =
+  'export TEMPORAL_RUNTIME_PASSWORD="$$(cat /run/secrets/temporal-runtime-password)"; exec temporal-server --root /etc/temporal --config config --env docker start';
+const temporalNamespaceCommand =
+  'temporal operator namespace describe --namespace ui4a --address temporal:7233 >/dev/null 2>&1 || exec temporal operator namespace create --namespace ui4a --address temporal:7233 --retention 72h';
 const edgeRouting = `{
   auto_https off
   admin off
@@ -208,6 +253,12 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         pull_policy: 'missing',
         restart: 'unless-stopped',
         healthcheck: health(['CMD-SHELL', 'pg_isready -U postgres -d postgres']),
+        environment: {
+          POSTGRES_USER: 'postgres',
+          POSTGRES_DB: 'postgres',
+          POSTGRES_PASSWORD_FILE: '/run/secrets/postgres-bootstrap-password',
+        },
+        secrets: [stateSecretMount('postgres-bootstrap-password')],
         volumes: ['postgres-data:/var/lib/postgresql/data', 'backup-data:/backups'],
       },
       'postgres-bootstrap': {
@@ -215,7 +266,23 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         pull_policy: 'missing',
         restart: 'no',
         depends_on: dependencies({ postgres: 'service_healthy' }),
-        command: ['psql', '-v', 'ON_ERROR_STOP=1', '-f', '/opt/ui4a/bootstrap-roles.sql'],
+        environment: {
+          PGHOST: 'postgres',
+          PGDATABASE: 'postgres',
+          PGUSER: 'postgres',
+          PGPASSWORD_FILE: '/run/secrets/postgres-bootstrap-password',
+        },
+        secrets: [
+          stateSecretMount('postgres-bootstrap-password'),
+          stateSecretMount('ui4a-migration-password'),
+          stateSecretMount('ui4a-runtime-password'),
+          stateSecretMount('keycloak-database-password'),
+          stateSecretMount('temporal-schema-password'),
+          stateSecretMount('temporal-runtime-password'),
+          stateSecretMount('postgres-backup-password'),
+        ],
+        entrypoint: ['/bin/sh', '-ec'],
+        command: [postgresBootstrapCommand],
         volumes: ['../postgres/bootstrap-roles.sql:/opt/ui4a/bootstrap-roles.sql:ro'],
       },
       'temporal-schema': {
@@ -223,13 +290,30 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         pull_policy: 'missing',
         restart: 'no',
         depends_on: dependencies({ 'postgres-bootstrap': 'service_completed_successfully' }),
-        command: ['temporal-sql-tool', 'setup-and-update-schema'],
+        secrets: [stateSecretMount('temporal-schema-password')],
+        entrypoint: ['/bin/sh', '-ec'],
+        command: [temporalSchemaCommand],
       },
       temporal: {
         image: images.temporal,
         pull_policy: 'missing',
         restart: 'unless-stopped',
         depends_on: dependencies({ 'temporal-schema': 'service_completed_successfully' }),
+        configs: [
+          {
+            source: 'temporal-static-config',
+            target: '/etc/temporal/config/docker.yaml',
+            mode: 0o444,
+          },
+          {
+            source: 'temporal-dynamic-config',
+            target: '/etc/temporal/dynamicconfig/docker.yaml',
+            mode: 0o444,
+          },
+        ],
+        secrets: [stateSecretMount('temporal-runtime-password')],
+        entrypoint: ['/bin/sh', '-ec'],
+        command: [temporalServerCommand],
         healthcheck: health(['CMD', 'temporal', 'operator', 'cluster', 'health']),
       },
       'temporal-namespace': {
@@ -237,7 +321,8 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         pull_policy: 'missing',
         restart: 'no',
         depends_on: dependencies({ temporal: 'service_healthy' }),
-        command: ['temporal', 'operator', 'namespace', 'create-or-check', 'ui4a'],
+        entrypoint: ['/bin/sh', '-ec'],
+        command: [temporalNamespaceCommand],
       },
       'temporal-ui': {
         image: images.temporalUi,
@@ -254,6 +339,23 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           'postgres-bootstrap': 'service_completed_successfully',
           'pki-init': 'service_completed_successfully',
         }),
+        environment: {
+          KC_DB: 'postgres',
+          KC_DB_URL_HOST: 'postgres',
+          KC_DB_URL_DATABASE: 'keycloak',
+          KC_DB_USERNAME: 'keycloak_runtime',
+          KC_HEALTH_ENABLED: 'true',
+          KC_HTTP_ENABLED: 'true',
+          KC_PROXY_HEADERS: 'xforwarded',
+        },
+        secrets: [
+          stateSecretMount('keycloak-database-password'),
+          stateSecretMount('keycloak-bootstrap-admin-password'),
+        ],
+        entrypoint: ['/bin/bash', '-ec'],
+        command: [
+          'export KC_DB_PASSWORD="$$(cat /run/secrets/keycloak-database-password)"; export KC_BOOTSTRAP_ADMIN_USERNAME=ui4a-bootstrap; export KC_BOOTSTRAP_ADMIN_PASSWORD="$$(cat /run/secrets/keycloak-bootstrap-admin-password)"; exec /opt/keycloak/bin/kc.sh start',
+        ],
         healthcheck: health([
           'CMD-SHELL',
           "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '200 OK' <&3",
@@ -261,6 +363,10 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
       },
       'realm-bootstrap': runtimeService(images.worker, 'no', {
         depends_on: dependencies({ keycloak: 'service_healthy' }),
+        environment: {
+          ...canonicalRuntimeEnvironment,
+          UI4A_REALM_IMPORT_FILE: '/opt/ui4a/realm-import.json',
+        },
         command: ['node', 'dist/t22-keycloak-realm-bootstrap.js', '--apply'],
         volumes: [
           'realm-data:/var/lib/ui4a/realm',
@@ -385,9 +491,17 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
     configs: {
       'ui4a-deployment-settings': { file: input.settingsFile },
       'ui4a-edge-routing': { content: edgeRouting },
+      'temporal-static-config': { file: 'deploy/compose/temporal-config.yaml' },
+      'temporal-dynamic-config': { file: 'deploy/compose/temporal-dynamicconfig.yaml' },
     },
     secrets: {
       'ui4a-deployment-secrets': { file: input.secretsFile },
+      ...Object.fromEntries(
+        stateSecretNames.map((name) => [
+          name,
+          { file: siblingSecretFile(input.secretsFile, name) },
+        ]),
+      ),
     },
     'x-ui4a-contract': {
       schemaVersion: 1,

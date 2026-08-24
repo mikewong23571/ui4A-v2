@@ -37,13 +37,32 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      PGHOST: postgres
+      PGDATABASE: postgres
+      PGUSER: postgres
       PGPASSWORD_FILE: /run/secrets/postgres-bootstrap-password
     secrets:
       - postgres-bootstrap-password
-      - ui4a-deployment-secrets
+      - ui4a-migration-password
+      - ui4a-runtime-password
+      - keycloak-database-password
+      - temporal-schema-password
+      - temporal-runtime-password
+      - postgres-backup-password
     volumes:
       - ../postgres/bootstrap-roles.sql:/opt/ui4a/bootstrap-roles.sql:ro
-    command: [psql, -v, ON_ERROR_STOP=1, -f, /opt/ui4a/bootstrap-roles.sql]
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - >-
+        export PGPASSWORD="$$(cat /run/secrets/postgres-bootstrap-password)";
+        exec psql -v ON_ERROR_STOP=1
+        -v ui4a_migration_password="$$(cat /run/secrets/ui4a-migration-password)"
+        -v ui4a_runtime_password="$$(cat /run/secrets/ui4a-runtime-password)"
+        -v keycloak_runtime_password="$$(cat /run/secrets/keycloak-database-password)"
+        -v temporal_schema_password="$$(cat /run/secrets/temporal-schema-password)"
+        -v temporal_runtime_password="$$(cat /run/secrets/temporal-runtime-password)"
+        -v postgres_backup_password="$$(cat /run/secrets/postgres-backup-password)"
+        -f /opt/ui4a/bootstrap-roles.sql
 
   temporal-schema:
     image: ${UI4A_TEMPORAL_ADMIN_TOOLS_IMAGE:-temporalio/admin-tools@sha256:0000000000000000000000000000000000000000000000000000000000000000}
@@ -53,8 +72,15 @@ services:
       postgres-bootstrap:
         condition: service_completed_successfully
     secrets:
-      - ui4a-deployment-secrets
-    command: [temporal-sql-tool, setup-and-update-schema]
+      - temporal-schema-password
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - >-
+        TEMPORAL_SCHEMA_PASSWORD="$$(cat /run/secrets/temporal-schema-password)";
+        temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal setup-schema -v 0.0 &&
+        temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal update-schema -d /etc/temporal/schema/postgresql/v12/temporal/versioned &&
+        temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal_visibility setup-schema -v 0.0 &&
+        exec temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal_visibility update-schema -d /etc/temporal/schema/postgresql/v12/visibility/versioned
 
   temporal:
     image: ${UI4A_TEMPORAL_IMAGE:-temporalio/server@sha256:0000000000000000000000000000000000000000000000000000000000000000}
@@ -64,8 +90,19 @@ services:
       temporal-schema:
         condition: service_completed_successfully
     secrets:
-      - ui4a-deployment-secrets
-    command: [start]
+      - temporal-runtime-password
+    configs:
+      - source: temporal-static-config
+        target: /etc/temporal/config/docker.yaml
+        mode: 0444
+      - source: temporal-dynamic-config
+        target: /etc/temporal/dynamicconfig/docker.yaml
+        mode: 0444
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - >-
+        export TEMPORAL_RUNTIME_PASSWORD="$$(cat /run/secrets/temporal-runtime-password)";
+        exec temporal-server --root /etc/temporal --config config --env docker start
     healthcheck:
       test: [CMD, temporal, operator, cluster, health]
       interval: 10s
@@ -79,7 +116,11 @@ services:
     depends_on:
       temporal:
         condition: service_healthy
-    command: [temporal, operator, namespace, create-or-check, ui4a]
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - >-
+        temporal operator namespace describe --namespace ui4a --address temporal:7233 >/dev/null 2>&1 ||
+        exec temporal operator namespace create --namespace ui4a --address temporal:7233 --retention 72h
 
   temporal-ui:
     image: ${UI4A_TEMPORAL_UI_IMAGE:-temporalio/ui@sha256:0000000000000000000000000000000000000000000000000000000000000000}
@@ -97,7 +138,7 @@ services:
       retries: 12
 
   keycloak:
-    image: ${UI4A_KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    image: ${UI4A_KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.7.1@sha256:0000000000000000000000000000000000000000000000000000000000000000}
     pull_policy: missing
     restart: unless-stopped
     depends_on:
@@ -144,10 +185,12 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
-    environment: &ui4a-production-environment
-      UI4A_DEPLOYMENT_PROFILE: production
-      UI4A_DEPLOYMENT_SETTINGS_FILE: /run/ui4a/settings.json
-      UI4A_DEPLOYMENT_SECRETS_FILE: /run/secrets/ui4a-deployment-secrets
+    environment:
+      <<: &ui4a-production-environment
+        UI4A_DEPLOYMENT_PROFILE: production
+        UI4A_DEPLOYMENT_SETTINGS_FILE: /run/ui4a/settings.json
+        UI4A_DEPLOYMENT_SECRETS_FILE: /run/secrets/ui4a-deployment-secrets
+      UI4A_REALM_IMPORT_FILE: /opt/ui4a/realm-import.json
     configs: &ui4a-production-config
       - source: ui4a-deployment-settings
         target: /run/ui4a/settings.json
@@ -356,16 +399,30 @@ configs:
         tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key
         respond /_edge_live 200
       }
+  temporal-static-config:
+    file: ./temporal-config.yaml
+  temporal-dynamic-config:
+    file: ./temporal-dynamicconfig.yaml
 
 secrets:
   ui4a-deployment-secrets:
     file: ${UI4A_DEPLOYMENT_SECRETS_FILE:-./stack-contract.json}
   postgres-bootstrap-password:
     file: ${UI4A_POSTGRES_BOOTSTRAP_PASSWORD_FILE:-./stack-contract.json}
+  ui4a-migration-password:
+    file: ${UI4A_MIGRATION_PASSWORD_FILE:-./stack-contract.json}
+  ui4a-runtime-password:
+    file: ${UI4A_RUNTIME_PASSWORD_FILE:-./stack-contract.json}
   keycloak-database-password:
     file: ${UI4A_KEYCLOAK_DATABASE_PASSWORD_FILE:-./stack-contract.json}
   keycloak-bootstrap-admin-password:
     file: ${UI4A_KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD_FILE:-./stack-contract.json}
+  temporal-schema-password:
+    file: ${UI4A_TEMPORAL_SCHEMA_PASSWORD_FILE:-./stack-contract.json}
+  temporal-runtime-password:
+    file: ${UI4A_TEMPORAL_RUNTIME_PASSWORD_FILE:-./stack-contract.json}
+  postgres-backup-password:
+    file: ${UI4A_POSTGRES_BACKUP_PASSWORD_FILE:-./stack-contract.json}
 
 volumes:
   postgres-data:

@@ -1,0 +1,17 @@
+frontend.enableClientVersionCheck:
+  - value: true
+    constraints: {}
+history.defaultActivityRetryPolicy:
+  - value:
+      initialIntervalInSeconds: 1
+      maximumIntervalCoefficient: 100
+      backoffCoefficient: 2
+      maximumAttempts: 0
+    constraints: {}
+history.defaultWorkflowRetryPolicy:
+  - value:
+      initialIntervalInSeconds: 1
+      maximumIntervalCoefficient: 1000
+      backoffCoefficient: 2
+      maximumAttempts: 0
+    constraints: {}

@@ -39,6 +39,20 @@ const roleSecrets = [
 ] as const;
 
 describe('T22 executable Compose state services', () => {
+  it('pins state service versions and executable Temporal configuration artifacts', () => {
+    const contract = JSON.parse(source('deploy/compose/stack-contract.json')) as {
+      stateServices: Record<string, unknown>;
+    };
+
+    expect(contract.stateServices).toEqual({
+      postgresMajor: 17,
+      temporalServerVersion: '1.31.2',
+      keycloakVersion: '26.7.1',
+      temporalStaticConfig: 'deploy/compose/temporal-config.yaml',
+      temporalDynamicConfig: 'deploy/compose/temporal-dynamicconfig.yaml',
+    });
+  });
+
   it('injects all six PostgreSQL role passwords from independent Secret files', () => {
     const rendered = stack();
     const bootstrap = rendered.services['postgres-bootstrap'];
