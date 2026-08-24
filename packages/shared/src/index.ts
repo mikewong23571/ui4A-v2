@@ -34,3 +34,5 @@ export * from './agent-authoring';
 export * from './writing-agent';
 // Platform-neutral, fail-closed production deployment contract (T22).
 export * from './production-deployment-config';
+// Platform-neutral process readiness aggregation contract (T22).
+export * from './readiness';
