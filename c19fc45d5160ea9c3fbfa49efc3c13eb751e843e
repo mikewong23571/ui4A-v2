@@ -1,0 +1,3 @@
+D35 experimental authentication surface declaration.
+
+Documents exact public and application-credential paths, inline sub plus azp exchange, Worker service identity, shared-secret callbacks, deferred unprotected routes, single-process session restart behavior, and the required default-deny edge boundary. Phase C code evidence is separated from later Phase H and I live edge evidence.
