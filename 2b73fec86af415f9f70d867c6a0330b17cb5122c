@@ -1,0 +1,7 @@
+Task: Phase D Red TDD - explicit migration contract
+
+Summary: Added isolated-schema DB and source-boundary contracts for versioned migration, adoption, idempotency, concurrency, rollback/retry, future-version incompatibility, migration role entrypoint and DDL-free runtime.
+
+Red evidence: 2 files/10 tests failed exactly because migrations.ts and t22-migrate.ts are absent and 31 runtime ensure* call debts remain. localhost:5433/ui4a_test confirmed; no network.
+
+Files: apps/web/src/db/migrations.test.ts; scripts/t22-migration-contract.test.ts.
