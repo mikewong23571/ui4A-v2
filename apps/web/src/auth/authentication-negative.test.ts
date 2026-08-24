@@ -2,8 +2,7 @@ import { createPrivateKey, sign } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { parseExecBody } from '../app/api/exec-request';
-import { metaContextFromRequest } from '../engine/meta-authorization';
+import { applyTrustedIdentity, resolveTrustedRequestIdentity } from './request-identity';
 
 const NOW_SECONDS = 1_788_739_200;
 const NOW_MILLISECONDS = NOW_SECONDS * 1_000;
@@ -271,17 +270,16 @@ describe('canonical production request identity negative corpus', () => {
       POLICY,
       VALID_DEPENDENCIES,
     );
-    expect(
-      api.buildProductionRequestIdentity(credential, {
-        requiredScopes: ['ui4a:write'],
-        untrusted: {
-          actor: 'human',
-          principal: 'root-admin',
-          scope: ['root:*'],
-          delegation: [{ actor: 'root-admin' }],
-        },
-      }),
-    ).toEqual({
+    const identity = api.buildProductionRequestIdentity(credential, {
+      requiredScopes: ['ui4a:write'],
+      untrusted: {
+        actor: 'human',
+        principal: 'root-admin',
+        scope: ['root:*'],
+        delegation: [{ actor: 'root-admin' }],
+      },
+    });
+    expect(identity).toEqual({
       actor: 'agent',
       kind: 'agent',
       principal: 'human-alice',
@@ -291,6 +289,35 @@ describe('canonical production request identity negative corpus', () => {
         subject: 'human-alice',
         actorClientId: 'ui4a-agent',
         source: 'token-exchange-sub-azp',
+      },
+    });
+    expect(
+      applyTrustedIdentity(
+        { rel: 'post:first', action: 'archive', actor: 'human', principal: 'forged' },
+        {
+          authorizationMode: 'credential',
+          actor: 'agent',
+          principal: identity.principal,
+          scopes: identity.scopes,
+          policyScope: 'development',
+          channel: 'oidc',
+          humanApprovalEligible: identity.humanApprovalEligible,
+          delegation: identity.delegation,
+        },
+      ),
+    ).toMatchObject({
+      actor: 'agent',
+      principal: 'human-alice',
+      channel: 'oidc',
+      identity: {
+        authorizationMode: 'credential',
+        scopes: ['ui4a:read', 'ui4a:write'],
+        humanApprovalEligible: false,
+        delegation: {
+          subject: 'human-alice',
+          actorClientId: 'ui4a-agent',
+          source: 'token-exchange-sub-azp',
+        },
       },
     });
   });
@@ -375,37 +402,64 @@ describe('canonical production request identity negative corpus', () => {
 });
 
 describe('current route identity debt (executable Red evidence)', () => {
-  it('must stop accepting ordinary body actor/principal as trusted production identity', () => {
-    const parsed = parseExecBody({
-      rel: 'confirmation:c1',
-      action: 'approve',
+  it('must stop accepting ordinary body actor/principal as trusted production identity', async () => {
+    const context = await resolveTrustedRequestIdentity(
+      new Request('https://ui4a.mothership.internal/api/exec', {
+        headers: { authorization: bearer(token({ scope: 'ui4a:read ui4a:approve publishing' })) },
+      }),
+      {
+        profile: 'production',
+        plane: 'business',
+        requiredScopes: ['ui4a:approve'],
+        authorizedPolicyScopes: ['publishing', 'governance'],
+        defaultPolicyScope: 'publishing',
+        productionPolicy: POLICY,
+        productionDependencies: VALID_DEPENDENCIES,
+        untrusted: {
+          actor: 'agent',
+          principal: 'root-admin',
+          scope: ['root:*'],
+          delegation: [{ actor: 'root-admin' }],
+        },
+      },
+    );
+    expect(context).toMatchObject({
       actor: 'human',
-      principal: 'root-admin',
-      params: {},
+      principal: 'human-alice',
+      policyScope: 'publishing',
+      authorizationMode: 'credential',
+      humanApprovalEligible: true,
     });
-    expect(parsed).toEqual({
-      ok: false,
-      error: 'production identity fields must come from the verified credential',
-    });
+    expect(context.scopes).not.toContain('root:*');
+    expect(context).not.toHaveProperty('delegation');
   });
 
-  it('must stop ordinary headers/query from overriding production principal or scope', () => {
-    const context = metaContextFromRequest(
+  it('must stop ordinary headers/query from overriding production principal or scope', async () => {
+    const context = await resolveTrustedRequestIdentity(
       new Request(
         'https://ui4a.mothership.internal/_meta/api/entity?rel=meta%2Fflows&scope=governance',
         {
           headers: {
+            authorization: bearer(token({ scope: 'ui4a:read publishing' })),
             'x-ui4a-principal': 'root-admin',
             'x-ui4a-policy-scope': 'governance',
           },
         },
       ),
-      ['publishing', 'governance'],
-      'publishing',
+      {
+        profile: 'production',
+        plane: 'meta',
+        requiredScopes: ['ui4a:read'],
+        authorizedPolicyScopes: ['publishing', 'governance'],
+        defaultPolicyScope: 'publishing',
+        productionPolicy: POLICY,
+        productionDependencies: VALID_DEPENDENCIES,
+      },
     );
     expect(context).toMatchObject({
-      principal: 'local-user',
-      effectiveScope: 'publishing',
+      principal: 'human-alice',
+      policyScope: 'publishing',
+      authorizationMode: 'credential',
     });
   });
 });

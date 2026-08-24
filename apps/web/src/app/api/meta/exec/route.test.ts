@@ -117,7 +117,17 @@ describe('POST /_meta/api/exec', () => {
     );
     expect(accepted.status).toBe(200);
     const event = (await listEvents(pool)).at(-1);
-    expect(event).toMatchObject({ actor: 'human', principal: 'local-user', channel: 'bios' });
+    expect(event).toMatchObject({
+      actor: 'human',
+      principal: 'local-user',
+      channel: 'bios',
+      detail: {
+        identity: {
+          authorizationMode: 'self-reported-local-demo',
+          humanApprovalEligible: true,
+        },
+      },
+    });
 
     const forged = await POST(
       new Request('http://localhost:3100/_meta/api/exec?scope=root-admin', {

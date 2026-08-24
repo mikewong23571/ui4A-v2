@@ -175,6 +175,7 @@ export function suspendForConfirmation(
     actor,
     principal: request.principal,
     channel: request.channel,
+    ...(request.identity !== undefined ? { identity: request.identity } : {}),
     ...(Object.keys(paramFields).length > 0 ? { params: paramFields } : {}),
     detail,
   };
@@ -248,6 +249,7 @@ export function suspendForConfirmation(
 export interface Approver {
   actor: 'human' | 'agent';
   principal?: string;
+  identity?: ExecRequest['identity'];
 }
 
 /** 确认实体上的 approve 动作声明(Siren 投影与 guard 求值共用)。 */
@@ -423,6 +425,7 @@ export function approveConfirmation(
     actor: 'human',
     principal: confirmation.proposedBy.principal,
     channel: 'confirmation',
+    ...(approver.identity !== undefined ? { identity: approver.identity } : {}),
   };
   const outcome = applyEffects(request, actionEffects(action), snapshot, {
     flows: deps.flows,
@@ -436,6 +439,7 @@ export function approveConfirmation(
     actor: approver.actor,
     principal: approver.principal,
     channel: 'confirmation',
+    ...(approver.identity !== undefined ? { identity: approver.identity } : {}),
     detail: {
       id: confirmationId,
       proposedBy: confirmation.proposedBy,
@@ -498,6 +502,7 @@ export function rejectConfirmation(
     actor: approver.actor,
     principal: approver.principal,
     channel: 'confirmation',
+    ...(approver.identity !== undefined ? { identity: approver.identity } : {}),
     reason,
     detail: {
       id: confirmationId,

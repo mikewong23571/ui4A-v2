@@ -13,6 +13,18 @@ import { actionEffects } from './parse';
 import { fieldDefinitionsToJsonSchema, mergeFieldDefinitions } from './schema';
 import type { ActionDefinition, EffectDefinition, FlowDefinition, ParamOrigin } from './types';
 
+/** Verified request identity provenance. It is audit-only and never participates in judgment. */
+export interface RequestIdentityAudit {
+  authorizationMode: 'credential' | 'self-reported-local-demo';
+  scopes: string[];
+  humanApprovalEligible: boolean;
+  delegation?: {
+    subject: string;
+    actorClientId: string;
+    source: 'token-exchange-sub-azp';
+  };
+}
+
 /** exec 请求(事件日志字段的镜像:actor/principal/channel/参数出处)。 */
 export interface ExecRequest {
   rel: string;
@@ -23,6 +35,8 @@ export interface ExecRequest {
   actor?: 'human' | 'agent';
   principal?: string;
   channel?: string;
+  /** Trusted HTTP-boundary provenance; deliberately excluded from declaration/guard/schema. */
+  identity?: RequestIdentityAudit;
   /**
    * 上游机械 effect gate 已核验的用户原话索引。引擎不据此放行动作；它只随
    * 裁决事件留痕，审计投影会再次对 append-only user message 做引用校验。

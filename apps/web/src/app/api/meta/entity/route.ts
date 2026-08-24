@@ -5,7 +5,10 @@ import {
   getAgentDefinitionMetaEntity,
   isAgentDefinitionMetaRel,
 } from '../../../../engine/agent-definitions';
-import { metaContextFromRequest } from '../../../../engine/meta-authorization';
+import {
+  authenticationErrorResponse,
+  resolveTrustedRequestIdentity,
+} from '../../../../auth/request-identity';
 
 // GET /_meta/api/entity?rel=… — meta 站点 Siren 实体端点(T4 Phase B,spec 决定 6):
 // - rel 以 meta/ 前缀路由到同一引擎的 meta 投影(同日志同串行队列;快照即真相);
@@ -30,32 +33,36 @@ export async function GET(request: Request) {
   try {
     const db = getDb();
     const engine = await getEngine(db);
-    const context = metaContextFromRequest(
-      request,
-      Object.keys(engine.getSnapshot().applications ?? {}),
-    );
+    const identity = await resolveTrustedRequestIdentity(request, {
+      plane: 'meta',
+      requiredScopes: ['ui4a:read'],
+      authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
+      defaultPolicyScope: 'publishing',
+    });
     const entity = isDraftMetaRel(rel)
       ? await getDraftMetaEntity(
           db,
           engine,
           rel,
-          context.principal,
-          context.effectiveScope,
+          identity.principal,
+          identity.policyScope,
           agentDefinitionDraftRegistryPort,
         )
       : isAgentDefinitionMetaRel(rel)
-        ? await getAgentDefinitionMetaEntity(db, rel, context.principal, context.effectiveScope)
+        ? await getAgentDefinitionMetaEntity(db, rel, identity.principal, identity.policyScope)
         : await engine.getMetaEntity(rel);
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });
     }
     return Response.json(entity, {
       headers: {
-        'x-ui4a-effective-scope': context.effectiveScope,
-        'x-ui4a-authorization-mode': context.authorizationMode,
+        'x-ui4a-effective-scope': identity.policyScope,
+        'x-ui4a-authorization-mode': identity.authorizationMode,
       },
     });
   } catch (error) {
+    const authentication = authenticationErrorResponse(error);
+    if (authentication !== undefined) return authentication;
     const err = error as { code?: string; message?: string };
     const dbFailure =
       typeof err.code === 'string' &&

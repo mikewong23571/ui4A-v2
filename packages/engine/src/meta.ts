@@ -196,6 +196,7 @@ function definitionEvent(
     actor: request.actor ?? 'human',
     principal: request.principal,
     channel: request.channel,
+    ...(request.identity !== undefined ? { identity: request.identity } : {}),
     detail,
   };
 }

@@ -108,6 +108,23 @@ const agentArchiveRequest: ExecRequest = {
   channel: 'http',
 };
 
+const agentCredentialIdentity = {
+  authorizationMode: 'credential' as const,
+  scopes: ['ui4a:write', 'development'],
+  humanApprovalEligible: false,
+  delegation: {
+    subject: 'user:mike',
+    actorClientId: 'ui4a-agent',
+    source: 'token-exchange-sub-azp' as const,
+  },
+};
+
+const humanCredentialIdentity = {
+  authorizationMode: 'credential' as const,
+  scopes: ['ui4a:approve', 'development'],
+  humanApprovalEligible: true,
+};
+
 /** 在线挂起一次(agent archive post-welcome)得到带 pending c1 的快照。 */
 function suspendedSnapshot(): EngineSnapshot {
   const outcome = executeWithGates(agentArchiveRequest, seedSnapshot, deps);
@@ -118,6 +135,33 @@ function suspendedSnapshot(): EngineSnapshot {
 }
 
 describe('approveConfirmation — human 生效路径', () => {
+  it('挂起与批准事件分别保留提议者和批准者的可信身份审计', () => {
+    const suspended = executeWithGates(
+      { ...agentArchiveRequest, identity: agentCredentialIdentity },
+      seedSnapshot,
+      deps,
+    );
+    expect(suspended.kind).toBe('suspended');
+    if (suspended.kind !== 'suspended') return;
+    expect(suspended.events[0]).toMatchObject({ identity: agentCredentialIdentity });
+    expect(suspended.events[0]?.detail).toMatchObject({
+      request: { identity: agentCredentialIdentity },
+    });
+
+    const approved = approveConfirmation(
+      suspended.snapshot,
+      suspended.confirmation.id,
+      { actor: 'human', principal: 'user:mike', identity: humanCredentialIdentity },
+      deps,
+    );
+    expect(approved.kind).toBe('confirmed');
+    if (approved.kind !== 'confirmed') return;
+    expect(approved.events.map((event) => event.identity)).toEqual([
+      humanCredentialIdentity,
+      humanCredentialIdentity,
+    ]);
+  });
+
   it('human approve → 应用原目标动作效果(post-welcome → archived)', () => {
     const decision = approveConfirmation(
       suspendedSnapshot(),

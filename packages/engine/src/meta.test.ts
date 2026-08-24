@@ -63,6 +63,29 @@ describe('definition-seeded 事件与 fold', () => {
 });
 
 describe('revise(active → draft,开工作副本)', () => {
+  it('action 与 definition decision 事件携带同一可信身份审计', () => {
+    const snapshot = seededSnapshot([seedPostStatus]);
+    const identity = {
+      authorizationMode: 'credential' as const,
+      scopes: ['ui4a:write', 'publishing'],
+      humanApprovalEligible: false,
+    };
+    const outcome = executeMeta(
+      {
+        rel: 'meta/flow:post-status',
+        action: 'revise',
+        actor: 'agent',
+        principal: 'user:mike',
+        identity,
+      },
+      snapshot,
+      deps,
+    );
+    expect(outcome.kind).toBe('executed');
+    if (outcome.kind !== 'executed') return;
+    expect(outcome.events.map((event) => event.identity)).toEqual([identity, identity]);
+  });
+
   it('revise:实例与条目入 draft,bornBy=当前版本,version 不变(版本号在 approve 落实)', () => {
     const snapshot = seededSnapshot([seedPostStatus]);
     const outcome = executeMeta(

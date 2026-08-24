@@ -18,13 +18,14 @@ import { canTransition } from './machine';
 import { actionEffects } from './parse';
 import { flowForInstance } from './judge';
 import type { DefinitionVersionTable } from './judge';
-import type { ExecRequest } from './judge';
+import type { ExecRequest, RequestIdentityAudit } from './judge';
 import type { ActionDefinition, EffectDefinition, FlowDefinition, NodeDefinition } from './types';
 
 /** 引擎产出的事件(append 到事件日志;seq/ts 由日志层分配——时钟是 capability)。 */
 export interface EngineEvent {
   kind:
     | 'action-executed'
+    | 'action-rejected'
     | 'entity-appended'
     | 'spawn-requested'
     | 'confirmation-requested'
@@ -48,6 +49,8 @@ export interface EngineEvent {
   actor: 'human' | 'agent';
   principal?: string;
   channel?: string;
+  /** Audit-only verified identity provenance; fold and business effects ignore it. */
+  identity?: RequestIdentityAudit;
   /** 带出处的参数快照(事件溯源的求值输入)。 */
   params?: Record<string, FieldValue>;
   /** action-executed:迁移目标节点。 */
@@ -329,6 +332,7 @@ export function applyEffects(
         actor: request.actor ?? 'human',
         principal: request.principal,
         channel: request.channel,
+        ...(request.identity !== undefined ? { identity: request.identity } : {}),
         // 载荷仍只带请求参数(留痕):entity-appended 是伴随事件,fold 不读它——
         // 合并集由同批 action-executed 重放经同一 applyEffects 重推导(I5 同构)。
         params: submittedParamFields,
@@ -349,6 +353,7 @@ export function applyEffects(
         actor: request.actor ?? 'human',
         principal: request.principal,
         channel: request.channel,
+        ...(request.identity !== undefined ? { identity: request.identity } : {}),
         capability: effect.capability,
         bind: effect.bind,
         'on-done': effect['on-done'],
@@ -364,6 +369,7 @@ export function applyEffects(
     actor: request.actor ?? 'human',
     principal: request.principal,
     channel: request.channel,
+    ...(request.identity !== undefined ? { identity: request.identity } : {}),
     params: submittedParamFields,
     ...(to !== undefined ? { to } : {}),
     ...(appendedRels.length > 0 ? { appended: appendedRels } : {}),

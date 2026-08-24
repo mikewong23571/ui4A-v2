@@ -178,6 +178,7 @@ export function executePlan(
     actor: first?.actor ?? 'human',
     principal: first?.principal,
     channel: first?.channel,
+    ...(first?.identity !== undefined ? { identity: first.identity } : {}),
     detail: {
       kind,
       steps: results.map(({ step, rel, action, outcome }) => ({ step, rel, action, outcome })),

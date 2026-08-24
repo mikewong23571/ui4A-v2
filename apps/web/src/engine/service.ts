@@ -40,6 +40,7 @@ import { createHash } from 'node:crypto';
 import {
   activeDefinitionOf,
   applyCapabilityArtifactCreated,
+  actionRejectedEvent,
   assertMetaBootstrapIntegrity,
   approveConfirmation,
   canonicalJson,
@@ -404,16 +405,20 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     return sitemap;
   };
 
-  /** 引擎事件 → 日志层追加形状(detail/reason 一并落库:fold 依赖 detail 重放)。 */
-  const toAppend = (event: EngineEvent): EventAppend => ({
-    kind: event.kind,
-    rel: event.rel,
-    action: event.action,
-    actor: event.actor,
-    principal: event.principal,
-    channel: event.channel,
-    params: event.params,
-    detail:
+  const withIdentityAudit = (detail: unknown, identity: ExecRequest['identity']): unknown => {
+    if (identity === undefined) return detail;
+    const base =
+      typeof detail === 'object' && detail !== null && !Array.isArray(detail)
+        ? (detail as Record<string, unknown>)
+        : detail === undefined
+          ? {}
+          : { value: detail };
+    return { ...base, identity };
+  };
+
+  /** 引擎事件 → 日志层追加形状(identity 寄存 detail，不增加第二套 DB schema)。 */
+  const toAppend = (event: EngineEvent): EventAppend => {
+    const eventDetail =
       event.kind === 'spawn-requested'
         ? {
             capability: event.capability,
@@ -421,9 +426,19 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
             ...(event['on-done'] !== undefined ? { 'on-done': event['on-done'] } : {}),
             ...(event['on-error'] !== undefined ? { 'on-error': event['on-error'] } : {}),
           }
-        : event.detail,
-    reason: event.reason,
-  });
+        : event.detail;
+    return {
+      kind: event.kind,
+      rel: event.rel,
+      action: event.action,
+      actor: event.actor,
+      principal: event.principal,
+      channel: event.channel,
+      params: event.params,
+      detail: withIdentityAudit(eventDetail, event.identity),
+      reason: event.reason,
+    };
+  };
 
   /**
    * 追加并推进 lastSeq(自身事件不进入增量 fold,防双算)。
@@ -506,6 +521,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           actor: request.actor ?? 'human',
           ...(request.principal !== undefined ? { principal: request.principal } : {}),
         },
+        ...(request.identity === undefined ? {} : { identity: request.identity }),
       };
       const seq = await appendWithSeq({
         kind: 'capability-artifact-created',
@@ -591,17 +607,12 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       detail?: unknown;
     },
   ): Promise<ExecOutcome> => {
-    await appendWithSeq({
-      kind: 'action-rejected',
-      rel: request.rel,
-      action: request.action,
-      actor: request.actor ?? 'human',
-      principal: request.principal,
-      channel: request.channel,
-      params: paramsWithOrigins(request),
-      reason: verdict.reason,
-      detail: { layer: verdict.layer, judge: verdict.detail },
-    });
+    await appendWithSeq(
+      toAppend({
+        ...actionRejectedEvent(request, verdict),
+        params: paramsWithOrigins(request),
+      }),
+    );
     return verdict.detail === undefined
       ? { kind: 'rejected', layer: verdict.layer, reason: verdict.reason }
       : {
@@ -622,6 +633,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     const approver: Approver = {
       actor: request.actor ?? 'human',
       ...(request.principal !== undefined ? { principal: request.principal } : {}),
+      ...(request.identity !== undefined ? { identity: request.identity } : {}),
     };
     let decision: ConfirmationDecision;
     if (request.action === 'approve') {
@@ -905,22 +917,14 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         const rejected = outcome.results.find((result) => result.outcome === 'rejected');
         if (rejected !== undefined && rejected.rejection !== undefined) {
           const request = aliased[rejected.step - 1]!;
-          await appendWithSeq({
-            kind: 'action-rejected',
-            rel: request.rel,
-            action: request.action,
-            actor: request.actor ?? 'human',
-            principal: request.principal,
-            channel: request.channel,
-            params: paramsWithOrigins(request),
-            reason: rejected.rejection.reason,
-            // 与单步 exec 的 persistRejection 同源形状,另带计划步号(审计链)。
-            detail: {
-              layer: rejected.rejection.layer,
-              judge: rejected.rejection.detail,
-              plan: { step: rejected.step },
-            },
-          });
+          await appendWithSeq(
+            toAppend({
+              ...actionRejectedEvent(request, rejected.rejection, {
+                plan: { step: rejected.step },
+              }),
+              params: paramsWithOrigins(request),
+            }),
+          );
         }
         await appendWithSeq(toAppend(outcome.record));
         snapshot = outcome.snapshot;

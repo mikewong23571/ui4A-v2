@@ -9,6 +9,8 @@ import {
 } from './fixtures';
 import { applyEffects } from './effects';
 import type { EngineEvent } from './effects';
+import { actionRejectedEvent } from './execute';
+import { fold, type LogEvent } from './fold';
 import type { ExecRequest } from './judge';
 
 const deps = {
@@ -18,6 +20,17 @@ const deps = {
 function exec(action: string, rel: string, params?: Record<string, unknown>): ExecRequest {
   return { rel, action, params, actor: 'agent', principal: 'user-mike', channel: 'chat' };
 }
+
+const credentialIdentity = {
+  authorizationMode: 'credential' as const,
+  scopes: ['ui4a:write', 'development'],
+  humanApprovalEligible: false,
+  delegation: {
+    subject: 'human-alice',
+    actorClientId: 'ui4a-agent',
+    source: 'token-exchange-sub-azp' as const,
+  },
+};
 
 describe('效果词汇表 — transition', () => {
   it('实例节点迁移,产出 action-executed 事件(带 to 与参数出处)', () => {
@@ -481,5 +494,48 @@ describe('效果应用 — 纯函数性', () => {
     );
     const roundTrip = JSON.parse(JSON.stringify(outcome.events)) as EngineEvent[];
     expect(roundTrip).toEqual(outcome.events);
+  });
+
+  it('可信身份仅进入事件审计，在线状态与 replay 状态均不受影响', () => {
+    const plain = applyEffects(
+      exec('approve', 'comment:c1'),
+      [{ type: 'transition', to: 'approved' }],
+      seedSnapshot,
+      deps,
+    );
+    const audited = applyEffects(
+      { ...exec('approve', 'comment:c1'), identity: credentialIdentity },
+      [{ type: 'transition', to: 'approved' }],
+      seedSnapshot,
+      deps,
+    );
+    expect(audited.events[0]).toMatchObject({ identity: credentialIdentity });
+    expect(audited.snapshot).toEqual(plain.snapshot);
+
+    const sequence = (events: readonly EngineEvent[]): LogEvent[] =>
+      events.map((event, index) => ({ ...event, seq: index + 1 }));
+    const plainReplay = fold(sequence(plain.events), { flows: deps.flows }, seedSnapshot);
+    const auditedReplay = fold(sequence(audited.events), { flows: deps.flows }, seedSnapshot);
+    expect(auditedReplay).toEqual(plainReplay);
+  });
+
+  it('拒绝审计事件保留可信身份且不包含任何状态变更', () => {
+    const event = actionRejectedEvent(
+      { ...exec('explode', 'comment:c1'), identity: credentialIdentity },
+      { layer: 'undeclared', reason: 'not declared' },
+    );
+    expect(event).toMatchObject({
+      kind: 'action-rejected',
+      reason: 'not declared',
+      identity: credentialIdentity,
+      detail: { layer: 'undeclared' },
+    });
+    const withoutIdentity = actionRejectedEvent(exec('explode', 'comment:c1'), {
+      layer: 'undeclared',
+      reason: 'not declared',
+    });
+    expect(fold([{ ...event, seq: 1 }], { flows: deps.flows }, seedSnapshot)).toEqual(
+      fold([{ ...withoutIdentity, seq: 1 }], { flows: deps.flows }, seedSnapshot),
+    );
   });
 });

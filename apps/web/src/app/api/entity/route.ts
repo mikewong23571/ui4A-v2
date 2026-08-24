@@ -9,7 +9,10 @@ import {
   getAgentRunEntity,
   isAgentRunRel,
 } from '../../../engine/agent-runs';
-import { metaContextFromRequest } from '../../../engine/meta-authorization';
+import {
+  authenticationErrorResponse,
+  resolveTrustedRequestIdentity,
+} from '../../../auth/request-identity';
 
 // GET /api/entity?rel=… — Siren 实体端点(spec FR3):
 // - 已知 rel(实例或集合)→ 200 四件组装 properties/actions/links/guard-results;
@@ -35,13 +38,14 @@ export async function GET(request: Request) {
   try {
     const db = getDb();
     const engine = await getEngine(db);
-    const context = metaContextFromRequest(
-      request,
-      Object.keys(engine.getSnapshot().applications ?? {}),
-      'development',
-    );
-    const principal = context.principal;
-    const policyScope = context.effectiveScope;
+    const identity = await resolveTrustedRequestIdentity(request, {
+      plane: 'business',
+      requiredScopes: ['ui4a:read'],
+      authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
+      defaultPolicyScope: 'development',
+    });
+    const principal = identity.principal;
+    const policyScope = identity.policyScope;
     const projected = isCapabilityRunRel(rel)
       ? await getCapabilityRunEntity(db, rel, principal, policyScope)
       : isAgentRunRel(rel)
@@ -60,6 +64,8 @@ export async function GET(request: Request) {
     }
     return Response.json(entity);
   } catch (error) {
+    const authentication = authenticationErrorResponse(error);
+    if (authentication !== undefined) return authentication;
     // db 层故障(pg 连接类错误 code ECONNREFUSED/ETIMEDOUT 等)→ 503;
     // 增量 fold 的日志完整性错误如实 500 带原始信息,不伪装成基础设施故障
     //(与 /api/exec 同口径;产品指南:如实,不粉饰)。

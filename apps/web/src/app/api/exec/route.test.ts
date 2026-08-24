@@ -5,7 +5,7 @@ import { getPool } from '../../../db/pool';
 import { resetEngineForTests } from '../../../engine/service';
 import { GET as getEntity } from '../entity/route';
 
-import { POST } from './route';
+import { POST, requiredBusinessExecScopes } from './route';
 
 // /api/exec 契约测试(spec FR4 / DoD):
 // - POST {rel,action,params,actor,principal,channel} → 200 {entity:受影响实体};
@@ -52,6 +52,18 @@ beforeEach(async () => {
 });
 
 describe('POST /api/exec', () => {
+  it('requires approval scope only for confirmation decisions, not ordinary approve actions', () => {
+    expect(requiredBusinessExecScopes({ rel: 'comment:c1', action: 'approve' })).toEqual([
+      'ui4a:write',
+    ]);
+    expect(requiredBusinessExecScopes({ rel: 'confirmation:c1', action: 'approve' })).toEqual([
+      'ui4a:approve',
+    ]);
+    expect(requiredBusinessExecScopes({ rel: 'confirmation:c1', action: 'reject' })).toEqual([
+      'ui4a:approve',
+    ]);
+  });
+
   it('通过:approve → 200 {entity},新节点 approved', async () => {
     const res = await POST(
       post({
@@ -127,6 +139,17 @@ describe('POST /api/exec', () => {
     expect(body.detail).toEqual([
       expect.objectContaining({ name: 'title-not-taken', pass: false }),
     ]);
+    const rejected = (
+      await pool.query(
+        "SELECT detail FROM events WHERE kind = 'action-rejected' ORDER BY seq DESC LIMIT 1",
+      )
+    ).rows[0] as { detail: Record<string, unknown> };
+    expect(rejected.detail).toMatchObject({
+      identity: {
+        authorizationMode: 'self-reported-local-demo',
+        humanApprovalEligible: false,
+      },
+    });
   });
 
   it('schema 层拒绝:缺必填 → 422 {layer,reason,detail 为 ajv 错误}', async () => {
@@ -161,13 +184,19 @@ describe('POST /api/exec', () => {
     expect(res.status).toBe(200);
 
     const rows = await pool.query(
-      'SELECT actor, principal, channel FROM events WHERE kind = $1 ORDER BY seq DESC LIMIT 1',
+      'SELECT actor, principal, channel, detail FROM events WHERE kind = $1 ORDER BY seq DESC LIMIT 1',
       ['action-executed'],
     );
     expect(rows.rows[0]).toMatchObject({
       actor: 'human',
       principal: 'local-user',
       channel: 'http',
+      detail: {
+        identity: {
+          authorizationMode: 'self-reported-local-demo',
+          humanApprovalEligible: true,
+        },
+      },
     });
   });
 

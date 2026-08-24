@@ -41,6 +41,25 @@ export type ExecWithGatesOutcome =
     }
   | { kind: 'rejected'; layer: JudgeLayer; reason: string; detail?: unknown };
 
+/** Pure audit event factory for a rejected request; rejection still has no state effect. */
+export function actionRejectedEvent(
+  request: ExecRequest,
+  verdict: { layer: JudgeLayer; reason: string; detail?: unknown },
+  additionalDetail: Record<string, unknown> = {},
+): EngineEvent {
+  return {
+    kind: 'action-rejected',
+    rel: request.rel,
+    action: request.action,
+    actor: request.actor ?? 'human',
+    principal: request.principal,
+    channel: request.channel,
+    ...(request.identity !== undefined ? { identity: request.identity } : {}),
+    reason: verdict.reason,
+    detail: { layer: verdict.layer, judge: verdict.detail, ...additionalDetail },
+  };
+}
+
 /**
  * 编排主入口:judge(三层)→ confirmGate(策略)→ applyEffects(效果)。
  * 拒绝结果原样透传 judge(拒绝即数据 I6,由调用方入日志);

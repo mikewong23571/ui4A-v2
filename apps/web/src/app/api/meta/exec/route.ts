@@ -1,7 +1,11 @@
 import { getDb, getEngine, isMetaRel } from '../../../../engine/service';
 import { executeDraftMeta, isDraftMetaRel } from '../../../../engine/drafts';
 import { agentDefinitionDraftRegistryPort } from '../../../../engine/agent-definitions';
-import { metaContextFromRequest } from '../../../../engine/meta-authorization';
+import {
+  applyTrustedIdentity,
+  authenticationErrorResponse,
+  resolveTrustedRequestIdentity,
+} from '../../../../auth/request-identity';
 
 import { parseExecBody, rejectionStatus } from '../../exec-request';
 
@@ -38,22 +42,19 @@ export async function POST(request: Request) {
   try {
     const db = getDb();
     const engine = await getEngine(db);
-    const context = metaContextFromRequest(
-      request,
-      Object.keys(engine.getSnapshot().applications ?? {}),
-    );
-    const metaRequest =
-      parsed.request.actor === undefined
-        ? {
-            ...parsed.request,
-            actor: 'human' as const,
-            principal: context.principal,
-            channel: 'bios',
-          }
-        : parsed.request;
+    const identity = await resolveTrustedRequestIdentity(request, {
+      plane: 'meta',
+      requiredScopes: ['approve', 'reject'].includes(parsed.request.action)
+        ? ['ui4a:approve']
+        : ['ui4a:write'],
+      untrusted: parsed.request,
+      authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
+      defaultPolicyScope: 'publishing',
+    });
+    const metaRequest = applyTrustedIdentity(parsed.request, identity);
     const outcome = isDraftMetaRel(parsed.request.rel)
       ? await executeDraftMeta(db, engine, metaRequest, {
-          policyScope: context.effectiveScope,
+          policyScope: identity.policyScope,
           agentDefinitions: agentDefinitionDraftRegistryPort,
         })
       : await engine.exec(metaRequest);
@@ -80,6 +81,8 @@ export async function POST(request: Request) {
     }
     return Response.json(response, { status: rejectionStatus(outcome.layer) });
   } catch (error) {
+    const authentication = authenticationErrorResponse(error);
+    if (authentication !== undefined) return authentication;
     const err = error as { code?: string; message?: string };
     const dbFailure =
       typeof err.code === 'string' &&

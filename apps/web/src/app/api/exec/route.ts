@@ -7,7 +7,11 @@ import {
 import { executeCapabilityRunAction, isCapabilityRunRel } from '../../../engine/capability-runs';
 import { finalizeCapabilitySource } from '../../../engine/capability-source-callback';
 import { executeAgentRunAction, isAgentRunRel } from '../../../engine/agent-runs';
-import { metaContextFromRequest } from '../../../engine/meta-authorization';
+import {
+  applyTrustedIdentity,
+  authenticationErrorResponse,
+  resolveTrustedRequestIdentity,
+} from '../../../auth/request-identity';
 
 import { parseExecBody, rejectionStatus } from '../exec-request';
 
@@ -25,6 +29,12 @@ import { parseExecBody, rejectionStatus } from '../exec-request';
 // exec 经服务层串行队列(单 atom);params 出处 HTTP 层不区分,一律记 intent。
 
 export const dynamic = 'force-dynamic';
+
+export function requiredBusinessExecScopes(request: { rel: string; action: string }): string[] {
+  return request.rel.startsWith('confirmation:') && ['approve', 'reject'].includes(request.action)
+    ? ['ui4a:approve']
+    : ['ui4a:write'];
+}
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -48,17 +58,16 @@ export async function POST(request: Request) {
   try {
     const db = getDb();
     const engine = await getEngine(db);
-    const context = metaContextFromRequest(
-      request,
-      Object.keys(engine.getSnapshot().applications ?? {}),
-      'development',
-    );
-    const resolvedRequest = {
-      ...parsed.request,
-      principal: parsed.request.principal ?? context.principal,
-    };
+    const identity = await resolveTrustedRequestIdentity(request, {
+      plane: 'business',
+      requiredScopes: requiredBusinessExecScopes(parsed.request),
+      untrusted: parsed.request,
+      authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
+      defaultPolicyScope: 'development',
+    });
+    const resolvedRequest = applyTrustedIdentity(parsed.request, identity);
     if (isCapabilityRunRel(resolvedRequest.rel)) {
-      const outcome = await executeCapabilityRunAction(db, resolvedRequest, context.effectiveScope);
+      const outcome = await executeCapabilityRunAction(db, resolvedRequest, identity.policyScope);
       if (outcome.kind !== 'accepted') {
         return Response.json({ layer: 'guard-failed', reason: outcome.reason }, { status: 422 });
       }
@@ -73,7 +82,7 @@ export async function POST(request: Request) {
       return Response.json({ entity: outcome.entity, source: finalized.entity });
     }
     if (isAgentRunRel(resolvedRequest.rel)) {
-      const outcome = await executeAgentRunAction(db, resolvedRequest, context.effectiveScope);
+      const outcome = await executeAgentRunAction(db, resolvedRequest, identity.policyScope);
       if (outcome.kind !== 'accepted') {
         return Response.json({ layer: 'guard-failed', reason: outcome.reason }, { status: 422 });
       }
@@ -102,6 +111,8 @@ export async function POST(request: Request) {
     }
     return Response.json(response, { status: rejectionStatus(outcome.layer) });
   } catch (error) {
+    const authentication = authenticationErrorResponse(error);
+    if (authentication !== undefined) return authentication;
     if (error instanceof LlmArtifactConfigurationError) {
       return Response.json({ error: error.message }, { status: 503 });
     }
