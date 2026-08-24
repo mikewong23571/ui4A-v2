@@ -1,0 +1,7 @@
+Task: Phase E PostgreSQL 17 deployment contract
+
+Summary: Added fixed single-PG/four-DB topology, seven least-privilege roles and executable bootstrap SQL, TLS/storage/Compose-K8s bindings, quiesced logical backup contract, canonical backup/Keycloak DB identities, and production Web/Worker Pool adapters with verify-full and no DATABASE_URL fallback.
+
+Verification: Phase E combined 16 files/142 tests; Shared/Web/Worker typechecks; root lint 0 errors; format/diff and secret scan green.
+
+Boundary: generic artifacts contain no mothership node/path; live role execution and Compose/K8s manifests remain later Phase E integration/G/H.
