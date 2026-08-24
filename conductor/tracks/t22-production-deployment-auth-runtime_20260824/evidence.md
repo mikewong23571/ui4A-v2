@@ -25,6 +25,9 @@
 
 ### E3 Identity
 
+Route coverage、Golden allowlist、internal callback 和 deferred 清单以
+[实验版认证暴露边界](./auth-surface.md)为准。
+
 - Browser OIDC login/logout/expiry。
 - CLI Bearer Token discovery/read/exec。
 - Agent Client Credentials、RFC 8693 Token Exchange 与 canonical `sub + azp` delegation；`act`
