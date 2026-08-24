@@ -101,7 +101,9 @@ function delivery(specialization: Specialization = 'coding'): RunnerDelivery {
   };
 }
 
-function dependencies(overrides: Partial<Parameters<ProcessModule['createRunnerDeliveryProcessor']>[0]> = {}) {
+function dependencies(
+  overrides: Partial<Parameters<ProcessModule['createRunnerDeliveryProcessor']>[0]> = {},
+) {
   return {
     resolveSecrets: vi.fn(async () => ({ 'provider-token': '__runner_secret__' })),
     executor: vi.fn(async () => ({
@@ -156,19 +158,22 @@ describe('Agent Runner common delivery process', () => {
     'workspace',
     'resources',
     'networkPolicy',
-  ])('rejects request-controlled %s before Secret resolution or executor mutation', async (field) => {
-    const { createRunnerDeliveryProcessor } = await processApi();
-    const deps = dependencies();
-    const input = delivery() as RunnerDelivery & { request: Record<string, unknown> };
-    input.request[field] = 'request-controlled';
+  ])(
+    'rejects request-controlled %s before Secret resolution or executor mutation',
+    async (field) => {
+      const { createRunnerDeliveryProcessor } = await processApi();
+      const deps = dependencies();
+      const input = delivery() as RunnerDelivery & { request: Record<string, unknown> };
+      input.request[field] = 'request-controlled';
 
-    await expect(createRunnerDeliveryProcessor(deps).execute(input)).rejects.toThrow(
-      `runner_request_forbidden_field:${field}`,
-    );
-    expect(deps.resolveSecrets).not.toHaveBeenCalled();
-    expect(deps.executor).not.toHaveBeenCalled();
-    expect(deps.scheduleTimeout).not.toHaveBeenCalled();
-  });
+      await expect(createRunnerDeliveryProcessor(deps).execute(input)).rejects.toThrow(
+        `runner_request_forbidden_field:${field}`,
+      );
+      expect(deps.resolveSecrets).not.toHaveBeenCalled();
+      expect(deps.executor).not.toHaveBeenCalled();
+      expect(deps.scheduleTimeout).not.toHaveBeenCalled();
+    },
+  );
 
   it('deduplicates identical concurrent and completed delivery while rejecting id conflict', async () => {
     const { createRunnerDeliveryProcessor } = await processApi();
