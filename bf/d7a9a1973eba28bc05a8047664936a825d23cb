@@ -1,0 +1,1 @@
+T22 Phase H live corrections: six finite Helm Jobs opt out of namespace Istio sidecars; duplicate Postgres securityContext removed so uid0 minimal capabilities survive template rendering. 53/53 contracts, strict TS, real Helm lint/template/kubectl dry-run.
