@@ -22,6 +22,8 @@ export const RUNNER_PKI_FILES = {
   ui4aPrivateKey: 'ui4a/tls.key',
   keycloakCertificate: 'keycloak/tls.crt',
   keycloakPrivateKey: 'keycloak/tls.key',
+  postgresCertificate: 'postgres/server.crt',
+  postgresPrivateKey: 'postgres/server.key',
 } as const;
 
 export type RunnerPkiFileId = keyof typeof RUNNER_PKI_FILES;
@@ -44,12 +46,20 @@ export interface RunnerPkiResult {
     sha256: string;
     mode: 0o600 | 0o644;
   }>;
+  postgresHandoff: {
+    certificatePath: string;
+    privateKeyPath: string;
+    certificateMode: 0o644;
+    privateKeyMode: 0o600;
+    ownership: 'deployment-adapter-copy-init';
+  };
 }
 
 export interface RunnerPkiInput {
   rootDirectory: string;
   ui4aHost: string;
   keycloakHost: string;
+  postgresHost: string;
   processRunner?: PkiProcessRunner;
   edgeUid?: number;
   edgeGid?: number;
@@ -174,6 +184,8 @@ async function validateInventory(input: {
   rootDirectory: string;
   ui4aHost: string;
   keycloakHost: string;
+  postgresHost: string;
+  postgresDnsNames: string[];
   edgeUid: number;
   edgeGid: number;
 }): Promise<void> {
@@ -182,9 +194,11 @@ async function validateInventory(input: {
       await readFile(join(input.rootDirectory, COMPLETE_MARKER), 'utf8'),
     ) as Record<string, unknown>;
     if (
-      marker.schemaVersion !== 1 ||
+      marker.schemaVersion !== 2 ||
       marker.ui4aHost !== input.ui4aHost ||
-      marker.keycloakHost !== input.keycloakHost
+      marker.keycloakHost !== input.keycloakHost ||
+      marker.postgresHost !== input.postgresHost ||
+      JSON.stringify(marker.postgresDnsNames) !== JSON.stringify(input.postgresDnsNames)
     ) {
       fail('PKI_INVALID');
     }
@@ -216,19 +230,20 @@ async function validateInventory(input: {
       await readFile(join(input.rootDirectory, RUNNER_PKI_FILES.rootPrivateKey)),
     );
 
-    for (const [certificateId, privateKeyId, host] of [
-      ['ui4aCertificate', 'ui4aPrivateKey', input.ui4aHost],
-      ['keycloakCertificate', 'keycloakPrivateKey', input.keycloakHost],
+    for (const [certificateId, privateKeyId, commonName, dnsNames] of [
+      ['ui4aCertificate', 'ui4aPrivateKey', input.ui4aHost, [input.ui4aHost]],
+      ['keycloakCertificate', 'keycloakPrivateKey', input.keycloakHost, [input.keycloakHost]],
+      ['postgresCertificate', 'postgresPrivateKey', input.postgresHost, input.postgresDnsNames],
     ] as const) {
       const certificate = new X509Certificate(
         await readFile(join(input.rootDirectory, RUNNER_PKI_FILES[certificateId])),
       );
       if (
         certificate.ca ||
-        certificate.subject !== `CN=${host}` ||
+        certificate.subject !== `CN=${commonName}` ||
         certificate.issuer !== root.subject ||
-        certificate.subjectAltName !== `DNS:${host}` ||
-        certificate.checkHost(host) !== host ||
+        certificate.subjectAltName !== dnsNames.map((host) => `DNS:${host}`).join(', ') ||
+        dnsNames.some((host) => certificate.checkHost(host) !== host) ||
         !certificate.verify(root.publicKey)
       ) {
         fail('PKI_INVALID');
@@ -248,14 +263,17 @@ async function validateInventory(input: {
 async function generateLeaf(input: {
   runner: PkiProcessRunner;
   stageDirectory: string;
-  directory: 'ui4a' | 'keycloak';
-  host: string;
+  directory: 'ui4a' | 'keycloak' | 'postgres';
+  commonName: string;
+  dnsNames: string[];
+  certificateName?: string;
+  privateKeyName?: string;
 }): Promise<void> {
   const directory = join(input.stageDirectory, input.directory);
   await mkdir(directory, { recursive: true, mode: 0o700 });
-  const privateKey = join(directory, 'tls.key');
+  const privateKey = join(directory, input.privateKeyName ?? 'tls.key');
   const request = join(directory, 'tls.csr');
-  const certificate = join(directory, 'tls.crt');
+  const certificate = join(directory, input.certificateName ?? 'tls.crt');
   await runCommand(input.runner, [
     'genpkey',
     '-algorithm',
@@ -274,9 +292,15 @@ async function generateLeaf(input: {
     '-out',
     request,
     '-subj',
-    `/CN=${input.host}`,
+    `/CN=${input.commonName}`,
     '-addext',
-    `subjectAltName=DNS:${input.host}`,
+    `subjectAltName=${input.dnsNames.map((host) => `DNS:${host}`).join(',')}`,
+    '-addext',
+    'basicConstraints=critical,CA:FALSE',
+    '-addext',
+    'keyUsage=critical,digitalSignature,keyEncipherment',
+    '-addext',
+    'extendedKeyUsage=serverAuth',
   ]);
   await runCommand(input.runner, [
     'x509',
@@ -305,6 +329,8 @@ async function generateStagedInventory(input: {
   stageDirectory: string;
   ui4aHost: string;
   keycloakHost: string;
+  postgresHost: string;
+  postgresDnsNames: string[];
 }): Promise<void> {
   const rootPrivateKey = join(input.stageDirectory, 'root-ca.key');
   const rootCertificate = join(input.stageDirectory, 'root-ca.crt');
@@ -341,13 +367,24 @@ async function generateStagedInventory(input: {
     runner: input.runner,
     stageDirectory: input.stageDirectory,
     directory: 'ui4a',
-    host: input.ui4aHost,
+    commonName: input.ui4aHost,
+    dnsNames: [input.ui4aHost],
   });
   await generateLeaf({
     runner: input.runner,
     stageDirectory: input.stageDirectory,
     directory: 'keycloak',
-    host: input.keycloakHost,
+    commonName: input.keycloakHost,
+    dnsNames: [input.keycloakHost],
+  });
+  await generateLeaf({
+    runner: input.runner,
+    stageDirectory: input.stageDirectory,
+    directory: 'postgres',
+    commonName: input.postgresHost,
+    dnsNames: input.postgresDnsNames,
+    certificateName: 'server.crt',
+    privateKeyName: 'server.key',
   });
 }
 
@@ -356,11 +393,14 @@ async function publishStagedInventory(input: {
   stageDirectory: string;
   ui4aHost: string;
   keycloakHost: string;
+  postgresHost: string;
+  postgresDnsNames: string[];
   edgeUid: number;
   edgeGid: number;
 }): Promise<void> {
   await mkdir(join(input.rootDirectory, 'ui4a'), { recursive: true, mode: 0o700 });
   await mkdir(join(input.rootDirectory, 'keycloak'), { recursive: true, mode: 0o700 });
+  await mkdir(join(input.rootDirectory, 'postgres'), { recursive: true, mode: 0o700 });
   for (const id of MATERIAL_IDS) {
     await rename(
       join(input.stageDirectory, RUNNER_PKI_FILES[id]),
@@ -383,9 +423,11 @@ async function publishStagedInventory(input: {
   await writeFile(
     markerTemp,
     `${JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: 2,
       ui4aHost: input.ui4aHost,
       keycloakHost: input.keycloakHost,
+      postgresHost: input.postgresHost,
+      postgresDnsNames: input.postgresDnsNames,
     })}\n`,
     { encoding: 'utf8', flag: 'wx', mode: 0o644 },
   );
@@ -412,7 +454,21 @@ async function result(
         };
       }),
     ),
+    postgresHandoff: {
+      certificatePath: join(rootDirectory, RUNNER_PKI_FILES.postgresCertificate),
+      privateKeyPath: join(rootDirectory, RUNNER_PKI_FILES.postgresPrivateKey),
+      certificateMode: 0o644,
+      privateKeyMode: 0o600,
+      ownership: 'deployment-adapter-copy-init',
+    },
   };
+}
+
+function postgresDnsNames(postgresHost: string): string[] {
+  const host = requireHost(postgresHost);
+  const match = /^([a-z0-9-]+)\.([a-z0-9-]+)\.svc\.cluster\.local$/.exec(host);
+  if (match === null) return [host];
+  return [match[1]!, `${match[1]}.${match[2]}.svc`, host];
 }
 
 /** Generate or validate the fixed experimental CA inventory without ever rotating existing files. */
@@ -420,6 +476,8 @@ export async function initializeRunnerPki(input: RunnerPkiInput): Promise<Runner
   const rootDirectory = safeRootDirectory(input.rootDirectory);
   const ui4aHost = requireHost(input.ui4aHost);
   const keycloakHost = requireHost(input.keycloakHost);
+  const postgresHost = requireHost(input.postgresHost);
+  const postgresNames = postgresDnsNames(postgresHost);
   const edgeUid = input.edgeUid ?? 1000;
   const edgeGid = input.edgeGid ?? 1000;
   if (
@@ -430,13 +488,23 @@ export async function initializeRunnerPki(input: RunnerPkiInput): Promise<Runner
   ) {
     fail('PKI_CONFIGURATION_INVALID');
   }
-  if (ui4aHost === keycloakHost) fail('PKI_CONFIGURATION_INVALID');
+  if (ui4aHost === keycloakHost || ui4aHost === postgresHost || keycloakHost === postgresHost) {
+    fail('PKI_CONFIGURATION_INVALID');
+  }
   await ensureWritableRoot(rootDirectory);
 
   const initialState = await inventoryState(rootDirectory);
   if (initialState === 'partial') fail('PKI_PARTIAL_STATE');
   if (initialState === 'complete') {
-    await validateInventory({ rootDirectory, ui4aHost, keycloakHost, edgeUid, edgeGid });
+    await validateInventory({
+      rootDirectory,
+      ui4aHost,
+      keycloakHost,
+      postgresHost,
+      postgresDnsNames: postgresNames,
+      edgeUid,
+      edgeGid,
+    });
     return result('reused', rootDirectory);
   }
 
@@ -452,7 +520,15 @@ export async function initializeRunnerPki(input: RunnerPkiInput): Promise<Runner
     const lockedState = await inventoryState(rootDirectory);
     if (lockedState === 'partial') fail('PKI_PARTIAL_STATE');
     if (lockedState === 'complete') {
-      await validateInventory({ rootDirectory, ui4aHost, keycloakHost, edgeUid, edgeGid });
+      await validateInventory({
+        rootDirectory,
+        ui4aHost,
+        keycloakHost,
+        postgresHost,
+        postgresDnsNames: postgresNames,
+        edgeUid,
+        edgeGid,
+      });
       return result('reused', rootDirectory);
     }
     stageDirectory = await mkdtemp(join(rootDirectory, '.pki-stage-'));
@@ -461,16 +537,28 @@ export async function initializeRunnerPki(input: RunnerPkiInput): Promise<Runner
       stageDirectory,
       ui4aHost,
       keycloakHost,
+      postgresHost,
+      postgresDnsNames: postgresNames,
     });
     await publishStagedInventory({
       rootDirectory,
       stageDirectory,
       ui4aHost,
       keycloakHost,
+      postgresHost,
+      postgresDnsNames: postgresNames,
       edgeUid,
       edgeGid,
     });
-    await validateInventory({ rootDirectory, ui4aHost, keycloakHost, edgeUid, edgeGid });
+    await validateInventory({
+      rootDirectory,
+      ui4aHost,
+      keycloakHost,
+      postgresHost,
+      postgresDnsNames: postgresNames,
+      edgeUid,
+      edgeGid,
+    });
     return result('created', rootDirectory);
   } finally {
     if (stageDirectory !== undefined) await rm(stageDirectory, { force: true, recursive: true });

@@ -8,7 +8,7 @@ import {
   type RunnerDeliveryProcessor,
   type RunnerDeliveryResult,
 } from './process.js';
-import { initializeRunnerPki, type RunnerPkiResult } from './pki.js';
+import { initializeRunnerPki, type RunnerPkiInput, type RunnerPkiResult } from './pki.js';
 
 export interface RunnerOneshotAdapter {
   processor: RunnerDeliveryProcessor;
@@ -23,11 +23,7 @@ export interface RunnerCommandOptions {
   daemon?: (environment: NodeJS.ProcessEnv) => Promise<void>;
   oneshot?: RunnerOneshotAdapter;
   productionOneshot?: (environment: NodeJS.ProcessEnv) => RunnerOneshotAdapter | undefined;
-  pkiInit?: (input: {
-    rootDirectory: string;
-    ui4aHost: string;
-    keycloakHost: string;
-  }) => Promise<RunnerPkiResult>;
+  pkiInit?: (input: RunnerPkiInput) => Promise<RunnerPkiResult>;
 }
 
 export async function runRunnerCommand(
@@ -51,10 +47,18 @@ export async function runRunnerCommand(
     if (command === 'pki-init') {
       const pkiInit = options.pkiInit ?? initializeRunnerPki;
       try {
+        const postgresHost = environment.UI4A_POSTGRES_HOST;
+        if (
+          environment.UI4A_DEPLOYMENT_PROFILE === 'production' &&
+          (postgresHost === undefined || postgresHost === '')
+        ) {
+          throw new Error('PKI_CONFIGURATION_INVALID');
+        }
         const result = await pkiInit({
           rootDirectory: environment.UI4A_PKI_ROOT ?? '/var/lib/ui4a/ca',
           ui4aHost: environment.UI4A_HOST ?? 'ui4a.mothership.internal',
           keycloakHost: environment.KEYCLOAK_HOST ?? 'auth.ui4a.mothership.internal',
+          postgresHost: postgresHost ?? 'postgres',
         });
         stdout(JSON.stringify(result));
         return 0;

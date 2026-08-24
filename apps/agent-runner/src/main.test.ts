@@ -31,11 +31,19 @@ describe('Agent Runner command entrypoint', () => {
           mode: 0o644 as const,
         },
       ],
+      postgresHandoff: {
+        certificatePath: '/var/lib/ui4a/ca/postgres/server.crt',
+        privateKeyPath: '/var/lib/ui4a/ca/postgres/server.key',
+        certificateMode: 0o644 as const,
+        privateKeyMode: 0o600 as const,
+        ownership: 'deployment-adapter-copy-init' as const,
+      },
     }));
     const environment = {
       UI4A_PKI_ROOT: '/var/lib/ui4a/ca',
       UI4A_HOST: 'ui4a.mothership.internal',
       KEYCLOAK_HOST: 'auth.ui4a.mothership.internal',
+      UI4A_POSTGRES_HOST: 'postgres.ui4a-system.svc.cluster.local',
     };
     const harness = commandHarness({ environment, pkiInit });
 
@@ -44,6 +52,7 @@ describe('Agent Runner command entrypoint', () => {
       rootDirectory: '/var/lib/ui4a/ca',
       ui4aHost: 'ui4a.mothership.internal',
       keycloakHost: 'auth.ui4a.mothership.internal',
+      postgresHost: 'postgres.ui4a-system.svc.cluster.local',
     });
     expect(harness.stderr).toEqual([]);
     expect(JSON.parse(harness.stdout[0]!)).toMatchObject({ status: 'created' });
@@ -61,6 +70,21 @@ describe('Agent Runner command entrypoint', () => {
     expect(JSON.parse(harness.stderr[0]!)).toEqual({
       status: 'failed',
       reasonCode: 'PKI_ROOT_NOT_WRITABLE',
+    });
+  });
+
+  it('requires a server-owned PostgreSQL host for production PKI initialization', async () => {
+    const pkiInit = vi.fn();
+    const harness = commandHarness({
+      environment: { UI4A_DEPLOYMENT_PROFILE: 'production' },
+      pkiInit,
+    });
+
+    await expect(runRunnerMain(['pki-init'], harness.options)).resolves.toBe(73);
+    expect(pkiInit).not.toHaveBeenCalled();
+    expect(JSON.parse(harness.stderr[0]!)).toEqual({
+      status: 'failed',
+      reasonCode: 'PKI_CONFIGURATION_INVALID',
     });
   });
 
