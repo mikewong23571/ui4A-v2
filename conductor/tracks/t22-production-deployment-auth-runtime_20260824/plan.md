@@ -155,14 +155,14 @@
 - [ ] one-shot container mode 与 trusted host daemon mode
 - [ ] 与 generic Host lifecycle 和 specialization verifier 分离
 - [ ] Secret 仅在 authorized Run 生命周期可见
-- [~] Task: Red→Green——K8s Job Backend
-- [ ] per-Run Job/Pod、fixed image/ServiceAccount/resources/network/workspace
-- [ ] watch、heartbeat、cancel、TTL、eviction 和 duplicate callback
-- [ ] human decision 前保留 Coding workspace
-- [~] Task: Red→Green——Host Runner Backend
-- [ ] server-owned registry、identity、heartbeat、lease 和 fixed roots
-- [ ] disconnect、cancel、duplicate delivery 与 invalid path
-- [ ] 禁止向更宽权限 backend fallback
+- [x] Task: Red→Green——K8s Job Backend 9f0ee11
+- [x] per-Run Job/Pod、fixed image/ServiceAccount/resources/network/workspace
+- [x] watch、heartbeat、cancel、TTL、eviction 和 duplicate callback
+- [x] human decision 前保留 Coding workspace
+- [x] Task: Red→Green——Host Runner Backend 869b5a2
+- [x] server-owned registry、identity、heartbeat、lease 和 fixed roots
+- [x] disconnect、cancel、duplicate delivery 与 invalid path
+- [x] 禁止向更宽权限 backend fallback
 - [ ] Task: 运行双后端等价 corpus
 - [ ] Coding、Writing 和 Agent Definition Authoring canonical tasks
 - [ ] 对齐 Agent Run、artifact、verification 和 human decision
