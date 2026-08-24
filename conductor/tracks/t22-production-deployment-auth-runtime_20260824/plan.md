@@ -124,7 +124,7 @@
 
 ## Phase E: PostgreSQL、Temporal、持久化与灾备合同
 
-- [ ] Task: Red TDD——定义 stateful deployment 与 restore fixtures
+- [~] Task: Red TDD——定义 stateful deployment 与 restore fixtures
 - [ ] 覆盖 PostgreSQL、Temporal、Keycloak、events、payloads 和 workflow history
 - [ ] 覆盖 Coding/Writing/Authoring artifacts 与实验 CA
 - [ ] Task: 实现 PostgreSQL 17 deployment contract
