@@ -6,7 +6,6 @@ import type {
 import type { AgentDefinitionRef, JsonValue } from '@ui4a/shared';
 
 import {
-  ensureAgentDefinitionTables,
   getActiveAgentDefinition,
   getAgentDefinitionVersion,
   prepareAgentDefinitionActivation,
@@ -113,7 +112,6 @@ async function draftSnapshot(
   owner: string,
   policyScope: string,
 ): Promise<AgentDefinitionDraftRegistrySnapshot> {
-  await ensureAgentDefinitionTables(db);
   const registry = await readAgentDefinitionRegistry(db, owner, policyScope);
   const configuration = agentRegistryConfigurationFromEnvironment();
   return { ...registry, ...configuration };
@@ -168,7 +166,6 @@ export async function getAgentDefinitionCatalog(
   principal: string,
   policyScope: string,
 ): Promise<AgentDefinitionCatalogEntry[]> {
-  await ensureAgentDefinitionTables(db);
   const registry = await readAgentDefinitionRegistry(db, principal, policyScope);
   const entries: AgentDefinitionCatalogEntry[] = [];
   for (const [name, ref] of registry.activeByName) {

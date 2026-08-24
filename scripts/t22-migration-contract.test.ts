@@ -41,6 +41,7 @@ describe('T22 explicit migration artifact boundary', () => {
     expect(source).toContain('settings.postgres.migrationUser');
     expect(source).toContain('settings.postgres.migrationPasswordRef');
     expect(source).toContain('runMigrations');
+    expect(source).toContain('bootstrapAndVerifyApplication');
     expect(source).not.toContain('settings.postgres.runtimeUser');
     expect(source).not.toContain('settings.postgres.runtimePasswordRef');
     expect(source).not.toMatch(/ensure[A-Za-z]+Tables?/);
@@ -75,5 +76,8 @@ describe('T22 explicit migration artifact boundary', () => {
     );
 
     expect(debts).toEqual([]);
+    for (const path of runtimePaths) {
+      expect(requiredSource(path), path).not.toMatch(/\.query\(['"`]TRUNCATE\b/);
+    }
   });
 });

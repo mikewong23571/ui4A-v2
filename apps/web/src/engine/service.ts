@@ -1,9 +1,8 @@
 /**
  * 引擎服务层:单例 engine runtime,把纯引擎(裁决/效果/投影)接到 PG 事件日志。
  *
- * - boot = ensureEventsTable + meta application-bundle 幂等安装（具体业务定义来自
- *   独立数据制品，kernel 只做解析/校验/事件规划）+
- *   fold(日志)→ 快照;
+ * - production boot 只读校验 versioned migration + explicit bootstrap receipt，再
+ *   fold(日志)→ 快照；local demo/test 可自动执行同一 migration/bootstrap writer;
  * - 定义解析(T4 Phase B):业务 exec/judge/project/sitemap 一律吃 fold 快照的
  *   活跃定义(activeDefinitionOf:definitions 条目只持活跃指针,内容在
  *   definitionVersions 历史);生产运行无代码业务定义 fallback;
@@ -50,7 +49,6 @@ import {
   executeWithGates,
   executePlan,
   fold,
-  planMetaBootstrap,
   project,
   readRenderSpecsOf,
   rejectConfirmation,
@@ -77,27 +75,17 @@ import type { EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
 import type { FieldValue } from '@ui4a/shared';
 import { metaCapabilityRel, metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
 
-import {
-  appendEvent,
-  ensureEventsTable,
-  readLog,
-  type DbExecutor,
-  type EventAppend,
-} from '../db/events';
+import { appendEvent, readLog, type DbExecutor, type EventAppend } from '../db/events';
+import { assertApplicationBootstrapReady, prepareDatabaseForApplication } from '../db/migrations';
 import { getPool } from '../db/pool';
-import { ensureCapabilityRunTables } from '../db/capability-runs';
-import {
-  ensureAgentDefinitionTables,
-  installSeedAgentDefinition,
-  rebuildAgentDefinitionProjection,
-} from '../db/agent-definitions';
-import { installedApplicationBundles } from '../applications/bundles';
-import { installedAgentDefinitions } from '../applications/agent-definitions';
 import {
   resetRecipeCoordinatorForTests,
   scheduleRecipesForSnapshot,
 } from './presentation/recipes-runtime';
 import { cedarPolicyFromDefaultFile } from '../domain/cedarPolicy';
+import { bootstrapAndVerifyApplication } from './bootstrap';
+
+export { bootstrapAndVerifyApplication } from './bootstrap';
 import type { RenderSpec } from '../render/spec';
 import { validateSpec } from '../render/validator';
 import { wordOf } from '../render/registry';
@@ -269,38 +257,13 @@ function enqueue<T>(state: EngineGlobalState, run: () => Promise<T>): Promise<T>
   return result;
 }
 
-/** 应用从 meta 自举：通用安装器消费版本化数据制品，service 不认识任何业务名。 */
-async function bootstrapApplicationBundles(db: DbExecutor): Promise<void> {
-  for (const bundle of installedApplicationBundles) {
-    const log = await readLog(db);
-    for (const event of planMetaBootstrap(bundle, log)) {
-      await appendEvent(db, event);
-    }
-  }
-}
-
-/** Install repository-owned Agent Definition versions without impersonating a human approver. */
-async function bootstrapAgentDefinitions(db: DbExecutor): Promise<void> {
-  for (const definition of installedAgentDefinitions) {
-    for (const policyScope of definition.policyScopes) {
-      await installSeedAgentDefinition(db, {
-        principal: 'local-user',
-        policyScope,
-        source: definition.source,
-        artifact: definition.artifact,
-        evalEvidence: definition.evaluation,
-      });
-    }
-  }
-}
-
 async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
-  await ensureEventsTable(db);
-  await ensureCapabilityRunTables(db);
-  await ensureAgentDefinitionTables(db);
-  await rebuildAgentDefinitionProjection(db);
-  await bootstrapApplicationBundles(db);
-  await bootstrapAgentDefinitions(db);
+  if (process.env.UI4A_DEPLOYMENT_PROFILE === 'production') {
+    await assertApplicationBootstrapReady(db);
+  } else {
+    await prepareDatabaseForApplication(db);
+    await bootstrapAndVerifyApplication(db);
+  }
 
   const events: LogEvent[] = await readLog(db);
   assertMetaBootstrapIntegrity(events);

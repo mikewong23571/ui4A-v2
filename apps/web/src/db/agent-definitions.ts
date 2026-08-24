@@ -349,7 +349,6 @@ export async function registerAgentDefinitionVersion(
   event?: RegistrationEventDetail;
   seq?: number;
 }> {
-  await ensureAgentDefinitionTables(db);
   const source = parseAgentDefinitionSource(input.source);
   const parsedRef = parseAgentDefinitionRef(source.ref);
   if (input.artifact.ref !== source.ref || input.artifact.definition.ref !== source.ref) {
@@ -473,7 +472,6 @@ export async function installSeedAgentDefinition(
     evalEvidence: JsonValue;
   },
 ): Promise<AgentDefinitionVersionRecord> {
-  await ensureAgentDefinitionTables(db);
   const source = parseAgentDefinitionSource(input.source);
   const parsed = parseAgentDefinitionRef(source.ref);
   if (input.artifact.ref !== source.ref || input.artifact.definition.ref !== source.ref) {
@@ -782,7 +780,6 @@ export async function activateAgentDefinitionVersion(
   },
 ): Promise<{ version: AgentDefinitionVersionRecord; event?: ActivationEventDetail; seq?: number }> {
   if (input.actor !== 'human') throw new Error('agent definition activation requires human actor');
-  await ensureAgentDefinitionTables(db);
   const parsed = parseAgentDefinitionRef(input.ref);
   return withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(740941)');
@@ -872,7 +869,6 @@ export async function deprecateAgentDefinitionVersion(
   seq?: number;
 }> {
   if (input.actor !== 'human') throw new Error('agent definition deprecation requires human actor');
-  await ensureAgentDefinitionTables(db);
   const parsed = parseAgentDefinitionRef(input.ref);
   return withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(740941)');
@@ -1117,11 +1113,11 @@ async function loadEvents(db: DbExecutor): Promise<AgentDefinitionStoredEvent[]>
 
 /** Delete the cache and deterministically replay exact versions plus active pointers from events. */
 export async function rebuildAgentDefinitionProjection(db: ConnectableDb): Promise<void> {
-  await ensureAgentDefinitionTables(db);
   await withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(740941)');
     const events = await loadEvents(client);
-    await client.query('TRUNCATE agent_definition_active, agent_definition_versions');
+    await client.query('DELETE FROM agent_definition_active');
+    await client.query('DELETE FROM agent_definition_versions');
     const versions = new Map<string, AgentDefinitionVersionRecord>();
     const active = new Map<string, { version: AgentDefinitionVersionRecord; seq: number }>();
     for (const event of events) {

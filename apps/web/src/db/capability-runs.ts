@@ -3,7 +3,6 @@ import { createHash } from 'node:crypto';
 import {
   applyCapabilityRunCommand,
   canonicalJson,
-  createCapabilityRunSnapshot,
   foldCapabilityRunEvents,
   type CapabilityRun,
   type CapabilityRunCommand,
@@ -145,7 +144,6 @@ export async function appendCapabilityRunCommand(
   db: ConnectableDb,
   command: CapabilityRunCommand,
 ): Promise<{ aggregate: CapabilityRun; event?: CapabilityRunEvent; seq?: number }> {
-  await ensureCapabilityRunTables(db);
   return withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(740939)');
     await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [command.runId]);
@@ -236,7 +234,6 @@ export async function appendCapabilityRawEvent(
     redaction: CodingRedactionPolicy;
   },
 ): Promise<{ payloadHash: string; seq: number }> {
-  await ensureCapabilityRunTables(db);
   return withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(740939)');
     await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [input.runId]);
@@ -368,11 +365,10 @@ export async function listCapabilityRuns(
 }
 
 export async function rebuildCapabilityRunProjection(db: ConnectableDb): Promise<void> {
-  await ensureCapabilityRunTables(db);
   await withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(740939)');
     const snapshot = await loadSnapshot(client);
-    await client.query('TRUNCATE capability_run_projection');
+    await client.query('DELETE FROM capability_run_projection');
     const seq = await client.query<{ seq: string | number | null }>(
       `SELECT max(seq) AS seq FROM events WHERE domain='capability'`,
     );

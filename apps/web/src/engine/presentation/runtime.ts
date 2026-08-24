@@ -15,7 +15,6 @@ import type { PresentationRequest } from '@ui4a/shared';
 import { appendEvent, listEvents } from '../../db/events';
 import {
   appendSidecarCommand,
-  ensurePresentationTables,
   findActiveSidecar,
   loadPresentationSnapshot,
 } from '../../db/presentation';
@@ -309,7 +308,6 @@ export function getPresentationBroker(): WebPresentationBroker {
   });
   scope[runtimeKey] = {
     async present(request) {
-      await ensurePresentationTables(getDb());
       await appendLifecycle('presentation-requested', request, {
         subject: request.subject,
         intent: request.intent,

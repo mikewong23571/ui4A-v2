@@ -140,7 +140,6 @@ export async function appendSidecarCommand(
   db: ConnectableDb,
   command: SidecarCommand,
 ): Promise<{ aggregate: UserSidecarAggregate; event?: PresentationSidecarEvent; seq?: number }> {
-  await ensurePresentationTables(db);
   return withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
       command.sidecarId,
@@ -206,11 +205,10 @@ export async function getSidecarById(
 }
 
 export async function rebuildPresentationProjection(db: ConnectableDb): Promise<void> {
-  await ensurePresentationTables(db);
   await withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(740935)');
     const snapshot = await loadPresentationSnapshot(client);
-    await client.query('TRUNCATE presentation_user_sidecars');
+    await client.query('DELETE FROM presentation_user_sidecars');
     const seqResult = await client.query<{ seq: string | number | null }>(
       `SELECT max(seq) AS seq FROM events WHERE domain='presentation'`,
     );

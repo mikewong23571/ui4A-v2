@@ -12,14 +12,14 @@
  * - activity 内先查同 rel 的 notification-delivered 是否已存在,存在即跳过
  *   (重试/重跑不双写);fold 对重复送达事件同样幂等(engine fold 分支)。
  *
- * 存储层复用 web 的 db 模块(appendEvent/ensureEventsTable 是唯一写入口,
+ * 存储层复用 web 的 append-only event adapter；schema 由显式 migration command 安装，
  * 跨 app 相对引用——事件日志是共享底座,不属于任何平面,arch-brief §1)。
  */
 import { createHash } from 'node:crypto';
 import { cancellationSignal } from '@temporalio/activity';
 
 import type { DbExecutor } from '../../web/src/db/events';
-import { appendEvent, ensureEventsTable } from '../../web/src/db/events';
+import { appendEvent } from '../../web/src/db/events';
 import { getPool } from '../../web/src/db/pool';
 import { appendAgentRunCommand, getAgentRun } from '../../web/src/db/agent-runs';
 
@@ -134,13 +134,12 @@ function findDelivered(db: DbExecutor, rel: string): Promise<number | null> {
 /**
  * 送达核心(db 注入,单测用假 DbExecutor):
  * 写 notification-delivered(rel=confirmation:<id>,detail 含 inbox 条目数据);
- * 已送达则跳过(deduplicated=true)。ensureEventsTable 幂等——worker 可先于 web 启动。
+ * 已送达则跳过(deduplicated=true)。Worker 启动前必须已完成显式 migration。
  */
 export async function deliverNotification(
   db: DbExecutor,
   confirmation: NotifyConfirmation,
 ): Promise<{ seq: number; deduplicated: boolean }> {
-  await ensureEventsTable(db);
   const rel = `confirmation:${confirmation.id}`;
   const existing = await findDelivered(db, rel);
   if (existing !== null) {
@@ -444,7 +443,6 @@ export async function materializeCapabilityArtifact(
   db: DbExecutor,
   input: CapabilityArtifactInput,
 ): Promise<{ seq: number; deduplicated: boolean; contentHash: string }> {
-  await ensureEventsTable(db);
   const rel = `artifact:${input.id}`;
   const canonicalContent = canonicalJson(input.content);
   const contentHash = `sha256:${createHash('sha256').update(canonicalContent).digest('hex')}`;

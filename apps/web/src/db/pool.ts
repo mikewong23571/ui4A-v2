@@ -16,6 +16,27 @@ export function getPool(connectionString: string): Pool {
   return pool;
 }
 
+/** Dedicated non-cached pool for the migration command's short-lived privileged connection. */
+export function createMigrationPool(input: {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+  connectTimeoutMs: number;
+  ca: string;
+}): Pool {
+  return new Pool({
+    host: input.host,
+    port: input.port,
+    database: input.database,
+    user: input.user,
+    password: input.password,
+    connectionTimeoutMillis: input.connectTimeoutMs,
+    ssl: { ca: input.ca, rejectUnauthorized: true },
+  });
+}
+
 export async function closeAllPools(): Promise<void> {
   const closing = [...pools.values()].map((p) => p.end());
   pools.clear();

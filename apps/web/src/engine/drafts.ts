@@ -34,7 +34,6 @@ import {
 import {
   acceptDraftWithCoreEvent,
   appendDraftCommand,
-  ensureDraftTables,
   getDraft,
   getDraftByOwner,
   listDrafts,
@@ -333,7 +332,6 @@ export async function getDraftMetaEntity(
   policyScope: string,
   agentDefinitions?: AgentDefinitionDraftRegistryPort,
 ): Promise<SirenEntity | undefined> {
-  await ensureDraftTables(db);
   if (rel === 'meta/drafts') {
     const drafts = await listDrafts(db, { owner: principal, policyScope });
     return {
@@ -516,7 +514,6 @@ export async function executeDraftMeta(
     await rejectionEvent(db, request, outcome);
     return outcome;
   }
-  await ensureDraftTables(db);
   if (request.rel === 'meta/drafts') {
     if (request.action !== 'create')
       return rejected('undeclared', `action ${request.action} is not declared`);

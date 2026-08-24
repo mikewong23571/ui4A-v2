@@ -1,7 +1,6 @@
 import { getDb } from '../../../../engine/service';
 import {
   appendSidecarCommand,
-  ensurePresentationTables,
   getSidecarById,
   loadPresentationSnapshot,
 } from '../../../../db/presentation';
@@ -25,7 +24,6 @@ export async function GET(request: Request): Promise<Response> {
   if (sidecarId === null || sidecarId === '') {
     return Response.json({ error: 'sidecarId is required' }, { status: 400 });
   }
-  await ensurePresentationTables(getDb());
   const sidecar = await getSidecarById(getDb(), sidecarId, LOCAL_PRESENTATION_PRINCIPAL);
   if (sidecar === undefined) return Response.json({ error: 'Sidecar not found' }, { status: 404 });
   if (new URL(request.url).searchParams.get('explain') === '1') {
@@ -75,7 +73,6 @@ export async function POST(request: Request): Promise<Response> {
   ) {
     return Response.json({ error: 'human Sidecar lifecycle request is invalid' }, { status: 400 });
   }
-  await ensurePresentationTables(getDb());
   const current = await getSidecarById(getDb(), body.sidecarId, LOCAL_PRESENTATION_PRINCIPAL);
   if (current === undefined) return Response.json({ error: 'Sidecar not found' }, { status: 404 });
   if (

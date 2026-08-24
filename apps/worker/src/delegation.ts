@@ -34,7 +34,7 @@ import type {
 } from '@ui4a/agent';
 
 import type { DbExecutor, EventKind } from '../../web/src/db/events';
-import { appendEvent, ensureEventsTable } from '../../web/src/db/events';
+import { appendEvent } from '../../web/src/db/events';
 
 import type {
   AgentStepArgs,
@@ -105,7 +105,6 @@ async function appendOnce(
   db: DbExecutor,
   event: DelegationEventAppend,
 ): Promise<{ seq: number; deduplicated: boolean }> {
-  await ensureEventsTable(db);
   const existing = await findEventSeq(db, event.kind, event.rel);
   if (existing !== null) {
     return { seq: existing, deduplicated: true };
@@ -220,7 +219,6 @@ export async function runAgentStep(
   deps: AgentStepDeps,
   args: AgentStepArgs,
 ): Promise<AgentStepResult> {
-  await ensureEventsTable(deps.db);
   // 防御 Temporal 并发/重试窗口：step 1 在写步事件前再次幂等确保首事件在场。
   // workflow 的 start activity 仍是正常路径；这里保证 append-only 日志不会出现
   // delegation-step 先于或缺失 delegation-started，避免读侧重放整体 500。

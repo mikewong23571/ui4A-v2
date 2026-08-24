@@ -27,7 +27,8 @@
     "eval:t17": "node scripts/t17-eval.mjs",
     "eval:t18": "pnpm exec tsx scripts/t18-real-eval.ts",
     "eval:t19:writing": "pnpm exec tsx scripts/t19-writing-real-eval.ts",
-    "eval:t19:authoring": "pnpm exec tsx scripts/t19-authoring-real-eval.ts"
+    "eval:t19:authoring": "pnpm exec tsx scripts/t19-authoring-real-eval.ts",
+    "migrate:production": "pnpm --filter @ui4a/worker exec tsx ../../scripts/t22-migrate.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

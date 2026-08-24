@@ -287,7 +287,7 @@ async function upsertProjection(db: DbExecutor, run: AgentRun, updatedSeq: numbe
 }
 
 async function replaceProjection(db: DbExecutor, loaded: LoadedSnapshot): Promise<void> {
-  await db.query('TRUNCATE agent_run_projection');
+  await db.query('DELETE FROM agent_run_projection');
   for (const run of Object.values(loaded.snapshot.runs)) {
     await upsertProjection(db, run, loaded.updatedSeqByRun.get(run.runId) ?? loaded.latestSeq);
   }
@@ -300,7 +300,6 @@ async function replaceProjection(db: DbExecutor, loaded: LoadedSnapshot): Promis
 
 /** Catch up the canonical projection after a legacy writer appended immutable T18 events. */
 export async function synchronizeAgentRunProjection(db: ConnectableDb): Promise<void> {
-  await ensureAgentRunTables(db);
   await withTransaction(db, async (client) => {
     // Share the legacy Capability writer lock while rebuilding the mixed projection.
     await client.query('SELECT pg_advisory_xact_lock(740939)');
@@ -314,7 +313,6 @@ export async function synchronizeAgentRunProjection(db: ConnectableDb): Promise<
 }
 
 export async function rebuildAgentRunProjection(db: ConnectableDb): Promise<void> {
-  await ensureAgentRunTables(db);
   await withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(740939)');
     await client.query('SELECT pg_advisory_xact_lock(740943)');
@@ -336,7 +334,6 @@ export async function appendAgentRunCommand(
   command: AgentRunCommand,
   actor: 'human' | 'agent' = 'agent',
 ): Promise<{ aggregate: AgentRun; event?: AgentRunEvent; seq?: number; resultRef?: string }> {
-  await ensureAgentRunTables(db);
   return withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(740943)');
     await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [command.runId]);

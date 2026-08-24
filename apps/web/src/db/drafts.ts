@@ -201,7 +201,6 @@ export async function appendDraftCommand(
   command: DraftCommand,
   payload?: unknown,
 ): Promise<{ aggregate: DraftAggregate; event?: DraftEvent; seq?: number }> {
-  await ensureDraftTables(db);
   return withTransaction(db, async (client) => {
     // Serializes domain cursors and command-id checks; the draft lock provides per-aggregate CAS.
     await client.query('SELECT pg_advisory_xact_lock(740937)');
@@ -260,7 +259,6 @@ export async function acceptDraftWithCoreEvent(
   coreSeqs?: number[];
   draftSeq?: number;
 }> {
-  await ensureDraftTables(db);
   return withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(740937)');
     await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [command.draftId]);
@@ -385,7 +383,6 @@ export async function findDraftsBySource(
   db: ConnectableDb,
   input: { owner: string; policyScope: string; source: string },
 ): Promise<DraftAggregate[]> {
-  await ensureDraftTables(db);
   const drafts = await listDrafts(db, {
     owner: input.owner,
     policyScope: input.policyScope,
@@ -399,11 +396,10 @@ export async function findDraftsBySource(
 }
 
 export async function rebuildDraftProjection(db: ConnectableDb): Promise<void> {
-  await ensureDraftTables(db);
   await withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(740937)');
     const snapshot = await loadDraftSnapshot(client);
-    await client.query('TRUNCATE draft_projection');
+    await client.query('DELETE FROM draft_projection');
     const seq = await client.query<{ seq: string | number | null }>(
       `SELECT max(seq) AS seq FROM events WHERE domain='draft'`,
     );
