@@ -35,6 +35,67 @@ const serviceAccountKeys = [
 ] as const;
 const volumeKeys = ['postgres', 'runtime', 'backup', 'pki'] as const;
 
+type EdgeMethod = 'GET' | 'POST';
+type EdgeMatch = Readonly<{ method: EdgeMethod; path: string; kind?: 'prefix' }>;
+
+const webEdgeMatches: readonly EdgeMatch[] = [
+  ...[
+    '/',
+    '/canvas',
+    '/chat',
+    '/delegations',
+    '/entity',
+    '/events',
+    '/meta',
+    '/favicon.ico',
+    '/file.svg',
+    '/globe.svg',
+    '/next.svg',
+    '/vercel.svg',
+    '/window.svg',
+    '/live',
+    '/version',
+    '/api/health',
+    '/api/render/catalog',
+    '/auth/login',
+    '/api/auth/callback',
+    '/.well-known/ui4a.json',
+    '/api/entity',
+    '/_meta/api/entity',
+  ].map((path): EdgeMatch => ({ method: 'GET', path })),
+  { method: 'GET', path: '/meta/', kind: 'prefix' },
+  { method: 'GET', path: '/_next/', kind: 'prefix' },
+  ...['/auth/logout', '/api/exec', '/api/exec-plan', '/api/chat', '/_meta/api/exec'].map(
+    (path): EdgeMatch => ({ method: 'POST', path }),
+  ),
+];
+
+const keycloakEdgeMatches: readonly EdgeMatch[] = [
+  ...[
+    '/realms/ui4a/.well-known/openid-configuration',
+    '/realms/ui4a/protocol/openid-connect/auth',
+    '/realms/ui4a/protocol/openid-connect/certs',
+    '/realms/ui4a/protocol/openid-connect/logout',
+    '/realms/ui4a/account',
+  ].map((path): EdgeMatch => ({ method: 'GET', path })),
+  { method: 'GET', path: '/realms/ui4a/account/', kind: 'prefix' },
+  { method: 'GET', path: '/realms/ui4a/login-actions/', kind: 'prefix' },
+  { method: 'GET', path: '/resources/', kind: 'prefix' },
+  ...[
+    '/realms/ui4a/protocol/openid-connect/token',
+    '/realms/ui4a/protocol/openid-connect/revoke',
+    '/realms/ui4a/protocol/openid-connect/logout',
+    '/realms/ui4a/account',
+  ].map((path): EdgeMatch => ({ method: 'POST', path })),
+  { method: 'POST', path: '/realms/ui4a/account/', kind: 'prefix' },
+  { method: 'POST', path: '/realms/ui4a/login-actions/', kind: 'prefix' },
+];
+
+const internalCallbackPaths = [
+  '/api/internal/capability-callback',
+  '/api/internal/agent-run-callback',
+] as const;
+
 type ImageKey = (typeof imageKeys)[number];
 type ServiceAccountKey = (typeof serviceAccountKeys)[number];
 type VolumeKey = (typeof volumeKeys)[number];
@@ -470,6 +531,35 @@ function grpcProbe(port: number, delay = 5) {
 
 function selector(name: string) {
   return { 'app.kubernetes.io/name': name, 'app.kubernetes.io/instance': 'ui4a' };
+}
+
+function virtualServiceMatch(match: EdgeMatch): UnknownRecord {
+  return {
+    method: { exact: match.method },
+    uri: { [match.kind ?? 'exact']: match.path },
+  };
+}
+
+function edgeRoute(matches: readonly EdgeMatch[], host: string, port: number): UnknownRecord {
+  return {
+    match: matches.map(virtualServiceMatch),
+    route: [{ destination: { host, port: { number: port } } }],
+  };
+}
+
+function authorizationRule(matches: readonly EdgeMatch[], method: EdgeMethod): UnknownRecord {
+  return {
+    to: [
+      {
+        operation: {
+          methods: [method],
+          paths: matches
+            .filter((match) => match.method === method)
+            .map((match) => (match.kind === 'prefix' ? `${match.path}*` : match.path)),
+        },
+      },
+    ],
+  };
 }
 
 function externalHostAliases(values: Ui4aHelmValues) {
@@ -1500,10 +1590,14 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         gateways: [values.istio.gateway],
         http: [
           {
-            match: [{ uri: { prefix: '/api/internal/' } }],
+            match: internalCallbackPaths.map((path) => ({
+              method: { exact: 'POST' },
+              uri: { exact: path },
+            })),
             directResponse: { status: 404 },
           },
-          { route: [{ destination: { host: 'web', port: { number: 3100 } } }] },
+          edgeRoute(webEdgeMatches, 'web', 3100),
+          { directResponse: { status: 404 } },
         ],
       },
     },
@@ -1514,7 +1608,21 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       spec: {
         hosts: [values.hosts.keycloak],
         gateways: [values.istio.gateway],
-        http: [{ route: [{ destination: { host: 'keycloak', port: { number: 8080 } } }] }],
+        http: [
+          {
+            match: [
+              { uri: { prefix: '/admin/' } },
+              { uri: { prefix: '/realms/master/' } },
+              { uri: { exact: '/metrics' } },
+              { uri: { prefix: '/metrics/' } },
+              { uri: { exact: '/health' } },
+              { uri: { prefix: '/health/' } },
+            ],
+            directResponse: { status: 404 },
+          },
+          edgeRoute(keycloakEdgeMatches, 'keycloak', 8080),
+          { directResponse: { status: 404 } },
+        ],
       },
     },
     {
@@ -1541,7 +1649,8 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         selector: { matchLabels: selector('web') },
         action: 'ALLOW',
         rules: [
-          { to: [{ operation: { notPaths: ['/api/internal/*'] } }] },
+          authorizationRule(webEdgeMatches, 'GET'),
+          authorizationRule(webEdgeMatches, 'POST'),
           {
             from: [
               {
@@ -1550,7 +1659,14 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
                 },
               },
             ],
-            to: [{ operation: { paths: ['/api/internal/*'] } }],
+            to: [
+              {
+                operation: {
+                  methods: ['POST'],
+                  paths: [...internalCallbackPaths],
+                },
+              },
+            ],
           },
         ],
       },

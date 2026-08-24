@@ -66,7 +66,9 @@ describe('T22 opaque internal callback and Istio JWT compatibility', () => {
   it('keeps internal callback paths off the Gateway while allowing the Worker identity', () => {
     const istio = source('deploy/helm/ui4a/templates/istio.yaml');
 
-    expect(istio).toMatch(/prefix:\s*\/api\/internal\//);
+    expect(istio).toMatch(/exact:\s*\/api\/internal\/capability-callback/);
+    expect(istio).toMatch(/exact:\s*\/api\/internal\/agent-run-callback/);
+    expect(istio).not.toMatch(/prefix:\s*\/api\/internal\//);
     expect(istio).toMatch(/directResponse:\s*\{\s*status:\s*404\s*\}/);
     expect(istio).toMatch(/principals:[\s\S]+serviceAccounts\.worker/);
     expect(istio).not.toMatch(/fromHeaders:[\s\S]+x-ui4a-capability-token/);
