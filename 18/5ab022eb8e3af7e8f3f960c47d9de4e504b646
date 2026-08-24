@@ -1,0 +1,8 @@
+Task: Separate immutable bootstrap Job images from rolling UI4A images.
+
+- Added required digest-pinned images.adminWorker and images.pkiRunner.
+- Every finite Job worker/trust/pki container uses immutable bootstrap refs.
+- Deployments continue to use rolling Web/Worker/Runner refs.
+- Prevents Helm image refresh from mutating retained Completed Job PodTemplates.
+
+Verification: Red rejected unknown fields; Green T22 Helm/K8s contracts 54 passed. Real mothership overlay Helm lint, template and Kubernetes server dry-run passed without Job immutable errors.
