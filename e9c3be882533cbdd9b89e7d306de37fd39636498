@@ -1,0 +1,18 @@
+Task: Phase A probe source governance
+
+Summary:
+- Added focused source-governance tests for all disposable T22 probes.
+- Proves probes contain no fixed credentials or repository-write/process-spawn primitives.
+- Proves live gates, Keycloak cleanup, deterministic Temporal workflow constraints, and non-registration in production entry points.
+- Expanded the T22 Vitest config to include all t22-*.test.ts contract tests.
+
+Files:
+- scripts/t22-probes-source.test.ts
+- vitest.t22-contract.config.mts
+
+Why:
+Phase A introduced live disposable probes. The checkpoint requires executable evidence that those probes remain isolated, explicitly gated, deterministic where required, and absent from production runtime composition.
+
+Verification:
+CI=true pnpm exec vitest run --config vitest.t22-contract.config.mts
+Result: 2 files passed, 13 tests passed.
