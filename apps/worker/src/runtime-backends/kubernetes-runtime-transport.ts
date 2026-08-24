@@ -261,7 +261,10 @@ function job(input: {
       activeDeadlineSeconds: Math.ceil(envelope.execution.resources.timeoutMs / 1_000),
       ttlSecondsAfterFinished: 3_600,
       template: {
-        metadata: { labels: input.labels },
+        metadata: {
+          labels: input.labels,
+          annotations: { 'sidecar.istio.io/inject': 'false' },
+        },
         spec: {
           serviceAccountName: options.runnerServiceAccountName,
           automountServiceAccountToken: false,

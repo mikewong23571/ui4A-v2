@@ -227,6 +227,16 @@ describe('T22 in-cluster Kubernetes compiled Runtime transport', () => {
     });
     expect(fixture.objects.configMaps).toHaveLength(1);
     expect(fixture.objects.jobs).toHaveLength(1);
+    expect(
+      (
+        (
+          (fixture.objects.jobs[0]!.spec as Record<string, unknown>).template as Record<
+            string,
+            unknown
+          >
+        ).metadata as Record<string, unknown>
+      ).annotations,
+    ).toEqual({ 'sidecar.istio.io/inject': 'false' });
     const serializedObjects = JSON.stringify(fixture.objects);
     expect(serializedObjects).not.toContain('super-secret-value');
     expect(serializedObjects).not.toContain('Authorization');
