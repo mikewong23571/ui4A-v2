@@ -1,0 +1,7 @@
+T22 Phase C canonical Keycloak realm contract and planner Green.
+
+Added one Keycloak 26.7.1 ui4a realm contract referenced identically by future Compose and Kubernetes consumers. It defines confidential PKCE Web, service-account Agent with Standard Token Exchange, bearer API, no password-grant CLI, permission and policy scopes, approval-safe roles, and Secret-referenced human fixtures.
+
+Added a strict clone-and-freeze parser plus deterministic value-redacted planner. Absent realm creates managed resources; matching state is noop; managed client scope role drift is reconciled; existing users, profiles, credentials, roles, and operator-owned data are never updated or copied into plans.
+
+Main-agent verification: realm contract suite passed 10 of 10; scoped Prettier and git diff check passed. The Admin API executor and executable bootstrap command are intentionally still missing, so the Conductor task is not marked complete.
