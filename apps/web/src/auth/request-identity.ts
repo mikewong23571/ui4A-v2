@@ -13,6 +13,12 @@ import {
   type ProductionRequestIdentity,
   verifyProductionCredential,
 } from './production-request-identity';
+import {
+  BROWSER_SESSION_COOKIE_NAME,
+  BrowserAuthenticationError,
+  type BrowserAuthentication,
+} from './browser-session';
+import { getProductionBrowserAuthentication } from './production-browser-authentication';
 
 export type RequestIdentityProfile = 'local' | 'production';
 
@@ -44,6 +50,7 @@ export interface ResolveRequestIdentityOptions {
   productionConfig?: ProductionDeploymentConfig;
   productionPolicy?: ProductionCredentialPolicy;
   productionDependencies?: ProductionCredentialDependencies;
+  browserAuthentication?: Pick<BrowserAuthentication, 'resolveSession'>;
 }
 
 const remoteLoaders = new Map<string, ReturnType<typeof createRemoteJwksLoader>>();
@@ -125,6 +132,15 @@ function resolveCredentialPolicyScope(
   return granted.includes(defaultScope) ? defaultScope : granted[0]!;
 }
 
+function hasCookie(request: Request, name: string): boolean {
+  const cookie = request.headers.get('cookie');
+  if (cookie === null) return false;
+  return cookie.split(';').some((part) => {
+    const separator = part.indexOf('=');
+    return separator >= 0 && part.slice(0, separator).trim() === name;
+  });
+}
+
 export async function resolveTrustedRequestIdentity(
   request: Request,
   options: ResolveRequestIdentityOptions,
@@ -166,8 +182,20 @@ export async function resolveTrustedRequestIdentity(
       ? undefined
       : productionConfig(options));
   const policy = options.productionPolicy ?? policyFor(config!, options.authorizedPolicyScopes);
+  const authorizationHeader = request.headers.get('authorization');
+  const hasSessionCookie = hasCookie(request, BROWSER_SESSION_COOKIE_NAME);
+  if (authorizationHeader !== null && hasSessionCookie) {
+    throw new ProductionIdentityError('credential_source_conflict');
+  }
+  const credentialAuthorization = hasSessionCookie
+    ? (
+        await (
+          options.browserAuthentication ?? getProductionBrowserAuthentication()
+        ).resolveSession(request)
+      ).authorizationHeader
+    : authorizationHeader;
   const credential = await verifyProductionCredential(
-    request.headers.get('authorization'),
+    credentialAuthorization,
     policy,
     options.productionDependencies ?? dependenciesFor(config!),
   );
@@ -213,6 +241,24 @@ export function applyTrustedIdentity(
 }
 
 export function authenticationErrorResponse(error: unknown): Response | undefined {
+  if (error instanceof BrowserAuthenticationError) {
+    const unavailable = new Set([
+      'oidc_token_endpoint_unavailable',
+      'jwks_unavailable',
+      'session_refresh_unavailable',
+      'oidc_revocation_unavailable',
+    ]);
+    const unauthorized = new Set([
+      'session_cookie_invalid',
+      'session_not_found',
+      'session_expired',
+      'session_revoked',
+    ]);
+    return Response.json(
+      { error: { code: error.code } },
+      { status: unavailable.has(error.code) ? 503 : unauthorized.has(error.code) ? 401 : 400 },
+    );
+  }
   if (!(error instanceof ProductionIdentityError)) return undefined;
   const forbidden = new Set([
     'scope_insufficient',

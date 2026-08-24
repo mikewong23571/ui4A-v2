@@ -1,5 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
+export const BROWSER_SESSION_COOKIE_NAME = '__Host-ui4a_session';
+export const BROWSER_LOGIN_COOKIE_NAME = '__Host-ui4a_login';
+
 export interface AuthPrivateStore {
   get(key: string): Promise<unknown>;
   put(key: string, value: unknown, expiresAtMs: number): Promise<void>;
@@ -71,6 +74,7 @@ export type BrowserAuthenticationErrorCode =
   | 'authorization_code_missing'
   | 'login_correlation_missing'
   | 'oidc_nonce_mismatch'
+  | 'oidc_id_token_invalid'
   | 'oidc_token_endpoint_unavailable'
   | 'jwks_unavailable'
   | 'session_cookie_invalid'
@@ -108,6 +112,7 @@ interface SessionRecord {
 const textEncoder = new TextEncoder();
 const CALLBACK_ERRORS = new Set<BrowserAuthenticationErrorCode>([
   'oidc_nonce_mismatch',
+  'oidc_id_token_invalid',
   'oidc_token_endpoint_unavailable',
   'jwks_unavailable',
 ]);
@@ -266,7 +271,7 @@ function errorResponse(code: BrowserAuthenticationErrorCode, cookie?: string): R
     code === 'jwks_unavailable' ||
     code === 'session_refresh_unavailable' ||
     code === 'oidc_revocation_unavailable';
-  const unauthorized = code === 'oidc_nonce_mismatch';
+  const unauthorized = code === 'oidc_nonce_mismatch' || code === 'oidc_id_token_invalid';
   const headers = new Headers({ 'content-type': 'application/json' });
   if (cookie !== undefined) headers.append('set-cookie', cookie);
   return new Response(JSON.stringify({ error: { code } }), {

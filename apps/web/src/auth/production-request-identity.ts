@@ -3,6 +3,7 @@ import { createPublicKey, verify } from 'node:crypto';
 export type ProductionIdentityErrorCode =
   | 'credential_missing'
   | 'credential_malformed'
+  | 'credential_source_conflict'
   | 'credential_expired'
   | 'credential_not_active'
   | 'issuer_mismatch'
@@ -12,6 +13,7 @@ export type ProductionIdentityErrorCode =
   | 'jwks_unavailable'
   | 'jwks_stale'
   | 'scope_insufficient'
+  | 'oidc_nonce_mismatch'
   | 'delegation_malformed'
   | 'delegation_too_deep'
   | 'delegation_actor_not_allowed'
@@ -232,15 +234,16 @@ function usableSigningKey(keys: readonly JsonWebKeyLike[], kid: string): JsonWeb
   return key;
 }
 
-export async function verifyProductionCredential(
-  authorizationHeader: string | null,
-  policy: ProductionCredentialPolicy,
+async function verifySignedRs256Jwt(
+  compact: string,
   dependencies: ProductionCredentialDependencies,
-): Promise<VerifiedCredential> {
-  const parsed = parseBearerCredential(authorizationHeader);
-  if (parsed.header.alg !== 'RS256' || !policy.algorithms.includes('RS256')) {
-    fail('credential_malformed');
-  }
+): Promise<{
+  claims: Record<string, unknown>;
+  header: { alg: 'RS256'; kid: string };
+  nowMs: number;
+}> {
+  const parsed = parseBearerCredential(`Bearer ${compact}`);
+  if (parsed.header.alg !== 'RS256') fail('credential_malformed');
   if (typeof parsed.header.kid !== 'string' || parsed.header.kid === '') {
     fail('credential_malformed');
   }
@@ -273,24 +276,47 @@ export async function verifyProductionCredential(
     validSignature = false;
   }
   if (!validSignature) fail('signature_invalid');
+  return {
+    claims: parsed.claims,
+    header: { alg: 'RS256', kid: parsed.header.kid },
+    nowMs,
+  };
+}
 
-  // Claims become authorization inputs only after signature verification.
-  if (parsed.claims.iss !== policy.issuer) fail('issuer_mismatch');
-  if (!validAudience(parsed.claims.aud, policy.audience)) fail('audience_mismatch');
+function verifyStandardClaims(
+  claims: Record<string, unknown>,
+  expected: { issuer: string; audience: string },
+  nowMs: number,
+): void {
+  if (claims.iss !== expected.issuer) fail('issuer_mismatch');
+  if (!validAudience(claims.aud, expected.audience)) fail('audience_mismatch');
   const nowSeconds = Math.floor(nowMs / 1_000);
-  if (claimSeconds(parsed.claims, 'exp') <= nowSeconds) fail('credential_expired');
-  if (parsed.claims.nbf !== undefined && claimSeconds(parsed.claims, 'nbf') > nowSeconds) {
+  if (claimSeconds(claims, 'exp') <= nowSeconds) fail('credential_expired');
+  if (claims.nbf !== undefined && claimSeconds(claims, 'nbf') > nowSeconds) {
     fail('credential_not_active');
   }
-  if (typeof parsed.claims.sub !== 'string' || parsed.claims.sub === '') {
-    fail('credential_malformed');
-  }
-  scopeList(parsed.claims.scope);
+  if (typeof claims.sub !== 'string' || claims.sub === '') fail('credential_malformed');
+}
 
-  freezeClaims(parsed.claims);
-  const header = Object.freeze({ alg: 'RS256' as const, kid: parsed.header.kid });
+export async function verifyProductionCredential(
+  authorizationHeader: string | null,
+  policy: ProductionCredentialPolicy,
+  dependencies: ProductionCredentialDependencies,
+): Promise<VerifiedCredential> {
+  if (authorizationHeader === null) fail('credential_missing');
+  const bearerMatch = /^Bearer ([^\s]+)$/.exec(authorizationHeader);
+  if (bearerMatch === null) fail('credential_malformed');
+  if (!policy.algorithms.includes('RS256')) fail('credential_malformed');
+  const verified = await verifySignedRs256Jwt(bearerMatch[1]!, dependencies);
+
+  // Claims become authorization inputs only after signature verification.
+  verifyStandardClaims(verified.claims, policy, verified.nowMs);
+  scopeList(verified.claims.scope);
+
+  freezeClaims(verified.claims);
+  const header = Object.freeze(verified.header);
   const credential: VerifiedCredential = {
-    claims: parsed.claims,
+    claims: verified.claims,
     header,
   };
   Object.defineProperty(credential, verifiedPolicy, {
@@ -300,6 +326,23 @@ export async function verifyProductionCredential(
     writable: false,
   });
   return Object.freeze(credential);
+}
+
+/** Verify the signed OIDC ID Token used by the browser callback without requiring API scopes. */
+export async function verifyProductionIdToken(
+  idToken: string,
+  expected: { issuer: string; nonce: string; audience: string },
+  dependencies: ProductionCredentialDependencies,
+): Promise<void> {
+  const verified = await verifySignedRs256Jwt(idToken, dependencies);
+  verifyStandardClaims(verified.claims, expected, verified.nowMs);
+  if (
+    typeof verified.claims.nonce !== 'string' ||
+    verified.claims.nonce === '' ||
+    verified.claims.nonce !== expected.nonce
+  ) {
+    fail('oidc_nonce_mismatch');
+  }
 }
 
 const PROTOCOL_SCOPES = new Set(['openid', 'profile', 'email', 'offline_access']);

@@ -227,7 +227,7 @@ function makeHarness(overrides: Record<string, unknown> = {}) {
       authorizationEndpoint: `${ISSUER}/protocol/openid-connect/auth`,
       clientId: CLIENT_ID,
       audience: AUDIENCE,
-      redirectUri: `${UI4A_ORIGIN}/auth/callback`,
+      redirectUri: `${UI4A_ORIGIN}/api/auth/callback`,
       scopes: ['openid', 'profile', 'ui4a:read', 'ui4a:write', 'ui4a:approve'],
       sessionCookieName: SESSION_COOKIE,
       loginCookieName: LOGIN_COOKIE,
@@ -328,7 +328,7 @@ describe('browser Authorization Code + S256 PKCE lifecycle', () => {
     expect(Object.fromEntries(location.searchParams)).toMatchObject({
       response_type: 'code',
       client_id: CLIENT_ID,
-      redirect_uri: `${UI4A_ORIGIN}/auth/callback`,
+      redirect_uri: `${UI4A_ORIGIN}/api/auth/callback`,
       code_challenge_method: 'S256',
       state: login.state,
       nonce: login.nonce,
@@ -350,7 +350,7 @@ describe('browser Authorization Code + S256 PKCE lifecycle', () => {
     expect(location.searchParams.get('code_challenge')).toBe(expectedChallenge);
     expect(exchange).toMatchObject({
       code: 'fixed-authorization-code',
-      redirectUri: `${UI4A_ORIGIN}/auth/callback`,
+      redirectUri: `${UI4A_ORIGIN}/api/auth/callback`,
       clientId: CLIENT_ID,
     });
     expect(harness.nonceChecks).toEqual([
