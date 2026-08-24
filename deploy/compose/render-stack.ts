@@ -141,109 +141,7 @@ const postgresTlsCommand = [
   '-c ssl_key_file=/var/run/ui4a/postgres-tls/server.key',
   '-c ssl_ca_file=/var/lib/ui4a/ca/root-ca.crt',
 ].join(' ');
-const edgeRouting = `{
-  auto_https off
-  admin off
-}
-
-https://{$UI4A_HOST}:8443 {
-  tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key
-  handle /deliver {
-    reverse_proxy runner:3102
-  }
-
-  @ui4aPublic {
-    method GET HEAD
-    path / /canvas /chat /delegations /entity /events /meta /meta/* /_next/* /favicon.ico /file.svg /globe.svg /next.svg /vercel.svg /window.svg /live /version /api/health /api/render/catalog /auth/login /api/auth/callback
-  }
-  handle @ui4aPublic {
-    reverse_proxy web:3100
-  }
-
-  @ui4aPublicWrite {
-    method POST
-    path /auth/logout
-  }
-  handle @ui4aPublicWrite {
-    reverse_proxy web:3100
-  }
-
-  @ui4aAuthenticatedRead {
-    method GET HEAD
-    path /.well-known/ui4a.json /api/entity /_meta/api/entity
-  }
-  handle @ui4aAuthenticatedRead {
-    reverse_proxy web:3100
-  }
-
-  @ui4aAuthenticatedWrite {
-    method POST
-    path /api/exec /api/exec-plan /api/chat /_meta/api/exec
-  }
-  handle @ui4aAuthenticatedWrite {
-    reverse_proxy web:3100
-  }
-
-  handle {
-    respond 404
-  }
-}
-
-https://{$UI4A_HOST}:9444 {
-  tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key
-  handle /deliver {
-    reverse_proxy host-runner:3102
-  }
-  handle {
-    respond 404
-  }
-}
-
-https://{$KEYCLOAK_HOST}:8443 {
-  tls /var/lib/ui4a/ca/keycloak/tls.crt /var/lib/ui4a/ca/keycloak/tls.key
-
-  @keycloakProtocolRead {
-    method GET HEAD
-    path /realms/ui4a/protocol/openid-connect/auth /realms/ui4a/protocol/openid-connect/certs /realms/ui4a/login-actions/* /resources/*
-  }
-  handle @keycloakProtocolRead {
-    reverse_proxy keycloak:8080
-  }
-
-  @keycloakProtocolWrite {
-    method POST
-    path /realms/ui4a/protocol/openid-connect/token /realms/ui4a/protocol/openid-connect/revoke /realms/ui4a/login-actions/*
-  }
-  handle @keycloakProtocolWrite {
-    reverse_proxy keycloak:8080
-  }
-
-  handle {
-    respond 404
-  }
-}
-
-https://{$KEYCLOAK_HOST}:9443 {
-  tls /var/lib/ui4a/ca/keycloak/tls.crt /var/lib/ui4a/ca/keycloak/tls.key
-
-  @keycloakAdmin {
-    method GET POST
-    path /realms/master/protocol/openid-connect/token /admin/realms*
-  }
-  handle @keycloakAdmin {
-    reverse_proxy keycloak:8080
-  }
-
-  handle {
-    respond 404
-  }
-}
-
-https://127.0.0.1:8443 {
-  tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key
-  respond /_edge_live 200
-}
-`;
+const edgeRoutingFile = 'deploy/compose/edge-routing.caddy';
 
 function fail(message: string): never {
   throw new TypeError(`Invalid T22 Compose input: ${message}`);
@@ -678,7 +576,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
     configs: {
       'ui4a-deployment-settings': { file: input.settingsFile },
       'ui4a-config-init': { file: 'deploy/compose/config-init.mjs' },
-      'ui4a-edge-routing': { content: edgeRouting },
+      'ui4a-edge-routing': { file: edgeRoutingFile },
       'temporal-static-config': { file: 'deploy/compose/temporal-config.yaml' },
       'temporal-dynamic-config': { file: 'deploy/compose/temporal-dynamicconfig.yaml' },
     },
