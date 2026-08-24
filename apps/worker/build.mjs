@@ -36,3 +36,17 @@ await build({
   entryPoints: [resolve(workerRoot, 'src/workflows.ts')],
   outfile: resolve(workerRoot, 'dist/workflows.js'),
 });
+
+for (const [name, entryPoint] of Object.entries({
+  't22-keycloak-realm-bootstrap': resolve(
+    repositoryRoot,
+    'scripts/t22-keycloak-realm-bootstrap.ts',
+  ),
+  't22-migrate': resolve(repositoryRoot, 'scripts/t22-migrate.ts'),
+})) {
+  await build({
+    ...common,
+    entryPoints: [entryPoint],
+    outfile: resolve(workerRoot, `dist/${name}.js`),
+  });
+}

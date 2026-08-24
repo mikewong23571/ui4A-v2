@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { closeSync, constants, fstatSync, openSync, readFileSync } from 'node:fs';
+import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { preflightProductionDeploymentFromEnvironment } from '../packages/shared/src/production-deployment-config';
@@ -13,6 +13,37 @@ import {
 
 const realmImportPath = 'deploy/keycloak/realm-import.json';
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const realmImportEnvironmentVariable = 'UI4A_REALM_IMPORT_FILE';
+const maximumRealmImportBytes = 1024 * 1024;
+
+function readRealmImport(environment: NodeJS.ProcessEnv): RealmImportRepresentation {
+  const configuredPath = environment[realmImportEnvironmentVariable];
+  const path =
+    configuredPath === undefined ? resolve(repositoryRoot, realmImportPath) : configuredPath;
+  if (!isAbsolute(path) || path.includes('\0')) {
+    throw new KeycloakBootstrapError(
+      'KEYCLOAK_REALM_IMPORT_INVALID',
+      `${realmImportEnvironmentVariable} must identify an absolute regular file.`,
+    );
+  }
+
+  let descriptor: number | undefined;
+  try {
+    descriptor = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const status = fstatSync(descriptor);
+    if (!status.isFile() || status.size === 0 || status.size > maximumRealmImportBytes) {
+      throw new Error('unsafe realm import file');
+    }
+    return JSON.parse(readFileSync(descriptor, 'utf8')) as RealmImportRepresentation;
+  } catch {
+    throw new KeycloakBootstrapError(
+      'KEYCLOAK_REALM_IMPORT_INVALID',
+      `${realmImportEnvironmentVariable} does not identify a readable, bounded regular file.`,
+    );
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
 
 function modeFromArguments(arguments_: string[]): 'check' | 'apply' {
   if (arguments_.length === 1 && arguments_[0] === '--check') return 'check';
@@ -56,9 +87,7 @@ async function main(): Promise<void> {
     'ui4a-experiment-human-password': settings.keycloak.experimentHumanPasswordRef,
   };
 
-  const realmImport = JSON.parse(
-    readFileSync(resolve(repositoryRoot, realmImportPath), 'utf8'),
-  ) as RealmImportRepresentation;
+  const realmImport = readRealmImport(process.env);
   const admin = createKeycloakAdminClient({
     baseUrl: issuer.origin,
     adminUsername: settings.keycloak.bootstrapAdminUser,
