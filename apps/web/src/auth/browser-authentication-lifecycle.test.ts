@@ -108,7 +108,10 @@ interface BrowserAuthenticationModule {
     }): Promise<BrowserTokenSet>;
     refresh(refreshToken: string): Promise<BrowserTokenSet>;
     revoke(refreshToken: string): Promise<void>;
-    verifyIdToken(idToken: string, expected: { nonce: string; audience: string }): Promise<void>;
+    verifyIdToken(
+      idToken: string,
+      expected: { issuer: string; nonce: string; audience: string },
+    ): Promise<void>;
   }): BrowserAuthentication;
 }
 
@@ -194,7 +197,12 @@ function makeHarness(overrides: Record<string, unknown> = {}) {
     redirectUri: string;
     clientId: string;
   }> = [];
-  const nonceChecks: Array<{ idToken: string; nonce: string; audience: string }> = [];
+  const nonceChecks: Array<{
+    idToken: string;
+    issuer: string;
+    nonce: string;
+    audience: string;
+  }> = [];
   const refreshes: string[] = [];
   const revocations: string[] = [];
   const loginTransactions = new MemoryAuthPrivateStore();
@@ -251,7 +259,10 @@ function makeHarness(overrides: Record<string, unknown> = {}) {
     revoke: async (refreshToken: string) => {
       revocations.push(refreshToken);
     },
-    verifyIdToken: async (idToken: string, expected: { nonce: string; audience: string }) => {
+    verifyIdToken: async (
+      idToken: string,
+      expected: { issuer: string; nonce: string; audience: string },
+    ) => {
       nonceChecks.push({ idToken, ...expected });
     },
     ...overrides,
@@ -343,7 +354,12 @@ describe('browser Authorization Code + S256 PKCE lifecycle', () => {
       clientId: CLIENT_ID,
     });
     expect(harness.nonceChecks).toEqual([
-      { idToken: 'fixed-id-token', nonce: login.nonce, audience: AUDIENCE },
+      {
+        idToken: 'fixed-id-token',
+        issuer: ISSUER,
+        nonce: login.nonce,
+        audience: AUDIENCE,
+      },
     ]);
   });
 
