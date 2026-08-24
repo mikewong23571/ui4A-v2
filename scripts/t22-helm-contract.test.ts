@@ -892,7 +892,9 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       });
 
       it('renders the verified Keycloak database and bootstrap environment', async () => {
-        const { resources } = (await renderer()).renderUi4aChart(genericValues());
+        const values = genericValues();
+        values.istio.oidcIssuer = 'https://auth.ui4a.internal.test:32067/realms/ui4a';
+        const { resources } = (await renderer()).renderUi4aChart(values);
         const keycloak = workload(resources, 'Deployment', 'keycloak');
         const env = environment(primaryContainer(keycloak));
 
@@ -904,7 +906,9 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
           KC_HEALTH_ENABLED: 'true',
           KC_HTTP_ENABLED: 'true',
           KC_PROXY_HEADERS: 'xforwarded',
+          KC_HOSTNAME: 'https://auth.ui4a.internal.test:32067',
         });
+        expect(JSON.stringify(keycloak)).not.toMatch(/hostname-strict[^]*false/i);
         expect(JSON.stringify(keycloak)).toContain('keycloak-bootstrap-admin-password');
         expect(JSON.stringify(keycloak)).toContain('keycloak-database-password');
         expect(primaryContainer(keycloak).args).toEqual(['start']);

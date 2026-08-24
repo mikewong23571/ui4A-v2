@@ -803,6 +803,7 @@ function dependencyGates(
 function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
   const namespace = values.namespace.name;
   const postgresHost = `postgres.${namespace}.svc.cluster.local`;
+  const keycloakPublicOrigin = new URL(values.istio.oidcIssuer).origin;
   const secretEnvironment = {
     envFrom: [{ secretRef: { name: values.secrets.existingSecretName } }],
   };
@@ -1023,6 +1024,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
           { name: 'KC_HEALTH_ENABLED', value: 'true' },
           { name: 'KC_HTTP_ENABLED', value: 'true' },
           { name: 'KC_PROXY_HEADERS', value: 'xforwarded' },
+          { name: 'KC_HOSTNAME', value: keycloakPublicOrigin },
           {
             name: 'KC_DB_PASSWORD',
             valueFrom: {

@@ -142,6 +142,7 @@ spec:
             - { name: KC_HEALTH_ENABLED, value: 'true' }
             - { name: KC_HTTP_ENABLED, value: 'true' }
             - { name: KC_PROXY_HEADERS, value: xforwarded }
+            - { name: KC_HOSTNAME, value: {{ trimSuffix "/realms/ui4a" .Values.istio.oidcIssuer | quote }} }
             - name: KC_DB_PASSWORD
               valueFrom:
                 secretKeyRef: { name: {{ .Values.secrets.existingSecretName | quote }}, key: keycloak-database-password }
