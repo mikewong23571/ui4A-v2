@@ -110,6 +110,7 @@ interface ComposeService {
   read_only?: boolean;
   tmpfs?: string[];
   command?: string[];
+  networks?: Record<string, { aliases?: string[] }>;
 }
 
 interface ComposeStack {
@@ -437,6 +438,59 @@ describe('T22 Docker Compose all-in-one contract', () => {
     expect(stack.services.edge?.environment).toMatchObject({
       UI4A_HOST: 'ui4a.mothership.internal',
       KEYCLOAK_HOST: 'auth.ui4a.mothership.internal',
+    });
+  });
+
+  it('wires the server-owned Compose Runner identity and HTTPS origin without token material', async () => {
+    const stack = await renderedStack();
+    const worker = stack.services.worker;
+    const runner = stack.services.runner;
+
+    expect(worker?.environment).toMatchObject({
+      UI4A_RUNNER_IMAGE: renderInput().images.runner,
+      UI4A_HOST_RUNNER_ORIGINS:
+        '{"compose-runner":"https://ui4a.mothership.internal:8443"}',
+    });
+    expect(runner?.environment).toMatchObject({
+      UI4A_RUNNER_ID: 'compose-runner',
+      UI4A_RUNNER_IMAGE: renderInput().images.runner,
+    });
+    expect(dependency(stack, 'worker', 'edge')).toBe('service_healthy');
+    expect(dependency(stack, 'edge', 'runner')).toBe('service_healthy');
+    expect(JSON.stringify({ worker: worker?.environment, runner: runner?.environment })).not.toMatch(
+      /Bearer |runner-token|authorization/i,
+    );
+  });
+
+  it('routes only exact /deliver through the Runner and retains Web as the UI4A fallback', async () => {
+    const stack = await renderedStack();
+    const routing = (stack.configs['ui4a-edge-routing'] as { content?: string }).content ?? '';
+    const delivery = routing.indexOf('handle /deliver');
+    const runner = routing.indexOf('reverse_proxy runner:3102');
+    const fallback = routing.indexOf('handle {', runner + 1);
+    const web = routing.indexOf('reverse_proxy web:3100', fallback);
+
+    expect(delivery).toBeGreaterThan(0);
+    expect(runner).toBeGreaterThan(delivery);
+    expect(fallback).toBeGreaterThan(runner);
+    expect(web).toBeGreaterThan(fallback);
+    expect(routing).not.toContain('handle_path /deliver*');
+    expect(stack.services.edge?.networks?.default?.aliases).toContain(
+      'ui4a.mothership.internal',
+    );
+  });
+
+  it('records the Compose TLS origin that operator settings must use', () => {
+    const contract = requiredJson<StackContract & { runnerDelivery: Record<string, unknown> }>(
+      contractPath,
+    );
+
+    expect(contract.runnerDelivery).toEqual({
+      runnerId: 'compose-runner',
+      route: '/deliver',
+      workerOrigin: 'https://ui4a.mothership.internal:8443',
+      edgeNetworkAlias: 'ui4a.mothership.internal',
+      requiredServicePublicOrigin: 'https://ui4a.mothership.internal:8443',
     });
   });
 
