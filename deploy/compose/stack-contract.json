@@ -34,7 +34,9 @@
     "web",
     "worker",
     "runner",
-    "host-runner"
+    "host-runner",
+    "pki-init",
+    "edge"
   ],
   "volumes": [
     { "name": "postgres-data", "retainOnOrdinaryDown": true },
