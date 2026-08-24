@@ -74,7 +74,25 @@ describe('production CLI Bearer identity boundary', () => {
     const directory = await mkdtemp(join(tmpdir(), 'ui4a-cli-auth-red-'));
     const planPath = join(directory, 'plan.json');
     const payloadPath = join(directory, 'flow.json');
-    await writeFile(planPath, JSON.stringify({ steps: [] }), 'utf8');
+    await writeFile(
+      planPath,
+      JSON.stringify({
+        actor: 'human',
+        principal: 'forged-plan-owner',
+        channel: 'forged-plan-channel',
+        steps: [
+          {
+            rel: 'post:first',
+            action: 'unpublish',
+            params: {},
+            actor: 'human',
+            principal: 'forged-step-owner',
+            channel: 'forged-step-channel',
+          },
+        ],
+      }),
+      'utf8',
+    );
     await writeFile(payloadPath, JSON.stringify({ name: 'candidate' }), 'utf8');
     const bodies: Record<string, unknown>[] = [];
     const fetcher = vi.fn<typeof fetch>(async (_input, init) => {
@@ -110,11 +128,48 @@ describe('production CLI Bearer identity boundary', () => {
     for (const body of bodies) {
       expect(body).not.toHaveProperty('actor');
       expect(body).not.toHaveProperty('principal');
+      expect(body).not.toHaveProperty('channel');
       expect(JSON.stringify(body)).not.toContain(ACCESS_TOKEN);
     }
+    expect(bodies[0]).toMatchObject({
+      steps: [expect.not.objectContaining({ actor: expect.anything() })],
+    });
+    expect(bodies[0]).toMatchObject({
+      steps: [expect.not.objectContaining({ principal: expect.anything() })],
+    });
+    expect(bodies[0]).toMatchObject({
+      steps: [expect.not.objectContaining({ channel: expect.anything() })],
+    });
     // Green obligation: once the credential-mode CLI omits this untrusted value, the Meta
     // Draft route/adapter must inject trustedIdentity.policyScope as the server-owned create param.
     expect(bodies[1]).not.toHaveProperty('params.policyScope');
+  });
+
+  it('omits the self-reported policyScope query from Bearer Meta entity reads', async () => {
+    const requestedUrls: string[] = [];
+    const fetcher = vi.fn<typeof fetch>(async (input) => {
+      requestedUrls.push(String(input));
+      return response({ properties: { rel: 'meta/application:publishing' }, actions: [] });
+    });
+    const config = await loadConfig(
+      { configPath: '/definitely/missing' },
+      {
+        UI4A_BASE_URL: 'https://ui4a.internal',
+        UI4A_TOKEN: ACCESS_TOKEN,
+        UI4A_POLICY_SCOPE: 'forged-client-scope',
+      },
+    );
+
+    await runCommand(
+      parseArgs(['entities', 'get', 'meta/application:publishing']),
+      new Ui4aHttpClient(config, fetcher),
+    );
+
+    expect(requestedUrls).toHaveLength(1);
+    const requested = new URL(requestedUrls[0]!);
+    expect(requested.pathname).toBe('/_meta/api/entity');
+    expect(requested.searchParams.get('rel')).toBe('meta/application:publishing');
+    expect(requested.searchParams.has('policyScope')).toBe(false);
   });
 
   it('keeps self-reported headers and exec fields only for the explicit token-missing local demo', async () => {

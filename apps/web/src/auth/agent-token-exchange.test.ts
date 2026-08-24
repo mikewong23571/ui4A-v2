@@ -111,13 +111,18 @@ function exchangedToken(claims: Record<string, unknown> = {}): string {
   return `${signingInput}.${base64Url(signature)}`;
 }
 
-function tokenResponse(accessToken: string): Response {
+function tokenResponse(
+  accessToken: string,
+  options: { includeIssuedTokenType?: boolean; scope?: string } = {},
+): Response {
   return Response.json({
     access_token: accessToken,
-    issued_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+    ...(options.includeIssuedTokenType === false
+      ? {}
+      : { issued_token_type: 'urn:ietf:params:oauth:token-type:access_token' }),
     token_type: 'Bearer',
     expires_in: 300,
-    scope: 'ui4a:read ui4a:write development',
+    scope: options.scope ?? 'ui4a:read ui4a:write development',
   });
 }
 
@@ -183,7 +188,9 @@ describe('production confidential Agent credential provider', () => {
       preferred_username: 'service-account-ui4a-agent',
       scope: 'ui4a:read development',
     });
-    const fetcher = vi.fn<typeof fetch>(async () => tokenResponse(serviceToken));
+    const fetcher = vi.fn<typeof fetch>(async () =>
+      tokenResponse(serviceToken, { includeIssuedTokenType: false }),
+    );
     const api = await plannedApi();
     const provider = api.createProductionAgentTokenProvider(providerOptions(fetcher));
 
@@ -257,7 +264,9 @@ describe('production confidential Agent credential provider', () => {
 describe('RFC 8693 delegated Agent identity and audit', () => {
   it('fixes the exchange request and narrows the subject credential to requested scopes', async () => {
     const accessToken = exchangedToken();
-    const fetcher = vi.fn<typeof fetch>(async () => tokenResponse(accessToken));
+    const fetcher = vi.fn<typeof fetch>(async () =>
+      tokenResponse(accessToken, { scope: 'ui4a:read development' }),
+    );
     const api = await plannedApi();
     const provider = api.createProductionAgentTokenProvider(providerOptions(fetcher));
 
@@ -282,6 +291,23 @@ describe('RFC 8693 delegated Agent identity and audit', () => {
     expect(credential.authorizationHeader).toBe(`Bearer ${accessToken}`);
     expect(JSON.stringify(credential)).not.toContain(SUBJECT_TOKEN);
     expect(JSON.stringify(credential)).not.toContain(CLIENT_SECRET);
+  });
+
+  it('fails closed when the exchange endpoint expands the requested scopes', async () => {
+    const accessToken = exchangedToken();
+    const fetcher = vi.fn<typeof fetch>(async () =>
+      tokenResponse(accessToken, { scope: 'ui4a:read ui4a:write' }),
+    );
+    const api = await plannedApi();
+    const provider = api.createProductionAgentTokenProvider(providerOptions(fetcher));
+
+    await expect(
+      provider.exchangeDelegatedCredential({
+        subjectToken: SUBJECT_TOKEN,
+        requestedScopes: ['ui4a:read'],
+      }),
+    ).rejects.toMatchObject({ code: 'agent_token_response_invalid' });
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
   it('derives canonical sub+azp delegation, records it in exec audit, and rejects Agent approval', async () => {

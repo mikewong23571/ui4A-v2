@@ -95,7 +95,13 @@ describe('POST /api/exec-plan — 全过(plan-completed)', () => {
     );
     expect(marker.rows).toHaveLength(1);
     expect(marker.rows[0]).toMatchObject({ actor: 'agent', principal: 'user:mike' });
-    expect(marker.rows[0].detail).toMatchObject({ kind: 'plan-completed' });
+    expect(marker.rows[0].detail).toMatchObject({
+      kind: 'plan-completed',
+      identity: {
+        authorizationMode: 'self-reported-local-demo',
+        humanApprovalEligible: false,
+      },
+    });
     expect(marker.rows[0].detail.steps).toHaveLength(4);
 
     const executed = await pool.query(
@@ -174,9 +180,7 @@ describe('POST /api/exec-plan — 中拒截断(plan-rejected)', () => {
     expect(rejected.rows).toHaveLength(1);
     expect(rejected.rows[0].detail).toMatchObject({ layer: 'undeclared', plan: { step: 2 } });
     // 标记事件照常(detail.kind=plan-rejected,分步摘要含拒绝步)。
-    const marker = await pool.query(
-      "SELECT detail FROM events WHERE kind = 'plan-executed'",
-    );
+    const marker = await pool.query("SELECT detail FROM events WHERE kind = 'plan-executed'");
     expect(marker.rows[0].detail).toMatchObject({ kind: 'plan-rejected' });
     expect(marker.rows[0].detail.steps).toHaveLength(2);
   });

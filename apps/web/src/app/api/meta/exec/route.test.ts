@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { ensureDraftTables } from '../../../../db/drafts';
 import { ensureEventsTable, listEvents } from '../../../../db/events';
 import { getPool } from '../../../../db/pool';
 import { resetEngineForTests } from '../../../../engine/service';
@@ -23,7 +24,8 @@ function post(body: unknown): Request {
 
 beforeEach(async () => {
   await ensureEventsTable(pool);
-  await pool.query('TRUNCATE events');
+  await ensureDraftTables(pool);
+  await pool.query('TRUNCATE draft_projection, draft_payloads, events');
   resetEngineForTests();
 });
 
@@ -136,5 +138,32 @@ describe('POST /_meta/api/exec', () => {
       }),
     );
     expect(forged.status).toBe(403);
+  });
+
+  it('injects the resolved policy scope into Draft create and overwrites a forged param', async () => {
+    const response = await POST(
+      post({
+        rel: 'meta/drafts',
+        action: 'create',
+        actor: 'agent',
+        principal: 'local-user',
+        params: {
+          kind: 'flow-definition',
+          target: 'post-status',
+          policyScope: 'development',
+          commandId: 'route-server-owned-scope',
+          payload: { name: 'post-status' },
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      entity: { properties: { policyScope: string; owner: string } };
+    };
+    expect(body.entity.properties).toMatchObject({
+      policyScope: 'publishing',
+      owner: 'local-user',
+    });
   });
 });

@@ -1,4 +1,9 @@
 import { getDb, getEngine, isMetaRel } from '../../../engine/service';
+import {
+  applyTrustedIdentity,
+  authenticationErrorResponse,
+  resolveTrustedRequestIdentity,
+} from '../../../auth/request-identity';
 
 import { parsePlanBody } from '../exec-request';
 
@@ -44,7 +49,16 @@ export async function POST(request: Request) {
 
   try {
     const engine = await getEngine(getDb());
-    const outcome = await engine.execPlan(parsed.steps);
+    const identity = await resolveTrustedRequestIdentity(request, {
+      plane: 'business',
+      requiredScopes: ['ui4a:write'],
+      untrusted: parsed.steps[0],
+      authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
+      defaultPolicyScope: 'development',
+    });
+    const outcome = await engine.execPlan(
+      parsed.steps.map((step) => applyTrustedIdentity(step, identity)),
+    );
     if (outcome.kind === 'plan-suspended') {
       // 202 Accepted:计划被受理但挂起(非拒绝)——等待人类裁决,剩余步不续跑。
       return Response.json(
@@ -66,10 +80,13 @@ export async function POST(request: Request) {
       entities: outcome.entities,
     });
   } catch (error) {
+    const authentication = authenticationErrorResponse(error);
+    if (authentication !== undefined) return authentication;
     // db 层故障 → 503;引擎内部不变式破坏如实 500(与 /api/exec 同口径)。
     const err = error as { code?: string; message?: string };
     const dbFailure =
-      typeof err.code === 'string' && /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
+      typeof err.code === 'string' &&
+      /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
     const message = error instanceof Error ? error.message : String(error);
     return Response.json(
       dbFailure

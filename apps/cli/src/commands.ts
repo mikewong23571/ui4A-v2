@@ -94,8 +94,37 @@ function entityPath(rel: string, config: CliConfig): string {
   const meta = rel.startsWith('meta/') || rel.startsWith('draft:');
   const base = meta ? '/_meta/api/entity' : '/api/entity';
   const query = new URLSearchParams({ rel });
-  if (meta) query.set('policyScope', config.policyScope);
+  if (meta && config.token === undefined) query.set('policyScope', config.policyScope);
   return `${base}?${query}`;
+}
+
+function writeIdentity(
+  client: Ui4aHttpClient,
+  body: Record<string, unknown>,
+): Record<string, unknown> {
+  const adapted = { ...body };
+  delete adapted.actor;
+  delete adapted.principal;
+  delete adapted.channel;
+  if (client.config.token !== undefined) {
+    if (Array.isArray(adapted.steps)) {
+      adapted.steps = adapted.steps.map((step) => {
+        if (!record(step)) return step;
+        const sanitized = { ...step };
+        delete sanitized.actor;
+        delete sanitized.principal;
+        delete sanitized.channel;
+        return sanitized;
+      });
+    }
+    return adapted;
+  }
+  return {
+    ...adapted,
+    actor: 'agent',
+    principal: client.config.principal,
+    channel: 'cli',
+  };
 }
 
 async function sitemap(client: Ui4aHttpClient): Promise<Sitemap> {
@@ -247,14 +276,14 @@ async function actions(args: ParsedArgs, client: Ui4aHttpClient): Promise<Succes
   }
   const path =
     rel.startsWith('meta/') || rel.startsWith('draft:') ? '/_meta/api/exec' : '/api/exec';
-  const response = await client.post(path, {
-    rel,
-    action: name,
-    params,
-    actor: 'agent',
-    principal: client.config.principal,
-    channel: 'cli',
-  });
+  const response = await client.post(
+    path,
+    writeIdentity(client, {
+      rel,
+      action: name,
+      params,
+    }),
+  );
   return envelope('actions.exec', response.data);
 }
 
@@ -263,12 +292,7 @@ async function plans(args: ParsedArgs, client: Ui4aHttpClient): Promise<SuccessE
   const file = flagString(args, 'file', true)!;
   const plan = await jsonFlagOrFile({ ...args, flags: { file } }, 'unused', 'file', true);
   if (!record(plan)) throw new CliError('USAGE', 'plan file must contain an object', 2);
-  const response = await client.post('/api/exec-plan', {
-    ...plan,
-    actor: 'agent',
-    principal: client.config.principal,
-    channel: 'cli',
-  });
+  const response = await client.post('/api/exec-plan', writeIdentity(client, plan));
   return envelope('plans.submit', response.data);
 }
 
@@ -358,14 +382,14 @@ function draftRel(value: string): string {
 }
 
 async function draftExec(client: Ui4aHttpClient, rel: string, actionName: string, params: unknown) {
-  return client.post('/_meta/api/exec', {
-    rel,
-    action: actionName,
-    params,
-    actor: 'agent',
-    principal: client.config.principal,
-    channel: 'cli',
-  });
+  return client.post(
+    '/_meta/api/exec',
+    writeIdentity(client, {
+      rel,
+      action: actionName,
+      params,
+    }),
+  );
 }
 
 async function drafts(args: ParsedArgs, client: Ui4aHttpClient): Promise<SuccessEnvelope> {
@@ -393,7 +417,7 @@ async function drafts(args: ParsedArgs, client: Ui4aHttpClient): Promise<Success
     const response = await draftExec(client, 'meta/drafts', 'create', {
       kind: flagString(args, 'kind', true),
       target: flagString(args, 'target', true),
-      policyScope: client.config.policyScope,
+      ...(client.config.token === undefined ? { policyScope: client.config.policyScope } : {}),
       commandId: commandId(args),
       payload,
     });

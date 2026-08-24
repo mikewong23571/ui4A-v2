@@ -30,12 +30,14 @@ export class Ui4aHttpClient {
   private headers(write: boolean): Headers {
     const headers = new Headers({
       accept: 'application/json',
-      'x-ui4a-principal': this.config.principal,
-      'x-ui4a-policy-scope': this.config.policyScope,
     });
     if (write) headers.set('content-type', 'application/json');
-    if (this.config.token !== undefined)
+    if (this.config.token !== undefined) {
       headers.set('authorization', `Bearer ${this.config.token}`);
+    } else {
+      headers.set('x-ui4a-principal', this.config.principal);
+      headers.set('x-ui4a-policy-scope', this.config.policyScope);
+    }
     return headers;
   }
 

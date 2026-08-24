@@ -51,7 +51,17 @@ export async function POST(request: Request) {
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
       defaultPolicyScope: 'publishing',
     });
-    const metaRequest = applyTrustedIdentity(parsed.request, identity);
+    const trustedRequest = applyTrustedIdentity(parsed.request, identity);
+    const metaRequest =
+      trustedRequest.rel === 'meta/drafts' && trustedRequest.action === 'create'
+        ? {
+            ...trustedRequest,
+            params: {
+              ...trustedRequest.params,
+              policyScope: identity.policyScope,
+            },
+          }
+        : trustedRequest;
     const outcome = isDraftMetaRel(parsed.request.rel)
       ? await executeDraftMeta(db, engine, metaRequest, {
           policyScope: identity.policyScope,

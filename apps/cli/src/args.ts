@@ -12,7 +12,17 @@ export interface ParsedArgs {
 }
 
 const GLOBAL_VALUE = new Set(['base-url', 'token', 'config']);
-const FORBIDDEN_FLAGS = new Set(['actor', 'principal', 'no-draft', 'approve', 'reject']);
+const FORBIDDEN_FLAGS = new Set([
+  'actor',
+  'principal',
+  'scope',
+  'policy-scope',
+  'submission-mode',
+  'submission-policy',
+  'no-draft',
+  'approve',
+  'reject',
+]);
 
 export function parseArgs(argv: string[]): ParsedArgs {
   const result: ParsedArgs = { json: false, help: false, version: false, words: [], flags: {} };
