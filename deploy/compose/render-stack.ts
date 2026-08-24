@@ -124,14 +124,15 @@ const temporalSchemaCommand = [
 
 const temporalServerCommand =
   'exec temporal-server --root /etc/temporal --config config --env docker start';
+const temporalCli = 'temporal --client-connect-timeout 3s --command-timeout 10s --output none';
 const temporalNamespaceCommand = [
   'set -eu;',
   'for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do',
-  'if temporal operator namespace describe --namespace temporal-system --address temporal:7233 >/dev/null 2>&1; then break; fi;',
+  `if ${temporalCli} operator namespace describe --namespace temporal-system --address temporal:7233; then break; fi;`,
   'if [ "$$attempt" = 12 ]; then exit 1; fi;',
   'sleep 2;',
   'done;',
-  'temporal operator namespace describe --namespace ui4a --address temporal:7233 >/dev/null 2>&1 || exec temporal operator namespace create --namespace ui4a --address temporal:7233 --retention 72h',
+  `${temporalCli} operator namespace describe --namespace ui4a --address temporal:7233 || exec ${temporalCli} operator namespace create --namespace ui4a --address temporal:7233 --retention 72h`,
 ].join(' ');
 const postgresTlsCommand = [
   'set -eu;',
