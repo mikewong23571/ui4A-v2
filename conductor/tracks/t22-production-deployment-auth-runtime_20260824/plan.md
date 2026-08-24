@@ -171,13 +171,13 @@
 
 ## Phase G: Docker Compose all-in-one
 
-- [~] Task: Red TDD——编写 Compose contract tests
-- [ ] 验证 config schema、Secrets、volumes、health、dependency 和 restart
-- [ ] 验证 image digest、idempotent restart、data retention 和 confirmed clean
-- [ ] Task: Green——实现 all-in-one stack
-- [ ] PostgreSQL、Temporal Server/UI、单实例 Keycloak 和 migration/realm import-or-check
-- [ ] UI4A Web/Worker、container Runner 和 optional Host Runner profile
-- [ ] Task: 实现 Compose internal TLS
+- [x] Task: Red TDD——编写 Compose contract tests 880dcf9
+- [x] 验证 config schema、Secrets、volumes、health、dependency 和 restart
+- [x] 验证 image digest、idempotent restart、data retention 和 confirmed clean
+- [x] Task: Green——实现 all-in-one stack 7e23e03
+- [x] PostgreSQL、Temporal Server/UI、单实例 Keycloak 和 migration/realm import-or-check
+- [x] UI4A Web/Worker、container Runner 和 optional Host Runner profile
+- [~] Task: 实现 Compose internal TLS
 - [ ] 首次生成并持久化 experiment root CA
 - [ ] 两个 local hosts/leaf certs，重复启动不覆盖
 - [ ] client trust 与 OIDC issuer/redirect/logout 验证
