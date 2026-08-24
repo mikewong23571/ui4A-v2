@@ -28,6 +28,9 @@ const CONFIG = {
         clientId: 'ui4a-web',
         clientSecretRef: 'oidc-client-secret',
         sessionSecretRef: 'oidc-session-secret',
+        agentClientId: 'ui4a-agent',
+        agentClientSecretRef: 'oidc-agent-client-secret',
+        agentScopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
         callbackUrl: 'https://ui4a.mothership.internal/api/auth/callback',
         scopes: ['openid', 'ui4a:read'],
       },
@@ -36,6 +39,7 @@ const CONFIG = {
   secrets: {
     'oidc-client-secret': 'fixed-client-secret',
     'oidc-session-secret': 'fixed-independent-session-secret',
+    'oidc-agent-client-secret': 'fixed-agent-client-secret',
   },
 } as unknown as ProductionDeploymentConfig;
 

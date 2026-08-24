@@ -1,4 +1,5 @@
 import {
+  createBoundedBearerFetch,
   createDriver,
   LlmConfigurationError,
   resolveLlmConfig,
@@ -7,6 +8,7 @@ import {
   type ConversationContext as AgentConversationContext,
   type ConversationMessage as AgentConversationMessage,
   type FactRef,
+  type FetchLike,
 } from '@ui4a/agent';
 import {
   CHAT_VIEW_PROTOCOL_VERSION,
@@ -26,12 +28,21 @@ import { conversationView } from '../../../chat/conversation';
 import { executionAuditContext } from '../../../chat/audit-context';
 import { hasExplicitMetaIntent, resolveStartRel } from '../../../chat/start';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
+import { getProductionAgentTokenProvider } from '../../../auth/production-agent-token-provider';
+import { getProductionBrowserAuthentication } from '../../../auth/production-browser-authentication';
+import {
+  authenticationErrorResponse,
+  requestIdentityProfile,
+  resolveTrustedRequestIdentity,
+  type TrustedRequestAuditContext,
+} from '../../../auth/request-identity';
 import { appendEvent, readLog } from '../../../db/events';
 import { getDb } from '../../../engine/service';
 import {
   getPresentationBroker,
   getPresentationCapabilities,
 } from '../../../engine/presentation/runtime';
+import { runWebProductionDeploymentPreflight } from '../../../production-deployment-preflight';
 import { dispatchDelegation } from '../../../temporal/delegation';
 
 // POST /api/chat — 悬浮聊天的合同后端(spec FR6/FR7,arch-brief §8)。
@@ -81,8 +92,34 @@ import { dispatchDelegation } from '../../../temporal/delegation';
 
 export const dynamic = 'force-dynamic';
 
-// D8 自报身份口径下的本地 demo 用户；与 Chat Session id 解耦，供用户级 Sidecar 迁移。
-const PRESENTATION_PRINCIPAL = 'user:local';
+// 本地 demo 的用户级 Sidecar 与 Chat session 解耦；生产则使用已认证 principal。
+const LOCAL_PRESENTATION_PRINCIPAL = 'user:local';
+const AGENT_CONTRACT_PATHS = [
+  '/.well-known/ui4a.json',
+  '/api/entity',
+  '/api/exec',
+  '/api/exec-plan',
+  '/_meta/.well-known/ui4a.json',
+  '/_meta/api/entity',
+  '/_meta/api/exec',
+] as const;
+
+function bearerToken(authorizationHeader: string): string | undefined {
+  const match = /^Bearer ([^\s]+)$/.exec(authorizationHeader);
+  return match?.[1];
+}
+
+function agentCredentialErrorResponse(error: unknown): Response {
+  const code =
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string' &&
+    error.code.startsWith('agent_')
+      ? error.code
+      : 'agent_token_endpoint_unavailable';
+  return Response.json({ error: { code } }, { status: 503 });
+}
 
 interface ParsedChatBody {
   ok: true;
@@ -212,12 +249,13 @@ async function appendChatProjection(
   kind: 'chat-turn-started' | 'chat-turn-progress' | 'chat-turn',
   sessionId: string,
   detail: ChatTurnStartedDetail | ChatTurnProgressDetail | ChatTurnDetail,
+  principal = `user:${sessionId}`,
 ): Promise<void> {
   try {
     await appendEvent(getDb(), {
       kind,
       actor: 'agent',
-      principal: `user:${sessionId}`,
+      principal,
       channel: 'chat',
       rel: `chat:${sessionId}`,
       detail,
@@ -229,6 +267,7 @@ async function appendChatProjection(
 
 async function appendConversationMessage(args: {
   sessionId: string;
+  principal?: string;
   turnId: string;
   messageId: string;
   role: 'user' | 'assistant';
@@ -240,7 +279,7 @@ async function appendConversationMessage(args: {
   const appended = await appendEvent(getDb(), {
     kind: 'chat-message-appended',
     actor: args.role === 'user' ? 'human' : 'agent',
-    principal: `user:${args.sessionId}`,
+    principal: args.principal ?? `user:${args.sessionId}`,
     channel: 'chat',
     rel: `chat:${args.sessionId}`,
     detail: {
@@ -262,6 +301,7 @@ async function appendConversationMessage(args: {
 
 async function appendConversationContext(args: {
   sessionId: string;
+  principal?: string;
   basedOnSeq: number;
   sourceMessageIds: string[];
   patch: Record<string, unknown>;
@@ -269,7 +309,7 @@ async function appendConversationContext(args: {
   await appendEvent(getDb(), {
     kind: 'chat-context-updated',
     actor: 'agent',
-    principal: `user:${args.sessionId}`,
+    principal: args.principal ?? `user:${args.sessionId}`,
     channel: 'chat',
     rel: `chat:${args.sessionId}`,
     detail: {
@@ -281,18 +321,24 @@ async function appendConversationContext(args: {
   });
 }
 
-async function appendNavigationCompletion(completion: NavigationCompletion): Promise<void> {
+async function appendNavigationCompletion(
+  completion: NavigationCompletion,
+  principal = `user:${completion.sessionId}`,
+): Promise<void> {
   await appendEvent(getDb(), {
     kind: 'chat-navigation-completed',
     actor: 'agent',
-    principal: `user:${completion.sessionId}`,
+    principal,
     channel: 'chat',
     rel: `chat:${completion.sessionId}`,
     detail: completion,
   });
 }
 
-async function loadAgentConversation(sessionId: string): Promise<{
+async function loadAgentConversation(
+  sessionId: string,
+  principal = `user:${sessionId}`,
+): Promise<{
   messages: AgentConversationMessage[];
   context: AgentConversationContext;
   clientView: ReturnType<typeof conversationView>['clientView'];
@@ -300,7 +346,7 @@ async function loadAgentConversation(sessionId: string): Promise<{
 }> {
   const events = await readLog(getDb());
   const view = conversationView(events, sessionId);
-  const executionAudit = executionAuditContext(events, `user:${sessionId}`);
+  const executionAudit = executionAuditContext(events, principal);
   return {
     messages: view.recentMessages.map(({ messageId, role, content }) => ({
       messageId,
@@ -361,6 +407,9 @@ async function streamAgentLoop(args: {
   requested: 'llm' | 'auto';
   resolved: 'llm';
   baseUrl: string;
+  principal: string;
+  presentationPrincipal: string;
+  fetchImpl: FetchLike;
   conversationMessages: AgentConversationMessage[];
   conversation: AgentConversationContext;
   clientView: ReturnType<typeof conversationView>['clientView'];
@@ -374,6 +423,9 @@ async function streamAgentLoop(args: {
     requested,
     resolved,
     baseUrl,
+    principal,
+    presentationPrincipal,
+    fetchImpl,
     conversationMessages,
     conversation,
     clientView,
@@ -383,7 +435,7 @@ async function streamAgentLoop(args: {
   const startRel = await resolveStartRel(
     baseUrl,
     goal,
-    (url, init) => fetch(url, init),
+    fetchImpl,
     baseUrl.endsWith('/_meta') ? 'meta/flows' : 'articles',
   );
   // agent-decision 审计(T11 Phase B):包装 driver 在 decide 时刻捕获
@@ -401,9 +453,9 @@ async function streamAgentLoop(args: {
     goal,
     {
       baseUrl,
-      fetchImpl: (url, init) => fetch(url, init),
+      fetchImpl,
       actor: 'agent',
-      principal: `user:${sessionId}`,
+      principal,
       channel: 'chat',
       startRel,
       conversationMessages,
@@ -427,7 +479,7 @@ async function streamAgentLoop(args: {
         presentationCount += 1;
         const request = completePresentationRequest(intent, {
           requestId: `${turnId}:presentation:${presentationCount}`,
-          principal: PRESENTATION_PRINCIPAL,
+          principal: presentationPrincipal,
           sourceMessageIds: [turnId],
         });
         presentationRequestIds.push(request.requestId);
@@ -443,17 +495,20 @@ async function streamAgentLoop(args: {
               (payload.status === 'ready' || payload.status === 'fallback') &&
               payload.surfaceUrl !== undefined
             ) {
-              await appendNavigationCompletion({
-                schemaVersion: CHAT_VIEW_PROTOCOL_VERSION,
-                navigationId: `${request.requestId}:presentation-navigation`,
-                source: 'presentation-receipt',
-                sessionId,
-                turnId,
-                subject: request.subject,
-                route: payload.surfaceUrl,
-                sourceMessageIds: [...request.sourceMessageIds],
-                presentationRequestId: request.requestId,
-              });
+              await appendNavigationCompletion(
+                {
+                  schemaVersion: CHAT_VIEW_PROTOCOL_VERSION,
+                  navigationId: `${request.requestId}:presentation-navigation`,
+                  source: 'presentation-receipt',
+                  sessionId,
+                  turnId,
+                  subject: request.subject,
+                  route: payload.surfaceUrl,
+                  sourceMessageIds: [...request.sourceMessageIds],
+                  presentationRequestId: request.requestId,
+                },
+                principal,
+              );
             }
             send({ type: 'presentation', turnId, payload });
           });
@@ -462,17 +517,20 @@ async function streamAgentLoop(args: {
       onStep: async (step) => {
         stepFramesSent += 1;
         if (step.op.kind === 'navigate' && step.outcome === 'navigated') {
-          await appendNavigationCompletion({
-            schemaVersion: CHAT_VIEW_PROTOCOL_VERSION,
-            navigationId: `${turnId}:navigate:${step.step}`,
-            source: 'agent-navigate',
-            sessionId,
-            turnId,
-            subject: step.rel,
-            route: `/canvas?focus=${encodeURIComponent(step.rel)}`,
-            sourceMessageIds: [turnId],
-            step: step.step,
-          });
+          await appendNavigationCompletion(
+            {
+              schemaVersion: CHAT_VIEW_PROTOCOL_VERSION,
+              navigationId: `${turnId}:navigate:${step.step}`,
+              source: 'agent-navigate',
+              sessionId,
+              turnId,
+              subject: step.rel,
+              route: `/canvas?focus=${encodeURIComponent(step.rel)}`,
+              sourceMessageIds: [turnId],
+              step: step.step,
+            },
+            principal,
+          );
           send({ type: 'focus', turnId, rel: step.rel });
         } else if (step.op.kind === 'exec' && step.outcome === 'executed') {
           // navigate 帧展示动作前处境；执行成功后显式刷新同一 rel，让共享
@@ -483,12 +541,12 @@ async function streamAgentLoop(args: {
         }
         const message = stepToMessage(step);
         send({ type: 'step', turnId, message, rel: step.rel });
-        await appendChatProjection('chat-turn-progress', sessionId, {
+        await appendChatProjection(
+          'chat-turn-progress',
           sessionId,
-          turnId,
-          message,
-          step,
-        });
+          { sessionId, turnId, message, step },
+          principal,
+        );
       },
     },
   );
@@ -498,11 +556,12 @@ async function streamAgentLoop(args: {
   // 保持客户端「消息 = 各 step 帧文本」的重建口径与 trailToMessages 等值。
   for (const extra of messages.slice(result.steps.length)) {
     send({ type: 'step', turnId, message: extra });
-    await appendChatProjection('chat-turn-progress', sessionId, {
+    await appendChatProjection(
+      'chat-turn-progress',
       sessionId,
-      turnId,
-      message: extra,
-    });
+      { sessionId, turnId, message: extra },
+      principal,
+    );
   }
 
   // agent-decision 落库:inline 每步决策一条,与 chat-turn 同源同值
@@ -513,7 +572,7 @@ async function streamAgentLoop(args: {
       await appendEvent(getDb(), {
         kind: 'agent-decision',
         actor: 'agent',
-        principal: `user:${sessionId}`,
+        principal,
         channel: 'chat',
         rel: `chat:${sessionId}`,
         detail,
@@ -539,13 +598,14 @@ async function streamAgentLoop(args: {
     ...(presentationRequestIds.length > 0 ? { presentationRequestIds } : {}),
     driver: resolved,
   };
-  await appendChatProjection('chat-turn', sessionId, turnDetail);
+  await appendChatProjection('chat-turn', sessionId, turnDetail, principal);
 
   const assistantMessageId = `${turnId}:assistant`;
   const assistantContent = result.summary ?? '';
   if (assistantContent !== '') {
     const assistantSeq = await appendConversationMessage({
       sessionId,
+      principal,
       turnId,
       messageId: assistantMessageId,
       role: 'assistant',
@@ -556,6 +616,7 @@ async function streamAgentLoop(args: {
     if (result.outcome === 'clarification-needed' && result.continuation !== undefined) {
       await appendConversationContext({
         sessionId,
+        principal,
         basedOnSeq: assistantSeq,
         sourceMessageIds: [turnId, assistantMessageId],
         patch: {
@@ -590,6 +651,66 @@ async function streamAgentLoop(args: {
 }
 
 export async function POST(request: Request) {
+  const requestUrl = new URL(request.url);
+  let productionIdentity: TrustedRequestAuditContext | undefined;
+  let productionSubjectToken: string | undefined;
+  let productionOrigin: string | undefined;
+  let productionAgentScopes: string[] | undefined;
+
+  if (requestIdentityProfile() === 'production') {
+    let config;
+    try {
+      config = runWebProductionDeploymentPreflight();
+    } catch {
+      return Response.json({ error: { code: 'deployment_config_invalid' } }, { status: 503 });
+    }
+    if (config === undefined) {
+      return Response.json({ error: { code: 'deployment_config_invalid' } }, { status: 503 });
+    }
+    const configuredOrigin = new URL(config.settings.service.publicOrigin);
+    const requestHost = request.headers.get('host');
+    if (
+      requestUrl.origin !== configuredOrigin.origin ||
+      (requestHost !== null && requestHost !== configuredOrigin.host)
+    ) {
+      return Response.json({ error: { code: 'request_origin_invalid' } }, { status: 400 });
+    }
+
+    const agentScopes = config.settings.auth.oidc.agentScopes;
+    const policyScopes = agentScopes
+      .filter((scope) => scope.startsWith('ui4a:policy:'))
+      .map((scope) => scope.slice('ui4a:policy:'.length));
+    if (policyScopes.length === 0) {
+      return Response.json({ error: { code: 'deployment_config_invalid' } }, { status: 503 });
+    }
+    try {
+      const browserSession = await getProductionBrowserAuthentication().resolveSession(request);
+      const subjectToken = bearerToken(browserSession.authorizationHeader);
+      if (subjectToken === undefined) {
+        return Response.json({ error: { code: 'credential_malformed' } }, { status: 401 });
+      }
+      const identityRequest = new Request(request.url, {
+        headers: { authorization: browserSession.authorizationHeader },
+      });
+      productionIdentity = await resolveTrustedRequestIdentity(identityRequest, {
+        profile: 'production',
+        productionConfig: config,
+        requiredScopes: ['ui4a:read'],
+        authorizedPolicyScopes: policyScopes,
+        defaultPolicyScope: policyScopes[0]!,
+        plane: 'business',
+      });
+      productionSubjectToken = subjectToken;
+      productionOrigin = configuredOrigin.origin;
+      productionAgentScopes = [...agentScopes];
+    } catch (error) {
+      return (
+        authenticationErrorResponse(error) ??
+        Response.json({ error: { code: 'credential_malformed' } }, { status: 401 })
+      );
+    }
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -602,15 +723,55 @@ export async function POST(request: Request) {
     return Response.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { goal, sessionId, turnId, driver: requested, mode, clientView } = parsed;
+  const { goal, turnId, driver: requested, mode, clientView } = parsed;
+  const sessionId = productionIdentity?.principal ?? parsed.sessionId;
+  const principal = productionIdentity?.principal ?? `user:${sessionId}`;
+  const presentationPrincipal = productionIdentity?.principal ?? LOCAL_PRESENTATION_PRINCIPAL;
+  let turnFetch: FetchLike = (url, init) => fetch(url, init);
+  if (
+    productionIdentity !== undefined &&
+    productionSubjectToken !== undefined &&
+    productionOrigin !== undefined &&
+    productionAgentScopes !== undefined
+  ) {
+    let authorizationHeader: string;
+    if (mode === 'inline') {
+      const requestedScopes = [
+        'ui4a:read',
+        'ui4a:write',
+        `ui4a:policy:${productionIdentity.policyScope}`,
+      ];
+      if (requestedScopes.some((scope) => !productionAgentScopes.includes(scope))) {
+        return Response.json({ error: { code: 'deployment_config_invalid' } }, { status: 503 });
+      }
+      try {
+        const credential = await getProductionAgentTokenProvider().exchangeDelegatedCredential({
+          subjectToken: productionSubjectToken,
+          requestedScopes,
+        });
+        authorizationHeader = credential.authorizationHeader;
+      } catch (error) {
+        return agentCredentialErrorResponse(error);
+      }
+    } else {
+      authorizationHeader = `Bearer ${productionSubjectToken}`;
+    }
+    turnFetch = createBoundedBearerFetch({
+      origin: productionOrigin,
+      authorizationHeader,
+      allowedPaths: AGENT_CONTRACT_PATHS,
+      fetch,
+    });
+  }
   // baseUrl 口径(终审 M-2):delegated 派发的 workflow args.baseUrl 不信任
   // 请求 Host 头(可被调用方控制,进 workflow 会让 worker 以服务端身份持续
   // 回环抓取任意 origin)。APP_ORIGIN 显式覆盖;否则仅放行本机 Host(dev/
   // e2e 都在 localhost),非本机且未配置 → 拒绝 delegated 派发。
-  const requestUrl = new URL(request.url);
   const resolved = 'llm' as const;
   let baseUrl: string;
-  if (mode !== 'delegated') {
+  if (productionOrigin !== undefined) {
+    baseUrl = productionOrigin;
+  } else if (mode !== 'delegated') {
     baseUrl = requestUrl.origin;
   } else if (process.env.APP_ORIGIN !== undefined) {
     baseUrl = process.env.APP_ORIGIN;
@@ -644,21 +805,21 @@ export async function POST(request: Request) {
   const userMessageId = turnId;
   await appendConversationMessage({
     sessionId,
+    principal,
     turnId,
     messageId: userMessageId,
     role: 'user',
     content: goal.verb,
     ...(clientView === undefined ? {} : { clientView }),
   });
-  const agentConversation = await loadAgentConversation(sessionId);
+  const agentConversation = await loadAgentConversation(sessionId, principal);
 
-  await appendChatProjection('chat-turn-started', sessionId, {
+  await appendChatProjection(
+    'chat-turn-started',
     sessionId,
-    turnId,
-    goal,
-    driver: resolved,
-    mode,
-  });
+    { sessionId, turnId, goal, driver: resolved, mode },
+    principal,
+  );
 
   if (configurationFailure !== undefined) {
     if (mode === 'inline') {
@@ -671,6 +832,9 @@ export async function POST(request: Request) {
           requested,
           resolved,
           baseUrl,
+          principal,
+          presentationPrincipal,
+          fetchImpl: turnFetch,
           conversationMessages: agentConversation.messages,
           conversation: agentConversation.context,
           clientView: agentConversation.clientView,
@@ -679,16 +843,21 @@ export async function POST(request: Request) {
       });
     }
     const messages = [{ role: 'assistant' as const, text: `失败: ${configurationFailure}` }];
-    await appendChatProjection('chat-turn', sessionId, {
+    await appendChatProjection(
+      'chat-turn',
       sessionId,
-      turnId,
-      goal,
-      outcome: 'failed',
-      summary: configurationFailure,
-      messages,
-      steps: [],
-      driver: resolved,
-    });
+      {
+        sessionId,
+        turnId,
+        goal,
+        outcome: 'failed',
+        summary: configurationFailure,
+        messages,
+        steps: [],
+        driver: resolved,
+      },
+      principal,
+    );
     return Response.json(
       {
         sessionId,
@@ -712,30 +881,35 @@ export async function POST(request: Request) {
       const startRel = await resolveStartRel(
         baseUrl,
         goal,
-        (url, init) => fetch(url, init),
+        turnFetch,
         baseUrl.endsWith('/_meta') ? 'meta/flows' : 'articles',
       );
       const { delegationId } = await dispatchDelegation({
         goal,
         driverKind: resolved,
         startRel,
-        principal: `user:${sessionId}`,
+        principal,
         baseUrl,
       });
       const message = {
         role: 'assistant' as const,
         text: `已派发委托 ${delegationId.replace(/^delegation-/, '').slice(0, 8)}…(后台执行中),进度见委托监控页 /delegations`,
       };
-      await appendChatProjection('chat-turn', sessionId, {
+      await appendChatProjection(
+        'chat-turn',
         sessionId,
-        turnId,
-        goal,
-        outcome: 'done',
-        summary: `委托已派发:${delegationId}`,
-        messages: [message],
-        steps: [],
-        driver: resolved,
-      });
+        {
+          sessionId,
+          turnId,
+          goal,
+          outcome: 'done',
+          summary: `委托已派发:${delegationId}`,
+          messages: [message],
+          steps: [],
+          driver: resolved,
+        },
+        principal,
+      );
       return Response.json({
         mode: 'delegated',
         delegationId,
@@ -746,16 +920,21 @@ export async function POST(request: Request) {
       // 派发失败据实 503(委托未出发;与 inline 的"失败也是 200"不同——
       // 这里连循环都没开始,客户端必须知道派发本身未成)。
       const summary = `委托派发失败: ${error instanceof Error ? error.message : String(error)}`;
-      await appendChatProjection('chat-turn', sessionId, {
+      await appendChatProjection(
+        'chat-turn',
         sessionId,
-        turnId,
-        goal,
-        outcome: 'failed',
-        summary,
-        messages: [{ role: 'assistant', text: `失败: ${summary}` }],
-        steps: [],
-        driver: resolved,
-      });
+        {
+          sessionId,
+          turnId,
+          goal,
+          outcome: 'failed',
+          summary,
+          messages: [{ role: 'assistant', text: `失败: ${summary}` }],
+          steps: [],
+          driver: resolved,
+        },
+        principal,
+      );
       return Response.json(
         {
           sessionId,
@@ -778,6 +957,9 @@ export async function POST(request: Request) {
       requested,
       resolved,
       baseUrl,
+      principal,
+      presentationPrincipal,
+      fetchImpl: turnFetch,
       conversationMessages: agentConversation.messages,
       conversation: agentConversation.context,
       clientView: agentConversation.clientView,

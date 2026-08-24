@@ -23,8 +23,17 @@ import { appendEvent, ensureEventsTable } from '../../web/src/db/events';
 import { getPool } from '../../web/src/db/pool';
 import { appendAgentRunCommand, getAgentRun } from '../../web/src/db/agent-runs';
 
-import { resolveLlmConfig, type SitemapSummary } from '@ui4a/agent';
+import {
+  createBoundedBearerFetch,
+  createProductionAgentTokenProvider,
+  resolveLlmConfig,
+  type AgentDriver,
+  type FetchLike,
+  type ProductionAgentTokenProvider,
+  type SitemapSummary,
+} from '@ui4a/agent';
 import { canonicalJson } from '@ui4a/engine';
+import type { ProductionDeploymentConfig } from '@ui4a/shared';
 
 import {
   fetchSitemap,
@@ -86,6 +95,7 @@ import type {
   AgentSuspensionRecord,
   AgentVerificationResult,
 } from './agents/host/contracts';
+import { runWorkerProductionDeploymentPreflight } from './production-deployment-preflight';
 
 const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
 
@@ -470,6 +480,114 @@ export interface DelegationActivities {
   finishDelegation(args: DelegationFinishArgs): Promise<{ seq: number; deduplicated: boolean }>;
 }
 
+const PRODUCTION_AGENT_CONTRACT_PATHS = [
+  '/.well-known/ui4a.json',
+  '/api/entity',
+  '/api/exec',
+  '/api/exec-plan',
+] as const;
+
+export interface ProductionAgentActivityDeps {
+  config: ProductionDeploymentConfig;
+  credentialProvider: Pick<ProductionAgentTokenProvider, 'getClientCredential'>;
+  fetchImpl: FetchLike;
+  db: DbExecutor;
+  driver?: AgentDriver;
+}
+
+export class ProductionAgentActivityAuthenticationError extends Error {
+  readonly code = 'agent_activity_credential_unavailable';
+
+  constructor() {
+    super('agent_activity_credential_unavailable');
+    this.name = 'ProductionAgentActivityAuthenticationError';
+  }
+}
+
+function requireCanonicalAgentActivityOrigin(
+  config: ProductionDeploymentConfig,
+  suppliedBaseUrl: string,
+): string {
+  const canonicalOrigin = config.settings.service.publicOrigin;
+  if (suppliedBaseUrl !== canonicalOrigin) {
+    throw new Error('agent_activity_base_url_must_equal_canonical_origin');
+  }
+  return canonicalOrigin;
+}
+
+async function productionAgentFetch(
+  deps: ProductionAgentActivityDeps,
+  suppliedBaseUrl: string,
+): Promise<FetchLike> {
+  const origin = requireCanonicalAgentActivityOrigin(deps.config, suppliedBaseUrl);
+  let authorizationHeader: string;
+  try {
+    ({ authorizationHeader } = await deps.credentialProvider.getClientCredential());
+  } catch {
+    throw new ProductionAgentActivityAuthenticationError();
+  }
+  return createBoundedBearerFetch({
+    origin,
+    authorizationHeader,
+    allowedPaths: PRODUCTION_AGENT_CONTRACT_PATHS,
+    fetch: deps.fetchImpl,
+  });
+}
+
+/** Production Activity core: the credential exists only in the bounded Fetch closure. */
+export async function loadSitemapWithProductionAuth(
+  deps: ProductionAgentActivityDeps,
+  args: { baseUrl: string },
+): Promise<SitemapSummary | undefined> {
+  const authenticatedFetch = await productionAgentFetch(deps, args.baseUrl);
+  return fetchSitemap(args.baseUrl, authenticatedFetch);
+}
+
+/** Production Activity core: verified Bearer identity replaces all self-reported identity fields. */
+export async function agentStepWithProductionAuth(
+  deps: ProductionAgentActivityDeps,
+  args: AgentStepArgs,
+): Promise<AgentStepResult> {
+  const authenticatedFetch = await productionAgentFetch(deps, args.baseUrl);
+  return runAgentStep(
+    {
+      db: deps.db,
+      fetchImpl: authenticatedFetch,
+      ...(deps.driver === undefined ? {} : { driver: deps.driver }),
+      selfReportedIdentity: false,
+    },
+    args,
+  );
+}
+
+function productionAgentActivityDeps(
+  config: ProductionDeploymentConfig,
+): ProductionAgentActivityDeps {
+  const oidc = config.settings.auth.oidc;
+  return {
+    config,
+    credentialProvider: createProductionAgentTokenProvider({
+      tokenEndpoint: `${oidc.issuer}/protocol/openid-connect/token`,
+      audience: oidc.audience,
+      clientId: oidc.agentClientId,
+      clientSecret: config.secrets[oidc.agentClientSecretRef]!,
+      registeredClientIds: [oidc.agentClientId],
+      allowedScopes: oidc.agentScopes,
+      clock: Date.now,
+      fetcher: fetch,
+    }),
+    fetchImpl: fetch,
+    db: workerDb(),
+  };
+}
+
+function productionAgentActivityConfig(): ProductionDeploymentConfig | undefined {
+  if (process.env.UI4A_DEPLOYMENT_PROFILE !== 'production') return undefined;
+  const config = runWorkerProductionDeploymentPreflight(process.env);
+  if (config === undefined) throw new Error('production_agent_activity_config_missing');
+  return config;
+}
+
 export async function startDelegation(
   args: DelegationStartArgs,
 ): Promise<{ seq: number; deduplicated: boolean }> {
@@ -477,10 +595,18 @@ export async function startDelegation(
 }
 
 export async function loadSitemap(args: { baseUrl: string }): Promise<SitemapSummary | undefined> {
+  const config = productionAgentActivityConfig();
+  if (config !== undefined) {
+    return loadSitemapWithProductionAuth(productionAgentActivityDeps(config), args);
+  }
   return fetchSitemap(args.baseUrl, fetch);
 }
 
 export async function agentStep(args: AgentStepArgs): Promise<AgentStepResult> {
+  const config = productionAgentActivityConfig();
+  if (config !== undefined) {
+    return agentStepWithProductionAuth(productionAgentActivityDeps(config), args);
+  }
   return runAgentStep({ db: workerDb(), fetchImpl: fetch }, args);
 }
 

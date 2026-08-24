@@ -16,6 +16,9 @@ export interface ProductionDeploymentSettings {
       clientId: string;
       clientSecretRef: string;
       sessionSecretRef: string;
+      agentClientId: 'ui4a-agent';
+      agentClientSecretRef: string;
+      agentScopes: string[];
       callbackUrl: string;
       scopes: string[];
     };
@@ -257,6 +260,9 @@ function parseAuth(value: unknown): ProductionDeploymentSettings['auth'] {
     'clientId',
     'clientSecretRef',
     'sessionSecretRef',
+    'agentClientId',
+    'agentClientSecretRef',
+    'agentScopes',
     'callbackUrl',
     'scopes',
   ]);
@@ -268,6 +274,21 @@ function parseAuth(value: unknown): ProductionDeploymentSettings['auth'] {
       clientId: identifier(oidc.clientId, 'settings.auth.oidc.clientId'),
       clientSecretRef: identifier(oidc.clientSecretRef, 'settings.auth.oidc.clientSecretRef'),
       sessionSecretRef: identifier(oidc.sessionSecretRef, 'settings.auth.oidc.sessionSecretRef'),
+      agentClientId: (() => {
+        const clientId = identifier(oidc.agentClientId, 'settings.auth.oidc.agentClientId');
+        if (clientId !== 'ui4a-agent') {
+          fail(
+            'settings.auth.oidc.agentClientId',
+            'must be ui4a-agent for the experimental release',
+          );
+        }
+        return clientId as 'ui4a-agent';
+      })(),
+      agentClientSecretRef: identifier(
+        oidc.agentClientSecretRef,
+        'settings.auth.oidc.agentClientSecretRef',
+      ),
+      agentScopes: stringList(oidc.agentScopes, 'settings.auth.oidc.agentScopes'),
       callbackUrl: httpsUrl(oidc.callbackUrl, 'auth.oidc.callbackUrl').toString(),
       scopes: stringList(oidc.scopes, 'settings.auth.oidc.scopes'),
     },
@@ -644,11 +665,51 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
   if (settings.auth.oidc.sessionSecretRef === settings.auth.oidc.clientSecretRef) {
     fail('settings.auth.oidc.sessionSecretRef', 'must differ from clientSecretRef');
   }
+  if (
+    settings.auth.oidc.agentClientId === settings.auth.oidc.clientId ||
+    settings.auth.oidc.agentClientId === settings.auth.oidc.audience
+  ) {
+    fail('settings.auth.oidc.agentClientId', 'must differ from the Web client and API audience');
+  }
+  if (
+    settings.auth.oidc.agentClientSecretRef === settings.auth.oidc.clientSecretRef ||
+    settings.auth.oidc.agentClientSecretRef === settings.auth.oidc.sessionSecretRef
+  ) {
+    fail(
+      'settings.auth.oidc.agentClientSecretRef',
+      'must differ from the Web client and browser session Secret refs',
+    );
+  }
   if (!settings.auth.oidc.scopes.includes('openid')) {
     fail('settings.auth.oidc.scopes', 'must include openid');
   }
   if (new Set(settings.auth.oidc.scopes).size !== settings.auth.oidc.scopes.length) {
     fail('settings.auth.oidc.scopes', 'must not contain duplicates');
+  }
+  const agentScopes = settings.auth.oidc.agentScopes;
+  if (new Set(agentScopes).size !== agentScopes.length) {
+    fail('settings.auth.oidc.agentScopes', 'must not contain duplicates');
+  }
+  if (!agentScopes.includes('ui4a:read') || !agentScopes.includes('ui4a:write')) {
+    fail('settings.auth.oidc.agentScopes', 'must include exactly ui4a:read and ui4a:write');
+  }
+  if (!agentScopes.some((scope) => /^ui4a:policy:[A-Za-z0-9][A-Za-z0-9._-]*$/.test(scope))) {
+    fail('settings.auth.oidc.agentScopes', 'must include at least one ui4a:policy:<app> scope');
+  }
+  if (
+    agentScopes.some(
+      (scope) =>
+        scope === 'openid' ||
+        scope === 'ui4a:approve' ||
+        (scope !== 'ui4a:read' &&
+          scope !== 'ui4a:write' &&
+          !/^ui4a:policy:[A-Za-z0-9][A-Za-z0-9._-]*$/.test(scope)),
+    )
+  ) {
+    fail(
+      'settings.auth.oidc.agentScopes',
+      'may contain only ui4a:read, ui4a:write and ui4a:policy:<app> scopes; openid and approve are forbidden',
+    );
   }
   if (settings.postgres.runtimeUser === settings.postgres.migrationUser) {
     fail('settings.postgres.migrationUser', 'must differ from runtimeUser in production');
@@ -660,6 +721,7 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
   const secretRefs: Array<[string, string]> = [
     [settings.auth.oidc.clientSecretRef, 'settings.auth.oidc.clientSecretRef'],
     [settings.auth.oidc.sessionSecretRef, 'settings.auth.oidc.sessionSecretRef'],
+    [settings.auth.oidc.agentClientSecretRef, 'settings.auth.oidc.agentClientSecretRef'],
     [settings.postgres.runtimePasswordRef, 'settings.postgres.runtimePasswordRef'],
     [settings.postgres.migrationPasswordRef, 'settings.postgres.migrationPasswordRef'],
     [settings.keycloak.databasePasswordRef, 'settings.keycloak.databasePasswordRef'],
@@ -680,6 +742,7 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
   for (const [ref, path] of secretRefs) requireSecret(secrets, ref, path);
 
   const sessionSecret = secrets[settings.auth.oidc.sessionSecretRef]!;
+  const agentClientSecret = secrets[settings.auth.oidc.agentClientSecretRef]!;
   if (
     sessionSecret === secrets[settings.auth.oidc.clientSecretRef] ||
     sessionSecret === settings.auth.oidc.clientId
@@ -687,6 +750,15 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
     fail(
       'settings.auth.oidc.sessionSecretRef',
       'Secret material must differ from the OIDC client credential and clientId',
+    );
+  }
+  if (
+    agentClientSecret === secrets[settings.auth.oidc.clientSecretRef] ||
+    agentClientSecret === sessionSecret
+  ) {
+    fail(
+      'settings.auth.oidc.agentClientSecretRef',
+      'Secret material must differ from the Web client credential and browser session Secret',
     );
   }
 

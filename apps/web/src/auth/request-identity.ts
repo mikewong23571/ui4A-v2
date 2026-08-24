@@ -74,7 +74,7 @@ function policyFor(
   config: ProductionDeploymentConfig,
   authorizedPolicyScopes: readonly string[],
 ): ProductionCredentialPolicy {
-  const agentClientId = 'ui4a-agent';
+  const { agentClientId, agentScopes } = config.settings.auth.oidc;
   return {
     issuer: config.settings.auth.oidc.issuer,
     audience: config.settings.auth.oidc.audience,
@@ -82,12 +82,11 @@ function policyFor(
     humanClientIds: [config.settings.auth.oidc.clientId],
     agentClientIds: [agentClientId],
     delegatedScopesByClient: {
-      [agentClientId]: [
-        'ui4a:read',
-        'ui4a:write',
-        ...authorizedPolicyScopes,
-        ...authorizedPolicyScopes.map((scope) => `ui4a:policy:${scope}`),
-      ],
+      [agentClientId]: agentScopes.filter(
+        (scope) =>
+          !scope.startsWith('ui4a:policy:') ||
+          authorizedPolicyScopes.includes(scope.slice('ui4a:policy:'.length)),
+      ),
     },
   };
 }

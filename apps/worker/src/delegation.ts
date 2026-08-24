@@ -69,6 +69,11 @@ export interface AgentStepDeps {
   driver?: AgentDriver;
   /** 缺省:产品 driver 开启，scripted/mock 注入关闭。 */
   requireEffectAuthorization?: boolean;
+  /**
+   * Local/demo compatibility only. Production authentication derives actor/principal/channel
+   * from the verified Bearer credential and therefore must disable these request-body hints.
+   */
+  selfReportedIdentity?: boolean;
 }
 
 /** 委托实体 rel(rel=delegation:<workflowId>;与 engine 投影的 delegationRel 同口径)。 */
@@ -356,9 +361,13 @@ export async function runAgentStep(
     }
     const call = await client.execPlan({
       steps: op.steps,
-      actor: 'agent',
-      principal: args.principal,
-      channel: DELEGATION_CHANNEL,
+      ...((deps.selfReportedIdentity ?? true)
+        ? {
+            actor: 'agent' as const,
+            principal: args.principal,
+            channel: DELEGATION_CHANNEL,
+          }
+        : {}),
     });
     if (call.outcome === 'completed') {
       return recordStep(deps.db, args, { op, outcome: 'executed', ...decisionExtra });
@@ -401,9 +410,13 @@ export async function runAgentStep(
     rel: args.currentRel,
     action: op.action,
     params: op.params ?? {},
-    actor: 'agent',
-    principal: args.principal,
-    channel: DELEGATION_CHANNEL,
+    ...((deps.selfReportedIdentity ?? true)
+      ? {
+          actor: 'agent' as const,
+          principal: args.principal,
+          channel: DELEGATION_CHANNEL,
+        }
+      : {}),
   });
   if (call.ok) {
     return recordStep(deps.db, args, {

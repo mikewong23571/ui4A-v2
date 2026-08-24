@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   dispatchDelegation: vi.fn(),
   exchangeDelegatedCredential: vi.fn(),
   fetcher: vi.fn(),
+  preflight: vi.fn(),
   readLog: vi.fn(),
   resolveIdentity: vi.fn(),
   runAgent: vi.fn(),
@@ -65,6 +66,10 @@ vi.mock('../../../auth/request-identity', async (importOriginal) => {
     },
   };
 });
+
+vi.mock('../../../production-deployment-preflight', () => ({
+  runWebProductionDeploymentPreflight: mocks.preflight,
+}));
 
 vi.mock('@ui4a/agent', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@ui4a/agent')>();
@@ -156,6 +161,19 @@ beforeEach(() => {
   mocks.fetcher.mockReset();
   mocks.fetcher.mockImplementation(async (input: string | URL | Request) => successfulFetch(input));
   vi.stubGlobal('fetch', mocks.fetcher);
+  mocks.preflight.mockReset();
+  mocks.preflight.mockReturnValue({
+    settings: {
+      service: { publicOrigin: APP_ORIGIN },
+      auth: {
+        mode: 'oidc',
+        oidc: {
+          agentScopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
+        },
+      },
+    },
+    secrets: {},
+  });
   mocks.readLog.mockReset();
   mocks.readLog.mockResolvedValue([]);
   mocks.resolveIdentity.mockReset();
@@ -163,7 +181,7 @@ beforeEach(() => {
     authorizationMode: 'credential',
     actor: 'human',
     principal: 'human-alice',
-    scopes: ['ui4a:read', 'ui4a:write', 'development'],
+    scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
     policyScope: 'development',
     channel: 'oidc',
     humanApprovalEligible: true,
@@ -240,7 +258,7 @@ describe('production chat turn credential boundary', () => {
     expect(mocks.exchangeDelegatedCredential).toHaveBeenCalledTimes(1);
     expect(mocks.exchangeDelegatedCredential).toHaveBeenCalledWith({
       subjectToken: HUMAN_ACCESS_TOKEN,
-      requestedScopes: ['ui4a:read', 'ui4a:write', 'development'],
+      requestedScopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
     });
     expect(
       (mocks.exchangeDelegatedCredential.mock.calls[0]![0] as { requestedScopes: string[] })

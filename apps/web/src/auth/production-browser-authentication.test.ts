@@ -123,6 +123,9 @@ const COMPOSITION_CONFIG = {
         clientId: CLIENT_ID,
         clientSecretRef: 'oidc-client-secret',
         sessionSecretRef: 'oidc-session-secret',
+        agentClientId: 'ui4a-agent',
+        agentClientSecretRef: 'oidc-agent-client-secret',
+        agentScopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
         callbackUrl: 'https://ui4a.mothership.internal/api/auth/callback',
         scopes: ['openid', 'ui4a:read'],
       },
@@ -131,6 +134,7 @@ const COMPOSITION_CONFIG = {
   secrets: {
     'oidc-client-secret': CLIENT_SECRET,
     'oidc-session-secret': 'short-independent',
+    'oidc-agent-client-secret': 'fixed-agent-client-secret',
   },
 } as unknown as ProductionDeploymentConfig;
 

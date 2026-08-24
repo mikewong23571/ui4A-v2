@@ -7,6 +7,7 @@
  */
 export * from './types';
 export * from './authorization';
+export * from './authenticated-fetch';
 export * from './llm-config';
 export * from './http';
 export * from './loop';
@@ -19,4 +20,5 @@ export * from './llm-driver';
 export * from './llm-probe';
 export * from './presentation-agent';
 export * from './presentation-revision';
+export * from './production-agent-token-provider';
 export * from './specialization/index';

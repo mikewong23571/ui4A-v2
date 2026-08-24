@@ -1,5 +1,9 @@
 import { getDb, getEngine } from '../../../engine/service';
 import { getAgentDefinitionCatalog } from '../../../engine/agent-definitions';
+import {
+  authenticationErrorResponse,
+  resolveTrustedRequestIdentity,
+} from '../../../auth/request-identity';
 
 // GET /.well-known/ui4a.json — 应用 sitemap 端点(spec FR4):
 // 从 flow 常量纯推导的"应用交互拓扑完整声明"(界面清单/流程拓扑/每节点
@@ -12,11 +16,22 @@ export async function GET(request?: Request) {
   try {
     const db = getDb();
     const engine = await getEngine(db);
-    const principal = request?.headers.get('x-ui4a-principal') ?? 'local-user';
-    const policyScope = request?.headers.get('x-ui4a-policy-scope') ?? 'publishing';
+    const identity = await resolveTrustedRequestIdentity(
+      request ?? new Request('http://localhost:3100/.well-known/ui4a.json'),
+      {
+        plane: 'business',
+        requiredScopes: ['ui4a:read'],
+        authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
+        defaultPolicyScope: 'publishing',
+      },
+    );
+    const principal = identity.principal;
+    const policyScope = identity.policyScope;
     const agents = await getAgentDefinitionCatalog(db, principal, policyScope);
     return Response.json({ protocolVersion: '1', ...engine.getSitemap(), agents });
-  } catch {
+  } catch (error) {
+    const authentication = authenticationErrorResponse(error);
+    if (authentication !== undefined) return authentication;
     return Response.json({ error: 'sitemap 数据库不可用' }, { status: 503 });
   }
 }
