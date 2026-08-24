@@ -1,0 +1,25 @@
+Task: 运行 disposable Runtime Backend 探针
+
+Summary:
+- Defined and exercised a sealed server-resolved Runner envelope with explicit request-forbidden deployment fields.
+- Probed one-shot and authenticated localhost daemon adapters, duplicate delivery, disconnect, cancellation, timeout, and restart boundaries.
+- Ran live disposable Kubernetes Jobs for completion/result and cancellation/Pod cleanup, then removed the namespace.
+- Chose apps/agent-runner with oneshot and daemon modes sharing one canonical result contract.
+
+Files:
+- scripts/t22-runtime-probe.ts
+- scripts/t22-evidence-contract.test.ts
+- conductor/tracks/t22-production-deployment-auth-runtime_20260824/{runtime-probe.json,runtime-probe.md,index.md,plan.md}
+
+Why:
+Kubernetes and trusted-host execution must differ only at the deployment backend, not create two Agent Run truths or let requests select privileged runtime settings.
+
+Verification:
+- Red: focused contract failed because runtime-probe.json was absent.
+- Host probe: oneshot/daemon/duplicate/disconnect/cancel/timeout passed.
+- K8s probe: Job create/watch/log result/cancel/dependent Pod deletion/namespace cleanup passed.
+- Green: ./node_modules/.bin/vitest run --config vitest.t22-contract.config.mts => 7/7 passed.
+- Prettier, JSON parse, git diff --check, and live namespace-absence check passed.
+
+Safety:
+Only the dedicated ui4a-runtime-probe namespace and two disposable Jobs were created. The namespace was deleted and confirmed absent. The cached Flannel image was a shell carrier only and is not a Runtime recommendation.
