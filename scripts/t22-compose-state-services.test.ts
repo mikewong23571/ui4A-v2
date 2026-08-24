@@ -208,6 +208,11 @@ describe('T22 executable Compose state services', () => {
   it('uses a real idempotent Temporal namespace describe-or-create command', () => {
     const command = stack().services['temporal-namespace']?.command?.join(' ') ?? '';
 
+    expect(command).toContain(
+      'temporal operator namespace describe --namespace temporal-system --address temporal:7233',
+    );
+    expect(command).toMatch(/for attempt in 1 2 3 4 5 6 7 8 9 10 11 12/);
+    expect(command).toContain('sleep 2');
     expect(command).toContain('temporal operator namespace describe --namespace ui4a');
     expect(command).toContain('temporal operator namespace create --namespace ui4a');
     expect(command).toContain('--address temporal:7233');
