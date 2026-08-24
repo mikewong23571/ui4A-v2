@@ -1,0 +1,5 @@
+T22 Phase I K8s one-shot Codex transport correction
+
+Replaced SDK built-in baseUrl transport with one server-owned custom provider using wire_api=responses and supports_websockets=false. Derived HOME and CODEX_HOME mechanically beneath the already-sealed workspace root, with canonical containment validation.
+
+TDD: focused production test failed twice before implementation, then passed. Verification: Agent Runner 5 suites/81 tests, typecheck, build, Prettier, and diff-check all passed. Rootless isolated probe reached HTTP Responses events without websocket 404; the upstream provider then failed honestly with security_plugin_uninstalled. No API key was included in source or git notes. No image build/deploy was performed.
