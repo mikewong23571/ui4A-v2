@@ -1,0 +1,5 @@
+T22 Phase I bounded Responses adapter
+
+Operator explicitly authorized bounded UA rewrite. Added a per-execution 127.0.0.1 ephemeral adapter that accepts only canonical POST /v1/responses, derives its HTTPS upstream only from validated settings, fixes the non-Codex User-Agent, strips hop-by-hop transport headers, and transparently forwards authorization, body, status, safe headers, and SSE bytes. Redirects fail, requests are size/time bounded, active work aborts on timeout/close, and adapter-generated errors contain stable codes only. Production Codex composition points its existing Responses custom provider at this loopback and closes it in finally; no fallback route exists.
+
+TDD evidence: adapter module/API missing Red; composition Red showed canonical baseUrl still direct and close absent. Green: Runner 6 suites/90 tests, typecheck, build, Prettier, and diff-check passed. A rootless probe using the implemented bundled module completed one structured Codex stream with probe=ok and the full thread/turn/item/turn lifecycle. No business Run, OCI build, deploy, Secret change, request body, authorization value, or upstream error message was recorded.
