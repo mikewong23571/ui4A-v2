@@ -43,9 +43,10 @@ WORKDIR /app
 COPY --from=builder --chown=node:node /workspace/apps/web/.next/standalone ./
 COPY --from=builder --chown=node:node /workspace/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=node:node /workspace/apps/web/public ./apps/web/public
+COPY --from=builder --chown=node:node /workspace/apps/web/production-entrypoint.mjs ./apps/web/production-entrypoint.mjs
 RUN mkdir -p /app/apps/web/.next/cache /tmp && chown -R node:node /app/apps/web/.next/cache /tmp
 USER node
 EXPOSE 3100
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:3100/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
-CMD ["node", "apps/web/server.js"]
+CMD ["node", "apps/web/production-entrypoint.mjs"]

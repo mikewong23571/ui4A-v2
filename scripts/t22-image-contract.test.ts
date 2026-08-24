@@ -136,6 +136,22 @@ describe('T22 production OCI image contract', () => {
     expect(contract.images.web?.health.endpoint).toBe('/live');
   });
 
+  it('gates the standalone Web server behind the production bootstrap', () => {
+    const dockerfile = requiredSource(imageFiles.web);
+    const entrypoint = requiredSource('apps/web/production-entrypoint.mjs');
+    const contract = JSON.parse(requiredSource('deploy/oci/image-contract.json')) as {
+      images: { web: { entrypoint: string[] } };
+    };
+
+    expect(dockerfile).toContain(
+      '/workspace/apps/web/production-entrypoint.mjs ./apps/web/production-entrypoint.mjs',
+    );
+    expect(dockerfile).toContain('CMD ["node", "apps/web/production-entrypoint.mjs"]');
+    expect(contract.images.web.entrypoint).toEqual(['node', 'apps/web/production-entrypoint.mjs']);
+    expect(entrypoint).toMatch(/await register\(\)/);
+    expect(entrypoint).toMatch(/await loadModule\(serverUrl\)/);
+  });
+
   it('pins the Runner Git, Pandoc and Codex requirements', () => {
     const dockerfile = requiredSource(imageFiles.runner);
 

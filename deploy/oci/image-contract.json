@@ -21,7 +21,7 @@
   "images": {
     "web": {
       "dockerfile": "apps/web/Dockerfile",
-      "entrypoint": ["node", "apps/web/server.js"],
+      "entrypoint": ["node", "apps/web/production-entrypoint.mjs"],
       "health": {
         "command": [
           "node",
