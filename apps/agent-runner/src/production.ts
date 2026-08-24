@@ -1,12 +1,16 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { lstatSync, readFileSync } from 'node:fs';
 import type { IncomingMessage } from 'node:http';
+import { isAbsolute } from 'node:path';
 
 import { Codex, type CodexOptions, type ThreadOptions } from '@openai/codex-sdk';
 import {
   preflightProductionDeploymentFromEnvironment,
   type HostProductionRuntimeProfile,
+  type KubernetesProductionRuntimeProfile,
   type ProductionDeploymentConfig,
+  type ProductionDeploymentMode,
+  type ProductionRuntimeProfile,
 } from '@ui4a/shared';
 
 import {
@@ -54,6 +58,7 @@ export interface RunnerCodexSdk {
 }
 
 export interface ProductionRunnerComposition {
+  deploymentMode: ProductionDeploymentMode;
   processor: RunnerDeliveryProcessor;
   authorizeDelivery: RunnerDeliveryAuthorizer;
   backendReadiness: RunnerBackendReadinessProvider;
@@ -153,9 +158,9 @@ function serializeMessages(messages: CompiledCodexRequest['messages']): string {
 
 function matchingProfile(
   delivery: RunnerDelivery,
-  profiles: readonly HostProductionRuntimeProfile[],
+  profiles: readonly ProductionRuntimeProfile[],
   runnerImage: string,
-): HostProductionRuntimeProfile {
+): ProductionRuntimeProfile {
   const matches = profiles.filter(
     (profile) =>
       profile.id === delivery.execution.profileId &&
@@ -163,9 +168,11 @@ function matchingProfile(
   );
   if (matches.length !== 1) throw new Error('runner_execution_failed');
   const profile = matches[0]!;
+  const expectedBackend = profile.backend === 'host' ? 'trusted-host' : 'kubernetes-job';
+  const expectedImage = profile.backend === 'host' ? runnerImage : profile.image;
   if (
-    delivery.execution.backend !== 'trusted-host' ||
-    delivery.execution.image !== runnerImage ||
+    delivery.execution.backend !== expectedBackend ||
+    delivery.execution.image !== expectedImage ||
     delivery.execution.workspace.rootRef !== profile.workspaceRoot ||
     delivery.execution.resources.cpu !== profile.resources.cpu ||
     delivery.execution.resources.memory !== profile.resources.memory ||
@@ -192,7 +199,7 @@ function parseAgentResult(event: Record<string, unknown>): unknown | undefined {
 async function executeCodex(input: {
   delivery: RunnerDelivery;
   request: CompiledCodexRequest;
-  profile: HostProductionRuntimeProfile;
+  profile: ProductionRuntimeProfile;
   signal: AbortSignal;
   configuration: ProductionDeploymentConfig;
   resolvedSecrets: Readonly<Record<string, string>>;
@@ -288,29 +295,46 @@ export function createProductionRunnerComposition(
   } catch {
     fail();
   }
-  const runnerId = environment.UI4A_RUNNER_ID;
   const runnerImage = environment.UI4A_RUNNER_IMAGE;
-  if (
-    configuration === undefined ||
-    configuration.settings.deploymentMode !== 'compose' ||
-    runnerId === undefined ||
-    runnerId === '' ||
-    runnerImage === undefined ||
-    !imagePattern.test(runnerImage)
-  ) {
+  if (configuration === undefined || runnerImage === undefined || !imagePattern.test(runnerImage)) {
     fail();
   }
-  const profiles = configuration.settings.runtime.profiles.filter(
-    (profile): profile is HostProductionRuntimeProfile =>
-      profile.backend === 'host' && profile.runnerId === runnerId,
-  );
+  const deploymentMode = configuration.settings.deploymentMode;
+  let profiles: ProductionRuntimeProfile[];
+  let authorizeDelivery: RunnerDeliveryAuthorizer;
+  let deliveryAvailable: boolean;
+  if (deploymentMode === 'compose') {
+    const runnerId = environment.UI4A_RUNNER_ID;
+    if (runnerId === undefined || runnerId === '') fail();
+    profiles = configuration.settings.runtime.profiles.filter(
+      (profile): profile is HostProductionRuntimeProfile =>
+        profile.backend === 'host' && profile.runnerId === runnerId,
+    );
+    if (profiles.length === 0) fail();
+    const runnerTokenRefs = new Set(
+      profiles.map((profile) => (profile as HostProductionRuntimeProfile).runnerTokenRef),
+    );
+    if (runnerTokenRefs.size !== 1) fail();
+    const runnerTokenRef = [...runnerTokenRefs][0]!;
+    const runnerToken = configuration.secrets[runnerTokenRef];
+    if (runnerToken === undefined || runnerToken === '') fail();
+    authorizeDelivery = bearerAuthorizer(runnerToken);
+    deliveryAvailable = true;
+  } else if (deploymentMode === 'kubernetes') {
+    profiles = configuration.settings.runtime.profiles.filter(
+      (profile): profile is KubernetesProductionRuntimeProfile =>
+        profile.backend === 'kubernetes' && profile.image === runnerImage,
+    );
+    // Kubernetes delivery is a sealed file in a one-shot Job. The long-running Deployment stays
+    // fail-closed because no HTTP Runner bearer-token contract exists for this backend.
+    authorizeDelivery = async () => false;
+    deliveryAvailable = false;
+  } else {
+    fail();
+  }
   if (profiles.length === 0) fail();
-  const runnerTokenRefs = new Set(profiles.map((profile) => profile.runnerTokenRef));
-  if (runnerTokenRefs.size !== 1) fail();
-  const runnerTokenRef = [...runnerTokenRefs][0]!;
-  const runnerToken = configuration.secrets[runnerTokenRef];
   const apiKey = configuration.secrets[configuration.settings.llm.apiKeyRef];
-  if (runnerToken === undefined || runnerToken === '' || apiKey === undefined || apiKey === '') {
+  if (apiKey === undefined || apiKey === '') {
     fail();
   }
   for (const profile of profiles) {
@@ -373,9 +397,56 @@ export function createProductionRunnerComposition(
     },
   };
   return {
+    deploymentMode,
     processor,
-    authorizeDelivery: bearerAuthorizer(runnerToken),
-    backendReadiness: () => ({ registered: true, deliveryAvailable: true }),
+    authorizeDelivery,
+    backendReadiness: () => ({ registered: true, deliveryAvailable }),
+  };
+}
+
+export interface ProductionRunnerOneshotAdapter {
+  processor: RunnerDeliveryProcessor;
+  readDelivery(environment: NodeJS.ProcessEnv): Promise<unknown>;
+  signal?: AbortSignal;
+}
+
+function validateDeliveryFile(path: string): void {
+  if (!isAbsolute(path)) throw new Error('runner_delivery_source_invalid');
+  let facts;
+  try {
+    facts = lstatSync(path);
+  } catch {
+    throw new Error('runner_delivery_source_invalid');
+  }
+  if (!facts.isFile() || facts.isSymbolicLink() || facts.size < 1 || facts.size > 1024 * 1024) {
+    throw new Error('runner_delivery_source_invalid');
+  }
+}
+
+/** Default Kubernetes Job entry: one bounded sealed delivery file, same processor and executor. */
+export function createProductionRunnerOneshotAdapter(
+  environment: NodeJS.ProcessEnv,
+  dependencies: ProductionRunnerDependencies = {},
+): ProductionRunnerOneshotAdapter | undefined {
+  const mode = environment.UI4A_DEPLOYMENT_PROFILE;
+  if (mode === undefined || mode === '' || mode === 'local') return undefined;
+  const path = environment.UI4A_RUNNER_DELIVERY_FILE;
+  if (path === undefined || path === '') throw new Error('runner_delivery_source_invalid');
+  validateDeliveryFile(path);
+  const composition = createProductionRunnerComposition(environment, dependencies);
+  if (composition?.deploymentMode !== 'kubernetes') {
+    throw new Error('runner_delivery_source_invalid');
+  }
+  return {
+    processor: composition.processor,
+    async readDelivery() {
+      validateDeliveryFile(path);
+      try {
+        return JSON.parse(readFileSync(path, 'utf8')) as unknown;
+      } catch {
+        throw new Error('runner_delivery_source_invalid');
+      }
+    },
   };
 }
 

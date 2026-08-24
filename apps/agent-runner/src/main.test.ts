@@ -135,6 +135,37 @@ describe('Agent Runner command entrypoint', () => {
     });
   });
 
+  it('uses the production Kubernetes one-shot adapter when no test adapter is injected', async () => {
+    const readDelivery = vi.fn(async () => ({ sealed: 'delivery' }));
+    const runnerResult = {
+      schemaVersion: 1 as const,
+      deliveryId: 'delivery:k8s:1',
+      runId: 'run:k8s:1',
+      specialization: 'writing' as const,
+      status: 'succeeded' as const,
+      birth: {
+        definitionRef: 'writing@1',
+        definitionHash: `sha256:${'1'.repeat(64)}`,
+        promptHash: `sha256:${'2'.repeat(64)}`,
+        runtimeHash: `sha256:${'3'.repeat(64)}`,
+        taskContractHash: `sha256:${'4'.repeat(64)}`,
+        resultContractHash: `sha256:${'5'.repeat(64)}`,
+      },
+      candidate: { markdown: '# K8s' },
+      artifacts: [],
+      resultHash: `sha256:${'6'.repeat(64)}`,
+    };
+    const processor = { execute: vi.fn(async () => runnerResult) };
+    const productionOneshot = vi.fn(() => ({ processor, readDelivery }));
+    const harness = commandHarness({ productionOneshot });
+
+    await expect(runRunnerMain(['oneshot'], harness.options)).resolves.toBe(0);
+    expect(productionOneshot).toHaveBeenCalledWith(harness.options.environment);
+    expect(readDelivery).toHaveBeenCalledOnce();
+    expect(processor.execute).toHaveBeenCalledWith({ sealed: 'delivery' }, undefined);
+    expect(JSON.parse(harness.stdout[0]!)).toEqual(runnerResult);
+  });
+
   it.each(['health', 'version', '--version'])(
     '%s exits zero with canonical non-GA metadata',
     async (command) => {

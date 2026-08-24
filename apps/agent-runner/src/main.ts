@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { releaseMetadata, runnerLivePayload } from './runtime.js';
-import { runProductionDaemon } from './production.js';
+import { createProductionRunnerOneshotAdapter, runProductionDaemon } from './production.js';
 import {
   executeRunnerDelivery,
   type RunnerDeliveryProcessor,
@@ -22,6 +22,7 @@ export interface RunnerCommandOptions {
   stderr?: (line: string) => void;
   daemon?: (environment: NodeJS.ProcessEnv) => Promise<void>;
   oneshot?: RunnerOneshotAdapter;
+  productionOneshot?: (environment: NodeJS.ProcessEnv) => RunnerOneshotAdapter | undefined;
   pkiInit?: (input: {
     rootDirectory: string;
     ui4aHost: string;
@@ -67,21 +68,24 @@ export async function runRunnerCommand(
       }
     }
     if (command === 'oneshot') {
-      if (options.oneshot === undefined) {
-        stderr(
-          JSON.stringify({
-            status: 'unavailable',
-            reasonCode: 'runner_delivery_not_configured',
-          }),
-        );
-        return 78;
-      }
       try {
-        const delivery = await options.oneshot.readDelivery(environment);
+        const oneshot =
+          options.oneshot ??
+          (options.productionOneshot ?? createProductionRunnerOneshotAdapter)(environment);
+        if (oneshot === undefined) {
+          stderr(
+            JSON.stringify({
+              status: 'unavailable',
+              reasonCode: 'runner_delivery_not_configured',
+            }),
+          );
+          return 78;
+        }
+        const delivery = await oneshot.readDelivery(environment);
         const result: RunnerDeliveryResult = await executeRunnerDelivery(
-          options.oneshot.processor,
+          oneshot.processor,
           delivery,
-          options.oneshot.signal === undefined ? undefined : { signal: options.oneshot.signal },
+          oneshot.signal === undefined ? undefined : { signal: oneshot.signal },
         );
         stdout(JSON.stringify(result));
         return 0;

@@ -1,11 +1,15 @@
 import type { IncomingMessage } from 'node:http';
+import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import type { CodexOptions, ThreadOptions } from '@openai/codex-sdk';
 import type { HostProductionRuntimeProfile, ProductionDeploymentConfig } from '@ui4a/shared';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createProductionRunnerComposition,
+  createProductionRunnerOneshotAdapter,
   runProductionDaemon,
   type RunnerCodexSdk,
 } from './production.js';
@@ -14,6 +18,11 @@ import type { RunnerDaemonOptions } from './runtime.js';
 const image = `registry.internal/ui4a/agent-runner@sha256:${'a'.repeat(64)}`;
 const apiKey = '__runner_codex_api_key__';
 const runnerToken = 'runner-token.fixture-123';
+const temporaryRoots: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true })));
+});
 
 function configuration(): ProductionDeploymentConfig {
   return {
@@ -61,6 +70,40 @@ function environment(): NodeJS.ProcessEnv {
     UI4A_RUNNER_ID: 'runner-1',
     UI4A_RUNNER_IMAGE: image,
   };
+}
+
+function kubernetesConfiguration(): ProductionDeploymentConfig {
+  const config = configuration();
+  config.settings.deploymentMode = 'kubernetes';
+  config.settings.runtime.profiles = [
+    {
+      id: 'writing-k8s',
+      specialization: 'writing',
+      backend: 'kubernetes',
+      image,
+      workspaceRoot: '/workspaces/writing',
+      timeoutSeconds: 30,
+      resources: { cpu: '1', memory: '2Gi' },
+      networkPolicy: 'restricted',
+      credentialRefs: ['llm-api-key'],
+    },
+  ];
+  return config;
+}
+
+function kubernetesEnvironment(): NodeJS.ProcessEnv {
+  return {
+    UI4A_DEPLOYMENT_PROFILE: 'production',
+    UI4A_RUNNER_IMAGE: image,
+  };
+}
+
+function kubernetesDelivery() {
+  const value = delivery();
+  value.execution.profileId = 'writing-k8s';
+  (value.execution as { backend: string }).backend = 'kubernetes-job';
+  value.execution.workspace.rootRef = '/workspaces/writing';
+  return value;
 }
 
 function compiledPayload() {
@@ -314,7 +357,10 @@ describe('Agent Runner production composition', () => {
 
   it('passes the production processor, authorizer, and readiness into daemon startup', async () => {
     const runDaemon = vi.fn(
-      async (_environment: NodeJS.ProcessEnv, _options?: RunnerDaemonOptions) => undefined,
+      async (environment: NodeJS.ProcessEnv, options?: RunnerDaemonOptions) => {
+        void environment;
+        void options;
+      },
     );
     const created = composition();
     await runProductionDaemon(environment(), {
@@ -335,5 +381,120 @@ describe('Agent Runner production composition', () => {
       registered: true,
       deliveryAvailable: true,
     });
+  });
+
+  it('executes a Kubernetes one-shot through the same sealed processor and generic Codex executor', async () => {
+    const transport = sdk();
+    const created = createProductionRunnerComposition(kubernetesEnvironment(), {
+      loadConfiguration: () => kubernetesConfiguration(),
+      createClient: transport.createClient,
+      scheduleTimeout: () => () => undefined,
+    });
+
+    expect(created).toBeDefined();
+    await expect(created!.processor.execute(kubernetesDelivery())).resolves.toMatchObject({
+      status: 'succeeded',
+      candidate: {
+        schemaVersion: 1,
+        nativeSessionId: 'thread-writing-1',
+        result: { markdown: '# Candidate' },
+      },
+    });
+    expect(transport.createClient).toHaveBeenCalledOnce();
+    expect(created!.backendReadiness()).toEqual({ registered: true, deliveryAvailable: false });
+    await expect(created!.authorizeDelivery({ headers: {} } as IncomingMessage)).resolves.toBe(
+      false,
+    );
+  });
+
+  it.each([
+    [
+      'backend',
+      (value: ReturnType<typeof kubernetesDelivery>) =>
+        ((value.execution as { backend: string }).backend = 'trusted-host'),
+    ],
+    [
+      'image',
+      (value: ReturnType<typeof kubernetesDelivery>) => (value.execution.image = `${image}0`),
+    ],
+    [
+      'profile',
+      (value: ReturnType<typeof kubernetesDelivery>) => (value.execution.profileId = 'other'),
+    ],
+    [
+      'credentials',
+      (value: ReturnType<typeof kubernetesDelivery>) =>
+        (value.execution.credentialRefs = ['codex-token']),
+    ],
+    [
+      'contract',
+      (value: ReturnType<typeof kubernetesDelivery>) =>
+        (value.request.task.contractRef = 'request-selected@1'),
+    ],
+  ])('rejects Kubernetes %s override before SDK construction', async (_label, mutate) => {
+    const transport = sdk();
+    const created = createProductionRunnerComposition(kubernetesEnvironment(), {
+      loadConfiguration: () => kubernetesConfiguration(),
+      createClient: transport.createClient,
+      scheduleTimeout: () => () => undefined,
+    });
+    const input = kubernetesDelivery();
+    mutate(input);
+
+    await expect(created!.processor.execute(input)).rejects.toThrow('runner_execution_failed');
+    expect(transport.createClient).not.toHaveBeenCalled();
+  });
+
+  it('reads a bounded regular Kubernetes delivery file without creating another wire format', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ui4a-k8s-runner-'));
+    temporaryRoots.push(root);
+    const deliveryFile = join(root, 'delivery.json');
+    await writeFile(deliveryFile, JSON.stringify(kubernetesDelivery()));
+    const transport = sdk();
+    const env = { ...kubernetesEnvironment(), UI4A_RUNNER_DELIVERY_FILE: deliveryFile };
+    const adapter = createProductionRunnerOneshotAdapter(env, {
+      loadConfiguration: () => kubernetesConfiguration(),
+      createClient: transport.createClient,
+      scheduleTimeout: () => () => undefined,
+    });
+
+    expect(adapter).toBeDefined();
+    const sealed = await adapter!.readDelivery(env);
+    expect(sealed).toEqual(kubernetesDelivery());
+    await expect(adapter!.processor.execute(sealed)).resolves.toMatchObject({
+      status: 'succeeded',
+    });
+  });
+
+  it('fails closed for missing, symlinked, or invalid one-shot delivery sources', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ui4a-k8s-runner-invalid-'));
+    temporaryRoots.push(root);
+    const target = join(root, 'target.json');
+    const link = join(root, 'delivery.json');
+    await writeFile(target, JSON.stringify(kubernetesDelivery()));
+    await symlink(target, link);
+    const baseDependencies = {
+      loadConfiguration: () => kubernetesConfiguration(),
+      createClient: sdk().createClient,
+    };
+
+    expect(() =>
+      createProductionRunnerOneshotAdapter(kubernetesEnvironment(), baseDependencies),
+    ).toThrow('runner_delivery_source_invalid');
+    expect(() =>
+      createProductionRunnerOneshotAdapter(
+        { ...kubernetesEnvironment(), UI4A_RUNNER_DELIVERY_FILE: link },
+        baseDependencies,
+      ),
+    ).toThrow('runner_delivery_source_invalid');
+
+    await writeFile(target, '{not-json');
+    const adapter = createProductionRunnerOneshotAdapter(
+      { ...kubernetesEnvironment(), UI4A_RUNNER_DELIVERY_FILE: target },
+      baseDependencies,
+    );
+    await expect(adapter!.readDelivery(kubernetesEnvironment())).rejects.toThrow(
+      'runner_delivery_source_invalid',
+    );
   });
 });
