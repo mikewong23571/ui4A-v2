@@ -54,37 +54,85 @@ export function handleRunnerRequest(
   writeJson(response, 404, { status: 'not-found' });
 }
 
-export async function runDaemon(environment: NodeJS.ProcessEnv = process.env): Promise<void> {
+export interface RunnerDaemonOptions {
+  host?: string;
+  signal?: AbortSignal;
+  write?: (line: string) => void;
+}
+
+export function runnerPort(environment: NodeJS.ProcessEnv = process.env): number {
   const port = Number(environment.UI4A_RUNNER_PORT ?? 3102);
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
     throw new Error('UI4A_RUNNER_PORT must be an integer from 1 to 65535');
   }
+  return port;
+}
+
+export async function runDaemon(
+  environment: NodeJS.ProcessEnv = process.env,
+  options: RunnerDaemonOptions = {},
+): Promise<void> {
+  const port = runnerPort(environment);
+  const host = options.host ?? '0.0.0.0';
+  const write = options.write ?? ((line: string) => console.log(line));
+  const release = releaseMetadata(environment);
 
   const server = createServer((request, response) =>
     handleRunnerRequest(request, response, environment),
   );
   await new Promise<void>((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(port, '0.0.0.0', resolve);
+    const onError = (error: Error): void => {
+      server.off('listening', onListening);
+      reject(error);
+    };
+    const onListening = (): void => {
+      server.off('error', onError);
+      resolve();
+    };
+    server.once('error', onError);
+    server.once('listening', onListening);
+    server.listen(port, host);
   });
-  console.log(
+  write(
     JSON.stringify({
       event: 'runner-started',
       mode: 'daemon',
       port,
-      release: releaseMetadata(environment),
+      release,
     }),
   );
 
-  const close = (): void => {
-    server.close();
-  };
-  process.once('SIGINT', close);
-  process.once('SIGTERM', close);
-  await new Promise<void>((resolve, reject) => {
+  let rejectClose: (error: Error) => void = () => undefined;
+  const closed = new Promise<void>((resolve, reject) => {
+    rejectClose = reject;
     server.once('close', resolve);
     server.once('error', reject);
   });
+  let closing = false;
+  const close = (): void => {
+    if (closing || !server.listening) {
+      return;
+    }
+    closing = true;
+    server.close((error) => {
+      if (error !== undefined) {
+        rejectClose(error);
+      }
+    });
+  };
+  process.once('SIGINT', close);
+  process.once('SIGTERM', close);
+  options.signal?.addEventListener('abort', close, { once: true });
+  if (options.signal?.aborted === true) {
+    close();
+  }
+  try {
+    await closed;
+  } finally {
+    process.off('SIGINT', close);
+    process.off('SIGTERM', close);
+    options.signal?.removeEventListener('abort', close);
+  }
 }
 
 export function unavailableOneshotMessage(): string {

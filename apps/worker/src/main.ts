@@ -12,59 +12,36 @@ import { fileURLToPath } from 'node:url';
 import { NativeConnection, Worker } from '@temporalio/worker';
 
 import * as activities from './activities';
-import { shutdownBanner, startupBanner } from './banner';
 import { runWorkerProductionDeploymentPreflight } from './production-deployment-preflight';
 import { startWorkerHealthServer, workerReleaseMetadata } from './runtime-health';
+import { runWorkerStartup } from './worker-startup';
 
 async function main(): Promise<void> {
   if (process.argv[2] === '--version' || process.argv[2] === 'version') {
     console.log(JSON.stringify(workerReleaseMetadata()));
     return;
   }
-  const productionConfig = runWorkerProductionDeploymentPreflight();
-  const taskQueue =
-    productionConfig?.settings.temporal.taskQueue ?? process.env.UI4A_TASK_QUEUE ?? 'ui4a';
-  const temporalAddress =
-    productionConfig?.settings.temporal.address ?? process.env.TEMPORAL_ADDRESS ?? 'localhost:7233';
-  const namespace = productionConfig?.settings.temporal.namespace ?? 'default';
-  const identity = productionConfig?.settings.temporal.workerIdentity;
-
-  const connection = await NativeConnection.connect({ address: temporalAddress });
-  const worker = await Worker.create({
-    connection,
-    namespace,
-    taskQueue,
-    ...(identity === undefined ? {} : { identity }),
-    // workflowsPath 指向源文件:worker 自带打包器把 workflow 模块隔离打包
-    //(workflow 代码不得引入 Node API;tsx 只负责本入口进程)。
-    workflowsPath: fileURLToPath(
-      new URL(
-        import.meta.url.endsWith('.ts') ? './workflows.ts' : './workflows.js',
-        import.meta.url,
-      ),
-    ),
-    activities,
-  });
-
-  const healthServer = await startWorkerHealthServer();
-  console.log(startupBanner({ taskQueue, address: temporalAddress }));
-
-  let shuttingDown = false;
-  const requestShutdown = (signal: NodeJS.Signals): void => {
-    if (shuttingDown) return; // 重复信号不重复关闭
-    shuttingDown = true;
-    console.log(shutdownBanner(signal));
-    worker.shutdown();
-  };
-  process.on('SIGINT', () => requestShutdown('SIGINT'));
-  process.on('SIGTERM', () => requestShutdown('SIGTERM'));
-
-  try {
-    await worker.run(); // 阻塞至优雅关闭完成
-  } finally {
-    healthServer.close();
-    await connection.close();
-  }
+  const workflowsPath = fileURLToPath(
+    new URL(import.meta.url.endsWith('.ts') ? './workflows.ts' : './workflows.js', import.meta.url),
+  );
+  await runWorkerStartup(
+    {
+      preflight: runWorkerProductionDeploymentPreflight,
+      connect: (options) => NativeConnection.connect(options),
+      closeConnection: (connection) => connection.close(),
+      createWorker: (options) =>
+        Worker.create({
+          ...options,
+          // Worker 的 bundler 只以纯 workflows 模块为入口；Node/health 代码不进入 sandbox。
+          workflowsPath,
+          activities,
+        }),
+      startHealthServer: (environment) => startWorkerHealthServer(environment),
+      onSignal: (signal, handler) => process.on(signal, handler),
+      log: (message) => console.log(message),
+    },
+    process.env,
+  );
 }
 
 main().catch((error: unknown) => {

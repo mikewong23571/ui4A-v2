@@ -1,6 +1,30 @@
+import { createServer } from 'node:http';
+
 import { describe, expect, it } from 'vitest';
 
-import { releaseMetadata, runnerLivePayload, unavailableOneshotMessage } from './runtime.js';
+import {
+  releaseMetadata,
+  runDaemon,
+  runnerLivePayload,
+  runnerPort,
+  unavailableOneshotMessage,
+} from './runtime.js';
+
+async function allocatePort(): Promise<number> {
+  const server = createServer();
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  if (address === null || typeof address === 'string') {
+    throw new Error('test server did not bind a TCP port');
+  }
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => (error === undefined ? resolve() : reject(error)));
+  });
+  return address.port;
+}
 
 describe('Agent Runner production process skeleton', () => {
   it('reports immutable image provenance and experimental channel', () => {
@@ -39,5 +63,69 @@ describe('Agent Runner production process skeleton', () => {
   it('fails honestly until Phase F defines oneshot task delivery', () => {
     expect(unavailableOneshotMessage()).toContain('unavailable');
     expect(unavailableOneshotMessage()).toContain('Phase F');
+  });
+
+  it.each(['0', '65536', '3.14', 'invalid'])('rejects invalid daemon port %s', (port) => {
+    expect(() => runnerPort({ UI4A_RUNNER_PORT: port })).toThrow(
+      'UI4A_RUNNER_PORT must be an integer from 1 to 65535',
+    );
+  });
+
+  it('serves live/version/404 over HTTP and closes on an abort signal', async () => {
+    const port = await allocatePort();
+    const controller = new AbortController();
+    let started: (() => void) | undefined;
+    const listening = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const daemon = runDaemon(
+      {
+        UI4A_RUNNER_PORT: String(port),
+        UI4A_GIT_SHA: 'runner-test-sha',
+        UI4A_BUILD_DATE: '2026-08-24T00:00:00Z',
+      },
+      {
+        host: '127.0.0.1',
+        signal: controller.signal,
+        write: (line) => {
+          expect(JSON.parse(line)).toMatchObject({
+            event: 'runner-started',
+            port,
+            release: { channel: 'experimental', support: { ga: false } },
+          });
+          started?.();
+        },
+      },
+    );
+
+    await listening;
+    const live = await fetch(`http://127.0.0.1:${port}/live`);
+    expect(live.status).toBe(200);
+    expect(live.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    await expect(live.json()).resolves.toMatchObject({
+      status: 'live',
+      mode: 'daemon',
+      release: {
+        version: '0.1.0-experimental.1',
+        channel: 'experimental',
+        gitSha: 'runner-test-sha',
+        support: { ga: false, productionReady: false, sla: false, lts: false },
+      },
+    });
+
+    const version = await fetch(`http://127.0.0.1:${port}/version`);
+    expect(version.status).toBe(200);
+    await expect(version.json()).resolves.toMatchObject({
+      component: 'ui4a-agent-runner',
+      version: '0.1.0-experimental.1',
+      support: { ga: false, productionReady: false, sla: false, lts: false },
+    });
+
+    const notFound = await fetch(`http://127.0.0.1:${port}/ready`);
+    expect(notFound.status).toBe(404);
+    await expect(notFound.json()).resolves.toEqual({ status: 'not-found' });
+
+    controller.abort();
+    await expect(daemon).resolves.toBeUndefined();
   });
 });
