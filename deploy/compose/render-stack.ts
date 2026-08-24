@@ -485,6 +485,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         }),
         environment: {
           ...canonicalRuntimeEnvironment,
+          UI4A_PUBLIC_BASE_URL: 'http://web:3100',
           UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: `${runtimeConfigRoot}/capability-callback-token`,
           UI4A_RUNNER_IMAGE: images.runner,
           UI4A_HOST_RUNNER_ORIGINS:

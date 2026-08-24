@@ -638,6 +638,25 @@ describe('T22 Docker Compose all-in-one contract', () => {
     ).not.toMatch(/Bearer |runner-token|authorization/i);
   });
 
+  it('gives only Worker the server-owned internal callback origin', async () => {
+    const stack = await renderedStack();
+    const compose = requiredSource('deploy/compose/compose.yaml');
+    const contract = requiredJson<StackContract & { runnerDelivery: Record<string, unknown> }>(
+      contractPath,
+    );
+
+    expect(stack.services.worker?.environment).toMatchObject({
+      UI4A_PUBLIC_BASE_URL: 'http://web:3100',
+    });
+    for (const name of ['web', 'runner', 'host-runner']) {
+      expect(stack.services[name]?.environment, name).not.toHaveProperty('UI4A_PUBLIC_BASE_URL');
+    }
+    expect(compose.match(/UI4A_PUBLIC_BASE_URL/g)).toHaveLength(1);
+    expect(contract.runnerDelivery).toMatchObject({
+      workerCallbackOrigin: 'http://web:3100',
+    });
+  });
+
   it('wires independent container and Host Runner identities, origins, and token refs without fallback', async () => {
     const contract = requiredJson<StackContract>(contractPath);
     const stack = await renderedStack();
@@ -766,6 +785,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
       runnerId: 'compose-container-runner',
       route: '/deliver',
       workerOrigin: 'https://ui4a.mothership.internal:8443',
+      workerCallbackOrigin: 'http://web:3100',
       edgeNetworkAlias: 'ui4a.mothership.internal',
       requiredServicePublicOrigin: 'https://ui4a.mothership.internal:8443',
     });

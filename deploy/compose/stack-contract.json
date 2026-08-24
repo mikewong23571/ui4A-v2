@@ -43,6 +43,7 @@
     "runnerId": "compose-container-runner",
     "route": "/deliver",
     "workerOrigin": "https://ui4a.mothership.internal:8443",
+    "workerCallbackOrigin": "http://web:3100",
     "edgeNetworkAlias": "ui4a.mothership.internal",
     "requiredServicePublicOrigin": "https://ui4a.mothership.internal:8443"
   },

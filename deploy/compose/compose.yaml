@@ -378,6 +378,7 @@ services:
         condition: service_healthy
     environment:
       <<: *ui4a-production-environment
+      UI4A_PUBLIC_BASE_URL: http://web:3100
       UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: /var/run/ui4a/runtime-config/capability-callback-token
       UI4A_RUNNER_IMAGE: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
       UI4A_HOST_RUNNER_ORIGINS: '{"compose-container-runner":"https://${UI4A_HOST:-ui4a.mothership.internal}:8443","compose-host-runner":"https://${UI4A_HOST:-ui4a.mothership.internal}:9444"}'
