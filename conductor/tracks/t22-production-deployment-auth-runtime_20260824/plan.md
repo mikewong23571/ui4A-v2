@@ -66,7 +66,7 @@
 - [ ] 覆盖 missing/expired/wrong issuer/audience/signature Token
 - [ ] 覆盖伪造 actor/principal/scope/header 和 agent approval
 - [ ] 覆盖 malformed/over-scoped `act` chain 与 JWKS failure
-- [ ] Task: Green——实现 credential verification 与 request identity
+- [x] Task: Green——实现 credential verification 与 request identity ac7e959
 - [ ] 验证 issuer、audience、signature、expiry 和 scopes
 - [ ] 从 credential 派生 actor、principal、scope 和 delegation chain
 - [ ] 移除 production 对 body/query/ordinary header identity 的信任
