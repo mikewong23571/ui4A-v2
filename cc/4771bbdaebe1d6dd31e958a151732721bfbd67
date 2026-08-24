@@ -1,0 +1,7 @@
+T22 Compose U7/U8 Worker callback origin correction
+
+Red: the aa08514 Worker successfully created a real browser-started Writing Agent Run, but finalization failed honestly because Compose omitted UI4A_PUBLIC_BASE_URL while the callback token file was present.
+
+Green: static Compose and the pure renderer inject the fixed internal service origin http://web:3100 into Worker only. Web and both Runner services cannot receive or select it. stack-contract records the same server-owned callback origin.
+
+Verification: 8 Compose suites / 85 tests passed; strict standalone TypeScript; scoped Prettier; docker compose config; git diff check. No app/image/Secret/K8s/Conductor change and no live fallback.
