@@ -1,0 +1,5 @@
+Task: Phase E Temporal recovery evidence
+
+Summary: Added secret-free Temporal history fingerprints and strict closed/open workflow recovery comparison with source-prefix, identity, ordering and unique terminal-event gates.
+
+Verification: 10/10 tests, Worker typecheck, lint/format/diff green; injected reader only, no network/Temporal.
