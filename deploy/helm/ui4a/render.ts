@@ -1189,7 +1189,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         securityContext: vendorNonRootSecurityContext(70, 70),
       },
       {
-        automountServiceAccountToken: true,
+        automountServiceAccountToken: false,
         initContainers: dependencyGates(values, ['postgres']),
         volumes: [
           { name: 'bootstrap-sql', configMap: { name: 'ui4a-postgres-bootstrap' } },

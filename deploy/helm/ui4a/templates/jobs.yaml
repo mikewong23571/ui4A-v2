@@ -14,7 +14,7 @@ spec:
       annotations: { sidecar.istio.io/inject: 'false' }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       initContainers:
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres") | nindent 8 }}
