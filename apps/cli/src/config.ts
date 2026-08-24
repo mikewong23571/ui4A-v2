@@ -78,6 +78,9 @@ export async function loadConfig(
   } catch (error) {
     throw new CliError('CONFIG', error instanceof Error ? error.message : String(error), 3);
   }
+  if (token !== undefined && token !== '' && new URL(baseUrl).protocol !== 'https:') {
+    throw new CliError('CONFIG', 'Bearer authentication requires an HTTPS UI4A base URL', 3);
+  }
   return {
     baseUrl,
     ...(token === undefined || token === '' ? {} : { token }),

@@ -20,6 +20,29 @@ function response(body: unknown, status = 200): Response {
 }
 
 describe('production CLI Bearer identity boundary', () => {
+  it('rejects a Bearer credential over cleartext HTTP before any request', async () => {
+    const fetcher = vi.fn<typeof fetch>(async () => response({ unexpected: true }));
+    let failure: unknown;
+
+    try {
+      const config = await loadConfig(
+        { configPath: '/definitely/missing' },
+        { UI4A_BASE_URL: 'http://ui4a.internal', UI4A_TOKEN: ACCESS_TOKEN },
+      );
+      await new Ui4aHttpClient(config, fetcher).get('/.well-known/ui4a.json');
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toMatchObject({
+      code: 'CONFIG',
+      exitCode: 3,
+      message: 'Bearer authentication requires an HTTPS UI4A base URL',
+    });
+    expect(JSON.stringify(redact(failure))).not.toContain(ACCESS_TOKEN);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it('uses one configured Bearer credential for discovery, read, and exec without self-reporting identity', async () => {
     const requests: Array<{ url: string; headers: Headers; body?: string }> = [];
     const fetcher = vi.fn<typeof fetch>(async (input, init) => {
@@ -204,33 +227,37 @@ describe('production CLI Bearer identity boundary', () => {
   });
 
   it.each([
-    ['missing', undefined, 'credential_missing'],
-    ['expired', ACCESS_TOKEN, 'credential_expired'],
-  ])('fails honestly for a %s credential without leaking it', async (_case, token, code) => {
-    const fetcher = vi.fn<typeof fetch>(async () =>
-      response({ error: code, authorization: token }, 401),
-    );
-    const config = await loadConfig(
-      { configPath: '/definitely/missing' },
-      {
-        UI4A_BASE_URL: 'https://ui4a.internal',
-        ...(token === undefined ? {} : { UI4A_TOKEN: token }),
-      },
-    );
-    const client = new Ui4aHttpClient(config, fetcher);
-
-    try {
-      await runCommand(parseArgs(['apps', 'list']), client);
-      throw new Error('expected the CLI request to fail');
-    } catch (error) {
-      expect(error).toMatchObject({ code: 'AUTH', exitCode: 4, status: 401 });
-      const serialized = JSON.stringify(
-        redact(failure('apps.list', error as Parameters<typeof failure>[1])),
+    ['missing', undefined, 'credential_missing', 401],
+    ['expired', ACCESS_TOKEN, 'credential_expired', 401],
+    ['forbidden', ACCESS_TOKEN, 'scope_insufficient', 403],
+  ])(
+    'fails honestly for a %s credential without leaking it',
+    async (_case, token, code, status) => {
+      const fetcher = vi.fn<typeof fetch>(async () =>
+        response({ error: code, authorization: token }, status),
       );
-      expect(serialized).toContain(code);
-      if (token !== undefined) expect(serialized).not.toContain(token);
-    }
-  });
+      const config = await loadConfig(
+        { configPath: '/definitely/missing' },
+        {
+          UI4A_BASE_URL: 'https://ui4a.internal',
+          ...(token === undefined ? {} : { UI4A_TOKEN: token }),
+        },
+      );
+      const client = new Ui4aHttpClient(config, fetcher);
+
+      try {
+        await runCommand(parseArgs(['apps', 'list']), client);
+        throw new Error('expected the CLI request to fail');
+      } catch (error) {
+        expect(error).toMatchObject({ code: 'AUTH', exitCode: 4, status });
+        const serialized = JSON.stringify(
+          redact(failure('apps.list', error as Parameters<typeof failure>[1])),
+        );
+        expect(serialized).toContain(code);
+        if (token !== undefined) expect(serialized).not.toContain(token);
+      }
+    },
+  );
 
   it('rejects identity, authority, and SubmissionPolicy overrides before any HTTP request', () => {
     for (const flag of [

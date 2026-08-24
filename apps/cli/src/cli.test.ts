@@ -38,10 +38,10 @@ describe('ui4a CLI contract', () => {
 
   it('uses flag then env then config/default precedence without printing token', async () => {
     const config = await loadConfig(
-      { baseUrl: 'http://flag.example', token: 'flag-secret', configPath: '/definitely/missing' },
-      { UI4A_BASE_URL: 'http://env.example', UI4A_TOKEN: 'env-secret' },
+      { baseUrl: 'https://flag.example', token: 'flag-secret', configPath: '/definitely/missing' },
+      { UI4A_BASE_URL: 'https://env.example', UI4A_TOKEN: 'env-secret' },
     );
-    expect(config.baseUrl).toBe('http://flag.example');
+    expect(config.baseUrl).toBe('https://flag.example');
     expect(config.sources).toMatchObject({ baseUrl: 'flag', token: 'flag' });
     expect(
       JSON.stringify(redact({ token: config.token, nested: { authorization: 'x' } })),

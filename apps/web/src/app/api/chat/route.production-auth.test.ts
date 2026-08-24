@@ -6,6 +6,7 @@ const HUMAN_ACCESS_TOKEN = 'human-access-token-fixture';
 const EXCHANGED_ACCESS_TOKEN = 'turn-exchanged-token-fixture';
 const AGENT_CLIENT_SECRET = 'agent-client-secret-fixture';
 const APP_ORIGIN = 'https://ui4a.internal';
+const AGENT_CLIENT_ID = 'ui4a-agent';
 
 const mocks = vi.hoisted(() => ({
   appendEvent: vi.fn(),
@@ -62,7 +63,9 @@ vi.mock('../../../auth/request-identity', async (importOriginal) => {
         typeof error === 'object' && error !== null && 'code' in error
           ? String((error as { code: unknown }).code)
           : 'credential_malformed';
-      return Response.json({ error: { code } }, { status: 401 });
+      if (code.startsWith('agent_')) return undefined;
+      const forbidden = ['scope_insufficient', 'delegation_actor_not_allowed'].includes(code);
+      return Response.json({ error: { code } }, { status: forbidden ? 403 : 401 });
     },
   };
 });
@@ -169,6 +172,7 @@ beforeEach(() => {
         mode: 'oidc',
         oidc: {
           agentScopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
+          agentClientId: AGENT_CLIENT_ID,
         },
       },
     },
@@ -177,14 +181,36 @@ beforeEach(() => {
   mocks.readLog.mockReset();
   mocks.readLog.mockResolvedValue([]);
   mocks.resolveIdentity.mockReset();
-  mocks.resolveIdentity.mockResolvedValue({
-    authorizationMode: 'credential',
-    actor: 'human',
-    principal: 'human-alice',
-    scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
-    policyScope: 'development',
-    channel: 'oidc',
-    humanApprovalEligible: true,
+  mocks.resolveIdentity.mockImplementation(async (identityRequest: Request) => {
+    const authorization = identityRequest.headers.get('authorization');
+    if (authorization === `Bearer ${HUMAN_ACCESS_TOKEN}`) {
+      return {
+        authorizationMode: 'credential',
+        actor: 'human',
+        principal: 'human-alice',
+        scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
+        policyScope: 'development',
+        channel: 'oidc',
+        humanApprovalEligible: true,
+      };
+    }
+    if (authorization === `Bearer ${EXCHANGED_ACCESS_TOKEN}`) {
+      return {
+        authorizationMode: 'credential',
+        actor: 'agent',
+        principal: 'human-alice',
+        scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
+        policyScope: 'development',
+        channel: 'oidc',
+        humanApprovalEligible: false,
+        delegation: {
+          subject: 'human-alice',
+          actorClientId: AGENT_CLIENT_ID,
+          source: 'token-exchange-sub-azp',
+        },
+      };
+    }
+    throw Object.assign(new Error('unexpected credential'), { code: 'credential_malformed' });
   });
   mocks.runAgent.mockReset();
   mocks.runAgent.mockImplementation(
@@ -254,7 +280,18 @@ describe('production chat turn credential boundary', () => {
     expect((await frames(response)).some((frame) => frame.type === 'final')).toBe(true);
 
     expect(mocks.browserSession).toHaveBeenCalledTimes(1);
-    expect(mocks.resolveIdentity).toHaveBeenCalledTimes(1);
+    expect(mocks.resolveIdentity).toHaveBeenCalledTimes(2);
+    const exchangedVerification = mocks.resolveIdentity.mock.calls[1]!;
+    expect((exchangedVerification[0] as Request).headers.get('authorization')).toBe(
+      `Bearer ${EXCHANGED_ACCESS_TOKEN}`,
+    );
+    expect(exchangedVerification[1]).toMatchObject({
+      profile: 'production',
+      requiredScopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
+      authorizedPolicyScopes: ['development'],
+      defaultPolicyScope: 'development',
+      plane: 'business',
+    });
     expect(mocks.exchangeDelegatedCredential).toHaveBeenCalledTimes(1);
     expect(mocks.exchangeDelegatedCredential).toHaveBeenCalledWith({
       subjectToken: HUMAN_ACCESS_TOKEN,
@@ -287,6 +324,111 @@ describe('production chat turn credential boundary', () => {
     expect(mocks.runAgent).toHaveBeenCalledTimes(1);
     expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).principal).toBe('human-alice');
     expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).channel).toBe('chat');
+  });
+
+  it.each([
+    ['read-only human', ['ui4a:read', 'ui4a:policy:development']],
+    ['human without policy scope', ['ui4a:read', 'ui4a:write']],
+  ])('rejects a %s before exchange, database, or Agent execution', async (_name, scopes) => {
+    mocks.resolveIdentity.mockResolvedValueOnce({
+      authorizationMode: 'credential',
+      actor: 'human',
+      principal: 'human-alice',
+      scopes,
+      policyScope: 'development',
+      channel: 'oidc',
+      humanApprovalEligible: true,
+    });
+
+    const response = await POST(
+      request(
+        { goal: { verb: 'browse articles' }, sessionId: 'display-only', turnId: 'turn-scope' },
+        { cookie: 'valid-session' },
+      ),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: { code: 'agent_scope_exceeded' } });
+    expect(mocks.exchangeDelegatedCredential).not.toHaveBeenCalled();
+    expect(mocks.readLog).not.toHaveBeenCalled();
+    expect(mocks.appendEvent).not.toHaveBeenCalled();
+    expect(mocks.runAgent).not.toHaveBeenCalled();
+    expect(mocks.fetcher).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      'wrong subject',
+      {
+        principal: 'human-mallory',
+        scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
+        delegation: {
+          subject: 'human-mallory',
+          actorClientId: AGENT_CLIENT_ID,
+          source: 'token-exchange-sub-azp',
+        },
+      },
+    ],
+    [
+      'wrong authorized party',
+      {
+        principal: 'human-alice',
+        scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
+        delegation: {
+          subject: 'human-alice',
+          actorClientId: 'unknown-agent',
+          source: 'token-exchange-sub-azp',
+        },
+      },
+    ],
+    [
+      'expanded scopes',
+      {
+        principal: 'human-alice',
+        scopes: ['ui4a:read', 'ui4a:write', 'ui4a:approve', 'ui4a:policy:development'],
+        delegation: {
+          subject: 'human-alice',
+          actorClientId: AGENT_CLIENT_ID,
+          source: 'token-exchange-sub-azp',
+        },
+      },
+    ],
+  ])('rejects an exchanged credential with %s before business effects', async (_name, patch) => {
+    mocks.resolveIdentity.mockResolvedValueOnce({
+      authorizationMode: 'credential',
+      actor: 'human',
+      principal: 'human-alice',
+      scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
+      policyScope: 'development',
+      channel: 'oidc',
+      humanApprovalEligible: true,
+    });
+    mocks.resolveIdentity.mockResolvedValueOnce({
+      authorizationMode: 'credential',
+      actor: 'agent',
+      policyScope: 'development',
+      channel: 'oidc',
+      humanApprovalEligible: false,
+      ...patch,
+    });
+
+    const response = await POST(
+      request(
+        { goal: { verb: 'browse articles' }, sessionId: 'display-only', turnId: 'turn-result' },
+        { cookie: 'valid-session' },
+      ),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'agent_delegation_identity_invalid' },
+    });
+    expect(mocks.exchangeDelegatedCredential).toHaveBeenCalledTimes(1);
+    expect(mocks.resolveIdentity).toHaveBeenCalledTimes(2);
+    expect(mocks.readLog).not.toHaveBeenCalled();
+    expect(mocks.appendEvent).not.toHaveBeenCalled();
+    expect(mocks.runAgent).not.toHaveBeenCalled();
+    expect(mocks.fetcher).not.toHaveBeenCalled();
   });
 
   it('rejects a spoofed Host before token exchange or network access', async () => {

@@ -28,6 +28,7 @@ interface RealmClientRepresentation extends Record<string, unknown> {
 interface RealmImportRepresentation extends Record<string, unknown> {
   realm: string;
   enabled: boolean;
+  attributes?: Record<string, string>;
   clients: RealmClientRepresentation[];
 }
 
@@ -158,7 +159,11 @@ class ImportOrSkipKeycloakAdmin {
         return jsonResponse({ error: 'forced_failure', detail: webClientSecret }, 503);
       }
       const imported = JSON.parse(body) as RealmImportRepresentation;
-      this.realm = { realm: imported.realm, enabled: imported.enabled };
+      this.realm = {
+        realm: imported.realm,
+        enabled: imported.enabled,
+        attributes: structuredClone(imported.attributes),
+      };
       this.clients = imported.clients.map((candidate, index) => ({
         ...structuredClone(candidate),
         id: `client-${index + 1}`,
@@ -305,6 +310,12 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
       (fake: ImportOrSkipKeycloakAdmin) => Object.assign(fake.realm!, { enabled: false }),
     ],
     [
+      'realm contract version drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        fake.realm!.attributes = { 'ui4a.experimental.contract.version': '0' };
+      },
+    ],
+    [
       'missing managed client',
       (fake: ImportOrSkipKeycloakAdmin) => {
         fake.clients = fake.clients.filter(({ clientId }) => clientId !== 'ui4a-api');
@@ -315,6 +326,13 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
       (fake: ImportOrSkipKeycloakAdmin) => {
         const web = fake.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
         web.attributes = { ...web.attributes, 'pkce.code.challenge.method': 'plain' };
+      },
+    ],
+    [
+      'Web service-account drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const web = fake.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
+        web.serviceAccountsEnabled = true;
       },
     ],
     [
@@ -331,6 +349,13 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
       (fake: ImportOrSkipKeycloakAdmin) => {
         const agent = fake.clients.find(({ clientId }) => clientId === 'ui4a-agent')!;
         agent.attributes = { ...agent.attributes, 'standard.token.exchange.enabled': 'false' };
+      },
+    ],
+    [
+      'Agent standard-flow drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const agent = fake.clients.find(({ clientId }) => clientId === 'ui4a-agent')!;
+        agent.standardFlowEnabled = true;
       },
     ],
     [
@@ -367,6 +392,13 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
         );
       },
     ],
+    [
+      'API bearer-only drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const api = fake.clients.find(({ clientId }) => clientId === 'ui4a-api')!;
+        api.bearerOnly = false;
+      },
+    ],
   ])('fails closed on %s without attempting repair', async (_label, drift) => {
     const fake = new ImportOrSkipKeycloakAdmin();
     await execute(fake, 'apply');
@@ -380,6 +412,16 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
     expect(fake.mutations).toHaveLength(0);
     expect(mutationRequests(fake)).toHaveLength(1); // Admin token request only.
     expect(resolveSecret).not.toHaveBeenCalled();
+  });
+
+  it('ignores non-managed Keycloak clients while checking the three UI4A clients', async () => {
+    const fake = new ImportOrSkipKeycloakAdmin();
+    await execute(fake, 'apply');
+    fake.clients.push({ clientId: 'account', enabled: true });
+    fake.clearTraffic();
+
+    await expect(execute(fake, 'check')).resolves.toMatchObject({ outcome: 'skip' });
+    expect(fake.mutations).toHaveLength(0);
   });
 
   it('never reads or mutates users, profiles, passwords, roles, or client scopes', async () => {
@@ -528,6 +570,13 @@ describe('T22 Keycloak bootstrap executable entrypoint', () => {
     expect(source).toMatch(/settings\.service\.publicOrigin/);
     expect(source).toMatch(/settings\.keycloak\.bootstrapAdminUser/);
     expect(source).toMatch(/settings\.keycloak\.bootstrapAdminPasswordRef/);
+    expect(source).toContain("'oidc-client-secret': settings.auth.oidc.clientSecretRef");
+    expect(source).toContain("'ui4a-agent-client-secret': settings.auth.oidc.agentClientSecretRef");
+    expect(source).toContain(
+      "'ui4a-experiment-human-password': settings.keycloak.experimentHumanPasswordRef",
+    );
+    expect(source).toContain('config.secrets[configuredReference]');
+    expect(source).not.toContain('config.secrets[reference]');
     expect(source).toMatch(/config\.secrets/);
     expect(source).toContain('deploy/keycloak/realm-import.json');
     expect(source).toContain('--check');

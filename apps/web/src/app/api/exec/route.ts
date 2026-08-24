@@ -10,8 +10,10 @@ import { executeAgentRunAction, isAgentRunRel } from '../../../engine/agent-runs
 import {
   applyTrustedIdentity,
   authenticationErrorResponse,
+  requireHumanApprovalScope,
   resolveTrustedRequestIdentity,
 } from '../../../auth/request-identity';
+import { assertRelInPolicyScope } from '../../../auth/application-scope';
 
 import { parseExecBody, rejectionStatus } from '../exec-request';
 
@@ -30,10 +32,12 @@ import { parseExecBody, rejectionStatus } from '../exec-request';
 
 export const dynamic = 'force-dynamic';
 
-export function requiredBusinessExecScopes(request: { rel: string; action: string }): string[] {
-  return request.rel.startsWith('confirmation:') && ['approve', 'reject'].includes(request.action)
-    ? ['ui4a:approve']
-    : ['ui4a:write'];
+export function requiredBusinessExecScopes(): string[] {
+  return ['ui4a:write'];
+}
+
+function isConfirmationDecision(request: { rel: string; action: string }): boolean {
+  return request.rel.startsWith('confirmation:') && ['approve', 'reject'].includes(request.action);
 }
 
 export async function POST(request: Request) {
@@ -60,11 +64,21 @@ export async function POST(request: Request) {
     const engine = await getEngine(db);
     const identity = await resolveTrustedRequestIdentity(request, {
       plane: 'business',
-      requiredScopes: requiredBusinessExecScopes(parsed.request),
+      requiredScopes: requiredBusinessExecScopes(),
       untrusted: parsed.request,
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
       defaultPolicyScope: 'development',
     });
+    if (isConfirmationDecision(parsed.request)) requireHumanApprovalScope(identity);
+    if (identity.authorizationMode === 'credential') {
+      assertRelInPolicyScope({
+        snapshot: engine.getSnapshot(),
+        sitemap: engine.getSitemap(),
+        rel: parsed.request.rel,
+        policyScope: identity.policyScope,
+        plane: 'business',
+      });
+    }
     const resolvedRequest = applyTrustedIdentity(parsed.request, identity);
     if (isCapabilityRunRel(resolvedRequest.rel)) {
       const outcome = await executeCapabilityRunAction(db, resolvedRequest, identity.policyScope);

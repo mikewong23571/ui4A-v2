@@ -112,6 +112,7 @@ export function createKeycloakBrowserTokenAdapter(input: {
         },
         body: parameters,
         cache: 'no-store',
+        redirect: 'error',
       });
     } catch {
       return browserError(failure);
@@ -174,6 +175,7 @@ export function createKeycloakBrowserTokenAdapter(input: {
           headers: { 'content-type': 'application/x-www-form-urlencoded' },
           body: parameters,
           cache: 'no-store',
+          redirect: 'error',
         });
       } catch {
         return browserError('oidc_revocation_unavailable');

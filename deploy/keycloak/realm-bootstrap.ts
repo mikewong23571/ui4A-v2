@@ -22,6 +22,7 @@ export interface RealmClientRepresentation extends Record<string, unknown> {
 export interface RealmImportRepresentation extends Record<string, unknown> {
   realm: string;
   enabled: boolean;
+  attributes: { 'ui4a.experimental.contract.version': '1' };
   clients: RealmClientRepresentation[];
   clientScopes: RealmClientScopeRepresentation[];
   users?: Array<Record<string, unknown>>;
@@ -170,7 +171,7 @@ function validateRealmImport(input: unknown): RealmImportRepresentation {
   const root = requiredObject(input, 'realm import');
   exactKeys(
     root,
-    new Set(['realm', 'enabled', 'clients', 'clientScopes', 'users']),
+    new Set(['realm', 'enabled', 'attributes', 'clients', 'clientScopes', 'users']),
     'realm import',
   );
   if (root.realm !== 'ui4a' || root.enabled !== true || !Array.isArray(root.clients)) {
@@ -178,6 +179,13 @@ function validateRealmImport(input: unknown): RealmImportRepresentation {
   }
   if (root.clients.length !== managedClientIds.length) {
     fail('KEYCLOAK_REALM_IMPORT_INVALID', 'realm import must define exactly three clients');
+  }
+  const realmAttributes = stringRecord(root.attributes, 'realm import attributes');
+  if (
+    Object.keys(realmAttributes).length !== 1 ||
+    realmAttributes['ui4a.experimental.contract.version'] !== '1'
+  ) {
+    fail('KEYCLOAK_REALM_IMPORT_INVALID', 'realm import contract version is incompatible');
   }
 
   const clients = root.clients.map((candidate, index) => {
@@ -366,7 +374,14 @@ function compatibleRealm(
   clients: Array<Record<string, unknown>>,
   expected: RealmImportRepresentation,
 ): boolean {
-  if (realm.enabled !== true) return false;
+  const realmAttributes = object(realm.attributes);
+  if (
+    realm.enabled !== true ||
+    realmAttributes?.['ui4a.experimental.contract.version'] !==
+      expected.attributes['ui4a.experimental.contract.version']
+  ) {
+    return false;
+  }
   const byId = new Map<string, Record<string, unknown>>();
   for (const candidate of clients) {
     if (
@@ -383,12 +398,17 @@ function compatibleRealm(
   const web = byId.get('ui4a-web')!;
   const expectedWeb = expected.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
   const webAttributes = object(web.attributes);
+  const expectedWebAttributes = expectedWeb.attributes!;
   if (
     web.enabled !== true ||
     web.publicClient !== false ||
+    web.bearerOnly !== false ||
     web.standardFlowEnabled !== true ||
+    web.serviceAccountsEnabled !== false ||
     web.directAccessGrantsEnabled !== false ||
     webAttributes?.['pkce.code.challenge.method'] !== 'S256' ||
+    webAttributes['post.logout.redirect.uris'] !==
+      expectedWebAttributes['post.logout.redirect.uris'] ||
     !sameStringSet(web.defaultClientScopes, expectedClientScopeAssignments['ui4a-web'].defaults) ||
     !sameStringSet(web.optionalClientScopes, expectedClientScopeAssignments['ui4a-web'].optional) ||
     !hasAccessTokenAudience(web, 'ui4a-api') ||
@@ -405,6 +425,8 @@ function compatibleRealm(
   if (
     agent.enabled !== true ||
     agent.publicClient !== false ||
+    agent.bearerOnly !== false ||
+    agent.standardFlowEnabled !== false ||
     agent.serviceAccountsEnabled !== true ||
     agent.directAccessGrantsEnabled !== false ||
     agentAttributes?.['standard.token.exchange.enabled'] !== 'true' ||
@@ -426,6 +448,8 @@ function compatibleRealm(
     api.enabled === true &&
     api.publicClient === false &&
     api.bearerOnly === true &&
+    api.standardFlowEnabled === false &&
+    api.serviceAccountsEnabled === false &&
     api.directAccessGrantsEnabled === false &&
     sameStringSet(api.defaultClientScopes, expectedClientScopeAssignments['ui4a-api'].defaults) &&
     sameStringSet(api.optionalClientScopes, expectedClientScopeAssignments['ui4a-api'].optional)

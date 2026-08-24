@@ -122,11 +122,18 @@ function resolveCredentialPolicyScope(
   claims: Record<string, unknown>,
   authorizedScopes: readonly string[],
   defaultScope: string,
+  requestedScope?: string,
 ): string {
   const granted = policyScopeClaims(claims, identity.scopes).filter((scope) =>
     authorizedScopes.includes(scope),
   );
   if (granted.length === 0) throw new ProductionIdentityError('scope_insufficient');
+  if (requestedScope !== undefined) {
+    if (!granted.includes(requestedScope)) {
+      throw new ProductionIdentityError('scope_insufficient');
+    }
+    return requestedScope;
+  }
   return granted.includes(defaultScope) ? defaultScope : granted[0]!;
 }
 
@@ -207,6 +214,9 @@ export async function resolveTrustedRequestIdentity(
     credential.claims,
     options.authorizedPolicyScopes,
     options.defaultPolicyScope,
+    new URL(request.url).searchParams.get('scope') ??
+      new URL(request.url).searchParams.get('policyScope') ??
+      undefined,
   );
   return {
     authorizationMode: 'credential',
@@ -232,10 +242,22 @@ export function applyTrustedIdentity(
     identity: {
       authorizationMode: identity.authorizationMode,
       scopes: [...identity.scopes],
+      policyScope: identity.policyScope,
       humanApprovalEligible: identity.humanApprovalEligible,
       ...(identity.delegation === undefined ? {} : { delegation: { ...identity.delegation } }),
     },
   };
+}
+
+/** Human approval is a second gate after credential identity is established. */
+export function requireHumanApprovalScope(identity: TrustedRequestAuditContext): void {
+  if (
+    identity.authorizationMode === 'credential' &&
+    identity.actor === 'human' &&
+    !identity.scopes.includes('ui4a:approve')
+  ) {
+    throw new ProductionIdentityError('scope_insufficient');
+  }
 }
 
 export function authenticationErrorResponse(error: unknown): Response | undefined {

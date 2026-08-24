@@ -52,16 +52,8 @@ beforeEach(async () => {
 });
 
 describe('POST /api/exec', () => {
-  it('requires approval scope only for confirmation decisions, not ordinary approve actions', () => {
-    expect(requiredBusinessExecScopes({ rel: 'comment:c1', action: 'approve' })).toEqual([
-      'ui4a:write',
-    ]);
-    expect(requiredBusinessExecScopes({ rel: 'confirmation:c1', action: 'approve' })).toEqual([
-      'ui4a:approve',
-    ]);
-    expect(requiredBusinessExecScopes({ rel: 'confirmation:c1', action: 'reject' })).toEqual([
-      'ui4a:approve',
-    ]);
+  it('establishes write identity before the actor-specific human approval gate', () => {
+    expect(requiredBusinessExecScopes()).toEqual(['ui4a:write']);
   });
 
   it('通过:approve → 200 {entity},新节点 approved', async () => {

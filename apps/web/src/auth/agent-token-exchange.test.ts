@@ -141,6 +141,7 @@ function providerOptions(fetcher: typeof fetch, clientId = CLIENT_ID) {
 
 function formOf(init: RequestInit | undefined): URLSearchParams {
   expect(init?.method).toBe('POST');
+  expect(init?.redirect).toBe('error');
   expect(new Headers(init?.headers).get('content-type')).toBe('application/x-www-form-urlencoded');
   return new URLSearchParams(String(init?.body));
 }

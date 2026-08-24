@@ -4,6 +4,7 @@ import {
   authenticationErrorResponse,
   resolveTrustedRequestIdentity,
 } from '../../../auth/request-identity';
+import { assertRelInPolicyScope } from '../../../auth/application-scope';
 
 import { parsePlanBody } from '../exec-request';
 
@@ -56,6 +57,17 @@ export async function POST(request: Request) {
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
       defaultPolicyScope: 'development',
     });
+    if (identity.authorizationMode === 'credential') {
+      for (const step of parsed.steps) {
+        assertRelInPolicyScope({
+          snapshot: engine.getSnapshot(),
+          sitemap: engine.getSitemap(),
+          rel: step.rel,
+          policyScope: identity.policyScope,
+          plane: 'business',
+        });
+      }
+    }
     const outcome = await engine.execPlan(
       parsed.steps.map((step) => applyTrustedIdentity(step, identity)),
     );

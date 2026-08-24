@@ -13,6 +13,10 @@ import {
   authenticationErrorResponse,
   resolveTrustedRequestIdentity,
 } from '../../../auth/request-identity';
+import {
+  assertRelInPolicyScope,
+  filterEntityForPolicyScope,
+} from '../../../auth/application-scope';
 
 // GET /api/entity?rel=… — Siren 实体端点(spec FR3):
 // - 已知 rel(实例或集合)→ 200 四件组装 properties/actions/links/guard-results;
@@ -46,6 +50,15 @@ export async function GET(request: Request) {
     });
     const principal = identity.principal;
     const policyScope = identity.policyScope;
+    const scopeContext = {
+      snapshot: engine.getSnapshot(),
+      sitemap: engine.getSitemap(),
+      policyScope,
+      plane: 'business' as const,
+    };
+    if (identity.authorizationMode === 'credential') {
+      assertRelInPolicyScope({ ...scopeContext, rel });
+    }
     const projected = isCapabilityRunRel(rel)
       ? await getCapabilityRunEntity(db, rel, principal, policyScope)
       : isAgentRunRel(rel)
@@ -62,7 +75,11 @@ export async function GET(request: Request) {
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });
     }
-    return Response.json(entity);
+    return Response.json(
+      identity.authorizationMode === 'credential'
+        ? filterEntityForPolicyScope(entity, scopeContext)
+        : entity,
+    );
   } catch (error) {
     const authentication = authenticationErrorResponse(error);
     if (authentication !== undefined) return authentication;

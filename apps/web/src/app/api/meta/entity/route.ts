@@ -9,6 +9,10 @@ import {
   authenticationErrorResponse,
   resolveTrustedRequestIdentity,
 } from '../../../../auth/request-identity';
+import {
+  assertRelInPolicyScope,
+  filterEntityForPolicyScope,
+} from '../../../../auth/application-scope';
 
 // GET /_meta/api/entity?rel=… — meta 站点 Siren 实体端点(T4 Phase B,spec 决定 6):
 // - rel 以 meta/ 前缀路由到同一引擎的 meta 投影(同日志同串行队列;快照即真相);
@@ -39,6 +43,15 @@ export async function GET(request: Request) {
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
       defaultPolicyScope: 'publishing',
     });
+    const scopeContext = {
+      snapshot: engine.getSnapshot(),
+      sitemap: engine.getSitemap(),
+      policyScope: identity.policyScope,
+      plane: 'meta' as const,
+    };
+    if (identity.authorizationMode === 'credential') {
+      assertRelInPolicyScope({ ...scopeContext, rel });
+    }
     const entity = isDraftMetaRel(rel)
       ? await getDraftMetaEntity(
           db,
@@ -54,12 +67,17 @@ export async function GET(request: Request) {
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });
     }
-    return Response.json(entity, {
-      headers: {
-        'x-ui4a-effective-scope': identity.policyScope,
-        'x-ui4a-authorization-mode': identity.authorizationMode,
+    return Response.json(
+      identity.authorizationMode === 'credential'
+        ? filterEntityForPolicyScope(entity, scopeContext)
+        : entity,
+      {
+        headers: {
+          'x-ui4a-effective-scope': identity.policyScope,
+          'x-ui4a-authorization-mode': identity.authorizationMode,
+        },
       },
-    });
+    );
   } catch (error) {
     const authentication = authenticationErrorResponse(error);
     if (authentication !== undefined) return authentication;

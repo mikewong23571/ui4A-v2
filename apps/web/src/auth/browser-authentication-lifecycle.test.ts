@@ -602,6 +602,25 @@ describe('opaque secure browser session lifecycle', () => {
     );
   });
 
+  it('requires login again after a single-process Web restart clears the private store', async () => {
+    const api = await plannedApi();
+    const harness = makeHarness();
+    const beforeRestart = api.createBrowserAuthentication(harness.dependencies);
+    const login = await startLogin(beforeRestart);
+    const callback = await completeLogin(beforeRestart, login);
+    const cookie = cookieFrom(callback, SESSION_COOKIE);
+    const afterRestart = api.createBrowserAuthentication({
+      ...harness.dependencies,
+      loginTransactions: new MemoryAuthPrivateStore(),
+      sessions: new MemoryAuthPrivateStore(),
+    });
+
+    await expectAuthCode(
+      afterRestart.resolveSession(requestWithCookie(`${UI4A_ORIGIN}/api/entity`, cookie)),
+      'session_not_found',
+    );
+  });
+
   it('clears the local session but reports a Keycloak revocation outage honestly', async () => {
     const api = await plannedApi();
     const harness = makeHarness({

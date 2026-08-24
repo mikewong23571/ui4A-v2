@@ -4,6 +4,7 @@ import {
   authenticationErrorResponse,
   resolveTrustedRequestIdentity,
 } from '../../../auth/request-identity';
+import { filterSitemapForPolicyScope } from '../../../auth/application-scope';
 
 // GET /.well-known/ui4a.json — 应用 sitemap 端点(spec FR4):
 // 从 flow 常量纯推导的"应用交互拓扑完整声明"(界面清单/流程拓扑/每节点
@@ -28,7 +29,14 @@ export async function GET(request?: Request) {
     const principal = identity.principal;
     const policyScope = identity.policyScope;
     const agents = await getAgentDefinitionCatalog(db, principal, policyScope);
-    return Response.json({ protocolVersion: '1', ...engine.getSitemap(), agents });
+    const sitemap = engine.getSitemap();
+    return Response.json({
+      protocolVersion: '1',
+      ...(identity.authorizationMode === 'credential'
+        ? filterSitemapForPolicyScope(sitemap, policyScope)
+        : sitemap),
+      agents,
+    });
   } catch (error) {
     const authentication = authenticationErrorResponse(error);
     if (authentication !== undefined) return authentication;

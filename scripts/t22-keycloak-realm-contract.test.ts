@@ -32,6 +32,7 @@ interface RealmClientRepresentation {
 interface RealmImportRepresentation {
   realm: string;
   enabled: boolean;
+  attributes?: Record<string, string>;
   clients: RealmClientRepresentation[];
   clientScopes?: Array<{
     name: string;
@@ -81,7 +82,11 @@ describe('T22 experimental Keycloak realm import contract', () => {
       consumers: Record<'compose' | 'kubernetes', { realmImportRef: string }>;
     }>(deploymentBindingsPath);
 
-    expect(input).toMatchObject({ realm: 'ui4a', enabled: true });
+    expect(input).toMatchObject({
+      realm: 'ui4a',
+      enabled: true,
+      attributes: { 'ui4a.experimental.contract.version': '1' },
+    });
     expect(bindings.schemaVersion).toBe(1);
     expect(bindings.consumers.compose.realmImportRef).toBe(realmImportPath);
     expect(bindings.consumers.kubernetes.realmImportRef).toBe(realmImportPath);

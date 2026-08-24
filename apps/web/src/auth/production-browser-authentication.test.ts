@@ -9,7 +9,7 @@ import {
   PRODUCTION_BROWSER_LOGIN_COOKIE,
   PRODUCTION_BROWSER_SESSION_COOKIE,
 } from './production-browser-authentication';
-import { verifyProductionIdToken } from './production-request-identity';
+import { createRemoteJwksLoader, verifyProductionIdToken } from './production-request-identity';
 import { BrowserAuthenticationError, type AuthPrivateStore } from './browser-session';
 import { authenticationErrorResponse, resolveTrustedRequestIdentity } from './request-identity';
 
@@ -255,6 +255,7 @@ describe('production Keycloak browser protocol adapters', () => {
     expect(requests[0]!.init).toMatchObject({
       method: 'POST',
       cache: 'no-store',
+      redirect: 'error',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
     });
     expect(Object.fromEntries(requests[0]!.init!.body as URLSearchParams)).toEqual({
@@ -275,6 +276,55 @@ describe('production Keycloak browser protocol adapters', () => {
     expect(JSON.stringify(result)).not.toContain(CLIENT_SECRET);
     expect(PRODUCTION_BROWSER_SESSION_COOKIE).toBe('__Host-ui4a_session');
     expect(PRODUCTION_BROWSER_LOGIN_COOKIE).toBe('__Host-ui4a_login');
+  });
+
+  it.each(['refresh', 'revoke'] as const)(
+    'forbids redirects while posting the confidential %s form',
+    async (operation) => {
+      const requests: RequestInit[] = [];
+      const fetcher = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+        requests.push(init ?? {});
+        return operation === 'refresh'
+          ? Response.json({
+              access_token: 'access-token',
+              id_token: 'id-token',
+              refresh_token: 'rotated-refresh-token',
+              expires_in: 60,
+              refresh_expires_in: 3_600,
+            })
+          : new Response(null, { status: 204 });
+      }) as typeof globalThis.fetch;
+      const adapter = createKeycloakBrowserTokenAdapter({
+        issuer: ISSUER,
+        clientId: CLIENT_ID,
+        clientSecret: CLIENT_SECRET,
+        fetch: fetcher,
+      });
+
+      if (operation === 'refresh') await adapter.refresh('private-refresh-token');
+      else await adapter.revoke('private-refresh-token');
+
+      expect(fetcher).toHaveBeenCalledOnce();
+      expect(requests[0]?.redirect).toBe('error');
+    },
+  );
+
+  it('pins JWKS loading to the configured issuer origin by forbidding redirects', async () => {
+    const requests: RequestInit[] = [];
+    const fetcher = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      requests.push(init ?? {});
+      return Response.json({ keys: [PUBLIC_JWK] }, { headers: { 'cache-control': 'max-age=60' } });
+    }) as typeof globalThis.fetch;
+    const loader = createRemoteJwksLoader({
+      url: `${ISSUER}/protocol/openid-connect/certs`,
+      clock: () => NOW_MILLISECONDS,
+      fetch: fetcher,
+    });
+
+    await loader.load();
+
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(requests[0]?.redirect).toBe('error');
   });
 
   it.each([

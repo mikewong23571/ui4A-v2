@@ -24,7 +24,7 @@ describe('T16 Chat/Presentation source governance', () => {
 
   it('completes model intent with trusted request metadata and stores references only', () => {
     expect(routeSource).toContain('completePresentationRequest(intent');
-    expect(routeSource).toContain('principal: PRESENTATION_PRINCIPAL');
+    expect(routeSource).toContain('principal: presentationPrincipal');
     expect(routeSource).toContain('sourceMessageIds: [turnId]');
     expect(routeSource).toContain('presentationRequestIds');
 

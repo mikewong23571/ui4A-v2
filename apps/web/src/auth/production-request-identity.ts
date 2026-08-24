@@ -66,6 +66,7 @@ export function createRemoteJwksLoader(input: {
         response = await fetcher(input.url, {
           headers: { accept: 'application/json' },
           cache: 'no-store',
+          redirect: 'error',
         });
       } catch {
         return fail('jwks_unavailable');

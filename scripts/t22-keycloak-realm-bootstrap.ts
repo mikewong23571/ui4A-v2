@@ -50,6 +50,11 @@ async function main(): Promise<void> {
       'The configured bootstrap credential is unavailable.',
     );
   }
+  const realmSecretReferences: Readonly<Record<string, string>> = {
+    'oidc-client-secret': settings.auth.oidc.clientSecretRef,
+    'ui4a-agent-client-secret': settings.auth.oidc.agentClientSecretRef,
+    'ui4a-experiment-human-password': settings.keycloak.experimentHumanPasswordRef,
+  };
 
   const realmImport = JSON.parse(
     readFileSync(resolve(repositoryRoot, realmImportPath), 'utf8'),
@@ -66,7 +71,9 @@ async function main(): Promise<void> {
     realmImport,
     publicOrigin: settings.service.publicOrigin,
     resolveSecret(reference) {
-      const value = config.secrets[reference];
+      const configuredReference = realmSecretReferences[reference];
+      const value =
+        configuredReference === undefined ? undefined : config.secrets[configuredReference];
       if (value === undefined) {
         throw new KeycloakBootstrapError(
           'KEYCLOAK_REALM_IMPORT_INVALID',

@@ -17,6 +17,8 @@ import type { ActionDefinition, EffectDefinition, FlowDefinition, ParamOrigin } 
 export interface RequestIdentityAudit {
   authorizationMode: 'credential' | 'self-reported-local-demo';
   scopes: string[];
+  /** Server-resolved Application scope; audit-only and never an authorization input here. */
+  policyScope?: string;
   humanApprovalEligible: boolean;
   delegation?: {
     subject: string;

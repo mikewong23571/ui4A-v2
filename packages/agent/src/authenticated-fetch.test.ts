@@ -1,13 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createBoundedBearerFetch } from './authenticated-fetch';
+import type { FetchLike } from './types';
 
 describe('createBoundedBearerFetch', () => {
   it('seals Authorization and transport to the exact HTTPS UI4A contract surface', async () => {
     const token = 'test-agent-token-must-not-leak';
-    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) =>
-      Response.json({ ok: true }),
-    );
+    const fetchImpl = vi.fn<FetchLike>().mockResolvedValue(Response.json({ ok: true }));
     const authenticatedFetch = createBoundedBearerFetch({
       origin: 'https://ui4a.mothership.internal',
       authorizationHeader: `Bearer ${token}`,

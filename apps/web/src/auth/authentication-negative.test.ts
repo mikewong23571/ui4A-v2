@@ -389,6 +389,7 @@ describe('canonical production request identity negative corpus', () => {
     ).toEqual({
       authorizationMode: 'credential',
       scopes: ['ui4a:read', 'ui4a:write'],
+      policyScope: 'development',
       humanApprovalEligible: false,
       delegation: {
         subject: 'human-alice',
@@ -508,13 +509,13 @@ describe('current route identity debt (executable Red evidence)', () => {
     expect(context).not.toHaveProperty('delegation');
   });
 
-  it('must stop ordinary headers/query from overriding production principal or scope', async () => {
+  it('allows a signed granted query scope but ordinary headers cannot override identity or grants', async () => {
     const context = await resolveTrustedRequestIdentity(
       new Request(
         'https://ui4a.mothership.internal/_meta/api/entity?rel=meta%2Fflows&scope=governance',
         {
           headers: {
-            authorization: bearer(token({ scope: 'ui4a:read publishing' })),
+            authorization: bearer(token({ scope: 'ui4a:read publishing governance' })),
             'x-ui4a-principal': 'root-admin',
             'x-ui4a-policy-scope': 'governance',
           },
@@ -532,8 +533,26 @@ describe('current route identity debt (executable Red evidence)', () => {
     );
     expect(context).toMatchObject({
       principal: 'human-alice',
-      policyScope: 'publishing',
+      policyScope: 'governance',
       authorizationMode: 'credential',
     });
+
+    await expect(
+      resolveTrustedRequestIdentity(
+        new Request(
+          'https://ui4a.mothership.internal/_meta/api/entity?rel=meta%2Fflows&scope=governance',
+          { headers: { authorization: bearer(token({ scope: 'ui4a:read publishing' })) } },
+        ),
+        {
+          profile: 'production',
+          plane: 'meta',
+          requiredScopes: ['ui4a:read'],
+          authorizedPolicyScopes: ['publishing', 'governance'],
+          defaultPolicyScope: 'publishing',
+          productionPolicy: POLICY,
+          productionDependencies: VALID_DEPENDENCIES,
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'scope_insufficient' });
   });
 });

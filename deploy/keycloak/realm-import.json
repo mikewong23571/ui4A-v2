@@ -1,6 +1,9 @@
 {
   "realm": "ui4a",
   "enabled": true,
+  "attributes": {
+    "ui4a.experimental.contract.version": "1"
+  },
   "clientScopes": [
     {
       "name": "ui4a:read",

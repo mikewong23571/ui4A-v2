@@ -121,6 +121,28 @@ function agentCredentialErrorResponse(error: unknown): Response {
   return Response.json({ error: { code } }, { status: 503 });
 }
 
+function agentAuthorizationErrorResponse(code: string): Response {
+  return Response.json({ error: { code } }, { status: 403 });
+}
+
+function isCanonicalDelegatedIdentity(input: {
+  human: TrustedRequestAuditContext;
+  delegated: TrustedRequestAuditContext;
+  agentClientId: string;
+  requestedScopes: readonly string[];
+}): boolean {
+  const { human, delegated, agentClientId, requestedScopes } = input;
+  return (
+    delegated.actor === 'agent' &&
+    delegated.humanApprovalEligible === false &&
+    delegated.principal === human.principal &&
+    delegated.delegation?.subject === human.principal &&
+    delegated.delegation.actorClientId === agentClientId &&
+    delegated.delegation.source === 'token-exchange-sub-azp' &&
+    delegated.scopes.every((scope) => requestedScopes.includes(scope))
+  );
+}
+
 interface ParsedChatBody {
   ok: true;
   goal: AgentGoal;
@@ -656,6 +678,8 @@ export async function POST(request: Request) {
   let productionSubjectToken: string | undefined;
   let productionOrigin: string | undefined;
   let productionAgentScopes: string[] | undefined;
+  let productionConfig:
+    NonNullable<ReturnType<typeof runWebProductionDeploymentPreflight>> | undefined;
 
   if (requestIdentityProfile() === 'production') {
     let config;
@@ -703,6 +727,7 @@ export async function POST(request: Request) {
       productionSubjectToken = subjectToken;
       productionOrigin = configuredOrigin.origin;
       productionAgentScopes = [...agentScopes];
+      productionConfig = config;
     } catch (error) {
       return (
         authenticationErrorResponse(error) ??
@@ -732,7 +757,8 @@ export async function POST(request: Request) {
     productionIdentity !== undefined &&
     productionSubjectToken !== undefined &&
     productionOrigin !== undefined &&
-    productionAgentScopes !== undefined
+    productionAgentScopes !== undefined &&
+    productionConfig !== undefined
   ) {
     let authorizationHeader: string;
     if (mode === 'inline') {
@@ -741,6 +767,9 @@ export async function POST(request: Request) {
         'ui4a:write',
         `ui4a:policy:${productionIdentity.policyScope}`,
       ];
+      if (requestedScopes.some((scope) => !productionIdentity.scopes.includes(scope))) {
+        return agentAuthorizationErrorResponse('agent_scope_exceeded');
+      }
       if (requestedScopes.some((scope) => !productionAgentScopes.includes(scope))) {
         return Response.json({ error: { code: 'deployment_config_invalid' } }, { status: 503 });
       }
@@ -749,9 +778,33 @@ export async function POST(request: Request) {
           subjectToken: productionSubjectToken,
           requestedScopes,
         });
+        const delegatedIdentity = await resolveTrustedRequestIdentity(
+          new Request(request.url, {
+            headers: { authorization: credential.authorizationHeader },
+          }),
+          {
+            profile: 'production',
+            productionConfig,
+            requiredScopes: requestedScopes,
+            authorizedPolicyScopes: [productionIdentity.policyScope],
+            defaultPolicyScope: productionIdentity.policyScope,
+            plane: 'business',
+          },
+        );
+        const agentClientId = productionConfig.settings.auth.oidc.agentClientId;
+        if (
+          !isCanonicalDelegatedIdentity({
+            human: productionIdentity,
+            delegated: delegatedIdentity,
+            agentClientId,
+            requestedScopes,
+          })
+        ) {
+          return agentAuthorizationErrorResponse('agent_delegation_identity_invalid');
+        }
         authorizationHeader = credential.authorizationHeader;
       } catch (error) {
-        return agentCredentialErrorResponse(error);
+        return authenticationErrorResponse(error) ?? agentCredentialErrorResponse(error);
       }
     } else {
       authorizationHeader = `Bearer ${productionSubjectToken}`;

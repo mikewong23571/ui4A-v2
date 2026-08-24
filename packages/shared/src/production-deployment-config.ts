@@ -12,8 +12,8 @@ export interface ProductionDeploymentSettings {
     mode: 'oidc';
     oidc: {
       issuer: string;
-      audience: string;
-      clientId: string;
+      audience: 'ui4a-api';
+      clientId: 'ui4a-web';
       clientSecretRef: string;
       sessionSecretRef: string;
       agentClientId: 'ui4a-agent';
@@ -45,11 +45,12 @@ export interface ProductionDeploymentSettings {
   };
   keycloak: {
     host: string;
-    realm: string;
+    realm: 'ui4a';
     database: string;
     databasePasswordRef: string;
     bootstrapAdminUser: string;
     bootstrapAdminPasswordRef: string;
+    experimentHumanPasswordRef: string;
   };
   tls: {
     ui4aHost: string;
@@ -130,6 +131,16 @@ export class ProductionDeploymentConfigError extends Error {
     this.name = 'ProductionDeploymentConfigError';
   }
 }
+
+const EXPERIMENTAL_POLICY_SCOPES = [
+  'ui4a:policy:default',
+  'ui4a:policy:publishing',
+  'ui4a:policy:community',
+  'ui4a:policy:development',
+  'ui4a:policy:editorial',
+  'ui4a:policy:governance',
+] as const;
+const EXPERIMENTAL_POLICY_SCOPE_SET = new Set<string>(EXPERIMENTAL_POLICY_SCOPES);
 
 function fail(path: string, reason: string): never {
   throw new ProductionDeploymentConfigError(path, reason);
@@ -266,12 +277,23 @@ function parseAuth(value: unknown): ProductionDeploymentSettings['auth'] {
     'callbackUrl',
     'scopes',
   ]);
+  if (oidc.audience === '*') {
+    fail('settings.auth.oidc.audience', 'wildcard audience is forbidden in production');
+  }
+  const audience = identifier(oidc.audience, 'settings.auth.oidc.audience');
+  if (audience !== 'ui4a-api') {
+    fail('settings.auth.oidc.audience', 'must be ui4a-api for the experimental release');
+  }
+  const clientId = identifier(oidc.clientId, 'settings.auth.oidc.clientId');
+  if (clientId !== 'ui4a-web') {
+    fail('settings.auth.oidc.clientId', 'must be ui4a-web for the experimental release');
+  }
   return {
     mode,
     oidc: {
       issuer: httpsUrl(oidc.issuer, 'auth.oidc.issuer').toString().replace(/\/$/, ''),
-      audience: string(oidc.audience, 'settings.auth.oidc.audience'),
-      clientId: identifier(oidc.clientId, 'settings.auth.oidc.clientId'),
+      audience,
+      clientId,
       clientSecretRef: identifier(oidc.clientSecretRef, 'settings.auth.oidc.clientSecretRef'),
       sessionSecretRef: identifier(oidc.sessionSecretRef, 'settings.auth.oidc.sessionSecretRef'),
       agentClientId: (() => {
@@ -395,10 +417,15 @@ function parseKeycloak(value: unknown): ProductionDeploymentSettings['keycloak']
     'databasePasswordRef',
     'bootstrapAdminUser',
     'bootstrapAdminPasswordRef',
+    'experimentHumanPasswordRef',
   ]);
+  const realm = identifier(candidate.realm, 'settings.keycloak.realm');
+  if (realm !== 'ui4a') {
+    fail('settings.keycloak.realm', 'must be ui4a for the experimental release');
+  }
   return {
     host: hostname(candidate.host, 'settings.keycloak.host'),
-    realm: identifier(candidate.realm, 'settings.keycloak.realm'),
+    realm,
     database: identifier(candidate.database, 'settings.keycloak.database'),
     databasePasswordRef: identifier(
       candidate.databasePasswordRef,
@@ -411,6 +438,10 @@ function parseKeycloak(value: unknown): ProductionDeploymentSettings['keycloak']
     bootstrapAdminPasswordRef: identifier(
       candidate.bootstrapAdminPasswordRef,
       'settings.keycloak.bootstrapAdminPasswordRef',
+    ),
+    experimentHumanPasswordRef: identifier(
+      candidate.experimentHumanPasswordRef,
+      'settings.keycloak.experimentHumanPasswordRef',
     ),
   };
 }
@@ -659,17 +690,8 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
   if (new URL(settings.auth.oidc.callbackUrl).pathname !== '/api/auth/callback') {
     fail('auth.oidc.callbackUrl', 'path must be /api/auth/callback');
   }
-  if (settings.auth.oidc.audience === '*') {
-    fail('settings.auth.oidc.audience', 'wildcard audience is forbidden in production');
-  }
   if (settings.auth.oidc.sessionSecretRef === settings.auth.oidc.clientSecretRef) {
     fail('settings.auth.oidc.sessionSecretRef', 'must differ from clientSecretRef');
-  }
-  if (
-    settings.auth.oidc.agentClientId === settings.auth.oidc.clientId ||
-    settings.auth.oidc.agentClientId === settings.auth.oidc.audience
-  ) {
-    fail('settings.auth.oidc.agentClientId', 'must differ from the Web client and API audience');
   }
   if (
     settings.auth.oidc.agentClientSecretRef === settings.auth.oidc.clientSecretRef ||
@@ -680,11 +702,29 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
       'must differ from the Web client and browser session Secret refs',
     );
   }
-  if (!settings.auth.oidc.scopes.includes('openid')) {
-    fail('settings.auth.oidc.scopes', 'must include openid');
-  }
-  if (new Set(settings.auth.oidc.scopes).size !== settings.auth.oidc.scopes.length) {
+  const browserScopes = settings.auth.oidc.scopes;
+  if (new Set(browserScopes).size !== browserScopes.length) {
     fail('settings.auth.oidc.scopes', 'must not contain duplicates');
+  }
+  const requiredBrowserScopes = ['openid', 'ui4a:read', 'ui4a:write', 'ui4a:approve'];
+  if (requiredBrowserScopes.some((scope) => !browserScopes.includes(scope))) {
+    fail(
+      'settings.auth.oidc.scopes',
+      'must include openid and the ui4a:read, ui4a:write, ui4a:approve permissions',
+    );
+  }
+  if (!browserScopes.some((scope) => EXPERIMENTAL_POLICY_SCOPE_SET.has(scope))) {
+    fail('settings.auth.oidc.scopes', 'must include at least one fixed ui4a:policy:<app> scope');
+  }
+  if (
+    browserScopes.some(
+      (scope) =>
+        !['openid', 'profile', 'email', 'ui4a:read', 'ui4a:write', 'ui4a:approve'].includes(
+          scope,
+        ) && !EXPERIMENTAL_POLICY_SCOPE_SET.has(scope),
+    )
+  ) {
+    fail('settings.auth.oidc.scopes', 'contains a scope unavailable in the fixed ui4a realm');
   }
   const agentScopes = settings.auth.oidc.agentScopes;
   if (new Set(agentScopes).size !== agentScopes.length) {
@@ -693,7 +733,7 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
   if (!agentScopes.includes('ui4a:read') || !agentScopes.includes('ui4a:write')) {
     fail('settings.auth.oidc.agentScopes', 'must include exactly ui4a:read and ui4a:write');
   }
-  if (!agentScopes.some((scope) => /^ui4a:policy:[A-Za-z0-9][A-Za-z0-9._-]*$/.test(scope))) {
+  if (!agentScopes.some((scope) => EXPERIMENTAL_POLICY_SCOPE_SET.has(scope))) {
     fail('settings.auth.oidc.agentScopes', 'must include at least one ui4a:policy:<app> scope');
   }
   if (
@@ -703,7 +743,7 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
         scope === 'ui4a:approve' ||
         (scope !== 'ui4a:read' &&
           scope !== 'ui4a:write' &&
-          !/^ui4a:policy:[A-Za-z0-9][A-Za-z0-9._-]*$/.test(scope)),
+          !EXPERIMENTAL_POLICY_SCOPE_SET.has(scope)),
     )
   ) {
     fail(
@@ -726,6 +766,7 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
     [settings.postgres.migrationPasswordRef, 'settings.postgres.migrationPasswordRef'],
     [settings.keycloak.databasePasswordRef, 'settings.keycloak.databasePasswordRef'],
     [settings.keycloak.bootstrapAdminPasswordRef, 'settings.keycloak.bootstrapAdminPasswordRef'],
+    [settings.keycloak.experimentHumanPasswordRef, 'settings.keycloak.experimentHumanPasswordRef'],
     [settings.llm.apiKeyRef, 'settings.llm.apiKeyRef'],
   ];
   for (const profile of settings.runtime.profiles) {

@@ -27,7 +27,14 @@ function validInput() {
           agentClientSecretRef: 'oidc-agent-client-secret',
           agentScopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
           callbackUrl: 'https://ui4a.mothership.internal/api/auth/callback',
-          scopes: ['openid', 'profile'],
+          scopes: [
+            'openid',
+            'profile',
+            'ui4a:read',
+            'ui4a:write',
+            'ui4a:approve',
+            'ui4a:policy:development',
+          ],
         },
       },
       postgres: {
@@ -60,6 +67,7 @@ function validInput() {
         databasePasswordRef: 'keycloak-database-password',
         bootstrapAdminUser: 'ui4a-bootstrap-admin',
         bootstrapAdminPasswordRef: 'keycloak-bootstrap-admin-password',
+        experimentHumanPasswordRef: 'keycloak-experiment-human-password',
       },
       tls: {
         ui4aHost: 'ui4a.mothership.internal',
@@ -132,6 +140,7 @@ function validInput() {
       'postgres-migration-password': '__test_only_postgres_migration__',
       'keycloak-database-password': '__test_only_keycloak_database__',
       'keycloak-bootstrap-admin-password': '__test_only_keycloak_admin__',
+      'keycloak-experiment-human-password': '__test_only_keycloak_experiment_human__',
       'oidc-client-secret': '__test_only_oidc_client__',
       'oidc-session-secret': '__test_only_oidc_session__',
       'oidc-agent-client-secret': '__test_only_oidc_agent_client__',
@@ -276,11 +285,72 @@ describe('T22 production deployment config contract', () => {
       ['ui4a:read', 'ui4a:write'],
       ['ui4a:read', 'ui4a:policy:development'],
       ['ui4a:write', 'ui4a:policy:development'],
+      ['ui4a:read', 'ui4a:write', 'ui4a:policy:unknown'],
     ]) {
       const invalid = structuredClone(canonical);
       Object.assign(invalid.settings.auth.oidc, { agentScopes: invalidScopes });
       expectInvalid(invalid, /agentScopes|scope|duplicate|approve|openid|policy/i);
     }
+  });
+
+  it('fixes the experimental realm and three client identities to the shared realm artifact', () => {
+    const fixed = parseProductionDeploymentConfig(validInput());
+
+    expect(fixed.settings.keycloak.realm).toBe('ui4a');
+    expect(fixed.settings.auth.oidc).toMatchObject({
+      clientId: 'ui4a-web',
+      agentClientId: 'ui4a-agent',
+      audience: 'ui4a-api',
+    });
+
+    for (const [path, mutate] of [
+      [
+        'settings.keycloak.realm',
+        (candidate: ReturnType<typeof validInput>) => (candidate.settings.keycloak.realm = 'other'),
+      ],
+      [
+        'settings.auth.oidc.clientId',
+        (candidate: ReturnType<typeof validInput>) =>
+          (candidate.settings.auth.oidc.clientId = 'other-web'),
+      ],
+      [
+        'settings.auth.oidc.audience',
+        (candidate: ReturnType<typeof validInput>) =>
+          (candidate.settings.auth.oidc.audience = 'other-api'),
+      ],
+    ] as const) {
+      const candidate = validInput();
+      mutate(candidate);
+      if (path === 'settings.keycloak.realm') {
+        candidate.settings.auth.oidc.issuer = 'https://auth.ui4a.mothership.internal/realms/other';
+      }
+      expectInvalid(candidate, new RegExp(path.replaceAll('.', '\\.')));
+    }
+  });
+
+  it('requires browser scopes that the fixed realm can issue for the Golden path', () => {
+    for (const invalidScopes of [
+      ['openid', 'ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
+      ['openid', 'ui4a:read', 'ui4a:approve', 'ui4a:policy:development'],
+      ['openid', 'ui4a:write', 'ui4a:approve', 'ui4a:policy:development'],
+      ['openid', 'ui4a:read', 'ui4a:write', 'ui4a:approve'],
+      ['openid', 'ui4a:read', 'ui4a:write', 'ui4a:approve', 'ui4a:policy:unknown'],
+    ]) {
+      const candidate = validInput();
+      candidate.settings.auth.oidc.scopes = invalidScopes;
+      expectInvalid(candidate, /auth\.oidc\.scopes|permission|policy/i);
+    }
+  });
+
+  it('requires an explicit configured Secret ref for the imported experimental human', () => {
+    const missingField = validInput();
+    delete (missingField.settings.keycloak as { experimentHumanPasswordRef?: string })
+      .experimentHumanPasswordRef;
+    expectInvalid(missingField, /settings\.keycloak\.experimentHumanPasswordRef/);
+
+    const missingSecret = validInput();
+    delete (missingSecret.secrets as Record<string, string>)['keycloak-experiment-human-password'];
+    expectInvalid(missingSecret, /settings\.keycloak\.experimentHumanPasswordRef/);
   });
 
   it('keeps Secret material structurally separate from ordinary settings', () => {

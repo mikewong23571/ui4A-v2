@@ -4,8 +4,10 @@ import { agentDefinitionDraftRegistryPort } from '../../../../engine/agent-defin
 import {
   applyTrustedIdentity,
   authenticationErrorResponse,
+  requireHumanApprovalScope,
   resolveTrustedRequestIdentity,
 } from '../../../../auth/request-identity';
+import { assertRelInPolicyScope } from '../../../../auth/application-scope';
 
 import { parseExecBody, rejectionStatus } from '../../exec-request';
 
@@ -44,13 +46,23 @@ export async function POST(request: Request) {
     const engine = await getEngine(db);
     const identity = await resolveTrustedRequestIdentity(request, {
       plane: 'meta',
-      requiredScopes: ['approve', 'reject'].includes(parsed.request.action)
-        ? ['ui4a:approve']
-        : ['ui4a:write'],
+      requiredScopes: ['ui4a:write'],
       untrusted: parsed.request,
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
       defaultPolicyScope: 'publishing',
     });
+    if (['approve', 'reject'].includes(parsed.request.action)) {
+      requireHumanApprovalScope(identity);
+    }
+    if (identity.authorizationMode === 'credential') {
+      assertRelInPolicyScope({
+        snapshot: engine.getSnapshot(),
+        sitemap: engine.getSitemap(),
+        rel: parsed.request.rel,
+        policyScope: identity.policyScope,
+        plane: 'meta',
+      });
+    }
     const trustedRequest = applyTrustedIdentity(parsed.request, identity);
     const metaRequest =
       trustedRequest.rel === 'meta/drafts' && trustedRequest.action === 'create'

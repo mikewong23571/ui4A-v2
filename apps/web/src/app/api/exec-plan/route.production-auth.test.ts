@@ -5,7 +5,40 @@ const mocks = vi.hoisted(() => {
   const execPlan = vi.fn();
   const engine = {
     execPlan,
-    getSnapshot: vi.fn(() => ({ applications: { development: {} } })),
+    getSnapshot: vi.fn(() => ({
+      applications: { development: {}, publishing: {} },
+      instances: {
+        'comment:c1': { rel: 'comment:c1', flow: 'software-change', node: 'ready', fields: {} },
+        'post:first': { rel: 'post:first', flow: 'software-change', node: 'ready', fields: {} },
+        'post:publishing': {
+          rel: 'post:publishing',
+          flow: 'post-status',
+          node: 'published',
+          fields: {},
+        },
+      },
+      definitions: {
+        'software-change': {
+          name: 'software-change',
+          version: 1,
+          status: 'active',
+          definition: { name: 'software-change', app: 'development' },
+        },
+        'post-status': {
+          name: 'post-status',
+          version: 1,
+          status: 'active',
+          definition: { name: 'post-status', app: 'publishing' },
+        },
+      },
+    })),
+    getSitemap: vi.fn(() => ({
+      version: 'test',
+      surfaces: [],
+      flows: [],
+      applications: [],
+      capabilities: [],
+    })),
   };
   const getDb = vi.fn(() => ({ kind: 'mock-db' }));
   const getEngine = vi.fn(async () => engine);
@@ -30,7 +63,9 @@ const mocks = vi.hoisted(() => {
   );
   const authenticationErrorResponse = vi.fn((error: unknown) => {
     const code = (error as { code?: string }).code;
-    return code === undefined ? undefined : Response.json({ error: { code } }, { status: 401 });
+    return code === undefined
+      ? undefined
+      : Response.json({ error: { code } }, { status: code === 'scope_insufficient' ? 403 : 401 });
   });
   return {
     applyTrustedIdentity,
@@ -128,7 +163,7 @@ describe('POST /api/exec-plan production trusted identity', () => {
       expect.objectContaining({
         plane: 'business',
         requiredScopes: ['ui4a:write'],
-        authorizedPolicyScopes: ['development'],
+        authorizedPolicyScopes: ['development', 'publishing'],
         defaultPolicyScope: 'development',
       }),
     );
@@ -183,6 +218,22 @@ describe('POST /api/exec-plan production trusted identity', () => {
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({ error: { code: 'credential_missing' } });
     expect(mocks.authenticationErrorResponse).toHaveBeenCalledTimes(1);
+    expect(mocks.applyTrustedIdentity).not.toHaveBeenCalled();
+    expect(mocks.execPlan).not.toHaveBeenCalled();
+  });
+
+  it('rejects a plan step owned by another application before executing any step', async () => {
+    const response = await POST(
+      request({
+        steps: [
+          { rel: 'comment:c1', action: 'approve', params: {} },
+          { rel: 'post:publishing', action: 'archive', params: {} },
+        ],
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: { code: 'scope_insufficient' } });
     expect(mocks.applyTrustedIdentity).not.toHaveBeenCalled();
     expect(mocks.execPlan).not.toHaveBeenCalled();
   });

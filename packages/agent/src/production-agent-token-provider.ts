@@ -176,6 +176,7 @@ export function createProductionAgentTokenProvider(
         },
         body: parameters,
         cache: 'no-store',
+        redirect: 'error',
       });
     } catch {
       return fail('agent_token_endpoint_unavailable');

@@ -4,7 +4,36 @@ const mocks = vi.hoisted(() => {
   const getAgentDefinitionCatalog = vi.fn(async () => []);
   const getDb = vi.fn(() => ({ kind: 'mock-db' }));
   const engine = {
-    getSitemap: vi.fn(() => ({ version: 'test-version', surfaces: [] })),
+    getSitemap: vi.fn(() => ({
+      version: 'test-version',
+      surfaces: [
+        { rel: 'articles', title: 'Articles', app: 'publishing' },
+        { rel: 'comments', title: 'Comments', app: 'community' },
+      ],
+      flows: [
+        {
+          name: 'article-drafting',
+          title: 'Articles',
+          app: 'publishing',
+          initial: 'draft',
+          nodes: [],
+          edges: [],
+        },
+        {
+          name: 'comment-moderation',
+          title: 'Comments',
+          app: 'community',
+          initial: 'pending',
+          nodes: [],
+          edges: [],
+        },
+      ],
+      applications: [
+        { name: 'publishing', title: 'Publishing', intent: 'publish', flows: [] },
+        { name: 'community', title: 'Community', intent: 'moderate', flows: [] },
+      ],
+      capabilities: [],
+    })),
     getSnapshot: vi.fn(() => ({ applications: { publishing: {}, community: {} } })),
   };
   const getEngine = vi.fn(async () => engine);
@@ -104,6 +133,13 @@ describe('GET /.well-known/ui4a.json trusted entry', () => {
       'human-alice',
       'publishing',
     );
+    await expect(authenticated.json()).resolves.toEqual(
+      expect.objectContaining({
+        surfaces: [expect.objectContaining({ rel: 'articles' })],
+        flows: [expect.objectContaining({ name: 'article-drafting' })],
+        applications: [expect.objectContaining({ name: 'publishing' })],
+      }),
+    );
 
     delete process.env.UI4A_DEPLOYMENT_PROFILE;
     const local = await GET(
@@ -119,6 +155,14 @@ describe('GET /.well-known/ui4a.json trusted entry', () => {
       expect.anything(),
       'local-alice',
       'community',
+    );
+    await expect(local.json()).resolves.toEqual(
+      expect.objectContaining({
+        surfaces: [
+          expect.objectContaining({ rel: 'articles' }),
+          expect.objectContaining({ rel: 'comments' }),
+        ],
+      }),
     );
   });
 });
