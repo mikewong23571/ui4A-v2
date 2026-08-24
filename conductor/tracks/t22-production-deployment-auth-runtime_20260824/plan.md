@@ -15,10 +15,10 @@
 - [x] 确认无 StorageClass，盘点 static/local PV 或 provisioner 方案
 - [x] 探测 Nexus 中 Node、PostgreSQL、Temporal、Keycloak 和 Runtime images
 - [x] 验证 `ctr --all-platforms`、`IfNotPresent` 和 image export/import
-- [~] Task: 运行 disposable 认证探针
-- [ ] 验证 Keycloak Authorization Code + PKCE、CLI Bearer 和 Client Credentials
-- [ ] 验证 RFC 8693 Token Exchange 与 `act` claim
-- [ ] 比较应用 JWT 验证与 Istio RequestAuthentication 职责
+- [x] Task: 运行 disposable 认证探针 246c295
+- [x] 验证 Keycloak Authorization Code + PKCE、CLI Bearer 和 Client Credentials
+- [x] 验证 RFC 8693 Token Exchange 与 `act` claim
+- [x] 比较应用 JWT 验证与 Istio RequestAuthentication 职责
 - [ ] Task: 运行 disposable Runtime Backend 探针
 - [ ] 验证 Temporal Worker 创建、观察和取消 K8s Job
 - [ ] 验证 one-shot Runner 与 host daemon 的统一 task envelope
