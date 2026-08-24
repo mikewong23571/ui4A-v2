@@ -137,12 +137,12 @@
 - [ ] Worker graceful drain、independent test queue 和 restart recovery（真实 restart evidence 待 Phase I）
 - [x] Task: 实现 backup/restore commands c2b072a
 - [x] PostgreSQL consistent backup、Keycloak DB/共享 realm 文件数据与 Temporal 的直接 restore
-- [ ] workspace/artifact archive 和根 CA/私钥/certificate 直接 backup（可携带 Coding export 待 Phase F）
+- [x] workspace/artifact archive 和根 CA/私钥/certificate 直接 backup
 - [x] 默认隔离恢复而不是破坏 current state
-- [~] Task: Red→Green——恢复一致性
-- [ ] 记录恢复前 business hash、identity 和 Run evidence
-- [ ] 从 backup 恢复、rebuild projections 并对比结果
-- [ ] 记录实际 RPO/RTO
+- [x] Task: Red→Green——恢复一致性 cc8e414
+- [x] 记录恢复前 business hash、identity 和 Run evidence
+- [x] 从 backup 恢复、rebuild projections 并对比结果
+- [ ] 记录实际 RPO/RTO（Phase I 真实 drill）
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase F: 双后端 Agent Runtime
