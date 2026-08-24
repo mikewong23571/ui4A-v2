@@ -1015,6 +1015,12 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
           { name: 'tmp', mountPath: '/tmp' },
           { name: 'keycloak-data', mountPath: '/opt/keycloak/data' },
         ],
+        startupProbe: {
+          httpGet: { path: '/health/started', port: 9000 },
+          periodSeconds: 5,
+          timeoutSeconds: 3,
+          failureThreshold: 60,
+        },
         livenessProbe: httpProbe('/health/live', 9000),
         readinessProbe: httpProbe('/health/ready', 9000),
       },
