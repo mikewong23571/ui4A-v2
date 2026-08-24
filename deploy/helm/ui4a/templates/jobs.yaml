@@ -100,7 +100,7 @@ spec:
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
-            {{- include "ui4a.nodeContainerSecurityContext" . | nindent 12 }}
+            {{- include "ui4a.temporalContainerSecurityContext" . | nindent 12 }}
       volumes:
         - name: state-secrets
           secret: { secretName: {{ .Values.secrets.existingSecretName | quote }} }
@@ -121,7 +121,7 @@ spec:
       annotations: { sidecar.istio.io/inject: 'false' }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       initContainers:
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal") | nindent 8 }}

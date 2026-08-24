@@ -45,7 +45,7 @@ spec:
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
-            {{- include "ui4a.nodeContainerSecurityContext" . | nindent 12 }}
+            {{- include "ui4a.temporalContainerSecurityContext" . | nindent 12 }}
       volumes:
         - name: temporal-static-config
           configMap: { name: ui4a-temporal-static }
@@ -76,7 +76,7 @@ spec:
       labels: { app.kubernetes.io/name: temporal-ui, app.kubernetes.io/instance: ui4a }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.temporal | quote }}
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       initContainers:
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal") | nindent 8 }}

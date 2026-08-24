@@ -429,11 +429,15 @@ function ui4aNodeSecurityContext() {
   };
 }
 
-function vendorNonRootSecurityContext(uid: number, gid: number) {
+function vendorNonRootSecurityContext(
+  uid: number,
+  gid: number,
+  readOnlyRootFilesystem = true,
+) {
   return {
     allowPrivilegeEscalation: false,
     capabilities: { drop: ['ALL'] },
-    readOnlyRootFilesystem: true,
+    readOnlyRootFilesystem,
     runAsUser: uid,
     runAsGroup: gid,
   };
@@ -931,7 +935,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         ],
         livenessProbe: tcpProbe(7233, 20),
         readinessProbe: { exec: { command: ['temporal', 'operator', 'cluster', 'health'] } },
-        securityContext: vendorNonRootSecurityContext(1000, 1000),
+        securityContext: vendorNonRootSecurityContext(1000, 1000, false),
       },
       {
         automountServiceAccountToken: true,
@@ -965,7 +969,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         securityContext: vendorNonRootSecurityContext(1000, 1000),
       },
       {
-        automountServiceAccountToken: true,
+        automountServiceAccountToken: false,
         initContainers: dependencyGates(values, ['temporal']),
         volumes: [{ name: 'tmp', emptyDir: {} }],
       },
@@ -1210,7 +1214,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       ],
       {
         volumeMounts: [stateSecretMount],
-        securityContext: vendorNonRootSecurityContext(1000, 1000),
+        securityContext: vendorNonRootSecurityContext(1000, 1000, false),
       },
       {
         automountServiceAccountToken: true,
@@ -1231,7 +1235,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       ],
       { securityContext: vendorNonRootSecurityContext(1000, 1000) },
       {
-        automountServiceAccountToken: true,
+        automountServiceAccountToken: false,
         initContainers: dependencyGates(values, ['temporal']),
       },
     ),

@@ -42,6 +42,15 @@ capabilities:
   drop: [ALL]
 {{- end -}}
 
+{{- define "ui4a.temporalContainerSecurityContext" -}}
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: false
+runAsUser: 1000
+runAsGroup: 1000
+capabilities:
+  drop: [ALL]
+{{- end -}}
+
 {{- define "ui4a.nodeSelector" -}}
 {{- with .Values.scheduling.nodeSelector }}
 nodeSelector:
