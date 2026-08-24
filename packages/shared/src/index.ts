@@ -32,3 +32,5 @@ export * from './agent-definition';
 export * from './agent-authoring';
 // Source-grounded Writing Agent specialization contracts and protocol limits.
 export * from './writing-agent';
+// Platform-neutral, fail-closed production deployment contract (T22).
+export * from './production-deployment-config';

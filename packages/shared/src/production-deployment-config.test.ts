@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseProductionDeploymentConfig } from './production-deployment-config';
+import {
+  parseProductionDeploymentConfig,
+  preflightProductionDeploymentFromEnvironment,
+  productionDeploymentConfigFromHelmValues,
+} from './production-deployment-config';
 
 function validInput() {
   return {
@@ -348,5 +352,58 @@ describe('T22 production deployment config contract', () => {
     candidate.settings.runtime.defaultProfiles.coding = 'request-selected';
 
     expectInvalid(candidate, /runtime\.defaultProfiles\.coding|profile|request-selected/i);
+  });
+});
+
+describe('T22 canonical deployment mappings', () => {
+  it('maps Compose environment JSON and Helm values to the same canonical config', () => {
+    const canonical = validInput();
+    const fromEnvironment = preflightProductionDeploymentFromEnvironment({
+      UI4A_DEPLOYMENT_PROFILE: 'production',
+      UI4A_DEPLOYMENT_SETTINGS_JSON: JSON.stringify(canonical.settings),
+      UI4A_DEPLOYMENT_SECRETS_JSON: JSON.stringify(canonical.secrets),
+    });
+    const fromHelm = productionDeploymentConfigFromHelmValues({
+      ui4a: { deploymentConfig: canonical },
+    });
+
+    expect(fromEnvironment).toEqual(fromHelm);
+  });
+
+  it('supports mounted settings and Secret files without disclosing Secret file contents', () => {
+    const canonical = validInput();
+    const files: Record<string, string> = {
+      '/run/ui4a/settings.json': JSON.stringify(canonical.settings),
+      '/run/ui4a/secrets.json': JSON.stringify(canonical.secrets),
+    };
+    const parsed = preflightProductionDeploymentFromEnvironment(
+      {
+        UI4A_DEPLOYMENT_PROFILE: 'production',
+        UI4A_DEPLOYMENT_SETTINGS_FILE: '/run/ui4a/settings.json',
+        UI4A_DEPLOYMENT_SECRETS_FILE: '/run/ui4a/secrets.json',
+      },
+      (path) => {
+        const content = files[path];
+        if (content === undefined) throw new Error('missing');
+        return content;
+      },
+    );
+
+    expect(parsed?.settings).toEqual(parseProductionDeploymentConfig(canonical).settings);
+  });
+
+  it('does not infer production from NODE_ENV and rejects ambiguous production sources', () => {
+    expect(
+      preflightProductionDeploymentFromEnvironment({ NODE_ENV: 'production' }),
+    ).toBeUndefined();
+
+    expect(() =>
+      preflightProductionDeploymentFromEnvironment({
+        UI4A_DEPLOYMENT_PROFILE: 'production',
+        UI4A_DEPLOYMENT_SETTINGS_JSON: '{}',
+        UI4A_DEPLOYMENT_SETTINGS_FILE: '/run/ui4a/settings.json',
+        UI4A_DEPLOYMENT_SECRETS_JSON: '{}',
+      }),
+    ).toThrow(/exactly one|settings/i);
   });
 });
