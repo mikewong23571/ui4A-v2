@@ -1,6 +1,53 @@
 {
   "realm": "ui4a",
   "enabled": true,
+  "clientScopes": [
+    {
+      "name": "ui4a:read",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" }
+    },
+    {
+      "name": "ui4a:write",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" }
+    },
+    {
+      "name": "ui4a:approve",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" }
+    },
+    {
+      "name": "ui4a:policy:default",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" }
+    },
+    {
+      "name": "ui4a:policy:publishing",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" }
+    },
+    {
+      "name": "ui4a:policy:community",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" }
+    },
+    {
+      "name": "ui4a:policy:development",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" }
+    },
+    {
+      "name": "ui4a:policy:editorial",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" }
+    },
+    {
+      "name": "ui4a:policy:governance",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" }
+    }
+  ],
   "clients": [
     {
       "clientId": "ui4a-web",
@@ -15,6 +62,15 @@
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "{{UI4A_ORIGIN}}/*"
       },
+      "defaultClientScopes": ["profile", "email", "ui4a:read", "ui4a:write", "ui4a:approve"],
+      "optionalClientScopes": [
+        "ui4a:policy:default",
+        "ui4a:policy:publishing",
+        "ui4a:policy:community",
+        "ui4a:policy:development",
+        "ui4a:policy:editorial",
+        "ui4a:policy:governance"
+      ],
       "protocolMappers": [
         {
           "name": "ui4a-api-audience",
@@ -50,6 +106,15 @@
       "attributes": {
         "standard.token.exchange.enabled": "true"
       },
+      "defaultClientScopes": ["ui4a:read", "ui4a:write"],
+      "optionalClientScopes": [
+        "ui4a:policy:default",
+        "ui4a:policy:publishing",
+        "ui4a:policy:community",
+        "ui4a:policy:development",
+        "ui4a:policy:editorial",
+        "ui4a:policy:governance"
+      ],
       "protocolMappers": [
         {
           "name": "ui4a-api-audience",
@@ -71,7 +136,18 @@
       "bearerOnly": true,
       "standardFlowEnabled": false,
       "serviceAccountsEnabled": false,
-      "directAccessGrantsEnabled": false
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": ["ui4a:read"],
+      "optionalClientScopes": [
+        "ui4a:write",
+        "ui4a:approve",
+        "ui4a:policy:default",
+        "ui4a:policy:publishing",
+        "ui4a:policy:community",
+        "ui4a:policy:development",
+        "ui4a:policy:editorial",
+        "ui4a:policy:governance"
+      ]
     }
   ],
   "users": [

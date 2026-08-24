@@ -9,6 +9,8 @@ export interface RealmClientRepresentation extends Record<string, unknown> {
   redirectUris?: string[];
   attributes?: Record<string, string>;
   secret?: string;
+  defaultClientScopes: string[];
+  optionalClientScopes: string[];
   protocolMappers?: Array<{
     name: string;
     protocol: string;
@@ -21,7 +23,14 @@ export interface RealmImportRepresentation extends Record<string, unknown> {
   realm: string;
   enabled: boolean;
   clients: RealmClientRepresentation[];
+  clientScopes: RealmClientScopeRepresentation[];
   users?: Array<Record<string, unknown>>;
+}
+
+interface RealmClientScopeRepresentation extends Record<string, unknown> {
+  name: string;
+  protocol: 'openid-connect';
+  attributes: { 'include.in.token.scope': 'true' };
 }
 
 export interface BootstrapResult {
@@ -71,6 +80,33 @@ interface BootstrapInput {
 type JsonObject = Record<string, unknown>;
 
 const managedClientIds = ['ui4a-web', 'ui4a-agent', 'ui4a-api'] as const;
+const permissionScopes = ['ui4a:read', 'ui4a:write', 'ui4a:approve'] as const;
+const policyScopes = [
+  'ui4a:policy:default',
+  'ui4a:policy:publishing',
+  'ui4a:policy:community',
+  'ui4a:policy:development',
+  'ui4a:policy:editorial',
+  'ui4a:policy:governance',
+] as const;
+const managedClientScopes = [...permissionScopes, ...policyScopes] as const;
+const expectedClientScopeAssignments: Record<
+  (typeof managedClientIds)[number],
+  { defaults: readonly string[]; optional: readonly string[] }
+> = {
+  'ui4a-web': {
+    defaults: ['profile', 'email', ...permissionScopes],
+    optional: policyScopes,
+  },
+  'ui4a-agent': {
+    defaults: ['ui4a:read', 'ui4a:write'],
+    optional: policyScopes,
+  },
+  'ui4a-api': {
+    defaults: ['ui4a:read'],
+    optional: ['ui4a:write', 'ui4a:approve', ...policyScopes],
+  },
+};
 const clientKeys = new Set([
   'clientId',
   'enabled',
@@ -83,6 +119,8 @@ const clientKeys = new Set([
   'attributes',
   'secret',
   'protocolMappers',
+  'defaultClientScopes',
+  'optionalClientScopes',
 ]);
 
 function fail(code: KeycloakBootstrapErrorCode, message: string): never {
@@ -113,9 +151,28 @@ function stringRecord(input: unknown, label: string): Record<string, string> {
   return value as Record<string, string>;
 }
 
+function exactStringArray(input: unknown, expected: readonly string[], label: string): string[] {
+  if (!Array.isArray(input) || input.some((entry) => typeof entry !== 'string')) {
+    fail('KEYCLOAK_REALM_IMPORT_INVALID', `${label} must contain only strings`);
+  }
+  const values = input as string[];
+  const sortedExpected = [...expected].sort();
+  if (
+    values.length !== sortedExpected.length ||
+    [...values].sort().some((entry, index) => entry !== sortedExpected[index])
+  ) {
+    fail('KEYCLOAK_REALM_IMPORT_INVALID', `${label} is incompatible`);
+  }
+  return values;
+}
+
 function validateRealmImport(input: unknown): RealmImportRepresentation {
   const root = requiredObject(input, 'realm import');
-  exactKeys(root, new Set(['realm', 'enabled', 'clients', 'users']), 'realm import');
+  exactKeys(
+    root,
+    new Set(['realm', 'enabled', 'clients', 'clientScopes', 'users']),
+    'realm import',
+  );
   if (root.realm !== 'ui4a' || root.enabled !== true || !Array.isArray(root.clients)) {
     fail('KEYCLOAK_REALM_IMPORT_INVALID', 'realm import must define the enabled ui4a realm');
   }
@@ -150,6 +207,20 @@ function validateRealmImport(input: unknown): RealmImportRepresentation {
     }
     if (client.attributes !== undefined)
       stringRecord(client.attributes, `clients[${index}].attributes`);
+    const expectedScopes =
+      expectedClientScopeAssignments[client.clientId as (typeof managedClientIds)[number]];
+    if (expectedScopes !== undefined) {
+      exactStringArray(
+        client.defaultClientScopes,
+        expectedScopes.defaults,
+        `clients[${index}].defaultClientScopes`,
+      );
+      exactStringArray(
+        client.optionalClientScopes,
+        expectedScopes.optional,
+        `clients[${index}].optionalClientScopes`,
+      );
+    }
     return client as RealmClientRepresentation;
   });
 
@@ -157,6 +228,27 @@ function validateRealmImport(input: unknown): RealmImportRepresentation {
   if (ids.join(',') !== [...managedClientIds].sort().join(',')) {
     fail('KEYCLOAK_REALM_IMPORT_INVALID', 'realm import client identifiers are incompatible');
   }
+  if (!Array.isArray(root.clientScopes)) {
+    fail('KEYCLOAK_REALM_IMPORT_INVALID', 'realm import must define fixed client scopes');
+  }
+  exactStringArray(
+    root.clientScopes.map((candidate) => object(candidate)?.name),
+    managedClientScopes,
+    'realm import client scope names',
+  );
+  root.clientScopes.forEach((candidate, index) => {
+    const scope = requiredObject(candidate, `clientScopes[${index}]`);
+    exactKeys(scope, new Set(['name', 'protocol', 'attributes']), `clientScopes[${index}]`);
+    const attributes = stringRecord(scope.attributes, `clientScopes[${index}].attributes`);
+    if (
+      typeof scope.name !== 'string' ||
+      scope.protocol !== 'openid-connect' ||
+      attributes['include.in.token.scope'] !== 'true' ||
+      Object.keys(attributes).length !== 1
+    ) {
+      fail('KEYCLOAK_REALM_IMPORT_INVALID', `clientScopes[${index}] has an invalid contract`);
+    }
+  });
   if (!Array.isArray(root.users) || root.users.length !== 1) {
     fail('KEYCLOAK_REALM_IMPORT_INVALID', 'realm import must define one experimental user');
   }
@@ -260,6 +352,15 @@ function hasAccessTokenAudience(client: Record<string, unknown>, audience: strin
   });
 }
 
+function sameStringSet(input: unknown, expected: readonly string[]): boolean {
+  return (
+    Array.isArray(input) &&
+    input.every((entry) => typeof entry === 'string') &&
+    input.length === expected.length &&
+    [...input].sort().every((entry, index) => entry === [...expected].sort()[index])
+  );
+}
+
 function compatibleRealm(
   realm: Record<string, unknown>,
   clients: Array<Record<string, unknown>>,
@@ -288,6 +389,8 @@ function compatibleRealm(
     web.standardFlowEnabled !== true ||
     web.directAccessGrantsEnabled !== false ||
     webAttributes?.['pkce.code.challenge.method'] !== 'S256' ||
+    !sameStringSet(web.defaultClientScopes, expectedClientScopeAssignments['ui4a-web'].defaults) ||
+    !sameStringSet(web.optionalClientScopes, expectedClientScopeAssignments['ui4a-web'].optional) ||
     !hasAccessTokenAudience(web, 'ui4a-api') ||
     !hasAccessTokenAudience(web, 'ui4a-agent') ||
     !Array.isArray(web.redirectUris) ||
@@ -305,6 +408,14 @@ function compatibleRealm(
     agent.serviceAccountsEnabled !== true ||
     agent.directAccessGrantsEnabled !== false ||
     agentAttributes?.['standard.token.exchange.enabled'] !== 'true' ||
+    !sameStringSet(
+      agent.defaultClientScopes,
+      expectedClientScopeAssignments['ui4a-agent'].defaults,
+    ) ||
+    !sameStringSet(
+      agent.optionalClientScopes,
+      expectedClientScopeAssignments['ui4a-agent'].optional,
+    ) ||
     !hasAccessTokenAudience(agent, 'ui4a-api')
   ) {
     return false;
@@ -315,7 +426,9 @@ function compatibleRealm(
     api.enabled === true &&
     api.publicClient === false &&
     api.bearerOnly === true &&
-    api.directAccessGrantsEnabled === false
+    api.directAccessGrantsEnabled === false &&
+    sameStringSet(api.defaultClientScopes, expectedClientScopeAssignments['ui4a-api'].defaults) &&
+    sameStringSet(api.optionalClientScopes, expectedClientScopeAssignments['ui4a-api'].optional)
   );
 }
 

@@ -21,6 +21,8 @@ interface RealmClientRepresentation extends Record<string, unknown> {
   clientId: string;
   attributes?: Record<string, string>;
   protocolMappers?: Array<{ config?: Record<string, string> }>;
+  defaultClientScopes?: string[];
+  optionalClientScopes?: string[];
 }
 
 interface RealmImportRepresentation extends Record<string, unknown> {
@@ -336,6 +338,33 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
       (fake: ImportOrSkipKeycloakAdmin) => {
         const agent = fake.clients.find(({ clientId }) => clientId === 'ui4a-agent')!;
         agent.protocolMappers = [];
+      },
+    ],
+    [
+      'Web default scope drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const web = fake.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
+        web.defaultClientScopes = web.defaultClientScopes?.filter(
+          (scope) => scope !== 'ui4a:approve',
+        );
+      },
+    ],
+    [
+      'Agent optional policy scope drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const agent = fake.clients.find(({ clientId }) => clientId === 'ui4a-agent')!;
+        agent.optionalClientScopes = agent.optionalClientScopes?.filter(
+          (scope) => scope !== 'ui4a:policy:governance',
+        );
+      },
+    ],
+    [
+      'API optional permission scope drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const api = fake.clients.find(({ clientId }) => clientId === 'ui4a-api')!;
+        api.optionalClientScopes = api.optionalClientScopes?.filter(
+          (scope) => scope !== 'ui4a:write',
+        );
       },
     ],
   ])('fails closed on %s without attempting repair', async (_label, drift) => {

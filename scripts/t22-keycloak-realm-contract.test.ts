@@ -19,6 +19,8 @@ interface RealmClientRepresentation {
   redirectUris?: string[];
   attributes?: Record<string, string>;
   secret?: string;
+  defaultClientScopes?: string[];
+  optionalClientScopes?: string[];
   protocolMappers?: Array<{
     name: string;
     protocol: string;
@@ -31,6 +33,11 @@ interface RealmImportRepresentation {
   realm: string;
   enabled: boolean;
   clients: RealmClientRepresentation[];
+  clientScopes?: Array<{
+    name: string;
+    protocol: string;
+    attributes: Record<string, string>;
+  }>;
   users?: Array<{
     username: string;
     enabled: boolean;
@@ -58,6 +65,15 @@ function client(input: RealmImportRepresentation, clientId: string): RealmClient
 }
 
 describe('T22 experimental Keycloak realm import contract', () => {
+  const policyScopes = [
+    'ui4a:policy:community',
+    'ui4a:policy:default',
+    'ui4a:policy:development',
+    'ui4a:policy:editorial',
+    'ui4a:policy:governance',
+    'ui4a:policy:publishing',
+  ];
+
   it('uses one direct realm import artifact for Compose and Kubernetes', () => {
     const input = requiredJson<RealmImportRepresentation>(realmImportPath);
     const bindings = requiredJson<{
@@ -97,6 +113,14 @@ describe('T22 experimental Keycloak realm import contract', () => {
     expect(web.redirectUris).toEqual(['{{UI4A_ORIGIN}}/api/auth/callback']);
     expect(web.attributes?.['post.logout.redirect.uris']).toBe('{{UI4A_ORIGIN}}/*');
     expect(web.secret).toBe('{{secret:oidc-client-secret}}');
+    expect(web.defaultClientScopes).toEqual([
+      'profile',
+      'email',
+      'ui4a:read',
+      'ui4a:write',
+      'ui4a:approve',
+    ]);
+    expect(web.optionalClientScopes?.toSorted()).toEqual(policyScopes);
     expect(
       web.protocolMappers
         ?.filter(
@@ -137,6 +161,8 @@ describe('T22 experimental Keycloak realm import contract', () => {
         }),
       ]),
     );
+    expect(agent.defaultClientScopes).toEqual(['ui4a:read', 'ui4a:write']);
+    expect(agent.optionalClientScopes?.toSorted()).toEqual(policyScopes);
     expect(api).toMatchObject({
       enabled: true,
       publicClient: false,
@@ -145,6 +171,35 @@ describe('T22 experimental Keycloak realm import contract', () => {
       serviceAccountsEnabled: false,
       directAccessGrantsEnabled: false,
     });
+    expect(api.defaultClientScopes).toEqual(['ui4a:read']);
+    expect(api.optionalClientScopes?.toSorted()).toEqual(
+      [...policyScopes, 'ui4a:approve', 'ui4a:write'].toSorted(),
+    );
+  });
+
+  it('defines only the fixed permission and policy client scopes emitted in access tokens', () => {
+    const input = requiredJson<RealmImportRepresentation>(realmImportPath);
+
+    expect(input.clientScopes?.map(({ name }) => name).toSorted()).toEqual([
+      'ui4a:approve',
+      'ui4a:policy:community',
+      'ui4a:policy:default',
+      'ui4a:policy:development',
+      'ui4a:policy:editorial',
+      'ui4a:policy:governance',
+      'ui4a:policy:publishing',
+      'ui4a:read',
+      'ui4a:write',
+    ]);
+    expect(input.clientScopes).toEqual(
+      expect.arrayContaining(
+        input.clientScopes!.map(({ name }) => ({
+          name,
+          protocol: 'openid-connect',
+          attributes: { 'include.in.token.scope': 'true' },
+        })),
+      ),
+    );
   });
 
   it('keeps CLI as an external Bearer consumer and delegation as standard sub plus azp', () => {
@@ -176,7 +231,6 @@ describe('T22 experimental Keycloak realm import contract', () => {
       },
     ]);
     expect(input).not.toHaveProperty('roles');
-    expect(input).not.toHaveProperty('clientScopes');
     expect(source).not.toMatch(/fixtureUsers|passwordSecretRef|secretRotation|managedFields/);
     expect(source).not.toContain('__test_only_secret_material__');
   });
