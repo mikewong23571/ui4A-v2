@@ -14,7 +14,7 @@
 
 - 单一、文档化命令启动 PostgreSQL、Temporal、Keycloak、migration、Web、Worker 和 Runner。
 - readiness 全绿后才报告成功；失败指出具体依赖。
-- \`docker compose down\` 后重启，业务实体、用户、Workflow 和 artifacts 仍在。
+- `docker compose down` 后重启，业务实体、用户、Workflow 和 artifacts 仍在。
 - 明确的 destructive clean 命令要求二次确认，普通停止不删除 volume。
 
 ### U2 K8s 从零部署
@@ -24,7 +24,7 @@
 验收：
 
 - 从当前三节点 K8s v1.31.14/Istio 1.24.2 前置状态开始。
-- 处理当前无 StorageClass、CRI 不读取 mirror、Istio \`Always\` pull 等现场约束。
+- 处理当前无 StorageClass、CRI 不读取 mirror、Istio `Always` pull 等现场约束。
 - 所有 image digest 与 release manifest 一致。
 - PostgreSQL、Temporal、Keycloak、migration、Web、Worker、Runner 和 Istio resources 全部 ready。
 - runbook 不依赖未记录的手工数据库修改、临时端口转发或个人 shell 状态。
@@ -44,7 +44,7 @@
 
 ### U4 CLI 认证
 
-作为外部 Agent/CLI 用户，我能取得受限 Token、运行 \`ui4a doctor\`、发现和读取授权合同。
+作为外部 Agent/CLI 用户，我能取得受限 Token、运行 `ui4a doctor`、发现和读取授权合同。
 
 验收：
 
@@ -54,18 +54,18 @@
 
 ### U5 委托身份
 
-作为用户，我能将受限权限交换给 Agent；事件保留 principal 与 \`act\` 链，Agent 不能扩大 scope。
+作为用户，我能将受限权限交换给 Agent；事件保留 principal 与 `act` 链，Agent 不能扩大 scope。
 
 验收：
 
 - RFC 8693 Token Exchange 产生有界 delegation。
 - 交换 scope 必须是原 principal grants 的子集。
-- 嵌套 \`act\` 链有界且可审计。
+- 嵌套 `act` 链有界且可审计。
 - 非法 subject/actor token、越权 scope 和错误 audience 100% 被拒绝。
 
 ### U6 审批不委托
 
-作为治理者，我确认 Agent Token、自报 \`actor=human\`、伪造 principal/header 都无法批准 Draft 或
+作为治理者，我确认 Agent Token、自报 `actor=human`、伪造 principal/header 都无法批准 Draft 或
 Confirmation；真实人类登录可以批准。
 
 验收：
@@ -167,7 +167,7 @@ evidence；Pod 无法扩大授权。
 验收：
 
 - liveness 与 readiness 语义分离。
-- \`degraded\` 不冒充 ready。
+- `degraded` 不冒充 ready。
 - 只读/人工能力若仍安全可用，应与不可用 durable operation 明确区分。
 - 故障恢复后重试遵守幂等和 CAS。
 
@@ -198,7 +198,7 @@ evidence；Pod 无法扩大授权。
 
 ### U17 可安装、可验证的试验性发布
 
-作为试用者，我可以依据一个固定 release manifest 部署 \`v0.1.0-experimental.1\`，并清楚知道它
+作为试用者，我可以依据一个固定 release manifest 部署 `v0.1.0-experimental.1`，并清楚知道它
 验证了什么、没有承诺什么。
 
 验收：
@@ -210,7 +210,7 @@ evidence；Pod 无法扩大授权。
 
 ## Golden Story
 
-\`\`\`text
+```text
 从空环境部署
 → 安装/信任内网根 CA
 → 人类经 Keycloak 登录 UI4A
@@ -223,4 +223,4 @@ evidence；Pod 无法扩大授权。
 → 重启 Web/Worker 后状态及身份仍可恢复
 → 备份、隔离数据、恢复
 → 实体状态 hash、审计链及 Run evidence 一致
-\`\`\`
+```

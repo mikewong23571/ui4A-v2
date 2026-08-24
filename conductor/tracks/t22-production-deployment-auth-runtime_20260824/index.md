@@ -7,7 +7,10 @@ all-in-one 中重复部署、认证、恢复和验证的首个试验性版本。
 - [Metadata](./metadata.json)
 - [Specification](./spec.md)
 - [User Stories](./user-stories.md)
+- [Technical Stories](./technical-stories.md)
 - [Acceptance Evidence Contract](./evidence.md)
+- [Acceptance Evidence Schema](./acceptance-evidence.schema.json)
+- [Red Acceptance Baseline](./acceptance-baseline.json)
 - [Implementation Plan](./plan.md)
 
 当前状态：`in_progress`。目标发布为 `v0.1.0-experimental.1`，不宣称 GA、正式 SLA 或当前两 Worker

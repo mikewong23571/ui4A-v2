@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ui4a.local/schemas/t22-acceptance-evidence.json",
+  "title": "T22 acceptance evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "trackId",
+    "release",
+    "gitSha",
+    "environment",
+    "storyId",
+    "status",
+    "commands",
+    "artifacts",
+    "assertions",
+    "startedAt",
+    "finishedAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "trackId": {
+      "const": "t22-production-deployment-auth-runtime_20260824"
+    },
+    "release": {
+      "const": "v0.1.0-experimental.1"
+    },
+    "gitSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$"
+    },
+    "environment": {
+      "enum": ["compose", "kubernetes"]
+    },
+    "storyId": {
+      "enum": [
+        "U1",
+        "U2",
+        "U3",
+        "U4",
+        "U5",
+        "U6",
+        "U7",
+        "U8",
+        "U9",
+        "U10",
+        "U11",
+        "U12",
+        "U13",
+        "U14",
+        "U15",
+        "U16",
+        "U17"
+      ]
+    },
+    "status": {
+      "enum": ["passed", "failed", "blocked"]
+    },
+    "commands": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "exitCode", "summary"],
+        "properties": {
+          "command": { "type": "string", "minLength": 1 },
+          "exitCode": { "type": "integer" },
+          "summary": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "ref", "digest"],
+        "properties": {
+          "kind": {
+            "enum": [
+              "oci-image",
+              "event-log",
+              "workflow-history",
+              "agent-result",
+              "backup",
+              "certificate",
+              "report"
+            ]
+          },
+          "ref": { "type": "string", "minLength": 1 },
+          "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "assertions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "expected", "actual", "status"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "expected": {},
+          "actual": {},
+          "status": { "enum": ["passed", "failed"] }
+        }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actor", "subject", "scopes", "delegationDepth"],
+      "properties": {
+        "actor": { "enum": ["human", "agent", "system"] },
+        "subject": { "type": "string", "minLength": 1 },
+        "scopes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "delegationDepth": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "finishedAt": { "type": "string", "format": "date-time" },
+    "notes": { "type": "string" }
+  }
+}

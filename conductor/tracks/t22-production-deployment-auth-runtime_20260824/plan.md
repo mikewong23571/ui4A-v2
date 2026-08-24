@@ -1,12 +1,12 @@
 # T22 生产形态部署、身份认证与双后端 Agent Runtime — Plan
 
-> 遵循 \`conductor/workflow.md\` 的 Story TDD、任务提交、Git notes 和 Phase Checkpoint 协议。
+> 遵循 `conductor/workflow.md` 的 Story TDD、任务提交、Git notes 和 Phase Checkpoint 协议。
 > Compose 与 K8s 必须消费同一运行合同并运行同一核心用户故事 corpus。目标发布为
-> \`v0.1.0-experimental.1\`，不宣称 GA、正式 SLA 或当前实验集群具备未经验证的 HA。
+> `v0.1.0-experimental.1`，不宣称 GA、正式 SLA 或当前实验集群具备未经验证的 HA。
 
 ## Phase A: 红线、平台探测与架构决策
 
-- [ ] Task: 建立 U1–U17、Golden Story、负向安全矩阵和 evidence schema
+- [~] Task: 建立 U1–U17、Golden Story、负向安全矩阵和 evidence schema
 - [ ] 编写 technical stories 与初始红线验收 corpus
 - [ ] 固定 Compose/K8s 共用结果断言，不固定 Helm 输出或模型措辞
 - [ ] 记录身份、事件、Workflow、Agent Run、备份和恢复前后 hash
@@ -14,25 +14,25 @@
 - [ ] 记录节点、污点、资源、Istio Gateway、NodePort、DNS、证书和 namespace
 - [ ] 确认无 StorageClass，盘点 static/local PV 或 provisioner 方案
 - [ ] 探测 Nexus 中 Node、PostgreSQL、Temporal、Keycloak 和 Runtime images
-- [ ] 验证 \`ctr --all-platforms\`、\`IfNotPresent\` 和 image export/import
+- [ ] 验证 `ctr --all-platforms`、`IfNotPresent` 和 image export/import
 - [ ] Task: 运行 disposable 认证探针
 - [ ] 验证 Keycloak Authorization Code + PKCE、CLI Bearer 和 Client Credentials
-- [ ] 验证 RFC 8693 Token Exchange 与 \`act\` claim
+- [ ] 验证 RFC 8693 Token Exchange 与 `act` claim
 - [ ] 比较应用 JWT 验证与 Istio RequestAuthentication 职责
 - [ ] Task: 运行 disposable Runtime Backend 探针
 - [ ] 验证 Temporal Worker 创建、观察和取消 K8s Job
 - [ ] 验证 one-shot Runner 与 host daemon 的统一 task envelope
 - [ ] 验证 workspace、result、cancel、timeout 和 disconnect recovery
-- [ ] 决定是否新增 \`apps/agent-runner\` 及进程模式
+- [ ] 决定是否新增 `apps/agent-runner` 及进程模式
 - [ ] Task: 运行 PostgreSQL 与 Temporal 生产拓扑探针
 - [ ] 验证跨 Web Pod PostgreSQL advisory/transaction lock
 - [ ] 验证显式 migration Job
 - [ ] 验证 Temporal namespace、persistence 和 Worker drain
 - [ ] 选择无 StorageClass 环境的 stateful installation 方式
 - [ ] Task: 记录绑定架构决定
-- [ ] 在 \`DECISIONS.md\` 记录真实身份、部署合同、实验非 HA 和恢复边界
+- [ ] 在 `DECISIONS.md` 记录真实身份、部署合同、实验非 HA 和恢复边界
 - [ ] 记录双 Runtime Backend、跨副本裁决和 experimental release 策略
-- [ ] 新增依赖或工具前更新 \`conductor/tech-stack.md\`
+- [ ] 新增依赖或工具前更新 `conductor/tech-stack.md`
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase B: 生产配置、构建和版本基座
@@ -55,7 +55,7 @@
 - [ ] 根据 Phase A 决定增加 Agent Runner image
 - [ ] 固定 Node 24、pnpm 10、Git、Pandoc 和 Codex requirements
 - [ ] 增加 OCI labels、SBOM、image smoke 和 vulnerability scan
-- [ ] Task: 建立 \`v0.1.0-experimental.1\` 版本合同
+- [ ] Task: 建立 `v0.1.0-experimental.1` 版本合同
 - [ ] 增加应用、health、CLI 和 image version reporting
 - [ ] 禁止呈现为 GA、production SLA 或 LTS
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
@@ -65,7 +65,7 @@
 - [ ] Task: Red TDD——建立 authentication negative corpus
 - [ ] 覆盖 missing/expired/wrong issuer/audience/signature Token
 - [ ] 覆盖伪造 actor/principal/scope/header 和 agent approval
-- [ ] 覆盖 malformed/over-scoped \`act\` chain 与 JWKS failure
+- [ ] 覆盖 malformed/over-scoped `act` chain 与 JWKS failure
 - [ ] Task: Green——实现 credential verification 与 request identity
 - [ ] 验证 issuer、audience、signature、expiry 和 scopes
 - [ ] 从 credential 派生 actor、principal、scope 和 delegation chain
@@ -77,7 +77,7 @@
 - [ ] Meta 与 business scope 一致
 - [ ] Task: Red→Green——CLI 与 Agent 身份
 - [ ] CLI Bearer discovery/read/exec
-- [ ] Client Credentials、RFC 8693 Token Exchange 和 \`act\` audit
+- [ ] Client Credentials、RFC 8693 Token Exchange 和 `act` audit
 - [ ] scope 只能收窄，Agent 不能获得 human approval
 - [ ] Task: 定义可重复 Keycloak realm bootstrap
 - [ ] Realm、clients、redirect URIs、roles、scopes 和 test users
@@ -103,8 +103,8 @@
 - [ ] 保持 declaration → guard → schema 顺序和 rejection audit
 - [ ] 跨 replicas 只有合法结果成功且 replay hash 一致
 - [ ] Task: Red→Green——实现 health/readiness
-- [ ] \`/live\` 只表达 process life
-- [ ] \`/ready\` 检查 DB、migration 和 required config
+- [ ] `/live` 只表达 process life
+- [ ] `/ready` 检查 DB、migration 和 required config
 - [ ] 独立报告 Temporal、Keycloak、LLM 和 Runtime dependencies
 - [ ] degraded 不进入 Ready；Worker 暴露 readiness/drain
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
@@ -178,19 +178,19 @@
 - [ ] Task: Red TDD——建立 Helm/K8s render contract
 - [ ] kubeconform/schema lint namespace、RBAC、ServiceAccount、PV/PVC、probe、resources 和 PDB
 - [ ] Secret 不进入 rendered evidence
-- [ ] 验证 Istio hosts、TLS、JWT、callback policy 和 \`IfNotPresent\`
+- [ ] 验证 Istio hosts、TLS、JWT、callback policy 和 `IfNotPresent`
 - [ ] Task: Green——实现 generic UI4A Helm chart
 - [ ] Web、Worker、Runner、migration/bootstrap Job
 - [ ] PostgreSQL、Temporal、Keycloak values
 - [ ] static PV/replaceable StorageClass、backup CronJob 和 Istio policies
 - [ ] Task: 创建 mothership-specific overlay
-- [ ] 默认 \`ui4a.mothership.internal\` 与 \`auth.ui4a.mothership.internal\`
+- [ ] 默认 `ui4a.mothership.internal` 与 `auth.ui4a.mothership.internal`
 - [ ] 适配 existing ingressgateway/NodePort 32067
 - [ ] 复用或扩展 existing internal CA，不覆盖已有 certificates
 - [ ] 固定 node/PV paths、resources 和 image import strategy
 - [ ] Task: 谨慎处理 mothership-setup worktree
 - [ ] 实施前记录 existing dirty/untracked state
-- [ ] 仅新增 \`deploy/ui4a/\` 和明确文档链接
+- [ ] 仅新增 `deploy/ui4a/` 和明确文档链接
 - [ ] 不覆盖 Mattermost、Headlamp 或 unrelated K8s files
 - [ ] UI4A 与 mothership-setup 分别提交并记录双方 SHA
 - [ ] Task: 执行真实集群部署
@@ -231,18 +231,18 @@
 - [ ] pre-upgrade backup、compatible migration、rollout 和 smoke
 - [ ] rollback images/data 并验证 event log 未截断或重写
 - [ ] Task: 运行全量质量门
-- [ ] focused Vitest、\`pnpm check\` 和 \`CI=true pnpm e2e\`
+- [ ] focused Vitest、`pnpm check` 和 `CI=true pnpm e2e`
 - [ ] Compose/K8s acceptance、auth negatives、runtime matrix 和 restore drill
 - [ ] image scan 与 SBOM
-- [ ] Task: 产出 \`v0.1.0-experimental.1\`
+- [ ] Task: 产出 `v0.1.0-experimental.1`
 - [ ] 固定 image digests，生成 manifest、checksums、SBOM 和 acceptance report
 - [ ] 创建 Git tag 与 experimental Release Notes
 - [ ] 明示 internal experiment、non-HA、known limits 和 compatibility
 - [ ] Task: 同步产品、架构和运行文档
-- [ ] 更新 \`GOAL.md\`、\`README.md\`、\`docs/runtime-operations.md\` 和 \`DECISIONS.md\`
+- [ ] 更新 `GOAL.md`、`README.md`、`docs/runtime-operations.md` 和 `DECISIONS.md`
 - [ ] 更新 Conductor product/tech-stack/arch brief 与 mothership K8S runbook
 - [ ] Task: Track Review、用户故事 evidence 与 DONE
 - [ ] Critical/High identity、data consistency 和 recovery issues 为零
 - [ ] Compose/K8s semantics 一致且 evidence 关联 commands/events/images/Git SHA
-- [ ] 系统保持可运行并形成 \`DONE.md\` 与 experimental release report
+- [ ] 系统保持可运行并形成 `DONE.md` 与 experimental release report
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)

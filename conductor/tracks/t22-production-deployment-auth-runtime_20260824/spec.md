@@ -9,7 +9,7 @@ Feature
 将 UI4A 从本地 Demo 运行方式升级为可重复、可审计、可恢复的生产形态，并在以下两种目标上交付
 同一运行合同：
 
-1. \`/home/mike/projs/main/mothership-setup/K8S-ISTIO-DEPLOY.md\` 描述的 Kubernetes
+1. `/home/mike/projs/main/mothership-setup/K8S-ISTIO-DEPLOY.md` 描述的 Kubernetes
    v1.31.14、Istio 1.24.2 内网集群。
 2. 单机 Docker Compose all-in-one 环境。
 
@@ -18,12 +18,12 @@ Runtime。Agent Runtime 同时支持 K8s 隔离 Pod 与受信宿主机 Runner，
 Runtime Profile 选择。
 
 项目引入真实身份认证：人类通过 Keycloak OIDC 登录，CLI 使用 Bearer Token，Agent 使用
-RFC 8693 Token Exchange 和 \`act\` 委托链。生产环境不再接受客户端自报的 \`actor\`、
-\`principal\` 或授权 scope。
+RFC 8693 Token Exchange 和 `act` 委托链。生产环境不再接受客户端自报的 `actor`、
+`principal` 或授权 scope。
 
 交付物必须包含从零部署、配置、验证、备份恢复、升级、回滚和故障排查的逐步运行手册，并在真实
 目标集群与 Docker Compose 上留下用户故事验收证据。Track 完成时产出首个试验性版本
-\`v0.1.0-experimental.1\`；它不代表 GA、正式 SLA 或未经验证的高可用承诺。
+`v0.1.0-experimental.1`；它不代表 GA、正式 SLA 或未经验证的高可用承诺。
 
 ## Functional Requirements
 
@@ -31,8 +31,8 @@ RFC 8693 Token Exchange 和 \`act\` 委托链。生产环境不再接受客户�
 
 必须定义经过 schema 校验的部署配置，覆盖：
 
-- 部署模式：\`compose\` 或 \`kubernetes\`。
-- 认证模式：显式 \`demo\` 或 \`oidc\`；生产配置禁止隐式回退。
+- 部署模式：`compose` 或 `kubernetes`。
+- 认证模式：显式 `demo` 或 `oidc`；生产配置禁止隐式回退。
 - PostgreSQL、Temporal、Keycloak、LLM 和 Agent Runtime。
 - UI4A、Keycloak 两个内网域名。
 - TLS、数据库连接池、资源预算、超时、Task Queue 和 namespace。
@@ -49,11 +49,11 @@ Docker Compose 与 K8s 必须消费同一变量语义，不维护两套含义不
 - Worker 生产镜像。
 - Agent Runner 镜像或明确隔离的 Runtime 镜像。
 - 固定 Node/pnpm/系统工具版本的多阶段构建。
-- Worker 正式 build/start 入口，不再以 \`tsx ... dev\` 作为生产命令。
+- Worker 正式 build/start 入口，不再以 `tsx ... dev` 作为生产命令。
 - 镜像版本、Git SHA、构建时间和依赖清单。
 - 非 root 运行、合理的只读根文件系统和可写目录声明。
 - SBOM、依赖漏洞扫描及镜像 smoke test。
-- 内网 Nexus 构建、推送或 \`ctr import\` 的可验证流程。
+- 内网 Nexus 构建、推送或 `ctr import` 的可验证流程。
 
 同一 Git revision 的 Compose 与 K8s 部署必须使用相同镜像 digest。
 
@@ -61,12 +61,12 @@ Docker Compose 与 K8s 必须消费同一变量语义，不维护两套含义不
 
 必须把当前请求时幂等 DDL 升级为显式、版本化、可重试的迁移流程：
 
-\`\`\`text
+```text
 PostgreSQL ready
 → migration Job/command
 → bootstrap/replay integrity check
 → Web/Worker ready
-\`\`\`
+```
 
 要求：
 
@@ -98,33 +98,33 @@ PostgreSQL ready
 - CLI Bearer Token。
 - 服务账号和机器身份。
 - RFC 8693 Token Exchange。
-- \`act\` 委托链。
+- `act` 委托链。
 - Token issuer、audience、expiry、signature 和 scope 校验。
 - 用户、角色、client、scope 与测试 fixture 的可重复 realm bootstrap。
 - 退出登录、过期、撤销和 Keycloak 不可用的诚实失败。
 
 ### FR6 身份成为机械事实
 
-HTTP 请求里的 \`actor\`、\`principal\`、policy scope 和委托关系必须由已验证凭证派生。
+HTTP 请求里的 `actor`、`principal`、policy scope 和委托关系必须由已验证凭证派生。
 
 要求：
 
-- \`actor=human\` 只能来自满足人类登录策略的凭证。
+- `actor=human` 只能来自满足人类登录策略的凭证。
 - Agent、service account 和 callback 身份不得批准 human-only action。
 - 请求 body、query 或普通 header 不能覆盖凭证身份。
-- Principal/scope/\`act\` 链进入事件审计。
+- Principal/scope/`act` 链进入事件审计。
 - 未认证请求只能访问明确声明的公共端点。
-- \`demo\` 自报模式只允许显式本地配置，生产启动时发现该模式必须失败。
+- `demo` 自报模式只允许显式本地配置，生产启动时发现该模式必须失败。
 - Istio 可做入口 JWT 和网络层拦截，但应用仍负责业务身份与 scope 裁决。
 
 ### FR7 Istio 入口与内网 TLS
 
 必须提供两个可配置内网域名：
 
-\`\`\`text
+```text
 UI4A_HOST
 KEYCLOAK_HOST
-\`\`\`
+```
 
 通过 Istio Gateway、VirtualService、RequestAuthentication 和 AuthorizationPolicy 暴露。
 
@@ -191,7 +191,7 @@ Temporal 客户端与 Worker 必须支持部署配置：
 - readiness。
 - 独立测试 Task Queue。
 
-不得继续把 namespace 固定为 \`default\`。Temporal 不可用时必须区分：
+不得继续把 namespace 固定为 `default`。Temporal 不可用时必须区分：
 
 - Web 仍可提供的只读/人工功能。
 - 不可派发的 durable operation。
@@ -240,7 +240,7 @@ Temporal 客户端与 Worker 必须支持部署配置：
 - 有依赖健康检查。
 - 支持 HTTPS 与 OIDC。
 - 支持首次启动和重复启动。
-- \`docker compose down\` 不删除数据。
+- `docker compose down` 不删除数据。
 - 明确提供带确认的完全清理命令。
 - 运行与 K8s 相同的核心用户故事验收脚本。
 
@@ -253,7 +253,7 @@ Temporal 客户端与 Worker 必须支持部署配置：
 - Dependency status：Temporal、Keycloak、LLM、Runtime Backend。
 - Worker readiness 与 drain 状态。
 
-健康探针不能仅凭 HTTP 200 判断；\`degraded\` 不能进入 ready。
+健康探针不能仅凭 HTTP 200 判断；`degraded` 不能进入 ready。
 
 结构化日志必须包含 request/run/workflow/principal correlation，且不得打印 Token、API Key、数据库
 密码或完整敏感 Prompt。
@@ -288,7 +288,7 @@ Temporal 客户端与 Worker 必须支持部署配置：
 
 提供可重复的验证入口，至少区分：
 
-\`\`\`text
+```text
 config lint
 image test
 compose acceptance
@@ -298,13 +298,13 @@ k8s acceptance
 backup/restore drill
 auth negative tests
 runtime backend matrix
-\`\`\`
+```
 
 验证脚本不得依赖人工修改数据库或伪造 actor/header。
 
 ### FR16 首个试验性版本
 
-Track 完成时必须产出 \`v0.1.0-experimental.1\`：
+Track 完成时必须产出 `v0.1.0-experimental.1`：
 
 - 固定 Web、Worker 和 Runner image digest。
 - 提供 release manifest、checksums、SBOM、Release Notes 和验收报告。
@@ -318,7 +318,7 @@ Track 完成时必须产出 \`v0.1.0-experimental.1\`：
 
 ## Golden Story
 
-\`\`\`text
+```text
 从空环境部署
 → 安装/信任内网根 CA
 → 人类经 Keycloak 登录 UI4A
@@ -331,27 +331,27 @@ Track 完成时必须产出 \`v0.1.0-experimental.1\`：
 → 重启 Web/Worker 后状态及身份仍可恢复
 → 备份、隔离数据、恢复
 → 实体状态 hash、审计链及 Run evidence 一致
-\`\`\`
+```
 
 Golden Story 必须在 K8s 真实集群完成；Compose 至少完成除集群故障注入外的等价路径。
 
 ## Non-Functional Requirements
 
 - 不引入第二业务真相源。
-- 保持 \`shared ← engine ← agent\` 依赖方向。
+- 保持 `shared ← engine ← agent` 依赖方向。
 - 所有生产 Secret 由部署状态提供，不进入 UI4A Git。
 - 实验根 CA 按用户要求采用固定持久目录保存，不引入复杂托管系统。
 - K8s 资源使用 namespace 隔离、requests/limits、PDB 和最小 ServiceAccount。
 - 生产启动 fail-closed，禁止认证或 Runtime Backend fallback。
 - 数据恢复必须实际演练。
 - 所有部署 YAML/模板可 lint、可重复渲染。
-- 内网镜像流程遵守目标集群 \`ctr --all-platforms\`、本地缓存和 \`IfNotPresent\` 限制。
+- 内网镜像流程遵守目标集群 `ctr --all-platforms`、本地缓存和 `IfNotPresent` 限制。
 - 每个阶段结束系统保持可运行。
 - 既有 I1–I7 和 T15–T21 验收不得回归。
 
 ## Acceptance Gates
 
-- \`pnpm check\`、相关 E2E 和新增安全测试通过。
+- `pnpm check`、相关 E2E 和新增安全测试通过。
 - Web、Worker、Runner 镜像 build/smoke/scan 通过。
 - Docker Compose 从空 volume 部署成功并通过 U1、U3–U9、U13、U14、U16。
 - mothership K8s 实际部署成功并通过 U2–U16。
@@ -361,7 +361,7 @@ Golden Story 必须在 K8s 真实集群完成；Compose 至少完成除集群故
 - 备份恢复 drill 成功，Business Snapshot hash 一致。
 - 所有关键 Pod readiness 正确，故障时不误报 ready。
 - runbook 由干净环境按步骤复跑，无隐含手工步骤。
-- \`v0.1.0-experimental.1\` release artifacts 与 evidence 完整。
+- `v0.1.0-experimental.1` release artifacts 与 evidence 完整。
 - Critical/High 身份、数据一致性和可恢复性问题为零。
 
 ## Out of Scope
