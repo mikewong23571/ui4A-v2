@@ -62,7 +62,7 @@
 
 ## Phase C: Keycloak 与可信身份链
 
-- [ ] Task: Red TDD——建立 authentication negative corpus
+- [x] Task: Red TDD——建立 authentication negative corpus ee3d44a
 - [ ] 覆盖 missing/expired/wrong issuer/audience/signature Token
 - [ ] 覆盖伪造 actor/principal/scope/header 和 agent approval
 - [ ] 覆盖 malformed/over-scoped `act` chain 与 JWKS failure
