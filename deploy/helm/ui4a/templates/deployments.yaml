@@ -218,7 +218,7 @@ spec:
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
-            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+            {{- include "ui4a.nodeContainerSecurityContext" . | nindent 12 }}
       volumes:
         {{- include "ui4a.productionVolumes" . | nindent 8 }}
         - { name: tmp, emptyDir: {} }
@@ -280,7 +280,7 @@ spec:
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
-            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+            {{- include "ui4a.nodeContainerSecurityContext" . | nindent 12 }}
       volumes:
         {{- include "ui4a.productionVolumes" . | nindent 8 }}
         - { name: tmp, emptyDir: {} }
@@ -334,7 +334,7 @@ spec:
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
-            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+            {{- include "ui4a.nodeContainerSecurityContext" . | nindent 12 }}
       volumes:
         {{- include "ui4a.productionVolumes" . | nindent 8 }}
         - { name: tmp, emptyDir: {} }

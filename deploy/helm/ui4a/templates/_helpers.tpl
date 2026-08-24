@@ -33,6 +33,15 @@ capabilities:
   drop: [ALL]
 {{- end -}}
 
+{{- define "ui4a.nodeContainerSecurityContext" -}}
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: true
+runAsUser: 1000
+runAsGroup: 1000
+capabilities:
+  drop: [ALL]
+{{- end -}}
+
 {{- define "ui4a.nodeSelector" -}}
 {{- with .Values.scheduling.nodeSelector }}
 nodeSelector:
@@ -90,7 +99,7 @@ nodeSelector:
   resources:
     {{- include "ui4a.resources" . | nindent 4 }}
   securityContext:
-    {{- include "ui4a.containerSecurityContext" . | nindent 4 }}
+    {{- include "ui4a.nodeContainerSecurityContext" . | nindent 4 }}
 {{- end -}}
 
 {{- define "ui4a.waitFor" -}}
@@ -112,5 +121,5 @@ nodeSelector:
   resources:
     {{- include "ui4a.resources" .root | nindent 4 }}
   securityContext:
-    {{- include "ui4a.containerSecurityContext" .root | nindent 4 }}
+    {{- include "ui4a.nodeContainerSecurityContext" .root | nindent 4 }}
 {{- end -}}

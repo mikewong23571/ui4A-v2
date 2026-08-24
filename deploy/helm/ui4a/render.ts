@@ -417,6 +417,17 @@ const resources = {
 // postgres:17-alpine defines the postgres account as uid=70,gid=70. The root handoff init
 // copies the 0600 runtime key to this identity before the image entrypoint drops privileges.
 const POSTGRES_17_ALPINE_IDENTITY = Object.freeze({ uid: 70, gid: 70 });
+const UI4A_NODE_IDENTITY = Object.freeze({ uid: 1000, gid: 1000 });
+
+function ui4aNodeSecurityContext() {
+  return {
+    allowPrivilegeEscalation: false,
+    capabilities: { drop: ['ALL'] },
+    readOnlyRootFilesystem: true,
+    runAsUser: UI4A_NODE_IDENTITY.uid,
+    runAsGroup: UI4A_NODE_IDENTITY.gid,
+  };
+}
 
 function container(name: string, image: string, options: UnknownRecord = {}): UnknownRecord {
   return {
@@ -648,6 +659,7 @@ function dependencyGate(values: Ui4aHelmValues, dependency: string): UnknownReco
         value: '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt',
       },
     ],
+    securityContext: ui4aNodeSecurityContext(),
   });
 }
 
@@ -722,6 +734,7 @@ function trustInit(values: Ui4aHelmValues): UnknownRecord {
       { name: 'panel-ca', mountPath: '/var/run/ui4a/panel-ca', readOnly: true },
       { name: 'combined-trust', mountPath: '/var/run/ui4a/trust' },
     ],
+    securityContext: ui4aNodeSecurityContext(),
   });
 }
 
@@ -793,6 +806,15 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
             ],
             livenessProbe: { exec: { command: ['pg_isready', '-U', 'postgres'] } },
             readinessProbe: tcpProbe(5432),
+            securityContext: {
+              allowPrivilegeEscalation: false,
+              runAsUser: 0,
+              capabilities: {
+                drop: ['ALL'],
+                add: ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETUID', 'SETGID'],
+              },
+              readOnlyRootFilesystem: true,
+            },
           }),
         ],
         {
@@ -1011,6 +1033,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         ports: [{ name: 'http', containerPort: 3100 }],
         livenessProbe: httpProbe('/live', 3100),
         readinessProbe: httpProbe('/ready', 3100),
+        securityContext: ui4aNodeSecurityContext(),
       },
       {
         automountServiceAccountToken: true,
@@ -1072,6 +1095,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         ports: [{ name: 'http', containerPort: 3101 }],
         livenessProbe: httpProbe('/live', 3101),
         readinessProbe: httpProbe('/ready', 3101),
+        securityContext: ui4aNodeSecurityContext(),
       },
       {
         automountServiceAccountToken: true,
@@ -1108,6 +1132,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         ],
         livenessProbe: httpProbe('/live', 3102),
         readinessProbe: httpProbe('/ready', 3102),
+        securityContext: ui4aNodeSecurityContext(),
       },
       {
         automountServiceAccountToken: true,
@@ -1232,6 +1257,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       {
         env: productionEnvironment(),
         volumeMounts: [...productionVolumeMounts, { name: 'tmp', mountPath: '/tmp' }],
+        securityContext: ui4aNodeSecurityContext(),
       },
       {
         automountServiceAccountToken: true,
@@ -1267,6 +1293,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
             readOnly: true,
           },
         ],
+        securityContext: ui4aNodeSecurityContext(),
       },
       {
         automountServiceAccountToken: true,

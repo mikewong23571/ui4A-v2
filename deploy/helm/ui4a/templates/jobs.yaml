@@ -224,7 +224,7 @@ spec:
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
-            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+            {{- include "ui4a.nodeContainerSecurityContext" . | nindent 12 }}
       initContainers:
         {{- include "ui4a.trustInit" . | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres-bootstrap") | nindent 8 }}
@@ -269,7 +269,7 @@ spec:
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
-            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+            {{- include "ui4a.nodeContainerSecurityContext" . | nindent 12 }}
       initContainers:
         {{- include "ui4a.trustInit" . | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "keycloak") | nindent 8 }}

@@ -515,6 +515,42 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       }
     });
 
+    it('pins every UI4A Node container to the image numeric uid and leaves external images alone', async () => {
+      const { resources } = (await renderer()).renderUi4aChart(genericValues());
+      for (const [kind, name] of [
+        ['Deployment', 'web'],
+        ['Deployment', 'worker'],
+        ['Deployment', 'runner'],
+        ['Job', 'migration'],
+        ['Job', 'realm-bootstrap'],
+      ] as const) {
+        expect(
+          record(primaryContainer(workload(resources, kind, name)).securityContext),
+        ).toMatchObject({ runAsUser: 1000, runAsGroup: 1000 });
+      }
+      for (const resource of resources.filter(({ kind }) =>
+        ['Deployment', 'StatefulSet', 'Job'].includes(kind),
+      )) {
+        for (const init of list(podSpec(resource).initContainers ?? []).map(record)) {
+          if (String(init.name).startsWith('wait-for-') || init.name === 'trust-init') {
+            expect(
+              record(init.securityContext),
+              `${resource.kind}/${resource.metadata.name}/${String(init.name)}`,
+            ).toMatchObject({ runAsUser: 1000, runAsGroup: 1000 });
+          }
+        }
+      }
+      for (const [kind, name] of [
+        ['StatefulSet', 'postgres'],
+        ['Deployment', 'temporal'],
+        ['Deployment', 'keycloak'],
+      ] as const) {
+        expect(
+          record(primaryContainer(workload(resources, kind, name)).securityContext).runAsUser,
+        ).not.toBe(1000);
+      }
+    });
+
     it('applies one server-owned nodeSelector to every state, UI4A and admin workload', async () => {
       const values = genericValues();
       values.scheduling.nodeSelector = { 'node-role.kubernetes.io/ui4a': 'true' };

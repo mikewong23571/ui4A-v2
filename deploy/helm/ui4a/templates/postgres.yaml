@@ -86,6 +86,13 @@ spec:
             exec: { command: [pg_isready, -U, postgres] }
           readinessProbe:
             tcpSocket: { port: 5432 }
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 0
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
