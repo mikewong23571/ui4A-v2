@@ -226,9 +226,9 @@
 - [x] 覆盖 missing/expired/wrong issuer/audience/signature 与 identity forgery
 - [x] 覆盖 agent/service approval 和 over-scoped exchange
 - [x] 100% 正确拒绝并留痕
-- [ ] Task: 故障注入
-- [ ] LLM、Temporal、Keycloak/JWKS、PostgreSQL 和两 Runtime backends
-- [ ] 无伪成功、无越权副作用、readiness 正确
+- [x] Task: 故障注入合同（真实多依赖故障注入后移，不阻塞 experimental） 11a0765
+- [x] 以 unit/contract 覆盖 LLM、Temporal、Keycloak/JWKS、PostgreSQL 和两 Runtime backends
+- [x] 强制无伪成功、无越权副作用、readiness 与 finally-restore 语义
 - [x] Task: 完整 backup/restore drill e71b59f
 - [x] 生成 named backup、隔离 current state、恢复 state/certs/artifacts
 - [x] rebuild projections，验证 business hash、identity 和 Run evidence
@@ -240,13 +240,14 @@
 - [x] Task: 编写完整 step-by-step runbook 95f4da2
 - [x] 每步包含 command、expected output、failure criterion 和 recovery action
 - [x] 覆盖 Compose、mothership K8s、Host Runner、DNS/CA、auth 和 troubleshooting
-- [ ] Task: 验证 upgrade 与 rollback
-- [ ] pre-upgrade backup、compatible migration、rollout 和 smoke
-- [ ] rollback images/data 并验证 event log 未截断或重写
-- [ ] realm 在线升级不在本版本演练；记录直接备份/恢复和重建边界
+- [ ] Task: 验证 app-image upgrade；rollback 仅审查命令并标记未实测
+- [x] pre-upgrade backup 与隔离恢复已验证
+- [ ] 执行新镜像 rollout 和 smoke
+- [ ] 证明 upgrade 前后 event log 未截断或重写；不执行实际 rollback drill
+- [x] realm 在线升级与通用 bootstrap Job replacement 后移；记录直接备份/恢复边界
 - [ ] Task: 运行全量质量门
 - [ ] focused Vitest、`pnpm check` 和 `CI=true pnpm e2e`
-- [ ] 单副本 Compose/K8s acceptance、主路径 auth negatives、runtime matrix 和 restore drill
+- [ ] 单副本 Compose/K8s acceptance、主路径 auth negatives、最小三次 Runtime Run 和 restore drill
 - [ ] image scan 与 SBOM
 - [ ] Task: 产出 `v0.1.0-experimental.1`
 - [ ] 固定 image digests，生成 manifest、checksums、SBOM 和 acceptance report
