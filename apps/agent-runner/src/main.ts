@@ -7,6 +7,7 @@ import {
   type RunnerDeliveryProcessor,
   type RunnerDeliveryResult,
 } from './process.js';
+import { initializeRunnerPki, type RunnerPkiResult } from './pki.js';
 
 export interface RunnerOneshotAdapter {
   processor: RunnerDeliveryProcessor;
@@ -20,6 +21,11 @@ export interface RunnerCommandOptions {
   stderr?: (line: string) => void;
   daemon?: (environment: NodeJS.ProcessEnv) => Promise<void>;
   oneshot?: RunnerOneshotAdapter;
+  pkiInit?: (input: {
+    rootDirectory: string;
+    ui4aHost: string;
+    keycloakHost: string;
+  }) => Promise<RunnerPkiResult>;
 }
 
 export async function runRunnerCommand(
@@ -39,6 +45,25 @@ export async function runRunnerCommand(
     if (command === 'health') {
       stdout(JSON.stringify(runnerLivePayload(environment)));
       return 0;
+    }
+    if (command === 'pki-init') {
+      const pkiInit = options.pkiInit ?? initializeRunnerPki;
+      try {
+        const result = await pkiInit({
+          rootDirectory: environment.UI4A_PKI_ROOT ?? '/var/lib/ui4a/ca',
+          ui4aHost: environment.UI4A_HOST ?? 'ui4a.mothership.internal',
+          keycloakHost: environment.KEYCLOAK_HOST ?? 'auth.ui4a.mothership.internal',
+        });
+        stdout(JSON.stringify(result));
+        return 0;
+      } catch (error) {
+        const reasonCode =
+          error instanceof Error && /^PKI_[A-Z_]+$/.test(error.message)
+            ? error.message
+            : 'PKI_INIT_FAILED';
+        stderr(JSON.stringify({ status: 'failed', reasonCode }));
+        return 73;
+      }
     }
     if (command === 'oneshot') {
       if (options.oneshot === undefined) {

@@ -40,9 +40,10 @@ ARG UI4A_GIT_SHA
 ARG UI4A_BUILD_DATE
 RUN sed -i "s#http://deb.debian.org/debian-security#${DEBIAN_SECURITY_MIRROR}#g; s#http://deb.debian.org/debian#${DEBIAN_MIRROR}#g" /etc/apt/sources.list.d/debian.sources && \
     apt-get update && \
-    apt-get install -y --no-install-recommends git pandoc ca-certificates tini && \
+    apt-get install -y --no-install-recommends git pandoc openssl ca-certificates tini && \
     git --version | grep -F "git version ${GIT_VERSION}" && \
     pandoc --version | grep -F "pandoc ${PANDOC_VERSION}" && \
+    openssl version && \
     rm -rf /var/lib/apt/lists/*
 LABEL org.opencontainers.image.title="UI4A Agent Runner" \
       org.opencontainers.image.version="${UI4A_VERSION}" \

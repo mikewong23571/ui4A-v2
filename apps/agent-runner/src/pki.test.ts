@@ -5,11 +5,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  initializeRunnerPki,
-  type PkiProcessRunner,
-  RUNNER_PKI_FILES,
-} from './pki.js';
+import { initializeRunnerPki, type PkiProcessRunner, RUNNER_PKI_FILES } from './pki.js';
 
 const temporaryRoots: string[] = [];
 
@@ -20,7 +16,9 @@ async function temporaryRoot(): Promise<string> {
 }
 
 afterEach(async () => {
-  await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { force: true, recursive: true })));
+  await Promise.all(
+    temporaryRoots.splice(0).map((root) => rm(root, { force: true, recursive: true })),
+  );
 });
 
 function input(rootDirectory: string) {
@@ -28,6 +26,8 @@ function input(rootDirectory: string) {
     rootDirectory,
     ui4aHost: 'ui4a.mothership.internal',
     keycloakHost: 'auth.ui4a.mothership.internal',
+    edgeUid: process.getuid!(),
+    edgeGid: process.getgid!(),
   };
 }
 
@@ -72,6 +72,18 @@ describe('Agent Runner experimental PKI initializer', () => {
       const mode = (await stat(join(rootDirectory, relativePath))).mode & 0o777;
       expect(mode, id).toBe(id.endsWith('PrivateKey') ? 0o600 : 0o644);
     }
+    for (const id of [
+      'ui4aCertificate',
+      'ui4aPrivateKey',
+      'keycloakCertificate',
+      'keycloakPrivateKey',
+    ] as const) {
+      const owner = await stat(join(rootDirectory, RUNNER_PKI_FILES[id]));
+      expect({ uid: owner.uid, gid: owner.gid }, id).toEqual({
+        uid: process.getuid!(),
+        gid: process.getgid!(),
+      });
+    }
   }, 30_000);
 
   it('reuses a complete valid inventory with zero process calls, writes, or byte changes', async () => {
@@ -93,20 +105,18 @@ describe('Agent Runner experimental PKI initializer', () => {
     await unlink(join(rootDirectory, RUNNER_PKI_FILES.keycloakPrivateKey));
     const processRunner = vi.fn<PkiProcessRunner>();
 
-    await expect(
-      initializeRunnerPki({ ...input(rootDirectory), processRunner }),
-    ).rejects.toThrow('PKI_PARTIAL_STATE');
+    await expect(initializeRunnerPki({ ...input(rootDirectory), processRunner })).rejects.toThrow(
+      'PKI_PARTIAL_STATE',
+    );
     expect(processRunner).not.toHaveBeenCalled();
   }, 30_000);
 
   it('fails closed for a complete but invalid certificate inventory', async () => {
     const rootDirectory = await temporaryRoot();
     await initializeRunnerPki(input(rootDirectory));
-    await writeFile(
-      join(rootDirectory, RUNNER_PKI_FILES.ui4aCertificate),
-      'not-a-certificate',
-      { mode: 0o644 },
-    );
+    await writeFile(join(rootDirectory, RUNNER_PKI_FILES.ui4aCertificate), 'not-a-certificate', {
+      mode: 0o644,
+    });
 
     await expect(initializeRunnerPki(input(rootDirectory))).rejects.toThrow('PKI_INVALID');
   }, 30_000);
