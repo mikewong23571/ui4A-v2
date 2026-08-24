@@ -1,0 +1,7 @@
+Task: Phase D health/readiness
+
+Summary: Added shared readiness adapters to Web /ready and diagnostic health, Worker starting/serving/draining with independent config/postgres/migration/bootstrap/replay/Temporal facts, and honest Runner backend-unavailable /ready seam. Runner build now bundles shared contract and Docker builder copies shared source.
+
+Verification: unified 11 files/79 tests; Worker follow-up 3 files/32; four workspace typechecks; Runner frozen-lock/build/dist health; root lint 0 errors; format/diff green.
+
+Boundary: optional Web capabilities may be degraded without removing safe readiness; Runner remains 503 until Phase F backend registration/delivery. Compose/K8s probe wiring remains Phase G/H.
