@@ -1,0 +1,1 @@
+T22 Phase H contract correction: the newer dual-root trust story supersedes the earlier runtime-root-only NODE_EXTRA_CA_CERTS assertion; primary Node consumers now require the deterministic combined bundle.
