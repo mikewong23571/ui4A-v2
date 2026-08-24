@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "topology": {
+    "replicas": 1,
+    "highAvailability": false,
+    "keycloak": {
+      "instances": 1,
+      "realms": ["ui4a"],
+      "clients": ["ui4a-web", "ui4a-agent", "ui4a-api"]
+    }
+  },
+  "references": {
+    "composeFile": "deploy/compose/compose.yaml",
+    "renderer": "deploy/compose/render-stack.ts",
+    "productionConfig": "packages/shared/src/production-deployment-config.ts",
+    "imageContract": "deploy/oci/image-contract.json",
+    "postgresStateful": "deploy/postgres/stateful-contract.json",
+    "postgresBindings": "deploy/postgres/deployment-bindings.json",
+    "postgresBackup": "deploy/postgres/backup-contract.json",
+    "temporal": "deploy/temporal/production-contract.json",
+    "keycloakRealm": "deploy/keycloak/realm-import.json",
+    "keycloakBootstrap": "deploy/keycloak/realm-bootstrap.ts"
+  },
+  "services": [
+    "postgres",
+    "postgres-bootstrap",
+    "temporal-schema",
+    "temporal",
+    "temporal-namespace",
+    "temporal-ui",
+    "keycloak",
+    "realm-bootstrap",
+    "migration",
+    "web",
+    "worker",
+    "runner",
+    "host-runner"
+  ],
+  "volumes": [
+    { "name": "postgres-data", "retainOnOrdinaryDown": true },
+    { "name": "backup-data", "retainOnOrdinaryDown": true },
+    { "name": "realm-data", "retainOnOrdinaryDown": true },
+    { "name": "experiment-ca", "retainOnOrdinaryDown": true },
+    { "name": "runner-workspaces", "retainOnOrdinaryDown": true },
+    { "name": "runner-artifacts", "retainOnOrdinaryDown": true }
+  ],
+  "lifecycle": {
+    "up": ["docker", "compose", "-f", "deploy/compose/compose.yaml", "up", "-d", "--wait"],
+    "down": ["docker", "compose", "-f", "deploy/compose/compose.yaml", "down"],
+    "clean": {
+      "command": ["docker", "compose", "-f", "deploy/compose/compose.yaml", "down", "--volumes"],
+      "confirmation": "DELETE UI4A COMPOSE DATA",
+      "removesVolumes": true
+    },
+    "backupHook": {
+      "contractRef": "deploy/postgres/backup-contract.json",
+      "command": [
+        "pnpm",
+        "exec",
+        "tsx",
+        "scripts/t22-backup-command.ts",
+        "backup",
+        "--environment",
+        "compose"
+      ]
+    },
+    "restoreHook": {
+      "isolatedTargetRequired": true,
+      "command": [
+        "pnpm",
+        "exec",
+        "tsx",
+        "scripts/t22-restore-command.ts",
+        "restore",
+        "--target",
+        "isolated"
+      ]
+    }
+  }
+}

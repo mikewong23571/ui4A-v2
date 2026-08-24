@@ -1,0 +1,306 @@
+name: ui4a
+
+# This file is the executable, fail-closed Compose projection of stack-contract.json. Operators
+# must override every UI4A_*_IMAGE with the release digest and both config file paths before `up`.
+# The existing stack contract is only a non-secret, parseable default; product preflight rejects it.
+x-ui4a-contract:
+  schemaVersion: 1
+  replicas: 1
+  highAvailability: false
+  realmLifecycle: import-or-check-and-skip
+
+services:
+  postgres:
+    image: ${UI4A_POSTGRES_IMAGE:-postgres@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-bootstrap-password
+    secrets:
+      - postgres-bootstrap-password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - backup-data:/backups
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres -d postgres]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  postgres-bootstrap:
+    image: ${UI4A_POSTGRES_IMAGE:-postgres@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD_FILE: /run/secrets/postgres-bootstrap-password
+    secrets:
+      - postgres-bootstrap-password
+      - ui4a-deployment-secrets
+    volumes:
+      - ../postgres/bootstrap-roles.sql:/opt/ui4a/bootstrap-roles.sql:ro
+    command: [psql, -v, ON_ERROR_STOP=1, -f, /opt/ui4a/bootstrap-roles.sql]
+
+  temporal-schema:
+    image: ${UI4A_TEMPORAL_ADMIN_TOOLS_IMAGE:-temporalio/admin-tools@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: 'no'
+    depends_on:
+      postgres-bootstrap:
+        condition: service_completed_successfully
+    secrets:
+      - ui4a-deployment-secrets
+    command: [temporal-sql-tool, setup-and-update-schema]
+
+  temporal:
+    image: ${UI4A_TEMPORAL_IMAGE:-temporalio/server@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: unless-stopped
+    depends_on:
+      temporal-schema:
+        condition: service_completed_successfully
+    secrets:
+      - ui4a-deployment-secrets
+    command: [start]
+    healthcheck:
+      test: [CMD, temporal, operator, cluster, health]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  temporal-namespace:
+    image: ${UI4A_TEMPORAL_ADMIN_TOOLS_IMAGE:-temporalio/admin-tools@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: 'no'
+    depends_on:
+      temporal:
+        condition: service_healthy
+    command: [temporal, operator, namespace, create-or-check, ui4a]
+
+  temporal-ui:
+    image: ${UI4A_TEMPORAL_UI_IMAGE:-temporalio/ui@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: unless-stopped
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+    healthcheck:
+      test: [CMD, wget, -q, --spider, 'http://127.0.0.1:8080/']
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  keycloak:
+    image: ${UI4A_KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: unless-stopped
+    depends_on:
+      postgres-bootstrap:
+        condition: service_completed_successfully
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak_runtime
+      KC_HEALTH_ENABLED: 'true'
+      KC_HTTP_ENABLED: 'true'
+      KC_PROXY_HEADERS: xforwarded
+    secrets:
+      - keycloak-database-password
+      - keycloak-bootstrap-admin-password
+    entrypoint: [/bin/bash, -ec]
+    command:
+      - >-
+        export KC_DB_PASSWORD="$$(cat /run/secrets/keycloak-database-password)";
+        export KC_BOOTSTRAP_ADMIN_USERNAME=ui4a-bootstrap;
+        export KC_BOOTSTRAP_ADMIN_PASSWORD="$$(cat /run/secrets/keycloak-bootstrap-admin-password)";
+        exec /opt/keycloak/bin/kc.sh start
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000;
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3;
+          grep -q '200 OK' <&3
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  realm-bootstrap:
+    image: ${UI4A_WORKER_IMAGE:-ui4a/worker@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: 'no'
+    user: '1000:1000'
+    read_only: true
+    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment: &ui4a-production-environment
+      UI4A_DEPLOYMENT_PROFILE: production
+      UI4A_DEPLOYMENT_SETTINGS_FILE: /run/ui4a/settings.json
+      UI4A_DEPLOYMENT_SECRETS_FILE: /run/secrets/ui4a-deployment-secrets
+    configs: &ui4a-production-config
+      - source: ui4a-deployment-settings
+        target: /run/ui4a/settings.json
+        mode: 0444
+    secrets: &ui4a-production-secret
+      - source: ui4a-deployment-secrets
+        target: ui4a-deployment-secrets
+        mode: 0400
+    volumes:
+      - realm-data:/var/lib/ui4a/realm
+      - experiment-ca:/var/lib/ui4a/ca:ro
+      - ../keycloak/realm-import.json:/opt/ui4a/realm-import.json:ro
+    command: [node, dist/t22-keycloak-realm-bootstrap.js, --apply]
+
+  migration:
+    image: ${UI4A_WORKER_IMAGE:-ui4a/worker@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: 'no'
+    user: '1000:1000'
+    read_only: true
+    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    depends_on:
+      postgres-bootstrap:
+        condition: service_completed_successfully
+    environment: *ui4a-production-environment
+    configs: *ui4a-production-config
+    secrets: *ui4a-production-secret
+    command: [node, dist/t22-migrate.js]
+
+  web:
+    image: ${UI4A_WEB_IMAGE:-ui4a/web@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: unless-stopped
+    user: '1000:1000'
+    read_only: true
+    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+      realm-bootstrap:
+        condition: service_completed_successfully
+      temporal-namespace:
+        condition: service_completed_successfully
+    environment: *ui4a-production-environment
+    configs: *ui4a-production-config
+    secrets: *ui4a-production-secret
+    volumes:
+      - experiment-ca:/var/lib/ui4a/ca:ro
+    ports:
+      - 127.0.0.1:3100:3100
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3100/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  worker:
+    image: ${UI4A_WORKER_IMAGE:-ui4a/worker@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: unless-stopped
+    user: '1000:1000'
+    read_only: true
+    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+      realm-bootstrap:
+        condition: service_completed_successfully
+      temporal-namespace:
+        condition: service_completed_successfully
+    environment: *ui4a-production-environment
+    configs: *ui4a-production-config
+    secrets: *ui4a-production-secret
+    volumes:
+      - experiment-ca:/var/lib/ui4a/ca:ro
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3101/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  runner:
+    image: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: unless-stopped
+    user: '1000:1000'
+    read_only: true
+    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    environment: *ui4a-production-environment
+    configs: *ui4a-production-config
+    secrets: *ui4a-production-secret
+    volumes: &runner-volumes
+      - runner-workspaces:/workspaces
+      - runner-artifacts:/artifacts
+    command: [node, dist/main.js, daemon]
+    healthcheck: &runner-healthcheck
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3102/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  host-runner:
+    profiles: [host-runner]
+    image: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    pull_policy: missing
+    restart: unless-stopped
+    user: '1000:1000'
+    read_only: true
+    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    environment: *ui4a-production-environment
+    configs: *ui4a-production-config
+    secrets: *ui4a-production-secret
+    volumes: *runner-volumes
+    command: [node, dist/main.js, daemon]
+    healthcheck: *runner-healthcheck
+
+configs:
+  ui4a-deployment-settings:
+    file: ${UI4A_DEPLOYMENT_SETTINGS_FILE:-./stack-contract.json}
+
+secrets:
+  ui4a-deployment-secrets:
+    file: ${UI4A_DEPLOYMENT_SECRETS_FILE:-./stack-contract.json}
+  postgres-bootstrap-password:
+    file: ${UI4A_POSTGRES_BOOTSTRAP_PASSWORD_FILE:-./stack-contract.json}
+  keycloak-database-password:
+    file: ${UI4A_KEYCLOAK_DATABASE_PASSWORD_FILE:-./stack-contract.json}
+  keycloak-bootstrap-admin-password:
+    file: ${UI4A_KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD_FILE:-./stack-contract.json}
+
+volumes:
+  postgres-data:
+    labels: { io.ui4a.volume: postgres-data, io.ui4a.retention: retain-on-ordinary-down }
+  backup-data:
+    labels: { io.ui4a.volume: backup-data, io.ui4a.retention: retain-on-ordinary-down }
+  realm-data:
+    labels: { io.ui4a.volume: realm-data, io.ui4a.retention: retain-on-ordinary-down }
+  experiment-ca:
+    labels: { io.ui4a.volume: experiment-ca, io.ui4a.retention: retain-on-ordinary-down }
+  runner-workspaces:
+    labels: { io.ui4a.volume: runner-workspaces, io.ui4a.retention: retain-on-ordinary-down }
+  runner-artifacts:
+    labels: { io.ui4a.volume: runner-artifacts, io.ui4a.retention: retain-on-ordinary-down }
