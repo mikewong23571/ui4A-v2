@@ -1,0 +1,7 @@
+T22 experimental scope reset authorized by the user.
+
+D35 narrows v0.1.0-experimental.1 to single-replica Compose and K8s, one Keycloak realm with Web Agent API clients, browser PKCE, external CLI Bearer, Agent Client Credentials and Standard Token Exchange, canonical sub plus azp delegation, fixed realm first import and existing-realm check-skip, and direct CA database realm backup restore.
+
+Deferred from the release gate: multi-replica Web and Session, cross-replica single atom, act extensions, online realm upgrade or drift repair, fine-grained role synchronization, automatic Secret rotation, comprehensive service-to-service OIDC and full-route platformization, and HA.
+
+Machine evidence contracts were updated to single-replica replay, sub plus azp identity, and explicit deferredCapabilities. Main-agent verification: evidence contract 9 of 9, JSON schema positive and negative checks from delegated review, scoped Prettier and git diff check passed.
