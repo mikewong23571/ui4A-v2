@@ -45,7 +45,7 @@
 - [ ] Web、Worker、Runner 复用平台中立配置类型
 - [ ] Secret 不进入错误、日志、Siren 或 Meta raw view
 - [ ] 为 Compose env 与 Helm values 生成一致映射和示例
-- [ ] Task: Red TDD——定义 OCI image contract
+- [x] Task: Red TDD——定义 OCI image contract 6e0fc83
 - [ ] 验证正式 Worker 入口、non-root、health command 和 writable paths
 - [ ] 验证 images 不含 local env、test reports、dev DB 或个人 Codex 配置
 - [ ] 验证 Web/Worker/Runner version 与 Git SHA 一致
