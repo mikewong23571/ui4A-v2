@@ -196,12 +196,12 @@
 - [x] 单副本 Web/Worker/Runner、migration 与 realm import-or-check Job
 - [x] PostgreSQL、Temporal、Keycloak values
 - [x] static PV/replaceable StorageClass、backup CronJob 和 Istio policies
-- [ ] Task: 创建 mothership-specific overlay
+- [~] Task: 创建 mothership-specific overlay
 - [ ] 默认 `ui4a.mothership.internal` 与 `auth.ui4a.mothership.internal`
 - [ ] 适配 existing ingressgateway/NodePort 32067
 - [ ] 复用或扩展 existing internal CA，不覆盖已有 certificates
 - [ ] 固定 node/PV paths、resources 和 image import strategy
-- [ ] Task: 谨慎处理 mothership-setup worktree
+- [~] Task: 谨慎处理 mothership-setup worktree
 - [ ] 实施前记录 existing dirty/untracked state
 - [ ] 仅新增 `deploy/ui4a/` 和明确文档链接
 - [ ] 不覆盖 Mattermost、Headlamp 或 unrelated K8s files
