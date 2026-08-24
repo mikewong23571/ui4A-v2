@@ -113,7 +113,7 @@ nodeSelector:
 
 {{- define "ui4a.waitFor" -}}
 - name: wait-for-{{ .dependency }}
-  image: {{ default .root.Values.images.worker .image | quote }}
+  image: {{ default .root.Values.images.adminWorker .image | quote }}
   imagePullPolicy: IfNotPresent
   command: [node, -e]
   args:

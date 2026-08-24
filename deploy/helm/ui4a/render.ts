@@ -676,7 +676,7 @@ function dependencyGate(
   values: Ui4aHelmValues,
   dependency: string,
   apiToken = false,
-  image = values.images.worker,
+  image = values.images.adminWorker,
 ): UnknownRecord {
   return container(`wait-for-${dependency}`, image, {
     command: ['node', '-e', WAIT_FOR_DEPENDENCY_SCRIPT],
@@ -806,7 +806,7 @@ function dependencyGates(
   values: Ui4aHelmValues,
   dependencies: readonly string[],
   apiToken = false,
-  image = values.images.worker,
+  image = values.images.adminWorker,
 ) {
   return dependencies.map((dependency) => dependencyGate(values, dependency, apiToken, image));
 }

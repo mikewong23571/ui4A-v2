@@ -522,6 +522,14 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       expect(JSON.stringify(podSpec(workload(resources, 'Deployment', 'worker')))).toContain(
         values.images.runner,
       );
+      for (const name of ['temporal', 'temporal-ui', 'keycloak', 'web', 'worker']) {
+        const pod = podSpec(workload(resources, 'Deployment', name));
+        for (const init of list(pod.initContainers ?? []).map(record)) {
+          if (String(init.name).startsWith('wait-for-')) {
+            expect(init.image, `${name}/${String(init.name)}`).toBe(values.images.adminWorker);
+          }
+        }
+      }
     });
 
     it('disables Istio sidecars on exactly the six finite admin Jobs', async () => {
