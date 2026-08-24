@@ -368,4 +368,35 @@ describe('T22 executable acceptance contract', () => {
       productionNamespace: 'ui4a',
     });
   });
+
+  it('binds T22 architecture decisions before production implementation', () => {
+    const architecturePath = trackFile('architecture.md');
+    expect(existsSync(architecturePath), 'architecture.md must exist').toBe(true);
+    if (!existsSync(architecturePath)) return;
+
+    const architecture = readFileSync(architecturePath, 'utf8');
+    const decisions = readFileSync(resolve(repositoryRoot, 'DECISIONS.md'), 'utf8');
+    const techStack = readFileSync(resolve(repositoryRoot, 'conductor/tech-stack.md'), 'utf8');
+
+    expect(decisions).toContain('## D34 T22 生产形态、可信身份与双后端 Agent Runtime');
+    expect(decisions).toContain('v0.1.0-experimental.1');
+    expect(decisions).toContain('sub + azp');
+    expect(decisions).toContain('static local PV');
+    expect(techStack).toContain('## T22 生产形态部署');
+    expect(techStack).toContain('Keycloak 26.7.1');
+    expect(techStack).toContain('Temporal Server 1.31.2');
+    for (const section of [
+      '## Deployment topology',
+      '## Identity trust line',
+      '## Cross-replica command atom',
+      '## Agent Runtime backends',
+      '## Persistence and recovery',
+      '## Repository ownership',
+      '## Experimental release boundary',
+    ]) {
+      expect(architecture).toContain(section);
+    }
+    expect(architecture).toContain('shared ← engine ← agent');
+    expect(architecture).not.toMatch(/Keycloak (directly )?(emits|provides) a stable JWT act/i);
+  });
 });

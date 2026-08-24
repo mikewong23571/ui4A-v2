@@ -29,7 +29,7 @@
 - [x] 验证显式 migration Job
 - [x] 验证 Temporal namespace、persistence 和 Worker drain
 - [x] 选择无 StorageClass 环境的 stateful installation 方式
-- [ ] Task: 记录绑定架构决定
+- [~] Task: 记录绑定架构决定
 - [ ] 在 `DECISIONS.md` 记录真实身份、部署合同、实验非 HA 和恢复边界
 - [ ] 记录双 Runtime Backend、跨副本裁决和 experimental release 策略
 - [ ] 新增依赖或工具前更新 `conductor/tech-stack.md`

@@ -365,3 +365,41 @@
 - **Presentation 顺序**:Chat answer 与 Presentation planning 继续独立。可用异步 receipt 必须先持久化
   completion 再对客户端可见；SSE 跟踪 jobs 到 settled，避免客户端已跳转而下一 turn 尚无可重放
   navigation。T21 不新增 package、数据库表、状态库或 Provider，因此不修改技术栈。
+
+## D34 T22 生产形态、可信身份与双后端 Agent Runtime(2026-08-24,T22 Phase A)
+
+- **范围与发布口径**：T22 同时交付 mothership K8s/Istio 与 Docker Compose all-in-one，两者消费
+  同一配置语义、Git SHA、OCI digest 和核心用户故事 corpus。首个发布为
+  `v0.1.0-experimental.1`，只声明已验证的内网实验范围；不声明 GA、SLA、LTS、多地域或当前
+  两 Worker 集群具备 HA。
+- **身份模式**：生产配置必须显式使用 OIDC，D8/D10 的 self-reported identity 只保留在显式本地
+  demo mode。Keycloak 26.7.1 提供浏览器 Authorization Code + S256 PKCE、CLI/service Bearer 与
+  confidential-client RFC 8693 Standard Token Exchange。请求 body/query/普通 header 不能覆盖
+  actor、principal、scope 或 delegation。
+- **委托事实**：live probe 证明 Standard Token Exchange 保留 human `sub` 和 Agent client
+  `azp`；稳定输入记作 sub + azp。Keycloak experimental delegation 在 consent token 中产生
+  `may_act`，但 exchange 后既没有 `act` 也没有 `may_act`。因此 UI4A 从已验证
+  `sub + azp + scope/audience` 机械投影 canonical delegation/audit chain；不得宣称 Keycloak
+  直接签发稳定 JWT `act`。可选 `may_act` 只属于显式 experimental profile。
+- **授权分层**：Istio RequestAuthentication/AuthorizationPolicy 负责 issuer、signature、audience、
+  Token presence、粗粒度 route/network policy。UI4A 应用层重新建立可信 request identity，并负责
+  scope、delegation、human-only approval、Siren action、Cedar、guard、schema、CAS 和事件 provenance。
+  Istio 放行永远不等于业务批准。
+- **跨副本命令原子**：生产 Web 不再以进程内 Promise queue 作为唯一并发控制。所有写命令的
+  refresh → declaration/guard/schema judgment → append → projection 在 PostgreSQL transaction 与
+  transaction-scoped advisory lock 内完成；拒绝仍是事件。显式 versioned migration 使用独立锁和
+  migration role，失败阻止 readiness。
+- **状态拓扑**：mothership 实验形态采用一个 PostgreSQL 17 instance + static local PV，分别建立
+  UI4A、Keycloak、Temporal default 与 Temporal visibility databases/roles。Temporal Server 1.31.2
+  使用 namespace `ui4a`；官方 Helm chart 只部署 server components，数据库由 UI4A deployment
+  提供。单实例通过命名备份和隔离恢复验真，不包装成 HA。
+- **Agent Runtime**：新增 `apps/agent-runner`，同一 artifact 支持 K8s `oneshot` 与 trusted-host
+  `daemon`。backend/profile/image/workspace/resources/network policy 全部由服务端 profile sealed；
+  请求不能选择或覆盖。两个 backend 复用 canonical Agent Run、birth references、specialization
+  verifier 和 human result decision；失败不得切换到更宽权限 backend。
+- **真相与存储**：PostgreSQL event log 继续是唯一业务真相，Temporal history 是 durable execution
+  history，Runner workspace 是受治理 artifact backend。Kubernetes state、container logs 和
+  Keycloak sessions 都不成为第二业务真相。
+- **仓库所有权**：UI4A 仓库拥有 generic images/config/Compose/chart/runbook；mothership-setup 只
+  拥有 `deploy/ui4a/` overlay、集群路径和入口事实。两个仓库分别提交并在 evidence 中记录 SHA，
+  不覆盖 mothership 已有 dirty/untracked 工作。

@@ -91,3 +91,23 @@ structured transport 与 Temporal，分别接 Git worktree 和 document workspac
 T20 不新增 npm 或基础设施依赖：复用 Next.js、Siren、shadcn、RJSF、现有 diff/graph 组件与
 PostgreSQL 投影。Meta dashboard 使用授权 sitemap + bounded collection summaries，exact entity 采用
 scope/sitemap-version cache；action 始终 bypass cache 重读。控制台没有 AI/Presentation 依赖。
+
+## T22 生产形态部署
+
+T22 将原 demo-only 运行方式扩展为 K8s/Istio 与 Docker Compose all-in-one 的同合同部署。Phase A
+probe 已固定以下实验版本基线；OCI digest 在 release manifest 中最终锁定：
+
+| Component | T22 selection | Boundary |
+|---|---|---|
+| Kubernetes / Istio | 1.31.14 / 1.24.2 | mothership 现有三节点内网实验集群 |
+| PostgreSQL | 17 | 一个 static local PV instance；逻辑 database/role 隔离；非 HA |
+| Keycloak | Keycloak 26.7.1 | OIDC、PKCE、Bearer、RFC 8693；delegation feature 仍属 experimental |
+| Temporal | Temporal Server 1.31.2 / UI 2.50.1 / CLI 1.8.2 | namespace `ui4a`；PostgreSQL default + visibility |
+| Temporal Helm | official chart 1.6.0 | 只部署 server components；不携带 database subchart |
+| UI4A runtime | Node 24 / pnpm 10.32.1 | Web、Worker、Agent Runner OCI images |
+| Agent Runner | new `apps/agent-runner` workspace | one artifact；K8s oneshot + trusted-host daemon |
+| Ingress/TLS | Istio Gateway + internal experimental CA | `ui4a.mothership.internal` 与 `auth.ui4a.mothership.internal` |
+
+Phase A 不预选应用内 OIDC/JWT npm library、Kubernetes client library、chart templating helper 或
+image scanner；相关 Phase 必须先以 Red test/official compatibility 验证，再在本文件记录实际新增
+依赖。部署不得自造身份协议、Workflow engine、container registry 或 secret store。
