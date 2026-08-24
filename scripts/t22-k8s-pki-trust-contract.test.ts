@@ -158,6 +158,14 @@ describe('T22 Kubernetes PKI handoff and combined trust contract', () => {
     expect(handoffText).toContain('openssl');
     expect(handoffText).toContain('-checkhost');
     expect(handoffText).toContain('openssl verify');
+    expect(handoffText).toMatch(/install[^]*-o 70[^]*-g 70[^]*-m 0600/);
+    expect(object(handoff.securityContext)).toMatchObject({
+      runAsUser: 0,
+      capabilities: {
+        drop: ['ALL'],
+        add: expect.arrayContaining(['CHOWN', 'DAC_READ_SEARCH', 'FOWNER']),
+      },
+    });
     expect(primaryText).toContain('ssl_cert_file=/var/run/ui4a/postgres-tls/server.crt');
     expect(primaryText).toContain('ssl_key_file=/var/run/ui4a/postgres-tls/server.key');
     expect(primaryText).toContain('ssl_ca_file=/var/run/ui4a/postgres-tls/root-ca.crt');
@@ -172,6 +180,7 @@ describe('T22 Kubernetes PKI handoff and combined trust contract', () => {
       ]),
     );
     expect(podText).toContain('emptyDir');
+    expect(object(podSpec(postgres).securityContext).runAsNonRoot).not.toBe(true);
   });
 
   it.each([
