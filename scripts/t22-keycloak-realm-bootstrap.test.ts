@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const executorPath = 'deploy/keycloak/realm-bootstrap.ts';
 const entrypointPath = 'scripts/t22-keycloak-realm-bootstrap.ts';
-const contractPath = 'deploy/keycloak/realm-contract.json';
+const realmImportPath = 'deploy/keycloak/realm-import.json';
 const keycloakOrigin = 'https://auth.ui4a.mothership.internal';
 const publicOrigin = 'https://ui4a.mothership.internal';
 const adminPassword = '__test_only_bootstrap_admin_password__';
@@ -16,38 +16,21 @@ const agentClientSecret = '__test_only_agent_client_secret__';
 const fixturePassword = '__test_only_fixture_user_password__';
 const adminToken = '__test_only_admin_access_token__';
 
-interface RealmContract {
-  realm: { name: string; enabled: boolean };
-  clientScopes: Array<{ name: string; kind: 'permission' | 'policy' }>;
-  roles: Array<{ name: string; scopes: string[]; humanApprovalEligible: boolean }>;
-  clients: Array<{
-    clientId: string;
-    clientKind: 'browser' | 'service-account' | 'resource-server';
-    confidential: boolean;
-    standardFlowEnabled: boolean;
-    serviceAccountsEnabled: boolean;
-    directAccessGrantsEnabled: boolean;
-    pkceCodeChallengeMethod?: string;
-    redirectUris?: string[];
-    postLogoutRedirectUris?: string[];
-    secretRef?: string;
-    standardTokenExchangeEnabled?: boolean;
-    audiences: string[];
-    defaultScopes: string[];
-    optionalScopes: string[];
-  }>;
-  fixtureUsers: Array<{ username: string; role: string; passwordSecretRef: string }>;
+interface RealmClientRepresentation extends Record<string, unknown> {
+  id?: string;
+  clientId: string;
+  attributes?: Record<string, string>;
+  protocolMappers?: Array<{ config?: Record<string, string> }>;
+}
+
+interface RealmImportRepresentation extends Record<string, unknown> {
+  realm: string;
+  enabled: boolean;
+  clients: RealmClientRepresentation[];
 }
 
 interface BootstrapResult {
-  outcome: 'create' | 'noop' | 'update';
-  operations: Array<{
-    verb: 'create' | 'update';
-    kind: 'realm' | 'client' | 'client-scope' | 'realm-role' | 'user';
-    id: string;
-    secretRef?: string;
-    changedFields?: string[];
-  }>;
+  outcome: 'imported' | 'skip' | 'absent';
   summary: string;
 }
 
@@ -59,12 +42,12 @@ interface BootstrapModule {
     fetch: typeof fetch;
     timeoutMs: number;
   }): unknown;
-  reconcileKeycloakRealm(input: {
+  bootstrapKeycloakRealm(input: {
     admin: unknown;
-    contract: RealmContract;
+    realmImport: RealmImportRepresentation;
     publicOrigin: string;
     resolveSecret: (reference: string) => string;
-    apply?: boolean;
+    mode: 'check' | 'apply';
   }): Promise<BootstrapResult>;
 }
 
@@ -77,19 +60,16 @@ interface RecordedRequest {
   signal?: AbortSignal | null;
 }
 
-interface StoredResource extends Record<string, unknown> {
-  id: string;
-}
-
 function requiredSource(path: string): string {
   const absolutePath = resolve(repositoryRoot, path);
-  if (!existsSync(absolutePath))
+  if (!existsSync(absolutePath)) {
     throw new Error(`missing T22 Keycloak bootstrap artifact: ${path}`);
+  }
   return readFileSync(absolutePath, 'utf8');
 }
 
-function contract(): RealmContract {
-  return JSON.parse(requiredSource(contractPath)) as RealmContract;
+function realmImport(): RealmImportRepresentation {
+  return JSON.parse(requiredSource(realmImportPath)) as RealmImportRepresentation;
 }
 
 async function bootstrapModule(): Promise<BootstrapModule> {
@@ -111,10 +91,10 @@ function secret(reference: string): string {
   return value;
 }
 
-function jsonResponse(body: unknown, status = 200, headers?: HeadersInit): Response {
+function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json', ...headers },
+    headers: { 'content-type': 'application/json' },
   });
 }
 
@@ -124,23 +104,12 @@ function requestBody(init: RequestInit | undefined): string {
   return '';
 }
 
-function resourceName(path: string, body: Record<string, unknown>): string {
-  if (path.endsWith('/client-scopes')) return String(body.name);
-  if (path.endsWith('/roles')) return String(body.name);
-  if (path.endsWith('/clients')) return String(body.clientId);
-  if (path.endsWith('/users')) return String(body.username);
-  return '';
-}
-
-class StatefulKeycloakAdmin {
+class ImportOrSkipKeycloakAdmin {
   readonly requests: RecordedRequest[] = [];
-  readonly mutations: Array<{ kind: string; id: string; body: string }> = [];
+  readonly mutations: Array<{ path: string; body: string }> = [];
   realm: Record<string, unknown> | undefined;
-  clientScopes: StoredResource[] = [];
-  roles: StoredResource[] = [];
-  clients: StoredResource[] = [];
-  users: StoredResource[] = [];
-  failMutationNumber: number | undefined;
+  clients: RealmClientRepresentation[] = [];
+  failImport = false;
 
   readonly fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const rawUrl = input instanceof Request ? input.url : String(input);
@@ -168,73 +137,33 @@ class StatefulKeycloakAdmin {
       return jsonResponse({ error: 'unauthorized' }, 401);
     }
 
-    const realmPath = '/admin/realms/ui4a';
-    if (method === 'GET' && url.pathname === realmPath) {
+    if (method === 'GET' && url.pathname === '/admin/realms/ui4a') {
       return this.realm === undefined
         ? jsonResponse({ error: 'not_found' }, 404)
         : jsonResponse(this.realm);
     }
+    if (method === 'GET' && url.pathname === '/admin/realms/ui4a/clients') {
+      const requested = url.searchParams.get('clientId');
+      const clients =
+        requested === null
+          ? this.clients
+          : this.clients.filter((candidate) => candidate.clientId === requested);
+      return jsonResponse(clients);
+    }
     if (method === 'POST' && url.pathname === '/admin/realms') {
-      return this.mutate('realm', 'ui4a', body, () => {
-        this.realm = JSON.parse(body) as Record<string, unknown>;
-      });
-    }
-    if (method === 'PUT' && url.pathname === realmPath) {
-      return this.mutate(
-        'realm',
-        'ui4a',
-        body,
-        () => {
-          this.realm = JSON.parse(body) as Record<string, unknown>;
-        },
-        204,
-      );
+      this.mutations.push({ path: url.pathname, body });
+      if (this.failImport) {
+        return jsonResponse({ error: 'forced_failure', detail: webClientSecret }, 503);
+      }
+      const imported = JSON.parse(body) as RealmImportRepresentation;
+      this.realm = { realm: imported.realm, enabled: imported.enabled };
+      this.clients = imported.clients.map((candidate, index) => ({
+        ...structuredClone(candidate),
+        id: `client-${index + 1}`,
+      }));
+      return new Response(null, { status: 201 });
     }
 
-    const collections: Array<[string, StoredResource[]]> = [
-      [`${realmPath}/client-scopes`, this.clientScopes],
-      [`${realmPath}/roles`, this.roles],
-      [`${realmPath}/clients`, this.clients],
-      [`${realmPath}/users`, this.users],
-    ];
-    for (const [path, resources] of collections) {
-      if (method === 'GET' && url.pathname === path) {
-        const username = url.searchParams.get('username');
-        const result =
-          username === null ? resources : resources.filter((item) => item.username === username);
-        return jsonResponse(result);
-      }
-      if (method === 'POST' && url.pathname === path) {
-        const parsed = JSON.parse(body) as Record<string, unknown>;
-        const name = resourceName(path, parsed);
-        const kind = path.slice(path.lastIndexOf('/') + 1);
-        return this.mutate(kind, name, body, () => {
-          resources.push({ ...parsed, id: `${kind}-${name}` });
-        });
-      }
-    }
-
-    for (const [path, resources] of collections.slice(0, 3)) {
-      if (method === 'PUT' && url.pathname.startsWith(`${path}/`)) {
-        const identifier = decodeURIComponent(url.pathname.slice(path.length + 1));
-        const index = resources.findIndex(
-          (item) =>
-            item.id === identifier || item.name === identifier || item.clientId === identifier,
-        );
-        if (index < 0) return jsonResponse({ error: 'not_found' }, 404);
-        const parsed = JSON.parse(body) as Record<string, unknown>;
-        const kind = path.slice(path.lastIndexOf('/') + 1);
-        return this.mutate(
-          kind,
-          String(parsed.name ?? parsed.clientId ?? identifier),
-          body,
-          () => {
-            resources[index] = { ...resources[index], ...parsed } as StoredResource;
-          },
-          204,
-        );
-      }
-    }
     return jsonResponse({ error: 'unexpected_admin_path', path: url.pathname }, 404);
   }) as typeof fetch;
 
@@ -243,25 +172,12 @@ class StatefulKeycloakAdmin {
     this.mutations.length = 0;
     this.fetch.mockClear();
   }
-
-  private mutate(
-    kind: string,
-    id: string,
-    body: string,
-    apply: () => void,
-    status = 201,
-  ): Response {
-    const mutationNumber = this.mutations.length + 1;
-    this.mutations.push({ kind, id, body });
-    if (this.failMutationNumber === mutationNumber) {
-      return jsonResponse({ error: 'forced_failure', detail: fixturePassword }, 503);
-    }
-    apply();
-    return new Response(null, { status });
-  }
 }
 
-async function execute(fake: StatefulKeycloakAdmin, apply = true): Promise<BootstrapResult> {
+async function execute(
+  fake: ImportOrSkipKeycloakAdmin,
+  mode: 'check' | 'apply' = 'apply',
+): Promise<BootstrapResult> {
   const module = await bootstrapModule();
   const admin = module.createKeycloakAdminClient({
     baseUrl: keycloakOrigin,
@@ -270,19 +186,25 @@ async function execute(fake: StatefulKeycloakAdmin, apply = true): Promise<Boots
     fetch: fake.fetch,
     timeoutMs: 100,
   });
-  return module.reconcileKeycloakRealm({
+  return module.bootstrapKeycloakRealm({
     admin,
-    contract: contract(),
+    realmImport: realmImport(),
     publicOrigin,
     resolveSecret: secret,
-    apply,
+    mode,
   });
 }
 
-describe('T22 executable Keycloak realm bootstrap', () => {
-  it('uses only injected Admin credentials and never discloses credentials in URLs or results', async () => {
-    const fake = new StatefulKeycloakAdmin();
-    const result = await execute(fake, false);
+function mutationRequests(fake: ImportOrSkipKeycloakAdmin): RecordedRequest[] {
+  return fake.requests.filter((request) =>
+    ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method),
+  );
+}
+
+describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
+  it('uses injected Admin credentials and never discloses credentials in URLs or results', async () => {
+    const fake = new ImportOrSkipKeycloakAdmin();
+    const result = await execute(fake, 'check');
     const login = fake.requests.find((request) => request.url.includes('/realms/master/'));
 
     expect(login).toBeDefined();
@@ -290,122 +212,163 @@ describe('T22 executable Keycloak realm bootstrap', () => {
     expect(login?.body).toContain('client_id=admin-cli');
     expect(login?.body).toContain('username=ui4a-bootstrap-admin');
     expect(login?.body).toContain(`password=${encodeURIComponent(adminPassword)}`);
-    expect(login?.url).not.toMatch(/password|token|secret/i);
+    expect(new URL(login!.url).search).toBe('');
+    for (const material of [
+      'ui4a-bootstrap-admin',
+      adminPassword,
+      webClientSecret,
+      agentClientSecret,
+      fixturePassword,
+      adminToken,
+    ]) {
+      expect(login?.url).not.toContain(material);
+    }
     expect(JSON.stringify(result)).not.toMatch(
-      new RegExp(
-        [adminPassword, webClientSecret, agentClientSecret, fixturePassword, adminToken].join('|'),
-      ),
+      new RegExp([adminPassword, webClientSecret, agentClientSecret, adminToken].join('|')),
     );
     expect(fake.mutations).toHaveLength(0);
   });
 
-  it('creates an absent realm in planner order and resolves Secret material only for its Admin request', async () => {
-    const fake = new StatefulKeycloakAdmin();
-    const input = contract();
-    const result = await execute(fake);
+  it('--check reports an absent realm without importing it', async () => {
+    const fake = new ImportOrSkipKeycloakAdmin();
 
-    expect(result.outcome).toBe('create');
-    expect(fake.mutations.map(({ kind, id }) => `${kind}:${id}`)).toEqual([
-      'realm:ui4a',
-      ...input.clientScopes.map((scope) => `client-scopes:${scope.name}`),
-      ...input.roles.map((role) => `roles:${role.name}`),
-      ...input.clients.map((client) => `clients:${client.clientId}`),
-      ...input.fixtureUsers.map((user) => `users:${user.username}`),
+    await expect(execute(fake, 'check')).resolves.toMatchObject({ outcome: 'absent' });
+    expect(fake.realm).toBeUndefined();
+    expect(fake.mutations).toHaveLength(0);
+  });
+
+  it('--apply imports an absent realm with one full RealmRepresentation POST', async () => {
+    const fake = new ImportOrSkipKeycloakAdmin();
+    const result = await execute(fake, 'apply');
+
+    expect(result).toMatchObject({ outcome: 'imported' });
+    expect(fake.mutations).toHaveLength(1);
+    expect(fake.mutations[0]?.path).toBe('/admin/realms');
+    const imported = JSON.parse(fake.mutations[0]!.body) as RealmImportRepresentation;
+    expect(imported).toMatchObject({ realm: 'ui4a', enabled: true });
+    expect(imported.clients.map(({ clientId }) => clientId).sort()).toEqual([
+      'ui4a-agent',
+      'ui4a-api',
+      'ui4a-web',
     ]);
-
-    const mutationWith = (material: string) =>
-      fake.mutations.filter((mutation) => mutation.body.includes(material));
-    expect(mutationWith(webClientSecret).map(({ id }) => id)).toEqual(['ui4a-web']);
-    expect(mutationWith(agentClientSecret).map(({ id }) => id)).toEqual(['ui4a-agent']);
-    expect(mutationWith(fixturePassword).map(({ id }) => id)).toEqual(['ui4a-experiment-human']);
-    expect(fake.requests.filter((request) => request.body.includes(adminPassword))).toHaveLength(1);
-    expect(fake.requests.every((request) => !request.url.includes(adminPassword))).toBe(true);
-
-    const web = fake.clients.find((client) => client.clientId === 'ui4a-web');
-    expect(JSON.stringify(web)).toContain(`${publicOrigin}/api/auth/callback`);
-    expect(JSON.stringify(web)).toContain(`${publicOrigin}/`);
-    expect(JSON.stringify(web)).not.toContain('{{UI4A_ORIGIN}}');
+    expect(JSON.stringify(imported)).toContain(`${publicOrigin}/api/auth/callback`);
+    expect(JSON.stringify(imported)).toContain(webClientSecret);
+    expect(JSON.stringify(imported)).toContain(agentClientSecret);
+    expect(JSON.stringify(imported)).toContain(fixturePassword);
+    expect(JSON.stringify(imported)).not.toMatch(/\{\{UI4A_ORIGIN\}\}|\{\{secret:/);
     expect(JSON.stringify(result)).not.toMatch(/__test_only_|access_token/i);
   });
 
-  it('observes a matching realm as noop and performs no mutation', async () => {
-    const fake = new StatefulKeycloakAdmin();
-    await execute(fake);
+  it('checks an existing compatible realm and skips without mutation', async () => {
+    const fake = new ImportOrSkipKeycloakAdmin();
+    await execute(fake, 'apply');
     fake.clearTraffic();
 
-    const result = await execute(fake);
+    const result = await execute(fake, 'apply');
 
-    expect(result).toMatchObject({ outcome: 'noop', operations: [] });
+    expect(result).toMatchObject({ outcome: 'skip' });
     expect(fake.mutations).toHaveLength(0);
     expect(fake.requests.some((request) => request.url.endsWith('/admin/realms/ui4a'))).toBe(true);
+    expect(
+      fake.requests.some((request) => new URL(request.url).pathname.endsWith('/clients')),
+    ).toBe(true);
   });
 
-  it('updates only managed client/scope drift and never mutates an existing fixture user', async () => {
-    const fake = new StatefulKeycloakAdmin();
-    await execute(fake);
-    const web = fake.clients.find((client) => client.clientId === 'ui4a-web');
-    if (web === undefined) throw new Error('stateful fake is missing ui4a-web');
-    web.redirectUris = ['https://drift.invalid/callback'];
-    fake.clientScopes = fake.clientScopes.filter((scope) => scope.name !== 'governance');
-    const user = fake.users[0];
-    if (user === undefined) throw new Error('stateful fake is missing fixture user');
-    Object.assign(user, {
-      firstName: 'Operator',
-      lastName: 'Owned',
-      email: 'operator-owned@ui4a.invalid',
-      credentials: [{ type: 'password', value: '__operator_owned_password__' }],
-      realmRoles: ['operator-owned-role'],
-    });
+  it('is idempotent: the second run checks and skips', async () => {
+    const fake = new ImportOrSkipKeycloakAdmin();
+
+    await expect(execute(fake, 'apply')).resolves.toMatchObject({ outcome: 'imported' });
     fake.clearTraffic();
-
-    const result = await execute(fake);
-
-    expect(result.outcome).toBe('update');
-    expect(fake.mutations.map(({ kind, id }) => `${kind}:${id}`)).toEqual([
-      'client-scopes:governance',
-      'clients:ui4a-web',
-    ]);
-    expect(fake.mutations.every((mutation) => mutation.kind !== 'users')).toBe(true);
-    expect(JSON.stringify(result)).not.toMatch(/Operator|operator-owned|password/i);
-  });
-
-  it('is idempotent across two consecutive runs against one stateful Admin API', async () => {
-    const fake = new StatefulKeycloakAdmin();
-
-    const first = await execute(fake);
-    const firstMutationCount = fake.mutations.length;
-    fake.clearTraffic();
-    const second = await execute(fake);
-
-    expect(first.outcome).toBe('create');
-    expect(firstMutationCount).toBeGreaterThan(0);
-    expect(second).toMatchObject({ outcome: 'noop', operations: [] });
+    await expect(execute(fake, 'apply')).resolves.toMatchObject({ outcome: 'skip' });
+    expect(mutationRequests(fake)).toHaveLength(1); // Admin token request only.
     expect(fake.mutations).toHaveLength(0);
   });
 
-  it('stops on partial failure with a stable redacted code and never reports success', async () => {
-    const fake = new StatefulKeycloakAdmin();
-    fake.failMutationNumber = 2;
+  it.each([
+    [
+      'disabled realm',
+      (fake: ImportOrSkipKeycloakAdmin) => Object.assign(fake.realm!, { enabled: false }),
+    ],
+    [
+      'missing managed client',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        fake.clients = fake.clients.filter(({ clientId }) => clientId !== 'ui4a-api');
+      },
+    ],
+    [
+      'Web PKCE drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const web = fake.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
+        web.attributes = { ...web.attributes, 'pkce.code.challenge.method': 'plain' };
+      },
+    ],
+    [
+      'Agent exchange drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const agent = fake.clients.find(({ clientId }) => clientId === 'ui4a-agent')!;
+        agent.attributes = { ...agent.attributes, 'standard.token.exchange.enabled': 'false' };
+      },
+    ],
+    [
+      'Agent audience drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const agent = fake.clients.find(({ clientId }) => clientId === 'ui4a-agent')!;
+        agent.protocolMappers = [];
+      },
+    ],
+  ])('fails closed on %s without attempting repair', async (_label, drift) => {
+    const fake = new ImportOrSkipKeycloakAdmin();
+    await execute(fake, 'apply');
+    drift(fake);
+    fake.clearTraffic();
+
+    await expect(execute(fake, 'apply')).rejects.toMatchObject({
+      code: 'KEYCLOAK_REALM_INCOMPATIBLE',
+    });
+    expect(fake.mutations).toHaveLength(0);
+    expect(mutationRequests(fake)).toHaveLength(1); // Admin token request only.
+  });
+
+  it('never reads or mutates users, profiles, passwords, roles, or client scopes', async () => {
+    const fake = new ImportOrSkipKeycloakAdmin();
+    await execute(fake, 'apply');
+    fake.clearTraffic();
+    await execute(fake, 'check');
+
+    const paths = fake.requests.map((request) => new URL(request.url).pathname);
+    expect(paths).not.toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/\/users(?:\/|$)/),
+        expect.stringMatching(/\/roles(?:\/|$)/),
+        expect.stringMatching(/\/client-scopes(?:\/|$)/),
+      ]),
+    );
+    expect(fake.mutations).toHaveLength(0);
+  });
+
+  it('reports one failed import with a stable redacted error', async () => {
+    const fake = new ImportOrSkipKeycloakAdmin();
+    fake.failImport = true;
 
     let failure: unknown;
     try {
-      await execute(fake);
+      await execute(fake, 'apply');
     } catch (error) {
       failure = error;
     }
 
     expect(failure).toMatchObject({ code: 'KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED' });
     expect(failure).toBeInstanceOf(Error);
-    expect((failure as Error).message).not.toContain(fixturePassword);
+    expect((failure as Error).message).not.toMatch(/__test_only_|password|token/i);
     expect(JSON.stringify(failure)).not.toMatch(/__test_only_|password|token/i);
-    expect(fake.mutations).toHaveLength(2);
+    expect(fake.mutations).toHaveLength(1);
   });
 });
 
 describe('T22 Keycloak Admin network boundary', () => {
   it('uses same-origin Admin paths, rejects redirects, and attaches a timeout signal', async () => {
-    const fake = new StatefulKeycloakAdmin();
-    await execute(fake, false);
+    const fake = new ImportOrSkipKeycloakAdmin();
+    await execute(fake, 'check');
 
     expect(fake.requests.length).toBeGreaterThan(1);
     for (const request of fake.requests) {
@@ -418,7 +381,7 @@ describe('T22 Keycloak Admin network boundary', () => {
     }
   });
 
-  it('maps timeout, non-success status, and malformed JSON to stable non-secret errors', async () => {
+  it('maps timeout and malformed Admin responses to stable non-secret errors', async () => {
     const module = await bootstrapModule();
     const timeoutFetch = vi.fn(
       (_: string | URL | Request, init?: RequestInit) =>
@@ -436,12 +399,12 @@ describe('T22 Keycloak Admin network boundary', () => {
       timeoutMs: 5,
     });
     await expect(
-      module.reconcileKeycloakRealm({
+      module.bootstrapKeycloakRealm({
         admin: timedAdmin,
-        contract: contract(),
+        realmImport: realmImport(),
         publicOrigin,
         resolveSecret: secret,
-        apply: false,
+        mode: 'check',
       }),
     ).rejects.toMatchObject({ code: 'KEYCLOAK_BOOTSTRAP_TIMEOUT' });
 
@@ -459,19 +422,19 @@ describe('T22 Keycloak Admin network boundary', () => {
       timeoutMs: 100,
     });
     await expect(
-      module.reconcileKeycloakRealm({
+      module.bootstrapKeycloakRealm({
         admin: invalidAdmin,
-        contract: contract(),
+        realmImport: realmImport(),
         publicOrigin,
         resolveSecret: secret,
-        apply: false,
+        mode: 'check',
       }),
     ).rejects.toMatchObject({ code: 'KEYCLOAK_BOOTSTRAP_INVALID_RESPONSE' });
   });
 });
 
 describe('T22 Keycloak bootstrap executable entrypoint', () => {
-  it('loads canonical production configuration and exposes explicit check/apply modes', () => {
+  it('loads canonical production configuration and exposes check/apply import modes', () => {
     const source = requiredSource(entrypointPath);
 
     expect(source).toContain('preflightProductionDeploymentFromEnvironment');
@@ -480,9 +443,11 @@ describe('T22 Keycloak bootstrap executable entrypoint', () => {
     expect(source).toMatch(/settings\.keycloak\.bootstrapAdminUser/);
     expect(source).toMatch(/settings\.keycloak\.bootstrapAdminPasswordRef/);
     expect(source).toMatch(/config\.secrets/);
-    expect(source).toContain('deploy/keycloak/realm-contract.json');
+    expect(source).toContain('deploy/keycloak/realm-import.json');
     expect(source).toContain('--check');
     expect(source).toContain('--apply');
+    expect(source).toContain('bootstrapKeycloakRealm');
+    expect(source).not.toContain('planKeycloakRealmReconciliation');
     expect(source).not.toMatch(/__test_only_|adminPassword\s*:\s*['"]|clientSecret\s*:\s*['"]/);
   });
 });
