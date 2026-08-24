@@ -198,7 +198,11 @@
       "properties": {
         "gateway": { "$ref": "#/definitions/name" },
         "tlsCredentialName": { "$ref": "#/definitions/name" },
-        "oidcIssuer": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "oidcIssuer": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://[^/?#]+/realms/ui4a$"
+        },
         "oidcAudience": { "$ref": "#/definitions/name" },
         "jwksUri": { "type": "string", "format": "uri", "pattern": "^https?://" }
       }

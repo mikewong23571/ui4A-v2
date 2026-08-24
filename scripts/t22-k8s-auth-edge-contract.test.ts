@@ -191,6 +191,18 @@ const expectedKeycloakMatches = [
 ].sort();
 
 describe('T22 Kubernetes exact authentication edge', () => {
+  it('binds the fixed ui4a realm edge to the canonical issuer path', async () => {
+    const input = values();
+    const istio = record(input.istio);
+    istio.oidcIssuer = 'https://auth.ui4a.internal.test/realms/other';
+    const renderer = (await import(pathToFileURL(rendererPath).href)) as RendererModule;
+
+    expect(() => renderer.renderUi4aChart(input)).toThrow(/values\.istio\.oidcIssuer/);
+    expect(readFileSync(resolve(chartRoot, 'values.schema.json'), 'utf8')).toContain(
+      '/realms/ui4a$',
+    );
+  });
+
   it('routes only public assets and credential-adjudicated Golden UI4A paths', async () => {
     const web = resource(await resources(), 'VirtualService', 'ui4a-web');
     const serialized = JSON.stringify(web);

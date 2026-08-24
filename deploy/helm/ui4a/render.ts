@@ -421,8 +421,14 @@ function parseValues(input: unknown): Ui4aHelmValues {
     'jwksUri',
   ]);
   const oidcIssuer = httpsUrl(istio.oidcIssuer, 'values.istio.oidcIssuer');
-  if (new URL(oidcIssuer).hostname !== keycloakHost) {
-    fail('values.istio.oidcIssuer', 'must use the configured keycloak host');
+  const issuerUrl = new URL(oidcIssuer);
+  if (
+    issuerUrl.hostname !== keycloakHost ||
+    issuerUrl.pathname !== '/realms/ui4a' ||
+    issuerUrl.search !== '' ||
+    issuerUrl.hash !== ''
+  ) {
+    fail('values.istio.oidcIssuer', 'must use the configured keycloak host and ui4a realm');
   }
 
   return {
