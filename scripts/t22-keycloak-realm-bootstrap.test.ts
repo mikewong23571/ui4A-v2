@@ -579,6 +579,10 @@ describe('T22 Keycloak bootstrap executable entrypoint', () => {
     expect(source).not.toContain('config.secrets[reference]');
     expect(source).toMatch(/config\.secrets/);
     expect(source).toContain('deploy/keycloak/realm-import.json');
+    expect(source).toContain('UI4A_REALM_IMPORT_FILE');
+    expect(source).toMatch(/isAbsolute\(path\)/);
+    expect(source).toMatch(/O_NOFOLLOW/);
+    expect(source).toMatch(/status\.isFile\(\)/);
     expect(source).toContain('--check');
     expect(source).toContain('--apply');
     expect(source).toContain('bootstrapKeycloakRealm');
