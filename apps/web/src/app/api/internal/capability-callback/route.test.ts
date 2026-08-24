@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../../../temporal/agent-run', () => ({
+  dispatchAgentRun: vi.fn(async ({ runId }: { runId: string }) => ({
+    workflowId: `agent-${runId}`,
+  })),
+  cancelAgentRun: vi.fn(async () => undefined),
+}));
 vi.mock('../../../../temporal/capability', () => ({
   dispatchCodingCapability: vi.fn(async () => ({ workflowId: 'coding-test' })),
   cancelCodingCapability: vi.fn(async () => undefined),
