@@ -188,14 +188,14 @@
 
 ## Phase H: K8s、Istio 与 mothership 集成
 
-- [~] Task: Red TDD——建立 Helm/K8s render contract
-- [ ] kubeconform/schema lint namespace、RBAC、ServiceAccount、PV/PVC、probe 和 resources
-- [ ] Secret 不进入 rendered evidence
-- [ ] 验证 Istio hosts、TLS、JWT、callback policy 和 `IfNotPresent`
-- [ ] Task: Green——实现 generic UI4A Helm chart
-- [ ] 单副本 Web/Worker/Runner、migration 与 realm import-or-check Job
-- [ ] PostgreSQL、Temporal、Keycloak values
-- [ ] static PV/replaceable StorageClass、backup CronJob 和 Istio policies
+- [x] Task: Red TDD——建立 Helm/K8s render contract 4e0501d
+- [x] kubeconform/schema lint namespace、RBAC、ServiceAccount、PV/PVC、probe 和 resources
+- [x] Secret 不进入 rendered evidence
+- [x] 验证 Istio hosts、TLS、JWT、callback policy 和 `IfNotPresent`
+- [x] Task: Green——实现 generic UI4A Helm chart 21e450a
+- [x] 单副本 Web/Worker/Runner、migration 与 realm import-or-check Job
+- [x] PostgreSQL、Temporal、Keycloak values
+- [x] static PV/replaceable StorageClass、backup CronJob 和 Istio policies
 - [ ] Task: 创建 mothership-specific overlay
 - [ ] 默认 `ui4a.mothership.internal` 与 `auth.ui4a.mothership.internal`
 - [ ] 适配 existing ingressgateway/NodePort 32067
