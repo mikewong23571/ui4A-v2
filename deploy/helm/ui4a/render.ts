@@ -966,7 +966,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
           { name: 'tmp', mountPath: '/tmp' },
         ],
         livenessProbe: tcpProbe(7233, 20),
-        readinessProbe: { exec: { command: ['temporal', 'operator', 'cluster', 'health'] } },
+        readinessProbe: tcpProbe(7233, 5),
         securityContext: vendorNonRootSecurityContext(1000, 1000, false),
       },
       {

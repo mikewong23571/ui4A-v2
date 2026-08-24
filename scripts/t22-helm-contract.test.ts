@@ -887,6 +887,11 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
         expect(serverText).toContain('temporal-server');
         expect(serverText).not.toContain('TEMPORAL_RUNTIME_PASSWORD');
         expect(serverText).toContain('/run/secrets/temporal-runtime-password');
+        expect(primaryContainer(temporal).readinessProbe).toEqual({
+          tcpSocket: { port: 7233 },
+          initialDelaySeconds: 5,
+          periodSeconds: 10,
+        });
         expect(environment(primaryContainer(temporalUi))).toMatchObject({
           TEMPORAL_ADDRESS: 'temporal:7233',
         });
