@@ -283,6 +283,7 @@ describe('T22 production Runtime backend composition', () => {
         },
         resources: { cpu: '1', memory: '1Gi', timeoutSeconds: 900 },
         networkPolicy: 'restricted',
+        credentialRefs: [`${specialization}-provider-credential`],
       });
       expect(deliveries[0]!.birth).toEqual(expectedRequest.birth);
       expect(deliveries[0]!.task.payload).toEqual(expectedRequest.task.payload);

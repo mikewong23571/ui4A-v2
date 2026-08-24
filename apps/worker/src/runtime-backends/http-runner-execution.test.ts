@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type {
-  RuntimeBackendExecutionPort,
-  SealedRunnerEnvelope,
-} from './backend';
+import type { RuntimeBackendExecutionPort, SealedRunnerEnvelope } from './backend';
 
 interface HttpRunnerExecutionModule {
   createHttpRunnerExecutionPort(input: {
@@ -12,6 +9,27 @@ interface HttpRunnerExecutionModule {
     fetchImpl: typeof fetch;
     timeoutMs: number;
   }): RuntimeBackendExecutionPort;
+}
+
+interface RunnerDeliveryWire {
+  schemaVersion: 1;
+  deliveryId: string;
+  request: {
+    schemaVersion: 1;
+    runId: string;
+    specialization: 'coding' | 'writing' | 'authoring';
+    birth: SealedRunnerEnvelope['birth'];
+    task: SealedRunnerEnvelope['task'];
+  };
+  execution: {
+    profileId: string;
+    backend: 'kubernetes-job' | 'trusted-host';
+    image: string;
+    workspace: { rootRef: string };
+    resources: { cpu: string; memory: string; timeoutMs: number };
+    networkPolicy: 'restricted';
+    credentialRefs: string[];
+  };
 }
 
 const plannedModulePath = './http-runner-execution';
@@ -54,6 +72,7 @@ function envelope(): SealedRunnerEnvelope {
       workspace: { rootRef: '/srv/ui4a/writing', retention: 'until-human-decision' },
       resources: { cpu: '1', memory: '1Gi', timeoutSeconds: 900 },
       networkPolicy: 'restricted',
+      credentialRefs: ['writing-provider-token'],
       leaseId: 'lease:writing-42',
       issuedAt: '2026-08-24T12:00:00.000Z',
     },
@@ -68,7 +87,7 @@ function runnerResult(overrides: Record<string, unknown> = {}): Record<string, u
     runId: delivery.runId,
     birth: delivery.birth,
     specialization: delivery.specialization,
-    status: 'completed',
+    status: 'succeeded',
     resultHash: SHA.result,
     candidate: { markdown: '# Bounded result' },
     artifacts: [{ ref: 'artifact:writing-result', hash: SHA.artifact }],
@@ -137,11 +156,31 @@ describe('T22 authenticated HTTP Runner execution port', () => {
       },
     });
     const body = String(init?.body);
-    expect(JSON.parse(body)).toEqual({
+    const expectedWire = {
       schemaVersion: 1,
       deliveryId: 'delivery-writing-42',
-      delivery: envelope(),
-    });
+      request: {
+        schemaVersion: 1,
+        runId: envelope().runId,
+        specialization: envelope().specialization,
+        birth: envelope().birth,
+        task: envelope().task,
+      },
+      execution: {
+        profileId: envelope().execution.profileId,
+        backend: envelope().execution.backend,
+        image: envelope().execution.image,
+        workspace: { rootRef: envelope().execution.workspace.rootRef },
+        resources: {
+          cpu: envelope().execution.resources.cpu,
+          memory: envelope().execution.resources.memory,
+          timeoutMs: envelope().execution.resources.timeoutSeconds * 1_000,
+        },
+        networkPolicy: envelope().execution.networkPolicy,
+        credentialRefs: ['writing-provider-token'],
+      },
+    } satisfies RunnerDeliveryWire;
+    expect(JSON.parse(body)).toEqual(expectedWire);
     expect(body).not.toContain('runner-token-sensitive');
     expect(body).not.toContain('authorization');
     expect(body).not.toContain('request-provider-must-not-cross-wire');
@@ -201,6 +240,7 @@ describe('T22 authenticated HTTP Runner execution port', () => {
     ['birth', { ...envelope().birth, runtimeHash: SHA.result }],
     ['resultHash', 'sha256:not-a-digest'],
     ['artifacts', [{ ref: 'artifact:writing-result', hash: 'invalid' }]],
+    ['status', 'completed'],
     ['unknown', true],
   ] as const)('rejects invalid exact result field %s', async (field, value) => {
     const fetchImpl = vi.fn(async () =>

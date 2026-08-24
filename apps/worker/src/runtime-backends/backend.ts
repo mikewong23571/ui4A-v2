@@ -28,6 +28,7 @@ export interface ServerRuntimeProfile {
   workspace: { rootRef: string; retention: 'until-human-decision' };
   resources: { cpu: string; memory: string; timeoutSeconds: number };
   networkPolicy: 'restricted';
+  credentialRefs: string[];
   leaseDurationMs: number;
   heartbeatTimeoutMs: number;
 }
@@ -40,6 +41,7 @@ export interface SealedRunnerEnvelope extends RuntimeRequest {
     workspace: ServerRuntimeProfile['workspace'];
     resources: ServerRuntimeProfile['resources'];
     networkPolicy: 'restricted';
+    credentialRefs: string[];
     leaseId: string;
     issuedAt: string;
   };
@@ -251,6 +253,13 @@ function validateProfile(profile: ServerRuntimeProfile): ServerRuntimeProfile {
   }
   positiveInteger(profile.leaseDurationMs, 'runtime_profile_invalid');
   positiveInteger(profile.heartbeatTimeoutMs, 'runtime_profile_invalid');
+  if (
+    !Array.isArray(profile.credentialRefs) ||
+    profile.credentialRefs.some((ref) => typeof ref !== 'string' || ref === '') ||
+    new Set(profile.credentialRefs).size !== profile.credentialRefs.length
+  ) {
+    throw new Error('runtime_profile_invalid');
+  }
   return deepClone(profile);
 }
 
@@ -278,6 +287,7 @@ export function sealRuntimeEnvelope(input: {
       workspace: profile.workspace,
       resources: profile.resources,
       networkPolicy: profile.networkPolicy,
+      credentialRefs: profile.credentialRefs,
       leaseId,
       issuedAt,
     },

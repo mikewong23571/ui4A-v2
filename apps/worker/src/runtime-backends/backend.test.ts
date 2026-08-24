@@ -26,6 +26,7 @@ interface ServerRuntimeProfile {
   workspace: { rootRef: string; retention: 'until-human-decision' };
   resources: { cpu: string; memory: string; timeoutSeconds: number };
   networkPolicy: 'restricted';
+  credentialRefs: string[];
   leaseDurationMs: number;
   heartbeatTimeoutMs: number;
 }
@@ -38,6 +39,7 @@ interface SealedRunnerEnvelope extends RuntimeRequest {
     workspace: ServerRuntimeProfile['workspace'];
     resources: ServerRuntimeProfile['resources'];
     networkPolicy: 'restricted';
+    credentialRefs: string[];
     leaseId: string;
     issuedAt: string;
   };
@@ -158,6 +160,7 @@ const profile: ServerRuntimeProfile = {
   workspace: { rootRef: 'workspace-root:isolated', retention: 'until-human-decision' },
   resources: { cpu: '2', memory: '4Gi', timeoutSeconds: 1_800 },
   networkPolicy: 'restricted',
+  credentialRefs: ['coding-provider-token'],
   leaseDurationMs: 60_000,
   heartbeatTimeoutMs: 15_000,
 };
@@ -253,6 +256,7 @@ describe('T22 unified Runtime Backend contract', () => {
         workspace: profile.workspace,
         resources: profile.resources,
         networkPolicy: 'restricted',
+        credentialRefs: profile.credentialRefs,
         leaseId: 'lease:runtime-coding-1',
       },
     });

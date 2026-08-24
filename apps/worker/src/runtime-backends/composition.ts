@@ -88,6 +88,7 @@ function serverProfile(
       timeoutSeconds: profile.timeoutSeconds,
     },
     networkPolicy: profile.networkPolicy,
+    credentialRefs: [...profile.credentialRefs],
     leaseDurationMs: options.leaseDurationMs,
     heartbeatTimeoutMs: options.heartbeatTimeoutMs,
   };
