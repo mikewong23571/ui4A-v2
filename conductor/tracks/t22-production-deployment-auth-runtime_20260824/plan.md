@@ -106,12 +106,12 @@
 - [x] Task: Red TDD——建立 migration contract 2b73fec
 - [ ] 覆盖 empty/existing DB、rerun、concurrent run、partial failure 和 incompatible version
 - [ ] 验证 runtime role 无 DDL 权限
-- [~] Task: Green——实现 versioned migration command
+- [x] Task: Green——实现 versioned migration command ae854e9
 - [ ] 从 production request path 移出 DDL
 - [ ] 增加 migration history 与 advisory lock
 - [ ] migration failure 阻止 readiness
 - [ ] bootstrap 与 replay integrity 显式执行
-- [ ] Task: Red→Green——验证单 Web 副本命令与重放完整性
+- [~] Task: Red→Green——验证单 Web 副本命令与重放完整性
 - [ ] 覆盖同一 resource 的进程内并发、confirmation/draft decision、worker event gap 和 Pod restart
 - [ ] 保持 declaration → guard → schema、CAS、rejection audit、event order 与 replay hash
 - [ ] 明确记录多副本 Web/Session 和跨副本 database-level single atom 为 deferred
