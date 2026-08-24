@@ -1,0 +1,20 @@
+T22 Principal Critical #1 correction — Kubernetes exact authentication edge
+
+Summary:
+- Replaced UI4A and Keycloak catch-all VirtualService routes with method-aware fixed allowlists and terminal HTTP 404 default deny.
+- UI4A exposes public HTML/static assets, health/version/login/callback/logout, and only the credential-adjudicated business/Meta Golden routes from auth-surface.md.
+- Deferred dynamic routes including raw events, chat history/session, delegations APIs, presentation/sidecar, Meta sitemap and direct /api/meta aliases are not routed.
+- Keycloak exposes only the ui4a realm discovery/auth/certs/token/revoke/logout plus bounded login-actions/resources/account prefixes. Admin, master realm, metrics and health paths are explicitly denied and everything else defaults to 404.
+- RequestAuthentication retains forwardOriginalToken=true. AuthorizationPolicy does not require requestPrincipal, so browser Session cookies and verified Bearer credentials still reach application adjudication. The two internal callbacks are exact POST paths restricted to the Worker ServiceAccount and remain external 404.
+- Static Helm templates and the strict pure renderer use the same inventories; no Secret material or new values were introduced.
+
+Verification:
+- Red: scripts/t22-k8s-auth-edge-contract.test.ts failed 4/4 against both bare catch-all routes and broad notPaths policy.
+- Green focused Helm/edge: 3 files, 51 tests passed.
+- Auth regression: 14 files, 135 tests passed.
+- Strict standalone TypeScript, scoped Prettier, and git diff --check passed.
+- On k8s-cp-1 with Helm 3.16.3 and kubectl 1.31.14: mothership overlay helm lint passed; helm template produced resources; kubectl apply --dry-run=client --validate=false passed.
+
+Boundary:
+- No application routes were modified or newly authenticated.
+- No Helm upgrade/install/apply or live cluster mutation was performed; the live edge matrix remains a separate acceptance step.
