@@ -151,10 +151,10 @@
 - [x] immutable Run/birth references 与 prepare/execute/collect/verify/finalize
 - [x] heartbeat、lease、cancel、timeout、restart boundary 和 canonical result
 - [x] 拒绝 request backend/image/cwd/provider/model/env override
-- [~] Task: Green——抽离 common Runner process
-- [ ] one-shot container mode 与 trusted host daemon mode
-- [ ] 与 generic Host lifecycle 和 specialization verifier 分离
-- [ ] Secret 仅在 authorized Run 生命周期可见
+- [x] Task: Green——抽离 common Runner process dc0b40b
+- [x] one-shot container mode 与 trusted host daemon mode
+- [x] 与 generic Host lifecycle 和 specialization verifier 分离
+- [x] Secret 仅在 authorized Run 生命周期可见
 - [x] Task: Red→Green——K8s Job Backend 9f0ee11
 - [x] per-Run Job/Pod、fixed image/ServiceAccount/resources/network/workspace
 - [x] watch、heartbeat、cancel、TTL、eviction 和 duplicate callback
