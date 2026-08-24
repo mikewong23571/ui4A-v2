@@ -1,0 +1,26 @@
+Task: 运行 PostgreSQL 与 Temporal 生产拓扑探针
+
+Summary:
+- Verified transaction-scoped PostgreSQL advisory locking, idempotent migration recording, and rollback of a failed migration in an isolated database.
+- Verified configurable Temporal namespace, completed Workflow result/history persistence across a full server restart, and TypeScript SDK/server compatibility.
+- Verified the real UI4A Worker custom task queue and SIGTERM RUNNING→STOPPING→DRAINING→DRAINED→STOPPED path.
+- Selected a non-HA experimental topology: one PostgreSQL 17 instance on static local PV, separate logical databases/roles, Temporal default+visibility stores, namespace ui4a.
+
+Files:
+- scripts/t22-temporal-probe.ts
+- apps/worker/src/t22-temporal-probe-workflows.ts
+- scripts/t22-evidence-contract.test.ts
+- conductor/tracks/t22-production-deployment-auth-runtime_20260824/{topology-probe.json,topology-probe.md,index.md,plan.md}
+
+Why:
+The production deployment needs measured lock/migration/durability behavior and must not mistake a dev Temporal server or two-worker lab cluster for HA.
+
+Verification:
+- Red: focused contract failed because topology-probe.json was absent.
+- PostgreSQL: lock wait 1.772s, migration version count 1, failed version count 0, probe DB removed.
+- Temporal: namespace persisted; completed result and 10 history events survived server restart.
+- Worker: custom queue and graceful SIGTERM drain passed.
+- Green: focused Vitest 8/8, Worker TypeScript, Prettier, JSON, diff and port cleanup checks passed.
+
+Safety:
+Mattermost data was not read or modified; only an isolated probe database was created and dropped. Temporal used a temporary SQLite file and isolated ports/task queues.
