@@ -171,7 +171,7 @@
 
 ## Phase G: Docker Compose all-in-one
 
-- [ ] Task: Red TDD——编写 Compose contract tests
+- [~] Task: Red TDD——编写 Compose contract tests
 - [ ] 验证 config schema、Secrets、volumes、health、dependency 和 restart
 - [ ] 验证 image digest、idempotent restart、data retention 和 confirmed clean
 - [ ] Task: Green——实现 all-in-one stack
