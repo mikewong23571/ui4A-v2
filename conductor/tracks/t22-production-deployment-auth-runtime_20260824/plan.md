@@ -71,7 +71,7 @@
 - [ ] 从 credential 派生 actor、principal、scope 和 delegation chain
 - [ ] 移除 production 对 body/query/ordinary header identity 的信任
 - [ ] 保留显式 local-only demo adapter 并将可信身份写入 audit
-- [ ] Task: Red→Green——浏览器登录生命周期
+- [x] Task: Red→Green——浏览器登录生命周期 64d8d08
 - [ ] Authorization Code + PKCE、callback、secure session、refresh 和 logout
 - [ ] 登录前目标恢复、multi-tab、expiry 和 Keycloak outage
 - [ ] Meta 与 business scope 一致
