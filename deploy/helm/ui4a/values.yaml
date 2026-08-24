@@ -29,6 +29,8 @@ images:
   web: registry.internal.test/ui4a-web@sha256:6666666666666666666666666666666666666666666666666666666666666666
   worker: registry.internal.test/ui4a-worker@sha256:7777777777777777777777777777777777777777777777777777777777777777
   runner: registry.internal.test/ui4a-runner@sha256:8888888888888888888888888888888888888888888888888888888888888888
+  adminWorker: registry.internal.test/ui4a-admin-worker@sha256:9999999999999999999999999999999999999999999999999999999999999999
+  pkiRunner: registry.internal.test/ui4a-pki-runner@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 imagePullPolicy: IfNotPresent
 
 serviceAccounts:

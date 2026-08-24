@@ -39,6 +39,8 @@ function values(): Record<string, unknown> {
       web: `registry.internal.test/ui4a-web@${digest('6')}`,
       worker: `registry.internal.test/ui4a-worker@${digest('7')}`,
       runner: `registry.internal.test/ui4a-runner@${digest('8')}`,
+      adminWorker: `registry.internal.test/ui4a-admin-worker@${digest('9')}`,
+      pkiRunner: `registry.internal.test/ui4a-pki-runner@${digest('a')}`,
     },
     imagePullPolicy: 'IfNotPresent',
     serviceAccounts: {

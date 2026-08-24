@@ -109,6 +109,8 @@ function genericValues(): GenericHelmValues {
       web: `registry.internal.test/ui4a-web@${digest('6')}`,
       worker: `registry.internal.test/ui4a-worker@${digest('7')}`,
       runner: `registry.internal.test/ui4a-runner@${digest('8')}`,
+      adminWorker: `registry.internal.test/ui4a-admin-worker@${digest('9')}`,
+      pkiRunner: `registry.internal.test/ui4a-pki-runner@${digest('a')}`,
     },
     imagePullPolicy: 'IfNotPresent',
     serviceAccounts: {
@@ -480,6 +482,46 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
         );
       }
       expect(JSON.stringify(resources)).not.toMatch(/highAvailability["']?\s*:\s*true/i);
+    });
+
+    it('pins finite Job bootstrap images independently from rolling Runtime images', async () => {
+      const values = genericValues();
+      const { resources } = (await renderer()).renderUi4aChart(values);
+      const jobs = resources.filter(({ kind }) => kind === 'Job');
+
+      for (const job of jobs) {
+        for (const container of containers(job)) {
+          if (String(container.name).startsWith('wait-for-')) {
+            expect(container.image, `${job.metadata.name}/${String(container.name)}`).toBe(
+              values.images.adminWorker,
+            );
+          }
+          if (container.name === 'trust-init') {
+            expect(container.image, `${job.metadata.name}/trust-init`).toBe(
+              values.images.pkiRunner,
+            );
+          }
+        }
+      }
+      expect(primaryContainer(workload(resources, 'Job', 'migration')).image).toBe(
+        values.images.adminWorker,
+      );
+      expect(primaryContainer(workload(resources, 'Job', 'realm-bootstrap')).image).toBe(
+        values.images.adminWorker,
+      );
+      expect(primaryContainer(workload(resources, 'Job', 'pki-init')).image).toBe(
+        values.images.pkiRunner,
+      );
+
+      expect(primaryContainer(workload(resources, 'Deployment', 'web')).image).toBe(
+        values.images.web,
+      );
+      expect(primaryContainer(workload(resources, 'Deployment', 'worker')).image).toBe(
+        values.images.worker,
+      );
+      expect(JSON.stringify(podSpec(workload(resources, 'Deployment', 'worker')))).toContain(
+        values.images.runner,
+      );
     });
 
     it('disables Istio sidecars on exactly the six finite admin Jobs', async () => {

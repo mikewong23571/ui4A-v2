@@ -88,7 +88,7 @@ nodeSelector:
 
 {{- define "ui4a.trustInit" -}}
 - name: trust-init
-  image: {{ .Values.images.runner | quote }}
+  image: {{ .image | quote }}
   imagePullPolicy: IfNotPresent
   command: [/bin/sh, -ec]
   args:
@@ -106,14 +106,14 @@ nodeSelector:
     - { name: panel-ca, mountPath: /var/run/ui4a/panel-ca, readOnly: true }
     - { name: combined-trust, mountPath: /var/run/ui4a/trust }
   resources:
-    {{- include "ui4a.resources" . | nindent 4 }}
+    {{- include "ui4a.resources" .root | nindent 4 }}
   securityContext:
-    {{- include "ui4a.nodeContainerSecurityContext" . | nindent 4 }}
+    {{- include "ui4a.nodeContainerSecurityContext" .root | nindent 4 }}
 {{- end -}}
 
 {{- define "ui4a.waitFor" -}}
 - name: wait-for-{{ .dependency }}
-  image: {{ .root.Values.images.worker | quote }}
+  image: {{ default .root.Values.images.worker .image | quote }}
   imagePullPolicy: IfNotPresent
   command: [node, -e]
   args:

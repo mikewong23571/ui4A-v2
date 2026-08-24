@@ -203,7 +203,7 @@ spec:
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       {{- include "ui4a.hostAliases" . | nindent 6 }}
       initContainers:
-        {{- include "ui4a.trustInit" . | nindent 8 }}
+        {{- include "ui4a.trustInit" (dict "root" . "image" .Values.images.runner) | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "migration") | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "realm-bootstrap") | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal-namespace") | nindent 8 }}
@@ -261,7 +261,7 @@ spec:
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       {{- include "ui4a.hostAliases" . | nindent 6 }}
       initContainers:
-        {{- include "ui4a.trustInit" . | nindent 8 }}
+        {{- include "ui4a.trustInit" (dict "root" . "image" .Values.images.runner) | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "migration") | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "realm-bootstrap") | nindent 8 }}
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal-namespace") | nindent 8 }}

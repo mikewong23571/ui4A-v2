@@ -100,7 +100,9 @@
         "keycloak",
         "web",
         "worker",
-        "runner"
+        "runner",
+        "adminWorker",
+        "pkiRunner"
       ],
       "properties": {
         "postgres": { "$ref": "#/definitions/image" },
@@ -110,7 +112,9 @@
         "keycloak": { "$ref": "#/definitions/image" },
         "web": { "$ref": "#/definitions/image" },
         "worker": { "$ref": "#/definitions/image" },
-        "runner": { "$ref": "#/definitions/image" }
+        "runner": { "$ref": "#/definitions/image" },
+        "adminWorker": { "$ref": "#/definitions/image" },
+        "pkiRunner": { "$ref": "#/definitions/image" }
       }
     },
     "imagePullPolicy": { "const": "IfNotPresent" },

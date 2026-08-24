@@ -17,7 +17,7 @@ spec:
       automountServiceAccountToken: false
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       initContainers:
-        {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres") | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres" "image" .Values.images.adminWorker) | nindent 8 }}
       restartPolicy: Never
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
@@ -79,7 +79,7 @@ spec:
       automountServiceAccountToken: false
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       initContainers:
-        {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres-bootstrap" "apiToken" true) | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres-bootstrap" "apiToken" true "image" .Values.images.adminWorker) | nindent 8 }}
       restartPolicy: Never
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
@@ -125,7 +125,7 @@ spec:
       automountServiceAccountToken: false
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       initContainers:
-        {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal") | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal" "image" .Values.images.adminWorker) | nindent 8 }}
       restartPolicy: Never
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
@@ -169,7 +169,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: pki-init
-          image: {{ .Values.images.runner | quote }}
+          image: {{ .Values.images.pkiRunner | quote }}
           imagePullPolicy: IfNotPresent
           command: [node, dist/main.js, pki-init]
           env:
@@ -224,7 +224,7 @@ spec:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
         - name: migration
-          image: {{ .Values.images.worker | quote }}
+          image: {{ .Values.images.adminWorker | quote }}
           imagePullPolicy: IfNotPresent
           command: [node, dist/t22-migrate.js]
           env:
@@ -237,9 +237,9 @@ spec:
           securityContext:
             {{- include "ui4a.nodeContainerSecurityContext" . | nindent 12 }}
       initContainers:
-        {{- include "ui4a.trustInit" . | nindent 8 }}
-        {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres-bootstrap") | nindent 8 }}
-        {{- include "ui4a.waitFor" (dict "root" . "dependency" "pki-init") | nindent 8 }}
+        {{- include "ui4a.trustInit" (dict "root" . "image" .Values.images.pkiRunner) | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres-bootstrap" "image" .Values.images.adminWorker) | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "pki-init" "image" .Values.images.adminWorker) | nindent 8 }}
       volumes:
         {{- include "ui4a.productionVolumes" . | nindent 8 }}
         - { name: tmp, emptyDir: {} }
@@ -268,7 +268,7 @@ spec:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
         - name: realm-bootstrap
-          image: {{ .Values.images.worker | quote }}
+          image: {{ .Values.images.adminWorker | quote }}
           imagePullPolicy: IfNotPresent
           command: [node, dist/t22-keycloak-realm-bootstrap.js, --apply]
           env:
@@ -283,9 +283,9 @@ spec:
           securityContext:
             {{- include "ui4a.nodeContainerSecurityContext" . | nindent 12 }}
       initContainers:
-        {{- include "ui4a.trustInit" . | nindent 8 }}
-        {{- include "ui4a.waitFor" (dict "root" . "dependency" "keycloak") | nindent 8 }}
-        {{- include "ui4a.waitFor" (dict "root" . "dependency" "pki-init") | nindent 8 }}
+        {{- include "ui4a.trustInit" (dict "root" . "image" .Values.images.pkiRunner) | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "keycloak" "image" .Values.images.adminWorker) | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "pki-init" "image" .Values.images.adminWorker) | nindent 8 }}
       volumes:
         {{- include "ui4a.productionVolumes" . | nindent 8 }}
         - { name: tmp, emptyDir: {} }

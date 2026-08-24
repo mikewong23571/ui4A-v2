@@ -20,6 +20,8 @@ const imageKeys = [
   'web',
   'worker',
   'runner',
+  'adminWorker',
+  'pkiRunner',
 ] as const;
 const serviceAccountKeys = [
   'postgres',
@@ -674,8 +676,9 @@ function dependencyGate(
   values: Ui4aHelmValues,
   dependency: string,
   apiToken = false,
+  image = values.images.worker,
 ): UnknownRecord {
-  return container(`wait-for-${dependency}`, values.images.worker, {
+  return container(`wait-for-${dependency}`, image, {
     command: ['node', '-e', WAIT_FOR_DEPENDENCY_SCRIPT],
     env: [
       { name: 'UI4A_WAIT_FOR', value: dependency },
@@ -781,8 +784,8 @@ const TRUST_INIT_SCRIPT = [
   'mv /var/run/ui4a/trust/ca-bundle.crt.tmp /var/run/ui4a/trust/ca-bundle.crt',
 ].join('; ');
 
-function trustInit(values: Ui4aHelmValues): UnknownRecord {
-  return container('trust-init', values.images.runner, {
+function trustInit(values: Ui4aHelmValues, image = values.images.runner): UnknownRecord {
+  return container('trust-init', image, {
     command: ['/bin/sh', '-ec', TRUST_INIT_SCRIPT],
     volumeMounts: [
       { name: 'pki-data', mountPath: '/var/lib/ui4a/ca', readOnly: true },
@@ -803,8 +806,9 @@ function dependencyGates(
   values: Ui4aHelmValues,
   dependencies: readonly string[],
   apiToken = false,
+  image = values.images.worker,
 ) {
-  return dependencies.map((dependency) => dependencyGate(values, dependency, apiToken));
+  return dependencies.map((dependency) => dependencyGate(values, dependency, apiToken, image));
 }
 
 function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
@@ -1217,7 +1221,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       },
       {
         automountServiceAccountToken: false,
-        initContainers: dependencyGates(values, ['postgres']),
+        initContainers: dependencyGates(values, ['postgres'], false, values.images.adminWorker),
         volumes: [
           { name: 'bootstrap-sql', configMap: { name: 'ui4a-postgres-bootstrap' } },
           stateSecretVolume(values.secrets.existingSecretName),
@@ -1241,7 +1245,12 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       },
       {
         automountServiceAccountToken: false,
-        initContainers: dependencyGates(values, ['postgres-bootstrap'], true),
+        initContainers: dependencyGates(
+          values,
+          ['postgres-bootstrap'],
+          true,
+          values.images.adminWorker,
+        ),
         volumes: [stateSecretVolume(values.secrets.existingSecretName), dependencyApiTokenVolume()],
       },
     ),
@@ -1259,7 +1268,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       { securityContext: vendorNonRootSecurityContext(1000, 1000) },
       {
         automountServiceAccountToken: false,
-        initContainers: dependencyGates(values, ['temporal']),
+        initContainers: dependencyGates(values, ['temporal'], false, values.images.adminWorker),
       },
     ),
     job(
@@ -1267,7 +1276,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       'pki-init',
       values.serviceAccounts.admin,
       values.scheduling.nodeSelector,
-      values.images.runner,
+      values.images.pkiRunner,
       ['node', 'dist/main.js', 'pki-init'],
       {
         env: [
@@ -1300,7 +1309,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       'migration',
       values.serviceAccounts.admin,
       values.scheduling.nodeSelector,
-      values.images.worker,
+      values.images.adminWorker,
       ['node', 'dist/t22-migrate.js'],
       {
         env: productionEnvironment(),
@@ -1311,8 +1320,13 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         automountServiceAccountToken: true,
         hostAliases: externalHostAliases(values),
         initContainers: [
-          trustInit(values),
-          ...dependencyGates(values, ['postgres-bootstrap', 'pki-init']),
+          trustInit(values, values.images.pkiRunner),
+          ...dependencyGates(
+            values,
+            ['postgres-bootstrap', 'pki-init'],
+            false,
+            values.images.adminWorker,
+          ),
         ],
         volumes: [
           ...productionVolumes(values.secrets.existingSecretName),
@@ -1325,7 +1339,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       'realm-bootstrap',
       values.serviceAccounts.admin,
       values.scheduling.nodeSelector,
-      values.images.worker,
+      values.images.adminWorker,
       ['node', 'dist/t22-keycloak-realm-bootstrap.js', '--apply'],
       {
         env: productionEnvironment([
@@ -1346,7 +1360,10 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       {
         automountServiceAccountToken: true,
         hostAliases: externalHostAliases(values),
-        initContainers: [trustInit(values), ...dependencyGates(values, ['keycloak', 'pki-init'])],
+        initContainers: [
+          trustInit(values, values.images.pkiRunner),
+          ...dependencyGates(values, ['keycloak', 'pki-init'], false, values.images.adminWorker),
+        ],
         volumes: [
           ...productionVolumes(values.secrets.existingSecretName),
           { name: 'tmp', emptyDir: {} },
