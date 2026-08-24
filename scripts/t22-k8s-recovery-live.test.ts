@@ -172,6 +172,23 @@ describe('T22 live Kubernetes isolated recovery orchestration', () => {
     expect(deps.allocateIsolatedTarget).not.toHaveBeenCalled();
   });
 
+  it('binds the plan and source fingerprint to the post-quiescence observation', async () => {
+    const deps = dependencies();
+    const staleInput = input();
+    staleInput.quiescence.eventHighWaterMarks = [1, 1];
+
+    const result = await executeLiveKubernetesRecoveryDrill(deps, staleInput);
+
+    expect(result).toMatchObject({ ok: true, code: 'K8S_LIVE_RECOVERY_COMPLETED' });
+    expect(deps.createBackup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plan: expect.objectContaining({
+          quiescenceReceipt: expect.objectContaining({ eventHighWaterMark: 43 }),
+        }),
+      }),
+    );
+  });
+
   it('rejects a completed backup missing any required checksummed artifact', async () => {
     const deps = dependencies();
     vi.mocked(deps.createBackup).mockResolvedValue({

@@ -134,10 +134,6 @@ function validFingerprint(value: LiveRecoveryFingerprint): boolean {
   );
 }
 
-function sameQuiescence(expected: QuiescenceObservation, observed: QuiescenceObservation): boolean {
-  return JSON.stringify(expected) === JSON.stringify(observed);
-}
-
 function validateBackup(backup: CompletedKubernetesBackup, plan: KubernetesRecoveryPlan): void {
   const refs = Object.keys(backup.artifacts).sort();
   if (
@@ -209,7 +205,7 @@ export async function executeLiveKubernetesRecoveryDrill(
   dependencies: LiveRecoveryDependencies,
   input: KubernetesDrillInput,
 ): Promise<Record<string, unknown>> {
-  const plan = planKubernetesRecoveryDrill(input);
+  let plan = planKubernetesRecoveryDrill(input);
   const initialCurrent = await dependencies.attestCurrent();
   if (canonicalCurrent(initialCurrent) !== canonicalCurrent(input.current)) {
     fail('K8S_LIVE_CURRENT_TARGET_CHANGED');
@@ -222,7 +218,11 @@ export async function executeLiveKubernetesRecoveryDrill(
     await dependencies.quiesceCurrent(plan);
     quiesced = true;
     const observed = await dependencies.observeQuiescence();
-    if (!sameQuiescence(input.quiescence, observed)) fail('K8S_LIVE_QUIESCENCE_INVALID');
+    try {
+      plan = planKubernetesRecoveryDrill({ ...input, quiescence: observed });
+    } catch {
+      fail('K8S_LIVE_QUIESCENCE_INVALID');
+    }
     source = await dependencies.captureSourceFingerprint();
     if (
       !validFingerprint(source) ||
