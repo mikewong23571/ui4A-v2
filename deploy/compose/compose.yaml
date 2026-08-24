@@ -203,7 +203,7 @@ services:
     restart: 'no'
     user: '1000:1000'
     read_only: true
-    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
     depends_on:
       keycloak:
         condition: service_healthy
@@ -237,7 +237,7 @@ services:
     restart: 'no'
     user: '1000:1000'
     read_only: true
-    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
     depends_on:
       postgres-bootstrap:
         condition: service_completed_successfully
@@ -256,7 +256,7 @@ services:
     restart: 'no'
     user: '0:0'
     read_only: true
-    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
     environment:
       UI4A_DEPLOYMENT_PROFILE: production
       UI4A_DEPLOYMENT_SETTINGS_FILE: /run/ui4a/settings.json
@@ -277,7 +277,7 @@ services:
     restart: unless-stopped
     user: '1000:1000'
     read_only: true
-    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
     depends_on:
       pki-init:
         condition: service_completed_successfully
@@ -317,7 +317,7 @@ services:
     restart: unless-stopped
     user: '1000:1000'
     read_only: true
-    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
     depends_on:
       migration:
         condition: service_completed_successfully
@@ -359,7 +359,7 @@ services:
     restart: unless-stopped
     user: '1000:1000'
     read_only: true
-    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
     depends_on:
       pki-init:
         condition: service_completed_successfully
@@ -392,7 +392,7 @@ services:
     restart: unless-stopped
     user: '1000:1000'
     read_only: true
-    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
     depends_on:
       pki-init:
         condition: service_completed_successfully
@@ -412,7 +412,7 @@ services:
     restart: unless-stopped
     user: '1000:1000'
     read_only: true
-    tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
     depends_on:
       pki-init:
         condition: service_completed_successfully

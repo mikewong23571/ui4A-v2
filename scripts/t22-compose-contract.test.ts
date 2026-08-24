@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -702,6 +703,51 @@ describe('T22 Docker Compose all-in-one contract', () => {
         expect.arrayContaining([expect.stringMatching(/^\/tmp:/)]),
       );
     }
+  });
+
+  it('renders each writable tmpfs as one absolute daemon mount specification', async () => {
+    const expected = ['/tmp:rw,noexec,nosuid,size=64m'];
+    const runtimeServices = [
+      'migration',
+      'realm-bootstrap',
+      'pki-init',
+      'web',
+      'worker',
+      'runner',
+      'host-runner',
+      'edge',
+    ];
+    const rendered = await renderedStack();
+    for (const name of runtimeServices) {
+      expect(rendered.services[name]?.tmpfs, `renderer:${name}`).toEqual(expected);
+    }
+
+    const staticConfig = JSON.parse(
+      execFileSync(
+        'docker',
+        [
+          'compose',
+          '--project-name',
+          'ui4a',
+          '-f',
+          'deploy/compose/compose.yaml',
+          '--profile',
+          'host-runner',
+          'config',
+          '--format',
+          'json',
+        ],
+        { encoding: 'utf8' },
+      ),
+    ) as ComposeStack;
+    for (const name of runtimeServices) {
+      const tmpfs = staticConfig.services[name]?.tmpfs ?? [];
+      expect(tmpfs, `daemon:${name}`).toEqual(expected);
+      expect(tmpfs.every((mount) => mount.startsWith('/'))).toBe(true);
+    }
+    expect(staticConfig.services.postgres?.tmpfs).toEqual([
+      '/var/run/ui4a/postgres-tls:rw,noexec,nosuid,size=1m,mode=0700',
+    ]);
   });
 
   it('declares retained named volumes for data, backups, realm, CA, and Runner evidence', async () => {
