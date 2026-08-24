@@ -1,0 +1,270 @@
+import { lstatSync, readFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { isAbsolute, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+import { preflightProductionDeploymentFromEnvironment } from '../packages/shared/src/production-deployment-config';
+
+const project = 'ui4a';
+const composeFile = 'deploy/compose/compose.yaml';
+const digestImage = /^[a-zA-Z0-9][a-zA-Z0-9._/:~-]*@sha256:[0-9a-f]{64}$/;
+
+const fileEnvironmentKeys = [
+  'UI4A_DEPLOYMENT_SETTINGS_FILE',
+  'UI4A_DEPLOYMENT_SECRETS_FILE',
+  'UI4A_POSTGRES_BOOTSTRAP_PASSWORD_FILE',
+  'UI4A_MIGRATION_PASSWORD_FILE',
+  'UI4A_RUNTIME_PASSWORD_FILE',
+  'UI4A_KEYCLOAK_DATABASE_PASSWORD_FILE',
+  'UI4A_KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD_FILE',
+  'UI4A_TEMPORAL_SCHEMA_PASSWORD_FILE',
+  'UI4A_TEMPORAL_RUNTIME_PASSWORD_FILE',
+  'UI4A_POSTGRES_BACKUP_PASSWORD_FILE',
+] as const;
+
+const imageEnvironmentKeys = [
+  'UI4A_POSTGRES_IMAGE',
+  'UI4A_TEMPORAL_IMAGE',
+  'UI4A_TEMPORAL_ADMIN_TOOLS_IMAGE',
+  'UI4A_TEMPORAL_UI_IMAGE',
+  'UI4A_KEYCLOAK_IMAGE',
+  'UI4A_WEB_IMAGE',
+  'UI4A_WORKER_IMAGE',
+  'UI4A_RUNNER_IMAGE',
+  'UI4A_EDGE_IMAGE',
+] as const;
+
+type ComposeAction = 'up' | 'status' | 'down' | 'backup' | 'restore-plan' | 'clean';
+
+export interface ComposeProcessCommand {
+  executable: 'docker';
+  args: string[];
+}
+
+export interface ComposeCommandPlan {
+  action: ComposeAction;
+  preflight: boolean;
+  commands: ComposeProcessCommand[];
+  report?: Record<string, unknown>;
+}
+
+export type ComposeCommandResult =
+  { ok: true; code: string; plan?: Record<string, unknown> } | { ok: false; code: string };
+
+export interface ComposeCommandDependencies {
+  run(
+    command: ComposeProcessCommand,
+    environment: Readonly<Record<string, string | undefined>>,
+  ): Promise<{ exitCode: number }>;
+  validateCanonicalDeployment(
+    environment: Readonly<Record<string, string | undefined>>,
+    readFile: (path: string) => string,
+  ): void;
+}
+
+function fail(code: string): never {
+  throw new TypeError(code);
+}
+
+function composeCommand(...args: string[]): ComposeProcessCommand {
+  return {
+    executable: 'docker',
+    args: ['compose', '--project-name', project, '-f', composeFile, ...args],
+  };
+}
+
+export function planComposeCommand(
+  argv: readonly string[],
+  _environment: Readonly<Record<string, string | undefined>>,
+): ComposeCommandPlan {
+  const [action, ...options] = argv;
+  if (action === 'up' && options.length === 0) {
+    return {
+      action,
+      preflight: true,
+      commands: [composeCommand('run', '--rm', 'pki-init'), composeCommand('up', '-d', '--wait')],
+    };
+  }
+  if (action === 'status' && options.length === 0) {
+    return { action, preflight: false, commands: [composeCommand('ps')] };
+  }
+  if (action === 'down' && options.length === 0) {
+    return { action, preflight: false, commands: [composeCommand('down')] };
+  }
+  if (action === 'backup' && options.length === 0) {
+    return {
+      action,
+      preflight: true,
+      commands: [],
+      report: {
+        contract: 'scripts/t22-backup-contract.ts',
+        strategy: 'quiesced-pg-dump',
+        requiresVerifiedQuiescenceReceipt: true,
+        execution: 'plan-only',
+      },
+    };
+  }
+  if (action === 'restore-plan' && options.length === 0) {
+    return {
+      action,
+      preflight: true,
+      commands: [],
+      report: {
+        contract: 'scripts/t22-restore-contract.ts',
+        target: 'isolated',
+        destructive: false,
+        useCleanRestore: false,
+        execution: 'plan-only',
+      },
+    };
+  }
+  if (action === 'clean') {
+    if (options.length === 0) fail('COMPOSE_USAGE_INVALID');
+    if (
+      options.length !== 2 ||
+      options[0] !== '--confirm-destroy-volumes' ||
+      options[1] !== project
+    ) {
+      fail('COMPOSE_CLEAN_CONFIRMATION_REQUIRED');
+    }
+    return {
+      action,
+      preflight: false,
+      commands: [composeCommand('down', '--volumes')],
+    };
+  }
+  fail('COMPOSE_USAGE_INVALID');
+}
+
+function validateRegularFile(path: string): void {
+  if (!isAbsolute(path)) fail('COMPOSE_PREFLIGHT_FAILED');
+  let facts;
+  try {
+    facts = lstatSync(path);
+  } catch {
+    fail('COMPOSE_PREFLIGHT_FAILED');
+  }
+  if (!facts.isFile() || facts.isSymbolicLink() || facts.size === 0) {
+    fail('COMPOSE_PREFLIGHT_FAILED');
+  }
+}
+
+function preflight(
+  dependencies: ComposeCommandDependencies,
+  environment: Readonly<Record<string, string | undefined>>,
+): void {
+  if (
+    environment.UI4A_DEPLOYMENT_PROFILE !== 'production' ||
+    environment.UI4A_DEPLOYMENT_SETTINGS_JSON !== undefined ||
+    environment.UI4A_DEPLOYMENT_SECRETS_JSON !== undefined
+  ) {
+    fail('COMPOSE_PREFLIGHT_FAILED');
+  }
+  for (const key of fileEnvironmentKeys) {
+    const path = environment[key];
+    if (path === undefined || path === '') fail('COMPOSE_PREFLIGHT_FAILED');
+    validateRegularFile(path);
+  }
+  for (const key of imageEnvironmentKeys) {
+    const image = environment[key];
+    if (image === undefined || !digestImage.test(image)) fail('COMPOSE_PREFLIGHT_FAILED');
+  }
+  try {
+    dependencies.validateCanonicalDeployment(environment, (path) => readFileSync(path, 'utf8'));
+  } catch {
+    fail('COMPOSE_PREFLIGHT_FAILED');
+  }
+}
+
+const successCode: Record<Exclude<ComposeAction, 'backup' | 'restore-plan'>, string> = {
+  up: 'COMPOSE_UP_COMPLETED',
+  status: 'COMPOSE_STATUS_COMPLETED',
+  down: 'COMPOSE_DOWN_COMPLETED',
+  clean: 'COMPOSE_CLEAN_COMPLETED',
+};
+
+const failureCode: Record<Exclude<ComposeAction, 'backup' | 'restore-plan'>, string> = {
+  up: 'COMPOSE_UP_FAILED',
+  status: 'COMPOSE_STATUS_FAILED',
+  down: 'COMPOSE_DOWN_FAILED',
+  clean: 'COMPOSE_CLEAN_FAILED',
+};
+
+export async function executeComposeCommand(
+  dependencies: ComposeCommandDependencies,
+  argv: readonly string[],
+  environment: Readonly<Record<string, string | undefined>>,
+): Promise<ComposeCommandResult> {
+  let plan: ComposeCommandPlan;
+  try {
+    plan = planComposeCommand(argv, environment);
+    if (plan.preflight) preflight(dependencies, environment);
+  } catch (error) {
+    const code = error instanceof Error ? error.message : 'COMPOSE_COMMAND_FAILED';
+    return {
+      ok: false,
+      code: /^COMPOSE_[A-Z_]+$/.test(code) ? code : 'COMPOSE_COMMAND_FAILED',
+    };
+  }
+
+  if (plan.action === 'backup') {
+    return { ok: true, code: 'COMPOSE_BACKUP_PLAN', plan: plan.report };
+  }
+  if (plan.action === 'restore-plan') {
+    return { ok: true, code: 'COMPOSE_RESTORE_PLAN', plan: plan.report };
+  }
+
+  for (const [index, command] of plan.commands.entries()) {
+    let exitCode: number;
+    try {
+      ({ exitCode } = await dependencies.run(command, environment));
+    } catch {
+      exitCode = 1;
+    }
+    if (exitCode !== 0) {
+      if (plan.action === 'up' && index === 0) {
+        return { ok: false, code: 'COMPOSE_PKI_INIT_FAILED' };
+      }
+      return { ok: false, code: failureCode[plan.action] };
+    }
+  }
+  return { ok: true, code: successCode[plan.action] };
+}
+
+const productionDependencies: ComposeCommandDependencies = {
+  async run(command, environment) {
+    return new Promise((complete) => {
+      const child = spawn(command.executable, command.args, {
+        cwd: resolve(import.meta.dirname, '..'),
+        env: { ...process.env, ...environment },
+        shell: false,
+        stdio: 'inherit',
+      });
+      child.once('error', () => complete({ exitCode: 1 }));
+      child.once('exit', (code) => complete({ exitCode: code ?? 1 }));
+    });
+  },
+  validateCanonicalDeployment(environment, readFile) {
+    const deployment = preflightProductionDeploymentFromEnvironment(environment, readFile);
+    if (deployment?.settings.deploymentMode !== 'compose') fail('COMPOSE_PREFLIGHT_FAILED');
+  },
+};
+
+async function main(): Promise<void> {
+  const result = await executeComposeCommand(
+    productionDependencies,
+    process.argv.slice(2),
+    process.env,
+  );
+  const stream = result.ok ? process.stdout : process.stderr;
+  stream.write(`${JSON.stringify(result)}\n`);
+  if (!result.ok) process.exitCode = 1;
+}
+
+const directEntry = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : undefined;
+if (directEntry === import.meta.url) {
+  void main().catch(() => {
+    process.stderr.write(`${JSON.stringify({ ok: false, code: 'COMPOSE_COMMAND_FAILED' })}\n`);
+    process.exitCode = 1;
+  });
+}

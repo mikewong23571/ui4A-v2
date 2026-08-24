@@ -1,6 +1,8 @@
-import { mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,6 +13,7 @@ import {
 } from './t22-compose';
 
 const roots: string[] = [];
+const execFileAsync = promisify(execFile);
 const imageEnvironment = {
   UI4A_POSTGRES_IMAGE: `registry.internal/postgres@sha256:${'1'.repeat(64)}`,
   UI4A_TEMPORAL_IMAGE: `registry.internal/temporal@sha256:${'2'.repeat(64)}`,
@@ -23,8 +26,8 @@ const imageEnvironment = {
   UI4A_EDGE_IMAGE: `registry.internal/edge@sha256:${'9'.repeat(64)}`,
 };
 
-afterEach(() => {
-  roots.splice(0);
+afterEach(async () => {
+  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true })));
 });
 
 async function environment(): Promise<Record<string, string>> {
@@ -172,11 +175,7 @@ describe('T22 Compose single-command operations', () => {
     expect(backupDeps.run).not.toHaveBeenCalled();
 
     const restoreDeps = dependencies();
-    const restore = await executeComposeCommand(
-      restoreDeps,
-      ['restore-plan'],
-      await environment(),
-    );
+    const restore = await executeComposeCommand(restoreDeps, ['restore-plan'], await environment());
     expect(restore).toMatchObject({
       ok: true,
       code: 'COMPOSE_RESTORE_PLAN',
@@ -196,10 +195,7 @@ describe('T22 Compose single-command operations', () => {
       planComposeCommand(['clean', '--confirm-destroy-volumes', 'not-ui4a'], {}),
     ).toThrowError('COMPOSE_CLEAN_CONFIRMATION_REQUIRED');
 
-    const plan = planComposeCommand(
-      ['clean', '--confirm-destroy-volumes', 'ui4a'],
-      {},
-    );
+    const plan = planComposeCommand(['clean', '--confirm-destroy-volumes', 'ui4a'], {});
     expect(plan.commands).toEqual([
       {
         executable: 'docker',
@@ -224,5 +220,17 @@ describe('T22 Compose single-command operations', () => {
     });
     expect(deps.run).not.toHaveBeenCalled();
     expect(deps.validateCanonicalDeployment).not.toHaveBeenCalled();
+  });
+
+  it('emits one stable JSON error envelope from the executable tsx entry', async () => {
+    await expect(
+      execFileAsync('apps/worker/node_modules/.bin/tsx', ['scripts/t22-compose.ts', 'invalid'], {
+        cwd: process.cwd(),
+      }),
+    ).rejects.toMatchObject({
+      code: 1,
+      stdout: '',
+      stderr: '{"ok":false,"code":"COMPOSE_USAGE_INVALID"}\n',
+    });
   });
 });
