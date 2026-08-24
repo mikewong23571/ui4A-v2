@@ -7,6 +7,7 @@ const repositoryRoot = resolve(import.meta.dirname, '..');
 const statefulContractPath = 'deploy/postgres/stateful-contract.json';
 const deploymentBindingsPath = 'deploy/postgres/deployment-bindings.json';
 const backupContractPath = 'deploy/postgres/backup-contract.json';
+const roleBootstrapPath = 'deploy/postgres/bootstrap-roles.sql';
 
 interface RoleContract {
   id: string;
@@ -17,6 +18,7 @@ interface RoleContract {
   dml: boolean;
   truncate: boolean;
   replication: boolean;
+  readOnly?: boolean;
   availableToRuntime: boolean;
 }
 
@@ -52,6 +54,10 @@ interface DeploymentBindings {
   schemaVersion: 1;
   statefulContractRef: string;
   backupContractRef: string;
+  roleBootstrap: {
+    sqlRef: string;
+    secretBindings: Array<{ variable: string; secretRef: string }>;
+  };
   compose: {
     replicas: 1;
     publishedDatabasePort: false;
@@ -77,11 +83,21 @@ interface DeploymentBindings {
 
 interface BackupContract {
   schemaVersion: 1;
-  strategy: 'pg_basebackup';
+  strategy: 'quiesced-pg-dump';
   postgresMajor: 17;
   imageDigestRequired: true;
   role: 'postgres-backup';
   targetStorage: 'backup';
+  quiescence: {
+    receiptRequired: true;
+    requiredStoppedServices: ['web', 'worker', 'runner', 'keycloak', 'temporal'];
+    eventHighWaterMarkRequired: true;
+  };
+  databaseBackup: {
+    tool: 'pg_dump';
+    format: 'custom';
+    databases: ['ui4a', 'keycloak', 'temporal', 'temporal_visibility'];
+  };
   job: {
     dedicatedServiceAccount: true;
     automountServiceAccountToken: false;
@@ -104,6 +120,7 @@ interface BackupContract {
     manifestFields: string[];
   };
   restore: {
+    tool: 'pg_restore';
     isolatedTargetRequired: true;
     currentTargetForbidden: true;
     checksumVerificationRequired: true;
@@ -111,12 +128,16 @@ interface BackupContract {
   };
 }
 
-function requiredJson<T>(path: string): T {
+function requiredSource(path: string): string {
   const absolutePath = resolve(repositoryRoot, path);
   if (!existsSync(absolutePath)) {
     throw new Error(`missing planned T22 PostgreSQL artifact: ${path}`);
   }
-  return JSON.parse(readFileSync(absolutePath, 'utf8')) as T;
+  return readFileSync(absolutePath, 'utf8');
+}
+
+function requiredJson<T>(path: string): T {
+  return JSON.parse(requiredSource(path)) as T;
 }
 
 function roleById(contract: StatefulContract, id: string): RoleContract {
@@ -201,7 +222,8 @@ describe('T22 generic PostgreSQL stateful deployment contract', () => {
       ddl: false,
       dml: false,
       truncate: false,
-      replication: true,
+      replication: false,
+      readOnly: true,
       availableToRuntime: false,
     });
   });
@@ -229,6 +251,35 @@ describe('T22 generic PostgreSQL stateful deployment contract', () => {
       schemaVersion: 1,
       statefulContractRef: statefulContractPath,
       backupContractRef: backupContractPath,
+      roleBootstrap: {
+        sqlRef: roleBootstrapPath,
+        secretBindings: [
+          {
+            variable: 'ui4a_migration_password',
+            secretRef: 'settings.postgres.migrationPasswordRef',
+          },
+          {
+            variable: 'ui4a_runtime_password',
+            secretRef: 'settings.postgres.runtimePasswordRef',
+          },
+          {
+            variable: 'keycloak_runtime_password',
+            secretRef: 'settings.keycloak.databasePasswordRef',
+          },
+          {
+            variable: 'temporal_schema_password',
+            secretRef: 'deploymentSecrets.temporal-schema-password',
+          },
+          {
+            variable: 'temporal_runtime_password',
+            secretRef: 'deploymentSecrets.temporal-runtime-password',
+          },
+          {
+            variable: 'postgres_backup_password',
+            secretRef: 'deploymentSecrets.postgres-backup-password',
+          },
+        ],
+      },
       compose: {
         replicas: 1,
         publishedDatabasePort: false,
@@ -258,16 +309,63 @@ describe('T22 generic PostgreSQL stateful deployment contract', () => {
     );
   });
 
+  it('provides idempotent executable role/database bootstrap with Secret variables only', () => {
+    const sql = requiredSource(roleBootstrapPath);
+
+    expect(sql).toContain('\\set ON_ERROR_STOP on');
+    expect(sql).toContain('\\gexec');
+    for (const database of ['ui4a', 'keycloak', 'temporal', 'temporal_visibility']) {
+      expect(sql).toMatch(new RegExp(`CREATE DATABASE[^\\n]+${database}`, 'i'));
+    }
+    for (const role of [
+      'ui4a_migration',
+      'ui4a_runtime',
+      'keycloak_runtime',
+      'temporal_schema',
+      'temporal_runtime',
+      'postgres_backup',
+    ]) {
+      expect(sql).toContain(role);
+    }
+    expect(sql).toMatch(/postgres_backup[^\n]+NOREPLICATION/i);
+    expect(sql).toMatch(/GRANT SELECT ON ALL TABLES[^\n]+postgres_backup/i);
+    expect(sql).toMatch(/GRANT SELECT ON ALL SEQUENCES[^\n]+postgres_backup/i);
+    expect(sql.match(/\\connect (?:ui4a|keycloak|temporal|temporal_visibility)/g)).toHaveLength(4);
+    expect(
+      sql
+        .split('\n')
+        .filter((line) => line.includes('postgres_backup'))
+        .join('\n'),
+    ).not.toMatch(/GRANT (?:INSERT|UPDATE|DELETE|TRUNCATE)/i);
+    expect(sql).toMatch(/ALTER DEFAULT PRIVILEGES[\s\S]+ui4a_runtime/i);
+    expect(sql).toMatch(/ALTER DEFAULT PRIVILEGES[\s\S]+temporal_runtime/i);
+    expect(sql).toMatch(/GRANT CONNECT ON DATABASE ui4a TO ui4a_runtime/i);
+    expect(sql).toMatch(/GRANT CONNECT ON DATABASE keycloak TO keycloak_runtime/i);
+    expect(sql).not.toMatch(/mothership|k8s-(?:cp|w)-|10\.134\.|\/srv\/ui4a/i);
+    expect(sql).not.toMatch(/PASSWORD\s+'[^']+'/i);
+    expect(sql.match(/PASSWORD\s+:'[a-z0-9_]+'/gi)).toHaveLength(6);
+  });
+
   it('defines bounded secret-backed backup Job and disabled-by-default CronJob semantics', () => {
     const backup = requiredJson<BackupContract>(backupContractPath);
 
     expect(backup).toMatchObject({
       schemaVersion: 1,
-      strategy: 'pg_basebackup',
+      strategy: 'quiesced-pg-dump',
       postgresMajor: 17,
       imageDigestRequired: true,
       role: 'postgres-backup',
       targetStorage: 'backup',
+      quiescence: {
+        receiptRequired: true,
+        requiredStoppedServices: ['web', 'worker', 'runner', 'keycloak', 'temporal'],
+        eventHighWaterMarkRequired: true,
+      },
+      databaseBackup: {
+        tool: 'pg_dump',
+        format: 'custom',
+        databases: ['ui4a', 'keycloak', 'temporal', 'temporal_visibility'],
+      },
       job: {
         dedicatedServiceAccount: true,
         automountServiceAccountToken: false,
@@ -289,6 +387,7 @@ describe('T22 generic PostgreSQL stateful deployment contract', () => {
         checksums: 'sha256',
       },
       restore: {
+        tool: 'pg_restore',
         isolatedTargetRequired: true,
         currentTargetForbidden: true,
         checksumVerificationRequired: true,
@@ -307,6 +406,7 @@ describe('T22 generic PostgreSQL stateful deployment contract', () => {
         'postgresMajor',
         'migrationVersion',
         'bootstrapReceipt',
+        'quiescenceReceipt',
         'startedAt',
         'completedAt',
         'databases',

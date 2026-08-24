@@ -45,11 +45,15 @@ function validInput() {
         runtimePasswordRef: 'postgres-runtime-password',
         migrationUser: 'ui4a_migration',
         migrationPasswordRef: 'postgres-migration-password',
+        backupUser: 'ui4a_backup',
+        backupPasswordRef: 'postgres-backup-password',
         pool: { min: 2, max: 20, idleTimeoutMs: 30_000 },
         connectTimeoutMs: 10_000,
         tls: {
           mode: 'verify-full',
           caCertificatePath: '/run/secrets/database-ca.crt',
+          serverCertificatePath: '/run/tls/postgres/tls.crt',
+          serverPrivateKeyPath: '/run/tls/postgres/tls.key',
         },
       },
       temporal: {
@@ -84,6 +88,7 @@ function validInput() {
         host: 'auth.ui4a.mothership.internal',
         realm: 'ui4a',
         database: 'keycloak',
+        databaseUser: 'keycloak_runtime',
         databasePasswordRef: 'keycloak-database-password',
         bootstrapAdminUser: 'ui4a-bootstrap-admin',
         bootstrapAdminPasswordRef: 'keycloak-bootstrap-admin-password',
@@ -158,6 +163,7 @@ function validInput() {
     secrets: {
       'postgres-runtime-password': '__test_only_postgres_runtime__',
       'postgres-migration-password': '__test_only_postgres_migration__',
+      'postgres-backup-password': '__test_only_postgres_backup__',
       'temporal-schema-password': '__test_only_temporal_schema__',
       'temporal-runtime-password': '__test_only_temporal_runtime__',
       'temporal-visibility-schema-password': '__test_only_temporal_visibility_schema__',
@@ -280,6 +286,24 @@ describe('T22 production deployment config contract', () => {
     expect(temporal.persistence.defaultStore.database).not.toBe(
       temporal.persistence.visibilityStore.database,
     );
+  });
+
+  it('models distinct PostgreSQL runtime, migration, backup, and Keycloak database roles', () => {
+    const parsed = parseProductionDeploymentConfig(validInput());
+
+    expect(parsed.settings.postgres).toMatchObject({
+      runtimeUser: 'ui4a_runtime',
+      migrationUser: 'ui4a_migration',
+      backupUser: 'ui4a_backup',
+      backupPasswordRef: 'postgres-backup-password',
+      tls: {
+        mode: 'verify-full',
+        caCertificatePath: '/run/secrets/database-ca.crt',
+        serverCertificatePath: '/run/tls/postgres/tls.crt',
+        serverPrivateKeyPath: '/run/tls/postgres/tls.key',
+      },
+    });
+    expect(parsed.settings.keycloak.databaseUser).toBe('keycloak_runtime');
   });
 
   it.each([
@@ -527,8 +551,12 @@ describe('T22 production deployment config contract', () => {
   it.each([
     'settings.auth.oidc.audience',
     'settings.postgres.runtimePasswordRef',
+    'settings.postgres.backupPasswordRef',
+    'settings.postgres.tls.serverCertificatePath',
+    'settings.postgres.tls.serverPrivateKeyPath',
     'settings.temporal.taskQueue',
     'settings.keycloak.bootstrapAdminPasswordRef',
+    'settings.keycloak.databaseUser',
     'settings.tls.ui4aPrivateKeyPath',
     'settings.llm.model',
     'settings.runtime.defaultProfiles.authoring',

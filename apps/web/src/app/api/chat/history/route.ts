@@ -5,7 +5,7 @@ import type {
   ChatTurnStartedDetail,
 } from '../../../../chat/history';
 import { listEvents } from '../../../../db/events';
-import { getPool } from '../../../../db/pool';
+import { getDb } from '../../../../engine/service';
 
 // GET /api/chat/history?sessionId=<id> — 聊天历史投影(T9 Phase B / B3)。
 //
@@ -22,17 +22,14 @@ import { getPool } from '../../../../db/pool';
 
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
-
 export async function GET(request: Request) {
   const sessionId = new URL(request.url).searchParams.get('sessionId');
   if (sessionId === null || sessionId === '') {
     return Response.json({ error: 'sessionId 查询参数必填' }, { status: 400 });
   }
 
-  const connectionString = process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL;
   try {
-    const events = await listEvents(getPool(connectionString));
+    const events = await listEvents(getDb());
     const turnsById = new Map<string, ChatTurn>();
     for (const event of events) {
       if (event.rel !== `chat:${sessionId}`) continue;

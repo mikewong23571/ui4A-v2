@@ -71,7 +71,7 @@ import {
   type SirenEntity,
   type SuspendedConfirmation,
 } from '@ui4a/engine';
-import type { EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
+import type { DeploymentEnvironment, EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
 import type { FieldValue } from '@ui4a/shared';
 import { metaCapabilityRel, metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
 
@@ -84,6 +84,8 @@ import {
 } from '../db/events';
 import { assertApplicationBootstrapReady, prepareDatabaseForApplication } from '../db/migrations';
 import { getPool } from '../db/pool';
+import { getProductionPool } from '../db/production-pool';
+import { runWebProductionDeploymentPreflight } from '../production-deployment-preflight';
 import {
   resetRecipeCoordinatorForTests,
   scheduleRecipesForSnapshot,
@@ -206,8 +208,11 @@ export interface EngineRuntime {
 const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
 
 /** 服务层自用 db(按连接串复用 pg pool)。 */
-export function getDb(): DbExecutor {
-  return getPool(process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL);
+export function getDb(environment: DeploymentEnvironment = process.env): DbExecutor {
+  const productionConfig = runWebProductionDeploymentPreflight(environment);
+  return productionConfig === undefined
+    ? getPool(environment.DATABASE_URL ?? DEFAULT_DATABASE_URL)
+    : getProductionPool(productionConfig);
 }
 
 /** 请求参数 → 带出处的字段(出处缺省 intent;与 engine effects 的 originOf 同口径)。 */

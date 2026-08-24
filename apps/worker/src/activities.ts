@@ -20,7 +20,6 @@ import { cancellationSignal } from '@temporalio/activity';
 
 import type { DbExecutor } from '../../web/src/db/events';
 import { appendEvent } from '../../web/src/db/events';
-import { getPool } from '../../web/src/db/pool';
 import { appendAgentRunCommand, getAgentRun } from '../../web/src/db/agent-runs';
 
 import {
@@ -96,13 +95,9 @@ import type {
   AgentVerificationResult,
 } from './agents/host/contracts';
 import { runWorkerProductionDeploymentPreflight } from './production-deployment-preflight';
+import { workerDb } from './worker-db';
 
-const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
-
-/** worker 自用 db(与 web 同库;按连接串复用 web 侧 pg pool 单例管理)。 */
-export function workerDb(): DbExecutor {
-  return getPool(process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL);
-}
+export { workerDb } from './worker-db';
 
 /** activity 注册表(workflow 经 proxyActivities 按名调用)。 */
 export interface NotifyActivities {
@@ -575,7 +570,7 @@ function productionAgentActivityDeps(
       fetcher: fetch,
     }),
     fetchImpl: fetch,
-    db: workerDb(),
+    db: workerDb(process.env, config),
   };
 }
 

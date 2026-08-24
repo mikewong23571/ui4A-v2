@@ -1,5 +1,5 @@
 import { listEvents } from '../../../db/events';
-import { getPool } from '../../../db/pool';
+import { getDb } from '../../../engine/service';
 
 // GET /api/events — 事件日志只读审计端点(spec FR2 / I6):
 // - seq 升序返回原始事件(kind/reason 原样,拒绝即数据);
@@ -8,8 +8,6 @@ import { getPool } from '../../../db/pool';
 // CORS 无所谓(spec:T7 才做 timeline 渲染)。
 
 export const dynamic = 'force-dynamic';
-
-const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
 
 function parseAfterSeq(raw: string | null): number | null {
   if (raw === null) return 0;
@@ -49,9 +47,8 @@ export async function GET(request: Request) {
   }
   const principal = headerPrincipal ?? queryPrincipal;
 
-  const connectionString = process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL;
   try {
-    const rows = await listEvents(getPool(connectionString), afterSeq, {
+    const rows = await listEvents(getDb(), afterSeq, {
       ...(domain === null ? {} : { domain: domain as 'core' | 'presentation' | 'draft' }),
       ...(url.searchParams.get('rel') === null ? {} : { rel: url.searchParams.get('rel')! }),
       ...(url.searchParams.get('kind') === null ? {} : { kind: url.searchParams.get('kind')! }),

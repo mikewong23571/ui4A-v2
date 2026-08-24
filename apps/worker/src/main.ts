@@ -39,7 +39,8 @@ async function main(): Promise<void> {
           activities,
         }),
       createReadinessState: () => createWorkerReadinessState(),
-      probeDependencies: () => probeWorkerDependencies({ db: activities.workerDb() }),
+      probeDependencies: (config, environment) =>
+        probeWorkerDependencies({ db: activities.workerDb(environment, config) }),
       startHealthServer: (environment, readiness) =>
         startWorkerHealthServer(environment, readiness),
       onSignal: (signal, handler) => process.on(signal, handler),

@@ -1,5 +1,7 @@
 import { Pool } from 'pg';
 
+import { closeProductionPool } from './production-pool';
+
 // pg Pool 单例管理:按连接串复用(生产中连接串不变 → 恒为单例;
 // 测试切换 DATABASE_URL 时按 key 隔离,避免交叉污染)。
 // closeAllPools 供测试收尾关闭真实连接。
@@ -40,5 +42,5 @@ export function createMigrationPool(input: {
 export async function closeAllPools(): Promise<void> {
   const closing = [...pools.values()].map((p) => p.end());
   pools.clear();
-  await Promise.all(closing);
+  await Promise.all([...closing, closeProductionPool()]);
 }

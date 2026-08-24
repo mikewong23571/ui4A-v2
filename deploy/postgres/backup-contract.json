@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "strategy": "quiesced-pg-dump",
+  "postgresMajor": 17,
+  "imageDigestRequired": true,
+  "role": "postgres-backup",
+  "targetStorage": "backup",
+  "quiescence": {
+    "receiptRequired": true,
+    "requiredStoppedServices": ["web", "worker", "runner", "keycloak", "temporal"],
+    "eventHighWaterMarkRequired": true
+  },
+  "databaseBackup": {
+    "tool": "pg_dump",
+    "format": "custom",
+    "databases": ["ui4a", "keycloak", "temporal", "temporal_visibility"]
+  },
+  "job": {
+    "dedicatedServiceAccount": true,
+    "automountServiceAccountToken": false,
+    "restartPolicy": "Never",
+    "backoffLimit": 0,
+    "activeDeadlineSeconds": 3600,
+    "resourcesRequired": true,
+    "credentialSource": "secret-ref",
+    "caMountReadOnly": true
+  },
+  "cronJob": {
+    "concurrencyPolicy": "Forbid",
+    "suspendByDefault": true,
+    "successfulJobsHistoryLimit": 1,
+    "failedJobsHistoryLimit": 1
+  },
+  "output": {
+    "atomicCompletionMarker": true,
+    "checksums": "sha256",
+    "manifestFields": [
+      "schemaVersion",
+      "backupName",
+      "releaseVersion",
+      "gitSha",
+      "postgresMajor",
+      "migrationVersion",
+      "bootstrapReceipt",
+      "quiescenceReceipt",
+      "startedAt",
+      "completedAt",
+      "databases",
+      "files",
+      "sha256",
+      "status"
+    ]
+  },
+  "restore": {
+    "tool": "pg_restore",
+    "isolatedTargetRequired": true,
+    "currentTargetForbidden": true,
+    "checksumVerificationRequired": true,
+    "matchingPostgresMajorRequired": true
+  }
+}

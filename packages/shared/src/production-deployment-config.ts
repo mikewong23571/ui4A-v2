@@ -49,9 +49,16 @@ export interface ProductionDeploymentSettings {
     runtimePasswordRef: string;
     migrationUser: string;
     migrationPasswordRef: string;
+    backupUser: string;
+    backupPasswordRef: string;
     pool: { min: number; max: number; idleTimeoutMs: number };
     connectTimeoutMs: number;
-    tls: { mode: 'verify-full'; caCertificatePath: string };
+    tls: {
+      mode: 'verify-full';
+      caCertificatePath: string;
+      serverCertificatePath: string;
+      serverPrivateKeyPath: string;
+    };
   };
   temporal: {
     address: string;
@@ -73,6 +80,7 @@ export interface ProductionDeploymentSettings {
     host: string;
     realm: 'ui4a';
     database: string;
+    databaseUser: string;
     databasePasswordRef: string;
     bootstrapAdminUser: string;
     bootstrapAdminPasswordRef: string;
@@ -352,6 +360,8 @@ function parsePostgres(value: unknown): ProductionDeploymentSettings['postgres']
     'runtimePasswordRef',
     'migrationUser',
     'migrationPasswordRef',
+    'backupUser',
+    'backupPasswordRef',
     'pool',
     'connectTimeoutMs',
     'tls',
@@ -364,7 +374,12 @@ function parsePostgres(value: unknown): ProductionDeploymentSettings['postgres']
   const min = integer(pool.min, 'settings.postgres.pool.min', 0);
   const max = integer(pool.max, 'settings.postgres.pool.max');
   if (min > max) fail('settings.postgres.pool', 'min must not exceed max');
-  const tls = exactObject(candidate.tls, 'settings.postgres.tls', ['mode', 'caCertificatePath']);
+  const tls = exactObject(candidate.tls, 'settings.postgres.tls', [
+    'mode',
+    'caCertificatePath',
+    'serverCertificatePath',
+    'serverPrivateKeyPath',
+  ]);
   return {
     host: hostname(candidate.host, 'settings.postgres.host'),
     port: (() => {
@@ -383,6 +398,11 @@ function parsePostgres(value: unknown): ProductionDeploymentSettings['postgres']
       candidate.migrationPasswordRef,
       'settings.postgres.migrationPasswordRef',
     ),
+    backupUser: identifier(candidate.backupUser, 'settings.postgres.backupUser'),
+    backupPasswordRef: identifier(
+      candidate.backupPasswordRef,
+      'settings.postgres.backupPasswordRef',
+    ),
     pool: {
       min,
       max,
@@ -394,6 +414,14 @@ function parsePostgres(value: unknown): ProductionDeploymentSettings['postgres']
       caCertificatePath: absolutePath(
         tls.caCertificatePath,
         'settings.postgres.tls.caCertificatePath',
+      ),
+      serverCertificatePath: absolutePath(
+        tls.serverCertificatePath,
+        'settings.postgres.tls.serverCertificatePath',
+      ),
+      serverPrivateKeyPath: absolutePath(
+        tls.serverPrivateKeyPath,
+        'settings.postgres.tls.serverPrivateKeyPath',
       ),
     },
   };
@@ -546,6 +574,7 @@ function parseKeycloak(value: unknown): ProductionDeploymentSettings['keycloak']
     'host',
     'realm',
     'database',
+    'databaseUser',
     'databasePasswordRef',
     'bootstrapAdminUser',
     'bootstrapAdminPasswordRef',
@@ -559,6 +588,7 @@ function parseKeycloak(value: unknown): ProductionDeploymentSettings['keycloak']
     host: hostname(candidate.host, 'settings.keycloak.host'),
     realm,
     database: identifier(candidate.database, 'settings.keycloak.database'),
+    databaseUser: identifier(candidate.databaseUser, 'settings.keycloak.databaseUser'),
     databasePasswordRef: identifier(
       candidate.databasePasswordRef,
       'settings.keycloak.databasePasswordRef',
@@ -886,8 +916,23 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
   if (settings.postgres.runtimeUser === settings.postgres.migrationUser) {
     fail('settings.postgres.migrationUser', 'must differ from runtimeUser in production');
   }
+  if (
+    settings.postgres.backupUser === settings.postgres.runtimeUser ||
+    settings.postgres.backupUser === settings.postgres.migrationUser
+  ) {
+    fail('settings.postgres.backupUser', 'must differ from runtimeUser and migrationUser');
+  }
   if (settings.postgres.database === settings.keycloak.database) {
     fail('settings.keycloak.database', 'must be isolated from the UI4A database');
+  }
+  if (
+    [
+      settings.postgres.runtimeUser,
+      settings.postgres.migrationUser,
+      settings.postgres.backupUser,
+    ].includes(settings.keycloak.databaseUser)
+  ) {
+    fail('settings.keycloak.databaseUser', 'must be isolated from UI4A database roles');
   }
 
   const secretRefs: Array<[string, string]> = [
@@ -896,6 +941,7 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
     [settings.auth.oidc.agentClientSecretRef, 'settings.auth.oidc.agentClientSecretRef'],
     [settings.postgres.runtimePasswordRef, 'settings.postgres.runtimePasswordRef'],
     [settings.postgres.migrationPasswordRef, 'settings.postgres.migrationPasswordRef'],
+    [settings.postgres.backupPasswordRef, 'settings.postgres.backupPasswordRef'],
     [
       settings.temporal.persistence.defaultStore.schemaPasswordRef,
       'settings.temporal.persistence.defaultStore.schemaPasswordRef',

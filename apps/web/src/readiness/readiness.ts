@@ -4,7 +4,6 @@ import {
   type ReadinessResult,
 } from '@ui4a/shared';
 
-import { getPool } from '../db/pool';
 import {
   getApplicationBootstrapStatus,
   getMigrationStatus,
@@ -12,8 +11,7 @@ import {
   type MigrationStatus,
 } from '../db/migrations';
 import { runWebProductionDeploymentPreflight } from '../production-deployment-preflight';
-
-const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
+import { getDb } from '../engine/service';
 
 type RequiredDependency = 'config' | 'postgres' | 'migration' | 'bootstrap' | 'replay';
 type OptionalDependency = 'temporal' | 'keycloak' | 'llm' | 'runtime';
@@ -156,7 +154,7 @@ export async function probeWebReadiness<Db>(
 export function getWebReadinessSnapshot(): Promise<ReadinessResult> {
   return probeWebReadiness({
     preflight: () => runWebProductionDeploymentPreflight(),
-    database: () => getPool(process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL),
+    database: () => getDb(),
     postgres: async (db) => {
       const result = await db.query<{ ok: number }>('SELECT 1 AS ok');
       if (result.rows[0]?.ok !== 1) throw new Error('postgres readiness check failed');

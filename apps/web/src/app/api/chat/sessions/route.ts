@@ -4,7 +4,7 @@ import type {
   ChatTurnStartedDetail,
 } from '../../../../chat/history';
 import { listEvents } from '../../../../db/events';
-import { getPool } from '../../../../db/pool';
+import { getDb } from '../../../../engine/service';
 
 // GET /api/chat/sessions — 聊天会话清单投影(T9 补:历史会话入口)。
 //
@@ -15,12 +15,9 @@ import { getPool } from '../../../../db/pool';
 
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
-
 export async function GET() {
-  const connectionString = process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL;
   try {
-    const events = await listEvents(getPool(connectionString));
+    const events = await listEvents(getDb());
     const bySession = new Map<string, ChatSessionSummary>();
     const seenTurns = new Set<string>();
     for (const event of events) {

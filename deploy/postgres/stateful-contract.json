@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "topology": {
+    "postgresMajor": 17,
+    "instances": 1,
+    "replicas": 1,
+    "highAvailability": false,
+    "imageDigestRequired": true
+  },
+  "databases": [
+    {
+      "name": "ui4a",
+      "ownerRole": "ui4a-migration",
+      "runtimeRole": "ui4a-runtime"
+    },
+    {
+      "name": "keycloak",
+      "ownerRole": "keycloak-runtime",
+      "runtimeRole": "keycloak-runtime"
+    },
+    {
+      "name": "temporal",
+      "ownerRole": "temporal-schema",
+      "runtimeRole": "temporal-runtime"
+    },
+    {
+      "name": "temporal_visibility",
+      "ownerRole": "temporal-schema",
+      "runtimeRole": "temporal-runtime"
+    }
+  ],
+  "roles": [
+    {
+      "id": "postgres-bootstrap",
+      "purpose": "cluster-bootstrap",
+      "login": true,
+      "databaseScope": ["postgres"],
+      "ddl": true,
+      "dml": true,
+      "truncate": true,
+      "replication": false,
+      "availableToRuntime": false
+    },
+    {
+      "id": "ui4a-migration",
+      "purpose": "ui4a-schema-owner",
+      "login": true,
+      "databaseScope": ["ui4a"],
+      "ddl": true,
+      "dml": true,
+      "truncate": true,
+      "replication": false,
+      "availableToRuntime": false
+    },
+    {
+      "id": "ui4a-runtime",
+      "purpose": "ui4a-application-runtime",
+      "login": true,
+      "databaseScope": ["ui4a"],
+      "ddl": false,
+      "dml": true,
+      "truncate": false,
+      "replication": false,
+      "availableToRuntime": true
+    },
+    {
+      "id": "keycloak-runtime",
+      "purpose": "keycloak-schema-and-runtime",
+      "login": true,
+      "databaseScope": ["keycloak"],
+      "ddl": true,
+      "dml": true,
+      "truncate": false,
+      "replication": false,
+      "availableToRuntime": true
+    },
+    {
+      "id": "temporal-schema",
+      "purpose": "temporal-schema-owner",
+      "login": true,
+      "databaseScope": ["temporal", "temporal_visibility"],
+      "ddl": true,
+      "dml": true,
+      "truncate": true,
+      "replication": false,
+      "availableToRuntime": false
+    },
+    {
+      "id": "temporal-runtime",
+      "purpose": "temporal-server-runtime",
+      "login": true,
+      "databaseScope": ["temporal", "temporal_visibility"],
+      "ddl": false,
+      "dml": true,
+      "truncate": false,
+      "replication": false,
+      "availableToRuntime": true
+    },
+    {
+      "id": "postgres-backup",
+      "purpose": "quiesced-logical-backup",
+      "login": true,
+      "databaseScope": ["ui4a", "keycloak", "temporal", "temporal_visibility"],
+      "ddl": false,
+      "dml": false,
+      "truncate": false,
+      "replication": false,
+      "readOnly": true,
+      "availableToRuntime": false
+    }
+  ],
+  "tls": {
+    "required": true,
+    "clientMode": "verify-full",
+    "serverCertificateRequired": true,
+    "clientCaRequired": true
+  },
+  "storage": {
+    "data": {
+      "accessMode": "ReadWriteOnce",
+      "reclaimPolicy": "Retain"
+    },
+    "backup": {
+      "accessMode": "ReadWriteOnce",
+      "reclaimPolicy": "Retain"
+    },
+    "separateClaimsRequired": true
+  }
+}

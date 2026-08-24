@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "statefulContractRef": "deploy/postgres/stateful-contract.json",
+  "backupContractRef": "deploy/postgres/backup-contract.json",
+  "roleBootstrap": {
+    "sqlRef": "deploy/postgres/bootstrap-roles.sql",
+    "secretBindings": [
+      {
+        "variable": "ui4a_migration_password",
+        "secretRef": "settings.postgres.migrationPasswordRef"
+      },
+      {
+        "variable": "ui4a_runtime_password",
+        "secretRef": "settings.postgres.runtimePasswordRef"
+      },
+      {
+        "variable": "keycloak_runtime_password",
+        "secretRef": "settings.keycloak.databasePasswordRef"
+      },
+      {
+        "variable": "temporal_schema_password",
+        "secretRef": "deploymentSecrets.temporal-schema-password"
+      },
+      {
+        "variable": "temporal_runtime_password",
+        "secretRef": "deploymentSecrets.temporal-runtime-password"
+      },
+      {
+        "variable": "postgres_backup_password",
+        "secretRef": "deploymentSecrets.postgres-backup-password"
+      }
+    ]
+  },
+  "compose": {
+    "replicas": 1,
+    "publishedDatabasePort": false,
+    "dataVolume": {
+      "kind": "named-volume",
+      "mountPath": "/var/lib/postgresql/data"
+    },
+    "backupVolume": {
+      "kind": "named-volume",
+      "mountPath": "/backups"
+    }
+  },
+  "kubernetes": {
+    "replicas": 1,
+    "dataClaim": {
+      "kind": "PersistentVolumeClaim",
+      "accessMode": "ReadWriteOnce",
+      "storageClassSource": "deployment-values"
+    },
+    "backupClaim": {
+      "kind": "PersistentVolumeClaim",
+      "accessMode": "ReadWriteOnce",
+      "storageClassSource": "deployment-values"
+    },
+    "localPathSource": "overlay-required",
+    "nodeAffinitySource": "overlay-required"
+  }
+}
