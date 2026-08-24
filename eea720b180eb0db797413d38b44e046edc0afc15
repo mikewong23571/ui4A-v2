@@ -1,0 +1,28 @@
+Task: 记录绑定架构决定
+
+Summary:
+- Added D34 binding production identity, cross-replica atom, state topology, dual Runner, repository ownership and experimental release boundaries.
+- Updated the tech stack with pinned Phase A versions and explicit deferred dependency choices.
+- Added the implementation-oriented T22 architecture with topology, trust line, command transaction, persistence/recovery and repository split.
+
+Files:
+- DECISIONS.md
+- conductor/tech-stack.md
+- conductor/tracks/t22-production-deployment-auth-runtime_20260824/{architecture.md,index.md,plan.md}
+- scripts/t22-evidence-contract.test.ts
+
+Why:
+Production implementation changes previously demo-only decisions. Binding the observed choices before code prevents self-reported identity, process-local locking, misleading act claims or fake HA from re-entering implementation.
+
+Verification:
+- Red: architecture contract failed because architecture.md and D34 were absent.
+- Green: focused Vitest 9/9, Prettier and git diff --check passed.
+- Architecture retains shared ← engine ← agent and keeps deployment clients out of pure packages.
+
+Material decisions:
+- OIDC required in production; demo auth explicit/local only.
+- stable delegated input is verified sub + azp; may_act optional experimental evidence.
+- PostgreSQL transaction locks govern cross-replica writes.
+- one PG17 static-local-PV instance plus verified restore, explicitly non-HA.
+- apps/agent-runner supports oneshot and daemon with server-owned backend selection.
+- release target remains v0.1.0-experimental.1.
