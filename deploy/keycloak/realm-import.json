@@ -76,6 +76,17 @@
       ],
       "protocolMappers": [
         {
+          "name": "subject",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "config": {
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "lightweight.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
           "name": "ui4a-api-audience",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-audience-mapper",

@@ -360,6 +360,29 @@ function hasAccessTokenAudience(client: Record<string, unknown>, audience: strin
   });
 }
 
+function hasExactAccessTokenSubjectMapper(client: Record<string, unknown>): boolean {
+  const mappers = Array.isArray(client.protocolMappers) ? client.protocolMappers : [];
+  const subjects = mappers.filter((candidate) => {
+    const mapper = object(candidate);
+    return mapper?.name === 'subject' || mapper?.protocolMapper === 'oidc-sub-mapper';
+  });
+  if (subjects.length !== 1) return false;
+
+  const mapper = object(subjects[0]);
+  const config = object(mapper?.config);
+  return (
+    mapper?.name === 'subject' &&
+    mapper.protocol === 'openid-connect' &&
+    mapper.protocolMapper === 'oidc-sub-mapper' &&
+    config !== undefined &&
+    Object.keys(config).length === 4 &&
+    config['access.token.claim'] === 'true' &&
+    config['introspection.token.claim'] === 'true' &&
+    config['lightweight.claim'] === 'true' &&
+    config['id.token.claim'] === 'false'
+  );
+}
+
 function sameStringSet(input: unknown, expected: readonly string[]): boolean {
   return (
     Array.isArray(input) &&
@@ -411,6 +434,7 @@ function compatibleRealm(
       expectedWebAttributes['post.logout.redirect.uris'] ||
     !sameStringSet(web.defaultClientScopes, expectedClientScopeAssignments['ui4a-web'].defaults) ||
     !sameStringSet(web.optionalClientScopes, expectedClientScopeAssignments['ui4a-web'].optional) ||
+    !hasExactAccessTokenSubjectMapper(web) ||
     !hasAccessTokenAudience(web, 'ui4a-api') ||
     !hasAccessTokenAudience(web, 'ui4a-agent') ||
     !Array.isArray(web.redirectUris) ||

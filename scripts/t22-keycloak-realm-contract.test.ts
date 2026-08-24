@@ -132,6 +132,21 @@ describe('T22 experimental Keycloak realm import contract', () => {
         .map(({ config }) => config['included.client.audience'])
         .sort(),
     ).toEqual(['ui4a-agent', 'ui4a-api']);
+    expect(
+      web.protocolMappers?.filter(({ protocolMapper }) => protocolMapper === 'oidc-sub-mapper'),
+    ).toEqual([
+      {
+        name: 'subject',
+        protocol: 'openid-connect',
+        protocolMapper: 'oidc-sub-mapper',
+        config: {
+          'access.token.claim': 'true',
+          'introspection.token.claim': 'true',
+          'lightweight.claim': 'true',
+          'id.token.claim': 'false',
+        },
+      },
+    ]);
   });
 
   it('configures Agent client credentials, Standard Token Exchange, and API audience', () => {

@@ -20,7 +20,12 @@ interface RealmClientRepresentation extends Record<string, unknown> {
   id?: string;
   clientId: string;
   attributes?: Record<string, string>;
-  protocolMappers?: Array<{ config?: Record<string, string> }>;
+  protocolMappers?: Array<{
+    name?: string;
+    protocol?: string;
+    protocolMapper?: string;
+    config?: Record<string, string>;
+  }>;
   defaultClientScopes?: string[];
   optionalClientScopes?: string[];
 }
@@ -345,6 +350,39 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
         web.protocolMappers = web.protocolMappers?.filter(
           ({ config }) => config?.['included.client.audience'] !== 'ui4a-agent',
         );
+      },
+    ],
+    [
+      'Web subject mapper missing',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const web = fake.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
+        web.protocolMappers = web.protocolMappers?.filter(
+          ({ protocolMapper }) => protocolMapper !== 'oidc-sub-mapper',
+        );
+      },
+    ],
+    [
+      'Web subject mapper config drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const web = fake.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
+        const subject = web.protocolMappers?.find(
+          ({ protocolMapper }) => protocolMapper === 'oidc-sub-mapper',
+        );
+        if (subject !== undefined) {
+          subject.config = { ...subject.config, 'lightweight.claim': 'false' };
+        }
+      },
+    ],
+    [
+      'Web subject mapper duplicate',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const web = fake.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
+        const subject = web.protocolMappers?.find(
+          ({ protocolMapper }) => protocolMapper === 'oidc-sub-mapper',
+        );
+        if (subject !== undefined) {
+          web.protocolMappers = [...(web.protocolMappers ?? []), structuredClone(subject)];
+        }
       },
     ],
     [
