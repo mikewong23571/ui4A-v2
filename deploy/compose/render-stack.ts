@@ -39,6 +39,7 @@ export interface ComposeService {
   configs?: Array<{ source: string; target: string; mode: number }>;
   volumes?: string[];
   ports?: string[];
+  networks?: Record<string, { aliases?: string[] }>;
   user?: string;
   read_only?: boolean;
   tmpfs?: string[];
@@ -65,6 +66,7 @@ const canonicalRuntimeEnvironment = Object.freeze({
   UI4A_DEPLOYMENT_PROFILE: 'production',
   UI4A_DEPLOYMENT_SETTINGS_FILE: '/run/ui4a/settings.json',
   UI4A_DEPLOYMENT_SECRETS_FILE: '/run/secrets/ui4a-deployment-secrets',
+  NODE_EXTRA_CA_CERTS: '/var/lib/ui4a/ca/root-ca.crt',
 });
 const canonicalConfigMount = Object.freeze({
   source: 'ui4a-deployment-settings',
@@ -128,7 +130,12 @@ const edgeRouting = `{
 
 https://{$UI4A_HOST}:8443 {
   tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key
-  reverse_proxy web:3100
+  handle /deliver {
+    reverse_proxy runner:3102
+  }
+  handle {
+    reverse_proxy web:3100
+  }
 }
 
 https://{$KEYCLOAK_HOST}:8443 {
@@ -377,11 +384,14 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
       migration: runtimeService(images.worker, 'no', {
         depends_on: dependencies({ 'postgres-bootstrap': 'service_completed_successfully' }),
         command: ['node', 'dist/t22-migrate.js'],
+        volumes: ['experiment-ca:/var/lib/ui4a/ca:ro'],
       }),
       'pki-init': runtimeService(images.runner, 'no', {
         user: '0:0',
         environment: {
-          ...canonicalRuntimeEnvironment,
+          UI4A_DEPLOYMENT_PROFILE: 'production',
+          UI4A_DEPLOYMENT_SETTINGS_FILE: '/run/ui4a/settings.json',
+          UI4A_DEPLOYMENT_SECRETS_FILE: '/run/secrets/ui4a-deployment-secrets',
           UI4A_PKI_ROOT: '/var/lib/ui4a/ca',
           UI4A_HOST: 'ui4a.mothership.internal',
           KEYCLOAK_HOST: 'auth.ui4a.mothership.internal',
@@ -409,7 +419,13 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           migration: 'service_completed_successfully',
           'realm-bootstrap': 'service_completed_successfully',
           'temporal-namespace': 'service_completed_successfully',
+          edge: 'service_healthy',
         }),
+        environment: {
+          ...canonicalRuntimeEnvironment,
+          UI4A_RUNNER_IMAGE: images.runner,
+          UI4A_HOST_RUNNER_ORIGINS: '{"compose-runner":"https://ui4a.mothership.internal:8443"}',
+        },
         healthcheck: health([
           'CMD',
           'node',
@@ -419,6 +435,11 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         volumes: ['experiment-ca:/var/lib/ui4a/ca:ro'],
       }),
       runner: runtimeService(images.runner, 'unless-stopped', {
+        environment: {
+          ...canonicalRuntimeEnvironment,
+          UI4A_RUNNER_ID: 'compose-runner',
+          UI4A_RUNNER_IMAGE: images.runner,
+        },
         healthcheck: health([
           'CMD',
           'node',
@@ -426,7 +447,11 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           "fetch('http://127.0.0.1:3102/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]),
         command: ['node', 'dist/main.js', 'daemon'],
-        volumes: ['runner-workspaces:/workspaces', 'runner-artifacts:/artifacts'],
+        volumes: [
+          'experiment-ca:/var/lib/ui4a/ca:ro',
+          'runner-workspaces:/workspaces',
+          'runner-artifacts:/artifacts',
+        ],
       }),
       'host-runner': runtimeService(images.runner, 'unless-stopped', {
         profiles: ['host-runner'],
@@ -437,7 +462,11 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           "fetch('http://127.0.0.1:3102/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]),
         command: ['node', 'dist/main.js', 'daemon'],
-        volumes: ['runner-workspaces:/workspaces', 'runner-artifacts:/artifacts'],
+        volumes: [
+          'experiment-ca:/var/lib/ui4a/ca:ro',
+          'runner-workspaces:/workspaces',
+          'runner-artifacts:/artifacts',
+        ],
       }),
       edge: {
         image: images.edge,
@@ -450,6 +479,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           'pki-init': 'service_completed_successfully',
           web: 'service_healthy',
           keycloak: 'service_healthy',
+          runner: 'service_healthy',
         }),
         healthcheck: health([
           'CMD',
@@ -475,6 +505,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         ],
         volumes: ['experiment-ca:/var/lib/ui4a/ca:ro'],
         ports: ['127.0.0.1:8443:8443'],
+        networks: { default: { aliases: ['ui4a.mothership.internal'] } },
         command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile'],
       },
     },

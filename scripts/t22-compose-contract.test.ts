@@ -448,18 +448,25 @@ describe('T22 Docker Compose all-in-one contract', () => {
 
     expect(worker?.environment).toMatchObject({
       UI4A_RUNNER_IMAGE: renderInput().images.runner,
-      UI4A_HOST_RUNNER_ORIGINS:
-        '{"compose-runner":"https://ui4a.mothership.internal:8443"}',
+      UI4A_HOST_RUNNER_ORIGINS: '{"compose-runner":"https://ui4a.mothership.internal:8443"}',
+      NODE_EXTRA_CA_CERTS: '/var/lib/ui4a/ca/root-ca.crt',
     });
     expect(runner?.environment).toMatchObject({
       UI4A_RUNNER_ID: 'compose-runner',
       UI4A_RUNNER_IMAGE: renderInput().images.runner,
     });
+    for (const serviceName of ['worker', 'runner', 'realm-bootstrap', 'migration']) {
+      const service = stack.services[serviceName];
+      expect(service?.environment?.NODE_EXTRA_CA_CERTS, serviceName).toBe(
+        '/var/lib/ui4a/ca/root-ca.crt',
+      );
+      expect(service?.volumes, serviceName).toContain('experiment-ca:/var/lib/ui4a/ca:ro');
+    }
     expect(dependency(stack, 'worker', 'edge')).toBe('service_healthy');
     expect(dependency(stack, 'edge', 'runner')).toBe('service_healthy');
-    expect(JSON.stringify({ worker: worker?.environment, runner: runner?.environment })).not.toMatch(
-      /Bearer |runner-token|authorization/i,
-    );
+    expect(
+      JSON.stringify({ worker: worker?.environment, runner: runner?.environment }),
+    ).not.toMatch(/Bearer |runner-token|authorization/i);
   });
 
   it('routes only exact /deliver through the Runner and retains Web as the UI4A fallback', async () => {
@@ -475,9 +482,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
     expect(fallback).toBeGreaterThan(runner);
     expect(web).toBeGreaterThan(fallback);
     expect(routing).not.toContain('handle_path /deliver*');
-    expect(stack.services.edge?.networks?.default?.aliases).toContain(
-      'ui4a.mothership.internal',
-    );
+    expect(stack.services.edge?.networks?.default?.aliases).toContain('ui4a.mothership.internal');
   });
 
   it('records the Compose TLS origin that operator settings must use', () => {
@@ -492,6 +497,18 @@ describe('T22 Docker Compose all-in-one contract', () => {
       edgeNetworkAlias: 'ui4a.mothership.internal',
       requiredServicePublicOrigin: 'https://ui4a.mothership.internal:8443',
     });
+  });
+
+  it('keeps the static Compose projection equivalent for Runner delivery wiring', () => {
+    const compose = requiredSource('deploy/compose/compose.yaml');
+
+    expect(compose).toContain('UI4A_RUNNER_ID: compose-runner');
+    expect(compose).toContain('UI4A_HOST_RUNNER_ORIGINS:');
+    expect(compose).toContain('NODE_EXTRA_CA_CERTS: /var/lib/ui4a/ca/root-ca.crt');
+    expect(compose).toContain('handle /deliver {');
+    expect(compose).toContain('reverse_proxy runner:3102');
+    expect(compose).toContain('- ${UI4A_HOST:-ui4a.mothership.internal}');
+    expect(compose).not.toMatch(/Bearer |runner-token|authorization/i);
   });
 
   it('keeps PostgreSQL, Temporal gRPC, and Keycloak database ports internal', async () => {

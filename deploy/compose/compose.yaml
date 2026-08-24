@@ -190,6 +190,7 @@ services:
         UI4A_DEPLOYMENT_PROFILE: production
         UI4A_DEPLOYMENT_SETTINGS_FILE: /run/ui4a/settings.json
         UI4A_DEPLOYMENT_SECRETS_FILE: /run/secrets/ui4a-deployment-secrets
+        NODE_EXTRA_CA_CERTS: /var/lib/ui4a/ca/root-ca.crt
       UI4A_REALM_IMPORT_FILE: /opt/ui4a/realm-import.json
     configs: &ui4a-production-config
       - source: ui4a-deployment-settings
@@ -218,6 +219,8 @@ services:
     environment: *ui4a-production-environment
     configs: *ui4a-production-config
     secrets: *ui4a-production-secret
+    volumes:
+      - experiment-ca:/var/lib/ui4a/ca:ro
     command: [node, dist/t22-migrate.js]
 
   pki-init:
@@ -228,7 +231,9 @@ services:
     read_only: true
     tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
     environment:
-      <<: *ui4a-production-environment
+      UI4A_DEPLOYMENT_PROFILE: production
+      UI4A_DEPLOYMENT_SETTINGS_FILE: /run/ui4a/settings.json
+      UI4A_DEPLOYMENT_SECRETS_FILE: /run/secrets/ui4a-deployment-secrets
       UI4A_PKI_ROOT: /var/lib/ui4a/ca
       UI4A_HOST: ${UI4A_HOST:-ui4a.mothership.internal}
       KEYCLOAK_HOST: ${KEYCLOAK_HOST:-auth.ui4a.mothership.internal}
@@ -284,7 +289,12 @@ services:
         condition: service_completed_successfully
       temporal-namespace:
         condition: service_completed_successfully
-    environment: *ui4a-production-environment
+      edge:
+        condition: service_healthy
+    environment:
+      <<: *ui4a-production-environment
+      UI4A_RUNNER_IMAGE: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
+      UI4A_HOST_RUNNER_ORIGINS: '{"compose-runner":"https://${UI4A_HOST:-ui4a.mothership.internal}:8443"}'
     configs: *ui4a-production-config
     secrets: *ui4a-production-secret
     volumes:
@@ -307,10 +317,14 @@ services:
     user: '1000:1000'
     read_only: true
     tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
-    environment: *ui4a-production-environment
+    environment:
+      <<: *ui4a-production-environment
+      UI4A_RUNNER_ID: compose-runner
+      UI4A_RUNNER_IMAGE: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
     configs: *ui4a-production-config
     secrets: *ui4a-production-secret
     volumes: &runner-volumes
+      - experiment-ca:/var/lib/ui4a/ca:ro
       - runner-workspaces:/workspaces
       - runner-artifacts:/artifacts
     command: [node, dist/main.js, daemon]
@@ -354,6 +368,8 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
+      runner:
+        condition: service_healthy
     environment:
       UI4A_HOST: ${UI4A_HOST:-ui4a.mothership.internal}
       KEYCLOAK_HOST: ${KEYCLOAK_HOST:-auth.ui4a.mothership.internal}
@@ -368,6 +384,10 @@ services:
       - experiment-ca:/var/lib/ui4a/ca:ro
     ports:
       - ${UI4A_EDGE_BIND_ADDRESS:-127.0.0.1}:${UI4A_EDGE_HTTPS_PORT:-8443}:8443
+    networks:
+      default:
+        aliases:
+          - ${UI4A_HOST:-ui4a.mothership.internal}
     command: [caddy, run, --config, /etc/caddy/Caddyfile]
     healthcheck:
       test: [CMD, wget, -q, --no-check-certificate, --spider, 'https://127.0.0.1:8443/_edge_live']
@@ -387,7 +407,12 @@ configs:
 
       https://{$$UI4A_HOST}:8443 {
         tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key
-        reverse_proxy web:3100
+        handle /deliver {
+          reverse_proxy runner:3102
+        }
+        handle {
+          reverse_proxy web:3100
+        }
       }
 
       https://{$$KEYCLOAK_HOST}:8443 {

@@ -16,6 +16,13 @@
     "temporalStaticConfig": "deploy/compose/temporal-config.yaml",
     "temporalDynamicConfig": "deploy/compose/temporal-dynamicconfig.yaml"
   },
+  "runnerDelivery": {
+    "runnerId": "compose-runner",
+    "route": "/deliver",
+    "workerOrigin": "https://ui4a.mothership.internal:8443",
+    "edgeNetworkAlias": "ui4a.mothership.internal",
+    "requiredServicePublicOrigin": "https://ui4a.mothership.internal:8443"
+  },
   "references": {
     "composeFile": "deploy/compose/compose.yaml",
     "renderer": "deploy/compose/render-stack.ts",
