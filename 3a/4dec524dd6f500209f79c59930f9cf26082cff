@@ -1,0 +1,1 @@
+T22 Phase H live correction from kubelet evidence: UI4A Node containers and init gates run 1000:1000; Postgres official entrypoint receives only minimal root capabilities before dropping to uid70. 52/52 contracts plus real Helm lint/template/kubectl dry-run pass.
