@@ -155,6 +155,48 @@ function expectInvalid(candidate: unknown, issue: RegExp) {
   expect(() => parseProductionDeploymentConfig(candidate)).toThrow(issue);
 }
 
+function withTemporalProductionContract() {
+  const candidate = validInput();
+  Object.assign(candidate.settings.temporal, {
+    namespace: 'ui4a',
+    taskQueue: 'ui4a-agent-runs',
+    testTaskQueue: 'ui4a-agent-runs-test',
+    webIdentity: 'ui4a-web',
+    transport: {
+      mode: 'tls',
+      serverName: 'temporal-frontend.ui4a.svc.cluster.local',
+      caCertificatePath: '/run/tls/temporal/ca.crt',
+      clientCertificatePath: '/run/tls/temporal/client.crt',
+      clientPrivateKeyPath: '/run/tls/temporal/client.key',
+    },
+    persistence: {
+      host: 'postgres.ui4a.svc.cluster.local',
+      port: 5432,
+      defaultStore: {
+        database: 'temporal',
+        schemaUser: 'temporal_schema',
+        schemaPasswordRef: 'temporal-schema-password',
+        runtimeUser: 'temporal_runtime',
+        runtimePasswordRef: 'temporal-runtime-password',
+      },
+      visibilityStore: {
+        database: 'temporal_visibility',
+        schemaUser: 'temporal_visibility_schema',
+        schemaPasswordRef: 'temporal-visibility-schema-password',
+        runtimeUser: 'temporal_visibility_runtime',
+        runtimePasswordRef: 'temporal-visibility-runtime-password',
+      },
+    },
+  });
+  Object.assign(candidate.secrets, {
+    'temporal-schema-password': '__test_only_temporal_schema__',
+    'temporal-runtime-password': '__test_only_temporal_runtime__',
+    'temporal-visibility-schema-password': '__test_only_temporal_visibility_schema__',
+    'temporal-visibility-runtime-password': '__test_only_temporal_visibility_runtime__',
+  });
+  return candidate;
+}
+
 function deletePath(candidate: unknown, path: string) {
   const segments = path.split('.');
   const leaf = segments.pop();
@@ -166,6 +208,83 @@ function deletePath(candidate: unknown, path: string) {
 }
 
 describe('T22 production deployment config contract', () => {
+  it('models one canonical Temporal runtime and two isolated PostgreSQL stores', () => {
+    const parsed = parseProductionDeploymentConfig(withTemporalProductionContract());
+    const temporal = parsed.settings.temporal as typeof parsed.settings.temporal & {
+      testTaskQueue: string;
+      webIdentity: string;
+      persistence: {
+        defaultStore: { database: string };
+        visibilityStore: { database: string };
+      };
+    };
+
+    expect(temporal).toMatchObject({
+      address: 'temporal-frontend.ui4a.svc.cluster.local:7233',
+      namespace: 'ui4a',
+      taskQueue: 'ui4a-agent-runs',
+      testTaskQueue: 'ui4a-agent-runs-test',
+      webIdentity: 'ui4a-web',
+      workerIdentity: 'ui4a-worker',
+      connectTimeoutMs: 15_000,
+      transport: {
+        mode: 'tls',
+        serverName: 'temporal-frontend.ui4a.svc.cluster.local',
+        caCertificatePath: '/run/tls/temporal/ca.crt',
+        clientCertificatePath: '/run/tls/temporal/client.crt',
+        clientPrivateKeyPath: '/run/tls/temporal/client.key',
+      },
+      persistence: {
+        host: 'postgres.ui4a.svc.cluster.local',
+        port: 5432,
+        defaultStore: {
+          database: 'temporal',
+          schemaUser: 'temporal_schema',
+          schemaPasswordRef: 'temporal-schema-password',
+          runtimeUser: 'temporal_runtime',
+          runtimePasswordRef: 'temporal-runtime-password',
+        },
+        visibilityStore: {
+          database: 'temporal_visibility',
+          schemaUser: 'temporal_visibility_schema',
+          schemaPasswordRef: 'temporal-visibility-schema-password',
+          runtimeUser: 'temporal_visibility_runtime',
+          runtimePasswordRef: 'temporal-visibility-runtime-password',
+        },
+      },
+    });
+    expect(temporal.persistence.defaultStore.database).not.toBe(
+      temporal.persistence.visibilityStore.database,
+    );
+  });
+
+  it.each([
+    [
+      'default namespace',
+      (candidate: ReturnType<typeof withTemporalProductionContract>) => {
+        candidate.settings.temporal.namespace = 'default';
+      },
+    ],
+    [
+      'localhost address',
+      (candidate: ReturnType<typeof withTemporalProductionContract>) => {
+        candidate.settings.temporal.address = 'localhost:7233';
+      },
+    ],
+    [
+      'test queue collision',
+      (candidate: ReturnType<typeof withTemporalProductionContract>) => {
+        Object.assign(candidate.settings.temporal, {
+          testTaskQueue: candidate.settings.temporal.taskQueue,
+        });
+      },
+    ],
+  ])('rejects Temporal %s in production', (_name, mutate) => {
+    const candidate = withTemporalProductionContract();
+    mutate(candidate);
+    expectInvalid(candidate, /temporal|namespace|localhost|testTaskQueue|must differ/i);
+  });
+
   it('requires an independently referenced browser-session authentication secret', () => {
     const candidate = validInput();
     Object.assign(candidate.settings.auth.oidc, {
