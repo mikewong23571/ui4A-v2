@@ -219,6 +219,66 @@ describe('T22 production deployment config contract', () => {
     );
   });
 
+  it('shares one bounded Agent OIDC client contract across Compose and Helm', () => {
+    const canonical = validInput();
+    type AgentOidcFields = {
+      agentClientId: string;
+      agentClientSecretRef: string;
+      agentScopes: string[];
+    };
+    const oidc = canonical.settings.auth.oidc as typeof canonical.settings.auth.oidc &
+      AgentOidcFields;
+    Object.assign(oidc, {
+      audience: 'ui4a-api',
+      agentClientId: 'ui4a-agent',
+      agentClientSecretRef: 'oidc-agent-client-secret',
+      agentScopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
+    });
+    Object.assign(canonical.secrets, {
+      'oidc-agent-client-secret': '__test_only_oidc_agent_client__',
+    });
+
+    const fromEnvironment = preflightProductionDeploymentFromEnvironment({
+      UI4A_DEPLOYMENT_PROFILE: 'production',
+      UI4A_DEPLOYMENT_SETTINGS_JSON: JSON.stringify(canonical.settings),
+      UI4A_DEPLOYMENT_SECRETS_JSON: JSON.stringify(canonical.secrets),
+    });
+    const fromHelm = productionDeploymentConfigFromHelmValues({
+      ui4a: { deploymentConfig: canonical },
+    });
+
+    expect(fromEnvironment).toEqual(fromHelm);
+    expect(fromEnvironment?.settings.auth.oidc).toMatchObject({
+      agentClientId: 'ui4a-agent',
+      agentClientSecretRef: 'oidc-agent-client-secret',
+      agentScopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
+    });
+    expect(oidc.agentClientId).not.toBe(oidc.clientId);
+    expect(oidc.agentClientId).not.toBe(oidc.audience);
+    expect(oidc.agentClientSecretRef).not.toBe(oidc.clientSecretRef);
+    expect(oidc.agentClientSecretRef).not.toBe(oidc.sessionSecretRef);
+    expect(canonical.secrets['oidc-agent-client-secret']).not.toBe(
+      canonical.secrets['oidc-client-secret'],
+    );
+    expect(canonical.secrets['oidc-agent-client-secret']).not.toBe(
+      canonical.secrets['oidc-session-secret'],
+    );
+
+    for (const invalidScopes of [
+      [],
+      ['ui4a:read', 'ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
+      ['ui4a:read', 'ui4a:write', 'openid', 'ui4a:policy:development'],
+      ['ui4a:read', 'ui4a:write', 'ui4a:approve', 'ui4a:policy:development'],
+      ['ui4a:read', 'ui4a:write'],
+      ['ui4a:read', 'ui4a:policy:development'],
+      ['ui4a:write', 'ui4a:policy:development'],
+    ]) {
+      const invalid = structuredClone(canonical);
+      Object.assign(invalid.settings.auth.oidc, { agentScopes: invalidScopes });
+      expectInvalid(invalid, /agentScopes|scope|duplicate|approve|openid|policy/i);
+    }
+  });
+
   it('keeps Secret material structurally separate from ordinary settings', () => {
     const parsed = parseProductionDeploymentConfig(validInput());
     const serializedSettings = JSON.stringify(parsed.settings);

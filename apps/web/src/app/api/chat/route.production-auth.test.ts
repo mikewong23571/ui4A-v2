@@ -1,0 +1,409 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { BROWSER_SESSION_COOKIE_NAME } from '../../../auth/browser-session';
+
+const HUMAN_ACCESS_TOKEN = 'human-access-token-fixture';
+const EXCHANGED_ACCESS_TOKEN = 'turn-exchanged-token-fixture';
+const AGENT_CLIENT_SECRET = 'agent-client-secret-fixture';
+const APP_ORIGIN = 'https://ui4a.internal';
+
+const mocks = vi.hoisted(() => ({
+  appendEvent: vi.fn(),
+  browserSession: vi.fn(),
+  dispatchDelegation: vi.fn(),
+  exchangeDelegatedCredential: vi.fn(),
+  fetcher: vi.fn(),
+  readLog: vi.fn(),
+  resolveIdentity: vi.fn(),
+  runAgent: vi.fn(),
+}));
+
+vi.mock('../../../db/events', () => ({
+  appendEvent: mocks.appendEvent,
+  readLog: mocks.readLog,
+}));
+
+vi.mock('../../../engine/service', () => ({
+  getDb: () => ({ kind: 'test-db' }),
+}));
+
+vi.mock('../../../engine/presentation/runtime', () => ({
+  getPresentationBroker: () => ({ present: vi.fn() }),
+  getPresentationCapabilities: () => ({ markdownWord: false }),
+}));
+
+vi.mock('../../../temporal/delegation', () => ({
+  dispatchDelegation: mocks.dispatchDelegation,
+}));
+
+vi.mock('../../../auth/production-browser-authentication', () => ({
+  getProductionBrowserAuthentication: () => ({ resolveSession: mocks.browserSession }),
+}));
+
+vi.mock('../../../auth/production-agent-token-provider', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../auth/production-agent-token-provider')>();
+  return {
+    ...actual,
+    getProductionAgentTokenProvider: () => ({
+      exchangeDelegatedCredential: mocks.exchangeDelegatedCredential,
+    }),
+  };
+});
+
+vi.mock('../../../auth/request-identity', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../auth/request-identity')>();
+  return {
+    ...actual,
+    resolveTrustedRequestIdentity: mocks.resolveIdentity,
+    authenticationErrorResponse: (error: unknown) => {
+      const code =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? String((error as { code: unknown }).code)
+          : 'credential_malformed';
+      return Response.json({ error: { code } }, { status: 401 });
+    },
+  };
+});
+
+vi.mock('@ui4a/agent', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@ui4a/agent')>();
+  return {
+    ...actual,
+    createDriver: vi.fn(() => ({ kind: 'test-driver' })),
+    resolveLlmConfig: vi.fn(() => ({ kind: 'test-config' })),
+    runAgent: mocks.runAgent,
+  };
+});
+
+import { POST } from './route';
+
+interface AgentRunContext {
+  baseUrl: string;
+  actor: string;
+  principal: string;
+  channel: string;
+  fetchImpl: (url: string, init?: RequestInit) => Promise<Response>;
+}
+
+function browserError(code: 'session_not_found' | 'session_cookie_invalid' | 'session_expired') {
+  return Object.assign(new Error(code), { name: 'BrowserAuthenticationError', code });
+}
+
+function request(
+  body: Record<string, unknown>,
+  options: { url?: string; host?: string; cookie?: string } = {},
+): Request {
+  return new Request(options.url ?? `${APP_ORIGIN}/api/chat`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      ...(options.host === undefined ? {} : { host: options.host }),
+      ...(options.cookie === undefined
+        ? {}
+        : { cookie: `${BROWSER_SESSION_COOKIE_NAME}=${options.cookie}` }),
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+async function frames(response: Response): Promise<Array<Record<string, unknown>>> {
+  const raw = await response.text();
+  return raw
+    .split('\n\n')
+    .map((chunk) => chunk.split('\n').find((line) => line.startsWith('data: ')))
+    .filter((line): line is string => line !== undefined)
+    .map((line) => JSON.parse(line.slice('data: '.length)) as Record<string, unknown>);
+}
+
+function successfulFetch(input: string | URL | Request): Response {
+  const url = new URL(input instanceof Request ? input.url : String(input));
+  if (url.pathname.endsWith('/.well-known/ui4a.json')) {
+    return Response.json({ surfaces: [{ rel: 'articles', title: 'articles' }] });
+  }
+  return Response.json({ class: ['entity'], properties: { rel: 'articles' } });
+}
+
+function secretsIn(value: unknown): string {
+  return JSON.stringify(value, (_key, item: unknown) => {
+    if (item instanceof Headers) return Object.fromEntries(item);
+    if (item instanceof URLSearchParams) return item.toString();
+    return item;
+  });
+}
+
+beforeEach(() => {
+  process.env.UI4A_DEPLOYMENT_PROFILE = 'production';
+  process.env.APP_ORIGIN = APP_ORIGIN;
+  process.env.LLM_API_KEY = 'test-llm-key';
+  process.env.LLM_BASE_URL = 'https://llm.ui4a.internal/v1';
+  process.env.LLM_MODEL = 'test-model';
+
+  mocks.appendEvent.mockReset();
+  mocks.appendEvent.mockImplementation(async () => ({ seq: 1 }));
+  mocks.browserSession.mockReset();
+  mocks.browserSession.mockResolvedValue({
+    authorizationHeader: `Bearer ${HUMAN_ACCESS_TOKEN}`,
+    expiresAtMs: Date.now() + 60_000,
+  });
+  mocks.dispatchDelegation.mockReset();
+  mocks.dispatchDelegation.mockResolvedValue({ delegationId: 'delegation-production-fixture' });
+  mocks.exchangeDelegatedCredential.mockReset();
+  mocks.exchangeDelegatedCredential.mockResolvedValue({
+    authorizationHeader: `Bearer ${EXCHANGED_ACCESS_TOKEN}`,
+    expiresAtMs: Date.now() + 30_000,
+  });
+  mocks.fetcher.mockReset();
+  mocks.fetcher.mockImplementation(async (input: string | URL | Request) => successfulFetch(input));
+  vi.stubGlobal('fetch', mocks.fetcher);
+  mocks.readLog.mockReset();
+  mocks.readLog.mockResolvedValue([]);
+  mocks.resolveIdentity.mockReset();
+  mocks.resolveIdentity.mockResolvedValue({
+    authorizationMode: 'credential',
+    actor: 'human',
+    principal: 'human-alice',
+    scopes: ['ui4a:read', 'ui4a:write', 'development'],
+    policyScope: 'development',
+    channel: 'oidc',
+    humanApprovalEligible: true,
+  });
+  mocks.runAgent.mockReset();
+  mocks.runAgent.mockImplementation(
+    async (_driver: unknown, _goal: unknown, context: AgentRunContext) => {
+      await context.fetchImpl(`${context.baseUrl}/api/entity?rel=articles`, {
+        headers: { authorization: 'Bearer attacker-controlled-header' },
+      });
+      await context.fetchImpl(`${context.baseUrl}/api/exec`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ rel: 'article:first', action: 'archive' }),
+      });
+      await context.fetchImpl(`${context.baseUrl}/api/exec-plan`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ steps: [] }),
+      });
+      return { outcome: 'done', summary: 'done', steps: [], successes: [] };
+    },
+  );
+});
+
+afterEach(() => {
+  delete process.env.UI4A_DEPLOYMENT_PROFILE;
+  delete process.env.APP_ORIGIN;
+  delete process.env.LLM_API_KEY;
+  delete process.env.LLM_BASE_URL;
+  delete process.env.LLM_MODEL;
+  vi.unstubAllGlobals();
+});
+
+describe('production chat turn credential boundary', () => {
+  it.each([
+    ['missing', 'session_not_found'],
+    ['invalid', 'session_cookie_invalid'],
+    ['expired', 'session_expired'],
+  ] as const)(
+    'rejects a %s browser session before events, LLM, dispatch, exchange, or fetch',
+    async (_name, code) => {
+      mocks.browserSession.mockRejectedValueOnce(browserError(code));
+
+      const response = await POST(
+        request(
+          { goal: { verb: 'browse articles' }, sessionId: 'attacker-session', turnId: 'turn-1' },
+          { cookie: code === 'session_not_found' ? undefined : 'bad-session' },
+        ),
+      );
+
+      expect(response.status).toBe(401);
+      await expect(response.json()).resolves.toEqual({ error: { code } });
+      expect(mocks.appendEvent).not.toHaveBeenCalled();
+      expect(mocks.runAgent).not.toHaveBeenCalled();
+      expect(mocks.dispatchDelegation).not.toHaveBeenCalled();
+      expect(mocks.exchangeDelegatedCredential).not.toHaveBeenCalled();
+      expect(mocks.fetcher).not.toHaveBeenCalled();
+    },
+  );
+
+  it('exchanges once and binds the narrowed credential to same-origin contract fetches for this turn', async () => {
+    const response = await POST(
+      request(
+        { goal: { verb: 'browse articles' }, sessionId: 'display-only', turnId: 'turn-2' },
+        { cookie: 'valid-session' },
+      ),
+    );
+    expect(response.status).toBe(200);
+    expect((await frames(response)).some((frame) => frame.type === 'final')).toBe(true);
+
+    expect(mocks.browserSession).toHaveBeenCalledTimes(1);
+    expect(mocks.resolveIdentity).toHaveBeenCalledTimes(1);
+    expect(mocks.exchangeDelegatedCredential).toHaveBeenCalledTimes(1);
+    expect(mocks.exchangeDelegatedCredential).toHaveBeenCalledWith({
+      subjectToken: HUMAN_ACCESS_TOKEN,
+      requestedScopes: ['ui4a:read', 'ui4a:write', 'development'],
+    });
+    expect(
+      (mocks.exchangeDelegatedCredential.mock.calls[0]![0] as { requestedScopes: string[] })
+        .requestedScopes,
+    ).not.toContain('ui4a:approve');
+
+    const requestedPaths = mocks.fetcher.mock.calls.map(([input, init]) => {
+      const url = new URL(input instanceof Request ? input.url : String(input));
+      const requestHeaders = input instanceof Request ? input.headers : new Headers(init?.headers);
+      return { pathname: url.pathname, authorization: requestHeaders.get('authorization') };
+    });
+    expect(requestedPaths.map(({ pathname }) => pathname)).toEqual(
+      expect.arrayContaining([
+        '/.well-known/ui4a.json',
+        '/api/entity',
+        '/api/exec',
+        '/api/exec-plan',
+      ]),
+    );
+    expect(
+      requestedPaths.every(
+        ({ authorization }) => authorization === `Bearer ${EXCHANGED_ACCESS_TOKEN}`,
+      ),
+    ).toBe(true);
+
+    expect(mocks.runAgent).toHaveBeenCalledTimes(1);
+    expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).principal).toBe('human-alice');
+    expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).channel).toBe('chat');
+  });
+
+  it('rejects a spoofed Host before token exchange or network access', async () => {
+    const spoofed = await POST(
+      request(
+        { goal: { verb: 'browse articles' }, sessionId: 'spoof', turnId: 'turn-3' },
+        { cookie: 'valid-session', host: 'evil.internal' },
+      ),
+    );
+    expect(spoofed.status).toBe(400);
+    expect(mocks.fetcher).not.toHaveBeenCalled();
+    expect(mocks.exchangeDelegatedCredential).not.toHaveBeenCalled();
+  });
+
+  it('rejects cross-origin and non-contract Agent fetches before either reaches the network', async () => {
+    mocks.runAgent.mockImplementationOnce(
+      async (_driver: unknown, _goal: unknown, context: AgentRunContext) => {
+        await expect(
+          context.fetchImpl('https://evil.internal/api/entity?rel=secrets'),
+        ).rejects.toThrow(/origin|allowlist|forbidden/i);
+        await expect(context.fetchImpl(`${APP_ORIGIN}/admin`)).rejects.toThrow(
+          /path|allowlist|forbidden/i,
+        );
+        return { outcome: 'done', summary: 'bounded', steps: [], successes: [] };
+      },
+    );
+    const bounded = await POST(
+      request(
+        { goal: { verb: 'browse articles' }, sessionId: 'display-only', turnId: 'turn-4' },
+        { cookie: 'valid-session' },
+      ),
+    );
+    expect(bounded.status).toBe(200);
+    await bounded.text();
+    expect(
+      mocks.fetcher.mock.calls.some(([input]) =>
+        String(input instanceof Request ? input.url : input).startsWith('https://evil.internal'),
+      ),
+    ).toBe(false);
+    expect(
+      mocks.fetcher.mock.calls.some(([input]) =>
+        String(input instanceof Request ? input.url : input).endsWith('/admin'),
+      ),
+    ).toBe(false);
+  });
+
+  it('does not echo credentials when token exchange fails', async () => {
+    mocks.exchangeDelegatedCredential.mockRejectedValueOnce(
+      Object.assign(
+        new Error(`exchange failed for Bearer ${HUMAN_ACCESS_TOKEN} via ${AGENT_CLIENT_SECRET}`),
+        { code: 'agent_token_endpoint_unavailable' },
+      ),
+    );
+
+    const response = await POST(
+      request(
+        { goal: { verb: 'browse articles' }, sessionId: 'display-only', turnId: 'turn-error' },
+        { cookie: 'valid-session' },
+      ),
+    );
+    expect(response.status).toBe(503);
+    const payload = await response.text();
+    expect(payload).toContain('agent_token_endpoint_unavailable');
+    expect(payload).not.toContain(HUMAN_ACCESS_TOKEN);
+    expect(payload).not.toContain(EXCHANGED_ACCESS_TOKEN);
+    expect(payload).not.toContain(AGENT_CLIENT_SECRET);
+    expect(mocks.appendEvent).not.toHaveBeenCalled();
+    expect(mocks.runAgent).not.toHaveBeenCalled();
+    expect(mocks.fetcher).not.toHaveBeenCalled();
+  });
+
+  it('uses the trusted principal and never serializes human token, exchanged token, or client secret', async () => {
+    const response = await POST(
+      request(
+        { goal: { verb: 'browse articles' }, sessionId: 'forged-root', turnId: 'turn-5' },
+        { cookie: 'valid-session' },
+      ),
+    );
+    const sse = await response.text();
+    const eventInputs = mocks.appendEvent.mock.calls.map((call) => call[1]);
+    expect(eventInputs.length).toBeGreaterThan(0);
+    expect(eventInputs.every((event) => event.principal === 'human-alice')).toBe(true);
+
+    const observable = secretsIn({
+      sse,
+      events: eventInputs,
+      network: mocks.fetcher.mock.calls.map(([input, init]) => ({
+        url: input instanceof Request ? input.url : String(input),
+        body: init?.body,
+      })),
+      dispatch: mocks.dispatchDelegation.mock.calls,
+    });
+    expect(observable).not.toContain(HUMAN_ACCESS_TOKEN);
+    expect(observable).not.toContain(EXCHANGED_ACCESS_TOKEN);
+    expect(observable).not.toContain(AGENT_CLIENT_SECRET);
+    expect(observable).not.toContain('forged-root');
+  });
+
+  it('keeps durable delegation token-free and leaves credential acquisition to the Worker Activity', async () => {
+    const response = await POST(
+      request(
+        {
+          goal: { verb: 'browse articles' },
+          mode: 'delegated',
+          sessionId: 'forged-root',
+          turnId: 'turn-6',
+        },
+        { cookie: 'valid-session' },
+      ),
+    );
+    expect(response.status).toBe(200);
+    await response.text();
+    expect(mocks.exchangeDelegatedCredential).not.toHaveBeenCalled();
+    expect(mocks.dispatchDelegation).toHaveBeenCalledTimes(1);
+    const dispatch = mocks.dispatchDelegation.mock.calls[0]![0] as Record<string, unknown>;
+    expect(dispatch.principal).toBe('human-alice');
+    expect(secretsIn(dispatch)).not.toContain(HUMAN_ACCESS_TOKEN);
+    expect(secretsIn(dispatch)).not.toContain(EXCHANGED_ACCESS_TOKEN);
+    expect(secretsIn(dispatch)).not.toContain(AGENT_CLIENT_SECRET);
+  });
+});
+
+describe('local demo compatibility', () => {
+  it('retains the session-derived local principal and does not invoke production auth', async () => {
+    delete process.env.UI4A_DEPLOYMENT_PROFILE;
+    delete process.env.APP_ORIGIN;
+
+    const response = await POST(
+      request({ goal: { verb: 'browse articles' }, sessionId: 'local-demo', turnId: 'turn-local' }),
+    );
+    expect(response.status).toBe(200);
+    await response.text();
+    expect(mocks.browserSession).not.toHaveBeenCalled();
+    expect(mocks.resolveIdentity).not.toHaveBeenCalled();
+    expect(mocks.exchangeDelegatedCredential).not.toHaveBeenCalled();
+    expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).principal).toBe('user:local-demo');
+  });
+});
