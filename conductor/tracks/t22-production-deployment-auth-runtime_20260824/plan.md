@@ -49,7 +49,7 @@
 - [ ] 验证正式 Worker 入口、non-root、health command 和 writable paths
 - [ ] 验证 images 不含 local env、test reports、dev DB 或个人 Codex 配置
 - [ ] 验证 Web/Worker/Runner version 与 Git SHA 一致
-- [ ] Task: Green——实现 production images
+- [x] Task: Green——实现 production images 988a18c
 - [ ] 增加 Web 多阶段 Dockerfile
 - [ ] 增加 Worker build/start 产物与多阶段 Dockerfile
 - [ ] 根据 Phase A 决定增加 Agent Runner image
