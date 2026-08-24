@@ -1,0 +1,1 @@
+T22 Phase H live correction: Keycloak first boot build exceeded immediate liveness window. A bounded 5s/60-failure startup probe now gates liveness/readiness. 54/54 contracts, strict TS and real render dry-run pass.
