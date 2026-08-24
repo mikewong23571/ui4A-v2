@@ -1,0 +1,7 @@
+Task: Phase E Red TDD - stateful deployment and restore fixtures
+
+Summary: Added PostgreSQL/stateful, Temporal persistence/runtime, named backup, isolated restore and recovery fingerprint contracts.
+
+Red evidence: combined 7 files/86 tests => 33 expected failures and 53 passes. Failures are planned artifacts/modules/config fields and four legacy Temporal clients; no DB, filesystem mutation, network, container or K8s.
+
+Coverage: PG17 four DBs/roles/TLS/storage; Temporal external PG/namespace/shared adapter; complete backup inventory; non-destructive restore safety; authoritative hashes and measured RPO/RTO.
