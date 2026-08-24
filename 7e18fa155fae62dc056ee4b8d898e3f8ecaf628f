@@ -1,0 +1,5 @@
+D35 canonical delegation simplification.
+
+Removed act and may_act parsing, depth policy, and extension error codes. Production request identity now derives only from verified issuer audience signature expiry scope sub and azp. Raw signed act or may_act claims are ignored and cannot change human or agent identity, scopes, approval eligibility, or audit.
+
+Main-agent verification: all seven apps/web auth files passed 74 of 74; Web typecheck and scoped Prettier passed; delegated verification also covered scoped ESLint and no legacy depth symbols remain.
