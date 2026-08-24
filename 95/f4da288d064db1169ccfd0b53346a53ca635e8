@@ -1,0 +1,3 @@
+T22 Phase J production runbook
+
+Added the 19-section FR14 step-by-step deployment and operations runbook, its machine-readable 19-chapter/21-command inventory, and a contract test. Every command records expected output, failure criterion, and recovery action. The runbook covers Compose, mothership Kubernetes, Host Runner, DNS/CA, authentication, Golden Story/replay, isolated recovery, upgrade/rollback/roll-forward, diagnostics, and retained uninstall. It explicitly prohibits prune, force upgrade, online realm reconciliation, and unverified HA claims. Verification: focused 6/6, strict TypeScript, Prettier, JSON parsing, diff check, and credential/private-key pattern scan.
