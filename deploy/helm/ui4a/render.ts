@@ -483,9 +483,10 @@ function podTemplate(
   nodeSelector: Record<string, string>,
   containers: UnknownRecord[],
   options: UnknownRecord = {},
+  annotations?: Record<string, string>,
 ): UnknownRecord {
   return {
-    metadata: { labels: selector(name) },
+    metadata: { labels: selector(name), ...(annotations ? { annotations } : {}) },
     spec: {
       serviceAccountName,
       automountServiceAccountToken: false,
@@ -505,6 +506,7 @@ function deployment(
   image: string,
   containerOptions: UnknownRecord,
   podOptions: UnknownRecord = {},
+  podAnnotations?: Record<string, string>,
 ): KubernetesObject {
   return {
     apiVersion: 'apps/v1',
@@ -520,6 +522,7 @@ function deployment(
         nodeSelector,
         [container(name, image, containerOptions)],
         podOptions,
+        podAnnotations,
       ),
     },
   };
@@ -990,6 +993,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
           dependencyApiTokenVolume(),
         ],
       },
+      { 'proxy.istio.io/config': '{"holdApplicationUntilProxyStarts":true}' },
     ),
     deployment(
       namespace,

@@ -14,6 +14,8 @@ spec:
   template:
     metadata:
       labels: { app.kubernetes.io/name: temporal, app.kubernetes.io/instance: ui4a }
+      annotations:
+        proxy.istio.io/config: '{"holdApplicationUntilProxyStarts":true}'
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.temporal | quote }}
       automountServiceAccountToken: false

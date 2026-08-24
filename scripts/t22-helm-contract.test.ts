@@ -897,6 +897,9 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
           initialDelaySeconds: 20,
           periodSeconds: 10,
         });
+        expect(temporal.spec.template.metadata.annotations).toEqual({
+          'proxy.istio.io/config': '{"holdApplicationUntilProxyStarts":true}',
+        });
         expect(environment(primaryContainer(temporalUi))).toMatchObject({
           TEMPORAL_ADDRESS: 'temporal:7233',
         });
