@@ -8,6 +8,8 @@ import type { AgentDefinitionRef, JsonValue } from '@ui4a/shared';
 import {
   getActiveAgentDefinition,
   getAgentDefinitionVersion,
+  getSystemSeedAgentDefinitionVersion,
+  listSystemSeedAgentDefinitions,
   prepareAgentDefinitionActivation,
   readAgentDefinitionRegistry,
   type ConnectableDb,
@@ -166,24 +168,36 @@ export async function getAgentDefinitionCatalog(
   principal: string,
   policyScope: string,
 ): Promise<AgentDefinitionCatalogEntry[]> {
-  const registry = await readAgentDefinitionRegistry(db, principal, policyScope);
-  const entries: AgentDefinitionCatalogEntry[] = [];
+  const [registry, systemSeeds] = await Promise.all([
+    readAgentDefinitionRegistry(db, principal, policyScope),
+    listSystemSeedAgentDefinitions(db, policyScope),
+  ]);
+  const entries = new Map<string, AgentDefinitionCatalogEntry>();
+  for (const view of systemSeeds) {
+    entries.set(view.version.name, catalogEntry(view));
+  }
   for (const [name, ref] of registry.activeByName) {
     const view = await getAgentDefinitionVersion(db, ref, principal, policyScope);
     if (view === undefined) throw new Error(`active Agent Definition ${ref} is missing`);
-    entries.push({
-      name,
-      ref,
-      intent: view.flattened.definition.intent,
-      runtimeClass: view.flattened.definition.runtimeRequirements.class,
-      requiredFeatures: [...view.flattened.definition.runtimeRequirements.features],
-      inputSchema: view.flattened.definition.contracts.inputSchema,
-      outputSchema: view.flattened.definition.contracts.outputSchema,
-      flattenedHash: view.version.flattenedHash,
-      promptHash: view.version.content.template,
-    });
+    entries.set(name, catalogEntry(view));
   }
-  return entries.sort((left, right) => left.name.localeCompare(right.name));
+  return [...entries.values()].sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function catalogEntry(
+  view: NonNullable<Awaited<ReturnType<typeof getAgentDefinitionVersion>>>,
+): AgentDefinitionCatalogEntry {
+  return {
+    name: view.version.name,
+    ref: view.version.ref,
+    intent: view.flattened.definition.intent,
+    runtimeClass: view.flattened.definition.runtimeRequirements.class,
+    requiredFeatures: [...view.flattened.definition.runtimeRequirements.features],
+    inputSchema: view.flattened.definition.contracts.inputSchema,
+    outputSchema: view.flattened.definition.contracts.outputSchema,
+    flattenedHash: view.version.flattenedHash,
+    promptHash: view.version.content.template,
+  };
 }
 
 function definitionEntity(
@@ -260,9 +274,18 @@ export async function getAgentDefinitionMetaEntity(
   }
   if (!rel.startsWith(AGENT_DEFINITION_PREFIX)) return undefined;
   const value = rel.slice(AGENT_DEFINITION_PREFIX.length);
-  const view = value.includes('@')
+  const personal = value.includes('@')
     ? await getAgentDefinitionVersion(db, value as AgentDefinitionRef, principal, policyScope)
     : await getActiveAgentDefinition(db, value, principal, policyScope);
+  const systemSeed =
+    personal !== undefined
+      ? undefined
+      : value.includes('@')
+        ? await getSystemSeedAgentDefinitionVersion(db, value as AgentDefinitionRef, policyScope)
+        : (await listSystemSeedAgentDefinitions(db, policyScope)).find(
+            ({ version }) => version.name === value,
+          );
+  const view = personal ?? systemSeed;
   return view === undefined ? undefined : definitionEntity(view);
 }
 

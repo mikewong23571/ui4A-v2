@@ -1033,6 +1033,96 @@ export async function getAgentDefinitionVersion(
   return version === undefined ? undefined : hydrateVersion(db, version);
 }
 
+function systemSeedIdentity(version: AgentDefinitionVersionRecord): string {
+  return JSON.stringify({
+    ref: version.ref,
+    name: version.name,
+    version: version.version,
+    policyScope: version.policyScope,
+    content: version.content,
+    flattenedHash: version.flattenedHash,
+    parentRef: version.parentRef ?? null,
+  });
+}
+
+function oneSystemSeed(
+  rows: readonly AgentDefinitionVersionRecord[],
+  where: string,
+): AgentDefinitionVersionRecord | undefined {
+  const first = rows[0];
+  if (first === undefined) return undefined;
+  const expected = systemSeedIdentity(first);
+  if (
+    rows.some(
+      (version) =>
+        version.status !== 'active' ||
+        version.registeredActor !== 'system:bootstrap' ||
+        systemSeedIdentity(version) !== expected,
+    )
+  ) {
+    throw new Error(`system seed Agent Definition conflict for ${where}`);
+  }
+  return first;
+}
+
+async function activeSystemSeedRows(
+  db: DbExecutor,
+  policyScope: string,
+  ref?: AgentDefinitionRef,
+): Promise<AgentDefinitionVersionRecord[]> {
+  const parsed = ref === undefined ? undefined : parseAgentDefinitionRef(ref);
+  const result = await db.query<VersionRow>(
+    `SELECT v.* FROM agent_definition_active a
+       JOIN agent_definition_versions v
+         ON v.principal=a.principal AND v.policy_scope=a.policy_scope
+        AND v.definition_name=a.definition_name AND v.definition_version=a.active_version
+     WHERE v.policy_scope=$1 AND v.status='active'
+       AND v.registered_actor='system:bootstrap'
+       ${
+         parsed === undefined
+           ? ''
+           : 'AND v.definition_name=$2 AND v.definition_version=$3 AND v.definition_ref=$4'
+       }
+     ORDER BY v.definition_name,v.definition_version,v.principal`,
+    parsed === undefined ? [policyScope] : [policyScope, parsed.name, parsed.version, ref],
+  );
+  return result.rows.map(recordFromRow);
+}
+
+/** Resolve one repository-owned active seed by exact ref/scope, independent of request owner. */
+export async function getSystemSeedAgentDefinitionVersion(
+  db: DbExecutor,
+  ref: AgentDefinitionRef,
+  policyScope: string,
+): Promise<AgentDefinitionVersionView | undefined> {
+  const version = oneSystemSeed(
+    await activeSystemSeedRows(db, policyScope, ref),
+    `${policyScope}/${ref}`,
+  );
+  return version === undefined ? undefined : hydrateVersion(db, version);
+}
+
+/** List repository-owned active seeds for one scope, rejecting duplicate-name content drift. */
+export async function listSystemSeedAgentDefinitions(
+  db: DbExecutor,
+  policyScope: string,
+): Promise<AgentDefinitionVersionView[]> {
+  const grouped = new Map<string, AgentDefinitionVersionRecord[]>();
+  for (const version of await activeSystemSeedRows(db, policyScope)) {
+    const versions = grouped.get(version.name) ?? [];
+    versions.push(version);
+    grouped.set(version.name, versions);
+  }
+  const views: AgentDefinitionVersionView[] = [];
+  for (const [name, versions] of [...grouped].sort(([left], [right]) =>
+    left.localeCompare(right),
+  )) {
+    const version = oneSystemSeed(versions, `${policyScope}/${name}`)!;
+    views.push(await hydrateVersion(db, version));
+  }
+  return views;
+}
+
 export async function getActiveAgentDefinition(
   db: DbExecutor,
   name: string,

@@ -22,7 +22,11 @@ import {
   type ProductionDeploymentConfig,
 } from '@ui4a/shared';
 
-import { getAgentDefinitionVersion, readAgentDefinitionRegistry } from '../db/agent-definitions';
+import {
+  getAgentDefinitionVersion,
+  getSystemSeedAgentDefinitionVersion,
+  readAgentDefinitionRegistry,
+} from '../db/agent-definitions';
 import { appendAgentRunCommand, type ConnectableDb } from '../db/agent-runs';
 import { dispatchAgentRun } from '../temporal/agent-run';
 import {
@@ -224,13 +228,19 @@ export async function prepareNativeAgentDispatch(
   if (executor?.agentDefinition === undefined) {
     throw new Error(`capability ${input.capability.name} has no Agent Definition`);
   }
-  const view = await getAgentDefinitionVersion(
+  const personal = await getAgentDefinitionVersion(
     db,
     executor.agentDefinition,
     input.principal,
     input.policyScope,
   );
-  if (view === undefined || view.version.status !== 'active') {
+  if (personal !== undefined && personal.version.status !== 'active') {
+    throw new Error(`Agent Definition ${executor.agentDefinition} is not active in this scope`);
+  }
+  const view =
+    personal ??
+    (await getSystemSeedAgentDefinitionVersion(db, executor.agentDefinition, input.policyScope));
+  if (view === undefined) {
     throw new Error(`Agent Definition ${executor.agentDefinition} is not active in this scope`);
   }
   const runtimeClass = view.flattened.definition.runtimeRequirements.class;

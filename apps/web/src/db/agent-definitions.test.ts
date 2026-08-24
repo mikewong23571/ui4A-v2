@@ -9,6 +9,7 @@ import {
   ensureAgentDefinitionTables,
   getActiveAgentDefinition,
   getAgentDefinitionVersion,
+  getSystemSeedAgentDefinitionVersion,
   installSeedAgentDefinition,
   listAgentDefinitionVersions,
   prepareAgentDefinitionActivation,
@@ -22,13 +23,16 @@ import { getPool } from './pool';
 
 const pool = getPool(process.env.DATABASE_URL!);
 
-function definition(version: number): AgentDefinition {
+function definition(
+  version: number,
+  intent = 'Write grounded documents from an approved brief.',
+): AgentDefinition {
   return {
     schemaVersion: 1,
     ref: `writing-agent@${version}`,
     name: 'writing-agent',
     version,
-    intent: 'Write grounded documents from an approved brief.',
+    intent,
     prompt: {
       schemaVersion: 1,
       blocks: [
@@ -131,6 +135,51 @@ describe('Agent Definition persistence', () => {
       actor: 'system:bootstrap',
       provenance: { kind: 'system-seed' },
     });
+  });
+
+  it('resolves one active system seed by exact ref/scope for any authenticated principal', async () => {
+    const source = definition(1);
+    await installSeedAgentDefinition(pool, {
+      principal: 'local-user',
+      policyScope: 'development',
+      source,
+      artifact: resolveAgentDefinition(source, new Map()),
+      evalEvidence: { passed: true, score: 1 } as JsonValue,
+    });
+
+    await expect(
+      getSystemSeedAgentDefinitionVersion(pool, 'writing-agent@1', 'development'),
+    ).resolves.toMatchObject({
+      version: {
+        ref: 'writing-agent@1',
+        status: 'active',
+        registeredActor: 'system:bootstrap',
+        policyScope: 'development',
+      },
+    });
+    await expect(
+      getSystemSeedAgentDefinitionVersion(pool, 'writing-agent@1', 'publishing'),
+    ).resolves.toBeUndefined();
+  });
+
+  it('fails closed when multiple active system seeds for one ref/scope disagree on content', async () => {
+    for (const [principal, intent] of [
+      ['seed-owner-a', 'Repository seed A'],
+      ['seed-owner-b', 'Conflicting repository seed B'],
+    ] as const) {
+      const source = definition(1, intent);
+      await installSeedAgentDefinition(pool, {
+        principal,
+        policyScope: 'development',
+        source,
+        artifact: resolveAgentDefinition(source, new Map()),
+        evalEvidence: { passed: true, score: 1 } as JsonValue,
+      });
+    }
+
+    await expect(
+      getSystemSeedAgentDefinitionVersion(pool, 'writing-agent@1', 'development'),
+    ).rejects.toThrow(/system seed.*conflict/i);
   });
 
   it('stores source, flattened, Prompt, and Eval content by hash and isolates exact versions', async () => {

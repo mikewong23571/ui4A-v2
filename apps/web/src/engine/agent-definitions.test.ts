@@ -6,6 +6,7 @@ import type { AgentDefinition } from '@ui4a/shared';
 import {
   activateAgentDefinitionVersion,
   ensureAgentDefinitionTables,
+  installSeedAgentDefinition,
   registerAgentDefinitionVersion,
 } from '../db/agent-definitions';
 import { ensureDraftTables } from '../db/drafts';
@@ -155,6 +156,60 @@ describe('Agent Definition registry adapter and Siren', () => {
         'publishing',
       ),
     ).toBeUndefined();
+  });
+
+  it('merges system seeds for any principal, keeps scope isolation, and lets personal active win', async () => {
+    const systemSource = definition(1, 'Repository-owned writing seed.');
+    await installSeedAgentDefinition(pool, {
+      principal: 'local-user',
+      policyScope: 'editorial',
+      source: systemSource,
+      artifact: resolveAgentDefinition(systemSource, new Map()),
+      evalEvidence: { passed: true, score: 1 },
+    });
+
+    await expect(getAgentDefinitionCatalog(pool, 'oidc-human', 'editorial')).resolves.toEqual([
+      expect.objectContaining({ ref: 'writing-agent@1', intent: 'Repository-owned writing seed.' }),
+    ]);
+    await expect(getAgentDefinitionCatalog(pool, 'oidc-human', 'development')).resolves.toEqual([]);
+    await expect(
+      getAgentDefinitionMetaEntity(
+        pool,
+        'meta/agent-definition:writing-agent@1',
+        'oidc-human',
+        'editorial',
+      ),
+    ).resolves.toMatchObject({ properties: { ref: 'writing-agent@1', status: 'active' } });
+
+    const personalSource = definition(1, 'Personal writing definition wins.');
+    const personalArtifact = resolveAgentDefinition(personalSource, new Map());
+    await registerAgentDefinitionVersion(pool, {
+      eventId: 'event:register-personal-writing',
+      commandId: 'register-personal-writing',
+      actor: 'agent',
+      principal: 'oidc-human',
+      policyScope: 'editorial',
+      expectedLatestVersion: 0,
+      source: personalSource,
+      artifact: personalArtifact,
+      evalEvidence: { refs: ['eval:writing-v1'] },
+    });
+    await activateAgentDefinitionVersion(pool, {
+      eventId: 'event:activate-personal-writing',
+      commandId: 'activate-personal-writing',
+      actor: 'human',
+      principal: 'oidc-human',
+      policyScope: 'editorial',
+      ref: 'writing-agent@1',
+      expectedActiveVersion: null,
+    });
+
+    await expect(getAgentDefinitionCatalog(pool, 'oidc-human', 'editorial')).resolves.toEqual([
+      expect.objectContaining({
+        ref: 'writing-agent@1',
+        intent: 'Personal writing definition wins.',
+      }),
+    ]);
   });
 
   it('provides Draft validation registries and eval payloads from deployment config', async () => {

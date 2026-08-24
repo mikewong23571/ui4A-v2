@@ -24,7 +24,7 @@ import { getPool } from '../db/pool';
 import { dispatchAgentRun } from '../temporal/agent-run';
 import { enrichEntityWithAgentRuns } from './agent-runs';
 import { finalizeAgentRunSource } from './agent-run-source-callback';
-import { prepareNativeAgentDispatch } from './native-agent-dispatch';
+import { createAndDispatchAgentRun, prepareNativeAgentDispatch } from './native-agent-dispatch';
 import { getEngine, resetEngineForTests } from './service';
 import applicationBundle from '../applications/ui4a-walkthrough.bundle.json';
 
@@ -168,6 +168,57 @@ describe('native Agent dispatch from an Application capability', () => {
     expect(
       await listCapabilityRuns(pool, { principal: 'local-user', policyScope: 'development' }),
     ).toEqual([]);
+    expect(dispatchAgentRun).toHaveBeenCalledOnce();
+  });
+
+  it('resolves the repository system seed for an authenticated OIDC principal before mutation', async () => {
+    await getEngine(pool);
+    const capability = parseApplicationBundle(applicationBundle).capabilities.find(
+      ({ name }) => name === 'coding.execute',
+    )!;
+    const before = await readLog(pool);
+
+    const prepared = await prepareNativeAgentDispatch(pool, {
+      principal: 'oidc-human',
+      policyScope: 'development',
+      params: request().params,
+      capability,
+    });
+
+    expect(prepared.definitionRef).toBe('coding-agent@1');
+    expect(prepared.birth.definition).toMatchObject({ ref: 'coding-agent', version: 1 });
+    expect(await readLog(pool)).toEqual(before);
+    expect(dispatchAgentRun).not.toHaveBeenCalled();
+  });
+
+  it('keeps native Run ownership on the requesting principal when using a system seed', async () => {
+    await getEngine(pool);
+    const capability = parseApplicationBundle(applicationBundle).capabilities.find(
+      ({ name }) => name === 'coding.execute',
+    )!;
+    const prepared = await prepareNativeAgentDispatch(pool, {
+      principal: 'oidc-human',
+      policyScope: 'development',
+      params: request().params,
+      capability,
+    });
+
+    const run = await createAndDispatchAgentRun(pool, {
+      prepared,
+      sourceSeq: 9001,
+      sourceRel: 'software-change:oidc-fixture',
+      sourceAction: 'start-implementation',
+      principal: 'oidc-human',
+      policyScope: 'development',
+    });
+
+    expect(run.principal).toBe('oidc-human');
+    await expect(
+      listAgentRuns(pool, { principal: 'oidc-human', policyScope: 'development' }),
+    ).resolves.toHaveLength(1);
+    await expect(
+      listAgentRuns(pool, { principal: 'local-user', policyScope: 'development' }),
+    ).resolves.toEqual([]);
     expect(dispatchAgentRun).toHaveBeenCalledOnce();
   });
 
