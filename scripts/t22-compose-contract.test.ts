@@ -22,6 +22,8 @@ const coreServices = [
   'worker',
   'runner',
   'host-runner',
+  'pki-init',
+  'edge',
 ] as const;
 
 const longRunningServices = [
@@ -33,6 +35,7 @@ const longRunningServices = [
   'worker',
   'runner',
   'host-runner',
+  'edge',
 ] as const;
 
 const initServices = [
@@ -41,6 +44,7 @@ const initServices = [
   'temporal-namespace',
   'realm-bootstrap',
   'migration',
+  'pki-init',
 ] as const;
 
 const volumeNames = [
@@ -135,7 +139,8 @@ interface ComposeRenderInput {
     | 'keycloak'
     | 'web'
     | 'worker'
-    | 'runner',
+    | 'runner'
+    | 'edge',
     string
   >;
 }
@@ -181,6 +186,7 @@ function renderInput(): ComposeRenderInput {
       web: `nexus.internal/ui4a/web@${digest('6')}`,
       worker: `nexus.internal/ui4a/worker@${digest('7')}`,
       runner: `nexus.internal/ui4a/runner@${digest('8')}`,
+      edge: `nexus.internal/ui4a/edge@${digest('9')}`,
     },
   };
 }
@@ -377,6 +383,56 @@ describe('T22 Docker Compose all-in-one contract', () => {
     expect(realmCommand).not.toMatch(/reconcile|drift|repair/i);
     expect(migrationCommand).toMatch(/t22-migrate/);
     expect(stack.services['host-runner']?.image).toBe(stack.services.runner?.image);
+  });
+
+  it('initializes persisted PKI before exposing the rootless local HTTPS edge', async () => {
+    const stack = await renderedStack();
+    const pki = stack.services['pki-init'];
+    const edge = stack.services.edge;
+
+    expect(pki).toMatchObject({
+      image: renderInput().images.runner,
+      restart: 'no',
+      user: '0:0',
+      read_only: true,
+      command: ['node', 'dist/main.js', 'pki-init'],
+    });
+    expect(pki?.volumes).toContain('experiment-ca:/var/lib/ui4a/ca');
+
+    expect(edge).toMatchObject({
+      image: renderInput().images.edge,
+      restart: 'unless-stopped',
+      user: '1000:1000',
+      read_only: true,
+      ports: ['127.0.0.1:8443:8443'],
+    });
+    expect(edge?.volumes).toContain('experiment-ca:/var/lib/ui4a/ca:ro');
+    expect(dependency(stack, 'edge', 'pki-init')).toBe('service_completed_successfully');
+    expect(dependency(stack, 'edge', 'web')).toBe('service_healthy');
+    expect(dependency(stack, 'edge', 'keycloak')).toBe('service_healthy');
+    expect(dependency(stack, 'web', 'pki-init')).toBe('service_completed_successfully');
+    expect(dependency(stack, 'keycloak', 'pki-init')).toBe('service_completed_successfully');
+    expect(stack.services.web?.ports ?? []).toEqual([]);
+  });
+
+  it('routes both canonical internal hosts over persisted leaf certificates', async () => {
+    const stack = await renderedStack();
+    const edgeConfig = stack.configs['ui4a-edge-routing'] as
+      { file?: string; content?: string } | undefined;
+    const routing = edgeConfig?.content ?? '';
+
+    expect(routing).toContain('https://{$UI4A_HOST}:8443');
+    expect(routing).toContain('tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key');
+    expect(routing).toContain('reverse_proxy web:3100');
+    expect(routing).toContain('https://{$KEYCLOAK_HOST}:8443');
+    expect(routing).toContain(
+      'tls /var/lib/ui4a/ca/keycloak/tls.crt /var/lib/ui4a/ca/keycloak/tls.key',
+    );
+    expect(routing).toContain('reverse_proxy keycloak:8080');
+    expect(stack.services.edge?.environment).toMatchObject({
+      UI4A_HOST: 'ui4a.mothership.internal',
+      KEYCLOAK_HOST: 'auth.ui4a.mothership.internal',
+    });
   });
 
   it('keeps PostgreSQL, Temporal gRPC, and Keycloak database ports internal', async () => {
