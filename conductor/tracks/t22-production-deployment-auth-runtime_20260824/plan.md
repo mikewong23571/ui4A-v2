@@ -237,9 +237,9 @@
 
 ## Phase J: Runbook、升级回滚与试验性发布
 
-- [ ] Task: 编写完整 step-by-step runbook
-- [ ] 每步包含 command、expected output、failure criterion 和 recovery action
-- [ ] 覆盖 Compose、mothership K8s、Host Runner、DNS/CA、auth 和 troubleshooting
+- [x] Task: 编写完整 step-by-step runbook 95f4da2
+- [x] 每步包含 command、expected output、failure criterion 和 recovery action
+- [x] 覆盖 Compose、mothership K8s、Host Runner、DNS/CA、auth 和 troubleshooting
 - [ ] Task: 验证 upgrade 与 rollback
 - [ ] pre-upgrade backup、compatible migration、rollout 和 smoke
 - [ ] rollback images/data 并验证 event log 未截断或重写
