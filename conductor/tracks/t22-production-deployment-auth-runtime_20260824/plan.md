@@ -101,7 +101,7 @@
 - [x] 仅要求 Golden Story、CLI/Agent 合同主路径与负向身份 corpus 通过
 - [x] 列出未纳入的 route/callback；不以“全面 route auth 已完成”作为 v0.1 gate
 
-## Phase D: 显式迁移、单副本重放和健康语义
+## Phase D: 显式迁移、单副本重放和健康语义 [checkpoint: 4fb024b]
 
 - [x] Task: Red TDD——建立 migration contract 2b73fec
 - [x] 覆盖 empty/existing DB、rerun、concurrent run、partial failure 和 incompatible version
@@ -120,7 +120,7 @@
 - [x] `/ready` 检查 DB、migration 和 required config
 - [x] 独立报告 Temporal、Keycloak、LLM 和 Runtime dependencies
 - [x] degraded 不进入 Ready；Worker 暴露 readiness/drain
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 4fb024b
 
 ## Phase E: PostgreSQL、Temporal、持久化与灾备合同
 
