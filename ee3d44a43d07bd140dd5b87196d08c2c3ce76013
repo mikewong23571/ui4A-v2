@@ -1,0 +1,17 @@
+Task: Red TDD — authentication negative corpus
+
+Summary:
+- Added 25 deterministic production identity negative cases with a fixed RSA key, public JWK, and injected clock.
+- Covers missing/malformed/expired/not-active tokens, issuer/audience/signature/kid errors, unavailable/stale JWKS, insufficient scope, and Istio marker non-authority.
+- Covers forged actor/principal/scope/delegation fields, malformed/deep/unknown/over-scoped delegation, agent/service approval denial, and canonical verified sub plus azp provenance without assuming stable act.
+- Includes executable Red evidence that current parseExecBody accepts body identity and current meta context accepts ordinary header/query identity.
+
+Files:
+- apps/web/src/auth/authentication-negative.test.ts
+
+Red verification:
+- Focused Vitest: 1 failed file, 25 failed tests as expected.
+- 23 cases failed only because production-request-identity does not yet exist.
+- 2 cases failed because current request parsers still trust self-reported identity.
+- No network, real Keycloak, random clock, or database dependency.
+- Focused ESLint had no errors.
