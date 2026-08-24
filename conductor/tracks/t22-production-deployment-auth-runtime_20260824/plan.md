@@ -10,7 +10,7 @@
 - [x] 编写 technical stories 与初始红线验收 corpus
 - [x] 固定 Compose/K8s 共用结果断言，不固定 Helm 输出或模型措辞
 - [x] 记录身份、事件、Workflow、Agent Run、备份和恢复前后 hash
-- [ ] Task: 对 mothership 集群执行只读生产前探测
+- [~] Task: 对 mothership 集群执行只读生产前探测
 - [ ] 记录节点、污点、资源、Istio Gateway、NodePort、DNS、证书和 namespace
 - [ ] 确认无 StorageClass，盘点 static/local PV 或 provisioner 方案
 - [ ] 探测 Nexus 中 Node、PostgreSQL、Temporal、Keycloak 和 Runtime images

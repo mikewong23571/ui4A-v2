@@ -128,4 +128,68 @@ describe('T22 executable acceptance contract', () => {
     );
     expect(schemaText).not.toMatch(/LLM_API_KEY|tls\.key|ca\.key/);
   });
+
+  it('records the live mothership platform without claiming unavailable infrastructure', () => {
+    const probeJsonPath = trackFile('platform-probe.json');
+    const probeMarkdownPath = trackFile('platform-probe.md');
+    expect(existsSync(probeJsonPath), 'platform-probe.json must exist').toBe(true);
+    expect(existsSync(probeMarkdownPath), 'platform-probe.md must exist').toBe(true);
+    if (!existsSync(probeJsonPath) || !existsSync(probeMarkdownPath)) return;
+
+    const probe = JSON.parse(readFileSync(probeJsonPath, 'utf8')) as {
+      schemaVersion: number;
+      mode: string;
+      proxyEnvironment: string;
+      cluster: {
+        kubernetesVersion: string;
+        istioVersion: string;
+        containerdVersion: string;
+        nodes: Array<{ name: string; ready: boolean; role: string }>;
+        storageClasses: string[];
+        gateways: string[];
+        ingressNodePorts: number[];
+      };
+      imageSources: Array<{ component: string; status: string; source: string }>;
+      storageCandidates: string[];
+      constraints: string[];
+    };
+
+    expect(probe.schemaVersion).toBe(1);
+    expect(probe.mode).toBe('read-only');
+    expect(probe.proxyEnvironment).toBe('unset');
+    expect(probe.cluster.kubernetesVersion).toBe('v1.31.14');
+    expect(probe.cluster.istioVersion).toBe('1.24.2');
+    expect(probe.cluster.containerdVersion).toBe('2.2.1');
+    expect(probe.cluster.nodes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'k8s-cp-1', ready: true, role: 'control-plane' }),
+        expect.objectContaining({ name: 'k8s-w-1', ready: true, role: 'worker' }),
+        expect.objectContaining({ name: 'k8s-w-2', ready: true, role: 'worker' }),
+      ]),
+    );
+    expect(probe.cluster.storageClasses).toEqual([]);
+    expect(probe.cluster.gateways).toEqual(
+      expect.arrayContaining(['gateway-demo/demo-gateway', 'mattermost/mattermost-gateway']),
+    );
+    expect(probe.cluster.ingressNodePorts).toEqual(expect.arrayContaining([31534, 32067]));
+    expect(probe.imageSources.map(({ component }) => component)).toEqual(
+      expect.arrayContaining(['node', 'postgresql', 'temporal', 'keycloak', 'agent-runtime']),
+    );
+    for (const image of probe.imageSources) {
+      expect(['available', 'blocked', 'build-required']).toContain(image.status);
+      expect(image.source.length, image.component).toBeGreaterThan(0);
+    }
+    expect(probe.storageCandidates).toEqual(
+      expect.arrayContaining(['static-local-pv', 'local-path-provisioner']),
+    );
+    expect(probe.constraints).toEqual(
+      expect.arrayContaining([
+        'no-storage-class',
+        'cri-does-not-use-certs.d',
+        'multi-arch-pulls-require-all-platforms',
+        'istio-images-require-if-not-present',
+        'mothership-setup-worktree-is-dirty',
+      ]),
+    );
+  });
 });

@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "trackId": "t22-production-deployment-auth-runtime_20260824",
+  "observedAt": "2026-08-24T02:42:33Z",
+  "mode": "read-only",
+  "proxyEnvironment": "unset",
+  "cluster": {
+    "kubernetesVersion": "v1.31.14",
+    "istioVersion": "1.24.2",
+    "containerdVersion": "2.2.1",
+    "helmVersion": "v3.16.3",
+    "nodes": [
+      {
+        "name": "k8s-cp-1",
+        "ready": true,
+        "role": "control-plane",
+        "cpu": "4",
+        "memory": "8029388Ki",
+        "dataDisk": "vdb:100GiB:unformatted"
+      },
+      {
+        "name": "k8s-w-1",
+        "ready": true,
+        "role": "worker",
+        "cpu": "4",
+        "memory": "8029388Ki",
+        "dataDisk": "vdb:100GiB:unformatted"
+      },
+      {
+        "name": "k8s-w-2",
+        "ready": true,
+        "role": "worker",
+        "cpu": "4",
+        "memory": "8029396Ki",
+        "dataDisk": "vdb:100GiB:unformatted"
+      }
+    ],
+    "storageClasses": [],
+    "persistentVolumes": [],
+    "persistentVolumeClaims": [],
+    "gateways": ["gateway-demo/demo-gateway", "mattermost/mattermost-gateway"],
+    "ingressNodePorts": [30486, 31534, 32067],
+    "namespaces": [
+      "default",
+      "gateway-demo",
+      "headlamp",
+      "istio-system",
+      "kube-flannel",
+      "kube-node-lease",
+      "kube-public",
+      "kube-system",
+      "mattermost",
+      "mattermost-operator"
+    ]
+  },
+  "imageSources": [
+    {
+      "component": "node",
+      "status": "available",
+      "source": "daocloud/v2/library/node:24-bookworm-slim (manifest HTTP 200)"
+    },
+    {
+      "component": "postgresql",
+      "status": "available",
+      "source": "daocloud/v2/library/postgres:17-alpine (manifest HTTP 200)"
+    },
+    {
+      "component": "temporal",
+      "status": "available",
+      "source": "daocloud/v2/temporalio/server:latest (manifest HTTP 200); UI manifest cold-cache probe timed out"
+    },
+    {
+      "component": "keycloak",
+      "status": "available",
+      "source": "docker-quay/v2/keycloak/keycloak:latest (manifest HTTP 200)"
+    },
+    {
+      "component": "agent-runtime",
+      "status": "build-required",
+      "source": "docker-hosted exists; UI4A Runner image and push credentials are not yet produced"
+    }
+  ],
+  "storageCandidates": ["static-local-pv", "local-path-provisioner"],
+  "recommendedExperimentalStorage": "static-local-pv",
+  "constraints": [
+    "no-storage-class",
+    "cri-does-not-use-certs.d",
+    "multi-arch-pulls-require-all-platforms",
+    "istio-images-require-if-not-present",
+    "mothership-setup-worktree-is-dirty",
+    "control-plane-is-no-schedule",
+    "three-unformatted-100gib-data-disks",
+    "docker-hub-is-not-directly-reachable",
+    "existing-public-ca-private-key-not-located"
+  ],
+  "existingPki": {
+    "publicCaSubject": "CN=Mothership Internal CA",
+    "publicCaNotAfter": "2036-08-03T02:26:51Z",
+    "publicCaSha256Fingerprint": "DC:E8:F0:5A:A3:A9:11:F7:00:0C:88:46:D8:7B:7C:2C:B6:B4:B6:88:67:2D:74:21:46:47:AC:27:15:92:94:07",
+    "matchingPrivateKeyLocated": false
+  },
+  "sourceDigests": {
+    "k8sRunbookSha256": "7f374c87f0da1091f1fc5d5428615259695b228ecf2076167c5e424571b48491",
+    "publicCaFileSha256": "a3060c3eb12f339fa299f82d5babcf53977baa94cc1bd98c4c68c7bccfdc6f0c"
+  }
+}
