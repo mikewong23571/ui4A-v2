@@ -1,0 +1,7 @@
+T22 Phase C credential verification and request identity Green.
+
+Implemented strict RS256 Bearer verification with issuer, audience, expiry, nbf, kid, signature, JWKS freshness, required scopes, client classification, canonical sub plus azp delegation, and stable non-secret error codes. Production business and Meta entity/exec routes ignore request-supplied identity and use the common trusted adapter; local demo remains isolated. Accepted, rejected, confirmation, meta, and plan events persist audit-only scopes, approval eligibility, and delegation in existing event detail without schema changes or replay effects.
+
+Main-agent verification: focused Vitest 9 files and 163 tests passed; authentication negative corpus 25 of 25; Engine typecheck passed; Web typecheck passed; scoped ESLint passed with only the repository pages-directory notice; scoped Prettier passed; git diff check passed.
+
+Deliberate remaining Phase C scope: exec-plan, events, browser sessions, CLI and agent flows, and internal callback service credentials are not yet wired by this task.
