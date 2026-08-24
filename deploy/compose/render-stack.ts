@@ -186,6 +186,16 @@ https://{$UI4A_HOST}:8443 {
   }
 }
 
+https://{$UI4A_HOST}:9444 {
+  tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key
+  handle /deliver {
+    reverse_proxy host-runner:3102
+  }
+  handle {
+    respond 404
+  }
+}
+
 https://{$KEYCLOAK_HOST}:8443 {
   tls /var/lib/ui4a/ca/keycloak/tls.crt /var/lib/ui4a/ca/keycloak/tls.key
 
@@ -521,7 +531,8 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         environment: {
           ...canonicalRuntimeEnvironment,
           UI4A_RUNNER_IMAGE: images.runner,
-          UI4A_HOST_RUNNER_ORIGINS: '{"compose-runner":"https://ui4a.mothership.internal:8443"}',
+          UI4A_HOST_RUNNER_ORIGINS:
+            '{"compose-container-runner":"https://ui4a.mothership.internal:8443","compose-host-runner":"https://ui4a.mothership.internal:9444"}',
         },
         healthcheck: health([
           'CMD',
@@ -535,7 +546,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         depends_on: dependencies({ 'pki-init': 'service_completed_successfully' }),
         environment: {
           ...canonicalRuntimeEnvironment,
-          UI4A_RUNNER_ID: 'compose-runner',
+          UI4A_RUNNER_ID: 'compose-container-runner',
           UI4A_RUNNER_IMAGE: images.runner,
         },
         healthcheck: health([
@@ -554,6 +565,11 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
       'host-runner': runtimeService(images.runner, 'unless-stopped', {
         profiles: ['host-runner'],
         depends_on: dependencies({ 'pki-init': 'service_completed_successfully' }),
+        environment: {
+          ...canonicalRuntimeEnvironment,
+          UI4A_RUNNER_ID: 'compose-host-runner',
+          UI4A_RUNNER_IMAGE: images.runner,
+        },
         healthcheck: health([
           'CMD',
           'node',

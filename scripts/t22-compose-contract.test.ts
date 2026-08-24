@@ -90,6 +90,24 @@ interface StackContract {
     backupHook: { contractRef: string; command: string[] };
     restoreHook: { isolatedTargetRequired: true; command: string[] };
   };
+  dualRuntime: {
+    fallback: false;
+    container: {
+      service: 'runner';
+      runnerId: 'compose-container-runner';
+      tokenRef: 'compose-container-runner-token';
+      origin: 'https://ui4a.mothership.internal:8443';
+      route: '/deliver';
+    };
+    host: {
+      service: 'host-runner';
+      profile: 'host-runner';
+      runnerId: 'compose-host-runner';
+      tokenRef: 'compose-host-runner-token';
+      origin: 'https://ui4a.mothership.internal:9444';
+      route: '/deliver';
+    };
+  };
 }
 
 interface ComposeDependency {
@@ -469,11 +487,12 @@ describe('T22 Docker Compose all-in-one contract', () => {
 
     expect(worker?.environment).toMatchObject({
       UI4A_RUNNER_IMAGE: renderInput().images.runner,
-      UI4A_HOST_RUNNER_ORIGINS: '{"compose-runner":"https://ui4a.mothership.internal:8443"}',
+      UI4A_HOST_RUNNER_ORIGINS:
+        '{"compose-container-runner":"https://ui4a.mothership.internal:8443","compose-host-runner":"https://ui4a.mothership.internal:9444"}',
       NODE_EXTRA_CA_CERTS: '/var/lib/ui4a/ca/root-ca.crt',
     });
     expect(runner?.environment).toMatchObject({
-      UI4A_RUNNER_ID: 'compose-runner',
+      UI4A_RUNNER_ID: 'compose-container-runner',
       UI4A_RUNNER_IMAGE: renderInput().images.runner,
     });
     for (const serviceName of ['worker', 'runner', 'realm-bootstrap', 'migration']) {
@@ -490,6 +509,55 @@ describe('T22 Docker Compose all-in-one contract', () => {
     expect(
       JSON.stringify({ worker: worker?.environment, runner: runner?.environment }),
     ).not.toMatch(/Bearer |runner-token|authorization/i);
+  });
+
+  it('wires independent container and Host Runner identities, origins, and token refs without fallback', async () => {
+    const contract = requiredJson<StackContract>(contractPath);
+    const stack = await renderedStack();
+    const worker = stack.services.worker;
+    const containerRunner = stack.services.runner;
+    const hostRunner = stack.services['host-runner'];
+    const routing = (stack.configs['ui4a-edge-routing'] as { content?: string }).content ?? '';
+
+    expect(contract.dualRuntime).toEqual({
+      fallback: false,
+      container: {
+        service: 'runner',
+        runnerId: 'compose-container-runner',
+        tokenRef: 'compose-container-runner-token',
+        origin: 'https://ui4a.mothership.internal:8443',
+        route: '/deliver',
+      },
+      host: {
+        service: 'host-runner',
+        profile: 'host-runner',
+        runnerId: 'compose-host-runner',
+        tokenRef: 'compose-host-runner-token',
+        origin: 'https://ui4a.mothership.internal:9444',
+        route: '/deliver',
+      },
+    });
+    expect(containerRunner?.environment).toMatchObject({
+      UI4A_RUNNER_ID: contract.dualRuntime.container.runnerId,
+    });
+    expect(hostRunner?.environment).toMatchObject({
+      UI4A_RUNNER_ID: contract.dualRuntime.host.runnerId,
+    });
+    expect(hostRunner?.profiles).toEqual([contract.dualRuntime.host.profile]);
+    expect(JSON.parse(worker?.environment?.UI4A_HOST_RUNNER_ORIGINS ?? '{}')).toEqual({
+      [contract.dualRuntime.container.runnerId]: contract.dualRuntime.container.origin,
+      [contract.dualRuntime.host.runnerId]: contract.dualRuntime.host.origin,
+    });
+    expect(routing).toMatch(
+      /https:\/\/\{\$UI4A_HOST\}:8443[\s\S]+handle \/deliver[\s\S]+reverse_proxy runner:3102/,
+    );
+    expect(routing).toMatch(
+      /https:\/\/\{\$UI4A_HOST\}:9444[\s\S]+handle \/deliver[\s\S]+reverse_proxy host-runner:3102/,
+    );
+    expect(stack.services.edge?.ports).toEqual(['127.0.0.1:8443:8443']);
+    expect(JSON.stringify({ worker, containerRunner, hostRunner })).not.toMatch(
+      /FALLBACK|compose-(?:container|host)-runner-token/i,
+    );
   });
 
   it('routes only the declared UI4A surface and rejects internal or deferred routes by default', async () => {
@@ -564,7 +632,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
     );
 
     expect(contract.runnerDelivery).toEqual({
-      runnerId: 'compose-runner',
+      runnerId: 'compose-container-runner',
       route: '/deliver',
       workerOrigin: 'https://ui4a.mothership.internal:8443',
       edgeNetworkAlias: 'ui4a.mothership.internal',
@@ -575,7 +643,8 @@ describe('T22 Docker Compose all-in-one contract', () => {
   it('keeps the static Compose projection equivalent for Runner delivery wiring', () => {
     const compose = requiredSource('deploy/compose/compose.yaml');
 
-    expect(compose).toContain('UI4A_RUNNER_ID: compose-runner');
+    expect(compose).toContain('UI4A_RUNNER_ID: compose-container-runner');
+    expect(compose).toContain('UI4A_RUNNER_ID: compose-host-runner');
     expect(compose).toContain('UI4A_HOST_RUNNER_ORIGINS:');
     expect(compose).toContain('NODE_EXTRA_CA_CERTS: /var/lib/ui4a/ca/root-ca.crt');
     expect(compose).toContain('handle /deliver {');

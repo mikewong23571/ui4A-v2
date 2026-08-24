@@ -39,6 +39,10 @@ export interface ComposeAcceptancePlan {
     route: string;
     execution: 'operator-authorized-live';
   }>;
+  runtimePaths: {
+    U7: { runnerId: string; origin: string; route: '/deliver'; fallback: false };
+    U8: { runnerId: string; origin: string; route: '/deliver'; fallback: false };
+  };
 }
 
 function fail(): never {
@@ -54,6 +58,20 @@ export function planComposeStoryAcceptance(): ComposeAcceptancePlan {
       route: routes[storyId],
       execution: 'operator-authorized-live',
     })),
+    runtimePaths: {
+      U7: {
+        runnerId: 'compose-container-runner',
+        origin: 'https://ui4a.mothership.internal:8443',
+        route: '/deliver',
+        fallback: false,
+      },
+      U8: {
+        runnerId: 'compose-host-runner',
+        origin: 'https://ui4a.mothership.internal:9444',
+        route: '/deliver',
+        fallback: false,
+      },
+    },
   };
 }
 

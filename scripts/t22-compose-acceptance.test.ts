@@ -21,6 +21,20 @@ describe('T22 Compose story acceptance runner contract', () => {
       evidenceSchema:
         'conductor/tracks/t22-production-deployment-auth-runtime_20260824/acceptance-evidence.schema.json',
       stories: storyIds,
+      runtimePaths: {
+        U7: {
+          runnerId: 'compose-container-runner',
+          origin: 'https://ui4a.mothership.internal:8443',
+          route: '/deliver',
+          fallback: false,
+        },
+        U8: {
+          runnerId: 'compose-host-runner',
+          origin: 'https://ui4a.mothership.internal:9444',
+          route: '/deliver',
+          fallback: false,
+        },
+      },
     });
     expect(plan.stories.map(({ storyId }) => storyId)).toEqual(storyIds);
     expect(plan.stories.every(({ execution }) => execution === 'operator-authorized-live')).toBe(

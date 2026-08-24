@@ -322,7 +322,7 @@ services:
     environment:
       <<: *ui4a-production-environment
       UI4A_RUNNER_IMAGE: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
-      UI4A_HOST_RUNNER_ORIGINS: '{"compose-runner":"https://${UI4A_HOST:-ui4a.mothership.internal}:8443"}'
+      UI4A_HOST_RUNNER_ORIGINS: '{"compose-container-runner":"https://${UI4A_HOST:-ui4a.mothership.internal}:8443","compose-host-runner":"https://${UI4A_HOST:-ui4a.mothership.internal}:9444"}'
     configs: *ui4a-production-config
     secrets: *ui4a-production-secret
     volumes:
@@ -350,7 +350,7 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *ui4a-production-environment
-      UI4A_RUNNER_ID: compose-runner
+      UI4A_RUNNER_ID: compose-container-runner
       UI4A_RUNNER_IMAGE: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
     configs: *ui4a-production-config
     secrets: *ui4a-production-secret
@@ -381,7 +381,10 @@ services:
     depends_on:
       pki-init:
         condition: service_completed_successfully
-    environment: *ui4a-production-environment
+    environment:
+      <<: *ui4a-production-environment
+      UI4A_RUNNER_ID: compose-host-runner
+      UI4A_RUNNER_IMAGE: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
     configs: *ui4a-production-config
     secrets: *ui4a-production-secret
     volumes: *runner-volumes
@@ -472,6 +475,16 @@ configs:
           reverse_proxy web:3100
         }
 
+        handle {
+          respond 404
+        }
+      }
+
+      https://{$$UI4A_HOST}:9444 {
+        tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key
+        handle /deliver {
+          reverse_proxy host-runner:3102
+        }
         handle {
           respond 404
         }

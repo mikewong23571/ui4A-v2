@@ -52,6 +52,13 @@ interface ComposeCanonicalBindingView {
       };
     };
     keycloak: { databasePasswordRef: string; bootstrapAdminPasswordRef: string };
+    runtime: {
+      profiles: Array<{
+        backend: string;
+        runnerId?: string;
+        runnerTokenRef?: string;
+      }>;
+    };
   };
   secrets: Readonly<Record<string, string>>;
 }
@@ -191,6 +198,39 @@ export function validateComposeProductionEnvironment(
     fail('COMPOSE_CANONICAL_INPUT_INVALID');
   }
   const { settings } = canonical;
+  const expectedRunnerTokenRefs = {
+    'compose-container-runner': 'compose-container-runner-token',
+    'compose-host-runner': 'compose-host-runner-token',
+  } as const;
+  const hostProfiles = settings.runtime.profiles.filter((profile) => profile.backend === 'host');
+  if (
+    hostProfiles.some(
+      (profile) =>
+        profile.runnerId === undefined ||
+        !Object.hasOwn(expectedRunnerTokenRefs, profile.runnerId) ||
+        profile.runnerTokenRef !==
+          expectedRunnerTokenRefs[profile.runnerId as keyof typeof expectedRunnerTokenRefs],
+    ) ||
+    Object.entries(expectedRunnerTokenRefs).some(
+      ([runnerId, tokenRef]) =>
+        !hostProfiles.some(
+          (profile) => profile.runnerId === runnerId && profile.runnerTokenRef === tokenRef,
+        ),
+    )
+  ) {
+    fail('COMPOSE_RUNTIME_BINDING_INVALID');
+  }
+  const containerToken = canonical.secrets[expectedRunnerTokenRefs['compose-container-runner']];
+  const hostToken = canonical.secrets[expectedRunnerTokenRefs['compose-host-runner']];
+  if (
+    containerToken === undefined ||
+    hostToken === undefined ||
+    containerToken === '' ||
+    hostToken === '' ||
+    containerToken === hostToken
+  ) {
+    fail('COMPOSE_RUNTIME_BINDING_INVALID');
+  }
   sameMaterial(
     environment,
     'UI4A_POSTGRES_BOOTSTRAP_PASSWORD_FILE',

@@ -40,11 +40,29 @@
     }
   },
   "runnerDelivery": {
-    "runnerId": "compose-runner",
+    "runnerId": "compose-container-runner",
     "route": "/deliver",
     "workerOrigin": "https://ui4a.mothership.internal:8443",
     "edgeNetworkAlias": "ui4a.mothership.internal",
     "requiredServicePublicOrigin": "https://ui4a.mothership.internal:8443"
+  },
+  "dualRuntime": {
+    "fallback": false,
+    "container": {
+      "service": "runner",
+      "runnerId": "compose-container-runner",
+      "tokenRef": "compose-container-runner-token",
+      "origin": "https://ui4a.mothership.internal:8443",
+      "route": "/deliver"
+    },
+    "host": {
+      "service": "host-runner",
+      "profile": "host-runner",
+      "runnerId": "compose-host-runner",
+      "tokenRef": "compose-host-runner-token",
+      "origin": "https://ui4a.mothership.internal:9444",
+      "route": "/deliver"
+    }
   },
   "references": {
     "composeFile": "deploy/compose/compose.yaml",

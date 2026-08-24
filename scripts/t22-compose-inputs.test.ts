@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -41,6 +43,8 @@ function fixture() {
     temporalSchema: 'temporal-schema-password',
     temporalRuntime: 'temporal-runtime-password',
     postgresBackup: 'postgres-backup-password',
+    containerRunner: 'compose-container-runner-token',
+    hostRunner: 'compose-host-runner-token',
   };
   const secrets = Object.fromEntries(Object.values(refs).map((ref) => [ref, secretValue(ref)]));
   const files = new Map<string, string>([
@@ -89,6 +93,20 @@ function fixture() {
           keycloak: {
             databasePasswordRef: refs.keycloakDatabase,
             bootstrapAdminPasswordRef: refs.keycloakAdmin,
+          },
+          runtime: {
+            profiles: [
+              {
+                backend: 'host',
+                runnerId: 'compose-container-runner',
+                runnerTokenRef: refs.containerRunner,
+              },
+              {
+                backend: 'host',
+                runnerId: 'compose-host-runner',
+                runnerTokenRef: refs.hostRunner,
+              },
+            ],
           },
         },
         secrets,
@@ -153,5 +171,37 @@ describe('T22 Compose operator-owned production inputs', () => {
     expect(() => validateComposeProductionEnvironment(invalid, dependencies)).toThrowError(
       'COMPOSE_IMAGE_REFERENCE_INVALID',
     );
+  });
+
+  it('preflights two distinct server-owned Runner ids and token refs from canonical settings', () => {
+    const source = readFileSync('scripts/t22-compose-inputs.ts', 'utf8');
+
+    expect(source).toContain('settings.runtime.profiles');
+    expect(source).toContain('compose-container-runner');
+    expect(source).toContain('compose-container-runner-token');
+    expect(source).toContain('compose-host-runner');
+    expect(source).toContain('compose-host-runner-token');
+    expect(source).toContain('COMPOSE_RUNTIME_BINDING_INVALID');
+  });
+
+  it('rejects a missing Host Runner binding or reused Runner credential material', () => {
+    const missing = fixture();
+    const loadCanonical = missing.dependencies.loadCanonical;
+    missing.dependencies.loadCanonical = (...args) => {
+      const canonical = loadCanonical(...args);
+      canonical.settings.runtime.profiles = canonical.settings.runtime.profiles.filter(
+        ({ runnerId }) => runnerId !== 'compose-host-runner',
+      );
+      return canonical;
+    };
+    expect(() =>
+      validateComposeProductionEnvironment(environment(), missing.dependencies),
+    ).toThrowError('COMPOSE_RUNTIME_BINDING_INVALID');
+
+    const reused = fixture();
+    reused.secrets['compose-host-runner-token'] = reused.secrets['compose-container-runner-token']!;
+    expect(() =>
+      validateComposeProductionEnvironment(environment(), reused.dependencies),
+    ).toThrowError('COMPOSE_RUNTIME_BINDING_INVALID');
   });
 });
