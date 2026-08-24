@@ -61,7 +61,7 @@ https://{$KEYCLOAK_HOST}:8443 {
 
   @keycloakProtocolRead {
     method GET HEAD
-    path /realms/ui4a/.well-known/openid-configuration /realms/ui4a/protocol/openid-connect/auth /realms/ui4a/protocol/openid-connect/certs /realms/ui4a/login-actions/* /resources/*
+    path /realms/ui4a/.well-known/openid-configuration /realms/ui4a/protocol/openid-connect/auth /realms/ui4a/protocol/openid-connect/certs /realms/ui4a/protocol/openid-connect/logout /realms/ui4a/login-actions/* /resources/*
   }
   handle @keycloakProtocolRead {
     reverse_proxy keycloak:8080
@@ -69,7 +69,7 @@ https://{$KEYCLOAK_HOST}:8443 {
 
   @keycloakProtocolWrite {
     method POST
-    path /realms/ui4a/protocol/openid-connect/token /realms/ui4a/protocol/openid-connect/revoke /realms/ui4a/login-actions/*
+    path /realms/ui4a/protocol/openid-connect/token /realms/ui4a/protocol/openid-connect/revoke /realms/ui4a/protocol/openid-connect/logout /realms/ui4a/login-actions/*
   }
   handle @keycloakProtocolWrite {
     reverse_proxy keycloak:8080

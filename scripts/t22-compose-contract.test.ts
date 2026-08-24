@@ -718,6 +718,9 @@ describe('T22 Docker Compose all-in-one contract', () => {
     expect(internalListener).toBeGreaterThan(publicListener);
     expect(publicRouting).toContain('/realms/ui4a/.well-known/openid-configuration');
     expect(publicRouting).toContain('/realms/ui4a/protocol/openid-connect/token');
+    expect(publicRouting.match(/\/realms\/ui4a\/protocol\/openid-connect\/logout/g)).toHaveLength(
+      2,
+    );
     expect(publicRouting).not.toContain('/realms/master/');
     expect(publicRouting).not.toContain('/admin/');
     expect(routing.slice(internalListener)).toContain(
