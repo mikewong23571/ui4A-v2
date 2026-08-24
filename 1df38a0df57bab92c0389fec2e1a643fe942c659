@@ -1,0 +1,9 @@
+Task: Phase C Principal review corrections
+
+Summary: Bound policy scope to server-owned Applications across Golden sitemap/entity/exec/plan and Meta routes; prevented RFC8693 subject scope expansion and reverified delegated sub+azp; fixed CLI HTTPS, OIDC/JWKS redirect, bounded process sessions, fixed realm/config/secret invariants, and persisted agent/service human-approval rejections with policy-scope audit.
+
+Files: 42 auth, route, CLI, shared config, engine audit, Keycloak import/bootstrap and test files.
+
+Verification: NODE_OPTIONS=--no-experimental-webstorage CI=true pnpm check => exit 0; 275 files passed, 7 skipped; 1973 tests passed, 13 skipped; all workspace typechecks; ESLint 0 errors (7 pre-existing warnings). Focused Phase C route/auth/realm suites and approval DB matrix also passed.
+
+Why: Principal review found Golden-path scope confusion, exchange privilege expansion, credential redirect/HTTP exposure, unbounded session state, realm/config mismatch, and approval rejection audit gaps. D35 remains single-replica and fixed-realm; no HA, online reconciliation, act, rotation, or comprehensive route OIDC added.
