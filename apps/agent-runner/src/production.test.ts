@@ -1,7 +1,7 @@
 import type { IncomingMessage } from 'node:http';
 
 import type { CodexOptions, ThreadOptions } from '@openai/codex-sdk';
-import type { ProductionDeploymentConfig } from '@ui4a/shared';
+import type { HostProductionRuntimeProfile, ProductionDeploymentConfig } from '@ui4a/shared';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -9,6 +9,7 @@ import {
   runProductionDaemon,
   type RunnerCodexSdk,
 } from './production.js';
+import type { RunnerDaemonOptions } from './runtime.js';
 
 const image = `registry.internal/ui4a/agent-runner@sha256:${'a'.repeat(64)}`;
 const apiKey = '__runner_codex_api_key__';
@@ -17,6 +18,7 @@ const runnerToken = 'runner-token.fixture-123';
 function configuration(): ProductionDeploymentConfig {
   return {
     settings: {
+      deploymentMode: 'compose',
       llm: {
         baseUrl: 'https://llm.mothership.internal/v1',
         model: 'server-owned-model',
@@ -40,7 +42,7 @@ function configuration(): ProductionDeploymentConfig {
             timeoutSeconds: 30,
             resources: { cpu: '1', memory: '2Gi' },
             networkPolicy: 'restricted',
-            credentialRefs: ['codex-token'],
+            credentialRefs: ['llm-api-key'],
           },
         ],
       },
@@ -48,7 +50,7 @@ function configuration(): ProductionDeploymentConfig {
     secrets: {
       'llm-api-key': apiKey,
       'runner-token': runnerToken,
-      'codex-token': '__profile_codex_token__',
+      'codex-token': '__unselected_profile_token__',
     },
   } as unknown as ProductionDeploymentConfig;
 }
@@ -109,7 +111,7 @@ function delivery() {
       workspace: { rootRef: '/srv/ui4a/workspaces/writing' },
       resources: { cpu: '1', memory: '2Gi', timeoutMs: 30_000 },
       networkPolicy: 'restricted' as const,
-      credentialRefs: ['codex-token'],
+      credentialRefs: ['llm-api-key'],
     },
   };
 }
@@ -158,7 +160,9 @@ function sdk() {
   return { createClient, clientOptions, threadOptions, prompts };
 }
 
-function composition(overrides: { config?: ProductionDeploymentConfig; env?: NodeJS.ProcessEnv } = {}) {
+function composition(
+  overrides: { config?: ProductionDeploymentConfig; env?: NodeJS.ProcessEnv } = {},
+) {
   const transport = sdk();
   const result = createProductionRunnerComposition(overrides.env ?? environment(), {
     loadConfiguration: () => overrides.config ?? configuration(),
@@ -195,9 +199,9 @@ describe('Agent Runner production composition', () => {
     await expect(authorizeDelivery(request(`Bearer ${runnerToken}`))).resolves.toBe(true);
     await expect(authorizeDelivery(request(`bearer ${runnerToken}`))).resolves.toBe(false);
     await expect(authorizeDelivery(request(`Bearer ${runnerToken}x`))).resolves.toBe(false);
-    await expect(authorizeDelivery(request(['Bearer first', `Bearer ${runnerToken}`]))).resolves.toBe(
-      false,
-    );
+    await expect(
+      authorizeDelivery(request(['Bearer first', `Bearer ${runnerToken}`])),
+    ).resolves.toBe(false);
     await expect(authorizeDelivery(request())).resolves.toBe(false);
   });
 
@@ -235,12 +239,16 @@ describe('Agent Runner production composition', () => {
       events: expect.arrayContaining([expect.objectContaining({ type: 'thread.started' })]),
     });
     expect(JSON.stringify(result)).not.toContain(apiKey);
-    expect(JSON.stringify(result)).not.toContain('__profile_codex_token__');
+    expect(JSON.stringify(result)).not.toContain('__unselected_profile_token__');
   });
 
   it.each([
     ['profile', (value: ReturnType<typeof delivery>) => (value.execution.profileId = 'other')],
-    ['backend', (value: ReturnType<typeof delivery>) => (value.execution.backend = 'kubernetes-job')],
+    [
+      'backend',
+      (value: ReturnType<typeof delivery>) =>
+        ((value.execution as { backend: string }).backend = 'kubernetes-job'),
+    ],
     ['image', (value: ReturnType<typeof delivery>) => (value.execution.image = `${image}0`)],
     [
       'workspace',
@@ -250,10 +258,18 @@ describe('Agent Runner production composition', () => {
     ['memory', (value: ReturnType<typeof delivery>) => (value.execution.resources.memory = '99Gi')],
     ['timeout', (value: ReturnType<typeof delivery>) => (value.execution.resources.timeoutMs = 1)],
     [
-      'credentials',
-      (value: ReturnType<typeof delivery>) => (value.execution.credentialRefs = ['llm-api-key']),
+      'network',
+      (value: ReturnType<typeof delivery>) =>
+        ((value.execution as { networkPolicy: string }).networkPolicy = 'unrestricted'),
     ],
-    ['contract', (value: ReturnType<typeof delivery>) => (value.request.task.contractRef = 'other@1')],
+    [
+      'credentials',
+      (value: ReturnType<typeof delivery>) => (value.execution.credentialRefs = ['codex-token']),
+    ],
+    [
+      'contract',
+      (value: ReturnType<typeof delivery>) => (value.request.task.contractRef = 'other@1'),
+    ],
     [
       'compiled hash',
       (value: ReturnType<typeof delivery>) =>
@@ -274,7 +290,7 @@ describe('Agent Runner production composition', () => {
     );
     const ambiguous = configuration();
     ambiguous.settings.runtime.profiles.push({
-      ...ambiguous.settings.runtime.profiles[0]!,
+      ...(ambiguous.settings.runtime.profiles[0] as HostProductionRuntimeProfile),
       id: 'authoring-host',
       specialization: 'authoring',
       runnerTokenRef: 'other-runner-token',
@@ -282,8 +298,24 @@ describe('Agent Runner production composition', () => {
     expect(() => composition({ config: ambiguous })).toThrow('runner_production_config_invalid');
   });
 
+  it('rejects a profile that did not authorize the configured LLM Secret before SDK creation', () => {
+    const config = configuration();
+    config.settings.runtime.profiles[0]!.credentialRefs = ['codex-token'];
+    const transport = sdk();
+
+    expect(() =>
+      createProductionRunnerComposition(environment(), {
+        loadConfiguration: () => config,
+        createClient: transport.createClient,
+      }),
+    ).toThrow('runner_production_config_invalid');
+    expect(transport.createClient).not.toHaveBeenCalled();
+  });
+
   it('passes the production processor, authorizer, and readiness into daemon startup', async () => {
-    const runDaemon = vi.fn(async () => undefined);
+    const runDaemon = vi.fn(
+      async (_environment: NodeJS.ProcessEnv, _options?: RunnerDaemonOptions) => undefined,
+    );
     const created = composition();
     await runProductionDaemon(environment(), {
       compose: () => created,
@@ -298,7 +330,8 @@ describe('Agent Runner production composition', () => {
         backendReadiness: expect.any(Function),
       }),
     );
-    expect(runDaemon.mock.calls[0]?.[1]?.backendReadiness()).toEqual({
+    const daemonOptions = runDaemon.mock.calls[0]?.[1];
+    expect(daemonOptions?.backendReadiness?.()).toEqual({
       registered: true,
       deliveryAvailable: true,
     });

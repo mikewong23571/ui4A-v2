@@ -1,7 +1,8 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { releaseMetadata, runDaemon, runnerLivePayload } from './runtime.js';
+import { releaseMetadata, runnerLivePayload } from './runtime.js';
+import { runProductionDaemon } from './production.js';
 import {
   executeRunnerDelivery,
   type RunnerDeliveryProcessor,
@@ -35,7 +36,7 @@ export async function runRunnerCommand(
   const environment = options.environment ?? process.env;
   const stdout = options.stdout ?? ((line: string) => console.log(line));
   const stderr = options.stderr ?? ((line: string) => console.error(line));
-  const daemon = options.daemon ?? runDaemon;
+  const daemon = options.daemon ?? runProductionDaemon;
 
   try {
     if (command === '--version' || command === 'version') {
