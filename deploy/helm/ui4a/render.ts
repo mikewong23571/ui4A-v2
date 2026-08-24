@@ -942,9 +942,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.images.temporal,
       {
         command: ['/bin/sh', '-ec'],
-        args: [
-          'export TEMPORAL_RUNTIME_PASSWORD="$(cat /run/secrets/temporal-runtime-password)"; exec temporal-server --root /etc/temporal --config config --env docker start',
-        ],
+        args: ['exec temporal-server --root /etc/temporal --config config --env docker start'],
         ports: [{ name: 'grpc', containerPort: 7233 }],
         volumeMounts: [
           {

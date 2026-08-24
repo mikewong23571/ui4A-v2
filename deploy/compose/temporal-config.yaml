@@ -14,7 +14,10 @@ persistence:
         connectAddr: postgres:5432
         connectProtocol: tcp
         user: temporal_runtime
-        password: '{{ default .Env.TEMPORAL_RUNTIME_PASSWORD "" }}'
+        passwordCommand:
+          command: /bin/cat
+          args:
+            - /run/secrets/temporal-runtime-password
         maxConns: 20
         maxIdleConns: 20
         maxConnLifetime: 1h
@@ -25,7 +28,10 @@ persistence:
         connectAddr: postgres:5432
         connectProtocol: tcp
         user: temporal_runtime
-        password: '{{ default .Env.TEMPORAL_RUNTIME_PASSWORD "" }}'
+        passwordCommand:
+          command: /bin/cat
+          args:
+            - /run/secrets/temporal-runtime-password
         maxConns: 10
         maxIdleConns: 10
         maxConnLifetime: 1h

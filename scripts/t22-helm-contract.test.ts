@@ -885,7 +885,8 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
         expect(serverText).toContain('/etc/temporal/config/docker.yaml');
         expect(serverText).toContain('/etc/temporal/dynamicconfig/docker.yaml');
         expect(serverText).toContain('temporal-server');
-        expect(serverText).toContain('TEMPORAL_RUNTIME_PASSWORD');
+        expect(serverText).not.toContain('TEMPORAL_RUNTIME_PASSWORD');
+        expect(serverText).toContain('/run/secrets/temporal-runtime-password');
         expect(environment(primaryContainer(temporalUi))).toMatchObject({
           TEMPORAL_ADDRESS: 'temporal:7233',
         });

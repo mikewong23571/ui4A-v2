@@ -186,14 +186,17 @@ describe('T22 executable Compose state services', () => {
       target: 'temporal-runtime-password',
       mode: 0o400,
     });
-    expect(command).toContain('/run/secrets/temporal-runtime-password');
+    expect(command).not.toContain('TEMPORAL_RUNTIME_PASSWORD');
     expect(command).toContain('temporal-server');
     expect(command).toContain('--env docker');
     expect(config).toContain('pluginName: postgres12');
     expect(config).toContain('databaseName: temporal');
     expect(config).toContain('databaseName: temporal_visibility');
     expect(config.match(/user: temporal_runtime/g)).toHaveLength(2);
-    expect(config).toContain('.Env.TEMPORAL_RUNTIME_PASSWORD');
+    expect(config).not.toContain('.Env.TEMPORAL_RUNTIME_PASSWORD');
+    expect(config.match(/passwordCommand:/g)).toHaveLength(2);
+    expect(config.match(/command: \/bin\/cat/g)).toHaveLength(2);
+    expect(config.match(/- \/run\/secrets\/temporal-runtime-password/g)).toHaveLength(2);
     expect(config).toContain('/etc/temporal/dynamicconfig/docker.yaml');
     expect(dynamic).toMatch(/frontend\.enableClientVersionCheck:/);
   });

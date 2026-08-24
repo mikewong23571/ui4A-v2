@@ -120,7 +120,7 @@ const temporalSchemaCommand = [
 ].join(' ');
 
 const temporalServerCommand =
-  'export TEMPORAL_RUNTIME_PASSWORD="$$(cat /run/secrets/temporal-runtime-password)"; exec temporal-server --root /etc/temporal --config config --env docker start';
+  'exec temporal-server --root /etc/temporal --config config --env docker start';
 const temporalNamespaceCommand =
   'temporal operator namespace describe --namespace ui4a --address temporal:7233 >/dev/null 2>&1 || exec temporal operator namespace create --namespace ui4a --address temporal:7233 --retention 72h';
 const postgresTlsCommand = [
