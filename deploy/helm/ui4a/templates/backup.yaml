@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    app.kubernetes.io/name: backup
+    {{- include "ui4a.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  suspend: false
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels: { app.kubernetes.io/name: backup, app.kubernetes.io/instance: ui4a }
+        spec:
+          serviceAccountName: {{ .Values.serviceAccounts.backup | quote }}
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          securityContext:
+            {{- include "ui4a.podSecurityContext" . | nindent 12 }}
+          containers:
+            - name: backup
+              image: {{ .Values.images.postgres | quote }}
+              imagePullPolicy: IfNotPresent
+              command: [pg_dump, --format=custom, --file=/backups/ui4a.dump, ui4a]
+              envFrom:
+                - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+              volumeMounts:
+                - { name: backup-data, mountPath: /backups }
+              resources:
+                {{- include "ui4a.resources" . | nindent 16 }}
+              securityContext:
+                {{- include "ui4a.containerSecurityContext" . | nindent 16 }}
+          volumes:
+            - name: backup-data
+              persistentVolumeClaim: { claimName: backup-data }

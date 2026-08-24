@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    app.kubernetes.io/name: postgres
+    {{- include "ui4a.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: postgres
+  selector:
+    matchLabels: { app.kubernetes.io/name: postgres, app.kubernetes.io/instance: ui4a }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: postgres, app.kubernetes.io/instance: ui4a }
+    spec:
+      serviceAccountName: {{ .Values.serviceAccounts.postgres | quote }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "ui4a.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: postgres
+          image: {{ .Values.images.postgres | quote }}
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          ports:
+            - { name: postgres, containerPort: 5432 }
+          volumeMounts:
+            - { name: postgres-data, mountPath: /var/lib/postgresql/data }
+          livenessProbe:
+            exec: { command: [pg_isready, -U, postgres] }
+          readinessProbe:
+            tcpSocket: { port: 5432 }
+          resources:
+            {{- include "ui4a.resources" . | nindent 12 }}
+          securityContext:
+            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim: { claimName: postgres-data }

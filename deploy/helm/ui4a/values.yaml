@@ -1,0 +1,58 @@
+schemaVersion: 1
+
+namespace:
+  create: true
+  name: ui4a-system
+  istioInjection: true
+
+experimental:
+  highAvailability: false
+  replicas: 1
+
+hosts:
+  web: ui4a.internal.test
+  keycloak: auth.ui4a.internal.test
+
+# Replace all example digests before installation. Tags and mutable image references are rejected.
+images:
+  postgres: registry.internal.test/postgres@sha256:1111111111111111111111111111111111111111111111111111111111111111
+  temporal: registry.internal.test/temporal@sha256:2222222222222222222222222222222222222222222222222222222222222222
+  temporalAdminTools: registry.internal.test/temporal-admin-tools@sha256:3333333333333333333333333333333333333333333333333333333333333333
+  temporalUi: registry.internal.test/temporal-ui@sha256:4444444444444444444444444444444444444444444444444444444444444444
+  keycloak: registry.internal.test/keycloak@sha256:5555555555555555555555555555555555555555555555555555555555555555
+  web: registry.internal.test/ui4a-web@sha256:6666666666666666666666666666666666666666666666666666666666666666
+  worker: registry.internal.test/ui4a-worker@sha256:7777777777777777777777777777777777777777777777777777777777777777
+  runner: registry.internal.test/ui4a-runner@sha256:8888888888888888888888888888888888888888888888888888888888888888
+imagePullPolicy: IfNotPresent
+
+serviceAccounts:
+  postgres: ui4a-postgres
+  temporal: ui4a-temporal
+  keycloak: ui4a-keycloak
+  web: ui4a-web
+  worker: ui4a-worker
+  runner: ui4a-runner
+  admin: ui4a-admin-jobs
+  backup: ui4a-backup
+
+# This chart consumes a pre-created Secret by name. Secret values never belong in Helm values.
+secrets:
+  existingSecretName: ui4a-runtime-secrets
+
+storage:
+  mode: dynamic
+  storageClassName: replaceable-storage
+  sizes:
+    postgres: 20Gi
+    runtime: 20Gi
+    backup: 40Gi
+    pki: 1Gi
+
+backup:
+  schedule: '17 2 * * *'
+
+istio:
+  gateway: ui4a-internal
+  tlsCredentialName: ui4a-internal-tls
+  oidcIssuer: https://auth.ui4a.internal.test/realms/ui4a
+  oidcAudience: ui4a-api

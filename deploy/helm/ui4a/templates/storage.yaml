@@ -1,0 +1,48 @@
+{{- if eq .Values.storage.mode "static" }}
+{{- range $name := list "postgres" "runtime" "backup" "pki" }}
+{{- $volume := index $.Values.storage.volumes $name }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ $volume.volumeName | quote }}
+  labels:
+    app.kubernetes.io/name: {{ $name | quote }}
+    {{- include "ui4a.labels" $ | nindent 4 }}
+spec:
+  capacity:
+    storage: {{ $volume.capacity | quote }}
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ''
+  local:
+    path: {{ $volume.hostPath | quote }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [{{ $volume.nodeName | quote }}]
+---
+{{- end }}
+{{- end }}
+{{- range $name := list "postgres" "runtime" "backup" "pki" }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ printf "%s-data" $name | quote }}
+  namespace: {{ $.Values.namespace.name | quote }}
+  labels:
+    app.kubernetes.io/name: {{ $name | quote }}
+    {{- include "ui4a.labels" $ | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ if eq $.Values.storage.mode "dynamic" }}{{ $.Values.storage.storageClassName | quote }}{{ else }}''{{ end }}
+  {{- if eq $.Values.storage.mode "static" }}
+  volumeName: {{ (index $.Values.storage.volumes $name).volumeName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ if eq $.Values.storage.mode "dynamic" }}{{ index $.Values.storage.sizes $name | quote }}{{ else }}{{ (index $.Values.storage.volumes $name).capacity | quote }}{{ end }}
+---
+{{- end }}

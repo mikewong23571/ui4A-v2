@@ -1,0 +1,74 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: {{ .Values.istio.gateway | quote }}
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ui4a.labels" . | nindent 4 }}
+spec:
+  selector: { istio: ingressgateway }
+  servers:
+    - port: { number: 443, name: https, protocol: HTTPS }
+      tls:
+        mode: SIMPLE
+        credentialName: {{ .Values.istio.tlsCredentialName | quote }}
+      hosts: [{{ .Values.hosts.web | quote }}, {{ .Values.hosts.keycloak | quote }}]
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ui4a-web
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ui4a.labels" . | nindent 4 }}
+spec:
+  hosts: [{{ .Values.hosts.web | quote }}]
+  gateways: [{{ .Values.istio.gateway | quote }}]
+  http:
+    - route:
+        - destination: { host: web, port: { number: 3100 } }
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ui4a-keycloak
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ui4a.labels" . | nindent 4 }}
+spec:
+  hosts: [{{ .Values.hosts.keycloak | quote }}]
+  gateways: [{{ .Values.istio.gateway | quote }}]
+  http:
+    - route:
+        - destination: { host: keycloak, port: { number: 8080 } }
+---
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: ui4a-web-jwt
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ui4a.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels: { app.kubernetes.io/name: web, app.kubernetes.io/instance: ui4a }
+  jwtRules:
+    - issuer: {{ .Values.istio.oidcIssuer | quote }}
+      audiences: [{{ .Values.istio.oidcAudience | quote }}]
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: ui4a-web
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ui4a.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels: { app.kubernetes.io/name: web, app.kubernetes.io/instance: ui4a }
+  action: ALLOW
+  rules:
+    - to:
+        - operation: { paths: ['/api/auth/*'] }
+    - from:
+        - source: { requestPrincipals: ['*'] }

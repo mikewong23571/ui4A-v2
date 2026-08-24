@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -8,6 +8,15 @@ const repositoryRoot = resolve(import.meta.dirname, '..');
 const chartRoot = resolve(repositoryRoot, 'deploy/helm/ui4a');
 const plannedFiles = ['Chart.yaml', 'values.yaml', 'values.schema.json', 'render.ts'] as const;
 const missingFiles = plannedFiles.filter((file) => !existsSync(resolve(chartRoot, file)));
+
+function helmTemplateSource(): string {
+  const templatesRoot = resolve(chartRoot, 'templates');
+  if (!existsSync(templatesRoot)) return '';
+  return readdirSync(templatesRoot, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.yaml'))
+    .map((entry) => readFileSync(resolve(entry.parentPath, entry.name), 'utf8'))
+    .join('\n---\n');
+}
 
 type KubernetesObject = Record<string, unknown> & {
   apiVersion: string;
@@ -208,6 +217,48 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       missingFiles,
       'Phase H Green must create the generic deploy/helm/ui4a chart and pure TypeScript renderer',
     ).toEqual([]);
+  });
+
+  it('backs the pure renderer with installable Helm templates for the same core inventory', () => {
+    const source = helmTemplateSource();
+
+    for (const kind of [
+      'Deployment',
+      'StatefulSet',
+      'Job',
+      'CronJob',
+      'Service',
+      'PersistentVolume',
+      'PersistentVolumeClaim',
+      'Gateway',
+      'VirtualService',
+      'RequestAuthentication',
+      'AuthorizationPolicy',
+    ]) {
+      expect(source, `templates must render ${kind}`).toMatch(
+        new RegExp(`^kind:\\s+${kind}$`, 'm'),
+      );
+    }
+    for (const name of [
+      'postgres',
+      'temporal',
+      'temporal-ui',
+      'keycloak',
+      'web',
+      'worker',
+      'runner',
+      'postgres-bootstrap',
+      'temporal-schema',
+      'temporal-namespace',
+      'pki-init',
+      'migration',
+      'realm-bootstrap',
+      'backup',
+    ]) {
+      expect(source, `templates must render ${name}`).toMatch(
+        new RegExp(`^  name:\\s+["']?${name}["']?$`, 'm'),
+      );
+    }
   });
 
   describe.runIf(missingFiles.length === 0)('rendered generic chart', () => {

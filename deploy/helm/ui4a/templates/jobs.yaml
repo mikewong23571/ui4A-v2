@@ -1,0 +1,209 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-bootstrap
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    app.kubernetes.io/name: postgres-bootstrap
+    {{- include "ui4a.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: postgres-bootstrap, app.kubernetes.io/instance: ui4a }
+    spec:
+      serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        {{- include "ui4a.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: postgres-bootstrap
+          image: {{ .Values.images.postgres | quote }}
+          imagePullPolicy: IfNotPresent
+          command: [psql, -v, ON_ERROR_STOP=1, -f, /opt/ui4a/bootstrap-roles.sql]
+          envFrom:
+            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          volumeMounts:
+            - { name: bootstrap-sql, mountPath: /opt/ui4a, readOnly: true }
+          resources:
+            {{- include "ui4a.resources" . | nindent 12 }}
+          securityContext:
+            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+      volumes:
+        - name: bootstrap-sql
+          configMap: { name: ui4a-postgres-bootstrap }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: temporal-schema
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    app.kubernetes.io/name: temporal-schema
+    {{- include "ui4a.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: temporal-schema, app.kubernetes.io/instance: ui4a }
+    spec:
+      serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        {{- include "ui4a.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: temporal-schema
+          image: {{ .Values.images.temporalAdminTools | quote }}
+          imagePullPolicy: IfNotPresent
+          command: [temporal-sql-tool, setup-and-update-schema]
+          envFrom:
+            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          resources:
+            {{- include "ui4a.resources" . | nindent 12 }}
+          securityContext:
+            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: temporal-namespace
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    app.kubernetes.io/name: temporal-namespace
+    {{- include "ui4a.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: temporal-namespace, app.kubernetes.io/instance: ui4a }
+    spec:
+      serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        {{- include "ui4a.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: temporal-namespace
+          image: {{ .Values.images.temporalAdminTools | quote }}
+          imagePullPolicy: IfNotPresent
+          command: [temporal, operator, namespace, create-or-check, ui4a]
+          resources:
+            {{- include "ui4a.resources" . | nindent 12 }}
+          securityContext:
+            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pki-init
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    app.kubernetes.io/name: pki-init
+    {{- include "ui4a.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: pki-init, app.kubernetes.io/instance: ui4a }
+    spec:
+      serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: pki-init
+          image: {{ .Values.images.runner | quote }}
+          imagePullPolicy: IfNotPresent
+          command: [node, dist/pki-init.js]
+          volumeMounts:
+            - { name: pki-data, mountPath: /var/lib/ui4a/ca }
+          resources:
+            {{- include "ui4a.resources" . | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+      volumes:
+        - name: pki-data
+          persistentVolumeClaim: { claimName: pki-data }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migration
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    app.kubernetes.io/name: migration
+    {{- include "ui4a.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: migration, app.kubernetes.io/instance: ui4a }
+    spec:
+      serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        {{- include "ui4a.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: migration
+          image: {{ .Values.images.worker | quote }}
+          imagePullPolicy: IfNotPresent
+          command: [node, dist/t22-migrate.js]
+          envFrom:
+            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          resources:
+            {{- include "ui4a.resources" . | nindent 12 }}
+          securityContext:
+            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: realm-bootstrap
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    app.kubernetes.io/name: realm-bootstrap
+    {{- include "ui4a.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: realm-bootstrap, app.kubernetes.io/instance: ui4a }
+    spec:
+      serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        {{- include "ui4a.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: realm-bootstrap
+          image: {{ .Values.images.worker | quote }}
+          imagePullPolicy: IfNotPresent
+          command: [node, dist/t22-keycloak-realm-bootstrap.js, --apply]
+          env:
+            - { name: UI4A_REALM_IMPORT_FILE, value: /opt/ui4a/realm-import.json }
+          envFrom:
+            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          volumeMounts:
+            - { name: realm-import, mountPath: /opt/ui4a/realm-import.json, subPath: realm-import.json, readOnly: true }
+          resources:
+            {{- include "ui4a.resources" . | nindent 12 }}
+          securityContext:
+            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+      volumes:
+        - name: realm-import
+          configMap: { name: ui4a-realm-import }

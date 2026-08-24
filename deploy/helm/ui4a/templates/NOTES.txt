@@ -1,0 +1,16 @@
+UI4A v0.1.0-experimental.1 renders as a single-replica, non-HA stack.
+
+Before installing, create these server-owned inputs in namespace {{ .Values.namespace.name }}:
+
+1. Secret {{ .Values.secrets.existingSecretName }} containing the canonical production
+   environment/configuration and all referenced credentials. Secret values must never be placed in
+   values.yaml or rendered evidence.
+2. ConfigMap ui4a-postgres-bootstrap with key bootstrap-roles.sql sourced from
+   deploy/postgres/bootstrap-roles.sql.
+3. ConfigMap ui4a-realm-import with key realm-import.json sourced from
+   deploy/keycloak/realm-import.json.
+4. TLS credential Secret {{ .Values.istio.tlsCredentialName }} in the ingress gateway's configured
+   credential namespace.
+
+Replace every example image digest, hostname and StorageClass (or select explicit static retained
+volumes) before installation. The environment-specific overlay owns those facts.

@@ -1,0 +1,23 @@
+{{- if .Values.namespace.create }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ required "namespace.name is required" .Values.namespace.name | quote }}
+  labels:
+    istio-injection: {{ ternary "enabled" "disabled" .Values.namespace.istioInjection | quote }}
+    app.kubernetes.io/part-of: ui4a
+---
+{{- end }}
+{{- range $component, $serviceAccount := .Values.serviceAccounts }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $serviceAccount | quote }}
+  namespace: {{ $.Values.namespace.name | quote }}
+  labels:
+    app.kubernetes.io/name: {{ $component | quote }}
+    app.kubernetes.io/instance: ui4a
+    app.kubernetes.io/part-of: ui4a
+automountServiceAccountToken: false
+---
+{{- end }}

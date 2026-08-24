@@ -1,0 +1,197 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "namespace",
+    "experimental",
+    "hosts",
+    "images",
+    "imagePullPolicy",
+    "serviceAccounts",
+    "secrets",
+    "storage",
+    "backup",
+    "istio"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "namespace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["create", "name", "istioInjection"],
+      "properties": {
+        "create": { "const": true },
+        "name": { "$ref": "#/definitions/name" },
+        "istioInjection": { "const": true }
+      }
+    },
+    "experimental": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["highAvailability", "replicas"],
+      "properties": {
+        "highAvailability": { "const": false },
+        "replicas": { "const": 1 }
+      }
+    },
+    "hosts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["web", "keycloak"],
+      "properties": {
+        "web": { "$ref": "#/definitions/hostname" },
+        "keycloak": { "$ref": "#/definitions/hostname" }
+      }
+    },
+    "images": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "postgres",
+        "temporal",
+        "temporalAdminTools",
+        "temporalUi",
+        "keycloak",
+        "web",
+        "worker",
+        "runner"
+      ],
+      "properties": {
+        "postgres": { "$ref": "#/definitions/image" },
+        "temporal": { "$ref": "#/definitions/image" },
+        "temporalAdminTools": { "$ref": "#/definitions/image" },
+        "temporalUi": { "$ref": "#/definitions/image" },
+        "keycloak": { "$ref": "#/definitions/image" },
+        "web": { "$ref": "#/definitions/image" },
+        "worker": { "$ref": "#/definitions/image" },
+        "runner": { "$ref": "#/definitions/image" }
+      }
+    },
+    "imagePullPolicy": { "const": "IfNotPresent" },
+    "serviceAccounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "postgres",
+        "temporal",
+        "keycloak",
+        "web",
+        "worker",
+        "runner",
+        "admin",
+        "backup"
+      ],
+      "properties": {
+        "postgres": { "$ref": "#/definitions/name" },
+        "temporal": { "$ref": "#/definitions/name" },
+        "keycloak": { "$ref": "#/definitions/name" },
+        "web": { "$ref": "#/definitions/name" },
+        "worker": { "$ref": "#/definitions/name" },
+        "runner": { "$ref": "#/definitions/name" },
+        "admin": { "$ref": "#/definitions/name" },
+        "backup": { "$ref": "#/definitions/name" }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["existingSecretName"],
+      "properties": {
+        "existingSecretName": { "$ref": "#/definitions/name" }
+      }
+    },
+    "storage": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "storageClassName", "sizes"],
+          "properties": {
+            "mode": { "const": "dynamic" },
+            "storageClassName": { "$ref": "#/definitions/name" },
+            "sizes": { "$ref": "#/definitions/sizes" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "volumes"],
+          "properties": {
+            "mode": { "const": "static" },
+            "volumes": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["postgres", "runtime", "backup", "pki"],
+              "properties": {
+                "postgres": { "$ref": "#/definitions/staticVolume" },
+                "runtime": { "$ref": "#/definitions/staticVolume" },
+                "backup": { "$ref": "#/definitions/staticVolume" },
+                "pki": { "$ref": "#/definitions/staticVolume" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "backup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schedule"],
+      "properties": { "schedule": { "type": "string", "minLength": 9 } }
+    },
+    "istio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gateway", "tlsCredentialName", "oidcIssuer", "oidcAudience"],
+      "properties": {
+        "gateway": { "$ref": "#/definitions/name" },
+        "tlsCredentialName": { "$ref": "#/definitions/name" },
+        "oidcIssuer": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "oidcAudience": { "$ref": "#/definitions/name" }
+      }
+    }
+  },
+  "definitions": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63
+    },
+    "hostname": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$"
+    },
+    "image": {
+      "type": "string",
+      "pattern": "^\\S+@sha256:[a-f0-9]{64}$"
+    },
+    "quantity": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*(?:Ki|Mi|Gi|Ti)$"
+    },
+    "sizes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["postgres", "runtime", "backup", "pki"],
+      "properties": {
+        "postgres": { "$ref": "#/definitions/quantity" },
+        "runtime": { "$ref": "#/definitions/quantity" },
+        "backup": { "$ref": "#/definitions/quantity" },
+        "pki": { "$ref": "#/definitions/quantity" }
+      }
+    },
+    "staticVolume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["volumeName", "capacity", "hostPath", "nodeName"],
+      "properties": {
+        "volumeName": { "$ref": "#/definitions/name" },
+        "capacity": { "$ref": "#/definitions/quantity" },
+        "hostPath": { "type": "string", "pattern": "^/[^\\u0000]+$" },
+        "nodeName": { "$ref": "#/definitions/hostname" }
+      }
+    }
+  }
+}
