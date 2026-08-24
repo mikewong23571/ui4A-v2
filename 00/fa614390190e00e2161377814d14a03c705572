@@ -1,0 +1,5 @@
+T22 Keycloak subject mapper canonicalization correction
+
+Keycloak 26.7.1 persists oidc-sub-mapper with userinfo.token.claim=false. Added that safe server-canonical field to the realm artifact and exact compatibility predicate, with fail-closed userinfo drift coverage.
+
+Verification: focused Keycloak realm tests (37 passed); live mapper returned the same five-field config.
