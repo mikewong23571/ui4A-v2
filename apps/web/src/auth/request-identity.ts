@@ -89,7 +89,6 @@ function policyFor(
         ...authorizedPolicyScopes.map((scope) => `ui4a:policy:${scope}`),
       ],
     },
-    maximumDelegationDepth: 1,
   };
 }
 
@@ -262,8 +261,6 @@ export function authenticationErrorResponse(error: unknown): Response | undefine
   if (!(error instanceof ProductionIdentityError)) return undefined;
   const forbidden = new Set([
     'scope_insufficient',
-    'delegation_malformed',
-    'delegation_too_deep',
     'delegation_actor_not_allowed',
     'delegation_scope_exceeded',
   ]);

@@ -331,7 +331,6 @@ describe('production Keycloak browser protocol adapters', () => {
           humanClientIds: [CLIENT_ID],
           agentClientIds: [],
           delegatedScopesByClient: {},
-          maximumDelegationDepth: 1,
         },
         productionDependencies: ID_TOKEN_DEPENDENCIES,
         browserAuthentication: { resolveSession },

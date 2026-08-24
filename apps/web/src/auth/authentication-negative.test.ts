@@ -95,7 +95,6 @@ const POLICY = {
   delegatedScopesByClient: {
     'ui4a-agent': ['ui4a:read', 'ui4a:write'],
   },
-  maximumDelegationDepth: 1,
 };
 
 const VALID_DEPENDENCIES = {
@@ -323,13 +322,7 @@ describe('canonical production request identity negative corpus', () => {
   });
 
   it.each([
-    ['string act', { act: 'ui4a-agent' }, 'delegation_malformed'],
-    ['missing act.sub', { act: {} }, 'delegation_malformed'],
-    [
-      'nested act',
-      { act: { sub: 'ui4a-agent', act: { sub: 'other-agent' } } },
-      'delegation_too_deep',
-    ],
+    ['missing azp', { azp: undefined }, 'credential_malformed'],
     ['unregistered azp', { azp: 'unknown-agent' }, 'delegation_actor_not_allowed'],
     [
       'over-scoped exchange',
@@ -346,6 +339,87 @@ describe('canonical production request identity negative corpus', () => {
     expect(() =>
       api.buildProductionRequestIdentity(credential, { requiredScopes: ['ui4a:read'] }),
     ).toThrow(expect.objectContaining({ code }));
+  });
+
+  it('ignores raw act and may_act claims when deriving canonical delegation', async () => {
+    const api = await plannedApi();
+    const credential = await api.verifyProductionCredential(
+      bearer(
+        token({
+          sub: 'human-alice',
+          azp: 'ui4a-agent',
+          scope: 'ui4a:read ui4a:write',
+          act: 'untrusted-extension-shape',
+          may_act: { sub: 'root-admin', azp: 'unknown-agent' },
+        }),
+      ),
+      POLICY,
+      VALID_DEPENDENCIES,
+    );
+
+    const identity = api.buildProductionRequestIdentity(credential, {
+      requiredScopes: ['ui4a:read'],
+    });
+    expect(identity).toEqual({
+      actor: 'agent',
+      kind: 'agent',
+      principal: 'human-alice',
+      scopes: ['ui4a:read', 'ui4a:write'],
+      humanApprovalEligible: false,
+      delegation: {
+        subject: 'human-alice',
+        actorClientId: 'ui4a-agent',
+        source: 'token-exchange-sub-azp',
+      },
+    });
+    expect(
+      applyTrustedIdentity(
+        { rel: 'post:first', action: 'archive' },
+        {
+          authorizationMode: 'credential',
+          actor: 'agent',
+          principal: identity.principal,
+          scopes: identity.scopes,
+          policyScope: 'development',
+          channel: 'oidc',
+          humanApprovalEligible: identity.humanApprovalEligible,
+          delegation: identity.delegation,
+        },
+      ).identity,
+    ).toEqual({
+      authorizationMode: 'credential',
+      scopes: ['ui4a:read', 'ui4a:write'],
+      humanApprovalEligible: false,
+      delegation: {
+        subject: 'human-alice',
+        actorClientId: 'ui4a-agent',
+        source: 'token-exchange-sub-azp',
+      },
+    });
+  });
+
+  it('ignores raw act and may_act claims for a verified human identity', async () => {
+    const api = await plannedApi();
+    const credential = await api.verifyProductionCredential(
+      bearer(
+        token({
+          act: { sub: 'untrusted-actor', act: { malformed: true } },
+          may_act: 'untrusted-extension-shape',
+        }),
+      ),
+      POLICY,
+      VALID_DEPENDENCIES,
+    );
+
+    expect(
+      api.buildProductionRequestIdentity(credential, { requiredScopes: ['ui4a:approve'] }),
+    ).toEqual({
+      actor: 'human',
+      kind: 'human',
+      principal: 'human-alice',
+      scopes: ['ui4a:read', 'ui4a:write', 'ui4a:approve'],
+      humanApprovalEligible: true,
+    });
   });
 
   it.each([

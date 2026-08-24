@@ -56,7 +56,6 @@ const productionPolicy: ProductionCredentialPolicy = {
   humanClientIds: ['ui4a-web'],
   agentClientIds: ['ui4a-agent'],
   delegatedScopesByClient: { 'ui4a-agent': ['ui4a:read'] },
-  maximumDelegationDepth: 1,
 };
 
 const productionDependencies: ProductionCredentialDependencies = {

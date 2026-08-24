@@ -14,8 +14,6 @@ export type ProductionIdentityErrorCode =
   | 'jwks_stale'
   | 'scope_insufficient'
   | 'oidc_nonce_mismatch'
-  | 'delegation_malformed'
-  | 'delegation_too_deep'
   | 'delegation_actor_not_allowed'
   | 'delegation_scope_exceeded';
 
@@ -100,7 +98,6 @@ export interface ProductionCredentialPolicy {
   humanClientIds: readonly string[];
   agentClientIds: readonly string[];
   delegatedScopesByClient: Readonly<Record<string, readonly string[]>>;
-  maximumDelegationDepth: number;
 }
 
 export interface ProductionCredentialDependencies {
@@ -204,20 +201,6 @@ function freezeClaims(value: unknown): void {
 function scopeList(value: unknown): string[] {
   if (typeof value !== 'string') fail('credential_malformed');
   return [...new Set(value.split(/\s+/).filter(Boolean))];
-}
-
-function validateAct(claims: Record<string, unknown>, maximumDepth: number): void {
-  if (claims.act === undefined) return;
-  let current: unknown = claims.act;
-  let depth = 0;
-  while (current !== undefined) {
-    if (!record(current) || typeof current.sub !== 'string' || current.sub === '') {
-      fail('delegation_malformed');
-    }
-    depth += 1;
-    if (depth > maximumDepth) fail('delegation_too_deep');
-    current = current.act;
-  }
 }
 
 function usableSigningKey(keys: readonly JsonWebKeyLike[], kid: string): JsonWebKeyLike {
@@ -368,7 +351,6 @@ export function buildProductionRequestIdentity(
   if (effectivePolicy === undefined) fail('credential_malformed');
 
   const claims = credential.claims;
-  validateAct(claims, effectivePolicy.maximumDelegationDepth);
   const subject = claims.sub;
   const authorizedParty = claims.azp;
   if (typeof subject !== 'string' || typeof authorizedParty !== 'string') {
@@ -381,7 +363,6 @@ export function buildProductionRequestIdentity(
   const scopes = allScopes.filter((scope) => !PROTOCOL_SCOPES.has(scope));
 
   if (effectivePolicy.humanClientIds.includes(authorizedParty)) {
-    if (claims.act !== undefined) fail('delegation_actor_not_allowed');
     return {
       actor: 'human',
       kind: 'human',

@@ -165,7 +165,6 @@ async function trustedIdentity(authorizationHeader: string, requiredScopes: stri
         delegatedScopesByClient: {
           [CLIENT_ID]: ['ui4a:read', 'ui4a:write', 'development'],
         },
-        maximumDelegationDepth: 1,
       },
       productionDependencies: {
         clock: () => NOW_MILLISECONDS,
