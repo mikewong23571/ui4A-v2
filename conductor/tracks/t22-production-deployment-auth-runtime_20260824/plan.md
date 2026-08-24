@@ -55,7 +55,7 @@
 - [ ] 根据 Phase A 决定增加 Agent Runner image
 - [ ] 固定 Node 24、pnpm 10、Git、Pandoc 和 Codex requirements
 - [ ] 增加 OCI labels、SBOM、image smoke 和 vulnerability scan
-- [ ] Task: 建立 `v0.1.0-experimental.1` 版本合同
+- [x] Task: 建立 `v0.1.0-experimental.1` 版本合同 bc351b0
 - [ ] 增加应用、health、CLI 和 image version reporting
 - [ ] 禁止呈现为 GA、production SLA 或 LTS
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
