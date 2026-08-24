@@ -38,6 +38,12 @@ describe('Next.js instrumentation production preflight', () => {
     await expect(register()).rejects.toThrow(/settings|UI4A_DEPLOYMENT_SETTINGS/i);
   });
 
+  it('rejects standalone startup without NEXT_RUNTIME when production is incomplete', async () => {
+    process.env.UI4A_DEPLOYMENT_PROFILE = 'production';
+
+    await expect(register()).rejects.toThrow(/settings|UI4A_DEPLOYMENT_SETTINGS/i);
+  });
+
   it.each([undefined, 'local'])(
     'allows Node startup for the %s deployment profile',
     async (profile) => {
