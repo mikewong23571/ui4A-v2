@@ -75,7 +75,7 @@
 - [ ] Authorization Code + PKCE、callback、secure session、refresh 和 logout
 - [ ] 登录前目标恢复、multi-tab、expiry 和 Keycloak outage
 - [ ] Meta 与 business scope 一致
-- [ ] Task: Red→Green——CLI 与 Agent 身份
+- [x] Task: Red→Green——CLI 与 Agent 身份 b2a502d
 - [ ] CLI Bearer discovery/read/exec
 - [ ] Client Credentials、RFC 8693 Token Exchange 和 `act` audit
 - [ ] scope 只能收窄，Agent 不能获得 human approval
