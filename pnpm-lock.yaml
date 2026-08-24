@@ -44,6 +44,9 @@ importers:
 
   apps/agent-runner:
     dependencies:
+      '@openai/codex':
+        specifier: 0.149.0
+        version: 0.149.0
       '@openai/codex-sdk':
         specifier: 0.149.0
         version: 0.149.0
@@ -60,6 +63,10 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+    optionalDependencies:
+      '@openai/codex-linux-x64':
+        specifier: npm:@openai/codex@0.149.0-linux-x64
+        version: '@openai/codex@0.149.0-linux-x64'
 
   apps/cli:
     devDependencies:

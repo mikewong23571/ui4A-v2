@@ -20,8 +20,16 @@ function requiredSource(path: string): string {
   return readFileSync(absolutePath, 'utf8');
 }
 
-function packageJson(path: string): { scripts?: Record<string, string> } {
-  return JSON.parse(requiredSource(path)) as { scripts?: Record<string, string> };
+function packageJson(path: string): {
+  scripts?: Record<string, string>;
+  dependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+} {
+  return JSON.parse(requiredSource(path)) as {
+    scripts?: Record<string, string>;
+    dependencies?: Record<string, string>;
+    optionalDependencies?: Record<string, string>;
+  };
 }
 
 describe('T22 production OCI image contract', () => {
@@ -179,13 +187,24 @@ describe('T22 production OCI image contract', () => {
 
   it('pins the Runner Git, Pandoc and Codex requirements', () => {
     const dockerfile = requiredSource(imageFiles.runner);
+    const runnerPackage = packageJson('apps/agent-runner/package.json');
+    const dependencies = runnerPackage.dependencies ?? {};
+    const optionalDependencies = runnerPackage.optionalDependencies ?? {};
 
     expect(dockerfile).toMatch(/^ARG GIT_VERSION=\S+$/m);
     expect(dockerfile).toMatch(/^ARG PANDOC_VERSION=\S+$/m);
     expect(dockerfile).toMatch(/^ARG CODEX_SDK_VERSION=0\.149\.0$/m);
+    expect(dependencies['@openai/codex-sdk']).toBe('0.149.0');
+    expect(dependencies['@openai/codex']).toBe('0.149.0');
+    expect(optionalDependencies['@openai/codex-linux-x64']).toBe(
+      'npm:@openai/codex@0.149.0-linux-x64',
+    );
     expect(dockerfile).toMatch(/git --version/);
     expect(dockerfile).toMatch(/pandoc --version/);
-    expect(dockerfile).toContain('@openai/codex-sdk');
+    expect(dockerfile).toContain('@openai/codex/package.json');
+    expect(dockerfile).toContain('@openai/codex-linux-x64/package.json');
+    expect(dockerfile).toContain('vendor/x86_64-unknown-linux-musl/bin/codex');
+    expect(dockerfile).toContain('codex-cli ${CODEX_SDK_VERSION}');
   });
 
   it('installs and verifies the Runner OpenSSL binary required by pki-init', () => {

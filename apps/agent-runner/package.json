@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@openai/codex": "0.149.0",
     "@openai/codex-sdk": "0.149.0",
     "@ui4a/shared": "workspace:*"
   },
@@ -19,5 +20,8 @@
     "@types/node": "^26.2.0",
     "esbuild": "0.28.2",
     "typescript": "^5.9.3"
+  },
+  "optionalDependencies": {
+    "@openai/codex-linux-x64": "npm:@openai/codex@0.149.0-linux-x64"
   }
 }

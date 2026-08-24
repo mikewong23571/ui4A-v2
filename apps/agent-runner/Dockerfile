@@ -60,7 +60,10 @@ ENV NODE_ENV=production \
     UI4A_BUILD_DATE=${UI4A_BUILD_DATE}
 WORKDIR /app
 COPY --from=builder --chown=node:node /runtime ./
-RUN node -e "const fs=require('node:fs'); if (JSON.parse(fs.readFileSync('/app/node_modules/@openai/codex-sdk/package.json')).version !== process.argv[1]) process.exit(1)" "${CODEX_SDK_VERSION}" && \
+RUN node -e "const fs=require('node:fs'),{createRequire}=require('node:module'); const version=process.argv[1],sdk=JSON.parse(fs.readFileSync('/app/node_modules/@openai/codex-sdk/package.json')),cli=JSON.parse(fs.readFileSync('/app/node_modules/@openai/codex/package.json')),r=createRequire('/app/node_modules/@openai/codex/package.json'),platform=JSON.parse(fs.readFileSync(r.resolve('@openai/codex-linux-x64/package.json'))); if(sdk.version!==version||cli.version!==version||platform.version!==version+'-linux-x64')process.exit(1)" "${CODEX_SDK_VERSION}" && \
+    CODEX_BIN="$(node -e "const p=require('node:path'),{createRequire}=require('node:module'),r=createRequire('/app/node_modules/@openai/codex/package.json'); process.stdout.write(p.join(p.dirname(r.resolve('@openai/codex-linux-x64/package.json')),'vendor/x86_64-unknown-linux-musl/bin/codex'))")" && \
+    test -x "${CODEX_BIN}" && \
+    test "$("${CODEX_BIN}" --version)" = "codex-cli ${CODEX_SDK_VERSION}" && \
     mkdir -p /tmp /workspaces /artifacts && \
     chown -R node:node /tmp /workspaces /artifacts
 USER node
