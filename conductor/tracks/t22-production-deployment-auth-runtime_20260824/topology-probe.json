@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "trackId": "t22-production-deployment-auth-runtime_20260824",
+  "observedAt": "2026-08-24T03:10:16.935Z",
+  "postgres": {
+    "probeVersion": "16",
+    "targetVersion": "17",
+    "advisoryLockSerialized": true,
+    "lockWaitSeconds": 1.772,
+    "migrationIdempotent": true,
+    "migrationVersionCount": 1,
+    "failedMigrationRolledBack": true,
+    "failedMigrationVersionCount": 0,
+    "probeDatabaseRemoved": true
+  },
+  "temporal": {
+    "cliVersion": "1.8.2",
+    "serverVersion": "1.31.2",
+    "uiVersion": "2.50.1",
+    "sdkVersion": "1.22.0",
+    "namespaceConfigurable": true,
+    "probeNamespace": "ui4a-probe",
+    "persistenceRestart": "passed",
+    "workflowHistoryDurable": true,
+    "historyEventsAfterRestart": 10
+  },
+  "worker": {
+    "customTaskQueue": true,
+    "probeTaskQueue": "t22-drain-probe",
+    "gracefulSigterm": "passed",
+    "states": ["RUNNING", "STOPPING", "DRAINING", "DRAINED", "STOPPED"],
+    "namespaceCurrentlyHardcoded": true
+  },
+  "topology": {
+    "storage": "static-local-pv",
+    "databaseInstances": 1,
+    "temporalStores": ["temporal", "temporal_visibility"],
+    "productionNamespace": "ui4a"
+  }
+}

@@ -17,6 +17,8 @@ all-in-one 中重复部署、认证、恢复和验证的首个试验性版本。
 - [Disposable Keycloak Facts](./auth-probe.json)
 - [Disposable Runtime Backend Probe](./runtime-probe.md)
 - [Disposable Runtime Backend Facts](./runtime-probe.json)
+- [PostgreSQL and Temporal Topology Probe](./topology-probe.md)
+- [PostgreSQL and Temporal Topology Facts](./topology-probe.json)
 - [Implementation Plan](./plan.md)
 
 当前状态：`in_progress`。目标发布为 `v0.1.0-experimental.1`，不宣称 GA、正式 SLA 或当前两 Worker

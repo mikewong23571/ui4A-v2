@@ -24,7 +24,7 @@
 - [x] 验证 one-shot Runner 与 host daemon 的统一 task envelope
 - [x] 验证 workspace、result、cancel、timeout 和 disconnect recovery
 - [x] 决定是否新增 `apps/agent-runner` 及进程模式
-- [ ] Task: 运行 PostgreSQL 与 Temporal 生产拓扑探针
+- [~] Task: 运行 PostgreSQL 与 Temporal 生产拓扑探针
 - [ ] 验证跨 Web Pod PostgreSQL advisory/transaction lock
 - [ ] 验证显式 migration Job
 - [ ] 验证 Temporal namespace、persistence 和 Worker drain

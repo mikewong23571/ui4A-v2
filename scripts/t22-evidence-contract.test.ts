@@ -323,4 +323,49 @@ describe('T22 executable acceptance contract', () => {
     });
     expect(probeText).not.toMatch(/apiKey|privateKey|clientSecret|accessToken/);
   });
+
+  it('records PostgreSQL locking, migration and durable Temporal topology probes', () => {
+    const probeJsonPath = trackFile('topology-probe.json');
+    const probeMarkdownPath = trackFile('topology-probe.md');
+    expect(existsSync(probeJsonPath), 'topology-probe.json must exist').toBe(true);
+    expect(existsSync(probeMarkdownPath), 'topology-probe.md must exist').toBe(true);
+    if (!existsSync(probeJsonPath) || !existsSync(probeMarkdownPath)) return;
+
+    const probe = JSON.parse(readFileSync(probeJsonPath, 'utf8')) as {
+      schemaVersion: number;
+      postgres: Record<string, string | number | boolean>;
+      temporal: Record<string, string | number | boolean>;
+      worker: Record<string, string | boolean>;
+      topology: {
+        storage: string;
+        databaseInstances: number;
+        temporalStores: string[];
+        productionNamespace: string;
+      };
+    };
+
+    expect(probe.schemaVersion).toBe(1);
+    expect(probe.postgres).toMatchObject({
+      advisoryLockSerialized: true,
+      migrationIdempotent: true,
+      failedMigrationRolledBack: true,
+      probeDatabaseRemoved: true,
+    });
+    expect(Number(probe.postgres.lockWaitSeconds)).toBeGreaterThanOrEqual(1);
+    expect(probe.temporal).toMatchObject({
+      namespaceConfigurable: true,
+      persistenceRestart: 'passed',
+      workflowHistoryDurable: true,
+    });
+    expect(probe.worker).toMatchObject({
+      customTaskQueue: true,
+      gracefulSigterm: 'passed',
+    });
+    expect(probe.topology).toEqual({
+      storage: 'static-local-pv',
+      databaseInstances: 1,
+      temporalStores: ['temporal', 'temporal_visibility'],
+      productionNamespace: 'ui4a',
+    });
+  });
 });
