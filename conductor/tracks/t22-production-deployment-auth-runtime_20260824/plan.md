@@ -41,7 +41,7 @@
 - [ ] 覆盖 auth/deployment mode、PostgreSQL、Temporal、Keycloak、TLS 和 Runtime
 - [ ] 覆盖缺项、非法 URL、空 Secret、危险默认值和 profile override
 - [ ] 证明 production 下 demo identity 和 localhost fallback 会失败
-- [ ] Task: Green——实现统一配置解析和启动预检
+- [x] Task: Green——实现统一配置解析和启动预检 7a76547
 - [ ] Web、Worker、Runner 复用平台中立配置类型
 - [ ] Secret 不进入错误、日志、Siren 或 Meta raw view
 - [ ] 为 Compose env 与 Helm values 生成一致映射和示例
