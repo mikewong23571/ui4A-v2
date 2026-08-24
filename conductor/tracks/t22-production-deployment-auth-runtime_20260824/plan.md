@@ -196,16 +196,16 @@
 - [x] 单副本 Web/Worker/Runner、migration 与 realm import-or-check Job
 - [x] PostgreSQL、Temporal、Keycloak values
 - [x] static PV/replaceable StorageClass、backup CronJob 和 Istio policies
-- [~] Task: 创建 mothership-specific overlay
-- [ ] 默认 `ui4a.mothership.internal` 与 `auth.ui4a.mothership.internal`
-- [ ] 适配 existing ingressgateway/NodePort 32067
-- [ ] 复用或扩展 existing internal CA，不覆盖已有 certificates
-- [ ] 固定 node/PV paths、resources 和 image import strategy
-- [~] Task: 谨慎处理 mothership-setup worktree
-- [ ] 实施前记录 existing dirty/untracked state
-- [ ] 仅新增 `deploy/ui4a/` 和明确文档链接
-- [ ] 不覆盖 Mattermost、Headlamp 或 unrelated K8s files
-- [ ] UI4A 与 mothership-setup 分别提交并记录双方 SHA
+- [x] Task: 创建 mothership-specific overlay 29f4e6c
+- [x] 默认 `ui4a.mothership.internal` 与 `auth.ui4a.mothership.internal`
+- [x] 适配 existing ingressgateway/NodePort 32067
+- [x] 复用或扩展 existing internal CA，不覆盖已有 certificates
+- [x] 固定 node/PV paths、resources 和 image import strategy
+- [x] Task: 谨慎处理 mothership-setup worktree 29f4e6c
+- [x] 实施前记录 existing dirty/untracked state
+- [x] 仅新增 `deploy/ui4a/` 和明确文档链接
+- [x] 不覆盖 Mattermost、Headlamp 或 unrelated K8s files
+- [x] UI4A 与 mothership-setup 分别提交并记录双方 SHA
 - [ ] Task: 执行真实集群部署
 - [ ] pre-pull 并验证全部 image digests
 - [ ] 创建 PV/namespace/Secrets 并部署 state services
