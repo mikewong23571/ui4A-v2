@@ -13,6 +13,7 @@ import {
   runProductionDaemon,
   type RunnerCodexSdk,
 } from './production.js';
+import type { ResponsesLoopbackAdapterOptions } from './responses-loopback-adapter.js';
 import type { RunnerDaemonOptions } from './runtime.js';
 
 const image = `registry.internal/ui4a/agent-runner@sha256:${'a'.repeat(64)}`;
@@ -203,17 +204,28 @@ function sdk() {
   return { createClient, clientOptions, threadOptions, prompts };
 }
 
+function responsesAdapter() {
+  const close = vi.fn(async () => undefined);
+  const start = vi.fn(async (_options: ResponsesLoopbackAdapterOptions) => ({
+    baseUrl: 'http://127.0.0.1:43123/v1',
+    close,
+  }));
+  return { start, close };
+}
+
 function composition(
   overrides: { config?: ProductionDeploymentConfig; env?: NodeJS.ProcessEnv } = {},
 ) {
   const transport = sdk();
+  const adapter = responsesAdapter();
   const result = createProductionRunnerComposition(overrides.env ?? environment(), {
     loadConfiguration: () => overrides.config ?? configuration(),
     createClient: transport.createClient,
     scheduleTimeout: () => () => undefined,
+    startResponsesAdapter: adapter.start,
   });
   if (result === undefined) throw new Error('expected production composition');
-  return { ...result, transport };
+  return { ...result, transport, adapter };
 }
 
 describe('Agent Runner production composition', () => {
@@ -249,7 +261,7 @@ describe('Agent Runner production composition', () => {
   });
 
   it('executes one strict generic compiled request with server-owned Codex options', async () => {
-    const { processor, transport } = composition();
+    const { processor, transport, adapter } = composition();
 
     const result = await processor.execute(delivery());
 
@@ -262,7 +274,7 @@ describe('Agent Runner production composition', () => {
           model_providers: {
             ui4a: {
               name: 'UI4A Production',
-              base_url: 'https://llm.mothership.internal/v1',
+              base_url: 'http://127.0.0.1:43123/v1',
               env_key: 'CODEX_API_KEY',
               wire_api: 'responses',
               supports_websockets: false,
@@ -286,6 +298,11 @@ describe('Agent Runner production composition', () => {
         networkAccessEnabled: false,
       },
     ]);
+    expect(adapter.start).toHaveBeenCalledWith({
+      upstreamBaseUrl: 'https://llm.mothership.internal/v1',
+      requestTimeoutMs: 60_000,
+    });
+    expect(adapter.close).toHaveBeenCalledOnce();
     expect(transport.prompts[0]).toMatchObject({
       input: expect.stringContaining('<<<UI4A_COMPILED_MESSAGE_V1 role="system">>>'),
       options: { outputSchema: compiledPayload().outputSchema, signal: expect.any(AbortSignal) },
@@ -400,10 +417,12 @@ describe('Agent Runner production composition', () => {
 
   it('executes a Kubernetes one-shot through the same sealed processor and generic Codex executor', async () => {
     const transport = sdk();
+    const adapter = responsesAdapter();
     const created = createProductionRunnerComposition(kubernetesEnvironment(), {
       loadConfiguration: () => kubernetesConfiguration(),
       createClient: transport.createClient,
       scheduleTimeout: () => () => undefined,
+      startResponsesAdapter: adapter.start,
     });
 
     expect(created).toBeDefined();
@@ -424,7 +443,7 @@ describe('Agent Runner production composition', () => {
           model_providers: {
             ui4a: {
               name: 'UI4A Production',
-              base_url: 'https://llm.mothership.internal/v1',
+              base_url: 'http://127.0.0.1:43123/v1',
               env_key: 'CODEX_API_KEY',
               wire_api: 'responses',
               supports_websockets: false,
@@ -446,10 +465,32 @@ describe('Agent Runner production composition', () => {
         workingDirectory: '/workspaces/writing/run:writing:1/agent',
       }),
     ]);
+    expect(adapter.start).toHaveBeenCalledWith({
+      upstreamBaseUrl: 'https://llm.mothership.internal/v1',
+      requestTimeoutMs: 60_000,
+    });
+    expect(adapter.close).toHaveBeenCalledOnce();
     expect(created!.backendReadiness()).toEqual({ registered: true, deliveryAvailable: false });
     await expect(created!.authorizeDelivery({ headers: {} } as IncomingMessage)).resolves.toBe(
       false,
     );
+  });
+
+  it('closes the loopback adapter when Codex client construction fails', async () => {
+    const adapter = responsesAdapter();
+    const created = createProductionRunnerComposition(kubernetesEnvironment(), {
+      loadConfiguration: () => kubernetesConfiguration(),
+      createClient: () => {
+        throw new Error('sdk construction failed with sensitive detail');
+      },
+      startResponsesAdapter: adapter.start,
+      scheduleTimeout: () => () => undefined,
+    });
+
+    await expect(created!.processor.execute(kubernetesDelivery())).rejects.toThrow(
+      'runner_execution_failed',
+    );
+    expect(adapter.close).toHaveBeenCalledOnce();
   });
 
   it.each([

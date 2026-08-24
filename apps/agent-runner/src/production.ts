@@ -20,6 +20,10 @@ import {
   type RunnerDeliveryProcessor,
 } from './process.js';
 import {
+  startResponsesLoopbackAdapter,
+  type ResponsesLoopbackAdapterOptions,
+} from './responses-loopback-adapter.js';
+import {
   runDaemon,
   type RunnerBackendReadinessProvider,
   type RunnerDaemonOptions,
@@ -68,6 +72,9 @@ export interface ProductionRunnerDependencies {
   loadConfiguration?: (environment: NodeJS.ProcessEnv) => ProductionDeploymentConfig | undefined;
   createClient?: (options: CodexOptions) => RunnerCodexSdk;
   scheduleTimeout?: typeof scheduleRunnerTimeout;
+  startResponsesAdapter?: (
+    options: ResponsesLoopbackAdapterOptions,
+  ) => ReturnType<typeof startResponsesLoopbackAdapter>;
 }
 
 function fail(): never {
@@ -242,6 +249,7 @@ async function executeCodex(input: {
   configuration: ProductionDeploymentConfig;
   resolvedSecrets: Readonly<Record<string, string>>;
   createClient: (options: CodexOptions) => RunnerCodexSdk;
+  startResponsesAdapter: typeof startResponsesLoopbackAdapter;
 }): Promise<{
   candidate: { schemaVersion: 1; nativeSessionId: string; result: unknown; events: unknown[] };
   artifacts: [];
@@ -252,61 +260,69 @@ async function executeCodex(input: {
   const secretValues = Object.values(input.configuration.secrets).filter((value) => value !== '');
   if (containsSecret(input.request, secretValues)) throw new Error('runner_execution_failed');
   const workspaceRoot = input.delivery.execution.workspace.rootRef;
-  const client = input.createClient({
-    apiKey,
-    config: {
-      model_provider: 'ui4a',
-      model_providers: {
-        ui4a: {
-          name: 'UI4A Production',
-          base_url: settings.llm.baseUrl,
-          env_key: 'CODEX_API_KEY',
-          wire_api: 'responses',
-          supports_websockets: false,
+  const adapter = await input.startResponsesAdapter({
+    upstreamBaseUrl: settings.llm.baseUrl,
+    requestTimeoutMs: settings.llm.requestTimeoutMs,
+  });
+  try {
+    const client = input.createClient({
+      apiKey,
+      config: {
+        model_provider: 'ui4a',
+        model_providers: {
+          ui4a: {
+            name: 'UI4A Production',
+            base_url: adapter.baseUrl,
+            env_key: 'CODEX_API_KEY',
+            wire_api: 'responses',
+            supports_websockets: false,
+          },
         },
       },
-    },
-    env: codexWorkspaceEnvironment(workspaceRoot),
-  });
-  const thread = client.startThread({
-    model: settings.llm.model,
-    workingDirectory: workspaceRoot,
-    skipGitRepoCheck: true,
-    sandboxMode: input.request.sandboxMode,
-    approvalPolicy: 'never',
-    networkAccessEnabled: false,
-  });
-  const streamed = await thread.runStreamed(serializeMessages(input.request.messages), {
-    outputSchema: input.request.outputSchema,
-    signal: input.signal,
-  });
-  let nativeSessionId: string | undefined;
-  let result: unknown;
-  const events: unknown[] = [];
-  for await (const value of streamed.events) {
-    let event: Record<string, unknown>;
-    try {
-      event = structuredClone(record(value));
-    } catch {
+      env: codexWorkspaceEnvironment(workspaceRoot),
+    });
+    const thread = client.startThread({
+      model: settings.llm.model,
+      workingDirectory: workspaceRoot,
+      skipGitRepoCheck: true,
+      sandboxMode: input.request.sandboxMode,
+      approvalPolicy: 'never',
+      networkAccessEnabled: false,
+    });
+    const streamed = await thread.runStreamed(serializeMessages(input.request.messages), {
+      outputSchema: input.request.outputSchema,
+      signal: input.signal,
+    });
+    let nativeSessionId: string | undefined;
+    let result: unknown;
+    const events: unknown[] = [];
+    for await (const value of streamed.events) {
+      let event: Record<string, unknown>;
+      try {
+        event = structuredClone(record(value));
+      } catch {
+        throw new Error('runner_execution_failed');
+      }
+      events.push(event);
+      if (event.type === 'thread.started' && typeof event.thread_id === 'string') {
+        nativeSessionId = event.thread_id;
+      }
+      const parsed = parseAgentResult(event);
+      if (parsed !== undefined) result = parsed;
+      if (event.type === 'turn.failed' || event.type === 'error') {
+        throw new Error('runner_execution_failed');
+      }
+    }
+    nativeSessionId ??= thread.id ?? undefined;
+    if (nativeSessionId === undefined || nativeSessionId === '' || result === undefined) {
       throw new Error('runner_execution_failed');
     }
-    events.push(event);
-    if (event.type === 'thread.started' && typeof event.thread_id === 'string') {
-      nativeSessionId = event.thread_id;
-    }
-    const parsed = parseAgentResult(event);
-    if (parsed !== undefined) result = parsed;
-    if (event.type === 'turn.failed' || event.type === 'error') {
-      throw new Error('runner_execution_failed');
-    }
+    const candidate = { schemaVersion: 1 as const, nativeSessionId, result, events };
+    if (containsSecret(candidate, secretValues)) throw new Error('runner_execution_failed');
+    return { candidate, artifacts: [] };
+  } finally {
+    await adapter.close();
   }
-  nativeSessionId ??= thread.id ?? undefined;
-  if (nativeSessionId === undefined || nativeSessionId === '' || result === undefined) {
-    throw new Error('runner_execution_failed');
-  }
-  const candidate = { schemaVersion: 1 as const, nativeSessionId, result, events };
-  if (containsSecret(candidate, secretValues)) throw new Error('runner_execution_failed');
-  return { candidate, artifacts: [] };
 }
 
 function defaultLoadConfiguration(
@@ -413,6 +429,7 @@ export function createProductionRunnerComposition(
         configuration: configuration!,
         resolvedSecrets: context.secrets,
         createClient,
+        startResponsesAdapter: dependencies.startResponsesAdapter ?? startResponsesLoopbackAdapter,
       });
     },
     scheduleTimeout: dependencies.scheduleTimeout ?? scheduleRunnerTimeout,
