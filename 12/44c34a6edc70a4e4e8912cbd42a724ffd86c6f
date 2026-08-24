@@ -1,0 +1,1 @@
+T22 Phase H live wiring: Worker K8s object refs/RBAC, callback Secret env, strict optional hostAliases for external-origin consumers. 51/51 focused; strict TS/format; real Helm 3.16 lint, template and kubectl client dry-run pass.
