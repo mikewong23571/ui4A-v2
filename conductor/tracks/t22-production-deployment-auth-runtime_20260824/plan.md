@@ -87,7 +87,7 @@
 - [ ] Compose/K8s 挂载同一固定 realm 文件并使用同一检查命令
 - [ ] realm absent 时首次导入；existing compatible 时检查并跳过；incompatible 时 fail closed
 - [ ] 禁止在线 drift repair、通用 reconciliation、细粒度角色同步或自动 Secret rotation
-- [ ] Task: Red→Green——接通实验版 Agent credential 主路径
+- [x] Task: Red→Green——接通实验版 Agent credential 主路径 ac893ea
 - [ ] Browser Chat 单 turn 使用 human Token Exchange，Token 仅存在于 bounded fetch closure
 - [ ] Worker Activity 使用 Agent Client Credentials，不把 Token 写入 Temporal history/event/log
 - [ ] 仅接通 Golden Story sitemap/entity/exec/exec-plan；其他 route 明确列为未覆盖
