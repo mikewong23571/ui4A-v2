@@ -1,0 +1,5 @@
+T22 browser invalid_scope correction
+
+Narrowed ui4a-web realm default scopes to ui4a:read/write/approve and aligned import-or-check compatibility. Added exact realm import coverage and a fail-closed regression for extra built-in profile scope.
+
+Verification: CI=true pnpm vitest run scripts/t22-keycloak-realm-contract.test.ts scripts/t22-keycloak-realm-bootstrap.test.ts (33 passed).
