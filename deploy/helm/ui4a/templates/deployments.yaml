@@ -276,7 +276,8 @@ spec:
             - { name: UI4A_PUBLIC_BASE_URL, value: 'http://web:3100' }
             - { name: UI4A_RUNNER_IMAGE, value: {{ .Values.images.runner | quote }} }
             - { name: UI4A_KUBERNETES_SETTINGS_CONFIGMAP, value: ui4a-deployment-settings }
-            - { name: UI4A_KUBERNETES_SECRETS_SECRET, value: {{ .Values.secrets.existingSecretName | quote }} }
+            - { name: UI4A_KUBERNETES_SECRETS_SECRET, value: {{ .Values.secrets.runnerExistingSecretName | quote }} }
+            - { name: UI4A_KUBERNETES_SECRETS_KEY, value: {{ .Values.secrets.runnerSecretsKey | quote }} }
             - { name: UI4A_KUBERNETES_WORKSPACE_CLAIM, value: runtime-data }
             - { name: UI4A_KUBERNETES_RUNNER_SERVICE_ACCOUNT, value: {{ .Values.serviceAccounts.runner | quote }} }
             - name: UI4A_CAPABILITY_CALLBACK_TOKEN

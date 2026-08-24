@@ -128,7 +128,11 @@ export interface Ui4aHelmValues {
   images: Record<ImageKey, string>;
   imagePullPolicy: 'IfNotPresent';
   serviceAccounts: Record<ServiceAccountKey, string>;
-  secrets: { existingSecretName: string };
+  secrets: {
+    existingSecretName: string;
+    runnerExistingSecretName: string;
+    runnerSecretsKey: string;
+  };
   storage: DynamicStorage | StaticStorage;
   backup: { schedule: string };
   istio: {
@@ -199,6 +203,14 @@ function name(value: unknown, path: string): string {
   const result = string(value, path);
   if (!/^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?$/.test(result) || result.length > 63) {
     fail(path, 'must be a Kubernetes name');
+  }
+  return result;
+}
+
+function secretKey(value: unknown, path: string): string {
+  const result = string(value, path);
+  if (!/^[A-Za-z0-9._-]+$/.test(result) || result.length > 253) {
+    fail(path, 'must be a Kubernetes Secret data key');
   }
   return result;
 }
@@ -360,8 +372,17 @@ function parseValues(input: unknown): Ui4aHelmValues {
     fail('values.serviceAccounts', 'names must be unique');
   }
 
-  const secrets = exactObject(root.secrets, 'values.secrets', ['existingSecretName']);
+  const secrets = exactObject(root.secrets, 'values.secrets', [
+    'existingSecretName',
+    'runnerExistingSecretName',
+    'runnerSecretsKey',
+  ]);
   const existingSecretName = name(secrets.existingSecretName, 'values.secrets.existingSecretName');
+  const runnerExistingSecretName = name(
+    secrets.runnerExistingSecretName,
+    'values.secrets.runnerExistingSecretName',
+  );
+  const runnerSecretsKey = secretKey(secrets.runnerSecretsKey, 'values.secrets.runnerSecretsKey');
 
   const rawStorage = object(root.storage, 'values.storage');
   const storageMode = string(rawStorage.mode, 'values.storage.mode');
@@ -441,7 +462,7 @@ function parseValues(input: unknown): Ui4aHelmValues {
     images,
     imagePullPolicy: 'IfNotPresent',
     serviceAccounts,
-    secrets: { existingSecretName },
+    secrets: { existingSecretName, runnerExistingSecretName, runnerSecretsKey },
     storage,
     backup: { schedule },
     istio: {
@@ -1245,8 +1266,9 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
           },
           {
             name: 'UI4A_KUBERNETES_SECRETS_SECRET',
-            value: values.secrets.existingSecretName,
+            value: values.secrets.runnerExistingSecretName,
           },
+          { name: 'UI4A_KUBERNETES_SECRETS_KEY', value: values.secrets.runnerSecretsKey },
           { name: 'UI4A_KUBERNETES_WORKSPACE_CLAIM', value: 'runtime-data' },
           {
             name: 'UI4A_KUBERNETES_RUNNER_SERVICE_ACCOUNT',

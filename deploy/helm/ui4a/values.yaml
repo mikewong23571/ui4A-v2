@@ -46,6 +46,8 @@ serviceAccounts:
 # This chart consumes a pre-created Secret by name. Secret values never belong in Helm values.
 secrets:
   existingSecretName: ui4a-runtime-secrets
+  runnerExistingSecretName: ui4a-runner-secrets
+  runnerSecretsKey: runner-secrets.json
 
 storage:
   mode: dynamic

@@ -145,9 +145,11 @@
     "secrets": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["existingSecretName"],
+      "required": ["existingSecretName", "runnerExistingSecretName", "runnerSecretsKey"],
       "properties": {
-        "existingSecretName": { "$ref": "#/definitions/name" }
+        "existingSecretName": { "$ref": "#/definitions/name" },
+        "runnerExistingSecretName": { "$ref": "#/definitions/name" },
+        "runnerSecretsKey": { "$ref": "#/definitions/secretKey" }
       }
     },
     "storage": {
@@ -213,6 +215,11 @@
       "type": "string",
       "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
       "maxLength": 63
+    },
+    "secretKey": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+$",
+      "maxLength": 253
     },
     "hostname": {
       "type": "string",

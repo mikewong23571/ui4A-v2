@@ -49,7 +49,11 @@ interface GenericHelmValues {
     admin: string;
     backup: string;
   };
-  secrets: { existingSecretName: string };
+  secrets: {
+    existingSecretName: string;
+    runnerExistingSecretName: string;
+    runnerSecretsKey: string;
+  };
   storage:
     | {
         mode: 'dynamic';
@@ -123,7 +127,11 @@ function genericValues(): GenericHelmValues {
       admin: 'ui4a-admin-jobs',
       backup: 'ui4a-backup',
     },
-    secrets: { existingSecretName: 'ui4a-runtime-secrets' },
+    secrets: {
+      existingSecretName: 'ui4a-runtime-secrets',
+      runnerExistingSecretName: 'ui4a-runner-secrets',
+      runnerSecretsKey: 'runner-secrets.json',
+    },
     storage: {
       mode: 'dynamic',
       storageClassName: 'replaceable-storage',
@@ -365,7 +373,8 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       expect(workerEnv).toMatchObject({
         UI4A_RUNNER_IMAGE: values.images.runner,
         UI4A_KUBERNETES_SETTINGS_CONFIGMAP: 'ui4a-deployment-settings',
-        UI4A_KUBERNETES_SECRETS_SECRET: values.secrets.existingSecretName,
+        UI4A_KUBERNETES_SECRETS_SECRET: values.secrets.runnerExistingSecretName,
+        UI4A_KUBERNETES_SECRETS_KEY: values.secrets.runnerSecretsKey,
         UI4A_KUBERNETES_WORKSPACE_CLAIM: 'runtime-data',
         UI4A_KUBERNETES_RUNNER_SERVICE_ACCOUNT: values.serviceAccounts.runner,
       });
@@ -839,6 +848,8 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       expect(schema.properties?.secrets?.additionalProperties).toBe(false);
       expect(schema.properties?.secrets?.properties).toEqual({
         existingSecretName: expect.any(Object),
+        runnerExistingSecretName: expect.any(Object),
+        runnerSecretsKey: expect.any(Object),
       });
     });
 
