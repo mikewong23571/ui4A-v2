@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { runRunnerCommand, runRunnerMain, type RunnerCommandOptions } from './main.js';
+import { createRunnerDeliveryProcessor, scheduleRunnerTimeout } from './process.js';
 
 function commandHarness(overrides: RunnerCommandOptions = {}) {
   const stdout: string[] = [];
@@ -18,7 +19,7 @@ function commandHarness(overrides: RunnerCommandOptions = {}) {
 }
 
 describe('Agent Runner command entrypoint', () => {
-  it('fails oneshot honestly with a structured unavailable result and exit 78', async () => {
+  it('fails oneshot honestly with stable CONFIG exit when no delivery adapter is configured', async () => {
     const harness = commandHarness();
 
     await expect(runRunnerMain(['oneshot'], harness.options)).resolves.toBe(78);
@@ -26,7 +27,66 @@ describe('Agent Runner command entrypoint', () => {
     expect(harness.stderr).toHaveLength(1);
     expect(JSON.parse(harness.stderr[0]!)).toMatchObject({
       status: 'unavailable',
-      reason: expect.stringContaining('Phase F'),
+      reasonCode: 'runner_delivery_not_configured',
+    });
+  });
+
+  it('executes an injected sealed delivery and writes only its canonical result', async () => {
+    const delivery = {
+      schemaVersion: 1,
+      deliveryId: 'delivery:oneshot:1',
+      request: {
+        schemaVersion: 1,
+        runId: 'run:oneshot:1',
+        specialization: 'writing',
+        birth: {
+          definitionRef: 'writing-agent@1',
+          definitionHash: `sha256:${'1'.repeat(64)}`,
+          promptHash: `sha256:${'2'.repeat(64)}`,
+          runtimeHash: `sha256:${'3'.repeat(64)}`,
+          taskContractHash: `sha256:${'4'.repeat(64)}`,
+          resultContractHash: `sha256:${'5'.repeat(64)}`,
+        },
+        task: {
+          contractRef: 'writing-task@1',
+          payload: { instruction: 'Write the result.' },
+          contextRefs: [],
+        },
+      },
+      execution: {
+        profileId: 'server-writing',
+        backend: 'kubernetes-job',
+        image: `registry.internal/ui4a/agent-runner@sha256:${'a'.repeat(64)}`,
+        workspace: { rootRef: 'workspace:writing:1' },
+        resources: { cpu: '1', memory: '1Gi', timeoutMs: 30_000 },
+        networkPolicy: 'restricted',
+        credentialRefs: [],
+      },
+    };
+    const executor = vi.fn(async () => ({
+      candidate: { markdown: '# Result' },
+      artifacts: [],
+    }));
+    const processor = createRunnerDeliveryProcessor({
+      resolveSecrets: async () => ({}),
+      executor,
+      scheduleTimeout: scheduleRunnerTimeout,
+    });
+    const readDelivery = vi.fn(async () => delivery);
+    const oneshot = { processor, readDelivery };
+    const harness = commandHarness({ oneshot });
+
+    await expect(runRunnerMain(['oneshot'], harness.options)).resolves.toBe(0);
+    expect(readDelivery).toHaveBeenCalledWith(harness.options.environment);
+    expect(executor).toHaveBeenCalledOnce();
+    expect(harness.stderr).toEqual([]);
+    expect(JSON.parse(harness.stdout[0]!)).toMatchObject({
+      deliveryId: 'delivery:oneshot:1',
+      runId: 'run:oneshot:1',
+      specialization: 'writing',
+      status: 'succeeded',
+      candidate: { markdown: '# Result' },
+      resultHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
     });
   });
 

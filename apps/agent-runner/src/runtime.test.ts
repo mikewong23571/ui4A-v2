@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   releaseMetadata,
@@ -8,8 +8,8 @@ import {
   runnerLivePayload,
   runnerPort,
   runnerReadyPayload,
-  unavailableOneshotMessage,
 } from './runtime.js';
+import { createRunnerDeliveryProcessor, scheduleRunnerTimeout } from './process.js';
 
 async function allocatePort(): Promise<number> {
   const server = createServer();
@@ -121,11 +121,6 @@ describe('Agent Runner production process skeleton', () => {
     });
   });
 
-  it('fails honestly until Phase F defines oneshot task delivery', () => {
-    expect(unavailableOneshotMessage()).toContain('unavailable');
-    expect(unavailableOneshotMessage()).toContain('Phase F');
-  });
-
   it.each(['0', '65536', '3.14', 'invalid'])('rejects invalid daemon port %s', (port) => {
     expect(() => runnerPort({ UI4A_RUNNER_PORT: port })).toThrow(
       'UI4A_RUNNER_PORT must be an integer from 1 to 65535',
@@ -193,6 +188,13 @@ describe('Agent Runner production process skeleton', () => {
     expect(notFound.status).toBe(404);
     await expect(notFound.json()).resolves.toEqual({ status: 'not-found' });
 
+    const delivery = await fetch(`http://127.0.0.1:${port}/deliver`, { method: 'POST' });
+    expect(delivery.status).toBe(503);
+    await expect(delivery.json()).resolves.toEqual({
+      status: 'unavailable',
+      reasonCode: 'runner_delivery_not_configured',
+    });
+
     controller.abort();
     await expect(daemon).resolves.toBeUndefined();
   });
@@ -221,6 +223,96 @@ describe('Agent Runner production process skeleton', () => {
       status: 'ready',
       health: 'ok',
     });
+
+    controller.abort();
+    await expect(daemon).resolves.toBeUndefined();
+  });
+
+  it('serves daemon delivery through the same injected common processor', async () => {
+    const port = await allocatePort();
+    const controller = new AbortController();
+    let started: (() => void) | undefined;
+    const listening = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const executor = vi.fn(async () => ({
+      candidate: { markdown: '# Daemon result' },
+      artifacts: [],
+    }));
+    const deliveryProcessor = createRunnerDeliveryProcessor({
+      resolveSecrets: async () => ({}),
+      executor,
+      scheduleTimeout: scheduleRunnerTimeout,
+    });
+    const daemon = runDaemon(
+      { UI4A_RUNNER_PORT: String(port) },
+      {
+        host: '127.0.0.1',
+        signal: controller.signal,
+        deliveryProcessor,
+        authorizeDelivery: (request) => request.headers.authorization === 'Bearer fixture',
+        write: () => started?.(),
+      },
+    );
+    await listening;
+
+    const unauthorized = await fetch(`http://127.0.0.1:${port}/deliver`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    });
+    expect(unauthorized.status).toBe(401);
+    await expect(unauthorized.json()).resolves.toEqual({
+      status: 'failed',
+      reasonCode: 'runner_delivery_unauthorized',
+    });
+    expect(executor).not.toHaveBeenCalled();
+
+    const response = await fetch(`http://127.0.0.1:${port}/deliver`, {
+      method: 'POST',
+      headers: { authorization: 'Bearer fixture', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        schemaVersion: 1,
+        deliveryId: 'delivery:daemon:1',
+        request: {
+          schemaVersion: 1,
+          runId: 'run:daemon:1',
+          specialization: 'authoring',
+          birth: {
+            definitionRef: 'authoring-agent@1',
+            definitionHash: `sha256:${'1'.repeat(64)}`,
+            promptHash: `sha256:${'2'.repeat(64)}`,
+            runtimeHash: `sha256:${'3'.repeat(64)}`,
+            taskContractHash: `sha256:${'4'.repeat(64)}`,
+            resultContractHash: `sha256:${'5'.repeat(64)}`,
+          },
+          task: {
+            contractRef: 'authoring-task@1',
+            payload: { instruction: 'Draft a candidate.' },
+            contextRefs: [],
+          },
+        },
+        execution: {
+          profileId: 'server-authoring-host',
+          backend: 'trusted-host',
+          image: `registry.internal/ui4a/agent-runner@sha256:${'a'.repeat(64)}`,
+          workspace: { rootRef: 'workspace:authoring:1' },
+          resources: { cpu: '1', memory: '1Gi', timeoutMs: 30_000 },
+          networkPolicy: 'restricted',
+          credentialRefs: [],
+        },
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      deliveryId: 'delivery:daemon:1',
+      runId: 'run:daemon:1',
+      specialization: 'authoring',
+      status: 'succeeded',
+      candidate: { markdown: '# Daemon result' },
+    });
+    expect(executor).toHaveBeenCalledOnce();
 
     controller.abort();
     await expect(daemon).resolves.toBeUndefined();

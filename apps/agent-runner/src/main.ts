@@ -1,18 +1,25 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { releaseMetadata, runDaemon, runnerLivePayload } from './runtime.js';
 import {
-  releaseMetadata,
-  runDaemon,
-  runnerLivePayload,
-  unavailableOneshotMessage,
-} from './runtime.js';
+  executeRunnerDelivery,
+  type RunnerDeliveryProcessor,
+  type RunnerDeliveryResult,
+} from './process.js';
+
+export interface RunnerOneshotAdapter {
+  processor: RunnerDeliveryProcessor;
+  readDelivery(environment: NodeJS.ProcessEnv): unknown | Promise<unknown>;
+  signal?: AbortSignal;
+}
 
 export interface RunnerCommandOptions {
   environment?: NodeJS.ProcessEnv;
   stdout?: (line: string) => void;
   stderr?: (line: string) => void;
   daemon?: (environment: NodeJS.ProcessEnv) => Promise<void>;
+  oneshot?: RunnerOneshotAdapter;
 }
 
 export async function runRunnerCommand(
@@ -34,8 +41,34 @@ export async function runRunnerCommand(
       return 0;
     }
     if (command === 'oneshot') {
-      stderr(JSON.stringify({ status: 'unavailable', reason: unavailableOneshotMessage() }));
-      return 78;
+      if (options.oneshot === undefined) {
+        stderr(
+          JSON.stringify({
+            status: 'unavailable',
+            reasonCode: 'runner_delivery_not_configured',
+          }),
+        );
+        return 78;
+      }
+      try {
+        const delivery = await options.oneshot.readDelivery(environment);
+        const result: RunnerDeliveryResult = await executeRunnerDelivery(
+          options.oneshot.processor,
+          delivery,
+          options.oneshot.signal === undefined ? undefined : { signal: options.oneshot.signal },
+        );
+        stdout(JSON.stringify(result));
+        return 0;
+      } catch (error) {
+        const reasonCode =
+          error instanceof Error && /^runner_[a-z_]+$/.test(error.message)
+            ? error.message
+            : 'runner_execution_failed';
+        stderr(JSON.stringify({ status: 'failed', reasonCode }));
+        if (reasonCode === 'runner_execution_timeout') return 124;
+        if (reasonCode === 'runner_execution_cancelled') return 130;
+        return 75;
+      }
     }
     if (command === 'daemon') {
       await daemon(environment);

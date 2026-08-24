@@ -2,6 +2,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 
 import { aggregateReadiness, type ReadinessLifecycle } from '@ui4a/shared';
 
+import { executeRunnerDelivery, type RunnerDeliveryProcessor } from './process.js';
+
 export const RUNNER_COMPONENT = 'ui4a-agent-runner';
 const RUNNER_VERSION = '0.1.0-experimental.1' as const;
 const RUNNER_TAG = `v${RUNNER_VERSION}` as const;
@@ -46,6 +48,7 @@ export interface RunnerReadinessState extends RunnerBackendReadiness {
 
 export type RunnerBackendReadinessProvider = () => RunnerBackendReadiness;
 type RunnerReadinessProvider = () => RunnerReadinessState;
+export type RunnerDeliveryAuthorizer = (request: IncomingMessage) => boolean | Promise<boolean>;
 
 const UNAVAILABLE_BACKEND: RunnerBackendReadiness = Object.freeze({
   registered: false,
@@ -90,7 +93,39 @@ function writeJson(response: ServerResponse, status: number, value: unknown): vo
   response.end(`${JSON.stringify(value)}\n`);
 }
 
-export function handleRunnerRequest(
+async function readJsonBody(request: IncomingMessage): Promise<unknown> {
+  const chunks: Buffer[] = [];
+  let bytes = 0;
+  for await (const chunk of request) {
+    const buffer = Buffer.from(chunk);
+    bytes += buffer.byteLength;
+    if (bytes > 1024 * 1024) throw new Error('runner_delivery_too_large');
+    chunks.push(buffer);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
+  } catch {
+    throw new Error('runner_delivery_invalid_json');
+  }
+}
+
+function publicDeliveryError(error: unknown): { status: number; reasonCode: string } {
+  const reasonCode = error instanceof Error ? error.message : 'runner_execution_failed';
+  if (reasonCode === 'runner_delivery_conflict') return { status: 409, reasonCode };
+  if (reasonCode === 'runner_execution_timeout') return { status: 504, reasonCode };
+  if (reasonCode === 'runner_execution_cancelled') return { status: 409, reasonCode };
+  if (
+    reasonCode === 'runner_delivery_invalid' ||
+    reasonCode === 'runner_delivery_invalid_json' ||
+    reasonCode === 'runner_delivery_too_large' ||
+    reasonCode.startsWith('runner_request_forbidden_field:')
+  ) {
+    return { status: 400, reasonCode };
+  }
+  return { status: 502, reasonCode: 'runner_execution_failed' };
+}
+
+export async function handleRunnerRequest(
   request: IncomingMessage,
   response: ServerResponse,
   environment: NodeJS.ProcessEnv = process.env,
@@ -98,7 +133,9 @@ export function handleRunnerRequest(
     lifecycle: 'serving',
     ...UNAVAILABLE_BACKEND,
   }),
-): void {
+  deliveryProcessor?: RunnerDeliveryProcessor,
+  authorizeDelivery?: RunnerDeliveryAuthorizer,
+): Promise<void> {
   if (request.method === 'GET' && request.url === '/live') {
     writeJson(response, 200, runnerLivePayload(environment));
     return;
@@ -118,6 +155,43 @@ export function handleRunnerRequest(
     writeJson(response, payload.status === 'ready' ? 200 : 503, payload);
     return;
   }
+  if (request.method === 'POST' && request.url === '/deliver') {
+    if (deliveryProcessor === undefined || authorizeDelivery === undefined) {
+      writeJson(response, 503, {
+        status: 'unavailable',
+        reasonCode: 'runner_delivery_not_configured',
+      });
+      return;
+    }
+    let authorized = false;
+    try {
+      authorized = await authorizeDelivery(request);
+    } catch {
+      // Authentication adapters fail closed without exposing credential details.
+    }
+    if (!authorized) {
+      writeJson(response, 401, {
+        status: 'failed',
+        reasonCode: 'runner_delivery_unauthorized',
+      });
+      return;
+    }
+    const controller = new AbortController();
+    const cancel = (): void => controller.abort();
+    request.once('aborted', cancel);
+    try {
+      const result = await executeRunnerDelivery(deliveryProcessor, await readJsonBody(request), {
+        signal: controller.signal,
+      });
+      writeJson(response, 200, result);
+    } catch (error) {
+      const failure = publicDeliveryError(error);
+      writeJson(response, failure.status, { status: 'failed', reasonCode: failure.reasonCode });
+    } finally {
+      request.off('aborted', cancel);
+    }
+    return;
+  }
   writeJson(response, 404, { status: 'not-found' });
 }
 
@@ -126,6 +200,8 @@ export interface RunnerDaemonOptions {
   signal?: AbortSignal;
   write?: (line: string) => void;
   backendReadiness?: RunnerBackendReadinessProvider;
+  deliveryProcessor?: RunnerDeliveryProcessor;
+  authorizeDelivery?: RunnerDeliveryAuthorizer;
 }
 
 export function runnerPort(environment: NodeJS.ProcessEnv = process.env): number {
@@ -144,7 +220,11 @@ export async function runDaemon(
   const host = options.host ?? '0.0.0.0';
   const write = options.write ?? ((line: string) => console.log(line));
   const release = releaseMetadata(environment);
-  const backendReadiness = options.backendReadiness ?? (() => UNAVAILABLE_BACKEND);
+  const backendReadiness =
+    options.backendReadiness ??
+    (options.deliveryProcessor === undefined || options.authorizeDelivery === undefined
+      ? () => UNAVAILABLE_BACKEND
+      : () => ({ registered: true, deliveryAvailable: true }));
   let lifecycle: ReadinessLifecycle = 'starting';
   const readiness = (): RunnerReadinessState => {
     let backend = UNAVAILABLE_BACKEND;
@@ -156,9 +236,16 @@ export async function runDaemon(
     return { lifecycle, ...backend };
   };
 
-  const server = createServer((request, response) =>
-    handleRunnerRequest(request, response, environment, readiness),
-  );
+  const server = createServer((request, response) => {
+    void handleRunnerRequest(
+      request,
+      response,
+      environment,
+      readiness,
+      options.deliveryProcessor,
+      options.authorizeDelivery,
+    );
+  });
   await new Promise<void>((resolve, reject) => {
     const onError = (error: Error): void => {
       server.off('listening', onListening);
@@ -213,8 +300,4 @@ export async function runDaemon(
     process.off('SIGTERM', close);
     options.signal?.removeEventListener('abort', close);
   }
-}
-
-export function unavailableOneshotMessage(): string {
-  return 'oneshot delivery is unavailable until the Phase F Runtime Backend contract is active';
 }
