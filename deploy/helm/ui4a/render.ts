@@ -1005,7 +1005,12 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
             },
           },
         ],
-        args: ['start', '--optimized'],
+        args: ['start'],
+        securityContext: {
+          allowPrivilegeEscalation: false,
+          capabilities: { drop: ['ALL'] },
+          readOnlyRootFilesystem: false,
+        },
         ports: [{ name: 'http', containerPort: 8080 }],
         volumeMounts: [
           { name: 'tmp', mountPath: '/tmp' },

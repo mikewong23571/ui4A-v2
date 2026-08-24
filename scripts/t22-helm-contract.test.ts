@@ -871,7 +871,12 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
         });
         expect(JSON.stringify(keycloak)).toContain('keycloak-bootstrap-admin-password');
         expect(JSON.stringify(keycloak)).toContain('keycloak-database-password');
-        expect(primaryContainer(keycloak).args).toEqual(['start', '--optimized']);
+        expect(primaryContainer(keycloak).args).toEqual(['start']);
+        expect(primaryContainer(keycloak).securityContext).toMatchObject({
+          allowPrivilegeEscalation: false,
+          readOnlyRootFilesystem: false,
+          capabilities: { drop: ['ALL'] },
+        });
       });
 
       it.each([

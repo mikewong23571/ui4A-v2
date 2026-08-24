@@ -132,7 +132,7 @@ spec:
         - name: keycloak
           image: {{ .Values.images.keycloak | quote }}
           imagePullPolicy: IfNotPresent
-          args: [start, --optimized]
+          args: [start]
           env:
             - { name: KC_DB, value: postgres }
             - { name: KC_DB_URL_HOST, value: postgres }
@@ -166,7 +166,9 @@ spec:
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
-            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities: { drop: [ALL] }
       volumes:
         - { name: tmp, emptyDir: {} }
         - { name: keycloak-data, emptyDir: {} }
