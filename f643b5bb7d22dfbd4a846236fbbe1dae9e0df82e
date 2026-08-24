@@ -1,0 +1,7 @@
+T22 Phase C CLI and Agent identity Red.
+
+Added contracts for Bearer-only CLI transport without self-reported production identity, local demo compatibility, forbidden authority flags, RFC 8693 delegated exchange, client credentials, scope narrowing, secret-free errors, canonical sub plus azp audit, agent approval rejection, and production exec-plan identity propagation.
+
+Main-agent Red proof: 14 tests with 3 existing characterizations passing and 11 expected failures. Failures are limited to current CLI identity fields, missing production Agent token provider, and exec-plan not using the trusted identity adapter. No database, JWKS network, Keycloak, K8s, Docker, or random clock participated.
+
+Green must also inject trusted policyScope for Bearer Draft create after the CLI omits params.policyScope; removing the client field alone would make the Draft schema fail. Local token-missing demo behavior must remain.
