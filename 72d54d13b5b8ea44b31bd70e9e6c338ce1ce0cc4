@@ -1,0 +1,21 @@
+Task: Red TDD — define production configuration schema
+
+Summary:
+- Added the canonical production deployment configuration contract test at the platform-neutral shared boundary.
+- Defines strict {settings,secrets} separation for Compose and Kubernetes mappings.
+- Covers deployment/auth modes, PostgreSQL, Temporal, Keycloak/OIDC, TLS, LLM, Coding/Writing/Authoring Runtime profiles, repositories, workspaces, limits, timeouts, and references.
+- Covers missing sections/fields, malformed or inconsistent HTTPS URLs, empty/missing Secrets, dangerous defaults, localhost/demo production fallback, floating images, root workspaces, request-controlled overrides, and wider-backend fallback.
+
+Files:
+- packages/shared/src/production-deployment-config.test.ts
+
+Why:
+T22 requires Compose and Helm adapters to converge on one fail-closed typed contract. The Red suite fixes behavior before parser implementation and keeps environment/deployment adapters out of the shared kernel.
+
+Red verification:
+env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u NO_PROXY -u http_proxy -u https_proxy -u all_proxy -u no_proxy CI=true pnpm exec vitest run packages/shared/src/production-deployment-config.test.ts
+
+Expected result observed:
+- Test suite failed during import only because ./production-deployment-config does not yet exist.
+- No syntax, dependency, database, network, or environment failure occurred.
+- This is the intended Red boundary for the next Green task.
