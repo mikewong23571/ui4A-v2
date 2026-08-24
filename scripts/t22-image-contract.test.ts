@@ -163,6 +163,13 @@ describe('T22 production OCI image contract', () => {
     expect(dockerfile).toContain('@openai/codex-sdk');
   });
 
+  it('installs and verifies the Runner OpenSSL binary required by pki-init', () => {
+    const dockerfile = requiredSource(imageFiles.runner);
+
+    expect(dockerfile).toMatch(/apt-get install[^\n]*openssl/);
+    expect(dockerfile).toMatch(/openssl version/);
+  });
+
   it('copies the shared readiness source before bundling the Runner', () => {
     const dockerfile = requiredSource(imageFiles.runner);
 

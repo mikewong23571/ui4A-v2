@@ -19,6 +19,51 @@ function commandHarness(overrides: RunnerCommandOptions = {}) {
 }
 
 describe('Agent Runner command entrypoint', () => {
+  it('runs pki-init from server-owned environment and emits no key material', async () => {
+    const pkiInit = vi.fn(async () => ({
+      status: 'created' as const,
+      rootDirectory: '/var/lib/ui4a/ca',
+      files: [
+        {
+          id: 'rootCertificate' as const,
+          path: '/var/lib/ui4a/ca/root-ca.crt',
+          sha256: `sha256:${'a'.repeat(64)}`,
+          mode: 0o644 as const,
+        },
+      ],
+    }));
+    const environment = {
+      UI4A_PKI_ROOT: '/var/lib/ui4a/ca',
+      UI4A_HOST: 'ui4a.mothership.internal',
+      KEYCLOAK_HOST: 'auth.ui4a.mothership.internal',
+    };
+    const harness = commandHarness({ environment, pkiInit });
+
+    await expect(runRunnerMain(['pki-init'], harness.options)).resolves.toBe(0);
+    expect(pkiInit).toHaveBeenCalledWith({
+      rootDirectory: '/var/lib/ui4a/ca',
+      ui4aHost: 'ui4a.mothership.internal',
+      keycloakHost: 'auth.ui4a.mothership.internal',
+    });
+    expect(harness.stderr).toEqual([]);
+    expect(JSON.parse(harness.stdout[0]!)).toMatchObject({ status: 'created' });
+    expect(harness.stdout[0]).not.toContain('PRIVATE KEY');
+  });
+
+  it('maps a non-writable pki-init volume to stable EX_CANTCREAT without leaking details', async () => {
+    const pkiInit = vi.fn(async () => {
+      throw new Error('PKI_ROOT_NOT_WRITABLE');
+    });
+    const harness = commandHarness({ pkiInit });
+
+    await expect(runRunnerMain(['pki-init'], harness.options)).resolves.toBe(73);
+    expect(harness.stdout).toEqual([]);
+    expect(JSON.parse(harness.stderr[0]!)).toEqual({
+      status: 'failed',
+      reasonCode: 'PKI_ROOT_NOT_WRITABLE',
+    });
+  });
+
   it('fails oneshot honestly with stable CONFIG exit when no delivery adapter is configured', async () => {
     const harness = commandHarness();
 
