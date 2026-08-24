@@ -177,10 +177,10 @@
 - [x] Task: Green——实现 all-in-one stack 7e23e03
 - [x] PostgreSQL、Temporal Server/UI、单实例 Keycloak 和 migration/realm import-or-check
 - [x] UI4A Web/Worker、container Runner 和 optional Host Runner profile
-- [~] Task: 实现 Compose internal TLS
-- [ ] 首次生成并持久化 experiment root CA
-- [ ] 两个 local hosts/leaf certs，重复启动不覆盖
-- [ ] client trust 与 OIDC issuer/redirect/logout 验证
+- [x] Task: 实现 Compose internal TLS 0d1f5ed
+- [x] 首次生成并持久化 experiment root CA
+- [x] 两个 local hosts/leaf certs，重复启动不覆盖
+- [x] client trust 与 OIDC issuer/redirect/logout 验证
 - [ ] Task: Red→Green——Compose story acceptance
 - [ ] 通过 U1、U3–U9、U13、U14、U16 和 Compose Golden Story
 - [ ] 验证 restart、dual backends 和 backup/restore smoke
