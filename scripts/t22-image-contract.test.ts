@@ -163,6 +163,15 @@ describe('T22 production OCI image contract', () => {
     expect(dockerfile).toContain('@openai/codex-sdk');
   });
 
+  it('copies the shared readiness source before bundling the Runner', () => {
+    const dockerfile = requiredSource(imageFiles.runner);
+
+    expect(dockerfile).toContain('COPY packages/shared packages/shared');
+    expect(dockerfile.indexOf('COPY packages/shared packages/shared')).toBeLessThan(
+      dockerfile.indexOf('pnpm --filter @ui4a/agent-runner build'),
+    );
+  });
+
   it('declares offline-auditable image smoke, metadata, SBOM and vulnerability commands', () => {
     const contract = JSON.parse(requiredSource('deploy/oci/image-contract.json')) as {
       verification: Record<string, string>;

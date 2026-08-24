@@ -25,6 +25,7 @@ RUN pnpm install --filter @ui4a/agent-runner... --frozen-lockfile
 
 FROM dependencies AS builder
 COPY apps/agent-runner apps/agent-runner
+COPY packages/shared packages/shared
 RUN pnpm --filter @ui4a/agent-runner build && \
     pnpm --filter @ui4a/agent-runner --prod deploy --config.inject-workspace-packages=true /runtime
 

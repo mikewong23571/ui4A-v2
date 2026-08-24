@@ -1,5 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
+import { aggregateReadiness, type ReadinessLifecycle } from '@ui4a/shared';
+
 export const RUNNER_COMPONENT = 'ui4a-agent-runner';
 const RUNNER_VERSION = '0.1.0-experimental.1' as const;
 const RUNNER_TAG = `v${RUNNER_VERSION}` as const;
@@ -33,6 +35,56 @@ export function runnerLivePayload(environment: NodeJS.ProcessEnv = process.env) 
   };
 }
 
+export interface RunnerBackendReadiness {
+  registered: boolean;
+  deliveryAvailable: boolean;
+}
+
+export interface RunnerReadinessState extends RunnerBackendReadiness {
+  lifecycle: ReadinessLifecycle;
+}
+
+export type RunnerBackendReadinessProvider = () => RunnerBackendReadiness;
+type RunnerReadinessProvider = () => RunnerReadinessState;
+
+const UNAVAILABLE_BACKEND: RunnerBackendReadiness = Object.freeze({
+  registered: false,
+  deliveryAvailable: false,
+});
+
+function readinessErrorCode(state: RunnerReadinessState): string {
+  if (state.lifecycle === 'starting') return 'process_starting';
+  if (state.lifecycle === 'draining') return 'process_draining';
+  if (!state.registered) return 'runtime_backend_unavailable';
+  return 'runtime_delivery_unavailable';
+}
+
+export function runnerReadyPayload(state: RunnerReadinessState) {
+  const readiness = aggregateReadiness({
+    component: RUNNER_COMPONENT,
+    lifecycle: state.lifecycle,
+    dependencies: {
+      registration: state.registered
+        ? { required: true, status: 'ok' }
+        : {
+            required: true,
+            status: 'error',
+            reasonCode: 'runtime_backend_unavailable',
+          },
+      delivery: state.deliveryAvailable
+        ? { required: true, status: 'ok' }
+        : {
+            required: true,
+            status: 'error',
+            reasonCode: 'runtime_delivery_unavailable',
+          },
+    },
+  });
+  return readiness.status === 'ready'
+    ? readiness
+    : { ...readiness, error: { code: readinessErrorCode(state) } };
+}
+
 function writeJson(response: ServerResponse, status: number, value: unknown): void {
   response.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
   response.end(`${JSON.stringify(value)}\n`);
@@ -42,6 +94,10 @@ export function handleRunnerRequest(
   request: IncomingMessage,
   response: ServerResponse,
   environment: NodeJS.ProcessEnv = process.env,
+  readiness: RunnerReadinessProvider = () => ({
+    lifecycle: 'serving',
+    ...UNAVAILABLE_BACKEND,
+  }),
 ): void {
   if (request.method === 'GET' && request.url === '/live') {
     writeJson(response, 200, runnerLivePayload(environment));
@@ -51,6 +107,17 @@ export function handleRunnerRequest(
     writeJson(response, 200, releaseMetadata(environment));
     return;
   }
+  if (request.method === 'GET' && request.url === '/ready') {
+    let state: RunnerReadinessState;
+    try {
+      state = readiness();
+    } catch {
+      state = { lifecycle: 'serving', ...UNAVAILABLE_BACKEND };
+    }
+    const payload = runnerReadyPayload(state);
+    writeJson(response, payload.status === 'ready' ? 200 : 503, payload);
+    return;
+  }
   writeJson(response, 404, { status: 'not-found' });
 }
 
@@ -58,6 +125,7 @@ export interface RunnerDaemonOptions {
   host?: string;
   signal?: AbortSignal;
   write?: (line: string) => void;
+  backendReadiness?: RunnerBackendReadinessProvider;
 }
 
 export function runnerPort(environment: NodeJS.ProcessEnv = process.env): number {
@@ -76,9 +144,20 @@ export async function runDaemon(
   const host = options.host ?? '0.0.0.0';
   const write = options.write ?? ((line: string) => console.log(line));
   const release = releaseMetadata(environment);
+  const backendReadiness = options.backendReadiness ?? (() => UNAVAILABLE_BACKEND);
+  let lifecycle: ReadinessLifecycle = 'starting';
+  const readiness = (): RunnerReadinessState => {
+    let backend = UNAVAILABLE_BACKEND;
+    try {
+      backend = backendReadiness();
+    } catch {
+      // Dependency adapters fail closed without exposing exception text or credentials.
+    }
+    return { lifecycle, ...backend };
+  };
 
   const server = createServer((request, response) =>
-    handleRunnerRequest(request, response, environment),
+    handleRunnerRequest(request, response, environment, readiness),
   );
   await new Promise<void>((resolve, reject) => {
     const onError = (error: Error): void => {
@@ -87,6 +166,7 @@ export async function runDaemon(
     };
     const onListening = (): void => {
       server.off('error', onError);
+      lifecycle = 'serving';
       resolve();
     };
     server.once('error', onError);
@@ -110,10 +190,10 @@ export async function runDaemon(
   });
   let closing = false;
   const close = (): void => {
-    if (closing || !server.listening) {
-      return;
-    }
+    if (closing) return;
     closing = true;
+    lifecycle = 'draining';
+    if (!server.listening) return;
     server.close((error) => {
       if (error !== undefined) {
         rejectClose(error);

@@ -7,15 +7,17 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "node build.mjs",
     "start": "node dist/main.js daemon",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@openai/codex-sdk": "0.149.0"
+    "@openai/codex-sdk": "0.149.0",
+    "@ui4a/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
+    "esbuild": "0.28.2",
     "typescript": "^5.9.3"
   }
 }

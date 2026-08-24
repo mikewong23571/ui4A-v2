@@ -8,14 +8,24 @@ import {
   workerLivePayload,
   workerReleaseMetadata,
 } from './runtime-health';
+import { createWorkerReadinessState, type WorkerReadinessState } from './worker-readiness';
 
-function invokeHealthHandler(method: string, url: string) {
+function invokeHealthHandler(method: string, url: string, readiness?: WorkerReadinessState) {
   const writeHead = vi.fn();
   const end = vi.fn();
-  createWorkerHealthHandler({
-    UI4A_VERSION: '0.1.0-experimental.1',
-    UI4A_GIT_SHA: 'health-test-sha',
-  })({ method, url } as IncomingMessage, { writeHead, end } as unknown as ServerResponse);
+  createWorkerHealthHandler(
+    {
+      UI4A_VERSION: '0.1.0-experimental.1',
+      UI4A_GIT_SHA: 'health-test-sha',
+    },
+    readiness,
+  )(
+    { method, url } as IncomingMessage,
+    {
+      writeHead,
+      end,
+    } as unknown as ServerResponse,
+  );
   return { writeHead, end };
 }
 
@@ -72,9 +82,46 @@ describe('Worker production process metadata', () => {
     });
   });
 
+  it('serves lifecycle-aware /ready without changing /live during drain', () => {
+    const readiness = createWorkerReadinessState();
+    const starting = invokeHealthHandler('GET', '/ready', readiness);
+    expect(starting.writeHead).toHaveBeenCalledWith(503, {
+      'content-type': 'application/json; charset=utf-8',
+    });
+    expect(JSON.parse(String(starting.end.mock.calls[0]?.[0]))).toMatchObject({
+      lifecycle: 'starting',
+      status: 'not-ready',
+    });
+
+    for (const dependency of [
+      'config',
+      'postgres',
+      'migration',
+      'bootstrap',
+      'replay',
+      'temporal',
+    ] as const) {
+      readiness.markDependency(dependency, 'ok');
+    }
+    readiness.markServing();
+    const serving = invokeHealthHandler('GET', '/ready', readiness);
+    expect(serving.writeHead).toHaveBeenCalledWith(200, {
+      'content-type': 'application/json; charset=utf-8',
+    });
+    expect(JSON.parse(String(serving.end.mock.calls[0]?.[0]))).toMatchObject({
+      lifecycle: 'serving',
+      status: 'ready',
+    });
+
+    readiness.beginDraining();
+    const draining = invokeHealthHandler('GET', '/ready', readiness);
+    const live = invokeHealthHandler('GET', '/live', readiness);
+    expect(draining.writeHead).toHaveBeenCalledWith(503, expect.any(Object));
+    expect(live.writeHead).toHaveBeenCalledWith(200, expect.any(Object));
+  });
+
   it.each([
     ['POST', '/live'],
-    ['GET', '/ready'],
     ['GET', '/missing'],
   ])('returns 404 for %s %s', (method, url) => {
     const response = invokeHealthHandler(method, url);

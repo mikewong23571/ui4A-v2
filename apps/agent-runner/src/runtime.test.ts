@@ -7,6 +7,7 @@ import {
   runDaemon,
   runnerLivePayload,
   runnerPort,
+  runnerReadyPayload,
   unavailableOneshotMessage,
 } from './runtime.js';
 
@@ -60,6 +61,66 @@ describe('Agent Runner production process skeleton', () => {
     expect(runnerLivePayload()).not.toHaveProperty('ready');
   });
 
+  it('fails readiness honestly while the Phase F backend and delivery are unavailable', () => {
+    expect(
+      runnerReadyPayload({
+        lifecycle: 'serving',
+        registered: false,
+        deliveryAvailable: false,
+      }),
+    ).toMatchObject({
+      schemaVersion: 1,
+      component: 'ui4a-agent-runner',
+      lifecycle: 'serving',
+      status: 'not-ready',
+      health: 'degraded',
+      error: { code: 'runtime_backend_unavailable' },
+      dependencies: {
+        registration: {
+          required: true,
+          status: 'error',
+          reasonCode: 'runtime_backend_unavailable',
+        },
+        delivery: {
+          required: true,
+          status: 'error',
+          reasonCode: 'runtime_delivery_unavailable',
+        },
+      },
+    });
+  });
+
+  it.each([
+    ['starting', 'process_starting'],
+    ['draining', 'process_draining'],
+  ] as const)('keeps %s lifecycle not ready', (lifecycle, reasonCode) => {
+    expect(
+      runnerReadyPayload({ lifecycle, registered: true, deliveryAvailable: true }),
+    ).toMatchObject({
+      lifecycle,
+      status: 'not-ready',
+      error: { code: reasonCode },
+    });
+  });
+
+  it('allows a future backend seam to report ready only when registered and deliverable', () => {
+    expect(
+      runnerReadyPayload({
+        lifecycle: 'serving',
+        registered: true,
+        deliveryAvailable: true,
+      }),
+    ).toMatchObject({
+      lifecycle: 'serving',
+      status: 'ready',
+      health: 'ok',
+      dependencies: {
+        registration: { required: true, status: 'ok' },
+        delivery: { required: true, status: 'ok' },
+      },
+    });
+  });
+
   it('fails honestly until Phase F defines oneshot task delivery', () => {
     expect(unavailableOneshotMessage()).toContain('unavailable');
     expect(unavailableOneshotMessage()).toContain('Phase F');
@@ -71,7 +132,7 @@ describe('Agent Runner production process skeleton', () => {
     );
   });
 
-  it('serves live/version/404 over HTTP and closes on an abort signal', async () => {
+  it('serves live/version/default-not-ready/404 over HTTP and closes on abort', async () => {
     const port = await allocatePort();
     const controller = new AbortController();
     let started: (() => void) | undefined;
@@ -121,9 +182,45 @@ describe('Agent Runner production process skeleton', () => {
       support: { ga: false, productionReady: false, sla: false, lts: false },
     });
 
-    const notFound = await fetch(`http://127.0.0.1:${port}/ready`);
+    const ready = await fetch(`http://127.0.0.1:${port}/ready`);
+    expect(ready.status).toBe(503);
+    await expect(ready.json()).resolves.toMatchObject({
+      status: 'not-ready',
+      error: { code: 'runtime_backend_unavailable' },
+    });
+
+    const notFound = await fetch(`http://127.0.0.1:${port}/unknown`);
     expect(notFound.status).toBe(404);
     await expect(notFound.json()).resolves.toEqual({ status: 'not-found' });
+
+    controller.abort();
+    await expect(daemon).resolves.toBeUndefined();
+  });
+
+  it('serves 200 readiness through an injected registered delivery backend', async () => {
+    const port = await allocatePort();
+    const controller = new AbortController();
+    let started: (() => void) | undefined;
+    const listening = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const daemon = runDaemon(
+      { UI4A_RUNNER_PORT: String(port) },
+      {
+        host: '127.0.0.1',
+        signal: controller.signal,
+        backendReadiness: () => ({ registered: true, deliveryAvailable: true }),
+        write: () => started?.(),
+      },
+    );
+
+    await listening;
+    const ready = await fetch(`http://127.0.0.1:${port}/ready`);
+    expect(ready.status).toBe(200);
+    await expect(ready.json()).resolves.toMatchObject({
+      status: 'ready',
+      health: 'ok',
+    });
 
     controller.abort();
     await expect(daemon).resolves.toBeUndefined();

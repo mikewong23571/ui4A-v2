@@ -14,6 +14,7 @@ import { NativeConnection, Worker } from '@temporalio/worker';
 import * as activities from './activities';
 import { runWorkerProductionDeploymentPreflight } from './production-deployment-preflight';
 import { startWorkerHealthServer, workerReleaseMetadata } from './runtime-health';
+import { createWorkerReadinessState, probeWorkerDependencies } from './worker-readiness';
 import { runWorkerStartup } from './worker-startup';
 
 async function main(): Promise<void> {
@@ -36,7 +37,10 @@ async function main(): Promise<void> {
           workflowsPath,
           activities,
         }),
-      startHealthServer: (environment) => startWorkerHealthServer(environment),
+      createReadinessState: () => createWorkerReadinessState(),
+      probeDependencies: () => probeWorkerDependencies({ db: activities.workerDb() }),
+      startHealthServer: (environment, readiness) =>
+        startWorkerHealthServer(environment, readiness),
       onSignal: (signal, handler) => process.on(signal, handler),
       log: (message) => console.log(message),
     },

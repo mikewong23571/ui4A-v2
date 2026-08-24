@@ -1,6 +1,7 @@
 import type { DeploymentEnvironment, ProductionDeploymentConfig } from '@ui4a/shared';
 
 import { shutdownBanner, startupBanner } from './banner';
+import type { WorkerPersistentDependencySnapshot, WorkerReadinessState } from './worker-readiness';
 
 export interface WorkerProcess {
   run(): Promise<void>;
@@ -23,7 +24,15 @@ export interface WorkerStartupDependencies<Connection> {
   connect(options: { address: string }): Promise<Connection>;
   closeConnection(connection: Connection): Promise<void>;
   createWorker(options: WorkerRegistrationOptions<Connection>): Promise<WorkerProcess>;
-  startHealthServer(environment: DeploymentEnvironment): Promise<WorkerHealthServer>;
+  createReadinessState(): WorkerReadinessState;
+  probeDependencies(
+    config: ProductionDeploymentConfig | undefined,
+    environment: DeploymentEnvironment,
+  ): Promise<WorkerPersistentDependencySnapshot>;
+  startHealthServer(
+    environment: DeploymentEnvironment,
+    readiness: WorkerReadinessState,
+  ): Promise<WorkerHealthServer>;
   onSignal(signal: NodeJS.Signals, handler: () => void): void;
   log(message: string): void;
 }
@@ -68,23 +77,51 @@ export async function runWorkerStartup<Connection>(
 ): Promise<void> {
   const productionConfig = dependencies.preflight(environment);
   const options = workerStartupOptions(productionConfig, environment);
-  const connection = await dependencies.connect({ address: options.address });
+  const readiness = dependencies.createReadinessState();
+  readiness.markDependency('config', 'ok');
   let healthServer: WorkerHealthServer | undefined;
+  let connection: Connection | undefined;
 
   try {
+    healthServer = await dependencies.startHealthServer(environment, readiness);
+    const persistent = await dependencies.probeDependencies(productionConfig, environment);
+    for (const dependency of ['postgres', 'migration', 'bootstrap', 'replay'] as const) {
+      readiness.markDependency(
+        dependency,
+        persistent[dependency].status,
+        persistent[dependency].reasonCode,
+      );
+    }
+    const failedPersistent = (['postgres', 'migration', 'bootstrap', 'replay'] as const).find(
+      (dependency) => persistent[dependency].status !== 'ok',
+    );
+    if (failedPersistent !== undefined) {
+      throw new Error(
+        persistent[failedPersistent].reasonCode ?? 'worker_persistent_dependency_not_ready',
+      );
+    }
+
+    try {
+      connection = await dependencies.connect({ address: options.address });
+      readiness.markDependency('temporal', 'ok');
+    } catch {
+      readiness.markDependency('temporal', 'error', 'temporal_unavailable');
+      throw new Error('temporal_unavailable');
+    }
     const worker = await dependencies.createWorker({
       connection,
       namespace: options.namespace,
       taskQueue: options.taskQueue,
       ...(options.identity === undefined ? {} : { identity: options.identity }),
     });
-    healthServer = await dependencies.startHealthServer(environment);
+    readiness.markServing();
     dependencies.log(startupBanner({ taskQueue: options.taskQueue, address: options.address }));
 
     let shuttingDown = false;
     const requestShutdown = (signal: NodeJS.Signals): void => {
       if (shuttingDown) return;
       shuttingDown = true;
+      readiness.beginDraining();
       dependencies.log(shutdownBanner(signal));
       worker.shutdown();
     };
@@ -93,7 +130,8 @@ export async function runWorkerStartup<Connection>(
 
     await worker.run();
   } finally {
+    if (readiness.snapshot().lifecycle === 'serving') readiness.beginDraining();
     healthServer?.close();
-    await dependencies.closeConnection(connection);
+    if (connection !== undefined) await dependencies.closeConnection(connection);
   }
 }
