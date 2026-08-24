@@ -83,6 +83,7 @@ spec:
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.temporal | quote }}
       automountServiceAccountToken: false
+      enableServiceLinks: false
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       initContainers:
         {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal") | nindent 8 }}

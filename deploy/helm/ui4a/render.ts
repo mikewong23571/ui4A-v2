@@ -1011,6 +1011,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       },
       {
         automountServiceAccountToken: false,
+        enableServiceLinks: false,
         initContainers: dependencyGates(values, ['temporal']),
         volumes: [{ name: 'tmp', emptyDir: {} }],
       },
