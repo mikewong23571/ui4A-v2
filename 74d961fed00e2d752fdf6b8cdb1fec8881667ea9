@@ -1,0 +1,7 @@
+T22 Phase C browser authentication core Green.
+
+Implemented injected Authorization Code plus S256 PKCE lifecycle, state nonce and issuer correlation, safe return targets, parallel state consumption, authenticated opaque host cookies, auth-private Token sessions, bounded refresh, absolute expiry, revocation, logout, and stable non-secret errors. Browser sessions expose only a Bearer boundary consumed by the existing credential verifier.
+
+Main-agent verification: browser lifecycle plus authentication negative corpus passed 44 of 44; Web typecheck passed; scoped ESLint passed with only the repository pages-directory notice; scoped Prettier and git diff check passed.
+
+This commit deliberately does not provide a production shared AuthPrivateStore, Next login callback logout routes, browser controls, or live Keycloak network adapter. In-memory storage remains test-only; the Conductor task is not marked complete yet.
