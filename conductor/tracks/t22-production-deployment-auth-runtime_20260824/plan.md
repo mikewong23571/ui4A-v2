@@ -147,11 +147,11 @@
 
 ## Phase F: 双后端 Agent Runtime
 
-- [~] Task: Red TDD——定义统一 Runtime Backend SPI
-- [ ] immutable Run/birth references 与 prepare/execute/collect/verify/finalize
-- [ ] heartbeat、lease、cancel、timeout、restart boundary 和 canonical result
-- [ ] 拒绝 request backend/image/cwd/provider/model/env override
-- [ ] Task: Green——抽离 common Runner process
+- [x] Task: Red TDD——定义统一 Runtime Backend SPI f891fa5
+- [x] immutable Run/birth references 与 prepare/execute/collect/verify/finalize
+- [x] heartbeat、lease、cancel、timeout、restart boundary 和 canonical result
+- [x] 拒绝 request backend/image/cwd/provider/model/env override
+- [~] Task: Green——抽离 common Runner process
 - [ ] one-shot container mode 与 trusted host daemon mode
 - [ ] 与 generic Host lifecycle 和 specialization verifier 分离
 - [ ] Secret 仅在 authorized Run 生命周期可见
