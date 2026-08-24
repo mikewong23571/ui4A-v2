@@ -1,0 +1,32 @@
+Task: Establish v0.1.0-experimental.1 version contract
+
+Summary:
+- Added canonical shared release semver 0.1.0-experimental.1, display/tag v0.1.0-experimental.1, experimental channel, and explicit non-GA support metadata.
+- Added fail-closed release provenance helper: image UI4A_VERSION must match the canonical semver; missing Git SHA/build date report unknown honestly.
+- Unified Web /live and new /version, Worker /live /version and --version, and Runner /live /version and --version.
+- Added dependency-free CLI --version/-V and aligned its local installable boundary mechanically with shared.
+- Aligned root and seven workspace package manifests, three Dockerfile version defaults, and deploy/oci/image-contract.json.
+- Added repository-level tests preventing drift and proving ga=false, productionReady=false, sla=false, lts=false.
+
+Files:
+- packages/shared/src/release.ts and release/index tests
+- apps/web/src/release.ts, /live and /version routes/tests
+- apps/worker/src/runtime-health.ts and test
+- apps/agent-runner/src/runtime.ts and test
+- apps/cli release/args/main/envelope/help/tests
+- root/workspace package.json versions
+- three Dockerfiles, deploy/oci/image-contract.json, T22 image/release contract tests
+
+Why:
+The repository previously reported 0.1.0 in shared/CLI/packages while health and images independently hardcoded a v-prefixed experimental string. The canonical contract separates machine semver from display tag and makes experimental/non-GA status visible and mechanically enforced.
+
+TDD evidence:
+- Red: packages/shared/src/index.test.ts expected 0.1.0-experimental.1 but received 0.1.0 (1 failed, 4 passed).
+- Green (orchestrator rerun): 10 test files passed, 41 tests passed.
+- Typecheck passed for shared, web, worker, agent-runner, and CLI.
+- pnpm cli:build passed.
+- ui4a v0.1.0-experimental.1 (experimental) and  both returned  without endpoint config/network.
+- git diff --check passed.
+
+Scope note:
+Application/Flow/Definition/Presentation wire schema versions were not changed. This is release identity only. Images from the prior task were not rebuilt here; final release images will be rebuilt with the final Git SHA in Phase J.
