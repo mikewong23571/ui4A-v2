@@ -38,7 +38,15 @@ export interface CompletedKubernetesBackup {
   backupId: string;
   completedAt: string;
   manifestDigest: string;
-  artifacts: Record<string, string>;
+  artifacts: Record<
+    string,
+    {
+      digest: string;
+      bytes: number;
+      kind: 'database' | 'runtime' | 'realm' | 'pki' | 'private-config';
+      private: boolean;
+    }
+  >;
 }
 
 export interface IsolatedTargetAttestation {
@@ -141,7 +149,26 @@ function validateBackup(backup: CompletedKubernetesBackup, plan: KubernetesRecov
     !validTimestamp(backup.completedAt) ||
     !digestPattern.test(backup.manifestDigest) ||
     refs.join(',') !== [...liveRecoveryArtifactRefs].sort().join(',') ||
-    Object.values(backup.artifacts).some((digest) => !digestPattern.test(digest))
+    Object.entries(backup.artifacts).some(
+      ([ref, artifact]) =>
+        !digestPattern.test(artifact.digest) ||
+        !Number.isSafeInteger(artifact.bytes) ||
+        artifact.bytes < 0 ||
+        artifact.private !==
+          (ref.startsWith('databases/') ||
+            ref.startsWith('runtime/') ||
+            ref.startsWith('private/')) ||
+        artifact.kind !==
+          (ref.startsWith('databases/')
+            ? 'database'
+            : ref.startsWith('runtime/')
+              ? 'runtime'
+              : ref === 'private/pki.tar'
+                ? 'pki'
+                : ref.startsWith('private/')
+                  ? 'private-config'
+                  : 'realm'),
+    )
   ) {
     fail('K8S_LIVE_BACKUP_INCOMPLETE');
   }

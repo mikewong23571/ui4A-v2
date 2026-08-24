@@ -22,6 +22,24 @@ const requiredArtifacts = [
   'runtime/workspaces.tar',
 ];
 
+function artifact(ref: string) {
+  return {
+    digest: SHA,
+    bytes: 1,
+    kind: ref.startsWith('databases/')
+      ? ('database' as const)
+      : ref.startsWith('runtime/')
+        ? ('runtime' as const)
+        : ref === 'private/pki.tar'
+          ? ('pki' as const)
+          : ref.startsWith('private/')
+            ? ('private-config' as const)
+            : ('realm' as const),
+    private:
+      ref.startsWith('databases/') || ref.startsWith('runtime/') || ref.startsWith('private/'),
+  };
+}
+
 function fingerprint(overrides: Partial<LiveRecoveryFingerprint> = {}): LiveRecoveryFingerprint {
   return {
     eventHighWaterMark: 43,
@@ -109,7 +127,7 @@ function dependencies(): LiveRecoveryDependencies {
       backupId: input().backupId,
       completedAt: '2026-08-24T16:01:00.000Z',
       manifestDigest: SHA,
-      artifacts: Object.fromEntries(requiredArtifacts.map((ref) => [ref, SHA])),
+      artifacts: Object.fromEntries(requiredArtifacts.map((ref) => [ref, artifact(ref)])),
     })),
     resumeCurrent: vi.fn(async () => undefined),
     allocateIsolatedTarget: vi.fn(async () => ({
@@ -195,7 +213,7 @@ describe('T22 live Kubernetes isolated recovery orchestration', () => {
       backupId: input().backupId,
       completedAt: '2026-08-24T16:01:00.000Z',
       manifestDigest: SHA,
-      artifacts: Object.fromEntries(requiredArtifacts.slice(1).map((ref) => [ref, SHA])),
+      artifacts: Object.fromEntries(requiredArtifacts.slice(1).map((ref) => [ref, artifact(ref)])),
     });
 
     await expect(executeLiveKubernetesRecoveryDrill(deps, input())).rejects.toMatchObject({
@@ -203,6 +221,27 @@ describe('T22 live Kubernetes isolated recovery orchestration', () => {
     });
     expect(deps.resumeCurrent).toHaveBeenCalledOnce();
     expect(deps.allocateIsolatedTarget).not.toHaveBeenCalled();
+  });
+
+  it('rejects checksum rows without exact kind, byte count and privacy metadata', async () => {
+    const deps = dependencies();
+    const artifacts = Object.fromEntries(requiredArtifacts.map((ref) => [ref, artifact(ref)]));
+    artifacts['private/pki.tar'] = {
+      ...artifacts['private/pki.tar']!,
+      bytes: -1,
+      kind: 'realm',
+      private: false,
+    };
+    vi.mocked(deps.createBackup).mockResolvedValue({
+      backupId: input().backupId,
+      completedAt: '2026-08-24T16:01:00.000Z',
+      manifestDigest: SHA,
+      artifacts,
+    });
+
+    await expect(executeLiveKubernetesRecoveryDrill(deps, input())).rejects.toMatchObject({
+      code: 'K8S_LIVE_BACKUP_INCOMPLETE',
+    });
   });
 
   it('fails closed when target attestation aliases a current UID or root', async () => {
