@@ -122,7 +122,7 @@
 - [x] degraded 不进入 Ready；Worker 暴露 readiness/drain
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 4fb024b
 
-## Phase E: PostgreSQL、Temporal、持久化与灾备合同
+## Phase E: PostgreSQL、Temporal、持久化与灾备合同 [checkpoint: cc8e414]
 
 - [x] Task: Red TDD——定义 stateful deployment 与 restore fixtures 8db59ea
 - [x] 覆盖 PostgreSQL、Temporal、Keycloak、events、payloads 和 workflow history
@@ -143,7 +143,7 @@
 - [x] 记录恢复前 business hash、identity 和 Run evidence
 - [x] 从 backup 恢复、rebuild projections 并对比结果
 - [ ] 记录实际 RPO/RTO（Phase I 真实 drill）
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) cc8e414
 
 ## Phase F: 双后端 Agent Runtime
 
