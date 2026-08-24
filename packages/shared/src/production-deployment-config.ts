@@ -15,6 +15,7 @@ export interface ProductionDeploymentSettings {
       audience: string;
       clientId: string;
       clientSecretRef: string;
+      sessionSecretRef: string;
       callbackUrl: string;
       scopes: string[];
     };
@@ -255,6 +256,7 @@ function parseAuth(value: unknown): ProductionDeploymentSettings['auth'] {
     'audience',
     'clientId',
     'clientSecretRef',
+    'sessionSecretRef',
     'callbackUrl',
     'scopes',
   ]);
@@ -265,6 +267,7 @@ function parseAuth(value: unknown): ProductionDeploymentSettings['auth'] {
       audience: string(oidc.audience, 'settings.auth.oidc.audience'),
       clientId: identifier(oidc.clientId, 'settings.auth.oidc.clientId'),
       clientSecretRef: identifier(oidc.clientSecretRef, 'settings.auth.oidc.clientSecretRef'),
+      sessionSecretRef: identifier(oidc.sessionSecretRef, 'settings.auth.oidc.sessionSecretRef'),
       callbackUrl: httpsUrl(oidc.callbackUrl, 'auth.oidc.callbackUrl').toString(),
       scopes: stringList(oidc.scopes, 'settings.auth.oidc.scopes'),
     },
@@ -638,6 +641,9 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
   if (settings.auth.oidc.audience === '*') {
     fail('settings.auth.oidc.audience', 'wildcard audience is forbidden in production');
   }
+  if (settings.auth.oidc.sessionSecretRef === settings.auth.oidc.clientSecretRef) {
+    fail('settings.auth.oidc.sessionSecretRef', 'must differ from clientSecretRef');
+  }
   if (!settings.auth.oidc.scopes.includes('openid')) {
     fail('settings.auth.oidc.scopes', 'must include openid');
   }
@@ -653,6 +659,7 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
 
   const secretRefs: Array<[string, string]> = [
     [settings.auth.oidc.clientSecretRef, 'settings.auth.oidc.clientSecretRef'],
+    [settings.auth.oidc.sessionSecretRef, 'settings.auth.oidc.sessionSecretRef'],
     [settings.postgres.runtimePasswordRef, 'settings.postgres.runtimePasswordRef'],
     [settings.postgres.migrationPasswordRef, 'settings.postgres.migrationPasswordRef'],
     [settings.keycloak.databasePasswordRef, 'settings.keycloak.databasePasswordRef'],
@@ -671,6 +678,17 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
     }
   }
   for (const [ref, path] of secretRefs) requireSecret(secrets, ref, path);
+
+  const sessionSecret = secrets[settings.auth.oidc.sessionSecretRef]!;
+  if (
+    sessionSecret === secrets[settings.auth.oidc.clientSecretRef] ||
+    sessionSecret === settings.auth.oidc.clientId
+  ) {
+    fail(
+      'settings.auth.oidc.sessionSecretRef',
+      'Secret material must differ from the OIDC client credential and clientId',
+    );
+  }
 
   return { settings, secrets: Object.freeze({ ...secrets }) };
 }

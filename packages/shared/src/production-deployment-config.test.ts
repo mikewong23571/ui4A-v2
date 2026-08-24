@@ -22,6 +22,7 @@ function validInput() {
           audience: 'ui4a',
           clientId: 'ui4a-web',
           clientSecretRef: 'oidc-client-secret',
+          sessionSecretRef: 'oidc-session-secret',
           callbackUrl: 'https://ui4a.mothership.internal/api/auth/callback',
           scopes: ['openid', 'profile'],
         },
@@ -129,6 +130,7 @@ function validInput() {
       'keycloak-database-password': '__test_only_keycloak_database__',
       'keycloak-bootstrap-admin-password': '__test_only_keycloak_admin__',
       'oidc-client-secret': '__test_only_oidc_client__',
+      'oidc-session-secret': '__test_only_oidc_session__',
       'llm-api-key': '__test_only_llm_api_key__',
       'codex-api-token': '__test_only_codex_api_token__',
       'host-runner-token': '__test_only_host_runner_token__',
@@ -166,6 +168,8 @@ describe('T22 production deployment config contract', () => {
 
   it('rejects a missing or client-credential-reused browser-session secret', () => {
     const missing = validInput();
+    delete (missing.settings.auth.oidc as Partial<typeof missing.settings.auth.oidc>)
+      .sessionSecretRef;
     expectInvalid(missing, /sessionSecretRef/);
 
     const reusedRef = validInput();
@@ -178,8 +182,9 @@ describe('T22 production deployment config contract', () => {
     Object.assign(reusedMaterial.settings.auth.oidc, {
       sessionSecretRef: 'oidc-session-secret',
     });
-    reusedMaterial.secrets['oidc-session-secret'] =
-      reusedMaterial.secrets[reusedMaterial.settings.auth.oidc.clientSecretRef]!;
+    reusedMaterial.secrets['oidc-session-secret'] = (
+      reusedMaterial.secrets as Record<string, string>
+    )[reusedMaterial.settings.auth.oidc.clientSecretRef]!;
     expectInvalid(reusedMaterial, /sessionSecretRef|must differ|reuse/i);
 
     const reusedClientId = validInput();
