@@ -5,7 +5,7 @@ import { isAbsolute, join, relative, resolve } from 'node:path';
 
 import { Codex, type CodexOptions, type ThreadOptions } from '@openai/codex-sdk';
 import {
-  preflightProductionDeploymentFromEnvironment,
+  preflightProductionRunnerFromEnvironment,
   type HostProductionRuntimeProfile,
   type KubernetesProductionRuntimeProfile,
   type ProductionDeploymentConfig,
@@ -40,6 +40,8 @@ const compiledFields = [
   'outputSchema',
   'sandboxMode',
 ] as const;
+const maxStreamedEvents = 4_096;
+const maxStreamedEventBytes = 8 * 1024 * 1024;
 
 interface CompiledCodexRequest {
   schemaVersion: 1;
@@ -296,11 +298,22 @@ async function executeCodex(input: {
     let nativeSessionId: string | undefined;
     let result: unknown;
     const events: unknown[] = [];
+    let eventBytes = 0;
     for await (const value of streamed.events) {
       let event: Record<string, unknown>;
       try {
         event = structuredClone(record(value));
       } catch {
+        throw new Error('runner_execution_failed');
+      }
+      let serialized: string;
+      try {
+        serialized = JSON.stringify(event);
+      } catch {
+        throw new Error('runner_execution_failed');
+      }
+      eventBytes += Buffer.byteLength(serialized, 'utf8');
+      if (events.length >= maxStreamedEvents || eventBytes > maxStreamedEventBytes) {
         throw new Error('runner_execution_failed');
       }
       events.push(event);
@@ -328,7 +341,7 @@ async function executeCodex(input: {
 function defaultLoadConfiguration(
   environment: NodeJS.ProcessEnv,
 ): ProductionDeploymentConfig | undefined {
-  return preflightProductionDeploymentFromEnvironment(environment, (path) =>
+  return preflightProductionRunnerFromEnvironment(environment, (path) =>
     readFileSync(path, 'utf8'),
   );
 }
@@ -384,9 +397,13 @@ export function createProductionRunnerComposition(
     authorizeDelivery = bearerAuthorizer(runnerToken);
     deliveryAvailable = true;
   } else if (deploymentMode === 'kubernetes') {
+    const profileId = environment.UI4A_RUNNER_PROFILE_ID;
+    if (profileId === undefined || profileId === '') fail();
     profiles = configuration.settings.runtime.profiles.filter(
       (profile): profile is KubernetesProductionRuntimeProfile =>
-        profile.backend === 'kubernetes' && profile.image === runnerImage,
+        profile.backend === 'kubernetes' &&
+        profile.id === profileId &&
+        profile.image === runnerImage,
     );
     // Kubernetes delivery is a sealed file in a one-shot Job. The long-running Deployment stays
     // fail-closed because no HTTP Runner bearer-token contract exists for this backend.
@@ -396,6 +413,17 @@ export function createProductionRunnerComposition(
     fail();
   }
   if (profiles.length === 0) fail();
+  const allowedSecretRefs = new Set<string>([configuration.settings.llm.apiKeyRef]);
+  for (const profile of profiles) {
+    for (const ref of profile.credentialRefs) allowedSecretRefs.add(ref);
+    if (profile.backend === 'host') allowedSecretRefs.add(profile.runnerTokenRef);
+  }
+  if (
+    Object.keys(configuration.secrets).some((ref) => !allowedSecretRefs.has(ref)) ||
+    [...allowedSecretRefs].some((ref) => configuration?.secrets[ref] === undefined)
+  ) {
+    fail();
+  }
   const apiKey = configuration.secrets[configuration.settings.llm.apiKeyRef];
   if (apiKey === undefined || apiKey === '') {
     fail();

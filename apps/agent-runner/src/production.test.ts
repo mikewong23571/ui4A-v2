@@ -60,7 +60,6 @@ function configuration(): ProductionDeploymentConfig {
     secrets: {
       'llm-api-key': apiKey,
       'runner-token': runnerToken,
-      'codex-token': '__unselected_profile_token__',
     },
   } as unknown as ProductionDeploymentConfig;
 }
@@ -76,6 +75,7 @@ function environment(): NodeJS.ProcessEnv {
 function kubernetesConfiguration(): ProductionDeploymentConfig {
   const config = configuration();
   config.settings.deploymentMode = 'kubernetes';
+  delete (config.secrets as Record<string, string>)['runner-token'];
   config.settings.runtime.profiles = [
     {
       id: 'writing-k8s',
@@ -95,6 +95,7 @@ function kubernetesConfiguration(): ProductionDeploymentConfig {
 function kubernetesEnvironment(): NodeJS.ProcessEnv {
   return {
     UI4A_DEPLOYMENT_PROFILE: 'production',
+    UI4A_RUNNER_PROFILE_ID: 'writing-k8s',
     UI4A_RUNNER_IMAGE: image,
   };
 }
@@ -206,10 +207,13 @@ function sdk() {
 
 function responsesAdapter() {
   const close = vi.fn(async () => undefined);
-  const start = vi.fn(async (_options: ResponsesLoopbackAdapterOptions) => ({
-    baseUrl: 'http://127.0.0.1:43123/v1',
-    close,
-  }));
+  const start = vi.fn(async (options: ResponsesLoopbackAdapterOptions) => {
+    void options;
+    return {
+      baseUrl: 'http://127.0.0.1:43123/v1',
+      close,
+    };
+  });
   return { start, close };
 }
 
@@ -314,7 +318,6 @@ describe('Agent Runner production composition', () => {
       events: expect.arrayContaining([expect.objectContaining({ type: 'thread.started' })]),
     });
     expect(JSON.stringify(result)).not.toContain(apiKey);
-    expect(JSON.stringify(result)).not.toContain('__unselected_profile_token__');
   });
 
   it.each([
@@ -376,6 +379,7 @@ describe('Agent Runner production composition', () => {
   it('rejects a profile that did not authorize the configured LLM Secret before SDK creation', () => {
     const config = configuration();
     config.settings.runtime.profiles[0]!.credentialRefs = ['codex-token'];
+    (config.secrets as Record<string, string>)['codex-token'] = '__profile_token__';
     const transport = sdk();
 
     expect(() =>
@@ -385,6 +389,55 @@ describe('Agent Runner production composition', () => {
       }),
     ).toThrow('runner_production_config_invalid');
     expect(transport.createClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects a full deployment Secret canary before constructing the SDK', () => {
+    const config = configuration();
+    (config.secrets as Record<string, string>)['postgres-runtime-password'] = '__postgres_canary__';
+    const transport = sdk();
+
+    expect(() =>
+      createProductionRunnerComposition(environment(), {
+        loadConfiguration: () => config,
+        createClient: transport.createClient,
+      }),
+    ).toThrow('runner_production_config_invalid');
+    expect(transport.createClient).not.toHaveBeenCalled();
+  });
+
+  it('bounds the aggregate streamed event count without returning a partial candidate', async () => {
+    const adapter = responsesAdapter();
+    let yielded = 0;
+    const client: RunnerCodexSdk = {
+      startThread() {
+        return {
+          id: 'thread-overflow',
+          async runStreamed() {
+            async function* events() {
+              yielded += 1;
+              yield { type: 'thread.started', thread_id: 'thread-overflow' };
+              for (let index = 0; index < 4_097; index += 1) {
+                yielded += 1;
+                yield { type: 'turn.started', index };
+              }
+            }
+            return { events: events() };
+          },
+        };
+      },
+    };
+    const created = createProductionRunnerComposition(kubernetesEnvironment(), {
+      loadConfiguration: () => kubernetesConfiguration(),
+      createClient: () => client,
+      startResponsesAdapter: adapter.start,
+      scheduleTimeout: () => () => undefined,
+    });
+
+    await expect(created!.processor.execute(kubernetesDelivery())).rejects.toThrow(
+      'runner_execution_failed',
+    );
+    expect(yielded).toBeLessThan(4_098);
+    expect(adapter.close).toHaveBeenCalledOnce();
   });
 
   it('passes the production processor, authorizer, and readiness into daemon startup', async () => {

@@ -245,6 +245,8 @@ services:
         mode: 0400
     volumes:
       - runtime-config:/var/run/ui4a/runtime-config
+      - runner-config:/var/run/ui4a/runner-config
+      - host-runner-config:/var/run/ui4a/host-runner-config
     command: [node, /opt/ui4a/config-init.mjs]
 
   realm-bootstrap:
@@ -407,13 +409,15 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *ui4a-production-environment
+      UI4A_DEPLOYMENT_SETTINGS_FILE: /var/run/ui4a/runner-config/settings.json
+      UI4A_DEPLOYMENT_SECRETS_FILE: /var/run/ui4a/runner-config/runner-secrets.json
       UI4A_RUNNER_ID: compose-container-runner
       UI4A_RUNNER_IMAGE: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
-    volumes: &runner-volumes
+    volumes:
       - experiment-ca:/var/lib/ui4a/ca:ro
       - runner-workspaces:/workspaces
       - runner-artifacts:/artifacts
-      - runtime-config:/var/run/ui4a/runtime-config:ro
+      - runner-config:/var/run/ui4a/runner-config:ro
     command: [node, dist/main.js, daemon]
     healthcheck: &runner-healthcheck
       test:
@@ -441,9 +445,15 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *ui4a-production-environment
+      UI4A_DEPLOYMENT_SETTINGS_FILE: /var/run/ui4a/host-runner-config/settings.json
+      UI4A_DEPLOYMENT_SECRETS_FILE: /var/run/ui4a/host-runner-config/runner-secrets.json
       UI4A_RUNNER_ID: compose-host-runner
       UI4A_RUNNER_IMAGE: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
-    volumes: *runner-volumes
+    volumes:
+      - experiment-ca:/var/lib/ui4a/ca:ro
+      - runner-workspaces:/workspaces
+      - runner-artifacts:/artifacts
+      - host-runner-config:/var/run/ui4a/host-runner-config:ro
     command: [node, dist/main.js, daemon]
     healthcheck: *runner-healthcheck
 
@@ -527,3 +537,7 @@ volumes:
     labels: { io.ui4a.volume: runner-artifacts, io.ui4a.retention: retain-on-ordinary-down }
   runtime-config:
     labels: { io.ui4a.volume: runtime-config, io.ui4a.retention: retain-on-ordinary-down }
+  runner-config:
+    labels: { io.ui4a.volume: runner-config, io.ui4a.retention: retain-on-ordinary-down }
+  host-runner-config:
+    labels: { io.ui4a.volume: host-runner-config, io.ui4a.retention: retain-on-ordinary-down }

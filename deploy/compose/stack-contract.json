@@ -103,7 +103,9 @@
     { "name": "experiment-ca", "retainOnOrdinaryDown": true },
     { "name": "runner-workspaces", "retainOnOrdinaryDown": true },
     { "name": "runner-artifacts", "retainOnOrdinaryDown": true },
-    { "name": "runtime-config", "retainOnOrdinaryDown": true }
+    { "name": "runtime-config", "retainOnOrdinaryDown": true },
+    { "name": "runner-config", "retainOnOrdinaryDown": true },
+    { "name": "host-runner-config", "retainOnOrdinaryDown": true }
   ],
   "lifecycle": {
     "up": ["docker", "compose", "-f", "deploy/compose/compose.yaml", "up", "-d", "--wait"],

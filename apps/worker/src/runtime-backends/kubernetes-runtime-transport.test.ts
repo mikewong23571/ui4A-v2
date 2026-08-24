@@ -185,8 +185,8 @@ function transport(api: KubernetesRuntimeApi) {
     namespace: 'ui4a',
     settingsConfigMapName: 'ui4a-runtime-settings',
     settingsKey: 'settings.json',
-    secretsSecretName: 'ui4a-runtime-secrets',
-    secretsKey: 'secrets.json',
+    secretsSecretName: 'ui4a-runner-secrets',
+    secretsKey: 'writing-k8s.json',
     workspaceClaimName: 'ui4a-runtime-workspace',
     workspaceMountPath: '/workspaces',
     runnerServiceAccountName: 'ui4a-runner',
@@ -240,7 +240,27 @@ describe('T22 in-cluster Kubernetes compiled Runtime transport', () => {
     const serializedObjects = JSON.stringify(fixture.objects);
     expect(serializedObjects).not.toContain('super-secret-value');
     expect(serializedObjects).not.toContain('Authorization');
-    expect(serializedObjects).toContain('ui4a-runtime-secrets');
+    expect(serializedObjects).toContain('ui4a-runner-secrets');
+    expect(serializedObjects).toContain('writing-k8s.json');
+    expect(serializedObjects).toContain('UI4A_RUNNER_PROFILE_ID');
+    expect(serializedObjects).not.toContain('ui4a-runtime-secrets');
+    const job = fixture.objects.jobs[0] as {
+      spec: {
+        template: {
+          spec: {
+            volumes: Array<{ name: string; secret?: Record<string, unknown> }>;
+          };
+        };
+      };
+    };
+    expect(job.spec.template.spec.volumes).toContainEqual({
+      name: 'runner-secrets',
+      secret: {
+        secretName: 'ui4a-runner-secrets',
+        defaultMode: 0o400,
+        items: [{ key: 'writing-k8s.json', path: 'runner-secrets.json', mode: 0o400 }],
+      },
+    });
     expect(serializedObjects).toContain('ui4a-runtime-settings');
     expect(serializedObjects).toContain('ui4a-runtime-workspace');
     expect(serializedObjects).toContain('node');
@@ -301,8 +321,8 @@ describe('T22 in-cluster Kubernetes compiled Runtime transport', () => {
       namespace: 'ui4a',
       settingsConfigMapName: 'ui4a-runtime-settings',
       settingsKey: 'settings.json',
-      secretsSecretName: 'ui4a-runtime-secrets',
-      secretsKey: 'secrets.json',
+      secretsSecretName: 'ui4a-runner-secrets',
+      secretsKey: 'writing-k8s.json',
       workspaceClaimName: 'ui4a-runtime-workspace',
       workspaceMountPath: '/workspaces',
       runnerServiceAccountName: 'ui4a-runner',

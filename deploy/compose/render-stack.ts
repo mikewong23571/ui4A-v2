@@ -82,6 +82,8 @@ const canonicalSecretMount = Object.freeze({
 const runtimeTmpfs = '/tmp:rw,noexec,nosuid,size=64m';
 const runtimeConfigRoot = '/var/run/ui4a/runtime-config';
 const runtimeConfigReadOnlyVolume = `runtime-config:${runtimeConfigRoot}:ro`;
+const runnerConfigRoot = '/var/run/ui4a/runner-config';
+const hostRunnerConfigRoot = '/var/run/ui4a/host-runner-config';
 const stateSecretNames = [
   'postgres-bootstrap-password',
   'ui4a-migration-password',
@@ -402,7 +404,11 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           stateSecretMount('keycloak-database-password'),
           stateSecretMount('keycloak-bootstrap-admin-password'),
         ],
-        volumes: [`runtime-config:${runtimeConfigRoot}`],
+        volumes: [
+          `runtime-config:${runtimeConfigRoot}`,
+          `runner-config:${runnerConfigRoot}`,
+          `host-runner-config:${hostRunnerConfigRoot}`,
+        ],
         command: ['node', '/opt/ui4a/config-init.mjs'],
       }),
       'realm-bootstrap': runtimeService(images.worker, 'no', {
@@ -499,6 +505,8 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         }),
         environment: {
           ...canonicalRuntimeEnvironment,
+          UI4A_DEPLOYMENT_SETTINGS_FILE: `${runnerConfigRoot}/settings.json`,
+          UI4A_DEPLOYMENT_SECRETS_FILE: `${runnerConfigRoot}/runner-secrets.json`,
           UI4A_RUNNER_ID: 'compose-container-runner',
           UI4A_RUNNER_IMAGE: images.runner,
         },
@@ -513,7 +521,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           'experiment-ca:/var/lib/ui4a/ca:ro',
           'runner-workspaces:/workspaces',
           'runner-artifacts:/artifacts',
-          runtimeConfigReadOnlyVolume,
+          `runner-config:${runnerConfigRoot}:ro`,
         ],
       }),
       'host-runner': runtimeService(images.runner, 'unless-stopped', {
@@ -524,6 +532,8 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         }),
         environment: {
           ...canonicalRuntimeEnvironment,
+          UI4A_DEPLOYMENT_SETTINGS_FILE: `${hostRunnerConfigRoot}/settings.json`,
+          UI4A_DEPLOYMENT_SECRETS_FILE: `${hostRunnerConfigRoot}/runner-secrets.json`,
           UI4A_RUNNER_ID: 'compose-host-runner',
           UI4A_RUNNER_IMAGE: images.runner,
         },
@@ -538,7 +548,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           'experiment-ca:/var/lib/ui4a/ca:ro',
           'runner-workspaces:/workspaces',
           'runner-artifacts:/artifacts',
-          runtimeConfigReadOnlyVolume,
+          `host-runner-config:${hostRunnerConfigRoot}:ro`,
         ],
       }),
       edge: {
@@ -588,6 +598,8 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         'runner-workspaces',
         'runner-artifacts',
         'runtime-config',
+        'runner-config',
+        'host-runner-config',
       ].map((name) => [name, retainedVolume(name)]),
     ),
     configs: {

@@ -288,8 +288,9 @@ function job(input: {
                 { name: 'UI4A_DEPLOYMENT_SETTINGS_FILE', value: '/run/ui4a/settings.json' },
                 {
                   name: 'UI4A_DEPLOYMENT_SECRETS_FILE',
-                  value: '/run/secrets/ui4a-deployment-secrets',
+                  value: '/run/secrets/ui4a-runner-secrets',
                 },
+                { name: 'UI4A_RUNNER_PROFILE_ID', value: envelope.execution.profileId },
                 { name: 'UI4A_RUNNER_DELIVERY_FILE', value: '/run/ui4a/delivery.json' },
                 { name: 'UI4A_RUNNER_IMAGE', value: envelope.execution.image },
               ],
@@ -322,9 +323,9 @@ function job(input: {
                   readOnly: true,
                 },
                 {
-                  name: 'deployment-secrets',
-                  mountPath: '/run/secrets/ui4a-deployment-secrets',
-                  subPath: options.secretsKey,
+                  name: 'runner-secrets',
+                  mountPath: '/run/secrets/ui4a-runner-secrets',
+                  subPath: 'runner-secrets.json',
                   readOnly: true,
                 },
                 { name: 'runtime-workspace', mountPath: options.workspaceMountPath },
@@ -339,8 +340,18 @@ function job(input: {
               configMap: { name: options.settingsConfigMapName },
             },
             {
-              name: 'deployment-secrets',
-              secret: { secretName: options.secretsSecretName },
+              name: 'runner-secrets',
+              secret: {
+                secretName: options.secretsSecretName,
+                defaultMode: 0o400,
+                items: [
+                  {
+                    key: options.secretsKey,
+                    path: 'runner-secrets.json',
+                    mode: 0o400,
+                  },
+                ],
+              },
             },
             {
               name: 'runtime-workspace',
@@ -793,8 +804,8 @@ export function createInClusterKubernetesRuntimeTransportFromEnvironment(
     settingsConfigMapName:
       environment.UI4A_KUBERNETES_SETTINGS_CONFIGMAP ?? 'ui4a-deployment-settings',
     settingsKey: environment.UI4A_KUBERNETES_SETTINGS_KEY ?? 'settings.json',
-    secretsSecretName: environment.UI4A_KUBERNETES_SECRETS_SECRET ?? 'ui4a-deployment-secrets',
-    secretsKey: environment.UI4A_KUBERNETES_SECRETS_KEY ?? 'ui4a-deployment-secrets',
+    secretsSecretName: environment.UI4A_KUBERNETES_SECRETS_SECRET ?? 'ui4a-runner-secrets',
+    secretsKey: environment.UI4A_KUBERNETES_SECRETS_KEY ?? 'runner-secrets.json',
     workspaceClaimName: environment.UI4A_KUBERNETES_WORKSPACE_CLAIM ?? 'runtime-data',
     workspaceMountPath: environment.UI4A_KUBERNETES_WORKSPACE_MOUNT ?? '/workspaces',
     runnerServiceAccountName: environment.UI4A_KUBERNETES_RUNNER_SERVICE_ACCOUNT ?? 'ui4a-runner',

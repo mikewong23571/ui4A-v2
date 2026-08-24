@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   parseProductionDeploymentConfig,
+  parseProductionRunnerDeploymentConfig,
   preflightProductionDeploymentFromEnvironment,
+  preflightProductionRunnerFromEnvironment,
   productionDeploymentConfigFromHelmValues,
 } from './production-deployment-config';
 
@@ -754,5 +756,73 @@ describe('T22 canonical deployment mappings', () => {
         UI4A_DEPLOYMENT_SECRETS_JSON: '{}',
       }),
     ).toThrow(/exactly one|settings/i);
+  });
+});
+
+describe('T22 runner-scoped production deployment projection', () => {
+  it('accepts only the selected Kubernetes profile credentials and rejects wider Secret material', () => {
+    const canonical = validInput();
+    canonical.settings.deploymentMode = 'kubernetes';
+    const secrets = {
+      'llm-api-key': canonical.secrets['llm-api-key'],
+      'codex-api-token': canonical.secrets['codex-api-token'],
+    };
+
+    const parsed = parseProductionRunnerDeploymentConfig(
+      { settings: canonical.settings, secrets },
+      { backend: 'kubernetes', profileId: 'coding-k8s' },
+    );
+
+    expect(parsed.secrets).toEqual(secrets);
+    expect(Object.keys(parsed.secrets)).not.toContain('postgres-runtime-password');
+    expect(() =>
+      parseProductionRunnerDeploymentConfig(
+        {
+          settings: canonical.settings,
+          secrets: { ...secrets, 'postgres-runtime-password': '__postgres_canary__' },
+        },
+        { backend: 'kubernetes', profileId: 'coding-k8s' },
+      ),
+    ).toThrow(/runner|secret|scope/i);
+    expect(() =>
+      parseProductionRunnerDeploymentConfig(
+        { settings: canonical.settings, secrets: { 'llm-api-key': secrets['llm-api-key'] } },
+        { backend: 'kubernetes', profileId: 'coding-k8s' },
+      ),
+    ).toThrow(/codex-api-token|credential|secret/i);
+  });
+
+  it('loads one server-owned Host runner scope with its independent daemon token', () => {
+    const canonical = validInput();
+    canonical.settings.deploymentMode = 'compose';
+    canonical.settings.runtime.profiles.push({
+      ...canonical.settings.runtime.profiles[1]!,
+      id: 'authoring-host-shared-runner',
+      specialization: 'authoring',
+      credentialRefs: ['authoring-provider-token'],
+    });
+    const secrets = {
+      'llm-api-key': canonical.secrets['llm-api-key'],
+      'codex-api-token': canonical.secrets['codex-api-token'],
+      'host-runner-token': canonical.secrets['host-runner-token'],
+      'authoring-provider-token': '__test_only_authoring_provider__',
+    };
+    const files = {
+      '/run/runner/settings.json': JSON.stringify(canonical.settings),
+      '/run/runner/secrets.json': JSON.stringify(secrets),
+    } as Record<string, string>;
+
+    const parsed = preflightProductionRunnerFromEnvironment(
+      {
+        UI4A_DEPLOYMENT_PROFILE: 'production',
+        UI4A_RUNNER_ID: 'trusted-writer-01',
+        UI4A_DEPLOYMENT_SETTINGS_FILE: '/run/runner/settings.json',
+        UI4A_DEPLOYMENT_SECRETS_FILE: '/run/runner/secrets.json',
+      },
+      (path) => files[path]!,
+    );
+
+    expect(parsed?.secrets).toEqual(secrets);
+    expect(JSON.stringify(parsed)).not.toContain('__test_only_postgres_runtime__');
   });
 });

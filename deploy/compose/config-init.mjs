@@ -19,6 +19,8 @@ const defaultInput = Object.freeze({
     keycloakBootstrapAdminPassword: '/run/secrets/keycloak-bootstrap-admin-password',
   }),
   targetDirectory: '/var/run/ui4a/runtime-config',
+  runnerTargetDirectory: '/var/run/ui4a/runner-config',
+  hostRunnerTargetDirectory: '/var/run/ui4a/host-runner-config',
   uid: 1000,
   gid: 1000,
 });
@@ -113,6 +115,69 @@ async function writePrivateStage(targetDirectory, name, material, uid, gid) {
   }
 }
 
+function runnerSecretProjection(settingsMaterial, secretsMaterial, runnerId) {
+  let settings;
+  let secrets;
+  try {
+    settings = JSON.parse(settingsMaterial.toString('utf8'));
+    secrets = JSON.parse(secretsMaterial.toString('utf8'));
+  } catch {
+    fail('UI4A_RUNTIME_CONFIG_SOURCE_INVALID');
+  }
+  if (
+    typeof settings !== 'object' ||
+    settings === null ||
+    typeof settings.llm !== 'object' ||
+    settings.llm === null ||
+    typeof settings.llm.apiKeyRef !== 'string' ||
+    typeof settings.runtime !== 'object' ||
+    settings.runtime === null ||
+    !Array.isArray(settings.runtime.profiles) ||
+    typeof secrets !== 'object' ||
+    secrets === null ||
+    Array.isArray(secrets)
+  ) {
+    fail('UI4A_RUNTIME_CONFIG_SOURCE_INVALID');
+  }
+  const selected = settings.runtime.profiles.filter(
+    (profile) =>
+      typeof profile === 'object' &&
+      profile !== null &&
+      profile.backend === 'host' &&
+      profile.runnerId === runnerId,
+  );
+  if (selected.length === 0) fail('UI4A_RUNTIME_CONFIG_SOURCE_INVALID');
+  const refs = new Set([settings.llm.apiKeyRef]);
+  for (const profile of selected) {
+    if (
+      typeof profile.runnerTokenRef !== 'string' ||
+      !Array.isArray(profile.credentialRefs) ||
+      profile.credentialRefs.some((ref) => typeof ref !== 'string')
+    ) {
+      fail('UI4A_RUNTIME_CONFIG_SOURCE_INVALID');
+    }
+    refs.add(profile.runnerTokenRef);
+    for (const ref of profile.credentialRefs) refs.add(ref);
+  }
+  const projection = {};
+  for (const ref of refs) {
+    if (typeof secrets[ref] !== 'string' || secrets[ref] === '') {
+      fail('UI4A_RUNTIME_CONFIG_SOURCE_INVALID');
+    }
+    projection[ref] = secrets[ref];
+  }
+  return Buffer.from(JSON.stringify(projection), 'utf8');
+}
+
+async function syncDirectory(path) {
+  const directory = await open(path, constants.O_RDONLY);
+  try {
+    await directory.sync();
+  } finally {
+    await directory.close();
+  }
+}
+
 /**
  * Copy root-readable rootless bind inputs into one retained, private, uid-1000 runtime volume.
  * The result contains only a stable outcome and count; paths and material are never returned.
@@ -124,7 +189,21 @@ export async function initializeRuntimeConfig(input = defaultInput) {
   for (const [sourceName, targetName] of targets) {
     material.set(targetName, await readPrivateRegularFile(input.sources[sourceName]));
   }
+  const settings = material.get('settings.json');
+  const deploymentSecrets = material.get('deployment-secrets.json');
+  const runnerSecrets = runnerSecretProjection(
+    settings,
+    deploymentSecrets,
+    'compose-container-runner',
+  );
+  const hostRunnerSecrets = runnerSecretProjection(
+    settings,
+    deploymentSecrets,
+    'compose-host-runner',
+  );
   await validateTargetDirectory(targetDirectory, input.uid, input.gid);
+  await validateTargetDirectory(input.runnerTargetDirectory, input.uid, input.gid);
+  await validateTargetDirectory(input.hostRunnerTargetDirectory, input.uid, input.gid);
   for (const [, targetName] of targets) {
     await writePrivateStage(
       targetDirectory,
@@ -134,13 +213,19 @@ export async function initializeRuntimeConfig(input = defaultInput) {
       input.gid,
     );
   }
-  const directory = await open(targetDirectory, constants.O_RDONLY);
-  try {
-    await directory.sync();
-  } finally {
-    await directory.close();
+  for (const [directory, secrets] of [
+    [input.runnerTargetDirectory, runnerSecrets],
+    [input.hostRunnerTargetDirectory, hostRunnerSecrets],
+  ]) {
+    await writePrivateStage(directory, 'settings.json', settings, input.uid, input.gid);
+    await writePrivateStage(directory, 'runner-secrets.json', secrets, input.uid, input.gid);
   }
-  return { code: 'UI4A_RUNTIME_CONFIG_READY', files: targets.length };
+  await Promise.all([
+    syncDirectory(targetDirectory),
+    syncDirectory(input.runnerTargetDirectory),
+    syncDirectory(input.hostRunnerTargetDirectory),
+  ]);
+  return { code: 'UI4A_RUNTIME_CONFIG_READY', files: targets.length + 4 };
 }
 
 export async function runConfigInit({

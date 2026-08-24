@@ -32,11 +32,13 @@ interface ConfigInitModule {
       string
     >;
     targetDirectory: string;
+    runnerTargetDirectory: string;
+    hostRunnerTargetDirectory: string;
     uid: number;
     gid: number;
-  }): Promise<{ code: 'UI4A_RUNTIME_CONFIG_READY'; files: 7 }>;
+  }): Promise<{ code: 'UI4A_RUNTIME_CONFIG_READY'; files: 11 }>;
   runConfigInit(input: {
-    initialize: () => Promise<{ code: 'UI4A_RUNTIME_CONFIG_READY'; files: 7 }>;
+    initialize: () => Promise<{ code: 'UI4A_RUNTIME_CONFIG_READY'; files: 11 }>;
     write: (value: string) => void;
   }): Promise<number>;
 }
@@ -62,6 +64,8 @@ function fixture(): {
       : never
     : never;
   targetDirectory: string;
+  runnerTargetDirectory: string;
+  hostRunnerTargetDirectory: string;
 } {
   const root = mkdtempSync(join(tmpdir(), 'ui4a-compose-config-init-'));
   roots.push(root);
@@ -74,10 +78,55 @@ function fixture(): {
     keycloakDatabasePassword: join(root, 'keycloak-database-password'),
     keycloakBootstrapAdminPassword: join(root, 'keycloak-bootstrap-admin-password'),
   };
-  writeFileSync(sources.settings, '{"schemaVersion":1}', { mode: 0o600 });
-  writeFileSync(sources.deploymentSecrets, '{"schemaVersion":1,"private":"fixture"}', {
-    mode: 0o600,
-  });
+  writeFileSync(
+    sources.settings,
+    JSON.stringify({
+      llm: { apiKeyRef: 'llm-api-key' },
+      runtime: {
+        profiles: [
+          {
+            backend: 'host',
+            runnerId: 'compose-container-runner',
+            runnerTokenRef: 'compose-container-runner-token',
+            credentialRefs: ['llm-api-key', 'codex-api-token'],
+          },
+          {
+            backend: 'host',
+            runnerId: 'compose-host-runner',
+            runnerTokenRef: 'compose-host-runner-token',
+            credentialRefs: ['llm-api-key', 'codex-api-token'],
+          },
+          {
+            backend: 'host',
+            runnerId: 'compose-container-runner',
+            runnerTokenRef: 'compose-container-runner-token',
+            credentialRefs: ['container-writing-token'],
+          },
+          {
+            backend: 'host',
+            runnerId: 'compose-host-runner',
+            runnerTokenRef: 'compose-host-runner-token',
+            credentialRefs: ['host-authoring-token'],
+          },
+        ],
+      },
+    }),
+    { mode: 0o600 },
+  );
+  writeFileSync(
+    sources.deploymentSecrets,
+    JSON.stringify({
+      'llm-api-key': '__llm_canary__',
+      'codex-api-token': '__codex_canary__',
+      'compose-container-runner-token': '__container_runner_canary__',
+      'compose-host-runner-token': '__host_runner_canary__',
+      'container-writing-token': '__container_writing_canary__',
+      'host-authoring-token': '__host_authoring_canary__',
+      'postgres-runtime-password': '__postgres_canary__',
+      'oidc-client-secret': '__keycloak_canary__',
+    }),
+    { mode: 0o600 },
+  );
   writeFileSync(sources.callbackToken, 'callback.fixture', { mode: 0o600 });
   writeFileSync(sources.temporalSchemaPassword, 'temporal-schema.fixture', { mode: 0o600 });
   writeFileSync(sources.temporalRuntimePassword, 'temporal-runtime.fixture', { mode: 0o600 });
@@ -85,7 +134,13 @@ function fixture(): {
   writeFileSync(sources.keycloakBootstrapAdminPassword, 'keycloak-bootstrap.fixture', {
     mode: 0o600,
   });
-  return { root, sources, targetDirectory: join(root, 'runtime-config') };
+  return {
+    root,
+    sources,
+    targetDirectory: join(root, 'runtime-config'),
+    runnerTargetDirectory: join(root, 'runner-config'),
+    hostRunnerTargetDirectory: join(root, 'host-runner-config'),
+  };
 }
 
 describe('T22 Compose rootless runtime config handoff', () => {
@@ -94,7 +149,7 @@ describe('T22 Compose rootless runtime config handoff', () => {
     const input = fixture();
     await expect(
       module.initializeRuntimeConfig({ ...input, uid: 1000, gid: 1000 }),
-    ).resolves.toEqual({ code: 'UI4A_RUNTIME_CONFIG_READY', files: 7 });
+    ).resolves.toEqual({ code: 'UI4A_RUNTIME_CONFIG_READY', files: 11 });
 
     const expected = {
       'settings.json': readFileSync(input.sources.settings, 'utf8'),
@@ -114,6 +169,38 @@ describe('T22 Compose rootless runtime config handoff', () => {
       expect(statSync(target).mode & 0o777).toBe(0o400);
       expect(statSync(target)).toMatchObject({ uid: 1000, gid: 1000 });
       expect(readFileSync(target, 'utf8')).toBe(material);
+    }
+    expect(
+      JSON.parse(readFileSync(join(input.runnerTargetDirectory, 'runner-secrets.json'), 'utf8')),
+    ).toEqual({
+      'llm-api-key': '__llm_canary__',
+      'codex-api-token': '__codex_canary__',
+      'compose-container-runner-token': '__container_runner_canary__',
+      'container-writing-token': '__container_writing_canary__',
+    });
+    expect(
+      JSON.parse(
+        readFileSync(join(input.hostRunnerTargetDirectory, 'runner-secrets.json'), 'utf8'),
+      ),
+    ).toEqual({
+      'llm-api-key': '__llm_canary__',
+      'codex-api-token': '__codex_canary__',
+      'compose-host-runner-token': '__host_runner_canary__',
+      'host-authoring-token': '__host_authoring_canary__',
+    });
+    for (const directory of [input.runnerTargetDirectory, input.hostRunnerTargetDirectory]) {
+      expect(readFileSync(join(directory, 'settings.json'), 'utf8')).toBe(
+        readFileSync(input.sources.settings, 'utf8'),
+      );
+      for (const name of ['settings.json', 'runner-secrets.json']) {
+        expect(statSync(join(directory, name)).mode & 0o777).toBe(0o400);
+      }
+      expect(readFileSync(join(directory, 'runner-secrets.json'), 'utf8')).not.toContain(
+        '__postgres_canary__',
+      );
+      expect(readFileSync(join(directory, 'runner-secrets.json'), 'utf8')).not.toContain(
+        '__keycloak_canary__',
+      );
     }
   });
 
@@ -162,11 +249,11 @@ describe('T22 Compose rootless runtime config handoff', () => {
     const success: string[] = [];
     await expect(
       module.runConfigInit({
-        initialize: async () => ({ code: 'UI4A_RUNTIME_CONFIG_READY', files: 7 }),
+        initialize: async () => ({ code: 'UI4A_RUNTIME_CONFIG_READY', files: 11 }),
         write: (value) => success.push(value),
       }),
     ).resolves.toBe(0);
-    expect(success).toEqual(['{"code":"UI4A_RUNTIME_CONFIG_READY","files":7}']);
+    expect(success).toEqual(['{"code":"UI4A_RUNTIME_CONFIG_READY","files":11}']);
 
     const failure: string[] = [];
     await expect(

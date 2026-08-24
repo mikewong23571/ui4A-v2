@@ -58,6 +58,8 @@ const volumeNames = [
   'runner-workspaces',
   'runner-artifacts',
   'runtime-config',
+  'runner-config',
+  'host-runner-config',
 ] as const;
 
 interface StackContract {
@@ -382,13 +384,23 @@ describe('T22 Docker Compose all-in-one contract', () => {
     expect(stack.secrets['ui4a-deployment-secrets']).toEqual({
       file: renderInput().secretsFile,
     });
-    for (const name of ['migration', 'realm-bootstrap', 'web', 'worker', 'runner', 'host-runner']) {
+    for (const name of ['migration', 'realm-bootstrap', 'web', 'worker']) {
       const service = stack.services[name];
       expect(service?.environment).toMatchObject({
         UI4A_DEPLOYMENT_PROFILE: 'production',
         UI4A_DEPLOYMENT_SETTINGS_FILE: '/var/run/ui4a/runtime-config/settings.json',
         UI4A_DEPLOYMENT_SECRETS_FILE: '/var/run/ui4a/runtime-config/deployment-secrets.json',
       });
+      expect(service?.configs ?? []).not.toContainEqual(
+        expect.objectContaining({ source: 'ui4a-deployment-settings' }),
+      );
+      expect(service?.secrets ?? []).not.toContainEqual(
+        expect.objectContaining({ source: 'ui4a-deployment-secrets' }),
+      );
+    }
+    for (const name of ['runner', 'host-runner']) {
+      const service = stack.services[name];
+      expect(service?.environment).toMatchObject({ UI4A_DEPLOYMENT_PROFILE: 'production' });
       expect(service?.configs ?? []).not.toContainEqual(
         expect.objectContaining({ source: 'ui4a-deployment-settings' }),
       );
@@ -444,7 +456,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
   it('hands rootless bind-backed inputs to every Node consumer without widening source modes', async () => {
     const stack = await renderedStack();
     const init = stack.services['config-init'];
-    const consumers = ['migration', 'realm-bootstrap', 'web', 'worker', 'runner', 'host-runner'];
+    const consumers = ['migration', 'realm-bootstrap', 'web', 'worker'];
     const runtimeRoot = '/var/run/ui4a/runtime-config';
 
     expect(init).toMatchObject({
@@ -470,6 +482,8 @@ describe('T22 Docker Compose all-in-one contract', () => {
       ]),
     );
     expect(init?.volumes).toContain(`runtime-config:${runtimeRoot}`);
+    expect(init?.volumes).toContain('runner-config:/var/run/ui4a/runner-config');
+    expect(init?.volumes).toContain('host-runner-config:/var/run/ui4a/host-runner-config');
     expect(stack.configs['ui4a-config-init']).toEqual({ file: 'deploy/compose/config-init.mjs' });
 
     for (const name of consumers) {
@@ -492,6 +506,18 @@ describe('T22 Docker Compose all-in-one contract', () => {
       expect(stack.services[name]?.environment).toMatchObject({
         UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: `${runtimeRoot}/capability-callback-token`,
       });
+    }
+    for (const [name, root] of [
+      ['runner', '/var/run/ui4a/runner-config'],
+      ['host-runner', '/var/run/ui4a/host-runner-config'],
+    ] as const) {
+      const service = stack.services[name];
+      expect(service?.environment).toMatchObject({
+        UI4A_DEPLOYMENT_SETTINGS_FILE: `${root}/settings.json`,
+        UI4A_DEPLOYMENT_SECRETS_FILE: `${root}/runner-secrets.json`,
+      });
+      expect(service?.volumes).toContain(`${name}-config:${root}:ro`);
+      expect(service?.volumes).not.toContain(`runtime-config:${runtimeRoot}:ro`);
     }
   });
 
