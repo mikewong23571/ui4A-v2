@@ -103,7 +103,7 @@
 
 ## Phase D: 显式迁移、单副本重放和健康语义
 
-- [ ] Task: Red TDD——建立 migration contract
+- [~] Task: Red TDD——建立 migration contract
 - [ ] 覆盖 empty/existing DB、rerun、concurrent run、partial failure 和 incompatible version
 - [ ] 验证 runtime role 无 DDL 权限
 - [ ] Task: Green——实现 versioned migration command
