@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "volume": {
+    "name": "experiment-ca",
+    "mountPath": "/var/lib/ui4a/ca",
+    "retainOnOrdinaryDown": true
+  },
+  "files": {
+    "rootCertificate": {
+      "path": "/var/lib/ui4a/ca/root-ca.crt",
+      "mode": 420
+    },
+    "rootPrivateKey": {
+      "path": "/var/lib/ui4a/ca/root-ca.key",
+      "mode": 384
+    },
+    "ui4aCertificate": {
+      "path": "/var/lib/ui4a/ca/ui4a/tls.crt",
+      "mode": 420
+    },
+    "ui4aPrivateKey": {
+      "path": "/var/lib/ui4a/ca/ui4a/tls.key",
+      "mode": 384
+    },
+    "keycloakCertificate": {
+      "path": "/var/lib/ui4a/ca/keycloak/tls.crt",
+      "mode": 420
+    },
+    "keycloakPrivateKey": {
+      "path": "/var/lib/ui4a/ca/keycloak/tls.key",
+      "mode": 384
+    }
+  },
+  "hostRefs": {
+    "ui4a": "settings.tls.ui4aHost",
+    "keycloak": "settings.tls.keycloakHost"
+  },
+  "trustRefs": {
+    "ui4a": "settings.tls.caCertificatePath",
+    "keycloak": "settings.tls.caCertificatePath",
+    "postgres": "settings.postgres.tls.caCertificatePath",
+    "temporal": "settings.temporal.transport.caCertificatePath"
+  },
+  "backup": {
+    "artifactRef": "private/pki.tar",
+    "allowlist": [
+      "/var/lib/ui4a/ca/root-ca.crt",
+      "/var/lib/ui4a/ca/root-ca.key",
+      "/var/lib/ui4a/ca/ui4a/tls.crt",
+      "/var/lib/ui4a/ca/ui4a/tls.key",
+      "/var/lib/ui4a/ca/keycloak/tls.crt",
+      "/var/lib/ui4a/ca/keycloak/tls.key"
+    ]
+  },
+  "publicEvidence": {
+    "materialIncluded": false,
+    "certificateIds": ["ui4aCertificate", "keycloakCertificate"]
+  }
+}
