@@ -748,21 +748,28 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       }
     });
 
-    it('renders a bounded, non-overlapping PostgreSQL backup CronJob', async () => {
+    it('keeps the incomplete automatic backup CronJob suspended and non-authoritative', async () => {
       const { resources } = (await renderer()).renderUi4aChart(genericValues());
       const backup = workload(resources, 'CronJob', 'backup');
       const spec = record(backup.spec);
       const jobSpec = record(record(spec.jobTemplate).spec);
       const backupPod = record(record(jobSpec.template).spec);
+      const staticTemplate = readFileSync(resolve(chartRoot, 'templates/backup.yaml'), 'utf8');
+      const notes = readFileSync(resolve(chartRoot, 'templates/NOTES.txt'), 'utf8');
 
       expect(spec.schedule).toBe('17 2 * * *');
       expect(spec.concurrencyPolicy).toBe('Forbid');
-      expect(spec.suspend).toBe(false);
+      expect(spec.suspend).toBe(true);
       expect(spec.successfulJobsHistoryLimit).toBeGreaterThan(0);
       expect(spec.failedJobsHistoryLimit).toBeGreaterThan(0);
       expect(jobSpec.backoffLimit).toBeGreaterThanOrEqual(0);
       expect(backupPod.restartPolicy).toBe('Never');
       expect(backupPod.serviceAccountName).toBe('ui4a-backup');
+      expect(staticTemplate).toContain('suspend: true');
+      expect(notes).toContain('automatic CronJob is suspended');
+      expect(notes).toContain('non-authoritative');
+      expect(notes).toContain('scripts/t22-k8s-recovery-live.ts');
+      expect(notes).toContain('ten-artifact');
     });
 
     it('renders TLS routing plus JWT and callback-aware Istio authorization', async () => {

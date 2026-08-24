@@ -1476,7 +1476,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
     spec: {
       schedule: values.backup.schedule,
       concurrencyPolicy: 'Forbid',
-      suspend: false,
+      suspend: true,
       successfulJobsHistoryLimit: 3,
       failedJobsHistoryLimit: 3,
       jobTemplate: {

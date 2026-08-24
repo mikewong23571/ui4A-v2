@@ -9,7 +9,9 @@ metadata:
 spec:
   schedule: {{ .Values.backup.schedule | quote }}
   concurrencyPolicy: Forbid
-  suspend: false
+  # v0.1 keeps this incomplete single-database fixture fail-closed. The verified host operator is
+  # the only authoritative backup path until a full quiesced ten-artifact CronJob is implemented.
+  suspend: true
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   jobTemplate:
