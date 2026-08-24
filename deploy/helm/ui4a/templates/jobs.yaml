@@ -207,6 +207,7 @@ spec:
       serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
       automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
+      {{- include "ui4a.hostAliases" . | nindent 6 }}
       restartPolicy: Never
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
@@ -249,6 +250,7 @@ spec:
       serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
       automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
+      {{- include "ui4a.hostAliases" . | nindent 6 }}
       restartPolicy: Never
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}

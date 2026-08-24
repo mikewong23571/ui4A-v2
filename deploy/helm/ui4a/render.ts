@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { isIP } from 'node:net';
 
 export type KubernetesObject = Record<string, unknown> & {
   apiVersion: string;
@@ -59,6 +60,7 @@ export interface Ui4aHelmValues {
   namespace: { create: true; name: string; istioInjection: true };
   experimental: { highAvailability: false; replicas: 1 };
   scheduling: { nodeSelector: Record<string, string> };
+  network: { hostAliases: Array<{ ip: string; hostnames: string[] }> };
   hosts: { web: string; keycloak: string };
   images: Record<ImageKey, string>;
   imagePullPolicy: 'IfNotPresent';
@@ -202,6 +204,7 @@ function parseValues(input: unknown): Ui4aHelmValues {
     'namespace',
     'experimental',
     'scheduling',
+    'network',
     'hosts',
     'images',
     'imagePullPolicy',
@@ -243,6 +246,30 @@ function parseValues(input: unknown): Ui4aHelmValues {
       return [key, parsed];
     }),
   );
+
+  const network = exactObject(root.network, 'values.network', ['hostAliases']);
+  if (!Array.isArray(network.hostAliases)) {
+    fail('values.network.hostAliases', 'must be an array');
+  }
+  const hostAliases = network.hostAliases.map((entry, index) => {
+    const path = `values.network.hostAliases[${index}]`;
+    const alias = exactObject(entry, path, ['ip', 'hostnames']);
+    const ip = string(alias.ip, `${path}.ip`);
+    if (isIP(ip) === 0) fail(`${path}.ip`, 'must be an IP address');
+    if (!Array.isArray(alias.hostnames) || alias.hostnames.length === 0) {
+      fail(`${path}.hostnames`, 'must be a non-empty array');
+    }
+    const hostnames = alias.hostnames.map((host, hostIndex) =>
+      dnsName(host, `${path}.hostnames[${hostIndex}]`),
+    );
+    if (new Set(hostnames).size !== hostnames.length) {
+      fail(`${path}.hostnames`, 'must not contain duplicates');
+    }
+    return { ip, hostnames };
+  });
+  if (new Set(hostAliases.map(({ ip }) => ip)).size !== hostAliases.length) {
+    fail('values.network.hostAliases', 'must not contain duplicate IP entries');
+  }
 
   const hosts = exactObject(root.hosts, 'values.hosts', ['web', 'keycloak']);
   const webHost = dnsName(hosts.web, 'values.hosts.web');
@@ -340,6 +367,7 @@ function parseValues(input: unknown): Ui4aHelmValues {
     namespace: { create: true, name: namespaceName, istioInjection: true },
     experimental: { highAvailability: false, replicas: 1 },
     scheduling: { nodeSelector },
+    network: { hostAliases },
     hosts: { web: webHost, keycloak: keycloakHost },
     images,
     imagePullPolicy: 'IfNotPresent',
@@ -415,6 +443,13 @@ function tcpProbe(port: number, delay = 5) {
 
 function selector(name: string) {
   return { 'app.kubernetes.io/name': name, 'app.kubernetes.io/instance': 'ui4a' };
+}
+
+function externalHostAliases(values: Ui4aHelmValues) {
+  return values.network.hostAliases.map(({ ip, hostnames }) => ({
+    ip,
+    hostnames: [...hostnames],
+  }));
 }
 
 function podTemplate(
@@ -956,7 +991,18 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.scheduling.nodeSelector,
       values.images.web,
       {
-        env: productionEnvironment([{ name: 'UI4A_PUBLIC_BASE_URL', value: 'http://web:3100' }]),
+        env: productionEnvironment([
+          { name: 'UI4A_PUBLIC_BASE_URL', value: 'http://web:3100' },
+          {
+            name: 'UI4A_CAPABILITY_CALLBACK_TOKEN',
+            valueFrom: {
+              secretKeyRef: {
+                name: values.secrets.existingSecretName,
+                key: 'capability-callback-token',
+              },
+            },
+          },
+        ]),
         volumeMounts: [
           ...productionVolumeMounts,
           { name: 'tmp', mountPath: '/tmp' },
@@ -968,6 +1014,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       },
       {
         automountServiceAccountToken: true,
+        hostAliases: externalHostAliases(values),
         initContainers: [
           trustInit(values),
           ...dependencyGates(values, [
@@ -994,6 +1041,28 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         env: productionEnvironment([
           { name: 'UI4A_PUBLIC_BASE_URL', value: 'http://web:3100' },
           { name: 'UI4A_RUNNER_IMAGE', value: values.images.runner },
+          {
+            name: 'UI4A_KUBERNETES_SETTINGS_CONFIGMAP',
+            value: 'ui4a-deployment-settings',
+          },
+          {
+            name: 'UI4A_KUBERNETES_SECRETS_SECRET',
+            value: values.secrets.existingSecretName,
+          },
+          { name: 'UI4A_KUBERNETES_WORKSPACE_CLAIM', value: 'runtime-data' },
+          {
+            name: 'UI4A_KUBERNETES_RUNNER_SERVICE_ACCOUNT',
+            value: values.serviceAccounts.runner,
+          },
+          {
+            name: 'UI4A_CAPABILITY_CALLBACK_TOKEN',
+            valueFrom: {
+              secretKeyRef: {
+                name: values.secrets.existingSecretName,
+                key: 'capability-callback-token',
+              },
+            },
+          },
         ]),
         volumeMounts: [
           ...productionVolumeMounts,
@@ -1006,6 +1075,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       },
       {
         automountServiceAccountToken: true,
+        hostAliases: externalHostAliases(values),
         initContainers: [
           trustInit(values),
           ...dependencyGates(values, ['migration', 'realm-bootstrap', 'temporal-namespace']),
@@ -1165,6 +1235,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       },
       {
         automountServiceAccountToken: true,
+        hostAliases: externalHostAliases(values),
         initContainers: [
           trustInit(values),
           ...dependencyGates(values, ['postgres-bootstrap', 'pki-init']),
@@ -1199,6 +1270,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       },
       {
         automountServiceAccountToken: true,
+        hostAliases: externalHostAliases(values),
         initContainers: [trustInit(values), ...dependencyGates(values, ['keycloak', 'pki-init'])],
         volumes: [
           ...productionVolumes(values.secrets.existingSecretName),
@@ -1266,14 +1338,24 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       metadata: metadata('ui4a-runtime-jobs', namespace),
       rules: [
         {
+          apiGroups: [''],
+          resources: ['configmaps'],
+          verbs: ['get', 'create', 'delete'],
+        },
+        {
           apiGroups: ['batch'],
           resources: ['jobs'],
-          verbs: ['create', 'get', 'list', 'watch', 'delete'],
+          verbs: ['get', 'create', 'delete'],
         },
         {
           apiGroups: [''],
-          resources: ['pods', 'pods/log'],
-          verbs: ['get', 'list', 'watch'],
+          resources: ['pods'],
+          verbs: ['list'],
+        },
+        {
+          apiGroups: [''],
+          resources: ['pods/log'],
+          verbs: ['get'],
         },
       ],
     },
@@ -1281,11 +1363,13 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       apiVersion: 'rbac.authorization.k8s.io/v1',
       kind: 'RoleBinding',
       metadata: metadata('ui4a-runtime-jobs', namespace),
-      subjects: serviceAccountKeys.map((key) => ({
-        kind: 'ServiceAccount',
-        name: values.serviceAccounts[key],
-        namespace,
-      })),
+      subjects: [
+        {
+          kind: 'ServiceAccount',
+          name: values.serviceAccounts.worker,
+          namespace,
+        },
+      ],
       roleRef: { apiGroup: 'rbac.authorization.k8s.io', kind: 'Role', name: 'ui4a-runtime-jobs' },
     },
     ...persistentResources(values),

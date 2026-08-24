@@ -28,6 +28,7 @@ function values(): Record<string, unknown> {
     namespace: { create: true, name: 'ui4a-system', istioInjection: true },
     experimental: { highAvailability: false, replicas: 1 },
     scheduling: { nodeSelector: {} },
+    network: { hostAliases: [] },
     hosts: { web: 'ui4a.internal.test', keycloak: 'auth.ui4a.internal.test' },
     images: {
       postgres: `registry.internal.test/postgres@${digest('1')}`,

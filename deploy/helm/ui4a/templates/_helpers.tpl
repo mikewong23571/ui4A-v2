@@ -4,6 +4,13 @@ app.kubernetes.io/part-of: ui4a
 app.kubernetes.io/managed-by: Helm
 {{- end -}}
 
+{{- define "ui4a.hostAliases" -}}
+{{- with .Values.network.hostAliases }}
+hostAliases:
+{{ toYaml . }}
+{{- end }}
+{{- end -}}
+
 {{- define "ui4a.resources" -}}
 requests:
   cpu: 100m

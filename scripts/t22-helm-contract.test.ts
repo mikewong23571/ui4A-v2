@@ -35,6 +35,7 @@ interface GenericHelmValues {
   namespace: { create: true; name: string; istioInjection: true };
   experimental: { highAvailability: false; replicas: 1 };
   scheduling: { nodeSelector: Record<string, string> };
+  network: { hostAliases: Array<{ ip: string; hostnames: string[] }> };
   hosts: { web: string; keycloak: string };
   images: Record<string, string>;
   imagePullPolicy: 'IfNotPresent';
@@ -97,6 +98,7 @@ function genericValues(): GenericHelmValues {
     namespace: { create: true, name: 'ui4a-system', istioInjection: true },
     experimental: { highAvailability: false, replicas: 1 },
     scheduling: { nodeSelector: {} },
+    network: { hostAliases: [] },
     hosts: { web: webHost, keycloak: keycloakHost },
     images: {
       postgres: `registry.internal.test/postgres@${digest('1')}`,
@@ -347,6 +349,95 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
           'ui4a-system',
         );
       }
+    });
+
+    it('wires the Worker Kubernetes delivery source and callback Secrets with least privilege', async () => {
+      const values = genericValues();
+      const { resources } = (await renderer()).renderUi4aChart(values);
+      const worker = workload(resources, 'Deployment', 'worker');
+      const web = workload(resources, 'Deployment', 'web');
+      const workerContainer = primaryContainer(worker);
+      const workerEnv = environment(workerContainer);
+      const role = workload(resources, 'Role', 'ui4a-runtime-jobs');
+      const binding = workload(resources, 'RoleBinding', 'ui4a-runtime-jobs');
+
+      expect(workerEnv).toMatchObject({
+        UI4A_KUBERNETES_SETTINGS_CONFIGMAP: 'ui4a-deployment-settings',
+        UI4A_KUBERNETES_SECRETS_SECRET: values.secrets.existingSecretName,
+        UI4A_KUBERNETES_WORKSPACE_CLAIM: 'runtime-data',
+        UI4A_KUBERNETES_RUNNER_SERVICE_ACCOUNT: values.serviceAccounts.runner,
+      });
+      for (const resource of [web, worker]) {
+        const callback = list(primaryContainer(resource).env)
+          .map(record)
+          .find((variable) => variable.name === 'UI4A_CAPABILITY_CALLBACK_TOKEN');
+        expect(callback, resource.metadata.name).toEqual({
+          name: 'UI4A_CAPABILITY_CALLBACK_TOKEN',
+          valueFrom: {
+            secretKeyRef: {
+              name: values.secrets.existingSecretName,
+              key: 'capability-callback-token',
+            },
+          },
+        });
+      }
+      expect(record(role).rules).toEqual([
+        { apiGroups: [''], resources: ['configmaps'], verbs: ['get', 'create', 'delete'] },
+        { apiGroups: ['batch'], resources: ['jobs'], verbs: ['get', 'create', 'delete'] },
+        { apiGroups: [''], resources: ['pods'], verbs: ['list'] },
+        { apiGroups: [''], resources: ['pods/log'], verbs: ['get'] },
+      ]);
+      expect(record(binding).subjects).toEqual([
+        {
+          kind: 'ServiceAccount',
+          name: values.serviceAccounts.worker,
+          namespace: values.namespace.name,
+        },
+      ]);
+      expect(JSON.stringify({ workerEnv, role, binding })).not.toContain(
+        '__callback_token_material__',
+      );
+    });
+
+    it('strictly projects optional hostAliases only to external-origin consumers', async () => {
+      const values = genericValues();
+      values.network.hostAliases = [
+        {
+          ip: '192.0.2.10',
+          hostnames: [values.hosts.web, values.hosts.keycloak],
+        },
+      ];
+      const { resources } = (await renderer()).renderUi4aChart(values);
+
+      for (const [kind, name] of [
+        ['Deployment', 'web'],
+        ['Deployment', 'worker'],
+        ['Job', 'migration'],
+        ['Job', 'realm-bootstrap'],
+      ] as const) {
+        expect(podSpec(workload(resources, kind, name)).hostAliases, `${kind}/${name}`).toEqual(
+          values.network.hostAliases,
+        );
+      }
+      expect(helmTemplateSource()).toContain('.Values.network.hostAliases');
+      expect(readFileSync(resolve(chartRoot, 'values.yaml'), 'utf8')).toMatch(
+        /network:\s*\n\s+hostAliases:\s*\[\]/,
+      );
+    });
+
+    it('rejects malformed or request-shaped host aliases before rendering', async () => {
+      const render = (await renderer()).renderUi4aChart;
+      const malformed = genericValues();
+      malformed.network.hostAliases = [{ ip: 'not-an-ip', hostnames: ['issuer.internal'] }];
+      expect(() => render(malformed)).toThrow(/network\.hostAliases|IP/i);
+
+      const unexpected = genericValues() as GenericHelmValues & {
+        network: { hostAliases: Array<Record<string, unknown>> };
+      };
+      unexpected.network.hostAliases = [
+        { ip: '192.0.2.10', hostnames: ['issuer.internal'], token: 'request-override' },
+      ];
+      expect(() => render(unexpected)).toThrow(/unknown|field|network\.hostAliases/i);
     });
 
     it('keeps every experimental component single-replica and renders the complete stack', async () => {

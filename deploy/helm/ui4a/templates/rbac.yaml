@@ -6,12 +6,18 @@ metadata:
   labels:
     {{- include "ui4a.labels" . | nindent 4 }}
 rules:
+  - apiGroups: ['']
+    resources: [configmaps]
+    verbs: [get, create, delete]
   - apiGroups: [batch]
     resources: [jobs]
-    verbs: [create, get, list, watch, delete]
+    verbs: [get, create, delete]
   - apiGroups: ['']
-    resources: [pods, pods/log]
-    verbs: [get, list, watch]
+    resources: [pods]
+    verbs: [list]
+  - apiGroups: ['']
+    resources: [pods/log]
+    verbs: [get]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -21,11 +27,9 @@ metadata:
   labels:
     {{- include "ui4a.labels" . | nindent 4 }}
 subjects:
-  {{- range $serviceAccount := .Values.serviceAccounts }}
   - kind: ServiceAccount
-    name: {{ $serviceAccount | quote }}
-    namespace: {{ $.Values.namespace.name | quote }}
-  {{- end }}
+    name: {{ .Values.serviceAccounts.worker | quote }}
+    namespace: {{ .Values.namespace.name | quote }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

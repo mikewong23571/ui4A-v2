@@ -12,6 +12,9 @@ experimental:
 scheduling:
   nodeSelector: {}
 
+network:
+  hostAliases: []
+
 hosts:
   web: ui4a.internal.test
   keycloak: auth.ui4a.internal.test
