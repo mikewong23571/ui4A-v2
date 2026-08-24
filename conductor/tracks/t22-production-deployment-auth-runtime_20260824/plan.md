@@ -35,7 +35,7 @@
 - [x] 新增依赖或工具前更新 `conductor/tech-stack.md`
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) f50b8af
 
-## Phase B: 生产配置、构建和版本基座
+## Phase B: 生产配置、构建和版本基座 [checkpoint: c609262]
 
 - [x] Task: Red TDD——定义生产配置 schema 72d54d1
 - [ ] 覆盖 auth/deployment mode、PostgreSQL、Temporal、Keycloak、TLS 和 Runtime
@@ -58,7 +58,7 @@
 - [x] Task: 建立 `v0.1.0-experimental.1` 版本合同 bc351b0
 - [ ] 增加应用、health、CLI 和 image version reporting
 - [ ] 禁止呈现为 GA、production SLA 或 LTS
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) c609262
 
 ## Phase C: Keycloak 与可信身份链
 
