@@ -31,6 +31,7 @@ type SecretFileEnvironmentKey = (typeof composeSecretFileEnvironmentKeys)[number
 type ImageEnvironmentKey = (typeof composeImageEnvironmentKeys)[number];
 
 export interface ComposeProductionInput {
+  ui4aGitSha: string;
   settingsFile: string;
   secretsFile: string;
   secretFiles: Record<SecretFileEnvironmentKey, string>;
@@ -161,6 +162,12 @@ export function validateComposeProductionEnvironment(
   ) {
     fail('COMPOSE_CANONICAL_INPUT_INVALID');
   }
+  const releaseGitSha = requiredEnvironmentValue(
+    environment,
+    'UI4A_RELEASE_GIT_SHA',
+    'COMPOSE_RELEASE_REVISION_INVALID',
+  );
+  if (!/^[0-9a-f]{40}$/.test(releaseGitSha)) fail('COMPOSE_RELEASE_REVISION_INVALID');
   const settingsFile = requiredEnvironmentValue(
     environment,
     'UI4A_DEPLOYMENT_SETTINGS_FILE',
@@ -297,6 +304,7 @@ export function validateComposeProductionEnvironment(
   const safeEnvironment = Object.fromEntries(
     [
       'UI4A_DEPLOYMENT_PROFILE',
+      'UI4A_RELEASE_GIT_SHA',
       'UI4A_DEPLOYMENT_SETTINGS_FILE',
       'UI4A_DEPLOYMENT_SECRETS_FILE',
       ...composeSecretFileEnvironmentKeys,
@@ -316,6 +324,7 @@ export function generateComposeProductionEnvironment(
   return validateComposeProductionEnvironment(
     {
       UI4A_DEPLOYMENT_PROFILE: 'production',
+      UI4A_RELEASE_GIT_SHA: input.ui4aGitSha,
       UI4A_DEPLOYMENT_SETTINGS_FILE: input.settingsFile,
       UI4A_DEPLOYMENT_SECRETS_FILE: input.secretsFile,
       ...input.secretFiles,

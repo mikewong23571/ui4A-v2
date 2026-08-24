@@ -43,6 +43,11 @@ export interface ComposeAcceptancePlan {
     U7: { runnerId: string; origin: string; route: '/deliver'; fallback: false };
     U8: { runnerId: string; origin: string; route: '/deliver'; fallback: false };
   };
+  provenance: {
+    releaseGitShaSource: 'UI4A_RELEASE_GIT_SHA';
+    operatorGitShaSource: 'git rev-parse HEAD';
+    relationship: 'ancestor-or-equal';
+  };
 }
 
 function fail(): never {
@@ -71,6 +76,11 @@ export function planComposeStoryAcceptance(): ComposeAcceptancePlan {
         route: '/deliver',
         fallback: false,
       },
+    },
+    provenance: {
+      releaseGitShaSource: 'UI4A_RELEASE_GIT_SHA',
+      operatorGitShaSource: 'git rev-parse HEAD',
+      relationship: 'ancestor-or-equal',
     },
   };
 }

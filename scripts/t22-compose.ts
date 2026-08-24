@@ -62,6 +62,8 @@ export interface ComposeCommandDependencies {
   ): void;
   readCurrentGitRevision(): Promise<string>;
   readImageRevision(image: string): Promise<string>;
+  commitExists(revision: string): Promise<boolean>;
+  isAncestor(ancestor: string, descendant: string): Promise<boolean>;
 }
 
 function fail(code: string): never {
@@ -157,7 +159,7 @@ function validateRegularFile(path: string): void {
 async function preflight(
   dependencies: ComposeCommandDependencies,
   environment: Readonly<Record<string, string | undefined>>,
-): Promise<void> {
+): Promise<{ releaseGitSha: string; operatorGitSha: string; relationship: 'ancestor-or-equal' }> {
   if (
     environment.UI4A_DEPLOYMENT_PROFILE !== 'production' ||
     environment.UI4A_DEPLOYMENT_SETTINGS_JSON !== undefined ||
@@ -176,16 +178,31 @@ async function preflight(
   }
   try {
     dependencies.validateCanonicalDeployment(environment, (path) => readFileSync(path, 'utf8'));
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && /^COMPOSE_[A-Z_]+$/.test(error.message)) fail(error.message);
     fail('COMPOSE_PREFLIGHT_FAILED');
   }
-  let expectedRevision: string;
+  const releaseGitSha = environment.UI4A_RELEASE_GIT_SHA;
+  if (releaseGitSha === undefined || !/^[0-9a-f]{40}$/.test(releaseGitSha)) {
+    fail('COMPOSE_RELEASE_REVISION_INVALID');
+  }
+  let operatorGitSha: string;
   try {
-    expectedRevision = (await dependencies.readCurrentGitRevision()).trim();
+    operatorGitSha = (await dependencies.readCurrentGitRevision()).trim();
   } catch {
     fail('COMPOSE_GIT_REVISION_UNAVAILABLE');
   }
-  if (!/^[0-9a-f]{40}$/.test(expectedRevision)) fail('COMPOSE_GIT_REVISION_UNAVAILABLE');
+  if (!/^[0-9a-f]{40}$/.test(operatorGitSha)) fail('COMPOSE_GIT_REVISION_UNAVAILABLE');
+  let releaseExists: boolean;
+  let releaseIsAncestor: boolean;
+  try {
+    releaseExists = await dependencies.commitExists(releaseGitSha);
+    releaseIsAncestor =
+      releaseExists && (await dependencies.isAncestor(releaseGitSha, operatorGitSha));
+  } catch {
+    fail('COMPOSE_GIT_REVISION_UNAVAILABLE');
+  }
+  if (!releaseExists || !releaseIsAncestor) fail('COMPOSE_RELEASE_REVISION_NOT_ANCESTOR');
   for (const key of ['UI4A_WEB_IMAGE', 'UI4A_WORKER_IMAGE', 'UI4A_RUNNER_IMAGE'] as const) {
     let revision: string;
     try {
@@ -193,8 +210,9 @@ async function preflight(
     } catch {
       fail('COMPOSE_IMAGE_INSPECT_FAILED');
     }
-    if (revision !== expectedRevision) fail('COMPOSE_IMAGE_REVISION_MISMATCH');
+    if (revision !== releaseGitSha) fail('COMPOSE_IMAGE_REVISION_MISMATCH');
   }
+  return { releaseGitSha, operatorGitSha, relationship: 'ancestor-or-equal' };
 }
 
 const successCode: Record<Exclude<ComposeAction, 'backup' | 'restore-plan'>, string> = {
@@ -219,9 +237,12 @@ export async function executeComposeCommand(
   environment: Readonly<Record<string, string | undefined>>,
 ): Promise<ComposeCommandResult> {
   let plan: ComposeCommandPlan;
+  let preflightReport:
+    | { releaseGitSha: string; operatorGitSha: string; relationship: 'ancestor-or-equal' }
+    | undefined;
   try {
     plan = planComposeCommand(argv, environment);
-    if (plan.preflight) await preflight(dependencies, environment);
+    if (plan.preflight) preflightReport = await preflight(dependencies, environment);
   } catch (error) {
     const code = error instanceof Error ? error.message : 'COMPOSE_COMMAND_FAILED';
     return {
@@ -237,7 +258,7 @@ export async function executeComposeCommand(
     return { ok: true, code: 'COMPOSE_RESTORE_PLAN', plan: plan.report };
   }
   if (plan.action === 'preflight') {
-    return { ok: true, code: successCode.preflight };
+    return { ok: true, code: successCode.preflight, plan: preflightReport };
   }
 
   for (const [index, command] of plan.commands.entries()) {
@@ -318,6 +339,22 @@ const productionDependencies: ComposeCommandDependencies = {
       '{{ index .Config.Labels "org.opencontainers.image.revision" }}',
       image,
     ]);
+  },
+  async commitExists(revision) {
+    try {
+      await readProcessOutput('git', ['cat-file', '-e', `${revision}^{commit}`]);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  async isAncestor(ancestor, descendant) {
+    try {
+      await readProcessOutput('git', ['merge-base', '--is-ancestor', ancestor, descendant]);
+      return true;
+    } catch {
+      return false;
+    }
   },
 };
 

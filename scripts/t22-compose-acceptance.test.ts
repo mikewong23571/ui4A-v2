@@ -35,6 +35,16 @@ describe('T22 Compose story acceptance runner contract', () => {
           fallback: false,
         },
       },
+      provenance: {
+        releaseGitShaSource: 'UI4A_RELEASE_GIT_SHA',
+        operatorGitShaSource: 'git rev-parse HEAD',
+        relationship: 'ancestor-or-equal',
+      },
+    });
+    expect(plan.provenance).toEqual({
+      releaseGitShaSource: 'UI4A_RELEASE_GIT_SHA',
+      operatorGitShaSource: 'git rev-parse HEAD',
+      relationship: 'ancestor-or-equal',
     });
     expect(plan.stories.map(({ storyId }) => storyId)).toEqual(storyIds);
     expect(plan.stories.every(({ execution }) => execution === 'operator-authorized-live')).toBe(

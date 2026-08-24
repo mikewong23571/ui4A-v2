@@ -26,6 +26,7 @@ const imageEnvironment = {
   UI4A_EDGE_IMAGE: `registry.internal/edge@sha256:${'9'.repeat(64)}`,
 };
 const currentGitRevision = 'a'.repeat(40);
+const releaseGitRevision = 'c'.repeat(40);
 const ui4aImages = [
   imageEnvironment.UI4A_WEB_IMAGE,
   imageEnvironment.UI4A_WORKER_IMAGE,
@@ -58,12 +59,20 @@ async function environment(): Promise<Record<string, string>> {
   );
   return {
     UI4A_DEPLOYMENT_PROFILE: 'production',
+    UI4A_RELEASE_GIT_SHA: releaseGitRevision,
     ...imageEnvironment,
     ...Object.fromEntries(Object.entries(files).map(([key, name]) => [key, join(root, name)])),
   };
 }
 
-function dependencies(options: { failFirst?: boolean; imageRevision?: string } = {}) {
+function dependencies(
+  options: {
+    failFirst?: boolean;
+    imageRevision?: string;
+    releaseExists?: boolean;
+    releaseIsAncestor?: boolean;
+  } = {},
+) {
   const commands: ComposeProcessCommand[] = [];
   const run = vi.fn(async (command: ComposeProcessCommand) => {
     commands.push(command);
@@ -72,14 +81,20 @@ function dependencies(options: { failFirst?: boolean; imageRevision?: string } =
   const validateCanonicalDeployment = vi.fn(() => undefined);
   const readCurrentGitRevision = vi.fn(async () => currentGitRevision);
   const readImageRevision = vi.fn(async (_image: string) => {
-    return options.imageRevision ?? currentGitRevision;
+    return options.imageRevision ?? releaseGitRevision;
   });
+  const commitExists = vi.fn(async (_revision: string) => options.releaseExists ?? true);
+  const isAncestor = vi.fn(
+    async (_ancestor: string, _descendant: string) => options.releaseIsAncestor ?? true,
+  );
   return {
     commands,
     run,
     validateCanonicalDeployment,
     readCurrentGitRevision,
     readImageRevision,
+    commitExists,
+    isAncestor,
   };
 }
 
@@ -92,18 +107,42 @@ describe('T22 Compose single-command operations', () => {
     expect(source).toContain('validateComposeProductionEnvironment');
   });
 
-  it('provides a read-only production preflight that pins all UI4A images to checkout HEAD', async () => {
+  it('pins UI4A images to the operator release SHA and records its ancestry to checkout HEAD', async () => {
     const env = await environment();
     const deps = dependencies();
 
     const result = await executeComposeCommand(deps, ['preflight'], env);
 
-    expect(result).toEqual({ ok: true, code: 'COMPOSE_PREFLIGHT_COMPLETED' });
+    expect(result).toEqual({
+      ok: true,
+      code: 'COMPOSE_PREFLIGHT_COMPLETED',
+      plan: {
+        releaseGitSha: releaseGitRevision,
+        operatorGitSha: currentGitRevision,
+        relationship: 'ancestor-or-equal',
+      },
+    });
     expect(deps.validateCanonicalDeployment).toHaveBeenCalledOnce();
     expect(deps.readCurrentGitRevision).toHaveBeenCalledOnce();
+    expect(deps.commitExists).toHaveBeenCalledWith(releaseGitRevision);
+    expect(deps.isAncestor).toHaveBeenCalledWith(releaseGitRevision, currentGitRevision);
     expect(deps.readImageRevision.mock.calls.map(([image]) => image)).toEqual(ui4aImages);
     expect(deps.run).not.toHaveBeenCalled();
     expect(JSON.stringify(result)).not.toContain('__private_test_value__');
+  });
+
+  it.each([
+    ['absent', { releaseExists: false }],
+    ['not an ancestor', { releaseIsAncestor: false }],
+  ])('rejects a release SHA that is %s relative to operator HEAD', async (_case, options) => {
+    const deps = dependencies(options);
+
+    expect(await executeComposeCommand(deps, ['preflight'], await environment())).toEqual({
+      ok: false,
+      code: 'COMPOSE_RELEASE_REVISION_NOT_ANCESTOR',
+    });
+    expect(deps.readImageRevision).not.toHaveBeenCalled();
+    expect(deps.run).not.toHaveBeenCalled();
   });
 
   it('rejects a stale UI4A image revision before PKI or any Compose process', async () => {

@@ -18,6 +18,11 @@
       "fallback": false
     }
   },
+  "provenance": {
+    "releaseGitShaSource": "UI4A_RELEASE_GIT_SHA",
+    "operatorGitShaSource": "git rev-parse HEAD",
+    "relationship": "ancestor-or-equal"
+  },
   "execution": "operator-authorized-live",
   "safety": {
     "automaticStackMutation": false,

@@ -11,6 +11,7 @@ import {
 const secretValue = (name: string): string => `__private_${name}__`;
 const settingsFile = '/operator/ui4a/settings.json';
 const secretsFile = '/operator/ui4a/deployment-secrets.json';
+const ui4aGitSha = 'c'.repeat(40);
 const secretFiles = {
   UI4A_POSTGRES_BOOTSTRAP_PASSWORD_FILE: '/operator/ui4a/postgres-bootstrap-password',
   UI4A_MIGRATION_PASSWORD_FILE: '/operator/ui4a/ui4a-migration-password',
@@ -119,6 +120,7 @@ function fixture() {
 function environment(): Record<string, string> {
   return {
     UI4A_DEPLOYMENT_PROFILE: 'production',
+    UI4A_RELEASE_GIT_SHA: ui4aGitSha,
     UI4A_DEPLOYMENT_SETTINGS_FILE: settingsFile,
     UI4A_DEPLOYMENT_SECRETS_FILE: secretsFile,
     ...secretFiles,
@@ -130,7 +132,7 @@ describe('T22 Compose operator-owned production inputs', () => {
   it('generates only a sealed path/digest environment and verifies all eight Secret bindings', () => {
     const { dependencies, secrets } = fixture();
     const generated = generateComposeProductionEnvironment(
-      { settingsFile, secretsFile, secretFiles, images },
+      { ui4aGitSha, settingsFile, secretsFile, secretFiles, images },
       dependencies,
     );
 
@@ -171,6 +173,17 @@ describe('T22 Compose operator-owned production inputs', () => {
     expect(() => validateComposeProductionEnvironment(invalid, dependencies)).toThrowError(
       'COMPOSE_IMAGE_REFERENCE_INVALID',
     );
+  });
+
+  it('rejects a missing or malformed operator-owned UI4A release SHA', () => {
+    const { dependencies } = fixture();
+
+    expect(() =>
+      generateComposeProductionEnvironment(
+        { ui4aGitSha: 'not-a-sha', settingsFile, secretsFile, secretFiles, images },
+        dependencies,
+      ),
+    ).toThrowError('COMPOSE_RELEASE_REVISION_INVALID');
   });
 
   it('preflights two distinct server-owned Runner ids and token refs from canonical settings', () => {
