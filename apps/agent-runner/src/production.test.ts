@@ -1,11 +1,12 @@
 import type { IncomingMessage } from 'node:http';
-import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { lstatSync } from 'node:fs';
+import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { CodexOptions, ThreadOptions } from '@openai/codex-sdk';
 import type { HostProductionRuntimeProfile, ProductionDeploymentConfig } from '@ui4a/shared';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createProductionRunnerComposition,
@@ -20,9 +21,21 @@ const image = `registry.internal/ui4a/agent-runner@sha256:${'a'.repeat(64)}`;
 const apiKey = '__runner_codex_api_key__';
 const runnerToken = 'runner-token.fixture-123';
 const temporaryRoots: string[] = [];
+const productionWorkspaceRoot = join('/dev/shm', `ui4a-agent-runner-${process.pid}`);
+const hostWorkspaceRoot = join(productionWorkspaceRoot, 'host');
+const kubernetesWorkspaceBase = join(productionWorkspaceRoot, 'kubernetes');
+const kubernetesWorkspaceRoot = join(kubernetesWorkspaceBase, 'run:writing:1', 'agent');
+
+beforeEach(async () => {
+  await mkdir(hostWorkspaceRoot, { recursive: true, mode: 0o700 });
+  await mkdir(kubernetesWorkspaceRoot, { recursive: true, mode: 0o700 });
+});
 
 afterEach(async () => {
-  await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true })));
+  await Promise.all([
+    ...temporaryRoots.splice(0).map((root) => rm(root, { recursive: true })),
+    rm(productionWorkspaceRoot, { force: true, recursive: true }),
+  ]);
 });
 
 function configuration(): ProductionDeploymentConfig {
@@ -48,7 +61,7 @@ function configuration(): ProductionDeploymentConfig {
             backend: 'host',
             runnerId: 'runner-1',
             runnerTokenRef: 'runner-token',
-            workspaceRoot: '/srv/ui4a/workspaces/writing',
+            workspaceRoot: hostWorkspaceRoot,
             timeoutSeconds: 30,
             resources: { cpu: '1', memory: '2Gi' },
             networkPolicy: 'restricted',
@@ -82,7 +95,7 @@ function kubernetesConfiguration(): ProductionDeploymentConfig {
       specialization: 'writing',
       backend: 'kubernetes',
       image,
-      workspaceRoot: '/workspaces/writing',
+      workspaceRoot: kubernetesWorkspaceBase,
       timeoutSeconds: 30,
       resources: { cpu: '1', memory: '2Gi' },
       networkPolicy: 'restricted',
@@ -104,7 +117,7 @@ function kubernetesDelivery() {
   const value = delivery();
   value.execution.profileId = 'writing-k8s';
   (value.execution as { backend: string }).backend = 'kubernetes-job';
-  value.execution.workspace.rootRef = '/workspaces/writing/run:writing:1/agent';
+  value.execution.workspace.rootRef = kubernetesWorkspaceRoot;
   return value;
 }
 
@@ -153,7 +166,7 @@ function delivery() {
       profileId: 'writing-host',
       backend: 'trusted-host' as const,
       image,
-      workspace: { rootRef: '/srv/ui4a/workspaces/writing' },
+      workspace: { rootRef: hostWorkspaceRoot },
       resources: { cpu: '1', memory: '2Gi', timeoutMs: 30_000 },
       networkPolicy: 'restricted' as const,
       credentialRefs: ['llm-api-key'],
@@ -287,15 +300,15 @@ describe('Agent Runner production composition', () => {
         },
         env: expect.objectContaining({
           LANG: 'C.UTF-8',
-          HOME: '/srv/ui4a/workspaces/writing',
-          CODEX_HOME: '/srv/ui4a/workspaces/writing/.codex',
+          HOME: hostWorkspaceRoot,
+          CODEX_HOME: join(hostWorkspaceRoot, '.codex'),
         }),
       },
     ]);
     expect(transport.threadOptions).toEqual([
       {
         model: 'server-owned-model',
-        workingDirectory: '/srv/ui4a/workspaces/writing',
+        workingDirectory: hostWorkspaceRoot,
         skipGitRepoCheck: true,
         sandboxMode: 'read-only',
         approvalPolicy: 'never',
@@ -318,6 +331,37 @@ describe('Agent Runner production composition', () => {
       events: expect.arrayContaining([expect.objectContaining({ type: 'thread.started' })]),
     });
     expect(JSON.stringify(result)).not.toContain(apiKey);
+  });
+
+  it('creates one private writable Codex home inside the sealed workspace before SDK use', async () => {
+    const { processor } = composition();
+
+    await expect(processor.execute(delivery())).resolves.toMatchObject({ status: 'succeeded' });
+
+    const codexHome = join(hostWorkspaceRoot, '.codex');
+    const facts = lstatSync(codexHome);
+    expect(facts.isDirectory()).toBe(true);
+    expect(facts.isSymbolicLink()).toBe(false);
+    expect(facts.mode & 0o777).toBe(0o700);
+    expect(facts.uid).toBe(process.getuid?.());
+  });
+
+  it.each([
+    ['symlink', async (path: string) => symlink('/tmp', path)],
+    [
+      'non-private mode',
+      async (path: string) => {
+        await mkdir(path, { mode: 0o700 });
+        await chmod(path, 0o755);
+      },
+    ],
+  ])('rejects a %s Codex home before SDK construction', async (_label, prepare) => {
+    const codexHome = join(hostWorkspaceRoot, '.codex');
+    await prepare(codexHome);
+    const { processor, transport } = composition();
+
+    await expect(processor.execute(delivery())).rejects.toThrow('runner_execution_failed');
+    expect(transport.createClient).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -505,8 +549,8 @@ describe('Agent Runner production composition', () => {
         },
         env: expect.objectContaining({
           LANG: 'C.UTF-8',
-          HOME: '/workspaces/writing/run:writing:1/agent',
-          CODEX_HOME: '/workspaces/writing/run:writing:1/agent/.codex',
+          HOME: kubernetesWorkspaceRoot,
+          CODEX_HOME: join(kubernetesWorkspaceRoot, '.codex'),
         }),
       },
     ]);
@@ -515,7 +559,7 @@ describe('Agent Runner production composition', () => {
     expect(transport.clientOptions[0]?.env?.CODEX_HOME).not.toMatch(/^\/tmp(?:\/|$)/u);
     expect(transport.threadOptions).toEqual([
       expect.objectContaining({
-        workingDirectory: '/workspaces/writing/run:writing:1/agent',
+        workingDirectory: kubernetesWorkspaceRoot,
       }),
     ]);
     expect(adapter.start).toHaveBeenCalledWith({
@@ -547,9 +591,9 @@ describe('Agent Runner production composition', () => {
   });
 
   it.each([
-    ['canonical base instead of a per-Run root', '/workspaces/writing'],
-    ['another Run root', '/workspaces/writing/run:other/agent'],
-    ['normalized escape', '/workspaces/writing/run:writing:1/agent/../../other'],
+    ['canonical base instead of a per-Run root', kubernetesWorkspaceBase],
+    ['another Run root', join(kubernetesWorkspaceBase, 'run:other', 'agent')],
+    ['normalized escape', join(kubernetesWorkspaceRoot, '..', '..', 'other')],
     ['absolute escape', '/tmp/run:writing:1/agent'],
   ])('rejects Kubernetes workspace %s before SDK construction', async (_label, rootRef) => {
     const transport = sdk();

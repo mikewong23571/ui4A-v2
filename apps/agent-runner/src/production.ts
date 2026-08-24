@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { lstatSync, readFileSync } from 'node:fs';
+import { accessSync, constants, lstatSync, mkdirSync, readFileSync } from 'node:fs';
 import type { IncomingMessage } from 'node:http';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 
@@ -233,6 +233,36 @@ function codexWorkspaceEnvironment(workspaceRoot: string): Record<string, string
     codexHomeRelative.startsWith('..') ||
     isAbsolute(codexHomeRelative)
   ) {
+    throw new Error('runner_execution_failed');
+  }
+  try {
+    const uid = process.getuid?.();
+    const workspaceFacts = lstatSync(canonicalRoot);
+    if (
+      uid === undefined ||
+      !workspaceFacts.isDirectory() ||
+      workspaceFacts.isSymbolicLink() ||
+      workspaceFacts.uid !== uid
+    ) {
+      throw new Error('runner_execution_failed');
+    }
+    accessSync(canonicalRoot, constants.R_OK | constants.W_OK | constants.X_OK);
+    try {
+      mkdirSync(codexHome, { mode: 0o700 });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    }
+    const codexHomeFacts = lstatSync(codexHome);
+    if (
+      !codexHomeFacts.isDirectory() ||
+      codexHomeFacts.isSymbolicLink() ||
+      codexHomeFacts.uid !== uid ||
+      (codexHomeFacts.mode & 0o777) !== 0o700
+    ) {
+      throw new Error('runner_execution_failed');
+    }
+    accessSync(codexHome, constants.R_OK | constants.W_OK | constants.X_OK);
+  } catch {
     throw new Error('runner_execution_failed');
   }
   return {
