@@ -626,7 +626,7 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
             UI4A_DEPLOYMENT_PROFILE: 'production',
             UI4A_DEPLOYMENT_SETTINGS_FILE: '/run/ui4a/settings.json',
             UI4A_DEPLOYMENT_SECRETS_FILE: '/run/secrets/ui4a-deployment-secrets',
-            NODE_EXTRA_CA_CERTS: '/var/lib/ui4a/ca/root-ca.crt',
+            NODE_EXTRA_CA_CERTS: '/var/run/ui4a/trust/ca-bundle.crt',
           });
           expect(paths).toEqual(
             expect.arrayContaining([
