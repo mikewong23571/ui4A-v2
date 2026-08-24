@@ -50,7 +50,11 @@ function values(): Record<string, unknown> {
       admin: 'ui4a-admin-jobs',
       backup: 'ui4a-backup',
     },
-    secrets: { existingSecretName: 'ui4a-runtime-secrets' },
+    secrets: {
+      existingSecretName: 'ui4a-runtime-secrets',
+      runnerExistingSecretName: 'ui4a-runner-secrets',
+      runnerSecretsKey: 'runner-secrets.json',
+    },
     storage: {
       mode: 'dynamic',
       storageClassName: 'replaceable-storage',
