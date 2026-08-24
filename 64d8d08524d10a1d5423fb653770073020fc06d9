@@ -1,0 +1,9 @@
+T22 Phase C production browser login wiring Green.
+
+Added lazy canonical production browser composition, Keycloak authorization-code PKCE exchange, refresh and revocation adapters, strict RS256 ID Token verification, opaque PostgreSQL-backed session use, three thin Next handlers, and session-cookie versus Authorization source arbitration through the existing request identity verifier.
+
+OIDC ID Tokens are validated for the browser clientId audience while API access tokens retain the distinct configured API audience. The independent session secret is domain-separated and SHA-256-derived before HMAC use. Provider errors and secrets are folded to stable response codes.
+
+Main-agent verification: focused browser wiring, lifecycle, credential negatives, production composition, and real test-database store suites passed 67 of 67; Web typecheck passed; scoped ESLint passed with only the repository pages-directory notice; scoped Prettier and git diff check passed.
+
+The auth-private DDL remains migration-owned and is not executed by routes. Live Keycloak realm import and end-to-end browser acceptance remain later Phase C and Phase I work, not claims of this commit.
