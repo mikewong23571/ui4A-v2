@@ -137,6 +137,81 @@ describe('governed Flow Draft vertical slice', () => {
     );
   });
 
+  it('concurrent agent abandon has one terminal winner and one audited guard loser', async () => {
+    const engine = await getEngine(pool);
+    const created = await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel: 'meta/drafts',
+        action: 'create',
+        actor: 'agent',
+        principal: 'agent:replay-drill',
+        channel: 'oidc',
+        params: {
+          kind: 'flow-definition',
+          target: 'post-status',
+          policyScope: 'publishing',
+          commandId: 'replay-drill:create',
+          payload: { name: 'post-status' },
+        },
+      },
+      { policyScope: 'publishing' },
+    );
+    expect(created.kind).toBe('accepted');
+    const draftRel = created.kind === 'accepted' ? String(created.entity.properties.rel) : '';
+
+    const settled = await Promise.allSettled([
+      executeDraftMeta(
+        pool,
+        engine,
+        {
+          rel: draftRel,
+          action: 'abandon',
+          actor: 'agent',
+          principal: 'agent:replay-drill',
+          channel: 'oidc',
+          params: { commandId: 'replay-drill:abandon-a', reason: 'race fixture a' },
+        },
+        { policyScope: 'publishing' },
+      ),
+      executeDraftMeta(
+        pool,
+        engine,
+        {
+          rel: draftRel,
+          action: 'abandon',
+          actor: 'agent',
+          principal: 'agent:replay-drill',
+          channel: 'oidc',
+          params: { commandId: 'replay-drill:abandon-b', reason: 'race fixture b' },
+        },
+        { policyScope: 'publishing' },
+      ),
+    ]);
+
+    expect(settled.every(({ status }) => status === 'fulfilled')).toBe(true);
+    const outcomes = settled.flatMap((result) =>
+      result.status === 'fulfilled' ? [result.value] : [],
+    );
+    expect(outcomes.filter(({ kind }) => kind === 'accepted')).toHaveLength(1);
+    expect(outcomes.filter(({ kind }) => kind === 'rejected')).toEqual([
+      expect.objectContaining({ kind: 'rejected', layer: 'guard-failed' }),
+    ]);
+    const events = await listEvents(pool);
+    expect(events.filter(({ kind }) => kind === 'draft-abandoned')).toHaveLength(1);
+    expect(
+      events.filter(
+        ({ kind, rel, action }) =>
+          kind === 'action-rejected' && rel === draftRel && action === 'abandon',
+      ),
+    ).toHaveLength(1);
+    expect(
+      (await getDraft(pool, draftRel.slice('draft:'.length), 'agent:replay-drill', 'publishing'))
+        ?.aggregate.status,
+    ).toBe('abandoned');
+  });
+
   it('rejects target and request scopes outside credential policy scope', async () => {
     const engine = await getEngine(pool);
     const request = {

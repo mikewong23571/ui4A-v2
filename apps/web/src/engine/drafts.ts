@@ -946,16 +946,22 @@ export async function executeDraftMeta(
       activation: `${DRAFT_ACTIVATION_PREFIX}${draftId}`,
     });
   } else if (request.action === 'abandon') {
-    await appendDraftCommand(db, {
-      kind: 'abandon',
-      eventId: `event:${commandId}`,
-      commandId,
-      draftId,
-      activeVersion: aggregate.activeVersion,
-      ...(stringParam(request, 'reason') === undefined
-        ? {}
-        : { reason: stringParam(request, 'reason') }),
-    });
+    try {
+      await appendDraftCommand(db, {
+        kind: 'abandon',
+        eventId: `event:${commandId}`,
+        commandId,
+        draftId,
+        activeVersion: aggregate.activeVersion,
+        ...(stringParam(request, 'reason') === undefined
+          ? {}
+          : { reason: stringParam(request, 'reason') }),
+      });
+    } catch (error) {
+      const conflict = await concurrentDecisionRejection(db, request, error);
+      if (conflict !== undefined) return conflict;
+      throw error;
+    }
   } else {
     return rejected('undeclared', `action ${request.action} is not declared`);
   }
