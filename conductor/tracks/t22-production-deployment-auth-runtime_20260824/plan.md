@@ -206,11 +206,11 @@
 - [x] 仅新增 `deploy/ui4a/` 和明确文档链接
 - [x] 不覆盖 Mattermost、Headlamp 或 unrelated K8s files
 - [x] UI4A 与 mothership-setup 分别提交并记录双方 SHA
-- [ ] Task: 执行真实集群部署
+- [x] Task: 执行真实集群部署 6f2bba3
 - [x] pre-pull 并验证全部 image digests（mothership `b4c6c27`）
-- [ ] 创建 PV/namespace/Secrets 并部署 state services
-- [ ] 执行 migration/realm import-or-check，部署单副本 Web/Worker 和按 Run one-shot Runner 合同
-- [ ] 应用 Istio resources 并验证 Pods、Jobs、PV/PVC、sidecars 和 readiness
+- [x] 创建 PV/namespace/Secrets 并部署 state services
+- [x] 执行 migration/realm import-or-check，部署单副本 Web/Worker 和按 Run one-shot Runner 合同
+- [x] 应用 Istio resources 并验证 Pods、Jobs、PV/PVC、sidecars 和 readiness
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase I: 真实用户故事、故障注入与恢复演练
@@ -222,10 +222,10 @@
 - [ ] Task: 单副本并发、重启与重放
 - [ ] 在一个 Web 副本内并发同一 resource，验证 guard/CAS/rejection 结果
 - [ ] 重启后验证 event order、projection 与 replay hash 一致
-- [ ] Task: Authentication Safety Gate
-- [ ] 覆盖 missing/expired/wrong issuer/audience/signature 与 identity forgery
-- [ ] 覆盖 agent/service approval 和 over-scoped exchange
-- [ ] 100% 正确拒绝并留痕
+- [x] Task: Authentication Safety Gate 4fd3417
+- [x] 覆盖 missing/expired/wrong issuer/audience/signature 与 identity forgery
+- [x] 覆盖 agent/service approval 和 over-scoped exchange
+- [x] 100% 正确拒绝并留痕
 - [ ] Task: 故障注入
 - [ ] LLM、Temporal、Keycloak/JWKS、PostgreSQL 和两 Runtime backends
 - [ ] 无伪成功、无越权副作用、readiness 正确
