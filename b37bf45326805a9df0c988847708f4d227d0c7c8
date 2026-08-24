@@ -1,0 +1,7 @@
+D35 fixed experimental Keycloak realm import Green.
+
+Replaced the generic realm contract and reconciliation planner with one direct Keycloak 26 realm import containing exactly ui4a-web, ui4a-agent, ui4a-api and one initial experimental human. Web uses confidential PKCE and access-token audiences for both ui4a-api and ui4a-agent; Agent uses Client Credentials and Standard Token Exchange; no act, role sync, drift repair, or rotation control plane exists.
+
+The bounded bootstrap command imports an absent realm once, reports absent in check mode, checks an existing realm and three client invariants, skips compatible state, and fails closed on incompatible state without PUT PATCH DELETE user role or scope access. Existing checks do not resolve business Secrets.
+
+Main-agent verification: two realm files passed 23 of 23; scoped Prettier and git diff check passed; delegated strict TypeScript and invalid-command smoke passed. No live network or Keycloak was used.
