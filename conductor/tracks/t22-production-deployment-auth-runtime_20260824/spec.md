@@ -145,8 +145,9 @@ K8s 部署必须包含：
 - 必需的 Service、ConfigMap、Secret、PVC、Job、CronJob 和 Istio 资源。
 
 目标 mothership 集群是两 Worker 节点组成的实验集群，但本版本所有 stateful/UI4A workload 均以
-单副本验收，不能虚构高可用。交付只声明已验证的单实例恢复能力，不把未来 values 扩容能力当成
-本版本承诺。
+单副本验收，不能虚构高可用。K8s Agent Runtime 按 Run 创建一个 one-shot Job/Pod，空闲时不部署
+不接受 delivery 的长期 Runner daemon 或 Service。交付只声明已验证的单实例恢复能力，不把未来
+values 扩容能力当成本版本承诺。
 
 ### FR9 存储、备份与恢复
 
@@ -199,6 +200,7 @@ Temporal 客户端与 Worker 必须支持部署配置：
 #### K8s Backend
 
 - 每个 Run 使用隔离 Job/Pod 或等价受控执行单元。
+- 每个 Run 的执行单元副本数为一；空闲时不运行静态 Runner Deployment/Service。
 - 明确 ServiceAccount、资源限额、超时、workspace、网络策略和取消。
 - Provider 凭证只注入授权 Run。
 - Coding workspace 在人类决定前保留。

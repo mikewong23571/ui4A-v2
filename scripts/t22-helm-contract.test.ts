@@ -286,7 +286,6 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       'keycloak',
       'web',
       'worker',
-      'runner',
       'postgres-bootstrap',
       'temporal-schema',
       'temporal-namespace',
@@ -362,11 +361,20 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       const binding = workload(resources, 'RoleBinding', 'ui4a-runtime-jobs');
 
       expect(workerEnv).toMatchObject({
+        UI4A_RUNNER_IMAGE: values.images.runner,
         UI4A_KUBERNETES_SETTINGS_CONFIGMAP: 'ui4a-deployment-settings',
         UI4A_KUBERNETES_SECRETS_SECRET: values.secrets.existingSecretName,
         UI4A_KUBERNETES_WORKSPACE_CLAIM: 'runtime-data',
         UI4A_KUBERNETES_RUNNER_SERVICE_ACCOUNT: values.serviceAccounts.runner,
       });
+      expect(
+        resources.some(
+          ({ kind, metadata }) =>
+            ['Deployment', 'Service'].includes(kind) && metadata.name === 'runner',
+        ),
+      ).toBe(false);
+      workload(resources, 'ServiceAccount', values.serviceAccounts.runner);
+      workload(resources, 'PersistentVolumeClaim', 'runtime-data');
       for (const resource of [web, worker]) {
         const callback = list(primaryContainer(resource).env)
           .map(record)
@@ -449,7 +457,6 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
         ['Deployment', 'keycloak'],
         ['Deployment', 'web'],
         ['Deployment', 'worker'],
-        ['Deployment', 'runner'],
         ['Job', 'postgres-bootstrap'],
         ['Job', 'temporal-schema'],
         ['Job', 'temporal-namespace'],
@@ -535,7 +542,6 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
         ['Deployment', 'keycloak'],
         ['Deployment', 'web'],
         ['Deployment', 'worker'],
-        ['Deployment', 'runner'],
       ] as const) {
         const primary = containers(workload(resources, kind, name)).at(-1);
         expect(primary?.livenessProbe, `${kind}/${name}`).toBeTruthy();
@@ -611,7 +617,6 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       for (const [kind, name] of [
         ['Deployment', 'web'],
         ['Deployment', 'worker'],
-        ['Deployment', 'runner'],
         ['Job', 'migration'],
         ['Job', 'realm-bootstrap'],
       ] as const) {
@@ -827,7 +832,6 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       it.each([
         ['Deployment', 'web', ['/tmp', '/app/apps/web/.next/cache']],
         ['Deployment', 'worker', ['/tmp', '/var/lib/ui4a']],
-        ['Deployment', 'runner', ['/tmp', '/workspaces', '/artifacts']],
         ['Job', 'migration', ['/tmp']],
         ['Job', 'realm-bootstrap', ['/tmp', '/opt/ui4a/realm-import.json']],
       ] as const)(
@@ -944,7 +948,6 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
         ['Job', 'migration', ['postgres-bootstrap', 'pki-init']],
         ['Deployment', 'web', ['migration', 'realm-bootstrap', 'temporal-namespace', 'pki-init']],
         ['Deployment', 'worker', ['migration', 'realm-bootstrap', 'temporal-namespace']],
-        ['Deployment', 'runner', ['pki-init']],
       ] as const)(
         'gates %s/%s on executable dependency checks',
         async (kind, name, dependencies) => {

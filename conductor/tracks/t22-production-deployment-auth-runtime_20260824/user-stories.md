@@ -28,8 +28,11 @@
 - 从当前三节点 K8s v1.31.14/Istio 1.24.2 前置状态开始。
 - 处理当前无 StorageClass、CRI 不读取 mirror、Istio `Always` pull 等现场约束。
 - 所有 image digest 与 release manifest 一致。
-- PostgreSQL、Temporal、Keycloak、migration、Web、Worker、Runner 和 Istio resources 全部 ready。
-- 所有 stateful/UI4A workload 按实验版单副本部署，不以当前两 Worker 节点暗示 HA。
+- PostgreSQL、Temporal、Keycloak、migration、Web、Worker 和 Istio resources 全部 ready；Worker
+  的 K8s delivery 配置、RBAC、Runner image digest 和 workspace 就绪。
+- K8s Runtime 空闲时没有静态 Runner daemon；每个真实 Run 只创建一个 one-shot Job/Pod，并由
+  U7 的 canonical result 验真。所有其他 stateful/UI4A workload 按实验版单副本部署，不以当前
+  两 Worker 节点暗示 HA。
 - runbook 不依赖未记录的手工数据库修改、临时端口转发或个人 shell 状态。
 
 ## B. 可信身份

@@ -195,7 +195,6 @@ describe('T22 Kubernetes PKI handoff and combined trust contract', () => {
   it.each([
     ['Deployment', 'web'],
     ['Deployment', 'worker'],
-    ['Deployment', 'runner'],
     ['Job', 'migration'],
     ['Job', 'realm-bootstrap'],
   ] as const)(
@@ -236,7 +235,7 @@ describe('T22 Kubernetes PKI handoff and combined trust contract', () => {
     const consumers = resources.filter(
       (item) =>
         workloadKinds.has(item.kind) &&
-        ['web', 'worker', 'runner', 'migration', 'realm-bootstrap'].includes(item.metadata.name),
+        ['web', 'worker', 'migration', 'realm-bootstrap'].includes(item.metadata.name),
     );
     const notesPath = resolve(chartRoot, 'templates/NOTES.txt');
     expect(existsSync(notesPath)).toBe(true);

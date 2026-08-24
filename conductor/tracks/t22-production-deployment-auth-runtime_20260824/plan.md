@@ -193,7 +193,7 @@
 - [x] Secret 不进入 rendered evidence
 - [x] 验证 Istio hosts、TLS、JWT、callback policy 和 `IfNotPresent`
 - [x] Task: Green——实现 generic UI4A Helm chart 21e450a
-- [x] 单副本 Web/Worker/Runner、migration 与 realm import-or-check Job
+- [x] 单副本 Web/Worker、按 Run 单副本 one-shot Runner、migration 与 realm import-or-check Job
 - [x] PostgreSQL、Temporal、Keycloak values
 - [x] static PV/replaceable StorageClass、backup CronJob 和 Istio policies
 - [x] Task: 创建 mothership-specific overlay 29f4e6c
@@ -209,7 +209,7 @@
 - [ ] Task: 执行真实集群部署
 - [x] pre-pull 并验证全部 image digests（mothership `b4c6c27`）
 - [ ] 创建 PV/namespace/Secrets 并部署 state services
-- [ ] 执行 migration/realm import-or-check，部署单副本 Web/Worker/Runner
+- [ ] 执行 migration/realm import-or-check，部署单副本 Web/Worker 和按 Run one-shot Runner 合同
 - [ ] 应用 Istio resources 并验证 Pods、Jobs、PV/PVC、sidecars 和 readiness
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 

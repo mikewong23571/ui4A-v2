@@ -430,3 +430,16 @@
 - **明确延后**：多副本 Web/Session、跨副本 single atom、realm 在线升级、细粒度角色同步、自动
   Secret rotation、全面 service-to-service OIDC/全 route 认证平台化及 PostgreSQL/Temporal/
   Keycloak/storage HA 均延后到后续 Track，不阻塞 `v0.1.0-experimental.1`。
+
+## D36 T22 K8s Agent Runtime 使用按 Run one-shot 拓扑(2026-08-24)
+
+- **覆盖关系**：本决定澄清 D35“所有 stateful/UI4A workload 单副本”的 Runner 口径。K8s
+  backend 的执行单元是每个 Run 恰好一个 one-shot Job/Pod；空闲时没有长期 Runner daemon、
+  Deployment 或 Service。Runner image、ServiceAccount、workspace PVC、Worker RBAC 和服务端
+  Runtime Profile 继续属于部署合同。
+- **诚实 readiness**：K8s 模式的 Runner daemon 不接受 HTTP delivery，正确状态是
+  `deliveryAvailable=false`。不得把仅存活的 daemon 冒充 Runtime ready，也不得用 `replicas: 0`
+  隐藏一个无用途 workload。Phase H 验证长期服务、Worker delivery 配置/RBAC 和镜像 digest；
+  Runtime 功能成功只由 U7 真实 per-Run Job 的 canonical result 证明。
+- **Compose/Host 边界**：Compose container Runner 与可选 trusted-host Runner 仍使用受认证 daemon；
+  本决定只删除 K8s 的冗余 idle daemon，不改变 Host backend、Runner artifact 或双后端等价语义。

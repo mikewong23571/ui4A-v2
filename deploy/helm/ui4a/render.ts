@@ -1186,39 +1186,6 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         ],
       },
     ),
-    deployment(
-      namespace,
-      'runner',
-      values.serviceAccounts.runner,
-      values.scheduling.nodeSelector,
-      values.images.runner,
-      {
-        env: productionEnvironment([
-          { name: 'UI4A_RUNNER_ID', value: 'kubernetes-runner' },
-          { name: 'UI4A_RUNNER_IMAGE', value: values.images.runner },
-        ]),
-        command: ['node', 'dist/main.js', 'daemon'],
-        ports: [{ name: 'http', containerPort: 3102 }],
-        volumeMounts: [
-          ...productionVolumeMounts,
-          { name: 'tmp', mountPath: '/tmp' },
-          { name: 'runtime-data', mountPath: '/workspaces' },
-          { name: 'runtime-data', mountPath: '/artifacts' },
-        ],
-        livenessProbe: httpProbe('/live', 3102),
-        readinessProbe: httpProbe('/ready', 3102),
-        securityContext: ui4aNodeSecurityContext(),
-      },
-      {
-        automountServiceAccountToken: true,
-        initContainers: [trustInit(values), ...dependencyGates(values, ['pki-init'])],
-        volumes: [
-          ...productionVolumes(values.secrets.existingSecretName),
-          { name: 'tmp', emptyDir: {} },
-          { name: 'runtime-data', persistentVolumeClaim: { claimName: 'runtime-data' } },
-        ],
-      },
-    ),
   ];
 
   const jobs = [
@@ -1490,7 +1457,6 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
     service(namespace, 'keycloak', 8080),
     service(namespace, 'web', 3100),
     service(namespace, 'worker', 3101),
-    service(namespace, 'runner', 3102),
     {
       apiVersion: 'networking.istio.io/v1beta1',
       kind: 'Gateway',
