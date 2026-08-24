@@ -132,7 +132,7 @@ spec:
         - name: keycloak
           image: {{ .Values.images.keycloak | quote }}
           imagePullPolicy: IfNotPresent
-          args: [start]
+          args: [start, --optimized]
           env:
             - { name: KC_DB, value: postgres }
             - { name: KC_DB_URL_HOST, value: postgres }

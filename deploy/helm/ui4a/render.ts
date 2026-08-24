@@ -429,11 +429,7 @@ function ui4aNodeSecurityContext() {
   };
 }
 
-function vendorNonRootSecurityContext(
-  uid: number,
-  gid: number,
-  readOnlyRootFilesystem = true,
-) {
+function vendorNonRootSecurityContext(uid: number, gid: number, readOnlyRootFilesystem = true) {
   return {
     allowPrivilegeEscalation: false,
     capabilities: { drop: ['ALL'] },
@@ -1009,7 +1005,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
             },
           },
         ],
-        args: ['start'],
+        args: ['start', '--optimized'],
         ports: [{ name: 'http', containerPort: 8080 }],
         volumeMounts: [
           { name: 'tmp', mountPath: '/tmp' },
