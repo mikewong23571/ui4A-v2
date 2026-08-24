@@ -327,7 +327,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         entrypoint: ['/bin/sh', '-ec'],
         command: [temporalServerCommand],
         volumes: [runtimeConfigReadOnlyVolume],
-        healthcheck: health(['CMD', 'temporal', 'operator', 'cluster', 'health']),
+        healthcheck: health(['CMD', 'nc', '-z', '127.0.0.1', '7233']),
       },
       'temporal-namespace': {
         image: images.temporalAdminTools,

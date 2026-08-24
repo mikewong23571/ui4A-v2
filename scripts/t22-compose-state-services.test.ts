@@ -189,6 +189,8 @@ describe('T22 executable Compose state services', () => {
     expect(command).not.toContain('TEMPORAL_RUNTIME_PASSWORD');
     expect(command).toContain('temporal-server');
     expect(command).toContain('--env docker');
+    expect(temporal?.healthcheck?.test).toEqual(['CMD', 'nc', '-z', '127.0.0.1', '7233']);
+    expect(temporal?.healthcheck?.test.join(' ')).not.toContain('temporal operator');
     expect(config).toContain('pluginName: postgres12');
     expect(config).toContain('databaseName: temporal');
     expect(config).toContain('databaseName: temporal_visibility');

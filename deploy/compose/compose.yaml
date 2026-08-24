@@ -129,7 +129,7 @@ services:
     volumes:
       - runtime-config:/var/run/ui4a/runtime-config:ro
     healthcheck:
-      test: [CMD, temporal, operator, cluster, health]
+      test: [CMD, nc, -z, 127.0.0.1, '7233']
       interval: 10s
       timeout: 3s
       retries: 12
