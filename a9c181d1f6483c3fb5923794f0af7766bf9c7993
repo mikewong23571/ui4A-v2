@@ -1,0 +1,1 @@
+T22 Phase H Red: 40 focused tests yielded 22 expected Helm executable parity failures and 18 Green, covering admin jobs, production config/CA/writable mounts, state services, dependency gates, K8s Runner oneshot, and callback/Istio compatibility.
