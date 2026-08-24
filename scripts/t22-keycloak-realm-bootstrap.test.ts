@@ -264,6 +264,9 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
       'ui4a-api',
       'ui4a-web',
     ]);
+    expect(
+      imported.clients.find(({ clientId }) => clientId === 'ui4a-web')?.defaultClientScopes,
+    ).toEqual(['ui4a:read', 'ui4a:write', 'ui4a:approve']);
     expect(JSON.stringify(imported)).toContain(`${publicOrigin}/api/auth/callback`);
     expect(JSON.stringify(imported)).toContain(webClientSecret);
     expect(JSON.stringify(imported)).toContain(agentClientSecret);
@@ -372,6 +375,13 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
         web.defaultClientScopes = web.defaultClientScopes?.filter(
           (scope) => scope !== 'ui4a:approve',
         );
+      },
+    ],
+    [
+      'Web built-in default scope drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const web = fake.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
+        web.defaultClientScopes = [...(web.defaultClientScopes ?? []), 'profile'];
       },
     ],
     [

@@ -118,13 +118,7 @@ describe('T22 experimental Keycloak realm import contract', () => {
     expect(web.redirectUris).toEqual(['{{UI4A_ORIGIN}}/api/auth/callback']);
     expect(web.attributes?.['post.logout.redirect.uris']).toBe('{{UI4A_ORIGIN}}/*');
     expect(web.secret).toBe('{{secret:oidc-client-secret}}');
-    expect(web.defaultClientScopes).toEqual([
-      'profile',
-      'email',
-      'ui4a:read',
-      'ui4a:write',
-      'ui4a:approve',
-    ]);
+    expect(web.defaultClientScopes).toEqual(['ui4a:read', 'ui4a:write', 'ui4a:approve']);
     expect(web.optionalClientScopes?.toSorted()).toEqual(policyScopes);
     expect(
       web.protocolMappers

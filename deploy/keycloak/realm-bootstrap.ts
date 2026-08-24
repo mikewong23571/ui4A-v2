@@ -96,7 +96,7 @@ const expectedClientScopeAssignments: Record<
   { defaults: readonly string[]; optional: readonly string[] }
 > = {
   'ui4a-web': {
-    defaults: ['profile', 'email', ...permissionScopes],
+    defaults: permissionScopes,
     optional: policyScopes,
   },
   'ui4a-agent': {

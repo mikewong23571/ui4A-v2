@@ -65,7 +65,7 @@
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "{{UI4A_ORIGIN}}/*"
       },
-      "defaultClientScopes": ["profile", "email", "ui4a:read", "ui4a:write", "ui4a:approve"],
+      "defaultClientScopes": ["ui4a:read", "ui4a:write", "ui4a:approve"],
       "optionalClientScopes": [
         "ui4a:policy:default",
         "ui4a:policy:publishing",
