@@ -1,0 +1,5 @@
+T22 browser access-token subject correction
+
+Added the unique ui4a-web oidc-sub-mapper for access tokens, introspection, and lightweight tokens while excluding ID tokens. Import-or-check compatibility now fails closed on missing, drifted, or duplicate subject mappers without reconciliation.
+
+Verification: CI=true pnpm vitest run scripts/t22-keycloak-realm-contract.test.ts scripts/t22-keycloak-realm-bootstrap.test.ts (36 passed).
