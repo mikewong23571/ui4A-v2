@@ -12,10 +12,14 @@ const pnpmExecutable = process.env.UI4A_PNPM_EXECUTABLE ?? process.env.npm_execp
 
 async function executeAdminEntry(file: string, arguments_: string[]) {
   try {
-    const result = await execFileAsync(process.execPath, [resolve(workerRoot, 'dist', file), ...arguments_], {
-      cwd: workerRoot,
-      env: { ...process.env, UI4A_DEPLOYMENT_PROFILE: '' },
-    });
+    const result = await execFileAsync(
+      process.execPath,
+      [resolve(workerRoot, 'dist', file), ...arguments_],
+      {
+        cwd: workerRoot,
+        env: { ...process.env, UI4A_DEPLOYMENT_PROFILE: '' },
+      },
+    );
     return { exitCode: 0, ...result };
   } catch (error) {
     const failure = error as Error & { code?: number; stdout?: string; stderr?: string };
@@ -48,7 +52,9 @@ describe('T22 Compose Worker admin entry artifacts', () => {
     (file) => {
       const artifact = resolve(workerRoot, 'dist', file);
 
-      expect(existsSync(artifact), `${file} must be emitted by the Worker production build`).toBe(true);
+      expect(existsSync(artifact), `${file} must be emitted by the Worker production build`).toBe(
+        true,
+      );
       expect(readFileSync(artifact, 'utf8')).not.toMatch(
         /(?:import|from)\s*\(?['"][^'"]*scripts\/t22-.+\.ts/,
       );

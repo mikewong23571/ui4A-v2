@@ -359,9 +359,12 @@ function unavailableSpecialization(): ProductionSpecializationPort {
 describe('T22 production Agent Runtime activity wiring', () => {
   it('is wired from the production activities module rather than remaining a test-only helper', () => {
     const source = readFileSync(resolve(repositoryRoot, activitiesPath), 'utf8');
+    const wiringPath = resolve(repositoryRoot, plannedModulePath);
+    const wiringSource = existsSync(wiringPath) ? readFileSync(wiringPath, 'utf8') : '';
 
     expect(source).toContain("from './runtime-backends/production-wiring'");
     expect(source).toMatch(/createProductionAgentRunActivities/);
+    expect(`${source}\n${wiringSource}`).toMatch(/createHttpRunnerExecutionPort/);
     expect(source).toMatch(
       /export async function executeAgentRun[\s\S]{0,500}productionAgentRunActivities[\s\S]{0,200}executeAgentRun/,
     );
@@ -378,7 +381,7 @@ describe('T22 production Agent Runtime activity wiring', () => {
         order.push('transport');
         expect(envelope).toEqual(expectedTransportEnvelope());
         const serialized = JSON.stringify(envelope);
-        expect(serialized).not.toContain('briefRef":"artifact:brief-42","backend"');
+        expect(serialized).not.toContain('"task":');
         expect(serialized).not.toMatch(/"provider"|"model"|"cwd"|"env"/);
         expect(serialized).not.toContain('compose-runner-token');
         reportProgress('1', { kind: 'message-received' });
