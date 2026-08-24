@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ui4a.internal/schemas/t22-backup-manifest.schema.json",
+  "title": "UI4A T22 experimental backup manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "backupId",
+    "state",
+    "release",
+    "gitSha",
+    "environment",
+    "postgresMajor",
+    "startedAt",
+    "singleReplica",
+    "ha",
+    "strategy",
+    "quiescenceReceipt",
+    "artifacts",
+    "checksums"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "backupId": {
+      "type": "string",
+      "pattern": "^ui4a-v0\\.1\\.0-experimental\\.1-(compose|kubernetes)-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{7}$"
+    },
+    "state": { "enum": ["incomplete", "completed"] },
+    "release": { "const": "v0.1.0-experimental.1" },
+    "gitSha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+    "environment": { "enum": ["compose", "kubernetes"] },
+    "postgresMajor": { "const": 17 },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "finishedAt": { "type": "string", "format": "date-time" },
+    "singleReplica": { "const": true },
+    "ha": { "const": false },
+    "strategy": { "const": "quiesced-pg-dump" },
+    "quiescenceReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verified", "quiescedAt", "eventHighWaterMark", "stopped"],
+      "properties": {
+        "verified": { "const": true },
+        "quiescedAt": { "type": "string", "format": "date-time" },
+        "eventHighWaterMark": { "type": "integer", "minimum": 0 },
+        "stopped": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["web", "worker", "runner", "keycloak", "temporal"],
+          "properties": {
+            "web": { "const": true },
+            "worker": { "const": true },
+            "runner": { "const": true },
+            "keycloak": { "const": true },
+            "temporal": { "const": true }
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "ref", "digest", "bytes", "private"],
+        "properties": {
+          "kind": {
+            "enum": ["database", "runtime", "realm", "pki", "private-config"]
+          },
+          "ref": {
+            "type": "string",
+            "pattern": "^(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?/)[^/]+(?:/[^/]+)*$"
+          },
+          "digest": { "$ref": "#/$defs/digest" },
+          "bytes": { "type": "integer", "minimum": 0 },
+          "private": { "type": "boolean" }
+        }
+      }
+    },
+    "checksums": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?/)[^/]+(?:/[^/]+)*$"
+      },
+      "additionalProperties": { "$ref": "#/$defs/digest" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "state": { "const": "completed" } } },
+      "then": { "required": ["finishedAt"] }
+    }
+  ],
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  }
+}

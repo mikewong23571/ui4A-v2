@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ui4a.internal/schemas/t22-restore-report.schema.json",
+  "title": "UI4A T22 isolated restore report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "backupId",
+    "mode",
+    "status",
+    "sourceEnvironmentId",
+    "targetEnvironmentId",
+    "authoritativeMatch",
+    "rpoEventDelta",
+    "rpoCommittedEvents",
+    "serviceRtoMs",
+    "verifiedRtoMs",
+    "startedAt",
+    "readyAt",
+    "verifiedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "backupId": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
+    "mode": { "const": "isolated" },
+    "status": { "enum": ["passed", "failed"] },
+    "sourceEnvironmentId": { "type": "string", "minLength": 1 },
+    "targetEnvironmentId": { "type": "string", "minLength": 1 },
+    "authoritativeMatch": { "type": "boolean" },
+    "rpoEventDelta": { "type": "integer", "minimum": 0 },
+    "rpoCommittedEvents": { "type": "integer", "minimum": 0 },
+    "serviceRtoMs": { "type": "integer", "minimum": 0 },
+    "verifiedRtoMs": { "type": "integer", "minimum": 0 },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "readyAt": { "type": "string", "format": "date-time" },
+    "verifiedAt": { "type": "string", "format": "date-time" }
+  }
+}

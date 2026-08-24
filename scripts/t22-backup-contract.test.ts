@@ -1,7 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
 type DeploymentEnvironment = 'compose' | 'kubernetes';
 type BackupState = 'incomplete' | 'completed';
+
+interface QuiescenceReceipt {
+  verified: true;
+  quiescedAt: string;
+  eventHighWaterMark: number;
+  stopped: {
+    web: true;
+    worker: true;
+    runner: true;
+    keycloak: true;
+    temporal: true;
+  };
+}
 
 interface BackupArtifact {
   kind: 'database' | 'runtime' | 'realm' | 'pki' | 'private-config';
@@ -23,6 +39,8 @@ interface BackupManifest {
   finishedAt?: string;
   singleReplica: true;
   ha: false;
+  strategy: 'quiesced-pg-dump';
+  quiescenceReceipt: QuiescenceReceipt;
   artifacts: BackupArtifact[];
   checksums: Record<string, string>;
 }
@@ -41,6 +59,7 @@ interface BackupContractModule {
     environment: DeploymentEnvironment;
     startedAt: string;
     postgresMajor: 17;
+    quiescenceReceipt: QuiescenceReceipt;
   }): BackupPlan;
   completeBackup(input: {
     plan: BackupPlan;
@@ -59,6 +78,18 @@ const SHA_A = `sha256:${'a'.repeat(64)}`;
 const SHA_B = `sha256:${'b'.repeat(64)}`;
 const SHA_C = `sha256:${'c'.repeat(64)}`;
 const SHA_D = `sha256:${'d'.repeat(64)}`;
+const QUIESCENCE_RECEIPT: QuiescenceReceipt = {
+  verified: true,
+  quiescedAt: '2026-08-24T12:00:59.000Z',
+  eventHighWaterMark: 42,
+  stopped: {
+    web: true,
+    worker: true,
+    runner: true,
+    keycloak: true,
+    temporal: true,
+  },
+};
 
 function artifact(
   kind: BackupArtifact['kind'],
@@ -79,6 +110,7 @@ describe('T22 named backup contract', () => {
       environment: 'kubernetes',
       startedAt: '2026-08-24T12:01:02.000Z',
       postgresMajor: 17,
+      quiescenceReceipt: QUIESCENCE_RECEIPT,
     });
 
     expect(plan).toMatchObject({
@@ -91,6 +123,8 @@ describe('T22 named backup contract', () => {
         state: 'incomplete',
         singleReplica: true,
         ha: false,
+        strategy: 'quiesced-pg-dump',
+        quiescenceReceipt: QUIESCENCE_RECEIPT,
         artifacts: [],
         checksums: {},
       },
@@ -106,6 +140,7 @@ describe('T22 named backup contract', () => {
       environment: 'compose',
       startedAt: '2026-08-24T12:01:02.000Z',
       postgresMajor: 17,
+      quiescenceReceipt: QUIESCENCE_RECEIPT,
     });
     const artifacts = [
       artifact('database', 'databases/ui4a.dump', SHA_A, true),
@@ -147,6 +182,7 @@ describe('T22 named backup contract', () => {
       environment: 'compose' as const,
       startedAt: '2026-08-24T12:01:02.000Z',
       postgresMajor: 17 as const,
+      quiescenceReceipt: QUIESCENCE_RECEIPT,
       databasePassword: secret,
       rootCaPrivateKey: secret,
     };
@@ -156,5 +192,41 @@ describe('T22 named backup contract', () => {
     expect(JSON.stringify(plan)).not.toContain(secret);
     expect(plan.manifest).not.toHaveProperty('databasePassword');
     expect(plan.manifest).not.toHaveProperty('rootCaPrivateKey');
+  });
+
+  it('requires the versioned manifest schema to encode verified quiescence before backup', async () => {
+    const schema = JSON.parse(
+      await readFile(
+        resolve(import.meta.dirname, '../deploy/backup/backup-manifest.schema.json'),
+        'utf8',
+      ),
+    ) as Record<string, unknown>;
+
+    expect(schema).toMatchObject({
+      required: expect.arrayContaining(['strategy', 'quiescenceReceipt']),
+      properties: {
+        strategy: { const: 'quiesced-pg-dump' },
+        quiescenceReceipt: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['verified', 'quiescedAt', 'eventHighWaterMark', 'stopped'],
+          properties: {
+            verified: { const: true },
+            quiescedAt: { type: 'string', format: 'date-time' },
+            eventHighWaterMark: { type: 'integer', minimum: 0 },
+            stopped: {
+              required: ['web', 'worker', 'runner', 'keycloak', 'temporal'],
+              properties: {
+                web: { const: true },
+                worker: { const: true },
+                runner: { const: true },
+                keycloak: { const: true },
+                temporal: { const: true },
+              },
+            },
+          },
+        },
+      },
+    });
   });
 });
