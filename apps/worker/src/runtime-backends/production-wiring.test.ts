@@ -31,6 +31,7 @@ interface CompiledGenericTransportRequest {
 interface GenericTransportEnvelope {
   schemaVersion: 1;
   runId: string;
+  specialization: RuntimeSpecialization;
   birth: AgentRunWorkflowArgs['birth'];
   request: CompiledGenericTransportRequest;
   execution: {
@@ -201,7 +202,7 @@ function context(): AgentRunWorkflowArgs {
       schemaVersion: 1,
       kind: 'event-native',
       definition: {
-        ref: 'writing-agent',
+        ref: 'editorial-writer',
         version: 1,
         sourceHash: hashes.definition,
         parentHashes: [],
@@ -213,8 +214,8 @@ function context(): AgentRunWorkflowArgs {
         profileVersion: '1',
         adapterVersion: 'document-agent-runtime@1',
       },
-      task: { contract: 'writing-task@1', schemaHash: hashes.task },
-      result: { contract: 'writing-result@1', schemaHash: hashes.result },
+      taskContract: { ref: 'writing-task@1', hash: hashes.task },
+      resultContract: { ref: 'writing-result@1', hash: hashes.result },
     },
     task: {
       schemaVersion: 1,
@@ -251,6 +252,7 @@ function expectedTransportEnvelope(): GenericTransportEnvelope {
   return {
     schemaVersion: 1,
     runId: context().runId,
+    specialization: 'writing',
     birth: context().birth,
     request: compiledRequest(),
     execution: {
@@ -381,7 +383,7 @@ describe('T22 production Agent Runtime activity wiring', () => {
         order.push('transport');
         expect(envelope).toEqual(expectedTransportEnvelope());
         const serialized = JSON.stringify(envelope);
-        expect(serialized).not.toContain('"task":');
+        expect(serialized).not.toContain('"payload":');
         expect(serialized).not.toMatch(/"provider"|"model"|"cwd"|"env"/);
         expect(serialized).not.toContain('compose-runner-token');
         reportProgress('1', { kind: 'message-received' });
