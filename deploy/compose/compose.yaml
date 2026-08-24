@@ -216,6 +216,8 @@ services:
     depends_on:
       postgres-bootstrap:
         condition: service_completed_successfully
+      pki-init:
+        condition: service_completed_successfully
     environment: *ui4a-production-environment
     configs: *ui4a-production-config
     secrets: *ui4a-production-secret
@@ -317,6 +319,9 @@ services:
     user: '1000:1000'
     read_only: true
     tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    depends_on:
+      pki-init:
+        condition: service_completed_successfully
     environment:
       <<: *ui4a-production-environment
       UI4A_RUNNER_ID: compose-runner
@@ -347,6 +352,9 @@ services:
     user: '1000:1000'
     read_only: true
     tmpfs: [/tmp:rw, noexec, nosuid, size=64m]
+    depends_on:
+      pki-init:
+        condition: service_completed_successfully
     environment: *ui4a-production-environment
     configs: *ui4a-production-config
     secrets: *ui4a-production-secret

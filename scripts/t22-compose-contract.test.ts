@@ -462,6 +462,8 @@ describe('T22 Docker Compose all-in-one contract', () => {
       );
       expect(service?.volumes, serviceName).toContain('experiment-ca:/var/lib/ui4a/ca:ro');
     }
+    expect(dependency(stack, 'runner', 'pki-init')).toBe('service_completed_successfully');
+    expect(dependency(stack, 'migration', 'pki-init')).toBe('service_completed_successfully');
     expect(dependency(stack, 'worker', 'edge')).toBe('service_healthy');
     expect(dependency(stack, 'edge', 'runner')).toBe('service_healthy');
     expect(

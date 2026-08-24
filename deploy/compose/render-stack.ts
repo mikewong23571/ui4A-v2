@@ -382,7 +382,10 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         ],
       }),
       migration: runtimeService(images.worker, 'no', {
-        depends_on: dependencies({ 'postgres-bootstrap': 'service_completed_successfully' }),
+        depends_on: dependencies({
+          'postgres-bootstrap': 'service_completed_successfully',
+          'pki-init': 'service_completed_successfully',
+        }),
         command: ['node', 'dist/t22-migrate.js'],
         volumes: ['experiment-ca:/var/lib/ui4a/ca:ro'],
       }),
@@ -435,6 +438,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         volumes: ['experiment-ca:/var/lib/ui4a/ca:ro'],
       }),
       runner: runtimeService(images.runner, 'unless-stopped', {
+        depends_on: dependencies({ 'pki-init': 'service_completed_successfully' }),
         environment: {
           ...canonicalRuntimeEnvironment,
           UI4A_RUNNER_ID: 'compose-runner',
@@ -455,6 +459,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
       }),
       'host-runner': runtimeService(images.runner, 'unless-stopped', {
         profiles: ['host-runner'],
+        depends_on: dependencies({ 'pki-init': 'service_completed_successfully' }),
         healthcheck: health([
           'CMD',
           'node',
