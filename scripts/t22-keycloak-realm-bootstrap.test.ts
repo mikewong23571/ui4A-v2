@@ -374,6 +374,18 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
       },
     ],
     [
+      'Web subject userinfo drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const web = fake.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
+        const subject = web.protocolMappers?.find(
+          ({ protocolMapper }) => protocolMapper === 'oidc-sub-mapper',
+        );
+        if (subject !== undefined) {
+          subject.config = { ...subject.config, 'userinfo.token.claim': 'true' };
+        }
+      },
+    ],
+    [
       'Web subject mapper duplicate',
       (fake: ImportOrSkipKeycloakAdmin) => {
         const web = fake.clients.find(({ clientId }) => clientId === 'ui4a-web')!;

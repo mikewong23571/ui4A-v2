@@ -144,6 +144,7 @@ describe('T22 experimental Keycloak realm import contract', () => {
           'introspection.token.claim': 'true',
           'lightweight.claim': 'true',
           'id.token.claim': 'false',
+          'userinfo.token.claim': 'false',
         },
       },
     ]);

@@ -83,7 +83,8 @@
             "access.token.claim": "true",
             "introspection.token.claim": "true",
             "lightweight.claim": "true",
-            "id.token.claim": "false"
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
           }
         },
         {

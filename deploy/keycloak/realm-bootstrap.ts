@@ -375,11 +375,12 @@ function hasExactAccessTokenSubjectMapper(client: Record<string, unknown>): bool
     mapper.protocol === 'openid-connect' &&
     mapper.protocolMapper === 'oidc-sub-mapper' &&
     config !== undefined &&
-    Object.keys(config).length === 4 &&
+    Object.keys(config).length === 5 &&
     config['access.token.claim'] === 'true' &&
     config['introspection.token.claim'] === 'true' &&
     config['lightweight.claim'] === 'true' &&
-    config['id.token.claim'] === 'false'
+    config['id.token.claim'] === 'false' &&
+    config['userinfo.token.claim'] === 'false'
   );
 }
 
