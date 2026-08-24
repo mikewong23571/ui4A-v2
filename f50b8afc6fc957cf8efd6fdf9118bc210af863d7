@@ -1,0 +1,32 @@
+Task: Phase A checkpoint isolation correction and verification
+
+Task summary:
+- Updated the internal capability callback test to mock the canonical Agent Run Temporal dispatcher in addition to the legacy capability dispatcher.
+- Prevents the unit/integration test from contacting localhost:7233 and preserves the original identity-rejection and declared-action transition assertions.
+- No production runtime code, timeout, or business assertion changed.
+
+Files:
+- apps/web/src/app/api/internal/capability-callback/route.test.ts
+
+Why:
+The full checkpoint exposed a stale fixture: coding.execute now dispatches a canonical Agent Run, but this test only isolated the legacy dispatcher. The unmocked network attempt timed out and then advanced the fixture to implementation-failed. Mocking the current boundary restores deterministic test isolation.
+
+Automated verification:
+1. CI=true pnpm exec vitest run --config vitest.t22-contract.config.mts
+   Result: 2 files passed, 13 tests passed.
+2. NODE_OPTIONS=--no-experimental-webstorage pnpm vitest run apps/web/src/app/api/internal/capability-callback/route.test.ts apps/web/src/components/floating-chat.test.tsx --reporter=verbose
+   Result: 2 files passed, 31 tests passed.
+3. NODE_OPTIONS=--no-experimental-webstorage CI=true pnpm check
+   Result: typecheck passed for all workspaces; ESLint 0 errors and 7 pre-existing warnings; 239 test files passed, 7 skipped; 1677 tests passed, 13 skipped.
+   Environment note: host Node is 25.4.0 while the project binds Node 24. The Node option disables Node 25 experimental Web Storage so Vitest/jsdom provides standards-compatible localStorage. Phase B will pin Node 24.
+
+Autonomous manual-equivalent verification:
+1. Asserted platform-probe.json records read-only mode, proxy unset, all nodes Ready, no StorageClass, and static-local-pv decision.
+2. Asserted auth-probe.json records passing PKCE, client credentials, RFC 8693 exchange, delegation experiment, and expected public-client rejection.
+3. Asserted runtime-probe.json records passing one-shot/daemon, disconnect/cancel, K8s Job create/result/cancel/cleanup, timeout/duplicate/restart, and one canonical result.
+4. Asserted topology-probe.json records serialized advisory lock, idempotent/rollback-safe migration, probe DB cleanup, durable Temporal history/restart, and graceful Worker SIGTERM.
+5. Confirmed namespace ui4a-probe is absent and no T22 disposable Keycloak/Runtime/Temporal probe process remains.
+   Result: Phase A evidence assertions PASS; disposable namespace cleanup PASS; disposable process cleanup PASS.
+
+Confirmation:
+Autonomous acceptance performed by the orchestrating agent under conductor/workflow.md. Evidence meets the Phase A goals: platform constraints are measured, identity/runtime/state probes are executable and disposable, architecture decisions are bound, and the repository remains runnable. No user-facing UI changed in this phase.
