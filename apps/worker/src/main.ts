@@ -14,8 +14,13 @@ import { NativeConnection, Worker } from '@temporalio/worker';
 import * as activities from './activities';
 import { shutdownBanner, startupBanner } from './banner';
 import { runWorkerProductionDeploymentPreflight } from './production-deployment-preflight';
+import { startWorkerHealthServer, workerReleaseMetadata } from './runtime-health';
 
 async function main(): Promise<void> {
+  if (process.argv[2] === '--version' || process.argv[2] === 'version') {
+    console.log(JSON.stringify(workerReleaseMetadata()));
+    return;
+  }
   const productionConfig = runWorkerProductionDeploymentPreflight();
   const taskQueue =
     productionConfig?.settings.temporal.taskQueue ?? process.env.UI4A_TASK_QUEUE ?? 'ui4a';
@@ -32,10 +37,16 @@ async function main(): Promise<void> {
     ...(identity === undefined ? {} : { identity }),
     // workflowsPath 指向源文件:worker 自带打包器把 workflow 模块隔离打包
     //(workflow 代码不得引入 Node API;tsx 只负责本入口进程)。
-    workflowsPath: fileURLToPath(new URL('./workflows.ts', import.meta.url)),
+    workflowsPath: fileURLToPath(
+      new URL(
+        import.meta.url.endsWith('.ts') ? './workflows.ts' : './workflows.js',
+        import.meta.url,
+      ),
+    ),
     activities,
   });
 
+  const healthServer = await startWorkerHealthServer();
   console.log(startupBanner({ taskQueue, address: temporalAddress }));
 
   let shuttingDown = false;
@@ -48,8 +59,12 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => requestShutdown('SIGINT'));
   process.on('SIGTERM', () => requestShutdown('SIGTERM'));
 
-  await worker.run(); // 阻塞至优雅关闭完成
-  await connection.close();
+  try {
+    await worker.run(); // 阻塞至优雅关闭完成
+  } finally {
+    healthServer.close();
+    await connection.close();
+  }
 }
 
 main().catch((error: unknown) => {

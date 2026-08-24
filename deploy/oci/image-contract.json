@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "version": "v0.1.0-experimental.1",
+    "channel": "experimental",
+    "buildArgs": ["UI4A_VERSION", "UI4A_GIT_SHA", "UI4A_BUILD_DATE"],
+    "labels": [
+      "org.opencontainers.image.version",
+      "org.opencontainers.image.revision",
+      "org.opencontainers.image.created",
+      "io.ui4a.release.channel"
+    ]
+  },
+  "images": {
+    "web": {
+      "dockerfile": "apps/web/Dockerfile",
+      "entrypoint": ["node", "apps/web/server.js"],
+      "health": {
+        "command": [
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3100/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        ],
+        "endpoint": "/live"
+      },
+      "runAsNonRoot": true,
+      "readOnlyRootFilesystem": true,
+      "writablePaths": ["/tmp", "/app/apps/web/.next/cache"]
+    },
+    "worker": {
+      "dockerfile": "apps/worker/Dockerfile",
+      "entrypoint": ["node", "dist/main.js"],
+      "health": {
+        "command": [
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3101/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        ],
+        "endpoint": "/live"
+      },
+      "runAsNonRoot": true,
+      "readOnlyRootFilesystem": true,
+      "writablePaths": ["/tmp", "/var/lib/ui4a"]
+    },
+    "runner": {
+      "dockerfile": "apps/agent-runner/Dockerfile",
+      "entrypoint": ["node", "dist/main.js", "daemon"],
+      "health": {
+        "command": [
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3102/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        ],
+        "endpoint": "/live"
+      },
+      "runAsNonRoot": true,
+      "readOnlyRootFilesystem": true,
+      "writablePaths": ["/tmp", "/workspaces", "/artifacts"]
+    }
+  },
+  "verification": {
+    "smoke": "docker run --rm --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m $UI4A_IMAGE",
+    "metadata": "docker inspect --format '{{json .Config.Labels}}' $UI4A_IMAGE",
+    "sbom": "syft $UI4A_IMAGE -o cyclonedx-json > $UI4A_SBOM_FILE",
+    "vulnerability": "grype $UI4A_IMAGE --fail-on high"
+  }
+}

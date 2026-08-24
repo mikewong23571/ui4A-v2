@@ -1,6 +1,21 @@
 import type { NextConfig } from 'next';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const webRoot = dirname(fileURLToPath(import.meta.url));
+const isProduction = process.env.NODE_ENV === 'production';
 
 const nextConfig: NextConfig = {
+  typescript: {
+    tsconfigPath: isProduction ? 'tsconfig.build.json' : 'tsconfig.json',
+  },
+  output: 'standalone',
+  outputFileTracingRoot: resolve(webRoot, '../..'),
+  // Next 16 Turbopack traces @swc/helpers' package.json through pnpm, but omits
+  // its exported helper files unless the monorepo store path is explicit.
+  outputFileTracingIncludes: {
+    '/*': ['../../node_modules/.pnpm/@swc+helpers@*/node_modules/@swc/helpers/**/*'],
+  },
   // workspace 内的 TS 源码包需让 Next 一并转译(全栈共享通路 @ui4a/shared;
   // Phase C 起 /api/* 路由运行时引用 @ui4a/engine 的裁决与投影;
   // Phase E 起 /api/chat 引用 @ui4a/agent 的循环与双 driver)

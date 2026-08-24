@@ -27,6 +27,7 @@ export default defineConfig([
   {
     files: [
       'apps/worker/src/**/*.ts',
+      'apps/agent-runner/src/**/*.ts',
       'packages/engine/src/**/*.ts',
       'packages/shared/src/**/*.ts',
       'packages/agent/src/**/*.ts',

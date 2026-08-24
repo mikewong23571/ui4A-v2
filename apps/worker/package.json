@@ -3,11 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "node build.mjs",
     "dev": "tsx src/main.ts",
+    "start": "node ./dist/main.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.45",
     "@openai/codex-sdk": "0.149.0",
     "@temporalio/activity": "1.22.0",
     "@temporalio/worker": "1.22.0",
@@ -15,11 +21,14 @@
     "@ui4a/agent": "workspace:*",
     "@ui4a/engine": "workspace:*",
     "@ui4a/shared": "workspace:*",
-    "pg": "^8.23.0"
+    "ai": "^7.0.71",
+    "pg": "^8.23.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@temporalio/client": "1.22.0",
     "@types/pg": "^8.23.1",
+    "esbuild": "0.28.2",
     "tsx": "^4.20.0",
     "typescript": "^5.9.3"
   }
