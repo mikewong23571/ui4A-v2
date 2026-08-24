@@ -17,8 +17,9 @@ K8s 形态在集群内运行 UI4A Web、Worker、PostgreSQL、Temporal、Keycloa
 Runtime。Agent Runtime 同时支持 K8s 隔离 Pod 与受信宿主机 Runner，具体后端只能由服务端
 Runtime Profile 选择。
 
-项目引入真实身份认证：人类通过 Keycloak OIDC 登录，CLI 使用 Bearer Token，Agent 使用
-RFC 8693 Token Exchange 和 `act` 委托链。生产环境不再接受客户端自报的 `actor`、
+项目引入真实身份认证：人类通过 Keycloak Authorization Code + PKCE 登录，CLI 直接使用外部
+Bearer Token，Agent 使用 Client Credentials / RFC 8693 Token Exchange。canonical delegation
+只使用已验证的 `sub + azp`，不实现 `act` 扩展。生产环境不再接受客户端自报的 `actor`、
 `principal` 或授权 scope。
 
 交付物必须包含从零部署、配置、验证、备份恢复、升级、回滚和故障排查的逐步运行手册，并在真实
@@ -70,37 +71,32 @@ PostgreSQL ready
 
 要求：
 
-- 多副本启动不会并发破坏 DDL。
+- 重复或并发启动 migration 不会破坏 DDL。
 - 迁移失败时 Web/Worker 不进入 ready。
 - 数据库账号权限最小化区分 migration 与 runtime。
 - 升级前备份，迁移与应用版本有兼容窗口。
 - 提供从空库初始化和现有事件日志升级两条路径。
 - 事件日志继续是业务真相，不引入第二权威状态库。
 
-### FR4 多副本并发安全
+### FR4 单副本命令与重放完整性
 
-生产 Web 不得只依赖进程内 Promise 队列保证单 atom。
-
-必须：
-
-- 通过 PostgreSQL 事务、锁或等价机制使跨 Pod 裁决保持串行语义。
-- 验证两个 Web 副本并发处理同一资源时仍满足声明 → guard → schema 顺序。
-- 保持拒绝留痕、事件全序和重放一致性。
-- 投影缓存失效或 Pod 重启不得产生陈旧裁决。
-- Compose 可以单 Web 运行；K8s 至少验证两个 Web 副本。
+Compose 与 K8s 的实验验收形态均为单 Web 副本。必须保留进程内串行、CAS、声明 → guard → schema
+顺序、拒绝留痕、事件全序和重放一致性，并验证 Web 重启后不会产生陈旧裁决。跨 Web 副本 single
+atom 与多副本 Session 属后续 Track，不阻塞本版本。
 
 ### FR5 Keycloak 身份认证
 
-集群内部署 Keycloak，并配置独立持久数据库/schema。必须支持：
+集群内部署单实例 Keycloak 和单个 realm，并配置独立持久数据库/schema。必须支持：
 
 - 浏览器 Authorization Code + PKCE。
-- UI4A 服务端安全 Session 或等价标准 OIDC 流程。
+- 单 Web 副本下的 UI4A 服务端安全 Session 或等价标准 OIDC 流程。
 - CLI Bearer Token。
-- 服务账号和机器身份。
-- RFC 8693 Token Exchange。
-- `act` 委托链。
+- `ui4a-web`、`ui4a-agent`、`ui4a-api` 三个且仅三个 client。
+- Agent Client Credentials 与 RFC 8693 Token Exchange。
+- 由已验证 `sub + azp` 构成的 canonical delegation；不实现或要求 `act` 扩展。
 - Token issuer、audience、expiry、signature 和 scope 校验。
-- 用户、角色、client、scope 与测试 fixture 的可重复 realm bootstrap。
+- Compose/K8s 共用一个固定 realm 文件：realm 不存在时导入，已存在时兼容性检查后跳过。
+- 不兼容 realm 必须 fail closed 并提示直接备份/替换/重建；禁止在线漂移修复或 reconciliation。
 - 退出登录、过期、撤销和 Keycloak 不可用的诚实失败。
 
 ### FR6 身份成为机械事实
@@ -112,7 +108,7 @@ HTTP 请求里的 `actor`、`principal`、policy scope 和委托关系必须由�
 - `actor=human` 只能来自满足人类登录策略的凭证。
 - Agent、service account 和 callback 身份不得批准 human-only action。
 - 请求 body、query 或普通 header 不能覆盖凭证身份。
-- Principal/scope/`act` 链进入事件审计。
+- Principal/scope 及 canonical `sub + azp` delegation 进入事件审计。
 - 未认证请求只能访问明确声明的公共端点。
 - `demo` 自报模式只允许显式本地配置，生产启动时发现该模式必须失败。
 - Istio 可做入口 JWT 和网络层拦截，但应用仍负责业务身份与 scope 裁决。
@@ -148,11 +144,9 @@ K8s 部署必须包含：
 - K8s Agent Runtime。
 - 必需的 Service、ConfigMap、Secret、PVC、Job、CronJob 和 Istio 资源。
 
-目标 mothership 集群是两 Worker 的实验集群，不能虚构高可用。交付必须区分：
-
-- 在该集群实际验证的单实例或有限冗余形态。
-- 可通过 values 配置扩展的生产副本与存储形态。
-- 已验证的备份恢复，而非未经验证的 HA 声称。
+目标 mothership 集群是两 Worker 节点组成的实验集群，但本版本所有 stateful/UI4A workload 均以
+单副本验收，不能虚构高可用。交付只声明已验证的单实例恢复能力，不把未来 values 扩容能力当成
+本版本承诺。
 
 ### FR9 存储、备份与恢复
 
@@ -163,6 +157,7 @@ K8s 部署必须包含：
 - PostgreSQL 数据及备份。
 - Temporal 持久化。
 - Keycloak 数据。
+- 共用 realm 文件。
 - Coding worktree。
 - Writing artifacts。
 - Agent Authoring runtime evidence。
@@ -232,7 +227,7 @@ Temporal 客户端与 Worker 必须支持部署配置：
 - UI4A Worker。
 - 容器化 Agent Runtime。
 - 可选 Host Runner profile。
-- 必需的初始化、迁移和 realm bootstrap。
+- 必需的初始化、迁移和 realm import-or-check-and-skip。
 
 要求：
 
@@ -269,7 +264,7 @@ Temporal 客户端与 Worker 必须支持部署配置：
 5. 根 CA、域名和证书。
 6. PostgreSQL。
 7. Temporal。
-8. Keycloak、realm/client/role bootstrap。
+8. Keycloak 固定 realm 首次导入与 existing realm 兼容性检查。
 9. 数据库迁移。
 10. UI4A Web/Worker。
 11. K8s Agent Runtime。
@@ -302,6 +297,9 @@ runtime backend matrix
 
 验证脚本不得依赖人工修改数据库或伪造 actor/header。
 
+认证 gate 只覆盖 Golden Story、CLI/Agent 合同所需的主路径与负向矩阵，并必须输出已覆盖和未覆盖
+的 route/callback 清单。全面 route 认证平台化不是本版本 gate，未覆盖入口不得宣称受保护。
+
 ### FR16 首个试验性版本
 
 Track 完成时必须产出 `v0.1.0-experimental.1`：
@@ -309,7 +307,7 @@ Track 完成时必须产出 `v0.1.0-experimental.1`：
 - 固定 Web、Worker 和 Runner image digest。
 - 提供 release manifest、checksums、SBOM、Release Notes 和验收报告。
 - 标明 Compose/K8s 验证范围、已知限制、非 HA 边界和升级兼容范围。
-- 验证升级与回滚。
+- 验证应用镜像/数据库兼容迁移的升级与回滚；realm 在线升级明确延后。
 - 不标记为 GA、production-ready SLA 或长期支持版本。
 
 ## User Stories
@@ -341,7 +339,7 @@ Golden Story 必须在 K8s 真实集群完成；Compose 至少完成除集群故
 - 保持 `shared ← engine ← agent` 依赖方向。
 - 所有生产 Secret 由部署状态提供，不进入 UI4A Git。
 - 实验根 CA 按用户要求采用固定持久目录保存，不引入复杂托管系统。
-- K8s 资源使用 namespace 隔离、requests/limits、PDB 和最小 ServiceAccount。
+- K8s 资源使用 namespace 隔离、requests/limits 和最小 ServiceAccount；实验验收单副本。
 - 生产启动 fail-closed，禁止认证或 Runtime Backend fallback。
 - 数据恢复必须实际演练。
 - 所有部署 YAML/模板可 lint、可重复渲染。
@@ -355,7 +353,7 @@ Golden Story 必须在 K8s 真实集群完成；Compose 至少完成除集群故
 - Web、Worker、Runner 镜像 build/smoke/scan 通过。
 - Docker Compose 从空 volume 部署成功并通过 U1、U3–U9、U13、U14、U16。
 - mothership K8s 实际部署成功并通过 U2–U16。
-- 两 Web 副本并发测试通过。
+- 单 Web 副本的并发、重启与重放完整性测试通过。
 - Token negative corpus 100% 拒绝正确。
 - Agent Runtime 两后端 canonical corpus 100% 通过。
 - 备份恢复 drill 成功，Business Snapshot hash 一致。
@@ -369,6 +367,10 @@ Golden Story 必须在 K8s 真实集群完成；Compose 至少完成除集群故
 - 公网 DNS、公共 CA 和互联网暴露。
 - 多地域、跨集群容灾。
 - 在当前两 Worker 实验集群上声称未经验证的高可用 SLA。
+- 多副本 Web/Session、跨副本 single atom 和任何 HA 拓扑。
+- realm 在线升级、通用漂移修复/reconciliation 和细粒度角色同步。
+- 自动 Secret rotation、全面 service-to-service OIDC 与全 route 认证平台化。
+- Keycloak `act` 或嵌套 `act` delegation 扩展。
 - 用户自助创建 realm/client。
 - 请求侧选择 Provider、模型、镜像、cwd 或 Runner。
 - Agent 自动 merge、push、deploy、activate 或批准结果。

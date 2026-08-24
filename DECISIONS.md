@@ -403,3 +403,30 @@
 - **仓库所有权**：UI4A 仓库拥有 generic images/config/Compose/chart/runbook；mothership-setup 只
   拥有 `deploy/ui4a/` overlay、集群路径和入口事实。两个仓库分别提交并在 evidence 中记录 SHA，
   不覆盖 mothership 已有 dirty/untracked 工作。
+
+## D35 T22 v0.1 实验版收敛为单实例身份与部署主路径(2026-08-24)
+
+- **覆盖关系**：本决定覆盖 D34 与原 T22 文档中“跨副本命令原子”、`act`/`may_act` 扩展、通用
+  realm reconciliation 和可扩展副本形态作为 `v0.1.0-experimental.1` 发布门槛的部分；D34 的统一配置、可信凭证、
+  双 Runtime、单一业务真相、仓库所有权和恢复边界继续有效。已完成的多副本、`act` 与 topology
+  probe 只保留为历史可行性证据，不代表本版本承诺实现这些能力。
+- **实验拓扑**：Compose 与 K8s 都以单个 Keycloak instance、单个 realm 和所有 stateful/UI4A
+  workload 单副本作为验收形态，不声明 HA。两种部署消费相同 realm 文件、配置语义和镜像；
+  PostgreSQL migration、readiness、重启和重放完整性仍是发布门槛。
+- **最小身份面**：realm 只定义 `ui4a-web`、`ui4a-agent`、`ui4a-api` 三个 client。浏览器只实现
+  Authorization Code + S256 PKCE；CLI 接受外部取得的 Bearer Token，不内建登录或 Token 管理；
+  Agent 使用 Client Credentials 与 RFC 8693 Standard Token Exchange。canonical delegation
+  只由已验证的 human `sub` 与 agent `azp` 构成，并受 audience/scope 限制；本版本不实现或要求
+  `act`/嵌套 `act` 扩展。
+- **最小 realm 生命周期**：首次启动仅在 realm 不存在时导入固定 realm 文件；realm 已存在时只
+  做版本/client/redirect/audience 等兼容性检查并跳过。发现不兼容时 fail closed 并给出备份、
+  人工替换或重建步骤，绝不在线修改、修复或 reconcile 已存在 realm。Compose 与 K8s 不维护两套
+  bootstrap 实现。
+- **认证验收边界**：Phase C 只要求 Golden Story 主路径及 CLI/Agent 合同端点建立可信 identity、
+  human-only approval 和负向身份测试，并记录尚未纳入的 route/callback。全面 route 平台化和
+  service-to-service OIDC 不阻塞实验版，但任何未覆盖入口不得宣称已受 OIDC 保护。
+- **直接恢复**：根 CA/私钥、数据库和 realm 文件/数据采用命名文件与数据库级直接备份恢复，
+  在隔离目标验真；不引入 secret manager、自动 rotation 或身份配置管理控制面。
+- **明确延后**：多副本 Web/Session、跨副本 single atom、realm 在线升级、细粒度角色同步、自动
+  Secret rotation、全面 service-to-service OIDC/全 route 认证平台化及 PostgreSQL/Temporal/
+  Keycloak/storage HA 均延后到后续 Track，不阻塞 `v0.1.0-experimental.1`。

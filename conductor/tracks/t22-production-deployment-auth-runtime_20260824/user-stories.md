@@ -13,8 +13,10 @@
 验收：
 
 - 单一、文档化命令启动 PostgreSQL、Temporal、Keycloak、migration、Web、Worker 和 Runner。
+- 所有 stateful/UI4A 服务以单副本运行；Keycloak 仅一个 instance/realm。
 - readiness 全绿后才报告成功；失败指出具体依赖。
-- `docker compose down` 后重启，业务实体、用户、Workflow 和 artifacts 仍在。
+- `docker compose down` 后重启，existing realm 兼容性检查后跳过导入，业务实体、用户、Workflow
+  和 artifacts 仍在。
 - 明确的 destructive clean 命令要求二次确认，普通停止不删除 volume。
 
 ### U2 K8s 从零部署
@@ -27,6 +29,7 @@
 - 处理当前无 StorageClass、CRI 不读取 mirror、Istio `Always` pull 等现场约束。
 - 所有 image digest 与 release manifest 一致。
 - PostgreSQL、Temporal、Keycloak、migration、Web、Worker、Runner 和 Istio resources 全部 ready。
+- 所有 stateful/UI4A workload 按实验版单副本部署，不以当前两 Worker 节点暗示 HA。
 - runbook 不依赖未记录的手工数据库修改、临时端口转发或个人 shell 状态。
 
 ## B. 可信身份
@@ -37,14 +40,15 @@
 
 验收：
 
-- Authorization Code + PKCE、callback、session refresh 和 logout 成功。
+- Authorization Code + PKCE、callback、单副本 secure session 和 logout 成功。
 - 登录前目标在 callback 后安全恢复。
 - 事件记录可信 principal、actor、scope 和 credential provenance。
 - body/query/header 伪造身份不能改变事件身份。
 
 ### U4 CLI 认证
 
-作为外部 Agent/CLI 用户，我能取得受限 Token、运行 `ui4a doctor`、发现和读取授权合同。
+作为外部 Agent/CLI 用户，我能把外部取得的受限 Bearer Token 交给 CLI，运行 `ui4a doctor`、
+发现和读取授权合同；CLI 不负责登录或 Token 管理。
 
 验收：
 
@@ -54,13 +58,14 @@
 
 ### U5 委托身份
 
-作为用户，我能将受限权限交换给 Agent；事件保留 principal 与 `act` 链，Agent 不能扩大 scope。
+作为用户，我能将受限权限交换给 Agent；事件保留 principal 与 canonical `sub + azp`
+delegation，Agent 不能扩大 scope。
 
 验收：
 
 - RFC 8693 Token Exchange 产生有界 delegation。
 - 交换 scope 必须是原 principal grants 的子集。
-- 嵌套 `act` 链有界且可审计。
+- 已验证 human `sub` 与 agent client `azp` 可审计；不实现或要求 `act`/嵌套 `act`。
 - 非法 subject/actor token、越权 scope 和错误 audience 100% 被拒绝。
 
 ### U6 审批不委托
@@ -122,7 +127,8 @@ evidence；Pod 无法扩大授权。
 
 - Web/Worker restart 后从 PostgreSQL/Temporal 恢复。
 - pending confirmation、Draft、Sidecar 和 Agent Run 可重新读取。
-- 不依赖进程内 session、Promise queue 或未持久化工作状态。
+- 业务事实不依赖进程内 Promise queue 或未持久化工作状态。
+- 浏览器会话只验收单 Web 副本的选定机制；多副本 Session 共享/切换明确延后。
 
 ### U11 备份恢复
 
@@ -132,20 +138,21 @@ evidence；Pod 无法扩大授权。
 验收：
 
 - 备份有名称、校验和、时间、版本和目标路径。
+- 根 CA/私钥、共享 realm 文件/数据和数据库使用直接、可检查的备份恢复命令。
 - 恢复在隔离目标执行，不破坏原环境。
 - 恢复后可登录，Workflow/Run 可查询，关键 artifact 可验证。
 - Business Snapshot hash 与恢复前一致；记录实测 RPO/RTO。
 
-### U12 扩缩容并发
+### U12 单副本一致性与重放
 
-作为运维人员，我运行两个 Web 副本并并发操作同一资源；系统只产生合法结果，竞争者得到带原因的
-拒绝，日志与重放一致。
+作为运维人员，我在支持的单 Web 副本内并发操作同一资源并重启服务；系统只产生合法结果，
+竞争者得到带原因的拒绝，日志与重放一致。
 
 验收：
 
-- 跨 Pod 裁决不依赖单进程 Promise queue。
-- 同一资源的 guard 读取与事件 append 位于数据库级单 atom。
+- 同一进程内保持现有串行、guard/schema 顺序和 CAS。
 - 竞争结果、事件 seq、projection 与 replay hash 确定。
+- 多副本 Web/Session 与跨副本 single atom 被明确标记为 deferred，不冒充已验证能力。
 
 ### U13 TLS 与 OIDC
 
@@ -182,6 +189,7 @@ evidence；Pod 无法扩大授权。
 - migration 与应用版本兼容窗口明确。
 - rollout、smoke、rollback 和数据恢复命令均现场执行。
 - 回滚后关键实体和 Business Snapshot hash 正确。
+- realm 在线升级不在本故事内；身份变化使用先备份后直接替换/重建的实验手册。
 
 ### U16 两种部署形态合同一致
 
@@ -206,6 +214,8 @@ evidence；Pod 无法扩大授权。
 - Git tag、Web/Worker/Runner digests、checksums、SBOM 和 release notes 完整。
 - Compose 与 mothership K8s evidence 可追溯到同一 release。
 - 已知限制明确包含内网实验、当前非 HA、Runtime backend 限制和升级兼容范围。
+- 已知限制明确列出多副本、realm 在线升级/漂移修复、自动 Secret rotation、`act` 与全面
+  service-to-service OIDC 未支持。
 - 文档不使用 GA、正式 SLA、长期支持或未经验证的 production-ready 声称。
 
 ## Golden Story
@@ -215,7 +225,7 @@ evidence；Pod 无法扩大授权。
 → 安装/信任内网根 CA
 → 人类经 Keycloak 登录 UI4A
 → 完成一个普通业务 Flow
-→ Agent 使用 token exchange 获得受限身份
+→ Agent 使用 token exchange，以 sub + azp 获得受限身份
 → Agent 发起需要确认的动作
 → Agent 无法批准
 → 人类批准后动作生效

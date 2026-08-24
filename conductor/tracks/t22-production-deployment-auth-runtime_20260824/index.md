@@ -4,6 +4,12 @@
 all-in-one 中重复部署、认证、恢复和验证的首个试验性版本。Keycloak 提供可信身份，Agent Runtime
 同时支持隔离 K8s Pod 与受信宿主机 Runner；服务端 Runtime Profile 保持最终选择权。
 
+`v0.1.0-experimental.1` 主路径按 D35 收敛：Compose/K8s 全组件单副本；一个 Keycloak
+instance/realm，仅 `ui4a-web`、`ui4a-agent`、`ui4a-api` 三个 client；浏览器 Authorization Code +
+PKCE、CLI 外部 Bearer、Agent Client Credentials/Token Exchange，以 `sub + azp` 作为唯一
+canonical delegation。两种部署共用固定 realm 文件，首次导入，已存在则兼容性检查后跳过，不做
+在线漂移修复。
+
 - [Metadata](./metadata.json)
 - [Specification](./spec.md)
 - [User Stories](./user-stories.md)
@@ -23,4 +29,6 @@ all-in-one 中重复部署、认证、恢复和验证的首个试验性版本。
 - [Implementation Plan](./plan.md)
 
 当前状态：`in_progress`。目标发布为 `v0.1.0-experimental.1`，不宣称 GA、正式 SLA 或当前两 Worker
-实验集群具备未经验证的高可用能力。
+实验集群具备未经验证的高可用能力。多副本 Web/Session、跨副本 single atom、realm 在线升级、
+细粒度角色同步、自动 Secret rotation、`act` 扩展、全面 service-to-service OIDC/全 route
+平台化和 HA 明确延后，不阻塞本 Track。

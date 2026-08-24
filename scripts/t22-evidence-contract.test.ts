@@ -53,6 +53,7 @@ describe('T22 executable acceptance contract', () => {
       goldenStory: string[];
       negativeCases: string[];
       requiredEvidence: string[];
+      deferredCapabilities: string[];
     };
 
     expect(baseline.schemaVersion).toBe(1);
@@ -86,10 +87,19 @@ describe('T22 executable acceptance contract', () => {
         'deployment-inventory',
         'identity',
         'runtime-matrix',
-        'concurrency-replay',
+        'single-replica-replay',
         'backup-restore',
         'runbook-replay',
         'experimental-release',
+      ]),
+    );
+    expect(baseline.deferredCapabilities).toEqual(
+      expect.arrayContaining([
+        'multi-replica-web-and-session',
+        'cross-replica-single-atom',
+        'keycloak-act-extension',
+        'online-realm-upgrade-and-reconciliation',
+        'comprehensive-service-to-service-oidc-and-full-route-authentication',
       ]),
     );
   });
@@ -127,6 +137,9 @@ describe('T22 executable acceptance contract', () => {
       expect.arrayContaining(['token', 'secret', 'password', 'apiKey', 'privateKey']),
     );
     expect(schemaText).not.toMatch(/LLM_API_KEY|tls\.key|ca\.key/);
+    expect(schemaText).toContain('authorizedParty');
+    expect(schemaText).toContain('delegationBasis');
+    expect(schemaText).not.toContain('delegationDepth');
   });
 
   it('records the live mothership platform without claiming unavailable infrastructure', () => {
@@ -379,6 +392,7 @@ describe('T22 executable acceptance contract', () => {
     const techStack = readFileSync(resolve(repositoryRoot, 'conductor/tech-stack.md'), 'utf8');
 
     expect(decisions).toContain('## D34 T22 生产形态、可信身份与双后端 Agent Runtime');
+    expect(decisions).toContain('## D35 T22 v0.1 实验版收敛为单实例身份与部署主路径');
     expect(decisions).toContain('v0.1.0-experimental.1');
     expect(decisions).toContain('sub + azp');
     expect(decisions).toContain('static local PV');
@@ -388,9 +402,10 @@ describe('T22 executable acceptance contract', () => {
     for (const section of [
       '## Deployment topology',
       '## Identity trust line',
-      '## Cross-replica command atom',
+      '## Single-replica command boundary',
       '## Agent Runtime backends',
       '## Persistence and recovery',
+      '## Keycloak realm lifecycle',
       '## Repository ownership',
       '## Experimental release boundary',
     ]) {

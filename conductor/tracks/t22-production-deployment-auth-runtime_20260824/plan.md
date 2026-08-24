@@ -3,6 +3,9 @@
 > 遵循 `conductor/workflow.md` 的 Story TDD、任务提交、Git notes 和 Phase Checkpoint 协议。
 > Compose 与 K8s 必须消费同一运行合同并运行同一核心用户故事 corpus。目标发布为
 > `v0.1.0-experimental.1`，不宣称 GA、正式 SLA 或当前实验集群具备未经验证的 HA。
+> D35 将发布主路径收敛为全组件单副本、单 Keycloak realm/三 clients、`sub + azp`
+> delegation 和 realm import-or-check-and-skip；多副本/HA、`act`、在线 realm reconciliation、
+> 自动 rotation 与全面 service-to-service OIDC 均为后续 Track。
 
 ## Phase A: 红线、平台探测与架构决策 [checkpoint: f50b8af]
 
@@ -17,7 +20,7 @@
 - [x] 验证 `ctr --all-platforms`、`IfNotPresent` 和 image export/import
 - [x] Task: 运行 disposable 认证探针 246c295
 - [x] 验证 Keycloak Authorization Code + PKCE、CLI Bearer 和 Client Credentials
-- [x] 验证 RFC 8693 Token Exchange 与 `act` claim
+- [x] 验证 RFC 8693 Token Exchange，并记录 exchange 不产生稳定 `act` 的探针事实
 - [x] 比较应用 JWT 验证与 Istio RequestAuthentication 职责
 - [x] Task: 运行 disposable Runtime Backend 探针 cb633a6
 - [x] 验证 Temporal Worker 创建、观察和取消 K8s Job
@@ -25,13 +28,13 @@
 - [x] 验证 workspace、result、cancel、timeout 和 disconnect recovery
 - [x] 决定是否新增 `apps/agent-runner` 及进程模式
 - [x] Task: 运行 PostgreSQL 与 Temporal 生产拓扑探针 9a0dc7b
-- [x] 验证跨 Web Pod PostgreSQL advisory/transaction lock
+- [x] 验证 PostgreSQL advisory/transaction lock 的未来跨副本可行性（非 v0.1 gate）
 - [x] 验证显式 migration Job
 - [x] 验证 Temporal namespace、persistence 和 Worker drain
 - [x] 选择无 StorageClass 环境的 stateful installation 方式
 - [x] Task: 记录绑定架构决定 eea720b
 - [x] 在 `DECISIONS.md` 记录真实身份、部署合同、实验非 HA 和恢复边界
-- [x] 记录双 Runtime Backend、跨副本裁决和 experimental release 策略
+- [x] 记录双 Runtime Backend、当时的跨副本方案和 experimental release 策略（后由 D35 收缩）
 - [x] 新增依赖或工具前更新 `conductor/tech-stack.md`
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) f50b8af
 
@@ -65,27 +68,30 @@
 - [x] Task: Red TDD——建立 authentication negative corpus ee3d44a
 - [ ] 覆盖 missing/expired/wrong issuer/audience/signature Token
 - [ ] 覆盖伪造 actor/principal/scope/header 和 agent approval
-- [ ] 覆盖 malformed/over-scoped `act` chain 与 JWKS failure
+- [ ] 覆盖越权 scope、错误 `sub + azp` delegation 与 JWKS failure；`act` 不属于 v0.1 contract
 - [x] Task: Green——实现 credential verification 与 request identity ac7e959
 - [ ] 验证 issuer、audience、signature、expiry 和 scopes
-- [ ] 从 credential 派生 actor、principal、scope 和 delegation chain
+- [ ] 从 credential 派生 actor、principal、scope 和 canonical `sub + azp` delegation
 - [ ] 移除 production 对 body/query/ordinary header identity 的信任
 - [ ] 保留显式 local-only demo adapter 并将可信身份写入 audit
 - [x] Task: Red→Green——浏览器登录生命周期 64d8d08
-- [ ] Authorization Code + PKCE、callback、secure session、refresh 和 logout
-- [ ] 登录前目标恢复、multi-tab、expiry 和 Keycloak outage
+- [ ] Authorization Code + PKCE、callback、单副本 secure session 和 logout
+- [ ] 登录前目标恢复、expiry 后重新登录和 Keycloak outage 诚实失败
 - [ ] Meta 与 business scope 一致
 - [x] Task: Red→Green——CLI 与 Agent 身份 b2a502d
-- [ ] CLI Bearer discovery/read/exec
-- [ ] Client Credentials、RFC 8693 Token Exchange 和 `act` audit
+- [ ] CLI 直接使用外部 Bearer Token 完成 discovery/read/exec，不内建登录或 Token 管理
+- [ ] Agent Client Credentials、RFC 8693 Token Exchange 和 `sub + azp` audit
 - [ ] scope 只能收窄，Agent 不能获得 human approval
-- [ ] Task: 定义可重复 Keycloak realm bootstrap
-- [ ] Realm、clients、redirect URIs、roles、scopes 和 test users
-- [ ] Compose/K8s 使用同一 realm contract
-- [ ] 重复导入幂等且不覆盖已有用户数据
+- [ ] Task: 定义最小 Keycloak realm import-or-check-and-skip
+- [ ] 单 realm 只包含 `ui4a-web`、`ui4a-agent`、`ui4a-api` 与必要 redirect/audience/scope fixtures
+- [ ] Compose/K8s 挂载同一固定 realm 文件并使用同一检查命令
+- [ ] realm absent 时首次导入；existing compatible 时检查并跳过；incompatible 时 fail closed
+- [ ] 禁止在线 drift repair、通用 reconciliation、细粒度角色同步或自动 Secret rotation
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [ ] 仅要求 Golden Story、CLI/Agent 合同主路径与负向身份 corpus 通过
+- [ ] 列出未纳入的 route/callback；不以“全面 route auth 已完成”作为 v0.1 gate
 
-## Phase D: 显式迁移、跨副本裁决和健康语义
+## Phase D: 显式迁移、单副本重放和健康语义
 
 - [ ] Task: Red TDD——建立 migration contract
 - [ ] 覆盖 empty/existing DB、rerun、concurrent run、partial failure 和 incompatible version
@@ -95,13 +101,10 @@
 - [ ] 增加 migration history 与 advisory lock
 - [ ] migration failure 阻止 readiness
 - [ ] bootstrap 与 replay integrity 显式执行
-- [ ] Task: Red TDD——复现两个 Web replicas 的 stale judgment
-- [ ] 覆盖同一 resource、confirmation/draft decision、worker event gap 和 Pod restart
-- [ ] 先证明 current in-process queue 不足
-- [ ] Task: Green——实现 database-level single atom
-- [ ] PostgreSQL transaction/lock 覆盖 refresh → judgment → append → projection
-- [ ] 保持 declaration → guard → schema 顺序和 rejection audit
-- [ ] 跨 replicas 只有合法结果成功且 replay hash 一致
+- [ ] Task: Red→Green——验证单 Web 副本命令与重放完整性
+- [ ] 覆盖同一 resource 的进程内并发、confirmation/draft decision、worker event gap 和 Pod restart
+- [ ] 保持 declaration → guard → schema、CAS、rejection audit、event order 与 replay hash
+- [ ] 明确记录多副本 Web/Session 和跨副本 database-level single atom 为 deferred
 - [ ] Task: Red→Green——实现 health/readiness
 - [ ] `/live` 只表达 process life
 - [ ] `/ready` 检查 DB、migration 和 required config
@@ -123,8 +126,8 @@
 - [ ] Temporal Server 使用 PostgreSQL persistence
 - [ ] Worker graceful drain、independent test queue 和 restart recovery
 - [ ] Task: 实现 backup/restore commands
-- [ ] PostgreSQL consistent backup、Keycloak realm/DB 与 Temporal restore
-- [ ] workspace/artifact archive 和 CA/certificate backup
+- [ ] PostgreSQL consistent backup、Keycloak DB/共享 realm 文件数据与 Temporal 的直接 restore
+- [ ] workspace/artifact archive 和根 CA/私钥/certificate 直接 backup
 - [ ] 默认隔离恢复而不是破坏 current state
 - [ ] Task: Red→Green——恢复一致性
 - [ ] 记录恢复前 business hash、identity 和 Run evidence
@@ -162,7 +165,7 @@
 - [ ] 验证 config schema、Secrets、volumes、health、dependency 和 restart
 - [ ] 验证 image digest、idempotent restart、data retention 和 confirmed clean
 - [ ] Task: Green——实现 all-in-one stack
-- [ ] PostgreSQL、Temporal Server/UI、Keycloak 和 migration/bootstrap
+- [ ] PostgreSQL、Temporal Server/UI、单实例 Keycloak 和 migration/realm import-or-check
 - [ ] UI4A Web/Worker、container Runner 和 optional Host Runner profile
 - [ ] Task: 实现 Compose internal TLS
 - [ ] 首次生成并持久化 experiment root CA
@@ -176,11 +179,11 @@
 ## Phase H: K8s、Istio 与 mothership 集成
 
 - [ ] Task: Red TDD——建立 Helm/K8s render contract
-- [ ] kubeconform/schema lint namespace、RBAC、ServiceAccount、PV/PVC、probe、resources 和 PDB
+- [ ] kubeconform/schema lint namespace、RBAC、ServiceAccount、PV/PVC、probe 和 resources
 - [ ] Secret 不进入 rendered evidence
 - [ ] 验证 Istio hosts、TLS、JWT、callback policy 和 `IfNotPresent`
 - [ ] Task: Green——实现 generic UI4A Helm chart
-- [ ] Web、Worker、Runner、migration/bootstrap Job
+- [ ] 单副本 Web/Worker/Runner、migration 与 realm import-or-check Job
 - [ ] PostgreSQL、Temporal、Keycloak values
 - [ ] static PV/replaceable StorageClass、backup CronJob 和 Istio policies
 - [ ] Task: 创建 mothership-specific overlay
@@ -196,7 +199,7 @@
 - [ ] Task: 执行真实集群部署
 - [ ] pre-pull 并验证全部 image digests
 - [ ] 创建 PV/namespace/Secrets 并部署 state services
-- [ ] 执行 migration/bootstrap，部署 Web/Worker/Runner
+- [ ] 执行 migration/realm import-or-check，部署单副本 Web/Worker/Runner
 - [ ] 应用 Istio resources 并验证 Pods、Jobs、PV/PVC、sidecars 和 readiness
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
@@ -206,9 +209,9 @@
 - [ ] trust CA、human login、business Flow 和 Agent token exchange
 - [ ] Agent 提议高风险 action、agent approval 拒绝、human approval 生效
 - [ ] K8s/Host 两后端完成 Agent Run
-- [ ] Task: 两副本并发与重放
-- [ ] scale Web to two replicas 并并发同一 resource
-- [ ] 验证一成功一拒绝、restart 后 replay hash 一致
+- [ ] Task: 单副本并发、重启与重放
+- [ ] 在一个 Web 副本内并发同一 resource，验证 guard/CAS/rejection 结果
+- [ ] 重启后验证 event order、projection 与 replay hash 一致
 - [ ] Task: Authentication Safety Gate
 - [ ] 覆盖 missing/expired/wrong issuer/audience/signature 与 identity forgery
 - [ ] 覆盖 agent/service approval 和 over-scoped exchange
@@ -230,9 +233,10 @@
 - [ ] Task: 验证 upgrade 与 rollback
 - [ ] pre-upgrade backup、compatible migration、rollout 和 smoke
 - [ ] rollback images/data 并验证 event log 未截断或重写
+- [ ] realm 在线升级不在本版本演练；记录直接备份/恢复和重建边界
 - [ ] Task: 运行全量质量门
 - [ ] focused Vitest、`pnpm check` 和 `CI=true pnpm e2e`
-- [ ] Compose/K8s acceptance、auth negatives、runtime matrix 和 restore drill
+- [ ] 单副本 Compose/K8s acceptance、主路径 auth negatives、runtime matrix 和 restore drill
 - [ ] image scan 与 SBOM
 - [ ] Task: 产出 `v0.1.0-experimental.1`
 - [ ] 固定 image digests，生成 manifest、checksums、SBOM 和 acceptance report

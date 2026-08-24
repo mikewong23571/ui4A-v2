@@ -114,17 +114,27 @@
     "identity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["actor", "subject", "scopes", "delegationDepth"],
+      "required": ["actor", "subject", "scopes"],
       "properties": {
         "actor": { "enum": ["human", "agent", "system"] },
         "subject": { "type": "string", "minLength": 1 },
+        "authorizedParty": { "type": "string", "minLength": 1 },
+        "delegationBasis": { "const": "sub+azp" },
         "scopes": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "uniqueItems": true
-        },
-        "delegationDepth": { "type": "integer", "minimum": 0 }
-      }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "actor": { "const": "agent" } },
+            "required": ["actor"]
+          },
+          "then": { "required": ["authorizedParty", "delegationBasis"] }
+        }
+      ]
     },
     "startedAt": { "type": "string", "format": "date-time" },
     "finishedAt": { "type": "string", "format": "date-time" },

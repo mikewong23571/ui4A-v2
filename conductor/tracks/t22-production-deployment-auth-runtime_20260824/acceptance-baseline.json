@@ -9,14 +9,18 @@
     { "storyId": "U2", "status": "red", "routes": ["k8s-runbook-replay"] },
     { "storyId": "U3", "status": "red", "routes": ["browser-oidc", "identity-audit"] },
     { "storyId": "U4", "status": "red", "routes": ["cli-bearer", "token-negatives"] },
-    { "storyId": "U5", "status": "red", "routes": ["token-exchange", "act-audit"] },
+    { "storyId": "U5", "status": "red", "routes": ["token-exchange", "sub-azp-audit"] },
     { "storyId": "U6", "status": "red", "routes": ["approval-negatives", "event-audit"] },
     { "storyId": "U7", "status": "red", "routes": ["k8s-runtime-corpus"] },
     { "storyId": "U8", "status": "red", "routes": ["host-runtime-corpus"] },
     { "storyId": "U9", "status": "red", "routes": ["runtime-override-negatives"] },
     { "storyId": "U10", "status": "red", "routes": ["restart-recovery"] },
     { "storyId": "U11", "status": "red", "routes": ["backup-restore-drill"] },
-    { "storyId": "U12", "status": "red", "routes": ["two-replica-concurrency", "replay-hash"] },
+    {
+      "storyId": "U12",
+      "status": "red",
+      "routes": ["single-replica-concurrency", "restart-replay-hash"]
+    },
     { "storyId": "U13", "status": "red", "routes": ["tls-chain", "oidc-redirect"] },
     { "storyId": "U14", "status": "red", "routes": ["dependency-fault-matrix"] },
     { "storyId": "U15", "status": "red", "routes": ["upgrade-rollback"] },
@@ -46,7 +50,7 @@
     "forged-human-actor",
     "forged-principal",
     "forged-policy-scope",
-    "malformed-act-chain",
+    "invalid-sub-azp-delegation",
     "over-scoped-token-exchange",
     "agent-approval",
     "service-account-approval",
@@ -62,7 +66,7 @@
     "deployment-inventory",
     "identity",
     "runtime-matrix",
-    "concurrency-replay",
+    "single-replica-replay",
     "backup-restore",
     "runbook-replay",
     "experimental-release"
@@ -71,10 +75,19 @@
     "production identity is currently self-reported",
     "production Worker build/start artifact is missing",
     "database DDL currently runs during application boot",
-    "cross-process judgment is not serialized",
     "Temporal namespace is fixed to default",
     "Kubernetes and Compose production manifests do not exist",
     "mothership cluster currently has no StorageClass",
     "Agent Runtime does not yet provide Kubernetes and trusted-host backends"
+  ],
+  "deferredCapabilities": [
+    "multi-replica-web-and-session",
+    "cross-replica-single-atom",
+    "keycloak-act-extension",
+    "online-realm-upgrade-and-reconciliation",
+    "fine-grained-role-sync",
+    "automatic-secret-rotation",
+    "comprehensive-service-to-service-oidc-and-full-route-authentication",
+    "high-availability"
   ]
 }

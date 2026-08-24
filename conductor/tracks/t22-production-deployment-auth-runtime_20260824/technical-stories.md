@@ -31,11 +31,16 @@ Red evidence: injected JWT/JWKS corpus covering valid and invalid claims without
 
 ## TS4 Browser, CLI and delegated identity
 
-Browser Authorization Code + PKCE, CLI Bearer credentials, service accounts, and RFC 8693 Token
-Exchange converge on the same request identity. The `act` chain can only narrow authority and
-cannot confer human approval.
+Browser Authorization Code + PKCE, an externally obtained CLI Bearer credential, Agent Client
+Credentials, and RFC 8693 Token Exchange converge on the same request identity. Delegation uses
+verified `sub + azp`, can only narrow authority, and cannot confer human approval. `act` is not part
+of the v0.1 contract.
 
 Red evidence: protocol fixtures plus live disposable Keycloak probe before product wiring.
+
+The realm lifecycle is intentionally bounded: the one shared realm file defines only `ui4a-web`,
+`ui4a-agent`, and `ui4a-api`; absent realms are imported, compatible existing realms are checked and
+skipped, and incompatible realms fail closed. No online reconciliation or drift repair is built.
 
 ## TS5 Versioned database migration
 
@@ -44,13 +49,13 @@ Migration and runtime roles are distinct; incompatible or failed migrations keep
 
 Red evidence: empty/existing/concurrent/partial-failure database integration tests.
 
-## TS6 Cross-replica single atom
+## TS6 Single-replica command and replay integrity
 
-Two Web processes judging the same resource serialize refresh, judgment, append, and projection at
-the PostgreSQL boundary. The existing declaration → guard → schema order and rejection events remain
-unchanged.
+One Web process judging concurrent commands preserves the existing serialization, CAS,
+declaration → guard → schema order, rejection events, event order, and replay hash across restart.
+Multi-replica Web/Session and cross-replica single atom are deferred.
 
-Red evidence: two isolated service runtimes demonstrate the stale-judgment failure before locking.
+Red evidence: concurrent single-process service requests plus restart/replay fixtures.
 
 ## TS7 Honest health and readiness
 
@@ -71,7 +76,8 @@ Red evidence: configuration tests and disposable restart/drain probe.
 
 PostgreSQL 17 persists UI4A and Keycloak data; Temporal uses PostgreSQL persistence. Backup artifacts
 are named, checksummed, versioned, and restored into an isolated target before business replay hashes
-are compared.
+are compared. The Keycloak database, shared realm file/data, and experimental CA are backed up and
+restored directly; no secret-management or identity-reconciliation control plane is introduced.
 
 Red evidence: restore harness starts with missing backup metadata and deliberately divergent hashes.
 
@@ -102,16 +108,17 @@ Red evidence: in-process fake Runner transport and lease-expiry tests.
 ## TS13 Compose all-in-one
 
 Compose starts PostgreSQL, Temporal, Keycloak, migrations, Web, Worker, and container Runner with
-named volumes and dependency-aware health. Restart preserves data. Destructive cleanup is separate
-and explicit.
+named volumes and dependency-aware health. Keycloak is one instance/realm and executes the shared
+import-or-check-and-skip contract. Restart preserves data. Destructive cleanup is separate and explicit.
 
 Red evidence: rendered Compose contract and clean-environment acceptance test.
 
 ## TS14 Kubernetes and Istio deployment
 
 A generic chart plus mothership values renders valid namespace, RBAC, ServiceAccount, static
-PV/PVC, Jobs, probes, resources, PDB, Services, Gateway, VirtualService, RequestAuthentication, and
-AuthorizationPolicy objects. Images use pinned digests and `IfNotPresent`.
+PV/PVC, Jobs, probes, resources, Services, Gateway, VirtualService, RequestAuthentication, and
+AuthorizationPolicy objects. All stateful/UI4A components are accepted at one replica. Images use
+pinned digests and `IfNotPresent`.
 
 Red evidence: schema/render tests before applying to the live cluster.
 
@@ -133,7 +140,8 @@ Red evidence: every U1–U17 route begins in `acceptance-baseline.json` with sta
 
 `v0.1.0-experimental.1` binds Git tag, image digests, checksums, SBOM, release notes, known limits,
 upgrade/rollback evidence, and both environment reports. It never claims GA, SLA, LTS, or unverified
-HA.
+HA. Realm online upgrade, automatic secret rotation, comprehensive service-to-service OIDC, and
+multi-replica behavior are documented deferred work rather than release gates.
 
 Red evidence: release manifest validation fails until every required artifact and acceptance report
 exists.
