@@ -40,6 +40,7 @@ export interface ComposeService {
   volumes?: string[];
   ports?: string[];
   networks?: Record<string, { aliases?: string[] }>;
+  network_mode?: string;
   user?: string;
   read_only?: boolean;
   tmpfs?: string[];
@@ -128,11 +129,11 @@ const temporalCli = 'temporal --client-connect-timeout 3s --command-timeout 10s 
 const temporalNamespaceCommand = [
   'set -eu;',
   'for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do',
-  `if ${temporalCli} operator namespace describe --namespace temporal-system --address temporal:7233; then break; fi;`,
+  `if ${temporalCli} operator namespace describe --namespace temporal-system --address 127.0.0.1:7233; then break; fi;`,
   'if [ "$$attempt" = 12 ]; then exit 1; fi;',
   'sleep 2;',
   'done;',
-  `${temporalCli} operator namespace describe --namespace ui4a --address temporal:7233 || exec ${temporalCli} operator namespace create --namespace ui4a --address temporal:7233 --retention 72h`,
+  `${temporalCli} operator namespace describe --namespace ui4a --address 127.0.0.1:7233 || exec ${temporalCli} operator namespace create --namespace ui4a --address 127.0.0.1:7233 --retention 72h`,
 ].join(' ');
 const postgresTlsCommand = [
   'set -eu;',
@@ -342,6 +343,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         pull_policy: 'missing',
         restart: 'no',
         depends_on: dependencies({ temporal: 'service_healthy' }),
+        network_mode: 'service:temporal',
         entrypoint: ['/bin/sh', '-ec'],
         command: [temporalNamespaceCommand],
       },
