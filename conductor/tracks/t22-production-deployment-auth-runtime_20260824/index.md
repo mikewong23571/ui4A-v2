@@ -10,5 +10,5 @@ all-in-one 中重复部署、认证、恢复和验证的首个试验性版本。
 - [Acceptance Evidence Contract](./evidence.md)
 - [Implementation Plan](./plan.md)
 
-当前状态：`new`。目标发布为 `v0.1.0-experimental.1`，不宣称 GA、正式 SLA 或当前两 Worker
+当前状态：`in_progress`。目标发布为 `v0.1.0-experimental.1`，不宣称 GA、正式 SLA 或当前两 Worker
 实验集群具备未经验证的高可用能力。

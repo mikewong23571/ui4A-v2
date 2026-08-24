@@ -47,4 +47,4 @@
 
 ---
 
-- [ ] **Track: T22 生产形态部署、身份认证与双后端 Agent Runtime：mothership K8s/Istio、Docker Compose all-in-one、Keycloak、灾备与首个试验性版本** *Link: [tracks/t22-production-deployment-auth-runtime_20260824/index.md](./tracks/t22-production-deployment-auth-runtime_20260824/index.md)*
+- [~] **Track: T22 生产形态部署、身份认证与双后端 Agent Runtime：mothership K8s/Istio、Docker Compose all-in-one、Keycloak、灾备与首个试验性版本** *Link: [tracks/t22-production-deployment-auth-runtime_20260824/index.md](./tracks/t22-production-deployment-auth-runtime_20260824/index.md)*
