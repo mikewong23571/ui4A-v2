@@ -50,7 +50,69 @@ describe('T22 executable Compose state services', () => {
       keycloakVersion: '26.7.1',
       temporalStaticConfig: 'deploy/compose/temporal-config.yaml',
       temporalDynamicConfig: 'deploy/compose/temporal-dynamicconfig.yaml',
+      postgresTls: {
+        serverEnabled: true,
+        canonicalHost: 'postgres',
+        caCertificatePath: '/var/lib/ui4a/ca/root-ca.crt',
+        sourceCertificatePath: '/var/lib/ui4a/ca/postgres/server.crt',
+        sourcePrivateKeyPath: '/var/lib/ui4a/ca/postgres/server.key',
+        runtimeCertificatePath: '/var/run/ui4a/postgres-tls/server.crt',
+        runtimePrivateKeyPath: '/var/run/ui4a/postgres-tls/server.key',
+        certificateMode: 420,
+        privateKeyMode: 384,
+        canonicalSettings: {
+          host: 'postgres',
+          caCertificatePath: '/var/lib/ui4a/ca/root-ca.crt',
+          serverCertificatePath: '/var/lib/ui4a/ca/postgres/server.crt',
+          serverPrivateKeyPath: '/var/lib/ui4a/ca/postgres/server.key',
+        },
+      },
+      databaseClientTransport: {
+        ui4aRuntime: 'verify-full',
+        ui4aMigration: 'verify-full',
+        keycloak: 'plaintext-on-private-compose-network',
+        temporal: 'plaintext-on-private-compose-network',
+      },
     });
+  });
+
+  it('initializes PostgreSQL PKI before copying a private server handoff and enabling TLS', () => {
+    const rendered = stack();
+    const postgres = rendered.services.postgres;
+    const pki = rendered.services['pki-init'];
+    const command = postgres?.command?.join(' ') ?? '';
+
+    expect(pki?.environment).toMatchObject({ UI4A_POSTGRES_HOST: 'postgres' });
+    expect(postgres?.depends_on?.['pki-init']?.condition).toBe('service_completed_successfully');
+    expect(postgres?.entrypoint).toEqual(['/bin/sh', '-ec']);
+    expect(postgres?.volumes).toEqual(
+      expect.arrayContaining(['experiment-ca:/var/lib/ui4a/ca:ro']),
+    );
+    expect(postgres?.tmpfs).toContain(
+      '/var/run/ui4a/postgres-tls:rw,noexec,nosuid,size=1m,mode=0700',
+    );
+    expect(command).toContain('cp /var/lib/ui4a/ca/postgres/server.crt');
+    expect(command).toContain('cp /var/lib/ui4a/ca/postgres/server.key');
+    expect(command).toContain('chown postgres:postgres');
+    expect(command).toContain('chmod 0700 /var/run/ui4a/postgres-tls');
+    expect(command).toContain('chmod 0644 /var/run/ui4a/postgres-tls/server.crt');
+    expect(command).toContain('chmod 0600 /var/run/ui4a/postgres-tls/server.key');
+    expect(command).toContain('ssl=on');
+    expect(command).toContain('ssl_cert_file=/var/run/ui4a/postgres-tls/server.crt');
+    expect(command).toContain('ssl_key_file=/var/run/ui4a/postgres-tls/server.key');
+    expect(command).toContain('ssl_ca_file=/var/lib/ui4a/ca/root-ca.crt');
+    expect(command).not.toMatch(/keycloak.*verify-full|temporal.*verify-full/i);
+    expect(postgres?.volumes).toContain('experiment-ca:/var/lib/ui4a/ca:ro');
+  });
+
+  it('keeps the static PostgreSQL TLS handoff equivalent without embedding key material', () => {
+    const compose = source('deploy/compose/compose.yaml');
+
+    expect(compose).toContain('UI4A_POSTGRES_HOST: ${UI4A_POSTGRES_HOST:-postgres}');
+    expect(compose).toContain('experiment-ca:/var/lib/ui4a/ca:ro');
+    expect(compose).toContain('cp /var/lib/ui4a/ca/postgres/server.key');
+    expect(compose).toContain('ssl_cert_file=/var/run/ui4a/postgres-tls/server.crt');
+    expect(compose).not.toMatch(/-----BEGIN (?:RSA )?PRIVATE KEY-----/);
   });
 
   it('injects all six PostgreSQL role passwords from independent Secret files', () => {

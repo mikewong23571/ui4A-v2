@@ -123,6 +123,21 @@ const temporalServerCommand =
   'export TEMPORAL_RUNTIME_PASSWORD="$$(cat /run/secrets/temporal-runtime-password)"; exec temporal-server --root /etc/temporal --config config --env docker start';
 const temporalNamespaceCommand =
   'temporal operator namespace describe --namespace ui4a --address temporal:7233 >/dev/null 2>&1 || exec temporal operator namespace create --namespace ui4a --address temporal:7233 --retention 72h';
+const postgresTlsCommand = [
+  'set -eu;',
+  'mkdir -p /var/run/ui4a/postgres-tls;',
+  'cp /var/lib/ui4a/ca/postgres/server.crt /var/run/ui4a/postgres-tls/server.crt;',
+  'cp /var/lib/ui4a/ca/postgres/server.key /var/run/ui4a/postgres-tls/server.key;',
+  'chown postgres:postgres /var/run/ui4a/postgres-tls /var/run/ui4a/postgres-tls/server.crt /var/run/ui4a/postgres-tls/server.key;',
+  'chmod 0700 /var/run/ui4a/postgres-tls;',
+  'chmod 0644 /var/run/ui4a/postgres-tls/server.crt;',
+  'chmod 0600 /var/run/ui4a/postgres-tls/server.key;',
+  'exec docker-entrypoint.sh postgres',
+  '-c ssl=on',
+  '-c ssl_cert_file=/var/run/ui4a/postgres-tls/server.crt',
+  '-c ssl_key_file=/var/run/ui4a/postgres-tls/server.key',
+  '-c ssl_ca_file=/var/lib/ui4a/ca/root-ca.crt',
+].join(' ');
 const edgeRouting = `{
   auto_https off
   admin off
@@ -259,6 +274,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         image: images.postgres,
         pull_policy: 'missing',
         restart: 'unless-stopped',
+        depends_on: dependencies({ 'pki-init': 'service_completed_successfully' }),
         healthcheck: health(['CMD-SHELL', 'pg_isready -U postgres -d postgres']),
         environment: {
           POSTGRES_USER: 'postgres',
@@ -266,7 +282,14 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           POSTGRES_PASSWORD_FILE: '/run/secrets/postgres-bootstrap-password',
         },
         secrets: [stateSecretMount('postgres-bootstrap-password')],
-        volumes: ['postgres-data:/var/lib/postgresql/data', 'backup-data:/backups'],
+        entrypoint: ['/bin/sh', '-ec'],
+        command: [postgresTlsCommand],
+        tmpfs: ['/var/run/ui4a/postgres-tls:rw,noexec,nosuid,size=1m,mode=0700'],
+        volumes: [
+          'postgres-data:/var/lib/postgresql/data',
+          'backup-data:/backups',
+          'experiment-ca:/var/lib/ui4a/ca:ro',
+        ],
       },
       'postgres-bootstrap': {
         image: images.postgres,
@@ -398,6 +421,7 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           UI4A_PKI_ROOT: '/var/lib/ui4a/ca',
           UI4A_HOST: 'ui4a.mothership.internal',
           KEYCLOAK_HOST: 'auth.ui4a.mothership.internal',
+          UI4A_POSTGRES_HOST: 'postgres',
         },
         command: ['node', 'dist/main.js', 'pki-init'],
         volumes: ['experiment-ca:/var/lib/ui4a/ca'],

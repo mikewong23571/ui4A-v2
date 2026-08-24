@@ -14,15 +14,37 @@ services:
     image: ${UI4A_POSTGRES_IMAGE:-postgres@sha256:0000000000000000000000000000000000000000000000000000000000000000}
     pull_policy: missing
     restart: unless-stopped
+    depends_on:
+      pki-init:
+        condition: service_completed_successfully
     environment:
       POSTGRES_USER: postgres
       POSTGRES_DB: postgres
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres-bootstrap-password
     secrets:
       - postgres-bootstrap-password
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - >-
+        set -eu;
+        mkdir -p /var/run/ui4a/postgres-tls;
+        cp /var/lib/ui4a/ca/postgres/server.crt /var/run/ui4a/postgres-tls/server.crt;
+        cp /var/lib/ui4a/ca/postgres/server.key /var/run/ui4a/postgres-tls/server.key;
+        chown postgres:postgres /var/run/ui4a/postgres-tls /var/run/ui4a/postgres-tls/server.crt /var/run/ui4a/postgres-tls/server.key;
+        chmod 0700 /var/run/ui4a/postgres-tls;
+        chmod 0644 /var/run/ui4a/postgres-tls/server.crt;
+        chmod 0600 /var/run/ui4a/postgres-tls/server.key;
+        exec docker-entrypoint.sh postgres
+        -c ssl=on
+        -c ssl_cert_file=/var/run/ui4a/postgres-tls/server.crt
+        -c ssl_key_file=/var/run/ui4a/postgres-tls/server.key
+        -c ssl_ca_file=/var/lib/ui4a/ca/root-ca.crt
+    tmpfs:
+      - /var/run/ui4a/postgres-tls:rw,noexec,nosuid,size=1m,mode=0700
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - backup-data:/backups
+      - experiment-ca:/var/lib/ui4a/ca:ro
     healthcheck:
       test: [CMD-SHELL, pg_isready -U postgres -d postgres]
       interval: 10s
@@ -239,6 +261,7 @@ services:
       UI4A_PKI_ROOT: /var/lib/ui4a/ca
       UI4A_HOST: ${UI4A_HOST:-ui4a.mothership.internal}
       KEYCLOAK_HOST: ${KEYCLOAK_HOST:-auth.ui4a.mothership.internal}
+      UI4A_POSTGRES_HOST: ${UI4A_POSTGRES_HOST:-postgres}
     configs: *ui4a-production-config
     secrets: *ui4a-production-secret
     volumes:

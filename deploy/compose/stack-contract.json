@@ -14,7 +14,30 @@
     "temporalServerVersion": "1.31.2",
     "keycloakVersion": "26.7.1",
     "temporalStaticConfig": "deploy/compose/temporal-config.yaml",
-    "temporalDynamicConfig": "deploy/compose/temporal-dynamicconfig.yaml"
+    "temporalDynamicConfig": "deploy/compose/temporal-dynamicconfig.yaml",
+    "postgresTls": {
+      "serverEnabled": true,
+      "canonicalHost": "postgres",
+      "caCertificatePath": "/var/lib/ui4a/ca/root-ca.crt",
+      "sourceCertificatePath": "/var/lib/ui4a/ca/postgres/server.crt",
+      "sourcePrivateKeyPath": "/var/lib/ui4a/ca/postgres/server.key",
+      "runtimeCertificatePath": "/var/run/ui4a/postgres-tls/server.crt",
+      "runtimePrivateKeyPath": "/var/run/ui4a/postgres-tls/server.key",
+      "certificateMode": 420,
+      "privateKeyMode": 384,
+      "canonicalSettings": {
+        "host": "postgres",
+        "caCertificatePath": "/var/lib/ui4a/ca/root-ca.crt",
+        "serverCertificatePath": "/var/lib/ui4a/ca/postgres/server.crt",
+        "serverPrivateKeyPath": "/var/lib/ui4a/ca/postgres/server.key"
+      }
+    },
+    "databaseClientTransport": {
+      "ui4aRuntime": "verify-full",
+      "ui4aMigration": "verify-full",
+      "keycloak": "plaintext-on-private-compose-network",
+      "temporal": "plaintext-on-private-compose-network"
+    }
   },
   "runnerDelivery": {
     "runnerId": "compose-runner",
