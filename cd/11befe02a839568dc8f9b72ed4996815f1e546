@@ -1,0 +1,1 @@
+T22 Phase G PKI v2: Compose pki-init issues Postgres leaf, Postgres waits then copies cert/key to private tmpfs with postgres ownership and enables TLS; UI4A runtime/migration verify-full, Keycloak/Temporal plaintext limited to private experiment network. Verified 55 focused tests, Compose config default/host, strict TS and format.
