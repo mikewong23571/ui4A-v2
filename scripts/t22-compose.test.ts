@@ -25,6 +25,12 @@ const imageEnvironment = {
   UI4A_RUNNER_IMAGE: `registry.internal/runner@sha256:${'8'.repeat(64)}`,
   UI4A_EDGE_IMAGE: `registry.internal/edge@sha256:${'9'.repeat(64)}`,
 };
+const currentGitRevision = 'a'.repeat(40);
+const ui4aImages = [
+  imageEnvironment.UI4A_WEB_IMAGE,
+  imageEnvironment.UI4A_WORKER_IMAGE,
+  imageEnvironment.UI4A_RUNNER_IMAGE,
+] as const;
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true })));
@@ -57,17 +63,52 @@ async function environment(): Promise<Record<string, string>> {
   };
 }
 
-function dependencies(options: { failFirst?: boolean } = {}) {
+function dependencies(options: { failFirst?: boolean; imageRevision?: string } = {}) {
   const commands: ComposeProcessCommand[] = [];
   const run = vi.fn(async (command: ComposeProcessCommand) => {
     commands.push(command);
     return { exitCode: options.failFirst && commands.length === 1 ? 23 : 0 };
   });
   const validateCanonicalDeployment = vi.fn(() => undefined);
-  return { commands, run, validateCanonicalDeployment };
+  const readCurrentGitRevision = vi.fn(async () => currentGitRevision);
+  const readImageRevision = vi.fn(async (_image: string) => {
+    return options.imageRevision ?? currentGitRevision;
+  });
+  return {
+    commands,
+    run,
+    validateCanonicalDeployment,
+    readCurrentGitRevision,
+    readImageRevision,
+  };
 }
 
 describe('T22 Compose single-command operations', () => {
+  it('provides a read-only production preflight that pins all UI4A images to checkout HEAD', async () => {
+    const env = await environment();
+    const deps = dependencies();
+
+    const result = await executeComposeCommand(deps, ['preflight'], env);
+
+    expect(result).toEqual({ ok: true, code: 'COMPOSE_PREFLIGHT_COMPLETED' });
+    expect(deps.validateCanonicalDeployment).toHaveBeenCalledOnce();
+    expect(deps.readCurrentGitRevision).toHaveBeenCalledOnce();
+    expect(deps.readImageRevision.mock.calls.map(([image]) => image)).toEqual(ui4aImages);
+    expect(deps.run).not.toHaveBeenCalled();
+    expect(JSON.stringify(result)).not.toContain('__private_test_value__');
+  });
+
+  it('rejects a stale UI4A image revision before PKI or any Compose process', async () => {
+    const deps = dependencies({ imageRevision: 'b'.repeat(40) });
+
+    expect(await executeComposeCommand(deps, ['up'], await environment())).toEqual({
+      ok: false,
+      code: 'COMPOSE_IMAGE_REVISION_MISMATCH',
+    });
+    expect(deps.readImageRevision).toHaveBeenCalledTimes(1);
+    expect(deps.run).not.toHaveBeenCalled();
+  });
+
   it('preflights canonical files and all nine digest images before ordered up', async () => {
     const env = await environment();
     const deps = dependencies();
@@ -76,6 +117,7 @@ describe('T22 Compose single-command operations', () => {
 
     expect(result).toEqual({ ok: true, code: 'COMPOSE_UP_COMPLETED' });
     expect(deps.validateCanonicalDeployment).toHaveBeenCalledOnce();
+    expect(deps.readImageRevision).toHaveBeenCalledTimes(3);
     expect(deps.commands.map(({ executable, args }) => [executable, ...args])).toEqual([
       [
         'docker',

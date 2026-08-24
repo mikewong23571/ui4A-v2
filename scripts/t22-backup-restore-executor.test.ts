@@ -1,6 +1,9 @@
+import { execFile } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -49,8 +52,33 @@ interface RestoreExecutorModule {
   }): Promise<CommandResult>;
 }
 
+interface BackupCliModule {
+  executeBackupCli(
+    argv: readonly string[],
+    environment: Readonly<Record<string, string | undefined>>,
+    dependencies: {
+      readRequest(path: string): unknown;
+      execute(input: Record<string, unknown>): Promise<CommandResult>;
+    },
+  ): Promise<{ ok: boolean; code?: string; backupId?: string }>;
+}
+
+interface RestoreCliModule {
+  executeRestoreCli(
+    argv: readonly string[],
+    environment: Readonly<Record<string, string | undefined>>,
+    dependencies: {
+      readRequest(path: string): unknown;
+      execute(input: Record<string, unknown>): Promise<CommandResult>;
+    },
+  ): Promise<{ ok: boolean; code?: string; backupId?: string }>;
+}
+
 const backupModulePath = './t22-backup-contract';
 const restoreModulePath = './t22-restore-contract';
+const backupEntryPath = 'scripts/t22-backup-command.ts';
+const restoreEntryPath = 'scripts/t22-restore-command.ts';
+const execFileAsync = promisify(execFile);
 
 async function backupApi(): Promise<BackupExecutorModule> {
   return (await import(backupModulePath)) as BackupExecutorModule;
@@ -58,6 +86,14 @@ async function backupApi(): Promise<BackupExecutorModule> {
 
 async function restoreApi(): Promise<RestoreExecutorModule> {
   return (await import(restoreModulePath)) as RestoreExecutorModule;
+}
+
+async function backupCliApi(): Promise<BackupCliModule> {
+  return (await import('./t22-backup-command')) as BackupCliModule;
+}
+
+async function restoreCliApi(): Promise<RestoreCliModule> {
+  return (await import('./t22-restore-command')) as RestoreCliModule;
 }
 
 const temporaryRoots: string[] = [];
@@ -112,6 +148,62 @@ function incompleteManifest(): Record<string, unknown> {
 }
 
 describe('T22 generic backup command seam', () => {
+  it('provides a real bounded backup CLI entry over the existing plan and executor', async () => {
+    expect(existsSync(resolve(backupEntryPath)), backupEntryPath).toBe(true);
+    const source = readFileSync(resolve(backupEntryPath), 'utf8');
+
+    expect(source).toContain('createBackupPlan');
+    expect(source).toContain('executeBackupCommand');
+    expect(source).not.toMatch(/execSync|spawnSync|shell:\s*true/);
+    await expect(
+      execFileAsync('apps/worker/node_modules/.bin/tsx', [backupEntryPath, 'invalid'], {
+        cwd: process.cwd(),
+      }),
+    ).rejects.toMatchObject({
+      code: 1,
+      stdout: '',
+      stderr: '{"ok":false,"code":"BACKUP_USAGE_INVALID"}\n',
+    });
+  });
+
+  it('derives a Compose backup plan and delegates execution without spawning in the CLI', async () => {
+    const { executeBackupCli } = await backupCliApi();
+    const execute = vi.fn(async (input: Record<string, unknown>) => ({
+      exitCode: 0 as const,
+      output: {
+        status: 'completed' as const,
+        backupId: String(input.backupId),
+        manifestPath: `/backups/${String(input.backupId)}/manifest.json`,
+      },
+    }));
+
+    const result = await executeBackupCli(
+      ['backup', '--environment', 'compose'],
+      { UI4A_BACKUP_REQUEST_FILE: '/private/backup-request.json' },
+      {
+        readRequest: () => ({
+          gitSha: 'abcdef0123456789',
+          startedAt: '2026-08-24T12:01:02.000Z',
+          finishedAt: '2026-08-24T12:04:05.000Z',
+          outputRoot: '/backups',
+          quiescenceReceipt: QUIESCENCE_RECEIPT,
+          databaseServices: SERVICES,
+          pgPassFileRef: '/run/secrets/postgres-backup.pgpass',
+          prestagedArtifacts: [],
+        }),
+        execute,
+      },
+    );
+
+    expect(result).toMatchObject({ ok: true, backupId: BACKUP_ID });
+    expect(execute).toHaveBeenCalledOnce();
+    expect(execute.mock.calls[0]?.[0]).toMatchObject({
+      backupId: BACKUP_ID,
+      outputRoot: '/backups',
+      databaseServices: SERVICES,
+    });
+  });
+
   it('uses controlled pg_dump argv, hashes staged inventory, and atomically completes', async () => {
     const { executeBackupCommand } = await backupApi();
     const outputRoot = await temporaryRoot();
@@ -258,6 +350,88 @@ describe('T22 generic backup command seam', () => {
 });
 
 describe('T22 generic isolated restore command seam', () => {
+  it('provides a real isolated restore CLI entry over validation and the existing executor', async () => {
+    expect(existsSync(resolve(restoreEntryPath)), restoreEntryPath).toBe(true);
+    const source = readFileSync(resolve(restoreEntryPath), 'utf8');
+
+    expect(source).toContain('planIsolatedRestore');
+    expect(source).toContain('executeRestoreCommand');
+    expect(source).not.toMatch(/--clean|execSync|spawnSync|shell:\s*true/);
+    await expect(
+      execFileAsync('apps/worker/node_modules/.bin/tsx', [restoreEntryPath, 'invalid'], {
+        cwd: process.cwd(),
+      }),
+    ).rejects.toMatchObject({
+      code: 1,
+      stdout: '',
+      stderr: '{"ok":false,"code":"RESTORE_USAGE_INVALID"}\n',
+    });
+  });
+
+  it('validates an isolated restore plan before delegating without invoking pg_restore in the CLI', async () => {
+    const { executeRestoreCli } = await restoreCliApi();
+    const execute = vi.fn(async (input: Record<string, unknown>) => ({
+      exitCode: 0 as const,
+      output: { status: 'completed' as const, backupId: String(input.backupId) },
+    }));
+    const refs = [
+      'databases/ui4a.dump',
+      'databases/keycloak.dump',
+      'databases/temporal.dump',
+      'databases/temporal_visibility.dump',
+      'runtime/coding/run-1.tar',
+      'runtime/writing/run-2.tar',
+      'runtime/authoring/run-3.tar',
+      'identity/realm-import.json',
+      'identity/deployment-bindings.json',
+      'private/pki.tar',
+      'private/deployment-secrets.tar',
+    ];
+
+    const result = await executeRestoreCli(
+      ['restore', '--target', 'isolated'],
+      { UI4A_RESTORE_REQUEST_FILE: '/private/restore-request.json' },
+      {
+        readRequest: () => ({
+          planInput: {
+            backupId: BACKUP_ID,
+            backupState: 'completed',
+            source: { environmentId: 'compose-main', postgresMajor: 17, root: '/backups/source' },
+            target: {
+              environmentId: 'compose-restore',
+              postgresMajor: 17,
+              root: '/restore/target',
+              exists: false,
+            },
+            artifacts: refs.map((ref) => ({
+              kind: ref.startsWith('databases/') ? 'database' : 'runtime',
+              ref,
+              digest: `sha256:${'a'.repeat(64)}`,
+              actualDigest: `sha256:${'a'.repeat(64)}`,
+              entryType: 'file',
+            })),
+          },
+          backupRoot: '/backups/source',
+          targetDatabaseServices: {
+            ui4a: 'ui4a-restore',
+            keycloak: 'keycloak-restore',
+            temporal: 'temporal-restore',
+            temporal_visibility: 'temporal-visibility-restore',
+          },
+          pgPassFileRef: '/run/secrets/postgres-restore.pgpass',
+        }),
+        execute,
+      },
+    );
+
+    expect(result).toEqual({ ok: true, status: 'completed', backupId: BACKUP_ID });
+    expect(execute).toHaveBeenCalledOnce();
+    expect(execute.mock.calls[0]?.[0]).toMatchObject({
+      backupId: BACKUP_ID,
+      validatedIsolatedPlan: { mode: 'isolated', destructive: false, useCleanRestore: false },
+    });
+  });
+
   it('invokes pg_restore only for a prevalidated isolated target and never uses --clean', async () => {
     const { executeRestoreCommand } = await restoreApi();
     const backupRoot = await temporaryRoot();

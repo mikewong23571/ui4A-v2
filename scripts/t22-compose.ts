@@ -34,7 +34,7 @@ const imageEnvironmentKeys = [
   'UI4A_EDGE_IMAGE',
 ] as const;
 
-type ComposeAction = 'up' | 'status' | 'down' | 'backup' | 'restore-plan' | 'clean';
+type ComposeAction = 'preflight' | 'up' | 'status' | 'down' | 'backup' | 'restore-plan' | 'clean';
 
 export interface ComposeProcessCommand {
   executable: 'docker';
@@ -60,6 +60,8 @@ export interface ComposeCommandDependencies {
     environment: Readonly<Record<string, string | undefined>>,
     readFile: (path: string) => string,
   ): void;
+  readCurrentGitRevision(): Promise<string>;
+  readImageRevision(image: string): Promise<string>;
 }
 
 function fail(code: string): never {
@@ -78,6 +80,9 @@ export function planComposeCommand(
   _environment: Readonly<Record<string, string | undefined>>,
 ): ComposeCommandPlan {
   const [action, ...options] = argv;
+  if (action === 'preflight' && options.length === 0) {
+    return { action, preflight: true, commands: [] };
+  }
   if (action === 'up' && options.length === 0) {
     return {
       action,
@@ -149,10 +154,10 @@ function validateRegularFile(path: string): void {
   }
 }
 
-function preflight(
+async function preflight(
   dependencies: ComposeCommandDependencies,
   environment: Readonly<Record<string, string | undefined>>,
-): void {
+): Promise<void> {
   if (
     environment.UI4A_DEPLOYMENT_PROFILE !== 'production' ||
     environment.UI4A_DEPLOYMENT_SETTINGS_JSON !== undefined ||
@@ -174,9 +179,26 @@ function preflight(
   } catch {
     fail('COMPOSE_PREFLIGHT_FAILED');
   }
+  let expectedRevision: string;
+  try {
+    expectedRevision = (await dependencies.readCurrentGitRevision()).trim();
+  } catch {
+    fail('COMPOSE_GIT_REVISION_UNAVAILABLE');
+  }
+  if (!/^[0-9a-f]{40}$/.test(expectedRevision)) fail('COMPOSE_GIT_REVISION_UNAVAILABLE');
+  for (const key of ['UI4A_WEB_IMAGE', 'UI4A_WORKER_IMAGE', 'UI4A_RUNNER_IMAGE'] as const) {
+    let revision: string;
+    try {
+      revision = (await dependencies.readImageRevision(environment[key]!)).trim();
+    } catch {
+      fail('COMPOSE_IMAGE_INSPECT_FAILED');
+    }
+    if (revision !== expectedRevision) fail('COMPOSE_IMAGE_REVISION_MISMATCH');
+  }
 }
 
 const successCode: Record<Exclude<ComposeAction, 'backup' | 'restore-plan'>, string> = {
+  preflight: 'COMPOSE_PREFLIGHT_COMPLETED',
   up: 'COMPOSE_UP_COMPLETED',
   status: 'COMPOSE_STATUS_COMPLETED',
   down: 'COMPOSE_DOWN_COMPLETED',
@@ -184,6 +206,7 @@ const successCode: Record<Exclude<ComposeAction, 'backup' | 'restore-plan'>, str
 };
 
 const failureCode: Record<Exclude<ComposeAction, 'backup' | 'restore-plan'>, string> = {
+  preflight: 'COMPOSE_PREFLIGHT_FAILED',
   up: 'COMPOSE_UP_FAILED',
   status: 'COMPOSE_STATUS_FAILED',
   down: 'COMPOSE_DOWN_FAILED',
@@ -198,7 +221,7 @@ export async function executeComposeCommand(
   let plan: ComposeCommandPlan;
   try {
     plan = planComposeCommand(argv, environment);
-    if (plan.preflight) preflight(dependencies, environment);
+    if (plan.preflight) await preflight(dependencies, environment);
   } catch (error) {
     const code = error instanceof Error ? error.message : 'COMPOSE_COMMAND_FAILED';
     return {
@@ -212,6 +235,9 @@ export async function executeComposeCommand(
   }
   if (plan.action === 'restore-plan') {
     return { ok: true, code: 'COMPOSE_RESTORE_PLAN', plan: plan.report };
+  }
+  if (plan.action === 'preflight') {
+    return { ok: true, code: successCode.preflight };
   }
 
   for (const [index, command] of plan.commands.entries()) {
@@ -231,6 +257,39 @@ export async function executeComposeCommand(
   return { ok: true, code: successCode[plan.action] };
 }
 
+function readProcessOutput(executable: string, args: string[]): Promise<string> {
+  return new Promise((complete, reject) => {
+    const child = spawn(executable, args, {
+      cwd: resolve(import.meta.dirname, '..'),
+      env: process.env,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    let output = '';
+    let settled = false;
+    const failProcess = () => {
+      if (settled) return;
+      settled = true;
+      reject(new Error('COMPOSE_READ_PROCESS_FAILED'));
+    };
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', (chunk: string) => {
+      output += chunk;
+      if (output.length > 4096) {
+        child.kill();
+        failProcess();
+      }
+    });
+    child.once('error', failProcess);
+    child.once('exit', (code) => {
+      if (settled) return;
+      settled = true;
+      if (code === 0) complete(output);
+      else reject(new Error('COMPOSE_READ_PROCESS_FAILED'));
+    });
+  });
+}
+
 const productionDependencies: ComposeCommandDependencies = {
   async run(command, environment) {
     return new Promise((complete) => {
@@ -247,6 +306,18 @@ const productionDependencies: ComposeCommandDependencies = {
   validateCanonicalDeployment(environment, readFile) {
     const deployment = preflightProductionDeploymentFromEnvironment(environment, readFile);
     if (deployment?.settings.deploymentMode !== 'compose') fail('COMPOSE_PREFLIGHT_FAILED');
+  },
+  async readCurrentGitRevision() {
+    return readProcessOutput('git', ['rev-parse', 'HEAD']);
+  },
+  async readImageRevision(image) {
+    return readProcessOutput('docker', [
+      'image',
+      'inspect',
+      '--format',
+      '{{ index .Config.Labels "org.opencontainers.image.revision" }}',
+      image,
+    ]);
   },
 };
 
