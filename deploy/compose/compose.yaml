@@ -385,6 +385,7 @@ services:
     volumes:
       - experiment-ca:/var/lib/ui4a/ca:ro
       - runtime-config:/var/run/ui4a/runtime-config:ro
+      - runner-workspaces:/workspaces
     healthcheck:
       test:
         - CMD

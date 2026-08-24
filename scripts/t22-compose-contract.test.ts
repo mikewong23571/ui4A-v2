@@ -657,6 +657,23 @@ describe('T22 Docker Compose all-in-one contract', () => {
     });
   });
 
+  it('shares the server-owned document workspace only with Worker and both Runners', async () => {
+    const stack = await renderedStack();
+    const compose = requiredSource('deploy/compose/compose.yaml');
+    const contract = requiredJson<StackContract & { runnerDelivery: Record<string, unknown> }>(
+      contractPath,
+    );
+
+    for (const name of ['worker', 'runner', 'host-runner']) {
+      expect(stack.services[name]?.volumes, name).toContain('runner-workspaces:/workspaces');
+    }
+    expect(stack.services.web?.volumes).not.toContain('runner-workspaces:/workspaces');
+    expect(compose.match(/runner-workspaces:\/workspaces/g)).toHaveLength(3);
+    expect(contract.runnerDelivery).toMatchObject({
+      workerWorkspaceVolume: 'runner-workspaces:/workspaces',
+    });
+  });
+
   it('wires independent container and Host Runner identities, origins, and token refs without fallback', async () => {
     const contract = requiredJson<StackContract>(contractPath);
     const stack = await renderedStack();
@@ -786,6 +803,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
       route: '/deliver',
       workerOrigin: 'https://ui4a.mothership.internal:8443',
       workerCallbackOrigin: 'http://web:3100',
+      workerWorkspaceVolume: 'runner-workspaces:/workspaces',
       edgeNetworkAlias: 'ui4a.mothership.internal',
       requiredServicePublicOrigin: 'https://ui4a.mothership.internal:8443',
     });

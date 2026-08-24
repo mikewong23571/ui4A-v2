@@ -497,7 +497,11 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           '-e',
           "fetch('http://127.0.0.1:3101/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]),
-        volumes: ['experiment-ca:/var/lib/ui4a/ca:ro', runtimeConfigReadOnlyVolume],
+        volumes: [
+          'experiment-ca:/var/lib/ui4a/ca:ro',
+          runtimeConfigReadOnlyVolume,
+          'runner-workspaces:/workspaces',
+        ],
       }),
       runner: runtimeService(images.runner, 'unless-stopped', {
         depends_on: dependencies({
