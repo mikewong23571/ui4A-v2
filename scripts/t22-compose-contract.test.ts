@@ -398,6 +398,11 @@ describe('T22 Docker Compose all-in-one contract', () => {
       command: ['node', 'dist/main.js', 'pki-init'],
     });
     expect(pki?.volumes).toContain('experiment-ca:/var/lib/ui4a/ca');
+    expect(pki?.environment).toMatchObject({
+      UI4A_PKI_ROOT: '/var/lib/ui4a/ca',
+      UI4A_HOST: 'ui4a.mothership.internal',
+      KEYCLOAK_HOST: 'auth.ui4a.mothership.internal',
+    });
 
     expect(edge).toMatchObject({
       image: renderInput().images.edge,
