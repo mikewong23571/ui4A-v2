@@ -219,9 +219,9 @@
 - [ ] trust CA、human login、business Flow 和 Agent token exchange
 - [ ] Agent 提议高风险 action、agent approval 拒绝、human approval 生效
 - [ ] K8s/Host 两后端完成 Agent Run
-- [ ] Task: 单副本并发、重启与重放
-- [ ] 在一个 Web 副本内并发同一 resource，验证 guard/CAS/rejection 结果
-- [ ] 重启后验证 event order、projection 与 replay hash 一致
+- [x] Task: 单副本并发、重启与重放 d49ad70
+- [x] 在一个 Web 副本内并发同一 resource，验证 guard/CAS/rejection 结果
+- [x] 重启后验证 event order、projection 与 replay hash 一致
 - [x] Task: Authentication Safety Gate 4fd3417
 - [x] 覆盖 missing/expired/wrong issuer/audience/signature 与 identity forgery
 - [x] 覆盖 agent/service approval 和 over-scoped exchange
