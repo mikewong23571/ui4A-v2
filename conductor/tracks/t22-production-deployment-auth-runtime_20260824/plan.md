@@ -115,11 +115,11 @@
 - [x] 覆盖同一 resource 的进程内并发、confirmation/draft decision、worker event gap 和 Pod restart
 - [x] 保持 declaration → guard → schema、CAS、rejection audit、event order 与 replay hash
 - [x] 明确记录多副本 Web/Session 和跨副本 database-level single atom 为 deferred
-- [~] Task: Red→Green——实现 health/readiness
-- [ ] `/live` 只表达 process life
-- [ ] `/ready` 检查 DB、migration 和 required config
-- [ ] 独立报告 Temporal、Keycloak、LLM 和 Runtime dependencies
-- [ ] degraded 不进入 Ready；Worker 暴露 readiness/drain
+- [x] Task: Red→Green——实现 health/readiness 4fb024b
+- [x] `/live` 只表达 process life
+- [x] `/ready` 检查 DB、migration 和 required config
+- [x] 独立报告 Temporal、Keycloak、LLM 和 Runtime dependencies
+- [x] degraded 不进入 Ready；Worker 暴露 readiness/drain
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase E: PostgreSQL、Temporal、持久化与灾备合同
