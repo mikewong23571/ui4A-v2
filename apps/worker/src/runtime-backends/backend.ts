@@ -75,6 +75,26 @@ export interface RuntimeBackendSpi {
   ): Promise<{ candidate: unknown; artifacts: Array<{ ref: string; hash: string }> }>;
 }
 
+/**
+ * Backend-specific wire bridge used by concrete adapters after they have created/leased their
+ * execution unit. The complete sealed envelope is deliberately passed at both boundaries: a
+ * backend may persist only an opaque handle, but a Runner must never reconstruct a task from a
+ * run id or transport metadata.
+ */
+export interface RuntimeBackendExecutionPort {
+  execute(input: {
+    envelope: SealedRunnerEnvelope;
+    handle: string;
+    signal: AbortSignal;
+    checkpoint?: RuntimeCheckpoint;
+    heartbeat(cursor: string | null): void;
+  }): Promise<{ status: 'completed'; backendOutput: unknown; transport?: unknown }>;
+  collect(input: {
+    envelope: SealedRunnerEnvelope;
+    execution: { status: 'completed'; backendOutput: unknown; transport?: unknown };
+  }): Promise<{ candidate: unknown; artifacts: Array<{ ref: string; hash: string }> }>;
+}
+
 export interface RuntimeSpecializationPort {
   verify(input: {
     envelope: SealedRunnerEnvelope;

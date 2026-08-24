@@ -1,3 +1,11 @@
+import { createHash } from 'node:crypto';
+
+import type {
+  RuntimeBackendExecutionPort,
+  RuntimeBackendSpi,
+  SealedRunnerEnvelope,
+} from './backend';
+
 type Capability = 'coding' | 'writing' | 'authoring';
 
 interface HostRunnerTask {
@@ -55,6 +63,7 @@ interface HostRunnerBackendDependencies {
   clock: { nowMs(): number };
   fsFacts: HostRunnerFsFacts;
   heartbeatTtlMs: number;
+  runtimeExecution?: RuntimeBackendExecutionPort;
 }
 
 interface HostRunnerResult {
@@ -331,7 +340,7 @@ export function createHostRunnerBackend(dependencies: HostRunnerBackendDependenc
     }
   };
 
-  return {
+  const legacy = {
     async heartbeat(input: {
       runnerId: string;
       identity: string;
@@ -588,4 +597,57 @@ export function createHostRunnerBackend(dependencies: HostRunnerBackendDependenc
       return state === undefined ? undefined : clone(state);
     },
   };
+
+  const prepare: RuntimeBackendSpi['prepare'] = async (envelope) => {
+    if (dependencies.runtimeExecution === undefined) fail('HOST_RUNNER_UNAVAILABLE', true);
+    const lease = await legacy.dispatch({
+      task: {
+        schemaVersion: 1,
+        runId: `run-${createHash('sha256').update(envelope.runId).digest('hex').slice(0, 40)}`,
+        capability: envelope.specialization,
+        birth: {
+          definitionHash: envelope.birth.definitionHash,
+          promptHash: envelope.birth.promptHash,
+          runtimeHash: envelope.birth.runtimeHash,
+        },
+        payload: { delivery: envelope },
+      },
+      selectedProfileId: envelope.execution.profileId,
+    });
+    return { handle: lease.leaseId };
+  };
+
+  const spiExecute: RuntimeBackendSpi['execute'] = async (envelope, prepared, controls) => {
+    if (dependencies.runtimeExecution === undefined) fail('HOST_RUNNER_UNAVAILABLE', true);
+    return dependencies.runtimeExecution.execute({
+      envelope,
+      handle: prepared.handle,
+      signal: controls.signal,
+      ...(controls.checkpoint === undefined ? {} : { checkpoint: controls.checkpoint }),
+      heartbeat: controls.heartbeat,
+    });
+  };
+
+  function execute(input: { runnerId: string; identity: string; leaseId: string }): Promise<void>;
+  function execute(
+    envelope: SealedRunnerEnvelope,
+    prepared: { handle: string },
+    controls: Parameters<RuntimeBackendSpi['execute']>[2],
+  ): ReturnType<RuntimeBackendSpi['execute']>;
+  function execute(
+    first: SealedRunnerEnvelope | { runnerId: string; identity: string; leaseId: string },
+    prepared?: { handle: string },
+    controls?: Parameters<RuntimeBackendSpi['execute']>[2],
+  ): Promise<void | { status: 'completed'; backendOutput: unknown; transport?: unknown }> {
+    if ('runnerId' in first) return legacy.execute(first);
+    if (prepared === undefined || controls === undefined) fail('HOST_RUNNER_LEASE_INVALID');
+    return spiExecute(first, prepared, controls);
+  }
+
+  const collect: RuntimeBackendSpi['collect'] = async (envelope, execution) => {
+    if (dependencies.runtimeExecution === undefined) fail('HOST_RUNNER_UNAVAILABLE', true);
+    return dependencies.runtimeExecution.collect({ envelope, execution });
+  };
+
+  return { ...legacy, kind: 'trusted-host' as const, prepare, execute, collect };
 }

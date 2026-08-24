@@ -1,3 +1,7 @@
+import { createHash } from 'node:crypto';
+
+import type { RuntimeBackendExecutionPort, RuntimeBackendSpi } from './backend';
+
 type Sha256 = `sha256:${string}`;
 
 export interface RuntimeTask {
@@ -112,7 +116,8 @@ export class KubernetesBackendError extends Error {
   }
 }
 
-export interface KubernetesJobBackend {
+export interface KubernetesJobBackend extends RuntimeBackendSpi {
+  kind: 'kubernetes-job';
   deliver(task: RuntimeTask): Promise<DeliveryReceipt>;
   watch(
     receipt: DeliveryReceipt,
@@ -291,11 +296,13 @@ export function createKubernetesJobBackend(input: {
   config: KubernetesBackendConfig;
   client: KubernetesClient;
   idempotency: IdempotencyStore;
+  runtimeExecution?: RuntimeBackendExecutionPort;
 }): KubernetesJobBackend {
-  const { client, config, idempotency } = input;
+  const { client, config, idempotency, runtimeExecution } = input;
   const cancellationRequests = new Set<string>();
   const workspaceReleases = new Set<string>();
   const inFlightDeliveries = new Map<string, Promise<DeliveryReceipt>>();
+  const spiReceipts = new Map<string, DeliveryReceipt>();
 
   const deliver = async (task: RuntimeTask): Promise<DeliveryReceipt> => {
     assertTask(task);
@@ -464,5 +471,54 @@ export function createKubernetesJobBackend(input: {
     return { released: true, decision };
   };
 
-  return { deliver, watch, cancel, reconcile, acceptCallback, releaseWorkspace };
+  const transportLabel = (prefix: string, value: string): string =>
+    `${prefix}-${createHash('sha256').update(value).digest('hex').slice(0, 40)}`;
+
+  const prepare: RuntimeBackendSpi['prepare'] = async (envelope) => {
+    if (runtimeExecution === undefined) throw unavailable();
+    const deliveryId = transportLabel('delivery', envelope.execution.leaseId);
+    const receipt = await deliver({
+      schemaVersion: 1,
+      runId: transportLabel('run', envelope.runId),
+      deliveryId,
+      kind: envelope.specialization,
+      payload: { delivery: envelope },
+      birth: {
+        definitionHash: envelope.birth.definitionHash as Sha256,
+        promptHash: envelope.birth.promptHash as Sha256,
+        runtimeHash: envelope.birth.runtimeHash as Sha256,
+      },
+    });
+    spiReceipts.set(deliveryId, receipt);
+    return { handle: deliveryId };
+  };
+
+  const execute: RuntimeBackendSpi['execute'] = async (envelope, prepared, controls) => {
+    if (runtimeExecution === undefined || !spiReceipts.has(prepared.handle)) throw unavailable();
+    return runtimeExecution.execute({
+      envelope,
+      handle: prepared.handle,
+      signal: controls.signal,
+      ...(controls.checkpoint === undefined ? {} : { checkpoint: controls.checkpoint }),
+      heartbeat: controls.heartbeat,
+    });
+  };
+
+  const collect: RuntimeBackendSpi['collect'] = async (envelope, execution) => {
+    if (runtimeExecution === undefined) throw unavailable();
+    return runtimeExecution.collect({ envelope, execution });
+  };
+
+  return {
+    kind: 'kubernetes-job',
+    prepare,
+    execute,
+    collect,
+    deliver,
+    watch,
+    cancel,
+    reconcile,
+    acceptCallback,
+    releaseWorkspace,
+  };
 }
