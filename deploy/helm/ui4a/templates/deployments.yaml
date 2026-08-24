@@ -16,27 +16,47 @@ spec:
       labels: { app.kubernetes.io/name: temporal, app.kubernetes.io/instance: ui4a }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.temporal | quote }}
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
+      initContainers:
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal-schema") | nindent 8 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
         - name: temporal
           image: {{ .Values.images.temporal | quote }}
           imagePullPolicy: IfNotPresent
-          args: [start]
-          envFrom:
-            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          command: [/bin/sh, -ec]
+          args:
+            - >-
+              export TEMPORAL_RUNTIME_PASSWORD="$(cat /run/secrets/temporal-runtime-password)";
+              exec temporal-server --root /etc/temporal --config config --env docker start
           ports:
             - { name: grpc, containerPort: 7233 }
           livenessProbe:
             tcpSocket: { port: 7233 }
           readinessProbe:
             exec: { command: [temporal, operator, cluster, health] }
+          volumeMounts:
+            - { name: temporal-static-config, mountPath: /etc/temporal/config/docker.yaml, subPath: docker.yaml, readOnly: true }
+            - { name: temporal-dynamic-config, mountPath: /etc/temporal/dynamicconfig/docker.yaml, subPath: docker.yaml, readOnly: true }
+            - { name: temporal-runtime-password, mountPath: /run/secrets/temporal-runtime-password, subPath: temporal-runtime-password, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
             {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+      volumes:
+        - name: temporal-static-config
+          configMap: { name: ui4a-temporal-static }
+        - name: temporal-dynamic-config
+          configMap: { name: ui4a-temporal-dynamic }
+        - name: temporal-runtime-password
+          secret:
+            secretName: {{ .Values.secrets.existingSecretName | quote }}
+            items:
+              - { key: temporal-runtime-password, path: temporal-runtime-password }
+        - { name: tmp, emptyDir: {} }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -56,24 +76,32 @@ spec:
       labels: { app.kubernetes.io/name: temporal-ui, app.kubernetes.io/instance: ui4a }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.temporal | quote }}
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
+      initContainers:
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal") | nindent 8 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
         - name: temporal-ui
           image: {{ .Values.images.temporalUi | quote }}
           imagePullPolicy: IfNotPresent
+          env:
+            - { name: TEMPORAL_ADDRESS, value: 'temporal:7233' }
           ports:
             - { name: http, containerPort: 8080 }
           livenessProbe:
             httpGet: { path: /, port: 8080 }
           readinessProbe:
             tcpSocket: { port: 8080 }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
             {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+      volumes:
+        - { name: tmp, emptyDir: {} }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -93,8 +121,11 @@ spec:
       labels: { app.kubernetes.io/name: keycloak, app.kubernetes.io/instance: ui4a }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.keycloak | quote }}
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
+      initContainers:
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres-bootstrap") | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "pki-init") | nindent 8 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
@@ -102,8 +133,21 @@ spec:
           image: {{ .Values.images.keycloak | quote }}
           imagePullPolicy: IfNotPresent
           args: [start]
-          envFrom:
-            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          env:
+            - { name: KC_DB, value: postgres }
+            - { name: KC_DB_URL_HOST, value: postgres }
+            - { name: KC_DB_URL_DATABASE, value: keycloak }
+            - { name: KC_DB_USERNAME, value: keycloak_runtime }
+            - { name: KC_HEALTH_ENABLED, value: 'true' }
+            - { name: KC_HTTP_ENABLED, value: 'true' }
+            - { name: KC_PROXY_HEADERS, value: xforwarded }
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: {{ .Values.secrets.existingSecretName | quote }}, key: keycloak-database-password }
+            - { name: KC_BOOTSTRAP_ADMIN_USERNAME, value: ui4a-bootstrap }
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: {{ .Values.secrets.existingSecretName | quote }}, key: keycloak-bootstrap-admin-password }
           ports:
             - { name: http, containerPort: 8080 }
             - { name: management, containerPort: 9000 }
@@ -111,10 +155,16 @@ spec:
             httpGet: { path: /health/live, port: 9000 }
           readinessProbe:
             httpGet: { path: /health/ready, port: 9000 }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: keycloak-data, mountPath: /opt/keycloak/data }
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
             {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+      volumes:
+        - { name: tmp, emptyDir: {} }
+        - { name: keycloak-data, emptyDir: {} }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -134,26 +184,40 @@ spec:
       labels: { app.kubernetes.io/name: web, app.kubernetes.io/instance: ui4a }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.web | quote }}
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
+      initContainers:
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "migration") | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "realm-bootstrap") | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal-namespace") | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "pki-init") | nindent 8 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
         - name: web
           image: {{ .Values.images.web | quote }}
           imagePullPolicy: IfNotPresent
-          envFrom:
-            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          env:
+            {{- include "ui4a.productionEnv" . | nindent 12 }}
+            - { name: UI4A_PUBLIC_BASE_URL, value: 'http://web:3100' }
           ports:
             - { name: http, containerPort: 3100 }
           livenessProbe:
             httpGet: { path: /live, port: 3100 }
           readinessProbe:
             httpGet: { path: /ready, port: 3100 }
+          volumeMounts:
+            {{- include "ui4a.productionMounts" . | nindent 12 }}
+            - { name: tmp, mountPath: /tmp }
+            - { name: next-cache, mountPath: /app/apps/web/.next/cache }
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
             {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+      volumes:
+        {{- include "ui4a.productionVolumes" . | nindent 8 }}
+        - { name: tmp, emptyDir: {} }
+        - { name: next-cache, emptyDir: {} }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -175,24 +239,38 @@ spec:
       serviceAccountName: {{ .Values.serviceAccounts.worker | quote }}
       automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
+      initContainers:
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "migration") | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "realm-bootstrap") | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal-namespace") | nindent 8 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
         - name: worker
           image: {{ .Values.images.worker | quote }}
           imagePullPolicy: IfNotPresent
-          envFrom:
-            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          env:
+            {{- include "ui4a.productionEnv" . | nindent 12 }}
+            - { name: UI4A_PUBLIC_BASE_URL, value: 'http://web:3100' }
+            - { name: UI4A_RUNNER_IMAGE, value: {{ .Values.images.runner | quote }} }
           ports:
             - { name: http, containerPort: 3101 }
           livenessProbe:
             httpGet: { path: /live, port: 3101 }
           readinessProbe:
             httpGet: { path: /ready, port: 3101 }
+          volumeMounts:
+            {{- include "ui4a.productionMounts" . | nindent 12 }}
+            - { name: tmp, mountPath: /tmp }
+            - { name: worker-state, mountPath: /var/lib/ui4a }
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
             {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+      volumes:
+        {{- include "ui4a.productionVolumes" . | nindent 8 }}
+        - { name: tmp, emptyDir: {} }
+        - { name: worker-state, emptyDir: {} }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -212,8 +290,10 @@ spec:
       labels: { app.kubernetes.io/name: runner, app.kubernetes.io/instance: ui4a }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.runner | quote }}
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
+      initContainers:
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "pki-init") | nindent 8 }}
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
       containers:
@@ -221,12 +301,17 @@ spec:
           image: {{ .Values.images.runner | quote }}
           imagePullPolicy: IfNotPresent
           command: [node, dist/main.js, daemon]
-          envFrom:
-            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          env:
+            {{- include "ui4a.productionEnv" . | nindent 12 }}
+            - { name: UI4A_RUNNER_ID, value: kubernetes-runner }
+            - { name: UI4A_RUNNER_IMAGE, value: {{ .Values.images.runner | quote }} }
           ports:
             - { name: http, containerPort: 3102 }
           volumeMounts:
+            {{- include "ui4a.productionMounts" . | nindent 12 }}
+            - { name: tmp, mountPath: /tmp }
             - { name: runtime-data, mountPath: /workspaces }
+            - { name: runtime-data, mountPath: /artifacts }
           livenessProbe:
             httpGet: { path: /live, port: 3102 }
           readinessProbe:
@@ -236,5 +321,7 @@ spec:
           securityContext:
             {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
       volumes:
+        {{- include "ui4a.productionVolumes" . | nindent 8 }}
+        - { name: tmp, emptyDir: {} }
         - name: runtime-data
           persistentVolumeClaim: { claimName: runtime-data }

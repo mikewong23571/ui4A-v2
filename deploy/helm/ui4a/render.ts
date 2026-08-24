@@ -477,7 +477,6 @@ function job(
     metadata: metadata(name, namespace),
     spec: {
       backoffLimit: 2,
-      ttlSecondsAfterFinished: 86_400,
       template: podTemplate(
         name,
         serviceAccount,
@@ -562,6 +561,110 @@ function neverValue(): never {
   throw new Error('unreachable storage mode');
 }
 
+const WAIT_FOR_DEPENDENCY_SCRIPT = `
+const fs = require('node:fs');
+const net = require('node:net');
+const dependency = process.env.UI4A_WAIT_FOR;
+const namespace = process.env.UI4A_NAMESPACE;
+const services = { postgres: ['postgres', 5432], temporal: ['temporal', 7233], keycloak: ['keycloak', 8080] };
+const delay = () => new Promise((resolve) => setTimeout(resolve, 2000));
+async function waitService([host, port]) {
+  for (;;) {
+    const ready = await new Promise((resolve) => {
+      const socket = net.createConnection({ host, port }, () => { socket.destroy(); resolve(true); });
+      socket.setTimeout(1500, () => { socket.destroy(); resolve(false); });
+      socket.on('error', () => resolve(false));
+    });
+    if (ready) return;
+    await delay();
+  }
+}
+async function waitJob() {
+  process.env.NODE_EXTRA_CA_CERTS = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt';
+  const token = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8');
+  const url = 'https://kubernetes.default.svc/apis/batch/v1/namespaces/' + namespace + '/jobs/' + dependency;
+  for (;;) {
+    try {
+      const response = await fetch(url, { headers: { authorization: 'Bearer ' + token } });
+      if (response.ok) {
+        const job = await response.json();
+        if (job.status?.conditions?.some((condition) => condition.type === 'Complete' && condition.status === 'True')) return;
+        if (job.status?.conditions?.some((condition) => condition.type === 'Failed' && condition.status === 'True')) process.exit(70);
+      }
+    } catch {}
+    await delay();
+  }
+}
+void (services[dependency] ? waitService(services[dependency]) : waitJob());
+`.trim();
+
+function dependencyGate(values: Ui4aHelmValues, dependency: string): UnknownRecord {
+  return container(`wait-for-${dependency}`, values.images.worker, {
+    command: ['node', '-e', WAIT_FOR_DEPENDENCY_SCRIPT],
+    env: [
+      { name: 'UI4A_WAIT_FOR', value: dependency },
+      { name: 'UI4A_NAMESPACE', value: values.namespace.name },
+      {
+        name: 'NODE_EXTRA_CA_CERTS',
+        value: '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt',
+      },
+    ],
+  });
+}
+
+function productionEnvironment(extra: UnknownRecord[] = []): UnknownRecord[] {
+  return [
+    { name: 'UI4A_DEPLOYMENT_PROFILE', value: 'production' },
+    { name: 'UI4A_DEPLOYMENT_SETTINGS_FILE', value: '/run/ui4a/settings.json' },
+    {
+      name: 'UI4A_DEPLOYMENT_SECRETS_FILE',
+      value: '/run/secrets/ui4a-deployment-secrets',
+    },
+    { name: 'NODE_EXTRA_CA_CERTS', value: '/var/lib/ui4a/ca/root-ca.crt' },
+    ...extra,
+  ];
+}
+
+const productionVolumeMounts = [
+  {
+    name: 'deployment-settings',
+    mountPath: '/run/ui4a/settings.json',
+    subPath: 'settings.json',
+    readOnly: true,
+  },
+  {
+    name: 'deployment-secrets',
+    mountPath: '/run/secrets/ui4a-deployment-secrets',
+    subPath: 'ui4a-deployment-secrets',
+    readOnly: true,
+  },
+  { name: 'pki-data', mountPath: '/var/lib/ui4a/ca', readOnly: true },
+] as const;
+
+function productionVolumes(secretName: string): UnknownRecord[] {
+  return [
+    { name: 'deployment-settings', configMap: { name: 'ui4a-deployment-settings' } },
+    {
+      name: 'deployment-secrets',
+      secret: {
+        secretName,
+        items: [{ key: 'ui4a-deployment-secrets', path: 'ui4a-deployment-secrets' }],
+      },
+    },
+    { name: 'pki-data', persistentVolumeClaim: { claimName: 'pki-data' } },
+  ];
+}
+
+function stateSecretVolume(secretName: string): UnknownRecord {
+  return { name: 'state-secrets', secret: { secretName } };
+}
+
+const stateSecretMount = { name: 'state-secrets', mountPath: '/run/secrets', readOnly: true };
+
+function dependencyGates(values: Ui4aHelmValues, dependencies: readonly string[]) {
+  return dependencies.map((dependency) => dependencyGate(values, dependency));
+}
+
 function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
   const namespace = values.namespace.name;
   const secretEnvironment = {
@@ -581,9 +684,38 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         values.scheduling.nodeSelector,
         [
           container('postgres', values.images.postgres, {
-            ...secretEnvironment,
+            args: [
+              '-c',
+              'ssl=on',
+              '-c',
+              'ssl_cert_file=/var/lib/ui4a/ca/postgres/server.crt',
+              '-c',
+              'ssl_key_file=/var/lib/ui4a/ca/postgres/server.key',
+              '-c',
+              'ssl_ca_file=/var/lib/ui4a/ca/root-ca.crt',
+            ],
+            env: [
+              { name: 'POSTGRES_USER', value: 'postgres' },
+              { name: 'POSTGRES_DB', value: 'postgres' },
+              {
+                name: 'POSTGRES_PASSWORD_FILE',
+                value: '/run/secrets/postgres-bootstrap-password',
+              },
+            ],
             ports: [{ name: 'postgres', containerPort: 5432 }],
-            volumeMounts: [{ name: 'postgres-data', mountPath: '/var/lib/postgresql/data' }],
+            volumeMounts: [
+              { name: 'postgres-data', mountPath: '/var/lib/postgresql/data' },
+              { name: 'backup-data', mountPath: '/backups' },
+              { name: 'postgres-run', mountPath: '/run/postgresql' },
+              { name: 'tmp', mountPath: '/tmp' },
+              { name: 'pki-data', mountPath: '/var/lib/ui4a/ca', readOnly: true },
+              {
+                name: 'postgres-bootstrap-password',
+                mountPath: '/run/secrets/postgres-bootstrap-password',
+                subPath: 'postgres-bootstrap-password',
+                readOnly: true,
+              },
+            ],
             livenessProbe: { exec: { command: ['pg_isready', '-U', 'postgres'] } },
             readinessProbe: tcpProbe(5432),
           }),
@@ -591,6 +723,22 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
         {
           volumes: [
             { name: 'postgres-data', persistentVolumeClaim: { claimName: 'postgres-data' } },
+            { name: 'backup-data', persistentVolumeClaim: { claimName: 'backup-data' } },
+            { name: 'pki-data', persistentVolumeClaim: { claimName: 'pki-data' } },
+            { name: 'postgres-run', emptyDir: {} },
+            { name: 'tmp', emptyDir: {} },
+            {
+              name: 'postgres-bootstrap-password',
+              secret: {
+                secretName: values.secrets.existingSecretName,
+                items: [
+                  {
+                    key: 'postgres-bootstrap-password',
+                    path: 'postgres-bootstrap-password',
+                  },
+                ],
+              },
+            },
           ],
         },
       ),
@@ -605,11 +753,50 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.scheduling.nodeSelector,
       values.images.temporal,
       {
-        ...secretEnvironment,
-        args: ['start'],
+        command: ['/bin/sh', '-ec'],
+        args: [
+          'export TEMPORAL_RUNTIME_PASSWORD="$(cat /run/secrets/temporal-runtime-password)"; exec temporal-server --root /etc/temporal --config config --env docker start',
+        ],
         ports: [{ name: 'grpc', containerPort: 7233 }],
+        volumeMounts: [
+          {
+            name: 'temporal-static-config',
+            mountPath: '/etc/temporal/config/docker.yaml',
+            subPath: 'docker.yaml',
+            readOnly: true,
+          },
+          {
+            name: 'temporal-dynamic-config',
+            mountPath: '/etc/temporal/dynamicconfig/docker.yaml',
+            subPath: 'docker.yaml',
+            readOnly: true,
+          },
+          {
+            name: 'temporal-runtime-password',
+            mountPath: '/run/secrets/temporal-runtime-password',
+            subPath: 'temporal-runtime-password',
+            readOnly: true,
+          },
+          { name: 'tmp', mountPath: '/tmp' },
+        ],
         livenessProbe: tcpProbe(7233, 20),
         readinessProbe: { exec: { command: ['temporal', 'operator', 'cluster', 'health'] } },
+      },
+      {
+        automountServiceAccountToken: true,
+        initContainers: dependencyGates(values, ['temporal-schema']),
+        volumes: [
+          { name: 'temporal-static-config', configMap: { name: 'ui4a-temporal-static' } },
+          { name: 'temporal-dynamic-config', configMap: { name: 'ui4a-temporal-dynamic' } },
+          {
+            name: 'temporal-runtime-password',
+            secret: {
+              secretName: values.secrets.existingSecretName,
+              items: [{ key: 'temporal-runtime-password', path: 'temporal-runtime-password' }],
+            },
+          },
+          { name: 'tmp', emptyDir: {} },
+        ],
       },
     ),
     deployment(
@@ -619,9 +806,16 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.scheduling.nodeSelector,
       values.images.temporalUi,
       {
+        env: [{ name: 'TEMPORAL_ADDRESS', value: 'temporal:7233' }],
         ports: [{ name: 'http', containerPort: 8080 }],
+        volumeMounts: [{ name: 'tmp', mountPath: '/tmp' }],
         livenessProbe: httpProbe('/', 8080),
         readinessProbe: tcpProbe(8080),
+      },
+      {
+        automountServiceAccountToken: true,
+        initContainers: dependencyGates(values, ['temporal']),
+        volumes: [{ name: 'tmp', emptyDir: {} }],
       },
     ),
     deployment(
@@ -631,11 +825,50 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.scheduling.nodeSelector,
       values.images.keycloak,
       {
-        ...secretEnvironment,
+        env: [
+          { name: 'KC_DB', value: 'postgres' },
+          { name: 'KC_DB_URL_HOST', value: 'postgres' },
+          { name: 'KC_DB_URL_DATABASE', value: 'keycloak' },
+          { name: 'KC_DB_USERNAME', value: 'keycloak_runtime' },
+          { name: 'KC_HEALTH_ENABLED', value: 'true' },
+          { name: 'KC_HTTP_ENABLED', value: 'true' },
+          { name: 'KC_PROXY_HEADERS', value: 'xforwarded' },
+          {
+            name: 'KC_DB_PASSWORD',
+            valueFrom: {
+              secretKeyRef: {
+                name: values.secrets.existingSecretName,
+                key: 'keycloak-database-password',
+              },
+            },
+          },
+          { name: 'KC_BOOTSTRAP_ADMIN_USERNAME', value: 'ui4a-bootstrap' },
+          {
+            name: 'KC_BOOTSTRAP_ADMIN_PASSWORD',
+            valueFrom: {
+              secretKeyRef: {
+                name: values.secrets.existingSecretName,
+                key: 'keycloak-bootstrap-admin-password',
+              },
+            },
+          },
+        ],
         args: ['start'],
         ports: [{ name: 'http', containerPort: 8080 }],
+        volumeMounts: [
+          { name: 'tmp', mountPath: '/tmp' },
+          { name: 'keycloak-data', mountPath: '/opt/keycloak/data' },
+        ],
         livenessProbe: httpProbe('/health/live', 9000),
         readinessProbe: httpProbe('/health/ready', 9000),
+      },
+      {
+        automountServiceAccountToken: true,
+        initContainers: dependencyGates(values, ['postgres-bootstrap', 'pki-init']),
+        volumes: [
+          { name: 'tmp', emptyDir: {} },
+          { name: 'keycloak-data', emptyDir: {} },
+        ],
       },
     ),
     deployment(
@@ -645,10 +878,29 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.scheduling.nodeSelector,
       values.images.web,
       {
-        ...secretEnvironment,
+        env: productionEnvironment([{ name: 'UI4A_PUBLIC_BASE_URL', value: 'http://web:3100' }]),
+        volumeMounts: [
+          ...productionVolumeMounts,
+          { name: 'tmp', mountPath: '/tmp' },
+          { name: 'next-cache', mountPath: '/app/apps/web/.next/cache' },
+        ],
         ports: [{ name: 'http', containerPort: 3100 }],
         livenessProbe: httpProbe('/live', 3100),
         readinessProbe: httpProbe('/ready', 3100),
+      },
+      {
+        automountServiceAccountToken: true,
+        initContainers: dependencyGates(values, [
+          'migration',
+          'realm-bootstrap',
+          'temporal-namespace',
+          'pki-init',
+        ]),
+        volumes: [
+          ...productionVolumes(values.secrets.existingSecretName),
+          { name: 'tmp', emptyDir: {} },
+          { name: 'next-cache', emptyDir: {} },
+        ],
       },
     ),
     deployment(
@@ -658,12 +910,32 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.scheduling.nodeSelector,
       values.images.worker,
       {
-        ...secretEnvironment,
+        env: productionEnvironment([
+          { name: 'UI4A_PUBLIC_BASE_URL', value: 'http://web:3100' },
+          { name: 'UI4A_RUNNER_IMAGE', value: values.images.runner },
+        ]),
+        volumeMounts: [
+          ...productionVolumeMounts,
+          { name: 'tmp', mountPath: '/tmp' },
+          { name: 'worker-state', mountPath: '/var/lib/ui4a' },
+        ],
         ports: [{ name: 'http', containerPort: 3101 }],
         livenessProbe: httpProbe('/live', 3101),
         readinessProbe: httpProbe('/ready', 3101),
       },
-      { automountServiceAccountToken: true },
+      {
+        automountServiceAccountToken: true,
+        initContainers: dependencyGates(values, [
+          'migration',
+          'realm-bootstrap',
+          'temporal-namespace',
+        ]),
+        volumes: [
+          ...productionVolumes(values.secrets.existingSecretName),
+          { name: 'tmp', emptyDir: {} },
+          { name: 'worker-state', emptyDir: {} },
+        ],
+      },
     ),
     deployment(
       namespace,
@@ -672,14 +944,30 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.scheduling.nodeSelector,
       values.images.runner,
       {
-        ...secretEnvironment,
+        env: productionEnvironment([
+          { name: 'UI4A_RUNNER_ID', value: 'kubernetes-runner' },
+          { name: 'UI4A_RUNNER_IMAGE', value: values.images.runner },
+        ]),
         command: ['node', 'dist/main.js', 'daemon'],
         ports: [{ name: 'http', containerPort: 3102 }],
-        volumeMounts: [{ name: 'runtime-data', mountPath: '/workspaces' }],
+        volumeMounts: [
+          ...productionVolumeMounts,
+          { name: 'tmp', mountPath: '/tmp' },
+          { name: 'runtime-data', mountPath: '/workspaces' },
+          { name: 'runtime-data', mountPath: '/artifacts' },
+        ],
         livenessProbe: httpProbe('/live', 3102),
         readinessProbe: httpProbe('/ready', 3102),
       },
-      { volumes: [{ name: 'runtime-data', persistentVolumeClaim: { claimName: 'runtime-data' } }] },
+      {
+        automountServiceAccountToken: true,
+        initContainers: dependencyGates(values, ['pki-init']),
+        volumes: [
+          ...productionVolumes(values.secrets.existingSecretName),
+          { name: 'tmp', emptyDir: {} },
+          { name: 'runtime-data', persistentVolumeClaim: { claimName: 'runtime-data' } },
+        ],
+      },
     ),
   ];
 
@@ -690,12 +978,31 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.serviceAccounts.admin,
       values.scheduling.nodeSelector,
       values.images.postgres,
-      ['psql', '-v', 'ON_ERROR_STOP=1', '-f', '/opt/ui4a/bootstrap-roles.sql'],
+      [
+        '/bin/sh',
+        '-ec',
+        'export PGPASSWORD="$(cat /run/secrets/postgres-bootstrap-password)"; exec psql -v ON_ERROR_STOP=1 -v ui4a_migration_password="$(cat /run/secrets/ui4a-migration-password)" -v ui4a_runtime_password="$(cat /run/secrets/ui4a-runtime-password)" -v keycloak_runtime_password="$(cat /run/secrets/keycloak-database-password)" -v temporal_schema_password="$(cat /run/secrets/temporal-schema-password)" -v temporal_runtime_password="$(cat /run/secrets/temporal-runtime-password)" -v postgres_backup_password="$(cat /run/secrets/postgres-backup-password)" -f /opt/ui4a/bootstrap-roles.sql',
+      ],
       {
-        ...secretEnvironment,
-        volumeMounts: [{ name: 'bootstrap-sql', mountPath: '/opt/ui4a', readOnly: true }],
+        env: [
+          { name: 'PGHOST', value: 'postgres' },
+          { name: 'PGDATABASE', value: 'postgres' },
+          { name: 'PGUSER', value: 'postgres' },
+          { name: 'PGPASSWORD_FILE', value: '/run/secrets/postgres-bootstrap-password' },
+        ],
+        volumeMounts: [
+          { name: 'bootstrap-sql', mountPath: '/opt/ui4a', readOnly: true },
+          stateSecretMount,
+        ],
       },
-      { volumes: [{ name: 'bootstrap-sql', configMap: { name: 'ui4a-postgres-bootstrap' } }] },
+      {
+        automountServiceAccountToken: true,
+        initContainers: dependencyGates(values, ['postgres']),
+        volumes: [
+          { name: 'bootstrap-sql', configMap: { name: 'ui4a-postgres-bootstrap' } },
+          stateSecretVolume(values.secrets.existingSecretName),
+        ],
+      },
     ),
     job(
       namespace,
@@ -703,8 +1010,17 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.serviceAccounts.admin,
       values.scheduling.nodeSelector,
       values.images.temporalAdminTools,
-      ['temporal-sql-tool', 'setup-and-update-schema'],
-      secretEnvironment,
+      [
+        '/bin/sh',
+        '-ec',
+        'TEMPORAL_SCHEMA_PASSWORD="$(cat /run/secrets/temporal-schema-password)"; temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal setup-schema -v 0.0 && temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal update-schema -d /etc/temporal/schema/postgresql/v12/temporal/versioned && temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal_visibility setup-schema -v 0.0 && exec temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal_visibility update-schema -d /etc/temporal/schema/postgresql/v12/visibility/versioned',
+      ],
+      { volumeMounts: [stateSecretMount] },
+      {
+        automountServiceAccountToken: true,
+        initContainers: dependencyGates(values, ['postgres-bootstrap']),
+        volumes: [stateSecretVolume(values.secrets.existingSecretName)],
+      },
     ),
     job(
       namespace,
@@ -712,7 +1028,16 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.serviceAccounts.admin,
       values.scheduling.nodeSelector,
       values.images.temporalAdminTools,
-      ['temporal', 'operator', 'namespace', 'create-or-check', 'ui4a'],
+      [
+        '/bin/sh',
+        '-ec',
+        'temporal operator namespace describe --namespace ui4a --address temporal:7233 >/dev/null 2>&1 || exec temporal operator namespace create --namespace ui4a --address temporal:7233 --retention 72h',
+      ],
+      {},
+      {
+        automountServiceAccountToken: true,
+        initContainers: dependencyGates(values, ['temporal']),
+      },
     ),
     job(
       namespace,
@@ -720,9 +1045,31 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.serviceAccounts.admin,
       values.scheduling.nodeSelector,
       values.images.runner,
-      ['node', 'dist/pki-init.js'],
-      { volumeMounts: [{ name: 'pki-data', mountPath: '/var/lib/ui4a/ca' }] },
-      { volumes: [{ name: 'pki-data', persistentVolumeClaim: { claimName: 'pki-data' } }] },
+      ['node', 'dist/main.js', 'pki-init'],
+      {
+        env: [
+          { name: 'UI4A_DEPLOYMENT_PROFILE', value: 'production' },
+          { name: 'UI4A_DEPLOYMENT_SETTINGS_FILE', value: '/run/ui4a/settings.json' },
+          {
+            name: 'UI4A_DEPLOYMENT_SECRETS_FILE',
+            value: '/run/secrets/ui4a-deployment-secrets',
+          },
+          { name: 'UI4A_PKI_ROOT', value: '/var/lib/ui4a/ca' },
+          { name: 'UI4A_HOST', value: values.hosts.web },
+          { name: 'KEYCLOAK_HOST', value: values.hosts.keycloak },
+        ],
+        volumeMounts: [
+          ...productionVolumeMounts.filter(({ name }) => name !== 'pki-data'),
+          { name: 'pki-data', mountPath: '/var/lib/ui4a/ca' },
+          { name: 'tmp', mountPath: '/tmp' },
+        ],
+      },
+      {
+        volumes: [
+          ...productionVolumes(values.secrets.existingSecretName),
+          { name: 'tmp', emptyDir: {} },
+        ],
+      },
     ),
     job(
       namespace,
@@ -731,7 +1078,18 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.scheduling.nodeSelector,
       values.images.worker,
       ['node', 'dist/t22-migrate.js'],
-      secretEnvironment,
+      {
+        env: productionEnvironment(),
+        volumeMounts: [...productionVolumeMounts, { name: 'tmp', mountPath: '/tmp' }],
+      },
+      {
+        automountServiceAccountToken: true,
+        initContainers: dependencyGates(values, ['postgres-bootstrap', 'pki-init']),
+        volumes: [
+          ...productionVolumes(values.secrets.existingSecretName),
+          { name: 'tmp', emptyDir: {} },
+        ],
+      },
     ),
     job(
       namespace,
@@ -741,9 +1099,12 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       values.images.worker,
       ['node', 'dist/t22-keycloak-realm-bootstrap.js', '--apply'],
       {
-        ...secretEnvironment,
-        env: [{ name: 'UI4A_REALM_IMPORT_FILE', value: '/opt/ui4a/realm-import.json' }],
+        env: productionEnvironment([
+          { name: 'UI4A_REALM_IMPORT_FILE', value: '/opt/ui4a/realm-import.json' },
+        ]),
         volumeMounts: [
+          ...productionVolumeMounts,
+          { name: 'tmp', mountPath: '/tmp' },
           {
             name: 'realm-import',
             mountPath: '/opt/ui4a/realm-import.json',
@@ -752,7 +1113,15 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
           },
         ],
       },
-      { volumes: [{ name: 'realm-import', configMap: { name: 'ui4a-realm-import' } }] },
+      {
+        automountServiceAccountToken: true,
+        initContainers: dependencyGates(values, ['keycloak', 'pki-init']),
+        volumes: [
+          ...productionVolumes(values.secrets.existingSecretName),
+          { name: 'tmp', emptyDir: {} },
+          { name: 'realm-import', configMap: { name: 'ui4a-realm-import' } },
+        ],
+      },
     ),
   ];
 
@@ -828,7 +1197,11 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
       apiVersion: 'rbac.authorization.k8s.io/v1',
       kind: 'RoleBinding',
       metadata: metadata('ui4a-runtime-jobs', namespace),
-      subjects: [{ kind: 'ServiceAccount', name: values.serviceAccounts.worker, namespace }],
+      subjects: serviceAccountKeys.map((key) => ({
+        kind: 'ServiceAccount',
+        name: values.serviceAccounts[key],
+        namespace,
+      })),
       roleRef: { apiGroup: 'rbac.authorization.k8s.io', kind: 'Role', name: 'ui4a-runtime-jobs' },
     },
     ...persistentResources(values),

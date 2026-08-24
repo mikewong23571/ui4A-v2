@@ -32,3 +32,47 @@ nodeSelector:
 {{ toYaml . | nindent 2 }}
 {{- end }}
 {{- end -}}
+
+{{- define "ui4a.productionEnv" -}}
+- { name: UI4A_DEPLOYMENT_PROFILE, value: production }
+- { name: UI4A_DEPLOYMENT_SETTINGS_FILE, value: /run/ui4a/settings.json }
+- { name: UI4A_DEPLOYMENT_SECRETS_FILE, value: /run/secrets/ui4a-deployment-secrets }
+- { name: NODE_EXTRA_CA_CERTS, value: /var/lib/ui4a/ca/root-ca.crt }
+{{- end -}}
+
+{{- define "ui4a.productionMounts" -}}
+- { name: deployment-settings, mountPath: /run/ui4a/settings.json, subPath: settings.json, readOnly: true }
+- { name: deployment-secrets, mountPath: /run/secrets/ui4a-deployment-secrets, subPath: ui4a-deployment-secrets, readOnly: true }
+- { name: pki-data, mountPath: /var/lib/ui4a/ca, readOnly: true }
+{{- end -}}
+
+{{- define "ui4a.productionVolumes" -}}
+- name: deployment-settings
+  configMap: { name: ui4a-deployment-settings }
+- name: deployment-secrets
+  secret: { secretName: {{ .Values.secrets.existingSecretName | quote }} }
+- name: pki-data
+  persistentVolumeClaim: { claimName: pki-data }
+{{- end -}}
+
+{{- define "ui4a.waitFor" -}}
+- name: wait-for-{{ .dependency }}
+  image: {{ .root.Values.images.worker | quote }}
+  imagePullPolicy: IfNotPresent
+  command: [node, -e]
+  args:
+    - >-
+      const fs=require('node:fs'),net=require('node:net'),d=process.env.UI4A_WAIT_FOR,n=process.env.UI4A_NAMESPACE,
+      services={postgres:['postgres',5432],temporal:['temporal',7233],keycloak:['keycloak',8080]},sleep=()=>new Promise(r=>setTimeout(r,2000));
+      async function service(x){for(;;){if(await new Promise(r=>{const s=net.createConnection({host:x[0],port:x[1]},()=>{s.destroy();r(true)});s.setTimeout(1500,()=>{s.destroy();r(false)});s.on('error',()=>r(false))}))return;await sleep()}}
+      async function job(){const t=fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token','utf8'),u='https://kubernetes.default.svc/apis/batch/v1/namespaces/'+n+'/jobs/'+d;for(;;){try{const r=await fetch(u,{headers:{authorization:'Bearer '+t}}),j=r.ok?await r.json():{};if(j.status?.conditions?.some(c=>c.type==='Complete'&&c.status==='True'))return;if(j.status?.conditions?.some(c=>c.type==='Failed'&&c.status==='True'))process.exit(70)}catch{}await sleep()}}
+      void(services[d]?service(services[d]):job());
+  env:
+    - { name: UI4A_WAIT_FOR, value: {{ .dependency | quote }} }
+    - { name: UI4A_NAMESPACE, value: {{ .root.Values.namespace.name | quote }} }
+    - { name: NODE_EXTRA_CA_CERTS, value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt }
+  resources:
+    {{- include "ui4a.resources" .root | nindent 4 }}
+  securityContext:
+    {{- include "ui4a.containerSecurityContext" .root | nindent 4 }}
+{{- end -}}

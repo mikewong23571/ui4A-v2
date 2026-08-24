@@ -24,12 +24,28 @@ spec:
         - name: postgres
           image: {{ .Values.images.postgres | quote }}
           imagePullPolicy: IfNotPresent
-          envFrom:
-            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          args:
+            - -c
+            - ssl=on
+            - -c
+            - ssl_cert_file=/var/lib/ui4a/ca/postgres/server.crt
+            - -c
+            - ssl_key_file=/var/lib/ui4a/ca/postgres/server.key
+            - -c
+            - ssl_ca_file=/var/lib/ui4a/ca/root-ca.crt
+          env:
+            - { name: POSTGRES_USER, value: postgres }
+            - { name: POSTGRES_DB, value: postgres }
+            - { name: POSTGRES_PASSWORD_FILE, value: /run/secrets/postgres-bootstrap-password }
           ports:
             - { name: postgres, containerPort: 5432 }
           volumeMounts:
             - { name: postgres-data, mountPath: /var/lib/postgresql/data }
+            - { name: backup-data, mountPath: /backups }
+            - { name: postgres-run, mountPath: /run/postgresql }
+            - { name: tmp, mountPath: /tmp }
+            - { name: pki-data, mountPath: /var/lib/ui4a/ca, readOnly: true }
+            - { name: postgres-bootstrap-password, mountPath: /run/secrets/postgres-bootstrap-password, subPath: postgres-bootstrap-password, readOnly: true }
           livenessProbe:
             exec: { command: [pg_isready, -U, postgres] }
           readinessProbe:
@@ -41,3 +57,14 @@ spec:
       volumes:
         - name: postgres-data
           persistentVolumeClaim: { claimName: postgres-data }
+        - name: backup-data
+          persistentVolumeClaim: { claimName: backup-data }
+        - name: pki-data
+          persistentVolumeClaim: { claimName: pki-data }
+        - { name: postgres-run, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
+        - name: postgres-bootstrap-password
+          secret:
+            secretName: {{ .Values.secrets.existingSecretName | quote }}
+            items:
+              - { key: postgres-bootstrap-password, path: postgres-bootstrap-password }

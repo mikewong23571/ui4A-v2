@@ -136,6 +136,8 @@
           "required": ["mode", "volumes"],
           "properties": {
             "mode": { "const": "static" },
+            "storageClassName": { "$ref": "#/definitions/name" },
+            "sizes": { "$ref": "#/definitions/sizes" },
             "volumes": {
               "type": "object",
               "additionalProperties": false,
@@ -173,20 +175,20 @@
   "definitions": {
     "name": {
       "type": "string",
-      "pattern": "^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?$",
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
       "maxLength": 63
     },
     "hostname": {
       "type": "string",
-      "pattern": "^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$"
+      "pattern": "^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
     },
     "image": {
       "type": "string",
-      "pattern": "^\\S+@sha256:[a-f0-9]{64}$"
+      "pattern": "^[^[:space:]]+@sha256:[a-f0-9]{64}$"
     },
     "quantity": {
       "type": "string",
-      "pattern": "^[1-9][0-9]*(?:Ki|Mi|Gi|Ti)$"
+      "pattern": "^[1-9][0-9]*(Ki|Mi|Gi|Ti)$"
     },
     "sizes": {
       "type": "object",
@@ -206,7 +208,7 @@
       "properties": {
         "volumeName": { "$ref": "#/definitions/name" },
         "capacity": { "$ref": "#/definitions/quantity" },
-        "hostPath": { "type": "string", "pattern": "^/[^\\u0000]+$" },
+        "hostPath": { "type": "string", "pattern": "^/[^[:cntrl:]]+$" },
         "nodeName": { "$ref": "#/definitions/hostname" }
       }
     }

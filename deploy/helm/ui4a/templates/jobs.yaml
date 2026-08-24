@@ -8,14 +8,15 @@ metadata:
     {{- include "ui4a.labels" . | nindent 4 }}
 spec:
   backoffLimit: 2
-  ttlSecondsAfterFinished: 86400
   template:
     metadata:
       labels: { app.kubernetes.io/name: postgres-bootstrap, app.kubernetes.io/instance: ui4a }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
+      initContainers:
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres") | nindent 8 }}
       restartPolicy: Never
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
@@ -23,11 +24,26 @@ spec:
         - name: postgres-bootstrap
           image: {{ .Values.images.postgres | quote }}
           imagePullPolicy: IfNotPresent
-          command: [psql, -v, ON_ERROR_STOP=1, -f, /opt/ui4a/bootstrap-roles.sql]
-          envFrom:
-            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          command: [/bin/sh, -ec]
+          args:
+            - >-
+              export PGPASSWORD="$(cat /run/secrets/postgres-bootstrap-password)";
+              exec psql -v ON_ERROR_STOP=1
+              -v ui4a_migration_password="$(cat /run/secrets/ui4a-migration-password)"
+              -v ui4a_runtime_password="$(cat /run/secrets/ui4a-runtime-password)"
+              -v keycloak_runtime_password="$(cat /run/secrets/keycloak-database-password)"
+              -v temporal_schema_password="$(cat /run/secrets/temporal-schema-password)"
+              -v temporal_runtime_password="$(cat /run/secrets/temporal-runtime-password)"
+              -v postgres_backup_password="$(cat /run/secrets/postgres-backup-password)"
+              -f /opt/ui4a/bootstrap-roles.sql
+          env:
+            - { name: PGHOST, value: postgres }
+            - { name: PGDATABASE, value: postgres }
+            - { name: PGUSER, value: postgres }
+            - { name: PGPASSWORD_FILE, value: /run/secrets/postgres-bootstrap-password }
           volumeMounts:
             - { name: bootstrap-sql, mountPath: /opt/ui4a, readOnly: true }
+            - { name: state-secrets, mountPath: /run/secrets, readOnly: true }
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
@@ -35,6 +51,8 @@ spec:
       volumes:
         - name: bootstrap-sql
           configMap: { name: ui4a-postgres-bootstrap }
+        - name: state-secrets
+          secret: { secretName: {{ .Values.secrets.existingSecretName | quote }} }
 ---
 apiVersion: batch/v1
 kind: Job
@@ -46,14 +64,15 @@ metadata:
     {{- include "ui4a.labels" . | nindent 4 }}
 spec:
   backoffLimit: 2
-  ttlSecondsAfterFinished: 86400
   template:
     metadata:
       labels: { app.kubernetes.io/name: temporal-schema, app.kubernetes.io/instance: ui4a }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
+      initContainers:
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres-bootstrap") | nindent 8 }}
       restartPolicy: Never
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
@@ -61,13 +80,23 @@ spec:
         - name: temporal-schema
           image: {{ .Values.images.temporalAdminTools | quote }}
           imagePullPolicy: IfNotPresent
-          command: [temporal-sql-tool, setup-and-update-schema]
-          envFrom:
-            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          command: [/bin/sh, -ec]
+          args:
+            - >-
+              TEMPORAL_SCHEMA_PASSWORD="$(cat /run/secrets/temporal-schema-password)";
+              temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal setup-schema -v 0.0 &&
+              temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal update-schema -d /etc/temporal/schema/postgresql/v12/temporal/versioned &&
+              temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal_visibility setup-schema -v 0.0 &&
+              exec temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal_visibility update-schema -d /etc/temporal/schema/postgresql/v12/visibility/versioned
+          volumeMounts:
+            - { name: state-secrets, mountPath: /run/secrets, readOnly: true }
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
             {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+      volumes:
+        - name: state-secrets
+          secret: { secretName: {{ .Values.secrets.existingSecretName | quote }} }
 ---
 apiVersion: batch/v1
 kind: Job
@@ -79,14 +108,15 @@ metadata:
     {{- include "ui4a.labels" . | nindent 4 }}
 spec:
   backoffLimit: 2
-  ttlSecondsAfterFinished: 86400
   template:
     metadata:
       labels: { app.kubernetes.io/name: temporal-namespace, app.kubernetes.io/instance: ui4a }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
+      initContainers:
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "temporal") | nindent 8 }}
       restartPolicy: Never
       securityContext:
         {{- include "ui4a.podSecurityContext" . | nindent 8 }}
@@ -94,7 +124,11 @@ spec:
         - name: temporal-namespace
           image: {{ .Values.images.temporalAdminTools | quote }}
           imagePullPolicy: IfNotPresent
-          command: [temporal, operator, namespace, create-or-check, ui4a]
+          command: [/bin/sh, -ec]
+          args:
+            - >-
+              temporal operator namespace describe --namespace ui4a --address temporal:7233 >/dev/null 2>&1 ||
+              exec temporal operator namespace create --namespace ui4a --address temporal:7233 --retention 72h
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
@@ -110,7 +144,6 @@ metadata:
     {{- include "ui4a.labels" . | nindent 4 }}
 spec:
   backoffLimit: 2
-  ttlSecondsAfterFinished: 86400
   template:
     metadata:
       labels: { app.kubernetes.io/name: pki-init, app.kubernetes.io/instance: ui4a }
@@ -128,9 +161,19 @@ spec:
         - name: pki-init
           image: {{ .Values.images.runner | quote }}
           imagePullPolicy: IfNotPresent
-          command: [node, dist/pki-init.js]
+          command: [node, dist/main.js, pki-init]
+          env:
+            - { name: UI4A_DEPLOYMENT_PROFILE, value: production }
+            - { name: UI4A_DEPLOYMENT_SETTINGS_FILE, value: /run/ui4a/settings.json }
+            - { name: UI4A_DEPLOYMENT_SECRETS_FILE, value: /run/secrets/ui4a-deployment-secrets }
+            - { name: UI4A_PKI_ROOT, value: /var/lib/ui4a/ca }
+            - { name: UI4A_HOST, value: {{ .Values.hosts.web | quote }} }
+            - { name: KEYCLOAK_HOST, value: {{ .Values.hosts.keycloak | quote }} }
           volumeMounts:
             - { name: pki-data, mountPath: /var/lib/ui4a/ca }
+            - { name: deployment-settings, mountPath: /run/ui4a/settings.json, subPath: settings.json, readOnly: true }
+            - { name: deployment-secrets, mountPath: /run/secrets/ui4a-deployment-secrets, subPath: ui4a-deployment-secrets, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
@@ -140,6 +183,11 @@ spec:
       volumes:
         - name: pki-data
           persistentVolumeClaim: { claimName: pki-data }
+        - name: deployment-settings
+          configMap: { name: ui4a-deployment-settings }
+        - name: deployment-secrets
+          secret: { secretName: {{ .Values.secrets.existingSecretName | quote }} }
+        - { name: tmp, emptyDir: {} }
 ---
 apiVersion: batch/v1
 kind: Job
@@ -151,13 +199,12 @@ metadata:
     {{- include "ui4a.labels" . | nindent 4 }}
 spec:
   backoffLimit: 2
-  ttlSecondsAfterFinished: 86400
   template:
     metadata:
       labels: { app.kubernetes.io/name: migration, app.kubernetes.io/instance: ui4a }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       restartPolicy: Never
       securityContext:
@@ -167,12 +214,21 @@ spec:
           image: {{ .Values.images.worker | quote }}
           imagePullPolicy: IfNotPresent
           command: [node, dist/t22-migrate.js]
-          envFrom:
-            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
+          env:
+            {{- include "ui4a.productionEnv" . | nindent 12 }}
+          volumeMounts:
+            {{- include "ui4a.productionMounts" . | nindent 12 }}
+            - { name: tmp, mountPath: /tmp }
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
             {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+      initContainers:
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "postgres-bootstrap") | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "pki-init") | nindent 8 }}
+      volumes:
+        {{- include "ui4a.productionVolumes" . | nindent 8 }}
+        - { name: tmp, emptyDir: {} }
 ---
 apiVersion: batch/v1
 kind: Job
@@ -184,13 +240,12 @@ metadata:
     {{- include "ui4a.labels" . | nindent 4 }}
 spec:
   backoffLimit: 2
-  ttlSecondsAfterFinished: 86400
   template:
     metadata:
       labels: { app.kubernetes.io/name: realm-bootstrap, app.kubernetes.io/instance: ui4a }
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.admin | quote }}
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       {{- include "ui4a.nodeSelector" . | nindent 6 }}
       restartPolicy: Never
       securityContext:
@@ -201,15 +256,21 @@ spec:
           imagePullPolicy: IfNotPresent
           command: [node, dist/t22-keycloak-realm-bootstrap.js, --apply]
           env:
+            {{- include "ui4a.productionEnv" . | nindent 12 }}
             - { name: UI4A_REALM_IMPORT_FILE, value: /opt/ui4a/realm-import.json }
-          envFrom:
-            - secretRef: { name: {{ .Values.secrets.existingSecretName | quote }} }
           volumeMounts:
+            {{- include "ui4a.productionMounts" . | nindent 12 }}
+            - { name: tmp, mountPath: /tmp }
             - { name: realm-import, mountPath: /opt/ui4a/realm-import.json, subPath: realm-import.json, readOnly: true }
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
           securityContext:
             {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
+      initContainers:
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "keycloak") | nindent 8 }}
+        {{- include "ui4a.waitFor" (dict "root" . "dependency" "pki-init") | nindent 8 }}
       volumes:
+        {{- include "ui4a.productionVolumes" . | nindent 8 }}
+        - { name: tmp, emptyDir: {} }
         - name: realm-import
           configMap: { name: ui4a-realm-import }

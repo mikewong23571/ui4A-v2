@@ -3,14 +3,25 @@ UI4A v0.1.0-experimental.1 renders as a single-replica, non-HA stack.
 Before installing, create these server-owned inputs in namespace {{ .Values.namespace.name }}:
 
 1. Secret {{ .Values.secrets.existingSecretName }} containing the canonical production
-   environment/configuration and all referenced credentials. Secret values must never be placed in
+   deployment JSON under key ui4a-deployment-secrets plus the individual state-service credential
+   keys named by deploy/postgres/deployment-bindings.json. Secret values must never be placed in
    values.yaml or rendered evidence.
-2. ConfigMap ui4a-postgres-bootstrap with key bootstrap-roles.sql sourced from
+2. ConfigMap ui4a-deployment-settings with key settings.json sourced from the canonical validated
+   production settings.
+3. ConfigMap ui4a-postgres-bootstrap with key bootstrap-roles.sql sourced from
    deploy/postgres/bootstrap-roles.sql.
-3. ConfigMap ui4a-realm-import with key realm-import.json sourced from
+4. ConfigMaps ui4a-temporal-static and ui4a-temporal-dynamic with key docker.yaml sourced from
+   deploy/compose/temporal-config.yaml and deploy/compose/temporal-dynamicconfig.yaml.
+5. ConfigMap ui4a-realm-import with key realm-import.json sourced from
    deploy/keycloak/realm-import.json.
-4. TLS credential Secret {{ .Values.istio.tlsCredentialName }} in the ingress gateway's configured
+6. The retained pki-data volume populated with root-ca.crt and PostgreSQL server.crt/server.key;
+   the database certificate must cover the configured PostgreSQL service hostname.
+7. TLS credential Secret {{ .Values.istio.tlsCredentialName }} in the ingress gateway's configured
    credential namespace.
 
 Replace every example image digest, hostname and StorageClass (or select explicit static retained
 volumes) before installation. The environment-specific overlay owns those facts.
+
+Completed bootstrap Jobs are intentionally retained: replacement Pods use their durable Complete
+conditions as restart gates. An upgrade runbook must delete and recreate only the explicitly rerun
+Jobs after taking its pre-upgrade backup.
