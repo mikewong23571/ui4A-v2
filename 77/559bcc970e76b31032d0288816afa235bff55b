@@ -1,0 +1,6 @@
+T22 Critical #2 scoped Runner credential boundary.
+
+Red: full deployment Secret canary reached Runner; dynamic K8s Job mounted deployment Secret; Compose both Runner forms mounted runtime-config; event stream was unbounded.
+Green: server-owned runner projection validates canonical settings and exposes only the selected K8s profile or Host runner profile union; Compose creates separate 0400 handoffs; K8s Job projects one scoped Secret item; Runner rejects extra Secret keys and bounds events to 4096/8MiB.
+Verification: 153 focused tests; shared/agent-runner/worker typecheck; agent-runner/worker builds; eslint; Prettier; docker compose config; git diff --check.
+Known deferred Red: scripts/t22-k8s-runner-isolation.test.ts covers Helm scoped Secret values plus optional NetworkPolicy; no Helm production files were changed in this commit.
