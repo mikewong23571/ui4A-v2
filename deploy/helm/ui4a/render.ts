@@ -462,6 +462,10 @@ function tcpProbe(port: number, delay = 5) {
   return { tcpSocket: { port }, initialDelaySeconds: delay, periodSeconds: 10 };
 }
 
+function grpcProbe(port: number, delay = 5) {
+  return { grpc: { port }, initialDelaySeconds: delay, periodSeconds: 10 };
+}
+
 function selector(name: string) {
   return { 'app.kubernetes.io/name': name, 'app.kubernetes.io/instance': 'ui4a' };
 }
@@ -965,8 +969,8 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
           },
           { name: 'tmp', mountPath: '/tmp' },
         ],
-        livenessProbe: tcpProbe(7233, 20),
-        readinessProbe: tcpProbe(7233, 5),
+        livenessProbe: grpcProbe(7233, 20),
+        readinessProbe: grpcProbe(7233, 5),
         securityContext: vendorNonRootSecurityContext(1000, 1000, false),
       },
       {

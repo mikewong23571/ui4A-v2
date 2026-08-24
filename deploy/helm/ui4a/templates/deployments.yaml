@@ -33,9 +33,11 @@ spec:
           ports:
             - { name: grpc, containerPort: 7233 }
           livenessProbe:
-            tcpSocket: { port: 7233 }
+            grpc: { port: 7233 }
+            initialDelaySeconds: 20
+            periodSeconds: 10
           readinessProbe:
-            tcpSocket: { port: 7233 }
+            grpc: { port: 7233 }
             initialDelaySeconds: 5
             periodSeconds: 10
           volumeMounts:
