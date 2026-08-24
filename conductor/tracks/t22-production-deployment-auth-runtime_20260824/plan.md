@@ -104,17 +104,17 @@
 ## Phase D: 显式迁移、单副本重放和健康语义
 
 - [x] Task: Red TDD——建立 migration contract 2b73fec
-- [ ] 覆盖 empty/existing DB、rerun、concurrent run、partial failure 和 incompatible version
-- [ ] 验证 runtime role 无 DDL 权限
+- [x] 覆盖 empty/existing DB、rerun、concurrent run、partial failure 和 incompatible version
+- [x] 验证 runtime role 无 DDL 权限
 - [x] Task: Green——实现 versioned migration command ae854e9
-- [ ] 从 production request path 移出 DDL
-- [ ] 增加 migration history 与 advisory lock
-- [ ] migration failure 阻止 readiness
-- [ ] bootstrap 与 replay integrity 显式执行
-- [~] Task: Red→Green——验证单 Web 副本命令与重放完整性
-- [ ] 覆盖同一 resource 的进程内并发、confirmation/draft decision、worker event gap 和 Pod restart
-- [ ] 保持 declaration → guard → schema、CAS、rejection audit、event order 与 replay hash
-- [ ] 明确记录多副本 Web/Session 和跨副本 database-level single atom 为 deferred
+- [x] 从 production request path 移出 DDL
+- [x] 增加 migration history 与 advisory lock
+- [x] migration failure 阻止 readiness
+- [x] bootstrap 与 replay integrity 显式执行
+- [x] Task: Red→Green——验证单 Web 副本命令与重放完整性 d0e6874
+- [x] 覆盖同一 resource 的进程内并发、confirmation/draft decision、worker event gap 和 Pod restart
+- [x] 保持 declaration → guard → schema、CAS、rejection audit、event order 与 replay hash
+- [x] 明确记录多副本 Web/Session 和跨副本 database-level single atom 为 deferred
 - [~] Task: Red→Green——实现 health/readiness
 - [ ] `/live` 只表达 process life
 - [ ] `/ready` 检查 DB、migration 和 required config
