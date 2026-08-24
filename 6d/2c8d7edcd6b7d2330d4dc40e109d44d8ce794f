@@ -1,0 +1,7 @@
+T22 Compose Worker/Runner workspace parity correction
+
+Red: a real browser-started Writing Run reached the corrected callback path but prepare failed before Runner delivery because Worker had no /workspaces mount while both Runner services used runner-workspaces.
+
+Green: static Compose and the pure renderer mount the same retained runner-workspaces volume read-write at /workspaces in Worker and both Runner services. Web does not receive it. stack-contract records the server-owned mapping.
+
+Verification: 8 Compose suites / 86 tests; strict standalone TypeScript; scoped Prettier; docker compose config; diff check. No app/K8s/Secret/Conductor change, no fallback and no live cleanup.
