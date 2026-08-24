@@ -146,13 +146,13 @@ describe('T22 executable Compose state services', () => {
     const schema = rendered.services['temporal-schema'];
     const command = schema?.command?.join(' ') ?? '';
 
-    expect(schema?.secrets).toContainEqual({
-      source: 'temporal-schema-password',
-      target: 'temporal-schema-password',
-      mode: 0o400,
-    });
+    expect(schema?.secrets ?? []).not.toContainEqual(
+      expect.objectContaining({ source: 'temporal-schema-password' }),
+    );
+    expect(schema?.depends_on?.['config-init']?.condition).toBe('service_completed_successfully');
+    expect(schema?.volumes).toContain('runtime-config:/var/run/ui4a/runtime-config:ro');
     expect(command).toContain('temporal_schema');
-    expect(command).toContain('/run/secrets/temporal-schema-password');
+    expect(command).toContain('/var/run/ui4a/runtime-config/temporal-schema-password');
     expect(command.match(/setup-schema/g)).toHaveLength(2);
     expect(command.match(/update-schema/g)).toHaveLength(2);
     expect(command).toContain('--db temporal ');
@@ -181,11 +181,11 @@ describe('T22 executable Compose state services', () => {
         expect.objectContaining({ target: '/etc/temporal/dynamicconfig/docker.yaml' }),
       ]),
     );
-    expect(temporal?.secrets).toContainEqual({
-      source: 'temporal-runtime-password',
-      target: 'temporal-runtime-password',
-      mode: 0o400,
-    });
+    expect(temporal?.secrets ?? []).not.toContainEqual(
+      expect.objectContaining({ source: 'temporal-runtime-password' }),
+    );
+    expect(temporal?.depends_on?.['config-init']?.condition).toBe('service_completed_successfully');
+    expect(temporal?.volumes).toContain('runtime-config:/var/run/ui4a/runtime-config:ro');
     expect(command).not.toContain('TEMPORAL_RUNTIME_PASSWORD');
     expect(command).toContain('temporal-server');
     expect(command).toContain('--env docker');
@@ -196,7 +196,9 @@ describe('T22 executable Compose state services', () => {
     expect(config).not.toContain('.Env.TEMPORAL_RUNTIME_PASSWORD');
     expect(config.match(/passwordCommand:/g)).toHaveLength(2);
     expect(config.match(/command: \/bin\/cat/g)).toHaveLength(2);
-    expect(config.match(/- \/run\/secrets\/temporal-runtime-password/g)).toHaveLength(2);
+    expect(
+      config.match(/- \/var\/run\/ui4a\/runtime-config\/temporal-runtime-password/g),
+    ).toHaveLength(2);
     expect(config).toContain('/etc/temporal/dynamicconfig/docker.yaml');
     expect(dynamic).toMatch(/frontend\.enableClientVersionCheck:/);
   });
@@ -226,13 +228,14 @@ describe('T22 executable Compose state services', () => {
     expect(JSON.stringify(keycloak)).not.toMatch(
       /hostname-strict=false|KC_HOSTNAME_STRICT.*false/i,
     );
-    expect(keycloak?.secrets).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ source: 'keycloak-database-password' }),
-        expect.objectContaining({ source: 'keycloak-bootstrap-admin-password' }),
-      ]),
+    expect(keycloak?.secrets ?? []).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ source: 'keycloak-database-password' })]),
     );
-    expect(keycloak?.command?.join(' ')).toContain('/run/secrets/keycloak-database-password');
+    expect(keycloak?.depends_on?.['config-init']?.condition).toBe('service_completed_successfully');
+    expect(keycloak?.volumes).toContain('runtime-config:/var/run/ui4a/runtime-config:ro');
+    expect(keycloak?.command?.join(' ')).toContain(
+      '/var/run/ui4a/runtime-config/keycloak-database-password',
+    );
     expect(compose).toMatch(/quay\.io\/keycloak\/keycloak:26\.7\.1@sha256:/);
     expect(keycloak?.healthcheck?.test.join(' ')).toContain('/health/ready');
     expect(JSON.stringify(keycloak)).not.toContain('temporal-runtime-password');

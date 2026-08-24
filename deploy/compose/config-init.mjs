@@ -13,6 +13,10 @@ const defaultInput = Object.freeze({
     settings: '/run/ui4a/settings.json',
     deploymentSecrets: '/run/secrets/ui4a-deployment-secrets',
     callbackToken: '/run/secrets/capability-callback-token',
+    temporalSchemaPassword: '/run/secrets/temporal-schema-password',
+    temporalRuntimePassword: '/run/secrets/temporal-runtime-password',
+    keycloakDatabasePassword: '/run/secrets/keycloak-database-password',
+    keycloakBootstrapAdminPassword: '/run/secrets/keycloak-bootstrap-admin-password',
   }),
   targetDirectory: '/var/run/ui4a/runtime-config',
   uid: 1000,
@@ -23,6 +27,10 @@ const targets = Object.freeze([
   ['settings', 'settings.json'],
   ['deploymentSecrets', 'deployment-secrets.json'],
   ['callbackToken', 'capability-callback-token'],
+  ['temporalSchemaPassword', 'temporal-schema-password'],
+  ['temporalRuntimePassword', 'temporal-runtime-password'],
+  ['keycloakDatabasePassword', 'keycloak-database-password'],
+  ['keycloakBootstrapAdminPassword', 'keycloak-bootstrap-admin-password'],
 ]);
 
 function fail(code) {
@@ -132,7 +140,7 @@ export async function initializeRuntimeConfig(input = defaultInput) {
   } finally {
     await directory.close();
   }
-  return { code: 'UI4A_RUNTIME_CONFIG_READY', files: 3 };
+  return { code: 'UI4A_RUNTIME_CONFIG_READY', files: targets.length };
 }
 
 export async function runConfigInit({

@@ -21,13 +21,22 @@ const roots: string[] = [];
 
 interface ConfigInitModule {
   initializeRuntimeConfig(input: {
-    sources: { settings: string; deploymentSecrets: string; callbackToken: string };
+    sources: Record<
+      | 'settings'
+      | 'deploymentSecrets'
+      | 'callbackToken'
+      | 'temporalSchemaPassword'
+      | 'temporalRuntimePassword'
+      | 'keycloakDatabasePassword'
+      | 'keycloakBootstrapAdminPassword',
+      string
+    >;
     targetDirectory: string;
     uid: number;
     gid: number;
-  }): Promise<{ code: 'UI4A_RUNTIME_CONFIG_READY'; files: 3 }>;
+  }): Promise<{ code: 'UI4A_RUNTIME_CONFIG_READY'; files: 7 }>;
   runConfigInit(input: {
-    initialize: () => Promise<{ code: 'UI4A_RUNTIME_CONFIG_READY'; files: 3 }>;
+    initialize: () => Promise<{ code: 'UI4A_RUNTIME_CONFIG_READY'; files: 7 }>;
     write: (value: string) => void;
   }): Promise<number>;
 }
@@ -45,7 +54,13 @@ async function loadConfigInit(): Promise<ConfigInitModule> {
 
 function fixture(): {
   root: string;
-  sources: { settings: string; deploymentSecrets: string; callbackToken: string };
+  sources: ConfigInitModule extends {
+    initializeRuntimeConfig(input: infer Input): unknown;
+  }
+    ? Input extends { sources: infer Sources }
+      ? Sources
+      : never
+    : never;
   targetDirectory: string;
 } {
   const root = mkdtempSync(join(tmpdir(), 'ui4a-compose-config-init-'));
@@ -54,12 +69,22 @@ function fixture(): {
     settings: join(root, 'settings.json'),
     deploymentSecrets: join(root, 'deployment-secrets.json'),
     callbackToken: join(root, 'capability-callback-token'),
+    temporalSchemaPassword: join(root, 'temporal-schema-password'),
+    temporalRuntimePassword: join(root, 'temporal-runtime-password'),
+    keycloakDatabasePassword: join(root, 'keycloak-database-password'),
+    keycloakBootstrapAdminPassword: join(root, 'keycloak-bootstrap-admin-password'),
   };
   writeFileSync(sources.settings, '{"schemaVersion":1}', { mode: 0o600 });
   writeFileSync(sources.deploymentSecrets, '{"schemaVersion":1,"private":"fixture"}', {
     mode: 0o600,
   });
   writeFileSync(sources.callbackToken, 'callback.fixture', { mode: 0o600 });
+  writeFileSync(sources.temporalSchemaPassword, 'temporal-schema.fixture', { mode: 0o600 });
+  writeFileSync(sources.temporalRuntimePassword, 'temporal-runtime.fixture', { mode: 0o600 });
+  writeFileSync(sources.keycloakDatabasePassword, 'keycloak-database.fixture', { mode: 0o600 });
+  writeFileSync(sources.keycloakBootstrapAdminPassword, 'keycloak-bootstrap.fixture', {
+    mode: 0o600,
+  });
   return { root, sources, targetDirectory: join(root, 'runtime-config') };
 }
 
@@ -69,12 +94,19 @@ describe('T22 Compose rootless runtime config handoff', () => {
     const input = fixture();
     await expect(
       module.initializeRuntimeConfig({ ...input, uid: 1000, gid: 1000 }),
-    ).resolves.toEqual({ code: 'UI4A_RUNTIME_CONFIG_READY', files: 3 });
+    ).resolves.toEqual({ code: 'UI4A_RUNTIME_CONFIG_READY', files: 7 });
 
     const expected = {
       'settings.json': readFileSync(input.sources.settings, 'utf8'),
       'deployment-secrets.json': readFileSync(input.sources.deploymentSecrets, 'utf8'),
       'capability-callback-token': readFileSync(input.sources.callbackToken, 'utf8'),
+      'temporal-schema-password': readFileSync(input.sources.temporalSchemaPassword, 'utf8'),
+      'temporal-runtime-password': readFileSync(input.sources.temporalRuntimePassword, 'utf8'),
+      'keycloak-database-password': readFileSync(input.sources.keycloakDatabasePassword, 'utf8'),
+      'keycloak-bootstrap-admin-password': readFileSync(
+        input.sources.keycloakBootstrapAdminPassword,
+        'utf8',
+      ),
     };
     for (const [name, material] of Object.entries(expected)) {
       const target = join(input.targetDirectory, name);
@@ -130,11 +162,11 @@ describe('T22 Compose rootless runtime config handoff', () => {
     const success: string[] = [];
     await expect(
       module.runConfigInit({
-        initialize: async () => ({ code: 'UI4A_RUNTIME_CONFIG_READY', files: 3 }),
+        initialize: async () => ({ code: 'UI4A_RUNTIME_CONFIG_READY', files: 7 }),
         write: (value) => success.push(value),
       }),
     ).resolves.toBe(0);
-    expect(success).toEqual(['{"code":"UI4A_RUNTIME_CONFIG_READY","files":3}']);
+    expect(success).toEqual(['{"code":"UI4A_RUNTIME_CONFIG_READY","files":7}']);
 
     const failure: string[] = [];
     await expect(

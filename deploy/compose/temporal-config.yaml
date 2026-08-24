@@ -17,7 +17,7 @@ persistence:
         passwordCommand:
           command: /bin/cat
           args:
-            - /run/secrets/temporal-runtime-password
+            - /var/run/ui4a/runtime-config/temporal-runtime-password
         maxConns: 20
         maxIdleConns: 20
         maxConnLifetime: 1h
@@ -31,7 +31,7 @@ persistence:
         passwordCommand:
           command: /bin/cat
           args:
-            - /run/secrets/temporal-runtime-password
+            - /var/run/ui4a/runtime-config/temporal-runtime-password
         maxConns: 10
         maxIdleConns: 10
         maxConnLifetime: 1h

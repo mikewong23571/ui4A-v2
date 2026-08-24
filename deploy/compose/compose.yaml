@@ -91,28 +91,30 @@ services:
     pull_policy: missing
     restart: 'no'
     depends_on:
+      config-init:
+        condition: service_completed_successfully
       postgres-bootstrap:
         condition: service_completed_successfully
-    secrets:
-      - temporal-schema-password
     entrypoint: [/bin/sh, -ec]
     command:
       - >-
-        TEMPORAL_SCHEMA_PASSWORD="$$(cat /run/secrets/temporal-schema-password)";
+        TEMPORAL_SCHEMA_PASSWORD="$$(cat /var/run/ui4a/runtime-config/temporal-schema-password)";
         temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal setup-schema -v 0.0 &&
         temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal update-schema -d /etc/temporal/schema/postgresql/v12/temporal/versioned &&
         temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal_visibility setup-schema -v 0.0 &&
         exec temporal-sql-tool --ep postgres -p 5432 -u temporal_schema --pw "$$TEMPORAL_SCHEMA_PASSWORD" --pl postgres12 --db temporal_visibility update-schema -d /etc/temporal/schema/postgresql/v12/visibility/versioned
+    volumes:
+      - runtime-config:/var/run/ui4a/runtime-config:ro
 
   temporal:
     image: ${UI4A_TEMPORAL_IMAGE:-temporalio/server@sha256:0000000000000000000000000000000000000000000000000000000000000000}
     pull_policy: missing
     restart: unless-stopped
     depends_on:
+      config-init:
+        condition: service_completed_successfully
       temporal-schema:
         condition: service_completed_successfully
-    secrets:
-      - temporal-runtime-password
     configs:
       - source: temporal-static-config
         target: /etc/temporal/config/docker.yaml
@@ -124,6 +126,8 @@ services:
     command:
       - >-
         exec temporal-server --root /etc/temporal --config config --env docker start
+    volumes:
+      - runtime-config:/var/run/ui4a/runtime-config:ro
     healthcheck:
       test: [CMD, temporal, operator, cluster, health]
       interval: 10s
@@ -163,6 +167,8 @@ services:
     pull_policy: missing
     restart: unless-stopped
     depends_on:
+      config-init:
+        condition: service_completed_successfully
       postgres-bootstrap:
         condition: service_completed_successfully
       pki-init:
@@ -176,16 +182,15 @@ services:
       KC_HTTP_ENABLED: 'true'
       KC_PROXY_HEADERS: xforwarded
       KC_HOSTNAME: https://${KEYCLOAK_HOST:-auth.ui4a.mothership.internal}:8443
-    secrets:
-      - keycloak-database-password
-      - keycloak-bootstrap-admin-password
     entrypoint: [/bin/bash, -ec]
     command:
       - >-
-        export KC_DB_PASSWORD="$$(cat /run/secrets/keycloak-database-password)";
+        export KC_DB_PASSWORD="$$(cat /var/run/ui4a/runtime-config/keycloak-database-password)";
         export KC_BOOTSTRAP_ADMIN_USERNAME=ui4a-bootstrap;
-        export KC_BOOTSTRAP_ADMIN_PASSWORD="$$(cat /run/secrets/keycloak-bootstrap-admin-password)";
+        export KC_BOOTSTRAP_ADMIN_PASSWORD="$$(cat /var/run/ui4a/runtime-config/keycloak-bootstrap-admin-password)";
         exec /opt/keycloak/bin/kc.sh start
+    volumes:
+      - runtime-config:/var/run/ui4a/runtime-config:ro
     healthcheck:
       test:
         - CMD-SHELL
@@ -218,6 +223,18 @@ services:
         mode: 0400
       - source: capability-callback-token
         target: capability-callback-token
+        mode: 0400
+      - source: temporal-schema-password
+        target: temporal-schema-password
+        mode: 0400
+      - source: temporal-runtime-password
+        target: temporal-runtime-password
+        mode: 0400
+      - source: keycloak-database-password
+        target: keycloak-database-password
+        mode: 0400
+      - source: keycloak-bootstrap-admin-password
+        target: keycloak-bootstrap-admin-password
         mode: 0400
     volumes:
       - runtime-config:/var/run/ui4a/runtime-config
