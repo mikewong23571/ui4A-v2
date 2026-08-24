@@ -44,3 +44,7 @@
 - [x] **Track: T20 Meta Human Control Plane:Meta sitemap 驱动发现、Application/Agent Definition/Draft 人类治理闭环、优雅任务视图、scope/action 安全与 U1–U22/TS1–TS18 验收** *Link: [tracks/t20-meta-human-control-plane_20260823/index.md](./tracks/t20-meta-human-control-plane_20260823/index.md)*
 
 - [x] **Track: T21 Assistant 双焦点事实与 AI-first Presentation 一致性:保留 lastNavigation/clientView、LLM 冲突理解、多步呈现回答与协议失败安全** *Link: [tracks/t21-assistant-dual-focus_20260823/index.md](./tracks/t21-assistant-dual-focus_20260823/index.md)*
+
+---
+
+- [ ] **Track: T22 生产形态部署、身份认证与双后端 Agent Runtime：mothership K8s/Istio、Docker Compose all-in-one、Keycloak、灾备与首个试验性版本** *Link: [tracks/t22-production-deployment-auth-runtime_20260824/index.md](./tracks/t22-production-deployment-auth-runtime_20260824/index.md)*
