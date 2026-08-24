@@ -127,19 +127,19 @@
 - [x] Task: Red TDD——定义 stateful deployment 与 restore fixtures 8db59ea
 - [x] 覆盖 PostgreSQL、Temporal、Keycloak、events、payloads 和 workflow history
 - [x] 覆盖 Coding/Writing/Authoring artifacts 与实验 CA
-- [~] Task: 实现 PostgreSQL 17 deployment contract
-- [ ] K8s static PV/selected provisioner 与 Compose named volume
-- [ ] migration/runtime/backup roles、resources、probes 和 backup Job
-- [ ] 不声称未经验证 HA
-- [~] Task: Red→Green——Temporal production config
-- [ ] 可配置 address、namespace、task queue、identity 和 connection options
-- [ ] Temporal Server 使用 PostgreSQL persistence
-- [ ] Worker graceful drain、independent test queue 和 restart recovery
-- [~] Task: 实现 backup/restore commands
-- [ ] PostgreSQL consistent backup、Keycloak DB/共享 realm 文件数据与 Temporal 的直接 restore
-- [ ] workspace/artifact archive 和根 CA/私钥/certificate 直接 backup
-- [ ] 默认隔离恢复而不是破坏 current state
-- [ ] Task: Red→Green——恢复一致性
+- [x] Task: 实现 PostgreSQL 17 deployment contract dc6fcdb
+- [x] K8s static PV/selected provisioner 与 Compose named volume
+- [x] migration/runtime/backup roles、resources、probes 和 backup Job
+- [x] 不声称未经验证 HA
+- [x] Task: Red→Green——Temporal production config f7aa88d
+- [x] 可配置 address、namespace、task queue、identity 和 connection options
+- [x] Temporal Server 使用 PostgreSQL persistence
+- [ ] Worker graceful drain、independent test queue 和 restart recovery（真实 restart evidence 待 Phase I）
+- [x] Task: 实现 backup/restore commands c2b072a
+- [x] PostgreSQL consistent backup、Keycloak DB/共享 realm 文件数据与 Temporal 的直接 restore
+- [ ] workspace/artifact archive 和根 CA/私钥/certificate 直接 backup（可携带 Coding export 待 Phase F）
+- [x] 默认隔离恢复而不是破坏 current state
+- [~] Task: Red→Green——恢复一致性
 - [ ] 记录恢复前 business hash、identity 和 Run evidence
 - [ ] 从 backup 恢复、rebuild projections 并对比结果
 - [ ] 记录实际 RPO/RTO
