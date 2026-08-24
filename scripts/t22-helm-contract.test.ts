@@ -731,6 +731,7 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       expect(authnText).toContain(values.istio.oidcIssuer);
       expect(authnText).toContain(values.istio.oidcAudience);
       expect(authnText).toContain(values.istio.jwksUri);
+      expect(record(list(record(authentication.spec).jwtRules)[0]).forwardOriginalToken).toBe(true);
       expect(authzText).not.toContain('requestPrincipals');
       expect(authzText).toContain('/api/internal/*');
       expect(authzText).toContain(
@@ -740,6 +741,7 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       expect(JSON.stringify(virtualServices)).toContain('/api/internal/');
       const templates = helmTemplateSource();
       expect(templates).toMatch(/jwksUri:\s*\{\{\s*\.Values\.istio\.jwksUri/);
+      expect(templates).toMatch(/forwardOriginalToken:\s*true/);
       expect(templates).not.toMatch(/requestPrincipals/);
       expect(templates).toMatch(/notPaths:\s*\[['"]\/api\/internal\/\*['"]\]/);
     });

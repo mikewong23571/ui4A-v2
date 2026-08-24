@@ -1509,6 +1509,7 @@ function renderResources(values: Ui4aHelmValues): KubernetesObject[] {
             issuer: values.istio.oidcIssuer,
             audiences: [values.istio.oidcAudience],
             jwksUri: values.istio.jwksUri,
+            forwardOriginalToken: true,
           },
         ],
       },

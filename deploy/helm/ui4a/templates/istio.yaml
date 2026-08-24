@@ -59,6 +59,7 @@ spec:
     - issuer: {{ .Values.istio.oidcIssuer | quote }}
       audiences: [{{ .Values.istio.oidcAudience | quote }}]
       jwksUri: {{ .Values.istio.jwksUri | quote }}
+      forwardOriginalToken: true
 ---
 apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
