@@ -367,6 +367,8 @@ describe('T22 production Agent Runtime activity wiring', () => {
     expect(source).toContain("from './runtime-backends/production-wiring'");
     expect(source).toMatch(/createProductionAgentRunActivities/);
     expect(`${source}\n${wiringSource}`).toMatch(/createHttpRunnerExecutionPort/);
+    expect(source).toMatch(/createInClusterKubernetesRuntimeTransportFromEnvironment/);
+    expect(source).toMatch(/'kubernetes-job': kubernetesTransport/);
     expect(source).toMatch(
       /export async function executeAgentRun[\s\S]{0,500}productionAgentRunActivities[\s\S]{0,200}executeAgentRun/,
     );

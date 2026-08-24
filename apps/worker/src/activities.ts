@@ -115,6 +115,7 @@ import {
   type CompiledRuntimeTransportResult,
   type ProductionRuntimeSpecializationPort,
 } from './runtime-backends/production-wiring';
+import { createInClusterKubernetesRuntimeTransportFromEnvironment } from './runtime-backends/kubernetes-runtime-transport';
 import { runWorkerProductionDeploymentPreflight } from './production-deployment-preflight';
 import { workerDb } from './worker-db';
 
@@ -613,10 +614,20 @@ function productionAgentRunActivities(config: ProductionDeploymentConfig) {
       return { origin, authorizationHeader: `Bearer ${token}` };
     },
   });
+  const kubernetesTransport =
+    config.settings.deploymentMode === 'kubernetes'
+      ? createInClusterKubernetesRuntimeTransportFromEnvironment(
+          process.env,
+          Object.values(config.secrets),
+        )
+      : undefined;
   return createProductionAgentRunActivities({
     runtime: config.settings.runtime,
     runnerArtifactImage,
-    transports: { 'trusted-host': transport },
+    transports: {
+      'trusted-host': transport,
+      ...(kubernetesTransport === undefined ? {} : { 'kubernetes-job': kubernetesTransport }),
+    },
     specializations: runtimeSpecializationPorts(),
   });
 }
