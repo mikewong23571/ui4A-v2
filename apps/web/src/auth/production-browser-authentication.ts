@@ -2,8 +2,6 @@ import { createHash, randomBytes } from 'node:crypto';
 
 import type { ProductionDeploymentConfig } from '@ui4a/shared';
 
-import { createPostgresAuthPrivateStore } from '../db/auth-private-store';
-import { getDb } from '../engine/service';
 import { runWebProductionDeploymentPreflight } from '../production-deployment-preflight';
 
 import {
@@ -15,6 +13,7 @@ import {
   type BrowserAuthentication,
   type BrowserTokenSet,
 } from './browser-session';
+import { createInMemoryAuthPrivateStore } from './in-memory-auth-private-store';
 import {
   createRemoteJwksLoader,
   ProductionIdentityError,
@@ -260,6 +259,7 @@ export function createProductionBrowserAuthentication(
 }
 
 let productionBrowserAuthentication: BrowserAuthentication | undefined;
+const productionAuthPrivateStore = createInMemoryAuthPrivateStore();
 
 /** Lazily compose the process singleton after production preflight has resolved canonical config. */
 export function getProductionBrowserAuthentication(): BrowserAuthentication {
@@ -272,7 +272,7 @@ export function getProductionBrowserAuthentication(): BrowserAuthentication {
   productionBrowserAuthentication = createProductionBrowserAuthentication({
     config,
     clock,
-    store: createPostgresAuthPrivateStore(getDb(), { clock }),
+    store: productionAuthPrivateStore,
   });
   return productionBrowserAuthentication;
 }
