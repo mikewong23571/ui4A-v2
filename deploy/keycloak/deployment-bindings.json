@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "consumers": {
+    "compose": {
+      "realmContractRef": "deploy/keycloak/realm-contract.json"
+    },
+    "kubernetes": {
+      "realmContractRef": "deploy/keycloak/realm-contract.json"
+    }
+  }
+}
