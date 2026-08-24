@@ -1,0 +1,3 @@
+Preparatory Red: Phase D platform-neutral readiness aggregation
+
+8/8 failed only because packages/shared/src/readiness.ts is absent. Contract covers lifecycle, required/optional dependency semantics, deterministic stable reason codes and secret/error-safe detached output. No DB/network.
