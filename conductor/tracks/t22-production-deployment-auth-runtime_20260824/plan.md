@@ -82,11 +82,15 @@
 - [ ] CLI 直接使用外部 Bearer Token 完成 discovery/read/exec，不内建登录或 Token 管理
 - [ ] Agent Client Credentials、RFC 8693 Token Exchange 和 `sub + azp` audit
 - [ ] scope 只能收窄，Agent 不能获得 human approval
-- [ ] Task: 定义最小 Keycloak realm import-or-check-and-skip
+- [x] Task: 定义最小 Keycloak realm import-or-check-and-skip b37bf45
 - [ ] 单 realm 只包含 `ui4a-web`、`ui4a-agent`、`ui4a-api` 与必要 redirect/audience/scope fixtures
 - [ ] Compose/K8s 挂载同一固定 realm 文件并使用同一检查命令
 - [ ] realm absent 时首次导入；existing compatible 时检查并跳过；incompatible 时 fail closed
 - [ ] 禁止在线 drift repair、通用 reconciliation、细粒度角色同步或自动 Secret rotation
+- [ ] Task: Red→Green——接通实验版 Agent credential 主路径
+- [ ] Browser Chat 单 turn 使用 human Token Exchange，Token 仅存在于 bounded fetch closure
+- [ ] Worker Activity 使用 Agent Client Credentials，不把 Token 写入 Temporal history/event/log
+- [ ] 仅接通 Golden Story sitemap/entity/exec/exec-plan；其他 route 明确列为未覆盖
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 - [ ] 仅要求 Golden Story、CLI/Agent 合同主路径与负向身份 corpus 通过
 - [ ] 列出未纳入的 route/callback；不以“全面 route auth 已完成”作为 v0.1 gate
