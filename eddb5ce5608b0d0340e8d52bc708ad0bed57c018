@@ -1,0 +1,5 @@
+T22 Phase C executable Keycloak bootstrap Red.
+
+Added nine deterministic cases for the Keycloak 26 Admin REST adapter and command: injected admin login, same-origin and timeout controls, create order, request-time Secret resolution, origin substitution, check versus apply, managed drift only, existing-user immutability, two-run idempotency, stable partial failure, and canonical config loading.
+
+Main-agent Red proof: executor suite failed 9 of 9 solely because realm-bootstrap executor and entrypoint are absent, while the existing realm contract suite remained 10 of 10 Green. No live network, Keycloak, Docker, K8s, or real credentials participated.
