@@ -1,0 +1,330 @@
+{
+  "schemaVersion": 1,
+  "release": "v0.1.0-experimental.1",
+  "runbookRef": "docs/t22-production-runbook.md",
+  "invariants": [
+    "no-prune",
+    "no-force",
+    "no-online-realm-reconcile",
+    "retain-state",
+    "single-replica-non-ha"
+  ],
+  "externalReferences": [
+    {
+      "id": "compose-inputs",
+      "path": "deploy/compose/README.md",
+      "purpose": "Canonical Compose environment, Secret-file and immutable image inputs."
+    },
+    {
+      "id": "mothership-overlay",
+      "path": "../mothership-setup/deploy/ui4a/README.md",
+      "purpose": "Cluster-specific image import, node preparation, storage, ingress and overlay commands."
+    },
+    {
+      "id": "mothership-cluster",
+      "path": "../mothership-setup/K8S-ISTIO-DEPLOY.md",
+      "purpose": "Existing Kubernetes and Istio cluster lifecycle; UI4A does not duplicate its private material."
+    }
+  ],
+  "chapters": [
+    {
+      "number": 1,
+      "id": "cluster-preflight",
+      "title": "目标集群和节点预检",
+      "anchor": "#1-cluster-preflight",
+      "commands": [
+        {
+          "id": "cluster-readiness",
+          "command": "unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy; kubectl version; kubectl get nodes -o wide; kubectl get namespace ui4a-system --show-labels",
+          "expectedOutput": "Kubernetes v1.31.14, three Ready nodes, and ui4a-system with istio-injection=enabled when already installed.",
+          "failureCriterion": "kubectl cannot reach the cluster, any node is NotReady, or surveyed versions/node names differ.",
+          "recoveryAction": "Stop before rendering; follow ../mothership-setup/K8S-ISTIO-DEPLOY.md to restore the existing cluster."
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "id": "storage-decision",
+      "title": "StorageClass/PV 决策",
+      "anchor": "#2-storage-decision",
+      "commands": [
+        {
+          "id": "storage-inventory",
+          "command": "kubectl get storageclass,pv; kubectl -n ui4a-system get pvc -o wide",
+          "expectedOutput": "Exactly postgres/runtime/backup/pki claims are Bound to reviewed Retain volumes or a reviewed replaceable StorageClass.",
+          "failureCriterion": "A claim is Pending, a local path/node differs from the overlay, or reclaimPolicy is not Retain.",
+          "recoveryAction": "Do not delete claims; correct the overlay or provisioner decision and repeat the read-only inventory."
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "id": "images",
+      "title": "内网镜像构建、传输、预拉和 digest 验证",
+      "anchor": "#3-images",
+      "commands": [
+        {
+          "id": "image-gate",
+          "command": "../mothership-setup/deploy/ui4a/verify-overlay.sh; ssh k8s-w-2 'sudo crictl --runtime-endpoint unix:///run/containerd/containerd.sock images'",
+          "expectedOutput": "Overlay PASS and every release image available by immutable @sha256 reference with the release OCI revision.",
+          "failureCriterion": "Any placeholder, mutable tag, digest mismatch, missing layer, or OCI revision mismatch.",
+          "recoveryAction": "Stop; repeat the exact export/checksum/import procedure in the mothership overlay runbook without pruning containerd content."
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "id": "namespace-istio",
+      "title": "Namespace、Istio injection 和基础策略",
+      "anchor": "#4-namespace-istio",
+      "commands": [
+        {
+          "id": "istio-contract",
+          "command": "kubectl -n ui4a-system get gateway,virtualservice,requestauthentication,authorizationpolicy; kubectl get namespace ui4a-system --show-labels",
+          "expectedOutput": "The namespace is injected and the UI4A Gateway, two host routes, JWT rule and authorization policies exist.",
+          "failureCriterion": "Injection is absent, hosts/issuer/audience drift, or an internal callback route is exposed externally.",
+          "recoveryAction": "Do not bypass Istio; fix values and rerender deploy/helm/ui4a before apply."
+        },
+        {
+          "id": "helm-install",
+          "command": "ssh k8s-cp-1 \"helm upgrade --install ui4a '<reviewed-chart>' -n ui4a-system -f '<reviewed-values>' --wait --wait-for-jobs --timeout 15m\"",
+          "expectedOutput": "A new release is deployed only after namespace, Secret metadata, storage and render gates pass.",
+          "failureCriterion": "Helm reports a failed revision, an immutable Job patch, or any workload/PVC is not ready.",
+          "recoveryAction": "Stop and inspect the failed revision; do not use --force or delete retained state."
+        }
+      ]
+    },
+    {
+      "number": 5,
+      "id": "ca-domains-certificates",
+      "title": "根 CA、域名和证书",
+      "anchor": "#5-ca-domains-certificates",
+      "commands": [
+        {
+          "id": "certificate-facts",
+          "command": "kubectl -n istio-system get secret ui4a-internal-tls -o custom-columns=NAME:.metadata.name,TYPE:.type; kubectl -n ui4a-system get pvc pki-data",
+          "expectedOutput": "Ingress TLS Secret metadata exists and retained pki-data is Bound; both internal DNS SANs are verified by the mothership runbook.",
+          "failureCriterion": "TLS metadata is missing, SAN/issuer is wrong, or pki-data is not retained.",
+          "recoveryAction": "Stop; restore certificate/PKI artifacts from the verified backup. Never regenerate over an existing root CA or private key."
+        }
+      ]
+    },
+    {
+      "number": 6,
+      "id": "postgresql",
+      "title": "PostgreSQL",
+      "anchor": "#6-postgresql",
+      "commands": [
+        {
+          "id": "postgres-ready",
+          "command": "kubectl -n ui4a-system rollout status statefulset/postgres --timeout=180s; kubectl -n ui4a-system get job postgres-bootstrap",
+          "expectedOutput": "PostgreSQL 1/1 Ready and postgres-bootstrap Complete with TLS verify-full configuration.",
+          "failureCriterion": "StatefulSet is not Ready, bootstrap is not Complete, or postgres-data UID/path changes.",
+          "recoveryAction": "Inspect postgres and bootstrap logs; do not recreate postgres-data or reset roles."
+        }
+      ]
+    },
+    {
+      "number": 7,
+      "id": "temporal",
+      "title": "Temporal",
+      "anchor": "#7-temporal",
+      "commands": [
+        {
+          "id": "temporal-ready",
+          "command": "kubectl -n ui4a-system rollout status deployment/temporal --timeout=180s; kubectl -n ui4a-system get job temporal-schema temporal-namespace",
+          "expectedOutput": "Temporal and UI are Ready, schema and namespace Jobs have Complete conditions, and namespace ui4a exists.",
+          "failureCriterion": "Schema/namespace Job is active or terminal-failed, gRPC probe fails, or persistence authentication fails.",
+          "recoveryAction": "Keep PostgreSQL intact; inspect Job/server previous logs and rerun only an explicitly reviewed idempotent Job."
+        }
+      ]
+    },
+    {
+      "number": 8,
+      "id": "keycloak-realm",
+      "title": "Keycloak 固定 realm 首次导入与兼容性检查",
+      "anchor": "#8-keycloak-realm",
+      "commands": [
+        {
+          "id": "realm-check",
+          "command": "pnpm --filter @ui4a/worker exec tsx ../../scripts/t22-keycloak-realm-bootstrap.ts --check; test -f deploy/keycloak/realm-import.json",
+          "expectedOutput": "A missing realm reports absent; an existing compatible realm reports skip without mutation.",
+          "failureCriterion": "KEYCLOAK_REALM_INCOMPATIBLE, an unexpected client set, or any request for drift repair.",
+          "recoveryAction": "Back up identity state and stop. Replace/rebuild explicitly; never reconcile an existing realm online."
+        }
+      ]
+    },
+    {
+      "number": 9,
+      "id": "database-migration",
+      "title": "数据库迁移",
+      "anchor": "#9-database-migration",
+      "commands": [
+        {
+          "id": "migration-job",
+          "command": "kubectl -n ui4a-system wait --for=condition=complete job/migration --timeout=300s; kubectl -n ui4a-system logs job/migration -c migration",
+          "expectedOutput": "Migration Job is Complete and reports the expected compatible schema revision.",
+          "failureCriterion": "Job is active/failed, schema revision is unexpected, or a destructive migration is proposed.",
+          "recoveryAction": "Stop application rollout; preserve the named backup and use the reviewed compatibility window."
+        }
+      ]
+    },
+    {
+      "number": 10,
+      "id": "web-worker",
+      "title": "UI4A Web/Worker",
+      "anchor": "#10-web-worker",
+      "commands": [
+        {
+          "id": "application-ready",
+          "command": "kubectl -n ui4a-system rollout status deployment/web --timeout=180s; kubectl -n ui4a-system rollout status deployment/worker --timeout=180s",
+          "expectedOutput": "Single Web and Worker replicas are Ready with immutable release digests.",
+          "failureCriterion": "Either workload is degraded/not Ready or image/source revision differs from the release.",
+          "recoveryAction": "Inspect dependency readiness and rollback images; do not scale beyond the supported single replica."
+        }
+      ]
+    },
+    {
+      "number": 11,
+      "id": "kubernetes-runtime",
+      "title": "K8s Agent Runtime",
+      "anchor": "#11-kubernetes-runtime",
+      "commands": [
+        {
+          "id": "runtime-contract",
+          "command": "kubectl -n ui4a-system auth can-i create jobs --as=system:serviceaccount:ui4a-system:ui4a-worker; kubectl -n ui4a-system get jobs -l app.kubernetes.io/name=ui4a-agent-runner",
+          "expectedOutput": "Worker RBAC permits bounded one-shot Jobs; idle state has no static Runner daemon and each Run has one immutable Job.",
+          "failureCriterion": "RBAC is broader/missing, an idle daemon exists, or a Run can override image/profile/workspace.",
+          "recoveryAction": "Disable K8s dispatch and correct server-owned settings/RBAC; never fall back to a wider backend."
+        }
+      ]
+    },
+    {
+      "number": 12,
+      "id": "host-runner",
+      "title": "Host Runner",
+      "anchor": "#12-host-runner",
+      "commands": [
+        {
+          "id": "host-runner-daemon",
+          "command": "UI4A_RUNNER_ID='<server-owned-id>' UI4A_RUNNER_TOKEN=\"$(< '<absolute-0600-token-file>')\" node apps/agent-runner/dist/main.js daemon",
+          "expectedOutput": "The configured Runner becomes ready and accepts only its exact profile, workspace, image and credential refs.",
+          "failureCriterion": "runner_delivery_not_configured, token/profile mismatch, path escape, or readiness without an authorized processor.",
+          "recoveryAction": "Stop the daemon, preserve workspace evidence, fix canonical settings/private token file, and restart without widening permissions."
+        }
+      ]
+    },
+    {
+      "number": 13,
+      "id": "dns-client-ca",
+      "title": "DNS/hosts 和客户端根证书",
+      "anchor": "#13-dns-client-ca",
+      "commands": [
+        {
+          "id": "client-trust",
+          "command": "getent hosts ui4a.mothership.internal auth.ui4a.mothership.internal; curl --cacert '<reviewed-panel-ca-copy>' https://ui4a.mothership.internal:32067/.well-known/ui4a.json",
+          "expectedOutput": "Both names resolve to the reviewed ingress address and TLS validation succeeds without -k.",
+          "failureCriterion": "Resolution differs, curl needs -k, or certificate SAN/chain validation fails.",
+          "recoveryAction": "Correct DNS/hosts or install the reviewed public CA certificate; never distribute a private key."
+        }
+      ]
+    },
+    {
+      "number": 14,
+      "id": "authentication",
+      "title": "人类登录、CLI、Agent token exchange",
+      "anchor": "#14-authentication",
+      "commands": [
+        {
+          "id": "auth-gate",
+          "command": "pnpm cli:build; UI4A_TOKEN='<memory-only-bearer>' node apps/cli/dist/main.js doctor; pnpm vitest run apps/web/src/auth/authentication-negative.test.ts apps/cli/src/production-authentication.test.ts",
+          "expectedOutput": "PKCE human login, CLI Bearer reads and bounded sub+azp delegation pass; malformed/expired/forged credentials fail closed.",
+          "failureCriterion": "Any Agent approval succeeds, scope expands, identity comes from request fields, or credential material appears in output.",
+          "recoveryAction": "Revoke the test credential, stop acceptance, inspect issuer/audience/JWKS/application identity checks, and do not weaken policy."
+        }
+      ]
+    },
+    {
+      "number": 15,
+      "id": "golden-story",
+      "title": "Golden Story",
+      "anchor": "#15-golden-story",
+      "commands": [
+        {
+          "id": "compose-recovery-plan",
+          "command": "pnpm compose:t22 backup; pnpm compose:t22 restore-plan",
+          "expectedOutput": "Compose returns explicit quiesced-pg-dump and isolated non-destructive restore plans.",
+          "failureCriterion": "Preflight fails, backup lacks a verified quiescence receipt, or restore targets current volumes.",
+          "recoveryAction": "Keep the current stack and volumes; correct the canonical request before running the backup/restore executors."
+        },
+        {
+          "id": "golden-story-gate",
+          "command": "CI=true pnpm e2e invariants",
+          "expectedOutput": "Business flow, delegated proposal, human-only approval, both Runtime backends, restart and audit evidence pass.",
+          "failureCriterion": "A Pod Running/HTTP 200 substitutes for the story, an Agent approves, or replay/audit evidence differs.",
+          "recoveryAction": "Keep the experimental release unaccepted; diagnose the first failed user-story boundary and rerun from a clean fixture."
+        }
+      ]
+    },
+    {
+      "number": 16,
+      "id": "backup-restore",
+      "title": "备份恢复",
+      "anchor": "#16-backup-restore",
+      "commands": [
+        {
+          "id": "isolated-recovery",
+          "command": "pnpm --filter @ui4a/worker exec tsx ../../scripts/t22-k8s-recovery-observe-command.ts capture; pnpm --filter @ui4a/worker exec tsx ../../scripts/t22-k8s-recovery-command.ts plan; test -f scripts/t22-k8s-recovery-live.ts",
+          "expectedOutput": "A named completed manifest covers four databases, runtime, realm/config, PKI/private artifacts; isolated restore reports RPO/RTO and matching authority/identity/Run evidence.",
+          "failureCriterion": "Checksums/inventory/quiescence are incomplete, target aliases current state, or restored fingerprints differ.",
+          "recoveryAction": "Resume current writers, retain the incomplete archive for diagnosis, and never restore into the current PVC/database."
+        }
+      ]
+    },
+    {
+      "number": 17,
+      "id": "upgrade-rollback",
+      "title": "升级与回滚",
+      "anchor": "#17-upgrade-rollback",
+      "commands": [
+        {
+          "id": "helm-u15",
+          "command": "ssh k8s-cp-1 \"helm upgrade ui4a '<reviewed-chart>' -n ui4a-system -f '<reviewed-values>' --wait --wait-for-jobs --timeout 15m\"; ssh k8s-cp-1 'helm rollback ui4a 19 -n ui4a-system --wait --wait-for-jobs --timeout 15m'",
+          "expectedOutput": "New revision passes smoke, rollback restores old image refs, roll-forward restores the new revision, and HWM/authority hash remain equal.",
+          "failureCriterion": "Rendered retained Jobs differ, migration is incompatible, smoke fails, or HWM/hash changes unexpectedly.",
+          "recoveryAction": "Rollback to revision 19 without --force; if data recovery is required, use the verified backup only in an isolated target first."
+        }
+      ]
+    },
+    {
+      "number": 18,
+      "id": "health-troubleshooting",
+      "title": "日志、健康检查和常见故障",
+      "anchor": "#18-health-troubleshooting",
+      "commands": [
+        {
+          "id": "diagnostic-bundle",
+          "command": "kubectl -n ui4a-system get pods,jobs,pvc -o wide; kubectl -n ui4a-system get events --sort-by=.lastTimestamp; kubectl -n ui4a-system logs deployment/web -c web --tail=200",
+          "expectedOutput": "Liveness, readiness and dependency failures are distinguishable and logs contain correlation IDs without credentials.",
+          "failureCriterion": "degraded is reported Ready, previous container errors are hidden, or logs expose Token/API key/password/prompt material.",
+          "recoveryAction": "Capture only redacted metadata and previous logs, repair the named dependency, then rerun readiness and the bounded smoke."
+        }
+      ]
+    },
+    {
+      "number": 19,
+      "id": "stop-uninstall-retention",
+      "title": "停止、卸载和数据保留",
+      "anchor": "#19-stop-uninstall-retention",
+      "commands": [
+        {
+          "id": "retained-stop",
+          "command": "pnpm compose:t22 down; pnpm compose:t22 clean --confirm-destroy-volumes ui4a; ssh k8s-cp-1 'helm uninstall ui4a -n ui4a-system'",
+          "expectedOutput": "Ordinary Compose stop retains volumes; destructive Compose clean requires the exact project confirmation; Helm uninstall leaves Retain PV data for explicit disposition.",
+          "failureCriterion": "Ordinary stop contains --volumes, any prune/force command appears, or uninstall implicitly deletes retained data.",
+          "recoveryAction": "Cancel before confirmation. Inventory named volumes/PVC/PV and backup checksums; data deletion is a separate reviewed operation outside this runbook."
+        }
+      ]
+    }
+  ]
+}
