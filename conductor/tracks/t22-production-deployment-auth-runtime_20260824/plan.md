@@ -181,14 +181,14 @@
 - [x] 首次生成并持久化 experiment root CA
 - [x] 两个 local hosts/leaf certs，重复启动不覆盖
 - [x] client trust 与 OIDC issuer/redirect/logout 验证
-- [ ] Task: Red→Green——Compose story acceptance
+- [~] Task: Red→Green——Compose story acceptance
 - [ ] 通过 U1、U3–U9、U13、U14、U16 和 Compose Golden Story
 - [ ] 验证 restart、dual backends 和 backup/restore smoke
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase H: K8s、Istio 与 mothership 集成
 
-- [ ] Task: Red TDD——建立 Helm/K8s render contract
+- [~] Task: Red TDD——建立 Helm/K8s render contract
 - [ ] kubeconform/schema lint namespace、RBAC、ServiceAccount、PV/PVC、probe 和 resources
 - [ ] Secret 不进入 rendered evidence
 - [ ] 验证 Istio hosts、TLS、JWT、callback policy 和 `IfNotPresent`
