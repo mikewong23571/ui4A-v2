@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { isAbsolute, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { preflightProductionDeploymentFromEnvironment } from '../packages/shared/src/production-deployment-config';
+import { validateComposeProductionEnvironment } from './t22-compose-inputs';
 
 const project = 'ui4a';
 const composeFile = 'deploy/compose/compose.yaml';
@@ -304,8 +304,8 @@ const productionDependencies: ComposeCommandDependencies = {
     });
   },
   validateCanonicalDeployment(environment, readFile) {
-    const deployment = preflightProductionDeploymentFromEnvironment(environment, readFile);
-    if (deployment?.settings.deploymentMode !== 'compose') fail('COMPOSE_PREFLIGHT_FAILED');
+    void readFile;
+    validateComposeProductionEnvironment(environment);
   },
   async readCurrentGitRevision() {
     return readProcessOutput('git', ['rev-parse', 'HEAD']);

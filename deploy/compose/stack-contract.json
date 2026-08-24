@@ -56,7 +56,9 @@
     "postgresBackup": "deploy/postgres/backup-contract.json",
     "temporal": "deploy/temporal/production-contract.json",
     "keycloakRealm": "deploy/keycloak/realm-import.json",
-    "keycloakBootstrap": "deploy/keycloak/realm-bootstrap.ts"
+    "keycloakBootstrap": "deploy/keycloak/realm-bootstrap.ts",
+    "operatorInputs": "scripts/t22-compose-inputs.ts",
+    "storyAcceptance": "deploy/compose/acceptance-contract.json"
   },
   "services": [
     "postgres",

@@ -78,6 +78,8 @@ interface StackContract {
     temporal: string;
     keycloakRealm: string;
     keycloakBootstrap: string;
+    operatorInputs: string;
+    storyAcceptance: string;
   };
   services: string[];
   volumes: Array<{ name: string; retainOnOrdinaryDown: boolean }>;
@@ -244,6 +246,8 @@ describe('T22 Docker Compose all-in-one contract', () => {
       temporal: 'deploy/temporal/production-contract.json',
       keycloakRealm: 'deploy/keycloak/realm-import.json',
       keycloakBootstrap: 'deploy/keycloak/realm-bootstrap.ts',
+      operatorInputs: 'scripts/t22-compose-inputs.ts',
+      storyAcceptance: 'deploy/compose/acceptance-contract.json',
     });
     for (const path of Object.values(contract.references)) requiredSource(path);
   });

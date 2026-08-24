@@ -84,6 +84,14 @@ function dependencies(options: { failFirst?: boolean; imageRevision?: string } =
 }
 
 describe('T22 Compose single-command operations', () => {
+  it('binds production preflight to the operator-owned input validator', async () => {
+    const source = await import('node:fs/promises').then(({ readFile }) =>
+      readFile('scripts/t22-compose.ts', 'utf8'),
+    );
+
+    expect(source).toContain('validateComposeProductionEnvironment');
+  });
+
   it('provides a read-only production preflight that pins all UI4A images to checkout HEAD', async () => {
     const env = await environment();
     const deps = dependencies();
