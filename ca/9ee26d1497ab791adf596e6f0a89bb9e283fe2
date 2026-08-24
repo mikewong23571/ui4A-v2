@@ -1,0 +1,1 @@
+T22 Phase H K8s runtime: Worker in-cluster SA/CA REST transport creates deterministic ConfigMap plus one-shot Runner Job, validates exact owner/result wire, supports restart/409/cancel/timeout and zero fallback, and rejects Secret material before Kubernetes writes. Verified 134 focused tests, Worker typecheck/build/lint/format.
