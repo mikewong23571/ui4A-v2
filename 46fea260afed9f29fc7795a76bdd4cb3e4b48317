@@ -1,0 +1,7 @@
+T22 experimental scope reset: Keycloak realm Red.
+
+Replaced generic reconciliation contracts with a bounded import-or-check-skip path. The fixed realm contains exactly Web, Agent, and API clients plus one initial experimental human, with PKCE, Client Credentials, Standard Token Exchange, API audience, external CLI Bearer, and sub plus azp delegation only.
+
+Existing compatible realm must skip without mutation. Missing or incompatible client basics fail closed without repair. No online user, role, client-scope, profile, credential, drift, or rotation synchronization is allowed.
+
+Main-agent Red proof: 21 of 21 failed only because the fixed realm import, bounded checker, and entrypoint are not yet present. No network, Keycloak, Docker, K8s, or real Secret participated.
