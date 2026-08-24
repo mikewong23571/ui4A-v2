@@ -218,6 +218,37 @@ function containers(resource: KubernetesObject): Record<string, unknown>[] {
   return [...list(pod.initContainers ?? []), ...list(pod.containers)].map(record);
 }
 
+function primaryContainer(resource: KubernetesObject): Record<string, unknown> {
+  const candidate = containers(resource).at(-1);
+  if (candidate === undefined)
+    throw new Error(`${resource.kind}/${resource.metadata.name} has no container`);
+  return candidate;
+}
+
+function environment(container: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(
+    list(container.env ?? [])
+      .map(record)
+      .filter(
+        (variable): variable is Record<string, unknown> & { name: string; value: string } =>
+          typeof variable.name === 'string' && typeof variable.value === 'string',
+      )
+      .map((variable) => [variable.name, variable.value]),
+  );
+}
+
+function mountPaths(container: Record<string, unknown>): string[] {
+  return list(container.volumeMounts ?? []).map((entry) => String(record(entry).mountPath));
+}
+
+function templateDocument(name: string): string {
+  const document = helmTemplateSource()
+    .split(/^---$/m)
+    .find((candidate) => new RegExp(`^  name:\\s+["']?${name}["']?$`, 'm').test(candidate));
+  if (document === undefined) throw new Error(`missing Helm template document ${name}`);
+  return document;
+}
+
 describe('T22 generic Helm/Kubernetes render contract', () => {
   it('provides the planned chart metadata, schema, values and pure renderer', () => {
     expect(
@@ -518,6 +549,178 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       expect(schema.properties?.secrets?.properties).toEqual({
         existingSecretName: expect.any(Object),
       });
+    });
+
+    describe('executable production parity', () => {
+      it.each([
+        [
+          'postgres-bootstrap',
+          [
+            'PGHOST',
+            'PGDATABASE',
+            'PGUSER',
+            'postgres-bootstrap-password',
+            'ui4a_migration_password',
+            'ui4a_runtime_password',
+            'keycloak_runtime_password',
+            'temporal_schema_password',
+            'temporal_runtime_password',
+            'postgres_backup_password',
+          ],
+        ],
+        [
+          'temporal-schema',
+          [
+            '--ep postgres',
+            '--db temporal setup-schema',
+            '--db temporal update-schema',
+            '--db temporal_visibility setup-schema',
+            '--db temporal_visibility update-schema',
+            'temporal-schema-password',
+          ],
+        ],
+        [
+          'temporal-namespace',
+          ['namespace describe', 'namespace create', '--address temporal:7233', '--retention 72h'],
+        ],
+        [
+          'pki-init',
+          [
+            'command: [node, dist/main.js, pki-init]',
+            'UI4A_PKI_ROOT',
+            'UI4A_HOST',
+            'KEYCLOAK_HOST',
+          ],
+        ],
+        ['migration', ['command: [node, dist/t22-migrate.js]']],
+        [
+          'realm-bootstrap',
+          [
+            'command: [node, dist/t22-keycloak-realm-bootstrap.js, --apply]',
+            'UI4A_REALM_IMPORT_FILE',
+          ],
+        ],
+      ] as const)('keeps the verified %s admin execution contract', (name, requiredTokens) => {
+        const document = templateDocument(name);
+        const missing = requiredTokens.filter((token) => !document.includes(token));
+
+        expect(missing, `${name} is not executable-equivalent to Compose`).toEqual([]);
+      });
+
+      it.each([
+        ['Deployment', 'web', ['/tmp', '/app/apps/web/.next/cache']],
+        ['Deployment', 'worker', ['/tmp', '/var/lib/ui4a']],
+        ['Deployment', 'runner', ['/tmp', '/workspaces', '/artifacts']],
+        ['Job', 'migration', ['/tmp']],
+        ['Job', 'realm-bootstrap', ['/tmp', '/opt/ui4a/realm-import.json']],
+      ] as const)(
+        'mounts production config, CA and writable paths for %s/%s',
+        async (kind, name, writablePaths) => {
+          const { resources } = (await renderer()).renderUi4aChart(genericValues());
+          const resource = workload(resources, kind, name);
+          const container = primaryContainer(resource);
+          const env = environment(container);
+          const paths = mountPaths(container);
+
+          expect(env).toMatchObject({
+            UI4A_DEPLOYMENT_PROFILE: 'production',
+            UI4A_DEPLOYMENT_SETTINGS_FILE: '/run/ui4a/settings.json',
+            UI4A_DEPLOYMENT_SECRETS_FILE: '/run/secrets/ui4a-deployment-secrets',
+            NODE_EXTRA_CA_CERTS: '/var/lib/ui4a/ca/root-ca.crt',
+          });
+          expect(paths).toEqual(
+            expect.arrayContaining([
+              '/run/ui4a/settings.json',
+              '/run/secrets/ui4a-deployment-secrets',
+              '/var/lib/ui4a/ca',
+              ...writablePaths,
+            ]),
+          );
+        },
+      );
+
+      it('renders an executable TLS PostgreSQL state service', async () => {
+        const { resources } = (await renderer()).renderUi4aChart(genericValues());
+        const postgres = workload(resources, 'StatefulSet', 'postgres');
+        const serialized = JSON.stringify(postgres);
+
+        expect(serialized).toContain('POSTGRES_PASSWORD_FILE');
+        expect(serialized).toContain('postgres-bootstrap-password');
+        expect(serialized).toContain('ssl=on');
+        expect(serialized).toContain('server.crt');
+        expect(serialized).toContain('server.key');
+        expect(mountPaths(primaryContainer(postgres))).toEqual(
+          expect.arrayContaining([
+            '/var/lib/postgresql/data',
+            '/backups',
+            '/run/postgresql',
+            '/tmp',
+          ]),
+        );
+      });
+
+      it('mounts the verified Temporal server config and UI address', async () => {
+        const { resources } = (await renderer()).renderUi4aChart(genericValues());
+        const temporal = workload(resources, 'Deployment', 'temporal');
+        const temporalUi = workload(resources, 'Deployment', 'temporal-ui');
+        const serverText = JSON.stringify(temporal);
+
+        expect(serverText).toContain('/etc/temporal/config/docker.yaml');
+        expect(serverText).toContain('/etc/temporal/dynamicconfig/docker.yaml');
+        expect(serverText).toContain('temporal-server');
+        expect(serverText).toContain('TEMPORAL_RUNTIME_PASSWORD');
+        expect(environment(primaryContainer(temporalUi))).toMatchObject({
+          TEMPORAL_ADDRESS: 'temporal:7233',
+        });
+      });
+
+      it('renders the verified Keycloak database and bootstrap environment', async () => {
+        const { resources } = (await renderer()).renderUi4aChart(genericValues());
+        const keycloak = workload(resources, 'Deployment', 'keycloak');
+        const env = environment(primaryContainer(keycloak));
+
+        expect(env).toMatchObject({
+          KC_DB: 'postgres',
+          KC_DB_URL_HOST: 'postgres',
+          KC_DB_URL_DATABASE: 'keycloak',
+          KC_DB_USERNAME: 'keycloak_runtime',
+          KC_HEALTH_ENABLED: 'true',
+          KC_HTTP_ENABLED: 'true',
+          KC_PROXY_HEADERS: 'xforwarded',
+        });
+        expect(JSON.stringify(keycloak)).toContain('keycloak-bootstrap-admin-password');
+        expect(JSON.stringify(keycloak)).toContain('keycloak-database-password');
+      });
+
+      it.each([
+        ['Job', 'postgres-bootstrap', ['postgres']],
+        ['Job', 'temporal-schema', ['postgres-bootstrap']],
+        ['Deployment', 'temporal', ['temporal-schema']],
+        ['Job', 'temporal-namespace', ['temporal']],
+        ['Deployment', 'keycloak', ['postgres-bootstrap', 'pki-init']],
+        ['Job', 'realm-bootstrap', ['keycloak', 'pki-init']],
+        ['Job', 'migration', ['postgres-bootstrap', 'pki-init']],
+        ['Deployment', 'web', ['migration', 'realm-bootstrap', 'temporal-namespace', 'pki-init']],
+        ['Deployment', 'worker', ['migration', 'realm-bootstrap', 'temporal-namespace']],
+        ['Deployment', 'runner', ['pki-init']],
+      ] as const)(
+        'gates %s/%s on executable dependency checks',
+        async (kind, name, dependencies) => {
+          const { resources } = (await renderer()).renderUi4aChart(genericValues());
+          const resource = workload(resources, kind, name);
+          const initContainers = list(podSpec(resource).initContainers ?? []).map(record);
+          const checkedDependencies = initContainers.flatMap((container) =>
+            list(container.env ?? [])
+              .map(record)
+              .filter((variable) => variable.name === 'UI4A_WAIT_FOR')
+              .map((variable) => String(variable.value)),
+          );
+
+          expect(checkedDependencies.sort(), `${kind}/${name} can race its dependencies`).toEqual(
+            [...dependencies].sort(),
+          );
+        },
+      );
     });
   });
 });
