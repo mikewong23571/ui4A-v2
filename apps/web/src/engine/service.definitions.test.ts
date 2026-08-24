@@ -42,10 +42,14 @@ beforeEach(async () => {
 describe('boot:定义 seed 迁移(空库)', () => {
   it('生产 service 只依赖应用制品安装器，不导入业务 TS fallback', () => {
     const source = readFileSync(new URL('./service.ts', import.meta.url), 'utf8');
+    const bootstrapSource = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
     expect(source).not.toMatch(/domain\/(?:flows|applications|capabilities|seed)/);
     expect(source).not.toContain('businessFlowList');
     expect(source).not.toContain('businessFlows');
-    expect(source).toContain('planMetaBootstrap');
+    expect(source).toContain("from './bootstrap'");
+    expect(source).not.toContain('planMetaBootstrap');
+    expect(bootstrapSource).toContain('planMetaBootstrap');
+    expect(bootstrapSource).toContain('installedApplicationBundles');
     expect(source).toContain('fold(events, { flows: {} })');
   });
 
