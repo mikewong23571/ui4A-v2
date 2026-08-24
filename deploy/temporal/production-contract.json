@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "versions": {
+    "server": "1.31.2",
+    "ui": "2.50.1",
+    "cli": "1.8.2",
+    "helmChart": "1.6.0",
+    "postgresql": "17"
+  },
+  "topology": {
+    "highAvailability": false,
+    "replicas": {
+      "frontend": 1,
+      "history": 1,
+      "matching": 1,
+      "worker": 1,
+      "ui": 1
+    }
+  },
+  "persistence": {
+    "driver": "postgresql",
+    "bundledDatabase": false,
+    "defaultStore": {
+      "database": "temporal",
+      "schemaUserRef": "settings.temporal.persistence.defaultStore.schemaUser",
+      "runtimeUserRef": "settings.temporal.persistence.defaultStore.runtimeUser",
+      "schemaPasswordRef": "settings.temporal.persistence.defaultStore.schemaPasswordRef",
+      "runtimePasswordRef": "settings.temporal.persistence.defaultStore.runtimePasswordRef"
+    },
+    "visibilityStore": {
+      "database": "temporal_visibility",
+      "schemaUserRef": "settings.temporal.persistence.visibilityStore.schemaUser",
+      "runtimeUserRef": "settings.temporal.persistence.visibilityStore.runtimeUser",
+      "schemaPasswordRef": "settings.temporal.persistence.visibilityStore.schemaPasswordRef",
+      "runtimePasswordRef": "settings.temporal.persistence.visibilityStore.runtimePasswordRef"
+    }
+  },
+  "jobs": {
+    "schemaSetup": { "enabled": true, "order": 1 },
+    "schemaUpdate": { "enabled": true, "order": 2 },
+    "namespace": { "enabled": true, "order": 3, "name": "ui4a", "mode": "create-or-check" }
+  }
+}

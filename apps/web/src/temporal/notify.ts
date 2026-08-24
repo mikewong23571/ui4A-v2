@@ -12,22 +12,14 @@
  * 参数类型 NotifyWorkflowArgs 镜像于 apps/worker/src/workflows.ts 的
  * NotifyConfirmation(跨 app 不共享包;字段变更两处同改,由集成测试对齐)。
  */
-import { Client, Connection } from '@temporalio/client';
+import type { Client } from '@temporalio/client';
 
 import type { SuspendedConfirmation } from '@ui4a/engine';
 
-/** worker 侧 taskQueue 会合点；测试使用隔离 queue，缺省仍为 ui4a。 */
-function taskQueue(): string {
-  return process.env.UI4A_TASK_QUEUE ?? 'ui4a';
-}
+import { getWebTemporalRuntime, resetWebTemporalRuntimeForTests } from './production-runtime';
 
 function workflowId(id: string): string {
   return `${process.env.UI4A_WORKFLOW_PREFIX ?? 'notify'}-${id}`;
-}
-
-/** Temporal dev server 地址(DECISIONS.md D4;env 可覆盖)。 */
-function temporalAddress(): string {
-  return process.env.TEMPORAL_ADDRESS ?? 'localhost:7233';
 }
 
 /** notifyWorkflow 参数(镜像 worker 的 NotifyConfirmation)。 */
@@ -58,29 +50,14 @@ export function notifyDispatchEnabled(): boolean {
   return !process.env.VITEST;
 }
 
-// 连接懒建单例(成功才缓存;失败清除,下次重试)。
-let clientPromise: Promise<Client> | null = null;
-
-function temporalClient(): Promise<Client> {
-  if (clientPromise === null) {
-    clientPromise = Connection.connect({ address: temporalAddress() }).then(
-      (connection) => new Client({ connection }),
-    );
-    clientPromise.catch(() => {
-      clientPromise = null; // 失败不缓存:下次派发重连
-    });
-  }
-  return clientPromise;
-}
-
 /** 尽力而为派发:任何失败只记日志(不抛;调用方 fire-and-forget)。 */
 export async function dispatchNotify(confirmation: SuspendedConfirmation): Promise<void> {
   if (!notifyDispatchEnabled()) return;
   try {
-    const client = await temporalClient();
+    const { client, taskQueue } = await getWebTemporalRuntime();
     await client.workflow.start('notifyWorkflow', {
       args: [notifyWorkflowArgs(confirmation)],
-      taskQueue: taskQueue(),
+      taskQueue,
       workflowId: workflowId(confirmation.id),
     });
   } catch (error) {
@@ -93,7 +70,7 @@ export async function dispatchNotify(confirmation: SuspendedConfirmation): Promi
 
 /** 测试专用:重置懒建连接缓存(防跨用例泄漏;生产代码不调用)。 */
 export function resetTemporalClientForTests(): void {
-  clientPromise = null;
+  resetWebTemporalRuntimeForTests();
 }
 
 /**
@@ -106,7 +83,7 @@ export function resetTemporalClientForTests(): void {
 export async function terminateStaleNotifyWorkflows(ids: readonly string[]): Promise<void> {
   let client: Client;
   try {
-    client = await temporalClient();
+    ({ client } = await getWebTemporalRuntime());
   } catch {
     return; // Temporal 不可达:无可清理(调用方已探活,此处兜底)。
   }

@@ -16,12 +16,8 @@
  * 不共享包;字段变更两处同改,由集成测试对齐)。
  */
 import type { AgentGoal } from '@ui4a/agent';
-import { Client, Connection } from '@temporalio/client';
 
-/** worker 侧 taskQueue 会合点(与 apps/worker/src/main.ts 同一常量)。 */
-function taskQueue(): string {
-  return process.env.UI4A_TASK_QUEUE ?? 'ui4a';
-}
+import { getWebTemporalRuntime, resetWebTemporalRuntimeForTests } from './production-runtime';
 
 /** 产品委托仅派发真实 LLM driver(worker 侧同口径)。 */
 export type DelegationDriverKind = 'llm';
@@ -38,27 +34,6 @@ export interface DelegationDispatchArgs {
   maxSteps?: number;
 }
 
-/** Temporal dev server 地址(DECISIONS.md D4;env 可覆盖)。 */
-function temporalAddress(): string {
-  return process.env.TEMPORAL_ADDRESS ?? 'localhost:7233';
-}
-
-// 连接懒建单例(成功才缓存;失败清除,下次重试)——与 notify.ts 同模式
-// (web 侧两个 Temporal capability 各持一条连接,互不耦合)。
-let clientPromise: Promise<Client> | null = null;
-
-function temporalClient(): Promise<Client> {
-  if (clientPromise === null) {
-    clientPromise = Connection.connect({ address: temporalAddress() }).then(
-      (connection) => new Client({ connection }),
-    );
-    clientPromise.catch(() => {
-      clientPromise = null; // 失败不缓存:下次派发重连
-    });
-  }
-  return clientPromise;
-}
-
 /**
  * 派发一个委托 workflow,返回 delegationId(**即 workflowId,含 delegation- 前缀**:
  * worker 侧事件 rel=delegation:<workflowInfo().workflowId>,/api/delegations/<id>
@@ -68,10 +43,10 @@ export async function dispatchDelegation(
   args: DelegationDispatchArgs,
 ): Promise<{ delegationId: string }> {
   const delegationId = `delegation-${crypto.randomUUID()}`;
-  const client = await temporalClient();
+  const { client, taskQueue } = await getWebTemporalRuntime();
   await client.workflow.start('delegationWorkflow', {
     args: [args],
-    taskQueue: taskQueue(),
+    taskQueue,
     workflowId: delegationId,
   });
   return { delegationId };
@@ -79,5 +54,5 @@ export async function dispatchDelegation(
 
 /** 测试专用:重置懒建连接缓存(防跨用例泄漏;生产代码不调用)。 */
 export function resetTemporalDelegationClientForTests(): void {
-  clientPromise = null;
+  resetWebTemporalRuntimeForTests();
 }

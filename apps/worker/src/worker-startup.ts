@@ -1,6 +1,7 @@
 import type { DeploymentEnvironment, ProductionDeploymentConfig } from '@ui4a/shared';
 
 import { shutdownBanner, startupBanner } from './banner';
+import type { WorkerTemporalConnectionOptions } from './temporal-connection';
 import type { WorkerPersistentDependencySnapshot, WorkerReadinessState } from './worker-readiness';
 
 export interface WorkerProcess {
@@ -21,7 +22,7 @@ export interface WorkerRegistrationOptions<Connection> {
 
 export interface WorkerStartupDependencies<Connection> {
   preflight(environment: DeploymentEnvironment): ProductionDeploymentConfig | undefined;
-  connect(options: { address: string }): Promise<Connection>;
+  connect(options: WorkerTemporalConnectionOptions): Promise<Connection>;
   closeConnection(connection: Connection): Promise<void>;
   createWorker(options: WorkerRegistrationOptions<Connection>): Promise<WorkerProcess>;
   createReadinessState(): WorkerReadinessState;
@@ -37,8 +38,7 @@ export interface WorkerStartupDependencies<Connection> {
   log(message: string): void;
 }
 
-interface WorkerStartupOptions {
-  address: string;
+interface WorkerStartupOptions extends WorkerTemporalConnectionOptions {
   namespace: string;
   taskQueue: string;
   identity?: string;
@@ -52,6 +52,8 @@ function workerStartupOptions(
   if (temporal !== undefined) {
     return {
       address: temporal.address,
+      connectTimeoutMs: temporal.connectTimeoutMs,
+      transport: temporal.transport,
       namespace: temporal.namespace,
       taskQueue: temporal.taskQueue,
       identity: temporal.workerIdentity,
@@ -59,6 +61,8 @@ function workerStartupOptions(
   }
   return {
     address: environment.TEMPORAL_ADDRESS ?? 'localhost:7233',
+    connectTimeoutMs: 10_000,
+    transport: { mode: 'istio' },
     namespace: 'default',
     taskQueue: environment.UI4A_TASK_QUEUE ?? 'ui4a',
   };
@@ -102,7 +106,11 @@ export async function runWorkerStartup<Connection>(
     }
 
     try {
-      connection = await dependencies.connect({ address: options.address });
+      connection = await dependencies.connect({
+        address: options.address,
+        connectTimeoutMs: options.connectTimeoutMs,
+        transport: options.transport,
+      });
       readiness.markDependency('temporal', 'ok');
     } catch {
       readiness.markDependency('temporal', 'error', 'temporal_unavailable');

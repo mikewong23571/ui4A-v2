@@ -9,11 +9,12 @@
  */
 import { fileURLToPath } from 'node:url';
 
-import { NativeConnection, Worker } from '@temporalio/worker';
+import { Worker } from '@temporalio/worker';
 
 import * as activities from './activities';
 import { runWorkerProductionDeploymentPreflight } from './production-deployment-preflight';
 import { startWorkerHealthServer, workerReleaseMetadata } from './runtime-health';
+import { connectWorkerTemporal } from './temporal-connection';
 import { createWorkerReadinessState, probeWorkerDependencies } from './worker-readiness';
 import { runWorkerStartup } from './worker-startup';
 
@@ -28,7 +29,7 @@ async function main(): Promise<void> {
   await runWorkerStartup(
     {
       preflight: runWorkerProductionDeploymentPreflight,
-      connect: (options) => NativeConnection.connect(options),
+      connect: (options) => connectWorkerTemporal(options),
       closeConnection: (connection) => connection.close(),
       createWorker: (options) =>
         Worker.create({

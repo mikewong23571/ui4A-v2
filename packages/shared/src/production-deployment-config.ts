@@ -1,6 +1,24 @@
 export type ProductionDeploymentMode = 'compose' | 'kubernetes';
 export type ProductionAgentSpecialization = 'coding' | 'writing' | 'authoring';
 
+export interface ProductionTemporalPersistenceStore {
+  database: string;
+  schemaUser: string;
+  schemaPasswordRef: string;
+  runtimeUser: string;
+  runtimePasswordRef: string;
+}
+
+export type ProductionTemporalTransport =
+  | { mode: 'istio' }
+  | {
+      mode: 'tls';
+      serverName: string;
+      caCertificatePath: string;
+      clientCertificatePath?: string;
+      clientPrivateKeyPath?: string;
+    };
+
 export interface ProductionDeploymentSettings {
   schemaVersion: 1;
   releaseStage: 'production';
@@ -39,9 +57,17 @@ export interface ProductionDeploymentSettings {
     address: string;
     namespace: string;
     taskQueue: string;
+    testTaskQueue: string;
+    webIdentity: string;
     workerIdentity: string;
     connectTimeoutMs: number;
-    transport: { mode: 'istio' | 'tls' };
+    transport: ProductionTemporalTransport;
+    persistence: {
+      host: string;
+      port: number;
+      defaultStore: ProductionTemporalPersistenceStore;
+      visibilityStore: ProductionTemporalPersistenceStore;
+    };
   };
   keycloak: {
     host: string;
@@ -378,9 +404,12 @@ function parseTemporal(value: unknown): ProductionDeploymentSettings['temporal']
     'address',
     'namespace',
     'taskQueue',
+    'testTaskQueue',
+    'webIdentity',
     'workerIdentity',
     'connectTimeoutMs',
     'transport',
+    'persistence',
   ]);
   const address = string(candidate.address, 'settings.temporal.address');
   const match = /^([^:]+):(\d+)$/.exec(address);
@@ -393,18 +422,121 @@ function parseTemporal(value: unknown): ProductionDeploymentSettings['temporal']
   const namespace = identifier(candidate.namespace, 'settings.temporal.namespace');
   if (namespace === 'default')
     fail('settings.temporal.namespace', 'default is forbidden in production');
-  const transport = exactObject(candidate.transport, 'settings.temporal.transport', ['mode']);
+  const taskQueue = identifier(candidate.taskQueue, 'settings.temporal.taskQueue');
+  const testTaskQueue = identifier(candidate.testTaskQueue, 'settings.temporal.testTaskQueue');
+  if (testTaskQueue === taskQueue) {
+    fail('settings.temporal.testTaskQueue', 'must differ from taskQueue');
+  }
+
+  const rawTransport = exactObject(candidate.transport, 'settings.temporal.transport', [
+    'mode',
+    'serverName',
+    'caCertificatePath',
+    'clientCertificatePath',
+    'clientPrivateKeyPath',
+  ]);
+  const transportMode = enumValue(rawTransport.mode, 'settings.temporal.transport.mode', [
+    'istio',
+    'tls',
+  ] as const);
+  let transport: ProductionTemporalTransport;
+  if (transportMode === 'istio') {
+    for (const field of [
+      'serverName',
+      'caCertificatePath',
+      'clientCertificatePath',
+      'clientPrivateKeyPath',
+    ] as const) {
+      if (rawTransport[field] !== undefined) {
+        fail(`settings.temporal.transport.${field}`, 'is forbidden for istio transport');
+      }
+    }
+    transport = { mode: 'istio' };
+  } else {
+    const clientCertificatePath = rawTransport.clientCertificatePath;
+    const clientPrivateKeyPath = rawTransport.clientPrivateKeyPath;
+    if ((clientCertificatePath === undefined) !== (clientPrivateKeyPath === undefined)) {
+      fail(
+        'settings.temporal.transport.clientCertificatePath',
+        'client certificate and private key must be configured together',
+      );
+    }
+    transport = {
+      mode: 'tls',
+      serverName: hostname(rawTransport.serverName, 'settings.temporal.transport.serverName'),
+      caCertificatePath: absolutePath(
+        rawTransport.caCertificatePath,
+        'settings.temporal.transport.caCertificatePath',
+      ),
+      ...(clientCertificatePath === undefined
+        ? {}
+        : {
+            clientCertificatePath: absolutePath(
+              clientCertificatePath,
+              'settings.temporal.transport.clientCertificatePath',
+            ),
+            clientPrivateKeyPath: absolutePath(
+              clientPrivateKeyPath,
+              'settings.temporal.transport.clientPrivateKeyPath',
+            ),
+          }),
+    };
+  }
+
+  const persistence = exactObject(candidate.persistence, 'settings.temporal.persistence', [
+    'host',
+    'port',
+    'defaultStore',
+    'visibilityStore',
+  ]);
+  const parseStore = (value: unknown, path: string): ProductionTemporalPersistenceStore => {
+    const store = exactObject(value, path, [
+      'database',
+      'schemaUser',
+      'schemaPasswordRef',
+      'runtimeUser',
+      'runtimePasswordRef',
+    ]);
+    const parsed = {
+      database: identifier(store.database, `${path}.database`),
+      schemaUser: identifier(store.schemaUser, `${path}.schemaUser`),
+      schemaPasswordRef: identifier(store.schemaPasswordRef, `${path}.schemaPasswordRef`),
+      runtimeUser: identifier(store.runtimeUser, `${path}.runtimeUser`),
+      runtimePasswordRef: identifier(store.runtimePasswordRef, `${path}.runtimePasswordRef`),
+    };
+    if (parsed.schemaUser === parsed.runtimeUser) {
+      fail(`${path}.runtimeUser`, 'must differ from schemaUser');
+    }
+    return parsed;
+  };
+  const defaultStore = parseStore(
+    persistence.defaultStore,
+    'settings.temporal.persistence.defaultStore',
+  );
+  const visibilityStore = parseStore(
+    persistence.visibilityStore,
+    'settings.temporal.persistence.visibilityStore',
+  );
+  if (defaultStore.database === visibilityStore.database) {
+    fail(
+      'settings.temporal.persistence.visibilityStore.database',
+      'must differ from defaultStore.database',
+    );
+  }
   return {
     address,
     namespace,
-    taskQueue: identifier(candidate.taskQueue, 'settings.temporal.taskQueue'),
+    taskQueue,
+    testTaskQueue,
+    webIdentity: identifier(candidate.webIdentity, 'settings.temporal.webIdentity'),
     workerIdentity: identifier(candidate.workerIdentity, 'settings.temporal.workerIdentity'),
     connectTimeoutMs: integer(candidate.connectTimeoutMs, 'settings.temporal.connectTimeoutMs'),
-    transport: {
-      mode: enumValue(transport.mode, 'settings.temporal.transport.mode', [
-        'istio',
-        'tls',
-      ] as const),
+    transport,
+    persistence: {
+      host: hostname(persistence.host, 'settings.temporal.persistence.host'),
+      port: integer(persistence.port, 'settings.temporal.persistence.port'),
+      defaultStore,
+      visibilityStore,
     },
   };
 }
@@ -764,6 +896,22 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
     [settings.auth.oidc.agentClientSecretRef, 'settings.auth.oidc.agentClientSecretRef'],
     [settings.postgres.runtimePasswordRef, 'settings.postgres.runtimePasswordRef'],
     [settings.postgres.migrationPasswordRef, 'settings.postgres.migrationPasswordRef'],
+    [
+      settings.temporal.persistence.defaultStore.schemaPasswordRef,
+      'settings.temporal.persistence.defaultStore.schemaPasswordRef',
+    ],
+    [
+      settings.temporal.persistence.defaultStore.runtimePasswordRef,
+      'settings.temporal.persistence.defaultStore.runtimePasswordRef',
+    ],
+    [
+      settings.temporal.persistence.visibilityStore.schemaPasswordRef,
+      'settings.temporal.persistence.visibilityStore.schemaPasswordRef',
+    ],
+    [
+      settings.temporal.persistence.visibilityStore.runtimePasswordRef,
+      'settings.temporal.persistence.visibilityStore.runtimePasswordRef',
+    ],
     [settings.keycloak.databasePasswordRef, 'settings.keycloak.databasePasswordRef'],
     [settings.keycloak.bootstrapAdminPasswordRef, 'settings.keycloak.bootstrapAdminPasswordRef'],
     [settings.keycloak.experimentHumanPasswordRef, 'settings.keycloak.experimentHumanPasswordRef'],

@@ -101,12 +101,12 @@ beforeEach(() => {
   vi.stubEnv('UI4A_NOTIFY_DISPATCH', 'on');
   vi.stubEnv('TEMPORAL_ADDRESS', 'legacy-temporal.invalid:9999');
   vi.stubEnv('UI4A_TASK_QUEUE', 'legacy-queue');
-  temporal.clientOptions.length = 0;
-  vi.clearAllMocks();
   resetTemporalClientForTests();
   resetTemporalDelegationClientForTests();
   resetTemporalCapabilityClientForTests();
   resetTemporalAgentRunClientForTests();
+  temporal.clientOptions.length = 0;
+  vi.clearAllMocks();
 });
 
 afterEach(() => {

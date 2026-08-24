@@ -12,7 +12,11 @@ function productionConfig(): ProductionDeploymentConfig {
         address: 'temporal.ui4a.svc:7233',
         namespace: 'ui4a-production',
         taskQueue: 'ui4a-production-worker',
+        testTaskQueue: 'ui4a-production-test',
+        webIdentity: 'web-0.ui4a',
         workerIdentity: 'worker-0.ui4a',
+        connectTimeoutMs: 12_000,
+        transport: { mode: 'istio' },
       },
     },
   } as ProductionDeploymentConfig;
@@ -58,6 +62,8 @@ describe('Worker startup composition', () => {
 
     expect(dependencies.connect).toHaveBeenCalledExactlyOnceWith({
       address: 'temporal.ui4a.svc:7233',
+      connectTimeoutMs: 12_000,
+      transport: { mode: 'istio' },
     });
     expect(createWorker).toHaveBeenCalledExactlyOnceWith({
       connection: 'connection',
@@ -76,7 +82,11 @@ describe('Worker startup composition', () => {
 
     await runWorkerStartup(dependencies, {});
 
-    expect(dependencies.connect).toHaveBeenCalledExactlyOnceWith({ address: 'localhost:7233' });
+    expect(dependencies.connect).toHaveBeenCalledExactlyOnceWith({
+      address: 'localhost:7233',
+      connectTimeoutMs: 10_000,
+      transport: { mode: 'istio' },
+    });
     expect(createWorker).toHaveBeenCalledExactlyOnceWith({
       connection: 'connection',
       namespace: 'default',
