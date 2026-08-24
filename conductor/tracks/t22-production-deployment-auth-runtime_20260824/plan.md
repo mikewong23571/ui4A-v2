@@ -4,7 +4,7 @@
 > Compose 与 K8s 必须消费同一运行合同并运行同一核心用户故事 corpus。目标发布为
 > `v0.1.0-experimental.1`，不宣称 GA、正式 SLA 或当前实验集群具备未经验证的 HA。
 
-## Phase A: 红线、平台探测与架构决策
+## Phase A: 红线、平台探测与架构决策 [checkpoint: f50b8af]
 
 - [x] Task: 建立 U1–U17、Golden Story、负向安全矩阵和 evidence schema f2f1854
 - [x] 编写 technical stories 与初始红线验收 corpus
@@ -33,7 +33,7 @@
 - [x] 在 `DECISIONS.md` 记录真实身份、部署合同、实验非 HA 和恢复边界
 - [x] 记录双 Runtime Backend、跨副本裁决和 experimental release 策略
 - [x] 新增依赖或工具前更新 `conductor/tech-stack.md`
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) f50b8af
 
 ## Phase B: 生产配置、构建和版本基座
 
