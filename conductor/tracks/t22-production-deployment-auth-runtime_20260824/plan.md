@@ -91,6 +91,12 @@
 - [ ] Browser Chat 单 turn 使用 human Token Exchange，Token 仅存在于 bounded fetch closure
 - [ ] Worker Activity 使用 Agent Client Credentials，不把 Token 写入 Temporal history/event/log
 - [ ] 仅接通 Golden Story sitemap/entity/exec/exec-plan；其他 route 明确列为未覆盖
+- [~] Task: Principal review 修正——收口 Golden 身份与 realm 不变式
+- [ ] 绑定 policy scope 与目标 Application，防止跨 scope sitemap/read/exec/plan
+- [ ] Token Exchange 不得扩大 subject scopes，结果必须保持 human `sub` + `ui4a-agent` `azp`
+- [ ] Bearer 禁止明文 HTTP，OIDC/JWKS 禁止 redirect，单进程 session store 有界
+- [ ] canonical config、固定 realm/client/scope 与 Secret refs 完全一致
+- [ ] 对 agent/service human-only approval 保留可审计拒绝证据，补齐 CLI 403 与 session restart 负例
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 - [ ] 仅要求 Golden Story、CLI/Agent 合同主路径与负向身份 corpus 通过
 - [ ] 列出未纳入的 route/callback；不以“全面 route auth 已完成”作为 v0.1 gate
