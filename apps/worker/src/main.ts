@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 import { Worker } from '@temporalio/worker';
 
-import * as activities from './activities';
+import { loadCapabilityCallbackToken } from './file-secret';
 import { runWorkerProductionDeploymentPreflight } from './production-deployment-preflight';
 import { startWorkerHealthServer, workerReleaseMetadata } from './runtime-health';
 import { connectWorkerTemporal } from './temporal-connection';
@@ -23,6 +23,8 @@ async function main(): Promise<void> {
     console.log(JSON.stringify(workerReleaseMetadata()));
     return;
   }
+  loadCapabilityCallbackToken(process.env);
+  const activities = await import('./activities');
   const workflowsPath = fileURLToPath(
     new URL(import.meta.url.endsWith('.ts') ? './workflows.ts' : './workflows.js', import.meta.url),
   );

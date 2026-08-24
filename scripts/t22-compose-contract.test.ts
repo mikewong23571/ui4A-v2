@@ -396,6 +396,33 @@ describe('T22 Docker Compose all-in-one contract', () => {
     }
   });
 
+  it('mounts one callback credential file only into Web and Worker startup', async () => {
+    const stack = await renderedStack();
+
+    expect(stack.secrets['capability-callback-token']).toEqual({
+      file: '/srv/ui4a/secrets/capability-callback-token',
+    });
+    for (const name of ['web', 'worker']) {
+      expect(stack.services[name]?.environment).toMatchObject({
+        UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: '/run/secrets/capability-callback-token',
+      });
+      expect(stack.services[name]?.secrets).toContainEqual({
+        source: 'capability-callback-token',
+        target: 'capability-callback-token',
+        mode: 0o400,
+      });
+    }
+    for (const name of ['migration', 'realm-bootstrap', 'runner', 'host-runner']) {
+      expect(stack.services[name]?.environment).not.toHaveProperty(
+        'UI4A_CAPABILITY_CALLBACK_TOKEN_FILE',
+      );
+      expect(stack.services[name]?.secrets).not.toContainEqual(
+        expect.objectContaining({ source: 'capability-callback-token' }),
+      );
+    }
+    expect(JSON.stringify(stack)).not.toContain('__private_callback_material__');
+  });
+
   it('does not serialize Secret material or request-selected Runtime overrides', async () => {
     const stackSource = JSON.stringify(await renderedStack());
 

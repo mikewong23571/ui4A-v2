@@ -27,6 +27,7 @@ describe('Web production container bootstrap', () => {
       () => new Promise<void>((resolveRegister) => (completeRegister = resolveRegister)),
     );
     const serverImport = vi.fn();
+    const loadCallbackToken = vi.fn();
     const loadModule = vi.fn(async (specifier: string) => {
       if (specifier === 'instrumentation:test') return { default: { register } };
       serverImport();
@@ -35,10 +36,15 @@ describe('Web production container bootstrap', () => {
 
     const started = startProductionServer({
       loadModule,
+      loadCallbackToken,
       instrumentationUrl: 'instrumentation:test',
       serverUrl: 'server:test',
     });
     await vi.waitFor(() => expect(register).toHaveBeenCalledOnce());
+    expect(loadCallbackToken).toHaveBeenCalledOnce();
+    expect(loadCallbackToken.mock.invocationCallOrder[0]).toBeLessThan(
+      loadModule.mock.invocationCallOrder[0]!,
+    );
     expect(serverImport).not.toHaveBeenCalled();
 
     completeRegister?.();

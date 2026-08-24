@@ -88,6 +88,7 @@ const stateSecretNames = [
   'temporal-schema-password',
   'temporal-runtime-password',
   'postgres-backup-password',
+  'capability-callback-token',
 ] as const;
 
 function stateSecretMount(name: (typeof stateSecretNames)[number]) {
@@ -513,6 +514,11 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
           'realm-bootstrap': 'service_completed_successfully',
           'temporal-namespace': 'service_completed_successfully',
         }),
+        environment: {
+          ...canonicalRuntimeEnvironment,
+          UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: '/run/secrets/capability-callback-token',
+        },
+        secrets: [{ ...canonicalSecretMount }, stateSecretMount('capability-callback-token')],
         healthcheck: health([
           'CMD',
           'node',
@@ -530,10 +536,12 @@ export function renderComposeStack(input: ComposeRenderInput): ComposeStack {
         }),
         environment: {
           ...canonicalRuntimeEnvironment,
+          UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: '/run/secrets/capability-callback-token',
           UI4A_RUNNER_IMAGE: images.runner,
           UI4A_HOST_RUNNER_ORIGINS:
             '{"compose-container-runner":"https://ui4a.mothership.internal:8443","compose-host-runner":"https://ui4a.mothership.internal:9444"}',
         },
+        secrets: [{ ...canonicalSecretMount }, stateSecretMount('capability-callback-token')],
         healthcheck: health([
           'CMD',
           'node',

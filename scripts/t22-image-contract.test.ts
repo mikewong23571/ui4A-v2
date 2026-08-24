@@ -157,10 +157,24 @@ describe('T22 production OCI image contract', () => {
     expect(dockerfile).toContain(
       '/workspace/apps/web/production-entrypoint.mjs ./apps/web/production-entrypoint.mjs',
     );
+    expect(dockerfile).toContain('/workspace/apps/web/file-secret.mjs ./apps/web/file-secret.mjs');
     expect(dockerfile).toContain('CMD ["node", "apps/web/production-entrypoint.mjs"]');
     expect(contract.images.web.entrypoint).toEqual(['node', 'apps/web/production-entrypoint.mjs']);
     expect(entrypoint).toMatch(/await register\(\)/);
     expect(entrypoint).toMatch(/await loadModule\(serverUrl\)/);
+  });
+
+  it('loads callback file material before Web instrumentation and Worker activities', () => {
+    const webEntrypoint = requiredSource('apps/web/production-entrypoint.mjs');
+    const workerMain = requiredSource('apps/worker/src/main.ts');
+
+    expect(webEntrypoint.indexOf('loadCapabilityCallbackToken')).toBeLessThan(
+      webEntrypoint.indexOf('loadModule(instrumentationUrl)'),
+    );
+    expect(workerMain).not.toMatch(/^import \* as activities/m);
+    expect(workerMain.indexOf('loadCapabilityCallbackToken')).toBeLessThan(
+      workerMain.indexOf("await import('./activities')"),
+    );
   });
 
   it('pins the Runner Git, Pandoc and Codex requirements', () => {

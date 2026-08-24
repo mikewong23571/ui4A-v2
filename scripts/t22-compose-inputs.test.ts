@@ -21,6 +21,7 @@ const secretFiles = {
   UI4A_TEMPORAL_SCHEMA_PASSWORD_FILE: '/operator/ui4a/temporal-schema-password',
   UI4A_TEMPORAL_RUNTIME_PASSWORD_FILE: '/operator/ui4a/temporal-runtime-password',
   UI4A_POSTGRES_BACKUP_PASSWORD_FILE: '/operator/ui4a/postgres-backup-password',
+  UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: '/operator/ui4a/capability-callback-token',
 } as const;
 const images = {
   UI4A_POSTGRES_IMAGE: `registry.internal/postgres@sha256:${'1'.repeat(64)}`,
@@ -46,6 +47,7 @@ function fixture() {
     postgresBackup: 'postgres-backup-password',
     containerRunner: 'compose-container-runner-token',
     hostRunner: 'compose-host-runner-token',
+    callback: 'capability-callback-token',
   };
   const secrets = Object.fromEntries(Object.values(refs).map((ref) => [ref, secretValue(ref)]));
   const files = new Map<string, string>([
@@ -59,6 +61,7 @@ function fixture() {
     [secretFiles.UI4A_TEMPORAL_SCHEMA_PASSWORD_FILE, secrets[refs.temporalSchema]!],
     [secretFiles.UI4A_TEMPORAL_RUNTIME_PASSWORD_FILE, secrets[refs.temporalRuntime]!],
     [secretFiles.UI4A_POSTGRES_BACKUP_PASSWORD_FILE, secrets[refs.postgresBackup]!],
+    [secretFiles.UI4A_CAPABILITY_CALLBACK_TOKEN_FILE, secrets[refs.callback]!],
   ]);
   const dependencies: ComposeInputDependencies = {
     inspectFile(path) {
@@ -137,7 +140,7 @@ describe('T22 Compose operator-owned production inputs', () => {
     );
 
     expect(generated.environment).toEqual(environment());
-    expect(generated.summary).toEqual({ files: 10, secretFiles: 8, images: 9, bindings: 8 });
+    expect(generated.summary).toEqual({ files: 11, secretFiles: 9, images: 9, bindings: 9 });
     for (const material of Object.values(secrets)) {
       expect(JSON.stringify(generated)).not.toContain(material);
     }

@@ -2,7 +2,8 @@
 
 The Compose production input generator validates operator-owned files; it does not create or print
 credentials. Prepare one canonical settings JSON, one canonical deployment Secret JSON, and the
-eight independently mounted password files referenced by `compose.yaml`. Every file and the input
+eight independently mounted password files plus the callback credential file referenced by
+`compose.yaml`. Every file and the input
 manifest must be an absolute, non-symlink regular file with mode `0600`.
 
 The manifest contains `ui4aGitSha`, paths, and nine digest-pinned image references only. The three

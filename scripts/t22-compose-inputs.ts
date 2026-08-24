@@ -13,6 +13,7 @@ export const composeSecretFileEnvironmentKeys = [
   'UI4A_TEMPORAL_SCHEMA_PASSWORD_FILE',
   'UI4A_TEMPORAL_RUNTIME_PASSWORD_FILE',
   'UI4A_POSTGRES_BACKUP_PASSWORD_FILE',
+  'UI4A_CAPABILITY_CALLBACK_TOKEN_FILE',
 ] as const;
 
 export const composeImageEnvironmentKeys = [
@@ -80,7 +81,7 @@ export interface ComposeInputDependencies {
 
 export interface GeneratedComposeProductionEnvironment {
   environment: Readonly<Record<string, string>>;
-  summary: { files: 10; secretFiles: 8; images: 9; bindings: 8 };
+  summary: { files: 11; secretFiles: 9; images: 9; bindings: 9 };
 }
 
 const digestImage = /^[a-zA-Z0-9][a-zA-Z0-9._/:~-]*@sha256:[0-9a-f]{64}$/;
@@ -247,6 +248,13 @@ export function validateComposeProductionEnvironment(
   );
   sameMaterial(
     environment,
+    'UI4A_CAPABILITY_CALLBACK_TOKEN_FILE',
+    ['capability-callback-token'],
+    canonical,
+    dependencies,
+  );
+  sameMaterial(
+    environment,
     'UI4A_MIGRATION_PASSWORD_FILE',
     [settings.postgres.migrationPasswordRef],
     canonical,
@@ -313,7 +321,7 @@ export function validateComposeProductionEnvironment(
   );
   return {
     environment: Object.freeze(safeEnvironment),
-    summary: { files: 10, secretFiles: 8, images: 9, bindings: 8 },
+    summary: { files: 11, secretFiles: 9, images: 9, bindings: 9 },
   };
 }
 

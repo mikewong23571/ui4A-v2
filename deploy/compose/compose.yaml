@@ -287,9 +287,17 @@ services:
         condition: service_completed_successfully
       temporal-namespace:
         condition: service_completed_successfully
-    environment: *ui4a-production-environment
+    environment:
+      <<: *ui4a-production-environment
+      UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: /run/secrets/capability-callback-token
     configs: *ui4a-production-config
-    secrets: *ui4a-production-secret
+    secrets:
+      - source: ui4a-deployment-secrets
+        target: ui4a-deployment-secrets
+        mode: 0400
+      - source: capability-callback-token
+        target: capability-callback-token
+        mode: 0400
     volumes:
       - experiment-ca:/var/lib/ui4a/ca:ro
     healthcheck:
@@ -321,10 +329,17 @@ services:
         condition: service_healthy
     environment:
       <<: *ui4a-production-environment
+      UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: /run/secrets/capability-callback-token
       UI4A_RUNNER_IMAGE: ${UI4A_RUNNER_IMAGE:-ui4a/runner@sha256:0000000000000000000000000000000000000000000000000000000000000000}
       UI4A_HOST_RUNNER_ORIGINS: '{"compose-container-runner":"https://${UI4A_HOST:-ui4a.mothership.internal}:8443","compose-host-runner":"https://${UI4A_HOST:-ui4a.mothership.internal}:9444"}'
     configs: *ui4a-production-config
-    secrets: *ui4a-production-secret
+    secrets:
+      - source: ui4a-deployment-secrets
+        target: ui4a-deployment-secrets
+        mode: 0400
+      - source: capability-callback-token
+        target: capability-callback-token
+        mode: 0400
     volumes:
       - experiment-ca:/var/lib/ui4a/ca:ro
     healthcheck:
@@ -558,6 +573,8 @@ secrets:
     file: ${UI4A_TEMPORAL_RUNTIME_PASSWORD_FILE:-./stack-contract.json}
   postgres-backup-password:
     file: ${UI4A_POSTGRES_BACKUP_PASSWORD_FILE:-./stack-contract.json}
+  capability-callback-token:
+    file: ${UI4A_CAPABILITY_CALLBACK_TOKEN_FILE:-./stack-contract.json}
 
 volumes:
   postgres-data:

@@ -51,6 +51,7 @@ async function environment(): Promise<Record<string, string>> {
     UI4A_TEMPORAL_SCHEMA_PASSWORD_FILE: 'temporal-schema-password',
     UI4A_TEMPORAL_RUNTIME_PASSWORD_FILE: 'temporal-runtime-password',
     UI4A_POSTGRES_BACKUP_PASSWORD_FILE: 'postgres-backup-password',
+    UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: 'capability-callback-token',
   };
   await Promise.all(
     Object.values(files).map((name) =>

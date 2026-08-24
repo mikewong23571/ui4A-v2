@@ -1,6 +1,8 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { loadCapabilityCallbackToken } from './file-secret.mjs';
+
 const defaultInstrumentationUrl = () =>
   pathToFileURL(resolve(process.cwd(), 'apps/web/.next/server/instrumentation.js')).href;
 const defaultServerUrl = () => pathToFileURL(resolve(process.cwd(), 'apps/web/server.js')).href;
@@ -19,10 +21,12 @@ export function instrumentationRegister(moduleNamespace) {
 
 /** Await production preflight before loading the standalone server, so failure cannot bind a port. */
 export async function startProductionServer({
+  loadCallbackToken = () => loadCapabilityCallbackToken(process.env),
   loadModule = (specifier) => import(specifier),
   instrumentationUrl = defaultInstrumentationUrl(),
   serverUrl = defaultServerUrl(),
 } = {}) {
+  loadCallbackToken();
   const instrumentation = await loadModule(instrumentationUrl);
   const register = instrumentationRegister(instrumentation);
   await register();
