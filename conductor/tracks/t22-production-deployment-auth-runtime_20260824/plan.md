@@ -142,7 +142,7 @@
 - [x] Task: Red→Green——恢复一致性 cc8e414
 - [x] 记录恢复前 business hash、identity 和 Run evidence
 - [x] 从 backup 恢复、rebuild projections 并对比结果
-- [ ] 记录实际 RPO/RTO（Phase I 真实 drill）
+- [x] 记录实际 RPO/RTO（Phase I 真实 drill）
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) cc8e414
 
 ## Phase F: 双后端 Agent Runtime [checkpoint: ae25036]
@@ -229,10 +229,10 @@
 - [ ] Task: 故障注入
 - [ ] LLM、Temporal、Keycloak/JWKS、PostgreSQL 和两 Runtime backends
 - [ ] 无伪成功、无越权副作用、readiness 正确
-- [ ] Task: 完整 backup/restore drill
-- [ ] 生成 named backup、隔离 current state、恢复 state/certs/artifacts
-- [ ] rebuild projections，验证 business hash、identity 和 Run evidence
-- [ ] 记录实际 RPO/RTO
+- [x] Task: 完整 backup/restore drill e71b59f
+- [x] 生成 named backup、隔离 current state、恢复 state/certs/artifacts
+- [x] rebuild projections，验证 business hash、identity 和 Run evidence
+- [x] 记录实际 RPO/RTO
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase J: Runbook、升级回滚与试验性发布
