@@ -95,8 +95,6 @@ spec:
               add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
           resources:
             {{- include "ui4a.resources" . | nindent 12 }}
-          securityContext:
-            {{- include "ui4a.containerSecurityContext" . | nindent 12 }}
       volumes:
         - name: postgres-data
           persistentVolumeClaim: { claimName: postgres-data }

@@ -469,7 +469,7 @@ function podTemplate(
   nodeSelector: Record<string, string>,
   containers: UnknownRecord[],
   options: UnknownRecord = {},
-) {
+): UnknownRecord {
   return {
     metadata: { labels: selector(name) },
     spec: {
@@ -521,19 +521,24 @@ function job(
   options: UnknownRecord = {},
   podOptions: UnknownRecord = {},
 ): KubernetesObject {
+  const template = podTemplate(
+    name,
+    serviceAccount,
+    nodeSelector,
+    [container(name, image, { command, ...options })],
+    { restartPolicy: 'Never', ...podOptions },
+  );
+  template.metadata = {
+    labels: selector(name),
+    annotations: { 'sidecar.istio.io/inject': 'false' },
+  };
   return {
     apiVersion: 'batch/v1',
     kind: 'Job',
     metadata: metadata(name, namespace),
     spec: {
       backoffLimit: 2,
-      template: podTemplate(
-        name,
-        serviceAccount,
-        nodeSelector,
-        [container(name, image, { command, ...options })],
-        { restartPolicy: 'Never', ...podOptions },
-      ),
+      template,
     },
   };
 }

@@ -171,6 +171,14 @@ describe('T22 Kubernetes PKI handoff and combined trust contract', () => {
     expect(primaryText).toContain('ssl_key_file=/var/run/ui4a/postgres-tls/server.key');
     expect(primaryText).toContain('ssl_ca_file=/var/run/ui4a/postgres-tls/root-ca.crt');
     expect(primaryText).not.toContain('/var/lib/ui4a/ca');
+    expect(object(primary.securityContext)).toMatchObject({
+      runAsUser: 0,
+      allowPrivilegeEscalation: false,
+      capabilities: {
+        drop: ['ALL'],
+        add: ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETUID', 'SETGID'],
+      },
+    });
     expect(mounts(primary)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

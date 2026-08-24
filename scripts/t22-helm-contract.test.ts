@@ -470,6 +470,36 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       expect(JSON.stringify(resources)).not.toMatch(/highAvailability["']?\s*:\s*true/i);
     });
 
+    it('disables Istio sidecars on exactly the six finite admin Jobs', async () => {
+      const { resources } = (await renderer()).renderUi4aChart(genericValues());
+      const jobs = resources.filter(({ kind }) => kind === 'Job');
+      expect(jobs.map(({ metadata }) => metadata.name).sort()).toEqual(
+        [
+          'postgres-bootstrap',
+          'temporal-schema',
+          'temporal-namespace',
+          'pki-init',
+          'migration',
+          'realm-bootstrap',
+        ].sort(),
+      );
+      for (const job of jobs) {
+        expect(record(record(job.spec).template).metadata).toMatchObject({
+          annotations: { 'sidecar.istio.io/inject': 'false' },
+        });
+      }
+      for (const workloadResource of resources.filter(({ kind }) =>
+        ['Deployment', 'StatefulSet'].includes(kind),
+      )) {
+        const annotations = record(record(workloadResource.spec).template).metadata;
+        expect(
+          JSON.stringify(annotations),
+          `${workloadResource.kind}/${workloadResource.metadata.name}`,
+        ).not.toContain('sidecar.istio.io/inject');
+      }
+      expect(helmTemplateSource().match(/sidecar\.istio\.io\/inject:/g)).toHaveLength(6);
+    });
+
     it('pins every workload image by digest with the offline-compatible pull policy', async () => {
       const { resources } = (await renderer()).renderUi4aChart(genericValues());
       const workloads = resources.filter(({ kind }) =>
