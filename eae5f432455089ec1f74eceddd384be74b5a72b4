@@ -1,0 +1,10 @@
+Task: Correct standalone runtime preflight gate
+
+Summary:
+- Added a regression test for explicit production when standalone omits NEXT_RUNTIME.
+- Changed instrumentation to skip only explicit Edge runtime; Node and standalone perform the same preflight.
+
+Evidence:
+- Red regression reproduced the prior resolved startup.
+- Green: instrumentation test 6 of 6 passed and Web typecheck passed.
+- A subsequent real image smoke showed Next logged Ready before surfacing hook rejection and did not exit; that deeper behavior is corrected by the following explicit bootstrap commit c609262.
