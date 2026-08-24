@@ -1,0 +1,7 @@
+D35 experimental Golden Story Agent credential wiring Green.
+
+Canonical config now owns the fixed ui4a-agent client Secret reference and bounded scopes. The reusable OAuth Client Credentials and RFC 8693 provider plus same-origin exact-path Bearer fetch live in packages/agent; Web and Worker only compose them from canonical config.
+
+Production business sitemap verifies read identity. Inline Chat authenticates the browser before side effects, performs one human subject token exchange per turn, and binds the exchanged credential only to a bounded fetch closure. Durable delegation carries no token; Worker Activities obtain fresh service credentials locally and omit self-reported HTTP identity.
+
+Main-agent verification: ten focused files passed 145 of 145; Shared Agent Web Worker typechecks passed; scoped ESLint and Prettier passed. Tokens and client Secrets are absent from Temporal args, events, SSE, activity results, errors, and logs by contract tests.
