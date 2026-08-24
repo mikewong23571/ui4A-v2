@@ -1,0 +1,25 @@
+Task: 建立 U1–U17、Golden Story、负向安全矩阵和 evidence schema
+
+Summary:
+- Added TS1–TS17 technical stories, strict JSON evidence envelope, and a complete U1–U17 red baseline shared by Compose and Kubernetes.
+- Added a database-independent Vitest contract that enforces story uniqueness, baseline completeness, negative cases, evidence families, and secret-safe schema fields.
+- Added Track index links and repaired escaped Markdown code spans from track initialization.
+
+Files:
+- conductor/tracks/t22-production-deployment-auth-runtime_20260824/{acceptance-baseline.json,acceptance-evidence.schema.json,technical-stories.md,index.md,plan.md,spec.md,user-stories.md}
+- scripts/t22-evidence-contract.test.ts
+- vitest.t22-contract.config.mts
+
+Why:
+The deployment Track needs executable acceptance truth before infrastructure work so Pod/Helm success cannot masquerade as identity, business, runtime, or recovery success.
+
+Verification:
+- Red: focused Vitest failed 3 tests for the three intentionally missing artifacts.
+- Green: ./node_modules/.bin/vitest run --config vitest.t22-contract.config.mts => 4/4 passed.
+- workspace typecheck => passed after Next route type generation.
+- eslint . => 0 errors, 7 pre-existing warnings.
+- Prettier check and JSON parse => passed.
+- Full database Vitest deferred to the platform probe because Docker Hub image pull is unavailable; the focused contract deliberately has no database global setup.
+
+Coverage:
+No production module was added; executable contract branches are fully exercised by four focused tests.
