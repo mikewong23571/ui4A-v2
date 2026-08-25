@@ -1,0 +1,9 @@
+T22 Compose U7 trusted-host workspace seal correction
+
+Live diagnosis without body/token/raw logs proved Worker→edge→Runner networking and auth: all containers shared ui4a_default, DNS and liveness were correct, no-auth /deliver was 401 both direct and through Caddy, and authenticated invalid requests produced the same Runner-owned 502 direct and through edge. The failed Run had a uid-1000 mode-0700 per-Run workspace but no .codex, placing rejection before executeCodex.
+
+Root cause: Worker deliberately sent <profile base>/<runId>/agent for Writing, while Runner accepted exact profile base for trusted-host and only accepted per-Run children for Kubernetes.
+
+Green: trusted-host and Kubernetes now both accept only the canonical direct per-Run child derived from server profile base plus sealed runId. Base, cross-run, normalized escape and absolute escape fail before SDK construction; CODEX_HOME remains a private child of the accepted workspace.
+
+Verification: Red 3 focused failures; Green production 39/39; Runner full 99/99; typecheck/build; scoped ESLint/Prettier; diff-check. No image, deploy, cluster, Compose, Secret or business Run change.
