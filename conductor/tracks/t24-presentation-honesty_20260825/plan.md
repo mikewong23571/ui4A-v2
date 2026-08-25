@@ -41,7 +41,7 @@
 
 ## Phase C: 端到端验收
 
-- [ ] Task: e2e 与走查
+- [~] Task: e2e 与走查
   - Golden Story 人类段/Agent 段、invariants 全绿
   - Playwright 截图走查:canvas 首屏零机制词、抽屉能力等价、chat 折叠/
     活动语言/失败分层
