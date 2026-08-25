@@ -2,8 +2,14 @@
  * /api/chat SSE 帧协议(T9 Phase B / B1)的客户端读取器。
  *
  * 帧协议(每帧一条 `data: <json>\n\n`):
- * - {type:'step', turnId, message:{role:'assistant',text}, rel?} —— 轨迹一步
- *   (text 为 trail.ts stepToMessage 口径;rel 供 flow 徽章展示);
+ * - {type:'step', turnId, message:{role:'assistant',text}, rel?, activity?,
+ *   eventSeq?} —— 轨迹一步(text 为 trail.ts stepToMessage 口径的机器层原文,
+ *   保留供审计/回退;rel 供 flow 徽章展示;T24 Phase B 起 activity 携带
+ *   {op, title?, subject?} 结构化显示数据——op 为 agent 协议动词,title/
+ *   subject 由服务器从实体/动作合同取,客户端按固定 op 词表渲染活动语言;
+ *   eventSeq 为本步 chat-turn-progress 事件的日志 seq,供审计下钻定位。
+ *   旧服务端帧无 activity/eventSeq 字段:客户端回退 message.text 中性显示,
+ *   前向兼容口径与未知帧忽略一致);
  * - {type:'thinking-delta', turnId, step, text} —— 推理增量片段(逐 raw chunk 到达
  *   即推;客户端同号原地累积);
  * - {type:'thinking', turnId, step, text} —— llm 步推理自述(T11 Phase C:聚合整段
@@ -23,10 +29,25 @@
 import type { AgentOutcome, ExecSuccess, FactRef, TrailStep } from '@ui4a/agent';
 import type { PresentationReceipt } from '@ui4a/shared';
 
-/** step 帧的 assistant 消息(trail.ts stepToMessage 口径)。 */
+/** step 帧的 assistant 消息(trail.ts stepToMessage 口径;机器层原文,审计/回退用)。 */
 export interface ChatStepMessage {
   role: 'assistant';
   text: string;
+}
+
+/**
+ * step 帧的结构化活动数据(T24 Phase B):主呈现用「正在做什么」的活动语言,
+ * 由客户端固定 op 词表渲染。op 是 agent 协议动词原样(AgentOperation kind);
+ * title/subject 由服务器从合同(sitemap 表面标题/流程动作标题)取,客户端
+ * 零猜测、零每实体分支。
+ */
+export interface ChatStepActivity {
+  /** agent 协议动词(navigate/exec/present/answer/…);未知值客户端中性回退。 */
+  op: string;
+  /** 服务器自合同解析的标题(navigate 的表面/流程标题、exec 的动作标题)。 */
+  title?: string;
+  /** present 的呈现对象(字符串原样;selection 以「、」联结,服务器侧完成)。 */
+  subject?: string;
 }
 
 /** final 帧载荷(inline 回合的完整结果投影)。 */
@@ -70,7 +91,16 @@ export type ChatSseFrame =
   | { type: 'session'; sessionId: string; turnId: string }
   | { type: 'focus'; turnId: string; rel: string; refresh?: boolean }
   | { type: 'heartbeat' }
-  | { type: 'step'; turnId: string; message: ChatStepMessage; rel?: string }
+  | {
+      type: 'step';
+      turnId: string;
+      message: ChatStepMessage;
+      rel?: string;
+      /** 结构化活动数据(T24 Phase B);旧服务端帧缺省,客户端回退 message.text。 */
+      activity?: ChatStepActivity;
+      /** 本步 chat-turn-progress 事件的日志 seq(审计下钻定位);落库失败时缺省。 */
+      eventSeq?: number;
+    }
   | { type: 'thinking-delta'; turnId: string; step: number; text: string }
   | { type: 'thinking'; turnId: string; step: number; text: string }
   | { type: 'render'; turnId: string; payload: ChatRenderPayload }

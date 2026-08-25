@@ -28,7 +28,7 @@ import { useExternalStoreRuntime, type AppendMessage } from '@assistant-ui/react
 
 import type { ChatSessionSummary, ChatTurn } from '@/chat/history';
 import { clientViewReportForLocation, type ActivePresentationView } from '@/chat/client-view';
-import type { ChatRenderPayload } from '@/chat/sse';
+import type { ChatRenderPayload, ChatStepActivity } from '@/chat/sse';
 import { anySignal, createIdleTimeout, readChatSseStream, type ChatFinalPayload } from '@/chat/sse';
 
 import {
@@ -163,12 +163,21 @@ export function useChatSession(): ChatSession {
     };
   }, [restoreSession]);
 
-  const appendAssistant = useCallback((content: string, rel?: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { role: 'assistant', content, ...(rel !== undefined ? { rel } : {}) },
-    ]);
-  }, []);
+  const appendAssistant = useCallback(
+    (content: string, rel?: string, activity?: ChatStepActivity, eventSeq?: number): void => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content,
+          ...(rel !== undefined ? { rel } : {}),
+          ...(activity !== undefined ? { activity } : {}),
+          ...(eventSeq !== undefined ? { eventSeq } : {}),
+        },
+      ]);
+    },
+    [],
+  );
 
   const flushThinkingDeltas = useCallback(() => {
     if (thinkingFlushRef.current !== null) clearTimeout(thinkingFlushRef.current);
@@ -238,14 +247,21 @@ export function useChatSession(): ChatSession {
     [],
   );
 
-  /** SSE 帧处置:step 逐步追加;final 更新会话/回执;error 如实进消息。 */
+  /** SSE 帧处置:step 逐步追加(活动语言/旧形状回退);final 更新会话/回执;error 如实进消息。 */
   const handleFinal = useCallback(
-    (payload: ChatFinalPayload, stepCount: number) => {
+    (payload: ChatFinalPayload, stepCount: number, machineTextSteps: number) => {
       persistSession(payload.sessionId);
       markSessionPending(null);
-      // 零轨迹步的失败(如起始实体不可得):步帧为空,以 final.summary 补一条,
-      // 与旧一次性 JSON 客户端的兜底口径一致。
-      if (stepCount === 0 && payload.summary !== null && payload.summary !== '') {
+      // 终局内容补一条 assistant 消息:零轨迹步(如起始实体不可得,与旧一次性
+      // JSON 客户端兜底口径一致),或 T24 活动语言回合——活动条目只说「正在
+      // 做什么」,answer/done/fail 的终局内容(answered 的回答、完成/失败
+      // summary)不在步帧主呈现里,经 final.summary 落地,内容不丢。旧形状
+      // 步帧(机器文本已含终局内容,如「完成: …」)不补,避免双份。
+      if (
+        (stepCount === 0 || machineTextSteps === 0) &&
+        payload.summary !== null &&
+        payload.summary !== ''
+      ) {
         appendAssistant(
           payload.outcome === 'failed' ? `失败: ${payload.summary}` : payload.summary,
         );
@@ -307,6 +323,9 @@ export function useChatSession(): ChatSession {
       const idleTimeout = createIdleTimeout(STREAM_IDLE_TIMEOUT_MS);
       const signal = anySignal([controller.signal, idleTimeout.signal]);
       let stepCount = 0;
+      // 机器文本步计数(T24 Phase B):无 activity 的旧形状步帧走 message.text
+      // 回退渲染——它们已含终局内容,final.summary 不再补(避免双份)。
+      let machineTextSteps = 0;
       try {
         const response = await fetch('/api/chat', {
           method: 'POST',
@@ -344,7 +363,10 @@ export function useChatSession(): ChatSession {
             } else if (frame.type === 'step') {
               flushThinkingDeltas();
               stepCount += 1;
-              appendAssistant(frame.message.text, frame.rel);
+              if (frame.activity === undefined) machineTextSteps += 1;
+              // T24 Phase B:活动帧主呈现为活动语言(message.text 机器原文
+              // 保留在消息数据里作机器层,thread 不再直出);旧形状回退原文。
+              appendAssistant(frame.message.text, frame.rel, frame.activity, frame.eventSeq);
             } else if (frame.type === 'render') {
               if (frame.payload.turnId !== undefined && frame.payload.turnId !== turnId) return;
               // 渲染回执帧(渲染短路 LLM 路径 SSE 化):处置与 JSON 回执等价。
@@ -367,7 +389,7 @@ export function useChatSession(): ChatSession {
             } else if (frame.type === 'final') {
               if (frame.payload.turnId !== undefined && frame.payload.turnId !== turnId) return;
               flushThinkingDeltas();
-              handleFinal(frame.payload, stepCount);
+              handleFinal(frame.payload, stepCount, machineTextSteps);
             } else if (frame.type === 'error') {
               markSessionPending(null);
               appendAssistant(`失败: ${frame.error}`);

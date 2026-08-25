@@ -262,6 +262,221 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
   });
 });
 
+describe('工作台 · step 活动语言(T24 Phase B)', () => {
+  const finalFrame = (payload: Record<string, unknown>) => ({ type: 'final', payload });
+
+  it('navigate 活动帧:主呈现为「正在读取 <合同标题>」,机器日志原文不露出,可点下钻事件流', async () => {
+    const frames = [
+      {
+        type: 'step',
+        message: { role: 'assistant', text: '导航到 articles' },
+        rel: 'articles',
+        activity: { op: 'navigate', title: '文章列表' },
+        eventSeq: 42,
+      },
+      finalFrame({
+        sessionId: 'sess-act-1',
+        driver: 'llm',
+        requestedDriver: 'auto',
+        outcome: 'done',
+        summary: '目标完成',
+        steps: [],
+        successes: [],
+      }),
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('看文章列表');
+
+    await waitFor(() => {
+      expect(screen.getByText('正在读取 文章列表')).toBeTruthy();
+    });
+    // 机器日志原文不进主呈现(message.text 保留在帧内作机器层)。
+    expect(screen.queryByText(/导航到 articles/)).toBeNull();
+    // 审计下钻:活动为可点链接,目标含事件定位参数(afterSeq = eventSeq - 1,
+    // 对应事件恰为返回首条)。
+    const link = screen.getByRole('link', { name: '正在读取 文章列表' }) as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/api/events?afterSeq=41');
+    // 活动语言零机制词(呈现诚实化)。
+    const label = link.textContent ?? '';
+    expect(MECHANISM_WORDS.some((word) => label.includes(word))).toBe(false);
+  });
+
+  it('exec/present 活动帧:消费服务器合同标题与 subject', async () => {
+    const frames = [
+      {
+        type: 'step',
+        message: { role: 'assistant', text: '执行 next(article-drafting:main)' },
+        rel: 'article-drafting:main',
+        activity: { op: 'exec', title: '完成编辑' },
+        eventSeq: 43,
+      },
+      {
+        type: 'step',
+        message: { role: 'assistant', text: '正在准备「文章列表」的呈现' },
+        activity: { op: 'present', subject: '文章列表' },
+        eventSeq: 44,
+      },
+      finalFrame({
+        sessionId: 'sess-act-2',
+        driver: 'llm',
+        requestedDriver: 'auto',
+        outcome: 'done',
+        summary: '目标完成',
+        steps: [],
+        successes: [],
+      }),
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('编辑正文并展示');
+
+    await waitFor(() => {
+      expect(screen.getByText('正在执行 完成编辑')).toBeTruthy();
+    });
+    expect(screen.getByText('正在准备「文章列表」的呈现')).toBeTruthy();
+    expect(screen.queryByText(/执行 next\(article-drafting:main\)/)).toBeNull();
+  });
+
+  it('未知 op:中性回退并显式携带 op,不静默吞', async () => {
+    const frames = [
+      {
+        type: 'step',
+        message: { role: 'assistant', text: '机器原文' },
+        activity: { op: 'frobnicate' },
+        eventSeq: 7,
+      },
+      finalFrame({
+        sessionId: 'sess-act-3',
+        driver: 'llm',
+        requestedDriver: 'auto',
+        outcome: 'done',
+        summary: '目标完成',
+        steps: [],
+        successes: [],
+      }),
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('做点什么');
+
+    await waitFor(() => {
+      expect(screen.getByText('正在处理 · frobnicate')).toBeTruthy();
+    });
+    expect(screen.queryByText('机器原文')).toBeNull();
+  });
+
+  it('旧形状帧(无 activity):回退 message.text 中性显示,与既有口径一致', async () => {
+    const frames = [
+      { type: 'step', message: { role: 'assistant', text: '导航到 articles' } },
+      finalFrame({
+        sessionId: 'sess-act-4',
+        driver: 'llm',
+        requestedDriver: 'auto',
+        outcome: 'done',
+        summary: '目标完成',
+        steps: [],
+        successes: [],
+      }),
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    await waitFor(() => {
+      expect(screen.getByText('导航到 articles')).toBeTruthy();
+    });
+    // 旧形状不产活动链接(无定位信息,不伪造)。
+    expect(screen.queryByRole('link', { name: /正在/ })).toBeNull();
+  });
+
+  it('活动帧缺 eventSeq:下钻链接仍可达(事件流页,不伪造定位)', async () => {
+    const frames = [
+      {
+        type: 'step',
+        message: { role: 'assistant', text: '导航到 articles' },
+        activity: { op: 'navigate', title: '文章列表' },
+      },
+      finalFrame({
+        sessionId: 'sess-act-5',
+        driver: 'llm',
+        requestedDriver: 'auto',
+        outcome: 'done',
+        summary: '目标完成',
+        steps: [],
+        successes: [],
+      }),
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('看文章列表');
+
+    const link = (await screen.findByRole('link', {
+      name: '正在读取 文章列表',
+    })) as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/events');
+  });
+
+  it('活动帧回合的终局内容不丢:answered 的回答经 final.summary 呈现', async () => {
+    const frames = [
+      {
+        type: 'step',
+        message: { role: 'assistant', text: '共 3 篇文章,其中 1 篇已发布' },
+        activity: { op: 'answer' },
+        eventSeq: 9,
+      },
+      finalFrame({
+        sessionId: 'sess-act-6',
+        driver: 'llm',
+        requestedDriver: 'auto',
+        outcome: 'answered',
+        summary: '共 3 篇文章,其中 1 篇已发布',
+        steps: [],
+        successes: [],
+      }),
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(frames))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('现在有几篇文章');
+
+    // 活动条目为「正在整理回答」;回答本体经 final.summary 补一条(不丢内容)。
+    await waitFor(() => {
+      expect(screen.getByText('共 3 篇文章,其中 1 篇已发布')).toBeTruthy();
+    });
+    expect(screen.getByRole('link', { name: '正在整理回答' })).toBeTruthy();
+  });
+});
+
 describe('工作台 · 思考区(T11 Phase C / T24 Phase B)', () => {
   it('增量流入(T24):默认折叠为一条「思考中」进行中指示(含步数),展开后增量实时流入', async () => {
     // 流保持打开:thinking 增量流入时回合仍在进行,指示/实时性可逐帧断言。

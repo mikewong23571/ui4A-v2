@@ -14,6 +14,13 @@
  * - 轨迹步骤卡:step 帧携带的 rel 经 metadata.custom 传入——flow 实例步
  *   (rel 含 flow 或文本含节点迁移「执行 next(」)以 Badge 弱化呈现 rel
  *   (纯展示层,不改 trail.ts 文本);
+ * - 轨迹活动条目(T24 Phase B):step 帧携带 activity={op,title?,subject?}
+ *   (经 metadata.custom)时主呈现为固定 op 词表的活动语言(「正在读取
+ *   <标题>」「正在执行 <动作>」…,标题由服务器取自合同,客户端零猜测);
+ *   机器日志原文不直出(保留在消息数据作机器层);未知 op 中性回退并显式
+ *   携带 op。整条可点下钻事件流(eventSeq 定位到本步 chat-turn-progress
+ *   事件;缺失退 /events 页);旧形状帧(无 activity)回退 message.text
+ *   中性显示,与历史回放同口径;
  * - 思考区(T11 Phase C + T24 Phase B):thinking 增量/终帧条目
  *   (metadata.custom.thinking = 归步步号)按 (turnId, step) 各渲染为一条
  *   可折叠思考区(Collapsible,默认收起——推理是次级信息;aria-expanded/
@@ -30,7 +37,9 @@ import {
   type TextMessagePartComponent,
 } from '@assistant-ui/react';
 
+import type { ChatStepActivity } from '@/chat/sse';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
+import { isChatStepActivity, stepActivityText } from '@/components/chat/step-activity-words';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -53,6 +62,35 @@ function useMessageThinkingStep(): number | undefined {
 }
 
 /**
+ * 当前消息的轨迹活动数据(T24 Phase B:convertMessage 的
+ * metadata.custom.activity;守卫命中返回原引用,Object.is 稳定)。
+ */
+function useMessageActivity(): ChatStepActivity | undefined {
+  return useAuiState((s) => {
+    const value: unknown = s.message.metadata.custom['activity'];
+    return isChatStepActivity(value) ? value : undefined;
+  });
+}
+
+/** 当前消息的审计事件 seq(chat-turn-progress 日志定位;缺失为 undefined)。 */
+function useMessageEventSeq(): number | undefined {
+  return useAuiState((s) => {
+    const value: unknown = s.message.metadata.custom['eventSeq'];
+    return typeof value === 'number' ? value : undefined;
+  });
+}
+
+/**
+ * 活动条目的审计下钻目标(T24 Phase B):eventSeq 在场时指向 /api/events 的
+ * afterSeq 定位窗口(本步 chat-turn-progress 事件恰为首条);缺失(落库失败/
+ * 旧形状)指向事件流页 /events——两者都真实存在,不伪造定位参数。
+ */
+function stepAuditHref(eventSeq: number | undefined): string {
+  if (eventSeq === undefined) return '/events';
+  return `/api/events?afterSeq=${Math.max(0, eventSeq - 1)}`;
+}
+
+/**
  * 本条消息是否为进行中的思考条目(T24 Phase B):线程 running 且本条是末条
  * 消息——只有正在累积/执行中的当前步思考满足(其同号 step 帧未到;更早
  * 回合与已完成步的思考条目都不是末条)。布尔选择器,Object.is 稳定。
@@ -61,9 +99,26 @@ function useIsLiveThinking(): boolean {
   return useAuiState((s) => s.thread.isRunning && s.message.isLast);
 }
 
-/** assistant 文本部件:Markdown + flow 实例 rel 徽章(弱化呈现,纯展示)。 */
+/** assistant 文本部件:活动语言条目(可点下钻)或 Markdown + flow rel 徽章。 */
 const AssistantText: TextMessagePartComponent = ({ text }) => {
   const rel = useMessageRel();
+  const activity = useMessageActivity();
+  const eventSeq = useMessageEventSeq();
+  // 轨迹活动条目(T24 Phase B):主呈现为固定 op 词表的活动语言
+  // (「正在读取 文章列表」…);机器日志原文(text)不直出,保留在消息数据
+  // 作机器层。整条可点下钻对应事件(原生 <a>,键盘可达)。
+  if (activity !== undefined) {
+    return (
+      <a
+        href={stepAuditHref(eventSeq)}
+        data-nav={eventSeq !== undefined ? `audit:${eventSeq}` : 'audit:events'}
+        title="在事件流中查看本步事件"
+        className="inline-flex w-fit items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+      >
+        {stepActivityText(activity)}
+      </a>
+    );
+  }
   const showRel = rel !== undefined && (rel.includes('flow') || text.includes('执行 next('));
   return (
     <span className="block">

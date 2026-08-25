@@ -26,6 +26,7 @@ import type {
 import { wrapDriverForAudit, type AgentDecisionDetail } from '../../../chat/decisions';
 import { conversationView } from '../../../chat/conversation';
 import { executionAuditContext } from '../../../chat/audit-context';
+import { readSitemapTitles, stepActivityData } from '../../../chat/step-activity';
 import { resolveStartRel } from '../../../chat/start';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
 import { getProductionAgentTokenProvider } from '../../../auth/production-agent-token-provider';
@@ -57,8 +58,12 @@ import { dispatchDelegation } from '../../../temporal/delegation';
 //   LLM driver(default/auto 均是 llm),runAgent 循环过本源
 //   HTTP 合同(actor=agent,principal=user:<sessionId>,channel=chat)——
 //   "agent 走合同"字面成立;onStep 每步推一帧
-//   {type:'step', message:{role:'assistant',text}, rel}(text 为 trail.ts
-//   stepToMessage 口径);llm 步 decide 产推理自述时先于同号 step 帧推一帧
+//   {type:'step', message:{role:'assistant',text}, rel, activity, eventSeq?}
+//   (text 为 trail.ts stepToMessage 口径的机器层原文;T24 Phase B 起
+//   activity={op,title?,subject?} 为结构化显示数据——op 是协议动词、标题取自
+//   合同 sitemap,客户端按固定 op 词表渲染活动语言;eventSeq 指向本步
+//   chat-turn-progress 事件供审计下钻);llm 步 decide 产推理自述时先于同号
+//   step 帧推一帧
 //   {type:'thinking', turnId, step, text}(T11 Phase C / 架构决定 4:聚合整段权威
 //   终帧——D22 GLM reasoning 末尾齐发,非打字机;turnId + step 与对应 step 帧同号,
 //   便于客户端归步;端点不返回 reasoning 时零 thinking 帧);
@@ -273,9 +278,9 @@ async function appendChatProjection(
   sessionId: string,
   detail: ChatTurnStartedDetail | ChatTurnProgressDetail | ChatTurnDetail,
   principal = `user:${sessionId}`,
-): Promise<void> {
+): Promise<number | undefined> {
   try {
-    await appendEvent(getDb(), {
+    const appended = await appendEvent(getDb(), {
       kind,
       actor: 'agent',
       principal,
@@ -283,8 +288,10 @@ async function appendChatProjection(
       rel: `chat:${sessionId}`,
       detail,
     });
+    return appended.seq;
   } catch (persistError) {
     console.error(`${kind} 事件落库失败(不阻断聊天响应):`, persistError);
+    return undefined;
   }
 }
 
@@ -461,6 +468,9 @@ async function streamAgentLoop(args: {
     fetchImpl,
     baseUrl.endsWith('/_meta') ? 'meta/flows' : 'articles',
   );
+  // 活动语言标题索引(T24 Phase B):读一次合同 sitemap(surfaces 表面标题 +
+  // flows 动作标题),不可得时如实降级(rel/动作名兜底,零发明标题)。
+  const sitemapTitles = await readSitemapTitles(baseUrl, fetchImpl);
   // agent-decision 审计(T11 Phase B):包装 driver 在 decide 时刻捕获
   // (prompt/reasoning/op)——决策输入只存在于 decide 时的 DriverContext,
   // 执行后的 TrailStep 回推不出 prompt(捕获方案见 chat/decisions.ts)。
@@ -563,13 +573,26 @@ async function streamAgentLoop(args: {
           send({ type: 'focus', turnId, rel: step.rel, refresh: true });
         }
         const message = stepToMessage(step);
-        send({ type: 'step', turnId, message, rel: step.rel });
-        await appendChatProjection(
+        // T24 Phase B:message.text(机器层原文)随帧保留供审计/回退;activity
+        // 携带 {op, title?, subject?} 结构化显示数据(标题取自合同 sitemap),
+        // 客户端按固定 op 词表渲染「正在做什么」的活动语言。先落
+        // chat-turn-progress 拿日志 seq,帧内 eventSeq 供审计下钻定位;
+        // 落库失败时帧照发(下钻退事件流页,不伪造定位)。
+        const activity = stepActivityData(step, sitemapTitles);
+        const eventSeq = await appendChatProjection(
           'chat-turn-progress',
           sessionId,
           { sessionId, turnId, message, step },
           principal,
         );
+        send({
+          type: 'step',
+          turnId,
+          message,
+          rel: step.rel,
+          activity,
+          ...(eventSeq !== undefined ? { eventSeq } : {}),
+        });
       },
     },
   );
