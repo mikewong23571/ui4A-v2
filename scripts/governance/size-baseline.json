@@ -35,9 +35,9 @@
     },
     {
       "path": "apps/web/src/components",
-      "lines": 4116,
+      "lines": 4175,
       "limit": 4000,
-      "note": "T24 在途:『为什么这样展示』抽屉按架构归属落位 components/(与 canvas-body 及被嵌入的 sidecar 工具条同住),业务优先不为凑行数拆分(workflow 业务优先原则 2026-08-26);收缩窗口=T27 workstation 站点结构落地时按站点重组 components/ 目录"
+      "note": "T24 在途:『为什么这样展示』抽屉按架构归属落位 components/(与 canvas-body 及被嵌入的 sidecar 工具条同住),业务优先不为凑行数拆分(workflow 业务优先原则 2026-08-26);4116→4175 为 T24 Task 4 首屏断言测试增量(在途 track 期间允许上调,shrink-only 自 T24 关闭起算);收缩窗口=T27 workstation 站点结构落地时按站点重组 components/ 目录"
     }
   ]
 }

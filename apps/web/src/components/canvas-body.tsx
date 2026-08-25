@@ -29,6 +29,10 @@
  * T23 Phase D 拆分:动作处理接线 → canvas-action-handler.ts;单 surface
  * 异常隔离 → surface-error-boundary.tsx;Sidecar 个人视图操作 →
  * use-sidecar-actions.ts;Sidecar 工具条 → canvas-sidecar-toolbar.tsx。
+ *
+ * T24 Phase A Task 4:主区域不再渲染 CanvasSidecarToolbar——控制条只经
+ * 「为什么这样展示」抽屉(canvas-why-drawer)可达,首屏零机制文案;
+ * sidecar 视图语义(收起/疏密渲染)与 useSidecarActions 操作保持不变。
  */
 import { A2uiSurface } from '@a2ui/react/v0_9';
 import type { ReactComponentImplementation } from '@a2ui/react/v0_9';
@@ -51,7 +55,6 @@ import {
 import type { RenderSpec } from '@/render/spec';
 
 import { createCanvasActionHandler } from './canvas-action-handler';
-import { CanvasSidecarToolbar } from './canvas-sidecar-toolbar';
 import { CanvasWhyDrawer } from './canvas-why-drawer';
 import { useEntityCache } from './entity-cache-provider';
 import { execAction, fetchEntity } from './exec-client';
@@ -454,17 +457,8 @@ export function CanvasBody() {
           {notice}
         </p>
       )}
-      {sidecarMeta !== undefined && (
-        <CanvasSidecarToolbar
-          sidecarMeta={sidecarMeta}
-          promotionPending={promotionPending}
-          mutateSidecar={mutateSidecar}
-          patchSidecar={patchSidecar}
-          explainSidecar={explainSidecar}
-          promoteSidecar={promoteSidecar}
-          cancelPromotion={() => setPromotionPending(false)}
-        />
-      )}
+      {/* T24 Phase A Task 4:Sidecar 控制条已从主区域移除,抽屉入口是唯一
+          机制入口(能力等价:同一 CanvasSidecarToolbar 嵌在抽屉内)。 */}
       {errors.length > 0 && (
         <ul className="mt-4 space-y-1 text-sm text-destructive" data-testid="canvas-errors">
           {errors.map((error) => (

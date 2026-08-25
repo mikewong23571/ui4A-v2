@@ -4,13 +4,16 @@
  *
  * 成功渲染出语义 surface(标题/正文如实呈现)之后,首屏主区域的可读文本
  * 不得出现机制词表(lib/mechanism-words,固定常量清单)中的任何词;机制
- * 信息(目录协商、表面 ID 等)只允许出现在后续任务的「为什么这样展示」
- * 抽屉。本任务断言范围:头部机制行与表面 ID;「个人呈现」相关断言由后续
- * 任务追加(词表已收录,此处一并巡检)。
+ * 信息(目录协商、表面 ID 等)只允许出现在「为什么这样展示」抽屉。
+ * - Task 1 断言范围:头部机制行与表面 ID;
+ * - Task 4 追加:带 Sidecar 的成功渲染(stub /api/presentation 回执与
+ *   /api/presentation/sidecar 个人呈现合同,口径同 canvas-why-drawer.test)
+ *   抽屉关闭时主区域零控制条机制文案,抽屉入口是唯一机制入口
+ *   (「为什么这样展示」是抽屉入口的保留文案,不在主区域禁词内)。
  *
  * stub 口径与 app/canvas/page.test.tsx 一致:mock next/navigation 的
  * useSearchParams + 全局 fetch 应答目录协商/sitemap/实体读取(/api/entity
- * 经页面级缓存默认 fetcher 走同一全局 fetch)。
+ * 经页面级实体缓存默认 fetcher 走同一全局 fetch)。
  */
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -18,6 +21,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SirenEntity } from '@ui4a/engine';
 
 import { MECHANISM_WORDS } from '@/lib/mechanism-words';
+import { planGenericPresentationSurface } from '@/render/presentation/generic';
 import { renderCatalogJson } from '@/render/registry';
 
 import { CanvasBody } from './canvas-body';
@@ -65,6 +69,28 @@ const EMPTY_SPECS: SirenEntity = {
   entities: [],
 };
 
+const SIDECAR_ID = 'sidecar:1';
+/** Sidecar 携带的 Surface Tree:由通用规划器对同一 focus 实体产出(纯函数,
+ * 与真实服务端口径一致);hydrate 后语义渲染与无 sidecar 路径相同。 */
+const SIDECAR_SURFACE = planGenericPresentationSurface(
+  'post:first-post',
+  FIRST,
+  'definition-v1',
+).surface;
+
+/** 控制条(canvas-sidecar-toolbar)可读机制文案。覆盖两种 retention 下
+ * 实际出现的全部机制文本;「为什么这样展示」除外——它同时是抽屉入口的
+ * 保留文案,不属主区域禁词。 */
+const SIDECAR_TOOLBAR_WORDS: readonly string[] = [
+  '个人呈现',
+  '已固定',
+  '以后都这样看',
+  '恢复上一版本',
+  '收起视图',
+  '切换疏密',
+  '设为团队默认',
+];
+
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -72,18 +98,43 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-/** 画布合同桩:目录协商 + sitemap + 实体读取;/api/presentation 等未用端点 404。 */
-function mockCanvasContract(): ReturnType<typeof vi.fn> {
+/** /api/presentation/sidecar 应答:version>1(恢复上一版本可见)、
+ * collapsedNodeIds 为空(语义内容如实上屏而非收起占位)。 */
+function sidecarResponseBody(retention: 'cache' | 'pinned'): unknown {
+  return {
+    sidecar: {
+      id: SIDECAR_ID,
+      version: 2,
+      retention,
+      key: { subject: 'post:first-post' },
+      surface: SIDECAR_SURFACE,
+      view: { collapsedNodeIds: [], densityByNodeId: {} },
+    },
+  };
+}
+
+/** 画布合同桩:目录协商 + sitemap + 实体读取;withSidecar 时再应答
+ * /api/presentation(回执)与 /api/presentation/sidecar(个人呈现合同),
+ * 其余未用端点(含无 sidecar 路径的 /api/presentation)404。 */
+function mockCanvasContract(withSidecar?: {
+  retention: 'cache' | 'pinned';
+}): ReturnType<typeof vi.fn> {
   const rows: Record<string, SirenEntity> = {
     'post:first-post': FIRST,
     'render-specs': EMPTY_SPECS,
   };
-  return vi.fn((input: RequestInfo | URL) => {
+  return vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url === '/api/render/catalog')
       return Promise.resolve(jsonResponse(200, renderCatalogJson()));
     if (url.startsWith('/.well-known/ui4a.json')) {
       return Promise.resolve(jsonResponse(200, { version: 'definition-v1' }));
+    }
+    if (withSidecar !== undefined && url === '/api/presentation' && init?.method === 'POST') {
+      return Promise.resolve(jsonResponse(200, { sidecar: { id: SIDECAR_ID } }));
+    }
+    if (withSidecar !== undefined && url.startsWith('/api/presentation/sidecar?')) {
+      return Promise.resolve(jsonResponse(200, sidecarResponseBody(withSidecar.retention)));
     }
     if (url.startsWith('/api/entity?rel=')) {
       const rel = new URL(url, 'http://ui4a.test').searchParams.get('rel') ?? '';
@@ -96,6 +147,25 @@ function mockCanvasContract(): ReturnType<typeof vi.fn> {
     }
     return Promise.resolve(jsonResponse(404, { error: `unknown ${url}` }));
   });
+}
+
+/** 带 Sidecar 的成功渲染:返回主区域容器文本(抽屉默认关闭)。 */
+async function renderCanvasWithSidecar(retention: 'cache' | 'pinned'): Promise<{
+  container: HTMLElement;
+  text: string;
+}> {
+  window.history.pushState({}, '', '/canvas?focus=post%3Afirst-post');
+  vi.stubGlobal('fetch', mockCanvasContract({ retention }));
+  const { container } = render(
+    <EntityCacheProvider>
+      <CanvasBody />
+    </EntityCacheProvider>,
+  );
+  // 前置(非断言目标):sidecar 视图成功上屏(语义内容如实呈现)——若这里
+  // 失败是 setup 问题,不算机制词 Red。
+  expect(await screen.findByRole('heading', { name: '第一篇', level: 1 })).toBeTruthy();
+  expect(screen.getByText(/这是第一篇完整文章/)).toBeTruthy();
+  return { container, text: container.textContent ?? '' };
 }
 
 describe('CanvasBody 首屏零机制词(T24)', () => {
@@ -119,5 +189,32 @@ describe('CanvasBody 首屏零机制词(T24)', () => {
     const text = container.textContent ?? '';
     const leaked = MECHANISM_WORDS.filter((word) => text.includes(word));
     expect(leaked).toEqual([]);
+  });
+
+  it('带 Sidecar(cache,v2)的成功渲染:抽屉关闭时主区域零控制条机制文案,抽屉入口是唯一机制入口', async () => {
+    const { text } = await renderCanvasWithSidecar('cache');
+
+    // Red 断言:机制词表 + 控制条机制文案(个人呈现/以后都这样看/恢复上一
+    // 版本/收起/疏密/团队默认)在主区域零泄漏——控制条只允许出现在抽屉内。
+    const leaked = [...MECHANISM_WORDS, ...SIDECAR_TOOLBAR_WORDS].filter((word) =>
+      text.includes(word),
+    );
+    expect(leaked).toEqual([]);
+
+    // 抽屉入口(默认关闭)是唯一机制入口:主区域不再有控制条自带的
+    // explain 按钮,同名按钮只剩入口一处。
+    const entries = screen.getAllByRole('button', { name: '为什么这样展示' });
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('带 Sidecar(pinned)的成功渲染:主区域零「已固定」等控制条机制文案', async () => {
+    const { text } = await renderCanvasWithSidecar('pinned');
+
+    const leaked = [...MECHANISM_WORDS, ...SIDECAR_TOOLBAR_WORDS].filter((word) =>
+      text.includes(word),
+    );
+    expect(leaked).toEqual([]);
+    expect(screen.getAllByRole('button', { name: '为什么这样展示' })).toHaveLength(1);
   });
 });
