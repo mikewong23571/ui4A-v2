@@ -558,6 +558,7 @@ function projectDefinitionEntity(
   return {
     class: ['meta', 'flow-definition'],
     properties: {
+      rel,
       ...properties,
       status,
       initial: definition.initial,
@@ -576,6 +577,7 @@ function projectSelf(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
   return {
     class: ['meta', 'flow-definition'],
     properties: {
+      rel: 'meta/self',
       name: DEFINITION_LIFECYCLE_FLOW.name,
       version: 1,
       status: 'active',
@@ -773,6 +775,7 @@ function projectActivation(
   return {
     class: ['meta', 'activation', activation.status],
     properties: {
+      rel,
       id: activation.id,
       flow: activation.flow,
       status: activation.status,
@@ -839,6 +842,7 @@ function projectCapability(
   return {
     class: ['meta', 'capability-definition'],
     properties: {
+      rel,
       name: capability.name,
       title: capability.title,
       kind: capability.kind,
@@ -898,6 +902,7 @@ function projectApplication(
   return {
     class: ['meta', 'application-definition'],
     properties: {
+      rel,
       ...application,
       status: 'active',
       version: bundle.bundle.version,

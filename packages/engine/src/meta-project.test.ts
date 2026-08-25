@@ -120,6 +120,9 @@ describe('meta/flow:<name> 投影(A.2 定义实体)', () => {
     const entity = project(metaSnapshot('draft'), 'meta/flow:post-status', deps)!;
     expect(entity.class).toEqual(['meta', 'flow-definition']);
     expect(entity.properties).toEqual({
+      // rel 注入(T22 生产修复):meta 定义实体与业务实体同口径——渲染 deref/
+      // 实体缓存一律按 properties.rel 归键,缺 rel 会导致 canvas 全面 deref-failed。
+      rel: 'meta/flow:post-status',
       name: 'post-status',
       version: 1,
       status: 'draft',
@@ -456,6 +459,7 @@ describe('meta/capability:<name> 投影(T13 Phase C Task 3;spec 架构决定 3)'
     const entity = project(capabilitySnapshot(), 'meta/capability:draft', deps)!;
     expect(entity.class).toEqual(['meta', 'capability-definition']);
     expect(entity.properties).toEqual({
+      rel: 'meta/capability:draft',
       name: 'draft',
       title: '工件起草',
       kind: 'extract',
@@ -477,6 +481,7 @@ describe('meta/capability:<name> 投影(T13 Phase C Task 3;spec 架构决定 3)'
   it('可选 input/output 缺省不出现(形状稳定口径,同 confirmation 投影)', () => {
     const entity = project(capabilitySnapshot(), 'meta/capability:notify', deps)!;
     expect(entity.properties).toEqual({
+      rel: 'meta/capability:notify',
       name: 'notify',
       title: '确认门送达',
       kind: 'effect',
