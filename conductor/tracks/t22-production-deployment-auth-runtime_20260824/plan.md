@@ -211,7 +211,7 @@
 - [x] 创建 PV/namespace/Secrets 并部署 state services
 - [x] 执行 migration/realm import-or-check，部署单副本 Web/Worker 和按 Run one-shot Runner 合同
 - [x] 应用 Istio resources 并验证 Pods、Jobs、PV/PVC、sidecars 和 readiness
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase I: 真实用户故事、故障注入与恢复演练
 
@@ -240,22 +240,22 @@
 - [x] Task: 编写完整 step-by-step runbook 95f4da2
 - [x] 每步包含 command、expected output、failure criterion 和 recovery action
 - [x] 覆盖 Compose、mothership K8s、Host Runner、DNS/CA、auth 和 troubleshooting
-- [ ] Task: 验证 app-image upgrade；rollback 仅审查命令并标记未实测
+- [x] Task: 验证 app-image upgrade；rollback 仅审查命令并标记未实测
 - [x] pre-upgrade backup 与隔离恢复已验证
-- [ ] 执行新镜像 rollout 和 smoke
-- [ ] 证明 upgrade 前后 event log 未截断或重写；不执行实际 rollback drill
+- [x] 执行新镜像 rollout 和 smoke
+- [x] 证明 upgrade 前后 event log 未截断或重写；不执行实际 rollback drill
 - [x] realm 在线升级与通用 bootstrap Job replacement 后移；记录直接备份/恢复边界
 - [ ] Task: 运行全量质量门
 - [ ] focused Vitest、`pnpm check` 和 `CI=true pnpm e2e`
 - [ ] 单副本 Compose/K8s acceptance、主路径 auth negatives、最小三次 Runtime Run 和 restore drill
-- [ ] image scan 与 SBOM
-- [ ] Task: 产出 `v0.1.0-experimental.1`
-- [ ] 固定 image digests，生成 manifest、checksums、SBOM 和 acceptance report
-- [ ] 创建 Git tag 与 experimental Release Notes
-- [ ] 明示 internal experiment、non-HA、known limits 和 compatibility
-- [ ] Task: 同步产品、架构和运行文档
-- [ ] 更新 `GOAL.md`、`README.md`、`docs/runtime-operations.md` 和 `DECISIONS.md`
-- [ ] 更新 Conductor product/tech-stack/arch brief 与 mothership K8S runbook
+- [x] image scan 与 SBOM
+- [x] Task: 产出 `v0.1.0-experimental.1`
+- [x] 固定 image digests，生成 manifest、checksums、SBOM 和 acceptance report
+- [x] 创建 Git tag 与 experimental Release Notes
+- [x] 明示 internal experiment、non-HA、known limits 和 compatibility
+- [x] Task: 同步产品、架构和运行文档
+- [x] 更新 `GOAL.md`、`README.md`、`docs/runtime-operations.md` 和 `DECISIONS.md`
+- [x] 更新 Conductor product/tech-stack/arch brief 与 mothership K8S runbook
 - [ ] Task: Track Review、用户故事 evidence 与 DONE
 - [ ] Critical/High identity、data consistency 和 recovery issues 为零
 - [ ] Compose/K8s semantics 一致且 evidence 关联 commands/events/images/Git SHA
