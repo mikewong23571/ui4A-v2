@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+// T24 Phase A Task 4 断言适配:Sidecar 工具条(个人呈现/疏密/收起/pin/explain/
+// 团队默认)不再渲染在画布主区域,只经「为什么这样展示」抽屉可达——先开抽屉,
+// 工具条操作按抽屉范围定位(抽屉入口与工具条 explain 按钮同名「为什么这样展示」,
+// 须以 data-nav 区分)。生命周期行为(pin/patch/解释/晋升预览)本身未变。
 test.describe('T16 Golden Story presentation lifecycle', () => {
   test('Entity, Entities, semantic patch, pin, rollback, promotion preview and explanation', async ({
     page,
@@ -24,25 +28,31 @@ test.describe('T16 Golden Story presentation lifecycle', () => {
     await expect(page.getByRole('heading', { name: '第一篇', exact: true })).toBeVisible();
     await expect(page.getByText('这是第一篇完整文章')).toBeVisible();
 
-    const personal = page.getByText(/个人呈现 · v\d+/);
+    // T24:开抽屉——Sidecar 工具条的唯一入口(首屏主区域零机制文案)。
+    await page.locator('[data-nav="local:canvas-why"]').click();
+    const drawer = page.getByTestId('canvas-why-drawer');
+    await expect(drawer).toBeVisible();
+
+    const personal = drawer.getByText(/个人呈现 · v\d+/);
     await expect(personal).toBeVisible();
-    await page.getByRole('button', { name: '切换疏密' }).click();
+    await drawer.getByRole('button', { name: '切换疏密' }).click();
     await expect(page.getByRole('status')).toContainText('视图已调整');
-    await page.getByRole('button', { name: '收起视图' }).click();
+    await drawer.getByRole('button', { name: '收起视图' }).click();
     await expect(page.getByText('此视图已收起')).toBeVisible();
-    await page.getByRole('button', { name: '展开视图' }).click();
+    await drawer.getByRole('button', { name: '展开视图' }).click();
     await expect(page.getByRole('heading', { name: '第一篇', exact: true })).toBeVisible();
 
-    const pin = page.getByRole('button', { name: '以后都这样看' });
+    const pin = drawer.getByRole('button', { name: '以后都这样看' });
     if (await pin.isVisible()) {
       await pin.click();
       await expect(page.getByText(/已保存为个人视图/)).toBeVisible();
     }
-    await page.getByRole('button', { name: '为什么这样展示' }).click();
+    // T24:explain 按钮在抽屉工具条内,与抽屉入口同名,按 data-nav 定位。
+    await drawer.locator('[data-nav="presentation:explain-sidecar"]').click();
     await expect(page.getByRole('status')).toContainText('这样展示是因为');
 
-    await page.getByRole('button', { name: '设为团队默认' }).click();
-    await expect(page.getByRole('button', { name: '确认团队默认' })).toBeVisible();
+    await drawer.getByRole('button', { name: '设为团队默认' }).click();
+    await expect(drawer.getByRole('button', { name: '确认团队默认' })).toBeVisible();
     await page.locator('[data-presentation-action="cancel-promotion"]').click();
 
     await page.goto('/canvas');
