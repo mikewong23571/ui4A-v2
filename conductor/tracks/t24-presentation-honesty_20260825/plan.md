@@ -12,13 +12,13 @@
 - [x] Task: canvas 首屏清理(Green) 982d746
   - 移除头部机制行(A2UI surface 宿主/目录协商/表面 ID);信息层级:
     内容主体 > 合同动作(现状动作渲染不动) > 机制入口
-- [~] Task: "为什么这样展示"抽屉
+- [x] Task: "为什么这样展示"抽屉 3b00cbd
   - 抽屉承接:sidecar 元数据与生命周期操作(pin/revert/patch/promote/
     设为团队默认)、provenance 解释(explain 接口)、surface ID 与 catalog
     协商信息、原始合同 JSON 视图
   - 能力等价测试:抽屉内各操作与现状 sidecar 控制条行为一致(复用既有
     route 测试口径 + 组件测试)
-- [ ] Task: sidecar 控制条降级
+- [~] Task: sidecar 控制条降级
   - 首屏只留一个不显眼的"为什么这样展示"入口;原控制条从主区域移除
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
