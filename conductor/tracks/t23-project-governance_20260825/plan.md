@@ -7,18 +7,21 @@
 
 ## Phase A: 规则落盘与 Red 基线
 
-- [ ] Task: 建立治理检查骨架与例外登记
+- [x] Task: 建立治理检查骨架与例外登记 4ad07b9
   - 创建 `scripts/governance/`:`check-deps.mjs`、`check-compat.mjs`、`check-size.mjs`、
     `exceptions.json`、`size-baseline.json`,纯 Node 无新依赖
-  - `exceptions.json` 预置唯一依赖例外:worker 复用 web `src/db` adapter,注明
-    原因与退役条件(存储边界收敛为独立包或共享 db 包时移除)
-  - 三个检查输出违规清单;此时全部允许失败
-- [ ] Task: Red——固化三项基线
-  - 运行 check-deps:记录当前依赖方向违规清单(预期很少)入 baseline 语境输出
-  - 运行 check-compat:枚举 GR2 存量兼容路径清单
-  - 运行 check-size:生成全部超限文件清单写入 `size-baseline.json`(当前约 30+
-    个非测试文件 >500 有效行)
-  - 提交 baseline;此刻起 baseline 只许缩短
+  - `exceptions.json` 实测登记四条例外:worker→web `src/db` 存储复用、worker→web
+    `src/engine` 与 web→worker 测试期耦合、engine 测试读取 web bundle fixture,
+    均含原因与退役条件
+  - 三个检查输出违规清单;check-compat 对 3 个 GR2 禁用路径保持 Red,check-size
+    默认模式吸收基线、strict 模式要求基线为空
+- [x] Task: Red——固化三项基线 4ad07b9
+  - check-deps:36 处未登记违规全部归因并登记为 4 条例外,方向检查转绿
+  - check-compat:66 个文件含 legacy/compat 标记,全部录入 compatAllowlist
+    (pendingRemoval: true);3 个禁用路径(`compatibility.ts` 及其测试、
+    `legacy-capability-run.ts`)保持 Red 待 Phase B 删除
+  - check-size:`--write-baseline` 固化 33 个超限文件 + 12 个超限目录
+  - 基线已提交;此刻起只许缩短(check 对新增违规、基线增长、stale 条目均失败)
 - [ ] Task: 质量风险盘点核对
   - 用检查输出 + `git grep` 复核 spec.md 的三类债务清单,补齐遗漏(如 scripts
     考古层具体文件、6 个 playwright 配置的合并方案)
