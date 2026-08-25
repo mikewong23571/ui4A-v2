@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AgentRunWorkflowArgs } from '../agents/host/contracts';
+import type { AgentRunWorkflowArgs } from '../../agents/host/contracts';
 import type {
   CompiledRuntimeTransportEnvelope,
   CompiledRuntimeTransportResult,
-} from './production-wiring';
+} from '../production-wiring';
 import {
   createInClusterKubernetesRuntimeApi,
   createInClusterKubernetesRuntimeTransport,
   type KubernetesRuntimeApi,
-} from './kubernetes-runtime-transport';
+} from './runtime-transport';
 
 const digest = (character: string): `sha256:${string}` => `sha256:${character.repeat(64)}`;
 const image = `registry.internal/ui4a/agent-runner@${digest('a')}`;

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { RuntimeBackendExecutionPort, SealedRunnerEnvelope } from './backend';
+import type { RuntimeBackendExecutionPort, SealedRunnerEnvelope } from '../backend';
 
 interface HttpRunnerExecutionModule {
   createHttpRunnerExecutionPort(input: {

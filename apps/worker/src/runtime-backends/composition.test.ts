@@ -12,8 +12,8 @@ import type {
   RuntimeTransition,
   SealedRunnerEnvelope,
 } from './backend';
-import { createHostRunnerBackend } from './host-runner';
-import { createKubernetesJobBackend } from './kubernetes-job';
+import { createHostRunnerBackend } from './host/host-runner';
+import { createKubernetesJobBackend } from './kubernetes/kubernetes-job';
 
 interface RuntimeComposition {
   run(input: {

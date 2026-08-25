@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import type { RuntimeBackendExecutionPort, RuntimeBackendSpi } from './backend';
+import type { RuntimeBackendExecutionPort, RuntimeBackendSpi } from '../backend';
 
 type Sha256 = `sha256:${string}`;
 

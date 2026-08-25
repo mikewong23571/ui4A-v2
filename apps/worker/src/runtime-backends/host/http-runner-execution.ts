@@ -1,4 +1,4 @@
-import type { RuntimeBackendExecutionPort, SealedRunnerEnvelope } from './backend';
+import type { RuntimeBackendExecutionPort, SealedRunnerEnvelope } from '../backend';
 
 interface HttpRunnerExecutionOptions {
   origin: string;

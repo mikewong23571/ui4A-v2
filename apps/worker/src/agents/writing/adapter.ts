@@ -1,27 +1,7 @@
-import {
-  canonicalJson,
-  hashCanonicalAgentJson,
-  type AgentResultEnvelope,
-  type AgentRun,
-  type AgentRunCommand,
-  type AgentRunJson,
-} from '@ui4a/engine';
-import {
-  assertWritingBrief,
-  assertWritingResult,
-  type WritingBrief,
-  type WritingResult,
-} from '@ui4a/shared';
+import type { AgentResultEnvelope } from '@ui4a/engine';
+import { assertWritingResult, type WritingResult } from '@ui4a/shared';
 
-import {
-  appendAgentRunCommand,
-  appendAgentRunRawEvent,
-  getAgentRun,
-  listAgentRunRawReceipts,
-  readAgentRunPayload,
-  storeAgentRunPayload,
-  type ConnectableDb,
-} from '../../../../web/src/db/agent-runs';
+import { storeAgentRunPayload } from '../../../../web/src/db/agent-runs';
 import {
   CodexTransportCancelledError,
   executeCodexStructured,
@@ -51,264 +31,31 @@ import {
   collectDocumentWorkspace,
   prepareDocumentWorkspace,
   verifyWritingOutput,
-  type DocumentWorkspaceHandle,
 } from './workspace';
+import {
+  command,
+  currentRun,
+  parseCompleted,
+  parsePrepared,
+  parseTask,
+  profileFor,
+} from './adapter-parse';
+import { appendRaw, persistedProgress, rawStats } from './adapter-raw';
+import { WRITING_RESULT_SCHEMA } from './adapter-schema';
+import {
+  asJson,
+  record,
+  type WritingAgentAdapterDeps,
+  type WritingAgentCallbackInput,
+} from './adapter-types';
 
-export interface DocumentAgentProfile {
-  name: string;
-  runtimeClass: 'document-agent';
-  providerId: string;
-  transport: 'sdk';
-  model: string;
-  endpoint?: string;
-  apiKeyEnv: string;
-  artifactBackend: 'isolated-document-workspace';
-  timeoutSeconds: number;
-  maxTurns: number;
-  envAllowlist: string[];
-  networkPolicy: 'none' | 'source-only';
-}
-
-type CompiledMessage = {
-  blockId: string;
-  role: 'system' | 'user' | 'assistant';
-  purpose: string;
-  content: string;
-  sealed: boolean;
-};
-
-interface WritingTaskPayload {
-  kind: 'writing-task';
-  writingBrief: WritingBrief;
-  compiledPrompt: { compiledHash: string; messages: CompiledMessage[] };
-}
-
-interface WritingPreparedState {
-  kind: 'writing-agent-prepared';
-  workspace: DocumentWorkspaceHandle;
-}
-
-interface WritingCompletedState {
-  kind: 'writing-agent-completed';
-  workspace: DocumentWorkspaceHandle;
-  nativeSessionId: string;
-  claim: WritingResult;
-}
-
-export interface WritingAgentCallbackInput {
-  baseUrl: string;
-  token: string;
-  runId: string;
-  outcome: AgentFinalizeInput['outcome'];
-}
-
-export interface WritingAgentAdapterDeps {
-  db: ConnectableDb;
-  workspaceRoot: string;
-  profiles: DocumentAgentProfile[];
-  execute?: typeof executeCodexStructured;
-  probe?: () => Promise<{ available: boolean; reason?: string }>;
-  callback?: (input: WritingAgentCallbackInput) => Promise<unknown>;
-  callbackBaseUrl?: string;
-  callbackToken?: string;
-}
-
-function record(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function asJson(value: unknown): AgentRunJson {
-  return JSON.parse(JSON.stringify(value)) as AgentRunJson;
-}
-
-function parseTask(context: AgentRunWorkflowArgs): WritingTaskPayload {
-  const payload = context.task.payload;
-  if (!record(payload) || payload.kind !== 'writing-task') {
-    throw new Error('writing-agent adapter requires task.payload.kind=writing-task');
-  }
-  const writingBrief = assertWritingBrief(payload.writingBrief);
-  if (!record(payload.compiledPrompt) || typeof payload.compiledPrompt.compiledHash !== 'string') {
-    throw new Error('writing-agent compiled Prompt is missing');
-  }
-  if (payload.compiledPrompt.compiledHash !== context.birth.prompt.compiledHash) {
-    throw new Error('writing-agent compiled Prompt hash does not match Run birth provenance');
-  }
-  if (
-    !Array.isArray(payload.compiledPrompt.messages) ||
-    payload.compiledPrompt.messages.length === 0 ||
-    payload.compiledPrompt.messages.some(
-      (message) =>
-        !record(message) ||
-        typeof message.blockId !== 'string' ||
-        !['system', 'user', 'assistant'].includes(String(message.role)) ||
-        typeof message.purpose !== 'string' ||
-        typeof message.content !== 'string' ||
-        typeof message.sealed !== 'boolean',
-    )
-  ) {
-    throw new Error('writing-agent compiled Prompt messages are invalid');
-  }
-  const messages = payload.compiledPrompt.messages as unknown as CompiledMessage[];
-  if (
-    hashCanonicalAgentJson(messages as unknown as AgentRunJson) !==
-    payload.compiledPrompt.compiledHash
-  ) {
-    throw new Error('writing-agent compiled Prompt messages failed their birth-pinned hash');
-  }
-  return {
-    kind: 'writing-task',
-    writingBrief,
-    compiledPrompt: { compiledHash: payload.compiledPrompt.compiledHash, messages },
-  };
-}
-
-function profileFor(
-  context: AgentRunWorkflowArgs,
-  profiles: DocumentAgentProfile[],
-): DocumentAgentProfile {
-  const matches = profiles.filter((profile) => profile.name === context.birth.runtime.profileName);
-  if (matches.length !== 1)
-    throw new Error(
-      `document-agent profile ${context.birth.runtime.profileName} must resolve exactly once`,
-    );
-  const profile = matches[0]!;
-  if (profile.runtimeClass !== 'document-agent')
-    throw new Error('document-agent runtime class mismatch');
-  if (profile.providerId !== 'codex')
-    throw new Error(`document-agent Provider ${profile.providerId} is unavailable`);
-  if (profile.artifactBackend !== 'isolated-document-workspace')
-    throw new Error('document-agent requires isolated-document-workspace');
-  if (profile.networkPolicy !== 'none')
-    throw new Error('writing-agent@1 requires networkPolicy=none');
-  return profile;
-}
-
-/** Parse deployment configuration without a default/fallback profile. */
-export function parseDocumentAgentProfiles(raw: string): DocumentAgentProfile[] {
-  const value = JSON.parse(raw) as unknown;
-  if (!Array.isArray(value)) throw new Error('UI4A_DOCUMENT_AGENT_PROFILES must be an array');
-  return value.map((profile, index) => {
-    if (!record(profile)) throw new Error(`document-agent profile ${index} must be an object`);
-    const candidate = profile as unknown as DocumentAgentProfile;
-    if (
-      typeof candidate.name !== 'string' ||
-      candidate.runtimeClass !== 'document-agent' ||
-      candidate.transport !== 'sdk' ||
-      typeof candidate.providerId !== 'string' ||
-      typeof candidate.model !== 'string' ||
-      typeof candidate.apiKeyEnv !== 'string' ||
-      candidate.artifactBackend !== 'isolated-document-workspace' ||
-      !Number.isSafeInteger(candidate.timeoutSeconds) ||
-      candidate.timeoutSeconds <= 0 ||
-      !Number.isSafeInteger(candidate.maxTurns) ||
-      candidate.maxTurns <= 0 ||
-      !Array.isArray(candidate.envAllowlist) ||
-      candidate.envAllowlist.some((entry) => typeof entry !== 'string') ||
-      (candidate.networkPolicy !== 'none' && candidate.networkPolicy !== 'source-only')
-    ) {
-      throw new Error(`document-agent profile ${index} is invalid`);
-    }
-    return candidate;
-  });
-}
-
-async function currentRun(db: ConnectableDb, context: AgentRunWorkflowArgs): Promise<AgentRun> {
-  const run = await getAgentRun(db, context.runId, context.principal, context.policyScope);
-  if (run === undefined)
-    throw new Error('native writing Agent Run does not exist or is not authorized');
-  return run;
-}
-
-async function command(
-  deps: WritingAgentAdapterDeps,
-  context: AgentRunWorkflowArgs,
-  build: (run: AgentRun) => AgentRunCommand,
-): Promise<AgentRun> {
-  const run = await currentRun(deps.db, context);
-  return (await appendAgentRunCommand(deps.db, build(run))).aggregate;
-}
-
-function parsePrepared(value: AgentRunJson): WritingPreparedState {
-  if (!record(value) || value.kind !== 'writing-agent-prepared' || !record(value.workspace)) {
-    throw new Error('writing-agent prepared state is invalid');
-  }
-  return value as unknown as WritingPreparedState;
-}
-
-/** Read the mechanically prepared per-Run workspace for sealed remote Runtime delivery. */
-export function writingPreparedWorkspaceRoot(prepared: AgentPreparedResult): string {
-  return parsePrepared(prepared.state).workspace.workingDirectory;
-}
-
-function parseCompleted(value: AgentRunJson): WritingCompletedState {
-  if (
-    !record(value) ||
-    value.kind !== 'writing-agent-completed' ||
-    !record(value.workspace) ||
-    typeof value.nativeSessionId !== 'string' ||
-    !record(value.claim)
-  ) {
-    throw new Error('writing-agent completed state is invalid');
-  }
-  return { ...value, claim: assertWritingResult(value.claim) } as unknown as WritingCompletedState;
-}
-
-export const WRITING_RESULT_SCHEMA = {
-  type: 'object',
-  properties: {
-    schemaVersion: { type: 'integer', const: 1 },
-    resultId: { type: 'string' },
-    status: { type: 'string', enum: ['completed', 'failed'] },
-    summary: { type: 'string' },
-    artifact: {
-      type: 'object',
-      properties: {
-        path: { type: 'string' },
-        hash: { type: 'string', pattern: '^sha256:[0-9a-f]{64}$' },
-        sizeBytes: { type: 'integer', minimum: 1 },
-        mediaType: { type: 'string', const: 'text/markdown' },
-      },
-      required: ['path', 'hash', 'sizeBytes', 'mediaType'],
-      additionalProperties: false,
-    },
-    citations: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          sourceId: { type: 'string' },
-          sourceHash: { type: 'string', pattern: '^sha256:[0-9a-f]{64}$' },
-          paragraphs: { type: 'array', items: { type: 'integer', minimum: 1 } },
-          claims: { type: 'array', items: { type: 'string' } },
-        },
-        required: ['sourceId', 'sourceHash', 'paragraphs', 'claims'],
-        additionalProperties: false,
-      },
-    },
-    safety: {
-      type: 'object',
-      properties: Object.fromEntries(
-        [
-          'sourceInputsUnchanged',
-          'onlyAllowedOutputs',
-          'noRepositoryEffects',
-          'noNetworkEffects',
-          'noPublishEffects',
-        ].map((name) => [name, { type: 'boolean', const: true }]),
-      ),
-      required: [
-        'sourceInputsUnchanged',
-        'onlyAllowedOutputs',
-        'noRepositoryEffects',
-        'noNetworkEffects',
-        'noPublishEffects',
-      ],
-      additionalProperties: false,
-    },
-  },
-  required: ['schemaVersion', 'resultId', 'status', 'summary', 'artifact', 'citations', 'safety'],
-  additionalProperties: false,
-} as const;
+export { parseDocumentAgentProfiles, writingPreparedWorkspaceRoot } from './adapter-parse';
+export { WRITING_RESULT_SCHEMA } from './adapter-schema';
+export type {
+  DocumentAgentProfile,
+  WritingAgentAdapterDeps,
+  WritingAgentCallbackInput,
+} from './adapter-types';
 
 /** Prepare a Writing specialization without staging source bytes in its writable root. */
 export async function prepareWritingAgentRunWithDeps(
@@ -336,70 +83,6 @@ export async function prepareWritingAgentRunWithDeps(
     { workspaceRoot: deps.workspaceRoot },
   );
   return { state: asJson({ kind: 'writing-agent-prepared', workspace }) };
-}
-
-function jsonSafe(value: unknown): AgentRunJson {
-  if (value === undefined) return null;
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
-  if (typeof value === 'number') return Number.isFinite(value) ? value : String(value);
-  if (Array.isArray(value)) return value.map(jsonSafe);
-  if (typeof value !== 'object') return String(value);
-  return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, jsonSafe(child)]));
-}
-
-function redactRaw(value: unknown, brief: WritingBrief, workspacePath: string): AgentRunJson {
-  const sources = brief.sources.map((source) => [source.content, `[SOURCE:${source.id}]`] as const);
-  const walk = (child: AgentRunJson): AgentRunJson => {
-    if (typeof child === 'string') {
-      let output = child.replaceAll(workspacePath, '[WORKSPACE]');
-      for (const [content, replacement] of sources)
-        if (content !== '') output = output.replaceAll(content, replacement);
-      return output;
-    }
-    if (Array.isArray(child)) return child.map(walk);
-    if (child === null || typeof child !== 'object') return child;
-    return Object.fromEntries(Object.entries(child).map(([key, nested]) => [key, walk(nested)]));
-  };
-  return walk(jsonSafe(value));
-}
-
-async function rawStats(deps: WritingAgentAdapterDeps, runId: string) {
-  const receipts = await listAgentRunRawReceipts(deps.db, runId);
-  return {
-    count: receipts.length,
-    bytes: receipts.reduce((sum, receipt) => sum + Number(receipt.byteLength ?? 0), 0),
-    maxOrdinal: receipts.reduce((max, receipt) => Math.max(max, Number(receipt.ordinal ?? 0)), 0),
-  };
-}
-
-async function appendRaw(
-  deps: WritingAgentAdapterDeps,
-  context: AgentRunWorkflowArgs,
-  brief: WritingBrief,
-  workspacePath: string,
-  ordinal: number,
-  cursor: string,
-  value: unknown,
-): Promise<void> {
-  const payload = redactRaw(value, brief, workspacePath);
-  const byteLength = new TextEncoder().encode(canonicalJson(payload)).byteLength;
-  const stats = await rawStats(deps, context.runId);
-  if (ordinal !== stats.maxOrdinal + 1) throw new Error('writing-agent raw ordinal conflict');
-  if (
-    stats.count >= brief.budget.maxRawEvents ||
-    byteLength > brief.budget.maxRawChunkBytes ||
-    stats.bytes + byteLength > brief.budget.maxRawBytes
-  ) {
-    throw new Error('writing-agent raw trajectory budget exhausted');
-  }
-  await appendAgentRunRawEvent(deps.db, {
-    runId: context.runId,
-    principal: context.principal,
-    policyScope: context.policyScope,
-    ordinal,
-    cursor,
-    redactedPayload: payload,
-  });
 }
 
 async function executeRuntime(
@@ -579,19 +262,6 @@ export async function executeWritingAgentRunWithDeps(
     { runtime, recordRestart: (value) => recordRestart(deps, value) },
     controls,
   );
-}
-
-async function persistedProgress(
-  deps: WritingAgentAdapterDeps,
-  runId: string,
-): Promise<CodexTransportProgress[]> {
-  const progress: CodexTransportProgress[] = [];
-  for (const receipt of await listAgentRunRawReceipts(deps.db, runId)) {
-    const value = await readAgentRunPayload(deps.db, String(receipt.payloadRef));
-    if (record(value) && value.kind === 'writing-progress' && record(value.event))
-      progress.push(value.event as unknown as CodexTransportProgress);
-  }
-  return progress;
 }
 
 export async function collectWritingAgentRunWithDeps(

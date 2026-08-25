@@ -1,278 +1,30 @@
 import { createHash } from 'node:crypto';
 
-import type {
-  RuntimeBackendExecutionPort,
-  RuntimeBackendSpi,
-  SealedRunnerEnvelope,
-} from './backend';
-
-type Capability = 'coding' | 'writing' | 'authoring';
-
-interface HostRunnerTask {
-  schemaVersion: 1;
-  runId: string;
-  capability: Capability;
-  birth: {
-    definitionHash: string;
-    promptHash: string;
-    runtimeHash: string;
-  };
-  payload: unknown;
-  [key: string]: unknown;
-}
-
-interface RegisteredRunner {
-  id: string;
-  authenticatedIdentity: string;
-  capabilities: Capability[];
-  workspaceRoots: string[];
-}
-
-interface HostRunnerProfile {
-  id: string;
-  runnerId: string;
-  capability: Capability;
-  workspaceRoot: string;
-  timeoutMs: number;
-}
-
-interface HostRunnerRegistry {
-  runners: RegisteredRunner[];
-  profiles: HostRunnerProfile[];
-}
-
-interface HostRunnerStateStore {
-  load(runId: string): unknown;
-  save(runId: string, state: unknown): void;
-  list(): unknown[];
-}
-
-interface HostRunnerTransport {
-  deliver(command: unknown): Promise<void>;
-  cancel(command: unknown): Promise<void>;
-}
-
-interface HostRunnerFsFacts {
-  resolve(path: string): { kind: 'file' | 'directory' | 'symlink'; realPath: string };
-}
-
-interface HostRunnerBackendDependencies {
-  registry: HostRunnerRegistry;
-  state: HostRunnerStateStore;
-  transport: HostRunnerTransport;
-  clock: { nowMs(): number };
-  fsFacts: HostRunnerFsFacts;
-  heartbeatTtlMs: number;
-  runtimeExecution?: RuntimeBackendExecutionPort;
-}
-
-interface HostRunnerResult {
-  runId: string;
-  status: 'succeeded' | 'failed';
-  resultHash: string;
-  artifacts: Array<{ path: string; hash: string }>;
-}
-
-type HostRunStatus =
-  | 'unavailable'
-  | 'leased'
-  | 'claimed'
-  | 'delivering'
-  | 'executing'
-  | 'retryable-disconnect'
-  | 'succeeded'
-  | 'failed'
-  | 'canceled'
-  | 'timed-out';
-
-interface HostRunState {
-  schemaVersion: 1;
-  backend: 'host';
-  runId: string;
-  profileId: string;
-  runnerId: string;
-  workspaceRoot: string;
-  task: HostRunnerTask;
-  leaseId: string;
-  leaseUntilMs: number;
-  status: HostRunStatus;
-  delivered: boolean;
-  cancelSent: boolean;
-  restartBoundary: boolean;
-  fallbackAttempted: false;
-  result?: HostRunnerResult;
-  resultHash?: string;
-}
-
-interface RunnerPresence {
-  leaseUntilMs: number;
-}
-
-type HostRunnerErrorCode =
-  | 'HOST_RUNNER_CAPABILITY_ESCALATION'
-  | 'HOST_RUNNER_IDENTITY_INVALID'
-  | 'HOST_RUNNER_LEASE_EXPIRED'
-  | 'HOST_RUNNER_LEASE_INVALID'
-  | 'HOST_RUNNER_FILESYSTEM_FACT_INVALID'
-  | 'HOST_RUNNER_PATH_INVALID'
-  | 'HOST_RUNNER_PROFILE_INVALID'
-  | 'HOST_RUNNER_REGISTRY_INVALID'
-  | 'HOST_RUNNER_RESULT_CONFLICT'
-  | 'HOST_RUNNER_RESULT_INVALID'
-  | 'HOST_RUNNER_ROOT_ESCALATION'
-  | 'HOST_RUNNER_STATE_CONFLICT'
-  | 'HOST_RUNNER_SYMLINK_ESCAPE'
-  | 'HOST_RUNNER_TASK_INVALID'
-  | 'HOST_RUNNER_TASK_OVERRIDE_FORBIDDEN'
-  | 'HOST_RUNNER_TRANSPORT_FAILED'
-  | 'HOST_RUNNER_UNAVAILABLE';
-
-class HostRunnerError extends Error {
-  readonly backend = 'host';
-  readonly fallbackAttempted = false;
-
-  constructor(
-    readonly code: HostRunnerErrorCode,
-    readonly retryable = false,
-  ) {
-    super(code);
-    this.name = 'HostRunnerError';
-  }
-}
-
-const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/;
-const RUN_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]{0,63}$/;
-const STABLE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
-const FORBIDDEN_TASK_FIELDS = [
-  'backend',
-  'image',
-  'command',
-  'cwd',
-  'provider',
-  'model',
-  'env',
-] as const;
-const TERMINAL_STATUSES = new Set<HostRunStatus>(['succeeded', 'failed', 'canceled', 'timed-out']);
-
-function fail(code: HostRunnerErrorCode, retryable = false): never {
-  throw new HostRunnerError(code, retryable);
-}
-
-function canonical(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  return `{${Object.entries(value as Record<string, unknown>)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, child]) => `${JSON.stringify(key)}:${canonical(child)}`)
-    .join(',')}}`;
-}
-
-function clone<T>(value: T): T {
-  return structuredClone(value);
-}
-
-function sameMembers(left: readonly string[], right: readonly string[]): boolean {
-  return (
-    left.length === right.length &&
-    [...left].sort().every((value, index) => value === [...right].sort()[index])
-  );
-}
-
-function absoluteRoot(value: string): boolean {
-  return (
-    value.startsWith('/') &&
-    !value.endsWith('/') &&
-    !value.includes('\\') &&
-    !value.includes('\0') &&
-    !value.split('/').some((part) => part === '.' || part === '..')
-  );
-}
-
-function validateRegistry(registry: HostRunnerRegistry): void {
-  const runners = new Map<string, RegisteredRunner>();
-  for (const runner of registry.runners) {
-    if (
-      !STABLE_ID_PATTERN.test(runner.id) ||
-      runner.authenticatedIdentity.trim() === '' ||
-      runner.capabilities.length === 0 ||
-      new Set(runner.capabilities).size !== runner.capabilities.length ||
-      runner.workspaceRoots.length === 0 ||
-      runner.workspaceRoots.some((root) => !absoluteRoot(root)) ||
-      new Set(runner.workspaceRoots).size !== runner.workspaceRoots.length ||
-      runners.has(runner.id)
-    ) {
-      fail('HOST_RUNNER_REGISTRY_INVALID');
-    }
-    runners.set(runner.id, runner);
-  }
-
-  const profileIds = new Set<string>();
-  for (const profile of registry.profiles) {
-    const runner = runners.get(profile.runnerId);
-    if (
-      !STABLE_ID_PATTERN.test(profile.id) ||
-      profileIds.has(profile.id) ||
-      runner === undefined ||
-      !runner.capabilities.includes(profile.capability) ||
-      !runner.workspaceRoots.includes(profile.workspaceRoot) ||
-      !Number.isSafeInteger(profile.timeoutMs) ||
-      profile.timeoutMs < 1
-    ) {
-      fail('HOST_RUNNER_REGISTRY_INVALID');
-    }
-    profileIds.add(profile.id);
-  }
-}
-
-function validateTask(task: HostRunnerTask): void {
-  if (FORBIDDEN_TASK_FIELDS.some((field) => Object.hasOwn(task, field))) {
-    fail('HOST_RUNNER_TASK_OVERRIDE_FORBIDDEN');
-  }
-  if (
-    task.schemaVersion !== 1 ||
-    !RUN_ID_PATTERN.test(task.runId) ||
-    (task.capability !== 'coding' &&
-      task.capability !== 'writing' &&
-      task.capability !== 'authoring') ||
-    typeof task.birth !== 'object' ||
-    task.birth === null ||
-    !SHA256_PATTERN.test(task.birth.definitionHash) ||
-    !SHA256_PATTERN.test(task.birth.promptHash) ||
-    !SHA256_PATTERN.test(task.birth.runtimeHash)
-  ) {
-    fail('HOST_RUNNER_TASK_INVALID');
-  }
-}
-
-function runState(value: unknown): HostRunState | undefined {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
-  const candidate = value as Partial<HostRunState>;
-  if (
-    candidate.schemaVersion !== 1 ||
-    candidate.backend !== 'host' ||
-    typeof candidate.runId !== 'string' ||
-    typeof candidate.leaseId !== 'string'
-  ) {
-    return undefined;
-  }
-  return candidate as HostRunState;
-}
-
-function safeArtifactPath(path: string): boolean {
-  const segments = path.split('/');
-  return (
-    path !== '' &&
-    !path.startsWith('/') &&
-    !/^[A-Za-z]:/u.test(path) &&
-    !path.includes('\\') &&
-    !path.includes('\0') &&
-    segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
-  );
-}
-
-function containedBy(root: string, path: string): boolean {
-  return path === root || path.startsWith(`${root}/`);
-}
+import type { RuntimeBackendSpi, SealedRunnerEnvelope } from '../backend';
+import {
+  SHA256_PATTERN,
+  TERMINAL_STATUSES,
+  type Capability,
+  type HostRunState,
+  type HostRunnerBackendDependencies,
+  type HostRunnerFsFacts,
+  type HostRunnerResult,
+  type HostRunnerTask,
+  type RegisteredRunner,
+  type RunnerPresence,
+} from './host-runner-types';
+import {
+  absoluteRoot,
+  canonical,
+  clone,
+  containedBy,
+  fail,
+  runState,
+  safeArtifactPath,
+  sameMembers,
+  validateRegistry,
+  validateTask,
+} from './host-runner-validation';
 
 /**
  * Create the trusted-host activity adapter. All external facts remain injected: the registry owns

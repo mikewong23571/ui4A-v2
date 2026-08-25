@@ -14,7 +14,7 @@ import type {
   AgentVerificationResult,
 } from '../agents/host/contracts';
 import type { SealedRunnerEnvelope } from './backend';
-import { createHttpRunnerExecutionPort } from './http-runner-execution';
+import { createHttpRunnerExecutionPort } from './host/http-runner-execution';
 
 export type ProductionRuntimeSpecialization = 'coding' | 'writing' | 'authoring';
 export type ProductionRuntimeBackend = 'kubernetes-job' | 'trusted-host';
