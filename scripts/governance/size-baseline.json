@@ -23,7 +23,7 @@
   "dirs": [
     {
       "path": "scripts/t22",
-      "lines": 14402,
+      "lines": 14404,
       "limit": 4000,
       "note": "T22 在途 track 所有;T23 不处置,T22 关闭时按 GR5 裁决(见 risk-inventory R4)"
     }
