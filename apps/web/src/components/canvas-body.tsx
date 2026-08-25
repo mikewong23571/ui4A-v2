@@ -117,7 +117,6 @@ export function CanvasBody() {
   const [errors, setErrors] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [negotiated, setNegotiated] = useState(false);
   // 重载触发器:拦截门 executed 后重载(gate 闭包经 ref 触发,不经渲染期读)。
   const reloadRef = useRef<() => void>(() => {});
   const loadGenerationRef = useRef(0);
@@ -156,7 +155,6 @@ export function CanvasBody() {
     setErrors([]);
     setNotice(null);
     setSidecarMeta(undefined);
-    setNegotiated(false);
     try {
       // 1. 目录协商(catalogId 稳定 URI;目录与注册表同源才继续)。
       const catalogResponse = await fetch(catalogUrl, { signal: controller.signal });
@@ -169,7 +167,6 @@ export function CanvasBody() {
         );
       }
       if (generation !== loadGenerationRef.current) return;
-      setNegotiated(true);
 
       const sitemapResponse = await fetch('/.well-known/ui4a.json', {
         signal: controller.signal,
@@ -417,10 +414,6 @@ export function CanvasBody() {
           重新载入
         </Button>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        A2UI surface 宿主 · 目录 {negotiated ? `已协商(${CATALOG_ID})` : '协商中'}
-        {loading ? ' · 加载中…' : ` · ${surfaces.length} 个 surface`}
-      </p>
 
       {notice !== null && (
         <p
@@ -467,7 +460,6 @@ export function CanvasBody() {
               sidecarMeta?.view.densityByNodeId[sidecarMeta.rootNodeId] === 'spacious' && 'p-8',
             )}
           >
-            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">{entry.id}</h2>
             {entry.warnings.map((warning, index) => (
               <p
                 key={`${warning.collection}:${warning.fieldPath}:${index}`}
