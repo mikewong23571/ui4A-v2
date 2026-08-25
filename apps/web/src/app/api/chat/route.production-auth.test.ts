@@ -100,13 +100,16 @@ function browserError(code: 'session_not_found' | 'session_cookie_invalid' | 'se
 
 function request(
   body: Record<string, unknown>,
-  options: { url?: string; host?: string; cookie?: string } = {},
+  options: { url?: string; host?: string; cookie?: string; forwardedProto?: string } = {},
 ): Request {
   return new Request(options.url ?? `${APP_ORIGIN}/api/chat`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       ...(options.host === undefined ? {} : { host: options.host }),
+      ...(options.forwardedProto === undefined
+        ? {}
+        : { 'x-forwarded-proto': options.forwardedProto }),
       ...(options.cookie === undefined
         ? {}
         : { cookie: `${BROWSER_SESSION_COOKIE_NAME}=${options.cookie}` }),
@@ -441,6 +444,33 @@ describe('production chat turn credential boundary', () => {
     expect(spoofed.status).toBe(400);
     expect(mocks.fetcher).not.toHaveBeenCalled();
     expect(mocks.exchangeDelegatedCredential).not.toHaveBeenCalled();
+  });
+
+  it('reconstructs the external origin from x-forwarded-proto behind a TLS-terminating edge', async () => {
+    // TLS 在 edge 终止时 pod 内 request.url 协议为 http;edge 覆写的
+    // x-forwarded-proto + Host 重建的外部 origin 应与配置 publicOrigin 匹配。
+    const behindEdge = await POST(
+      request(
+        { goal: { verb: 'browse articles' }, sessionId: 'edge', turnId: 'turn-edge' },
+        {
+          cookie: 'valid-session',
+          url: 'http://ui4a.internal/api/chat',
+          host: 'ui4a.internal',
+          forwardedProto: 'https',
+        },
+      ),
+    );
+    expect(behindEdge.status).toBe(200);
+  });
+
+  it('still rejects a plain http origin that matches neither forwarded proto nor config', async () => {
+    const plain = await POST(
+      request(
+        { goal: { verb: 'browse articles' }, sessionId: 'plain', turnId: 'turn-plain' },
+        { cookie: 'valid-session', url: 'http://ui4a.internal/api/chat', host: 'ui4a.internal' },
+      ),
+    );
+    expect(plain.status).toBe(400);
   });
 
   it('rejects cross-origin and non-contract Agent fetches before either reaches the network', async () => {

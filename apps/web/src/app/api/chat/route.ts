@@ -693,8 +693,17 @@ export async function POST(request: Request) {
     }
     const configuredOrigin = new URL(config.settings.service.publicOrigin);
     const requestHost = request.headers.get('host');
+    // TLS 在 edge(Istio gateway / Caddy)终止,pod 内 request.url 协议恒为 http;
+    // origin 比较采用 edge 覆写的 x-forwarded-proto + Host 重建外部 origin(edge
+    // default-deny 保证外部流量必经 gateway,伪造头到不了 pod;直接集群内访问仍按
+    // request.url 兜底)。Host 本身仍必须等于配置 host。
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+    const effectiveOrigin =
+      requestHost !== null
+        ? `${forwardedProto ?? requestUrl.protocol.replace(/:$/, '')}://${requestHost}`
+        : requestUrl.origin;
     if (
-      requestUrl.origin !== configuredOrigin.origin ||
+      effectiveOrigin !== configuredOrigin.origin ||
       (requestHost !== null && requestHost !== configuredOrigin.host)
     ) {
       return Response.json({ error: { code: 'request_origin_invalid' } }, { status: 400 });

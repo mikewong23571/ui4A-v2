@@ -73,7 +73,7 @@ interface ChatJsonResponse {
     canvasUrl: string;
   };
   focus?: { rel: string; canvasUrl: string };
-  error?: string;
+  error?: string | { code?: string };
 }
 
 /** /api/chat mode=delegated 的派发回执(T5 Phase B)。 */
@@ -506,7 +506,12 @@ export function useChatSession(): ChatSession {
           for (const entry of body.messages) appendAssistant(entry.text);
         } else {
           markSessionPending(null);
-          appendAssistant(`失败: ${body.error ?? body.summary ?? `HTTP ${response.status}`}`);
+          // 结构化错误信封 {error:{code}} 取 code 如实展示,不把对象直接插值。
+          const failure =
+            typeof body.error === 'string'
+              ? body.error
+              : (body.error?.code ?? body.summary ?? `HTTP ${response.status}`);
+          appendAssistant(`失败: ${failure}`);
         }
       } catch (error) {
         const name = error instanceof Error ? error.name : '';
