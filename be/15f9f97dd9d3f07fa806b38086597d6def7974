@@ -1,0 +1,1 @@
+T23 Phase C(自治验收):engine bundle fixture 复制入包内、web 回放测试改用同构 fixture,两条例外消除;kill 集成测试例外保留并精确化 reason/retireWhen。复跑 check-deps OK,相关测试绿。
