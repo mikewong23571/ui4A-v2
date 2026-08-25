@@ -78,32 +78,12 @@
       "pendingRemoval": true
     },
     {
-      "path": "apps/web/src/db/agent-runs.test.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
-      "path": "apps/web/src/db/agent-runs.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
       "path": "apps/web/src/db/events.ts",
       "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
       "pendingRemoval": true
     },
     {
       "path": "apps/web/src/db/recovery.test.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
-      "path": "apps/web/src/engine/agent-runs.test.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
-      "path": "apps/web/src/engine/agent-runs.ts",
       "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
       "pendingRemoval": true
     },
@@ -123,27 +103,12 @@
       "pendingRemoval": true
     },
     {
-      "path": "apps/web/src/engine/native-agent-dispatch.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
       "path": "apps/web/src/engine/service.production-db.test.ts",
       "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
       "pendingRemoval": true
     },
     {
       "path": "apps/web/src/temporal/production-runtime.test.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
-      "path": "apps/worker/src/activities.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
-      "path": "apps/worker/src/agents/host/codex-transport.test.ts",
       "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
       "pendingRemoval": true
     },
@@ -159,16 +124,6 @@
     },
     {
       "path": "apps/worker/src/capabilities/coding/codex.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
-      "path": "apps/worker/src/capabilities/coding/compatibility.test.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
-      "path": "apps/worker/src/capabilities/coding/source-governance.test.ts",
       "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
       "pendingRemoval": true
     },
@@ -194,11 +149,6 @@
     },
     {
       "path": "apps/worker/src/worker-db.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
-      "path": "apps/worker/src/workflows.ts",
       "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
       "pendingRemoval": true
     },
@@ -268,31 +218,6 @@
       "pendingRemoval": true
     },
     {
-      "path": "packages/engine/src/agent-run/index.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
-      "path": "packages/engine/src/agent-run/legacy-capability-run.test.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
-      "path": "packages/engine/src/agent-run/legacy-capability-run.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
-      "path": "packages/engine/src/agent-run/run.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
-      "path": "packages/engine/src/capability-run/profile.test.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
       "path": "packages/engine/src/definition-resolution.test.ts",
       "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
       "pendingRemoval": true
@@ -324,11 +249,6 @@
     },
     {
       "path": "packages/engine/src/presentation/surface.ts",
-      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
-      "pendingRemoval": true
-    },
-    {
-      "path": "packages/engine/src/purity.test.ts",
       "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
       "pendingRemoval": true
     },

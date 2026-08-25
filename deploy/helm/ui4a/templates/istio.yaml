@@ -27,8 +27,6 @@ spec:
   http:
     - match:
         - method: { exact: POST }
-          uri: { exact: /api/internal/capability-callback }
-        - method: { exact: POST }
           uri: { exact: /api/internal/agent-run-callback }
       directResponse: { status: 404 }
     - match:
@@ -240,5 +238,4 @@ spec:
         - operation:
             methods: [POST]
             paths:
-              - /api/internal/capability-callback
               - /api/internal/agent-run-callback

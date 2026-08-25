@@ -878,7 +878,6 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
     expect(sitemap.surfaces.map((surface) => surface.rel).sort()).toEqual([
       'agent-runs',
       'articles',
-      'capability-runs',
       'comments',
       'flow:agent-definition-authoring',
       'flow:article-drafting',

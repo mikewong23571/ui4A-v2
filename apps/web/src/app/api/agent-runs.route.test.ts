@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { AgentRunBirthReferences } from '@ui4a/engine';
 
 import { appendAgentRunCommand, ensureAgentRunTables } from '../../db/agent-runs';
-import { ensureCapabilityRunTables } from '../../db/capability-runs';
 import { ensureEventsTable } from '../../db/events';
 import { getPool } from '../../db/pool';
 import { resetEngineForTests } from '../../engine/service';
@@ -30,11 +29,9 @@ const birth: AgentRunBirthReferences = {
 
 beforeEach(async () => {
   await ensureEventsTable(pool);
-  await ensureCapabilityRunTables(pool);
   await ensureAgentRunTables(pool);
   await pool.query(
-    `TRUNCATE agent_run_projection_state, agent_run_projection, agent_run_payloads,
-      capability_run_projection, capability_payloads, events`,
+    `TRUNCATE agent_run_projection_state, agent_run_projection, agent_run_payloads, events`,
   );
   resetEngineForTests();
 });

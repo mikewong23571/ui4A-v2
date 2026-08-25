@@ -3,7 +3,6 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ensureAgentDefinitionTables } from './agent-definitions';
 import { ensureAgentRunTables } from './agent-runs';
-import { ensureCapabilityRunTables } from './capability-runs';
 import { ensureDraftTables } from './drafts';
 import { appendEvent, ensureEventsTable, type DbExecutor } from './events';
 import { getPool } from './pool';
@@ -55,8 +54,6 @@ const EXPECTED_TABLES = [
   'presentation_user_sidecars',
   'draft_payloads',
   'draft_projection',
-  'capability_payloads',
-  'capability_run_projection',
   'agent_definition_payloads',
   'agent_definition_versions',
   'agent_definition_active',
@@ -158,7 +155,6 @@ describe('T22 explicit versioned migration contract', () => {
     await ensureEventsTable(client);
     await ensurePresentationTables(client);
     await ensureDraftTables(client);
-    await ensureCapabilityRunTables(client);
     await ensureAgentDefinitionTables(client);
     await ensureAgentRunTables(client);
     const marker = await appendEvent(client, { kind: 'seed', rel: 'migration:existing-marker' });
@@ -211,7 +207,7 @@ describe('T22 explicit versioned migration contract', () => {
     const migration = await migrations();
     let injected = false;
     const failing = forwardingExecutor(client, (sqlText) => {
-      if (!injected && sqlText.includes('CREATE TABLE IF NOT EXISTS capability_payloads')) {
+      if (!injected && sqlText.includes('CREATE TABLE IF NOT EXISTS agent_run_payloads')) {
         injected = true;
         return new Error('injected partial migration failure');
       }

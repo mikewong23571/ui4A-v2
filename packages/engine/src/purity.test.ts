@@ -47,12 +47,10 @@ describe('引擎两栖性(纯 TS,浏览器/服务端零 Node API)', () => {
     const sources = librarySources(srcDir).map((file) => file.slice(srcDir.length + 1));
     expect(sources).toEqual(
       expect.arrayContaining([
-        'capability-run/run.ts',
         'agent-definition/parse.ts',
         'agent-definition/derive.ts',
         'agent-definition/invariants.ts',
         'agent-run/run.ts',
-        'agent-run/legacy-capability-run.ts',
       ]),
     );
     expect(new Set(sources).size).toBe(sources.length);

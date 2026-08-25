@@ -14,14 +14,13 @@ function requiredSource(path: string): string {
 }
 
 describe('T22 explicit migration artifact boundary', () => {
-  it('registers all six existing DDL artifacts behind one versioned migration module', () => {
+  it('registers all five existing DDL artifacts behind one versioned migration module', () => {
     const source = requiredSource('apps/web/src/db/migrations.ts');
 
     for (const ddl of [
       'EVENTS_DDL',
       'PRESENTATION_DDL',
       'DRAFT_DDL',
-      'CAPABILITY_RUN_DDL',
       'AGENT_DEFINITION_DDL',
       'AGENT_RUN_DDL',
     ]) {
@@ -50,7 +49,6 @@ describe('T22 explicit migration artifact boundary', () => {
   it('keeps idempotent ensure helpers out of production request and Worker runtime paths', () => {
     const runtimePaths = [
       'apps/web/src/db/drafts.ts',
-      'apps/web/src/db/capability-runs.ts',
       'apps/web/src/db/agent-definitions.ts',
       'apps/web/src/db/agent-runs.ts',
       'apps/web/src/db/presentation.ts',

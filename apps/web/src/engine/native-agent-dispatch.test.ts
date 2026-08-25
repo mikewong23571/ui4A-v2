@@ -9,16 +9,9 @@ vi.mock('../temporal/agent-run', () => ({
   })),
   cancelAgentRun: vi.fn(async () => undefined),
 }));
-vi.mock('../temporal/capability', () => ({
-  dispatchCodingCapability: vi.fn(async ({ runId }: { runId: string }) => ({
-    workflowId: `coding-${runId}`,
-  })),
-  cancelCodingCapability: vi.fn(async () => undefined),
-}));
 
 import { ensureAgentDefinitionTables } from '../db/agent-definitions';
 import { appendAgentRunCommand, ensureAgentRunTables, listAgentRuns } from '../db/agent-runs';
-import { ensureCapabilityRunTables, listCapabilityRuns } from '../db/capability-runs';
 import { ensureEventsTable, readLog } from '../db/events';
 import { getPool } from '../db/pool';
 import { dispatchAgentRun } from '../temporal/agent-run';
@@ -127,12 +120,10 @@ beforeEach(async () => {
   vi.stubEnv('UI4A_DOCUMENT_AGENT_PROFILES', JSON.stringify([writingProfile]));
   vi.mocked(dispatchAgentRun).mockClear();
   await ensureEventsTable(pool);
-  await ensureCapabilityRunTables(pool);
   await ensureAgentRunTables(pool);
   await ensureAgentDefinitionTables(pool);
   await pool.query(
     `TRUNCATE agent_run_projection, agent_run_projection_state,
-      capability_run_projection, capability_payloads,
       agent_definition_active, agent_definition_versions, agent_definition_payloads, events`,
   );
   resetEngineForTests();
@@ -165,9 +156,6 @@ describe('native Agent dispatch from an Application capability', () => {
         messages: expect.any(Array),
       },
     });
-    expect(
-      await listCapabilityRuns(pool, { principal: 'local-user', policyScope: 'development' }),
-    ).toEqual([]);
     expect(dispatchAgentRun).toHaveBeenCalledOnce();
   });
 

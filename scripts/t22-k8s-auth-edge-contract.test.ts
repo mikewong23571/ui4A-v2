@@ -248,7 +248,7 @@ describe('T22 Kubernetes exact authentication edge', () => {
     expect(serialized).not.toContain('requestPrincipals');
     expect(serialized).not.toContain('notPaths');
     for (const path of [...webGetExact, ...webPostExact]) expect(serialized).toContain(path);
-    expect(serialized).toContain('/api/internal/capability-callback');
+    expect(serialized).not.toContain('/api/internal/capability-callback');
     expect(serialized).toContain('/api/internal/agent-run-callback');
     expect(serialized).toContain('cluster.local/ns/ui4a-system/sa/ui4a-worker');
     expect(serialized).not.toContain('/api/internal/*');
@@ -262,7 +262,7 @@ describe('T22 Kubernetes exact authentication edge', () => {
     expect(template).toContain('forwardOriginalToken: true');
     expect(template).toContain('exact: /api/entity');
     expect(template).toContain('exact: /realms/ui4a/protocol/openid-connect/token');
-    expect(template).toContain('exact: /api/internal/capability-callback');
+    expect(template).not.toContain('exact: /api/internal/capability-callback');
     expect(template.match(/directResponse:\s*\{\s*status:\s*404\s*\}/g)).toHaveLength(4);
   });
 });

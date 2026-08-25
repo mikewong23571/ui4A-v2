@@ -46,7 +46,6 @@ function pendingGrant(run: AgentRun) {
 }
 
 function actionsFor(run: AgentRun) {
-  if (run.birth.kind === 'legacy-t18-reconstructed') return [];
   const actions = [];
   const question = pendingQuestion(run);
   if (run.status === 'needs-input' && question !== undefined) {
@@ -139,14 +138,6 @@ function runEntity(
           `meta/agent-definition:${run.birth.definition.ref}`,
         )}`,
       },
-      ...(run.birth.kind === 'legacy-t18-reconstructed'
-        ? [
-            {
-              rel: ['legacy-capability-run'],
-              href: `/api/entity?rel=capability-run:${run.runId}`,
-            },
-          ]
-        : []),
       ...(run.result?.artifacts ?? []).map((artifact) => ({
         rel: ['artifact'],
         href: `/api/entity?rel=${encodeURIComponent(artifact.ref)}`,
@@ -160,7 +151,7 @@ function runEntity(
   };
 }
 
-/** Project the canonical list/exact Agent Run Siren resources for both event generations. */
+/** Project the canonical list/exact Agent Run Siren resources. */
 export async function getAgentRunEntity(
   db: ConnectableDb,
   rel: string,
@@ -306,9 +297,6 @@ export async function executeAgentRunAction(
     policyScope,
   );
   if (run === undefined) return { kind: 'rejected', reason: 'agent run not found' };
-  if (run.birth.kind === 'legacy-t18-reconstructed') {
-    return { kind: 'rejected', reason: 'legacy run actions use capability-run compatibility API' };
-  }
   const command = commandForAction(run, request);
   if ('error' in command) return { kind: 'rejected', reason: command.error };
   const updated = await appendAgentRunCommand(db, command, 'human');

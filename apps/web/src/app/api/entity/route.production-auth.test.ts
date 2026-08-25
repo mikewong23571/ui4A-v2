@@ -44,7 +44,6 @@ const mocks = vi.hoisted(() => {
     }),
     engine,
     enrichEntityWithAgentRuns: vi.fn(async (_db, projected) => projected),
-    enrichEntityWithCapabilityRuns: vi.fn(async (_db, projected) => projected),
     filterEntityForPolicyScope: vi.fn((projected) => projected),
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getEngine: vi.fn(async () => engine),
@@ -57,12 +56,6 @@ vi.mock('../../../engine/service', () => ({
   getDb: mocks.getDb,
   getEngine: mocks.getEngine,
   isMetaRel: (rel: string) => rel.startsWith('meta/'),
-}));
-
-vi.mock('../../../engine/capability-runs', () => ({
-  enrichEntityWithCapabilityRuns: mocks.enrichEntityWithCapabilityRuns,
-  getCapabilityRunEntity: vi.fn(),
-  isCapabilityRunRel: () => false,
 }));
 
 vi.mock('../../../engine/agent-runs', () => ({
@@ -123,7 +116,6 @@ describe('GET /api/entity production authentication wiring', () => {
       await expect(response.json()).resolves.toEqual({ error: { code } });
       expect(mocks.assertRelInPolicyScope).not.toHaveBeenCalled();
       expect(mocks.engine.getEntity).not.toHaveBeenCalled();
-      expect(mocks.enrichEntityWithCapabilityRuns).not.toHaveBeenCalled();
       expect(mocks.enrichEntityWithAgentRuns).not.toHaveBeenCalled();
       expect(mocks.filterEntityForPolicyScope).not.toHaveBeenCalled();
     },
@@ -146,7 +138,7 @@ describe('GET /api/entity production authentication wiring', () => {
       expect.objectContaining({ rel: 'post:first', policyScope: 'development', plane: 'business' }),
     );
     expect(mocks.engine.getEntity).toHaveBeenCalledWith('post:first');
-    expect(mocks.enrichEntityWithCapabilityRuns).toHaveBeenCalledWith(
+    expect(mocks.enrichEntityWithAgentRuns).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
       'credential-subject',

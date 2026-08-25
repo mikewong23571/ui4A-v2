@@ -1,12 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { AgentRunBirthReferences, AgentRunCommand, CapabilityRunCommand } from '@ui4a/engine';
+import type { AgentRunBirthReferences, AgentRunCommand } from '@ui4a/engine';
 
 import { appendAgentRunCommand, ensureAgentRunTables } from '../db/agent-runs';
-import { appendCapabilityRunCommand, ensureCapabilityRunTables } from '../db/capability-runs';
 import { ensureEventsTable } from '../db/events';
 import { getPool } from '../db/pool';
-import { getCapabilityRunEntity } from './capability-runs';
 import { executeAgentRunAction, getAgentRunEntity } from './agent-runs';
 
 const pool = getPool(process.env.DATABASE_URL!);
@@ -45,53 +43,22 @@ function createNative(): Extract<AgentRunCommand, { kind: 'create' }> {
   };
 }
 
-const legacyCreate: CapabilityRunCommand = {
-  kind: 'create',
-  eventId: 'event:create:legacy',
-  commandId: 'command:create:legacy',
-  runId: 'legacy-entity',
-  principal: 'user:mike',
-  policyScope: 'publishing',
-  source: { rel: 'software-change:main', action: 'start', eventId: 'core:31' },
-  profileName: 'coding-default',
-  task: {
-    schemaVersion: 1,
-    repositoryRef: 'repo:fixture',
-    baseRevision: 'b'.repeat(40),
-    goal: 'implement change',
-    constraints: [],
-    acceptanceCriteria: ['tests pass'],
-    allowedPaths: ['src'],
-    budget: {
-      timeoutSeconds: 300,
-      maxTurns: 20,
-      maxRawEvents: 2_000,
-      maxRawBytes: 4 * 1024 * 1024,
-      maxRawChunkBytes: 64 * 1024,
-    },
-    redaction: { secretNames: [], redactHostPaths: true },
-  },
-};
-
 beforeEach(async () => {
   await ensureEventsTable(pool);
-  await ensureCapabilityRunTables(pool);
   await ensureAgentRunTables(pool);
   await pool.query(
-    `TRUNCATE agent_run_projection_state, agent_run_projection, agent_run_payloads,
-      capability_run_projection, capability_payloads, events`,
+    `TRUNCATE agent_run_projection_state, agent_run_projection, agent_run_payloads, events`,
   );
 });
 
 describe('Agent Run Siren', () => {
-  it('lists mixed runs and exposes native birth/task/source without runtime secrets', async () => {
-    await appendCapabilityRunCommand(pool, legacyCreate);
+  it('lists native runs and exposes birth/task/source without runtime secrets', async () => {
     await appendAgentRunCommand(pool, createNative());
 
     const collection = await getAgentRunEntity(pool, 'agent-runs', 'user:mike', 'publishing');
     expect(collection).toMatchObject({
       class: ['collection', 'agent-runs'],
-      properties: { count: 2 },
+      properties: { count: 1 },
     });
     const exact = await getAgentRunEntity(
       pool,
@@ -117,41 +84,6 @@ describe('Agent Run Siren', () => {
     await expect(
       getAgentRunEntity(pool, 'agent-run:native-entity', 'user:other', 'publishing'),
     ).resolves.toBeUndefined();
-  });
-
-  it('keeps the frozen T18 capability presenter unchanged while adding a canonical legacy view', async () => {
-    await appendCapabilityRunCommand(pool, legacyCreate);
-    const before = await getCapabilityRunEntity(
-      pool,
-      'capability-run:legacy-entity',
-      'user:mike',
-      'publishing',
-    );
-    const canonical = await getAgentRunEntity(
-      pool,
-      'agent-run:legacy-entity',
-      'user:mike',
-      'publishing',
-    );
-    const after = await getCapabilityRunEntity(
-      pool,
-      'capability-run:legacy-entity',
-      'user:mike',
-      'publishing',
-    );
-    expect(after).toEqual(before);
-    expect(canonical).toMatchObject({
-      class: ['agent-run', 'queued', 'legacy-t18-reconstructed'],
-      properties: { birth: { definition: { ref: 'coding-agent@1' } } },
-      actions: [],
-      links: [
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-        expect.objectContaining({ rel: ['agent-definition'] }),
-        expect.objectContaining({ rel: ['legacy-capability-run'] }),
-      ],
-    });
   });
 
   it('renders typed question/grant actions and persists human interactions on the same run', async () => {

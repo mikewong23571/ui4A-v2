@@ -805,20 +805,20 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       expect(record(list(record(authentication.spec).jwtRules)[0]).forwardOriginalToken).toBe(true);
       expect(authzText).not.toContain('requestPrincipals');
       expect(authzText).not.toContain('notPaths');
-      expect(authzText).toContain('/api/internal/capability-callback');
+      expect(authzText).not.toContain('/api/internal/capability-callback');
       expect(authzText).toContain('/api/internal/agent-run-callback');
       expect(authzText).toContain(
         `cluster.local/ns/${values.namespace.name}/sa/${values.serviceAccounts.worker}`,
       );
       expect(JSON.stringify(virtualServices)).toContain('directResponse');
-      expect(JSON.stringify(virtualServices)).toContain('/api/internal/capability-callback');
+      expect(JSON.stringify(virtualServices)).not.toContain('/api/internal/capability-callback');
       expect(JSON.stringify(virtualServices)).toContain('/api/internal/agent-run-callback');
       const templates = helmTemplateSource();
       expect(templates).toMatch(/jwksUri:\s*\{\{\s*\.Values\.istio\.jwksUri/);
       expect(templates).toMatch(/forwardOriginalToken:\s*true/);
       expect(templates).not.toMatch(/requestPrincipals/);
       expect(templates).not.toMatch(/notPaths:/);
-      expect(templates).toMatch(/exact:\s*\/api\/internal\/capability-callback/);
+      expect(templates).not.toMatch(/exact:\s*\/api\/internal\/capability-callback/);
       expect(templates).toMatch(/exact:\s*\/api\/internal\/agent-run-callback/);
     });
 

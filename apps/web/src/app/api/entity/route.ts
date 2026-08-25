@@ -1,10 +1,5 @@
 import { getDb, getEngine, isMetaRel } from '../../../engine/service';
 import {
-  enrichEntityWithCapabilityRuns,
-  getCapabilityRunEntity,
-  isCapabilityRunRel,
-} from '../../../engine/capability-runs';
-import {
   enrichEntityWithAgentRuns,
   getAgentRunEntity,
   isAgentRunRel,
@@ -67,19 +62,13 @@ export async function GET(request: Request) {
     if (identity.authorizationMode === 'credential') {
       assertRelInPolicyScope({ ...scopeContext, rel });
     }
-    const projected = isCapabilityRunRel(rel)
-      ? await getCapabilityRunEntity(db, rel, principal, policyScope)
-      : isAgentRunRel(rel)
-        ? await getAgentRunEntity(db, rel, principal, policyScope)
-        : await engine.getEntity(rel);
-    const capabilityEnriched =
-      projected === undefined || isCapabilityRunRel(rel) || isAgentRunRel(rel)
-        ? projected
-        : await enrichEntityWithCapabilityRuns(db, projected, principal, policyScope);
+    const projected = isAgentRunRel(rel)
+      ? await getAgentRunEntity(db, rel, principal, policyScope)
+      : await engine.getEntity(rel);
     const entity =
-      capabilityEnriched === undefined || isCapabilityRunRel(rel) || isAgentRunRel(rel)
-        ? capabilityEnriched
-        : await enrichEntityWithAgentRuns(db, capabilityEnriched, principal, policyScope);
+      projected === undefined || isAgentRunRel(rel)
+        ? projected
+        : await enrichEntityWithAgentRuns(db, projected, principal, policyScope);
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });
     }

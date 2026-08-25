@@ -102,10 +102,7 @@ const keycloakEdgeMatches: readonly EdgeMatch[] = [
   { method: 'POST', path: '/realms/ui4a/login-actions/', kind: 'prefix' },
 ];
 
-const internalCallbackPaths = [
-  '/api/internal/capability-callback',
-  '/api/internal/agent-run-callback',
-] as const;
+const internalCallbackPaths = ['/api/internal/agent-run-callback'] as const;
 
 type ImageKey = (typeof imageKeys)[number];
 type ServiceAccountKey = (typeof serviceAccountKeys)[number];

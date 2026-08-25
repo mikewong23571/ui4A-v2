@@ -4,8 +4,6 @@ import {
   isMetaRel,
   LlmArtifactConfigurationError,
 } from '../../../engine/service';
-import { executeCapabilityRunAction, isCapabilityRunRel } from '../../../engine/capability-runs';
-import { finalizeCapabilitySource } from '../../../engine/capability-source-callback';
 import { executeAgentRunAction, isAgentRunRel } from '../../../engine/agent-runs';
 import {
   applyTrustedIdentity,
@@ -87,21 +85,6 @@ export async function POST(request: Request) {
       });
     }
     const resolvedRequest = applyTrustedIdentity(parsed.request, identity);
-    if (isCapabilityRunRel(resolvedRequest.rel)) {
-      const outcome = await executeCapabilityRunAction(db, resolvedRequest, identity.policyScope);
-      if (outcome.kind !== 'accepted') {
-        return Response.json({ layer: 'guard-failed', reason: outcome.reason }, { status: 422 });
-      }
-      const runId = resolvedRequest.rel.slice('capability-run:'.length);
-      const finalized = await finalizeCapabilitySource(db, runId);
-      if (!finalized.ok) {
-        return Response.json(
-          { layer: finalized.layer ?? 'guard-failed', reason: finalized.reason },
-          { status: finalized.status },
-        );
-      }
-      return Response.json({ entity: outcome.entity, source: finalized.entity });
-    }
     if (isAgentRunRel(resolvedRequest.rel)) {
       const outcome = await executeAgentRunAction(db, resolvedRequest, identity.policyScope);
       if (outcome.kind !== 'accepted') {

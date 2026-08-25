@@ -160,11 +160,6 @@
       "path": "apps/cli/src/commands.ts",
       "lines": 526,
       "limit": 500
-    },
-    {
-      "path": "apps/web/src/db/agent-runs.ts",
-      "lines": 511,
-      "limit": 500
     }
   ],
   "dirs": [

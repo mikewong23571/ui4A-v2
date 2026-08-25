@@ -2,7 +2,6 @@ import type { PoolClient } from 'pg';
 
 import { AGENT_DEFINITION_DDL } from './agent-definitions';
 import { AGENT_RUN_DDL } from './agent-runs';
-import { CAPABILITY_RUN_DDL } from './capability-runs';
 import { DRAFT_DDL } from './drafts';
 import { EVENTS_DDL, type DbExecutor } from './events';
 import { PRESENTATION_DDL } from './presentation';
@@ -54,7 +53,6 @@ const INITIAL_SCHEMA_DDL = [
   EVENTS_DDL,
   PRESENTATION_DDL,
   DRAFT_DDL,
-  CAPABILITY_RUN_DDL,
   AGENT_DEFINITION_DDL,
   AGENT_RUN_DDL,
 ] as const;

@@ -5,19 +5,18 @@ import {
   type AgentRunBirthReferences,
   type AgentRunCommand,
   type AgentTaskEnvelope,
-  type CapabilityRunCommand,
   type DraftCommand,
   type UserSidecarKey,
 } from '@ui4a/engine';
 import type { AgentDefinitionSource, JsonValue } from '@ui4a/shared';
 
 import { ensureAgentDefinitionTables, installSeedAgentDefinition } from './agent-definitions';
-import { appendAgentRunCommand, ensureAgentRunTables, storeAgentRunPayload } from './agent-runs';
 import {
-  appendCapabilityRawEvent,
-  appendCapabilityRunCommand,
-  ensureCapabilityRunTables,
-} from './capability-runs';
+  appendAgentRunCommand,
+  appendAgentRunRawEvent,
+  ensureAgentRunTables,
+  storeAgentRunPayload,
+} from './agent-runs';
 import { appendDraftCommand, ensureDraftTables, payloadSha256 } from './drafts';
 import { appendEvent, ensureEventsTable } from './events';
 import { getPool } from './pool';
@@ -57,34 +56,6 @@ if (new URL(TEST_DATABASE_URL).pathname !== '/ui4a_test') {
 }
 const pool = getPool(TEST_DATABASE_URL);
 const SECRET_CANARY = '__recovery_secret_must_not_escape__';
-
-const capabilityCreate = {
-  kind: 'create',
-  eventId: 'event:recovery:capability:create',
-  commandId: 'command:recovery:capability:create',
-  runId: 'recovery-capability-1',
-  principal: 'user:recovery',
-  policyScope: 'development',
-  source: { rel: 'recovery:fixture', action: 'run', eventId: 'core:recovery:1' },
-  profileName: 'recovery-profile',
-  task: {
-    schemaVersion: 1,
-    repositoryRef: 'repo:recovery',
-    baseRevision: 'a'.repeat(40),
-    goal: 'verify recovery',
-    constraints: [],
-    acceptanceCriteria: ['fingerprints match'],
-    allowedPaths: ['apps/web/src/db'],
-    budget: {
-      timeoutSeconds: 300,
-      maxTurns: 20,
-      maxRawEvents: 10,
-      maxRawBytes: 65_536,
-      maxRawChunkBytes: 16_384,
-    },
-    redaction: { secretNames: ['RECOVERY_TEST_SECRET'], redactHostPaths: true },
-  },
-} satisfies CapabilityRunCommand;
 
 const birth: AgentRunBirthReferences = {
   schemaVersion: 1,
@@ -197,7 +168,6 @@ async function clearFixture(): Promise<void> {
     `TRUNCATE presentation_user_sidecars,
       agent_run_projection_state, agent_run_projection, agent_run_payloads,
       agent_definition_active, agent_definition_versions, agent_definition_payloads,
-      capability_run_projection, capability_payloads,
       draft_projection, draft_payloads, events`,
   );
 }
@@ -234,17 +204,6 @@ async function seedFixture(): Promise<void> {
     validation: { valid: false, issues: [] },
   };
   await appendDraftCommand(pool, draftCommand, draftPayload);
-  await appendCapabilityRunCommand(pool, capabilityCreate);
-  vi.stubEnv('RECOVERY_TEST_SECRET', SECRET_CANARY);
-  await appendCapabilityRawEvent(pool, {
-    runId: capabilityCreate.runId,
-    principal: capabilityCreate.principal,
-    policyScope: capabilityCreate.policyScope,
-    ordinal: 1,
-    payload: { token: SECRET_CANARY, cwd: '/private/recovery/workspace' },
-    workspacePath: '/private/recovery',
-    redaction: capabilityCreate.task.redaction,
-  });
   await installSeedAgentDefinition(pool, {
     principal: 'user:recovery',
     policyScope: 'development',
@@ -253,6 +212,14 @@ async function seedFixture(): Promise<void> {
     evalEvidence: { suiteRef: 'eval-suite:recovery', passed: true, score: 1 } as JsonValue,
   });
   await appendAgentRunCommand(pool, nativeCreate);
+  vi.stubEnv('RECOVERY_TEST_SECRET', SECRET_CANARY);
+  await appendAgentRunRawEvent(pool, {
+    runId: nativeCreate.runId,
+    principal: nativeCreate.principal,
+    policyScope: nativeCreate.policyScope,
+    ordinal: 1,
+    redactedPayload: { token: '[REDACTED]', cwd: 'workspace://recovery' },
+  });
   await storeAgentRunPayload(pool, { markdown: '# Recovery evidence' }, 'application/json');
   await appendSidecarCommand(pool, {
     kind: 'instantiate',
@@ -267,7 +234,6 @@ async function seedFixture(): Promise<void> {
 beforeAll(async () => {
   await ensureEventsTable(pool);
   await ensureDraftTables(pool);
-  await ensureCapabilityRunTables(pool);
   await ensureAgentDefinitionTables(pool);
   await ensureAgentRunTables(pool);
   await ensurePresentationTables(pool);
@@ -371,7 +337,7 @@ describe.sequential('UI4A recovery consistency', () => {
       `TRUNCATE presentation_user_sidecars,
         agent_run_projection_state, agent_run_projection,
         agent_definition_active, agent_definition_versions,
-        capability_run_projection, draft_projection`,
+        draft_projection`,
     );
     expect(await captureUi4aProjectionFingerprint(pool)).not.toBe(sourceProjectionHash);
 

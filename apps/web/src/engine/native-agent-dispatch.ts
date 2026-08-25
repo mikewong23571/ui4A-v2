@@ -18,6 +18,7 @@ import {
   WRITING_AGENT_LIMITS,
   WRITING_AGENT_SCHEMA_VERSION,
   type CapabilityDefinition,
+  type CodingExecutorProfile,
   type CodingTask,
   type ProductionDeploymentConfig,
 } from '@ui4a/shared';
@@ -38,12 +39,47 @@ import {
   documentProfileAsAgentRuntime,
 } from './agent-runtime-config';
 import { agentRegistryConfigurationFromEnvironment } from './agent-definitions';
-import {
-  codingExecutorProfileFromEnvironment,
-  codingTaskFromCapabilityParams,
-} from './capability-runs';
+import { codingExecutorProfileFromEnvironment } from './coding-executor-config';
 
 const MAX_SUSPENSIONS = 8;
+
+/** Build the server-owned CodingTask from request params; execution-policy overrides are forbidden. */
+function codingTaskFromCapabilityParams(
+  params: Record<string, unknown>,
+  profile: CodingExecutorProfile,
+): CodingTask {
+  for (const key of ['provider', 'binary', 'model', 'sandbox', 'yolo', 'profile', 'cwd']) {
+    if (params[key] !== undefined) throw new Error(`request override ${key} is forbidden`);
+  }
+  if (
+    typeof params.repositoryRef !== 'string' ||
+    typeof params.baseRevision !== 'string' ||
+    typeof params.goal !== 'string' ||
+    params.goal === ''
+  ) {
+    throw new Error('repositoryRef/baseRevision/goal are required');
+  }
+  return {
+    schemaVersion: 1,
+    repositoryRef: params.repositoryRef,
+    baseRevision: params.baseRevision,
+    goal: params.goal,
+    constraints: stringListParam(params, 'constraints'),
+    acceptanceCriteria: stringListParam(params, 'acceptanceCriteria'),
+    allowedPaths: stringListParam(params, 'allowedPaths'),
+    budget: {
+      timeoutSeconds: profile.timeoutSeconds,
+      maxTurns: profile.maxTurns ?? 24,
+      maxRawEvents: 2_000,
+      maxRawBytes: 4 * 1024 * 1024,
+      maxRawChunkBytes: 64 * 1024,
+    },
+    redaction: {
+      secretNames: ['API_KEY', 'TOKEN', 'PASSWORD', 'AUTHORIZATION', 'COOKIE'],
+      redactHostPaths: true,
+    },
+  };
+}
 
 interface NativeSpecializationTaskMapping {
   runtimeProfile: AgentRuntimeProfile;
@@ -210,9 +246,9 @@ function contractRef(definitionRef: string, kind: 'input' | 'output', schema: un
 /**
  * Resolve every server-owned birth input before the source business event is appended.
  *
- * This compatibility bridge deliberately recognizes no capability name. The activated exact
- * Agent Definition supplies specialization semantics while the existing T18 capability parameters
- * are converted into the first native task contract.
+ * The dispatch deliberately recognizes no capability name. The activated exact Agent Definition
+ * supplies specialization semantics while the capability parameters are converted into the
+ * native task contract.
  */
 export async function prepareNativeAgentDispatch(
   db: ConnectableDb,

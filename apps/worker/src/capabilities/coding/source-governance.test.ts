@@ -4,8 +4,6 @@ import { describe, expect, it } from 'vitest';
 
 const productionFiles = [
   new URL('./codex.ts', import.meta.url),
-  new URL('./compatibility.ts', import.meta.url),
-  new URL('./runtime.ts', import.meta.url),
   new URL('./workspace.ts', import.meta.url),
   new URL('../../agents/host/codex-transport.ts', import.meta.url),
 ];

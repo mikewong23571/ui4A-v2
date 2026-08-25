@@ -42,7 +42,6 @@ import type {
 } from '@ui4a/agent';
 
 import type { DelegationActivities, NotifyActivities } from './activities';
-import type { CodingTask, WorkspaceHandle, CodingResult } from '@ui4a/shared';
 import type {
   AgentExecutionNeedsInput,
   AgentExecutionWaitingApproval,
@@ -83,79 +82,7 @@ export async function notifyWorkflow(confirmation: NotifyConfirmation): Promise<
 }
 
 // ---------------------------------------------------------------------------
-// codingCapabilityWorkflow(T18:Capability Run != Delegation)
-// ---------------------------------------------------------------------------
-
-export interface CodingCapabilityWorkflowArgs {
-  runId: string;
-  principal: string;
-  policyScope: string;
-  profileName: string;
-  task: CodingTask;
-  baseUrl: string;
-}
-
-export interface CodingPreparedResult {
-  workspace: WorkspaceHandle;
-}
-
-export type CodingExecutionResult =
-  | { status: 'succeeded'; result: CodingResult }
-  | { status: 'failed'; code: string; reason: string }
-  | { status: 'cancelled'; reason: string };
-
-export interface CodingCapabilityActivities {
-  prepareCodingRun(args: CodingCapabilityWorkflowArgs): Promise<CodingPreparedResult>;
-  executeCodingRun(args: {
-    context: CodingCapabilityWorkflowArgs;
-    prepared: CodingPreparedResult;
-  }): Promise<CodingExecutionResult>;
-  finalizeCodingRun(args: {
-    context: CodingCapabilityWorkflowArgs;
-    outcome: CodingExecutionResult;
-  }): Promise<void>;
-}
-
-const codingPrepare = proxyActivities<Pick<CodingCapabilityActivities, 'prepareCodingRun'>>({
-  startToCloseTimeout: '1 minute',
-  // Provider/profile preflight failures are terminal and already persisted.
-  retry: { maximumAttempts: 1 },
-});
-const codingExecute = proxyActivities<Pick<CodingCapabilityActivities, 'executeCodingRun'>>({
-  startToCloseTimeout: '1 hour',
-  heartbeatTimeout: '15 seconds',
-  retry: { maximumAttempts: 3 },
-});
-const codingFinalize = proxyActivities<Pick<CodingCapabilityActivities, 'finalizeCodingRun'>>({
-  startToCloseTimeout: '30 seconds',
-  retry: { maximumAttempts: 5 },
-});
-
-/** Durable segmented Coding Capability execution with idempotent callback finalization. */
-export async function codingCapabilityWorkflow(
-  args: CodingCapabilityWorkflowArgs,
-): Promise<CodingExecutionResult> {
-  let prepared: CodingPreparedResult;
-  try {
-    prepared = await codingPrepare.prepareCodingRun(args);
-  } catch (error) {
-    const outcome: CodingExecutionResult = {
-      status: 'failed',
-      code: 'prepare-failed',
-      reason: error instanceof Error ? error.message : String(error),
-    };
-    // prepare persists the terminal Run before throwing; callback the declared
-    // source action so the Business Flow cannot remain stuck in running.
-    await codingFinalize.finalizeCodingRun({ context: args, outcome });
-    return outcome;
-  }
-  const outcome = await codingExecute.executeCodingRun({ context: args, prepared });
-  await codingFinalize.finalizeCodingRun({ context: args, outcome });
-  return outcome;
-}
-
-// ---------------------------------------------------------------------------
-// agentRunWorkflow(T19:generic Host; additive beside the T18 compatibility workflow)
+// agentRunWorkflow(T19:generic Host)
 // ---------------------------------------------------------------------------
 
 export type {

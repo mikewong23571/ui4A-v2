@@ -16,7 +16,6 @@
  * 跨 app 相对引用——事件日志是共享底座,不属于任何平面,arch-brief §1)。
  */
 import { createHash } from 'node:crypto';
-import { cancellationSignal } from '@temporalio/activity';
 
 import type { DbExecutor } from '../../web/src/db/events';
 import { appendEvent } from '../../web/src/db/events';
@@ -47,16 +46,6 @@ import type {
   DelegationStartArgs,
 } from './workflows';
 import type { NotifyConfirmation } from './workflows';
-import type {
-  CodingCapabilityWorkflowArgs,
-  CodingExecutionResult,
-  CodingPreparedResult,
-} from './workflows';
-import {
-  executeCodingRunWithDeps,
-  parseExecutorProfiles,
-  prepareCodingRunWithDeps,
-} from './capabilities/coding/runtime';
 import type {
   CodexExecutionDeps,
   CodexExecutionInput,
@@ -186,70 +175,26 @@ export async function notify(
   return deliverNotification(workerDb(), confirmation);
 }
 
-function codingRuntimeDeps() {
+// ---------------------------------------------------------------------------
+// Generic Agent Host activities (T19)
+// ---------------------------------------------------------------------------
+
+function codingAgentAdapterDeps(): CodingAgentAdapterDeps {
   const repositoryRegistry = process.env.UI4A_CODING_REPOSITORIES;
   const workspaceRoot = process.env.UI4A_CODING_WORKSPACE_ROOT;
   const profiles = process.env.UI4A_CODING_EXECUTOR_PROFILES;
   if (repositoryRegistry === undefined || workspaceRoot === undefined || profiles === undefined) {
     throw new Error(
-      'coding capability requires UI4A_CODING_REPOSITORIES, UI4A_CODING_WORKSPACE_ROOT and UI4A_CODING_EXECUTOR_PROFILES',
+      'coding agent requires UI4A_CODING_REPOSITORIES, UI4A_CODING_WORKSPACE_ROOT and UI4A_CODING_EXECUTOR_PROFILES',
     );
   }
+  const parsed = JSON.parse(profiles) as unknown;
+  if (!Array.isArray(parsed)) throw new Error('coding executor profiles must be an array');
   return {
     db: workerDb(),
     repositoryRegistry,
     workspaceRoot,
-    profiles: parseExecutorProfiles(profiles),
-  };
-}
-
-export async function prepareCodingRun(
-  args: CodingCapabilityWorkflowArgs,
-): Promise<CodingPreparedResult> {
-  return prepareCodingRunWithDeps(args, codingRuntimeDeps());
-}
-
-export async function executeCodingRun(args: {
-  context: CodingCapabilityWorkflowArgs;
-  prepared: CodingPreparedResult;
-}): Promise<CodingExecutionResult> {
-  return executeCodingRunWithDeps(
-    args.context,
-    args.prepared,
-    codingRuntimeDeps(),
-    cancellationSignal(),
-  );
-}
-
-export async function finalizeCodingRun(args: {
-  context: CodingCapabilityWorkflowArgs;
-  outcome: CodingExecutionResult;
-}): Promise<void> {
-  const token = process.env.UI4A_CAPABILITY_CALLBACK_TOKEN;
-  if (token === undefined || token === '') {
-    throw new Error('UI4A_CAPABILITY_CALLBACK_TOKEN is required for coding callback');
-  }
-  const response = await fetch(`${args.context.baseUrl}/api/internal/capability-callback`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-ui4a-capability-token': token,
-    },
-    body: JSON.stringify({ runId: args.context.runId, outcome: args.outcome }),
-  });
-  if (!response.ok) {
-    throw new Error(`coding callback failed: HTTP ${response.status} ${await response.text()}`);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Generic Agent Host activities (T19; additive beside the T18 compatibility activities)
-// ---------------------------------------------------------------------------
-
-function codingAgentAdapterDeps(): CodingAgentAdapterDeps {
-  const legacy = codingRuntimeDeps();
-  return {
-    ...legacy,
+    profiles: parsed as CodingAgentAdapterDeps['profiles'],
     callbackBaseUrl: process.env.UI4A_PUBLIC_BASE_URL,
     callbackToken: process.env.UI4A_CAPABILITY_CALLBACK_TOKEN,
   };

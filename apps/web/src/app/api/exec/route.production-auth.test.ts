@@ -52,8 +52,6 @@ const mocks = vi.hoisted(() => {
     engine,
     exec,
     executeAgentRunAction: vi.fn(),
-    executeCapabilityRunAction: vi.fn(),
-    finalizeCapabilitySource: vi.fn(),
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getEngine: vi.fn(async () => engine),
     relCoveredByPolicyScope: vi.fn(() => true),
@@ -67,15 +65,6 @@ vi.mock('../../../engine/service', () => ({
   getEngine: mocks.getEngine,
   isMetaRel: (rel: string) => rel.startsWith('meta/'),
   LlmArtifactConfigurationError: class LlmArtifactConfigurationError extends Error {},
-}));
-
-vi.mock('../../../engine/capability-runs', () => ({
-  executeCapabilityRunAction: mocks.executeCapabilityRunAction,
-  isCapabilityRunRel: () => false,
-}));
-
-vi.mock('../../../engine/capability-source-callback', () => ({
-  finalizeCapabilitySource: mocks.finalizeCapabilitySource,
 }));
 
 vi.mock('../../../engine/agent-runs', () => ({
@@ -147,9 +136,7 @@ describe('POST /api/exec production authentication wiring', () => {
       expect(mocks.assertRelInPolicyScope).not.toHaveBeenCalled();
       expect(mocks.applyTrustedIdentity).not.toHaveBeenCalled();
       expect(mocks.exec).not.toHaveBeenCalled();
-      expect(mocks.executeCapabilityRunAction).not.toHaveBeenCalled();
       expect(mocks.executeAgentRunAction).not.toHaveBeenCalled();
-      expect(mocks.finalizeCapabilitySource).not.toHaveBeenCalled();
     },
   );
 

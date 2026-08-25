@@ -99,11 +99,7 @@ import { validateSpec } from '../render/validator';
 import { wordOf } from '../render/registry';
 import { dispatchNotify } from '../temporal/notify';
 import { resolveFlowRelAlias, withCollectionFlowEntryLinks } from './flow-entry';
-import {
-  createAndDispatchCapabilityRun,
-  preflightCapabilityExecutor,
-  preflightCodingResultDecision,
-} from './capability-runs';
+import { preflightCodingResultDecision } from './coding-result-decision';
 import {
   createAndDispatchAgentRun,
   prepareNativeAgentDispatch,
@@ -371,7 +367,6 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         { rel: 'software-changes', title: '软件变更', collection: true, app: 'development' },
         { rel: 'writing-requests', title: '写作请求', collection: true, app: 'editorial' },
         { rel: 'agent-runs', title: 'Agent Runs', collection: true, app: 'development' },
-        { rel: 'capability-runs', title: '能力执行', collection: true, app: 'development' },
       ],
       applications,
       capabilities,
@@ -787,20 +782,22 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
           const capability = snapshot.capabilities?.[event.capability];
           if (capability === undefined) continue;
-          if (capability.executor?.agentDefinition !== undefined) {
-            preparedNativeRuns.set(
-              event,
-              await prepareNativeAgentDispatch(db, {
-                principal: spawnPrincipal,
-                policyScope: spawnPolicyScope,
-                params: aliased.params ?? {},
-                capability,
-                ...(productionConfig === undefined ? {} : { productionConfig }),
-              }),
+          if (capability.executor === undefined) continue;
+          if (capability.executor.agentDefinition === undefined) {
+            throw new Error(
+              `capability ${capability.name} executor has no Agent Definition; only canonical Agent Runs can be dispatched`,
             );
-          } else {
-            preflightCapabilityExecutor(capability);
           }
+          preparedNativeRuns.set(
+            event,
+            await prepareNativeAgentDispatch(db, {
+              principal: spawnPrincipal,
+              policyScope: spawnPolicyScope,
+              params: aliased.params ?? {},
+              capability,
+              ...(productionConfig === undefined ? {} : { productionConfig }),
+            }),
+          );
         }
         const spawned: {
           event: EngineEvent;
@@ -824,30 +821,19 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
           const capability = snapshot.capabilities?.[event.capability];
           if (capability?.executor === undefined) continue;
-          const run =
-            prepared === undefined
-              ? await createAndDispatchCapabilityRun(db, {
-                  sourceSeq: seq,
-                  sourceRel: aliased.rel,
-                  sourceAction: aliased.action,
-                  principal: spawnPrincipal,
-                  policyScope: spawnPolicyScope,
-                  params: aliased.params ?? {},
-                  capability,
-                  onDoneAction: event['on-done'],
-                  onErrorAction: event['on-error'],
-                  baseUrl: process.env.UI4A_PUBLIC_BASE_URL ?? 'http://localhost:3100',
-                })
-              : await createAndDispatchAgentRun(db, {
-                  prepared,
-                  sourceSeq: seq,
-                  sourceRel: aliased.rel,
-                  sourceAction: aliased.action,
-                  principal: spawnPrincipal,
-                  policyScope: spawnPolicyScope,
-                  onDoneAction: event['on-done'],
-                  onErrorAction: event['on-error'],
-                });
+          if (prepared === undefined) {
+            throw new Error('spawn dispatch missed its prepared native Agent Run');
+          }
+          const run = await createAndDispatchAgentRun(db, {
+            prepared,
+            sourceSeq: seq,
+            sourceRel: aliased.rel,
+            sourceAction: aliased.action,
+            principal: spawnPrincipal,
+            policyScope: spawnPolicyScope,
+            onDoneAction: event['on-done'],
+            onErrorAction: event['on-error'],
+          });
           if (run.status === 'failed') {
             const callbackAction = run.source.onErrorAction;
             if (callbackAction === undefined) {

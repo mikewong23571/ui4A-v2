@@ -473,3 +473,12 @@
   跳转 `/auth/login?returnTo=<当前路径>`（returnTo 仍经服务端同源校验）；403/`scope_insufficient`
   不跳转——凭证有效而授权不足时登录无意义。接入点为合同客户端（entity/exec 读写）、sitemap
   version 取数与首页时间线取数，不发明旁路逻辑。
+
+## D39 删除 legacy Capability Run 子系统,canonical Agent Run 成唯一执行路径(2026-08-25,T23 Phase B)
+
+- **决定**：删除全部 T18 兼容层与 legacy Capability Run 子系统（事件双读、mixed 投影、
+  `capability-run:*` Siren 资源、`codingCapabilityWorkflow`、`/api/internal/capability-callback`
+  与 sitemap `capability-runs` surface)——项目未发布，窗口内允许合同收窄，不保留双路径。
+- **理由**：未发布软件无需为从未进入生产的内部兼容面永久付双写者/双投影/双部署合同成本。
+- **边界**：事件日志 append-only 语义与已存事件 payload 格式不变；callback token 机制
+  (`UI4A_CAPABILITY_CALLBACK_TOKEN`)保留，继续服务 canonical `/api/internal/agent-run-callback`。

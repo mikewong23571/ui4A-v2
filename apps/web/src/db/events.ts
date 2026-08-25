@@ -214,8 +214,6 @@ CREATE TABLE IF NOT EXISTS events (
   detail    JSONB
 );
 
-ALTER TABLE events ADD COLUMN IF NOT EXISTS domain TEXT NOT NULL DEFAULT 'core';
-
 CREATE INDEX IF NOT EXISTS events_seq_asc ON events (seq);
 CREATE INDEX IF NOT EXISTS events_domain_seq_asc ON events (domain, seq);
 

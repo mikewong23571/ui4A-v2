@@ -13,6 +13,15 @@ export function codingExecutorProfilesFromEnvironment(): CodingExecutorProfile[]
   return parseProfiles(raw);
 }
 
+/** Resolve exactly one server-owned profile by name; a missing profile is an honest failure. */
+export function codingExecutorProfileFromEnvironment(name: string): CodingExecutorProfile {
+  const profile = codingExecutorProfilesFromEnvironment().find(
+    (candidate) => candidate.name === name,
+  );
+  if (profile === undefined) throw new Error(`coding executor profile ${name} is missing`);
+  return profile;
+}
+
 /** Activation registry: an absent config is an empty registry, so executor flows cannot activate. */
 export function codingExecutorProfileRegistryFromEnvironment(): ReadonlyMap<string, string> {
   const raw = process.env.UI4A_CODING_EXECUTOR_PROFILES;

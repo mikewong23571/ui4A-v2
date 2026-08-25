@@ -49,11 +49,9 @@ describe('T22 Kubernetes Runner production composition', () => {
 describe('T22 opaque internal callback and Istio JWT compatibility', () => {
   it('keeps opaque callback credentials out of the JWT Authorization header', () => {
     const callbackSources = [
-      'apps/worker/src/activities.ts',
       'apps/worker/src/agents/coding/adapter.ts',
       'apps/worker/src/agents/writing/adapter.ts',
       'apps/worker/src/agents/authoring/adapter.ts',
-      'apps/web/src/app/api/internal/capability-callback/route.ts',
       'apps/web/src/app/api/internal/agent-run-callback/route.ts',
     ].map(source);
 
@@ -66,7 +64,7 @@ describe('T22 opaque internal callback and Istio JWT compatibility', () => {
   it('keeps internal callback paths off the Gateway while allowing the Worker identity', () => {
     const istio = source('deploy/helm/ui4a/templates/istio.yaml');
 
-    expect(istio).toMatch(/exact:\s*\/api\/internal\/capability-callback/);
+    expect(istio).not.toMatch(/exact:\s*\/api\/internal\/capability-callback/);
     expect(istio).toMatch(/exact:\s*\/api\/internal\/agent-run-callback/);
     expect(istio).not.toMatch(/prefix:\s*\/api\/internal\//);
     expect(istio).toMatch(/directResponse:\s*\{\s*status:\s*404\s*\}/);

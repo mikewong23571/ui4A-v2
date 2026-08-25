@@ -30,10 +30,10 @@ export interface AgentRunRuntimeBirthRef {
   adapterVersion: string;
 }
 
-/** Complete replay identity for one native or explicitly reconstructed Run. */
+/** Complete replay identity for one native Run. */
 export interface AgentRunBirthReferences {
   schemaVersion: 1;
-  kind: 'event-native' | 'legacy-t18-reconstructed';
+  kind: 'event-native';
   definition: AgentRunDefinitionBirthRef;
   prompt: AgentRunPromptBirthRef;
   runtime: AgentRunRuntimeBirthRef;

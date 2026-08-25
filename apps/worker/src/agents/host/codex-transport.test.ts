@@ -134,7 +134,7 @@ describe('generic Codex structured transport', () => {
     );
   });
 
-  it('serializes provider-neutral messages identically to the T18 compatibility adapter', () => {
+  it('serializes provider-neutral messages into the stable compiled wire format', () => {
     expect(serializeCodexMessages(messages)).toContain(
       '<<<UI4A_COMPILED_MESSAGE_V1 role="system">>>',
     );

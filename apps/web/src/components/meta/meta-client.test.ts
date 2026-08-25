@@ -81,7 +81,7 @@ describe('Meta browser client', () => {
                 name: 'capability-callback',
                 title: 'Internal',
                 method: 'POST',
-                href: '/api/internal/capability-callback',
+                href: '/api/internal/agent-run-callback',
               },
             ],
           }),

@@ -4,14 +4,12 @@ import {
   applyAgentRunCommand,
   canonicalJson,
   createAgentRunSnapshot,
-  decodeLegacyCapabilityRunEvents,
   foldAgentRunEvents,
   type AgentResultEnvelope,
   type AgentRun,
   type AgentRunCommand,
   type AgentRunEvent,
   type AgentRunSnapshot,
-  type CapabilityRunEvent,
 } from '@ui4a/engine';
 import type { PoolClient } from 'pg';
 
@@ -31,20 +29,6 @@ const AGENT_RUN_KINDS = [
   'agent-run-failed',
   'agent-run-cancelled',
   'agent-run-staled',
-] as const;
-
-const LEGACY_RUN_KINDS = [
-  'capability-run-created',
-  'capability-run-preparing',
-  'capability-run-started',
-  'capability-run-cursor-advanced',
-  'capability-run-restarted',
-  'capability-run-approval-requested',
-  'capability-run-resumed',
-  'capability-run-succeeded',
-  'capability-run-failed',
-  'capability-run-cancelled',
-  'capability-run-staled',
 ] as const;
 
 export const AGENT_RUN_DDL = `
@@ -85,7 +69,7 @@ CREATE INDEX IF NOT EXISTS agent_run_source
 CREATE UNIQUE INDEX IF NOT EXISTS agent_run_source_creation_unique
   ON events ((detail->'source'->>'eventId'))
   WHERE domain='capability'
-    AND kind IN ('capability-run-created', 'agent-run-created')
+    AND kind = 'agent-run-created'
     AND detail->'source'->>'eventId' IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS agent_run_native_command_unique
   ON events ((detail->>'commandId'))
@@ -197,10 +181,6 @@ export async function readAgentRunPayload(
   return result.rows[0]?.payload;
 }
 
-function isLegacyKind(kind: string): boolean {
-  return (LEGACY_RUN_KINDS as readonly string[]).includes(kind);
-}
-
 function isNativeKind(kind: string): boolean {
   return (AGENT_RUN_KINDS as readonly string[]).includes(kind);
 }
@@ -224,25 +204,21 @@ async function hydrateNativeEvent(
   return { ...base, result: result as AgentResultEnvelope };
 }
 
-async function loadMixedSnapshot(db: DbExecutor): Promise<LoadedSnapshot> {
+async function loadSnapshot(db: DbExecutor): Promise<LoadedSnapshot> {
   const rows = await db.query<{ seq: string | number; kind: string; detail: unknown }>(
     `SELECT seq,kind,detail FROM events
-     WHERE domain='capability' AND (kind = ANY($1::text[]) OR kind = ANY($2::text[]))
+     WHERE domain='capability' AND kind = ANY($1::text[])
      ORDER BY seq ASC`,
-    [LEGACY_RUN_KINDS, AGENT_RUN_KINDS],
+    [AGENT_RUN_KINDS],
   );
   let snapshot = createAgentRunSnapshot();
   const updatedSeqByRun = new Map<string, number>();
   let latestSeq = 0;
   for (const row of rows.rows) {
-    let events: AgentRunEvent[];
-    if (isLegacyKind(row.kind)) {
-      events = decodeLegacyCapabilityRunEvents([row.detail as CapabilityRunEvent]);
-    } else if (isNativeKind(row.kind)) {
-      events = [await hydrateNativeEvent(db, row.detail as AgentRunEvent | PersistedResultEvent)];
-    } else {
-      continue;
-    }
+    if (!isNativeKind(row.kind)) continue;
+    const events = [
+      await hydrateNativeEvent(db, row.detail as AgentRunEvent | PersistedResultEvent),
+    ];
     snapshot = foldAgentRunEvents(events, snapshot);
     const runId = events[0]?.runId;
     const seq = Number(row.seq);
@@ -268,7 +244,7 @@ async function upsertProjection(db: DbExecutor, run: AgentRun, updatedSeq: numbe
        aggregate=EXCLUDED.aggregate, updated_seq=EXCLUDED.updated_seq`,
     [
       run.runId,
-      run.birth.kind === 'legacy-t18-reconstructed' ? 'legacy-t18' : 'native',
+      'native',
       run.principal,
       run.policyScope,
       run.status,
@@ -298,25 +274,20 @@ async function replaceProjection(db: DbExecutor, loaded: LoadedSnapshot): Promis
   );
 }
 
-/** Catch up the canonical projection after a legacy writer appended immutable T18 events. */
+/** Reconcile the canonical projection from the append-only Agent Run event truth. */
 export async function synchronizeAgentRunProjection(db: ConnectableDb): Promise<void> {
   await withTransaction(db, async (client) => {
-    // Share the legacy Capability writer lock while rebuilding the mixed projection.
-    await client.query('SELECT pg_advisory_xact_lock(740939)');
+    // Sequence allocation can commit out of order, so a max(seq) checkpoint is not a safe
+    // proof that every lower event was observed. Reconcile from the one append-only truth.
     await client.query('SELECT pg_advisory_xact_lock(740943)');
-    // Capability and native writers deliberately keep separate compatibility locks. Sequence
-    // allocation can therefore commit out of order, so a max(seq) checkpoint is not a safe
-    // proof that every lower event was observed. Reconcile from the one append-only truth on
-    // reads until both writers share the generic command port in the next migration step.
-    await replaceProjection(client, await loadMixedSnapshot(client));
+    await replaceProjection(client, await loadSnapshot(client));
   });
 }
 
 export async function rebuildAgentRunProjection(db: ConnectableDb): Promise<void> {
   await withTransaction(db, async (client) => {
-    await client.query('SELECT pg_advisory_xact_lock(740939)');
     await client.query('SELECT pg_advisory_xact_lock(740943)');
-    await replaceProjection(client, await loadMixedSnapshot(client));
+    await replaceProjection(client, await loadSnapshot(client));
   });
 }
 
@@ -337,7 +308,7 @@ export async function appendAgentRunCommand(
   return withTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(740943)');
     await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [command.runId]);
-    const loaded = await loadMixedSnapshot(client);
+    const loaded = await loadSnapshot(client);
     const knownEvent = loaded.snapshot.commandEventIds[command.commandId];
     if (knownEvent !== undefined) {
       if (knownEvent !== command.eventId)
@@ -533,9 +504,8 @@ export async function listAgentRunRawReceipts(
 ): Promise<Record<string, unknown>[]> {
   const result = await db.query<{ detail: Record<string, unknown> }>(
     `SELECT detail FROM events WHERE domain='capability'
-     AND ((kind='agent-run-raw-chunk-recorded' AND rel=$1)
-       OR (kind='capability-raw-chunk-recorded' AND rel=$2)) ORDER BY seq ASC`,
-    [`agent-run:${runId}`, `capability-run:${runId}`],
+     AND kind='agent-run-raw-chunk-recorded' AND rel=$1 ORDER BY seq ASC`,
+    [`agent-run:${runId}`],
   );
   return result.rows.map((row) => row.detail);
 }

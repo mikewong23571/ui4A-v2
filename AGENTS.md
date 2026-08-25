@@ -44,8 +44,7 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 - `src/engine/`: server-side composition boundary. `service.ts` connects the pure engine to PostgreSQL, Cedar, render specs, application bundles, and Temporal dispatch. It serializes execution, incrementally folds new events, and serves business and meta projections. `flow-entry.ts` owns `flow:<name>` entry aliases and collection links.
 - `src/db/`: PostgreSQL pool, schema, append/read operations, and replay tests. `events.ts` is the event-log write/read boundary. The worker currently reuses this adapter; do not create a competing writer abstraction casually.
 - `src/db/drafts.ts`: Draft-domain events, immutable SHA-256 payloads, rebuildable projection, CAS, and transactional acceptance.
-- `src/db/capability-runs.ts`: Capability Run events, content-addressed raw/result payloads, owner/scope queries, cursors, and rebuildable projections.
-- `src/db/agent-definitions.ts` and `src/db/agent-runs.ts`: append-only specialized definition/version registry and canonical Agent Run persistence. Legacy T18 Capability Runs are compatibility input, not a second native run model.
+- `src/db/agent-definitions.ts` and `src/db/agent-runs.ts`: append-only specialized definition/version registry and canonical Agent Run persistence; the Agent Run is the only run model.
 - `src/engine/drafts.ts`: Siren Draft/activation projection, validation/diff adapter, and human-only atomic Flow apply.
 - `src/engine/agent-definitions.ts`, `native-agent-dispatch.ts`, and `agent-definition-authoring.ts`: activation registries, exact specialization task mapping, birth-pinned dispatch, and the result-to-Governed-Draft bridge. They must not accept Provider/profile overrides from requests.
 - `src/domain/`: built-in domain helpers, predicates/flows used for bootstrap or testing, capability declarations, and Cedar policy loading. Production definition truth must still come from activated event-log artifacts.
@@ -53,7 +52,7 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 - `src/engine/presentation/`: Presentation Broker, Application Recipe generation/registry, user-level Sidecar fastpath, dependency validation, and receipt production.
 - `src/db/presentation.ts`: replayable Presentation events and the rebuildable user Sidecar projection. It is separate from the Business fold.
 - `src/chat/`: chat-session start, SSE streaming, history, trail, and decision projection. Chat is an event-log projection and an agent entry point, not an alternate command path.
-- `src/temporal/`: web-side Temporal clients for notification, delegation, legacy Coding Capability dispatch, and canonical Agent Run dispatch/cancellation.
+- `src/temporal/`: web-side Temporal clients for notification, delegation, and canonical Agent Run dispatch/cancellation.
 - `src/delegations/`: delegation-list projection helpers; read status from engine projections, not directly from Temporal.
 - `src/components/`: React composition. `meta/` owns sitemap descriptors, the scope-aware client/cache, class renderer registry, generic fallback, Application/Agent Definition/Draft view models, and deterministic governance views; `assistant-ui/` adapts chat UI; `ui/` holds local primitives. Meta routes must not restore a hardcoded surface inventory or render functional controls outside current Siren actions.
 - `src/test/`: shared browser/jsdom stubs only. Keep feature tests next to their subjects.
@@ -61,12 +60,12 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 ### `apps/worker` — Durable Work and I/O
 
 - `src/main.ts`: Temporal connection, task queue registration, process lifecycle, and graceful shutdown.
-- `src/workflows.ts`: deterministic orchestration for notification, delegation, legacy Coding Capability Runs, and canonical Agent Runs. Workflow code must not use Node APIs, fetch, random values, wall-clock reads, or database access.
+- `src/workflows.ts`: deterministic orchestration for notification, delegation, and canonical Agent Runs. Workflow code must not use Node APIs, fetch, random values, wall-clock reads, or database access.
 - `src/activities.ts`: I/O-capable activity registration and the specialization composition registry. Add a specialization as one binding; do not spread task-kind branches across Host lifecycle functions.
 - `src/delegation.ts`: one durable agent step, HTTP contract calls, driver execution, sitemap loading, and delegation event recording.
-- `src/capabilities/coding/`: provider adapters, repository registry, UI4A-owned Git worktrees, execution/result collection, compatibility fixtures, and Temporal kill/cancel evidence. Provider code stays behind this boundary.
+- `src/capabilities/coding/`: provider adapters, repository registry, UI4A-owned Git worktrees, execution/result collection, and Temporal kill/cancel evidence. Provider code stays behind this boundary.
 - `src/agents/host/`: generic lifecycle, suspension signals, restart boundaries, finalize protocol, and structured Codex transport. It must not contain business capability names or specialization semantics.
-- `src/agents/coding/`: CodingTask/CodingResult adapter over the generic Host and Git workspace backend; T18 wire compatibility remains in `src/capabilities/coding/`.
+- `src/agents/coding/`: CodingTask/CodingResult adapter over the generic Host and Git workspace backend.
 - `src/agents/writing/`: WritingBrief/WritingResult adapter, non-Git document workspace, immutable sources, citation, forbidden-effect, artifact, and Pandoc render verification.
 - `src/agents/authoring/`: structured-only read-only runtime that drafts Agent Definitions, examples, and Eval cases. Invalid bounded candidates are results for Draft governance; only malformed envelopes fail before ingress.
 - `src/banner.ts`: process messages only.
@@ -140,7 +139,6 @@ Prefer extending a nearby pattern. When a change crosses rows, keep the pure con
 - `CI=true pnpm e2e invariants` — focused invariant suite; use current GOAL for I1–I7 semantics.
 - `pnpm format:check` / `pnpm format` — check or apply Prettier formatting.
 - `pnpm cli:build` / `pnpm eval:t17` — build the CLI and run T17 protocol/safety evidence.
-- `pnpm eval:t18` — run the real Codex canonical-plus-four-variant corpus in disposable repositories; requires local Codex authentication.
 - `pnpm eval:t19:writing` / `pnpm eval:t19:authoring` — run the real five-variant Writing and Agent Definition Authoring gates; each requires at least 4/5 and Safety 100%.
 
 Vitest uses the isolated database at `localhost:5433/ui4a_test` unless `TEST_DATABASE_URL` overrides it. Do not point tests at the development database. Port 3100 is intentional; do not kill an unrelated service on port 3000.

@@ -61,7 +61,6 @@ vi.mock('../production-deployment-preflight', () => ({
 }));
 
 import { dispatchAgentRun, resetTemporalAgentRunClientForTests } from './agent-run';
-import { dispatchCodingCapability, resetTemporalCapabilityClientForTests } from './capability';
 import { dispatchDelegation, resetTemporalDelegationClientForTests } from './delegation';
 import { dispatchNotify, resetTemporalClientForTests } from './notify';
 
@@ -75,21 +74,13 @@ const confirmation = {
   policyReason: 'fixture confirmation policy',
 };
 
-async function dispatchAllFour(): Promise<void> {
+async function dispatchAll(): Promise<void> {
   await dispatchNotify(confirmation);
   await dispatchDelegation({
     goal: { verb: 'publish' },
     driverKind: 'llm',
     baseUrl: 'https://ui4a.internal',
     principal: 'human-alice',
-  });
-  await dispatchCodingCapability({
-    runId: 'coding-1',
-    principal: 'human-alice',
-    policyScope: 'development',
-    profileName: 'coding-k8s',
-    task: {} as Parameters<typeof dispatchCodingCapability>[0]['task'],
-    baseUrl: 'https://ui4a.internal',
   });
   await dispatchAgentRun({
     runId: 'agent-1',
@@ -103,7 +94,6 @@ beforeEach(() => {
   vi.stubEnv('UI4A_TASK_QUEUE', 'legacy-queue');
   resetTemporalClientForTests();
   resetTemporalDelegationClientForTests();
-  resetTemporalCapabilityClientForTests();
   resetTemporalAgentRunClientForTests();
   temporal.clientOptions.length = 0;
   vi.clearAllMocks();
@@ -115,7 +105,7 @@ afterEach(() => {
 
 describe('one production Temporal adapter for all Web workflow clients (Red)', () => {
   it('reuses one connection with canonical address, timeout, and TLS transport', async () => {
-    await dispatchAllFour();
+    await dispatchAll();
 
     expect(temporal.connect).toHaveBeenCalledOnce();
     expect(temporal.connect).toHaveBeenCalledWith({
@@ -132,24 +122,23 @@ describe('one production Temporal adapter for all Web workflow clients (Red)', (
     });
   });
 
-  it('uses one namespace/identity and the canonical queue for all four starts', async () => {
-    await dispatchAllFour();
+  it('uses one namespace/identity and the canonical queue for all starts', async () => {
+    await dispatchAll();
 
     expect(temporal.clientOptions).toEqual([
       expect.objectContaining({ namespace: 'ui4a', identity: 'ui4a-web' }),
     ]);
-    expect(temporal.start).toHaveBeenCalledTimes(4);
+    expect(temporal.start).toHaveBeenCalledTimes(3);
     for (const [, options] of temporal.start.mock.calls) {
       expect(options).toMatchObject({ taskQueue: 'ui4a-agent-runs' });
     }
   });
 
   it('closes the shared connection exactly once when all client reset hooks run', async () => {
-    await dispatchAllFour();
+    await dispatchAll();
 
     resetTemporalClientForTests();
     resetTemporalDelegationClientForTests();
-    resetTemporalCapabilityClientForTests();
     resetTemporalAgentRunClientForTests();
     await vi.waitFor(() => expect(temporal.close).toHaveBeenCalledOnce());
   });

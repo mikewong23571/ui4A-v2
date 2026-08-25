@@ -68,6 +68,8 @@ describe('GET /_meta/api/entity', () => {
     };
     expect(entity.class).toEqual(['meta', 'flow-definition']);
     expect(entity.properties).toEqual({
+      // rel 注入(T22 生产修复):与业务实体同口径,canvas deref 按 properties.rel 归键。
+      rel: 'meta/flow:post-status',
       name: 'post-status',
       version: 1,
       status: 'active',

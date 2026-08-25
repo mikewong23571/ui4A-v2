@@ -6,12 +6,6 @@ vi.mock('../temporal/agent-run', () => ({
   })),
   cancelAgentRun: vi.fn(async () => undefined),
 }));
-vi.mock('../temporal/capability', () => ({
-  dispatchCodingCapability: vi.fn(async ({ runId }: { runId: string }) => ({
-    workflowId: `coding-${runId}`,
-  })),
-  cancelCodingCapability: vi.fn(async () => undefined),
-}));
 
 import type { AgentDefinition } from '@ui4a/shared';
 
@@ -26,7 +20,6 @@ import {
   getAgentRun,
   listAgentRuns,
 } from '../db/agent-runs';
-import { ensureCapabilityRunTables } from '../db/capability-runs';
 import { ensureDraftTables, getDraft, listDrafts, rebuildDraftProjection } from '../db/drafts';
 import { ensureEventsTable, readLog } from '../db/events';
 import { getPool } from '../db/pool';
@@ -159,14 +152,12 @@ beforeEach(async () => {
   );
   vi.mocked(dispatchAgentRun).mockClear();
   await ensureEventsTable(pool);
-  await ensureCapabilityRunTables(pool);
   await ensureAgentRunTables(pool);
   await ensureDraftTables(pool);
   await ensureAgentDefinitionTables(pool);
   await pool.query(
     `TRUNCATE draft_projection, draft_payloads,
       agent_run_projection, agent_run_projection_state, agent_run_payloads,
-      capability_run_projection, capability_payloads,
       agent_definition_active, agent_definition_versions, agent_definition_payloads, events`,
   );
   resetEngineForTests();

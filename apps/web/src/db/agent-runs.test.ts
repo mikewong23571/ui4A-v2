@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type {
-  AgentRunBirthReferences,
-  AgentRunCommand,
-  AgentTaskEnvelope,
-  CapabilityRunCommand,
-} from '@ui4a/engine';
+import type { AgentRunBirthReferences, AgentRunCommand, AgentTaskEnvelope } from '@ui4a/engine';
 
 import {
   appendAgentRunCommand,
@@ -20,11 +15,6 @@ import {
   readAgentRunPayload,
   rebuildAgentRunProjection,
 } from './agent-runs';
-import {
-  appendCapabilityRunCommand,
-  ensureCapabilityRunTables,
-  getCapabilityRun,
-} from './capability-runs';
 import { ensureEventsTable } from './events';
 import { getPool } from './pool';
 
@@ -78,51 +68,16 @@ function createNative(overrides: Partial<Extract<AgentRunCommand, { kind: 'creat
   } satisfies AgentRunCommand;
 }
 
-const legacyCreate: CapabilityRunCommand = {
-  kind: 'create',
-  eventId: 'event:legacy:create',
-  commandId: 'command:legacy:create',
-  runId: 'legacy-1',
-  principal: 'user:mike',
-  policyScope: 'publishing',
-  source: {
-    rel: 'software-change:main',
-    action: 'start-implementation',
-    eventId: 'core:10',
-  },
-  profileName: 'coding-default',
-  task: {
-    schemaVersion: 1,
-    repositoryRef: 'repo:fixture',
-    baseRevision: 'a'.repeat(40),
-    goal: 'change code',
-    constraints: [],
-    acceptanceCriteria: ['tests pass'],
-    allowedPaths: ['src'],
-    budget: {
-      timeoutSeconds: 300,
-      maxTurns: 20,
-      maxRawEvents: 2_000,
-      maxRawBytes: 4 * 1024 * 1024,
-      maxRawChunkBytes: 64 * 1024,
-    },
-    redaction: { secretNames: [], redactHostPaths: true },
-  },
-};
-
 beforeEach(async () => {
   await ensureEventsTable(pool);
-  await ensureCapabilityRunTables(pool);
   await ensureAgentRunTables(pool);
   await pool.query(
-    `TRUNCATE agent_run_projection_state, agent_run_projection, agent_run_payloads,
-      capability_run_projection, capability_payloads, events`,
+    `TRUNCATE agent_run_projection_state, agent_run_projection, agent_run_payloads, events`,
   );
 });
 
 describe('canonical Agent Run persistence', () => {
-  it('replays mixed legacy/native events with the same incremental and empty-rebuild hash', async () => {
-    await appendCapabilityRunCommand(pool, legacyCreate);
+  it('replays native events with the same incremental and empty-rebuild hash', async () => {
     await appendAgentRunCommand(pool, createNative());
     const native = await getAgentRun(pool, 'native-1', 'user:mike', 'publishing');
     await appendAgentRunCommand(pool, {
@@ -132,24 +87,13 @@ describe('canonical Agent Run persistence', () => {
       eventId: 'event:native:prepare',
       commandId: 'command:native:prepare',
     });
-    await appendCapabilityRunCommand(pool, {
-      kind: 'prepare',
-      runId: 'legacy-1',
-      expectedRevision: 1,
-      eventId: 'event:legacy:prepare',
-      commandId: 'command:legacy:prepare',
-    });
 
     const incremental = await listAgentRuns(pool, {
       principal: 'user:mike',
       policyScope: 'publishing',
     });
-    expect(incremental).toHaveLength(2);
-    expect(incremental.find((run) => run.runId === 'legacy-1')?.birth).toMatchObject({
-      kind: 'legacy-t18-reconstructed',
-      definition: { ref: 'coding-agent@1' },
-    });
-    expect(incremental.find((run) => run.runId === 'legacy-1')?.status).toBe('preparing');
+    expect(incremental).toHaveLength(1);
+    expect(incremental[0]?.status).toBe('preparing');
     const hash = agentRunProjectionSha256(incremental);
 
     await pool.query('TRUNCATE agent_run_projection_state, agent_run_projection');
@@ -179,23 +123,6 @@ describe('canonical Agent Run persistence', () => {
     await expect(
       findAgentRunsBySource(pool, 'writing-request:main', 'user:mike', 'publishing'),
     ).resolves.toHaveLength(1);
-  });
-
-  it('admits only one creation across legacy and native event families for a source event', async () => {
-    const outcomes = await Promise.allSettled([
-      appendCapabilityRunCommand(pool, legacyCreate),
-      appendAgentRunCommand(
-        pool,
-        createNative({
-          source: { rel: 'writing-request:main', action: 'write', eventId: 'core:10' },
-        }),
-      ),
-    ]);
-    expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
-    expect(outcomes.filter((outcome) => outcome.status === 'rejected')).toHaveLength(1);
-    expect(
-      await listAgentRuns(pool, { principal: 'user:mike', policyScope: 'publishing' }),
-    ).toHaveLength(1);
   });
 
   it('persists native cursor, question, grant, result, and cancellation transitions', async () => {
@@ -353,9 +280,7 @@ describe('canonical Agent Run persistence', () => {
     expect(cancellable.status).toBe('cancelled');
   });
 
-  it('content-addresses raw frames and leaves the legacy T18 projection readable', async () => {
-    await appendCapabilityRunCommand(pool, legacyCreate);
-    const legacyBefore = await getCapabilityRun(pool, 'legacy-1', 'user:mike', 'publishing');
+  it('content-addresses raw frames and enforces raw event budgets', async () => {
     await appendAgentRunCommand(pool, createNative());
     const receipt = await appendAgentRunRawEvent(pool, {
       runId: 'native-1',
@@ -397,8 +322,5 @@ describe('canonical Agent Run persistence', () => {
           .rows[0]?.count ?? 0,
       ),
     ).toBe(1);
-    expect(await getCapabilityRun(pool, 'legacy-1', 'user:mike', 'publishing')).toEqual(
-      legacyBefore,
-    );
   });
 });

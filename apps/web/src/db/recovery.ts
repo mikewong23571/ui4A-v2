@@ -4,7 +4,6 @@ import { canonicalJson } from '@ui4a/engine';
 
 import { rebuildAgentDefinitionProjection } from './agent-definitions';
 import { rebuildAgentRunProjection } from './agent-runs';
-import { rebuildCapabilityRunProjection } from './capability-runs';
 import { rebuildDraftProjection } from './drafts';
 import type { ConnectableDb, DbExecutor } from './events';
 import { rebuildPresentationProjection } from './presentation';
@@ -111,9 +110,6 @@ async function immutablePayloads(db: DbExecutor): Promise<Record<string, unknown
               canonicalization_version AS metadata_version,byte_length,payload
        FROM draft_payloads
        UNION ALL
-       SELECT 'capability_payloads',payload_hash,media_type,redaction_version,byte_length,payload
-       FROM capability_payloads
-       UNION ALL
        SELECT 'agent_definition_payloads',payload_hash,media_type,
               canonicalization_version,byte_length,payload
        FROM agent_definition_payloads
@@ -129,7 +125,7 @@ async function immutablePayloads(db: DbExecutor): Promise<Record<string, unknown
 function runEvidence(events: readonly Record<string, unknown>[]): Record<string, unknown>[] {
   return events.filter(({ domain, kind }) => {
     if (domain !== 'capability' || typeof kind !== 'string') return false;
-    return kind.startsWith('capability-run-') || kind.startsWith('agent-run-');
+    return kind.startsWith('agent-run-');
   });
 }
 
@@ -181,9 +177,6 @@ export async function captureUi4aProjectionFingerprint(db: ConnectableDb): Promi
     const drafts = await client.query<{ aggregate: unknown }>(
       'SELECT aggregate FROM draft_projection ORDER BY draft_id',
     );
-    const capabilityRuns = await client.query<{ aggregate: unknown }>(
-      'SELECT aggregate FROM capability_run_projection ORDER BY run_id',
-    );
     const definitionVersions = await client.query<Record<string, unknown>>(
       `SELECT principal,policy_scope,definition_name,definition_version,definition_ref,status,
                 source_hash,flattened_hash,template_hash,evaluation_hash,parent_ref,registered_actor,
@@ -204,7 +197,6 @@ export async function captureUi4aProjectionFingerprint(db: ConnectableDb): Promi
     );
     return digest({
       drafts: drafts.rows.map(({ aggregate }) => aggregate),
-      capabilityRuns: capabilityRuns.rows.map(({ aggregate }) => aggregate),
       definitionVersions: definitionVersions.rows,
       activeDefinitions: activeDefinitions.rows,
       agentRuns: agentRuns.rows.map(({ aggregate }) => aggregate),
@@ -216,7 +208,6 @@ export async function captureUi4aProjectionFingerprint(db: ConnectableDb): Promi
 /** Rebuild all disposable UI4A views from append-only events and immutable payloads. */
 export async function rebuildAllUi4aProjections(db: ConnectableDb): Promise<void> {
   await rebuildDraftProjection(db);
-  await rebuildCapabilityRunProjection(db);
   await rebuildAgentDefinitionProjection(db);
   await rebuildAgentRunProjection(db);
   await rebuildPresentationProjection(db);
