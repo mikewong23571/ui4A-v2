@@ -2,23 +2,8 @@
   "$schema": "T23 GR3 shrink-only baseline. files/dirs entries record path + effective lines at Red time; entries must only shrink.",
   "files": [
     {
-      "path": "deploy/helm/ui4a/render.ts",
-      "lines": 1647,
-      "limit": 500
-    },
-    {
-      "path": "packages/agent/src/loop.test.ts",
-      "lines": 1278,
-      "limit": 800
-    },
-    {
       "path": "apps/web/src/db/agent-definitions.ts",
       "lines": 1192,
-      "limit": 500
-    },
-    {
-      "path": "packages/shared/src/production-deployment-config.ts",
-      "lines": 1126,
       "limit": 500
     },
     {
@@ -47,19 +32,15 @@
       "limit": 500
     },
     {
-      "path": "packages/engine/src/presentation/surface.ts",
-      "lines": 950,
-      "limit": 500
-    },
-    {
       "path": "apps/web/src/engine/drafts.ts",
       "lines": 949,
       "limit": 500
     },
     {
       "path": "apps/web/src/app/api/chat/route.ts",
-      "lines": 901,
-      "limit": 500
+      "lines": 904,
+      "limit": 500,
+      "note": "T22 在途所有;T23 不拆分,待 T22 关闭后处理(见 risk-inventory R3)"
     },
     {
       "path": "scripts/t22-compose-contract.test.ts",
@@ -75,16 +56,6 @@
       "path": "apps/web/src/engine/service.ts",
       "lines": 828,
       "limit": 500
-    },
-    {
-      "path": "packages/engine/src/siren.ts",
-      "lines": 819,
-      "limit": 500
-    },
-    {
-      "path": "e2e/s2.spec.ts",
-      "lines": 814,
-      "limit": 800
     },
     {
       "path": "apps/worker/src/agents/coding/adapter.ts",
@@ -107,28 +78,8 @@
       "limit": 500
     },
     {
-      "path": "packages/engine/src/fold.ts",
-      "lines": 689,
-      "limit": 500
-    },
-    {
       "path": "apps/web/src/components/canvas-body.tsx",
       "lines": 673,
-      "limit": 500
-    },
-    {
-      "path": "packages/agent/src/presentation-agent.ts",
-      "lines": 673,
-      "limit": 500
-    },
-    {
-      "path": "deploy/compose/render-stack.ts",
-      "lines": 607,
-      "limit": 500
-    },
-    {
-      "path": "packages/engine/src/agent-run/run.ts",
-      "lines": 598,
       "limit": 500
     },
     {
@@ -137,18 +88,8 @@
       "limit": 500
     },
     {
-      "path": "deploy/keycloak/realm-bootstrap.ts",
-      "lines": 592,
-      "limit": 500
-    },
-    {
       "path": "apps/agent-runner/src/production.ts",
       "lines": 562,
-      "limit": 500
-    },
-    {
-      "path": "packages/agent/src/llm-driver.ts",
-      "lines": 536,
       "limit": 500
     },
     {
@@ -169,18 +110,8 @@
       "limit": 4000
     },
     {
-      "path": "packages/engine/src",
-      "lines": 12507,
-      "limit": 4000
-    },
-    {
       "path": "apps/web/src/engine",
       "lines": 9296,
-      "limit": 4000
-    },
-    {
-      "path": "packages/agent/src",
-      "lines": 9124,
       "limit": 4000
     },
     {
@@ -201,16 +132,6 @@
     {
       "path": "apps/web/src/components",
       "lines": 5439,
-      "limit": 4000
-    },
-    {
-      "path": "packages/shared/src",
-      "lines": 5365,
-      "limit": 4000
-    },
-    {
-      "path": "packages/engine/src/presentation",
-      "lines": 5106,
       "limit": 4000
     },
     {

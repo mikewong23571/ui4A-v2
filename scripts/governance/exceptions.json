@@ -31,18 +31,23 @@
       "pendingRemoval": false
     },
     {
-      "path": "packages/engine/src/presentation/recipe.ts",
+      "path": "packages/engine/src/presentation/recipe/recipe.ts",
       "reason": "正当语义:RecipeDependencyChange.compatible 表示依赖变更是否向后安全(recipe 失效判定),是协议字段名而非 legacy/compat 代码",
       "pendingRemoval": false
     },
     {
-      "path": "packages/engine/src/presentation/recipe.test.ts",
+      "path": "packages/engine/src/presentation/recipe/recipe.test.ts",
       "reason": "正当语义:测试构造 RecipeDependencyChange.compatible 协议字段,随 recipe.ts 存续",
       "pendingRemoval": false
     },
     {
       "path": "scripts/t22-release-artifacts.test.ts",
       "reason": "正当语义:断言 RELEASE_NOTES.md 必须包含 compatibility 声明章节(release/v0.1.0-experimental.1/RELEASE_NOTES.md §Compatibility),属发布合同措辞",
+      "pendingRemoval": false
+    },
+    {
+      "path": "deploy/keycloak/realm-bootstrap.ts",
+      "reason": "T22 D35 realm import-or-check 的兼容判定是当前部署合同功能,非历史兼容债务",
       "pendingRemoval": false
     }
   ]
