@@ -43,6 +43,13 @@ Prompt 必须自包含(仓库路径、相关文档路径、技术栈与铁律约
 - 任务完成判据包含治理门禁:`pnpm governance` 必须全绿(新增依赖违规、未登记的
   legacy/compat 标记、超限文件/目录都会失败);例外须先登记
   `scripts/governance/exceptions.json` 再写代码(AGENTS.md GR1–GR5);
+- **业务优先原则(2026-08-26 授权)**:实施期间治理的行数上限(check-size)不驱动
+  代码裁剪或文件拆分——业务功能实现优先,不为凑行数重构。文件按架构归属落位;
+  确实超限时**优先登记例外**:超限文件/目录记入
+  `scripts/governance/size-baseline.json`(注明在途 track 与处置计划),依赖/兼容
+  例外记入 `scripts/governance/exceptions.json`,例外登记由编排 agent 统一执行。
+  派发 subagent 的 prompt 必须写明该策略(以及相关 leaf 目录的现值/余量事实),
+  subagent 遇治理失败**只如实报告,不自行核算预算、不裁剪代码**;
 - `plan.md` 任务状态流转、commit、git notes 由编排 agent 执行;
 - Phase Checkpoint 协议中"等待用户确认"(Step 5)由编排 agent 代行:以自动化等效验证
   (测试全绿 + 将手动验证步骤脚本化执行,如 curl/Playwright)作为确认依据,并在 git
