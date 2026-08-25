@@ -4,12 +4,12 @@ import {
   appendPresenceChange,
   ensurePresenceTables,
   PresenceRateLimitError,
-} from '../../../../db/presence';
+} from '../../../db/presence';
 import {
   authenticationErrorResponse,
   resolveTrustedRequestIdentity,
-} from '../../../../auth/request-identity';
-import { getDb, getEngine } from '../../../../engine/service';
+} from '../../../auth/request-identity';
+import { getDb, getEngine } from '../../../engine/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +35,7 @@ export async function POST(request: Request): Promise<Response> {
     });
     if (
       change.kind === 'scope' &&
-      change.value !== null &&
+      typeof change.value === 'string' &&
       !identity.scopes.includes(change.value)
     ) {
       return Response.json({ error: { code: 'scope_insufficient' } }, { status: 403 });

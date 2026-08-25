@@ -14,13 +14,13 @@ const mocks = vi.hoisted(() => ({
   resolveTrustedRequestIdentity: vi.fn(),
 }));
 
-vi.mock('../../../../db/presence', () => ({
+vi.mock('../../../db/presence', () => ({
   appendPresenceChange: mocks.appendPresenceChange,
   ensurePresenceTables: mocks.ensurePresenceTables,
   PresenceRateLimitError: class PresenceRateLimitError extends Error {},
 }));
-vi.mock('../../../../engine/service', () => ({ getDb: mocks.getDb, getEngine: mocks.getEngine }));
-vi.mock('../../../../auth/request-identity', () => ({
+vi.mock('../../../engine/service', () => ({ getDb: mocks.getDb, getEngine: mocks.getEngine }));
+vi.mock('../../../auth/request-identity', () => ({
   authenticationErrorResponse: mocks.authenticationErrorResponse,
   resolveTrustedRequestIdentity: mocks.resolveTrustedRequestIdentity,
 }));
