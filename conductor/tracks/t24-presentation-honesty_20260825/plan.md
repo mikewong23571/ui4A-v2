@@ -27,12 +27,12 @@
 - [x] Task: thinking 帧默认折叠可展开 15d5752
   - 折叠态=一条进行中指示(步数/当前活动);展开态=实时思考增量(现状
     thinking-delta 渲染逻辑保留迁移)
-- [~] Task: step 帧活动语言
+- [x] Task: step 帧活动语言 5eaac0c
   - 固定 op 词汇映射(舞台机械,非文案模板):navigate→正在读取 {rel 标题}、
     exec→正在执行 {action 标题}、present→正在准备「{subject}」的呈现、
     answer/fail 等;映射表为固定常量,零每实体分支
   - 审计下钻:每条活动可点击跳事件流对应事件
-- [ ] Task: 失败措辞分层
+- [~] Task: 失败措辞分层
   - 机械层产出结构化 reason({code, evidence, 已尝试});LLM 在场时由其
     生成面向用户表述;LLM 不可用时渲染中性结构化展示
     ("失败 · code=… · 已尝试:…"),零硬编码友好文案模板
