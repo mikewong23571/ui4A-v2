@@ -32,6 +32,12 @@
       "lines": 14424,
       "limit": 4000,
       "note": "T22 在途 track 所有;T23 不处置,T22 关闭时按 GR5 裁决(见 risk-inventory R4);T29 realm-bootstrap 列表视图修复 +16(用户授权)"
+    },
+    {
+      "path": "apps/web/src/components",
+      "lines": 4116,
+      "limit": 4000,
+      "note": "T24 在途:『为什么这样展示』抽屉按架构归属落位 components/(与 canvas-body 及被嵌入的 sidecar 工具条同住),业务优先不为凑行数拆分(workflow 业务优先原则 2026-08-26);收缩窗口=T27 workstation 站点结构落地时按站点重组 components/ 目录"
     }
   ]
 }
