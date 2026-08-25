@@ -6,7 +6,7 @@
 
 ## Phase A: presence 事件与投影(纯事实层)
 
-- [ ] Task: presence 事件 schema 与有界校验
+- [x] Task: presence 事件 schema 与有界校验 b7b24aa
   - `packages/shared`:presence 事件类型(site/scope/thread/focus 四类变化点,
     字段白名单、尺寸上限);事件种类与频率上限入合同断言
   - Red:非法 kind/超界载荷/非变化点(与当前在场相同)一律拒绝的测试
