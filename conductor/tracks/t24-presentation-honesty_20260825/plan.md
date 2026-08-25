@@ -3,7 +3,7 @@
 > 遵循 `conductor/workflow.md` 的 Story TDD、任务提交、Git notes 和 Phase Checkpoint 协议。
 > 纯呈现层:不改引擎/合同/事件语义。spec:`./spec.md`。
 
-## Phase A: canvas 机制抽屉化
+## Phase A: canvas 机制抽屉化 [checkpoint: 706862c]
 
 - [x] Task: 机制词表断言(Red) 02226a7
   - 固定机制词常量清单(surface 宿主/catalog.json/sidecar:/deref-failed/
@@ -20,7 +20,7 @@
     route 测试口径 + 组件测试)
 - [x] Task: sidecar 控制条降级 706862c
   - 首屏只留一个不显眼的"为什么这样展示"入口;原控制条从主区域移除
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) 706862c
 
 ## Phase B: chat 可观测性重构(活性保留,方言分层)
 
