@@ -111,12 +111,14 @@ LLM/Codex 凭据门槛用例,与本批无关)。
   (401 fail-closed 不读投影/凭证 200/local 不变,列表+详情);既有集成测试改传 Request 实参;
   两个 edge 契约测试同步放行并移出 deferred 清单。
 - 质量门:`pnpm check` 全绿(336 文件 2587 通过)。
-- 部署:web 镜像 `docker.io/ui4a/web@sha256:c7c763b42e08ebb4a07a9ff8347288ff852cce95ddd689d76589c4738fd3da5c`
-  (tag `v0.1.0-experimental.1.t22auth3`;archive SHA-256
-  `789c954566b0a3e03137f703fee3f539da7c01471b23a098338301af49b4062c`;两 worker ctr import
+- 部署:代码已提交为 `39b9c7e`;web 镜像
+  `docker.io/ui4a/web@sha256:97b587227fefc6498dd39d5a0e50ca64229ec55570752820c3d54f962b1a75e3`
+  (tag `v0.1.0-experimental.1.t22auth4`,OCI revision 标签 = `39b9c7e`;archive SHA-256
+  `6789c4c409e46b880b5391bfd5edf89fcd4d1f9da943cfdfbd3cb7aab21bf21e`;两 worker ctr import
   一致,并以 digest 引用名补 tag——仅 tag 导入时 kubelet 按 digest 引用会去 docker.io 拉取);
-  helm rev 24→25,Pod `web-6c64d8b4f4-xtg4c` Running 2/2。chart/values staging 在
-  k8s-cp-1:/tmp/ui4a-release-t22auth3。
+  helm rev 25→26,Pod `web-7fbcc97fdc-qdpf6` Running 2/2。chart/values staging 在
+  k8s-cp-1:/tmp/ui4a-release-t22auth4。(中间 rev 25 为提交前构建的 t22auth3,内容与本提交
+  一致,已被 rev 26 取代。)
 - 线上验证:未认证 `/api/delegations` 与 `/api/delegations/wf-x` → 401(fail closed,应用裁决
   而非 edge 404);`/api/chat/history` 仍 404(deferred 不变)。已登录浏览器(Playwright
   headless Chrome,PKCE 全链)4/4:登录 → `GET /api/delegations` 200 → 委托监控页无错误横幅、
