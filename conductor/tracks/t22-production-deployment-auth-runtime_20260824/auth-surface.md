@@ -114,8 +114,11 @@ OIDC。
 | --- | --- | --- |
 | `GET` | `/api/chat/history` | Chat 历史未绑定 credential principal；必须 deny/not expose。 |
 | `GET` | `/api/chat/sessions` | Session 清单未绑定 credential principal；必须 deny/not expose。 |
-| `POST` | `/api/presentation` | Presentation request 未接入 request identity；必须 deny/not expose。 |
-| `GET`, `POST` | `/api/presentation/sidecar` | 仍使用固定 local principal/自报 human lifecycle；必须 deny/not expose。 |
+
+`POST /api/presentation` 与 `GET, POST /api/presentation/sidecar` 已接入统一 credential
+adapter（2026-08-25 修复）：production 下强制 application credential（GET 需 `ui4a:read`，
+POST 需 `ui4a:write`），并以已认证 principal 覆盖客户端自报 principal 作为 durable
+Sidecar 归属；edge 按 exact path 放行。human lifecycle（`actor: 'human'`）约束不变。
 
 `/api/health` 和 `/api/render/catalog` 因为被明确归类为公共入口，不属于“遗漏认证”。除公共入口、
 已认证 Golden allowlist、内部 callback 和部署明确列出的 HTML/static assets 外，edge 采用 default

@@ -65,13 +65,20 @@ const webEdgeMatches: readonly EdgeMatch[] = [
     '/api/events',
     '/api/delegations',
     '/_meta/api/entity',
+    '/api/presentation/sidecar',
   ].map((path): EdgeMatch => ({ method: 'GET', path })),
   { method: 'GET', path: '/api/delegations/', kind: 'prefix' },
   { method: 'GET', path: '/meta/', kind: 'prefix' },
   { method: 'GET', path: '/_next/', kind: 'prefix' },
-  ...['/auth/logout', '/api/exec', '/api/exec-plan', '/api/chat', '/_meta/api/exec'].map(
-    (path): EdgeMatch => ({ method: 'POST', path }),
-  ),
+  ...[
+    '/auth/logout',
+    '/api/exec',
+    '/api/exec-plan',
+    '/api/chat',
+    '/_meta/api/exec',
+    '/api/presentation',
+    '/api/presentation/sidecar',
+  ].map((path): EdgeMatch => ({ method: 'POST', path })),
 ];
 
 const keycloakEdgeMatches: readonly EdgeMatch[] = [

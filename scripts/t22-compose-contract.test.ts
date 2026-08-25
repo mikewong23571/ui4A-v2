@@ -745,16 +745,12 @@ describe('T22 Docker Compose all-in-one contract', () => {
       '/_meta/.well-known/ui4a.json',
       '/_meta/api/entity',
       '/_meta/api/exec',
+      '/api/presentation',
+      '/api/presentation/sidecar',
     ]) {
       expect(routing, path).toContain(path);
     }
-    for (const path of [
-      '/api/internal/',
-      '/api/chat/history',
-      '/api/chat/sessions',
-      '/api/presentation',
-      '/api/meta/',
-    ]) {
+    for (const path of ['/api/internal/', '/api/chat/history', '/api/chat/sessions', '/api/meta/']) {
       expect(routing, path).not.toContain(path);
     }
     expect(routing).not.toMatch(/handle\s*\{\s*reverse_proxy web:3100/s);

@@ -88,6 +88,8 @@ spec:
           uri: { prefix: /api/delegations/ }
         - method: { exact: GET }
           uri: { exact: /_meta/api/entity }
+        - method: { exact: GET }
+          uri: { exact: /api/presentation/sidecar }
         - method: { exact: POST }
           uri: { exact: /auth/logout }
         - method: { exact: POST }
@@ -98,6 +100,10 @@ spec:
           uri: { exact: /api/chat }
         - method: { exact: POST }
           uri: { exact: /_meta/api/exec }
+        - method: { exact: POST }
+          uri: { exact: /api/presentation }
+        - method: { exact: POST }
+          uri: { exact: /api/presentation/sidecar }
       route:
         - destination: { host: web, port: { number: 3100 } }
     - directResponse: { status: 404 }
@@ -214,6 +220,7 @@ spec:
               - /api/delegations
               - '/api/delegations/*'
               - /_meta/api/entity
+              - /api/presentation/sidecar
     - to:
         - operation:
             methods: [POST]
@@ -223,6 +230,8 @@ spec:
               - /api/exec-plan
               - /api/chat
               - /_meta/api/exec
+              - /api/presentation
+              - /api/presentation/sidecar
     - from:
         - source:
             principals:

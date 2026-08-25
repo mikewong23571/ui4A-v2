@@ -163,6 +163,7 @@ const webGetExact = [
   '/api/events',
   '/api/delegations',
   '/_meta/api/entity',
+  '/api/presentation/sidecar',
 ] as const;
 const webGetPrefix = ['/api/delegations/', '/meta/', '/_next/'] as const;
 const webPostExact = [
@@ -171,6 +172,8 @@ const webPostExact = [
   '/api/exec-plan',
   '/api/chat',
   '/_meta/api/exec',
+  '/api/presentation',
+  '/api/presentation/sidecar',
 ] as const;
 
 const expectedWebMatches = [
@@ -217,13 +220,7 @@ describe('T22 Kubernetes exact authentication edge', () => {
     expect(routeMatches(web)).toEqual(expectedWebMatches);
     expect(staticRouteMatches('ui4a-web')).toEqual(expectedWebMatches);
     expect(defaultDeny(web)).toEqual({ directResponse: { status: 404 } });
-    for (const deferred of [
-      '/api/chat/history',
-      '/api/chat/sessions',
-      '/api/presentation',
-      '/api/presentation/sidecar',
-      '/api/meta/',
-    ]) {
+    for (const deferred of ['/api/chat/history', '/api/chat/sessions', '/api/meta/']) {
       expect(serialized, deferred).not.toContain(`\"exact\":\"${deferred}\"`);
       expect(serialized, deferred).not.toContain(`\"prefix\":\"${deferred}\"`);
     }

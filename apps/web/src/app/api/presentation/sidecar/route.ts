@@ -1,10 +1,15 @@
-import { getDb } from '../../../../engine/service';
+import { getDb, getEngine } from '../../../../engine/service';
 import {
   appendSidecarCommand,
   getSidecarById,
   loadPresentationSnapshot,
 } from '../../../../db/presentation';
 import { appendEvent } from '../../../../db/events';
+import {
+  authenticationErrorResponse,
+  requestIdentityProfile,
+  resolveTrustedRequestIdentity,
+} from '../../../../auth/request-identity';
 import {
   applyRenderPatch,
   createRenderPatchTarget,
@@ -19,12 +24,40 @@ export const dynamic = 'force-dynamic';
 
 const LOCAL_PRESENTATION_PRINCIPAL = 'user:local';
 
+// production profile(T22 验证修复):接入 application credential(Browser Session
+// 或 Bearer),并以已认证 principal 作为 Sidecar 归属——durable Sidecar key 以
+// principal 区分,固定 local principal 在生产既越权又查不到 chat 建立的 Sidecar。
+// local profile 行为不变(固定 user:local)。
+async function presentationPrincipal(
+  request: Request,
+  requiredScopes: string[],
+): Promise<string | Response> {
+  if (requestIdentityProfile() !== 'production') return LOCAL_PRESENTATION_PRINCIPAL;
+  try {
+    const engine = await getEngine(getDb());
+    const identity = await resolveTrustedRequestIdentity(request, {
+      plane: 'business',
+      requiredScopes,
+      authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
+      defaultPolicyScope: 'default',
+    });
+    return identity.principal;
+  } catch (error) {
+    return (
+      authenticationErrorResponse(error) ??
+      Response.json({ error: { code: 'credential_malformed' } }, { status: 401 })
+    );
+  }
+}
+
 export async function GET(request: Request): Promise<Response> {
   const sidecarId = new URL(request.url).searchParams.get('sidecarId');
   if (sidecarId === null || sidecarId === '') {
     return Response.json({ error: 'sidecarId is required' }, { status: 400 });
   }
-  const sidecar = await getSidecarById(getDb(), sidecarId, LOCAL_PRESENTATION_PRINCIPAL);
+  const principal = await presentationPrincipal(request, ['ui4a:read']);
+  if (principal instanceof Response) return principal;
+  const sidecar = await getSidecarById(getDb(), sidecarId, principal);
   if (sidecar === undefined) return Response.json({ error: 'Sidecar not found' }, { status: 404 });
   if (new URL(request.url).searchParams.get('explain') === '1') {
     try {
@@ -73,7 +106,9 @@ export async function POST(request: Request): Promise<Response> {
   ) {
     return Response.json({ error: 'human Sidecar lifecycle request is invalid' }, { status: 400 });
   }
-  const current = await getSidecarById(getDb(), body.sidecarId, LOCAL_PRESENTATION_PRINCIPAL);
+  const principal = await presentationPrincipal(request, ['ui4a:write']);
+  if (principal instanceof Response) return principal;
+  const current = await getSidecarById(getDb(), body.sidecarId, principal);
   if (current === undefined) return Response.json({ error: 'Sidecar not found' }, { status: 404 });
   if (
     body.action === 'revert' &&
@@ -169,7 +204,7 @@ export async function POST(request: Request): Promise<Response> {
         domain: 'presentation',
         kind: 'render-recipe-promoted',
         rel: recipe.id,
-        principal: LOCAL_PRESENTATION_PRINCIPAL,
+        principal,
         channel: 'presentation',
         detail: {
           eventId: `event:${id}`,
