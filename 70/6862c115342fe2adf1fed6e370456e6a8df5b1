@@ -1,0 +1,6 @@
+T24 Phase A Task 4: sidecar 控制条降级
+
+- CanvasBody 移除主区域 CanvasSidecarToolbar 渲染;抽屉入口(为什么这样展示)成为唯一机制入口;useSidecarActions 及视图语义(收起/疏密)原样保留。
+- canvas-first-screen.test.tsx 新增 cache/pinned 两用例:sidecar 在场且抽屉关闭时主区域零机制词(词表+控制条按钮文案),唯一入口断言;Red→Green 留证。
+- baseline 4116→4175(+59 测试断言,在途上调,shrink-only 自 T24 关闭起算)。
+- 验证(编排 agent 复跑):4 文件 29 用例全绿;e2e 对控制条选择器零依赖;governance 复绿。
