@@ -14,7 +14,7 @@
    硬编码落 `development` default scope,已登录用户访问 `articles`(publishing)/`comments`、
    `inbox`(default)全部 403 `scope_insufficient`。
 
-## 修复(工作树,基于 `8ba3fd2`,决定 D38)
+## 修复(已提交为 `09ab20d`,基于 `8ba3fd2`,决定 D38)
 
 - 服务端 credential 模式下未显式请求 scope 时,按 rel 归属在已授予 scope 中确定性选择第一个
   覆盖的 scope(`relCoveredByPolicyScope`);显式 scope 语义不变,不扩大授权。
@@ -24,7 +24,7 @@
 - 浏览器端 401 认证错误码统一 `redirectToLoginOnAuthError` 跳转 `/auth/login?returnTo=…`;
   403/scope_insufficient 不跳转。
 
-## 质量门(本地,工作树 = 8ba3fd2 + 本修复)
+## 质量门(本地,代码 = 后提交为 `09ab20d`)
 
 - focused Vitest(改动相关 10 文件)84/84;`apps/web/src/{auth,app/api,components}` 回归
   445/445。
@@ -39,7 +39,8 @@
 - chart 为工作树 `deploy/helm/ui4a`(含 `/api/events` edge 放行);values 仅替换 web digest。
 - `helm lint`/`helm template` 通过;`helm upgrade` rev 23→24,web Pod `web-6ffc5d66c5-7jm4j`
   Running 2/2,image 与上述 digest 一致。Worker/Runner/stateful 组件未动。
-- 注意:镜像 OCI revision 标签为 `8ba3fd2`(构建时 HEAD),内容 = 8ba3fd2 + 本修复(提交前构建)。
+- 注意:镜像 OCI revision 标签为 `8ba3fd2`(构建时 HEAD),实际内容即后续提交 `09ab20d`
+  (提交前构建,工作树与提交内容逐字节一致,未再重建)。
 
 ## E3 身份链验证(对 rev 24 最终镜像)
 
