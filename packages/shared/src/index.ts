@@ -22,6 +22,8 @@ export * from './definition/definition';
 export * from './presentation/presentation';
 // Browser-observed view and server navigation facts remain separate from Business truth.
 export * from './presentation/chat-view';
+// Bounded, replayable user presence changes and projection shapes (T29).
+export * from './presence';
 // External-agent write ingress policy and governed Draft wire contracts.
 export * from './submission';
 // Provider-neutral Coding Capability Executor wire contracts.
