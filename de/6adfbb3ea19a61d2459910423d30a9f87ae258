@@ -1,0 +1,1 @@
+Correction for T29 presence endpoint: fixed the route and route-test relative imports from src/app/api/presence to src/{db,auth,engine}, and narrowed the scope type guard. Verified with the route test, web typecheck, and git diff --check.
