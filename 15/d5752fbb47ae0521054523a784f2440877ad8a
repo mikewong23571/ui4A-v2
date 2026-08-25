@@ -1,0 +1,6 @@
+T24 Phase B Task 1: thinking 帧默认折叠可展开
+
+- 每 (turnId,step) 一条可折叠思考区:折叠=「思考中 · 第 N 步」进行中指示(isRunning && 末条),展开=实时思考增量;thinking-delta 50ms 聚合与终帧全文替换逻辑原样保留;回合结束回落「思考 · 步骤 N」仍可展开(数据不丢)。
+- showThinking 全局开关与 THINKING_STORAGE_KEY 退役(折叠指示常在后冗余);全仓含 e2e 无残留引用;静止态文案与门控 e2e llm-thinking.spec 的既有正则兼容。
+- 测试:新增折叠/展开/实时/回落/机制词断言,既有十项 thinking 口径全保留;Red→Green 留证。
+- 验证(编排 agent 复跑):floating-chat 16/16、floating-chat-session 14/14、components 整目录 31 文件 185 用例全绿;governance OK。
