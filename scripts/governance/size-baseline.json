@@ -22,6 +22,12 @@
   ],
   "dirs": [
     {
+      "path": "apps/web/src/db",
+      "lines": 4014,
+      "limit": 4000,
+      "note": "T29 presence 投影(presence.ts/presence.test.ts + 迁移 v2)在 T22 关闭前入库;用户授权登记,db 目录拆分或 T22 基线裁决时一并退役"
+    },
+    {
       "path": "scripts/t22",
       "lines": 14408,
       "limit": 4000,
