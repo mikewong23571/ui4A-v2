@@ -22,7 +22,8 @@ const apiKey = '__runner_codex_api_key__';
 const runnerToken = 'runner-token.fixture-123';
 const temporaryRoots: string[] = [];
 const productionWorkspaceRoot = join('/dev/shm', `ui4a-agent-runner-${process.pid}`);
-const hostWorkspaceRoot = join(productionWorkspaceRoot, 'host');
+const hostWorkspaceBase = join(productionWorkspaceRoot, 'host');
+const hostWorkspaceRoot = join(hostWorkspaceBase, 'run:writing:1', 'agent');
 const kubernetesWorkspaceBase = join(productionWorkspaceRoot, 'kubernetes');
 const kubernetesWorkspaceRoot = join(kubernetesWorkspaceBase, 'run:writing:1', 'agent');
 
@@ -61,7 +62,7 @@ function configuration(): ProductionDeploymentConfig {
             backend: 'host',
             runnerId: 'runner-1',
             runnerTokenRef: 'runner-token',
-            workspaceRoot: hostWorkspaceRoot,
+            workspaceRoot: hostWorkspaceBase,
             timeoutSeconds: 30,
             resources: { cpu: '1', memory: '2Gi' },
             networkPolicy: 'restricted',
@@ -401,6 +402,20 @@ describe('Agent Runner production composition', () => {
     const { processor, transport } = composition();
     const input = delivery();
     mutate(input);
+
+    await expect(processor.execute(input)).rejects.toThrow('runner_execution_failed');
+    expect(transport.createClient).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['configured base', hostWorkspaceBase],
+    ['another Run root', join(hostWorkspaceBase, 'run:other', 'agent')],
+    ['normalized escape', join(hostWorkspaceRoot, '..', '..', 'other')],
+    ['absolute escape', '/tmp/run:writing:1/agent'],
+  ])('rejects trusted-host workspace %s before SDK construction', async (_label, rootRef) => {
+    const { processor, transport } = composition();
+    const input = delivery();
+    input.execution.workspace.rootRef = rootRef;
 
     await expect(processor.execute(input)).rejects.toThrow('runner_execution_failed');
     expect(transport.createClient).not.toHaveBeenCalled();

@@ -180,22 +180,19 @@ function matchingProfile(
   const expectedBackend = profile.backend === 'host' ? 'trusted-host' : 'kubernetes-job';
   const expectedImage = profile.backend === 'host' ? runnerImage : profile.image;
   const workspaceRoot = delivery.execution.workspace.rootRef;
-  let workspaceMatches = workspaceRoot === profile.workspaceRoot;
-  if (profile.backend === 'kubernetes') {
-    if (!/^[A-Za-z0-9:_-]{1,128}$/u.test(delivery.request.runId)) {
-      throw new Error('runner_execution_failed');
-    }
-    const base = resolve(profile.workspaceRoot);
-    const expected = resolve(join(base, delivery.request.runId, 'agent'));
-    const child = relative(base, expected);
-    workspaceMatches =
-      isAbsolute(workspaceRoot) &&
-      workspaceRoot === resolve(workspaceRoot) &&
-      workspaceRoot === expected &&
-      child !== '' &&
-      !child.startsWith('..') &&
-      !isAbsolute(child);
+  if (!/^[A-Za-z0-9:_-]{1,128}$/u.test(delivery.request.runId)) {
+    throw new Error('runner_execution_failed');
   }
+  const base = resolve(profile.workspaceRoot);
+  const expected = resolve(join(base, delivery.request.runId, 'agent'));
+  const child = relative(base, expected);
+  const workspaceMatches =
+    isAbsolute(workspaceRoot) &&
+    workspaceRoot === resolve(workspaceRoot) &&
+    workspaceRoot === expected &&
+    child !== '' &&
+    !child.startsWith('..') &&
+    !isAbsolute(child);
   if (
     delivery.execution.backend !== expectedBackend ||
     delivery.execution.image !== expectedImage ||
