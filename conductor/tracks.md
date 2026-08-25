@@ -52,3 +52,13 @@
 ---
 
 - [~] **Track: T23 项目治理：规则基线 GR1–GR5、依赖方向与例外登记、未发布窗口兼容性清理、文件/模块大小门禁，类 TDD 红绿执行并入 pnpm check** *Link: [tracks/t23-project-governance_20260825/index.md](./tracks/t23-project-governance_20260825/index.md)*
+
+---
+
+方向 program(依据 [product-vision.md](../product-vision.md);站点为天然分割点,limited scope;依赖序 T24/T25 → T26 → T27 → T28):
+
+- [~] **Track: T24 呈现诚实化(减暴露):机制 chrome 退出首屏与对话面** *Link: [tracks/t24-presentation-honesty_20260825/index.md](./tracks/t24-presentation-honesty_20260825/index.md)*
+- [~] **Track: T25 Assistant 上下文收窄(limited scope):分层披露,起点用事实** *Link: [tracks/t25-assistant-scoped-context_20260825/index.md](./tracks/t25-assistant-scoped-context_20260825/index.md)*
+- [~] **Track: T26 工作线投影(work thread):一件事的纯投影聚合(spike 先行)** *Link: [tracks/t26-work-thread-projection_20260825/index.md](./tracks/t26-work-thread-projection_20260825/index.md)*
+- [~] **Track: T27 Workstation 站点:三种工作形态落地与"我的事"首页** *Link: [tracks/t27-workstation-site_20260825/index.md](./tracks/t27-workstation-site_20260825/index.md)*
+- [~] **Track: T28 一等交互与引用:动作上肩、引用可点、raw 模式** *Link: [tracks/t28-first-class-interaction_20260825/index.md](./tracks/t28-first-class-interaction_20260825/index.md)*
