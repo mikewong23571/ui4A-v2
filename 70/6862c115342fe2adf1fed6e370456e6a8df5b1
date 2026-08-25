@@ -4,3 +4,20 @@ T24 Phase A Task 4: sidecar 控制条降级
 - canvas-first-screen.test.tsx 新增 cache/pinned 两用例:sidecar 在场且抽屉关闭时主区域零机制词(词表+控制条按钮文案),唯一入口断言;Red→Green 留证。
 - baseline 4116→4175(+59 测试断言,在途上调,shrink-only 自 T24 关闭起算)。
 - 验证(编排 agent 复跑):4 文件 29 用例全绿;e2e 对控制条选择器零依赖;governance 复绿。
+
+——
+
+T24 Phase A Verification & Checkpoint(自治验收,编排 agent 代行)
+
+阶段范围:机制词表 Red 基线(02226a7)→ 首屏清理(982d746)→ 抽屉(3b00cbd)→ 控制条降级(706862c)。
+代码变更文件:canvas-body.tsx、canvas-why-drawer.tsx(+test)、canvas-first-screen.test.tsx、use-sidecar-actions.ts、lib/mechanism-words.ts——均由本轮新增/扩展的组件测试覆盖。
+
+自动化验证(编排 agent 亲自复跑):
+- pnpm vitest run apps/web/src/components apps/web/src/app/canvas apps/web/src/app/api/presentation → 35 files / 203 tests 全绿;
+- pnpm governance → OK(components 目录超限已按 workflow 业务优先原则登记 size-baseline 4175,shrink-only 自 T24 关闭起算)。
+
+手动走查替代(自治):canvas 为客户端渲染,SSR HTML 不含首屏机制词不构成证据;首屏零机制词/抽屉能力等价由组件测试断言承担,浏览器截图走查按计划归 Phase C(Playwright 截图对比)。
+
+已知既有问题(非本阶段引入):.next-e2e 陈旧生成物致 web typecheck 报 TS2307(api/internal/capability-callback 已删除),Phase C 全量 pnpm check 前处置。
+
+结论:Phase A 验收通过。
