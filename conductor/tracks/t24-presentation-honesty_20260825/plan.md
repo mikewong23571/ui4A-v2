@@ -5,7 +5,7 @@
 
 ## Phase A: canvas 机制抽屉化
 
-- [ ] Task: 机制词表断言(Red)
+- [x] Task: 机制词表断言(Red) 02226a7
   - 固定机制词常量清单(surface 宿主/catalog.json/sidecar:/deref-failed/
     个人呈现 等),组件测试:canvas 主区域渲染文本不出现清单词;
     诊断/机制词只出现在抽屉内
