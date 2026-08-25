@@ -1,0 +1,5 @@
+T24 Phase A Task 2: canvas 首屏清理(Green)
+
+- canvas-body.tsx 纯减法 8 行:删头部机制行(A2UI surface 宿主/目录协商/surface 计数)与 surface 卡片 ID 标题(h2);删 negotiated 死状态。目录协商校验逻辑保留(渲染前置校验,非展示)。
+- 首屏信息层级落位:内容主体 > 合同动作(未动)> 机制(后续任务入抽屉)。
+- 验证(编排 agent 复跑):canvas-first-screen.test.tsx(Red 基线)变绿;canvas-body.test.tsx 4/4 绿;governance OK;data-surface 属性保留,e2e 选择器不受影响。
