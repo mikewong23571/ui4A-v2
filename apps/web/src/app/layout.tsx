@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 
 import { AppShell } from '@/components/app-shell';
 import { FloatingChat } from '@/components/chat/floating-chat';
+import { PresenceReporter } from '@/components/presence-reporter';
 
 import './globals.css';
 
@@ -15,7 +17,12 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
     <html lang="zh-CN" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         {/* aside 槽:assistant 工作台 sidebar(T9 Phase B);收起态为右下 FAB */}
-        <AppShell aside={<FloatingChat />}>{children}</AppShell>
+        <AppShell aside={<FloatingChat />}>
+          <Suspense fallback={null}>
+            <PresenceReporter />
+          </Suspense>
+          {children}
+        </AppShell>
       </body>
     </html>
   );
