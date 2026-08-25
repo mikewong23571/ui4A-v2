@@ -799,6 +799,12 @@ export async function POST(request: Request) {
           subjectToken: productionSubjectToken,
           requestedScopes,
         });
+        // 接收端校验的 delegated scope 白名单必须与本次交换携带的 policy scopes 一致
+        // (全量 granted),否则 policyFor 按单个 policyScope 收窄会误报
+        // delegation_scope_exceeded。
+        const exchangedPolicyScopes = requestedScopes
+          .filter((scope) => scope.startsWith('ui4a:policy:'))
+          .map((scope) => scope.slice('ui4a:policy:'.length));
         const delegatedIdentity = await resolveTrustedRequestIdentity(
           new Request(request.url, {
             headers: { authorization: credential.authorizationHeader },
@@ -807,7 +813,7 @@ export async function POST(request: Request) {
             profile: 'production',
             productionConfig,
             requiredScopes: requestedScopes,
-            authorizedPolicyScopes: [productionIdentity.policyScope],
+            authorizedPolicyScopes: exchangedPolicyScopes,
             defaultPolicyScope: productionIdentity.policyScope,
             plane: 'business',
           },

@@ -377,6 +377,13 @@ describe('production chat turn credential boundary', () => {
         'ui4a:policy:publishing',
       ],
     });
+    // 交换凭证的接收端校验白名单必须覆盖全部携带的 policy scopes(否则误报
+    // delegation_scope_exceeded)。
+    const delegatedVerification = mocks.resolveIdentity.mock.calls[1]!;
+    expect(delegatedVerification[1]).toMatchObject({
+      authorizedPolicyScopes: ['development', 'publishing'],
+      defaultPolicyScope: 'development',
+    });
   });
 
   it.each([
