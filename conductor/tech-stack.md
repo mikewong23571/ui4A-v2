@@ -111,3 +111,12 @@ probe 已固定以下实验版本基线；OCI digest 在 release manifest 中最
 Phase A 不预选应用内 OIDC/JWT npm library、Kubernetes client library、chart templating helper 或
 image scanner；相关 Phase 必须先以 Red test/official compatibility 验证，再在本文件记录实际新增
 依赖。部署不得自造身份协议、Workflow engine、container registry 或 secret store。
+
+### v0.1.0-experimental.1 现场结果
+
+mothership K8s 已以 single-replica、non-HA 形态部署并可访问；认证、单 Web replay/restart 和十工件
+isolated recovery 已验证。最终 Compose 与 K8s Runtime 都 `failed-honest`，U8/accept deferred；
+镜像扫描为 50 Critical、241 High matches，作为 `known-risk` 仅限 internal experiment。rollback 与
+fault injection 未实测，因此不形成 GA、SLA、LTS 或 production-ready 口径，也不标记 T22/Phase
+完成。最终工件与镜像身份见
+[`release-manifest.json`](../release/v0.1.0-experimental.1/release-manifest.json)。

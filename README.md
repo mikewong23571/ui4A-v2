@@ -26,6 +26,17 @@ pnpm dev:all
 
 停止完整栈使用 `Ctrl-C`；需要同时停止 PostgreSQL 时运行 `pnpm infra:down`。
 
+## v0.1.0-experimental.1 现场状态
+
+首个 internal experimental 版本已在 mothership 内网以单副本、非 HA 形态部署，可通过
+`https://ui4a.mothership.internal:32067/` 访问。认证、单 Web 并发/重启/重放及十工件隔离恢复已
+现场验证；最终 Compose 与 K8s Runtime 均诚实返回 `execute-failed`、无 fallback，U8 和 accept
+仍 deferred。镜像扫描有 50 个 Critical、241 个 High matches，属于仅限内网实验的 `known-risk`；
+rollback 与 fault injection 尚未实测。本版本不是 GA，不提供 SLA 或 LTS，也不适用于生产。
+证据见 [release notes](./release/v0.1.0-experimental.1/RELEASE_NOTES.md)、
+[acceptance report](./release/v0.1.0-experimental.1/acceptance-report.json) 和
+[deployment runbook](./docs/t22-production-runbook.md)；仓库未创建对应 Git tag。
+
 ## 当前产品边界
 
 - 生产 Assistant 是 AI-first：default/auto 使用外部配置的真实 LLM，不 fallback 到 rule driver。模型不可用时诚实失败，人工 Renderer 仍可使用。

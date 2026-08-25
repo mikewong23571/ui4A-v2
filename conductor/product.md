@@ -192,6 +192,15 @@ diff/checks/Eval/provenance 与 human-only approval。控制台零 LLM/Sidecar �
 | I6 | 拒绝留痕 | 每个被拒动作在日志中带原因,且可作为下一步决策上下文获取 |
 | I7 | 模型故障安全 | LLM 缺失/失败/超时时诚实失败且零业务副作用；人工 renderer、审批和合同操作仍可用 |
 
+## v0.1.0-experimental.1 部署证据边界
+
+该 internal experiment 已在 mothership 内网以 single-replica、non-HA 形态部署并可访问。认证、
+单 Web replay/restart 与十工件 isolated recovery 已验证；最终 Compose/K8s Runtime 均
+`failed-honest`、无 fallback，U8/accept deferred。镜像扫描仍有 50 Critical、241 High matches，
+按 `known-risk` 接受；rollback/fault injection 未实测。该状态不标记 T22/Phase 完成，也不代表
+GA、SLA、LTS 或 production readiness。证据见
+[`acceptance-report.json`](../release/v0.1.0-experimental.1/acceptance-report.json)。
+
 ## 五条铁律(不可违背)
 
 1. **AI-first、机械治理**:LLM 负责理解、对话与规划;机械层负责事实、权限、裁决、确认、审计和重放。模型不可用时诚实失败且零副作用,人工 renderer 保持可用;不以 rule driver 复刻智能;

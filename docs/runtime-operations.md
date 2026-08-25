@@ -1,5 +1,16 @@
 # Runtime Operations
 
+## Experimental deployment status
+
+`v0.1.0-experimental.1` 已在 mothership 内网以 single-replica、non-HA 形态部署并可访问
+`https://ui4a.mothership.internal:32067/`。认证、单 Web replay/restart 与十工件 isolated recovery
+已现场验证；最终 Compose/K8s Runtime 均为 `failed-honest`，U8/accept deferred。镜像扫描结果为
+50 Critical、241 High matches，按 `known-risk` 仅接受 internal experiment；rollback/fault injection
+未实测。它不是 GA、SLA、LTS 或 production-ready 声明。部署步骤以
+[T22 runbook](./t22-production-runbook.md) 为准，证据边界见
+[release notes](../release/v0.1.0-experimental.1/RELEASE_NOTES.md) 与
+[acceptance report](../release/v0.1.0-experimental.1/acceptance-report.json)。
+
 ## Local stack
 
 ```bash

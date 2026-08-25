@@ -11,6 +11,15 @@
 
 以下业务与切片场景、T15 AI-first、T16 Presentation、T17 External Agent Draft、T18 Coding Capability、T19 Specialized Agent Contracts、T20 Meta Human Control Plane、T21 Assistant 双焦点一致性用户故事 Eval 及不变量全部通过，外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
 
+### v0.1.0-experimental.1 现场状态
+
+该版本已在 mothership 内网以单副本、非 HA 形态部署并可访问；认证、单 Web 并发/重启/重放和
+十工件隔离恢复已经现场验证。最终 Compose 与 K8s Runtime 均 `failed-honest`，没有 fallback；U8
+与 accept 延后。镜像扫描仍有 50 个 Critical、241 个 High matches，按 `known-risk` 仅接受用于
+internal experiment；rollback 与 fault injection 未实测。这份证据不把 T22 或其 Phase 标记为完成，
+也不代表 GA、SLA、LTS 或生产就绪。详见 [release notes](./release/v0.1.0-experimental.1/RELEASE_NOTES.md)
+和 [acceptance report](./release/v0.1.0-experimental.1/acceptance-report.json)。
+
 ### AI-first 用户故事
 
 Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能力发现，以 `conductor/tracks/t15-ai-first-dynamic-assistant_20260822/user-stories.md` 的 U1–U23 为准。验收必须运行配置的真实 LLM；rule/scripted driver 只能证明协议机制，不能证明 Assistant 用户故事成立。

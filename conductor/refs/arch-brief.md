@@ -217,6 +217,15 @@ approve/reject、diff、checks、Eval 与 provenance 零 AI。
 包含校验类别的真实 LLM repair；拒绝文本永不由代码解析为 operation。Presentation job 可晚于 Chat
 final，但 ready/fallback receipt 必须先持久化 completion，再对客户端可见，SSE 在 jobs settled 后关闭。
 
+### 8.8 T22 experimental deployment evidence
+
+`v0.1.0-experimental.1` 已在 mothership 内网以 single-replica、non-HA 形态部署并可访问。认证、
+单 Web 并发/重启/重放和十工件隔离恢复已验证；最终 Compose/K8s Runtime 均 `failed-honest`、
+无 fallback，U8/accept deferred。镜像扫描仍有 50 Critical、241 High matches，按 `known-risk` 仅限
+internal experiment；rollback/fault injection 未实测。该证据不把 T22/Phase 标成完成，也不构成
+GA、SLA、LTS 或 production readiness。机器可读边界见
+[`acceptance-report.json`](../../release/v0.1.0-experimental.1/acceptance-report.json)。
+
 ## 9. 五条垂直切片(第五部,施工顺序)
 
 1. **确认门切片**:agent 执行高危动作 → guard 挂起 → pending 实体化 → notification capability 送达 → 人类在推送上 approve → 事件留痕带 actor/principal。一次验证 guard 第三语义、确认实体、出站能力、委托模型四个论点。构成(README):Cedar 风险策略 + guard 挂起语义 + Temporal notify activity + RJSF 渲染 pending 实体 + 收件箱。GOAL S1 断言:动作未生效挂起 → human approve(actor=human)→ 生效,日志含 actor/principal/信道。

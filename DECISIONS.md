@@ -443,3 +443,14 @@
   Runtime 功能成功只由 U7 真实 per-Run Job 的 canonical result 证明。
 - **Compose/Host 边界**：Compose container Runner 与可选 trusted-host Runner 仍使用受认证 daemon；
   本决定只删除 K8s 的冗余 idle daemon，不改变 Host backend、Runner artifact 或双后端等价语义。
+
+## D37 v0.1.0-experimental.1 按现场证据作为已知风险内网实验发布(2026-08-25,T22 Phase J)
+
+- **发布口径**：mothership K8s 已以 single-replica、non-HA 形态部署且可访问；认证、单 Web
+  并发/重启/重放和十工件隔离恢复已现场验证。该事实不等于 T22 或任一 Phase 完成，也不产生
+  GA、SLA、LTS 或 production-ready 声明；仓库不创建该版本 Git tag。
+- **Runtime 证据**：最终 Compose 与 K8s U7 都以 `execute-failed` 诚实失败且没有 fallback；U8 与
+  accept deferred。因此 Runtime matrix 固定为 `failed-honest`，不得提升为 passed。
+- **已知风险与延后项**：最终镜像扫描为 50 Critical、241 High matches，作为 `known-risk` 只接受
+  internal experiment。rollback 与 fault injection 未实测；不能从部署可访问推导升级/回滚或故障
+  恢复已经验证。机器可读边界以 `release/v0.1.0-experimental.1/` bundle 为准。
