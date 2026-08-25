@@ -106,6 +106,17 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+/** Keycloak 26 列表视图行为:省略默认值级 mapper 配置键。 */
+function stripListViewDefaults(client: RealmClientRepresentation): RealmClientRepresentation {
+  const clone = structuredClone(client);
+  if (Array.isArray(clone.protocolMappers)) {
+    for (const mapper of clone.protocolMappers) {
+      if (mapper.config !== undefined) delete mapper.config['userinfo.token.claim'];
+    }
+  }
+  return clone;
+}
+
 function requestBody(init: RequestInit | undefined): string {
   if (typeof init?.body === 'string') return init.body;
   if (init?.body instanceof URLSearchParams) return init.body.toString();
@@ -156,7 +167,16 @@ class ImportOrSkipKeycloakAdmin {
         requested === null
           ? this.clients
           : this.clients.filter((candidate) => candidate.clientId === requested);
-      return jsonResponse(clients);
+      // Keycloak 26 列表视图省略默认值级 mapper 配置;详情视图完整(生产实测:
+      // userinfo.token.claim 仅列表视图缺失)。兼容性判定必须走详情。
+      return jsonResponse(clients.map((candidate) => stripListViewDefaults(candidate)));
+    }
+    const detailMatch = /^\/admin\/realms\/ui4a\/clients\/([^/]+)$/.exec(url.pathname);
+    if (method === 'GET' && detailMatch !== null) {
+      const client = this.clients.find((candidate) => candidate.id === detailMatch[1]);
+      return client === undefined
+        ? jsonResponse({ error: 'not_found' }, 404)
+        : jsonResponse(client);
     }
     if (method === 'POST' && url.pathname === '/admin/realms') {
       this.mutations.push({ path: url.pathname, body });
@@ -477,7 +497,7 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
   it('ignores non-managed Keycloak clients while checking the three UI4A clients', async () => {
     const fake = new ImportOrSkipKeycloakAdmin();
     await execute(fake, 'apply');
-    fake.clients.push({ clientId: 'account', enabled: true });
+    fake.clients.push({ id: 'account-builtin', clientId: 'account', enabled: true });
     fake.clearTraffic();
 
     await expect(execute(fake, 'check')).resolves.toMatchObject({ outcome: 'skip' });

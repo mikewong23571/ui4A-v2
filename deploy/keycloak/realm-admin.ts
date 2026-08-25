@@ -137,7 +137,26 @@ export function createKeycloakAdminClient(input: AdminClientInput): KeycloakAdmi
       if (!Array.isArray(body) || body.some((entry) => object(entry) === undefined)) {
         fail('KEYCLOAK_BOOTSTRAP_INVALID_RESPONSE', 'Keycloak Admin response was invalid');
       }
-      return body as Array<Record<string, unknown>>;
+      // 列表视图省略默认值级 mapper 配置(如 userinfo.token.claim),兼容性判定必须
+      // 基于完整表示:逐个取回详情(verified against Keycloak 26 list behavior)。
+      const full: Array<Record<string, unknown>> = [];
+      for (const entry of body as Array<Record<string, unknown>>) {
+        if (typeof entry.id !== 'string' || entry.id === '') {
+          fail('KEYCLOAK_BOOTSTRAP_INVALID_RESPONSE', 'Keycloak Admin response was invalid');
+        }
+        const detail = await authorized(
+          `/admin/realms/${encodeURIComponent(realm)}/clients/${encodeURIComponent(entry.id)}`,
+        );
+        if (!detail.ok) {
+          fail('KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED', 'Keycloak Admin request failed');
+        }
+        const detailBody = object(await json(detail));
+        full.push(
+          detailBody ??
+            fail('KEYCLOAK_BOOTSTRAP_INVALID_RESPONSE', 'Keycloak Admin response was invalid'),
+        );
+      }
+      return full;
     },
     async importRealm(realm) {
       const response = await authorized('/admin/realms', {
