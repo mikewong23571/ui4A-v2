@@ -33,9 +33,7 @@ function versionSubEntities(entity: SirenEntity): SirenEntity[] {
 }
 
 /** 经 service.exec 走 meta 动作(与 /_meta/api/exec 同一入口)。 */
-async function metaExec(
-  request: Parameters<Awaited<ReturnType<typeof getEngine>>['exec']>[0],
-) {
+async function metaExec(request: Parameters<Awaited<ReturnType<typeof getEngine>>['exec']>[0]) {
   const engine = await getEngine(pool);
   return engine.exec(request);
 }

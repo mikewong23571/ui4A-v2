@@ -116,9 +116,9 @@ describe('freezeSpec:入口校验(不合法不入日志)', () => {
 
   it('concern 参数与 spec.concern 不一致 → 抛错(凝固键一致)', async () => {
     const engine = await getEngine(pool);
-    await expect(
-      engine.freezeSpec('other-key', chartSpec, { actor: 'agent' }),
-    ).rejects.toThrow(/concern/);
+    await expect(engine.freezeSpec('other-key', chartSpec, { actor: 'agent' })).rejects.toThrow(
+      /concern/,
+    );
   });
 });
 
@@ -138,7 +138,10 @@ describe('凝固 spec 查询与投影(合同可见)', () => {
     await engine.freezeSpec(chartSpec.concern, chartSpec, { actor: 'agent' });
 
     const single = await engine.getEntity('render-spec:articles-by-category');
-    expect(single?.properties).toMatchObject({ concern: 'articles-by-category', component: 'chart' });
+    expect(single?.properties).toMatchObject({
+      concern: 'articles-by-category',
+      component: 'chart',
+    });
 
     const collectionEntity = await engine.getEntity('render-specs');
     expect(collectionEntity?.properties).toEqual({ rel: 'render-specs', count: 1 });

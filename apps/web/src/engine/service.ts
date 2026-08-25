@@ -34,27 +34,15 @@
  * - sitemap 从快照活跃定义纯推导,按活跃集内容 hash 缓存(定义激活即重生成,
  *   版本号=内容 hash,S2 的根基)。
  */
-import { createHash } from 'node:crypto';
-
 import {
   activeDefinitionOf,
-  applyCapabilityArtifactCreated,
   actionRejectedEvent,
   assertMetaBootstrapIntegrity,
-  approveConfirmation,
-  canonicalJson,
-  contentVersion,
-  deriveSitemap,
   executeMeta,
   executeWithGates,
   executePlan,
-  fold,
   project,
   readRenderSpecsOf,
-  rejectConfirmation,
-  renderSpecRel,
-  type Approver,
-  type ConfirmationDecision,
   type ConfirmationDeps,
   type EngineEvent,
   type ExecRequest,
@@ -65,23 +53,15 @@ import {
   type MetaDeps,
   type PlanStepResult,
   type ProjectDeps,
-  type RenderSpecFrozenDetail,
   type Sitemap,
-  type SitemapSurface,
   type SirenEntity,
   type SuspendedConfirmation,
 } from '@ui4a/engine';
 import type { DeploymentEnvironment, EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
 import type { FieldValue } from '@ui4a/shared';
-import { metaCapabilityRel, metaFlowRel, seedGuardRegistry } from '@ui4a/shared';
+import { seedGuardRegistry } from '@ui4a/shared';
 
-import {
-  appendEventBatch,
-  readLog,
-  type ConnectableDb,
-  type DbExecutor,
-  type EventAppend,
-} from '../db/events';
+import { readLog, type DbExecutor, type EventAppend } from '../db/events';
 import { assertApplicationBootstrapReady, prepareDatabaseForApplication } from '../db/migrations';
 import { getPool } from '../db/pool';
 import { getProductionPool } from '../db/production-pool';
@@ -95,8 +75,6 @@ import { bootstrapAndVerifyApplication } from './bootstrap';
 
 export { bootstrapAndVerifyApplication } from './bootstrap';
 import type { RenderSpec } from '../render/spec';
-import { validateSpec } from '../render/validator';
-import { wordOf } from '../render/registry';
 import { dispatchNotify } from '../temporal/notify';
 import { resolveFlowRelAlias, withCollectionFlowEntryLinks } from './flow-entry';
 import { preflightCodingResultDecision } from './agent/coding-result-decision';
@@ -106,22 +84,26 @@ import {
   type PreparedNativeAgentDispatch,
 } from './agent/native-agent-dispatch';
 import { codingExecutorProfileRegistryFromEnvironment } from './agent/coding-executor-config';
+import {
+  appendBatchWithSeq,
+  applyForeignGaps,
+  createCoreEventLogState,
+  refreshFromLog,
+} from './service-event-log';
+import { artifactModelFor, materializeSpawnArtifacts } from './service-artifacts';
+import { execConfirmationDecision, persistRejection } from './service-confirmation';
+import { createSitemapReaders, type MetaSitemap } from './service-sitemaps';
+import { freezeSpecCore, toRenderSpec, type FreezeSpecResult } from './service-render-specs';
+
+export { LlmArtifactConfigurationError } from './service-artifacts';
+export type { MetaSitemap } from './service-sitemaps';
+export type { FreezeSpecResult } from './service-render-specs';
 
 /** exec 结果(discriminated union;HTTP 层据此映射 200/202/4xx)。 */
 export type ExecOutcome =
   | { kind: 'accepted'; entity: SirenEntity; appended: string[] }
   | { kind: 'suspended'; entity: SirenEntity; confirmation: SuspendedConfirmation }
   | { kind: 'rejected'; layer: JudgeLayer; reason: string; detail?: unknown };
-
-/** 正式模型工件缺少部署 profile；调用方应映射为可恢复 503，而非内部错误。 */
-export class LlmArtifactConfigurationError extends Error {
-  readonly code = 'LLM_CONFIGURATION';
-
-  constructor() {
-    super('正式模型工件需要外部配置 LLM_MODEL；未写入任何业务事件，请配置后重试');
-    this.name = 'LlmArtifactConfigurationError';
-  }
-}
 
 /**
  * exec-plan 结果(T6 批量裁决;HTTP 层映射 completed/rejected → 200,
@@ -138,27 +120,9 @@ export type PlanServiceOutcome =
       confirmation: SuspendedConfirmation;
     };
 
-/** meta 站点 sitemap(定义层交互拓扑:meta rel 面;跨站规则下业务面不携带)。 */
-export interface MetaSitemap {
-  version: string;
-  site: 'meta';
-  surfaces: SitemapSurface[];
-}
-
 /** 定义平面 rel(meta/self 或 meta/ 前缀;HTTP 层的跨站路由键)。 */
 export function isMetaRel(rel: string): boolean {
   return rel === 'meta/self' || rel.startsWith('meta/') || rel.startsWith('draft:');
-}
-
-/**
- * 冻结结果:spec 为生效的已凝固 spec;frozen=true 本次首冻(事件已追加),
- * false = concern 已凝固,返回首冻 spec(首冻为准——"同一关注点永远同一布局")。
- */
-export interface FreezeSpecResult {
-  concern: string;
-  frozen: boolean;
-  spec: RenderSpec;
-  requestedBy: { actor: 'human' | 'agent'; principal?: string };
 }
 
 export interface EngineRuntime {
@@ -212,7 +176,7 @@ export function getDb(environment: DeploymentEnvironment = process.env): DbExecu
 }
 
 /** 请求参数 → 带出处的字段(出处缺省 intent;与 engine effects 的 originOf 同口径)。 */
-function paramsWithOrigins(request: ExecRequest): Record<string, FieldValue> {
+export function paramsWithOrigins(request: ExecRequest): Record<string, FieldValue> {
   return Object.fromEntries(
     Object.entries(request.params ?? {}).map(([name, value]) => [
       name,
@@ -222,18 +186,7 @@ function paramsWithOrigins(request: ExecRequest): Record<string, FieldValue> {
 }
 
 /** 确认实体 rel 前缀(与 engine confirmationRel 同口径;approve/reject 的路由键)。 */
-const CONFIRMATION_REL_PREFIX = 'confirmation:';
-
-/** 已凝固条目 → RenderSpec(bind 在凝固入口已过零字面校验,仅类型归属)。 */
-function toRenderSpec(frozen: FrozenRenderSpec): RenderSpec {
-  return {
-    concern: frozen.concern,
-    component: frozen.component,
-    // 断言理由:bind 经 freezeSpec 入口的零字面校验器把关后入日志,
-    // 此处从 unknown 归属回 BindTree(渲染模块拥有该类型)。
-    bind: frozen.bind as RenderSpec['bind'],
-  };
-}
+export const CONFIRMATION_REL_PREFIX = 'confirmation:';
 
 // ---- globalThis 单例(见文件头注释)----------------------------------------
 
@@ -274,28 +227,27 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
 
   const events: LogEvent[] = await readLog(db);
   assertMetaBootstrapIntegrity(events);
-  let snapshot = fold(events, { flows: {} });
+  // 核心事件日志状态(快照 + 已折叠进度 seq 高水位 + foreignGaps):自身 append
+  // 推进水位;读路径/exec 开头按此增量 fold 外部写者(多写者水位铁律见下)。
+  const logState = createCoreEventLogState(events);
   // Application/Flow/Catalog activation 的旁路预生成；配置/模型失败只进入
   // Presentation coordinator failure，不阻断 boot 或业务引擎。
-  scheduleRecipesForSnapshot(snapshot);
-  // 已折叠进度(seq 高水位):自身 append 推进;读路径/exec 开头按此增量 fold 外部写者。
-  let lastSeq = events.length > 0 ? events[events.length - 1]!.seq : 0;
-  let committedCoreCount = events.length;
+  scheduleRecipesForSnapshot(logState.snapshot);
   const state = engineState();
 
   // ---- 定义解析(T4 Phase B:fold 快照即真相,代码常量仅 seed 源+顺序锚)----
   // 活跃定义 = definitionVersions[条目当前版本](activeDefinitionOf):草稿窗口
   // 的工作副本不进业务平面;每快照演进后重算(定义激活即自动切换)。
   const activeFlowList = (): FlowDefinition[] =>
-    Object.keys(snapshot.definitions ?? {}).flatMap((name) => {
-      const active = activeDefinitionOf(snapshot, name);
+    Object.keys(logState.snapshot.definitions ?? {}).flatMap((name) => {
+      const active = activeDefinitionOf(logState.snapshot, name);
       return active === undefined ? [] : [active];
     });
   const activeFlows = (): Record<string, FlowDefinition> =>
     Object.fromEntries(activeFlowList().map((flow) => [flow.name, flow]));
   // 出生版本注册表(在途实例按出生定义走完):definitions 历史原样注入。
   const versions = (): Record<string, Record<number, FlowDefinition>> =>
-    snapshot.definitionVersions ?? {};
+    logState.snapshot.definitionVersions ?? {};
   const guards = seedGuardRegistry;
   // 确认门依赖:Cedar 策略在 boot 时装配一次(策略文件改动重启生效,T4 起 _meta 热更新)。
   const policy = cedarPolicyFromDefaultFile();
@@ -319,61 +271,12 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     executorProfiles: codingExecutorProfileRegistryFromEnvironment(),
   });
 
-  // meta 站点 sitemap(meta rel 面;定义实体随 definitions 表动态列出,
-  // capability 实体随 capabilities 表动态列出[T13 Phase C]——两面同进缓存键)。
-  let metaSitemapCache: { key: string; sitemap: MetaSitemap } | undefined;
-  const currentMetaSitemap = (): MetaSitemap => {
-    const surfaces: SitemapSurface[] = [
-      { rel: 'meta/self', title: 'definition-lifecycle(引擎自举)' },
-      { rel: 'meta/flows', title: '流程定义', collection: true },
-      { rel: 'meta/activations', title: '激活队列', collection: true },
-      { rel: 'meta/applications', title: '应用定义', collection: true },
-      ...Object.values(snapshot.applications ?? {}).map((application) => ({
-        rel: `meta/application:${application.name}`,
-        title: application.title,
-      })),
-      ...Object.values(snapshot.definitions ?? {}).map((entry) => ({
-        rel: metaFlowRel(entry.name),
-        title: entry.definition.title ?? entry.name,
-      })),
-      { rel: 'meta/capabilities', title: '能力目录', collection: true },
-      ...Object.values(snapshot.capabilities ?? {}).map((capability) => ({
-        rel: metaCapabilityRel(capability.name),
-        title: capability.title,
-      })),
-    ];
-    const key = contentVersion(surfaces);
-    if (metaSitemapCache?.key === key) return metaSitemapCache.sitemap;
-    const sitemap: MetaSitemap = { version: key, site: 'meta', surfaces };
-    metaSitemapCache = { key, sitemap };
-    return sitemap;
-  };
-
-  // sitemap 从快照活跃定义推导,按活跃集内容 hash 缓存(定义不变同对象引用;
-  // 定义激活 → 活跃集变化 → 版本号变[S2 根基]——version 本身就是内容 hash)。
-  // T10:applications 分组吃 snapshot.applications(fold 落表)且进缓存键——
-  // app 定义变更(无 flow 变更)同样重生成,版本号随之 bump。
-  let sitemapCache: { key: string; sitemap: Sitemap } | undefined;
-  const currentSitemap = (): Sitemap => {
-    const flows = activeFlowList();
-    const applications = snapshot.applications;
-    const capabilities = snapshot.capabilities;
-    const key = contentVersion({ flows, applications, capabilities });
-    if (sitemapCache?.key === key) return sitemapCache.sitemap;
-    const sitemap = deriveSitemap(flows, {
-      extraSurfaces: [
-        { rel: 'comments', title: '评论', collection: true },
-        { rel: 'inbox', title: '确认收件箱', collection: true },
-        { rel: 'software-changes', title: '软件变更', collection: true, app: 'development' },
-        { rel: 'writing-requests', title: '写作请求', collection: true, app: 'editorial' },
-        { rel: 'agent-runs', title: 'Agent Runs', collection: true, app: 'development' },
-      ],
-      applications,
-      capabilities,
-    });
-    sitemapCache = { key, sitemap };
-    return sitemap;
-  };
+  // sitemap 读者(业务/meta 两面;按活跃定义集内容 hash 缓存,工厂与缓存在
+  // service-sitemaps.ts,快照经 getSnapshot 惰性读取)。
+  const { currentSitemap, currentMetaSitemap } = createSitemapReaders(
+    () => logState.snapshot,
+    activeFlowList,
+  );
 
   const withIdentityAudit = (detail: unknown, identity: ExecRequest['identity']): unknown => {
     if (identity === undefined) return detail;
@@ -422,253 +325,25 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
    * 的外部事件收进 foreignGaps,随后由 applyForeignGaps 折入。
    *
    * 收集而非立即折叠的原因:exec/确认裁决随后会用**不含这些外部事件的**
-   * 派生快照整体覆写 snapshot(applyEffects 的纯函数产物)——立即折会被
+   * 派生快照整体覆写 logState.snapshot(applyEffects 的纯函数产物)——立即折会被
    * 覆写冲掉;每个覆写点之后统一补折。可交换性论证:worker 直写的是
    * delegation:* 族与 notification-delivered(rel=confirmation:<id>)——
    * 前者 rel 与自身族不相交;后者与确认族 rel 相交但**字段级可交换**
    * (notified 标志不与 status/approvedBy 等字段互相覆盖),交换次序安全。
    */
-  let foreignGaps: LogEvent[] = [];
-
-  /** Atomically append one command batch and collect already-committed lower foreign sequences. */
-  const appendBatchWithSeq = async (batch: readonly EventAppend[]): Promise<number[]> => {
-    if (batch.length === 0) return [];
-    const appended = await appendEventBatch(db as ConnectableDb, batch);
-    const seqs = appended.map(({ seq }) => seq);
-    const own = new Set(seqs);
-    const highest = Math.max(...seqs);
-    committedCoreCount += seqs.length;
-    if (highest > lastSeq) {
-      const gap = (await readLog(db, lastSeq)).filter(
-        (entry) => entry.seq < highest && !own.has(entry.seq),
-      );
-      foreignGaps.push(...gap);
-      committedCoreCount += gap.length;
-      lastSeq = highest;
-    }
-    return seqs;
-  };
-
-  /** Append one event through the same real-client transaction boundary used by command batches. */
-  const appendWithSeq = async (event: EventAppend): Promise<number> =>
-    (await appendBatchWithSeq([event]))[0]!;
-
-  /**
-   * 通用同步 capability materialization：LLM 已按 action schema 生成 output-param，
-   * spawn bind 只声明来源字段与输出参数名；本层把它物化为可重放 artifact。
-   * 不识别 capability/action 业务名，缺少完整声明时保留 spawn 事件但不造工件。
-   */
-  const materializeSpawnArtifacts = async (
-    events: readonly EngineEvent[],
-    request: ExecRequest,
-    model: string | undefined,
-  ): Promise<void> => {
-    for (const event of events) {
-      if (event.kind !== 'spawn-requested') continue;
-      if (typeof event.capability !== 'string') continue;
-      const sourceField = event.bind?.['source-field'];
-      const outputParam = event.bind?.['output-param'];
-      if (typeof sourceField !== 'string' || typeof outputParam !== 'string') continue;
-      const source = snapshot.instances[request.rel]?.fields[sourceField];
-      const output = request.params?.[outputParam];
-      const capability = snapshot.capabilities?.[event.capability];
-      if (source === undefined || output === undefined || capability === undefined) continue;
-      if (model === undefined) {
-        throw new Error('正式工件 materialization 缺少已预检的 LLM_MODEL(内部不变式破坏)');
-      }
-
-      const content = { [outputParam]: output };
-      const canonicalContent = canonicalJson(content);
-      const contentHash = `sha256:${createHash('sha256').update(canonicalContent).digest('hex')}`;
-      const id = createHash('sha256')
-        .update(
-          canonicalJson({
-            capability: event.capability,
-            source: { rel: request.rel, field: sourceField },
-            contentHash,
-            model,
-          }),
-        )
-        .digest('hex');
-      const rel = `artifact:${id}`;
-      const detail = {
-        id,
-        capability: event.capability,
-        source: { rel: request.rel, field: sourceField },
-        model,
-        outputSchema: capability.outputSchema ?? { type: 'object' },
-        content,
-        contentHash,
-        createdBy: {
-          actor: request.actor ?? 'human',
-          ...(request.principal !== undefined ? { principal: request.principal } : {}),
-        },
-        ...(request.identity === undefined ? {} : { identity: request.identity }),
-      };
-      const seq = await appendWithSeq({
-        kind: 'capability-artifact-created',
-        rel,
-        actor: request.actor ?? 'human',
-        principal: request.principal,
-        channel: 'capability',
-        detail,
-      });
-      snapshot = applyCapabilityArtifactCreated(snapshot, { seq, rel, detail });
-    }
-  };
-
-  /**
-   * 只对确实会物化正式工件的 spawn 要求模型 profile。必须在 append outcome.events
-   * 之前调用，避免 action-executed/spawn-requested 已写而 artifact 未写的半成品。
-   */
-  const artifactModelFor = (
-    events: readonly EngineEvent[],
-    request: ExecRequest,
-  ): string | undefined => {
-    const materializes = events.some((event) => {
-      if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') return false;
-      const sourceField = event.bind?.['source-field'];
-      const outputParam = event.bind?.['output-param'];
-      if (typeof sourceField !== 'string' || typeof outputParam !== 'string') return false;
-      return (
-        snapshot.instances[request.rel]?.fields[sourceField] !== undefined &&
-        request.params?.[outputParam] !== undefined &&
-        snapshot.capabilities?.[event.capability] !== undefined
-      );
-    });
-    if (!materializes) return undefined;
-    const model = process.env.LLM_MODEL?.trim();
-    if (model === undefined || model === '') throw new LlmArtifactConfigurationError();
-    return model;
-  };
-
-  /** 把落库窗口内挤进来的外部事件补折进当前快照(幂等清空;所有覆写点之后调用)。 */
-  const applyForeignGaps = (): void => {
-    if (foreignGaps.length === 0) return;
-    const gaps = foreignGaps;
-    foreignGaps = [];
-    snapshot = fold(gaps, { flows: {} }, snapshot);
-  };
-
-  /** Incrementally fold committed suffixes; rebuild if commit order reveals a late lower seq. */
-  const refreshFromLog = async (): Promise<void> => {
-    const result = await db.query<{
-      max_seq: string | number | null;
-      event_count: string | number;
-    }>("SELECT max(seq) AS max_seq, count(*) AS event_count FROM events WHERE domain='core'");
-    const maxSeq = Number(result.rows[0]?.max_seq ?? 0);
-    const eventCount = Number(result.rows[0]?.event_count ?? 0);
-    if (eventCount === committedCoreCount) {
-      applyForeignGaps(); // 上一队列操作若中途抛错可能遗留未补折的外部事件
-      return;
-    }
-    const fresh = maxSeq > lastSeq ? await readLog(db, lastSeq) : [];
-    const expectedFresh = eventCount - committedCoreCount;
-    if (expectedFresh < 0 || fresh.length !== expectedFresh) {
-      // PostgreSQL sequences are allocation order, not commit order. A transaction may commit a
-      // lower seq after this process has already observed and applied a higher one. Folding that
-      // late event after the current snapshot would reorder history, so rebuild from sorted truth.
-      const complete = await readLog(db);
-      snapshot = fold(complete, { flows: {} });
-      foreignGaps = [];
-      committedCoreCount = complete.length;
-      lastSeq = complete.at(-1)?.seq ?? 0;
-      if (complete.some((event) => event.kind === 'definition-candidate-applied')) {
-        scheduleRecipesForSnapshot(snapshot);
-      }
-      return;
-    }
-    // 先折遗留 foreignGaps 再折 fresh:gaps 构造上恒更旧(seq < 收集时的
-    // lastSeq),先折保持时序;若先折 fresh,遗留 gap 与 fresh 中相邻的
-    // 委托步号会触发折叠层「步号不连续」响亮报错且确定性复发(终审 M-1)。
-    applyForeignGaps();
-    snapshot = fold(fresh, { flows: {} }, snapshot);
-    if (fresh.some((event) => event.kind === 'definition-candidate-applied')) {
-      scheduleRecipesForSnapshot(snapshot);
-    }
-    committedCoreCount += fresh.length;
-    lastSeq = Math.max(lastSeq, fresh[fresh.length - 1]!.seq);
-  };
-
-  /** 拒绝留痕(action-rejected;detail 携带 layer,HTTP 响应与本事件同源)。 */
-  const persistRejection = async (
-    request: ExecRequest,
-    verdict: {
-      layer: JudgeLayer;
-      reason: string;
-      detail?: unknown;
-    },
-  ): Promise<ExecOutcome> => {
-    await appendWithSeq(
-      toAppend({
-        ...actionRejectedEvent(request, verdict),
-        params: paramsWithOrigins(request),
-      }),
-    );
-    return verdict.detail === undefined
-      ? { kind: 'rejected', layer: verdict.layer, reason: verdict.reason }
-      : {
-          kind: 'rejected',
-          layer: verdict.layer,
-          reason: verdict.reason,
-          detail: verdict.detail,
-        };
-  };
-
-  /**
-   * 确认实体上的裁决动作(rel=confirmation:<id>,仅 approve/reject):
-   * 路由到引擎人类裁决入口;受影响实体:approve → 目标实体(效果已应用),
-   * reject → 确认实体自身(审计视图)。guard/schema 拒绝同样留痕(I4)。
-   */
-  const execConfirmationDecision = async (request: ExecRequest): Promise<ExecOutcome> => {
-    const id = request.rel.slice(CONFIRMATION_REL_PREFIX.length);
-    const approver: Approver = {
-      actor: request.actor ?? 'human',
-      ...(request.principal !== undefined ? { principal: request.principal } : {}),
-      ...(request.identity !== undefined ? { identity: request.identity } : {}),
-    };
-    let decision: ConfirmationDecision;
-    if (request.action === 'approve') {
-      decision = approveConfirmation(snapshot, id, approver, confirmDeps());
-    } else if (request.action === 'reject') {
-      const reason = typeof request.params?.reason === 'string' ? request.params.reason : '';
-      decision = rejectConfirmation(snapshot, id, approver, reason, confirmDeps());
-    } else {
-      decision = {
-        kind: 'rejected',
-        layer: 'undeclared',
-        reason: `动作 "${request.action}" 未声明于确认实体(仅 approve/reject)`,
-      };
-    }
-    if (decision.kind === 'rejected') {
-      return persistRejection(request, decision);
-    }
-
-    await appendBatchWithSeq(decision.events.map(toAppend));
-    snapshot = decision.snapshot;
-    applyForeignGaps();
-
-    const targetRel =
-      request.action === 'approve'
-        ? (snapshot.confirmations?.[request.rel]?.targetRel ?? request.rel)
-        : request.rel;
-    const entity = project(snapshot, targetRel, projectDeps());
-    if (entity === undefined) {
-      throw new Error(`exec 后目标实体 "${targetRel}" 不可投影(内部不变式破坏)`);
-    }
-    return { kind: 'accepted', entity, appended: [] };
-  };
-
   return {
-    getSnapshot: () => snapshot,
-    readSnapshot: () => enqueue(state, refreshFromLog).then(() => snapshot),
+    getSnapshot: () => logState.snapshot,
+    readSnapshot: () =>
+      enqueue(state, () => refreshFromLog(db, logState, scheduleRecipesForSnapshot)).then(
+        () => logState.snapshot,
+      ),
     getEntity: async (rel) => {
       // 读路径增量 fold(spec 决定 4):返回前同步 worker 等外部写者的新事件。
-      await enqueue(state, refreshFromLog);
+      await enqueue(state, () => refreshFromLog(db, logState, scheduleRecipesForSnapshot));
       // flow:<name> 别名(向导类 flow 投影为其实例实体)——纯服务层投影补全,
       // engine 的 project/judge 语义不动。alias 请求参数缺省仅影响 rel 解析。
-      const target = resolveFlowRelAlias(rel, snapshot) ?? rel;
-      const entity = project(snapshot, target, projectDeps());
+      const target = resolveFlowRelAlias(rel, logState.snapshot) ?? rel;
+      const entity = project(logState.snapshot, target, projectDeps());
       if (entity === undefined) return undefined;
       // 集合入口链接同样吃快照活跃定义(append 目标随定义激活演进)。
       return withCollectionFlowEntryLinks(entity, activeFlowList());
@@ -676,8 +351,8 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     getMetaEntity: async (rel) => {
       // _meta 站点读路径:同一引擎同一日志(先同步外部写者);href 前缀 /_meta
       // (站点自洽:留在定义层;引擎 project 的 baseHref 机制,不改投影语义)。
-      await enqueue(state, refreshFromLog);
-      return project(snapshot, rel, { ...projectDeps(), baseHref: '/_meta' });
+      await enqueue(state, () => refreshFromLog(db, logState, scheduleRecipesForSnapshot));
+      return project(logState.snapshot, rel, { ...projectDeps(), baseHref: '/_meta' });
     },
     getSitemap: () => currentSitemap(),
     getMetaSitemap: () => currentMetaSitemap(),
@@ -685,40 +360,45 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       return enqueue(state, async () => {
         // 先同步外部写者进度再裁决(裁决器只见全序日志的最新折叠态);
         // 已在串行队列内,直接调用(不重入 enqueue)。
-        await refreshFromLog();
+        await refreshFromLog(db, logState, scheduleRecipesForSnapshot);
 
         // exec 同样吃 flow 别名:裁决与日志都记实例 rel(不产生幽灵实体)。
         const aliased: ExecRequest = {
           ...request,
-          rel: resolveFlowRelAlias(request.rel, snapshot) ?? request.rel,
+          rel: resolveFlowRelAlias(request.rel, logState.snapshot) ?? request.rel,
         };
 
         // 确认实体上的动作走人类裁决入口(approve/reject;铁律 5:审批不委托)。
         if (aliased.rel.startsWith(CONFIRMATION_REL_PREFIX)) {
-          return execConfirmationDecision(aliased);
+          return execConfirmationDecision(
+            db,
+            logState,
+            { toAppend, confirmDeps, projectDeps },
+            aliased,
+          );
         }
 
         // meta 平面(rel 前缀路由,T4 Phase B):编辑动词/生命周期动词过同一
         // executeMeta 编排——同一裁决器(lifecycle 常量自举)、同一日志、同一
         // 串行队列;后续事件落库/投影与业务 exec 共用同一套代码路径。
         const outcome = isMetaRel(aliased.rel)
-          ? executeMeta(aliased, snapshot, metaDeps())
-          : executeWithGates(aliased, snapshot, gateDeps());
+          ? executeMeta(aliased, logState.snapshot, metaDeps())
+          : executeWithGates(aliased, logState.snapshot, gateDeps());
 
         if (outcome.kind === 'rejected') {
           // 拒绝即数据(I6):不改状态,结构化原因入日志;detail 携带 layer,
           // HTTP 响应与本事件同源(同一 verdict 对象),口径必然一致。
-          return persistRejection(aliased, outcome);
+          return persistRejection(db, logState, toAppend, aliased, outcome);
         }
 
         if (outcome.kind === 'suspended') {
           // 挂起(非拒绝):confirmation-requested 落库(detail 含 Cedar 策略 id
           // 与原因,spec 验收 5),pending 实体物化进快照,业务状态不动。
-          await appendBatchWithSeq(outcome.events.map(toAppend));
-          snapshot = outcome.snapshot;
-          applyForeignGaps();
+          await appendBatchWithSeq(db, logState, outcome.events.map(toAppend));
+          logState.snapshot = outcome.snapshot;
+          applyForeignGaps(logState);
           const rel = `confirmation:${outcome.confirmation.id}`;
-          const entity = project(snapshot, rel, projectDeps());
+          const entity = project(logState.snapshot, rel, projectDeps());
           if (entity === undefined) {
             throw new Error(`挂起后确认实体 "${rel}" 不可投影(内部不变式破坏)`);
           }
@@ -729,18 +409,18 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         }
 
         let effectiveEvents = outcome.events;
-        const decisionInstance = snapshot.instances[aliased.rel];
+        const decisionInstance = logState.snapshot.instances[aliased.rel];
         const decisionFlow =
           decisionInstance === undefined
             ? undefined
-            : activeDefinitionOf(snapshot, decisionInstance.flow);
+            : activeDefinitionOf(logState.snapshot, decisionInstance.flow);
         const decisionAction = decisionFlow?.nodes
           .find((node) => node.name === decisionInstance?.node)
           ?.actions.find((action) => action.name === aliased.action);
         if (decisionAction?.decision !== undefined) {
           const decision = await preflightCodingResultDecision(
             db,
-            snapshot,
+            logState.snapshot,
             aliased,
             decisionAction,
           );
@@ -748,7 +428,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
             decision !== undefined &&
             (decision.decision === 'denied' || decision.decision === 'stale')
           ) {
-            return persistRejection(aliased, {
+            return persistRejection(db, logState, toAppend, aliased, {
               layer: 'guard-failed',
               reason: decision.reason,
               detail: decision,
@@ -769,18 +449,18 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           }
         }
 
-        const artifactModel = artifactModelFor(effectiveEvents, aliased);
-        const sourceInstance = snapshot.instances[aliased.rel];
+        const artifactModel = artifactModelFor(logState, effectiveEvents, aliased);
+        const sourceInstance = logState.snapshot.instances[aliased.rel];
         const spawnPolicyScope =
           (sourceInstance === undefined
             ? undefined
-            : activeDefinitionOf(snapshot, sourceInstance.flow)?.app) ?? 'default';
+            : activeDefinitionOf(logState.snapshot, sourceInstance.flow)?.app) ?? 'default';
         const spawnPrincipal = aliased.principal ?? 'local-user';
         const productionConfig = runWebProductionDeploymentPreflight();
         const preparedNativeRuns = new Map<EngineEvent, PreparedNativeAgentDispatch>();
         for (const event of effectiveEvents) {
           if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
-          const capability = snapshot.capabilities?.[event.capability];
+          const capability = logState.snapshot.capabilities?.[event.capability];
           if (capability === undefined) continue;
           if (capability.executor === undefined) continue;
           if (capability.executor.agentDefinition === undefined) {
@@ -804,7 +484,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           seq: number;
           prepared?: PreparedNativeAgentDispatch;
         }[] = [];
-        const effectiveSeqs = await appendBatchWithSeq(effectiveEvents.map(toAppend));
+        const effectiveSeqs = await appendBatchWithSeq(db, logState, effectiveEvents.map(toAppend));
         for (const [index, event] of effectiveEvents.entries()) {
           const seq = effectiveSeqs[index]!;
           if (event.kind === 'spawn-requested') {
@@ -812,14 +492,14 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
             spawned.push({ event, seq, ...(prepared === undefined ? {} : { prepared }) });
           }
         }
-        snapshot = outcome.snapshot;
+        logState.snapshot = outcome.snapshot;
         if (effectiveEvents.some((event) => event.kind === 'definition-activated')) {
-          scheduleRecipesForSnapshot(snapshot);
+          scheduleRecipesForSnapshot(logState.snapshot);
         }
-        await materializeSpawnArtifacts(effectiveEvents, aliased, artifactModel);
+        await materializeSpawnArtifacts(db, logState, effectiveEvents, aliased, artifactModel);
         for (const { event, seq, prepared } of spawned) {
           if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
-          const capability = snapshot.capabilities?.[event.capability];
+          const capability = logState.snapshot.capabilities?.[event.capability];
           if (capability?.executor === undefined) continue;
           if (prepared === undefined) {
             throw new Error('spawn dispatch missed its prepared native Agent Run');
@@ -851,7 +531,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
                   reason: run.failure?.reason ?? 'capability dispatch failed',
                 },
               },
-              snapshot,
+              logState.snapshot,
               gateDeps(),
             );
             if (callback.kind !== 'executed') {
@@ -861,16 +541,16 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
                 }`,
               );
             }
-            await appendBatchWithSeq(callback.events.map(toAppend));
-            snapshot = callback.snapshot;
+            await appendBatchWithSeq(db, logState, callback.events.map(toAppend));
+            logState.snapshot = callback.snapshot;
           }
         }
-        applyForeignGaps();
+        applyForeignGaps(logState);
 
         // 受影响实体:append 产出新实例时返回新实体,否则返回执行实体的新投影。
         const appended = effectiveEvents[0]?.appended ?? [];
         const targetRel = appended.length > 0 ? appended[appended.length - 1]! : aliased.rel;
-        const entity = project(snapshot, targetRel, projectDeps());
+        const entity = project(logState.snapshot, targetRel, projectDeps());
         if (entity === undefined) {
           throw new Error(`exec 后目标实体 "${targetRel}" 不可投影(内部不变式破坏)`);
         }
@@ -880,15 +560,15 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     execPlan(steps) {
       // 单事务:整个计划一次入串行队列(与 exec 无交错;批量裁决是一个 atom)。
       return enqueue(state, async () => {
-        await refreshFromLog();
+        await refreshFromLog(db, logState, scheduleRecipesForSnapshot);
 
         // 步级 flow 别名与 exec 同口径(flow:article-drafting → 唯一实例 rel)。
         const aliased = steps.map((step) => ({
           ...step,
-          rel: resolveFlowRelAlias(step.rel, snapshot) ?? step.rel,
+          rel: resolveFlowRelAlias(step.rel, logState.snapshot) ?? step.rel,
         }));
 
-        const outcome = executePlan(aliased, snapshot, gateDeps());
+        const outcome = executePlan(aliased, logState.snapshot, gateDeps());
 
         // 落库顺序 = 日志顺序:各步伴随事件 → 拒绝步留痕 → 批量裁决记录标记。
         const batch = outcome.events.map(toAppend);
@@ -905,9 +585,9 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           );
         }
         batch.push(toAppend(outcome.record));
-        await appendBatchWithSeq(batch);
-        snapshot = outcome.snapshot;
-        applyForeignGaps();
+        await appendBatchWithSeq(db, logState, batch);
+        logState.snapshot = outcome.snapshot;
+        applyForeignGaps(logState);
 
         // entities 摘要:executed 步的目标与追加 rel(保序去重)。
         const entities: string[] = [];
@@ -933,84 +613,20 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       });
     },
     freezeSpec(concern, spec, requestedBy) {
+      // 串行队列内先同步外部写者,主流程(校验/首冻/物化)在 service-render-specs.ts。
       return enqueue(state, async () => {
-        await refreshFromLog();
-        // 入口校验(不合法不入日志):零字面剃刀 + 词汇表词名 + concern 键一致。
-        const validation = validateSpec(spec);
-        if (!validation.valid) {
-          const summary = validation.errors.map((error) => `${error.path}: ${error.message}`);
-          throw new Error(`render spec 校验失败:\n${summary.join('\n')}`);
-        }
-        if (spec.concern !== concern) {
-          throw new Error(
-            `凝固键不一致:concern 参数 "${concern}" 与 spec.concern "${spec.concern}" 必须相同`,
-          );
-        }
-        if (wordOf(spec.component) === undefined) {
-          throw new Error(`词条 "${spec.component}" 不在渲染词汇表(目录 /api/render/catalog)`);
-        }
-        const by = requestedBy ?? { actor: 'agent' as const };
-        // 首冻为准:已凝固直接返回(同一关注点永远同一布局,不追加事件)。
-        const existing = snapshot.renderSpecs?.[concern];
-        if (existing !== undefined) {
-          return {
-            concern,
-            frozen: false,
-            spec: toRenderSpec(existing),
-            requestedBy: existing.requestedBy,
-          };
-        }
-        const detail: RenderSpecFrozenDetail = {
-          concern,
-          spec: { concern: spec.concern, component: spec.component, bind: spec.bind },
-          requestedBy: by,
-        };
-        // 终审 H-1:走 appendWithSeq(多写者水位铁律)——裸 appendEvent +
-        // lastSeq 推进会永久跳过 INSERT 窗口内挤入的外部事件(S5 与 S3 并跑
-        // 的真实窗口);appendWithSeq 把区间收进 foreignGaps,末尾补折。
-        const seq = await appendWithSeq({
-          kind: 'render-spec-frozen',
-          rel: renderSpecRel(concern),
-          actor: by.actor,
-          ...(by.principal !== undefined ? { principal: by.principal } : {}),
-          detail,
-        });
-        // 在线增量物化(与 fold 同构:同一 applyRenderSpecFrozen)。
-        snapshot = fold(
-          [
-            {
-              seq,
-              kind: 'render-spec-frozen',
-              rel: renderSpecRel(concern),
-              actor: by.actor,
-              ...(by.principal !== undefined ? { principal: by.principal } : {}),
-              detail,
-            },
-          ],
-          { flows: {} },
-          snapshot,
-        );
-        applyForeignGaps();
-        const frozen = snapshot.renderSpecs?.[concern];
-        if (frozen === undefined) {
-          throw new Error(`凝固后 renderSpecs 表缺 "${concern}"(内部不变式破坏)`);
-        }
-        return {
-          concern,
-          frozen: true,
-          spec: toRenderSpec(frozen),
-          requestedBy: frozen.requestedBy,
-        };
+        await refreshFromLog(db, logState, scheduleRecipesForSnapshot);
+        return freezeSpecCore(db, logState, concern, spec, requestedBy);
       });
     },
     getFrozenSpec: (concern) => {
-      const frozen = snapshot.renderSpecs?.[concern];
+      const frozen = logState.snapshot.renderSpecs?.[concern];
       return frozen === undefined ? undefined : toRenderSpec(frozen);
     },
-    listFrozenSpecs: () => readRenderSpecsOf(snapshot),
+    listFrozenSpecs: () => readRenderSpecsOf(logState.snapshot),
     runExclusive: (run) =>
       enqueue(state, async () => {
-        await refreshFromLog();
+        await refreshFromLog(db, logState, scheduleRecipesForSnapshot);
         return run();
       }),
   };
