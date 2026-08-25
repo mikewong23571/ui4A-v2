@@ -4,6 +4,7 @@ import { AGENT_DEFINITION_DDL } from './agent-definitions';
 import { AGENT_RUN_DDL } from './agent-runs';
 import { DRAFT_DDL } from './drafts';
 import { EVENTS_DDL, type DbExecutor } from './events';
+import { PRESENCE_DDL } from './presence';
 import { PRESENTATION_DDL } from './presentation';
 
 export interface MigrationDefinition {
@@ -44,6 +45,7 @@ export class MigrationError extends Error {
 
 export const MIGRATION_REGISTRY: readonly MigrationDefinition[] = Object.freeze([
   Object.freeze({ version: 1, name: 'initial-ui4a-schema' }),
+  Object.freeze({ version: 2, name: 'presence-projection' }),
 ]);
 
 const MIGRATION_HISTORY_TABLE = 'ui4a_schema_migrations';
@@ -226,6 +228,9 @@ export async function runMigrations(db: ConnectableDb): Promise<MigrationStatus>
       if (migration.version <= before.currentVersion) continue;
       if (migration.version === 1) {
         for (const ddl of INITIAL_SCHEMA_DDL) await client.query(ddl);
+      }
+      if (migration.version === 2) {
+        await client.query(PRESENCE_DDL);
       }
       await client.query(`INSERT INTO ${MIGRATION_HISTORY_TABLE} (version, name) VALUES ($1, $2)`, [
         migration.version,

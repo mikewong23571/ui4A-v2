@@ -60,6 +60,7 @@ const EXPECTED_TABLES = [
   'agent_run_payloads',
   'agent_run_projection',
   'agent_run_projection_state',
+  'presence_current',
   'ui4a_schema_migrations',
   'ui4a_bootstrap_state',
 ] as const;
@@ -127,18 +128,21 @@ describe('T22 explicit versioned migration contract', () => {
   it('migrates an empty database to the exact repository schema and records one version', async () => {
     const migration = await migrations();
 
-    expect(migration.MIGRATION_REGISTRY).toEqual([{ version: 1, name: 'initial-ui4a-schema' }]);
+    expect(migration.MIGRATION_REGISTRY).toEqual([
+      { version: 1, name: 'initial-ui4a-schema' },
+      { version: 2, name: 'presence-projection' },
+    ]);
     await expect(migration.getMigrationStatus(client)).resolves.toEqual({
       state: 'pending',
       currentVersion: 0,
-      targetVersion: 1,
+      targetVersion: 2,
       ready: false,
     });
 
     await expect(migration.runMigrations(client)).resolves.toEqual({
       state: 'ready',
-      currentVersion: 1,
-      targetVersion: 1,
+      currentVersion: 2,
+      targetVersion: 2,
       ready: true,
     });
     for (const table of EXPECTED_TABLES) {
@@ -147,7 +151,7 @@ describe('T22 explicit versioned migration contract', () => {
       ]);
       expect(found.rows[0]?.name, table).not.toBeNull();
     }
-    expect(await historyCount()).toBe(1);
+    expect(await historyCount()).toBe(2);
   });
 
   it('adopts an existing idempotent-DDL database without replacing its event log', async () => {
@@ -166,7 +170,7 @@ describe('T22 explicit versioned migration contract', () => {
       ['migration:existing-marker'],
     );
     expect(preserved.rows).toEqual([{ seq: String(marker.seq), rel: 'migration:existing-marker' }]);
-    expect(await historyCount()).toBe(1);
+    expect(await historyCount()).toBe(2);
   });
 
   it('is a no-op on rerun and does not reset data or duplicate history', async () => {
@@ -180,7 +184,7 @@ describe('T22 explicit versioned migration contract', () => {
       'migration:rerun-marker',
     ]);
     expect(Number(preserved.rows[0]?.seq)).toBe(marker.seq);
-    expect(await historyCount()).toBe(1);
+    expect(await historyCount()).toBe(2);
   });
 
   it('serializes two migration invocations and applies each version once', async () => {
@@ -194,10 +198,10 @@ describe('T22 explicit versioned migration contract', () => {
       ]);
 
       expect(results).toEqual([
-        { state: 'ready', currentVersion: 1, targetVersion: 1, ready: true },
-        { state: 'ready', currentVersion: 1, targetVersion: 1, ready: true },
+        { state: 'ready', currentVersion: 2, targetVersion: 2, ready: true },
+        { state: 'ready', currentVersion: 2, targetVersion: 2, ready: true },
       ]);
-      expect(await historyCount()).toBe(1);
+      expect(await historyCount()).toBe(2);
     } finally {
       second.release();
     }
@@ -219,16 +223,16 @@ describe('T22 explicit versioned migration contract', () => {
     await expect(migration.getMigrationStatus(client)).resolves.toEqual({
       state: 'pending',
       currentVersion: 0,
-      targetVersion: 1,
+      targetVersion: 2,
       ready: false,
     });
 
     await expect(migration.runMigrations(client)).resolves.toMatchObject({
       state: 'ready',
-      currentVersion: 1,
+      currentVersion: 2,
       ready: true,
     });
-    expect(await historyCount()).toBe(1);
+    expect(await historyCount()).toBe(2);
   });
 
   it('fails closed when database history is newer than this application', async () => {
@@ -242,8 +246,8 @@ describe('T22 explicit versioned migration contract', () => {
 
     await expect(migration.getMigrationStatus(client)).resolves.toEqual({
       state: 'incompatible',
-      currentVersion: 2,
-      targetVersion: 1,
+      currentVersion: 3,
+      targetVersion: 2,
       ready: false,
     });
     await expect(migration.runMigrations(client)).rejects.toMatchObject({
@@ -297,7 +301,7 @@ describe('T22 explicit versioned migration contract', () => {
       await expect(migration.getApplicationBootstrapStatus(readOnly)).resolves.toEqual({
         state: 'pending',
         ready: false,
-        migrationVersion: 1,
+        migrationVersion: 2,
       });
       await expect(getEngine(readOnly)).rejects.toMatchObject({ code: 'BOOTSTRAP_REQUIRED' });
     } finally {
@@ -315,10 +319,10 @@ describe('T22 explicit versioned migration contract', () => {
     expect(receipt).toMatchObject({
       state: 'ready',
       ready: true,
-      migrationVersion: 1,
+      migrationVersion: 2,
       receipt: {
         schemaVersion: 1,
-        migrationVersion: 1,
+        migrationVersion: 2,
         eventHighWaterMark: expect.any(Number),
         replayHash: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
       },

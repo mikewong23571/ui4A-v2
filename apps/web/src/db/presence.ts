@@ -73,6 +73,9 @@ async function withTransaction<T>(db: ConnectableDb, run: (client: DbExecutor) =
 }
 
 export async function ensurePresenceTables(db: DbExecutor): Promise<void> {
+  // 生产运行时角色无 DDL 权限:presence_current 由版本化迁移(见 migrations.ts
+  // version 2)以 migration 角色创建,运行时只读写;本地/测试保持懒建便利。
+  if (process.env.UI4A_DEPLOYMENT_PROFILE === 'production') return;
   await ensureEventsTable(db);
   await db.query('BEGIN');
   try {

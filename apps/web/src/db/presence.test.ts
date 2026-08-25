@@ -68,6 +68,23 @@ describe('presence projection', () => {
     expect(folded['user:one']?.updatedSeq).toBe(4);
   });
 
+  it('skips DDL under the production profile; the runtime role only reads and writes', async () => {
+    const previousProfile = process.env.UI4A_DEPLOYMENT_PROFILE;
+    process.env.UI4A_DEPLOYMENT_PROFILE = 'production';
+    const denying: Parameters<typeof ensurePresenceTables>[0] = {
+      query: (sqlText: string) =>
+        /\b(?:CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE)\b/i.test(sqlText)
+          ? Promise.reject(new Error('runtime role attempted forbidden DDL'))
+          : Promise.reject(new Error('no statement expected')),
+    };
+    try {
+      await expect(ensurePresenceTables(denying)).resolves.toBeUndefined();
+    } finally {
+      if (previousProfile === undefined) delete process.env.UI4A_DEPLOYMENT_PROFILE;
+      else process.env.UI4A_DEPLOYMENT_PROFILE = previousProfile;
+    }
+  });
+
   it('appends four change points, deduplicates repeats, and replays to the same hash', async () => {
     const identity = { principal: 'user:replay', actor: 'human' as const, channel: 'test' };
     for (const [kind, value] of [
