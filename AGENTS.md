@@ -41,12 +41,12 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 
 - `src/app/`: Next.js pages and route handlers. Business contract endpoints are `/.well-known/ui4a.json`, `/api/entity`, `/api/exec`, `/api/exec-plan`, and `/api/events`. Canonical meta endpoints are `/_meta/.well-known/ui4a.json`, `/_meta/api/entity`, and `/_meta/api/exec`; `next.config.ts` rewrites them to internal handlers.
 - `src/applications/`: installable application data. `ui4a-walkthrough.bundle.json` is the built-in application artifact; `bundles.ts` parses and registers bundles. Put application definitions here rather than hard-coding production flows into services.
-- `src/engine/`: server-side composition boundary. `service.ts` connects the pure engine to PostgreSQL, Cedar, render specs, application bundles, and Temporal dispatch. It serializes execution, incrementally folds new events, and serves business and meta projections. `flow-entry.ts` owns `flow:<name>` entry aliases and collection links.
+- `src/engine/`: server-side composition boundary. `service.ts` connects the pure engine to PostgreSQL, Cedar, render specs, application bundles, and Temporal dispatch; event-log state, artifact materialization, confirmation decisions, sitemaps, and render-spec freezing live in `service-*.ts` modules. `flow-entry.ts` owns `flow:<name>` entry aliases. Agent Definition/dispatch modules sit in `src/engine/agent/`; Draft meta execution in `src/engine/drafts/`; service test suites in `src/engine/service-tests/`.
 - `src/db/`: PostgreSQL pool, schema, append/read operations, and replay tests. `events.ts` is the event-log write/read boundary. The worker currently reuses this adapter; do not create a competing writer abstraction casually.
 - `src/db/drafts.ts`: Draft-domain events, immutable SHA-256 payloads, rebuildable projection, CAS, and transactional acceptance.
-- `src/db/agent-definitions.ts` and `src/db/agent-runs.ts`: append-only specialized definition/version registry and canonical Agent Run persistence; the Agent Run is the only run model.
-- `src/engine/drafts.ts`: Siren Draft/activation projection, validation/diff adapter, and human-only atomic Flow apply.
-- `src/engine/agent-definitions.ts`, `native-agent-dispatch.ts`, and `agent-definition-authoring.ts`: activation registries, exact specialization task mapping, birth-pinned dispatch, and the result-to-Governed-Draft bridge. They must not accept Provider/profile overrides from requests.
+- `src/db/agent-definitions/` (types/store/commands/queries/lifecycle) and `src/db/agent-runs.ts`: append-only specialized definition/version registry and canonical Agent Run persistence; the Agent Run is the only run model.
+- `src/engine/drafts/` (views/helpers/create/execute): Siren Draft/activation projection, validation/diff adapter, and human-only atomic Flow apply.
+- `src/engine/agent/` (`agent-definitions.ts`, `native-agent-dispatch.ts`, `agent-definition-authoring.ts`, `coding-result-decision.ts`): activation registries, exact specialization task mapping, birth-pinned dispatch, and the result-to-Governed-Draft bridge. They must not accept Provider/profile overrides from requests.
 - `src/domain/`: built-in domain helpers, predicates/flows used for bootstrap or testing, capability declarations, and Cedar policy loading. Production definition truth must still come from activated event-log artifacts.
 - `src/render/`: deterministic A2UI compilation and hydration. `presentation/` compiles semantic Surface Trees; `deref.ts` and the entity cache resolve live facts; `canvas/` hosts surfaces; `words/` contains concrete vocabulary renderers.
 - `src/engine/presentation/`: Presentation Broker, Application Recipe generation/registry, user-level Sidecar fastpath, dependency validation, and receipt production.
@@ -54,14 +54,15 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 - `src/chat/`: chat-session start, SSE streaming, history, trail, and decision projection. Chat is an event-log projection and an agent entry point, not an alternate command path.
 - `src/temporal/`: web-side Temporal clients for notification, delegation, and canonical Agent Run dispatch/cancellation.
 - `src/delegations/`: delegation-list projection helpers; read status from engine projections, not directly from Temporal.
-- `src/components/`: React composition. `meta/` owns sitemap descriptors, the scope-aware client/cache, class renderer registry, generic fallback, Application/Agent Definition/Draft view models, and deterministic governance views; `assistant-ui/` adapts chat UI; `ui/` holds local primitives. Meta routes must not restore a hardcoded surface inventory or render functional controls outside current Siren actions.
+- `src/components/`: React composition. `meta/` owns sitemap descriptors, the scope-aware client/cache, class renderer registry, generic fallback, Application/Agent Definition/Draft view models, and deterministic governance views; `assistant-ui/` adapts chat UI; `chat/` owns chat panel/session components and hooks; `ui/` holds local primitives. Meta routes must not restore a hardcoded surface inventory or render functional controls outside current Siren actions.
 - `src/test/`: shared browser/jsdom stubs only. Keep feature tests next to their subjects.
 
 ### `apps/worker` — Durable Work and I/O
 
 - `src/main.ts`: Temporal connection, task queue registration, process lifecycle, and graceful shutdown.
 - `src/workflows.ts`: deterministic orchestration for notification, delegation, and canonical Agent Runs. Workflow code must not use Node APIs, fetch, random values, wall-clock reads, or database access.
-- `src/activities.ts`: I/O-capable activity registration and the specialization composition registry. Add a specialization as one binding; do not spread task-kind branches across Host lifecycle functions.
+- `src/activities.ts` + `src/activities/`: production transport assembly at the root file; specialization bindings (`agent-coding.ts`/`agent-writing.ts`/`agent-authoring.ts`) and shared deps in the subdir. Add a specialization as one binding; do not spread task-kind branches across Host lifecycle functions.
+- `src/runtime-backends/`: Runtime Backend selection (`composition.ts`); Kubernetes backend in `kubernetes/`, trusted-host Runner in `host/`.
 - `src/delegation.ts`: one durable agent step, HTTP contract calls, driver execution, sitemap loading, and delegation event recording.
 - `src/capabilities/coding/`: provider adapters, repository registry, UI4A-owned Git worktrees, execution/result collection, and Temporal kill/cancel evidence. Provider code stays behind this boundary.
 - `src/agents/host/`: generic lifecycle, suspension signals, restart boundaries, finalize protocol, and structured Codex transport. It must not contain business capability names or specialization semantics.
@@ -79,11 +80,11 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 
 ### `packages/shared` — Cross-Runtime Contracts
 
-Owns state shapes, definition language types, guard contracts, predicate types, and constants shared by browser, server, worker, and engine. It must remain platform-neutral and contain no database, Next.js, React, Temporal, or network code.
+Owns state shapes, definition language types, guard contracts, predicate types, and constants shared by browser, server, worker, and engine, grouped into `definition/`, `agent/`, `presentation/`, and `deployment/` subdirs. It must remain platform-neutral and contain no database, Next.js, React, Temporal, or network code.
 
 ### `packages/engine` — Pure Business Kernel
 
-Owns parsing and schemas; XState construction; declaration → guard → schema judgment; effects and execution; confirmation and plan execution; event folding; delegation state; Siren/sitemap projection; the pure Presentation kernel (`lens/surface/recipe/sidecar/patch`); definition lifecycle, bootstrap, diff, history, and activation invariants. Keep it deterministic and free of PostgreSQL, HTTP, React, Temporal, and environment access.
+Owns parsing and schemas; XState construction; declaration → guard → schema judgment; effects and execution; confirmation and plan execution; event folding; delegation state; Siren/sitemap projection; the pure Presentation kernel (`lens/surface/recipe/sidecar/patch`); definition lifecycle, bootstrap, diff, history, and activation invariants. Sources are grouped into `core/`, `contract/`, `execution/`, `projection/`, `definition/`, `delegation/`, `presentation/`, `agent-run/`, `capability-run/`, `agent-definition/`, and `submission/`; the `@ui4a/engine` barrel is the only public surface. Keep it deterministic and free of PostgreSQL, HTTP, React, Temporal, and environment access.
 
 ### `packages/agent` — Agent Protocol and Drivers
 
@@ -110,6 +111,16 @@ Dependency direction is `shared ← engine ← agent`, with applications composi
 
 Prefer extending a nearby pattern. When a change crosses rows, keep the pure contract/semantic change in a package and adapters at application boundaries.
 
+## Governance Gates (T23, enforced by `pnpm check`)
+
+Rules GR1–GR5 are mechanically enforced by `scripts/governance/`; run `pnpm governance` for the report.
+
+- **GR1 dependency direction:** `packages/shared ← packages/engine ← packages/agent`; apps compose packages and never import each other. `shared`/`engine` stay free of platform packages (pg, Temporal, Next/React, Node http). Every exception must be registered in `scripts/governance/exceptions.json` with a reason and retirement condition _before_ the code is written; stale entries fail the gate.
+- **GR2 no compatibility code while unreleased:** no legacy/compat dual paths for old wire formats, event shapes, or API behavior — change the single implementation; dev/test databases may be reset. Marker scans fail on unregistered legacy/compat wording.
+- **GR3 size limits (effective lines):** non-test source file ≤ 500, test file ≤ 800, per-directory direct `.ts/.tsx` total ≤ 4000. Current debt lives in `scripts/governance/size-baseline.json` (shrink-only; today only T22-owned entries remain, see DECISIONS.md D40). New violations fail the gate.
+- **GR4 gate semantics:** governance checks run in Red → Green → Gate order; baselines may only shrink; `governance:strict` (empty baselines) joins `pnpm check` once T22 closes.
+- **GR5 archaeology control:** when a Track closes, its bespoke scripts/specs are either promoted to standing gates or deleted (git keeps history); do not add permanent per-track Playwright configs. Completed Tracks live read-only in `conductor/tracks/archive/`.
+
 ## Architectural Invariants
 
 - **AI-first, mechanically governed:** the production Assistant uses the configured LLM and fails honestly when it is unavailable; deterministic code governs facts, authorization, actions, confirmation, audit, and replay. The human renderer remains available, but no rule driver impersonates Assistant intelligence.
@@ -134,7 +145,8 @@ Prefer extending a nearby pattern. When a change crosses rows, keep the pure con
 - `pnpm infra:down` — stop PostgreSQL after local development.
 - `pnpm --filter @ui4a/web build` — production Next.js build.
 - `pnpm vitest run path/to/file.test.ts` — focused Vitest run.
-- `pnpm check` — all workspace type checks, ESLint, and Vitest tests.
+- `pnpm governance` — T23 governance gates (dependency direction, no-compat, size limits); default mode fails on new violations beyond the registered baselines, `pnpm governance:strict` additionally requires empty baselines.
+- `pnpm check` — all workspace type checks, ESLint, governance gates, and Vitest tests.
 - `CI=true pnpm e2e` — Playwright suite with a clean server and one CI worker.
 - `CI=true pnpm e2e invariants` — focused invariant suite; use current GOAL for I1–I7 semantics.
 - `pnpm format:check` / `pnpm format` — check or apply Prettier formatting.

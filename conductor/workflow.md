@@ -40,6 +40,9 @@ Prompt 必须自包含(仓库路径、相关文档路径、技术栈与铁律约
 ### 验收协议(编排 agent 代行)
 
 - subagent 返回后,编排 agent **必须亲自复跑**其声称通过的测试命令,不信口头报告;
+- 任务完成判据包含治理门禁:`pnpm governance` 必须全绿(新增依赖违规、未登记的
+  legacy/compat 标记、超限文件/目录都会失败);例外须先登记
+  `scripts/governance/exceptions.json` 再写代码(AGENTS.md GR1–GR5);
 - `plan.md` 任务状态流转、commit、git notes 由编排 agent 执行;
 - Phase Checkpoint 协议中"等待用户确认"(Step 5)由编排 agent 代行:以自动化等效验证
   (测试全绿 + 将手动验证步骤脚本化执行,如 curl/Playwright)作为确认依据,并在 git
