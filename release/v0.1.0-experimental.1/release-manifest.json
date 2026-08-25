@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "release": "v0.1.0-experimental.1",
+  "channel": "experimental",
+  "sourceGitSha": "44a1fe37d9806434cc5d97a4ec0bc45197cce3ce",
+  "buildDate": "2026-08-25T00:56:30Z",
+  "platform": "linux/amd64",
+  "imageArchive": {
+    "bytes": 1391936000,
+    "sha256": "ea28939cf955eb49b4140cd61f4f6d3d5eb0935dcd741fba589f3a0e110b6a6b"
+  },
+  "images": {
+    "web": {
+      "immutableRef": "docker.io/ui4a/web@sha256:1c6014fac9fa3499bb7258a65c935514ad168574eea526d757fcaf4874ca79f3",
+      "digest": "sha256:1c6014fac9fa3499bb7258a65c935514ad168574eea526d757fcaf4874ca79f3",
+      "sbomRef": "sbom/web.spdx.json"
+    },
+    "worker": {
+      "immutableRef": "docker.io/ui4a/worker@sha256:40a2e878e5b451e69d0b3c0b3ceeea6de6d8286134223780d597d6b6738b416c",
+      "digest": "sha256:40a2e878e5b451e69d0b3c0b3ceeea6de6d8286134223780d597d6b6738b416c",
+      "sbomRef": "sbom/worker.spdx.json"
+    },
+    "runner": {
+      "immutableRef": "docker.io/ui4a/runner@sha256:6c915e0a2ef3826dfa0304177ce8815ceff3fba2cee0c31e84e145bfa1fbc1cf",
+      "digest": "sha256:6c915e0a2ef3826dfa0304177ce8815ceff3fba2cee0c31e84e145bfa1fbc1cf",
+      "sbomRef": "sbom/runner.spdx.json"
+    }
+  },
+  "deploymentEvidence": {
+    "helmRevision": 22,
+    "crossNodeInventory": ["k8s-w-1", "k8s-w-2"],
+    "ociRevisionMatch": true
+  },
+  "artifacts": {
+    "checksums": "SHA256SUMS",
+    "vulnerabilitySummary": "vulnerability-summary.json",
+    "releaseNotes": "RELEASE_NOTES.md",
+    "acceptanceReport": "acceptance-report.json",
+    "runbookInventory": "runbook-inventory.json"
+  },
+  "support": {
+    "internalExperiment": true,
+    "highAvailability": false,
+    "ga": false,
+    "productionReady": false,
+    "sla": false,
+    "lts": false
+  }
+}

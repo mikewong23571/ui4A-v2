@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "release": "v0.1.0-experimental.1",
+  "sourceRef": "deploy/runbook/t22-runbook-inventory.json",
+  "sections": [
+    {
+      "id": "target-preflight",
+      "commandRef": "../../docs/t22-production-runbook.md#1-cluster-preflight",
+      "expectedOutput": "Kubernetes v1.31.14, three Ready nodes, and ui4a-system with istio-injection=enabled when already installed.",
+      "failureCriterion": "kubectl cannot reach the cluster, any node is NotReady, or surveyed versions/node names differ.",
+      "recoveryAction": "Stop before rendering; follow ../mothership-setup/K8S-ISTIO-DEPLOY.md to restore the existing cluster."
+    },
+    {
+      "id": "storage-decision",
+      "commandRef": "../../docs/t22-production-runbook.md#2-storage-decision",
+      "expectedOutput": "Exactly postgres/runtime/backup/pki claims are Bound to reviewed Retain volumes or a reviewed replaceable StorageClass.",
+      "failureCriterion": "A claim is Pending, a local path/node differs from the overlay, or reclaimPolicy is not Retain.",
+      "recoveryAction": "Do not delete claims; correct the overlay or provisioner decision and repeat the read-only inventory."
+    },
+    {
+      "id": "image-build-transfer-digests",
+      "commandRef": "../../docs/t22-production-runbook.md#3-images",
+      "expectedOutput": "Overlay PASS and every release image available by immutable @sha256 reference with the release OCI revision.",
+      "failureCriterion": "Any placeholder, mutable tag, digest mismatch, missing layer, or OCI revision mismatch.",
+      "recoveryAction": "Stop; repeat the exact export/checksum/import procedure in the mothership overlay runbook without pruning containerd content."
+    },
+    {
+      "id": "namespace-istio-policy",
+      "commandRef": "../../docs/t22-production-runbook.md#4-namespace-istio",
+      "expectedOutput": "The namespace is injected and the UI4A Gateway, two host routes, JWT rule and authorization policies exist.",
+      "failureCriterion": "Injection is absent, hosts/issuer/audience drift, or an internal callback route is exposed externally.",
+      "recoveryAction": "Do not bypass Istio; fix values and rerender deploy/helm/ui4a before apply."
+    },
+    {
+      "id": "internal-ca-domains-certificates",
+      "commandRef": "../../docs/t22-production-runbook.md#5-ca-domains-certificates",
+      "expectedOutput": "Ingress TLS Secret metadata exists and retained pki-data is Bound; both internal DNS SANs are verified by the mothership runbook.",
+      "failureCriterion": "TLS metadata is missing, SAN/issuer is wrong, or pki-data is not retained.",
+      "recoveryAction": "Stop; restore certificate/PKI artifacts from the verified backup. Never regenerate over an existing root CA or private key."
+    },
+    {
+      "id": "postgresql",
+      "commandRef": "../../docs/t22-production-runbook.md#6-postgresql",
+      "expectedOutput": "PostgreSQL 1/1 Ready and postgres-bootstrap Complete with TLS verify-full configuration.",
+      "failureCriterion": "StatefulSet is not Ready, bootstrap is not Complete, or postgres-data UID/path changes.",
+      "recoveryAction": "Inspect postgres and bootstrap logs; do not recreate postgres-data or reset roles."
+    },
+    {
+      "id": "temporal",
+      "commandRef": "../../docs/t22-production-runbook.md#7-temporal",
+      "expectedOutput": "Temporal and UI are Ready, schema and namespace Jobs have Complete conditions, and namespace ui4a exists.",
+      "failureCriterion": "Schema/namespace Job is active or terminal-failed, gRPC probe fails, or persistence authentication fails.",
+      "recoveryAction": "Keep PostgreSQL intact; inspect Job/server previous logs and rerun only an explicitly reviewed idempotent Job."
+    },
+    {
+      "id": "keycloak-import-or-check",
+      "commandRef": "../../docs/t22-production-runbook.md#8-keycloak-realm",
+      "expectedOutput": "A missing realm reports absent; an existing compatible realm reports skip without mutation.",
+      "failureCriterion": "KEYCLOAK_REALM_INCOMPATIBLE, an unexpected client set, or any request for drift repair.",
+      "recoveryAction": "Back up identity state and stop. Replace/rebuild explicitly; never reconcile an existing realm online."
+    },
+    {
+      "id": "database-migration",
+      "commandRef": "../../docs/t22-production-runbook.md#9-database-migration",
+      "expectedOutput": "Migration Job is Complete and reports the expected compatible schema revision.",
+      "failureCriterion": "Job is active/failed, schema revision is unexpected, or a destructive migration is proposed.",
+      "recoveryAction": "Stop application rollout; preserve the named backup and use the reviewed compatibility window."
+    },
+    {
+      "id": "web-worker",
+      "commandRef": "../../docs/t22-production-runbook.md#10-web-worker",
+      "expectedOutput": "Single Web and Worker replicas are Ready with immutable release digests.",
+      "failureCriterion": "Either workload is degraded/not Ready or image/source revision differs from the release.",
+      "recoveryAction": "Inspect dependency readiness and rollback images; do not scale beyond the supported single replica."
+    },
+    {
+      "id": "kubernetes-agent-runtime",
+      "commandRef": "../../docs/t22-production-runbook.md#11-kubernetes-runtime",
+      "expectedOutput": "Worker RBAC permits bounded one-shot Jobs; idle state has no static Runner daemon and each Run has one immutable Job.",
+      "failureCriterion": "RBAC is broader/missing, an idle daemon exists, or a Run can override image/profile/workspace.",
+      "recoveryAction": "Disable K8s dispatch and correct server-owned settings/RBAC; never fall back to a wider backend."
+    },
+    {
+      "id": "host-runner",
+      "commandRef": "../../docs/t22-production-runbook.md#12-host-runner",
+      "expectedOutput": "The configured Runner becomes ready and accepts only its exact profile, workspace, image and credential refs.",
+      "failureCriterion": "runner_delivery_not_configured, token/profile mismatch, path escape, or readiness without an authorized processor.",
+      "recoveryAction": "Stop the daemon, preserve workspace evidence, fix canonical settings/private token file, and restart without widening permissions."
+    },
+    {
+      "id": "dns-hosts-client-trust",
+      "commandRef": "../../docs/t22-production-runbook.md#13-dns-client-ca",
+      "expectedOutput": "Both names resolve to the reviewed ingress address and TLS validation succeeds without -k.",
+      "failureCriterion": "Resolution differs, curl needs -k, or certificate SAN/chain validation fails.",
+      "recoveryAction": "Correct DNS/hosts or install the reviewed public CA certificate; never distribute a private key."
+    },
+    {
+      "id": "browser-cli-agent-authentication",
+      "commandRef": "../../docs/t22-production-runbook.md#14-authentication",
+      "expectedOutput": "PKCE human login, CLI token reads and bounded sub+azp delegation pass; malformed/expired/forged credentials fail closed.",
+      "failureCriterion": "Any Agent approval succeeds, scope expands, identity comes from request fields, or credential material appears in output.",
+      "recoveryAction": "Revoke the test credential, stop acceptance, inspect issuer/audience/JWKS/application identity checks, and do not weaken policy."
+    },
+    {
+      "id": "golden-story",
+      "commandRef": "../../docs/t22-production-runbook.md#15-golden-story",
+      "expectedOutput": "Business flow, delegated proposal, human-only approval, both Runtime backends, restart and audit evidence pass.",
+      "failureCriterion": "A Pod Running/HTTP 200 substitutes for the story, an Agent approves, or replay/audit evidence differs.",
+      "recoveryAction": "Keep the experimental release unaccepted; diagnose the first failed user-story boundary and rerun from a clean fixture."
+    },
+    {
+      "id": "backup-restore",
+      "commandRef": "../../docs/t22-production-runbook.md#16-backup-restore",
+      "expectedOutput": "A named completed manifest covers four databases, runtime, realm/config, PKI/private artifacts; isolated restore reports RPO/RTO and matching authority/identity/Run evidence.",
+      "failureCriterion": "Checksums/inventory/quiescence are incomplete, target aliases current state, or restored fingerprints differ.",
+      "recoveryAction": "Resume current writers, retain the incomplete archive for diagnosis, and never restore into the current PVC/database."
+    },
+    {
+      "id": "upgrade-rollback",
+      "commandRef": "../../docs/t22-production-runbook.md#17-upgrade-rollback",
+      "expectedOutput": "New revision passes smoke, rollback restores old image refs, roll-forward restores the new revision, and HWM/authority hash remain equal.",
+      "failureCriterion": "Rendered retained Jobs differ, migration is incompatible, smoke fails, or HWM/hash changes unexpectedly.",
+      "recoveryAction": "Rollback to revision 19 without --force; if data recovery is required, use the verified backup only in an isolated target first."
+    },
+    {
+      "id": "health-logs-troubleshooting",
+      "commandRef": "../../docs/t22-production-runbook.md#18-health-troubleshooting",
+      "expectedOutput": "Liveness, readiness and dependency failures are distinguishable and logs contain correlation IDs without credentials.",
+      "failureCriterion": "degraded is reported Ready, previous container errors are hidden, or logs expose Token/API key/password/prompt material.",
+      "recoveryAction": "Capture only redacted metadata and previous logs, repair the named dependency, then rerun readiness and the bounded smoke."
+    },
+    {
+      "id": "stop-uninstall-data-retention",
+      "commandRef": "../../docs/t22-production-runbook.md#19-stop-uninstall-retention",
+      "expectedOutput": "Ordinary Compose stop retains volumes; destructive Compose clean requires the exact project confirmation; Helm uninstall leaves Retain PV data for explicit disposition.",
+      "failureCriterion": "Ordinary stop contains --volumes, any prune/force command appears, or uninstall implicitly deletes retained data.",
+      "recoveryAction": "Cancel before confirmation. Inventory named volumes/PVC/PV and backup checksums; data deletion is a separate reviewed operation outside this runbook."
+    }
+  ]
+}

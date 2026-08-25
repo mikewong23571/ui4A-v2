@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "release": "v0.1.0-experimental.1",
+  "sourceGitSha": "44a1fe37d9806434cc5d97a4ec0bc45197cce3ce",
+  "scope": "internal-experiment-only",
+  "evidenceSets": [
+    {
+      "id": "build-provenance",
+      "status": "partial-known-risk",
+      "evidenceRefs": [
+        "release-manifest.json",
+        "sbom/web.spdx.json",
+        "sbom/worker.spdx.json",
+        "sbom/runner.spdx.json",
+        "vulnerability-summary.json"
+      ],
+      "summary": "Exact source labels and SBOMs exist; image vulnerabilities are an explicit known risk."
+    },
+    {
+      "id": "deployment-inventory",
+      "status": "passed",
+      "evidenceRefs": ["release-manifest.json"],
+      "summary": "Immutable image inventory and cross-node containerd digest checks are recorded."
+    },
+    {
+      "id": "identity",
+      "status": "passed",
+      "evidenceRefs": ["docs/t22-production-runbook.md#14-authentication"],
+      "summary": "Live positive and negative identity gates passed on the experimental main path."
+    },
+    {
+      "id": "runtime-matrix",
+      "status": "failed-honest",
+      "evidenceRefs": [
+        "docs/t22-production-runbook.md#11-kubernetes-runtime",
+        "docs/t22-production-runbook.md#12-host-runner"
+      ],
+      "summary": "Server-owned transport and isolation contracts passed, but final Compose U7 failed honestly before events or artifacts and final K8s Run a1o-20407625d83e also terminated execute-failed; neither path fell back, U8 was not attempted, and no acceptance action ran."
+    },
+    {
+      "id": "single-replica-replay",
+      "status": "passed",
+      "evidenceRefs": ["scripts/t22-k8s-replay-drill.ts"],
+      "summary": "Bounded business and Draft races, Web restart, authority and replay hashes passed."
+    },
+    {
+      "id": "backup-restore",
+      "status": "passed",
+      "evidenceRefs": ["scripts/t22-k8s-recovery-live.ts"],
+      "summary": "Ten-artifact named backup and isolated restore passed with RPO 0 and matching authority/identity/Run evidence."
+    },
+    {
+      "id": "runbook-replay",
+      "status": "passed",
+      "evidenceRefs": ["docs/t22-production-runbook.md", "runbook-inventory.json"],
+      "summary": "The 19-section mechanical runbook contract passed; deferred live operations remain marked deferred."
+    },
+    {
+      "id": "experimental-release",
+      "status": "partial-known-risk",
+      "evidenceRefs": ["RELEASE_NOTES.md", "SHA256SUMS"],
+      "summary": "The nine-artifact bundle is complete but intentionally carries known vulnerability and live-rollout limitations."
+    }
+  ],
+  "deferred": [
+    { "id": "fault-injection", "status": "deferred" },
+    { "id": "rollback", "status": "deferred" }
+  ],
+  "finalGate": {
+    "identityDataRecovery": { "critical": 0, "high": 0, "status": "passed" },
+    "vulnerability": {
+      "status": "known-risk",
+      "criticalMatches": 50,
+      "highMatches": 241,
+      "scanTool": "grype@0.117.0",
+      "dbVersion": "v6.1.9",
+      "acceptedFor": "internal-experiment-only"
+    }
+  }
+}
