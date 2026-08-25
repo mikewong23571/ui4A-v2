@@ -49,12 +49,12 @@ describe('T22 explicit migration artifact boundary', () => {
   it('keeps idempotent ensure helpers out of production request and Worker runtime paths', () => {
     const runtimePaths = [
       'apps/web/src/db/drafts.ts',
-      'apps/web/src/db/agent-definitions.ts',
+      'apps/web/src/db/agent-definitions/index.ts',
       'apps/web/src/db/agent-runs.ts',
       'apps/web/src/db/presentation.ts',
       'apps/web/src/engine/service.ts',
-      'apps/web/src/engine/drafts.ts',
-      'apps/web/src/engine/agent-definitions.ts',
+      'apps/web/src/engine/drafts/execute.ts',
+      'apps/web/src/engine/agent/agent-definitions.ts',
       'apps/web/src/engine/presentation/runtime.ts',
       'apps/web/src/app/api/presentation/sidecar/route.ts',
       'apps/worker/src/activities.ts',

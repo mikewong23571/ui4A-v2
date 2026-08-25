@@ -79,7 +79,7 @@ const routes: readonly StoryAcceptanceRoute[] = [
   },
   {
     storyId: 'S15',
-    deterministic: ['apps/web/src/engine/service.test.ts'],
+    deterministic: ['apps/web/src/engine/service-tests/service.test.ts'],
     browser: 'e2e/eval/t16-golden.spec.ts',
   },
   { storyId: 'S16', deterministic: ['apps/web/src/render/presentation/compiler.test.ts'] },

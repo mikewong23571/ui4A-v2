@@ -30,7 +30,7 @@ describe('T22 Kubernetes Runner production composition', () => {
 
   it('keeps the idle Kubernetes footprint free of a non-delivering Runner daemon', () => {
     const production = source('apps/agent-runner/src/production.ts');
-    const transport = source('apps/worker/src/runtime-backends/kubernetes-runtime-transport.ts');
+    const transport = source('apps/worker/src/runtime-backends/kubernetes/runtime-transport-manifests.ts');
     const deployments = source('deploy/helm/ui4a/templates/deployments.yaml');
     const services = source('deploy/helm/ui4a/templates/services.yaml');
     const renderer = source('deploy/helm/ui4a/render.ts');
@@ -49,7 +49,7 @@ describe('T22 Kubernetes Runner production composition', () => {
 describe('T22 opaque internal callback and Istio JWT interoperation', () => {
   it('keeps opaque callback credentials out of the JWT Authorization header', () => {
     const callbackSources = [
-      'apps/worker/src/agents/coding/adapter.ts',
+      'apps/worker/src/agents/coding/adapter-results.ts',
       'apps/worker/src/agents/writing/adapter.ts',
       'apps/worker/src/agents/authoring/adapter.ts',
       'apps/web/src/app/api/internal/agent-run-callback/route.ts',
