@@ -24,7 +24,6 @@ import {
   renderSpecRel,
 } from '../../projection/render-spec';
 import { mergeFieldDefinitions } from '../schema';
-import type { ActionDefinition, FlowDefinition } from '../../core/types';
 import { entityHref, fallbackPresentationRole, guardResultsFor, toSirenAction } from './build';
 import { projectMeta } from './project-meta';
 import type { ProjectDeps, SirenEntity, SirenFieldPresentation, SirenLink } from './types';
