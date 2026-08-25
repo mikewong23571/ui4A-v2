@@ -13,11 +13,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { FlowDefinition, SirenEntity } from '@ui4a/engine';
 
-import { ensureEventsTable } from '../db/events';
-import { getPool } from '../db/pool';
-import { businessFlows } from '../domain/flows';
+import { ensureEventsTable } from '../../db/events';
+import { getPool } from '../../db/pool';
+import { businessFlows } from '../../domain/flows';
 
-import { getEngine, resetEngineForTests } from './service';
+import { getEngine, resetEngineForTests } from '../service';
 
 const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');
 

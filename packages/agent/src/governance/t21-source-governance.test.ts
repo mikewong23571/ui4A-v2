@@ -7,7 +7,7 @@ function source(path: string): string {
 }
 
 const chatRoute = source('../../../../apps/web/src/app/api/chat/route.ts');
-const chatPanel = source('../../../../apps/web/src/components/chat-panel.tsx');
+const chatPanel = source('../../../../apps/web/src/components/chat/chat-panel.tsx');
 const conversation = source('../../../../apps/web/src/chat/conversation.ts');
 const llmDriver = source('../llm/llm-driver.ts');
 const agentLoop = source('../loop/loop.ts');

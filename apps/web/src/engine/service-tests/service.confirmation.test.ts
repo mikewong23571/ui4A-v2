@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { contentVersion, fold } from '@ui4a/engine';
 import type { LogEvent } from '@ui4a/engine';
 
-import { businessFlows } from '../domain/flows';
-import { ensureEventsTable, readLog, type DbExecutor } from '../db/events';
-import { getPool } from '../db/pool';
+import { businessFlows } from '../../domain/flows';
+import { ensureEventsTable, readLog, type DbExecutor } from '../../db/events';
+import { getPool } from '../../db/pool';
 
-import { getEngine, resetEngineForTests } from './service';
+import { getEngine, resetEngineForTests } from '../service';
 
 // 确认门服务层集成测试(T3 Phase B / Task 2,真 PG):
 // - exec 走 executeWithGates(deps.policy = Cedar 策略):agent + high → 挂起

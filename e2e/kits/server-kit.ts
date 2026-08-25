@@ -11,7 +11,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
 
-import { getPool } from '../apps/web/src/db/pool';
+import { getPool } from '../../apps/web/src/db/pool';
 
 const REPO_ROOT = path.join(__dirname, '..');
 export const SCENARIO_PORT = 3110;

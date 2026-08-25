@@ -6,13 +6,13 @@ const mocks = vi.hoisted(() => ({
   getProductionPool: vi.fn(),
 }));
 
-vi.mock('../production-deployment-preflight', () => ({
+vi.mock('../../production-deployment-preflight', () => ({
   runWebProductionDeploymentPreflight: mocks.preflight,
 }));
-vi.mock('../db/pool', () => ({ getPool: mocks.getLocalPool }));
-vi.mock('../db/production-pool', () => ({ getProductionPool: mocks.getProductionPool }));
+vi.mock('../../db/pool', () => ({ getPool: mocks.getLocalPool }));
+vi.mock('../../db/production-pool', () => ({ getProductionPool: mocks.getProductionPool }));
 
-import { getDb } from './service';
+import { getDb } from '../service';
 
 describe('T22 Web database production composition', () => {
   beforeEach(() => {

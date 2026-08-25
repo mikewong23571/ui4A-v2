@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { contentVersion, fold } from '@ui4a/engine';
 
-import { businessFlows } from '../domain/flows';
-import { ensureEventsTable, readLog } from '../db/events';
-import { getPool } from '../db/pool';
+import { businessFlows } from '../../domain/flows';
+import { ensureEventsTable, readLog } from '../../db/events';
+import { getPool } from '../../db/pool';
 
-import { deliverNotification } from './notification-delivery.fixture';
-import { getEngine, resetEngineForTests } from './service';
+import { deliverNotification } from '../notification-delivery.fixture';
+import { getEngine, resetEngineForTests } from '../service';
 
 // 双写一致性集成测试(T3 Phase C / Task 2,真 PG;spec 架构决定 4):
 // worker 是事件日志的第二写者(直接 appendEvent 到同一 PG),web 读路径

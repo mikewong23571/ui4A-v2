@@ -13,14 +13,14 @@ import { readFileSync } from 'node:fs';
 import { contentVersion } from '@ui4a/engine';
 import type { FlowDefinition, LogEvent, SirenEntity } from '@ui4a/engine';
 
-import { businessApplicationList } from '../domain/applications';
-import { businessCapabilityList } from '../domain/capabilities';
-import { businessFlows, businessFlowList } from '../domain/flows';
-import { SEED_REL, seedDetail } from '../domain/seed';
-import { appendEvent, ensureEventsTable, readLog } from '../db/events';
-import { getPool } from '../db/pool';
+import { businessApplicationList } from '../../domain/applications';
+import { businessCapabilityList } from '../../domain/capabilities';
+import { businessFlows, businessFlowList } from '../../domain/flows';
+import { SEED_REL, seedDetail } from '../../domain/seed';
+import { appendEvent, ensureEventsTable, readLog } from '../../db/events';
+import { getPool } from '../../db/pool';
 
-import { getEngine, resetEngineForTests } from './service';
+import { getEngine, resetEngineForTests } from '../service';
 
 const CONNECTION_STRING = process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a';
 const pool = getPool(CONNECTION_STRING);
@@ -41,9 +41,12 @@ beforeEach(async () => {
 
 describe('boot:定义 seed 迁移(空库)', () => {
   it('生产 service 只依赖应用制品安装器，不导入业务 TS fallback', () => {
-    const source = readFileSync(new URL('./service.ts', import.meta.url), 'utf8');
-    const bootstrapSource = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
-    const eventLogSource = readFileSync(new URL('./service-event-log.ts', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../service.ts', import.meta.url), 'utf8');
+    const bootstrapSource = readFileSync(new URL('../bootstrap.ts', import.meta.url), 'utf8');
+    const eventLogSource = readFileSync(
+      new URL('../service-event-log.ts', import.meta.url),
+      'utf8',
+    );
     expect(source).not.toMatch(/domain\/(?:flows|applications|capabilities|seed)/);
     expect(source).not.toContain('businessFlowList');
     expect(source).not.toContain('businessFlows');

@@ -6,10 +6,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { Client, Connection } from '@temporalio/client';
 
-import { ensureEventsTable, readLog } from '../db/events';
-import { getPool } from '../db/pool';
+import { ensureEventsTable, readLog } from '../../db/events';
+import { getPool } from '../../db/pool';
 
-import { getEngine, resetEngineForTests } from './service';
+import { getEngine, resetEngineForTests } from '../service';
 
 // S1 notify 真链路集成(T3 Phase C / Task 2;真 PG + 真 Temporal dev server):
 // agent archive → web exec 挂起(202)→ dispatchNotify(Temporal client)
@@ -20,7 +20,10 @@ import { getEngine, resetEngineForTests } from './service';
 // 7233 不可达(如 CI)→ 整个 describe 跳过并说明,不挂 CI;编排者环境已运行。
 const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? 'localhost:7233';
 const CONNECTION_STRING = process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a';
-const WORKER_DIR = path.join(fileURLToPath(new URL('../../../..', import.meta.url)), 'apps/worker');
+const WORKER_DIR = path.join(
+  fileURLToPath(new URL('../../../../..', import.meta.url)),
+  'apps/worker',
+);
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {

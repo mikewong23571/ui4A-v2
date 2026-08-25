@@ -4,13 +4,13 @@ import { contentVersion, fold } from '@ui4a/engine';
 import type { ExecRequest, SirenEntity } from '@ui4a/engine';
 import type { LogEvent } from '@ui4a/engine';
 
-import { businessFlows } from '../domain/flows';
-import { SEED_REL } from '../domain/seed';
-import { appendEvent, ensureEventsTable, readLog } from '../db/events';
-import type { DbExecutor } from '../db/events';
-import { getPool } from '../db/pool';
+import { businessFlows } from '../../domain/flows';
+import { SEED_REL } from '../../domain/seed';
+import { appendEvent, ensureEventsTable, readLog } from '../../db/events';
+import type { DbExecutor } from '../../db/events';
+import { getPool } from '../../db/pool';
 
-import { getEngine, resetEngineForTests } from './service';
+import { getEngine, resetEngineForTests } from '../service';
 
 // 引擎服务层测试(T2 Phase C / Task C2):
 // - boot = 建表 + 幂等 seed(查重后才 append)+ fold(日志)→ 快照;

@@ -20,7 +20,7 @@ const routes: readonly StoryAcceptanceRoute[] = [
   },
   {
     storyId: 'S2',
-    deterministic: ['apps/web/src/components/floating-chat.test.tsx'],
+    deterministic: ['apps/web/src/components/chat/floating-chat.test.tsx'],
     browser: 'e2e/chat.spec.ts',
   },
   {

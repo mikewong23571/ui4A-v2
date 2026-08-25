@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { contentVersion, fold } from '@ui4a/engine';
 
-import { businessFlows } from '../domain/flows';
-import { ensureEventsTable, readLog } from '../db/events';
-import { getPool } from '../db/pool';
+import { businessFlows } from '../../domain/flows';
+import { ensureEventsTable, readLog } from '../../db/events';
+import { getPool } from '../../db/pool';
 
-import { deliverNotification } from './notification-delivery.fixture';
-import { getEngine, resetEngineForTests } from './service';
+import { deliverNotification } from '../notification-delivery.fixture';
+import { getEngine, resetEngineForTests } from '../service';
 
 const pool = getPool(process.env.DATABASE_URL!);
 

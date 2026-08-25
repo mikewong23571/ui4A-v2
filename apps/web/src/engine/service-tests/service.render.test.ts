@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { contentVersion, fold, readRenderSpecsOf } from '@ui4a/engine';
 
-import { businessFlows } from '../domain/flows';
-import { ensureEventsTable, readLog } from '../db/events';
-import { getPool } from '../db/pool';
-import { fieldRef, type RenderSpec } from '../render/spec';
+import { businessFlows } from '../../domain/flows';
+import { ensureEventsTable, readLog } from '../../db/events';
+import { getPool } from '../../db/pool';
+import { fieldRef, type RenderSpec } from '../../render/spec';
 
-import { getEngine, resetEngineForTests } from './service';
+import { getEngine, resetEngineForTests } from '../service';
 
 // 凝固机制服务层集成测试(T7 Phase A Task 3,真 PG):
 // freezeSpec 经串行队列:零字面校验 + 词名校验 → appendEvent
