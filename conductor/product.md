@@ -110,7 +110,7 @@ UI4A 将这条路径压缩为:
 
 ### AI-first 用户故事
 
-Assistant 的自然语言理解、多轮目标形成、授权事实阅读、总结/比较/解释、动态 action/capability 发现与副作用授权，以 `tracks/t15-ai-first-dynamic-assistant_20260822/user-stories.md` 为准。真实 LLM Eval 是动态能力证据；rule/scripted driver 仅用于协议测试。
+Assistant 的自然语言理解、多轮目标形成、授权事实阅读、总结/比较/解释、动态 action/capability 发现与副作用授权，以 `tracks/archive/t15-ai-first-dynamic-assistant_20260822/user-stories.md` 为准。真实 LLM Eval 是动态能力证据；rule/scripted driver 仅用于协议测试。
 
 ### Presentation Plane
 

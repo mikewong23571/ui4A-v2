@@ -31,7 +31,7 @@
 - UI4A-owned worktree、content-addressed raw/patch/trajectory、Temporal SIGKILL/cancel/prepare-fail、
   human-only result CAS 与 source callback 均有独立证据；主 checkout 和 Active truth 零变化。
 - Human accept 只记录 `merged=false/deployed=false/activated=false` receipt；后续 main-branch/PR/
-  deployment 应另建 Track。关闭报告见 [T18 DONE](./tracks/t18-coding-capability-executors_20260823/DONE.md)。
+  deployment 应另建 Track。关闭报告见 [T18 DONE](./tracks/archive/t18-coding-capability-executors_20260823/DONE.md)。
 
 ## T17 External Agent CLI 与 Governed Draft Ingress（2026-08-23）
 
@@ -54,9 +54,9 @@ T15 修正了旧报告把“AI 可选”解释为“无模型也由 rule driver 
 | 认知/能力边界 | 阅读、回答、总结、比较、解释是 LLM 原生能力；只有应用先声明明确业务字段/action 时才允许持久化。D28 删除 publishing 摘要 artifact/actions | T15 U1–U4/U15–U17；D28 |
 | 副作用授权 | agent effect 引用 user message id + 逐字 quote；事件记录 declaration/guards/schema/confirmation，解释只从事件链生成 | `packages/agent/src/authorization.ts`、`packages/engine/src/execution-audit.ts` |
 | Provider 配置 | `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` 全部外置；缺项诚实失败且零副作用；正式工件不允许占位模型半写 | `packages/agent/src/llm-config.ts`、`apps/web/src/engine/service.ts` |
-| 验收 | 安全边界确定性测试必须 100%；动态语义由真实 LLM Eval 验收，不以固定措辞、固定轨迹或 fake driver 冒充 | [T15 spec](./tracks/t15-ai-first-dynamic-assistant_20260822/spec.md) 的 Story Eval Contract |
+| 验收 | 安全边界确定性测试必须 100%；动态语义由真实 LLM Eval 验收，不以固定措辞、固定轨迹或 fake driver 冒充 | [T15 spec](./tracks/archive/t15-ai-first-dynamic-assistant_20260822/spec.md) 的 Story Eval Contract |
 
-T15 checkpoint `b80efbc` 已完成最终 Story Eval/walkthrough；可复核结果见 [T15 Evaluation Evidence](./tracks/t15-ai-first-dynamic-assistant_20260822/evaluation.md)。
+T15 checkpoint `b80efbc` 已完成最终 Story Eval/walkthrough；可复核结果见 [T15 Evaluation Evidence](./tracks/archive/t15-ai-first-dynamic-assistant_20260822/evaluation.md)。
 
 ## T16 Presentation 与 D28 addendum(2026-08-23)
 
@@ -69,7 +69,7 @@ T15 checkpoint `b80efbc` 已完成最终 Story Eval/walkthrough；可复核结�
 | 摘要 | Assistant 原生临时回答；publishing 无 summarize capability、生成工件或保存引用 action | D28；built-in Application Bundle |
 | App 创建 | 不在产品 Chat 内闭环；候选方向为外置 Agent 起草 Bundle、UI4A meta 治理 | `GOAL.md` App 创建边界 |
 
-T16 关闭报告见 [T16 DONE](./tracks/t16-semantic-a2ui-sidecars_20260823/DONE.md)。测试数量不再抄入报告，以 `pnpm check`、`CI=true pnpm e2e` 和 opt-in Story Eval 的现场输出为准。
+T16 关闭报告见 [T16 DONE](./tracks/archive/t16-semantic-a2ui-sidecars_20260823/DONE.md)。测试数量不再抄入报告，以 `pnpm check`、`CI=true pnpm e2e` 和 opt-in Story Eval 的现场输出为准。
 
 ## 基线场景(业务平面)
 

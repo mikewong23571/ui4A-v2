@@ -22,7 +22,7 @@ internal experiment；rollback 与 fault injection 未实测。这份证据不�
 
 ### AI-first 用户故事
 
-Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能力发现，以 `conductor/tracks/t15-ai-first-dynamic-assistant_20260822/user-stories.md` 的 U1–U23 为准。验收必须运行配置的真实 LLM；rule/scripted driver 只能证明协议机制，不能证明 Assistant 用户故事成立。
+Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能力发现，以 `conductor/tracks/archive/t15-ai-first-dynamic-assistant_20260822/user-stories.md` 的 U1–U23 为准。验收必须运行配置的真实 LLM；rule/scripted driver 只能证明协议机制，不能证明 Assistant 用户故事成立。
 
 产品边界：
 
@@ -33,11 +33,11 @@ Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能�
 
 ### Presentation 用户故事
 
-呈现以 `conductor/tracks/t16-semantic-a2ui-sidecars_20260823/user-stories.md` 的 S1–S32 为准。Chat 只发薄 `PresentationRequest`；Application Recipe 和独立 Presentation Agent 产生 binding-only Surface；用户级 Sidecar 跨 Session 命中并重新授权、解引用。个人优化只有经参数化、机械 diff 和 human approval 才可晋升共享 Recipe。Recipe/Sidecar/patch/promotion 事件独立重放，不进入 Business Snapshot。
+呈现以 `conductor/tracks/archive/t16-semantic-a2ui-sidecars_20260823/user-stories.md` 的 S1–S32 为准。Chat 只发薄 `PresentationRequest`；Application Recipe 和独立 Presentation Agent 产生 binding-only Surface；用户级 Sidecar 跨 Session 命中并重新授权、解引用。个人优化只有经参数化、机械 diff 和 human approval 才可晋升共享 Recipe。Recipe/Sidecar/patch/promotion 事件独立重放，不进入 Business Snapshot。
 
 ### Assistant 双焦点一致性
 
-`conductor/tracks/t21-assistant-dual-focus_20260823/` 的 U1–U8 约束参考 Assistant：`currentRel`
+`conductor/tracks/archive/t21-assistant-dual-focus_20260823/` 的 U1–U8 约束参考 Assistant：`currentRel`
 只表示本轮合同读取位置；最近成功 navigate/Presentation 作为 `lastNavigation` 重放，用户发送消息
 时的实际 route/subject 作为不可变 `clientView`。LLM 同时理解两者并自主决定 answer/clarify/
 navigate/present，机械层不得用关键词、URL 或 rule driver 替代意图。一个用户回合可有多个单工具
@@ -58,7 +58,7 @@ decision；Provider 用 required tool envelope，非法输出最多进行一次�
 
 已有 publishing/community Application 的运行、发现、操作与呈现仍属于当前 DONE；“创建新 App”属于后续外置 Agent 集成范围。
 
-该方向已由 `conductor/tracks/t17-external-agent-cli-drafts_20260823/` 首切片闭环：可安装
+该方向已由 `conductor/tracks/archive/t17-external-agent-cli-drafts_20260823/` 首切片闭环：可安装
 `ui4a` CLI 是 HTTP/Siren/meta 协议的 agent-friendly 参考客户端；第三方 Agent 可参与受权
 业务操作，并把 Flow 候选作为系统内 Draft 修订、校验、diff 和提交。Draft 是否适用由激活
 合同的 `draft|direct|none` SubmissionPolicy 决定，Agent 无权在请求侧绕过；human approval
@@ -66,7 +66,7 @@ decision；Provider 用 required tool envelope，非法输出最多进行一次�
 
 ### Coding Capability Executor
 
-`conductor/tracks/t18-coding-capability-executors_20260823/` 跟踪通用 Coding Agent 作为
+`conductor/tracks/archive/t18-coding-capability-executors_20260823/` 跟踪通用 Coding Agent 作为
 `coding.execute` capability executor 的闭环：Application Flow 只声明业务节点与能力；UI4A
 治理 executor profile、隔离 workspace、durable run、预算、轨迹、result artifact 和 human
 accept/reject。Codex 是首个真实 reference executor；Hermes 只提供 Runtime/Workspace/session/
@@ -75,7 +75,7 @@ deploy 或批准自己的结果。
 
 ### Specialized Agent Contracts
 
-`conductor/tracks/t19-specialized-agent-contracts_20260823/` 将业务 Capability、版本化
+`conductor/tracks/archive/t19-specialized-agent-contracts_20260823/` 将业务 Capability、版本化
 Agent Definition 与部署 Runtime Profile 分层。Coding 与 Writing 是同一 Agent Host 上的两个真实
 specialization，但分别保留 Git/test 与 document/source/citation/render 合同。Agent Definition
 Author 可以根据自然语言起草 Prompt、Task/Result schema、runtime/policy、examples 和 Eval corpus；
@@ -84,7 +84,7 @@ Author 可以根据自然语言起草 Prompt、Task/Result schema、runtime/poli
 
 ### Meta Human Control Plane
 
-`conductor/tracks/t20-meta-human-control-plane_20260823/` 把 Meta sitemap、Application、Agent
+`conductor/tracks/archive/t20-meta-human-control-plane_20260823/` 把 Meta sitemap、Application、Agent
 Definition、Draft/Activation 合同投影为完整的人类治理控制台。`/meta` 动态发现当前授权面；
 未知合法 class 走安全 generic fallback，Application/Agent Definition/Draft 使用任务优先特化视图。
 Scope 由服务端重新裁决，所有功能控件来自当前 Siren action 并在提交前重读 exact entity；审批、
