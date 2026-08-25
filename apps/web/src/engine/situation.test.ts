@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assembleSituation, type SituationInput } from './situation';
+import { assembleSituation, grantedPolicyScopes, type SituationInput } from './situation';
 
 const presence = {
   principal: 'user:one',
@@ -24,6 +24,13 @@ function input(overrides: Partial<SituationInput> = {}): SituationInput {
 }
 
 describe('situation assembler', () => {
+  it('normalizes production policy claim names without admitting infrastructure scopes', () => {
+    expect(grantedPolicyScopes(['ui4a:read', 'ui4a:policy:publishing', 'default'])).toEqual([
+      'publishing',
+      'default',
+    ]);
+  });
+
   it('gives valid explicit parameters priority over presence and defaults', () => {
     expect(
       assembleSituation(

@@ -40,7 +40,7 @@ import {
 import { appendEvent, readLog } from '../../../db/events';
 import { ensurePresenceTables, loadPresenceForPrincipal } from '../../../db/presence';
 import { getDb } from '../../../engine/service';
-import { assembleSituation } from '../../../engine/situation';
+import { assembleSituation, grantedPolicyScopes } from '../../../engine/situation';
 import {
   getPresentationBroker,
   getPresentationCapabilities,
@@ -770,10 +770,7 @@ export async function POST(request: Request) {
     await ensurePresenceTables(db);
     const presence = await loadPresenceForPrincipal(db, principal);
     const grantedScopes = productionIdentity
-      ? [
-          ...productionIdentity.scopes.filter((scope) => !scope.startsWith('ui4a:')),
-          productionIdentity.policyScope,
-        ]
+      ? [...grantedPolicyScopes(productionIdentity.scopes), productionIdentity.policyScope]
       : ['default'];
     situation = assembleSituation({
       principal,

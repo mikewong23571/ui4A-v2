@@ -10,6 +10,7 @@ import {
   resolveTrustedRequestIdentity,
 } from '../../../auth/request-identity';
 import { getDb, getEngine } from '../../../engine/service';
+import { grantedPolicyScopes } from '../../../engine/situation';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +37,7 @@ export async function POST(request: Request): Promise<Response> {
     if (
       change.kind === 'scope' &&
       typeof change.value === 'string' &&
-      !identity.scopes.includes(change.value)
+      !grantedPolicyScopes(identity.scopes).includes(change.value)
     ) {
       return Response.json({ error: { code: 'scope_insufficient' } }, { status: 403 });
     }

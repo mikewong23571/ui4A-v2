@@ -37,6 +37,21 @@ export interface Situation {
   disclosure: SituationDisclosureSlice;
 }
 
+/** Normalize trusted policy claims to the application names used by the assembler. */
+export function grantedPolicyScopes(scopes: readonly string[]): string[] {
+  return [
+    ...new Set(
+      scopes.flatMap((scope) =>
+        scope.startsWith('ui4a:policy:')
+          ? [scope.slice('ui4a:policy:'.length)]
+          : scope.startsWith('ui4a:')
+            ? []
+            : [scope],
+      ),
+    ),
+  ];
+}
+
 function firstString(...values: Array<string | null | undefined>): string {
   const value = values.find((entry): entry is string => entry !== undefined && entry !== '');
   if (value === undefined) throw new Error('situation requires a non-empty string');

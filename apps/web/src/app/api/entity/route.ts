@@ -14,7 +14,7 @@ import {
   relCoveredByPolicyScope,
 } from '../../../auth/application-scope';
 import { ensurePresenceTables, loadPresenceForPrincipal } from '../../../db/presence';
-import { assembleSituation } from '../../../engine/situation';
+import { assembleSituation, grantedPolicyScopes } from '../../../engine/situation';
 
 // GET /api/entity?rel=… — Siren 实体端点(spec FR3):
 // - 已知 rel(实例或集合)→ 200 四件组装 properties/actions/links/guard-results;
@@ -64,10 +64,7 @@ export async function GET(request: Request) {
     const requestedScope = new URL(request.url).searchParams.get('scope') ?? undefined;
     const situation = assembleSituation({
       principal,
-      grantedScopes: [
-        ...identity.scopes.filter((scope) => !scope.startsWith('ui4a:')),
-        identity.policyScope,
-      ],
+      grantedScopes: [...grantedPolicyScopes(identity.scopes), identity.policyScope],
       presence,
       explicit: requestedScope === undefined ? undefined : { scope: requestedScope },
       defaults: { site: 'business', scope: identity.policyScope },
