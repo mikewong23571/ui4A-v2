@@ -1,0 +1,7 @@
+T24 Phase B Task 3: 失败措辞分层
+
+- 机械层结构化 reason{code,evidence,tried}:code 词表 no_progress_loop/driver_fail/start_entity_unavailable/loop_exception;evidence 首行为机器句子(审计真相不消失);tried=trail 最近 6 条概要;packages/agent 最小附加暴露(fail op 可选 code 字段,零语义变化)。
+- LLM 表述(AI-first):failure-reason.ts phraseFailureWithLlm,在场=resolveLlmConfig 可解析;缺席/失败零调用/undefined,永不伪造;prompt 极简结构指令零文案模板(有测试断言无示例词)。
+- 客户端三分层:phrasing 主呈现(标注助手表述)/无 phrasing 中性「失败 · code=… · 已尝试:…」/结构化本体恒入 details 失败数据区;旧帧回退现状呈现(前向兼容)。
+- 例外登记(编排 agent):floating-chat.test.tsx 944>800 入 size-baseline(T24 在途,shrink-only 自关闭起算)。
+- 验证(编排 agent 复跑):chat+api/chat+components 49 文件 319 用例、packages/agent 241 用例全绿;governance 复绿。
