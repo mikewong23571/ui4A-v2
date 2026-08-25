@@ -171,6 +171,7 @@ const webPostExact = [
   '/api/exec',
   '/api/exec-plan',
   '/api/chat',
+  '/api/presence',
   '/_meta/api/exec',
   '/api/presentation',
   '/api/presentation/sidecar',

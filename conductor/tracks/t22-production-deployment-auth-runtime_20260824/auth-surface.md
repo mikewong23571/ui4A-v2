@@ -49,6 +49,7 @@ human `sub` 加 exchanging client `azp`，不读取或扩展 `act`/`may_act`。
 | `POST` | `/api/exec` | Browser Session 或 Bearer；普通动作 `ui4a:write`，confirmation approve/reject 为 `ui4a:approve` | 单动作裁决和 human-only approval。 |
 | `POST` | `/api/exec-plan` | Browser Session 或 Bearer；`ui4a:write` | Golden Story 的批量合同执行。 |
 | `POST` | `/api/chat` | 生产 Browser Session；入口需 `ui4a:read` | 浏览器 Chat；inline turn 再执行受限 Token Exchange。 |
+| `POST` | `/api/presence` | Browser Session 或 Bearer；`ui4a:write` | 有界在场变化点上报；principal 由 credential 绑定。 |
 | `GET` | `/api/events` | Browser Session 或 Bearer；`ui4a:read` | 审计读；principal 过滤不得超出 credential。 |
 | `GET` | `/api/delegations` | Browser Session 或 Bearer；`ui4a:read` | 委托舰队列表；全局只读投影，无 per-principal 过滤。 |
 | `GET` | `/api/delegations/{id}` | Browser Session 或 Bearer；`ui4a:read` | 委托详情与事件轨迹；动态 path 仅作为 `/api/delegations/` prefix 暴露。 |

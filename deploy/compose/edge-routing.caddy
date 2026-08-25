@@ -35,7 +35,7 @@ https://{$UI4A_HOST}:8443 {
 
   @ui4aAuthenticatedWrite {
     method POST
-    path /api/exec /api/exec-plan /api/chat /_meta/api/exec /api/presentation /api/presentation/sidecar
+    path /api/exec /api/exec-plan /api/chat /api/presence /_meta/api/exec /api/presentation /api/presentation/sidecar
   }
   handle @ui4aAuthenticatedWrite {
     reverse_proxy web:3100

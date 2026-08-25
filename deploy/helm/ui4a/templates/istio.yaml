@@ -97,6 +97,8 @@ spec:
         - method: { exact: POST }
           uri: { exact: /api/chat }
         - method: { exact: POST }
+          uri: { exact: /api/presence }
+        - method: { exact: POST }
           uri: { exact: /_meta/api/exec }
         - method: { exact: POST }
           uri: { exact: /api/presentation }
@@ -227,6 +229,7 @@ spec:
               - /api/exec
               - /api/exec-plan
               - /api/chat
+              - /api/presence
               - /_meta/api/exec
               - /api/presentation
               - /api/presentation/sidecar
