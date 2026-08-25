@@ -40,8 +40,6 @@ export interface CodexStructuredInput {
   outputSchema: unknown;
   workingDirectory: string;
   sandboxMode?: 'read-only' | 'workspace-write';
-  /** Serialized byte string form used when a definition has no typed Prompt messages. */
-  serializedPrompt?: string;
   profile: CodexTransportProfile;
   nativeSessionId?: string;
   signal?: AbortSignal;
@@ -178,7 +176,7 @@ export async function executeCodexStructured(
     input.nativeSessionId === undefined
       ? client.startThread(threadOptions)
       : client.resumeThread(input.nativeSessionId, threadOptions);
-  const dispatchedPrompt = input.serializedPrompt ?? serializeCodexMessages(input.messages);
+  const dispatchedPrompt = serializeCodexMessages(input.messages);
   await deps.onPromptDispatched?.({
     compiledHash: input.compiledHash,
     sentPromptHash: `sha256:${createHash('sha256').update(dispatchedPrompt).digest('hex')}`,

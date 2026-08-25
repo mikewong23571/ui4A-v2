@@ -30,8 +30,7 @@ export async function GET() {
       }
       const detail = event.detail as ChatTurnDetail | ChatTurnStartedDetail;
       const sessionId = detail.sessionId ?? event.rel.slice('chat:'.length);
-      const turnId = detail.turnId ?? `legacy:${event.seq}`;
-      const turnKey = `${sessionId}:${turnId}`;
+      const turnKey = `${sessionId}:${detail.turnId}`;
       const firstForTurn = !seenTurns.has(turnKey);
       seenTurns.add(turnKey);
       const ts = event.ts;

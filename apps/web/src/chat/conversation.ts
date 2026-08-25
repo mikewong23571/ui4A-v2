@@ -20,8 +20,6 @@ import type {
   ChatContextUpdatedDetail,
   ChatMessageAppendedDetail,
   ChatMessageProvenance,
-  ChatTurnDetail,
-  ChatTurnStartedDetail,
   ConversationConstraint,
   ConversationFocus,
   ConversationReferent,
@@ -230,63 +228,16 @@ function rawMessage(
   };
 }
 
-function isLegacyTurn(value: unknown): value is ChatTurnDetail {
-  return (
-    isRecord(value) &&
-    typeof value.sessionId === 'string' &&
-    isRecord(value.goal) &&
-    typeof value.goal.verb === 'string' &&
-    Array.isArray(value.messages)
-  );
-}
-
-function isLegacyStarted(value: unknown): value is ChatTurnStartedDetail {
-  return (
-    isRecord(value) &&
-    typeof value.sessionId === 'string' &&
-    typeof value.turnId === 'string' &&
-    isRecord(value.goal) &&
-    typeof value.goal.verb === 'string'
-  );
-}
-
-function legacyMessage(
-  event: ConversationEvent,
-  detail: { sessionId: string; turnId: string },
-  role: 'user' | 'assistant',
-  content: string,
-): ConversationMessage {
-  return {
-    seq: event.seq,
-    ts: event.ts ?? '',
-    sessionId: detail.sessionId,
-    turnId: detail.turnId,
-    messageId: `legacy:${detail.turnId}:${role}`,
-    role,
-    content,
-    provenance: { kind: 'legacy-chat-turn' },
-  };
-}
-
 /**
  * 从全局日志纯重建单个 session。输入顺序不会被修改；投影按 seq 排序。
- * 新 raw message 存在的 turn 不再消费同 turn 的 chat-turn 完成事件，避免双记。
+ * dialogue 原话只来自 chat-message-appended；chat-turn / chat-turn-started /
+ * chat-turn-progress 是回合审计与在途进度事件，不进入对话投影。
  */
 export function foldConversation(
   events: readonly ConversationEvent[],
   sessionId: string,
 ): ConversationState {
   const ordered = [...events].sort((left, right) => left.seq - right.seq);
-  const rawTurnIds = new Set(
-    ordered
-      .filter(
-        (event) =>
-          event.kind === 'chat-message-appended' &&
-          belongsToSession(event, sessionId) &&
-          isMessageDetail(event.detail),
-      )
-      .map((event) => (event.detail as ChatMessageAppendedDetail).turnId),
-  );
   const messages: ConversationMessage[] = [];
   const seenMessageIds = new Set<string>();
   const seenNavigationIds = new Set<string>();
@@ -330,24 +281,6 @@ export function foldConversation(
     if (event.kind === 'chat-context-updated' && isContextDetail(event.detail)) {
       context = applyContextUpdate(context, event, event.detail);
       continue;
-    }
-
-    if (event.kind === 'chat-turn-started' && isLegacyStarted(event.detail)) {
-      if (!rawTurnIds.has(event.detail.turnId)) {
-        append(legacyMessage(event, event.detail, 'user', event.detail.goal.verb));
-      }
-      continue;
-    }
-
-    if (event.kind === 'chat-turn' && isLegacyTurn(event.detail)) {
-      const turnId = event.detail.turnId ?? `legacy:${event.seq}`;
-      if (rawTurnIds.has(turnId)) continue;
-      const legacyDetail = { sessionId: event.detail.sessionId, turnId };
-      append(legacyMessage(event, legacyDetail, 'user', event.detail.goal.verb));
-      const finalMessage = event.detail.messages.at(-1);
-      if (finalMessage !== undefined) {
-        append(legacyMessage(event, legacyDetail, 'assistant', finalMessage.text));
-      }
     }
   }
 

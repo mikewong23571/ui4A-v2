@@ -14,8 +14,7 @@ import { getDb } from '../../../../engine/service';
 // 双写者模式;engine fold 忽略该 kind,纯审计留痕)。返回各回合的
 // {seq, ts, goal, outcome, summary, messages, steps, driver},客户端重放进
 // 消息列表(goal 作为 user 消息在前,messages 逐条 assistant);
-// steps(T11 Phase B)是结构化 TrailStep[] 原料——旧事件无此字段,读出归一
-// 为空数组(向后兼容)。
+// steps(T11 Phase B)是结构化 TrailStep[] 原料。
 //
 // - 缺 sessionId → 400;db 不可达 → 503(不抛 500);
 // - 无该会话的回合 → { turns: [] }(空态,非错误)。
@@ -57,13 +56,10 @@ export async function GET(request: Request) {
         }
       } else if (event.kind === 'chat-turn') {
         const detail = event.detail as ChatTurnDetail;
-        const turnId = detail.turnId ?? `legacy:${event.seq}`;
-        turnsById.set(turnId, {
+        turnsById.set(detail.turnId, {
           seq: event.seq,
           ts: event.ts,
           ...detail,
-          turnId,
-          steps: detail.steps ?? [],
           status: 'final',
         });
       }

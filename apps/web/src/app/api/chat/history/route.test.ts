@@ -7,8 +7,7 @@
  * 覆盖:
  * - 已落回合:按 sessionId 过滤,goal/outcome/messages/driver 原样返回,
  *   seq 升序(两回合顺序保持);
- * - T11 Phase B:回合读出携带结构化 steps;T11 前写入的旧形状 detail
- *   (无 steps 字段)读出归一为空数组(向后兼容);
+ * - T11 Phase B:回合读出携带结构化 steps;
  * - 无该会话回合 → { turns: [] }(空态非错误);
  * - 缺 sessionId → 400。
  */
@@ -207,33 +206,6 @@ describe('聊天历史投影(T9 Phase B)', () => {
     expect(
       steps.every((step) => typeof step.step === 'number' && typeof step.rel === 'string'),
     ).toBe(true);
-  });
-
-  it('旧形状兼容:T11 前写入的 chat-turn(无 steps 字段)读出归一为空数组', async () => {
-    // 直写一条 T11 Phase B 之前的旧形状 detail(无 steps 字段),模拟存量事件。
-    await appendEvent(pool, {
-      kind: 'chat-turn',
-      actor: 'agent',
-      principal: 'user:sess-old-shape',
-      channel: 'chat',
-      rel: 'chat:sess-old-shape',
-      detail: {
-        sessionId: 'sess-old-shape',
-        goal: { verb: '发布一篇文章' },
-        outcome: 'done',
-        summary: '已发布',
-        messages: [{ role: 'assistant', text: '完成: 已发布' }],
-        driver: 'rule',
-      },
-    });
-
-    const { status, json } = await history('?sessionId=sess-old-shape');
-    expect(status).toBe(200);
-    const turns = json.turns ?? [];
-    expect(turns).toHaveLength(1);
-    expect(turns[0]!.goal.verb).toBe('发布一篇文章');
-    expect(turns[0]!.messages[0]!.text).toContain('完成');
-    expect(turns[0]!.steps).toEqual([]);
   });
 
   it('缺 sessionId → 400', async () => {

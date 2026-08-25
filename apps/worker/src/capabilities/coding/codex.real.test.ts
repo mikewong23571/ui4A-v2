@@ -64,7 +64,29 @@ it.skipIf(!enabled)(
     };
     const normalized: CodingNormalizedEvent[] = [];
     const output = await executeCodexTask(
-      { runId: 'real-run', task, profile, workspace: { id: 'real-workspace', path: repository } },
+      {
+        runId: 'real-run',
+        task,
+        profile,
+        workspace: { id: 'real-workspace', path: repository },
+        compiledPrompt: {
+          compiledHash: `sha256:${'5'.repeat(64)}`,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                'Complete the following authorized coding task inside the current workspace.',
+                `Goal: ${task.goal}`,
+                `Constraints:\n${task.constraints.map((value) => `- ${value}`).join('\n')}`,
+                `Acceptance criteria:\n${task.acceptanceCriteria.map((value) => `- ${value}`).join('\n')}`,
+                `Allowed paths:\n${task.allowedPaths.map((value) => `- ${value}`).join('\n')}`,
+                'Do not push, merge, deploy, change another checkout, or approve the result.',
+                'Run the relevant tests and return the required structured result.',
+              ].join('\n\n'),
+            },
+          ],
+        },
+      },
       { onRaw: async () => undefined, onNormalized: async (event) => void normalized.push(event) },
     );
     expect(output.claim.status).toBe('completed');

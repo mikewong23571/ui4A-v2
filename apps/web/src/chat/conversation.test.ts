@@ -2,11 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { StoredEvent } from '../db/events';
 import { conversationView, foldConversation } from './conversation';
-import type {
-  ChatContextUpdatedDetail,
-  ChatMessageAppendedDetail,
-  ChatTurnDetail,
-} from './history';
+import type { ChatContextUpdatedDetail, ChatMessageAppendedDetail } from './history';
 
 function event(
   seq: number,
@@ -492,21 +488,7 @@ describe('event-sourced conversation context', () => {
     ]);
   });
 
-  it('兼容旧 chat-turn：保留目标与最终 assistant 消息，不吸收 progress 事件', () => {
-    const oldTurn: ChatTurnDetail = {
-      sessionId: 'sess-main',
-      turnId: 'old-turn',
-      goal: { verb: '总结第一篇文章' },
-      outcome: 'answered',
-      summary: '完成总结',
-      messages: [
-        { role: 'assistant', text: '导航到 post:first-post' },
-        { role: 'assistant', text: '第一篇文章用于验证正文阅读链路。' },
-      ],
-      steps: [],
-      driver: 'llm',
-    };
-
+  it('chat-turn 完成事件不进入 dialogue:原话只来自 chat-message-appended', () => {
     const folded = foldConversation(
       [
         event(1, 'chat-turn-progress', {
@@ -514,16 +496,24 @@ describe('event-sourced conversation context', () => {
           turnId: 'old-turn',
           message: { role: 'assistant', text: '思考中' },
         }),
-        event(2, 'chat-turn', oldTurn),
+        event(2, 'chat-turn', {
+          sessionId: 'sess-main',
+          turnId: 'old-turn',
+          goal: { verb: '总结第一篇文章' },
+          outcome: 'answered',
+          summary: '完成总结',
+          messages: [
+            { role: 'assistant', text: '导航到 post:first-post' },
+            { role: 'assistant', text: '第一篇文章用于验证正文阅读链路。' },
+          ],
+          steps: [],
+          driver: 'llm',
+        }),
       ],
       'sess-main',
     );
 
-    expect(folded.messages.map(({ role, content }) => ({ role, content }))).toEqual([
-      { role: 'user', content: '总结第一篇文章' },
-      { role: 'assistant', content: '第一篇文章用于验证正文阅读链路。' },
-    ]);
-    expect(folded.messages.every((item) => item.provenance.kind === 'legacy-chat-turn')).toBe(true);
+    expect(folded.messages).toEqual([]);
   });
 
   it('bounded view 只取最后 N 条原文，不截断也不改写内容', () => {

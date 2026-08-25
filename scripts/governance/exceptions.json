@@ -28,36 +28,6 @@
   ],
   "compatAllowlist": [
     {
-      "path": "apps/web/src/app/api/chat/history/route.ts",
-      "reason": "真债务已报告(T23 Phase B):detail.turnId ?? `legacy:${event.seq}` 是 pre-turnId chat-turn 事件的读取兜底分支;字符串为投影输出运行值,措辞改写不改行为,分支本身待单独清理",
-      "pendingRemoval": false
-    },
-    {
-      "path": "apps/web/src/app/api/chat/sessions/route.ts",
-      "reason": "真债务已报告(T23 Phase B):与 history 路由相同的 `legacy:${event.seq}` turnId 兜底,服务无 turnId 的旧 chat-turn 事件;运行值不改,分支待单独清理",
-      "pendingRemoval": false
-    },
-    {
-      "path": "apps/web/src/chat/conversation.ts",
-      "reason": "真债务已报告(T23 Phase B):foldConversation 的 legacyMessage/isLegacyTurn 分支仅从 T15 前 chat-turn 事件恢复上下文,'legacy-chat-turn' provenance 与 `legacy:` messageId 为投影输出运行值;分支待单独清理",
-      "pendingRemoval": false
-    },
-    {
-      "path": "apps/web/src/chat/history.ts",
-      "reason": "ChatMessageProvenance 联合类型中的 'legacy-chat-turn' 是投影契约字符串(对应 conversation.ts 的 pre-T15 恢复分支,真债务已报告);随分支清理一并移除",
-      "pendingRemoval": false
-    },
-    {
-      "path": "apps/web/src/chat/conversation.test.ts",
-      "reason": "断言 conversation.ts pre-T15 恢复分支输出的 'legacy-chat-turn' provenance(真债务已报告);分支清理时同步删除",
-      "pendingRemoval": false
-    },
-    {
-      "path": "apps/worker/src/capabilities/coding/codex.ts",
-      "reason": "真债务已报告(T23 Phase B):compiledPrompt 缺省时 compiledHash 回落 'legacy:t18' 并走 serializedPrompt 未编译 Prompt 路径,服务 typed Prompt 之前的定义;字符串为落库运行值,分支待单独清理",
-      "pendingRemoval": false
-    },
-    {
       "path": "packages/agent/src/presentation-revision.ts",
       "reason": "正当语义:'compatible-word' 是 Render Patch 协议的操作 kind(LLM prompt 词表),与 engine patch.ts 共用,非 legacy/compat 代码",
       "pendingRemoval": false

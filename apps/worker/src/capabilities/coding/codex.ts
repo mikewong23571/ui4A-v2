@@ -48,8 +48,8 @@ export interface CodexExecutionInput {
   task: CodingTask;
   profile: CodingExecutorProfile;
   workspace: { id: string; path: string };
-  /** Optional T19 specialization Prompt. Omission preserves the T18 Prompt byte-for-byte. */
-  compiledPrompt?: CodexCompiledPrompt;
+  /** Server-compiled T19 specialization Prompt; execution fails fast without one. */
+  compiledPrompt: CodexCompiledPrompt;
   nativeSessionId?: string;
   signal?: AbortSignal;
 }
@@ -84,18 +84,6 @@ export async function probeCodexExecutor(
     ...(probe.version === undefined ? {} : { version: probe.version }),
     ...(probe.reason === undefined ? {} : { reason: probe.reason }),
   };
-}
-
-function promptFor(task: CodingTask): string {
-  return [
-    'Complete the following authorized coding task inside the current workspace.',
-    `Goal: ${task.goal}`,
-    `Constraints:\n${task.constraints.map((value) => `- ${value}`).join('\n') || '- none'}`,
-    `Acceptance criteria:\n${task.acceptanceCriteria.map((value) => `- ${value}`).join('\n')}`,
-    `Allowed paths:\n${task.allowedPaths.map((value) => `- ${value}`).join('\n') || '- all workspace paths'}`,
-    'Do not push, merge, deploy, change another checkout, or approve the result.',
-    'Run the relevant tests and return the required structured result.',
-  ].join('\n\n');
 }
 
 /** Stable alias retained for T18 callers and evidence. */
@@ -178,19 +166,18 @@ export async function executeCodexTask(
     throw new Error('Codex coding executor requires the server-owned workspace-write sandbox');
   }
   const compiledPrompt = input.compiledPrompt;
-  const messages = compiledPrompt?.messages ?? [
-    { role: 'user' as const, content: promptFor(input.task) },
-  ];
+  if (compiledPrompt === undefined) {
+    throw new Error('Codex coding executor requires a server-compiled Prompt');
+  }
   let sequence = 0;
   try {
     const output = await executeCodexStructured(
       {
         runId: input.runId,
-        messages,
-        compiledHash: compiledPrompt?.compiledHash ?? 'legacy:t18',
+        messages: compiledPrompt.messages,
+        compiledHash: compiledPrompt.compiledHash,
         outputSchema: CLAIM_SCHEMA,
         workingDirectory: input.workspace.path,
-        ...(compiledPrompt === undefined ? { serializedPrompt: promptFor(input.task) } : {}),
         profile: {
           providerId: input.profile.providerId,
           envAllowlist: input.profile.envAllowlist,
@@ -202,7 +189,7 @@ export async function executeCodexTask(
       },
       {
         ...(deps.createClient === undefined ? {} : { createClient: deps.createClient }),
-        ...(compiledPrompt === undefined || deps.onPromptDispatched === undefined
+        ...(deps.onPromptDispatched === undefined
           ? {}
           : { onPromptDispatched: deps.onPromptDispatched }),
         onRaw: deps.onRaw,

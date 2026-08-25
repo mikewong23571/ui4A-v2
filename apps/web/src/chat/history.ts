@@ -13,8 +13,8 @@ import type { ChatMessage } from './trail';
 /** chat-turn 事件的 detail 载荷(chat 路由写入端与 history 读端同一形状)。 */
 export interface ChatTurnDetail {
   sessionId: string;
-  /** 同 session 内一轮的稳定标识；旧事件缺省时由 seq 兼容生成。 */
-  turnId?: string;
+  /** 同 session 内一轮的稳定标识。 */
+  turnId: string;
   goal: AgentGoal;
   outcome: AgentOutcome;
   summary: string | null;
@@ -23,7 +23,7 @@ export interface ChatTurnDetail {
   /**
    * 结构化轨迹原料(T11 Phase B / 架构决定 2):runAgent 的 TrailStep[] 原样
    * 落库——messages 是人读投影,steps 是机器可读原料(轨迹挖掘/蒸馏的数据
-   * 飞轮)。向后兼容:T11 前写入的旧事件无此字段,history 读端归一为空数组。
+   * 飞轮)。
    */
   steps: TrailStep[];
   /** Chat history retains only thin Presentation request references, never Surface/catalog data. */
@@ -54,12 +54,9 @@ export interface ChatTurnProgressDetail {
   step?: TrailStep;
 }
 
-/**
- * 不可变对话原话的出处。用户输入与 Assistant 最终输出是新的权威事件；
- * legacy-chat-turn 仅用于从 T15 前的完成回合恢复有限上下文。
- */
+/** 不可变对话原话的出处。用户输入与 Assistant 最终输出是权威事件。 */
 export interface ChatMessageProvenance {
-  kind: 'user-input' | 'assistant-output' | 'legacy-chat-turn';
+  kind: 'user-input' | 'assistant-output';
   model?: string;
 }
 

@@ -40,6 +40,11 @@ const profile: CodingExecutorProfile = {
   networkPolicy: 'none',
 };
 
+const defaultCompiledPrompt = {
+  compiledHash: `sha256:${'5'.repeat(64)}`,
+  messages: [{ role: 'user' as const, content: 'Typed task data.' }],
+};
+
 function sdk(events: unknown[], threadId = 'thread-1'): CodexSdkLike {
   const thread = {
     id: null as string | null,
@@ -59,7 +64,7 @@ function sdk(events: unknown[], threadId = 'thread-1'): CodexSdkLike {
 }
 
 describe('Codex reference executor adapter', () => {
-  it('uses an optional server-compiled Prompt without changing the default Prompt', async () => {
+  it('dispatches the server-compiled Prompt byte-for-byte and reports its receipt', async () => {
     const client = sdk([
       { type: 'thread.started', thread_id: 'thread-prompt' },
       {
@@ -128,44 +133,24 @@ describe('Codex reference executor adapter', () => {
       ].join('\n'),
       expect.objectContaining({ outputSchema: expect.any(Object) }),
     );
+  });
 
-    const uncompiled = sdk([
-      { type: 'thread.started', thread_id: 'thread-plain-prompt' },
-      {
-        type: 'item.completed',
-        item: {
-          id: 'msg-plain-prompt',
-          type: 'agent_message',
-          text: JSON.stringify({
-            status: 'completed',
-            summary: 'done',
-            tests: [],
-            changedFiles: [],
-          }),
+  it('fails fast when the server-compiled Prompt is missing', async () => {
+    await expect(
+      executeCodexTask(
+        {
+          runId: 'run-no-prompt',
+          task,
+          profile,
+          workspace: { id: 'w-no-prompt', path: '/tmp/worktree' },
+        } as unknown as Parameters<typeof executeCodexTask>[0],
+        {
+          createClient: () => sdk([]),
+          onRaw: async () => undefined,
+          onNormalized: async () => undefined,
         },
-      },
-    ]);
-    await executeCodexTask(
-      { runId: 'run-plain-prompt', task, profile, workspace: { id: 'w', path: '/tmp/worktree' } },
-      {
-        createClient: () => uncompiled,
-        onRaw: async () => undefined,
-        onNormalized: async () => undefined,
-      },
-    );
-    const plainThread = vi.mocked(uncompiled.startThread).mock.results[0]?.value;
-    expect(plainThread?.runStreamed).toHaveBeenCalledWith(
-      [
-        'Complete the following authorized coding task inside the current workspace.',
-        'Goal: implement sum',
-        'Constraints:\n- small change',
-        'Acceptance criteria:\n- tests pass',
-        'Allowed paths:\n- src\n- test',
-        'Do not push, merge, deploy, change another checkout, or approve the result.',
-        'Run the relevant tests and return the required structured result.',
-      ].join('\n\n'),
-      expect.any(Object),
-    );
+      ),
+    ).rejects.toThrow('server-compiled Prompt');
   });
 
   it('preflights binary/auth and reports unavailable without fallback', async () => {
@@ -248,7 +233,13 @@ describe('Codex reference executor adapter', () => {
     const normalized: CodingNormalizedEvent[] = [];
     const raw: unknown[] = [];
     const output = await executeCodexTask(
-      { runId: 'run-1', task, profile, workspace: { id: 'w1', path: '/tmp/worktree' } },
+      {
+        runId: 'run-1',
+        task,
+        profile,
+        workspace: { id: 'w1', path: '/tmp/worktree' },
+        compiledPrompt: defaultCompiledPrompt,
+      },
       {
         createClient: () => client,
         onRaw: async (event) => void raw.push(event),
@@ -280,6 +271,7 @@ describe('Codex reference executor adapter', () => {
           task,
           profile,
           workspace: { id: 'w2', path: '/tmp/worktree' },
+          compiledPrompt: defaultCompiledPrompt,
           nativeSessionId: 'thread-old',
         },
         {
@@ -303,6 +295,7 @@ describe('Codex reference executor adapter', () => {
           task,
           profile,
           workspace: { id: 'w3', path: '/tmp/worktree' },
+          compiledPrompt: defaultCompiledPrompt,
           signal: controller.signal,
         },
         {
@@ -319,6 +312,7 @@ describe('Codex reference executor adapter', () => {
           task,
           profile: { ...profile, sandbox: 'danger-full-access' as never },
           workspace: { id: 'w4', path: '/tmp/worktree' },
+          compiledPrompt: defaultCompiledPrompt,
         },
         {
           createClient: () => sdk([]),
