@@ -1,0 +1,5 @@
+T24 Phase A Task 1: 机制词表断言(Red)
+
+- 新增 apps/web/src/lib/mechanism-words.ts:固定机制词常量清单(A2UI/surface 宿主/目录 已协商/catalog.json/sidecar:/个人呈现/deref-failed/presentation-post%3A),纯常量零分支,canvas/chat 复用。
+- 新增 apps/web/src/components/canvas-first-screen.test.tsx:渲染 CanvasBody 出 surface 后断言首屏文本零机制词;当前 Red(泄漏 A2UI/surface 宿主/目录 已协商/catalog.json/presentation-post%3A),由下一任务 Green。
+- 验证(编排 agent 复跑):新测试 Red 失败于机制词断言;canvas-body.test.tsx 4/4 绿;pnpm governance OK。
