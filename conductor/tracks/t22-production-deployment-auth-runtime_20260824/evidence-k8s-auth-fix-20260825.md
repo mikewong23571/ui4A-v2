@@ -196,6 +196,35 @@ LLM/Codex 凭据门槛用例,与本批无关)。
   `/canvas?focus=post:post-welcome` 直达链路(POST /api/presentation → 复用/建立
   Sidecar)同样渲染成功;匿名直取两路均 401。
 
+## 追加:canvas deref-failed 与 agent meta 平面误判(2026-08-25,同日第五轮)
+
+- 症状 A:chat 在定义面建立的 Sidecar(如 meta/application:publishing)在画布上全部
+  绑定 `deref-failed`。根因:meta 定义实体(flow/application/capability/activation/self)
+  的 properties 缺 `rel`,而 canvas deref/实体缓存一律按 `properties.rel` 归键——业务实体
+  有 rel,meta 没有,合同口径不一致。修复:engine siren 五个 meta 投影统一注入
+  `properties.rel`。提交 `b760844`。
+- 症状 B:业务页面上说"新增一篇文章,主要介绍当前应用提供的用户故事,操作流程;",
+  agent 却在 meta/flow:article-drafting 与 meta/application:publishing 之间导航循环至
+  诚实失败。根因:chat 路由用正则启发式 `hasExplicitMetaIntent` 猜平面——"新增"与远隔
+  的"流程"跨从句命中,整回合被切到 /_meta 合同站,业务向导不可见。修复(按 AI-first
+  原则,不用更复杂的正则、也不加 LLM 分类器):平面归属改为客户端上下文事实——用户在
+  meta 控制台(/meta)或正在查看定义实体(canvas focus/roots 为 meta/ rel)时走 /_meta,
+  其余一律业务面;`_meta` 原话记号保留为显式入口;删除自然语言正则猜测。提交
+  `6cd07e2`。
+- 质量门:受影响套件全绿(engine 508/508、web meta/presentation 155/155、chat 64/64);
+  新 HEAD(含 T23 phase B `cf2397e`)全量 `pnpm check` 绿(331 文件,2579 通过)。
+- 部署:镜像 `docker.io/ui4a/web@sha256:06e372274724899ed29d024b696b43298a1645d4da26a431caf0fd1a0afe1b4d`
+  (tag `v0.1.0-experimental.1.t22auth10`,OCI revision = `6cd07e2`;worktree 干净副本
+  构建)。**本轮起生产镜像携带 T23 phase B(legacy capability-run 移除,cf2397e,用户
+  自行提交)**。helm rev 32,rollout 完成。staging 在
+  k8s-cp-1:/tmp/ui4a-release-t22auth10(chart 模板已同步该提交)。
+- 线上验证(Playwright 真实登录):此前 deref-failed 的
+  `/canvas?sidecar=sidecar:a188a8dd1b302ca3&focus=meta/application:publishing` 整页无
+  deref-failed、正常渲染应用定义内容;业务页(route=/)发起同一句"新增一篇文章…操作
+  流程;",agent 全程留在业务面(navigate flow:article-drafting → 逐步 exec next 填
+  标题/分类/正文),首轮因 LLM 端点超时诚实失败(非代码问题),重试回合 outcome=done:
+  "已新增并发布文章《当前应用的用户故事与操作流程》"。
+
 ## 未覆盖(保持诚实边界)
 
 - K8s/Host 两后端 Agent Run 仍为 `failed-honest`(见 RELEASE_NOTES 已知限制),本修复不涉及
