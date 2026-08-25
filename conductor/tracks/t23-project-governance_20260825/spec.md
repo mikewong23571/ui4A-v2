@@ -132,6 +132,18 @@ scripts/、e2e/、deploy/ ──► apps 与 packages 的公开契约
 `pnpm governance` 单独可跑。根 `package.json`、`AGENTS.md` 的 Build/Test 节、
 `conductor/workflow.md` 的验收协议同步更新。
 
+### FR5 历史 Track 归档
+
+- 已完成的 Track(T1–T21)从 `conductor/tracks/` 移入
+  `conductor/tracks/archive/`,目录内容保持只读不改写(conductor 既有约定:
+  completed Track 文档是不可变实现历史)。
+- `conductor/tracks.md` 重组:活跃 Track 一节只列 `[~]`;已完成 Track 保留
+  单行标题 + archive 链接,或压缩为归档索引一节。
+- `conductor/index.md` 及任何引用被移动 Track 路径的活跃文档同步修正链接。
+- 归档只动位置不动内容;活跃 Track(T22 及之后)不归档。
+- 与 GR5 衔接:被归档 Track 的专属脚本/spec 在同一 commit 序列中按
+  "提升为常驻门禁或随 track 归档"裁决。
+
 ## Non-goals
 
 - 不改变任何业务语义、HTTP/Siren 合同、事件日志格式语义、Temporal 合同。
@@ -149,3 +161,5 @@ scripts/、e2e/、deploy/ ──► apps 与 packages 的公开契约
 - `size-baseline.json` 为空;GR2 兼容清理清单全部完成并有删除 commit。
 - `pnpm check` 与 `CI=true pnpm e2e invariants` 全绿,证明清理无行为回归。
 - AGENTS.md 迁入 GR1–GR5 规则,workflow.md 记录门禁验收点。
+- T1–T21 已归档至 `conductor/tracks/archive/`,`tracks.md` 活跃区只含在途 Track,
+  归档链接全部可达。

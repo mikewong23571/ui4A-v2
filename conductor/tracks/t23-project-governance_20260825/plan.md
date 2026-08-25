@@ -75,10 +75,16 @@
 - [ ] Task: `size-baseline.json` 清空,check-size 全绿
 - [ ] Task: Phase Verification & Checkpoint
 
-## Phase E: 门禁化与规则迁移(Gate)
+## Phase E: 门禁化、历史归档与规则迁移(Gate)
 
 - [ ] Task: 根 `package.json` 增加 `governance` script 并并入 `check`
+- [ ] Task: 历史 Track 归档(FR5)
+  - T1–T21 移入 `conductor/tracks/archive/`,内容只读不改写
+  - `tracks.md` 重组为"活跃 Track + 归档索引"两节,修正全部链接
+  - `conductor/index.md` 等活跃文档中被移动路径的引用同步修正
+  - 被归档 Track 的专属脚本按 GR5 在同一序列裁决(衔接 Phase D 考古任务)
 - [ ] Task: GR1–GR5 迁入 `AGENTS.md`(Architectural Invariants / Conventions 节),
-  `conductor/workflow.md` 验收协议增加治理门禁一步
+  `conductor/workflow.md` 验收协议增加治理门禁一步;AGENTS.md 的 System Map 与
+  模块职责表按本 Track 实际清理结果对齐(如兼容层删除、目录下沉后的新结构)
 - [ ] Task: 终验——全新 clone 视角跑 `pnpm install && pnpm check` 与 invariants 全绿;
   Track 收口,更新 `conductor/tracks.md` 状态
