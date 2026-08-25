@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { AppShell } from '@/components/app-shell';
-import { FloatingChat } from '@/components/floating-chat';
+import { FloatingChat } from '@/components/chat/floating-chat';
 
 import './globals.css';
 

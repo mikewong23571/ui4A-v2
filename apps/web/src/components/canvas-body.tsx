@@ -25,6 +25,10 @@
  *
  * 词汇表 = 官方 SDK(@a2ui/react + web_core,DECISIONS D12)的
  * basic 布局原语 + 十数据词条(word-catalog)。
+ *
+ * T23 Phase D 拆分:动作处理接线 → canvas-action-handler.ts;单 surface
+ * 异常隔离 → surface-error-boundary.tsx;Sidecar 个人视图操作 →
+ * use-sidecar-actions.ts;Sidecar 工具条 → canvas-sidecar-toolbar.tsx。
  */
 import { A2uiSurface } from '@a2ui/react/v0_9';
 import type { ReactComponentImplementation } from '@a2ui/react/v0_9';
@@ -32,14 +36,10 @@ import { MessageProcessor } from '@a2ui/web_core/v0_9';
 import type { SurfaceModel } from '@a2ui/web_core/v0_9';
 import type { SirenEntity, SurfaceTree } from '@ui4a/engine';
 import { useSearchParams } from 'next/navigation';
-import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';
-import {
-  createActionGate,
-  type ActionGate,
-  type CanvasClientAction,
-} from '@/render/canvas/action-gate';
+import { createActionGate, type CanvasClientAction } from '@/render/canvas/action-gate';
 import { planSurface } from '@/render/canvas/surface-flow';
 import { ui4aRenderCatalog } from '@/render/canvas/word-catalog';
 import { CATALOG_ID, catalogUrl } from '@/render/registry';
@@ -50,9 +50,13 @@ import {
 } from '@/render/presentation/generic';
 import type { RenderSpec } from '@/render/spec';
 
-import { useEntityCache, type EntityCacheHandle } from './entity-cache-provider';
+import { createCanvasActionHandler } from './canvas-action-handler';
+import { CanvasSidecarToolbar } from './canvas-sidecar-toolbar';
+import { useEntityCache } from './entity-cache-provider';
 import { execAction, fetchEntity } from './exec-client';
+import { SurfaceErrorBoundary } from './surface-error-boundary';
 import { Button } from './ui/button';
+import { useSidecarActions } from './use-sidecar-actions';
 
 // 注:@a2ui/react 0.10.2 声明的 ./styles/structural.css 在包内缺失(打包缺口);
 // basic 原语样式经 useBasicCatalogStyles 运行时注入(adoptedStyleSheets),
@@ -67,40 +71,6 @@ function frozenSpecsOf(collection: SirenEntity): RenderSpec[] {
     }
     return [{ concern, component, bind: bind as RenderSpec['bind'] }];
   });
-}
-
-/** 画布动作处理的依赖(拦截门 / 页面缓存 / 告示 / 整面 reload 入口)。 */
-export interface CanvasActionHandlerDeps {
-  gate: ActionGate;
-  cache: EntityCacheHandle;
-  notify: (message: string) => void;
-  reload: () => void;
-}
-
-/**
- * 画布动作处理:白名单裁决 → executed 时先精确失效(当前 rel + 实体回链的
- * 真实所属 collection)再整面 reload——reload 后受影响 rel 经页面缓存重取,
- * 无关 rel 命中缓存;rejected/refused 零失效零 reload(诚实失败口径不变)。
- */
-export function createCanvasActionHandler(deps: CanvasActionHandlerDeps) {
-  return async (action: CanvasClientAction): Promise<void> => {
-    const outcome = await deps.gate.handle(action);
-    if (outcome.outcome === 'executed') {
-      const rel = action.context.rel;
-      // gate 已保证 executed 时 rel 是非空字符串;这里仍按合同形状防御一次。
-      if (typeof rel === 'string' && rel !== '') {
-        deps.cache.invalidateAfterExec(rel, outcome.entity);
-      }
-      deps.notify(`动作已执行:${action.name}`);
-      deps.reload(); // executed → 数据即事件投影,整面 reload 重建 surface
-      return;
-    }
-    deps.notify(
-      outcome.outcome === 'rejected'
-        ? `渲染层拒绝:${outcome.reason}`
-        : `裁决层拒绝:[${outcome.layer}] ${outcome.reason}`,
-    );
-  };
 }
 
 /** 渲染中的 surface 条目(surface 模型进 state:渲染只读 state,不读 ref)。 */
@@ -127,42 +97,6 @@ async function withAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T
   });
 }
 
-interface SurfaceErrorBoundaryProps {
-  surfaceId: string;
-  children: ReactNode;
-}
-
-interface SurfaceErrorBoundaryState {
-  error?: string;
-}
-
-/** 隔离单个 A2UI surface 的渲染期异常,保留同页其余 surface。 */
-export class SurfaceErrorBoundary extends Component<
-  SurfaceErrorBoundaryProps,
-  SurfaceErrorBoundaryState
-> {
-  state: SurfaceErrorBoundaryState = {};
-
-  static getDerivedStateFromError(error: unknown): SurfaceErrorBoundaryState {
-    return { error: error instanceof Error ? error.message : String(error) };
-  }
-
-  render(): ReactNode {
-    if (this.state.error !== undefined) {
-      return (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
-        >
-          surface {this.props.surfaceId} 渲染失败：{this.state.error}。请检查该 surface
-          的数据绑定后重新载入。
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
 /** 成员缺字段诊断的人类可读机械投影。 */
 function warningText(warning: DerefWarning): string {
   return `${warning.skipped} 条成员因缺字段 ${warning.fieldPath} 未纳入：${warning.members.join(
@@ -182,23 +116,26 @@ export function CanvasBody() {
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
-  const [sidecarMeta, setSidecarMeta] = useState<{
-    id: string;
-    version: number;
-    retention: 'cache' | 'pinned';
-    rootNodeId: string;
-    view: {
-      collapsedNodeIds: string[];
-      densityByNodeId: Record<string, 'compact' | 'comfortable' | 'spacious'>;
-    };
-  }>();
-  const [promotionPending, setPromotionPending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [negotiated, setNegotiated] = useState(false);
   // 重载触发器:拦截门 executed 后重载(gate 闭包经 ref 触发,不经渲染期读)。
   const reloadRef = useRef<() => void>(() => {});
   const loadGenerationRef = useRef(0);
   const inFlightRef = useRef<AbortController | null>(null);
+
+  // Sidecar 个人视图操作(pin/revert/patch/explain/promote)与元信息状态:
+  // 搬到 use-sidecar-actions;revert 后的整面重载经 reloadRef 触发(同拦截门口径)。
+  const reload = useCallback(() => reloadRef.current(), []);
+  const {
+    sidecarMeta,
+    setSidecarMeta,
+    promotionPending,
+    setPromotionPending,
+    mutateSidecar,
+    patchSidecar,
+    explainSidecar,
+    promoteSidecar,
+  } = useSidecarActions({ notify: setNotice, reload });
 
   const load = useCallback(async () => {
     // chat 是画布缓存之外的执行者；refresh 表明合同刚发生写入，影响范围
@@ -442,7 +379,15 @@ export function CanvasBody() {
         setLoading(false);
       }
     }
-  }, [cache, concernParam, focusParam, focusRefreshParam, rootsParam, sidecarParam]);
+  }, [
+    cache,
+    concernParam,
+    focusParam,
+    focusRefreshParam,
+    rootsParam,
+    setSidecarMeta,
+    sidecarParam,
+  ]);
 
   useEffect(() => {
     const initial = setTimeout(() => void load(), 0);
@@ -451,134 +396,6 @@ export function CanvasBody() {
       inFlightRef.current?.abort(new DOMException('Canvas view changed.', 'AbortError'));
     };
   }, [load]);
-
-  const mutateSidecar = useCallback(
-    async (action: 'pin' | 'revert'): Promise<void> => {
-      if (sidecarMeta === undefined) return;
-      const response = await fetch('/api/presentation/sidecar', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          sidecarId: sidecarMeta.id,
-          action,
-          actor: 'human',
-          ...(action === 'revert' ? { targetVersion: sidecarMeta.version - 1 } : {}),
-        }),
-      });
-      const body = (await response.json()) as {
-        sidecar?: { id: string; version: number; retention: 'cache' | 'pinned' };
-        error?: string;
-      };
-      if (!response.ok || body.sidecar === undefined) {
-        setNotice(`Sidecar ${action} 失败:${body.error ?? `HTTP ${response.status}`}`);
-        return;
-      }
-      setSidecarMeta((current) =>
-        current === undefined ? undefined : { ...current, ...body.sidecar },
-      );
-      setNotice(
-        action === 'pin'
-          ? `已保存为个人视图 · v${body.sidecar.version}`
-          : `已恢复 Sidecar v${body.sidecar.version}`,
-      );
-      if (action === 'revert') void load();
-    },
-    [load, sidecarMeta],
-  );
-
-  const patchSidecar = useCallback(
-    async (kind: 'collapse' | 'density'): Promise<void> => {
-      if (sidecarMeta === undefined) return;
-      const collapsed = sidecarMeta.view.collapsedNodeIds.includes(sidecarMeta.rootNodeId);
-      const currentDensity = sidecarMeta.view.densityByNodeId[sidecarMeta.rootNodeId];
-      const operations =
-        kind === 'collapse'
-          ? [{ kind, nodeId: sidecarMeta.rootNodeId, collapsed: !collapsed }]
-          : [
-              {
-                kind,
-                nodeId: sidecarMeta.rootNodeId,
-                density: currentDensity === 'compact' ? 'spacious' : 'compact',
-              },
-            ];
-      const response = await fetch('/api/presentation/sidecar', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          sidecarId: sidecarMeta.id,
-          action: 'patch',
-          actor: 'human',
-          interactionId: `canvas:${kind}:${crypto.randomUUID()}`,
-          operations,
-        }),
-      });
-      const body = (await response.json()) as {
-        sidecar?: typeof sidecarMeta;
-        error?: string;
-      };
-      if (!response.ok || body.sidecar === undefined) {
-        setNotice(`视图调整失败:${body.error ?? `HTTP ${response.status}`}`);
-        return;
-      }
-      setSidecarMeta(body.sidecar);
-      setNotice(`视图已调整 · v${body.sidecar.version} · 可恢复上一版本`);
-    },
-    [sidecarMeta],
-  );
-
-  const explainSidecar = useCallback(async (): Promise<void> => {
-    if (sidecarMeta === undefined) return;
-    const response = await fetch(
-      `/api/presentation/sidecar?sidecarId=${encodeURIComponent(sidecarMeta.id)}&explain=1`,
-    );
-    const body = (await response.json()) as {
-      explanation?: { provenance?: { kind?: string; ref?: string }; dependencyIds?: string[] };
-      error?: string;
-    };
-    if (!response.ok || body.explanation === undefined) {
-      setNotice(`无法解释当前呈现:${body.error ?? `HTTP ${response.status}`}`);
-      return;
-    }
-    setNotice(
-      `这样展示是因为 ${body.explanation.provenance?.kind ?? 'unknown'}:${
-        body.explanation.provenance?.ref ?? 'unknown'
-      }，依赖 ${body.explanation.dependencyIds?.length ?? 0} 项。`,
-    );
-  }, [sidecarMeta]);
-
-  const promoteSidecar = useCallback(
-    async (confirm: boolean): Promise<void> => {
-      if (sidecarMeta === undefined) return;
-      const response = await fetch('/api/presentation/sidecar', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          sidecarId: sidecarMeta.id,
-          action: confirm ? 'promote' : 'promotion-preview',
-          actor: 'human',
-        }),
-      });
-      const body = (await response.json()) as {
-        diff?: { fromSidecarVersion?: number };
-        recipe?: { id?: string; version?: number };
-        error?: string;
-      };
-      if (!response.ok) {
-        setNotice(`团队默认处理失败:${body.error ?? `HTTP ${response.status}`}`);
-        return;
-      }
-      if (!confirm) {
-        setPromotionPending(true);
-        setNotice(
-          `将把个人视图 v${body.diff?.fromSidecarVersion ?? '?'} 参数化为团队默认，请确认。`,
-        );
-      } else {
-        setPromotionPending(false);
-        setNotice(`已设为团队默认 · ${body.recipe?.id ?? 'recipe'} v${body.recipe?.version ?? 1}`);
-      }
-    },
-    [sidecarMeta],
-  );
 
   // latest-ref:拦截门 executed 后的重载入口(effect 内更新,渲染期零 ref 访问)。
   useEffect(() => {
@@ -615,100 +432,15 @@ export function CanvasBody() {
         </p>
       )}
       {sidecarMeta !== undefined && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs">
-          <span>
-            个人呈现 · v{sidecarMeta.version} ·{' '}
-            {sidecarMeta.retention === 'pinned' ? '已固定' : '缓存'}
-          </span>
-          {sidecarMeta.retention === 'cache' && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              data-presentation-action="pin-sidecar"
-              data-nav="presentation:pin-sidecar"
-              onClick={() => void mutateSidecar('pin')}
-            >
-              以后都这样看
-            </Button>
-          )}
-          {sidecarMeta.version > 1 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              data-presentation-action="revert-sidecar"
-              data-nav="presentation:revert-sidecar"
-              onClick={() => void mutateSidecar('revert')}
-            >
-              恢复上一版本
-            </Button>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            aria-pressed={sidecarMeta.view.collapsedNodeIds.includes(sidecarMeta.rootNodeId)}
-            data-presentation-action="collapse-sidecar"
-            data-nav="presentation:collapse-sidecar"
-            onClick={() => void patchSidecar('collapse')}
-          >
-            {sidecarMeta.view.collapsedNodeIds.includes(sidecarMeta.rootNodeId)
-              ? '展开视图'
-              : '收起视图'}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            data-presentation-action="density-sidecar"
-            data-nav="presentation:density-sidecar"
-            onClick={() => void patchSidecar('density')}
-          >
-            切换疏密
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            data-nav="presentation:explain-sidecar"
-            onClick={() => void explainSidecar()}
-          >
-            为什么这样展示
-          </Button>
-          {!promotionPending ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              data-nav="presentation:preview-promotion"
-              onClick={() => void promoteSidecar(false)}
-            >
-              设为团队默认
-            </Button>
-          ) : (
-            <>
-              <Button
-                type="button"
-                size="sm"
-                data-nav="presentation:confirm-promotion"
-                onClick={() => void promoteSidecar(true)}
-              >
-                确认团队默认
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                data-presentation-action="cancel-promotion"
-                data-nav="presentation:cancel-promotion"
-                onClick={() => setPromotionPending(false)}
-              >
-                取消
-              </Button>
-            </>
-          )}
-        </div>
+        <CanvasSidecarToolbar
+          sidecarMeta={sidecarMeta}
+          promotionPending={promotionPending}
+          mutateSidecar={mutateSidecar}
+          patchSidecar={patchSidecar}
+          explainSidecar={explainSidecar}
+          promoteSidecar={promoteSidecar}
+          cancelPromotion={() => setPromotionPending(false)}
+        />
       )}
       {errors.length > 0 && (
         <ul className="mt-4 space-y-1 text-sm text-destructive" data-testid="canvas-errors">

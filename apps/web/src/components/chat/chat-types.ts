@@ -1,0 +1,104 @@
+/**
+ * chat 面板共享类型与持久化键(T23 Phase D 自 chat-panel.tsx 拆出):
+ * 面板消息形状、一次性 JSON/委托派发响应形状、localStorage 键与装载器、
+ * useChatSession 的对外会话契约。纯类型/常量/纯函数,零 React 状态。
+ */
+import type { ThreadMessageLike, useExternalStoreRuntime } from '@assistant-ui/react';
+
+import type { ChatSessionSummary } from '@/chat/history';
+
+/** 面板内消息(rel 为轨迹步的实体 rel:flow 徽章展示用,见 thread.tsx)。 */
+export interface ChatUiMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  rel?: string;
+  /** 思考区条目以回合 + 步号唯一标识，content 为该步推理自述全文。 */
+  thinking?: { turnId: string; step: number };
+}
+
+/** 一次性 JSON 响应形状(render 短路/兼容路径;inline 已转 SSE)。 */
+export interface ChatJsonResponse {
+  sessionId?: string;
+  outcome?: string;
+  summary?: string | null;
+  messages?: { role: 'assistant'; text: string }[];
+  render?: {
+    concern: string;
+    canvasUrl: string;
+  };
+  focus?: { rel: string; canvasUrl: string };
+  error?: string | { code?: string };
+}
+
+/** /api/chat mode=delegated 的派发回执(T5 Phase B)。 */
+export interface DelegatedResponse {
+  mode?: 'delegated';
+  delegationId?: string;
+  sessionId?: string;
+}
+
+export const SESSION_STORAGE_KEY = 'ui4a.chat.sessionId';
+export const PENDING_SESSION_STORAGE_KEY = 'ui4a.chat.pendingSessionId';
+
+/** 思考过程可见性开关的持久化键('0' = 关闭;缺省/其他 = 开启)。 */
+export const THINKING_STORAGE_KEY = 'ui4a.chat.thinking';
+
+export function loadThinkingPreference(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(THINKING_STORAGE_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+/** 客户端流空闲超时:有效帧/heartbeat 会续期，不再把总时长误判为超时。 */
+export const STREAM_IDLE_TIMEOUT_MS = 120_000;
+
+export function loadSessionId(): string {
+  try {
+    return globalThis.localStorage?.getItem(SESSION_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+export function convertMessage(message: ChatUiMessage): ThreadMessageLike {
+  const custom: Record<string, unknown> = {};
+  if (message.rel !== undefined) custom['rel'] = message.rel;
+  if (message.thinking !== undefined) {
+    custom['thinking'] = message.thinking.step;
+    custom['thinkingTurnId'] = message.thinking.turnId;
+  }
+  return {
+    role: message.role,
+    content: [{ type: 'text', text: message.content }],
+    ...(Object.keys(custom).length > 0 ? { metadata: { custom } } : {}),
+  };
+}
+
+export interface ChatSession {
+  sessionId: string;
+  isRunning: boolean;
+  delegated: boolean;
+  /** 思考过程可见性(用户开关,持久化;关闭 = 思考条目不渲染,state 保留)。 */
+  showThinking: boolean;
+  lastRender: { concern: string; canvasUrl: string } | undefined;
+  /** Thin Presentation receipt target; full Surface never enters Chat state. */
+  lastPresentation: { canvasUrl: string } | undefined;
+  /** agent 当前查看的实体引用（临时共享处境，不是凝固布局）。 */
+  lastFocus: { rel: string; canvasUrl: string } | undefined;
+  toggleDelegated: () => void;
+  toggleShowThinking: () => void;
+  startNewSession: () => void;
+  runtime: ReturnType<typeof useExternalStoreRuntime>;
+  /** 会话清单视图(T9 补):'chat' 会话态 / 'sessions' 清单态。 */
+  view: 'chat' | 'sessions';
+  /** 清单数据(null = 未加载/加载中;[] = 空态)。 */
+  sessions: ChatSessionSummary[] | null;
+  /** 打开清单视图(每次重新拉取——清单是日志投影,拉取即最新)。 */
+  openSessions: () => void;
+  /** 返回会话视图。 */
+  closeSessions: () => void;
+  /** 切换到指定历史会话(持久化 sessionId + 重放该会话回合)。 */
+  selectSession: (sessionId: string) => void;
+}

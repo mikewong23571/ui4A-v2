@@ -1,8 +1,8 @@
 'use client';
 /**
- * assistant 工作台面板(T9 Phase B):悬浮窗(float)、sidebar 与独立窗口
- * (/chat)三形态共用的聊天会话本体。会话状态由 useChatSession 持有(聊天 = 事件日志的投影,
- * 服务端零会话态):
+ * 聊天会话状态 hook(T23 Phase D 自 chat-panel.tsx 拆出):悬浮窗(float)、
+ * sidebar 与独立窗口(/chat)三形态共用的会话逻辑。会话状态由本 hook 持有
+ * (聊天 = 事件日志的投影,服务端零会话态):
  *
  * - 发送(B1 流式轨迹):POST /api/chat——inline 返回 SSE 流,step 帧逐步
  *   追加 assistant 消息(每步一条,废弃一次性 join);thinking-delta 帧
@@ -16,138 +16,33 @@
  * - 历史(B3):挂载时按 localStorage 的 sessionId 拉 /api/chat/history,
  *   各回合 messages 重放进消息列表(goal 作为 user 消息在前);「新会话」
  *   清 localStorage + 清空消息(历史仍在日志,审计不丢);
- * - render 回执(S5):回执即达即跳——router.push 客户端导航到画布 URL
- *   (与点击链接同路:main 内容区切换,面板不重挂载;已在目标地址则跳过);
- *   底部保留「在画布查看:<concern>」链接(data-nav="render:<concern>",
- *   手动回入口,不在画布时主窗口导航过去,sidebar 与画布同屏即协同);
  * - 委托模式(T5 Phase B):开关打开后发送 mode:'delegated',立即回执
  *   「已派发委托 <id前8位>…(后台执行中),进度见舰队页 /delegations」。
  *
- * UI:assistant-ui 官方 stock thread 裁剪版(@/components/assistant-ui/thread)
- * + shadcn Button;消息态经 useExternalStoreRuntime 外接。
+ * 消息态经 useExternalStoreRuntime 外接;共享类型/持久化键见 chat-types.ts。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import {
-  AssistantRuntimeProvider,
-  useExternalStoreRuntime,
-  type AppendMessage,
-  type ThreadMessageLike,
-} from '@assistant-ui/react';
+import { useExternalStoreRuntime, type AppendMessage } from '@assistant-ui/react';
 
 import type { ChatSessionSummary, ChatTurn } from '@/chat/history';
 import { clientViewReportForLocation, type ActivePresentationView } from '@/chat/client-view';
 import type { ChatRenderPayload } from '@/chat/sse';
 import { anySignal, createIdleTimeout, readChatSseStream, type ChatFinalPayload } from '@/chat/sse';
-import { ChatThread } from '@/components/assistant-ui/thread';
-import { Button } from '@/components/ui/button';
+
 import {
-  ArrowLeft,
-  History,
-  PanelRight,
-  PictureInPicture2,
-  SquareArrowOutUpRight,
-  SquarePen,
-  X,
-} from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-
-/** 面板内消息(rel 为轨迹步的实体 rel:flow 徽章展示用,见 thread.tsx)。 */
-interface ChatUiMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  rel?: string;
-  /** 思考区条目以回合 + 步号唯一标识，content 为该步推理自述全文。 */
-  thinking?: { turnId: string; step: number };
-}
-
-/** 一次性 JSON 响应形状(render 短路/兼容路径;inline 已转 SSE)。 */
-interface ChatJsonResponse {
-  sessionId?: string;
-  outcome?: string;
-  summary?: string | null;
-  messages?: { role: 'assistant'; text: string }[];
-  render?: {
-    concern: string;
-    canvasUrl: string;
-  };
-  focus?: { rel: string; canvasUrl: string };
-  error?: string | { code?: string };
-}
-
-/** /api/chat mode=delegated 的派发回执(T5 Phase B)。 */
-interface DelegatedResponse {
-  mode?: 'delegated';
-  delegationId?: string;
-  sessionId?: string;
-}
-
-const SESSION_STORAGE_KEY = 'ui4a.chat.sessionId';
-const PENDING_SESSION_STORAGE_KEY = 'ui4a.chat.pendingSessionId';
-
-/** 思考过程可见性开关的持久化键('0' = 关闭;缺省/其他 = 开启)。 */
-const THINKING_STORAGE_KEY = 'ui4a.chat.thinking';
-
-function loadThinkingPreference(): boolean {
-  try {
-    return globalThis.localStorage?.getItem(THINKING_STORAGE_KEY) !== '0';
-  } catch {
-    return true;
-  }
-}
-
-/** 客户端流空闲超时:有效帧/heartbeat 会续期，不再把总时长误判为超时。 */
-const STREAM_IDLE_TIMEOUT_MS = 120_000;
-
-function loadSessionId(): string {
-  try {
-    return globalThis.localStorage?.getItem(SESSION_STORAGE_KEY) ?? '';
-  } catch {
-    return '';
-  }
-}
-
-function convertMessage(message: ChatUiMessage): ThreadMessageLike {
-  const custom: Record<string, unknown> = {};
-  if (message.rel !== undefined) custom['rel'] = message.rel;
-  if (message.thinking !== undefined) {
-    custom['thinking'] = message.thinking.step;
-    custom['thinkingTurnId'] = message.thinking.turnId;
-  }
-  return {
-    role: message.role,
-    content: [{ type: 'text', text: message.content }],
-    ...(Object.keys(custom).length > 0 ? { metadata: { custom } } : {}),
-  };
-}
-
-export interface ChatSession {
-  sessionId: string;
-  isRunning: boolean;
-  delegated: boolean;
-  /** 思考过程可见性(用户开关,持久化;关闭 = 思考条目不渲染,state 保留)。 */
-  showThinking: boolean;
-  lastRender: { concern: string; canvasUrl: string } | undefined;
-  /** Thin Presentation receipt target; full Surface never enters Chat state. */
-  lastPresentation: { canvasUrl: string } | undefined;
-  /** agent 当前查看的实体引用（临时共享处境，不是凝固布局）。 */
-  lastFocus: { rel: string; canvasUrl: string } | undefined;
-  toggleDelegated: () => void;
-  toggleShowThinking: () => void;
-  startNewSession: () => void;
-  runtime: ReturnType<typeof useExternalStoreRuntime>;
-  /** 会话清单视图(T9 补):'chat' 会话态 / 'sessions' 清单态。 */
-  view: 'chat' | 'sessions';
-  /** 清单数据(null = 未加载/加载中;[] = 空态)。 */
-  sessions: ChatSessionSummary[] | null;
-  /** 打开清单视图(每次重新拉取——清单是日志投影,拉取即最新)。 */
-  openSessions: () => void;
-  /** 返回会话视图。 */
-  closeSessions: () => void;
-  /** 切换到指定历史会话(持久化 sessionId + 重放该会话回合)。 */
-  selectSession: (sessionId: string) => void;
-}
+  convertMessage,
+  loadSessionId,
+  loadThinkingPreference,
+  PENDING_SESSION_STORAGE_KEY,
+  SESSION_STORAGE_KEY,
+  STREAM_IDLE_TIMEOUT_MS,
+  THINKING_STORAGE_KEY,
+  type ChatJsonResponse,
+  type ChatSession,
+  type ChatUiMessage,
+  type DelegatedResponse,
+} from './chat-types';
 
 /** 聊天会话状态 + 运行时(sidebar 壳与 /chat 独立页共用同一逻辑)。 */
 export function useChatSession(): ChatSession {
@@ -658,264 +553,4 @@ export function useChatSession(): ChatSession {
     closeSessions,
     selectSession,
   };
-}
-
-// ---- 历史会话清单(日志投影的只读视图)---------------------------------------
-
-/** 清单时间显示(月-日 时:分;投影字段直出)。 */
-function tsBrief(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-const OUTCOME_LABEL: Record<string, string> = {
-  done: '完成',
-  failed: '失败',
-  suspended: '待确认',
-  'max-steps': '步数上限',
-};
-
-function SessionList({ session }: { session: ChatSession }) {
-  if (session.sessions === null) {
-    return <p className="py-8 text-center text-xs text-muted-foreground">读取会话清单…</p>;
-  }
-  if (session.sessions.length === 0) {
-    return (
-      <p className="py-8 text-center text-xs text-muted-foreground" data-testid="empty-sessions">
-        暂无历史会话(回合完成后经事件日志留痕)。
-      </p>
-    );
-  }
-  return (
-    <ul className="h-full space-y-1 overflow-y-auto px-3 py-3">
-      {session.sessions.map((item) => {
-        const current = item.sessionId === session.sessionId;
-        return (
-          <li key={item.sessionId}>
-            <button
-              type="button"
-              data-nav="local:chat-session-open"
-              data-rel={item.sessionId}
-              aria-current={current ? 'true' : undefined}
-              className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
-                current ? 'border-primary bg-accent' : 'border-border bg-card hover:bg-accent/60'
-              }`}
-              onClick={() => session.selectSession(item.sessionId)}
-            >
-              <span className="flex items-center justify-between gap-2">
-                <span className="truncate font-medium text-foreground">
-                  {item.lastGoal !== '' ? item.lastGoal : '(空目标)'}
-                </span>
-                <span className="shrink-0 text-[10px] text-muted-foreground">
-                  {tsBrief(item.lastTs)}
-                </span>
-              </span>
-              <span className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                <span>会话 {item.sessionId.slice(0, 8)}</span>
-                <span>·</span>
-                <span>{item.turns} 回合</span>
-                {item.lastOutcome !== '' && (
-                  <>
-                    <span>·</span>
-                    <span>{OUTCOME_LABEL[item.lastOutcome] ?? item.lastOutcome}</span>
-                  </>
-                )}
-                {current && <span className="text-primary">· 当前</span>}
-              </span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-// ---- 面板壳(头部 + 消息区/会话清单 + render 回执)-----------------------------
-
-interface ChatPanelProps {
-  /** float:右下悬浮窗(带分栏切换);sidebar:右侧分栏(带悬浮切换);window:/chat 独立窗口(全屏)。 */
-  variant: 'float' | 'sidebar' | 'window';
-  session: ChatSession;
-  onClose?: () => void;
-  onPopout?: () => void;
-  /** float → sidebar(分栏停靠)。 */
-  onDock?: () => void;
-  /** sidebar → float(悬浮窗)。 */
-  onFloat?: () => void;
-}
-
-export function ChatPanel({
-  variant,
-  session,
-  onClose,
-  onPopout,
-  onDock,
-  onFloat,
-}: ChatPanelProps) {
-  const router = useRouter();
-  // render 回执即达即跳:与点击底部「在画布查看」等价的编程式客户端导航
-  // (main 内容区切画布,本面板在 root layout 侧不重挂载,同屏协同);目标与
-  // 当前地址相同(重复回执)则跳过——不重复入历史。仅 onNew 的一次性 JSON
-  // 路径会 setLastRender,历史回放/刷新不触发。
-  const lastRender = session.lastRender;
-  useEffect(() => {
-    if (lastRender === undefined) return;
-    if (`${window.location.pathname}${window.location.search}` === lastRender.canvasUrl) {
-      return;
-    }
-    router.push(lastRender.canvasUrl);
-  }, [lastRender, router]);
-  const lastFocus = session.lastFocus;
-  useEffect(() => {
-    if (lastFocus === undefined) return;
-    if (`${window.location.pathname}${window.location.search}` === lastFocus.canvasUrl) return;
-    router.push(lastFocus.canvasUrl);
-  }, [lastFocus, router]);
-  const lastPresentation = session.lastPresentation;
-  useEffect(() => {
-    if (lastPresentation === undefined) return;
-    if (`${window.location.pathname}${window.location.search}` === lastPresentation.canvasUrl) {
-      return;
-    }
-    router.push(lastPresentation.canvasUrl);
-  }, [lastPresentation, router]);
-
-  return (
-    <div className="flex h-full min-h-0 flex-col bg-background">
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
-        <div className="text-sm font-semibold text-foreground">
-          UI4A 助手
-          <span className="ml-2 text-[10px] font-normal text-muted-foreground">
-            {session.sessionId === '' ? '新会话' : `会话 ${session.sessionId.slice(0, 8)}`}
-          </span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            aria-label="新会话"
-            title="新会话"
-            data-nav="local:chat-new"
-            onClick={session.startNewSession}
-          >
-            <SquarePen />
-          </Button>
-          {session.view === 'chat' ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label="历史会话"
-              title="历史会话"
-              data-nav="local:chat-sessions"
-              onClick={session.openSessions}
-            >
-              <History />
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label="返回会话"
-              title="返回会话"
-              data-nav="local:chat-back"
-              onClick={session.closeSessions}
-            >
-              <ArrowLeft />
-            </Button>
-          )}
-          {variant === 'float' && onDock !== undefined && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label="分栏"
-              title="分栏(停靠右侧)"
-              data-nav="local:chat-dock"
-              onClick={onDock}
-            >
-              <PanelRight />
-            </Button>
-          )}
-          {variant === 'sidebar' && onFloat !== undefined && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label="悬浮"
-              title="悬浮窗"
-              data-nav="local:chat-float"
-              onClick={onFloat}
-            >
-              <PictureInPicture2 />
-            </Button>
-          )}
-          {variant !== 'window' && onPopout !== undefined && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label="独立窗口"
-              title="独立窗口"
-              data-nav="local:chat-popout"
-              onClick={onPopout}
-            >
-              <SquareArrowOutUpRight />
-            </Button>
-          )}
-          {variant !== 'window' && onClose !== undefined && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label="收起聊天窗"
-              title="收起"
-              data-nav="local:chat-close"
-              onClick={onClose}
-            >
-              <X />
-            </Button>
-          )}
-        </div>
-      </div>
-      <div className="min-h-0 flex-1">
-        {session.view === 'sessions' ? (
-          <SessionList session={session} />
-        ) : (
-          <AssistantRuntimeProvider runtime={session.runtime}>
-            <ChatThread
-              delegated={session.delegated}
-              onToggleDelegated={session.toggleDelegated}
-              showThinking={session.showThinking}
-              onToggleShowThinking={session.toggleShowThinking}
-            />
-          </AssistantRuntimeProvider>
-        )}
-      </div>
-      {/* render 回执入口(S5):点击在画布打开该 surface(Link 客户端导航——
-          layout 不重挂载,聊天面板保持打开,与画布同屏协同)。 */}
-      {session.lastRender !== undefined && (
-        <Link
-          href={session.lastRender.canvasUrl}
-          data-nav={`render:${session.lastRender.concern}`}
-          className="border-t border-border px-3 py-2 text-xs font-medium text-primary hover:underline"
-        >
-          在画布查看:{session.lastRender.concern}
-        </Link>
-      )}
-      {session.lastFocus !== undefined && (
-        <Link
-          href={session.lastFocus.canvasUrl}
-          data-nav={`focus:${session.lastFocus.rel}`}
-          className="border-t border-border px-3 py-2 text-xs font-medium text-primary hover:underline"
-        >
-          当前查看:{session.lastFocus.rel}
-        </Link>
-      )}
-    </div>
-  );
 }

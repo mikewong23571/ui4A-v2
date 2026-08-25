@@ -1,7 +1,7 @@
 import { activeDefinitionOf, type SirenEntity, type Sitemap } from '@ui4a/engine';
 import type { EngineSnapshot } from '@ui4a/shared';
 
-import { ProductionIdentityError } from './production-request-identity';
+import { ProductionIdentityError } from './production/request-identity';
 
 type Plane = 'business' | 'meta';
 const UNRESOLVED_APPLICATION = '\u0000unresolved';

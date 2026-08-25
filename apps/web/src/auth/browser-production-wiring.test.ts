@@ -5,15 +5,15 @@ import {
   ProductionIdentityError,
   type ProductionCredentialDependencies,
   type ProductionCredentialPolicy,
-} from './production-request-identity';
+} from './production/request-identity';
 
 const credentialMocks = vi.hoisted(() => ({
   verify: vi.fn(),
   build: vi.fn(),
 }));
 
-vi.mock('./production-request-identity', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./production-request-identity')>();
+vi.mock('./production/request-identity', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./production/request-identity')>();
   return {
     ...actual,
     verifyProductionCredential: credentialMocks.verify,

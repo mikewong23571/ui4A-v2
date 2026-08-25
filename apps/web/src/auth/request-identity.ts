@@ -12,7 +12,7 @@ import {
   type ProductionCredentialPolicy,
   type ProductionRequestIdentity,
   verifyProductionCredential,
-} from './production-request-identity';
+} from './production/request-identity';
 import {
   BROWSER_SESSION_COOKIE_NAME,
   BrowserAuthenticationError,

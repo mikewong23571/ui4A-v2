@@ -108,7 +108,7 @@ const VALID_DEPENDENCIES = {
   },
 };
 
-const plannedModulePath = './production-request-identity';
+const plannedModulePath = './production/request-identity';
 
 async function plannedApi(): Promise<ProductionIdentityModule> {
   return (await import(plannedModulePath)) as ProductionIdentityModule;

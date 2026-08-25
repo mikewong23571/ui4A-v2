@@ -14,15 +14,16 @@
  * 悬浮/分栏的形态选择持久化到 localStorage(ui4a.chat.mode),重开记住上次。
  * /chat 页内不渲染本壳(该页即工作台本体,避免窗中窗)。
  * 会话逻辑(SSE 流式轨迹/停止/历史/委托/render 回执)全在
- * chat-panel.tsx 的 useChatSession + ChatPanel;状态挂在壳上,
- * 收起/展开/切形态不丢消息。
+ * use-chat-session.ts 的 useChatSession + chat-panel.tsx 的 ChatPanel;
+ * 状态挂在壳上,收起/展开/切形态不丢消息。
  */
 import { useCallback, useState } from 'react';
 
 import { MessageCircle } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
-import { ChatPanel, useChatSession } from '@/components/chat-panel';
+import { ChatPanel } from './chat-panel';
+import { useChatSession } from './use-chat-session';
 
 /** 面板形态(localStorage 持久化;缺省 float——经典客服悬浮窗)。 */
 type ChatMode = 'float' | 'sidebar';

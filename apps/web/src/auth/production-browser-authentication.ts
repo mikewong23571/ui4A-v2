@@ -19,7 +19,7 @@ import {
   ProductionIdentityError,
   verifyProductionIdToken,
   type ProductionCredentialDependencies,
-} from './production-request-identity';
+} from './production/request-identity';
 
 export const PRODUCTION_BROWSER_SESSION_COOKIE = BROWSER_SESSION_COOKIE_NAME;
 export const PRODUCTION_BROWSER_LOGIN_COOKIE = BROWSER_LOGIN_COOKIE_NAME;

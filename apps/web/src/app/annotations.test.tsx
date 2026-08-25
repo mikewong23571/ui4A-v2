@@ -12,7 +12,7 @@ import type { SirenEntity } from '@ui4a/engine';
 
 import DelegationsPage from '@/app/delegations/page';
 import { EntityView } from '@/components/entity-view';
-import { FloatingChat } from '@/components/floating-chat';
+import { FloatingChat } from '@/components/chat/floating-chat';
 
 afterEach(() => {
   cleanup();
@@ -21,9 +21,20 @@ afterEach(() => {
 
 const POST_ENTITY: SirenEntity = {
   class: ['flow-instance', 'post-status'],
-  properties: { rel: 'post:post-welcome', node: 'published', title: '已发布', fields: { title: '欢迎' } },
+  properties: {
+    rel: 'post:post-welcome',
+    node: 'published',
+    title: '已发布',
+    fields: { title: '欢迎' },
+  },
   actions: [
-    { name: 'unpublish', title: '下线', method: 'POST', href: '/api/exec', fields: { type: 'object', properties: {} } },
+    {
+      name: 'unpublish',
+      title: '下线',
+      method: 'POST',
+      href: '/api/exec',
+      fields: { type: 'object', properties: {} },
+    },
   ],
   links: [
     { rel: ['collection'], href: '/api/entity?rel=articles' },
@@ -76,9 +87,14 @@ describe('可点元素标注抽样(data-action / data-nav)', () => {
   it('舰队页:刷新按钮 = 本地视图控件 data-nav(local: 前缀)', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ delegations: [] }), { status: 200, headers: { 'content-type': 'application/json' } }),
-      ),
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ delegations: [] }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
     );
     const { container } = render(<DelegationsPage />);
     await waitFor(() => {

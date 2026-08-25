@@ -8,7 +8,8 @@
  * 本页内悬浮聊天壳(FloatingChat)自行隐藏(pathname === '/chat' 返回 null,
  * 避免窗中窗);<main> 仍由 AppShell 提供且唯一。
  */
-import { ChatPanel, useChatSession } from '@/components/chat-panel';
+import { ChatPanel } from '@/components/chat/chat-panel';
+import { useChatSession } from '@/components/chat/use-chat-session';
 
 export default function ChatPage() {
   const session = useChatSession();
