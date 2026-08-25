@@ -5,7 +5,6 @@
 ## 活跃 Tracks
 
 - [~] **Track: T22 生产形态部署、身份认证与双后端 Agent Runtime：mothership K8s/Istio、Docker Compose all-in-one、Keycloak、灾备与首个试验性版本** *Link: [tracks/t22-production-deployment-auth-runtime_20260824/index.md](./tracks/t22-production-deployment-auth-runtime_20260824/index.md)*
-- [~] **Track: T23 项目治理：规则基线 GR1–GR5、依赖方向与例外登记、未发布窗口兼容性清理、文件/模块大小门禁，类 TDD 红绿执行并入 pnpm check** *Link: [tracks/t23-project-governance_20260825/index.md](./tracks/t23-project-governance_20260825/index.md)*
 
 方向 program(依据 [product-vision.md](../product-vision.md);站点为天然分割点,limited scope;
 执行序:T29 ∥ T24 → T25 → T26(spike) → T30 → T27 → T28):
@@ -18,8 +17,9 @@
 - [~] **Track: T27 Workstation 站点:三种工作形态落地与"我的事"首页** *Link: [tracks/t27-workstation-site_20260825/index.md](./tracks/t27-workstation-site_20260825/index.md)*
 - [~] **Track: T28 一等交互与引用:动作上肩、引用可点、raw 模式** *Link: [tracks/t28-first-class-interaction_20260825/index.md](./tracks/t28-first-class-interaction_20260825/index.md)*
 
-## 归档 Tracks(T1–T21,只读历史)
+## 归档 Tracks(T1–T21、T23,只读历史)
 
+- [x] **Track: T23 项目治理：规则基线 GR1–GR5、依赖方向与例外登记、未发布窗口兼容性清理、文件/模块大小门禁，类 TDD 红绿执行并入 pnpm check** *Link: [tracks/archive/t23-project-governance_20260825/index.md](./tracks/archive/t23-project-governance_20260825/index.md)*
 - [x] **Track: T1 工程基建:pnpm monorepo + Next.js 壳 + Postgres docker compose + 测试基座** *Link: [tracks/archive/t1-infra_20260821/index.md](./tracks/archive/t1-infra_20260821/index.md)*
 - [x] **Track: T2 业务平面基线:引擎 + 事件日志 + Siren 合同 + 双 driver + 聊天 + 表单(B1–B4, I1/I5/I6)** *Link: [tracks/archive/t2-business-plane_20260821/index.md](./tracks/archive/t2-business-plane_20260821/index.md)*
 - [x] **Track: T3 确认门切片:guard 挂起 + pending 实体 + Cedar 风险策略 + Temporal notify + 收件箱(S1, I4)** *Link: [tracks/archive/t3-confirmation-gate_20260821/index.md](./tracks/archive/t3-confirmation-gate_20260821/index.md)*

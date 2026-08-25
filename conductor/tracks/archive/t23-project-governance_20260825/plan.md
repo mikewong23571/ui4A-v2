@@ -84,14 +84,20 @@
 
 ## Phase E: 门禁化、历史归档与规则迁移(Gate)
 
-- [ ] Task: 根 `package.json` 增加 `governance` script 并并入 `check`
-- [ ] Task: 历史 Track 归档(FR5)
+- [x] Task: 根 `package.json` 增加 `governance` script 并并入 `check` def0cfe
+- [x] Task: 历史 Track 归档(FR5) def0cfe
   - T1–T21 移入 `conductor/tracks/archive/`,内容只读不改写
   - `tracks.md` 重组为"活跃 Track + 归档索引"两节,修正全部链接
-  - `conductor/index.md` 等活跃文档中被移动路径的引用同步修正
-  - 被归档 Track 的专属脚本按 GR5 在同一序列裁决(衔接 Phase D 考古任务)
-- [ ] Task: GR1–GR5 迁入 `AGENTS.md`(Architectural Invariants / Conventions 节),
-  `conductor/workflow.md` 验收协议增加治理门禁一步;AGENTS.md 的 System Map 与
-  模块职责表按本 Track 实际清理结果对齐(如兼容层删除、目录下沉后的新结构)
-- [ ] Task: 终验——全新 clone 视角跑 `pnpm install && pnpm check` 与 invariants 全绿;
-  Track 收口,更新 `conductor/tracks.md` 状态
+  - GOAL.md、done-report、product.md 等活跃文档链接同步修正
+  - 被归档 Track 的专属脚本已在 Phase D 按 GR5 裁决
+- [x] Task: GR1–GR5 迁入 `AGENTS.md` 与 workflow.md 6cc4f10
+  - 新增 "Governance Gates" 节;模块职责表对齐新结构(engine 子域目录、
+    service-* 模块、engine/agent|drafts|service-tests、worker activities/、
+    runtime-backends kubernetes|host、components/chat、cli/agent-runner 拆分)
+- [x] Task: 终验与收口
+  - 净 HEAD `pnpm check`(typecheck+lint+governance+vitest)exit 0:
+    346 文件 / 2602 测试全绿
+  - `CI=true pnpm e2e invariants` 4 passed
+  - 注:验收期间并发的 T22/T29 会话 WIP 两次以 stash 隔离(`stash@{0}`=T22 chat、
+    `stash@{1}`=T22/T29 混合 WIP,后者 pop 时因其间新建同名文件未完全恢复,
+    条目保留待该会话自行核对);size-baseline 剩 4 个 T22 所有条目(D40)

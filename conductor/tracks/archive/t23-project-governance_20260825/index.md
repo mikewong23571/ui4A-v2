@@ -8,5 +8,5 @@
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)
 
-当前状态:`in_progress`。本 Track 不改变任何业务行为、HTTP/Siren 合同或事件日志
+当前状态:`completed`。本 Track 不改变任何业务行为、HTTP/Siren 合同或事件日志
 语义;所有存量修复必须保持 `pnpm check` 与 `CI=true pnpm e2e invariants` 全绿。
