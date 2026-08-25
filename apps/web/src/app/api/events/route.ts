@@ -42,8 +42,14 @@ export async function GET(request: Request) {
     return Response.json({ error: 'limit 必须是 1..100 的整数' }, { status: 400 });
   }
   const domain = url.searchParams.get('domain');
-  if (domain !== null && !['core', 'presentation', 'draft'].includes(domain)) {
-    return Response.json({ error: 'domain 必须是 core|presentation|draft' }, { status: 400 });
+  if (
+    domain !== null &&
+    !['core', 'presence', 'presentation', 'draft', 'capability', 'agent-definition'].includes(domain)
+  ) {
+    return Response.json(
+      { error: 'domain 必须是 core|presence|presentation|draft|capability|agent-definition' },
+      { status: 400 },
+    );
   }
   const headerPrincipal = request.headers.get('x-ui4a-principal');
   const queryPrincipal = url.searchParams.get('principal');
@@ -74,7 +80,17 @@ export async function GET(request: Request) {
       }
     }
     const rows = await listEvents(getDb(), afterSeq, {
-      ...(domain === null ? {} : { domain: domain as 'core' | 'presentation' | 'draft' }),
+      ...(domain === null
+        ? {}
+        : {
+            domain: domain as
+              | 'core'
+              | 'presence'
+              | 'presentation'
+              | 'draft'
+              | 'capability'
+              | 'agent-definition',
+          }),
       ...(url.searchParams.get('rel') === null ? {} : { rel: url.searchParams.get('rel')! }),
       ...(url.searchParams.get('kind') === null ? {} : { kind: url.searchParams.get('kind')! }),
       ...(principal === null ? {} : { principal }),
