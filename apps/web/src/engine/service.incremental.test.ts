@@ -5,14 +5,16 @@ import { contentVersion, fold } from '@ui4a/engine';
 import { businessFlows } from '../domain/flows';
 import { ensureEventsTable, readLog } from '../db/events';
 import { getPool } from '../db/pool';
-import { deliverNotification } from '../../../worker/src/activities';
 
+import { deliverNotification } from './notification-delivery.fixture';
 import { getEngine, resetEngineForTests } from './service';
 
 // 双写一致性集成测试(T3 Phase C / Task 2,真 PG;spec 架构决定 4):
 // worker 是事件日志的第二写者(直接 appendEvent 到同一 PG),web 读路径
 // (getEntity/readSnapshot)在返回前按 seq 检查新事件并增量 fold——
 // 外部追加的事件**不需重启**立即可见;与 web 自身 exec 交错不损坏快照(I5)。
+// worker 写侧由 notification-delivery.fixture 模拟(与 worker deliverNotification
+// activity 同构的 payload 与去重口径;不跨 app import worker 生产代码)。
 const CONNECTION_STRING = process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a';
 const pool = getPool(CONNECTION_STRING);
 
@@ -44,7 +46,7 @@ describe('双写一致性:worker 侧 appendEvent 后 web 读路径立即可见',
   it('getEntity 增量 fold worker 的 notification-delivered:inbox delivered 计数 + confirmation notified(不需重启)', async () => {
     const engine = await getEngine(pool);
     await engine.exec(agentArchive); // web 写:confirmation-requested(c1 挂起)
-    // worker 写:同一 PG 直接送达(真 worker 代码路径 deliverNotification)。
+    // worker 写:同一 PG 直接送达(与 worker deliverNotification 同构的 fixture)。
     await deliverNotification(pool, confirmationForNotify);
 
     const inbox = await engine.getEntity('inbox');

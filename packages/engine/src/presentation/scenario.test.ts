@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import walkthroughArtifact from '../../../../apps/web/src/applications/ui4a-walkthrough.bundle.json';
+// 钉版快照:apps/web/src/applications/ui4a-walkthrough.bundle.json 的只读副本
+// (web 内置 walkthrough bundle)。web 侧更新内置应用时需同步刷新本 fixture。
+import walkthroughArtifact from './test-fixtures/ui4a-walkthrough.bundle.json';
 
 import type { ApplicationDefinition, CapabilityDefinition, FlowDefinition } from '@ui4a/shared';
 

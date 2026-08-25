@@ -1,0 +1,1077 @@
+{
+  "schema": "https://ui4a.dev/application-bundle/v1",
+  "bundle": {
+    "name": "ui4a-walkthrough",
+    "version": 4
+  },
+  "applications": [
+    {
+      "name": "default",
+      "title": "默认应用",
+      "intent": "归一化兜底:未显式声明归属的 flow 统一落在这里(parse 缺省 app=default)。boot seed 保证其始终激活,是 app-known 不变式的地板——不承载具体业务语义。"
+    },
+    {
+      "name": "publishing",
+      "title": "内容发布",
+      "intent": "内容起草与发布:三步向导起草文章并发布,发布后管理其状态(下线/归档/重新发布)。"
+    },
+    {
+      "name": "community",
+      "title": "社区互动",
+      "intent": "评论与社区互动:读者评论进入审核队列,经人工裁决通过或驳回。"
+    },
+    {
+      "name": "development",
+      "title": "软件实施",
+      "intent": "把受权的软件变更任务交给隔离 Coding Capability Executor，查看进度、测试与结果，并由人类接受或驳回。"
+    },
+    {
+      "name": "editorial",
+      "title": "编辑写作",
+      "intent": "把有来源约束的写作 Brief 交给 Writing Agent，查看进度、文档、引用与渲染证据，再由人类接受或驳回；接受不等于发布。"
+    },
+    {
+      "name": "governance",
+      "title": "Agent 治理",
+      "intent": "把自然语言专业化需求交给 Agent Definition Author，生成可机械验证的定义 Draft、示例和 Eval corpus；只有人类审批才能激活版本。"
+    }
+  ],
+  "capabilities": [
+    {
+      "name": "draft",
+      "title": "工件起草",
+      "kind": "extract",
+      "intent": "价值载体字段的草稿工件起草:proposal 来源字段(如文章正文)由本能力产出候选草稿,经 human-required 选择门裁决后落字段(事实永不发明:出处记 proposal)。",
+      "input": "字段语义与上下文工件(字段 schema、当前实例字段值、选项数 options)。",
+      "output": "草稿工件候选集(options 份,供人类选择;arch-brief 第七层:artifact in → artifact out)。"
+    },
+    {
+      "name": "notify",
+      "title": "确认门送达",
+      "kind": "effect",
+      "intent": "确认挂起后的通知送达:把 pending 确认提议送达人类收件箱并留痕(notification-delivered 事件;arch-brief §9.1「notify 是第一个 capability」,Temporal notifyWorkflow 承载,worker 第二写者写入)。",
+      "input": "挂起确认实体工件(confirmation 快照:目标 rel/动作/提议者/策略原因)。",
+      "output": "送达留痕工件(notif:<id> 通知 + notification-delivered 事件,确认标记 notified)。"
+    },
+    {
+      "name": "clarify",
+      "title": "字段澄清",
+      "kind": "extract",
+      "intent": "意图型字段的澄清收敛:提交校验失败且字段声明 on-invalid: clarify 时,把拒绝转澄清 session,收敛到 schema 满足(第九层:clarify 是 capability不是聊天;机械兜底 = 表单,AI 只改善问的质量)。",
+      "input": "悬挂字段与校验失败现场工件(字段 schema、ajv 错误、当前实体快照)。",
+      "output": "满足 schema 的字段值工件(出处记 elicited:session-N;意图型失败路由给人)。"
+    },
+    {
+      "name": "coding.execute",
+      "title": "执行软件实施任务",
+      "kind": "effect",
+      "intent": "在 UI4A 分配的隔离 workspace 中调用通用 Coding Agent 完成受约束的代码修改与测试，返回 patch、tests 和 trajectory artifact。",
+      "input": "repositoryRef/baseRevision/goal/constraints/acceptanceCriteria/allowedPaths。",
+      "output": "CodingResult: patch、base/head revision、changed files、tests、trajectory 与 summary。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repositoryRef": { "type": "string", "minLength": 1 },
+          "baseRevision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+          "goal": { "type": "string", "minLength": 1 },
+          "constraints": { "type": "array", "items": { "type": "string" } },
+          "acceptanceCriteria": { "type": "array", "items": { "type": "string" } },
+          "allowedPaths": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": [
+          "repositoryRef",
+          "baseRevision",
+          "goal",
+          "constraints",
+          "acceptanceCriteria",
+          "allowedPaths"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "resultId": { "type": "string" },
+          "patch": { "type": "string" },
+          "trajectory": { "type": "string" },
+          "changedFiles": { "type": "array", "items": { "type": "string" } },
+          "tests": { "type": "array", "items": { "type": "object" } },
+          "summary": { "type": "string" }
+        },
+        "required": ["resultId", "patch", "trajectory", "changedFiles", "tests", "summary"]
+      },
+      "scope": { "applications": ["development"], "flows": ["software-change"] },
+      "executor": {
+        "class": "coding-agent",
+        "profile": "default",
+        "agentDefinition": "coding-agent@1",
+        "requiredFeatures": ["resume", "structured-events", "workspace-write"]
+      }
+    },
+    {
+      "name": "writing.compose",
+      "title": "撰写文档",
+      "kind": "effect",
+      "intent": "依据显式 Brief 与不可变来源，在隔离文档 workspace 中生成 Markdown、引用和渲染证据，结果仅进入人工评审。",
+      "input": "objective/audience/requiredSections/constraints/sources；输出路径、引用策略与预算由服务器配置。",
+      "output": "WritingResult: Markdown artifact、citations、Safety 与 render evidence；不自动发布。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "objective": { "type": "string", "minLength": 1 },
+          "audience": { "type": "string", "minLength": 1 },
+          "requiredSections": { "type": "array", "items": { "type": "string" } },
+          "constraints": { "type": "array", "items": { "type": "string" } },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "title": { "type": "string", "minLength": 1 },
+                "mediaType": {
+                  "enum": ["text/plain", "text/markdown", "application/json"]
+                },
+                "content": { "type": "string" },
+                "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+              },
+              "required": ["id", "title", "mediaType", "content", "hash"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["objective", "audience", "requiredSections", "constraints", "sources"],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "resultId": { "type": "string" },
+          "summary": { "type": "string" },
+          "artifact": { "type": "object" },
+          "citations": { "type": "array", "items": { "type": "object" } },
+          "safety": { "type": "object" }
+        },
+        "required": ["resultId", "summary", "artifact", "citations", "safety"],
+        "additionalProperties": false
+      },
+      "scope": { "applications": ["editorial"], "flows": ["writing-request"] },
+      "executor": {
+        "class": "document-agent",
+        "profile": "editorial-default",
+        "agentDefinition": "writing-agent@1",
+        "requiredFeatures": [
+          "structured-result",
+          "streamed-events",
+          "cancel",
+          "resume",
+          "document-workspace",
+          "artifact-write"
+        ]
+      }
+    },
+    {
+      "name": "agent-definition.author",
+      "title": "起草专业 Agent",
+      "kind": "effect",
+      "intent": "依据自然语言目标和 Agent Definition Meta 合同生成 Prompt、schemas、runtime requirements、policies、examples 与 Eval corpus；结果只进入 Draft。",
+      "input": "description；定义 schema、registry context、输出边界和预算由服务器注入。",
+      "output": "AgentDefinition Draft candidate、examples、Eval corpus 与机械 Safety evidence；不批准、不激活。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string", "minLength": 1 }
+        },
+        "required": ["description"],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "object" },
+          "examples": { "type": "array" },
+          "evalCorpus": { "type": "array" }
+        },
+        "required": ["source", "examples", "evalCorpus"],
+        "additionalProperties": false
+      },
+      "scope": {
+        "applications": ["governance"],
+        "flows": ["agent-definition-authoring"]
+      },
+      "executor": {
+        "class": "agent-definition-authoring",
+        "profile": "authoring-default",
+        "agentDefinition": "agent-definition-author@1",
+        "requiredFeatures": ["structured-result", "streamed-events", "cancel", "resume"]
+      }
+    }
+  ],
+  "flows": [
+    {
+      "name": "article-drafting",
+      "title": "文章发布向导",
+      "app": "publishing",
+      "initial": "basic-info",
+      "nodes": [
+        {
+          "name": "basic-info",
+          "title": "基本信息",
+          "fields": [
+            {
+              "name": "title",
+              "type": "text",
+              "required": true,
+              "semantics": "intent",
+              "presentation": { "role": "identity" },
+              "title": "文章标题"
+            }
+          ],
+          "actions": [
+            {
+              "name": "next",
+              "title": "下一步",
+              "to": "classification",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "classification"
+                }
+              ]
+            },
+            {
+              "name": "abandon",
+              "title": "放弃",
+              "collect-node-fields": false,
+              "to": "done",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "done"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "classification",
+          "title": "分类",
+          "fields": [
+            {
+              "name": "category",
+              "type": "select",
+              "required": true,
+              "options": ["tech", "essay", "review"],
+              "semantics": "org-standard",
+              "presentation": { "role": "metadata" },
+              "title": "分类",
+              "source": {
+                "kind": "static"
+              }
+            },
+            {
+              "name": "tags",
+              "type": "text",
+              "semantics": "intent",
+              "title": "标签"
+            }
+          ],
+          "actions": [
+            {
+              "name": "next",
+              "title": "下一步",
+              "to": "content",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "content"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "content",
+          "title": "正文",
+          "fields": [
+            {
+              "name": "body",
+              "type": "textarea",
+              "required": true,
+              "semantics": "work-product",
+              "presentation": { "role": "primary-content" },
+              "title": "正文",
+              "source": {
+                "kind": "proposal",
+                "capability": "draft",
+                "options": 3,
+                "selection": "human-required"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "name": "next",
+              "title": "完成编辑",
+              "to": "ready",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "ready"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "ready",
+          "title": "就绪",
+          "actions": [
+            {
+              "name": "publish",
+              "title": "发布",
+              "to": "basic-info",
+              "guards": ["title-not-taken"],
+              "fields": [
+                {
+                  "name": "title",
+                  "type": "text",
+                  "required": true,
+                  "semantics": "intent",
+                  "presentation": { "role": "identity" },
+                  "title": "文章标题",
+                  "description": "用于生成文章地址(slug),与前序所填一致"
+                }
+              ],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "basic-info"
+                },
+                {
+                  "type": "append",
+                  "collection": "articles",
+                  "resource-type": "post",
+                  "flow": "post-status",
+                  "name-from": "title",
+                  "node": "published"
+                },
+                {
+                  "type": "clear-fields"
+                }
+              ],
+              "method": "POST"
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "done",
+          "title": "完成",
+          "actions": [],
+          "fields": []
+        }
+      ],
+      "fields": []
+    },
+    {
+      "name": "post-status",
+      "title": "文章状态",
+      "app": "publishing",
+      "initial": "published",
+      "fields": [
+        {
+          "name": "title",
+          "type": "text",
+          "title": "文章标题",
+          "presentation": { "role": "identity" }
+        },
+        {
+          "name": "body",
+          "type": "textarea",
+          "title": "正文",
+          "presentation": { "role": "primary-content" }
+        },
+        {
+          "name": "category",
+          "type": "select",
+          "options": ["tech", "essay", "review"],
+          "title": "分类",
+          "presentation": { "role": "metadata" }
+        }
+      ],
+      "nodes": [
+        {
+          "name": "published",
+          "title": "已发布",
+          "actions": [
+            {
+              "name": "unpublish",
+              "title": "下线",
+              "submission": { "mode": "direct", "actors": ["agent", "human"] },
+              "to": "offline",
+              "guards": ["is-published"],
+              "method": "POST",
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "offline"
+                }
+              ]
+            },
+            {
+              "name": "archive",
+              "title": "归档",
+              "to": "archived",
+              "guards": ["is-published"],
+              "requires-confirmation": "high",
+              "method": "POST",
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "archived"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "offline",
+          "title": "已下线",
+          "actions": [
+            {
+              "name": "republish",
+              "title": "重新发布",
+              "to": "published",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "published"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "archived",
+          "title": "已归档",
+          "actions": [],
+          "fields": []
+        }
+      ]
+    },
+    {
+      "name": "comment-moderation",
+      "title": "评论审核",
+      "app": "community",
+      "initial": "pending",
+      "nodes": [
+        {
+          "name": "pending",
+          "title": "待处理",
+          "actions": [
+            {
+              "name": "approve",
+              "title": "通过",
+              "submission": { "mode": "direct", "actors": ["agent", "human"] },
+              "to": "approved",
+              "guards": ["is-pending"],
+              "method": "POST",
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "approved"
+                }
+              ]
+            },
+            {
+              "name": "reject",
+              "title": "驳回",
+              "submission": { "mode": "direct", "actors": ["agent", "human"] },
+              "to": "rejected",
+              "guards": ["is-pending"],
+              "method": "POST",
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "rejected"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "approved",
+          "title": "已通过",
+          "actions": [],
+          "fields": []
+        },
+        {
+          "name": "rejected",
+          "title": "已驳回",
+          "actions": [],
+          "fields": []
+        }
+      ],
+      "fields": []
+    },
+    {
+      "name": "software-change",
+      "title": "软件变更实施",
+      "app": "development",
+      "initial": "implementation-ready",
+      "nodes": [
+        {
+          "name": "implementation-ready",
+          "title": "待实施",
+          "actions": [
+            {
+              "name": "start-implementation",
+              "title": "开始编码实施",
+              "to": "implementation-running",
+              "guards": [],
+              "fields": [
+                { "name": "repositoryRef", "type": "text", "required": true, "persist": false },
+                {
+                  "name": "baseRevision",
+                  "type": "text",
+                  "required": true,
+                  "minLength": 40,
+                  "persist": false
+                },
+                { "name": "goal", "type": "textarea", "required": true, "persist": false },
+                {
+                  "name": "constraints",
+                  "type": "json",
+                  "required": true,
+                  "persist": false,
+                  "schema": { "type": "array", "items": { "type": "string" } }
+                },
+                {
+                  "name": "acceptanceCriteria",
+                  "type": "json",
+                  "required": true,
+                  "persist": false,
+                  "schema": { "type": "array", "items": { "type": "string" } }
+                },
+                {
+                  "name": "allowedPaths",
+                  "type": "json",
+                  "required": true,
+                  "persist": false,
+                  "schema": { "type": "array", "items": { "type": "string" } }
+                }
+              ],
+              "effect": [
+                { "type": "transition", "to": "implementation-running" },
+                {
+                  "type": "spawn",
+                  "capability": "coding.execute",
+                  "on-done": "implementation-succeeded",
+                  "on-error": "implementation-failed"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "implementation-running",
+          "title": "编码实施中",
+          "actions": [
+            {
+              "name": "implementation-succeeded",
+              "title": "实施成功回调",
+              "internal": "capability-callback",
+              "to": "review-ready",
+              "guards": ["principal-is-capability-system"],
+              "fields": [
+                { "name": "runId", "type": "text", "required": true },
+                { "name": "resultId", "type": "text", "required": true }
+              ],
+              "effect": [{ "type": "transition", "to": "review-ready" }]
+            },
+            {
+              "name": "implementation-failed",
+              "title": "实施失败回调",
+              "internal": "capability-callback",
+              "to": "implementation-failed",
+              "guards": ["principal-is-capability-system"],
+              "fields": [
+                { "name": "runId", "type": "text", "required": true },
+                { "name": "reason", "type": "textarea", "required": true }
+              ],
+              "effect": [{ "type": "transition", "to": "implementation-failed" }]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "review-ready",
+          "title": "待验收",
+          "actions": [
+            {
+              "name": "accept-implementation",
+              "title": "接受实施结果",
+              "decision": "accept-capability-result",
+              "to": "accepted",
+              "guards": ["actor-is-human"],
+              "fields": [],
+              "effect": [{ "type": "transition", "to": "accepted" }]
+            },
+            {
+              "name": "reject-implementation",
+              "title": "驳回实施结果",
+              "decision": "reject-capability-result",
+              "to": "rejected",
+              "guards": ["actor-is-human"],
+              "fields": [
+                { "name": "reason", "type": "textarea", "required": true, "minLength": 1 }
+              ],
+              "effect": [{ "type": "transition", "to": "rejected" }]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "implementation-failed",
+          "title": "实施失败",
+          "actions": [
+            {
+              "name": "retry-implementation",
+              "title": "重新准备实施",
+              "to": "implementation-ready",
+              "guards": [],
+              "fields": [],
+              "effect": [{ "type": "transition", "to": "implementation-ready" }]
+            }
+          ],
+          "fields": []
+        },
+        { "name": "accepted", "title": "已接受", "actions": [], "fields": [] },
+        { "name": "rejected", "title": "已驳回", "actions": [], "fields": [] }
+      ],
+      "fields": []
+    },
+    {
+      "name": "writing-request",
+      "title": "写作请求",
+      "app": "editorial",
+      "initial": "brief-draft",
+      "nodes": [
+        {
+          "name": "brief-draft",
+          "title": "待提交 Brief",
+          "actions": [
+            {
+              "name": "start-writing",
+              "title": "开始写作",
+              "to": "writing-running",
+              "guards": [],
+              "fields": [
+                {
+                  "name": "objective",
+                  "title": "写作目标",
+                  "type": "textarea",
+                  "required": true,
+                  "persist": false
+                },
+                {
+                  "name": "audience",
+                  "title": "目标读者",
+                  "type": "text",
+                  "required": true,
+                  "persist": false
+                },
+                {
+                  "name": "requiredSections",
+                  "title": "必需章节",
+                  "type": "json",
+                  "required": true,
+                  "persist": false,
+                  "schema": { "type": "array", "items": { "type": "string" } }
+                },
+                {
+                  "name": "constraints",
+                  "title": "写作约束",
+                  "type": "json",
+                  "required": true,
+                  "persist": false,
+                  "schema": { "type": "array", "items": { "type": "string" } }
+                },
+                {
+                  "name": "sources",
+                  "title": "授权来源",
+                  "type": "json",
+                  "required": true,
+                  "persist": false,
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1 },
+                        "title": { "type": "string", "minLength": 1 },
+                        "mediaType": {
+                          "enum": ["text/plain", "text/markdown", "application/json"]
+                        },
+                        "content": { "type": "string" },
+                        "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+                      },
+                      "required": ["id", "title", "mediaType", "content", "hash"],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              ],
+              "effect": [
+                { "type": "transition", "to": "writing-running" },
+                {
+                  "type": "spawn",
+                  "capability": "writing.compose",
+                  "on-done": "writing-succeeded",
+                  "on-error": "writing-failed-callback"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "writing-running",
+          "title": "写作中",
+          "actions": [
+            {
+              "name": "writing-succeeded",
+              "title": "写作成功回调",
+              "internal": "capability-callback",
+              "to": "review-ready",
+              "guards": ["principal-is-capability-system"],
+              "fields": [
+                { "name": "runId", "type": "text", "required": true },
+                { "name": "resultId", "type": "text", "required": true }
+              ],
+              "effect": [{ "type": "transition", "to": "review-ready" }]
+            },
+            {
+              "name": "writing-failed-callback",
+              "title": "写作失败回调",
+              "internal": "capability-callback",
+              "to": "writing-failed",
+              "guards": ["principal-is-capability-system"],
+              "fields": [
+                { "name": "runId", "type": "text", "required": true },
+                { "name": "reason", "type": "textarea", "required": true }
+              ],
+              "effect": [{ "type": "transition", "to": "writing-failed" }]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "review-ready",
+          "title": "待评审",
+          "actions": [
+            {
+              "name": "accept-writing-result",
+              "title": "接受写作结果",
+              "to": "accepted",
+              "guards": ["actor-is-human"],
+              "fields": [],
+              "effect": [{ "type": "transition", "to": "accepted" }]
+            },
+            {
+              "name": "reject-writing-result",
+              "title": "驳回写作结果",
+              "to": "rejected",
+              "guards": ["actor-is-human"],
+              "fields": [
+                {
+                  "name": "reason",
+                  "title": "驳回原因",
+                  "type": "textarea",
+                  "required": true,
+                  "minLength": 1,
+                  "persist": false
+                }
+              ],
+              "effect": [{ "type": "transition", "to": "rejected" }]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "writing-failed",
+          "title": "写作失败",
+          "actions": [
+            {
+              "name": "retry-writing",
+              "title": "重新准备 Brief",
+              "to": "brief-draft",
+              "guards": [],
+              "fields": [],
+              "effect": [{ "type": "transition", "to": "brief-draft" }]
+            }
+          ],
+          "fields": []
+        },
+        { "name": "accepted", "title": "已接受（未发布）", "actions": [], "fields": [] },
+        { "name": "rejected", "title": "已驳回", "actions": [], "fields": [] }
+      ],
+      "fields": []
+    },
+    {
+      "name": "agent-definition-authoring",
+      "title": "专业 Agent 起草",
+      "app": "governance",
+      "initial": "request-ready",
+      "nodes": [
+        {
+          "name": "request-ready",
+          "title": "描述专业 Agent",
+          "fields": [],
+          "actions": [
+            {
+              "name": "start-authoring",
+              "title": "生成 Agent Definition Draft",
+              "to": "authoring-running",
+              "guards": [],
+              "fields": [
+                {
+                  "name": "description",
+                  "type": "textarea",
+                  "title": "专业 Agent 需求",
+                  "required": true,
+                  "semantics": "intent",
+                  "persist": false,
+                  "minLength": 1
+                }
+              ],
+              "effect": [
+                { "type": "transition", "to": "authoring-running" },
+                {
+                  "type": "spawn",
+                  "capability": "agent-definition.author",
+                  "on-done": "authoring-succeeded",
+                  "on-error": "authoring-failed-callback"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "authoring-running",
+          "title": "正在起草",
+          "fields": [],
+          "actions": [
+            {
+              "name": "authoring-succeeded",
+              "title": "起草成功回调",
+              "internal": "capability-callback",
+              "agent-result-bridge": { "kind": "agent-definition-draft" },
+              "to": "draft-ready",
+              "guards": ["principal-is-capability-system"],
+              "fields": [
+                { "name": "runId", "type": "text", "required": true },
+                { "name": "resultId", "type": "text", "required": true },
+                { "name": "draftRel", "type": "text", "required": true }
+              ],
+              "effect": [{ "type": "transition", "to": "draft-ready" }]
+            },
+            {
+              "name": "authoring-failed-callback",
+              "title": "起草失败回调",
+              "internal": "capability-callback",
+              "to": "authoring-failed",
+              "guards": ["principal-is-capability-system"],
+              "fields": [
+                { "name": "runId", "type": "text", "required": true },
+                { "name": "reason", "type": "textarea", "required": true }
+              ],
+              "effect": [{ "type": "transition", "to": "authoring-failed" }]
+            }
+          ]
+        },
+        {
+          "name": "draft-ready",
+          "title": "定义 Draft 已生成",
+          "fields": [],
+          "actions": [
+            {
+              "name": "author-another",
+              "title": "起草另一个 Agent",
+              "to": "request-ready",
+              "guards": ["actor-is-human"],
+              "fields": [],
+              "effect": [
+                { "type": "transition", "to": "request-ready" },
+                { "type": "clear-fields" }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "authoring-failed",
+          "title": "起草失败",
+          "fields": [],
+          "actions": [
+            {
+              "name": "retry-authoring",
+              "title": "重新描述需求",
+              "to": "request-ready",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                { "type": "transition", "to": "request-ready" },
+                { "type": "clear-fields" }
+              ]
+            }
+          ]
+        }
+      ],
+      "fields": []
+    }
+  ],
+  "seed": {
+    "rel": "seed:business-domain-v4",
+    "detail": {
+      "instances": {
+        "post:post-welcome": {
+          "rel": "post:post-welcome",
+          "flow": "post-status",
+          "node": "published",
+          "fields": {
+            "title": {
+              "value": "欢迎来到 UI4A",
+              "origin": "default"
+            },
+            "category": {
+              "value": "tech",
+              "origin": "default"
+            },
+            "body": {
+              "value": "欢迎使用 UI4A。这篇文章介绍同一份合同如何同时服务人类界面与 agent。",
+              "origin": "default"
+            }
+          }
+        },
+        "post:first-post": {
+          "rel": "post:first-post",
+          "flow": "post-status",
+          "node": "published",
+          "fields": {
+            "title": {
+              "value": "第一篇",
+              "origin": "default"
+            },
+            "category": {
+              "value": "essay",
+              "origin": "default"
+            },
+            "body": {
+              "value": "这是第一篇完整文章，用来验证具体查看、正文阅读和跨刷新恢复链路。",
+              "origin": "default"
+            }
+          }
+        },
+        "comment:c1": {
+          "rel": "comment:c1",
+          "flow": "comment-moderation",
+          "node": "pending",
+          "fields": {
+            "body": {
+              "value": "好文章",
+              "origin": "default"
+            }
+          }
+        },
+        "comment:c2": {
+          "rel": "comment:c2",
+          "flow": "comment-moderation",
+          "node": "pending",
+          "fields": {
+            "body": {
+              "value": "学习了",
+              "origin": "default"
+            }
+          }
+        },
+        "comment:c3": {
+          "rel": "comment:c3",
+          "flow": "comment-moderation",
+          "node": "pending",
+          "fields": {
+            "body": {
+              "value": "期待下一篇",
+              "origin": "default"
+            }
+          }
+        },
+        "comment:c4": {
+          "rel": "comment:c4",
+          "flow": "comment-moderation",
+          "node": "approved",
+          "fields": {
+            "body": {
+              "value": "赞",
+              "origin": "default"
+            }
+          }
+        },
+        "article-drafting:main": {
+          "rel": "article-drafting:main",
+          "flow": "article-drafting",
+          "node": "basic-info",
+          "fields": {}
+        },
+        "software-change:main": {
+          "rel": "software-change:main",
+          "flow": "software-change",
+          "node": "implementation-ready",
+          "fields": {}
+        },
+        "writing-request:main": {
+          "rel": "writing-request:main",
+          "flow": "writing-request",
+          "node": "brief-draft",
+          "fields": {}
+        },
+        "agent-definition-request:main": {
+          "rel": "agent-definition-request:main",
+          "flow": "agent-definition-authoring",
+          "node": "request-ready",
+          "fields": {}
+        }
+      },
+      "collections": {
+        "articles": ["post:post-welcome", "post:first-post"],
+        "comments": ["comment:c1", "comment:c2", "comment:c3", "comment:c4"],
+        "software-changes": ["software-change:main"],
+        "writing-requests": ["writing-request:main"],
+        "agent-definition-requests": ["agent-definition-request:main"]
+      }
+    }
+  }
+}

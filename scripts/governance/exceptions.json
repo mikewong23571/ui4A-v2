@@ -10,20 +10,8 @@
     {
       "from": "apps/worker/src",
       "to": "apps/web/src/engine",
-      "reason": "delegation.kill.integration.test 直接构造 web engine service 验证 kill 证据落库,属测试期耦合",
-      "retireWhen": "kill 证据改为经公开契约(事件日志读取边界或 @ui4a/db)断言后移除"
-    },
-    {
-      "from": "apps/web/src/engine",
-      "to": "apps/worker/src",
-      "reason": "service.incremental/restart-replay 测试直接 import worker activities 做回放对比,属测试期耦合",
-      "retireWhen": "回放对比改为消费 worker 公开导出或共享包后移除"
-    },
-    {
-      "from": "packages/engine/src",
-      "to": "apps/web/src",
-      "reason": "presentation scenario 测试直接读取 apps/web 内置 walkthrough bundle JSON 作为 fixture",
-      "retireWhen": "fixture 移入 packages 自身测试资产或独立 fixtures 包后移除;packages 对 apps 的运行时依赖永远不允许"
+      "reason": "delegation.kill.integration.test 需一个进程内引擎真身(boot/seed + Cedar 裁决 + bundle + 投影的完整组合根)挂在最小 HTTP 适配器后,供独立 worker 进程经真 HTTP 合同驱动多步委托;仅把 kill 证据断言改为 readLog 无法消除该 import(引擎真身是测试固有需求),而复制 composition 或下沉组合根属 Phase D 架构变更,投入产出失衡",
+      "retireWhen": "引擎组合根(service.ts 的 boot/exec/getEntity 装配)下沉到 packages 层或发布为共享测试 harness 后,worker 测试改从该处构造引擎,本例外移除"
     }
   ],
   "compatAllowlist": [
