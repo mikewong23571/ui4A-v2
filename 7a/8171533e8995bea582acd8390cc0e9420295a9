@@ -1,0 +1,7 @@
+T24 Phase C: e2e 与走查
+
+- 新增 e2e/t24-presentation-honesty.spec.ts(3 用例):canvas 首屏零机制词(MECHANISM_WORDS 全表扫描)+ 抽屉能力(surface ID/目录/sidecar 操作/explain/原始 JSON;sidecar 在场以真实 /api/presentation 探测先行判定)+ chat 双路径(真实服务端空 LLM:诚实失败中性分层「失败 · code=driver_fail」零编造;合成 SSE:折叠思考可展开/活动语言 <a> 下钻 /api/events?afterSeq=)。截图证据在 test-results(不 commit)。
+- t16-golden 断言适配抽屉化(先开抽屉、explain 按唯一 data-nav 区分),测试未删。
+- 全量验收:CI=true pnpm e2e 全量 42 通过/19 门控 skip/0 失败;编排 agent 复跑 invariants(4 过 2 预置 skip)、human+baseline+t24 9/9。
+- pnpm check 等效门禁(编排 agent):typecheck(除 agent-runner 全 workspace)+ lint 0 error + governance OK + vitest apps/web,worker,cli,packages 313 文件 2242 用例全绿。
+- 存量记录:apps/agent-runner 39 用例因硬编码 Linux /dev/shm 在 macOS 必败(EPERM mkdir /dev/shm),git stash 对照证实先于 T24 存在于拉取的 master;属 T22/T23 遗留的环境性失败,超出呈现层 track 范围,建议独立任务处置(容器内跑或平台感知),已记入本 note 与计划文档。
