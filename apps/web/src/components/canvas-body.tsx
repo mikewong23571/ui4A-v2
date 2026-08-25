@@ -52,6 +52,7 @@ import type { RenderSpec } from '@/render/spec';
 
 import { createCanvasActionHandler } from './canvas-action-handler';
 import { CanvasSidecarToolbar } from './canvas-sidecar-toolbar';
+import { CanvasWhyDrawer } from './canvas-why-drawer';
 import { useEntityCache } from './entity-cache-provider';
 import { execAction, fetchEntity } from './exec-client';
 import { SurfaceErrorBoundary } from './surface-error-boundary';
@@ -117,6 +118,10 @@ export function CanvasBody() {
   const [errors, setErrors] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // T24「为什么这样展示」抽屉数据源:目录协商结果与 focus 实体原始 JSON。
+  // 只供抽屉消费,不渲染进主区域(首屏零机制词口径不变)。
+  const [catalogId, setCatalogId] = useState<string>();
+  const [focusEntityJson, setFocusEntityJson] = useState<string>();
   // 重载触发器:拦截门 executed 后重载(gate 闭包经 ref 触发,不经渲染期读)。
   const reloadRef = useRef<() => void>(() => {});
   const loadGenerationRef = useRef(0);
@@ -130,6 +135,7 @@ export function CanvasBody() {
     setSidecarMeta,
     promotionPending,
     setPromotionPending,
+    explanation,
     mutateSidecar,
     patchSidecar,
     explainSidecar,
@@ -155,6 +161,8 @@ export function CanvasBody() {
     setErrors([]);
     setNotice(null);
     setSidecarMeta(undefined);
+    setCatalogId(undefined);
+    setFocusEntityJson(undefined);
     try {
       // 1. 目录协商(catalogId 稳定 URI;目录与注册表同源才继续)。
       const catalogResponse = await fetch(catalogUrl, { signal: controller.signal });
@@ -166,6 +174,8 @@ export function CanvasBody() {
           `目录协商失败:服务目录 ${String(catalog.catalogId)} 与本地词汇表 ${CATALOG_ID} 不同源`,
         );
       }
+      // 协商通过即服务目录 === CATALOG_ID;记录供抽屉展示(主区域零渲染)。
+      setCatalogId(CATALOG_ID);
       if (generation !== loadGenerationRef.current) return;
 
       const sitemapResponse = await fetch('/.well-known/ui4a.json', {
@@ -310,6 +320,10 @@ export function CanvasBody() {
         try {
           const entity = await withAbort(cache.get(requestedFocus), controller.signal);
           if (entity === null) throw new Error(`实体 "${requestedFocus}" 不存在`);
+          // 主 focus(首项)的原始合同文本:load 已取得的实体直接序列化,
+          // 零额外取数;只进抽屉,不进主区域渲染。
+          if (requestedFocus === requestedFocuses[0])
+            setFocusEntityJson(JSON.stringify(entity, null, 2));
           const plan =
             sidecarSurface === undefined
               ? planGenericPresentationSurface(requestedFocus, entity, sitemap.version)
@@ -414,6 +428,22 @@ export function CanvasBody() {
           重新载入
         </Button>
       </div>
+
+      {/* T24:机制信息收口进抽屉(默认关闭,零机制词泄漏;数据全部来自
+          内部状态与 sidecar 操作,能力与主区域控制条等价)。 */}
+      <CanvasWhyDrawer
+        surfaceIds={surfaces.map((entry) => entry.id)}
+        catalogId={catalogId}
+        focusEntityJson={focusEntityJson}
+        sidecarMeta={sidecarMeta}
+        promotionPending={promotionPending}
+        explanation={explanation}
+        mutateSidecar={mutateSidecar}
+        patchSidecar={patchSidecar}
+        explainSidecar={explainSidecar}
+        promoteSidecar={promoteSidecar}
+        cancelPromotion={() => setPromotionPending(false)}
+      />
 
       {notice !== null && (
         <p

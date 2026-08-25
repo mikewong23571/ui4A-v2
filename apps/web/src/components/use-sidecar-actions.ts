@@ -3,6 +3,10 @@
  * 视图 patch(收起/疏密)、explain、promote(团队默认预览/确认)四个
  * /api/presentation/sidecar 调用,与 sidecarMeta/promotionPending 状态同住。
  * 纯接线搬运,请求形状与告示口径不变。
+ *
+ * T24 Phase A Task 3 最小扩展:explain 成功后把结果(provenance kind/ref、
+ * 依赖数)结构化记录进 explanation 状态,供「为什么这样展示」抽屉内结构化
+ * 展示;请求形状与 notify 告示行为不变。
  */
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
 
@@ -18,11 +22,18 @@ export interface SidecarMeta {
   };
 }
 
+/** explain 的结构化结果(抽屉内结构化展示;口径见文件头 T24 注)。 */
+export interface SidecarExplanation {
+  provenance: { kind: string; ref: string };
+  dependencyCount: number;
+}
+
 export interface SidecarActions {
   sidecarMeta: SidecarMeta | undefined;
   setSidecarMeta: Dispatch<SetStateAction<SidecarMeta | undefined>>;
   promotionPending: boolean;
   setPromotionPending: Dispatch<SetStateAction<boolean>>;
+  explanation: SidecarExplanation | undefined;
   mutateSidecar: (action: 'pin' | 'revert') => Promise<void>;
   patchSidecar: (kind: 'collapse' | 'density') => Promise<void>;
   explainSidecar: () => Promise<void>;
@@ -40,6 +51,7 @@ export function useSidecarActions(deps: {
   const { notify, reload } = deps;
   const [sidecarMeta, setSidecarMeta] = useState<SidecarMeta>();
   const [promotionPending, setPromotionPending] = useState(false);
+  const [explanation, setExplanation] = useState<SidecarExplanation>();
 
   const mutateSidecar = useCallback(
     async (action: 'pin' | 'revert'): Promise<void> => {
@@ -128,6 +140,14 @@ export function useSidecarActions(deps: {
       notify(`无法解释当前呈现:${body.error ?? `HTTP ${response.status}`}`);
       return;
     }
+    // T24:结构化结果进状态(抽屉内结构化展示);下方 notify 告示不变。
+    setExplanation({
+      provenance: {
+        kind: body.explanation.provenance?.kind ?? 'unknown',
+        ref: body.explanation.provenance?.ref ?? 'unknown',
+      },
+      dependencyCount: body.explanation.dependencyIds?.length ?? 0,
+    });
     notify(
       `这样展示是因为 ${body.explanation.provenance?.kind ?? 'unknown'}:${
         body.explanation.provenance?.ref ?? 'unknown'
@@ -172,6 +192,7 @@ export function useSidecarActions(deps: {
     setSidecarMeta,
     promotionPending,
     setPromotionPending,
+    explanation,
     mutateSidecar,
     patchSidecar,
     explainSidecar,
