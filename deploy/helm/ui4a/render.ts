@@ -60,6 +60,7 @@ const webEdgeMatches: readonly EdgeMatch[] = [
     '/auth/login',
     '/api/auth/callback',
     '/.well-known/ui4a.json',
+    '/_meta/.well-known/ui4a.json',
     '/api/entity',
     '/api/events',
     '/api/delegations',

@@ -158,6 +158,7 @@ const webGetExact = [
   '/auth/login',
   '/api/auth/callback',
   '/.well-known/ui4a.json',
+  '/_meta/.well-known/ui4a.json',
   '/api/entity',
   '/api/events',
   '/api/delegations',
@@ -217,7 +218,6 @@ describe('T22 Kubernetes exact authentication edge', () => {
     expect(staticRouteMatches('ui4a-web')).toEqual(expectedWebMatches);
     expect(defaultDeny(web)).toEqual({ directResponse: { status: 404 } });
     for (const deferred of [
-      '/_meta/.well-known/ui4a.json',
       '/api/chat/history',
       '/api/chat/sessions',
       '/api/presentation',

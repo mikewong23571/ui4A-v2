@@ -1,11 +1,13 @@
 export const META_LOCAL_AUTHORIZATION_MODE = 'self-reported-local-demo' as const;
 
+export type MetaAuthorizationMode = typeof META_LOCAL_AUTHORIZATION_MODE | 'credential';
+
 export interface MetaRequestContext {
   principal: string;
   requestedScope?: string;
   effectiveScope: string;
   authorizedScopes: string[];
-  authorizationMode: typeof META_LOCAL_AUTHORIZATION_MODE;
+  authorizationMode: MetaAuthorizationMode;
 }
 
 /**

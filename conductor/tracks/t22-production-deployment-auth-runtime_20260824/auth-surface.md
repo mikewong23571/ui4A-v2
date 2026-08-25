@@ -53,6 +53,7 @@ human `sub` 加 exchanging client `azp`，不读取或扩展 `act`/`may_act`。
 | `GET` | `/api/delegations` | Browser Session 或 Bearer；`ui4a:read` | 委托舰队列表；全局只读投影，无 per-principal 过滤。 |
 | `GET` | `/api/delegations/{id}` | Browser Session 或 Bearer；`ui4a:read` | 委托详情与事件轨迹；动态 path 仅作为 `/api/delegations/` prefix 暴露。 |
 | `GET` | `/_meta/api/entity` | Browser Session 或 Bearer；`ui4a:read` | Canonical Meta entity read。 |
+| `GET` | `/_meta/.well-known/ui4a.json` | Browser Session 或 Bearer；`ui4a:read` | Meta sitemap；Scope 只能在 granted policy scopes 内选择。 |
 | `POST` | `/_meta/api/exec` | Browser Session 或 Bearer；普通动作 `ui4a:write`，approve/reject 为 `ui4a:approve` | Canonical Meta action 与 human-only approval。 |
 
 生产请求里的 body/query/普通 header actor、principal、scope 和 delegation 都不是身份事实。直接
@@ -67,9 +68,9 @@ edge 只应暴露上表中的 canonical `/_meta/*` 路径，避免形成第二�
   Standard Token Exchange。交换后的 credential 只存在于 same-origin、HTTPS、exact-path bounded
   fetch closure。接收端仍按 issuer、audience、signature、expiry 和 scope 独立验证。
 - inline Agent 的 fetch allowlist 当前包含 business sitemap/entity/exec/exec-plan 与 Meta
-  sitemap/entity/exec；其中 Meta sitemap 接收端尚未校验 application credential，因此
-  `/_meta/.well-known/ui4a.json` 不属于本版本外部 Golden allowlist，部署 edge 必须拒绝它。此限制
-  意味着 v0.1 不验收依赖 Meta sitemap 的 inline 导航。
+  sitemap/entity/exec；Meta sitemap 接收端已接入 application credential 校验（T22 验证修复），
+  `/_meta/.well-known/ui4a.json` 属于外部 Golden allowlist；内部 alias
+  `/api/meta/.well-known/ui4a.json` 仍不得暴露。
 - durable Worker Activity 不继承浏览器 Token，也不把 Token 写入 Temporal history、event 或日志。
   每次 Activity 通过 `ui4a-agent` Client Credentials 取得 service identity，且只允许同一 canonical
   HTTPS origin 的以下 exact paths：`/.well-known/ui4a.json`、`/api/entity`、`/api/exec`、
@@ -111,7 +112,6 @@ OIDC。
 
 | Method | Exact path | 当前风险/限制 |
 | --- | --- | --- |
-| `GET` | `/_meta/.well-known/ui4a.json` | 仍从普通 header/query 构造 Meta context；必须 deny/not expose。内部 alias `/api/meta/.well-known/ui4a.json` 同样不得暴露。 |
 | `GET` | `/api/chat/history` | Chat 历史未绑定 credential principal；必须 deny/not expose。 |
 | `GET` | `/api/chat/sessions` | Session 清单未绑定 credential principal；必须 deny/not expose。 |
 | `POST` | `/api/presentation` | Presentation request 未接入 request identity；必须 deny/not expose。 |
