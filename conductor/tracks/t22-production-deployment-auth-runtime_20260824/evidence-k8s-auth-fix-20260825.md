@@ -164,6 +164,38 @@ LLM/Codex 凭据门槛用例,与本批无关)。
 - 线上验证:meta 控制台 4/4(sitemap 200 credential、页面就绪);chat POST 200,真实 LLM
   回答"OK",outcome=answered,turn 事件落库(sessionId=credential sub)。
 
+## 追加:canvas Sidecar 404 修复(2026-08-25,同日第四轮)
+
+- 症状:chat 让 agent 在画布展示文章后,`/canvas?sidecar=sidecar:…&focus=post:…` 报
+  `Sidecar … → HTTP 404`。
+- 根因:`/api/presentation` 与 `/api/presentation/sidecar` 未接入 request identity,
+  Sidecar 归属固定为 `user:local`——chat 以已认证 principal 建立的 durable Sidecar 在
+  canvas 读路径下查不到;且 edge(istio VirtualService/AuthorizationPolicy、Compose
+  Caddy)未放行这两路(auth-surface.md 原列为 deferred "必须 deny/not expose")。
+- 修复(提交 `e3b56eb`):
+  - `/api/presentation` POST:production 强制 credential(`ui4a:read`),以已认证
+    principal 覆盖客户端自报 principal 作为 durable Sidecar key 归属;
+  - `/api/presentation/sidecar` GET(`ui4a:read`)/POST(`ui4a:write`):同样接入
+    credential 并按已认证 principal 读写;human lifecycle(`actor: 'human'`)约束不变;
+  - local profile 两路行为完全不变;
+  - edge 按 exact path 放行两路(render.ts、istio.yaml VirtualService+
+    AuthorizationPolicy、edge-routing.caddy);auth-surface.md 与
+    `t22-k8s-auth-edge-contract.test.ts`/`t22-compose-contract.test.ts` 同步收口,
+    deferred 清单收敛为 `/api/chat/history`、`/api/chat/sessions`、`/api/meta/`。
+- 质量门:vitest 47/47(既有 presentation 路由 4 例、新增 production-auth 8 例
+  [401/已认证 principal 覆盖/local 不变、GET read/POST write 口径]、t22 两个 edge 合同
+  套件)。提交时工作树仍含 T23 在途改动,全量 typecheck 不可跑;改动文件 ESLint 全绿。
+- 部署:镜像 `docker.io/ui4a/web@sha256:c16064a64ecb50cf6acc42886a9dd3c8f4e0227728c6f349f561e22daffb0d56`
+  (tag `v0.1.0-experimental.1.t22auth9`,OCI revision = `e3b56eb`;worktree 干净副本
+  构建;两 worker 均已 import 并补 digest 引用名)。helm rev 31,Pod
+  `web-5dc95844f7-9gzht` Running 2/2。staging 在 k8s-cp-1:/tmp/ui4a-release-t22auth9
+  (chart 模板已从该提交同步,istio.yaml 含 presentation 两路)。
+- 线上验证(Playwright headless Chrome,真实登录 ui4a-experiment-human):6/6——直取用户
+  报告的 `sidecar:53201e98f1940fa7` 返回 200(version=1,subject=post:post-welcome,不再
+  404);报告的 canvas URL 整页无 404 错误卡且渲染《欢迎来到 UI4A》正文;无 sidecar 参数的
+  `/canvas?focus=post:post-welcome` 直达链路(POST /api/presentation → 复用/建立
+  Sidecar)同样渲染成功;匿名直取两路均 401。
+
 ## 未覆盖(保持诚实边界)
 
 - K8s/Host 两后端 Agent Run 仍为 `failed-honest`(见 RELEASE_NOTES 已知限制),本修复不涉及
