@@ -9,7 +9,7 @@
 方向 program(依据 [product-vision.md](../product-vision.md);站点为天然分割点,limited scope;
 执行序:T24 → T25 → T26(spike) → T30 → T27 → T28;T29 已完成):
 
-- [~] **Track: T24 呈现诚实化(减暴露):机制 chrome 退出首屏与对话面** *Link: [tracks/t24-presentation-honesty_20260825/index.md](./tracks/t24-presentation-honesty_20260825/index.md)*
+- [x] **Track: T24 呈现诚实化(减暴露):机制 chrome 退出首屏与对话面** *Link: [tracks/t24-presentation-honesty_20260825/index.md](./tracks/t24-presentation-honesty_20260825/index.md)*
 - [~] **Track: T25 Assistant 上下文收窄(limited scope):分层披露,起点用事实** *Link: [tracks/t25-assistant-scoped-context_20260825/index.md](./tracks/t25-assistant-scoped-context_20260825/index.md)*
 - [~] **Track: T26 工作线投影(work thread):一件事的纯投影聚合(spike 先行)** *Link: [tracks/t26-work-thread-projection_20260825/index.md](./tracks/t26-work-thread-projection_20260825/index.md)*
 - [~] **Track: T30 呈现平面组合化:区域 × intent × 聚合虚主体(前置架构)** *Link: [tracks/t30-presentation-composition_20260825/index.md](./tracks/t30-presentation-composition_20260825/index.md)*
