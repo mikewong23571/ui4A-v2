@@ -124,6 +124,46 @@ LLM/Codex 凭据门槛用例,与本批无关)。
   headless Chrome,PKCE 全链)4/4:登录 → `GET /api/delegations` 200 → 委托监控页无错误横幅、
   呈现合法空态(执行中 0)。
 
+## 追加:meta 控制台与 chat 全链修复(2026-08-25,同日第三轮)
+
+用户在 meta 控制台看到"读取定义合同失败"、chat 发问得到"失败: [object Object]"。逐层定位
+并修复四个问题,最终 chat inline 全链(登录 → Session → Token Exchange → bounded fetch →
+真实 LLM)打通:
+
+1. **meta sitemap 未接 credential**(auth-surface deferred 项):`/_meta/.well-known/ui4a.json`
+   路由 production 接入 `resolveTrustedRequestIdentity`(`ui4a:read`),authorizedScopes 收窄为
+   granted policy scopes;edge 放行(istio/render.ts;Compose Caddy 本就放行——两形态白名单
+   此前不一致)。提交 `5d96971`。
+2. **chat origin 校验不适配 TLS 终止**:pod 内 `request.url` 协议恒为 http,与配置
+   `https://…:32067` publicOrigin 不匹配 → 400 `request_origin_invalid`,前端又把
+   `{error:{code}}` 对象插值成 `[object Object]`。修复:以 edge 覆写的
+   `x-forwarded-proto` + Host 重建外部 origin(伪造 Host 仍拒);chat-panel 结构化错误取
+   code 展示。提交 `ba39b0f`。
+3. **inline exchange 只带单一 policy scope**:取 agentScopes 第一个(`default`),agent 读
+   articles(publishing)403。修复:交换请求携带 human granted ∩ agentScopes 的全部
+   policy scope(剥离 `ui4a:approve`,仍严格收窄),逐请求收窄由接收端 scopeCoverage 负责。
+   提交 `0d18e3e`。
+4. **deferred 校验白名单误报**:接收端 `delegatedScopesByClient` 仍按单 scope 收窄 →
+   403 `delegation_scope_exceeded`。修复:白名单与交换携带的 policy scopes 对齐。
+   提交 `e0a5ec7`(该改动曾被 T23 工作 stash,经 `git stash pop` 恢复后提交)。
+5. **web 进程缺 LLM env**:settings/secrets 文件里 LLM 合同齐备(baseUrl/model/apiKeyRef,
+   preflight 已强制),但无人导出 `LLM_*` 环境变量 → 诚实失败"LLM 配置缺失"。修复:
+   `instrumentation.ts` register 在 production preflight 后导出 LLM_BASE_URL/LLM_MODEL/
+   LLM_API_KEY(显式预设优先,缺项不写)。提交 `9540b84`(pathspec 提交,未触碰并发的
+   T23 在途改动)。
+
+- 质量门:第 1–4 项各自 `pnpm check` 全绿(至 2593 通过)。第 5 项提交时工作树含 T23 在途
+   staged 删除(legacy capability-run 移除),全量 typecheck 暂不可跑;该项由
+  `instrumentation.llm-env.test.ts` 4 例 + instrumentation 既有套件覆盖(10/10)。
+- 部署:镜像 `docker.io/ui4a/web@sha256:d234f91801932054372b700b9255696d8f7c0633c7da337d7f6d41d9078f2c9b`
+  (tag `v0.1.0-experimental.1.t22auth8`,OCI revision = `9540b84`;archive SHA-256
+  `111607f91880a4ca05382315ecf89fcb33e197caf0a0162132cefef3f3f75fb5`;构建在
+  `git worktree` 干净副本上进行,规避 T23 在途状态;构建前清理了本机 docker 磁盘
+  [100%→53%])。helm rev 27→30(中间 28/29 为 t22auth6/7),Pod `web-dd4b495c6-ggw87`
+  Running 2/2。staging 在 k8s-cp-1:/tmp/ui4a-release-t22auth8。
+- 线上验证:meta 控制台 4/4(sitemap 200 credential、页面就绪);chat POST 200,真实 LLM
+  回答"OK",outcome=answered,turn 事件落库(sessionId=credential sub)。
+
 ## 未覆盖(保持诚实边界)
 
 - K8s/Host 两后端 Agent Run 仍为 `failed-honest`(见 RELEASE_NOTES 已知限制),本修复不涉及
