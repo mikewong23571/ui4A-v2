@@ -39,9 +39,9 @@
   - 测试:三种来源(LLM 表述/中性降级/结构化数据)各自的渲染形状
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) fe0c62c
 
-## Phase C: 端到端验收
+## Phase C: 端到端验收 [checkpoint: 7a81715]
 
-- [~] Task: e2e 与走查
+- [x] Task: e2e 与走查 7a81715
   - Golden Story 人类段/Agent 段、invariants 全绿
   - Playwright 截图走查:canvas 首屏零机制词、抽屉能力等价、chat 折叠/
     活动语言/失败分层
