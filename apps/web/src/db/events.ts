@@ -117,9 +117,19 @@ export type EventKind =
   | 'user-sidecar-staled'
   | 'user-sidecar-reverted'
   | 'user-sidecar-evicted'
-  | 'render-feedback-recorded';
+  | 'render-feedback-recorded'
+  | 'presence-site-changed'
+  | 'presence-scope-changed'
+  | 'presence-thread-changed'
+  | 'presence-focus-changed';
 
-export type EventDomain = 'core' | 'presentation' | 'draft' | 'capability' | 'agent-definition';
+export type EventDomain =
+  | 'core'
+  | 'presence'
+  | 'presentation'
+  | 'draft'
+  | 'capability'
+  | 'agent-definition';
 
 /** 追加事件(引擎 EngineEvent 的日志层超集:引擎不产 seq/ts/reason,由本层分配)。 */
 export interface EventAppend {
@@ -366,7 +376,7 @@ export type { PoolClient };
 /** 存储事件 → 引擎 fold 的 LogEvent(null 归一为 undefined;ts 保留 ISO 字符串)。 */
 export function toLogEvent(event: StoredEvent): LogEvent {
   if (event.domain !== undefined && event.domain !== 'core') {
-    throw new Error(`Presentation event "${event.kind}" cannot enter the Business fold`);
+    throw new Error(`Non-core event "${event.kind}" cannot enter the Business fold`);
   }
   return {
     seq: event.seq,
