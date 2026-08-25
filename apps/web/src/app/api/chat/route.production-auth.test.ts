@@ -329,6 +329,56 @@ describe('production chat turn credential boundary', () => {
     expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).channel).toBe('chat');
   });
 
+  it('carries every granted agent policy scope into the exchange (rel coverage is per-request)', async () => {
+    // human 与 agentScopes 交集含两个 policy scope 时,交换请求必须全量携带——
+    // 回合内将读取哪个应用的 rel 事先不可知,逐请求收窄由接收端 scopeCoverage 负责。
+    mocks.preflight.mockReturnValueOnce({
+      settings: {
+        service: { publicOrigin: APP_ORIGIN },
+        auth: {
+          mode: 'oidc',
+          oidc: {
+            agentScopes: [
+              'ui4a:read',
+              'ui4a:write',
+              'ui4a:policy:development',
+              'ui4a:policy:publishing',
+            ],
+            agentClientId: AGENT_CLIENT_ID,
+          },
+        },
+      },
+      secrets: {},
+    });
+    mocks.resolveIdentity.mockImplementationOnce(async () => ({
+      authorizationMode: 'credential',
+      actor: 'human',
+      principal: 'human-alice',
+      scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development', 'ui4a:policy:publishing'],
+      policyScope: 'development',
+      channel: 'oidc',
+      humanApprovalEligible: true,
+    }));
+
+    const response = await POST(
+      request(
+        { goal: { verb: 'browse articles' }, sessionId: 'multi-scope', turnId: 'turn-multi' },
+        { cookie: 'valid-session' },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.exchangeDelegatedCredential).toHaveBeenCalledWith({
+      subjectToken: HUMAN_ACCESS_TOKEN,
+      requestedScopes: [
+        'ui4a:read',
+        'ui4a:write',
+        'ui4a:policy:development',
+        'ui4a:policy:publishing',
+      ],
+    });
+  });
+
   it.each([
     ['read-only human', ['ui4a:read', 'ui4a:policy:development']],
     ['human without policy scope', ['ui4a:read', 'ui4a:write']],

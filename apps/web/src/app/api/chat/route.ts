@@ -771,11 +771,23 @@ export async function POST(request: Request) {
   ) {
     let authorizationHeader: string;
     if (mode === 'inline') {
+      // 收窄口径:human granted ∩ agentScopes 的 policy scopes 全量携带(chat 无 scope
+      // 选择器,回合内合同读取的 rel 归属哪个应用事先不可知;接收端 /api/entity 的
+      // scopeCoverage 再按 rel 逐请求收窄)。相对 human grant 仍是严格收窄(剥离
+      // ui4a:approve 与非 agent scope)。
       const requestedScopes = [
         'ui4a:read',
         'ui4a:write',
-        `ui4a:policy:${productionIdentity.policyScope}`,
+        ...productionAgentScopes.filter(
+          (scope) =>
+            scope.startsWith('ui4a:policy:') && productionIdentity.scopes.includes(scope),
+        ),
       ];
+      // 纵深防御:identity 宣称的 policyScope 必须有对应 granted scope 背书(正常路径
+      // 由 resolveCredentialPolicyScope 保证;此处防 identity 适配层漂移)。
+      if (!requestedScopes.includes(`ui4a:policy:${productionIdentity.policyScope}`)) {
+        return agentAuthorizationErrorResponse('agent_scope_exceeded');
+      }
       if (requestedScopes.some((scope) => !productionIdentity.scopes.includes(scope))) {
         return agentAuthorizationErrorResponse('agent_scope_exceeded');
       }
