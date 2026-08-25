@@ -266,6 +266,14 @@ test('S4-六步一次决策:单次 exec-plan(next×3 + publish + unpublish + rep
       channel: 'http',
     });
     expect(planDetail(markers[0]!)).toEqual({
+      // T22 起事件 detail 携带 identity 审计块(credential provenance;local 口径为
+      // self-reported-local-demo,agent 无 human approval 资格)。
+      identity: {
+        authorizationMode: 'self-reported-local-demo',
+        humanApprovalEligible: false,
+        policyScope: 'development',
+        scopes: ['default', 'publishing', 'community', 'development', 'editorial', 'governance'],
+      },
       kind: 'plan-completed',
       steps: [
         { step: 1, rel: 'article-drafting:main', action: 'next', outcome: 'executed' },
@@ -348,6 +356,13 @@ test('S4-拒绝截断:计划第 2 步 schema-invalid(枚举外 category)→ 前 
     const markers = events.filter((event) => event.kind === 'plan-executed');
     expect(markers).toHaveLength(1);
     expect(planDetail(markers[0]!)).toEqual({
+      // T22 identity 审计块(口径同上文 plan-completed 断言)。
+      identity: {
+        authorizationMode: 'self-reported-local-demo',
+        humanApprovalEligible: false,
+        policyScope: 'development',
+        scopes: ['default', 'publishing', 'community', 'development', 'editorial', 'governance'],
+      },
       kind: 'plan-rejected',
       steps: [
         { step: 1, rel: 'article-drafting:main', action: 'next', outcome: 'executed' },
@@ -442,6 +457,13 @@ test('S4-挂起交互:agent 计划第 5 步 archive(高危)→ 202 suspended + c
       const markers = events.filter((event) => event.kind === 'plan-executed');
       expect(markers).toHaveLength(1);
       expect(planDetail(markers[0]!)).toEqual({
+        // T22 identity 审计块(口径同上文 plan-completed 断言)。
+        identity: {
+          authorizationMode: 'self-reported-local-demo',
+          humanApprovalEligible: false,
+          policyScope: 'development',
+          scopes: ['default', 'publishing', 'community', 'development', 'editorial', 'governance'],
+        },
         kind: 'plan-suspended',
         steps: [
           { step: 1, rel: 'article-drafting:main', action: 'next', outcome: 'executed' },

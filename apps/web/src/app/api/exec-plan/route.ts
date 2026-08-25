@@ -4,7 +4,7 @@ import {
   authenticationErrorResponse,
   resolveTrustedRequestIdentity,
 } from '../../../auth/request-identity';
-import { assertRelInPolicyScope } from '../../../auth/application-scope';
+import { assertRelInPolicyScope, relCoveredByPolicyScope } from '../../../auth/application-scope';
 
 import { parsePlanBody } from '../exec-request';
 
@@ -56,6 +56,15 @@ export async function POST(request: Request) {
       untrusted: parsed.steps[0],
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
       defaultPolicyScope: 'development',
+      // 未显式请求 scope 时要求一个已授予 scope 覆盖计划全部 rel(多 rel 口径)。
+      scopeCoverage: (policyScope) =>
+        parsed.steps.every((step) =>
+          relCoveredByPolicyScope(
+            { snapshot: engine.getSnapshot(), sitemap: engine.getSitemap(), plane: 'business' },
+            step.rel,
+            policyScope,
+          ),
+        ),
     });
     if (identity.authorizationMode === 'credential') {
       for (const step of parsed.steps) {

@@ -48,6 +48,7 @@ const mocks = vi.hoisted(() => {
     filterEntityForPolicyScope: vi.fn((projected) => projected),
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getEngine: vi.fn(async () => engine),
+    relCoveredByPolicyScope: vi.fn(() => true),
     resolveTrustedRequestIdentity: vi.fn(),
   };
 });
@@ -78,6 +79,7 @@ vi.mock('../../../auth/request-identity', () => ({
 vi.mock('../../../auth/application-scope', () => ({
   assertRelInPolicyScope: mocks.assertRelInPolicyScope,
   filterEntityForPolicyScope: mocks.filterEntityForPolicyScope,
+  relCoveredByPolicyScope: mocks.relCoveredByPolicyScope,
 }));
 
 import { GET } from './route';
@@ -151,5 +153,16 @@ describe('GET /api/entity production authentication wiring', () => {
       'development',
     );
     expect(mocks.filterEntityForPolicyScope).toHaveBeenCalledTimes(1);
+    // T22 验证修复:路由向 identity 解析传入按 query rel 归属的 scopeCoverage 闭包。
+    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as {
+      scopeCoverage?: (policyScope: string) => boolean;
+    };
+    expect(options.scopeCoverage).toBeInstanceOf(Function);
+    expect(options.scopeCoverage?.('development')).toBe(true);
+    expect(mocks.relCoveredByPolicyScope).toHaveBeenCalledWith(
+      expect.objectContaining({ plane: 'business' }),
+      'post:first',
+      'development',
+    );
   });
 });

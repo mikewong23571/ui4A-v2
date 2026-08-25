@@ -454,3 +454,22 @@
 - **已知风险与延后项**：最终镜像扫描为 50 Critical、241 High matches，作为 `known-risk` 只接受
   internal experiment。rollback 与 fault injection 未实测；不能从部署可访问推导升级/回滚或故障
   恢复已经验证。机器可读边界以 `release/v0.1.0-experimental.1/` bundle 为准。
+
+## D38 生产人类浏览器路径可用性:scope 按 rel 归属选择、审计端点认证、401 跳登录(2026-08-25,T22 验证修复)
+
+- **背景**：`v0.1.0-experimental.1` 现场实测发现 production profile 下人类浏览器路径不可用——
+  未认证浏览器只有 401 静默失败而无登录引导；`/api/events` 不在 edge 白名单；浏览器不带
+  scope 参数的请求落在 `development` 默认 scope，对 publishing/default 所属 rel 产生伪 403。
+- **scope 按 rel 归属选择**：credential 模式下请求未显式携带 `scope`/`policyScope` 时，服务端在
+  已授予且与 `authorizedPolicyScopes` 求交后的 scope 列表中，按顺序选择第一个覆盖目标 rel 的
+  scope（覆盖判定 = rel 归属 Application 未知或包含该 scope；`/api/exec-plan` 要求一个 scope 覆盖
+  计划全部 rel）。无覆盖时回退既有 default/granted[0] 行为，下游照常 403。显式 scope 参数语义
+  完全不变。该选择不扩大授权：仍要求已授予 scope 覆盖该 rel，只消除伪 403。
+- **`/api/events` 接入认证面**：production profile 下该审计端点经 `resolveTrustedRequestIdentity`
+  建立 credential identity（Browser Session 或 Bearer，`ui4a:read`），principal 过滤不得超出
+  credential（不等 → 403），无过滤时保持返回全部的审计语义，不做 rel scope 断言；local profile
+  行为不变。Istio AuthorizationPolicy 与 Compose Caddy 的 GET 白名单同步加入 `/api/events`。
+- **401 统一跳登录**：浏览器端对认证类 401 错误码（`credential_*` 与 `session_*` 失效族）统一
+  跳转 `/auth/login?returnTo=<当前路径>`（returnTo 仍经服务端同源校验）；403/`scope_insufficient`
+  不跳转——凭证有效而授权不足时登录无意义。接入点为合同客户端（entity/exec 读写）、sitemap
+  version 取数与首页时间线取数，不发明旁路逻辑。

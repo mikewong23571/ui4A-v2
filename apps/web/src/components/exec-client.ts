@@ -7,6 +7,8 @@
  */
 import type { SirenEntity } from '@ui4a/engine';
 
+import { redirectToLoginOnAuthError } from './auth-redirect';
+
 /** 人类执行者的固定身份(与 e2e 断言的日志口径一致)。 */
 export const HUMAN_CHANNEL = {
   actor: 'human',
@@ -58,6 +60,8 @@ export async function execAction(input: {
   if (response.ok && body.entity !== undefined) {
     return { ok: true, entity: body.entity as SirenEntity };
   }
+  // 认证类 401 统一跳转登录(T22 验证修复);其余失败照常如实返回。
+  redirectToLoginOnAuthError(response.status, body);
   return {
     ok: false,
     status: response.status,
@@ -84,6 +88,8 @@ export async function fetchEntity(
   const response = await fetch(endpoint, { signal });
   if (response.status === 404) return null;
   if (!response.ok) {
+    const body = (await response.json().catch(() => undefined)) as unknown;
+    redirectToLoginOnAuthError(response.status, body);
     throw new Error(`GET ${endpoint} → HTTP ${response.status}`);
   }
   return (await response.json()) as SirenEntity;

@@ -13,7 +13,7 @@ import {
   requireHumanApprovalScope,
   resolveTrustedRequestIdentity,
 } from '../../../auth/request-identity';
-import { assertRelInPolicyScope } from '../../../auth/application-scope';
+import { assertRelInPolicyScope, relCoveredByPolicyScope } from '../../../auth/application-scope';
 
 import { parseExecBody, rejectionStatus } from '../exec-request';
 
@@ -68,6 +68,13 @@ export async function POST(request: Request) {
       untrusted: parsed.request,
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
       defaultPolicyScope: 'development',
+      // 未显式请求 scope 时按 rel 归属选择已授予 scope(与 /api/entity 同口径)。
+      scopeCoverage: (policyScope) =>
+        relCoveredByPolicyScope(
+          { snapshot: engine.getSnapshot(), sitemap: engine.getSitemap(), plane: 'business' },
+          parsed.request.rel,
+          policyScope,
+        ),
     });
     if (isConfirmationDecision(parsed.request)) requireHumanApprovalScope(identity);
     if (identity.authorizationMode === 'credential') {

@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { redirectToLoginOnAuthError } from './auth-redirect';
 import { execAction, fetchEntity } from './exec-client';
+
+vi.mock('./auth-redirect', () => ({
+  redirectToLoginOnAuthError: vi.fn(() => false),
+}));
 
 const entity = { class: ['meta'], properties: {}, actions: [], links: [] };
 
@@ -63,5 +68,42 @@ describe('合同站路由', () => {
 
     await execAction({ rel: 'agent-run:r1', action: 'cancel', scope: 'governance' });
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/exec?scope=governance');
+  });
+});
+
+describe('401 认证错误跳转接线(T22 验证修复)', () => {
+  it('fetchEntity 非 ok 时先解析 body 调跳转 helper 再抛错', async () => {
+    const body = { error: { code: 'credential_missing' } };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(body), {
+          status: 401,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+
+    await expect(fetchEntity('post:first')).rejects.toThrow('HTTP 401');
+
+    expect(redirectToLoginOnAuthError).toHaveBeenCalledWith(401, body);
+  });
+
+  it('execAction 非 ok 时调跳转 helper 后照常返回失败结果', async () => {
+    const body = { error: { code: 'session_expired' } };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(body), {
+          status: 401,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+
+    const result = await execAction({ rel: 'post:first', action: 'archive' });
+
+    expect(redirectToLoginOnAuthError).toHaveBeenCalledWith(401, body);
+    expect(result).toMatchObject({ ok: false, status: 401 });
   });
 });

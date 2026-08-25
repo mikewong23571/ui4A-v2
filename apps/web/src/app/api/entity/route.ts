@@ -16,6 +16,7 @@ import {
 import {
   assertRelInPolicyScope,
   filterEntityForPolicyScope,
+  relCoveredByPolicyScope,
 } from '../../../auth/application-scope';
 
 // GET /api/entity?rel=… — Siren 实体端点(spec FR3):
@@ -47,6 +48,13 @@ export async function GET(request: Request) {
       requiredScopes: ['ui4a:read'],
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
       defaultPolicyScope: 'development',
+      // 未显式请求 scope 时按 rel 归属选择已授予 scope(消除伪 403,不扩大授权)。
+      scopeCoverage: (policyScope) =>
+        relCoveredByPolicyScope(
+          { snapshot: engine.getSnapshot(), sitemap: engine.getSitemap(), plane: 'business' },
+          rel,
+          policyScope,
+        ),
     });
     const principal = identity.principal;
     const policyScope = identity.policyScope;

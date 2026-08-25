@@ -80,6 +80,20 @@ function applicationsForRel(context: Omit<ScopeContext, 'policyScope'>, rel: str
     : metaApplications(context.snapshot, context.sitemap, rel);
 }
 
+/**
+ * 判定一个已授予 policy scope 是否覆盖目标 rel(T22 验证修复:未显式请求 scope 时
+ * 服务端按 rel 归属在已授予 scope 中确定性选择)。未知 rel 视为被任意 scope 覆盖,
+ * 交由下游照常裁决,不扩大授权。
+ */
+export function relCoveredByPolicyScope(
+  context: Omit<ScopeContext, 'policyScope'>,
+  rel: string,
+  policyScope: string,
+): boolean {
+  const applications = applicationsForRel(context, rel);
+  return applications.length === 0 || applications.includes(policyScope);
+}
+
 /** Reject a known rel whose server-owned Application differs from the credential policy scope. */
 export function assertRelInPolicyScope(context: ScopeContext & { rel: string }): void {
   const applications = applicationsForRel(context, context.rel);

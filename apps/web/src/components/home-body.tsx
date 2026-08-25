@@ -35,6 +35,7 @@ import {
 import { StatWord } from '@/render/words/stat';
 import { TimelineWord } from '@/render/words/timeline';
 
+import { redirectToLoginOnAuthError } from './auth-redirect';
 import { useEntityCache } from './entity-cache-provider';
 import { entityPageHref } from './entity-view';
 import { buttonVariants } from './ui/button';
@@ -97,7 +98,15 @@ export function HomeBody() {
         for (const entity of [nextArticles, nextComments, nextInbox, delegations]) {
           if (entity !== null) entities.set(String(entity.properties.rel), entity);
         }
-        const eventsBody = (await eventsResponse.json()) as { events?: LogEventRow[] };
+        const eventsBody = eventsResponse.ok
+          ? ((await eventsResponse.json()) as { events?: LogEventRow[] })
+          : undefined;
+        if (eventsBody === undefined) {
+          // 认证类 401 统一跳转登录(不再显示"读取合同失败");其余失败走 failed 分支。
+          const body = (await eventsResponse.json().catch(() => undefined)) as unknown;
+          if (redirectToLoginOnAuthError(eventsResponse.status, body)) return;
+          throw new Error(`GET /api/events → HTTP ${eventsResponse.status}`);
+        }
         const allEvents = eventsBody.events ?? [];
         setSituation({
           entities,

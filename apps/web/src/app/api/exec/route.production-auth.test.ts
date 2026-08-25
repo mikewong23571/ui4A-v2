@@ -56,6 +56,7 @@ const mocks = vi.hoisted(() => {
     finalizeCapabilitySource: vi.fn(),
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getEngine: vi.fn(async () => engine),
+    relCoveredByPolicyScope: vi.fn(() => true),
     requireHumanApprovalScope: vi.fn(),
     resolveTrustedRequestIdentity: vi.fn(),
   };
@@ -91,6 +92,7 @@ vi.mock('../../../auth/request-identity', () => ({
 
 vi.mock('../../../auth/application-scope', () => ({
   assertRelInPolicyScope: mocks.assertRelInPolicyScope,
+  relCoveredByPolicyScope: mocks.relCoveredByPolicyScope,
 }));
 
 import { POST } from './route';
@@ -181,6 +183,17 @@ describe('POST /api/exec production authentication wiring', () => {
         principal: 'credential-subject',
         channel: 'oidc',
       }),
+    );
+    // T22 验证修复:路由向 identity 解析传入按 body rel 归属的 scopeCoverage 闭包。
+    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as {
+      scopeCoverage?: (policyScope: string) => boolean;
+    };
+    expect(options.scopeCoverage).toBeInstanceOf(Function);
+    expect(options.scopeCoverage?.('development')).toBe(true);
+    expect(mocks.relCoveredByPolicyScope).toHaveBeenCalledWith(
+      expect.objectContaining({ plane: 'business' }),
+      'post:first',
+      'development',
     );
   });
 });

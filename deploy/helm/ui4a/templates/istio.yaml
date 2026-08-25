@@ -79,6 +79,8 @@ spec:
         - method: { exact: GET }
           uri: { exact: /api/entity }
         - method: { exact: GET }
+          uri: { exact: /api/events }
+        - method: { exact: GET }
           uri: { exact: /_meta/api/entity }
         - method: { exact: POST }
           uri: { exact: /auth/logout }
@@ -201,6 +203,7 @@ spec:
               - /api/auth/callback
               - /.well-known/ui4a.json
               - /api/entity
+              - /api/events
               - /_meta/api/entity
     - to:
         - operation:

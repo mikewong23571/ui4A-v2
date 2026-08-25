@@ -45,6 +45,12 @@ export interface ResolveRequestIdentityOptions {
     scope?: unknown;
     delegation?: unknown;
   };
+  /**
+   * 未显式请求 scope 时按 rel 归属选择已授予 scope(T22 验证修复):仅在 credential
+   * 分支且 URL 无 scope/policyScope 参数时生效;按 granted 顺序选第一个覆盖目标
+   * 的 scope,无覆盖时回退 default/granted[0](下游照常 403,不扩大授权)。
+   */
+  scopeCoverage?: (policyScope: string) => boolean;
   profile?: RequestIdentityProfile;
   environment?: DeploymentEnvironment;
   productionConfig?: ProductionDeploymentConfig;
@@ -123,6 +129,7 @@ function resolveCredentialPolicyScope(
   authorizedScopes: readonly string[],
   defaultScope: string,
   requestedScope?: string,
+  scopeCoverage?: (policyScope: string) => boolean,
 ): string {
   const granted = policyScopeClaims(claims, identity.scopes).filter((scope) =>
     authorizedScopes.includes(scope),
@@ -133,6 +140,10 @@ function resolveCredentialPolicyScope(
       throw new ProductionIdentityError('scope_insufficient');
     }
     return requestedScope;
+  }
+  if (scopeCoverage !== undefined) {
+    const covering = granted.find((scope) => scopeCoverage(scope));
+    if (covering !== undefined) return covering;
   }
   return granted.includes(defaultScope) ? defaultScope : granted[0]!;
 }
@@ -209,14 +220,17 @@ export async function resolveTrustedRequestIdentity(
     { requiredScopes: options.requiredScopes, untrusted: options.untrusted },
     policy,
   );
+  const requestedScope =
+    new URL(request.url).searchParams.get('scope') ??
+    new URL(request.url).searchParams.get('policyScope') ??
+    undefined;
   const policyScope = resolveCredentialPolicyScope(
     identity,
     credential.claims,
     options.authorizedPolicyScopes,
     options.defaultPolicyScope,
-    new URL(request.url).searchParams.get('scope') ??
-      new URL(request.url).searchParams.get('policyScope') ??
-      undefined,
+    requestedScope,
+    requestedScope === undefined ? options.scopeCoverage : undefined,
   );
   return {
     authorizationMode: 'credential',

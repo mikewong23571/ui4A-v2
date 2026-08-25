@@ -53,8 +53,10 @@ async function waitUntilHealthy(baseUrl: string, timeoutMs: number): Promise<voi
   while (Date.now() < deadline) {
     try {
       const response = await fetch(`${baseUrl}/api/health`);
-      const body = (await response.json()) as { status?: string; db?: string };
-      if (body.status === 'ok' && body.db === 'ok') return;
+      // T22 readiness 口径:serving 判据是 readiness === 'ready'(required 依赖全 ok);
+      // health.status 含 optional 探针,dev/e2e 环境恒为 degraded(见 server-kit.ts)。
+      const body = (await response.json()) as { readiness?: string; db?: string };
+      if (body.readiness === 'ready' && body.db === 'ok') return;
       lastError = `health 返回 ${JSON.stringify(body)}`;
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);

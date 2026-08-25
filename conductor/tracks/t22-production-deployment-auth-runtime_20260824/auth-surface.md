@@ -49,6 +49,7 @@ human `sub` 加 exchanging client `azp`，不读取或扩展 `act`/`may_act`。
 | `POST` | `/api/exec` | Browser Session 或 Bearer；普通动作 `ui4a:write`，confirmation approve/reject 为 `ui4a:approve` | 单动作裁决和 human-only approval。 |
 | `POST` | `/api/exec-plan` | Browser Session 或 Bearer；`ui4a:write` | Golden Story 的批量合同执行。 |
 | `POST` | `/api/chat` | 生产 Browser Session；入口需 `ui4a:read` | 浏览器 Chat；inline turn 再执行受限 Token Exchange。 |
+| `GET` | `/api/events` | Browser Session 或 Bearer；`ui4a:read` | 审计读；principal 过滤不得超出 credential。 |
 | `GET` | `/_meta/api/entity` | Browser Session 或 Bearer；`ui4a:read` | Canonical Meta entity read。 |
 | `POST` | `/_meta/api/exec` | Browser Session 或 Bearer；普通动作 `ui4a:write`，approve/reject 为 `ui4a:approve` | Canonical Meta action 与 human-only approval。 |
 
@@ -109,7 +110,6 @@ OIDC。
 | Method | Exact path | 当前风险/限制 |
 | --- | --- | --- |
 | `GET` | `/_meta/.well-known/ui4a.json` | 仍从普通 header/query 构造 Meta context；必须 deny/not expose。内部 alias `/api/meta/.well-known/ui4a.json` 同样不得暴露。 |
-| `GET` | `/api/events` | 可读原始事件并接受普通 principal filter；必须 deny/not expose。 |
 | `GET` | `/api/chat/history` | Chat 历史未绑定 credential principal；必须 deny/not expose。 |
 | `GET` | `/api/chat/sessions` | Session 清单未绑定 credential principal；必须 deny/not expose。 |
 | `GET` | `/api/delegations` | 委托清单未绑定 credential principal；必须 deny/not expose。 |

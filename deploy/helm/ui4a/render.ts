@@ -61,6 +61,7 @@ const webEdgeMatches: readonly EdgeMatch[] = [
     '/api/auth/callback',
     '/.well-known/ui4a.json',
     '/api/entity',
+    '/api/events',
     '/_meta/api/entity',
   ].map((path): EdgeMatch => ({ method: 'GET', path })),
   { method: 'GET', path: '/meta/', kind: 'prefix' },

@@ -237,4 +237,37 @@ describe('POST /api/exec-plan production trusted identity', () => {
     expect(mocks.applyTrustedIdentity).not.toHaveBeenCalled();
     expect(mocks.execPlan).not.toHaveBeenCalled();
   });
+
+  // T22 验证修复:多 rel 计划的 scopeCoverage 要求一个已授予 scope 覆盖全部 rel;
+  // 闭包走真实 relCoveredByPolicyScope(application-scope 未 mock)。
+  it('exposes multi-rel scope coverage requiring one scope to cover every plan rel', async () => {
+    await POST(
+      request({
+        steps: [
+          { rel: 'comment:c1', action: 'approve', params: {} },
+          { rel: 'post:first', action: 'unpublish', params: {} },
+        ],
+      }),
+    );
+    const singleApp = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as {
+      scopeCoverage?: (policyScope: string) => boolean;
+    };
+    expect(singleApp.scopeCoverage).toBeInstanceOf(Function);
+    expect(singleApp.scopeCoverage?.('development')).toBe(true);
+    expect(singleApp.scopeCoverage?.('publishing')).toBe(false);
+
+    await POST(
+      request({
+        steps: [
+          { rel: 'comment:c1', action: 'approve', params: {} },
+          { rel: 'post:publishing', action: 'archive', params: {} },
+        ],
+      }),
+    );
+    const mixed = mocks.resolveTrustedRequestIdentity.mock.calls[1]?.[1] as {
+      scopeCoverage?: (policyScope: string) => boolean;
+    };
+    expect(mixed.scopeCoverage?.('development')).toBe(false);
+    expect(mixed.scopeCoverage?.('publishing')).toBe(false);
+  });
 });

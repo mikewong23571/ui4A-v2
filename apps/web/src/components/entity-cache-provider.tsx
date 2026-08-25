@@ -24,12 +24,16 @@ import type { SirenEntity } from '@ui4a/engine';
 
 import { collectionBacklinkOf, PageEntityCache, type EntityFetcher } from '@/render/entity-cache';
 
+import { redirectToLoginOnAuthError } from './auth-redirect';
 import { fetchEntity } from './exec-client';
 
 /** 业务 sitemap version 取数(FR4 端点;一致性戳不可得时响亮失败,不静默跳过)。 */
 async function fetchSitemapVersion(): Promise<string> {
   const response = await fetch('/.well-known/ui4a.json');
   if (!response.ok) {
+    const body = (await response.json().catch(() => undefined)) as unknown;
+    // 认证类 401 统一跳转登录(T22 验证修复)。
+    redirectToLoginOnAuthError(response.status, body);
     throw new Error(`GET /.well-known/ui4a.json → HTTP ${response.status}`);
   }
   const body = (await response.json()) as { version?: unknown };

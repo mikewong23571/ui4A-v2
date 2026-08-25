@@ -737,6 +737,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
     for (const path of [
       '/.well-known/ui4a.json',
       '/api/entity',
+      '/api/events',
       '/api/exec',
       '/api/exec-plan',
       '/api/chat',
@@ -748,7 +749,6 @@ describe('T22 Docker Compose all-in-one contract', () => {
     }
     for (const path of [
       '/api/internal/',
-      '/api/events',
       '/api/chat/history',
       '/api/chat/sessions',
       '/api/delegations',

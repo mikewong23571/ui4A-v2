@@ -216,8 +216,8 @@
 ## Phase I: 真实用户故事、故障注入与恢复演练
 
 - [ ] Task: 执行 K8s Golden Story
-- [ ] trust CA、human login、business Flow 和 Agent token exchange
-- [ ] Agent 提议高风险 action、agent approval 拒绝、human approval 生效
+- [x] trust CA、human login、business Flow 和 Agent token exchange（见 evidence-k8s-auth-fix-20260825.md；CA 信任沿用 runbook 既有证据，本轮为登录/Flow/exchange 新证据）
+- [x] Agent 提议高风险 action、agent approval 拒绝、human approval 生效（confirmation:c3 挂起 → actor-is-human guard 拒绝 → human approve 生效）
 - [ ] K8s/Host 两后端完成 Agent Run
 - [x] Task: 单副本并发、重启与重放 d49ad70
 - [x] 在一个 Web 副本内并发同一 resource，验证 guard/CAS/rejection 结果

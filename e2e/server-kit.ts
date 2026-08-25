@@ -34,8 +34,11 @@ export async function waitUntilHealthy(baseUrl: string, timeoutMs: number): Prom
   while (Date.now() < deadline) {
     try {
       const response = await fetch(`${baseUrl}/api/health`);
-      const body = (await response.json()) as { status?: string; db?: string };
-      if (body.status === 'ok' && body.db === 'ok') return;
+      // T22 readiness 口径:health.status 只在全部(含 optional)依赖 ok 时为 "ok",dev/e2e
+      // 环境不接 temporal/keycloak/llm/runtime 探针,恒为 degraded;serving 判据是
+      // readiness === 'ready'(required 依赖全 ok)。
+      const body = (await response.json()) as { readiness?: string; db?: string };
+      if (body.readiness === 'ready' && body.db === 'ok') return;
       lastError = `health 返回 ${JSON.stringify(body)}`;
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
