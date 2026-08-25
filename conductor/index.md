@@ -15,6 +15,7 @@ Do not revive AI-optional rule fallback, concern-key render freezing, summary ar
 ## Definition
 
 -   [Product Definition](./product.md)
+-   [Product Vision (北极星方向备忘录)](./product-vision.md)
 -   [Product Guidelines](./product-guidelines.md)
 -   [Tech Stack](./tech-stack.md)
 
