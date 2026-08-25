@@ -45,9 +45,13 @@
 
 ## Phase C: 依赖方向收口(GR1,Green)
 
-- [ ] Task: 修复 check-deps 报告的存量违规(若有)
-- [ ] Task: 无法即时修复者登记入 exceptions.json(须含退役条件),其余清零
-- [ ] Task: Phase Verification & Checkpoint
+- [x] Task: 修复 check-deps 报告的存量违规 be15f9f
+  - engine 测试读 web bundle:fixture 复制为包内钉版快照
+  - web 回放测试 import worker activities:改用 web 内同构 fixture
+- [x] Task: 无法即时修复者登记入 exceptions.json(须含退役条件),其余清零 be15f9f
+  - 剩余 2 条:worker→web `src/db`(长期存储边界)、worker→web `src/engine`
+    (kill 集成测试的引擎真身需求,retireWhen 指向组合根下沉)
+- [x] Task: Phase Verification & Checkpoint(编排 agent 复跑 check-deps + 回放测试绿)
 
 ## Phase D: 大小治理(GR3,Green)
 
