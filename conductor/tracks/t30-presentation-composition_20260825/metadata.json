@@ -1,0 +1,10 @@
+{
+  "id": "t30-presentation-composition_20260825",
+  "type": "architecture",
+  "status": "planned",
+  "title": "T30 呈现平面组合化:区域 × intent × 聚合虚主体",
+  "created_at": "2026-08-25T10:00:00Z",
+  "updated_at": "2026-08-25T10:00:00Z",
+  "approved_by": "user (前置架构层:整体架构分析后设立;T27 零硬编码的前提)",
+  "depends_on": []
+}

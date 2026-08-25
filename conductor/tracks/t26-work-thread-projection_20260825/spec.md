@@ -21,13 +21,17 @@ bugfix。conductor 的 track 目录就是这个聚合的人工文件版。今天
 
 1. **成员资格**:什么把实体/事件归入一条线?候选:goal 锚定(chat turn 声明)、
    人类显式 pin、会话隐式聚合、rel 引用图自动扩张。允许组合,但主规则必须
-   声明式(数据),不是代码分支。
+   声明式(数据),不是代码分支。**约束(CLI 纪律二):主规则必须由事件中的
+   显式引用聚合(exec/goal 携带 thread 锚),不得仅由 presence/会话隐式推导——
+   否则 CLI/外部 agent 的工作落在线外,人机两世界。**
 2. **生命周期**:线的创建/暂停/完成/归档由什么事件界定?能否跨 session?
    (预期:能;durable 如 sidecar,key 绑定 principal 而非 sessionId。)
 3. **跨 scope 引用**:上下文包跨应用/跨平面(business/meta/外部系统投影)
    的表示法;与 sidecar key 的 policyScope 维度如何对齐。
 4. **与既有对象的关系**:chat session、delegation、flow 实例、confirmation
    如何被"收编"而不产生第二真相;线与 track(conductor)概念的命名与映射。
+5. **在场锚点**:线的进入/离开是否复用 T29 presence 事件(预期:是——
+   presence 只记锚点,成员资格仍按第 1 问的显式引用聚合)。
 
 ## 最终形态(实施目标)
 
@@ -56,7 +60,9 @@ bugfix。conductor 的 track 目录就是这个聚合的人工文件版。今天
 
 ## 验收方向
 
-- spike 产出:四个问题的 DECISIONS 条目与否决项记录;
+- spike 产出:五个问题的 DECISIONS 条目与否决项记录;
 - fold/重放测试:投影可重建、终态 hash 一致;
 - 合同测试:`thread:<id>` 实体的 Siren 形状(links/actions/guard-results);
+- **CLI 对照:经 CLI(显式 thread 锚,无 presence)完成建线/挂载/查态/
+  审计全流程——同一场景两种执行者各跑一遍;**
 - 不回归:invariants 与既有投影测试全绿。

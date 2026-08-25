@@ -18,10 +18,11 @@ meta sitemap、每条 flow 定义的版本摘要(内嵌定义全文)一次性灌
 
 ## 最终形态
 
-1. **分层披露。** agent 首轮上下文只含:当前 scope(由 clientView/scope 声明
-   决定)的 sitemap 切片、当前实体(合同全形)、可用动作。其他 scope 仅披露
-   "可导航入口"(rel + title,不含实体全形)。跨 scope 内容靠 agent 显式导航
-   获取,每次导航留痕(事件日志现状即支持)。
+1. **分层披露。** agent 首轮上下文只含:当前 scope 的 sitemap 切片、当前
+   实体(合同全形)、可用动作。scope/focus/切片由 T29 处境装配唯一供给,
+   本 Track 不另建 scope 推导。其他 scope 仅披露"可导航入口"(rel +
+   title,不含实体全形)。跨 scope 内容靠 agent 显式导航获取,每次导航
+   留痕(事件日志现状即支持)。
 2. **起点即事实。** 删除 `resolveStartRel` 的 sitemap 词级交集探测:起点 =
    clientView.subject(用户正注视的实体)→ scope 默认入口 → `articles`
    兜底。无 clientView 时报事实缺失,不猜。
