@@ -14,7 +14,7 @@
   - `apps/web/src/db/presence.ts`(与 db/presentation.ts 同族,不进业务 snapshot):
     principal → 最近 site/scope/thread/focus 的投影视图,可重建
   - 重放测试:重建后视图与增量 fold 一致;空日志 → 空在场(合法态)
-- [ ] Task: 上报端点 `POST /api/presence`
+- [x] Task: 上报端点 `POST /api/presence` 6f8e884
   - 认证(ui4a:write,生产接 credential 同 delegations 口径);服务端以已认证
     principal 为归属(不接受自报 principal);同态去重(非变化点不落库,返回
     200 幂等);presence 不经 judge/无 guard 无 effect
