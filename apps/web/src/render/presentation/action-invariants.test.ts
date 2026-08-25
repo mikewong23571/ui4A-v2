@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
 import { describe, expect, it, vi } from 'vitest';
 
@@ -39,15 +39,16 @@ describe('Surface action source and persistence invariants', () => {
   });
 
   it('persisted Surface and Recipe production schemas contain no transient interaction state', () => {
+    const readDir = (rel: string) => {
+      const dir = new URL(rel, import.meta.url);
+      return readdirSync(dir)
+        .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+        .map((f) => readFileSync(new URL(f, dir), 'utf8'))
+        .join('\n');
+    };
     const sources = [
-      readFileSync(
-        new URL('../../../../../packages/engine/src/presentation/surface.ts', import.meta.url),
-        'utf8',
-      ),
-      readFileSync(
-        new URL('../../../../../packages/engine/src/presentation/recipe.ts', import.meta.url),
-        'utf8',
-      ),
+      readDir('../../../../../packages/engine/src/presentation/surface/'),
+      readDir('../../../../../packages/engine/src/presentation/recipe/'),
     ].join('\n');
 
     for (const forbidden of ['enabled:', 'guardResult:', 'formData:', 'confirmationComplete:']) {
