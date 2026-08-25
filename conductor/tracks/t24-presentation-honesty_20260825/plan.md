@@ -24,7 +24,7 @@
 
 ## Phase B: chat 可观测性重构(活性保留,方言分层)
 
-- [ ] Task: thinking 帧默认折叠可展开
+- [~] Task: thinking 帧默认折叠可展开
   - 折叠态=一条进行中指示(步数/当前活动);展开态=实时思考增量(现状
     thinking-delta 渲染逻辑保留迁移)
 - [ ] Task: step 帧活动语言
