@@ -49,7 +49,7 @@
  */
 import { expect, test } from '@playwright/test';
 
-import { validateSpec } from '../apps/web/src/render/validator';
+import { validateSpec } from '../../apps/web/src/render/validator';
 
 import { SCENARIO_BASE, withFreshServer } from '../kits/server-kit';
 

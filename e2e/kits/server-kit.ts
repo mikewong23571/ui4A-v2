@@ -13,7 +13,10 @@ import path from 'node:path';
 
 import { getPool } from '../../apps/web/src/db/pool';
 
-const REPO_ROOT = path.join(__dirname, '..');
+// 本文件在 e2e/kits/ 下(T23 Phase D 迁移;750340a 修 import 时 __dirname 层级
+// 漏改一层——REPO_ROOT 曾解析到 e2e/,WORKER_DIR=e2e/apps/worker 不存在导致
+// worker 栈 spawn 同步 ENOENT);两级上行才是仓库根。
+const REPO_ROOT = path.join(__dirname, '..', '..');
 export const SCENARIO_PORT = 3110;
 export const SCENARIO_BASE = `http://localhost:${SCENARIO_PORT}`;
 export const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a';

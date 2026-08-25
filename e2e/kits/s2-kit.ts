@@ -18,7 +18,9 @@ import {
   waitUntilPortFree,
 } from './server-kit';
 
-export const REPO_ROOT = path.join(__dirname, '..');
+// e2e/kits/ 下两级上行才是仓库根(与 server-kit.ts 同款 T23 迁移层级修正;
+// 此前 e2e/ 作为 cwd 靠 pnpm 向上找工作区根而侥幸可用)。
+export const REPO_ROOT = path.join(__dirname, '..', '..');
 export const META_BASE = `${SCENARIO_BASE}/_meta`;
 export const AGENT_PRINCIPAL = 'user:mike';
 export const HUMAN_PRINCIPAL = 'local-user';
