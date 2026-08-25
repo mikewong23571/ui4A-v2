@@ -17,9 +17,9 @@ import {
   readAgentDefinitionRegistry,
   rebuildAgentDefinitionProjection,
   registerAgentDefinitionVersion,
-} from './agent-definitions';
-import { appendEvent, ensureEventsTable } from './events';
-import { getPool } from './pool';
+} from './index';
+import { appendEvent, ensureEventsTable } from '../events';
+import { getPool } from '../pool';
 
 const pool = getPool(process.env.DATABASE_URL!);
 
