@@ -5,3 +5,11 @@ T24 Phase C: e2e 与走查
 - 全量验收:CI=true pnpm e2e 全量 42 通过/19 门控 skip/0 失败;编排 agent 复跑 invariants(4 过 2 预置 skip)、human+baseline+t24 9/9。
 - pnpm check 等效门禁(编排 agent):typecheck(除 agent-runner 全 workspace)+ lint 0 error + governance OK + vitest apps/web,worker,cli,packages 313 文件 2242 用例全绿。
 - 存量记录:apps/agent-runner 39 用例因硬编码 Linux /dev/shm 在 macOS 必败(EPERM mkdir /dev/shm),git stash 对照证实先于 T24 存在于拉取的 master;属 T22/T23 遗留的环境性失败,超出呈现层 track 范围,建议独立任务处置(容器内跑或平台感知),已记入本 note 与计划文档。
+
+——
+
+T24 Phase C Verification & Checkpoint(自治验收,编排 agent 代行)
+
+自动化验证(编排 agent 亲自复跑):CI=true pnpm e2e invariants → 4 通过/2 预置 skip;CI=true pnpm e2e human baseline t24-presentation-honesty → 9/9;等效 pnpm check(typecheck 除 agent-runner + lint + governance + vitest 2242 用例)全绿。
+已知存量(非 T24):apps/agent-runner 39 用例 macOS 因 /dev/shm 必败,先于本 track 存在于 master。
+结论:Phase C 验收通过;Track DoD 达成(等效门禁口径,偏差已如实记录)。
