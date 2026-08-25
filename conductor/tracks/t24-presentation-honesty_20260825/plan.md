@@ -9,10 +9,10 @@
   - 固定机制词常量清单(surface 宿主/catalog.json/sidecar:/deref-failed/
     个人呈现 等),组件测试:canvas 主区域渲染文本不出现清单词;
     诊断/机制词只出现在抽屉内
-- [ ] Task: canvas 首屏清理(Green)
+- [x] Task: canvas 首屏清理(Green) 982d746
   - 移除头部机制行(A2UI surface 宿主/目录协商/表面 ID);信息层级:
     内容主体 > 合同动作(现状动作渲染不动) > 机制入口
-- [ ] Task: "为什么这样展示"抽屉
+- [~] Task: "为什么这样展示"抽屉
   - 抽屉承接:sidecar 元数据与生命周期操作(pin/revert/patch/promote/
     设为团队默认)、provenance 解释(explain 接口)、surface ID 与 catalog
     协商信息、原始合同 JSON 视图
