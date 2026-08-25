@@ -62,8 +62,10 @@ const webEdgeMatches: readonly EdgeMatch[] = [
     '/.well-known/ui4a.json',
     '/api/entity',
     '/api/events',
+    '/api/delegations',
     '/_meta/api/entity',
   ].map((path): EdgeMatch => ({ method: 'GET', path })),
+  { method: 'GET', path: '/api/delegations/', kind: 'prefix' },
   { method: 'GET', path: '/meta/', kind: 'prefix' },
   { method: 'GET', path: '/_next/', kind: 'prefix' },
   ...['/auth/logout', '/api/exec', '/api/exec-plan', '/api/chat', '/_meta/api/exec'].map(

@@ -160,9 +160,10 @@ const webGetExact = [
   '/.well-known/ui4a.json',
   '/api/entity',
   '/api/events',
+  '/api/delegations',
   '/_meta/api/entity',
 ] as const;
-const webGetPrefix = ['/meta/', '/_next/'] as const;
+const webGetPrefix = ['/api/delegations/', '/meta/', '/_next/'] as const;
 const webPostExact = [
   '/auth/logout',
   '/api/exec',
@@ -219,7 +220,6 @@ describe('T22 Kubernetes exact authentication edge', () => {
       '/_meta/.well-known/ui4a.json',
       '/api/chat/history',
       '/api/chat/sessions',
-      '/api/delegations',
       '/api/presentation',
       '/api/presentation/sidecar',
       '/api/meta/',

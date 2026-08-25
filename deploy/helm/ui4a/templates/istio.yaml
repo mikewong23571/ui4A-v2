@@ -81,6 +81,10 @@ spec:
         - method: { exact: GET }
           uri: { exact: /api/events }
         - method: { exact: GET }
+          uri: { exact: /api/delegations }
+        - method: { exact: GET }
+          uri: { prefix: /api/delegations/ }
+        - method: { exact: GET }
           uri: { exact: /_meta/api/entity }
         - method: { exact: POST }
           uri: { exact: /auth/logout }
@@ -204,6 +208,8 @@ spec:
               - /.well-known/ui4a.json
               - /api/entity
               - /api/events
+              - /api/delegations
+              - '/api/delegations/*'
               - /_meta/api/entity
     - to:
         - operation:

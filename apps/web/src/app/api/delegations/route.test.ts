@@ -84,7 +84,7 @@ beforeEach(async () => {
 
 describe('GET /api/delegations(舰队列表:事件日志聚合)', () => {
   it('空舰队:200 空列表(集合恒可投影,非 404)', async () => {
-    const response = await listDelegations();
+    const response = await listDelegations(new Request('http://localhost:3100/api/delegations'));
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ delegations: [] });
   });
@@ -106,7 +106,7 @@ describe('GET /api/delegations(舰队列表:事件日志聚合)', () => {
       detail: { step: 1, op: { kind: 'navigate', rel: 'comments' }, outcome: 'navigated' },
     });
 
-    const response = await listDelegations();
+    const response = await listDelegations(new Request('http://localhost:3100/api/delegations'));
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
       delegations: {

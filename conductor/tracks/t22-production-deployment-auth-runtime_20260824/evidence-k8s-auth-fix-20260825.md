@@ -99,6 +99,29 @@ T22 起事件 detail 携带 identity,断言腐烂非行为回归)。
 全量回归:`CI=true pnpm e2e` 43 passed / 31 skipped / 0 failed(约 7 分钟;skipped 为真实
 LLM/Codex 凭据门槛用例,与本批无关)。
 
+## 追加:`/api/delegations` 缺口修复(2026-08-25,同日第二轮)
+
+委托监控页报"服务不可用"——`/api/delegations` 与 `/api/delegations/{id}` 属于 auth-surface
+"未纳入 OIDC"清单,edge 按合同 404;页面后端不可达。本轮把两路由接入 application credential
+(production profile,Browser Session 或 Bearer,`ui4a:read`;全局只读投影,无 per-principal
+过滤;local profile 行为不变),edge 放行 exact `/api/delegations` + prefix `/api/delegations/`
+(istio.yaml/render.ts/Caddy 三处),auth-surface.md 相应两行移入已认证表。
+
+- 测试:`apps/web/src/app/api/delegations/route.production-auth.test.ts` 新增 6 例
+  (401 fail-closed 不读投影/凭证 200/local 不变,列表+详情);既有集成测试改传 Request 实参;
+  两个 edge 契约测试同步放行并移出 deferred 清单。
+- 质量门:`pnpm check` 全绿(336 文件 2587 通过)。
+- 部署:web 镜像 `docker.io/ui4a/web@sha256:c7c763b42e08ebb4a07a9ff8347288ff852cce95ddd689d76589c4738fd3da5c`
+  (tag `v0.1.0-experimental.1.t22auth3`;archive SHA-256
+  `789c954566b0a3e03137f703fee3f539da7c01471b23a098338301af49b4062c`;两 worker ctr import
+  一致,并以 digest 引用名补 tag——仅 tag 导入时 kubelet 按 digest 引用会去 docker.io 拉取);
+  helm rev 24→25,Pod `web-6c64d8b4f4-xtg4c` Running 2/2。chart/values staging 在
+  k8s-cp-1:/tmp/ui4a-release-t22auth3。
+- 线上验证:未认证 `/api/delegations` 与 `/api/delegations/wf-x` → 401(fail closed,应用裁决
+  而非 edge 404);`/api/chat/history` 仍 404(deferred 不变)。已登录浏览器(Playwright
+  headless Chrome,PKCE 全链)4/4:登录 → `GET /api/delegations` 200 → 委托监控页无错误横幅、
+  呈现合法空态(执行中 0)。
+
 ## 未覆盖(保持诚实边界)
 
 - K8s/Host 两后端 Agent Run 仍为 `failed-honest`(见 RELEASE_NOTES 已知限制),本修复不涉及
