@@ -16,7 +16,7 @@
   ],
   "compatAllowlist": [
     {
-      "path": "packages/agent/src/presentation-revision.ts",
+      "path": "packages/agent/src/presentation/presentation-revision.ts",
       "reason": "正当语义:'compatible-word' 是 Render Patch 协议的操作 kind(LLM prompt 词表),与 engine patch.ts 共用,非 legacy/compat 代码",
       "pendingRemoval": false
     },

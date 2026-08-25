@@ -37,7 +37,7 @@ import { terminateStaleNotifyWorkflows } from '../apps/web/src/temporal/notify';
 import { derefSpec, type DimensionCount, type EntityCache } from '../apps/web/src/render/deref';
 import { validateSpec } from '../apps/web/src/render/validator';
 import { contentVersion, fold } from '../packages/engine/src/index';
-import { metaFlowRel } from '../packages/shared/src/definition';
+import { metaFlowRel } from '../packages/shared/src/definition/definition';
 
 import { DATABASE_URL, SCENARIO_BASE, withFreshServer } from './server-kit';
 

@@ -10,8 +10,8 @@
       "default": "./src/index.ts"
     },
     "./testkit/rule-driver": {
-      "types": "./src/rule-driver.ts",
-      "default": "./src/rule-driver.ts"
+      "types": "./src/testkit/rule-driver.ts",
+      "default": "./src/testkit/rule-driver.ts"
     }
   },
   "scripts": {

@@ -13,26 +13,26 @@ export function heartbeatMessage(tick: number): string {
 }
 
 // 引擎运行时状态与 guard 合同(T2:谓词实现与引擎共用的类型基座)。
-export * from './state';
-export * from './guards';
-export * from './predicates';
+export * from './definition/state';
+export * from './definition/guards';
+export * from './definition/predicates';
 // 定义语言与定义平面形状(T4:machine-as-JSON 类型迁入,engine re-export 保持公共面)。
-export * from './definition';
+export * from './definition/definition';
 // Chat/runtime 与独立 Presentation Plane 之间的 versioned thin protocol。
-export * from './presentation';
+export * from './presentation/presentation';
 // Browser-observed view and server navigation facts remain separate from Business truth.
-export * from './chat-view';
+export * from './presentation/chat-view';
 // External-agent write ingress policy and governed Draft wire contracts.
 export * from './submission';
 // Provider-neutral Coding Capability Executor wire contracts.
-export * from './coding-executor';
+export * from './agent/coding-executor';
 // Versioned specialized Agent definition/task/result protocol (T19).
-export * from './agent-definition';
+export * from './agent/agent-definition';
 // Agent-authored specialization Draft contracts; approval and activation stay out of this result.
-export * from './agent-authoring';
+export * from './agent/agent-authoring';
 // Source-grounded Writing Agent specialization contracts and protocol limits.
-export * from './writing-agent';
+export * from './agent/writing-agent';
 // Platform-neutral, fail-closed production deployment contract (T22).
-export * from './production-deployment-config';
+export * from './deployment/index';
 // Platform-neutral process readiness aggregation contract (T22).
-export * from './readiness';
+export * from './deployment/readiness';

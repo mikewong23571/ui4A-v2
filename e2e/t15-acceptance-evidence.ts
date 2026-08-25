@@ -27,9 +27,9 @@ export const T15_PHASE_GH_EVIDENCE: readonly T15AcceptanceEvidence[] = [
   {
     storyId: 'U20',
     deterministic: [
-      'packages/engine/src/execution-audit.test.ts',
+      'packages/engine/src/execution/execution-audit.test.ts',
       'apps/web/src/chat/audit-context.test.ts',
-      'packages/agent/src/execution-audit-prompt.test.ts',
+      'packages/agent/src/llm/execution-audit-prompt.test.ts',
     ],
     focusedLiveEval: 'e2e/t15-ai-first-phase-gh.spec.ts',
     liveClosure: 'required',
@@ -38,7 +38,7 @@ export const T15_PHASE_GH_EVIDENCE: readonly T15AcceptanceEvidence[] = [
   {
     storyId: 'U21',
     deterministic: [
-      'packages/engine/src/execution-audit.test.ts',
+      'packages/engine/src/execution/execution-audit.test.ts',
       'apps/web/src/chat/audit-context.test.ts',
     ],
     focusedLiveEval: 'e2e/t15-ai-first-phase-gh.spec.ts',
@@ -48,7 +48,7 @@ export const T15_PHASE_GH_EVIDENCE: readonly T15AcceptanceEvidence[] = [
   {
     storyId: 'U22',
     deterministic: [
-      'packages/agent/src/llm-driver.test.ts',
+      'packages/agent/src/llm/llm-driver.test.ts',
       'apps/web/src/app/api/chat/route.test.ts',
       'e2e/chat.spec.ts',
       'e2e/t15-u22-failure.spec.ts',
@@ -59,8 +59,8 @@ export const T15_PHASE_GH_EVIDENCE: readonly T15AcceptanceEvidence[] = [
   {
     storyId: 'U23',
     deterministic: [
-      'packages/agent/src/llm-config.test.ts',
-      'packages/agent/src/llm-probe.test.ts',
+      'packages/agent/src/llm/llm-config.test.ts',
+      'packages/agent/src/llm/llm-probe.test.ts',
       'apps/web/src/app/api/chat/route.delegated.test.ts',
     ],
     focusedLiveEval: 'e2e/t15-ai-first-phase-gh.spec.ts',
