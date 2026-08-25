@@ -37,9 +37,8 @@ import {
   type TrustedRequestAuditContext,
 } from '../../../auth/request-identity';
 import { appendEvent, readLog } from '../../../db/events';
-import { ensurePresenceTables, loadPresenceForPrincipal } from '../../../db/presence';
+import { situationForChat } from '../../../engine/chat-situation';
 import { getDb } from '../../../engine/service';
-import { assembleSituation, grantedPolicyScopes } from '../../../engine/situation';
 import {
   getPresentationBroker,
   getPresentationCapabilities,
@@ -763,49 +762,11 @@ export async function POST(request: Request) {
   const sessionId = productionIdentity?.principal ?? parsed.sessionId;
   const principal = productionIdentity?.principal ?? `user:${sessionId}`;
   const presentationPrincipal = productionIdentity?.principal ?? LOCAL_PRESENTATION_PRINCIPAL;
-  let situation: ReturnType<typeof assembleSituation>;
-  try {
-    const db = getDb();
-    await ensurePresenceTables(db);
-    const presence = await loadPresenceForPrincipal(db, principal);
-    const grantedScopes = productionIdentity
-      ? [...grantedPolicyScopes(productionIdentity.scopes), productionIdentity.policyScope]
-      : ['default'];
-    situation = assembleSituation({
-      principal,
-      grantedScopes: [...new Set(grantedScopes)],
-      presence,
-      explicit:
-        clientView === undefined
-          ? undefined
-          : {
-              site: clientView.presence.site,
-              scope: clientView.presence.scope,
-              thread: clientView.presence.thread,
-              focus: clientView.presence.focus,
-            },
-      defaults: {
-        site: 'business',
-        scope: productionIdentity?.policyScope ?? 'default',
-      },
-    });
-  } catch {
-    // Presence is auxiliary; a projection outage must not disable Chat.
-    situation = assembleSituation({
-      principal,
-      grantedScopes: [productionIdentity?.policyScope ?? 'default'],
-      explicit:
-        clientView === undefined
-          ? undefined
-          : {
-              site: clientView.presence.site,
-              scope: clientView.presence.scope,
-              thread: clientView.presence.thread,
-              focus: clientView.presence.focus,
-            },
-      defaults: { site: 'business', scope: productionIdentity?.policyScope ?? 'default' },
-    });
-  }
+  const situation = await situationForChat({
+    principal,
+    identity: productionIdentity,
+    clientView,
+  });
   let turnFetch: FetchLike = (url, init) => fetch(url, init);
   if (
     productionIdentity !== undefined &&
