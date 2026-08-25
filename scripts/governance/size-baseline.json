@@ -1,0 +1,232 @@
+{
+  "$schema": "T23 GR3 shrink-only baseline. files/dirs entries record path + effective lines at Red time; entries must only shrink.",
+  "files": [
+    {
+      "path": "deploy/helm/ui4a/render.ts",
+      "lines": 1647,
+      "limit": 500
+    },
+    {
+      "path": "packages/agent/src/loop.test.ts",
+      "lines": 1278,
+      "limit": 800
+    },
+    {
+      "path": "apps/web/src/db/agent-definitions.ts",
+      "lines": 1192,
+      "limit": 500
+    },
+    {
+      "path": "packages/shared/src/production-deployment-config.ts",
+      "lines": 1126,
+      "limit": 500
+    },
+    {
+      "path": "apps/web/src/components/floating-chat.test.tsx",
+      "lines": 1075,
+      "limit": 800
+    },
+    {
+      "path": "e2e/story-eval-kit.ts",
+      "lines": 1037,
+      "limit": 500
+    },
+    {
+      "path": "scripts/t22-helm-contract.test.ts",
+      "lines": 983,
+      "limit": 800
+    },
+    {
+      "path": "apps/web/src/app/api/chat/route.test.ts",
+      "lines": 956,
+      "limit": 800
+    },
+    {
+      "path": "apps/worker/src/agents/authoring/adapter.ts",
+      "lines": 952,
+      "limit": 500
+    },
+    {
+      "path": "packages/engine/src/presentation/surface.ts",
+      "lines": 950,
+      "limit": 500
+    },
+    {
+      "path": "apps/web/src/engine/drafts.ts",
+      "lines": 949,
+      "limit": 500
+    },
+    {
+      "path": "apps/web/src/app/api/chat/route.ts",
+      "lines": 901,
+      "limit": 500
+    },
+    {
+      "path": "scripts/t22-compose-contract.test.ts",
+      "lines": 866,
+      "limit": 800
+    },
+    {
+      "path": "apps/worker/src/activities.ts",
+      "lines": 840,
+      "limit": 500
+    },
+    {
+      "path": "apps/web/src/engine/service.ts",
+      "lines": 828,
+      "limit": 500
+    },
+    {
+      "path": "packages/engine/src/siren.ts",
+      "lines": 819,
+      "limit": 500
+    },
+    {
+      "path": "e2e/s2.spec.ts",
+      "lines": 814,
+      "limit": 800
+    },
+    {
+      "path": "apps/worker/src/agents/coding/adapter.ts",
+      "lines": 809,
+      "limit": 500
+    },
+    {
+      "path": "apps/worker/src/runtime-backends/kubernetes-runtime-transport.ts",
+      "lines": 776,
+      "limit": 500
+    },
+    {
+      "path": "apps/web/src/components/chat-panel.tsx",
+      "lines": 767,
+      "limit": 500
+    },
+    {
+      "path": "apps/worker/src/agents/writing/adapter.ts",
+      "lines": 711,
+      "limit": 500
+    },
+    {
+      "path": "packages/engine/src/fold.ts",
+      "lines": 689,
+      "limit": 500
+    },
+    {
+      "path": "apps/web/src/components/canvas-body.tsx",
+      "lines": 673,
+      "limit": 500
+    },
+    {
+      "path": "packages/agent/src/presentation-agent.ts",
+      "lines": 673,
+      "limit": 500
+    },
+    {
+      "path": "deploy/compose/render-stack.ts",
+      "lines": 607,
+      "limit": 500
+    },
+    {
+      "path": "packages/engine/src/agent-run/run.ts",
+      "lines": 598,
+      "limit": 500
+    },
+    {
+      "path": "apps/worker/src/runtime-backends/host-runner.ts",
+      "lines": 593,
+      "limit": 500
+    },
+    {
+      "path": "deploy/keycloak/realm-bootstrap.ts",
+      "lines": 592,
+      "limit": 500
+    },
+    {
+      "path": "apps/agent-runner/src/production.ts",
+      "lines": 562,
+      "limit": 500
+    },
+    {
+      "path": "packages/agent/src/llm-driver.ts",
+      "lines": 536,
+      "limit": 500
+    },
+    {
+      "path": "apps/agent-runner/src/pki.ts",
+      "lines": 535,
+      "limit": 500
+    },
+    {
+      "path": "apps/cli/src/commands.ts",
+      "lines": 526,
+      "limit": 500
+    },
+    {
+      "path": "apps/web/src/db/agent-runs.ts",
+      "lines": 511,
+      "limit": 500
+    }
+  ],
+  "dirs": [
+    {
+      "path": "scripts",
+      "lines": 15316,
+      "limit": 4000
+    },
+    {
+      "path": "packages/engine/src",
+      "lines": 12507,
+      "limit": 4000
+    },
+    {
+      "path": "apps/web/src/engine",
+      "lines": 9296,
+      "limit": 4000
+    },
+    {
+      "path": "packages/agent/src",
+      "lines": 9124,
+      "limit": 4000
+    },
+    {
+      "path": "e2e",
+      "lines": 8306,
+      "limit": 4000
+    },
+    {
+      "path": "apps/worker/src/runtime-backends",
+      "lines": 6209,
+      "limit": 4000
+    },
+    {
+      "path": "apps/web/src/db",
+      "lines": 5886,
+      "limit": 4000
+    },
+    {
+      "path": "apps/web/src/components",
+      "lines": 5439,
+      "limit": 4000
+    },
+    {
+      "path": "packages/shared/src",
+      "lines": 5365,
+      "limit": 4000
+    },
+    {
+      "path": "packages/engine/src/presentation",
+      "lines": 5106,
+      "limit": 4000
+    },
+    {
+      "path": "apps/worker/src",
+      "lines": 4465,
+      "limit": 4000
+    },
+    {
+      "path": "apps/web/src/auth",
+      "lines": 4235,
+      "limit": 4000
+    }
+  ]
+}

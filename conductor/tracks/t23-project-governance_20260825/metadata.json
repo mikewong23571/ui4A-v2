@@ -1,0 +1,9 @@
+{
+  "id": "t23-project-governance_20260825",
+  "type": "governance",
+  "status": "in_progress",
+  "title": "T23 项目治理:规则基线、依赖方向、兼容性清理与大小门禁",
+  "created_at": "2026-08-25T06:30:00Z",
+  "updated_at": "2026-08-25T06:30:00Z",
+  "approved_by": "user (先定治理规则;类 TDD 红绿门禁;控制模块依赖方向与例外;清理兼容性代码——项目未发布不留兼容;限定模块与单文件大小)"
+}

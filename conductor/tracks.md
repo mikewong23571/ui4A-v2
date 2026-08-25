@@ -48,3 +48,7 @@
 ---
 
 - [~] **Track: T22 生产形态部署、身份认证与双后端 Agent Runtime：mothership K8s/Istio、Docker Compose all-in-one、Keycloak、灾备与首个试验性版本** *Link: [tracks/t22-production-deployment-auth-runtime_20260824/index.md](./tracks/t22-production-deployment-auth-runtime_20260824/index.md)*
+
+---
+
+- [~] **Track: T23 项目治理：规则基线 GR1–GR5、依赖方向与例外登记、未发布窗口兼容性清理、文件/模块大小门禁，类 TDD 红绿执行并入 pnpm check** *Link: [tracks/t23-project-governance_20260825/index.md](./tracks/t23-project-governance_20260825/index.md)*

@@ -1,0 +1,361 @@
+{
+  "$schema": "T23 governance exceptions registry. dependencyExceptions: GR1 direction exceptions with reason + retireWhen. compatAllowlist: GR2 baseline of legacy/compat markers; pendingRemoval: true = shrink-only debt, false = permanent legitimate wording.",
+  "dependencyExceptions": [
+    {
+      "from": "apps/worker/src",
+      "to": "apps/web/src/db",
+      "reason": "worker 复用 web 的 PostgreSQL pool/事件 adapter(AGENTS.md 承认的存储边界例外),避免两个进程各自维护一套连接与追加读实现",
+      "retireWhen": "存储访问收敛为独立的 @ui4a/db 共享包后,worker 改从该包导入,本例外移除"
+    },
+    {
+      "from": "apps/worker/src",
+      "to": "apps/web/src/engine",
+      "reason": "delegation.kill.integration.test 直接构造 web engine service 验证 kill 证据落库,属测试期耦合",
+      "retireWhen": "kill 证据改为经公开契约(事件日志读取边界或 @ui4a/db)断言后移除"
+    },
+    {
+      "from": "apps/web/src/engine",
+      "to": "apps/worker/src",
+      "reason": "service.incremental/restart-replay 测试直接 import worker activities 做回放对比,属测试期耦合",
+      "retireWhen": "回放对比改为消费 worker 公开导出或共享包后移除"
+    },
+    {
+      "from": "packages/engine/src",
+      "to": "apps/web/src",
+      "reason": "presentation scenario 测试直接读取 apps/web 内置 walkthrough bundle JSON 作为 fixture",
+      "retireWhen": "fixture 移入 packages 自身测试资产或独立 fixtures 包后移除;packages 对 apps 的运行时依赖永远不允许"
+    }
+  ],
+  "compatAllowlist": [
+    {
+      "path": "apps/web/src/app/api/chat/history/route.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/app/api/chat/history/route.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/app/api/chat/route.production-auth.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/app/api/chat/sessions/route.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/app/api/health/route.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/chat/client-view.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/chat/conversation.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/chat/conversation.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/chat/history.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/components/auth-redirect.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/db/agent-runs.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/db/agent-runs.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/db/events.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/db/recovery.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/engine/agent-runs.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/engine/agent-runs.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/engine/agent-runtime-config.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/engine/agent-runtime-config.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/engine/native-agent-dispatch.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/engine/native-agent-dispatch.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/engine/service.production-db.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/web/src/temporal/production-runtime.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/worker/src/activities.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/worker/src/agents/host/codex-transport.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/worker/src/agents/host/codex-transport.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/worker/src/capabilities/coding/codex.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/worker/src/capabilities/coding/codex.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/worker/src/capabilities/coding/compatibility.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/worker/src/capabilities/coding/source-governance.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/worker/src/delegation.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/worker/src/file-secret.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/worker/src/runtime-backends/host-runner.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/worker/src/worker-db.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/worker/src/worker-db.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "apps/worker/src/workflows.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "deploy/keycloak/realm-bootstrap.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "e2e/glm-probe.spec.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "e2e/t15-story-corpus.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/agent/src/index.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/agent/src/llm-config.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/agent/src/llm-probe.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/agent/src/llm-probe.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/agent/src/presentation-agent.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/agent/src/presentation-revision.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/agent/src/progress.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/agent/src/rule-driver.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/agent/src/runtime-governance.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/agent/src/t21-source-governance.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/engine/src/agent-run/index.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/engine/src/agent-run/legacy-capability-run.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/engine/src/agent-run/legacy-capability-run.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/engine/src/agent-run/run.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/engine/src/capability-run/profile.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/engine/src/definition-resolution.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/engine/src/meta-bootstrap.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/engine/src/presentation/patch.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/engine/src/presentation/patch.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/engine/src/presentation/recipe.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/engine/src/presentation/recipe.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/engine/src/presentation/surface.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/engine/src/purity.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "packages/shared/src/definition.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "scripts/t22-helm-contract.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "scripts/t22-k8s-runtime-edge-contract.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "scripts/t22-keycloak-realm-bootstrap.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    },
+    {
+      "path": "scripts/t22-release-artifacts.test.ts",
+      "reason": "T23 Red 基线:legacy/compat 标记,待 Phase B 复核——清理兼容代码或修正措辞",
+      "pendingRemoval": true
+    }
+  ]
+}
