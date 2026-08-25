@@ -25,8 +25,8 @@
     "eval:llm": "CI=true playwright test --config=playwright.eval.config.ts",
     "cli:build": "pnpm --filter @ui4a/cli build",
     "cli:pack": "pnpm --filter @ui4a/cli pack",
-    "migrate:production": "pnpm --filter @ui4a/worker exec tsx ../../scripts/t22-migrate.ts",
-    "compose:t22": "pnpm --filter @ui4a/worker exec tsx ../../scripts/t22-compose.ts"
+    "migrate:production": "pnpm --filter @ui4a/worker exec tsx ../../scripts/t22/t22-migrate.ts",
+    "compose:t22": "pnpm --filter @ui4a/worker exec tsx ../../scripts/t22/t22-compose.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

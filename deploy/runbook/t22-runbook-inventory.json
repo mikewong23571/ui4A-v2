@@ -147,7 +147,7 @@
       "commands": [
         {
           "id": "realm-check",
-          "command": "pnpm --filter @ui4a/worker exec tsx ../../scripts/t22-keycloak-realm-bootstrap.ts --check; test -f deploy/keycloak/realm-import.json",
+          "command": "pnpm --filter @ui4a/worker exec tsx ../../scripts/t22/t22-keycloak-realm-bootstrap.ts --check; test -f deploy/keycloak/realm-import.json",
           "expectedOutput": "A missing realm reports absent; an existing compatible realm reports skip without mutation.",
           "failureCriterion": "KEYCLOAK_REALM_INCOMPATIBLE, an unexpected client set, or any request for drift repair.",
           "recoveryAction": "Back up identity state and stop. Replace/rebuild explicitly; never reconcile an existing realm online."
@@ -274,7 +274,7 @@
       "commands": [
         {
           "id": "isolated-recovery",
-          "command": "pnpm --filter @ui4a/worker exec tsx ../../scripts/t22-k8s-recovery-observe-command.ts capture; pnpm --filter @ui4a/worker exec tsx ../../scripts/t22-k8s-recovery-command.ts plan; test -f scripts/t22-k8s-recovery-live.ts",
+          "command": "pnpm --filter @ui4a/worker exec tsx ../../scripts/t22/t22-k8s-recovery-observe-command.ts capture; pnpm --filter @ui4a/worker exec tsx ../../scripts/t22/t22-k8s-recovery-command.ts plan; test -f scripts/t22/t22-k8s-recovery-live.ts",
           "expectedOutput": "A named completed manifest covers four databases, runtime, realm/config, PKI/private artifacts; isolated restore reports RPO/RTO and matching authority/identity/Run evidence.",
           "failureCriterion": "Checksums/inventory/quiescence are incomplete, target aliases current state, or restored fingerprints differ.",
           "recoveryAction": "Resume current writers, retain the incomplete archive for diagnosis, and never restore into the current PVC/database."

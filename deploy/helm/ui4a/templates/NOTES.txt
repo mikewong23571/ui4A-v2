@@ -31,6 +31,6 @@ Jobs after taking its pre-upgrade backup.
 The v0.1 automatic CronJob is suspended by default. Its retained single-database command is an
 incomplete, non-authoritative fixture and must not be unsuspended or used as recovery evidence. The
 only verified recovery path is the host-operated, quiesced ten-artifact workflow governed by
-scripts/t22-k8s-recovery-live.ts; it covers four databases, runtime/workspaces, realm/config refs,
+scripts/t22/t22-k8s-recovery-live.ts; it covers four databases, runtime/workspaces, realm/config refs,
 deployment Secret archival and runtime PKI with checksums, an atomic completed manifest, isolated
 restore, projection rebuild, and authority/identity/Run evidence.

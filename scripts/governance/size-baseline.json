@@ -17,7 +17,7 @@
       "limit": 500
     },
     {
-      "path": "scripts/t22-helm-contract.test.ts",
+      "path": "scripts/t22/t22-helm-contract.test.ts",
       "lines": 983,
       "limit": 800
     },
@@ -43,7 +43,7 @@
       "note": "T22 在途所有;T23 不拆分,待 T22 关闭后处理(见 risk-inventory R3)"
     },
     {
-      "path": "scripts/t22-compose-contract.test.ts",
+      "path": "scripts/t22/t22-compose-contract.test.ts",
       "lines": 866,
       "limit": 800
     },
@@ -105,11 +105,6 @@
   ],
   "dirs": [
     {
-      "path": "scripts",
-      "lines": 15316,
-      "limit": 4000
-    },
-    {
       "path": "apps/web/src/engine",
       "lines": 9296,
       "limit": 4000
@@ -143,6 +138,12 @@
       "path": "apps/web/src/auth",
       "lines": 4235,
       "limit": 4000
+    },
+    {
+      "path": "scripts/t22",
+      "lines": 14402,
+      "limit": 4000,
+      "note": "T22 在途 track 所有;T23 不处置,T22 关闭时按 GR5 裁决(见 risk-inventory R4)"
     }
   ]
 }

@@ -77,7 +77,7 @@
     "temporal": "deploy/temporal/production-contract.json",
     "keycloakRealm": "deploy/keycloak/realm-import.json",
     "keycloakBootstrap": "deploy/keycloak/realm-bootstrap.ts",
-    "operatorInputs": "scripts/t22-compose-inputs.ts",
+    "operatorInputs": "scripts/t22/t22-compose-inputs.ts",
     "storyAcceptance": "deploy/compose/acceptance-contract.json"
   },
   "services": [
@@ -124,7 +124,7 @@
         "pnpm",
         "exec",
         "tsx",
-        "scripts/t22-backup-command.ts",
+        "scripts/t22/t22-backup-command.ts",
         "backup",
         "--environment",
         "compose"
@@ -136,7 +136,7 @@
         "pnpm",
         "exec",
         "tsx",
-        "scripts/t22-restore-command.ts",
+        "scripts/t22/t22-restore-command.ts",
         "restore",
         "--target",
         "isolated"

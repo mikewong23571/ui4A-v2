@@ -41,7 +41,7 @@
       "pendingRemoval": false
     },
     {
-      "path": "scripts/t22-release-artifacts.test.ts",
+      "path": "scripts/t22/t22-release-artifacts.test.ts",
       "reason": "正当语义:断言 RELEASE_NOTES.md 必须包含 compatibility 声明章节(release/v0.1.0-experimental.1/RELEASE_NOTES.md §Compatibility),属发布合同措辞",
       "pendingRemoval": false
     },
