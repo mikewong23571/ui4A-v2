@@ -11,7 +11,6 @@ import {
   type FetchLike,
 } from '@ui4a/agent';
 import {
-  CHAT_VIEW_PROTOCOL_VERSION,
   CHAT_NAVIGATION_PROTOCOL_VERSION,
   completePresentationRequest,
   parseClientViewReport,
