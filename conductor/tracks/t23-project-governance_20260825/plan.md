@@ -48,9 +48,30 @@
 
 ## Phase D: 大小治理(GR3,Green)
 
-- [ ] Task: 按 spec FR4 优先级从大到小拆分超限生产源码文件,每次拆分后复跑该模块测试
-- [ ] Task: 拆分超限测试文件(>800 有效行)按场景分组
-- [ ] Task: 裁决 `scripts/` 考古层(GR5):常驻化或归档;合并 playwright 配置
+> 策略优先级:删除 > 下沉 > 拆分 > 提取。12 个超限目录按四种类型分别施治,
+> 不按统一"拆文件"处理。
+
+- [ ] Task: 考古堆积型裁决——`scripts/`(15.3k)、`e2e/`(8.3k)
+  - t15–t19 已关闭 track 的 eval 脚本/spec/corpus:提升为常驻门禁或随 track 归档删除
+  - t22 系列在 T22 关闭前保留,关闭时同规则裁决
+  - playwright 配置 6 个合并为 2 个(CI 常驻 + eval 按需),e2e 常驻集只留
+    invariants + 核心流程 spec
+- [ ] Task: 平铺增长型下沉——`packages/engine/src`、`packages/agent/src`、
+  `packages/shared/src`
+  - 按既有领域语言把根部平铺文件下沉子目录(如 definition/、execution/、contract/),
+    零行为变化,批量改 import
+  - 随下沉拆分超限文件:`siren.ts`、`fold.ts`、`agent-run/run.ts`
+- [ ] Task: 组合边界型下沉——`apps/web/src/engine`、`apps/web/src/db`
+  - 按文件名自带领域簇分组:`engine/agent/`、`engine/capability/` 等;`db/` 同步
+  - 先拆 `db/agent-definitions.ts`(1192)再下沉
+- [ ] Task: 实现厚型拆分——`apps/worker/src/runtime-backends`、`apps/web/src/auth`、
+  `apps/web/src/components`、`deploy/helm/ui4a/render.ts`
+  - runtime-backends 分 `kubernetes/`、`host/` 子目录,拆
+    `kubernetes-runtime-transport.ts`、`host-runner.ts`
+  - chat 组件下沉 `components/chat/`,拆 `chat-panel.tsx`、`canvas-body.tsx`
+  - auth 仅超 6%,拆一两个文件达标,不动结构
+  - `render.ts`(1647)按部署组件拆分
+- [ ] Task: 拆分其余超限测试文件(>800 有效行)按场景分组
 - [ ] Task: `size-baseline.json` 清空,check-size 全绿
 - [ ] Task: Phase Verification & Checkpoint
 
