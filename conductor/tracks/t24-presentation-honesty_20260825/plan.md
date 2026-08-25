@@ -22,7 +22,7 @@
   - 首屏只留一个不显眼的"为什么这样展示"入口;原控制条从主区域移除
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) 706862c
 
-## Phase B: chat 可观测性重构(活性保留,方言分层)
+## Phase B: chat 可观测性重构(活性保留,方言分层) [checkpoint: fe0c62c]
 
 - [x] Task: thinking 帧默认折叠可展开 15d5752
   - 折叠态=一条进行中指示(步数/当前活动);展开态=实时思考增量(现状
@@ -37,7 +37,7 @@
     生成面向用户表述;LLM 不可用时渲染中性结构化展示
     ("失败 · code=… · 已尝试:…"),零硬编码友好文案模板
   - 测试:三种来源(LLM 表述/中性降级/结构化数据)各自的渲染形状
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) fe0c62c
 
 ## Phase C: 端到端验收
 
