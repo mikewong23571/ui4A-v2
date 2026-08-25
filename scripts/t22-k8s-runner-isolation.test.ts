@@ -29,7 +29,7 @@ describe('T22 K8s dynamic Runner scoped Secret contract', () => {
       /UI4A_KUBERNETES_SECRETS_SECRET[^\n]+\.Values\.secrets\.existingSecretName/,
     );
 
-    const renderer = readFileSync(resolve(chartRoot, 'render.ts'), 'utf8');
+    const renderer = readFileSync(resolve(chartRoot, 'workloads.ts'), 'utf8');
     expect(renderer).toMatch(
       /name: 'UI4A_KUBERNETES_SECRETS_SECRET',[\s\S]{0,100}value: values\.secrets\.runnerExistingSecretName/,
     );
