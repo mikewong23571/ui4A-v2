@@ -1,0 +1,7 @@
+T24 Phase B Task 2: step 帧活动语言
+
+- 固定 op 映射常量(step-activity-words.ts,8 op 全覆盖: navigate/exec/present/answer/clarify/exec-plan/done/fail,未知 op 中性回退不静默吞);零每实体分支。
+- step 帧扩展 {activity:{op,title?,subject?}, eventSeq}:标题服务器侧从 sitemap/流程合同解析(step-activity.ts),旧帧无 activity 回退 message.text(前向兼容);message.text 机器层保留。
+- 审计下钻:route.ts 先落 chat-turn-progress 取 seq 再发帧;活动渲染为 <a> 指向 /api/events?afterSeq=<seq-1>(接口真实存在且支持 afterSeq;/events 页无 seq 锚点能力且不在本任务作用域——诚实可达,Phase C 走查复核)。
+- handleFinal 补条条件扩展 machineTextSteps(旧形状终局不双份;answered 回答本体不丢,有专测)。
+- 验证(编排 agent 复跑):chat 域 50 用例、components 197、api/chat 54 全绿;governance OK;packages/ 只读未动。
