@@ -144,7 +144,12 @@ function versionRows(entity: SirenEntity): VersionRow[] {
           source += ` · ${decidedBy.actor ?? ''}${decidedBy.principal ? `(${decidedBy.principal})` : ''}`;
         }
       }
-      return { version: Number(props.version ?? 0), status: String(props.status ?? ''), source, definition };
+      return {
+        version: Number(props.version ?? 0),
+        status: String(props.status ?? ''),
+        source,
+        definition,
+      };
     })
     .sort((a, b) => a.version - b.version);
 }

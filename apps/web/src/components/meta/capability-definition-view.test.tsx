@@ -74,10 +74,7 @@ describe('CapabilityDefinitionBody(取数状态机)', () => {
   });
 
   it('404 → missing 提示(能力不存在);不造数据', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(jsonResponse(404, { error: '实体不存在' })),
-    );
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(404, { error: '实体不存在' })));
     render(<CapabilityDefinitionBody rel="meta/capability:ghost" />);
     await waitFor(() => expect(screen.getByText(/不存在/)).toBeTruthy());
     expect(screen.queryByRole('button')).toBeNull();

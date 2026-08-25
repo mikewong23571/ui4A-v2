@@ -12,12 +12,7 @@
  */
 import type { SirenEntity } from '@ui4a/engine';
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 
 import { useMetaEntity } from './meta-client';
 

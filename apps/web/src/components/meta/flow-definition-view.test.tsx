@@ -321,16 +321,16 @@ describe('版本两版对比(T13 Phase B Task 2;spec 架构决定 2 后半)', ()
     const section = container.querySelector<HTMLElement>('section[aria-label="版本历史"]')!;
     const base = within(section).getByLabelText('基线版本');
     const candidate = within(section).getByLabelText('对比版本');
-    expect(within(base).getAllByRole('option').map((option) => option.textContent)).toEqual([
-      '选择版本',
-      'v1',
-      'v2',
-    ]);
-    expect(within(candidate).getAllByRole('option').map((option) => option.textContent)).toEqual([
-      '选择版本',
-      'v1',
-      'v2',
-    ]);
+    expect(
+      within(base)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['选择版本', 'v1', 'v2']);
+    expect(
+      within(candidate)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['选择版本', 'v1', 'v2']);
     // 初始未选择:不渲染 diff。
     expect(section.querySelector('[data-bios="diff"]')).toBeNull();
   });

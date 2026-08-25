@@ -223,9 +223,7 @@ export function CapabilitiesListBody() {
                   <TableCell className="px-3 py-2">
                     <Badge variant="outline">{kind}</Badge>
                   </TableCell>
-                  <TableCell className="px-3 py-2">
-                    {String(sub.properties.intent ?? '')}
-                  </TableCell>
+                  <TableCell className="px-3 py-2">{String(sub.properties.intent ?? '')}</TableCell>
                 </TableRow>
               );
             })}
