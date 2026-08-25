@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { hasExplicitMetaIntent, isDiscoveryOnlyIntent, resolveStartRel } from './start';
+import { isDiscoveryOnlyIntent, metaPlaneFromClientRoute, resolveStartRel } from './start';
 import type { FetchLike } from '@ui4a/agent';
 
 const BASE = 'http://contract.test';
@@ -128,12 +128,18 @@ describe('resolveStartRel', () => {
   });
 });
 
-describe('hasExplicitMetaIntent', () => {
-  it('仅显式定义变更越界到 _meta，普通业务 flow 目标仍留在业务站', () => {
-    expect(hasExplicitMetaIntent('给文章状态 flow 加一个置顶动作')).toBe(true);
-    expect(hasExplicitMetaIntent('经 _meta 修订文章状态')).toBe(true);
-    expect(hasExplicitMetaIntent('把文章发布向导一次走完')).toBe(false);
-    expect(hasExplicitMetaIntent('把 first-post 置顶')).toBe(false);
+describe('metaPlaneFromClientRoute', () => {
+  it('平面归属跟用户位置走:/meta 与 meta canvas 视图越界,业务页面留在业务站', () => {
+    expect(metaPlaneFromClientRoute(undefined)).toBe(false);
+    expect(metaPlaneFromClientRoute('/')).toBe(false);
+    expect(metaPlaneFromClientRoute('/entity?rel=articles')).toBe(false);
+    expect(metaPlaneFromClientRoute('/canvas?focus=post%3Apost-welcome')).toBe(false);
+    expect(metaPlaneFromClientRoute('/meta')).toBe(true);
+    expect(metaPlaneFromClientRoute('/meta/applications')).toBe(true);
+    expect(metaPlaneFromClientRoute('/canvas?focus=meta%2Fflow%3Aarticle-drafting')).toBe(true);
+    expect(
+      metaPlaneFromClientRoute('/canvas?roots=meta%2Fflow%3Aarticle-drafting,post%3Afirst-post'),
+    ).toBe(true);
   });
 });
 

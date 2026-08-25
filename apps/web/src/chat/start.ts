@@ -23,17 +23,23 @@ function goalText(goal: AgentGoal): string {
 }
 
 /**
- * 定义面必须由用户显式意图进入。业务目标里出现 flow 不足以越界；只有
- * `_meta`，或“修改/修订/新增 flow 定义/动作”这类自举表达才切换合同本源。
+ * 定义面必须由用户显式意图进入,而显式意图就是用户当下所在的位置:
+ * 站在 meta 控制台(/meta)或正在查看定义实体(canvas focus/roots 指向
+ * meta/ rel)时,聊天回合在定义合同站(/_meta)进行;其余一律业务面。
+ * 不从自然语言猜测意图(AI-first:理解归 LLM,平面归属只是客户端上下文
+ * 事实)——正则启发式曾把"新增一篇文章…介绍操作流程"误判越界,agent 整
+ * 回合困在 meta 平面导航循环(T22 生产实测)。
  */
-export function hasExplicitMetaIntent(verb: string): boolean {
-  if (verb.includes('_meta')) return true;
-  const mentionsDefinition = /(?:flow|流程|定义)/i.test(verb);
-  const requestsMutation =
-    /(?:修改|修订|变更|新增|添加|加一个|加上|移除|删除).*(?:动作|节点|字段|flow|流程|定义)/i.test(
-      verb,
-    );
-  return mentionsDefinition && requestsMutation;
+export function metaPlaneFromClientRoute(route: string | undefined): boolean {
+  if (route === undefined) return false;
+  const pathname = route.split('?')[0]!;
+  if (pathname === '/meta' || pathname.startsWith('/meta/')) return true;
+  if (pathname !== '/canvas') return false;
+  const params = new URLSearchParams(route.slice(route.indexOf('?') + 1));
+  const subjects = [params.get('focus'), params.get('roots')].filter(
+    (value): value is string => value !== null,
+  );
+  return subjects.some((value) => value.split(',').some((rel) => rel.startsWith('meta/')));
 }
 
 /**

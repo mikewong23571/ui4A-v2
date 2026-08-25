@@ -26,7 +26,7 @@ import type {
 import { wrapDriverForAudit, type AgentDecisionDetail } from '../../../chat/decisions';
 import { conversationView } from '../../../chat/conversation';
 import { executionAuditContext } from '../../../chat/audit-context';
-import { hasExplicitMetaIntent, resolveStartRel } from '../../../chat/start';
+import { metaPlaneFromClientRoute, resolveStartRel } from '../../../chat/start';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
 import { getProductionAgentTokenProvider } from '../../../auth/production-agent-token-provider';
 import { getProductionBrowserAuthentication } from '../../../auth/production-browser-authentication';
@@ -867,7 +867,9 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (hasExplicitMetaIntent(goal.verb)) {
+  // 平面归属:跟用户当下位置走(meta 控制台/正在查看定义实体 → 定义合同站;
+  // 其余 → 业务站);`_meta` 原话记号保留为显式越界入口。不做自然语言意图猜测。
+  if (goal.verb.includes('_meta') || metaPlaneFromClientRoute(parsed.clientView?.route)) {
     baseUrl = `${baseUrl.replace(/\/$/, '')}/_meta`;
   }
 
