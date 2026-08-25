@@ -107,12 +107,7 @@ packages/shared ◄── packages/engine ◄── packages/agent
 ```bash
 pnpm check                         # TypeScript + ESLint + Vitest
 CI=true pnpm e2e                   # Playwright 全量套件
-pnpm eval:t15                      # opt-in T15 真实 LLM Story Eval
-pnpm eval:t16                      # opt-in T16 真实 LLM Story Eval
-pnpm eval:t17                      # CLI/Draft safety、性能与 external-Agent evidence
-pnpm eval:t18                      # 真实 Codex 5-variant Coding Capability Eval
-pnpm eval:t19:writing              # 真实 Writing 5-variant + rubric + Safety Eval
-pnpm eval:t19:authoring            # 真实 Agent Definition Authoring 5-variant Eval
+pnpm eval:llm                      # opt-in 真实 LLM 门禁(provider profile 经环境显式提供,默认 skip)
 pnpm format:check                  # Prettier
 ```
 

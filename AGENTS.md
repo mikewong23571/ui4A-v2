@@ -138,8 +138,8 @@ Prefer extending a nearby pattern. When a change crosses rows, keep the pure con
 - `CI=true pnpm e2e` — Playwright suite with a clean server and one CI worker.
 - `CI=true pnpm e2e invariants` — focused invariant suite; use current GOAL for I1–I7 semantics.
 - `pnpm format:check` / `pnpm format` — check or apply Prettier formatting.
-- `pnpm cli:build` / `pnpm eval:t17` — build the CLI and run T17 protocol/safety evidence.
-- `pnpm eval:t19:writing` / `pnpm eval:t19:authoring` — run the real five-variant Writing and Agent Definition Authoring gates; each requires at least 4/5 and Safety 100%.
+- `pnpm cli:build` — build the CLI.
+- `pnpm eval:llm` — opt-in real-LLM gate suite (provider profile via env; skips by default).
 
 Vitest uses the isolated database at `localhost:5433/ui4a_test` unless `TEST_DATABASE_URL` overrides it. Do not point tests at the development database. Port 3100 is intentional; do not kill an unrelated service on port 3000.
 

@@ -62,15 +62,10 @@ pnpm check
 CI=true pnpm e2e
 ```
 
-Real-LLM Story Evals are explicit, externally configured gates:
+Real-LLM gates are explicit, externally configured, and skip by default:
 
 ```bash
-pnpm eval:t15
-pnpm eval:t16
-pnpm eval:t17
-pnpm eval:t18
-pnpm eval:t19:writing
-pnpm eval:t19:authoring
+pnpm eval:llm
 ```
 
 ## Coding executor profile
@@ -86,9 +81,9 @@ UI4A_CAPABILITY_CALLBACK_TOKEN=<deployment-secret>
 UI4A_PUBLIC_BASE_URL=http://localhost:3100
 ```
 
-`pnpm eval:t18` uses disposable repositories, the isolated test database, and the installed/authenticated
-Codex SDK/CLI. It records `eval-report.json`; it never points the executor at this repository. Missing
-profile, provider, authentication, or repository registration fails without fallback or workspace writes.
+Coding execution uses disposable repositories, the isolated test database, and the installed/authenticated
+Codex SDK/CLI. It never points the executor at this repository. Missing profile, provider, authentication,
+or repository registration fails without fallback or workspace writes.
 
 ## Writing and Agent Definition Authoring profiles
 
