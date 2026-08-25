@@ -22,7 +22,7 @@ const profile: CodingExecutorProfile = {
   networkPolicy: 'none',
 };
 
-describe('T18 Coding profile compatibility adapter', () => {
+describe('T18 Coding profile Agent Runtime adapter', () => {
   it('projects a provider-neutral exact Agent Runtime profile without credentials', () => {
     expect(codingProfileAsAgentRuntime(profile)).toEqual({
       ref: 'default',
@@ -38,7 +38,7 @@ describe('T18 Coding profile compatibility adapter', () => {
 });
 
 describe('document-agent deployment profile', () => {
-  it('mechanically selects the canonical production default without legacy environment input', () => {
+  it('mechanically selects the canonical production default without environment profile input', () => {
     delete process.env.UI4A_DOCUMENT_AGENT_PROFILES;
     const config = {
       settings: {

@@ -35,7 +35,7 @@ describe('T22 Web database production composition', () => {
     expect(mocks.getLocalPool).not.toHaveBeenCalled();
   });
 
-  it('preserves the existing DATABASE_URL local/test compatibility path', () => {
+  it('preserves the existing DATABASE_URL local/test pool path', () => {
     const expected = { query: vi.fn() };
     mocks.preflight.mockReturnValue(undefined);
     mocks.getLocalPool.mockReturnValue(expected);

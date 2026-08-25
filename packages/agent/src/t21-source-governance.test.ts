@@ -42,7 +42,7 @@ describe('T21 AI-first dual-focus source governance', () => {
     expect(chatRoute).not.toMatch(/resolveStartRel\([\s\S]{0,300}(?:clientView|lastNavigation)/);
   });
 
-  it('keeps the production runtime free of the legacy rule driver', () => {
+  it('keeps the production runtime free of the rule driver', () => {
     for (const [name, content] of [
       ['chat route', chatRoute],
       ['LLM driver', llmDriver],

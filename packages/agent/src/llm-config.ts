@@ -29,7 +29,7 @@ function configured(value: string | undefined): string | undefined {
 }
 
 /**
- * Resolve one complete OpenAI-compatible profile. Explicit overrides exist for
+ * Resolve one complete OpenAI-API profile. Explicit overrides exist for
  * protocol tests; production callers use the three generic environment names.
  */
 export function resolveLlmConfig(

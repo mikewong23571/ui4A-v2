@@ -2,7 +2,7 @@
  * T11 Phase A 实测探针内核(e2e/glm-probe.spec.ts 为历史文件名)。
  *
  * 本模块最初用于 T11 的 GLM-5.3 校准；T15 U23 将运行时探针扩展为任意
- * OpenAI-compatible profile，同时保留原始文件/type 名以兼容历史调用方。
+ * OpenAI 协议 profile。
  *
  * T15 U23 起与 llm-driver 共用 provider-neutral 配置合同:只接受完整的
  * LLM_API_KEY/LLM_BASE_URL/LLM_MODEL profile，不再携带供应商默认值。
@@ -37,7 +37,7 @@ export interface GlmProbeToolCall {
 export interface GlmProbeObservation {
   mode: 'generateText' | 'streamText';
   model: string;
-  /** 本次请求实际使用的 OpenAI-compatible endpoint。 */
+  /** 本次请求实际使用的 OpenAI 协议 endpoint。 */
   baseURL: string;
   /** 端到端墙钟时延(发起 → 响应完整返回/流收尾;出错时为出错时刻)。 */
   latencyMs: number;
@@ -119,7 +119,7 @@ function createProbeModel(options: GlmProbeOptions): {
     apiKey: config.apiKey,
     fetch: createRecordingFetch(capture),
   });
-  // Baseline 端点均以 OpenAI-compatible Chat Completions 接入。
+  // Baseline 端点均以 OpenAI 协议 Chat Completions 接入。
   const model: LanguageModel = provider.chat(config.model);
   return { model, modelId: config.model, baseURL: config.baseURL, capture };
 }
@@ -239,7 +239,7 @@ export async function runGenerateProbe(
       system: buildSystemPrompt({}),
       prompt: PROBE_USER_PROMPT,
       tools: probeToolSet(),
-      // 使用 OpenAI-compatible 协议的默认 auto，不附加供应商专用参数。
+      // 使用 OpenAI 协议的默认 auto，不附加供应商专用参数。
       abortSignal: AbortSignal.timeout(options.abortMs ?? DEFAULT_PROBE_ABORT_MS),
     });
     base.latencyMs = Date.now() - startedAt;
@@ -430,7 +430,7 @@ export function formatProbeReport(observations: GlmProbeObservation[]): string {
   const stream = observations.filter((entry) => entry.mode === 'streamText');
   const first = observations[0];
   const lines = [
-    '## OpenAI-compatible LLM 探针实测报告',
+    '## OpenAI 协议 LLM 探针实测报告',
     '',
     `- 时间: ${new Date().toISOString()}`,
     `- 模型: ${first !== undefined ? first.model : '(无观测)'};端点: ${first !== undefined ? first.baseURL : '(无观测)'}(provider.chat,Chat Completions)`,

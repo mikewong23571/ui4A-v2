@@ -67,7 +67,7 @@ describe('provider-neutral LLM probe configuration', () => {
     vi.stubEnv('LLM_API_KEY', 'fixture-key');
     vi.stubEnv('LLM_BASE_URL', 'https://provider.example/v1');
     vi.stubEnv('LLM_MODEL', 'fixture-model');
-    vi.stubEnv('GLM_API_KEY', 'legacy-key-must-not-be-used');
+    vi.stubEnv('GLM_API_KEY', 'unused-key-must-not-be-used');
 
     const calls: Array<{ url: string; authorization: string | null; model: unknown }> = [];
     vi.stubGlobal('fetch', async (input: string | URL | Request, init?: RequestInit) => {
@@ -98,7 +98,7 @@ describe('provider-neutral LLM probe configuration', () => {
     vi.stubEnv('LLM_API_KEY', '');
     vi.stubEnv('LLM_BASE_URL', '');
     vi.stubEnv('LLM_MODEL', '');
-    vi.stubEnv('GLM_API_KEY', 'legacy-key-must-not-be-used');
+    vi.stubEnv('GLM_API_KEY', 'unused-key-must-not-be-used');
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
 

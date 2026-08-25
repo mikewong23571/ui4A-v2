@@ -638,7 +638,7 @@ describe('production chat turn credential boundary', () => {
   });
 });
 
-describe('local demo compatibility', () => {
+describe('local demo profile', () => {
   it('retains the session-derived local principal and does not invoke production auth', async () => {
     delete process.env.UI4A_DEPLOYMENT_PROFILE;
     delete process.env.APP_ORIGIN;

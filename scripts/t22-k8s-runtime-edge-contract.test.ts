@@ -46,7 +46,7 @@ describe('T22 Kubernetes Runner production composition', () => {
   });
 });
 
-describe('T22 opaque internal callback and Istio JWT compatibility', () => {
+describe('T22 opaque internal callback and Istio JWT interoperation', () => {
   it('keeps opaque callback credentials out of the JWT Authorization header', () => {
     const callbackSources = [
       'apps/worker/src/agents/coding/adapter.ts',

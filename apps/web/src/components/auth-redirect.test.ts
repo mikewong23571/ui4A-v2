@@ -49,7 +49,7 @@ describe('redirectToLoginOnAuthError', () => {
   it.each([
     ['non-401 status with an auth code', 500, { error: { code: 'credential_missing' } }],
     ['unknown error code', 401, { error: { code: 'jwks_unavailable' } }],
-    ['legacy string error body', 401, { error: 'afterSeq 必须是非负整数' }],
+    ['plain string error body', 401, { error: 'afterSeq 必须是非负整数' }],
     ['empty body', 401, {}],
     ['non-object body', 401, null],
   ])('does not redirect for %s', (_name, status, body) => {

@@ -285,7 +285,7 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
     ]);
   });
 
-  it('checks an existing compatible realm and skips without mutation', async () => {
+  it('checks an existing matching realm and skips without mutation', async () => {
     const fake = new ImportOrSkipKeycloakAdmin();
     await execute(fake, 'apply');
     fake.clearTraffic();

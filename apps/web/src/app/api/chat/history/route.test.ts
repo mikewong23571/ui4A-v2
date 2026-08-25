@@ -214,11 +214,11 @@ describe('聊天历史投影(T9 Phase B)', () => {
     await appendEvent(pool, {
       kind: 'chat-turn',
       actor: 'agent',
-      principal: 'user:sess-legacy',
+      principal: 'user:sess-old-shape',
       channel: 'chat',
-      rel: 'chat:sess-legacy',
+      rel: 'chat:sess-old-shape',
       detail: {
-        sessionId: 'sess-legacy',
+        sessionId: 'sess-old-shape',
         goal: { verb: '发布一篇文章' },
         outcome: 'done',
         summary: '已发布',
@@ -227,7 +227,7 @@ describe('聊天历史投影(T9 Phase B)', () => {
       },
     });
 
-    const { status, json } = await history('?sessionId=sess-legacy');
+    const { status, json } = await history('?sessionId=sess-old-shape');
     expect(status).toBe(200);
     const turns = json.turns ?? [];
     expect(turns).toHaveLength(1);

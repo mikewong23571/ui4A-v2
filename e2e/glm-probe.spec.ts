@@ -63,5 +63,5 @@ test('LLM 探针:reasoning 暴露形态 / tool calling / 每步时延实测', as
   for (const entry of stream) {
     expect(entry.toolCalls.length, 'streamText 应返回 tool call(auto)').toBeGreaterThan(0);
   }
-  // reasoning 是可选的 provider 观测，不作为 OpenAI-compatible 兼容门槛。
+  // reasoning 是可选的 provider 观测，不作为 OpenAI 协议门槛。
 });

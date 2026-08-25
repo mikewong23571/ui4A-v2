@@ -132,7 +132,7 @@ function parseAgentAuthoringProfile(
 /**
  * Adapt the deployed T18 Coding profile into the generic T19 Runtime registry.
  *
- * The legacy profile has no version/features fields, so this compatibility contract fixes version
+ * The Coding executor profile has no version/features fields, so this adapter fixes version
  * 1 and the features already guaranteed by the T18 Codex/worktree implementation.
  */
 export function codingProfileAsAgentRuntime(profile: CodingExecutorProfile): AgentRuntimeProfile {

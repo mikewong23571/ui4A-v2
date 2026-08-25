@@ -21,7 +21,7 @@ function secretFile(): string {
 }
 
 describe('Worker callback file Secret startup loader', () => {
-  it('loads file material while preserving direct environment compatibility', () => {
+  it('loads file material while preserving direct environment variable support', () => {
     const fromFile: NodeJS.ProcessEnv = { UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: secretFile() };
     const direct: NodeJS.ProcessEnv = {
       UI4A_CAPABILITY_CALLBACK_TOKEN: '__direct_callback_value__',

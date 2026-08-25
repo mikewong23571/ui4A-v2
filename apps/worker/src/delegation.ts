@@ -70,7 +70,7 @@ export interface AgentStepDeps {
   /** 缺省:产品 driver 开启，scripted/mock 注入关闭。 */
   requireEffectAuthorization?: boolean;
   /**
-   * Local/demo compatibility only. Production authentication derives actor/principal/channel
+   * Local/demo deployments only. Production authentication derives actor/principal/channel
    * from the verified Bearer credential and therefore must disable these request-body hints.
    */
   selfReportedIdentity?: boolean;

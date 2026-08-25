@@ -820,12 +820,12 @@ function selectCatalogWord(
     left.localeCompare(right),
   )) {
     if (!definition.roles.includes(role)) continue;
-    const compatible = Object.entries(definition.bindings)
+    const supported = Object.entries(definition.bindings)
       .filter(([, binding]) => binding.sources.includes(source))
       .sort(([left], [right]) => left.localeCompare(right));
     const required = Object.entries(definition.bindings).filter(([, binding]) => binding.required);
-    if (compatible.length > 0 && required.every(([name]) => name === compatible[0]![0])) {
-      return { word, input: compatible[0]![0] };
+    if (supported.length > 0 && required.every(([name]) => name === supported[0]![0])) {
+      return { word, input: supported[0]![0] };
     }
   }
   return undefined;

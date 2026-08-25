@@ -22,7 +22,7 @@ import { seedSnapshot } from './fixtures';
 
 const guards: GuardRegistry = { ...seedGuardRegistry };
 
-/** v1:published 有 legacy-pin(→ pinned);v2:published 有 feature(→ archived)。 */
+/** v1:published 有 v1-pin(→ pinned);v2:published 有 feature(→ archived)。 */
 const postStatusV1: FlowDefinition = {
   name: 'post-status',
   title: '文章状态',
@@ -32,7 +32,7 @@ const postStatusV1: FlowDefinition = {
       name: 'published',
       actions: [
         { name: 'unpublish', title: '下线', to: 'offline' },
-        { name: 'legacy-pin', title: '旧版置顶', to: 'pinned' },
+        { name: 'v1-pin', title: '旧版置顶', to: 'pinned' },
       ],
     },
     { name: 'offline', actions: [{ name: 'republish', title: '再上线', to: 'published' }] },
@@ -147,14 +147,14 @@ describe('judge/投影/transition 按出生版本解析', () => {
     // 若错误解析到活跃 v2,feature 会被接受——这是判别器。
     expect(feature).toMatchObject({ kind: 'rejected', layer: 'undeclared' });
 
-    const legacy = executeWithGates(
-      { rel: 'post:old', action: 'legacy-pin', actor: 'agent' },
+    const v1Run = executeWithGates(
+      { rel: 'post:old', action: 'v1-pin', actor: 'agent' },
       snapshot,
       deps,
     );
-    expect(legacy.kind).toBe('executed');
-    if (legacy.kind !== 'executed') return;
-    expect(legacy.snapshot.instances['post:old']?.node).toBe('pinned'); // v1 的边:pinned 存在于 v1
+    expect(v1Run.kind).toBe('executed');
+    if (v1Run.kind !== 'executed') return;
+    expect(v1Run.snapshot.instances['post:old']?.node).toBe('pinned'); // v1 的边:pinned 存在于 v1
   });
 
   it('投影按出生版本:在途实例 actions 来自 v1(无 feature)', () => {
@@ -164,7 +164,7 @@ describe('judge/投影/transition 按出生版本解析', () => {
       guards,
       versions: snapshot.definitionVersions,
     });
-    expect(entity?.actions.map((action) => action.name)).toEqual(['unpublish', 'legacy-pin']);
+    expect(entity?.actions.map((action) => action.name)).toEqual(['unpublish', 'v1-pin']);
     expect(entity?.properties).toMatchObject({ node: 'published' });
   });
 
@@ -227,13 +227,13 @@ describe('fold.applyExecuted 以快照定义为主源(常量仅兜底)', () => {
     }
     expect(snapshot.definitions?.['post-status']?.version).toBe(2);
 
-    // 在线业务 exec:post:old(born v1)按 v1 执行 legacy-pin。
+    // 在线业务 exec:post:old(born v1)按 v1 执行 v1-pin。
     const online = executeWithGates(
-      { rel: 'post:old', action: 'legacy-pin', actor: 'agent' },
+      { rel: 'post:old', action: 'v1-pin', actor: 'agent' },
       snapshot,
       activeDeps(snapshot),
     );
-    if (online.kind !== 'executed') throw new Error('legacy-pin 应通过(按出生定义)');
+    if (online.kind !== 'executed') throw new Error('v1-pin 应通过(按出生定义)');
     log.push(...online.events);
 
     // 重放:flows 传空表——applyExecuted 只能从快照 definitionVersions 解析。

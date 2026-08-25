@@ -90,8 +90,8 @@ async function dispatchAll(): Promise<void> {
 beforeEach(() => {
   vi.stubEnv('UI4A_DEPLOYMENT_PROFILE', 'production');
   vi.stubEnv('UI4A_NOTIFY_DISPATCH', 'on');
-  vi.stubEnv('TEMPORAL_ADDRESS', 'legacy-temporal.invalid:9999');
-  vi.stubEnv('UI4A_TASK_QUEUE', 'legacy-queue');
+  vi.stubEnv('TEMPORAL_ADDRESS', 'unused-temporal.invalid:9999');
+  vi.stubEnv('UI4A_TASK_QUEUE', 'unused-queue');
   resetTemporalClientForTests();
   resetTemporalDelegationClientForTests();
   resetTemporalAgentRunClientForTests();

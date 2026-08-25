@@ -10,7 +10,7 @@ vi.mock('../../../readiness/readiness', () => ({
 vi.mock('../../../db/pool', () => ({
   getPool: () => ({
     query: async () => {
-      throw new Error('legacy health route must not reach a real database');
+      throw new Error('health route must not reach a real database');
     },
   }),
 }));

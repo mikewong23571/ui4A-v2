@@ -270,7 +270,7 @@ function legacyMessage(
 
 /**
  * 从全局日志纯重建单个 session。输入顺序不会被修改；投影按 seq 排序。
- * 新 raw message 存在的 turn 不再消费同 turn 的 legacy chat-turn，避免双记。
+ * 新 raw message 存在的 turn 不再消费同 turn 的 chat-turn 完成事件，避免双记。
  */
 export function foldConversation(
   events: readonly ConversationEvent[],

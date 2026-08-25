@@ -1,5 +1,5 @@
 /**
- * legacy rule driver:纯启发式协议测试 fixture。产品 runtime 不导入、不 fallback，
+ * rule driver:纯启发式协议测试 fixture。产品 runtime 不导入、不 fallback，
  * 仅通过 @ui4a/agent/testkit/rule-driver 的显式测试子路径提供。
  *
  * 目标相关性决策次序(arch-brief §5 原样,逐层带停止条件):

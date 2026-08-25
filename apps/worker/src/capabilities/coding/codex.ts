@@ -68,7 +68,7 @@ export class CodingExecutorCancelledError extends Error {
   }
 }
 
-/** Compatibility-shaped Provider/auth preflight backed by the shared Codex transport probe. */
+/** Provider/auth preflight backed by the shared Codex transport probe. */
 export async function probeCodexExecutor(
   profileName: string,
   binary = process.env.UI4A_CODEX_BIN ?? 'codex',

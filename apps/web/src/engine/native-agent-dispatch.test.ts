@@ -302,7 +302,7 @@ describe('native Agent dispatch from an Application capability', () => {
     expect(dispatchAgentRun).toHaveBeenCalledOnce();
   });
 
-  it('pins the canonical production writing default in birth without legacy profile input', async () => {
+  it('pins the canonical production writing default in birth without environment profile input', async () => {
     delete process.env.UI4A_DOCUMENT_AGENT_PROFILES;
     await getEngine(pool);
     const capability = parseApplicationBundle(applicationBundle).capabilities.find(

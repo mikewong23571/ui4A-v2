@@ -59,7 +59,7 @@ function sdk(events: unknown[], threadId = 'thread-1'): CodexSdkLike {
 }
 
 describe('Codex reference executor adapter', () => {
-  it('uses an optional server-compiled Prompt without changing the legacy default Prompt', async () => {
+  it('uses an optional server-compiled Prompt without changing the default Prompt', async () => {
     const client = sdk([
       { type: 'thread.started', thread_id: 'thread-prompt' },
       {
@@ -129,12 +129,12 @@ describe('Codex reference executor adapter', () => {
       expect.objectContaining({ outputSchema: expect.any(Object) }),
     );
 
-    const legacy = sdk([
-      { type: 'thread.started', thread_id: 'thread-legacy-prompt' },
+    const uncompiled = sdk([
+      { type: 'thread.started', thread_id: 'thread-plain-prompt' },
       {
         type: 'item.completed',
         item: {
-          id: 'msg-legacy-prompt',
+          id: 'msg-plain-prompt',
           type: 'agent_message',
           text: JSON.stringify({
             status: 'completed',
@@ -146,15 +146,15 @@ describe('Codex reference executor adapter', () => {
       },
     ]);
     await executeCodexTask(
-      { runId: 'run-legacy-prompt', task, profile, workspace: { id: 'w', path: '/tmp/worktree' } },
+      { runId: 'run-plain-prompt', task, profile, workspace: { id: 'w', path: '/tmp/worktree' } },
       {
-        createClient: () => legacy,
+        createClient: () => uncompiled,
         onRaw: async () => undefined,
         onNormalized: async () => undefined,
       },
     );
-    const legacyThread = vi.mocked(legacy.startThread).mock.results[0]?.value;
-    expect(legacyThread?.runStreamed).toHaveBeenCalledWith(
+    const plainThread = vi.mocked(uncompiled.startThread).mock.results[0]?.value;
+    expect(plainThread?.runStreamed).toHaveBeenCalledWith(
       [
         'Complete the following authorized coding task inside the current workspace.',
         'Goal: implement sum',

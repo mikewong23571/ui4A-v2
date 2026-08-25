@@ -402,7 +402,7 @@ export const T15_STORY_CORPUS: readonly T15StoryCorpusEntry[] = [
     '运维者无需改代码即可切换 LLM',
     'hybrid',
     [
-      ['运维：配置一组完整的 OpenAI-compatible profile 后运行 inline。'],
+      ['运维：配置一组完整的 OpenAI 协议 profile 后运行 inline。'],
       ['运维：只替换 model 环境值并重新加载。'],
       ['运维：用同一 profile 运行 render 与 inline。'],
       ['运维：用同一 profile 派发 delegated Assistant。'],

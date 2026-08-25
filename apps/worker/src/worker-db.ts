@@ -7,7 +7,7 @@ import { runWorkerProductionDeploymentPreflight } from './production-deployment-
 
 const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
 
-/** Select canonical production Pool only after preflight; preserve local/test URL compatibility. */
+/** Select canonical production Pool only after preflight; otherwise use the local/test DATABASE_URL pool. */
 export function workerDb(
   environment: DeploymentEnvironment = process.env,
   productionConfig: ProductionDeploymentConfig | undefined = runWorkerProductionDeploymentPreflight(

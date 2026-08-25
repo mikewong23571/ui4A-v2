@@ -101,12 +101,12 @@ describe('meta application bundle bootstrap', () => {
     })) as LogEvent[];
     expect(planMetaBootstrap(bundle, installed)).toEqual([]);
 
-    const legacy: LogEvent[] = [
+    const partial: LogEvent[] = [
       installed[0]!,
       installed.find((event) => event.kind === 'definition-seeded')!,
       installed.find((event) => event.kind === 'seed')!,
     ];
-    const migrated = planMetaBootstrap(bundle, legacy);
+    const migrated = planMetaBootstrap(bundle, partial);
     expect(migrated.map((event) => event.kind)).toEqual([
       'application-seeded',
       'capability-seeded',

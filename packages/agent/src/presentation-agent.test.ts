@@ -284,7 +284,7 @@ describe('Presentation Agent transport', () => {
     });
   });
 
-  it('uses injected OpenAI-compatible transport and returns the candidate', async () => {
+  it('uses injected OpenAI-protocol transport and returns the candidate', async () => {
     const transport = createScriptedTransport(() =>
       sseResponse(JSON.stringify(validModelOutput())),
     );

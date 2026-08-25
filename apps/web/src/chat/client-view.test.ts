@@ -22,7 +22,7 @@ describe('T21 client view capture', () => {
     ).toMatchObject({ subject: { selection: ['post:a', 'post:b'] } });
   });
 
-  it.each(['/', '/canvas', '/canvas?concern=legacy'])(
+  it.each(['/', '/canvas', '/canvas?concern=unknown'])(
     'keeps subject unknown when route %s does not prove one',
     (route) => {
       expect(clientViewReportForLocation('client:a', route)).toEqual({

@@ -340,7 +340,7 @@ export function createHostRunnerBackend(dependencies: HostRunnerBackendDependenc
     }
   };
 
-  const legacy = {
+  const runnerOps = {
     async heartbeat(input: {
       runnerId: string;
       identity: string;
@@ -600,7 +600,7 @@ export function createHostRunnerBackend(dependencies: HostRunnerBackendDependenc
 
   const prepare: RuntimeBackendSpi['prepare'] = async (envelope) => {
     if (dependencies.runtimeExecution === undefined) fail('HOST_RUNNER_UNAVAILABLE', true);
-    const lease = await legacy.dispatch({
+    const lease = await runnerOps.dispatch({
       task: {
         schemaVersion: 1,
         runId: `run-${createHash('sha256').update(envelope.runId).digest('hex').slice(0, 40)}`,
@@ -639,7 +639,7 @@ export function createHostRunnerBackend(dependencies: HostRunnerBackendDependenc
     prepared?: { handle: string },
     controls?: Parameters<RuntimeBackendSpi['execute']>[2],
   ): Promise<void | { status: 'completed'; backendOutput: unknown; transport?: unknown }> {
-    if ('runnerId' in first) return legacy.execute(first);
+    if ('runnerId' in first) return runnerOps.execute(first);
     if (prepared === undefined || controls === undefined) fail('HOST_RUNNER_LEASE_INVALID');
     return spiExecute(first, prepared, controls);
   }
@@ -649,5 +649,5 @@ export function createHostRunnerBackend(dependencies: HostRunnerBackendDependenc
     return dependencies.runtimeExecution.collect({ envelope, execution });
   };
 
-  return { ...legacy, kind: 'trusted-host' as const, prepare, execute, collect };
+  return { ...runnerOps, kind: 'trusted-host' as const, prepare, execute, collect };
 }

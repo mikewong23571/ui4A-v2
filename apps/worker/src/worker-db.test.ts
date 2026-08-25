@@ -48,7 +48,7 @@ describe('T22 Worker database production composition', () => {
     expect(mocks.getLocalPool).not.toHaveBeenCalled();
   });
 
-  it('preserves local/test DATABASE_URL compatibility', async () => {
+  it('preserves local/test DATABASE_URL pool selection', async () => {
     const { workerDb } = await plannedApi();
     const expected = { query: vi.fn() };
     mocks.preflight.mockReturnValue(undefined);

@@ -493,9 +493,9 @@ describe('event-sourced conversation context', () => {
   });
 
   it('兼容旧 chat-turn：保留目标与最终 assistant 消息，不吸收 progress 事件', () => {
-    const legacy: ChatTurnDetail = {
+    const oldTurn: ChatTurnDetail = {
       sessionId: 'sess-main',
-      turnId: 'legacy-turn',
+      turnId: 'old-turn',
       goal: { verb: '总结第一篇文章' },
       outcome: 'answered',
       summary: '完成总结',
@@ -511,10 +511,10 @@ describe('event-sourced conversation context', () => {
       [
         event(1, 'chat-turn-progress', {
           sessionId: 'sess-main',
-          turnId: 'legacy-turn',
+          turnId: 'old-turn',
           message: { role: 'assistant', text: '思考中' },
         }),
-        event(2, 'chat-turn', legacy),
+        event(2, 'chat-turn', oldTurn),
       ],
       'sess-main',
     );

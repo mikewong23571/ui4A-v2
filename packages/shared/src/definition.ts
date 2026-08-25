@@ -252,7 +252,7 @@ export interface CapabilityDefinition {
   executor?: {
     class: string;
     profile: string;
-    /** Exact specialization birth version; absent capabilities remain on the T18 legacy path. */
+    /** Exact specialization birth version; capabilities without it fail dispatch. */
     agentDefinition?: AgentDefinitionRef;
     requiredFeatures?: string[];
   };

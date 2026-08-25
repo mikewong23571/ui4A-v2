@@ -629,5 +629,5 @@ export async function bootstrapKeycloakRealm(input: BootstrapInput): Promise<Boo
       'The existing ui4a realm is incompatible; back it up and replace or rebuild it.',
     );
   }
-  return { outcome: 'skip', summary: 'The existing ui4a realm is compatible; no changes made.' };
+  return { outcome: 'skip', summary: 'The existing ui4a realm already matches; no changes made.' };
 }

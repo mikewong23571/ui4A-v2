@@ -43,7 +43,7 @@ function extractJson(text: string): unknown {
   return JSON.parse(candidate);
 }
 
-/** The model receives binding-only structure and catalog compatibility, never live fact values. */
+/** The model receives binding-only structure and the catalog word list, never live fact values. */
 export function buildPresentationRevisionPrompt(input: PresentationRevisionInput): string {
   const request = parseRevisionRequest(input.request);
   return [

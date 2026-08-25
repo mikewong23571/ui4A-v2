@@ -140,7 +140,7 @@ export interface EventAppend {
 
 /** 读回的存储事件(行形状;ts 统一 ISO 字符串,便于 JSON 直出)。 */
 export interface StoredEvent {
-  /** Legacy in-memory fixtures omit domain and are interpreted as core. DB rows always provide it. */
+  /** In-memory test fixtures omit domain and are interpreted as core. DB rows always provide it. */
   domain?: EventDomain;
   seq: number;
   ts: string;

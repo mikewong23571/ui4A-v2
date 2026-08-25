@@ -251,7 +251,7 @@ afterAll(async () => {
 });
 
 describe.sequential('UI4A recovery consistency', () => {
-  it('captures stable script-compatible authority without payload or Secret disclosure', async () => {
+  it('captures stable script-consumable authority without payload or Secret disclosure', async () => {
     const { captureUi4aRecoveryFingerprint } = await recoveryApi();
     const businessSnapshot = { instances: { 'recovery:fixture': { node: 'ready' } } };
 

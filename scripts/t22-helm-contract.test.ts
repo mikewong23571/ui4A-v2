@@ -571,7 +571,7 @@ describe('T22 generic Helm/Kubernetes render contract', () => {
       expect(helmTemplateSource().match(/sidecar\.istio\.io\/inject:/g)).toHaveLength(6);
     });
 
-    it('pins every workload image by digest with the offline-compatible pull policy', async () => {
+    it('pins every workload image by digest with the offline-safe pull policy', async () => {
       const { resources } = (await renderer()).renderUi4aChart(genericValues());
       const workloads = resources.filter(({ kind }) =>
         ['Deployment', 'StatefulSet', 'Job', 'CronJob'].includes(kind),

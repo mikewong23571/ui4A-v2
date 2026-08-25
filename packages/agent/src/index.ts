@@ -3,7 +3,7 @@
  *
  * 循环协议(runAgent)与 AI-first LLM driver/工具投影。
  * 纯 TS 两栖;HTTP 客户端经 fetchImpl 注入;LLM 传输同样可注入(单测零网络)。
- * legacy rule driver 仅从显式 testkit 子路径提供，不属于产品公共面。
+ * rule driver 仅从显式 testkit 子路径提供，不属于产品公共面。
  */
 export * from './types';
 export * from './authorization';

@@ -40,7 +40,7 @@ export interface CodexStructuredInput {
   outputSchema: unknown;
   workingDirectory: string;
   sandboxMode?: 'read-only' | 'workspace-write';
-  /** Compatibility-only byte string for definitions born before typed Prompt messages existed. */
+  /** Serialized byte string form used when a definition has no typed Prompt messages. */
   serializedPrompt?: string;
   profile: CodexTransportProfile;
   nativeSessionId?: string;
