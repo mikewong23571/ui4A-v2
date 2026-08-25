@@ -27,7 +27,13 @@
  *   aria-controls 语义可达)。进行中条目(线程 running 且本条是末条消息 =
  *   当前步思考仍在累积/执行)触发器为紧凑进行中指示「思考中 · 第 N 步」
  *   (含步数,无机制词),展开即实时思考增量;同号 step 帧到达或回合结束
- *   后回落「思考 · 步骤 N」,仍可展开查看(数据不丢,只改呈现)。
+ *   后回落「思考 · 步骤 N」,仍可展开查看(数据不丢,只改呈现);
+ * - 失败终局条目(T24 Phase B Task 3:失败措辞分层):final/error 帧携带
+ *   reason={code, evidence?, tried?, phrasing?}(经 metadata.custom.failure)
+ *   时按 AI-first 分层——LLM 表述在场则主呈现 phrasing(附「助手表述」来源
+ *   标注),缺席则中性结构化行「失败 · code=… · 已尝试:…」(零硬编码友好
+ *   文案);结构化本体始终收纳于可展开的失败数据区(审计可达)。旧形状帧
+ *   无 failure 数据,回退 message.text 中性呈现,与历史回放同口径。
  */
 import {
   ComposerPrimitive,
@@ -37,9 +43,10 @@ import {
   type TextMessagePartComponent,
 } from '@assistant-ui/react';
 
-import type { ChatStepActivity } from '@/chat/sse';
+import type { ChatFailureReason, ChatStepActivity } from '@/chat/sse';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { isChatStepActivity, stepActivityText } from '@/components/chat/step-activity-words';
+import { failureNeutralLine, isChatFailureReason } from '@/components/chat/failure-words';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -77,6 +84,17 @@ function useMessageEventSeq(): number | undefined {
   return useAuiState((s) => {
     const value: unknown = s.message.metadata.custom['eventSeq'];
     return typeof value === 'number' ? value : undefined;
+  });
+}
+
+/**
+ * 当前消息的结构化失败数据(T24 Phase B Task 3:convertMessage 的
+ * metadata.custom.failure;守卫命中返回原引用,Object.is 稳定)。
+ */
+function useMessageFailure(): ChatFailureReason | undefined {
+  return useAuiState((s) => {
+    const value: unknown = s.message.metadata.custom['failure'];
+    return isChatFailureReason(value) ? value : undefined;
   });
 }
 
@@ -178,11 +196,51 @@ function ThinkingMessage({ step }: { step: number }) {
   );
 }
 
+/**
+ * 失败终局条目(T24 Phase B Task 3:失败措辞分层):
+ * - LLM 表述在场(phrasing)→ 主呈现为表述,附「助手表述」来源标注;
+ * - 缺席 → 中性结构化行「失败 · code=… · 已尝试:…」(零硬编码友好文案);
+ * - 结构化数据本体(code/已尝试/机械事实)始终收纳在可展开的失败数据区,
+ *   审计视角可达,不随主呈现选择消失。
+ */
+function FailureMessage({ failure }: { failure: ChatFailureReason }) {
+  const tried = failure.tried ?? [];
+  return (
+    <MessagePrimitive.Root className="flex w-full justify-start">
+      <div className="max-w-[85%] space-y-1 rounded-2xl rounded-bl-sm bg-muted px-3 py-1.5 text-sm text-foreground">
+        {failure.phrasing !== undefined ? (
+          <>
+            <p className="whitespace-pre-wrap">{failure.phrasing}</p>
+            <p className="text-[10px] text-muted-foreground">助手表述</p>
+          </>
+        ) : (
+          <p>{failureNeutralLine(failure)}</p>
+        )}
+        <details className="text-xs text-muted-foreground">
+          <summary>失败数据</summary>
+          <div className="mt-1 space-y-0.5">
+            <div>code={failure.code}</div>
+            {tried.length > 0 && <div>已尝试:{tried.join('、')}</div>}
+            {(failure.evidence ?? []).map((line, index) => (
+              <div key={index}>{line}</div>
+            ))}
+          </div>
+        </details>
+      </div>
+    </MessagePrimitive.Root>
+  );
+}
+
 function AssistantMessage() {
   const thinkingStep = useMessageThinkingStep();
+  const failure = useMessageFailure();
   // thinking 帧条目:可折叠思考区(与气泡步骤消息按到达序相邻)。
   if (thinkingStep !== undefined) {
     return <ThinkingMessage step={thinkingStep} />;
+  }
+  // 失败终局条目(T24 Phase B Task 3):按措辞分层呈现(见 FailureMessage)。
+  if (failure !== undefined) {
+    return <FailureMessage failure={failure} />;
   }
   return (
     <MessagePrimitive.Root className="flex w-full justify-start">

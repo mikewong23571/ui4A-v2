@@ -308,6 +308,9 @@ export async function runAgent(
       ];
       const op = {
         kind: 'fail' as const,
+        // 结构化失败码(T24 Phase B Task 3):机械层终止原因带出到轨迹,
+        // 供上层组装 {code, evidence, tried};不改终止判定语义。
+        code: 'no_progress_loop',
         reason: `检测到无进展导航循环；当前合同未暴露完成目标所需的可执行能力`,
         evidence,
       };

@@ -255,6 +255,22 @@ describe('循环终止', () => {
       reason: expect.stringContaining('无进展导航循环'),
       evidence: expect.arrayContaining(['重复处境:articles']),
     });
+    // T24 Phase B Task 3(失败措辞分层):机械终止携带结构化 code 供上层
+    // 组装 {code, evidence, tried};driver 自述 fail 无 code(上层归 driver_fail)。
+    expect(result.steps.at(-1)?.op).toMatchObject({ code: 'no_progress_loop' });
+  });
+
+  it('driver 自述 fail 不携带 code(结构化 code 是循环机械终止的属性)', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const driver = new ScriptedDriver([{ kind: 'fail', reason: '无路可走' }]);
+
+    const result = await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+    });
+
+    expect(result.outcome).toBe('failed');
+    expect(result.steps[0]!.op).not.toHaveProperty('code');
   });
 
   it('起始实体不可得(404)立即失败并说明 rel', async () => {

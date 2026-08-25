@@ -6,12 +6,14 @@
 import type { ThreadMessageLike, useExternalStoreRuntime } from '@assistant-ui/react';
 
 import type { ChatSessionSummary } from '@/chat/history';
-import type { ChatStepActivity } from '@/chat/sse';
+import type { ChatFailureReason, ChatStepActivity } from '@/chat/sse';
 
 /**
  * 面板内消息(rel 为轨迹步的实体 rel:flow 徽章展示用,见 thread.tsx;
  * activity/eventSeq 为 T24 Phase B 结构化轨迹数据:activity 在场时主呈现为
  * 活动语言(机器原文 content 保留作机器层),eventSeq 供审计下钻定位;
+ * failure 为 T24 Phase B Task 3 结构化失败数据:在场时主呈现按措辞分层
+ * (phrasing 主呈现 / 无则中性结构化行),content 保留机器层 summary;
  * 历史回放消息只有 text 投影,如实按原文渲染,不伪造结构化数据)。
  */
 export interface ChatUiMessage {
@@ -24,6 +26,8 @@ export interface ChatUiMessage {
   activity?: ChatStepActivity;
   /** 对应 chat-turn-progress 事件的日志 seq(审计下钻)。 */
   eventSeq?: number;
+  /** 结构化失败数据(SSE final/error 帧 reason);在场时 thread 按措辞分层渲染。 */
+  failure?: ChatFailureReason;
 }
 
 /** 一次性 JSON 响应形状(render 短路/兼容路径;inline 已转 SSE)。 */
@@ -74,6 +78,7 @@ export function convertMessage(message: ChatUiMessage): ThreadMessageLike {
   }
   if (message.activity !== undefined) custom['activity'] = message.activity;
   if (message.eventSeq !== undefined) custom['eventSeq'] = message.eventSeq;
+  if (message.failure !== undefined) custom['failure'] = message.failure;
   return {
     role: message.role,
     content: [{ type: 'text', text: message.content }],

@@ -11,7 +11,10 @@
  *   thread.tsx 呈现为默认折叠、可展开看实时增量的思考区;rule 路径零
  *   思考帧);render 帧(渲染短路 LLM 路径 SSE 化)与一次性
  *   JSON 回执同形处置;final 帧更新 sessionId(localStorage 持久化,纯投影)
- *   与 render 回执;整体超时 120s 如实报错;
+ *   与 render 回执;失败终局(T24 Phase B Task 3)final/error 帧携带结构化
+ *   reason 时,终局条目携带 failure 数据进 thread(phrasing 主呈现/中性
+ *   结构化行分层,见 thread.tsx;旧形状无 reason 回退现状中性呈现);
+ *   整体超时 120s 如实报错;
  * - 停止(B2):onCancel 挂 AbortController 中止 fetch,追加「已停止(仅中断
  *   展示,服务端轨迹已在事件日志留痕)」——循环在服务端跑完并落 chat-turn;
  * - 历史(B3):挂载时按 localStorage 的 sessionId 拉 /api/chat/history,
@@ -28,7 +31,7 @@ import { useExternalStoreRuntime, type AppendMessage } from '@assistant-ui/react
 
 import type { ChatSessionSummary, ChatTurn } from '@/chat/history';
 import { clientViewReportForLocation, type ActivePresentationView } from '@/chat/client-view';
-import type { ChatRenderPayload, ChatStepActivity } from '@/chat/sse';
+import type { ChatFailureReason, ChatRenderPayload, ChatStepActivity } from '@/chat/sse';
 import { anySignal, createIdleTimeout, readChatSseStream, type ChatFinalPayload } from '@/chat/sse';
 
 import {
@@ -164,7 +167,13 @@ export function useChatSession(): ChatSession {
   }, [restoreSession]);
 
   const appendAssistant = useCallback(
-    (content: string, rel?: string, activity?: ChatStepActivity, eventSeq?: number): void => {
+    (
+      content: string,
+      rel?: string,
+      activity?: ChatStepActivity,
+      eventSeq?: number,
+      failure?: ChatFailureReason,
+    ): void => {
       setMessages((prev) => [
         ...prev,
         {
@@ -173,6 +182,7 @@ export function useChatSession(): ChatSession {
           ...(rel !== undefined ? { rel } : {}),
           ...(activity !== undefined ? { activity } : {}),
           ...(eventSeq !== undefined ? { eventSeq } : {}),
+          ...(failure !== undefined ? { failure } : {}),
         },
       ]);
     },
@@ -252,6 +262,13 @@ export function useChatSession(): ChatSession {
     (payload: ChatFinalPayload, stepCount: number, machineTextSteps: number) => {
       persistSession(payload.sessionId);
       markSessionPending(null);
+      // 失败措辞分层(T24 Phase B Task 3):结构化 reason 在场时,终局条目
+      // 携带 failure 数据(content 保留机器层 summary),thread 按 phrasing /
+      // 中性结构化行分层呈现;服务器机器叙句不再作为主呈现直出。
+      if (payload.outcome === 'failed' && payload.reason !== undefined) {
+        appendAssistant(payload.summary ?? '', undefined, undefined, undefined, payload.reason);
+        return;
+      }
       // 终局内容补一条 assistant 消息:零轨迹步(如起始实体不可得,与旧一次性
       // JSON 客户端兜底口径一致),或 T24 活动语言回合——活动条目只说「正在
       // 做什么」,answer/done/fail 的终局内容(answered 的回答、完成/失败
@@ -392,7 +409,13 @@ export function useChatSession(): ChatSession {
               handleFinal(frame.payload, stepCount, machineTextSteps);
             } else if (frame.type === 'error') {
               markSessionPending(null);
-              appendAssistant(`失败: ${frame.error}`);
+              // 失败措辞分层(T24 Phase B Task 3):结构化 reason 在场 →
+              // 中性结构化呈现;旧形状回退「失败: {error}」原文。
+              if (frame.reason !== undefined) {
+                appendAssistant(frame.error, undefined, undefined, undefined, frame.reason);
+              } else {
+                appendAssistant(`失败: ${frame.error}`);
+              }
             }
             // 未知帧类型:忽略(协议前向兼容——旧客户端对新帧零误伤口径)。
           });

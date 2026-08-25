@@ -58,6 +58,99 @@ describe('step 帧结构化活动数据(T24 Phase B)', () => {
   });
 });
 
+describe('final/error 帧结构化失败 reason(T24 Phase B Task 3)', () => {
+  it('final 帧携带 reason{code,evidence,tried,phrasing}:新形状解析完整,旧形状无 reason 兼容', async () => {
+    const encoder = new TextEncoder();
+    const expected: ChatSseFrame[] = [
+      { type: 'step', turnId: 't-fail', message: { role: 'assistant', text: '导航到 articles' } },
+      {
+        type: 'final',
+        turnId: 't-fail',
+        payload: {
+          sessionId: 'sess-fail',
+          turnId: 't-fail',
+          driver: 'llm',
+          requestedDriver: 'auto',
+          outcome: 'failed',
+          summary: '检测到无进展导航循环;当前合同未暴露完成目标所需的可执行能力',
+          reason: {
+            code: 'no_progress_loop',
+            evidence: ['重复处境:articles', '可用动作:(无)', '已成功执行:0'],
+            tried: ['导航到 articles'],
+            phrasing: '当前页面没有提供完成这个目标所需的操作入口。',
+          },
+          steps: [],
+          successes: [],
+        },
+      },
+      // 旧服务端形状:final 无 reason(客户端回退 summary 中性呈现)。
+      {
+        type: 'final',
+        turnId: 't-fail-old',
+        payload: {
+          sessionId: 'sess-fail-old',
+          turnId: 't-fail-old',
+          driver: 'llm',
+          requestedDriver: 'auto',
+          outcome: 'failed',
+          summary: '旧机器句子',
+          steps: [],
+          successes: [],
+        },
+      },
+    ];
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const frame of expected) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(frame)}\n\n`));
+        }
+        controller.close();
+      },
+    });
+    const frames: ChatSseFrame[] = [];
+
+    await readChatSseStream(body, new AbortController().signal, (frame) => frames.push(frame));
+
+    expect(frames).toEqual(expected);
+    const finalFrame = frames[1]!;
+    if (finalFrame.type !== 'final') throw new Error('应为 final 帧');
+    expect(finalFrame.payload.reason).toEqual({
+      code: 'no_progress_loop',
+      evidence: ['重复处境:articles', '可用动作:(无)', '已成功执行:0'],
+      tried: ['导航到 articles'],
+      phrasing: '当前页面没有提供完成这个目标所需的操作入口。',
+    });
+    const oldFinal = frames[2]!;
+    if (oldFinal.type !== 'final') throw new Error('应为 final 帧');
+    expect(oldFinal.payload.reason).toBeUndefined();
+  });
+
+  it('error 帧可携带 reason(结构化兜底);旧形状无 reason 兼容', async () => {
+    const encoder = new TextEncoder();
+    const expected: ChatSseFrame[] = [
+      {
+        type: 'error',
+        error: '聊天循环异常: 爆炸',
+        reason: { code: 'loop_exception', evidence: ['聊天循环异常: 爆炸'] },
+      },
+      { type: 'error', error: '旧形状错误' },
+    ];
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const frame of expected) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(frame)}\n\n`));
+        }
+        controller.close();
+      },
+    });
+    const frames: ChatSseFrame[] = [];
+
+    await readChatSseStream(body, new AbortController().signal, (frame) => frames.push(frame));
+
+    expect(frames).toEqual(expected);
+  });
+});
+
 describe('SSE 空闲超时', () => {
   it('保留同 step 的跨回合 identity 与 render 回执 turnId', async () => {
     const encoder = new TextEncoder();

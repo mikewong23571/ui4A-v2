@@ -26,6 +26,7 @@ import type {
 import { wrapDriverForAudit, type AgentDecisionDetail } from '../../../chat/decisions';
 import { conversationView } from '../../../chat/conversation';
 import { executionAuditContext } from '../../../chat/audit-context';
+import { failureReasonFromResult, phraseFailureWithLlm } from '../../../chat/failure-reason';
 import { readSitemapTitles, stepActivityData } from '../../../chat/step-activity';
 import { resolveStartRel } from '../../../chat/start';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
@@ -251,9 +252,13 @@ function sseResponse(
         await start(send);
       } catch (error) {
         // 委托不崩溃:循环与 driver 都不应抛出;此处兜底为 error 帧(200 流内)。
+        const sentence = `聊天循环异常: ${error instanceof Error ? error.message : String(error)}`;
         send({
           type: 'error',
-          error: `聊天循环异常: ${error instanceof Error ? error.message : String(error)}`,
+          error: sentence,
+          // 结构化 reason(T24 Phase B Task 3):机械层只产数据;表述层
+          // 由客户端中性结构化展示(error 帧无 LLM 表述路径——兜底分支)。
+          reason: { code: 'loop_exception', evidence: [sentence] },
         });
       } finally {
         clearInterval(heartbeat);
@@ -677,6 +682,19 @@ async function streamAgentLoop(args: {
     }
   }
 
+  // 失败措辞分层(T24 Phase B Task 3):机械层组装结构化 reason;LLM 在场时
+  // 由 reason 生成一句面向用户表述(AI-first),缺席则帧内无 phrasing、客户端
+  // 中性结构化展示。summary 机器句子保留为机械层/审计数据,不从呈现消失真相。
+  const failureReason = failureReasonFromResult(result);
+  const phrasing =
+    failureReason === undefined
+      ? undefined
+      : await phraseFailureWithLlm({
+          reason: failureReason,
+          goal,
+          summary: result.summary,
+        });
+
   send({
     type: 'final',
     turnId,
@@ -689,6 +707,9 @@ async function streamAgentLoop(args: {
       summary: result.summary ?? null,
       steps: result.steps,
       successes: result.successes,
+      ...(failureReason !== undefined
+        ? { reason: phrasing === undefined ? failureReason : { ...failureReason, phrasing } }
+        : {}),
       ...(result.sources !== undefined ? { sources: result.sources } : {}),
       ...(presentationRequestIds.length > 0 ? { presentationRequestIds } : {}),
     },

@@ -477,6 +477,170 @@ describe('工作台 · step 活动语言(T24 Phase B)', () => {
   });
 });
 
+describe('工作台 · 失败措辞分层(T24 Phase B Task 3)', () => {
+  const failedFinal = (reason: Record<string, unknown> | undefined): unknown[] => [
+    {
+      type: 'step',
+      message: { role: 'assistant', text: '导航到 articles' },
+      rel: 'articles',
+      activity: { op: 'navigate', title: '文章列表' },
+    },
+    {
+      type: 'step',
+      message: { role: 'assistant', text: '失败: 检测到无进展导航循环' },
+      activity: { op: 'fail' },
+    },
+    {
+      type: 'final',
+      payload: {
+        sessionId: 'sess-fail-layer',
+        driver: 'llm',
+        requestedDriver: 'auto',
+        outcome: 'failed',
+        summary: '检测到无进展导航循环;当前合同未暴露完成目标所需的可执行能力',
+        ...(reason === undefined ? {} : { reason }),
+        steps: [],
+        successes: [],
+      },
+    },
+  ];
+
+  it('LLM 表述形状:phrasing 为主呈现 + 来源标注「助手表述」;机器叙句不进主呈现', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse(
+            failedFinal({
+              code: 'no_progress_loop',
+              evidence: ['重复处境:articles', '可用动作:(无)'],
+              tried: ['导航到 articles'],
+              phrasing: '当前页面没有提供完成这个目标所需的操作入口。',
+            }),
+          ),
+        ),
+      ),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    await waitFor(() => {
+      expect(screen.getByText('当前页面没有提供完成这个目标所需的操作入口。')).toBeTruthy();
+    });
+    // 来源标注:助手表述(LLM 生成),零编造安慰语。
+    expect(screen.getByText('助手表述')).toBeTruthy();
+    // 服务器机器叙句(summary)不进主呈现(降级为机械层/审计数据)。
+    expect(screen.queryByText(/检测到无进展导航循环/)).toBeNull();
+  });
+
+  it('中性降级形状:无 phrasing → 「失败 · code=… · 已尝试:…」,evidence 折叠在失败数据区', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse(
+            failedFinal({
+              code: 'no_progress_loop',
+              evidence: ['重复处境:articles'],
+              tried: ['导航到 articles'],
+            }),
+          ),
+        ),
+      ),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('失败 · code=no_progress_loop · 已尝试:导航到 articles'),
+      ).toBeTruthy();
+    });
+    expect(screen.queryByText(/检测到无进展导航循环/)).toBeNull();
+    // evidence 作为结构化数据可达(次级区域),不作主叙事。
+    expect(screen.getByText('失败数据')).toBeTruthy();
+    expect(screen.getByText('重复处境:articles')).toBeTruthy();
+  });
+
+  it('结构化数据可达形状:details 区呈现 code/已尝试/evidence 本体(审计视角)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse(
+            failedFinal({
+              code: 'driver_fail',
+              evidence: ['LLM 调用失败: HTTP 401 令牌无效'],
+              tried: ['导航到 articles'],
+              phrasing: '助手模型暂时无法访问。',
+            }),
+          ),
+        ),
+      ),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    await waitFor(() => {
+      expect(screen.getByText('助手模型暂时无法访问。')).toBeTruthy();
+    });
+    // 即便有 LLM 表述,结构化本体仍可达:code/已尝试/evidence 行在失败数据区。
+    expect(screen.getByText('失败数据')).toBeTruthy();
+    expect(screen.getByText('code=driver_fail')).toBeTruthy();
+    expect(screen.getByText('已尝试:导航到 articles')).toBeTruthy();
+    expect(screen.getByText('LLM 调用失败: HTTP 401 令牌无效')).toBeTruthy();
+  });
+
+  it('旧形状前向兼容:final failed 无 reason → 现状中性回退「失败: {summary}」', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(sseResponse(failedFinal(undefined)))),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('失败: 检测到无进展导航循环;当前合同未暴露完成目标所需的可执行能力'),
+      ).toBeTruthy();
+    });
+  });
+
+  it('error 帧携带 reason:中性结构化展示(code=loop_exception),旧形状仍回退原文', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse([
+            {
+              type: 'error',
+              error: '聊天循环异常: 爆炸',
+              reason: { code: 'loop_exception', evidence: ['聊天循环异常: 爆炸'] },
+            },
+          ]),
+        ),
+      ),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    await waitFor(() => {
+      expect(screen.getByText('失败 · code=loop_exception')).toBeTruthy();
+    });
+    expect(screen.getByText('聊天循环异常: 爆炸')).toBeTruthy();
+  });
+});
+
 describe('工作台 · 思考区(T11 Phase C / T24 Phase B)', () => {
   it('增量流入(T24):默认折叠为一条「思考中」进行中指示(含步数),展开后增量实时流入', async () => {
     // 流保持打开:thinking 增量流入时回合仍在进行,指示/实时性可逐帧断言。

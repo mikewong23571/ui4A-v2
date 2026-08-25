@@ -18,6 +18,12 @@
       "lines": 866,
       "limit": 800,
       "note": "T22 在途 track 所有;T23 不拆分,T22 关闭时随 scripts/t22 一并裁决"
+    },
+    {
+      "path": "apps/web/src/components/chat/floating-chat.test.tsx",
+      "lines": 944,
+      "limit": 800,
+      "note": "T24 在途:Phase B chat 可观测性(thinking 折叠/活动语言/失败分层)新增用例所致;业务优先不为凑行数拆分(workflow 业务优先原则 2026-08-26),shrink-only 自 T24 关闭起算;收缩窗口=T27 workstation 重组时按 feature 分片或提炼共享 SSE 桩"
     }
   ],
   "dirs": [

@@ -19,8 +19,12 @@
  *   payload 与一次性 JSON 回执同形状,rule 命中路径仍走 JSON);
  * - {type:'heartbeat'} —— 长回合连接保活(不产生消息,只刷新客户端空闲计时);
  * - {type:'final', turnId, payload:{sessionId, turnId, driver, requestedDriver, outcome,
- *   summary, steps, successes, render?}} —— 回合终帧;
- * - {type:'error', error} —— 服务端兜底(循环异常,200 流内如实报告)。
+ *   summary, steps, successes, render?, reason?}} —— 回合终帧;失败终局
+ *   (T24 Phase B Task 3)附 reason={code, evidence?, tried?, phrasing?} 结构化
+ *   失败数据(phrasing 为 LLM 在场时的表述,缺席=诚实降级),summary 保留为
+ *   机器层/审计数据;旧服务端帧无 reason,客户端回退 summary 中性呈现;
+ * - {type:'error', error, reason?} —— 服务端兜底(循环异常,200 流内如实报告;
+ *   reason 为结构化失败数据,旧服务端帧缺省)。
  *
  * 停止/超时(B2/B1):signal 中止时主动 cancel reader——真实 fetch 的流会随
  * signal 报错,而测试桩的手造流不会;显式 cancel 让两种来源行为一致,
@@ -50,6 +54,24 @@ export interface ChatStepActivity {
   subject?: string;
 }
 
+/**
+ * 结构化失败 reason(T24 Phase B Task 3:失败措辞分层):机械层只产结构化
+ * 数据——code 为机械失败码(no_progress_loop / driver_fail /
+ * start_entity_unavailable / loop_exception),evidence 为机械事实原文,
+ * tried 为已尝试步骤概要;phrasing 是 LLM 在场时生成的面向用户表述
+ * (AI-first:缺席 = 诚实降级,客户端走中性结构化展示,不伪造)。
+ */
+export interface ChatFailureReason {
+  /** 机械失败码(结构化数据,不是面向用户叙句)。 */
+  code: string;
+  /** 机械事实(协议/合同层原文;审计视角)。 */
+  evidence?: string[];
+  /** 已尝试步骤的简短列举(机器投影;完整轨迹在 final.steps)。 */
+  tried?: string[];
+  /** LLM 生成的面向用户表述;LLM 不可用/调用失败时缺省。 */
+  phrasing?: string;
+}
+
 /** final 帧载荷(inline 回合的完整结果投影)。 */
 export interface ChatFinalPayload {
   sessionId: string;
@@ -62,6 +84,12 @@ export interface ChatFinalPayload {
   successes: ExecSuccess[];
   sources?: FactRef[];
   presentationRequestIds?: string[];
+  /**
+   * 失败终局的结构化 reason(T24 Phase B Task 3);outcome=failed 时在场。
+   * summary 仍是机器层/审计数据(真相不从主呈现消失);旧服务端帧缺省,
+   * 客户端回退 summary 中性呈现,前向兼容。
+   */
+  reason?: ChatFailureReason;
   render?: {
     concern: string;
     canvasUrl: string;
@@ -106,7 +134,12 @@ export type ChatSseFrame =
   | { type: 'render'; turnId: string; payload: ChatRenderPayload }
   | { type: 'presentation'; turnId: string; payload: PresentationReceipt }
   | { type: 'final'; turnId: string; payload: ChatFinalPayload }
-  | { type: 'error'; error: string };
+  | {
+      type: 'error';
+      error: string;
+      /** 循环异常兜底的结构化 reason(T24 Phase B Task 3);旧服务端帧缺省。 */
+      reason?: ChatFailureReason;
+    };
 
 /** AbortSignal.any 的便携版(jsdom 等环境可能缺该静态方法)。 */
 export function anySignal(signals: AbortSignal[]): AbortSignal {

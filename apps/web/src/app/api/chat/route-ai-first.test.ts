@@ -1,4 +1,4 @@
-import { type Server } from 'node:http';
+import { type Server, createServer } from 'node:http';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -13,6 +13,74 @@ import {
   startChatRouteFixtures,
   stopChatRouteFixtures,
 } from './route-test-kit';
+
+/**
+ * 双角色 LLM 桩(T24 Phase B Task 3):driver 决策请求(SDK 流式,带 tools)
+ * 依次 navigate(articles)→ fail;表述请求(机械层直调,无 tools)记入
+ * phrasingCalls 并返回一句话 JSON —— phrasing 只能来自 LLM 输出。
+ */
+function createPhrasingAwareLlmStub(): Promise<
+  Server & { port(): number; phrasingCalls: unknown[] }
+> {
+  return new Promise((resolve) => {
+    let driverCalls = 0;
+    const phrasingCalls: unknown[] = [];
+    const chunk = (delta: Record<string, unknown>, finishReason: string | null = null) =>
+      `data: ${JSON.stringify({
+        id: 'chatcmpl-t24',
+        object: 'chat.completion.chunk',
+        created: 1755700000,
+        model: 'test-model',
+        choices: [{ index: 0, delta, finish_reason: finishReason }],
+      })}`;
+    const stub = createServer(async (req, res) => {
+      const chunks: Buffer[] = [];
+      for await (const piece of req) chunks.push(Buffer.from(piece));
+      let body: unknown = {};
+      try {
+        body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      } catch {
+        body = {};
+      }
+      if (typeof body === 'object' && body !== null && 'tools' in body) {
+        driverCalls += 1;
+        const tool =
+          driverCalls === 1
+            ? { name: 'navigate', args: { rel: 'articles' } }
+            : {
+                name: 'fail',
+                args: { reason: '合同没有可用入口', evidence: ['articles 无动作'] },
+              };
+        res.statusCode = 200;
+        res.setHeader('content-type', 'text/event-stream');
+        res.end(
+          `${[
+            chunk({
+              tool_calls: [
+                {
+                  index: 0,
+                  id: `call_t24_${driverCalls}`,
+                  type: 'function',
+                  function: { name: tool.name, arguments: JSON.stringify(tool.args) },
+                },
+              ],
+            }),
+            chunk({}, 'tool_calls'),
+            'data: [DONE]',
+          ].join('\n\n')}\n\n`,
+        );
+        return;
+      }
+      phrasingCalls.push(body);
+      res.statusCode = 200;
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ choices: [{ message: { content: '这里没有可用的发布入口。' } }] }));
+    }) as Server & { port(): number; phrasingCalls: unknown[] };
+    stub.port = () => (stub.address() as { port: number }).port;
+    stub.phrasingCalls = phrasingCalls;
+    stub.listen(0, '127.0.0.1', () => resolve(stub));
+  });
+}
 
 beforeEach(startChatRouteFixtures);
 afterEach(stopChatRouteFixtures);
@@ -84,6 +152,21 @@ describe('T15 U22:product chat runtime is AI-first', () => {
     expect(response.json.summary).toContain('LLM 不可用');
     expect(await eventKinds()).not.toContain('render-spec-frozen');
     expect(await eventKinds()).not.toContain('action-executed');
+  });
+
+  it('LLM 缺席:final 帧含结构化 reason、无 phrasing(诚实降级,零网络替身)', async () => {
+    const { json } = await chat({
+      sessionId: 'u22-reason-unavailable',
+      goal: { verb: PUBLISH_TEST_GOAL },
+    });
+
+    expect(json.outcome).toBe('failed');
+    const reason = (json as { reason?: { code: string; phrasing?: string; evidence?: string[] } })
+      .reason;
+    expect(reason?.code).toBe('driver_fail');
+    expect(reason?.phrasing).toBeUndefined();
+    // 机器句子降级为机械层数据(evidence 可达),不再由服务器拼面向用户叙句。
+    expect(reason?.evidence?.[0]).toContain('LLM 不可用');
   });
 
   it('rejects delegated work before dispatch when the LLM profile is unavailable', async () => {
@@ -306,6 +389,69 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
     expect(
       steps.every((step) => typeof step.step === 'number' && typeof step.rel === 'string'),
     ).toBe(true);
+  });
+});
+
+describe('T24 Phase B Task 3:失败措辞分层(结构化 reason + LLM phrasing)', () => {
+  const envKey = process.env.LLM_API_KEY;
+  const envBase = process.env.LLM_BASE_URL;
+  const envModel = process.env.LLM_MODEL;
+
+  afterEach(() => {
+    if (envKey === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = envKey;
+    if (envBase === undefined) delete process.env.LLM_BASE_URL;
+    else process.env.LLM_BASE_URL = envBase;
+    if (envModel === undefined) delete process.env.LLM_MODEL;
+    else process.env.LLM_MODEL = envModel;
+  });
+
+  it('LLM 在场:失败终局 final.reason.phrasing 来自 LLM 输出,输入为结构化 reason', async () => {
+    const stub = await createPhrasingAwareLlmStub();
+    process.env.LLM_API_KEY = 'test-key';
+    process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+    process.env.LLM_MODEL = 'test-model';
+
+    const { json, frames } = await chat({ sessionId: 't24-phrasing', goal: { verb: '随便看看' } });
+
+    expect(json.outcome).toBe('failed');
+    const reason = (json as { reason?: Record<string, unknown> }).reason;
+    expect(reason?.code).toBe('driver_fail');
+    expect(reason?.tried).toEqual(['导航到 articles']);
+    expect(reason?.evidence).toEqual(['合同没有可用入口', 'articles 无动作']);
+    expect(reason?.phrasing).toBe('这里没有可用的发布入口。');
+    // 表述请求恰一次,输入是结构化 reason(prompt 携带 code,不注入文案模板)。
+    expect(stub.phrasingCalls).toHaveLength(1);
+    const sent = JSON.stringify(stub.phrasingCalls[0]);
+    expect(sent).toContain('driver_fail');
+    expect(sent).toContain('随便看看');
+    expect(sent).not.toMatch(/例如|比如|示例/);
+    // final 帧载荷内 reason 与展开断言同一来源。
+    const finalFrame = frames.find((frame) => frame.type === 'final');
+    expect((finalFrame?.payload as { reason?: { phrasing?: string } })?.reason?.phrasing).toBe(
+      '这里没有可用的发布入口。',
+    );
+    await new Promise<void>((resolve) => stub.close(() => resolve()));
+  });
+
+  it('LLM 在场但表述调用失败:final.reason 无 phrasing(不伪造、不静默)', async () => {
+    const stub = await createUnauthorizedStub();
+    process.env.LLM_API_KEY = 'invalid-key';
+    process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+    process.env.LLM_MODEL = 'test-model';
+
+    const { json } = await chat({
+      sessionId: 't24-phrasing-down',
+      goal: { verb: PUBLISH_TEST_GOAL },
+    });
+
+    expect(json.outcome).toBe('failed');
+    const reason = (json as { reason?: { code: string; phrasing?: string; evidence?: string[] } })
+      .reason;
+    expect(reason?.code).toBe('driver_fail');
+    expect(reason?.evidence?.[0]).toContain('401');
+    expect(reason?.phrasing).toBeUndefined();
+    await new Promise<void>((resolve) => stub.close(() => resolve()));
   });
 });
 

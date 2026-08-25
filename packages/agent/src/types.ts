@@ -136,7 +136,17 @@ export type AgentOperation =
       authorization?: EffectAuthorization;
     }
   | { kind: 'done'; summary: string }
-  | { kind: 'fail'; reason: string; evidence?: string[] };
+  | {
+      kind: 'fail';
+      reason: string;
+      evidence?: string[];
+      /**
+       * 机械终止的结构化失败码(T24 Phase B Task 3):循环自身的协议级终止
+       * (如 no_progress_loop)携带;driver 自述 fail 缺省(上层按来源归类)。
+       * 只读附加暴露,不参与循环判定语义。
+       */
+      code?: string;
+    };
 
 /**
  * 一次拒绝(navigate 不可达记 layer 'not-found';exec 拒绝携带合同的结构化原因)。
