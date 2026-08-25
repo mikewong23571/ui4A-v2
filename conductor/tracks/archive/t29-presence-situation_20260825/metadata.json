@@ -1,10 +1,10 @@
 {
   "id": "t29-presence-situation_20260825",
   "type": "architecture",
-  "status": "planned",
+  "status": "completed",
   "title": "T29 在场与处境(presence & situation):人机同源的处境事实层",
   "created_at": "2026-08-25T10:00:00Z",
-  "updated_at": "2026-08-25T10:00:00Z",
+  "updated_at": "2026-08-25T20:00:00Z",
   "approved_by": "user (前置架构层:整体架构分析后设立;支撑 T24-T28 愿景 program)",
   "depends_on": []
 }

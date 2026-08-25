@@ -54,12 +54,19 @@
   - 测试切面:chat 平面判断与 entity scope 缺省来自同一装配输出(改一处
     presence → 两处行为同变)
   - 无 presence 的 Bearer/CLI 形态:装配正常、行为与现状等价
-- [~] Task: 全量验收
+- [x] Task: 全量验收
   - `pnpm check` 全绿;`CI=true pnpm e2e invariants` 全绿
   - presence 事件 → 投影 → 重放 hash 一致(并入重放测试套件)
-  - 自治证据: `pnpm check` 346 files passed / 6 integration files skipped;
-    invariants 4 passed / 2 skipped; CLI build passed. 生产 Playwright 仍需
-    OIDC credential/profile 与部署后授权窗口，当前未伪造登录执行。
+  - 自治证据(2026-08-25, rev 38 / 镜像 t29a2 / master ad2d221):
+    `pnpm check` 347 files passed / 6 integration skipped(2604 tests);
+    invariants 4 passed / 2 skipped(I1 superseded、I2 对拍精简);
+    生产 Playwright 7/7(登录/首页/meta 控制台/presence 已认证 200 +
+    幂等去重/chat 200 + outcome=answered,presence 投影显示客户端上报的
+    site 变化点)。
+  - 验收中修正(均已提交):chat route 接线 situationForChat(1aa1b3d);
+    presence_current 走版本化迁移 v2(15aedf5,生产运行时角色无 DDL 权限);
+    realm 兼容性判定改读完整客户端表示(ad2d221,Keycloak 26 列表视图
+    省略默认值级 mapper 配置)。
 
 ## 验收标准(Track DoD)
 
