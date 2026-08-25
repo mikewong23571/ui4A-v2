@@ -27,9 +27,9 @@ import {
   getAgentDefinitionVersion,
   getSystemSeedAgentDefinitionVersion,
   readAgentDefinitionRegistry,
-} from '../db/agent-definitions';
-import { appendAgentRunCommand, type ConnectableDb } from '../db/agent-runs';
-import { dispatchAgentRun } from '../temporal/agent-run';
+} from '../../db/agent-definitions';
+import { appendAgentRunCommand, type ConnectableDb } from '../../db/agent-runs';
+import { dispatchAgentRun } from '../../temporal/agent-run';
 import {
   agentAuthoringProfileFromEnvironment,
   authoringProfileAsAgentRuntime,

@@ -3,23 +3,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseApplicationBundle } from '@ui4a/engine';
 import type { ProductionDeploymentConfig } from '@ui4a/shared';
 
-vi.mock('../temporal/agent-run', () => ({
+vi.mock('../../temporal/agent-run', () => ({
   dispatchAgentRun: vi.fn(async ({ runId }: { runId: string }) => ({
     workflowId: `agent-${runId}`,
   })),
   cancelAgentRun: vi.fn(async () => undefined),
 }));
 
-import { ensureAgentDefinitionTables } from '../db/agent-definitions';
-import { appendAgentRunCommand, ensureAgentRunTables, listAgentRuns } from '../db/agent-runs';
-import { ensureEventsTable, readLog } from '../db/events';
-import { getPool } from '../db/pool';
-import { dispatchAgentRun } from '../temporal/agent-run';
+import { ensureAgentDefinitionTables } from '../../db/agent-definitions';
+import { appendAgentRunCommand, ensureAgentRunTables, listAgentRuns } from '../../db/agent-runs';
+import { ensureEventsTable, readLog } from '../../db/events';
+import { getPool } from '../../db/pool';
+import { dispatchAgentRun } from '../../temporal/agent-run';
 import { enrichEntityWithAgentRuns } from './agent-runs';
 import { finalizeAgentRunSource } from './agent-run-source-callback';
 import { createAndDispatchAgentRun, prepareNativeAgentDispatch } from './native-agent-dispatch';
-import { getEngine, resetEngineForTests } from './service';
-import applicationBundle from '../applications/ui4a-walkthrough.bundle.json';
+import { getEngine, resetEngineForTests } from '../service';
+import applicationBundle from '../../applications/ui4a-walkthrough.bundle.json';
 
 const pool = getPool(process.env.DATABASE_URL!);
 const profile = {

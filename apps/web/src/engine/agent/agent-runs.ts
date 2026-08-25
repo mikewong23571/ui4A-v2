@@ -14,8 +14,8 @@ import {
   listAgentRunRawReceipts,
   listAgentRuns,
   type ConnectableDb,
-} from '../db/agent-runs';
-import { findDraftsBySource } from '../db/drafts';
+} from '../../db/agent-runs';
+import { findDraftsBySource } from '../../db/drafts';
 
 export const AGENT_RUNS_REL = 'agent-runs';
 const AGENT_RUN_PREFIX = 'agent-run:';

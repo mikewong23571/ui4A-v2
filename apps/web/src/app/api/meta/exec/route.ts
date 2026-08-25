@@ -1,6 +1,6 @@
 import { getDb, getEngine, isMetaRel } from '../../../../engine/service';
-import { executeDraftMeta, isDraftMetaRel } from '../../../../engine/drafts';
-import { agentDefinitionDraftRegistryPort } from '../../../../engine/agent-definitions';
+import { executeDraftMeta, isDraftMetaRel } from '../../../../engine/drafts/drafts';
+import { agentDefinitionDraftRegistryPort } from '../../../../engine/agent/agent-definitions';
 import {
   applyTrustedIdentity,
   authenticationErrorResponse,

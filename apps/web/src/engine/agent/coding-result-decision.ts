@@ -5,8 +5,8 @@ import { promisify } from 'node:util';
 import { canonicalJson, decideCodingResult, type ExecRequest } from '@ui4a/engine';
 import type { ActionDefinition, CodingResult, CodingTask, EngineSnapshot } from '@ui4a/shared';
 
-import { getAgentRunInternal, readAgentRunPayload } from '../db/agent-runs';
-import type { DbExecutor } from '../db/events';
+import { getAgentRunInternal, readAgentRunPayload } from '../../db/agent-runs';
+import type { DbExecutor } from '../../db/events';
 
 const runFile = promisify(execFile);
 

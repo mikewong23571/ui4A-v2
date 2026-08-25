@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { AgentRunBirthReferences, AgentRunCommand } from '@ui4a/engine';
 
-import { appendAgentRunCommand, ensureAgentRunTables } from '../db/agent-runs';
-import { ensureEventsTable } from '../db/events';
-import { getPool } from '../db/pool';
+import { appendAgentRunCommand, ensureAgentRunTables } from '../../db/agent-runs';
+import { ensureEventsTable } from '../../db/events';
+import { getPool } from '../../db/pool';
 import { executeAgentRunAction, getAgentRunEntity } from './agent-runs';
 
 const pool = getPool(process.env.DATABASE_URL!);

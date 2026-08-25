@@ -1,10 +1,10 @@
 import { getDb, getEngine, isMetaRel } from '../../../../engine/service';
-import { getDraftMetaEntity, isDraftMetaRel } from '../../../../engine/drafts';
+import { getDraftMetaEntity, isDraftMetaRel } from '../../../../engine/drafts/drafts';
 import {
   agentDefinitionDraftRegistryPort,
   getAgentDefinitionMetaEntity,
   isAgentDefinitionMetaRel,
-} from '../../../../engine/agent-definitions';
+} from '../../../../engine/agent/agent-definitions';
 import {
   authenticationErrorResponse,
   resolveTrustedRequestIdentity,

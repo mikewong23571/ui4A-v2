@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { finalizeAgentRunSource } from '../../../../engine/agent-run-source-callback';
+import { finalizeAgentRunSource } from '../../../../engine/agent/agent-run-source-callback';
 import { getDb } from '../../../../engine/service';
 
 export const dynamic = 'force-dynamic';

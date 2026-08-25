@@ -1,7 +1,7 @@
 import { contentVersion } from '@ui4a/engine';
 
 import { getDb, getEngine } from '../../../../../engine/service';
-import { getAgentDefinitionCatalog } from '../../../../../engine/agent-definitions';
+import { getAgentDefinitionCatalog } from '../../../../../engine/agent/agent-definitions';
 import {
   metaContextFromRequest,
   type MetaRequestContext,

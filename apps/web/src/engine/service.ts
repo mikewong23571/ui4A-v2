@@ -99,13 +99,13 @@ import { validateSpec } from '../render/validator';
 import { wordOf } from '../render/registry';
 import { dispatchNotify } from '../temporal/notify';
 import { resolveFlowRelAlias, withCollectionFlowEntryLinks } from './flow-entry';
-import { preflightCodingResultDecision } from './coding-result-decision';
+import { preflightCodingResultDecision } from './agent/coding-result-decision';
 import {
   createAndDispatchAgentRun,
   prepareNativeAgentDispatch,
   type PreparedNativeAgentDispatch,
-} from './native-agent-dispatch';
-import { codingExecutorProfileRegistryFromEnvironment } from './coding-executor-config';
+} from './agent/native-agent-dispatch';
+import { codingExecutorProfileRegistryFromEnvironment } from './agent/coding-executor-config';
 
 /** exec 结果(discriminated union;HTTP 层据此映射 200/202/4xx)。 */
 export type ExecOutcome =

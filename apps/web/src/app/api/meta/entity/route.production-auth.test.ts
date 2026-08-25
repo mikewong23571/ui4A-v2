@@ -50,12 +50,12 @@ vi.mock('../../../../engine/service', () => ({
   isMetaRel: (rel: string) => rel.startsWith('meta/'),
 }));
 
-vi.mock('../../../../engine/drafts', () => ({
+vi.mock('../../../../engine/drafts/drafts', () => ({
   getDraftMetaEntity: mocks.getDraftMetaEntity,
   isDraftMetaRel: () => false,
 }));
 
-vi.mock('../../../../engine/agent-definitions', () => ({
+vi.mock('../../../../engine/agent/agent-definitions', () => ({
   agentDefinitionDraftRegistryPort: {},
   getAgentDefinitionMetaEntity: mocks.getAgentDefinitionMetaEntity,
   isAgentDefinitionMetaRel: () => false,

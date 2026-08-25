@@ -8,17 +8,17 @@ import {
   ensureAgentDefinitionTables,
   installSeedAgentDefinition,
   registerAgentDefinitionVersion,
-} from '../db/agent-definitions';
-import { ensureDraftTables } from '../db/drafts';
-import { ensureEventsTable } from '../db/events';
-import { getPool } from '../db/pool';
+} from '../../db/agent-definitions';
+import { ensureDraftTables } from '../../db/drafts';
+import { ensureEventsTable } from '../../db/events';
+import { getPool } from '../../db/pool';
 import {
   agentDefinitionDraftRegistryPort,
   getAgentDefinitionCatalog,
   getAgentDefinitionMetaEntity,
 } from './agent-definitions';
-import { executeDraftMeta } from './drafts';
-import { getEngine, resetEngineForTests } from './service';
+import { executeDraftMeta } from '../drafts/drafts';
+import { getEngine, resetEngineForTests } from '../service';
 
 const pool = getPool(process.env.DATABASE_URL!);
 

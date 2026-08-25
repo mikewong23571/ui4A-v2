@@ -1,10 +1,10 @@
 import { flowForInstance, inspectJsonBudget, type AgentRun, type AgentRunJson } from '@ui4a/engine';
 import { assertAgentAuthoringResult } from '@ui4a/shared';
 
-import type { DbExecutor } from '../db/events';
+import type { DbExecutor } from '../../db/events';
 import { agentDefinitionDraftRegistryPort } from './agent-definitions';
-import { executeDraftMeta } from './drafts';
-import type { EngineRuntime } from './service';
+import { executeDraftMeta } from '../drafts/drafts';
+import type { EngineRuntime } from '../service';
 
 /** Local Application seam until result bridges become a shared definition-language vocabulary. */
 interface AgentDefinitionDraftBridge {

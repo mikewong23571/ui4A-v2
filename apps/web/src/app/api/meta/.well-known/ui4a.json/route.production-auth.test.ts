@@ -26,7 +26,7 @@ vi.mock('../../../../../engine/service', () => ({
   getEngine: mocks.getEngine,
 }));
 
-vi.mock('../../../../../engine/agent-definitions', () => ({
+vi.mock('../../../../../engine/agent/agent-definitions', () => ({
   getAgentDefinitionCatalog: mocks.getAgentDefinitionCatalog,
 }));
 

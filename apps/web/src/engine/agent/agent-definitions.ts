@@ -13,12 +13,12 @@ import {
   prepareAgentDefinitionActivation,
   readAgentDefinitionRegistry,
   type ConnectableDb,
-} from '../db/agent-definitions';
-import type { DbExecutor } from '../db/events';
+} from '../../db/agent-definitions';
+import type { DbExecutor } from '../../db/events';
 import type {
   AgentDefinitionDraftRegistryPort,
   AgentDefinitionDraftRegistrySnapshot,
-} from './drafts';
+} from '../drafts/drafts';
 
 export const AGENT_DEFINITIONS_REL = 'meta/agent-definitions';
 const AGENT_DEFINITION_PREFIX = 'meta/agent-definition:';

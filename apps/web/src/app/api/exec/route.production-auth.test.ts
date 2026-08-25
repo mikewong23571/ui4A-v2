@@ -67,7 +67,7 @@ vi.mock('../../../engine/service', () => ({
   LlmArtifactConfigurationError: class LlmArtifactConfigurationError extends Error {},
 }));
 
-vi.mock('../../../engine/agent-runs', () => ({
+vi.mock('../../../engine/agent/agent-runs', () => ({
   executeAgentRunAction: mocks.executeAgentRunAction,
   isAgentRunRel: () => false,
 }));

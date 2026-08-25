@@ -4,7 +4,7 @@ import {
   isMetaRel,
   LlmArtifactConfigurationError,
 } from '../../../engine/service';
-import { executeAgentRunAction, isAgentRunRel } from '../../../engine/agent-runs';
+import { executeAgentRunAction, isAgentRunRel } from '../../../engine/agent/agent-runs';
 import {
   applyTrustedIdentity,
   authenticationErrorResponse,

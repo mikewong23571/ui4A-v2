@@ -40,10 +40,10 @@ import {
   payloadSha256,
   type AtomicCoreMutationPlan,
   type ConnectableDb,
-} from '../db/drafts';
-import { appendEvent, readLog, type DbExecutor } from '../db/events';
-import type { EngineRuntime } from './service';
-import { codingExecutorProfileRegistryFromEnvironment } from './coding-executor-config';
+} from '../../db/drafts';
+import { appendEvent, readLog, type DbExecutor } from '../../db/events';
+import type { EngineRuntime } from '../service';
+import { codingExecutorProfileRegistryFromEnvironment } from '../agent/coding-executor-config';
 
 const DRAFT_REL_PREFIX = 'draft:';
 const DRAFT_ACTIVATION_PREFIX = 'meta/activation:draft-';

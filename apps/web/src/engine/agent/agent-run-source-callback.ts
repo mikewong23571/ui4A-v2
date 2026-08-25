@@ -1,8 +1,8 @@
 import type { SirenEntity } from '@ui4a/engine';
 
-import { getAgentRunInternal, type ConnectableDb } from '../db/agent-runs';
+import { getAgentRunInternal, type ConnectableDb } from '../../db/agent-runs';
 import { materializeDeclaredAgentDefinitionDraft } from './agent-definition-authoring';
-import { getEngine } from './service';
+import { getEngine } from '../service';
 
 export type AgentRunSourceCallbackResult =
   | { ok: true; entity: SirenEntity; deduplicated: boolean }

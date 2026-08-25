@@ -3,7 +3,7 @@ import {
   enrichEntityWithAgentRuns,
   getAgentRunEntity,
   isAgentRunRel,
-} from '../../../engine/agent-runs';
+} from '../../../engine/agent/agent-runs';
 import {
   authenticationErrorResponse,
   resolveTrustedRequestIdentity,

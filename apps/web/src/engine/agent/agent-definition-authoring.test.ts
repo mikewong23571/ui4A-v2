@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../temporal/agent-run', () => ({
+vi.mock('../../temporal/agent-run', () => ({
   dispatchAgentRun: vi.fn(async ({ runId }: { runId: string }) => ({
     workflowId: `agent-${runId}`,
   })),
@@ -13,22 +13,22 @@ import {
   ensureAgentDefinitionTables,
   getActiveAgentDefinition,
   rebuildAgentDefinitionProjection,
-} from '../db/agent-definitions';
+} from '../../db/agent-definitions';
 import {
   appendAgentRunCommand,
   ensureAgentRunTables,
   getAgentRun,
   listAgentRuns,
-} from '../db/agent-runs';
-import { ensureDraftTables, getDraft, listDrafts, rebuildDraftProjection } from '../db/drafts';
-import { ensureEventsTable, readLog } from '../db/events';
-import { getPool } from '../db/pool';
-import { dispatchAgentRun } from '../temporal/agent-run';
+} from '../../db/agent-runs';
+import { ensureDraftTables, getDraft, listDrafts, rebuildDraftProjection } from '../../db/drafts';
+import { ensureEventsTable, readLog } from '../../db/events';
+import { getPool } from '../../db/pool';
+import { dispatchAgentRun } from '../../temporal/agent-run';
 import { agentDefinitionDraftRegistryPort } from './agent-definitions';
 import { finalizeAgentRunSource } from './agent-run-source-callback';
 import { getAgentRunEntity } from './agent-runs';
-import { executeDraftMeta, getDraftMetaEntity } from './drafts';
-import { getEngine, resetEngineForTests } from './service';
+import { executeDraftMeta, getDraftMetaEntity } from '../drafts/drafts';
+import { getEngine, resetEngineForTests } from '../service';
 
 const pool = getPool(process.env.DATABASE_URL!);
 const profile = {

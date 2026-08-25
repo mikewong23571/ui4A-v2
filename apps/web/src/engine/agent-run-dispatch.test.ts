@@ -22,8 +22,8 @@ import {
   storeAgentRunPayload,
 } from '../db/agent-runs';
 import { dispatchAgentRun } from '../temporal/agent-run';
-import { enrichEntityWithAgentRuns, executeAgentRunAction, getAgentRunEntity } from './agent-runs';
-import { finalizeAgentRunSource } from './agent-run-source-callback';
+import { enrichEntityWithAgentRuns, executeAgentRunAction, getAgentRunEntity } from './agent/agent-runs';
+import { finalizeAgentRunSource } from './agent/agent-run-source-callback';
 import { getEngine, resetEngineForTests } from './service';
 
 const pool = getPool(process.env.DATABASE_URL!);

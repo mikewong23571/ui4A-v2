@@ -58,7 +58,7 @@ vi.mock('../../../engine/service', () => ({
   isMetaRel: (rel: string) => rel.startsWith('meta/'),
 }));
 
-vi.mock('../../../engine/agent-runs', () => ({
+vi.mock('../../../engine/agent/agent-runs', () => ({
   enrichEntityWithAgentRuns: mocks.enrichEntityWithAgentRuns,
   getAgentRunEntity: vi.fn(),
   isAgentRunRel: () => false,
