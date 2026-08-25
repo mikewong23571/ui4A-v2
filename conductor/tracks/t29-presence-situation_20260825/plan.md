@@ -10,7 +10,7 @@
   - `packages/shared`:presence 事件类型(site/scope/thread/focus 四类变化点,
     字段白名单、尺寸上限);事件种类与频率上限入合同断言
   - Red:非法 kind/超界载荷/非变化点(与当前在场相同)一律拒绝的测试
-- [ ] Task: 独立 fold 与 presence 投影
+- [x] Task: 独立 fold 与 presence 投影 7c2e57d
   - `apps/web/src/db/presence.ts`(与 db/presentation.ts 同族,不进业务 snapshot):
     principal → 最近 site/scope/thread/focus 的投影视图,可重建
   - 重放测试:重建后视图与增量 fold 一致;空日志 → 空在场(合法态)
