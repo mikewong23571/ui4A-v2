@@ -22,7 +22,7 @@
     `legacy-capability-run.ts`)保持 Red 待 Phase B 删除
   - check-size:`--write-baseline` 固化 33 个超限文件 + 12 个超限目录
   - 基线已提交;此刻起只许缩短(check 对新增违规、基线增长、stale 条目均失败)
-- [ ] Task: 质量风险盘点核对
+- [x] Task: 质量风险盘点核对
   - 用检查输出 + `git grep` 复核 spec.md 的三类债务清单,补齐遗漏(如 scripts
     考古层具体文件、6 个 playwright 配置的合并方案)
   - 产出 `risk-inventory.md`(track 内文档),作为 Phase B–D 的修复索引
