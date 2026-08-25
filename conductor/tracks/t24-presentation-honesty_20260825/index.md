@@ -7,6 +7,7 @@
 
 - [Metadata](./metadata.json)
 - [Specification](./spec.md)
+- [Implementation Plan](./plan.md)
 
 当前状态:`planned`。方向依据:`conductor/product-vision.md` §一(AI as
 assistant)、§五(减法)、§六(施工纪律·文案滑梯)。

@@ -7,6 +7,7 @@ T26(成员规则输入)、T27(scope 常显)的共同地基,也是"同一扇门�
 
 - [Metadata](./metadata.json)
 - [Specification](./spec.md)
+- [Implementation Plan](./plan.md)
 
 当前状态:`planned`。方向依据:`conductor/product-vision.md` §二(入口论)、
 §三、§八(架构判断)。前置架构 track,无依赖,执行序第一(与 T24 并行)。
