@@ -10,7 +10,7 @@
  */
 import { expect, test } from '@playwright/test';
 
-import { SCENARIO_BASE, withFreshServer } from './server-kit';
+import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
 
 // 本文件全部用例指向场景 server(3110),与 baseline/chat 同源复用。
 test.use({ baseURL: SCENARIO_BASE });

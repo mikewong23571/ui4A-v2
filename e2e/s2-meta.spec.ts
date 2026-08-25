@@ -14,7 +14,7 @@ import { expect, test } from '@playwright/test';
 
 import { appendEvent, listEvents } from '../apps/web/src/db/events';
 import { getPool } from '../apps/web/src/db/pool';
-import { DATABASE_URL, SCENARIO_BASE, truncateEvents, withFreshServer } from './server-kit';
+import { DATABASE_URL, SCENARIO_BASE, truncateEvents, withFreshServer } from './kits/server-kit';
 import {
   AGENT_PRINCIPAL,
   HUMAN_PRINCIPAL,
@@ -33,7 +33,7 @@ import {
   pinOnPublished,
   pinOnReady,
   spawnScenarioServer,
-} from './s2-kit';
+} from './kits/s2-kit';
 
 // 本文件全部用例指向场景 server(3110)。
 test.use({ baseURL: SCENARIO_BASE });

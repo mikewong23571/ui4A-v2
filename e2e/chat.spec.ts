@@ -18,7 +18,7 @@ import { createServer } from 'node:http';
 
 import { expect, test } from '@playwright/test';
 
-import { SCENARIO_BASE, withFreshServer } from './server-kit';
+import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
 
 interface ChatResponseBody {
   sessionId: string;

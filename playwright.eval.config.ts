@@ -17,12 +17,12 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: 'e2e',
   testMatch: [
-    'glm-probe.spec.ts',
-    'llm-render.spec.ts',
-    'llm-smoke.spec.ts',
-    'llm-thinking.spec.ts',
-    't15-ai-first-phase-gh.spec.ts',
-    't16-real-llm.spec.ts',
+    'eval/glm-probe.spec.ts',
+    'eval/llm-render.spec.ts',
+    'eval/llm-smoke.spec.ts',
+    'eval/llm-thinking.spec.ts',
+    'eval/t15-ai-first-phase-gh.spec.ts',
+    'eval/t16-real-llm.spec.ts',
   ],
   timeout: 900_000,
   fullyParallel: false,

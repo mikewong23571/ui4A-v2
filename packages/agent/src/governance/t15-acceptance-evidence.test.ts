@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { T15_PHASE_GH_EVIDENCE } from '../../../../e2e/t15-acceptance-evidence';
+import { T15_PHASE_GH_EVIDENCE } from '../../../../e2e/kits/t15-acceptance-evidence';
 
 describe('T15 U18-U23 acceptance evidence inventory', () => {
   it('routes every story to existing focused evidence without claiming pending live work is done', () => {

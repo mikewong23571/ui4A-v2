@@ -48,7 +48,7 @@ import {
   TEMPORAL_ADDRESS,
   withWorkerServer,
   withWorkerStack,
-} from './server-kit';
+} from './kits/server-kit';
 
 test.skip(
   !process.env.RUN_LLM_E2E ||

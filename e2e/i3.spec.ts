@@ -25,7 +25,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 
-import { SCENARIO_BASE, withFreshServer } from './server-kit';
+import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
 
 /** fuzz 页面清单(骨架五面 + 实体页;GOAL I3「所有页面」的本站全集)。 */
 const PAGES: { name: string; path: string; ready: string }[] = [

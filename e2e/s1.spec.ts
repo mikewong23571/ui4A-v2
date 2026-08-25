@@ -25,7 +25,12 @@ import { spawnSync } from 'node:child_process';
 import { expect, test } from '@playwright/test';
 
 import { terminateStaleNotifyWorkflows } from '../apps/web/src/temporal/notify';
-import { SCENARIO_BASE, TEMPORAL_ADDRESS, withFreshServer, withWorkerServer } from './server-kit';
+import {
+  SCENARIO_BASE,
+  TEMPORAL_ADDRESS,
+  withFreshServer,
+  withWorkerServer,
+} from './kits/server-kit';
 
 // 本文件全部用例指向场景 server(3110)+ 真 worker。
 test.use({ baseURL: SCENARIO_BASE });

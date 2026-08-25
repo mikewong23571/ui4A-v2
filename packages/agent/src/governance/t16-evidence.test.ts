@@ -5,7 +5,7 @@ import {
   T16_TECHNICAL_STORY_IDS,
   createT16StoryEvidence,
   summarizeT16Evidence,
-} from '../../../../e2e/t16-evidence';
+} from '../../../../e2e/kits/t16-evidence';
 
 describe('T16 presentation evidence contract', () => {
   it('enumerates every user and technical story exactly once', () => {

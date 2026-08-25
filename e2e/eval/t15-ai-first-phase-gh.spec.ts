@@ -23,7 +23,7 @@ import {
   loadLlmEvalProfile,
   runEvalTurn,
   withIsolatedStoryServer,
-} from './story-eval-kit';
+} from '../kits/story-eval-kit';
 
 const RUN_LLM_EVAL = process.env.RUN_LLM_EVAL === '1';
 

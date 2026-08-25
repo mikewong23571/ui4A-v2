@@ -17,7 +17,7 @@ import { expect, test } from '@playwright/test';
 
 import { validateSpec } from '../apps/web/src/render/validator';
 
-import { SCENARIO_BASE, withFreshServer } from './server-kit';
+import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
 
 /** 配置合同完整但不会被确定性 binding-only render 命中路径调用。 */
 const UNUSED_LLM_PROFILE = {

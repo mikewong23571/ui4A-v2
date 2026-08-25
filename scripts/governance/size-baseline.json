@@ -12,7 +12,7 @@
       "limit": 800
     },
     {
-      "path": "e2e/story-eval-kit.ts",
+      "path": "e2e/kits/story-eval-kit.ts",
       "lines": 1037,
       "limit": 500
     },
@@ -107,11 +107,6 @@
     {
       "path": "apps/web/src/engine",
       "lines": 9296,
-      "limit": 4000
-    },
-    {
-      "path": "e2e",
-      "lines": 8306,
       "limit": 4000
     },
     {

@@ -24,7 +24,10 @@ describe('AI-first runtime source governance', () => {
 
   it('E2E protocol fixtures import the rule driver only through the testkit subpath', () => {
     const directory = new URL('../../../../e2e/', import.meta.url);
-    for (const name of readdirSync(directory).filter((entry) => entry.endsWith('.ts'))) {
+    const entries = readdirSync(directory, { recursive: true }).filter(
+      (entry): entry is string => typeof entry === 'string' && entry.endsWith('.ts'),
+    );
+    for (const name of entries) {
       const content = readFileSync(new URL(name, directory), 'utf8');
       if (!content.includes('createRuleDriver')) continue;
       expect(content, name).toContain("from '@ui4a/agent/testkit/rule-driver'");

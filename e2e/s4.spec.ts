@@ -39,7 +39,7 @@ import { planFor } from '@ui4a/agent';
 import { expect, test } from '@playwright/test';
 
 import { terminateStaleNotifyWorkflows } from '../apps/web/src/temporal/notify';
-import { SCENARIO_BASE, withFreshServer } from './server-kit';
+import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
 
 // 本文件全部用例指向场景 server(3110)。
 test.use({ baseURL: SCENARIO_BASE });
@@ -138,10 +138,9 @@ class AgentChannel {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ steps, actor: 'agent', principal: this.principal, channel: 'http' }),
     });
-    expect(
-      response.status,
-      'exec-plan 应 2xx(拒绝/挂起是步级数据,不是 HTTP 错误)',
-    ).toBeLessThan(300);
+    expect(response.status, 'exec-plan 应 2xx(拒绝/挂起是步级数据,不是 HTTP 错误)').toBeLessThan(
+      300,
+    );
     return { status: response.status, body: (await response.json()) as PlanResponse };
   }
 }
@@ -171,7 +170,9 @@ function publishGoal(title: string, category: string): Parameters<typeof planFor
 }
 
 /** planFor 的提案步 + 手工业务步 → exec-plan 请求体(params 规范化为 {})。 */
-function toBodySteps(steps: readonly { rel: string; action: string; params?: unknown }[]): PlanStepBody[] {
+function toBodySteps(
+  steps: readonly { rel: string; action: string; params?: unknown }[],
+): PlanStepBody[] {
   return steps.map((step) => ({
     rel: step.rel,
     action: step.action,
@@ -295,9 +296,9 @@ test('S4-六步一次决策:单次 exec-plan(next×3 + publish + unpublish + rep
       'unpublish',
       'republish',
     ]);
-    expect(executed.every((event) => event.actor === 'agent' && event.principal === 'user:s4-plan')).toBe(
-      true,
-    );
+    expect(
+      executed.every((event) => event.actor === 'agent' && event.principal === 'user:s4-plan'),
+    ).toBe(true);
     // 追加伴随事件恰一条(落库行携带 rel/action;新文章 rel 以响应分步结果
     // 与下方集合状态断言——append 的实例级细节在 action-executed 重放里)。
     const appended = events.filter((event) => event.kind === 'entity-appended');

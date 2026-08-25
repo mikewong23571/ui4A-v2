@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { T15_STORY_CORPUS, type T15StoryId } from '../../../../e2e/t15-story-corpus';
+import { T15_STORY_CORPUS, type T15StoryId } from '../../../../e2e/kits/t15-story-corpus';
 
 const EXPECTED_IDS = Array.from({ length: 23 }, (_, index) => `U${index + 1}` as T15StoryId);
 

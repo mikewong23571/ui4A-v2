@@ -14,7 +14,7 @@
  */
 import { expect, test } from '@playwright/test';
 
-import { SCENARIO_BASE, withFreshServer } from './server-kit';
+import { SCENARIO_BASE, withFreshServer } from '../kits/server-kit';
 
 test.skip(
   !process.env.RUN_LLM_E2E ||

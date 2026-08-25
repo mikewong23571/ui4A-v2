@@ -1,9 +1,9 @@
 /** U22 focused corpus: five natural requests under an explicitly missing LLM profile. */
 import { expect, test } from '@playwright/test';
 
-import { SCENARIO_BASE, withFreshServer } from './server-kit';
-import { runEvalTurn } from './story-eval-kit';
-import { T15_STORY_CORPUS } from './t15-story-corpus';
+import { SCENARIO_BASE, withFreshServer } from '../kits/server-kit';
+import { runEvalTurn } from '../kits/story-eval-kit';
+import { T15_STORY_CORPUS } from '../kits/t15-story-corpus';
 
 const NON_BUSINESS_KINDS = new Set([
   'agent-decision',

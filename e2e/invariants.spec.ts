@@ -39,7 +39,7 @@ import { validateSpec } from '../apps/web/src/render/validator';
 import { contentVersion, fold } from '../packages/engine/src/index';
 import { metaFlowRel } from '../packages/shared/src/definition/definition';
 
-import { DATABASE_URL, SCENARIO_BASE, withFreshServer } from './server-kit';
+import { DATABASE_URL, SCENARIO_BASE, withFreshServer } from './kits/server-kit';
 
 const UNUSED_LLM_PROFILE = {
   LLM_API_KEY: 'e2e-unused-key',
