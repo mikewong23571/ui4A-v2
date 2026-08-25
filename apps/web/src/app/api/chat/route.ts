@@ -779,8 +779,7 @@ export async function POST(request: Request) {
         'ui4a:read',
         'ui4a:write',
         ...productionAgentScopes.filter(
-          (scope) =>
-            scope.startsWith('ui4a:policy:') && productionIdentity.scopes.includes(scope),
+          (scope) => scope.startsWith('ui4a:policy:') && productionIdentity.scopes.includes(scope),
         ),
       ];
       // 纵深防御:identity 宣称的 policyScope 必须有对应 granted scope 背书(正常路径
