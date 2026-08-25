@@ -68,3 +68,45 @@ Meta Human Control Plane 呈现与治理的全部对象;人类与 agent 读同�
 - meta 平面对象定义"应用是什么"(定义、打包、激活、草稿、agent 定义);
 - infra 对象回答"真相在哪、谁在执行、谁批准了"(事件日志、投影、确认、委托、会话、身份);
 - 前端对象只负责"把授权事实呈现出来"(binding-only,行动作闸)。
+
+## 根与相互作用
+
+### 两个根
+
+1. **真相之根:append-only 事件日志**(`events` 表)。唯一权威;所有对象都是它的
+   可重建投影——投影可丢弃(sidecar stale 重建、chat 重放、web 重启),日志在则世界在。
+2. **语义之根:定义生命周期自举**(`meta/self`)。"定义如何被起草、激活、废弃"本身
+   被建模为一个 flow definition(`DEFINITION_LIFECYCLE_FLOW` 常量)——治理所有定义
+   的机器与被治理对象共享同一套语义,引擎用自己定义自己,无需外部权威启动治理。
+
+贯穿脊椎:一切执行都过 **declaration → guard → schema** 同一裁决顺序,无旁路。
+
+### 四个闭环
+
+- **闭环一:定义 → 行为。** Flow Definition 经 Activation(人类批准)激活后,立刻成为
+  业务平面 exec 的裁决依据——同一份定义,人类 UI、agent 合同读取、引擎 guard 三方共用。
+  定义不是文档,是可执行的边界。
+- **闭环二:行为 → 定义。** Agent Run(经 Delegation 在 capability 平面执行)产出的候选
+  定义只能进入 Governed Draft;人类审查机械 diff、批准激活 → 定义更新 → 回到闭环一。
+  agent 可以写定义,但只有人类能让它生效——agent 生产力与人类治理权共存而非互斥。
+- **闭环三:呈现 ↔ 会话。** Chat 发起薄 Presentation Request(只有 subject/intent),
+  Broker 重新授权、解引用实时事实、规划 Surface;canvas 渲染后把 clientView(用户在看
+  什么)回报给 chat,成为下一轮 agent 决策的上下文——用户所在位置决定回合的合同平面
+  (2026-08-25 修复)。呈现永不反向污染事实(binding-only 旁路)。
+- **闭环四:确认闸。** 带 effect 的执行可在 Confirmation 挂起进入 Inbox,只有人类
+  approve 才继续;审批同样是日志事件——"人类在场"是日志事实,不是 UI 约定。
+
+### 相互成就的关节点
+
+- **同一份合同,两个读者。** 人类 renderer 与 agent driver 读同样的 Siren entity/action/
+  guard;meta 平面每定义一个新能力,人类与 agent 同时获得,无需分别为 UI 和 API 建设。
+- **日志让投影廉价,投影廉价让治理敢做。** 一切可重放,因此 Draft 可拒绝、sidecar 可
+  stale、定义可废弃——治理动作零沉没成本。
+- **Draft 让 agent 可信,agent 让定义进化。** Draft 闸把 agent 产出变成系统自我演进的
+  安全供给。
+- **human-only 不变量是自动化的信用来源。** approve 拒绝 agent、executor 选择服务端
+  拥有、sidecar key 绑定已认证 principal——机械约束不可谈判,上层才敢把更多操作开放
+  给 agent。
+
+**一句话:根是"日志 + 自举生命周期",成就来自闭环——定义产生行为,行为(经 agent)
+产生新定义,呈现与确认把人类始终留在回路上。**
