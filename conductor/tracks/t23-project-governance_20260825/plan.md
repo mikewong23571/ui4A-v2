@@ -30,15 +30,18 @@
 
 ## Phase B: 兼容性清理(GR2,Green)
 
-- [ ] Task: 移除 T18 wire 兼容层
+- [x] Task: 移除 T18 wire 兼容层 cf2397e
   - 删除 `apps/worker/src/capabilities/coding/compatibility.ts` 及其测试/fixture
   - 删除 `packages/engine/src/agent-run/legacy-capability-run.ts` 及引用
   - 清理 web/worker 中 legacy dispatch 分支,保留 canonical Agent Run 唯一路径
-- [ ] Task: 清理其余兼容 shim
-  - 审查 `apps/web/src/db/migrations.ts` 等兼容 shim,由 T22 显式迁移合同取代者删除
-  - check-compat 转绿(仅剩白名单注释语境)
-  - 复跑受影响包全部测试 + invariants
-- [ ] Task: Phase Verification & Checkpoint
+  - 整链清除:temporal/capability、db/capability-runs、capability-callback 路由、
+    worker codingCapabilityWorkflow、engine capability-run aggregate;deploy 合同
+    与 s2 sitemap 断言同步;DECISIONS.md 记 D39
+- [x] Task: 清理其余兼容 shim 1ae6270, b795d52
+  - migrations.ts 无旧结构 shim(盘点纠正);events.ts 旧 domain 列兜底已删
+  - 50 条措辞基线复核裁决;chat pre-T15 恢复路径与 Codex legacy:t18 回落删除
+  - check-compat 转绿且 pendingRemoval 清零;受影响测试全绿(invariants 留待终验)
+- [x] Task: Phase Verification & Checkpoint(编排 agent 复跑:994+135 测试全绿)
 
 ## Phase C: 依赖方向收口(GR1,Green)
 
