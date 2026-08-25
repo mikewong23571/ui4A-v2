@@ -187,12 +187,7 @@ export function ChatPanel({
           <SessionList session={session} />
         ) : (
           <AssistantRuntimeProvider runtime={session.runtime}>
-            <ChatThread
-              delegated={session.delegated}
-              onToggleDelegated={session.toggleDelegated}
-              showThinking={session.showThinking}
-              onToggleShowThinking={session.toggleShowThinking}
-            />
+            <ChatThread delegated={session.delegated} onToggleDelegated={session.toggleDelegated} />
           </AssistantRuntimeProvider>
         )}
       </div>

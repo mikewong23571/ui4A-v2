@@ -12,14 +12,18 @@
  * 消息(每步一条),final 帧更新 sessionId(localStorage 持久化);
  * 一次性 JSON 兼容路径(render 短路/委托派发/参数错误)仍覆盖。
  *
- * T11 Phase C(思考区):thinking 帧(llm 步推理自述,先于同号 step 帧)
- * 渲染为可折叠「思考 · 步骤 N」区(默认收起,推理是次级信息);与同号
- * step 帧交错时按到达序相邻;rule 路径零 thinking 帧,渲染与现状一致。
+ * T11 Phase C(思考区)+ T24 Phase B(默认折叠可展开):thinking 增量/终帧
+ * 按 (turnId, step) 聚合成一条条目;进行中条目默认折叠为紧凑的「思考中 ·
+ * 第 N 步」进行中指示(含步数、无机制词),展开即实时思考增量;同号 step 帧
+ * 到达或回合结束后回落为「思考 · 步骤 N」仍可展开查看(数据不丢);全局
+ * 思考开关已移除(折叠指示常在,无需整体隐藏);rule 路径零 thinking 帧。
  * jsdom 无 ResizeObserver(assistant-ui 的 viewport/composer 尺寸观测),桩替换;
  * next/navigation 的 usePathname 桩为 '/'(非 /chat,壳正常渲染)。
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { MECHANISM_WORDS } from '@/lib/mechanism-words';
 
 import { FloatingChat } from './floating-chat';
 import {
@@ -27,6 +31,7 @@ import {
   jsonResponse,
   openChat,
   ResizeObserverStub,
+  scriptedSseResponse,
   sendGoal,
   sseResponse,
 } from './floating-chat-test-stubs';
@@ -257,7 +262,82 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
   });
 });
 
-describe('工作台 · 思考区(T11 Phase C)', () => {
+describe('工作台 · 思考区(T11 Phase C / T24 Phase B)', () => {
+  it('增量流入(T24):默认折叠为一条「思考中」进行中指示(含步数),展开后增量实时流入', async () => {
+    // 流保持打开:thinking 增量流入时回合仍在进行,指示/实时性可逐帧断言。
+    const scripted = scriptedSseResponse([{ type: 'thinking-delta', step: 1, text: '先补标题' }]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(scripted.response)),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('发布一篇文章');
+
+    try {
+      // 折叠指示:一条、紧凑、含步数;增量原文不露出(默认折叠)。
+      const trigger = await screen.findByRole('button', { name: /思考中 · 第 1 步/ });
+      expect(trigger.getAttribute('aria-expanded')).toBe('false');
+      expect(screen.queryByText(/先补标题/)).toBeNull();
+      // 指示文案不得出现机制词(呈现诚实化:思考是人类语言,不是合同层词汇)。
+      const label = trigger.textContent ?? '';
+      expect(MECHANISM_WORDS.some((word) => label.includes(word))).toBe(false);
+
+      // 展开:已累积增量可见 + aria-controls 指向真实内容节点(语义可达)。
+      fireEvent.click(trigger);
+      expect(trigger.getAttribute('aria-expanded')).toBe('true');
+      const controlsId = trigger.getAttribute('aria-controls');
+      expect(controlsId).not.toBeNull();
+      expect(document.getElementById(controlsId!)).not.toBeNull();
+      await waitFor(() => {
+        expect(screen.getByText('先补标题')).toBeTruthy();
+      });
+
+      // 展开态下新流入的增量实时呈现(不丢实时性;同号原地累积)。
+      scripted.push({ type: 'thinking-delta', step: 1, text: ',再推进向导' });
+      await waitFor(() => {
+        expect(screen.getByText('先补标题,再推进向导')).toBeTruthy();
+      });
+      expect(screen.getAllByRole('button', { name: /思考中 · 第 1 步/ })).toHaveLength(1);
+
+      // 同号 step 帧到达:该步思考完成,指示回落静止文案;展开态与文本保留。
+      scripted.push({
+        type: 'step',
+        message: { role: 'assistant', text: '导航到 articles' },
+        rel: 'articles',
+      });
+      await waitFor(() => {
+        expect(screen.getByText('导航到 articles')).toBeTruthy();
+      });
+      const resting = screen.getByRole('button', { name: /思考 · 步骤 1/ });
+      expect(resting.getAttribute('aria-expanded')).toBe('true');
+      expect(screen.getByText('先补标题,再推进向导')).toBeTruthy();
+
+      // 回合结束(final + 流关闭):思考区仍可展开查看,数据不丢。
+      scripted.push({
+        type: 'final',
+        payload: {
+          sessionId: 'sess-live-think',
+          driver: 'llm',
+          requestedDriver: 'auto',
+          outcome: 'done',
+          summary: '目标完成',
+          steps: [],
+          successes: [],
+        },
+      });
+      scripted.close();
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: '发送' })).toBeTruthy();
+      });
+      expect(screen.getByRole('button', { name: /思考 · 步骤 1/ })).toBeTruthy();
+      expect(screen.getByText('先补标题,再推进向导')).toBeTruthy();
+    } finally {
+      scripted.close();
+    }
+  });
+
   it('连续十回合的步骤 1 以 turnId 隔离，旧回合 reasoning 不被覆盖或迁移', async () => {
     const fetchMock = vi.fn((_url: string | URL | RequestInfo, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as {
@@ -315,7 +395,7 @@ describe('工作台 · 思考区(T11 Phase C)', () => {
     }
   });
 
-  it('thinking 帧:渲染为默认收起的「思考」区,点击展开读全文、再点收起', async () => {
+  it('thinking 帧:回合结束后渲染为默认收起的「思考」区,点击展开读全文、再点收起', async () => {
     const frames = [
       { type: 'thinking', step: 1, text: '先补标题,再推进向导' },
       { type: 'step', message: { role: 'assistant', text: '导航到 articles' }, rel: 'articles' },
@@ -344,7 +424,12 @@ describe('工作台 · 思考区(T11 Phase C)', () => {
     await waitFor(() => {
       expect(screen.getByText('导航到 articles')).toBeTruthy();
     });
-    // 默认收起(推理是次级信息):触发器在,正文未进 DOM。
+    // 回合结束(发送按钮回来 = 不再 running):进行中文案回落静止文案。
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '发送' })).toBeTruthy();
+    });
+    expect(screen.queryByRole('button', { name: /思考中/ })).toBeNull();
+    // 默认收起(推理是次级信息):触发器在,正文未进 DOM;回合后仍可展开查看。
     const trigger = screen.getByRole('button', { name: /思考 · 步骤 1/ });
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByText('先补标题,再推进向导')).toBeNull();
@@ -603,7 +688,10 @@ describe('工作台 · 思考增量与渲染回执帧', () => {
     expect(routerPushMock).not.toHaveBeenCalled();
   });
 
-  it('思考开关:默认开启;关闭 → 思考条目不渲染且持久化,重开即回', async () => {
+  it('思考区常在(T24 Phase B):无全局隐藏开关;旧 ui4a.chat.thinking 键失效不隐藏', async () => {
+    // 旧开关退役后遗留的 '0'(原「关闭思考」)不再是任何读写的键:思考区
+    // 默认折叠常在,不因遗留偏好被整体隐藏。
+    window.localStorage.setItem('ui4a.chat.thinking', '0');
     const frames = [
       { type: 'thinking', step: 1, text: '先补标题,再推进向导' },
       { type: 'step', message: { role: 'assistant', text: '导航到 articles' }, rel: 'articles' },
@@ -618,45 +706,17 @@ describe('工作台 · 思考增量与渲染回执帧', () => {
     openChat();
     sendGoal('发布一篇文章');
 
-    const toggle = screen.getByRole('button', { name: '思考过程' });
-    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    // 全局思考开关已移除(折叠指示常在,无需整体隐藏);composer 只有委托开关。
+    expect(screen.queryByRole('button', { name: '思考过程' })).toBeNull();
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /思考 · 步骤 1/ })).toBeTruthy();
     });
-
-    // 关闭:条目即刻消失(state 保留),localStorage 落 '0'。
-    fireEvent.click(toggle);
-    expect(toggle.getAttribute('aria-pressed')).toBe('false');
-    expect(screen.queryByRole('button', { name: /思考 · 步骤/ })).toBeNull();
-    expect(window.localStorage.getItem('ui4a.chat.thinking')).toBe('0');
-
-    // 重开:条目回来(消息未丢)。
-    fireEvent.click(toggle);
-    expect(screen.getByRole('button', { name: /思考 · 步骤 1/ })).toBeTruthy();
-    expect(window.localStorage.getItem('ui4a.chat.thinking')).toBe('1');
-  });
-
-  it('思考开关持久化:localStorage 置 0 起步 → 初始关闭,思考条目不进消息区', async () => {
-    window.localStorage.setItem('ui4a.chat.thinking', '0');
-    const frames = [
-      { type: 'thinking', step: 1, text: '先补标题' },
-      { type: 'step', message: { role: 'assistant', text: '完成: 目标完成' } },
-      finalFrame('sess-toggle-2'),
-    ];
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve(sseResponse(frames))),
-    );
-
-    render(<FloatingChat />);
-    openChat();
-    sendGoal('发布一篇文章');
-
-    const toggle = screen.getByRole('button', { name: '思考过程' });
-    expect(toggle.getAttribute('aria-pressed')).toBe('false');
     await waitFor(() => {
-      expect(screen.getByText('完成: 目标完成')).toBeTruthy();
+      expect(screen.getByRole('button', { name: '发送' })).toBeTruthy();
     });
-    expect(screen.queryByRole('button', { name: /思考 · 步骤/ })).toBeNull();
+    // 遗留 '0' 不隐藏:展开仍读得到全文。
+    fireEvent.click(screen.getByRole('button', { name: /思考 · 步骤 1/ }));
+    expect(screen.getByText('先补标题,再推进向导')).toBeTruthy();
   });
 });

@@ -8,16 +8,19 @@
  * 合同锚点(悬浮聊天 e2e/jsdom 断言依赖,不可改):
  * - 输入框 placeholder「输入目标…」;发送/停止按钮文本与
  *   data-nav="local:chat-send|chat-cancel";委托模式开关 aria-label「委托模式」
- *   + aria-pressed + data-nav="local:chat-delegated";思考过程开关
- *   aria-label「思考过程」+ aria-pressed + data-nav="local:chat-thinking"
- *   (off = 思考条目经 runtime 过滤,不进消息区);
+ *   + aria-pressed + data-nav="local:chat-delegated"(全局思考过程开关已在
+ *   T24 Phase B 移除:思考区默认折叠常在,无需整体隐藏);
  * - running 指示:三点 typing(替代 stock 的裸「●」);
  * - 轨迹步骤卡:step 帧携带的 rel 经 metadata.custom 传入——flow 实例步
  *   (rel 含 flow 或文本含节点迁移「执行 next(」)以 Badge 弱化呈现 rel
  *   (纯展示层,不改 trail.ts 文本);
- * - 思考区(T11 Phase C):thinking 帧条目(metadata.custom.thinking = 归步
- *   步号)渲染为可折叠「思考 · 步骤 N」(Collapsible,默认收起——推理是
- *   次级信息);与同号步骤消息按到达序相邻。
+ * - 思考区(T11 Phase C + T24 Phase B):thinking 增量/终帧条目
+ *   (metadata.custom.thinking = 归步步号)按 (turnId, step) 各渲染为一条
+ *   可折叠思考区(Collapsible,默认收起——推理是次级信息;aria-expanded/
+ *   aria-controls 语义可达)。进行中条目(线程 running 且本条是末条消息 =
+ *   当前步思考仍在累积/执行)触发器为紧凑进行中指示「思考中 · 第 N 步」
+ *   (含步数,无机制词),展开即实时思考增量;同号 step 帧到达或回合结束
+ *   后回落「思考 · 步骤 N」,仍可展开查看(数据不丢,只改呈现)。
  */
 import {
   ComposerPrimitive,
@@ -31,7 +34,7 @@ import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Brain, ChevronDown, SendHorizontal, Square } from 'lucide-react';
+import { ChevronDown, SendHorizontal, Square } from 'lucide-react';
 
 /** 当前消息的 rel(external store 经 convertMessage 的 metadata.custom.rel 传入)。 */
 function useMessageRel(): string | undefined {
@@ -47,6 +50,15 @@ function useMessageThinkingStep(): number | undefined {
     const value: unknown = s.message.metadata.custom['thinking'];
     return typeof value === 'number' ? value : undefined;
   });
+}
+
+/**
+ * 本条消息是否为进行中的思考条目(T24 Phase B):线程 running 且本条是末条
+ * 消息——只有正在累积/执行中的当前步思考满足(其同号 step 帧未到;更早
+ * 回合与已完成步的思考条目都不是末条)。布尔选择器,Object.is 稳定。
+ */
+function useIsLiveThinking(): boolean {
+  return useAuiState((s) => s.thread.isRunning && s.message.isLast);
 }
 
 /** assistant 文本部件:Markdown + flow 实例 rel 徽章(弱化呈现,纯展示)。 */
@@ -83,14 +95,25 @@ const ThinkingText: TextMessagePartComponent = ({ text }) => (
   <span className="block whitespace-pre-wrap">{text}</span>
 );
 
-/** 思考区条目(T11 Phase C):llm 步推理自述——次级信息,默认收起,展开读全文。 */
+/**
+ * 思考区条目(T11 Phase C + T24 Phase B):llm 步推理自述——次级信息,默认
+ * 收起;进行中呈现为一条紧凑的「思考中 · 第 N 步」指示(脉冲点 + 步数),
+ * 展开即实时思考增量,完成/回合结束后回落「思考 · 步骤 N」仍可展开查看。
+ */
 function ThinkingMessage({ step }: { step: number }) {
+  const active = useIsLiveThinking();
   return (
     <MessagePrimitive.Root className="flex w-full justify-start">
       <Collapsible className="max-w-[85%] rounded-lg border border-border px-3 py-1.5">
         <CollapsibleTrigger className="flex w-full items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground [&[data-state=open]>svg]:rotate-180">
           <ChevronDown className="h-3 w-3 transition-transform" />
-          思考 · 步骤 {step}
+          {active ? `思考中 · 第 ${step} 步` : `思考 · 步骤 ${step}`}
+          {active && (
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 animate-pulse rounded-full bg-muted-foreground/60"
+            />
+          )}
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-1 text-xs text-muted-foreground">
           <MessagePrimitive.Parts components={{ Text: ThinkingText }} />
@@ -131,17 +154,9 @@ function TypingIndicator() {
 export interface ChatThreadProps {
   delegated: boolean;
   onToggleDelegated: () => void;
-  /** 思考过程可见性(用户开关;关闭 = 思考条目经 runtime 过滤,不进消息区)。 */
-  showThinking: boolean;
-  onToggleShowThinking: () => void;
 }
 
-export function ChatThread({
-  delegated,
-  onToggleDelegated,
-  showThinking,
-  onToggleShowThinking,
-}: ChatThreadProps) {
+export function ChatThread({ delegated, onToggleDelegated }: ChatThreadProps) {
   return (
     <ThreadPrimitive.Root className="flex h-full min-h-0 flex-col">
       <ThreadPrimitive.Viewport className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
@@ -172,19 +187,6 @@ export function ChatThread({
           onClick={onToggleDelegated}
         >
           委托
-        </Button>
-        {/* 思考过程开关:off→思考条目不渲染(runtime 过滤,state 保留可回看)。 */}
-        <Button
-          type="button"
-          variant={showThinking ? 'default' : 'secondary'}
-          size="sm"
-          aria-label="思考过程"
-          data-nav="local:chat-thinking"
-          aria-pressed={showThinking}
-          onClick={onToggleShowThinking}
-        >
-          <Brain className="h-3.5 w-3.5" />
-          思考
         </Button>
         <ThreadPrimitive.If running={false}>
           <ComposerPrimitive.Send asChild>

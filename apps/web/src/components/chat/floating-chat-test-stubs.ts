@@ -46,6 +46,44 @@ export function hangingSseResponse(): Response {
   });
 }
 
+/**
+ * 可续写 SSE 流(T24 Phase B 进行中思考指示测试):初始帧先行入队,流保持
+ * 打开;push 按需续帧,close 收尾(客户端读到流结束才把回合置为已完成)。
+ */
+export function scriptedSseResponse(initial: unknown[]): {
+  response: Response;
+  push: (frame: unknown) => void;
+  close: () => void;
+} {
+  const encoder = new TextEncoder();
+  let controller: ReadableStreamDefaultController<Uint8Array> | undefined;
+  let closed = false;
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c;
+      for (const frame of initial) {
+        c.enqueue(encoder.encode(`data: ${JSON.stringify(frame)}\n\n`));
+      }
+    },
+  });
+  return {
+    response: new Response(stream, {
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' },
+    }),
+    push: (frame: unknown) => {
+      if (closed) return;
+      controller?.enqueue(encoder.encode(`data: ${JSON.stringify(frame)}\n\n`));
+    },
+    // 幂等:收尾与测试 finally 双调用均安全。
+    close: () => {
+      if (closed) return;
+      closed = true;
+      controller?.close();
+    },
+  };
+}
+
 export function openChat(): void {
   fireEvent.click(screen.getByRole('button', { name: '展开聊天窗' }));
 }

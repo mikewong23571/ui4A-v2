@@ -7,8 +7,9 @@
  * - 发送(B1 流式轨迹):POST /api/chat——inline 返回 SSE 流,step 帧逐步
  *   追加 assistant 消息(每步一条,废弃一次性 join);thinking-delta 帧
  *   (推理增量)按 `(turnId, step)` 原地累积,thinking 帧为聚合权威终帧,
- *   先于同号 step 帧到达并替换累积(归步成可折叠「思考」区,默认收起;
- *   rule 路径零思考帧);render 帧(渲染短路 LLM 路径 SSE 化)与一次性
+ *   先于同号 step 帧到达并替换累积(T24 Phase B:条目原样进 thread,由
+ *   thread.tsx 呈现为默认折叠、可展开看实时增量的思考区;rule 路径零
+ *   思考帧);render 帧(渲染短路 LLM 路径 SSE 化)与一次性
  *   JSON 回执同形处置;final 帧更新 sessionId(localStorage 持久化,纯投影)
  *   与 render 回执;整体超时 120s 如实报错;
  * - 停止(B2):onCancel 挂 AbortController 中止 fetch,追加「已停止(仅中断
@@ -33,11 +34,9 @@ import { anySignal, createIdleTimeout, readChatSseStream, type ChatFinalPayload 
 import {
   convertMessage,
   loadSessionId,
-  loadThinkingPreference,
   PENDING_SESSION_STORAGE_KEY,
   SESSION_STORAGE_KEY,
   STREAM_IDLE_TIMEOUT_MS,
-  THINKING_STORAGE_KEY,
   type ChatJsonResponse,
   type ChatSession,
   type ChatUiMessage,
@@ -53,10 +52,6 @@ export function useChatSession(): ChatSession {
   // 委托模式(ref 镜像:onNew 回调零依赖 memo,发送时读 ref 防闭包过期)。
   const [delegated, setDelegated] = useState(false);
   const delegatedRef = useRef(false);
-  // 思考过程可见性(用户开关):关闭时思考条目不渲染(消息保留在 state,
-  // 重开即回——纯展示层过滤)。持久化 ui4a.chat.thinking,缺省开启;与委托
-  // 开关同住壳层(悬浮/分栏形态切换 ChatPanel 重挂载,状态在壳上不丢)。
-  const [showThinking, setShowThinking] = useState(loadThinkingPreference);
   // 最近一次渲染回执(S5:surface 引用的可点形态——点击在画布打开)。
   const [lastRender, setLastRender] = useState<ChatJsonResponse['render']>(undefined);
   const [lastFocus, setLastFocus] = useState<ChatJsonResponse['focus']>(undefined);
@@ -449,19 +444,6 @@ export function useChatSession(): ChatSession {
     setDelegated(next);
   }, []);
 
-  /** 思考过程可见性开关:持久化到 localStorage(隐私模式退化为内存态,无损)。 */
-  const toggleShowThinking = useCallback(() => {
-    setShowThinking((prev) => {
-      const next = !prev;
-      try {
-        globalThis.localStorage?.setItem(THINKING_STORAGE_KEY, next ? '1' : '0');
-      } catch {
-        // 同上
-      }
-      return next;
-    });
-  }, []);
-
   // 新会话(B3):清 localStorage + 清空消息;历史仍在事件日志(审计不丢),
   // 旧会话经「历史会话」清单随时可回读。
   const startNewSession = useCallback(() => {
@@ -527,9 +509,9 @@ export function useChatSession(): ChatSession {
 
   const runtime = useExternalStoreRuntime({
     isRunning,
-    // 思考开关关闭时过滤思考条目(state 保留,重开即回;纯展示层过滤,
-    // 不动 thread 组件树)。
-    messages: showThinking ? messages : messages.filter((entry) => entry.thinking === undefined),
+    // 思考条目原样进 thread(T24 Phase B):默认折叠的进行中指示由
+    // thread.tsx 呈现,不再做全局隐藏过滤(呈现层负责折叠,数据不丢)。
+    messages,
     convertMessage,
     onNew,
     onCancel,
@@ -539,12 +521,10 @@ export function useChatSession(): ChatSession {
     sessionId,
     isRunning,
     delegated,
-    showThinking,
     lastRender,
     lastFocus,
     lastPresentation,
     toggleDelegated,
-    toggleShowThinking,
     startNewSession,
     runtime,
     view,
