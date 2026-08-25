@@ -18,6 +18,12 @@ export interface PresenceReporterOptions {
   debounceMs?: number;
 }
 
+let latestPresenceSequence: number | undefined;
+
+export function latestPresenceSeq(): number | undefined {
+  return latestPresenceSequence;
+}
+
 function routeValue(route: string): URL {
   return new URL(route, 'http://ui4a.local');
 }
@@ -121,5 +127,13 @@ export async function postPresence(change: PresenceChange): Promise<unknown> {
     body: JSON.stringify(change),
   });
   if (!response.ok) throw new Error(`presence report failed: ${response.status}`);
-  return response.json();
+  const result = (await response.json()) as {
+    seq?: unknown;
+    presence?: { updatedSeq?: unknown };
+  };
+  const seq = result.seq ?? result.presence?.updatedSeq;
+  if (Number.isSafeInteger(seq) && (seq as number) >= 0) {
+    latestPresenceSequence = seq as number;
+  }
+  return result;
 }

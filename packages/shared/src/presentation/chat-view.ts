@@ -1,6 +1,7 @@
 import { parseRenderSubject, type RenderSubject } from './presentation';
 
-export const CHAT_VIEW_PROTOCOL_VERSION = 1 as const;
+export const CHAT_VIEW_PROTOCOL_VERSION = 2 as const;
+export const CHAT_NAVIGATION_PROTOCOL_VERSION = 1 as const;
 export const MAX_CLIENT_INSTANCE_ID_LENGTH = 128;
 export const MAX_CLIENT_ROUTE_LENGTH = 2_048;
 export const MAX_CHAT_VIEW_ID_LENGTH = 256;
@@ -8,9 +9,16 @@ export const MAX_CHAT_VIEW_REL_LENGTH = 512;
 
 export interface ClientViewReport {
   schemaVersion: typeof CHAT_VIEW_PROTOCOL_VERSION;
+  presence: ClientViewPresence;
+}
+
+export interface ClientViewPresence {
   clientInstanceId: string;
-  route: string;
-  subject?: RenderSubject;
+  site: string;
+  scope: string | null;
+  thread: string | null;
+  focus: RenderSubject | null;
+  presenceSeq?: number;
   presentationRequestId?: string;
 }
 
@@ -22,7 +30,7 @@ export interface ClientViewFact extends ClientViewReport {
 export type NavigationCompletionSource = 'agent-navigate' | 'presentation-receipt';
 
 export interface NavigationCompletion {
-  schemaVersion: typeof CHAT_VIEW_PROTOCOL_VERSION;
+  schemaVersion: typeof CHAT_NAVIGATION_PROTOCOL_VERSION;
   navigationId: string;
   source: NavigationCompletionSource;
   sessionId: string;
@@ -90,32 +98,77 @@ function parseSchemaVersion(value: unknown, label: string): typeof CHAT_VIEW_PRO
   return CHAT_VIEW_PROTOCOL_VERSION;
 }
 
+function parseNavigationSchemaVersion(
+  value: unknown,
+  label: string,
+): typeof CHAT_NAVIGATION_PROTOCOL_VERSION {
+  if (value !== CHAT_NAVIGATION_PROTOCOL_VERSION) {
+    throw new Error(`${label} schemaVersion must be ${CHAT_NAVIGATION_PROTOCOL_VERSION}`);
+  }
+  return CHAT_NAVIGATION_PROTOCOL_VERSION;
+}
+
+function nullableBoundedString(value: unknown, max: number, label: string): string | null {
+  return value === null ? null : boundedString(value, max, label);
+}
+
 export function parseClientViewReport(value: unknown): ClientViewReport {
   record(value, 'Client view report');
+  exactKeys(value, ['schemaVersion', 'presence'], 'Client view report');
+  record(value.presence, 'Client view presence');
   exactKeys(
-    value,
-    ['schemaVersion', 'clientInstanceId', 'route', 'subject', 'presentationRequestId'],
-    'Client view report',
+    value.presence,
+    [
+      'clientInstanceId',
+      'site',
+      'scope',
+      'thread',
+      'focus',
+      'presenceSeq',
+      'presentationRequestId',
+    ],
+    'Client view presence',
   );
-  const subject = value.subject === undefined ? undefined : boundedSubject(value.subject);
+  const presenceSeq = value.presence.presenceSeq;
+  if (
+    presenceSeq !== undefined &&
+    (!Number.isSafeInteger(presenceSeq) || (presenceSeq as number) < 0)
+  ) {
+    throw new Error('Client view presenceSeq must be a non-negative integer');
+  }
   const presentationRequestId =
-    value.presentationRequestId === undefined
+    value.presence.presentationRequestId === undefined
       ? undefined
       : boundedString(
-          value.presentationRequestId,
+          value.presence.presentationRequestId,
           MAX_CHAT_VIEW_ID_LENGTH,
           'Client view presentationRequestId',
         );
+  const focus =
+    value.presence.focus === null ? null : boundedSubject(value.presence.focus);
   return {
     schemaVersion: parseSchemaVersion(value.schemaVersion, 'Client view report'),
-    clientInstanceId: boundedString(
-      value.clientInstanceId,
-      MAX_CLIENT_INSTANCE_ID_LENGTH,
-      'Client view clientInstanceId',
-    ),
-    route: parseRoute(value.route),
-    ...(subject === undefined ? {} : { subject }),
-    ...(presentationRequestId === undefined ? {} : { presentationRequestId }),
+    presence: {
+      clientInstanceId: boundedString(
+        value.presence.clientInstanceId,
+        MAX_CLIENT_INSTANCE_ID_LENGTH,
+        'Client view clientInstanceId',
+      ),
+      site: boundedString(value.presence.site, MAX_CHAT_VIEW_REL_LENGTH, 'Client view site'),
+      scope: nullableBoundedString(
+        value.presence.scope,
+        MAX_CHAT_VIEW_REL_LENGTH,
+        'Client view scope',
+      ),
+      thread: nullableBoundedString(
+        value.presence.thread,
+        MAX_CHAT_VIEW_REL_LENGTH,
+        'Client view thread',
+      ),
+      focus,
+      ...(presenceSeq === undefined ? {} : { presenceSeq: presenceSeq as number }),
+      ...(presentationRequestId === undefined ? {} : { presentationRequestId }),
+    },
   };
 }
 
@@ -174,7 +227,7 @@ export function parseNavigationCompletion(value: unknown): NavigationCompletion 
     throw new Error('presentation-receipt completion requires presentationRequestId');
   }
   return {
-    schemaVersion: parseSchemaVersion(value.schemaVersion, 'Navigation completion'),
+    schemaVersion: parseNavigationSchemaVersion(value.schemaVersion, 'Navigation completion'),
     navigationId: boundedString(
       value.navigationId,
       MAX_CHAT_VIEW_ID_LENGTH,

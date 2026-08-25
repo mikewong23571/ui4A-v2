@@ -12,6 +12,7 @@ import {
 } from '@ui4a/agent';
 import {
   CHAT_VIEW_PROTOCOL_VERSION,
+  CHAT_NAVIGATION_PROTOCOL_VERSION,
   completePresentationRequest,
   parseClientViewReport,
   type ClientViewReport,
@@ -26,7 +27,7 @@ import type {
 import { wrapDriverForAudit, type AgentDecisionDetail } from '../../../chat/decisions';
 import { conversationView } from '../../../chat/conversation';
 import { executionAuditContext } from '../../../chat/audit-context';
-import { metaPlaneFromClientRoute, resolveStartRel } from '../../../chat/start';
+import { resolveStartRel } from '../../../chat/start';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
 import { getProductionAgentTokenProvider } from '../../../auth/production-agent-token-provider';
 import { getProductionBrowserAuthentication } from '../../../auth/production-browser-authentication';
@@ -37,7 +38,9 @@ import {
   type TrustedRequestAuditContext,
 } from '../../../auth/request-identity';
 import { appendEvent, readLog } from '../../../db/events';
+import { ensurePresenceTables, loadPresenceForPrincipal } from '../../../db/presence';
 import { getDb } from '../../../engine/service';
+import { assembleSituation } from '../../../engine/situation';
 import {
   getPresentationBroker,
   getPresentationCapabilities,
@@ -519,7 +522,7 @@ async function streamAgentLoop(args: {
             ) {
               await appendNavigationCompletion(
                 {
-                  schemaVersion: CHAT_VIEW_PROTOCOL_VERSION,
+                  schemaVersion: CHAT_NAVIGATION_PROTOCOL_VERSION,
                   navigationId: `${request.requestId}:presentation-navigation`,
                   source: 'presentation-receipt',
                   sessionId,
@@ -541,7 +544,7 @@ async function streamAgentLoop(args: {
         if (step.op.kind === 'navigate' && step.outcome === 'navigated') {
           await appendNavigationCompletion(
             {
-              schemaVersion: CHAT_VIEW_PROTOCOL_VERSION,
+              schemaVersion: CHAT_NAVIGATION_PROTOCOL_VERSION,
               navigationId: `${turnId}:navigate:${step.step}`,
               source: 'agent-navigate',
               sessionId,
@@ -761,6 +764,52 @@ export async function POST(request: Request) {
   const sessionId = productionIdentity?.principal ?? parsed.sessionId;
   const principal = productionIdentity?.principal ?? `user:${sessionId}`;
   const presentationPrincipal = productionIdentity?.principal ?? LOCAL_PRESENTATION_PRINCIPAL;
+  let situation: ReturnType<typeof assembleSituation>;
+  try {
+    const db = getDb();
+    await ensurePresenceTables(db);
+    const presence = await loadPresenceForPrincipal(db, principal);
+    const grantedScopes = productionIdentity
+      ? [
+          ...productionIdentity.scopes.filter((scope) => !scope.startsWith('ui4a:')),
+          productionIdentity.policyScope,
+        ]
+      : ['default'];
+    situation = assembleSituation({
+      principal,
+      grantedScopes: [...new Set(grantedScopes)],
+      presence,
+      explicit:
+        clientView === undefined
+          ? undefined
+          : {
+              site: clientView.presence.site,
+              scope: clientView.presence.scope,
+              thread: clientView.presence.thread,
+              focus: clientView.presence.focus,
+            },
+      defaults: {
+        site: 'business',
+        scope: productionIdentity?.policyScope ?? 'default',
+      },
+    });
+  } catch {
+    // Presence is auxiliary; a projection outage must not disable Chat.
+    situation = assembleSituation({
+      principal,
+      grantedScopes: [productionIdentity?.policyScope ?? 'default'],
+      explicit:
+        clientView === undefined
+          ? undefined
+          : {
+              site: clientView.presence.site,
+              scope: clientView.presence.scope,
+              thread: clientView.presence.thread,
+              focus: clientView.presence.focus,
+            },
+      defaults: { site: 'business', scope: productionIdentity?.policyScope ?? 'default' },
+    });
+  }
   let turnFetch: FetchLike = (url, init) => fetch(url, init);
   if (
     productionIdentity !== undefined &&
@@ -868,7 +917,7 @@ export async function POST(request: Request) {
   }
   // 平面归属:跟用户当下位置走(meta 控制台/正在查看定义实体 → 定义合同站;
   // 其余 → 业务站);`_meta` 原话记号保留为显式越界入口。不做自然语言意图猜测。
-  if (goal.verb.includes('_meta') || metaPlaneFromClientRoute(parsed.clientView?.route)) {
+  if (goal.verb.includes('_meta') || situation.site === 'meta') {
     baseUrl = `${baseUrl.replace(/\/$/, '')}/_meta`;
   }
 

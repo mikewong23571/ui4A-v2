@@ -9,6 +9,19 @@ import {
   stopChatRouteFixtures,
 } from './route-test-kit';
 
+function clientView(clientInstanceId: string, focus: string) {
+  return {
+    schemaVersion: 2,
+    presence: {
+      clientInstanceId,
+      site: 'business',
+      scope: null,
+      thread: null,
+      focus,
+    },
+  };
+}
+
 beforeEach(startChatRouteFixtures);
 afterEach(stopChatRouteFixtures);
 
@@ -52,12 +65,7 @@ describe('T21 navigation completion audit', () => {
       const result = await chat({
         sessionId: 't21-nav',
         goal: { verb: 'inspect' },
-        clientView: {
-          schemaVersion: 1,
-          clientInstanceId: 'client:a',
-          route: '/canvas?focus=articles',
-          subject: 'articles',
-        },
+        clientView: clientView('client:a', 'articles'),
       });
       const focusIndex = result.frames.findIndex((frame) => frame.type === 'focus');
       expect(focusIndex).toBeGreaterThan(0);
@@ -139,23 +147,13 @@ describe('T21 navigation completion audit', () => {
         sessionId: 't21-replay',
         turnId: 'turn-a',
         goal: { verb: 'inspect' },
-        clientView: {
-          schemaVersion: 1,
-          clientInstanceId: 'client:a',
-          route: '/canvas?focus=articles',
-          subject: 'articles',
-        },
+        clientView: clientView('client:a', 'articles'),
       });
       await chat({
         sessionId: 't21-replay',
         turnId: 'turn-b',
         goal: { verb: 'where' },
-        clientView: {
-          schemaVersion: 1,
-          clientInstanceId: 'client:b',
-          route: '/canvas?focus=articles',
-          subject: 'articles',
-        },
+        clientView: clientView('client:b', 'articles'),
       });
 
       const body = (await (await fetch(`${chatRouteBase()}/api/events`)).json()) as {
@@ -176,11 +174,7 @@ describe('T21 navigation completion audit', () => {
     const response = await chat({
       sessionId: 't21-invalid-view',
       goal: { verb: 'read' },
-      clientView: {
-        schemaVersion: 1,
-        clientInstanceId: 'client:a',
-        route: 'https://evil.example/canvas',
-      },
+      clientView: { schemaVersion: 2, presence: { clientInstanceId: 'client:a' } },
     });
     expect(response.status).toBe(400);
     expect(response.json.error).toContain('clientView 无效');

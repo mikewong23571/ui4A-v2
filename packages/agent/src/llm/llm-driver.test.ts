@@ -589,10 +589,14 @@ describe('多轮会话进入 LLM messages', () => {
           completedAtSeq: 10,
         },
         clientView: {
-          schemaVersion: 1,
-          clientInstanceId: 'client:b',
-          route: '/canvas?focus=articles',
-          subject: 'articles',
+          schemaVersion: 2,
+          presence: {
+            clientInstanceId: 'client:b',
+            site: 'business',
+            scope: null,
+            thread: null,
+            focus: 'articles',
+          },
           sourceMessageId: 'message:b',
           observedAtSeq: 12,
         },

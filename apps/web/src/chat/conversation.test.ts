@@ -41,6 +41,19 @@ function context(
   return event(seq, 'chat-context-updated', { sessionId, ...detail }, `chat:${sessionId}`);
 }
 
+function clientView(clientInstanceId: string, focus: string) {
+  return {
+    schemaVersion: 2 as const,
+    presence: {
+      clientInstanceId,
+      site: 'business',
+      scope: null,
+      thread: null,
+      focus,
+    },
+  };
+}
+
 function navigation(
   seq: number,
   detail: Record<string, unknown>,
@@ -56,12 +69,7 @@ function navigation(
 
 describe('event-sourced conversation context', () => {
   it('keeps the current user message client view separate from navigation history', () => {
-    const firstView = {
-      schemaVersion: 1 as const,
-      clientInstanceId: 'client:a',
-      route: '/canvas?focus=post%3Afirst-post',
-      subject: 'post:first-post',
-    };
+    const firstView = clientView('client:a', 'post:first-post');
     const folded = foldConversation(
       [
         message(1, {
@@ -108,12 +116,7 @@ describe('event-sourced conversation context', () => {
           role: 'user',
           content: '第一窗口',
           provenance: { kind: 'user-input' },
-          clientView: {
-            schemaVersion: 1,
-            clientInstanceId: 'client:a',
-            route: '/canvas?focus=post%3Afirst-post',
-            subject: 'post:first-post',
-          },
+          clientView: clientView('client:a', 'post:first-post'),
         }),
         message(2, {
           turnId: 'turn-2',
@@ -127,7 +130,9 @@ describe('event-sourced conversation context', () => {
     );
 
     expect(folded.clientView).toBeNull();
-    expect(folded.messages[0]?.clientView).toMatchObject({ clientInstanceId: 'client:a' });
+    expect(folded.messages[0]?.clientView).toMatchObject({
+      presence: { clientInstanceId: 'client:a' },
+    });
     expect(folded.messages[1]?.clientView).toBeUndefined();
   });
 
@@ -140,12 +145,7 @@ describe('event-sourced conversation context', () => {
           role: 'user',
           content: '窗口 B',
           provenance: { kind: 'user-input' },
-          clientView: {
-            schemaVersion: 1,
-            clientInstanceId: 'client:b',
-            route: '/canvas?focus=articles',
-            subject: 'articles',
-          },
+          clientView: clientView('client:b', 'articles'),
         }),
         message(1, {
           turnId: 'turn-a',
@@ -153,22 +153,17 @@ describe('event-sourced conversation context', () => {
           role: 'user',
           content: '窗口 A',
           provenance: { kind: 'user-input' },
-          clientView: {
-            schemaVersion: 1,
-            clientInstanceId: 'client:a',
-            route: '/canvas?focus=post%3Afirst-post',
-            subject: 'post:first-post',
-          },
+          clientView: clientView('client:a', 'post:first-post'),
         }),
       ],
       'sess-main',
     );
 
-    expect(folded.messages.map((item) => item.clientView?.clientInstanceId)).toEqual([
+    expect(folded.messages.map((item) => item.clientView?.presence.clientInstanceId)).toEqual([
       'client:a',
       'client:b',
     ]);
-    expect(folded.clientView?.clientInstanceId).toBe('client:b');
+    expect(folded.clientView?.presence.clientInstanceId).toBe('client:b');
   });
 
   it('folds successful navigation by seq, ignores duplicate ids and isolates sessions', () => {

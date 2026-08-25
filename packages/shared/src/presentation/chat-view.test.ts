@@ -12,18 +12,26 @@ describe('T21 dual-focus shared contract', () => {
   it('round-trips a bounded client observation without granting authority', () => {
     const report = parseClientViewReport({
       schemaVersion: CHAT_VIEW_PROTOCOL_VERSION,
-      clientInstanceId: 'client:one',
-      route: '/canvas?focus=post%3Afirst-post',
-      subject: 'post:first-post',
-      presentationRequestId: 'turn:1:presentation:1',
+      presence: {
+        clientInstanceId: 'client:one',
+        site: 'business',
+        scope: null,
+        thread: null,
+        focus: 'post:first-post',
+        presentationRequestId: 'turn:1:presentation:1',
+      },
     });
 
     expect(report).toEqual({
-      schemaVersion: 1,
-      clientInstanceId: 'client:one',
-      route: '/canvas?focus=post%3Afirst-post',
-      subject: 'post:first-post',
-      presentationRequestId: 'turn:1:presentation:1',
+      schemaVersion: 2,
+      presence: {
+        clientInstanceId: 'client:one',
+        site: 'business',
+        scope: null,
+        thread: null,
+        focus: 'post:first-post',
+        presentationRequestId: 'turn:1:presentation:1',
+      },
     });
     expectTypeOf(report).toEqualTypeOf<ClientViewReport>();
   });
@@ -31,14 +39,20 @@ describe('T21 dual-focus shared contract', () => {
   it('keeps one client selection independent from server navigation provenance', () => {
     expect(
       parseClientViewReport({
-        schemaVersion: 1,
-        clientInstanceId: 'client:two',
-        route: '/canvas?roots=post%3Aa%2Cpost%3Ab',
-        subject: { selection: ['post:a', 'post:b'] },
+        schemaVersion: 2,
+        presence: {
+          clientInstanceId: 'client:two',
+          site: 'business',
+          scope: null,
+          thread: null,
+          focus: { selection: ['post:a', 'post:b'] },
+        },
       }),
     ).toMatchObject({
-      clientInstanceId: 'client:two',
-      subject: { selection: ['post:a', 'post:b'] },
+      presence: {
+        clientInstanceId: 'client:two',
+        focus: { selection: ['post:a', 'post:b'] },
+      },
     });
 
     const completion = parseNavigationCompletion({
@@ -57,32 +71,33 @@ describe('T21 dual-focus shared contract', () => {
   });
 
   it.each([
-    [{ schemaVersion: 1, clientInstanceId: 'c', route: 'https://evil.example/canvas' }, 'route'],
-    [{ schemaVersion: 1, clientInstanceId: 'c', route: '//evil.example/canvas' }, 'route'],
-    [{ schemaVersion: 1, clientInstanceId: 'c', route: '/canvas#hidden' }, 'route'],
+    [{ schemaVersion: 2, presence: { clientInstanceId: 'c', site: '', scope: null, thread: null, focus: null } }, 'site'],
+    [{ schemaVersion: 2, presence: { clientInstanceId: 'c', site: 'business', scope: null, thread: null, focus: null }, route: '/legacy' }, 'forbidden'],
     [
       {
-        schemaVersion: 1,
-        clientInstanceId: 'c',
-        route: '/canvas',
-        subject: { selection: ['post:a', 'post:a'] },
+        schemaVersion: 2,
+        presence: {
+          clientInstanceId: 'c',
+          site: 'business',
+          scope: null,
+          thread: null,
+          focus: { selection: ['post:a', 'post:a'] },
+        },
       },
       'duplicate',
     ],
     [
       {
-        schemaVersion: 1,
-        clientInstanceId: 'c',
-        route: '/canvas',
+        schemaVersion: 2,
+        presence: { clientInstanceId: 'c', site: 'business', scope: null, thread: null, focus: null },
         principal: 'admin',
       },
       'principal',
     ],
     [
       {
-        schemaVersion: 1,
-        clientInstanceId: 'c',
-        route: '/canvas',
+        schemaVersion: 2,
+        presence: { clientInstanceId: 'c', site: 'business', scope: null, thread: null, focus: null },
         authorization: { actor: 'human' },
       },
       'authorization',

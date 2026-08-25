@@ -23,26 +23,6 @@ function goalText(goal: AgentGoal): string {
 }
 
 /**
- * 定义面必须由用户显式意图进入,而显式意图就是用户当下所在的位置:
- * 站在 meta 控制台(/meta)或正在查看定义实体(canvas focus/roots 指向
- * meta/ rel)时,聊天回合在定义合同站(/_meta)进行;其余一律业务面。
- * 不从自然语言猜测意图(AI-first:理解归 LLM,平面归属只是客户端上下文
- * 事实)——正则启发式曾把"新增一篇文章…介绍操作流程"误判越界,agent 整
- * 回合困在 meta 平面导航循环(T22 生产实测)。
- */
-export function metaPlaneFromClientRoute(route: string | undefined): boolean {
-  if (route === undefined) return false;
-  const pathname = route.split('?')[0]!;
-  if (pathname === '/meta' || pathname.startsWith('/meta/')) return true;
-  if (pathname !== '/canvas') return false;
-  const params = new URLSearchParams(route.slice(route.indexOf('?') + 1));
-  const subjects = [params.get('focus'), params.get('roots')].filter(
-    (value): value is string => value !== null,
-  );
-  return subjects.some((value) => value.split(',').some((rel) => rel.startsWith('meta/')));
-}
-
-/**
  * 只表达“想处理某类事情”而未授权具体写动作时，只做发现/定位。避免把
  * “处理评论区”擅自解释为通过、驳回或批量修改。
  */

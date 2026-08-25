@@ -2,7 +2,7 @@ import type { PresenceProjection, RenderSubject } from '@ui4a/shared';
 
 export interface SituationExplicitParameters {
   site?: string;
-  scope?: string;
+  scope?: string | null;
   thread?: string | null;
   focus?: RenderSubject | null;
 }

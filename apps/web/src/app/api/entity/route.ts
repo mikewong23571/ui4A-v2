@@ -13,6 +13,8 @@ import {
   filterEntityForPolicyScope,
   relCoveredByPolicyScope,
 } from '../../../auth/application-scope';
+import { ensurePresenceTables, loadPresenceForPrincipal } from '../../../db/presence';
+import { assembleSituation } from '../../../engine/situation';
 
 // GET /api/entity?rel=… — Siren 实体端点(spec FR3):
 // - 已知 rel(实例或集合)→ 200 四件组装 properties/actions/links/guard-results;
@@ -52,7 +54,25 @@ export async function GET(request: Request) {
         ),
     });
     const principal = identity.principal;
-    const policyScope = identity.policyScope;
+    let presence;
+    try {
+      await ensurePresenceTables(db);
+      presence = await loadPresenceForPrincipal(db, principal);
+    } catch {
+      // Presence is auxiliary; entity reads remain available without its projection.
+    }
+    const requestedScope = new URL(request.url).searchParams.get('scope') ?? undefined;
+    const situation = assembleSituation({
+      principal,
+      grantedScopes: [
+        ...identity.scopes.filter((scope) => !scope.startsWith('ui4a:')),
+        identity.policyScope,
+      ],
+      presence,
+      explicit: requestedScope === undefined ? undefined : { scope: requestedScope },
+      defaults: { site: 'business', scope: identity.policyScope },
+    });
+    const policyScope = situation.scope;
     const scopeContext = {
       snapshot: engine.getSnapshot(),
       sitemap: engine.getSitemap(),

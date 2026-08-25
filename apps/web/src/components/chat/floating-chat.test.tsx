@@ -148,25 +148,25 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     const first = JSON.parse(String(fetchMock.mock.calls[0]![1]?.body)) as {
-      clientView?: { clientInstanceId: string; route: string; subject?: string };
+      clientView?: { presence: { clientInstanceId: string; focus?: string } };
     };
     expect(first.clientView).toMatchObject({
-      route: '/canvas?focus=post%3Afirst-post',
-      subject: 'post:first-post',
+      presence: { site: 'business', focus: 'post:first-post' },
     });
-    expect(first.clientView?.clientInstanceId).toMatch(/^[0-9a-f-]+$/i);
+    expect(first.clientView?.presence.clientInstanceId).toMatch(/^[0-9a-f-]+$/i);
 
     window.history.pushState({}, '', '/canvas?focus=articles');
     sendGoal('再看一次');
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     const second = JSON.parse(String(fetchMock.mock.calls[1]![1]?.body)) as {
-      clientView?: { clientInstanceId: string; route: string; subject?: string };
+      clientView?: { presence: { clientInstanceId: string; focus?: string } };
     };
     expect(second.clientView).toMatchObject({
-      route: '/canvas?focus=articles',
-      subject: 'articles',
+      presence: { site: 'business', focus: 'articles' },
     });
-    expect(second.clientView?.clientInstanceId).toBe(first.clientView?.clientInstanceId);
+    expect(second.clientView?.presence.clientInstanceId).toBe(
+      first.clientView?.presence.clientInstanceId,
+    );
   });
 
   it('请求发出前即生成并持久化 session/turn 标识，刷新可从 started 投影续接', async () => {
