@@ -1,4 +1,4 @@
-import type { ApplicationRenderRecipeCandidate, RecipeDependency } from './recipe';
+import type { ApplicationRenderRecipeCandidate, RecipeDependency } from './recipe/recipe';
 import type { PresentationSnapshot, UserSidecarAggregate } from './sidecar';
 import type {
   SurfaceBinding,
@@ -6,7 +6,7 @@ import type {
   SurfaceDependency,
   SurfaceNode,
   SurfaceTree,
-} from './surface';
+} from './surface/index';
 
 export interface SidecarPromotionOptions {
   application: string;

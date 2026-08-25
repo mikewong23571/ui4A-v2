@@ -1,6 +1,6 @@
 import type { RenderSubject } from '@ui4a/shared';
 
-import type { SurfaceProvenance, SurfaceTree } from './surface';
+import type { SurfaceProvenance, SurfaceTree } from './surface/index';
 
 export interface UserSidecarKey {
   principal: string;

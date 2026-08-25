@@ -1,9 +1,9 @@
 import type { DraftValidation, FlowDefinition } from '@ui4a/shared';
 
-import { definitionDiff } from '../definition-diff';
-import type { DefinitionRegistries } from '../invariants';
-import { validateDefinition } from '../invariants';
-import { parseFlowDefinition } from '../parse';
+import { definitionDiff } from '../definition/definition-diff';
+import type { DefinitionRegistries } from '../definition/invariants';
+import { validateDefinition } from '../definition/invariants';
+import { parseFlowDefinition } from '../core/parse';
 import { payloadFingerprint } from './draft';
 
 export interface FlowDraftValidation extends DraftValidation {

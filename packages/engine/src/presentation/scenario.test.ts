@@ -8,7 +8,7 @@ import walkthroughArtifact from './test-fixtures/ui4a-walkthrough.bundle.json';
 
 import type { ApplicationDefinition, CapabilityDefinition, FlowDefinition } from '@ui4a/shared';
 
-import { parseApplicationBundle } from '../meta-bootstrap';
+import { parseApplicationBundle } from '../definition/meta-bootstrap';
 import {
   SCENARIO_ENUMERATOR_VERSION,
   enumerateApplicationScenarios,

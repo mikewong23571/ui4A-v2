@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SurfaceCatalog } from './surface';
+import type { SurfaceCatalog } from './surface/index';
 import { applySidecarCommand, createPresentationSnapshot } from './sidecar';
 import { explainSidecarPresentation, promoteUserSidecarCandidate } from './promotion';
-import { createRecipeRegistry, promoteRecipe, registerRecipeCandidate } from './recipe';
+import { createRecipeRegistry, promoteRecipe, registerRecipeCandidate } from './recipe/recipe';
 
 const catalog: SurfaceCatalog = {
   id: 'catalog:test',

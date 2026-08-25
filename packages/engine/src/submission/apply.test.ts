@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EngineSnapshot, FlowDefinition } from '@ui4a/shared';
 
-import { contentVersion } from '../sitemap';
+import { contentVersion } from '../contract/sitemap';
 import { applyDefinitionCandidate } from './apply';
 
 const current: FlowDefinition = {

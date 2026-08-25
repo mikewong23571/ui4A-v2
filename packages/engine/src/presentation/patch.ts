@@ -4,7 +4,7 @@ import {
   type SurfaceNode,
   type SurfaceTree,
   validateSurfaceTree,
-} from './surface';
+} from './surface/index';
 
 export const RENDER_PATCH_SCHEMA_VERSION = 1 as const;
 const MAX_PATCH_OPERATIONS = 64;

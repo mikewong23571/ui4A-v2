@@ -43,10 +43,17 @@ describe('引擎两栖性(纯 TS,浏览器/服务端零 Node API)', () => {
     }
   });
 
-  it('递归扫描覆盖新增的 capability、agent-definition 与 agent-run 子模块', () => {
+  it('递归扫描覆盖全部领域子目录(T23 Phase D 下沉/拆分后)', () => {
     const sources = librarySources(srcDir).map((file) => file.slice(srcDir.length + 1));
     expect(sources).toEqual(
       expect.arrayContaining([
+        'core/parse.ts',
+        'contract/siren/index.ts',
+        'execution/judge.ts',
+        'projection/fold/index.ts',
+        'definition/meta.ts',
+        'delegation/delegation.ts',
+        'presentation/surface/index.ts',
         'agent-definition/parse.ts',
         'agent-definition/derive.ts',
         'agent-definition/invariants.ts',

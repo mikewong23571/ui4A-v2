@@ -7,7 +7,7 @@ import type {
   FlowDefinition,
 } from '@ui4a/shared';
 
-import { contentVersion } from '../sitemap';
+import { contentVersion } from '../contract/sitemap';
 
 export interface DefinitionCandidateAppliedDetail {
   schemaVersion: 1;

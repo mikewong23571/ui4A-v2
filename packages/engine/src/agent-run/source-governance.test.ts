@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-const GENERIC_MODULES = ['run.ts', 'index.ts'] as const;
+const GENERIC_MODULES = ['run.ts', 'run-fold.ts', 'run-types.ts', 'index.ts'] as const;
 
 describe('generic Agent Run source governance', () => {
   it('contains no specialization, transport or infrastructure branches', () => {

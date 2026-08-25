@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
-import type { SurfaceCatalog, SurfaceTree } from './surface';
+import type { SurfaceCatalog, SurfaceTree } from './surface/index';
 import {
   applyRenderPatch,
   createRenderPatchTarget,
