@@ -58,29 +58,29 @@
 > 策略优先级:删除 > 下沉 > 拆分 > 提取。12 个超限目录按四种类型分别施治,
 > 不按统一"拆文件"处理。
 
-- [ ] Task: 考古堆积型裁决——`scripts/`(15.3k)、`e2e/`(8.3k)
-  - t15–t19 已关闭 track 的 eval 脚本/spec/corpus:提升为常驻门禁或随 track 归档删除
-  - t22 系列在 T22 关闭前保留,关闭时同规则裁决
-  - playwright 配置 6 个合并为 2 个(CI 常驻 + eval 按需),e2e 常驻集只留
-    invariants + 核心流程 spec
-- [ ] Task: 平铺增长型下沉——`packages/engine/src`、`packages/agent/src`、
-  `packages/shared/src`
-  - 按既有领域语言把根部平铺文件下沉子目录(如 definition/、execution/、contract/),
-    零行为变化,批量改 import
-  - 随下沉拆分超限文件:`siren.ts`、`fold.ts`、`agent-run/run.ts`
-- [ ] Task: 组合边界型下沉——`apps/web/src/engine`、`apps/web/src/db`
-  - 按文件名自带领域簇分组:`engine/agent/`、`engine/capability/` 等;`db/` 同步
-  - 先拆 `db/agent-definitions.ts`(1192)再下沉
-- [ ] Task: 实现厚型拆分——`apps/worker/src/runtime-backends`、`apps/web/src/auth`、
-  `apps/web/src/components`、`deploy/helm/ui4a/render.ts`
-  - runtime-backends 分 `kubernetes/`、`host/` 子目录,拆
-    `kubernetes-runtime-transport.ts`、`host-runner.ts`
-  - chat 组件下沉 `components/chat/`,拆 `chat-panel.tsx`、`canvas-body.tsx`
-  - auth 仅超 6%,拆一两个文件达标,不动结构
-  - `render.ts`(1647)按部署组件拆分
-- [ ] Task: 拆分其余超限测试文件(>800 有效行)按场景分组
-- [ ] Task: `size-baseline.json` 清空,check-size 全绿
-- [ ] Task: Phase Verification & Checkpoint
+- [x] Task: 考古堆积型裁决——`scripts/`(15.3k)、`e2e/`(8.3k) e1141eb, 8752c58, 2eddc8d
+  - t15–t19 已关闭 track 的 eval 脚本/spec/corpus 已删除;playwright 配置 6→2
+    (主 + eval 合并);scripts/t22 归 `scripts/t22/`;e2e 分 `kits/`、`eval/`
+- [x] Task: 平铺增长型下沉——`packages/engine/src`、`packages/agent/src`、
+  `packages/shared/src` e76d22c, a20a89c
+  - engine:contract/execution/projection/definition 等子目录;agent:loop/llm/
+    presentation/protocol/testkit;shared:definition/agent/presentation/deployment
+  - siren/fold/run/surface/llm-driver/presentation-agent/production-deployment-config
+    全部拆分;barrel 导出面 parity 验证一致
+- [x] Task: 组合边界型下沉——`apps/web/src/engine`、`apps/web/src/db` 4d456a7 等
+  - engine/agent/、engine/drafts/、engine/service-tests/ 下沉;db/agent-definitions/
+    拆 types/store/commands/queries/lifecycle;drafts 拆 views/helpers/create/execute;
+    service.ts 组合根拆出 event-log/artifacts/confirmation/sitemaps/render-specs
+- [x] Task: 实现厚型拆分——worker、components、auth、deploy、cli、agent-runner
+  71f5fae, f256893, 0bbda56 等
+  - runtime-backends 分 kubernetes/、host/;activities.ts 拆为 activities/ 子模块;
+    三个 agents adapter 拆分;components/chat/ 下沉 + canvas-body 拆分;
+    deploy 三渲染器拆分(产物字节级 parity 验证);cli commands 按域拆;
+    agent-runner production/pki 拆分;e2e/kits/story-eval-kit 拆分
+- [x] Task: 拆分其余超限测试文件(>800 有效行)按场景分组
+  (loop.test 7 分片、floating-chat 2 分片、chat route.test 3 文件 + 共享 kit)
+- [x] Task: `size-baseline.json` 对账——仅剩 4 个 T22 在途条目(note 标注,D40 决策)
+- [x] Task: Phase Verification & Checkpoint(编排 agent 复跑:vitest 分区全绿、governance 默认模式 OK)
 
 ## Phase E: 门禁化、历史归档与规则迁移(Gate)
 

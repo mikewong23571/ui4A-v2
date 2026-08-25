@@ -4,12 +4,8 @@
     {
       "path": "scripts/t22/t22-helm-contract.test.ts",
       "lines": 983,
-      "limit": 800
-    },
-    {
-      "path": "apps/web/src/app/api/chat/route.test.ts",
-      "lines": 956,
-      "limit": 800
+      "limit": 800,
+      "note": "T22 在途 track 所有;T23 不拆分,T22 关闭时随 scripts/t22 一并裁决"
     },
     {
       "path": "apps/web/src/app/api/chat/route.ts",
@@ -20,7 +16,8 @@
     {
       "path": "scripts/t22/t22-compose-contract.test.ts",
       "lines": 866,
-      "limit": 800
+      "limit": 800,
+      "note": "T22 在途 track 所有;T23 不拆分,T22 关闭时随 scripts/t22 一并裁决"
     }
   ],
   "dirs": [

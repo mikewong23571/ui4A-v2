@@ -482,3 +482,13 @@
 - **理由**：未发布软件无需为从未进入生产的内部兼容面永久付双写者/双投影/双部署合同成本。
 - **边界**：事件日志 append-only 语义与已存事件 payload 格式不变；callback token 机制
   (`UI4A_CAPABILITY_CALLBACK_TOKEN`)保留，继续服务 canonical `/api/internal/agent-run-callback`。
+
+## D40 T23 大小基线中 T22 在途文件的延迟处置(2026-08-25,T23 Phase D)
+
+- **决定**:`size-baseline.json` 保留 4 个 T22 在途条目(`apps/web/src/app/api/chat/route.ts`、
+  `scripts/t22/` 目录及其中两个 >800 行的合同测试),带 note 标注归属;T23 不拆分,T22 关闭时
+  由该 track 按 GR3/GR5 自行清偿并清空基线。
+- **理由**:T22 正在这些文件上活跃提交,并行拆分必然冲突;治理门禁(新增违规失败、基线只许
+  缩短)对它们同样生效,延迟不等于豁免。
+- **边界**:除这 4 条外 T23 验收要求 size-baseline 为空;`pnpm governance:strict` 在 T22 关闭
+  前不纳入 `pnpm check`(strict 会因这 4 条失败),默认模式即刻生效。
