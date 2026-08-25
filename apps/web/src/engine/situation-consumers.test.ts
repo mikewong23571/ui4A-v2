@@ -9,8 +9,10 @@ function source(path: string): string {
 describe('T29 situation consumer matrix', () => {
   it('keeps chat plane and entity scope defaults on the same assembler', () => {
     const chatRoute = source('apps/web/src/app/api/chat/route.ts');
+    const chatSituation = source('apps/web/src/engine/chat-situation.ts');
     const entityRoute = source('apps/web/src/app/api/entity/route.ts');
-    expect(chatRoute).toContain('assembleSituation');
+    expect(chatRoute).toContain('situationForChat');
+    expect(chatSituation).toContain('assembleSituation');
     expect(entityRoute).toContain('assembleSituation');
     expect(chatRoute).not.toContain('metaPlaneFromClientRoute');
     expect(chatRoute).toContain('situation.site');
