@@ -479,6 +479,30 @@ ssh k8s-cp-1 'helm rollback ui4a 20 -n ui4a-system \
 
 Realm Job 在此路径不重跑，所以不需要 realm 在线升级；身份变更是独立的备份后替换/重建工作。
 
+### Step 17.3 — 必须移动 adminWorker digest 时(rev 38 验证路径)
+
+`adminWorker` 镜像出现在全部六个 Job 的 pod template(waitFor initContainer 或主容器),
+digest 变化使 Job patch 因 immutable 失败。迁移注册表新增版本(如 v2 presence-projection)
+必须移动它时,按以下已验证顺序:
+
+1. 六个 init Job 的幂等性已逐一核实:postgres-bootstrap(SQL 全幂等)、temporal-schema、
+   pki-init(永不轮换既有文件)、migration(版本化注册表)、realm-bootstrap(见下)可重跑;
+   temporal-namespace 是 `describe || create`,temporal 重启窗口内会瞬态失败,删除 Job
+   按渲染清单重建即可。
+2. `kubectl delete job postgres-bootstrap temporal-schema temporal-namespace pki-init
+   realm-bootstrap migration -n ui4a-system`,然后 helm upgrade 重建全部 Job。
+3. realm-bootstrap 的两个前置:边缘默认 404 `/admin/` 与 `/realms/master/`(T22 边缘硬化
+   在 Job 设计之后),需临时把 VirtualService ui4a-keycloak 的这两条从 deny 规则移到路由
+   规则,跑完立即按渲染清单恢复;realm 若被判 incompatible,先按当前 realm 合同做手术
+   (realm attributes、client attributes/scope assignments),或按设计逃生路径
+   `kcadm delete realms/ui4a` 后由 Job 重新 import(声明式,secrets 来自部署 Secret)。
+4. **realm 删除/重建会轮换签名密钥**:istiod 的 JWKS 缓存仍持旧 kid,全部 Bearer 401
+   ("Jwks doesn't have key to match kid or alg")。必须 `kubectl rollout restart
+   deploy/istiod -n istio-system` 刷新;浏览器 cookie 会话不受影响,只影响 Bearer 链路
+   (agent token、CLI、delegated credential)。
+5. 新 import 的人类用户缺 profile 字段会触发 VERIFY_PROFILE required action,需经
+   kcadm 补 email/firstName/lastName。
+
 ## 18. 日志、健康检查和常见故障
 
 ### Step 18.1 — Redacted diagnostics
