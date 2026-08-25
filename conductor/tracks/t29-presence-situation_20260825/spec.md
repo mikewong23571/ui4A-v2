@@ -23,9 +23,10 @@ Architecture(前置架构层;T25/T26/T27 的共同地基)
    对象(focus)变化,作为新事件 kind 进同一事件日志。只记**变化点**,不记
    高频移动(每次滚动/点击不进日志);来源为客户端显式上报,服务端校验身份
    后落库。presence 是关于注意力的事实,不是业务状态,不触发裁决。
-2. **presence 投影。** fold 出"当前在场"视图(principal → 最近 site/scope/
-   thread/focus),可重放、可审计;clientView 演进为引用在场事实的消息级
-   快照(协议版本演进,旧字段兼容窗口内退役——不留双路径,GR2)。
+2. **presence 投影。** 独立 fold(与 presentation 事件同族,不进业务
+   snapshot,避免主投影膨胀)出"当前在场"视图(principal → 最近
+   site/scope/thread/focus),可重放、可审计;clientView 协议直接演进到
+   引用在场事实的形状——项目未发布,按 GR2 不留新旧双路径,一次性切换。
 3. **处境装配(唯一回答者)。** 服务组合层单一模块,输入 = 已认证身份 +
    granted scopes + presence 投影 + 显式参数;输出 = site/scope/focus/
    disclosure 切片。agent prompt 构造(T25)、chat 路由、前端 scope 常显
@@ -52,6 +53,6 @@ Architecture(前置架构层;T25/T26/T27 的共同地基)
 
 - presence 事件→投影→重放 hash 一致;
 - 装配单测:显式优先、presence 辅助、无 presence(CLI 形态)正常装配;
-- clientView 协议演进:版本迁移测试,旧字段按 GR2 窗口退役;
+- clientView 协议演进:一次性切换测试(GR2,无新旧双路径);
 - 消费方矩阵断言:agent prompt/chat 路由/scope 常显同一来源(测试切面);
 - 不回归:invariants、chat 套件全绿。

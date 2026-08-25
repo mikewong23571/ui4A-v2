@@ -23,9 +23,11 @@ meta sitemap、每条 flow 定义的版本摘要(内嵌定义全文)一次性灌
    本 Track 不另建 scope 推导。其他 scope 仅披露"可导航入口"(rel +
    title,不含实体全形)。跨 scope 内容靠 agent 显式导航获取,每次导航
    留痕(事件日志现状即支持)。
-2. **起点即事实。** 删除 `resolveStartRel` 的 sitemap 词级交集探测:起点 =
+2. **起点即事实。** 删除 `resolveStartRel` 的 sitemap 词级交集探测。起点链:
    clientView.subject(用户正注视的实体)→ scope 默认入口 → `articles`
-   兜底。无 clientView 时报事实缺失,不猜。
+   兜底——每一级都是事实或约定入口,不是猜测。delegated(Temporal)场景
+   天然无 clientView:直接从 scope 默认入口起,不允许退化为词级探测;
+   委托派发方有明确起点时经显式参数传入(显式正典,同 T29 纪律)。
 3. **prompt 预算。** 单次 decide prompt 设硬上限(目标 ≤32KB);超限即披露层
    bug,测试断言拦截。定义版本全文等大体积数据不进 prompt——按 rel 引用,
    需要时导航读取。
