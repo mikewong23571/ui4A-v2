@@ -9,7 +9,7 @@
     },
     {
       "path": "apps/web/src/app/api/chat/route.ts",
-      "lines": 904,
+      "lines": 948,
       "limit": 500,
       "note": "T22 在途所有;T23 不拆分,待 T22 关闭后处理(见 risk-inventory R3)"
     },
@@ -23,7 +23,7 @@
   "dirs": [
     {
       "path": "scripts/t22",
-      "lines": 14404,
+      "lines": 14408,
       "limit": 4000,
       "note": "T22 在途 track 所有;T23 不处置,T22 关闭时按 GR5 裁决(见 risk-inventory R4)"
     }

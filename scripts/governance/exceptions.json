@@ -49,6 +49,11 @@
       "path": "deploy/keycloak/realm-bootstrap.ts",
       "reason": "T22 D35 realm import-or-check 的兼容判定是当前部署合同功能,非历史兼容债务",
       "pendingRemoval": false
+    },
+    {
+      "path": "packages/shared/src/presentation/chat-view.test.ts",
+      "reason": "T29 presence 合同测试的 '/legacy' 路由夹具串(断言其被禁),非历史兼容债务",
+      "pendingRemoval": false
     }
   ]
 }
