@@ -18,9 +18,9 @@
     协商信息、原始合同 JSON 视图
   - 能力等价测试:抽屉内各操作与现状 sidecar 控制条行为一致(复用既有
     route 测试口径 + 组件测试)
-- [~] Task: sidecar 控制条降级
+- [x] Task: sidecar 控制条降级 706862c
   - 首屏只留一个不显眼的"为什么这样展示"入口;原控制条从主区域移除
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: chat 可观测性重构(活性保留,方言分层)
 
