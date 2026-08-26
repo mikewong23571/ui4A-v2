@@ -10,6 +10,8 @@
  */
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
 
+import { withPolicyScope } from './exec-client';
+
 /** 画布侧记录的 Sidecar 元信息(个人呈现横幅与视图操作的状态源)。 */
 export interface SidecarMeta {
   id: string;
@@ -57,8 +59,9 @@ export interface SidecarActions {
 export function useSidecarActions(deps: {
   notify: (message: string) => void;
   reload: () => void;
+  scope?: string;
 }): SidecarActions {
-  const { notify, reload } = deps;
+  const { notify, reload, scope } = deps;
   const [sidecarMeta, setSidecarMeta] = useState<SidecarMeta>();
   const [promotionPending, setPromotionPending] = useState(false);
   const [explanation, setExplanation] = useState<SidecarExplanation>();
@@ -66,7 +69,7 @@ export function useSidecarActions(deps: {
   const mutateSidecar = useCallback(
     async (action: 'pin' | 'revert'): Promise<void> => {
       if (sidecarMeta === undefined) return;
-      const response = await fetch('/api/presentation/sidecar', {
+      const response = await fetch(withPolicyScope('/api/presentation/sidecar', scope), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -94,7 +97,7 @@ export function useSidecarActions(deps: {
       );
       if (action === 'revert') reload();
     },
-    [notify, reload, sidecarMeta],
+    [notify, reload, scope, sidecarMeta],
   );
 
   const patchSidecar = useCallback(
@@ -112,7 +115,7 @@ export function useSidecarActions(deps: {
                 density: currentDensity === 'compact' ? 'spacious' : 'compact',
               },
             ];
-      const response = await fetch('/api/presentation/sidecar', {
+      const response = await fetch(withPolicyScope('/api/presentation/sidecar', scope), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -134,13 +137,16 @@ export function useSidecarActions(deps: {
       setSidecarMeta(body.sidecar);
       notify(`视图已调整 · v${body.sidecar.version} · 可恢复上一版本`);
     },
-    [notify, sidecarMeta],
+    [notify, scope, sidecarMeta],
   );
 
   const explainSidecar = useCallback(async (): Promise<void> => {
     if (sidecarMeta === undefined) return;
     const response = await fetch(
-      `/api/presentation/sidecar?sidecarId=${encodeURIComponent(sidecarMeta.id)}&explain=1`,
+      withPolicyScope(
+        `/api/presentation/sidecar?sidecarId=${encodeURIComponent(sidecarMeta.id)}&explain=1`,
+        scope,
+      ),
     );
     const body = (await response.json()) as {
       explanation?: {
@@ -170,12 +176,12 @@ export function useSidecarActions(deps: {
         body.explanation.provenance?.ref ?? 'unknown'
       }，依赖 ${body.explanation.dependencyIds?.length ?? 0} 项。`,
     );
-  }, [notify, sidecarMeta]);
+  }, [notify, scope, sidecarMeta]);
 
   const promoteSidecar = useCallback(
     async (confirm: boolean): Promise<void> => {
       if (sidecarMeta === undefined) return;
-      const response = await fetch('/api/presentation/sidecar', {
+      const response = await fetch(withPolicyScope('/api/presentation/sidecar', scope), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -201,7 +207,7 @@ export function useSidecarActions(deps: {
         notify(`已设为团队默认 · ${body.recipe?.id ?? 'recipe'} v${body.recipe?.version ?? 1}`);
       }
     },
-    [notify, sidecarMeta],
+    [notify, scope, sidecarMeta],
   );
 
   return {

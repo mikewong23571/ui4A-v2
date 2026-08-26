@@ -24,6 +24,12 @@ function contractPrefix(rel: string): '' | '/_meta' {
   return rel.startsWith('meta/') || rel.startsWith('draft:') ? '/_meta' : '';
 }
 
+/** Preserve an explicitly declared policy scope across browser contract requests. */
+export function withPolicyScope(endpoint: string, scope?: string): string {
+  if (scope === undefined) return endpoint;
+  return `${endpoint}${endpoint.includes('?') ? '&' : '?'}scope=${encodeURIComponent(scope)}`;
+}
+
 /** 提交一个已声明动作；meta rel 留在定义合同站，业务 rel 留在业务站。 */
 export async function execAction(input: {
   rel: string;
@@ -37,16 +43,11 @@ export async function execAction(input: {
       input.params !== undefined && Object.keys(input.params).length > 0
         ? { params: input.params }
         : {};
-    response = await fetch(
-      `${contractPrefix(input.rel)}/api/exec${
-        input.scope === undefined ? '' : `?scope=${encodeURIComponent(input.scope)}`
-      }`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ rel: input.rel, action: input.action, ...params, ...HUMAN_CHANNEL }),
-      },
-    );
+    response = await fetch(withPolicyScope(`${contractPrefix(input.rel)}/api/exec`, input.scope), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ rel: input.rel, action: input.action, ...params, ...HUMAN_CHANNEL }),
+    });
   } catch (error) {
     return {
       ok: false,
@@ -82,9 +83,10 @@ export async function fetchEntity(
   signal?: AbortSignal,
   scope?: string,
 ): Promise<SirenEntity | null> {
-  const endpoint = `${contractPrefix(rel)}/api/entity?rel=${encodeURIComponent(rel)}${
-    scope === undefined ? '' : `&scope=${encodeURIComponent(scope)}`
-  }`;
+  const endpoint = withPolicyScope(
+    `${contractPrefix(rel)}/api/entity?rel=${encodeURIComponent(rel)}`,
+    scope,
+  );
   const response = await fetch(endpoint, { signal });
   if (response.status === 404) return null;
   if (!response.ok) {

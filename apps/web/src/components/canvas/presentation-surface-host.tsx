@@ -56,7 +56,7 @@ import type { RenderSpec } from '@/render/spec';
 import { createCanvasActionHandler } from '../canvas-action-handler';
 import { CanvasWhyDrawer } from '../canvas-why-drawer';
 import { useEntityCache } from '../entity-cache-provider';
-import { execAction, fetchEntity } from '../exec-client';
+import { execAction, fetchEntity, withPolicyScope } from '../exec-client';
 import { SurfaceErrorBoundary } from '../surface-error-boundary';
 import { Button } from '../ui/button';
 import { useSidecarActions } from '../use-sidecar-actions';
@@ -116,6 +116,8 @@ export interface PresentationSurfaceParameters {
   roots?: string;
   /** Exact Sidecar id supplied by a Presentation receipt. */
   sidecar?: string;
+  /** Explicit URL policy scope preserved across Presentation and action requests. */
+  scope?: string;
   /** Presence means external writes occurred and the page cache must be cleared. */
   refresh?: string;
 }
@@ -133,6 +135,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
   const concernParam = parameters.concern;
   const focusParam = parameters.focus;
   const rootsParam = parameters.roots;
+  const scopeParam = parameters.scope;
   const sidecarParam = parameters.sidecar;
   const focusRefreshParam = parameters.refresh;
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
@@ -161,7 +164,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
     patchSidecar,
     explainSidecar,
     promoteSidecar,
-  } = useSidecarActions({ notify: setNotice, reload });
+  } = useSidecarActions({ notify: setNotice, reload, scope: scopeParam });
 
   const load = useCallback(async () => {
     // chat 是画布缓存之外的执行者；refresh 表明合同刚发生写入，影响范围
@@ -245,7 +248,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
         focusParam !== undefined &&
         requestedFocuses.length === 1
       ) {
-        const response = await fetch('/api/presentation', {
+        const response = await fetch(withPolicyScope('/api/presentation', scopeParam), {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
@@ -268,7 +271,10 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
       let sidecarHydrationRels: string[] = [];
       if (resolvedSidecarId !== undefined && requestedFocuses.length === 1) {
         const response = await fetch(
-          `/api/presentation/sidecar?sidecarId=${encodeURIComponent(resolvedSidecarId)}`,
+          withPolicyScope(
+            `/api/presentation/sidecar?sidecarId=${encodeURIComponent(resolvedSidecarId)}`,
+            scopeParam,
+          ),
           { signal: controller.signal },
         );
         if (!response.ok) {
@@ -336,7 +342,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
 
       // 4. 拦截门 + MessageProcessor(每轮重载重建,白名单随数据模型重建);
       // 实体取数经页面缓存:同 rel 跨 surface 零重复 fetch。
-      const gate = createActionGate(execAction);
+      const gate = createActionGate((input) => execAction({ ...input, scope: scopeParam }));
       const handleAction = createCanvasActionHandler({
         gate,
         cache,
@@ -454,6 +460,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
     focusParam,
     focusRefreshParam,
     rootsParam,
+    scopeParam,
     setSidecarMeta,
     sidecarParam,
   ]);

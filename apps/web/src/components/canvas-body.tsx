@@ -14,6 +14,7 @@ export function CanvasBody() {
         concern: searchParams.get('concern') ?? undefined,
         focus: searchParams.get('focus') ?? undefined,
         roots: searchParams.get('roots') ?? undefined,
+        scope: searchParams.get('scope') ?? undefined,
         sidecar: searchParams.get('sidecar') ?? undefined,
         refresh: searchParams.get('refresh') ?? undefined,
       }}

@@ -78,6 +78,7 @@ interface ContractFixture {
 function presentationContract(input: {
   subject: string;
   source: SirenEntity;
+  scope?: string;
   failSidecar?: boolean;
 }): ContractFixture {
   const sidecarId = `sidecar:${encodeURIComponent(input.subject)}`;
@@ -89,9 +90,16 @@ function presentationContract(input: {
       return Promise.resolve(jsonResponse(200, renderCatalogJson()));
     if (url === '/.well-known/ui4a.json')
       return Promise.resolve(jsonResponse(200, { version: 'definition-v1' }));
-    if (url === '/api/presentation' && init?.method === 'POST')
+    const presentationUrl =
+      input.scope === undefined
+        ? '/api/presentation'
+        : `/api/presentation?scope=${encodeURIComponent(input.scope)}`;
+    if (url === presentationUrl && init?.method === 'POST')
       return Promise.resolve(jsonResponse(200, { sidecar: { id: sidecarId } }));
     if (url.startsWith('/api/presentation/sidecar?')) {
+      if (input.scope !== undefined) {
+        expect(new URL(url, 'http://ui4a.test').searchParams.get('scope')).toBe(input.scope);
+      }
       if (input.failSidecar) return Promise.resolve(jsonResponse(503, { error: 'offline' }));
       return Promise.resolve(
         jsonResponse(200, {
@@ -122,6 +130,7 @@ type MountCase = {
   name: string;
   subject: string;
   title: string;
+  scope?: string;
   mount: () => React.ReactElement;
 };
 
@@ -130,8 +139,9 @@ const cases: MountCase[] = [
     name: 'Canvas URL 参数',
     subject: 'post:canvas',
     title: '画布对象',
+    scope: 'publishing',
     mount: () => {
-      window.history.pushState({}, '', '/canvas?focus=post%3Acanvas');
+      window.history.pushState({}, '', '/canvas?focus=post%3Acanvas&scope=publishing');
       return <CanvasBody />;
     },
   },
@@ -153,7 +163,11 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
         testCase.subject === 'workspace:my-work' ? 'inbox' : testCase.subject,
         testCase.title,
       );
-      const fixture = presentationContract({ subject: testCase.subject, source });
+      const fixture = presentationContract({
+        subject: testCase.subject,
+        source,
+        scope: testCase.scope,
+      });
       vi.stubGlobal('fetch', fixture.fetchMock);
 
       const { container } = render(<EntityCacheProvider>{testCase.mount()}</EntityCacheProvider>);
@@ -164,7 +178,11 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
       expect(screen.getByRole('button', { name: '为什么这样展示' })).toBeTruthy();
 
       const urls = fixture.fetchMock.mock.calls.map(([request]) => String(request));
-      const presentationIndex = urls.indexOf('/api/presentation');
+      const presentationUrl =
+        testCase.scope === undefined
+          ? '/api/presentation'
+          : `/api/presentation?scope=${encodeURIComponent(testCase.scope)}`;
+      const presentationIndex = urls.indexOf(presentationUrl);
       const sidecarIndex = urls.findIndex((url) => url.startsWith('/api/presentation/sidecar?'));
       const hydrateSourceIndex = urls.findIndex((url) =>
         url.includes(`rel=${encodeURIComponent(String(source.properties.rel))}`),
@@ -187,9 +205,7 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
       fireEvent.click(screen.getByRole('button', { name: '重新载入' }));
       await waitFor(() =>
         expect(
-          fixture.fetchMock.mock.calls.filter(
-            ([request]) => String(request) === '/api/presentation',
-          ),
+          fixture.fetchMock.mock.calls.filter(([request]) => String(request) === presentationUrl),
         ).toHaveLength(2),
       );
       expect(container.querySelectorAll('[data-surface]')).toHaveLength(1);
@@ -204,6 +220,7 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
     const fixture = presentationContract({
       subject: testCase.subject,
       source,
+      scope: testCase.scope,
       failSidecar: true,
     });
     vi.stubGlobal('fetch', fixture.fetchMock);
@@ -217,7 +234,13 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
     fireEvent.click(screen.getByRole('button', { name: '重新载入' }));
     await waitFor(() =>
       expect(
-        fixture.fetchMock.mock.calls.filter(([request]) => String(request) === '/api/presentation'),
+        fixture.fetchMock.mock.calls.filter(([request]) => {
+          const expected =
+            testCase.scope === undefined
+              ? '/api/presentation'
+              : `/api/presentation?scope=${encodeURIComponent(testCase.scope)}`;
+          return String(request) === expected;
+        }),
       ).toHaveLength(2),
     );
   });
