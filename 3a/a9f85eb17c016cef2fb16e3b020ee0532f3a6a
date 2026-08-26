@@ -1,0 +1,1 @@
+T30 Phase F diagnostic hardening: include Sidecar HTTP status/body in the composition E2E assertion. This exposed an orphaned pre-pause 3110 Next process as the test failure source; after terminating that exact process group, the combined T16/T24/T30/invariants suite passed 9 with 2 superseded skips.
