@@ -691,3 +691,60 @@
    既有诚实 404 语义，桥不改写为猜测。**否决(b)**:命名约定已是单一真相，
    映射表会漂移且需另建生命周期；**否决(c)**:它把合同命名逻辑泄漏到组件树，
    违反内容面零类型特判。其他实体不出桥，不因落地便利而降级为后续 Track。
+
+## D47 一等交互、结构化引用、raw 镜头与 intent 裁剪(2026-08-26,T28 Phase A)
+
+1. **动作控件与提交边界**:候选是(a)实体页、Canvas 与组合区域统一使用一套
+   contract-driven `ActionRunner`/动作组，宿主显式注入各自 scope-aware 的 fresh-read →
+   exec adapter；(b)把 React/RJSF 控件全部收编进 A2UI SDK `createActionGate`。采纳(a)：
+   动作组只遍历当前 Siren actions，统一表单、两段式确认、guard reason 与图例；Entity 宿主
+   注入 scope-aware exec，Surface 宿主注入 fresh entity → declaration → guard → schema →
+   dependency recheck → exec，服务端继续作最终裁决。删除 `live` 与函数身份判断这类隐式分流。
+   否决(b)：SDK gate 是 A2UI dispatch 白名单，不拥有 React 表单和确认状态；强行合并会扩大
+   边界且仍不能代替提交前 fresh read。组级可见文案固定为“你和助手使用同一合同，由同一规则
+   裁决”，不声称 actor 权限或结果完全相同，保留 human-only approval。阻断原因直接显示合同
+   `guard-results.reason` 并以 status 语义暴露，tooltip 只可冗余，禁止实体类型或 action 名特判。
+
+2. **chat 引用与点击因果链**:候选是(a)assistant 终局消息尾部结构化 citation chips；
+   (b)把正文实体名改写成内联链接；(c)两者并存。采纳(a)：只消费 canonical
+   `FactRef{rel,pointer}`，按 `(rel,pointer)` 首次出现去重且不截断；rel 是主目标，pointer 是
+   可见的次级证据/无障碍说明，不额外解引用人话标题或事实值。live 从 final SSE sources 接线，
+   history 按显式 turnId 从权威 `chat-message-appended.citations` 投影，禁止按文本匹配。
+   点击只构造 `/canvas?focus=<rel>`，从当前 URL 保留非空 scope/thread；若 rel 是
+   `thread:<id>`，它覆盖旧 thread。其他页面 query 与 pointer 不伪装成 Canvas 已支持的定位能力。
+   chip 与 Canvas 都只从 URL focus 导出 active/`aria-current`，不新增全局选择态、事件或存储；
+   点击后仍 fresh 授权。否决(b)：现有 FactRef 没有正文 span/sourceIndex，Markdown 拦截、正则或
+   文本扫描都无法证明对应关系；未来内联必须先立结构化协议。否决(c)：继承同一不可证明映射，
+   并制造两套点击和高亮真相。
+
+3. **raw 是共享抽屉内容，不是第三站点**:候选是(a)共享 `RawContractDrawer`/
+   `RawContractContent`，由实体页、Canvas focus 与 citation 落面后的实体入口使用；(b)全局 URL
+   模式；(c)独立路由。采纳(a)：输入必须是当前 scope 新鲜授权得到的、未组装 Siren Entity，
+   直接 JSON 序列化，不通过 self link 再取、不包含 hydrated facts、Surface、事件或 explain。
+   EntityView 已持有 exact entity；Surface 宿主保留 exact focus entity 给同一内容组件。citation
+   先聚焦 Canvas、再开 raw，满足两步；`workspace:*` 不是业务实体，不能伪造 raw，组合成员/source
+   必须经 scope-preserving 链接落到实体后再开。迁移 why 抽屉现有 raw 区为共享内容，raw 触发器
+   仍是 why 的同级局部控件；所有触发器具 i3 注记。否决(b)/(c)：它们把验钞镜头变成新的站点或
+   导航状态。事件切片属于审计链接，provenance 属 why；本 Track raw v1 只展示原始 Siren JSON。
+
+4. **generic intent 裁剪与依赖**:候选是(a)所有 intent 共用一个 role 优先级上限；
+   (b)版本化 exact intent → role budget 声明映射。采纳(b)，以(a)仅作未知非空 intent 的固定
+   `read` fallback。匹配只接受完整 intent 字符串，禁止 substring、regex、分词、自然语言分类，
+   规则不得包含 entity class、rel、action 名、字段路径或事实值。空白 intent 沿用
+   `generic-input-invalid`；默认属性预算是 identity:1、status:1、primary-content:1，其余为 0；
+   actions、Siren links 与 collection members 始终保留，diagnostic 不可由字段或 profile 选择。
+   同 role 内按 canonical path 字典序选取并去重，再按 `GENERIC_ROLE_ORDER` 排列。selector 只接收
+   path/`FieldPresentationRole`，不接收实体或值；`GenericSurfaceOptions.intent` 为必填。
+   `planRegion` 传声明 intent，单主体 broker 传请求 intent，Canvas fallback 传同一显式 `read`；
+   不读取 class。policy version 作为 `definition:generic-intent-policy` dependency，版本变化使
+   Sidecar invalidate/replan。否决仅(a)：无法证明 intent 真进入 generic；否决自由文本启发式：
+   让机械层承担意图理解；否决 unknown 全量/空结果：分别保留旧缺陷或让合法自由 intent 不可用。
+
+5. **诊断在位而细节退守 why**:候选是(a)首屏保留无机制词的最小状态，结构化细节进抽屉；
+   (b)所有诊断进抽屉且 slot 留空。采纳(a)，以同时满足 D45 第 5 问“不静默、不泄漏”：
+   `region-unavailable` 首屏只显示“此区域暂不可用”，其他诊断显示“部分内容暂时无法显示”；不得
+   显示 code、node id、内部 message、source rel、policy 或 fingerprint。compiler 仍保留 Text
+   占位，但其 data 只含上述固定人话；完整、去重的结构化 issues 由 Surface 宿主传入 why 抽屉。
+   region-unavailable 的 why 细节也只允许声明 region、availability 与固定 code。否决(b)：空 slot
+   无法区分合法空集合与授权/编译降级，违反 D45；否决首屏直接显示 code：泄漏机制信息并违反
+   T24 诚实化口径。所有文案跨实体通用，禁止区域、Application 或实体类型特判。
