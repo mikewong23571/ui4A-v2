@@ -1,0 +1,25 @@
+Task: 起点链切换与词级探测退役(Green)
+
+Summary:
+- Added the pure Situation-based focus -> scoped application entry -> site fallback start chain.
+- Reused one assembled Situation and one engine application snapshot for inline and delegated Chat starts.
+- Removed resolveStartRel, its lexical/probe implementation, and obsolete tests.
+- Replaced the T21 reverse gate with fact-chain/no-heuristic source governance and added delegated focus/fallback coverage.
+
+Files:
+- apps/web/src/chat/start-chain.ts
+- apps/web/src/chat/start.ts (deleted)
+- apps/web/src/chat/start.test.ts (deleted)
+- apps/web/src/app/api/chat/route.ts
+- apps/web/src/app/api/chat/route.delegated.test.ts
+- packages/agent/src/governance/t21-source-governance.test.ts
+
+Why:
+The first contract read must come from T29 situation facts, with no lexical intent guessing or reachability probes.
+
+Verification:
+- pnpm vitest run apps/web/src/chat/start-chain.test.ts packages/agent/src/governance/t21-source-governance.test.ts apps/web/src/app/api/chat/route.delegated.test.ts apps/web/src/app/api/chat/route.test.ts apps/web/src/chat/failure-reason.test.ts (5 files, 35 tests)
+- pnpm --filter @ui4a/web typecheck
+- pnpm governance
+- git diff --cached --check
+- Autonomous acceptance by the orchestrating agent.
