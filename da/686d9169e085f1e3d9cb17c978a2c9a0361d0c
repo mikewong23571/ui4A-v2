@@ -1,0 +1,5 @@
+T24 Phase A Task 3 例外登记(编排 agent,业务优先原则)
+
+- apps/web/src/components 直属文件 4116/4000 超限,按 workflow『业务优先原则』登记 size-baseline(shrink-only)。
+- 依据:抽屉组件按架构归属与 canvas-body/被嵌入的 CanvasSidecarToolbar 同住;不为凑行数拆分。
+- 收缩窗口:T27 workstation 站点结构落地时按站点重组 components/。
