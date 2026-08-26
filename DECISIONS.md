@@ -492,3 +492,21 @@
   缩短)对它们同样生效,延迟不等于豁免。
 - **边界**:除这 4 条外 T23 验收要求 size-baseline 为空;`pnpm governance:strict` 在 T22 关闭
   前不纳入 `pnpm check`(strict 会因这 4 条失败),默认模式即刻生效。
+
+## D41 Assistant 分层披露与事实起点(2026-08-26,T25 Phase A)
+
+- **覆盖关系**:本决定 supersede D33“合同 discovery 的 `resolveStartRel` 不被 client view 机械
+  改写”这一句。`resolveStartRel` 删除后，起点固定为 T29 Situation 的 string focus → 当前
+  `ApplicationDefinition.entry` → 站点兜底（business `articles` / meta `meta/flows`）；selection
+  focus 跳过。整条链只消费结构化事实或约定入口，禁止词级猜测和可达性预探测。
+- **D33 保留边界**:D33 的双焦点三个位置、原子写入与纯重放、AI-first 决策和 provider-native
+  协议 envelope 等其余约束全部不变；事实起点只决定首次合同读取位置，不替代 LLM 对
+  answer/clarify/navigate/present 的自主选择，也不扩大授权或副作用许可。
+- **披露与公开合同**:scoped disclosure 只发生在内嵌 Assistant prompt 层，绝不窄化公开
+  HTTP/Siren discovery 合同；`/.well-known/ui4a.json`、`/api/entity` 及 canonical meta discovery
+  继续作为 CLI、外部 Agent 和脚本的完整发现面。
+- **显式委托上下文**:delegated 路径的 scope 与 startRel 由派发侧显式传入；显式值是正典，
+  presence 只作辅助，不得在 worker 内通过自然语言、标题或隐式漫游重新推断。
+- **同源切片与预算**:inline 与 delegated 必须消费同一机械披露切片；能力 schema 在 prompt 中
+  按 rel 引用、按需导航读取，不广播全文。每次 decide 的 prompt wire budget 固定为 32 KiB，
+  包含 tools 投影；超限视为披露层缺陷，不以窄化公开合同规避。
