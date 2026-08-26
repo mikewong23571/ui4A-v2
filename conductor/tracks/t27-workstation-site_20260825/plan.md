@@ -13,7 +13,7 @@
 > `apps/web/AGENTS.md`(Next.js 版本特定规则,改 apps/web 前必读)、
 > `conductor/workflow.md`(任务生命周期/验收协议/Phase Checkpoint)。
 
-## Phase A: Spike → DECISIONS(分歧先于代码)
+## Phase A: Spike → DECISIONS(分歧先于代码) [checkpoint: b1985b8]
 
 - [x] Task: spike 五问决断,落 DECISIONS.md D46 `952574e`
   - 五问 = spec.md"Phase A 决策投影":首页落地形态、处境常显与显式声明形态、
@@ -25,7 +25,7 @@
 - [x] Task: spec/plan 回改对齐 D46 `d5b227a`
   - 将 D46 已决形状同步进 spec 最终形态与 Phase B–F 任务合同,移除未决选择
     口径;tracks.md 无需动(本 Track 已登记)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `b1985b8`
 
 ## Phase B: 误导验收前置迁移
 
