@@ -110,7 +110,7 @@
     `authorization-failed` 且不生成可复用 Sidecar；生命周期事件沿用，
     surfaceUrl/surface id 约定沿用
   - 测试:授权逐源发生、越 scope 降级不泄漏、收据诚实、无 LLM 时 generic 退路(I7)
-- [ ] Task: canvas 挂载与抽屉组合信息
+- [x] Task: canvas 挂载与抽屉组合信息 `61c285e`
   - canvas 单树挂载组合 surface(零分叉验证);why 抽屉/explain 呈现区域清单、
     声明版本与 provenance(机制信息留抽屉,T24 口径)
   - 测试:编译/渲染 layout+slot 组合树、抽屉区域信息可达、新控件遵守 i3 fuzz
