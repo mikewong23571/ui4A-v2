@@ -24,7 +24,7 @@
 subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.md` 指向的
 `node_modules/next/dist/docs/` 相关篇章;风格遵守 `conductor/code_styleguides/`。
 
-## Phase A: 决策落档与起点即事实
+## Phase A: 决策落档与起点即事实 [checkpoint: dc09427]
 
 - [x] Task: DECISIONS.md 落档(新条目,先于代码) b1c110c
   - 修订 D33 条款"合同 discovery 的 `resolveStartRel` 不被 client view 机械
@@ -48,7 +48,7 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
     删除,`apps/web/src/chat/start.ts` 退役,`start.test.ts` 重写为起点链测试
   - `packages/agent/src/governance/t21-source-governance.test.ts` 的反向断言
     改写为新纪律(起点供给只消费处境事实,禁止词级猜测原语进入起点路径)
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) dc09427
 
 ## Phase B: 分层披露与 prompt 预算
 
