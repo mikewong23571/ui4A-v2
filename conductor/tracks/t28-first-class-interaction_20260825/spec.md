@@ -190,62 +190,39 @@ Recipe/Sidecar 机制。
   (fast-check:随机实体 × 随机 spec 的 provenance 溯源 + 字面载荷注入必拒)。
   **验收命令必须跑全量 vitest,不能只跑 e2e**(静默缺口警戒)。
 
-## Phase A 决策点(spike,产出 DECISIONS 条目;编号顺延,T27 spike 占 D46)
+## Phase A 决策结论(D47)
 
-每问给出:候选、约束、推荐默认、否决项与理由。分歧先于代码(GOAL.md 约束)。
+D47 已完成五问 spike 并否决所有开放候选;实施只允许以下固定形态:
 
-1. **动作一等控件的统一形态与提交路径。** 现状:实体页 ActionRunner 直调
-   exec,canvas 词条 ActionRunner live 复核,SDK 事件另走 createActionGate
-   白名单——三条路径。候选:(a) 呈现层统一(同一 ActionRunner 升级为一等
-   控件,实体页/canvas/组合区域同源),提交路径按宿主分层但语义一致(同一
-   /api/exec、同一 declaration → guard → schema、同一确认门);(b) 全量收编
-   进 gate。约束:不改裁决/确认门语义(非目标);零每实体类型特判。
-   "人/AI 同权"标注的形态(控件旁注 vs 统一图例)一并裁决——文案面向任务
-   语言(product-guidelines)。guard 阻断原因从 title tooltip 升级为可见
-   呈现:内容来自合同 `guard-results` 结构,零硬编码文案。
-2. **chat 引用的呈现与点击行为。** citations(FactRef{rel,pointer})已端到端
-   落库。候选:(a) 消息尾部引用列表(chips);(b) 正文内联实体链接(需
-   markdown 渲染层的 rel 拦截);(c) 尾部列表 + 内联两者。点击 = 画布聚焦
-   (沿用 `/canvas?focus=<rel>` 既有链路;T27 共享宿主落地后复核 href 形态)。
-   "引用→事实→画面"因果链的最小形态(引用高亮 ↔ 画布定位联动)一并裁决。
-   红线:只消费结构化 citations,绝不解析 assistant 自然语言文本。
-3. **raw 模式形态与入口。** 候选:(a) 随处抽屉(why 抽屉的"原始合同"区推广
-   到实体页/chat 引用);(b) 全局视图切换(URL 参数或模式 toggle,整页裸
-   合同);(c) 独立路由。北极星:镜头不是目的地;任何实体两步内可见原始
-   合同 JSON;零组装、零 AI。纳入范围一并裁决:未组装 Siren JSON 为必备,
-   事件切片(/api/events 定位链接)与 provenance(explain)为候选。入口
-   控件遵守 i3 fuzz 注记规则(参照既有 `[data-nav="local:canvas-why"]`
-   模式)。
-4. **intent 裁剪的规则与接线。** intent 如何进入 generic 回退路径(现状:
-   `planRegion` 回退 `planGenericSurface` 时 intent 丢失;`planGenericSurface`
-   无 intent 参数);裁剪规则形状:按投影已有的字段 role
-   (identity/status/primary-content/metadata/relation)+ intent 机械选择字段
-   子集——候选:(a) role 优先级限量(GENERIC_ROLE_ORDER 已有位次);(b)
-   intent → role 集合映射表(声明式数据,非代码分支)。红线:零每实体类型
-   分支;binding-only 不变(裁剪只减绑定,不引入字面量);I2 property test
-   口径不回归。
-5. **诊断节点的呈现位置。** 现状:diagnostic 编译为 surface 内 Text caption;
-   目标:诊断细节(deref-failed 等)只在抽屉暴露。与 D45 的张力:区域降级
-   (region-unavailable)不得静默缺席——候选:(a) surface 内保留最小在位
-   指示(非机制词,如"此区域暂不可用"),细节归抽屉;(b) 全部进抽屉,
-   区域槽位留空态占位。裁决须同时满足"诊断不上首屏"与"降级不静默、不
-   泄漏"(D45 第 5 问口径)。
+1. **动作:**同一 contract-driven ActionRunner/动作组;宿主显式注入 scope-aware
+   fresh-read → exec adapter,不再以 `live` 或函数身份分流。组级显示“你和助手使用
+   同一合同,由同一规则裁决”;guard reason 在控件下可见,human-only approval 不变。
+2. **引用:**assistant 终局消息尾部只渲染结构化 FactRef chips;live/history 双链路
+   接通,按 turnId 投影。点击聚焦 Canvas,只保留 scope/thread;URL focus 同时驱动
+   chip current 与 Surface active。正文不改写,不解析文本。
+3. **raw:**共享抽屉只显示当前 scope 已授权、未组装的 exact Siren Entity JSON。
+   Entity/Canvas 复用同一内容;citation 聚焦后第二步可打开。无全局模式、独立路由、
+   事件切片或 provenance 混入;`workspace:*` 不伪造业务合同。
+4. **intent:**版本化 exact intent → field-role budget;未知非空 intent 使用固定 read
+   fallback,空白 fail-closed。selector 只看 path/role,不看 class/rel/action/值;
+   actions/links/members 永久保留;policy version 进入 dependency。
+5. **诊断:**首屏仅保留固定人话在位提示;code/node/message 与去重结构化 issues 进入
+   why。`region-unavailable` 仍非静默,且不披露 source/policy/fingerprint。
 
 ## 最终形态(实施目标)
 
-1. **动作一等按钮。** 实体合同声明的 actions 由通用 action 渲染器生成一等
-   控件(实体页/canvas/组合区域同一渲染器;action gate 裁决、确认门、表单/
-   schema 现状语义不变),可见标注"人/AI 同权"——同一 exec、同一裁决,一眼
-   可读。guard 阻断的动作用合同 guard-results 可见呈现原因,不藏进 tooltip。
+1. **动作一等按钮。** 实体合同声明的 actions 由通用动作组生成一等控件;实体页、
+   Canvas 与组合区域同源,宿主显式注入 scope-aware fresh-read → exec adapter。
+   action gate、确认门与 schema 语义不变;统一图例说明“你和助手使用同一合同,由
+   同一规则裁决”。guard reason 来自合同并在控件下可见。
 2. **chat 引用可点。** assistant 消息的结构化引用(citations)渲染为可点
-   入口,点击 = 画布聚焦同一实体;引用 → 事实 → 画面的因果链可见(最小
-   联动形态按第 2 问)。渲染只消费结构化 FactRef,零文本解析。
+   chip,点击 = 画布聚焦同一实体并保留 scope/thread;URL focus 同时驱动 chip
+   current 与 Surface active。live/history 都保留 citations,只消费结构化 FactRef。
 3. **raw 模式。** "查看原始合同"从实体页/canvas/引用随处可达:未组装的
-   Siren JSON(必备)+ 事件切片/provenance(按第 3 问);零组装、零 AI;
-   镜头不是站点,无顶级导航入口(T27 已坐实)。
-4. **呈现按 intent 裁剪。** generic surface 规划按呈现 intent 选择字段(role
-   驱动的声明式规则),不再全属性绑定;诊断细节只在抽屉暴露,降级在位指示
-   按第 5 问。
+   Siren JSON;零组装、零 AI,不混入事件/provenance;镜头不是站点,无顶级导航入口。
+4. **呈现按 intent 裁剪。** generic surface 使用版本化 exact intent → role budget
+   只选字段子集,未知 intent 用固定 read fallback;规则零 class/事实输入。首屏诊断只留
+   固定人话状态,结构化细节只在 why 抽屉暴露。
 
 ## Scope 边界(非目标)
 
