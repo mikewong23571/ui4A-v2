@@ -22,7 +22,7 @@ describe('business sitemap principal surfaces', () => {
     });
   });
 
-  it('makes every my-work composition source discoverable through the business sitemap', () => {
+  it('makes every my-work composition source a principal business surface', () => {
     const snapshot: EngineSnapshot = { instances: {}, collections: {}, threads: {} };
     const readers = createSitemapReaders(
       () => snapshot,
@@ -31,12 +31,17 @@ describe('business sitemap principal surfaces', () => {
     const declaration = getBuiltinComposition('my-work');
 
     expect(declaration).toBeDefined();
-    const sitemapRels = new Set(readers.currentSitemap().surfaces.map((surface) => surface.rel));
-    const missingSources =
-      declaration?.regions
-        .map((region) => region.source)
-        .filter((source) => !sitemapRels.has(source)) ?? [];
+    const surfaces = new Map(
+      readers.currentSitemap().surfaces.map((surface) => [surface.rel, surface]),
+    );
+    const sourceSurfaces = declaration?.regions.map((region) => surfaces.get(region.source));
 
-    expect(missingSources).toEqual([]);
+    expect(sourceSurfaces).toHaveLength(3);
+    expect(sourceSurfaces).not.toContain(undefined);
+    expect(sourceSurfaces?.map((surface) => surface?.scope)).toEqual([
+      'principal',
+      'principal',
+      'principal',
+    ]);
   });
 });
