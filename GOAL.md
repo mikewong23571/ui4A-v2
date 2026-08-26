@@ -37,7 +37,7 @@ Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能�
 
 ### Presentation 用户故事
 
-呈现以 `conductor/tracks/archive/t16-semantic-a2ui-sidecars_20260823/user-stories.md` 的 S1–S32 为准。Chat 只发薄 `PresentationRequest`；Application Recipe 和独立 Presentation Agent 产生 binding-only Surface；用户级 Sidecar 跨 Session 命中并重新授权、解引用。个人优化只有经参数化、机械 diff 和 human approval 才可晋升共享 Recipe。Recipe/Sidecar/patch/promotion 事件独立重放，不进入 Business Snapshot。
+呈现以 `conductor/tracks/archive/t16-semantic-a2ui-sidecars_20260823/user-stories.md` 的 S1–S32 与 T30 组合合同为准。Chat 只发薄 `PresentationRequest`；Application Recipe 和独立 Presentation Agent 产生 binding-only Surface；单主体与 `workspace:<id>` 多区域组合共用同一 planner/Recipe/Sidecar/Canvas 路径。用户级 Sidecar 跨 Session 命中并逐源重新授权、解引用；部分授权只输出对应 `region-unavailable`，虚主体不成为业务实体或事件。个人优化只有经参数化、机械 diff 和 human approval 才可晋升共享 Recipe。Recipe/Sidecar/patch/promotion 事件独立重放，不进入 Business Snapshot。
 
 ### Assistant 双焦点一致性
 

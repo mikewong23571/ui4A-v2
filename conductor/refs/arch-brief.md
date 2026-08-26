@@ -142,6 +142,13 @@ planner。每次命中仍重新授权、校验依赖并实时解引用。Sidecar
 事件重建。Presentation fold 与 Business fold 分离，任何 Presentation event 误入 Business fold
 都 fail-closed。
 
+T30 将单主体固定为 `layout → slot(subject) → subtree`，并在同一 planner 上加入版本化
+`CompositionDeclaration`。Broker 只把 `workspace:<id>` 解析为内建声明；engine 依据
+`regions[{region,source,intent,mode}]` 组装一棵有序 Surface，依赖并集沿用 Sidecar 的
+rehydrate/invalidate 判定。每个来源都以可信 principal/policy scope 新鲜授权；不可见来源只形成
+无绑定的 `region-unavailable`，全部不可见不生成 Sidecar。虚主体不进入业务 sitemap、exec 或
+Business fold，Explain 仅从根节点 composition provenance 机械推导声明和区域 availability。
+
 ### 8.2 外置 App Authoring Agent 边界
 
 Application 创建暂不进入产品 Chat runtime。外置 Agent 可以读取定义语言、用户故事和 meta

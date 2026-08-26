@@ -122,7 +122,7 @@ Assistant 的自然语言理解、多轮目标形成、授权事实阅读、总�
 
 ### Presentation Plane
 
-Chat Agent 只决定是否呈现、呈现哪个 subject 和 intent；完整 catalog、Surface、bindings 与依赖不进入 Chat 上下文。Application 激活后预生成参数化 Recipe，运行时按 user pinned/cache → promoted/candidate Recipe → generic → Presentation Agent 的顺序解析。Sidecar 只保存 binding-only 展示结构和 provenance，按用户跨 Session 复用；业务事实、guard 和 action 始终实时读取并由引擎裁决。
+Chat Agent 只决定是否呈现、呈现哪个 subject 和 intent；完整 catalog、Surface、bindings 与依赖不进入 Chat 上下文。单主体与 `workspace:<id>` 聚合虚主体走同一台 Surface/Recipe/Sidecar 机器：版本化组合声明把多个授权来源装入一棵有序区域树，部分授权只降级对应区域，全部不可见则失败且不缓存。Application 激活后预生成参数化 Recipe，运行时按 user pinned/cache → promoted/candidate Recipe → generic → Presentation Agent 的顺序解析。Sidecar 只保存 binding-only 展示结构和 provenance，按用户跨 Session 复用；每次命中逐源重新授权并解引用当前事实，虚主体不进入业务 sitemap、action 或事件真相。
 
 ### App 创建边界
 
