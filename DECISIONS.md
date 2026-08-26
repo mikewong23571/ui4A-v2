@@ -523,3 +523,13 @@
   Responses API 或恢复 required，不在本决定中引入 provider 特判或 fallback。
 - **TODO(D42)**:另立后续 Track 验证 DeepSeek Responses API 的 reasoning/tool item 多轮回传，目标是
   在不引入请求端 provider override 的前提下恢复 wire-level `tool_choice: required` 保证。
+
+## D43 Assistant SSE terminated 的同决策有界恢复(2026-08-26,T25 Phase D)
+
+- **观测与决定**:真实 DeepSeek gate 三次出现错误消息严格为 `terminated` 的 SSE 断流；driver 对该
+  已观测错误在相同 context/messages/tools 下最多尝试三次，不扩大到未观测的错误分类。成功工具
+  envelope 仍须完整聚合并校验后才进入 Agent loop，因此断流重试不重复业务 mutation。
+- **失败边界**:连续三次 `terminated` 后仍返回原样诚实失败；401、其他网络错误、协议 repair 与
+  非法模型输出保持既有语义。重试选择与次数由服务端固定，请求不能覆盖。
+- **时限**:单次流的硬总时限由 60 秒调整为 300 秒，避免 thinking 长 SSE 被过早终止；Agent 步数、
+  Chat/Workflow 外层 deadline 继续提供整体有界性。本决定不引入新的 provider 或 fallback 路径。

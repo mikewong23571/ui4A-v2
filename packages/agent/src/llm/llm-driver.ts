@@ -97,6 +97,9 @@ interface DecisionAttempt {
   reasoning?: string;
 }
 
+const LLM_DECISION_TIMEOUT_MS = 300_000;
+const TERMINATED_MAX_ATTEMPTS = 3;
+
 function repairMessage(protocolFailure: string): LlmMessage {
   return {
     role: 'user',
@@ -143,7 +146,7 @@ async function llmDecisionAttempt(
       ),
     ),
     toolChoice: 'auto',
-    abortSignal: AbortSignal.timeout(60_000),
+    abortSignal: AbortSignal.timeout(LLM_DECISION_TIMEOUT_MS),
     includeRawChunks: true,
   });
   let text = '';
@@ -194,6 +197,27 @@ async function llmDecisionAttempt(
   };
 }
 
+function isTerminatedStream(error: unknown): boolean {
+  return error instanceof Error && error.message === 'terminated';
+}
+
+/** Retry only the observed transient SSE termination; every retry sees identical facts/tools. */
+async function llmDecisionAttemptWithStreamRetry(
+  model: LanguageModel,
+  context: DriverContext,
+  sink?: DecideSink,
+  protocolFailure?: string,
+): Promise<DecisionAttempt> {
+  for (let attempt = 1; attempt <= TERMINATED_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await llmDecisionAttempt(model, context, sink, protocolFailure);
+    } catch (error) {
+      if (!isTerminatedStream(error) || attempt === TERMINATED_MAX_ATTEMPTS) throw error;
+    }
+  }
+  throw new Error('unreachable terminated stream retry state');
+}
+
 function emitAttemptReasoning(attempt: DecisionAttempt, sink?: DecideSink): void {
   if (attempt.reasoning === undefined) return;
   try {
@@ -204,8 +228,9 @@ function emitAttemptReasoning(attempt: DecisionAttempt, sink?: DecideSink): void
 }
 
 /**
- * One autonomous decision plus at most one real-LLM protocol repair. Provider failures remain
- * honest terminal failures; rejected text is never converted into an operation.
+ * One autonomous decision plus at most one real-LLM protocol repair. The observed transient SSE
+ * `terminated` error retries the same decision boundedly; other provider failures remain honest
+ * terminal failures. Rejected text is never converted into an operation.
  */
 async function llmDecide(
   model: LanguageModel,
@@ -213,12 +238,17 @@ async function llmDecide(
   sink?: DecideSink,
 ): Promise<AgentOperation> {
   try {
-    const first = await llmDecisionAttempt(model, context, sink);
+    const first = await llmDecisionAttemptWithStreamRetry(model, context, sink);
     if (first.protocolFailure === undefined) {
       emitAttemptReasoning(first, sink);
       return first.op;
     }
-    const repaired = await llmDecisionAttempt(model, context, sink, first.protocolFailure);
+    const repaired = await llmDecisionAttemptWithStreamRetry(
+      model,
+      context,
+      sink,
+      first.protocolFailure,
+    );
     emitAttemptReasoning(repaired.reasoning === undefined ? first : repaired, sink);
     return repaired.op;
   } catch (error) {

@@ -303,6 +303,7 @@ describe('B4:失败如实呈现(委托不崩溃)', () => {
       expect(op.reason).toContain('fetch failed');
     }
   });
+
 });
 
 describe('fail-safe:模型输出不合法', () => {
