@@ -26,7 +26,35 @@ const mocks = vi.hoisted(() => ({
     key: { subject: 'post:first', intent: 'read' },
     versions: {
       1: {
-        surface: { schemaVersion: 1, root: { kind: 'word', id: 'root' } },
+        surface: {
+          schemaVersion: 1,
+          root: {
+            kind: 'layout',
+            id: 'root',
+            role: 'primary-content',
+            layout: 'stack',
+            dependencies: [],
+            provenance: [],
+            children: [
+              {
+                kind: 'slot',
+                id: 'subject-region',
+                role: 'primary-content',
+                name: 'subject',
+                dependencies: [],
+                provenance: [],
+                child: {
+                  kind: 'diagnostic',
+                  id: 'subject-diagnostic',
+                  role: 'diagnostic',
+                  code: 'fixture',
+                  dependencies: [],
+                  provenance: [],
+                },
+              },
+            ],
+          },
+        },
         dependencies: [],
         retention: 'cache',
       },
@@ -152,7 +180,9 @@ describe('POST /api/presentation production authentication wiring', () => {
 
     expect(response.status).toBe(200);
     expect(mocks.resolveTrustedRequestIdentity).not.toHaveBeenCalled();
-    expect(mocks.present).toHaveBeenCalledWith(expect.objectContaining({ principal: 'user:local' }));
+    expect(mocks.present).toHaveBeenCalledWith(
+      expect.objectContaining({ principal: 'user:local' }),
+    );
   });
 });
 
@@ -202,11 +232,7 @@ describe('GET /api/presentation/sidecar production authentication wiring', () =>
 
     expect(response.status).toBe(200);
     expect(mocks.resolveTrustedRequestIdentity).not.toHaveBeenCalled();
-    expect(mocks.getSidecarById).toHaveBeenCalledWith(
-      expect.anything(),
-      'sidecar:1',
-      'user:local',
-    );
+    expect(mocks.getSidecarById).toHaveBeenCalledWith(expect.anything(), 'sidecar:1', 'user:local');
   });
 });
 

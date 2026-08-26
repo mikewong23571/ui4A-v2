@@ -42,83 +42,97 @@ function surface(): SurfaceTree {
       children: [
         {
           kind: 'slot',
-          id: 'identity-slot',
-          role: 'identity',
-          name: 'identity',
+          id: 'subject-region',
+          role: 'primary-content',
+          name: 'subject',
           dependencies: [],
           provenance,
           child: {
-            kind: 'word',
-            id: 'heading',
-            role: 'identity',
-            word: 'heading',
-            bindings: {
-              value: { kind: 'property', subject: 'post:first', path: 'properties.fields.title' },
-            },
-            dependencies: [
-              catalogDependency,
-              entityDependency('post:first', ['properties.fields.title']),
-            ],
+            kind: 'layout',
+            id: 'subject-content',
+            role: 'primary-content',
+            layout: 'stack',
+            dependencies: [],
             provenance,
-          },
-        },
-        {
-          kind: 'layout',
-          id: 'summary-row',
-          role: 'metadata',
-          layout: 'inline',
-          dependencies: [],
-          provenance,
-          children: [
-            {
-              kind: 'word',
-              id: 'state',
-              role: 'status',
-              word: 'state',
-              bindings: {
-                value: { kind: 'property', subject: 'post:first', path: 'properties.node' },
+            children: [
+              {
+                kind: 'word',
+                id: 'heading',
+                role: 'identity',
+                word: 'heading',
+                bindings: {
+                  value: {
+                    kind: 'property',
+                    subject: 'post:first',
+                    path: 'properties.fields.title',
+                  },
+                },
+                dependencies: [
+                  catalogDependency,
+                  entityDependency('post:first', ['properties.fields.title']),
+                ],
+                provenance,
               },
-              dependencies: [
-                catalogDependency,
-                entityDependency('post:first', ['properties.node']),
-              ],
-              provenance,
-            },
-            {
-              kind: 'word',
-              id: 'summary',
-              role: 'metadata',
-              word: 'prose',
-              bindings: {
-                value: {
-                  kind: 'property',
-                  subject: 'post:first',
-                  path: 'properties.fields.summary',
+              {
+                kind: 'layout',
+                id: 'summary-row',
+                role: 'metadata',
+                layout: 'inline',
+                dependencies: [],
+                provenance,
+                children: [
+                  {
+                    kind: 'word',
+                    id: 'state',
+                    role: 'status',
+                    word: 'state',
+                    bindings: {
+                      value: { kind: 'property', subject: 'post:first', path: 'properties.node' },
+                    },
+                    dependencies: [
+                      catalogDependency,
+                      entityDependency('post:first', ['properties.node']),
+                    ],
+                    provenance,
+                  },
+                  {
+                    kind: 'word',
+                    id: 'summary',
+                    role: 'metadata',
+                    word: 'prose',
+                    bindings: {
+                      value: {
+                        kind: 'property',
+                        subject: 'post:first',
+                        path: 'properties.fields.summary',
+                      },
+                    },
+                    dependencies: [
+                      catalogDependency,
+                      entityDependency('post:first', ['properties.fields.summary']),
+                    ],
+                    provenance,
+                  },
+                ],
+              },
+              {
+                kind: 'repeat',
+                id: 'related-posts',
+                role: 'relation',
+                source: { kind: 'entities', subject: 'articles' },
+                dependencies: [entityDependency('articles', ['$entities'])],
+                provenance,
+                item: {
+                  kind: 'word',
+                  id: 'related-heading',
+                  role: 'identity',
+                  word: 'heading',
+                  bindings: { value: { kind: 'item', path: 'properties.fields.title' } },
+                  dependencies: [catalogDependency],
+                  provenance,
                 },
               },
-              dependencies: [
-                catalogDependency,
-                entityDependency('post:first', ['properties.fields.summary']),
-              ],
-              provenance,
-            },
-          ],
-        },
-        {
-          kind: 'repeat',
-          id: 'related-posts',
-          role: 'relation',
-          source: { kind: 'entities', subject: 'articles' },
-          dependencies: [entityDependency('articles', ['$entities'])],
-          provenance,
-          item: {
-            kind: 'word',
-            id: 'related-heading',
-            role: 'identity',
-            word: 'heading',
-            bindings: { value: { kind: 'item', path: 'properties.fields.title' } },
-            dependencies: [catalogDependency],
-            provenance,
+            ],
           },
         },
       ],
@@ -290,11 +304,17 @@ describe('normalized Surface Tree to A2UI v0.9 compiler', () => {
     expect(JSON.stringify(unknownBundle.messages[2])).toContain('diagnostic');
     expect(() => replayA2uiBundle(unknownBundle, UI4A_A2UI_CATALOG_ADAPTER)).not.toThrow();
 
-    const literal = surface() as unknown as {
-      schemaVersion: 1;
-      root: { children: Array<{ child?: { bindings?: Record<string, unknown> } }> };
-    };
-    literal.root.children[0]!.child!.bindings!.value = 'leaked literal';
+    const literal = surface();
+    if (literal.root.kind !== 'layout') throw new Error('fixture must be a layout');
+    const subjectRegion = literal.root.children.find(
+      (node) => node.kind === 'slot' && node.name === 'subject',
+    );
+    if (subjectRegion?.kind !== 'slot' || subjectRegion.child.kind !== 'layout') {
+      throw new Error('fixture must contain the canonical subject region');
+    }
+    const heading = subjectRegion.child.children.find((node) => node.id === 'heading');
+    if (heading?.kind !== 'word') throw new Error('fixture must contain a heading word');
+    (heading.bindings as Record<string, unknown>).value = 'leaked literal';
     const literalBundle = compileSurfaceTree(literal as unknown as SurfaceTree, {
       surfaceId: 'partial-literal',
       catalog: PRESENTATION_SURFACE_CATALOG,

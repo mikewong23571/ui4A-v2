@@ -74,30 +74,48 @@ test('S24: real Presentation Agent produces semantic patches for five human phra
       provenance: [{ kind: 'generic-fallback' as const, ref: 'fixture' }],
       children: [
         {
-          kind: 'word' as const,
-          id: 'body',
+          kind: 'slot' as const,
+          id: 'subject-region',
           role: 'primary-content' as const,
-          word: 'prose',
-          bindings: {
-            value: {
-              kind: 'property' as const,
-              subject: 'post:first-post',
-              path: 'properties.fields.body',
-            },
-          },
+          name: 'subject',
           dependencies: [],
           provenance: [{ kind: 'generic-fallback' as const, ref: 'fixture' }],
-        },
-        {
-          kind: 'word' as const,
-          id: 'actions',
-          role: 'actions' as const,
-          word: 'controls',
-          bindings: {
-            actions: { kind: 'actions' as const, subject: 'post:first-post' },
+          child: {
+            kind: 'layout' as const,
+            id: 'subject-content',
+            role: 'primary-content' as const,
+            layout: 'stack' as const,
+            dependencies: [],
+            provenance: [{ kind: 'generic-fallback' as const, ref: 'fixture' }],
+            children: [
+              {
+                kind: 'word' as const,
+                id: 'body',
+                role: 'primary-content' as const,
+                word: 'prose',
+                bindings: {
+                  value: {
+                    kind: 'property' as const,
+                    subject: 'post:first-post',
+                    path: 'properties.fields.body',
+                  },
+                },
+                dependencies: [],
+                provenance: [{ kind: 'generic-fallback' as const, ref: 'fixture' }],
+              },
+              {
+                kind: 'word' as const,
+                id: 'actions',
+                role: 'actions' as const,
+                word: 'controls',
+                bindings: {
+                  actions: { kind: 'actions' as const, subject: 'post:first-post' },
+                },
+                dependencies: [],
+                provenance: [{ kind: 'generic-fallback' as const, ref: 'fixture' }],
+              },
+            ],
           },
-          dependencies: [],
-          provenance: [{ kind: 'generic-fallback' as const, ref: 'fixture' }],
         },
       ],
     },
@@ -136,8 +154,7 @@ test('S24: real Presentation Agent produces semantic patches for five human phra
       result.status === 'patch' &&
       result.patch.operations.length > 0 &&
       result.patch.operations.every(
-        (operation) =>
-          operation.kind === 'pin' || ['root', 'body', 'actions'].includes(operation.nodeId),
+        (operation) => operation.kind === 'pin' || ['body', 'actions'].includes(operation.nodeId),
       ),
   );
   await testInfo.attach('t16-s24-real-llm-evidence.json', {
