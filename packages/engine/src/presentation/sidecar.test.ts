@@ -73,6 +73,26 @@ describe('Presentation Sidecar event fold', () => {
     expect(source).not.toMatch(/sessionId|session_id/);
   });
 
+  it('keeps composition workspace identity stable and distinct from subject and intent changes', () => {
+    const compositionKey: UserSidecarKey = {
+      ...key,
+      subject: 'workspace:my-work',
+      intent: 'organize my work',
+    };
+    const fingerprint = sidecarKeyFingerprint(compositionKey);
+
+    expect(sidecarKeyFingerprint({ ...compositionKey })).toBe(fingerprint);
+    expect(sidecarKeyFingerprint({ ...compositionKey, subject: 'workspace:team-work' })).not.toBe(
+      fingerprint,
+    );
+    expect(sidecarKeyFingerprint({ ...compositionKey, intent: 'review my work' })).not.toBe(
+      fingerprint,
+    );
+    expect(sidecarKeyFingerprint({ ...compositionKey, principal: 'user:other' })).not.toBe(
+      fingerprint,
+    );
+  });
+
   it('replays instantiate, pin, revise, stale and revert with immutable versions', () => {
     let state = createPresentationSnapshot();
     const created = applySidecarCommand(state, {

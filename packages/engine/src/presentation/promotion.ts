@@ -1,4 +1,8 @@
-import type { ApplicationRenderRecipeCandidate, RecipeDependency } from './recipe/recipe';
+import type {
+  ApplicationRecipeSlot,
+  ApplicationRenderRecipeCandidate,
+  RecipeDependency,
+} from './recipe/recipe';
 import type { PresentationSnapshot, UserSidecarAggregate } from './sidecar';
 import type {
   SurfaceBinding,
@@ -15,6 +19,7 @@ export interface SidecarPromotionOptions {
   subjectShape: string;
   intent: string;
   catalog: SurfaceCatalog;
+  slots: Array<ApplicationRecipeSlot & { subject: string }>;
   dependencies: RecipeDependency[];
 }
 
@@ -28,22 +33,49 @@ export interface SidecarPromotionResult {
   };
 }
 
-function parameterizeBinding(binding: SurfaceBinding): SurfaceBinding {
-  if (binding.kind === 'item') return { ...binding };
-  return { ...binding, subject: '$slot:subject' };
+function parameterizedSubject(
+  subject: string,
+  slotsBySubject: ReadonlyMap<string, string>,
+): string {
+  const slot = slotsBySubject.get(subject);
+  if (slot === undefined) throw new Error(`Surface subject "${subject}" has no mapped Recipe slot`);
+  return `$slot:${slot}`;
 }
 
-function parameterizeDependency(dependency: SurfaceDependency): SurfaceDependency {
+function parameterizeBinding(
+  binding: SurfaceBinding,
+  slotsBySubject: ReadonlyMap<string, string>,
+): SurfaceBinding {
+  if (binding.kind === 'item') return { ...binding };
+  return { ...binding, subject: parameterizedSubject(binding.subject, slotsBySubject) };
+}
+
+function parameterizeDependency(
+  dependency: SurfaceDependency,
+  slotsBySubject: ReadonlyMap<string, string>,
+): SurfaceDependency {
+  if (dependency.kind !== 'entity' && dependency.subject.startsWith('$slot:')) {
+    throw new Error('Surface dependency contains an unresolved Recipe slot subject');
+  }
   return dependency.kind === 'entity'
-    ? { ...dependency, subject: '$slot:subject', version: '$runtime' }
+    ? {
+        ...dependency,
+        subject: parameterizedSubject(dependency.subject, slotsBySubject),
+        version: '$runtime',
+      }
     : { ...dependency };
 }
 
-function parameterizeNode(node: SurfaceNode): SurfaceNode {
+function parameterizeNode(
+  node: SurfaceNode,
+  slotsBySubject: ReadonlyMap<string, string>,
+): SurfaceNode {
   const base = {
     id: node.id,
     role: node.role,
-    dependencies: node.dependencies.map(parameterizeDependency),
+    dependencies: node.dependencies.map((dependency) =>
+      parameterizeDependency(dependency, slotsBySubject),
+    ),
     provenance: node.provenance.map((entry) => ({ ...entry })),
   };
   switch (node.kind) {
@@ -52,16 +84,24 @@ function parameterizeNode(node: SurfaceNode): SurfaceNode {
         kind: 'layout',
         ...base,
         layout: node.layout,
-        children: node.children.map(parameterizeNode),
+        children: node.children.map((child) => parameterizeNode(child, slotsBySubject)),
       };
     case 'slot':
-      return { kind: 'slot', ...base, name: node.name, child: parameterizeNode(node.child) };
+      return {
+        kind: 'slot',
+        ...base,
+        name: node.name,
+        child: parameterizeNode(node.child, slotsBySubject),
+      };
     case 'repeat':
       return {
         kind: 'repeat',
         ...base,
-        source: { kind: 'entities', subject: '$slot:subject' },
-        item: parameterizeNode(node.item),
+        source: {
+          kind: 'entities',
+          subject: parameterizedSubject(node.source.subject, slotsBySubject),
+        },
+        item: parameterizeNode(node.item, slotsBySubject),
       };
     case 'word':
       return {
@@ -71,7 +111,7 @@ function parameterizeNode(node: SurfaceNode): SurfaceNode {
         bindings: Object.fromEntries(
           Object.entries(node.bindings).map(([name, binding]) => [
             name,
-            parameterizeBinding(binding),
+            parameterizeBinding(binding, slotsBySubject),
           ]),
         ),
       };
@@ -85,8 +125,47 @@ function parameterizeNode(node: SurfaceNode): SurfaceNode {
   }
 }
 
-function parameterizeSurface(surface: SurfaceTree): SurfaceTree {
-  return { schemaVersion: 1, root: parameterizeNode(surface.root) };
+function parameterizeSurface(
+  surface: SurfaceTree,
+  slotsBySubject: ReadonlyMap<string, string>,
+): SurfaceTree {
+  return { schemaVersion: 1, root: parameterizeNode(surface.root, slotsBySubject) };
+}
+
+function promotionSlots(options: SidecarPromotionOptions, surface: SurfaceTree) {
+  if (options.slots.length === 0) throw new Error('Recipe promotion slots must not be empty');
+  const names = new Set<string>();
+  const subjects = new Set<string>();
+  for (const slot of options.slots) {
+    if (
+      !/^[a-zA-Z0-9_.-]+$/.test(slot.name) ||
+      !['entity', 'collection', 'flow', 'selection'].includes(slot.kind) ||
+      slot.subject.trim() === '' ||
+      slot.subject.startsWith('$slot:') ||
+      names.has(slot.name) ||
+      subjects.has(slot.subject)
+    ) {
+      throw new Error('Recipe promotion contains an invalid or duplicate slot name or subject');
+    }
+    names.add(slot.name);
+    subjects.add(slot.subject);
+  }
+  if (
+    surface.root.kind !== 'layout' ||
+    surface.root.children.some((child) => child.kind !== 'slot')
+  ) {
+    throw new Error('Surface root must be a canonical layout of Recipe region slots');
+  }
+  const surfaceNames = surface.root.children.map((child) =>
+    child.kind === 'slot' ? child.name : '',
+  );
+  if (
+    surfaceNames.length !== options.slots.length ||
+    surfaceNames.some((name, index) => name !== options.slots[index]?.name)
+  ) {
+    throw new Error('Surface slot shape does not match Recipe promotion slots');
+  }
+  return new Map(options.slots.map((slot) => [slot.subject, slot.name]));
 }
 
 /** Strip user/entity identity and produce an unpromoted, mechanically diffable Recipe candidate. */
@@ -96,6 +175,7 @@ export function promoteUserSidecarCandidate(
 ): SidecarPromotionResult {
   const active = sidecar.versions[sidecar.activeVersion];
   if (active === undefined) throw new Error('Sidecar active provenance is unavailable');
+  const slotsBySubject = promotionSlots(options, active.surface);
   const candidate: ApplicationRenderRecipeCandidate = {
     key: {
       application: options.application,
@@ -105,8 +185,8 @@ export function promoteUserSidecarCandidate(
       intent: options.intent,
       catalogVersion: options.catalog.version,
     },
-    slots: [{ name: 'subject', kind: 'entity' }],
-    surfaceTemplate: parameterizeSurface(active.surface),
+    slots: options.slots.map(({ name, kind }) => ({ name, kind })),
+    surfaceTemplate: parameterizeSurface(active.surface, slotsBySubject),
     dependencies: options.dependencies.map((dependency) => ({ ...dependency })),
     provenance: { model: 'human-promotion', generatedAt: 'human-approved-candidate' },
   };
@@ -116,7 +196,7 @@ export function promoteUserSidecarCandidate(
       sidecarId: sidecar.id,
       fromSidecarVersion: sidecar.activeVersion,
       parameterized: true,
-      subjectSlots: ['subject'],
+      subjectSlots: options.slots.map(({ name }) => name),
     },
   };
 }

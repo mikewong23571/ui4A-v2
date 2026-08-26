@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { appendSidecarCommand, ensurePresentationTables } from '../../../../db/presentation';
+import {
+  appendSidecarCommand,
+  ensurePresentationTables,
+  loadPresentationSnapshot,
+} from '../../../../db/presentation';
 import { getDb } from '../../../../engine/service';
 import { GET, POST } from './route';
 
@@ -23,31 +27,49 @@ beforeEach(async () => {
       surface: {
         schemaVersion: 1,
         root: {
-          kind: 'word',
+          kind: 'layout',
           id: 'root',
           role: 'primary-content',
-          word: 'prose',
-          bindings: {
-            value: {
-              kind: 'property',
-              subject: 'post:first',
-              path: 'properties.fields.body',
-            },
-          },
-          dependencies: [
+          layout: 'stack',
+          dependencies: [],
+          provenance: [{ kind: 'generic-fallback', ref: 'fixture' }],
+          children: [
             {
-              kind: 'entity',
-              subject: 'post:first',
-              version: 'entity-v1',
-              paths: ['properties.fields.body'],
-            },
-            {
-              kind: 'catalog',
-              subject: 'urn:ui4a:presentation:semantic',
-              version: 'semantic-v1',
+              kind: 'slot',
+              id: 'subject-slot',
+              role: 'primary-content',
+              name: 'subject',
+              dependencies: [],
+              provenance: [{ kind: 'generic-fallback', ref: 'fixture' }],
+              child: {
+                kind: 'word',
+                id: 'body',
+                role: 'primary-content',
+                word: 'prose',
+                bindings: {
+                  value: {
+                    kind: 'property',
+                    subject: 'post:first',
+                    path: 'properties.fields.body',
+                  },
+                },
+                dependencies: [
+                  {
+                    kind: 'entity',
+                    subject: 'post:first',
+                    version: 'entity-v1',
+                    paths: ['properties.fields.body'],
+                  },
+                  {
+                    kind: 'catalog',
+                    subject: 'urn:ui4a:presentation:semantic',
+                    version: 'semantic-v1',
+                  },
+                ],
+                provenance: [{ kind: 'generic-fallback', ref: 'fixture' }],
+              },
             },
           ],
-          provenance: [{ kind: 'generic-fallback', ref: 'fixture' }],
         },
       },
       dependencies: [],
@@ -158,6 +180,39 @@ describe('Sidecar human lifecycle route', () => {
     );
     await expect(reverted.json()).resolves.toMatchObject({
       sidecar: { version: 1, retention: 'cache' },
+    });
+  });
+
+  it('fails workspace promotion closed until a complete ordered region slot map is available', async () => {
+    const snapshot = await loadPresentationSnapshot(getDb());
+    const source = snapshot.sidecars['sidecar:1']!;
+    await appendSidecarCommand(getDb(), {
+      kind: 'instantiate',
+      eventId: 'workspace:e1',
+      commandId: 'workspace:c1',
+      sidecarId: 'sidecar:workspace',
+      key: {
+        ...source.key,
+        subject: 'workspace:my-work',
+        intent: 'organize',
+      },
+      version: source.versions[source.activeVersion]!,
+    });
+
+    const response = await POST(
+      new Request('http://localhost/api/presentation/sidecar', {
+        method: 'POST',
+        body: JSON.stringify({
+          sidecarId: 'sidecar:workspace',
+          action: 'promotion-preview',
+          actor: 'human',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringMatching(/complete ordered slot map/i),
     });
   });
 });

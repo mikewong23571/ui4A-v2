@@ -1,12 +1,10 @@
 import {
   contentVersion,
   dependencyDecision,
-  instantiateRecipeSurface,
   planGenericSurface,
   sidecarKeyFingerprint,
   validateSurfaceTree,
   type SidecarDependency,
-  type ApplicationRenderRecipe,
   type ApplicationRenderRecipeCandidate,
   type UserSidecarKey,
 } from '@ui4a/engine';
@@ -28,6 +26,7 @@ import { getDb, getEngine } from '../service';
 import { RENDER_WORDS } from '../../render/registry';
 import { semanticHintsOf } from './situation';
 import { currentRecipeCoordinator } from './recipes-runtime';
+import { selectAndInstantiateRecipe } from './recipe-selection';
 
 const runtimeKey = Symbol.for('ui4a.presentation-broker');
 
@@ -138,23 +137,6 @@ async function hydratePromotedRecipes(): Promise<void> {
   }
 }
 
-function recipeFor(request: PresentationRequest): ApplicationRenderRecipe | undefined {
-  if (typeof request.subject !== 'string') return undefined;
-  return Object.values(currentRecipeCoordinator().registry().recipes)
-    .filter(
-      (recipe) =>
-        recipe.status !== 'stale' &&
-        recipe.key.intent === request.intent &&
-        recipe.key.catalogVersion === PRESENTATION_SURFACE_CATALOG.version &&
-        recipe.slots.length === 1 &&
-        recipe.slots[0]?.name === 'subject',
-    )
-    .sort((left, right) => {
-      const status = Number(right.status === 'promoted') - Number(left.status === 'promoted');
-      return status !== 0 ? status : right.version - left.version;
-    })[0];
-}
-
 async function appendLifecycle(
   kind: 'presentation-requested' | 'presentation-resolved' | 'presentation-failed',
   request: PresentationRequest,
@@ -189,9 +171,18 @@ export function getPresentationBroker(): WebPresentationBroker {
       const sidecar = await findActiveSidecar(getDb(), key);
       if (sidecar === undefined) {
         await hydratePromotedRecipes();
-        const recipe = recipeFor(request);
-        if (recipe === undefined || typeof request.subject !== 'string') return { kind: 'miss' };
-        const surface = instantiateRecipeSurface(recipe, { subject: request.subject });
+        if (typeof request.subject !== 'string') return { kind: 'miss' };
+        const selected = selectAndInstantiateRecipe(
+          Object.values(currentRecipeCoordinator().registry().recipes),
+          {
+            subjectShape: 'entity',
+            intent: request.intent,
+            catalogVersion: PRESENTATION_SURFACE_CATALOG.version,
+            slots: [{ name: 'subject', kind: 'entity', subject: request.subject }],
+          },
+        );
+        if (selected === undefined) return { kind: 'miss' };
+        const { recipe, surface } = selected;
         const validation = validateSurfaceTree(surface, PRESENTATION_SURFACE_CATALOG);
         if (!validation.valid) return { kind: 'miss' };
         const sidecarId = `sidecar:${sidecarKeyFingerprint(key).replace(/^fnv1a64:/, '')}`;

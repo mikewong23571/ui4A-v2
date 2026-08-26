@@ -63,6 +63,31 @@ function candidate(): ApplicationRenderRecipeCandidate {
   };
 }
 
+function compositionCandidate(): ApplicationRenderRecipeCandidate {
+  const next = candidate();
+  next.key.subjectShape = 'composition:my-work@3[waiting:collection,moving:entity]';
+  next.slots = [
+    { name: 'waiting', kind: 'collection' },
+    { name: 'moving', kind: 'entity' },
+  ];
+  next.surfaceTemplate = {
+    schemaVersion: 1,
+    root: {
+      kind: 'layout',
+      id: 'root',
+      role: 'primary-content',
+      layout: 'stack',
+      dependencies: [],
+      provenance: [{ kind: 'presentation-agent', ref: 'composition:fixture' }],
+      children: [
+        { ...surface('$slot:waiting').root, id: 'waiting' },
+        { ...surface('$slot:moving').root, id: 'moving' },
+      ],
+    },
+  };
+  return next;
+}
+
 describe('Application Recipe validation and registry', () => {
   it('accepts a parameterized binding-only candidate and gives it a deterministic key', () => {
     const next = candidate();
@@ -144,9 +169,9 @@ describe('Application Recipe validation and registry', () => {
 
   it('instantiates declared subject slots without copying factual values into the Recipe', () => {
     const registered = registerRecipeCandidate(createRecipeRegistry(), candidate(), catalog, 'g:1');
-    const instantiated = instantiateRecipeSurface(registered.recipe, {
-      subject: 'post:first-post',
-    });
+    const instantiated = instantiateRecipeSurface(registered.recipe, [
+      { name: 'subject', kind: 'entity', subject: 'post:first-post' },
+    ]);
     expect(instantiated.root).toMatchObject({
       kind: 'word',
       bindings: { value: { subject: 'post:first-post' } },
@@ -156,7 +181,58 @@ describe('Application Recipe validation and registry', () => {
     });
     expect(JSON.stringify(instantiated)).not.toContain('private body');
     expect(() =>
-      instantiateRecipeSurface(registered.recipe, { subject: 'post:first-post', extra: 'x' }),
-    ).toThrow(/undeclared/i);
+      instantiateRecipeSurface(registered.recipe, [
+        { name: 'subject', kind: 'entity', subject: 'post:first-post' },
+        { name: 'extra', kind: 'entity', subject: 'x' },
+      ]),
+    ).toThrow(/shape/i);
+  });
+
+  it('registers and instantiates a complete ordered multi-slot composition shape', () => {
+    const next = compositionCandidate();
+    const registered = registerRecipeCandidate(createRecipeRegistry(), next, catalog, 'multi:1');
+    const instantiated = instantiateRecipeSurface(registered.recipe, [
+      { name: 'waiting', kind: 'collection', subject: 'inbox' },
+      { name: 'moving', kind: 'entity', subject: 'delegations' },
+    ]);
+
+    expect(JSON.stringify(instantiated)).not.toContain('$slot:');
+    expect(JSON.stringify(instantiated)).toContain('inbox');
+    expect(JSON.stringify(instantiated)).toContain('delegations');
+  });
+
+  it.each([
+    [
+      'wrong order',
+      [
+        { name: 'moving', kind: 'entity' as const, subject: 'delegations' },
+        { name: 'waiting', kind: 'collection' as const, subject: 'inbox' },
+      ],
+    ],
+    [
+      'wrong kind',
+      [
+        { name: 'waiting', kind: 'entity' as const, subject: 'inbox' },
+        { name: 'moving', kind: 'entity' as const, subject: 'delegations' },
+      ],
+    ],
+  ])('rejects instantiation with %s', (_label, slots) => {
+    const registered = registerRecipeCandidate(
+      createRecipeRegistry(),
+      compositionCandidate(),
+      catalog,
+      'multi:shape',
+    );
+    expect(() => instantiateRecipeSurface(registered.recipe, slots)).toThrow(/shape/i);
+  });
+
+  it('rejects candidates whose declared slots are incomplete or out of template order', () => {
+    const missing = compositionCandidate();
+    missing.slots = [{ name: 'waiting', kind: 'collection' }];
+    expect(validateRecipeCandidate(missing, catalog)).toMatchObject({ valid: false });
+
+    const reversed = compositionCandidate();
+    reversed.slots = [...reversed.slots].reverse();
+    expect(validateRecipeCandidate(reversed, catalog)).toMatchObject({ valid: false });
   });
 });

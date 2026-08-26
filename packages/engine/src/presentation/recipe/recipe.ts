@@ -15,6 +15,10 @@ export interface ApplicationRecipeSlot {
   kind: 'entity' | 'collection' | 'flow' | 'selection';
 }
 
+export interface ApplicationRecipeSlotBinding extends ApplicationRecipeSlot {
+  subject: string;
+}
+
 export interface RecipeDependency {
   kind: 'definition' | 'catalog';
   subject: string;
@@ -182,6 +186,25 @@ export function validateRecipeCandidate(
 
   const surfaceResult = validateSurfaceTree(value.surfaceTemplate, catalog);
   if (!surfaceResult.valid) errors.push(...surfaceResult.issues.map((issue) => issue.message));
+  if (JSON.stringify(surfaceResult.surface).includes('$slot:')) {
+    const invalidDependency = (() => {
+      const visit = (node: SurfaceTree['root']): boolean => {
+        if (
+          node.dependencies.some(
+            (dependency) => dependency.kind !== 'entity' && dependency.subject.startsWith('$slot:'),
+          )
+        ) {
+          return true;
+        }
+        if (node.kind === 'layout') return node.children.some(visit);
+        if (node.kind === 'slot') return visit(node.child);
+        if (node.kind === 'repeat') return visit(node.item);
+        return false;
+      };
+      return visit(surfaceResult.surface.root);
+    })();
+    if (invalidDependency) errors.push('only entity dependencies may use Recipe slot subjects');
+  }
   const subjects: string[] = [];
   collectSurfaceSubjects(surfaceResult.surface.root, subjects);
   for (const subject of subjects) {
@@ -189,6 +212,18 @@ export function validateRecipeCandidate(
     if (slot === undefined || !slotNames.has(slot)) {
       errors.push(`surface subject "${subject}" is not a declared slot`);
     }
+  }
+  const referencedSlots = subjects
+    .map((subject) => /^\$slot:([a-zA-Z0-9_.-]+)$/.exec(subject)?.[1])
+    .filter((slot): slot is string => slot !== undefined)
+    .filter((slot, index, all) => all.indexOf(slot) === index);
+  const candidateSlots = Array.isArray(value.slots) ? value.slots : [];
+  if (
+    Array.isArray(value.slots) &&
+    (referencedSlots.length !== candidateSlots.length ||
+      referencedSlots.some((slot, index) => slot !== recordSlotName(candidateSlots[index])))
+  ) {
+    errors.push('recipe slots must match the complete ordered surface slot shape');
   }
 
   if (!Array.isArray(value.dependencies) || value.dependencies.length === 0) {
@@ -227,6 +262,10 @@ export function validateRecipeCandidate(
     errors.push('recipe provenance is invalid');
   }
   return { valid: errors.length === 0, errors };
+}
+
+function recordSlotName(value: unknown): string | undefined {
+  return isRecord(value) && typeof value.name === 'string' ? value.name : undefined;
 }
 
 export function createRecipeRegistry(): RecipeRegistry {
@@ -451,14 +490,35 @@ function instantiateRecipeNode(
 /** Instantiate only declared Recipe slots; factual values remain binding-only. */
 export function instantiateRecipeSurface(
   recipe: ApplicationRenderRecipe,
-  slots: Readonly<Record<string, string>>,
+  slots: readonly ApplicationRecipeSlotBinding[],
 ): SurfaceTree {
-  const declared = new Set(recipe.slots.map(({ name }) => name));
-  if (Object.keys(slots).some((name) => !declared.has(name))) {
-    throw new Error('recipe instantiation contains an undeclared slot');
+  if (
+    slots.length !== recipe.slots.length ||
+    slots.some(
+      (slot, index) =>
+        slot.name !== recipe.slots[index]?.name || slot.kind !== recipe.slots[index]?.kind,
+    )
+  ) {
+    throw new Error('recipe instantiation slot shape does not match the declared ordered shape');
   }
-  for (const name of declared) {
-    if (slots[name] === undefined) throw new Error(`recipe slot "${name}" is unbound`);
+  const subjects = new Set<string>();
+  for (const slot of slots) {
+    if (
+      slot.subject.trim() === '' ||
+      slot.subject.startsWith('$slot:') ||
+      subjects.has(slot.subject)
+    ) {
+      throw new Error('recipe instantiation contains an invalid or duplicate slot subject');
+    }
+    subjects.add(slot.subject);
   }
-  return { schemaVersion: 1, root: instantiateRecipeNode(recipe.surfaceTemplate.root, slots) };
+  const bound = Object.fromEntries(slots.map(({ name, subject }) => [name, subject]));
+  const surface = {
+    schemaVersion: 1 as const,
+    root: instantiateRecipeNode(recipe.surfaceTemplate.root, bound),
+  };
+  if (JSON.stringify(surface).includes('$slot:')) {
+    throw new Error('recipe instantiation left an unresolved slot subject');
+  }
+  return surface;
 }

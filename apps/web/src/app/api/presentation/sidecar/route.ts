@@ -178,13 +178,17 @@ export async function POST(request: Request): Promise<Response> {
 
   if (body.action === 'promotion-preview' || body.action === 'promote') {
     try {
+      if (typeof current.key.subject !== 'string' || current.key.subject.startsWith('workspace:')) {
+        throw new Error('Recipe promotion requires a complete ordered slot map');
+      }
       const promoted = promoteUserSidecarCandidate(current, {
         application: 'runtime',
         applicationVersion: '1',
         scenario: 'human-promoted',
-        subjectShape: typeof current.key.subject === 'string' ? 'entity' : 'selection',
+        subjectShape: 'entity',
         intent: current.key.intent,
         catalog: PRESENTATION_SURFACE_CATALOG,
+        slots: [{ name: 'subject', kind: 'entity', subject: current.key.subject }],
         dependencies: [
           {
             kind: 'catalog',
