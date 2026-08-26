@@ -20,3 +20,21 @@ Verification:
 - pnpm --filter @ui4a/worker typecheck
 - pnpm governance
 - Autonomous acceptance by the orchestrating agent.
+
+Phase C autonomous verification report
+
+Automated commands:
+- NODE_OPTIONS=--no-experimental-webstorage pnpm check
+  Result: typecheck/lint/governance passed; 356 test files passed, 6 skipped; 2685 tests passed, 10 skipped.
+- CI=true NODE_OPTIONS=--no-experimental-webstorage pnpm e2e invariants
+  Result: 4 passed, 2 established skips; I5 replay hash 4c6822cece4b over 53 events / 30 rels.
+
+Scripted manual-equivalent verification:
+1. Confirm Chat dispatch passes Situation.scope through Temporal and every worker AgentStep.
+2. Confirm worker DriverContext uses the public shared disclosure slicer and retains foreign navigation rels without schemas.
+3. Confirm inline sitemap GET count is exactly one, including unavailable-preload behavior.
+4. Confirm ghost focus emits start_entity_unavailable with no steps/probes and delegated 404 emits zero-step delegation-failed.
+5. Confirm failure codes are exactly no_progress_loop, driver_fail, start_entity_unavailable, loop_exception.
+
+Confirmation:
+Autonomously accepted by the orchestrating agent under conductor/workflow.md; all scripted expectations and full phase gates passed.
