@@ -1,0 +1,28 @@
+T27 Phase E Task: 跨站双桥
+
+Summary:
+- pure canonical helper implements flow:<name> ↔ meta/flow:<name> URL bridges with no entity lookup/map/class branch.
+- /meta/flow/<encoded-name> becomes canonical presence focus meta/flow:<name>.
+- SituationBar renders workstation→meta and meta→workstation links, preserving scope and current thread; other/selection/empty focus yields no bridge.
+- standing E2E proves round-trip, focus/site/scope/thread, real surface, post no-bridge, and ghost definition/instance honest 404/error.
+- focused flow-entry test proves zero/multi instance aliases never fall back.
+- I3 now fuzzes both bridge routes with isolated pages.
+- tracked e2e baseline corrected to 4497 after new standing file entered Git (commit ea9981f); T28 must consolidate/feature-place evidence.
+
+Files:
+- apps/web/src/presence navigation/client + tests
+- stage/SituationBar + tests
+- apps/web/src/engine/flow-entry.test.ts
+- e2e/workstation-bridges.spec.ts and i3.spec.ts
+
+Why:
+Crossing business/meta must be explicit and mechanically derived from canonical names while retaining the user’s declared scope/work line; unknown instances remain honest failures.
+
+TDD:
+- Red: 6 bridge/path/component assertions failed.
+- Green: focused unit 17 tests in root rerun; agent full set 28/28.
+
+Verification:
+- @ui4a/web typecheck + production build: PASS
+- CI=true TMPDIR=/home/mike/.cache/ui4a-t27-tmp pnpm e2e e2e/workstation-bridges.spec.ts e2e/i3.spec.ts: PASS (3/3)
+- pnpm governance, Prettier/diff: PASS
