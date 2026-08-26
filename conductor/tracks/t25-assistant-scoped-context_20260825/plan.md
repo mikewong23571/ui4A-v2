@@ -97,7 +97,7 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
 
 ## Phase D: 端到端验收
 
-- [ ] Task: 回归用例与全量验收
+- [~] Task: 回归用例与全量验收
   - "新增一篇文章…介绍操作流程"端到端完成且无 meta 越界(北极星 §一.2 反例;
     e2e 断言全程不出现 meta sitemap 导航)
   - 起点解析断言:presence focus 优先、探测请求数=0(e2e/路由测试口径)
