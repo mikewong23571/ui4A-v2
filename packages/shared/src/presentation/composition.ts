@@ -64,6 +64,11 @@ function identifier(value: unknown, label: string): string {
   return parsed;
 }
 
+/** Parse an id using the exact grammar shared by declarations and workspace adapters. */
+export function parseCompositionId(value: unknown): string {
+  return identifier(value, 'Composition declaration id');
+}
+
 function sourceRel(value: unknown, label: string): string {
   const parsed = boundedText(value, MAX_COMPOSITION_SOURCE_LENGTH, label);
   if (parsed.startsWith('workspace:')) {
@@ -114,7 +119,7 @@ export function parseCompositionDeclaration(value: unknown): CompositionDeclarat
   }
 
   return {
-    id: identifier(value.id, 'Composition declaration id'),
+    id: parseCompositionId(value.id),
     version: boundedText(
       value.version,
       MAX_COMPOSITION_VERSION_LENGTH,

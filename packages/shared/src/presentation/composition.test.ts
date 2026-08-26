@@ -7,6 +7,7 @@ import {
   MAX_COMPOSITION_REGIONS,
   MAX_COMPOSITION_SOURCE_LENGTH,
   MAX_COMPOSITION_VERSION_LENGTH,
+  parseCompositionId,
   parseCompositionDeclaration,
   type CompositionDeclaration,
 } from '../index';
@@ -31,6 +32,12 @@ const declaration = {
 } as const;
 
 describe('composition declaration', () => {
+  it('exports the declaration id parser for workspace adapters', () => {
+    expect(parseCompositionId('my-work')).toBe('my-work');
+    expect(() => parseCompositionId('Uppercase')).toThrow(/id/i);
+    expect(() => parseCompositionId('a'.repeat(MAX_COMPOSITION_ID_LENGTH + 1))).toThrow(/id/i);
+  });
+
   it('round-trips one platform-neutral, versioned declaration through the shared barrel', () => {
     const parsed = parseCompositionDeclaration(declaration);
 
