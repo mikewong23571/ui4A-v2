@@ -53,14 +53,14 @@
   - `e2e/s2-meta.spec.ts:297-310` 与 `apps/web/src/app/api/contract.test.ts:204-211`
     的精确 toEqual 改开放断言(存在性/可导航);保绿即禁止 threads 暴露 =
     方向错误,本任务是纠偏原则的首次执行,必须先于 threads 入 sitemap
-- [~] Task: `thread:<id>` 与 `threads` 实体投影
+- [x] Task: `thread:<id>` 与 `threads` 实体投影 eae3573
   - `packages/engine/src/contract/siren/project.ts` `project()` 新分支
     (解析顺序文档见 spec 现状事实);class 参照 `['collection','inbox']`/
     `['delegation', status]` 模式;实体内容按 spec 最终形态 2
     (goal/上下文包/进行中/待批准/事件切片;成员来自 fold,当前状态指针只从
     同一 EngineSnapshot 的 canonical 投影解析,不可解析引用保留 dangling)
   - Red→Green:Siren 形状合同测试(class/links/actions/guard-results)
-- [ ] Task: sitemap 与授权覆盖
+- [~] Task: sitemap 与授权覆盖
   - `apps/web/src/engine/service-sitemaps.ts` `extraSurfaces` 加 `threads`
     (与 inbox/agent-runs 同法,contentVersion 缓存自动生效)
   - `relCoveredByPolicyScope`(`apps/web/src/auth/application-scope.ts`)
