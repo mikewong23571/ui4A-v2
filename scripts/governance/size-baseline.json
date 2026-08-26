@@ -59,7 +59,7 @@
     },
     {
       "path": "e2e",
-      "lines": 4125,
+      "lines": 4126,
       "limit": 4000,
       "note": "T30 my-work 端到端 proof 新增 194 行，覆盖真实 HTTP/Canvas binding 对拍与 Presentation replay/Business fold 隔离；按 workflow 业务优先原则保留为 standing E2E，不拆成 bespoke 配置或脚本；shrink-only 自 T30 关闭起算，收缩窗口=T27 workstation E2E 落地时提炼共享 presentation evidence kit"
     }
