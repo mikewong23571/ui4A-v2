@@ -50,7 +50,7 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
     改写为新纪律(起点供给只消费处境事实,禁止词级猜测原语进入起点路径)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) dc09427
 
-## Phase B: 分层披露与 prompt 预算
+## Phase B: 分层披露与 prompt 预算 [checkpoint: 4e5fe4b]
 
 - [x] Task: 披露切片纯函数测试(Red) a8f60e9
   - `packages/agent` 新模块(建议 `src/contract/disclosure.ts`,inline 与
@@ -75,7 +75,7 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
     `llm-driver.test.ts` 的 `systemPromptOf(calls)`)
   - 典型处境三例:读文章(business scope)、走向导、定义治理(meta scope);
     单次 decide 请求 ≤ 32KB,超限即披露层 bug
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) 4e5fe4b
 
 ## Phase C: delegated 同收窄与回合卫生
 
