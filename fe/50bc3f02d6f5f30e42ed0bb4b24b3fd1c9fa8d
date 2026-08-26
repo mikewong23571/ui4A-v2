@@ -17,3 +17,27 @@ Verification:
 - 12 focused tests passed.
 - @ui4a/web typecheck passed.
 - pnpm governance passed.
+
+Phase B Verification Report (autonomous acceptance)
+
+Scope:
+- Shared composition contract/parser and tests.
+- Web built-in composition registry and tests.
+- Business sitemap declaration and registry-to-sitemap cross-test.
+- Concurrent auth commit 41a228d was explicitly excluded from the T30 commit-set audit.
+
+Automated evidence:
+- NODE_OPTIONS=--no-experimental-webstorage pnpm check: PASS (366 files passed, 6 skipped; 2812 tests passed, 10 skipped)
+- CI=true NODE_OPTIONS=--no-experimental-webstorage pnpm e2e invariants: PASS (4 passed, 2 skipped; I5 replay hash matched)
+- Focused sitemap/registry verification: PASS (12/12)
+- @ui4a/web typecheck: PASS
+- pnpm governance: PASS
+
+Autonomous manual verification:
+- T30 commit set contains only parser, registry, sitemap, tests, shared barrel and plan files.
+- delegations is a real app-neutral collection surface.
+- workspace:my-work is absent from the business sitemap.
+- Cross-test derives expected source rels from the registered declaration rather than duplicating them.
+
+Confirmation:
+Autonomous orchestration accepted Phase B after the checkpoint audit blocker was corrected and all gates passed.
