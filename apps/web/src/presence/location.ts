@@ -20,7 +20,7 @@ export function locationRoute(pathname: string, search: string): string {
 export function useLocationObservation(): LocationObservation {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const route = locationRoute(pathname, searchParams.toString());
+  const route = locationRoute(pathname, searchParams?.toString() ?? '');
 
   return useMemo(() => ({ route, observation: presenceObservationForLocation(route) }), [route]);
 }
