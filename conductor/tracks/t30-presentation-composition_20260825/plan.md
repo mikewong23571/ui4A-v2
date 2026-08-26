@@ -21,7 +21,7 @@
     锚点:spec.md"现状事实"节
   - 验收:DECISIONS.md 新增条目,编号顺延(当前最新 D44);五问各有明确采纳/否决;
     否决项写明理由(防复辟)
-- [~] Task: spec/plan 回改对齐 D45
+- [x] Task: spec/plan 回改对齐 D45 `e325ac0`
   - 将 D45 已决形状同步进 spec 最终形态和 Phase B–F 任务合同，清除开放问题与
     推荐默认措辞；tracks.md 无需动(本 Track 已登记)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
