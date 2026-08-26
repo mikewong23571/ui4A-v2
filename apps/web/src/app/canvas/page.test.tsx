@@ -105,10 +105,12 @@ describe('Canvas semantic Presentation runtime', () => {
     expect(await screen.findByRole('heading', { name: '第一篇', level: 1 })).toBeTruthy();
     expect(screen.getByText(/这是第一篇完整文章/)).toBeTruthy();
     expect(screen.getByText('published')).toBeTruthy();
-    expect(screen.getByText('essay')).toBeTruthy();
+    expect(screen.queryByText('essay')).toBeNull();
     const surface = document.querySelector('[data-concern="presentation:post:first-post"]');
     expect(surface?.getAttribute('data-active')).toBe('true');
     expect(surface?.textContent).not.toContain('fields=');
+    fireEvent.click(screen.getByRole('button', { name: '查看原始合同' }));
+    expect(screen.getByTestId('raw-contract-json').textContent).toContain('essay');
     expect(callsOf(mock, '/api/entity?rel=post%3Afirst-post')).toHaveLength(1);
   });
 

@@ -90,10 +90,11 @@ describe('Writing request human Renderer contract', () => {
       'guard-results': [],
     };
 
-    render(<EntityView rel="agent-run:writing-1" entity={run} />);
+    const { container } = render(<EntityView rel="agent-run:writing-1" entity={run} />);
     expect(screen.getByText(/Launch note draft is ready/)).toBeTruthy();
     expect(screen.getByText(/markdown-render/)).toBeTruthy();
     expect(screen.getByText('artifact:writing-result-1')).toBeTruthy();
-    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByRole('button', { name: '查看原始合同' })).toBeTruthy();
+    expect(container.querySelector('[data-action]')).toBeNull();
   });
 });
