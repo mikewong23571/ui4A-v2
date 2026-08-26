@@ -1,0 +1,7 @@
+T27 mothership scoped entity-cache regression fix
+
+Revision 46 showed that Presentation and Sidecar requests carried publishing scope, but scoped Canvas hydration still called /api/entity without scope. A previous governance presence scope could therefore override the new URL situation and reject the flow entity. CanvasBody now owns a scope-aware page EntityCacheProvider, while host render-spec and sitemap reads carry the same explicit scope; cache and credential decisions remain server-backed.
+
+Verification:
+- Red: scoped host entity request had null scope and no Surface
+- Green: Presentation host, EntityCacheProvider, Canvas page suites 16/16 PASS
