@@ -53,9 +53,9 @@
     },
     {
       "path": "e2e",
-      "lines": 4497,
+      "lines": 4507,
       "limit": 4000,
-      "note": "T30 既有 4126;T27 workstation-home CLI/Sidecar/DOM、workstation-situation presence 留痕、flow 双桥/ghost 诚实失败三份 standing E2E及 I3 双桥覆盖后 tracked total=4497;按 workflow 业务优先不裁剪验收证据。处置计划=T28 一等交互验收落地时合并重复 Presentation/server setup 到 e2e/kits 并按 workstation/presentation feature 子目录归位,最终不得遗留 bespoke track 配置"
+      "note": "T30 既有 4126;T27 workstation-home CLI/Sidecar/DOM、workstation-situation presence 留痕、flow 双桥/ghost 诚实失败 standing E2E、I3 双桥覆盖及 S2 raw replay/alias 诚实性修正后 tracked total=4507;按 workflow 业务优先不裁剪验收证据。处置计划=T28 一等交互验收落地时合并重复 Presentation/server setup 到 e2e/kits 并按 workstation/presentation feature 子目录归位,最终不得遗留 bespoke track 配置"
     }
   ]
 }

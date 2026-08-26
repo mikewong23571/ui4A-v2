@@ -14,7 +14,12 @@ import { expect, test } from '@playwright/test';
 
 import { appendEvent, listEvents } from '../apps/web/src/db/events';
 import { getPool } from '../apps/web/src/db/pool';
-import { DATABASE_URL, SCENARIO_BASE, truncateEvents, withFreshServer } from './kits/server-kit';
+import {
+  DATABASE_URL,
+  SCENARIO_BASE,
+  truncateLogsForReplay,
+  withFreshServer,
+} from './kits/server-kit';
 import {
   AGENT_PRINCIPAL,
   HUMAN_PRINCIPAL,
@@ -246,7 +251,9 @@ test('重放一致:S2 全链事件 TRUNCATE 原序回灌 → 活跃定义 v2 含
   })();
 
   // —— TRUNCATE + 原序回灌(bigserial 重新编号;fold 只依赖全序)——
-  await truncateEvents();
+  // Replay owns the next append sequence. The ordinary scenario reset also reseeds the
+  // application, which would duplicate stable Agent Definition event ids before this loop.
+  await truncateLogsForReplay();
   const db = getPool(DATABASE_URL);
   for (const row of rows) {
     await appendEvent(db, {
@@ -323,8 +330,15 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
     ).toBe(true);
     for (const surface of sitemap.surfaces) {
       expect(surface.title.trim(), `业务面 ${surface.rel} 应有标题`).not.toBe('');
-      await getEntity(surface.rel);
+      if (!surface.rel.startsWith('flow:')) await getEntity(surface.rel);
     }
+    // flow:* 是定义入口描述；只有恰一活实例的向导可解析为实体。多实例 flow
+    // 保持诚实 404，不因出现在 sitemap 就伪造一个聚合实体。
+    await getEntity('flow:article-drafting');
+    const multiInstanceFlow = await fetch(
+      `${SCENARIO_BASE}/api/entity?rel=${encodeURIComponent('flow:post-status')}`,
+    );
+    expect(multiInstanceFlow.status).toBe(404);
 
     // 业务实体 links 不携带 /_meta href
     const articles = await getEntity('articles');

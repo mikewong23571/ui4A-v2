@@ -41,6 +41,13 @@ export async function truncateEvents(): Promise<void> {
   await bootstrapAndVerifyApplication(pool);
 }
 
+/** Empty persisted logs for a caller-controlled replay without reseeding between truncate and append. */
+export async function truncateLogsForReplay(): Promise<void> {
+  const pool = getPool(DATABASE_URL);
+  await pool.query('TRUNCATE events RESTART IDENTITY');
+  await pool.query('TRUNCATE presentation_user_sidecars');
+}
+
 export async function waitUntilHealthy(baseUrl: string, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   let lastError = '未开始探测';
