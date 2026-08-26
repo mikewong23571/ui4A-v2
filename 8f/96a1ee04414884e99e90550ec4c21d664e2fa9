@@ -1,0 +1,4 @@
+T24 Phase C 附带修复(存量,非 T24 缺陷)
+
+- server-kit.ts/s2-kit.ts REPO_ROOT 少 ../.. 一层(750340a 迁入 e2e/kits 时只修了 import):WORKER_DIR 解析到 e2e/apps/worker,worker 栈用例必败且泄漏 3110 server 污染后续场景;llm-render.spec.ts import 少一层阻塞全量套件加载。
+- 修复后 s1+dual-executor 10/10、s2/s2-meta 4/4;遗留脆弱性(withWorkerStack 在 try 前 spawn)如实记录未动。
