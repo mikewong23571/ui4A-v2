@@ -197,19 +197,27 @@ describe('B1 投影联动:exec → /api/entity', () => {
 describe('sitemap 表面 ↔ entity 端点一致', () => {
   it('sitemap 中的集合表面全部可经 /api/entity 取到', async () => {
     const sitemap = (await (await getSitemap()).json()) as {
-      surfaces: { rel: string; collection?: boolean }[];
+      surfaces: { rel: string; title: string; collection?: boolean }[];
     };
 
     const collections = sitemap.surfaces.filter((surface) => surface.collection);
-    expect(collections.map((surface) => surface.rel).sort()).toEqual([
+    const requiredCollectionRels = [
       'agent-runs',
       'articles',
       'comments',
       'inbox',
       'software-changes',
       'writing-requests',
-    ]);
+    ];
+    expect(collections).toEqual(
+      expect.arrayContaining(
+        requiredCollectionRels.map((rel) =>
+          expect.objectContaining({ rel, title: expect.any(String), collection: true }),
+        ),
+      ),
+    );
     for (const surface of collections) {
+      expect(surface.title.trim(), `集合面 ${surface.rel} 应有标题`).not.toBe('');
       const res = await entity(surface.rel);
       expect(res.status, `集合面 ${surface.rel} 应可达`).toBe(200);
     }

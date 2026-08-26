@@ -294,7 +294,7 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
   await withFreshServer(async () => {
     // 业务 sitemap:导航枚举不含任何 meta 面(进入定义层必须显式意图)
     const sitemap = await getSitemap();
-    expect(sitemap.surfaces.map((surface) => surface.rel).sort()).toEqual([
+    const requiredBusinessSurfaceRels = [
       'agent-runs',
       'articles',
       'comments',
@@ -307,7 +307,24 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
       'inbox',
       'software-changes',
       'writing-requests',
-    ]);
+    ];
+    expect(sitemap.surfaces).toEqual(
+      expect.arrayContaining(
+        requiredBusinessSurfaceRels.map((rel) =>
+          expect.objectContaining({ rel, title: expect.any(String) }),
+        ),
+      ),
+    );
+    expect(
+      sitemap.surfaces.every(
+        (surface) => !surface.rel.startsWith('meta/') && !surface.rel.startsWith('_meta'),
+      ),
+      '业务 sitemap 不得披露 meta surface',
+    ).toBe(true);
+    for (const surface of sitemap.surfaces) {
+      expect(surface.title.trim(), `业务面 ${surface.rel} 应有标题`).not.toBe('');
+      await getEntity(surface.rel);
+    }
 
     // 业务实体 links 不携带 /_meta href
     const articles = await getEntity('articles');
