@@ -115,7 +115,12 @@
     声明版本与 provenance(机制信息留抽屉,T24 口径)
   - 测试:编译/渲染 layout+slot 组合树、抽屉区域信息可达、新控件遵守 i3 fuzz
     注记规则(data-action/data-nav)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: region mode、Explain 边界与授权迁移修正 `e6e9e6b`
+  - collection membership dependency 执行 declaration region.mode；entity contract
+    形状变化仍固定 invalidate
+  - pure engine Explain 仅从 composition-declaration provenance 推导 id/version，
+    不解析 workspace wire；补 same-scope full↔partial/partial↔full durable replan 测试
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase F: 端到端验收与收尾
 
