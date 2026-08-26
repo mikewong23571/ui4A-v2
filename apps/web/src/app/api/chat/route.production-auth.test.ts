@@ -384,6 +384,10 @@ describe('production chat turn credential boundary', () => {
       authorizedPolicyScopes: ['development', 'publishing'],
       defaultPolicyScope: 'development',
     });
+    // 排空 SSE 流:回合的 chat 投影事件(chat-turn / chat-message-appended)
+    // 在流体内异步落库;不读完,落库会越过本用例边界、在后续用例 mockReset
+    // 之后到达,污染其 appendEvent 未调用断言。
+    await response.text();
   });
 
   it.each([
