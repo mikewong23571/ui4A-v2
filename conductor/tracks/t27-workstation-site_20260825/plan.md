@@ -49,7 +49,7 @@
     ready 锚点并复核零白名单 fuzz
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `5cbf49e`
 
-## Phase C: 站点壳与三形态导航
+## Phase C: 站点壳与三形态导航 [checkpoint: 535f47d]
 
 - [x] Task: presence site 值域一次性切换(D46 第 3 问) `505243a`
   - Red:站点推导/装配/起点链的 site 值断言(`workstation`/`meta`)
@@ -62,7 +62,7 @@
     折叠为壳级“系统”区,路由全部保留;raw 无顶级入口
   - Red→Green:导航结构组件测试(站点分组/系统区入口可达/全部新控件
     data-nav 注记齐全);导航文案任务语言
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `535f47d`
 
 ## Phase D: 首页"我的事"落地
 
