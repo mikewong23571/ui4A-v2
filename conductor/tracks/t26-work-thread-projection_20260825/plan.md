@@ -47,7 +47,7 @@
     (worker 第二写者形态,参照 service.ts:316-333 交换性论证)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) f9d4eb8
 
-## Phase C: 合同暴露(实体/sitemap/授权/I5)
+## Phase C: 合同暴露(实体/sitemap/授权/I5) [checkpoint: 832d33d]
 
 - [x] Task: 闭式 sitemap 断言开放化(前置纠偏,spec"误导性验收排查") 9a6b3c6
   - `e2e/s2-meta.spec.ts:297-310` 与 `apps/web/src/app/api/contract.test.ts:204-211`
@@ -72,7 +72,7 @@
 - [x] Task: I5 枚举扩展 832d33d
   - `e2e/invariants.spec.ts` `enumerateEntityRels` 纳入 `threads`/`thread:*`;
     在线/重放 hash 一致(除新增投影表外与现状等价)
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) 832d33d
 
 ## Phase D: 锚定接线(形状以 D44 为准)
 
