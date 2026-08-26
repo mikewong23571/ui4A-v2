@@ -228,7 +228,14 @@ describe('project(delegations 投影)', () => {
     const entity = project({ instances: {}, collections: {} }, DELEGATIONS_REL, deps);
     expect(entity).toMatchObject({
       class: ['collection', 'delegations'],
-      properties: { rel: 'delegations', count: 0 },
+      properties: {
+        rel: 'delegations',
+        title: '在动',
+        count: 0,
+        presentation: {
+          fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+        },
+      },
     });
     expect(entity?.entities).toEqual([]);
   });
@@ -243,7 +250,14 @@ describe('project(delegations 投影)', () => {
       deps,
     );
     const entity = project(snapshot, DELEGATIONS_REL, deps);
-    expect(entity?.properties).toEqual({ rel: 'delegations', count: 1 });
+    expect(entity?.properties).toEqual({
+      rel: 'delegations',
+      title: '在动',
+      count: 1,
+      presentation: {
+        fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+      },
+    });
     expect(entity?.entities).toHaveLength(1);
     const sub = entity?.entities?.[0];
     expect(sub?.rel).toEqual(['item']);

@@ -34,6 +34,15 @@ import { entityHref, fallbackPresentationRole, guardResultsFor, toSirenAction } 
 import { projectMeta } from './project-meta';
 import type { ProjectDeps, SirenEntity, SirenFieldPresentation, SirenLink } from './types';
 
+function collectionIdentity(title: string): Record<string, unknown> {
+  return {
+    title,
+    presentation: {
+      fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+    },
+  };
+}
+
 /** 实例实体投影(节点 = 界面:动作、guard、字段全部来自当前节点声明——
  *  声明按实例出生版本解析:在途实例看到的动作面是它的出生定义)。 */
 function projectInstance(
@@ -223,7 +232,12 @@ function projectInbox(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity 
   }));
   return {
     class: ['collection', 'inbox'],
-    properties: { rel: 'inbox', count: pending.length, delivered },
+    properties: {
+      rel: 'inbox',
+      ...collectionIdentity('在等我'),
+      count: pending.length,
+      delivered,
+    },
     actions: [],
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'inbox') }],
     'guard-results': [],
@@ -268,7 +282,11 @@ function projectDelegations(snapshot: EngineSnapshot, deps: ProjectDeps): SirenE
   }));
   return {
     class: ['collection', DELEGATIONS_REL],
-    properties: { rel: DELEGATIONS_REL, count: entries.length },
+    properties: {
+      rel: DELEGATIONS_REL,
+      ...collectionIdentity('在动'),
+      count: entries.length,
+    },
     actions: [],
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, DELEGATIONS_REL) }],
     'guard-results': [],

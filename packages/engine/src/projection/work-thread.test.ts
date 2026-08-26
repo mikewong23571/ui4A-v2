@@ -75,7 +75,14 @@ describe('Work Thread Siren projection', () => {
 
     expect(entity).toMatchObject({
       class: ['collection', 'threads'],
-      properties: { rel: 'threads', count: 1 },
+      properties: {
+        rel: 'threads',
+        title: '我的工作线',
+        count: 1,
+        presentation: {
+          fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+        },
+      },
     });
     expect(entity?.actions.map((action) => action.name)).toEqual(['create']);
     expect(entity?.actions[0]?.fields).toMatchObject({

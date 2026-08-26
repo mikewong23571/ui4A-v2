@@ -355,7 +355,14 @@ describe('project — inbox 集合(spec 架构决定 5)', () => {
     const entity = project(suspendedSnapshot(), 'inbox', deps);
     expect(entity).toMatchObject({
       class: ['collection', 'inbox'],
-      properties: { rel: 'inbox', count: 1 },
+      properties: {
+        rel: 'inbox',
+        title: '在等我',
+        count: 1,
+        presentation: {
+          fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+        },
+      },
     });
     expect(entity?.links).toEqual([{ rel: ['self'], href: '/api/entity?rel=inbox' }]);
 

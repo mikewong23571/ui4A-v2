@@ -17,6 +17,10 @@ import type {
 export const THREADS_REL = 'threads';
 export const THREAD_REL_PREFIX = 'thread:';
 
+const THREADS_PRESENTATION = {
+  fields: [{ path: 'properties.title', title: '标题', role: 'identity' as const }],
+};
+
 const noNodeFields = { 'collect-node-fields': false } as const;
 
 export const THREAD_CREATE_ACTION: ActionDefinition = {
@@ -205,7 +209,12 @@ export function projectWorkThreads(snapshot: EngineSnapshot, deps: ProjectDeps):
   const threads = Object.values(snapshot.threads ?? {});
   return {
     class: ['collection', THREADS_REL],
-    properties: { rel: THREADS_REL, count: threads.length },
+    properties: {
+      rel: THREADS_REL,
+      title: '我的工作线',
+      count: threads.length,
+      presentation: THREADS_PRESENTATION,
+    },
     actions: [toSirenAction(THREAD_CREATE_ACTION, [], deps.baseHref)],
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, THREADS_REL) }],
     'guard-results': unblocked([THREAD_CREATE_ACTION]),

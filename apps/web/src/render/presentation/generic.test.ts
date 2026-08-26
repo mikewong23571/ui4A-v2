@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SirenEntity } from '@ui4a/engine';
+import type { SirenEntity, SurfaceNode } from '@ui4a/engine';
 
 import { planGenericPresentationSurface } from './generic';
+
+function propertyIdentityPaths(node: SurfaceNode): string[] {
+  if (node.kind === 'layout') return node.children.flatMap(propertyIdentityPaths);
+  if (node.kind === 'slot') return propertyIdentityPaths(node.child);
+  if (node.kind === 'repeat') return propertyIdentityPaths(node.item);
+  if (node.kind !== 'word' || node.role !== 'identity') return [];
+  return Object.values(node.bindings).flatMap((binding) =>
+    binding.kind === 'property' ? [binding.path] : [],
+  );
+}
 
 const post: SirenEntity = {
   class: ['flow-instance'],
@@ -50,5 +60,29 @@ describe('generic Presentation runtime plan', () => {
     expect(plan.bundle.issues).toEqual([]);
     expect(JSON.stringify(plan.surface)).toContain('article-drafting:main');
     expect(JSON.stringify(plan.surface)).not.toContain('$slot');
+  });
+
+  it('uses a collection-declared human title as identity while retaining the canonical rel', () => {
+    const collection: SirenEntity = {
+      class: ['collection', 'threads'],
+      properties: {
+        rel: 'threads',
+        title: '我的工作线',
+        count: 0,
+        presentation: {
+          fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+        },
+      },
+      actions: [],
+      links: [{ rel: ['self'], href: '/api/entity?rel=threads' }],
+      entities: [],
+    };
+
+    const plan = planGenericPresentationSurface('threads', collection, 'definition-v1');
+    expect(plan.bundle.issues).toEqual([]);
+    expect(JSON.stringify(plan.surface)).toContain('properties.title');
+    expect(propertyIdentityPaths(plan.surface.root)).toEqual(['properties.title']);
+    expect(JSON.stringify(plan.bundle.messages[1])).toContain('我的工作线');
+    expect(collection.properties.rel).toBe('threads');
   });
 });

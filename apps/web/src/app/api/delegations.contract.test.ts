@@ -77,8 +77,15 @@ describe('GET /api/entity?rel=delegations(委托集合投影,worker 写后免重
   it('空委托表:200 空集合(count=0),非 404', async () => {
     const res = await entityRoute(DELEGATIONS_REL);
     expect(res.status).toBe(200);
-    const entity = (await res.json()) as { properties: { rel: string; count: number } };
-    expect(entity.properties).toEqual({ rel: 'delegations', count: 0 });
+    const entity = (await res.json()) as { properties: Record<string, unknown> };
+    expect(entity.properties).toEqual({
+      rel: 'delegations',
+      title: '在动',
+      count: 0,
+      presentation: {
+        fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+      },
+    });
   });
 
   it('boot 后 worker 追加委托事件 → 增量 fold 即刻可见:集合/子实体直达/单委托', async () => {
@@ -94,7 +101,7 @@ describe('GET /api/entity?rel=delegations(委托集合投影,worker 写后免重
     expect(res.status).toBe(200);
     const collection = (await res.json()) as {
       class: string[];
-      properties: { rel: string; count: number };
+      properties: Record<string, unknown>;
       entities: {
         rel: string[];
         href: string;
@@ -103,7 +110,14 @@ describe('GET /api/entity?rel=delegations(委托集合投影,worker 写后免重
       }[];
     };
     expect(collection.class).toEqual(['collection', 'delegations']);
-    expect(collection.properties).toEqual({ rel: 'delegations', count: 1 });
+    expect(collection.properties).toEqual({
+      rel: 'delegations',
+      title: '在动',
+      count: 1,
+      presentation: {
+        fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+      },
+    });
     expect(collection.entities).toHaveLength(1);
     const sub = collection.entities[0]!;
     expect(sub.rel).toEqual(['item']);
