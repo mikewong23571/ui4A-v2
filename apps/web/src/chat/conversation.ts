@@ -25,6 +25,7 @@ import type {
   ConversationReferent,
   PendingClarification,
 } from './history';
+import { parseCitations } from './citations';
 
 export interface ConversationMessage {
   seq: number;
@@ -117,6 +118,14 @@ function isMessageDetail(value: unknown): value is ChatMessageAppendedDetail {
     typeof value.content === 'string' &&
     (value.provenance.kind === 'user-input' || value.provenance.kind === 'assistant-output');
   if (!base) return false;
+  if (value.citations !== undefined) {
+    if (value.role !== 'assistant') return false;
+    try {
+      parseCitations(value.citations);
+    } catch {
+      return false;
+    }
+  }
   if (value.clientView === undefined) return true;
   if (value.role !== 'user') return false;
   try {
@@ -219,9 +228,7 @@ function rawMessage(
     role: detail.role,
     content: detail.content,
     provenance: { ...detail.provenance },
-    ...(detail.citations !== undefined
-      ? { citations: detail.citations.map((citation) => ({ ...citation })) }
-      : {}),
+    ...(detail.citations !== undefined ? { citations: parseCitations(detail.citations) } : {}),
     ...(detail.clientView === undefined
       ? {}
       : { clientView: parseClientViewReport(detail.clientView) }),

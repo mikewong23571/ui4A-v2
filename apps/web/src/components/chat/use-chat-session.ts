@@ -30,6 +30,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useExternalStoreRuntime, type AppendMessage } from '@assistant-ui/react';
 
 import type { ChatSessionSummary, ChatTurn } from '@/chat/history';
+import { citationsOrEmpty } from '@/chat/citations';
 import { clientViewReportForLocation, type ActivePresentationView } from '@/chat/client-view';
 import type { ChatFailureReason, ChatRenderPayload, ChatStepActivity } from '@/chat/sse';
 import { anySignal, createIdleTimeout, readChatSseStream, type ChatFinalPayload } from '@/chat/sse';
@@ -40,6 +41,7 @@ import {
   PENDING_SESSION_STORAGE_KEY,
   SESSION_STORAGE_KEY,
   STREAM_IDLE_TIMEOUT_MS,
+  withCitationsOnLastAssistant,
   type ChatJsonResponse,
   type ChatSession,
   type ChatUiMessage,
@@ -116,8 +118,15 @@ export function useChatSession(): ChatSession {
             const replayed: ChatUiMessage[] = [];
             for (const turn of turns) {
               replayed.push({ role: 'user', content: turn.goal.verb });
-              for (const entry of turn.messages) {
-                replayed.push({ role: 'assistant', content: entry.text });
+              const citations = citationsOrEmpty(turn.citations);
+              for (const [index, entry] of turn.messages.entries()) {
+                const isCitedAnswer =
+                  turn.outcome === 'answered' && index === turn.messages.length - 1;
+                replayed.push({
+                  role: 'assistant',
+                  content: entry.text,
+                  ...(isCitedAnswer && citations.length > 0 ? { citations } : {}),
+                });
               }
             }
             setMessages(replayed);
@@ -169,25 +178,34 @@ export function useChatSession(): ChatSession {
   const appendAssistant = useCallback(
     (
       content: string,
-      rel?: string,
-      activity?: ChatStepActivity,
-      eventSeq?: number,
-      failure?: ChatFailureReason,
+      options: {
+        rel?: string;
+        activity?: ChatStepActivity;
+        eventSeq?: number;
+        failure?: ChatFailureReason;
+        citations?: unknown;
+      } = {},
     ): void => {
+      const citations = citationsOrEmpty(options.citations);
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           content,
-          ...(rel !== undefined ? { rel } : {}),
-          ...(activity !== undefined ? { activity } : {}),
-          ...(eventSeq !== undefined ? { eventSeq } : {}),
-          ...(failure !== undefined ? { failure } : {}),
+          ...(options.rel !== undefined ? { rel: options.rel } : {}),
+          ...(options.activity !== undefined ? { activity: options.activity } : {}),
+          ...(options.eventSeq !== undefined ? { eventSeq: options.eventSeq } : {}),
+          ...(options.failure !== undefined ? { failure: options.failure } : {}),
+          ...(citations.length > 0 ? { citations } : {}),
         },
       ]);
     },
     [],
   );
+
+  const attachCitationsToLastAssistant = useCallback((input: unknown): void => {
+    setMessages((previous) => withCitationsOnLastAssistant(previous, input));
+  }, []);
 
   const flushThinkingDeltas = useCallback(() => {
     if (thinkingFlushRef.current !== null) clearTimeout(thinkingFlushRef.current);
@@ -266,7 +284,7 @@ export function useChatSession(): ChatSession {
       // 携带 failure 数据(content 保留机器层 summary),thread 按 phrasing /
       // 中性结构化行分层呈现;服务器机器叙句不再作为主呈现直出。
       if (payload.outcome === 'failed' && payload.reason !== undefined) {
-        appendAssistant(payload.summary ?? '', undefined, undefined, undefined, payload.reason);
+        appendAssistant(payload.summary ?? '', { failure: payload.reason });
         return;
       }
       // 终局内容补一条 assistant 消息:零轨迹步(如起始实体不可得,与旧一次性
@@ -281,10 +299,15 @@ export function useChatSession(): ChatSession {
       ) {
         appendAssistant(
           payload.outcome === 'failed' ? `失败: ${payload.summary}` : payload.summary,
+          {
+            citations: payload.sources,
+          },
         );
+      } else if (payload.outcome === 'answered') {
+        attachCitationsToLastAssistant(payload.sources);
       }
     },
-    [appendAssistant, markSessionPending, persistSession],
+    [appendAssistant, attachCitationsToLastAssistant, markSessionPending, persistSession],
   );
 
   /**
@@ -383,7 +406,11 @@ export function useChatSession(): ChatSession {
               if (frame.activity === undefined) machineTextSteps += 1;
               // T24 Phase B:活动帧主呈现为活动语言(message.text 机器原文
               // 保留在消息数据里作机器层,thread 不再直出);旧形状回退原文。
-              appendAssistant(frame.message.text, frame.rel, frame.activity, frame.eventSeq);
+              appendAssistant(frame.message.text, {
+                ...(frame.rel === undefined ? {} : { rel: frame.rel }),
+                ...(frame.activity === undefined ? {} : { activity: frame.activity }),
+                ...(frame.eventSeq === undefined ? {} : { eventSeq: frame.eventSeq }),
+              });
             } else if (frame.type === 'render') {
               if (frame.payload.turnId !== undefined && frame.payload.turnId !== turnId) return;
               // 渲染回执帧(渲染短路 LLM 路径 SSE 化):处置与 JSON 回执等价。
@@ -412,7 +439,7 @@ export function useChatSession(): ChatSession {
               // 失败措辞分层(T24 Phase B Task 3):结构化 reason 在场 →
               // 中性结构化呈现;旧形状回退「失败: {error}」原文。
               if (frame.reason !== undefined) {
-                appendAssistant(frame.error, undefined, undefined, undefined, frame.reason);
+                appendAssistant(frame.error, { failure: frame.reason });
               } else {
                 appendAssistant(`失败: ${frame.error}`);
               }

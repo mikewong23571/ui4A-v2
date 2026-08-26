@@ -298,6 +298,40 @@ describe('event-sourced conversation context', () => {
     expect(events[0]?.detail).toMatchObject({ content: '  不用保存。\n' });
   });
 
+  it('strictly preserves and deduplicates assistant citations without parsing its text', () => {
+    const citations = [
+      { rel: 'post:first-post', pointer: '/properties/fields/body' },
+      { rel: 'post:first-post', pointer: '/properties/fields/body' },
+      { rel: 'articles', pointer: '/properties/count' },
+    ];
+    const valid = message(1, {
+      turnId: 'turn-1',
+      messageId: 'turn-1:assistant',
+      role: 'assistant',
+      content: '正文没有任何实体名。',
+      provenance: { kind: 'assistant-output' },
+      citations,
+    });
+    const malformed = message(2, {
+      turnId: 'turn-2',
+      messageId: 'turn-2:assistant',
+      role: 'assistant',
+      content: 'post:ghost 不应变成引用。',
+      provenance: { kind: 'assistant-output' },
+      citations: [{ rel: 'post:ghost', pointer: 'properties/body' }],
+    });
+
+    expect(foldConversation([valid, malformed], 'sess-main').messages).toMatchObject([
+      {
+        messageId: 'turn-1:assistant',
+        citations: [
+          { rel: 'post:first-post', pointer: '/properties/fields/body' },
+          { rel: 'articles', pointer: '/properties/count' },
+        ],
+      },
+    ]);
+  });
+
   it('从 derived update 重建目标、focus、指代、约束、澄清与授权骨架', () => {
     const events = [
       message(1, {

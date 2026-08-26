@@ -42,10 +42,12 @@ import {
   useAuiState,
   type TextMessagePartComponent,
 } from '@assistant-ui/react';
+import { Suspense } from 'react';
 
 import type { ChatFailureReason, ChatStepActivity } from '@/chat/sse';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { isChatStepActivity, stepActivityText } from '@/components/chat/step-activity-words';
+import { CitationList } from '@/components/chat/citation-list';
 import { failureNeutralLine, isChatFailureReason } from '@/components/chat/failure-words';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -96,6 +98,11 @@ function useMessageFailure(): ChatFailureReason | undefined {
     const value: unknown = s.message.metadata.custom['failure'];
     return isChatFailureReason(value) ? value : undefined;
   });
+}
+
+/** Raw citation metadata; CitationList owns strict validation and exact-pair dedupe. */
+function useMessageCitations(): unknown {
+  return useAuiState((s) => s.message.metadata.custom['citations']);
 }
 
 /**
@@ -234,6 +241,7 @@ function FailureMessage({ failure }: { failure: ChatFailureReason }) {
 function AssistantMessage() {
   const thinkingStep = useMessageThinkingStep();
   const failure = useMessageFailure();
+  const citations = useMessageCitations();
   // thinking 帧条目:可折叠思考区(与气泡步骤消息按到达序相邻)。
   if (thinkingStep !== undefined) {
     return <ThinkingMessage step={thinkingStep} />;
@@ -246,6 +254,9 @@ function AssistantMessage() {
     <MessagePrimitive.Root className="flex w-full justify-start">
       <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-muted px-3 py-1.5 text-sm text-foreground">
         <MessagePrimitive.Parts components={{ Text: AssistantText }} />
+        <Suspense fallback={null}>
+          <CitationList citations={citations} />
+        </Suspense>
       </div>
     </MessagePrimitive.Root>
   );

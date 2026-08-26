@@ -117,3 +117,11 @@ export function entityPageHref(rel: string, scope?: string): string {
 export function canvasEntityHref(rel: string): string {
   return withThreadTarget(`/canvas?focus=${encodeURIComponent(rel)}`, rel);
 }
+
+/** Focus one cited rel while carrying only explicit scope/thread declarations. */
+export function citationCanvasHref(route: string, rel: string): string {
+  const source = new URL(route, 'http://ui4a.local');
+  const params = new URLSearchParams({ focus: rel });
+  appendSituationDeclarations(params, source);
+  return withThreadTarget(`/canvas?${params.toString()}`, rel);
+}

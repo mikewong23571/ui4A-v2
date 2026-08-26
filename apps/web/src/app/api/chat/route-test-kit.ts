@@ -239,6 +239,7 @@ export interface ChatResponseBody {
   steps?: unknown[];
   successes?: unknown[];
   error?: string;
+  sources?: { rel: string; pointer: string }[];
 }
 
 /** SSE 帧(T9 Phase B):step 逐步消息 / final 终帧 / error 兜底;

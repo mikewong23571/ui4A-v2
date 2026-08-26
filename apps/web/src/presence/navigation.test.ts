@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   canvasEntityHref,
+  citationCanvasHref,
   crossSiteFlowBridge,
   entityPageHref,
   locationHrefWithChanges,
@@ -42,6 +43,21 @@ describe('explicit URL navigation', () => {
     expect(canvasEntityHref('thread:release-1')).toBe(
       '/canvas?focus=thread%3Arelease-1&thread=release-1',
     );
+  });
+
+  it('builds citation focus URLs from only scope/thread declarations', () => {
+    expect(
+      citationCanvasHref(
+        '/meta/entity?rel=meta%2Fflow%3Aone&scope=governance&thread=release-1&mode=raw',
+        'post:first-post',
+      ),
+    ).toBe('/canvas?focus=post%3Afirst-post&scope=governance&thread=release-1');
+    expect(
+      citationCanvasHref(
+        '/canvas?focus=post%3Aold&scope=publishing&thread=release-1&refresh=9&roots=a,b',
+        'thread:release-2',
+      ),
+    ).toBe('/canvas?focus=thread%3Arelease-2&scope=publishing&thread=release-2');
   });
 
   it('derives the workstation-to-meta bridge only from a canonical flow focus', () => {

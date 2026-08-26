@@ -4,8 +4,10 @@
  * useChatSession 的对外会话契约。纯类型/常量/纯函数,零 React 状态。
  */
 import type { ThreadMessageLike, useExternalStoreRuntime } from '@assistant-ui/react';
+import type { FactRef } from '@ui4a/agent';
 
 import type { ChatSessionSummary } from '@/chat/history';
+import { citationsOrEmpty } from '@/chat/citations';
 import type { ChatFailureReason, ChatStepActivity } from '@/chat/sse';
 
 /**
@@ -28,6 +30,8 @@ export interface ChatUiMessage {
   eventSeq?: number;
   /** 结构化失败数据(SSE final/error 帧 reason);在场时 thread 按措辞分层渲染。 */
   failure?: ChatFailureReason;
+  /** Canonical answer evidence; never inferred from content. */
+  citations?: FactRef[];
 }
 
 /** 一次性 JSON 响应形状(render 短路/兼容路径;inline 已转 SSE)。 */
@@ -79,11 +83,36 @@ export function convertMessage(message: ChatUiMessage): ThreadMessageLike {
   if (message.activity !== undefined) custom['activity'] = message.activity;
   if (message.eventSeq !== undefined) custom['eventSeq'] = message.eventSeq;
   if (message.failure !== undefined) custom['failure'] = message.failure;
+  if (message.citations !== undefined) {
+    custom['citations'] = message.citations.map((citation) => ({ ...citation }));
+  }
   return {
     role: message.role,
     content: [{ type: 'text', text: message.content }],
     ...(Object.keys(custom).length > 0 ? { metadata: { custom } } : {}),
   };
+}
+
+/** Add final evidence to the latest terminal assistant message without comparing its text. */
+export function withCitationsOnLastAssistant(
+  messages: ChatUiMessage[],
+  input: unknown,
+): ChatUiMessage[] {
+  const citations = citationsOrEmpty(input);
+  if (citations.length === 0) return messages;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]!;
+    if (
+      message.role === 'assistant' &&
+      message.thinking === undefined &&
+      message.failure === undefined
+    ) {
+      const next = [...messages];
+      next[index] = { ...message, citations };
+      return next;
+    }
+  }
+  return messages;
 }
 
 export interface ChatSession {

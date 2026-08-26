@@ -4,6 +4,7 @@ import type {
   ChatTurnProgressDetail,
   ChatTurnStartedDetail,
 } from '../../../../chat/history';
+import { citationsOrEmpty } from '../../../../chat/citations';
 import { listEvents } from '../../../../db/events';
 import { getDb } from '../../../../engine/service';
 
@@ -30,6 +31,7 @@ export async function GET(request: Request) {
   try {
     const events = await listEvents(getDb());
     const turnsById = new Map<string, ChatTurn>();
+    const citationsByTurnId = new Map<string, ChatTurn['citations']>();
     for (const event of events) {
       if (event.rel !== `chat:${sessionId}`) continue;
       if (event.kind === 'chat-turn-started') {
@@ -62,7 +64,25 @@ export async function GET(request: Request) {
           ...detail,
           status: 'final',
         });
+      } else if (event.kind === 'chat-message-appended') {
+        const detail = event.detail;
+        if (typeof detail !== 'object' || detail === null) continue;
+        const candidate = detail as Record<string, unknown>;
+        if (
+          candidate.sessionId !== sessionId ||
+          candidate.role !== 'assistant' ||
+          typeof candidate.turnId !== 'string' ||
+          candidate.citations === undefined
+        ) {
+          continue;
+        }
+        const citations = citationsOrEmpty(candidate.citations);
+        if (citations.length > 0) citationsByTurnId.set(candidate.turnId, citations);
       }
+    }
+    for (const [turnId, citations] of citationsByTurnId) {
+      const turn = turnsById.get(turnId);
+      if (turn?.status === 'final') turn.citations = citations;
     }
     const turns = [...turnsById.values()].sort((a, b) => a.seq - b.seq);
     return Response.json({ turns });

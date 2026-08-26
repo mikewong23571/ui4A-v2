@@ -48,6 +48,7 @@ interface HistoryTurn {
   }[];
   driver: string;
   status: 'running' | 'final';
+  citations?: { rel: string; pointer: string }[];
 }
 
 async function history(
@@ -149,6 +150,54 @@ describe('聊天历史投影(T9 Phase B)', () => {
     const { status, json } = await history('?sessionId=sess-ghost');
     expect(status).toBe(200);
     expect(json.turns).toEqual([]);
+  });
+
+  it('joins canonical assistant citations to the exact final turnId without text matching', async () => {
+    await runChatTurn('sess-citations', '相同回答文本');
+    await runChatTurn('sess-citations', '相同回答文本');
+    const rows = await pool.query<{ seq: string; detail: { turnId: string } }>(
+      `SELECT seq::text, detail FROM events
+       WHERE kind='chat-turn' AND rel='chat:sess-citations' ORDER BY seq ASC`,
+    );
+    const [first, second] = rows.rows;
+    await appendEvent(pool, {
+      kind: 'chat-message-appended',
+      actor: 'agent',
+      principal: 'user:sess-citations',
+      channel: 'chat',
+      rel: 'chat:sess-citations',
+      detail: {
+        sessionId: 'sess-citations',
+        turnId: first!.detail.turnId,
+        messageId: `${first!.detail.turnId}:assistant`,
+        role: 'assistant',
+        content: '相同回答文本',
+        provenance: { kind: 'assistant-output' },
+        citations: [{ rel: 'post:first-post', pointer: '/properties/fields/body' }],
+      },
+    });
+    await appendEvent(pool, {
+      kind: 'chat-message-appended',
+      actor: 'agent',
+      principal: 'user:sess-citations',
+      channel: 'chat',
+      rel: 'chat:sess-citations',
+      detail: {
+        sessionId: 'sess-citations',
+        turnId: second!.detail.turnId,
+        messageId: `${second!.detail.turnId}:assistant`,
+        role: 'assistant',
+        content: '相同回答文本',
+        provenance: { kind: 'assistant-output' },
+        citations: [{ rel: 'articles', pointer: '/properties/count' }],
+      },
+    });
+
+    const { json } = await history('?sessionId=sess-citations');
+    expect(json.turns?.map((turn) => turn.citations)).toEqual([
+      [{ rel: 'post:first-post', pointer: '/properties/fields/body' }],
+      [{ rel: 'articles', pointer: '/properties/count' }],
+    ]);
   });
 
   it('started + progress 在 final 前即可恢复为 running 回合，刷新不丢在途消息', async () => {

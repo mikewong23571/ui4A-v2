@@ -69,6 +69,9 @@ describe('T21 navigation completion audit', () => {
       });
       const focusIndex = result.frames.findIndex((frame) => frame.type === 'focus');
       expect(focusIndex).toBeGreaterThan(0);
+      expect(result.frames.find((frame) => frame.type === 'final')?.payload?.sources).toEqual([
+        { rel: 'post:first-post', pointer: '/properties/fields' },
+      ]);
 
       const body = (await (await fetch(`${chatRouteBase()}/api/events`)).json()) as {
         events: { kind: string; detail: Record<string, unknown> }[];
@@ -82,6 +85,11 @@ describe('T21 navigation completion audit', () => {
           }),
         }),
       ]);
+      expect(
+        body.events.find(
+          (event) => event.kind === 'chat-message-appended' && event.detail.role === 'assistant',
+        )?.detail.citations,
+      ).toEqual([{ rel: 'post:first-post', pointer: '/properties/fields' }]);
     } finally {
       await new Promise<void>((resolve) => stub.close(() => resolve()));
     }

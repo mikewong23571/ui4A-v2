@@ -37,6 +37,8 @@ export interface ChatTurn extends Omit<ChatTurnDetail, 'outcome'> {
   ts: string;
   status: 'running' | 'final';
   outcome: AgentOutcome | 'running';
+  /** Response-only projection joined from canonical chat-message-appended by exact turnId. */
+  citations?: FactRef[];
 }
 
 export interface ChatTurnStartedDetail {
