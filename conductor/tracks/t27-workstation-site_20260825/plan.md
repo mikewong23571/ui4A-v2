@@ -56,7 +56,7 @@
   - Green:`/meta` 前缀推导 `meta`,其余路径推导 `workstation`;同步迁移
     `presence/client.ts`、`chat-situation.ts` defaults、`start-chain.ts` 站点
     兜底与相关测试;删除 `business` site 口径,raw 不进入值域,GR2 零双路径
-- [ ] Task: 导航重组与系统区(D46 第 4 问)
+- [x] Task: 导航重组与系统区(D46 第 4 问) `f1e44ae`
   - SiteNav 按 workstation/meta 分区;“我的事”(`/`)与“共同注视”(`/canvas`)
     是 workstation 顶级入口,meta 是显式越界入口;收件箱、事件流、委托监控
     折叠为壳级“系统”区,路由全部保留;raw 无顶级入口
