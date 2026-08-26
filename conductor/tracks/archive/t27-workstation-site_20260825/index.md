@@ -8,8 +8,10 @@
 - [Metadata](./metadata.json)
 - [Specification](./spec.md)
 - [Plan](./plan.md)
+- [Mothership acceptance evidence](./evidence-mothership-20260826.md)
 
-当前状态:`planned`。方向依据:`conductor/product-vision.md` §二(入口论)、
+当前状态:`completed`（source `e3b282c60414da3da6b2f8beb54fecdc273ad0b4`，
+mothership Helm revision 47 现场验收）。方向依据:`conductor/product-vision.md` §二(入口论)、
 §三(工作形态/workstation 不硬编码)、§五(加减法)、§六(页面滑梯)、
 §八(装配单点)。依赖 T24(呈现诚实化)、T26(工作线投影)、T29(在场与处境)
 与 T30(呈现组合化——内容面承载机),四者均已闭环归档。

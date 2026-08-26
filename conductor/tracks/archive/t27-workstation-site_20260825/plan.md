@@ -124,11 +124,14 @@
     `pnpm dev:all` 代替
   - 现场证据见 `evidence-mothership-20260826.md`;最终接受 source
     `e3b282c60414da3da6b2f8beb54fecdc273ad0b4` / Helm revision 47
-- [ ] Task: Track 收尾
+- [x] Task: Track 收尾
   - `conductor/tracks.md` 状态流转;track 目录按 GR5 处置(无 bespoke 脚本/
     配置残留);metadata.json 归档;components 目录基线按实际收缩更新
     (兑现 note 预留窗口,或登记新基线并注明处置计划);T28 spec 的站点框架
     口径如有偏差回改一行备注
+  - `apps/web/src/components` 目录基线已退出 `size-baseline.json`;本 Track
+    没有新增 bespoke 脚本或 Playwright 配置;e2e 既有基线 4507 明确由 T28
+    合并共享 setup 后收缩
 
 ## 验收标准(Track DoD)
 

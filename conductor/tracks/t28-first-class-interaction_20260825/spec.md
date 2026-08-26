@@ -57,19 +57,15 @@ workstation 站为主(raw 模式全域可达);meta 站的动作控件沿用其�
 
 ## 依赖(全部为稳定符号锚点;实施前以仓库现状复核)
 
-### T27 站点框架(在途——D46 已落;先于本 Track 执行,其闭环前本 Track 不动工)
+### T27 站点框架(已闭环——D46 + mothership revision 47 现场验收)
 
-- 本 Track 的入口 chrome(raw 模式入口、桥的位置)落在 T27 的壳与共享 canvas
-  宿主上;T27 的 D46 会定导航折叠与常显条形态。
-- **T27 闭环后复核点**(本 Track 动工前逐条确认):
-  - canvas 共享宿主的组件位置与接口(原 `canvas-body.tsx` 提炼后的落点)——
-    raw 抽屉与动作控件触点在其上;
-  - `apps/web/src/components/` 按 canvas/why/sidecar feature 子目录重组后的
-    目录布局——本 Track 新组件按其落位;
-  - SiteNav 重组结果与 raw 无顶级入口的坐实形态;
-  - presence site 值域(`{workstation, meta}`)——raw 是模式不是 site,不入
-    值域;
-  - i3 PAGES 表与首页 ready 选择器迁移后的现状。
+- 入口 chrome 已落在 T27 的壳与共享宿主上:共享实现为
+  `components/canvas/presentation-surface-host.tsx`;`canvas-body.tsx` 是 URL
+  adapter 并创建 scope-aware 页面实体缓存。raw 抽屉与动作控件从该宿主接入。
+- SiteNav 已重组且 raw 无顶级入口;presence site 值域为
+  `{workstation, meta}`(raw 是模式);i3 页面表与首页 ready 已迁移。
+- `apps/web/src/components` 目录基线已移除;新增实现按现有 `canvas/`、`stage/`
+  与 sidecar helper 邻近落位。e2e 目录 4507 基线由本 Track 按登记计划收缩。
 
 ### T24 呈现诚实化(已闭环)
 
