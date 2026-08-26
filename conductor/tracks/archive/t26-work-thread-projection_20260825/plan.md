@@ -89,7 +89,7 @@
     chat 回合落库事件携带同一显式锚
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) e71689e
 
-## Phase E: 端到端验收与收尾
+## Phase E: 端到端验收与收尾 [checkpoint: 30edab0]
 
 - [x] Task: CLI 对照全流程 30edab0
   - 经 CLI(显式 thread 锚,无 presence)完成建线/挂载/查态/审计;
@@ -106,7 +106,7 @@
     当前节点缺 `temporal` CLI 导致 worker 按 `temporal_unavailable` fail-closed。
     用户明确授权跳过本地 CLI 补装,完整 Temporal/Worker 组合改在部署环境验证,
     不阻塞本次代码提交。
-- [~] Task: Track 收尾
+- [x] Task: Track 收尾
   - `conductor/tracks.md` 状态流转;track 目录按 GR5 处置(无 bespoke
     脚本/配置残留);metadata.json 归档
 

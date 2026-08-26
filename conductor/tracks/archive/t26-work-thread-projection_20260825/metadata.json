@@ -1,10 +1,10 @@
 {
   "id": "t26-work-thread-projection_20260825",
   "type": "feature",
-  "status": "in_progress",
+  "status": "completed",
   "title": "T26 工作线投影(work thread):一件事的纯投影聚合(spike 先行)",
   "created_at": "2026-08-25T09:00:00Z",
-  "updated_at": "2026-08-26T00:00:00Z",
+  "updated_at": "2026-08-26T11:30:00Z",
   "approved_by": "user (建立方向 program:T24-T28;站点为天然分割点;limited scope)",
   "depends_on": ["t25-assistant-scoped-context_20260825"]
 }

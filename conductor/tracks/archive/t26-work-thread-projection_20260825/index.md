@@ -9,7 +9,7 @@ context 的真正载体、workstation 首页与 AI 上下文边界的共同地�
 - [Specification](./spec.md)
 - [Plan](./plan.md)
 
-当前状态:`in_progress`。方向依据:`conductor/product-vision.md` §一.3(scoped
+当前状态:`completed`。方向依据:`conductor/product-vision.md` §一.3(scoped
 context)、§三(workstation 是家)、§四(工作线概念)、§六(规则滑梯)、
 §八.3(复合投影)+ CLI 纪律二(显式引用聚合)。
 
@@ -20,3 +20,7 @@ context)、§三(workstation 是家)、§四(工作线概念)、§六(规则滑�
 (验收与 track 目标相悖时干掉验收目标)与全量误导性验收排查结论(两处闭式
 sitemap 断言须先开放化,I5 enumerateEntityRels 静默缺口必堵);关联备注已
 同步至 T27/T28/T30 spec。实施会话无需此前聊天上下文,从 spec.md 起步即可。
+
+2026-08-26 完成：D44、纯 fold、Siren/sitemap/principal scope、受治理动作、
+chat presence 显式锚定与真实 CLI headless 流程均落地；`pnpm check` 与目标 E2E
+全绿。`dev:all` 在当前节点因缺 Temporal CLI fail-closed，用户授权部署环境后验证。
