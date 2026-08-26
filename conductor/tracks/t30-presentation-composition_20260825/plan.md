@@ -28,7 +28,7 @@
 
 ## Phase B: 组合声明模型(数据 + 严格 parse)
 
-- [ ] Task: CompositionDeclaration 类型与严格 parse
+- [x] Task: CompositionDeclaration 类型与严格 parse `fab35f2`
   - 在 `packages/shared` 定义声明类型并提供严格 parser(id/version/
     regions[{region, source rel, intent, mode}])；纯组合语义留在 packages/engine。
     虚主体固定为 `workspace:<id>` 字符串，id 规则(参照 D44
