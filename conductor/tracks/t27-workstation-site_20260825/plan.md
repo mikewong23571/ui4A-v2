@@ -86,7 +86,7 @@
   - Playwright 走查截图:首屏零机制词汇、三门问题一眼可答
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `932abe6`
 
-## Phase E: 处境常显、显式声明与双桥
+## Phase E: 处境常显、显式声明与双桥 [checkpoint: ae9a816]
 
 - [x] Task: scope/处境常显组件(D46 第 2 问) `d84fed3`
   - 壳级常显固定为 site/scope/thread/focus,直接回显
@@ -105,7 +105,7 @@
     两座桥在 T27 同时交付,不修改 meta 治理视图内部
   - e2e 双桥走查:首页 → 工作线 → 注视 flow → meta 编辑(保 scope)→ 查看
     活实例 → 回 workstation
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `ae9a816`
 
 ## Phase F: 端到端验收与收尾
 
