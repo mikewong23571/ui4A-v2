@@ -65,7 +65,12 @@
     `layout → slot(subject) → subtree`，不保留旧规划旁路；validate/normalize/hash
     覆盖该形状(新校验逻辑进新模块)，compiler `root`/`node:<id>` 约定保持确定
   - 测试:退化等价(呈现语义)+ 组合树校验/规范化/hash 稳定
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: 组合命名空间碰撞与真实 generic 集成修正 `3e616f3`
+  - Phase checkpoint 审计发现 outer slot 与 subtree id 可跨层碰撞；分离两类
+    node id 命名空间并同步 diagnostic.failedNodeId 映射
+  - compose 测试改用真实 planGenericSurface 输入，不再冻结旧 generic 内树 id；
+    区域 intent 的 planner 路由明确留给 Phase E web runtime，Phase C 只验纯组装核
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase D: sidecar/recipe/promotion 组合化
 
