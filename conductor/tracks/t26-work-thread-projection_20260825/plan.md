@@ -81,13 +81,13 @@
     archive 走 declaration → guard → schema 正常裁决链;human/agent 同权
     (I4 不受影响:approve 仍 human-only),可信 principal 固定 owner
   - 测试:action 合同测试 + 拒绝留痕(I6 口径)
-- [~] Task: chat/exec 入口的 thread 显式记录
+- [x] Task: chat/exec 入口的 thread 显式记录 e71689e
   - presence.thread 仅为当前 user message 选择一条已存在且同 owner 的线;
     另写独立 `thread-reference-attached(category=context)` core 事件并记录
     resolved id/source,不让 turn 后续副作用继承;不修改 chat detail wire 形状
   - 测试:无 clientView 的 exec(CLI 形态)显式锚定落库;有 presence 的
     chat 回合落库事件携带同一显式锚
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase E: 端到端验收与收尾
 
