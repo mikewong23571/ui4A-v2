@@ -109,7 +109,7 @@
 
 ## Phase F: 端到端验收与收尾
 
-- [~] Task: 全量验收
+- [x] Task: 全量验收 `60ac8e2`
   - `pnpm check` 全绿;`CI=true pnpm e2e invariants` 全绿;`CI=true pnpm e2e`
     全量全绿;T16 presentation 套件、T24 honesty 套件、chat 套件全绿;这些
     本地命令只作为开发门禁,不作为 Track 最终现场验收证据
@@ -122,6 +122,8 @@
     不变量;记录 Git SHA、image digests、mothership-setup SHA、Helm revision、命令、
     时间与结果到本 Track evidence。最终结论只依据该部署环境,不以本地
     `pnpm dev:all` 代替
+  - 现场证据见 `evidence-mothership-20260826.md`;最终接受 source
+    `e3b282c60414da3da6b2f8beb54fecdc273ad0b4` / Helm revision 47
 - [ ] Task: Track 收尾
   - `conductor/tracks.md` 状态流转;track 目录按 GR5 处置(无 bespoke 脚本/
     配置残留);metadata.json 归档;components 目录基线按实际收缩更新
