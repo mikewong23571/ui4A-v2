@@ -7,7 +7,7 @@
 > Phase B–D 的具体形状以 Phase A 的 DECISIONS 条目(D44)为准;若 spike 结论
 > 改变任务内容,先按 Task Correction 流程修订本计划再施工。
 
-## Phase A: Spike → DECISIONS(分歧先于代码)
+## Phase A: Spike → DECISIONS(分歧先于代码) [checkpoint: 8d9145e]
 
 - [x] Task: spike 五问决断,落 DECISIONS.md D44 e79d352
   - 按 spec.md Phase 0 五问逐一给出:候选、约束、采纳、否决项与理由;
@@ -18,10 +18,10 @@
     锚点:spec.md"现状事实"节
   - 验收:DECISIONS.md 新增条目,编号顺延(当前最新 D43);五问各有明确
     采纳/否决;否决项写明理由(防复辟)
-- [~] Task: spec/plan 回改对齐 D44
+- [x] Task: spec/plan 回改对齐 D44 8d9145e
   - 若 spike 结论改变"最终形态"表述或后续 Phase 任务形状,同步修订
     spec.md 与本 plan;tracks.md 无需动(本 Track 已登记)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) 8d9145e
 
 ## Phase B: 事件与 fold 内核(纯投影)
 
