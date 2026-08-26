@@ -12,7 +12,7 @@
 
 ## Phase A: Spike → DECISIONS(分歧先于代码)
 
-- [ ] Task: spike 五问决断,落 DECISIONS.md D45
+- [x] Task: spike 五问决断,落 DECISIONS.md D45 `9bb2003`
   - 按 spec.md Phase 0 五问逐一给出:候选、约束、采纳、否决项与理由;核心抉择:
     虚主体 wire 表示(保留字 `workspace:<id>` 字符串 vs RenderSubject 新 variant)、
     区域声明数据归属(内建注册表 vs bundle vs 定义平面)、区域树表达(layout+slot
