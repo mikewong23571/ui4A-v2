@@ -1,0 +1,1 @@
+T30 Phase E correction: collection membership now follows declared region mode while entity contracts invalidate; Explain derives composition identity only from root provenance; durable tests cover same-scope partial/full migrations and all-denied zero Sidecar lifecycle. Main verification: 26 files / 179 tests, engine+web typecheck, governance. Independent re-audit: PASS.
