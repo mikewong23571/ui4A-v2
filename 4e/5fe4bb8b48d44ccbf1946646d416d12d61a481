@@ -1,0 +1,22 @@
+Task: prompt 预算断言
+
+Summary:
+- Added three parameterized prompt/wire budget scenarios for article reading, a business wizard, and meta definition governance.
+- Each fixture proves its unsliced sitemap exceeds 32 KiB while the scoped messages and real provider request body remain below 32 KiB.
+- Preserved current action tools and foreign navigation rels while rejecting capability schema leakage.
+
+Files:
+- packages/agent/src/llm/prompt-budget.test.ts
+
+Why:
+The 32 KiB decide wire ceiling is a mechanical disclosure gate and must include the actual tools projection, not just prompt text.
+
+Verification:
+- 4 files / 66 tests passed
+- Exact bytes: article messages=3878 wire=14666; wizard messages=3874 wire=14646; meta messages=3931 wire=14722
+- pnpm --filter @ui4a/agent typecheck
+- pnpm governance
+- Autonomous acceptance by the orchestrating agent.
+
+TDD note:
+This plan task is a post-Green budget assertion following the preceding disclosure implementation; its first run passed, so no artificial Red failure was created.
