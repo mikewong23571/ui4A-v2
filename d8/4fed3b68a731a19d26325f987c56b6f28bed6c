@@ -1,0 +1,28 @@
+T27 Phase E Task: scope/处境常显组件
+
+Summary:
+- AppShell 常驻紧凑 SituationBar，显示 URL 声明的 site/scope/thread/focus 并明确不等于授权。
+- SituationBar 与 PresenceReporter 共用 useLocationObservation；Chat clientView继续消费同一 pure parser。
+- scope set/clear、thread leave 保留其他 query 且全 data-nav。
+- EntityView/EntityLinkWord 共用 pure thread-target helper，thread:<id> 导航自动携带 thread=<id>。
+- 修复 StrictMode cleanup 后 Reporter disposed 与四类 presence 并发 POST 503，改为每 mount 新 reporter + 串行 transport。
+- standing E2E 证明 workstation/meta 四类 change point、null clear 与 query preservation。
+- e2e baseline tracked total 登记 4426（commit 82ad257），T28 consolidation 时归位。
+
+Files:
+- apps/web/src/presence location/navigation/client + tests
+- AppShell, PresenceReporter, stage/SituationBar + tests
+- EntityView/EntityLinkWord + tests
+- e2e/workstation-situation.spec.ts
+
+Why:
+用户和 Chat 必须看到/消费同一结构化 URL 处境，显式声明自动落既有事件链，不能出现第二套授权或自然语言推断。
+
+TDD:
+- Red: missing modules/links; concurrent transport only persisted site.
+- Green: 8 files / 50 tests pass.
+
+Verification:
+- @ui4a/web typecheck and production build: PASS (19 prerendered routes)
+- CI=true TMPDIR=/home/mike/.cache/ui4a-t27-tmp pnpm e2e e2e/workstation-situation.spec.ts e2e/i3.spec.ts: PASS (3/3)
+- pnpm governance, Prettier/diff: PASS
