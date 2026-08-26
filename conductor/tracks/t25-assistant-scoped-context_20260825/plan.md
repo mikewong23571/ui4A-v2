@@ -89,11 +89,11 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
   - resolveStartRel 的 sitemap 抓取已随 Phase A 删除消失;归并 runAgent 循环
     外抓取(loop.ts)与 `readSitemapTitles`(route.ts,step 活动标题索引,
     `apps/web/src/chat/step-activity.ts`)为单回合一次读取
-- [~] Task: 失败语义回归测试
+- [x] Task: 失败语义回归测试 486d3c8
   - 事实链起点实体不可得 → `start_entity_unavailable` 诚实失败路径保留;
     失败 code 集合不变(`apps/web/src/chat/failure-reason.ts`):
     `no_progress_loop / driver_fail / start_entity_unavailable / loop_exception`
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase D: 端到端验收
 
