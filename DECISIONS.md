@@ -533,3 +533,39 @@
   非法模型输出保持既有语义。重试选择与次数由服务端固定，请求不能覆盖。
 - **时限**:单次流的硬总时限由 60 秒调整为 300 秒，避免 thinking 长 SSE 被过早终止；Agent 步数、
   Chat/Workflow 外层 deadline 继续提供整体有界性。本决定不引入新的 provider 或 fallback 路径。
+
+## D44 Work Thread 是 principal-owned 的显式引用投影(2026-08-26,T26 Phase A)
+
+- **成员资格主规则**:`threads#create` 与 `thread:<id>` 的 `attach`/`detach` 动作产生
+  `thread-created`、`thread-reference-attached`、`thread-reference-detached` core 事件；fold 只消费
+  这些事件中的显式 `threadId + category + rel`，不按实体类型、Application、chat session、goal 文本、
+  rel 图或 presence 自动扩张。`category` 是封闭的通用投影角色(`context`、`active`、`approval`、
+  `event`)，不是业务类型分支。既有 exec/goal 不统一增设 thread 字段；应用若要在同一业务命令中
+  锚定，可显式追加同形 thread 事件，但 v1 正典仍是线资源动作。否决 turn 继承和 session 聚合：它们
+  让 CLI 工作落在线外；否决 rel 图自动扩张：它既不可治理又会跨授权边界蔓延。
+- **生命周期与标识**:只允许显式 `create/pause/resume/complete/archive` 转移；首次 attach 不隐式建线，
+  未创建或已归档线的写入 fail-closed。状态为 `open | paused | completed | archived`，完成与归档不删除，
+  审计链接永久可读。调用方提交 1–64 字符、匹配 `[a-z0-9][a-z0-9._-]*` 的全局 thread id；事件同时
+  固定非空 owner principal，所有后续命令必须同 owner。线跨 session，任何 key、成员或动作都不含
+  sessionId。否决首次引用即创建和 session key：前者隐藏生命周期，后者刷新即断线。
+- **跨 scope 与授权**:`rel` 按现有 canonical 字符串原样保存，business/meta 前缀就是平面边界，
+  不发明第二套 URI。`threads`/`thread:*` 是 Application-agnostic business resources，不新增伪
+  Application 或第七个 policy scope；任一已授予 business policy scope 可发现入口，但 exact/list/exec
+  必须按可信 principal 校验 owner。credentialed 读取只展示当前 policy scope 可覆盖的成员引用，
+  切 scope 是同一条线的另一授权镜头；不得因线跨域而扩大目标 rel 的读取或动作权限。否决归入
+  `default`（错误单属）、专门 `work` Application scope（把工作单位重新伪装成应用）和只靠 scope
+  不验 owner（跨用户泄漏）。Sidecar 仍保留自身 policyScope 维度；未来以 thread subject 命中时也
+  每次重授权，不把线提升为授权主体。
+- **收编而非复制**:ThreadSnapshot 只保存 goal 原文及来源引用、owner、lifecycle 与分类 rel 集；
+  flow instance、Agent Run、delegation、confirmation、Draft 和 chat message 的内容/状态继续由各自
+  事件族与投影拥有。Siren thread 视图可在同一 EngineSnapshot 上把引用解析成当前状态指针和 links，
+  这是纯投影组合，不写回副本、不查询第二存储；不可解析引用保留为可审计 dangling ref。`event`
+  类成员使用 `event:<seq>` 显式索引且只保留最近 50 项。产品术语固定为 Work Thread；Conductor Track
+  只是仓库施工单位，二者无运行时映射。
+- **presence/chat 边界**:T29 `presence-thread-changed` 原样复用为“用户当前看哪条线”的辅助事实；
+  presence 可为 chat 请求选择默认 thread id，但持久成员变化必须另写显式 thread core 事件，且事件
+  记录 resolved thread id 与来源。不得把同一 turn 的后续副作用自动继承到线。删除整个 chat 子系统后，
+  CLI 仍能经 Siren 动作建线、挂载、查态、审计并从空库重放，Work Thread 合同必须完整成立。
+- **裁决与事件边界**:线资源动作复用 declaration → guard → schema 的纯裁决顺序和统一拒绝留痕；
+  thread 事件 detail 在共享合同入口做字段白名单、长度与数量上界校验。事件日志仍是唯一业务真相，
+  `EngineSnapshot.threads` 只是可删除重建的 fold 表；web 只做可信身份、串行 append 与 HTTP 适配。
