@@ -160,7 +160,7 @@ test('B3 审核队列(人类):逐条 approve 至 pending 清零;c4 终态无重�
     // c4 已 approved:终态节点零声明动作 → 详情页无任何动作按钮(approve 不重复)
     await page.click('a[data-rel="comment:c4"]');
     await expect(page.locator('h1')).toHaveText('已通过');
-    await expect(page.locator('main button')).toHaveCount(0);
+    await expect(page.locator('main button[data-action]')).toHaveCount(0);
 
     // 逐条 approve 3 条 pending(每次从队列点进成员 → 通过 → 回队列)
     for (let round = 0; round < 3; round += 1) {

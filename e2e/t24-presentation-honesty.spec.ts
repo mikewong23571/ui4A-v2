@@ -105,9 +105,9 @@ test('canvas 首屏:focus 实体语义上屏,主区域零机制词;机制信息�
     } else {
       await expect(drawer.getByText('当前没有 Sidecar 个人呈现。')).toBeVisible();
     }
-    // 原始合同 JSON:details 展开,如实可见 focus 实体的 Siren 原文。
-    await drawer.getByText('focus 实体 Siren JSON').click();
-    await expect(page.getByTestId('canvas-why-raw-json')).toContainText('"rel": "post:first-post"');
+    // 原始合同是 why 的同级验钞镜头,不混入 explain/provenance 抽屉。
+    await page.getByRole('button', { name: '查看原始合同' }).click();
+    await expect(page.getByTestId('raw-contract-json')).toContainText('"rel": "post:first-post"');
     await shoot(page, 't24-canvas-why-drawer');
   });
 });

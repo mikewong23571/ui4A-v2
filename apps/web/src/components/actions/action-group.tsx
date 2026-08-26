@@ -45,7 +45,9 @@ export function ActionGroup({
 
   return (
     <div data-testid="action-contract-group" className="space-y-3">
-      <p className="text-xs text-muted-foreground">{ACTION_CONTRACT_LEGEND}</p>
+      <p data-testid="action-contract-legend" className="text-xs text-muted-foreground">
+        {ACTION_CONTRACT_LEGEND}
+      </p>
       <div className="space-y-3">
         {entity.actions.map((action) => {
           const guard = guards.get(action.name);

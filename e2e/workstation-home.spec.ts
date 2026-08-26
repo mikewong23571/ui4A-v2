@@ -200,7 +200,9 @@ test('workstation home and the real CLI read the same three declared source enti
         ),
       )
       .sort();
-    const renderedScalarFacts = (await surface.locator('p').allTextContents()).sort();
+    const renderedScalarFacts = (
+      await surface.locator('p:not([data-testid="action-contract-legend"])').allTextContents()
+    ).sort();
     expect(renderedScalarFacts).toEqual(expectedScalarFacts);
 
     const members = [...entities.values()].flatMap((entity) => entity.entities ?? []);
