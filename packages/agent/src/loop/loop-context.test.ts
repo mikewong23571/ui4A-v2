@@ -13,6 +13,7 @@ import {
 } from './loop-test-fixtures';
 import { runAgent } from './loop';
 import { instanceEntity } from '../testkit/testkit';
+import type { SitemapSummary } from '../types';
 
 const groupedSitemapBody = {
   version: 'v-apps',
@@ -61,6 +62,68 @@ const groupedSitemapBody = {
 };
 
 describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
+  it('显式预载 sitemap 时不再 GET，DriverContext 消费拷贝且不改写输入', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
+    const sitemap: SitemapSummary = {
+      version: 'preloaded-v1',
+      surfaces: [{ rel: 'articles', title: '预载文章集', app: 'publishing' }],
+      applications: [
+        {
+          name: 'publishing',
+          intent: '发布内容',
+          flows: [{ name: 'post-status', title: '文章状态', actions: [] }],
+        },
+      ],
+      capabilities: [],
+    };
+    const snapshot = structuredClone(sitemap);
+
+    await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+      sitemap,
+    });
+
+    expect(transport.calls.filter((call) => call.url.endsWith('/.well-known/ui4a.json'))).toEqual(
+      [],
+    );
+    expect(driver.contexts[0]?.sitemap).toEqual(snapshot);
+    expect(driver.contexts[0]?.sitemap).not.toBe(sitemap);
+    driver.contexts[0]!.sitemap!.surfaces[0]!.title = '驱动器改写';
+    expect(sitemap).toEqual(snapshot);
+  });
+
+  it('未预载时独立 runAgent 仍只抓取一次 sitemap', async () => {
+    const transport = contractTransport({
+      entities: { articles: articlesEntity },
+      sitemap: groupedSitemapBody,
+    });
+    const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
+
+    await runAgent(driver, GOAL, { baseUrl: BASE, fetchImpl: transport.fetch });
+
+    expect(
+      transport.calls.filter((call) => call.url.endsWith('/.well-known/ui4a.json')),
+    ).toHaveLength(1);
+  });
+
+  it('显式预载 undefined 时按不可得降级，不再发起第二次抓取', async () => {
+    const transport = contractTransport({ entities: { articles: articlesEntity } });
+    const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
+
+    await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+      sitemap: undefined,
+    });
+
+    expect(transport.calls.filter((call) => call.url.endsWith('/.well-known/ui4a.json'))).toEqual(
+      [],
+    );
+    expect(driver.contexts[0]?.sitemap).toBeUndefined();
+  });
+
   it('从实体 flow 推导 scope，保留当前 app 全形并把其他 app 降为导航入口', async () => {
     const transport = contractTransport({
       entities: { articles: articlesEntity },

@@ -1,5 +1,6 @@
 import {
   createBoundedBearerFetch,
+  createContractClient,
   createDriver,
   LlmConfigurationError,
   resolveLlmConfig,
@@ -27,7 +28,7 @@ import { wrapDriverForAudit, type AgentDecisionDetail } from '../../../chat/deci
 import { conversationView } from '../../../chat/conversation';
 import { executionAuditContext } from '../../../chat/audit-context';
 import { failureReasonFromResult, phraseFailureWithLlm } from '../../../chat/failure-reason';
-import { readSitemapTitles, stepActivityData } from '../../../chat/step-activity';
+import { sitemapTitlesFromSummary, stepActivityData } from '../../../chat/step-activity';
 import { startRelFromSituation } from '../../../chat/start-chain';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
 import { getProductionAgentTokenProvider } from '../../../auth/production-agent-token-provider';
@@ -472,9 +473,10 @@ async function streamAgentLoop(args: {
     lastNavigation,
   } = args;
   send({ type: 'session', sessionId, turnId });
-  // 活动语言标题索引(T24 Phase B):读一次合同 sitemap(surfaces 表面标题 +
-  // flows 动作标题),不可得时如实降级(rel/动作名兜底,零发明标题)。
-  const sitemapTitles = await readSitemapTitles(baseUrl, fetchImpl);
+  // 同一已解析 sitemap 同时供 Agent 静态上下文与 T24 活动标题投影；
+  // 不可得时显式预载 undefined，循环不二次抓取且照常仅实体导航。
+  const sitemap = await createContractClient(baseUrl, fetchImpl).getSitemap();
+  const sitemapTitles = sitemapTitlesFromSummary(sitemap);
   // agent-decision 审计(T11 Phase B):包装 driver 在 decide 时刻捕获
   // (prompt/reasoning/op)——决策输入只存在于 decide 时的 DriverContext,
   // 执行后的 TrailStep 回推不出 prompt(捕获方案见 chat/decisions.ts)。
@@ -491,6 +493,7 @@ async function streamAgentLoop(args: {
     {
       baseUrl,
       fetchImpl,
+      sitemap,
       actor: 'agent',
       principal,
       channel: 'chat',

@@ -258,6 +258,8 @@ export interface SitemapFlowSummary {
   title: string;
   /** 跨节点动作目录仅用于发现；执行时仍以当前实体 actions 为准。 */
   actions?: SitemapActionSummary[];
+  /** 流程边摘要；活动标题可据动作后节点机械回溯声明标题。 */
+  edges?: { from: string; action: string; to: string }[];
 }
 
 export interface SitemapCapabilitySummary {
@@ -281,6 +283,8 @@ export interface SitemapSummary {
    * 端点未提供(旧形状)时解析为空数组;扁平 surfaces 始终保留(向后兼容)。
    */
   applications: SitemapApplicationSummary[];
+  /** 顶层流程发现摘要；旧端点形状或 meta sitemap 缺席时为空。 */
+  flows?: SitemapFlowSummary[];
   /** 当前 sitemap 注册的 capability 定义摘要；旧端点形状解析为空数组。 */
   capabilities?: SitemapCapabilitySummary[];
 }
@@ -313,6 +317,11 @@ export interface RunAgentOptions {
   /** 合同本源,如 http://localhost:3100(不带尾斜杠)。 */
   baseUrl: string;
   fetchImpl: FetchLike;
+  /**
+   * 上层已读取的 sitemap 静态上下文。显式提供该属性（包括 undefined）
+   * 时循环不再发起 sitemap GET；未提供时独立 runAgent 仍自行读一次。
+   */
+  sitemap?: SitemapSummary;
   /** 步数上限(终止条件之一;缺省 24)。 */
   maxSteps?: number;
   /** 授权观察账本最多保留的不同实体数(缺省 8，最小 1)。 */

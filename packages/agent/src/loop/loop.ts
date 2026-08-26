@@ -183,16 +183,9 @@ export async function runAgent(
   //(name/intent/组内 flows 摘要;选 app〔读 intent〕→ 选 flow)。
   let sitemap: SitemapSummary | undefined;
   try {
-    const fetched = await client.getSitemap();
-    if (fetched !== undefined) {
-      const full: SitemapSummary = {
-        version: fetched.version,
-        surfaces: fetched.surfaces.map((surface) => ({ ...surface })),
-        applications: fetched.applications,
-        capabilities: fetched.capabilities ?? [],
-      };
-      sitemap = full;
-    }
+    const supplied = Object.prototype.hasOwnProperty.call(options, 'sitemap');
+    const source = supplied ? options.sitemap : await client.getSitemap();
+    sitemap = source === undefined ? undefined : structuredClone(source);
   } catch {
     sitemap = undefined;
   }

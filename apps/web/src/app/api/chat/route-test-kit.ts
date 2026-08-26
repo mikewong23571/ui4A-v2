@@ -16,6 +16,7 @@ export const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@lo
 
 let server: Server;
 let base = '';
+let sitemapRequests = 0;
 export const PUBLISH_TEST_GOAL = '对 article-drafting:main 执行 next 并 publish，发布一篇文章';
 export const PUBLISH_TEST_AUTHORIZATION = {
   sourceMessageId: 'route-test-turn',
@@ -27,7 +28,10 @@ export async function handler(pathname: string, request: Request): Promise<Respo
   if (pathname === '/api/exec') return postExecRoute(request);
   if (pathname === '/api/events') return getEventsRoute(request);
   // sitemap 路由无查询参数(签名零参)
-  if (pathname === '/.well-known/ui4a.json') return getSitemapRoute();
+  if (pathname === '/.well-known/ui4a.json') {
+    sitemapRequests += 1;
+    return getSitemapRoute();
+  }
   if (pathname === '/api/chat') return postChat(request);
   return Response.json({ error: 'not found' }, { status: 404 });
 }
@@ -312,6 +316,7 @@ export async function startChatRouteFixtures(): Promise<void> {
   await ensureEventsTable(pool);
   await pool.query('TRUNCATE events');
   resetEngineForTests();
+  sitemapRequests = 0;
   server = createServer(async (req, res) => {
     // 用真实 host 构造 Request:聊天路由经 request.url 的 origin 回环 fetch 自身。
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`);
@@ -339,4 +344,8 @@ export async function stopChatRouteFixtures(): Promise<void> {
 /** 当前回环 server 的 origin(startChatRouteFixtures 之后有效)。 */
 export function chatRouteBase(): string {
   return base;
+}
+
+export function sitemapRequestCount(): number {
+  return sitemapRequests;
 }

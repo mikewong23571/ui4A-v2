@@ -15,7 +15,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { FetchLike, TrailStep } from '@ui4a/agent';
 
-import { readSitemapTitles, stepActivityData, type SitemapTitles } from './step-activity';
+import {
+  readSitemapTitles,
+  sitemapTitlesFromSummary,
+  stepActivityData,
+  type SitemapTitles,
+} from './step-activity';
 
 const SITEMAP = {
   version: 'v1',
@@ -223,5 +228,29 @@ describe('readSitemapTitles(合同 sitemap → 标题投影)', () => {
 
     const failed: FetchLike = async () => jsonResponse({ error: 'x' }, 500);
     await expect(readSitemapTitles('http://contract.test', failed)).resolves.toBeUndefined();
+  });
+
+  it('从已解析 SitemapSummary 纯投影标题，保留同一版本的动作边映射', () => {
+    const summary = {
+      version: 'summary-v2',
+      surfaces: [{ rel: 'articles', title: '摘要文章列表' }],
+      applications: [],
+      capabilities: [],
+      flows: [
+        {
+          name: 'article-drafting',
+          title: '摘要发布向导',
+          actions: [{ name: 'next', title: '摘要完成编辑', node: 'content', guards: [] }],
+          edges: [{ from: 'content', action: 'next', to: 'ready' }],
+        },
+      ],
+    };
+
+    const titles = sitemapTitlesFromSummary(summary);
+
+    expect(titles?.surfaces.get('articles')).toBe('摘要文章列表');
+    expect(titles?.flows[0]?.title).toBe('摘要发布向导');
+    expect(titles?.flows[0]?.nodes.get('content')?.get('next')).toBe('摘要完成编辑');
+    expect(titles?.flows[0]?.edges).toEqual([{ from: 'content', action: 'next', to: 'ready' }]);
   });
 });

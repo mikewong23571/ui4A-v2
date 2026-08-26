@@ -16,7 +16,12 @@
  * - present subject:字符串原样,selection 以「、」联结;
  * - answer/clarify/exec-plan/done/fail:仅 op(终局内容经 final.summary 呈现)。
  */
-import type { FetchLike, TrailStep } from '@ui4a/agent';
+import {
+  createContractClient,
+  type FetchLike,
+  type SitemapSummary,
+  type TrailStep,
+} from '@ui4a/agent';
 
 import type { ChatStepActivity } from './sse';
 
@@ -33,22 +38,27 @@ export interface SitemapTitles {
   }[];
 }
 
-interface RawSitemapShape {
-  surfaces?: { rel?: unknown; title?: unknown }[];
-  flows?: {
-    name?: unknown;
-    title?: unknown;
-    nodes?: {
-      name?: unknown;
-      title?: unknown;
-      actions?: { name?: unknown; title?: unknown }[];
-    }[];
-    edges?: { from?: unknown; action?: unknown; to?: unknown }[];
-  }[];
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === 'string' && value !== '' ? value : undefined;
+/** 已解析 sitemap 摘要 → 活动标题索引；纯机械投影，零 I/O。 */
+export function sitemapTitlesFromSummary(
+  sitemap: SitemapSummary | undefined,
+): SitemapTitles | undefined {
+  if (sitemap === undefined) return undefined;
+  const surfaces = new Map(sitemap.surfaces.map((surface) => [surface.rel, surface.title]));
+  const flows = (sitemap.flows ?? []).map((flow) => {
+    const nodes = new Map<string, Map<string, string>>();
+    for (const action of flow.actions ?? []) {
+      const actions = nodes.get(action.node) ?? new Map<string, string>();
+      actions.set(action.name, action.title);
+      nodes.set(action.node, actions);
+    }
+    return {
+      name: flow.name,
+      title: flow.title,
+      nodes,
+      edges: (flow.edges ?? []).map((edge) => ({ ...edge })),
+    };
+  });
+  return { surfaces, flows };
 }
 
 /**
@@ -59,57 +69,8 @@ export async function readSitemapTitles(
   baseUrl: string,
   fetchImpl: FetchLike,
 ): Promise<SitemapTitles | undefined> {
-  let body: unknown;
-  try {
-    const response = await fetchImpl(`${baseUrl}/.well-known/ui4a.json`);
-    if (!response.ok) return undefined;
-    body = await response.json();
-  } catch {
-    return undefined;
-  }
-  if (typeof body !== 'object' || body === null) return undefined;
-  const raw = body as RawSitemapShape;
-  const surfaces = new Map<string, string>();
-  for (const surface of raw.surfaces ?? []) {
-    const rel = asString(surface?.rel);
-    const title = asString(surface?.title);
-    if (rel !== undefined && title !== undefined) surfaces.set(rel, title);
-  }
-  const flows: SitemapTitles['flows'] = [];
-  for (const flow of raw.flows ?? []) {
-    const name = asString(flow?.name);
-    if (name === undefined) continue;
-    const nodes = new Map<string, Map<string, string>>();
-    for (const node of flow?.nodes ?? []) {
-      const nodeName = asString(node?.name);
-      if (nodeName === undefined) continue;
-      const actions = new Map<string, string>();
-      for (const action of node?.actions ?? []) {
-        const actionName = asString(action?.name);
-        const actionTitle = asString(action?.title);
-        if (actionName !== undefined && actionTitle !== undefined) {
-          actions.set(actionName, actionTitle);
-        }
-      }
-      nodes.set(nodeName, actions);
-    }
-    const edges: { from: string; action: string; to: string }[] = [];
-    for (const edge of flow?.edges ?? []) {
-      const from = asString(edge?.from);
-      const action = asString(edge?.action);
-      const to = asString(edge?.to);
-      if (from !== undefined && action !== undefined && to !== undefined) {
-        edges.push({ from, action, to });
-      }
-    }
-    flows.push({
-      name,
-      ...(asString(flow?.title) ? { title: asString(flow?.title) } : {}),
-      nodes,
-      edges,
-    });
-  }
-  return { surfaces, flows };
+  const sitemap = await createContractClient(baseUrl, fetchImpl).getSitemap();
+  return sitemapTitlesFromSummary(sitemap);
 }
 
 /** flow 实体的 Siren class 形如 ['flow-instance', <flow 名>];其余实体无流程可依。 */

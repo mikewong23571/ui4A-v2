@@ -13,6 +13,7 @@ import type {
   SitemapActionSummary,
   SitemapApplicationSummary,
   SitemapCapabilitySummary,
+  SitemapFlowSummary,
   SitemapSummary,
 } from '../types';
 
@@ -102,57 +103,81 @@ function errorMessage(body: unknown, fallback: string): string {
  * sitemap JSON 的 applications 分组 → agent 摘要(宽容解析:字段缺失的
  * 条目跳过;旧形状无 applications 字段 → 空数组,静态上下文退化为扁平)。
  */
+function asFlowSummaries(value: unknown): SitemapFlowSummary[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((flow) => {
+    if (!isPlainObject(flow) || typeof flow.name !== 'string' || typeof flow.title !== 'string') {
+      return [];
+    }
+    const actions: SitemapActionSummary[] = [];
+    const directActions = Array.isArray(flow.actions) ? flow.actions : [];
+    for (const action of directActions) {
+      if (
+        isPlainObject(action) &&
+        typeof action.name === 'string' &&
+        typeof action.title === 'string' &&
+        typeof action.node === 'string'
+      ) {
+        actions.push({
+          name: action.name,
+          title: action.title,
+          node: action.node,
+          guards: Array.isArray(action.guards)
+            ? action.guards.filter((guard): guard is string => typeof guard === 'string')
+            : [],
+        });
+      }
+    }
+    for (const node of Array.isArray(flow.nodes) ? flow.nodes : []) {
+      if (!isPlainObject(node) || typeof node.name !== 'string') continue;
+      for (const action of Array.isArray(node.actions) ? node.actions : []) {
+        if (
+          !isPlainObject(action) ||
+          typeof action.name !== 'string' ||
+          typeof action.title !== 'string'
+        ) {
+          continue;
+        }
+        actions.push({
+          name: action.name,
+          title: action.title,
+          node: node.name,
+          guards: Array.isArray(action.guards)
+            ? action.guards.filter((guard): guard is string => typeof guard === 'string')
+            : [],
+        });
+      }
+    }
+    const edges = (Array.isArray(flow.edges) ? flow.edges : []).flatMap((edge) =>
+      isPlainObject(edge) &&
+      typeof edge.from === 'string' &&
+      typeof edge.action === 'string' &&
+      typeof edge.to === 'string'
+        ? [{ from: edge.from, action: edge.action, to: edge.to }]
+        : [],
+    );
+    return [
+      {
+        name: flow.name,
+        title: flow.title,
+        actions,
+        ...(Array.isArray(flow.edges) ? { edges } : {}),
+      },
+    ];
+  });
+}
+
 function asApplicationSummaries(value: unknown): SitemapApplicationSummary[] {
   if (!Array.isArray(value)) return [];
   const applications: SitemapApplicationSummary[] = [];
   for (const entry of value) {
     if (!isPlainObject(entry)) continue;
     if (typeof entry.name !== 'string' || typeof entry.intent !== 'string') continue;
-    const flows = (Array.isArray(entry.flows) ? entry.flows : []).flatMap((flow) => {
-      if (!isPlainObject(flow) || typeof flow.name !== 'string' || typeof flow.title !== 'string') {
-        return [];
-      }
-      const actions: SitemapActionSummary[] = [];
-      const directActions = Array.isArray(flow.actions) ? flow.actions : [];
-      for (const action of directActions) {
-        if (
-          isPlainObject(action) &&
-          typeof action.name === 'string' &&
-          typeof action.title === 'string' &&
-          typeof action.node === 'string'
-        ) {
-          actions.push({
-            name: action.name,
-            title: action.title,
-            node: action.node,
-            guards: Array.isArray(action.guards)
-              ? action.guards.filter((guard): guard is string => typeof guard === 'string')
-              : [],
-          });
-        }
-      }
-      for (const node of Array.isArray(flow.nodes) ? flow.nodes : []) {
-        if (!isPlainObject(node) || typeof node.name !== 'string') continue;
-        for (const action of Array.isArray(node.actions) ? node.actions : []) {
-          if (
-            !isPlainObject(action) ||
-            typeof action.name !== 'string' ||
-            typeof action.title !== 'string'
-          ) {
-            continue;
-          }
-          actions.push({
-            name: action.name,
-            title: action.title,
-            node: node.name,
-            guards: Array.isArray(action.guards)
-              ? action.guards.filter((guard): guard is string => typeof guard === 'string')
-              : [],
-          });
-        }
-      }
-      return [{ name: flow.name, title: flow.title, actions }];
-    });
+    const flows = asFlowSummaries(entry.flows).map((flow) => ({
+      name: flow.name,
+      title: flow.title,
+      ...(flow.actions === undefined ? {} : { actions: flow.actions }),
+    }));
     applications.push({ name: entry.name, intent: entry.intent, flows });
   }
   return applications;
@@ -222,6 +247,7 @@ export function createContractClient(baseUrl: string, fetchImpl: FetchLike): Con
           version: body.version,
           surfaces,
           applications: asApplicationSummaries(body.applications),
+          flows: asFlowSummaries(body.flows),
           capabilities: asCapabilitySummaries(body.capabilities),
         };
       } catch {
