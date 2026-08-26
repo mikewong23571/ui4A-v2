@@ -1,0 +1,26 @@
+T27 Phase D Task: 共享 canvas 宿主提炼
+
+Summary:
+- CanvasBody 缩为 useSearchParams → structured props 的纯 URL adapter。
+- 新 PresentationSurfaceHost 唯一拥有 catalog/sitemap/spec、POST Presentation、GET Sidecar、hydrate、action gate、surface/why/error/reload 状态链。
+- Canvas URL focus 与固定 workspace:my-work mount 使用同一代码路径；无标题文本推断。
+- 独立只读 catalog/sitemap/render-spec 前置请求并行，Presentation→Sidecar→hydrate 顺序保持。
+- components direct baseline 随 feature 归位从 4563 收缩至 4122（commit 8987887）。
+
+Files:
+- apps/web/src/components/canvas-body.tsx
+- apps/web/src/components/canvas/presentation-surface-host.tsx
+- apps/web/src/components/canvas/presentation-surface-host.test.tsx
+
+Why:
+T27 首页和 /canvas 必须共用同一台 binding-only Presentation 机器，不能复制取数、授权、水化或交互背书链。
+
+TDD:
+- Red: shared-host module missing.
+- Green: 4 shared-mount tests pass with exact workspace subject and single-tree/action/why/error/reload evidence.
+
+Verification:
+- 7 related test files / 36 tests: PASS
+- @ui4a/web typecheck and focused ESLint: PASS
+- CI=true TMPDIR=/home/mike/.cache/ui4a-t27-tmp pnpm e2e e2e/i3.spec.ts e2e/t24-presentation-honesty.spec.ts: PASS (5/5)
+- pnpm governance: PASS; Prettier/diff: PASS
