@@ -20,3 +20,30 @@ Verification:
 - I3 zero-whitelist fuzz: PASS
 - I5 replay: 53 events / 31 rels / hash equal
 - Prettier and git diff --check: PASS
+
+T27 Phase B Verification (自治验收)
+
+Scope:
+- e2e/human.spec.ts
+- e2e/dual-executor.spec.ts
+- e2e/s1.spec.ts
+- e2e/smoke.spec.ts
+- apps/web/src/app/home.test.tsx
+- e2e/i3.spec.ts
+- e2e/invariants.spec.ts
+
+Automated verification:
+- pnpm check: PASS (372 files passed, 6 skipped; 2880 tests passed, 10 skipped, 2 Phase D todo; governance OK)
+- CI=true TMPDIR=/home/mike/.cache/ui4a-t27-tmp pnpm e2e e2e/human.spec.ts e2e/dual-executor.spec.ts e2e/s1.spec.ts e2e/smoke.spec.ts: PASS (8 passed, 7 Temporal-unavailable skips)
+- CI=true TMPDIR=/home/mike/.cache/ui4a-t27-tmp pnpm e2e e2e/i3.spec.ts e2e/invariants.spec.ts: PASS (6 passed, 2 existing skips)
+- Prettier and diff checks: PASS
+
+Manual-equivalent verification:
+1. Confirm legacy home article/comment/inbox/delegation summaries are absent from assertions.
+2. Confirm B1-B3 and S1 preserve entity-state and event-log proof through canonical routes.
+3. Confirm I3 enumerates non-empty clickables and retains zero whitelist.
+4. Confirm Phase D obligations are explicit todos rather than compatibility behavior.
+Expected: old home can be removed without weakening business contracts or I3.
+
+Confirmation:
+- 自治验收：all gates and scripted replacement-assertion audit passed.
