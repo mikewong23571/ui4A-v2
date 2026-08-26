@@ -1,0 +1,25 @@
+Task: 单回合 sitemap 单读归并
+
+Summary:
+- Added optional preloaded sitemap input to runAgent, distinguishing omitted from explicitly unavailable input.
+- Reused one contract-client sitemap read for Agent context and step activity titles in inline Chat.
+- Added a pure SitemapSummary-to-title projection and preserved top-level flow/action/edge parsing in the shared HTTP adapter.
+- Kept independent runAgent at one self-read and prevented retry reads when Chat preload is unavailable.
+
+Files:
+- packages/agent/src/types.ts
+- packages/agent/src/loop/loop.ts and loop-context.test.ts
+- packages/agent/src/contract/http.ts
+- apps/web/src/chat/step-activity.ts and test
+- apps/web/src/app/api/chat/route.ts, route-test-kit.ts, route-ai-first.test.ts
+
+Why:
+A Chat turn needs one sitemap version for both LLM disclosure and human activity titles; duplicate reads waste context and can observe inconsistent versions.
+
+TDD evidence:
+- Red: 34/38 passed; expected failures were request count 2, preload still GET, missing pure title projection, and route still calling readSitemapTitles.
+- Green: 46 files / 368 tests passed; inline count=1, independent count=1, explicit unavailable preload count=0.
+- pnpm --filter @ui4a/agent typecheck
+- pnpm --filter @ui4a/web typecheck
+- pnpm governance
+- Autonomous acceptance by the orchestrating agent.
