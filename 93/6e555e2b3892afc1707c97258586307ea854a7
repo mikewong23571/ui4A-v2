@@ -1,0 +1,25 @@
+Task: broker 授权与运行时接线
+
+Summary:
+- Added trusted internal policy-scope context without changing PresentationRequest or Chat history.
+- Resolved workspace declarations and freshly authorized each region before every request hit.
+- Added partial-authorization diagnostics with no denied source bindings and all-denied failure.
+- Planned/selected each visible region by its declared intent, assembled one Surface/Sidecar, and used visible-only aggregate dependencies.
+- Added structural credential lens, cross-scope durable namespaces, Sidecar GET/POST source reauthorization and full workspace promotion.
+- Kept workspace out of business sitemap/entity/exec/core events.
+
+Files:
+- Engine Broker/compose/sidecar pure contracts and tests
+- Web Broker/runtime composition/authorization modules and tests
+- Direct Presentation, Sidecar lifecycle and Chat trusted-context route tests
+
+Why:
+D45 requires every cache/Recipe/Sidecar hit to reauthorize current region sources and degrade partially without leaking denied facts or creating a business entity.
+
+Verification:
+- Main focused run: 13 files / 81 tests passed; implementation final run: 14 files / 97 tests passed
+- Independent security re-audit: PASS (6 files / 34 tests)
+- engine/web typecheck and pnpm governance passed after baseline commit ada6a43
+
+Governance:
+packages/engine/src/presentation in-flight baseline updated to 4406/4000; shrink window unchanged.
