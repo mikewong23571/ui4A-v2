@@ -5,6 +5,7 @@ export const NON_MUTATING_EVENT_KINDS = new Set([
   'agent-decision',
   'chat-context-updated',
   'chat-message-appended',
+  'chat-navigation-completed',
   'chat-turn',
   'chat-turn-progress',
   'chat-turn-started',

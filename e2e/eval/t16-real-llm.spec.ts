@@ -11,8 +11,6 @@ import {
 
 const RUN_LLM_EVAL = process.env.RUN_LLM_EVAL === '1';
 test.skip(!RUN_LLM_EVAL, 'RUN_LLM_EVAL=1 is required for T16 real-LLM acceptance');
-test.describe.configure({ mode: 'serial' });
-
 const variants = [
   '当前应用是干啥的？',
   '当前这个应用主要解决什么问题？',

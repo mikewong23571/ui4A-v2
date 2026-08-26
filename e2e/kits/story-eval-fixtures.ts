@@ -3,6 +3,7 @@ import type { EventAppend } from '../../apps/web/src/db/events';
 
 import { isolatedEvalDatabaseUrl } from './story-eval-env';
 import { readOnlySafetyEvidence } from './story-eval-safety';
+import * as serverKit from './server-kit';
 import { readBusinessProjection, readEvents } from './story-eval-turns';
 import type {
   BusinessProjection,
@@ -177,7 +178,6 @@ export async function captureReadOnlyStoryAcrossRestart(
   const previousDatabaseUrl = process.env.DATABASE_URL;
   process.env.DATABASE_URL = databaseUrl;
   try {
-    const serverKit = await import('./server-kit');
     if (serverKit.DATABASE_URL !== databaseUrl) {
       throw new Error(
         'server-kit was initialized with a different database; use a dedicated worker',
@@ -239,9 +239,6 @@ export async function withIsolatedStoryServer<T>(
   const previousDatabaseUrl = process.env.DATABASE_URL;
   process.env.DATABASE_URL = databaseUrl;
   try {
-    // Import only after DATABASE_URL is pinned. server-kit captures it at module evaluation and
-    // performs the actual TRUNCATE/start/health/teardown lifecycle.
-    const serverKit = await import('./server-kit');
     if (serverKit.DATABASE_URL !== databaseUrl) {
       throw new Error(
         'server-kit was initialized with a different database; use a dedicated worker',

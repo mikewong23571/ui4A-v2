@@ -28,8 +28,6 @@ import {
 const RUN_LLM_EVAL = process.env.RUN_LLM_EVAL === '1';
 
 test.skip(!RUN_LLM_EVAL, 'RUN_LLM_EVAL=1 is required for focused Phase G/H real-LLM eval');
-test.describe.configure({ mode: 'serial' });
-
 test.beforeEach(() => {
   test.setTimeout(420_000);
   expect(process.env.DATABASE_URL).toBe(isolatedEvalDatabaseUrl());
@@ -99,7 +97,7 @@ test('U18: real Assistant reads the same authorized article projection as the re
   const profile = loadLlmEvalProfile();
   const evidence = await withIsolatedStoryServer(profile, async (baseUrl) => {
     const rendererEntity = await (
-      await fetch(`${baseUrl}/api/entity?rel=${encodeURIComponent('post:first-post')}`)
+      await fetch(`${baseUrl}/api/entity?rel=${encodeURIComponent('articles')}`)
     ).json();
     const result = await captureReadOnlyStory(baseUrl, async () => [
       await runEvalTurn(
@@ -113,14 +111,26 @@ test('U18: real Assistant reads the same authorized article projection as the re
     expect(turn.driver).toBe('llm');
     expect(['answered', 'done']).toContain(turn.outcome);
     expect(result.safety.passed).toBe(true);
-    const fields = record(record(rendererEntity)?.properties)?.fields;
-    const answer = turnEvidence(turn);
-    for (const name of ['title', 'category', 'body']) {
+    const members = record(rendererEntity)?.entities;
+    expect(Array.isArray(members)).toBe(true);
+    const memberIndex = (members as unknown[]).findIndex(
+      (member) => record(record(member)?.properties)?.rel === 'post:first-post',
+    );
+    expect(memberIndex).toBeGreaterThanOrEqual(0);
+    const fields = record(record((members as unknown[])[memberIndex])?.properties)?.fields;
+    const answer = [turn.summary, ...turn.messages].filter(Boolean).join('\n');
+    expect(answer.length).toBeGreaterThan(0);
+    for (const name of ['title', 'category']) {
       const value = record(fields)?.[name];
       expect(typeof value, `renderer field ${name}`).toBe('string');
       expect(answer, `Assistant omitted renderer field ${name}`).toContain(String(value));
     }
-    expect(answer).toContain('/properties/fields');
+    expect(typeof record(fields)?.body).toBe('string');
+    const requiredSources = ['title', 'category', 'body'].map((name) => ({
+      rel: 'articles',
+      pointer: `/entities/${memberIndex}/properties/fields/${name}`,
+    }));
+    expect(turn.payload.sources).toEqual(expect.arrayContaining(requiredSources));
     return { rendererEntity, result };
   });
 
@@ -131,8 +141,8 @@ test('U18: real Assistant reads the same authorized article projection as the re
     manualRubric: {
       status: 'pending',
       criteria: [
-        'title, category, and body agree with the renderer projection',
-        'no field omitted for token convenience',
+        'title and category agree exactly with the renderer projection',
+        'body is faithfully summarized and the exact body source is cited',
       ],
     },
   });

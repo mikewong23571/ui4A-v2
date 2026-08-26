@@ -22,8 +22,6 @@ const REQUEST =
   '新增一篇文章，标题为《操作流程》，分类为 tech，正文介绍操作流程，内容是“操作流程包括准备、执行和复核。”';
 
 test.skip(!RUN_LLM_EVAL, 'RUN_LLM_EVAL=1 is required for the real-LLM scoped-context eval');
-test.describe.configure({ mode: 'serial' });
-
 test.beforeEach(() => {
   test.setTimeout(420_000);
   expect(process.env.DATABASE_URL).toBe(isolatedEvalDatabaseUrl());
