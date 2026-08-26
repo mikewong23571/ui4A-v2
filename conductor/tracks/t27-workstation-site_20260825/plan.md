@@ -51,7 +51,7 @@
 
 ## Phase C: 站点壳与三形态导航
 
-- [ ] Task: presence site 值域一次性切换(D46 第 3 问)
+- [x] Task: presence site 值域一次性切换(D46 第 3 问) `505243a`
   - Red:站点推导/装配/起点链的 site 值断言(`workstation`/`meta`)
   - Green:`/meta` 前缀推导 `meta`,其余路径推导 `workstation`;同步迁移
     `presence/client.ts`、`chat-situation.ts` defaults、`start-chain.ts` 站点
