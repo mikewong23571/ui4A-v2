@@ -1,0 +1,18 @@
+T27 Phase A Task: spec/plan 回改对齐 D46
+
+Summary:
+- 把 spec 的五项开放决策改为 D46 已决投影。
+- 将 Phase B–F 的任务合同具体化为共享宿主、URL-derived presence observation、workstation/meta、站点导航与系统区、canonical flow 双桥。
+- 删除推荐默认、可降级和未决选择措辞。
+
+Files:
+- conductor/tracks/t27-workstation-site_20260825/spec.md
+- conductor/tracks/t27-workstation-site_20260825/plan.md
+
+Why:
+让后续实现只执行 D46 的单一路径，防止已否决形态在任务执行中复辟。
+
+Verification:
+- rg 未决选择措辞（零命中）
+- pnpm exec prettier --check <spec> <plan>
+- git diff --check
