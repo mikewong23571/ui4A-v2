@@ -222,6 +222,7 @@ export function suspendForConfirmation(
         ? { capabilities: { ...snapshot.capabilities } }
         : {}),
       artifacts: { ...(snapshot.artifacts ?? {}) },
+      threads: snapshot.threads ?? {},
     },
     events: [event],
     confirmation: {
@@ -543,6 +544,7 @@ export function rejectConfirmation(
         ? { capabilities: { ...snapshot.capabilities } }
         : {}),
       artifacts: { ...(snapshot.artifacts ?? {}) },
+      threads: snapshot.threads ?? {},
     },
     events: [rejectedEvent],
   };

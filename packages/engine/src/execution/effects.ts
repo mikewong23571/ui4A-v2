@@ -405,6 +405,7 @@ export function applyEffects(
         ? { capabilities: { ...snapshot.capabilities } }
         : {}),
       artifacts: { ...(snapshot.artifacts ?? {}) },
+      threads: snapshot.threads ?? {},
     },
     events: [executedEvent, ...appendedEvents, ...spawnEvents],
   };

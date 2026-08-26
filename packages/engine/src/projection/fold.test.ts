@@ -76,6 +76,7 @@ describe('fold 投影', () => {
       // T7:renderSpecs 表恒物化(空表;凝固事件折叠的目标表)。
       renderSpecs: {},
       artifacts: {},
+      threads: {},
     });
   });
 

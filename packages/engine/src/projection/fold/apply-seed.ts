@@ -47,6 +47,7 @@ export function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnap
     // T7:renderSpecs 表随行(seed 不产凝固;与 confirmations 同口径)。
     renderSpecs: { ...(snapshot.renderSpecs ?? {}) },
     artifacts: { ...(snapshot.artifacts ?? {}) },
+    threads: { ...(snapshot.threads ?? {}) },
     // T10:applications 表随行,但仅在场时携带——缺省不物化为 {}
     // (app-known 以"表不存在"为过渡期 vacuous pass 信号;与 effects.ts 同口径)。
     ...(snapshot.applications !== undefined ? { applications: { ...snapshot.applications } } : {}),

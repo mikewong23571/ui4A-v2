@@ -48,6 +48,7 @@ import {
   applyDefinitionSubmitted,
 } from './apply-definition';
 import type { LogEvent } from './log-event';
+import { applyThreadEvent } from './apply-thread';
 
 export * from './log-event';
 
@@ -180,6 +181,7 @@ export function fold(
           definitionVersions: {},
           renderSpecs: {},
           artifacts: {},
+          threads: {},
         }
       : {
           instances: initial.instances,
@@ -202,6 +204,7 @@ export function fold(
           // capability-registered 过渡期 vacuous pass 信号)。
           ...(initial.capabilities !== undefined ? { capabilities: initial.capabilities } : {}),
           artifacts: initial.artifacts ?? {},
+          threads: initial.threads ?? {},
         };
   for (const event of events) {
     switch (event.kind) {
@@ -271,6 +274,12 @@ export function fold(
         break;
       case 'capability-artifact-created':
         snapshot = applyCapabilityArtifactCreated(snapshot, event);
+        break;
+      case 'thread-created':
+      case 'thread-reference-attached':
+      case 'thread-reference-detached':
+      case 'thread-status-changed':
+        snapshot = applyThreadEvent(snapshot, event);
         break;
       case 'action-rejected':
       case 'entity-appended':
