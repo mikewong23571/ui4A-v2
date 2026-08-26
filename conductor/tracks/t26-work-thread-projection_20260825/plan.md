@@ -76,12 +76,12 @@
 
 ## Phase D: 锚定接线(形状以 D44 为准)
 
-- [ ] Task: 线实体动作经正常 exec 裁决
+- [x] Task: 线实体动作经正常 exec 裁决 d6f1e4e
   - `threads#create` 与 `thread:<id>` 的 attach/detach/pause/resume/complete/
     archive 走 declaration → guard → schema 正常裁决链;human/agent 同权
     (I4 不受影响:approve 仍 human-only),可信 principal 固定 owner
   - 测试:action 合同测试 + 拒绝留痕(I6 口径)
-- [ ] Task: chat/exec 入口的 thread 显式记录
+- [~] Task: chat/exec 入口的 thread 显式记录
   - presence.thread 仅为当前 user message 选择一条已存在且同 owner 的线;
     另写独立 `thread-reference-attached(category=context)` core 事件并记录
     resolved id/source,不让 turn 后续副作用继承;不修改 chat detail wire 形状
