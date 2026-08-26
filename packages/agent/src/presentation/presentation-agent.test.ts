@@ -40,7 +40,7 @@ function input(overrides: Partial<PresentationGenerationInput> = {}): Presentati
       subjectShape: 'post',
       intent: 'inspect',
       definitionRefs: ['application:publishing', 'flow:post-status'],
-      slots: ['subject.rel'],
+      slots: ['subject'],
       versions: { enumerator: 1, application: '7', flow: '3' },
     },
     definitions: [
@@ -75,7 +75,7 @@ function validModelOutput(): Record<string, unknown> {
           bindings: {
             value: {
               kind: 'property',
-              subject: '$slot:subject.rel',
+              subject: '$slot:subject',
               path: 'properties.fields.body',
             },
           },
@@ -176,6 +176,19 @@ describe('Presentation Agent context boundary', () => {
     expect(result).toMatchObject({ status: 'failed', reasonCode: 'context-invalid' });
     expect(transport.calls).toHaveLength(0);
   });
+
+  it('rejects a non-canonical logical-field slot inventory before transport', async () => {
+    const transport = createScriptedTransport(() =>
+      sseResponse(JSON.stringify(validModelOutput())),
+    );
+    const agent = createPresentationAgent({ ...CONFIG, fetchImpl: transport.fetch });
+    const result = await agent.generate(
+      input({ scenario: { ...input().scenario, slots: ['subject.rel'] } }),
+    );
+
+    expect(result).toMatchObject({ status: 'failed', reasonCode: 'context-invalid' });
+    expect(transport.calls).toHaveLength(0);
+  });
 });
 
 describe('Presentation candidate parser', () => {
@@ -189,7 +202,7 @@ describe('Presentation candidate parser', () => {
       status: 'candidate',
       candidate: {
         key: { scenario: 'entity-inspect:post' },
-        slots: [{ name: 'subject.rel', kind: 'entity' }],
+        slots: [{ name: 'subject', kind: 'entity' }],
         dependencies: [
           { kind: 'definition', subject: 'application:publishing', version: '7' },
           { kind: 'definition', subject: 'flow:post-status', version: '3' },
@@ -202,6 +215,10 @@ describe('Presentation candidate parser', () => {
       },
     });
     if (result.status !== 'candidate') throw new Error('expected candidate');
+    expect(result.candidate.surfaceTemplate.root).toMatchObject({
+      kind: 'layout',
+      children: [{ kind: 'slot', name: 'subject' }],
+    });
     expect(validateRecipeCandidate(result.candidate, CATALOG)).toEqual({ valid: true, errors: [] });
   });
 

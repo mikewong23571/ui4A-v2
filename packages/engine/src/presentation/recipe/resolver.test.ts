@@ -34,26 +34,44 @@ const surface: SurfaceTree = {
 const recipeSurface: SurfaceTree = {
   schemaVersion: 1,
   root: {
-    kind: 'word',
-    id: 'recipe-root',
+    kind: 'layout',
+    id: 'recipe-layout',
     role: 'primary-content',
-    word: 'prose',
-    bindings: {
-      value: {
-        kind: 'property',
-        subject: '$slot:subject',
-        path: 'properties.fields.title',
-      },
-    },
-    dependencies: [
+    layout: 'stack',
+    children: [
       {
-        kind: 'entity',
-        subject: '$slot:subject',
-        version: '$runtime',
-        paths: ['properties.fields.title'],
+        kind: 'slot',
+        id: 'recipe-subject',
+        role: 'primary-content',
+        name: 'subject',
+        child: {
+          kind: 'word',
+          id: 'recipe-root',
+          role: 'primary-content',
+          word: 'prose',
+          bindings: {
+            value: {
+              kind: 'property',
+              subject: '$slot:subject',
+              path: 'properties.fields.title',
+            },
+          },
+          dependencies: [
+            {
+              kind: 'entity',
+              subject: '$slot:subject',
+              version: '$runtime',
+              paths: ['properties.fields.title'],
+            },
+            { kind: 'catalog', subject: catalog.id, version: catalog.version },
+          ],
+          provenance: [{ kind: 'presentation-agent', ref: 'fixture', model: 'model' }],
+        },
+        dependencies: [],
+        provenance: [{ kind: 'presentation-agent', ref: 'fixture' }],
       },
-      { kind: 'catalog', subject: catalog.id, version: catalog.version },
     ],
+    dependencies: [],
     provenance: [{ kind: 'presentation-agent', ref: 'fixture', model: 'model' }],
   },
 };
@@ -148,9 +166,12 @@ describe('Presentation fastpath resolver', () => {
       catalog,
       'g1',
     );
+    const instantiatedSurface = JSON.parse(
+      JSON.stringify(recipeSurface).replaceAll('$slot:subject', 'post:first'),
+    ) as SurfaceTree;
     const instantiate = vi.fn(async () => ({
-      id: 'sidecar:recipe',
-      version: 1,
+      surface: instantiatedSurface,
+      sidecar: { id: 'sidecar:recipe', version: 1 },
     }));
     const result = await resolvePresentationFastpath(
       {
@@ -175,7 +196,52 @@ describe('Presentation fastpath resolver', () => {
       presentationLlmCalls: 0,
       sidecar: { id: 'sidecar:recipe', version: 1 },
     });
+    expect(result.status === 'ready' ? JSON.stringify(result.surface) : '').not.toContain('$slot:');
     expect(instantiate).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips a Recipe that cannot be fully instantiated and continues to generic', async () => {
+    const recipeCandidate = {
+      key: {
+        application: 'publishing',
+        applicationVersion: '1',
+        scenario: 'inspect',
+        subjectShape: 'entity',
+        intent: 'read',
+        catalogVersion: catalog.version,
+      },
+      slots: [{ name: 'subject', kind: 'entity' as const }],
+      surfaceTemplate: recipeSurface,
+      dependencies: [{ kind: 'catalog' as const, subject: catalog.id, version: catalog.version }],
+      provenance: { model: 'model', generatedAt: 'now' },
+    };
+    const registered = registerRecipeCandidate(
+      createRecipeRegistry(),
+      recipeCandidate,
+      catalog,
+      'g2',
+    );
+    const generic = vi.fn(async () => ({ surface, dependencies }));
+    const result = await resolvePresentationFastpath(
+      {
+        key,
+        dependencies,
+        presentation: createPresentationSnapshot(),
+        registry: registered.registry,
+        recipeKey: recipeCandidate.key,
+        recipeDependencies: recipeCandidate.dependencies,
+      },
+      {
+        authorize: async () => true,
+        now: () => 1,
+        instantiateRecipe: async () => undefined,
+        generic,
+        plan: vi.fn(),
+      },
+    );
+
+    expect(result).toMatchObject({ hitPath: 'generic' });
+    expect(generic).toHaveBeenCalledTimes(1);
   });
 
   it('uses generic without LLM and honestly fails when only new planning is unavailable', async () => {

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createRecipeRegistry,
+  instantiateRecipeSurface,
   promoteRecipe,
   registerRecipeCandidate,
   type ApplicationRenderRecipeCandidate,
@@ -341,6 +342,13 @@ describe('composition Sidecar/Recipe fastpath', () => {
     const runtime = {
       authorize: async () => true,
       now: () => 1,
+      instantiateRecipe: async (recipe: ReturnType<typeof registerRecipeCandidate>['recipe']) => ({
+        surface: instantiateRecipeSurface(recipe, [
+          { name: 'waiting', kind: 'collection', subject: 'inbox' },
+          { name: 'moving', kind: 'collection', subject: 'delegations' },
+          { name: 'threads', kind: 'collection', subject: 'threads' },
+        ]),
+      }),
       generic: vi.fn(async () => ({
         surface: surface('generic'),
         dependencies: aggregateDependencies,
@@ -348,11 +356,16 @@ describe('composition Sidecar/Recipe fastpath', () => {
       plan: vi.fn(),
     };
 
-    await expect(
-      resolvePresentationFastpath({ ...base, recipeKey: candidate.key }, runtime),
-    ).resolves.toMatchObject({
+    const promotedResult = await resolvePresentationFastpath(
+      { ...base, recipeKey: candidate.key },
+      runtime,
+    );
+    expect(promotedResult).toMatchObject({
       hitPath: 'promoted-recipe',
     });
+    expect(
+      promotedResult.status === 'ready' ? JSON.stringify(promotedResult.surface) : '',
+    ).not.toContain('$slot:');
     await expect(
       resolvePresentationFastpath(
         {
@@ -367,8 +380,13 @@ describe('composition Sidecar/Recipe fastpath', () => {
     ).resolves.toMatchObject({ hitPath: 'generic' });
 
     const candidateOnly = { ...base, registry: first.registry };
-    await expect(
-      resolvePresentationFastpath({ ...candidateOnly, recipeKey: candidate.key }, runtime),
-    ).resolves.toMatchObject({ hitPath: 'candidate-recipe' });
+    const candidateResult = await resolvePresentationFastpath(
+      { ...candidateOnly, recipeKey: candidate.key },
+      runtime,
+    );
+    expect(candidateResult).toMatchObject({ hitPath: 'candidate-recipe' });
+    expect(
+      candidateResult.status === 'ready' ? JSON.stringify(candidateResult.surface) : '',
+    ).not.toContain('$slot:');
   });
 });

@@ -107,15 +107,21 @@ function protocolExample(descriptor: ScenarioDescriptor) {
         layout: 'stack',
         children: [
           {
-            kind: 'word',
-            id: 'subject-identity',
-            role: 'identity',
-            word: 'heading',
-            bindings: {
-              value: {
-                kind: 'property',
-                subject: `$slot:${descriptor.slots[0]}`,
-                path: 'properties.rel',
+            kind: 'slot',
+            id: 'subject-region',
+            role: 'primary-content',
+            name: 'subject',
+            child: {
+              kind: 'word',
+              id: 'subject-identity',
+              role: 'identity',
+              word: 'heading',
+              bindings: {
+                value: {
+                  kind: 'property',
+                  subject: '$slot:subject',
+                  path: 'properties.rel',
+                },
               },
             },
           },

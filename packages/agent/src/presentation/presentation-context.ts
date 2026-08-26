@@ -11,7 +11,6 @@ import {
   MAX_DEFINITIONS,
   MAX_EXAMPLE_BYTES,
   MAX_EXAMPLES,
-  MAX_SLOTS,
   MAX_WORDS,
   ROLE_SET,
   SCENARIO_KIND_SET,
@@ -75,12 +74,12 @@ export function contextIssues(input: PresentationGenerationInput): string[] {
     issues.push('scenario identity is invalid');
   }
   if (
-    scenario.slots.length === 0 ||
-    scenario.slots.length > MAX_SLOTS ||
-    new Set(scenario.slots).size !== scenario.slots.length ||
-    scenario.slots.some((slot) => !SLOT_NAME.test(slot) || FORBIDDEN_IDENTITY.test(slot))
+    scenario.slots.length !== 1 ||
+    scenario.slots[0] !== 'subject' ||
+    !SLOT_NAME.test(scenario.slots[0]) ||
+    FORBIDDEN_IDENTITY.test(scenario.slots[0])
   ) {
-    issues.push('scenario slots are invalid or over budget');
+    issues.push('scenario must declare the canonical subject region slot');
   }
   if (
     scenario.definitionRefs.length === 0 ||

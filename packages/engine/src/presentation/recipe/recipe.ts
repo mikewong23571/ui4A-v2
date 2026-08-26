@@ -1,5 +1,6 @@
 import type { SurfaceCatalog, SurfaceTree } from '../surface/index';
 import { validateSurfaceTree } from '../surface/index';
+import { canonicalRecipeSlotIssues } from './slot-shape';
 
 export interface ApplicationRecipeKey {
   application: string;
@@ -213,17 +214,14 @@ export function validateRecipeCandidate(
       errors.push(`surface subject "${subject}" is not a declared slot`);
     }
   }
-  const referencedSlots = subjects
-    .map((subject) => /^\$slot:([a-zA-Z0-9_.-]+)$/.exec(subject)?.[1])
-    .filter((slot): slot is string => slot !== undefined)
-    .filter((slot, index, all) => all.indexOf(slot) === index);
   const candidateSlots = Array.isArray(value.slots) ? value.slots : [];
-  if (
-    Array.isArray(value.slots) &&
-    (referencedSlots.length !== candidateSlots.length ||
-      referencedSlots.some((slot, index) => slot !== recordSlotName(candidateSlots[index])))
-  ) {
-    errors.push('recipe slots must match the complete ordered surface slot shape');
+  if (Array.isArray(value.slots)) {
+    errors.push(
+      ...canonicalRecipeSlotIssues(
+        surfaceResult.surface,
+        candidateSlots.map((slot) => ({ name: recordSlotName(slot) ?? '' })),
+      ),
+    );
   }
 
   if (!Array.isArray(value.dependencies) || value.dependencies.length === 0) {
@@ -501,16 +499,10 @@ export function instantiateRecipeSurface(
   ) {
     throw new Error('recipe instantiation slot shape does not match the declared ordered shape');
   }
-  const subjects = new Set<string>();
   for (const slot of slots) {
-    if (
-      slot.subject.trim() === '' ||
-      slot.subject.startsWith('$slot:') ||
-      subjects.has(slot.subject)
-    ) {
-      throw new Error('recipe instantiation contains an invalid or duplicate slot subject');
+    if (slot.subject.trim() === '' || slot.subject.startsWith('$slot:')) {
+      throw new Error('recipe instantiation contains an invalid slot subject');
     }
-    subjects.add(slot.subject);
   }
   const bound = Object.fromEntries(slots.map(({ name, subject }) => [name, subject]));
   const surface = {

@@ -4,6 +4,7 @@
  * 元数据由系统机械添加,模型永远接触不到。
  */
 import {
+  assembleSurfaceRegions,
   SURFACE_SCHEMA_VERSION,
   type ApplicationRecipeSlot,
   type RecipeDependency,
@@ -110,14 +111,13 @@ function withTrustedMetadata(
   }
 }
 
-function slotKind(input: PresentationGenerationInput, name: string): ApplicationRecipeSlot['kind'] {
-  if (name === 'members' || input.scenario.subjectShape.startsWith('collection:')) {
+function slotKind(input: PresentationGenerationInput): ApplicationRecipeSlot['kind'] {
+  if (input.scenario.subjectShape.startsWith('collection:')) {
     return 'collection';
   }
-  if (name === 'subject.node' || input.scenario.subjectShape.startsWith('flow-instance:')) {
+  if (input.scenario.subjectShape.startsWith('flow-instance:')) {
     return 'flow';
   }
-  if (name.startsWith('target.') || name.startsWith('source.')) return 'selection';
   return 'entity';
 }
 
@@ -151,10 +151,23 @@ export function parsePresentationCandidate(
     const issues: string[] = [];
     const root = parseBareNode(parsed.root, input, 'root', issues);
     if (root === undefined || issues.length > 0) return failure('output-invalid', issues);
-    const surfaceTemplate: SurfaceTree = {
+    const subtree: SurfaceTree = {
       schemaVersion: SURFACE_SCHEMA_VERSION,
       root: withTrustedMetadata(root, input, provenance),
     };
+    const trustedProvenance: SurfaceProvenance[] = [
+      { kind: 'presentation-agent', ref: input.scenario.key, model: provenance.model },
+    ];
+    const surfaceTemplate = assembleSurfaceRegions(
+      [
+        {
+          region: 'subject',
+          surface: subtree,
+          provenance: trustedProvenance,
+        },
+      ],
+      { provenance: trustedProvenance },
+    );
     const application = applicationIdentity(input);
     const dependencies: RecipeDependency[] = [
       ...input.definitions.map(({ ref, version, allowedPointers }) => ({
@@ -176,7 +189,7 @@ export function parsePresentationCandidate(
           intent: input.scenario.intent,
           catalogVersion: input.catalog.version,
         },
-        slots: input.scenario.slots.map((name) => ({ name, kind: slotKind(input, name) })),
+        slots: input.scenario.slots.map((name) => ({ name, kind: slotKind(input) })),
         surfaceTemplate,
         dependencies,
         provenance,

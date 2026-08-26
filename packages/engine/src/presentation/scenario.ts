@@ -100,7 +100,7 @@ function descriptorsForCollections(
         subjectShape: `collection:${collection}`,
         intent: 'browse-members',
         definitionRefs,
-        slots: ['subject.rel', 'members'],
+        slots: ['subject'],
         versions: flowVersions(applicationVersion, flow.version),
       });
     }
@@ -131,7 +131,7 @@ function descriptorsForConfirmations(
         subjectShape: 'confirmation:pending',
         intent: 'review-proposed-effect',
         definitionRefs,
-        slots: ['subject.rel', 'target.rel', 'target.action'],
+        slots: ['subject'],
         versions: flowVersions(applicationVersion, flow.version),
       });
     }
@@ -172,7 +172,7 @@ function descriptorsForArtifacts(
         subjectShape: `capability-artifact:${capabilityName}`,
         intent: 'inspect-provenance-and-output',
         definitionRefs: [...actionRefs, `capability:${capabilityName}@${capabilityVersion}`],
-        slots: ['subject.rel', 'source.rel'],
+        slots: ['subject'],
         versions: {
           ...flowVersions(applicationVersion, flow.version),
           capability: capabilityVersion,
@@ -215,7 +215,7 @@ export function enumerateApplicationScenarios(
         `application:${applicationName}@${applicationVersion}`,
         ...flows.map(({ baseRef }) => baseRef),
       ],
-      slots: ['subject.rel'],
+      slots: ['subject'],
       versions: {
         enumerator: SCENARIO_ENUMERATOR_VERSION,
         application: applicationVersion,
@@ -227,7 +227,7 @@ export function enumerateApplicationScenarios(
       subjectShape: `flow-instance:${flow.definition.name}`,
       intent: 'inspect-entity',
       definitionRefs: [flow.baseRef],
-      slots: ['subject.rel'],
+      slots: ['subject'],
       versions: flowVersions(applicationVersion, flow.version),
     })),
     ...flows.flatMap((flow) =>
@@ -239,7 +239,7 @@ export function enumerateApplicationScenarios(
           subjectShape: `flow-instance:${flow.definition.name}`,
           intent: 'continue-current-task',
           definitionRefs: [`${flow.baseRef}#node/${node.name}`],
-          slots: ['subject.rel', 'subject.node'],
+          slots: ['subject'],
           versions: flowVersions(applicationVersion, flow.version),
         })),
     ),

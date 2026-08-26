@@ -78,7 +78,7 @@ describe('enumerateApplicationScenarios', () => {
         `flow:article-drafting@${publishingVersion}`,
         `flow:post-status@${publishingVersion}`,
       ],
-      slots: ['subject.rel'],
+      slots: ['subject'],
       versions: { enumerator: SCENARIO_ENUMERATOR_VERSION, application: publishingVersion },
     });
     expect(first).toContainEqual({
@@ -87,7 +87,7 @@ describe('enumerateApplicationScenarios', () => {
       subjectShape: 'flow-instance:article-drafting',
       intent: 'continue-current-task',
       definitionRefs: [`flow:article-drafting@${publishingVersion}#node/ready`],
-      slots: ['subject.rel', 'subject.node'],
+      slots: ['subject'],
       versions: {
         enumerator: SCENARIO_ENUMERATOR_VERSION,
         application: publishingVersion,
@@ -102,7 +102,7 @@ describe('enumerateApplicationScenarios', () => {
       definitionRefs: [
         `flow:article-drafting@${publishingVersion}#node/ready/action/publish/effect/append`,
       ],
-      slots: ['subject.rel', 'members'],
+      slots: ['subject'],
       versions: {
         enumerator: SCENARIO_ENUMERATOR_VERSION,
         application: publishingVersion,
@@ -115,7 +115,7 @@ describe('enumerateApplicationScenarios', () => {
       subjectShape: 'confirmation:pending',
       intent: 'review-proposed-effect',
       definitionRefs: [`flow:post-status@${publishingVersion}#node/published/action/archive`],
-      slots: ['subject.rel', 'target.rel', 'target.action'],
+      slots: ['subject'],
       versions: {
         enumerator: SCENARIO_ENUMERATOR_VERSION,
         application: publishingVersion,

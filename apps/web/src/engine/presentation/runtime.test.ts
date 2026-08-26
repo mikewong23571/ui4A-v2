@@ -133,38 +133,56 @@ describe('durable user Sidecar fastpath', () => {
         application: 'runtime',
         applicationVersion: '1',
         scenario: 'human-promoted',
-        subjectShape: 'entity',
+        subjectShape: 'flow-instance:post-status',
         intent: 'review',
         catalogVersion: PRESENTATION_SURFACE_CATALOG.version,
       },
-      slots: [{ name: 'subject', kind: 'entity' as const }],
+      slots: [{ name: 'subject', kind: 'flow' as const }],
       surfaceTemplate: {
         schemaVersion: 1 as const,
         root: {
-          kind: 'word' as const,
-          id: 'identity',
-          role: 'identity' as const,
-          word: 'heading',
-          bindings: {
-            value: {
-              kind: 'property' as const,
-              subject: '$slot:subject',
-              path: 'properties.fields.title',
-            },
-          },
-          dependencies: [
+          kind: 'layout' as const,
+          id: 'root',
+          role: 'primary-content' as const,
+          layout: 'stack' as const,
+          children: [
             {
-              kind: 'entity' as const,
-              subject: '$slot:subject',
-              version: '$runtime',
-              paths: ['properties.fields.title'],
-            },
-            {
-              kind: 'catalog' as const,
-              subject: PRESENTATION_SURFACE_CATALOG.id,
-              version: PRESENTATION_SURFACE_CATALOG.version,
+              kind: 'slot' as const,
+              id: 'subject-region',
+              role: 'primary-content' as const,
+              name: 'subject',
+              child: {
+                kind: 'word' as const,
+                id: 'identity',
+                role: 'identity' as const,
+                word: 'heading',
+                bindings: {
+                  value: {
+                    kind: 'property' as const,
+                    subject: '$slot:subject',
+                    path: 'properties.fields.title',
+                  },
+                },
+                dependencies: [
+                  {
+                    kind: 'entity' as const,
+                    subject: '$slot:subject',
+                    version: '$runtime',
+                    paths: ['properties.fields.title'],
+                  },
+                  {
+                    kind: 'catalog' as const,
+                    subject: PRESENTATION_SURFACE_CATALOG.id,
+                    version: PRESENTATION_SURFACE_CATALOG.version,
+                  },
+                ],
+                provenance: [{ kind: 'human-patch' as const, ref: 'sidecar:source' }],
+              },
+              dependencies: [],
+              provenance: [{ kind: 'human-patch' as const, ref: 'sidecar:source' }],
             },
           ],
+          dependencies: [],
           provenance: [{ kind: 'human-patch' as const, ref: 'sidecar:source' }],
         },
       },
@@ -210,10 +228,20 @@ describe('durable user Sidecar fastpath', () => {
         1: {
           provenance: { kind: 'application-recipe' },
           surface: {
-            root: { bindings: { value: { subject: 'post:first-post' } } },
+            root: {
+              children: [{ child: { bindings: { value: { subject: 'post:first-post' } } } }],
+            },
           },
         },
       },
     });
+    const stored = await findActiveSidecar(getDb(), {
+      principal: 'user:local',
+      policyScope: 'local-demo',
+      subject: 'post:first-post',
+      intent: 'review',
+      deviceClass: 'any',
+    });
+    expect(JSON.stringify(stored?.versions[1]?.surface)).not.toContain('$slot:');
   });
 });

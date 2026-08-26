@@ -27,6 +27,7 @@ import { RENDER_WORDS } from '../../render/registry';
 import { semanticHintsOf } from './situation';
 import { currentRecipeCoordinator } from './recipes-runtime';
 import { selectAndInstantiateRecipe } from './recipe-selection';
+import { singleSubjectRecipeContext } from './recipe-context';
 
 const runtimeKey = Symbol.for('ui4a.presentation-broker');
 
@@ -172,13 +173,15 @@ export function getPresentationBroker(): WebPresentationBroker {
       if (sidecar === undefined) {
         await hydratePromotedRecipes();
         if (typeof request.subject !== 'string') return { kind: 'miss' };
+        const recipeContext = singleSubjectRecipeContext(situation);
+        if (recipeContext === undefined) return { kind: 'miss' };
         const selected = selectAndInstantiateRecipe(
           Object.values(currentRecipeCoordinator().registry().recipes),
           {
-            subjectShape: 'entity',
+            subjectShape: recipeContext.subjectShape,
             intent: request.intent,
             catalogVersion: PRESENTATION_SURFACE_CATALOG.version,
-            slots: [{ name: 'subject', kind: 'entity', subject: request.subject }],
+            slots: recipeContext.slots,
           },
         );
         if (selected === undefined) return { kind: 'miss' };

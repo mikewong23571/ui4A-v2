@@ -29,15 +29,35 @@ function surface(subject = '$slot:subject'): SurfaceTree {
   return {
     schemaVersion: 1,
     root: {
-      kind: 'word',
-      id: 'identity',
-      role: 'identity',
-      word: 'prose',
-      bindings: { value: { kind: 'property', subject, path: 'properties.fields.title' } },
-      dependencies: [
-        { kind: 'entity', subject, version: '$runtime', paths: ['properties.fields.title'] },
-        { kind: 'catalog', subject: catalog.id, version: catalog.version },
+      kind: 'layout',
+      id: 'root',
+      role: 'primary-content',
+      layout: 'stack',
+      children: [
+        {
+          kind: 'slot',
+          id: 'subject-region',
+          role: 'primary-content',
+          name: 'subject',
+          child: {
+            kind: 'word',
+            id: 'identity',
+            role: 'identity',
+            word: 'prose',
+            bindings: { value: { kind: 'property', subject, path: 'properties.fields.title' } },
+            dependencies: [
+              { kind: 'entity', subject, version: '$runtime', paths: ['properties.fields.title'] },
+              { kind: 'catalog', subject: catalog.id, version: catalog.version },
+            ],
+            provenance: [
+              { kind: 'presentation-agent', ref: 'generation:1', model: 'configured-model' },
+            ],
+          },
+          dependencies: [],
+          provenance: [{ kind: 'presentation-agent', ref: 'generation:1' }],
+        },
       ],
+      dependencies: [],
       provenance: [{ kind: 'presentation-agent', ref: 'generation:1', model: 'configured-model' }],
     },
   };
@@ -63,6 +83,12 @@ function candidate(): ApplicationRenderRecipeCandidate {
   };
 }
 
+function subjectRegionChild(subject = '$slot:subject'): SurfaceTree['root'] {
+  const root = surface(subject).root;
+  if (root.kind !== 'layout' || root.children[0]?.kind !== 'slot') throw new Error('fixture');
+  return root.children[0].child;
+}
+
 function compositionCandidate(): ApplicationRenderRecipeCandidate {
   const next = candidate();
   next.key.subjectShape = 'composition:my-work@3[waiting:collection,moving:entity]';
@@ -80,8 +106,30 @@ function compositionCandidate(): ApplicationRenderRecipeCandidate {
       dependencies: [],
       provenance: [{ kind: 'presentation-agent', ref: 'composition:fixture' }],
       children: [
-        { ...surface('$slot:waiting').root, id: 'waiting' },
-        { ...surface('$slot:moving').root, id: 'moving' },
+        {
+          kind: 'slot',
+          id: 'waiting-region',
+          role: 'primary-content',
+          name: 'waiting',
+          child: {
+            ...subjectRegionChild('$slot:waiting'),
+            id: 'waiting-word',
+          },
+          dependencies: [],
+          provenance: [{ kind: 'presentation-agent', ref: 'generation:1' }],
+        },
+        {
+          kind: 'slot',
+          id: 'moving-region',
+          role: 'primary-content',
+          name: 'moving',
+          child: {
+            ...subjectRegionChild('$slot:moving'),
+            id: 'moving-word',
+          },
+          dependencies: [],
+          provenance: [{ kind: 'presentation-agent', ref: 'generation:1' }],
+        },
       ],
     },
   };
@@ -111,9 +159,43 @@ describe('Application Recipe validation and registry', () => {
     expect(validateRecipeCandidate(unbound, catalog)).toMatchObject({ valid: false });
 
     const unknown = candidate();
-    if (unknown.surfaceTemplate.root.kind !== 'word') throw new Error('fixture');
-    unknown.surfaceTemplate.root.word = 'not-registered';
+    if (
+      unknown.surfaceTemplate.root.kind !== 'layout' ||
+      unknown.surfaceTemplate.root.children[0]?.kind !== 'slot' ||
+      unknown.surfaceTemplate.root.children[0].child.kind !== 'word'
+    ) {
+      throw new Error('fixture');
+    }
+    unknown.surfaceTemplate.root.children[0].child.word = 'not-registered';
     expect(validateRecipeCandidate(unknown, catalog)).toMatchObject({ valid: false });
+  });
+
+  it('rejects a direct word root instead of accepting a non-canonical Recipe shape', () => {
+    const direct = candidate();
+    direct.surfaceTemplate = {
+      schemaVersion: 1,
+      root: subjectRegionChild(),
+    };
+    expect(validateRecipeCandidate(direct, catalog)).toMatchObject({
+      valid: false,
+      errors: expect.arrayContaining([expect.stringMatching(/canonical layout/i)]),
+    });
+  });
+
+  it('allows semantic slots inside the canonical subject region', () => {
+    const nested = candidate();
+    const root = nested.surfaceTemplate.root;
+    if (root.kind !== 'layout' || root.children[0]?.kind !== 'slot') throw new Error('fixture');
+    root.children[0].child = {
+      kind: 'slot',
+      id: 'semantic-detail',
+      role: 'primary-content',
+      name: 'detail',
+      child: root.children[0].child,
+      dependencies: [],
+      provenance: [{ kind: 'presentation-agent', ref: 'generation:1' }],
+    };
+    expect(validateRecipeCandidate(nested, catalog)).toEqual({ valid: true, errors: [] });
   });
 
   it('deduplicates generation commands and preserves immutable candidate versions', () => {
@@ -173,11 +255,19 @@ describe('Application Recipe validation and registry', () => {
       { name: 'subject', kind: 'entity', subject: 'post:first-post' },
     ]);
     expect(instantiated.root).toMatchObject({
-      kind: 'word',
-      bindings: { value: { subject: 'post:first-post' } },
-      dependencies: expect.arrayContaining([
-        expect.objectContaining({ subject: 'post:first-post' }),
-      ]),
+      kind: 'layout',
+      children: [
+        {
+          kind: 'slot',
+          name: 'subject',
+          child: {
+            bindings: { value: { subject: 'post:first-post' } },
+            dependencies: expect.arrayContaining([
+              expect.objectContaining({ subject: 'post:first-post' }),
+            ]),
+          },
+        },
+      ],
     });
     expect(JSON.stringify(instantiated)).not.toContain('private body');
     expect(() =>
@@ -199,6 +289,18 @@ describe('Application Recipe validation and registry', () => {
     expect(JSON.stringify(instantiated)).not.toContain('$slot:');
     expect(JSON.stringify(instantiated)).toContain('inbox');
     expect(JSON.stringify(instantiated)).toContain('delegations');
+  });
+
+  it('allows distinct region slots to bind the same real subject', () => {
+    const next = compositionCandidate();
+    const registered = registerRecipeCandidate(createRecipeRegistry(), next, catalog, 'multi:same');
+    const instantiated = instantiateRecipeSurface(registered.recipe, [
+      { name: 'waiting', kind: 'collection', subject: 'inbox' },
+      { name: 'moving', kind: 'entity', subject: 'inbox' },
+    ]);
+
+    expect(JSON.stringify(instantiated)).not.toContain('$slot:');
+    expect(JSON.stringify(instantiated).match(/inbox/g)?.length).toBeGreaterThan(1);
   });
 
   it.each([

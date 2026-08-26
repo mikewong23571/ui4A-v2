@@ -19,7 +19,7 @@ beforeEach(async () => {
     key: {
       principal: 'user:local',
       policyScope: 'local-demo',
-      subject: 'post:first',
+      subject: 'post:first-post',
       intent: 'read',
       deviceClass: 'any',
     },
@@ -49,14 +49,14 @@ beforeEach(async () => {
                 bindings: {
                   value: {
                     kind: 'property',
-                    subject: 'post:first',
+                    subject: 'post:first-post',
                     path: 'properties.fields.body',
                   },
                 },
                 dependencies: [
                   {
                     kind: 'entity',
-                    subject: 'post:first',
+                    subject: 'post:first-post',
                     version: 'entity-v1',
                     paths: ['properties.fields.body'],
                   },

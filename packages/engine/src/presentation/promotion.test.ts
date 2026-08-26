@@ -310,13 +310,6 @@ describe('Sidecar promotion and explanation', () => {
       ],
     ],
     [
-      'duplicate slot subject',
-      [
-        { name: 'waiting', kind: 'collection' as const, subject: 'inbox' },
-        { name: 'moving', kind: 'entity' as const, subject: 'inbox' },
-      ],
-    ],
-    [
       'placeholder instance subject',
       [
         { name: 'waiting', kind: 'collection' as const, subject: '$slot:waiting' },
@@ -336,6 +329,46 @@ describe('Sidecar promotion and explanation', () => {
         dependencies: [{ kind: 'catalog', subject: catalog.id, version: catalog.version }],
       }),
     ).toThrow(/slot|subject/i);
+  });
+
+  it('parameterizes the same real source independently in two intent regions', () => {
+    const aggregate = compositionSnapshot().sidecars['sidecar:1']!;
+    const root = aggregate.versions[1]!.surface.root;
+    if (root.kind !== 'layout' || root.children[1]?.kind !== 'slot') throw new Error('fixture');
+    const moving = root.children[1].child;
+    if (moving.kind !== 'word') throw new Error('fixture');
+    moving.bindings.value = {
+      kind: 'property',
+      subject: 'inbox',
+      path: 'properties.fields.title',
+    };
+    moving.dependencies = [
+      {
+        kind: 'entity',
+        subject: 'inbox',
+        version: 'inbox-v1',
+        paths: ['properties.fields.title'],
+      },
+    ];
+
+    const result = promoteUserSidecarCandidate(aggregate, {
+      application: 'default',
+      applicationVersion: '1',
+      scenario: 'same-source-two-intents',
+      subjectShape: 'composition:same@1[waiting:collection,moving:entity]',
+      intent: 'organize',
+      catalog,
+      slots: [
+        { name: 'waiting', kind: 'collection', subject: 'inbox' },
+        { name: 'moving', kind: 'entity', subject: 'inbox' },
+      ],
+      dependencies: [{ kind: 'catalog', subject: catalog.id, version: catalog.version }],
+    });
+
+    const serialized = JSON.stringify(result.candidate.surfaceTemplate);
+    expect(serialized).toContain('$slot:waiting');
+    expect(serialized).toContain('$slot:moving');
+    expect(serialized).not.toContain('"subject":"inbox"');
   });
 
   it('fails closed when a surface source or named region is not mapped', () => {

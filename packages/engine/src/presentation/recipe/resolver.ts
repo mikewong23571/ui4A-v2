@@ -36,7 +36,9 @@ export interface PresentationFastpathInput {
 export interface PresentationFastpathDependencies {
   authorize(key: UserSidecarKey): boolean | Promise<boolean>;
   now(): number;
-  instantiateRecipe?(recipe: ApplicationRenderRecipe): Promise<{ id: string; version: number }>;
+  instantiateRecipe?(
+    recipe: ApplicationRenderRecipe,
+  ): Promise<{ surface: SurfaceTree; sidecar?: { id: string; version: number } } | undefined>;
   generic(): Promise<ResolvedPresentationPlan | undefined>;
   plan(): Promise<ResolvedPresentationPlan>;
 }
@@ -151,17 +153,19 @@ export async function resolvePresentationFastpath(
   if (input.recipeKey !== undefined && input.recipeDependencies !== undefined) {
     const recipe = resolveRecipe(input.registry, input.recipeKey, input.recipeDependencies);
     if (recipe !== undefined) {
-      const sidecar = await dependencies.instantiateRecipe?.(recipe);
-      return {
-        status: 'ready',
-        hitPath: recipe.status === 'promoted' ? 'promoted-recipe' : 'candidate-recipe',
-        ...(sidecar === undefined ? {} : { sidecar }),
-        surface: recipe.surfaceTemplate,
-        dependency: staleDecision ?? exactDependency(input.dependencies),
-        chatLlmCalls: 0,
-        presentationLlmCalls: 0,
-        firstUsableMs: elapsed(started, dependencies.now),
-      };
+      const instantiated = await dependencies.instantiateRecipe?.(recipe);
+      if (instantiated !== undefined && !JSON.stringify(instantiated.surface).includes('$slot:')) {
+        return {
+          status: 'ready',
+          hitPath: recipe.status === 'promoted' ? 'promoted-recipe' : 'candidate-recipe',
+          ...(instantiated.sidecar === undefined ? {} : { sidecar: instantiated.sidecar }),
+          surface: instantiated.surface,
+          dependency: staleDecision ?? exactDependency(input.dependencies),
+          chatLlmCalls: 0,
+          presentationLlmCalls: 0,
+          firstUsableMs: elapsed(started, dependencies.now),
+        };
+      }
     }
   }
 

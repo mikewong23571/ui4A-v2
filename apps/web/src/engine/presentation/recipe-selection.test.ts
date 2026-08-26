@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ApplicationRenderRecipe } from '@ui4a/engine';
 
 import { selectAndInstantiateRecipe } from './recipe-selection';
+import { singleSubjectRecipeContext } from './recipe-context';
 
 function recipe(
   slots: ApplicationRenderRecipe['slots'],
@@ -31,16 +32,24 @@ function recipe(
         dependencies: [],
         provenance: [],
         children: slots.map((slot) => ({
-          kind: 'word' as const,
-          id: slot.name,
+          kind: 'slot' as const,
+          id: `${slot.name}-region`,
           role: 'primary-content' as const,
-          word: 'prose',
-          bindings: {
-            value: {
-              kind: 'property' as const,
-              subject: `$slot:${slot.name}`,
-              path: 'properties.rel',
+          name: slot.name,
+          child: {
+            kind: 'word' as const,
+            id: slot.name,
+            role: 'primary-content' as const,
+            word: 'prose',
+            bindings: {
+              value: {
+                kind: 'property' as const,
+                subject: `$slot:${slot.name}`,
+                path: 'properties.rel',
+              },
             },
+            dependencies: [],
+            provenance: [],
           },
           dependencies: [],
           provenance: [],
@@ -123,4 +132,38 @@ describe('runtime Recipe selection', () => {
       ),
     ).toBeUndefined();
   });
+
+  it.each([
+    [
+      'flow',
+      'article-drafting:main',
+      ['flow-instance', 'article-drafting'],
+      'flow-instance:article-drafting',
+      'flow' as const,
+    ],
+    [
+      'collection',
+      'articles',
+      ['collection', 'articles'],
+      'collection:articles',
+      'collection' as const,
+    ],
+  ])(
+    'hits an exact %s Recipe derived from the authorized Siren shape',
+    (_label, subject, classes, shape, kind) => {
+      const context = singleSubjectRecipeContext({
+        rels: [subject],
+        entities: [{ class: classes, properties: { rel: subject }, actions: [], links: [] }],
+        policyScope: 'contract',
+      });
+      expect(context).toBeDefined();
+      const result = selectAndInstantiateRecipe([recipe([{ name: 'subject', kind }], shape)], {
+        ...context!,
+        intent: 'organize',
+        catalogVersion: 'semantic-v1',
+      });
+      expect(result?.recipe.key.subjectShape).toBe(shape);
+      expect(JSON.stringify(result?.surface)).not.toContain('$slot:');
+    },
+  );
 });

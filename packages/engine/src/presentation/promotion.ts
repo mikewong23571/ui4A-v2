@@ -127,28 +127,42 @@ function parameterizeNode(
 
 function parameterizeSurface(
   surface: SurfaceTree,
-  slotsBySubject: ReadonlyMap<string, string>,
+  slots: ReadonlyArray<ApplicationRecipeSlot & { subject: string }>,
 ): SurfaceTree {
-  return { schemaVersion: 1, root: parameterizeNode(surface.root, slotsBySubject) };
+  if (surface.root.kind !== 'layout') {
+    throw new Error('Surface root must be a canonical layout of Recipe region slots');
+  }
+  const rootDependencies = surface.root.dependencies.map((dependency) =>
+    parameterizeDependency(dependency, new Map()),
+  );
+  return {
+    schemaVersion: 1,
+    root: {
+      ...surface.root,
+      dependencies: rootDependencies,
+      provenance: surface.root.provenance.map((entry) => ({ ...entry })),
+      children: surface.root.children.map((child, index) => {
+        const slot = slots[index]!;
+        return parameterizeNode(child, new Map([[slot.subject, slot.name]]));
+      }),
+    },
+  };
 }
 
 function promotionSlots(options: SidecarPromotionOptions, surface: SurfaceTree) {
   if (options.slots.length === 0) throw new Error('Recipe promotion slots must not be empty');
   const names = new Set<string>();
-  const subjects = new Set<string>();
   for (const slot of options.slots) {
     if (
       !/^[a-zA-Z0-9_.-]+$/.test(slot.name) ||
       !['entity', 'collection', 'flow', 'selection'].includes(slot.kind) ||
       slot.subject.trim() === '' ||
       slot.subject.startsWith('$slot:') ||
-      names.has(slot.name) ||
-      subjects.has(slot.subject)
+      names.has(slot.name)
     ) {
-      throw new Error('Recipe promotion contains an invalid or duplicate slot name or subject');
+      throw new Error('Recipe promotion contains an invalid or duplicate slot name');
     }
     names.add(slot.name);
-    subjects.add(slot.subject);
   }
   if (
     surface.root.kind !== 'layout' ||
@@ -165,7 +179,7 @@ function promotionSlots(options: SidecarPromotionOptions, surface: SurfaceTree) 
   ) {
     throw new Error('Surface slot shape does not match Recipe promotion slots');
   }
-  return new Map(options.slots.map((slot) => [slot.subject, slot.name]));
+  return options.slots;
 }
 
 /** Strip user/entity identity and produce an unpromoted, mechanically diffable Recipe candidate. */
@@ -175,7 +189,7 @@ export function promoteUserSidecarCandidate(
 ): SidecarPromotionResult {
   const active = sidecar.versions[sidecar.activeVersion];
   if (active === undefined) throw new Error('Sidecar active provenance is unavailable');
-  const slotsBySubject = promotionSlots(options, active.surface);
+  const slots = promotionSlots(options, active.surface);
   const candidate: ApplicationRenderRecipeCandidate = {
     key: {
       application: options.application,
@@ -186,7 +200,7 @@ export function promoteUserSidecarCandidate(
       catalogVersion: options.catalog.version,
     },
     slots: options.slots.map(({ name, kind }) => ({ name, kind })),
-    surfaceTemplate: parameterizeSurface(active.surface, slotsBySubject),
+    surfaceTemplate: parameterizeSurface(active.surface, slots),
     dependencies: options.dependencies.map((dependency) => ({ ...dependency })),
     provenance: { model: 'human-promotion', generatedAt: 'human-approved-candidate' },
   };

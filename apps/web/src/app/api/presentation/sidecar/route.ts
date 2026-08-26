@@ -19,6 +19,7 @@ import {
 } from '@ui4a/engine';
 import { PRESENTATION_SURFACE_CATALOG } from '../../../../engine/presentation/catalog';
 import { currentRecipeCoordinator } from '../../../../engine/presentation/recipes-runtime';
+import { singleSubjectRecipeContext } from '../../../../engine/presentation/recipe-context';
 
 export const dynamic = 'force-dynamic';
 
@@ -181,14 +182,23 @@ export async function POST(request: Request): Promise<Response> {
       if (typeof current.key.subject !== 'string' || current.key.subject.startsWith('workspace:')) {
         throw new Error('Recipe promotion requires a complete ordered slot map');
       }
+      const entity = await (await getEngine(getDb())).getEntity(current.key.subject);
+      const recipeContext = singleSubjectRecipeContext({
+        rels: [current.key.subject],
+        entities: entity === undefined ? [] : [entity],
+        policyScope: current.key.policyScope,
+      });
+      if (recipeContext === undefined) {
+        throw new Error('Recipe promotion requires an authorized single-subject contract shape');
+      }
       const promoted = promoteUserSidecarCandidate(current, {
         application: 'runtime',
         applicationVersion: '1',
         scenario: 'human-promoted',
-        subjectShape: 'entity',
+        subjectShape: recipeContext.subjectShape,
         intent: current.key.intent,
         catalog: PRESENTATION_SURFACE_CATALOG,
-        slots: [{ name: 'subject', kind: 'entity', subject: current.key.subject }],
+        slots: [...recipeContext.slots],
         dependencies: [
           {
             kind: 'catalog',

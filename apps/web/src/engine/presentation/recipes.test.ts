@@ -78,7 +78,7 @@ describe('Application Recipe coordinator', () => {
             issues: ['bad candidate'],
           };
         }
-        const subject = `$slot:${input.scenario.slots[0]}`;
+        const subject = '$slot:subject';
         return {
           status: 'candidate' as const,
           candidate: {
@@ -90,32 +90,65 @@ describe('Application Recipe coordinator', () => {
               intent: input.scenario.intent,
               catalogVersion: PRESENTATION_SURFACE_CATALOG.version,
             },
-            slots: input.scenario.slots.map((name) => ({ name, kind: 'entity' as const })),
+            slots: input.scenario.slots.map((name) => ({
+              name,
+              kind: input.scenario.subjectShape.startsWith('collection:')
+                ? ('collection' as const)
+                : input.scenario.subjectShape.startsWith('flow-instance:')
+                  ? ('flow' as const)
+                  : ('entity' as const),
+            })),
             surfaceTemplate: {
               schemaVersion: 1,
               root: {
-                kind: 'word',
-                id: 'identity',
-                role: 'identity',
-                word: 'heading',
-                bindings: {
-                  value: { kind: 'property', subject, path: 'properties.rel' },
-                },
-                dependencies: [
-                  {
-                    kind: 'entity',
-                    subject,
-                    version: '$runtime',
-                    paths: ['properties.rel'],
-                  },
-                  {
-                    kind: 'catalog',
-                    subject: PRESENTATION_SURFACE_CATALOG.id,
-                    version: PRESENTATION_SURFACE_CATALOG.version,
-                  },
-                ],
+                kind: 'layout',
+                id: 'root',
+                role: 'primary-content',
+                layout: 'stack',
+                dependencies: [],
                 provenance: [
                   { kind: 'presentation-agent', ref: input.scenario.key, model: 'test-model' },
+                ],
+                children: [
+                  {
+                    kind: 'slot',
+                    id: 'subject-region',
+                    role: 'primary-content',
+                    name: 'subject',
+                    dependencies: [],
+                    provenance: [
+                      { kind: 'presentation-agent', ref: input.scenario.key, model: 'test-model' },
+                    ],
+                    child: {
+                      kind: 'word',
+                      id: 'identity',
+                      role: 'identity',
+                      word: 'heading',
+                      bindings: {
+                        value: { kind: 'property', subject, path: 'properties.rel' },
+                      },
+                      dependencies: [
+                        {
+                          kind: 'entity',
+                          subject,
+                          version: '$runtime',
+                          paths: ['properties.rel'],
+                        },
+                        {
+                          kind: 'catalog',
+                          subject: PRESENTATION_SURFACE_CATALOG.id,
+                          version: PRESENTATION_SURFACE_CATALOG.version,
+                        },
+                      ],
+                      provenance: [
+                        {
+                          kind: 'presentation-agent',
+                          ref: input.scenario.key,
+                          model: 'test-model',
+                        },
+                      ],
+                    },
+                  },
                 ],
               },
             },
