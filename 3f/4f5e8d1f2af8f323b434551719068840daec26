@@ -1,0 +1,1 @@
+T28 Phase A task: align spec and plan. Open recommendations were replaced by D47 fixed contracts for Phases B-E. Verification: prettier; git diff --check.
