@@ -12,6 +12,8 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
 
 import { getPool } from '../../apps/web/src/db/pool';
+import { prepareDatabaseForApplication } from '../../apps/web/src/db/migrations';
+import { bootstrapAndVerifyApplication } from '../../apps/web/src/engine/bootstrap';
 
 // 本文件在 e2e/kits/ 下(T23 Phase D 迁移;750340a 修 import 时 __dirname 层级
 // 漏改一层——REPO_ROOT 曾解析到 e2e/,WORKER_DIR=e2e/apps/worker 不存在导致
@@ -25,10 +27,18 @@ export type ScenarioEnv = Record<string, string>;
 
 export async function truncateEvents(): Promise<void> {
   const pool = getPool(DATABASE_URL);
-  await pool.query('TRUNCATE events');
+  await pool.query('TRUNCATE events').catch((error: unknown) => {
+    if ((error as { code?: string }).code !== '42P01') throw error;
+  });
   await pool.query('TRUNCATE presentation_user_sidecars').catch((error: unknown) => {
     if ((error as { code?: string }).code !== '42P01') throw error;
   });
+  // T29 起 schema 变更入版本化迁移注册表,readiness 只读探测不再兜底应用,引擎
+  // boot 也只在首个业务请求懒触发——场景重置时把 bootEngine 的非生产序列做完
+  // (迁移就绪 + 应用自举回执),库从 v0/v1 起步的新环境与 TRUNCATE 后的旧库
+  // 都能直接通过 waitUntilHealthy,不依赖懒 boot。
+  await prepareDatabaseForApplication(pool);
+  await bootstrapAndVerifyApplication(pool);
 }
 
 export async function waitUntilHealthy(baseUrl: string, timeoutMs: number): Promise<void> {
