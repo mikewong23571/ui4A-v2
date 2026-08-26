@@ -1,0 +1,11 @@
+T27 Phase E checkpoint correction: location search params null
+
+pnpm check exposed home tests where Next test runtime returned null from useSearchParams. The shared location hook now treats that documented migration-compatible value as an empty query; a regression test pins route=/ and the workstation/null observation.
+
+Files:
+- apps/web/src/presence/location.ts
+- apps/web/src/presence/location.test.tsx
+
+Verification:
+- location + home tests: 6 passed
+- @ui4a/web typecheck, Prettier, diff: PASS
