@@ -1,4 +1,5 @@
 export * from './broker';
+export * from './compose';
 export * from './lens';
 export * from './patch';
 export * from './promotion';

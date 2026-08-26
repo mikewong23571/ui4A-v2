@@ -34,6 +34,7 @@ const PROVENANCE_KIND_SET = new Set<string>([
   'presentation-agent',
   'generic-fallback',
   'human-patch',
+  'composition-declaration',
   'validator',
 ]);
 const DEPENDENCY_KIND_SET = new Set<string>(['entity', 'definition', 'catalog']);

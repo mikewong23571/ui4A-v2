@@ -28,7 +28,12 @@ export interface SurfaceDependency {
 
 export interface SurfaceProvenance {
   kind:
-    'application-recipe' | 'presentation-agent' | 'generic-fallback' | 'human-patch' | 'validator';
+    | 'application-recipe'
+    | 'presentation-agent'
+    | 'generic-fallback'
+    | 'human-patch'
+    | 'composition-declaration'
+    | 'validator';
   ref: string;
   model?: string;
 }
