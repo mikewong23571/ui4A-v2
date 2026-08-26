@@ -97,7 +97,7 @@
     `?thread=<id>`,出线删除 `thread` 参数,不增加“设为当前工作线”控件
   - Red→Green:常显与 PresenceReporter/clientView v2 同源断言;上述导航产生
     对应 presence 事件落库(组件 + API 级或 e2e),零自然语言启发式
-- [ ] Task: 跨站双桥(D46 第 5 问)
+- [x] Task: 跨站双桥(D46 第 5 问) `a831c0b`
   - 仅对 `flow:<name>` ↔ `meta/flow:<name>` 做双向机械推导:
     workstation 链接为 `/meta/flow/<name>?scope=<scope>`,meta 链接为
     `/canvas?focus=flow:<name>&scope=<scope>`;零映射表、零 React 实体类型分支
