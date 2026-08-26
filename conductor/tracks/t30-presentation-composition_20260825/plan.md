@@ -102,7 +102,7 @@
 - [x] Task: 误导验收前置迁移(spec"误导性验收排查"清单) `3bdc873`
   - 按清单逐条处置(开放化/迁移/删除),处置记录进任务 notes;先于组合形状
     落地——保绿即冻结旧形状 = 方向错误,本任务是纠偏原则的首次执行
-- [ ] Task: broker 授权与运行时接线
+- [x] Task: broker 授权与运行时接线 `936e555`
   - broker authorize 对组合主体解析声明并逐区域源 fresh getEntity 重授权;
     不可授权区域保留无 binding/目标 rel/policy 细节的
     `diagnostic(code='region-unavailable')` slot；至少一个区域可见时 receipt 为
