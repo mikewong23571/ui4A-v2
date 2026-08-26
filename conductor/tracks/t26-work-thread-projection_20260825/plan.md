@@ -91,11 +91,11 @@
 
 ## Phase E: 端到端验收与收尾
 
-- [ ] Task: CLI 对照全流程
+- [x] Task: CLI 对照全流程 30edab0
   - 经 CLI(显式 thread 锚,无 presence)完成建线/挂载/查态/审计;
     同一场景人类经 chat + presence 锚跑一遍(GOAL.md 双执行者口径);
     两侧投影一致
-- [ ] Task: 全量验收
+- [~] Task: 全量验收
   - `pnpm check` 全绿;`CI=true pnpm e2e invariants` 全绿;chat 套件
     (`e2e/chat.spec.ts`)全绿;I5 含 threads 通过
   - 系统可运行验证:`pnpm dev:all` 实际启动走查(里程碑约束)
