@@ -27,11 +27,22 @@ interface LoggedEvent {
   channel: string | null;
 }
 
+interface EntityShape {
+  properties: Record<string, unknown>;
+  entities?: EntityShape[];
+}
+
 async function getEvents(): Promise<LoggedEvent[]> {
   const response = await fetch(`${SCENARIO_BASE}/api/events`);
   expect(response.status).toBe(200);
   const body = (await response.json()) as { events: LoggedEvent[] };
   return body.events;
+}
+
+async function getEntity(rel: string): Promise<EntityShape> {
+  const response = await fetch(`${SCENARIO_BASE}/api/entity?rel=${encodeURIComponent(rel)}`);
+  expect(response.status, `GET ${rel} 应为 200`).toBe(200);
+  return (await response.json()) as EntityShape;
 }
 
 function executed(events: LoggedEvent[], action: string): LoggedEvent[] {
@@ -49,11 +60,8 @@ test.beforeEach(() => {
 
 test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → 列表出现新文章', async ({ page }) => {
   await withFreshServer(async () => {
-    await page.goto('/');
-    await expect(page.getByText('文章(共 2 篇)')).toBeVisible();
-
-    // 首页 flow 入口链接 → 发布向导(零 startRel 特权)
-    await page.click('a[data-rel="flow:article-drafting"]');
+    // 保留的实体路由直达发布 flow；首页不承担应用内容入口合同。
+    await page.goto('/entity?rel=flow%3Aarticle-drafting');
 
     // 第一步 basic-info:title(text)
     await expect(page.locator('h1')).toHaveText('基本信息');
@@ -79,25 +87,23 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
     // 向导循环语义(D11):发布后回到基本信息(起草下一篇),不再是 done 终态
     await expect(page.locator('h1')).toHaveText('基本信息');
 
-    // 回首页:文章计数 2→3,新文章 published
-    await page.goto('/');
-    await expect(page.getByText('文章(共 3 篇)')).toBeVisible();
-    const created = page.locator('a[data-rel^="post:"]', { hasText: '人类的第三篇' });
+    // 文章集合合同可导航，且新文章实体真实存在并处于 published。
+    await page.goto('/entity?rel=articles');
+    const articles = await getEntity('articles');
+    expect(articles.properties.count).toBe(3);
+    const created = page.locator('section[aria-label="成员"] a[data-rel^="post:"]', {
+      hasText: '人类的第三篇',
+    });
     await expect(created).toBeVisible();
     await expect(created).toContainText('published');
 
     // B1 字段保真(D24):向导分类步所填 category/tags 经 set-field 落在向导
     // 实例上,publish 只带 title 参数——合并语义下必须出现在发布文章实体上。
     const createdRel = await created.getAttribute('data-rel');
-    const entityResponse = await fetch(
-      `${SCENARIO_BASE}/api/entity?rel=${encodeURIComponent(createdRel ?? '')}`,
-    );
-    expect(entityResponse.status).toBe(200);
-    const entity = (await entityResponse.json()) as {
-      properties: { fields?: Record<string, unknown> };
-    };
-    expect(entity.properties.fields?.category).toBe('tech');
-    expect(entity.properties.fields?.tags).toBe('human-e2e');
+    const entity = await getEntity(createdRel ?? '');
+    const fields = entity.properties.fields as Record<string, unknown> | undefined;
+    expect(fields?.category).toBe('tech');
+    expect(fields?.tags).toBe('human-e2e');
 
     // 日志留痕:publish 由 human 执行,principal/channel 为 renderer 口径
     const events = await getEvents();
@@ -110,10 +116,10 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
   });
 });
 
-test('B2 点名下线(人类):列表进入 post-welcome → 下线;first-post 不受影响', async ({ page }) => {
+test('B2 点名下线(人类):直达 post-welcome → 下线;first-post 不受影响', async ({ page }) => {
   await withFreshServer(async () => {
-    await page.goto('/');
-    await page.click('a[data-rel="post:post-welcome"]');
+    // 保留的实体路由直达目标文章，不依赖首页成员快照。
+    await page.goto('/entity?rel=post%3Apost-welcome');
     await expect(page.locator('h1')).toHaveText('已发布');
     await expect(page.getByRole('button', { name: '下线' })).toBeVisible();
 
@@ -128,10 +134,9 @@ test('B2 点名下线(人类):列表进入 post-welcome → 下线;first-post �
     await expect(page.getByRole('button', { name: '下线' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: '重新发布' })).toBeVisible();
 
-    // 另一篇不受影响
-    await page.goto('/');
-    await expect(page.locator('a[data-rel="post:first-post"]')).toContainText('published');
-    await expect(page.locator('a[data-rel="post:post-welcome"]')).toContainText('offline');
+    // 精确业务实体状态：另一篇不受影响，目标文章已下线。
+    expect((await getEntity('post:first-post')).properties.node).toBe('published');
+    expect((await getEntity('post:post-welcome')).properties.node).toBe('offline');
 
     // 日志:unpublish 由 human 执行,rel 精确为 post-welcome
     const events = await getEvents();
@@ -145,9 +150,11 @@ test('B2 点名下线(人类):列表进入 post-welcome → 下线;first-post �
 
 test('B3 审核队列(人类):逐条 approve 至 pending 清零;c4 终态无重复按钮', async ({ page }) => {
   await withFreshServer(async () => {
-    await page.goto('/');
-    await expect(page.getByText('评论队列(待处理 3)')).toBeVisible();
-    await page.click('a[data-rel="comments"]');
+    // 保留的评论集合路由可导航；pending 状态来自成员实体，而非首页摘要。
+    await page.goto('/entity?rel=comments');
+    await expect(page.locator('section[aria-label="成员"] a', { hasText: 'pending' })).toHaveCount(
+      3,
+    );
     await expect(page.getByText('成员(4)')).toBeVisible();
 
     // c4 已 approved:终态节点零声明动作 → 详情页无任何动作按钮(approve 不重复)

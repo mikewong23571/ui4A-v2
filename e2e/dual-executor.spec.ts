@@ -152,9 +152,8 @@ test('B1 双执行者:agent 合同发布 + human 表单发布,同一日志两类
     expect(agentRun.outcome, `轨迹:${JSON.stringify(opKinds(agentRun.steps))}`).toBe('done');
     expect((await getEntity('articles')).properties.count).toBe(3);
 
-    // ---- human 路径(renderer:三步向导表单,human.spec 走查核心)-----------
-    await page.goto('/');
-    await page.click('a[data-rel="flow:article-drafting"]');
+    // ---- human 路径(renderer:保留实体路由直达三步向导)-------------------
+    await page.goto('/entity?rel=flow%3Aarticle-drafting');
     await expect(page.locator('h1')).toHaveText('基本信息');
     await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第四篇');
     await page.getByRole('button', { name: '下一步', exact: true }).click();
@@ -171,8 +170,7 @@ test('B1 双执行者:agent 合同发布 + human 表单发布,同一日志两类
     await expect(page.locator('h1')).toHaveText('基本信息');
 
     // ---- 同一日志:publish 由两类执行者各执行一次,各自正确 ----------------
-    await page.goto('/');
-    await expect(page.getByText('文章(共 4 篇)')).toBeVisible();
+    // 文章集合实体状态是业务合同；不依赖首页文章计数快照。
     expect((await getEntity('articles')).properties.count).toBe(4);
     const { agent, human } = assertDualActors(await getEvents(), 'publish');
     expect(agent).toHaveLength(1);
@@ -202,9 +200,8 @@ test('B2 双执行者:agent 合同下线 post-welcome + human 表单下线 first
     expect(agentRun.outcome, `轨迹:${JSON.stringify(opKinds(agentRun.steps))}`).toBe('done');
     expect(agentRun.steps[0]!.op).toEqual({ kind: 'navigate', rel: 'post:post-welcome' });
 
-    // ---- human 路径(renderer:实体页下线按钮)---------------------------
-    await page.goto('/');
-    await page.click('a[data-rel="post:first-post"]');
+    // ---- human 路径(renderer:保留实体路由直达下线按钮)-------------------
+    await page.goto('/entity?rel=post%3Afirst-post');
     await expect(page.locator('h1')).toHaveText('已发布');
     await page.getByRole('button', { name: '下线' }).click();
     await expect(page.locator('h1')).toHaveText('已下线');

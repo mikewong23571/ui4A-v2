@@ -2,11 +2,12 @@ import { expect, test } from '@playwright/test';
 
 // T1 Phase 3 冒烟:证明 E2E 通路(Playwright → dev server → 页面/合同 API)可用。
 
-test('首页返回 HTTP 200 且内容含 "UI4A"', async ({ page }) => {
+test('首页返回 HTTP 200 且 App 壳存在', async ({ page }) => {
   const response = await page.goto('/');
   expect(response?.status()).toBe(200);
-  await expect(page).toHaveTitle(/UI4A/);
-  await expect(page.getByRole('heading', { name: 'UI4A' })).toBeVisible();
+  await expect(page.locator('header')).toBeVisible();
+  await expect(page.locator('header a[data-nav="home"]').first()).toBeVisible();
+  await expect(page.locator('main')).toBeVisible();
 });
 
 test('/api/health 返回 readiness "ready"', async ({ request }) => {

@@ -13,8 +13,8 @@
  *   channel=confirmation——委托语义)、inbox pending 清空;
  * - I4:agent exec approve → 422 guard(actor-is-human)留痕,confirmation 仍 pending;
  * - reject:human reject 带 reason → 原动作永不生效,confirmation-rejected;
- * - UI 走查(浏览器):首页收件箱计数 → 确认页 RJSF(approve 按钮 + reject reason
- *   必填)→ 批准 → 文章列表该篇 archived。
+ * - UI 走查(浏览器):收件箱保留路由 → 确认页 RJSF(approve 按钮 + reject reason
+ *   必填)→ 批准 → 合同实体确认文章 archived、收件箱清零。
  *
  * Temporal 依赖用例探活 skip-if:TEMPORAL_ADDRESS(缺省 localhost:7233)不可达
  * 时整个文件跳过(与 service.notify.integration.test.ts 同口径);PostgreSQL
@@ -379,17 +379,16 @@ test('reject 路径:human reject 带 reason → 原动作永不生效,事件 con
   });
 });
 
-test('UI 走查:首页收件箱 → 确认页 RJSF 批准 → 文章列表该篇 archived', async ({ page }) => {
+test('UI 走查:收件箱保留路由 → 确认页 RJSF 批准 → 文章实体 archived', async ({ page }) => {
   await cleanStaleWorkflows();
   await withWorkerServer(async () => {
     // agent 经 HTTP 提议(挂起),等通知送达收件箱。
     await agentArchive();
     await waitForInboxDelivered('c1');
 
-    // 人类浏览器:首页收件箱计数 ≥1 → 进入收件箱视图。
-    await page.goto('/');
-    await expect(page.getByText('收件箱(待确认 1)')).toBeVisible();
-    await page.click('a[data-rel="inbox"]');
+    // 收件箱实体投影为 1，且保留的实体路由可直接导航。
+    expect((await getEntity('inbox')).properties).toMatchObject({ count: 1 });
+    await page.goto('/entity?rel=inbox');
 
     // pending 列表:目标动作/提议者摘要可见,逐条链接到确认实体页。
     const member = page.locator('section[aria-label="成员"] a', {
@@ -413,10 +412,10 @@ test('UI 走查:首页收件箱 → 确认页 RJSF 批准 → 文章列表该篇
       page.locator('section[aria-label="属性"] tbody tr', { hasText: 'approved' }).first(),
     ).toBeVisible();
 
-    // 回首页:该篇 archived;收件箱清零。
-    await page.goto('/');
-    await expect(page.locator('a[data-rel="post:post-welcome"]')).toContainText('archived');
-    await expect(page.getByText('收件箱(待确认 0)')).toBeVisible();
+    // 业务合同结果：确认已批准、目标文章 archived、收件箱清零。
+    expect((await getEntity('confirmation:c1')).properties).toMatchObject({ status: 'approved' });
+    expect((await getEntity('post:post-welcome')).properties).toMatchObject({ node: 'archived' });
+    expect((await getEntity('inbox')).properties).toMatchObject({ count: 0 });
   });
 });
 
