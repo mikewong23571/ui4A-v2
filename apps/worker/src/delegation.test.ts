@@ -448,24 +448,62 @@ describe('runAgentStep(scripted protocol driver,决策+执行合一)', () => {
       outcome: 'done',
     });
 
-    // 实体不可得(runAgent 同口径:不产轨迹步,循环 failed 出口)。
+    // 首实体不可得(runAgent 同口径):即使携带 scoped disclosure，也不进入
+    // driver、不产 delegation-step；workflow 以零步 failed 终态收口。
     const missing = contractTransport({});
     const missingDb = fakeDb();
     const failResult = await runAgentStep(
-      { db: missingDb.db, fetchImpl: missing.fetch },
       {
-        delegationId: 'wf-2',
+        db: missingDb.db,
+        fetchImpl: missing.fetch,
+        driver: new ScriptedDriver([{ kind: 'done', summary: '不应进入 driver' }]),
+      },
+      {
+        delegationId: 'wf-missing-start',
         step: 1,
         goal: { verb: '任意' },
         driverKind: 'llm',
         baseUrl: BASE,
-        ...BASE_STATE,
+        sitemap: {
+          version: 'missing-start-v1',
+          surfaces: [{ rel: 'meta/flows', title: 'Definitions', app: 'governance' }],
+          applications: [{ name: 'governance', intent: 'govern', flows: [] }],
+          capabilities: [],
+        },
+        scope: PUBLISHING_SCOPE,
+        currentRel: 'ghost',
+        trail: [],
+        successes: [],
       },
     );
-    expect(failResult.outcome).toBe('failed');
-    expect(failResult.op).toMatchObject({ kind: 'fail' });
+    expect(failResult).toEqual({
+      op: { kind: 'fail', reason: '实体 "ghost" 不存在' },
+      outcome: 'failed',
+      unrecorded: true,
+    });
+    expect(missing.calls).toEqual([{ url: `${BASE}/api/entity?rel=ghost`, method: 'GET' }]);
+    expect(missingDb.inserts).toEqual([]);
+
+    const terminalState = applyStepToState(
+      { currentRel: 'ghost', trail: [], successes: [] },
+      1,
+      failResult,
+    );
+    expect(terminalState).toEqual({ currentRel: 'ghost', trail: [], successes: [] });
+    await recordDelegationFinish(missingDb.db, {
+      delegationId: 'wf-missing-start',
+      outcome: 'failed',
+      steps: terminalState.trail.length,
+      successes: terminalState.successes.length,
+      reason: failResult.op.kind === 'fail' ? failResult.op.reason : undefined,
+    });
     expect(missingDb.inserts).toHaveLength(1);
-    expect(missingDb.inserts[0]!.values[3]).toBe('delegation-started');
+    expect(missingDb.inserts[0]!.values[3]).toBe('delegation-failed');
+    expect(JSON.parse(String(missingDb.inserts[0]!.values[8]))).toEqual({
+      steps: 0,
+      successes: 0,
+      reason: '实体 "ghost" 不存在',
+    });
   });
 
   it('driver 决策 answer → answered 留痕且零业务 POST', async () => {

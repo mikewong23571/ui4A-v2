@@ -27,7 +27,11 @@ import type {
 import { wrapDriverForAudit, type AgentDecisionDetail } from '../../../chat/decisions';
 import { conversationView } from '../../../chat/conversation';
 import { executionAuditContext } from '../../../chat/audit-context';
-import { failureReasonFromResult, phraseFailureWithLlm } from '../../../chat/failure-reason';
+import {
+  failureReasonFromLoopException,
+  failureReasonFromResult,
+  phraseFailureWithLlm,
+} from '../../../chat/failure-reason';
 import { sitemapTitlesFromSummary, stepActivityData } from '../../../chat/step-activity';
 import { startRelFromSituation } from '../../../chat/start-chain';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
@@ -254,13 +258,13 @@ function sseResponse(
         await start(send);
       } catch (error) {
         // 委托不崩溃:循环与 driver 都不应抛出;此处兜底为 error 帧(200 流内)。
-        const sentence = `聊天循环异常: ${error instanceof Error ? error.message : String(error)}`;
+        const reason = failureReasonFromLoopException(error);
         send({
           type: 'error',
-          error: sentence,
+          error: reason.evidence?.[0] ?? '聊天循环异常',
           // 结构化 reason(T24 Phase B Task 3):机械层只产数据;表述层
           // 由客户端中性结构化展示(error 帧无 LLM 表述路径——兜底分支)。
-          reason: { code: 'loop_exception', evidence: [sentence] },
+          reason,
         });
       } finally {
         clearInterval(heartbeat);

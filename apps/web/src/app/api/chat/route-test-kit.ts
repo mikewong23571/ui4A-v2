@@ -17,6 +17,7 @@ export const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@lo
 let server: Server;
 let base = '';
 let sitemapRequests = 0;
+let entityRequests: string[] = [];
 export const PUBLISH_TEST_GOAL = '对 article-drafting:main 执行 next 并 publish，发布一篇文章';
 export const PUBLISH_TEST_AUTHORIZATION = {
   sourceMessageId: 'route-test-turn',
@@ -24,7 +25,10 @@ export const PUBLISH_TEST_AUTHORIZATION = {
 } as const;
 
 export async function handler(pathname: string, request: Request): Promise<Response> {
-  if (pathname === '/api/entity') return getEntityRoute(request);
+  if (pathname === '/api/entity') {
+    entityRequests.push(new URL(request.url).searchParams.get('rel') ?? '');
+    return getEntityRoute(request);
+  }
   if (pathname === '/api/exec') return postExecRoute(request);
   if (pathname === '/api/events') return getEventsRoute(request);
   // sitemap 路由无查询参数(签名零参)
@@ -317,6 +321,7 @@ export async function startChatRouteFixtures(): Promise<void> {
   await pool.query('TRUNCATE events');
   resetEngineForTests();
   sitemapRequests = 0;
+  entityRequests = [];
   server = createServer(async (req, res) => {
     // 用真实 host 构造 Request:聊天路由经 request.url 的 origin 回环 fetch 自身。
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`);
@@ -348,4 +353,8 @@ export function chatRouteBase(): string {
 
 export function sitemapRequestCount(): number {
   return sitemapRequests;
+}
+
+export function entityRequestRels(): string[] {
+  return [...entityRequests];
 }

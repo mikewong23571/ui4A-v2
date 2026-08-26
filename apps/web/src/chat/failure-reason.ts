@@ -17,6 +17,14 @@ import { resolveLlmConfig, type AgentGoal, type AgentRunResult, type TrailStep }
 import type { ChatFailureReason } from './sse';
 import { stepToMessage } from './trail';
 
+/** T24/T25 机械失败码闭包；新增来源必须先显式修改这份合同与行为测试。 */
+export const CHAT_FAILURE_REASON_CODES = [
+  'no_progress_loop',
+  'driver_fail',
+  'start_entity_unavailable',
+  'loop_exception',
+] as const;
+
 /** tried 概要上限(完整轨迹在 final.steps,审计不裁剪)。 */
 const TRIED_CAP = 6;
 
@@ -42,7 +50,9 @@ export function failureReasonFromResult(result: AgentRunResult): ChatFailureReas
   const lastOp = result.steps.at(-1)?.op;
   if (lastOp?.kind === 'fail') {
     return {
-      code: lastOp.code ?? 'driver_fail',
+      // Agent 循环当前唯一机械终止码是 no_progress_loop；driver 自述 fail
+      // （包括未知/越界 code）统一归 driver_fail，避免扩张 Chat 失败码合同。
+      code: lastOp.code === 'no_progress_loop' ? 'no_progress_loop' : 'driver_fail',
       evidence: [lastOp.reason, ...(lastOp.evidence ?? [])],
       ...(triedBrief(result.steps) !== undefined ? { tried: triedBrief(result.steps) } : {}),
     };
@@ -52,6 +62,12 @@ export function failureReasonFromResult(result: AgentRunResult): ChatFailureReas
     code: 'start_entity_unavailable',
     evidence: [result.summary ?? '(无摘要)'],
   };
+}
+
+/** SSE 循环壳异常 → 固定结构化 reason；保留既有原文和 evidence 分层。 */
+export function failureReasonFromLoopException(error: unknown): ChatFailureReason {
+  const sentence = `聊天循环异常: ${error instanceof Error ? error.message : String(error)}`;
+  return { code: 'loop_exception', evidence: [sentence] };
 }
 
 /** 表述层指令(极简:任务 + 数据边界 + 输出形态;零文案模板注入)。 */

@@ -10,7 +10,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { AgentRunResult, TrailStep } from '@ui4a/agent';
 
-import { failureReasonFromResult, phraseFailureWithLlm } from './failure-reason';
+import {
+  CHAT_FAILURE_REASON_CODES,
+  failureReasonFromLoopException,
+  failureReasonFromResult,
+  phraseFailureWithLlm,
+} from './failure-reason';
 
 const envKey = process.env.LLM_API_KEY;
 const envBase = process.env.LLM_BASE_URL;
@@ -35,6 +40,50 @@ function navigateStep(step: number, rel: string): TrailStep {
 }
 
 describe('failureReasonFromResult:失败终局 → 结构化 reason', () => {
+  it('机械 code 行为闭包精确为四种，未知 driver code 不扩张合同', () => {
+    const noProgress = failedResult(
+      [
+        {
+          step: 1,
+          rel: 'articles',
+          op: { kind: 'fail', code: 'no_progress_loop', reason: '循环终止' },
+          outcome: 'failed',
+        },
+      ],
+      '循环终止',
+    );
+    const unknownDriverCode = failedResult(
+      [
+        {
+          step: 1,
+          rel: 'articles',
+          op: { kind: 'fail', code: 'provider_specific_code', reason: 'driver 失败' },
+          outcome: 'failed',
+        },
+      ],
+      'driver 失败',
+    );
+
+    const produced = [
+      failureReasonFromResult(noProgress)?.code,
+      failureReasonFromResult(unknownDriverCode)?.code,
+      failureReasonFromResult(failedResult([], '实体 "ghost" 不可得'))?.code,
+      failureReasonFromLoopException(new Error('爆炸')).code,
+    ];
+
+    expect(CHAT_FAILURE_REASON_CODES).toEqual([
+      'no_progress_loop',
+      'driver_fail',
+      'start_entity_unavailable',
+      'loop_exception',
+    ]);
+    expect(produced).toEqual(CHAT_FAILURE_REASON_CODES);
+    expect(failureReasonFromLoopException(new Error('爆炸'))).toEqual({
+      code: 'loop_exception',
+      evidence: ['聊天循环异常: 爆炸'],
+    });
+  });
+
   it('no_progress_loop:code 取机械终止码,evidence 含机器句子与协议事实,tried 为已尝试概要', () => {
     const failStep: TrailStep = {
       step: 5,

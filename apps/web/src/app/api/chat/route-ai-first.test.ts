@@ -8,6 +8,7 @@ import {
   chat,
   createPublishingLlmStub,
   createUnauthorizedStub,
+  entityRequestRels,
   eventKinds,
   PUBLISH_TEST_GOAL,
   chatRouteBase,
@@ -247,6 +248,36 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
 
     expect(json.outcome).toBe('done');
     expect(sitemapRequestCount()).toBe(1);
+  });
+
+  it('事实 focus 首实体不可得:final 精确为 start_entity_unavailable 且不预探测其他实体', async () => {
+    const { json, frames } = await chat({
+      sessionId: 'focused-start-unavailable',
+      goal: { verb: '检查当前对象' },
+      clientView: {
+        schemaVersion: 2,
+        presence: {
+          clientInstanceId: 'client:start-unavailable',
+          site: 'business',
+          scope: 'default',
+          thread: null,
+          focus: 'ghost',
+        },
+      },
+    });
+
+    expect(json.outcome).toBe('failed');
+    expect(json.steps).toEqual([]);
+    expect((json as { reason?: { code?: string; evidence?: string[] } }).reason).toEqual({
+      code: 'start_entity_unavailable',
+      evidence: ['实体 "ghost" 不存在'],
+    });
+    expect(frames.find((frame) => frame.type === 'final')?.payload).toMatchObject({
+      outcome: 'failed',
+      reason: { code: 'start_entity_unavailable' },
+    });
+    expect(sitemapRequestCount()).toBe(1);
+    expect(entityRequestRels()).toEqual(['ghost']);
   });
 
   it('route 不再调用 readSitemapTitles 触发第二次 fetch', () => {
