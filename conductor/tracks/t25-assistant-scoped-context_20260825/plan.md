@@ -69,13 +69,13 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
     surfaces + 其他 scope 入口 rel + 实体可导航 rel(跨 scope 显式导航可达)
   - chat 路由接线:`situation.scope` 经 runAgent options 传入(`options.app`
     语义对齐:scope 即 application 名,`grantedPolicyScopes` 同口径)
-- [~] Task: prompt 预算断言
+- [x] Task: prompt 预算断言 4e5fe4b
   - 纯函数层:`buildLlmMessages` 返回值字节数;wire 层:scripted transport
     `RecordedCall.body`(覆盖 tools 投影体积,模式参照
     `llm-driver.test.ts` 的 `systemPromptOf(calls)`)
   - 典型处境三例:读文章(business scope)、走向导、定义治理(meta scope);
     单次 decide 请求 ≤ 32KB,超限即披露层 bug
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase C: delegated 同收窄与回合卫生
 
