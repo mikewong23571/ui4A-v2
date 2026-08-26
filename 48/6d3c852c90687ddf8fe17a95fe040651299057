@@ -1,0 +1,22 @@
+Task: 失败语义回归测试
+
+Summary:
+- Closed Chat mechanical failure reasons to the existing four-code contract.
+- Added a loop-exception reason factory and normalized unknown driver codes to driver_fail.
+- Proved fact-focus start unavailability performs one sitemap read, one exact entity read, returns no steps, and emits start_entity_unavailable.
+- Proved delegated first-entity 404 remains unrecorded and finishes delegation-failed with zero steps.
+
+Files:
+- apps/web/src/chat/failure-reason.ts and test
+- apps/web/src/app/api/chat/route.ts, route-test-kit.ts, route-ai-first.test.ts
+- apps/worker/src/delegation.test.ts
+
+Why:
+Context narrowing must not expand or silently change the stable failure contract, and start failure must remain honest without reachability probes.
+
+Verification:
+- 3 files / 51 tests passed
+- pnpm --filter @ui4a/web typecheck
+- pnpm --filter @ui4a/worker typecheck
+- pnpm governance
+- Autonomous acceptance by the orchestrating agent.
