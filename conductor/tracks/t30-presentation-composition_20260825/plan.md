@@ -128,7 +128,7 @@
 
 ## Phase F: 端到端验收与收尾
 
-- [ ] Task: my-work 端到端 proof
+- [~] Task: my-work 端到端 proof
   - `POST /api/presentation`(subject = `workspace:my-work`)→ receipt ready →
     canvas 渲染三区域;binding-only(I2 口径:deref 值与实体快照一致);
     presentation 域重建与业务 fold 隔离各自一致(I5 口径)
