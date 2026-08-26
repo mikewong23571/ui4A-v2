@@ -6,7 +6,7 @@
  *   (进程无 LLM profile 即零 LLM 网络调用的证据)→ 一条场景内跑 B1/B2/B3(baseline
  *   的 runAgent 合同路径核心)+ 表单版 S1(agent HTTP 挂起 → 人类 RJSF 批准,
  *   s1 UI 走查核心;无需 worker——inbox 投影列出全部 pending,送达断言属
- *   s1 的 notify 链路)+ 哑渲染(态势/事件流页数据断言);
+ *   s1 的 notify 链路)+ exact entity 状态与事件流断言;
  * - I2(事实不可发明):s5 对拍逻辑的精简重跑——chat(rule)生成零字面 spec →
  *   生产解引用器 derefSpec 对实体快照解引用 → 分组计数逐项对拍(无浏览器);
  * - I3(交互必背书):i3 fuzz 的抽页重跑(首页 + 实体页),同一探针口径;
@@ -242,10 +242,9 @@ test.describe('I1 零智能完整(已被 T15 AI-first supersede)', () => {
           // 挂起即未生效。
           expect((await getEntity('post:first-post')).properties.node).toBe('published');
 
-          // 人类全程 renderer:首页收件箱计数 → 收件箱成员 → 确认页 RJSF 批准。
-          await page.goto('/');
-          await expect(page.getByText('收件箱(待确认 1)')).toBeVisible();
-          await page.click('a[data-rel="inbox"]');
+          // 人类全程 renderer:canonical 收件箱实体 → 成员 → 确认页 RJSF 批准。
+          expect((await getEntity('inbox')).properties).toMatchObject({ count: 1 });
+          await page.goto('/entity?rel=inbox');
           const member = page.locator('section[aria-label="成员"] a', {
             hasText: 'target-action=archive',
           });
@@ -262,17 +261,13 @@ test.describe('I1 零智能完整(已被 T15 AI-first supersede)', () => {
           await expect(
             page.locator('section[aria-label="属性"] tbody tr', { hasText: 'approved' }).first(),
           ).toBeVisible();
-          await page.goto('/');
-          await expect(page.locator('a[data-rel="post:first-post"]')).toContainText('archived');
-          await expect(page.getByText('收件箱(待确认 0)')).toBeVisible();
+          expect((await getEntity('post:first-post')).properties.node).toBe('archived');
+          expect((await getEntity('inbox')).properties).toMatchObject({ count: 0 });
+          await page.goto('/entity?rel=post:first-post');
+          await expect(
+            page.locator('section[aria-label="属性"] tbody tr', { hasText: 'archived' }).first(),
+          ).toBeVisible();
 
-          // ---- 哑渲染(态势/事件流页:静态绑定数据,零 AI 路径)--------------
-          // 态势 stat:数值经 deref 从实体投影取回(文章数 3 / 待确认 0)。
-          await expect(page.locator('[data-testid="situation"]')).toBeVisible();
-          await expect(page.locator('[data-testid="stat-articles"]')).toContainText('3');
-          await expect(page.locator('[data-testid="stat-pending"]')).toContainText('0');
-          await expect(page.getByText('文章(共 3 篇)')).toBeVisible();
-          await expect(page.getByText('评论队列(待处理 0)')).toBeVisible();
           // 事件流页:timeline 词条渲染原始事件(本场景 publish 留痕可见)。
           await page.goto('/events');
           await expect(page.locator('[data-word="timeline"]')).toBeVisible();
@@ -363,9 +358,7 @@ test.describe('I3 交互必背书', () => {
   test('抽 2 页 fuzz:首页与实体页全部可点元素必映射已声明 action 或导航', async ({ page }) => {
     await withFreshServer(async () => {
       const targets = [
-        // Phase B 只等待独立 `/` 的稳定 AppShell 锚点；Phase D 会复核为
-        // 共享 Sidecar 单树宿主 ready，I3 探针口径与零白名单不变。
-        { name: '首页', path: '/', ready: 'main' },
+        { name: '首页', path: '/', ready: '[data-surface]' },
         {
           name: '实体页(已发布文章,含动作)',
           path: '/entity?rel=post:post-welcome',

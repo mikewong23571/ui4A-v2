@@ -29,9 +29,7 @@ import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
 
 /** fuzz 页面清单(骨架五面 + 实体页;GOAL I3「所有页面」的本站全集)。 */
 const PAGES: { name: string; path: string; ready: string }[] = [
-  // Phase B 只等待独立 `/` 的稳定 AppShell 锚点；Phase D 会复核为共享
-  // Sidecar 单树宿主的 ready 锚点，fuzz 本身继续保持零白名单。
-  { name: '首页', path: '/', ready: 'main' },
+  { name: '首页', path: '/', ready: '[data-surface]' },
   {
     name: '事件流',
     path: '/events',

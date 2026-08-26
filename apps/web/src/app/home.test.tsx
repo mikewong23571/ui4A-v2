@@ -1,12 +1,6 @@
 // @vitest-environment jsdom
-/**
- * T27 Phase B：首页测试只固定“家”的页面边界与 I3 交互合同。
- *
- * 旧首页的文章、评论、收件箱、委托、运行概览和计数都是即将退役的硬编码
- * 内容面，不再由本文件冻结。Phase D 会把下面两个 todo 升为共享 Presentation
- * 宿主的行为测试；在此之前不以伪实现让 Phase B 永久为红。
- */
-import { cleanup, render } from '@testing-library/react';
+/** T27 Phase D：首页是独立的“家”，内容面只挂共享 Presentation 宿主。 */
+import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AppShell } from '@/components/app-shell';
@@ -16,27 +10,33 @@ import Home from './page';
 
 stubBrowserApis();
 
+const { presentationSurfaceHostSpy } = vi.hoisted(() => ({
+  presentationSurfaceHostSpy: vi.fn(),
+}));
+
+vi.mock('@/components/canvas/presentation-surface-host', () => ({
+  PresentationSurfaceHost: (props: { heading: string; parameters: { focus: string } }) => {
+    presentationSurfaceHostSpy(props);
+    return (
+      <section data-testid="shared-presentation-host">
+        <h1>{props.heading}</h1>
+        <div data-surface="presentation-workspace%3Amy-work" />
+      </section>
+    );
+  },
+}));
+
 afterEach(() => {
   cleanup();
+  presentationSurfaceHostSpy.mockClear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   stubBrowserApis();
 });
 
-/**
- * 本 Phase 只测同步页面边界。让旧 HomeBody 的异步取数保持 pending，避免把
- * 它的私有端点清单重新写进首页合同；卸载时其 effect 会正常取消。
- */
-function holdContractReads(): void {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(() => new Promise<Response>(() => undefined)),
-  );
-}
-
 describe('首页 `/` 页面边界', () => {
-  it('作为独立的家挂入 AppShell，并由壳提供唯一稳定 main 锚点', () => {
-    holdContractReads();
+  it('作为独立的家挂入 AppShell，不重定向到 /canvas', () => {
+    window.history.pushState({}, '', '/');
     const { container } = render(
       <AppShell>
         <Home />
@@ -47,10 +47,10 @@ describe('首页 `/` 页面边界', () => {
     expect(mains).toHaveLength(1);
     expect(mains[0]!.childElementCount).toBeGreaterThan(0);
     expect(container.querySelector('header a[data-nav="home"]')?.getAttribute('href')).toBe('/');
+    expect(window.location.pathname).toBe('/');
   });
 
   it('所有可点击或可提交元素都有 data-nav/data-action，不假设首页零提交控件', () => {
-    holdContractReads();
     const { container } = render(
       <AppShell>
         <Home />
@@ -70,6 +70,23 @@ describe('首页 `/` 页面边界', () => {
     ).toEqual([]);
   });
 
-  it.todo('Phase D：首页固定请求 subject=workspace:my-work');
-  it.todo('Phase D：首页与 /canvas 复用同一 Sidecar 单树宿主和 action gate');
+  it('固定以精确 workspace subject 挂载共享 Sidecar 单树宿主', () => {
+    render(<Home />);
+
+    expect(presentationSurfaceHostSpy).toHaveBeenCalledTimes(1);
+    expect(presentationSurfaceHostSpy).toHaveBeenCalledWith({
+      heading: '我的事',
+      parameters: { focus: 'workspace:my-work' },
+    });
+    expect(screen.getByTestId('shared-presentation-host')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '我的事', level: 1 })).toBeTruthy();
+  });
+
+  it('不再渲染旧首页的硬编码内容面', () => {
+    const { container } = render(<Home />);
+    const host = screen.getByTestId('shared-presentation-host');
+
+    expect(container.childElementCount).toBe(1);
+    expect(container.firstElementChild).toBe(host);
+  });
 });
