@@ -1,0 +1,13 @@
+Task: spec/plan 回改对齐 D45
+
+Summary:
+- Replaced open spike choices with the committed D45 construction contract.
+- Fixed Phase B-F task shapes for workspace strings, shared parsing, web registry, layout/slot degeneration, per-region Recipe slots, and authorization diagnostics.
+- Updated acceptance language to reject dual presentation paths and authorization leakage.
+
+Files:
+- conductor/tracks/t30-presentation-composition_20260825/spec.md
+- conductor/tracks/t30-presentation-composition_20260825/plan.md
+
+Why:
+Implementation tasks must consume one decided architecture rather than reinterpret recommendations during construction.
