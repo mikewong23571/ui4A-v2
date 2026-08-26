@@ -89,14 +89,14 @@
 
 ## Phase F: 端到端验收与收尾
 
-- [ ] Task: 全量验收
+- [x] Task: 全量验收
   - `pnpm check` 全绿(含全量 vitest——I2 靠 property test,e2e 不构成
     binding-only 证据);`CI=true pnpm e2e invariants` 全绿;`CI=true pnpm e2e`
     全量全绿;T16 presentation/T24 honesty/chat 套件全绿
   - 最终系统验收不使用本地 dev server:从 accepted source 构建 web/worker/runner
     镜像,部署 mothership,在现场验证 ready/version、动作/引用/raw/intent/diagnostic、
     I3 与只读 replay;现场证据写入 Track 后方可关闭
-- [ ] Task: Track 收尾
+- [x] Task: Track 收尾
   - `conductor/tracks.md` 状态流转;track 目录按 GR5 处置(无 bespoke 脚本/
     配置残留);metadata.json 归档;方向 program(T24–T30)全闭环,GOAL.md
     与 product-vision.md 的落账口径复核
