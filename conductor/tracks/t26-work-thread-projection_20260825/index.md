@@ -7,6 +7,16 @@ context 的真正载体、workstation 首页与 AI 上下文边界的共同地�
 
 - [Metadata](./metadata.json)
 - [Specification](./spec.md)
+- [Plan](./plan.md)
 
-当前状态:`planned`。方向依据:`conductor/product-vision.md` §三(workstation
-是家)、§四(工作线概念)、§六(规则滑梯)。
+当前状态:`in_progress`。方向依据:`conductor/product-vision.md` §一.3(scoped
+context)、§三(workstation 是家)、§四(工作线概念)、§六(规则滑梯)、
+§八.3(复合投影)+ CLI 纪律二(显式引用聚合)。
+
+2026-08-26 细化:spec 补齐方向依据、T29/T25/D41 依赖事实、现状代码锚点
+(fold/project/sitemap/授权/chat/agent-run/CLI/GR3/I5)与 spike 五问的候选
+分析;新增 plan.md(Phase A spike → D44,Phase B fold 内核,Phase C 合同
+暴露,Phase D 锚定接线,Phase E 验收收尾)。同日补充:验收目标纠偏原则
+(验收与 track 目标相悖时干掉验收目标)与全量误导性验收排查结论(两处闭式
+sitemap 断言须先开放化,I5 enumerateEntityRels 静默缺口必堵);关联备注已
+同步至 T27/T28/T30 spec。实施会话无需此前聊天上下文,从 spec.md 起步即可。
