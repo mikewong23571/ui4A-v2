@@ -52,7 +52,7 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
 
 ## Phase B: 分层披露与 prompt 预算
 
-- [~] Task: 披露切片纯函数测试(Red)
+- [x] Task: 披露切片纯函数测试(Red) a8f60e9
   - `packages/agent` 新模块(建议 `src/contract/disclosure.ts`,inline 与
     worker 共用,GR1 方向内):输入 `SitemapSummary`
     (`packages/agent/src/types.ts`)+ scope(= application 名)+ 当前 rel;
