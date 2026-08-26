@@ -1,0 +1,29 @@
+T27 Phase D Task: 首页落地与 home-body 退役
+
+Summary:
+- / 固定挂载共享 PresentationSurfaceHost，heading=我的事，focus=workspace:my-work；不重定向 /canvas。
+- 删除 HomeBody 及其旧六区块/运行概览测试，零内容复制。
+- 首页 I3 ready 升为真实 [data-surface]。
+- 隐蔽在 skipped invariants 场景中的旧首页 inbox/article/stat/comment 快照迁为 canonical entity route 与 exact state。
+- components direct 目录已回到 4000 内，删除 size baseline（commit f9500c2）。
+
+Files:
+- apps/web/src/app/page.tsx
+- apps/web/src/app/home.test.tsx
+- deleted apps/web/src/components/home-body.tsx and test
+- e2e/i3.spec.ts
+- e2e/invariants.spec.ts
+
+Why:
+Workstation 首页内容必须完全来自 T30 my-work 声明与同一 Presentation 机器，舞台不再硬编码业务区块。
+
+TDD:
+- Red: 2 home tests fail against HomeBody (shared host call 0, legacy situation present).
+- Green: home/shared host 8 tests pass.
+
+Verification:
+- CI=true TMPDIR=/home/mike/.cache/ui4a-t27-tmp pnpm e2e e2e/i3.spec.ts e2e/invariants.spec.ts: PASS (6 passed, 2 existing skips)
+- I5 replay: 53 events / 31 rels / hash equal
+- legacy home contract rg audit: zero matches
+- web typecheck, changed ESLint, Prettier/diff: PASS
+- pnpm governance: PASS after stale baseline removal
