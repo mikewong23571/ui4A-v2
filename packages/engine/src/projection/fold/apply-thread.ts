@@ -73,7 +73,7 @@ function businessDetail(event: LogEvent): unknown {
   if (typeof event.detail !== 'object' || event.detail === null || Array.isArray(event.detail)) {
     return event.detail;
   }
-  const detail = { ...event.detail };
+  const detail: Record<string, unknown> = { ...event.detail };
   delete detail.identity;
   return detail;
 }
