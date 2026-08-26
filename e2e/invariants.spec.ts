@@ -363,7 +363,9 @@ test.describe('I3 交互必背书', () => {
   test('抽 2 页 fuzz:首页与实体页全部可点元素必映射已声明 action 或导航', async ({ page }) => {
     await withFreshServer(async () => {
       const targets = [
-        { name: '首页', path: '/', ready: '[data-testid="situation"]' },
+        // Phase B 只等待独立 `/` 的稳定 AppShell 锚点；Phase D 会复核为
+        // 共享 Sidecar 单树宿主 ready，I3 探针口径与零白名单不变。
+        { name: '首页', path: '/', ready: 'main' },
         {
           name: '实体页(已发布文章,含动作)',
           path: '/entity?rel=post:post-welcome',
