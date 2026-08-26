@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic';
 /** Shared entry for Chat, direct navigation, and Flow transitions. */
 export async function POST(request: Request): Promise<Response> {
   let presentationRequest;
+  let trustedPolicyScope: string | undefined;
   try {
     presentationRequest = parsePresentationRequest(await request.json());
   } catch (error) {
@@ -35,6 +36,7 @@ export async function POST(request: Request): Promise<Response> {
         defaultPolicyScope: 'default',
       });
       presentationRequest = { ...presentationRequest, principal: identity.principal };
+      trustedPolicyScope = identity.policyScope;
     } catch (error) {
       return (
         authenticationErrorResponse(error) ??
@@ -42,6 +44,11 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
   }
-  const receipt = await getPresentationBroker().present(presentationRequest);
+  const receipt =
+    trustedPolicyScope === undefined
+      ? await getPresentationBroker().present(presentationRequest)
+      : await getPresentationBroker().present(presentationRequest, {
+          policyScope: trustedPolicyScope,
+        });
   return Response.json(receipt);
 }

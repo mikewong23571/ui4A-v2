@@ -16,6 +16,7 @@ export type PresentationBrokerResolution =
       kind: 'ready';
       sidecar?: PresentationSidecarRef;
       surfaceUrl?: string;
+      reasonCode?: string;
     }
   | {
       kind: 'fallback';
@@ -102,7 +103,9 @@ function receiptFromResolution(
     ...(resolution.surfaceUrl === undefined ? {} : { surfaceUrl: resolution.surfaceUrl }),
     ...(resolution.kind === 'fallback'
       ? { reasonCode: resolution.reasonCode ?? defaultReasonCode ?? 'generic-fallback' }
-      : {}),
+      : resolution.reasonCode === undefined
+        ? {}
+        : { reasonCode: resolution.reasonCode }),
   };
 }
 

@@ -24,9 +24,14 @@ describe('T16 Chat/Presentation source governance', () => {
 
   it('completes model intent with trusted request metadata and stores references only', () => {
     expect(routeSource).toContain('completePresentationRequest(intent');
-    expect(routeSource).toContain('principal: presentationPrincipal');
+    expect(routeSource).toContain('principal: args.presentationPrincipal');
     expect(routeSource).toContain('sourceMessageIds: [turnId]');
     expect(routeSource).toContain('presentationRequestIds');
+    expect(routeSource).toContain(
+      "const presentationPolicyScope = productionIdentity?.policyScope ?? 'local-demo'",
+    );
+    expect(routeSource).toContain('presentationPolicyScope,');
+    expect(routeSource).not.toMatch(/completePresentationRequest\(intent,[\s\S]{0,300}policyScope/);
 
     const history: ChatTurnDetail = {
       sessionId: 'session:a',
@@ -40,10 +45,13 @@ describe('T16 Chat/Presentation source governance', () => {
       driver: 'llm',
     };
     expect(JSON.stringify(history)).not.toMatch(/surfaceTree|catalog|dependencies|hydration/i);
+    expect(JSON.stringify(history)).not.toContain('policyScope');
   });
 
   it('keeps Chat outcome independent while settling governed Presentation jobs before stream close', () => {
-    expect(routeSource).toMatch(/getPresentationBroker\(\)[\s\S]*?\.present\(request\)/);
+    expect(routeSource).toMatch(
+      /getPresentationBroker\(\)[\s\S]*?\.present\(request, \{ policyScope: args\.presentationPolicyScope \}\)/,
+    );
     expect(routeSource).toContain('presentationJobs.push(job)');
     expect(routeSource).toMatch(
       /send\(\{[\s\S]*?type: 'final'[\s\S]*?await Promise\.allSettled\(presentationJobs\)/,

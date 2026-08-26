@@ -43,6 +43,21 @@ function memoryStore(): PresentationBrokerStore {
 }
 
 describe('runPresentationBroker', () => {
+  it('preserves an honest reason code on a ready partial resolution', async () => {
+    const receipt = await runPresentationBroker(request, {
+      store: memoryStore(),
+      authorize: async () => ({}),
+      buildSituation: async () => ({}),
+      resolve: async () => ({
+        kind: 'ready',
+        surfaceUrl: '/canvas?sidecar=partial',
+        reasonCode: 'partial-authorization',
+      }),
+      plan: async () => ({ kind: 'miss' }),
+    });
+
+    expect(receipt).toMatchObject({ status: 'ready', reasonCode: 'partial-authorization' });
+  });
   it('reauthorizes, builds a situation, resolves and commits exactly one terminal receipt', async () => {
     const store = memoryStore();
     const authorize = vi.fn(async () => ({ policyScope: 'own-content' }));

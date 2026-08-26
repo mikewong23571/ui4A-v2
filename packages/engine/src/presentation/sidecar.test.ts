@@ -219,4 +219,22 @@ describe('Presentation Sidecar event fold', () => {
       rehydrated: [],
     });
   });
+
+  it('replans when current state introduces a new non-optional dependency', () => {
+    expect(
+      dependencyDecision(dependencies, [
+        ...dependencies,
+        {
+          id: 'definition:new-required',
+          subtreeId: 'root',
+          kind: 'definition',
+          ref: 'composition:new@1',
+          pointers: ['$definition'],
+          mode: 'invalidate',
+          fingerprint: 'v1',
+          optional: false,
+        },
+      ]),
+    ).toMatchObject({ valid: false, replanned: ['root'] });
+  });
 });

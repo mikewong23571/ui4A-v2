@@ -385,6 +385,16 @@ export function dependencyDecision(
       reused.push(dependency.subtreeId);
     }
   }
+  const expectedIds = new Set(expected.map((dependency) => dependency.id));
+  for (const dependency of current) {
+    if (
+      !dependency.optional &&
+      !expectedIds.has(dependency.id) &&
+      !replanned.includes(dependency.subtreeId)
+    ) {
+      replanned.push(dependency.subtreeId);
+    }
+  }
   const stableReplanned = [...replanned].sort();
   const replannedSet = new Set(stableReplanned);
   return {

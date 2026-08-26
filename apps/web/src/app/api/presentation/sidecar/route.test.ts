@@ -1,16 +1,25 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { completePresentationRequest } from '@ui4a/shared';
 
 import {
   appendSidecarCommand,
   ensurePresentationTables,
   loadPresentationSnapshot,
 } from '../../../../db/presentation';
-import { getDb } from '../../../../engine/service';
+import { getDb, resetEngineForTests } from '../../../../engine/service';
+import {
+  getPresentationBroker,
+  resetPresentationBrokerForTests,
+} from '../../../../engine/presentation/runtime';
+import { resetRecipeCoordinatorForTests } from '../../../../engine/presentation/recipes-runtime';
 import { GET, POST } from './route';
 
 beforeEach(async () => {
   await ensurePresentationTables(getDb());
   await getDb().query('TRUNCATE events, presentation_user_sidecars');
+  resetEngineForTests();
+  resetPresentationBrokerForTests();
+  resetRecipeCoordinatorForTests();
   await appendSidecarCommand(getDb(), {
     kind: 'instantiate',
     eventId: 'e1',
@@ -183,27 +192,30 @@ describe('Sidecar human lifecycle route', () => {
     });
   });
 
-  it('fails workspace promotion closed until a complete ordered region slot map is available', async () => {
-    const snapshot = await loadPresentationSnapshot(getDb());
-    const source = snapshot.sidecars['sidecar:1']!;
+  it('fails partial workspace promotion closed', async () => {
+    const receipt = await getPresentationBroker().present(
+      completePresentationRequest(
+        { subject: 'workspace:my-work', intent: 'organize', delivery: 'canvas' },
+        { requestId: 'workspace:partial', principal: 'user:local', sourceMessageIds: [] },
+      ),
+      { policyScope: 'publishing' },
+    );
+    expect(receipt).toMatchObject({ status: 'ready', reasonCode: 'partial-authorization' });
+    const partial = (await loadPresentationSnapshot(getDb())).sidecars[receipt.sidecar!.id]!;
     await appendSidecarCommand(getDb(), {
       kind: 'instantiate',
-      eventId: 'workspace:e1',
-      commandId: 'workspace:c1',
-      sidecarId: 'sidecar:workspace',
-      key: {
-        ...source.key,
-        subject: 'workspace:my-work',
-        intent: 'organize',
-      },
-      version: source.versions[source.activeVersion]!,
+      eventId: 'workspace:partial:local:event',
+      commandId: 'workspace:partial:local',
+      sidecarId: 'sidecar:workspace-partial-local',
+      key: { ...partial.key, policyScope: 'local-demo' },
+      version: partial.versions[partial.activeVersion]!,
     });
 
     const response = await POST(
       new Request('http://localhost/api/presentation/sidecar', {
         method: 'POST',
         body: JSON.stringify({
-          sidecarId: 'sidecar:workspace',
+          sidecarId: 'sidecar:workspace-partial-local',
           action: 'promotion-preview',
           actor: 'human',
         }),
@@ -212,7 +224,7 @@ describe('Sidecar human lifecycle route', () => {
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({
-      error: expect.stringMatching(/complete ordered slot map/i),
+      error: expect.stringMatching(/partial workspace/i),
     });
     const promoted = await getDb().query<{ count: string }>(
       `SELECT COUNT(*)::text AS count
@@ -220,8 +232,61 @@ describe('Sidecar human lifecycle route', () => {
         WHERE domain = 'presentation'
           AND kind = 'render-recipe-promoted'
           AND detail->>'sidecarId' = $1`,
-      ['sidecar:workspace'],
+      ['sidecar:workspace-partial-local'],
     );
     expect(promoted.rows[0]?.count).toBe('0');
+  });
+
+  it('promotes a full workspace and instantiates its aggregate Recipe for a new user', async () => {
+    const receipt = await getPresentationBroker().present(
+      completePresentationRequest(
+        { subject: 'workspace:my-work', intent: 'organize', delivery: 'canvas' },
+        { requestId: 'workspace:full', principal: 'user:local', sourceMessageIds: [] },
+      ),
+    );
+    const response = await POST(
+      new Request('http://localhost/api/presentation/sidecar', {
+        method: 'POST',
+        body: JSON.stringify({
+          sidecarId: receipt.sidecar!.id,
+          action: 'promotion-preview',
+          actor: 'human',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      diff: {
+        subjectSlots: ['waiting-for-me', 'in-motion', 'work-lines'],
+        parameterized: true,
+      },
+    });
+    const promoted = await POST(
+      new Request('http://localhost/api/presentation/sidecar', {
+        method: 'POST',
+        body: JSON.stringify({
+          sidecarId: receipt.sidecar!.id,
+          action: 'promote',
+          actor: 'human',
+        }),
+      }),
+    );
+    expect(promoted.status).toBe(200);
+    resetPresentationBrokerForTests();
+    resetRecipeCoordinatorForTests();
+
+    const instantiated = await getPresentationBroker().present(
+      completePresentationRequest(
+        { subject: 'workspace:my-work', intent: 'organize', delivery: 'canvas' },
+        { requestId: 'workspace:recipe-user', principal: 'user:other', sourceMessageIds: [] },
+      ),
+    );
+    expect(instantiated).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
+    const stored = (await loadPresentationSnapshot(getDb())).sidecars[instantiated.sidecar!.id]!;
+    expect(stored.versions[stored.activeVersion]!.provenance).toMatchObject({
+      kind: 'application-recipe',
+    });
+    expect(JSON.stringify(stored.versions[stored.activeVersion]!.surface)).not.toContain('$slot:');
   });
 });

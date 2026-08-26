@@ -20,6 +20,13 @@ import {
 import { PRESENTATION_SURFACE_CATALOG } from '../../../../engine/presentation/catalog';
 import { currentRecipeCoordinator } from '../../../../engine/presentation/recipes-runtime';
 import { singleSubjectRecipeContext } from '../../../../engine/presentation/recipe-context';
+import { resolveBuiltinCompositionSubject } from '../../../../engine/presentation/compositions';
+import { getAuthorizedPresentationEntity } from '../../../../engine/presentation/authorized-entity';
+import { compositionRecipeContext } from '../../../../engine/presentation/runtime-composition';
+import {
+  authorizeStoredSidecar,
+  hasUnavailableRegion,
+} from '../../../../engine/presentation/sidecar-authorization';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,11 +36,18 @@ const LOCAL_PRESENTATION_PRINCIPAL = 'user:local';
 // 或 Bearer),并以已认证 principal 作为 Sidecar 归属——durable Sidecar key 以
 // principal 区分,固定 local principal 在生产既越权又查不到 chat 建立的 Sidecar。
 // local profile 行为不变(固定 user:local)。
-async function presentationPrincipal(
+interface TrustedPresentationIdentity {
+  principal: string;
+  policyScope: string;
+}
+
+async function presentationIdentity(
   request: Request,
   requiredScopes: string[],
-): Promise<string | Response> {
-  if (requestIdentityProfile() !== 'production') return LOCAL_PRESENTATION_PRINCIPAL;
+): Promise<TrustedPresentationIdentity | Response> {
+  if (requestIdentityProfile() !== 'production') {
+    return { principal: LOCAL_PRESENTATION_PRINCIPAL, policyScope: 'local-demo' };
+  }
   try {
     const engine = await getEngine(getDb());
     const identity = await resolveTrustedRequestIdentity(request, {
@@ -42,7 +56,7 @@ async function presentationPrincipal(
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
       defaultPolicyScope: 'default',
     });
-    return identity.principal;
+    return { principal: identity.principal, policyScope: identity.policyScope };
   } catch (error) {
     return (
       authenticationErrorResponse(error) ??
@@ -56,10 +70,12 @@ export async function GET(request: Request): Promise<Response> {
   if (sidecarId === null || sidecarId === '') {
     return Response.json({ error: 'sidecarId is required' }, { status: 400 });
   }
-  const principal = await presentationPrincipal(request, ['ui4a:read']);
-  if (principal instanceof Response) return principal;
-  const sidecar = await getSidecarById(getDb(), sidecarId, principal);
-  if (sidecar === undefined) return Response.json({ error: 'Sidecar not found' }, { status: 404 });
+  const identity = await presentationIdentity(request, ['ui4a:read']);
+  if (identity instanceof Response) return identity;
+  const sidecar = await getSidecarById(getDb(), sidecarId, identity.principal);
+  if (sidecar === undefined || !(await authorizeStoredSidecar(sidecar, identity))) {
+    return Response.json({ error: 'Sidecar not found' }, { status: 404 });
+  }
   if (new URL(request.url).searchParams.get('explain') === '1') {
     try {
       return Response.json({
@@ -107,10 +123,9 @@ export async function POST(request: Request): Promise<Response> {
   ) {
     return Response.json({ error: 'human Sidecar lifecycle request is invalid' }, { status: 400 });
   }
-  const principal = await presentationPrincipal(request, ['ui4a:write']);
-  if (principal instanceof Response) return principal;
-  const current = await getSidecarById(getDb(), body.sidecarId, principal);
-  if (current === undefined) return Response.json({ error: 'Sidecar not found' }, { status: 404 });
+  const identity = await presentationIdentity(request, ['ui4a:write']);
+  if (identity instanceof Response) return identity;
+  const current = await getSidecarById(getDb(), body.sidecarId, identity.principal);
   if (
     body.action === 'revert' &&
     (typeof body.targetVersion !== 'number' ||
@@ -119,6 +134,15 @@ export async function POST(request: Request): Promise<Response> {
   ) {
     return Response.json({ error: 'targetVersion must be a positive integer' }, { status: 400 });
   }
+  if (
+    current === undefined ||
+    !(await authorizeStoredSidecar(current, identity)) ||
+    (body.action === 'revert' &&
+      !(await authorizeStoredSidecar(current, identity, body.targetVersion as number)))
+  ) {
+    return Response.json({ error: 'Sidecar not found' }, { status: 404 });
+  }
+  const principal = identity.principal;
 
   if (body.action === 'patch') {
     try {
@@ -179,15 +203,49 @@ export async function POST(request: Request): Promise<Response> {
 
   if (body.action === 'promotion-preview' || body.action === 'promote') {
     try {
-      if (typeof current.key.subject !== 'string' || current.key.subject.startsWith('workspace:')) {
+      if (hasUnavailableRegion(current.versions[current.activeVersion]!.surface.root)) {
+        throw new Error('Partial workspace surfaces cannot be promoted');
+      }
+      if (typeof current.key.subject !== 'string') {
         throw new Error('Recipe promotion requires a complete ordered slot map');
       }
-      const entity = await (await getEngine(getDb())).getEntity(current.key.subject);
-      const recipeContext = singleSubjectRecipeContext({
-        rels: [current.key.subject],
-        entities: entity === undefined ? [] : [entity],
-        policyScope: current.key.policyScope,
-      });
+      const composition = resolveBuiltinCompositionSubject(current.key.subject);
+      const recipeContext =
+        composition.kind === 'composition'
+          ? await (async () => {
+              const regions = await Promise.all(
+                composition.declaration.regions.map(async (declaration) => ({
+                  declaration,
+                  entity: await getAuthorizedPresentationEntity(
+                    declaration.source,
+                    principal,
+                    current.key.policyScope,
+                  ),
+                })),
+              );
+              if (regions.some((region) => region.entity === undefined)) {
+                throw new Error('Partial workspace surfaces cannot be promoted');
+              }
+              return compositionRecipeContext({
+                rels: regions.map((region) => region.declaration.source),
+                entities: regions.map((region) => region.entity),
+                policyScope: current.key.policyScope,
+                declaration: composition.declaration,
+                regions,
+              });
+            })()
+          : await (async () => {
+              const entity = await getAuthorizedPresentationEntity(
+                current.key.subject as string,
+                principal,
+                current.key.policyScope,
+              );
+              return singleSubjectRecipeContext({
+                rels: [current.key.subject as string],
+                entities: entity === undefined ? [] : [entity],
+                policyScope: current.key.policyScope,
+              });
+            })();
       if (recipeContext === undefined) {
         throw new Error('Recipe promotion requires an authorized single-subject contract shape');
       }

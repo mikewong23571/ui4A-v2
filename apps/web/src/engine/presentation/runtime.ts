@@ -7,6 +7,7 @@ import {
   type SidecarDependency,
   type ApplicationRenderRecipeCandidate,
   type UserSidecarKey,
+  type SurfaceTree,
 } from '@ui4a/engine';
 import type { PresentationRequest } from '@ui4a/shared';
 
@@ -22,12 +23,15 @@ import {
   type AuthorizedRoot,
   type WebPresentationBroker,
 } from './broker';
-import { getDb, getEngine } from '../service';
+import { getDb } from '../service';
 import { RENDER_WORDS } from '../../render/registry';
 import { semanticHintsOf } from './situation';
 import { currentRecipeCoordinator } from './recipes-runtime';
 import { selectAndInstantiateRecipe } from './recipe-selection';
 import { singleSubjectRecipeContext } from './recipe-context';
+import { getAuthorizedPresentationEntity } from './authorized-entity';
+import { compositionRecipeContext, planWorkspaceComposition } from './runtime-composition';
+import type { PresentationTrustedContext } from './broker';
 
 const runtimeKey = Symbol.for('ui4a.presentation-broker');
 
@@ -35,10 +39,10 @@ interface PresentationGlobal {
   [runtimeKey]?: WebPresentationBroker;
 }
 
-function durableKey(request: PresentationRequest): UserSidecarKey {
+function durableKey(request: PresentationRequest, policyScope: string): UserSidecarKey {
   return {
     principal: request.principal,
-    policyScope: 'local-demo',
+    policyScope,
     subject: request.subject,
     intent: request.intent,
     deviceClass: 'any',
@@ -46,6 +50,7 @@ function durableKey(request: PresentationRequest): UserSidecarKey {
 }
 
 function currentDependencies(root: AuthorizedRoot): SidecarDependency[] {
+  if (root.declaration !== undefined) return planWorkspaceComposition(root).dependencies;
   const entity = root.entities[0] as {
     class?: unknown;
     properties?: Record<string, unknown>;
@@ -82,13 +87,13 @@ function currentDependencies(root: AuthorizedRoot): SidecarDependency[] {
       optional: false,
     },
     {
-      id: 'policy:local-demo',
+      id: `policy:${root.policyScope}`,
       subtreeId: 'root',
       kind: 'policy',
-      ref: 'local-demo',
+      ref: root.policyScope,
       pointers: ['$policy'],
       mode: 'invalidate',
-      fingerprint: 'local-demo',
+      fingerprint: root.policyScope,
       optional: false,
     },
   ];
@@ -141,6 +146,7 @@ async function hydratePromotedRecipes(): Promise<void> {
 async function appendLifecycle(
   kind: 'presentation-requested' | 'presentation-resolved' | 'presentation-failed',
   request: PresentationRequest,
+  namespace: string,
   detail: Record<string, unknown>,
 ): Promise<void> {
   try {
@@ -151,7 +157,7 @@ async function appendLifecycle(
       principal: request.principal,
       channel: 'presentation',
       detail: {
-        eventId: `${request.requestId}:${kind}`,
+        eventId: `${namespace}:${request.requestId}:${kind}`,
         requestId: request.requestId,
         ...detail,
       },
@@ -161,19 +167,65 @@ async function appendLifecycle(
   }
 }
 
+async function persistSurface(
+  request: PresentationRequest,
+  key: UserSidecarKey,
+  surface: SurfaceTree,
+  dependencies: SidecarDependency[],
+  provenance: { kind: 'application-recipe' | 'generic-fallback'; ref: string },
+  recipeRef?: { id: string; version: number },
+) {
+  const sidecarId = `sidecar:${sidecarKeyFingerprint(key).replace(/^fnv1a64:/, '')}`;
+  const commandNamespace = sidecarKeyFingerprint(key);
+  const previous = (await loadPresentationSnapshot(getDb())).sidecars[sidecarId];
+  const version = {
+    surface,
+    dependencies,
+    provenance,
+    changedPaths: [] as string[],
+    ...(recipeRef === undefined ? {} : { recipeRef }),
+  };
+  const persisted = await appendSidecarCommand(
+    getDb(),
+    previous === undefined
+      ? {
+          kind: 'instantiate',
+          eventId: `${commandNamespace}:${request.requestId}:instantiate:event`,
+          commandId: `${commandNamespace}:${request.requestId}:instantiate`,
+          sidecarId,
+          key,
+          version,
+        }
+      : {
+          kind: 'revise',
+          eventId: `${commandNamespace}:${request.requestId}:repair:event`,
+          commandId: `${commandNamespace}:${request.requestId}:repair`,
+          sidecarId,
+          baseVersion: previous.activeVersion,
+          version,
+        },
+  );
+  return {
+    id: sidecarId,
+    version: persisted.aggregate.activeVersion,
+    url: surfaceUrl(sidecarId, request),
+  };
+}
+
 /** Process adapter; the Broker store becomes durable/rebuildable in T16 Phase G. */
 export function getPresentationBroker(): WebPresentationBroker {
   const scope = globalThis as typeof globalThis & PresentationGlobal;
   if (scope[runtimeKey] !== undefined) return scope[runtimeKey];
   const delegate = createWebPresentationBroker({
-    getEntity: async (rel) => (await getEngine(getDb())).getEntity(rel),
+    getEntity: getAuthorizedPresentationEntity,
     resolve: async (request, situation) => {
-      const key = durableKey(request);
+      const key = durableKey(request, situation.policyScope);
       const sidecar = await findActiveSidecar(getDb(), key);
       if (sidecar === undefined) {
         await hydratePromotedRecipes();
         if (typeof request.subject !== 'string') return { kind: 'miss' };
-        const recipeContext = singleSubjectRecipeContext(situation);
+        const recipeContext =
+          compositionRecipeContext(situation) ?? singleSubjectRecipeContext(situation);
         if (recipeContext === undefined) return { kind: 'miss' };
         const selected = selectAndInstantiateRecipe(
           Object.values(currentRecipeCoordinator().registry().recipes),
@@ -188,39 +240,18 @@ export function getPresentationBroker(): WebPresentationBroker {
         const { recipe, surface } = selected;
         const validation = validateSurfaceTree(surface, PRESENTATION_SURFACE_CATALOG);
         if (!validation.valid) return { kind: 'miss' };
-        const sidecarId = `sidecar:${sidecarKeyFingerprint(key).replace(/^fnv1a64:/, '')}`;
-        const previous = (await loadPresentationSnapshot(getDb())).sidecars[sidecarId];
-        const version = {
-          surface: validation.surface,
-          dependencies: currentDependencies(situation),
-          provenance: { kind: 'application-recipe' as const, ref: recipe.id },
-          changedPaths: [] as string[],
-          recipeRef: { id: recipe.id, version: recipe.version },
-        };
-        const persisted = await appendSidecarCommand(
-          getDb(),
-          previous === undefined
-            ? {
-                kind: 'instantiate',
-                eventId: `${request.requestId}:recipe:event`,
-                commandId: `${request.requestId}:recipe`,
-                sidecarId,
-                key,
-                version,
-              }
-            : {
-                kind: 'revise',
-                eventId: `${request.requestId}:recipe-repair:event`,
-                commandId: `${request.requestId}:recipe-repair`,
-                sidecarId,
-                baseVersion: previous.activeVersion,
-                version,
-              },
+        const persisted = await persistSurface(
+          request,
+          key,
+          validation.surface,
+          currentDependencies(situation),
+          { kind: 'application-recipe', ref: recipe.id },
+          { id: recipe.id, version: recipe.version },
         );
         return {
           kind: 'ready',
-          sidecar: { id: sidecarId, version: persisted.aggregate.activeVersion },
-          surfaceUrl: surfaceUrl(sidecarId, request),
+          sidecar: { id: persisted.id, version: persisted.version },
+          surfaceUrl: persisted.url,
         };
       }
       const active = sidecar.versions[sidecar.activeVersion]!;
@@ -254,64 +285,52 @@ export function getPresentationBroker(): WebPresentationBroker {
         kind: 'ready',
         sidecar: { id: sidecar.id, version: sidecar.activeVersion },
         surfaceUrl: surfaceUrl(sidecar.id, request),
+        ...(situation.regions?.some((region) => region.entity === undefined)
+          ? { reasonCode: 'partial-authorization' }
+          : {}),
       };
     },
     plan: async (request, situation) => {
       if (typeof request.subject !== 'string') throw new Error('selection planning unavailable');
+      const key = durableKey(request, situation.policyScope);
+      const composition =
+        situation.declaration === undefined ? undefined : planWorkspaceComposition(situation);
       const entity = situation.entities[0] as Parameters<typeof planGenericSurface>[1];
-      const key = durableKey(request);
-      const sidecarId = `sidecar:${sidecarKeyFingerprint(key).replace(/^fnv1a64:/, '')}`;
-      const surface = planGenericSurface(request.subject, entity, PRESENTATION_SURFACE_CATALOG, {
-        entityVersion: currentDependencies(situation)[0]!.fingerprint,
-        semanticHints: semanticHintsOf(entity),
-        provenanceRef: `request:${request.requestId}`,
+      const dependencies = composition?.dependencies ?? currentDependencies(situation);
+      const surface =
+        composition?.surface ??
+        planGenericSurface(request.subject, entity, PRESENTATION_SURFACE_CATALOG, {
+          entityVersion: dependencies[0]!.fingerprint,
+          semanticHints: semanticHintsOf(entity),
+          provenanceRef: `request:${request.requestId}`,
+        });
+      const persisted = await persistSurface(request, key, surface, dependencies, {
+        kind: 'generic-fallback',
+        ref: `request:${request.requestId}`,
       });
-      const version = {
-        surface,
-        dependencies: currentDependencies(situation),
-        provenance: { kind: 'generic-fallback' as const, ref: `request:${request.requestId}` },
-        changedPaths: [] as string[],
-      };
-      const previous = (await loadPresentationSnapshot(getDb())).sidecars[sidecarId];
-      const persisted = await appendSidecarCommand(
-        getDb(),
-        previous === undefined
-          ? {
-              kind: 'instantiate',
-              eventId: `${request.requestId}:instantiate:event`,
-              commandId: `${request.requestId}:instantiate`,
-              sidecarId,
-              key,
-              version,
-            }
-          : {
-              kind: 'revise',
-              eventId: `${request.requestId}:repair:event`,
-              commandId: `${request.requestId}:repair`,
-              sidecarId,
-              baseVersion: previous.activeVersion,
-              version,
-            },
-      );
       return {
         kind: 'ready',
-        sidecar: { id: sidecarId, version: persisted.aggregate.activeVersion },
-        surfaceUrl: surfaceUrl(sidecarId, request),
+        sidecar: { id: persisted.id, version: persisted.version },
+        surfaceUrl: persisted.url,
+        ...(composition?.partial ? { reasonCode: 'partial-authorization' } : {}),
       };
     },
   });
   scope[runtimeKey] = {
-    async present(request) {
-      await appendLifecycle('presentation-requested', request, {
+    async present(request, trustedContext?: PresentationTrustedContext) {
+      const policyScope = trustedContext?.policyScope ?? 'local-demo';
+      const lifecycleNamespace = sidecarKeyFingerprint(durableKey(request, policyScope));
+      await appendLifecycle('presentation-requested', request, lifecycleNamespace, {
         subject: request.subject,
         intent: request.intent,
         delivery: request.delivery,
         sourceMessageIds: request.sourceMessageIds,
       });
-      const receipt = await delegate.present(request);
+      const receipt = await delegate.present(request, { policyScope });
       await appendLifecycle(
         receipt.status === 'failed' ? 'presentation-failed' : 'presentation-resolved',
         request,
+        lifecycleNamespace,
         { receipt },
       );
       return receipt;

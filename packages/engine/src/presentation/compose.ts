@@ -38,8 +38,9 @@ export interface CompositionRegionSurfaceInput {
   source: string;
   sourceKind: CompositionSourceKind;
   surface: SurfaceTree;
-  entityFingerprint: string;
+  entityFingerprint?: string;
   membershipFingerprint?: string;
+  available?: boolean;
 }
 
 export interface CompositionPlanContext {
@@ -243,6 +244,7 @@ function dependenciesForRegion(
   declaration: CompositionDeclaration,
   input: CompositionRegionSurfaceInput,
 ): SidecarDependency[] {
+  if (input.available === false) return [];
   const subtreeId = regionSlotId(input.region);
   const prefix = `${declarationRef(declaration)}:${input.region}`;
   const dependencies = [
@@ -253,7 +255,7 @@ function dependenciesForRegion(
       input.source,
       ['$contract'],
       'invalidate',
-      input.entityFingerprint,
+      input.entityFingerprint!,
     ),
   ];
   if (input.sourceKind === 'collection') {
@@ -304,9 +306,18 @@ export function composeSurfaceRegions(
     if (!COMPOSITION_SOURCE_KINDS.has(input.sourceKind)) {
       throw new Error(`Composition region input "${input.region}" source kind is invalid`);
     }
-    requiredText(input.entityFingerprint, `Composition region input "${input.region}" fingerprint`);
+    if (input.available !== false) {
+      requiredText(
+        input.entityFingerprint ?? '',
+        `Composition region input "${input.region}" fingerprint`,
+      );
+    }
     if (input.sourceKind === 'collection' && input.membershipFingerprint === undefined) {
-      throw new Error(`Composition region input "${input.region}" requires membership fingerprint`);
+      if (input.available !== false) {
+        throw new Error(
+          `Composition region input "${input.region}" requires membership fingerprint`,
+        );
+      }
     }
     if (input.membershipFingerprint !== undefined) {
       requiredText(

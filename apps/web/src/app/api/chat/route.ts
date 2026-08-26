@@ -453,6 +453,7 @@ async function streamAgentLoop(args: {
   presentationPrincipal: string;
   startRel: string;
   scope: string | null;
+  presentationPolicyScope: string;
   fetchImpl: FetchLike;
   conversationMessages: AgentConversationMessage[];
   conversation: AgentConversationContext;
@@ -468,10 +469,6 @@ async function streamAgentLoop(args: {
     resolved,
     baseUrl,
     principal,
-    presentationPrincipal,
-    startRel,
-    scope,
-    fetchImpl,
     conversationMessages,
     conversation,
     clientView,
@@ -480,7 +477,7 @@ async function streamAgentLoop(args: {
   send({ type: 'session', sessionId, turnId });
   // 同一已解析 sitemap 同时供 Agent 静态上下文与 T24 活动标题投影；
   // 不可得时显式预载 undefined，循环不二次抓取且照常仅实体导航。
-  const sitemap = await createContractClient(baseUrl, fetchImpl).getSitemap();
+  const sitemap = await createContractClient(baseUrl, args.fetchImpl).getSitemap();
   const sitemapTitles = sitemapTitlesFromSummary(sitemap);
   // agent-decision 审计(T11 Phase B):包装 driver 在 decide 时刻捕获
   // (prompt/reasoning/op)——决策输入只存在于 decide 时的 DriverContext,
@@ -497,13 +494,13 @@ async function streamAgentLoop(args: {
     goal,
     {
       baseUrl,
-      fetchImpl,
+      fetchImpl: args.fetchImpl,
       sitemap,
       actor: 'agent',
       principal,
       channel: 'chat',
-      startRel,
-      app: scope ?? undefined,
+      startRel: args.startRel,
+      app: args.scope ?? undefined,
       conversationMessages,
       conversation,
       clientView,
@@ -525,7 +522,7 @@ async function streamAgentLoop(args: {
         presentationCount += 1;
         const request = completePresentationRequest(intent, {
           requestId: `${turnId}:presentation:${presentationCount}`,
-          principal: presentationPrincipal,
+          principal: args.presentationPrincipal,
           sourceMessageIds: [turnId],
         });
         presentationRequestIds.push(request.requestId);
@@ -535,7 +532,7 @@ async function streamAgentLoop(args: {
           payload: { schemaVersion: 1, requestId: request.requestId, status: 'pending' },
         });
         const job = getPresentationBroker()
-          .present(request)
+          .present(request, { policyScope: args.presentationPolicyScope })
           .then(async (payload) => {
             if (
               (payload.status === 'ready' || payload.status === 'fallback') &&
@@ -814,6 +811,7 @@ export async function POST(request: Request) {
   const sessionId = productionIdentity?.principal ?? parsed.sessionId;
   const principal = productionIdentity?.principal ?? `user:${sessionId}`;
   const presentationPrincipal = productionIdentity?.principal ?? LOCAL_PRESENTATION_PRINCIPAL;
+  const presentationPolicyScope = productionIdentity?.policyScope ?? 'local-demo';
   const situation = await situationForChat({
     principal,
     identity: productionIdentity,
@@ -983,6 +981,7 @@ export async function POST(request: Request) {
           presentationPrincipal,
           startRel,
           scope: situation.scope,
+          presentationPolicyScope,
           fetchImpl: turnFetch,
           conversationMessages: agentConversation.messages,
           conversation: agentConversation.context,
@@ -1105,6 +1104,7 @@ export async function POST(request: Request) {
       presentationPrincipal,
       startRel,
       scope: situation.scope,
+      presentationPolicyScope,
       fetchImpl: turnFetch,
       conversationMessages: agentConversation.messages,
       conversation: agentConversation.context,

@@ -13,6 +13,8 @@ import { getDb, getEngine, resetEngineForTests } from '../service';
 import { getPresentationBroker, resetPresentationBrokerForTests } from './runtime';
 import { resetRecipeCoordinatorForTests } from './recipes-runtime';
 import { PRESENTATION_SURFACE_CATALOG } from './catalog';
+import { getBuiltinComposition } from './compositions';
+import { planWorkspaceComposition } from './runtime-composition';
 
 beforeEach(async () => {
   await ensurePresentationTables(getDb());
@@ -23,6 +25,130 @@ beforeEach(async () => {
 });
 
 describe('durable user Sidecar fastpath', () => {
+  it('composes my-work as one ordered three-region binding-only Sidecar without an LLM', async () => {
+    const engine = await getEngine(getDb());
+    const beforeHash = contentVersion(engine.getSnapshot());
+    const beforeCoreCount = (await listEvents(getDb())).filter(
+      (event) => event.domain !== 'presentation',
+    ).length;
+    const request = completePresentationRequest(
+      { subject: 'workspace:my-work', intent: 'work overview', delivery: 'canvas' },
+      { requestId: 'workspace:full', principal: 'user:local', sourceMessageIds: [] },
+    );
+
+    const receipt = await getPresentationBroker().present(request);
+    expect(receipt).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
+    const sidecar = await findActiveSidecar(getDb(), {
+      principal: 'user:local',
+      policyScope: 'local-demo',
+      subject: 'workspace:my-work',
+      intent: 'work overview',
+      deviceClass: 'any',
+    });
+    const surface = sidecar!.versions[sidecar!.activeVersion]!.surface;
+    expect(surface.root).toMatchObject({
+      kind: 'layout',
+      children: [
+        { kind: 'slot', name: 'waiting-for-me' },
+        { kind: 'slot', name: 'in-motion' },
+        { kind: 'slot', name: 'work-lines' },
+      ],
+    });
+    expect(JSON.stringify(surface)).not.toMatch(/"value":"(?:inbox|delegations|threads)"/);
+    expect(
+      sidecar!.versions[sidecar!.activeVersion]!.dependencies.filter(
+        (dependency) => dependency.kind === 'entity-contract',
+      ),
+    ).toHaveLength(3);
+    expect(contentVersion((await getEngine(getDb())).getSnapshot())).toBe(beforeHash);
+    expect(
+      (await listEvents(getDb())).filter((event) => event.domain !== 'presentation'),
+    ).toHaveLength(beforeCoreCount);
+  });
+
+  it('persists concurrent same-requestId workspaces independently across trusted scopes', async () => {
+    const request = completePresentationRequest(
+      { subject: 'workspace:my-work', intent: 'concurrent overview', delivery: 'canvas' },
+      { requestId: 'workspace:same-request', principal: 'user:local', sourceMessageIds: [] },
+    );
+
+    const [full, partial] = await Promise.all([
+      getPresentationBroker().present(request, { policyScope: 'local-demo' }),
+      getPresentationBroker().present(request, { policyScope: 'publishing' }),
+    ]);
+
+    expect(full).toMatchObject({ status: 'ready' });
+    expect(full).not.toHaveProperty('reasonCode');
+    expect(partial).toMatchObject({ status: 'ready', reasonCode: 'partial-authorization' });
+    expect(full.sidecar?.id).not.toBe(partial.sidecar?.id);
+    await expect(
+      findActiveSidecar(getDb(), {
+        principal: 'user:local',
+        policyScope: 'local-demo',
+        subject: 'workspace:my-work',
+        intent: 'concurrent overview',
+        deviceClass: 'any',
+      }),
+    ).resolves.toMatchObject({ id: full.sidecar!.id });
+    await expect(
+      findActiveSidecar(getDb(), {
+        principal: 'user:local',
+        policyScope: 'publishing',
+        subject: 'workspace:my-work',
+        intent: 'concurrent overview',
+        deviceClass: 'any',
+      }),
+    ).resolves.toMatchObject({ id: partial.sidecar!.id });
+    const lifecycle = (await listEvents(getDb())).filter(
+      (event) =>
+        event.domain === 'presentation' &&
+        (event.kind === 'presentation-requested' || event.kind === 'presentation-resolved') &&
+        (event.detail as { requestId?: unknown }).requestId === request.requestId,
+    );
+    expect(lifecycle.filter((event) => event.kind === 'presentation-requested')).toHaveLength(2);
+    expect(lifecycle.filter((event) => event.kind === 'presentation-resolved')).toHaveLength(2);
+  });
+
+  it('keeps denied regions as non-leaking diagnostics and reports partial authorization', async () => {
+    const declaration = getBuiltinComposition('my-work')!;
+    const threads = await (await getEngine(getDb())).getEntity('threads');
+    expect(() =>
+      planWorkspaceComposition({
+        rels: ['threads'],
+        entities: [threads],
+        policyScope: 'publishing',
+        declaration,
+        regions: declaration.regions.map((region) => ({
+          declaration: region,
+          ...(region.source === 'threads' ? { entity: threads } : {}),
+        })),
+      }),
+    ).not.toThrow();
+    const request = completePresentationRequest(
+      { subject: 'workspace:my-work', intent: 'work overview', delivery: 'canvas' },
+      { requestId: 'workspace:partial', principal: 'user:local', sourceMessageIds: [] },
+    );
+
+    const receipt = await getPresentationBroker().present(request, { policyScope: 'publishing' });
+    expect(receipt).toMatchObject({ status: 'ready', reasonCode: 'partial-authorization' });
+    const sidecar = await findActiveSidecar(getDb(), {
+      principal: 'user:local',
+      policyScope: 'publishing',
+      subject: 'workspace:my-work',
+      intent: 'work overview',
+      deviceClass: 'any',
+    });
+    const serialized = JSON.stringify(sidecar!.versions[sidecar!.activeVersion]!.surface);
+    expect(serialized.match(/"code":"region-unavailable"/g)).toHaveLength(2);
+    expect(serialized).not.toContain('inbox');
+    expect(serialized).not.toContain('delegations');
+    expect(
+      sidecar!.versions[sidecar!.activeVersion]!.dependencies.filter(
+        (dependency) => dependency.kind === 'entity-contract',
+      ),
+    ).toHaveLength(1);
+  });
+
   it('returns the same Sidecar across independent Chat requests and leaves Business hash unchanged', async () => {
     const engine = await getEngine(getDb());
     const beforeHash = contentVersion(engine.getSnapshot());

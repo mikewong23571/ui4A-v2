@@ -23,7 +23,13 @@ const mocks = vi.hoisted(() => ({
   getSidecarById: vi.fn(async () => ({
     id: 'sidecar:1',
     activeVersion: 1,
-    key: { subject: 'post:first', intent: 'read' },
+    key: {
+      principal: 'human-alice',
+      policyScope: 'default',
+      subject: 'post:first',
+      intent: 'read',
+      deviceClass: 'any',
+    },
     versions: {
       1: {
         surface: {
@@ -89,6 +95,11 @@ vi.mock('../../../auth/request-identity', () => ({
   authenticationErrorResponse: mocks.authenticationErrorResponse,
   requestIdentityProfile: mocks.requestIdentityProfile,
   resolveTrustedRequestIdentity: mocks.resolveTrustedRequestIdentity,
+}));
+
+vi.mock('../../../engine/presentation/sidecar-authorization', () => ({
+  authorizeStoredSidecar: vi.fn(async () => true),
+  hasUnavailableRegion: vi.fn(() => false),
 }));
 
 import { POST as present } from './route';
@@ -165,6 +176,7 @@ describe('POST /api/presentation production authentication wiring', () => {
     );
     expect(mocks.present).toHaveBeenCalledWith(
       expect.objectContaining({ principal: 'human-alice' }),
+      { policyScope: 'default' },
     );
   });
 
