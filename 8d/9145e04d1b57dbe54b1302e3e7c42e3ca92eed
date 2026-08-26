@@ -1,0 +1,1 @@
+T26 Phase A — spec/plan 对齐 D44。\n\nSummary: 修正决定编号漂移，固定四种 thread core event、资源动作、principal ownership、Application-neutral scope、同快照状态组合与 chat/presence 显式引用边界；track 状态改为 in_progress。\nFiles: conductor/tracks/t26-work-thread-projection_20260825/{index.md,metadata.json,spec.md,plan.md}。\nWhy: 把 spike 决断转成后续 TDD 可执行合同，避免实现时恢复隐式 session 聚合。\nVerification: git diff --check；自治验收。
