@@ -1,0 +1,26 @@
+T27 Phase B Task: e2e 首页锚点迁移
+
+Summary:
+- human B1/B2/B3 从旧首页文章、成员与评论摘要改为保留实体路由和 Siren 实体状态断言。
+- dual-executor B1/B2 从首页 flow/成员入口改为实体路由，保留集合计数与双 actor 日志证明。
+- S1 UI 走查从首页 inbox/文章摘要改为 inbox、confirmation、post 合同实体状态。
+- smoke 从首页 title/h1 快照改为 HTTP 200 与 App 壳结构。
+- comments/delegations 零件页路径和发布/下线/审核/确认门业务结果断言均保留。
+
+Files:
+- e2e/human.spec.ts
+- e2e/dual-executor.spec.ts
+- e2e/s1.spec.ts
+- e2e/smoke.spec.ts
+
+Why:
+T27 必须退役硬编码旧首页；E2E 应约束业务合同与可导航路由，不应冻结首页六区块实现快照。
+
+Verification:
+- pnpm exec prettier --check <four files>: PASS
+- git diff --check: PASS
+- CI=true TMPDIR=/home/mike/.cache/ui4a-t27-tmp pnpm e2e e2e/human.spec.ts e2e/dual-executor.spec.ts e2e/s1.spec.ts e2e/smoke.spec.ts: PASS (8 passed, 7 Temporal-unavailable skips)
+- B3 isolated within full command: PASS
+
+Environment note:
+Earlier Chromium Target crashes were reproduced as /tmp resource pressure; routing Playwright TMPDIR to the /home volume produced a clean pass without code changes.
