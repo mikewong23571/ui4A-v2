@@ -61,7 +61,7 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
     全文(按 rel 引用)
   - 断言:零启发式(仅按 app 归属机械过滤);无 scope 输入时行为 =
     现状 inferEntityApplication 推断(CLI/独立 runAgent 形态不受收窄影响)
-- [ ] Task: prompt 分层改造(Green)
+- [~] Task: prompt 分层改造(Green)
   - `packages/agent/src/llm/prompts.ts`:`## 当前 app/scope 的动态 sitemap 处境`
     块改发切片视图 + 其他 scope 入口清单;capability schema 全文移出 prompt
   - `packages/agent/src/loop/loop.ts`:inferEntityApplication 段由切片函数承接;
