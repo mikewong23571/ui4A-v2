@@ -1,0 +1,27 @@
+T27 Phase C Task: 导航重组与系统区
+
+Summary:
+- workstation 主入口改为‘我的事’与‘共同注视’。
+- meta 以显式‘定义管理’入口分区。
+- 收件箱、事件流、委托监控折叠进原生可访问系统区，六条原路由均保留。
+- 所有 7 个可点控件（含 summary）均有 data-nav；raw 无顶级入口。
+- 使用当前 Next 16 Link 组件实现 client navigation。
+- 编排 agent 临时登记 components 4520 基线，强制在 T27 Phase D home-body 退役/feature 归位时收缩。
+
+Files:
+- apps/web/src/components/site-nav.tsx
+- apps/web/src/components/site-nav.test.tsx
+- scripts/governance/size-baseline.json
+
+Why:
+让顶栏表达人的三种工作形态，而不是平铺系统零件；底层队列/审计/执行仍可按需到达。
+
+TDD:
+- Red: 新 3 tests 对旧 NAV_ITEMS 全部失败。
+- Green: 5 tests passed, 2 Phase D todos.
+
+Verification:
+- @ui4a/web typecheck and focused ESLint: PASS
+- CI=true TMPDIR=/home/mike/.cache/ui4a-t27-tmp pnpm e2e e2e/i3.spec.ts e2e/smoke.spec.ts: PASS (4/4)
+- pnpm governance: PASS after orchestrator baseline registration
+- Prettier and diff check: PASS
