@@ -16,7 +16,7 @@
 
 ## Phase A: Spike → DECISIONS(分歧先于代码)
 
-- [ ] Task: spike 五问决断,落 DECISIONS.md 新条目
+- [x] Task: spike 五问决断,落 DECISIONS.md 新条目
   - 五问 = spec.md"Phase A 决策点":动作控件统一形态与提交路径、chat 引用
     呈现与点击行为、raw 模式形态与入口、intent 裁剪规则与接线、诊断节点
     呈现位置
@@ -24,10 +24,10 @@
     可用纯函数/组件原型验证形态语义(不提交或提交为 spike 测试)
   - 验收:DECISIONS.md 新增条目,编号顺延;五问各有明确采纳/否决;否决项
     写明理由(防复辟);第 5 问的裁决显式核对 D45 第 5 问(降级不静默)
-- [ ] Task: spec/plan 回改对齐
+- [x] Task: spec/plan 回改对齐
   - 将 D47 固定形状同步进 spec 最终形态与 Phase B–E 任务合同,清除开放问题;
     tracks.md 无需动(本 Track 已登记)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: 动作一等按钮
 
