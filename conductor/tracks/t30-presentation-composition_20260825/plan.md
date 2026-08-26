@@ -72,7 +72,7 @@
     区域 intent 的 planner 路由明确留给 Phase E web runtime，Phase C 只验纯组装核
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `3e616f3`
 
-## Phase D: sidecar/recipe/promotion 组合化
+## Phase D: sidecar/recipe/promotion 组合化 [checkpoint: 36a2e02]
 
 - [x] Task: key 与 recipe slot 一般化 `3481b03`
   - `UserSidecarKey.subject` 固定承载 `workspace:<id>`，key.intent 只承载组合 intent；
@@ -95,7 +95,7 @@
     canonical root region slots，并从已授权合同机械推导单主体 shape/slot context
   - 支持不同 region 复用同一 source：参数化按 outer region 上下文，不以全局
     subject→slot Map 施加 D45 未声明的唯一 source 限制
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `36a2e02`
 
 ## Phase E: web 运行时、canvas 与误导验收迁移
 
