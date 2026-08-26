@@ -77,7 +77,7 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
     单次 decide 请求 ≤ 32KB,超限即披露层 bug
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) 4e5fe4b
 
-## Phase C: delegated 同收窄与回合卫生
+## Phase C: delegated 同收窄与回合卫生 [checkpoint: 486d3c8]
 
 - [x] Task: worker delegated 路径收窄(显式正典) 8397778
   - `apps/web/src/temporal/delegation.ts` `DelegationDispatchArgs` 增 `scope`
@@ -93,7 +93,7 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
   - 事实链起点实体不可得 → `start_entity_unavailable` 诚实失败路径保留;
     失败 code 集合不变(`apps/web/src/chat/failure-reason.ts`):
     `no_progress_loop / driver_fail / start_entity_unavailable / loop_exception`
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) 486d3c8
 
 ## Phase D: 端到端验收
 
