@@ -53,9 +53,9 @@
     },
     {
       "path": "apps/web/src/components",
-      "lines": 4520,
+      "lines": 4563,
       "limit": 4000,
-      "note": "T24/T30 既有 4491;T27 Phase C 站点导航按 D46 增至 4520,业务优先不为行数裁剪(workflow 2026-08-26 自治授权);临时增长只覆盖 SiteNav 任务语言分组与系统区,T27 Phase D 删除 home-body 并按 canvas/why/sidecar feature 归位时必须收缩,Track 收尾不得保留本增量"
+      "note": "T24/T30 既有 4491;T27 Phase C 站点导航与 colocated contract test 按 D46 增至 4563,业务优先不为行数裁剪(workflow 2026-08-26 自治授权);临时增长只覆盖 SiteNav 任务语言分组、系统区与 TDD 证据,T27 Phase D 删除 home-body 并按 canvas/why/sidecar feature 归位时必须收缩,Track 收尾不得保留本增量"
     },
     {
       "path": "e2e",
