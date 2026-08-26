@@ -35,6 +35,7 @@ export default defineConfig([
       // 根级 Node 环境配置文件(不属任何 workspace 的 tsconfig 范围)
       'playwright.config.ts',
       'vitest.config.ts',
+      'vitest.db-tests.list.ts',
     ],
     extends: [tseslint.configs.recommended],
     rules: {

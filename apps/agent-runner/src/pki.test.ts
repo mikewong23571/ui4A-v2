@@ -1,11 +1,26 @@
 import { createHash, X509Certificate } from 'node:crypto';
-import { access, mkdtemp, readFile, rm, stat, unlink, writeFile } from 'node:fs/promises';
+import {
+  access,
+  chmod,
+  cp,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  unlink,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { initializeRunnerPki, type PkiProcessRunner, RUNNER_PKI_FILES } from './pki.js';
+import {
+  initializeRunnerPki,
+  type PkiProcessRunner,
+  type RunnerPkiResult,
+  RUNNER_PKI_FILES,
+} from './pki.js';
 
 const temporaryRoots: string[] = [];
 
@@ -47,11 +62,36 @@ async function materialHashes(rootDirectory: string): Promise<Record<string, str
   );
 }
 
+// One real OpenSSL generation shared by every case that needs a complete inventory.
+// Per-case scenarios (partial, invalid, mismatch, rebinding) are produced by copying
+// this fixture and mutating the copy, never by regenerating with OpenSSL.
+let sharedParent: string;
+let sharedRoot: string;
+let sharedResult: RunnerPkiResult;
+
+beforeAll(async () => {
+  sharedParent = await mkdtemp(join(tmpdir(), 'ui4a-pki-shared-'));
+  sharedRoot = join(sharedParent, 'ca');
+  sharedResult = await initializeRunnerPki(input(sharedRoot));
+}, 30_000);
+
+afterAll(async () => {
+  await rm(sharedParent, { force: true, recursive: true });
+});
+
+async function copySharedInventory(): Promise<string> {
+  const root = await temporaryRoot();
+  await cp(sharedRoot, root, { recursive: true });
+  for (const [id, relativePath] of Object.entries(RUNNER_PKI_FILES)) {
+    await chmod(join(root, relativePath), id.endsWith('PrivateKey') ? 0o600 : 0o644);
+  }
+  return root;
+}
+
 describe('Agent Runner experimental PKI initializer', () => {
   it('uses system OpenSSL to create one root and three server leaf pairs', async () => {
-    const rootDirectory = await temporaryRoot();
-
-    const result = await initializeRunnerPki(input(rootDirectory));
+    const rootDirectory = sharedRoot;
+    const result = sharedResult;
 
     expect(result.status).toBe('created');
     expect(result.files).toHaveLength(8);
@@ -111,8 +151,7 @@ describe('Agent Runner experimental PKI initializer', () => {
   }, 30_000);
 
   it('reuses a complete valid inventory with zero process calls, writes, or byte changes', async () => {
-    const rootDirectory = await temporaryRoot();
-    await initializeRunnerPki(input(rootDirectory));
+    const rootDirectory = sharedRoot;
     const before = await materialHashes(rootDirectory);
     const processRunner = vi.fn<PkiProcessRunner>();
 
@@ -124,8 +163,7 @@ describe('Agent Runner experimental PKI initializer', () => {
   }, 30_000);
 
   it('fails closed for a partial inventory and does not regenerate missing material', async () => {
-    const rootDirectory = await temporaryRoot();
-    await initializeRunnerPki(input(rootDirectory));
+    const rootDirectory = await copySharedInventory();
     await unlink(join(rootDirectory, RUNNER_PKI_FILES.keycloakPrivateKey));
     const processRunner = vi.fn<PkiProcessRunner>();
 
@@ -136,8 +174,7 @@ describe('Agent Runner experimental PKI initializer', () => {
   }, 30_000);
 
   it('fails closed for a complete but invalid certificate inventory', async () => {
-    const rootDirectory = await temporaryRoot();
-    await initializeRunnerPki(input(rootDirectory));
+    const rootDirectory = await copySharedInventory();
     await writeFile(join(rootDirectory, RUNNER_PKI_FILES.ui4aCertificate), 'not-a-certificate', {
       mode: 0o644,
     });
@@ -146,8 +183,7 @@ describe('Agent Runner experimental PKI initializer', () => {
   }, 30_000);
 
   it('rejects a PostgreSQL certificate and private-key mismatch without regeneration', async () => {
-    const rootDirectory = await temporaryRoot();
-    await initializeRunnerPki(input(rootDirectory));
+    const rootDirectory = await copySharedInventory();
     await writeFile(
       join(rootDirectory, RUNNER_PKI_FILES.postgresPrivateKey),
       await readFile(join(rootDirectory, RUNNER_PKI_FILES.keycloakPrivateKey)),
@@ -185,8 +221,7 @@ describe('Agent Runner experimental PKI initializer', () => {
   });
 
   it('binds the complete marker and reusable inventory to the canonical PostgreSQL host', async () => {
-    const rootDirectory = await temporaryRoot();
-    await initializeRunnerPki(input(rootDirectory));
+    const rootDirectory = await copySharedInventory();
     const processRunner = vi.fn<PkiProcessRunner>();
 
     await expect(
@@ -200,8 +235,7 @@ describe('Agent Runner experimental PKI initializer', () => {
   });
 
   it('treats a missing PostgreSQL private key as partial state without rotation', async () => {
-    const rootDirectory = await temporaryRoot();
-    await initializeRunnerPki(input(rootDirectory));
+    const rootDirectory = await copySharedInventory();
     await unlink(join(rootDirectory, RUNNER_PKI_FILES.postgresPrivateKey));
     const processRunner = vi.fn<PkiProcessRunner>();
 

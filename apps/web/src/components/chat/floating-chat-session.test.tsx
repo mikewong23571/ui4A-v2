@@ -270,21 +270,22 @@ describe('工作台 · 聊天历史(T9 Phase B / B3)', () => {
     openChat();
 
     // 打开清单:两行会话,当前会话标注「当前」。
+    // 清单与会话标注来自两次独立 fetch,须在同一 waitFor 内等待全部就绪。
     fireEvent.click(screen.getByRole('button', { name: '历史会话' }));
     await waitFor(() => {
       expect(screen.getByText('发布旧文章')).toBeTruthy();
+      expect(screen.getByText('发布当前文章')).toBeTruthy();
+      expect(screen.getByText('2 回合')).toBeTruthy();
+      expect(screen.getByText('· 当前')).toBeTruthy();
     });
-    expect(screen.getByText('发布当前文章')).toBeTruthy();
-    expect(screen.getByText('2 回合')).toBeTruthy();
-    expect(screen.getByText('· 当前')).toBeTruthy();
 
     // 点击进入 sess-old:持久化 + 重放该会话回合。
     fireEvent.click(screen.getByText('发布旧文章'));
     expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBe('sess-old');
     await waitFor(() => {
       expect(screen.getByText('完成: 旧目标完成')).toBeTruthy();
+      expect(screen.getByText('会话 sess-old')).toBeTruthy();
     });
-    expect(screen.getByText('会话 sess-old')).toBeTruthy();
   });
 });
 

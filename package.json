@@ -17,7 +17,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run",
+    "test": "NODE_OPTIONS=--no-experimental-webstorage vitest run",
     "governance": "node scripts/governance/run-all.mjs",
     "governance:strict": "node scripts/governance/run-all.mjs --strict",
     "check": "pnpm typecheck && pnpm lint && pnpm governance && pnpm test",

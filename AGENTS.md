@@ -145,6 +145,7 @@ Rules GR1–GR5 are mechanically enforced by `scripts/governance/`; run `pnpm go
 - `pnpm infra:down` — stop PostgreSQL after local development.
 - `pnpm --filter @ui4a/web build` — production Next.js build.
 - `pnpm vitest run path/to/file.test.ts` — focused Vitest run.
+- `pnpm vitest run --project db` / `--project unit` — run only the DB-touching (serial) or pure unit (parallel) project; `pnpm test` runs both via `test.projects` (unit project points `DATABASE_URL` at an unreachable address so misclassified DB tests fail loudly).
 - `pnpm governance` — T23 governance gates (dependency direction, no-compat, size limits); default mode fails on new violations beyond the registered baselines, `pnpm governance:strict` additionally requires empty baselines.
 - `pnpm check` — all workspace type checks, ESLint, governance gates, and Vitest tests.
 - `CI=true pnpm e2e` — Playwright suite with a clean server and one CI worker.
