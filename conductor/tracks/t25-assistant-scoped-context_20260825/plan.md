@@ -33,7 +33,7 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
     原子重放、AI-first 决策、协议 envelope)不动
   - 落档北极星 §八 CLI 纪律三本 Track 相关两条:披露收窄发生在 prompt 层、
     不窄化 HTTP 合同;delegated 起点/scope 经显式参数传入(显式是正典)
-- [~] Task: 起点事实链测试(Red)
+- [x] Task: 起点事实链测试(Red) 62bacd5
   - 新模块(建议 `apps/web/src/chat/start-chain.ts`,纯决策函数 + 薄调用):
     输入 `Situation`(`apps/web/src/engine/situation.ts`)+ 应用定义快照
     (`EngineSnapshot.applications[name].entry`,
