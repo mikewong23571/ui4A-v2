@@ -510,3 +510,14 @@
 - **同源切片与预算**:inline 与 delegated 必须消费同一机械披露切片；能力 schema 在 prompt 中
   按 rel 引用、按需导航读取，不广播全文。每次 decide 的 prompt wire budget 固定为 32 KiB，
   包含 tools 投影；超限视为披露层缺陷，不以窄化公开合同规避。
+
+## D42 Assistant Tool Choice 实验调整为 auto(2026-08-26,T25 Phase D)
+
+- **覆盖关系**:本决定暂时 supersede D33“生产每次 decision 使用 required”。当前 NewAPI 上
+  `deepseek-v4-flash` 的 thinking mode 对 Chat Completions `tool_choice: required` 返回 HTTP 400，
+  而 `auto` 实测可产生工具调用；生产 driver 因此统一发送 `toolChoice: 'auto'` 以完成真实模型验收。
+- **失败边界不变**:模型输出普通文本时仍判为协议失败，只允许一次相同事实与工具下的真实 LLM
+  repair；第二次仍未调用工具则诚实失败且零业务 mutation。产品代码不把文本转换为 operation，
+  请求端也不能选择 provider、model 或 tool choice。
+- **实验口径**:接受 auto 带来的额外 repair、延迟与失败率；后续以真实 LLM gate 证据决定是否迁移
+  Responses API 或恢复 required，不在本决定中引入 provider 特判或 fallback。

@@ -142,7 +142,7 @@ async function llmDecisionAttempt(
         context.sitemap?.surfaces.map((surface) => surface.rel) ?? [],
       ),
     ),
-    toolChoice: 'required',
+    toolChoice: 'auto',
     abortSignal: AbortSignal.timeout(60_000),
     includeRawChunks: true,
   });

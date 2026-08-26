@@ -325,7 +325,7 @@ describe('fail-safe:模型输出不合法', () => {
     });
     expect(calls).toHaveLength(2);
     expect(
-      calls.every((call) => JSON.stringify(call.body).includes('"tool_choice":"required"')),
+      calls.every((call) => JSON.stringify(call.body).includes('"tool_choice":"auto"')),
     ).toBe(true);
     const repairBody = JSON.stringify(calls[1]?.body);
     expect(repairBody).toContain('协议修复');

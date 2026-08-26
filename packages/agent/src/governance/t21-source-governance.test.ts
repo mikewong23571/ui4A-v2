@@ -66,7 +66,7 @@ describe('T21 AI-first dual-focus source governance', () => {
   });
 
   it('uses provider protocol constraints and never parses rejected model text into an operation', () => {
-    expect(llmDriver).toContain("toolChoice: 'required'");
+    expect(llmDriver).toContain("toolChoice: 'auto'");
     expect(llmDriver).toContain('const repaired = await llmDecisionAttempt');
     expect(llmDriver).not.toMatch(/JSON\.parse\(\s*text|mapToolCall\([^\n]*text/);
     expect(llmDriver).not.toMatch(/(?:includes|match|test)\([^\n]*协议修复/);

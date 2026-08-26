@@ -104,6 +104,8 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
   - `pnpm check` 全绿;`CI=true pnpm e2e invariants` 全绿;chat 套件
     (`e2e/chat.spec.ts`)全绿;T15 Story Eval 门槛(`pnpm eval:llm`,
     真实 LLM,opt-in)通过
+  - DeepSeek 兼容性实测(D42):NewAPI `deepseek-v4-flash` + Chat Completions
+    `tool_choice:auto` 探针 6/6 工具调用成功;scoped-context 真实写文章场景通过
 - [ ] Task: Track 收尾
   - `conductor/tracks.md` 状态流转;track 目录按 GR5 处置(无 bespoke 脚本/
     配置残留);metadata.json 归档
