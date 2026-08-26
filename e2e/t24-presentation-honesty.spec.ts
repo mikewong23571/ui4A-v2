@@ -112,7 +112,7 @@ test('canvas 首屏:focus 实体语义上屏,主区域零机制词;机制信息�
   });
 });
 
-test('chat 无 LLM:assistant 诚实失败——中性分层(失败 · code=)可见,零编造表述', async ({ page }) => {
+test('chat LLM 不可用/调用失败:中性分层(失败 · code=)可见,零编造表述', async ({ page }) => {
   await withFreshServer(
     async () => {
       await page.goto(`${SCENARIO_BASE}/`);
@@ -129,10 +129,10 @@ test('chat 无 LLM:assistant 诚实失败——中性分层(失败 · code=)可�
       const failureDetails = page.locator('details').filter({ hasText: '失败数据' });
       await failureDetails.locator('summary').click();
       await expect(failureDetails).toContainText('code=driver_fail');
-      await expect(failureDetails).toContainText('LLM 不可用');
+      await expect(failureDetails).toContainText(/LLM (?:不可用|调用失败)/);
       await shoot(page, 't24-chat-honest-failure');
     },
-    // 显式空配置压过 .env.local:e2e 进程无 LLM profile(chat.spec U22 同款)。
+    // 优先验证缺配置；若部署 preflight 注入 profile，则端点失败仍须走同一诚实分层。
     { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
   );
 });
