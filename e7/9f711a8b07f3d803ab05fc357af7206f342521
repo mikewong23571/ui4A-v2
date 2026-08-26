@@ -1,0 +1,28 @@
+T27 Phase D Task: 首页 E2E 与真实 CLI 对照
+
+Summary:
+- 新 standing e2e/workstation-home.spec.ts 构建并调用真实 ui4a binary：help、doctor、entities get inbox/delegations/threads。
+- 浏览器捕获 workspace:my-work Presentation 请求与 Sidecar 三 slot，逐 slot binding subject 对拍 CLI Siren Entity。
+- DOM 人话标题/标量/member links 与 CLI facts 机械一致；单 surface、零 errors、默认首屏机制词零泄漏；why 抽屉三声明区域可达。
+- 视觉走查首次发现技术 rel 标题；通过 Siren projection title + presentation identity declaration 修复为‘在等我/在动/我的工作线’，无 React/renderer/region 特判。
+- e2e baseline 登记为 4341（commit 8545871），T28 落地时合并重复 setup 并 feature 归位。
+
+Files:
+- e2e/workstation-home.spec.ts
+- packages/engine Siren inbox/delegations/work-thread projections + tests
+- apps/web generic planner/API contract tests
+
+Why:
+证明人类首页与外部 Agent CLI 消费同一合同事实，并用真实视觉证据防止只在协议层正确、首屏仍不可理解。
+
+TDD:
+- Red: no real CLI standing proof; then 5 projection/generic failures for missing human identity title.
+- Green: 5 focused files / 56 tests passed; CLI/home/T30/T24 E2E 5/5 passed.
+
+Verification:
+- pnpm cli:build + binary --help/doctor/entities: PASS
+- pnpm -r typecheck, pnpm governance, Prettier/ESLint/diff: PASS
+- local screenshots inspected:
+  - failing technical titles: /home/mike/.cache/ui4a-t27-evidence/workstation-home-local.png
+  - accepted human titles: /home/mike/.cache/ui4a-t27-evidence/workstation-home-local-human-titles.png
+- WebBridge daemon had no connected extension; screenshot fallback used installed Playwright Chromium. Final evidence will be recaptured on mothership per user requirement.
