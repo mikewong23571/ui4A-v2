@@ -39,7 +39,7 @@
     id 的严格校验，只有 web Presentation Broker 识别 `workspace:` 前缀并经
     registry adapter 解析到声明；未知/非法 workspace fail-closed，既有禁键清单不变
   - Red:非法声明/未知字段/超界/非法 id/未知源 rel 形态一律拒绝的解析测试
-- [ ] Task: 内建声明注册表与 my-work 首声明
+- [x] Task: 内建声明注册表与 my-work 首声明 `c123629`
   - apps/web Presentation adapter 提供内建纯数据 registry + 查找(版本化,零分支);
     注册 `my-work`:在等我(`inbox`)、在动(`delegations`)、工作线(`threads`)——
     区域源全部为 sitemap 可达合同实体，区域 intent 明确写入声明
