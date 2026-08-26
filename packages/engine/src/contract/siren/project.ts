@@ -24,6 +24,12 @@ import {
   renderSpecRel,
 } from '../../projection/render-spec';
 import { mergeFieldDefinitions } from '../schema';
+import {
+  THREADS_REL,
+  THREAD_REL_PREFIX,
+  projectWorkThread,
+  projectWorkThreads,
+} from '../../projection/work-thread';
 import { entityHref, fallbackPresentationRole, guardResultsFor, toSirenAction } from './build';
 import { projectMeta } from './project-meta';
 import type { ProjectDeps, SirenEntity, SirenFieldPresentation, SirenLink } from './types';
@@ -324,6 +330,11 @@ export function project(
   if (rel.startsWith('artifact:')) return projectCapabilityArtifact(rel, snapshot, deps);
   if (rel === 'meta/self' || rel.startsWith('meta/')) {
     return projectMeta(snapshot, rel, deps);
+  }
+  if (rel === THREADS_REL) return projectWorkThreads(snapshot, deps);
+  if (rel.startsWith(THREAD_REL_PREFIX)) {
+    const thread = snapshot.threads?.[rel.slice(THREAD_REL_PREFIX.length)];
+    return thread === undefined ? undefined : projectWorkThread(thread, snapshot, deps);
   }
   const instance = snapshot.instances[rel];
   if (instance !== undefined) {

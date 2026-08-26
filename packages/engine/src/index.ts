@@ -19,6 +19,7 @@ export * from './projection/fold/index';
 export * from './delegation/delegation';
 export * from './projection/render-spec';
 export * from './projection/capability-artifact';
+export * from './projection/work-thread';
 export * from './execution/execution-audit';
 export * from './definition/lifecycle';
 export * from './definition/meta';
