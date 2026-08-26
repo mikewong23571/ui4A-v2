@@ -109,7 +109,7 @@
 
 ## Phase F: 端到端验收与收尾
 
-- [ ] Task: 全量验收
+- [~] Task: 全量验收
   - `pnpm check` 全绿;`CI=true pnpm e2e invariants` 全绿;`CI=true pnpm e2e`
     全量全绿;T16 presentation 套件、T24 honesty 套件、chat 套件全绿;这些
     本地命令只作为开发门禁,不作为 Track 最终现场验收证据
