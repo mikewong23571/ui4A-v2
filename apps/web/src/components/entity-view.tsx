@@ -17,6 +17,7 @@ import type { GuardResultEntry, SirenEntity } from '@ui4a/engine';
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { entityPageHref } from '@/presence/navigation';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 
 import { ActionRunner } from './action-runner';
@@ -29,13 +30,7 @@ function hrefToRel(href: string): string | null {
   return match === null ? null : decodeURIComponent(match[1].replace(/\+/g, ' '));
 }
 
-/** 页面导航 href(renderer 内路由 = /entity?rel=…)。 */
-export function entityPageHref(rel: string, scope?: string): string {
-  const page = rel.startsWith('meta/') || rel.startsWith('draft:') ? '/meta/entity' : '/entity';
-  return `${page}?rel=${encodeURIComponent(rel)}${
-    scope === undefined ? '' : `&scope=${encodeURIComponent(scope)}`
-  }`;
-}
+export { entityPageHref } from '@/presence/navigation';
 
 /**
  * 字段键值对的展示文本。properties.fields 是投影后的扁平形状

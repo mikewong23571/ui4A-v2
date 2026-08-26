@@ -91,15 +91,13 @@ export function createPresenceReporter(options: PresenceReporterOptions) {
     timer = undefined;
     const changes = [...pending.values()];
     pending.clear();
-    await Promise.all(
-      changes.map(async (change) => {
-        try {
-          await options.transport(change);
-        } catch {
-          // Presence is an optimization signal; browsing and Chat must remain available.
-        }
-      }),
-    );
+    for (const change of changes) {
+      try {
+        await options.transport(change);
+      } catch {
+        // Presence is an optimization signal; browsing and Chat must remain available.
+      }
+    }
   };
 
   return {

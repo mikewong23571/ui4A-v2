@@ -11,11 +11,12 @@
  * flex 行里主区 flex-1 让宽,aside(悬浮聊天的 sidebar 态)贴右全高;
  * main 唯一性不变。
  */
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 
 import { APP_NAME, VERSION } from '@ui4a/shared';
 
 import { SiteNav } from '@/components/site-nav';
+import { SituationBar, SituationBarFallback } from '@/components/stage/situation-bar';
 
 export function AppShell({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
   return (
@@ -28,6 +29,9 @@ export function AppShell({ children, aside }: { children: ReactNode; aside?: Rea
           </a>
           <SiteNav />
         </div>
+        <Suspense fallback={<SituationBarFallback />}>
+          <SituationBar />
+        </Suspense>
       </header>
       <div className="flex w-full flex-1">
         <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">{children}</main>

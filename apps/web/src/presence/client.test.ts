@@ -61,4 +61,25 @@ describe('client presence change reporter', () => {
     expect(transport).toHaveBeenCalledWith(expect.objectContaining({ kind: 'scope' }));
     await expect(reporter.flush()).resolves.toBeUndefined();
   });
+
+  it('delivers one observation change point at a time so sibling writes cannot race', async () => {
+    vi.useFakeTimers();
+    let active = 0;
+    const delivered: string[] = [];
+    const transport = vi.fn(async (change) => {
+      if (active !== 0) throw new Error('concurrent presence write');
+      active += 1;
+      await Promise.resolve();
+      delivered.push(change.kind);
+      active -= 1;
+    });
+    const reporter = createPresenceReporter({ transport, debounceMs: 20 });
+    reporter.observe(
+      presenceObservationForLocation('/canvas?scope=publishing&thread=release-1&focus=post%3Aone'),
+      'client:one',
+    );
+
+    await vi.advanceTimersByTimeAsync(20);
+    expect(delivered).toEqual(['site', 'scope', 'thread', 'focus']);
+  });
 });

@@ -2,13 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 
-import { usePathname, useSearchParams } from 'next/navigation';
-
-import {
-  createPresenceReporter,
-  postPresence,
-  presenceObservationForLocation,
-} from '@/presence/client';
+import { createPresenceReporter, postPresence } from '@/presence/client';
+import { useLocationObservation } from '@/presence/location';
 
 function clientInstanceId(): string {
   try {
@@ -23,26 +18,27 @@ function clientInstanceId(): string {
 }
 
 export function PresenceReporter() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const { observation } = useLocationObservation();
   const instanceRef = useRef<string | undefined>(undefined);
   const reporterRef = useRef<ReturnType<typeof createPresenceReporter> | undefined>(undefined);
   instanceRef.current ??= clientInstanceId();
-  reporterRef.current ??= createPresenceReporter({ transport: postPresence });
-
-  useEffect(() => () => reporterRef.current?.dispose(), []);
 
   useEffect(() => {
-    const route = searchParams.toString() === '' ? pathname : `${pathname}?${searchParams}`;
+    const reporter = createPresenceReporter({ transport: postPresence });
+    reporterRef.current = reporter;
+    return () => {
+      reporter.dispose();
+      if (reporterRef.current === reporter) reporterRef.current = undefined;
+    };
+  }, []);
+
+  useEffect(() => {
     try {
-      reporterRef.current?.observe(
-        presenceObservationForLocation(route),
-        instanceRef.current ?? clientInstanceId(),
-      );
+      reporterRef.current?.observe(observation, instanceRef.current ?? clientInstanceId());
     } catch {
       // A malformed client route cannot disable browsing or Chat.
     }
-  }, [pathname, searchParams]);
+  }, [observation]);
 
   return null;
 }

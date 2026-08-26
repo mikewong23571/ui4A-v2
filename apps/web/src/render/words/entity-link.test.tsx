@@ -13,4 +13,11 @@ describe('EntityLinkWord', () => {
     expect(link.getAttribute('href')).toBe('/canvas?focus=post%3Afirst-post');
     expect(link.getAttribute('data-nav')).toBe('presentation:member');
   });
+
+  it('declares a Work Thread when the generic member target is thread:<id>', () => {
+    render(<EntityLinkWord label="发布工作线" rel="thread:release-1" />);
+    expect(screen.getByRole('link', { name: /发布工作线/ }).getAttribute('href')).toBe(
+      '/canvas?focus=thread%3Arelease-1&thread=release-1',
+    );
+  });
 });

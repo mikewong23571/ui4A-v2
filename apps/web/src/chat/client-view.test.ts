@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { clientViewReportForLocation } from './client-view';
+import { presenceObservationForLocation } from '../presence/client';
 
 describe('T21 client view capture', () => {
   it.each([
@@ -47,5 +48,16 @@ describe('T21 client view capture', () => {
     expect(
       clientViewReportForLocation('client:a', '/canvas?focus=post%3Aa', receipt),
     ).not.toHaveProperty('presence.presentationRequestId');
+  });
+
+  it('carries the same complete URL observation used by the shell and reporter', () => {
+    const route =
+      '/meta/entity?scope=governance&thread=release-1&rel=meta%2Fflow%3Aarticle-drafting';
+    const observation = presenceObservationForLocation(route);
+
+    expect(clientViewReportForLocation('client:a', route).presence).toMatchObject({
+      clientInstanceId: 'client:a',
+      ...observation,
+    });
   });
 });

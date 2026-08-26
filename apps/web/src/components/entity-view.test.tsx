@@ -397,6 +397,39 @@ describe('EntityView:实体四件组装渲染', () => {
     expect(anchor!.textContent).toContain('published');
   });
 
+  it('links[] 与 entities[] 的通用 thread target 都声明 thread query', () => {
+    const threadMember: SirenEntity = {
+      class: ['work-thread', 'open'],
+      properties: { rel: 'thread:release-1', goal: '发布' },
+      actions: [],
+      links: [{ rel: ['self'], href: '/api/entity?rel=thread%3Arelease-1' }],
+      entities: [
+        {
+          class: ['work-thread', 'open'],
+          rel: ['item'],
+          href: '/api/entity?rel=thread%3Arelease-2',
+          properties: { rel: 'thread:release-2', goal: '复核' },
+          actions: [],
+          links: [],
+        },
+      ],
+    };
+    const { container } = render(
+      <EntityView rel="threads" scope="publishing" entity={threadMember} />,
+    );
+
+    expect(
+      container
+        .querySelector<HTMLAnchorElement>('a[data-rel="thread:release-1"]')
+        ?.getAttribute('href'),
+    ).toBe('/entity?rel=thread%3Arelease-1&scope=publishing&thread=release-1');
+    expect(
+      container
+        .querySelector<HTMLAnchorElement>('a[data-rel="thread:release-2"]')
+        ?.getAttribute('href'),
+    ).toBe('/entity?rel=thread%3Arelease-2&scope=publishing&thread=release-2');
+  });
+
   it('properties 简表呈现字段值', () => {
     render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);
 
