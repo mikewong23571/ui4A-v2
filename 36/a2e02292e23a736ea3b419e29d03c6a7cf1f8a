@@ -1,0 +1,25 @@
+Task: Recipe canonical 实例化与 runtime shape 修正
+
+Summary:
+- Made canonical root layout/direct region slots a shared Recipe validation invariant.
+- Ensured pure resolver Recipe hits return only instantiated surfaces with zero slot placeholders.
+- Derived runtime single-subject shape/slot context from authorized Siren structure.
+- Migrated scenarios, pre-generation examples and Presentation Agent candidates to one subject region.
+- Parameterized promotion per outer region so multiple regions may share one real source.
+
+Files:
+- Engine Recipe/promotion/resolver/scenario modules and tests
+- Agent Presentation candidate/context modules and tests
+- Web Recipe context/selection/runtime/pregen modules and tests
+- Sidecar promotion route/tests
+
+Why:
+Phase D audit found placeholder leakage, non-canonical Recipe acceptance and a new runtime entity-shape hardcode that violated D45 and regressed pre-generated Recipes.
+
+Verification:
+- 23 focused files / 173 tests passed
+- engine/agent/web typecheck passed
+- pnpm governance passed after orchestrator baseline commit 2281226
+
+Governance:
+packages/engine/src/presentation direct modules are baseline 4351/4000 while T30 is in flight; shrink-only starts when T30 closes.
