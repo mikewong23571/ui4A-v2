@@ -385,5 +385,12 @@ export function dependencyDecision(
       reused.push(dependency.subtreeId);
     }
   }
-  return { valid: replanned.length === 0, reused, replanned, rehydrated };
+  const stableReplanned = [...replanned].sort();
+  const replannedSet = new Set(stableReplanned);
+  return {
+    valid: stableReplanned.length === 0,
+    reused: reused.filter((subtreeId) => !replannedSet.has(subtreeId)).sort(),
+    replanned: stableReplanned,
+    rehydrated: rehydrated.filter((subtreeId) => !replannedSet.has(subtreeId)).sort(),
+  };
 }

@@ -13,7 +13,12 @@ import { resolvePresentationFastpath } from './resolver';
 const catalog: SurfaceCatalog = {
   id: 'catalog:test',
   version: 'v1',
-  words: {},
+  words: {
+    prose: {
+      roles: ['primary-content'],
+      bindings: { value: { sources: ['property'], required: true } },
+    },
+  },
 };
 const surface: SurfaceTree = {
   schemaVersion: 1,
@@ -24,6 +29,32 @@ const surface: SurfaceTree = {
     code: 'fixture',
     dependencies: [],
     provenance: [{ kind: 'generic-fallback', ref: 'fixture' }],
+  },
+};
+const recipeSurface: SurfaceTree = {
+  schemaVersion: 1,
+  root: {
+    kind: 'word',
+    id: 'recipe-root',
+    role: 'primary-content',
+    word: 'prose',
+    bindings: {
+      value: {
+        kind: 'property',
+        subject: '$slot:subject',
+        path: 'properties.fields.title',
+      },
+    },
+    dependencies: [
+      {
+        kind: 'entity',
+        subject: '$slot:subject',
+        version: '$runtime',
+        paths: ['properties.fields.title'],
+      },
+      { kind: 'catalog', subject: catalog.id, version: catalog.version },
+    ],
+    provenance: [{ kind: 'presentation-agent', ref: 'fixture', model: 'model' }],
   },
 };
 const key: UserSidecarKey = {
@@ -107,7 +138,7 @@ describe('Presentation fastpath resolver', () => {
         catalogVersion: catalog.version,
       },
       slots: [{ name: 'subject', kind: 'entity' as const }],
-      surfaceTemplate: surface,
+      surfaceTemplate: recipeSurface,
       dependencies: [{ kind: 'catalog' as const, subject: catalog.id, version: catalog.version }],
       provenance: { model: 'model', generatedAt: 'now' },
     };
