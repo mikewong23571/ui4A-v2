@@ -1,3 +1,5 @@
+import { parseCompositionId } from '@ui4a/shared';
+
 import type {
   ApplicationRecipeSlot,
   ApplicationRenderRecipeCandidate,
@@ -240,29 +242,34 @@ export interface SidecarPresentationExplanation {
 }
 
 function explainComposition(
-  sidecar: UserSidecarAggregate,
   active: UserSidecarAggregate['versions'][number],
 ): SidecarPresentationExplanation['composition'] {
-  if (typeof sidecar.key.subject !== 'string' || !sidecar.key.subject.startsWith('workspace:')) {
-    return undefined;
-  }
   if (active.surface.root.kind !== 'layout') return undefined;
-  const id = sidecar.key.subject.slice('workspace:'.length);
-  const provenancePrefix = `composition:${id}@`;
-  const declarationProvenance = active.surface.root.provenance.find(
-    (entry) =>
-      entry.kind === 'composition-declaration' &&
-      entry.ref.startsWith(provenancePrefix) &&
-      !entry.ref.slice(provenancePrefix.length).includes('#'),
-  );
-  if (declarationProvenance === undefined) return undefined;
-  const version = declarationProvenance.ref.slice(provenancePrefix.length);
-  if (version === '' || active.surface.root.children.some((node) => node.kind !== 'slot')) {
+  const declaration = active.surface.root.provenance.flatMap((entry) => {
+    if (entry.kind !== 'composition-declaration' || !entry.ref.startsWith('composition:')) {
+      return [];
+    }
+    const identity = entry.ref.slice('composition:'.length);
+    const separator = identity.indexOf('@');
+    if (separator < 1) return [];
+    const id = identity.slice(0, separator);
+    const version = identity.slice(separator + 1);
+    if (version === '') return [];
+    try {
+      return [{ id: parseCompositionId(id), version, provenance: entry }];
+    } catch {
+      return [];
+    }
+  })[0];
+  if (
+    declaration === undefined ||
+    active.surface.root.children.some((node) => node.kind !== 'slot')
+  ) {
     return undefined;
   }
   return {
-    id,
-    version,
+    id: declaration.id,
+    version: declaration.version,
     regions: active.surface.root.children.map((node) => {
       if (node.kind !== 'slot') throw new Error('Composition region slot is unavailable');
       return node.child.kind === 'diagnostic' && node.child.code === 'region-unavailable'
@@ -273,7 +280,10 @@ function explainComposition(
           }
         : { region: node.name, availability: 'available' as const };
     }),
-    declarationProvenance: { ...declarationProvenance, kind: 'composition-declaration' },
+    declarationProvenance: {
+      ...declaration.provenance,
+      kind: 'composition-declaration',
+    },
   };
 }
 
@@ -286,7 +296,7 @@ export function explainSidecarPresentation(
   if (sidecar === undefined || active === undefined || active.provenance.ref === '') {
     throw new Error('Presentation provenance is unavailable');
   }
-  const composition = explainComposition(sidecar, active);
+  const composition = explainComposition(active);
   return {
     sidecarId,
     version: sidecar.activeVersion,

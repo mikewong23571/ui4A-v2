@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import type { CompositionDeclaration } from '@ui4a/shared';
@@ -490,5 +492,32 @@ describe('Sidecar promotion and explanation', () => {
     expect(serialized).not.toContain('secret-policy-scope');
     expect(serialized).not.toContain('secret-entity-fingerprint');
     expect(serialized).not.toContain('secret-policy-fingerprint');
+  });
+
+  it('explains composition solely from root declaration provenance with an opaque subject', () => {
+    const composed = compositionSnapshot();
+    const aggregate = composed.sidecars['sidecar:1']!;
+    aggregate.key.subject = 'ordinary-subject-containing-workspace-text';
+    const active = aggregate.versions[aggregate.activeVersion]!;
+    if (active.surface.root.kind !== 'layout') throw new Error('fixture must be a layout');
+    active.surface.root.provenance = [
+      { kind: 'composition-declaration', ref: 'composition:my-work@2026.08@candidate' },
+    ];
+
+    expect(explainSidecarPresentation(composed, 'sidecar:1').composition).toMatchObject({
+      id: 'my-work',
+      version: '2026.08@candidate',
+    });
+
+    active.surface.root.provenance = [];
+    aggregate.key.subject = 'workspace:my-work';
+    expect(explainSidecarPresentation(composed, 'sidecar:1')).not.toHaveProperty('composition');
+  });
+
+  it('keeps workspace wire parsing out of the pure explanation module', () => {
+    const source = readFileSync(new URL('./promotion.ts', import.meta.url), 'utf8');
+
+    expect(source).not.toContain('workspace:');
+    expect(source).not.toMatch(/key\.subject.*(?:startsWith|slice|substring)/s);
   });
 });

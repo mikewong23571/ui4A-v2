@@ -243,6 +243,7 @@ function stableUniqueDependencies(dependencies: readonly SidecarDependency[]): S
 function dependenciesForRegion(
   declaration: CompositionDeclaration,
   input: CompositionRegionSurfaceInput,
+  mode: CompositionMode,
 ): SidecarDependency[] {
   if (input.available === false) return [];
   const subtreeId = regionSlotId(input.region);
@@ -266,7 +267,7 @@ function dependenciesForRegion(
         'collection-membership',
         input.source,
         ['$entities'],
-        'rehydrate',
+        mode,
         input.membershipFingerprint!,
       ),
     );
@@ -350,7 +351,7 @@ export function composeSurfaceRegions(
     }
 
     const provenance = regionProvenance(declaration, region.region);
-    sidecarDependencies.push(...dependenciesForRegion(declaration, input));
+    sidecarDependencies.push(...dependenciesForRegion(declaration, input, region.mode));
     plannedRegions.push({ region: region.region, sourceKind: input.sourceKind, mode: region.mode });
     return {
       region: region.region,

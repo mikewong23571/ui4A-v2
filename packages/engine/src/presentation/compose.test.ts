@@ -7,6 +7,7 @@ import {
   composeSurfaceRegions,
   type CompositionRegionSurfaceInput,
 } from './compose';
+import { dependencyDecision } from './sidecar';
 import {
   hashSurfaceTree,
   normalizeSurfaceTree,
@@ -249,6 +250,45 @@ describe('composition region planner', () => {
       }),
     ]);
     expect(new Set(result.dependencies.map(({ id }) => id)).size).toBe(result.dependencies.length);
+  });
+
+  it('applies each collection region mode to membership drift while contracts invalidate', () => {
+    const collectionDeclaration: CompositionDeclaration = {
+      id: 'collection-modes',
+      version: '1',
+      regions: [
+        { region: 'live', source: 'inbox', intent: 'review', mode: 'rehydrate' },
+        { region: 'structural', source: 'threads', intent: 'organize', mode: 'invalidate' },
+      ],
+    };
+    const initial = composeSurfaceRegions(
+      collectionDeclaration,
+      [input('live', 'inbox', 'collection'), input('structural', 'threads', 'collection')],
+      context,
+    );
+    const current = initial.dependencies.map((candidate) =>
+      candidate.kind === 'collection-membership'
+        ? { ...candidate, fingerprint: `${candidate.fingerprint}:changed` }
+        : candidate,
+    );
+
+    expect(
+      initial.dependencies
+        .filter(({ kind }) => kind === 'collection-membership')
+        .map(({ ref, mode }) => [ref, mode]),
+    ).toEqual([
+      ['inbox', 'rehydrate'],
+      ['threads', 'invalidate'],
+    ]);
+    expect(
+      initial.dependencies.filter(({ kind }) => kind === 'entity-contract').map(({ mode }) => mode),
+    ).toEqual(['invalidate', 'invalidate']);
+    expect(dependencyDecision(initial.dependencies, current)).toEqual({
+      valid: false,
+      reused: ['region-slot:live', 'root'],
+      replanned: ['region-slot:structural'],
+      rehydrated: ['region-slot:live'],
+    });
   });
 
   it('keeps outer slots and adversarial subtree ids in disjoint namespaces', () => {
