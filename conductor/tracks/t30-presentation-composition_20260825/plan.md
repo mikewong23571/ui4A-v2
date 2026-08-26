@@ -132,10 +132,12 @@
   - `POST /api/presentation`(subject = `workspace:my-work`)→ receipt ready →
     canvas 渲染三区域;binding-only(I2 口径:deref 值与实体快照一致);
     presentation 域重建与业务 fold 隔离各自一致(I5 口径)
-- [~] Task: 全量验收
+- [x] Task: 全量验收 `ee9f64c`
   - `pnpm check` 全绿;`CI=true pnpm e2e invariants` 全绿;T16 presentation 套件
     与 chat 套件全绿;`pnpm dev:all` 实际启动走查(里程碑约束)
-- [ ] Task: Track 收尾
+  - 本机构建 host 缺 Temporal CLI；按用户指示改由 immutable images → mothership
+    Helm revision 43 → 安装版 CLI 完成真实环境走查，详见 `evidence.md`
+- [~] Task: Track 收尾
   - `conductor/tracks.md` 状态流转;track 目录按 GR5 处置(无 bespoke 脚本/配置
     残留);metadata.json 归档;T27 spec 的组合消费口径如有偏差回改一行备注
 
