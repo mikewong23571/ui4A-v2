@@ -60,7 +60,7 @@
     声明版本 / catalog / policy)落树并产出 sidecar 依赖输入
   - Red→Green:声明 → 树形状/binding 完整性(零字面量,I2 口径)/依赖并集覆盖
     全部聚合源 + 声明版本的断言
-- [ ] Task: 单主体退化统一
+- [x] Task: 单主体退化统一 `a3a8e84`
   - 单主体 surface 只经同一组合路径产出，固定形状为
     `layout → slot(subject) → subtree`，不保留旧规划旁路；validate/normalize/hash
     覆盖该形状(新校验逻辑进新模块)，compiler `root`/`node:<id>` 约定保持确定
