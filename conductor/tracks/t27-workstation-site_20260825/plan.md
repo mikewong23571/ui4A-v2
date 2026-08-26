@@ -74,7 +74,7 @@
   - Red→Green:同一宿主两种挂载(canvas 参数形态 / 首页固定
     `workspace:my-work`)行为一致的组件测试;`/` 不重定向,不存在第二套
     presentation fetch/hydrate/action-gate 实现
-- [ ] Task: 首页落地与 home-body 退役
+- [x] Task: 首页落地与 home-body 退役 `c7fb6bc`
   - `/` = 壳 + 宿主渲染 `workspace:my-work`;`home-body.tsx` 删除;运行概览/
     文章/收件箱/评论队列/委托监控/定义管理六区块不移植
   - Red→Green:首页三区块来自 my-work 声明区域源(断言取数 subject 与区域
