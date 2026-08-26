@@ -20,3 +20,23 @@ Verification:
 - pnpm --filter @ui4a/web typecheck
 - pnpm governance
 - Autonomous acceptance by the orchestrating agent.
+
+Phase A autonomous verification report
+
+Automated commands:
+- NODE_OPTIONS=--no-experimental-webstorage pnpm check
+  Result: typecheck/lint/governance passed; 353 test files passed, 6 skipped; 2659 tests passed, 10 skipped.
+- CI=true NODE_OPTIONS=--no-experimental-webstorage pnpm e2e invariants
+  Result: 4 passed, 2 skipped by established superseded/condensed invariant policy; I5 replay hash 4c6822cece4b over 53 events / 30 rels.
+
+Scripted manual-equivalent verification:
+1. Submit a publishing goal without focus and confirm the route uses the default ApplicationDefinition.entry flow:article-drafting.
+2. Submit with clientView presence focus and confirm focus overrides the application entry.
+3. Submit insufficient production scopes and confirm rejection occurs before getEngine/database/Agent execution.
+4. Confirm no resolveStartRel, overlaps, goal text matching, or reachability probe remains in the start path.
+
+Confirmation:
+Autonomously accepted by the orchestrating agent under conductor/workflow.md; all scripted expectations and full phase gates passed.
+
+Environment note:
+Node 25 experimental Web Storage was disabled so jsdom owns window.localStorage; this changes no product/test semantics.
