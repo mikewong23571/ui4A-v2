@@ -384,6 +384,7 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
           {
             goal,
             driverKind: 'llm',
+            scope: 'publishing',
             startRel: 'articles',
             principal: 'user:kill-test',
             maxSteps: 24,

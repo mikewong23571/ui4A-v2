@@ -8,6 +8,7 @@ import type {
   DecideSink,
   DriverContext,
   FetchLike,
+  SitemapSummary,
 } from '@ui4a/agent';
 
 import type { DbExecutor } from '../../web/src/db/events';
@@ -37,6 +38,7 @@ import {
 const BASE = 'http://contract.test';
 
 const GOAL = { verb: '下线', targetRel: 'post:post-welcome' };
+const PUBLISHING_SCOPE = 'publishing';
 
 function actionFixture(name: string): SirenAction {
   return { name, title: name, method: 'POST', href: '/api/exec', fields: {} };
@@ -117,6 +119,15 @@ class ThrowingDriver implements AgentDriver {
   }
 }
 
+class ContextCapturingDriver implements AgentDriver {
+  context?: DriverContext;
+
+  decide(context: DriverContext): AgentOperation {
+    this.context = context;
+    return { kind: 'navigate', rel: 'meta/flows' };
+  }
+}
+
 interface FakeDbOptions {
   /** 已落库的 delegation-step 事件(幂等恢复路径的存量)。 */
   stepEvents?: { step: number; result: AgentStepResult }[];
@@ -167,7 +178,12 @@ function fakeDb(options: FakeDbOptions = {}) {
   return { db, inserts };
 }
 
-const BASE_STATE: DelegationLoopState = { currentRel: 'articles', trail: [], successes: [] };
+const BASE_STATE: DelegationLoopState & { scope: string } = {
+  scope: PUBLISHING_SCOPE,
+  currentRel: 'articles',
+  trail: [],
+  successes: [],
+};
 
 describe('U22 delegated AI-first runtime', () => {
   it('产品委托类型只接受 llm，不再提供 rule 运行时选项', () => {
@@ -212,6 +228,71 @@ describe('U22 delegated AI-first runtime', () => {
 });
 
 describe('runAgentStep(scripted protocol driver,决策+执行合一)', () => {
+  it('uses explicit scope to share the prompt disclosure while keeping foreign rel navigable', async () => {
+    const sitemap: SitemapSummary = {
+      version: 'delegated-scope-v1',
+      surfaces: [
+        { rel: 'articles', title: 'Articles', app: 'publishing' },
+        {
+          rel: 'meta/flows',
+          title: 'Flow definitions',
+          app: 'governance',
+          hiddenForeignDetail: 'MUST_NOT_DISCLOSE',
+        } as SitemapSummary['surfaces'][number],
+      ],
+      applications: [
+        { name: 'publishing', intent: 'publish', flows: [{ name: 'post-status', title: 'Posts' }] },
+        { name: 'governance', intent: 'govern', flows: [{ name: 'flow-admin', title: 'Flows' }] },
+      ],
+      capabilities: [
+        {
+          name: 'publish-copy',
+          title: 'Publish copy',
+          kind: 'transform',
+          intent: 'publish',
+          inputSchema: { type: 'object', description: 'SCHEMA_MUST_NOT_ENTER_DRIVER_CONTEXT' },
+          outputSchema: { type: 'object' },
+          scope: { applications: ['publishing'], flows: ['post-status'] },
+        },
+      ],
+    };
+    const driver = new ContextCapturingDriver();
+    const transport = contractTransport({
+      entities: { articles: articlesEntity, 'meta/flows': articlesEntity },
+    });
+    const { db } = fakeDb();
+
+    const result = await runAgentStep(
+      { db, fetchImpl: transport.fetch, driver },
+      {
+        delegationId: 'wf-scoped-disclosure',
+        step: 1,
+        goal: { verb: '查看定义入口' },
+        driverKind: 'llm',
+        baseUrl: BASE,
+        sitemap,
+        ...BASE_STATE,
+      },
+    );
+
+    expect(driver.context?.app).toBe(PUBLISHING_SCOPE);
+    expect(driver.context?.sitemap?.applications.map(({ name }) => name)).toEqual([
+      PUBLISHING_SCOPE,
+    ]);
+    expect(driver.context?.sitemap?.surfaces).toContainEqual({
+      rel: 'meta/flows',
+      title: 'Flow definitions',
+    });
+    expect(JSON.stringify(driver.context?.sitemap)).not.toContain(
+      'SCHEMA_MUST_NOT_ENTER_DRIVER_CONTEXT',
+    );
+    expect(JSON.stringify(driver.context?.sitemap)).not.toContain('MUST_NOT_DISCLOSE');
+    expect(result).toMatchObject({
+      op: { kind: 'navigate', rel: 'meta/flows' },
+      outcome: 'navigated',
+    });
+  });
+
   it('① 点名资源:navigate 直达,outcome=navigated,delegation-step 事件携带 op 与实体摘要', async () => {
     const transport = contractTransport({
       entities: { articles: articlesEntity, 'post:post-welcome': postWelcomeEntity },
@@ -283,6 +364,7 @@ describe('runAgentStep(scripted protocol driver,决策+执行合一)', () => {
         goal: GOAL,
         driverKind: 'llm',
         baseUrl: BASE,
+        scope: PUBLISHING_SCOPE,
         principal: 'user:mike',
         currentRel: 'post:post-welcome',
         trail: [],
@@ -323,6 +405,7 @@ describe('runAgentStep(scripted protocol driver,决策+执行合一)', () => {
         goal: GOAL,
         driverKind: 'llm',
         baseUrl: BASE,
+        scope: PUBLISHING_SCOPE,
         currentRel: 'post:post-welcome',
         trail: [],
         successes: [],
@@ -578,6 +661,7 @@ describe('delegation-step reasoning 留痕(T11 / 验收 6)', () => {
         goal: GOAL,
         driverKind: 'llm',
         baseUrl: BASE,
+        scope: PUBLISHING_SCOPE,
         currentRel: 'post:post-welcome',
         trail: [],
         successes: [],

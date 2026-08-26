@@ -33,6 +33,7 @@ import {
 const args: DelegationDispatchArgs = {
   goal: { verb: '发布一篇文章', fields: { title: '舰队首航' } },
   driverKind: 'llm',
+  scope: 'publishing',
   startRel: 'articles',
   principal: 'user:sess-1',
   baseUrl: 'http://127.0.0.1:3100',
@@ -61,6 +62,7 @@ describe('dispatchDelegation(委托派发)', () => {
       taskQueue: 'ui4a',
       args: [args],
     });
+    expect((call[1]!.args as DelegationDispatchArgs[])[0]?.scope).toBe('publishing');
     const workflowId = call[1]!.workflowId as string;
     expect(workflowId).toMatch(/^delegation-[0-9a-f-]{36}$/);
     // delegationId 即 workflowId 全量(含前缀):worker 侧事件 rel=

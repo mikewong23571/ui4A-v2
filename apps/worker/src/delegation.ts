@@ -23,7 +23,13 @@
  *   落库前被杀 → 重试重执行(引擎单 atom 串行,重复 exec 被状态机拒绝并
  *   留痕——拒绝也是合同的一部分,委托不崩溃)。
  */
-import { authorizeEffects, createContractClient, createDriver, summarizeEntity } from '@ui4a/agent';
+import {
+  authorizeEffects,
+  createContractClient,
+  createDriver,
+  sliceSitemapDisclosure,
+  summarizeEntity,
+} from '@ui4a/agent';
 import type {
   AgentDriver,
   AgentOperation,
@@ -265,7 +271,14 @@ export async function runAgentStep(
     trail: [...args.trail],
     successes: [...args.successes],
     lastRejection: args.lastRejection,
-    sitemap: args.sitemap,
+    sitemap:
+      args.sitemap === undefined
+        ? undefined
+        : sliceSitemapDisclosure(args.sitemap, {
+            scope: args.scope,
+            currentRel: args.currentRel,
+          }),
+    app: args.scope,
   };
   const driver = deps.driver ?? createDriver('llm');
   // 推理自述捕获(T11 Phase C):llm driver 决策产出 reasoning 时经 sink 回调

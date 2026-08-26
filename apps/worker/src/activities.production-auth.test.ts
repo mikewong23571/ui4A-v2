@@ -112,6 +112,7 @@ function stepArgs(baseUrl = PUBLIC_ORIGIN): AgentStepArgs {
     goal: { verb: 'publish', targetRel: 'post:first' },
     driverKind: 'llm',
     baseUrl,
+    scope: 'publishing',
     currentRel: 'post:first',
     trail: [],
     successes: [],

@@ -138,12 +138,13 @@ describe('mode=delegated(委托派发)', () => {
     const args = dispatchMock.mock.calls[0]![0] as Record<string, unknown>;
     expect(args.goal).toEqual({ verb: '发布一篇文章', fields: { title: '委托发布' } });
     expect(args.driverKind).toBe('llm');
+    expect(args.scope).toBe('default');
     expect(args.startRel).toBe('flow:article-drafting');
     expect(args.principal).toBe('user:sess-d1');
     expect(args.baseUrl).toBe(base);
   });
 
-  it('uses the assembled client-view focus as the delegated start rel', async () => {
+  it('uses assembled scope and client-view focus as delegated context facts', async () => {
     await chat({
       goal: { verb: '检查当前文章' },
       mode: 'delegated',
@@ -161,6 +162,8 @@ describe('mode=delegated(委托派发)', () => {
     });
 
     expect(dispatchMock).toHaveBeenCalledTimes(1);
+    // Local demo grants only default; the assembler keeps focus but rejects the ungranted scope.
+    expect((dispatchMock.mock.calls[0]![0] as Record<string, unknown>).scope).toBe('default');
     expect((dispatchMock.mock.calls[0]![0] as Record<string, unknown>).startRel).toBe(
       'post:first-post',
     );

@@ -218,4 +218,22 @@ describe('disclosure source governance', () => {
     );
     expect(implementation).not.toMatch(/protocol\/match|\boverlaps\b|\bVERB_LEXICON\b/);
   });
+
+  it('keeps inline and delegated execution on the same public disclosure function', () => {
+    const publicIndex = readFileSync(new URL('../index.ts', import.meta.url), 'utf8');
+    const inlinePrompt = readFileSync(new URL('../llm/prompts.ts', import.meta.url), 'utf8');
+    const workerStep = readFileSync(
+      new URL('../../../../apps/worker/src/delegation.ts', import.meta.url),
+      'utf8',
+    );
+
+    expect(publicIndex).toContain("export * from './contract/disclosure'");
+    expect(inlinePrompt).toMatch(
+      /import \{ sliceSitemapDisclosure \} from ['"]\.\.\/contract\/disclosure['"]/,
+    );
+    expect(workerStep).toMatch(
+      /import \{[^}]*sliceSitemapDisclosure[^}]*\} from ['"]@ui4a\/agent['"]/s,
+    );
+    expect(workerStep).toContain('sliceSitemapDisclosure(args.sitemap, {');
+  });
 });

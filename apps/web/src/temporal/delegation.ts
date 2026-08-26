@@ -2,7 +2,7 @@
  * web→Temporal 委托派发(T5 Phase B / spec 架构决定 5):/api/chat mode=delegated
  * 的 dispatch 面。
  *
- * - dispatchDelegation:goal/driverKind/startRel/principal/baseUrl →
+ * - dispatchDelegation:goal/driverKind/scope/startRel/principal/baseUrl →
  *   client.workflow.start('delegationWorkflow', workflowId=delegation-<uuid>,
  *   taskQueue=ui4a);返回 delegationId(uuid 部分;事件日志 rel=delegation:<id> 的
  *   同一 id)——**委托 = workflow,事件历史 = 轨迹**(arch-brief §9.3);
@@ -29,6 +29,8 @@ export interface DelegationDispatchArgs {
   driverKind: DelegationDriverKind;
   /** 引擎合同本源(activity 内 fetch /api/entity+/api/exec 的回环本源)。 */
   baseUrl: string;
+  /** T29 Situation 装配的 application scope;显式值是 delegated 执行正典。 */
+  scope: string;
   startRel?: string;
   principal?: string;
   maxSteps?: number;

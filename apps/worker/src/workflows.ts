@@ -282,6 +282,8 @@ export interface DelegationWorkflowArgs {
   driverKind: DelegationDriverKind;
   /** 引擎合同本源,如 http://localhost:3100(activity 内 fetch /api/entity+/api/exec)。 */
   baseUrl: string;
+  /** 派发方 Situation 装配的 application scope;显式值是 worker 执行正典。 */
+  scope: string;
   /** 起始实体 rel(缺省 articles——种子域的入口集合,与 runAgent 同口径)。 */
   startRel?: string;
   principal?: string;
@@ -338,6 +340,7 @@ export interface AgentStepArgs {
   goal: AgentGoal;
   driverKind: DelegationDriverKind;
   baseUrl: string;
+  scope: string;
   principal?: string;
   sitemap?: SitemapSummary;
   currentRel: string;
@@ -458,6 +461,7 @@ export async function delegationWorkflow(
       goal: args.goal,
       driverKind: 'llm',
       baseUrl: args.baseUrl,
+      scope: args.scope,
       principal: args.principal,
       sitemap,
       currentRel: state.currentRel,

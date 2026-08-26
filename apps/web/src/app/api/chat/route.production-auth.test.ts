@@ -650,6 +650,7 @@ describe('production chat turn credential boundary', () => {
     expect(mocks.dispatchDelegation).toHaveBeenCalledTimes(1);
     const dispatch = mocks.dispatchDelegation.mock.calls[0]![0] as Record<string, unknown>;
     expect(dispatch.principal).toBe('human-alice');
+    expect(dispatch.scope).toBe('development');
     expect(secretsIn(dispatch)).not.toContain(HUMAN_ACCESS_TOKEN);
     expect(secretsIn(dispatch)).not.toContain(EXCHANGED_ACCESS_TOKEN);
     expect(secretsIn(dispatch)).not.toContain(AGENT_CLIENT_SECRET);

@@ -80,6 +80,7 @@ async function dispatchAll(): Promise<void> {
     goal: { verb: 'publish' },
     driverKind: 'llm',
     baseUrl: 'https://ui4a.internal',
+    scope: 'publishing',
     principal: 'human-alice',
   });
   await dispatchAgentRun({

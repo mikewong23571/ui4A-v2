@@ -1017,6 +1017,7 @@ export async function POST(request: Request) {
       const { delegationId } = await dispatchDelegation({
         goal,
         driverKind: resolved,
+        scope: situation.scope,
         startRel,
         principal,
         baseUrl,
