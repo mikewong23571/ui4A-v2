@@ -31,6 +31,9 @@ export default defineConfig({
   timeout: 900_000,
   fullyParallel: false,
   workers: 1,
+  // Real providers occasionally terminate or time out a single request; retry the whole isolated
+  // standing case with a fresh worker/server while keeping every semantic assertion unchanged.
+  retries: 2,
   forbidOnly: true,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: { trace: 'retain-on-failure' },
