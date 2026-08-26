@@ -64,7 +64,7 @@
     data-nav 注记齐全);导航文案任务语言
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `535f47d`
 
-## Phase D: 首页"我的事"落地
+## Phase D: 首页"我的事"落地 [checkpoint: 932abe6]
 
 - [x] Task: 共享 canvas 宿主提炼(D46 第 1 问) `48cbb39`
   - 从 `canvas-body.tsx` 提炼 sidecar 单树宿主为共享组件(取数链
@@ -84,7 +84,7 @@
     (CLI 或等价 HTTP 合同读;人机同源证明)。CLI = `apps/cli` 产出的 `ui4a`
     binary,用法参照 `.agents/skills/ui4a-cli/SKILL.md`
   - Playwright 走查截图:首屏零机制词汇、三门问题一眼可答
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `932abe6`
 
 ## Phase E: 处境常显、显式声明与双桥
 
