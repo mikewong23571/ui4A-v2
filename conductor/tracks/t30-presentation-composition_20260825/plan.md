@@ -52,7 +52,7 @@
 
 ## Phase C: 组合规划内核(packages/engine,新模块)
 
-- [ ] Task: 区域组装 planner
+- [x] Task: 区域组装 planner `e926447`
   - 新模块(如 `presentation/compose.ts`,不回填 validate.ts/recipe.ts):声明 →
     每区域源经既有 `planGenericSurface`/recipe 路径按区域 intent 规划子树 → 根
     layout + 命名 slot 组装单棵 SurfaceTree;区域由来落每节点既有 provenance;
