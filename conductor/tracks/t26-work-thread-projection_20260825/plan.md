@@ -35,7 +35,7 @@
     (`packages/engine/src/projection/fold/log-event.ts`)+ web `EventKind`
     (`apps/web/src/db/events.ts`);core domain,`readLog`/`toLogEvent` 直过
   - Red:非法 kind/超界载荷/缺锚引用一律拒绝的解析测试
-- [~] Task: `apply-thread.ts` + fold case + snapshot 表
+- [x] Task: `apply-thread.ts` + fold case + snapshot 表 4c4d510
   - `packages/engine/src/projection/fold/apply-thread.ts`(参照
     `apply-confirmation.ts`);`fold()` 新 case(显式,不静默);
     snapshot 新表恒携带(`initial.threads ?? {}`,样板:delegations 合并)
@@ -45,7 +45,7 @@
     重放测试:重建与增量
     fold 一致,空日志 → 空表(合法态);乱序/迟到 seq 容忍
     (worker 第二写者形态,参照 service.ts:316-333 交换性论证)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase C: 合同暴露(实体/sitemap/授权/I5)
 
