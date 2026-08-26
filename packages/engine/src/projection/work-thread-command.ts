@@ -126,7 +126,7 @@ function detailFor(
         threadId: id,
         category: params.category as ThreadReferenceCategory,
         rel: params.rel,
-        source: 'action',
+        source: request.channel === 'chat-presence' ? 'presence' : 'action',
         receipt: judgment,
       },
       entityRel: request.rel,

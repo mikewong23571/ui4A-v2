@@ -3,6 +3,9 @@ import { type Server, createServer } from 'node:http';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { readLog } from '../../../db/events';
+import { getEngine } from '../../../engine/service';
+
 import {
   articleCount,
   chat,
@@ -11,6 +14,7 @@ import {
   entityRequestRels,
   eventKinds,
   PUBLISH_TEST_GOAL,
+  pool,
   chatRouteBase,
   startChatRouteFixtures,
   stopChatRouteFixtures,
@@ -187,6 +191,55 @@ describe('T15 U22:product chat runtime is AI-first', () => {
     expect(response.json.error).toContain('LLM 不可用');
     expect(await eventKinds()).not.toContain('delegation-requested');
     expect(await eventKinds()).not.toContain('action-executed');
+  });
+
+  it('persists an explicit presence attachment after the user message even when LLM config is unavailable', async () => {
+    const engine = await getEngine(pool);
+    const created = await engine.exec({
+      rel: 'threads',
+      action: 'create',
+      actor: 'human',
+      principal: 'user:u22-thread-unavailable',
+      params: { id: 'failure-thread', goal: 'Keep context', goalSource: 'message:setup' },
+    });
+    expect(created.kind).toBe('accepted');
+
+    const response = await chat({
+      sessionId: 'u22-thread-unavailable',
+      goal: { verb: '检查当前工作线' },
+      clientView: {
+        schemaVersion: 2,
+        presence: {
+          clientInstanceId: 'client:thread-unavailable',
+          site: 'business',
+          scope: 'default',
+          thread: 'failure-thread',
+          focus: null,
+        },
+      },
+    });
+    expect(response.json.outcome).toBe('failed');
+
+    const events = await readLog(pool);
+    const message = events.find(
+      (event) =>
+        event.kind === 'chat-message-appended' &&
+        (event.detail as { messageId?: string }).messageId === 'route-test-turn',
+    );
+    const attachment = events.find(
+      (event) =>
+        event.kind === 'thread-reference-attached' &&
+        (event.detail as { rel?: string }).rel === 'message:route-test-turn',
+    );
+    expect(message?.seq).toBeLessThan(attachment?.seq ?? 0);
+    expect(attachment?.detail).toMatchObject({
+      threadId: 'failure-thread',
+      category: 'context',
+      source: 'presence',
+    });
+    expect(engine.getSnapshot().threads?.['failure-thread']?.references.context).toEqual([
+      'message:route-test-turn',
+    ]);
   });
 });
 

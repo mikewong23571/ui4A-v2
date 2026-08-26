@@ -45,6 +45,7 @@ import {
 } from '../../../auth/request-identity';
 import { appendEvent, readLog } from '../../../db/events';
 import { situationForChat } from '../../../engine/chat-situation';
+import { attachChatMessageToThread } from '../../../engine/chat-thread';
 import { getDb, getEngine } from '../../../engine/service';
 import {
   getPresentationBroker,
@@ -952,6 +953,11 @@ export async function POST(request: Request) {
     role: 'user',
     content: goal.verb,
     ...(clientView === undefined ? {} : { clientView }),
+  });
+  await attachChatMessageToThread(engine, {
+    thread: situation.thread,
+    principal,
+    messageId: userMessageId,
   });
   const agentConversation = await loadAgentConversation(sessionId, principal);
 

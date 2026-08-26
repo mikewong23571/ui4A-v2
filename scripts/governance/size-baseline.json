@@ -9,9 +9,9 @@
     },
     {
       "path": "apps/web/src/app/api/chat/route.ts",
-      "lines": 948,
+      "lines": 949,
       "limit": 500,
-      "note": "T22 在途所有;T23 不拆分,待 T22 关闭后处理(见 risk-inventory R3)"
+      "note": "T22 在途所有;T26 chat presence→thread 显式 attach 增 1 行调用(业务优先不为凑行数拆分,workflow 2026-08-26);待 T22 关闭或 T27 workstation 接入时按 chat orchestration helper 收缩"
     },
     {
       "path": "scripts/t22/t22-compose-contract.test.ts",

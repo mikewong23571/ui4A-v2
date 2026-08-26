@@ -230,6 +230,7 @@ describe('Work Thread Siren projection', () => {
         action: 'attach',
         actor: 'human',
         principal: 'user:mike',
+        channel: 'chat-presence',
         params: { category: 'context', rel: 'articles' },
       },
       created.snapshot,
@@ -237,7 +238,10 @@ describe('Work Thread Siren projection', () => {
     expect(attached).toMatchObject({
       kind: 'accepted',
       entityRel: 'thread:release-1',
-      event: { kind: 'thread-reference-attached' },
+      event: {
+        kind: 'thread-reference-attached',
+        detail: { source: 'presence' },
+      },
     });
     if (attached.kind !== 'accepted') return;
     expect(attached.snapshot.threads?.['release-1']?.references.context).toEqual(['articles']);
@@ -299,6 +303,11 @@ describe('Work Thread Siren projection', () => {
       snapshot(),
     );
     expect(outcome).toMatchObject({ kind: 'accepted', event: { kind: eventKind } });
-    if (outcome.kind === 'accepted') expect(outcome.event.kind).not.toBe('action-executed');
+    if (outcome.kind === 'accepted') {
+      expect(outcome.event.kind).not.toBe('action-executed');
+      if (action === 'attach' || action === 'detach') {
+        expect(outcome.event.detail).toMatchObject({ source: 'action' });
+      }
+    }
   });
 });
