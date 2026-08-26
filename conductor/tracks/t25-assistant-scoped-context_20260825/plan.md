@@ -79,7 +79,7 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
 
 ## Phase C: delegated 同收窄与回合卫生
 
-- [ ] Task: worker delegated 路径收窄(显式正典)
+- [~] Task: worker delegated 路径收窄(显式正典)
   - `apps/web/src/temporal/delegation.ts` `DelegationDispatchArgs` 增 `scope`
     显式参数(派发方经处境装配算出传入;`startRel` 现状已通,改由 Phase A
     事实链供给);`apps/worker/src/workflows.ts` `AgentStepArgs` 传递;
