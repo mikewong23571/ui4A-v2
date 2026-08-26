@@ -50,7 +50,7 @@
     source 与 sitemap 的交叉测试，防止声明引用不可发现源
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `fe50bc3`
 
-## Phase C: 组合规划内核(packages/engine,新模块)
+## Phase C: 组合规划内核(packages/engine,新模块) [checkpoint: 3e616f3]
 
 - [x] Task: 区域组装 planner `e926447`
   - 新模块(如 `presentation/compose.ts`,不回填 validate.ts/recipe.ts):声明 →
@@ -70,7 +70,7 @@
     node id 命名空间并同步 diagnostic.failedNodeId 映射
   - compose 测试改用真实 planGenericSurface 输入，不再冻结旧 generic 内树 id；
     区域 intent 的 planner 路由明确留给 Phase E web runtime，Phase C 只验纯组装核
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `3e616f3`
 
 ## Phase D: sidecar/recipe/promotion 组合化
 
