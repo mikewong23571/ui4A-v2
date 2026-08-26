@@ -1,8 +1,12 @@
 Task: Record T26 production deployment and CLI scope hotfix evidence
 
-Summary:
-- linked the evidence from the active T22 track index
-- recorded the completed revision 40-42 correction task in Phase J
-- documented replay and scope root causes, code/release commits, image digests, Helm evidence, installed CLI verification, audit seq 369-374, and the Node.js Web Storage full-suite limitation
+Effective documentation:
+- T22 index links the new evidence
+- T22 Phase J records the completed revision 40-42 correction task
+- evidence documents replay and scope root causes, code/release commits, image digests, Helm evidence, installed CLI verification, audit seq 369-374, and the Node.js Web Storage full-suite limitation
 
-Why: T26 is immutable archived history; post-release deployment corrections belong to active T22 evidence so the operational loop remains auditable without rewriting the completed track.
+Commit provenance:
+- f2d4ca7 contains the initial three-file documentation snapshot because a concurrent T30 checkpoint committed the shared staged index while this task was running
+- 6959d48 normalizes the evidence header and is the dedicated documentation handoff commit
+
+Why: T26 is immutable archived history; post-release deployment corrections belong to active T22 evidence.
