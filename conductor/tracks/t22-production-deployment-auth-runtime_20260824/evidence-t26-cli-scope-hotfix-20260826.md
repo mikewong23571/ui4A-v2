@@ -1,8 +1,11 @@
 # T26 Work Thread 生产部署与 CLI Scope Hotfix 证据
 
-日期：2026-08-26  
-环境：mothership Kubernetes，namespace `ui4a-system`  
-入口：`https://ui4a.mothership.internal:32067`  
+日期：2026-08-26
+
+环境：mothership Kubernetes，namespace `ui4a-system`
+
+入口：`https://ui4a.mothership.internal:32067`
+
 状态：完成；Helm revision 42 `deployed`
 
 ## 范围与结论
