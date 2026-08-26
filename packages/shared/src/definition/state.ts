@@ -12,6 +12,7 @@ import type {
   DefinitionEntry,
   FlowDefinition,
 } from './definition';
+import type { ThreadSnapshot } from '../work-thread';
 
 /**
  * 参数/字段值出处(事件日志记录口径,arch-brief §2):
@@ -206,6 +207,11 @@ export interface EngineSnapshot {
    * 等引擎产出函数恒携带(空表也为 {})。
    */
   renderSpecs?: Record<string, FrozenRenderSpec>;
+  /**
+   * Principal-owned Work Thread projection. Optional lets existing fixtures omit the new table;
+   * fold-produced snapshots carry an empty table even when no thread has been created.
+   */
+  threads?: Record<string, ThreadSnapshot>;
 }
 
 /** 原始字段值视图(properties 投影用):去掉出处,仅取值。 */

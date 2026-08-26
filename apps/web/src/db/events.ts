@@ -121,15 +121,14 @@ export type EventKind =
   | 'presence-site-changed'
   | 'presence-scope-changed'
   | 'presence-thread-changed'
-  | 'presence-focus-changed';
+  | 'presence-focus-changed'
+  | 'thread-created'
+  | 'thread-reference-attached'
+  | 'thread-reference-detached'
+  | 'thread-status-changed';
 
 export type EventDomain =
-  | 'core'
-  | 'presence'
-  | 'presentation'
-  | 'draft'
-  | 'capability'
-  | 'agent-definition';
+  'core' | 'presence' | 'presentation' | 'draft' | 'capability' | 'agent-definition';
 
 /** 追加事件(引擎 EngineEvent 的日志层超集:引擎不产 seq/ts/reason,由本层分配)。 */
 export interface EventAppend {

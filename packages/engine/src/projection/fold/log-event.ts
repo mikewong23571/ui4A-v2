@@ -46,7 +46,11 @@ export type LogEventKind =
   | 'chat-message-appended'
   | 'chat-context-updated'
   | 'chat-navigation-completed'
-  | 'agent-decision';
+  | 'agent-decision'
+  | 'thread-created'
+  | 'thread-reference-attached'
+  | 'thread-reference-detached'
+  | 'thread-status-changed';
 
 /**
  * 存储事件(引擎 EngineEvent + 日志层字段)。
