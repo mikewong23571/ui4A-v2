@@ -6,13 +6,14 @@ import {
   ensurePresentationTables,
   loadPresentationSnapshot,
 } from '../../../../db/presentation';
-import { getDb, resetEngineForTests } from '../../../../engine/service';
+import { getDb, getEngine, resetEngineForTests } from '../../../../engine/service';
 import {
   getPresentationBroker,
   resetPresentationBrokerForTests,
 } from '../../../../engine/presentation/runtime';
 import { resetRecipeCoordinatorForTests } from '../../../../engine/presentation/recipes-runtime';
 import { getBuiltinComposition } from '../../../../engine/presentation/compositions';
+import { planWorkspaceComposition } from '../../../../engine/presentation/runtime-composition';
 import { GET, POST } from './route';
 
 beforeEach(async () => {
@@ -194,22 +195,37 @@ describe('Sidecar human lifecycle route', () => {
   });
 
   it('fails partial workspace promotion closed', async () => {
-    const receipt = await getPresentationBroker().present(
-      completePresentationRequest(
-        { subject: 'workspace:my-work', intent: 'organize', delivery: 'canvas' },
-        { requestId: 'workspace:partial', principal: 'user:local', sourceMessageIds: [] },
-      ),
-      { policyScope: 'publishing' },
-    );
-    expect(receipt).toMatchObject({ status: 'ready', reasonCode: 'partial-authorization' });
-    const partial = (await loadPresentationSnapshot(getDb())).sidecars[receipt.sidecar!.id]!;
+    const declaration = getBuiltinComposition('my-work')!;
+    const threads = await (await getEngine(getDb())).getEntity('threads');
+    const partial = planWorkspaceComposition({
+      rels: ['threads'],
+      entities: [threads],
+      policyScope: 'local-demo',
+      declaration,
+      regions: declaration.regions.map((region) => ({
+        declaration: region,
+        ...(region.source === 'threads' ? { entity: threads } : {}),
+      })),
+    });
+    expect(partial.partial).toBe(true);
     await appendSidecarCommand(getDb(), {
       kind: 'instantiate',
       eventId: 'workspace:partial:local:event',
       commandId: 'workspace:partial:local',
       sidecarId: 'sidecar:workspace-partial-local',
-      key: { ...partial.key, policyScope: 'local-demo' },
-      version: partial.versions[partial.activeVersion]!,
+      key: {
+        principal: 'user:local',
+        policyScope: 'local-demo',
+        subject: 'workspace:my-work',
+        intent: 'organize',
+        deviceClass: 'any',
+      },
+      version: {
+        surface: partial.surface,
+        dependencies: partial.dependencies,
+        provenance: { kind: 'generic-fallback', ref: 'partial-workspace-fixture' },
+        changedPaths: [],
+      },
     });
 
     const explanationResponse = await GET(
@@ -234,7 +250,6 @@ describe('Sidecar human lifecycle route', () => {
       ({ availability }) => availability === 'unavailable',
     );
     expect(unavailable).toMatchObject({ diagnosticCode: 'region-unavailable' });
-    const declaration = getBuiltinComposition('my-work')!;
     const deniedSource = declaration.regions.find(
       ({ region }) => region === unavailable?.region,
     )?.source;

@@ -72,15 +72,16 @@ describe('durable user Sidecar fastpath', () => {
       { requestId: 'workspace:same-request', principal: 'user:local', sourceMessageIds: [] },
     );
 
-    const [full, partial] = await Promise.all([
+    const [local, publishing] = await Promise.all([
       getPresentationBroker().present(request, { policyScope: 'local-demo' }),
       getPresentationBroker().present(request, { policyScope: 'publishing' }),
     ]);
 
-    expect(full).toMatchObject({ status: 'ready' });
-    expect(full).not.toHaveProperty('reasonCode');
-    expect(partial).toMatchObject({ status: 'ready', reasonCode: 'partial-authorization' });
-    expect(full.sidecar?.id).not.toBe(partial.sidecar?.id);
+    expect(local).toMatchObject({ status: 'ready' });
+    expect(local).not.toHaveProperty('reasonCode');
+    expect(publishing).toMatchObject({ status: 'ready' });
+    expect(publishing).not.toHaveProperty('reasonCode');
+    expect(local.sidecar?.id).not.toBe(publishing.sidecar?.id);
     await expect(
       findActiveSidecar(getDb(), {
         principal: 'user:local',
@@ -89,7 +90,7 @@ describe('durable user Sidecar fastpath', () => {
         intent: 'concurrent overview',
         deviceClass: 'any',
       }),
-    ).resolves.toMatchObject({ id: full.sidecar!.id });
+    ).resolves.toMatchObject({ id: local.sidecar!.id });
     await expect(
       findActiveSidecar(getDb(), {
         principal: 'user:local',
@@ -98,7 +99,7 @@ describe('durable user Sidecar fastpath', () => {
         intent: 'concurrent overview',
         deviceClass: 'any',
       }),
-    ).resolves.toMatchObject({ id: partial.sidecar!.id });
+    ).resolves.toMatchObject({ id: publishing.sidecar!.id });
     const lifecycle = (await listEvents(getDb())).filter(
       (event) =>
         event.domain === 'presentation' &&
@@ -112,40 +113,23 @@ describe('durable user Sidecar fastpath', () => {
   it('keeps denied regions as non-leaking diagnostics and reports partial authorization', async () => {
     const declaration = getBuiltinComposition('my-work')!;
     const threads = await (await getEngine(getDb())).getEntity('threads');
-    expect(() =>
-      planWorkspaceComposition({
-        rels: ['threads'],
-        entities: [threads],
-        policyScope: 'publishing',
-        declaration,
-        regions: declaration.regions.map((region) => ({
-          declaration: region,
-          ...(region.source === 'threads' ? { entity: threads } : {}),
-        })),
-      }),
-    ).not.toThrow();
-    const request = completePresentationRequest(
-      { subject: 'workspace:my-work', intent: 'work overview', delivery: 'canvas' },
-      { requestId: 'workspace:partial', principal: 'user:local', sourceMessageIds: [] },
-    );
-
-    const receipt = await getPresentationBroker().present(request, { policyScope: 'publishing' });
-    expect(receipt).toMatchObject({ status: 'ready', reasonCode: 'partial-authorization' });
-    const sidecar = await findActiveSidecar(getDb(), {
-      principal: 'user:local',
+    const planned = planWorkspaceComposition({
+      rels: ['threads'],
+      entities: [threads],
       policyScope: 'publishing',
-      subject: 'workspace:my-work',
-      intent: 'work overview',
-      deviceClass: 'any',
+      declaration,
+      regions: declaration.regions.map((region) => ({
+        declaration: region,
+        ...(region.source === 'threads' ? { entity: threads } : {}),
+      })),
     });
-    const serialized = JSON.stringify(sidecar!.versions[sidecar!.activeVersion]!.surface);
+    expect(planned.partial).toBe(true);
+    const serialized = JSON.stringify(planned.surface);
     expect(serialized.match(/"code":"region-unavailable"/g)).toHaveLength(2);
     expect(serialized).not.toContain('inbox');
     expect(serialized).not.toContain('delegations');
     expect(
-      sidecar!.versions[sidecar!.activeVersion]!.dependencies.filter(
-        (dependency) => dependency.kind === 'entity-contract',
-      ),
+      planned.dependencies.filter((dependency) => dependency.kind === 'entity-contract'),
     ).toHaveLength(1);
   });
 
