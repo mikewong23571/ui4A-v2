@@ -9,16 +9,13 @@
 import { Suspense } from 'react';
 
 import { CanvasBody } from '@/components/canvas-body';
-import { EntityCacheProvider } from '@/components/entity-cache-provider';
 
 export default function CanvasPage() {
   return (
-    <EntityCacheProvider>
-      {/* Suspense:CanvasBody 经 useSearchParams 读 ?concern=(App Router 静态
-          预渲染的边界要求;渲染期读参数,不阻断数据流)。 */}
-      <Suspense>
-        <CanvasBody />
-      </Suspense>
-    </EntityCacheProvider>
+    // Suspense:CanvasBody 经 useSearchParams 读结构化 Presentation 参数，并在
+    // 同一客户端边界创建 scope-aware 页面缓存(App Router 静态预渲染要求)。
+    <Suspense>
+      <CanvasBody />
+    </Suspense>
   );
 }

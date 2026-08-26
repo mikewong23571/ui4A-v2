@@ -25,16 +25,17 @@ import type { SirenEntity } from '@ui4a/engine';
 import { collectionBacklinkOf, PageEntityCache, type EntityFetcher } from '@/render/entity-cache';
 
 import { redirectToLoginOnAuthError } from './auth-redirect';
-import { fetchEntity } from './exec-client';
+import { fetchEntity, withPolicyScope } from './exec-client';
 
 /** 业务 sitemap version 取数(FR4 端点;一致性戳不可得时响亮失败,不静默跳过)。 */
-async function fetchSitemapVersion(): Promise<string> {
-  const response = await fetch('/.well-known/ui4a.json');
+async function fetchSitemapVersion(scope?: string): Promise<string> {
+  const endpoint = withPolicyScope('/.well-known/ui4a.json', scope);
+  const response = await fetch(endpoint);
   if (!response.ok) {
     const body = (await response.json().catch(() => undefined)) as unknown;
     // 认证类 401 统一跳转登录(T22 验证修复)。
     redirectToLoginOnAuthError(response.status, body);
-    throw new Error(`GET /.well-known/ui4a.json → HTTP ${response.status}`);
+    throw new Error(`GET ${endpoint} → HTTP ${response.status}`);
   }
   const body = (await response.json()) as { version?: unknown };
   if (typeof body.version !== 'string' || body.version === '') {
@@ -100,11 +101,14 @@ export function EntityCacheProvider({
   children,
   scope,
   fetcher,
-  versionFetcher = fetchSitemapVersion,
+  versionFetcher,
 }: EntityCacheProviderProps) {
   // 句柄与 provider 同生同灭(useState 惰性初始化 = 每挂载恰一次)。
   const [handle] = useState(() =>
-    createHandle(fetcher ?? ((rel) => fetchEntity(rel, undefined, scope)), versionFetcher),
+    createHandle(
+      fetcher ?? ((rel) => fetchEntity(rel, undefined, scope)),
+      versionFetcher ?? (() => fetchSitemapVersion(scope)),
+    ),
   );
   return <EntityCacheContext.Provider value={handle}>{children}</EntityCacheContext.Provider>;
 }

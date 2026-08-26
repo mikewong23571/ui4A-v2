@@ -192,8 +192,10 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
       // 校验，Presentation 仍只在三者全部可信后启动。
       const [catalogResponse, sitemapResponse, frozenCollection] = await Promise.all([
         fetch(catalogUrl, { signal: controller.signal }),
-        fetch('/.well-known/ui4a.json', { signal: controller.signal }),
-        fetchEntity('render-specs', controller.signal),
+        fetch(withPolicyScope('/.well-known/ui4a.json', scopeParam), {
+          signal: controller.signal,
+        }),
+        fetchEntity('render-specs', controller.signal, scopeParam),
       ]);
       if (!catalogResponse.ok)
         throw new Error(`GET ${catalogUrl} → HTTP ${catalogResponse.status}`);

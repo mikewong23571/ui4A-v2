@@ -88,8 +88,12 @@ function presentationContract(input: {
     const url = String(request);
     if (url === '/api/render/catalog')
       return Promise.resolve(jsonResponse(200, renderCatalogJson()));
-    if (url === '/.well-known/ui4a.json')
+    if (url.startsWith('/.well-known/ui4a.json')) {
+      if (input.scope !== undefined) {
+        expect(new URL(url, 'http://ui4a.test').searchParams.get('scope')).toBe(input.scope);
+      }
       return Promise.resolve(jsonResponse(200, { version: 'definition-v1' }));
+    }
     const presentationUrl =
       input.scope === undefined
         ? '/api/presentation'
@@ -116,6 +120,9 @@ function presentationContract(input: {
       );
     }
     if (url.startsWith('/api/entity?rel=')) {
+      if (input.scope !== undefined) {
+        expect(new URL(url, 'http://ui4a.test').searchParams.get('scope')).toBe(input.scope);
+      }
       const rel = new URL(url, 'http://ui4a.test').searchParams.get('rel');
       if (rel === 'render-specs') return Promise.resolve(jsonResponse(200, EMPTY_SPECS));
       if (rel === sourceRel) return Promise.resolve(jsonResponse(200, input.source));
