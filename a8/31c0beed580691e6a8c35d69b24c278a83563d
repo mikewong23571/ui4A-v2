@@ -26,3 +26,32 @@ Verification:
 - @ui4a/web typecheck + production build: PASS
 - CI=true TMPDIR=/home/mike/.cache/ui4a-t27-tmp pnpm e2e e2e/workstation-bridges.spec.ts e2e/i3.spec.ts: PASS (3/3)
 - pnpm governance, Prettier/diff: PASS
+
+T27 Phase E Verification (自治验收)
+
+Scope:
+- shared URL observation and shell SituationBar
+- serialized/StrictMode-safe presence reporting
+- thread enter/leave and scope declaration links
+- canonical workstation↔meta flow bridges with honest alias failures
+
+Automated verification:
+- pnpm check: PASS (378 files passed, 6 skipped; 2908 tests passed, 10 skipped; governance OK)
+- CI=true TMPDIR=/home/mike/.cache/ui4a-t27-tmp pnpm e2e invariants: PASS (4 passed, 2 existing skips)
+- workstation-situation + I3: PASS (3/3)
+- workstation-bridges + I3: PASS (3/3)
+- Next production build: PASS (19 prerendered routes)
+
+Checkpoint corrections:
+- pnpm check caught null useSearchParams in Home test; fixed as empty query in d6ab551 with regression.
+- GR2 caught a forbidden test-name marker; wording corrected in ae9a816 without adding any dual path or exception.
+
+Manual-equivalent verification:
+1. Navigate scope/thread/focus and confirm SituationBar equals URL observation and events persist all four change kinds.
+2. Leave thread/clear scope and confirm unrelated query survives plus null events append.
+3. Follow flow:article-drafting to meta and back; scope/thread persist and focus/site update.
+4. Follow ghost bridge and confirm definition 404 and instance Surface error, with zero fallback.
+5. Confirm post/selection/empty names expose no bridge and all controls remain I3 backed.
+
+Confirmation:
+- 自治验收：full gates, production build, presence event evidence, and double-bridge E2E passed.
