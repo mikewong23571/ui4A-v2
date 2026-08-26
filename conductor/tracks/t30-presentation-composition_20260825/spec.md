@@ -194,85 +194,63 @@ presentation 面(全仓 grep:`apps/cli/src` 零 presentation/surface/sidecar
 - I7 失败安全:LLM 不可用时 generic fallback(`planGenericSurface`)诚实工作;
   组合规划同样必须有零 LLM 的 generic 退路,缺失即缺陷。
 
-## Phase 0:Spike(必须先回答,产出 DECISIONS 条目)
+## Phase A 决策基线(已完成)
 
-每问给出:候选、约束、推荐默认、否决项与理由。spike 产出一律落
-`DECISIONS.md`(D45),分歧先于代码(GOAL.md 约束)。
+Spike 已落 `DECISIONS.md` D45；以下结论是后续 Phase 的固定施工合同，不再作为
+候选或推荐默认重新决断：
 
-1. **虚主体标识与 wire 表示。** 候选:
-   - (a) **保留字 rel 形字符串**(如 `workspace:<id>`):`RenderSubject` 不新增
-     variant,subject 仍是 string;sidecar 表 subject JSONB、key fingerprint、
-     `parsePresentationRequest` 全部零形状变更;与 `flow:<name>`/`thread:<id>`
-     命名家风一致。约束:`/api/entity` 不解析它(404 是正典,虚主体不是业务
-     实体);broker authorize 改走声明解析而非 getEntity。
-   - (b) **RenderSubject 新 variant** `{compose: <id>}`:结构化最干净,但动共享
-     协议类型,parse/fingerprint/chat-view/tool-call-mapping 全链路跟改。
-   - (c) 复用 `{selection: string[]}`:**否决**——selection 是临时多 rel 集合,
-     无区域/intent/声明治理语义,聚合规则会散进调用方(§八.3 隐性第二真相)。
-   约束:虚主体 id 有界(参照 thread id 口径 1–64 字符
-   `[a-z0-9][a-z0-9._-]*`,D44);既有禁键清单不变。
-2. **区域声明数据的归属与治理位置。** 候选:
-   - (a) **内建声明注册表**:代码内 typed/validated/versioned 纯数据(落位按
-     GR3 归属,如 `apps/web/src/applications/` 或 engine 常量),形状 meta-ready
-     (id + version,内容寻址方向);定义平面治理显式推迟(同 T26 推迟线模板
-     治理的先例);
-   - (b) Application bundle 贡献区域:bundle 是应用内容正道,但 my-work 跨应用
-     (inbox/threads/delegations 均 app-neutral),首页组合不属于任一应用;
-     应用级 workspace 的 bundle 贡献留作后续扩展;
-   - (c) 直接定义平面 artifact(事件日志治理的 CompositionDefinition):最终态,
-     但本 Track 引入定义生命周期成本过重。
-   推荐 (a),形状对齐 (c) 以便将来晋升。约束:声明 = 纯数据(id/version/
-   regions[{region, source rel, intent, mode}]),引擎按声明组装,零每区域分支;
-   声明版本变更经 sidecar dependency(kind 复用 'definition')走既有失效语义。
-   否决:区域声明写进 React 页面/组件 props(页面滑梯);聚合规则写进 service
-   函数(§八.3)。
-3. **Surface 树的区域表达与单主体退化形态。** 候选:
-   - (a) **零新节点**:组合根 = 既有 layout 节点,区域 = 命名 slot 子树;区域→
-     源/intent 的绑定发生在规划期,树内由 bindings.subject 与每节点既有
-     dependencies/provenance 表达;区域由来经 provenance/explain 呈现。node
-     union、walker、validate、compiler、patch 零分叉;
-   - (b) 新 `region` 节点 kind(显式 subjectSlice/intent 字段):语义最显,但
-     node union 与全部 walker/patch/compiler 分叉,违背"同一台机器"。
-   推荐 (a)。单主体退化两个子案:(i) **统一包一层区域 slot**(形状单一;既有
-   nodeId 如 root/body/actions 位移 → 误导排查清单内测试按 GR2 一次性迁移);
-   (ii) 单区域省略 wrapper(形状两态,walker 须容忍)。推荐 (i)。约束:surface
-   id 约定 `presentation-<subject>` 对单主体保持不变,组合主体同法 URL 编码;
-   compiler component id 约定(`root`/`node:<id>`)稳定或一次性迁移。
-4. **Sidecar key、recipe slot 与 promotion 一般化粒度。** 约束(推荐默认):
-   key.subject 承载虚主体标识;**key.intent 仍是单字符串 = 组合 intent**(如
-   `work-home`),每区域 intent 住声明、不进 key(防 key 爆裂,pin/promote
-   语义不变);`ApplicationRecipeKey.subjectShape` 承载组合形状;slots 按区域
-   一般化('collection' slot kind 首次产出);`promotion.ts:108/119` 与
-   `runtime.ts:141-156` 的单 slot 硬编码同步一般化(按 slot 形状匹配,不再按
-   数量==1)。spike 决断点:promotion 参数化粒度(每区域一个 slot vs 每源实体
-   一个 slot)与 `$slot:` 命名规则。
-5. **授权、依赖失效与 credentialed 降级形状。** 约束(推荐默认):broker 对
-   组合主体解析声明后**逐区域源 fresh getEntity 重授权**(user-level sidecar
-   纪律:每次命中都重授权、实时解引用,不变);credentialed 客户端按当前
-   policy scope 逐源判定,不可覆盖的源区域降级呈现且不泄漏(收据诚实)。
-   spike 决断点:降级形状(区域级 diagnostic/缺席 vs 整请求 failed)与收据
-   reasonCode 词汇。依赖 = 全部区域源并集(entity-contract / 集合源加
-   collection-membership)+ 声明版本(definition)+ catalog + policy;mode
-   语义沿用(membership 漂移 → rehydrate,形状变更 → invalidate),"任一源
-   失效触发重规划"。披露边界:D41 不变,组合不窄化任何公开合同。
+1. **虚主体 wire:**固定使用 `workspace:<id>` 字符串，id 为 1–64 字符且匹配
+   `[a-z0-9][a-z0-9._-]*`；`RenderSubject`、thin request、Sidecar JSONB 与
+   fingerprint 维持现形。仅 Presentation Broker 将它解析到已注册声明；未知或
+   非法 id fail-closed，`/api/entity` 保持 404，且它不可 exec、不进 sitemap、
+   不产生 core 事件。新增 `{compose:<id>}` variant 与复用 selection 均已否决。
+2. **声明归属:**平台中立的 `CompositionDeclaration` 类型与严格 parser 放
+   `packages/shared`，纯组合语义放 `packages/engine`；首个 app-neutral
+   `my-work` 声明数据与内建、版本化 registry adapter 放 apps/web Presentation
+   边界。声明固定为 `id + version + regions[{region,source,intent,mode}]`，字段
+   白名单、有界、region 唯一；canonical fingerprint 作为 `definition`
+   dependency，同 id 内容变化必须换 version。bundle 贡献与定义 artifact 生命周期
+   均不在本 Track，React props/service 分支不得承载声明。
+3. **Surface 形状:**不新增 node kind；每棵 Surface 的 root 固定为 layout，每个
+   声明区域固定为命名 slot，child 是该区域经既有 generic/Recipe planner 产生的
+   子树。单主体也固定退化为 `layout → slot(subject) → subtree`，不得保留旧规划
+   旁路；单主体 surface id 仍为 `presentation-<subject>`，compiler 的
+   `root`/`node:<id>` 确定性约定保持。
+4. **Recipe/Sidecar:**组合 Sidecar key 的 subject 固定为 `workspace:<id>`，
+   key.intent 只承载组合 intent；每区域 intent 只在声明中。`subjectShape` 按
+   `composition:<declaration-id>@<version>[<region>:<kind>,...]` canonical 化，
+   单主体也使用单个 `subject` 区域的同一算法。每区域精确对应一个 Recipe slot，
+   slot name 等于 region id，kind 来自源合同形状；模板内该区域 subject 统一为
+   `$slot:<region>`，且 `$slot:` 不得进入请求、实例化 Surface 或事件事实。
+   promotion/resolve 按完整有序 `{name,kind}` slot 形状匹配，不再判断单 slot。
+5. **授权与降级:**每次 pinned/cache/Recipe 命中和重新规划均逐区域 fresh
+   `getEntity` 重授权。不可授权区域保留 slot，child 固定为无 binding、无目标 rel、
+   无 policy 细节的 `diagnostic(code='region-unavailable')`；至少一个区域可见时
+   receipt 为 `ready` 且 `reasonCode='partial-authorization'`，全部不可见时为
+   `failed`/`authorization-failed` 且不生成可复用 Sidecar。依赖只纳入成功授权
+   源的 `entity-contract`、集合源的 `collection-membership`，再并入 definition/
+   catalog/policy；任一变化先重新授权，再按声明 mode 执行 rehydrate/invalidate。
 
 ## 最终形态(实施目标)
 
-1. **组合声明模型(数据)**:CompositionDeclaration 类型 + 严格 parse(字段
-   白名单、有界)+ 内建注册表;首个声明 `my-work`(在等我=inbox、在动=
+1. **组合声明模型(数据)**:`packages/shared` 的 CompositionDeclaration 类型 +
+   严格 parse(字段白名单、有界)+ apps/web Presentation registry adapter;首个
+   声明 `my-work`(在等我=inbox、在动=
    delegations、工作线=threads;区域源全部为 sitemap 可达合同实体)作为本
    Track 验收载体,供 T27 首页直接消费;声明形状 meta-ready,治理晋升是
    后续 track。
 2. **区域 × intent 组合规划**:planner 消费声明,每区域源经既有 generic/recipe
    路径按区域 intent 规划子树,组装为根 layout + 命名 slot 的单棵 SurfaceTree;
-   binding-only 不变;新区域形态进词汇表;**单主体 surface = 单区域组合的退化
-   形态,同一台机器零分叉**。
+   binding-only 不变;**单主体固定为 `layout → slot(subject) → subtree` 的单区域
+   退化形态,同一台机器零分叉**。
 3. **组合级 sidecar/recipe**:key 承载虚主体标识 + 组合 intent;依赖 = 全部
    区域源并集 + 声明版本,任一源失效按声明 mode 触发 rehydrate/invalidate;
    pin/stale/revert/promote 与单实体同生命周期;promotion 多 slot 参数化。
-4. **web/canvas 承载零分叉**:broker 对组合主体逐源 fresh 重授权;credentialed
-   逐源降级(诚实、不泄漏);surfaceUrl/surface id 约定沿用;canvas 单树挂载;
-   抽屉/explain 呈现区域清单与声明由来。
+4. **web/canvas 承载零分叉**:broker 对组合主体逐源 fresh 重授权;不可授权区域
+   保留 `region-unavailable` diagnostic slot，部分授权收据为
+   `ready`/`partial-authorization`，全部不可见为 `failed`/
+   `authorization-failed`;surfaceUrl/surface id 约定沿用;canvas 单树挂载;
+   抽屉/explain 呈现区域清单与声明由来且不泄漏不可见源。
 5. **binding-only 与薄 chat 不变**:组合不产生业务事实、不产生业务事件;chat
    仍只携 presentationRequestId。
 
@@ -304,12 +282,14 @@ presentation 面(全仓 grep:`apps/cli/src` 零 presentation/surface/sidecar
 - 组合声明 parse:非法声明/未知字段/超界/非法 id 一律拒绝;
 - 组合规划纯内核测试:声明 → surface 形状(根 layout + 命名 slot + 区域子树)、
   binding 完整性(零字面量,I2 口径)、依赖并集覆盖全部聚合源 + 声明版本;
-- 单主体退化等价:同一主体经组合路径与现状路径呈现语义等价(形状以 D45 为准
-  一次性迁移,不留双路径);
+- 单主体退化等价:同一主体只经组合路径产生
+  `layout → slot(subject) → subtree`，既有路径一次性迁移且不留双轨;
 - sidecar 同生命周期:组合主体与单实体主体同 pin/stale/rehydrate/promote;
   依赖失效:任一聚合源漂移 → 按声明 mode rehydrate/invalidate;
-- 授权:组合主体命中逐源重授权发生;credentialed 越 scope 源区域降级且收据
-  诚实;未授权源零泄漏;
+- 授权:组合主体命中逐源重授权发生;credentialed 越 scope 源区域保留
+  `region-unavailable` diagnostic；部分授权收据为 `ready`/
+  `partial-authorization`，全部不可见为 `failed`/`authorization-failed`；
+  未授权源零泄漏;
 - binding-only 不变量同口径覆盖组合 surface(deref 值与实体快照一致);
 - 端到端 proof:my-work 声明经 `POST /api/presentation` → receipt ready →
   canvas 渲染三区域;零 LLM 时 generic 退路诚实工作(I7);
@@ -328,7 +308,7 @@ surface 树,大量既有断言会红(见下节排查清单)。四层防线按施
 
 1. **分歧先于代码(Phase A):** 五问先落 D45,采纳/否决齐全;否决项写明理由
    即防复辟裁判文书(如"复用 selection 当组合"已否决);spec/plan 回改对齐后,
-   后续 Phase 以 D45 为准,不以本 spec 的推荐默认为准。
+   后续 Phase 直接执行本节所投影的 D45 固定形状。
 2. **误导性验收前置迁移(Phase E 第一任务):** 排查清单的处置顺序是先迁移
    测试、再落组合形状——顺序反了,reds 会诱导实施者冻结旧形状、留双路径,
    保绿压过方向。
