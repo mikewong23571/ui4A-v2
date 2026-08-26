@@ -206,7 +206,7 @@ describe('Work Thread Siren projection', () => {
       entityRel: 'thread:release-1',
       event: {
         kind: 'thread-created',
-        rel: 'threads',
+        rel: 'thread:release-1',
         action: 'create',
         detail: {
           threadId: 'release-1',

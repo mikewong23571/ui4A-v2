@@ -41,6 +41,7 @@ describe('POST /api/exec Work Thread contract', () => {
     });
     const tail = await readLog(pool);
     expect(tail.at(-1)?.kind).toBe('thread-created');
+    expect(tail.at(-1)?.rel).toBe('thread:release-1');
     expect(tail.some((event) => event.rel === 'threads' && event.kind === 'action-executed')).toBe(
       false,
     );

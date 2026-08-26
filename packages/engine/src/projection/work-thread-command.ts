@@ -177,7 +177,7 @@ export function executeThreadCommand(
   }
   const event: EngineEvent & { kind: ThreadEventKind } = {
     kind: candidate.kind,
-    rel: request.rel,
+    rel: candidate.entityRel,
     action: request.action,
     actor: request.actor ?? 'human',
     principal: request.principal,

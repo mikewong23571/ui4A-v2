@@ -33,6 +33,7 @@ describe('Work Thread service exec', () => {
     });
     const createEvents = (await readLog(pool)).slice(before);
     expect(createEvents.map((event) => event.kind)).toEqual(['thread-created']);
+    expect(createEvents[0]?.rel).toBe('thread:release-1');
     expect(createEvents[0]?.detail).toMatchObject({
       receipt: {
         declaration: { passed: true },
