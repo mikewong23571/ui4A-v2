@@ -79,7 +79,7 @@
     文章/收件箱/评论队列/委托监控/定义管理六区块不移植
   - Red→Green:首页三区块来自 my-work 声明区域源(断言取数 subject 与区域
     源,不钉树形状);零每区块特判自查;why 抽屉区域清单在首页同样可达
-- [ ] Task: 首页 e2e 与 CLI 对照
+- [x] Task: 首页 e2e 与 CLI 对照 `e79f711`
   - e2e:首页三区块内容 vs 合同读 `inbox`/`delegations`/`threads` 逐项一致
     (CLI 或等价 HTTP 合同读;人机同源证明)。CLI = `apps/cli` 产出的 `ui4a`
     binary,用法参照 `.agents/skills/ui4a-cli/SKILL.md`
