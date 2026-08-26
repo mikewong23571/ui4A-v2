@@ -1,0 +1,19 @@
+Task: my-work 声明源的 sitemap 可达性修正
+
+Summary:
+- Added delegations as an app-neutral business sitemap collection surface.
+- Added a registry-to-sitemap cross-test that dynamically verifies every my-work source is discoverable.
+- Kept workspace virtual subjects out of the business sitemap.
+
+Files:
+- apps/web/src/engine/service-sitemaps.ts
+- apps/web/src/engine/service-sitemaps.test.ts
+
+Why:
+Phase B audit found the my-work declaration referenced a valid entity collection that agents could not discover through the sitemap, violating the declared composition contract.
+
+Verification:
+- Red test identified delegations as the sole missing source.
+- 12 focused tests passed.
+- @ui4a/web typecheck passed.
+- pnpm governance passed.
