@@ -53,3 +53,19 @@ workstation 站为主(raw 模式全域可达);meta 站的动作控件沿用其�
 - raw 模式:任何实体两步内可见原始合同 JSON;
 - 呈现裁剪:generic surface 绑定字段数显著下降且无信息回归(走查+快照);
 - invariants 与 Golden Story 全绿。
+
+## 验收目标纠偏与误导性验收排查(2026-08-26,行号以当时基线为准)
+
+**既有验收测试与本 Track 目标相悖时,干掉验收目标——修正/迁移/删除测试,
+绝不反向修改 track 目标去保绿。**
+
+排查结论:本 Track 与既有验收基本同向,无反向施压项——动作作为一等按钮
+已被 `e2e/human.spec.ts:118-129/:154-166`、`e2e/s1.spec.ts:402-414` 断言
+(下线/通过/批准按 role 找按钮),chat 活动条目链接化已被
+`e2e/t24-presentation-honesty.spec.ts:194-197` 断言。两处留意:
+
+- raw 抽屉入口须遵守 i3 fuzz 注记规则(data-action/data-nav,参照既有
+  `[data-nav="local:canvas-why"]` 模式),否则 i3 红——这是常驻约束,
+  不是误导;
+- 呈现按 intent 裁剪落地后,断言"全属性绑定"的旧快照若有残留一律删除
+  (GR2),不得保留双口径。
