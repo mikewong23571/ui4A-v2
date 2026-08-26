@@ -74,6 +74,7 @@ export function createSitemapReaders(
       extraSurfaces: [
         { rel: 'comments', title: '评论', collection: true },
         { rel: 'inbox', title: '确认收件箱', collection: true },
+        { rel: 'delegations', title: '委托监控', collection: true },
         { rel: 'software-changes', title: '软件变更', collection: true, app: 'development' },
         { rel: 'writing-requests', title: '写作请求', collection: true, app: 'editorial' },
         { rel: 'agent-runs', title: 'Agent Runs', collection: true, app: 'development' },
