@@ -1,0 +1,1 @@
+T28 Phase F checkpoint complete. Accepted source 2d8d6c8. Gates: pnpm check 386/6 files, 2941/10 tests; invariants 4/2; accepted-source full E2E 44 passed, 27 conditional skips. Helm revision 49; live PKCE browser, built CLI and read-only replay passed. Evidence commit d6c6c77. No required work remains before GR5 archive.
