@@ -50,7 +50,13 @@ export function RawContractDrawer({ entity }: RawContractDrawerProps) {
         >
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-foreground">原始合同</h2>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-nav="local:raw-contract-close"
+              onClick={() => setOpen(false)}
+            >
               关闭原始合同
             </Button>
           </div>

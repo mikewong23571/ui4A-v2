@@ -38,7 +38,9 @@ describe('raw contract lens', () => {
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByRole('complementary', { name: '原始合同' })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: '关闭原始合同' }));
+    const close = screen.getByRole('button', { name: '关闭原始合同' });
+    expect(close.getAttribute('data-nav')).toBe('local:raw-contract-close');
+    fireEvent.click(close);
     expect(screen.queryByRole('complementary', { name: '原始合同' })).toBeNull();
   });
 

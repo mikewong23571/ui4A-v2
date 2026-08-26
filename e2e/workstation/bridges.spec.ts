@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
+import { SCENARIO_BASE, withFreshServer } from '../kits/server-kit';
 
 test.describe.configure({ mode: 'serial' });
 
