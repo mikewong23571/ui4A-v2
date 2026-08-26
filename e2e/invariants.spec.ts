@@ -573,7 +573,7 @@ test.describe('I5 可重放', () => {
 
   /**
    * 全部实体 rel 枚举:读日志 → 生产 fold(与 boot 同依赖)→ 快照各表键
-   * ∪ 服务面固定视图(inbox/delegations/render-specs/meta 面)。枚举完整性
+   * ∪ 服务面固定视图(threads/inbox/delegations/render-specs/meta 面)。枚举完整性
    * 由日志保证(fold 是 rel 的唯一来源),两侧(在线/重放)用同一清单。
    */
   async function enumerateEntityRels(db: DbExecutor): Promise<string[]> {
@@ -583,11 +583,13 @@ test.describe('I5 可重放', () => {
       ...Object.keys(snapshot.collections),
       ...Object.keys(snapshot.confirmations ?? {}),
       ...Object.keys(snapshot.delegations ?? {}),
+      ...Object.keys(snapshot.threads ?? {}).map((id) => `thread:${id}`),
       ...Object.keys(snapshot.activations ?? {}),
       ...Object.values(snapshot.renderSpecs ?? {}).map((frozen) => `render-spec:${frozen.concern}`),
       'inbox',
       'delegations',
       'render-specs',
+      'threads',
       'meta/self',
       'meta/flows',
       'meta/activations',
@@ -762,6 +764,7 @@ test.describe('I5 可重放', () => {
         await waitForQuietLog(pool);
         rows = await saveLogRows(pool);
         rels = await enumerateEntityRels(pool);
+        expect(rels, 'I5 世界必须包含 principal-scoped threads 集合').toContain('threads');
         onlineWorld = await readWorld(rels);
         expect(
           rows.length,
