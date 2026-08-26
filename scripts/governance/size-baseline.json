@@ -53,9 +53,9 @@
     },
     {
       "path": "apps/web/src/components",
-      "lines": 4563,
+      "lines": 4122,
       "limit": 4000,
-      "note": "T24/T30 既有 4491;T27 Phase C 站点导航与 colocated contract test 按 D46 增至 4563,业务优先不为行数裁剪(workflow 2026-08-26 自治授权);临时增长只覆盖 SiteNav 任务语言分组、系统区与 TDD 证据,T27 Phase D 删除 home-body 并按 canvas/why/sidecar feature 归位时必须收缩,Track 收尾不得保留本增量"
+      "note": "T27 Phase D 已将 Canvas Presentation/Sidecar/hydrate/action-gate 单树宿主归位到 components/canvas/,direct total 从 Phase C 的 4563 收缩至 4122;剩余超限主要含待退役 home-body,T27 下一任务删除后必须移除此条 baseline"
     },
     {
       "path": "e2e",
