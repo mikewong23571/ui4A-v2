@@ -44,7 +44,11 @@
     注册 `my-work`:在等我(`inbox`)、在动(`delegations`)、工作线(`threads`)——
     区域源全部为 sitemap 可达合同实体，区域 intent 明确写入声明
   - Green:注册表单测(查找/版本/未知 id 拒绝);声明数据零代码分支自查
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: my-work 声明源的 sitemap 可达性修正 `fe50bc3`
+  - Phase checkpoint 审计发现 `delegations` 已有合法集合投影但未声明为 sitemap
+    surface；将它加入业务 sitemap 的 app-neutral extra surface，并增加 registry
+    source 与 sitemap 的交叉测试，防止声明引用不可发现源
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase C: 组合规划内核(packages/engine,新模块)
 
