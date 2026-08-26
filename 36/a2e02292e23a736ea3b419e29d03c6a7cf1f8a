@@ -23,3 +23,33 @@ Verification:
 
 Governance:
 packages/engine/src/presentation direct modules are baseline 4351/4000 while T30 is in flight; shrink-only starts when T30 closes.
+
+Phase D Verification Report (autonomous acceptance)
+
+Scope:
+- Ordered multi-region Recipe slots, promotion and exact selection.
+- Shared workspace Sidecar fastpath/invalidation lifecycle.
+- Canonical Recipe validation, instantiated resolver surfaces, scenario/pregen and structural runtime context.
+- Governance size baseline for T30 in-flight Presentation direct modules.
+
+Audit:
+- Initial audit found placeholder leakage, runtime entity-shape hardcoding, non-canonical Recipe acceptance and size overflow.
+- Read-only re-audit passed after 36a2e02 and baseline 2281226.
+- Permanent zero promotion-event assertion added in 7af13f5.
+
+Automated evidence:
+- NODE_OPTIONS=--no-experimental-webstorage pnpm check: PASS (370 files passed, 6 skipped; 2862 tests passed, 10 skipped)
+- CI=true NODE_OPTIONS=--no-experimental-webstorage pnpm e2e invariants: PASS (4 passed, 2 skipped; I5 replay hash matched)
+- Focused canonical Presentation tests: PASS (23 files / 173 tests)
+- Workspace promotion route: PASS (3/3)
+- engine/agent/web typecheck and pnpm governance: PASS
+
+Autonomous manual verification:
+- Resolver Recipe hits only return instantiated surfaces with no slot placeholders.
+- Common validation imports canonicalRecipeSlotIssues.
+- Runtime derives structural Recipe context from the authorized Siren entity.
+- Workspace promotion remains fail-closed before Phase E and emits no promotion event.
+- T30 size baseline is active at 4351/4000 with a recorded shrink window.
+
+Confirmation:
+Autonomous orchestration accepted Phase D after all audit blockers were corrected and all required gates passed.
