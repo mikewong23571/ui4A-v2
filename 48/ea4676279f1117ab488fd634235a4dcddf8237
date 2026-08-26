@@ -1,0 +1,1 @@
+T25 Phase D full DeepSeek LLM gate: 12 standing tests in 11.0m; 10 passed, U20 flaky then passed on retry, llm-smoke failed all three attempts with provider 'terminated' (one attempt completed publish before final decision termination). Phase D remains open. TODO retained for provider stability retest and a later Responses API track restoring required tool choice.
