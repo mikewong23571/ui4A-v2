@@ -20,9 +20,10 @@ import { Card } from '@/components/ui/card';
 import { entityPageHref } from '@/presence/navigation';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 
-import { ActionGroup } from './action-group';
-import { createDirectActionSubmit } from './action-submit';
+import { ActionGroup } from './actions/action-group';
+import { createDirectActionSubmit } from './actions/action-submit';
 import { execAction } from './exec-client';
+import { RawContractDrawer } from './canvas/raw-contract-drawer';
 
 /** 从合同 href 提取 rel(只认 /api/entity?rel=…;其余 href 无 rel 可提)。 */
 function hrefToRel(href: string): string | null {
@@ -169,6 +170,7 @@ export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
         {rel}
         {entity.properties.node !== undefined ? ` · 节点 ${String(entity.properties.node)}` : ''}
       </p>
+      <RawContractDrawer entity={entity} />
 
       <section aria-label="属性" className="mt-6">
         <h2 className="mb-2 text-sm font-semibold">属性</h2>

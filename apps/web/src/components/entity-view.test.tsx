@@ -17,7 +17,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ActionRunner } from './action-runner';
-import { createDirectActionSubmit } from './action-submit';
+import { createDirectActionSubmit } from './actions/action-submit';
 import { EntityView } from './entity-view';
 import { execAction } from './exec-client';
 
@@ -372,6 +372,18 @@ describe('ActionRunner:guard-results 谓词投影', () => {
 // ---- EntityView ----------------------------------------------------------------
 
 describe('EntityView:实体四件组装渲染', () => {
+  it('当前已授权实体两步内打开 exact Siren raw 合同', () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '查看原始合同' }));
+    expect(screen.getByTestId('raw-contract-json').textContent).toBe(
+      JSON.stringify(wizardEntity, null, 2),
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
   it('铁律 3:渲染的 form/button 全部来自 actions[](零合同外可提交元素)', () => {
     vi.stubGlobal('fetch', mockFetch(200, { entity: wizardEntity }));
     const { container } = render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);

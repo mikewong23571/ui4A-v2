@@ -8,7 +8,7 @@
  * - 与 entity-view 复用同一 contract-driven 动作组,不经页面或实体类型组装。
  */
 import { entityPageHref } from '../../components/entity-view';
-import { ActionGroup } from '../../components/action-group';
+import { ActionGroup } from '../../components/actions/action-group';
 import { Badge } from '@/components/ui/badge';
 
 import { asEntity, type WordProps } from './shared';

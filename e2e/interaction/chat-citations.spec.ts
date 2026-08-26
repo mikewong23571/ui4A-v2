@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
+import { SCENARIO_BASE, withFreshServer } from '../kits/server-kit';
 
 function citationSse(): string {
   const frames = [
@@ -63,5 +63,19 @@ test('structured citation click focuses the same Canvas entity and preserves onl
     });
     await expect(page.getByTestId('situation-focus')).toHaveText('post:first-post');
     await expect(citation).toHaveAttribute('aria-current', 'location');
+
+    await page.getByRole('button', { name: '查看原始合同' }).click();
+    await expect(page.getByTestId('raw-contract-json')).toContainText('"rel": "post:first-post"');
+  });
+});
+
+test('authorized entity exposes its exact Siren contract through the local raw lens', async ({
+  page,
+}) => {
+  await withFreshServer(async () => {
+    await page.goto(`${SCENARIO_BASE}/entity?rel=articles&scope=publishing`);
+    await page.getByRole('button', { name: '查看原始合同' }).click();
+    await expect(page.getByTestId('raw-contract-json')).toContainText('"rel": "articles"');
+    await expect(page.locator('header nav').getByText('raw', { exact: false })).toHaveCount(0);
   });
 });

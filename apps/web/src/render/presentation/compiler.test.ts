@@ -239,7 +239,13 @@ describe('normalized Surface Tree to A2UI v0.9 compiler', () => {
       deref,
     });
 
-    expect(bundle.issues).toEqual([]);
+    expect(bundle.issues).toEqual([
+      expect.objectContaining({
+        code: 'region-unavailable',
+        nodeId: 'moving-unavailable',
+        region: 'in-motion',
+      }),
+    ]);
     expect(bundle.messages.filter((message) => 'createSurface' in message)).toHaveLength(1);
     const componentMessage = bundle.messages[2] as Extract<
       A2uiMessage,
@@ -261,6 +267,9 @@ describe('normalized Surface Tree to A2UI v0.9 compiler', () => {
         expect.objectContaining({ id: 'node:moving-unavailable', variant: 'caption' }),
       ]),
     );
+    expect(JSON.stringify(bundle.messages[1])).toContain('此区域暂不可用');
+    expect(JSON.stringify(bundle.messages[1])).not.toContain('region-unavailable');
+    expect(JSON.stringify(bundle.messages[2])).not.toContain('region-unavailable');
   });
 
   it('maps layout/slot/repeat/semantic words and hydrates facts only through updateDataModel', () => {
@@ -397,6 +406,8 @@ describe('normalized Surface Tree to A2UI v0.9 compiler', () => {
     );
     expect(JSON.stringify(unknownBundle.messages[2])).not.toContain('mystery');
     expect(JSON.stringify(unknownBundle.messages[2])).toContain('diagnostic');
+    expect(JSON.stringify(unknownBundle.messages[1])).toContain('部分内容暂时无法显示');
+    expect(JSON.stringify(unknownBundle.messages[1])).not.toContain('unknown-word');
     expect(() => replayA2uiBundle(unknownBundle, UI4A_A2UI_CATALOG_ADAPTER)).not.toThrow();
 
     const literal = surface();

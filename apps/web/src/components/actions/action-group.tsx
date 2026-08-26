@@ -2,7 +2,7 @@
 
 import type { GuardResultEntry, SirenEntity } from '@ui4a/engine';
 
-import { ActionRunner } from './action-runner';
+import { ActionRunner } from '../action-runner';
 import { useActionSubmit, type ActionSubmit } from './action-submit';
 
 export const ACTION_CONTRACT_LEGEND = '你和助手使用同一合同，由同一规则裁决';

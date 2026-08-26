@@ -12,7 +12,7 @@
  *   app/api/presentation/sidecar/route.test.ts 的合同);
  * - explain 结果(provenance kind/ref、依赖数)结构化渲染在抽屉内,
  *   notify 告示现状保留;
- * - 原始合同 JSON 区块如实展示传入的只读文本。
+ * - compiler 诊断细节只在抽屉内可达,区域授权降级不泄漏 source/policy。
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -27,10 +27,6 @@ import { useSidecarActions } from './use-sidecar-actions';
 
 const CATALOG_ID = renderCatalogJson().catalogId;
 const SURFACE_IDS = ['presentation-post%3Afirst-post'];
-const RAW_JSON = JSON.stringify({
-  class: ['flow-instance'],
-  properties: { rel: 'post:first-post' },
-});
 const SIDECAR_META: SidecarMeta = {
   id: 'sidecar:1',
   version: 2,
@@ -78,7 +74,7 @@ function renderDrawer(overrides: Partial<Parameters<typeof CanvasWhyDrawer>[0]> 
   const props: Parameters<typeof CanvasWhyDrawer>[0] = {
     surfaceIds: SURFACE_IDS,
     catalogId: CATALOG_ID,
-    focusEntityJson: RAW_JSON,
+    diagnostics: [],
     sidecarMeta: SIDECAR_META,
     promotionPending: false,
     explanation: undefined,
@@ -107,7 +103,7 @@ async function renderOpenHarness(): Promise<void> {
         <CanvasWhyDrawer
           surfaceIds={SURFACE_IDS}
           catalogId={CATALOG_ID}
-          focusEntityJson={RAW_JSON}
+          diagnostics={[]}
           sidecarMeta={actions.sidecarMeta}
           promotionPending={actions.promotionPending}
           explanation={actions.explanation}
@@ -172,21 +168,47 @@ describe('「为什么这样展示」抽屉(T24)', () => {
     // 嵌入控制条的 explain 按钮(「为什么这样展示」= 入口 + 控制条各一)。
     expect(screen.queryAllByRole('button', { name: '为什么这样展示' })).toHaveLength(2);
 
-    // d. 原始合同 JSON:如实展示传入文本。
-    expect(screen.getByTestId('canvas-why-raw-json').textContent).toContain('post:first-post');
+    expect(screen.queryByTestId('raw-contract-json')).toBeNull();
   });
 
-  it('无 sidecar/无 focus 实体时:抽屉内呈现空态而非机制残影', () => {
+  it('无 sidecar 时:抽屉内呈现空态而非机制残影', () => {
     renderDrawer({
       surfaceIds: [],
       catalogId: undefined,
-      focusEntityJson: undefined,
       sidecarMeta: undefined,
     });
     fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
     expect(screen.getByText(/没有 Sidecar 个人呈现/)).toBeTruthy();
-    expect(screen.getByText(/没有 focus 实体/)).toBeTruthy();
     expect(screen.getByText(/没有渲染中的 surface/)).toBeTruthy();
+  });
+
+  it('诊断细节只在抽屉内可达,区域降级只披露 region/availability/fixed code', () => {
+    const { container } = renderDrawer({
+      diagnostics: [
+        {
+          code: 'region-unavailable',
+          nodeId: 'secret-node',
+          path: 'secret.path',
+          message: 'policy=secret source=inbox',
+          region: 'waiting-for-me',
+        },
+        {
+          code: 'deref-failed',
+          nodeId: 'summary',
+          path: 'summary',
+          message: 'binding resolved to undefined',
+        },
+      ],
+    });
+
+    expect(container.textContent).not.toContain('deref-failed');
+    fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
+    const details = screen.getByTestId('canvas-why-diagnostics').textContent ?? '';
+    expect(details).toContain('waiting-for-me · 不可用 · region-unavailable');
+    expect(details).not.toContain('secret-node');
+    expect(details).not.toContain('policy=secret');
+    expect(details).not.toContain('source=inbox');
+    expect(details).toContain('deref-failed · summary: binding resolved to undefined');
   });
 
   it('能力等价:抽屉内 pin/patch 触发与现状控制条一致的请求形状', async () => {

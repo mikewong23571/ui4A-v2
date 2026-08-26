@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ActionRunner } from './action-runner';
-import { createDirectActionSubmit, type ExecFn } from './action-submit';
+import { createDirectActionSubmit, type ExecFn } from './actions/action-submit';
 
 const entity: SirenEntity = {
   class: ['article'],

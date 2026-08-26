@@ -10,7 +10,7 @@ import type {
   SurfaceActionOutcome,
 } from '@/render/presentation/action-adapter';
 
-import type { ExecClientResult } from './exec-client';
+import type { ExecClientResult } from '../exec-client';
 
 export type ExecFn = (input: {
   rel: string;

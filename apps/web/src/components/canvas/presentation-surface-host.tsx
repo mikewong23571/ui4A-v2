@@ -39,7 +39,7 @@ import type { ReactComponentImplementation } from '@a2ui/react/v0_9';
 import { MessageProcessor } from '@a2ui/web_core/v0_9';
 import type { SurfaceModel } from '@a2ui/web_core/v0_9';
 import type { SirenEntity, SurfaceTree } from '@ui4a/engine';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';
 import { createActionGate, type CanvasClientAction } from '@/render/canvas/action-gate';
@@ -51,30 +51,20 @@ import {
   hydratePresentationSurface,
   planGenericPresentationSurface,
 } from '@/render/presentation/generic';
-import type { RenderSpec } from '@/render/spec';
-
 import { createCanvasActionHandler } from '../canvas-action-handler';
-import { CanvasWhyDrawer } from '../canvas-why-drawer';
+import { CanvasWhyDrawer, type PresentationDiagnostic } from '../canvas-why-drawer';
+import { ActionSubmitProvider, createSurfaceActionSubmit } from '../actions/action-submit';
 import { useEntityCache } from '../entity-cache-provider';
 import { execAction, fetchEntity, withPolicyScope } from '../exec-client';
+import { RawContractDrawer } from './raw-contract-drawer';
 import { SurfaceErrorBoundary } from '../surface-error-boundary';
 import { Button } from '../ui/button';
 import { useSidecarActions } from '../use-sidecar-actions';
+import { frozenSpecsOf, uniqueDiagnostics } from './presentation-surface-helpers';
 
 // 注:@a2ui/react 0.10.2 声明的 ./styles/structural.css 在包内缺失(打包缺口);
 // basic 原语样式经 useBasicCatalogStyles 运行时注入(adoptedStyleSheets),
 // 词条样式走本站 tailwind——无需额外 CSS 引入。
-
-/** 从 render-specs 集合实体提取凝固 spec(properties 直出,零特权端点)。 */
-function frozenSpecsOf(collection: SirenEntity): RenderSpec[] {
-  return (collection.entities ?? []).flatMap((member) => {
-    const { concern, component, bind } = member.properties;
-    if (typeof concern !== 'string' || typeof component !== 'string' || bind === undefined) {
-      return [];
-    }
-    return [{ concern, component, bind: bind as RenderSpec['bind'] }];
-  });
-}
 
 /** 渲染中的 surface 条目(surface 模型进 state:渲染只读 state,不读 ref)。 */
 interface SurfaceEntry {
@@ -86,6 +76,7 @@ interface SurfaceEntry {
   active: boolean;
   surface: SurfaceModel<ReactComponentImplementation>;
   warnings: DerefWarning[];
+  diagnostics: PresentationDiagnostic[];
 }
 
 const CANVAS_LOAD_TIMEOUT_MS = 15_000;
@@ -138,14 +129,21 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
   const scopeParam = parameters.scope;
   const sidecarParam = parameters.sidecar;
   const focusRefreshParam = parameters.refresh;
+  const surfaceSubmit = useMemo(
+    () =>
+      createSurfaceActionSubmit({
+        fetchEntity: (subject) => fetchEntity(subject, undefined, scopeParam),
+        exec: (input) => execAction({ ...input, scope: scopeParam }),
+      }),
+    [scopeParam],
+  );
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  // T24「为什么这样展示」抽屉数据源:目录协商结果与 focus 实体原始 JSON。
-  // 只供抽屉消费,不渲染进主区域(首屏零机制词口径不变)。
+  // T24「为什么这样展示」抽屉数据源与 T28 exact Siren verification lens。
   const [catalogId, setCatalogId] = useState<string>();
-  const [focusEntityJson, setFocusEntityJson] = useState<string>();
+  const [focusEntity, setFocusEntity] = useState<SirenEntity>();
   // 重载触发器:拦截门 executed 后重载(gate 闭包经 ref 触发,不经渲染期读)。
   const reloadRef = useRef<() => void>(() => {});
   const loadGenerationRef = useRef(0);
@@ -186,7 +184,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
     setNotice(null);
     setSidecarMeta(undefined);
     setCatalogId(undefined);
-    setFocusEntityJson(undefined);
+    setFocusEntity(undefined);
     try {
       // 目录、sitemap 与凝固 spec 是彼此独立的只读前置输入。并行取数后统一
       // 校验，Presentation 仍只在三者全部可信后启动。
@@ -357,7 +355,12 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
       );
 
       const failed: string[] = [];
-      const planned: { surfaceId: string; concern: string; warnings: DerefWarning[] }[] = [];
+      const planned: {
+        surfaceId: string;
+        concern: string;
+        warnings: DerefWarning[];
+        diagnostics: PresentationDiagnostic[];
+      }[] = [];
       if (sidecarSurface !== undefined && requestedFocuses.length === 1) {
         const requestedFocus = requestedFocuses[0]!;
         try {
@@ -369,7 +372,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
             roots.push(entity);
           }
           const focusEntity = roots.find((entity) => entity.properties.rel === requestedFocus);
-          if (focusEntity !== undefined) setFocusEntityJson(JSON.stringify(focusEntity, null, 2));
+          if (focusEntity !== undefined) setFocusEntity(focusEntity);
           const plan = hydratePresentationSurface(requestedFocus, sidecarSurface, roots);
           for (const hydrated of plan.entities.values()) gate.register(hydrated);
           processor.processMessages(plan.bundle.messages);
@@ -377,6 +380,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
             surfaceId: plan.bundle.surfaceId,
             concern: `presentation:${requestedFocus}`,
             warnings: [],
+            diagnostics: plan.bundle.issues,
           });
         } catch (error) {
           failed.push(
@@ -390,15 +394,20 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
             if (entity === null) throw new Error(`实体 "${requestedFocus}" 不存在`);
             // 主 focus(首项)的原始合同文本:load 已取得的实体直接序列化,
             // 零额外取数;只进抽屉,不进主区域渲染。
-            if (requestedFocus === requestedFocuses[0])
-              setFocusEntityJson(JSON.stringify(entity, null, 2));
-            const plan = planGenericPresentationSurface(requestedFocus, entity, sitemap.version);
+            if (requestedFocus === requestedFocuses[0]) setFocusEntity(entity);
+            const plan = planGenericPresentationSurface(
+              requestedFocus,
+              entity,
+              sitemap.version,
+              'read',
+            );
             for (const hydrated of plan.entities.values()) gate.register(hydrated);
             processor.processMessages(plan.bundle.messages);
             planned.push({
               surfaceId: plan.bundle.surfaceId,
               concern: `presentation:${requestedFocus}`,
               warnings: [],
+              diagnostics: plan.bundle.issues,
             });
           } catch (error) {
             failed.push(
@@ -416,6 +425,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
             surfaceId: plan.surfaceId,
             concern: spec.concern,
             warnings: plan.warnings,
+            diagnostics: [],
           });
         } catch (error) {
           failed.push(`${spec.concern}:${error instanceof Error ? error.message : String(error)}`);
@@ -424,7 +434,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
 
       if (generation !== loadGenerationRef.current || controller.signal.aborted) return;
       setSurfaces(
-        planned.flatMap(({ surfaceId, concern, warnings }) => {
+        planned.flatMap(({ surfaceId, concern, warnings, diagnostics }) => {
           const surface = processor.model.surfacesMap.get(surfaceId);
           return surface === undefined
             ? []
@@ -439,6 +449,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
                       : concern === activeConcern,
                   surface,
                   warnings,
+                  diagnostics,
                 },
               ];
         }),
@@ -498,19 +509,22 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
 
       {/* T24:机制信息收口进抽屉(默认关闭,零机制词泄漏;数据全部来自
           内部状态与 sidecar 操作,能力与主区域控制条等价)。 */}
-      <CanvasWhyDrawer
-        surfaceIds={surfaces.map((entry) => entry.id)}
-        catalogId={catalogId}
-        focusEntityJson={focusEntityJson}
-        sidecarMeta={sidecarMeta}
-        promotionPending={promotionPending}
-        explanation={explanation}
-        mutateSidecar={mutateSidecar}
-        patchSidecar={patchSidecar}
-        explainSidecar={explainSidecar}
-        promoteSidecar={promoteSidecar}
-        cancelPromotion={() => setPromotionPending(false)}
-      />
+      <div className="flex flex-wrap gap-2">
+        <CanvasWhyDrawer
+          surfaceIds={surfaces.map((entry) => entry.id)}
+          catalogId={catalogId}
+          diagnostics={uniqueDiagnostics(surfaces.flatMap((entry) => entry.diagnostics))}
+          sidecarMeta={sidecarMeta}
+          promotionPending={promotionPending}
+          explanation={explanation}
+          mutateSidecar={mutateSidecar}
+          patchSidecar={patchSidecar}
+          explainSidecar={explainSidecar}
+          promoteSidecar={promoteSidecar}
+          cancelPromotion={() => setPromotionPending(false)}
+        />
+        <RawContractDrawer entity={focusEntity} />
+      </div>
 
       {notice !== null && (
         <p
@@ -562,7 +576,9 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
               <p className="text-sm text-muted-foreground">此视图已收起，可在上方重新展开。</p>
             ) : (
               <SurfaceErrorBoundary surfaceId={entry.id}>
-                <A2uiSurface surface={entry.surface} />
+                <ActionSubmitProvider submit={surfaceSubmit}>
+                  <A2uiSurface surface={entry.surface} />
+                </ActionSubmitProvider>
               </SurfaceErrorBoundary>
             )}
           </div>

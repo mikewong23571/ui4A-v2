@@ -23,8 +23,8 @@ import {
 } from '@/components/ui/table';
 
 import { ActionRunner } from '../action-runner';
-import { blockedForRenderer } from '../action-group';
-import { createDirectActionSubmit } from '../action-submit';
+import { blockedForRenderer } from '../actions/action-group';
+import { createDirectActionSubmit } from '../actions/action-submit';
 import { DefinitionDiffView } from './diff-render';
 import { execMetaAction, useMetaEntity } from './meta-client';
 

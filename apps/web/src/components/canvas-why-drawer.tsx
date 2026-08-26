@@ -10,8 +10,8 @@
  * c. Provenance 解释——「解释这次呈现」调用 explainSidecar,结果
  *    (provenance kind/ref、依赖数)结构化展示在抽屉内(notify 告示现状
  *    由画布告示条保留);
- * d. 原始合同 JSON——当前 focus 实体的原始 Siren 文本(只读,由
- *    canvas-body 在 load 时取得传入;无 focus 实体时空态)。
+ * d. Presentation diagnostics——首屏只保留人话状态;code/node/message
+ *    在这里审计。region-unavailable 仅披露声明 region 与固定状态/code。
  *
  * 自持开合状态;关闭即卸载(零机制词泄漏,首屏口径可断言)。全部区块
  * 来自 props 数据,零硬编码页面内容、零每应用/每实体分支。
@@ -29,8 +29,8 @@ interface CanvasWhyDrawerProps {
   surfaceIds: readonly string[];
   /** 目录协商结果(与本地词汇表同源才到达渲染;未协商时 undefined)。 */
   catalogId: string | undefined;
-  /** focus 实体的原始 Siren JSON(只读文本;无 focus 实体时 undefined)。 */
-  focusEntityJson: string | undefined;
+  /** Compiler/validator issues. Raw contracts use the sibling verification lens. */
+  diagnostics: readonly PresentationDiagnostic[];
   /** Sidecar 元信息(useSidecarActions 状态;无 Sidecar 时 undefined)。 */
   sidecarMeta: SidecarMeta | undefined;
   /** promote 预览后的确认态(嵌入控制条按条件渲染确认/取消)。 */
@@ -45,10 +45,18 @@ interface CanvasWhyDrawerProps {
   cancelPromotion: () => void;
 }
 
+export interface PresentationDiagnostic {
+  code: string;
+  nodeId: string;
+  path: string;
+  message: string;
+  region?: string;
+}
+
 export function CanvasWhyDrawer({
   surfaceIds,
   catalogId,
-  focusEntityJson,
+  diagnostics,
   sidecarMeta,
   promotionPending,
   explanation,
@@ -170,19 +178,22 @@ export function CanvasWhyDrawer({
               </div>
             )}
           </section>
-          <section aria-label="原始合同">
-            <h3 className="mb-1 font-medium text-foreground">原始合同</h3>
-            {focusEntityJson === undefined ? (
-              <p>当前没有 focus 实体。</p>
-            ) : (
-              <details>
-                <summary>focus 实体 Siren JSON</summary>
-                <pre data-testid="canvas-why-raw-json" className="whitespace-pre-wrap break-all">
-                  {focusEntityJson}
-                </pre>
-              </details>
-            )}
-          </section>
+          {diagnostics.length > 0 && (
+            <section aria-label="呈现诊断">
+              <h3 className="mb-1 font-medium text-foreground">呈现诊断</h3>
+              <ul data-testid="canvas-why-diagnostics" className="space-y-1">
+                {diagnostics.map((diagnostic) => (
+                  <li
+                    key={`${diagnostic.code}:${diagnostic.nodeId}:${diagnostic.path}:${diagnostic.region ?? ''}`}
+                  >
+                    {diagnostic.code === 'region-unavailable'
+                      ? `${diagnostic.region ?? '未命名区域'} · 不可用 · region-unavailable`
+                      : `${diagnostic.code} · ${diagnostic.nodeId}: ${diagnostic.message}`}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </aside>
       )}
     </div>

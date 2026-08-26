@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { derefSpec } from '../deref';
 
-import { ActionSubmitProvider, createDirectActionSubmit } from '@/components/action-submit';
+import { ActionSubmitProvider, createDirectActionSubmit } from '@/components/actions/action-submit';
 import { execAction } from '@/components/exec-client';
 
 import { articlesCollection, specOf } from './fixtures';

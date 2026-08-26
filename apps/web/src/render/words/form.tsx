@@ -8,7 +8,7 @@
  * - 铁律 3:每个 form/button 带 data-action=<已声明动作名>,提交走
  *   /api/exec(渲染层白名单,合同外按钮无法提交)。
  */
-import { ActionGroup } from '../../components/action-group';
+import { ActionGroup } from '../../components/actions/action-group';
 
 import { asEntity, asRequiredString, type WordProps } from './shared';
 

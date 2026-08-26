@@ -94,7 +94,7 @@ it('renders live final.sources as tail citations and never parses rel-looking an
 });
 
 it('attaches final.sources to a terminal machine-text answer without duplicating its summary', async () => {
-  const answer = 'legacy machine-text answer';
+  const answer = 'machine-text answer';
   vi.stubGlobal(
     'fetch',
     vi.fn(() =>
@@ -104,7 +104,7 @@ it('attaches final.sources to a terminal machine-text answer without duplicating
           {
             type: 'final',
             payload: {
-              sessionId: 'e2e-citations-legacy',
+              sessionId: 'e2e-citations-machine-text',
               driver: 'llm',
               requestedDriver: 'auto',
               outcome: 'answered',

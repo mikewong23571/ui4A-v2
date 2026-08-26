@@ -83,7 +83,12 @@ function presentationContract(input: {
 }): ContractFixture {
   const sidecarId = `sidecar:${encodeURIComponent(input.subject)}`;
   const sourceRel = String(input.source.properties.rel);
-  const surface = planGenericPresentationSurface(sourceRel, input.source, 'definition-v1').surface;
+  const surface = planGenericPresentationSurface(
+    sourceRel,
+    input.source,
+    'definition-v1',
+    'read',
+  ).surface;
   const fetchMock = vi.fn((request: RequestInfo | URL, init?: RequestInit) => {
     const url = String(request);
     if (url === '/api/render/catalog')
@@ -100,6 +105,13 @@ function presentationContract(input: {
         : `/api/presentation?scope=${encodeURIComponent(input.scope)}`;
     if (url === presentationUrl && init?.method === 'POST')
       return Promise.resolve(jsonResponse(200, { sidecar: { id: sidecarId } }));
+    const execUrl =
+      input.scope === undefined
+        ? '/api/exec'
+        : `/api/exec?scope=${encodeURIComponent(input.scope)}`;
+    if (url === execUrl && init?.method === 'POST') {
+      return Promise.resolve(jsonResponse(200, { entity: input.source }));
+    }
     if (url.startsWith('/api/presentation/sidecar?')) {
       if (input.scope !== undefined) {
         expect(new URL(url, 'http://ui4a.test').searchParams.get('scope')).toBe(input.scope);
@@ -163,6 +175,60 @@ const cases: MountCase[] = [
 ];
 
 describe('PresentationSurfaceHost 共享单树宿主', () => {
+  it('Surface 动作组在同一 scope fresh-read 后才提交', async () => {
+    window.history.pushState({}, '', '/canvas?focus=post%3Acanvas&scope=publishing');
+    const source = sourceEntity('post:canvas', '画布对象');
+    const fixture = presentationContract({ subject: 'post:canvas', source, scope: 'publishing' });
+    vi.stubGlobal('fetch', fixture.fetchMock);
+
+    render(
+      <EntityCacheProvider scope="publishing">
+        <CanvasBody />
+      </EntityCacheProvider>,
+    );
+    expect(await screen.findByText('你和助手使用同一合同，由同一规则裁决')).toBeTruthy();
+    const before = fixture.fetchMock.mock.calls.filter(([request]) =>
+      String(request).startsWith('/api/entity?rel=post%3Acanvas'),
+    ).length;
+
+    fireEvent.click(screen.getByRole('button', { name: '完成' }));
+    await waitFor(() =>
+      expect(
+        fixture.fetchMock.mock.calls.filter(
+          ([request, init]) =>
+            String(request) === '/api/exec?scope=publishing' && init?.method === 'POST',
+        ),
+      ).toHaveLength(1),
+    );
+    const after = fixture.fetchMock.mock.calls.filter(([request]) =>
+      String(request).startsWith('/api/entity?rel=post%3Acanvas'),
+    ).length;
+    expect(after).toBe(before + 1);
+  });
+
+  it('Surface 动作组可见呈现当前合同 guard reason', async () => {
+    const source = sourceEntity('post:blocked', '受阻对象');
+    source['guard-results'] = [
+      {
+        action: 'complete',
+        blocked: true,
+        reason: 'guard 不满足: item-ready=false',
+        guards: [{ name: 'item-ready', pass: false }],
+      },
+    ];
+    const fixture = presentationContract({ subject: 'post:blocked', source });
+    vi.stubGlobal('fetch', fixture.fetchMock);
+
+    render(
+      <EntityCacheProvider>
+        <PresentationSurfaceHost heading="共同注视" parameters={{ focus: 'post:blocked' }} />
+      </EntityCacheProvider>,
+    );
+
+    expect((await screen.findByRole('status')).textContent).toBe('guard 不满足: item-ready=false');
+    expect((screen.getByRole('button', { name: '完成' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it.each(cases)(
     '$name 走 presentation → sidecar → hydrate → action gate → 单树链',
     async (testCase) => {

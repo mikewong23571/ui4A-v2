@@ -6,7 +6,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ActionSubmitProvider, type ActionSubmit } from '@/components/action-submit';
+import { ActionSubmitProvider, type ActionSubmit } from '@/components/actions/action-submit';
 
 import { derefSpec } from '../deref';
 

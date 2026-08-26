@@ -12,6 +12,7 @@ import {
   type SurfaceNode,
   type SurfaceTree,
   type SurfaceValidationIssue,
+  type SirenEntity,
 } from '@ui4a/engine';
 
 import type {
@@ -25,6 +26,7 @@ export interface A2uiCompileIssue {
   nodeId: string;
   path: string;
   message: string;
+  region?: string;
 }
 
 /** Ephemeral hydrated runtime output. Sidecars persist the binding-only SurfaceTree, never this. */
@@ -117,11 +119,11 @@ function compileIssue(node: SurfaceNode, code: string, message: string): A2uiCom
 function emitDiagnostic(
   node: SurfaceNode,
   isRoot: boolean,
-  code: string,
+  humanText: string,
   context: CompileContext,
 ): string {
   const id = componentId(node, isRoot);
-  context.hydration.diagnostics[node.id] = code;
+  context.hydration.diagnostics[node.id] = humanText;
   context.components.push({
     id,
     component: context.options.catalogAdapter.diagnosticComponent,
@@ -139,11 +141,13 @@ function transformedValue(
   if (transform === 'value') return value;
   const subject = binding.kind === 'item' ? '' : binding.subject;
   if (transform === 'actions-entity') {
+    const source = value as SirenEntity;
     return {
       class: ['presentation-action-slice'],
       properties: { rel: subject },
-      actions: value,
+      actions: source.actions,
       links: [],
+      'guard-results': source['guard-results'] ?? [],
     };
   }
   return {
@@ -164,7 +168,7 @@ function compileWord(
     context.issues.push(
       compileIssue(node, 'catalog-adapter-missing', `word "${node.word}" has no A2UI adapter`),
     );
-    return emitDiagnostic(node, isRoot, 'catalog-adapter-missing', context);
+    return emitDiagnostic(node, isRoot, '部分内容暂时无法显示', context);
   }
 
   const props: Record<string, unknown> = { ...adapter.props };
@@ -192,7 +196,7 @@ function compileWord(
   } catch (error) {
     const message = error instanceof Error ? error.message : 'deref failed';
     context.issues.push(compileIssue(node, 'deref-failed', message));
-    return emitDiagnostic(node, isRoot, 'deref-failed', context);
+    return emitDiagnostic(node, isRoot, '部分内容暂时无法显示', context);
   }
 
   if (Object.keys(hydrated).length > 0) context.hydration.values[node.id] = hydrated;
@@ -201,9 +205,30 @@ function compileWord(
   return id;
 }
 
-function compileNode(node: SurfaceNode, isRoot: boolean, context: CompileContext): string {
+function compileNode(
+  node: SurfaceNode,
+  isRoot: boolean,
+  context: CompileContext,
+  region?: string,
+): string {
   if (node.kind === 'diagnostic') {
-    return emitDiagnostic(node, isRoot, node.code, context);
+    const duplicate = context.issues.some(
+      (entry) =>
+        entry.code === node.code &&
+        (entry.nodeId === node.id || entry.nodeId === node.failedNodeId),
+    );
+    if (!duplicate) {
+      context.issues.push({
+        ...compileIssue(node, node.code, `surface diagnostic "${node.code}"`),
+        ...(region === undefined ? {} : { region }),
+      });
+    }
+    return emitDiagnostic(
+      node,
+      isRoot,
+      node.code === 'region-unavailable' ? '此区域暂不可用' : '部分内容暂时无法显示',
+      context,
+    );
   }
   if (node.kind === 'word') return compileWord(node, isRoot, context);
 
@@ -215,10 +240,10 @@ function compileNode(node: SurfaceNode, isRoot: boolean, context: CompileContext
     } catch (error) {
       const message = error instanceof Error ? error.message : 'repeat deref failed';
       context.issues.push(compileIssue(node, 'deref-failed', message));
-      return emitDiagnostic(node, isRoot, 'deref-failed', context);
+      return emitDiagnostic(node, isRoot, '部分内容暂时无法显示', context);
     }
     context.hydration.repeats[node.id] = items;
-    const item = compileNode(node.item, false, context);
+    const item = compileNode(node.item, false, context, region);
     const id = componentId(node, isRoot);
     context.components.push({
       id,
@@ -233,8 +258,8 @@ function compileNode(node: SurfaceNode, isRoot: boolean, context: CompileContext
 
   const children =
     node.kind === 'slot'
-      ? [compileNode(node.child, false, context)]
-      : node.children.map((child) => compileNode(child, false, context));
+      ? [compileNode(node.child, false, context, node.name)]
+      : node.children.map((child) => compileNode(child, false, context, region));
   const id = componentId(node, isRoot);
   context.components.push({
     id,

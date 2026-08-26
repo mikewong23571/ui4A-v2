@@ -5,8 +5,8 @@ import type { ReactNode } from 'react';
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ActionRunner } from '@/components/action-runner';
-import { blockedForRenderer } from '@/components/action-group';
-import { createDirectActionSubmit } from '@/components/action-submit';
+import { blockedForRenderer } from '@/components/actions/action-group';
+import { createDirectActionSubmit } from '@/components/actions/action-submit';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 

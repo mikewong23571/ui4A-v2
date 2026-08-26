@@ -33,7 +33,7 @@ import type { SirenAction } from '@ui4a/engine';
 
 import { Button } from '@/components/ui/button';
 
-import type { ActionSubmit } from './action-submit';
+import type { ActionSubmit } from './actions/action-submit';
 import { rjsfValidator } from './rjsf-validator';
 
 /** 参数 schema 是否声明了字段(空 schema 走推送按钮路径)。 */
