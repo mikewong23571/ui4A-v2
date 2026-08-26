@@ -1,0 +1,20 @@
+Task: CompositionDeclaration 类型与严格 parse
+
+Summary:
+- Added platform-neutral composition declaration types and closed modes.
+- Added strict, bounded parsing for declaration ids, versions, regions, source rels, intents and modes.
+- Rejected unknown/runtime identity keys, duplicate regions, unsafe sources and workspace virtual subjects.
+- Re-exported the public contract from @ui4a/shared.
+
+Files:
+- packages/shared/src/presentation/composition.ts
+- packages/shared/src/presentation/composition.test.ts
+- packages/shared/src/index.ts
+
+Why:
+Presentation composition declarations must be deterministic governed data before web registries or planners can consume them.
+
+Verification:
+- 54 focused tests passed
+- @ui4a/shared typecheck passed
+- pnpm governance passed
