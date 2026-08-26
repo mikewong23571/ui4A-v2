@@ -569,3 +569,65 @@
 - **裁决与事件边界**:线资源动作复用 declaration → guard → schema 的纯裁决顺序和统一拒绝留痕；
   thread 事件 detail 在共享合同入口做字段白名单、长度与数量上界校验。事件日志仍是唯一业务真相，
   `EngineSnapshot.threads` 只是可删除重建的 fold 表；web 只做可信身份、串行 append 与 HTTP 适配。
+
+## D45 Presentation 组合以虚主体声明退化到同一台 Surface 机器(2026-08-26,T30 Phase A)
+
+1. **虚主体 wire 表示**:候选是保留字 rel 形字符串 `workspace:<id>`、新增结构化
+   `RenderSubject` variant `{compose:<id>}`，或复用 `{selection:string[]}`。采纳字符串，其中 `<id>`
+   必须为 1–64 字符并匹配 `[a-z0-9][a-z0-9._-]*`；`RenderSubject`、Sidecar JSONB、fingerprint 与
+   thin request wire 均保持现形，既有禁键清单不变。`workspace:` 只由 Presentation Broker 解析到
+   已注册声明；它不进业务 sitemap，`/api/entity` 对它保持 404，不能 exec、没有业务 actions，也不
+   产生 core 事件。否决新 variant：它只为路由同一份声明增加 shared/parser/chat/tool 全链路形状；
+   否决 selection：selection 表达临时 rel 集，没有区域、intent 或声明版本，必然把聚合规则散回
+   调用方并形成第二真相。未知或非法 `workspace:` id fail-closed，不能回退为业务 rel。
+
+2. **区域声明归属**:候选是内建 typed registry、Application bundle 贡献，或定义平面的
+   `CompositionDefinition` artifact。采纳内建、严格解析、版本化的纯数据 registry：平台中立的声明
+   类型与 parser 放 shared，纯组合语义放 engine，首个 app-neutral `my-work` 声明数据及 web 查找接线
+   放 Presentation adapter；声明固定为 `id + version + regions[{region,source,intent,mode}]`，字段
+   白名单、有界，`region` 唯一，引擎只遍历数据，禁止按区域、实体类型或 Application 分支。声明的
+   canonical fingerprint 作为 `definition` dependency；同 id 内容变化必须换 version。否决 bundle：
+   `my-work` 聚合 inbox/delegations/threads，错误归属于任一 Application；bundle 贡献应用级 workspace
+   留待后续。否决本 Track 直接引入定义 artifact：目标方向正确，但会额外引入 Draft/activation/
+   migration 生命周期。也明确否决 React props 中声明区域以及 service 函数内硬编码聚合规则；registry
+   形状保持 meta-ready，后续治理迁移不得改变消费语义。
+
+3. **Surface 区域与退化形态**:候选是复用既有 `layout + slot`，或新增带 source/intent 的
+   `region` node；单区域又可统一保留 wrapper 或省略 wrapper。采纳零新 node：每棵 Surface 的 root
+   都是 layout，每个声明区域是一个命名 slot，slot child 是该区域经既有 generic/Recipe planner 产生
+   的子树；source/intent 在规划期消费，树内只留 binding subject、dependencies 与 provenance，机制
+   说明进入 explain/why 抽屉。单主体也构造成一个 region=`subject` 的声明并产出
+   `layout → slot(subject) → subtree`，不保留旧规划旁路；旧 node id/fixture 按 GR2 一次性迁移。
+   单主体 surface id 仍为 `presentation-<subject>`，组合主体按同一 URL 编码规则生成，compiler 的
+   `root`/`node:<id>` 约定保持确定。否决 `region` node：它迫使 node union、walker、validator、patch
+   与 compiler 全部分叉；否决省略单区域 wrapper：它制造两种树形并让后续 walker 隐式识别组合。
+
+4. **Sidecar key、Recipe slot 与 promotion**:候选 promotion 粒度是每区域一个 slot，或每个实时源
+   实体一个 slot。采纳每区域一个稳定 slot：Sidecar key 的 subject 为 `workspace:<id>`，key.intent
+   仍是一个组合 intent；区域 intent 只在声明中，不进入 key。`ApplicationRecipeKey.subjectShape` 按
+   `composition:<declaration-id>@<version>[<region>:<kind>,...]` canonical 化，区域顺序取声明顺序且
+   不含 principal、live rel 成员或事实值；单主体使用同算法的单个 `subject` 区域。Recipe slots 与
+   区域一一对应，name 精确等于合法 region id，kind 取源合同形状，集合源首次实际产出
+   `collection`；模板中所有该区域 subject 引用统一写作 `$slot:<region>`，`$slot:` 只允许出现在
+   Recipe template，不得出现在请求、已实例化 Surface 或事件事实中。promotion/resolve 按完整有序
+   slot `{name,kind}` 形状参数化和匹配，不再判断 `slots.length===1`；机械 diff 列出全部 slots，human
+   promotion 边界不变。否决每源实体一个 slot：成员数量是实时事实，会令 Recipe key、promotion 与
+   membership 漂移一起爆裂，并复制集合已有 repeat/item 语义。
+
+5. **逐源授权、降级与失效**:候选是任一源不可见即整请求失败、静默省略该区域，或保留区域并放置
+   diagnostic。采纳逐区域 fresh `getEntity` 重授权，并在每次 pinned/cache/Recipe 命中及重新规划时
+   执行；请求、Sidecar 或声明均不授予权限。部分源在当前 credential policy scope 不可覆盖时，保留
+   对应 slot，仅放无 binding、无目标 rel、无 policy 细节的 `diagnostic`，code 固定为
+   `region-unavailable`；receipt 仍为 `ready` 且 reasonCode 为 `partial-authorization`。至少一个区域
+   可见才允许 ready；全部区域不可见时整请求 `failed`，reasonCode 沿用 `authorization-failed`，且不
+   生成可复用 Sidecar。否决单源失败拖垮整体：组合会因最小权限镜头失去其余合法价值；否决静默
+   缺席：用户和审计无法区分空集合与无权查看。收据/diagnostic 只披露声明中的区域名和上述固定码，
+   不披露被拒源 rel、存在性、成员数或拒绝细节。
+
+   依赖是所有成功授权区域源的 `entity-contract`，集合源另加 `collection-membership`，再并入声明
+   fingerprint 的 `definition`、catalog 与 policy；未授权区域只受 declaration/catalog/policy 约束，
+   不把不可见源 fingerprint 写入客户端可见解释。membership 或值漂移按 `rehydrate` 实时解引用，
+   entity contract 形状、声明、catalog 或 policy 不兼容按 `invalidate` stale 后重规划；声明的 region
+   `mode` 只能在这两种既有语义中选择。任一 dependency 变化都必须重新逐源授权，再按其 mode
+   rehydrate 或 invalidate，绝不复用旧授权事实。该降级只影响 Presentation，D41 的公开 HTTP/Siren
+   合同和 D27 的 binding-only、用户级 Sidecar、独立 Presentation replay 边界均不改变。
