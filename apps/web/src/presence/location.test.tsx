@@ -35,7 +35,7 @@ describe('location observation hook', () => {
     });
   });
 
-  it('treats a migration-compatible null search-param hook as an empty query', () => {
+  it('treats a null search-param hook value as an empty query', () => {
     routeState.pathname = '/';
     routeState.search = null;
 
