@@ -11,7 +11,7 @@
 > 新模块,不回填 validate.ts(504)/recipe.ts(464);例外登记由编排 agent 统一执行,
 > subagent 只如实报告。
 
-## Phase A: Spike → DECISIONS(分歧先于代码)
+## Phase A: Spike → DECISIONS(分歧先于代码) [checkpoint: e325ac0]
 
 - [x] Task: spike 五问决断,落 DECISIONS.md D45 `9bb2003`
   - 已采纳:`workspace:<id>` 字符串、shared parser + web registry adapter、
@@ -24,7 +24,7 @@
 - [x] Task: spec/plan 回改对齐 D45 `e325ac0`
   - 将 D45 已决形状同步进 spec 最终形态和 Phase B–F 任务合同，清除开放问题与
     推荐默认措辞；tracks.md 无需动(本 Track 已登记)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `e325ac0`
 
 ## Phase B: 组合声明模型(数据 + 严格 parse)
 
