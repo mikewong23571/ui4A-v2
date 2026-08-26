@@ -8,6 +8,6 @@
 - [Specification](./spec.md)
 - [Plan](./plan.md)
 
-当前状态:`planned`。方向依据:`conductor/product-vision.md` §一(scoped
+当前状态:`completed`。方向依据:`conductor/product-vision.md` §一(scoped
 context is the most important)、§五、§六、§八;依赖 T29(已归档)处境装配。
 实施自包含说明见 plan.md「实施者读本」。

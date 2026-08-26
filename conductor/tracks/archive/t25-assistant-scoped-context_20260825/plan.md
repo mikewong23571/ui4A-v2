@@ -113,8 +113,8 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
     10 passed / 2 flaky / 0 failed(exit 0);flaky 保留探针断流与 U20 首次失败证据
   - 最终确定性 gate:`pnpm check` 357 files / 2687 tests 全绿;invariants 4 passed /
     2 个既有 superseded skip;chat E2E 6 passed;governance 7 项既有白名单不变
-- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
-- [ ] Task: Track 收尾
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) 8aad573
+- [x] Task: Track 收尾
   - `conductor/tracks.md` 状态流转;track 目录按 GR5 处置(无 bespoke 脚本/
     配置残留);metadata.json 归档
 

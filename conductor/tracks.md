@@ -10,14 +10,14 @@
 执行序:T24 → T25 → T26(spike) → T30 → T27 → T28;T29 已完成):
 
 - [x] **Track: T24 呈现诚实化(减暴露):机制 chrome 退出首屏与对话面** *Link: [tracks/t24-presentation-honesty_20260825/index.md](./tracks/t24-presentation-honesty_20260825/index.md)*
-- [~] **Track: T25 Assistant 上下文收窄(limited scope):分层披露,起点用事实** *Link: [tracks/t25-assistant-scoped-context_20260825/index.md](./tracks/t25-assistant-scoped-context_20260825/index.md)*
 - [~] **Track: T26 工作线投影(work thread):一件事的纯投影聚合(spike 先行)** *Link: [tracks/t26-work-thread-projection_20260825/index.md](./tracks/t26-work-thread-projection_20260825/index.md)*
 - [~] **Track: T30 呈现平面组合化:区域 × intent × 聚合虚主体(前置架构)** *Link: [tracks/t30-presentation-composition_20260825/index.md](./tracks/t30-presentation-composition_20260825/index.md)*
 - [~] **Track: T27 Workstation 站点:三种工作形态落地与"我的事"首页** *Link: [tracks/t27-workstation-site_20260825/index.md](./tracks/t27-workstation-site_20260825/index.md)*
 - [~] **Track: T28 一等交互与引用:动作上肩、引用可点、raw 模式** *Link: [tracks/t28-first-class-interaction_20260825/index.md](./tracks/t28-first-class-interaction_20260825/index.md)*
 
-## 归档 Tracks(T1–T21、T23、T29,只读历史)
+## 归档 Tracks(T1–T21、T23、T25、T29,只读历史)
 
+- [x] **Track: T25 Assistant 上下文收窄(limited scope):分层披露,起点用事实** *Link: [tracks/archive/t25-assistant-scoped-context_20260825/index.md](./tracks/archive/t25-assistant-scoped-context_20260825/index.md)*
 - [x] **Track: T29 在场与处境(presence & situation):人机同源的处境事实层(前置架构)** *Link: [tracks/archive/t29-presence-situation_20260825/index.md](./tracks/archive/t29-presence-situation_20260825/index.md)*
 - [x] **Track: T23 项目治理：规则基线 GR1–GR5、依赖方向与例外登记、未发布窗口兼容性清理、文件/模块大小门禁，类 TDD 红绿执行并入 pnpm check** *Link: [tracks/archive/t23-project-governance_20260825/index.md](./tracks/archive/t23-project-governance_20260825/index.md)*
 - [x] **Track: T1 工程基建:pnpm monorepo + Next.js 壳 + Postgres docker compose + 测试基座** *Link: [tracks/archive/t1-infra_20260821/index.md](./tracks/archive/t1-infra_20260821/index.md)*

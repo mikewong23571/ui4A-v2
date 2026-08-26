@@ -1,10 +1,10 @@
 {
   "id": "t25-assistant-scoped-context_20260825",
   "type": "feature",
-  "status": "planned",
+  "status": "completed",
   "title": "T25 Assistant 上下文收窄(limited scope):分层披露,起点用事实",
   "created_at": "2026-08-25T09:00:00Z",
-  "updated_at": "2026-08-26T02:45:00Z",
+  "updated_at": "2026-08-26T09:00:00Z",
   "approved_by": "user (建立方向 program:T24-T28;站点为天然分割点;limited scope)",
   "depends_on": ["t29-presence-situation_20260825"]
 }
