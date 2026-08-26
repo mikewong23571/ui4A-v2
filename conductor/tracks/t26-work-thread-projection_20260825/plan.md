@@ -25,7 +25,7 @@
 
 ## Phase B: 事件与 fold 内核(纯投影)
 
-- [ ] Task: thread 事件 schema 与双 union 登记
+- [x] Task: thread 事件 schema 与双 union 登记 53d579d
   - `packages/shared`:D44 四种事件 detail 类型(`thread-created`/
     `thread-reference-attached`/`thread-reference-detached`/
     `thread-status-changed`;goal 原文/来源、显式 category+rel、生命周期状态;
@@ -35,7 +35,7 @@
     (`packages/engine/src/projection/fold/log-event.ts`)+ web `EventKind`
     (`apps/web/src/db/events.ts`);core domain,`readLog`/`toLogEvent` 直过
   - Red:非法 kind/超界载荷/缺锚引用一律拒绝的解析测试
-- [ ] Task: `apply-thread.ts` + fold case + snapshot 表
+- [~] Task: `apply-thread.ts` + fold case + snapshot 表
   - `packages/engine/src/projection/fold/apply-thread.ts`(参照
     `apply-confirmation.ts`);`fold()` 新 case(显式,不静默);
     snapshot 新表恒携带(`initial.threads ?? {}`,样板:delegations 合并)
