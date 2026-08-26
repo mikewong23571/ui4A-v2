@@ -64,6 +64,20 @@ function eventSeq(rel: string): number {
   return Number(rel.slice('event:'.length));
 }
 
+/**
+ * Web persists verified credential provenance beside an event's business detail. It remains
+ * audit-only: strict Work Thread parsing must validate the closed business payload after removing
+ * only that storage envelope field, while every other undeclared field still fails closed.
+ */
+function businessDetail(event: LogEvent): unknown {
+  if (typeof event.detail !== 'object' || event.detail === null || Array.isArray(event.detail)) {
+    return event.detail;
+  }
+  const detail = { ...event.detail };
+  delete detail.identity;
+  return detail;
+}
+
 function attach(
   snapshot: EngineSnapshot,
   event: LogEvent,
@@ -118,7 +132,7 @@ function detach(
 export function applyThreadEvent(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
   switch (event.kind) {
     case 'thread-created': {
-      const created = parseThreadEventDetail(event.kind, event.detail);
+      const created = parseThreadEventDetail(event.kind, businessDetail(event));
       const eventPrincipal = principal(event);
       if (eventPrincipal !== created.owner) {
         throw new Error(`重放失败:seq=${event.seq} thread principal 与 owner 不匹配`);
@@ -136,11 +150,11 @@ export function applyThreadEvent(snapshot: EngineSnapshot, event: LogEvent): Eng
       });
     }
     case 'thread-reference-attached':
-      return attach(snapshot, event, parseThreadEventDetail(event.kind, event.detail));
+      return attach(snapshot, event, parseThreadEventDetail(event.kind, businessDetail(event)));
     case 'thread-reference-detached':
-      return detach(snapshot, event, parseThreadEventDetail(event.kind, event.detail));
+      return detach(snapshot, event, parseThreadEventDetail(event.kind, businessDetail(event)));
     case 'thread-status-changed': {
-      const detail = parseThreadEventDetail(event.kind, event.detail);
+      const detail = parseThreadEventDetail(event.kind, businessDetail(event));
       const existing = writableThread(snapshot, event, detail.threadId);
       if (!statusTransitions[existing.status].includes(detail.status)) {
         throw new Error(

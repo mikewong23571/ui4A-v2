@@ -22,6 +22,12 @@ describe('Work Thread service exec', () => {
       actor: 'agent',
       principal: 'user:mike',
       channel: 'http',
+      identity: {
+        authorizationMode: 'credential',
+        scopes: ['ui4a:write', 'publishing'],
+        policyScope: 'publishing',
+        humanApprovalEligible: false,
+      },
       params: { id: 'release-1', goal: 'Ship safely', goalSource: 'message:goal-1' },
     });
     expect(created).toMatchObject({
@@ -55,6 +61,12 @@ describe('Work Thread service exec', () => {
       entity: { properties: { context: ['articles'] } },
     });
     expect((await readLog(pool)).at(-1)?.kind).toBe('thread-reference-attached');
+
+    resetEngineForTests();
+    const replayed = await getEngine(pool);
+    expect(await replayed.getEntity('thread:release-1')).toMatchObject({
+      properties: { owner: 'user:mike', context: ['articles'] },
+    });
   });
 
   it('persists undeclared, owner-guard, and strict-schema rejections through one audit path', async () => {

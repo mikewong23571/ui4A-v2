@@ -99,6 +99,36 @@ describe('Work Thread fold', () => {
     expect(snapshot).not.toHaveProperty('messages');
   });
 
+  it('ignores trusted identity audit metadata stored beside the strict business detail', () => {
+    const createdWithIdentity = created();
+    createdWithIdentity.detail = {
+      ...(createdWithIdentity.detail as Record<string, unknown>),
+      identity: {
+        authorizationMode: 'credential',
+        scopes: ['ui4a:write', 'publishing'],
+        policyScope: 'publishing',
+        humanApprovalEligible: false,
+      },
+    };
+    const attachedWithIdentity = attached(2, 'context', 'articles');
+    attachedWithIdentity.detail = {
+      ...(attachedWithIdentity.detail as Record<string, unknown>),
+      identity: {
+        authorizationMode: 'credential',
+        scopes: ['ui4a:write', 'publishing'],
+        policyScope: 'publishing',
+        humanApprovalEligible: false,
+      },
+    };
+
+    expect(
+      fold([createdWithIdentity, attachedWithIdentity], deps).threads?.['release-1'],
+    ).toMatchObject({
+      owner,
+      references: { context: ['articles'] },
+    });
+  });
+
   it('deduplicates attachments, makes absent detach idempotent, and removes matching refs', () => {
     const once = fold([created(), attached(2, 'context', 'articles')], deps);
     const events = [
