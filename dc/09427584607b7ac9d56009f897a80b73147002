@@ -1,0 +1,22 @@
+Task correction: Phase A full-suite repair
+
+Summary:
+- Declared structured entries for every installed Application in the canonical walkthrough bundle.
+- Preserved authorization ordering by delaying engine snapshot reads until production identity/exchange and LLM configuration gates have passed.
+- Added application entry parsing coverage and updated delegated/auth route expectations.
+
+Files:
+- apps/web/src/applications/ui4a-walkthrough.bundle.json
+- apps/web/src/applications/bundles.test.ts
+- apps/web/src/app/api/chat/route.ts
+- apps/web/src/app/api/chat/route.delegated.test.ts
+- apps/web/src/app/api/chat/route.production-auth.test.ts
+
+Why:
+The fact chain exposed missing ApplicationDefinition.entry data; the correct fix is definition truth, not restoring lexical discovery. Authorization failures must remain pre-database.
+
+Verification:
+- 11 targeted files / 71 tests passed
+- pnpm --filter @ui4a/web typecheck
+- pnpm governance
+- Autonomous acceptance by the orchestrating agent.
