@@ -1,9 +1,9 @@
-import type { ExecRequest } from '@ui4a/engine';
+import type { ExecRequest, SirenEntity } from '@ui4a/engine';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
-  const exec = vi.fn(async () => ({
-    kind: 'accepted' as const,
+  const exec = vi.fn(async (): Promise<{ kind: 'accepted'; entity: SirenEntity }> => ({
+    kind: 'accepted',
     entity: { class: [], properties: { rel: 'post:first' }, actions: [], links: [] },
   }));
   const engine = {
@@ -53,6 +53,7 @@ const mocks = vi.hoisted(() => {
     engine,
     exec,
     executeAgentRunAction: vi.fn(),
+    filterEntityForPolicyScope: vi.fn((entity: unknown) => entity),
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getEngine: vi.fn(async () => engine),
     relCoveredByPolicyScope: vi.fn(() => true),
@@ -83,6 +84,7 @@ vi.mock('../../../auth/request-identity', () => ({
 vi.mock('../../../auth/application-scope', () => ({
   assertRelInPolicyScope: mocks.assertRelInPolicyScope,
   assertThreadOwner: mocks.assertThreadOwner,
+  filterEntityForPolicyScope: mocks.filterEntityForPolicyScope,
   relCoveredByPolicyScope: mocks.relCoveredByPolicyScope,
 }));
 
@@ -188,6 +190,36 @@ describe('POST /api/exec production authentication wiring', () => {
       expect.objectContaining({ plane: 'business' }),
       'post:first',
       'development',
+    );
+  });
+
+  it('filters the accepted entity through the same credential scope lens as GET /api/entity', async () => {
+    const projected = {
+      class: ['work-thread'],
+      properties: { rel: 'thread:release', context: ['articles'] },
+      actions: [],
+      links: [{ rel: ['context'], href: '/api/entity?rel=articles' }],
+    };
+    const filtered = {
+      ...projected,
+      properties: { ...projected.properties, context: [] },
+      links: [],
+    };
+    mocks.exec.mockResolvedValueOnce({ kind: 'accepted', entity: projected });
+    mocks.filterEntityForPolicyScope.mockReturnValueOnce(filtered);
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ entity: filtered });
+    expect(mocks.filterEntityForPolicyScope).toHaveBeenCalledWith(
+      projected,
+      expect.objectContaining({
+        snapshot: mocks.engine.getSnapshot(),
+        sitemap: mocks.engine.getSitemap(),
+        policyScope: 'development',
+        plane: 'business',
+      }),
     );
   });
 });

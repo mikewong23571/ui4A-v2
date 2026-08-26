@@ -1,3 +1,5 @@
+import type { SirenEntity } from '@ui4a/engine';
+
 import {
   getDb,
   getEngine,
@@ -14,6 +16,7 @@ import {
 import {
   assertRelInPolicyScope,
   assertThreadOwner,
+  filterEntityForPolicyScope,
   relCoveredByPolicyScope,
 } from '../../../auth/application-scope';
 
@@ -89,6 +92,15 @@ export async function POST(request: Request) {
       });
     }
     const resolvedRequest = applyTrustedIdentity(parsed.request, identity);
+    const responseEntity = (entity: SirenEntity): SirenEntity =>
+      identity.authorizationMode === 'credential'
+        ? filterEntityForPolicyScope(entity, {
+            snapshot: engine.getSnapshot(),
+            sitemap: engine.getSitemap(),
+            policyScope: identity.policyScope,
+            plane: 'business',
+          })
+        : entity;
     if (identity.authorizationMode === 'credential') {
       assertThreadOwner(engine.getSnapshot(), resolvedRequest.rel, resolvedRequest.principal ?? '');
     }
@@ -97,11 +109,11 @@ export async function POST(request: Request) {
       if (outcome.kind !== 'accepted') {
         return Response.json({ layer: 'guard-failed', reason: outcome.reason }, { status: 422 });
       }
-      return Response.json({ entity: outcome.entity });
+      return Response.json({ entity: responseEntity(outcome.entity) });
     }
     const outcome = await engine.exec(resolvedRequest);
     if (outcome.kind === 'accepted') {
-      return Response.json({ entity: outcome.entity });
+      return Response.json({ entity: responseEntity(outcome.entity) });
     }
     if (outcome.kind === 'suspended') {
       // 202 Accepted:动作已被受理但挂起(非拒绝)——等待人类在确认实体上裁决。
