@@ -88,7 +88,7 @@
 
 ## Phase E: 处境常显、显式声明与双桥
 
-- [ ] Task: scope/处境常显组件(D46 第 2 问)
+- [x] Task: scope/处境常显组件(D46 第 2 问) `d84fed3`
   - 壳级常显固定为 site/scope/thread/focus,直接回显
     `presenceObservationForLocation` 的当前 URL observation,并标明它是声明的
     处境而非授权结果;不展示 granted scopes、不新增 GET situation 端点、不在
