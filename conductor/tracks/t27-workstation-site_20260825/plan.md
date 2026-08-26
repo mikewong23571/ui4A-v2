@@ -39,7 +39,7 @@
     (存在性/可导航)或删除;处置记录进任务 notes
   - 零件页导航锚点(human :160/:169、dual-executor :240/:247、
     s3.spec.ts:467-553)本 Phase 不动,仅登记;入口文案变化时随 Phase C 同步
-- [ ] Task: home.test.tsx 整文件重写 + fuzz 选择器预案
+- [x] Task: home.test.tsx 整文件重写 + fuzz 选择器预案 `6eebfeb`
   - `apps/web/src/app/home.test.tsx`(384 行)整文件重写:从"钉死旧六区块"
     改为已决首页合同断言:独立 `/` 门、固定 `workspace:my-work` 请求、共享
     Sidecar 单树宿主链与壳元素存在;"纯导航页零可提交元素"(:306-324)迁移为
