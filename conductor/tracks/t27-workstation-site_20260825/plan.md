@@ -4,7 +4,7 @@
 > spec:`./spec.md`(含方向依据、依赖锚点、现状事实与 Phase A 决策点;实施前以仓库现状复核)。
 > TDD 顺序:每 Task 先 Red 再 Green;每 Phase 结束复跑 `pnpm check` 与
 > `CI=true pnpm e2e invariants`。
-> Phase B–F 固定执行 D46(Phase A 产出);不得重新引入已否决候选。
+> Phase B–F 固定执行 D46(Phase A 产出);不得重新引入已否决形态。
 > 治理纪律:GR3 行数上限不驱动裁剪(业务优先原则);components 目录重组按基线
 > note 预留窗口(canvas/why/sidecar feature 子目录)执行;例外登记由编排 agent
 > 统一执行,subagent 只如实报告。
@@ -16,15 +16,15 @@
 ## Phase A: Spike → DECISIONS(分歧先于代码)
 
 - [x] Task: spike 五问决断,落 DECISIONS.md D46 `952574e`
-  - 五问 = spec.md"Phase A 决策点":首页落地形态、处境常显与显式声明形态、
+  - 五问 = spec.md"Phase A 决策投影":首页落地形态、处境常显与显式声明形态、
     站点命名与 presence site 值域、导航折叠形态、跨站桥推导规则
-  - 每问给候选/约束/推荐默认/否决项与理由;锚点:spec.md"现状事实"节;
+  - 每问记录评估选项、约束、采纳项与否决理由;锚点:spec.md"现状事实"节;
     可用纯函数/组件原型验证形态语义(不提交或提交为 spike 测试)
   - 验收:DECISIONS.md 新增条目,编号顺延(当前最新 D45);五问各有明确
     采纳/否决;否决项写明理由(防复辟)
-- [ ] Task: spec/plan 回改对齐 D46
-  - 将 D46 已决形状同步进 spec 最终形态与 Phase B–F 任务合同,清除开放问题
-    与推荐默认措辞;tracks.md 无需动(本 Track 已登记)
+- [~] Task: spec/plan 回改对齐 D46
+  - 将 D46 已决形状同步进 spec 最终形态与 Phase B–F 任务合同,移除未决选择
+    口径;tracks.md 无需动(本 Track 已登记)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: 误导验收前置迁移
@@ -41,21 +41,25 @@
     s3.spec.ts:467-553)本 Phase 不动,仅登记;入口文案变化时随 Phase C 同步
 - [ ] Task: home.test.tsx 整文件重写 + fuzz 选择器预案
   - `apps/web/src/app/home.test.tsx`(384 行)整文件重写:从"钉死旧六区块"
-    改为新首页合同层断言的占位口径(壳元素存在、取数路径);"纯导航页零可
-    提交元素"(:306-324)迁移为 action gate 口径
+    改为已决首页合同断言:独立 `/` 门、固定 `workspace:my-work` 请求、共享
+    Sidecar 单树宿主链与壳元素存在;"纯导航页零可提交元素"(:306-324)迁移为
+    所有可提交控件均经 action gate 的口径
   - `e2e/i3.spec.ts:31-47` PAGES 表与 `e2e/invariants.spec.ts:363-372` 的
-    首页 ready 选择器改为新首页稳定锚点(落地前先指向壳元素,Phase D 复核)
+    首页 ready 选择器先改为独立 `/` 壳稳定锚点,Phase D 改为共享单树宿主
+    ready 锚点并复核零白名单 fuzz
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase C: 站点壳与三形态导航
 
 - [ ] Task: presence site 值域一次性切换(D46 第 3 问)
   - Red:站点推导/装配/起点链的 site 值断言(`workstation`/`meta`)
-  - Green:`presence/client.ts` 推导、`chat-situation.ts` defaults、
-    `start-chain.ts` 兜底与相关测试同步;GR2 零双路径
+  - Green:`/meta` 前缀推导 `meta`,其余路径推导 `workstation`;同步迁移
+    `presence/client.ts`、`chat-situation.ts` defaults、`start-chain.ts` 站点
+    兜底与相关测试;删除 `business` site 口径,raw 不进入值域,GR2 零双路径
 - [ ] Task: 导航重组与系统区(D46 第 4 问)
-  - SiteNav 按站点组织;零件表(收件箱/事件流/委托监控)折叠为壳级系统区,
-    路由全部保留;坐实 raw 无顶级入口(现状确认,不新增)
+  - SiteNav 按 workstation/meta 分区;“我的事”(`/`)与“共同注视”(`/canvas`)
+    是 workstation 顶级入口,meta 是显式越界入口;收件箱、事件流、委托监控
+    折叠为壳级“系统”区,路由全部保留;raw 无顶级入口
   - Red→Green:导航结构组件测试(站点分组/系统区入口可达/全部新控件
     data-nav 注记齐全);导航文案任务语言
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
@@ -67,8 +71,9 @@
     `POST /api/presentation` → `GET /api/presentation/sidecar` → hydrate →
     action gate → 单树渲染);`/canvas` 与 `/` 共用同一宿主,零渲染链分叉;
     按 components 基线 note 的 canvas/why/sidecar feature 子目录方向落位
-  - Red→Green:同一宿主两种挂载(canvas 参数形态 / 首页固定 subject 形态)
-    行为一致的组件测试
+  - Red→Green:同一宿主两种挂载(canvas 参数形态 / 首页固定
+    `workspace:my-work`)行为一致的组件测试;`/` 不重定向,不存在第二套
+    presentation fetch/hydrate/action-gate 实现
 - [ ] Task: 首页落地与 home-body 退役
   - `/` = 壳 + 宿主渲染 `workspace:my-work`;`home-body.tsx` 删除;运行概览/
     文章/收件箱/评论队列/委托监控/定义管理六区块不移植
@@ -84,12 +89,20 @@
 ## Phase E: 处境常显、显式声明与双桥
 
 - [ ] Task: scope/处境常显组件(D46 第 2 问)
-  - 壳级常显:站点/scope/工作线/注视对象;数据源与切换形态按 D46;零启发式
-  - Red→Green:常显与 presence 上报同源断言;切换 scope/进线/出线/跨站产生
-    对应 presence 事件落库(组件 + API 级或 e2e)
+  - 壳级常显固定为 site/scope/thread/focus,直接回显
+    `presenceObservationForLocation` 的当前 URL observation,并标明它是声明的
+    处境而非授权结果;不展示 granted scopes、不新增 GET situation 端点、不在
+    浏览器调用 `assembleSituation`
+  - scope、进线、出线与跨站均为 URL 导航;`thread:<id>` 目标链接携带
+    `?thread=<id>`,出线删除 `thread` 参数,不增加“设为当前工作线”控件
+  - Red→Green:常显与 PresenceReporter/clientView v2 同源断言;上述导航产生
+    对应 presence 事件落库(组件 + API 级或 e2e),零自然语言启发式
 - [ ] Task: 跨站双桥(D46 第 5 问)
-  - workstation → meta"在 meta 中编辑此定义" + meta → workstation"查看活
-    实例";推导规则按 D46,零映射表;桥链接保留当前 scope
+  - 仅对 `flow:<name>` ↔ `meta/flow:<name>` 做双向机械推导:
+    workstation 链接为 `/meta/flow/<name>?scope=<scope>`,meta 链接为
+    `/canvas?focus=flow:<name>&scope=<scope>`;零映射表、零 React 实体类型分支
+  - 零实例或多实例沿用 `resolveFlowRelAlias` 的诚实 404,其他实体不显示桥;
+    两座桥在 T27 同时交付,不修改 meta 治理视图内部
   - e2e 双桥走查:首页 → 工作线 → 注视 flow → meta 编辑(保 scope)→ 查看
     活实例 → 回 workstation
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)

@@ -226,44 +226,35 @@ raw 降格为模式(抽屉实现归 T28;现状导航本无 raw 顶级入口,本 
 - I7:LLM 不可用时组合规划 generic 退路诚实工作(T30 已保证);首页渲染不依赖
   LLM。
 
-## Phase A 决策点(spike,产出 DECISIONS 条目 D46)
+## Phase A 决策投影(D46)
 
-每问给出:候选、约束、推荐默认、否决项与理由。分歧先于代码(GOAL.md 约束)。
+D46 已完成五问决断；以下是 Phase B–F 必须实现的单一路径，不得恢复被否决形态。
 
-1. **首页落地形态。** 候选:(a) `/` 内嵌共享 canvas 宿主(从 canvas-body 提炼),
-   subject 固定 `workspace:my-work`,壳(标题/导航/常显/聊天)是舞台机械;
-   (b) `/` 重定向到 `/canvas?focus=workspace:my-work`(最省代码,但"家"没有
-   自己的门,首页语义绑进 canvas URL);(c) 新宿主组件(渲染链分叉,违反
-   "同一台机器",预否决)。约束:页面滑梯正解;GR2 零双轨。推荐 (a)。
-2. **处境常显与显式声明的形态与数据源。** 常显内容 = site/scope/thread/focus。
-   候选:(a) 客户端 presence 观察回显——与 PresenceReporter 上报同一份
-   `presenceObservationForLocation` 输出,零新端点、天然同源;语义诚实(显示
-   "你声明的处境",不冒充服务端授权裁决);(b) 新 GET situation 端点回显服务端
-   装配输出(多一次往返;装配含 granted scopes 裁决,不该进浏览器;多一个
-   消费方接线)。推荐 (a)。显式声明:切换 scope / 进线 / 出线 / 跨站 =
-   URL 导航(`?scope=`/`?thread=` 等),留痕由既有 PresenceReporter 自动完成,
-   chat 上下文经 clientView v2 既有链路消费——本 Track 只加 UI,不动事件与
-   装配。进线机制候选一并裁决:链接 URL 通用规则(指向 `thread:<id>` 的导航
-   链接统一携带 `?thread=<id>`)vs 壳级"设为当前工作线"控件;红线:零每实体
-   类型 React 分支、零自然语言启发式。
-3. **站点命名与 presence site 值域。** 现状:`pathname` `/meta` 前缀 → `'meta'`,
-   否则 `'business'`(`presence/client.ts:51`;`chat-situation.ts:22` defaults
-   `site:'business'`;`start-chain.ts:14` 兜底 `site==='meta' ? 'meta/flows' :
-   'articles'`)。三形态坐实后值域候选 `{workstation, meta}` 一次性切换(GR2,
-   项目未发布,不留新旧双路径),改动面 = presence 推导、situation defaults、
-   start-chain 兜底与相关测试;raw 是模式不是 site(T28),不入值域。
-4. **导航与零件表折叠形态。** 候选:(a) 顶栏按站点分区 + 壳级"系统"区
-   (收件箱/事件流/委托监控折叠其中,路由全部保留);(b) 折叠进首页区块
-   (把舞台机械混进内容面,预否决)。画布入口是否保留顶级一并裁决(chat
-   present 带路到 canvas,共同注视是协作核心)。约束:i3 fuzz data-nav 注记;
-   导航文案面向任务语言,机器名只在辅助说明(product-guidelines)。
-5. **跨站桥推导规则。** workstation → meta"在 meta 中编辑此定义":仅当从当前
-   注视实体可机械推导定义 rel 时出现——flow 命名约定 `flow:<name>` ↔
-   `meta/flow:<name>`(meta 站 `FlowDefinitionBody rel="meta/flow:<name>"` 已是
-   该约定);无推导路径的实体不出桥(诚实缺席)。否决:全局映射表、每实体
-   类型分支。meta → workstation"查看活实例":同一约定反向,meta flow 定义页
-   加最小壳级链接(不改动 meta 治理视图内部结构);若落地成本越界,spike
-   记录降级为后续 track。两座桥都保留当前 scope 参数。
+1. **首页落地形态。** `/` 保留独立的“家”语义，内嵌从 `canvas-body.tsx`
+   提炼的共享 Sidecar 单树宿主，固定 subject=`workspace:my-work`；`/canvas`
+   与 `/` 共用 `POST /api/presentation` → Sidecar → hydrate → action gate →
+   单树渲染链。不得把 `/` 重定向到 Canvas，也不得复制第二套宿主。
+2. **处境常显与显式声明。** 壳级常显固定展示 site/scope/thread/focus，直接
+   回显 `presenceObservationForLocation` 产生的当前客户端 URL 观察，并明示为
+   “你在 URL 中声明的处境”；它不展示 granted scopes、不在浏览器重算
+   Situation，也不新增 GET 端点。切换 scope、进线、出线与跨站全部使用 URL
+   导航；指向 `thread:<id>` 的链接统一携带 `?thread=<id>`，出线删除该参数。
+   `PresenceReporter` 自动留痕，Chat 经 clientView v2 消费同一观察；不增加
+   壳级“设为当前工作线”控件。
+3. **站点命名与 presence site 值域。** 值域一次性改为
+   `{workstation, meta}`：`/meta` 前缀推导 `meta`，其余路由推导
+   `workstation`；同步迁移 Situation defaults、起点链站点兜底与测试，不保留
+   `business` 双路径。raw 是随处可达的查看模式，不进入 site 值域。
+4. **导航与零件表折叠。** 顶栏按 workstation/meta 分区；“我的事”与“共同
+   注视”保留为 workstation 顶级入口，meta 是显式越界入口；收件箱、事件流、
+   委托监控收进壳级“系统”区且原路由全部保留。所有新增可点元素带
+   `data-nav`/`data-action`，raw 不新增顶级入口，首页内容区不承载这些舞台零件。
+5. **跨站桥推导。** 仅按 canonical rel 命名约定
+   `flow:<name>` ↔ `meta/flow:<name>` 双向机械推导，不建映射表、不在 React
+   中按实体类型分支。workstation focus 为 `flow:<name>` 时显示“在 meta 中
+   编辑此定义”，链接 `/meta/flow/<name>?scope=<scope>`；meta 定义页显示
+   “查看活实例”，链接 `/canvas?focus=flow:<name>&scope=<scope>`。零实例或
+   多实例沿用 `resolveFlowRelAlias` 的诚实 404；其他实体不显示桥。
 
 ## 最终形态(实施目标)
 
@@ -271,7 +262,7 @@ raw 降格为模式(抽屉实现归 T28;现状导航本无 raw 顶级入口,本 
    进入定义层的显式意图不变);raw 不是站点(无顶级入口;抽屉归 T28)。导航按
    站点组织;零件表(收件箱/事件流/委托监控)折叠为壳级系统区,路由全部保留
    (过渡态:T28 raw 抽屉落地前任何时刻裸视图可达——切片化施工,不留废墟)。
-   presence site 值域同步坐实(第 3 问)。
+   presence site 值域一次性使用 `{workstation,meta}`。
 2. **"我的事"首页。** `/` = 壳 + 共享 canvas 宿主渲染 `workspace:my-work`
    组合 surface:在等我(waiting-for-me ← inbox)、在动(in-motion ←
    delegations)、我的工作线(work-lines ← threads;线的"上次停在哪"由
@@ -288,7 +279,8 @@ raw 降格为模式(抽屉实现归 T28;现状导航本无 raw 顶级入口,本 
    走声明版本升级,不改首页代码。
 5. **跨站双桥。** workstation 注视 flow 实体/flow 入口 →"在 meta 中编辑此
    定义"(显式越界,保 scope);meta flow 定义 →"查看活实例"(回
-   workstation);推导规则按第 5 问,零映射表、零类型分支。
+   workstation);严格使用 `flow:<name>` ↔ `meta/flow:<name>` 命名约定，零映射表、
+   零类型分支。
 
 ## Scope 边界(非目标)
 
@@ -307,7 +299,7 @@ raw 降格为模式(抽屉实现归 T28;现状导航本无 raw 顶级入口,本 
 - 首页零每区块/每实体类型/每应用 React 特判;区块 = 组合声明区域 + 同一台
   presentation 机器;
 - 常显与声明零自然语言启发式;全部输入是 URL/presence 结构化事实;
-- 处境装配仍只有一处(`situation.ts`);前端常显不重算处境(第 2 问口径);
+- 处境装配仍只有一处(`situation.ts`);前端只回显 URL observation，不重算处境;
 - 导航/常显/桥属舞台机械;文案面向任务语言,机器名只在辅助说明
   (product-guidelines);
 - 新控件全部 data-action/data-nav 注记(i3 fuzz 常驻约束);
