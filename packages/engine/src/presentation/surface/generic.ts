@@ -3,6 +3,7 @@
  * 词汇选择由 catalog 驱动,绝不按 domain class、rel 或 action 名分支。
  */
 import type { SirenEntity } from '../../contract/siren/index';
+import { assembleSurfaceRegions } from '../compose';
 import {
   bindingPath,
   diagnosticNode,
@@ -101,6 +102,11 @@ function genericProvenance(ref: string): SurfaceProvenance[] {
   return [{ kind: 'generic-fallback', ref }];
 }
 
+function assembleGenericSubject(surface: SurfaceTree, provenanceRef: string): SurfaceTree {
+  const provenance = genericProvenance(provenanceRef);
+  return assembleSurfaceRegions([{ region: 'subject', surface, provenance }], { provenance });
+}
+
 function genericWord(
   id: string,
   role: SemanticRegionRole,
@@ -149,21 +155,24 @@ export function planGenericSurface(
   options: GenericSurfaceOptions,
 ): SurfaceTree {
   const catalogValidation = validateSurfaceCatalog(catalog);
+  const provenanceRef = options.provenanceRef ?? 'generic-fallback';
   if (
     !nonEmptyString(subject) ||
     !nonEmptyString(options.entityVersion) ||
     !catalogValidation.valid
   ) {
-    return {
-      schemaVersion: SURFACE_SCHEMA_VERSION,
-      root: diagnosticNode(
-        'root',
-        catalogValidation.valid ? 'generic-input-invalid' : 'catalog-invalid',
-        'root',
-      ),
-    };
+    return assembleGenericSubject(
+      {
+        schemaVersion: SURFACE_SCHEMA_VERSION,
+        root: diagnosticNode(
+          'root',
+          catalogValidation.valid ? 'generic-input-invalid' : 'catalog-invalid',
+          'root',
+        ),
+      },
+      provenanceRef,
+    );
   }
-  const provenanceRef = options.provenanceRef ?? 'generic-fallback';
   const plannedPaths = new Set<string>();
   const regions: Array<{ role: SemanticRegionRole; binding: SurfaceBinding }> = [];
   const hints = Object.entries(options.semanticHints ?? {}).sort(([left], [right]) =>
@@ -287,5 +296,8 @@ export function planGenericSurface(
     dependencies: normalizedDependencies(children.flatMap((child) => child.dependencies)),
     provenance: genericProvenance(provenanceRef),
   };
-  return normalizeSurfaceTree({ schemaVersion: SURFACE_SCHEMA_VERSION, root });
+  return assembleGenericSubject(
+    normalizeSurfaceTree({ schemaVersion: SURFACE_SCHEMA_VERSION, root }),
+    provenanceRef,
+  );
 }

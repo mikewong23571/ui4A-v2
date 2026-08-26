@@ -1,15 +1,15 @@
 import type { CompositionDeclaration, CompositionMode } from '@ui4a/shared';
 
 import type { SidecarDependency } from './sidecar';
-import {
-  normalizeSurfaceTree,
-  validateSurfaceTree,
-  type SurfaceCatalog,
-  type SurfaceDependency,
-  type SurfaceNode,
-  type SurfaceProvenance,
-  type SurfaceTree,
-} from './surface/index';
+import { normalizeSurfaceTree } from './surface/normalize';
+import type {
+  SurfaceCatalog,
+  SurfaceDependency,
+  SurfaceNode,
+  SurfaceProvenance,
+  SurfaceTree,
+} from './surface/types';
+import { validateSurfaceTree } from './surface/validate';
 
 export type CompositionSourceKind = 'entity' | 'collection' | 'flow' | 'selection';
 
@@ -19,6 +19,19 @@ const COMPOSITION_SOURCE_KINDS = new Set<CompositionSourceKind>([
   'flow',
   'selection',
 ]);
+
+export interface SurfaceRegionAssemblyInput {
+  region: string;
+  surface: SurfaceTree;
+  dependencies?: readonly SurfaceDependency[];
+  provenance?: readonly SurfaceProvenance[];
+  nodeProvenance?: readonly SurfaceProvenance[];
+}
+
+export interface SurfaceRegionAssemblyOptions {
+  dependencies?: readonly SurfaceDependency[];
+  provenance?: readonly SurfaceProvenance[];
+}
 
 export interface CompositionRegionSurfaceInput {
   region: string;
@@ -79,17 +92,20 @@ function regionProvenance(declaration: CompositionDeclaration, region?: string):
   };
 }
 
-function appendDeclarationProvenance(
+function appendProvenance(
   provenance: readonly SurfaceProvenance[],
-  entry: SurfaceProvenance,
+  entries: readonly SurfaceProvenance[],
 ): SurfaceProvenance[] {
-  return [...provenance.map((candidate) => ({ ...candidate })), entry];
+  return [
+    ...provenance.map((candidate) => ({ ...candidate })),
+    ...entries.map((entry) => ({ ...entry })),
+  ];
 }
 
 function namespaceNode(
   node: SurfaceNode,
   namespace: string,
-  provenance: SurfaceProvenance,
+  provenance: readonly SurfaceProvenance[],
 ): SurfaceNode {
   const base = {
     id: `${namespace}:${node.id}`,
@@ -98,7 +114,7 @@ function namespaceNode(
       ...dependency,
       ...(dependency.paths === undefined ? {} : { paths: [...dependency.paths] }),
     })),
-    provenance: appendDeclarationProvenance(node.provenance, provenance),
+    provenance: appendProvenance(node.provenance, provenance),
   };
 
   switch (node.kind) {
@@ -142,6 +158,56 @@ function namespaceNode(
           : { failedNodeId: `${namespace}:${node.failedNodeId}` }),
       };
   }
+}
+
+function cloneDependencies(dependencies: readonly SurfaceDependency[] = []): SurfaceDependency[] {
+  return dependencies.map((dependency) => ({
+    ...dependency,
+    ...(dependency.paths === undefined ? {} : { paths: [...dependency.paths] }),
+  }));
+}
+
+function cloneProvenance(provenance: readonly SurfaceProvenance[] = []): SurfaceProvenance[] {
+  return provenance.map((entry) => ({ ...entry }));
+}
+
+/**
+ * Assemble planned subtrees through the canonical layout/region-slot machine.
+ * Callers own region ordering; node ids are deterministically namespaced by region.
+ */
+export function assembleSurfaceRegions(
+  regions: readonly SurfaceRegionAssemblyInput[],
+  options: SurfaceRegionAssemblyOptions = {},
+): SurfaceTree {
+  if (regions.length === 0) throw new Error('Surface regions must not be empty');
+  const seen = new Set<string>();
+  const children = regions.map((region) => {
+    requiredText(region.region, 'Surface region name');
+    if (seen.has(region.region)) throw new Error(`Surface region "${region.region}" is duplicated`);
+    seen.add(region.region);
+    return {
+      kind: 'slot' as const,
+      id: `region:${region.region}`,
+      role: 'primary-content' as const,
+      name: region.region,
+      child: namespaceNode(region.surface.root, region.region, region.nodeProvenance ?? []),
+      dependencies: cloneDependencies(region.dependencies),
+      provenance: cloneProvenance(region.provenance),
+    };
+  });
+
+  return normalizeSurfaceTree({
+    schemaVersion: 1,
+    root: {
+      kind: 'layout',
+      id: 'root',
+      role: 'primary-content',
+      layout: 'stack',
+      children,
+      dependencies: cloneDependencies(options.dependencies),
+      provenance: cloneProvenance(options.provenance),
+    },
+  });
 }
 
 function dependency(
@@ -246,7 +312,7 @@ export function composeSurfaceRegions(
   const definitionDependency = declarationDependency(declaration, context);
   const sidecarDependencies: SidecarDependency[] = [];
   const plannedRegions: CompositionPlannedRegion[] = [];
-  const children = declaration.regions.map((region) => {
+  const assemblyRegions = declaration.regions.map((region) => {
     const input = inputsByRegion.get(region.region);
     if (input === undefined) {
       throw new Error(`Composition region input "${region.region}" is missing`);
@@ -265,31 +331,20 @@ export function composeSurfaceRegions(
     }
 
     const provenance = regionProvenance(declaration, region.region);
-    const child = namespaceNode(validation.surface.root, region.region, provenance);
     sidecarDependencies.push(...dependenciesForRegion(declaration, input));
     plannedRegions.push({ region: region.region, sourceKind: input.sourceKind, mode: region.mode });
     return {
-      kind: 'slot' as const,
-      id: `region:${region.region}`,
-      role: 'primary-content' as const,
-      name: region.region,
-      child,
+      region: region.region,
+      surface: validation.surface,
       dependencies: [definitionDependency],
       provenance: [provenance],
+      nodeProvenance: [provenance],
     };
   });
 
-  const surface = normalizeSurfaceTree({
-    schemaVersion: 1,
-    root: {
-      kind: 'layout',
-      id: 'root',
-      role: 'primary-content',
-      layout: 'stack',
-      children,
-      dependencies: [definitionDependency],
-      provenance: [regionProvenance(declaration)],
-    },
+  const surface = assembleSurfaceRegions(assemblyRegions, {
+    dependencies: [definitionDependency],
+    provenance: [regionProvenance(declaration)],
   });
   const assembledValidation = validateSurfaceTree(surface, context.catalog);
   if (!assembledValidation.valid) {

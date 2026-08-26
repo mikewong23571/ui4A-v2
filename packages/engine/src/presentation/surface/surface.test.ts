@@ -8,6 +8,7 @@ import type { SirenEntity } from '../../contract/siren/index';
 import {
   SEMANTIC_REGION_ROLES,
   hashSurfaceTree,
+  normalizeSurfaceTree,
   planGenericSurface,
   restoreSurfaceTree,
   serializeSurfaceTree,
@@ -317,14 +318,143 @@ describe('generic semantic fallback planner', () => {
     expect(serialized).not.toContain('properties.title');
     expect(serialized).toContain('"role":"actions"');
     expect(serialized).toContain('"role":"relation"');
-    if (surface.root.kind !== 'layout') throw new Error('generic surface must be layout');
-    expect(surface.root.children.map(({ role }) => role)).toEqual([
+    expect(surface.root).toMatchObject({
+      kind: 'layout',
+      id: 'root',
+      children: [
+        {
+          kind: 'slot',
+          id: 'region:subject',
+          name: 'subject',
+          child: { kind: 'layout', id: 'subject:root' },
+        },
+      ],
+    });
+    if (
+      surface.root.kind !== 'layout' ||
+      surface.root.children[0]?.kind !== 'slot' ||
+      surface.root.children[0].child.kind !== 'layout'
+    ) {
+      throw new Error('generic surface must use the subject region');
+    }
+    expect(surface.root.children[0].child.children.map(({ role }) => role)).toEqual([
       'identity',
       'status',
       'primary-content',
       'actions',
       'relation',
     ]);
+  });
+
+  it('preserves the generic binding, dependency and provenance semantics inside the subject region', () => {
+    const surface = planGenericSurface('record:alpha', entity, catalog, {
+      entityVersion: 'entity-v3',
+      semanticHints: {
+        'properties.fields.displayName': 'identity',
+        'properties.fields.summary': 'primary-content',
+      },
+      provenanceRef: 'generic:record:alpha',
+    });
+    const bindings = new Set<string>();
+    const dependencies = new Set<string>();
+    const provenanceRefs = new Set<string>();
+
+    const visit = (node: SurfaceTree['root']): void => {
+      for (const dependency of node.dependencies) {
+        dependencies.add(
+          `${dependency.kind}:${dependency.subject}:${dependency.version}:${(dependency.paths ?? []).join(',')}`,
+        );
+      }
+      for (const entry of node.provenance) provenanceRefs.add(`${entry.kind}:${entry.ref}`);
+      if (node.kind === 'word') {
+        for (const binding of Object.values(node.bindings)) {
+          bindings.add(
+            binding.kind === 'item'
+              ? `item:${binding.path}`
+              : `${binding.kind}:${binding.subject}:${binding.kind === 'property' ? binding.path : ''}`,
+          );
+        }
+      }
+      if (node.kind === 'layout') node.children.forEach(visit);
+      if (node.kind === 'slot') visit(node.child);
+      if (node.kind === 'repeat') visit(node.item);
+    };
+    visit(surface.root);
+
+    expect(bindings).toEqual(
+      new Set([
+        'property:record:alpha:properties.fields.displayName',
+        'property:record:alpha:properties.node',
+        'property:record:alpha:properties.fields.summary',
+        'actions:record:alpha:',
+        'links:record:alpha:',
+      ]),
+    );
+    expect(dependencies).toEqual(
+      new Set([
+        'catalog:catalog:baseline:7:',
+        'entity:record:alpha:entity-v3:properties.fields.displayName',
+        'entity:record:alpha:entity-v3:properties.node',
+        'entity:record:alpha:entity-v3:properties.fields.summary',
+        'entity:record:alpha:entity-v3:$actions',
+        'entity:record:alpha:entity-v3:$links',
+      ]),
+    );
+    expect(provenanceRefs).toEqual(new Set(['generic-fallback:generic:record:alpha']));
+  });
+
+  it('normalizes, serializes and hashes the subject region independently of hint insertion order', () => {
+    const first = planGenericSurface('record:alpha', entity, catalog, {
+      entityVersion: 'entity-v3',
+      semanticHints: {
+        'properties.fields.displayName': 'identity',
+        'properties.fields.summary': 'primary-content',
+      },
+    });
+    const second = planGenericSurface('record:alpha', entity, catalog, {
+      entityVersion: 'entity-v3',
+      semanticHints: {
+        'properties.fields.summary': 'primary-content',
+        'properties.fields.displayName': 'identity',
+      },
+    });
+
+    expect(validateSurfaceTree(first, catalog)).toMatchObject({ valid: true, issues: [] });
+    expect(normalizeSurfaceTree(second)).toEqual(normalizeSurfaceTree(first));
+    expect(serializeSurfaceTree(second)).toBe(serializeSurfaceTree(first));
+    expect(hashSurfaceTree(second)).toBe(hashSurfaceTree(first));
+  });
+
+  it.each([
+    ['', catalog, 'generic-input-invalid'],
+    [
+      'record:alpha',
+      {
+        ...catalog,
+        words: { prose: { roles: ['not-a-semantic-role'], bindings: {} } },
+      } as unknown as SurfaceCatalog,
+      'catalog-invalid',
+    ],
+  ])('keeps an honest %s diagnostic inside the subject region', (subject, inputCatalog, code) => {
+    const surface = planGenericSurface(subject, entity, inputCatalog, {
+      entityVersion: 'entity-v3',
+    });
+
+    expect(surface.root).toMatchObject({
+      kind: 'layout',
+      id: 'root',
+      children: [
+        {
+          kind: 'slot',
+          id: 'region:subject',
+          name: 'subject',
+          child: { kind: 'diagnostic', id: 'subject:diagnostic:root', code },
+        },
+      ],
+    });
+    if (validateSurfaceCatalog(inputCatalog).valid) {
+      expect(validateSurfaceTree(surface, inputCatalog)).toMatchObject({ valid: true, issues: [] });
+    }
   });
 
   it('never consults entity class/type to choose a page or component', () => {
