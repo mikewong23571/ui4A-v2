@@ -1,0 +1,1 @@
+T30 Phase F acceptance correction: T24 honesty test now accepts both missing-profile and configured-endpoint failure evidence under the same neutral driver_fail presentation. This preserves the honesty/no-fabrication contract while avoiding dependence on deployment preflight state. Isolated Playwright 1/1 and scoped ESLint passed.
