@@ -1,0 +1,5 @@
+T27 Phase F mothership acceptance
+
+Final accepted deployment: source e3b282c60414da3da6b2f8beb54fecdc273ad0b4, Helm revision 47. Evidence records immutable image checksums/digests, overlay provenance, live OIDC browser and real CLI parity, I3/presence/bridges, read-only current replay, readiness degradation honesty, resource identity preservation, and rejected candidate corrections.
+
+Evidence: conductor/tracks/t27-workstation-site_20260825/evidence-mothership-20260826.md
