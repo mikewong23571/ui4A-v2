@@ -27,7 +27,7 @@
     口径;tracks.md 无需动(本 Track 已登记)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `b1985b8`
 
-## Phase B: 误导验收前置迁移
+## Phase B: 误导验收前置迁移 [checkpoint: 5cbf49e]
 
 > 先于新首页与新导航落地——保绿即冻结旧首页 = 方向错误。本 Phase 是纠偏原则
 > 的执行,不是测试补强。
@@ -47,7 +47,7 @@
   - `e2e/i3.spec.ts:31-47` PAGES 表与 `e2e/invariants.spec.ts:363-372` 的
     首页 ready 选择器先改为独立 `/` 壳稳定锚点,Phase D 改为共享单树宿主
     ready 锚点并复核零白名单 fuzz
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `5cbf49e`
 
 ## Phase C: 站点壳与三形态导航
 
