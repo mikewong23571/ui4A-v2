@@ -214,5 +214,14 @@ describe('Sidecar human lifecycle route', () => {
     await expect(response.json()).resolves.toMatchObject({
       error: expect.stringMatching(/complete ordered slot map/i),
     });
+    const promoted = await getDb().query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count
+         FROM events
+        WHERE domain = 'presentation'
+          AND kind = 'render-recipe-promoted'
+          AND detail->>'sidecarId' = $1`,
+      ['sidecar:workspace'],
+    );
+    expect(promoted.rows[0]?.count).toBe('0');
   });
 });
