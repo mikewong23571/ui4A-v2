@@ -22,7 +22,7 @@
     可用纯函数/组件原型验证形态语义(不提交或提交为 spike 测试)
   - 验收:DECISIONS.md 新增条目,编号顺延(当前最新 D45);五问各有明确
     采纳/否决;否决项写明理由(防复辟)
-- [~] Task: spec/plan 回改对齐 D46
+- [x] Task: spec/plan 回改对齐 D46 `d5b227a`
   - 将 D46 已决形状同步进 spec 最终形态与 Phase B–F 任务合同,移除未决选择
     口径;tracks.md 无需动(本 Track 已登记)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
