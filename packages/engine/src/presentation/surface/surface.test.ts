@@ -324,9 +324,9 @@ describe('generic semantic fallback planner', () => {
       children: [
         {
           kind: 'slot',
-          id: 'region:subject',
+          id: 'region-slot:subject',
           name: 'subject',
-          child: { kind: 'layout', id: 'subject:root' },
+          child: { kind: 'layout', id: 'region-node:subject:root' },
         },
       ],
     });
@@ -446,9 +446,13 @@ describe('generic semantic fallback planner', () => {
       children: [
         {
           kind: 'slot',
-          id: 'region:subject',
+          id: 'region-slot:subject',
           name: 'subject',
-          child: { kind: 'diagnostic', id: 'subject:diagnostic:root', code },
+          child: {
+            kind: 'diagnostic',
+            id: 'region-node:subject:diagnostic:root',
+            code,
+          },
         },
       ],
     });

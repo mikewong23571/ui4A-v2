@@ -102,13 +102,21 @@ function appendProvenance(
   ];
 }
 
+function regionSlotId(region: string): string {
+  return `region-slot:${region}`;
+}
+
+function regionNodeId(region: string, nodeId: string): string {
+  return `region-node:${region}:${nodeId}`;
+}
+
 function namespaceNode(
   node: SurfaceNode,
-  namespace: string,
+  region: string,
   provenance: readonly SurfaceProvenance[],
 ): SurfaceNode {
   const base = {
-    id: `${namespace}:${node.id}`,
+    id: regionNodeId(region, node.id),
     role: node.role,
     dependencies: node.dependencies.map((dependency) => ({
       ...dependency,
@@ -123,21 +131,21 @@ function namespaceNode(
         kind: 'layout',
         ...base,
         layout: node.layout,
-        children: node.children.map((child) => namespaceNode(child, namespace, provenance)),
+        children: node.children.map((child) => namespaceNode(child, region, provenance)),
       };
     case 'slot':
       return {
         kind: 'slot',
         ...base,
         name: node.name,
-        child: namespaceNode(node.child, namespace, provenance),
+        child: namespaceNode(node.child, region, provenance),
       };
     case 'repeat':
       return {
         kind: 'repeat',
         ...base,
         source: { ...node.source },
-        item: namespaceNode(node.item, namespace, provenance),
+        item: namespaceNode(node.item, region, provenance),
       };
     case 'word':
       return {
@@ -155,7 +163,7 @@ function namespaceNode(
         code: node.code,
         ...(node.failedNodeId === undefined
           ? {}
-          : { failedNodeId: `${namespace}:${node.failedNodeId}` }),
+          : { failedNodeId: regionNodeId(region, node.failedNodeId) }),
       };
   }
 }
@@ -187,7 +195,7 @@ export function assembleSurfaceRegions(
     seen.add(region.region);
     return {
       kind: 'slot' as const,
-      id: `region:${region.region}`,
+      id: regionSlotId(region.region),
       role: 'primary-content' as const,
       name: region.region,
       child: namespaceNode(region.surface.root, region.region, region.nodeProvenance ?? []),
@@ -235,7 +243,7 @@ function dependenciesForRegion(
   declaration: CompositionDeclaration,
   input: CompositionRegionSurfaceInput,
 ): SidecarDependency[] {
-  const subtreeId = `region:${input.region}`;
+  const subtreeId = regionSlotId(input.region);
   const prefix = `${declarationRef(declaration)}:${input.region}`;
   const dependencies = [
     dependency(
