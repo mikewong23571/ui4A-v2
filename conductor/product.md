@@ -31,6 +31,14 @@ UI4A protocol 是两种本体之间的边界,不是 agent runtime。应用只负
 
 仓库中的悬浮 Chat、`packages/agent` 和 Assistant runtime 是一种参考组合与验收客户端,不构成应用本体,也不是 UI4A protocol 的唯一入口。Chat 可以独立于应用部署;审批、通知和责任决定可以通过其他通道到达人类。
 
+### Work Thread：一件事的跨应用工作单位
+
+Work Thread 把一个目标、显式上下文引用、进行中的 flow/run、待批准项和近期事件聚成
+principal-owned 的纯投影。它不属于单一 Application、不绑定 session，也不复制被引用对象的事实；
+`threads`/`thread:<id>` 通过同一 Siren/HTTP 合同供人类、CLI 和 Agent 读取与操作。成员资格只来自
+`create/attach/detach/lifecycle` 产生的显式 core 事件，presence 只选择当前线，不能隐式扩张成员。
+因此删除 Chat 后，CLI 仍可完整建线、挂载、查态、审计并从事件日志重放。
+
 ## 第一产品价值:让所有软件 chatable
 
 > **用户不需要先理解软件怎样组织和操作;可以直接问它知道什么,或告诉它自己想完成什么。**

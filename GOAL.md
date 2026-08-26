@@ -11,6 +11,10 @@
 
 以下业务与切片场景、T15 AI-first、T16 Presentation、T17 External Agent Draft、T18 Coding Capability、T19 Specialized Agent Contracts、T20 Meta Human Control Plane、T21 Assistant 双焦点一致性用户故事 Eval 及不变量全部通过，外加一次人工 demo 走查。技术栈与施工顺序见 `README.md` 与 `docs/`。
 
+T26 进一步把“一件事”实现为 Work Thread 纯投影：`threads`/`thread:<id>` 聚合目标、显式引用、
+进行中、待批准和近期事件；owner 绑定 principal 而非 session，Application scope 只充当授权镜头。
+CLI 无 presence 与 Chat+presence 两条路径都必须产生同形显式 thread core 事件，且全量重放一致。
+
 ### v0.1.0-experimental.1 现场状态
 
 该版本已在 mothership 内网以单副本、非 HA 形态部署并可访问；认证、单 Web 并发/重启/重放和

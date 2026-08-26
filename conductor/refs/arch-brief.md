@@ -226,6 +226,19 @@ internal experiment；rollback/fault injection 未实测。该证据不把 T22/P
 GA、SLA、LTS 或 production readiness。机器可读边界见
 [`acceptance-report.json`](../../release/v0.1.0-experimental.1/acceptance-report.json)。
 
+### 8.9 Work Thread 复合投影
+
+T26 新增 principal-owned、Application-neutral 的 `threads`/`thread:<id>` 业务合同。
+`thread-created`、`thread-reference-attached`、`thread-reference-detached`、
+`thread-status-changed` 四类 core event 经严格共享 parser 进入 `EngineSnapshot.threads`；成员角色封闭为
+context/active/approval/event。ThreadSnapshot 只保存 goal、owner、lifecycle 与有界 rel 集，Siren
+在同一 EngineSnapshot 上解析当前状态指针，未知引用保留 dangling，不复制目标内容。
+
+线资源动作走 declaration → owner guard → schema/parser，成功只写 dedicated thread event，拒绝复用
+`action-rejected`。sitemap surface 用 `scope:'principal' + memberRelPrefix:'thread:'` 声明跨 Application
+可发现性；HTTP exact/list 重新校验 owner，credentialed 成员再按当前 policy scope 裁剪。Chat presence
+只为当前 user message 选择默认线并调用同一 attach action；CLI 无 presence 是同等正典路径。
+
 ## 9. 五条垂直切片(第五部,施工顺序)
 
 1. **确认门切片**:agent 执行高危动作 → guard 挂起 → pending 实体化 → notification capability 送达 → 人类在推送上 approve → 事件留痕带 actor/principal。一次验证 guard 第三语义、确认实体、出站能力、委托模型四个论点。构成(README):Cedar 风险策略 + guard 挂起语义 + Temporal notify activity + RJSF 渲染 pending 实体 + 收件箱。GOAL S1 断言:动作未生效挂起 → human approve(actor=human)→ 生效,日志含 actor/principal/信道。
