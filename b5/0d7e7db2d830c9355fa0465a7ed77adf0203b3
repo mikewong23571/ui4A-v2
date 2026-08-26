@@ -1,0 +1,30 @@
+Task: prompt 分层改造(Green)
+
+Summary:
+- Added the shared pure sitemap disclosure slicer and public export.
+- Replaced loop-local filtering with explicit scope/entity inference followed by the shared slicer.
+- Kept foreign navigation entries reachable while stripping capability schemas from prompt-facing context.
+- Passed assembled Chat situation.scope into inline runAgent options.app and updated prompt disclosure wording.
+
+Files:
+- packages/agent/src/contract/disclosure.ts
+- packages/agent/src/contract/disclosure.test.ts
+- packages/agent/src/index.ts
+- packages/agent/src/loop/loop.ts
+- packages/agent/src/loop/loop-context.test.ts
+- packages/agent/src/llm/prompts.ts
+- packages/agent/src/llm/llm-driver.test.ts
+- packages/agent/src/protocol/tools.test.ts
+- apps/web/src/app/api/chat/route.ts
+- apps/web/src/app/api/chat/route.production-auth.test.ts
+
+Why:
+The embedded Assistant must receive one mechanically scoped view while the public discovery contract remains complete and cross-scope navigation remains explicit.
+
+Verification:
+- 7 files / 102 tests passed
+- pnpm --filter @ui4a/agent typecheck
+- pnpm --filter @ui4a/web typecheck
+- pnpm governance
+- git diff --check
+- Autonomous acceptance by the orchestrating agent.
