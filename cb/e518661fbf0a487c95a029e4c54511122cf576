@@ -1,0 +1,11 @@
+T28 Phase B — 一等动作渲染器统一 + 同合同图例/guard 原因可见
+
+Why: D47 requires EntityView, Canvas and composition regions to share one contract-driven action group, with host-owned submit adapters instead of ActionRunner live/function-identity branching. The legend states that human and assistant use the same contract and judge without claiming equal authorization; actor-is-human approval semantics remain intact.
+
+Red: pnpm vitest run apps/web/src/components/action-group.test.tsx failed because ./action-group did not exist. The Red contract required class-neutral action enumeration, exact legend text, explicit declaration submission, visible guard reason, and actor-is-human renderer behavior.
+
+Green: pnpm vitest run apps/web/src/components/action-group.test.tsx apps/web/src/components/entity-view.test.tsx apps/web/src/components/action-runner.t16.test.tsx apps/web/src/render/words/detail.test.tsx apps/web/src/render/words/form.test.tsx apps/web/src/components/canvas/presentation-surface-host.test.tsx apps/web/src/render/presentation/action-adapter.test.ts apps/web/src/render/canvas/action-gate.test.ts apps/web/src/render/presentation/action-invariants.test.ts apps/web/src/components/meta/activation-view.test.tsx apps/web/src/components/meta/renderers/meta-entity-renderer.test.tsx => 11 files, 76 tests passed. pnpm --filter @ui4a/shared typecheck; pnpm --filter @ui4a/engine typecheck; pnpm --filter @ui4a/web typecheck => passed. Focused Prettier/ESLint passed (ESLint emitted only the repository pages-dir informational warning).
+
+Governance: pnpm governance was run and failed only on concurrent Phase D/E working-tree growth: presentation-surface-host.tsx 519>500 and packages/engine/src/presentation 4605>4603 baseline. Per orchestration rules this task did not edit baselines.
+
+Files: action-group.tsx/test; action-submit.tsx; action-runner.tsx/T16 test; entity-view.tsx/test; meta activation/common adapters; detail/form words and tests. Cross-file Surface host/compiler/generic action integration was intentionally left unstaged for root-agent merge with concurrent raw/diagnostic/intent work.
