@@ -521,3 +521,5 @@
   请求端也不能选择 provider、model 或 tool choice。
 - **实验口径**:接受 auto 带来的额外 repair、延迟与失败率；后续以真实 LLM gate 证据决定是否迁移
   Responses API 或恢复 required，不在本决定中引入 provider 特判或 fallback。
+- **TODO(D42)**:另立后续 Track 验证 DeepSeek Responses API 的 reasoning/tool item 多轮回传，目标是
+  在不引入请求端 provider override 的前提下恢复 wire-level `tool_choice: required` 保证。

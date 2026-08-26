@@ -106,6 +106,11 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
     真实 LLM,opt-in)通过
   - DeepSeek 兼容性实测(D42):NewAPI `deepseek-v4-flash` + Chat Completions
     `tool_choice:auto` 探针 6/6 工具调用成功;scoped-context 真实写文章场景通过
+  - TODO(D42,后续 Track):验证 Responses API 多轮 reasoning/tool item 回传并恢复
+    wire-level `tool_choice:required`
+  - 完整真实 LLM gate 已执行(12 项,11.0m):10 passed / 1 flaky / 1 failed;
+    `llm-smoke` 三次均因 provider `terminated` 失败(一次已 publish、收尾 decision 断流),
+    U20 首次 failed 后 retry 通过;TODO:在 Phase D 关闭前复测并闭环该 provider 稳定性失败
 - [ ] Task: Track 收尾
   - `conductor/tracks.md` 状态流转;track 目录按 GR5 处置(无 bespoke 脚本/
     配置残留);metadata.json 归档
