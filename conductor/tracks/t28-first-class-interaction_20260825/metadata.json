@@ -4,7 +4,11 @@
   "status": "planned",
   "title": "T28 一等交互与引用:动作上肩、引用可点、raw 模式",
   "created_at": "2026-08-25T09:00:00Z",
-  "updated_at": "2026-08-25T09:00:00Z",
+  "updated_at": "2026-08-26T17:04:18Z",
   "approved_by": "user (建立方向 program:T24-T28;站点为天然分割点;limited scope)",
-  "depends_on": ["t27-workstation-site_20260825"]
+  "depends_on": [
+    "t24-presentation-honesty_20260825",
+    "t27-workstation-site_20260825",
+    "t30-presentation-composition_20260825"
+  ]
 }
