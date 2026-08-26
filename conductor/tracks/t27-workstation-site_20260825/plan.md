@@ -66,7 +66,7 @@
 
 ## Phase D: 首页"我的事"落地
 
-- [ ] Task: 共享 canvas 宿主提炼(D46 第 1 问)
+- [x] Task: 共享 canvas 宿主提炼(D46 第 1 问) `48cbb39`
   - 从 `canvas-body.tsx` 提炼 sidecar 单树宿主为共享组件(取数链
     `POST /api/presentation` → `GET /api/presentation/sidecar` → hydrate →
     action gate → 单树渲染);`/canvas` 与 `/` 共用同一宿主,零渲染链分叉;
