@@ -9,6 +9,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { derefSpec } from '../deref';
 
+import { ActionSubmitProvider, createDirectActionSubmit } from '@/components/action-submit';
+import { execAction } from '@/components/exec-client';
+
 import { articlesCollection, specOf } from './fixtures';
 import { FormWord } from './form';
 
@@ -35,7 +38,13 @@ function entityWithActions(): ReturnType<typeof articlesCollection> {
           required: ['reason'],
         },
       },
-      { name: 'archive', title: '归档', method: 'POST', href: '/api/exec', fields: { type: 'object', properties: {} } },
+      {
+        name: 'archive',
+        title: '归档',
+        method: 'POST',
+        href: '/api/exec',
+        fields: { type: 'object', properties: {} },
+      },
     ],
     links: [{ rel: ['collection'], href: '/api/entity?rel=articles' }],
     'guard-results': [],
@@ -46,11 +55,12 @@ describe('form 词条', () => {
   it('deref 输出 → 实体动作逐个渲染(RJSF 表单 + 推送按钮),data-action 标注', async () => {
     const entity = entityWithActions();
     const cache = new Map([['post:post-welcome', entity]]);
-    const props = derefSpec(
-      specOf('form', { entity: { ref: 'entity:post:post-welcome' } }),
-      cache,
+    const props = derefSpec(specOf('form', { entity: { ref: 'entity:post:post-welcome' } }), cache);
+    const { container } = render(
+      <ActionSubmitProvider submit={createDirectActionSubmit(execAction)}>
+        <FormWord {...props} />
+      </ActionSubmitProvider>,
     );
-    const { container } = render(<FormWord {...props} />);
 
     // 字段 schema 来自实体 actions(RJSF 输入)
     expect(await screen.findByText('下线原因')).toBeTruthy();
@@ -64,19 +74,23 @@ describe('form 词条', () => {
 
   it('提交走 /api/exec(实体声明的动作;白名单外拒)', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ entity: { class: [], properties: {}, actions: [], links: [] } }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
+      new Response(
+        JSON.stringify({ entity: { class: [], properties: {}, actions: [], links: [] } }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        },
+      ),
     );
     vi.stubGlobal('fetch', fetchMock);
     const entity = entityWithActions();
     const cache = new Map([['post:post-welcome', entity]]);
-    const props = derefSpec(
-      specOf('form', { entity: { ref: 'entity:post:post-welcome' } }),
-      cache,
+    const props = derefSpec(specOf('form', { entity: { ref: 'entity:post:post-welcome' } }), cache);
+    render(
+      <ActionSubmitProvider submit={createDirectActionSubmit(execAction)}>
+        <FormWord {...props} />
+      </ActionSubmitProvider>,
     );
-    render(<FormWord {...props} />);
 
     screen.getByRole('button', { name: '归档' }).click();
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));

@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
-import { ActionRunner, type ExecFn } from './action-runner';
+import { ActionRunner } from './action-runner';
+import { createDirectActionSubmit, type ExecFn } from './action-submit';
 
 const entity: SirenEntity = {
   class: ['article'],
@@ -50,7 +51,13 @@ afterEach(() => {
 describe('ActionRunner T16 schema-form interaction', () => {
   it('keeps the inline form accessible and supports cancel, reopen, Escape, and focus return', async () => {
     const execFn = acceptedExec();
-    render(<ActionRunner rel="post:first-post" action={editAction} execFn={execFn} />);
+    render(
+      <ActionRunner
+        rel="post:first-post"
+        action={editAction}
+        submit={createDirectActionSubmit(execFn)}
+      />,
+    );
 
     const trigger = screen.getByRole('button', { name: '填写编辑元数据参数' });
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
@@ -88,7 +95,7 @@ describe('ActionRunner T16 schema-form interaction', () => {
       <ActionRunner
         rel="post:first-post"
         action={editAction}
-        execFn={execFn}
+        submit={createDirectActionSubmit(execFn)}
         prefill={{ title: '第一篇', category: 'essay', injected: 'must-not-submit' }}
       />,
     );
@@ -120,7 +127,7 @@ describe('ActionRunner T16 high-risk staging', () => {
       <ActionRunner
         rel="post:first-post"
         action={archiveAction}
-        execFn={execFn}
+        submit={createDirectActionSubmit(execFn)}
         onExecuted={onExecuted}
       />,
     );
@@ -147,7 +154,11 @@ describe('ActionRunner T16 high-risk staging', () => {
   it('canceling a high-risk request is event-free and approve/reject remain ordinary human actions', async () => {
     const execFn = acceptedExec();
     const { rerender } = render(
-      <ActionRunner rel="post:first-post" action={archiveAction} execFn={execFn} />,
+      <ActionRunner
+        rel="post:first-post"
+        action={archiveAction}
+        submit={createDirectActionSubmit(execFn)}
+      />,
     );
 
     const trigger = screen.getByRole('button', { name: '归档' });
@@ -162,7 +173,13 @@ describe('ActionRunner T16 high-risk staging', () => {
       title: '批准',
       'requires-confirmation': undefined,
     };
-    rerender(<ActionRunner rel="confirmation:c1" action={approveAction} execFn={execFn} />);
+    rerender(
+      <ActionRunner
+        rel="confirmation:c1"
+        action={approveAction}
+        submit={createDirectActionSubmit(execFn)}
+      />,
+    );
     fireEvent.click(screen.getByRole('button', { name: '批准' }));
 
     await waitFor(() => expect(execFn).toHaveBeenCalledTimes(1));

@@ -4,12 +4,11 @@
  * D13 极简回退口径已随设计基座落地退出)。
  *
  * - entity = 实体引用的解引用结果:properties(rel/node + 扁平 fields)、
- *   actions(ActionRunner,data-action 标注)、links(合同 href → 页面路由);
- * - 与 entity-view 同口径但独立成词条(词汇表消费,不经页面组装)。
+ *   actions(共享 ActionGroup/ActionRunner,data-action 标注)、links(合同 href → 页面路由);
+ * - 与 entity-view 复用同一 contract-driven 动作组,不经页面或实体类型组装。
  */
 import { entityPageHref } from '../../components/entity-view';
-import { ActionRunner } from '../../components/action-runner';
-import { blockedForRenderer } from '../../components/entity-view';
+import { ActionGroup } from '../../components/action-group';
 import { Badge } from '@/components/ui/badge';
 
 import { asEntity, type WordProps } from './shared';
@@ -31,7 +30,6 @@ export function DetailWord(props: WordProps) {
     typeof entity.properties.title === 'string' && entity.properties.title !== ''
       ? entity.properties.title
       : String(entity.properties.rel ?? '实体');
-  const guardMap = new Map((entity['guard-results'] ?? []).map((entry) => [entry.action, entry]));
   const execRel = typeof entity.properties.rel === 'string' ? entity.properties.rel : '';
   const fields =
     typeof entity.properties.fields === 'object' && entity.properties.fields !== null
@@ -74,19 +72,7 @@ export function DetailWord(props: WordProps) {
 
       {mode !== 'links' && entity.actions.length > 0 && execRel !== '' && (
         <section aria-label="动作" className="mt-4 space-y-4">
-          {entity.actions.map((action) => {
-            const guard = guardMap.get(action.name);
-            return (
-              <ActionRunner
-                key={`${execRel}:${action.name}:${JSON.stringify(action.fields)}`}
-                rel={execRel}
-                action={action}
-                live
-                blocked={blockedForRenderer(guard)}
-                blockReason={guard?.reason}
-              />
-            );
-          })}
+          <ActionGroup entity={entity} />
         </section>
       )}
 

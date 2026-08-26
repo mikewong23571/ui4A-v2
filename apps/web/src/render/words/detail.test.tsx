@@ -4,7 +4,9 @@
  * properties/actions/links 四件组装直出;动作走 ActionRunner(data-action)。
  */
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { ActionSubmitProvider, type ActionSubmit } from '@/components/action-submit';
 
 import { derefSpec } from '../deref';
 
@@ -12,6 +14,8 @@ import { articlesCollection, specOf } from './fixtures';
 import { DetailWord } from './detail';
 
 afterEach(cleanup);
+
+const submit: ActionSubmit = vi.fn();
 
 function detailEntity(): ReturnType<typeof articlesCollection> {
   return {
@@ -43,7 +47,11 @@ describe('detail 词条', () => {
       specOf('detail', { entity: { ref: 'entity:post:post-welcome' } }),
       cache,
     );
-    const { container } = render(<DetailWord {...props} />);
+    const { container } = render(
+      <ActionSubmitProvider submit={submit}>
+        <DetailWord {...props} />
+      </ActionSubmitProvider>,
+    );
 
     const view = container.querySelector('[data-word="detail"]');
     expect(view).not.toBeNull();
@@ -63,12 +71,20 @@ describe('detail 词条', () => {
   });
 
   it('actions/links 语义模式只呈现对应交互，不重复原始属性表', async () => {
-    const { container, rerender } = render(<DetailWord entity={detailEntity()} mode="actions" />);
+    const { container, rerender } = render(
+      <ActionSubmitProvider submit={submit}>
+        <DetailWord entity={detailEntity()} mode="actions" />
+      </ActionSubmitProvider>,
+    );
     expect(await screen.findByRole('button', { name: '下线' })).toBeTruthy();
     expect(container.querySelector('table')).toBeNull();
     expect(screen.queryByText('articles')).toBeNull();
 
-    rerender(<DetailWord entity={detailEntity()} mode="links" />);
+    rerender(
+      <ActionSubmitProvider submit={submit}>
+        <DetailWord entity={detailEntity()} mode="links" />
+      </ActionSubmitProvider>,
+    );
     expect(screen.getByText('articles')).toBeTruthy();
     expect(screen.queryByRole('button', { name: '下线' })).toBeNull();
     expect(container.querySelector('table')).toBeNull();

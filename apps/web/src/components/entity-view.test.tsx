@@ -17,7 +17,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ActionRunner } from './action-runner';
+import { createDirectActionSubmit } from './action-submit';
 import { EntityView } from './entity-view';
+import { execAction } from './exec-client';
+
+const businessSubmit = createDirectActionSubmit(execAction);
 
 // ---- fixtures(形状与 /api/entity 的 Siren 投影一致)-------------------------
 
@@ -224,7 +228,9 @@ afterEach(() => {
 describe('ActionRunner:actions → RJSF 表单/按钮', () => {
   it('有 fields → RJSF 表单逐字段渲染(text 输入框、enum 下拉、textarea 文本域)', () => {
     vi.stubGlobal('fetch', mockFetch(200, { entity: wizardEntity }));
-    render(<ActionRunner rel="article-drafting:main" action={publishAction} />);
+    render(
+      <ActionRunner rel="article-drafting:main" action={publishAction} submit={businessSubmit} />,
+    );
 
     expect(screen.getByLabelText(/标题/)).toBeTruthy();
     const category = screen.getByLabelText(/分类/) as HTMLSelectElement;
@@ -239,7 +245,9 @@ describe('ActionRunner:actions → RJSF 表单/按钮', () => {
 
   it('无 fields → 渲染按钮而非表单', () => {
     vi.stubGlobal('fetch', mockFetch(200, { entity: wizardEntity }));
-    const { container } = render(<ActionRunner rel="article-drafting:main" action={resetAction} />);
+    const { container } = render(
+      <ActionRunner rel="article-drafting:main" action={resetAction} submit={businessSubmit} />,
+    );
 
     expect(screen.getByRole('button', { name: '重置' })).toBeTruthy();
     expect(container.querySelector('form')).toBeNull();
@@ -250,7 +258,12 @@ describe('ActionRunner:actions → RJSF 表单/按钮', () => {
     vi.stubGlobal('fetch', fetchMock);
     const onExecuted = vi.fn();
     render(
-      <ActionRunner rel="article-drafting:main" action={publishAction} onExecuted={onExecuted} />,
+      <ActionRunner
+        rel="article-drafting:main"
+        action={publishAction}
+        submit={businessSubmit}
+        onExecuted={onExecuted}
+      />,
     );
 
     fireEvent.change(screen.getByLabelText(/标题/), { target: { value: '第三篇' } });
@@ -277,7 +290,7 @@ describe('ActionRunner:actions → RJSF 表单/按钮', () => {
   it('按钮(无 fields)提交同样走 /api/exec 并带固定身份', async () => {
     const fetchMock = mockFetch(200, { entity: wizardEntity });
     vi.stubGlobal('fetch', fetchMock);
-    render(<ActionRunner rel="post:post-welcome" action={resetAction} />);
+    render(<ActionRunner rel="post:post-welcome" action={resetAction} submit={businessSubmit} />);
 
     fireEvent.click(screen.getByRole('button', { name: '重置' }));
 
@@ -299,7 +312,12 @@ describe('ActionRunner:actions → RJSF 表单/按钮', () => {
     vi.stubGlobal('fetch', fetchMock);
     const onExecuted = vi.fn();
     render(
-      <ActionRunner rel="article-drafting:main" action={publishAction} onExecuted={onExecuted} />,
+      <ActionRunner
+        rel="article-drafting:main"
+        action={publishAction}
+        submit={businessSubmit}
+        onExecuted={onExecuted}
+      />,
     );
 
     fireEvent.change(screen.getByLabelText(/标题/), { target: { value: '重名标题' } });
@@ -320,6 +338,7 @@ describe('ActionRunner:guard-results 谓词投影', () => {
       <ActionRunner
         rel="article-drafting:main"
         action={resetAction}
+        submit={businessSubmit}
         blocked
         blockReason="guard 不满足: is-pending=false"
       />,
@@ -338,6 +357,7 @@ describe('ActionRunner:guard-results 谓词投影', () => {
       <ActionRunner
         rel="article-drafting:main"
         action={publishAction}
+        submit={businessSubmit}
         blocked
         blockReason="guard 不满足: title-not-taken=false"
       />,
@@ -546,7 +566,13 @@ const seedPublishAction: SirenAction = {
 describe('ActionRunner:人话 label 与字段说明(T14 Phase A,#3/#4 表单侧)', () => {
   it('字段 label 取 schema.title 的人话标题,机器名不上屏;description 呈现为字段说明', () => {
     vi.stubGlobal('fetch', mockFetch(200, { entity: wizardEntity }));
-    render(<ActionRunner rel="article-drafting:main" action={seedPublishAction} />);
+    render(
+      <ActionRunner
+        rel="article-drafting:main"
+        action={seedPublishAction}
+        submit={businessSubmit}
+      />,
+    );
 
     expect(screen.getByLabelText(/文章标题/)).toBeTruthy();
     // 机器字段名不作为 label 上屏(label 位已被人话标题占据)
@@ -604,6 +630,7 @@ describe('ActionRunner:实例字段预填(T14 Phase A,#4)', () => {
       <ActionRunner
         rel="article-drafting:main"
         action={seedPublishAction}
+        submit={businessSubmit}
         prefill={{ title: '草稿标题', category: 'tech', meta: { nested: 1 } }}
       />,
     );

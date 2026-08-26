@@ -23,7 +23,8 @@ import {
 } from '@/components/ui/table';
 
 import { ActionRunner } from '../action-runner';
-import { blockedForRenderer } from '../entity-view';
+import { blockedForRenderer } from '../action-group';
+import { createDirectActionSubmit } from '../action-submit';
 import { DefinitionDiffView } from './diff-render';
 import { execMetaAction, useMetaEntity } from './meta-client';
 
@@ -160,7 +161,7 @@ export function ActivationView({ id, entity, onChanged }: ActivationViewProps) {
                     blocked={blockedForRenderer(guard)}
                     blockReason={guard?.reason}
                     onExecuted={onChanged}
-                    execFn={execMetaAction}
+                    submit={createDirectActionSubmit(execMetaAction)}
                   />
                 </Card>
               );

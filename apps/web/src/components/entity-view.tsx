@@ -13,14 +13,15 @@
  *   字段值行的业务字段名映射中文标签(未知名原样,零发明),rel/flow/node
  *   合同标识保留机器名;properties.fields 作为 ActionRunner 的预填取值源。
  */
-import type { GuardResultEntry, SirenEntity } from '@ui4a/engine';
+import type { SirenEntity } from '@ui4a/engine';
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { entityPageHref } from '@/presence/navigation';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 
-import { ActionRunner } from './action-runner';
+import { ActionGroup } from './action-group';
+import { createDirectActionSubmit } from './action-submit';
 import { execAction } from './exec-client';
 
 /** 从合同 href 提取 rel(只认 /api/entity?rel=…;其余 href 无 rel 可提)。 */
@@ -139,21 +140,6 @@ function memberSummary(sub: SirenEntity): string {
   return parts.filter((part) => part !== '').join(' · ');
 }
 
-/**
- * renderer 身份规则(arch-brief §3"同一个谓词的两个投影"):
- * Siren 投影的 guard-results 无 actor 上下文,actor-is-human 按引擎口径
- * fail-closed 为 false;但本 renderer 的 exec 恒以 actor=human 提交
- * (exec-client 固定身份)——该谓词在本视图恒过,真正的裁决仍在 exec
- * (agent 侧 approve 被 422 拒,I4)。仅当失败谓词**全部**是 actor-is-human
- * 时解除 disabled;状态类谓词(如 is-published)的 blocked 照旧呈现。
- */
-export function blockedForRenderer(entry: GuardResultEntry | undefined): boolean {
-  if (entry?.blocked !== true) return false;
-  const failed = entry.guards.filter((evaluation) => !evaluation.pass);
-  if (failed.length === 0) return true;
-  return !failed.every((evaluation) => evaluation.name === 'actor-is-human');
-}
-
 export interface EntityViewProps {
   /** 页面请求的 rel(标题与缺省用途)。 */
   rel: string;
@@ -164,21 +150,12 @@ export interface EntityViewProps {
 }
 
 export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
-  const guardMap = new Map((entity['guard-results'] ?? []).map((entry) => [entry.action, entry]));
-  const execRel =
-    typeof entity.properties.rel === 'string' && entity.properties.rel !== ''
-      ? entity.properties.rel
-      : rel;
   const heading =
     typeof entity.properties.title === 'string' && entity.properties.title !== ''
       ? entity.properties.title
       : rel;
   const members = entity.entities ?? [];
-  // 实例字段值(properties.fields 扁平形状):同名动作字段预填的取值源(#4)。
-  const prefillFields =
-    typeof entity.properties.fields === 'object' && entity.properties.fields !== null
-      ? (entity.properties.fields as Record<string, unknown>)
-      : undefined;
+  const submit = createDirectActionSubmit((input) => execAction({ ...input, scope }));
 
   return (
     <div>
@@ -236,31 +213,7 @@ export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
       {entity.actions.length > 0 && (
         <section aria-label="动作" className="mt-6">
           <h2 className="mb-2 text-sm font-semibold">动作</h2>
-          <div className="space-y-4">
-            {entity.actions.map((action) => {
-              const guard = guardMap.get(action.name);
-              return (
-                // key 含参数 schema:向导跨节点同名动作(如 next)的 schema 不同,
-                // 换 key 强制换表单实例——RJSF 内部 formData 是组件态,实例被
-                // React 复用会把前节点字段漏进本节点提交(additionalProperties:
-                // false 拒绝)。每个 action schema 一个干净表单。
-                <Card
-                  key={`${execRel}:${action.name}:${JSON.stringify(action.fields)}`}
-                  className="gap-3 p-4"
-                >
-                  <ActionRunner
-                    rel={execRel}
-                    action={action}
-                    blocked={blockedForRenderer(guard)}
-                    blockReason={guard?.reason}
-                    onExecuted={onChanged}
-                    prefill={prefillFields}
-                    execFn={(input) => execAction({ ...input, scope })}
-                  />
-                </Card>
-              );
-            })}
-          </div>
+          <ActionGroup entity={entity} rel={rel} submit={submit} onExecuted={onChanged} />
         </section>
       )}
 

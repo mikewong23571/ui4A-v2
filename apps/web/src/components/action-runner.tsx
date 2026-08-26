@@ -33,10 +33,8 @@ import type { SirenAction } from '@ui4a/engine';
 
 import { Button } from '@/components/ui/button';
 
-import { execAction } from './exec-client';
-import { fetchEntity, type ExecClientResult } from './exec-client';
+import type { ActionSubmit } from './action-submit';
 import { rjsfValidator } from './rjsf-validator';
-import { createSurfaceActionAdapter } from '@/render/presentation/action-adapter';
 
 /** 参数 schema 是否声明了字段(空 schema 走推送按钮路径)。 */
 function schemaHasFields(schema: SirenAction['fields']): boolean {
@@ -169,13 +167,6 @@ const FORM_CONTROL_STYLES = [
   '[&_textarea]:focus-visible:border-ring [&_textarea]:focus-visible:ring-[3px] [&_textarea]:focus-visible:ring-ring/50 [&_textarea]:focus-visible:outline-none',
 ].join(' ');
 
-/** 提交函数形态(缺省业务 /api/exec;BIOS 面注入 /_meta/api/exec)。 */
-export type ExecFn = (input: {
-  rel: string;
-  action: string;
-  params?: Record<string, unknown>;
-}) => Promise<ExecClientResult>;
-
 export interface ActionRunnerProps {
   /** 提交目标实例 rel(集合页无动作;实例页取实体自身 rel)。 */
   rel: string;
@@ -185,12 +176,10 @@ export interface ActionRunnerProps {
   blockReason?: string;
   /** exec 成功后的刷新回调(参数 = 实际提交的 rel)。 */
   onExecuted?: (rel: string) => void;
-  /** 提交函数(缺省业务端 /api/exec;_meta 站点动作注入 meta 客户端)。 */
-  execFn?: ExecFn;
+  /** Host-owned, scope-aware submit adapter; the server remains the final judge. */
+  submit: ActionSubmit;
   /** 当前实体的实例字段值(同名动作字段预填;缺省=无预填,如 _meta 动作)。 */
   prefill?: Record<string, unknown>;
-  /** Surface hosts enable live declaration/guard/schema revalidation before business submit. */
-  live?: boolean;
 }
 
 export function ActionRunner({
@@ -199,9 +188,8 @@ export function ActionRunner({
   blocked = false,
   blockReason,
   onExecuted,
-  execFn = execAction,
+  submit: submitAction,
   prefill,
-  live = false,
 }: ActionRunnerProps) {
   const hasFields = schemaHasFields(action.fields);
   const highRisk = action['requires-confirmation'] === 'high';
@@ -247,26 +235,7 @@ export function ActionRunner({
     setSubmitting(true);
     setFailure(null);
     try {
-      const result =
-        live && execFn === execAction
-          ? await createSurfaceActionAdapter({ fetchEntity, exec: execAction })
-              .submit({
-                subject: rel,
-                action: action.name,
-                params,
-                expected: { actionSchema: action.fields },
-              })
-              .then((outcome): ExecClientResult =>
-                outcome.outcome === 'executed'
-                  ? { ok: true, entity: outcome.entity }
-                  : {
-                      ok: false,
-                      status: outcome.status ?? 409,
-                      layer: outcome.code,
-                      reason: outcome.reason,
-                    },
-              )
-          : await execFn({ rel, action: action.name, params });
+      const result = await submitAction({ rel, action, params });
       if (result.ok) {
         if (highRisk) setInteraction('executed');
         onExecuted?.(rel);
@@ -304,6 +273,12 @@ export function ActionRunner({
         {failure}
       </p>
     ) : null;
+  const blockedNode =
+    blocked && blockReason !== undefined ? (
+      <p role="status" className="mt-1 text-xs text-muted-foreground">
+        {blockReason}
+      </p>
+    ) : null;
 
   if (!hasFields && !highRisk) {
     return (
@@ -323,6 +298,7 @@ export function ActionRunner({
             {action.title}
           </Button>
         </div>
+        {blockedNode}
         {failureNode}
       </div>
     );
@@ -357,6 +333,7 @@ export function ActionRunner({
           />
         )}
         {interaction === 'executed' && <ExecutedStatus action={action} />}
+        {blockedNode}
         {failureNode}
       </div>
     );
@@ -440,6 +417,7 @@ export function ActionRunner({
         />
       )}
       {interaction === 'executed' && <ExecutedStatus action={action} />}
+      {blockedNode}
       {failureNode}
     </div>
   );

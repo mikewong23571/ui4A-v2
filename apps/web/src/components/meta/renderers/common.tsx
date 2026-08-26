@@ -5,7 +5,8 @@ import type { ReactNode } from 'react';
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ActionRunner } from '@/components/action-runner';
-import { blockedForRenderer } from '@/components/entity-view';
+import { blockedForRenderer } from '@/components/action-group';
+import { createDirectActionSubmit } from '@/components/action-submit';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
@@ -79,7 +80,7 @@ export function MetaActions({
                 blocked={blockedForRenderer(guard)}
                 blockReason={guard?.reason}
                 prefill={actionPrefill}
-                execFn={(input) => execMetaAction({ ...input, scope })}
+                submit={createDirectActionSubmit((input) => execMetaAction({ ...input, scope }))}
                 onExecuted={onChanged}
               />
             </Card>
