@@ -74,7 +74,7 @@
     在线/重放 hash 一致(除新增投影表外与现状等价)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) 832d33d
 
-## Phase D: 锚定接线(形状以 D44 为准)
+## Phase D: 锚定接线(形状以 D44 为准) [checkpoint: e71689e]
 
 - [x] Task: 线实体动作经正常 exec 裁决 d6f1e4e
   - `threads#create` 与 `thread:<id>` 的 attach/detach/pause/resume/complete/
@@ -87,7 +87,7 @@
     resolved id/source,不让 turn 后续副作用继承;不修改 chat detail wire 形状
   - 测试:无 clientView 的 exec(CLI 形态)显式锚定落库;有 presence 的
     chat 回合落库事件携带同一显式锚
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) e71689e
 
 ## Phase E: 端到端验收与收尾
 
