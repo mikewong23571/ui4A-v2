@@ -91,8 +91,9 @@ test('my-work request renders one binding-only three-region Canvas and replays i
     const sidecarResponse = await fetch(
       `${SCENARIO_BASE}/api/presentation/sidecar?sidecarId=${encodeURIComponent(receipt.sidecar!.id)}`,
     );
-    expect(sidecarResponse.ok).toBe(true);
-    const sidecar = (await sidecarResponse.json()) as SidecarResponse;
+    const sidecarBody = await sidecarResponse.text();
+    expect(sidecarResponse.ok, `${sidecarResponse.status}: ${sidecarBody}`).toBe(true);
+    const sidecar = JSON.parse(sidecarBody) as SidecarResponse;
     expect(sidecar.sidecar.key).toEqual(key);
     expect(sidecar.sidecar.surface.root).toMatchObject({
       kind: 'layout',
