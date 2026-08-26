@@ -1,0 +1,23 @@
+Task: 组合命名空间碰撞与真实 generic 集成修正
+
+Summary:
+- Separated outer slot and subtree node id namespaces.
+- Applied the same region-node mapping to diagnostic failedNodeId.
+- Replaced obsolete hand-built generic fixtures with real planGenericSurface inputs.
+- Added adversarial collision, binding-only, provenance, validation and hash determinism coverage.
+
+Files:
+- packages/engine/src/presentation/compose.ts
+- packages/engine/src/presentation/compose.test.ts
+- packages/engine/src/presentation/surface/surface.test.ts
+
+Why:
+Phase C audit found valid region/node names could collide across the assembled tree, and the old fixture hid the real generic-to-composition path.
+
+Verification:
+- All presentation tests passed (70/70)
+- @ui4a/engine typecheck passed
+- pnpm governance passed
+
+Boundary:
+Phase C is the pure assembly core for surfaces already planned with each region intent; web-side intent routing remains Phase E.
