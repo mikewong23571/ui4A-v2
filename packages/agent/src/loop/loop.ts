@@ -14,6 +14,7 @@
  * 循环零智能:不解释拒绝、不判断完成——决策全在 driver。
  */
 import { createContractClient } from '../contract/http';
+import { sliceSitemapDisclosure } from '../contract/disclosure';
 import { authorizeEffects, type ProposedEffect } from './authorization';
 import type {
   AgentDriver,
@@ -321,33 +322,10 @@ export async function runAgent(
     // 上下文是逐步快照(trail/successes 拷贝):decide 之后循环继续追加,
     // 不应经由引用改写 driver 已见的历史。
     const currentApp = options.app ?? inferEntityApplication(sitemap, fetched.entity);
-    const currentEntityFlows = entityFlowNames(fetched.entity);
-    const currentAppFlows = new Set(
-      sitemap?.applications
-        .find((application) => application.name === currentApp)
-        ?.flows.map((flow) => flow.name) ?? [],
-    );
-    const applicableEntityFlows = [...currentEntityFlows].filter((flow) =>
-      currentAppFlows.has(flow),
-    );
     const scopedSitemap =
-      sitemap === undefined || currentApp === undefined
-        ? sitemap
-        : {
-            ...sitemap,
-            surfaces: sitemap.surfaces.filter(
-              (surface) => surface.app === undefined || surface.app === currentApp,
-            ),
-            applications: sitemap.applications.filter(
-              (application) => application.name === currentApp,
-            ),
-            capabilities: (sitemap.capabilities ?? []).filter(
-              (capability) =>
-                capability.scope.applications.includes(currentApp) &&
-                (applicableEntityFlows.length === 0 ||
-                  capability.scope.flows.some((flow) => applicableEntityFlows.includes(flow))),
-            ),
-          };
+      sitemap === undefined
+        ? undefined
+        : sliceSitemapDisclosure(sitemap, { scope: currentApp, currentRel });
     const context: DriverContext = {
       goal,
       conversationMessages: conversationMessages.map((message) => ({ ...message })),

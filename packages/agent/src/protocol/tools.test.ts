@@ -10,6 +10,7 @@ import type { SirenAction, SirenEntity } from '@ui4a/engine';
 import { describe, expect, it } from 'vitest';
 
 import { buildToolProjection } from './tools';
+import { sliceSitemapDisclosure } from '../contract/disclosure';
 import { collectionEntity, instanceEntity } from '../testkit/testkit';
 
 function textFieldsSchema(required: string[]): Record<string, unknown> {
@@ -92,6 +93,31 @@ describe('固定协议动词', () => {
     const parameters = navigate.parameters as { properties: { rel: { enum?: string[] } } };
 
     expect(parameters.properties.rel.enum).toEqual(['articles', 'flow:post-status']);
+  });
+
+  it('合并实体 links、当前 scope surface 与 foreign navigation-only entry', () => {
+    const disclosure = sliceSitemapDisclosure(
+      {
+        version: 'v-scope',
+        surfaces: [
+          { rel: 'alpha-home', title: 'Alpha', app: 'alpha' },
+          { rel: 'beta-home', title: 'Beta', app: 'beta' },
+        ],
+        applications: [
+          { name: 'alpha', intent: 'alpha', flows: [] },
+          { name: 'beta', intent: 'beta', flows: [] },
+        ],
+      },
+      { scope: 'alpha', currentRel: 'alpha-home' },
+    );
+    const navigate = buildToolProjection(
+      wizardEntity,
+      disclosure.surfaces.map(({ rel }) => rel),
+    ).find((tool) => tool.name === 'navigate')!;
+    const parameters = navigate.parameters as { properties: { rel: { enum?: string[] } } };
+
+    expect(parameters.properties.rel.enum).toEqual(['articles', 'alpha-home', 'beta-home']);
+    expect(disclosure.surfaces[1]).toEqual({ rel: 'beta-home', title: 'Beta' });
   });
 
   it('done 要求 summary;exec 枚举当前实体动作名并要求授权证据', () => {

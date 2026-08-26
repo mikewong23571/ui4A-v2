@@ -543,8 +543,8 @@ describe('授权合同观察进入 LLM prompt', () => {
     expect(prompt).toContain('"feature"');
     expect(prompt).toContain('"draft"');
     expect(prompt).toContain('"scope"');
-    expect(prompt).toContain('"inputSchema"');
-    expect(prompt).toContain('"outputSchema"');
+    expect(prompt).not.toContain('"inputSchema"');
+    expect(prompt).not.toContain('"outputSchema"');
   });
 
   it('动态 action/capability 发现不在 system prompt 中硬编码故事动作名', () => {

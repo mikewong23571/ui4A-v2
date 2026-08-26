@@ -61,7 +61,7 @@ const groupedSitemapBody = {
 };
 
 describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
-  it('applications 分组进入 DriverContext:name/intent 在场,组内 flows 摘要齐全,扁平 surfaces 保留', async () => {
+  it('从实体 flow 推导 scope，保留当前 app 全形并把其他 app 降为导航入口', async () => {
     const transport = contractTransport({
       entities: { articles: articlesEntity },
       sitemap: groupedSitemapBody,
@@ -72,15 +72,16 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
 
     const sitemap = driver.contexts[0]!.sitemap;
     expect(sitemap?.version).toBe('v-apps');
-    // 两层发现第一层:app 分组与 intent 在场(选 app → 选 flow)。
-    expect(sitemap?.applications.map((app) => app.name)).toEqual(['publishing', 'community']);
+    expect(sitemap?.applications.map((app) => app.name)).toEqual(['publishing']);
     const publishing = sitemap?.applications.find((app) => app.name === 'publishing');
     expect(publishing?.intent).toBe('内容起草与发布');
     expect(publishing?.flows).toEqual([
       { name: 'article-drafting', title: '文章发布向导', actions: [] },
     ]);
-    // 扁平信息保留(向后兼容:既有消费方零改动)。
-    expect(sitemap?.surfaces.map((surface) => surface.rel)).toEqual(['articles', 'comments']);
+    expect(sitemap?.surfaces).toEqual([
+      { rel: 'articles', title: '文章集合', app: 'publishing' },
+      { rel: 'comments', title: '评论队列' },
+    ]);
   });
 
   it('旧形状 sitemap(无 applications 字段)→ 分组为空数组,扁平 surfaces 照常', async () => {
@@ -124,7 +125,10 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     });
 
     expect(driver.contexts[0]!.sitemap).toMatchObject({
-      surfaces: [{ rel: 'articles', title: '文章集合' }],
+      surfaces: [
+        { rel: 'articles', title: '文章集合', app: 'publishing' },
+        { rel: 'comments', title: '评论队列' },
+      ],
       applications: [
         {
           name: 'publishing',
@@ -141,15 +145,12 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
           name: 'draft',
           title: '工件起草',
           kind: 'extract',
-          inputSchema: { type: 'object', required: ['body'] },
-          outputSchema: { type: 'object', required: ['summary'] },
           scope: { applications: ['publishing'], flows: ['article-drafting'] },
         },
       ],
     });
-    expect(driver.contexts[0]!.sitemap?.surfaces).not.toContainEqual(
-      expect.objectContaining({ rel: 'comments' }),
-    );
+    expect(JSON.stringify(driver.contexts[0]!.sitemap)).not.toContain('inputSchema');
+    expect(JSON.stringify(driver.contexts[0]!.sitemap)).not.toContain('outputSchema');
     expect(driver.contexts[0]!.sitemap?.capabilities).not.toContainEqual(
       expect.objectContaining({ name: 'moderate' }),
     );
@@ -182,7 +183,7 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     );
   });
 
-  it('集合成员只落在一个 app 时，从嵌入 flow 推导 app 并排除同 app 的无关 flow capability', async () => {
+  it('集合成员只落在一个 app 时，从嵌入 flow 推导 app 并披露该 app flow capabilities', async () => {
     const sitemap = {
       ...structuredClone(groupedSitemapBody),
       applications: groupedSitemapBody.applications.map((application) =>
@@ -217,7 +218,7 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
       'publishing',
     ]);
     expect(driver.contexts[0]!.sitemap?.capabilities?.map((capability) => capability.name)).toEqual(
-      ['summarize'],
+      ['draft', 'summarize'],
     );
   });
 });

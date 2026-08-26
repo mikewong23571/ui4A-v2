@@ -8,6 +8,7 @@
 export * from './types';
 export * from './loop/authorization';
 export * from './contract/authenticated-fetch';
+export * from './contract/disclosure';
 export * from './llm/llm-config';
 export * from './contract/http';
 export * from './loop/loop';

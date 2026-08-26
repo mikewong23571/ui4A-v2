@@ -93,6 +93,7 @@ interface AgentRunContext {
   actor: string;
   principal: string;
   channel: string;
+  app?: string;
   fetchImpl: (url: string, init?: RequestInit) => Promise<Response>;
 }
 
@@ -338,6 +339,7 @@ describe('production chat turn credential boundary', () => {
     expect(mocks.runAgent).toHaveBeenCalledTimes(1);
     expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).principal).toBe('human-alice');
     expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).channel).toBe('chat');
+    expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).app).toBe('development');
   });
 
   it('carries every granted agent policy scope into the exchange (rel coverage is per-request)', async () => {
@@ -668,5 +670,6 @@ describe('local demo profile', () => {
     expect(mocks.resolveIdentity).not.toHaveBeenCalled();
     expect(mocks.exchangeDelegatedCredential).not.toHaveBeenCalled();
     expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).principal).toBe('user:local-demo');
+    expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).app).toBe('default');
   });
 });

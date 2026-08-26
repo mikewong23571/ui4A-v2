@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { sliceSitemapDisclosure } from './disclosure';
+import { createContractClient } from './http';
 import type { SitemapSummary } from '../types';
 
 const INPUT_SCHEMA_MARKER = 'INPUT_SCHEMA_MUST_NOT_BE_DISCLOSED';
@@ -16,9 +17,7 @@ const alphaApplication: SitemapSummary['applications'][number] = {
     {
       name: 'alpha-create',
       title: 'Create alpha item',
-      actions: [
-        { name: 'advance', title: 'Advance', node: 'draft', guards: ['has-alpha-input'] },
-      ],
+      actions: [{ name: 'advance', title: 'Advance', node: 'draft', guards: ['has-alpha-input'] }],
     },
     {
       name: 'alpha-review',
@@ -193,6 +192,20 @@ describe('sliceSitemapDisclosure', () => {
     sliceSitemapDisclosure(input, { scope: 'alpha', currentRel: 'alpha-home' });
 
     expect(input).toEqual(before);
+  });
+
+  it('leaves the external HTTP discovery result full and narrows only the prompt view', async () => {
+    const wireBody = sitemapFixture();
+    const client = createContractClient('https://ui4a.test', async () => Response.json(wireBody));
+
+    const discovered = await client.getSitemap();
+
+    expect(discovered?.capabilities?.[0]?.inputSchema).toBeDefined();
+    expect(discovered?.applications.map(({ name }) => name)).toEqual(['alpha', 'beta']);
+    expect(
+      sliceSitemapDisclosure(discovered!, { scope: 'alpha', currentRel: 'alpha-home' })
+        .capabilities?.[0]?.inputSchema,
+    ).toBeUndefined();
   });
 });
 

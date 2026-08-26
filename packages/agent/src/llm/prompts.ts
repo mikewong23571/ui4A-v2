@@ -6,6 +6,7 @@
  *   最近拒绝/有界完整授权实体观察;原文 role 不被压成单个 prompt。
  */
 import type { DriverContext } from '../types';
+import { sliceSitemapDisclosure } from '../contract/disclosure';
 
 const SYSTEM_PROMPT = [
   '你是 UI4A 合同 agent，也是 AI-first 合同助手:读取授权超媒体合同、动态理解用户目标，并通过协议工具回答或安全执行。',
@@ -69,6 +70,18 @@ function describeObservations(context: DriverContext): string {
   return JSON.stringify(observations, null, 2);
 }
 
+function describeSitemap(context: DriverContext): string {
+  if (context.sitemap === undefined) return '{}';
+  return JSON.stringify(
+    sliceSitemapDisclosure(context.sitemap, {
+      scope: context.app,
+      currentRel: context.currentRel,
+    }),
+    null,
+    2,
+  );
+}
+
 function describeTrail(context: DriverContext): string {
   if (context.trail.length === 0) return '(空——这是第一步)';
   return context.trail
@@ -109,7 +122,7 @@ export function buildUserPrompt(context: DriverContext): string {
     `## 本轮合同读取位置 rel(不是客户端当前页面)\n${context.currentRel}`,
     `## 最近成功导航/呈现(历史完成事实，不是客户端当前页面)\n${JSON.stringify(context.lastNavigation ?? null, null, 2)}`,
     `## 当前消息的客户端可见视图(客户端观察，不是业务事实或授权)\n${JSON.stringify(context.clientView ?? null, null, 2)}`,
-    `## 当前 app/scope 的动态 sitemap 处境(actions/capabilities 仅用于发现，执行仍以当前实体合同为准)\n${JSON.stringify(context.sitemap ?? {}, null, 2)}`,
+    `## 当前 app/scope 的动态 sitemap 分层披露\n当前 scope 保留 surfaces/flows/actions；其他 scope 仅保留 rel + title 导航入口；capabilities 按 scope/flow 以摘要引用披露且不含 schema。执行仍以当前实体合同为准。\n${describeSitemap(context)}`,
     `## 授权合同观察账本(有界，按最近访问顺序；entity 为完整 Siren 快照)\n${describeObservations(context)}`,
     `## 轨迹(至今)\n${describeTrail(context)}`,
   ];

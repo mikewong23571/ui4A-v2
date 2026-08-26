@@ -446,6 +446,7 @@ async function streamAgentLoop(args: {
   principal: string;
   presentationPrincipal: string;
   startRel: string;
+  scope: string | null;
   fetchImpl: FetchLike;
   conversationMessages: AgentConversationMessage[];
   conversation: AgentConversationContext;
@@ -463,6 +464,7 @@ async function streamAgentLoop(args: {
     principal,
     presentationPrincipal,
     startRel,
+    scope,
     fetchImpl,
     conversationMessages,
     conversation,
@@ -493,6 +495,7 @@ async function streamAgentLoop(args: {
       principal,
       channel: 'chat',
       startRel,
+      app: scope ?? undefined,
       conversationMessages,
       conversation,
       clientView,
@@ -966,6 +969,7 @@ export async function POST(request: Request) {
           principal,
           presentationPrincipal,
           startRel,
+          scope: situation.scope,
           fetchImpl: turnFetch,
           conversationMessages: agentConversation.messages,
           conversation: agentConversation.context,
@@ -1086,6 +1090,7 @@ export async function POST(request: Request) {
       principal,
       presentationPrincipal,
       startRel,
+      scope: situation.scope,
       fetchImpl: turnFetch,
       conversationMessages: agentConversation.messages,
       conversation: agentConversation.context,
