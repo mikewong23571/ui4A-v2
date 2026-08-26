@@ -381,6 +381,7 @@ describe('效果词汇表 — spawn(T2 stub:只记事件不改状态)', () => {
     // T4 机械适配:definitions/activations/definitionVersions 表同口径随行。
     // T5 机械适配:delegations 表同口径随行。
     // T7 机械适配:renderSpecs 表同口径随行。
+    // T26 机械适配:threads 纯投影表同口径恒随行。
     expect(JSON.stringify(outcome.snapshot)).toBe(
       JSON.stringify({
         ...seedSnapshot,
@@ -391,6 +392,7 @@ describe('效果词汇表 — spawn(T2 stub:只记事件不改状态)', () => {
         definitionVersions: {},
         renderSpecs: {},
         artifacts: {},
+        threads: {},
       }),
     );
     expect(outcome.events.map((e) => e.kind)).toEqual(['action-executed', 'spawn-requested']);
