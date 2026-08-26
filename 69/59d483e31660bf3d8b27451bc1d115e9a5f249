@@ -1,0 +1,8 @@
+Task: Record T26 production deployment and CLI scope hotfix evidence
+
+Summary:
+- linked the evidence from the active T22 track index
+- recorded the completed revision 40-42 correction task in Phase J
+- documented replay and scope root causes, code/release commits, image digests, Helm evidence, installed CLI verification, audit seq 369-374, and the Node.js Web Storage full-suite limitation
+
+Why: T26 is immutable archived history; post-release deployment corrections belong to active T22 evidence so the operational loop remains auditable without rewriting the completed track.
