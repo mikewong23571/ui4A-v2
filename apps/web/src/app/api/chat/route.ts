@@ -808,8 +808,6 @@ export async function POST(request: Request) {
     identity: productionIdentity,
     clientView,
   });
-  const engine = await getEngine(getDb());
-  const startRel = startRelFromSituation(situation, engine.getSnapshot().applications ?? {});
   let turnFetch: FetchLike = (url, init) => fetch(url, init);
   if (
     productionIdentity !== undefined &&
@@ -931,6 +929,9 @@ export async function POST(request: Request) {
     if (!(error instanceof LlmConfigurationError)) throw error;
     configurationFailure = `LLM 不可用: ${error.message}。配置后可重试。`;
   }
+
+  const engine = await getEngine(getDb());
+  const startRel = startRelFromSituation(situation, engine.getSnapshot().applications ?? {});
 
   const userMessageId = turnId;
   await appendConversationMessage({

@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   dispatchDelegation: vi.fn(),
   exchangeDelegatedCredential: vi.fn(),
   fetcher: vi.fn(),
+  getEngine: vi.fn(),
   preflight: vi.fn(),
   readLog: vi.fn(),
   resolveIdentity: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock('../../../db/events', () => ({
 
 vi.mock('../../../engine/service', () => ({
   getDb: () => ({ kind: 'test-db' }),
+  getEngine: mocks.getEngine,
 }));
 
 vi.mock('../../../engine/presentation/runtime', () => ({
@@ -167,6 +169,15 @@ beforeEach(() => {
   mocks.fetcher.mockReset();
   mocks.fetcher.mockImplementation(async (input: string | URL | Request) => successfulFetch(input));
   vi.stubGlobal('fetch', mocks.fetcher);
+  mocks.getEngine.mockReset();
+  mocks.getEngine.mockResolvedValue({
+    getSnapshot: () => ({
+      applications: {
+        default: { entry: 'flow:article-drafting' },
+        development: { entry: 'flow:software-change' },
+      },
+    }),
+  });
   mocks.preflight.mockReset();
   mocks.preflight.mockReturnValue({
     settings: {
@@ -414,6 +425,7 @@ describe('production chat turn credential boundary', () => {
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ error: { code: 'agent_scope_exceeded' } });
     expect(mocks.exchangeDelegatedCredential).not.toHaveBeenCalled();
+    expect(mocks.getEngine).not.toHaveBeenCalled();
     expect(mocks.readLog).not.toHaveBeenCalled();
     expect(mocks.appendEvent).not.toHaveBeenCalled();
     expect(mocks.runAgent).not.toHaveBeenCalled();

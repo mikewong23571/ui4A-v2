@@ -131,14 +131,14 @@ describe('mode=delegated(委托派发)', () => {
     expect(json.statusUrl).toBe('/api/delegations/11111111-2222-3333-4444-555555555555');
 
     // 派发参数:goal 原样;driverKind 是 AI-first 的 llm;
-    // 无 focus/application entry 时 startRel 是 business 站点约定入口 articles;
+    // 无 focus 时 startRel 是 default application 的结构化入口;
     // principal 沿用 chat 会话口径;
     // baseUrl 是自身 origin(activity 内 fetch 引擎合同的回环本源)。
     expect(dispatchMock).toHaveBeenCalledTimes(1);
     const args = dispatchMock.mock.calls[0]![0] as Record<string, unknown>;
     expect(args.goal).toEqual({ verb: '发布一篇文章', fields: { title: '委托发布' } });
     expect(args.driverKind).toBe('llm');
-    expect(args.startRel).toBe('articles');
+    expect(args.startRel).toBe('flow:article-drafting');
     expect(args.principal).toBe('user:sess-d1');
     expect(args.baseUrl).toBe(base);
   });
