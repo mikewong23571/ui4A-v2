@@ -32,7 +32,7 @@
 > 先于新首页与新导航落地——保绿即冻结旧首页 = 方向错误。本 Phase 是纠偏原则
 > 的执行,不是测试补强。
 
-- [ ] Task: e2e 首页锚点迁移
+- [~] Task: e2e 首页锚点迁移
   - 按 spec"误导性验收排查"清单逐条处置 `e2e/human.spec.ts`(:52-53/:56/:84/
     :116/:149-150)、`e2e/dual-executor.spec.ts`(:157/:175/:207)、
     `e2e/s1.spec.ts:391-419`、`e2e/smoke.spec.ts:8-9`:改为断言合同承诺
@@ -111,8 +111,17 @@
 
 - [ ] Task: 全量验收
   - `pnpm check` 全绿;`CI=true pnpm e2e invariants` 全绿;`CI=true pnpm e2e`
-    全量全绿;T16 presentation 套件、T24 honesty 套件、chat 套件全绿;
-    `pnpm dev:all` 实际启动走查(里程碑约束:系统必须处于可运行状态)
+    全量全绿;T16 presentation 套件、T24 honesty 套件、chat 套件全绿;这些
+    本地命令只作为开发门禁,不作为 Track 最终现场验收证据
+  - 从完成 T27 的确定 Git SHA 构建 Web/Worker/Runner OCI images,记录 archive
+    checksum 与 immutable digest;按 `docs/t22-production-runbook.md` 和 mothership
+    overlay 将同一组 digest 导入目标节点并执行受审 Helm upgrade,禁止 mutable
+    tag 漂移、`--force`、删除 PVC/PV/Secret 或绕过 Istio/OIDC
+  - 在 `https://ui4a.mothership.internal:32067` 现场验收 T27 DoD:workstation/meta/
+    raw 形态、我的事三区域与合同对拍、处境声明与 presence 留痕、双桥、I3/I5/I7
+    不变量;记录 Git SHA、image digests、mothership-setup SHA、Helm revision、命令、
+    时间与结果到本 Track evidence。最终结论只依据该部署环境,不以本地
+    `pnpm dev:all` 代替
 - [ ] Task: Track 收尾
   - `conductor/tracks.md` 状态流转;track 目录按 GR5 处置(无 bespoke 脚本/
     配置残留);metadata.json 归档;components 目录基线按实际收缩更新
@@ -130,4 +139,5 @@
    经 clientView 同源消费;
 5. 双桥可达、保 scope、零映射表;
 6. CLI 对照三类事实逐项一致;`pnpm check` + `CI=true pnpm e2e invariants` +
-   e2e 全量全绿;系统实际可运行。
+   e2e 全量全绿;从确定 SHA 构建的 immutable images 已部署至 mothership,并在
+   现场环境完成 DoD 验收与可审计 evidence,系统实际可运行。

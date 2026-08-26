@@ -321,7 +321,11 @@ D46 已完成五问决断；以下是 Phase B–F 必须实现的单一路径，
   套件、T24 honesty 套件、chat 套件全绿;
 - Playwright 截图走查:首屏零机制词汇、三门问题(上次干到哪/什么在等我/
   什么在动)一眼可答;
-- 里程碑约束:`pnpm dev:all` 实际启动走查,系统可运行。
+- 本地 `pnpm check`/Playwright 只作开发门禁。最终验收必须从确定 Git SHA 构建
+  Web/Worker/Runner immutable OCI images,按 T22 runbook 部署到 mothership,并在
+  `https://ui4a.mothership.internal:32067` 现场走查;不得以本地 `pnpm dev:all`
+  替代。evidence 至少记录 Git SHA、三类 image digest、archive checksum、
+  mothership-setup SHA、Helm revision、命令、时间与逐项结果。
 
 ## 验收目标纠偏原则(本 Track 全程适用)
 
