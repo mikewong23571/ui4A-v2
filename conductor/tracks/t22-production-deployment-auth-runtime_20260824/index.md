@@ -27,6 +27,7 @@ canonical delegation。两种部署共用固定 realm 文件，首次导入，�
 - [PostgreSQL and Temporal Topology Facts](./topology-probe.json)
 - [Architecture](./architecture.md)
 - [Experimental Authentication Surface](./auth-surface.md)
+- [T26 Work Thread Production and CLI Hotfix Evidence](./evidence-t26-cli-scope-hotfix-20260826.md)
 - [Implementation Plan](./plan.md)
 
 当前状态：`in_progress`。目标发布为 `v0.1.0-experimental.1`，不宣称 GA、正式 SLA 或当前两 Worker

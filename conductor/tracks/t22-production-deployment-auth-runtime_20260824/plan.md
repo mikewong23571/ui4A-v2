@@ -245,6 +245,17 @@
 - [x] 执行新镜像 rollout 和 smoke
 - [x] 证明 upgrade 前后 event log 未截断或重写；不执行实际 rollback drill
 - [x] realm 在线升级与通用 bootstrap Job replacement 后移；记录直接备份/恢复边界
+- [x] Task: T26 Work Thread 生产部署与 credential scope hotfix 闭环 `41a228d`
+- [x] revision 40 首次部署发现 credential identity 审计封套导致严格 replay 失败；
+  `91e1a6e`/`8d3b289` 修复并以 revision 41 验证既有日志重放
+- [x] 安装版 CLI 在 revision 41 完成 create/attach/read/audit/pause/resume，发现单步 exec
+  返回未经过当前 credential scope lens 的实体；Red→Green 修复提交 `41a228d`
+- [x] 从 revision 41 基线隔离生成 release commit `d5557bf`，避免夹带并行 T30；Web
+  digest `sha256:9b0e20077d16368f0197a8fa493b8ec8b12b74b327a9caf030113e0c2e81911c`
+  在两节点一致并部署为 Helm revision 42
+- [x] 临时安装 `pnpm pack` 产物后复验：exec 与普通 GET 的默认 scope 均隐藏
+  `articles`，显式已授予 publishing scope 仍可见；事件 `369–374` 审计完整
+- [x] 证据：[`evidence-t26-cli-scope-hotfix-20260826.md`](./evidence-t26-cli-scope-hotfix-20260826.md)
 - [ ] Task: 运行全量质量门
 - [ ] focused Vitest、`pnpm check` 和 `CI=true pnpm e2e`
 - [ ] 单副本 Compose/K8s acceptance、主路径 auth negatives、最小三次 Runtime Run 和 restore drill

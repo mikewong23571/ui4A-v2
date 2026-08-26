@@ -26,7 +26,7 @@
     推荐默认措辞；tracks.md 无需动(本 Track 已登记)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `e325ac0`
 
-## Phase B: 组合声明模型(数据 + 严格 parse)
+## Phase B: 组合声明模型(数据 + 严格 parse) [checkpoint: fe50bc3]
 
 - [x] Task: CompositionDeclaration 类型与严格 parse `fab35f2`
   - 在 `packages/shared` 定义声明类型并提供严格 parser(id/version/
@@ -48,7 +48,7 @@
   - Phase checkpoint 审计发现 `delegations` 已有合法集合投影但未声明为 sitemap
     surface；将它加入业务 sitemap 的 app-neutral extra surface，并增加 registry
     source 与 sitemap 的交叉测试，防止声明引用不可发现源
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `fe50bc3`
 
 ## Phase C: 组合规划内核(packages/engine,新模块)
 
