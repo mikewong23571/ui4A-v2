@@ -15,7 +15,7 @@
 
 ## Phase A: Spike → DECISIONS(分歧先于代码)
 
-- [ ] Task: spike 五问决断,落 DECISIONS.md D46
+- [x] Task: spike 五问决断,落 DECISIONS.md D46 `952574e`
   - 五问 = spec.md"Phase A 决策点":首页落地形态、处境常显与显式声明形态、
     站点命名与 presence site 值域、导航折叠形态、跨站桥推导规则
   - 每问给候选/约束/推荐默认/否决项与理由;锚点:spec.md"现状事实"节;
