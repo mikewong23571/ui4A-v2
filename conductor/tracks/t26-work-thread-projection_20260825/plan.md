@@ -60,7 +60,7 @@
     (goal/上下文包/进行中/待批准/事件切片;成员来自 fold,当前状态指针只从
     同一 EngineSnapshot 的 canonical 投影解析,不可解析引用保留 dangling)
   - Red→Green:Siren 形状合同测试(class/links/actions/guard-results)
-- [~] Task: sitemap 与授权覆盖
+- [x] Task: sitemap 与授权覆盖 6584bba
   - `apps/web/src/engine/service-sitemaps.ts` `extraSurfaces` 加 `threads`
     (与 inbox/agent-runs 同法,contentVersion 缓存自动生效)
   - `relCoveredByPolicyScope`(`apps/web/src/auth/application-scope.ts`)
@@ -69,7 +69,7 @@
     再按当前 policy scope 过滤成员链接
   - 测试:sitemap 出现 threads surface;credentialed 客户端 GET
     `thread:<id>` 不 403;越权 principal 仍被拒
-- [ ] Task: I5 枚举扩展
+- [~] Task: I5 枚举扩展
   - `e2e/invariants.spec.ts` `enumerateEntityRels` 纳入 `threads`/`thread:*`;
     在线/重放 hash 一致(除新增投影表外与现状等价)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
