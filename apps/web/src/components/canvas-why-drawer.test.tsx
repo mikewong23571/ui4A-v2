@@ -252,6 +252,23 @@ describe('「为什么这样展示」抽屉(T24)', () => {
             explanation: {
               provenance: { kind: 'human-patch', ref: 'canvas:collapse:1' },
               dependencyIds: ['dep:1', 'dep:2', 'dep:3'],
+              composition: {
+                id: 'my-work',
+                version: '1',
+                regions: [
+                  { region: 'waiting-for-me', availability: 'available' },
+                  {
+                    region: 'in-motion',
+                    availability: 'unavailable',
+                    diagnosticCode: 'region-unavailable',
+                  },
+                  { region: 'work-lines', availability: 'available' },
+                ],
+                declarationProvenance: {
+                  kind: 'composition-declaration',
+                  ref: 'composition:my-work@1',
+                },
+              },
             },
           }),
         ),
@@ -268,7 +285,51 @@ describe('「为什么这样展示」抽屉(T24)', () => {
     expect(screen.getByTestId('canvas-why-provenance-kind').textContent).toBe('human-patch');
     expect(screen.getByTestId('canvas-why-provenance-ref').textContent).toBe('canvas:collapse:1');
     expect(screen.getByTestId('canvas-why-dependency-count').textContent).toBe('3 项');
+    expect(screen.getByTestId('canvas-why-composition-declaration').textContent).toContain(
+      'my-work · v1',
+    );
+    expect(screen.getByTestId('canvas-why-composition-provenance').textContent).toContain(
+      'composition:my-work@1',
+    );
+    expect(screen.getByTestId('canvas-why-composition-regions').textContent).toContain(
+      'waiting-for-me ·可用',
+    );
+    expect(screen.getByTestId('canvas-why-composition-regions').textContent).toContain(
+      'in-motion ·不可用 · region-unavailable',
+    );
     // notify 告示仍是现状口径(「这样展示是因为 …」)。
     expect(screen.getByTestId('harness-notice').textContent).toContain('这样展示是因为');
+  });
+
+  it('组合声明版本、provenance 与区域清单只在抽屉打开后可见', () => {
+    const { container } = renderDrawer({
+      explanation: {
+        provenance: { kind: 'generic-fallback', ref: 'workspace' },
+        dependencyCount: 4,
+        composition: {
+          id: 'my-work',
+          version: '1',
+          regions: [
+            { region: 'waiting-for-me', availability: 'available' },
+            { region: 'in-motion', availability: 'available' },
+            { region: 'work-lines', availability: 'available' },
+          ],
+          declarationProvenance: {
+            kind: 'composition-declaration',
+            ref: 'composition:my-work@1',
+          },
+        },
+      },
+    });
+
+    expect(container.textContent).not.toContain('waiting-for-me');
+    expect(container.textContent).not.toContain('composition:my-work@1');
+    fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
+    expect(screen.getByTestId('canvas-why-composition-regions').textContent).toContain(
+      'waiting-for-me',
+    );
+    expect(screen.getByTestId('canvas-why-composition-provenance').textContent).toContain(
+      'composition:my-work@1',
+    );
   });
 });

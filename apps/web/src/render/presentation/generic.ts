@@ -76,9 +76,12 @@ export function planGenericPresentationSurface(
 export function hydratePresentationSurface(
   subject: string,
   surface: SurfaceTree,
-  entity: SirenEntity,
+  roots: SirenEntity | readonly SirenEntity[],
 ): GenericPresentationPlan {
-  const entities = presentationEntityMap(entity);
+  const entities = new Map<string, SirenEntity>();
+  for (const root of Array.isArray(roots) ? roots : [roots]) {
+    for (const [rel, entity] of presentationEntityMap(root)) entities.set(rel, entity);
+  }
   const bundle = compileSurfaceTree(surface, {
     surfaceId: `presentation-${encodeURIComponent(subject)}`,
     catalog: PRESENTATION_SURFACE_CATALOG,

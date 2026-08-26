@@ -224,6 +224,57 @@ export interface SidecarPresentationExplanation {
   provenance: UserSidecarAggregate['versions'][number]['provenance'];
   dependencyIds: string[];
   staleReason: string | null;
+  composition?: {
+    id: string;
+    version: string;
+    regions: Array<{
+      region: string;
+      availability: 'available' | 'unavailable';
+      diagnosticCode?: 'region-unavailable';
+    }>;
+    declarationProvenance: {
+      kind: 'composition-declaration';
+      ref: string;
+    };
+  };
+}
+
+function explainComposition(
+  sidecar: UserSidecarAggregate,
+  active: UserSidecarAggregate['versions'][number],
+): SidecarPresentationExplanation['composition'] {
+  if (typeof sidecar.key.subject !== 'string' || !sidecar.key.subject.startsWith('workspace:')) {
+    return undefined;
+  }
+  if (active.surface.root.kind !== 'layout') return undefined;
+  const id = sidecar.key.subject.slice('workspace:'.length);
+  const provenancePrefix = `composition:${id}@`;
+  const declarationProvenance = active.surface.root.provenance.find(
+    (entry) =>
+      entry.kind === 'composition-declaration' &&
+      entry.ref.startsWith(provenancePrefix) &&
+      !entry.ref.slice(provenancePrefix.length).includes('#'),
+  );
+  if (declarationProvenance === undefined) return undefined;
+  const version = declarationProvenance.ref.slice(provenancePrefix.length);
+  if (version === '' || active.surface.root.children.some((node) => node.kind !== 'slot')) {
+    return undefined;
+  }
+  return {
+    id,
+    version,
+    regions: active.surface.root.children.map((node) => {
+      if (node.kind !== 'slot') throw new Error('Composition region slot is unavailable');
+      return node.child.kind === 'diagnostic' && node.child.code === 'region-unavailable'
+        ? {
+            region: node.name,
+            availability: 'unavailable' as const,
+            diagnosticCode: 'region-unavailable' as const,
+          }
+        : { region: node.name, availability: 'available' as const };
+    }),
+    declarationProvenance: { ...declarationProvenance, kind: 'composition-declaration' },
+  };
 }
 
 export function explainSidecarPresentation(
@@ -235,6 +286,7 @@ export function explainSidecarPresentation(
   if (sidecar === undefined || active === undefined || active.provenance.ref === '') {
     throw new Error('Presentation provenance is unavailable');
   }
+  const composition = explainComposition(sidecar, active);
   return {
     sidecarId,
     version: sidecar.activeVersion,
@@ -244,5 +296,6 @@ export function explainSidecarPresentation(
     provenance: { ...active.provenance },
     dependencyIds: active.dependencies.map(({ id }) => id),
     staleReason: sidecar.stale?.reason ?? null,
+    ...(composition === undefined ? {} : { composition }),
   };
 }

@@ -140,6 +140,66 @@ function surface(): SurfaceTree {
   };
 }
 
+function workspaceSurface(): SurfaceTree {
+  const region = (
+    name: string,
+    child: Extract<SurfaceTree['root'], { kind: 'word' | 'diagnostic' }>,
+  ) => ({
+    kind: 'slot' as const,
+    id: `region-slot:${name}`,
+    role: 'primary-content' as const,
+    name,
+    dependencies: [],
+    provenance: [
+      { kind: 'composition-declaration' as const, ref: `composition:my-work@1#${name}` },
+    ],
+    child,
+  });
+  return {
+    schemaVersion: 1,
+    root: {
+      kind: 'layout',
+      id: 'root',
+      role: 'primary-content',
+      layout: 'stack',
+      dependencies: [],
+      provenance: [{ kind: 'composition-declaration', ref: 'composition:my-work@1' }],
+      children: [
+        region('waiting-for-me', {
+          kind: 'word',
+          id: 'waiting-state',
+          role: 'status',
+          word: 'state',
+          bindings: {
+            value: { kind: 'property', subject: 'inbox', path: 'properties.count' },
+          },
+          dependencies: [catalogDependency, entityDependency('inbox', ['properties.count'])],
+          provenance,
+        }),
+        region('in-motion', {
+          kind: 'diagnostic',
+          id: 'moving-unavailable',
+          role: 'diagnostic',
+          code: 'region-unavailable',
+          dependencies: [],
+          provenance: [{ kind: 'validator', ref: 'region-unavailable' }],
+        }),
+        region('work-lines', {
+          kind: 'word',
+          id: 'thread-count',
+          role: 'primary-content',
+          word: 'prose',
+          bindings: {
+            value: { kind: 'property', subject: 'threads', path: 'properties.count' },
+          },
+          dependencies: [catalogDependency, entityDependency('threads', ['properties.count'])],
+          provenance,
+        }),
+      ],
+    },
+  };
+}
+
 const facts = new Map<string, unknown>([
   ['property:post:first:properties.fields.title', 'First post'],
   ['property:post:first:properties.node', 'published'],
@@ -151,6 +211,8 @@ const facts = new Map<string, unknown>([
       { properties: { fields: { title: 'Second post' } } },
     ],
   ],
+  ['property:inbox:properties.count', 2],
+  ['property:threads:properties.count', 3],
 ]);
 
 function bindingKey(binding: SurfaceBinding): string {
@@ -168,6 +230,39 @@ function messagesOf(bundle: { messages: A2uiMessage[] }): A2uiMessage[] {
 }
 
 describe('normalized Surface Tree to A2UI v0.9 compiler', () => {
+  it('compiles one workspace root with three direct region slots through generic words and diagnostics', () => {
+    const bundle = compileSurfaceTree(workspaceSurface(), {
+      surfaceId: 'presentation-workspace%3Amy-work',
+      catalog: PRESENTATION_SURFACE_CATALOG,
+      catalogAdapter: UI4A_A2UI_CATALOG_ADAPTER,
+      expectedCatalogFingerprint: UI4A_A2UI_CATALOG_ADAPTER.fingerprint,
+      deref,
+    });
+
+    expect(bundle.issues).toEqual([]);
+    expect(bundle.messages.filter((message) => 'createSurface' in message)).toHaveLength(1);
+    const componentMessage = bundle.messages[2] as Extract<
+      A2uiMessage,
+      { updateComponents: unknown }
+    >;
+    const root = componentMessage.updateComponents.components.find(
+      (component) => component.id === 'root',
+    );
+    expect(root).toMatchObject({ component: 'Column' });
+    expect(root?.children).toEqual([
+      'node:region-slot%3Awaiting-for-me',
+      'node:region-slot%3Ain-motion',
+      'node:region-slot%3Awork-lines',
+    ]);
+    expect(componentMessage.updateComponents.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ component: 'semantic-text', variant: 'status' }),
+        expect.objectContaining({ component: 'semantic-text', variant: 'prose' }),
+        expect.objectContaining({ id: 'node:moving-unavailable', variant: 'caption' }),
+      ]),
+    );
+  });
+
   it('maps layout/slot/repeat/semantic words and hydrates facts only through updateDataModel', () => {
     const bundle = compileSurfaceTree(surface(), {
       surfaceId: 'post-first-read',

@@ -127,24 +127,47 @@ export function CanvasWhyDrawer({
               解释这次呈现
             </Button>
             {explanation !== undefined && (
-              <ul data-testid="canvas-why-explanation" className="mt-2 space-y-1">
-                <li>
-                  来源类型:
-                  <code data-testid="canvas-why-provenance-kind">
-                    {explanation.provenance.kind}
-                  </code>
-                </li>
-                <li>
-                  来源引用:
-                  <code data-testid="canvas-why-provenance-ref">{explanation.provenance.ref}</code>
-                </li>
-                <li>
-                  依赖:
-                  <span data-testid="canvas-why-dependency-count">
-                    {explanation.dependencyCount} 项
-                  </span>
-                </li>
-              </ul>
+              <div data-testid="canvas-why-explanation" className="mt-2 space-y-2">
+                <ul className="space-y-1">
+                  <li>
+                    来源类型:
+                    <code data-testid="canvas-why-provenance-kind">
+                      {explanation.provenance.kind}
+                    </code>
+                  </li>
+                  <li>
+                    来源引用:
+                    <code data-testid="canvas-why-provenance-ref">
+                      {explanation.provenance.ref}
+                    </code>
+                  </li>
+                  <li>
+                    依赖:
+                    <span data-testid="canvas-why-dependency-count">
+                      {explanation.dependencyCount} 项
+                    </span>
+                  </li>
+                </ul>
+                {explanation.composition !== undefined && (
+                  <section aria-label="组合声明" className="space-y-1">
+                    <p data-testid="canvas-why-composition-declaration">
+                      组合声明 {explanation.composition.id} · v{explanation.composition.version}
+                    </p>
+                    <p data-testid="canvas-why-composition-provenance">
+                      声明来源:
+                      <code>{explanation.composition.declarationProvenance.ref}</code>
+                    </p>
+                    <ol data-testid="canvas-why-composition-regions" className="list-decimal pl-4">
+                      {explanation.composition.regions.map((region) => (
+                        <li key={region.region}>
+                          {region.region} ·{region.availability === 'available' ? '可用' : '不可用'}
+                          {region.diagnosticCode === undefined ? '' : ` · ${region.diagnosticCode}`}
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+                )}
+              </div>
             )}
           </section>
           <section aria-label="原始合同">

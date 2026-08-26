@@ -26,6 +26,16 @@ export interface SidecarMeta {
 export interface SidecarExplanation {
   provenance: { kind: string; ref: string };
   dependencyCount: number;
+  composition?: {
+    id: string;
+    version: string;
+    regions: Array<{
+      region: string;
+      availability: 'available' | 'unavailable';
+      diagnosticCode?: 'region-unavailable';
+    }>;
+    declarationProvenance: { kind: 'composition-declaration'; ref: string };
+  };
 }
 
 export interface SidecarActions {
@@ -133,7 +143,11 @@ export function useSidecarActions(deps: {
       `/api/presentation/sidecar?sidecarId=${encodeURIComponent(sidecarMeta.id)}&explain=1`,
     );
     const body = (await response.json()) as {
-      explanation?: { provenance?: { kind?: string; ref?: string }; dependencyIds?: string[] };
+      explanation?: {
+        provenance?: { kind?: string; ref?: string };
+        dependencyIds?: string[];
+        composition?: SidecarExplanation['composition'];
+      };
       error?: string;
     };
     if (!response.ok || body.explanation === undefined) {
@@ -147,6 +161,9 @@ export function useSidecarActions(deps: {
         ref: body.explanation.provenance?.ref ?? 'unknown',
       },
       dependencyCount: body.explanation.dependencyIds?.length ?? 0,
+      ...(body.explanation.composition === undefined
+        ? {}
+        : { composition: body.explanation.composition }),
     });
     notify(
       `这样展示是因为 ${body.explanation.provenance?.kind ?? 'unknown'}:${

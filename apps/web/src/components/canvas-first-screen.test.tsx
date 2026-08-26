@@ -15,10 +15,10 @@
  * useSearchParams + 全局 fetch 应答目录协商/sitemap/实体读取(/api/entity
  * 经页面级实体缓存默认 fetcher 走同一全局 fetch)。
  */
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { SirenEntity } from '@ui4a/engine';
+import { assembleSurfaceRegions, type SirenEntity } from '@ui4a/engine';
 
 import { MECHANISM_WORDS } from '@/lib/mechanism-words';
 import { planGenericPresentationSurface } from '@/render/presentation/generic';
@@ -78,6 +78,35 @@ const SIDECAR_SURFACE = planGenericPresentationSurface(
   'definition-v1',
 ).surface;
 
+const WORKSPACE_SOURCES = [
+  post('inbox', '在等我', '需要我处理的工作', 'work'),
+  post('delegations', '在动', '正在执行的工作', 'work'),
+  post('threads', '工作线', '持续推进的工作线', 'work'),
+] as const;
+const WORKSPACE_SURFACE = assembleSurfaceRegions(
+  [
+    { region: 'waiting-for-me', entity: WORKSPACE_SOURCES[0] },
+    { region: 'in-motion', entity: WORKSPACE_SOURCES[1] },
+    { region: 'work-lines', entity: WORKSPACE_SOURCES[2] },
+  ].map(({ region, entity }) => ({
+    region,
+    surface: planGenericPresentationSurface(
+      entity.properties.rel as string,
+      entity,
+      'definition-v1',
+    ).surface,
+    provenance: [
+      {
+        kind: 'composition-declaration' as const,
+        ref: `composition:my-work@1#${region}`,
+      },
+    ],
+  })),
+  {
+    provenance: [{ kind: 'composition-declaration', ref: 'composition:my-work@1' }],
+  },
+);
+
 /** 控制条(canvas-sidecar-toolbar)可读机制文案。覆盖两种 retention 下
  * 实际出现的全部机制文本;「为什么这样展示」除外——它同时是抽屉入口的
  * 保留文案,不属主区域禁词。 */
@@ -108,6 +137,7 @@ function sidecarResponseBody(retention: 'cache' | 'pinned'): unknown {
       retention,
       key: { subject: 'post:first-post' },
       surface: SIDECAR_SURFACE,
+      dependencies: [{ id: 'post-contract', kind: 'entity-contract', ref: 'post:first-post' }],
       view: { collapsedNodeIds: [], densityByNodeId: {} },
     },
   };
@@ -149,6 +179,73 @@ function mockCanvasContract(withSidecar?: {
   });
 }
 
+function mockWorkspaceCanvasContract(
+  dependencies = WORKSPACE_SOURCES.map((entity, index) => ({
+    id: `workspace-source:${index}`,
+    kind: 'entity-contract',
+    ref: entity.properties.rel,
+  })),
+): ReturnType<typeof vi.fn> {
+  const rows = Object.fromEntries(
+    WORKSPACE_SOURCES.map((entity) => [entity.properties.rel as string, entity]),
+  );
+  return vi.fn((input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url === '/api/render/catalog')
+      return Promise.resolve(jsonResponse(200, renderCatalogJson()));
+    if (url.startsWith('/.well-known/ui4a.json'))
+      return Promise.resolve(jsonResponse(200, { version: 'definition-v1' }));
+    if (url.includes('explain=1')) {
+      return Promise.resolve(
+        jsonResponse(200, {
+          explanation: {
+            provenance: { kind: 'generic-fallback', ref: 'workspace:my-work' },
+            dependencyIds: ['definition', 'catalog', 'policy'],
+            composition: {
+              id: 'my-work',
+              version: '1',
+              regions: [
+                { region: 'waiting-for-me', availability: 'available' },
+                { region: 'in-motion', availability: 'available' },
+                { region: 'work-lines', availability: 'available' },
+              ],
+              declarationProvenance: {
+                kind: 'composition-declaration',
+                ref: 'composition:my-work@1',
+              },
+            },
+          },
+        }),
+      );
+    }
+    if (url.startsWith('/api/presentation/sidecar?')) {
+      return Promise.resolve(
+        jsonResponse(200, {
+          sidecar: {
+            id: 'sidecar:workspace',
+            version: 1,
+            retention: 'cache',
+            key: { subject: 'workspace:my-work' },
+            surface: WORKSPACE_SURFACE,
+            dependencies,
+            view: { collapsedNodeIds: [], densityByNodeId: {} },
+          },
+        }),
+      );
+    }
+    if (url.startsWith('/api/entity?rel=')) {
+      const rel = new URL(url, 'http://ui4a.test').searchParams.get('rel') ?? '';
+      const entity = rel === 'render-specs' ? EMPTY_SPECS : rows[rel];
+      return Promise.resolve(
+        entity === undefined
+          ? jsonResponse(404, { error: 'not found' })
+          : jsonResponse(200, entity),
+      );
+    }
+    return Promise.resolve(jsonResponse(404, { error: `unknown ${url}` }));
+  });
+}
+
 /** 带 Sidecar 的成功渲染:返回主区域容器文本(抽屉默认关闭)。 */
 async function renderCanvasWithSidecar(retention: 'cache' | 'pinned'): Promise<{
   container: HTMLElement;
@@ -169,6 +266,99 @@ async function renderCanvasWithSidecar(retention: 'cache' | 'pinned'): Promise<{
 }
 
 describe('CanvasBody 首屏零机制词(T24)', () => {
+  it('单树挂载 workspace Sidecar 的三个 direct region slots，机制信息仅在 why 抽屉', async () => {
+    window.history.pushState(
+      {},
+      '',
+      '/canvas?focus=workspace%3Amy-work&sidecar=sidecar%3Aworkspace',
+    );
+    const fetchMock = mockWorkspaceCanvasContract();
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = render(
+      <EntityCacheProvider>
+        <CanvasBody />
+      </EntityCacheProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: '在等我', level: 1 })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '在动', level: 1 })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '工作线', level: 1 })).toBeTruthy();
+    expect(container.querySelectorAll('[data-surface]')).toHaveLength(1);
+    expect(container.querySelector('section[aria-label="surfaces"]')?.className).not.toContain(
+      'grid-cols-2',
+    );
+    expect(container.textContent).not.toContain('waiting-for-me');
+    expect(container.textContent).not.toContain('composition:my-work@1');
+    expect(
+      fetchMock.mock.calls.some(([input]) => String(input).includes('rel=workspace%3Amy-work')),
+    ).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
+    fireEvent.click(screen.getByTestId('canvas-why-explain'));
+    expect((await screen.findByTestId('canvas-why-composition-regions')).textContent).toContain(
+      'waiting-for-me',
+    );
+    expect(screen.getByTestId('canvas-why-composition-provenance').textContent).toContain(
+      'composition:my-work@1',
+    );
+  });
+
+  it('Sidecar hydration 只读取已授权 entity-contract refs，空依赖不回退到 workspace focus', async () => {
+    window.history.pushState(
+      {},
+      '',
+      '/canvas?focus=workspace%3Amy-work&sidecar=sidecar%3Aworkspace',
+    );
+    const fetchMock = mockWorkspaceCanvasContract([]);
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = render(
+      <EntityCacheProvider>
+        <CanvasBody />
+      </EntityCacheProvider>,
+    );
+
+    await waitFor(() => expect(container.querySelectorAll('[data-surface]')).toHaveLength(1));
+    const entityReads = fetchMock.mock.calls
+      .map(([input]) => String(input))
+      .filter(
+        (url) => url.startsWith('/api/entity?rel=') && !url.includes('rel=render-specs'),
+      );
+    expect(entityReads).toEqual([]);
+  });
+
+  it('partial workspace hydration 只读取 visible source，不读取 denied regions 或虚主体', async () => {
+    window.history.pushState(
+      {},
+      '',
+      '/canvas?focus=workspace%3Amy-work&sidecar=sidecar%3Aworkspace',
+    );
+    const fetchMock = mockWorkspaceCanvasContract([
+      { id: 'workspace-source:threads', kind: 'entity-contract', ref: 'threads' },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <EntityCacheProvider>
+        <CanvasBody />
+      </EntityCacheProvider>,
+    );
+
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([input]) => String(input).includes('rel=threads')),
+      ).toBe(true),
+    );
+    const entityReads = fetchMock.mock.calls
+      .map(([input]) => String(input))
+      .filter(
+        (url) => url.startsWith('/api/entity?rel=') && !url.includes('rel=render-specs'),
+      );
+    expect(entityReads).toHaveLength(1);
+    expect(entityReads[0]).toContain('rel=threads');
+    expect(entityReads[0]).not.toContain('workspace');
+    expect(entityReads[0]).not.toContain('inbox');
+    expect(entityReads[0]).not.toContain('delegations');
+  });
+
   it('成功渲染 surface 后,首屏主区域文本不含机制词表中的任何词', async () => {
     // focus 实例 rel 含冒号:表面 ID 呈 presentation-post%3A… 形态(词表特征)。
     window.history.pushState({}, '', '/canvas?focus=post%3Afirst-post');

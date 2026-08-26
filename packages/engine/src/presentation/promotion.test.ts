@@ -414,4 +414,81 @@ describe('Sidecar promotion and explanation', () => {
       /provenance/i,
     );
   });
+
+  it('explains full and partial workspace regions in declaration order without source or policy leakage', () => {
+    const workspace = compositionSnapshot();
+    const aggregate = workspace.sidecars['sidecar:1']!;
+    aggregate.key.subject = 'workspace:my-work';
+    const active = aggregate.versions[aggregate.activeVersion]!;
+    if (active.surface.root.kind !== 'layout') throw new Error('fixture must be a layout');
+    active.surface.root.provenance = [
+      { kind: 'composition-declaration', ref: 'composition:my-work@3' },
+    ];
+    active.surface.root.children[0]!.provenance = [
+      { kind: 'composition-declaration', ref: 'composition:my-work@3#waiting' },
+    ];
+    active.surface.root.children[1]!.provenance = [
+      { kind: 'composition-declaration', ref: 'composition:my-work@3#moving' },
+    ];
+    active.dependencies = [
+      {
+        id: 'composition:my-work@3:waiting:entity-contract',
+        subtreeId: 'waiting-slot',
+        kind: 'entity-contract',
+        ref: 'inbox-secret-source',
+        pointers: ['$contract'],
+        mode: 'invalidate',
+        fingerprint: 'secret-entity-fingerprint',
+        optional: false,
+      },
+      {
+        id: 'composition:my-work@3:policy',
+        subtreeId: 'root',
+        kind: 'policy',
+        ref: 'secret-policy-scope',
+        pointers: ['$policy'],
+        mode: 'invalidate',
+        fingerprint: 'secret-policy-fingerprint',
+        optional: false,
+      },
+    ];
+
+    expect(explainSidecarPresentation(workspace, 'sidecar:1').composition).toEqual({
+      id: 'my-work',
+      version: '3',
+      regions: [
+        { region: 'waiting', availability: 'available' },
+        { region: 'moving', availability: 'available' },
+      ],
+      declarationProvenance: {
+        kind: 'composition-declaration',
+        ref: 'composition:my-work@3',
+      },
+    });
+
+    const moving = active.surface.root.children[1]!;
+    if (moving.kind !== 'slot') throw new Error('fixture must contain region slots');
+    moving.child = {
+      kind: 'diagnostic',
+      id: 'moving-unavailable',
+      role: 'diagnostic',
+      code: 'region-unavailable',
+      dependencies: [],
+      provenance: [{ kind: 'validator', ref: 'region-unavailable' }],
+    };
+    const partial = explainSidecarPresentation(workspace, 'sidecar:1');
+    expect(partial.composition?.regions).toEqual([
+      { region: 'waiting', availability: 'available' },
+      {
+        region: 'moving',
+        availability: 'unavailable',
+        diagnosticCode: 'region-unavailable',
+      },
+    ]);
+    const serialized = JSON.stringify(partial);
+    expect(serialized).not.toContain('inbox-secret-source');
+    expect(serialized).not.toContain('secret-policy-scope');
+    expect(serialized).not.toContain('secret-entity-fingerprint');
+    expect(serialized).not.toContain('secret-policy-fingerprint');
+  });
 });

@@ -246,6 +246,7 @@ export function CanvasBody() {
         }
       }
       let sidecarSurface: SurfaceTree | undefined;
+      let sidecarHydrationRels: string[] = [];
       if (resolvedSidecarId !== undefined && requestedFocuses.length === 1) {
         const response = await fetch(
           `/api/presentation/sidecar?sidecarId=${encodeURIComponent(resolvedSidecarId)}`,
@@ -261,6 +262,7 @@ export function CanvasBody() {
             retention?: unknown;
             key?: { subject?: unknown };
             surface?: SurfaceTree;
+            dependencies?: Array<{ kind?: unknown; ref?: unknown }>;
             view?: {
               collapsedNodeIds?: unknown;
               densityByNodeId?: unknown;
@@ -274,6 +276,16 @@ export function CanvasBody() {
           throw new Error('Sidecar subject/surface does not match the requested focus');
         }
         sidecarSurface = body.sidecar.surface;
+        sidecarHydrationRels = [
+          ...new Set(
+            (body.sidecar.dependencies ?? [])
+              .filter(
+                (dependency) =>
+                  dependency.kind === 'entity-contract' && typeof dependency.ref === 'string',
+              )
+              .map((dependency) => dependency.ref as string),
+          ),
+        ];
         if (
           typeof body.sidecar.id === 'string' &&
           typeof body.sidecar.version === 'number' &&
@@ -319,18 +331,19 @@ export function CanvasBody() {
 
       const failed: string[] = [];
       const planned: { surfaceId: string; concern: string; warnings: DerefWarning[] }[] = [];
-      for (const requestedFocus of requestedFocuses) {
+      if (sidecarSurface !== undefined && requestedFocuses.length === 1) {
+        const requestedFocus = requestedFocuses[0]!;
         try {
-          const entity = await withAbort(cache.get(requestedFocus), controller.signal);
-          if (entity === null) throw new Error(`实体 "${requestedFocus}" 不存在`);
-          // 主 focus(首项)的原始合同文本:load 已取得的实体直接序列化,
-          // 零额外取数;只进抽屉,不进主区域渲染。
-          if (requestedFocus === requestedFocuses[0])
-            setFocusEntityJson(JSON.stringify(entity, null, 2));
-          const plan =
-            sidecarSurface === undefined
-              ? planGenericPresentationSurface(requestedFocus, entity, sitemap.version)
-              : hydratePresentationSurface(requestedFocus, sidecarSurface, entity);
+          const hydrationRels = sidecarHydrationRels;
+          const roots: SirenEntity[] = [];
+          for (const rel of hydrationRels) {
+            const entity = await withAbort(cache.get(rel), controller.signal);
+            if (entity === null) throw new Error(`实体 "${rel}" 不存在`);
+            roots.push(entity);
+          }
+          const focusEntity = roots.find((entity) => entity.properties.rel === requestedFocus);
+          if (focusEntity !== undefined) setFocusEntityJson(JSON.stringify(focusEntity, null, 2));
+          const plan = hydratePresentationSurface(requestedFocus, sidecarSurface, roots);
           for (const hydrated of plan.entities.values()) gate.register(hydrated);
           processor.processMessages(plan.bundle.messages);
           planned.push({
@@ -342,6 +355,29 @@ export function CanvasBody() {
           failed.push(
             `presentation:${requestedFocus}:${error instanceof Error ? error.message : String(error)}`,
           );
+        }
+      } else {
+        for (const requestedFocus of requestedFocuses) {
+          try {
+            const entity = await withAbort(cache.get(requestedFocus), controller.signal);
+            if (entity === null) throw new Error(`实体 "${requestedFocus}" 不存在`);
+            // 主 focus(首项)的原始合同文本:load 已取得的实体直接序列化,
+            // 零额外取数;只进抽屉,不进主区域渲染。
+            if (requestedFocus === requestedFocuses[0])
+              setFocusEntityJson(JSON.stringify(entity, null, 2));
+            const plan = planGenericPresentationSurface(requestedFocus, entity, sitemap.version);
+            for (const hydrated of plan.entities.values()) gate.register(hydrated);
+            processor.processMessages(plan.bundle.messages);
+            planned.push({
+              surfaceId: plan.bundle.surfaceId,
+              concern: `presentation:${requestedFocus}`,
+              warnings: [],
+            });
+          } catch (error) {
+            failed.push(
+              `presentation:${requestedFocus}:${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
         }
       }
       for (const spec of specs) {

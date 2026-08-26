@@ -12,6 +12,7 @@ import {
   resetPresentationBrokerForTests,
 } from '../../../../engine/presentation/runtime';
 import { resetRecipeCoordinatorForTests } from '../../../../engine/presentation/recipes-runtime';
+import { getBuiltinComposition } from '../../../../engine/presentation/compositions';
 import { GET, POST } from './route';
 
 beforeEach(async () => {
@@ -211,6 +212,37 @@ describe('Sidecar human lifecycle route', () => {
       version: partial.versions[partial.activeVersion]!,
     });
 
+    const explanationResponse = await GET(
+      new Request(
+        'http://localhost/api/presentation/sidecar?sidecarId=sidecar%3Aworkspace-partial-local&explain=1',
+      ),
+    );
+    expect(explanationResponse.status).toBe(200);
+    const explanation = (await explanationResponse.json()) as {
+      explanation: {
+        composition?: {
+          regions: Array<{ region: string; availability: string; diagnosticCode?: string }>;
+        };
+      };
+    };
+    expect(explanation.explanation.composition?.regions.map(({ region }) => region)).toEqual([
+      'waiting-for-me',
+      'in-motion',
+      'work-lines',
+    ]);
+    const unavailable = explanation.explanation.composition?.regions.find(
+      ({ availability }) => availability === 'unavailable',
+    );
+    expect(unavailable).toMatchObject({ diagnosticCode: 'region-unavailable' });
+    const declaration = getBuiltinComposition('my-work')!;
+    const deniedSource = declaration.regions.find(
+      ({ region }) => region === unavailable?.region,
+    )?.source;
+    expect(deniedSource).toBeDefined();
+    expect(JSON.stringify(explanation)).not.toContain(deniedSource!);
+    expect(JSON.stringify(explanation)).not.toContain('policyScope');
+    expect(JSON.stringify(explanation)).not.toContain('fingerprint');
+
     const response = await POST(
       new Request('http://localhost/api/presentation/sidecar', {
         method: 'POST',
@@ -254,6 +286,29 @@ describe('Sidecar human lifecycle route', () => {
         }),
       }),
     );
+
+    const explanation = await GET(
+      new Request(
+        `http://localhost/api/presentation/sidecar?sidecarId=${encodeURIComponent(receipt.sidecar!.id)}&explain=1`,
+      ),
+    );
+    await expect(explanation.json()).resolves.toMatchObject({
+      explanation: {
+        composition: {
+          id: 'my-work',
+          version: '1',
+          regions: [
+            { region: 'waiting-for-me', availability: 'available' },
+            { region: 'in-motion', availability: 'available' },
+            { region: 'work-lines', availability: 'available' },
+          ],
+          declarationProvenance: {
+            kind: 'composition-declaration',
+            ref: 'composition:my-work@1',
+          },
+        },
+      },
+    });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
