@@ -84,7 +84,7 @@
     `promotion.ts:108/119` 与 `apps/web/src/engine/presentation/runtime.ts:141-156`
     的单 slot 硬编码同步一般化(按完整有序 `{name,kind}` 匹配,不再按数量==1)
   - Red→Green:sidecar key/fingerprint 单测、recipe 注册/解析/晋升的多 slot 测试
-- [ ] Task: fastpath 与失效同机制
+- [x] Task: fastpath 与失效同机制 `5338e12`
   - 组合主体走同一 fastpath 阶梯(user-pinned → user-cache → promoted-recipe →
     candidate-recipe → generic → planner);依赖失效(任一聚合源/声明版本漂移)
     按声明 mode rehydrate/invalidate;stale/evict/pinned 语义沿用
