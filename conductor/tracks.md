@@ -12,6 +12,7 @@
 - [x] **Track: T24 呈现诚实化(减暴露):机制 chrome 退出首屏与对话面** *Link: [tracks/t24-presentation-honesty_20260825/index.md](./tracks/t24-presentation-honesty_20260825/index.md)*
 - [~] **Track: T27 Workstation 站点:三种工作形态落地与"我的事"首页** *Link: [tracks/t27-workstation-site_20260825/index.md](./tracks/t27-workstation-site_20260825/index.md)*
 - [~] **Track: T28 一等交互与引用:动作上肩、引用可点、raw 模式** *Link: [tracks/t28-first-class-interaction_20260825/index.md](./tracks/t28-first-class-interaction_20260825/index.md)*
+- [~] **Track: T31 质量评审修复:T24–T30 实现质量发现项登记与修复(评审修复 track;建议 T27 闭环后启动,并行须避开其冲突面)** *Link: [tracks/t31-quality-remediation_20260826/index.md](./tracks/t31-quality-remediation_20260826/index.md)*
 
 ## 归档 Tracks(T1–T21、T23、T25、T26、T29、T30,只读历史)
 
