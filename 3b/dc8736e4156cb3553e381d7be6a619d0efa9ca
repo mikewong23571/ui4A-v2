@@ -1,0 +1,21 @@
+Task: 误导验收前置迁移
+
+Summary:
+- Migrated the T16 real-LLM Surface fixture to canonical subject-region shape and stopped accepting structural root patch targets.
+- Migrated compiler serialize/restore and production-auth Sidecar fixtures to canonical root layout/direct subject slot.
+- Retained stable surface id, catalog URI, sidecar URL, Recipe scenario count and vocabulary assertions because they still express product contracts.
+- Confirmed Phase D already removed fixed single-slot production hardcoding.
+
+Files:
+- e2e/eval/t16-real-llm.spec.ts
+- apps/web/src/render/presentation/compiler.test.ts
+- apps/web/src/app/api/presentation/route.production-auth.test.ts
+
+Why:
+Old fixtures must not pressure implementation to restore the unwrapped Surface or fixed subject-slot path.
+
+Verification:
+- Changed Vitest fixtures passed (12/12)
+- @ui4a/web typecheck passed
+- pnpm governance passed
+- real-LLM Playwright file collected 2 tests
