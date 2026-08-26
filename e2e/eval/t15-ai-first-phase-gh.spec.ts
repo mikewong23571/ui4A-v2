@@ -59,14 +59,6 @@ function decisionPrompt(event: EventBody | undefined): string {
   return typeof prompt?.user === 'string' ? prompt.user : '';
 }
 
-function turnEvidence(turn: {
-  summary: string | null;
-  messages: string[];
-  payload: Record<string, unknown>;
-}): string {
-  return JSON.stringify({ summary: turn.summary, messages: turn.messages, payload: turn.payload });
-}
-
 async function attachFocusedEvidence(
   testInfo: TestInfo,
   storyId: 'U18' | 'U19' | 'U21',

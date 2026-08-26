@@ -97,7 +97,7 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
 
 ## Phase D: 端到端验收
 
-- [~] Task: 回归用例与全量验收
+- [x] Task: 回归用例与全量验收
   - "新增一篇文章…介绍操作流程"端到端完成且无 meta 越界(北极星 §一.2 反例;
     e2e 断言全程不出现 meta sitemap 导航)
   - 起点解析断言:presence focus 优先、探测请求数=0(e2e/路由测试口径)
@@ -108,10 +108,12 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
     `tool_choice:auto` 探针 6/6 工具调用成功;scoped-context 真实写文章场景通过
   - TODO(D42,后续 Track):验证 Responses API 多轮 reasoning/tool item 回传并恢复
     wire-level `tool_choice:required`
-  - 完整真实 LLM gate 已执行(12 项,11.0m):10 passed / 1 flaky / 1 failed;
-    `llm-smoke` 三次均因 provider `terminated` 失败(一次已 publish、收尾 decision 断流),
-    U20 首次 failed 后 retry 通过;D43 增加同决策有界断流恢复后，`llm-smoke` 聚焦复测
-    一次通过(26.1s)，该 TODO 已闭环
+  - 首轮完整真实 LLM gate 暴露 `llm-smoke` 三次 provider `terminated`;D43 增加同决策
+    有界断流恢复后，聚焦复测一次通过(26.1s)，最终完整 gate 通过(12 项,11.0m):
+    10 passed / 2 flaky / 0 failed(exit 0);flaky 保留探针断流与 U20 首次失败证据
+  - 最终确定性 gate:`pnpm check` 357 files / 2687 tests 全绿;invariants 4 passed /
+    2 个既有 superseded skip;chat E2E 6 passed;governance 7 项既有白名单不变
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 - [ ] Task: Track 收尾
   - `conductor/tracks.md` 状态流转;track 目录按 GR5 处置(无 bespoke 脚本/
     配置残留);metadata.json 归档
