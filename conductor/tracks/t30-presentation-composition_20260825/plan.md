@@ -89,7 +89,13 @@
     candidate-recipe → generic → planner);依赖失效(任一聚合源/声明版本漂移)
     按声明 mode rehydrate/invalidate;stale/evict/pinned 语义沿用
   - 测试:命中重授权发生、任一源失效触发重规划、pin 优先、evict 不删 pinned
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Recipe canonical 实例化与 runtime shape 修正 `36a2e02`
+  - Phase checkpoint 审计发现 pure resolver 返回未实例化 template、共同 Recipe
+    validator 仍接受旧 direct root、runtime subjectShape 被新硬编码为 entity；统一
+    canonical root region slots，并从已授权合同机械推导单主体 shape/slot context
+  - 支持不同 region 复用同一 source：参数化按 outer region 上下文，不以全局
+    subject→slot Map 施加 D45 未声明的唯一 source 限制
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase E: web 运行时、canvas 与误导验收迁移
 
