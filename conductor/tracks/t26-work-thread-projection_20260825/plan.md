@@ -69,10 +69,10 @@
     再按当前 policy scope 过滤成员链接
   - 测试:sitemap 出现 threads surface;credentialed 客户端 GET
     `thread:<id>` 不 403;越权 principal 仍被拒
-- [~] Task: I5 枚举扩展
+- [x] Task: I5 枚举扩展 832d33d
   - `e2e/invariants.spec.ts` `enumerateEntityRels` 纳入 `threads`/`thread:*`;
     在线/重放 hash 一致(除新增投影表外与现状等价)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase D: 锚定接线(形状以 D44 为准)
 
