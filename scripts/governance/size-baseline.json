@@ -53,9 +53,9 @@
     },
     {
       "path": "apps/web/src/components",
-      "lines": 4491,
+      "lines": 4520,
       "limit": 4000,
-      "note": "T24/T30 在途:『为什么这样展示』抽屉、组合区域 explanation 与 Canvas visible-source hydration 按架构归属落位 components/(与 canvas-body/sidecar 工具条同住);4116→4175 为 T24 首屏断言,4175→4491 为 T30 单树/partial hydration/抽屉安全回归;业务优先不为凑行数拆分(workflow 2026-08-26),shrink-only 自 T30 关闭起算;收缩窗口=T27 workstation 站点结构落地时按 canvas/why/sidecar feature 子目录重组 components/"
+      "note": "T24/T30 既有 4491;T27 Phase C 站点导航按 D46 增至 4520,业务优先不为行数裁剪(workflow 2026-08-26 自治授权);临时增长只覆盖 SiteNav 任务语言分组与系统区,T27 Phase D 删除 home-body 并按 canvas/why/sidecar feature 归位时必须收缩,Track 收尾不得保留本增量"
     },
     {
       "path": "e2e",
