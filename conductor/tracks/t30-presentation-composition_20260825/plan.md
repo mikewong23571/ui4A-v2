@@ -74,7 +74,7 @@
 
 ## Phase D: sidecar/recipe/promotion 组合化
 
-- [ ] Task: key 与 recipe slot 一般化
+- [x] Task: key 与 recipe slot 一般化 `3481b03`
   - `UserSidecarKey.subject` 固定承载 `workspace:<id>`，key.intent 只承载组合 intent；
     `ApplicationRecipeKey.subjectShape` 按
     `composition:<declaration-id>@<version>[<region>:<kind>,...]` canonical 化，
