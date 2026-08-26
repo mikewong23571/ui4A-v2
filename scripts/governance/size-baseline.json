@@ -29,7 +29,7 @@
   "dirs": [
     {
       "path": "packages/engine/src/presentation",
-      "lines": 4351,
+      "lines": 4406,
       "limit": 4000,
       "note": "T30 在途:组合 assembly、canonical Recipe slot/promotion 与多源 fastpath 均属 Presentation 纯内核直接模块;按 workflow 业务优先原则不为凑行数拆分,shrink-only 自 T30 关闭起算;收缩窗口=T30 review 或后续 CompositionDefinition 治理晋升时按 compose/recipe/sidecar 子域归档直接文件"
     },
