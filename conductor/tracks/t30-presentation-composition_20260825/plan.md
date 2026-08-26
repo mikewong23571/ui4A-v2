@@ -128,11 +128,11 @@
 
 ## Phase F: 端到端验收与收尾
 
-- [~] Task: my-work 端到端 proof
+- [x] Task: my-work 端到端 proof `c9d9d32`
   - `POST /api/presentation`(subject = `workspace:my-work`)→ receipt ready →
     canvas 渲染三区域;binding-only(I2 口径:deref 值与实体快照一致);
     presentation 域重建与业务 fold 隔离各自一致(I5 口径)
-- [ ] Task: 全量验收
+- [~] Task: 全量验收
   - `pnpm check` 全绿;`CI=true pnpm e2e invariants` 全绿;T16 presentation 套件
     与 chat 套件全绿;`pnpm dev:all` 实际启动走查(里程碑约束)
 - [ ] Task: Track 收尾
