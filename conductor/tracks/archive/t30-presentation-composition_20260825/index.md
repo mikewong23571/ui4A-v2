@@ -8,8 +8,9 @@ T27 的"零硬编码页面"就是无法执行的口号。
 - [Metadata](./metadata.json)
 - [Specification](./spec.md)
 - [Plan](./plan.md)
+- [Acceptance and deployment evidence](./evidence.md)
 
-当前状态:`planned`。方向依据:`conductor/product-vision.md` §三
+当前状态:`completed`（mothership Helm revision 43 与安装版 CLI 验收）。方向依据:`conductor/product-vision.md` §三
 (workstation 不硬编码)、§六(页面滑梯)、§八(架构判断)。
 前置架构 track,执行序在 T26 之后、T27 之前(threads 是 my-work 聚合源
 之一,动工前 T26 应已闭环;机制层面对 T26 零代码特判)。

@@ -126,7 +126,7 @@
   - `CI=true NODE_OPTIONS=--no-experimental-webstorage pnpm e2e invariants`:
     4 passed,2 superseded/skipped；独立复审 PASS
 
-## Phase F: 端到端验收与收尾
+## Phase F: 端到端验收与收尾 [checkpoint: 3aa9f85]
 
 - [x] Task: my-work 端到端 proof `c9d9d32`
   - `POST /api/presentation`(subject = `workspace:my-work`)→ receipt ready →
@@ -137,7 +137,7 @@
     与 chat 套件全绿;`pnpm dev:all` 实际启动走查(里程碑约束)
   - 本机构建 host 缺 Temporal CLI；按用户指示改由 immutable images → mothership
     Helm revision 43 → 安装版 CLI 完成真实环境走查，详见 `evidence.md`
-- [~] Task: Track 收尾
+- [x] Task: Track 收尾 `ee9f64c`
   - `conductor/tracks.md` 状态流转;track 目录按 GR5 处置(无 bespoke 脚本/配置
     残留);metadata.json 归档;T27 spec 的组合消费口径如有偏差回改一行备注
 
