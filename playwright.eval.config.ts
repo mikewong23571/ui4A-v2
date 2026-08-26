@@ -21,6 +21,7 @@ export default defineConfig({
     'eval/llm-render.spec.ts',
     'eval/llm-smoke.spec.ts',
     'eval/llm-thinking.spec.ts',
+    'eval/scoped-context.spec.ts',
     'eval/t15-ai-first-phase-gh.spec.ts',
     'eval/t16-real-llm.spec.ts',
   ],
