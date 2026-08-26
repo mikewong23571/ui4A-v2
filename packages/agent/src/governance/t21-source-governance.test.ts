@@ -9,6 +9,7 @@ function source(path: string): string {
 const chatRoute = source('../../../../apps/web/src/app/api/chat/route.ts');
 const chatPanel = source('../../../../apps/web/src/components/chat/chat-panel.tsx');
 const conversation = source('../../../../apps/web/src/chat/conversation.ts');
+const startChain = source('../../../../apps/web/src/chat/start-chain.ts');
 const llmDriver = source('../llm/llm-driver.ts');
 const agentLoop = source('../loop/loop.ts');
 
@@ -35,7 +36,7 @@ describe('T21 AI-first dual-focus source governance', () => {
     }
   });
 
-  it('does not let client route/view enter authorization, tool projection or start-rel discovery', () => {
+  it('does not let client route/view enter authorization or tool projection', () => {
     for (const path of [
       '../loop/authorization.ts',
       '../protocol/tools.ts',
@@ -43,7 +44,15 @@ describe('T21 AI-first dual-focus source governance', () => {
     ]) {
       expect(source(path), path).not.toMatch(/ClientView|clientView|LastNavigation|lastNavigation/);
     }
-    expect(chatRoute).not.toMatch(/resolveStartRel\([\s\S]{0,300}(?:clientView|lastNavigation)/);
+  });
+
+  it('derives the start rel from the assembled situation without lexical or request probing', () => {
+    expect(chatRoute).toContain('situationForChat');
+    expect(chatRoute).toContain('getEngine(getDb())');
+    expect(chatRoute).toContain('engine.getSnapshot().applications');
+    expect(chatRoute).toContain('startRelFromSituation(situation,');
+    expect(chatRoute).not.toContain('resolveStartRel');
+    expect(startChain).not.toMatch(/\b(?:overlaps|match|fetch|baseUrl|goal)\b/);
   });
 
   it('keeps the production runtime free of the rule driver', () => {

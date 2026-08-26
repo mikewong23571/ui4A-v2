@@ -21,8 +21,7 @@ import { POST as postChat } from './route';
 // T9 Phase B:inline 对照路径改 SSE 流——helper 解析 final 帧 payload 为 json,
 // delegated/参数错误仍一次性 JSON(形状不动)。
 //
-// 回环:node:http server 转交真实 route handler(与 route.test.ts 同装置),
-// resolveStartRel 的 sitemap/entity 探测经 request.url origin 原样命中。
+// 回环:node:http server 转交真实 route handler(与 route.test.ts 同装置)。
 const { dispatchMock } = vi.hoisted(() => ({ dispatchMock: vi.fn() }));
 
 vi.mock('../../../temporal/delegation', () => ({
@@ -132,16 +131,39 @@ describe('mode=delegated(委托派发)', () => {
     expect(json.statusUrl).toBe('/api/delegations/11111111-2222-3333-4444-555555555555');
 
     // 派发参数:goal 原样;driverKind 是 AI-first 的 llm;
-    // startRel 经回环 sitemap 解析(非空字符串);principal 沿用 chat 会话口径;
+    // 无 focus/application entry 时 startRel 是 business 站点约定入口 articles;
+    // principal 沿用 chat 会话口径;
     // baseUrl 是自身 origin(activity 内 fetch 引擎合同的回环本源)。
     expect(dispatchMock).toHaveBeenCalledTimes(1);
     const args = dispatchMock.mock.calls[0]![0] as Record<string, unknown>;
     expect(args.goal).toEqual({ verb: '发布一篇文章', fields: { title: '委托发布' } });
     expect(args.driverKind).toBe('llm');
-    expect(typeof args.startRel).toBe('string');
-    expect((args.startRel as string).length).toBeGreaterThan(0);
+    expect(args.startRel).toBe('articles');
     expect(args.principal).toBe('user:sess-d1');
     expect(args.baseUrl).toBe(base);
+  });
+
+  it('uses the assembled client-view focus as the delegated start rel', async () => {
+    await chat({
+      goal: { verb: '检查当前文章' },
+      mode: 'delegated',
+      sessionId: 'sess-focused',
+      clientView: {
+        schemaVersion: 2,
+        presence: {
+          clientInstanceId: 'client:focused',
+          site: 'business',
+          scope: 'publishing',
+          thread: null,
+          focus: 'post:first-post',
+        },
+      },
+    });
+
+    expect(dispatchMock).toHaveBeenCalledTimes(1);
+    expect((dispatchMock.mock.calls[0]![0] as Record<string, unknown>).startRel).toBe(
+      'post:first-post',
+    );
   });
 
   it('auto 与显式 llm 都以 llm 直传', async () => {

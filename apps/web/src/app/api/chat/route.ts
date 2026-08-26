@@ -28,7 +28,7 @@ import { conversationView } from '../../../chat/conversation';
 import { executionAuditContext } from '../../../chat/audit-context';
 import { failureReasonFromResult, phraseFailureWithLlm } from '../../../chat/failure-reason';
 import { readSitemapTitles, stepActivityData } from '../../../chat/step-activity';
-import { resolveStartRel } from '../../../chat/start';
+import { startRelFromSituation } from '../../../chat/start-chain';
 import { stepToMessage, trailToMessages } from '../../../chat/trail';
 import { getProductionAgentTokenProvider } from '../../../auth/production-agent-token-provider';
 import { getProductionBrowserAuthentication } from '../../../auth/production-browser-authentication';
@@ -40,7 +40,7 @@ import {
 } from '../../../auth/request-identity';
 import { appendEvent, readLog } from '../../../db/events';
 import { situationForChat } from '../../../engine/chat-situation';
-import { getDb } from '../../../engine/service';
+import { getDb, getEngine } from '../../../engine/service';
 import {
   getPresentationBroker,
   getPresentationCapabilities,
@@ -87,12 +87,13 @@ import { dispatchDelegation } from '../../../temporal/delegation';
 //   先于 chat-turn 落库;engine fold 忽略该 kind(纯留痕,I5 重放 hash 不变),
 //   落库失败 console.error 不阻断响应(同 chat-turn 口径);delegated 回合不写
 //   agent-decision(轨迹在舰队页);
-// - delegated(T5 Phase B / spec 架构决定 5):校验 goal → 解析 startRel 与
+// - delegated(T5 Phase B / spec 架构决定 5):校验 goal → 从 Situation 事实链取得 startRel 与
 //   driverKind(auto 先解析)→ dispatchDelegation 派发 delegationWorkflow
 //   (taskQueue ui4a;baseUrl=自身 origin,worker activity 回环走本源合同)→
 //   响应 {mode:'delegated', delegationId, statusUrl};派发失败(Temporal 不可达)
 //   据实 503——委托没派出去不能假装成功;
-// - 起始 rel 由 sitemap 词级交集解析(客户端行为),缺省 articles;
+// - 起始 rel 来自同一回合的 Situation:focus → scope application entry → 站点兜底；
+//   不做 sitemap 词级猜测或实体可达性预探测；
 // - 一次性 JSON 仅剩参数错误/delegated；inline 始终使用同一 SSE agent loop。
 //   B4:LLM 失败(401 等)如实进入 step 帧文本与 final.summary,route 不 5xx。
 // 服务无会话态:事件日志是真相,聊天会话是客户端投影(localStorage)。
@@ -431,7 +432,7 @@ async function loadAgentConversation(
 
 /**
  * inline 循环的流内执行(inline 常规路径与渲染路径过闸失败的兜底共用):
- * resolveStartRel → runAgent(thinking-delta/thinking/step 帧)→ 冗余步帧 →
+ * fact-based startRel → runAgent(thinking-delta/thinking/step 帧)→ 冗余步帧 →
  * agent-decision/chat-turn 落库 → final 帧。
  */
 async function streamAgentLoop(args: {
@@ -444,6 +445,7 @@ async function streamAgentLoop(args: {
   baseUrl: string;
   principal: string;
   presentationPrincipal: string;
+  startRel: string;
   fetchImpl: FetchLike;
   conversationMessages: AgentConversationMessage[];
   conversation: AgentConversationContext;
@@ -460,6 +462,7 @@ async function streamAgentLoop(args: {
     baseUrl,
     principal,
     presentationPrincipal,
+    startRel,
     fetchImpl,
     conversationMessages,
     conversation,
@@ -467,12 +470,6 @@ async function streamAgentLoop(args: {
     lastNavigation,
   } = args;
   send({ type: 'session', sessionId, turnId });
-  const startRel = await resolveStartRel(
-    baseUrl,
-    goal,
-    fetchImpl,
-    baseUrl.endsWith('/_meta') ? 'meta/flows' : 'articles',
-  );
   // 活动语言标题索引(T24 Phase B):读一次合同 sitemap(surfaces 表面标题 +
   // flows 动作标题),不可得时如实降级(rel/动作名兜底,零发明标题)。
   const sitemapTitles = await readSitemapTitles(baseUrl, fetchImpl);
@@ -811,6 +808,8 @@ export async function POST(request: Request) {
     identity: productionIdentity,
     clientView,
   });
+  const engine = await getEngine(getDb());
+  const startRel = startRelFromSituation(situation, engine.getSnapshot().applications ?? {});
   let turnFetch: FetchLike = (url, init) => fetch(url, init);
   if (
     productionIdentity !== undefined &&
@@ -965,6 +964,7 @@ export async function POST(request: Request) {
           baseUrl,
           principal,
           presentationPrincipal,
+          startRel,
           fetchImpl: turnFetch,
           conversationMessages: agentConversation.messages,
           conversation: agentConversation.context,
@@ -1009,12 +1009,6 @@ export async function POST(request: Request) {
   // 轨迹/状态经事件日志(/api/delegations/<id>)查询,与 inline 的消息语义等价。
   if (mode === 'delegated') {
     try {
-      const startRel = await resolveStartRel(
-        baseUrl,
-        goal,
-        turnFetch,
-        baseUrl.endsWith('/_meta') ? 'meta/flows' : 'articles',
-      );
       const { delegationId } = await dispatchDelegation({
         goal,
         driverKind: resolved,
@@ -1090,6 +1084,7 @@ export async function POST(request: Request) {
       baseUrl,
       principal,
       presentationPrincipal,
+      startRel,
       fetchImpl: turnFetch,
       conversationMessages: agentConversation.messages,
       conversation: agentConversation.context,
