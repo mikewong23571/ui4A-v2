@@ -69,7 +69,7 @@ export async function GET(request: Request) {
       grantedScopes: [...grantedPolicyScopes(identity.scopes), identity.policyScope],
       presence,
       explicit: requestedScope === undefined ? undefined : { scope: requestedScope },
-      defaults: { site: 'business', scope: identity.policyScope },
+      defaults: { site: 'workstation', scope: identity.policyScope },
     });
     const policyScope = situation.scope;
     const scopeContext = {

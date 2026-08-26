@@ -48,7 +48,8 @@ function focusFromLocation(url: URL): RenderSubject | null {
 /** Convert only explicit URL protocol fields into a structured presence observation. */
 export function presenceObservationForLocation(route: string): PresenceObservation {
   const url = routeValue(route);
-  const site = url.pathname === '/meta' || url.pathname.startsWith('/meta/') ? 'meta' : 'business';
+  const site =
+    url.pathname === '/meta' || url.pathname.startsWith('/meta/') ? 'meta' : 'workstation';
   return {
     site,
     scope: boundedQueryValue(url, 'scope'),

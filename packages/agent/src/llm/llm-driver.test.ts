@@ -303,7 +303,6 @@ describe('B4:失败如实呈现(委托不崩溃)', () => {
       expect(op.reason).toContain('fetch failed');
     }
   });
-
 });
 
 describe('fail-safe:模型输出不合法', () => {
@@ -325,9 +324,9 @@ describe('fail-safe:模型输出不合法', () => {
       content: '修复后的协议回答',
     });
     expect(calls).toHaveLength(2);
-    expect(
-      calls.every((call) => JSON.stringify(call.body).includes('"tool_choice":"auto"')),
-    ).toBe(true);
+    expect(calls.every((call) => JSON.stringify(call.body).includes('"tool_choice":"auto"'))).toBe(
+      true,
+    );
     const repairBody = JSON.stringify(calls[1]?.body);
     expect(repairBody).toContain('协议修复');
     expect(repairBody).toContain('未输出工具调用');
@@ -593,7 +592,7 @@ describe('多轮会话进入 LLM messages', () => {
           schemaVersion: 2,
           presence: {
             clientInstanceId: 'client:b',
-            site: 'business',
+            site: 'workstation',
             scope: null,
             thread: null,
             focus: 'articles',

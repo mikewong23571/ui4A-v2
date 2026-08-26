@@ -27,14 +27,16 @@ describe('presence change contract', () => {
     { schemaVersion: 1, kind: 'site', value: { arbitrary: true } },
     { schemaVersion: 1, kind: 'site', value: 'x'.repeat(257) },
     { schemaVersion: 1, kind: 'focus', value: { selection: ['post:a', 'post:a'] } },
-    { schemaVersion: 1, kind: 'site', value: 'business', principal: 'user:forged' },
+    { schemaVersion: 1, kind: 'site', value: 'workstation', principal: 'user:forged' },
   ])('rejects an unbounded or authority-bearing payload %#', (value) => {
     expect(() => parsePresenceChange(value)).toThrow();
   });
 
   it('allows an explicit clear', () => {
-    expect(
-      parsePresenceChange({ schemaVersion: 1, kind: 'thread', value: null }),
-    ).toEqual({ schemaVersion: 1, kind: 'thread', value: null });
+    expect(parsePresenceChange({ schemaVersion: 1, kind: 'thread', value: null })).toEqual({
+      schemaVersion: 1,
+      kind: 'thread',
+      value: null,
+    });
   });
 });

@@ -211,7 +211,7 @@ describe('T15 U22:product chat runtime is AI-first', () => {
         schemaVersion: 2,
         presence: {
           clientInstanceId: 'client:thread-unavailable',
-          site: 'business',
+          site: 'workstation',
           scope: 'default',
           thread: 'failure-thread',
           focus: null,
@@ -311,7 +311,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
         schemaVersion: 2,
         presence: {
           clientInstanceId: 'client:start-unavailable',
-          site: 'business',
+          site: 'workstation',
           scope: 'default',
           thread: null,
           focus: 'ghost',

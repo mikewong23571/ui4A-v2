@@ -19,7 +19,7 @@ export async function situationForChat(args: {
           thread: args.clientView.presence.thread,
           focus: args.clientView.presence.focus,
         };
-  const defaults = { site: 'business', scope: args.identity?.policyScope ?? 'default' };
+  const defaults = { site: 'workstation', scope: args.identity?.policyScope ?? 'default' };
   const grantedScopes = args.identity
     ? [...grantedPolicyScopes(args.identity.scopes), args.identity.policyScope]
     : ['default'];

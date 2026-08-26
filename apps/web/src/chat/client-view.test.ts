@@ -10,7 +10,7 @@ describe('T21 client view capture', () => {
   ])('mechanically reads one presence focus from %s', (route, focus) => {
     expect(clientViewReportForLocation('client:a', route)).toMatchObject({
       schemaVersion: 2,
-      presence: { clientInstanceId: 'client:a', site: 'business', focus },
+      presence: { clientInstanceId: 'client:a', site: 'workstation', focus },
     });
   });
 
@@ -27,7 +27,7 @@ describe('T21 client view capture', () => {
         schemaVersion: 2,
         presence: {
           clientInstanceId: 'client:a',
-          site: 'business',
+          site: 'workstation',
           scope: null,
           thread: null,
           focus: null,

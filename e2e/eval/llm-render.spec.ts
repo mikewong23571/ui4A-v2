@@ -106,7 +106,7 @@ test('real Assistant present produces a governed receipt, navigation, and factua
             schemaVersion: 2,
             presence: {
               clientInstanceId: `presentation-live-${round}`,
-              site: 'business',
+              site: 'workstation',
               scope: 'default',
               thread: null,
               focus: 'post:first-post',

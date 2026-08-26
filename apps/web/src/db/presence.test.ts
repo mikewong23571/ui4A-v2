@@ -23,7 +23,7 @@ const fixtureEvents: PresenceEventRow[] = [
     seq: 1,
     principal: 'user:one',
     kind: 'presence-site-changed',
-    detail: { schemaVersion: 1, kind: 'site', value: 'business' },
+    detail: { schemaVersion: 1, kind: 'site', value: 'workstation' },
   },
   {
     seq: 3,
@@ -44,7 +44,7 @@ describe('presence projection', () => {
     const replayed = foldPresenceEvents([...fixtureEvents].reverse());
     expect(incremental['user:one']).toEqual({
       principal: 'user:one',
-      site: 'business',
+      site: 'workstation',
       scope: 'publishing',
       thread: null,
       focus: 'post:first-post',

@@ -11,7 +11,7 @@ const presence = {
   updatedSeq: 12,
 } as const;
 
-const defaults = { site: 'business', scope: 'default' } as const;
+const defaults = { site: 'workstation', scope: 'default' } as const;
 
 function input(overrides: Partial<SituationInput> = {}): SituationInput {
   return {
@@ -36,7 +36,7 @@ describe('situation assembler', () => {
       assembleSituation(
         input({
           explicit: {
-            site: 'business',
+            site: 'workstation',
             scope: 'default',
             thread: 'thread:explicit',
             focus: 'post:explicit',
@@ -45,7 +45,7 @@ describe('situation assembler', () => {
       ),
     ).toEqual({
       principal: 'user:one',
-      site: 'business',
+      site: 'workstation',
       scope: 'default',
       thread: 'thread:explicit',
       focus: 'post:explicit',
@@ -75,7 +75,7 @@ describe('situation assembler', () => {
         }),
       ),
     ).toMatchObject({
-      site: 'business',
+      site: 'workstation',
       scope: 'publishing',
       thread: null,
       focus: 'post:cli',

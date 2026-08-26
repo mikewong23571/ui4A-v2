@@ -156,7 +156,7 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
       clientView?: { presence: { clientInstanceId: string; focus?: string } };
     };
     expect(first.clientView).toMatchObject({
-      presence: { site: 'business', focus: 'post:first-post' },
+      presence: { site: 'workstation', focus: 'post:first-post' },
     });
     expect(first.clientView?.presence.clientInstanceId).toMatch(/^[0-9a-f-]+$/i);
 
@@ -167,7 +167,7 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
       clientView?: { presence: { clientInstanceId: string; focus?: string } };
     };
     expect(second.clientView).toMatchObject({
-      presence: { site: 'business', focus: 'articles' },
+      presence: { site: 'workstation', focus: 'articles' },
     });
     expect(second.clientView?.presence.clientInstanceId).toBe(
       first.clientView?.presence.clientInstanceId,

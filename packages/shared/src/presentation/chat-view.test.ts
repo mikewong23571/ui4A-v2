@@ -14,7 +14,7 @@ describe('T21 dual-focus shared contract', () => {
       schemaVersion: CHAT_VIEW_PROTOCOL_VERSION,
       presence: {
         clientInstanceId: 'client:one',
-        site: 'business',
+        site: 'workstation',
         scope: null,
         thread: null,
         focus: 'post:first-post',
@@ -26,7 +26,7 @@ describe('T21 dual-focus shared contract', () => {
       schemaVersion: 2,
       presence: {
         clientInstanceId: 'client:one',
-        site: 'business',
+        site: 'workstation',
         scope: null,
         thread: null,
         focus: 'post:first-post',
@@ -42,7 +42,7 @@ describe('T21 dual-focus shared contract', () => {
         schemaVersion: 2,
         presence: {
           clientInstanceId: 'client:two',
-          site: 'business',
+          site: 'workstation',
           scope: null,
           thread: null,
           focus: { selection: ['post:a', 'post:b'] },
@@ -71,14 +71,33 @@ describe('T21 dual-focus shared contract', () => {
   });
 
   it.each([
-    [{ schemaVersion: 2, presence: { clientInstanceId: 'c', site: '', scope: null, thread: null, focus: null } }, 'site'],
-    [{ schemaVersion: 2, presence: { clientInstanceId: 'c', site: 'business', scope: null, thread: null, focus: null }, route: '/legacy' }, 'forbidden'],
+    [
+      {
+        schemaVersion: 2,
+        presence: { clientInstanceId: 'c', site: '', scope: null, thread: null, focus: null },
+      },
+      'site',
+    ],
     [
       {
         schemaVersion: 2,
         presence: {
           clientInstanceId: 'c',
-          site: 'business',
+          site: 'workstation',
+          scope: null,
+          thread: null,
+          focus: null,
+        },
+        route: '/legacy',
+      },
+      'forbidden',
+    ],
+    [
+      {
+        schemaVersion: 2,
+        presence: {
+          clientInstanceId: 'c',
+          site: 'workstation',
           scope: null,
           thread: null,
           focus: { selection: ['post:a', 'post:a'] },
@@ -89,7 +108,13 @@ describe('T21 dual-focus shared contract', () => {
     [
       {
         schemaVersion: 2,
-        presence: { clientInstanceId: 'c', site: 'business', scope: null, thread: null, focus: null },
+        presence: {
+          clientInstanceId: 'c',
+          site: 'workstation',
+          scope: null,
+          thread: null,
+          focus: null,
+        },
         principal: 'admin',
       },
       'principal',
@@ -97,7 +122,13 @@ describe('T21 dual-focus shared contract', () => {
     [
       {
         schemaVersion: 2,
-        presence: { clientInstanceId: 'c', site: 'business', scope: null, thread: null, focus: null },
+        presence: {
+          clientInstanceId: 'c',
+          site: 'workstation',
+          scope: null,
+          thread: null,
+          focus: null,
+        },
         authorization: { actor: 'human' },
       },
       'authorization',

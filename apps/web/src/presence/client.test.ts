@@ -1,9 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  createPresenceReporter,
-  presenceObservationForLocation,
-} from './client';
+import { createPresenceReporter, presenceObservationForLocation } from './client';
 
 describe('client presence change reporter', () => {
   afterEach(() => vi.useRealTimers());
@@ -15,11 +12,17 @@ describe('client presence change reporter', () => {
       thread: 't1',
       focus: null,
     });
+    expect(presenceObservationForLocation('/meta/flow/article-drafting')).toMatchObject({
+      site: 'meta',
+    });
     expect(presenceObservationForLocation('/canvas?focus=post%3Aone')).toEqual({
-      site: 'business',
+      site: 'workstation',
       scope: null,
       thread: null,
       focus: 'post:one',
+    });
+    expect(presenceObservationForLocation('/canvas?mode=raw')).toMatchObject({
+      site: 'workstation',
     });
   });
 
@@ -34,7 +37,11 @@ describe('client presence change reporter', () => {
     await vi.advanceTimersByTimeAsync(20);
     expect(transport).toHaveBeenCalledTimes(1);
     expect(transport).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: 'site', value: 'business', clientInstanceId: 'client:one' }),
+      expect.objectContaining({
+        kind: 'site',
+        value: 'workstation',
+        clientInstanceId: 'client:one',
+      }),
     );
   });
 

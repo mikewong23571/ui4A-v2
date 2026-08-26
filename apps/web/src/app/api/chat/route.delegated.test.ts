@@ -153,7 +153,7 @@ describe('mode=delegated(委托派发)', () => {
         schemaVersion: 2,
         presence: {
           clientInstanceId: 'client:focused',
-          site: 'business',
+          site: 'workstation',
           scope: 'publishing',
           thread: null,
           focus: 'post:first-post',

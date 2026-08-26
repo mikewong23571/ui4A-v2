@@ -46,7 +46,7 @@ function clientView(clientInstanceId: string, focus: string) {
     schemaVersion: 2 as const,
     presence: {
       clientInstanceId,
-      site: 'business',
+      site: 'workstation',
       scope: null,
       thread: null,
       focus,

@@ -18,7 +18,7 @@ function application(name: string, entry?: string): ApplicationDefinition {
 }
 
 function situation({
-  site = 'business',
+  site = 'workstation',
   scope = 'publishing',
   focus = null,
 }: {
@@ -66,9 +66,14 @@ describe('startRelFromSituation', () => {
   });
 
   it.each([
-    { site: 'business', missing: 'application', installed: applications(), expected: 'articles' },
     {
-      site: 'business',
+      site: 'workstation',
+      missing: 'application',
+      installed: applications(),
+      expected: 'articles',
+    },
+    {
+      site: 'workstation',
       missing: 'entry',
       installed: applications(application('publishing')),
       expected: 'articles',
