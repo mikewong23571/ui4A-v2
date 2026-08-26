@@ -26,7 +26,7 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
 
 ## Phase A: 决策落档与起点即事实
 
-- [~] Task: DECISIONS.md 落档(新条目,先于代码)
+- [x] Task: DECISIONS.md 落档(新条目,先于代码) b1c110c
   - 修订 D33 条款"合同 discovery 的 `resolveStartRel` 不被 client view 机械
     改写":resolveStartRel 删除,起点链以处境事实(presence focus)为首级,
     属"上下文来自结构化事实"而非意图猜测;D33 其余条款(双焦点三位置、
