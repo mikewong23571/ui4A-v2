@@ -1,0 +1,12 @@
+Task: spike 五问决断，落 DECISIONS.md D45
+
+Summary:
+- Recorded D45 for workspace virtual-subject wire representation.
+- Chose typed built-in composition declarations, layout+slot composition, per-region Recipe slots, and region-level fail-closed authorization diagnostics.
+- Explicitly rejected selection reuse, a second Surface node family, live-member Recipe slots, and silent authorization omission.
+
+Files:
+- DECISIONS.md
+
+Why:
+T30 must settle composition semantics before implementation so single-subject and workspace presentation share one governed machine without creating business truth.
