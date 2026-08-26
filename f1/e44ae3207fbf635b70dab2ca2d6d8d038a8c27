@@ -25,3 +25,29 @@ Verification:
 - CI=true TMPDIR=/home/mike/.cache/ui4a-t27-tmp pnpm e2e e2e/i3.spec.ts e2e/smoke.spec.ts: PASS (4/4)
 - pnpm governance: PASS after orchestrator baseline registration
 - Prettier and diff check: PASS
+
+T27 Phase C Verification (自治验收)
+
+Scope:
+- canonical presence/Situation/clientView site migration to workstation/meta
+- SiteNav workstation/meta groups and collapsible system routes
+- temporary GR3 baseline registration (corrected after tracked test entered count)
+
+Automated verification:
+- pnpm check: PASS (373 files passed, 6 skipped; 2883 tests passed, 10 skipped, 2 Phase D todo; governance OK)
+- CI=true TMPDIR=/home/mike/.cache/ui4a-t27-tmp pnpm e2e invariants: PASS (4 passed, 2 existing skips)
+- focused SiteNav/I3/smoke: PASS (4/4 E2E; 5 unit passed, 2 Phase D todo)
+- actual-site business rg audit: zero matches
+
+Manual-equivalent verification:
+1. / and non-meta routes derive site=workstation; /meta and descendants derive meta; raw stays a mode.
+2. Header exposes 我的事, 共同注视, 定义管理 as grouped task entrances.
+3. System disclosure reaches inbox, events and delegations without removing routes.
+4. Every clickable is data-nav backed and raw has no top-level entrance.
+Expected: navigation speaks task language and presence records the same two-site semantics.
+
+Governance note:
+- Initial 4520 count omitted the then-untracked colocated test; corrected tracked total is 4563 in commit 535f47d. Phase D must shrink it when retiring home-body/reorganizing canvas features.
+
+Confirmation:
+- 自治验收：automated gates and scripted navigation/presence audit passed.
