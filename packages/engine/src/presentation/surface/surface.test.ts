@@ -301,6 +301,7 @@ describe('generic semantic fallback planner', () => {
   it('uses explicit semantic hints and Siren structure without copying facts', () => {
     const surface = planGenericSurface('record:alpha', entity, catalog, {
       entityVersion: 'entity-v3',
+      intent: 'read',
       semanticHints: {
         'properties.fields.displayName': 'identity',
         'properties.fields.summary': 'primary-content',
@@ -349,6 +350,7 @@ describe('generic semantic fallback planner', () => {
   it('preserves the generic binding, dependency and provenance semantics inside the subject region', () => {
     const surface = planGenericSurface('record:alpha', entity, catalog, {
       entityVersion: 'entity-v3',
+      intent: 'read',
       semanticHints: {
         'properties.fields.displayName': 'identity',
         'properties.fields.summary': 'primary-content',
@@ -406,6 +408,7 @@ describe('generic semantic fallback planner', () => {
   it('normalizes, serializes and hashes the subject region independently of hint insertion order', () => {
     const first = planGenericSurface('record:alpha', entity, catalog, {
       entityVersion: 'entity-v3',
+      intent: 'read',
       semanticHints: {
         'properties.fields.displayName': 'identity',
         'properties.fields.summary': 'primary-content',
@@ -413,6 +416,7 @@ describe('generic semantic fallback planner', () => {
     });
     const second = planGenericSurface('record:alpha', entity, catalog, {
       entityVersion: 'entity-v3',
+      intent: 'read',
       semanticHints: {
         'properties.fields.summary': 'primary-content',
         'properties.fields.displayName': 'identity',
@@ -438,6 +442,7 @@ describe('generic semantic fallback planner', () => {
   ])('keeps an honest %s diagnostic inside the subject region', (subject, inputCatalog, code) => {
     const surface = planGenericSurface(subject, entity, inputCatalog, {
       entityVersion: 'entity-v3',
+      intent: 'read',
     });
 
     expect(surface.root).toMatchObject({
@@ -470,11 +475,78 @@ describe('generic semantic fallback planner', () => {
     });
 
     expect(() =>
-      planGenericSurface('record:alpha', guarded, catalog, { entityVersion: 'entity-v3' }),
+      planGenericSurface('record:alpha', guarded, catalog, {
+        entityVersion: 'entity-v3',
+        intent: 'read',
+      }),
     ).not.toThrow();
 
     const source = readFileSync(fileURLToPath(new URL('./generic.ts', import.meta.url)), 'utf8');
     expect(source).not.toMatch(/entity\.class|\.class\.includes|type\s*(?:===|=>)\s*component/i);
     expect(source).not.toMatch(/ArticlePage|DetailPage|FlowPage|post:first-post/);
+  });
+
+  it('selects different canonical field subsets for exact intents and uses read for unknown', () => {
+    const input: SirenEntity = {
+      ...entity,
+      properties: {
+        ...entity.properties,
+        fields: {
+          displayName: 'Alpha',
+          summary: 'Primary',
+          alpha: 'A',
+          zeta: 'Z',
+        },
+      },
+    };
+    const hints = {
+      'properties.fields.displayName': 'identity' as const,
+      'properties.fields.summary': 'primary-content' as const,
+      'properties.fields.alpha': 'metadata' as const,
+      'properties.fields.zeta': 'metadata' as const,
+    };
+    const paths = (intent: string): string[] => {
+      const surface = planGenericSurface('record:alpha', input, catalog, {
+        entityVersion: 'entity-v3',
+        intent,
+        semanticHints: hints,
+      });
+      const result: string[] = [];
+      const visit = (node: SurfaceTree['root']): void => {
+        if (node.kind === 'word') {
+          for (const binding of Object.values(node.bindings)) {
+            if (binding.kind === 'property') result.push(binding.path);
+          }
+        }
+        if (node.kind === 'layout') node.children.forEach(visit);
+        if (node.kind === 'slot') visit(node.child);
+        if (node.kind === 'repeat') visit(node.item);
+      };
+      visit(surface.root);
+      return result;
+    };
+
+    expect(paths('read')).toEqual([
+      'properties.fields.displayName',
+      'properties.node',
+      'properties.fields.summary',
+    ]);
+    expect(paths('overview')).toEqual([
+      'properties.fields.displayName',
+      'properties.node',
+      'properties.fields.alpha',
+      'properties.fields.zeta',
+    ]);
+    expect(paths('free-form unknown')).toEqual(paths('read'));
+
+    const invalid = planGenericSurface('record:alpha', input, catalog, {
+      entityVersion: 'entity-v3',
+      intent: '   ',
+      semanticHints: hints,
+    });
+    expect(invalid.root).toMatchObject({
+      kind: 'layout',
+      children: [{ kind: 'slot', child: { kind: 'diagnostic', code: 'generic-input-invalid' } }],
+    });
   });
 });

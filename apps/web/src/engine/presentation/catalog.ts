@@ -3,14 +3,14 @@ import type { SurfaceCatalog } from '@ui4a/engine';
 /** Semantic catalog planned by AI and compiled to the concrete A2UI catalog at runtime. */
 export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
   id: 'urn:ui4a:presentation:semantic',
-  version: 'semantic-v1',
+  version: 'semantic-v2',
   words: {
     heading: {
       roles: ['identity'],
       bindings: { value: { sources: ['property', 'item'], required: true } },
     },
     prose: {
-      roles: ['primary-content', 'metadata'],
+      roles: ['primary-content', 'metadata', 'relation'],
       bindings: { value: { sources: ['property', 'item'], required: true } },
     },
     state: {

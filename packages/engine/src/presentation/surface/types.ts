@@ -138,6 +138,7 @@ export interface SurfaceValidationResult {
 
 export interface GenericSurfaceOptions {
   entityVersion: string;
+  intent: string;
   semanticHints?: Readonly<Record<string, SemanticRegionRole>>;
   provenanceRef?: string;
 }

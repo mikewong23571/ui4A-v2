@@ -249,8 +249,8 @@ describe('Sidecar promotion and explanation', () => {
     const generic = (rel: string) =>
       planGenericSurface(rel, entity(rel), catalog, {
         entityVersion: `entity:${rel}:v1`,
+        intent: 'read',
         semanticHints: { 'properties.fields.title': 'primary-content' },
-        provenanceRef: `generic:${rel}`,
       });
     const plan = composeSurfaceRegions(
       declaration,

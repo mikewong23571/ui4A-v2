@@ -14,6 +14,7 @@ import { singleSubjectRecipeContext } from './recipe-context';
 import { selectAndInstantiateRecipe } from './recipe-selection';
 import { currentRecipeCoordinator } from './recipes-runtime';
 import { semanticHintsOf } from './situation';
+import { genericIntentPolicyDependency } from './generic-intent-policy';
 
 function diagnosticSurface(): SurfaceTree {
   return {
@@ -112,6 +113,7 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
       PRESENTATION_SURFACE_CATALOG,
       {
         entityVersion: fingerprint,
+        intent: region.declaration.intent,
         semanticHints: semanticHintsOf(region.entity as Parameters<typeof planGenericSurface>[1]),
         provenanceRef: `composition-region:${region.declaration.region}`,
       },
@@ -150,7 +152,7 @@ export function planWorkspaceComposition(root: AuthorizedRoot): {
   );
   return {
     surface: planned.surface,
-    dependencies: planned.dependencies,
+    dependencies: [...planned.dependencies, genericIntentPolicyDependency()],
     partial: root.regions.some((region) => region.entity === undefined),
   };
 }

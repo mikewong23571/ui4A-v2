@@ -46,7 +46,7 @@ function derefFrom(entities: ReadonlyMap<string, SirenEntity>, binding: SurfaceB
   const entity = entities.get(binding.subject);
   if (entity === undefined) return undefined;
   if (binding.kind === 'property') return readPath(entity, binding.path);
-  if (binding.kind === 'actions') return entity.actions;
+  if (binding.kind === 'actions') return entity;
   if (binding.kind === 'links') return entity.links;
   return entity.entities;
 }
@@ -55,11 +55,13 @@ export function planGenericPresentationSurface(
   subject: string,
   entity: SirenEntity,
   entityVersion: string,
+  intent: string,
 ): GenericPresentationPlan {
   const entities = presentationEntityMap(entity);
   const boundSubject = relOf(entity) ?? subject;
   const surface = planGenericSurface(boundSubject, entity, PRESENTATION_SURFACE_CATALOG, {
     entityVersion,
+    intent,
     semanticHints: semanticHintsOf(entity),
     provenanceRef: `generic:${subject}`,
   });

@@ -1,6 +1,12 @@
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
-import type { SirenEntity, SurfaceNode } from '@ui4a/engine';
+import {
+  GENERIC_INTENT_POLICY,
+  selectGenericFieldCandidates,
+  type SirenEntity,
+  type SurfaceNode,
+} from '@ui4a/engine';
 
 import { planGenericPresentationSurface } from './generic';
 
@@ -12,6 +18,25 @@ function propertyIdentityPaths(node: SurfaceNode): string[] {
   return Object.values(node.bindings).flatMap((binding) =>
     binding.kind === 'property' ? [binding.path] : [],
   );
+}
+
+function stringValues(value: unknown): Set<string> {
+  const result = new Set<string>();
+  const visit = (candidate: unknown): void => {
+    if (typeof candidate === 'string') {
+      result.add(candidate);
+      return;
+    }
+    if (Array.isArray(candidate)) {
+      candidate.forEach(visit);
+      return;
+    }
+    if (typeof candidate === 'object' && candidate !== null) {
+      Object.values(candidate as Record<string, unknown>).forEach(visit);
+    }
+  };
+  visit(value);
+  return result;
 }
 
 const post: SirenEntity = {
@@ -37,7 +62,7 @@ const post: SirenEntity = {
 
 describe('generic Presentation runtime plan', () => {
   it('hydrates identity/body/status/metadata while keeping facts out of A2UI components', () => {
-    const plan = planGenericPresentationSurface('post:first-post', post, 'definition-v1');
+    const plan = planGenericPresentationSurface('post:first-post', post, 'definition-v1', 'review');
     const components = JSON.stringify(plan.bundle.messages[2]);
     const data = JSON.stringify(plan.bundle.messages[1]);
 
@@ -56,7 +81,12 @@ describe('generic Presentation runtime plan', () => {
       ...post,
       properties: { ...post.properties, rel: 'article-drafting:main' },
     };
-    const plan = planGenericPresentationSurface('flow:article-drafting', flow, 'definition-v1');
+    const plan = planGenericPresentationSurface(
+      'flow:article-drafting',
+      flow,
+      'definition-v1',
+      'read',
+    );
     expect(plan.bundle.issues).toEqual([]);
     expect(JSON.stringify(plan.surface)).toContain('article-drafting:main');
     expect(JSON.stringify(plan.surface)).not.toContain('$slot');
@@ -78,11 +108,71 @@ describe('generic Presentation runtime plan', () => {
       entities: [],
     };
 
-    const plan = planGenericPresentationSurface('threads', collection, 'definition-v1');
+    const plan = planGenericPresentationSurface('threads', collection, 'definition-v1', 'read');
     expect(plan.bundle.issues).toEqual([]);
     expect(JSON.stringify(plan.surface)).toContain('properties.title');
     expect(propertyIdentityPaths(plan.surface.root)).toEqual(['properties.title']);
     expect(JSON.stringify(plan.bundle.messages[1])).toContain('我的工作线');
     expect(collection.properties.rel).toBe('threads');
+  });
+
+  it('keeps compiled components binding-only for random selected intent subsets', () => {
+    const roles = ['identity', 'status', 'primary-content', 'metadata', 'relation'] as const;
+    fc.assert(
+      fc.property(
+        fc.uniqueArray(fc.string({ minLength: 1, maxLength: 12 }), {
+          minLength: roles.length,
+          maxLength: roles.length,
+        }),
+        fc.constantFrom('read', 'overview', 'review', 'track', 'unknown free-form'),
+        (values, intent) => {
+          const fields = Object.fromEntries(
+            roles.map((role, index) => [`field${index}`, `FACT_${index}_${values[index]}`]),
+          );
+          const hints = roles.map((role, index) => ({
+            path: `properties.fields.field${index}`,
+            title: `Field ${index}`,
+            role,
+          }));
+          const entity: SirenEntity = {
+            class: ['opaque'],
+            properties: {
+              rel: 'record:property',
+              node: 'active',
+              fields,
+              presentation: { fields: hints },
+            },
+            actions: [{ name: 'act', title: 'Act', method: 'POST', href: '/api/exec', fields: {} }],
+            links: [{ rel: ['self'], href: '/api/entity?rel=record%3Aproperty' }],
+            entities: [],
+          };
+
+          const plan = planGenericPresentationSurface(
+            'record:property',
+            entity,
+            'definition-v1',
+            intent,
+          );
+          const components = JSON.stringify(plan.bundle.messages[2]);
+          const dataValues = stringValues(plan.bundle.messages[1]);
+          for (const value of Object.values(fields)) expect(components).not.toContain(value);
+
+          const selectedPaths = new Set(
+            selectGenericFieldCandidates(intent, hints, GENERIC_INTENT_POLICY).map(
+              ({ path }) => path,
+            ),
+          );
+          hints.forEach(({ path }, index) => {
+            const value = fields[`field${index}`]!;
+            expect(dataValues.has(value)).toBe(selectedPaths.has(path));
+          });
+          expect(JSON.stringify(plan.surface)).not.toMatch(/FACT_/);
+          expect(JSON.stringify(plan.surface)).toContain('"kind":"actions"');
+          expect(JSON.stringify(plan.surface)).toContain('"kind":"links"');
+          expect(JSON.stringify(plan.surface)).toContain('"kind":"entities"');
+        },
+      ),
+      { numRuns: 80 },
+    );
   });
 });

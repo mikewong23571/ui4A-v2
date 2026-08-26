@@ -32,6 +32,7 @@ import { singleSubjectRecipeContext } from './recipe-context';
 import { getAuthorizedPresentationEntity } from './authorized-entity';
 import { compositionRecipeContext, planWorkspaceComposition } from './runtime-composition';
 import type { PresentationTrustedContext } from './broker';
+import { genericIntentPolicyDependency } from './generic-intent-policy';
 
 const runtimeKey = Symbol.for('ui4a.presentation-broker');
 
@@ -86,6 +87,7 @@ function currentDependencies(root: AuthorizedRoot): SidecarDependency[] {
       fingerprint: PRESENTATION_SURFACE_CATALOG.version,
       optional: false,
     },
+    genericIntentPolicyDependency(),
     {
       id: `policy:${root.policyScope}`,
       subtreeId: 'root',
@@ -301,6 +303,7 @@ export function getPresentationBroker(): WebPresentationBroker {
         composition?.surface ??
         planGenericSurface(request.subject, entity, PRESENTATION_SURFACE_CATALOG, {
           entityVersion: dependencies[0]!.fingerprint,
+          intent: request.intent,
           semanticHints: semanticHintsOf(entity),
           provenanceRef: `request:${request.requestId}`,
         });

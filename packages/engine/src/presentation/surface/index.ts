@@ -4,6 +4,7 @@
  * generic(机械兜底规划器)。公开符号与拆分前的 surface.ts 一致。
  */
 export * from './types';
+export * from './intent';
 export { restoreSurfaceTree, validateSurfaceCatalog, validateSurfaceTree } from './validate';
 export { hashSurfaceTree, normalizeSurfaceTree, serializeSurfaceTree } from './normalize';
 export { planGenericSurface } from './generic';

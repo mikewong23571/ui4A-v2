@@ -12,6 +12,11 @@ import {
   normalizedDependencies,
 } from './internal';
 import { normalizeSurfaceTree } from './normalize';
+import {
+  GENERIC_ROLE_ORDER,
+  selectGenericFieldCandidates,
+  type GenericFieldCandidate,
+} from './intent';
 import { validateSurfaceCatalog } from './validate';
 import {
   SURFACE_SCHEMA_VERSION,
@@ -56,15 +61,9 @@ const GENERIC_STRUCTURAL_PROPERTY_PATHS = new Set([
   'properties.flow',
 ]);
 
-const GENERIC_ROLE_ORDER: Readonly<Record<SemanticRegionRole, number>> = {
-  identity: 0,
-  status: 1,
-  'primary-content': 2,
-  metadata: 3,
-  actions: 4,
-  relation: 5,
-  diagnostic: 6,
-};
+function isGenericFieldRole(role: SemanticRegionRole): role is GenericFieldCandidate['role'] {
+  return role !== 'actions' && role !== 'diagnostic';
+}
 
 function catalogDependency(catalog: SurfaceCatalog): SurfaceDependency {
   return { kind: 'catalog', subject: catalog.id, version: catalog.version };
@@ -159,6 +158,7 @@ export function planGenericSurface(
   if (
     !nonEmptyString(subject) ||
     !nonEmptyString(options.entityVersion) ||
+    !nonEmptyString(options.intent) ||
     !catalogValidation.valid
   ) {
     return assembleGenericSubject(
@@ -174,42 +174,36 @@ export function planGenericSurface(
     );
   }
   const plannedPaths = new Set<string>();
-  const regions: Array<{ role: SemanticRegionRole; binding: SurfaceBinding }> = [];
+  const fieldCandidates: GenericFieldCandidate[] = [];
   const hints = Object.entries(options.semanticHints ?? {}).sort(([left], [right]) =>
     left.localeCompare(right),
   );
 
   for (const [path, role] of hints) {
-    if (
-      (role === 'identity' ||
-        role === 'status' ||
-        role === 'primary-content' ||
-        role === 'metadata') &&
-      readPath(entity, path) !== undefined
-    ) {
-      regions.push({ role, binding: { kind: 'property', subject, path } });
+    if (isGenericFieldRole(role) && readPath(entity, path) !== undefined) {
+      fieldCandidates.push({ path, role });
       plannedPaths.add(path);
     }
   }
 
-  if (!regions.some((region) => region.role === 'identity')) {
+  if (!fieldCandidates.some((candidate) => candidate.role === 'identity')) {
     const path = 'properties.rel';
     if (readPath(entity, path) !== undefined) {
-      regions.unshift({ role: 'identity', binding: { kind: 'property', subject, path } });
+      fieldCandidates.push({ role: 'identity', path });
       plannedPaths.add(path);
     }
   }
-  if (!regions.some((region) => region.role === 'status')) {
+  if (!fieldCandidates.some((candidate) => candidate.role === 'status')) {
     const path = 'properties.node';
     if (readPath(entity, path) !== undefined) {
-      regions.push({ role: 'status', binding: { kind: 'property', subject, path } });
+      fieldCandidates.push({ role: 'status', path });
       plannedPaths.add(path);
     }
   }
 
   for (const path of scalarPropertyPaths(entity.properties.fields, 'properties.fields').sort()) {
     if (!plannedPaths.has(path)) {
-      regions.push({ role: 'primary-content', binding: { kind: 'property', subject, path } });
+      fieldCandidates.push({ role: 'primary-content', path });
       plannedPaths.add(path);
     }
   }
@@ -220,10 +214,15 @@ export function planGenericSurface(
       !path.startsWith('properties.presentation.') &&
       !GENERIC_STRUCTURAL_PROPERTY_PATHS.has(path)
     ) {
-      regions.push({ role: 'metadata', binding: { kind: 'property', subject, path } });
+      fieldCandidates.push({ role: 'metadata', path });
       plannedPaths.add(path);
     }
   }
+  const regions: Array<{ role: SemanticRegionRole; binding: SurfaceBinding }> =
+    selectGenericFieldCandidates(options.intent, fieldCandidates).map(({ path, role }) => ({
+      role,
+      binding: { kind: 'property', subject, path },
+    }));
   if (entity.actions.length > 0) {
     regions.push({ role: 'actions', binding: { kind: 'actions', subject } });
   }

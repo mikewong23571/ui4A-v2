@@ -76,6 +76,7 @@ const SIDECAR_SURFACE = planGenericPresentationSurface(
   'post:first-post',
   FIRST,
   'definition-v1',
+  'read',
 ).surface;
 
 const WORKSPACE_SOURCES = [
@@ -94,6 +95,7 @@ const WORKSPACE_SURFACE = assembleSurfaceRegions(
       entity.properties.rel as string,
       entity,
       'definition-v1',
+      'read',
     ).surface,
     provenance: [
       {

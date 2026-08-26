@@ -107,8 +107,8 @@ function input(
     sourceKind,
     surface: planGenericSurface(source, entity(source, sourceKind === 'collection'), catalog, {
       entityVersion: `contract:${source}`,
+      intent: 'read',
       semanticHints: { 'properties.fields.summary': 'primary-content' },
-      provenanceRef: `generic:${source}`,
     }),
     entityFingerprint: `entity:${source}:v1`,
     ...(sourceKind === 'collection' ? { membershipFingerprint: `members:${source}:v1` } : {}),
