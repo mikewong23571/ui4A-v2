@@ -23,7 +23,7 @@
     spec.md 与本 plan;tracks.md 无需动(本 Track 已登记)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) 8d9145e
 
-## Phase B: 事件与 fold 内核(纯投影)
+## Phase B: 事件与 fold 内核(纯投影) [checkpoint: f9d4eb8]
 
 - [x] Task: thread 事件 schema 与双 union 登记 53d579d
   - `packages/shared`:D44 四种事件 detail 类型(`thread-created`/
@@ -45,7 +45,7 @@
     重放测试:重建与增量
     fold 一致,空日志 → 空表(合法态);乱序/迟到 seq 容忍
     (worker 第二写者形态,参照 service.ts:316-333 交换性论证)
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) f9d4eb8
 
 ## Phase C: 合同暴露(实体/sitemap/授权/I5)
 
