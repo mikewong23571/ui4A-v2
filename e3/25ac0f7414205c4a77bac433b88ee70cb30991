@@ -11,3 +11,26 @@ Files:
 
 Why:
 Implementation tasks must consume one decided architecture rather than reinterpret recommendations during construction.
+
+Phase A Verification Report (autonomous acceptance)
+
+Scope:
+- DECISIONS.md
+- conductor/tracks/t30-presentation-composition_20260825/spec.md
+- conductor/tracks/t30-presentation-composition_20260825/plan.md
+- No code files changed by Phase A; no additional phase tests required.
+
+Automated evidence:
+- pnpm governance: PASS
+- NODE_OPTIONS=--no-experimental-webstorage pnpm check: PASS (364 files passed, 6 skipped; 2771 tests passed, 10 skipped)
+- CI=true NODE_OPTIONS=--no-experimental-webstorage pnpm e2e invariants: PASS (4 passed, 2 skipped; I5 replay hash matched)
+- Focused Chat tests under the same Node option: PASS (41/41)
+
+Autonomous manual verification:
+- git diff scope exactly matched the three Phase A Markdown files.
+- D45 contains five numbered decisions.
+- D45/spec/plan all contain the fixed workspace, layout/slot, Recipe slot and authorization diagnostic vocabulary.
+- The obsolete open Phase 0 spike section is absent.
+
+Confirmation:
+Autonomous orchestration protocol accepted the phase because all scripted manual checks and required gates passed. Node 24 experimental Web Storage was disabled for jsdom test compatibility; no product code was changed for it.
