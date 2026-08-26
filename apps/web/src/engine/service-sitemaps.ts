@@ -77,6 +77,13 @@ export function createSitemapReaders(
         { rel: 'software-changes', title: '软件变更', collection: true, app: 'development' },
         { rel: 'writing-requests', title: '写作请求', collection: true, app: 'editorial' },
         { rel: 'agent-runs', title: 'Agent Runs', collection: true, app: 'development' },
+        {
+          rel: 'threads',
+          title: 'Work Threads',
+          collection: true,
+          scope: 'principal',
+          memberRelPrefix: 'thread:',
+        },
       ],
       applications,
       capabilities,

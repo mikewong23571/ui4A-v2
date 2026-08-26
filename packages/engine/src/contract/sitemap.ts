@@ -22,6 +22,10 @@ export interface SitemapSurface {
   rel: string;
   title: string;
   collection?: boolean;
+  /** Application surfaces bind to app; principal surfaces remain visible in every granted app. */
+  scope?: 'application' | 'principal';
+  /** Optional exact-member rel family governed by this surface's same scope declaration. */
+  memberRelPrefix?: string;
   /**
    * 归属 application(T10 架构决定 5):flow 面取其 flow.app(归一化后);
    * 集合面取首次 append 它的 flow 的 app;无归属信息归 'default'。
@@ -273,9 +277,11 @@ export function deriveSitemap(
       }
     }
   }
-  // extraSurfaces 由调用方注入,无归属信息时归 'default'。
+  // extraSurfaces 由调用方注入;principal scope 不伪造 app 归属,其余缺省 default。
   for (const extra of options?.extraSurfaces ?? []) {
-    surfaces.push({ ...extra, app: extra.app ?? 'default' });
+    surfaces.push(
+      extra.scope === 'principal' ? { ...extra } : { ...extra, app: extra.app ?? 'default' },
+    );
   }
 
   // application 分组投影:组序 = 定义表声明序;组内 flows = 扁平表声明序过滤

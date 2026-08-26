@@ -10,7 +10,9 @@ import {
 } from '../../../auth/request-identity';
 import {
   assertRelInPolicyScope,
+  assertThreadOwner,
   filterEntityForPolicyScope,
+  filterThreadEntityForPrincipal,
   relCoveredByPolicyScope,
 } from '../../../auth/application-scope';
 import { ensurePresenceTables, loadPresenceForPrincipal } from '../../../db/presence';
@@ -76,16 +78,21 @@ export async function GET(request: Request) {
       policyScope,
       plane: 'business' as const,
     };
+    assertThreadOwner(scopeContext.snapshot, rel, principal);
     if (identity.authorizationMode === 'credential') {
       assertRelInPolicyScope({ ...scopeContext, rel });
     }
     const projected = isAgentRunRel(rel)
       ? await getAgentRunEntity(db, rel, principal, policyScope)
       : await engine.getEntity(rel);
-    const entity =
+    const principalScoped =
       projected === undefined || isAgentRunRel(rel)
         ? projected
-        : await enrichEntityWithAgentRuns(db, projected, principal, policyScope);
+        : filterThreadEntityForPrincipal(projected, scopeContext.snapshot, rel, principal);
+    const entity =
+      principalScoped === undefined || isAgentRunRel(rel)
+        ? principalScoped
+        : await enrichEntityWithAgentRuns(db, principalScoped, principal, policyScope);
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });
     }

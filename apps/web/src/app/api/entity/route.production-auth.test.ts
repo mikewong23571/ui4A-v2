@@ -38,6 +38,7 @@ const mocks = vi.hoisted(() => {
   };
   return {
     assertRelInPolicyScope: vi.fn(),
+    assertThreadOwner: vi.fn(),
     authenticationErrorResponse: vi.fn((error: unknown) => {
       const code = (error as { code?: string }).code;
       return code === undefined ? undefined : Response.json({ error: { code } }, { status: 401 });
@@ -45,6 +46,7 @@ const mocks = vi.hoisted(() => {
     engine,
     enrichEntityWithAgentRuns: vi.fn(async (_db, projected) => projected),
     filterEntityForPolicyScope: vi.fn((projected) => projected),
+    filterThreadEntityForPrincipal: vi.fn((projected) => projected),
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getEngine: vi.fn(async () => engine),
     relCoveredByPolicyScope: vi.fn(() => true),
@@ -71,7 +73,9 @@ vi.mock('../../../auth/request-identity', () => ({
 
 vi.mock('../../../auth/application-scope', () => ({
   assertRelInPolicyScope: mocks.assertRelInPolicyScope,
+  assertThreadOwner: mocks.assertThreadOwner,
   filterEntityForPolicyScope: mocks.filterEntityForPolicyScope,
+  filterThreadEntityForPrincipal: mocks.filterThreadEntityForPrincipal,
   relCoveredByPolicyScope: mocks.relCoveredByPolicyScope,
 }));
 
@@ -87,8 +91,8 @@ const TRUSTED_IDENTITY = {
   humanApprovalEligible: false,
 };
 
-function request(): Request {
-  return new Request('https://ui4a.internal/api/entity?rel=post%3Afirst', {
+function request(rel = 'post:first'): Request {
+  return new Request(`https://ui4a.internal/api/entity?rel=${encodeURIComponent(rel)}`, {
     headers: {
       authorization: 'Bearer verified-token',
       'x-ui4a-principal': 'forged-header-root',
@@ -137,6 +141,11 @@ describe('GET /api/entity production authentication wiring', () => {
     expect(mocks.assertRelInPolicyScope).toHaveBeenCalledWith(
       expect.objectContaining({ rel: 'post:first', policyScope: 'development', plane: 'business' }),
     );
+    expect(mocks.assertThreadOwner).toHaveBeenCalledWith(
+      expect.anything(),
+      'post:first',
+      'credential-subject',
+    );
     expect(mocks.engine.getEntity).toHaveBeenCalledWith('post:first');
     expect(mocks.enrichEntityWithAgentRuns).toHaveBeenCalledWith(
       expect.anything(),
@@ -145,6 +154,12 @@ describe('GET /api/entity production authentication wiring', () => {
       'development',
     );
     expect(mocks.filterEntityForPolicyScope).toHaveBeenCalledTimes(1);
+    expect(mocks.filterThreadEntityForPrincipal).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'post:first',
+      'credential-subject',
+    );
     // T22 验证修复:路由向 identity 解析传入按 query rel 归属的 scopeCoverage 闭包。
     const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as {
       scopeCoverage?: (policyScope: string) => boolean;
@@ -155,6 +170,41 @@ describe('GET /api/entity production authentication wiring', () => {
       expect.objectContaining({ plane: 'business' }),
       'post:first',
       'development',
+    );
+  });
+
+  it('wires trusted-principal filtering for the threads list before credential scope filtering', async () => {
+    const threads = {
+      class: ['collection', 'threads'],
+      properties: { rel: 'threads', count: 2 },
+      actions: [],
+      links: [],
+      'guard-results': [],
+      entities: [],
+    };
+    mocks.engine.getEntity.mockResolvedValueOnce(threads);
+    mocks.filterThreadEntityForPrincipal.mockReturnValueOnce({
+      ...threads,
+      properties: { ...threads.properties, count: 1 },
+    });
+
+    const response = await GET(request('threads'));
+
+    expect(response.status).toBe(200);
+    expect(mocks.assertThreadOwner).toHaveBeenCalledWith(
+      expect.anything(),
+      'threads',
+      'credential-subject',
+    );
+    expect(mocks.filterThreadEntityForPrincipal).toHaveBeenCalledWith(
+      threads,
+      expect.anything(),
+      'threads',
+      'credential-subject',
+    );
+    expect(mocks.filterEntityForPolicyScope).toHaveBeenCalledWith(
+      expect.objectContaining({ properties: expect.objectContaining({ count: 1 }) }),
+      expect.anything(),
     );
   });
 });

@@ -80,6 +80,27 @@ describe('deriveSitemap — 结构', () => {
     );
   });
 
+  it('keeps a principal-scoped surface Application-neutral without synthesizing app ownership', () => {
+    const sitemap = deriveSitemap(flows, {
+      extraSurfaces: [
+        {
+          rel: 'threads',
+          title: 'Work Threads',
+          collection: true,
+          scope: 'principal',
+          memberRelPrefix: 'thread:',
+        },
+      ],
+    });
+    expect(sitemap.surfaces.find((surface) => surface.rel === 'threads')).toEqual({
+      rel: 'threads',
+      title: 'Work Threads',
+      collection: true,
+      scope: 'principal',
+      memberRelPrefix: 'thread:',
+    });
+  });
+
   it('generatedAt 透传可选;缺省不出现', () => {
     expect(deriveSitemap(flows).generatedAt).toBeUndefined();
     expect(deriveSitemap(flows, { generatedAt: '2026-08-21T00:00:00Z' }).generatedAt).toBe(

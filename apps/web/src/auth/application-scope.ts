@@ -42,8 +42,14 @@ function businessApplications(
     const application = flowApplication(snapshot, instance.flow);
     return application === undefined ? [UNRESOLVED_APPLICATION] : [application];
   }
-  const surface = sitemap.surfaces.find((candidate) => candidate.rel === rel);
-  return surface === undefined ? [] : [surface.app ?? 'default'];
+  const surface =
+    sitemap.surfaces.find((candidate) => candidate.rel === rel) ??
+    sitemap.surfaces.find(
+      (candidate) =>
+        candidate.memberRelPrefix !== undefined && rel.startsWith(candidate.memberRelPrefix),
+    );
+  if (surface === undefined || surface.scope === 'principal') return [];
+  return [surface.app ?? 'default'];
 }
 
 function metaApplications(snapshot: EngineSnapshot, sitemap: Sitemap, rel: string): string[] {
@@ -108,7 +114,9 @@ export function filterSitemapForPolicyScope(sitemap: Sitemap, policyScope: strin
   return {
     ...sitemap,
     version: `${sitemap.version}:${policyScope}`,
-    surfaces: sitemap.surfaces.filter((surface) => surface.app === policyScope),
+    surfaces: sitemap.surfaces.filter(
+      (surface) => surface.scope === 'principal' || surface.app === policyScope,
+    ),
     flows,
     applications: sitemap.applications
       .filter((application) => application.name === policyScope)
@@ -131,31 +139,80 @@ function relFromHref(href: string | undefined): string | undefined {
   }
 }
 
+function visibleInPolicyScope(context: ScopeContext, rel: string): boolean {
+  if (context.plane === 'business' && (rel.startsWith('meta/') || rel.startsWith('_meta'))) {
+    return false;
+  }
+  const applications = applicationsForRel(context, rel);
+  return applications.length === 0 || applications.includes(context.policyScope);
+}
+
+function filterReferenceProperty(value: unknown, context: ScopeContext): unknown {
+  if (!Array.isArray(value)) return value;
+  return value.filter((item) => {
+    const rel = typeof item === 'string' ? item : (item as { rel?: unknown })?.rel;
+    return typeof rel !== 'string' || visibleInPolicyScope(context, rel);
+  });
+}
+
+/** Exact thread reads and writes are always constrained by the trusted request principal. */
+export function assertThreadOwner(snapshot: EngineSnapshot, rel: string, principal: string): void {
+  if (!rel.startsWith('thread:')) return;
+  const thread = snapshot.threads?.[rel.slice('thread:'.length)];
+  if (thread !== undefined && thread.owner !== principal) {
+    throw new ProductionIdentityError('scope_insufficient');
+  }
+}
+
+/** Filter the principal-scoped threads collection without trusting projected owner fields. */
+export function filterThreadEntityForPrincipal(
+  entity: SirenEntity,
+  snapshot: EngineSnapshot,
+  rel: string,
+  principal: string,
+): SirenEntity {
+  if (rel !== 'threads' || entity.entities === undefined) return entity;
+  const entities = entity.entities.filter((child) => {
+    const id = child.properties.id;
+    return typeof id === 'string' && snapshot.threads?.[id]?.owner === principal;
+  });
+  return {
+    ...entity,
+    properties: { ...entity.properties, count: entities.length },
+    entities,
+  };
+}
+
 /** Strip cross-Application children and links from a collection-style Siren projection. */
 export function filterEntityForPolicyScope(
   entity: SirenEntity,
   context: ScopeContext,
 ): SirenEntity {
-  if (entity.entities === undefined) return entity;
-  const entities = entity.entities.filter((child) => {
+  const entities = entity.entities?.filter((child) => {
     const rel = relFromHref(child.href);
     if (rel === undefined) return true;
-    const applications = applicationsForRel(context, rel);
-    return applications.length === 0 || applications.includes(context.policyScope);
+    return visibleInPolicyScope(context, rel);
   });
   const links = entity.links.filter((link) => {
     const rel = relFromHref(link.href);
     if (rel === undefined) return true;
-    const applications = applicationsForRel(context, rel);
-    return applications.length === 0 || applications.includes(context.policyScope);
+    return visibleInPolicyScope(context, rel);
   });
+  const threadProperties = entity.class.includes('work-thread')
+    ? {
+        ...entity.properties,
+        context: filterReferenceProperty(entity.properties.context, context),
+        active: filterReferenceProperty(entity.properties.active, context),
+        approval: filterReferenceProperty(entity.properties.approval, context),
+      }
+    : entity.properties;
   return {
     ...entity,
     properties:
-      typeof entity.properties.count === 'number'
-        ? { ...entity.properties, count: entities.length }
-        : entity.properties,
+      entities !== undefined && typeof entity.properties.count === 'number'
+        ? { ...threadProperties, count: entities.length }
+        : threadProperties,
     links,
-    entities,
+    ...(entities === undefined ? {} : { entities }),
   };
 }

@@ -28,6 +28,12 @@
   ],
   "dirs": [
     {
+      "path": "apps/web/src/auth",
+      "lines": 4074,
+      "limit": 4000,
+      "note": "T26 在途:principal-scoped Work Thread owner/scope 过滤按授权边界归属 auth/;业务优先不为凑行数拆分(workflow 业务优先原则 2026-08-26),shrink-only 自 T26 关闭起算;收缩窗口=T27 workstation 接入时将 principal resource helpers 提炼到独立 auth 子目录"
+    },
+    {
       "path": "apps/web/src/db",
       "lines": 4014,
       "limit": 4000,
