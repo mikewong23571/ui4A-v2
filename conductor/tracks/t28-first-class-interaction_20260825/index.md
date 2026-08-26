@@ -7,8 +7,10 @@
 - [Metadata](./metadata.json)
 - [Specification](./spec.md)
 - [Plan](./plan.md)
+- [Mothership acceptance evidence](./evidence-mothership-20260826.md)
 
-当前状态:`planned`(提前规划,T27 闭环后动工)。方向依据:
+当前状态:`completed`（D47 五问、实现、accepted source `2d8d6c8` 与 mothership Helm
+revision 49 现场验收）。方向依据:
 `conductor/product-vision.md` §一(AI as assistant)、§二(指代可解/canvas
 共同注视)、§三(raw 是镜头不是站点)、§五、§六(特判滑梯)。依赖
 T27(站点框架,动工前按 spec"T27 闭环后复核点"清单核对)、T24(抽屉口径)

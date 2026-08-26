@@ -39,6 +39,13 @@ Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能�
 
 呈现以 `conductor/tracks/archive/t16-semantic-a2ui-sidecars_20260823/user-stories.md` 的 S1–S32 与 T30 组合合同为准。Chat 只发薄 `PresentationRequest`；Application Recipe 和独立 Presentation Agent 产生 binding-only Surface；单主体与 `workspace:<id>` 多区域组合共用同一 planner/Recipe/Sidecar/Canvas 路径。用户级 Sidecar 跨 Session 命中并逐源重新授权、解引用；部分授权只输出对应 `region-unavailable`，虚主体不成为业务实体或事件。个人优化只有经参数化、机械 diff 和 human approval 才可晋升共享 Recipe。Recipe/Sidecar/patch/promotion 事件独立重放，不进入 Business Snapshot。
 
+T28 进一步把合同能力与事实证据提升为一等交互：Entity、Canvas 与组合区域复用同一
+contract-driven 动作组和宿主 fresh-read submit adapter；Assistant 终局回答只从结构化
+FactRef 渲染可点引用，URL focus 是 citation/Canvas 的共同真相；raw 是 exact authorized
+Siren JSON 的局部验钞镜头，不是站点；generic fallback 由版本化 exact intent → field-role
+budget 裁剪，诊断首屏只留不泄漏的人话状态、结构化细节退守 why。现场证据见
+`conductor/tracks/archive/t28-first-class-interaction_20260825/evidence-mothership-20260826.md`。
+
 ### Assistant 双焦点一致性
 
 `conductor/tracks/archive/t21-assistant-dual-focus_20260823/` 的 U1–U8 约束参考 Assistant：`currentRel`
