@@ -79,13 +79,13 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
 
 ## Phase C: delegated 同收窄与回合卫生
 
-- [~] Task: worker delegated 路径收窄(显式正典)
+- [x] Task: worker delegated 路径收窄(显式正典) 8397778
   - `apps/web/src/temporal/delegation.ts` `DelegationDispatchArgs` 增 `scope`
     显式参数(派发方经处境装配算出传入;`startRel` 现状已通,改由 Phase A
     事实链供给);`apps/worker/src/workflows.ts` `AgentStepArgs` 传递;
     `apps/worker/src/delegation.ts` DriverContext 构造应用 Phase B 同一切片
     函数(两路径同一实现,测试切面断言)
-- [ ] Task: 单回合 sitemap 单读归并
+- [~] Task: 单回合 sitemap 单读归并
   - resolveStartRel 的 sitemap 抓取已随 Phase A 删除消失;归并 runAgent 循环
     外抓取(loop.ts)与 `readSitemapTitles`(route.ts,step 活动标题索引,
     `apps/web/src/chat/step-activity.ts`)为单回合一次读取
