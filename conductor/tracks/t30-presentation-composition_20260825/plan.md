@@ -97,7 +97,7 @@
     subject→slot Map 施加 D45 未声明的唯一 source 限制
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `36a2e02`
 
-## Phase E: web 运行时、canvas 与误导验收迁移
+## Phase E: web 运行时、canvas 与误导验收迁移 [checkpoint: e6e9e6b]
 
 - [x] Task: 误导验收前置迁移(spec"误导性验收排查"清单) `3bdc873`
   - 按清单逐条处置(开放化/迁移/删除),处置记录进任务 notes;先于组合形状
@@ -120,7 +120,11 @@
     形状变化仍固定 invalidate
   - pure engine Explain 仅从 composition-declaration provenance 推导 id/version，
     不解析 workspace wire；补 same-scope full↔partial/partial↔full durable replan 测试
-- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) `e6e9e6b`
+  - `NODE_OPTIONS=--no-experimental-webstorage pnpm check`: 372 files passed,
+    6 skipped; 2889 tests passed,10 skipped
+  - `CI=true NODE_OPTIONS=--no-experimental-webstorage pnpm e2e invariants`:
+    4 passed,2 superseded/skipped；独立复审 PASS
 
 ## Phase F: 端到端验收与收尾
 
