@@ -42,13 +42,13 @@ subagent 不自行核算/裁剪);改动 Next.js app 前先读 `apps/web/AGENTS.m
     scope 应用 entry → 站点兜底(business `articles` / meta `meta/flows`)
   - 断言:不 import `match.ts`(零词级交集);全程零 `GET /api/entity` 预探测
     (探测请求数=0);各级缺失时顺序回退;meta 站点兜底 `meta/flows`
-- [~] Task: 起点链切换与词级探测退役(Green)
+- [x] Task: 起点链切换与词级探测退役(Green) c6fc710
   - `route.ts` 两处调用点(inline 回合起步、delegated 派发前)切换到事实链;
     `resolveStartRel` 与 `isDiscoveryOnlyIntent`(已无生产消费方,仅测试引用)
     删除,`apps/web/src/chat/start.ts` 退役,`start.test.ts` 重写为起点链测试
   - `packages/agent/src/governance/t21-source-governance.test.ts` 的反向断言
     改写为新纪律(起点供给只消费处境事实,禁止词级猜测原语进入起点路径)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [~] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: 分层披露与 prompt 预算
 
