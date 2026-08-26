@@ -1,0 +1,7 @@
+T27 mothership scoped Canvas regression fix
+
+Revision 45 live bridge acceptance showed that Canvas preserved scope in the browser URL and bridge hrefs but omitted it from Presentation and Sidecar HTTP requests. Production therefore selected the default policy scope and could not authorize a publishing flow Sidecar. Canvas now propagates the explicit scope query to Presentation create, Sidecar read/write/explain/promote, entity/exec helpers, and action execution; credential validation remains server-owned.
+
+Verification:
+- Red: scoped Canvas component issued no /api/presentation?scope=publishing request
+- Green: Presentation host, why drawer, and exec client tests 16/16 PASS
