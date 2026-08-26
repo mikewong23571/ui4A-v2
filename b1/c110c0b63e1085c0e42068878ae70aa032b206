@@ -1,0 +1,17 @@
+Task: DECISIONS.md 落档(新条目,先于代码)
+
+Summary:
+- Added D41 to supersede the resolveStartRel clause of D33 with the T29 Situation fact-chain start.
+- Bound scoped disclosure to the embedded Assistant prompt while preserving the public HTTP/Siren discovery contract.
+- Established explicit delegated scope/startRel, shared inline/delegated disclosure slicing, capability rel references, and the 32 KiB wire budget.
+
+Files:
+- DECISIONS.md
+
+Why:
+T25 changes a binding architectural constraint, so the replacement decision must precede code and preserve the unaffected D33 guarantees.
+
+Verification:
+- pnpm prettier --check DECISIONS.md
+- git diff --check
+- Autonomous acceptance by the orchestrating agent.
