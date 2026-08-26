@@ -631,3 +631,63 @@
    `mode` 只能在这两种既有语义中选择。任一 dependency 变化都必须重新逐源授权，再按其 mode
    rehydrate 或 invalidate，绝不复用旧授权事实。该降级只影响 Presentation，D41 的公开 HTTP/Siren
    合同和 D27 的 binding-only、用户级 Sidecar、独立 Presentation replay 边界均不改变。
+
+## D46 Workstation 站点、首页、处境与跨站桥(2026-08-26,T27 Phase A)
+
+1. **首页落地形态**:候选是(a)`/` 内嵌从 `canvas-body.tsx` 提炼的共享
+   Sidecar 单树宿主，固定 subject=`workspace:my-work`；(b)`/` 重定向
+   `/canvas?focus=workspace:my-work`；(c)为首页另造一套宿主。约束是 D45 的
+   单一 Presentation 机器、内容面 binding-only、首页零区域/实体/应用 React
+   特判以及 GR2 一次性迁移；壳、标题、导航、处境常显与 Chat 仍是舞台机械。
+   **采纳(a)**:`/` 保留独立的“家”语义，与 `/canvas` 共用同一条
+   `POST /api/presentation` → Sidecar → hydrate → action gate → 单树渲染链。
+   **否决(b)**:首页语义被绑到 Canvas 调试/共同注视 URL，“家”没有自己的门；
+   **否决(c)**:会复制取数、授权、水化与 action gate，形成第二条渲染真相。
+
+2. **处境常显与显式声明**:常显项固定为 site/scope/thread/focus。数据源
+   候选是(a)复用 `presenceObservationForLocation` 的当前客户端观察，与
+   `PresenceReporter` 上报同源；(b)新增 GET situation 端点，把服务端装配结果回显。
+   约束是处境仍只有 `assembleSituation` 一个服务端装配点，常显不得冒充授权
+   裁决，不新增事件种类、端点、自然语言启发式或每实体类型分支。
+   **采纳(a)**:常显语义明示为“你在 URL 中声明的处境”，不展示 granted
+   scopes，也不在浏览器重算 Situation。切换 scope、进线、出线与跨站全部是
+   URL 导航（`?scope=`/`?thread=`/`?focus=`）；PresenceReporter 自动留痕，Chat
+   继续通过 clientView v2 消费同份观察。进线采纳通用链接规则：目标 rel
+   为 `thread:<id>` 的导航统一携带 `?thread=<id>`；出线是常显条上删除
+   `thread` 参数的显式导航。**否决(b)**:它增加往返和消费方，还会把含授权
+   裁决的服务端装配暴露给不需要它的浏览器。否决壳级“设为当前工作线”
+   作为第二套进线机制：链接本身已能同时完成进入与声明，另一个控件会产生
+   两种时序和不一致处境。
+
+3. **站点命名与 presence site 值域**:候选是保留 `{business,meta}`，或与人类
+   站点语义对齐为 `{workstation,meta}`；raw 另有“第三站点”或“模式”两种定位。
+   约束是 workstation=`/`、meta=`/meta` 的显式物理分隔，项目未发布且 GR2
+   禁止新旧双路径，T28 才实现 raw 抽屉。**采纳 `{workstation,meta}`**，一次性
+   替换 presence 推导、Situation defaults、起点链站点兜底及相关测试；raw
+   不进入 site 值域。**否决 `business`**:它命名平面而不是人的工作场所，与
+   已定三形态口径冲突；**否决 raw 作站点**:验钞灯只是随处可达的查看模式，
+   不应拥有独立导航、presence 值或上下文起点。
+
+4. **导航与零件表折叠**:候选是(a)顶栏按 workstation/meta 分区，收件箱、
+   事件流、委托监控收进壳级“系统”区，保留全部原路由；(b)把这些零件
+   折叠为首页内容区块。画布还有保留 workstation 顶级入口或只依赖 Chat
+   present 跳转两个候选。约束是导航与系统区都属舞台机械，文案使用任务语言，
+   所有新可点元素必须有 `data-nav`/`data-action`，raw 不得新增顶级入口。
+   **采纳(a)，并保留画布为 workstation 顶级入口**:“我的事”与“共同注视”
+   是人的主任务，meta 是显式越界的定义管理，系统区提供对底层队列/审计/执行的
+   按需到达。**否决(b)**:它把舞台机械混入声明驱动的内容面，并复辟退役
+   `home-body` 的硬编码页面。否决移除画布顶级入口：共同注视是协作核心，不应
+   只有在 Chat 已成功规划呈现后才可达。
+
+5. **跨站桥推导规则**:候选是(a)只使用 canonical rel 命名约定
+   `flow:<name>` ↔ `meta/flow:<name>` 双向机械推导；(b)维护全局实例→定义映射表；
+   (c)在 React 中按实体类型决定桥。约束是进入 meta 必须是显式意图，链接必须
+   保留当前 scope，无可证明推导路径时诚实缺席，且不改 meta 治理视图内部。
+   **采纳(a)并在 T27 同时落地双桥**:workstation 当前 focus 是
+   `flow:<name>` 时显示“在 meta 中编辑此定义”，目标是
+   `/meta/flow/<name>?scope=<scope>`；meta `meta/flow:<name>` 定义页在壳级显示
+   “查看活实例”，目标是 `/canvas?focus=flow:<name>&scope=<scope>`。当前
+   `resolveFlowRelAlias` 已为唯一实例 flow 提供该活入口；零实例或多实例依其
+   既有诚实 404 语义，桥不改写为猜测。**否决(b)**:命名约定已是单一真相，
+   映射表会漂移且需另建生命周期；**否决(c)**:它把合同命名逻辑泄漏到组件树，
+   违反内容面零类型特判。其他实体不出桥，不因落地便利而降级为后续 Track。
