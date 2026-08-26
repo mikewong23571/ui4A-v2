@@ -43,6 +43,8 @@ import {
   executePlan,
   project,
   readRenderSpecsOf,
+  THREADS_REL,
+  THREAD_REL_PREFIX,
   type ConfirmationDeps,
   type EngineEvent,
   type ExecRequest,
@@ -92,6 +94,7 @@ import {
 } from './service-event-log';
 import { artifactModelFor, materializeSpawnArtifacts } from './service-artifacts';
 import { execConfirmationDecision, persistRejection } from './service-confirmation';
+import { execThreadAction } from './service-thread';
 import { createSitemapReaders, type MetaSitemap } from './service-sitemaps';
 import { freezeSpecCore, toRenderSpec, type FreezeSpecResult } from './service-render-specs';
 
@@ -376,6 +379,10 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
             { toAppend, confirmDeps, projectDeps },
             aliased,
           );
+        }
+
+        if (aliased.rel === THREADS_REL || aliased.rel.startsWith(THREAD_REL_PREFIX)) {
+          return execThreadAction(db, logState, { toAppend, projectDeps }, aliased);
         }
 
         // meta 平面(rel 前缀路由,T4 Phase B):编辑动词/生命周期动词过同一

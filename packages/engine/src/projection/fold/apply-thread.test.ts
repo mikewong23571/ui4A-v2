@@ -7,6 +7,12 @@ import type { LogEvent } from './log-event';
 
 const deps = { flows: {} };
 const owner = 'user:mike';
+const validReceipt = {
+  declaration: { passed: true as const },
+  guards: [{ name: 'thread-owner', pass: true as const }],
+  schema: { passed: true as const },
+  confirmation: { required: false as const, status: 'not-required' as const },
+};
 
 function created(seq = 1, threadId = 'release-1', principal = owner): LogEvent {
   return {
@@ -17,6 +23,7 @@ function created(seq = 1, threadId = 'release-1', principal = owner): LogEvent {
       threadId,
       owner,
       goal: { text: 'Ship safely', source: 'message:goal-1' },
+      receipt: validReceipt,
     },
   };
 }
@@ -31,7 +38,7 @@ function attached(
     seq,
     kind: 'thread-reference-attached',
     principal,
-    detail: { threadId: 'release-1', category, rel },
+    detail: { threadId: 'release-1', category, rel, receipt: validReceipt },
   };
 }
 
@@ -44,7 +51,7 @@ function detached(
     seq,
     kind: 'thread-reference-detached',
     principal: owner,
-    detail: { threadId: 'release-1', category, rel },
+    detail: { threadId: 'release-1', category, rel, receipt: validReceipt },
   };
 }
 
@@ -53,7 +60,7 @@ function status(seq: number, next: 'open' | 'paused' | 'completed' | 'archived')
     seq,
     kind: 'thread-status-changed',
     principal: owner,
-    detail: { threadId: 'release-1', status: next },
+    detail: { threadId: 'release-1', status: next, receipt: validReceipt },
   };
 }
 
@@ -159,12 +166,27 @@ describe('Work Thread fold', () => {
           seq: 2,
           kind: 'thread-reference-attached',
           principal: owner,
-          detail: { threadId: 'release-1', category: 'message', rel: 'message:1' },
+          detail: {
+            threadId: 'release-1',
+            category: 'message',
+            rel: 'message:1',
+            receipt: validReceipt,
+          },
         } as LogEvent,
       ],
     ],
   ])('fails closed for %s', (_label, events) => {
     expect(() => fold(events, deps)).toThrow();
+  });
+
+  it('fails closed when any second-writer thread event omits its judgment receipt', () => {
+    const withoutReceipt = created();
+    withoutReceipt.detail = {
+      threadId: 'release-1',
+      owner,
+      goal: { text: 'Ship safely', source: 'message:goal-1' },
+    };
+    expect(() => fold([withoutReceipt], deps)).toThrow(/receipt|object/u);
   });
 
   it('matches incremental fold with full replay and rebuilds deterministically after late seq', () => {

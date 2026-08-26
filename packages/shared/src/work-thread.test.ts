@@ -18,6 +18,12 @@ import {
 } from './work-thread';
 
 describe('work thread event contract', () => {
+  const validReceipt = {
+    declaration: { passed: true as const },
+    guards: [{ name: 'thread-owner', pass: true as const }],
+    schema: { passed: true as const },
+    confirmation: { required: false as const, status: 'not-required' as const },
+  };
   const created = {
     threadId: 'release.2026-08',
     owner: 'user:mike',
@@ -25,6 +31,7 @@ describe('work thread event contract', () => {
       text: 'Ship the release safely',
       source: 'message:goal-1',
     },
+    receipt: validReceipt,
   };
 
   it('parses the four closed event detail shapes', () => {
@@ -40,15 +47,18 @@ describe('work thread event contract', () => {
       threadId: created.threadId,
       category: 'context',
       rel: 'post:welcome',
+      receipt: validReceipt,
     });
     const parsedDetached = parseThreadEventDetail('thread-reference-detached', {
       threadId: created.threadId,
       category: 'approval',
       rel: 'confirmation:42',
+      receipt: validReceipt,
     });
     const parsedStatus = parseThreadEventDetail('thread-status-changed', {
       threadId: created.threadId,
       status: 'completed',
+      receipt: validReceipt,
     });
 
     expect(parsedCreated).toEqual(created);
@@ -66,6 +76,7 @@ describe('work thread event contract', () => {
           threadId: 'work-1',
           category,
           rel: 'meta/application:publishing',
+          receipt: validReceipt,
         }),
       ).toMatchObject({ category });
     },
@@ -79,6 +90,7 @@ describe('work thread event contract', () => {
           threadId: 'work-1',
           category: 'context',
           rel,
+          receipt: validReceipt,
         }),
       ).toMatchObject({ rel });
     },
@@ -90,6 +102,7 @@ describe('work thread event contract', () => {
         threadId: 'work-1',
         category: 'event',
         rel: 'event:42',
+        receipt: validReceipt,
       }),
     ).toMatchObject({ category: 'event', rel: 'event:42' });
 
@@ -99,6 +112,7 @@ describe('work thread event contract', () => {
           threadId: 'work-1',
           category: 'event',
           rel,
+          receipt: validReceipt,
         }),
       ).toThrow();
     }
@@ -143,29 +157,53 @@ describe('work thread event contract', () => {
     [
       'invalid category',
       'thread-reference-attached',
-      { threadId: 'work-1', category: 'message', rel: 'message:1' },
+      { threadId: 'work-1', category: 'message', rel: 'message:1', receipt: validReceipt },
     ],
     [
       'invalid rel',
       'thread-reference-attached',
-      { threadId: 'work-1', category: 'context', rel: 'not a rel' },
+      { threadId: 'work-1', category: 'context', rel: 'not a rel', receipt: validReceipt },
     ],
     [
       'query rel',
       'thread-reference-attached',
-      { threadId: 'work-1', category: 'context', rel: 'articles?scope=governance' },
+      {
+        threadId: 'work-1',
+        category: 'context',
+        rel: 'articles?scope=governance',
+        receipt: validReceipt,
+      },
     ],
     [
       'hash rel',
       'thread-reference-attached',
-      { threadId: 'work-1', category: 'context', rel: 'post:welcome#actions' },
+      {
+        threadId: 'work-1',
+        category: 'context',
+        rel: 'post:welcome#actions',
+        receipt: validReceipt,
+      },
     ],
     [
       'long rel',
       'thread-reference-detached',
-      { threadId: 'work-1', category: 'context', rel: `post:${'x'.repeat(MAX_THREAD_REL_LENGTH)}` },
+      {
+        threadId: 'work-1',
+        category: 'context',
+        rel: `post:${'x'.repeat(MAX_THREAD_REL_LENGTH)}`,
+        receipt: validReceipt,
+      },
     ],
-    ['invalid status', 'thread-status-changed', { threadId: 'work-1', status: 'closed' }],
+    [
+      'invalid status',
+      'thread-status-changed',
+      { threadId: 'work-1', status: 'closed', receipt: validReceipt },
+    ],
+    [
+      'missing receipt',
+      'thread-created',
+      { threadId: created.threadId, owner: created.owner, goal: created.goal },
+    ],
   ])('rejects %s', (_label, kind, detail) => {
     expect(() => parseThreadEventDetail(kind, detail)).toThrow();
   });

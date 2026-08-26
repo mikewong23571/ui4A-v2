@@ -9,6 +9,7 @@ import {
   THREAD_DETACH_ACTION,
   threadActionsForStatus,
 } from './work-thread';
+import { executeThreadCommand } from './work-thread-command';
 
 const deps = { flows: {}, guards: seedGuardRegistry };
 
@@ -185,5 +186,119 @@ describe('Work Thread Siren projection', () => {
 
   it('returns undefined for an unknown exact thread without inferring membership', () => {
     expect(project(snapshot(), 'thread:not-created', deps)).toBeUndefined();
+  });
+
+  it('executes create and attach as one thread event with a bounded mechanical receipt', () => {
+    const empty: EngineSnapshot = { instances: {}, collections: {}, threads: {} };
+    const created = executeThreadCommand(
+      {
+        rel: 'threads',
+        action: 'create',
+        actor: 'agent',
+        principal: 'user:mike',
+        authorization: { sourceMessageId: 'message:goal-1', quote: 'Ship safely' },
+        params: { id: 'release-1', goal: 'Ship safely', goalSource: 'message:goal-1' },
+      },
+      empty,
+    );
+    expect(created).toMatchObject({
+      kind: 'accepted',
+      entityRel: 'thread:release-1',
+      event: {
+        kind: 'thread-created',
+        rel: 'threads',
+        action: 'create',
+        detail: {
+          threadId: 'release-1',
+          owner: 'user:mike',
+          receipt: {
+            declaration: { passed: true },
+            guards: [{ name: 'thread-owner', pass: true }],
+            schema: { passed: true },
+            confirmation: { required: false, status: 'not-required' },
+            authorization: { sourceMessageId: 'message:goal-1', quote: 'Ship safely' },
+          },
+        },
+      },
+    });
+    if (created.kind !== 'accepted') return;
+    expect(created.snapshot.threads?.['release-1']?.owner).toBe('user:mike');
+
+    const attached = executeThreadCommand(
+      {
+        rel: 'thread:release-1',
+        action: 'attach',
+        actor: 'human',
+        principal: 'user:mike',
+        params: { category: 'context', rel: 'articles' },
+      },
+      created.snapshot,
+    );
+    expect(attached).toMatchObject({
+      kind: 'accepted',
+      entityRel: 'thread:release-1',
+      event: { kind: 'thread-reference-attached' },
+    });
+    if (attached.kind !== 'accepted') return;
+    expect(attached.snapshot.threads?.['release-1']?.references.context).toEqual(['articles']);
+  });
+
+  it('rejects in declaration, owner guard, then strict schema order', () => {
+    expect(
+      executeThreadCommand(
+        { rel: 'threads', action: 'archive', principal: 'user:mike', params: {} },
+        snapshot(),
+      ),
+    ).toMatchObject({ kind: 'rejected', layer: 'undeclared' });
+    expect(
+      executeThreadCommand(
+        {
+          rel: 'thread:release-1',
+          action: 'attach',
+          principal: 'user:other',
+          params: { category: 'invalid', rel: 'not a rel', extra: true },
+        },
+        snapshot(),
+      ),
+    ).toMatchObject({ kind: 'rejected', layer: 'guard-failed' });
+    expect(
+      executeThreadCommand(
+        {
+          rel: 'thread:release-1',
+          action: 'attach',
+          principal: 'user:mike',
+          params: { category: 'context', rel: 'articles', extra: true },
+        },
+        snapshot(),
+      ),
+    ).toMatchObject({ kind: 'rejected', layer: 'schema-invalid' });
+    expect(
+      executeThreadCommand(
+        {
+          rel: 'threads',
+          action: 'create',
+          principal: 'user:mike',
+          params: { id: 'release-2', goal: 'x'.repeat(2_049), goalSource: 'message:goal-2' },
+        },
+        snapshot(),
+      ),
+    ).toMatchObject({ kind: 'rejected', layer: 'schema-invalid' });
+  });
+
+  it.each([
+    ['pause', 'thread-status-changed'],
+    ['attach', 'thread-reference-attached'],
+    ['detach', 'thread-reference-detached'],
+  ] as const)('emits only the dedicated core event for %s', (action, eventKind) => {
+    const params =
+      action === 'pause'
+        ? {}
+        : { category: 'context', rel: action === 'attach' ? 'articles' : 'none' };
+    const outcome = executeThreadCommand(
+      { rel: 'thread:release-1', action, principal: 'user:mike', params },
+      snapshot(),
+    );
+    expect(outcome).toMatchObject({ kind: 'accepted', event: { kind: eventKind } });
+    if (outcome.kind === 'accepted') expect(outcome.event.kind).not.toBe('action-executed');
   });
 });

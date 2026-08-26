@@ -11,7 +11,11 @@ import {
   requireHumanApprovalScope,
   resolveTrustedRequestIdentity,
 } from '../../../auth/request-identity';
-import { assertRelInPolicyScope, relCoveredByPolicyScope } from '../../../auth/application-scope';
+import {
+  assertRelInPolicyScope,
+  assertThreadOwner,
+  relCoveredByPolicyScope,
+} from '../../../auth/application-scope';
 
 import { parseExecBody, rejectionStatus } from '../exec-request';
 
@@ -85,6 +89,9 @@ export async function POST(request: Request) {
       });
     }
     const resolvedRequest = applyTrustedIdentity(parsed.request, identity);
+    if (identity.authorizationMode === 'credential') {
+      assertThreadOwner(engine.getSnapshot(), resolvedRequest.rel, resolvedRequest.principal ?? '');
+    }
     if (isAgentRunRel(resolvedRequest.rel)) {
       const outcome = await executeAgentRunAction(db, resolvedRequest, identity.policyScope);
       if (outcome.kind !== 'accepted') {

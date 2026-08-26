@@ -48,7 +48,11 @@ export interface EngineEvent {
     | 'definition-deprecated'
     // T6 plan-executed:批量裁决记录事件(executePlan 每计划恰一条;标记性
     // 事件——状态由同批各步伴随事件重放,fold 不物化,见 plan.ts)。
-    | 'plan-executed';
+    | 'plan-executed'
+    | 'thread-created'
+    | 'thread-reference-attached'
+    | 'thread-reference-detached'
+    | 'thread-status-changed';
   rel: string;
   action: string;
   actor: 'human' | 'agent';

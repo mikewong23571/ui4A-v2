@@ -45,6 +45,7 @@ const mocks = vi.hoisted(() => {
   return {
     applyTrustedIdentity,
     assertRelInPolicyScope: vi.fn(),
+    assertThreadOwner: vi.fn(),
     authenticationErrorResponse: vi.fn((error: unknown) => {
       const code = (error as { code?: string }).code;
       return code === undefined ? undefined : Response.json({ error: { code } }, { status: 401 });
@@ -81,6 +82,7 @@ vi.mock('../../../auth/request-identity', () => ({
 
 vi.mock('../../../auth/application-scope', () => ({
   assertRelInPolicyScope: mocks.assertRelInPolicyScope,
+  assertThreadOwner: mocks.assertThreadOwner,
   relCoveredByPolicyScope: mocks.relCoveredByPolicyScope,
 }));
 
@@ -170,6 +172,11 @@ describe('POST /api/exec production authentication wiring', () => {
         principal: 'credential-subject',
         channel: 'oidc',
       }),
+    );
+    expect(mocks.assertThreadOwner).toHaveBeenCalledWith(
+      expect.anything(),
+      'post:first',
+      'credential-subject',
     );
     // T22 验证修复:路由向 identity 解析传入按 body rel 归属的 scopeCoverage 闭包。
     const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as {

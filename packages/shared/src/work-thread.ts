@@ -22,6 +22,14 @@ export type ThreadReferenceCategory = (typeof THREAD_REFERENCE_CATEGORIES)[numbe
 export type ThreadStatus = (typeof THREAD_STATUSES)[number];
 export type ThreadReferenceSource = (typeof THREAD_REFERENCE_SOURCES)[number];
 
+export interface ThreadJudgmentReceipt {
+  declaration: { passed: true };
+  guards: Array<{ name: string; pass: true }>;
+  schema: { passed: true };
+  confirmation: { required: false; status: 'not-required' };
+  authorization?: { sourceMessageId: string; quote: string };
+}
+
 /** Goal text is copied only once; source remains a canonical audit reference. */
 export interface ThreadGoal {
   text: string;
@@ -32,6 +40,7 @@ export interface ThreadCreatedDetail {
   threadId: string;
   owner: string;
   goal: ThreadGoal;
+  receipt: ThreadJudgmentReceipt;
 }
 
 export interface ThreadReferenceAttachedDetail {
@@ -40,6 +49,7 @@ export interface ThreadReferenceAttachedDetail {
   rel: string;
   /** Presence may select a default, but the resolved attachment is still explicit. */
   source?: ThreadReferenceSource;
+  receipt: ThreadJudgmentReceipt;
 }
 
 export interface ThreadReferenceDetachedDetail {
@@ -47,11 +57,13 @@ export interface ThreadReferenceDetachedDetail {
   category: ThreadReferenceCategory;
   rel: string;
   source?: ThreadReferenceSource;
+  receipt: ThreadJudgmentReceipt;
 }
 
 export interface ThreadStatusChangedDetail {
   threadId: string;
   status: ThreadStatus;
+  receipt: ThreadJudgmentReceipt;
 }
 
 export type ThreadEventDetail =
@@ -133,21 +145,75 @@ function goal(value: unknown): ThreadGoal {
   };
 }
 
+function receipt(value: unknown): ThreadJudgmentReceipt {
+  record(value, 'Thread judgment receipt');
+  exactKeys(
+    value,
+    ['declaration', 'guards', 'schema', 'confirmation', 'authorization'],
+    'Thread judgment receipt',
+  );
+  record(value.declaration, 'Thread receipt declaration');
+  exactKeys(value.declaration, ['passed'], 'Thread receipt declaration');
+  if (value.declaration.passed !== true) throw new Error('Thread receipt declaration must pass');
+  if (!Array.isArray(value.guards) || value.guards.length > 16) {
+    throw new Error('Thread receipt guards must be a bounded array');
+  }
+  const guards = value.guards.map((guard, index) => {
+    record(guard, `Thread receipt guard[${index}]`);
+    exactKeys(guard, ['name', 'pass'], `Thread receipt guard[${index}]`);
+    if (guard.pass !== true) throw new Error(`Thread receipt guard[${index}] must pass`);
+    return {
+      name: boundedText(guard.name, 128, `Thread receipt guard[${index}] name`),
+      pass: true as const,
+    };
+  });
+  record(value.schema, 'Thread receipt schema');
+  exactKeys(value.schema, ['passed'], 'Thread receipt schema');
+  if (value.schema.passed !== true) throw new Error('Thread receipt schema must pass');
+  record(value.confirmation, 'Thread receipt confirmation');
+  exactKeys(value.confirmation, ['required', 'status'], 'Thread receipt confirmation');
+  if (value.confirmation.required !== false || value.confirmation.status !== 'not-required') {
+    throw new Error('Thread receipt confirmation must be not-required');
+  }
+  let authorization: ThreadJudgmentReceipt['authorization'];
+  if (value.authorization !== undefined) {
+    record(value.authorization, 'Thread receipt authorization');
+    exactKeys(value.authorization, ['sourceMessageId', 'quote'], 'Thread receipt authorization');
+    authorization = {
+      sourceMessageId: boundedText(
+        value.authorization.sourceMessageId,
+        256,
+        'Thread receipt authorization sourceMessageId',
+      ),
+      quote: boundedText(value.authorization.quote, 4_096, 'Thread receipt authorization quote'),
+    };
+  }
+  return {
+    declaration: { passed: true },
+    guards,
+    schema: { passed: true },
+    confirmation: { required: false, status: 'not-required' },
+    ...(authorization === undefined ? {} : { authorization }),
+  };
+}
+
 function referenceDetail(
   value: Record<string, unknown>,
   label: string,
 ): ThreadReferenceAttachedDetail | ThreadReferenceDetachedDetail {
-  exactKeys(value, ['threadId', 'category', 'rel', 'source'], label);
+  exactKeys(value, ['threadId', 'category', 'rel', 'source', 'receipt'], label);
   const category = oneOf(value.category, THREAD_REFERENCE_CATEGORIES, 'Thread reference category');
   const source =
     value.source === undefined
       ? undefined
       : oneOf(value.source, THREAD_REFERENCE_SOURCES, 'Thread reference source');
+  const parsedReceipt = receipt(value.receipt);
   return {
     threadId: threadId(value.threadId),
     category,
     rel: canonicalRel(value.rel, category),
     ...(source === undefined ? {} : { source }),
+    receipt: parsedReceipt,
   };
 }
 
@@ -235,21 +301,25 @@ export function parseThreadEventDetail(kind: string, value: unknown): ThreadEven
   record(value, 'Thread event detail');
   switch (kind) {
     case 'thread-created':
-      exactKeys(value, ['threadId', 'owner', 'goal'], 'Thread created detail');
+      exactKeys(value, ['threadId', 'owner', 'goal', 'receipt'], 'Thread created detail');
+      const createdReceipt = receipt(value.receipt);
       return {
         threadId: threadId(value.threadId),
         owner: boundedText(value.owner, MAX_THREAD_OWNER_LENGTH, 'Thread owner'),
         goal: goal(value.goal),
+        receipt: createdReceipt,
       };
     case 'thread-reference-attached':
       return referenceDetail(value, 'Thread reference attached detail');
     case 'thread-reference-detached':
       return referenceDetail(value, 'Thread reference detached detail');
     case 'thread-status-changed':
-      exactKeys(value, ['threadId', 'status'], 'Thread status changed detail');
+      exactKeys(value, ['threadId', 'status', 'receipt'], 'Thread status changed detail');
+      const statusReceipt = receipt(value.receipt);
       return {
         threadId: threadId(value.threadId),
         status: oneOf(value.status, THREAD_STATUSES, 'Thread status'),
+        receipt: statusReceipt,
       };
     default:
       throw new Error(`Unsupported thread event kind ${kind}`);
