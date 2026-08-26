@@ -1,0 +1,125 @@
+import { MAX_DATA_LENS_SELECTORS } from './presentation';
+
+/** Closed invalidation behavior for one Composition source. */
+export const COMPOSITION_MODES = ['rehydrate', 'invalidate'] as const;
+
+export const MAX_COMPOSITION_ID_LENGTH = 64;
+export const MAX_COMPOSITION_REGIONS = MAX_DATA_LENS_SELECTORS;
+export const MAX_COMPOSITION_VERSION_LENGTH = 256;
+export const MAX_COMPOSITION_SOURCE_LENGTH = 256;
+export const MAX_COMPOSITION_INTENT_LENGTH = 256;
+
+export type CompositionMode = (typeof COMPOSITION_MODES)[number];
+
+export interface CompositionRegionDeclaration {
+  region: string;
+  source: string;
+  intent: string;
+  mode: CompositionMode;
+}
+
+/** Platform-neutral data consumed by Composition planners and runtime registries. */
+export interface CompositionDeclaration {
+  id: string;
+  version: string;
+  regions: CompositionRegionDeclaration[];
+}
+
+const identifierPattern = /^[a-z0-9][a-z0-9._-]*$/u;
+const contractRelPattern = /^[a-z0-9][a-z0-9._@/-]*(?::[a-z0-9][a-z0-9._@/-]*)?$/u;
+const forbiddenSourceSchemes = /^(?:data|file|https?|javascript|mailto):/u;
+
+function record(value: unknown, label: string): asserts value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`);
+  }
+}
+
+function exactKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  label: string,
+): void {
+  const unexpected = Object.keys(value).find((key) => !allowed.includes(key));
+  if (unexpected !== undefined) {
+    throw new Error(`${label} contains unknown key "${unexpected}"`);
+  }
+}
+
+function boundedText(value: unknown, maximum: number, label: string): string {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error(`${label} must be a non-empty string`);
+  }
+  if (value.length > maximum) {
+    throw new Error(`${label} exceeds ${maximum} characters`);
+  }
+  return value;
+}
+
+function identifier(value: unknown, label: string): string {
+  const parsed = boundedText(value, MAX_COMPOSITION_ID_LENGTH, label);
+  if (!identifierPattern.test(parsed)) {
+    throw new Error(`${label} must match [a-z0-9][a-z0-9._-]*`);
+  }
+  return parsed;
+}
+
+function sourceRel(value: unknown, label: string): string {
+  const parsed = boundedText(value, MAX_COMPOSITION_SOURCE_LENGTH, label);
+  if (parsed.startsWith('workspace:')) {
+    throw new Error(`${label} cannot use the workspace virtual subject namespace`);
+  }
+  if (forbiddenSourceSchemes.test(parsed) || !contractRelPattern.test(parsed)) {
+    throw new Error(`${label} must be a safe contract rel`);
+  }
+  return parsed;
+}
+
+function mode(value: unknown, label: string): CompositionMode {
+  if (!COMPOSITION_MODES.includes(value as CompositionMode)) {
+    throw new Error(`${label} must be rehydrate or invalidate`);
+  }
+  return value as CompositionMode;
+}
+
+function region(value: unknown, index: number): CompositionRegionDeclaration {
+  const label = `Composition region[${index}]`;
+  record(value, label);
+  exactKeys(value, ['region', 'source', 'intent', 'mode'], label);
+  return {
+    region: identifier(value.region, `${label} region`),
+    source: sourceRel(value.source, `${label} source rel`),
+    intent: boundedText(value.intent, MAX_COMPOSITION_INTENT_LENGTH, `${label} intent`),
+    mode: mode(value.mode, `${label} mode`),
+  };
+}
+
+/** Strictly parse one bounded declaration; the declaration itself grants no source access. */
+export function parseCompositionDeclaration(value: unknown): CompositionDeclaration {
+  record(value, 'Composition declaration');
+  exactKeys(value, ['id', 'version', 'regions'], 'Composition declaration');
+  if (
+    !Array.isArray(value.regions) ||
+    value.regions.length === 0 ||
+    value.regions.length > MAX_COMPOSITION_REGIONS
+  ) {
+    throw new Error(
+      `Composition declaration regions must contain 1-${MAX_COMPOSITION_REGIONS} entries`,
+    );
+  }
+
+  const regions = value.regions.map(region);
+  if (new Set(regions.map((entry) => entry.region)).size !== regions.length) {
+    throw new Error('Composition declaration region names must be unique');
+  }
+
+  return {
+    id: identifier(value.id, 'Composition declaration id'),
+    version: boundedText(
+      value.version,
+      MAX_COMPOSITION_VERSION_LENGTH,
+      'Composition declaration version',
+    ),
+    regions,
+  };
+}

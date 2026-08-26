@@ -20,6 +20,8 @@ export * from './definition/predicates';
 export * from './definition/definition';
 // Chat/runtime 与独立 Presentation Plane 之间的 versioned thin protocol。
 export * from './presentation/presentation';
+// Platform-neutral, bounded declarations for Presentation Composition.
+export * from './presentation/composition';
 // Browser-observed view and server navigation facts remain separate from Business truth.
 export * from './presentation/chat-view';
 // Bounded, replayable user presence changes and projection shapes (T29).
