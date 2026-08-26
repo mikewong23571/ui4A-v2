@@ -1,7 +1,85 @@
+import type { RenderSubject } from '@ui4a/shared';
+
 export type LocationQueryChanges = Readonly<Record<string, string | null>>;
+
+export interface CrossSiteFlowBridge {
+  label: '在 meta 中编辑此定义' | '查看活实例';
+  href: string;
+}
+
+const FLOW_PREFIX = 'flow:';
+const META_FLOW_PREFIX = 'meta/flow:';
 
 function relativeLocation(url: URL): string {
   return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function nonEmptySuffix(value: string, prefix: string): string | null {
+  if (!value.startsWith(prefix)) return null;
+  const suffix = value.slice(prefix.length);
+  return suffix.trim() === '' ? null : suffix;
+}
+
+/** Exact `/meta/flow/<encoded-name>` path to its canonical definition focus. */
+export function metaFlowFocusForPathname(pathname: string): string | null {
+  const match = /^\/meta\/flow\/([^/]+)$/.exec(pathname);
+  if (match === null) return null;
+  try {
+    const name = decodeURIComponent(match[1]!);
+    return name.trim() === '' ? null : `${META_FLOW_PREFIX}${name}`;
+  } catch {
+    return null;
+  }
+}
+
+function optionalDeclaration(url: URL, key: 'scope' | 'thread'): string | null {
+  const value = url.searchParams.get(key);
+  return value === null || value === '' ? null : value;
+}
+
+function appendSituationDeclarations(params: URLSearchParams, source: URL): void {
+  for (const key of ['scope', 'thread'] as const) {
+    const value = optionalDeclaration(source, key);
+    if (value !== null) params.set(key, value);
+  }
+}
+
+function workstationFlowBridge(source: URL, name: string): CrossSiteFlowBridge {
+  const params = new URLSearchParams();
+  appendSituationDeclarations(params, source);
+  const search = params.toString();
+  return {
+    label: '在 meta 中编辑此定义',
+    href: `/meta/flow/${encodeURIComponent(name)}${search === '' ? '' : `?${search}`}`,
+  };
+}
+
+function metaFlowBridge(source: URL, name: string): CrossSiteFlowBridge {
+  const params = new URLSearchParams({ focus: `${FLOW_PREFIX}${name}` });
+  appendSituationDeclarations(params, source);
+  return { label: '查看活实例', href: `/canvas?${params.toString()}` };
+}
+
+/**
+ * Build the two flow-definition bridges from canonical URL/rel naming only.
+ * This deliberately performs no entity lookup or instance-count resolution.
+ */
+export function crossSiteFlowBridge(
+  route: string,
+  focus: RenderSubject | null,
+): CrossSiteFlowBridge | null {
+  const source = new URL(route, 'http://ui4a.local');
+  const pathFocus = metaFlowFocusForPathname(source.pathname);
+  const pathName = pathFocus === null ? null : nonEmptySuffix(pathFocus, META_FLOW_PREFIX);
+  if (pathName !== null) return metaFlowBridge(source, pathName);
+
+  if (typeof focus !== 'string') return null;
+  const metaName = nonEmptySuffix(focus, META_FLOW_PREFIX);
+  if (metaName !== null) return metaFlowBridge(source, metaName);
+
+  const onMetaSite = source.pathname === '/meta' || source.pathname.startsWith('/meta/');
+  const workstationName = onMetaSite ? null : nonEmptySuffix(focus, FLOW_PREFIX);
+  return workstationName === null ? null : workstationFlowBridge(source, workstationName);
 }
 
 /** Change only named URL declarations and preserve all unrelated query fields. */

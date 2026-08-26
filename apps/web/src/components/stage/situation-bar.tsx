@@ -7,7 +7,7 @@ import Link from 'next/link';
 import type { PresenceValue } from '@ui4a/shared';
 
 import { useLocationObservation } from '@/presence/location';
-import { locationHrefWithChanges } from '@/presence/navigation';
+import { crossSiteFlowBridge, locationHrefWithChanges } from '@/presence/navigation';
 
 function displayedValue(value: PresenceValue): string {
   if (value === null) return '未声明';
@@ -70,6 +70,7 @@ function ScopeDeclarationEditor({ route, scope }: { route: string; scope: string
 /** Compact shell chrome that echoes URL declarations; it does not render authorization. */
 export function SituationBar() {
   const { route, observation } = useLocationObservation();
+  const bridge = crossSiteFlowBridge(route, observation.focus);
 
   return (
     <section aria-label="声明的处境" data-testid="situation-bar" className="border-t bg-muted/30">
@@ -89,6 +90,15 @@ export function SituationBar() {
             </div>
           ))}
         </dl>
+        {bridge !== null && (
+          <Link
+            href={bridge.href}
+            data-nav="situation:cross-site-flow"
+            className="shrink-0 text-primary hover:underline"
+          >
+            {bridge.label}
+          </Link>
+        )}
         {observation.thread !== null && (
           <Link
             href={locationHrefWithChanges(route, { thread: null })}

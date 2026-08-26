@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   canvasEntityHref,
+  crossSiteFlowBridge,
   entityPageHref,
   locationHrefWithChanges,
   withThreadTarget,
@@ -41,5 +42,61 @@ describe('explicit URL navigation', () => {
     expect(canvasEntityHref('thread:release-1')).toBe(
       '/canvas?focus=thread%3Arelease-1&thread=release-1',
     );
+  });
+
+  it('derives the workstation-to-meta bridge only from a canonical flow focus', () => {
+    expect(
+      crossSiteFlowBridge(
+        '/canvas?focus=flow%3Arelease%20flow&scope=publishing&thread=release-1',
+        'flow:release flow',
+      ),
+    ).toEqual({
+      label: '在 meta 中编辑此定义',
+      href: '/meta/flow/release%20flow?scope=publishing&thread=release-1',
+    });
+    expect(
+      crossSiteFlowBridge('/canvas?focus=flow%3Aarticle-drafting', 'flow:article-drafting'),
+    ).toEqual({
+      label: '在 meta 中编辑此定义',
+      href: '/meta/flow/article-drafting',
+    });
+    expect(
+      crossSiteFlowBridge(
+        '/canvas?focus=flow%3Aarticle-drafting&scope=&thread=',
+        'flow:article-drafting',
+      ),
+    ).toEqual({
+      label: '在 meta 中编辑此定义',
+      href: '/meta/flow/article-drafting',
+    });
+  });
+
+  it('derives the meta-to-workstation bridge from an exact route or canonical meta focus', () => {
+    expect(
+      crossSiteFlowBridge(
+        '/meta/flow/article-drafting?scope=publishing&thread=release-1',
+        'meta/flow:article-drafting',
+      ),
+    ).toEqual({
+      label: '查看活实例',
+      href: '/canvas?focus=flow%3Aarticle-drafting&scope=publishing&thread=release-1',
+    });
+    expect(
+      crossSiteFlowBridge(
+        '/meta/entity?rel=meta%2Fflow%3Arelease%20flow',
+        'meta/flow:release flow',
+      ),
+    ).toEqual({
+      label: '查看活实例',
+      href: '/canvas?focus=flow%3Arelease+flow',
+    });
+  });
+
+  it('does not bridge selections, other entities, empty names, or non-canonical meta paths', () => {
+    expect(crossSiteFlowBridge('/canvas?focus=post%3Aone', 'post:one')).toBeNull();
+    expect(crossSiteFlowBridge('/canvas?roots=flow%3Aone', { selection: ['flow:one'] })).toBeNull();
+    expect(crossSiteFlowBridge('/canvas?focus=flow%3A', 'flow:')).toBeNull();
+    expect(crossSiteFlowBridge('/meta/flow/', null)).toBeNull();
+    expect(crossSiteFlowBridge('/meta/flow/one/more', null)).toBeNull();
   });
 });

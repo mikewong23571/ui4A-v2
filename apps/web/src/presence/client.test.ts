@@ -14,6 +14,11 @@ describe('client presence change reporter', () => {
     });
     expect(presenceObservationForLocation('/meta/flow/article-drafting')).toMatchObject({
       site: 'meta',
+      focus: 'meta/flow:article-drafting',
+    });
+    expect(presenceObservationForLocation('/meta/flow/release%20flow')).toMatchObject({
+      site: 'meta',
+      focus: 'meta/flow:release flow',
     });
     expect(presenceObservationForLocation('/canvas?focus=post%3Aone')).toEqual({
       site: 'workstation',

@@ -4,7 +4,8 @@
  * GOAL 原文:「fuzz 所有可点元素:提交必映射到已声明 action,合同外按钮
  * 无法提交」。两层断言:
  *
- * 1) fuzz:枚举七个页面(首页/事件流/收件箱/实体页/BIOS 激活页/画布/舰队页)
+ * 1) fuzz:枚举基础页面与双桥处境(首页/事件流/收件箱/实体页/BIOS 激活页/
+ *    画布/舰队页/workstation flow/meta flow)
  *    DOM 所有可点元素(button/a/[role=button])→ 每个必有 data-action
  *    (已声明动作)或 data-nav(合同导航/本地视图控件),零白名单——
  *    timeline 词条已平替为自绘纯展示实现(T9 Phase D,零交互原语,
@@ -29,6 +30,16 @@ import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
 
 /** fuzz 页面清单(骨架五面 + 实体页;GOAL I3「所有页面」的本站全集)。 */
 const PAGES: { name: string; path: string; ready: string }[] = [
+  {
+    name: 'workstation flow 桥',
+    path: '/canvas?focus=flow:article-drafting&scope=publishing&thread=release-1',
+    ready: 'a[data-nav="situation:cross-site-flow"]',
+  },
+  {
+    name: 'meta flow 桥',
+    path: '/meta/flow/article-drafting?scope=publishing&thread=release-1',
+    ready: 'a[data-nav="situation:cross-site-flow"]',
+  },
   { name: '首页', path: '/', ready: '[data-surface]' },
   {
     name: '事件流',
@@ -100,23 +111,28 @@ test.beforeEach(() => {
 test('I3 fuzz:全部页面所有可点元素必映射 data-action/data-nav(零白名单)', async ({ page }) => {
   await withFreshServer(async () => {
     for (const target of PAGES) {
-      await page.goto(`${SCENARIO_BASE}${target.path}`);
-      await page.waitForSelector(target.ready, { timeout: 30_000 });
-      const clickables = await probeClickables(page);
-      // 空泛防护:每页至少一个可点元素(否则 fuzz 无意义)。
-      expect(
-        clickables.length,
-        `${target.name}(${target.path})应存在可点元素(fuzz 非空泛)`,
-      ).toBeGreaterThan(0);
-      const offenders = clickables.filter(
-        (element) => element.action === null && element.nav === null,
-      );
-      expect(
-        offenders,
-        `${target.name}(${target.path})存在未背书可点元素:\n${offenders
-          .map((element) => `  <${element.tag}> "${element.text}"`)
-          .join('\n')}`,
-      ).toEqual([]);
+      const targetPage = await page.context().newPage();
+      try {
+        await targetPage.goto(`${SCENARIO_BASE}${target.path}`);
+        await targetPage.waitForSelector(target.ready, { timeout: 30_000 });
+        const clickables = await probeClickables(targetPage);
+        // 空泛防护:每页至少一个可点元素(否则 fuzz 无意义)。
+        expect(
+          clickables.length,
+          `${target.name}(${target.path})应存在可点元素(fuzz 非空泛)`,
+        ).toBeGreaterThan(0);
+        const offenders = clickables.filter(
+          (element) => element.action === null && element.nav === null,
+        );
+        expect(
+          offenders,
+          `${target.name}(${target.path})存在未背书可点元素:\n${offenders
+            .map((element) => `  <${element.tag}> "${element.text}"`)
+            .join('\n')}`,
+        ).toEqual([]);
+      } finally {
+        await targetPage.close();
+      }
     }
   });
 });
