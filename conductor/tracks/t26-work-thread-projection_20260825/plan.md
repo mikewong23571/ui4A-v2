@@ -49,11 +49,11 @@
 
 ## Phase C: 合同暴露(实体/sitemap/授权/I5)
 
-- [ ] Task: 闭式 sitemap 断言开放化(前置纠偏,spec"误导性验收排查")
+- [x] Task: 闭式 sitemap 断言开放化(前置纠偏,spec"误导性验收排查") 9a6b3c6
   - `e2e/s2-meta.spec.ts:297-310` 与 `apps/web/src/app/api/contract.test.ts:204-211`
     的精确 toEqual 改开放断言(存在性/可导航);保绿即禁止 threads 暴露 =
     方向错误,本任务是纠偏原则的首次执行,必须先于 threads 入 sitemap
-- [ ] Task: `thread:<id>` 与 `threads` 实体投影
+- [~] Task: `thread:<id>` 与 `threads` 实体投影
   - `packages/engine/src/contract/siren/project.ts` `project()` 新分支
     (解析顺序文档见 spec 现状事实);class 参照 `['collection','inbox']`/
     `['delegation', status]` 模式;实体内容按 spec 最终形态 2
