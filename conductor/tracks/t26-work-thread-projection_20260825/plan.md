@@ -95,11 +95,18 @@
   - 经 CLI(显式 thread 锚,无 presence)完成建线/挂载/查态/审计;
     同一场景人类经 chat + presence 锚跑一遍(GOAL.md 双执行者口径);
     两侧投影一致
-- [~] Task: 全量验收
+- [x] Task: 全量验收 30edab0
   - `pnpm check` 全绿;`CI=true pnpm e2e invariants` 全绿;chat 套件
     (`e2e/chat.spec.ts`)全绿;I5 含 threads 通过
   - 系统可运行验证:`pnpm dev:all` 实际启动走查(里程碑约束)
-- [ ] Task: Track 收尾
+  - 2026-08-26 自治验收:`pnpm check` 364 files/2770 tests 全绿;
+    `CI=true pnpm e2e invariants chat t26-work-thread` 11 passed/2 skipped;
+    I5 hash 一致(53 events/31 rels),真实 CLI 全流程通过。
+  - 部署态偏差:`pnpm dev:all` 已实际尝试,PostgreSQL healthy、Web ready;
+    当前节点缺 `temporal` CLI 导致 worker 按 `temporal_unavailable` fail-closed。
+    用户明确授权跳过本地 CLI 补装,完整 Temporal/Worker 组合改在部署环境验证,
+    不阻塞本次代码提交。
+- [~] Task: Track 收尾
   - `conductor/tracks.md` 状态流转;track 目录按 GR5 处置(无 bespoke
     脚本/配置残留);metadata.json 归档
 
