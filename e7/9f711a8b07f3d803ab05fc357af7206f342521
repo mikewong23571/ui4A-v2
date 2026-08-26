@@ -26,3 +26,31 @@ Verification:
   - failing technical titles: /home/mike/.cache/ui4a-t27-evidence/workstation-home-local.png
   - accepted human titles: /home/mike/.cache/ui4a-t27-evidence/workstation-home-local-human-titles.png
 - WebBridge daemon had no connected extension; screenshot fallback used installed Playwright Chromium. Final evidence will be recaptured on mothership per user requirement.
+
+T27 Phase D Verification (自治验收)
+
+Scope:
+- shared PresentationSurfaceHost extraction
+- / home fixed to workspace:my-work and HomeBody deletion
+- real CLI vs browser three-source parity
+- human collection titles and visual first-screen correction
+
+Automated verification:
+- pnpm check: PASS (373 files passed, 6 skipped; 2888 tests passed, 10 skipped; governance OK)
+- CI=true TMPDIR=/home/mike/.cache/ui4a-t27-tmp pnpm e2e invariants: PASS (4 passed, 2 existing skips)
+- workstation-home + T30 composition + T24 honesty: PASS (5/5)
+- real CLI build/help/doctor/entities: PASS
+- legacy HomeBody/old homepage rg audit: zero matches
+
+Manual-equivalent verification:
+1. Confirm / stays an independent home and sends exactly workspace:my-work.
+2. Confirm one shared host owns Presentation→Sidecar→hydrate→action gate for / and /canvas.
+3. Compare CLI inbox/delegations/threads entities to Sidecar bindings and visible DOM facts.
+4. Inspect 1440x1200 screenshot: titles are 在等我/在动/我的工作线, all in viewport; default main view hides declared region ids/mechanism vocabulary; why drawer reveals three regions on request.
+5. Confirm no per-region React branch and components baseline is retired.
+
+Visual evidence:
+- /home/mike/.cache/ui4a-t27-evidence/workstation-home-local-human-titles.png
+
+Confirmation:
+- 自治验收：tests, CLI parity, replay, and inspected screenshot satisfy Phase D. Action form presentation remains existing behavior explicitly assigned to T28 first-class interaction.
