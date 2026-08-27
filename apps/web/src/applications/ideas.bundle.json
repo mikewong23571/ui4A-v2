@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "ideas",
-    "version": 3
+    "version": 4
   },
   "applications": [
     {
@@ -39,14 +39,14 @@
             {
               "name": "keep",
               "title": "记下想法",
-              "to": "done",
+              "to": "recorded",
               "method": "POST",
               "guards": [],
               "fields": [],
               "effect": [
                 {
                   "type": "transition",
-                  "to": "capture"
+                  "to": "recorded"
                 },
                 {
                   "type": "append",
@@ -64,6 +64,27 @@
           "name": "done",
           "title": "完成",
           "actions": [],
+          "fields": []
+        },
+        {
+          "name": "recorded",
+          "title": "已记下",
+          "actions": [
+            {
+              "name": "another",
+              "title": "再记一条",
+              "to": "capture",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "capture"
+                }
+              ]
+            }
+          ],
           "fields": []
         }
       ]
