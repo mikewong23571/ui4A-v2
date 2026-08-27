@@ -67,7 +67,7 @@
     回退 rel;words 单测先行
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
-## Phase D: 责任点一等——成员决策卡(词汇投资) [checkpoint: be192a5]
+## Phase D: 责任点一等——成员决策卡(词汇投资) [checkpoint: bfa1791]
 
 - [x] Task: Red——engine presentation 单测:成员决策卡结构规则
   - 施工发现(记入 notes):① inbox 成员投影缺 canonical properties.rel
@@ -75,15 +75,15 @@
     ② surface 适配器 guard 检查未接入 blockedForRenderer(renderer 满足
     actor-is-human),确认动作在 surface 路径全部被拒 → 接入与 ActionGroup
     同规(T28 遗留接缝);③ e2e 决策卡需 terminateStaleNotifyWorkflows
-    清理口径(与 s1 同) [be192a5]
+    清理口径(与 s1 同) [bfa1791]
   - repeat 成员携带已声明动作 → item 子树含 identity + 摘要 + actions 绑定;
     无动作成员 → 维持 member-link(纯结构规则,零 class/rel 分支);
     mutation 抽查:注入 `if class` 分支 → 变红(以 review + 扫描兜底)
-- [x] Task: Green——`member-card` 词条与 catalog 版本升级 [be192a5]
+- [x] Task: Green——`member-card` 词条与 catalog 版本升级 [bfa1791]
   - 新词条:identity + 一行结构化摘要 + ActionGroup(复用 D47.1 统一动作组);
     engine surface catalog + web word-catalog/catalog-adapter 双注册,指纹/版本
     bump(sidecar 失效走既有依赖机制);GR3:engine presentation 净不增长
-- [x] Task: e2e——首页"在等我"决策卡 [be192a5]
+- [x] Task: e2e——首页"在等我"决策卡 [bfa1791]
   - 成员卡 approve 一击(零导航、零参数)→ `/api/exec` 同裁决 → 事件落库 →
     卡片退场计数即变;与 chat 写同裁决断言(actor 区分,门相同)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
