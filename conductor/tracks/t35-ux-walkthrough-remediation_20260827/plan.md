@@ -66,6 +66,21 @@
 - [ ] Task: E5 Phase 视觉验收 & Checkpoint:S8 走查,截图,findings 回填 F-07/F-11
 - [ ] Task: E6 提交 `feat(t35): 工作线详情投影与动作层级(F-07,F-11)`
 
+## Phase W 线工作台三栏(用户裁决并入本 track;design-notes §六)
+
+- [ ] Task: W1 线工作台布局:URL 声明 thread 且注视为线相关面时,工作台切三栏——
+  左线叙述轨(消费 E-1 投影,pin 常驻)/中注视面(跟 situation)/右 chat(分栏态,
+  联动 D-8);组合驱动零每实体特判(舞台机械判定:换应用不改码)
+- [ ] Task: W2 线内 pin 页面:surface 角落 📌 钉住/取消;钉住集 localStorage 按
+  线隔离(与 ui4a.chat.mode 同规, presentation 偏好非真相);钉住面以 roots 网格
+  常驻;显式 URL roots 优先
+- [ ] Task: W3 切线路径二:处境线芯片点开列我的线(threads 投影),选择即切;
+  依赖 D-7;书桌正典(我的事)与 URL 显式已在
+- [ ] Task: W4 inline/委托提交语义话术(F-08③):提交控件旁一句说明
+  ("发送=在线协同,页面可切;委托=交后台无人值守,进'在动'")
+- [ ] Task: W5 回归 + 浏览器验收(S6/S8 扩展:三栏内完成一次线内协作),截图入 evidence
+- [ ] Task: W6 提交 `feat(t35): 线工作台三栏与 pin/切线(F-27,F-23 关联)`
+
 ## Phase F 轮次收口与持续试用
 
 - [ ] Task: F1 R2 全站试用一轮(重复 R1 路径 + S1–S8 全量),新发现追加 `findings.md`(F-17+)
