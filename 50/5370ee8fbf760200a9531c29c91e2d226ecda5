@@ -1,0 +1,19 @@
+T31 Phase C Task: chat/LLM 组(R14/R15/R16)
+
+变更:
+- R14(D48 b) api/chat/route.ts error 兜底分支注释升级为正式契约边界(引用
+  DECISIONS D48 第 4 小节:error 帧恒中性结构化展示,LLM phrasing 仅覆盖 final 帧,
+  补齐须新决策),零行为变化;
+- R15(GR2 单实现)删除客户端旧 wire-format 回退:sse.ts 失败合同上提为类型层判别
+  联合(outcome='failed' 必附 reason)、error 帧 reason 必填;use-chat-session 删
+  error 帧 else 兜底与 handleFinal reason 缺席分支及死代码前缀;assistant-ui/thread.tsx
+  配套;floating-chat.test.tsx 冻结测试迁移(28 个既有用例名无损,删 2 个冻结旧回退
+  的用例、合并改造 3 个为新合同锁);全仓 grep 零残留;
+- R16 新增 apps/web/src/applications/walkthrough-prompt-budget.test.ts(unit):
+  真实 walkthrough bundle 经生产链(parseApplicationBundle→deriveSitemap→
+  sliceSitemapDisclosure)度量 meta scope 切片 pretty 序列化 ≤32768 字节且关键
+  section 非空——实测 2394 字节,余量充足;依赖方向 web→agent 合法。
+floating-chat.test.tsx 最终实测 931 行 ≤ 基线 944(净收缩,无需登记)。
+反向验证(subagent+编排 agent 各一):恢复 error 帧旧回退(appendAssistant('失败:…'))
+→ 迁移后的结构化 reason 断言红 → 复原绿。编排 agent 另验证: floating-chat/sse 31 例
+绿,budget 测试 unit 分类 2 例绿(纯切片不触库,无需清单登记)。自治验收。
