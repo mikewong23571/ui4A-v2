@@ -30,7 +30,15 @@ canonical delegation。两种部署共用固定 realm 文件，首次导入，�
 - [T26 Work Thread Production and CLI Hotfix Evidence](./evidence-t26-cli-scope-hotfix-20260826.md)
 - [Implementation Plan](./plan.md)
 
-当前状态：`in_progress`。目标发布为 `v0.1.0-experimental.1`，不宣称 GA、正式 SLA 或当前两 Worker
+当前状态：`in_progress`(2026-08-27 收敛复核:Phase A–F/H 全部闭环;B/C/E 的验收
+子弹已按常驻合同套件逐项核验勾选,scripts/t22 33 套 308 用例绿 + darwin 非 root
+chown 守卫;arm64 temporal 剪枝修复与本地镜像实验栈已提交)。**剩余 14 项全部
+依赖实机/外部授权,本地会话不可代行**:Phase G Compose story 验收(U1/U3–U9/
+U13/U14/U16 + Golden Story,restart/dual backends/backup-restore smoke——
+operator-authorized-live)、Phase I 的 K8s/Host 双后端 Agent Run 与 Golden Story
+checkpoint(需 mothership 集群,本会话无 kubectl context)、Phase J 全量质量门
+(`pnpm check` 当前受并行 T31 的 db 基线增长在途影响)与终审 DONE 报告。目标发布
+为 `v0.1.0-experimental.1`，不宣称 GA、正式 SLA 或当前两 Worker
 实验集群具备未经验证的高可用能力。多副本 Web/Session、跨副本 single atom、realm 在线升级、
 细粒度角色同步、自动 Secret rotation、`act` 扩展、全面 service-to-service OIDC/全 route
 平台化和 HA 明确延后，不阻塞本 Track。

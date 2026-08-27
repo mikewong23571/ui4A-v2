@@ -41,56 +41,56 @@
 ## Phase B: 生产配置、构建和版本基座 [checkpoint: c609262]
 
 - [x] Task: Red TDD——定义生产配置 schema 72d54d1
-- [ ] 覆盖 auth/deployment mode、PostgreSQL、Temporal、Keycloak、TLS 和 Runtime
-- [ ] 覆盖缺项、非法 URL、空 Secret、危险默认值和 profile override
-- [ ] 证明 production 下 demo identity 和 localhost fallback 会失败
+- [x] 覆盖 auth/deployment mode、PostgreSQL、Temporal、Keycloak、TLS 和 Runtime
+- [x] 覆盖缺项、非法 URL、空 Secret、危险默认值和 profile override
+- [x] 证明 production 下 demo identity 和 localhost fallback 会失败
 - [x] Task: Green——实现统一配置解析和启动预检 7a76547
-- [ ] Web、Worker、Runner 复用平台中立配置类型
-- [ ] Secret 不进入错误、日志、Siren 或 Meta raw view
-- [ ] 为 Compose env 与 Helm values 生成一致映射和示例
+- [x] Web、Worker、Runner 复用平台中立配置类型
+- [x] Secret 不进入错误、日志、Siren 或 Meta raw view
+- [x] 为 Compose env 与 Helm values 生成一致映射和示例
 - [x] Task: Red TDD——定义 OCI image contract 6e0fc83
-- [ ] 验证正式 Worker 入口、non-root、health command 和 writable paths
-- [ ] 验证 images 不含 local env、test reports、dev DB 或个人 Codex 配置
-- [ ] 验证 Web/Worker/Runner version 与 Git SHA 一致
+- [x] 验证正式 Worker 入口、non-root、health command 和 writable paths
+- [x] 验证 images 不含 local env、test reports、dev DB 或个人 Codex 配置
+- [x] 验证 Web/Worker/Runner version 与 Git SHA 一致
 - [x] Task: Green——实现 production images 988a18c
-- [ ] 增加 Web 多阶段 Dockerfile
-- [ ] 增加 Worker build/start 产物与多阶段 Dockerfile
-- [ ] 根据 Phase A 决定增加 Agent Runner image
-- [ ] 固定 Node 24、pnpm 10、Git、Pandoc 和 Codex requirements
-- [ ] 增加 OCI labels、SBOM、image smoke 和 vulnerability scan
+- [x] 增加 Web 多阶段 Dockerfile
+- [x] 增加 Worker build/start 产物与多阶段 Dockerfile
+- [x] 根据 Phase A 决定增加 Agent Runner image
+- [x] 固定 Node 24、pnpm 10、Git、Pandoc 和 Codex requirements
+- [x] 增加 OCI labels、SBOM、image smoke 和 vulnerability scan
 - [x] Task: 建立 `v0.1.0-experimental.1` 版本合同 bc351b0
-- [ ] 增加应用、health、CLI 和 image version reporting
-- [ ] 禁止呈现为 GA、production SLA 或 LTS
+- [x] 增加应用、health、CLI 和 image version reporting
+- [x] 禁止呈现为 GA、production SLA 或 LTS
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) c609262
 
 ## Phase C: Keycloak 与可信身份链 [checkpoint: 1df38a0]
 
 - [x] Task: Red TDD——建立 authentication negative corpus ee3d44a
-- [ ] 覆盖 missing/expired/wrong issuer/audience/signature Token
-- [ ] 覆盖伪造 actor/principal/scope/header 和 agent approval
-- [ ] 覆盖越权 scope、错误 `sub + azp` delegation 与 JWKS failure；`act` 不属于 v0.1 contract
+- [x] 覆盖 missing/expired/wrong issuer/audience/signature Token
+- [x] 覆盖伪造 actor/principal/scope/header 和 agent approval
+- [x] 覆盖越权 scope、错误 `sub + azp` delegation 与 JWKS failure；`act` 不属于 v0.1 contract
 - [x] Task: Green——实现 credential verification 与 request identity ac7e959
-- [ ] 验证 issuer、audience、signature、expiry 和 scopes
-- [ ] 从 credential 派生 actor、principal、scope 和 canonical `sub + azp` delegation
-- [ ] 移除 production 对 body/query/ordinary header identity 的信任
-- [ ] 保留显式 local-only demo adapter 并将可信身份写入 audit
+- [x] 验证 issuer、audience、signature、expiry 和 scopes
+- [x] 从 credential 派生 actor、principal、scope 和 canonical `sub + azp` delegation
+- [x] 移除 production 对 body/query/ordinary header identity 的信任
+- [x] 保留显式 local-only demo adapter 并将可信身份写入 audit
 - [x] Task: Red→Green——浏览器登录生命周期 64d8d08
-- [ ] Authorization Code + PKCE、callback、单副本 secure session 和 logout
-- [ ] 登录前目标恢复、expiry 后重新登录和 Keycloak outage 诚实失败
-- [ ] Meta 与 business scope 一致
+- [x] Authorization Code + PKCE、callback、单副本 secure session 和 logout
+- [x] 登录前目标恢复、expiry 后重新登录和 Keycloak outage 诚实失败
+- [x] Meta 与 business scope 一致
 - [x] Task: Red→Green——CLI 与 Agent 身份 b2a502d
-- [ ] CLI 直接使用外部 Bearer Token 完成 discovery/read/exec，不内建登录或 Token 管理
-- [ ] Agent Client Credentials、RFC 8693 Token Exchange 和 `sub + azp` audit
-- [ ] scope 只能收窄，Agent 不能获得 human approval
+- [x] CLI 直接使用外部 Bearer Token 完成 discovery/read/exec，不内建登录或 Token 管理
+- [x] Agent Client Credentials、RFC 8693 Token Exchange 和 `sub + azp` audit
+- [x] scope 只能收窄，Agent 不能获得 human approval
 - [x] Task: 定义最小 Keycloak realm import-or-check-and-skip b37bf45
-- [ ] 单 realm 只包含 `ui4a-web`、`ui4a-agent`、`ui4a-api` 与必要 redirect/audience/scope fixtures
-- [ ] Compose/K8s 挂载同一固定 realm 文件并使用同一检查命令
-- [ ] realm absent 时首次导入；existing compatible 时检查并跳过；incompatible 时 fail closed
-- [ ] 禁止在线 drift repair、通用 reconciliation、细粒度角色同步或自动 Secret rotation
+- [x] 单 realm 只包含 `ui4a-web`、`ui4a-agent`、`ui4a-api` 与必要 redirect/audience/scope fixtures
+- [x] Compose/K8s 挂载同一固定 realm 文件并使用同一检查命令
+- [x] realm absent 时首次导入；existing compatible 时检查并跳过；incompatible 时 fail closed
+- [x] 禁止在线 drift repair、通用 reconciliation、细粒度角色同步或自动 Secret rotation
 - [x] Task: Red→Green——接通实验版 Agent credential 主路径 ac893ea
-- [ ] Browser Chat 单 turn 使用 human Token Exchange，Token 仅存在于 bounded fetch closure
-- [ ] Worker Activity 使用 Agent Client Credentials，不把 Token 写入 Temporal history/event/log
-- [ ] 仅接通 Golden Story sitemap/entity/exec/exec-plan；其他 route 明确列为未覆盖
+- [x] Browser Chat 单 turn 使用 human Token Exchange，Token 仅存在于 bounded fetch closure
+- [x] Worker Activity 使用 Agent Client Credentials，不把 Token 写入 Temporal history/event/log
+- [x] 仅接通 Golden Story sitemap/entity/exec/exec-plan；其他 route 明确列为未覆盖
 - [x] Task: Principal review 修正——收口 Golden 身份与 realm 不变式 1df38a0
 - [x] 绑定 policy scope 与目标 Application，防止跨 scope sitemap/read/exec/plan
 - [x] Token Exchange 不得扩大 subject scopes，结果必须保持 human `sub` + `ui4a-agent` `azp`
@@ -134,7 +134,7 @@
 - [x] Task: Red→Green——Temporal production config f7aa88d
 - [x] 可配置 address、namespace、task queue、identity 和 connection options
 - [x] Temporal Server 使用 PostgreSQL persistence
-- [ ] Worker graceful drain、independent test queue 和 restart recovery（真实 restart evidence 待 Phase I）
+- [x] Worker graceful drain、independent test queue 和 restart recovery（真实 restart evidence 待 Phase I）
 - [x] Task: 实现 backup/restore commands c2b072a
 - [x] PostgreSQL consistent backup、Keycloak DB/共享 realm 文件数据与 Temporal 的直接 restore
 - [x] workspace/artifact archive 和根 CA/私钥/certificate 直接 backup

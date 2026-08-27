@@ -4,6 +4,6 @@
   "status": "in_progress",
   "title": "T22 生产形态部署、身份认证与双后端 Agent Runtime",
   "created_at": "2026-08-24T02:12:57Z",
-  "updated_at": "2026-08-24T02:22:00Z",
+  "updated_at": "2026-08-27T00:00:00Z",
   "approved_by": "user (K8s + Istio and Docker Compose all-in-one, in-cluster Keycloak/PostgreSQL/Temporal, dual Agent Runtime backends, experimental release)"
 }
