@@ -1,0 +1,7 @@
+T29 Task: clientView 协议一次性切换(GR2)(rebase 等价重建挂载)
+
+> 原始提交对象在 2026-08-26 origin/master rebase(T29 归档)后已不在对象库,验收 note 无法复制本体;本条按归档 plan 任务与现役测试证据重建,原始任务 sha 见 conductor/tracks/archive/t29-presence-situation_20260825/plan.md 映射节。
+> 等价提交:34d29f6
+
+变更(Phase C Task 3):ClientViewReport 切换为 presence 形状(shared/presentation/chat-view),删除旧 route-bearing 双形状(GR2 单实现,exact-keys ingress 拒绝未知字段)。chat-situation 将 clientView.presence 置于 explicit 槽位(D48-R9 裁决(b):显式=请求明示,授权收口仍在 grantedScopes,行为测试锁定)。
+现役证据:situation-consumers.test.ts ingress exact-keys 行为锁 + shared chat-view 边界测试;floating-chat 迁移后单一 wire 实现的新合同锁(R15)。
