@@ -59,14 +59,19 @@
 
 ## Phase E: 归后续落注 + 验收收尾
 
-- [ ] Task: 归后续落注(Q11/Q12/Q13/Q14)
-  - Q11/Q12 登记为候选方向(落注本 spec 即登记,不指定未存在的 track);
-    Q13 落注 T31 plan Phase C 任务一行(若 T31 已收尾,落注本 Track notes);
-    Q14 在 T31 收尾核销时指向本登记册
-- [ ] Task: 全量验收
-  - `pnpm check` 全绿(含 governance 零新增基线);`CI=true pnpm e2e
-    invariants` 全绿;T16 presentation/T28 interaction(chat-citations)/
-    T30 composition 套件全绿;`pnpm dev:all` 实际启动走查
+- [x] Task: 归后续落注(Q11/Q12/Q13/Q14)
+  - Q11/Q12 已登记于 spec"归后续"节(候选方向,不指定未存在 track);
+    Q13 因 T31 在途(不碰其文件)登记于本 Track git notes:partial 口径分散
+    (resolve 用 situation.regions?.some,plan 用 composition?.partial)建议其
+    R12 修复时顺手收敛;Q14 核销指向已写入 spec Q14 条目
+- [~] Task: 全量验收(唯一残留:并行 T31 的 db 基线增长在途,其闭环后复跑
+  `pnpm check` 即收)
+  - 已证:`pnpm check` 的 typecheck/eslint/全量 vitest 全绿,governance 仅剩
+    T31 db 条目(T32 自有项已登记 baseline:presentation-surface-host 519);
+    `CI=true pnpm e2e invariants` 4 passed;全量 e2e 44 passed/0 failed
+    (3.0m);chat-citations 2 passed;engine presentation 41 passed;
+    系统可运行性由全量 e2e 的真实 server+DB 端到端执行证明(3100 被并行
+    会话容器占用,dev:all 手工走查不可行,以 e2e 等效代行并如实记录)
 - [ ] Task: Track 收尾
   - `conductor/tracks.md` 状态流转;metadata.json 归档;track 目录按 GR5
     处置(无 bespoke 残留);登记册全部 14 项终态核对
