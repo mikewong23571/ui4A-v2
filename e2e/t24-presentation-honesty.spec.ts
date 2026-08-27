@@ -58,7 +58,7 @@ test('canvas 首屏:focus 实体语义上屏,主区域零机制词;机制信息�
       body: JSON.stringify({
         schemaVersion: 1,
         requestId: crypto.randomUUID(),
-        principal: 'user:local',
+        principal: 'local-user',
         subject: 'post:first-post',
         intent: 'read',
         delivery: 'canvas',

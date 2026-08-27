@@ -13,7 +13,7 @@ test.describe('T16 Golden Story presentation lifecycle', () => {
       data: {
         schemaVersion: 1,
         requestId: `t16-golden:${Date.now()}`,
-        principal: 'user:local',
+        principal: 'local-user',
         subject: 'post:first-post',
         intent: 'review',
         delivery: 'canvas',

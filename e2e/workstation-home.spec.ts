@@ -48,7 +48,7 @@ async function cli<T>(...words: string[]): Promise<CliEnvelope<T>> {
       cwd: process.cwd(),
       env: {
         ...process.env,
-        UI4A_PRINCIPAL: 'user:local',
+        UI4A_PRINCIPAL: 'local-user',
         UI4A_POLICY_SCOPE: 'publishing',
         XDG_CONFIG_HOME: '/tmp/ui4a-workstation-home-no-config',
       },

@@ -10,6 +10,8 @@
  */
 import type { SirenAction, GuardResultEntry, SirenEntity } from '@ui4a/engine';
 
+import { canvasEntityHref } from '@/presence/navigation';
+
 import { ActionGroup } from '../../components/actions/action-group';
 
 import { asOptionalString, asRequiredString, type WordProps } from './shared';
@@ -58,7 +60,14 @@ export function MemberCardWord(props: WordProps) {
       data-rel={rel}
       className="w-full rounded-lg border bg-card p-3 text-card-foreground"
     >
-      <p className="text-sm font-medium text-foreground">{label}</p>
+      {/* 标题行保持成员导航(合同 href → 画布落面),动作行承载责任点 */}
+      <a
+        data-nav="presentation:member"
+        href={canvasEntityHref(rel)}
+        className="block text-sm font-medium text-foreground hover:text-primary hover:underline"
+      >
+        {label}
+      </a>
       {detail !== undefined && (
         <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>
       )}
