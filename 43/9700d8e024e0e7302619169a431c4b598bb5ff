@@ -1,0 +1,1 @@
+T24 归档手续补办:注册表 [x] 但目录仍在 tracks/ 且 metadata=planned/index=planned 的收尾欠账——目录 git mv 入 archive/,注册表链接改 archive 路径,metadata status=done,index 当前状态行记录闭环与 T31 承接项(R1/R14/R15/R21/R23/R24/R25)。零代码变更。
