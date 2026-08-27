@@ -11,6 +11,8 @@
 
 - [~] **Track: T32 交互与组合质量修复:T28/T30 实现质量发现项登记与修复(评审修复 track;Q6/Q7 与 T31 R12 同文件,建议 T31 闭环后执行该组)** *Link: [tracks/t32-interaction-composition-quality_20260827/index.md](./tracks/t32-interaction-composition-quality_20260827/index.md)*
 
+- [~] **Track: T33 读面姿态与责任点:读多写少落地(表单退位、决策卡一击、任务语言;ASCII 用户故事为验收方向锚,depends_on T32)** *Link: [tracks/t33-reading-posture-decision-cards_20260827/index.md](./tracks/t33-reading-posture-decision-cards_20260827/index.md)*
+
 ## 归档 Tracks(T1–T21、T23–T31,只读历史)
 
 - [x] **Track: T31 质量评审修复:T24–T30 实现质量发现项登记与修复(评审修复 track;建议 T27 闭环后启动,并行须避开其冲突面)** *Link: [tracks/archive/t31-quality-remediation_20260826/index.md](./tracks/archive/t31-quality-remediation_20260826/index.md)*

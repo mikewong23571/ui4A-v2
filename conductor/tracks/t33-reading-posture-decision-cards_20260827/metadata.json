@@ -1,0 +1,12 @@
+{
+  "id": "t33-reading-posture-decision-cards_20260827",
+  "type": "feature",
+  "status": "new",
+  "title": "T33 读面姿态与责任点:读多写少落地(表单退位、决策卡一击、任务语言)",
+  "created_at": "2026-08-27T00:00:00Z",
+  "updated_at": "2026-08-27T00:00:00Z",
+  "approved_by": "user (2026-08-27 指令:ASCII 用户故事落 track 验收目标;立项类型/范围/验收形态/排程与 spec/plan 均经选项确认批准)",
+  "depends_on": [
+    "t32-interaction-composition-quality_20260827"
+  ]
+}

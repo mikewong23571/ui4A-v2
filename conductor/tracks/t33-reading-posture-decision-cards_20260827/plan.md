@@ -1,0 +1,101 @@
+# T33 读面姿态与责任点 — Plan
+
+> 遵循 `conductor/workflow.md` 的任务生命周期、Git notes 与 Phase Checkpoint 协议。
+> spec:`./spec.md`(含 ASCII 理想态用户故事方向锚;锚点全为路径+符号,实施前复核)。
+> 每 Task 先 Red 再 Green;每 Phase 结束复跑 `pnpm check` 与
+> `CI=true pnpm e2e invariants`。
+> 治理纪律:GR3 业务优先不为凑行数拆分;触及 shrink-only 基线目录
+> (`packages/engine/src/presentation`)须净不增长;例外登记由编排 agent
+> 统一执行,subagent 只如实报告。词汇/目录变更走 catalog 版本升级。
+> 冲突面:`depends_on` T32(交互与组合质量修复,Phase E 收尾在途)——本 Track
+> 在 T32 闭环后开工;若并行,逐任务核对 T32 是否触及 `action-runner`/`generic`/
+> `intent` 同文件。
+> 前置确认:T27/T28/T30 已归档(消费对象);D45/D46/D47 已落 DECISIONS.md。
+> 实施前必读:根 `AGENTS.md`、`apps/web/AGENTS.md`、`conductor/workflow.md`。
+
+## Phase A: 裁决固化 → DECISIONS(D50)
+
+- [ ] Task: 读/写姿态裁决落 DECISIONS.md D50
+  - 两小节:① D47.4 姿态细化——actions 任何 intent 下始终保留且为一等控件;带参数
+    动作的参数表单全站单一默认收起(打开是零业务事件的表现层交互);无双路径;
+    ② 读/写通道分工方向判断——复杂写的正典在 chat 原话授权(T15 仪式),UI 保留
+    责任点一击(批准/拒绝/确认);
+  - 裁决须显式核对 D47 原文,不得复辟已否决候选(read 意图下移除动作 = 违背
+    D47.4 与 T28"每个声明 action 有一等控件");
+  - 验收:D50 一条目两小节,各有明确采纳与理由;引用 product-vision §一.1
+    "只做你明确要点头的部分"
+- [ ] Task: 误导性验收排查清单落地(spec"误导性验收排查"节为初核)
+  - grep 复核:action-runner 单测、`e2e/human`、`e2e/dual-executor`、`e2e/s1`、
+    `e2e/workstation-home`、chat 套件中默认展开表单依赖项;work-thread 英文 title
+    断言;成员渲染纯链接断言——逐项登记处置(迁移/保留),记录进本任务 notes
+- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+
+## Phase B: 写姿态单一默认收起
+
+- [ ] Task: Red——ActionRunner 组件测试改预期
+  - 默认态断言 `closed`(带参数动作渲染一行触发键,不渲染展开表单);点击打开后
+    prefill/schema 校验/焦点/两段式确认行为断言保持;mutation 抽查:恢复默认
+    `form` → 变红
+- [ ] Task: Green——`action-runner.tsx` 初始态改 `closed`
+  - 触发键/图例/`data-action` 注记保持;打开后的全部既有行为零改动
+- [ ] Task: 读面零展开表单断言 + e2e 迁移
+  - 新断言:首页三区域、canvas read surface、实体页首屏无默认展开参数表单;
+  - 按 Phase A 清单迁移受影响填表步骤(统一加"打开"一步,GR2 一次性,无双默认)
+- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+
+## Phase C: 任务语言(合同数据层)
+
+- [ ] Task: Red→Green——work-thread 定义 title 中文化
+  - engine 投影单测先行:threads 全部动作 title('创建工作线'等)与字段 title
+    ('线程标识'/'目标'/'目标来源'等,具体措辞施工时定)断言;`work-thread.ts`
+    数据改动,渲染器零改动
+- [ ] Task: Red→Green——链接标签优先合同 title
+  - 投影为 self/member 链接携带 Siren `title`(集合 identity 已有'在等我'式
+    人话标题,链接层补齐);渲染器(detail/entity-link 的 links 区)优先 title
+    回退 rel;words 单测先行
+- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+
+## Phase D: 责任点一等——成员决策卡(词汇投资)
+
+- [ ] Task: Red——engine presentation 单测:成员决策卡结构规则
+  - repeat 成员携带已声明动作 → item 子树含 identity + 摘要 + actions 绑定;
+    无动作成员 → 维持 member-link(纯结构规则,零 class/rel 分支);
+    mutation 抽查:注入 `if class` 分支 → 变红(以 review + 扫描兜底)
+- [ ] Task: Green——`member-card` 词条与 catalog 版本升级
+  - 新词条:identity + 一行结构化摘要 + ActionGroup(复用 D47.1 统一动作组);
+    engine surface catalog + web word-catalog/catalog-adapter 双注册,指纹/版本
+    bump(sidecar 失效走既有依赖机制);GR3:engine presentation 净不增长
+- [ ] Task: e2e——首页"在等我"决策卡
+  - 成员卡 approve 一击(零导航、零参数)→ `/api/exec` 同裁决 → 事件落库 →
+    卡片退场计数即变;与 chat 写同裁决断言(actor 区分,门相同)
+- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+
+## Phase E: 工作线一句话 + 在动进度轨
+
+- [ ] Task: Red→Green——thread/delegation 投影补 `presentation.fields` 角色声明
+  - thread:statusPointer/recent-events 进入角色通道;delegation:steps/successes;
+    投影单测先行
+- [ ] Task: Red→Green——`resume-point` 与 `progress` 词条
+  - `resume-point`:「停在「X」 · 时间」框架文字通用固定,节点名/时间全部合同
+    插值(D47.1 模式,零实体类型分支);`progress`:steps/successes 机械计数条;
+    catalog 版本再升级
+- [ ] Task: e2e——首页要素断言
+  - 工作线成员一句话 + 时间;在动成员进度呈现;`data-nav`/`data-action` 注记
+    齐全(I3)
+- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+
+## Phase F: 验收收口
+
+- [ ] Task: 全量回归
+  - `pnpm check`、`CI=true pnpm e2e invariants`、T16/T24/T27/T28 相关套件
+    (presentation honesty、workstation home、interaction/citations)全绿
+- [ ] Task: 人机同源与 chat 写复验
+  - CLI 对拍:`inbox`/`threads`/`delegations` 同一合同事实逐项一致;画面 3
+    走查:chat 建线经原话授权(引用 user message id 与逐字 quote)事件留痕
+- [ ] Task: 走查对照与零特判复核
+  - Playwright 截图走查对照 spec"理想态用户故事"要素清单;零特判扫描 +
+    review;D50 与实施一致性复核
+- [ ] Task: mothership 现场验收(spec 验收方向末条口径)
+  - 确定 Git SHA 构建 immutable OCI images,按 T22 runbook 部署走查,evidence
+    记录 SHA/digest/命令/时间/逐项结果
+- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
