@@ -63,6 +63,7 @@ import { useSidecarActions } from '../use-sidecar-actions';
 import {
   sidecarLoadFailure,
   SURFACE_LOAD_FAILED_PHRASE,
+  SIDECAR_UNAVAILABLE_PHRASE,
   SidecarLoadFailure,
 } from './presentation-sidecar-failure';
 import { frozenSpecsOf, uniqueDiagnostics } from './presentation-surface-helpers';
@@ -142,6 +143,9 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
   const focusRefreshParam = parameters.refresh;
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
+  // T35 F-02:主 focus 解析失败(404)的结构化空态——中性措辞(D51 存在性隐藏)
+  // + 恢复出口;实体名等机制细节只进 why 抽屉。
+  const [focusUnavailable, setFocusUnavailable] = useState(false);
   const [loadIssues, setLoadIssues] = useState<PresentationDiagnostic[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -203,6 +207,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
     );
     setLoading(true);
     setErrors([]);
+    setFocusUnavailable(false);
     setLoadIssues([]);
     setNotice(null);
     setSidecarMeta(undefined);
@@ -385,13 +390,28 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
 
       const failed: string[] = [];
       const failedIssues: PresentationDiagnostic[] = [];
+      const primaryFocus = requestedFocuses[0];
       const noteFailure = (nodeId: string, error: unknown): void => {
+        // T35 F-02:主 focus 实体不可解析(404)走结构化空态——首屏只留中性
+        // 措辞与恢复出口,机制细节进抽屉;其余失败维持通用口径。
+        const message = error instanceof Error ? error.message : String(error);
+        const missing = /^实体 "(.+)" 不存在$/.exec(message);
+        if (primaryFocus !== undefined && missing !== null && missing[1] === primaryFocus) {
+          setFocusUnavailable(true);
+          failedIssues.push({
+            code: 'focus-unavailable',
+            nodeId,
+            path: '/canvas',
+            message,
+          });
+          return;
+        }
         failed.push(SURFACE_LOAD_FAILED_PHRASE);
         failedIssues.push({
           code: 'surface-load-failed',
           nodeId,
           path: '/canvas',
-          message: error instanceof Error ? error.message : String(error),
+          message,
         });
       };
       const planned: {
@@ -489,7 +509,8 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
               ];
         }),
       );
-      setErrors(failed);
+      // T35 F-03(前置):同文错误行聚合去重,不逐 surface 堆叠。
+      setErrors([...new Set(failed)]);
       setLoadIssues(failedIssues);
     } catch (error) {
       if (generation !== loadGenerationRef.current) return;
@@ -597,6 +618,24 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
             <li key={error}>{error}</li>
           ))}
         </ul>
+      )}
+
+      {/* T35 F-02:focus 不可解析的结构化空态(D51 中性口径);机制细节在抽屉。 */}
+      {focusUnavailable && !loading && (
+        <div
+          data-testid="canvas-focus-unavailable"
+          className="mt-6 rounded-lg border bg-card p-6 text-card-foreground"
+        >
+          <p className="text-sm font-medium">{SIDECAR_UNAVAILABLE_PHRASE}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            你声明的注视当前无法展开。可以用顶栏的「调整声明」更换注视，或回到首页。
+          </p>
+          <div className="mt-3">
+            <Button asChild variant="outline" size="sm">
+              <a href="/">返回首页</a>
+            </Button>
+          </div>
+        </div>
       )}
 
       <section

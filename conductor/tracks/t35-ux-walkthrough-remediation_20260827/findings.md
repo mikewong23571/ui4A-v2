@@ -19,7 +19,7 @@
 
 ## F-01 动作成功后界面无反馈,页内"重新载入"也不刷新(P0)
 
-- **状态**: fixing
+- **状态**: rechecked(2026-08-27 关闭)
 - **严重度**: P0(操作闭环断裂,系统性复现)
 - **发现**: R1(2026-08-27)
 - **现象**: 点击"下线"后 `POST /api/exec` 返回 200、服务端实体已变 `offline`(API 实证),但界面纹丝不动:无 toast、无状态变化、按钮原样。点击页内"重新载入"后依旧显示 published——presentation 重新规划仍命中同一 `sidecarId`(日志:exec 前后 `GET /api/presentation/sidecar?sidecarId=sidecar:fde7c230…` 相同)。仅浏览器整页刷新后才显示真实状态。"批准"确认、"创建工作线"、"重新发布"全部同样复现(批准后服务端 `status: approved`,卡片仍挂着待批按钮)。
@@ -27,6 +27,8 @@
 - **证据**: `evidence/2026-08-27-initial-walkthrough/05_after_unpublish_no_feedback.png`、`06_in_app_reload_still_stale.png`、`07_hard_reload_shows_offline.png`、`22_create_thread_no_feedback.png`;dev 日志 `POST /api/exec 200` 与同 id sidecar 复用记录。
 - **初步根因**: exec 成功后未失效相关 sidecar/实体缓存,surface 不重取;UI 层也没有动作结果回执的呈现通道(成功/拒绝都不可见)。
 - **处置**: plan Phase A;复验故事 S2/S3/S4。
+- **修复记录(2026-08-27,commit 65525c3)**: 根因=画布双提交路径分叉——A2UI 原生动作走 canvas-action-handler(失效+reload),而词汇动作组(detail/member 词条 ActionGroup)走 surfaceSubmit,成功后零失效零重载。修复=PresentationSurfaceHost 的 surfaceSubmit 统一接 executed 协议(精确失效 rel+collection 回链 → 整面 reload);单测锁定第二次规划与失效重取(原 fresh-read 断言 +1 → +2)。治理:baseline +6 业务优先登记(12a9658)。
+- **复验记录**: 2026-08-27 浏览器实测(post:first-post 下线→offline+重新发布 当场呈现;重新发布→published 还原;创建工作线 计数 1→2 当场入列)。故事 S2/S3 正式验收待 Phase F 全量走查;截图 `evidence/2026-08-27-phase-a/`(待补)。
 
 ## F-02 meta"查看活实例"死链,并污染聊天注视(P0)
 

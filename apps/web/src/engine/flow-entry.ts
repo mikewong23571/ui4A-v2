@@ -14,7 +14,7 @@
  */
 import { actionEffects } from '@ui4a/engine';
 import type { FlowDefinition, SirenEntity, SirenLink } from '@ui4a/engine';
-import type { EngineSnapshot } from '@ui4a/shared';
+import type { EngineSnapshot, InstanceSnapshot } from '@ui4a/shared';
 
 const FLOW_REL_PREFIX = 'flow:';
 
@@ -65,4 +65,62 @@ export function withCollectionFlowEntryLinks(
   }
   if (entryLinks.length === 0) return entity;
   return { ...entity, links: [...entity.links, ...entryLinks] };
+}
+
+/**
+ * `flow:<name>` 的实例集合投影(T35 F-02):sitemap 已声明 `flow:<name>` 表面,
+ * 但别名只在恰一实例(向导语义)时解析;状态机类 flow(零或多实例)此前 404,
+ * "查看活实例"跨面桥因此落空。本投影把零/多实例兑现为**只读集合列举**——成员
+ * 即实例自身快照字段,零目标实体内容复制(T26 口径);非 flow rel 或未知 flow 名
+ * 返回 null(404 诚实不变)。
+ */
+export function flowInstancesCollection(
+  rel: string,
+  snapshot: EngineSnapshot,
+  flows: readonly FlowDefinition[],
+): SirenEntity | null {
+  const flowName = nonEmptySuffixOf(rel, FLOW_REL_PREFIX);
+  if (flowName === null) return null;
+  const definition = flows.find((flow) => flow.name === flowName);
+  if (definition === undefined) return null;
+  const members = Object.values(snapshot.instances).filter(
+    (instance) => instance.flow === flowName,
+  );
+  return {
+    class: ['collection', 'flow-instances'],
+    properties: {
+      rel,
+      flow: flowName,
+      title: `${definition.title ?? definition.name} · 活实例`,
+      count: members.length,
+    },
+    actions: [],
+    links: [{ rel: ['self'], href: `/api/entity?rel=${encodeURIComponent(rel)}` }],
+    entities: members.map((instance) => ({
+      class: ['flow-instance'],
+      properties: {
+        rel: instance.rel,
+        flow: instance.flow,
+        node: instance.node,
+        identity: instanceIdentity(instance),
+      },
+      actions: [],
+      links: [{ rel: ['self'], href: `/api/entity?rel=${encodeURIComponent(instance.rel)}` }],
+    })),
+  };
+}
+
+function nonEmptySuffixOf(value: string, prefix: string): string | null {
+  if (!value.startsWith(prefix)) return null;
+  const suffix = value.slice(prefix.length);
+  return suffix.trim() === '' ? null : suffix;
+}
+
+/** 实例成员的一行身份:声明 identity 字段优先,回退 rel(零发明)。 */
+function instanceIdentity(instance: InstanceSnapshot): string {
+  const declared = instance.fields['identity'];
+  if (typeof declared === 'string' && declared !== '') return declared;
+  const title = instance.fields['title'];
+  if (typeof title === 'string' && title !== '') return title;
+  return instance.rel;
 }

@@ -262,6 +262,38 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
     expect(entityFetches).toBe(3);
   });
 
+  it('focus 不可解析时呈现结构化空态:中性措辞 + 恢复出口,机制细节只进抽屉(T35 F-02)', async () => {
+    window.history.pushState({}, '', '/canvas?focus=post%3Amissing');
+    const source = sourceEntity('post:missing', '失踪对象');
+    const fixture = presentationContract({ subject: 'post:missing', source });
+    const inner = fixture.fetchMock.getMockImplementation()!;
+    fixture.fetchMock.mockImplementation((request: RequestInfo | URL, init?: RequestInit) => {
+      if (String(request).startsWith('/api/entity?rel=post%3Amissing')) {
+        return Promise.resolve(jsonResponse(404, { error: '实体 "post:missing" 不存在' }));
+      }
+      return inner(request, init);
+    });
+    vi.stubGlobal('fetch', fixture.fetchMock);
+
+    render(
+      <EntityCacheProvider>
+        <PresentationSurfaceHost heading="共同注视" parameters={{ focus: 'post:missing' }} />
+      </EntityCacheProvider>,
+    );
+
+    const empty = await screen.findByTestId('canvas-focus-unavailable');
+    // D51 中性口径:存在性隐藏,首屏不区分"不存在"与"不可见",不带裸 rel。
+    expect(empty.textContent).toContain('内容不存在或不可见');
+    expect(empty.textContent).not.toContain('post:missing');
+    const home = screen.getByRole('link', { name: '返回首页' });
+    expect(home.getAttribute('href')).toBe('/');
+    // 机制细节(实体名/原始报错)只进 why 抽屉诊断。
+    fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
+    expect(screen.getByTestId('canvas-why-diagnostics').textContent).toContain('post:missing');
+    // 同文错误行不堆叠:errors 列表不再重复渲染同一句。
+    expect(screen.queryAllByText('部分内容暂时无法显示，详情见「为什么这样展示」')).toHaveLength(0);
+  });
+
   it.each(cases)(
     '$name 走 presentation → sidecar → hydrate → action gate → 单树链',
     async (testCase) => {

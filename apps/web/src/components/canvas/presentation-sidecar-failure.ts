@@ -10,7 +10,8 @@ import type { PresentationDiagnostic } from '../canvas-why-drawer';
 /** T32 Q5 口径延续:denied 用「部分内容」级人话,机制细节只进抽屉。 */
 export const SURFACE_LOAD_FAILED_PHRASE = '部分内容暂时无法显示，详情见「为什么这样展示」';
 
-const SIDECAR_UNAVAILABLE_PHRASE = '内容不存在或不可见';
+/** D51 存在性隐藏口径:不区分「不存在」与「不可见」,首屏零机制标识。 */
+export const SIDECAR_UNAVAILABLE_PHRASE = '内容不存在或不可见';
 
 /** 携带首屏人话与抽屉诊断的 sidecar 取数失败;AbortError 不走此类型。 */
 export class SidecarLoadFailure extends Error {
