@@ -1,0 +1,18 @@
+T31 Phase B Task R2: presence 频率上限合同测试(db+route 双层)
+
+变更:
+- 新增 apps/web/src/db/presence.rate-limit.test.ts:预算由共享常量
+  PRESENCE_MAX_EVENTS_PER_WINDOW 驱动;触顶拒绝且零残留、principal 预算独立、
+  等值短路先于计数(changed=false 不占预算)、SQL 前移 ts 窗口滑动恢复、
+  边界处 fold==在线投影==rebuild 三方一致;
+- 新增 apps/web/src/app/api/presence/route.rate-limit.test.ts:真实 POST
+  handler(header 受信身份,先例 events/entity route test):未触顶 200 结果形状,
+  触顶精确 429 {error:{code:'presence_rate_limited'}},429 仅限触顶 principal;
+- vitest.db-tests.list.ts 登记两行(既有机制)。
+
+Why: T29 spec 红线明文频率上限入合同测试,此前仅兑现事件种类(R2)。mutation
+抽查:subagent 两处(比较符放宽/关闭等值短路)均红;编排 agent 亲自复跑
+'>= 改 >' mutation → 5 failed,复原后 8 passed 全绿。生产文件零 diff。
+偏离备案:窗口滑动测试需瞬时 DISABLE 触发器 events_append_only_trigger(events
+表 append-only 触发器拒绝 UPDATE;ensureEventsTable 每次重建自愈,finally 恢复)。
+测试用非 site kind=thread,不钉死 site 词表值。自治验收。
