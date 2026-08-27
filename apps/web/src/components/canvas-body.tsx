@@ -44,7 +44,7 @@ export function CanvasBody() {
         <aside
           data-testid="thread-rail"
           aria-label="本线"
-          className="sticky top-[5rem] max-h-[calc(100dvh-5rem)] w-80 shrink-0 overflow-y-auto pr-1"
+          className="sticky top-12 max-h-[calc(100dvh-3rem)] w-80 shrink-0 overflow-y-auto pr-1"
         >
           <ThreadRail threadId={threadId} scope={scope} />
         </aside>

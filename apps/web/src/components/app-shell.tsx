@@ -28,10 +28,11 @@ export function AppShell({ children, aside }: { children: ReactNode; aside?: Rea
             <span className="text-xs text-muted-foreground">v{VERSION}</span>
           </a>
           <SiteNav />
+          {/* T35 D-7:处境芯片进顶栏行——"你在哪"常显为芯片,顶栏高度确定 h-12。 */}
+          <Suspense fallback={<SituationBarFallback />}>
+            <SituationBar />
+          </Suspense>
         </div>
-        <Suspense fallback={<SituationBarFallback />}>
-          <SituationBar />
-        </Suspense>
       </header>
       <div className="flex w-full flex-1">
         <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">{children}</main>

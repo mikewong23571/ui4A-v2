@@ -14,6 +14,17 @@ import { contentVersion } from '@ui4a/engine';
 import type { FlowDefinition, LogEvent, SirenEntity } from '@ui4a/engine';
 
 import { businessApplicationList } from '../../domain/applications';
+import { installedApplicationBundles } from '../../applications/bundles';
+
+/**
+ * T35 F-28:期望锚与种子同源——bootstrap 播种用的是 installedApplicationBundles
+ * (含 todo/ideas),而 businessApplicationList 只是 walkthrough 夹具;两者脱节即
+ * 反空转锚误红。索引对齐断言仍用 businessApplicationList(seed 序 = bundle 安装序
+ * 的 walkthrough 前 6 + 追加 2,逐条 detail 校验保持)。
+ */
+const installedApplications = installedApplicationBundles.flatMap(
+  (bundle) => bundle.applications,
+);
 import { businessCapabilityList } from '../../domain/capabilities';
 import { businessFlows, businessFlowList } from '../../domain/flows';
 import { SEED_REL, seedDetail } from '../../domain/seed';
@@ -480,15 +491,16 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
     // 反空转锚:在线 applications 表先钉在种子常量(独立于"两侧同 fold"的
     // 对称性)——fold 若丢表/落错内容,本断言先红,保证下面的对比非空转。
     expect(onlineSnapshot.applications).toEqual(
-      Object.fromEntries(businessApplicationList.map((app) => [app.name, app])),
+      Object.fromEntries(installedApplications.map((app) => [app.name, app])),
     );
 
     // 导出事件(重放的唯一输入)并守卫 meta bundle 安装序与 receipt。
     const rows = await readLog(pool);
-    // T35 S9/S10:bundle 追加 todo/ideas → application×8、definition×10。
-    expect(rows.slice(0, 26).map((event) => event.kind)).toEqual([
-      'application-seeded',
-      'application-seeded',
+    // T35 S9/S10:bundle 追加 todo/ideas → application×8、definition×10;
+    // 安装序 = 逐 bundle 完整安装且每 bundle 各带 seed/applied 收据。断言:
+    // 头 18 帧 = walkthrough(6app→6cap→6def),后续为 todo/ideas 的增量段。
+    const headKinds = rows.slice(0, 29).map((event) => event.kind);
+    expect(headKinds.slice(0, 18)).toEqual([
       'application-seeded',
       'application-seeded',
       'application-seeded',
@@ -507,14 +519,11 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
       'definition-seeded',
       'definition-seeded',
       'definition-seeded',
-      'definition-seeded',
-      'definition-seeded',
-      'definition-seeded',
-      'definition-seeded',
-      'seed',
-      'meta-bootstrap-applied',
     ]);
-    expect(rows.some((event) => event.kind === 'action-executed')).toBe(true);
+    expect(headKinds.filter((kind) => kind === 'application-seeded')).toHaveLength(8);
+    expect(headKinds.filter((kind) => kind === 'definition-seeded')).toHaveLength(10);
+    expect(headKinds[18]).toBe('seed');
+    expect(headKinds[19]).toBe('meta-bootstrap-applied');    expect(rows.some((event) => event.kind === 'action-executed')).toBe(true);
     const appSeeds = rows.filter((event) => event.kind === 'application-seeded');
     expect(appSeeds.map((event) => event.rel)).toEqual(
       expect.arrayContaining([

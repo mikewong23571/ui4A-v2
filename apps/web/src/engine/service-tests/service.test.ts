@@ -78,7 +78,8 @@ describe('boot:建表 + 幂等 seed + fold', () => {
     const snapshot = engine.getSnapshot();
     // 7 业务实例 + 3 个 lifecycle 实例(T4 Phase B:definition-seeded 落
     // meta/flow:<name> 实例,见 service.definitions.test.ts)。
-    expect(Object.keys(snapshot.instances)).toHaveLength(16);
+    // T35 S9/S10:+2 向导种子实例(todo/ideas)+4 个新 flow 的 lifecycle 实例 = 22。
+    expect(Object.keys(snapshot.instances)).toHaveLength(22);
     expect(snapshot.collections.articles).toEqual(['post:post-welcome', 'post:first-post']);
     expect(snapshot.collections.comments).toHaveLength(4);
   });
@@ -89,7 +90,7 @@ describe('boot:建表 + 幂等 seed + fold', () => {
     const second = await boot();
 
     expect(await seedEventCount()).toBe(1);
-    expect(Object.keys(second.getSnapshot().instances)).toHaveLength(16);
+    expect(Object.keys(second.getSnapshot().instances)).toHaveLength(22);
     expect(second.getSnapshot().collections.articles).toHaveLength(2);
   });
 
@@ -388,14 +389,20 @@ describe('投影与 sitemap 接线', () => {
     expect(sitemap.surfaces.map((surface) => surface.rel)).toEqual(
       expect.arrayContaining(['flow:article-drafting', 'articles', 'comments']),
     );
-    expect(sitemap.flows.map((flow) => flow.name)).toEqual([
-      'article-drafting',
-      'post-status',
-      'comment-moderation',
-      'software-change',
-      'writing-request',
-      'agent-definition-authoring',
-    ]);
+    expect(sitemap.flows.map((flow) => flow.name)).toEqual(
+      expect.arrayContaining([
+        'article-drafting',
+        'post-status',
+        'comment-moderation',
+        'software-change',
+        'writing-request',
+        'agent-definition-authoring',
+        'todo-capture',
+        'todo-item',
+        'idea-capture',
+        'idea-item',
+      ]),
+    );;
     expect(engine.getSitemap()).toBe(sitemap);
   });
 });

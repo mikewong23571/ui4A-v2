@@ -131,7 +131,7 @@ export function FloatingChat() {
   }
 
   return (
-    <aside className="sticky top-[5rem] flex h-[calc(100dvh-5rem)] w-96 shrink-0 flex-col border-l border-border bg-background">
+    <aside className="sticky top-12 flex h-[calc(100dvh-3rem)] w-96 shrink-0 flex-col border-l border-border bg-background">
       <ChatPanel
         variant="sidebar"
         session={session}

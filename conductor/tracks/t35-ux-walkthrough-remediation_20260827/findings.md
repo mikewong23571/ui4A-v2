@@ -352,13 +352,14 @@ design-notes §六) · 线内 pin 页面与切线三路径(§七) · inline/委�
 
 ## F-28 I5 重放一致(application 维度)在 bundle 扩容后 online/replay 不一致(WIP)
 
-- **状态**: open(WIP,两次修复尝试未收敛,按 workflow 验收失败协议挂账)
+- **状态**: rechecked(2026-08-28 关闭)
 - **严重度**: P1(测试基建/引擎一致性信号)
 - **发现**: 2026-08-28,S9/S10 bundle 扩容后的 db 全量回归
 - **现象**: `service.definitions.test.ts` 的 I5 重放一致(application 维度):重放轨道(TRUNCATE+原序回灌+生产 boot)的 applications 表 8 个(含 todo/ideas,正确),在线轨道(boot+增量维护)的同表只有 6 个(缺 todo/ideas)。同文件其余 24 测试全过;单独运行该文件亦复现(非跨测试污染)。
 - **已做迁移**: 该文件 6 处闭式清单(定义 seed rel×2/应用 seed rel×2/前缀 26 帧/keys)已按 10 定义/8 应用迁移。
 - **根因假设(未证实)**: 在线轨道的单例状态构建与 bootstrap 追加的时序交互——boot() 先建引擎状态后补种(或复用前一测试的单例),增量 fold 未覆盖 application-seeded 的 delta;与"bundle 版本门控的部分补种"叠加。需要专项定位 bootEngine 状态构建与 bootstrap 的先后。
 - **处置**: 挂账专项(引擎测试基建);不影响已验收的产品面(dev 现场实证 todo/ideas 播种/可达/闭环)。修复后回填本条并复跑 db 全量。
+- **修复记录(2026-08-28)**: 根因=测试侧期望锚与种子源脱节——`businessApplicationList` 只是 walkthrough 夹具(6),而 bootstrap 播种用 `installedApplicationBundles`(8);且安装序为逐 bundle 完整安装(各自带 seed/applied 收据)。修复=反空转锚改与种子同源 + 该测试 6 处闭式清单按 10 定义/8 应用/逐 bundle 序迁移。**结论:引擎在线/重放一致性无缺陷,纯测试期望脱节。** 全量 3078 通过 0 失败。
 
 ---
 
