@@ -44,7 +44,7 @@
 
 ## Phase C: Low 行为修复(D48 已决项 + 纯修复项)
 
-- [ ] Task: T29 口径组(R8/R9/R10)
+- [x] Task: T29 口径组(R8/R9/R10) [fecc9c5]
   - 按 D48 落 scopeFrom 口径、clientView 分层、presence 端点 scope 校验对齐;
     各项配行为测试
 - [ ] Task: T26 投影/裁决组(R4/R5/R6/R7)
