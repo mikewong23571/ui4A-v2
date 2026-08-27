@@ -52,6 +52,7 @@ import {
   planGenericPresentationSurface,
 } from '@/render/presentation/generic';
 import { createCanvasActionHandler } from '../canvas-action-handler';
+import { readThreadPins, writeThreadPin } from './thread-rail';
 import { CanvasWhyDrawer, type PresentationDiagnostic } from '../canvas-why-drawer';
 import { ActionSubmitProvider, createSurfaceActionSubmit } from '../actions/action-submit';
 import { useEntityCache } from '../entity-cache-provider';
@@ -123,6 +124,8 @@ export interface PresentationSurfaceParameters {
   scope?: string;
   /** Presence means external writes occurred and the page cache must be cleared. */
   refresh?: string;
+  /** T35 W2:声明中的工作线(线工作台模式;surface 卡出现钉住控件)。 */
+  thread?: string;
 }
 
 export interface PresentationSurfaceHostProps {
@@ -140,6 +143,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
   const rootsParam = parameters.roots;
   const scopeParam = parameters.scope;
   const sidecarParam = parameters.sidecar;
+  const threadParam = parameters.thread;
   const focusRefreshParam = parameters.refresh;
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -149,6 +153,18 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
   const [loadIssues, setLoadIssues] = useState<PresentationDiagnostic[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // T35 W2:钉住集(呈现偏好,localStorage 按线隔离);版本号驱动钉住图标重渲。
+  const [pinsVersion, setPinsVersion] = useState(0);
+  useEffect(() => {
+    const sync = (): void => setPinsVersion((version) => version + 1);
+    window.addEventListener('ui4a:thread-pins-changed', sync);
+    return () => window.removeEventListener('ui4a:thread-pins-changed', sync);
+  }, []);
+  const threadPins = useMemo(
+    () => (threadParam === undefined ? [] : readThreadPins(threadParam)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pinsVersion 是重读信号
+    [threadParam, pinsVersion],
+  );
   // T24「为什么这样展示」抽屉数据源与 T28 exact Siren verification lens。
   const [catalogId, setCatalogId] = useState<string>();
   const [focusEntity, setFocusEntity] = useState<SirenEntity>();
@@ -654,6 +670,44 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
               sidecarMeta?.view.densityByNodeId[sidecarMeta.rootNodeId] === 'spacious' && 'p-8',
             )}
           >
+            {threadParam !== undefined && (
+              <div className="mb-2 flex justify-end">
+                <button
+                  type="button"
+                  data-nav={`local:thread-pin:${entry.concern}`}
+                  aria-pressed={threadPins.includes(
+                    entry.concern.startsWith('presentation:')
+                      ? entry.concern.slice('presentation:'.length)
+                      : entry.concern,
+                  )}
+                  title={
+                    threadPins.includes(
+                      entry.concern.startsWith('presentation:')
+                        ? entry.concern.slice('presentation:'.length)
+                        : entry.concern,
+                    )
+                      ? '取消钉住'
+                      : '钉住到本线'
+                  }
+                  className="rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  onClick={() => {
+                    const rel = entry.concern.startsWith('presentation:')
+                      ? entry.concern.slice('presentation:'.length)
+                      : entry.concern;
+                    const pinned = threadPins.includes(rel);
+                    writeThreadPin(threadParam, rel, !pinned);
+                  }}
+                >
+                  {threadPins.includes(
+                    entry.concern.startsWith('presentation:')
+                      ? entry.concern.slice('presentation:'.length)
+                      : entry.concern,
+                  )
+                    ? '📌 已钉住本线'
+                    : '📌 钉住到本线'}
+                </button>
+              </div>
+            )}
             {entry.warnings.map((warning, index) => (
               <p
                 key={`${warning.collection}:${warning.fieldPath}:${index}`}

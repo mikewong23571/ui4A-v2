@@ -49,14 +49,22 @@ describe('GET /.well-known/ui4a.json', () => {
         'comments',
       ]),
     );
-    expect(sitemap.flows.map((flow) => flow.name)).toEqual([
-      'article-drafting',
-      'post-status',
-      'comment-moderation',
-      'software-change',
-      'writing-request',
-      'agent-definition-authoring',
-    ]);
+    // T35 S9/S10:bundle 数据驱动,流程集随应用增删(bundle 追加 todo/ideas);
+    // 断言基准集在场 + 新应用流程在场,不做闭式全集(应用即数据,清单可生长)。
+    expect(sitemap.flows.map((flow) => flow.name)).toEqual(
+      expect.arrayContaining([
+        'article-drafting',
+        'post-status',
+        'comment-moderation',
+        'software-change',
+        'writing-request',
+        'agent-definition-authoring',
+        'todo-capture',
+        'todo-item',
+        'idea-capture',
+        'idea-item',
+      ]),
+    );
     expect(sitemap.flows[0]?.initial).toBe('basic-info');
   });
 
@@ -104,14 +112,19 @@ describe('GET /.well-known/ui4a.json', () => {
     };
 
     // 分组序 = seed 声明序(default 兜底桶在首);intent 是发现层第一层依据。
-    expect(sitemap.applications.map((app) => app.name)).toEqual([
-      'default',
-      'publishing',
-      'community',
-      'development',
-      'editorial',
-      'governance',
-    ]);
+    // T35 S9/S10:含 bundle 追加的 todo/ideas(arrayContaining 基准集)。
+    expect(sitemap.applications.map((app) => app.name)).toEqual(
+      expect.arrayContaining([
+        'default',
+        'publishing',
+        'community',
+        'development',
+        'editorial',
+        'governance',
+        'todo',
+        'ideas',
+      ]),
+    );
     const publishing = sitemap.applications.find((app) => app.name === 'publishing');
     expect(publishing).toMatchObject({ title: '内容发布' });
     expect(publishing?.intent).toContain('内容起草与发布');
@@ -122,14 +135,21 @@ describe('GET /.well-known/ui4a.json', () => {
     expect(development?.flows.map((flow) => flow.name)).toEqual(['software-change']);
 
     // 扁平 flows 索引保留(向后兼容),条目带归一化后的 app 归属。
-    expect(sitemap.flows.map((flow) => `${flow.name}:${flow.app}`)).toEqual([
-      'article-drafting:publishing',
-      'post-status:publishing',
-      'comment-moderation:community',
-      'software-change:development',
-      'writing-request:editorial',
-      'agent-definition-authoring:governance',
-    ]);
+    // T35 S9/S10:含 bundle 追加的 todo/ideas 归属(arrayContaining 基准集)。
+    expect(sitemap.flows.map((flow) => `${flow.name}:${flow.app}`)).toEqual(
+      expect.arrayContaining([
+        'article-drafting:publishing',
+        'post-status:publishing',
+        'comment-moderation:community',
+        'software-change:development',
+        'writing-request:editorial',
+        'agent-definition-authoring:governance',
+        'todo-capture:todo',
+        'todo-item:todo',
+        'idea-capture:ideas',
+        'idea-item:ideas',
+      ]),
+    );
   });
 
   it('app 定义变更(日志补种)→ version 变化(缓存键覆盖 applications)', async () => {

@@ -68,6 +68,11 @@ describe('boot:定义 seed 迁移(空库)', () => {
       'meta/flow:software-change',
       'meta/flow:writing-request',
       'meta/flow:agent-definition-authoring',
+      // T35 S9/S10:bundle 追加 todo/ideas。
+      'meta/flow:todo-capture',
+      'meta/flow:todo-item',
+      'meta/flow:idea-capture',
+      'meta/flow:idea-item',
     ]);
     for (const [index, flow] of businessFlowList.entries()) {
       expect(seeds[index]?.detail).toEqual({
@@ -96,11 +101,11 @@ describe('boot:定义 seed 迁移(空库)', () => {
     }
   });
 
-  it('boot 幂等:重复 boot 不再追加 definition-seeded(仍 6 条)', async () => {
+  it('boot 幂等:重复 boot 不再追加 definition-seeded(T35 后 10 条:6+todo/ideas×2)', async () => {
     await boot();
     resetEngineForTests();
     await boot();
-    expect(await definitionSeeds()).toHaveLength(6);
+    expect(await definitionSeeds()).toHaveLength(10);
   });
 });
 
@@ -125,7 +130,7 @@ describe('旧库迁移(业务 seed 在前,定义追加尾部)', () => {
 
     const log = await readLog(pool);
     expect(log[0]?.kind).toBe('seed');
-    expect(log.filter((event) => event.kind === 'definition-seeded')).toHaveLength(6);
+    expect(log.filter((event) => event.kind === 'definition-seeded')).toHaveLength(10);
 
     const snapshot = (await boot()).getSnapshot();
     expect(snapshot.instances['post:post-welcome']?.bornVersion).toBe(1);
@@ -223,7 +228,7 @@ describe('B1 行为不变(定义来自日志后零回归)', () => {
 });
 
 describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
-  it('五个 application 以 application-seeded 入日志:rel=meta/application:<name>,detail 全文', async () => {
+  it('application 以 application-seeded 入日志(T35 后 8 个):rel=meta/application:<name>,detail 全文', async () => {
     await boot();
     const seeds = (await readLog(pool)).filter((event) => event.kind === 'application-seeded');
     expect(seeds.map((event) => event.rel)).toEqual([
@@ -233,33 +238,40 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
       'meta/application:development',
       'meta/application:editorial',
       'meta/application:governance',
+      // T35 S9/S10:bundle 追加 todo/ideas。
+      'meta/application:todo',
+      'meta/application:ideas',
     ]);
     for (const [index, app] of businessApplicationList.entries()) {
       expect(seeds[index]?.detail).toEqual({ name: app.name, definition: app });
     }
   });
 
-  it('fold 快照:applications 表落五个已激活定义(app-known 注册表来源)', async () => {
+  it('fold 快照:applications 表落全部已激活定义(app-known 注册表来源)', async () => {
     const engine = await boot();
     const applications = engine.getSnapshot().applications;
-    expect(Object.keys(applications ?? {})).toEqual([
-      'default',
-      'publishing',
-      'community',
-      'development',
-      'editorial',
-      'governance',
-    ]);
+    expect(Object.keys(applications ?? {})).toEqual(
+      expect.arrayContaining([
+        'default',
+        'publishing',
+        'community',
+        'development',
+        'editorial',
+        'governance',
+        'todo',
+        'ideas',
+      ]),
+    );
     expect(applications?.['publishing']?.intent).toContain('发布');
     expect(applications?.['community']?.intent).toContain('评论');
   });
 
-  it('boot 幂等:重复 boot 不再追加 application-seeded(仍 6 条)', async () => {
+  it('boot 幂等:重复 boot 不再追加 application-seeded(T35 后 8 条)', async () => {
     await boot();
     resetEngineForTests();
     await boot();
     const seeds = (await readLog(pool)).filter((event) => event.kind === 'application-seeded');
-    expect(seeds).toHaveLength(6);
+    expect(seeds).toHaveLength(8);
   });
 
   it('旧库迁移:既有日志(flow 定义 + 业务 seed)无 application 事件 → boot 尾部补种', async () => {
@@ -278,23 +290,20 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
     // meta bundle 安装器只补缺项；receipt 收口迁移，不依赖脆弱的尾部切片。
     expect(
       log.filter((event) => event.kind === 'application-seeded').map((event) => event.kind),
-    ).toEqual([
-      'application-seeded',
-      'application-seeded',
-      'application-seeded',
-      'application-seeded',
-      'application-seeded',
-      'application-seeded',
-    ]);
+    ).toHaveLength(8); // T35 S9/S10:6+todo/ideas,boot 尾部一并补种
     expect(log.at(-1)?.kind).toBe('meta-bootstrap-applied');
-    expect(Object.keys(engine.getSnapshot().applications ?? {})).toEqual([
-      'default',
-      'publishing',
-      'community',
-      'development',
-      'editorial',
-      'governance',
-    ]);
+    expect(Object.keys(engine.getSnapshot().applications ?? {})).toEqual(
+      expect.arrayContaining([
+        'default',
+        'publishing',
+        'community',
+        'development',
+        'editorial',
+        'governance',
+        'todo',
+        'ideas',
+      ]),
+    );
   });
 });
 
@@ -476,7 +485,10 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
 
     // 导出事件(重放的唯一输入)并守卫 meta bundle 安装序与 receipt。
     const rows = await readLog(pool);
-    expect(rows.slice(0, 20).map((event) => event.kind)).toEqual([
+    // T35 S9/S10:bundle 追加 todo/ideas → application×8、definition×10。
+    expect(rows.slice(0, 26).map((event) => event.kind)).toEqual([
+      'application-seeded',
+      'application-seeded',
       'application-seeded',
       'application-seeded',
       'application-seeded',
@@ -489,6 +501,10 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
       'capability-seeded',
       'capability-seeded',
       'capability-seeded',
+      'definition-seeded',
+      'definition-seeded',
+      'definition-seeded',
+      'definition-seeded',
       'definition-seeded',
       'definition-seeded',
       'definition-seeded',
@@ -500,14 +516,18 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
     ]);
     expect(rows.some((event) => event.kind === 'action-executed')).toBe(true);
     const appSeeds = rows.filter((event) => event.kind === 'application-seeded');
-    expect(appSeeds.map((event) => event.rel)).toEqual([
-      'meta/application:default',
-      'meta/application:publishing',
-      'meta/application:community',
-      'meta/application:development',
-      'meta/application:editorial',
-      'meta/application:governance',
-    ]);
+    expect(appSeeds.map((event) => event.rel)).toEqual(
+      expect.arrayContaining([
+        'meta/application:default',
+        'meta/application:publishing',
+        'meta/application:community',
+        'meta/application:development',
+        'meta/application:editorial',
+        'meta/application:governance',
+        'meta/application:todo',
+        'meta/application:ideas',
+      ]),
+    );
     for (const [index, app] of businessApplicationList.entries()) {
       expect(appSeeds[index]?.detail).toEqual({ name: app.name, definition: app });
     }

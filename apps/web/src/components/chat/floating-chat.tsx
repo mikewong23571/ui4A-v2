@@ -17,7 +17,7 @@
  * use-chat-session.ts 的 useChatSession + chat-panel.tsx 的 ChatPanel;
  * 状态挂在壳上,收起/展开/切形态不丢消息。
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { MessageCircle } from 'lucide-react';
 import { usePathname } from 'next/navigation';
@@ -29,6 +29,26 @@ import { useChatSession } from './use-chat-session';
 type ChatMode = 'float' | 'sidebar';
 
 const MODE_STORAGE_KEY = 'ui4a.chat.mode';
+
+/**
+ * T35 W1:当前 URL 是否声明工作线(进线默认分栏的依据)。
+ * 读 window.location.search 而非 useSearchParams——本组件挂根布局,
+ * 免 Suspense 约束;导航为整页加载,popstate 兜底。
+ */
+function useThreadDeclared(): { declared: boolean; threadId: string | null } {
+  const pathname = usePathname();
+  const [state, setState] = useState({ declared: false, threadId: null as string | null });
+  useEffect(() => {
+    const sync = (): void => {
+      const id = new URLSearchParams(window.location.search).get('thread');
+      setState({ declared: id !== null, threadId: id });
+    };
+    sync();
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, [pathname]);
+  return state;
+}
 
 function loadMode(): ChatMode {
   try {
@@ -58,6 +78,18 @@ export function FloatingChat() {
     setMode(loadMode());
     setOpen(true);
   }, []);
+
+  // T35 W1:进线(URL 声明 thread)默认分栏停靠——每条线只自动停靠一次,
+  // 用户显式切回悬浮后本线内不再强制(尊重显式选择)。
+  const autoDockedThreadRef = useRef<string | null>(null);
+  const threadDeclared = useThreadDeclared();
+  useEffect(() => {
+    if (!threadDeclared.declared) return;
+    if (autoDockedThreadRef.current === threadDeclared.threadId) return;
+    if (!open) return;
+    autoDockedThreadRef.current = threadDeclared.threadId;
+    setMode('sidebar');
+  }, [threadDeclared.declared, threadDeclared.threadId, open]);
 
   // 独立窗口(B4):window.open 弹出 /chat(同 sessionId 的历史投影);
   // 本窗收起为 FAB——两边均可继续,会话是同一份日志投影。
@@ -99,7 +131,7 @@ export function FloatingChat() {
   }
 
   return (
-    <aside className="sticky top-12 flex h-[calc(100vh-3rem)] w-96 shrink-0 flex-col border-l border-border bg-background">
+    <aside className="sticky top-[5rem] flex h-[calc(100dvh-5rem)] w-96 shrink-0 flex-col border-l border-border bg-background">
       <ChatPanel
         variant="sidebar"
         session={session}

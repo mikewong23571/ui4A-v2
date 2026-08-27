@@ -316,9 +316,28 @@ describe('flow:<name> 实体投影:向导入口可达', () => {
     expect(executed[0]!.rel).toBe('article-drafting:main');
   });
 
-  it('无单实例语义的 flow rel 仍 404(多实例/未知不冒充实体)', async () => {
-    expect((await entity('flow:post-status')).status).toBe(404);
-    expect((await entity('flow:comment-moderation')).status).toBe(404);
+  it('多实例 flow rel 兑现为只读活实例集合(F-02);未知 flow 名仍 404', async () => {
+    // 多实例(post-status ≥2 篇文章)→ 实例集合投影(成员=实例自身快照)。
+    const multi = await entity('flow:post-status');
+    expect(multi.status).toBe(200);
+    const multiBody = (await multi.json()) as {
+      class: string[];
+      properties: { count: number; flow: string };
+      entities: Array<{ properties: { rel: string } }>;
+    };
+    expect(multiBody.class).toContain('collection');
+    expect(multiBody.class).toContain('flow-instances');
+    expect(multiBody.properties.flow).toBe('post-status');
+    expect(multiBody.properties.count).toBeGreaterThanOrEqual(2);
+    expect(multiBody.properties.count).toBe(multiBody.entities.length);
+
+    // comment-moderation(种子 4 条评论)同口径可读;零实例空集合场景由
+    // flow-entry 单测与 todo/ideas 现场覆盖。
+    const comments = await entity('flow:comment-moderation');
+    expect(comments.status).toBe(200);
+    expect(((await comments.json()) as { class: string[] }).class).toContain('flow-instances');
+
+    // 未知 flow 名不冒充任何实体(404 诚实不变)。
     expect((await entity('flow:no-such-flow')).status).toBe(404);
   });
 });

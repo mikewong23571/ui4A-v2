@@ -287,7 +287,7 @@ export function ChatThread({ delegated, onToggleDelegated }: ChatThreadProps) {
       <ThreadPrimitive.Viewport className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
         <ThreadPrimitive.Empty>
           <p className="py-8 text-center text-xs text-muted-foreground">
-            输入目标委托 agent(走 HTTP 合同),如「发布一篇文章」。
+            说出你想做成的事,如「发布一篇文章」;助手与你过同一道门,每步可见。
           </p>
         </ThreadPrimitive.Empty>
         <ThreadPrimitive.Messages components={{ UserMessage, AssistantMessage }} />
@@ -301,17 +301,20 @@ export function ChatThread({ delegated, onToggleDelegated }: ChatThreadProps) {
           placeholder="输入目标…"
           className="max-h-24 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none"
         />
-        {/* 委托模式开关(T5 Phase B):on→mode:'delegated' 派发 workflow。 */}
+        {/* 委托模式开关(T5 Phase B):on→mode:'delegated' 派发 workflow。
+            T35 F-08③/W4:两种提交的续跑语义就地说明(发送=在线协同,页面可切;
+            委托=交后台无人值守,进「在动」)。 */}
         <Button
           type="button"
           variant={delegated ? 'default' : 'secondary'}
           size="sm"
           aria-label="委托模式"
+          title={delegated ? '已切委托:交后台无人值守,进度看「在动」' : '在线协同:助手边问边做,页面可切,进度看这里'}
           data-nav="local:chat-delegated"
           aria-pressed={delegated}
           onClick={onToggleDelegated}
         >
-          委托
+          {delegated ? '委托(后台)' : '协同'}
         </Button>
         <ThreadPrimitive.If running={false}>
           <ComposerPrimitive.Send asChild>

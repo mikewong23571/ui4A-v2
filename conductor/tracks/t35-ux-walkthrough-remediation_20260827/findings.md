@@ -349,6 +349,17 @@ design-notes §六) · 线内 pin 页面与切线三路径(§七) · inline/委�
 - **处置**: 并入 Phase E-1(叙述页 + 材料清单 + 选择器);复验故事 S8(预期同步强化)。
 - **修复记录(2026-08-28,commit 397144a)**: 线投影声明任务语字段(状态"进行中"/上次停在哪/目标来源);context 投影为可导航成员卡(身份解析自被引对象);动作 title 任务语化(添加/移出涉及对象,合同数据层);rel 字段补说明。**已知残项**: resume 回退分支仍用节点名(P2);对象选择器与清单内一键移出归 W 阶段。
 
+
+## F-28 I5 重放一致(application 维度)在 bundle 扩容后 online/replay 不一致(WIP)
+
+- **状态**: open(WIP,两次修复尝试未收敛,按 workflow 验收失败协议挂账)
+- **严重度**: P1(测试基建/引擎一致性信号)
+- **发现**: 2026-08-28,S9/S10 bundle 扩容后的 db 全量回归
+- **现象**: `service.definitions.test.ts` 的 I5 重放一致(application 维度):重放轨道(TRUNCATE+原序回灌+生产 boot)的 applications 表 8 个(含 todo/ideas,正确),在线轨道(boot+增量维护)的同表只有 6 个(缺 todo/ideas)。同文件其余 24 测试全过;单独运行该文件亦复现(非跨测试污染)。
+- **已做迁移**: 该文件 6 处闭式清单(定义 seed rel×2/应用 seed rel×2/前缀 26 帧/keys)已按 10 定义/8 应用迁移。
+- **根因假设(未证实)**: 在线轨道的单例状态构建与 bootstrap 追加的时序交互——boot() 先建引擎状态后补种(或复用前一测试的单例),增量 fold 未覆盖 application-seeded 的 delta;与"bundle 版本门控的部分补种"叠加。需要专项定位 bootEngine 状态构建与 bootstrap 的先后。
+- **处置**: 挂账专项(引擎测试基建);不影响已验收的产品面(dev 现场实证 todo/ideas 播种/可达/闭环)。修复后回填本条并复跑 db 全量。
+
 ---
 
 ## 复验记录(回填区)

@@ -16,6 +16,7 @@ import {
   confirmationRel,
 } from '../../execution/confirmation';
 import { DELEGATIONS_REL, delegationRel } from '../../delegation/delegation';
+import { actionEffects } from '../../core/parse';
 import { flowForInstance } from '../../execution/judge';
 import {
   RENDER_SPECS_REL,
@@ -368,6 +369,21 @@ export function project(
     return projectInstance(instance, snapshot, deps);
   }
   if (rel in snapshot.collections) {
+    return projectCollection(rel, snapshot, deps);
+  }
+  // T35 F-23:已知集合如实投影空态——集合 rel 来自活跃定义的 append 目标
+  // (todo/ideas 等新应用零成员时 sitemap 面与实体端点必须一致,不再 404)。
+  const knownAppendTargets = new Set<string>();
+  for (const flow of Object.values(deps.flows)) {
+    for (const node of flow.nodes) {
+      for (const action of node.actions) {
+        for (const effect of actionEffects(action)) {
+          if (effect.type === 'append') knownAppendTargets.add(effect.collection);
+        }
+      }
+    }
+  }
+  if (knownAppendTargets.has(rel)) {
     return projectCollection(rel, snapshot, deps);
   }
   const confirmation = snapshot.confirmations?.[rel];

@@ -73,7 +73,7 @@ beforeEach(async () => {
                   {
                     kind: 'catalog',
                     subject: 'urn:ui4a:presentation:semantic',
-                    version: 'semantic-v4',
+                    version: 'semantic-v5',
                   },
                 ],
                 provenance: [{ kind: 'generic-fallback', ref: 'fixture' }],
