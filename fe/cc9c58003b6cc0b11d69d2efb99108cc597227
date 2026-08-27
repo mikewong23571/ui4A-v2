@@ -1,0 +1,16 @@
+T31 Phase C Task: T29 口径组(R8/R9/R10)
+
+变更(按 D48):
+- R8(a) apps/web/src/engine/situation.ts scopeFrom 删除空 grantedScopes 短路放行,
+  空授权集=拒绝(fail-closed,沿用既有 throw 语义);
+- R9(b) chat-situation 零生产改动,新增行为锁:clientView presence 显式槽位压过
+  stored presence、flip 同变、越权 explicit 被 granted 集收口(D48 分层语义入测);
+- R10 apps/web/src/app/api/presence/route.ts scope 允许集对齐消费方口径
+  ([...grantedPolicyScopes(identity.scopes), identity.policyScope]),
+  403 body 不变;测试扩展 route.test.ts(mock 身份表达 credential 形态 mismatch);
+- 附带:situation.ts thread 行 Prettier 规整(HEAD 原文件本就 format 违例,纯格式)。
+
+Red→Green:三项均先红后绿并做反向验证(恢复旧实现→新断言红→复原绿);R9 反向
+变异=D48 否决的降级方案。编排 agent 亲验:全相关套件绿(unit situation 8/8;
+db chat-situation+consumers+presence route×2 共 16/16)、亲自执行 R8 反向检查
+(旧逻辑 2 红 → 复原 8 绿)。自治验收。
