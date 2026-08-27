@@ -1,1 +1,3 @@
 T32 Q2 完成:property.test.ts 新增组合(多区域)describe——composedWorldArb 生成随机声明(1–4 region,源=世界实体/集合,intent 含未知值),经 parseCompositionDeclaration + planGenericSurface + composeSurfaceRegions 产出真实组合树;断言根 layout + 声明序 slot 名、binding 按 kind 的键全集剃刀(property=[kind,subject,path] 等)、subject 不发明 rel、字段值溯源到实体快照(集合自身 properties 并入局部宇宙)。mutation 抽查:generic.ts word binding 拼 value 字面键 → 组合用例红;还原后 3 passed。验证:CI=true pnpm vitest run apps/web/src/render/property.test.ts --project unit。
+
+—— T32 Phase B 自治验收(追加):Q1(bc3f2b7)e2e raw 深等+五键负向,mutation 红;Q2(149c7ad)组合树 property 常驻覆盖,mutation 红。验证:pnpm governance OK;property.test.ts 3 passed;raw-contract-drawer.test.tsx passed;chat-citations e2e 2 passed。改动面仅测试文件,无生产代码变更。
