@@ -38,24 +38,24 @@
     mutation 抽查:注入字面量值 → 变红
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) [149c7ad]
 
-## Phase C: Low 行为修复(D49 已决项 + 纯修复项)
+## Phase C: Low 行为修复(D49 已决项 + 纯修复项) [checkpoint: 053359d]
 
-- [ ] Task: chat 呈现组(Q3/Q4/Q5;与 T31 无文件冲突,可先行)
+- [x] Task: chat 呈现组(Q3/Q4/Q5;与 T31 无文件冲突,可先行)
   - Q3 按 D49 落地(豁免记录或 raw 镜头化);Q4 删除 `thread.tsx` 徽章文本
     启发式,改结构化 rel 判定并配测试(GR2 单实现);Q5 canvas load 失败
-    分支映射固定人话、机制细节进 why 抽屉,补异常分支测试
-- [ ] Task: T30 组(Q6/Q7;T31 闭环后或与其 Phase C 进度核对后执行)
+    分支映射固定人话、机制细节进 why 抽屉,补异常分支测试 [41d2a9d/8d9f1aa]
+- [x] Task: T30 组(Q6/Q7;T31 闭环后或与其 Phase C 进度核对后执行) [053359d]
   - Q6 按 D49 落地;Q7 `membershipFingerprint` 非空断言改显式守卫,错误点名
     区域与原因,配负向测试
   - GR3 注意:若触及 `packages/engine/src/presentation` 须净不增长
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) [053359d]
 
-## Phase D: 卫生(Q8/Q9/Q10)
+## Phase D: 卫生(Q8/Q9/Q10) [checkpoint: ef9392a]
 
-- [ ] Task: 卫生组
+- [x] Task: 卫生组 [ef9392a]
   - Q8 `hrefToRel` 提取共享模块;Q9 `entity-view.tsx` 头注释复述现状;
     Q10 `broker.ts`/`runtime.ts` 过期里程碑注释改写
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) [ef9392a]
 
 ## Phase E: 归后续落注 + 验收收尾
 
