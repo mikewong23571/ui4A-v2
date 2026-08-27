@@ -51,9 +51,9 @@
 - [ ] Task: D6 顺带修 F-13/F-16/F-18/F-19:刷新动词统一、开发注释改使用者视角或入抽屉;导航当前项指示(aria-current+视觉层级,F-18);系统下拉受控弹出层并在导航后收起(F-13/F-19)
 - [ ] Task: D7 处境条芯片化重做(F-12 升级,方案已获用户认可):先落 F-21 业务标题,再常显收敛为"你在哪"状态芯片;三个补丁(chip 截断规则/桥接迁内容上下文/注视 chip 免交互可见+同门提示);声明字段与调整收进弹层
 - [ ] Task: D8 分栏聊天粘性视口列(F-22):aside sticky + dvh 高度,消息区内部滚动、输入框常驻屏内;与 D7 顶栏高度联动;浏览器长页面验收
-- [ ] Task: D7 回归——`pnpm vitest run --project unit` + `pnpm governance` + `pnpm format:check` 全绿
-- [ ] Task: D8 Phase 视觉验收 & Checkpoint:S1/S7 走查,截图,findings 回填
-- [ ] Task: D9 提交 `fix(t35): 术语统一与文案收敛(F-05..F-16 相关)`
+- [ ] Task: D9 回归——`pnpm vitest run --project unit` + `pnpm governance` + `pnpm format:check` 全绿
+- [ ] Task: D10 Phase 视觉验收 & Checkpoint:S1/S7/S9 走查(含顶栏/分栏新形态),截图,findings 回填
+- [ ] Task: D11 提交 `fix(t35): 术语统一与文案收敛(F-05..F-22 相关)`
 
 ## Phase E 工作线投影与动作层级(修 F-07/F-11;故事 S8)
 
