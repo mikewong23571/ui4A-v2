@@ -36,7 +36,7 @@ const mocks = vi.hoisted(() => {
   );
   return {
     applyTrustedIdentity,
-    assertRelInPolicyScope: vi.fn(),
+    assertReachable: vi.fn(),
     authenticationErrorResponse: vi.fn((error: unknown) => {
       const code = (error as { code?: string }).code;
       return code === undefined ? undefined : Response.json({ error: { code } }, { status: 401 });
@@ -46,7 +46,6 @@ const mocks = vi.hoisted(() => {
     executeDraftMeta: vi.fn(),
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getEngine: vi.fn(async () => engine),
-    relCoveredByPolicyScope: vi.fn(() => true),
     requireHumanApprovalScope: vi.fn(),
     resolveTrustedRequestIdentity: vi.fn(),
   };
@@ -75,8 +74,7 @@ vi.mock('../../../../auth/request-identity', () => ({
 }));
 
 vi.mock('../../../../auth/application-scope', () => ({
-  assertRelInPolicyScope: mocks.assertRelInPolicyScope,
-  relCoveredByPolicyScope: mocks.relCoveredByPolicyScope,
+  assertReachable: mocks.assertReachable,
 }));
 
 import { POST } from './route';
@@ -86,7 +84,7 @@ const TRUSTED_IDENTITY = {
   actor: 'agent' as const,
   principal: 'credential-subject',
   scopes: ['ui4a:write', 'ui4a:policy:development'],
-  policyScope: 'development',
+  grantedApplications: ['development'],
   channel: 'oidc',
   humanApprovalEligible: false,
 };
@@ -128,7 +126,7 @@ describe('POST /_meta/api/exec production authentication wiring', () => {
 
       expect(response.status).toBe(401);
       await expect(response.json()).resolves.toEqual({ error: { code } });
-      expect(mocks.assertRelInPolicyScope).not.toHaveBeenCalled();
+      expect(mocks.assertReachable).not.toHaveBeenCalled();
       expect(mocks.applyTrustedIdentity).not.toHaveBeenCalled();
       expect(mocks.exec).not.toHaveBeenCalled();
       expect(mocks.executeDraftMeta).not.toHaveBeenCalled();
@@ -146,17 +144,12 @@ describe('POST /_meta/api/exec production authentication wiring', () => {
         plane: 'meta',
         requiredScopes: ['ui4a:write'],
         untrusted: expect.objectContaining({ principal: 'forged-body-root' }),
-        // T22 验证修复:路由向身份解析传入按 body rel 归属的 meta scopeCoverage 闭包
-        //(rel 已在身份解析前 parse,见下方闭包断言)。
-        scopeCoverage: expect.any(Function),
       }),
     );
-    expect(mocks.assertRelInPolicyScope).toHaveBeenCalledWith(
-      expect.objectContaining({
-        rel: 'meta/flow:software-change',
-        policyScope: 'development',
-        plane: 'meta',
-      }),
+    expect(mocks.assertReachable).toHaveBeenCalledWith(
+      expect.objectContaining({ plane: 'meta' }),
+      'meta/flow:software-change',
+      ['development'],
     );
     expect(mocks.applyTrustedIdentity).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -173,16 +166,13 @@ describe('POST /_meta/api/exec production authentication wiring', () => {
         channel: 'oidc',
       }),
     );
-    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as {
-      scopeCoverage?: (policyScope: string) => boolean;
-    };
-    expect(options.scopeCoverage).toBeInstanceOf(Function);
-    expect(options.scopeCoverage?.('development')).toBe(true);
-    // meta/flow:software-change 归属 development:闭包以 meta 平面与 body 解析的 rel 参与判定。
-    expect(mocks.relCoveredByPolicyScope).toHaveBeenCalledWith(
-      expect.objectContaining({ plane: 'meta' }),
-      'meta/flow:software-change',
-      'development',
-    );
+    // D51:身份解析不再携带会话级 scope 选择机器(defaultPolicyScope/scopeCoverage
+    // 均已退役);Draft 目标槽位由显式 ?scope= 或授予集合首员决定。
+    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(options.defaultPolicyScope).toBeUndefined();
+    expect(options.scopeCoverage).toBeUndefined();
   });
 });

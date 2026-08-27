@@ -53,6 +53,8 @@ const CREDENTIAL_IDENTITY = {
   actor: 'human' as const,
   principal: 'human-alice',
   scopes: ['ui4a:read', 'ui4a:policy:default', 'ui4a:policy:publishing'],
+  grantedApplications: ['default', 'publishing'],
+  // 显式 ?scope= 导航偏好(D51,可缺省):此处声明以验证展示槽位透传。
   policyScope: 'publishing',
   channel: 'oidc',
   humanApprovalEligible: true,
@@ -96,9 +98,15 @@ describe('GET /_meta/.well-known/ui4a.json production authentication wiring', ()
         plane: 'meta',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: ['default', 'publishing'],
-        defaultPolicyScope: 'publishing',
       }),
     );
+    // D51:身份解析不再携带会话级默认 scope 选择。
+    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(options.defaultPolicyScope).toBeUndefined();
+    expect(options.scopeCoverage).toBeUndefined();
     expect(mocks.metaContextFromRequest).not.toHaveBeenCalled();
     // Agent Definition 目录按 granted 并集(authorizedScopes)逐 scope 取,而非冻结在
     // effectiveScope 单 scope 上;多 scope 用户能看到所有已授权应用的 Agent。

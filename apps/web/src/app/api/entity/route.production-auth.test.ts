@@ -37,7 +37,7 @@ const mocks = vi.hoisted(() => {
     })),
   };
   return {
-    assertRelInPolicyScope: vi.fn(),
+    assertReachable: vi.fn(),
     assertThreadOwner: vi.fn(),
     authenticationErrorResponse: vi.fn((error: unknown) => {
       const code = (error as { code?: string }).code;
@@ -45,11 +45,10 @@ const mocks = vi.hoisted(() => {
     }),
     engine,
     enrichEntityWithAgentRuns: vi.fn(async (_db, projected) => projected),
-    filterEntityForPolicyScope: vi.fn((projected) => projected),
+    filterEntityForGrantedApplications: vi.fn((projected) => projected),
     filterThreadEntityForPrincipal: vi.fn((projected) => projected),
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getEngine: vi.fn(async () => engine),
-    relCoveredByPolicyScope: vi.fn(() => true),
     resolveTrustedRequestIdentity: vi.fn(),
   };
 });
@@ -72,11 +71,10 @@ vi.mock('../../../auth/request-identity', () => ({
 }));
 
 vi.mock('../../../auth/application-scope', () => ({
-  assertRelInPolicyScope: mocks.assertRelInPolicyScope,
+  assertReachable: mocks.assertReachable,
   assertThreadOwner: mocks.assertThreadOwner,
-  filterEntityForPolicyScope: mocks.filterEntityForPolicyScope,
+  filterEntityForGrantedApplications: mocks.filterEntityForGrantedApplications,
   filterThreadEntityForPrincipal: mocks.filterThreadEntityForPrincipal,
-  relCoveredByPolicyScope: mocks.relCoveredByPolicyScope,
 }));
 
 import { GET } from './route';
@@ -86,7 +84,8 @@ const TRUSTED_IDENTITY = {
   actor: 'agent' as const,
   principal: 'credential-subject',
   scopes: ['ui4a:read', 'ui4a:policy:development'],
-  policyScope: 'development',
+  // D51:identity 只携带凭证授予集合;不再产出会话冻结的单一 policyScope。
+  grantedApplications: ['development'],
   channel: 'oidc',
   humanApprovalEligible: false,
 };
@@ -118,10 +117,10 @@ describe('GET /api/entity production authentication wiring', () => {
 
       expect(response.status).toBe(401);
       await expect(response.json()).resolves.toEqual({ error: { code } });
-      expect(mocks.assertRelInPolicyScope).not.toHaveBeenCalled();
+      expect(mocks.assertReachable).not.toHaveBeenCalled();
       expect(mocks.engine.getEntity).not.toHaveBeenCalled();
       expect(mocks.enrichEntityWithAgentRuns).not.toHaveBeenCalled();
-      expect(mocks.filterEntityForPolicyScope).not.toHaveBeenCalled();
+      expect(mocks.filterEntityForGrantedApplications).not.toHaveBeenCalled();
     },
   );
 
@@ -138,8 +137,10 @@ describe('GET /api/entity production authentication wiring', () => {
         authorizedPolicyScopes: ['development'],
       }),
     );
-    expect(mocks.assertRelInPolicyScope).toHaveBeenCalledWith(
-      expect.objectContaining({ rel: 'post:first', policyScope: 'development', plane: 'business' }),
+    expect(mocks.assertReachable).toHaveBeenCalledWith(
+      expect.objectContaining({ plane: 'business' }),
+      'post:first',
+      ['development'],
     );
     expect(mocks.assertThreadOwner).toHaveBeenCalledWith(
       expect.anything(),
@@ -151,26 +152,23 @@ describe('GET /api/entity production authentication wiring', () => {
       expect.anything(),
       expect.anything(),
       'credential-subject',
-      'development',
     );
-    expect(mocks.filterEntityForPolicyScope).toHaveBeenCalledTimes(1);
+    expect(mocks.filterEntityForGrantedApplications).toHaveBeenCalledTimes(1);
     expect(mocks.filterThreadEntityForPrincipal).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
       'post:first',
       'credential-subject',
     );
-    // T22 验证修复:路由向 identity 解析传入按 query rel 归属的 scopeCoverage 闭包。
-    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as {
-      scopeCoverage?: (policyScope: string) => boolean;
-    };
-    expect(options.scopeCoverage).toBeInstanceOf(Function);
-    expect(options.scopeCoverage?.('development')).toBe(true);
-    expect(mocks.relCoveredByPolicyScope).toHaveBeenCalledWith(
-      expect.objectContaining({ plane: 'business' }),
-      'post:first',
-      'development',
-    );
+    // D51:身份解析不再携带会话级 scope 选择机器(defaultPolicyScope/scopeCoverage
+    // 均已退役);路由选项只有平面/范围/授权集。
+    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(options.defaultPolicyScope).toBeUndefined();
+    expect(options.scopeCoverage).toBeUndefined();
+    expect(options.authorizedPolicyScopes).toEqual(['development']);
   });
 
   it('wires trusted-principal filtering for the threads list before credential scope filtering', async () => {
@@ -202,7 +200,7 @@ describe('GET /api/entity production authentication wiring', () => {
       'threads',
       'credential-subject',
     );
-    expect(mocks.filterEntityForPolicyScope).toHaveBeenCalledWith(
+    expect(mocks.filterEntityForGrantedApplications).toHaveBeenCalledWith(
       expect.objectContaining({ properties: expect.objectContaining({ count: 1 }) }),
       expect.anything(),
     );

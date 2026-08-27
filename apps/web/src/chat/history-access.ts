@@ -13,7 +13,6 @@ export async function chatHistoryPrincipal(request: Request): Promise<string | u
     plane: 'business',
     requiredScopes: ['ui4a:read'],
     authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
-    defaultPolicyScope: 'default',
   });
   return identity.principal;
 }

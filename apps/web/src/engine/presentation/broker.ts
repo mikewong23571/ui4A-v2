@@ -13,9 +13,14 @@ import {
 } from './compositions';
 
 export interface PresentationTrustedContext {
-  policyScope: string;
-  /** 身份已授予的全部 policy scope;非空时授权点按目标 rel 在集合内做覆盖选择。 */
-  grantedPolicyScopes?: readonly string[];
+  /** 身份解析出的 principal(审计便捷透传);实际判权仍以请求自身的 principal 为准。 */
+  principal?: string;
+  /**
+   * 身份已授予的应用集合(D51):授权按授予集合 × 事实归属判定,不再有会话冻结
+   * scope。缺省视为本地信任域(['local-demo'] 标记),该标记跳过受众过滤、仅保留
+   * 属主重审。
+   */
+  grantedApplications?: readonly string[];
 }
 
 export interface AuthorizedRegion {
@@ -26,7 +31,11 @@ export interface AuthorizedRegion {
 export interface AuthorizedRoot {
   rels: string[];
   entities: unknown[];
-  policyScope: string;
+  /**
+   * 显式 ?scope= 导航偏好(D51):可缺省;仅作展示与依赖指纹的机械输入,
+   * 不参与任何授权判定。
+   */
+  policyScope?: string;
   declaration?: BuiltinCompositionDeclaration;
   regions?: AuthorizedRegion[];
 }
@@ -35,8 +44,7 @@ interface WebPresentationBrokerDependencies {
   getEntity(
     rel: string,
     principal: string,
-    policyScope: string,
-    grantedPolicyScopes?: readonly string[],
+    grantedApplications?: readonly string[],
   ): Promise<unknown | undefined>;
   resolveCompositionSubject?(subject: string): BuiltinCompositionSubjectResolution;
   plan?(
@@ -87,8 +95,10 @@ export function createWebPresentationBroker(
 ): WebPresentationBroker {
   const stores = new Map<string, PresentationBrokerStore>();
   return {
-    present(request, trustedContext = { policyScope: 'local-demo' }) {
-      const namespace = `${request.principal}\0${trustedContext.policyScope}`;
+    present(request, trustedContext: PresentationTrustedContext = {}) {
+      // 本地信任域兜底(D51):未传授予集合仅发生在 local profile 路径。
+      const grantedApplications = trustedContext.grantedApplications ?? ['local-demo'];
+      const namespace = `${request.principal}\0${grantedApplications.join(',')}`;
       let store = stores.get(namespace);
       if (store === undefined) {
         store = memoryStore();
@@ -111,8 +121,7 @@ export function createWebPresentationBroker(
                   entity: await dependencies.getEntity(
                     declaration.source,
                     candidate.principal,
-                    trustedContext.policyScope,
-                    trustedContext.grantedPolicyScopes,
+                    grantedApplications,
                   ),
                 })),
               );
@@ -124,7 +133,6 @@ export function createWebPresentationBroker(
               return {
                 rels: visible.map((region) => region.declaration.source),
                 entities: visible.map((region) => region.entity),
-                policyScope: trustedContext.policyScope,
                 declaration: composition.declaration,
                 regions,
               };
@@ -136,18 +144,13 @@ export function createWebPresentationBroker(
               : candidate.subject.selection;
           const entities = await Promise.all(
             rels.map((rel) =>
-              dependencies.getEntity(
-                rel,
-                candidate.principal,
-                trustedContext.policyScope,
-                trustedContext.grantedPolicyScopes,
-              ),
+              dependencies.getEntity(rel, candidate.principal, grantedApplications),
             ),
           );
           if (entities.some((entity) => entity === undefined)) {
             throw new Error('subject unavailable');
           }
-          return { rels, entities, policyScope: trustedContext.policyScope };
+          return { rels, entities };
         },
         buildSituation: async (_candidate, authorization) => authorization,
         resolve: dependencies.resolve ?? (async () => ({ kind: 'miss' })),

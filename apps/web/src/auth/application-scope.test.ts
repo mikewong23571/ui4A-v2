@@ -3,12 +3,11 @@ import type { SirenEntity, Sitemap } from '@ui4a/engine';
 import { describe, expect, it } from 'vitest';
 
 import {
+  assertReachable,
   assertThreadOwner,
-  assertRelInPolicyScope,
-  filterEntityForPolicyScope,
+  filterEntityForGrantedApplications,
   filterSitemapForPolicyScope,
   filterThreadEntityForPrincipal,
-  relCoveredByPolicyScope,
 } from './application-scope';
 
 const snapshot = {
@@ -131,30 +130,33 @@ const sitemap: Sitemap = {
   ],
 };
 
-describe('application-owned policy scope authorization', () => {
+const businessContext = { snapshot, sitemap, plane: 'business' as const };
+const metaContext = { snapshot, sitemap, plane: 'meta' as const };
+
+describe('audience predicate authorization (D51)', () => {
   it('binds business instances, aliases, collections, and confirmations to their application', () => {
     for (const rel of ['post:p1', 'flow:post-status', 'articles', 'confirmation:c1']) {
-      expect(() =>
-        assertRelInPolicyScope({
-          snapshot,
-          sitemap,
-          rel,
-          policyScope: 'publishing',
-          plane: 'business',
-        }),
-      ).not.toThrow();
+      expect(() => assertReachable(businessContext, rel, ['publishing'])).not.toThrow();
     }
     for (const rel of ['comment:c1', 'flow:comment-moderation', 'comments']) {
-      expect(() =>
-        assertRelInPolicyScope({
-          snapshot,
-          sitemap,
-          rel,
-          policyScope: 'publishing',
-          plane: 'business',
-        }),
-      ).toThrowError('scope_insufficient');
+      expect(() => assertReachable(businessContext, rel, ['publishing'])).toThrowError(
+        'scope_insufficient',
+      );
     }
+  });
+
+  it('grants are set-shaped: any intersection authorizes, disjoint sets deny', () => {
+    expect(() =>
+      assertReachable(businessContext, 'comments', ['development', 'community']),
+    ).not.toThrow();
+    expect(() =>
+      assertReachable(businessContext, 'comments', ['development', 'governance']),
+    ).toThrowError('scope_insufficient');
+  });
+
+  it('fail-opens rels without resolvable ownership and hands them to the three-stage judgment', () => {
+    // thread:mine 无归属(未知 rel):即使授予集合为空也不由受众谓词拒绝。
+    expect(() => assertReachable(businessContext, 'thread:mine', [])).not.toThrow();
   });
 
   it('binds Meta flow, activation, and application targets to the same application', () => {
@@ -163,30 +165,16 @@ describe('application-owned policy scope authorization', () => {
       'meta/activation:a1',
       'meta/application:publishing',
     ]) {
-      expect(() =>
-        assertRelInPolicyScope({
-          snapshot,
-          sitemap,
-          rel,
-          policyScope: 'publishing',
-          plane: 'meta',
-        }),
-      ).not.toThrow();
+      expect(() => assertReachable(metaContext, rel, ['publishing'])).not.toThrow();
     }
     for (const rel of ['meta/flow:comment-moderation', 'meta/application:community']) {
-      expect(() =>
-        assertRelInPolicyScope({
-          snapshot,
-          sitemap,
-          rel,
-          policyScope: 'publishing',
-          plane: 'meta',
-        }),
-      ).toThrowError('scope_insufficient');
+      expect(() => assertReachable(metaContext, rel, ['publishing'])).toThrowError(
+        'scope_insufficient',
+      );
     }
   });
 
-  it('returns a policy-scoped sitemap and strips cross-application collection members', () => {
+  it('keeps business plane visibility meta-free while audience-filtering by grant set', () => {
     const scoped = filterSitemapForPolicyScope(sitemap, 'publishing');
     expect(scoped.surfaces.map(({ rel }) => rel)).toEqual(['articles', 'threads']);
     expect(scoped.flows.map(({ name }) => name)).toEqual(['post-status']);
@@ -215,35 +203,17 @@ describe('application-owned policy scope authorization', () => {
         },
       ],
     };
-    const filtered = filterEntityForPolicyScope(collection, {
-      snapshot,
-      sitemap,
-      policyScope: 'publishing',
-      plane: 'business',
+    const filtered = filterEntityForGrantedApplications(collection, {
+      ...businessContext,
+      grantedApplications: ['publishing'],
     });
     expect(filtered.entities?.map(({ href }) => href)).toEqual(['/api/entity?rel=post%3Ap1']);
     expect(filtered.properties.count).toBe(1);
   });
 
-  it('treats threads as Application-neutral while enforcing trusted principal ownership', () => {
-    for (const policyScope of ['publishing', 'community']) {
-      expect(
-        relCoveredByPolicyScope(
-          { snapshot, sitemap, plane: 'business' },
-          'thread:mine',
-          policyScope,
-        ),
-      ).toBe(true);
-      expect(() =>
-        assertRelInPolicyScope({
-          snapshot,
-          sitemap,
-          rel: 'threads',
-          policyScope,
-          plane: 'business',
-        }),
-      ).not.toThrow();
-    }
+  it('treats principal-scoped surfaces as Application-neutral while enforcing trusted ownership', () => {
+    // threads 为 principal 持有面,成员不归属任何应用:空授予集也可达。
+    expect(() => assertReachable(businessContext, 'threads', [])).not.toThrow();
     expect(() => assertThreadOwner(snapshot, 'thread:mine', 'user:mike')).not.toThrow();
     expect(() => assertThreadOwner(snapshot, 'thread:theirs', 'user:mike')).toThrowError(
       'scope_insufficient',
@@ -266,7 +236,7 @@ describe('application-owned policy scope authorization', () => {
     expect(mine.properties.count).toBe(1);
   });
 
-  it('derives exact-member scope from the surface prefix declaration instead of the rel spelling', () => {
+  it('derives exact-member ownership from the surface prefix declaration instead of the rel spelling', () => {
     const applicationOwned: Sitemap = {
       ...sitemap,
       surfaces: [
@@ -281,23 +251,19 @@ describe('application-owned policy scope authorization', () => {
         },
       ],
     };
-    expect(
-      relCoveredByPolicyScope(
-        { snapshot, sitemap: applicationOwned, plane: 'business' },
-        'thread:mine',
-        'community',
-      ),
-    ).toBe(false);
-    expect(
-      relCoveredByPolicyScope(
-        { snapshot, sitemap: applicationOwned, plane: 'business' },
-        'thread:mine',
+    expect(() =>
+      assertReachable({ snapshot, sitemap: applicationOwned, plane: 'business' }, 'thread:mine', [
         'publishing',
-      ),
-    ).toBe(true);
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      assertReachable({ snapshot, sitemap: applicationOwned, plane: 'business' }, 'thread:mine', [
+        'community',
+      ]),
+    ).toThrowError('scope_insufficient');
   });
 
-  it('filters thread members and links through the current Application scope without dropping dangling refs', () => {
+  it('filters thread members and links through the granted set without dropping dangling refs', () => {
     const thread: SirenEntity = {
       class: ['work-thread', 'open'],
       properties: {
@@ -325,11 +291,9 @@ describe('application-owned policy scope authorization', () => {
         { rel: ['approval'], href: '/api/entity?rel=meta%2Factivation%3Aa1' },
       ],
     };
-    const filtered = filterEntityForPolicyScope(thread, {
-      snapshot,
-      sitemap,
-      policyScope: 'publishing',
-      plane: 'business',
+    const filtered = filterEntityForGrantedApplications(thread, {
+      ...businessContext,
+      grantedApplications: ['publishing'],
     });
     expect(filtered.properties).toMatchObject({
       context: ['articles'],
@@ -355,7 +319,13 @@ describe('application-owned policy scope authorization', () => {
       ...sitemap,
       surfaces: [
         ...sitemap.surfaces,
-        { rel: 'jobs', title: 'Jobs', collection: true, scope: 'principal', memberRelPrefix: 'job:' },
+        {
+          rel: 'jobs',
+          title: 'Jobs',
+          collection: true,
+          scope: 'principal',
+          memberRelPrefix: 'job:',
+        },
       ],
     };
     const job: SirenEntity = {
@@ -374,11 +344,11 @@ describe('application-owned policy scope authorization', () => {
       actions: [],
       links: [{ rel: ['self'], href: '/api/entity?rel=job%3Aj1' }],
     };
-    const filtered = filterEntityForPolicyScope(job, {
+    const filtered = filterEntityForGrantedApplications(job, {
       snapshot,
       sitemap: jobsSitemap,
-      policyScope: 'publishing',
       plane: 'business',
+      grantedApplications: ['publishing'],
     });
     expect(filtered.properties).toMatchObject({
       context: ['articles'],
@@ -404,11 +374,11 @@ describe('application-owned policy scope authorization', () => {
       actions: [],
       links: [{ rel: ['self'], href: '/api/entity?rel=thread%3Amine' }],
     };
-    const filtered = filterEntityForPolicyScope(thread, {
+    const filtered = filterEntityForGrantedApplications(thread, {
       snapshot,
       sitemap: withoutThreadsSurface,
-      policyScope: 'publishing',
       plane: 'business',
+      grantedApplications: ['publishing'],
     });
     expect(filtered.properties.context).toEqual(['articles', 'comments']);
     expect(filtered.properties.active).toEqual([
@@ -423,11 +393,9 @@ describe('application-owned policy scope authorization', () => {
       actions: [],
       links: [{ rel: ['self'], href: '/api/entity?rel=threads' }],
     };
-    const filtered = filterEntityForPolicyScope(collection, {
-      snapshot,
-      sitemap,
-      policyScope: 'publishing',
-      plane: 'business',
+    const filtered = filterEntityForGrantedApplications(collection, {
+      ...businessContext,
+      grantedApplications: ['publishing'],
     });
     expect(Object.keys(filtered.properties)).toEqual(['rel', 'title', 'count']);
   });

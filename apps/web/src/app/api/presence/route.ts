@@ -10,7 +10,6 @@ import {
   resolveTrustedRequestIdentity,
 } from '../../../auth/request-identity';
 import { getDb, getEngine } from '../../../engine/service';
-import { grantedPolicyScopes } from '../../../engine/situation';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,15 +31,13 @@ export async function POST(request: Request): Promise<Response> {
       plane: 'business',
       requiredScopes: ['ui4a:write'],
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
-      defaultPolicyScope: 'default',
     });
-    // R10 口径对齐:允许集与消费方(chat-situation.ts、api/entity/route.ts)一致,
-    // 服务端解析出的 policyScope 追加在 granted 声明之后。
-    const authorizedScopes = [...grantedPolicyScopes(identity.scopes), identity.policyScope];
+    // R10 口径对齐(D51):presence 变更的 scope 值按凭证授予集合校验;显式
+    // ?scope= 导航偏好不再参与任何判定。
     if (
       change.kind === 'scope' &&
       typeof change.value === 'string' &&
-      !authorizedScopes.includes(change.value)
+      !identity.grantedApplications.includes(change.value)
     ) {
       return Response.json({ error: { code: 'scope_insufficient' } }, { status: 403 });
     }

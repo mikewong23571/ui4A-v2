@@ -4,23 +4,20 @@ import type { TrustedRequestAuditContext } from '../auth/request-identity';
 import { ensurePresenceTables, loadPresenceForPrincipal } from '../db/presence';
 import type { PresentationTrustedContext } from './presentation/broker';
 import { getDb } from './service';
-import { assembleSituation, grantedPolicyScopes, type Situation } from './situation';
+import { assembleSituation, type Situation } from './situation';
 
 /**
- * Chat → Presentation 可信上下文(T22 口径):policyScope 仍是身份解析的冻结
- * fallback;grantedPolicyScopes 携带全部已授予 scope(identity.policyScope 并入
- * 去重,与 entity/route.ts 同口径)——目标 rel 在身份解析后才出现,覆盖选择由
- * Broker 授权点按 rel 完成。无 identity(local profile)维持单 scope local-demo。
+ * Chat → Presentation 可信上下文(D51):授权按授予集合 × 事实归属在 Broker
+ * 咽喉点判定,上下文不再携带会话冻结 scope。无 identity(local profile)维持
+ * 本地信任域标记 ['local-demo']。
  */
 export function presentationContextForIdentity(
   identity: TrustedRequestAuditContext | undefined,
 ): PresentationTrustedContext {
-  if (identity === undefined) return { policyScope: 'local-demo' };
+  if (identity === undefined) return { grantedApplications: ['local-demo'] };
   return {
-    policyScope: identity.policyScope,
-    grantedPolicyScopes: [
-      ...new Set([...grantedPolicyScopes(identity.scopes), identity.policyScope]),
-    ],
+    principal: identity.principal,
+    grantedApplications: identity.grantedApplications,
   };
 }
 
@@ -38,10 +35,9 @@ export async function situationForChat(args: {
           thread: args.clientView.presence.thread,
           focus: args.clientView.presence.focus,
         };
+  // D51:授予集合直接来自凭证;显式 ?scope= 导航偏好只作候选之一,不产生默认回退。
   const defaults = { site: 'workstation', scope: args.identity?.policyScope ?? 'default' };
-  const grantedScopes = args.identity
-    ? [...grantedPolicyScopes(args.identity.scopes), args.identity.policyScope]
-    : ['default'];
+  const grantedScopes = args.identity ? [...args.identity.grantedApplications] : ['default'];
   try {
     const db = getDb();
     await ensurePresenceTables(db);

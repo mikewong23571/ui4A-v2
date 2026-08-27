@@ -140,7 +140,6 @@ const definition: AgentDefinitionSource = {
 
 const sidecarKey: UserSidecarKey = {
   principal: 'user:recovery',
-  policyScope: 'development',
   subject: 'recovery:fixture',
   intent: 'inspect',
   deviceClass: 'wide',

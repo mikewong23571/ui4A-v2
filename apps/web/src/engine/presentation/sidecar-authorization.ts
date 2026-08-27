@@ -73,20 +73,17 @@ function orderedSources(sidecar: UserSidecarAggregate, versionNumber: number): s
 
 /**
  * Reauthorize every real source used by a stored active/target Surface before
- * disclosure/mutation. scope 判定从「与请求冻结 scope 严格相等」放宽为「stored
- * key 的 scope 在当前身份 granted 集合内」:多 scope 用户(如 granted 含
- * publishing)对自己名下 publishing-scope 的 sidecar 不再误 404;principal 严格
- * 相等与「scope 未授予 → false」的授权边界不变。源码重授权一律按 stored key 的
- * scope 进行(该 scope 已确认授予;原实现依赖相等检查使二者同值,放宽后必须随迁)。
+ * disclosure/mutation. D51:stored key 无 scope 维度,命中重审口径 =
+ * principal 严格相等 + 全部真实 sources 按当前授予集合逐项重审(授予集合变化
+ * 由依赖指纹失效触发自动重规划);跨 principal 的存在性隐藏由调用方 404 承担。
  */
 export async function authorizeStoredSidecar(
   sidecar: UserSidecarAggregate,
-  trusted: { principal: string; grantedPolicyScopes: readonly string[] },
+  trusted: { principal: string; grantedApplications: readonly string[] },
   versionNumber = sidecar.activeVersion,
 ): Promise<boolean> {
   if (
     sidecar.key.principal !== trusted.principal ||
-    !trusted.grantedPolicyScopes.includes(sidecar.key.policyScope) ||
     sidecar.versions[versionNumber] === undefined
   ) {
     return false;
@@ -97,7 +94,7 @@ export async function authorizeStoredSidecar(
         (await getAuthorizedPresentationEntity(
           source,
           trusted.principal,
-          sidecar.key.policyScope,
+          trusted.grantedApplications,
         )) === undefined
       ) {
         return false;

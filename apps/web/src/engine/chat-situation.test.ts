@@ -11,16 +11,16 @@ import { situationForChat } from './chat-situation';
 const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');
 const PRINCIPAL = 'user:client-view-lock';
 
-/** 与本地 profile resolveTrustedRequestIdentity 产物同构的受信身份。 */
+/** 与本地 profile resolveTrustedRequestIdentity 产物同构的受信身份(D51:授予集合口径)。 */
 function identityWith(
-  overrides: Partial<Pick<TrustedRequestAuditContext, 'scopes' | 'policyScope'>> = {},
+  overrides: Partial<Pick<TrustedRequestAuditContext, 'scopes' | 'grantedApplications'>> = {},
 ): TrustedRequestAuditContext {
   return {
     authorizationMode: 'self-reported-local-demo',
     actor: 'human',
     principal: PRINCIPAL,
     scopes: ['development', 'publishing'],
-    policyScope: 'development',
+    grantedApplications: ['development', 'publishing'],
     channel: 'http',
     humanApprovalEligible: true,
     ...overrides,

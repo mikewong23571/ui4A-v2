@@ -31,13 +31,17 @@ describe('T16 Chat/Presentation source governance', () => {
     expect(routeSource).toContain('principal: args.presentationPrincipal');
     expect(routeSource).toContain('sourceMessageIds: [turnId]');
     expect(routeSource).toContain('presentationRequestIds');
-    // granted scope 集合下穿管线:chat 入口经 presentationContextForIdentity 把全量
-    // granted scopes(identity.scopes 提取 + policyScope 兜底)随可信上下文交给
-    // Broker,目标 rel 的覆盖选择由 Broker 授权点完成;local profile 维持 local-demo。
+    // D51 新管线特征:chat 入口经 presentationContextForIdentity 把凭证授予集合
+    // (grantedApplications)随可信上下文交给 Broker,授权由咽喉点按授予集合 ×
+    // 事实归属完成;local profile 维持本地信任域标记;退役机器字样不得回流。
     expect(routeSource).toContain('presentationContextForIdentity(productionIdentity)');
     expect(routeSource).toContain('presentationContext,');
-    expect(chatSituationSource).toContain('grantedPolicyScopes(identity.scopes)');
-    expect(chatSituationSource).toContain("return { policyScope: 'local-demo' }");
+    expect(chatSituationSource).toContain("return { grantedApplications: ['local-demo'] };");
+    for (const source of [routeSource, chatSituationSource]) {
+      expect(source).not.toContain('defaultPolicyScope');
+      expect(source).not.toContain('scopeCoverage');
+      expect(source).not.toContain('grantedPolicyScopes');
+    }
     expect(routeSource).not.toMatch(/completePresentationRequest\(intent,[\s\S]{0,300}policyScope/);
 
     const history: ChatTurnDetail = {

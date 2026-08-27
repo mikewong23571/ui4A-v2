@@ -31,7 +31,6 @@ const catalog: SurfaceCatalog = {
 
 const key: UserSidecarKey = {
   principal: 'user:mike',
-  policyScope: 'scope:v1',
   subject: 'workspace:my-work',
   intent: 'organize',
   deviceClass: 'wide',

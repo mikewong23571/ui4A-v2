@@ -27,12 +27,8 @@ describe('web Presentation Broker adapter', () => {
       surfaceUrl: '/canvas?focus=post%3Afirst-post',
       reasonCode: 'planning-failed',
     });
-    expect(getEntity).toHaveBeenCalledWith(
-      'post:first-post',
-      'user:local',
-      'local-demo',
-      undefined,
-    );
+    // 未传授予集合 = 本地信任域(D51:['local-demo'] 标记跳过受众过滤仅属主重审)。
+    expect(getEntity).toHaveBeenCalledWith('post:first-post', 'user:local', ['local-demo']);
   });
 
   it('deduplicates requestId across chat, direct navigation, and flow callers', async () => {
@@ -48,28 +44,29 @@ describe('web Presentation Broker adapter', () => {
     expect(getEntity).toHaveBeenCalledTimes(1);
   });
 
-  it('isolates the same public requestId by trusted policy scope', async () => {
-    const getEntity = vi.fn(async (_rel: string, _principal: string, policyScope: string) =>
-      policyScope === 'publishing' ? { scope: policyScope } : undefined,
+  it('isolates the same public requestId by trusted grant envelope', async () => {
+    const getEntity = vi.fn(
+      async (_rel: string, _principal: string, grantedApplications: readonly string[]) =>
+        grantedApplications.includes('publishing') ? { scope: 'publishing' } : undefined,
     );
     const broker = createWebPresentationBroker({
       getEntity,
       resolve: async (_candidate, situation) => ({
         kind: 'ready',
-        surfaceUrl: `/canvas?scope=${situation.policyScope}`,
+        surfaceUrl: `/canvas?scope=${situation.policyScope ?? ''}`,
       }),
     });
 
-    const publishing = await broker.present(request, { policyScope: 'publishing' });
-    const development = await broker.present(request, { policyScope: 'development' });
-    const repeated = await broker.present(request, { policyScope: 'publishing' });
+    const granted = await broker.present(request, { grantedApplications: ['publishing'] });
+    const ungranted = await broker.present(request, { grantedApplications: ['development'] });
+    const repeated = await broker.present(request, { grantedApplications: ['publishing'] });
 
-    expect(publishing).toMatchObject({ status: 'ready', surfaceUrl: '/canvas?scope=publishing' });
-    expect(development).toMatchObject({ status: 'failed', reasonCode: 'authorization-failed' });
-    expect(repeated).toEqual(publishing);
+    expect(granted).toMatchObject({ status: 'ready' });
+    expect(ungranted).toMatchObject({ status: 'failed', reasonCode: 'authorization-failed' });
+    expect(repeated).toEqual(granted);
     expect(getEntity).toHaveBeenCalledTimes(2);
-    expect(publishing.requestId).toBe(request.requestId);
-    expect(development.requestId).toBe(request.requestId);
+    expect(granted.requestId).toBe(request.requestId);
+    expect(ungranted.requestId).toBe(request.requestId);
   });
 
   it('fails closed before planning when the subject is not authorized', async () => {
@@ -121,24 +118,25 @@ describe('web Presentation Broker adapter', () => {
       { requestId: 'workspace:1', principal: 'user:local', sourceMessageIds: [] },
     );
 
-    await expect(broker.present(workspace, { policyScope: 'publishing' })).resolves.toMatchObject({
+    await expect(
+      broker.present(workspace, { grantedApplications: ['publishing'] }),
+    ).resolves.toMatchObject({
       status: 'ready',
       reasonCode: 'partial-authorization',
     });
     expect(getEntity.mock.calls.map(([rel]) => rel)).toEqual(['inbox', 'delegations', 'threads']);
-    expect(getEntity).toHaveBeenCalledWith('threads', 'user:local', 'publishing', undefined);
+    expect(getEntity).toHaveBeenCalledWith('threads', 'user:local', ['publishing']);
   });
 
-  it('threads the trusted granted policy scopes into entity authorization', async () => {
+  it('threads the trusted granted applications into entity authorization', async () => {
     const getEntity = vi.fn(async () => ({ properties: { rel: 'post:first-post' } }));
     const broker = createWebPresentationBroker({ getEntity });
 
     await broker.present(request, {
-      policyScope: 'default',
-      grantedPolicyScopes: ['default', 'publishing'],
+      grantedApplications: ['default', 'publishing'],
     });
 
-    expect(getEntity).toHaveBeenCalledWith('post:first-post', 'user:local', 'default', [
+    expect(getEntity).toHaveBeenCalledWith('post:first-post', 'user:local', [
       'default',
       'publishing',
     ]);

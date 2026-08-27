@@ -48,8 +48,9 @@ const mocks = vi.hoisted(() => {
       authorizationMode: 'self-reported-local-demo',
       actor: 'human',
       principal: request.headers.get('x-ui4a-principal') ?? 'local-user',
-      scopes: ['publishing', 'community'],
-      policyScope: request.headers.get('x-ui4a-policy-scope') ?? 'publishing',
+      scopes: ['ui4a:policy:publishing', 'ui4a:policy:community'],
+      // D51:本地信任域 = 服务端已安装应用全集;查询/头中的 scope 不再进入授权。
+      grantedApplications: ['publishing', 'community'],
       channel: 'http',
       humanApprovalEligible: true,
     };
@@ -87,13 +88,13 @@ import { GET } from './route';
 const originalProfile = process.env.UI4A_DEPLOYMENT_PROFILE;
 
 // 与生产身份解析同形状的 credential 身份;测试里通过 mockResolvedValueOnce 调整
-// scopes 组合,覆盖"冻结单一 scope"的并集修复。
+// 授予集合组合,覆盖 D51 的授予并集口径。
 const CREDENTIAL_IDENTITY = {
   authorizationMode: 'credential' as const,
   actor: 'agent' as const,
   principal: 'human-alice',
-  scopes: ['ui4a:read', 'publishing'],
-  policyScope: 'publishing',
+  scopes: ['ui4a:read', 'ui4a:policy:publishing'],
+  grantedApplications: ['publishing'],
   channel: 'oidc',
   humanApprovalEligible: false,
 };
@@ -129,7 +130,6 @@ describe('GET /.well-known/ui4a.json trusted entry', () => {
         plane: 'business',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: ['publishing', 'community'],
-        defaultPolicyScope: 'publishing',
       }),
     );
     expect(mocks.getAgentDefinitionCatalogForScopes).toHaveBeenLastCalledWith(
@@ -175,7 +175,8 @@ describe('GET /.well-known/ui4a.json trusted entry', () => {
     process.env.UI4A_DEPLOYMENT_PROFILE = 'production';
     mocks.resolveTrustedRequestIdentity.mockResolvedValueOnce({
       ...CREDENTIAL_IDENTITY,
-      scopes: ['ui4a:read', 'publishing', 'community'],
+      scopes: ['ui4a:read', 'ui4a:policy:publishing', 'ui4a:policy:community'],
+      grantedApplications: ['publishing', 'community'],
     });
 
     const response = await GET(
@@ -214,7 +215,8 @@ describe('GET /.well-known/ui4a.json trusted entry', () => {
     process.env.UI4A_DEPLOYMENT_PROFILE = 'production';
     mocks.resolveTrustedRequestIdentity.mockResolvedValueOnce({
       ...CREDENTIAL_IDENTITY,
-      scopes: ['ui4a:read', 'community', 'publishing'],
+      scopes: ['ui4a:read', 'ui4a:policy:community', 'ui4a:policy:publishing'],
+      grantedApplications: ['community', 'publishing'],
     });
 
     const response = await GET(
@@ -232,7 +234,8 @@ describe('GET /.well-known/ui4a.json trusted entry', () => {
     process.env.UI4A_DEPLOYMENT_PROFILE = 'production';
     mocks.resolveTrustedRequestIdentity.mockResolvedValueOnce({
       ...CREDENTIAL_IDENTITY,
-      scopes: ['ui4a:read', 'publishing', 'unknown-app'],
+      scopes: ['ui4a:read', 'ui4a:policy:publishing'],
+      grantedApplications: ['publishing', 'unknown-app'],
     });
 
     await GET(

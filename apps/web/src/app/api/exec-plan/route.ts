@@ -4,7 +4,7 @@ import {
   authenticationErrorResponse,
   resolveTrustedRequestIdentity,
 } from '../../../auth/request-identity';
-import { assertRelInPolicyScope, relCoveredByPolicyScope } from '../../../auth/application-scope';
+import { assertReachable } from '../../../auth/application-scope';
 
 import { parsePlanBody } from '../exec-request';
 
@@ -50,31 +50,23 @@ export async function POST(request: Request) {
 
   try {
     const engine = await getEngine(getDb());
+    const snapshot = engine.getSnapshot();
+    const sitemap = engine.getSitemap();
     const identity = await resolveTrustedRequestIdentity(request, {
       plane: 'business',
       requiredScopes: ['ui4a:write'],
       untrusted: parsed.steps[0],
-      authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
-      defaultPolicyScope: 'development',
-      // 未显式请求 scope 时要求一个已授予 scope 覆盖计划全部 rel(多 rel 口径)。
-      scopeCoverage: (policyScope) =>
-        parsed.steps.every((step) =>
-          relCoveredByPolicyScope(
-            { snapshot: engine.getSnapshot(), sitemap: engine.getSitemap(), plane: 'business' },
-            step.rel,
-            policyScope,
-          ),
-        ),
+      authorizedPolicyScopes: Object.keys(snapshot.applications ?? {}),
     });
+    // D51 授权口径:每步 rel 按授予集合 × 归属判定(受众谓词),不再要求单一
+    // 会话 scope 覆盖全部步骤。
     if (identity.authorizationMode === 'credential') {
       for (const step of parsed.steps) {
-        assertRelInPolicyScope({
-          snapshot: engine.getSnapshot(),
-          sitemap: engine.getSitemap(),
-          rel: step.rel,
-          policyScope: identity.policyScope,
-          plane: 'business',
-        });
+        assertReachable(
+          { snapshot, sitemap, plane: 'business' },
+          step.rel,
+          identity.grantedApplications,
+        );
       }
     }
     const outcome = await engine.execPlan(

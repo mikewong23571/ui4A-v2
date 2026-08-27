@@ -70,7 +70,6 @@ export function authorizedRegionSlot(region: AuthorizedRegion): ApplicationRecip
   const context = singleSubjectRecipeContext({
     rels: [region.declaration.source],
     entities: [region.entity],
-    policyScope: '',
   });
   if (context === undefined) throw new Error('authorized region has no structural contract shape');
   return { ...context.slots[0]!, name: region.declaration.region };
@@ -104,7 +103,6 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
   const context = singleSubjectRecipeContext({
     rels: [region.declaration.source],
     entities: [region.entity],
-    policyScope: '',
   })!;
   const selected = selectAndInstantiateRecipe(
     Object.values(currentRecipeCoordinator().registry().recipes),
@@ -163,8 +161,10 @@ export function planWorkspaceComposition(root: AuthorizedRoot): {
       declarationFingerprint: contentVersion(root.declaration),
       catalog: PRESENTATION_SURFACE_CATALOG,
       catalogFingerprint: PRESENTATION_SURFACE_CATALOG.version,
-      policyRef: root.policyScope,
-      policyFingerprint: root.policyScope,
+      // D51:policyRef 不再锚定会话冻结 scope;导航偏好可缺省(占位 'any'),
+      // 授予集合指纹属 Phase B。
+      policyRef: root.policyScope ?? 'any',
+      policyFingerprint: root.policyScope ?? 'any',
     },
   );
   return {

@@ -4,7 +4,6 @@ import type { SurfaceProvenance, SurfaceTree } from './surface/index';
 
 export interface UserSidecarKey {
   principal: string;
-  policyScope: string;
   subject: RenderSubject;
   intent: string;
   deviceClass: 'any' | 'compact' | 'wide';

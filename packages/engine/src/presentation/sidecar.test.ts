@@ -16,7 +16,6 @@ import {
 
 const key: UserSidecarKey = {
   principal: 'user:mike',
-  policyScope: 'author:v1',
   subject: 'post:first',
   intent: 'read',
   deviceClass: 'wide',

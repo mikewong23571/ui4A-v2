@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS presentation_user_sidecars (
   sidecar_id       TEXT PRIMARY KEY,
   key_fingerprint  TEXT NOT NULL,
   principal        TEXT NOT NULL,
+  -- policy_scope:T33(D51) 起 durable 键无 scope 维度,本列停用——仅写入空串
+  -- 占位以满足 NOT NULL,读取侧不再参与任何查询/判定。投影可重建,无需迁移。
   policy_scope     TEXT NOT NULL,
   subject          JSONB NOT NULL,
   intent           TEXT NOT NULL,
@@ -122,7 +124,8 @@ async function upsertAggregate(
       aggregate.id,
       sidecarKeyFingerprint(aggregate.key),
       aggregate.key.principal,
-      aggregate.key.policyScope,
+      // D51:policy_scope 列停用,恒写空串占位(NOT NULL),不再承载键维度。
+      '',
       JSON.stringify(aggregate.key.subject),
       aggregate.key.intent,
       aggregate.key.deviceClass,
@@ -173,15 +176,15 @@ export async function findActiveSidecar(
   db: DbExecutor,
   key: UserSidecarKey,
 ): Promise<UserSidecarAggregate | undefined> {
+  // D51:durable 键无 scope 维度;policy_scope 列已停用,查询不读它。
   const result = await db.query<{ aggregate: UserSidecarAggregate }>(
     `SELECT aggregate FROM presentation_user_sidecars
-     WHERE principal=$1 AND policy_scope=$2 AND key_fingerprint=$3
-       AND subject=$4::jsonb AND intent=$5 AND device_class=$6 AND status='active'
+     WHERE principal=$1 AND key_fingerprint=$2
+       AND subject=$3::jsonb AND intent=$4 AND device_class=$5 AND status='active'
      ORDER BY CASE retention WHEN 'pinned' THEN 0 ELSE 1 END, active_version DESC
      LIMIT 1`,
     [
       key.principal,
-      key.policyScope,
       sidecarKeyFingerprint(key),
       JSON.stringify(key.subject),
       key.intent,

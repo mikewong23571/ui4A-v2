@@ -115,10 +115,12 @@ describe('GET /api/entity', () => {
     expect(body.error).toContain('rel');
   });
 
-  it('cross-plane scope is server-validated and unknown widening is rejected', async () => {
+  it('explicit ?scope= is only a navigation preference and cannot widen or break reads (D51)', async () => {
+    // D51:?scope= 不再是授权输入——授予集合内的声明仅作导航偏好;越界值静默
+    // 丢弃视为未声明,判权交给受众谓词与既有三段裁决。
     expect((await GET(request('?rel=articles&scope=governance'))).status).toBe(200);
     const forged = await GET(request('?rel=articles&scope=root-admin'));
-    expect(forged.status).toBe(403);
+    expect(forged.status).toBe(200);
   });
 
   it('db 不可达 → 503 JSON,不抛 500', async () => {

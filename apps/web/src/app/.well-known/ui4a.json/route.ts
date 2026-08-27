@@ -1,6 +1,5 @@
 import { getDb, getEngine } from '../../../engine/service';
 import { getAgentDefinitionCatalogForScopes } from '../../../engine/agent/agent-definitions';
-import { grantedPolicyScopes } from '../../../engine/situation';
 import {
   authenticationErrorResponse,
   resolveTrustedRequestIdentity,
@@ -29,16 +28,14 @@ export async function GET(request?: Request) {
         plane: 'business',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes,
-        defaultPolicyScope: 'publishing',
       },
     );
     const principal = identity.principal;
-    // granted 并集口径与 /api/entity 同款(grantedPolicyScopes(identity.scopes) +
-    // identity.policyScope 去重),再收窄到本引擎已知 application——凭据里携带的
-    // 未知 scope 不参与发现(与 meta sitemap 的 authorizedScopes 收窄一致)。
-    const granted = [
-      ...new Set([...grantedPolicyScopes(identity.scopes), identity.policyScope]),
-    ].filter((scope) => authorizedPolicyScopes.includes(scope));
+    // D51:发现文档 = 授予集合的并集(identity.grantedApplications 收窄到本引擎
+    // 已登记 application——凭据里携带的未知应用名不参与发现)。
+    const granted = [...new Set(identity.grantedApplications)].filter((scope) =>
+      authorizedPolicyScopes.includes(scope),
+    );
     const agents = await getAgentDefinitionCatalogForScopes(db, principal, granted);
     const sitemap = engine.getSitemap();
     return Response.json({

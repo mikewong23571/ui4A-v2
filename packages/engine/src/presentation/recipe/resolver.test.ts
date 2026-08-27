@@ -77,7 +77,6 @@ const recipeSurface: SurfaceTree = {
 };
 const key: UserSidecarKey = {
   principal: 'user:mike',
-  policyScope: 'scope:v1',
   subject: 'post:first',
   intent: 'read',
   deviceClass: 'wide',

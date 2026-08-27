@@ -444,18 +444,22 @@ async function getProjectionRun(
   return result.rows[0]?.aggregate;
 }
 
+/**
+ * D51:HTTP 读路径不再以会话冻结 scope 过滤 Agent Run;policyScope 可缺省
+ * (缺省 = 按属主返回授予并集),显式传入时保留精确过滤(内部派发等场景用)。
+ */
 export async function getAgentRun(
   db: ConnectableDb,
   runId: string,
   principal: string,
-  policyScope: string,
+  policyScope?: string,
 ): Promise<AgentRun | undefined> {
   await synchronizeAgentRunProjection(db);
   return getProjectionRun(
     db,
     `SELECT aggregate FROM agent_run_projection
-     WHERE run_id=$1 AND principal=$2 AND policy_scope=$3`,
-    [runId, principal, policyScope],
+     WHERE run_id=$1 AND principal=$2 AND ($3::text IS NULL OR policy_scope=$3)`,
+    [runId, principal, policyScope ?? null],
   );
 }
 
@@ -471,14 +475,15 @@ export async function getAgentRunInternal(
 
 export async function listAgentRuns(
   db: ConnectableDb,
-  input: { principal: string; policyScope: string; limit?: number },
+  input: { principal: string; policyScope?: string; limit?: number },
 ): Promise<AgentRun[]> {
   await synchronizeAgentRunProjection(db);
   const limit = Math.max(1, Math.min(input.limit ?? 20, 100));
   const result = await db.query<{ aggregate: AgentRun }>(
     `SELECT aggregate FROM agent_run_projection
-     WHERE principal=$1 AND policy_scope=$2 ORDER BY updated_seq DESC LIMIT $3`,
-    [input.principal, input.policyScope, limit],
+     WHERE principal=$1 AND ($2::text IS NULL OR policy_scope=$2)
+     ORDER BY updated_seq DESC LIMIT $3`,
+    [input.principal, input.policyScope ?? null, limit],
   );
   return result.rows.map((row) => row.aggregate);
 }
@@ -487,13 +492,14 @@ export async function findAgentRunsBySource(
   db: ConnectableDb,
   sourceRel: string,
   principal: string,
-  policyScope: string,
+  policyScope?: string,
 ): Promise<AgentRun[]> {
   await synchronizeAgentRunProjection(db);
   const result = await db.query<{ aggregate: AgentRun }>(
     `SELECT aggregate FROM agent_run_projection
-     WHERE source_rel=$1 AND principal=$2 AND policy_scope=$3 ORDER BY updated_seq DESC`,
-    [sourceRel, principal, policyScope],
+     WHERE source_rel=$1 AND principal=$2 AND ($3::text IS NULL OR policy_scope=$3)
+     ORDER BY updated_seq DESC`,
+    [sourceRel, principal, policyScope ?? null],
   );
   return result.rows.map((row) => row.aggregate);
 }

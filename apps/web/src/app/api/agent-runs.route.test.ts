@@ -131,19 +131,22 @@ describe('Agent Run HTTP contract', () => {
     );
     expect(hidden.status).toBe(404);
 
+    // D51:Agent Run 读写的边界是 principal 属主;伪造头(scope 头已退役)不能
+    // 触达他人名下的 Run——其他属主视角下 Run 不存在(422 guard-failed)。
     const rejected = await POST(
       new Request('http://localhost:3100/api/exec', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-ui4a-policy-scope': 'other',
+          'x-ui4a-principal': 'user:other',
         },
-        body: JSON.stringify({ rel: 'agent-run:http-run', action: 'cancel' }),
+        body: JSON.stringify({ rel: 'agent-run:http-run', action: 'cancel', actor: 'human' }),
       }),
     );
-    expect(rejected.status).toBe(403);
+    expect(rejected.status).toBe(422);
     await expect(rejected.json()).resolves.toMatchObject({
-      error: expect.stringContaining('not authorized'),
+      layer: 'guard-failed',
+      reason: expect.stringContaining('not found'),
     });
   });
 });

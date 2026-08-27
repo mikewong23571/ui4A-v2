@@ -361,17 +361,18 @@ export async function getDraftByOwner(
   return row;
 }
 
+/** D51:policyScope 可缺省(缺省 = 按属主返回全部目标应用)。 */
 export async function listDrafts(
   db: DbExecutor,
-  options: { owner: string; policyScope: string; status?: string; limit?: number },
+  options: { owner: string; policyScope?: string; status?: string; limit?: number },
 ): Promise<DraftAggregate[]> {
   const limit = Math.max(1, Math.min(options.limit ?? 20, 100));
-  const values: unknown[] = [options.owner, options.policyScope];
+  const values: unknown[] = [options.owner, options.policyScope ?? null];
   const status = options.status === undefined ? '' : ` AND status=$${values.push(options.status)}`;
   values.push(limit);
   const result = await db.query<{ aggregate: DraftAggregate }>(
     `SELECT aggregate FROM draft_projection
-     WHERE owner=$1 AND policy_scope=$2${status}
+     WHERE owner=$1 AND ($2::text IS NULL OR policy_scope=$2)${status}
      ORDER BY updated_seq DESC LIMIT $${values.length}`,
     values,
   );
@@ -381,11 +382,11 @@ export async function listDrafts(
 /** Bounded reverse lookup used by the human Run → governed Draft relationship view. */
 export async function findDraftsBySource(
   db: ConnectableDb,
-  input: { owner: string; policyScope: string; source: string },
+  input: { owner: string; policyScope?: string; source: string },
 ): Promise<DraftAggregate[]> {
   const drafts = await listDrafts(db, {
     owner: input.owner,
-    policyScope: input.policyScope,
+    ...(input.policyScope === undefined ? {} : { policyScope: input.policyScope }),
     limit: 100,
   });
   return drafts.filter((draft) =>

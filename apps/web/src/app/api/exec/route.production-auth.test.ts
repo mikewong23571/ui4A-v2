@@ -44,7 +44,7 @@ const mocks = vi.hoisted(() => {
   );
   return {
     applyTrustedIdentity,
-    assertRelInPolicyScope: vi.fn(),
+    assertReachable: vi.fn(),
     assertThreadOwner: vi.fn(),
     authenticationErrorResponse: vi.fn((error: unknown) => {
       const code = (error as { code?: string }).code;
@@ -53,10 +53,9 @@ const mocks = vi.hoisted(() => {
     engine,
     exec,
     executeAgentRunAction: vi.fn(),
-    filterEntityForPolicyScope: vi.fn((entity: unknown) => entity),
+    filterEntityForGrantedApplications: vi.fn((entity: unknown) => entity),
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getEngine: vi.fn(async () => engine),
-    relCoveredByPolicyScope: vi.fn(() => true),
     requireHumanApprovalScope: vi.fn(),
     resolveTrustedRequestIdentity: vi.fn(),
   };
@@ -82,10 +81,9 @@ vi.mock('../../../auth/request-identity', () => ({
 }));
 
 vi.mock('../../../auth/application-scope', () => ({
-  assertRelInPolicyScope: mocks.assertRelInPolicyScope,
+  assertReachable: mocks.assertReachable,
   assertThreadOwner: mocks.assertThreadOwner,
-  filterEntityForPolicyScope: mocks.filterEntityForPolicyScope,
-  relCoveredByPolicyScope: mocks.relCoveredByPolicyScope,
+  filterEntityForGrantedApplications: mocks.filterEntityForGrantedApplications,
 }));
 
 import { POST } from './route';
@@ -95,7 +93,7 @@ const TRUSTED_IDENTITY = {
   actor: 'agent' as const,
   principal: 'credential-subject',
   scopes: ['ui4a:write', 'ui4a:policy:development'],
-  policyScope: 'development',
+  grantedApplications: ['development'],
   channel: 'oidc',
   humanApprovalEligible: false,
 };
@@ -137,7 +135,7 @@ describe('POST /api/exec production authentication wiring', () => {
 
       expect(response.status).toBe(401);
       await expect(response.json()).resolves.toEqual({ error: { code } });
-      expect(mocks.assertRelInPolicyScope).not.toHaveBeenCalled();
+      expect(mocks.assertReachable).not.toHaveBeenCalled();
       expect(mocks.applyTrustedIdentity).not.toHaveBeenCalled();
       expect(mocks.exec).not.toHaveBeenCalled();
       expect(mocks.executeAgentRunAction).not.toHaveBeenCalled();
@@ -157,8 +155,10 @@ describe('POST /api/exec production authentication wiring', () => {
         untrusted: expect.objectContaining({ principal: 'forged-body-root' }),
       }),
     );
-    expect(mocks.assertRelInPolicyScope).toHaveBeenCalledWith(
-      expect.objectContaining({ rel: 'post:first', policyScope: 'development', plane: 'business' }),
+    expect(mocks.assertReachable).toHaveBeenCalledWith(
+      expect.objectContaining({ plane: 'business' }),
+      'post:first',
+      ['development'],
     );
     expect(mocks.applyTrustedIdentity).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -180,17 +180,14 @@ describe('POST /api/exec production authentication wiring', () => {
       'post:first',
       'credential-subject',
     );
-    // T22 验证修复:路由向 identity 解析传入按 body rel 归属的 scopeCoverage 闭包。
-    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as {
-      scopeCoverage?: (policyScope: string) => boolean;
-    };
-    expect(options.scopeCoverage).toBeInstanceOf(Function);
-    expect(options.scopeCoverage?.('development')).toBe(true);
-    expect(mocks.relCoveredByPolicyScope).toHaveBeenCalledWith(
-      expect.objectContaining({ plane: 'business' }),
-      'post:first',
-      'development',
-    );
+    // D51:身份解析不再携带会话级 scope 选择机器(defaultPolicyScope/scopeCoverage
+    // 均已退役);路由选项只有平面/范围/授权集。
+    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(options.defaultPolicyScope).toBeUndefined();
+    expect(options.scopeCoverage).toBeUndefined();
   });
 
   it('filters the accepted entity through the same credential scope lens as GET /api/entity', async () => {
@@ -206,18 +203,18 @@ describe('POST /api/exec production authentication wiring', () => {
       links: [],
     };
     mocks.exec.mockResolvedValueOnce({ kind: 'accepted', entity: projected });
-    mocks.filterEntityForPolicyScope.mockReturnValueOnce(filtered);
+    mocks.filterEntityForGrantedApplications.mockReturnValueOnce(filtered);
 
     const response = await POST(request());
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ entity: filtered });
-    expect(mocks.filterEntityForPolicyScope).toHaveBeenCalledWith(
+    expect(mocks.filterEntityForGrantedApplications).toHaveBeenCalledWith(
       projected,
       expect.objectContaining({
         snapshot: mocks.engine.getSnapshot(),
         sitemap: mocks.engine.getSitemap(),
-        policyScope: 'development',
+        grantedApplications: ['development'],
         plane: 'business',
       }),
     );

@@ -22,9 +22,9 @@ import { DATABASE_URL, SCENARIO_BASE, withFreshServer } from './kits/server-kit'
 
 test.use({ baseURL: SCENARIO_BASE });
 
+// D51:durable 键为 principal/subject/intent/device 四元组,无 scope 维度。
 const key: UserSidecarKey = {
   principal: 'user:local',
-  policyScope: 'local-demo',
   subject: 'workspace:my-work',
   intent: 'work overview',
   deviceClass: 'any',

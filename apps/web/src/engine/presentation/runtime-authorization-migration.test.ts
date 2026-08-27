@@ -19,7 +19,6 @@ import { getPresentationBroker, resetPresentationBrokerForTests } from './runtim
 
 const key = {
   principal: 'user:local',
-  policyScope: 'trusted-scope',
   subject: 'workspace:my-work',
   intent: 'authorization migration',
   deviceClass: 'any' as const,
@@ -57,18 +56,14 @@ beforeEach(async () => {
 describe('durable composition authorization migration', () => {
   it('stales and revises the same Sidecar from partial to full visibility', async () => {
     await setVisible('threads');
-    const first = await getPresentationBroker().present(request('migration:partial'), {
-      policyScope: key.policyScope,
-    });
+    const first = await getPresentationBroker().present(request('migration:partial'));
     const partial = await findActiveSidecar(getDb(), key);
     expect(first).toMatchObject({ status: 'ready', reasonCode: 'partial-authorization' });
     expect(JSON.stringify(partial?.versions[1]?.surface)).not.toContain('inbox');
     expect(JSON.stringify(partial?.versions[1]?.surface)).not.toContain('delegations');
 
     await setVisible('inbox', 'delegations', 'threads');
-    const second = await getPresentationBroker().present(request('migration:full'), {
-      policyScope: key.policyScope,
-    });
+    const second = await getPresentationBroker().present(request('migration:full'));
     const full = await findActiveSidecar(getDb(), key);
 
     expect(second).toMatchObject({
@@ -89,16 +84,12 @@ describe('durable composition authorization migration', () => {
 
   it('stales and revises the same Sidecar from full to partial visibility', async () => {
     await setVisible('inbox', 'delegations', 'threads');
-    const first = await getPresentationBroker().present(request('migration:full-first'), {
-      policyScope: key.policyScope,
-    });
+    const first = await getPresentationBroker().present(request('migration:full-first'));
     expect(first).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
     expect(first).not.toHaveProperty('reasonCode');
 
     await setVisible('threads');
-    const second = await getPresentationBroker().present(request('migration:partial-second'), {
-      policyScope: key.policyScope,
-    });
+    const second = await getPresentationBroker().present(request('migration:partial-second'));
     const partial = await findActiveSidecar(getDb(), key);
 
     expect(second).toMatchObject({
@@ -119,9 +110,7 @@ describe('durable composition authorization migration', () => {
   });
 
   it('fails all-denied authorization without creating Sidecar lifecycle events', async () => {
-    const receipt = await getPresentationBroker().present(request('migration:all-denied'), {
-      policyScope: key.policyScope,
-    });
+    const receipt = await getPresentationBroker().present(request('migration:all-denied'));
 
     expect(receipt).toMatchObject({ status: 'failed', reasonCode: 'authorization-failed' });
     await expect(findActiveSidecar(getDb(), key)).resolves.toBeUndefined();

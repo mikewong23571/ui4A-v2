@@ -304,12 +304,7 @@ describe('Agent-authored Agent Definition governance', () => {
       target: 'support-triage',
       status: 'ready',
     });
-    const runEntity = await getAgentRunEntity(
-      pool,
-      `agent-run:${run.runId}`,
-      'local-user',
-      'governance',
-    );
+    const runEntity = await getAgentRunEntity(pool, `agent-run:${run.runId}`, 'local-user');
     expect(runEntity?.links).toContainEqual({
       rel: ['draft'],
       href: `/_meta/api/entity?rel=${encodeURIComponent(`draft:${drafts[0]!.id}`)}`,

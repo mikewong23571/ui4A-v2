@@ -14,10 +14,9 @@ import {
   resolveTrustedRequestIdentity,
 } from '../../../auth/request-identity';
 import {
-  assertRelInPolicyScope,
+  assertReachable,
   assertThreadOwner,
-  filterEntityForPolicyScope,
-  relCoveredByPolicyScope,
+  filterEntityForGrantedApplications,
 } from '../../../auth/application-scope';
 
 import { parseExecBody, rejectionStatus } from '../exec-request';
@@ -67,45 +66,38 @@ export async function POST(request: Request) {
   try {
     const db = getDb();
     const engine = await getEngine(db);
+    const snapshot = engine.getSnapshot();
+    const sitemap = engine.getSitemap();
     const identity = await resolveTrustedRequestIdentity(request, {
       plane: 'business',
       requiredScopes: requiredBusinessExecScopes(),
       untrusted: parsed.request,
-      authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
-      defaultPolicyScope: 'development',
-      // 未显式请求 scope 时按 rel 归属选择已授予 scope(与 /api/entity 同口径)。
-      scopeCoverage: (policyScope) =>
-        relCoveredByPolicyScope(
-          { snapshot: engine.getSnapshot(), sitemap: engine.getSitemap(), plane: 'business' },
-          parsed.request.rel,
-          policyScope,
-        ),
+      authorizedPolicyScopes: Object.keys(snapshot.applications ?? {}),
     });
+    // D51 授权口径:凭证授予的应用集合 × 事实归属(受众谓词),不再有会话 scope 选择。
     if (isConfirmationDecision(parsed.request)) requireHumanApprovalScope(identity);
     if (identity.authorizationMode === 'credential') {
-      assertRelInPolicyScope({
-        snapshot: engine.getSnapshot(),
-        sitemap: engine.getSitemap(),
-        rel: parsed.request.rel,
-        policyScope: identity.policyScope,
-        plane: 'business',
-      });
+      assertReachable(
+        { snapshot, sitemap, plane: 'business' },
+        parsed.request.rel,
+        identity.grantedApplications,
+      );
     }
     const resolvedRequest = applyTrustedIdentity(parsed.request, identity);
     const responseEntity = (entity: SirenEntity): SirenEntity =>
       identity.authorizationMode === 'credential'
-        ? filterEntityForPolicyScope(entity, {
-            snapshot: engine.getSnapshot(),
-            sitemap: engine.getSitemap(),
-            policyScope: identity.policyScope,
+        ? filterEntityForGrantedApplications(entity, {
+            snapshot,
+            sitemap,
             plane: 'business',
+            grantedApplications: identity.grantedApplications,
           })
         : entity;
     if (identity.authorizationMode === 'credential') {
-      assertThreadOwner(engine.getSnapshot(), resolvedRequest.rel, resolvedRequest.principal ?? '');
+      assertThreadOwner(snapshot, resolvedRequest.rel, resolvedRequest.principal ?? '');
     }
     if (isAgentRunRel(resolvedRequest.rel)) {
-      const outcome = await executeAgentRunAction(db, resolvedRequest, identity.policyScope);
+      const outcome = await executeAgentRunAction(db, resolvedRequest);
       if (outcome.kind !== 'accepted') {
         return Response.json({ layer: 'guard-failed', reason: outcome.reason }, { status: 422 });
       }

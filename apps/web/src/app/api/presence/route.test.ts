@@ -32,7 +32,7 @@ const identity = {
   actor: 'human' as const,
   principal: 'human-alice',
   scopes: ['ui4a:read', 'ui4a:write', 'publishing'],
-  policyScope: 'publishing',
+  grantedApplications: ['publishing'],
   channel: 'oidc',
   humanApprovalEligible: true,
 };
@@ -80,33 +80,30 @@ describe('POST /api/presence', () => {
     expect(mocks.appendPresenceChange).not.toHaveBeenCalled();
   });
 
-  // T31 R10(←T29):scope 校验允许集必须与消费方口径一致
-  // ([...grantedPolicyScopes(identity.scopes), identity.policyScope],见
-  // chat-situation.ts 与 api/entity/route.ts)。credential 身份可能 tokens 里没有
-  // 裸 scope/policy 前缀声明、但服务端已把 policyScope 解析为授权值——该值必须放行。
+  // T31 R10(←T29)在 D51 口径下的重述:presence scope 变更的允许集 =
+  // 凭证授予集合(grantedApplications);显式导航偏好(policyScope)不再
+  // 参与任何判定,更不能放宽越界值。
   const scopeChange = (value: string): Request =>
     new Request('https://ui4a.internal/api/presence', {
       method: 'POST',
       body: JSON.stringify({ schemaVersion: 1, kind: 'scope', value }),
     });
-  const derivedIdentity = {
-    ...identity,
-    scopes: ['ui4a:read', 'ui4a:write'],
-    policyScope: 'publishing',
-  };
 
-  it('accepts a scope change matching the derived policyScope even without policy claims', async () => {
-    mocks.resolveTrustedRequestIdentity.mockResolvedValueOnce(derivedIdentity);
-    const response = await POST(scopeChange('publishing'));
-    expect(response.status).toBe(200);
-    expect(mocks.appendPresenceChange).toHaveBeenCalled();
-  });
-
-  it('keeps rejecting a scope outside both the granted claims and the derived policyScope', async () => {
-    mocks.resolveTrustedRequestIdentity.mockResolvedValueOnce(derivedIdentity);
+  it('rejects a scope outside the credential grant envelope', async () => {
+    mocks.resolveTrustedRequestIdentity.mockResolvedValueOnce(identity);
     const response = await POST(scopeChange('governance'));
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: { code: 'scope_insufficient' } });
+    expect(mocks.appendPresenceChange).not.toHaveBeenCalled();
+  });
+
+  it('never lets the navigation-preference scope widen the accepted set', async () => {
+    mocks.resolveTrustedRequestIdentity.mockResolvedValueOnce({
+      ...identity,
+      policyScope: 'governance',
+    });
+    const response = await POST(scopeChange('governance'));
+    expect(response.status).toBe(403);
     expect(mocks.appendPresenceChange).not.toHaveBeenCalled();
   });
 });

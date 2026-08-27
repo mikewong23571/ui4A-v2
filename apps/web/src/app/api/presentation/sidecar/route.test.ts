@@ -29,7 +29,6 @@ beforeEach(async () => {
     sidecarId: 'sidecar:1',
     key: {
       principal: 'user:local',
-      policyScope: 'local-demo',
       subject: 'post:first-post',
       intent: 'read',
       deviceClass: 'any',
@@ -200,7 +199,6 @@ describe('Sidecar human lifecycle route', () => {
     const partial = planWorkspaceComposition({
       rels: ['threads'],
       entities: [threads],
-      policyScope: 'local-demo',
       declaration,
       regions: declaration.regions.map((region) => ({
         declaration: region,
@@ -215,7 +213,6 @@ describe('Sidecar human lifecycle route', () => {
       sidecarId: 'sidecar:workspace-partial-local',
       key: {
         principal: 'user:local',
-        policyScope: 'local-demo',
         subject: 'workspace:my-work',
         intent: 'organize',
         deviceClass: 'any',

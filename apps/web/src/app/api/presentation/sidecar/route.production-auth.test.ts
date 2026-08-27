@@ -4,8 +4,7 @@ import { appendSidecarCommand, ensurePresentationTables } from '../../../../db/p
 import { getDb, resetEngineForTests } from '../../../../engine/service';
 
 const mocks = vi.hoisted(() => ({
-  policyScope: 'default',
-  extraScopes: [] as string[],
+  grantedApplications: ['publishing'] as string[],
   resolveTrustedRequestIdentity: vi.fn(),
 }));
 
@@ -17,7 +16,9 @@ vi.mock('../../../../auth/request-identity', () => ({
 
 import { GET, POST } from './route';
 
-async function seedSidecar(id: string, policyScope: string): Promise<void> {
+// D51:durable key 无 scope 维度(seed 只落 principal/subject/intent/device);
+// 命中重审 = principal 相等 + 全部真实 sources 在当前授予集合下可达。
+async function seedSidecar(id: string): Promise<void> {
   await appendSidecarCommand(getDb(), {
     kind: 'instantiate',
     eventId: `${id}:event`,
@@ -25,7 +26,6 @@ async function seedSidecar(id: string, policyScope: string): Promise<void> {
     sidecarId: id,
     key: {
       principal: 'human-alice',
-      policyScope,
       subject: 'post:first-post',
       intent: 'read',
       deviceClass: 'any',
@@ -65,54 +65,36 @@ beforeEach(async () => {
   await ensurePresentationTables(getDb());
   await getDb().query('TRUNCATE events, presentation_user_sidecars');
   resetEngineForTests();
-  mocks.policyScope = 'default';
-  mocks.extraScopes = [];
+  mocks.grantedApplications = ['publishing'];
   mocks.resolveTrustedRequestIdentity.mockReset().mockImplementation(async () => ({
     authorizationMode: 'credential',
     actor: 'human',
     principal: 'human-alice',
-    scopes: ['ui4a:read', 'ui4a:write', `ui4a:policy:${mocks.policyScope}`, ...mocks.extraScopes],
-    policyScope: mocks.policyScope,
+    scopes: [
+      'ui4a:read',
+      'ui4a:write',
+      ...mocks.grantedApplications.map((application) => `ui4a:policy:${application}`),
+    ],
+    grantedApplications: [...mocks.grantedApplications],
     channel: 'http',
     humanApprovalEligible: true,
   }));
 });
 
-describe('Sidecar production scope and source reauthorization', () => {
-  it('does not disclose a same-principal Sidecar whose stored scope is not granted', async () => {
-    // 安全边界:stored key 的 scope 必须落在当前身份 granted 集合内,否则 404。
-    await seedSidecar('sidecar:scope', 'default');
-    mocks.policyScope = 'development';
+describe('Sidecar production grant-set source reauthorization (D51)', () => {
+  it('discloses a same-principal Sidecar when its sources stay reachable within the grants', async () => {
+    await seedSidecar('sidecar:mine');
 
     const response = await GET(
-      new Request('http://localhost/api/presentation/sidecar?sidecarId=sidecar%3Ascope'),
-    );
-
-    expect(response.status).toBe(404);
-    const body = await response.json();
-    expect(body).toEqual({ error: 'Sidecar not found' });
-    expect(JSON.stringify(body)).not.toMatch(/surface|dependencies|post:first-post/);
-  });
-
-  it('discloses a same-principal Sidecar whose stored scope is granted but differs from the frozen default', async () => {
-    // 多 scope 用户(granted=[default, publishing])的 publishing-scope sidecar
-    // 不再因身份解析冻结 policyScope='default' 而误 404;pin 等生命周期同步放行。
-    await seedSidecar('sidecar:granted-cross-scope', 'publishing');
-    mocks.policyScope = 'default';
-    mocks.extraScopes = ['ui4a:policy:publishing'];
-
-    const response = await GET(
-      new Request(
-        'http://localhost/api/presentation/sidecar?sidecarId=sidecar%3Agranted-cross-scope',
-      ),
+      new Request('http://localhost/api/presentation/sidecar?sidecarId=sidecar%3Amine'),
     );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       sidecar: {
-        id: 'sidecar:granted-cross-scope',
+        id: 'sidecar:mine',
         version: 1,
-        key: { policyScope: 'publishing' },
+        key: { principal: 'human-alice', subject: 'post:first-post' },
       },
     });
 
@@ -120,7 +102,7 @@ describe('Sidecar production scope and source reauthorization', () => {
       new Request('http://localhost/api/presentation/sidecar', {
         method: 'POST',
         body: JSON.stringify({
-          sidecarId: 'sidecar:granted-cross-scope',
+          sidecarId: 'sidecar:mine',
           action: 'pin',
           actor: 'human',
         }),
@@ -132,12 +114,13 @@ describe('Sidecar production scope and source reauthorization', () => {
     });
   });
 
-  it('fails GET closed without leaking a stored source after source authorization is unavailable', async () => {
-    await seedSidecar('sidecar:revoked', 'development');
-    mocks.policyScope = 'development';
+  it('does not disclose a same-principal Sidecar once its sources leave the grant envelope', async () => {
+    // 安全边界:source 实体归属的应用不再授予(受众谓词失败)→ 存在性隐藏 404。
+    await seedSidecar('sidecar:ungranted');
+    mocks.grantedApplications = ['community'];
 
     const response = await GET(
-      new Request('http://localhost/api/presentation/sidecar?sidecarId=sidecar%3Arevoked'),
+      new Request('http://localhost/api/presentation/sidecar?sidecarId=sidecar%3Aungranted'),
     );
 
     expect(response.status).toBe(404);
@@ -147,8 +130,8 @@ describe('Sidecar production scope and source reauthorization', () => {
   });
 
   it('performs no lifecycle mutation when POST source reauthorization fails', async () => {
-    await seedSidecar('sidecar:no-mutation', 'development');
-    mocks.policyScope = 'development';
+    await seedSidecar('sidecar:no-mutation');
+    mocks.grantedApplications = ['community'];
     const before = await getDb().query<{ count: string }>(
       `SELECT COUNT(*)::text AS count FROM events WHERE domain='presentation'`,
     );

@@ -295,8 +295,8 @@ describe('native Agent dispatch from an Application capability', () => {
     const source = await engine.getEntity('writing-request:main');
     expect(source).toBeDefined();
     expect(
-      (await enrichEntityWithAgentRuns(pool, source!, 'local-user', 'editorial')).links.some(
-        (link) => link.rel.includes('agent-run'),
+      (await enrichEntityWithAgentRuns(pool, source!, 'local-user')).links.some((link) =>
+        link.rel.includes('agent-run'),
       ),
     ).toBe(true);
     expect(dispatchAgentRun).toHaveBeenCalledOnce();

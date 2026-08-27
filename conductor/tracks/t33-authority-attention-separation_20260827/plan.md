@@ -33,7 +33,7 @@
     占位防清单缩水;五景完成定义不变——Phase B/D 后五景全部有可执行证据。
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) [49c4e91]
 
-## Phase A: 内核收口(packages/engine + apps/web/src/auth)
+## Phase A: 内核收口(packages/engine + apps/web/src/auth)[in_progress]
 
 - [ ] Task: UserSidecarKey 去 policyScope 维度 [`packages/engine/src/presentation/sidecar.ts`]
   - 键回归 principal/intent/device/subject 四元组;sidecarKeyFingerprint

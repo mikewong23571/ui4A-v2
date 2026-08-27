@@ -96,7 +96,6 @@ export async function GET(request: Request) {
         plane: 'business',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
-        defaultPolicyScope: 'default',
       });
       if (principal !== null && principal !== identity.principal) {
         return Response.json(

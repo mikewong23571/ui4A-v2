@@ -31,7 +31,6 @@ import { selectAndInstantiateRecipe } from './recipe-selection';
 import { singleSubjectRecipeContext } from './recipe-context';
 import { getAuthorizedPresentationEntity } from './authorized-entity';
 import { compositionRecipeContext, planWorkspaceComposition } from './runtime-composition';
-import type { PresentationTrustedContext } from './broker';
 import { genericIntentPolicyDependency } from './generic-intent-policy';
 
 const runtimeKey = Symbol.for('ui4a.presentation-broker');
@@ -40,10 +39,10 @@ interface PresentationGlobal {
   [runtimeKey]?: WebPresentationBroker;
 }
 
-function durableKey(request: PresentationRequest, policyScope: string): UserSidecarKey {
+/** D51:durable Sidecar 键回归 principal/subject/intent/device 四元组,无 scope 维度。 */
+function durableKey(request: PresentationRequest): UserSidecarKey {
   return {
     principal: request.principal,
-    policyScope,
     subject: request.subject,
     intent: request.intent,
     deviceClass: 'any',
@@ -97,13 +96,15 @@ function currentDependencies(root: AuthorizedRoot): SidecarDependency[] {
     },
     genericIntentPolicyDependency(),
     {
-      id: `policy:${root.policyScope}`,
+      // D51:policy 依赖不再锚定会话冻结 scope;Phase A 机械保留导航偏好转指纹
+      // (未声明用固定占位 'any',授权语义由受众谓词承担),授予集合指纹属 Phase B。
+      id: `policy:${root.policyScope ?? 'any'}`,
       subtreeId: 'root',
       kind: 'policy',
-      ref: root.policyScope,
+      ref: root.policyScope ?? 'any',
       pointers: ['$policy'],
       mode: 'invalidate',
-      fingerprint: root.policyScope,
+      fingerprint: root.policyScope ?? 'any',
       optional: false,
     },
   ];
@@ -229,7 +230,7 @@ export function getPresentationBroker(): WebPresentationBroker {
   const delegate = createWebPresentationBroker({
     getEntity: getAuthorizedPresentationEntity,
     resolve: async (request, situation) => {
-      const key = durableKey(request, situation.policyScope);
+      const key = durableKey(request);
       const sidecar = await findActiveSidecar(getDb(), key);
       if (sidecar === undefined) {
         await hydratePromotedRecipes();
@@ -302,7 +303,7 @@ export function getPresentationBroker(): WebPresentationBroker {
     },
     plan: async (request, situation) => {
       if (typeof request.subject !== 'string') throw new Error('selection planning unavailable');
-      const key = durableKey(request, situation.policyScope);
+      const key = durableKey(request);
       const composition =
         situation.declaration === undefined ? undefined : planWorkspaceComposition(situation);
       const entity = situation.entities[0] as Parameters<typeof planGenericSurface>[1];
@@ -328,19 +329,16 @@ export function getPresentationBroker(): WebPresentationBroker {
     },
   });
   scope[runtimeKey] = {
-    async present(request, trustedContext?: PresentationTrustedContext) {
-      const policyScope = trustedContext?.policyScope ?? 'local-demo';
-      const lifecycleNamespace = sidecarKeyFingerprint(durableKey(request, policyScope));
+    async present(request, trustedContext?) {
+      // D51:lifecycle 命名空间随无 scope 的新键同源;授予集合原样下传 Broker。
+      const lifecycleNamespace = sidecarKeyFingerprint(durableKey(request));
       await appendLifecycle('presentation-requested', request, lifecycleNamespace, {
         subject: request.subject,
         intent: request.intent,
         delivery: request.delivery,
         sourceMessageIds: request.sourceMessageIds,
       });
-      const receipt = await delegate.present(request, {
-        policyScope,
-        grantedPolicyScopes: trustedContext?.grantedPolicyScopes,
-      });
+      const receipt = await delegate.present(request, trustedContext);
       await appendLifecycle(
         receipt.status === 'failed' ? 'presentation-failed' : 'presentation-resolved',
         request,

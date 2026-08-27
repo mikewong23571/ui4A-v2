@@ -29,8 +29,8 @@ const identity = {
   authorizationMode: 'credential' as const,
   actor: 'human' as const,
   principal: 'human-alice',
-  scopes: ['ui4a:read', 'default'],
-  policyScope: 'default',
+  scopes: ['ui4a:read', 'ui4a:policy:default'],
+  grantedApplications: ['default'],
   channel: 'oidc',
   humanApprovalEligible: true,
 };
@@ -73,7 +73,6 @@ describe('chat history production authentication', () => {
         plane: 'business',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: ['default', 'publishing'],
-        defaultPolicyScope: 'default',
       }),
     );
     expect(mocks.listEvents).toHaveBeenCalledWith(

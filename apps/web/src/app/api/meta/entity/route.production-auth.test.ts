@@ -29,18 +29,17 @@ const mocks = vi.hoisted(() => {
     })),
   };
   return {
-    assertRelInPolicyScope: vi.fn(),
+    assertReachable: vi.fn(),
     authenticationErrorResponse: vi.fn((error: unknown) => {
       const code = (error as { code?: string }).code;
       return code === undefined ? undefined : Response.json({ error: { code } }, { status: 401 });
     }),
     engine,
-    filterEntityForPolicyScope: vi.fn((projected) => projected),
+    filterEntityForGrantedApplications: vi.fn((projected) => projected),
     getAgentDefinitionMetaEntity: vi.fn(),
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getDraftMetaEntity: vi.fn(),
     getEngine: vi.fn(async () => engine),
-    relCoveredByPolicyScope: vi.fn(() => true),
     resolveTrustedRequestIdentity: vi.fn(),
   };
 });
@@ -68,9 +67,8 @@ vi.mock('../../../../auth/request-identity', () => ({
 }));
 
 vi.mock('../../../../auth/application-scope', () => ({
-  assertRelInPolicyScope: mocks.assertRelInPolicyScope,
-  filterEntityForPolicyScope: mocks.filterEntityForPolicyScope,
-  relCoveredByPolicyScope: mocks.relCoveredByPolicyScope,
+  assertReachable: mocks.assertReachable,
+  filterEntityForGrantedApplications: mocks.filterEntityForGrantedApplications,
 }));
 
 import { GET } from './route';
@@ -80,6 +78,8 @@ const TRUSTED_IDENTITY = {
   actor: 'agent' as const,
   principal: 'credential-subject',
   scopes: ['ui4a:read', 'ui4a:policy:development'],
+  grantedApplications: ['development'],
+  // 显式 ?scope= 导航偏好(D51,可缺省):此处声明以同时验证响应头透传。
   policyScope: 'development',
   channel: 'oidc',
   humanApprovalEligible: false,
@@ -112,11 +112,11 @@ describe('GET /_meta/api/entity production authentication wiring', () => {
 
       expect(response.status).toBe(401);
       await expect(response.json()).resolves.toEqual({ error: { code } });
-      expect(mocks.assertRelInPolicyScope).not.toHaveBeenCalled();
+      expect(mocks.assertReachable).not.toHaveBeenCalled();
       expect(mocks.engine.getMetaEntity).not.toHaveBeenCalled();
       expect(mocks.getDraftMetaEntity).not.toHaveBeenCalled();
       expect(mocks.getAgentDefinitionMetaEntity).not.toHaveBeenCalled();
-      expect(mocks.filterEntityForPolicyScope).not.toHaveBeenCalled();
+      expect(mocks.filterEntityForGrantedApplications).not.toHaveBeenCalled();
     },
   );
 
@@ -131,30 +131,23 @@ describe('GET /_meta/api/entity production authentication wiring', () => {
         plane: 'meta',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: ['development'],
-        // T22 验证修复:路由向身份解析传入按 query rel 归属的 meta scopeCoverage 闭包。
-        scopeCoverage: expect.any(Function),
       }),
     );
-    expect(mocks.assertRelInPolicyScope).toHaveBeenCalledWith(
-      expect.objectContaining({
-        rel: 'meta/flow:software-change',
-        policyScope: 'development',
-        plane: 'meta',
-      }),
-    );
-    expect(mocks.engine.getMetaEntity).toHaveBeenCalledWith('meta/flow:software-change');
-    expect(mocks.filterEntityForPolicyScope).toHaveBeenCalledTimes(1);
-    expect(response.headers.get('x-ui4a-effective-scope')).toBe('development');
-    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as {
-      scopeCoverage?: (policyScope: string) => boolean;
-    };
-    expect(options.scopeCoverage).toBeInstanceOf(Function);
-    expect(options.scopeCoverage?.('development')).toBe(true);
-    // meta/flow:software-change 归属 development:闭包以 meta 平面与 query rel 参与判定。
-    expect(mocks.relCoveredByPolicyScope).toHaveBeenCalledWith(
+    expect(mocks.assertReachable).toHaveBeenCalledWith(
       expect.objectContaining({ plane: 'meta' }),
       'meta/flow:software-change',
-      'development',
+      ['development'],
     );
+    expect(mocks.engine.getMetaEntity).toHaveBeenCalledWith('meta/flow:software-change');
+    expect(mocks.filterEntityForGrantedApplications).toHaveBeenCalledTimes(1);
+    expect(response.headers.get('x-ui4a-effective-scope')).toBe('development');
+    // D51:身份解析不再携带会话级 scope 选择机器(defaultPolicyScope/scopeCoverage
+    // 均已退役)。
+    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(options.defaultPolicyScope).toBeUndefined();
+    expect(options.scopeCoverage).toBeUndefined();
   });
 });

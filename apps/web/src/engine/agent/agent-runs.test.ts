@@ -55,17 +55,12 @@ describe('Agent Run Siren', () => {
   it('lists native runs and exposes birth/task/source without runtime secrets', async () => {
     await appendAgentRunCommand(pool, createNative());
 
-    const collection = await getAgentRunEntity(pool, 'agent-runs', 'user:mike', 'publishing');
+    const collection = await getAgentRunEntity(pool, 'agent-runs', 'user:mike');
     expect(collection).toMatchObject({
       class: ['collection', 'agent-runs'],
       properties: { count: 1 },
     });
-    const exact = await getAgentRunEntity(
-      pool,
-      'agent-run:native-entity',
-      'user:mike',
-      'publishing',
-    );
+    const exact = await getAgentRunEntity(pool, 'agent-run:native-entity', 'user:mike');
     expect(exact).toMatchObject({
       class: ['agent-run', 'queued', 'event-native'],
       properties: {
@@ -82,7 +77,7 @@ describe('Agent Run Siren', () => {
     });
     expect(JSON.stringify(exact)).not.toMatch(/apiKey|credential|endpoint|model/i);
     await expect(
-      getAgentRunEntity(pool, 'agent-run:native-entity', 'user:other', 'publishing'),
+      getAgentRunEntity(pool, 'agent-run:native-entity', 'user:other'),
     ).resolves.toBeUndefined();
   });
 
@@ -114,25 +109,16 @@ describe('Agent Run Siren', () => {
         question: { questionId: 'audience', prompt: 'Who is the audience?' },
       })
     ).aggregate;
-    let entity = await getAgentRunEntity(
-      pool,
-      'agent-run:native-entity',
-      'user:mike',
-      'publishing',
-    );
+    let entity = await getAgentRunEntity(pool, 'agent-run:native-entity', 'user:mike');
     expect(entity?.actions.map((item) => item.name)).toEqual(['answer-question', 'cancel']);
 
-    const answered = await executeAgentRunAction(
-      pool,
-      {
-        rel: 'agent-run:native-entity',
-        action: 'answer-question',
-        actor: 'human',
-        principal: 'user:mike',
-        params: { questionId: 'audience', answer: { value: 'maintainers' } },
-      },
-      'publishing',
-    );
+    const answered = await executeAgentRunAction(pool, {
+      rel: 'agent-run:native-entity',
+      action: 'answer-question',
+      actor: 'human',
+      principal: 'user:mike',
+      params: { questionId: 'audience', answer: { value: 'maintainers' } },
+    });
     expect(answered).toMatchObject({
       kind: 'accepted',
       entity: { properties: { status: 'running' } },
@@ -152,23 +138,19 @@ describe('Agent Run Siren', () => {
         },
       })
     ).aggregate;
-    entity = await getAgentRunEntity(pool, 'agent-run:native-entity', 'user:mike', 'publishing');
+    entity = await getAgentRunEntity(pool, 'agent-run:native-entity', 'user:mike');
     expect(entity?.actions.map((item) => item.name)).toEqual([
       'approve-resource-grant',
       'deny-resource-grant',
       'cancel',
     ]);
-    const denied = await executeAgentRunAction(
-      pool,
-      {
-        rel: 'agent-run:native-entity',
-        action: 'deny-resource-grant',
-        actor: 'human',
-        principal: 'user:mike',
-        params: { requestId: 'source-read', reason: 'Not authorized.' },
-      },
-      'publishing',
-    );
+    const denied = await executeAgentRunAction(pool, {
+      rel: 'agent-run:native-entity',
+      action: 'deny-resource-grant',
+      actor: 'human',
+      principal: 'user:mike',
+      params: { requestId: 'source-read', reason: 'Not authorized.' },
+    });
     expect(denied).toMatchObject({
       kind: 'accepted',
       entity: {
@@ -183,28 +165,20 @@ describe('Agent Run Siren', () => {
   it('rejects agent/system-like interaction and stale or undeclared actions', async () => {
     await appendAgentRunCommand(pool, createNative());
     await expect(
-      executeAgentRunAction(
-        pool,
-        {
-          rel: 'agent-run:native-entity',
-          action: 'cancel',
-          actor: 'agent',
-          principal: 'agent:writer',
-        },
-        'publishing',
-      ),
+      executeAgentRunAction(pool, {
+        rel: 'agent-run:native-entity',
+        action: 'cancel',
+        actor: 'agent',
+        principal: 'agent:writer',
+      }),
     ).resolves.toMatchObject({ kind: 'rejected', reason: expect.stringContaining('human') });
     await expect(
-      executeAgentRunAction(
-        pool,
-        {
-          rel: 'agent-run:native-entity',
-          action: 'approve',
-          actor: 'human',
-          principal: 'user:mike',
-        },
-        'publishing',
-      ),
+      executeAgentRunAction(pool, {
+        rel: 'agent-run:native-entity',
+        action: 'approve',
+        actor: 'human',
+        principal: 'user:mike',
+      }),
     ).resolves.toMatchObject({ kind: 'rejected', reason: expect.stringContaining('not declared') });
   });
 
@@ -247,12 +221,7 @@ describe('Agent Run Siren', () => {
       },
     });
 
-    const entity = await getAgentRunEntity(
-      pool,
-      'agent-run:native-entity',
-      'user:mike',
-      'publishing',
-    );
+    const entity = await getAgentRunEntity(pool, 'agent-run:native-entity', 'user:mike');
     expect(entity?.links).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ rel: ['source'] }),

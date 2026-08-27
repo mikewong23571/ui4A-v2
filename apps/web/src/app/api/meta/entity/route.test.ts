@@ -112,7 +112,7 @@ describe('GET /_meta/api/entity', () => {
     expect(body.error).toContain('_meta');
   });
 
-  it('scope is server-revalidated and effective scope is returned as provenance', async () => {
+  it('explicit ?scope= is echoed as provenance only; out-of-envelope values are dropped (D51)', async () => {
     const accepted = await GET(
       new Request(
         'http://localhost:3100/_meta/api/entity?rel=meta%2Fagent-definitions&scope=governance',
@@ -121,11 +121,14 @@ describe('GET /_meta/api/entity', () => {
     expect(accepted.status).toBe(200);
     expect(accepted.headers.get('x-ui4a-effective-scope')).toBe('governance');
 
+    // D51:?scope= 不参与任何校验/判定——越界值静默视为未声明,
+    // effective-scope 头只随显式声明出现。
     const forged = await GET(
       new Request(
         'http://localhost:3100/_meta/api/entity?rel=meta%2Fagent-definitions&scope=root-admin',
       ),
     );
-    expect(forged.status).toBe(403);
+    expect(forged.status).toBe(200);
+    expect(forged.headers.get('x-ui4a-effective-scope')).toBeNull();
   });
 });

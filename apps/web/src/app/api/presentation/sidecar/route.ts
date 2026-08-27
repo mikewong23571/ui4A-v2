@@ -10,7 +10,6 @@ import {
   requestIdentityProfile,
   resolveTrustedRequestIdentity,
 } from '../../../../auth/request-identity';
-import { grantedPolicyScopes } from '../../../../engine/situation';
 import {
   applyRenderPatch,
   createRenderPatchTarget,
@@ -37,13 +36,11 @@ const LOCAL_PRESENTATION_PRINCIPAL = 'user:local';
 // 或 Bearer),并以已认证 principal 作为 Sidecar 归属——durable Sidecar key 以
 // principal 区分,固定 local principal 在生产既越权又查不到 chat 建立的 Sidecar。
 // local profile 行为不变(固定 user:local)。
-// grantedPolicyScopes:身份已授予的全部 policy scope(identity.policyScope 并入,
-// 与 entity/route.ts 同口径)。授权检查按 stored key 的 scope ∈ granted 判定,
-// 多 scope 用户(如 granted=[default, publishing])不再因冻结默认 scope 误 404。
+// D51:授予集合口径(grantedApplications,identity.grantedApplications 直传),
+// stored key 已无 scope 维度;授权 = principal 相等 + sources 按当前集合重审。
 interface TrustedPresentationIdentity {
   principal: string;
-  policyScope: string;
-  grantedPolicyScopes: readonly string[];
+  grantedApplications: readonly string[];
 }
 
 async function presentationIdentity(
@@ -53,8 +50,7 @@ async function presentationIdentity(
   if (requestIdentityProfile() !== 'production') {
     return {
       principal: LOCAL_PRESENTATION_PRINCIPAL,
-      policyScope: 'local-demo',
-      grantedPolicyScopes: ['local-demo'],
+      grantedApplications: ['local-demo'],
     };
   }
   try {
@@ -63,13 +59,10 @@ async function presentationIdentity(
       plane: 'business',
       requiredScopes,
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
-      defaultPolicyScope: 'default',
     });
-    const granted = [...new Set([...grantedPolicyScopes(identity.scopes), identity.policyScope])];
     return {
       principal: identity.principal,
-      policyScope: identity.policyScope,
-      grantedPolicyScopes: granted,
+      grantedApplications: identity.grantedApplications,
     };
   } catch (error) {
     return (
@@ -233,7 +226,7 @@ export async function POST(request: Request): Promise<Response> {
                   entity: await getAuthorizedPresentationEntity(
                     declaration.source,
                     principal,
-                    current.key.policyScope,
+                    identity.grantedApplications,
                   ),
                 })),
               );
@@ -243,7 +236,6 @@ export async function POST(request: Request): Promise<Response> {
               return compositionRecipeContext({
                 rels: regions.map((region) => region.declaration.source),
                 entities: regions.map((region) => region.entity),
-                policyScope: current.key.policyScope,
                 declaration: composition.declaration,
                 regions,
               });
@@ -252,12 +244,11 @@ export async function POST(request: Request): Promise<Response> {
               const entity = await getAuthorizedPresentationEntity(
                 current.key.subject as string,
                 principal,
-                current.key.policyScope,
+                identity.grantedApplications,
               );
               return singleSubjectRecipeContext({
                 rels: [current.key.subject as string],
                 entities: entity === undefined ? [] : [entity],
-                policyScope: current.key.policyScope,
               });
             })();
       if (recipeContext === undefined) {

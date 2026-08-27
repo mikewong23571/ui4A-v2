@@ -15,8 +15,8 @@ import { POST } from './route';
 // - 跨站规则:非 meta rel → 404;业务站 /api/exec 对 meta rel → 404。
 const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');
 
-function post(body: unknown): Request {
-  return new Request('http://localhost:3100/_meta/api/exec', {
+function post(body: unknown, query = ''): Request {
+  return new Request(`http://localhost:3100/_meta/api/exec${query}`, {
     method: 'POST',
     body: JSON.stringify(body),
   });
@@ -110,9 +110,11 @@ describe('POST /_meta/api/exec', () => {
     expect(body.error).toContain('_meta');
   });
 
-  it('browser-style request gets server-owned human identity and forged scope is rejected', async () => {
+  it('browser-style request gets server-owned human identity and a forged ?scope= is dropped (D51)', async () => {
+    // 越界声明(root-admin)在身份解析层被静默丢弃,请求与未带 scope 完全同型,
+    // 动作照常经三段裁决受理。
     const accepted = await POST(
-      new Request('http://localhost:3100/_meta/api/exec?scope=publishing', {
+      new Request('http://localhost:3100/_meta/api/exec?scope=root-admin', {
         method: 'POST',
         body: JSON.stringify({ rel: 'meta/flow:post-status', action: 'revise' }),
       }),
@@ -131,30 +133,29 @@ describe('POST /_meta/api/exec', () => {
       },
     });
 
-    const forged = await POST(
-      new Request('http://localhost:3100/_meta/api/exec?scope=root-admin', {
-        method: 'POST',
-        body: JSON.stringify({ rel: 'meta/flow:post-status', action: 'revise' }),
-      }),
-    );
-    expect(forged.status).toBe(403);
+    // D51:?scope= 不再是鉴权输入——越界声明静默丢弃,动作照常过三段裁决。
   });
 
-  it('injects the resolved policy scope into Draft create and overwrites a forged param', async () => {
+  it('injects the navigation-preference scope into Draft create and overwrites a forged param (D51)', async () => {
+    // D51:Draft 目标应用槽位来自显式 ?scope= 导航偏好(∈ 授予集合),不再有
+    // 服务端默认回退;伪造的 params.policyScope 仍被服务端值覆写。
     const response = await POST(
-      post({
-        rel: 'meta/drafts',
-        action: 'create',
-        actor: 'agent',
-        principal: 'local-user',
-        params: {
-          kind: 'flow-definition',
-          target: 'post-status',
-          policyScope: 'development',
-          commandId: 'route-server-owned-scope',
-          payload: { name: 'post-status' },
+      post(
+        {
+          rel: 'meta/drafts',
+          action: 'create',
+          actor: 'agent',
+          principal: 'local-user',
+          params: {
+            kind: 'flow-definition',
+            target: 'post-status',
+            policyScope: 'development',
+            commandId: 'route-server-owned-scope',
+            payload: { name: 'post-status' },
+          },
         },
-      }),
+        '?scope=publishing',
+      ),
     );
 
     expect(response.status).toBe(200);

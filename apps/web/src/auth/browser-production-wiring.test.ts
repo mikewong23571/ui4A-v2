@@ -67,7 +67,6 @@ const productionDependencies: ProductionCredentialDependencies = {
 
 function identityOptions(
   plane: 'business' | 'meta',
-  defaultPolicyScope: string,
   browserAuthentication: Pick<BrowserAuthentication, 'resolveSession'>,
 ): ResolveRequestIdentityOptions {
   return {
@@ -75,7 +74,6 @@ function identityOptions(
     plane,
     requiredScopes: ['ui4a:read'],
     authorizedPolicyScopes: ['development', 'governance'],
-    defaultPolicyScope,
     productionPolicy,
     productionDependencies,
     browserAuthentication,
@@ -122,11 +120,11 @@ describe('production browser Route Handler wiring', () => {
 
 describe('production browser credential composition', () => {
   it.each([
-    ['business', '/api/entity?rel=applications', 'development'],
-    ['meta', '/_meta/api/entity?rel=meta%2Fflows', 'governance'],
+    ['business', '/api/entity?rel=applications'],
+    ['meta', '/_meta/api/entity?rel=meta%2Fflows'],
   ] as const)(
     'resolves a session-cookie-only %s request through the shared trusted identity adapter',
-    async (plane, path, defaultPolicyScope) => {
+    async (plane, path) => {
       const browserAuthentication = {
         resolveSession: vi.fn(async () => ({
           authorizationHeader: 'Bearer browser-access-token',
@@ -139,7 +137,7 @@ describe('production browser credential composition', () => {
 
       const identity = await resolveTrustedRequestIdentity(
         request,
-        identityOptions(plane, defaultPolicyScope, browserAuthentication),
+        identityOptions(plane, browserAuthentication),
       );
 
       expect(browserAuthentication.resolveSession).toHaveBeenCalledWith(request);
@@ -152,7 +150,7 @@ describe('production browser credential composition', () => {
         authorizationMode: 'credential',
         actor: 'human',
         principal: 'human-alice',
-        policyScope: defaultPolicyScope,
+        grantedApplications: ['development', 'governance'],
         channel: 'oidc',
         humanApprovalEligible: true,
       });
@@ -166,11 +164,12 @@ describe('production browser credential composition', () => {
     });
 
     await expect(
-      resolveTrustedRequestIdentity(
-        request,
-        identityOptions('business', 'development', browserAuthentication),
-      ),
-    ).resolves.toMatchObject({ principal: 'human-alice', policyScope: 'development' });
+      resolveTrustedRequestIdentity(request, identityOptions('business', browserAuthentication)),
+    ).resolves.toMatchObject({
+      principal: 'human-alice',
+      grantedApplications: ['development', 'governance'],
+      policyScope: undefined,
+    });
     expect(browserAuthentication.resolveSession).not.toHaveBeenCalled();
   });
 
@@ -189,10 +188,7 @@ describe('production browser credential composition', () => {
     });
 
     await expect(
-      resolveTrustedRequestIdentity(
-        request,
-        identityOptions('business', 'development', browserAuthentication),
-      ),
+      resolveTrustedRequestIdentity(request, identityOptions('business', browserAuthentication)),
     ).rejects.toMatchObject({ code: 'credential_source_conflict' });
     expect(browserAuthentication.resolveSession).not.toHaveBeenCalled();
     expect(credentialMocks.verify).not.toHaveBeenCalled();

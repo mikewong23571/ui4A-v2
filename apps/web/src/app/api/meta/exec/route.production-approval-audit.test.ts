@@ -11,7 +11,7 @@ const auth = vi.hoisted(() => {
       actor: 'agent',
       principal: 'human-alice',
       scopes: ['ui4a:write', 'ui4a:policy:publishing'],
-      policyScope: 'publishing',
+      grantedApplications: ['publishing'],
       channel: 'oidc',
       humanApprovalEligible: false,
       delegation: {
@@ -25,7 +25,7 @@ const auth = vi.hoisted(() => {
       actor: 'agent',
       principal: 'service-account-ui4a-agent',
       scopes: ['ui4a:write', 'ui4a:policy:publishing'],
-      policyScope: 'publishing',
+      grantedApplications: ['publishing'],
       channel: 'oidc',
       humanApprovalEligible: false,
     },
@@ -34,7 +34,7 @@ const auth = vi.hoisted(() => {
       actor: 'human',
       principal: 'human-alice',
       scopes: ['ui4a:write', 'ui4a:policy:publishing'],
-      policyScope: 'publishing',
+      grantedApplications: ['publishing'],
       channel: 'oidc',
       humanApprovalEligible: true,
     },
@@ -171,7 +171,7 @@ describe('production Meta activation approval rejection audit (Red)', () => {
           identity: {
             authorizationMode: 'credential',
             scopes: expected.scopes,
-            policyScope: 'publishing',
+            // D51:audit identity 不再携带会话冻结 scope;policy 授予在 scopes 内可见。
             humanApprovalEligible: false,
             ...(expectedDelegation === undefined ? {} : { delegation: expectedDelegation }),
           },

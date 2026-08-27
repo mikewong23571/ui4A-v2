@@ -1,8 +1,8 @@
 import type { ExecRequest } from '@ui4a/engine';
 import type { DeploymentEnvironment, ProductionDeploymentConfig } from '@ui4a/shared';
 
-import { resolveMetaRequestContext } from '../engine/meta-authorization';
 import { runWebProductionDeploymentPreflight } from '../production-deployment-preflight';
+import { grantedPolicyScopes } from '../engine/situation';
 
 import {
   buildProductionRequestIdentity,
@@ -27,7 +27,16 @@ export interface TrustedRequestAuditContext {
   actor: 'human' | 'agent';
   principal: string;
   scopes: string[];
-  policyScope: string;
+  /**
+   * 凭证授予的应用集合(D51):授权裁决的唯一会话外输入,由 ui4a:policy:*
+   * (及同名 plain scope)解析而来。取代已退役的 policyScope 会话冻结值。
+   */
+  grantedApplications: string[];
+  /**
+   * 显式 ?scope=/?policyScope= 查询参数的导航偏好透传(D51):仅在归属
+   * grantedApplications 时保留,不参与任何授权判定;不合法值静默丢弃。
+   */
+  policyScope?: string;
   channel: string;
   humanApprovalEligible: boolean;
   delegation?: ProductionRequestIdentity['delegation'];
@@ -36,7 +45,6 @@ export interface TrustedRequestAuditContext {
 export interface ResolveRequestIdentityOptions {
   requiredScopes: string[];
   authorizedPolicyScopes: readonly string[];
-  defaultPolicyScope: string;
   plane: 'business' | 'meta';
   untrusted?: {
     actor?: unknown;
@@ -45,12 +53,6 @@ export interface ResolveRequestIdentityOptions {
     scope?: unknown;
     delegation?: unknown;
   };
-  /**
-   * 未显式请求 scope 时按 rel 归属选择已授予 scope(T22 验证修复):仅在 credential
-   * 分支且 URL 无 scope/policyScope 参数时生效;按 granted 顺序选第一个覆盖目标
-   * 的 scope,无覆盖时回退 default/granted[0](下游照常 403,不扩大授权)。
-   */
-  scopeCoverage?: (policyScope: string) => boolean;
   profile?: RequestIdentityProfile;
   environment?: DeploymentEnvironment;
   productionConfig?: ProductionDeploymentConfig;
@@ -109,45 +111,6 @@ function dependenciesFor(config: ProductionDeploymentConfig): ProductionCredenti
   return { clock: Date.now, jwks: loader };
 }
 
-function policyScopeClaims(claims: Record<string, unknown>, scopes: readonly string[]): string[] {
-  const custom = claims.ui4a_policy_scope ?? claims.policy_scope;
-  const customScopes =
-    typeof custom === 'string'
-      ? custom.split(/\s+/).filter(Boolean)
-      : Array.isArray(custom) && custom.every((item) => typeof item === 'string')
-        ? custom
-        : [];
-  const prefixed = scopes
-    .filter((scope) => scope.startsWith('ui4a:policy:'))
-    .map((scope) => scope.slice('ui4a:policy:'.length));
-  return [...new Set([...customScopes, ...prefixed, ...scopes])];
-}
-
-function resolveCredentialPolicyScope(
-  identity: ProductionRequestIdentity,
-  claims: Record<string, unknown>,
-  authorizedScopes: readonly string[],
-  defaultScope: string,
-  requestedScope?: string,
-  scopeCoverage?: (policyScope: string) => boolean,
-): string {
-  const granted = policyScopeClaims(claims, identity.scopes).filter((scope) =>
-    authorizedScopes.includes(scope),
-  );
-  if (granted.length === 0) throw new ProductionIdentityError('scope_insufficient');
-  if (requestedScope !== undefined) {
-    if (!granted.includes(requestedScope)) {
-      throw new ProductionIdentityError('scope_insufficient');
-    }
-    return requestedScope;
-  }
-  if (scopeCoverage !== undefined) {
-    const covering = granted.find((scope) => scopeCoverage(scope));
-    if (covering !== undefined) return covering;
-  }
-  return granted.includes(defaultScope) ? defaultScope : granted[0]!;
-}
-
 function hasCookie(request: Request, name: string): boolean {
   const cookie = request.headers.get('cookie');
   if (cookie === null) return false;
@@ -157,31 +120,56 @@ function hasCookie(request: Request, name: string): boolean {
   });
 }
 
+/**
+ * 显式 ?scope=/?policyScope=(credential 分支只认查询参数)导航偏好(D51):
+ * 仅当落在授予集合内才透传,否则静默丢弃视为未声明——不再有默认回退。
+ */
+function declaredScopePreference(
+  url: URL,
+  grantedApplications: readonly string[],
+  headerScope?: string | null,
+): string | undefined {
+  const declared = url.searchParams.get('scope') ?? url.searchParams.get('policyScope');
+  const candidates =
+    declared !== null
+      ? [declared]
+      : headerScope === null || headerScope === undefined
+        ? []
+        : [headerScope];
+  for (const candidate of candidates) {
+    if (grantedApplications.includes(candidate)) return candidate;
+  }
+  return undefined;
+}
+
 export async function resolveTrustedRequestIdentity(
   request: Request,
   options: ResolveRequestIdentityOptions,
 ): Promise<TrustedRequestAuditContext> {
   const profile = options.profile ?? requestIdentityProfile(options.environment);
   if (profile === 'local') {
+    // 本地信任域(self-reported):授予集合 = 服务端登记的全部 application;
+    // 显式 scope(查询参数或本地头)只作导航偏好。查询与头同时给出且不一致
+    // 属输入冲突,保持既有拒绝口径。
     const url = new URL(request.url);
-    const local = resolveMetaRequestContext({
+    const queryScope =
+      url.searchParams.get('scope') ?? url.searchParams.get('policyScope') ?? undefined;
+    const headerScope = request.headers.get('x-ui4a-policy-scope') ?? undefined;
+    if (queryScope !== undefined && headerScope !== undefined && queryScope !== headerScope) {
+      throw new Error('conflicting Meta scope claims');
+    }
+    const grantedApplications = [...new Set(grantedPolicyScopes(options.authorizedPolicyScopes))];
+    const actor = options.untrusted?.actor === 'agent' ? 'agent' : 'human';
+    return {
+      authorizationMode: 'self-reported-local-demo',
+      actor,
       principal:
         typeof options.untrusted?.principal === 'string'
           ? options.untrusted.principal
-          : (request.headers.get('x-ui4a-principal') ?? undefined),
-      requestedScope:
-        url.searchParams.get('scope') ?? url.searchParams.get('policyScope') ?? undefined,
-      headerScope: request.headers.get('x-ui4a-policy-scope') ?? undefined,
-      authorizedScopes: options.authorizedPolicyScopes,
-      defaultScope: options.defaultPolicyScope,
-    });
-    const actor = options.untrusted?.actor === 'agent' ? 'agent' : 'human';
-    return {
-      authorizationMode: local.authorizationMode,
-      actor,
-      principal: local.principal,
-      scopes: local.authorizedScopes,
-      policyScope: local.effectiveScope,
+          : (request.headers.get('x-ui4a-principal') ?? 'local-user'),
+      scopes: [...new Set(options.authorizedPolicyScopes)],
+      grantedApplications,
+      policyScope: declaredScopePreference(url, grantedApplications, headerScope),
       channel:
         options.plane === 'meta' && actor === 'human' && options.untrusted?.actor === undefined
           ? 'bios'
@@ -220,24 +208,21 @@ export async function resolveTrustedRequestIdentity(
     { requiredScopes: options.requiredScopes, untrusted: options.untrusted },
     policy,
   );
-  const requestedScope =
-    new URL(request.url).searchParams.get('scope') ??
-    new URL(request.url).searchParams.get('policyScope') ??
-    undefined;
-  const policyScope = resolveCredentialPolicyScope(
-    identity,
-    credential.claims,
-    options.authorizedPolicyScopes,
-    options.defaultPolicyScope,
-    requestedScope,
-    requestedScope === undefined ? options.scopeCoverage : undefined,
-  );
+  // D51:凭证授予集合来自 token 的 policy 词汇解析(grantedPolicyScopes:
+  // ui4a:policy:* 解为应用名,ui4a:* 其余丢弃,其余原样保留)。空集合按无授权
+  // 处理(D48-R8 口径);非应用词表项(openid 等)不会匹配任何事实归属,
+  // 授权天然收口于受众谓词 × 已安装应用。
+  const grantedApplications = grantedPolicyScopes(identity.scopes);
+  if (grantedApplications.length === 0) {
+    throw new ProductionIdentityError('scope_insufficient');
+  }
   return {
     authorizationMode: 'credential',
     actor: identity.actor === 'human' ? 'human' : 'agent',
     principal: identity.principal,
     scopes: identity.scopes,
-    policyScope,
+    grantedApplications,
+    policyScope: declaredScopePreference(new URL(request.url), grantedApplications),
     channel: 'oidc',
     humanApprovalEligible: identity.humanApprovalEligible,
     ...(identity.delegation === undefined ? {} : { delegation: identity.delegation }),
@@ -256,7 +241,7 @@ export function applyTrustedIdentity(
     identity: {
       authorizationMode: identity.authorizationMode,
       scopes: [...identity.scopes],
-      policyScope: identity.policyScope,
+      ...(identity.policyScope === undefined ? {} : { policyScope: identity.policyScope }),
       humanApprovalEligible: identity.humanApprovalEligible,
       ...(identity.delegation === undefined ? {} : { delegation: { ...identity.delegation } }),
     },

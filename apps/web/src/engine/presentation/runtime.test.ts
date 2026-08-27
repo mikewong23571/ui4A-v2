@@ -40,7 +40,6 @@ describe('durable user Sidecar fastpath', () => {
     expect(receipt).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
     const sidecar = await findActiveSidecar(getDb(), {
       principal: 'user:local',
-      policyScope: 'local-demo',
       subject: 'workspace:my-work',
       intent: 'work overview',
       deviceClass: 'any',
@@ -66,48 +65,77 @@ describe('durable user Sidecar fastpath', () => {
     ).toHaveLength(beforeCoreCount);
   });
 
-  it('persists concurrent same-requestId workspaces independently across trusted scopes', async () => {
-    const request = completePresentationRequest(
+  it('persists concurrent same-requestId workspaces independently across principals', async () => {
+    const aliceRequest = completePresentationRequest(
       { subject: 'workspace:my-work', intent: 'concurrent overview', delivery: 'canvas' },
-      { requestId: 'workspace:same-request', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'workspace:same-request', principal: 'user:alice', sourceMessageIds: [] },
+    );
+    const bobRequest = completePresentationRequest(
+      { subject: 'workspace:my-work', intent: 'concurrent overview', delivery: 'canvas' },
+      { requestId: 'workspace:same-request', principal: 'user:bob', sourceMessageIds: [] },
     );
 
-    const [local, publishing] = await Promise.all([
-      getPresentationBroker().present(request, { policyScope: 'local-demo' }),
-      getPresentationBroker().present(request, { policyScope: 'publishing' }),
+    const [alice, bob] = await Promise.all([
+      getPresentationBroker().present(aliceRequest),
+      getPresentationBroker().present(bobRequest),
     ]);
 
-    expect(local).toMatchObject({ status: 'ready' });
-    expect(local).not.toHaveProperty('reasonCode');
-    expect(publishing).toMatchObject({ status: 'ready' });
-    expect(publishing).not.toHaveProperty('reasonCode');
-    expect(local.sidecar?.id).not.toBe(publishing.sidecar?.id);
+    expect(alice).toMatchObject({ status: 'ready' });
+    expect(alice).not.toHaveProperty('reasonCode');
+    expect(bob).toMatchObject({ status: 'ready' });
+    expect(bob).not.toHaveProperty('reasonCode');
+    // principal 是 durable 键的归属维度:同名 requestId 不串台。
+    expect(alice.sidecar?.id).not.toBe(bob.sidecar?.id);
     await expect(
       findActiveSidecar(getDb(), {
-        principal: 'user:local',
-        policyScope: 'local-demo',
+        principal: 'user:alice',
         subject: 'workspace:my-work',
         intent: 'concurrent overview',
         deviceClass: 'any',
       }),
-    ).resolves.toMatchObject({ id: local.sidecar!.id });
+    ).resolves.toMatchObject({ id: alice.sidecar!.id });
     await expect(
       findActiveSidecar(getDb(), {
-        principal: 'user:local',
-        policyScope: 'publishing',
+        principal: 'user:bob',
         subject: 'workspace:my-work',
         intent: 'concurrent overview',
         deviceClass: 'any',
       }),
-    ).resolves.toMatchObject({ id: publishing.sidecar!.id });
+    ).resolves.toMatchObject({ id: bob.sidecar!.id });
     const lifecycle = (await listEvents(getDb())).filter(
       (event) =>
         event.domain === 'presentation' &&
         (event.kind === 'presentation-requested' || event.kind === 'presentation-resolved') &&
-        (event.detail as { requestId?: unknown }).requestId === request.requestId,
+        (event.detail as { requestId?: unknown }).requestId === 'workspace:same-request',
     );
     expect(lifecycle.filter((event) => event.kind === 'presentation-requested')).toHaveLength(2);
     expect(lifecycle.filter((event) => event.kind === 'presentation-resolved')).toHaveLength(2);
+  });
+
+  it('reuses one durable Sidecar across changing grant envelopes without a second key (D51)', async () => {
+    const request = completePresentationRequest(
+      { subject: 'post:first-post', intent: 'grant-stable', delivery: 'canvas' },
+      { requestId: 'grant-stable:1', principal: 'user:local', sourceMessageIds: [] },
+    );
+
+    const first = await getPresentationBroker().present(request);
+    // 授予集合变化(如新增/移除 application)不得产生第二份键;同一四元组键上的
+    // 授予差异由依赖指纹失效触发重规划。
+    const second = await getPresentationBroker().present(request, {
+      grantedApplications: ['publishing'],
+    });
+
+    expect(first).toMatchObject({ status: 'ready' });
+    expect(second).toMatchObject({ status: 'ready' });
+    expect(second.sidecar?.id).toBe(first.sidecar?.id);
+    await expect(
+      findActiveSidecar(getDb(), {
+        principal: 'user:local',
+        subject: 'post:first-post',
+        intent: 'grant-stable',
+        deviceClass: 'any',
+      }),
+    ).resolves.toMatchObject({ id: first.sidecar!.id });
   });
 
   it('keeps denied regions as non-leaking diagnostics and reports partial authorization', async () => {
@@ -116,7 +144,6 @@ describe('durable user Sidecar fastpath', () => {
     const planned = planWorkspaceComposition({
       rels: ['threads'],
       entities: [threads],
-      policyScope: 'publishing',
       declaration,
       regions: declaration.regions.map((region) => ({
         declaration: region,
@@ -162,7 +189,6 @@ describe('durable user Sidecar fastpath', () => {
     await expect(
       findActiveSidecar(getDb(), {
         principal: 'user:local',
-        policyScope: 'local-demo',
         subject: 'post:first-post',
         intent: 'read',
         deviceClass: 'any',
@@ -193,7 +219,6 @@ describe('durable user Sidecar fastpath', () => {
     expect(first.status).toBe('ready');
     const active = await findActiveSidecar(getDb(), {
       principal: 'user:local',
-      policyScope: 'local-demo',
       subject: 'post:first-post',
       intent: 'read',
       deviceClass: 'any',
@@ -328,7 +353,6 @@ describe('durable user Sidecar fastpath', () => {
     await expect(
       findActiveSidecar(getDb(), {
         principal: 'user:local',
-        policyScope: 'local-demo',
         subject: 'post:first-post',
         intent: 'review',
         deviceClass: 'any',
@@ -347,7 +371,6 @@ describe('durable user Sidecar fastpath', () => {
     });
     const stored = await findActiveSidecar(getDb(), {
       principal: 'user:local',
-      policyScope: 'local-demo',
       subject: 'post:first-post',
       intent: 'review',
       deviceClass: 'any',

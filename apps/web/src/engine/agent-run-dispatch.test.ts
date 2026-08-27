@@ -86,15 +86,10 @@ describe('coding agent dispatch and Siren projection', () => {
     });
     expect(runs).toHaveLength(1);
     expect(runs[0]).toMatchObject({ status: 'queued', source: { rel: 'software-change:main' } });
-    const runEntity = await getAgentRunEntity(
-      pool,
-      `agent-run:${runs[0]!.runId}`,
-      'local-user',
-      'development',
-    );
+    const runEntity = await getAgentRunEntity(pool, `agent-run:${runs[0]!.runId}`, 'local-user');
     expect(runEntity?.actions.map((action) => action.name)).toEqual(['cancel']);
     const source = await engine.getEntity('software-change:main');
-    const enriched = await enrichEntityWithAgentRuns(pool, source!, 'local-user', 'development');
+    const enriched = await enrichEntityWithAgentRuns(pool, source!, 'local-user');
     expect(enriched.links.some((link) => link.rel.includes('agent-run'))).toBe(true);
   });
 
@@ -170,16 +165,12 @@ describe('coding agent dispatch and Siren projection', () => {
     const run = (
       await listAgentRuns(pool, { principal: 'local-user', policyScope: 'development' })
     )[0]!;
-    const outcome = await executeAgentRunAction(
-      pool,
-      {
-        rel: `agent-run:${run.runId}`,
-        action: 'cancel',
-        actor: 'human',
-        principal: 'local-user',
-      },
-      'development',
-    );
+    const outcome = await executeAgentRunAction(pool, {
+      rel: `agent-run:${run.runId}`,
+      action: 'cancel',
+      actor: 'human',
+      principal: 'local-user',
+    });
     expect(outcome.kind).toBe('accepted');
     expect(outcome.kind === 'accepted' && outcome.entity.properties.status).toBe('cancelled');
   });

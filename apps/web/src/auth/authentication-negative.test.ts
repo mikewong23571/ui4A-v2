@@ -298,7 +298,7 @@ describe('canonical production request identity negative corpus', () => {
           actor: 'agent',
           principal: identity.principal,
           scopes: identity.scopes,
-          policyScope: 'development',
+          grantedApplications: ['development'],
           channel: 'oidc',
           humanApprovalEligible: identity.humanApprovalEligible,
           delegation: identity.delegation,
@@ -380,7 +380,7 @@ describe('canonical production request identity negative corpus', () => {
           actor: 'agent',
           principal: identity.principal,
           scopes: identity.scopes,
-          policyScope: 'development',
+          grantedApplications: ['development'],
           channel: 'oidc',
           humanApprovalEligible: identity.humanApprovalEligible,
           delegation: identity.delegation,
@@ -389,7 +389,7 @@ describe('canonical production request identity negative corpus', () => {
     ).toEqual({
       authorizationMode: 'credential',
       scopes: ['ui4a:read', 'ui4a:write'],
-      policyScope: 'development',
+      policyScope: undefined,
       humanApprovalEligible: false,
       delegation: {
         subject: 'human-alice',
@@ -476,7 +476,7 @@ describe('canonical production request identity negative corpus', () => {
   });
 });
 
-describe('current route identity debt (executable Red evidence)', () => {
+describe('trusted production request identity versus ordinary body/header fields (D51)', () => {
   it('must stop accepting ordinary body actor/principal as trusted production identity', async () => {
     const context = await resolveTrustedRequestIdentity(
       new Request('https://ui4a.mothership.internal/api/exec', {
@@ -487,7 +487,6 @@ describe('current route identity debt (executable Red evidence)', () => {
         plane: 'business',
         requiredScopes: ['ui4a:approve'],
         authorizedPolicyScopes: ['publishing', 'governance'],
-        defaultPolicyScope: 'publishing',
         productionPolicy: POLICY,
         productionDependencies: VALID_DEPENDENCIES,
         untrusted: {
@@ -501,15 +500,18 @@ describe('current route identity debt (executable Red evidence)', () => {
     expect(context).toMatchObject({
       actor: 'human',
       principal: 'human-alice',
-      policyScope: 'publishing',
       authorizationMode: 'credential',
       humanApprovalEligible: true,
     });
+    // D51:授予集合来自凭证 scope 词汇(plain-name 与 ui4a:policy:* 同义),
+    // 不再有会话冻结的默认 scope。
+    expect(context.grantedApplications).toEqual(['publishing']);
+    expect(context.policyScope).toBeUndefined();
     expect(context.scopes).not.toContain('root:*');
     expect(context).not.toHaveProperty('delegation');
   });
 
-  it('allows a signed granted query scope but ordinary headers cannot override identity or grants', async () => {
+  it('passes an explicit in-grant query scope through as a navigation preference only', async () => {
     const context = await resolveTrustedRequestIdentity(
       new Request(
         'https://ui4a.mothership.internal/_meta/api/entity?rel=meta%2Fflows&scope=governance',
@@ -526,33 +528,37 @@ describe('current route identity debt (executable Red evidence)', () => {
         plane: 'meta',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: ['publishing', 'governance'],
-        defaultPolicyScope: 'publishing',
         productionPolicy: POLICY,
         productionDependencies: VALID_DEPENDENCIES,
       },
     );
     expect(context).toMatchObject({
       principal: 'human-alice',
-      policyScope: 'governance',
       authorizationMode: 'credential',
+      grantedApplications: ['publishing', 'governance'],
     });
+    // ?scope= ∈ 授予集合才作为导航偏好透传;production 一律忽略普通头。
+    expect(context.policyScope).toBe('governance');
+  });
 
-    await expect(
-      resolveTrustedRequestIdentity(
-        new Request(
-          'https://ui4a.mothership.internal/_meta/api/entity?rel=meta%2Fflows&scope=governance',
-          { headers: { authorization: bearer(token({ scope: 'ui4a:read publishing' })) } },
-        ),
-        {
-          profile: 'production',
-          plane: 'meta',
-          requiredScopes: ['ui4a:read'],
-          authorizedPolicyScopes: ['publishing', 'governance'],
-          defaultPolicyScope: 'publishing',
-          productionPolicy: POLICY,
-          productionDependencies: VALID_DEPENDENCIES,
-        },
+  it('silently drops an explicit query scope outside the grant envelope instead of trusting it', async () => {
+    const context = await resolveTrustedRequestIdentity(
+      new Request(
+        'https://ui4a.mothership.internal/_meta/api/entity?rel=meta%2Fflows&scope=governance',
+        { headers: { authorization: bearer(token({ scope: 'ui4a:read publishing' })) } },
       ),
-    ).rejects.toMatchObject({ code: 'scope_insufficient' });
+      {
+        profile: 'production',
+        plane: 'meta',
+        requiredScopes: ['ui4a:read'],
+        authorizedPolicyScopes: ['publishing', 'governance'],
+        productionPolicy: POLICY,
+        productionDependencies: VALID_DEPENDENCIES,
+      },
+    );
+    // D51 失败语义分家:越界声明不再是 403 事件,而是静默视为未声明——
+    // 授权判定交给咽喉点的受众谓词。
+    expect(context.policyScope).toBeUndefined();
+    expect(context.grantedApplications).toEqual(['publishing']);
   });
 });

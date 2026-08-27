@@ -75,7 +75,6 @@ function sameSubject(left: UserSidecarKey['subject'], right: UserSidecarKey['sub
 function sameKey(left: UserSidecarKey, right: UserSidecarKey): boolean {
   return (
     left.principal === right.principal &&
-    left.policyScope === right.policyScope &&
     left.intent === right.intent &&
     left.deviceClass === right.deviceClass &&
     sameSubject(left.subject, right.subject)

@@ -36,7 +36,6 @@ const mocks = vi.hoisted(() => ({
     activeVersion: 1,
     key: {
       principal: 'human-alice',
-      policyScope: 'default',
       subject: 'post:first',
       intent: 'read',
       deviceClass: 'any',
@@ -126,8 +125,8 @@ const CREDENTIAL_IDENTITY = {
   authorizationMode: 'credential' as const,
   actor: 'human' as const,
   principal: 'human-alice',
-  scopes: ['ui4a:read', 'ui4a:write', 'default'],
-  policyScope: 'default',
+  scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:default'],
+  grantedApplications: ['default'],
   channel: 'oidc',
   humanApprovalEligible: true,
 };
@@ -182,19 +181,19 @@ describe('POST /api/presentation production authentication wiring', () => {
         plane: 'business',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: ['default', 'publishing'],
-        defaultPolicyScope: 'default',
-        scopeCoverage: expect.any(Function),
       }),
     );
-    // scopeCoverage 按目标 rel 归属判定:post:first 属 publishing,只有 publishing 覆盖。
-    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]![1] as {
-      scopeCoverage: (policyScope: string) => boolean;
-    };
-    expect(options.scopeCoverage('publishing')).toBe(true);
-    expect(options.scopeCoverage('default')).toBe(false);
+    // D51:授予集合随上下文下传 Broker,目标 rel 的授权在咽喉点按集合判定;
+    // 身份解析不再携带会话级 scope 选择机器。
+    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]![1] as Record<
+      string,
+      unknown
+    >;
+    expect(options.defaultPolicyScope).toBeUndefined();
+    expect(options.scopeCoverage).toBeUndefined();
     expect(mocks.present).toHaveBeenCalledWith(
       expect.objectContaining({ principal: 'human-alice' }),
-      { policyScope: 'default', grantedPolicyScopes: ['default'] },
+      { grantedApplications: ['default'] },
     );
   });
 

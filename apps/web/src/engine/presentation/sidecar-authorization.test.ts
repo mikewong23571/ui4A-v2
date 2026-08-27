@@ -11,10 +11,10 @@ vi.mock('./authorized-entity', () => ({
 
 import { authorizeStoredSidecar } from './sidecar-authorization';
 
-function fixtureSidecar(policyScope: string, principal = 'human-alice'): UserSidecarAggregate {
+function fixtureSidecar(principal = 'human-alice'): UserSidecarAggregate {
   return {
     id: 'sidecar:unit',
-    key: { principal, policyScope, subject: 'post:first-post', intent: 'read', deviceClass: 'any' },
+    key: { principal, subject: 'post:first-post', intent: 'read', deviceClass: 'any' },
     versions: {
       1: {
         version: 1,
@@ -55,69 +55,56 @@ function fixtureSidecar(policyScope: string, principal = 'human-alice'): UserSid
 
 const entityStub = {} as SirenEntity;
 
-describe('authorizeStoredSidecar granted-scope semantics', () => {
+describe('authorizeStoredSidecar granted-set semantics (D51)', () => {
   beforeEach(() => {
     mocks.getAuthorizedPresentationEntity.mockReset();
   });
 
-  it('returns false when the stored policy scope is not in the granted set', async () => {
+  it('returns true when the principal matches and every source reauthorizes under the current grants', async () => {
     mocks.getAuthorizedPresentationEntity.mockResolvedValue(entityStub);
-    const sidecar = fixtureSidecar('publishing');
+    const sidecar = fixtureSidecar();
 
     const authorized = await authorizeStoredSidecar(sidecar, {
       principal: 'human-alice',
-      grantedPolicyScopes: ['default'],
-    });
-
-    expect(authorized).toBe(false);
-    expect(mocks.getAuthorizedPresentationEntity).not.toHaveBeenCalled();
-  });
-
-  it('returns true when the stored scope is granted and every source reauthorizes in that scope', async () => {
-    mocks.getAuthorizedPresentationEntity.mockResolvedValue(entityStub);
-    const sidecar = fixtureSidecar('publishing');
-
-    const authorized = await authorizeStoredSidecar(sidecar, {
-      principal: 'human-alice',
-      grantedPolicyScopes: ['default', 'publishing'],
+      grantedApplications: ['publishing'],
     });
 
     expect(authorized).toBe(true);
-    // 源码重授权按 stored key 的 scope 进行(不等于请求冻结 scope 时也能正确重审)。
+    // 命中重审按当前授予集合逐源进行;stored key 已无 scope 维度。
     expect(mocks.getAuthorizedPresentationEntity).toHaveBeenCalledWith(
       'post:first-post',
       'human-alice',
-      'publishing',
+      ['publishing'],
     );
   });
 
-  it('returns false when the principal does not match, even if the scope is granted', async () => {
+  it('returns false when the principal does not match, before any source read', async () => {
     mocks.getAuthorizedPresentationEntity.mockResolvedValue(entityStub);
-    const sidecar = fixtureSidecar('publishing');
+    const sidecar = fixtureSidecar();
 
     const authorized = await authorizeStoredSidecar(sidecar, {
       principal: 'human-bob',
-      grantedPolicyScopes: ['publishing'],
+      grantedApplications: ['publishing'],
     });
 
     expect(authorized).toBe(false);
     expect(mocks.getAuthorizedPresentationEntity).not.toHaveBeenCalled();
   });
 
-  it('returns false when a stored source fails reauthorization in the stored scope', async () => {
+  it('returns false when a stored source fails reauthorization under the current grants', async () => {
     mocks.getAuthorizedPresentationEntity.mockResolvedValue(undefined);
-    const sidecar = fixtureSidecar('publishing');
+    const sidecar = fixtureSidecar();
 
     const authorized = await authorizeStoredSidecar(sidecar, {
       principal: 'human-alice',
-      grantedPolicyScopes: ['publishing'],
+      grantedApplications: ['publishing'],
     });
 
     expect(authorized).toBe(false);
     expect(mocks.getAuthorizedPresentationEntity).toHaveBeenCalledWith(
       'post:first-post',
       'human-alice',
-      'publishing',
+      ['publishing'],
     );
   });
 });

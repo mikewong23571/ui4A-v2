@@ -6,10 +6,13 @@ import { ProductionIdentityError } from './production/request-identity';
 type Plane = 'business' | 'meta';
 const UNRESOLVED_APPLICATION = '\u0000unresolved';
 
-interface ScopeContext {
+/**
+ * D51 受众谓词上下文:授权的唯一输入是凭证授予的应用集合 × 事实的归属应用
+ * (归属证据来自 snapshot/sitemap,不来自会话状态)。
+ */
+export interface AudienceContext {
   snapshot: EngineSnapshot;
   sitemap: Sitemap;
-  policyScope: string;
   plane: Plane;
 }
 
@@ -80,30 +83,36 @@ function metaApplications(snapshot: EngineSnapshot, sitemap: Sitemap, rel: strin
   return [];
 }
 
-function applicationsForRel(context: Omit<ScopeContext, 'policyScope'>, rel: string): string[] {
+function applicationsForRel(context: AudienceContext, rel: string): string[] {
   return context.plane === 'business'
     ? businessApplications(context.snapshot, context.sitemap, rel)
     : metaApplications(context.snapshot, context.sitemap, rel);
 }
 
-/**
- * 判定一个已授予 policy scope 是否覆盖目标 rel(T22 验证修复:未显式请求 scope 时
- * 服务端按 rel 归属在已授予 scope 中确定性选择)。未知 rel 视为被任意 scope 覆盖,
- * 交由下游照常裁决,不扩大授权。
- */
-export function relCoveredByPolicyScope(
-  context: Omit<ScopeContext, 'policyScope'>,
+function reachableForGranted(
+  context: AudienceContext,
   rel: string,
-  policyScope: string,
+  grantedApplications: readonly string[],
 ): boolean {
+  if (context.plane === 'business' && (rel.startsWith('meta/') || rel.startsWith('_meta'))) {
+    return false;
+  }
+  // 归属应用为空的 rel 不在受众谓词管辖内(fail-open),交由既有三段裁决兜底。
   const applications = applicationsForRel(context, rel);
-  return applications.length === 0 || applications.includes(policyScope);
+  if (applications.length === 0) return true;
+  return applications.some((application) => grantedApplications.includes(application));
 }
 
-/** Reject a known rel whose server-owned Application differs from the credential policy scope. */
-export function assertRelInPolicyScope(context: ScopeContext & { rel: string }): void {
-  const applications = applicationsForRel(context, context.rel);
-  if (applications.length > 0 && !applications.includes(context.policyScope)) {
+/**
+ * 咽喉守卫(D51):目标 rel 的归属应用与凭证授予的应用集合无交集 → 结构化拒绝。
+ * 未知 rel(无可判定归属)直接放行,扩大边界由 declaration→guard→schema 裁决兜底。
+ */
+export function assertReachable(
+  context: AudienceContext,
+  rel: string,
+  grantedApplications: readonly string[],
+): void {
+  if (!reachableForGranted(context, rel, grantedApplications)) {
     throw new ProductionIdentityError('scope_insufficient');
   }
 }
@@ -139,19 +148,16 @@ function relFromHref(href: string | undefined): string | undefined {
   }
 }
 
-function visibleInPolicyScope(context: ScopeContext, rel: string): boolean {
-  if (context.plane === 'business' && (rel.startsWith('meta/') || rel.startsWith('_meta'))) {
-    return false;
-  }
-  const applications = applicationsForRel(context, rel);
-  return applications.length === 0 || applications.includes(context.policyScope);
-}
-
-function filterReferenceProperty(value: unknown, context: ScopeContext): unknown {
+function filterReferenceProperty(
+  value: unknown,
+  context: AudienceContext & { grantedApplications: readonly string[] },
+): unknown {
   if (!Array.isArray(value)) return value;
   return value.filter((item) => {
     const rel = typeof item === 'string' ? item : (item as { rel?: unknown })?.rel;
-    return typeof rel !== 'string' || visibleInPolicyScope(context, rel);
+    return (
+      typeof rel !== 'string' || reachableForGranted(context, rel, context.grantedApplications)
+    );
   });
 }
 
@@ -186,8 +192,8 @@ export function filterThreadEntityForPrincipal(
 /**
  * 声明式判定(R7):实体是否属于某个以 scope='principal' + memberRelPrefix 声明
  * 成员族的 sitemap 面(如 threads → thread:*)。这类面的成员是 Application 中立、
- * principal 持有的引用承载实体,其 context/active/approval 引用属性需按当前授权
- * 镜头逐成员重审。判定依据 sitemap 声明元数据与实体自身 self rel,不绑定任何
+ * principal 持有的引用承载实体,其 context/active/approval 引用属性需按当前授予
+ * 集合逐成员重审。判定依据 sitemap 声明元数据与实体自身 self rel,不绑定任何
  * per-class 字面量;未参与该声明的实体保持原样。
  */
 function governedByPrincipalMemberFamily(sitemap: Sitemap, entity: SirenEntity): boolean {
@@ -203,20 +209,20 @@ function governedByPrincipalMemberFamily(sitemap: Sitemap, entity: SirenEntity):
   );
 }
 
-/** Strip cross-Application children and links from a collection-style Siren projection. */
-export function filterEntityForPolicyScope(
+/** Strip granted-application-external children and links from a collection-style Siren projection. */
+export function filterEntityForGrantedApplications(
   entity: SirenEntity,
-  context: ScopeContext,
+  context: AudienceContext & { grantedApplications: readonly string[] },
 ): SirenEntity {
   const entities = entity.entities?.filter((child) => {
     const rel = relFromHref(child.href);
     if (rel === undefined) return true;
-    return visibleInPolicyScope(context, rel);
+    return reachableForGranted(context, rel, context.grantedApplications);
   });
   const links = entity.links.filter((link) => {
     const rel = relFromHref(link.href);
     if (rel === undefined) return true;
-    return visibleInPolicyScope(context, rel);
+    return reachableForGranted(context, rel, context.grantedApplications);
   });
   const referenceProperties = governedByPrincipalMemberFamily(context.sitemap, entity)
     ? {

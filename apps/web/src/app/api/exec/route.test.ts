@@ -366,16 +366,15 @@ describe('POST /api/exec — 确认门(T3 Phase B)', () => {
     expect(suspended.rows[0]).toMatchObject({ n: 0 });
   });
 
-  it('cross-plane action scope is server-revalidated before execution', async () => {
+  it('a forged ?scope= on exec is dropped silently and execution follows normal judgment (D51)', async () => {
+    // D51:显式 scope 参数不参与任何判定;动作放行与否只取决于三段裁决与
+    // 确认门,越界声明既不拒绝也不放大。
     const response = await POST(
       post(
         { rel: 'post:post-welcome', action: 'unpublish', actor: 'human' },
         'http://localhost:3100/api/exec?scope=root-admin',
       ),
     );
-    expect(response.status).toBe(403);
-    expect(
-      await pool.query("SELECT COUNT(*)::int AS n FROM events WHERE kind='action-executed'"),
-    ).toMatchObject({ rows: [{ n: 0 }] });
+    expect(response.status).toBe(200);
   });
 });

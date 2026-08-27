@@ -377,7 +377,6 @@ describe('production Keycloak browser protocol adapters', () => {
         plane: 'business',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: ['development'],
-        defaultPolicyScope: 'development',
         productionPolicy: {
           issuer: ISSUER,
           audience: API_AUDIENCE,

@@ -10,10 +10,10 @@ import {
   resolveTrustedRequestIdentity,
 } from '../../../../auth/request-identity';
 import {
-  assertRelInPolicyScope,
-  filterEntityForPolicyScope,
-  relCoveredByPolicyScope,
+  assertReachable,
+  filterEntityForGrantedApplications,
 } from '../../../../auth/application-scope';
+import { declaredOrFirstGrantedApplication } from '../../../../engine/situation';
 
 // GET /_meta/api/entity?rel=… — meta 站点 Siren 实体端点(T4 Phase B,spec 决定 6):
 // - rel 以 meta/ 前缀路由到同一引擎的 meta 投影(同日志同串行队列;快照即真相);
@@ -38,51 +38,50 @@ export async function GET(request: Request) {
   try {
     const db = getDb();
     const engine = await getEngine(db);
+    const snapshot = engine.getSnapshot();
+    const sitemap = engine.getSitemap();
+    const authorizedPolicyScopes = Object.keys(snapshot.applications ?? {});
     const identity = await resolveTrustedRequestIdentity(request, {
       plane: 'meta',
       requiredScopes: ['ui4a:read'],
-      authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
-      defaultPolicyScope: 'publishing',
-      // 未显式请求 scope 时按 rel 归属选择已授予 scope(与业务 /api/entity 同口径,
-      // plane 用 meta:metaApplications 归属判定,消除多 scope 用户的伪 403)。
-      scopeCoverage: (policyScope) =>
-        relCoveredByPolicyScope(
-          { snapshot: engine.getSnapshot(), sitemap: engine.getSitemap(), plane: 'meta' },
-          rel,
-          policyScope,
-        ),
+      authorizedPolicyScopes,
     });
-    const scopeContext = {
-      snapshot: engine.getSnapshot(),
-      sitemap: engine.getSitemap(),
-      policyScope: identity.policyScope,
-      plane: 'meta' as const,
-    };
+    // D51:授权 = 授予集合 × meta 归属;effectiveScope 只作展示槽位(Draft 目录
+    // 默认目标/响应头),不参与判权。
+    const audienceContext = { snapshot, sitemap, plane: 'meta' as const };
     if (identity.authorizationMode === 'credential') {
-      assertRelInPolicyScope({ ...scopeContext, rel });
+      assertReachable(audienceContext, rel, identity.grantedApplications);
     }
+    const effectiveScope =
+      declaredOrFirstGrantedApplication(identity, authorizedPolicyScopes) ??
+      authorizedPolicyScopes[0]!;
     const entity = isDraftMetaRel(rel)
       ? await getDraftMetaEntity(
           db,
           engine,
           rel,
           identity.principal,
-          identity.policyScope,
+          effectiveScope,
           agentDefinitionDraftRegistryPort,
         )
       : isAgentDefinitionMetaRel(rel)
-        ? await getAgentDefinitionMetaEntity(db, rel, identity.principal, identity.policyScope)
+        ? await getAgentDefinitionMetaEntity(db, rel, identity.principal, effectiveScope)
         : await engine.getMetaEntity(rel);
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });
     }
     return Response.json(
       identity.authorizationMode === 'credential'
-        ? filterEntityForPolicyScope(entity, scopeContext)
+        ? filterEntityForGrantedApplications(entity, {
+            ...audienceContext,
+            grantedApplications: identity.grantedApplications,
+          })
         : entity,
       {
         headers: {
-          'x-ui4a-effective-scope': identity.policyScope,
+          ...(identity.policyScope !== undefined
+            ? { 'x-ui4a-effective-scope': identity.policyScope }
+            : {}),
           'x-ui4a-authorization-mode': identity.authorizationMode,
         },
       },

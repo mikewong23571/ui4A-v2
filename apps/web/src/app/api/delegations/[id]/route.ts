@@ -36,15 +36,11 @@ export async function GET(
         plane: 'business',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
-        defaultPolicyScope: 'default',
       });
     }
     const entity = await engine.getEntity(delegationRel(id));
     if (entity === undefined) {
-      return Response.json(
-        { error: `委托 "${id}" 不存在(或首事件尚未落库)` },
-        { status: 404 },
-      );
+      return Response.json({ error: `委托 "${id}" 不存在(或首事件尚未落库)` }, { status: 404 });
     }
     const events = await loadDelegationEvents(getDb(), id);
     return Response.json(projectDelegationDetail(entity, events));

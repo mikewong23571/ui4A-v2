@@ -18,26 +18,10 @@ import {
 // 跨站规则:业务站 sitemap 不携带任何 _meta 入口,进入定义层必须显式意图
 // (直接访问 /api/meta/* 为同一处理器的内部别名;canonical URL 恒 /_meta/*)。
 // production profile(T22 验证修复):接入 application credential(Browser Session
-// 或 Bearer,ui4a:read);effectiveScope 取 credential policy scope(?scope= 只能在
-// granted 集合内选择),authorizedScopes 收窄为 granted policy scopes;local profile
-// 行为不变(self-reported)。
+// 或 Bearer,ui4a:read);D51:发现内容按授予并集返回,effectiveScope 只作显式
+// 导航偏好的展示槽位;local profile 行为不变(self-reported)。
 
 export const dynamic = 'force-dynamic';
-
-function grantedPolicyScopes(
-  scopes: readonly string[],
-  authorizedScopes: readonly string[],
-): string[] {
-  return [
-    ...new Set(
-      scopes
-        .map((scope) =>
-          scope.startsWith('ui4a:policy:') ? scope.slice('ui4a:policy:'.length) : scope,
-        )
-        .filter((scope) => authorizedScopes.includes(scope)),
-    ),
-  ];
-}
 
 export async function GET(request?: Request) {
   try {
@@ -51,13 +35,20 @@ export async function GET(request?: Request) {
         plane: 'meta',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: authorizedScopes,
-        defaultPolicyScope: 'publishing',
       });
-      const granted = grantedPolicyScopes(identity.scopes, authorizedScopes);
+      // D51:发现内容(surfaces/authorizedScopes/Agent 目录)恒按授予并集返回;
+      // effectiveScope 只是显式 ?scope= 的导航偏好展示槽位,不冻结内容取舍。
+      const granted = identity.grantedApplications.filter((scope) =>
+        authorizedScopes.includes(scope),
+      );
+      const effectiveScope =
+        identity.policyScope !== undefined && authorizedScopes.includes(identity.policyScope)
+          ? identity.policyScope
+          : (granted[0] ?? authorizedScopes[0]!);
       context = {
         principal: identity.principal,
-        effectiveScope: identity.policyScope,
-        authorizedScopes: granted.length > 0 ? granted : [identity.policyScope],
+        effectiveScope,
+        authorizedScopes: granted.length > 0 ? granted : [effectiveScope],
         authorizationMode: identity.authorizationMode,
       };
     } else {
@@ -85,8 +76,8 @@ export async function GET(request?: Request) {
       ...current,
       version: contentVersion(surfaces),
       surfaces,
-      // effectiveScope 是身份解析出的"默认 scope"(单值,受 ?scope= 在 granted 内
-      // 选择);发现内容(surfaces/authorizedScopes)为 granted 并集,不被它冻结。
+      // effectiveScope 只是显式 ?scope= 的导航偏好展示槽位(D51);发现内容
+      // (surfaces/authorizedScopes)为授予并集,不被它冻结。
       effectiveScope: context.effectiveScope,
       authorizedScopes: context.authorizedScopes,
       authorizationMode: context.authorizationMode,

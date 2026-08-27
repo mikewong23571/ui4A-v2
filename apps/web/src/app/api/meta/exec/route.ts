@@ -7,10 +7,8 @@ import {
   requireHumanApprovalScope,
   resolveTrustedRequestIdentity,
 } from '../../../../auth/request-identity';
-import {
-  assertRelInPolicyScope,
-  relCoveredByPolicyScope,
-} from '../../../../auth/application-scope';
+import { assertReachable } from '../../../../auth/application-scope';
+import { declaredOrFirstGrantedApplication } from '../../../../engine/situation';
 
 import { parseExecBody, rejectionStatus } from '../../exec-request';
 
@@ -47,33 +45,29 @@ export async function POST(request: Request) {
   try {
     const db = getDb();
     const engine = await getEngine(db);
+    const snapshot = engine.getSnapshot();
+    const sitemap = engine.getSitemap();
+    const authorizedPolicyScopes = Object.keys(snapshot.applications ?? {});
     const identity = await resolveTrustedRequestIdentity(request, {
       plane: 'meta',
       requiredScopes: ['ui4a:write'],
       untrusted: parsed.request,
-      authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
-      defaultPolicyScope: 'publishing',
-      // 未显式请求 scope 时按 rel 归属选择已授予 scope(rel 已在身份解析前从
-      // body 解析,见上方 parseExecBody;与业务 /api/exec 同口径,plane 用 meta)。
-      scopeCoverage: (policyScope) =>
-        relCoveredByPolicyScope(
-          { snapshot: engine.getSnapshot(), sitemap: engine.getSitemap(), plane: 'meta' },
-          parsed.request.rel,
-          policyScope,
-        ),
+      authorizedPolicyScopes,
     });
     if (['approve', 'reject'].includes(parsed.request.action)) {
       requireHumanApprovalScope(identity);
     }
+    // D51:授权按授予集合 × meta 归属判定;effectiveScope 只作 Draft 目标默认槽位。
     if (identity.authorizationMode === 'credential') {
-      assertRelInPolicyScope({
-        snapshot: engine.getSnapshot(),
-        sitemap: engine.getSitemap(),
-        rel: parsed.request.rel,
-        policyScope: identity.policyScope,
-        plane: 'meta',
-      });
+      assertReachable(
+        { snapshot, sitemap, plane: 'meta' },
+        parsed.request.rel,
+        identity.grantedApplications,
+      );
     }
+    const effectiveScope =
+      declaredOrFirstGrantedApplication(identity, authorizedPolicyScopes) ??
+      authorizedPolicyScopes[0]!;
     const trustedRequest = applyTrustedIdentity(parsed.request, identity);
     const metaRequest =
       trustedRequest.rel === 'meta/drafts' && trustedRequest.action === 'create'
@@ -81,13 +75,13 @@ export async function POST(request: Request) {
             ...trustedRequest,
             params: {
               ...trustedRequest.params,
-              policyScope: identity.policyScope,
+              policyScope: effectiveScope,
             },
           }
         : trustedRequest;
     const outcome = isDraftMetaRel(parsed.request.rel)
       ? await executeDraftMeta(db, engine, metaRequest, {
-          policyScope: identity.policyScope,
+          policyScope: effectiveScope,
           agentDefinitions: agentDefinitionDraftRegistryPort,
         })
       : await engine.exec(metaRequest);

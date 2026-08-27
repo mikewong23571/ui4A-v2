@@ -156,7 +156,6 @@ async function trustedIdentity(authorizationHeader: string, requiredScopes: stri
       plane: 'business',
       requiredScopes,
       authorizedPolicyScopes: ['development'],
-      defaultPolicyScope: 'development',
       productionPolicy: {
         issuer: ISSUER,
         audience: AUDIENCE,
@@ -217,7 +216,7 @@ describe('production confidential Agent credential provider', () => {
       actor: 'agent',
       principal: 'service-account-id',
       scopes: ['ui4a:read', 'development'],
-      policyScope: 'development',
+      grantedApplications: ['development'],
       channel: 'oidc',
       humanApprovalEligible: false,
     });
@@ -325,7 +324,7 @@ describe('RFC 8693 delegated Agent identity and audit', () => {
       actor: 'agent',
       principal: 'human-alice',
       scopes: ['ui4a:read', 'ui4a:write', 'development'],
-      policyScope: 'development',
+      grantedApplications: ['development'],
       channel: 'oidc',
       humanApprovalEligible: false,
       delegation: {

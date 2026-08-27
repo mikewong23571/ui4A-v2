@@ -93,6 +93,36 @@
       "retireWhen": "sidecar 端点改为在身份解析前确定单一目标 rel 时,改传 scopeCoverage 并移除本例外"
     },
     {
+      "path": "apps/web/src/app/api/entity/route.ts",
+      "reason": "T33 Phase A(D51):会话级 scope 选择机器已退役;授权移交 assertReachable(audience, grantedApplications) 受众谓词,?scope= 仅导航偏好;GR6 的 scopeCoverage 口径失去对象",
+      "retireWhen": "Phase D 删除本 GR6 扫描器与整个登记 section 时一并移除"
+    },
+    {
+      "path": "apps/web/src/app/api/exec/route.ts",
+      "reason": "同上(assertReachable 授予集合口径)",
+      "retireWhen": "Phase D 删除本 GR6 扫描器时移除"
+    },
+    {
+      "path": "apps/web/src/app/api/exec-plan/route.ts",
+      "reason": "同上(assertReachable 授予集合口径)",
+      "retireWhen": "Phase D 删除本 GR6 扫描器时移除"
+    },
+    {
+      "path": "apps/web/src/app/api/presentation/route.ts",
+      "reason": "同上(Broker trustedContext 攜 grantedApplications)",
+      "retireWhen": "Phase D 删除本 GR6 扫描器时移除"
+    },
+    {
+      "path": "apps/web/src/app/api/meta/entity/route.ts",
+      "reason": "同上(meta 平面 assertReachable)",
+      "retireWhen": "Phase D 删除本 GR6 扫描器时移除"
+    },
+    {
+      "path": "apps/web/src/app/api/meta/exec/route.ts",
+      "reason": "同上(meta 平面 assertReachable)",
+      "retireWhen": "Phase D 删除本 GR6 扫描器时移除"
+    },
+    {
       "path": "apps/web/src/app/api/meta/.well-known/ui4a.json/route.ts",
       "reason": "meta 发现文档:无单一目标 rel,按 granted 并集(grantedPolicyScopes)过滤 meta sitemap,与业务 well-known 同口径",
       "retireWhen": "meta 发现文档改为按单一 rel 归属裁决可见性时,改传 scopeCoverage 并移除本例外"

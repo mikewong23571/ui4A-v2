@@ -30,7 +30,6 @@ function snapshot() {
     sidecarId: 'sidecar:1',
     key: {
       principal: 'user:mike',
-      policyScope: 'scope:v1',
       subject: 'post:first',
       intent: 'read',
       deviceClass: 'wide',

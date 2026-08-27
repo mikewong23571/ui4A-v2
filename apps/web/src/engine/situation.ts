@@ -1,7 +1,4 @@
-import type { EngineSnapshot, PresenceProjection, RenderSubject } from '@ui4a/shared';
-import type { Sitemap } from '@ui4a/engine';
-
-import { relCoveredByPolicyScope } from '../auth/application-scope';
+import type { PresenceProjection, RenderSubject } from '@ui4a/shared';
 
 /** Normalize trusted policy claims to the application names used by the assembler. */
 export function grantedPolicyScopes(scopes: readonly string[]): string[] {
@@ -19,17 +16,20 @@ export function grantedPolicyScopes(scopes: readonly string[]): string[] {
 }
 
 /**
- * 从已授予 scope 集合中按数组顺序确定性地选第一个覆盖目标 rel 的 scope
- * (与 resolveCredentialPolicyScope 的 scopeCoverage 选择同口径)。供目标 rel 在
- * 身份解析后才出现的调用方(如 Presentation Broker)在授权点做覆盖选择;
- * 无覆盖者返回 undefined,与授权失败同语义,不扩大授权。
+ * 展示/导航偏好槽位(D51 过渡):显式声明优先,否则取授予集合中第一个已登记
+ * application。仅供响应元数据(effective-scope 头、sitemap 槽位、Draft 目标
+ * 默认值)使用,禁止进入任何授权判定——授权一律吃授予集合 × 事实归属。
  */
-export function selectCoveringPolicyScope(
-  context: { snapshot: EngineSnapshot; sitemap: Sitemap; plane: 'business' | 'meta' },
-  rel: string,
-  grantedScopes: readonly string[],
+export function declaredOrFirstGrantedApplication(
+  identity: { policyScope?: string; grantedApplications: readonly string[] },
+  authorizedApplications: readonly string[],
 ): string | undefined {
-  return grantedScopes.find((scope) => relCoveredByPolicyScope(context, rel, scope));
+  if (identity.policyScope !== undefined && authorizedApplications.includes(identity.policyScope)) {
+    return identity.policyScope;
+  }
+  return identity.grantedApplications.find((application) =>
+    authorizedApplications.includes(application),
+  );
 }
 
 export interface SituationExplicitParameters {

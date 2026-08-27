@@ -648,11 +648,11 @@ describe('opaque secure browser session lifecycle', () => {
 
 describe('one trusted request identity adapter for browser business and meta requests', () => {
   it.each([
-    ['business', '/api/entity?rel=applications', 'development'],
-    ['meta', '/_meta/api/entity?rel=meta%2Fflows', 'governance'],
+    ['business', '/api/entity?rel=applications'],
+    ['meta', '/_meta/api/entity?rel=meta%2Fflows'],
   ] as const)(
     'feeds a verified %s browser session into resolveTrustedRequestIdentity',
-    async (plane, path, defaultPolicyScope) => {
+    async (plane, path) => {
       const api = await plannedApi();
       const harness = makeHarness();
       const auth = api.createBrowserAuthentication(harness.dependencies);
@@ -670,7 +670,6 @@ describe('one trusted request identity adapter for browser business and meta req
         plane,
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: ['development', 'governance'],
-        defaultPolicyScope,
         productionPolicy: {
           issuer: ISSUER,
           audience: AUDIENCE,
@@ -691,11 +690,13 @@ describe('one trusted request identity adapter for browser business and meta req
         },
       });
 
+      // D51:identity 携带凭证授予集合(plain-name 与 ui4a:policy:* 同词汇解析),
+      // 不再产出会话冻结的单一 policyScope。
       expect(identity).toMatchObject({
         authorizationMode: 'credential',
         actor: 'human',
         principal: 'human-alice',
-        policyScope: defaultPolicyScope,
+        grantedApplications: ['development', 'governance'],
         channel: 'oidc',
         humanApprovalEligible: true,
       });

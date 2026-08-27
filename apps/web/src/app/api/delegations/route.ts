@@ -29,7 +29,6 @@ export async function GET(request: Request): Promise<Response> {
         plane: 'business',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
-        defaultPolicyScope: 'default',
       });
     }
     const entity = await engine.getEntity(DELEGATIONS_REL);

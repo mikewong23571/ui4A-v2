@@ -19,8 +19,9 @@ vi.mock('../service', () => ({
 
 import { getAuthorizedPresentationEntity } from './authorized-entity';
 
-// post:first-post 归属 publishing Application;threads 是未知 rel,视为被任意
-// scope 覆盖,用于观测 granted 数组顺序对覆盖选择的确定性影响。
+// post:first-post 归属 publishing Application;threads 无归属(未知 rel,
+// fail-open 交既有三段裁决兜底)。D51 受众谓词:唯一输入 = 凭证授予应用集合
+// × 事实归属。
 const SNAPSHOT = {
   instances: { 'post:first-post': { flow: 'post' } },
   definitions: { post: { version: 1, definition: { app: 'publishing' } } },
@@ -57,59 +58,43 @@ beforeEach(() => {
   );
 });
 
-describe('getAuthorizedPresentationEntity granted scope coverage selection', () => {
-  it('selects the covering granted scope when the frozen scope does not cover the rel', async () => {
-    const entity = await getAuthorizedPresentationEntity(
-      'post:first-post',
-      'human-alice',
+describe('getAuthorizedPresentationEntity audience predicate (D51)', () => {
+  it('returns the entity when its owning application is granted', async () => {
+    const entity = await getAuthorizedPresentationEntity('post:first-post', 'human-alice', [
       'default',
-      ['default', 'publishing'],
-    );
+      'publishing',
+    ]);
     expect(entity?.properties.title).toBe('first');
-    // 对照:未传 granted 集合时单一冻结 scope default 不覆盖 publishing rel。
+  });
+
+  it('returns undefined when no granted application matches the owning application', async () => {
     await expect(
-      getAuthorizedPresentationEntity('post:first-post', 'human-alice', 'default'),
+      getAuthorizedPresentationEntity('post:first-post', 'human-alice', ['default', 'development']),
     ).resolves.toBeUndefined();
   });
 
-  it('returns undefined when no granted scope covers the rel', async () => {
-    await expect(
-      getAuthorizedPresentationEntity('post:first-post', 'human-alice', 'default', [
-        'default',
-        'development',
-      ]),
-    ).resolves.toBeUndefined();
-  });
-
-  it('picks the first covering scope deterministically by granted order', async () => {
-    // threads 被任意 scope 覆盖;selected scope 由 granted 顺序决定,并经
-    // filterEntityForPolicyScope 可见性过滤可观测(publishing 链接只在
-    // publishing scope 下保留)。
-    const defaultFirst = await getAuthorizedPresentationEntity(
-      'threads',
-      'human-alice',
-      'default',
-      ['default', 'publishing'],
-    );
-    expect(defaultFirst?.links.map((link) => link.href)).toEqual(['/api/entity?rel=threads']);
-
-    const publishingFirst = await getAuthorizedPresentationEntity(
-      'threads',
-      'human-alice',
-      'default',
-      ['publishing', 'default'],
-    );
-    expect(publishingFirst?.links.map((link) => link.href)).toEqual([
+  it('filters cross-application references by the granted set instead of one frozen scope', async () => {
+    const granted = await getAuthorizedPresentationEntity('threads', 'human-alice', ['publishing']);
+    // publishing 在授予集合内:跨应用 related 链接保留。
+    expect(granted?.links.map((link) => link.href)).toEqual([
       '/api/entity?rel=threads',
       '/api/entity?rel=post:first-post',
     ]);
+
+    const ungranted = await getAuthorizedPresentationEntity('threads', 'human-alice', [
+      'development',
+    ]);
+    // threads 本身无归属(fail-open 可读);越界引用按受众过滤剥离。
+    expect(ungranted?.links.map((link) => link.href)).toEqual(['/api/entity?rel=threads']);
   });
 
-  it('keeps local-demo behavior unchanged when granted scopes are present', async () => {
-    const entity = await getAuthorizedPresentationEntity('threads', 'user:local', 'local-demo', [
+  it('keeps the local-demo trust domain bypass with only ownership rechecks', async () => {
+    // local-demo 标记不做受众过滤(等价旧本地分支),posting rel 未授予仍可见;
+    // thread 属主重审照常(snapshot 无 threads 记录时不拦截)。
+    const entity = await getAuthorizedPresentationEntity('post:first-post', 'user:local', [
       'local-demo',
     ]);
-    // local-demo 不做 scope 过滤,跨 Application 链接原样保留。
-    expect(entity?.links).toHaveLength(2);
+    expect(entity?.properties.title).toBe('first');
+    expect(entity?.links).toHaveLength(1);
   });
 });

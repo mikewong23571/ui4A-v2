@@ -156,10 +156,9 @@ export async function getAgentRunEntity(
   db: ConnectableDb,
   rel: string,
   principal: string,
-  policyScope: string,
 ): Promise<SirenEntity | undefined> {
   if (rel === AGENT_RUNS_REL) {
-    const runs = await listAgentRuns(db, { principal, policyScope });
+    const runs = await listAgentRuns(db, { principal });
     return {
       class: ['collection', AGENT_RUNS_REL],
       properties: { rel, count: runs.length, limit: 20 },
@@ -174,14 +173,13 @@ export async function getAgentRunEntity(
     };
   }
   if (!rel.startsWith(AGENT_RUN_PREFIX)) return undefined;
-  const run = await getAgentRun(db, rel.slice(AGENT_RUN_PREFIX.length), principal, policyScope);
+  const run = await getAgentRun(db, rel.slice(AGENT_RUN_PREFIX.length), principal);
   if (run === undefined) return undefined;
   const [raw, resultRef, drafts] = await Promise.all([
     listAgentRunRawReceipts(db, run.runId),
     getAgentRunResultRef(db, run.runId),
     findDraftsBySource(db, {
       owner: principal,
-      policyScope,
       source: `${AGENT_RUN_PREFIX}${run.runId}`,
     }),
   ]);
@@ -196,11 +194,10 @@ export async function enrichEntityWithAgentRuns(
   db: ConnectableDb,
   entity: SirenEntity,
   principal: string,
-  policyScope: string,
 ): Promise<SirenEntity> {
   const rel = entity.properties.rel;
   if (typeof rel !== 'string') return entity;
-  const runs = await findAgentRunsBySource(db, rel, principal, policyScope);
+  const runs = await findAgentRunsBySource(db, rel, principal);
   if (runs.length === 0) return entity;
   return {
     ...entity,
@@ -281,7 +278,6 @@ function commandForAction(
 export async function executeAgentRunAction(
   db: ConnectableDb,
   request: ExecRequest,
-  policyScope: string,
 ): Promise<{ kind: 'accepted'; entity: SirenEntity } | { kind: 'rejected'; reason: string }> {
   if (!request.rel.startsWith(AGENT_RUN_PREFIX)) {
     return { kind: 'rejected', reason: 'agent run action is not declared' };
@@ -290,12 +286,7 @@ export async function executeAgentRunAction(
     return { kind: 'rejected', reason: 'agent run interaction requires human actor' };
   }
   if (request.principal === undefined) return { kind: 'rejected', reason: 'principal is required' };
-  const run = await getAgentRun(
-    db,
-    request.rel.slice(AGENT_RUN_PREFIX.length),
-    request.principal,
-    policyScope,
-  );
+  const run = await getAgentRun(db, request.rel.slice(AGENT_RUN_PREFIX.length), request.principal);
   if (run === undefined) return { kind: 'rejected', reason: 'agent run not found' };
   const command = commandForAction(run, request);
   if ('error' in command) return { kind: 'rejected', reason: command.error };
@@ -305,7 +296,6 @@ export async function executeAgentRunAction(
     getAgentRunResultRef(db, updated.aggregate.runId),
     findDraftsBySource(db, {
       owner: request.principal,
-      policyScope,
       source: `${AGENT_RUN_PREFIX}${updated.aggregate.runId}`,
     }),
   ]);

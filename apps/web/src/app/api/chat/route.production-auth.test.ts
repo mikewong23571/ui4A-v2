@@ -208,7 +208,7 @@ beforeEach(() => {
         actor: 'human',
         principal: 'human-alice',
         scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
-        policyScope: 'development',
+        grantedApplications: ['development'],
         channel: 'oidc',
         humanApprovalEligible: true,
       };
@@ -219,7 +219,7 @@ beforeEach(() => {
         actor: 'agent',
         principal: 'human-alice',
         scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
-        policyScope: 'development',
+        grantedApplications: ['development'],
         channel: 'oidc',
         humanApprovalEligible: false,
         delegation: {
@@ -308,7 +308,6 @@ describe('production chat turn credential boundary', () => {
       profile: 'production',
       requiredScopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
       authorizedPolicyScopes: ['development'],
-      defaultPolicyScope: 'development',
       plane: 'business',
     });
     expect(mocks.exchangeDelegatedCredential).toHaveBeenCalledTimes(1);
@@ -347,8 +346,8 @@ describe('production chat turn credential boundary', () => {
   });
 
   it('carries every granted agent policy scope into the exchange (rel coverage is per-request)', async () => {
-    // human 与 agentScopes 交集含两个 policy scope 时,交换请求必须全量携带——
-    // 回合内将读取哪个应用的 rel 事先不可知,逐请求收窄由接收端 scopeCoverage 负责。
+    // D51:human 与 agentScopes 交集含两个 policy 应用时,交换请求必须全量携带——
+    // 接收端授权按授予集合 × 归属逐请求判定。
     mocks.preflight.mockReturnValueOnce({
       settings: {
         service: { publicOrigin: APP_ORIGIN },
@@ -372,7 +371,7 @@ describe('production chat turn credential boundary', () => {
       actor: 'human',
       principal: 'human-alice',
       scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development', 'ui4a:policy:publishing'],
-      policyScope: 'development',
+      grantedApplications: ['development', 'publishing'],
       channel: 'oidc',
       humanApprovalEligible: true,
     }));
@@ -399,7 +398,6 @@ describe('production chat turn credential boundary', () => {
     const delegatedVerification = mocks.resolveIdentity.mock.calls[1]!;
     expect(delegatedVerification[1]).toMatchObject({
       authorizedPolicyScopes: ['development', 'publishing'],
-      defaultPolicyScope: 'development',
     });
     // 排空 SSE 流:回合的 chat 投影事件(chat-turn / chat-message-appended)
     // 在流体内异步落库;不读完,落库会越过本用例边界、在后续用例 mockReset
@@ -408,9 +406,8 @@ describe('production chat turn credential boundary', () => {
   });
 
   it('passes every granted policy scope to the Presentation Broker for per-rel coverage selection', async () => {
-    // 多 scope 身份(defaultPolicyScope 冻结为第一个 granted)下,present 必须
-    // 携带全量 grantedPolicyScopes:目标 rel(如 publishing 的 post)在身份解析后
-    // 才出现,覆盖选择由 Broker 授权点按 rel 完成。
+    // D51:present 携带凭证授予集合(grantedApplications):目标 rel(如 publishing
+    // 的 post)在身份解析后才出现,授权由 Broker 咽喉点按授予集合 × 归属完成。
     mocks.preflight.mockReturnValueOnce({
       settings: {
         service: { publicOrigin: APP_ORIGIN },
@@ -434,7 +431,7 @@ describe('production chat turn credential boundary', () => {
       actor: 'human',
       principal: 'human-alice',
       scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development', 'ui4a:policy:publishing'],
-      policyScope: 'development',
+      grantedApplications: ['development', 'publishing'],
       channel: 'oidc',
       humanApprovalEligible: true,
     }));
@@ -460,20 +457,20 @@ describe('production chat turn credential boundary', () => {
     await response.text();
     expect(mocks.present).toHaveBeenCalledWith(
       expect.objectContaining({ subject: 'post:first-post' }),
-      { policyScope: 'development', grantedPolicyScopes: ['development', 'publishing'] },
+      { principal: 'human-alice', grantedApplications: ['development', 'publishing'] },
     );
   });
 
-  it.each([
-    ['read-only human', ['ui4a:read', 'ui4a:policy:development']],
-    ['human without policy scope', ['ui4a:read', 'ui4a:write']],
-  ])('rejects a %s before exchange, database, or Agent execution', async (_name, scopes) => {
+  it('rejects a read-only human before exchange, database, or Agent execution', async () => {
+    // D51 路由级收窄锚:交换请求的 scopes 必须是凭证 scopes 的子集(此处缺
+    // ui4a:write)。无 policy 声明的空授予封套在身份解析层已 fail-closed(见
+    // authentication-negative 的对应单元锚),不再由路由默认回退机器兜底。
     mocks.resolveIdentity.mockResolvedValueOnce({
       authorizationMode: 'credential',
       actor: 'human',
       principal: 'human-alice',
-      scopes,
-      policyScope: 'development',
+      scopes: ['ui4a:read', 'ui4a:policy:development'],
+      grantedApplications: ['development'],
       channel: 'oidc',
       humanApprovalEligible: true,
     });
@@ -538,14 +535,14 @@ describe('production chat turn credential boundary', () => {
       actor: 'human',
       principal: 'human-alice',
       scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
-      policyScope: 'development',
+      grantedApplications: ['development'],
       channel: 'oidc',
       humanApprovalEligible: true,
     });
     mocks.resolveIdentity.mockResolvedValueOnce({
       authorizationMode: 'credential',
       actor: 'agent',
-      policyScope: 'development',
+      grantedApplications: ['development'],
       channel: 'oidc',
       humanApprovalEligible: false,
       ...patch,

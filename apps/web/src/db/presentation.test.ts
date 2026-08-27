@@ -15,9 +15,9 @@ import {
 } from './presentation';
 
 const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');
+// D51:durable 键 = principal/subject/intent/device 四元组,无 scope 维度。
 const key: UserSidecarKey = {
   principal: 'user:mike',
-  policyScope: 'scope:v1',
   subject: 'post:first',
   intent: 'read',
   deviceClass: 'wide',
@@ -68,6 +68,11 @@ describe('Presentation PostgreSQL projection', () => {
         activeVersion: 1,
       });
     }
+    // D51:policy_scope 列停用,恒为空串占位;查询/判定均不读取它。
+    const stored = await pool.query<{ policy_scope: string }>(
+      'SELECT policy_scope FROM presentation_user_sidecars LIMIT 1',
+    );
+    expect(stored.rows[0]?.policy_scope).toBe('');
     await expect(
       findActiveSidecar(pool, { ...key, principal: 'user:other' }),
     ).resolves.toBeUndefined();

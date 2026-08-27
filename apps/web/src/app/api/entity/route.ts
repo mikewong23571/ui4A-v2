@@ -9,14 +9,11 @@ import {
   resolveTrustedRequestIdentity,
 } from '../../../auth/request-identity';
 import {
-  assertRelInPolicyScope,
+  assertReachable,
   assertThreadOwner,
-  filterEntityForPolicyScope,
+  filterEntityForGrantedApplications,
   filterThreadEntityForPrincipal,
-  relCoveredByPolicyScope,
 } from '../../../auth/application-scope';
-import { ensurePresenceTables, loadPresenceForPrincipal } from '../../../db/presence';
-import { assembleSituation, grantedPolicyScopes } from '../../../engine/situation';
 
 // GET /api/entity?rel=… — Siren 实体端点(spec FR3):
 // - 已知 rel(实例或集合)→ 200 四件组装 properties/actions/links/guard-results;
@@ -42,63 +39,40 @@ export async function GET(request: Request) {
   try {
     const db = getDb();
     const engine = await getEngine(db);
+    const snapshot = engine.getSnapshot();
+    const sitemap = engine.getSitemap();
     const identity = await resolveTrustedRequestIdentity(request, {
       plane: 'business',
       requiredScopes: ['ui4a:read'],
-      authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
-      defaultPolicyScope: 'development',
-      // 未显式请求 scope 时按 rel 归属选择已授予 scope(消除伪 403,不扩大授权)。
-      scopeCoverage: (policyScope) =>
-        relCoveredByPolicyScope(
-          { snapshot: engine.getSnapshot(), sitemap: engine.getSitemap(), plane: 'business' },
-          rel,
-          policyScope,
-        ),
+      authorizedPolicyScopes: Object.keys(snapshot.applications ?? {}),
     });
     const principal = identity.principal;
-    let presence;
-    try {
-      await ensurePresenceTables(db);
-      presence = await loadPresenceForPrincipal(db, principal);
-    } catch {
-      // Presence is auxiliary; entity reads remain available without its projection.
-    }
-    const requestedScope = new URL(request.url).searchParams.get('scope') ?? undefined;
-    const situation = assembleSituation({
-      principal,
-      grantedScopes: [...grantedPolicyScopes(identity.scopes), identity.policyScope],
-      presence,
-      explicit: requestedScope === undefined ? undefined : { scope: requestedScope },
-      defaults: { site: 'workstation', scope: identity.policyScope },
-    });
-    const policyScope = situation.scope;
-    const scopeContext = {
-      snapshot: engine.getSnapshot(),
-      sitemap: engine.getSitemap(),
-      policyScope,
-      plane: 'business' as const,
-    };
-    assertThreadOwner(scopeContext.snapshot, rel, principal);
+    // D51 授权口径:凭证授予的应用集合 × 事实归属(受众谓词),不再装配会话 scope。
+    const audienceContext = { snapshot, sitemap, plane: 'business' as const };
+    assertThreadOwner(snapshot, rel, principal);
     if (identity.authorizationMode === 'credential') {
-      assertRelInPolicyScope({ ...scopeContext, rel });
+      assertReachable(audienceContext, rel, identity.grantedApplications);
     }
     const projected = isAgentRunRel(rel)
-      ? await getAgentRunEntity(db, rel, principal, policyScope)
+      ? await getAgentRunEntity(db, rel, principal)
       : await engine.getEntity(rel);
     const principalScoped =
       projected === undefined || isAgentRunRel(rel)
         ? projected
-        : filterThreadEntityForPrincipal(projected, scopeContext.snapshot, rel, principal);
+        : filterThreadEntityForPrincipal(projected, snapshot, rel, principal);
     const entity =
       principalScoped === undefined || isAgentRunRel(rel)
         ? principalScoped
-        : await enrichEntityWithAgentRuns(db, principalScoped, principal, policyScope);
+        : await enrichEntityWithAgentRuns(db, principalScoped, principal);
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });
     }
     return Response.json(
       identity.authorizationMode === 'credential'
-        ? filterEntityForPolicyScope(entity, scopeContext)
+        ? filterEntityForGrantedApplications(entity, {
+            ...audienceContext,
+            grantedApplications: identity.grantedApplications,
+          })
         : entity,
     );
   } catch (error) {

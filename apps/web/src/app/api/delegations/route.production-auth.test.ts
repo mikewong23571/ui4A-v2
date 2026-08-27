@@ -52,8 +52,8 @@ const CREDENTIAL_IDENTITY = {
   authorizationMode: 'credential' as const,
   actor: 'human' as const,
   principal: 'human-alice',
-  scopes: ['ui4a:read', 'default'],
-  policyScope: 'default',
+  scopes: ['ui4a:read', 'ui4a:policy:default'],
+  grantedApplications: ['default'],
   channel: 'oidc',
   humanApprovalEligible: true,
 };
@@ -93,7 +93,6 @@ describe('GET /api/delegations production authentication wiring', () => {
         plane: 'business',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: ['default', 'publishing'],
-        defaultPolicyScope: 'default',
       }),
     );
   });

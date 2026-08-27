@@ -97,7 +97,7 @@ const AGENT_IDENTITY = {
   actor: 'agent' as const,
   principal: 'human-alice',
   scopes: ['ui4a:read', 'ui4a:write', 'development'],
-  policyScope: 'development',
+  grantedApplications: ['development'],
   channel: 'oidc',
   humanApprovalEligible: false,
   delegation: {
@@ -164,7 +164,6 @@ describe('POST /api/exec-plan production trusted identity', () => {
         plane: 'business',
         requiredScopes: ['ui4a:write'],
         authorizedPolicyScopes: ['development', 'publishing'],
-        defaultPolicyScope: 'development',
       }),
     );
     expect(mocks.applyTrustedIdentity).toHaveBeenCalledTimes(2);
@@ -238,10 +237,14 @@ describe('POST /api/exec-plan production trusted identity', () => {
     expect(mocks.execPlan).not.toHaveBeenCalled();
   });
 
-  // T22 验证修复:多 rel 计划的 scopeCoverage 要求一个已授予 scope 覆盖全部 rel;
-  // 闭包走真实 relCoveredByPolicyScope(application-scope 未 mock)。
-  it('exposes multi-rel scope coverage requiring one scope to cover every plan rel', async () => {
-    await POST(
+  it('still executes when every step rel stays inside one granted application', async () => {
+    // D51:不再要求单一会话 scope 覆盖全部步骤;每步受众谓词独立判定。
+    mocks.execPlan.mockResolvedValueOnce({
+      kind: 'plan-completed',
+      results: [],
+      entities: [],
+    });
+    const response = await POST(
       request({
         steps: [
           { rel: 'comment:c1', action: 'approve', params: {} },
@@ -249,25 +252,7 @@ describe('POST /api/exec-plan production trusted identity', () => {
         ],
       }),
     );
-    const singleApp = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as {
-      scopeCoverage?: (policyScope: string) => boolean;
-    };
-    expect(singleApp.scopeCoverage).toBeInstanceOf(Function);
-    expect(singleApp.scopeCoverage?.('development')).toBe(true);
-    expect(singleApp.scopeCoverage?.('publishing')).toBe(false);
-
-    await POST(
-      request({
-        steps: [
-          { rel: 'comment:c1', action: 'approve', params: {} },
-          { rel: 'post:publishing', action: 'archive', params: {} },
-        ],
-      }),
-    );
-    const mixed = mocks.resolveTrustedRequestIdentity.mock.calls[1]?.[1] as {
-      scopeCoverage?: (policyScope: string) => boolean;
-    };
-    expect(mixed.scopeCoverage?.('development')).toBe(false);
-    expect(mixed.scopeCoverage?.('publishing')).toBe(false);
+    expect(response.status).toBe(200);
+    expect(mocks.execPlan).toHaveBeenCalledTimes(1);
   });
 });

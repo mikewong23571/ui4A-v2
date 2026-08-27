@@ -20,11 +20,10 @@ import { getDb, getEngine, resetEngineForTests } from './service';
 // "改一处 presence → 两处行为同变"。
 // - fixture:appendPresenceChange 写入可辨识 presence 投影(site/scope 各一条);
 // - chat 消费方:situationForChat 真实调用(与 /api/chat 同一函数接线),identity 经
-//   resolveTrustedRequestIdentity 本地 header 方案构造(grant 集与 entity 路由同源);
-// - entity 消费方:真实 GET /api/entity handler。self-reported 授权下业务输出面里
-//   唯一随派生 scope 变化的读模型是 Agent Run 过滤(listAgentRuns 按 principal +
-//   policyScope 精确过滤;filterEntityForPolicyScope 仅 credential 模式生效),
-//   故以 seed 双 scope 的 Agent Run 观察派生 policyScope 缺省;
+//   resolveTrustedRequestIdentity 本地方案构造(授予集合 = 服务端已安装应用全集,
+//   D51);
+// - Agent Run 读模型经真实 GET /api/entity handler 断言授予并集口径(D51):集合
+//   按 principal 返回全部自有 Run,不再随会话 lens 过滤;
 // - 授权纪律:fixture scope 只取服务端已安装 Application 的授权集内值(动态取自
 //   快照,不钉死词表);越权场景留给 Phase C(R9/R10)。site 断言用 fixture 值等式,
 //   不钉死 site 词表(T27 改名中)。
@@ -48,7 +47,7 @@ async function installedScopes(): Promise<string[]> {
   return Object.keys(engine.getSnapshot().applications ?? {}).sort();
 }
 
-/** 与 /api/chat 本地接线同构的 identity(scopes/policyScope 来自服务端授权集)。 */
+/** 与 /api/chat 本地接线同构的 identity(授予集合来自服务端已安装应用,D51)。 */
 async function chatSituation() {
   const identity = await resolveTrustedRequestIdentity(
     new Request('http://localhost:3100/api/chat', { headers: { 'x-ui4a-principal': PRINCIPAL } }),
@@ -56,7 +55,6 @@ async function chatSituation() {
       plane: 'business',
       requiredScopes: ['ui4a:read'],
       authorizedPolicyScopes: await installedScopes(),
-      defaultPolicyScope: 'development',
     },
   );
   return situationForChat({ principal: PRINCIPAL, identity });
@@ -96,35 +94,42 @@ beforeEach(async () => {
 });
 
 describe('T29 situation consumer matrix (behavioral)', () => {
-  it('one presence write moves the chat plane and the entity scope default together', async () => {
-    // 授权集内的两个 Application scope 动态取自快照;seed 每个 scope 一个 Agent Run。
+  it('one presence write moves the chat plane and its disclosure slice together', async () => {
+    // 授权集内的两个 Application scope 动态取自快照。
     const [scopeA, scopeB] = await installedScopes();
     expect(scopeA).toBeDefined();
     expect(scopeB).toBeDefined();
-    await appendAgentRunCommand(pool, createRun('matrix-run-a', scopeA));
-    await appendAgentRunCommand(pool, createRun('matrix-run-b', scopeB));
 
-    // 状态 A:同一次 presence 投影喂出两处一致的派生事实。
+    // 状态 A:同一次 presence 投影喂出 chat 处境与其披露切片的一致事实。
     await writePresence('desk-alpha', scopeA);
     const chatA = await chatSituation();
     expect(chatA.site).toBe('desk-alpha');
     expect(chatA.scope).toBe(scopeA);
-    expect(chatA.disclosure.scope).toBe(chatA.scope);
-    const runsA = await agentRunsCollection();
-    expect(runsA.status).toBe(200);
-    expect(runsA.count).toBe(1);
-    expect(runsA.ids).toEqual(['matrix-run-a']);
+    expect(chatA.disclosure).toEqual({
+      scope: chatA.scope,
+      thread: chatA.thread,
+      focus: chatA.focus,
+    });
 
-    // 状态 B:只改一处(presence 投影),两个消费方同向变化(B 藏起 A 的 run)。
+    // 状态 B:只改一处(presence 投影),处境与披露切片同向变化。
     await writePresence('desk-beta', scopeB);
     const chatB = await chatSituation();
     expect(chatB.site).toBe('desk-beta');
     expect(chatB.scope).toBe(scopeB);
     expect(chatB.disclosure.scope).toBe(chatB.scope);
-    const runsB = await agentRunsCollection();
-    expect(runsB.status).toBe(200);
-    expect(runsB.count).toBe(1);
-    expect(runsB.ids).toEqual(['matrix-run-b']);
+  });
+
+  it('agent-run read model returns all principal-owned runs regardless of lens (D51)', async () => {
+    const [scopeA, scopeB] = await installedScopes();
+    await appendAgentRunCommand(pool, createRun('matrix-run-a', scopeA));
+    await appendAgentRunCommand(pool, createRun('matrix-run-b', scopeB));
+
+    await writePresence('desk-beta', scopeB);
+    const runs = await agentRunsCollection();
+    expect(runs.status).toBe(200);
+    // HTTP 合同按授予并集返回本人名下全部 Run;lens 只影响披露切片与落点。
+    expect(runs.count).toBe(2);
+    expect([...runs.ids].sort()).toEqual(['matrix-run-a', 'matrix-run-b']);
   });
 
   it('clientView ingress keeps the retired route-bearing wire shape absent (auxiliary freeze)', () => {

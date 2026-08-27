@@ -41,12 +41,6 @@
       "note": "T26–T31 累计(组合 assembly、canonical Recipe slot/promotion 与多源 fastpath 属 Presentation 纯内核直接模块);T30/T31 R12-R13 已按业务优先不为凑行数拆分(workflow 授权),T31 期间统一 slot 语法后 src 净收缩、基线现值为 R13 后实测;shrink-only 自 T31 关闭起算,处置计划=后续 CompositionDefinition 治理晋升时按 compose/recipe/sidecar 子域归档直接文件合并收缩"
     },
     {
-      "path": "apps/web/src/auth",
-      "lines": 4166,
-      "limit": 4000,
-      "note": "T26 在途:principal-scoped Work Thread owner/scope 过滤按授权边界归属 auth/;业务优先不为凑行数拆分(workflow 业务优先原则 2026-08-26),shrink-only 自 T26 关闭起算;收缩窗口=T27 workstation 接入时将 principal resource helpers 提炼到独立 auth 子目录;T31 R7 thread 裁剪改声明式 principal member family 推导(governedByPrincipalMemberFamily)+行为测试净增,业务优先不为凑行数拆分(2026-08-27 授权 subagent 自行登记口径),shrink-only 自 T31 关闭起算"
-    },
-    {
       "path": "apps/web/src/db",
       "lines": 4155,
       "limit": 4000,
@@ -60,9 +54,9 @@
     },
     {
       "path": "e2e",
-      "lines": 4507,
+      "lines": 4536,
       "limit": 4000,
-      "note": "T27 workstation-home CLI/Sidecar/DOM、workstation-situation presence 留痕、flow 双桥/ghost 诚实失败 standing E2E、I3 双桥覆盖及 S2 raw replay/alias 诚实性修正后累计(tracked total 见行数,按 workflow 业务优先不裁剪验收证据);T28 一等交互已闭环并按 GR5 归并重复 Presentation/server setup 到 e2e/kits,无 bespoke track 配置残留;shrink-only 自 T28 关闭起算"
+      "note": "T27 workstation-home CLI/Sidecar/DOM、workstation-situation presence 留痕、flow 双桥/ghost 诚实失败 standing E2E、I3 双桥覆盖及 S2 raw replay/alias 诚实性修正后累计(tracked total 见行数,按 workflow 业务优先不裁剪验收证据);T28 一等交互已闭环并按 GR5 归并重复 Presentation/server setup 到 e2e/kits,无 bespoke track 配置残留;shrink-only 自 T28 关闭起算;T33 Phase 0 五景走查锚 e2e/t33-authority-attention.spec.ts +111(D51 完成定义,业务优先不为凑行数裁剪验收证据,2026-08-27 用户授权业务优先原则),T33 关闭时按 GR5 裁决(并入 kits 或随五景证据常驻评估收缩)"
     }
   ]
 }

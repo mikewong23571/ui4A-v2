@@ -783,7 +783,6 @@ export async function POST(request: Request) {
         productionConfig: config,
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: policyScopes,
-        defaultPolicyScope: policyScopes[0]!,
         plane: 'business',
       });
       productionSubjectToken = subjectToken;
@@ -814,8 +813,8 @@ export async function POST(request: Request) {
   const sessionId = productionIdentity?.principal ?? parsed.sessionId;
   const principal = productionIdentity?.principal ?? `user:${sessionId}`;
   const presentationPrincipal = productionIdentity?.principal ?? LOCAL_PRESENTATION_PRINCIPAL;
-  // Presentation 的目标 rel 在身份解析后才出现:granted scope 集合随上下文下传到
-  // Broker,由授权点按 rel 做覆盖选择(与 /api/entity 的 scopeCoverage 同口径)。
+  // Presentation 的目标 rel 在身份解析后才出现:授予集合(grantedApplications)
+  // 随上下文下传 Broker,授权由咽喉点按授予集合 × 事实归属判定(D51)。
   const presentationContext = presentationContextForIdentity(productionIdentity);
   const situation = await situationForChat({
     principal,
@@ -833,8 +832,8 @@ export async function POST(request: Request) {
     let authorizationHeader: string;
     if (mode === 'inline') {
       // 收窄口径:human granted ∩ agentScopes 的 policy scopes 全量携带(chat 无 scope
-      // 选择器,回合内合同读取的 rel 归属哪个应用事先不可知;接收端 /api/entity 的
-      // scopeCoverage 再按 rel 逐请求收窄)。相对 human grant 仍是严格收窄(剥离
+      // 选择器,回合内合同读取的 rel 归属哪个应用事先不可知;接收端 /api/entity 按
+      // 授予集合 × 归属逐请求判定)。相对 human grant 仍是严格收窄(剥离
       // ui4a:approve 与非 agent scope)。
       const requestedScopes = [
         'ui4a:read',
@@ -843,9 +842,14 @@ export async function POST(request: Request) {
           (scope) => scope.startsWith('ui4a:policy:') && productionIdentity.scopes.includes(scope),
         ),
       ];
-      // 纵深防御:identity 宣称的 policyScope 必须有对应 granted scope 背书(正常路径
-      // 由 resolveCredentialPolicyScope 保证;此处防 identity 适配层漂移)。
-      if (!requestedScopes.includes(`ui4a:policy:${productionIdentity.policyScope}`)) {
+      const exchangedPolicyScopes = requestedScopes
+        .filter((scope) => scope.startsWith('ui4a:policy:'))
+        .map((scope) => scope.slice('ui4a:policy:'.length));
+      // 纵深防御(D51):交换请求携带的每个 policy 应用名都必须有凭证授予集合背书
+      // (正常路径由身份解析保证;此处防 identity 适配层漂移)。
+      if (
+        exchangedPolicyScopes.some((app) => !productionIdentity.grantedApplications.includes(app))
+      ) {
         return agentAuthorizationErrorResponse('agent_scope_exceeded');
       }
       if (requestedScopes.some((scope) => !productionIdentity.scopes.includes(scope))) {
@@ -860,11 +864,8 @@ export async function POST(request: Request) {
           requestedScopes,
         });
         // 接收端校验的 delegated scope 白名单必须与本次交换携带的 policy scopes 一致
-        // (全量 granted),否则 policyFor 按单个 policyScope 收窄会误报
+        // (全量授予并集),否则 policyFor 按单个 policyScope 收窄会误报
         // delegation_scope_exceeded。
-        const exchangedPolicyScopes = requestedScopes
-          .filter((scope) => scope.startsWith('ui4a:policy:'))
-          .map((scope) => scope.slice('ui4a:policy:'.length));
         const delegatedIdentity = await resolveTrustedRequestIdentity(
           new Request(request.url, {
             headers: { authorization: credential.authorizationHeader },
@@ -874,7 +875,6 @@ export async function POST(request: Request) {
             productionConfig,
             requiredScopes: requestedScopes,
             authorizedPolicyScopes: exchangedPolicyScopes,
-            defaultPolicyScope: productionIdentity.policyScope,
             plane: 'business',
           },
         );
