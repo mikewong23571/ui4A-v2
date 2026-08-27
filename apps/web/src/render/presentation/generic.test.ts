@@ -3,12 +3,15 @@ import { describe, expect, it } from 'vitest';
 
 import {
   GENERIC_INTENT_POLICY,
+  planGenericSurface,
   selectGenericFieldCandidates,
   type SirenEntity,
   type SurfaceNode,
 } from '@ui4a/engine';
 
-import { planGenericPresentationSurface } from './generic';
+import { PRESENTATION_SURFACE_CATALOG } from '../../engine/presentation/catalog';
+import { semanticHintsOf } from '../../engine/presentation/situation';
+import { hydratePresentationSurface, planGenericPresentationSurface } from './generic';
 
 function propertyIdentityPaths(node: SurfaceNode): string[] {
   if (node.kind === 'layout') return node.children.flatMap(propertyIdentityPaths);
@@ -90,6 +93,29 @@ describe('generic Presentation runtime plan', () => {
     expect(plan.bundle.issues).toEqual([]);
     expect(JSON.stringify(plan.surface)).toContain('article-drafting:main');
     expect(JSON.stringify(plan.surface)).not.toContain('$slot');
+  });
+
+  it('hydrate 按注视 subject 别名单根依赖实体,绑定不因规范 rel 漂移集体失败(T35 F-03)', () => {
+    // 服务端 runtime.plan 以请求 subject(flow:article-drafting)与别名后的
+    // 实例实体规划 surface;hydrate 拿到的单根依赖实体 rel 是实例 rel。
+    // 绑定 deref 不得因规范 rel 漂移而集体落空。
+    const aliasedEntity: SirenEntity = {
+      ...post,
+      properties: { ...post.properties, rel: 'article-drafting:main' },
+    };
+    const planned = planGenericSurface(
+      'flow:article-drafting',
+      aliasedEntity,
+      PRESENTATION_SURFACE_CATALOG,
+      {
+        entityVersion: 'definition-v1',
+        intent: 'read',
+        semanticHints: semanticHintsOf(aliasedEntity),
+        provenanceRef: 'request:test',
+      },
+    );
+    const plan = hydratePresentationSurface('flow:article-drafting', planned, [aliasedEntity]);
+    expect(plan.bundle.issues).toEqual([]);
   });
 
   it('uses a collection-declared human title as identity while retaining the canonical rel', () => {

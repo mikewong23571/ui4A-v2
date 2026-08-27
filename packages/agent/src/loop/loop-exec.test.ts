@@ -296,4 +296,42 @@ describe('副作用来源与目标授权门(U10–U12)', () => {
       op: { kind: 'exec-plan' },
     });
   });
+
+  it('同一动作同一参数第二次被拒即机械收敛,不烧后续步数(T35 C5)', async () => {
+    const transport = contractTransport({
+      entities: { 'post:post-welcome': postWelcomeEntity },
+      // exec 全部 409 拒绝(合同结构化拒绝)。
+      execResponses: [],
+    });
+    const base = (url: string, init?: RequestInit): Response => {
+      if (url === execUrl(BASE) && init?.method === 'POST') {
+        return jsonResponse({ error: 'guard 不满足: is-published=false' }, { status: 409 });
+      }
+      return jsonResponse(postWelcomeEntity);
+    };
+    const scripted = createScriptedTransport(base);
+    const driver = new ScriptedDriver([
+      { kind: 'exec', action: 'unpublish' },
+      { kind: 'exec', action: 'unpublish' },
+      { kind: 'exec', action: 'unpublish' },
+      { kind: 'done', summary: '不该到达' },
+    ]);
+
+    const result = await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: scripted.fetch,
+      startRel: 'post:post-welcome',
+    });
+
+    expect(result.outcome).toBe('failed');
+    const rejected = result.steps.filter((step) => step.outcome === 'rejected');
+    expect(rejected).toHaveLength(2);
+    expect(result.steps.at(-1)?.op).toMatchObject({
+      kind: 'fail',
+      code: 'repeated_rejection',
+      reason: expect.stringContaining('同一动作反复被拒'),
+    });
+    // driver 不再被询问第三遍。
+    expect(driver.contexts.length).toBeLessThanOrEqual(3);
+  });
 });

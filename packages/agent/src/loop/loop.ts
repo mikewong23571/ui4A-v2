@@ -195,6 +195,30 @@ export async function runAgent(
   const successes: ExecSuccess[] = [];
   const observations: ContractObservation[] = [];
   let lastRejection: RejectionRecord | undefined;
+  // T35 C5:同一动作同一参数反复被拒的机械收敛——计划重试被拒动作不烧步数,
+  // 第二次同键拒绝即结构化失败(code=repeated_rejection,原因回流)。
+  const rejectionCounts = new Map<string, number>();
+  const recordRepeatedRejection = async (
+    step: Parameters<typeof pushStep>[0]['step'],
+    rel: string,
+    action: string | undefined,
+    params: Record<string, unknown> | undefined,
+    rejection: RejectionRecord,
+  ): Promise<boolean> => {
+    const key = `${rel}|${action ?? ''}|${JSON.stringify(params ?? {})}`;
+    const count = (rejectionCounts.get(key) ?? 0) + 1;
+    rejectionCounts.set(key, count);
+    if (count < 2) return false;
+    const op = {
+      kind: 'fail' as const,
+      // 结构化失败码(T24 口径):机械终止带 code 供上层组装;原因回流原拒绝。
+      code: 'repeated_rejection',
+      reason: `同一动作反复被拒（${count} 次），机械收敛：${rejection.reason}`,
+      evidence: [`${rejection.rel}#${rejection.action ?? ''}`, `layer:${rejection.layer ?? ''}`],
+    };
+    await pushStep({ step, rel, op, outcome: 'failed' });
+    return true;
+  };
   // 同一合同处境第三次出现且期间没有成功 exec，说明 driver 正在机械绕圈。
   // 循环不猜业务完成条件，只对完全相同的可观察状态做协议级有限性保护。
   const stateVisits = new Map<string, number>();
@@ -427,6 +451,23 @@ export async function runAgent(
           outcome: 'rejected',
           rejection: authorizationRejection,
         });
+        if (
+          await recordRepeatedRejection(
+            step,
+            currentRel,
+            'exec-plan',
+            undefined,
+            authorizationRejection,
+          )
+        ) {
+          return {
+            goal,
+            outcome: 'failed',
+            summary: lastRejection.reason,
+            steps: trail,
+            successes,
+          };
+        }
         continue;
       }
       const call = await client.execPlan({
@@ -456,6 +497,9 @@ export async function runAgent(
       };
       lastRejection = rejection;
       await pushStep({ step, rel: currentRel, op, outcome: 'rejected', rejection });
+      if (await recordRepeatedRejection(step, currentRel, 'exec-plan', undefined, rejection)) {
+        return { goal, outcome: 'failed', summary: rejection.reason, steps: trail, successes };
+      }
       continue;
     }
 
@@ -471,6 +515,23 @@ export async function runAgent(
         outcome: 'rejected',
         rejection: authorizationRejection,
       });
+      if (
+        await recordRepeatedRejection(
+          step,
+          currentRel,
+          op.action,
+          op.params,
+          authorizationRejection,
+        )
+      ) {
+        return {
+          goal,
+          outcome: 'failed',
+          summary: authorizationRejection.reason,
+          steps: trail,
+          successes,
+        };
+      }
       continue;
     }
 
@@ -508,6 +569,9 @@ export async function runAgent(
       };
       lastRejection = rejection;
       await pushStep({ step, rel: currentRel, op, outcome: 'rejected', rejection });
+      if (await recordRepeatedRejection(step, currentRel, op.action, op.params, rejection)) {
+        return { goal, outcome: 'failed', summary: rejection.reason, steps: trail, successes };
+      }
     }
   }
 

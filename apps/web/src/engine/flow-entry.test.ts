@@ -54,21 +54,22 @@ describe('flow instances collection projection (T35 F-02)', () => {
   it('lists every live instance for multi-instance flows without inventing truth', () => {
     const entity = flowInstancesCollection(
       'flow:post-status',
-      snapshot(instance('post:a','post-status'), instance('post:b','post-status')),
+      snapshot(instance('post:a', 'post-status'), instance('post:b', 'post-status')),
       FLOWS,
     );
     expect(entity!.properties.count).toBe(2);
-    expect(entity!.entities!.map((member) => member.properties.rel)).toEqual([
-      'post:a',
-      'post:b',
-    ]);
+    expect(entity!.entities!.map((member) => member.properties.rel)).toEqual(['post:a', 'post:b']);
     // 成员只携带实例自身投影字段,不复制目标实体内容(T26 口径同源)。
     expect(entity!.entities![0]!.properties.flow).toBe('post-status');
     expect(entity!.entities![0]!.properties.node).toBe('title');
   });
 
   it('carries a self link and no actions (read-only listing)', () => {
-    const entity = flowInstancesCollection('flow:post-status', snapshot(instance('post:a','post-status')), FLOWS);
+    const entity = flowInstancesCollection(
+      'flow:post-status',
+      snapshot(instance('post:a', 'post-status')),
+      FLOWS,
+    );
     expect(entity!.actions).toHaveLength(0);
     expect(entity!.links.some((link) => link.rel.includes('self'))).toBe(true);
   });

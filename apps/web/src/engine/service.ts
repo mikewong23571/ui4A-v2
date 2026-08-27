@@ -78,7 +78,11 @@ import { bootstrapAndVerifyApplication } from './bootstrap';
 export { bootstrapAndVerifyApplication } from './bootstrap';
 import type { RenderSpec } from '../render/spec';
 import { dispatchNotify } from '../temporal/notify';
-import { flowInstancesCollection, resolveFlowRelAlias, withCollectionFlowEntryLinks } from './flow-entry';
+import {
+  flowInstancesCollection,
+  resolveFlowRelAlias,
+  withCollectionFlowEntryLinks,
+} from './flow-entry';
 import { preflightCodingResultDecision } from './agent/coding-result-decision';
 import {
   createAndDispatchAgentRun,

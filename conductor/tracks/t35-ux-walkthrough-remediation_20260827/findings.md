@@ -32,7 +32,7 @@
 
 ## F-02 meta"查看活实例"死链,并污染聊天注视(P0)
 
-- **状态**: fixing
+- **状态**: rechecked(2026-08-27 关闭)
 - **严重度**: P0(跨面闭环断裂 + 连带破坏产品示例场景)
 - **发现**: R1(2026-08-27)
 - **现象**: meta 流程详情顶栏"查看活实例"指向 `/canvas?focus=flow:post-status&scope=publishing`;该 focus 实体不存在(flow 定义不是实例),画布整页只剩一行红字"部分内容暂时无法显示"。此后在聊天发送首页建议的示例任务「发布一篇文章」,助手失败:"发布文章失败,因为实体 \"flow:post-status\" 不存在"——无效注视写入了会话上下文。
@@ -40,6 +40,8 @@
 - **证据**: `evidence/2026-08-27-initial-walkthrough/12_cross_plane_dead_end.png`、`15_chat_fail_flow_gaze.png`。
 - **初步根因**: 链接生成把 flow 定义 rel 直接当实例 focus;无效 gaze 的持久化/透传无拦截。
 - **处置**: plan Phase B;复验故事 S5。
+- **修复记录(2026-08-27,commit 6b70656)**: 根因=根因:根因=sitemap 声明了 `flow:<name>` 表面但服务层只在恰一实例(向导语义)时兑现,状态机类 flow(零/多实例)404。修复=服务层新增只读实例集合投影 `flowInstancesCollection`(成员=实例自身快照字段,零新真相;未知 flow 名保持 404);画布 focus 不可解析时呈现结构化空态(D51 中性口径+返回首页,机制细节只进 why 抽屉);同文错误行聚合去重(为 F-03 的呈现面先行收口)。
+- **复验记录**: 2026-08-27 浏览器实测:`/canvas?focus=flow:post-status` 呈现 3 个活实例成员(可点);未知 rel 呈现空态卡(中性措辞+返回首页,无裸 rel)。故事 S5 正式验收待 Phase F;截图 `evidence/2026-08-27-phase-b/`。成员标签当前显示 raw rel(业务 identity 缺席),转 F-05/D 轮成员标签口径处理。
 
 ## F-03 起草向导 surface deref 失败,画布堆叠重复错误行(P0)
 

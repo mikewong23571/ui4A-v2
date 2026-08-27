@@ -8,26 +8,26 @@
 
 ## Phase A 动作回执与 surface 失效(修 F-01;故事 S2/S3/S4)
 
-- [ ] Task: A1 红灯——语义回归测试先行
-  - [ ] 在 `apps/web/src/engine/presentation`(runtime/broker 层)补测试:exec 成功事件后,受影响 subject 的用户 sidecar 必须失效(同键再取不得返回旧版本)
-  - [ ] 在 `apps/web/src/components/actions/action-group.tsx` 相关测试补:动作提交后存在 pending 态与结果回执呈现通道(结构化,零文案模板)
-  - [ ] `pnpm vitest run` 相关文件确认红灯
-- [ ] Task: A2 实现——exec → sidecar 失效/重算链路(定位 `apps/web/src/engine/presentation/runtime.ts`、`apps/web/src/db/presentation.ts`、exec 路由 service 钩子;不新增处境装配点)
-- [ ] Task: A3 实现——动作控件 pending/回执呈现(投影更新为硬要求;回执走合同插值,不加 toast 文案库)
-- [ ] Task: A4 排查首页双"创建工作线"按钮重复渲染(F-15)
-- [ ] Task: A5 回归——`pnpm vitest run --project unit` + `pnpm governance` 全绿
-- [ ] Task: A6 Phase 视觉验收 & Checkpoint:按 user-stories.md 走 S2/S3/S4,截图入 `evidence/<date>-S2|S3|S4/`,findings 回填 F-01/F-15 复验记录
-- [ ] Task: A7 提交 `fix(t35): exec 后 surface 失效与动作回执(F-01,F-15)`
+- [x] Task: A1 红灯——语义回归测试先行
+  - [x] 在 `apps/web/src/engine/presentation`(runtime/broker 层)补测试:exec 成功事件后,受影响 subject 的用户 sidecar 必须失效(同键再取不得返回旧版本)
+  - [x] 在 `apps/web/src/components/actions/action-group.tsx` 相关测试补:动作提交后存在 pending 态与结果回执呈现通道(结构化,零文案模板)
+  - [x] `pnpm vitest run` 相关文件确认红灯
+- [x] Task: A2 实现——exec → sidecar 失效/重算链路(定位 `apps/web/src/engine/presentation/runtime.ts`、`apps/web/src/db/presentation.ts`、exec 路由 service 钩子;不新增处境装配点)
+- [x] Task: A3 实现——动作控件 pending/回执呈现(投影更新为硬要求;回执走合同插值,不加 toast 文案库)
+- [x] Task: A4 排查首页双"创建工作线"按钮重复渲染(F-15)
+- [x] Task: A5 回归——`pnpm vitest run --project unit` + `pnpm governance` 全绿
+- [x] Task: A6 Phase 视觉验收 & Checkpoint:按 user-stories.md 走 S2/S3/S4,截图入 `evidence/<date>-S2|S3|S4/`,findings 回填 F-01/F-15 复验记录
+- [x] Task: A7 提交 `fix(t35): exec 后 surface 失效与动作回执(F-01,F-15)`
 
 ## Phase B 跨面链接与无效注视(修 F-02;故事 S5)
 
-- [ ] Task: B1 红灯——`apps/web/src/presence/navigation.ts` 链接投影测试:"查看活实例"必须指向实例集合(存在性由集合 rel 决定),不得以 flow 定义 rel 作 focus
-- [ ] Task: B2 实现——修正链接目标生成(flow → 活实例集合视图)
-- [ ] Task: B3 红灯——canvas focus 解析失败测试:结构化空态(目标不存在 + 恢复入口),且不得把无效 focus 写入会话上下文(presence/chat clientView 侧)
-- [ ] Task: B4 实现——无效 focus 结构化空态与上下文隔离(与 D51 缺失语义一致)
-- [ ] Task: B5 回归——`pnpm vitest run --project unit` + `pnpm governance` 全绿
-- [ ] Task: B6 Phase 视觉验收 & Checkpoint:S5 走查,截图,findings 回填 F-02
-- [ ] Task: B7 提交 `fix(t35): 活实例链接与无效注视结构化空态(F-02)`
+- [x] Task: B1 红灯——`apps/web/src/presence/navigation.ts` 链接投影测试:"查看活实例"必须指向实例集合(存在性由集合 rel 决定),不得以 flow 定义 rel 作 focus
+- [x] Task: B2 实现——修正链接目标生成(flow → 活实例集合视图)
+- [x] Task: B3 红灯——canvas focus 解析失败测试:结构化空态(目标不存在 + 恢复入口),且不得把无效 focus 写入会话上下文(presence/chat clientView 侧)
+- [x] Task: B4 实现——无效 focus 结构化空态与上下文隔离(与 D51 缺失语义一致)
+- [x] Task: B5 回归——`pnpm vitest run --project unit` + `pnpm governance` 全绿
+- [x] Task: B6 Phase 视觉验收 & Checkpoint:S5 走查,截图,findings 回填 F-02
+- [x] Task: B7 提交 `fix(t35): 活实例链接与无效注视结构化空态(F-02)`
 
 ## Phase C 人机同门:向导渲染、错误聚合、代理收敛(修 F-03/F-04;故事 S6)
 

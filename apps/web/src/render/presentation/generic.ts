@@ -81,8 +81,16 @@ export function hydratePresentationSurface(
   roots: SirenEntity | readonly SirenEntity[],
 ): GenericPresentationPlan {
   const entities = new Map<string, SirenEntity>();
-  for (const root of Array.isArray(roots) ? roots : [roots]) {
+  const rootList = Array.isArray(roots) ? roots : [roots];
+  for (const root of rootList) {
     for (const [rel, entity] of presentationEntityMap(root)) entities.set(rel, entity);
+  }
+  // T35 F-03:sidecar 按注视 subject(flow:<name>)规划绑定,但服务端 flow
+  // 别名会以实例 rel(<name>:main)返回依赖实体——单根时把注视 subject 映射
+  // 到该根,绑定 deref 不因规范 rel 漂移而集体落空。零新事实:同一实体两个键。
+  if (!entities.has(subject) && rootList.length === 1) {
+    const only = relOf(rootList[0]!);
+    if (only !== undefined && only !== subject) entities.set(subject, rootList[0]!);
   }
   const bundle = compileSurfaceTree(surface, {
     surfaceId: `presentation-${encodeURIComponent(subject)}`,
