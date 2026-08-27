@@ -810,3 +810,28 @@
 
 纯修复项确认:Q1/Q2/Q4/Q5/Q7/Q8/Q9/Q10 无裁决分歧,按 spec 直接进入实施;
 归后续 Q11–Q14 按计划处置。
+
+## D50 身份解析必须按目标 rel 做 granted scope 覆盖选择(2026-08-27,GR6)
+
+- **背景**:多个路由调用 `resolveTrustedRequestIdentity` 时不传
+  `scopeCoverage` 闭包,`policyScope` 被冻结为 `defaultPolicyScope`
+  字面量/配置首项;多 scope 用户对归属其它 application 的 rel 发起
+  entity/exec 时被伪 403(授权本身合法)。D38 已在 `/api/entity`、
+  `/api/exec`、`/api/exec-plan` 按 rel 归属选择已授予 scope,但同类病灶
+  在 chat、presentation、meta 等入口反复出现,属系统性回归风险。
+- **决定**:身份解析的 `policyScope` 选择是授权语义的一部分,必须在每个
+  调用点显式决策:凡在身份解析时已知目标 rel 且下游消费 `policyScope`
+  的端点,必须传 `scopeCoverage` 闭包(按目标 rel 在 granted scope 集合中
+  选择,不扩大授权);会话级冻结 scope(不传 `scopeCoverage`)仅允许登记
+  例外——端点在解析时无单一目标 rel(如 chat turn、发现文档)或不消费
+  `policyScope`(如审计读、委托读),登记于
+  `scripts/governance/exceptions.json` 的 `identity-scope-selection`,
+  含 reason 与 retireWhen, shrink-only。由 GR6 静态扫描机械执行
+  (`scripts/governance/check-identity-scope.mjs`)。
+- **理由**:scope 冻结把"凭证授予了哪些 application"与"本次操作归属哪个
+  application"混为一谈,既产生伪 403(可用性 bug),也让默认 scope 成为
+  隐性特权位;逐调用点显式化后,授权选择与目标 rel 的关系可被静态审计,
+  例外登记使"无单一 rel"的端点显式承担该语义。
+- **影响**:`/api/meta/entity`、`/api/meta/exec`、`/api/presentation` 等
+  入口按同口径补 `scopeCoverage`;新路由引入身份解析调用时默认受门禁
+  约束,例外须先登记后合入。

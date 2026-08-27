@@ -1,5 +1,5 @@
 {
-  "$schema": "T23 governance exceptions registry. dependencyExceptions: GR1 direction exceptions with reason + retireWhen. compatAllowlist: GR2 baseline of legacy/compat markers; pendingRemoval: true = shrink-only debt, false = permanent legitimate wording.",
+  "$schema": "T23 governance exceptions registry. dependencyExceptions: GR1 direction exceptions with reason + retireWhen. compatAllowlist: GR2 baseline of legacy/compat markers; pendingRemoval: true = shrink-only debt, false = permanent legitimate wording. identity-scope-selection: GR6 exceptions for resolveTrustedRequestIdentity call sites without scopeCoverage (no single target rel / policyScope not consumed); shrink-only, stale entries fail the gate.",
   "dependencyExceptions": [
     {
       "from": "apps/worker/src",
@@ -54,6 +54,48 @@
       "path": "packages/shared/src/presentation/chat-view.test.ts",
       "reason": "T29 presence 合同测试的 '/legacy' 路由夹具串(断言其被禁),非历史兼容债务",
       "pendingRemoval": false
+    }
+  ],
+  "identity-scope-selection": [
+    {
+      "path": "apps/web/src/app/api/chat/route.ts",
+      "reason": "turn 级端点:目标 rel 在身份解析之后才由 driver/plan 产生,解析时没有单一 rel;逐目标 scope 选择由 Presentation Broker 与执行路径按 granted 集合完成(relCoveredByPolicyScope / assertRelInPolicyScope)",
+      "retireWhen": "chat 端点改为在身份解析前确定单一目标 rel 时,改传 scopeCoverage 并移除本例外"
+    },
+    {
+      "path": "apps/web/src/app/api/events/route.ts",
+      "reason": "审计只读端点:不消费 policyScope,仅用 principal 与 credential 比对过滤,无 scope 归属判定",
+      "retireWhen": "该端点未来按 policyScope 过滤事件时,改传 scopeCoverage 并移除本例外"
+    },
+    {
+      "path": "apps/web/src/app/api/delegations/route.ts",
+      "reason": "委托列表读:不消费 policyScope,实体投影由引擎授权收口,身份解析仅做认证",
+      "retireWhen": "该端点未来按 policyScope 过滤列表时,改传 scopeCoverage 并移除本例外"
+    },
+    {
+      "path": "apps/web/src/app/api/delegations/[id]/route.ts",
+      "reason": "委托详情读:不消费 policyScope,与列表同口径",
+      "retireWhen": "该端点未来按 policyScope 裁决可见性时,改传 scopeCoverage 并移除本例外"
+    },
+    {
+      "path": "apps/web/src/app/api/presence/route.ts",
+      "reason": "presence 写入用 granted 全集合成员检查(grantedPolicyScopes(scopes)+policyScope)裁决 scope 切换,不依赖单一被冻结的 policyScope",
+      "retireWhen": "presence 语义改为按单一目标 rel 归属裁决时,改传 scopeCoverage 并移除本例外"
+    },
+    {
+      "path": "apps/web/src/app/.well-known/ui4a.json/route.ts",
+      "reason": "应用发现文档:无单一目标 rel,sitemap 与 agent 目录按 granted scope 并集过滤(filterSitemapForPolicyScopes / getAgentDefinitionCatalogForScopes),policyScope 只是 granted 集合的成员之一",
+      "retireWhen": "发现文档改为按单一 rel 归属裁决可见性时,改传 scopeCoverage 并移除本例外"
+    },
+    {
+      "path": "apps/web/src/app/api/presentation/sidecar/route.ts",
+      "reason": "sidecar 管理端点:身份解析时没有单一目标 rel(按 sidecarId/key 寻址);授权由 authorizeStoredSidecar 按 stored key 的 policyScope ∈ granted 集合判定,源码重授权也按 stored scope 执行,不依赖被冻结的 identity.policyScope",
+      "retireWhen": "sidecar 端点改为在身份解析前确定单一目标 rel 时,改传 scopeCoverage 并移除本例外"
+    },
+    {
+      "path": "apps/web/src/app/api/meta/.well-known/ui4a.json/route.ts",
+      "reason": "meta 发现文档:无单一目标 rel,按 granted 并集(grantedPolicyScopes)过滤 meta sitemap,与业务 well-known 同口径",
+      "retireWhen": "meta 发现文档改为按单一 rel 归属裁决可见性时,改传 scopeCoverage 并移除本例外"
     }
   ]
 }
