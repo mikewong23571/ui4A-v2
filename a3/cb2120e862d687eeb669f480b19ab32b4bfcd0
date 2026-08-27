@@ -1,0 +1,7 @@
+T29 Task: 独立 fold 与 presence 投影(rebase 等价重建挂载)
+
+> 原始提交对象在 2026-08-26 origin/master rebase(T29 归档)后已不在对象库,验收 note 无法复制本体;本条按归档 plan 任务与现役测试证据重建,原始任务 sha 见 conductor/tracks/archive/t29-presence-situation_20260825/plan.md 映射节。
+> 等价提交:a3cb212
+
+变更(Phase A Task 2):apps/web/src/db/presence.ts 独立事件域 fold(foldPresenceEvents/rebuildPresenceProjection/版本化迁移 v2 建表,presence_current 只读投影);不入 Business Snapshot。
+现役证据:db/presence.test.ts、migrations.test v2 断言绿;rebuild 后 fold 幂等由 presence.rate-limit 边界三方一致断言钉住。
