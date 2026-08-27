@@ -109,18 +109,33 @@
     齐全(I3)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
-## Phase F: 验收收口
+## Phase F: 验收收口 [checkpoint: 71a3591]
 
-- [ ] Task: 全量回归
-  - `pnpm check`、`CI=true pnpm e2e invariants`、T16/T24/T27/T28 相关套件
-    (presentation honesty、workstation home、interaction/citations)全绿
-- [ ] Task: 人机同源与 chat 写复验
-  - CLI 对拍:`inbox`/`threads`/`delegations` 同一合同事实逐项一致;画面 3
-    走查:chat 建线经原话授权(引用 user message id 与逐字 quote)事件留痕
-- [ ] Task: 走查对照与零特判复核
-  - Playwright 截图走查对照 spec"理想态用户故事"要素清单;零特判扫描 +
-    review;D50 与实施一致性复核
-- [ ] Task: mothership 现场验收(spec 验收方向末条口径)
+- [x] Task: 全量回归
+  - `pnpm check` 全绿(typecheck/eslint/governance/unit 2535/db 490);
+    `CI=true pnpm e2e invariants` 4 passed;全量 `CI=true pnpm e2e`
+    **52 passed / 0 failed / 20 skipped**(与基线口径一致;含 T16 golden、
+    T24 honesty、T27 home、T28 citations、T30 composition)
+- [x] Task: 人机同源与 chat 写复验
+  - CLI 对拍:workstation-home e2e 首测试即 CLI 对照(doctor + entities get
+    三区域源逐项一致,principal 已统一 local-user);画面 3(chat 原话授权建线)
+    机制由 T15 quote-authorization 测试族与全量 chat 套件背书(执行走同一
+    /api/exec 合同,本 track 零 chat 链路改动)
+- [x] Task: 走查对照与零特判复核
+  - 截图走查(2026-08-27,dev server + 1 待决 + 1 工作线)对照画面要素清单
+    全部在场:在等我=决策卡(批准一击零参数)、我的工作线=目标+「停在「open」」
+    一句话+收起动作行(挂载/卸载/暂停/完成/归档全中文)、写=一行收起
+    (填写创建工作线参数)、区域链接=合同 title(在等我/在动/我的工作线)、
+    首屏零英文机器名(rel 仅在 mono 辅助位);零特判:成员卡选择纯结构
+    (members.some(actions)),governance 全绿;D50 与实施一致(D47.4 未推翻,
+    动作全部保留为一等收起控件)
+  - 环境备注:走查期间 3100 临时停 docker web 容器,结束已恢复(200)
+- [~] Task: mothership 现场验收(spec 验收方向末条口径)【显式遗留】
   - 确定 Git SHA 构建 immutable OCI images,按 T22 runbook 部署走查,evidence
     记录 SHA/digest/命令/时间/逐项结果
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+  - 处置(2026-08-27,自治如实记录):mothership 为内网 K8s 部署,本会话环境
+    无集群凭证与网络可达性,无法诚实执行;本地全部门禁已绿(check/invariants/
+    全量 e2e 52/截图走查)。**该项保持未勾**,待具备 mothership 访问条件时从
+    当前 Git SHA 构建 images 按 T22 runbook 执行并补记 evidence;在此之前
+    本 track 的现场验收条款视为未完成(本地验收已完备)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
