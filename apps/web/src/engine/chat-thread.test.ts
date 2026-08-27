@@ -122,6 +122,91 @@ describe('chat thread anchor fail-closed behavior', () => {
     ).resolves.toBe('skipped');
   });
 
+  it('logs one structured diagnostic when readSnapshot or exec throws, and still skips', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const brokenRead = {
+        getSnapshot: snapshot,
+        readSnapshot: async () => {
+          throw new Error('connection refused');
+        },
+        exec: vi.fn(),
+      };
+      await expect(
+        attachChatMessageToThread(brokenRead, {
+          thread: 'mine',
+          principal: 'user:mike',
+          messageId: 'turn-9',
+        }),
+      ).resolves.toBe('skipped');
+      expect(warn).toHaveBeenCalledTimes(1);
+      const readEntry = String(warn.mock.calls[0]?.[0]);
+      expect(readEntry).toContain('[ui4a]');
+      expect(readEntry).toContain('turn-9');
+      expect(readEntry).toContain('thread=mine');
+      expect(readEntry).toContain('connection refused');
+
+      const failedExec = {
+        getSnapshot: snapshot,
+        readSnapshot: async () => snapshot(),
+        exec: vi.fn(async () => Promise.reject(new Error('db unavailable'))),
+      };
+      await expect(
+        attachChatMessageToThread(failedExec, {
+          thread: 'mine',
+          principal: 'user:mike',
+          messageId: 'turn-10',
+        }),
+      ).resolves.toBe('skipped');
+      expect(warn).toHaveBeenCalledTimes(2);
+      const execEntry = String(warn.mock.calls[1]?.[0]);
+      expect(execEntry).toContain('[ui4a]');
+      expect(execEntry).toContain('turn-10');
+      expect(execEntry).toContain('db unavailable');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('stays silent on ordinary skip paths and rejections without a thrown error', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      await expect(
+        attachChatMessageToThread(
+          { getSnapshot: snapshot, readSnapshot: async () => snapshot(), exec: vi.fn() },
+          { thread: null, principal: 'user:mike', messageId: 'turn-1' },
+        ),
+      ).resolves.toBe('skipped');
+      // 非 owner anchor 在 try 内正常返回 skipped,不是异常,不产生日志。
+      await expect(
+        attachChatMessageToThread(
+          { getSnapshot: snapshot, readSnapshot: async () => snapshot(), exec: vi.fn() },
+          { thread: 'theirs', principal: 'user:mike', messageId: 'turn-1' },
+        ),
+      ).resolves.toBe('skipped');
+      // 裁决拒绝(kind!=='accepted')同样保持静默语义。
+      const rejected = {
+        getSnapshot: snapshot,
+        readSnapshot: async () => snapshot(),
+        exec: vi.fn(async () => ({
+          kind: 'rejected' as const,
+          layer: 'guard-failed' as const,
+          reason: 'stale',
+        })),
+      };
+      await expect(
+        attachChatMessageToThread(rejected, {
+          thread: 'mine',
+          principal: 'user:mike',
+          messageId: 'turn-1',
+        }),
+      ).resolves.toBe('skipped');
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it('uses refreshed state when the synchronous snapshot is stale', async () => {
     const fresh = snapshot();
     const engine = {

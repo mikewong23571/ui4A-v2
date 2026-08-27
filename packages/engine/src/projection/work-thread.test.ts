@@ -138,6 +138,22 @@ describe('Work Thread Siren projection', () => {
     expect(JSON.stringify(entity)).not.toContain('post:not-a-member');
   });
 
+  it('marks unresolvable context references as auditable dangling links like every member class', () => {
+    const withChatContext = snapshot();
+    withChatContext.threads!['release-1']!.references.context = [
+      'articles',
+      'message:turn-42',
+    ];
+
+    const entity = project(withChatContext, 'thread:release-1', deps);
+
+    expect(entity?.links).toContainEqual({ rel: ['context'], href: '/api/entity?rel=articles' });
+    expect(entity?.links).toContainEqual({
+      rel: ['context', 'dangling'],
+      href: '/api/entity?rel=message:turn-42',
+    });
+  });
+
   it('links event:1 to the baseHref-aware audit feed from afterSeq=0', () => {
     const withFirstEvent = snapshot();
     withFirstEvent.threads!['release-1']!.references.event = ['event:1'];
@@ -294,6 +310,38 @@ describe('Work Thread Siren projection', () => {
         snapshot(),
       ),
     ).toMatchObject({ kind: 'rejected', layer: 'schema-invalid' });
+  });
+
+  it('judges duplicate creation as thread-id-available guard failure before schema judgment', () => {
+    const create = (params: Record<string, unknown>) =>
+      executeThreadCommand(
+        { rel: 'threads', action: 'create', principal: 'user:mike', params },
+        snapshot(),
+      );
+
+    // 基础组合:重复 id + 其余参数合法 → guard-failed(thread-id-available=false)。
+    expect(create({ id: 'release-1', goal: 'Ship safely', goalSource: 'message:goal-1' })).toEqual(
+      expect.objectContaining({
+        kind: 'rejected',
+        layer: 'guard-failed',
+        reason: 'guard 不满足: thread-id-available=false',
+        detail: [{ name: 'thread-id-available', pass: false }],
+      }),
+    );
+    // 层序组合(D48 裁决 a):重复 id + 其余参数非法,schema 判定尚未执行,
+    // 拒绝归 guard-failed 而非 schema-invalid——机械层序 declaration → guard → schema 成立。
+    expect(create({ id: 'release-1' })).toMatchObject({
+      kind: 'rejected',
+      layer: 'guard-failed',
+      detail: [{ name: 'thread-id-available', pass: false }],
+    });
+    // 非字符串 id 安全处理:不做存在性判断,仍由 schema 层拒绝,不误报 guard-failed。
+    expect(create({ id: 7 })).toMatchObject({ kind: 'rejected', layer: 'schema-invalid' });
+    // 反向钉:id 可用时非法参数照旧 schema-invalid,guard 未吞并 schema 判定。
+    expect(create({ id: 'brand-new-1' })).toMatchObject({
+      kind: 'rejected',
+      layer: 'schema-invalid',
+    });
   });
 
   it.each([

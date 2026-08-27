@@ -149,6 +149,22 @@ export function executeThreadCommand(
   const guarded = ownerGuards(request, snapshot, declared.threadId);
   if ('kind' in guarded) return guarded;
 
+  // D48 裁决(a):thread-id-available 是 guard 层判定,先于参数 schema 校验执行,
+  // 使 declaration → guard → schema 机械层序与拒绝分类同时成立。id 与 detailFor
+  // thread-created 分支同源取 request.params.id;非字符串 id 不做存在性判断,
+  // 留给 schema 层拒绝;存在性判定用自有属性,不被继承键误触发。
+  if (request.rel === THREADS_REL) {
+    const requestedId = request.params?.id;
+    if (
+      typeof requestedId === 'string' &&
+      Object.hasOwn(snapshot.threads ?? {}, requestedId)
+    ) {
+      return rejected('guard-failed', 'guard 不满足: thread-id-available=false', [
+        { name: 'thread-id-available', pass: false },
+      ]);
+    }
+  }
+
   const schema = fieldDefinitionsToJsonSchema(declared.action.fields ?? []);
   const validate = new Ajv({ allErrors: true, strict: false }).compile(schema);
   if (!validate(request.params ?? {})) {
@@ -166,14 +182,6 @@ export function executeThreadCommand(
     return rejected('schema-invalid', '参数不符合 Work Thread 严格合同', {
       message: error instanceof Error ? error.message : String(error),
     });
-  }
-  if (candidate.kind === 'thread-created') {
-    const id = (detail as { threadId: string }).threadId;
-    if (snapshot.threads?.[id] !== undefined) {
-      return rejected('guard-failed', 'guard 不满足: thread-id-available=false', [
-        { name: 'thread-id-available', pass: false },
-      ]);
-    }
   }
   const event: EngineEvent & { kind: ThreadEventKind } = {
     kind: candidate.kind,

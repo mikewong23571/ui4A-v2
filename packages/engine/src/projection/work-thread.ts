@@ -163,10 +163,7 @@ function referenceLinks(
   const links: SirenLink[] = [
     { rel: ['self'], href: entityHref(deps.baseHref, threadRel(thread.id)) },
   ];
-  for (const rel of thread.references.context) {
-    links.push({ rel: ['context'], href: entityHref(deps.baseHref, rel) });
-  }
-  for (const category of ['active', 'approval'] as const) {
+  for (const category of ['context', 'active', 'approval'] as const) {
     for (const rel of thread.references[category]) {
       const pointer = statusPointer(rel, snapshot);
       links.push({
