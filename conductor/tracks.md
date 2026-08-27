@@ -9,10 +9,11 @@
 方向 program(依据 [product-vision.md](../product-vision.md);站点为天然分割点,limited scope;
 执行序:T24 → T25 → T26(spike) → T30 → T27 → T28;T29 已完成):
 
-- [~] **Track: T31 质量评审修复:T24–T30 实现质量发现项登记与修复(评审修复 track;建议 T27 闭环后启动,并行须避开其冲突面)** *Link: [tracks/t31-quality-remediation_20260826/index.md](./tracks/t31-quality-remediation_20260826/index.md)*
 - [~] **Track: T32 交互与组合质量修复:T28/T30 实现质量发现项登记与修复(评审修复 track;Q6/Q7 与 T31 R12 同文件,建议 T31 闭环后执行该组)** *Link: [tracks/t32-interaction-composition-quality_20260827/index.md](./tracks/t32-interaction-composition-quality_20260827/index.md)*
 
-## 归档 Tracks(T1–T21、T23–T30,只读历史)
+## 归档 Tracks(T1–T21、T23–T31,只读历史)
+
+- [x] **Track: T31 质量评审修复:T24–T30 实现质量发现项登记与修复(评审修复 track;建议 T27 闭环后启动,并行须避开其冲突面)** *Link: [tracks/archive/t31-quality-remediation_20260826/index.md](./tracks/archive/t31-quality-remediation_20260826/index.md)*
 
 - [x] **Track: T24 呈现诚实化(减暴露):机制 chrome 退出首屏与对话面** *Link: [tracks/archive/t24-presentation-honesty_20260825/index.md](./tracks/archive/t24-presentation-honesty_20260825/index.md)*
 

@@ -77,16 +77,16 @@
   - 验收:`git notes show` 对 T24/T29 全部任务 sha 可读
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
-## Phase E: 归后续落注 + 验收收尾
+## Phase E: 归后续落注 + 验收收尾 [checkpoint: f82d9d2]
 
 - [x] Task: 归后续落注(R23–R27) [f82d9d2]
   - R23/R25 落注 T28 spec/plan(raw 模式与呈现领土);R24/R26/R27 落注
     T27 spec/plan(收缩窗口与线消费接线);落注为各文档"承接自 T31
     评审"小节一行,不改目标 track 范围
-- [ ] Task: 全量验收
+- [x] Task: 全量验收 [f82d9d2]
   - `pnpm check` 全绿(含 governance 零新增基线);`CI=true pnpm e2e
     invariants` 全绿;T16/T24/chat 套件全绿;`pnpm dev:all` 实际启动走查
-- [ ] Task: Track 收尾
+- [x] Task: Track 收尾 [见 close commit]
   - `conductor/tracks.md` 状态流转;metadata.json 归档;track 目录按 GR5
     处置(无 bespoke 残留);登记册全部 27 项终态核对
 
