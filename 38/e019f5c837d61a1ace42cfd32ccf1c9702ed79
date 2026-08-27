@@ -1,0 +1,1 @@
+T32 补记:8d9f1aa(Q5)使 presentation-surface-host.tsx 达 519 有效行,超 500 单文件上限;按 workflow 业务优先原则登记 shrink-only 基线条目(注明在途 track 与处置计划:T31 闭环后提取 load 编排 hook 收缩)。此前 ef9392a 提交时遗漏该文件,本地 governance 一直按已登记状态跑(绿),本提交补齐版本历史。
