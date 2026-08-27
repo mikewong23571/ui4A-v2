@@ -1,0 +1,7 @@
+T29 Task: 前端 presence 上报器(rebase 等价重建挂载)
+
+> 原始提交对象在 2026-08-26 origin/master rebase(T29 归档)后已不在对象库,验收 note 无法复制本体;本条按归档 plan 任务与现役测试证据重建,原始任务 sha 见 conductor/tracks/archive/t29-presence-situation_20260825/plan.md 映射节。
+> 等价提交:4f7953f
+
+变更(Phase B Task 1):客户端 presence 上报器接入站点状态变化点,经 POST /api/presence 有界上报(channel/principal 由服务端受信身份裁定)。
+现役证据:e2e workstation-situation.spec.ts(presence 留痕场景)与 components chat/situation 夹具驱动链路持续覆盖。
