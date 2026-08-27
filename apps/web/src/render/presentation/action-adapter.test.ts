@@ -339,4 +339,25 @@ describe('Surface Action Adapter', () => {
       { numRuns: 100 },
     );
   });
+
+  it('采纳服务端别名实体作为 exec 目标,不再以 subject-mismatch 拒绝(T35 F-17)', async () => {
+    // fresh read 按注视 subject(flow:x)发起,服务端 flow 别名以实例 rel(x:main)
+    // 返回——服务端是身份权威;适配器应采纳规范 rel 提交 exec。
+    const aliased = entityOf('todo-capture:main', [actionOf('add')]);
+    const fetchEntity = vi.fn().mockResolvedValue(aliased);
+    const exec = vi.fn().mockResolvedValue({ ok: true, entity: aliased });
+    const adapter = createSurfaceActionAdapter({ fetchEntity, exec });
+
+    const result = await adapter.submit({ subject: 'flow:todo-capture', action: 'add' });
+
+    expect(result).toMatchObject({ outcome: 'executed', action: 'add' });
+    expect(exec).toHaveBeenCalledWith({
+      rel: 'todo-capture:main',
+      action: 'add',
+      params: undefined,
+    });
+    // 回执携带规范 rel 与原 subject,失效两侧都覆盖。
+    expect(result.outcome === 'executed' && result.refreshSubjects).toContain('flow:todo-capture');
+    expect(result.outcome === 'executed' && result.refreshSubjects).toContain('todo-capture:main');
+  });
 });

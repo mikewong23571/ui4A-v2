@@ -37,7 +37,6 @@ export type SurfaceActionRefusalCode =
   | 'invalid-reference'
   | 'reload-failed'
   | 'entity-missing'
-  | 'subject-mismatch'
   | 'action-undeclared'
   | 'action-ambiguous'
   | 'guard-state-invalid'
@@ -190,14 +189,13 @@ export function createSurfaceActionAdapter(
       if (entity === null) {
         return refusal(input, 'entity-missing', `Entity "${input.subject}" no longer exists`, true);
       }
-      if (entity.properties.rel !== input.subject) {
-        return refusal(
-          input,
-          'subject-mismatch',
-          `Reloaded entity does not identify itself as "${input.subject}"`,
-          true,
-        );
-      }
+      // T35 F-17:服务端是身份权威——fresh read 按注视 subject 发起,服务端
+      // flow 别名可能以实例 rel 返回同一实体;采纳规范 rel 作为 exec 目标,
+      // 后续 action/guard/schema 校验全部针对返回实体本身(失败仍关闭)。
+      const targetRel =
+        typeof entity.properties.rel === 'string' && entity.properties.rel !== ''
+          ? entity.properties.rel
+          : input.subject;
 
       const actions = liveActionOf(entity, input.action);
       if (actions.length === 0) {
@@ -288,11 +286,11 @@ export function createSurfaceActionAdapter(
 
       const gate = createActionGate(dependencies.exec);
       gate.register(entity);
-      const result = await gate.handle(clientActionOf(input));
+      const result = await gate.handle(clientActionOf({ ...input, subject: targetRel }));
       if (result.outcome === 'executed') {
         return {
           outcome: 'executed',
-          subject: input.subject,
+          subject: targetRel,
           action: input.action,
           entity: result.entity,
           refreshSubjects: refreshSubjectsOf(input, result.entity),
