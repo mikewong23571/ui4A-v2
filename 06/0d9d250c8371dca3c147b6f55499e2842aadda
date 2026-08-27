@@ -1,0 +1,16 @@
+==== Phase D Verification & Checkpoint(自治验收,编排 agent 代行)====
+
+卫生组(R17-R20,981a08b):readSitemapTitles 死代码退役+注释修正;DriverContext.sitemap
+披露切片双切割幂等注释;project() JSDoc 补 artifact/thread 分支;size-baseline 两条
+stale 口径修正。相邻五套件绿,typecheck/eslint/governance 干净。
+流程组(R21/R22,060d9d2):
+- R21 核验:T24 八个任务/checkpoint sha 的验收 notes 均已可读(rebase 会话记录见
+  note@4e3e2ef:'24 个 T24 提交 notes 全量 copy'),R21 登记的缺失已被既有工作修复,
+  本次逐 sha 复验通过;
+- R22 重建式补挂:T29 原始对象连 notes 整体缺失(MISSING),按登记册意图在八个
+  rebase 等价提交(bd083d5/a3cb212/c612ad1/d7c83ad/4f7953f/34d29f6/768263b,
+  edge 配套 6d40417)重建挂载等价验收 notes(git notes show 全部可读),
+  archived t29 plan.md 加注映射节;
+验收口径达成:git notes show 对 T24/T29 相关 sha 全部可读。
+D 与 E1(归后续落注 f82d9d2)插队于 C/D 关门前完成,统一以 12:11 的全绿
+pnpm check 为关门证据(纯注释/文档类改动)。Phase D 完成。
