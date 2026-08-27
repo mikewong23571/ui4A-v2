@@ -55,17 +55,17 @@
   - 按 Phase A 清单迁移受影响填表步骤(统一加"打开"一步,GR2 一次性,无双默认)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
-## Phase C: 任务语言(合同数据层)
+## Phase C: 任务语言(合同数据层) [checkpoint: c20c3d0]
 
-- [ ] Task: Red→Green——work-thread 定义 title 中文化
+- [x] Task: Red→Green——work-thread 定义 title 中文化 [c20c3d0]
   - engine 投影单测先行:threads 全部动作 title('创建工作线'等)与字段 title
     ('线程标识'/'目标'/'目标来源'等,具体措辞施工时定)断言;`work-thread.ts`
     数据改动,渲染器零改动
-- [ ] Task: Red→Green——链接标签优先合同 title
+- [x] Task: Red→Green——链接标签优先合同 title [c20c3d0]
   - 投影为 self/member 链接携带 Siren `title`(集合 identity 已有'在等我'式
     人话标题,链接层补齐);渲染器(detail/entity-link 的 links 区)优先 title
     回退 rel;words 单测先行
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase D: 责任点一等——成员决策卡(词汇投资)
 
