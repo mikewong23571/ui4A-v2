@@ -1,0 +1,1 @@
+T33 收口(自治验收,如实记录):本地门禁全绿 = pnpm check(typecheck/eslint/governance/unit 2535/db 490)+ CI=true pnpm e2e invariants 4p + 全量 e2e 52p/0f/20s + 截图走查对照 ASCII 画面要素清单(决策卡一击/工作线停在哪一句话/写收一行/合同 title/零英文机器名)。Phase F checkpoint 71a3591(e2e 迁移+卡片导航修复,全量 e2e 52 绿)。显式遗留:mothership 现场验收(内网不可达;补验路径已记录于 plan Phase F,从 Git SHA 构建 images 按 T22 runbook)。环境:3100 docker web 已恢复,3131-3133 临时服务已清。
