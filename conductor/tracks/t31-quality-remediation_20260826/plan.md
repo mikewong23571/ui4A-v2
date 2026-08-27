@@ -15,7 +15,7 @@
 
 ## Phase A: 分歧裁决 → DECISIONS(D48)
 
-- [ ] Task: 四个判断点落 DECISIONS.md D48
+- [x] Task: 四个判断点落 DECISIONS.md D48 [90743fb]
   - R4:`thread-id-available` 层序归位(前移 guard 层 vs 重归类并修正自述;
     不得破坏 declaration → guard → schema 不变量口径);
   - R8:`scopeFrom` 空 grantedScopes 口径(建议 fail-closed);
@@ -25,7 +25,7 @@
     边界)
   - 验收:D48 一条目四小节,各有明确采纳与理由;纯修复项(R5/R6/R7/R10/
     R11/R12/R13/R15/R16/R17–R20)确认无需决策,直接进 Phase C/D
-- [ ] Task: spec/plan 回改对齐 D48
+- [x] Task: spec/plan 回改对齐 D48 [5951549]
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: Medium 测试缺口(R1/R2/R3)
