@@ -1,0 +1,18 @@
+T31 Phase B Task R1: route 级 activity/eventSeq 真实接线行为测试
+
+变更:
+- 新增 apps/web/src/app/api/chat/route.step-frames.test.ts(db project):
+  经 route-test-kit 进程内回环调真实 POST /api/chat handler,解析真实 SSE 帧:
+  1) 断言 step 帧 activity 结构化投影,title 经 sitemapTitlesFromSummary 自合同
+     sitemap 注入(注入性证据:至少一步 ≠ 无 titles 的兜底投影);
+  2) 断言 eventSeq 正整数、逐帧递增,并以 readLog 回读事件日志逐帧命中
+     seq===eventSeq 且 kind=chat-turn-progress、turnId/message 归属本回合;
+  3) 全部断言不钉死 site 词表值。
+- vitest.db-tests.list.ts 登记新文件(db project 封闭清单的既有机制,+1 行,
+  字母序)。
+
+Why: T24 的 SSE 呈现接线此前只有机器文本断言与合成 SSE e2e,route 形状上
+无行为护栏(R1)。mutation 抽查双重验证:破坏 sitemapTitles 注入→红;
+移除 eventSeq 帧字段→红(subagent 两处均红;编排 agent 亲自复跑 eventSeq
+mutation 红 + 复原绿,绿套件亲自复跑 2 passed)。生产文件零残留
+(git diff route.ts 空)。自治验收(git notes 为证)。
