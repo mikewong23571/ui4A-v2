@@ -36,7 +36,7 @@
 - [x] Task: R2 presence 频率上限合同测试 [bc8d881]
   - 窗口计数达上限 → 429/结构化拒绝;窗口滑动后恢复;有界口径与
     `PRESENCE_MAX_EVENTS_PER_WINDOW` 对拍;mutation 抽查:移除上限 → 变红
-- [ ] Task: R3 消费方矩阵行为化
+- [x] Task: R3 消费方矩阵行为化 [9a11d6a]
   - presence fixture 驱动 chat 路由(site/scope)与 entity 路由(scope 缺省)
     的行为测试;"改一处 presence → 两处行为同变"以行为断言兑现;
     源码文本断言退役或降为辅助;不钉死 site 词表值(T27 改名中)
