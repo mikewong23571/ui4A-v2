@@ -10,6 +10,7 @@ import {
   requestIdentityProfile,
   resolveTrustedRequestIdentity,
 } from '../../../../auth/request-identity';
+import { grantedPolicyScopes } from '../../../../engine/situation';
 import {
   applyRenderPatch,
   createRenderPatchTarget,
@@ -36,9 +37,13 @@ const LOCAL_PRESENTATION_PRINCIPAL = 'user:local';
 // 或 Bearer),并以已认证 principal 作为 Sidecar 归属——durable Sidecar key 以
 // principal 区分,固定 local principal 在生产既越权又查不到 chat 建立的 Sidecar。
 // local profile 行为不变(固定 user:local)。
+// grantedPolicyScopes:身份已授予的全部 policy scope(identity.policyScope 并入,
+// 与 entity/route.ts 同口径)。授权检查按 stored key 的 scope ∈ granted 判定,
+// 多 scope 用户(如 granted=[default, publishing])不再因冻结默认 scope 误 404。
 interface TrustedPresentationIdentity {
   principal: string;
   policyScope: string;
+  grantedPolicyScopes: readonly string[];
 }
 
 async function presentationIdentity(
@@ -46,7 +51,11 @@ async function presentationIdentity(
   requiredScopes: string[],
 ): Promise<TrustedPresentationIdentity | Response> {
   if (requestIdentityProfile() !== 'production') {
-    return { principal: LOCAL_PRESENTATION_PRINCIPAL, policyScope: 'local-demo' };
+    return {
+      principal: LOCAL_PRESENTATION_PRINCIPAL,
+      policyScope: 'local-demo',
+      grantedPolicyScopes: ['local-demo'],
+    };
   }
   try {
     const engine = await getEngine(getDb());
@@ -56,7 +65,12 @@ async function presentationIdentity(
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
       defaultPolicyScope: 'default',
     });
-    return { principal: identity.principal, policyScope: identity.policyScope };
+    const granted = [...new Set([...grantedPolicyScopes(identity.scopes), identity.policyScope])];
+    return {
+      principal: identity.principal,
+      policyScope: identity.policyScope,
+      grantedPolicyScopes: granted,
+    };
   } catch (error) {
     return (
       authenticationErrorResponse(error) ??
