@@ -10,8 +10,11 @@
  *   先于同号 step 帧到达并替换累积(T24 Phase B:条目原样进 thread,由
  *   thread.tsx 呈现为默认折叠、可展开看实时增量的思考区;rule 路径零
  *   思考帧);render 帧(渲染短路 LLM 路径 SSE 化)与一次性
- *   JSON 回执同形处置;final 帧更新 sessionId(localStorage 持久化,纯投影)
- *   与 render 回执;失败终局(T24 Phase B Task 3)final/error 帧必附结构化
+ *   JSON 回执同形处置;presentation 帧(pending 占位 → ready/fallback/failed
+ *   终局两帧必达)以「正在准备呈现」占位或「呈现失败」条目进时间线——failed
+ *   不再静默吞,ready/fallback 移除占位且导航行为不变;final 帧更新 sessionId
+ *   (localStorage 持久化,纯投影)与 render 回执;失败终局(T24 Phase B Task 3)
+ *   final/error 帧必附结构化
  *   reason,终局条目携带 failure 数据进 thread(phrasing 主呈现/中性结构化
  *   行分层,见 thread.tsx);整体超时 120s 如实报错;
  * - 停止(B2):onCancel 挂 AbortController 中止 fetch,追加「已停止(仅中断
@@ -35,6 +38,7 @@ import type { ChatFailureReason, ChatRenderPayload, ChatStepActivity } from '@/c
 import { anySignal, createIdleTimeout, readChatSseStream, type ChatFinalPayload } from '@/chat/sse';
 
 import {
+  applyPresentationReceipt,
   convertMessage,
   loadSessionId,
   PENDING_SESSION_STORAGE_KEY,
@@ -415,6 +419,10 @@ export function useChatSession(): ChatSession {
               // 渲染回执帧(渲染短路 LLM 路径 SSE 化):处置与 JSON 回执等价。
               handleRenderReceipt(frame.payload);
             } else if (frame.type === 'presentation') {
+              // 呈现回执(pending 占位 + 终局帧必达):pending 追加「正在准备
+              // 呈现」占位,failed 以「呈现失败」条目终结占位(不再静默吞),
+              // ready/fallback 移除占位;成功导航行为不变。
+              setMessages((prev) => applyPresentationReceipt(prev, frame.payload));
               if (
                 (frame.payload.status === 'ready' || frame.payload.status === 'fallback') &&
                 frame.payload.surfaceUrl !== undefined

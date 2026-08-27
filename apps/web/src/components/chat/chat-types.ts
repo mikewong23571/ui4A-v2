@@ -5,10 +5,13 @@
  */
 import type { ThreadMessageLike, useExternalStoreRuntime } from '@assistant-ui/react';
 import type { FactRef } from '@ui4a/agent';
+import type { PresentationReceipt } from '@ui4a/shared';
 
 import type { ChatSessionSummary } from '@/chat/history';
 import { citationsOrEmpty } from '@/chat/citations';
 import type { ChatFailureReason, ChatStepActivity } from '@/chat/sse';
+
+import { PRESENTATION_PENDING_WORD, presentationFailureText } from './presentation-words';
 
 /**
  * 面板内消息(rel 为轨迹步的实体 rel:flow 徽章展示用,见 thread.tsx;
@@ -30,8 +33,24 @@ export interface ChatUiMessage {
   eventSeq?: number;
   /** 结构化失败数据(SSE final/error 帧 reason);在场时 thread 按措辞分层渲染。 */
   failure?: ChatFailureReason;
+  /** 呈现回执条目(SSE presentation 帧,pending 占位/failed 终局);仅 hook
+   * 内部作替换/移除标识,thread 按 content 文本呈现(不新增渲染分支)。 */
+  presentation?: ChatPresentationNotice;
   /** Canonical answer evidence; never inferred from content. */
   citations?: FactRef[];
+}
+
+/**
+ * 呈现回执条目:requestId 为 pending 与终局帧同号标识(替换/移除占位用);
+ * pending = 占位未终局,failed = 终局失败条目(含 reasonCode 机制词,只作
+ * 末尾次要附属信息)。流内瞬时条目,不随历史回放恢复。
+ */
+export interface ChatPresentationNotice {
+  requestId: string;
+  /** pending = 占位未终局;failed = 终局失败条目。 */
+  status: 'pending' | 'failed';
+  /** 终局失败时的 reasonCode(机制词,次要附属信息;缺失时省略)。 */
+  reasonCode?: string;
 }
 
 /** 一次性 JSON 响应形状(render 短路/兼容路径;inline 已转 SSE)。 */
@@ -105,7 +124,8 @@ export function withCitationsOnLastAssistant(
     if (
       message.role === 'assistant' &&
       message.thinking === undefined &&
-      message.failure === undefined
+      message.failure === undefined &&
+      message.presentation === undefined
     ) {
       const next = [...messages];
       next[index] = { ...message, citations };
@@ -113,6 +133,55 @@ export function withCitationsOnLastAssistant(
     }
   }
   return messages;
+}
+
+/**
+ * 呈现回执应用(纯函数;终局帧必达,不允许占位悬挂):pending 追加「正在准备
+ * 呈现」占位(同 requestId 条目已存在则不重复),failed 替换同 requestId
+ * 占位为失败条目(无占位则追加),ready/fallback 移除同 requestId 占位。
+ */
+export function applyPresentationReceipt(
+  messages: ChatUiMessage[],
+  receipt: PresentationReceipt,
+): ChatUiMessage[] {
+  const { requestId } = receipt;
+  if (receipt.status === 'ready' || receipt.status === 'fallback') {
+    if (!messages.some((message) => message.presentation?.requestId === requestId)) {
+      return messages;
+    }
+    return messages.filter((message) => message.presentation?.requestId !== requestId);
+  }
+  if (receipt.status === 'failed') {
+    const failed: ChatUiMessage = {
+      role: 'assistant',
+      content: presentationFailureText(receipt.reasonCode),
+      presentation: {
+        requestId,
+        status: 'failed',
+        ...(receipt.reasonCode === undefined ? {} : { reasonCode: receipt.reasonCode }),
+      },
+    };
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index]!.presentation?.requestId === requestId) {
+        const next = [...messages];
+        next[index] = failed;
+        return next;
+      }
+    }
+    return [...messages, failed];
+  }
+  // pending(或未知未来状态,按占位处理):同 requestId 已存在则不重复。
+  if (messages.some((message) => message.presentation?.requestId === requestId)) {
+    return messages;
+  }
+  return [
+    ...messages,
+    {
+      role: 'assistant',
+      content: PRESENTATION_PENDING_WORD,
+      presentation: { requestId, status: 'pending' },
+    },
+  ];
 }
 
 export interface ChatSession {
