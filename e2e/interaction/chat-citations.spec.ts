@@ -66,6 +66,7 @@ test('structured citation click focuses the same Canvas entity and preserves onl
 
     await page.getByRole('button', { name: '查看原始合同' }).click();
     await expect(page.getByTestId('raw-contract-json')).toContainText('"rel": "post:first-post"');
+    await expectRawContractEqualsFreshEntity(page, 'post:first-post');
   });
 });
 
@@ -76,6 +77,25 @@ test('authorized entity exposes its exact Siren contract through the local raw l
     await page.goto(`${SCENARIO_BASE}/entity?rel=articles&scope=publishing`);
     await page.getByRole('button', { name: '查看原始合同' }).click();
     await expect(page.getByTestId('raw-contract-json')).toContainText('"rel": "articles"');
+    await expectRawContractEqualsFreshEntity(page, 'articles');
     await expect(page.locator('header nav').getByText('raw', { exact: false })).toHaveCount(0);
   });
 });
+
+/**
+ * T32 Q1:raw 抽屉必须与同 scope 的新鲜授权实体深等(D47 第 3 问 exact 口径)。
+ * 深等本身排除事件切片/provenance/Surface/hydrated facts/explain 混入;负向
+ * 键断言显式锁定口径,防止将来在实体传入前拼装额外字段而不红。
+ */
+async function expectRawContractEqualsFreshEntity(page: import('@playwright/test').Page, rel: string) {
+  const rawText = await page.getByTestId('raw-contract-json').textContent();
+  const rawEntity = JSON.parse(rawText ?? '');
+  for (const forbidden of ['events', 'provenance', 'surface', 'hydrated', 'explain']) {
+    expect(rawEntity, `raw lens must not assemble "${forbidden}"`).not.toHaveProperty(forbidden);
+  }
+  const fresh = await page.request.get(
+    `${SCENARIO_BASE}/api/entity?rel=${encodeURIComponent(rel)}&scope=publishing`,
+  );
+  expect(fresh.status(), 'fresh entity fetch must stay authorized').toBe(200);
+  expect(rawEntity).toEqual(await fresh.json());
+}
