@@ -20,9 +20,11 @@ CLI 无 presence 与 Chat+presence 两条路径都必须产生同形显式 threa
 该版本已在 mothership 内网以单副本、非 HA 形态部署并可访问；认证、单 Web 并发/重启/重放和
 十工件隔离恢复已经现场验证。最终 Compose 与 K8s Runtime 均 `failed-honest`，没有 fallback；U8
 与 accept 延后。镜像扫描仍有 50 个 Critical、241 个 High matches，按 `known-risk` 仅接受用于
-internal experiment；rollback 与 fault injection 未实测。这份证据不把 T22 或其 Phase 标记为完成，
-也不代表 GA、SLA、LTS 或生产就绪。详见 [release notes](./release/v0.1.0-experimental.1/RELEASE_NOTES.md)
-和 [acceptance report](./release/v0.1.0-experimental.1/acceptance-report.json)。
+internal experiment；rollback 与 fault injection 未实测。T22 已于 2026-08-27 按 `DECISIONS.md`
+D52 闭环：上述边界作为发布物的定格证据留存，过期实机验证不再补跑；这仍不代表 GA、SLA、
+LTS 或生产就绪。详见 [release notes](./release/v0.1.0-experimental.1/RELEASE_NOTES.md)、
+[acceptance report](./release/v0.1.0-experimental.1/acceptance-report.json) 与
+[T22 DONE](./conductor/tracks/archive/t22-production-deployment-auth-runtime_20260824/DONE.md)。
 
 ### AI-first 用户故事
 

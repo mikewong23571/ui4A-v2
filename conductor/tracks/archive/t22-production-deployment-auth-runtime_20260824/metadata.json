@@ -1,9 +1,10 @@
 {
   "id": "t22-production-deployment-auth-runtime_20260824",
   "type": "feature",
-  "status": "in_progress",
+  "status": "completed",
   "title": "T22 生产形态部署、身份认证与双后端 Agent Runtime",
   "created_at": "2026-08-24T02:12:57Z",
   "updated_at": "2026-08-27T00:00:00Z",
-  "approved_by": "user (K8s + Istio and Docker Compose all-in-one, in-cluster Keycloak/PostgreSQL/Temporal, dual Agent Runtime backends, experimental release)"
+  "approved_by": "user (K8s + Istio and Docker Compose all-in-one, in-cluster Keycloak/PostgreSQL/Temporal, dual Agent Runtime backends, experimental release)",
+  "completed_note": "2026-08-27 闭环:v0.1.0-experimental.1 已发布(tag=d5557bf);认证/单 Web 并发重启重放/十工件隔离恢复现场已验;Runtime matrix 按 D37 定格 failed-honest,镜像 known-risk 50C/241H,rollback/fault injection 未实测如实登记;剩余实机验证按 D52 裁定过期不再补跑;scripts/t22 按 GR5/D52 晋升常驻部署合同套件。非 GA/SLA/LTS/生产就绪"
 }
