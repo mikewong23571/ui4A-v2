@@ -1,0 +1,1 @@
+T33 Phase A checkpoint(自治验收):D50 已落 DECISIONS(a8a143a);误导性验收排查清单落 plan(组件测试 5 文件、e2e 4 处、英文 title 零残留)。Phase A 仅文档变更(DECISIONS.md/plan.md),无代码文件;governance 复跑全绿作自动化等效验证,全量 pnpm check 于本 phase 前刚终绿(T32 收尾,8d01775),期间零代码改动。手动验证等效:git show a8a143a 核对 D50 与 spec 最终形态第 6 条一致。
