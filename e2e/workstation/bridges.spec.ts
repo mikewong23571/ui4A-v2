@@ -42,7 +42,8 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     await expect(page).toHaveURL(
       `${SCENARIO_BASE}/canvas?focus=flow%3Aarticle-drafting&scope=publishing&thread=release-1`,
     );
-    await expect(page.locator('[data-surface]')).toHaveCount(1);
+    // Cold dev-compile grace window(与 t33-a 冷启动兜底同口径):非减窗不断言。
+    await expect(page.locator('[data-surface]')).toHaveCount(1, { timeout: 30_000 });
     await expect(page.locator('[data-testid="canvas-errors"]')).toHaveCount(0);
     await expect(situation.getByTestId('situation-site')).toHaveText('workstation');
     await expect(situation.getByTestId('situation-thread')).toHaveText('release-1');

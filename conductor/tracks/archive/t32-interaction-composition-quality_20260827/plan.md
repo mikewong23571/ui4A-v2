@@ -64,15 +64,17 @@
     Q13 因 T31 在途(不碰其文件)登记于本 Track git notes:partial 口径分散
     (resolve 用 situation.regions?.some,plan 用 composition?.partial)建议其
     R12 修复时顺手收敛;Q14 核销指向已写入 spec Q14 条目
-- [~] Task: 全量验收(唯一残留:并行 T31 的 db 基线增长在途,其闭环后复跑
+- [x] Task: 全量验收(唯一残留:并行 T31 的 db 基线增长在途,其闭环后复跑
   `pnpm check` 即收)
+  - 2026-08-27 复跑 `pnpm check` 终绿(typecheck/eslint/governance/vitest
+    392 files, 3009 tests passed, 7 skipped),T31 闭环后基线无残留 [06443b8 前置]
   - 已证:`pnpm check` 的 typecheck/eslint/全量 vitest 全绿,governance 仅剩
     T31 db 条目(T32 自有项已登记 baseline:presentation-surface-host 519);
     `CI=true pnpm e2e invariants` 4 passed;全量 e2e 44 passed/0 failed
     (3.0m);chat-citations 2 passed;engine presentation 41 passed;
     系统可运行性由全量 e2e 的真实 server+DB 端到端执行证明(3100 被并行
     会话容器占用,dev:all 手工走查不可行,以 e2e 等效代行并如实记录)
-- [ ] Task: Track 收尾
+- [x] Task: Track 收尾
   - `conductor/tracks.md` 状态流转;metadata.json 归档;track 目录按 GR5
     处置(无 bespoke 残留);登记册全部 14 项终态核对
 

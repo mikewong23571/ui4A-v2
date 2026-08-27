@@ -86,7 +86,7 @@ export function DetailWord(props: WordProps) {
                       data-nav={link.rel[0]}
                       className="text-primary hover:underline"
                     >
-                      {target}
+                      {link.title ?? target}
                     </a>
                   ) : (
                     <a href={link.href} className="text-primary hover:underline">

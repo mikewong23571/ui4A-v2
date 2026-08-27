@@ -176,7 +176,8 @@ describe('Meta entity renderer', () => {
     });
     render(<MetaEntityRenderer rel="draft:d1" scope="governance" entity={draft} />);
 
-    const approve = await screen.findByRole('button', { name: 'Approve' });
+    // D50:带参动作(commandId)默认收起为触发键;身份规则只解除 actor-is-human
+    const approve = await screen.findByRole('button', { name: '填写Approve参数' });
     expect((approve as HTMLButtonElement).disabled).toBe(false);
   });
 

@@ -187,9 +187,15 @@ function projectConfirmation(
     class: ['confirmation', confirmation.status],
     properties: {
       id: confirmation.id,
+      rel: confirmationRel(confirmation.id),
       'target-rel': confirmation.targetRel,
       'target-action': confirmation.targetAction,
       params: fieldValues(confirmation.params ?? {}),
+      // 决策卡身份行(T33):任务语言身份由投影携带;已决策确认不进收件箱,
+      // 不需要身份行(保持 decided 形状稳定)。
+      ...(pending
+        ? { identity: `${confirmation.targetAction} · 由 ${confirmation.proposedBy.actor} 提议` }
+        : {}),
       'proposed-by': confirmation.proposedBy,
       ...(confirmation.channel !== undefined ? { channel: confirmation.channel } : {}),
       ...(confirmation.riskLevel !== undefined ||
@@ -239,7 +245,7 @@ function projectInbox(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity 
       delivered,
     },
     actions: [],
-    links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'inbox') }],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'inbox'), title: '在等我' }],
     'guard-results': [],
     entities,
   };
@@ -263,6 +269,8 @@ function projectDelegation(delegation: DelegationSnapshot, deps: ProjectDeps): S
       status: delegation.status,
       steps: delegation.steps,
       successes: delegation.successes,
+      // T33"在动"进度行:机械计数派生(successes/steps + 状态),投影数据。
+      resume: `${delegation.successes}/${delegation.steps} · ${delegation.status}`,
       ...(delegation.summary !== undefined ? { summary: delegation.summary } : {}),
       ...(delegation.reason !== undefined ? { reason: delegation.reason } : {}),
     },
@@ -288,7 +296,7 @@ function projectDelegations(snapshot: EngineSnapshot, deps: ProjectDeps): SirenE
       count: entries.length,
     },
     actions: [],
-    links: [{ rel: ['self'], href: entityHref(deps.baseHref, DELEGATIONS_REL) }],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, DELEGATIONS_REL), title: '在动' }],
     'guard-results': [],
     entities,
   };

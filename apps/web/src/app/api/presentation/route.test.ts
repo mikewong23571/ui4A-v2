@@ -22,7 +22,7 @@ describe('POST /api/presentation', () => {
   it('accepts the same thin request for a direct-navigation origin', async () => {
     const body = completePresentationRequest(
       { subject: 'post:first-post', intent: 'read article', delivery: 'canvas' },
-      { requestId: 'direct:1', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'direct:1', principal: 'local-user', sourceMessageIds: [] },
     );
     const response = await POST(
       new Request('http://localhost/api/presentation', {
@@ -48,7 +48,7 @@ describe('POST /api/presentation', () => {
           body: JSON.stringify({
             schemaVersion: 1,
             requestId: `bad:${forbidden}`,
-            principal: 'user:local',
+            principal: 'local-user',
             subject: 'articles',
             intent: 'browse',
             delivery: 'canvas',

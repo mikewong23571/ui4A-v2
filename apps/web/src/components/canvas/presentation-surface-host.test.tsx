@@ -268,7 +268,7 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
       expect(JSON.parse(String(presentationInit?.body))).toEqual({
         schemaVersion: 1,
         requestId: expect.any(String),
-        principal: 'user:local',
+        principal: 'local-user',
         subject: testCase.subject,
         intent: 'read',
         delivery: 'canvas',

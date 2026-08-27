@@ -811,30 +811,28 @@
 纯修复项确认:Q1/Q2/Q4/Q5/Q7/Q8/Q9/Q10 无裁决分歧,按 spec 直接进入实施;
 归后续 Q11–Q14 按计划处置。
 
-## D50 身份解析必须按目标 rel 做 granted scope 覆盖选择(2026-08-27,GR6)
+## D50 读面姿态与责任点:读写分工及 D47.4 姿态细化(2026-08-27,T33 Phase A)
 
-- **背景**:多个路由调用 `resolveTrustedRequestIdentity` 时不传
-  `scopeCoverage` 闭包,`policyScope` 被冻结为 `defaultPolicyScope`
-  字面量/配置首项;多 scope 用户对归属其它 application 的 rel 发起
-  entity/exec 时被伪 403(授权本身合法)。D38 已在 `/api/entity`、
-  `/api/exec`、`/api/exec-plan` 按 rel 归属选择已授予 scope,但同类病灶
-  在 chat、presentation、meta 等入口反复出现,属系统性回归风险。
-- **决定**:身份解析的 `policyScope` 选择是授权语义的一部分,必须在每个
-  调用点显式决策:凡在身份解析时已知目标 rel 且下游消费 `policyScope`
-  的端点,必须传 `scopeCoverage` 闭包(按目标 rel 在 granted scope 集合中
-  选择,不扩大授权);会话级冻结 scope(不传 `scopeCoverage`)仅允许登记
-  例外——端点在解析时无单一目标 rel(如 chat turn、发现文档)或不消费
-  `policyScope`(如审计读、委托读),登记于
-  `scripts/governance/exceptions.json` 的 `identity-scope-selection`,
-  含 reason 与 retireWhen, shrink-only。由 GR6 静态扫描机械执行
-  (`scripts/governance/check-identity-scope.mjs`)。
-- **理由**:scope 冻结把"凭证授予了哪些 application"与"本次操作归属哪个
-  application"混为一谈,既产生伪 403(可用性 bug),也让默认 scope 成为
-  隐性特权位;逐调用点显式化后,授权选择与目标 rel 的关系可被静态审计,
-  例外登记使"无单一 rel"的端点显式承担该语义。
-- **影响**:`/api/meta/entity`、`/api/meta/exec`、`/api/presentation` 等
-  入口按同口径补 `scopeCoverage`;新路由引入身份解析调用时默认受门禁
-  约束,例外须先登记后合入。
+1. **带参数动作的呈现姿态(D47.4 细化,不推翻)**:候选是(a)read 意图下把
+   actions 区域移出组合/单主体 surface;(b)actions 任何 intent 下始终保留且为
+   一等控件,但参数表单全站单一默认收起,打开/关闭仍是零业务事件的 presentation
+   interaction。**采纳(b)**:D47 第 4 问明文"actions、Siren links 与 collection
+   members 始终保留",T28 验收"每个声明 action 有一等控件"——一等 = 可见 +
+   同裁决,不是参数表单摊开;且 LLM 不可用的部署里 UI 按钮是唯一写通道,读面上
+   移除动作等于在最需要 affordance 时拿走它。**否决(a)**:直接违背 D47.4 与
+   T28 承诺,若要走须先立新决定推翻,无充分理由。单一默认收起适用实体页/画布/
+   组合区域全部宿主(GR2 不留"某处展开某处收起"双默认);打开后 prefill/焦点/
+   两段式确认行为不变。
+
+2. **读/写通道分工(方向判断)**:复杂写的正典在 chat 原话授权(T15 仪式:执行
+   引用 user message id 与逐字 quote),UI 保留的责任点写是一击零参数(批准/拒绝/
+   确认)——依据 product-vision §一.1"AI 让你对工作保有完整认知,同时只做你
+   明确要点头的部分"。责任点一等的实现形态是**成员决策卡**:集合成员携带已声明
+   动作时渲染 identity + 一行结构化摘要 + 统一动作组(选择规则纯结构,零
+   class/rel/action 名分支,继承 D47.1 统一动作组与两段式确认)。任务语言只来自
+   合同数据(动作/字段定义 title、投影 identity、Siren link title)或 LLM 原生
+   认知;渲染器只保留 D47.1 式通用固定框架("填写{action.title}参数"类),
+   零 i18n 映射、零文案模板(文案滑梯)。
 
 ## D51 授权与注意力范畴分离:凭证集合裁决,presence 单点镜头(2026-08-27,T33)
 
@@ -862,13 +860,13 @@
      措辞(presentation-words 口径),对话内解释由助手生成,禁止模板扩写
      冒充理解。
   五条可执行不变量及其执法映射见
-  `conductor/tracks/t33-authority-attention-separation_20260827/architecture.md`
+  `conductor/tracks/t34-authority-attention-separation_20260827/architecture.md`
   §七;GR6 静态扫描随之退役,执法主体移交类型系统。
 - **理由**:权限属于凭证与对象之间的关系,必须每次行为时就地判定且零语境;
   注意力属于工作台此刻的状态,只能决定先呈现什么。两者合流使"换一篇文章"
   变成"越权",任何修补都只是移动故障面;范畴分离后该错误类在定义上不可
   能发生,且满足愿景 §六 换 application 零改码的施工纪律。
-- **影响**:取代 D38/D50 的 route 级 scopeCoverage 口径(D50 与 GR6 扫描器按
-  shrink-only 退役);identity 携带 grantedApplications;chat/presentation/
+- **影响**:取代此前的 route 级 scopeCoverage 口径(GR6 门禁与登记簿已随本条整体退役;
+  被取代条目的原始记录仅存本地 git 历史);identity 携带 grantedApplications;chat/presentation/
   sidecar/meta/entity/exec 全部咽喉点换新谓词;应急修复 fix-0a36f20 中
   "durable key 冻结值"缺陷由 T33 Phase B 根除;诚实失败客户端分支随之落地。

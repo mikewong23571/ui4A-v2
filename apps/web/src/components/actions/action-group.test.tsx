@@ -67,7 +67,8 @@ describe('contract-driven ActionGroup', () => {
         '你和助手使用同一合同，由同一规则裁决',
       );
       expect(screen.getByRole('button', { name: '完成' })).toBeTruthy();
-      expect(screen.getByRole('button', { name: '修订' })).toBeTruthy();
+      // D50:带参数动作(修订)默认收起为一行触发键
+      expect(screen.getByRole('button', { name: '填写修订参数' })).toBeTruthy();
       expect(container.querySelectorAll('[data-action-group-item]')).toHaveLength(2);
     },
   );

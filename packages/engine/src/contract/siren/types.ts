@@ -43,6 +43,8 @@ export interface GuardResultEntry {
 export interface SirenLink {
   rel: string[];
   href: string;
+  /** Human-facing link label from contract data (Siren link.title); renderers prefer it over the raw rel. */
+  title?: string;
 }
 
 /** Siren 实体(子实体额外带 rel 与直达 href)。 */

@@ -233,7 +233,7 @@ export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
                         data-nav={link.rel[0]}
                         className="break-all text-primary hover:underline"
                       >
-                        {target}
+                        {link.title ?? target}
                       </a>
                     ) : (
                       <a

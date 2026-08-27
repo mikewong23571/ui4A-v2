@@ -1,14 +1,15 @@
 {
-  "id": "t33-authority-attention-separation_20260827",
+  "id": "t34-authority-attention-separation_20260827",
   "type": "refactor",
-  "status": "planned",
-  "title": "T33 授权与注意力范畴分离:凭证集合裁决 + presence 单点镜头,破坏性剥离单值 policyScope",
+  "status": "in_progress",
+  "title": "T34 授权与注意力范畴分离:凭证集合裁决 + presence 单点镜头,破坏性剥离单值 policyScope",
   "created_at": "2026-08-27T07:47:13Z",
   "updated_at": "2026-08-27T07:47:13Z",
   "approved_by": "user (2026-08-27 指令:不做临时修复,直接终态;权限溶解为数据谓词,注意力单点装配;新建 track 定计划)",
   "depends_on": [
     "t29-presence-situation_20260825",
     "t25-assistant-scoped-context_20260825",
-    "t16-semantic-a2ui-sidecars_20260823"
+    "t16-semantic-a2ui-sidecars_20260823",
+    "t33-reading-posture-decision-cards_20260827"
   ]
 }

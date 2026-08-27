@@ -63,24 +63,28 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
     // 保留的实体路由直达发布 flow；首页不承担应用内容入口合同。
     await page.goto('/entity?rel=flow%3Aarticle-drafting');
 
-    // 第一步 basic-info:title(text)
+    // 第一步 basic-info:title(text);D50:参数表单默认收起,先打开
     await expect(page.locator('h1')).toHaveText('基本信息');
+    await page.getByRole('button', { name: '填写下一步参数' }).click();
     await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第三篇');
     await page.getByRole('button', { name: '下一步', exact: true }).click();
 
     // 第二步 classification:category(select 下拉)+ tags(text)
     await expect(page.locator('h1')).toHaveText('分类');
+    await page.getByRole('button', { name: '填写下一步参数' }).click();
     await page.getByRole('combobox', { name: /分类/ }).selectOption('tech');
     await page.getByRole('textbox', { name: /标签/ }).fill('human-e2e');
     await page.getByRole('button', { name: '下一步', exact: true }).click();
 
     // 第三步 content:body(textarea 文本域)
     await expect(page.locator('h1')).toHaveText('正文');
+    await page.getByRole('button', { name: '填写完成编辑参数' }).click();
     await page.getByRole('textbox', { name: /正文/ }).fill('第三篇正文:由人类经三步向导发布。');
     await page.getByRole('button', { name: '完成编辑', exact: true }).click();
 
     // ready 节点:publish 表单(slug 来源 title)→ 发布
     await expect(page.locator('h1')).toHaveText('就绪');
+    await page.getByRole('button', { name: '填写发布参数' }).click();
     await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第三篇');
     await page.getByRole('button', { name: '发布', exact: true }).click();
 

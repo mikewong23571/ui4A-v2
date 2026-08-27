@@ -47,7 +47,7 @@ test('b. 咽喉链全自动:present→ready→sidecar 回放→画布可达', as
       body: JSON.stringify({
         schemaVersion: 1,
         requestId: 't33:e2e:b',
-        principal: 'user:local',
+        principal: 'local-user',
         subject: 'post:first-post',
         intent: 'read',
         delivery: 'canvas',
@@ -103,7 +103,7 @@ test('e. 多主体切换零 denied:focus/present 在授予集合内连续变换�
         body: JSON.stringify({
           schemaVersion: 1,
           requestId: `t33:e2e:e:${subject}`,
-          principal: 'user:local',
+          principal: 'local-user',
           subject,
           intent: 'read',
           delivery: 'canvas',

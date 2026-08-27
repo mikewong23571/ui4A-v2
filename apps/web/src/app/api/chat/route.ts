@@ -107,7 +107,7 @@ import { dispatchDelegation } from '../../../temporal/delegation';
 export const dynamic = 'force-dynamic';
 
 // 本地 demo 的用户级 Sidecar 与 Chat session 解耦；生产则使用已认证 principal。
-const LOCAL_PRESENTATION_PRINCIPAL = 'user:local';
+const LOCAL_PRESENTATION_PRINCIPAL = 'local-user';
 const AGENT_CONTRACT_PATHS = [
   '/.well-known/ui4a.json',
   '/api/entity',

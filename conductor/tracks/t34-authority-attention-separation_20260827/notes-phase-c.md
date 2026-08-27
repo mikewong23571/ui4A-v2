@@ -1,4 +1,4 @@
-# T33 Phase C 核对与证据补强 — Notes
+# T34 Phase C 核对与证据补强 — Notes
 
 > 阶段:Phase C(注意力核对 + CLI 纪律证据 + 新应用零改动证据)
 > 依据:architecture.md §三/§四/§七、spec.md「归后续」节、DECISIONS.md D51
@@ -94,7 +94,7 @@ fixture 变更说明:production-auth 套件引擎 fixture 增补 default 应用
 - `apps/web/src/auth/application-scope.test.ts`:新增 `describe('D51-新应用零改码')`
   (fixture-app 注册演练:assertReachable / filterEntityForGrantedApplications /
   getAuthorizedPresentationResult 三态;vi.mock engine service,纯单元)。
-- `conductor/tracks/t33-authority-attention-separation_20260827/notes-phase-c.md`(本文件)。
+- `conductor/tracks/t34-authority-attention-separation_20260827/notes-phase-c.md`(本文件)。
 - 产品代码零改动(含 auth/engine 谓词、chat/driver、presentation-words)。
 
 > 工作树注记:`conductor/product-vision.md` 与 `docs/design-reviews.md` 为本次

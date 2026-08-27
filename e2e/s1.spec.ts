@@ -400,6 +400,8 @@ test('UI 走查:收件箱保留路由 → 确认页 RJSF 批准 → 文章实体
     // 确认页:批准按钮可用(renderer 恒为 human);驳回的 reason 必填(RJSF)。
     const approve = page.getByRole('button', { name: '批准' });
     await expect(approve).toBeEnabled();
+    // D50:驳回表单默认收起,先打开再断言 reason 必填
+    await page.getByRole('button', { name: '填写驳回参数' }).click();
     await expect(page.getByRole('textbox', { name: /reason|原因/i })).toHaveAttribute(
       'required',
       '',

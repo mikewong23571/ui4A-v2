@@ -248,31 +248,58 @@ export function planGenericSurface(
       entity.entities.every((member) => readPath(member, 'properties.identity') !== undefined)
         ? 'properties.identity'
         : 'properties.rel';
+    // T33 D50:成员携带已声明动作(纯结构判定,零 class/rel 分支)→ 决策卡词条;
+    // 否则维持导航卡片(member-link)。
+    const membersDeclareActions = entity.entities.some((member) => member.actions.length > 0);
+    const memberCard =
+      membersDeclareActions === true
+        ? Object.entries(catalog.words).find(([, definition]) => definition.pattern === 'member-card')
+        : undefined;
     const memberLink = Object.entries(catalog.words).find(
       ([, definition]) => definition.pattern === 'member-link',
     );
     const item: SurfaceNode =
-      memberLink === undefined
-        ? genericWord(
-            `word-${repeatIndex}-item`,
-            'identity',
-            { kind: 'item', path: itemIdentityPath },
-            catalog,
-            options.entityVersion,
-            provenanceRef,
-          )
-        : {
+      memberCard !== undefined
+        ? {
             kind: 'word',
             id: `word-${repeatIndex}-item`,
             role: 'identity',
-            word: memberLink[0],
+            word: memberCard[0],
             bindings: {
               label: { kind: 'item', path: itemIdentityPath },
               rel: { kind: 'item', path: 'properties.rel' },
+              status: { kind: 'item', path: 'properties.status' },
+              detail: { kind: 'item', path: 'properties.resume' },
+              actions: { kind: 'item', path: 'actions' },
+              guardResults: { kind: 'item', path: 'guard-results' },
+              fields: { kind: 'item', path: 'properties.fields' },
             },
             dependencies: [catalogDependency(catalog)],
             provenance: genericProvenance(provenanceRef),
-          };
+          }
+        : memberLink === undefined
+          ? genericWord(
+              `word-${repeatIndex}-item`,
+              'identity',
+              { kind: 'item', path: itemIdentityPath },
+              catalog,
+              options.entityVersion,
+              provenanceRef,
+            )
+          : {
+              kind: 'word',
+              id: `word-${repeatIndex}-item`,
+              role: 'identity',
+              word: memberLink[0],
+              bindings: {
+                label: { kind: 'item', path: itemIdentityPath },
+                rel: { kind: 'item', path: 'properties.rel' },
+                status: { kind: 'item', path: 'properties.status' },
+                detail: { kind: 'item', path: 'properties.resume' },
+              },
+              dependencies: [catalogDependency(catalog)],
+              provenance: genericProvenance(provenanceRef),
+            };
     const repeat: SurfaceRepeatNode = {
       kind: 'repeat',
       id: `repeat-${repeatIndex}`,

@@ -29,16 +29,16 @@
       "path": "apps/web/src/components/canvas/presentation-surface-host.tsx",
       "lines": 531,
       "limit": 500,
-      "note": "T32 Q5 载入失败诚实化(固定人话+why 抽屉诊断)推过单文件上限;处置:T31 闭环后将 load 取数/装配编排提取为独立 hook 模块收缩(与 D49-2 依赖注释同批);T33 Phase B denied/unknown 分流人话 +12(D51 失败语义表落地,共享常量已外置 presentation-sidecar-failure.ts,业务优先不为凑行数拆分),收缩窗口同上 hook 提取批次",
+      "note": "T32 Q5 载入失败诚实化(固定人话+why 抽屉诊断)推过单文件上限;处置:T31 闭环后将 load 取数/装配编排提取为独立 hook 模块收缩(与 D49-2 依赖注释同批);T34 Phase B denied/unknown 分流人话 +12(D51 失败语义表落地,共享常量已外置 presentation-sidecar-failure.ts,业务优先不为凑行数拆分),收缩窗口同上 hook 提取批次",
       "track": "t32-interaction-composition-quality_20260827"
     }
   ],
   "dirs": [
     {
       "path": "packages/engine/src/presentation",
-      "lines": 4624,
+      "lines": 4639,
       "limit": 4000,
-      "note": "T26–T31 累计(组合 assembly、canonical Recipe slot/promotion 与多源 fastpath 属 Presentation 纯内核直接模块);T30/T31 R12-R13 已按业务优先不为凑行数拆分(workflow 授权),T31 期间统一 slot 语法后 src 净收缩、基线现值为 R13 后实测;shrink-only 自 T31 关闭起算,处置计划=后续 CompositionDefinition 治理晋升时按 compose/recipe/sidecar 子域归档直接文件合并收缩"
+      "note": "T26–T31 累计(组合 assembly、canonical Recipe slot/promotion 与多源 fastpath 属 Presentation 纯内核直接模块);T30/T31 R12-R13 已按业务优先不为凑行数拆分(workflow 授权),T31 期间统一 slot 语法后 src 净收缩、基线现值为 R13 后实测;shrink-only 自 T31 关闭起算,处置计划=后续 CompositionDefinition 治理晋升时按 compose/recipe/sidecar 子域归档直接文件合并收缩;T33 member-card/resume 规划与组合 v2 增 15 行(workflow 业务优先登记;候选收缩=compose 依赖注释收敛,留后续 track)"
     },
     {
       "path": "apps/web/src/db",
@@ -54,9 +54,9 @@
     },
     {
       "path": "e2e",
-      "lines": 4536,
+      "lines": 4627,
       "limit": 4000,
-      "note": "T27 workstation-home CLI/Sidecar/DOM、workstation-situation presence 留痕、flow 双桥/ghost 诚实失败 standing E2E、I3 双桥覆盖及 S2 raw replay/alias 诚实性修正后累计(tracked total 见行数,按 workflow 业务优先不裁剪验收证据);T28 一等交互已闭环并按 GR5 归并重复 Presentation/server setup 到 e2e/kits,无 bespoke track 配置残留;shrink-only 自 T28 关闭起算;T33 Phase 0 五景走查锚 e2e/t33-authority-attention.spec.ts +111(D51 完成定义,业务优先不为凑行数裁剪验收证据,2026-08-27 用户授权业务优先原则),T33 关闭时按 GR5 裁决(并入 kits 或随五景证据常驻评估收缩)"
+      "note": "T27 workstation-home CLI/Sidecar/DOM、workstation-situation presence 留痕、flow 双桥/ghost 诚实失败 standing E2E、I3 双桥覆盖及 S2 raw replay/alias 诚实性修正后累计(tracked total 见行数,按 workflow 业务优先不裁剪验收证据);T28 一等交互已闭环并按 GR5 归并重复 Presentation/server setup 到 e2e/kits,无 bespoke track 配置残留;shrink-only 自 T28 关闭起算;合并侧归因一:e2e/t33-authority-attention.spec.ts 五景走查锚 +111(T34 授权/注意力分离,D51 完成定义,业务优先不为凑行数裁剪验收证据,2026-08-27 用户授权;T34 关闭时按 GR5 裁决,并入 kits 或随五景证据常驻评估收缩);合并侧归因二:t33-reading-posture 决策卡/工作线 resume e2e +32(业务优先不裁剪验收证据,workflow 2026-08-26;后续 Phase E/F 若再增以本口径滚动);lines 为合并树 check-size 实测"
     }
   ]
 }

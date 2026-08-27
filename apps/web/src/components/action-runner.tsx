@@ -195,8 +195,10 @@ export function ActionRunner({
   const highRisk = action['requires-confirmation'] === 'high';
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  // D50:参数表单单一默认收起(打开/关闭是零业务事件的 presentation interaction);
+  // 阅读/任务面同默认,无双路径。打开后 prefill/焦点/两段式确认行为不变。
   const [interaction, setInteraction] = useState<'closed' | 'form' | 'requested' | 'executed'>(
-    hasFields ? 'form' : 'closed',
+    'closed',
   );
   const [pendingParams, setPendingParams] = useState<Record<string, unknown> | undefined>();
   const triggerRef = useRef<HTMLButtonElement>(null);

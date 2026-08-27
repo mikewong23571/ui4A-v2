@@ -8,7 +8,7 @@ const request: PresentationRequest = completePresentationRequest(
   { subject: 'post:first-post', intent: 'read article', delivery: 'canvas' },
   {
     requestId: 'turn:1:presentation:1',
-    principal: 'user:local',
+    principal: 'local-user',
     sourceMessageIds: ['turn:1'],
   },
 );
@@ -28,7 +28,7 @@ describe('web Presentation Broker adapter', () => {
       reasonCode: 'planning-failed',
     });
     // 未传授予集合 = 本地信任域(D51:['local-demo'] 标记跳过受众过滤仅属主重审)。
-    expect(getEntity).toHaveBeenCalledWith('post:first-post', 'user:local', ['local-demo']);
+    expect(getEntity).toHaveBeenCalledWith('post:first-post', 'local-user', ['local-demo']);
   });
 
   it('deduplicates requestId across chat, direct navigation, and flow callers', async () => {
@@ -102,7 +102,7 @@ describe('web Presentation Broker adapter', () => {
     });
     const ghost = completePresentationRequest(
       { subject: 'post:ghost', intent: 'read', delivery: 'canvas' },
-      { requestId: 'ghost:1', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'ghost:1', principal: 'local-user', sourceMessageIds: [] },
     );
 
     await expect(
@@ -112,7 +112,7 @@ describe('web Presentation Broker adapter', () => {
     // 全区域不可见的 composition:任一受众失败优先表达(确定性归因)。
     const workspace = completePresentationRequest(
       { subject: 'workspace:my-work', intent: 'work', delivery: 'canvas' },
-      { requestId: 'ghost:2', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'ghost:2', principal: 'local-user', sourceMessageIds: [] },
     );
     await expect(
       broker.present(workspace, { grantedApplications: ['publishing'] }),
@@ -124,7 +124,7 @@ describe('web Presentation Broker adapter', () => {
     const broker = createWebPresentationBroker({ getEntity });
     const selection = completePresentationRequest(
       { subject: { selection: ['post:a', 'post:b'] }, intent: 'compare', delivery: 'canvas' },
-      { requestId: 'selection:1', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'selection:1', principal: 'local-user', sourceMessageIds: [] },
     );
 
     await expect(broker.present(selection)).resolves.toMatchObject({
@@ -154,7 +154,7 @@ describe('web Presentation Broker adapter', () => {
     const broker = createWebPresentationBroker({ getEntity, resolve });
     const workspace = completePresentationRequest(
       { subject: 'workspace:my-work', intent: 'work', delivery: 'canvas' },
-      { requestId: 'workspace:1', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'workspace:1', principal: 'local-user', sourceMessageIds: [] },
     );
 
     await expect(
@@ -164,7 +164,7 @@ describe('web Presentation Broker adapter', () => {
       reasonCode: 'partial-authorization',
     });
     expect(getEntity.mock.calls.map(([rel]) => rel)).toEqual(['inbox', 'delegations', 'threads']);
-    expect(getEntity).toHaveBeenCalledWith('threads', 'user:local', ['publishing']);
+    expect(getEntity).toHaveBeenCalledWith('threads', 'local-user', ['publishing']);
   });
 
   it('threads the trusted granted applications into entity authorization', async () => {
@@ -175,7 +175,7 @@ describe('web Presentation Broker adapter', () => {
       grantedApplications: ['default', 'publishing'],
     });
 
-    expect(getEntity).toHaveBeenCalledWith('post:first-post', 'user:local', [
+    expect(getEntity).toHaveBeenCalledWith('post:first-post', 'local-user', [
       'default',
       'publishing',
     ]);
@@ -188,7 +188,7 @@ describe('web Presentation Broker adapter', () => {
       const broker = createWebPresentationBroker({ getEntity });
       const workspace = completePresentationRequest(
         { subject, intent: 'work', delivery: 'canvas' },
-        { requestId: `request:${subject}`, principal: 'user:local', sourceMessageIds: [] },
+        { requestId: `request:${subject}`, principal: 'local-user', sourceMessageIds: [] },
       );
 
       await expect(broker.present(workspace)).resolves.toMatchObject({
@@ -209,7 +209,7 @@ describe('web Presentation Broker adapter', () => {
     });
     const workspace = completePresentationRequest(
       { subject: 'workspace:my-work', intent: 'work', delivery: 'canvas' },
-      { requestId: 'workspace:denied', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'workspace:denied', principal: 'local-user', sourceMessageIds: [] },
     );
 
     await expect(broker.present(workspace)).resolves.toMatchObject({
@@ -229,7 +229,7 @@ describe('web Presentation Broker adapter', () => {
     const workspace = (requestId: string) =>
       completePresentationRequest(
         { subject: 'workspace:my-work', intent: 'work', delivery: 'canvas' },
-        { requestId, principal: 'user:local', sourceMessageIds: [] },
+        { requestId, principal: 'local-user', sourceMessageIds: [] },
       );
 
     await broker.present(workspace('workspace:fresh:1'));

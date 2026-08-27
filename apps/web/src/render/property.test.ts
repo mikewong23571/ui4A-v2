@@ -391,8 +391,23 @@ const compositionCatalog: SurfaceCatalog = {
       bindings: {
         label: { sources: ['item'], required: true },
         rel: { sources: ['item'], required: true },
+        status: { sources: ['item'] },
+        detail: { sources: ['item'] },
       },
       pattern: 'member-link',
+    },
+    memberCard: {
+      roles: ['identity'],
+      bindings: {
+        label: { sources: ['item'], required: true },
+        rel: { sources: ['item'], required: true },
+        status: { sources: ['item'] },
+        detail: { sources: ['item'] },
+        actions: { sources: ['item'] },
+        guardResults: { sources: ['item'] },
+        fields: { sources: ['item'] },
+      },
+      pattern: 'member-card',
     },
   },
 };

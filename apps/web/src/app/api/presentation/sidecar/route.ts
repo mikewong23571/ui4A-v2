@@ -32,7 +32,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const LOCAL_PRESENTATION_PRINCIPAL = 'user:local';
+const LOCAL_PRESENTATION_PRINCIPAL = 'local-user';
 
 // production profile(T22 验证修复):接入 application credential(Browser Session
 // 或 Bearer),并以已认证 principal 作为 Sidecar 归属——durable Sidecar key 以

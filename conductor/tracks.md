@@ -4,16 +4,18 @@
 
 ## 活跃 Tracks
 
-- [~] **Track: T33 授权与注意力范畴分离:凭证集合裁决 + presence 单点镜头,破坏性剥离单值 policyScope(D51;生产事故链终态改造)** *Link: [tracks/t33-authority-attention-separation_20260827/index.md](./tracks/t33-authority-attention-separation_20260827/index.md)*
+- [~] **Track: T34 授权与注意力范畴分离:凭证集合裁决 + presence 单点镜头,破坏性剥离单值 policyScope(D51;生产事故链终态改造)** *Link: [tracks/t34-authority-attention-separation_20260827/index.md](./tracks/t34-authority-attention-separation_20260827/index.md)*
 
 - [~] **Track: T22 生产形态部署、身份认证与双后端 Agent Runtime：mothership K8s/Istio、Docker Compose all-in-one、Keycloak、灾备与首个试验性版本** *Link: [tracks/t22-production-deployment-auth-runtime_20260824/index.md](./tracks/t22-production-deployment-auth-runtime_20260824/index.md)*
 
 方向 program(依据 [product-vision.md](../product-vision.md);站点为天然分割点,limited scope;
 执行序:T24 → T25 → T26(spike) → T30 → T27 → T28;T29 已完成):
 
-- [~] **Track: T32 交互与组合质量修复:T28/T30 实现质量发现项登记与修复(评审修复 track;Q6/Q7 与 T31 R12 同文件,建议 T31 闭环后执行该组)** *Link: [tracks/t32-interaction-composition-quality_20260827/index.md](./tracks/t32-interaction-composition-quality_20260827/index.md)*
+## 归档 Tracks(T1–T21、T23–T33,只读历史)
 
-## 归档 Tracks(T1–T21、T23–T31,只读历史)
+- [x] **Track: T33 读面姿态与责任点:读多写少落地(表单退位、决策卡一击、任务语言;ASCII 用户故事为验收方向锚;mothership 现场验收显式遗留)** *Link: [tracks/archive/t33-reading-posture-decision-cards_20260827/index.md](./tracks/archive/t33-reading-posture-decision-cards_20260827/index.md)*
+
+- [x] **Track: T32 交互与组合质量修复:T28/T30 实现质量发现项登记与修复(评审修复 track;Q6/Q7 与 T31 R12 同文件,建议 T31 闭环后执行该组)** *Link: [tracks/archive/t32-interaction-composition-quality_20260827/index.md](./tracks/archive/t32-interaction-composition-quality_20260827/index.md)*
 
 - [x] **Track: T31 质量评审修复:T24–T30 实现质量发现项登记与修复(评审修复 track;建议 T27 闭环后启动,并行须避开其冲突面)** *Link: [tracks/archive/t31-quality-remediation_20260826/index.md](./tracks/archive/t31-quality-remediation_20260826/index.md)*
 

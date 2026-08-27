@@ -33,13 +33,13 @@ describe('durable user Sidecar fastpath', () => {
     ).length;
     const request = completePresentationRequest(
       { subject: 'workspace:my-work', intent: 'work overview', delivery: 'canvas' },
-      { requestId: 'workspace:full', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'workspace:full', principal: 'local-user', sourceMessageIds: [] },
     );
 
     const receipt = await getPresentationBroker().present(request);
     expect(receipt).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
     const sidecar = await findActiveSidecar(getDb(), {
-      principal: 'user:local',
+      principal: 'local-user',
       subject: 'workspace:my-work',
       intent: 'work overview',
       deviceClass: 'any',
@@ -115,7 +115,7 @@ describe('durable user Sidecar fastpath', () => {
   it('reuses one durable Sidecar across changing grant envelopes without a second key (D51)', async () => {
     const request = completePresentationRequest(
       { subject: 'post:first-post', intent: 'grant-stable', delivery: 'canvas' },
-      { requestId: 'grant-stable:1', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'grant-stable:1', principal: 'local-user', sourceMessageIds: [] },
     );
 
     const first = await getPresentationBroker().present(request);
@@ -130,7 +130,7 @@ describe('durable user Sidecar fastpath', () => {
     expect(second.sidecar?.id).toBe(first.sidecar?.id);
     await expect(
       findActiveSidecar(getDb(), {
-        principal: 'user:local',
+        principal: 'local-user',
         subject: 'post:first-post',
         intent: 'grant-stable',
         deviceClass: 'any',
@@ -141,7 +141,7 @@ describe('durable user Sidecar fastpath', () => {
   it('replans in place when a grant-envelope change shifts the policy fingerprint (same key)', async () => {
     const request = completePresentationRequest(
       { subject: 'post:first-post', intent: 'grant-replan', delivery: 'canvas' },
-      { requestId: 'grant-replan:1', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'grant-replan:1', principal: 'local-user', sourceMessageIds: [] },
     );
     const policyDependencyOf = async (principal: string) => {
       const stored = await findActiveSidecar(getDb(), {
@@ -158,7 +158,7 @@ describe('durable user Sidecar fastpath', () => {
     const first = await getPresentationBroker().present(request);
     expect(first).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
     // B2:policy 指纹 = 排序后的授予集合;local profile 即 ['local-demo']。
-    await expect(policyDependencyOf('user:local')).resolves.toEqual(
+    await expect(policyDependencyOf('local-user')).resolves.toEqual(
       expect.objectContaining({
         id: 'policy:local-demo',
         ref: 'local-demo',
@@ -174,7 +174,7 @@ describe('durable user Sidecar fastpath', () => {
       sidecar: { id: first.sidecar!.id, version: 2 },
     });
     // 键不变、指纹失效 → dependencyDecision 重规划为最新授予集合指纹。
-    await expect(policyDependencyOf('user:local')).resolves.toEqual(
+    await expect(policyDependencyOf('local-user')).resolves.toEqual(
       expect.objectContaining({
         id: 'policy:default|publishing',
         ref: 'default|publishing',
@@ -218,7 +218,7 @@ describe('durable user Sidecar fastpath', () => {
     const first = await getPresentationBroker().present(
       completePresentationRequest(intent, {
         requestId: 'chat-a:1',
-        principal: 'user:local',
+        principal: 'local-user',
         sourceMessageIds: ['message:a'],
       }),
     );
@@ -226,7 +226,7 @@ describe('durable user Sidecar fastpath', () => {
     const second = await getPresentationBroker().present(
       completePresentationRequest(intent, {
         requestId: 'chat-b:1',
-        principal: 'user:local',
+        principal: 'local-user',
         sourceMessageIds: ['message:b'],
       }),
     );
@@ -238,7 +238,7 @@ describe('durable user Sidecar fastpath', () => {
     expect(second.surfaceUrl).toContain(`sidecar=${encodeURIComponent(first.sidecar!.id)}`);
     await expect(
       findActiveSidecar(getDb(), {
-        principal: 'user:local',
+        principal: 'local-user',
         subject: 'post:first-post',
         intent: 'read',
         deviceClass: 'any',
@@ -262,13 +262,13 @@ describe('durable user Sidecar fastpath', () => {
     const first = await getPresentationBroker().present(
       completePresentationRequest(intent, {
         requestId: 'corrupt:seed',
-        principal: 'user:local',
+        principal: 'local-user',
         sourceMessageIds: [],
       }),
     );
     expect(first.status).toBe('ready');
     const active = await findActiveSidecar(getDb(), {
-      principal: 'user:local',
+      principal: 'local-user',
       subject: 'post:first-post',
       intent: 'read',
       deviceClass: 'any',
@@ -301,7 +301,7 @@ describe('durable user Sidecar fastpath', () => {
     const repaired = await getPresentationBroker().present(
       completePresentationRequest(intent, {
         requestId: 'corrupt:repair',
-        principal: 'user:local',
+        principal: 'local-user',
         sourceMessageIds: [],
       }),
     );
@@ -384,7 +384,7 @@ describe('durable user Sidecar fastpath', () => {
       domain: 'presentation',
       kind: 'render-recipe-promoted',
       rel: 'recipe:durable',
-      principal: 'user:local',
+      principal: 'local-user',
       channel: 'presentation',
       detail: {
         eventId: 'promotion:event',
@@ -396,13 +396,13 @@ describe('durable user Sidecar fastpath', () => {
     const receipt = await getPresentationBroker().present(
       completePresentationRequest(
         { subject: 'post:first-post', intent: 'review', delivery: 'canvas' },
-        { requestId: 'recipe:request', principal: 'user:local', sourceMessageIds: [] },
+        { requestId: 'recipe:request', principal: 'local-user', sourceMessageIds: [] },
       ),
     );
     expect(receipt).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
     await expect(
       findActiveSidecar(getDb(), {
-        principal: 'user:local',
+        principal: 'local-user',
         subject: 'post:first-post',
         intent: 'review',
         deviceClass: 'any',
@@ -420,7 +420,7 @@ describe('durable user Sidecar fastpath', () => {
       },
     });
     const stored = await findActiveSidecar(getDb(), {
-      principal: 'user:local',
+      principal: 'local-user',
       subject: 'post:first-post',
       intent: 'review',
       deviceClass: 'any',

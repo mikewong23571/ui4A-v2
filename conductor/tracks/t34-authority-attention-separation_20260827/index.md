@@ -1,4 +1,4 @@
-# Track: T33 授权与注意力范畴分离:凭证集合裁决 + presence 单点镜头,破坏性剥离单值 policyScope
+# Track: T34 授权与注意力范畴分离:凭证集合裁决 + presence 单点镜头,破坏性剥离单值 policyScope
 
 2026-08-26/27 生产事故链(chat present 跨应用 authorization-failed →
 毒 sidecar 持久键 → canvas 404)的终态改造:根因是

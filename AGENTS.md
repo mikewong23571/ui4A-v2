@@ -126,7 +126,7 @@ Rules GR1–GR5 are mechanically enforced by `scripts/governance/`; run `pnpm go
 - **授权**:任何鉴权路径的输入只能是凭证的应用授予集合(`grantedApplications`)× 事实归属(fold 打标的 audience);禁止引入"当前会话 scope/活跃上下文"类输入。`resolveTrustedRequestIdentity` 不再产出被选择的 policyScope(`?scope=` 仅为导航偏好透传)。
 - **注意力**:lens 只能出自 situation 单点装配(显式 > presence > 未定位),只消费于披露切片、常显位置与导航落点;不得进入任何鉴权签名。
 - **失败语义**:授予内零可见授权事件;授予外与缺失为结构化 denied 回执;404 仅限跨 principal 存在性隐藏。
-- 违反以上任一即架构回退;机制依据见 `DECISIONS.md` D51 与 `conductor/tracks/t33-authority-attention-separation_20260827/architecture.md` §七 执法映射(D50 的 route 级 scopeCoverage 门禁已随该机器退役)。
+- 违反以上任一即架构回退;机制依据见 `DECISIONS.md` D51 与 `conductor/tracks/t34-authority-attention-separation_20260827/architecture.md` §七 执法映射(D50 的 route 级 scopeCoverage 门禁已随该机器退役)。
 
 ## Architectural Invariants
 

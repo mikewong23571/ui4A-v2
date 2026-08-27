@@ -28,7 +28,7 @@ beforeEach(async () => {
     commandId: 'c1',
     sidecarId: 'sidecar:1',
     key: {
-      principal: 'user:local',
+      principal: 'local-user',
       subject: 'post:first-post',
       intent: 'read',
       deviceClass: 'any',
@@ -73,7 +73,7 @@ beforeEach(async () => {
                   {
                     kind: 'catalog',
                     subject: 'urn:ui4a:presentation:semantic',
-                    version: 'semantic-v2',
+                    version: 'semantic-v4',
                   },
                 ],
                 provenance: [{ kind: 'generic-fallback', ref: 'fixture' }],
@@ -212,7 +212,7 @@ describe('Sidecar human lifecycle route', () => {
       commandId: 'workspace:partial:local',
       sidecarId: 'sidecar:workspace-partial-local',
       key: {
-        principal: 'user:local',
+        principal: 'local-user',
         subject: 'workspace:my-work',
         intent: 'organize',
         deviceClass: 'any',
@@ -285,7 +285,7 @@ describe('Sidecar human lifecycle route', () => {
     const receipt = await getPresentationBroker().present(
       completePresentationRequest(
         { subject: 'workspace:my-work', intent: 'organize', delivery: 'canvas' },
-        { requestId: 'workspace:full', principal: 'user:local', sourceMessageIds: [] },
+        { requestId: 'workspace:full', principal: 'local-user', sourceMessageIds: [] },
       ),
     );
     const response = await POST(
@@ -308,7 +308,7 @@ describe('Sidecar human lifecycle route', () => {
       explanation: {
         composition: {
           id: 'my-work',
-          version: '1',
+          version: '2',
           regions: [
             { region: 'waiting-for-me', availability: 'available' },
             { region: 'in-motion', availability: 'available' },
@@ -316,7 +316,7 @@ describe('Sidecar human lifecycle route', () => {
           ],
           declarationProvenance: {
             kind: 'composition-declaration',
-            ref: 'composition:my-work@1',
+            ref: 'composition:my-work@2',
           },
         },
       },

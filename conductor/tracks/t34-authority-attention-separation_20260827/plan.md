@@ -1,4 +1,4 @@
-# T33 授权与注意力范畴分离 — Plan
+# T34 授权与注意力范畴分离 — Plan
 
 > 遵循 `conductor/workflow.md` 的任务生命周期、Git notes 与 Phase Checkpoint 协议。
 > spec:`./spec.md`(含 D51 五条终态不变量与测试三分纪律;锚点全为路径+符号,

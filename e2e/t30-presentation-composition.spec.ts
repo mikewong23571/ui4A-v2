@@ -24,7 +24,7 @@ test.use({ baseURL: SCENARIO_BASE });
 
 // D51:durable 键为 principal/subject/intent/device 四元组,无 scope 维度。
 const key: UserSidecarKey = {
-  principal: 'user:local',
+  principal: 'local-user',
   subject: 'workspace:my-work',
   intent: 'work overview',
   deviceClass: 'any',
@@ -159,13 +159,25 @@ test('my-work request renders one binding-only three-region Canvas and replays i
     }
 
     await page.goto(receipt.surfaceUrl!);
-    await expect(page.locator('[data-surface]')).toHaveCount(1);
+    // Cold dev-compile grace window(与 t33-a 冷启动兜底同口径):非减窗不断言。
+    await expect(page.locator('[data-surface]')).toHaveCount(1, { timeout: 30_000 });
     await expect(page.locator('[data-testid="canvas-errors"]')).toHaveCount(0);
-    for (const rel of ['inbox', 'delegations', 'threads']) {
+    // T33:区域 self 链接标签优先合同 title(在等我/在动/我的工作线),rel 退居 href。
+    const regionTitles: Record<string, string> = {
+      inbox: '在等我',
+      delegations: '在动',
+      threads: '我的工作线',
+    };
+    for (const [rel, title] of Object.entries(regionTitles)) {
       expect(entities.get(rel)?.properties.rel).toBe(rel);
-      const renderedFact = page.getByText(rel, { exact: true });
+      const renderedFact = page.getByText(title, { exact: true });
       expect(await renderedFact.count()).toBeGreaterThan(0);
       await expect(renderedFact.first()).toBeVisible();
+      const relLink = page.locator(
+        `[data-surface] a[href="/entity?rel=${encodeURIComponent(rel)}"]`,
+      );
+      expect(await relLink.count()).toBeGreaterThan(0);
+      await expect(relLink.first()).toBeVisible();
     }
 
     const presentationBefore = await loadPresentationSnapshot(pool);

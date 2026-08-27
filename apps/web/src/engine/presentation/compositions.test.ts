@@ -6,13 +6,13 @@ describe('built-in composition registry', () => {
   it('looks up the versioned my-work declaration with stable ordered regions', () => {
     expect(getBuiltinComposition('my-work')).toEqual({
       id: 'my-work',
-      version: '1',
+      version: '2',
       regions: [
         {
           region: 'waiting-for-me',
           source: 'inbox',
           intent: 'Review work waiting for me',
-          mode: 'rehydrate',
+          mode: 'invalidate',
           shape: 'collection',
         },
         {
@@ -26,7 +26,7 @@ describe('built-in composition registry', () => {
           region: 'work-lines',
           source: 'threads',
           intent: 'Follow active work lines',
-          mode: 'rehydrate',
+          mode: 'invalidate',
           shape: 'collection',
         },
       ],

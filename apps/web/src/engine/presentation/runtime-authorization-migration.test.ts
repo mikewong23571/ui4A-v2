@@ -26,7 +26,7 @@ import { resetRecipeCoordinatorForTests } from './recipes-runtime';
 import { getPresentationBroker, resetPresentationBrokerForTests } from './runtime';
 
 const key = {
-  principal: 'user:local',
+  principal: 'local-user',
   subject: 'workspace:my-work',
   intent: 'authorization migration',
   deviceClass: 'any' as const,

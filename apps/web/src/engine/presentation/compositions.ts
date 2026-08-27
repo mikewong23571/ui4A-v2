@@ -23,14 +23,17 @@ const WORKSPACE_SUBJECT_PREFIX = 'workspace:';
 
 const builtinCompositionData = [
   {
+    // v2(T33/D50):成员可能携带已声明动作的区域(inbox 确认、threads 工作线)
+    // 升级 invalidate——成员集变化触发结构重规划,决策卡随事实到达;delegations
+    // 成员无动作,维持 rehydrate(结构稳定,数据逐源重授权)。
     id: 'my-work',
-    version: '1',
+    version: '2',
     regions: [
       {
         region: 'waiting-for-me',
         source: 'inbox',
         intent: 'Review work waiting for me',
-        mode: 'rehydrate',
+        mode: 'invalidate',
         shape: 'collection',
       },
       {
@@ -44,7 +47,7 @@ const builtinCompositionData = [
         region: 'work-lines',
         source: 'threads',
         intent: 'Follow active work lines',
-        mode: 'rehydrate',
+        mode: 'invalidate',
         shape: 'collection',
       },
     ],

@@ -258,8 +258,13 @@ describe('project(delegations 投影)', () => {
         fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
       },
     });
+    expect(entity?.links).toEqual([
+      { rel: ['self'], href: '/api/entity?rel=delegations', title: '在动' },
+    ]);
     expect(entity?.entities).toHaveLength(1);
     const sub = entity?.entities?.[0];
+    // T33:成员派生任务语言进度行(机械计数,投影数据)
+    expect(sub?.properties).toMatchObject({ resume: '1/1 · completed' });
     expect(sub?.rel).toEqual(['item']);
     expect(sub?.href).toBe('/api/entity?rel=delegation:wf-1');
     expect(sub?.properties).toMatchObject({
