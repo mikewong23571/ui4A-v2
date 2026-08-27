@@ -1,0 +1,5 @@
+T10 Phase A Task 1: ApplicationDefinition 类型 + parse 校验
+
+改动:packages/shared/src/definition.ts(+31:类型/rel 前缀/辅助函数)、packages/engine/src/parse.ts(+53:parseApplicationDefinition + AppParseError)、parse.test.ts(+80)、shared/definition.test.ts(新增)
+Why:引入 application 定义平面实体(D19 路线 T1;spec 架构决定 1),为 sitemap 分组与 agent 两层发现供载体。
+验收(编排 agent 亲自复跑):CI=true pnpm vitest run packages/engine/src/parse.test.ts packages/shared → 47/47;CI=true pnpm check → 849 passed 全绿。自治验收。

@@ -1,0 +1,6 @@
+Phase D core implementation: Scenario enumeration, Presentation Agent, Recipe Registry
+Summary: Added definition-only Scenario Enumerator (publishing inventory 15; dynamic new-definition discovery), independent provider-neutral Presentation Agent with bounded non-Chat context and strict bare-Surface parser, Application Recipe validator and immutable candidate/promoted/stale Registry with deterministic keys, idempotent generation commands, human-only promotion/rollback, dependency scanning, and compatible continuity.
+Red evidence: each new scenario/agent/recipe suite first failed on missing module.
+Green evidence: root rerun all workspaces typecheck and 6 focused files/52 tests; Presentation Agent injected suite 14 tests; engine Presentation 38 tests; targeted ESLint/Prettier/diff clean. No external model used in this commit.
+Safety: generated candidates allow declared  bindings only, reject runtime identity/live payloads/unknown catalog words, and become usable only after engine Surface+Recipe validation.
+Why: Application-level pre-generation must be AI-first composition over mechanically enumerated situations, not product keyword/page rules.

@@ -1,0 +1,7 @@
+T12 Phase B Task 2: 缓存精确失效接线
+
+改动:components/entity-cache-provider.tsx(新增,React context 承载)、entity-page-body.tsx(取数+exec 失效)、entity-view/action-runner(回调签名扩展,向后兼容)、app/entity/page.tsx(挂 provider)、render/entity-cache.ts(invalidateAfterExec 显式 collection 参数 + collectionBacklinkOf)+ 4 测试文件
+承载方案:React context 每页挂载——页内导航全走 <a href> 整页加载,provider 生命周期 ≤ 一次页面加载,天然跨页不共享;模块单例随 client 导航跨页存活(排除);useRef 供不了多 surface(排除)。
+真实归属闭环:siren.ts:149-154 投影本带 links['collection'] 回链;exec post:post-welcome → articles 集合真实失效重取(组件测试断言),Task 1 已知边界对 flow 实例闭合。
+Why:spec 架构决定 3——exec 成功精确失效(当前 rel + 所属 collection),整面 reload 兜底保留。
+验收(编排 agent 亲自复跑):4 测试文件 31/31;CI=true pnpm check 974 passed;baseline+s5 e2e 5/5。自治验收。

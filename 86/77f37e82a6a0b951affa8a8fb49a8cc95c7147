@@ -1,0 +1,15 @@
+Task: 聊天路由与悬浮窗(T2 Phase E / Task E2)
+
+Summary:
+- apps/web/src/app/api/chat/route.ts:POST {goal, sessionId?, driver?} → 服务端 createDriver(auto 无 key 回退 rule)+ runAgent 过本源 HTTP 合同(origin 回环,actor=agent,principal=user:<sessionId>,channel=chat);startRel 由 sitemap 词级交集+可达探测解析(chat/start.ts),缺省 articles;响应一次性 JSON:{sessionId, driver(解析后), requestedDriver, outcome, summary, messages(每步一条), steps, successes}。
+- chat/trail.ts:轨迹→assistant 消息投影(导航到 X/执行 Y(参数)/被拒:原因/导航失败/完成/失败;max-steps 补上限消息)。
+- chat/start.ts:overlaps(@ui4a/agent match 原语)词级交集;探测 200 才采用(多实例 flow 404 跳过);异常兜底 articles。
+- components/floating-chat.tsx:@assistant-ui/react useExternalStoreRuntime + ThreadPrimitive/ComposerPrimitive/MessagePrimitive 原语自绘悬浮窗(右下角,展开会话,输入目标→轨迹渲染;sessionId localStorage 纯投影)。assistant-ui 0.15.16 与 React 19.2/Next 16 集成成功——未触发 D7 偏差,无降级。
+- route.test.ts:进程内回环 http server 转交真实 route handler(entity/exec/events/sitemap/chat),覆盖 I1 路由级(无 key→rule,B1 done,计数 2→3,轨迹 3×next+publish,日志 actor=agent/channel=chat/principal=user:sess-42)与 B4 路由级(本地 401 桩→200+401 原文+同 session 重发存活)。
+- 期间发现并修复(独立 commit 004e3db):GLM coding 端点对 tool_choice:'required' 挂起;已改缺省 auto,系统提示词约束单工具调用。
+- 手工验证:dev server 上 curl rule 通道全轨迹正确;真实 GLM(auto→llm)B1 30s 完成(LLM 自编三步内容+publish,计数 3);Playwright 浏览器级走查:悬浮按钮可见→展开→输入→真实 LLM 轨迹渲染(截图留档)。
+
+Files: apps/web/src/app/api/chat/route.ts(+route.test.ts)、apps/web/src/chat/{trail,start}.ts(+tests)、apps/web/src/components/floating-chat.tsx、apps/web/src/app/layout.tsx、apps/web/next.config.ts、apps/web/package.json、pnpm-lock.yaml、packages/agent/src/loop.test.ts(lint 修正)
+附带 style commit 5dfc937(既有模块 prettier 格式化,无语义变化)。
+
+Verification: CI=true pnpm check 全绿(32 files / 264 tests)。

@@ -1,0 +1,4 @@
+Documentation governance refresh
+
+Established authority order; updated README and AGENTS module map; synchronized AI-first, T16 Recipe/User Sidecar, D28 summary boundary, and external App authoring; added runtime and raw-audit/replay guides; labeled original architecture/selection documents historical; removed stale counts/provider/fallback instructions; added executable documentation governance tests.
+Verification: targeted Prettier check passed; document-governance 3/3 passed.

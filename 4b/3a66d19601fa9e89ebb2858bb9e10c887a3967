@@ -1,0 +1,26 @@
+T7 Phase C Task 1: 聊天 render 意图 → spec 生成
+
+生成器位置决策:packages/agent/src/render.ts(agent 包)。理由:render 意图
+在 chat/agent 侧(rule driver 同族确定路径,match.ts 词级原语复用);纯函数
+零 I/O;类型上自持 GeneratedRenderSpec(结构即 web RenderSpec),web 入口
+经 validateSpec + freezeSpec 把关(分层校验,不在 agent 包重复)。
+
+设计要点:
+- 维度词命中但字段未在 sitemap 流程声明 → undefined(如实拒绝,不静默降级
+  table,不发明字段);s5 场景字段级验证以'全局声明过'为准(sitemap 不携带
+  flow→collection append 边),解引用器对假字段响亮失败是第二道闸。
+- dimension 路径 <collection>.fields.<name>:实体投影把实例字段嵌在
+  properties.fields 下(engine siren 口径)。
+- 无维度词的展示意图 → table(chart 需要 dimension,bindSchema 必填)。
+- 交互形态:chat 响应 render 载荷(spec+frozenNow+canvasUrl);悬浮聊天底部
+  「在画布查看」链接(data-nav=render:<concern>);画布 ?concern= 激活
+  (命中 surface 排最前+高亮;画布渲染全部凝固 spec——链接只是导航锚)。
+- render 拦截先于 inline/delegated 分派:渲染说明不是委托任务也不进执行
+  循环;引擎故障静默交回原路径(循环/委托如实报错,口径不变)。
+
+新增文件:packages/agent/src/render.{ts,test.ts}、
+apps/web/src/app/api/chat/route.render.test.ts。
+修改:agent/index.ts(导出)、api/chat/route.ts(render 短路)、
+floating-chat.tsx(回执链接)、canvas/page.tsx(?concern 激活+data-concern)。
+测试:agent render 16 + route render 4 + floating-chat 2 + canvas 2;
+CI=true pnpm check 全绿(821 单测,较前 +24)。

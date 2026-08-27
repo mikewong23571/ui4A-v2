@@ -1,0 +1,6 @@
+T16 Phase I acceptance
+
+Safety: corrupt Sidecar fails closed, is staled, and is repaired through generic binding-only planning.
+Quality: semantic plain-text A2UI words avoid an unconfigured Markdown runtime; all local presentation controls are interaction-backed.
+Evidence: pnpm check 164 files/1368 tests; T16 Golden Story passed; real deepseek-v4-flash S1/S3 and S24 canonical-plus-four variants passed; focused business replay passed.
+Full Playwright rerun follows final review.

@@ -1,0 +1,23 @@
+T4 Phase C — Phase Verification & Checkpoint(自治验收,编排 prompt 代行)
+
+Verification evidence (2026-08-21):
+
+1. CI=true pnpm check —— 全绿:typecheck(3 workspace)+ eslint + vitest 62 files / 553 tests(Phase B 基线 523 → +30:Task 1 +6[definition-diff 纯数据/executeMeta 集成/fold I5/投影合同],Task 2 +19[diff 渲染零 AI 源级断言/approve actor=human/reject reason 必填/checks/列表/定义表/首页 BIOS 入口],verification units +5[BIOS body 取数状态机])。
+
+2. CI=true pnpm e2e —— 18 passed / 1 skipped(llm-smoke 无 GLM_API_KEY,既有口径)零回归(48.8s;PostgreSQL 5433 + Temporal 7233 均起)。
+
+3. 无头走查(手工等效,Playwright chromium + 截图证据 /tmp/bios-*.png;TRUNCATE 后 dev 3100 重启、boot 重播种):
+   a. 首页:有且仅有一行 BIOS 链接(/meta);
+   b. BIOS 索引三面链接(meta/flows、meta/activations、meta/self);
+   c. 面1 定义查看:/meta/flows 列表(article-drafting pending-approval 可见)→ /meta/flow/article-drafting 属性/节点/动作表格;
+   d. 面3 meta/self:lifecycle 定义 + guard 集(actor-is-human 可见);
+   e. 激活链(agent 经 /_meta/api/exec,actor=agent):revise → draft;add-action(pin→done,guards:[])→ draft;submit → pending-approval;agent approve → 422 guard-failed actor-is-human(I4 延伸,拒绝即数据);
+   f. 面2 激活队列:/meta/activations 列出 a1 → /meta/activation/a1:六项 checks 全过可见 + 机械 diff(react-diff-view 绿行含 nodes[3].actions[1].name = "pin" 等逐字段路径,样式正常[绿/红行],截图 bios-activation-diff.png 视觉复核通过);
+   g. 浏览器点「批准」(BIOS 客户端恒 actor=human)→ 激活详情转审计视图(approved-by 留痕)→ 队列清空 → /meta/flow/article-drafting 回 active v2、动作表含 pin;
+   h. sitemap version 9794d12dda37 → b9b4cbc2eadd(重生成信号),sitemap 含 pin(定义激活即生效,S2 根基);业务 sitemap 无 _meta(跨站规则保持)。
+
+4. Phase 变更文件测试覆盖(workflow Step 2):engine(shared 类型/definition-diff/meta/fold/siren → definition-diff.test/meta-project.test/meta-approve.test/fold.test)、web 组件全部有 .test.tsx;页面壳与 Body 状态机 → 本 commit verification units(meta-bodies.test.tsx);walk 脚本为一次性证据(/tmp/bios-walk.mjs,不入库;S2 e2e 是 Phase D 交付)。
+
+DoD 对照:①check 全绿 ✓ ②e2e 18 零回归 ✓ ③activation 实体含 diff(合同测试 meta-project + 集成 definition-diff.test)✓ ④无头走查 revise→add-action→submit→pending→BIOS 见 diff 与 checks→approve→激活 ✓ ⑤diff 渲染零 AI(源级断言 + 输入 JSON 往返纯数据)✓ ⑥两任务 commit(5856baa/5474a47)+ 本验证 commit + plan 勾选 ✓。
+
+偏差与口径(详见各任务 git note):diff 在 engine executeMeta submit 内计算;页面路由 /meta(canonical API 恒 /_meta/*);依赖位置 deep-object-diff→@ui4a/engine、react-diff-view→@ui4a/web;react-diff-view textLinesToHunk 不解析 +/- 前缀,改走 parseDiff unified 文本管线;数组删除的空对象标记由渲染器从 before/after 按路径机械取值。词汇表浏览面(meta/registries)为加分项未做——T4 最小集不建该 rel(spec 架构决定 1)。

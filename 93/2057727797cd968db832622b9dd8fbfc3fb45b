@@ -1,0 +1,1 @@
+T14 Phase F: replace the 120s total deadline with a renewable idle deadline and emit 15s server heartbeats. Active streams can run indefinitely; only 120s of silence fails. Evidence: 49 focused web tests and web typecheck.

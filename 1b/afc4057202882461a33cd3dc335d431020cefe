@@ -1,0 +1,9 @@
+T15 formal review complete
+
+Findings fixed:
+- Updated product-guidelines from legacy zero-intelligence fallback language to AI-first honest degradation.
+- Removed real baseline model literals from conversation test fixtures.
+
+Verification inherited from implementation checkpoint: pnpm check 1226 tests passed; Playwright 42 passed/16 gated skips; real canonical eval 17/17 safetyFailures=0; focused U18-U23/render/delegated passed.
+Scoped Prettier check and source-governance/provider-secret scans passed.
+No remaining Critical, High, Medium, or Low T15 findings.

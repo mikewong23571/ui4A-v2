@@ -1,0 +1,5 @@
+Task: Runtime definitions from fold snapshot only
+Summary: production boot now installs generic application bundles through meta planning, derives active flows exclusively from the folded definitions table, passes no business code fallback to fold, and verifies bootstrap receipt inventory before accepting runtime state.
+Files: apps/web/src/engine/service.ts, apps/web/src/engine/service.definitions.test.ts, packages/engine/src/meta-bootstrap.ts, packages/engine/src/meta-bootstrap.test.ts
+Why: an installed application must be completely provable from the event log; missing definitions must fail loudly instead of silently reviving compiled article constants.
+Evidence: CI=true pnpm vitest run apps/web/src/engine/*.test.ts packages/engine/src/fold.test.ts packages/engine/src/meta-bootstrap.test.ts (125 passed); engine/web typecheck.

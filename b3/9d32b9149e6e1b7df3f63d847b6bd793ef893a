@@ -1,0 +1,1 @@
+Product boundary: in-product Chat-to-App creation is explicitly out of current DONE. Future direction is an external Agent that drafts Application Bundles and submits them through UI4A meta contracts; UI4A retains deterministic validation, diff, human approval, activation, audit, and replay.

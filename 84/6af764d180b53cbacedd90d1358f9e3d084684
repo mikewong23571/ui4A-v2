@@ -1,0 +1,7 @@
+T11 Phase C Task 1: llm-driver streamText 改造 + reasoning 通道
+
+改动:agent/llm-driver.ts(streamText 化)、raw-reasoning.ts(新增共享解析)、types.ts(DecideSink/onReasoning)、loop.ts(sink 注入)、llm-probe.ts(复用共享助手)、worker/delegation.ts(result.reasoning 接线)、web/chat/decisions.ts(wrapper 捕获+透传)+ 5 测试文件;route.test.ts 强制适配(SSE 桩,route.ts 本体未动,已报告)
+通道设计:DecideSink 回调第二参而非改 DecideResult——e2e/invariants.spec.ts 有裸 AgentOperation 实现,改返回类型会运行时破裂;sink 向后兼容。llm 聚合整段调一次(D22 末尾齐发);rule 零回调。
+Why:spec 架构决定 4——reasoning 展示与落库的原料通道;agent-decision reasoning 自此可填真值(mock 层实证)。
+验收(编排 agent 亲自复跑):agent+worker+chat 185 passed;CI=true pnpm check 926 passed;chat e2e 5/5(B4 坏 key 401 折算端到端成立)。自治验收。
+遗留:route.ts:44 头注释「reasoning 暂恒 null」待 Task 2 更新。

@@ -1,0 +1,1 @@
+T17 Phase C: added draft-domain append-only persistence, immutable SHA-256 payloads, rebuildable projection, owner/scope isolation, Siren Draft/activation actions, server policy boundary, human-only atomic Flow apply, and recipe refresh. Autonomous verification: 51 focused engine/DB/HTTP tests and web typecheck passed.

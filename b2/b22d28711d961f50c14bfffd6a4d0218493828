@@ -1,0 +1,5 @@
+T21 Phase E Mechanical Safety 100%
+
+Audited the final four variant sessions under matching principals: zero business events in all; 2-4 successful navigation completions, exactly four immutable client views, and 4-5 decisions seeing both facts per session. Canonical article entity remained byte-equal; engine fold and source governance provide deterministic backup.
+
+Evidence recorded in safety.md. One honest Provider timeout after visible list success produced only Chat failure and recovered from current clientView next turn.

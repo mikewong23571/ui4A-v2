@@ -1,0 +1,13 @@
+T5 Phase A Task 1: delegationWorkflow + agentStep activity + 委托事件
+
+决策记录:
+- activity 边界:采纳「统一每步一个 agentStep activity(决策+执行合一)」方案(编排者建议,实施确认)。理由:LLM 决策含网络必须进 activity;统一 rule/llm 走同一 activity 最简单且天然确定性(workflow 状态全在局部纯数据 + activity 返回值,重放零分歧)。plan 中 execStep 命名调整为 agentStep——该 activity 不只执行,还承载决策与步事件落库。
+- @ui4a/agent 复用方式(最小侵入):不改造 runAgent 为可注入 executor。runAgent 是一体 async 循环,无法在 Temporal 逐步 activity 边界停顿;改为复用其全部构件:createDriver(rule|llm 工厂)/createContractClient(fetch 合同封装)/summarizeEntity/轨迹与上下文类型。@ui4a/agent 公共面零改动(无需新增导出)。worker 内实现 runAgentStep(步进核心)+ delegationWorkflow(循环骨架,runAgent 语义逐条对齐:navigate 切 rel、exec 成功入 successes、lastRejection 单步消费、sitemap 取一次、done/fail/maxSteps 终止、实体不可得不产轨迹步)。
+- 幂等:activity 重试若发现该步 delegation-step 事件已落库(落库后/回执前被杀),直接返回事件记录的步结果——不重执行不双写;落库前被杀则重执行(引擎单 atom 串行,重复 exec 被状态机拒绝并留痕)。
+- 首尾事件 startDelegation/finishDelegation 按 (kind, rel) 查重幂等(与 notify activity 同方案)。
+
+文件:
+- 新增 apps/worker/src/delegation.ts(步进核心)、apps/worker/src/delegation.test.ts(13 单测:决策→执行→事件写入断言、幂等恢复零 HTTP、applyStepToState 状态推导、首尾事件幂等)
+- 修改 apps/worker/src/workflows.ts(delegationWorkflow + 类型 + applyStepToState 纯函数;workflow bundle 仅 type import @ui4a/agent)、apps/worker/src/activities.ts(DelegationActivities 注册)、apps/worker/package.json(+@ui4a/agent、+@ui4a/engine)、apps/web/src/db/events.ts(EventKind +5 委托 kind)、packages/engine/src/fold.ts(LogEventKind 类型先行)
+
+验证:CI=true pnpm vitest run apps/worker(19 过);CI=true pnpm check 全绿(63 文件 566 测试)

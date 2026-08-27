@@ -1,0 +1,5 @@
+T21 Phase D prompt acceptance
+
+Added exact structural tests proving currentRel is labeled as contract read location, lastNavigation and clientView are independently serialized with provenance, and missing facts are explicit null rather than inferred. Phase C had already wired the minimal Green input to satisfy navigation persistence ordering; this task freezes the intended AI context boundary.
+
+Validation: llm-driver and loop => 87 tests passed; agent typecheck; Prettier/diff checks.

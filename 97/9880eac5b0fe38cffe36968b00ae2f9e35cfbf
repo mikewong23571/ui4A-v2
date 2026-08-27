@@ -1,0 +1,5 @@
+T21 Phase C Red: client view reporting
+
+Added failing pure route-to-subject tests for direct rel, Canvas focus/roots, unknown routes, and receipt matching, plus component coverage requiring each /api/chat request to carry actual browser route/subject and a hook-lifetime client id.
+
+Red evidence: focused Vitest => client-view module missing and request clientView undefined; 29 existing floating-chat tests passed after route cleanup isolation.

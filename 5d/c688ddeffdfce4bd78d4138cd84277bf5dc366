@@ -1,0 +1,5 @@
+T21 Phase E real browser Golden Story
+
+Added gated real-LLM Playwright acceptance: explicit first-post detail appears on Canvas, count answer remains on detail URL, list request renders articles, location answer uses current client view, article snapshot is unchanged, audit contains both focus facts and zero business effects.
+
+Final command: RUN_LLM_EVAL=1 node scripts/with-local-env.mjs pnpm exec playwright test e2e/t21-golden.spec.ts --workers=1 => 1 passed in 46.0s. Two preceding runs found and corrected test-only polling/strict-locator issues; product flow itself reached the expected URLs.

@@ -1,0 +1,18 @@
+三 track 自治闭环总结(用户醒后审计入口;编排 agent 代行验收,2026-08-22)
+
+== T10 Application 切片(d81644a..3d974cb,checkpoint notes: 26d2097/0cc4d60/e4eacf5/aaf547c)==
+做了什么:ApplicationDefinition 定义平面实体(parse 校验 + meta/application: rel 前缀);FlowDefinition.app 单属归一化(缺省 default);激活不变式第七条 app-known(submit 拒非法引用留痕);application-seeded 事件入日志 + fold 落 applications 表(default/publishing/community seed,I5 重放一致);sitemap applications 分组投影(扁平 flows 保留带 app,version 随 app 定义 bump,缓存键同步);agent 两层发现(静态上下文分组 + SYSTEM_PROMPT role/app 空槽 + rule-driver app 定位层,软边界)。
+降级/回滚:无回滚。偏差 D21:checks 六项→七项,s2 e2e 精确名单/行数断言机械适配(D11 先例)。
+遗留:application meta 编辑动词/版本机制//app/<name> 页/meta 可视化/角色 archetype 均按 D19 路线归后续 track;comments 集合面归 default(extraSurfaces 无归属信息口径)。
+
+== T11 agent 可观测性与蒸馏留痕(de5791f..4021033,checkpoint notes: de5791f/5166485/c297157/986ef4c)==
+做了什么:GLM-5.3 探针(D22:SDK 层零暴露 reasoning,取数=streamText+includeRawChunks 原始层解析;reasoning 末尾齐发非增量;tool calling auto 复验;简单步 4-9s);chat-turn detail 结构化 steps(读端旧形状兼容);agent-decision 审计事件(inline llm/rule 每步一条五要素,fold no-op,I5 一致);delegation-step reasoning 字段(幂等恢复同构);llm-driver streamText 化(DecideSink 通道,rule 零回调,B4/60s abort 口径保持);SSE thinking 帧(先于同号 step 帧,rule 零帧);chat-panel 折叠思考区;门控实测 llm-thinking(真实 GLM:帧/落库/UI 三方同回合互证)。
+降级/回滚:无。GLM key 全程在位,门控全量实跑无降级。
+遗留:llm 路径 reasoning 真值已通(rule 恒 null 为口径);蒸馏算法本身非本 track 范围;route.ts 注释已同步。
+
+== T12 render LLM 接线 + 页面级实体缓存(85f8854..8ed0edc,checkpoint notes: da1b6c9/119dd52)==
+做了什么:rule miss 展示意图 → buildRenderPrompt → glm-5.3 → parseRenderResponse → 同一零字面闸+grounding+bindSchema → freezeSpec(失败交回普通循环,I1 无 key 跳过);门控实测 llm-render(真实 GLM chart spec 凝固渲染对拍);PageEntityCache(rel 索引+sitemap version 一致性戳,version 变全量失效,inflight 去重,404 不缓存);EntityCacheProvider 页面级承载(跨页不共享);exec 精确失效(实体 collection 回链真实归属,并集口径 I2)+ reload 兜底;首页/画布接入(多 surface 共享,D18 binderless 不破坏)。
+降级/回滚:一次回归修复(非回滚):别名页 exec 后页面 rel 未失效致 B1 向导停步(human/dual-executor 红)→ 修复尝试 #1 成功(119dd52,回归用例入套件)。
+遗留(subagent 实测发现,非本 track 范围,建议立项):1) 非聚合词条(kanban/table/timeline)bindSchema 允许 dimension 但运行时 asMembers 拒 DimensionCount[],过闸凝固后画布渲染抛错且无 per-surface 错误边界(/canvas 整页 surfaces 归零);2) caption 字段引用成员级路径挂集合实体必 dangling,坏 spec 凝固后每次画布加载都报;3) LLM render 无凝固复用短路(同 concern 重复请求每次付一次生成)。
+
+终态证据:CI=true pnpm check 982 passed | 2 skipped(Temporal 环境性);CI=true pnpm e2e 33 passed / 14 skipped(门控 llm 四件无 RUN_LLM_E2E 跳过不红,有 key 全部实跑通过);工作区干净;端口 3000 未触碰;无 push/force/历史改写。

@@ -1,0 +1,20 @@
+T13 Phase D Task 1: 激活不变式第八条 capability-registered
+
+改动:engine/invariants.ts(第八条+registries)、meta.ts(submit 接线)、invariants.test.ts(+9)、service.definitions.test.ts(+2 长牙)、e2e/s2.spec.ts(机械适配 7→8)、DECISIONS.md(D23)
+引用点口径:proposal.capability / spawn.capability / on-invalid(定义是数据,枚举外兜底);elicit.strategy 非 capability 不算。扫描面与 capabilities.test.ts 静态保证同源(D23)。
+Why:arch-brief A.5 种子集的 capability-registered 落地;capability-schema-compatible 归后续。
+验收(编排 agent 亲自复跑):invariants+meta+service.definitions 75/75;CI=true pnpm check 1073 passed;s2 e2e 4/4(八项名单+八行)。自治验收。
+
+---
+
+T13 Phase D Checkpoint + Track 闭环验证报告(自治验收)
+
+阶段范围:ab48d33..HEAD(capability-registered 第八条)+ 全量回归
+自动化验证(编排 agent 亲自执行):
+- CI=true pnpm check → 1073 passed(0 skipped——Temporal 集成测试本轮亦运行)
+- CI=true pnpm e2e → 45 passed / 4 skipped(并行会话 24a64ed 后的新基线;门控 llm 跳过不红)
+- capability-registered 长牙实证:未注册 spawn 引用 checks-fail 回 draft 留痕(service 测试);S2 e2e 八项名单+八行 UI 断言
+demo 走查(脚本化,PORT=3100 dev + curl):/api/health ok;/_meta/api/entity?rel=meta/capabilities → count=3;meta/capability:draft → kind=extract intent 可读;/meta/capabilities 与 /meta/flow/article-drafting → 200;拓扑图/版本对比浏览器断言由 s2 e2e ③'③'' 段覆盖。
+track 验收对照:spec 验收 1-7 全过(1 check/e2e 绿;2 拓扑只读+布局确定性;3 版本区+两版对比 diff;4 capability seed/fold/I5/BIOS 投影/跨站规则;5 capability-registered 拒且留痕+零误伤;6 回归零改动(D21 先例机械适配除外);7 走查如上)。
+确认:用户离线,编排 agent 代行验收——自治验收,T13 闭环。
+环境注记:Phase B 期间遇外部并行 WIP(onReasoningDelta),已由另一会话提交(24a64ed)后全量门恢复;Phase D 前 kill 过一个 3100 残留 dev server(本仓,可重启)。

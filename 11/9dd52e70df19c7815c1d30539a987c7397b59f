@@ -1,0 +1,31 @@
+T12 Phase B 回归修复:别名页缓存失效
+
+根因:Task 2 的精确失效只覆盖 execRel(实例 rel)+ 所属 collection;flow 别名页(flow:article-drafting → article-drafting:main,exec 直投实例 rel 不绕别名)的页面 rel 缓存条目残留,tick 重拉命中旧投影——Task 2/3 的组件测试均以 页面 rel == execRel 构造,未覆盖别名场景,e2e B1 向导(human/dual-executor)暴露。
+修复:invalidate(rel) 单 rel 失效 + EntityPageBody 别名同步失效;回归用例(别名页 exec → 页面 rel 重取上屏第二版)先入测试套件。
+验收(编排 agent 亲自执行):Red 复现 → Green;CI=true pnpm check 982 passed;human+dual-executor e2e 6 passed 1 skipped(门控)。自治修复(验收失败修复尝试 #1,成功)。
+
+---
+
+T12 Phase B Checkpoint 验证报告(自治验收)
+
+阶段范围:da1b6c9..HEAD(PageEntityCache 模块 + EntityCacheProvider 精确失效接线 + 页面/画布接入 + 别名页回归修复)
+自动化验证(编排 agent 亲自执行):
+- CI=true pnpm check → 982 passed | 2 skipped(环境性)
+- CI=true pnpm e2e → 33 passed / 14 skipped,零回归
+- 验收 5 实证:同 rel 二次渲染零重复 fetch(fetch 计数);exec 成功当前 rel + 真实所属 collection(回链)失效重取;version 变全量失效(模块单测);画布多 surface 共享(chart+table 同绑 articles 只取一次)
+- 回归记录:别名页缓存失效缺失致 B1 向导停步(human/dual-executor 红)→ 修复尝试 #1 成功(119dd52,回归用例入套件)
+确认:用户离线,编排 agent 代行验收——自治验收,通过。
+
+---
+
+T12 Phase C Checkpoint + Track 闭环验证报告(自治验收)
+
+阶段范围:全量回归 + demo 走查(无新功能 commit)
+自动化验证(编排 agent 亲自执行):
+- CI=true pnpm check → 982 passed | 2 skipped(环境性)
+- CI=true pnpm e2e → 33 passed / 14 skipped(门控 llm 四件无 key 跳过不红),零回归
+- 门控实测(本 track 期间,GLM key 在位):llm-render 1 passed(rule miss → LLM chart spec → 三闸 → 凝固 → 画布渲染,数值对拍)
+demo 走查(脚本化,PORT=3100 dev + curl):展示文章列表 → table(articles-list);按分类展示文章 → chart(articles-by-category)——同集合两视图均 done;exec unpublish → 200,实体投影立即 offline(freshness);post-welcome 已恢复 published。
+track 验收对照:spec 验收 1-6 全过(1 check/e2e 绿;2 LLM 接线 mock+门控;3 三拒诚实失败;4 I1 无 key rule 完整、S5 零改动;5 缓存三断言;6 全回归零改动通过)。
+确认:用户离线,编排 agent 代行验收——自治验收,T12 闭环。
+遗留(da1b6c9 note 已录):非聚合词条 dimension bindSchema 与运行时错位 + 画布无 per-surface 错误边界;caption 字段引用 dangling 凝固后永久留痕;LLM render 无凝固复用短路——均非本 track 范围,待后续立项。

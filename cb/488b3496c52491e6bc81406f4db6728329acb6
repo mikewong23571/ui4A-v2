@@ -1,0 +1,12 @@
+Task Summary — T1 Phase 3 Task 3: 文档落地
+
+改动:
+- 根 README.md(此前未入库,本 commit 一并纳入):保留全部既有内容(必读文档/施工顺序/五条铁律/状态基线),在标题与简介后新增'快速开始'一节:①pnpm install ②docker compose up -d --wait ③PORT=3100 pnpm dev → http://localhost:3100/api/health(期望 {"status":"ok","db":"ok"});附 pnpm check 与 CI=true pnpm e2e 说明及 .env.example 可选覆盖说明。README 同时经 prettier 统一格式(format:check 通过)。
+- conductor/workflow.md:仅替换 '## Development Commands' 节——三段示例占位代码块改为本仓库真实命令:Setup(pnpm install、docker compose up -d --wait)/ Daily(PORT=3100 pnpm dev、CI=true pnpm vitest run、pnpm --filter @ui4a/worker dev)/ Before Committing(pnpm check、CI=true pnpm e2e),并移除已过时的 'AI AGENT INSTRUCTION: adapt this section' 横幅。git diff 确认单 hunk(@@ -272,31 +272,37 @@),未动其他章节。
+
+命令逐条实测:
+- pnpm install 幂等成功;docker compose up -d --wait 后 postgres healthy;
+- pnpm --filter @ui4a/worker dev:输出 '[UI4A] worker v0.1.0 started(heartbeat every 3000ms)' 与心跳行;SIGINT 后 '[ui4a] worker received SIGINT, exiting' 干净退出,无残留进程;
+- PORT=3100 pnpm dev 与 curl /api/health、pnpm check、CI=true pnpm e2e 在 Phase Verification 统一复跑(见该 note)。
+
+为何:spec FR8/AC6——README quickstart 与 workflow.md 命令必须与实际一致,消除占位假命令误导后续 track 施工者。

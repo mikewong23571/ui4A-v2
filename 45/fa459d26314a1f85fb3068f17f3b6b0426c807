@@ -1,0 +1,26 @@
+Task: T4 Phase B Task 2 — /_meta 站点(三端点 + 跨站规则)
+
+改动:
+- apps/web/src/engine/service.ts:isMetaRel 导出;EngineRuntime 增 getMetaEntity/
+  getMetaSitemap(MetaSitemap 形状 {version,site:'meta',surfaces});exec 的 meta/
+  前缀分支路由 executeMeta(事件落库/拒绝留痕/投影与业务 exec 共用代码路径);
+  metaDeps={guards,policy}(lifecycle 自举在 executeMeta 内注入)。
+- apps/web/src/app/api/meta/{.well-known/ui4a.json,entity,exec}/route.ts(+测试):
+  meta sitemap / meta 实体(非 meta rel 404)/ meta exec(非 meta rel 404)。
+- apps/web/src/app/api/exec-request.ts:exec 请求体解析抽取(两 exec 端点共用)。
+- apps/web/src/app/api/{entity,exec}/route.ts:meta/ rel → 404(跨站不混)。
+- apps/web/next.config.ts:rewrites /_meta/*→/api/meta/*。
+
+口径决策(报告):
+- meta rel 路由:业务 /api/entity 对 meta/ rel 返回 404(不重定向)——跨站不混,
+  进入定义层必须显式意图;反向亦然(_meta 站对业务 rel 404)。
+- /_meta 实现方式:App Router '_' 前缀目录是私有文件夹(不可路由),经 next.config
+  rewrites 映射内部 /api/meta/* 处理器;直接访问 /api/meta/* 为内部别名(同处理器),
+  canonical URL 恒 /_meta/*。
+- /_meta href 前缀用 engine project 的既有 baseHref 机制(投影语义零改动)。
+
+测试:+12(well-known 1 + entity 4 + exec 4 + service.meta 3[agent approve I4、
+激活链 sitemap bump DoD 4、I5 重放含定义事件]);CI=true pnpm check 515 全绿;
+CI=true pnpm e2e 18 过 +1 skip;手工 curl(3199 dev)验证 /_meta 三端点 200、
+非法定义 422 留痕、agent approve 422、业务 sitemap surfaces 无 _meta、
+/api/entity meta rel 404。

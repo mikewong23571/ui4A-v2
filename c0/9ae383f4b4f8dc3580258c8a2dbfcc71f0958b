@@ -1,0 +1,17 @@
+Task: worker 真身(@temporalio/worker;notifyWorkflow + notify activity;taskQueue ui4a;心跳改为 worker 启动日志)
+
+## 变更
+- apps/worker/src/workflows.ts: notifyWorkflow(单 activity 编排;重试/超时由 Temporal 平台提供;无 timer/信号——重放确定性);
+- apps/worker/src/activities.ts: notify activity + deliverNotification 核心(db 注入);写 notification-delivered 事件(rel=confirmation:<id>,channel=notify,detail={notificationId:notif:<id>, confirmation 摘要}=inbox 条目数据);ensureEventsTable 幂等(worker 可先于 web 启动);workerDb 复用 web 的 pg pool;
+- apps/worker/src/main.ts: Temporal worker 入口(NativeConnection,TEMPORAL_ADDRESS 可覆盖;taskQueue ui4a;SIGINT/SIGTERM→worker.shutdown()→drain→自然退出;实测 dev server 上 RUNNING→SIGTERM→DRAINED→STOPPED 干净退出);
+- apps/worker/src/banner.ts(+test): 心跳循环删除,保留启动/退出横幅(APP_NAME/VERSION 证明 shared 通路);
+- apps/web/src/db/events.ts EventKind + packages/engine/src/fold.ts LogEventKind: 新增 notification-delivered(写侧词表;engine fold 分支与 notified 投影属 Task 2 读路径)。
+
+## 决策
+- 依赖放置:@temporalio/worker|workflow|activity + pg/@types/pg → apps/worker;@temporalio/client → apps/web(worker 不用 client,web 不用 worker 运行时);
+- 存储复用:worker 跨 app 相对引用 web 的 db/events.ts(appendEvent 唯一写入口,事件日志是共享底座不属任何平面;不复制 SQL 防漂移);
+- 幂等方案:两层——Temporal workflowId=notify-<id> 防并发重复派发;activity 按 (kind='notification-delivered', rel) 存在性检查,已送达即跳过(deduplicated=true)。未用 DB 唯一索引(需改 DDL/events.sql 一致性测试,收益小于成本);fold 幂等(重复送达事件不改快照)在 Task 2。
+
+## 测试
+- activities.test.ts: 假 DbExecutor 断言 INSERT 形状(kind/rel/actor/principal/channel/detail JSON)与幂等(存在→零 INSERT);banner.test.ts: 横幅格式。
+- CI=true pnpm check 全绿(376 tests);真 dev server 冒烟:启动 RUNNING + SIGTERM 优雅退出无残留。

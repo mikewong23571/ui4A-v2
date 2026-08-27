@@ -1,0 +1,16 @@
+Task: T15 Phase C grounded read-only answer protocol
+
+Summary:
+- Added answer(content,sources), FactRef, answered outcome, and bounded ContractObservation ledger.
+- LLM receives complete authorized Siren observations instead of action-only summary.
+- Read/summarize/compare/explain use protocol answer, not application action/capability.
+- Web renders answer content without completion prefix and final SSE includes sources.
+- Delegated worker records answered step and completes with answer summary, without business POST.
+- Story Eval expanded to U2/U3/U4 and accepts fact-covering parent JSON pointers/collection sub-entity references without fixing tool traces.
+
+Evidence:
+- Red: 10 core protocol tests failed before implementation.
+- Green: 12 targeted files / 195 tests passed; pnpm -r typecheck passed.
+- pnpm check: 121 files passed, 2 skipped; 1150 tests passed, 2 skipped.
+- Real DeepSeek: U1 and U2 passed; U3 produced faithful comparison with zero mutation; U4 passed one run and failed one run, so stability remains open; U10 passed; U12 remains red pending conversation context.
+- All observed read-only stories had zero business mutation in the latest runs.

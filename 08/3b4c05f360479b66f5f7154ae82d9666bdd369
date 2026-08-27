@@ -1,0 +1,10 @@
+T16 architecture refinement
+
+- Added architecture.md with Chat/Presentation/A2UI/Engine plane boundaries and protocol/data/event models.
+- Added technical-stories.md with TS1-TS18, each mapped to S1-S32 and carrying explicit acceptance.
+- Chat knows only thin PresentationRequest/Receipt; full A2UI planning uses separate Presentation Agent context.
+- Application activation pre-generates parameterized candidate/promoted Render Recipes.
+- Persisted Sidecars are user-level cache/pinned across Sessions; Sidecar key/schema forbids sessionId.
+- Runtime lookup: user pinned/cache -> promoted/candidate Recipe -> generic -> planner.
+- Updated spec, user stories, implementation plan, metadata, index, and registry.
+- Verified 32/32 user-story acceptance sections, 18/18 technical-story acceptance sections, phase checkpoints, JSON, formatting, and diff integrity.

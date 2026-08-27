@@ -1,0 +1,27 @@
+T7 Phase B Task 2: 画布 /canvas(A2UI surface 宿主;action 拦截;data-action/data-nav 全站标注)
+
+## 变更
+- apps/web/src/app/canvas/page.tsx(+test 4 例):A2UI surface 宿主页
+- apps/web/src/render/canvas/word-catalog.tsx(+test 4 例):官方 SDK 目录(basic + 十词条)
+- apps/web/src/render/canvas/surface-flow.ts(+test 6 例):spec→四消息装配(collectRefs/surfaceIdOf/planSurface)
+- apps/web/src/render/canvas/action-gate.ts(+test 5 例):action 拦截白名单
+- 全站标注:entity-view/entity-page-body/首页/舰队页/悬浮聊天/meta 页 + annotations.test.tsx(4 例抽样)
+- package.json:+zod@^3.25.76(与 SDK 同版 dedupe)
+
+## SDK 接入细节(D12 落地)
+- @a2ui/react@0.10.2 v0_9 渲染器(A2uiSurface/createComponentImplementation/basicCatalog)+
+  @a2ui/web_core@0.10.6(MessageProcessor/Catalog/DataBinding)——React 19.2.8 兼容,jsdom 全链测试通过;
+- 关键接线:①surface 根组件 id 必须 'root'(A2uiSurface 渲染入口);②Button child 是单 id 字符串非数组;
+  ③词条 props 用 z.union([base, DataBindingSchema, FunctionCallSchema]) 标记 DYNAMIC,binder 解析 {path};
+  ④目录 = new Catalog(CATALOG_ID, [...basicCatalog.components.values(), ...十词条实现]);
+- 包内缺口:@a2ui/react 声明的 ./styles/structural.css 文件缺失;basic 原语样式运行时注入,词条走本站 tailwind,无影响。
+
+## 渲染流(spec 架构决定 2/3)
+fetch /api/render/catalog 协商 → fetchEntity('render-specs') 凝固列表 + 演示 spec →
+planSurface(零字面+词条形状校验 → collectRefs → fetchEntity 进缓存 → derefSpec)→
+processMessages(createSurface[CATALOG_ID] + updateDataModel[渲染器私有] + updateComponents[props 全 {path}])→
+A2uiSurface。action 事件经 MessageProcessor actionHandler → createActionGate:白名单=渲染实体已声明动作,
+白名单外零 /api/exec 调用;executed 后重载 surface。
+
+## 测试
+CI=true pnpm check 全绿(785 单测,+23;lint/typecheck 通过)。

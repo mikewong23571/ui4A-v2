@@ -1,0 +1,8 @@
+T16 final checkpoint
+
+Full repository check: 164 files / 1370 tests passed; lint 0 errors, 6 existing warnings.
+Full Playwright: 39 passed, 22 explicit opt-in/superseded skips, exit 0.
+Configured real LLM: T16 S1/S3 and S24 canonical-plus-four variants passed with deepseek-v4-flash.
+Principal review high finding fixed by 3bedb27. Track registry and metadata completed.
+
+Live walkthrough after unified startup: /api/health ok; Canvas entity showed Sidecar v1, semantic title/status/body/metadata/actions/links; density/collapse/expand/explain/promotion-preview worked; collection showed two member links; no A2UI Markdown renderer warning observed.

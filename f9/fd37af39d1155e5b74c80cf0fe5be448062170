@@ -1,0 +1,17 @@
+任务:/api/chat mode=delegated(dispatch + statusUrl)+ /api/delegations(列表/详情)(T5 Phase B / Task 1)
+
+数据源选择(任务要求报告项):**事件日志为主**——列表取 engine delegations fold 增量投影(单写者、可重放、worker 写后免重启可见),详情轨迹直读该委托事件流(rel=delegation:<id>);Temporal client 只用于 dispatch 路径(apps/web/src/temporal/delegation.ts),读路径零 Temporal 依赖(可独立于 Temporal 服务运行)。理由:spec 决定 4 双写者方案下事件日志已是真相,舰队读侧引入 workflow list 会造成双真相与依赖放大。
+
+变更:
+- apps/web/src/app/api/chat/route.ts:请求体增 mode?:'inline'|'delegated'(缺省 inline,既有 inline 响应与测试零改动);delegated 分支校验 goal→resolveStartRel→resolveDriverKind(auto 先解析)→dispatchDelegation(workflowId=delegation-<uuid>,taskQueue ui4a,baseUrl=自身 origin)→200 {mode,delegationId,statusUrl};派发失败据实 503(与 inline '失败也是 200' 不同:循环未开始,不能伪成功)。
+- apps/web/src/temporal/delegation.ts(新):delegationWorkflow 派发面,懒建连接单例(失败不缓存);与 notify 差异:失败向上抛(notify 是 fire-and-forget)。
+- apps/web/src/delegations/projection.ts(新):事件流+快照→舰队行/详情;详情 messages 复用 chat/trail 的 stepToMessage(新导出,零行为改动),exec 步 rel 由 startRel 折叠重建(worker applyStepToState 同口径),max-steps 补上限消息——与 inline trailToMessages 逐条等值(projection.test.ts 直接对拍)。
+- apps/web/src/app/api/delegations/route.ts(新):GET 列表 {delegations:[{id,goal,status,steps,successes,summary?,reason?}]}(时间无关);空舰队 200 空数组。
+- apps/web/src/app/api/delegations/[id]/route.ts(新):GET 详情(goal/status/steps/successes/summary/trail/messages);未知 id 或首事件未落库→404;空 id→400。
+- apps/web/src/app/api/http.ts(新):db 故障 503/其余 500 的共享映射(与 /api/entity 同口径)。
+
+测试(21 新用例,CI=true pnpm check 全绿 603):
+- temporal/delegation.test.ts:startWorkflow 参数/workflowId 形状/uuid 唯一/连接失败上抛/失败不缓存连接;
+- chat/route.delegated.test.ts:delegated 派发响应与参数(driverKind auto→rule、principal、baseUrl、startRel)/llm 直传/503/缺省 inline 不触 dispatch/非法 mode 400(dispatch 模块 vi.mock;inline 分支带 /api/exec 回环);
+- delegations/projection.test.ts:messages 与 trailToMessages 全等/rel 折叠/被拒与导航失败原因/max-steps 补条/toDelegationRow 可选字段;
+- api/delegations/route.test.ts(真 PG):空列表/completed+running 并存/详情轨迹与 messages/running 中间态/404/400。

@@ -1,0 +1,5 @@
+T24 Phase A Task 3: 『为什么这样展示』抽屉
+
+- 新增 components/canvas-why-drawer.tsx + 测试(6 用例:默认关闭零机制词/打开呈现 surface+目录+sidecar 元数据+嵌入控制条/空态/能力等价 pin/patch/promote/explain 结构化渲染);原样嵌入 CanvasSidecarToolbar 保证能力等价;explain 结果双通道(抽屉结构化 + notify 现状)。
+- canvas-body 接线:catalogId/focusEntityJson/explanation 内部状态只供抽屉;use-sidecar-actions 增加 SidecarExplanation 状态(请求形状不变)。
+- 验证(编排 agent 复跑):drawer 6/6、first-screen 1/1(主区域零机制词)、canvas-body 4/4、floating-chat 16/16、presentation routes 12/12 全绿;governance 于提交后暴露 components 4116>4000,已按业务优先原则登记 size-baseline 例外后复绿。

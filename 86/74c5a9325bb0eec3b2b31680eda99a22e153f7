@@ -1,0 +1,19 @@
+Task: T8 Phase A Task 1 — invariants 套件(I1 keyless 显式/I2–I4/I6 引用收拢/I5 全量重放新增)
+
+摘要:
+- I1:显式 delete process.env.GLM_API_KEY(断言 undefined)+ spawn server 注入 GLM_API_KEY=''(压过 .env.local);单场景内 B1/B2/B3(runAgent 合同路径,baseline 断言核心)+ 表单版 S1(agent HTTP 挂起 → 人类 RJSF 批准,s1 UI 走查核心)+ 哑渲染(态势 stat/事件流 timeline 数据断言)。无需 worker:inbox 投影列出全部 pending,送达断言属 s1 的 notify 链路。
+- I2:s5 对拍逻辑精简重跑(无浏览器):chat rule 生成 spec → validateSpec 零字面 → 生产 derefSpec 对实体快照解引用 → 分组计数逐项对拍 + 总和=成员数。
+- I3:i3 fuzz 抽 2 页(首页/实体页)重跑,同探针口径(data-action/data-nav/chrono 白名单)。
+- I4:s1 的 agent approve 拒核心:422 guard actor-is-human + action-rejected 留痕 + confirmation 仍 pending(withFreshServer,不断言送达)。
+- I5(新增核心):fresh server 内跑压缩场景序列(B1 agent 发布→B2 agent 下线→B3 混合 actor 审核→拒绝留痕→S1 agent 挂起+human approve→S4 agent 六步 exec-plan→S5 agent chat render 凝固)→ 读日志经生产 fold 枚举全部实体 rel(实例/集合/确认/委托/激活/renderSpecs/meta 面 + inbox/delegations/render-specs 固定视图 + sitemap)→ 逐 rel HTTP 投影 → contentVersion 逐实体 + 综合 hash → TRUNCATE(空库)→ 原序回灌日志(显式 seq + setval)→ fresh boot(生产 bootEngine 全量 fold,keepLog)→ 同 rel 集逐实体 + 综合 hash 一致 + 终态抽查。hash 方案:HTTP 投影聚合 + engine contentVersion(canonical JSON + FNV-1a),重放前后 hash 均打印在测试输出。
+- I6:脚本化 driver 捕获 decide 上下文:被拒动作(undeclared)→ /api/events action-rejected 带原因 → contexts[2].lastRejection.reason 与日志原因逐字一致。
+
+文件:
+- 新增 e2e/invariants.spec.ts(6 用例)
+- e2e/server-kit.ts:withFreshServer 增 keepLog 选项(重放相位 fresh boot 不 TRUNCATE)
+
+验证:CI=true npx playwright test invariants → 6 passed(hash=c341491028a5,events=27,rels=22,两轮同 hash)。
+偏差/发现:
+- exec 拒绝的 HTTP 映射为 undeclared→400(I5 场景内拒绝步断言 400,guard/schema→422 与 s1 一致);
+- 环境中存在一个非本任务启动的常驻 worker(pid 见报告),会把 notification-delivered 补投进 I5 日志——已以 waitForQuietLog 静默窗口消除保存/读取竞态;该事件在重放两侧一致折叠(反而增强了外部写者事件的重放覆盖);
+- meta rel 跨站规则:readWorld/终态抽查经 /api/meta/entity(业务站 /api/entity 对 meta/ 返回 404)。

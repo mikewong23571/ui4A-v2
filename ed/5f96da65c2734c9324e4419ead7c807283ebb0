@@ -1,0 +1,11 @@
+Task: T4 Phase A Task 4 — approve/reject(actor-is-human)+ 全生命周期重放一致
+
+变更:
+- packages/engine/src/meta.ts:decide() 审批落态 + activationTargetOf 归一化(meta/activation:<id> 且 pending → 定位 flow,否则 judge 以原 rel 裁决 → undeclared);DefinitionActivatedDetail/DefinitionRejectedDetail。
+- packages/engine/src/fold.ts:applyDefinitionActivated(active+version+definition 全文+activation approved)/applyDefinitionRejected(rejected+reason 留痕),节点/激活状态核对,重复裁决响亮失败。
+
+版本语义(与任务文案的对齐说明):approve 落实 version+1(activation.version 在 submit 时已定为当前+1,approve 校验一致后写入);A.4 revise 括注 'draft(v+1)' 解释为'草稿的目标版本是 v+1'——版本号只在激活时分配(versions 内容寻址口径),避免双跳版。已报告。
+
+Cedar 确认门口径(报告项):修订动词(add-node/add-action/revise/deprecate)均无 requires-confirmation → confirmGate 直通,不产生挂起;approve/reject 本身是人的裁决动作,由 actor-is-human guard 把关,亦无 requires-confirmation。executeMeta 保留 suspended 结果类型的透传(策略层将来可注入)。
+
+测试:meta-approve.test.ts 8 用例;全仓 478 全绿(T4 Phase A 累计 +71 用例:23+23+17+8)。

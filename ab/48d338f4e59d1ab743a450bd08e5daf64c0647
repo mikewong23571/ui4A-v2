@@ -1,0 +1,17 @@
+T13 Phase C Task 3: BIOS capabilities 投影(列表+详情)
+
+改动:engine/siren.ts(capability 投影+路由)、service.ts(meta sitemap 携带)、meta-lists.tsx、capability-definition-view.tsx(新增)、app/meta/capabilities/ + capability/[name]/(新页)、meta/page.tsx(入口)、diff-render.test.tsx(零 AI 名单)、s2.spec.ts(仅新增)、api/meta well-known route.test.ts(精确名单机械适配,D21 先例,已申报)
+Why:spec 架构决定 3 + 验收 4——capability 目录人类/agent 可发现;跨站规则不破(业务 sitemap 无 capability 入口)。
+验收(编排 agent 亲自复跑):meta 相关 86/86;CI=true pnpm check 1060 passed;s2 e2e 4/4。自治验收。
+遗留:e2e/invariants enumerateEntityRels 未枚举 capability rel(I5 世界态对比不覆盖新投影,纯函数投影不破)——Phase D 回归时评估补锚。
+
+---
+
+T13 Phase C Checkpoint 验证报告(自治验收)
+
+阶段范围:6fbb98a..HEAD(CapabilityDefinition 类型+parse、capability-seeded 入日志+fold、BIOS capabilities 投影)
+自动化验证(编排 agent 亲自执行):
+- CI=true pnpm check → 1060 passed | 2 skipped(环境性)
+- CI=true pnpm e2e → 35 passed / 14 skipped,零回归(35 = 并行会话 24a64ed 新增 2 件后的新基线)
+- 实证:capability-seeded×3(draft/notify/clarify)入日志,I5 TRUNCATE 回灌重放 capabilities 表 hash 一致(invariants e2e 6/6);/meta/capabilities 三 seed 可读、业务 sitemap 零 capability 入口(s2 跨站规则)
+确认:用户离线,编排 agent 代行验收——自治验收,通过。

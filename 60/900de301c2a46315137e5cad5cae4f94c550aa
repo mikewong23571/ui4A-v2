@@ -1,0 +1,5 @@
+T21 Phase B Red: append-only dual-focus replay
+
+Added five failing tests for immutable current-message client views, missing-view unknown behavior, concurrent client isolation, ordered/idempotent successful navigation folding, session isolation, and rejection of pending/failed/not-found evidence as navigation completion.
+
+Red evidence: pnpm vitest run apps/web/src/chat/conversation.test.ts => 1 file failed, 5 new tests failed and 6 existing passed because clientView/lastNavigation projections were absent.

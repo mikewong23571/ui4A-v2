@@ -1,0 +1,5 @@
+Tasks: T16 Application Recipe probe and Flow/graph probe
+Summary: Proved deterministic enumeration of 15 publishing scenarios; defined parameterized slot-only Recipe descriptors and bounded authorized Lens shapes for Flow, entity relations, artifacts, and confirmations. Recorded hierarchical FlowShell/children and pointer-level invalidation recommendations.
+Files: conductor/tracks/t16-semantic-a2ui-sidecars_20260823/spikes/recipe-flow-graph-probe.md
+Why: Bound Presentation context and invalidation from current contract structure rather than entity-name routes or copied live facts.
+Verification: independent Node source probe found 2 flows, 8 nodes, 2 confirmations, 1 append, 1 spawn, total 15 descriptors; recursive forbidden-key/live-fact scan in probe returned zero; Prettier and diff checks passed.

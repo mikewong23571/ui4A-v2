@@ -1,0 +1,1 @@
+T20 U3/performance refinement: dashboard fetches bounded authorized collection summaries, indexes name/intent/type/status/rel, preserves query/filter in URL, offers one-click pending/invalid filters, shows counts and honest partial-summary state. No exact-member N+1. Verification: focused Vitest 5/5, ESLint 0 errors, T20 Playwright 7/7.

@@ -1,0 +1,13 @@
+T5 Phase A Task 2: delegations 集合投影(engine fold + /api/entity 可查)
+
+决策记录:
+- DelegationSnapshot 放 @ui4a/shared(与 EngineSnapshot 同文件,依赖方向 agent→engine→shared,shared 不能反向依赖 agent):goal 用结构镜像 DelegationGoal(verb/targetRel/resource/fields),worker 侧 AgentGoal 可直赋。
+- fold 计数口径:快照只持计数(steps/successes),逐步轨迹(op/outcome/rejection)留在事件日志——事件历史即轨迹(arch-brief §4),不重复建表。
+- 完整性强制(响亮失败,与 confirmation 族同风格):重复 started / 步号缺口 / 重复步号 / 未知委托 step / 重复终态 / 终态计数与步事件折叠值不一致 / 载荷不完整,均抛错。其中「步号连续无缺口」正是 S3-续跑正确性断言的 fold 层形态。
+- TDD 捕获的真缺陷:entity-不可得 fail 出口原本会让 workflow 轨迹步数(trail.length)与 delegation-step 事件计数漂移(1 步之差)→ 终态计数交叉核对必然炸。修复:AgentStepResult 增 unrecorded 标记(runAgent 同口径——实体不可得不产轨迹步),workflow 收到后跳过 applyStepToState 直接落终态。
+- 投影路由顺序:instances → collections → confirmations → delegation:<id> → inbox → delegations;空委托集合 200 count=0(与 inbox 同口径);集合/单委托子实体直达 href。
+- web 读路径零改动(增量 fold 自动生效),仅新增合同测试 apps/web/src/app/api/delegations.contract.test.ts(boot 后 worker 追加事件 → 免重启可见;running 委托可见——Phase B 舰队页数据源)。
+
+文件:新增 packages/engine/src/delegation.ts、delegation.test.ts(10 测)、apps/web/src/app/api/delegations.contract.test.ts(4 测);修改 shared/state.ts、engine fold/siren/effects/confirmation/index;机械适配 fold.test/effects.test/purity.test(快照形状 + 模块计数 17→18)。
+
+验证:CI=true pnpm check 全绿(65 文件 580 测试)

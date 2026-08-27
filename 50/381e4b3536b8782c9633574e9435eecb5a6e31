@@ -1,0 +1,7 @@
+T2 Phase A Task 3: guard 注册表 + 效果词汇表
+
+- packages/shared/src/predicates.ts:种子谓词 is-pending/is-published/always-true + nodeIs(name) 工厂 + seedGuardRegistry(名字→谓词);纯函数只读快照,永不调 capability。engine 只持注册表类型(GuardRegistry),谓词实现全部在 shared(按钮 disabled 与 agent guard-results 同一谓词两投影)。
+- packages/engine/src/effects.ts:applyEffects(request, effects, snapshot, deps) 纯函数、不可变产出。词汇表:transition(XState canTransition 复核,非法迁移显性抛错)、set-field(记录出处,缺省 effect)、append(生成 类型:实例名 rel:显式 name > name-from 参数 slugify > 计数;冲突确定性 -N 后缀;入集合并复制字段带出处)、spawn(T2 stub:只产出 spawn-requested 事件不改状态,T3 接 Temporal)。
+- 请求参数按声明字段落入实例字段,出处 default/intent/proposal/elicited(paramOrigins 覆盖,缺省 intent);事件序固定 action-executed → entity-appended* → spawn-requested*(重放确定性)。EngineEvent 不含 seq/ts——时钟是 capability,由日志层分配。
+- append 效果类型增补可选 flow 字段(新实例受辖流程,如 post-status);单 flow 校验器无法跨流程验证引用,registry 级校验留给 Phase C 编译期。
+- 测试:shared 谓词 7 + engine 效果 16 = 23 新用例(组合效果/不可变性/事件序列化/冲突去重);CI=true pnpm check 全绿(82 tests)。

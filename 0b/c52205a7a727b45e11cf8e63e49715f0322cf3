@@ -1,0 +1,12 @@
+Task: T8 Phase A Task 2 — 双执行者口径套件收拢
+
+摘要:
+- B1:agent(runAgent 三步向导合同)发布 '双执行者的第三篇' → human(RJSF 表单,human.spec 走查核心)发布 '人类的第四篇' → 同一日志 publish 两足迹:actor=agent(principal=user:mike,channel=e2e)×1 与 actor=human(principal=local-user,channel=renderer)×1,文章计数 2→4。
+- B2:agent 合同直达下线 post-welcome(首步 navigate post:post-welcome)→ human 实体页表单下线 first-post → 同日志 unpublish 双 actor,rel 各自精确,互不影响。
+- B3:agent HTTP approve c1 → human 队列逐条 approve c2/c3 → 同日志 approve 1(agent)+2(human),pending 清零,c4 零处理痕迹。
+- S1 双视角收拢:withWorkerStack + Temporal 探活 skip-if(同 s1.spec 口径);agent archive 202 挂起 → human approve → confirmation-requested(actor=agent)/confirmation-approved(actor=human,detail.proposedBy=agent/decidedBy=human)同链;生效 archive 足迹 actor=human、principal=提议者、channel=confirmation;inbox 清空、确认实体 approved 无动作。
+- 共享断言助手 assertDualActors:同一动作两类 actor 各 ≥1 且身份口径分立。
+
+文件:新增 e2e/dual-executor.spec.ts(4 用例)。
+
+验证:CI=true npx playwright test dual-executor → 4 passed;CI=true pnpm check 全绿(821 单测)。全量 e2e 回归于 Phase checkpoint 执行。

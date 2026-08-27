@@ -1,0 +1,26 @@
+T14 Phase D unified acceptance / task summary
+
+Target: 391a419 test(e2e): script T14 walkthrough remediation acceptance
+Scope: dev DB reset plus scripted US-1/US-2/US-13/US-14 rewalk; issue closure #1-#7; full B1-B4/S1-S5/I1-I6 regression.
+
+Functional artifact:
+- Added e2e/t14-walkthrough.spec.ts.
+- One fresh-server scenario proves renderer and chat publish preserve category/tags in the same log, ready title prefill/human labels, stable table/chart rendering, and readable expandable event audit.
+
+Automated verification:
+- CI=true pnpm check -> PASS: 118 test files, 1095 tests; typecheck pass; lint 0 errors (10 pre-existing warnings).
+- CI=true pnpm e2e -> PASS: 46 passed, 4 gated real-LLM probes skipped by the default suite.
+- CI=true pnpm exec playwright test e2e/t14-walkthrough.spec.ts -> PASS: 1/1.
+- GLM_API_KEY=<local secret> RUN_LLM_E2E=1 CI=true pnpm exec playwright test e2e/llm-render.spec.ts -> PASS: 1/1; rule-miss intent generated a grounded chart spec, froze it, and rendered the canvas.
+- git diff --check -> PASS.
+
+Walkthrough verification:
+1. Reset the event-backed dev database through withFreshServer.
+2. Publish walkthrough-human through the renderer without retyping the ready title; verify category=tech and tags=human-walkthrough.
+3. Publish walkthrough-agent through chat/rule; verify SSE final outcome=done and category=essay/tags=agent-walkthrough.
+4. Generate table and chart render specs; verify chart counts tech=2, essay=2, no surface warnings/errors, and stable reload.
+5. Open /events, page through all rows, and verify timestamps, narrative summaries, default-collapsed raw audit, plus human/agent/chat-turn/agent-decision traces.
+Result: PASS; #1-#7 user-visible failures closed. Generic data correction/remove remains the spec-declared architecture backlog.
+
+Confirmation: user explicitly authorized autonomous whole-track closure and instructed not to wait for manual confirmation; scripted browser verification and the live GLM gate serve as the confirmation evidence.
+Coverage: track acceptance does not define a percentage gate; the repository lacks @vitest/coverage-v8, so no dependency was added solely for a report.

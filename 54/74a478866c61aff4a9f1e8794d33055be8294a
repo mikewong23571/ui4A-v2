@@ -1,0 +1,23 @@
+Task: T4 Phase C Task 2 — BIOS 页三面(meta/flows 定义查看、激活队列+react-diff-view、meta/self)
+
+改动(apps/web;engine 仅 types.ts re-export 补全):
+- components/meta/meta-client.ts:BIOS 合同客户端(fetchMetaEntity → /_meta/api/entity、execMetaAction → /_meta/api/exec,身份恒 actor=human/principal=local-user/channel=bios)+ useMetaEntity 取数状态机(loading/ready/missing/error + refresh)。
+- components/meta/diff-render.tsx:DefinitionDiffView——机械转换纯数据 → react-diff-view 组件树。转换规则:三视角(added/deleted/updated)树只提供变更叶子路径,行值一律从 before/after 全文按同路径取回(数字键=数组下标;deep-object-diff 数组删除的空对象标记自然落到数组级增删行);输出 unified 行(按路径排序,确定性)经 parseDiff 喂内建 Diff 组件;行号为变更序号非源行号(合成 hunk)。textLinesToHunk 不解析 +/- 前缀(全部按 context 行),故走 parseDiff 文本管线。CSS 直接 import 'react-diff-view/style/index.css'。
+- components/meta/activation-view.tsx:激活详情(属性表跳过 checks/diff 单独成节、checks 表逐项 通过/失败+明细、机械 diff、approve/reject 复用 ActionRunner 注入 execMetaAction;guard-results 的 actor-is-human 投影 fail-closed 经 blockedForRenderer 解除——与业务确认页同口径)。
+- components/meta/flow-definition-view.tsx:属性/节点/动作/字段四表格(纯文本表格,零可视化);meta/self 复用(definition-lifecycle 状态机文本视图)。
+- components/meta/meta-lists.tsx:FlowsListBody(meta/flows → /meta/flow/<name>)+ ActivationsQueueBody(meta/activations → /meta/activation/<id>,空队列如实呈现)。
+- app/meta/*:页面路由 /meta(索引)、/meta/flows、/meta/flow/[name]、/meta/activations、/meta/activation/[id]、/meta/self。路由口径:canonical API 恒 /_meta/*(既有 rewrites),浏览器页面挂 /meta——App Router '_' 前缀目录不可路由(私有文件夹);首页一行 BIOS 链接(人类显式意图),业务 sitemap/agent 合同面仍无 _meta(跨站规则保持)。
+- action-runner.tsx:execFn 可注入(缺省业务 /api/exec);entity-view.tsx:导出 blockedForRenderer。
+- packages/engine/src/types.ts:re-export 补 DefinitionStatus/DefinitionEntry/ActivationCheck/DefinitionDiff(类型本体在 shared,Phase C 新消费方)。
+
+测试 +19(总 548 全绿,CI=true pnpm check):
+- diff-render.test:JSON 往返纯数据渲染、绿行含 pin 逐字段、更新行成对(-旧/+新)、数组删除标记从 before 机械取回、无差异提示、铁律 5 源级断言(BIOS 渲染路径 4 文件不 import 任何 @ai-sdk/openai/anthropic/@ui4a/agent/llm 模块);
+- activation-view.test:checks 逐项显示、diff 内建渲染、approve 提交 /_meta/api/exec body 恒 actor=human、reject reason 必填(RJSF 空值拦截不发请求+填写后带 reason)、已决策审计视图无按钮;
+- flow-definition-view.test:属性/节点/动作/字段表格、meta/self 复用;
+- meta-lists.test:两列表(含 _meta 编码 URL 口径 meta%2Fflows)与空队列;
+- home.test:BIOS 一行链接断言。
+
+偏差/口径记录:
+1. 页面路由 /meta(canonical API 不变 /_meta/*)——任务倾向方案采纳。
+2. react-diff-view 的 textLinesToHunk 把传入行全按 context 处理(不解析 +/- 前缀),改用 parseDiff(unified 文本)管线;diff 行号是变更序号(合成 hunk,无源文件行号概念——定义是 JSON 树非文本)。
+3. BIOS 身份 channel=bios(actor=human 与业务 renderer 同口径,channel 区分面)。

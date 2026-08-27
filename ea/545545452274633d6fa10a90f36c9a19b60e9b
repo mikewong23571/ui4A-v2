@@ -1,0 +1,16 @@
+Task: T7-A3 凝固机制(render-spec-frozen 事件;concern-key 持久化)
+
+Summary:
+- packages/engine/src/render-spec.ts(新模块): RENDER_SPECS_REL='render-specs'、RENDER_SPEC_REL_PREFIX='render-spec:'、renderSpecRel(concern)、RenderSpecFrozenDetail{concern,spec{concern,component,bind},requestedBy}、applyRenderSpecFrozen(载荷即真相 + 完整性校验:rel/concern 一致、detail 形状;同 concern 同 spec 幂等、异 spec 抛错)、readRenderSpecsOf(日志序条目列表)。
+- packages/shared/src/state.ts: FrozenRenderSpec{concern,component,bind:unknown,requestedBy} + EngineSnapshot.renderSpecs?(可选,恒物化口径)。随行点:fold(initial/applySeed)、effects.applyEffects、confirmation suspend/reject(approve 走 spread)——四处枚举重建各补 renderSpecs 随行。
+- packages/engine/src/siren.ts: projectRenderSpec(class [render-spec,frozen],properties {concern,component,bind,requested-by},无动作——凝固是数据不是操作)+ projectRenderSpecs 集合(count+子实体直达);project 解析顺序尾部追加。
+- apps/web/src/db/events.ts: EventKind 增 'render-spec-frozen'。
+- apps/web/src/engine/service.ts: EngineRuntime 增 freezeSpec/getFrozenSpec/listFrozenSpecs。freezeSpec 经 enqueue(串行队列):refreshFromLog → 入口校验(validateSpec 零字面 + wordOf 词汇表词名 + concern 键一致;不合法 throw 不入日志)→ 已凝固直接返回 {frozen:false, spec:首冻}(不追加事件)→ 否则 appendEvent(恰一条,actor/principal=requestedBy)→ fold 单事件增量物化(在线/重放同构)→ {frozen:true}。
+- 投影选择(报告项):最小口径 = concern 集合实体 render-specs + render-spec:<concern> 单实体(画布 Phase C 经合同查询);未做画布宿主实体(Phase B)。
+- 机械适配: fold.test 空快照期望 + effects.test spawn 快照期望 + purity.test 模块计数 19→20;render/words/placeholder.tsx→.ts(文件本无 JSX;worker tsconfig 无 jsx 配置,typecheck 会连带解析 web 源)。
+
+Why: '凝固'=按关注点首次生成渲染后缓存,同一关注点永远同一布局(保空间记忆锚点);首冻恰一条事件(留痕),二次请求零事件;I5 重放确定性覆盖新表(在线与全量 fold renderSpecs 内容 hash 一致,真 PG 集成断言)。
+
+Tests: CI=true pnpm vitest run packages/engine/src/render-spec.test.ts apps/web/src/engine/service.render.test.ts → 18 passed;CI=true pnpm check 全绿(729 tests:658 基线 + 71 新增)。
+
+Files: packages/engine/src/{render-spec.ts,render-spec.test.ts,fold.ts,fold.test.ts,effects.ts,effects.test.ts,confirmation.ts,siren.ts,index.ts,purity.test.ts}, packages/shared/src/state.ts, apps/web/src/db/events.ts, apps/web/src/engine/{service.ts,service.render.test.ts}, apps/web/src/render/words/placeholder.ts(rename from .tsx)

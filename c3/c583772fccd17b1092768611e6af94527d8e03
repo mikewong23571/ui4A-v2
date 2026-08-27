@@ -1,0 +1,39 @@
+T5 Phase C / Task 1 — S3 全链路 E2E(自治实施,编排代行验收)
+
+产出:e2e/s3.spec.ts(3 用例)+ e2e/server-kit.ts withWorkerStack(worker 生杀交场景,withWorkerServer 变薄委托)。
+
+发现并修复的链路问题(本任务核心价值):
+1. 多写者水位跳步(fix ee93eb8):web 增量 fold 的 lastSeq 会被自身 append 跨过未读 worker 事件 → delegation-step 缺步 → 折叠层「步号不连续」炸、/api/delegations 读路径全 500(S3-N 路实测复现;service.test 以 db 代理注入窗口 Red→Green)。
+2. 发布向导不可循环(feat b17591a,D11):spec 验收 4 的「发布×2」在旧域上结构性不可能(publish→done 消费单例向导);publish 改回 basic-info + basic-info 增 abandon→done 保 terminal-reachable;6 处机械期望同步,B1/I1/B4 行为零改动。
+
+S3-并发载体偏差(如实记录):并发 approve 同一评论对败者是读-判-行竞态——败者若在胜者提交后才读实体,approve 已 undeclared、根本不尝试,轨迹无被拒步骤(非确定性);改用同标题并发发布(title-not-taken 为世界状态型 guard),败者无论何时尝试必得带原因拒绝(guard-failed/undeclared),GOAL 原文「一个成功、一个拿到带原因的拒绝」逐字成立。败者可能吃两次拒绝(undeclared + title-not-taken),均为合法裁决留痕。
+
+稳定性处理:kill 场景直查 PG(25ms 轮询)压低杀点检测延迟;Temporal 探活 skip-if;S3 spec 连跑 3 轮全绿(31-66s/轮)。
+
+验证:CI=true pnpm check 全绿(613,+1 水位回归);CI=true pnpm e2e 25 passed + 1 skipped(llm-smoke 门控;22 既有 + 3 新增,零回归)。
+
+T5 Phase C Phase Verification & Checkpoint(自治验收,编排代行)
+
+自动化验证(提交后状态):
+- CI=true pnpm check 全绿:613 tests(612 基线 +1 多写者水位回归;72 文件)。
+- CI=true pnpm e2e:25 passed + 1 skipped(llm-smoke 门控 RUN_LLM_E2E;22 既有 + S3 新增 3,B/S/I/S1/S2 零回归)。
+- S3 spec 独立连跑 3 轮全绿(31–66s/轮,无 flakes;kill 场景以 PG 直查 25ms 轮询压低杀点检测延迟)。
+
+spec 验收 1–7 逐条核对:
+1. check/e2e 全绿 + Temporal 探活 skip-if ✓(s3.spec.ts 与 s1 同口径 nc -z)。
+2. S3-并发 ✓。载体偏差如实记录:并发 approve 同一评论对败者是「读-判-行」竞态——败者若在胜者提交后才读实体,approve 已 undeclared、根本不会尝试,轨迹无被拒步骤(非确定性,无法稳定断言);改用同标题并发发布(title-not-taken 为世界状态型 guard,与读取时机无关),败者必得带原因拒绝。断言:恰一委托 completed 且 trail 含 executed publish;另一 failed 且 trail/messages 含被拒 publish 步骤与原因(guard-failed title-not-taken 或向导重置窗口的 undeclared);两委托 delegation-started 首/终态尾/步号 1..N 连续;引擎侧恰一次 action-executed publish + ≥1 次 action-rejected publish(每次带原因)。「一个成功、一个拿到带原因的拒绝(裁决器即并发控制)」逐字成立。
+3. S3-续跑 ✓(e2e 级真 HTTP 全链,与 worker 包 kill 集成互补):delegated dispatch 多步委托 → PG 见 ≥1 delegation-step → SIGKILL worker 组 → Temporal describe=RUNNING → 重启 → completed;步号 1..N 无缺口无重复;post:s3-kill-resume 落库 published。
+4. S3-并行 ✓:发布×2(不同标题)+ 审核全部并发 → 3 委托全部 completed;文章 2→4(pending=0);各委托轨迹只含本域 rel(向导 vs 评论队列),互不串扰。
+5. 舰队页 ✓:/delegations 3 行=委托数、逐委托行可见、进行中抓到 data-status=running(15s 窗口;极快完成兜底口径=首查全终态)、完成后 reload 全 completed;/api/delegations 与 /api/entity?rel=delegations(count=3)双口径一致。
+6. chat delegated 轮询 ✓:statusUrl 每次 200 响应含 messages;终态 messages 与 trail 等长,stepToMessage 与 inline 同源;审核委托消息含「导航到 comment:c1」与 3×「执行 approve」。
+7. 回归 ✓:既有 22 e2e 全过。
+
+验证期发现并修复(Red→Green):
+- fix(web) ee93eb8 多写者水位跳步:S3-N 路实测 /api/delegations 全 500(「delegation-step 步号 2 不连续」)——web 增量 fold 的 lastSeq 被自身 append 跨过未读 worker 事件;修复 = append 窗口内外部事件收进 foreignGaps、快照覆写点(applyEffects/确认裁决产物)之后统一补折 + 回归测试(db 代理注入竞态窗口)。
+- feat(domain) b17591a + D11 发布向导循环化:spec 验收 4「发布×2」旧域结构性不可能(publish→done 消费单例向导);publish.to→basic-info、basic-info 增 abandon→done 保 terminal-reachable;6 处机械期望同步(human.spec B1 走查向导终态标题随域语义改「基本信息」);B1/I1/B4/kill 集成行为断言零改动。
+
+观察(不阻塞,未修):web/worker 并发 ensureEventsTable 幂等 DDL 偶发 pg_proc 死锁,自愈(Temporal 重试/请求重试吸收),先于本任务存在,建议后续单列 chore。
+
+现场:验证后无自起进程残留(3110 空闲、无孤儿 worker);编排者 postgres(5433)/temporal(7233)保持运行。
+
+Phase 变更清单(edff81f..HEAD --name-only):e2e/{s3.spec.ts[新],server-kit.ts,chat.spec.ts,s2.spec.ts,human.spec.ts};apps/web/src/engine/{service.ts,service.test.ts,service.bornversion.test.ts};apps/web/src/domain/{flows.ts,flows.test.ts};apps/web/src/app/api/{contract.test.ts,entity/route.test.ts};DECISIONS.md;conductor/tracks/t5-delegation_20260821/plan.md。

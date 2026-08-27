@@ -1,0 +1,7 @@
+T2 Phase A Task 2: 三层裁决器
+
+- engine/src/schema.ts:fieldDefinitionsToJsonSchema(field-definition → JSON Schema draft-07,additionalProperties:false 严格合同)+ mergeFieldDefinitions(节点字段 ∪ 动作字段,同名动作覆盖)。select→enum、textarea→format、date→format,RJSF v6 直接可吃。
+- engine/src/judge.ts:judge(request, snapshot, deps) 纯函数,顺序铁律①声明(action 声明于当前节点,实体/流程/节点/动作缺失同为 undeclared)→②guard(全部求值不短路,任一 false 拒绝,原因含 谓词名=false 列表,注册表缺名/谓词抛错 fail-closed)→③schema(Ajv draft-07 allErrors,detail 携带 Ajv errors)。结果 discriminated union {kind:accepted,effects,schema} | {kind:rejected,layer,reason,detail}。
+- shared 新增 state.ts(ParamOrigin/FieldValue/InstanceSnapshot/EngineSnapshot/fieldValues)与 guards.ts(GuardContext/GuardPredicate/GuardRegistry/GuardEvaluation):快照与 guard 合同放 shared 以免谓词实现反向依赖 engine(spec 架构决定 2);ParamOrigin 唯一定义移至 shared,engine re-export。
+- 测试:judge 15 + schema 4 = 19 新用例;关键顺序证明:未声明动作+guard 也不满足→layer=undeclared(非 guard-failed);guard 挂+schema 也挂→guard-failed;全过→accepted。CI=true pnpm check 全绿(61 tests)。
+- 设计要点(偏差说明):种子域向导字段随节点(spec 架构决定 5),动作参数=节点字段∪动作字段合并校验——arch-brief A.2 只画了 action.fields,此处按 spec 种子域形状扩展为合并语义,行为有专测。

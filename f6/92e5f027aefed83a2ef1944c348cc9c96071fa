@@ -1,0 +1,12 @@
+T5 Phase A Task 3: kill 续跑集成测试(真 Temporal + 真 worker + 真 PG + 真引擎)
+
+链路:dispatch delegationWorkflow(发布文章,rule driver,~6 步)→ 观察到 ≥2 个 delegation-step 落库 → SIGKILL worker 进程组 → Temporal describe 断言仍 RUNNING → 重启 worker → 轮询至 COMPLETED → 断言事件序列(detail.step = 1..N 连续无缺口/无重复)、业务结果(文章 post:kill-resume-* 落库且 node=published)、delegations 投影(status=completed,steps/successes 与步事件一致)。
+
+实施要点:
+- 引擎真身在测试进程内:最小 HTTP 适配器(/api/entity + /api/exec + /.well-known/ui4a.json → in-process engine runtime + 真 PG)——agent 走 HTTP 合同字面成立,不为测试改引擎。
+- exec 放慢步调(500ms)置于引擎执行**之前**:观察到第 N 步事件即杀,杀点高概率落在第 N+1 步 pace 等待(exec 未到引擎),重试在未前进状态上干净重执行;幂等恢复路径(事件已落库)由 agentStep 单测覆盖,此处测真崩溃。
+- 实测续跑延迟远小于 StartToClose 30s(worker 进程消失后 Temporal 很快重投 activity task),全程 12.7s。
+- 踩坑:本文件比 web 侧集成测试浅一层目录,WORKER_DIR 的 URL 相对解析需三层 '..'(四层会逃出仓库根 → spawn ENOENT)。
+- @temporalio/client 1.22.0 加为 worker devDependency(dispatch 侧)。
+
+验证:CI=true pnpm vitest run apps/worker/src/delegation.kill.integration.test.ts 通过(1 test, 12.7s);CI=true pnpm check 全绿(66 文件 581 测试);无残留进程(编排者 temporal/postgres 保持运行)

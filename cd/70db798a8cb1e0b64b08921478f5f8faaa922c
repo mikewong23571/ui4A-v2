@@ -1,0 +1,10 @@
+Task: T15 AI-first product-direction synchronization
+
+Summary:
+- Replaced AI-optional/rule-driver parity as the project target with AI-first + mechanical governance.
+- Added U1-U23 real-LLM Story Eval to GOAL/product acceptance.
+- Rewrote I1 as real Assistant capability and added I7 model-failure safety.
+- Updated architecture brief and tech stack to provider-neutral external config, answer/effect separation, and no production rule fallback target.
+
+Why:
+Deterministic software must govern facts and effects, not replicate LLM understanding. Model outage guarantees safety and manual control, not automatic task completion by rules.

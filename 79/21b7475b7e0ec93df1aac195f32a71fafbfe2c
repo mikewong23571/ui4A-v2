@@ -1,0 +1,13 @@
+T2 Phase D / Task D1: agent 循环协议(@ui4a/agent 新包)
+
+- runAgent(driver, goal, {baseUrl, fetchImpl, maxSteps, actor, principal, channel, startRel}):
+  每步取当前实体 → driver.decide({goal, currentRel, entity, trail, successes, lastRejection})
+  → 执行 navigate(立即取目标实体,404 记 not-found)/ exec(POST /api/exec,2xx 入 successes,
+  4xx/网络故障记 rejected)/ done / fail;终止:done、fail、maxSteps(缺省 24)、起始实体不可得。
+- 拒绝即数据(I6):lastRejection 只影响紧接着的下一步(消费即清);navigate 不可达同样回流。
+- 循环零智能:不解释拒绝、不判断完成;上下文为逐步快照(trail/successs 拷贝,引用不回漏)。
+- http.ts:fetchImpl 注入的合同客户端(测试脚本化/真实 fetch 双用,包零 Node API 两栖);
+  网络异常折算为数据不抛出(B4 委托不崩溃的前提)。
+- 测试:11 例(终止×5、navigate×2、exec 携带 actor/principal/channel、拒绝回流与一步时效、网络故障)。
+- 文件:packages/agent/{package.json,tsconfig.json,src/{types,http,loop,index,testkit,loop.test}.ts};
+  eslint.config.mjs 增 packages/agent 平配置;lockfile 登记新 workspace 包。

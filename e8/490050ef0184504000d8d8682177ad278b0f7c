@@ -1,0 +1,21 @@
+Task: 三端点(T2 Phase C / Task C3)
+
+摘要:
+- apps/web/src/app/api/entity/route.ts:GET ?rel=…;已知 rel 200 Siren 四件组装;
+  未知 404 {error};缺 rel 400;boot 失败 503。快照内存物化,boot 后不触库。
+- apps/web/src/app/api/exec/route.ts:POST {rel,action,params?,actor?,principal?,channel?}
+  (actor 缺省 human;channel 缺省 'http');形状校验 400(坏 JSON/缺字段/params 非对象);
+  通过→200 {entity}(append 时为新实例投影);拒绝→undeclared 400 /
+  guard-failed|schema-invalid 422,body {layer,reason,detail?}——与日志
+  action-rejected 同一 verdict 来源(service 落库 detail.layer)。
+- apps/web/src/app/.well-known/ui4a.json/route.ts:GET sitemap(版本=内容 hash
+  12hex,surfaces 含 flow:*/articles/comments,flows 含节点 action schema 与边)。
+  route 目录名含点段,vitest 默认 glob 可收录(已验证)。
+- apps/web/next.config.ts:transpilePackages 增加 @ui4a/engine(route 运行时引用)。
+
+测试:route.test.ts ×3(entity 6/exec 8/sitemap 4);CI=true pnpm check 全绿
+(23 文件 176 测试)。
+
+核心 why:agent 与人类共用同一 HTTP 合同(三端点 sitemap/entity/exec 是唯一入口);
+拒绝响应的结构化原因与事件日志同源,让'拒绝即数据'在合同层字面成立——
+Phase D 的 agent 可直接把 4xx body 当决策上下文。

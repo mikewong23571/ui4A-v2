@@ -1,0 +1,19 @@
+T10 Phase A Task 3: 激活不变式第七条 app-known
+
+改动:engine/invariants.ts(第七条+registries)、meta.ts(submit 接线)、effects.ts(applications 随行)、shared/state.ts(EngineSnapshot.applications 可选)、invariants.test.ts(+8)、e2e/s2.spec.ts(机械适配)、DECISIONS.md(D21)
+Why:submit 时归一化后的 flow.app 必须指向已激活 application;非法引用拒且留痕(spec 架构决定 3)。过渡期 vacuous pass,Phase B seed 后长牙。
+偏差:spec 红线「S2 断言零改动」与「checks 全量报告第七条」张力 → D21 按 D11 先例机械适配 s2 名单/行数断言。
+验收(编排 agent 亲自复跑):invariants+meta 44/44;CI=true pnpm check 861 passed;playwright e2e/s2.spec.ts 4/4。自治验收。
+
+---
+
+T10 Phase A Checkpoint 验证报告(自治验收)
+
+阶段范围:d81644a..HEAD(定义层:ApplicationDefinition/parse、FlowDefinition.app、app-known 第七条)
+自动化验证(编排 agent 亲自执行):
+- CI=true pnpm check → 861 passed | 2 skipped(Temporal 集成,环境性跳过),typecheck+eslint 全绿
+- CI=true pnpm e2e → 33 passed / 11 skipped(门控 LLM 无 RUN_LLM_E2E 跳过),与基线一致零回归
+- 阶段改动代码文件均有对应测试(parse.test.ts/definition.test.ts/invariants.test.ts)
+手动验证等效脚本化:S2 全链 e2e(submit→checks→BIOS 批准→sitemap bump)实证 app-known 入 checks 列表且全过;/.well-known/ui4a.json 由 smoke e2e 覆盖。
+确认:用户离线,按 conductor/workflow.md 自治编排协议由编排 agent 代行验收——自治验收,通过。
+偏差记录:D21(s2 checks 名单机械适配 6→7)。

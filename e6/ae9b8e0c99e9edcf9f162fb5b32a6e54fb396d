@@ -1,0 +1,1 @@
+T14 Phase G: client allocates session/turn ids before POST; append-only started/progress/final projections cover inline, focus, render and delegated paths; history exposes running turns and client polls them after refresh. Evidence: 97 focused tests plus web/engine typechecks.

@@ -1,0 +1,5 @@
+T21 Phase B Green: dual-focus event projection
+
+Embedded clientView in immutable user messages, added chat-navigation-completed as a core audit event ignored by Business fold, and projected current-message ClientViewFact plus idempotent latest LastNavigationFact independently of legacy ConversationFocus. Missing current view is null and concurrent clients remain message-scoped.
+
+Validation: conversation/fold/shared focused Vitest => 3 files, 57 tests passed; @ui4a/web and @ui4a/engine typecheck; Prettier and git diff checks.

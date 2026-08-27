@@ -1,0 +1,94 @@
+Task: web 服务层接线(T3 Phase B Task 2)
+
+变更文件:
+- apps/web/src/engine/service.ts:exec 改走 executeWithGates(gateDeps 含
+  cedarPolicyFromDefaultFile() boot 装配);confirmation:<id> rel 路由到
+  approveConfirmation/rejectConfirmation(unknown action → undeclared 留痕);
+  ExecOutcome 增 suspended 形态(entity=pending 确认实体投影 + confirmation 摘录);
+  事件落库映射 toAppend 补 detail/reason(confirmation-* 的 fold 重放依赖 detail,
+  T2 旧映射丢列对 action-executed 无影响,对 confirmation 是必需修复)。
+- apps/web/src/app/api/exec/route.ts:suspended → 202
+  {status:'suspended', confirmation:{rel:'confirmation:<id>', …SuspendedConfirmation 摘录}}。
+- apps/web/src/engine/service.confirmation.test.ts(新增,16 测试,真 PG)。
+- apps/web/src/app/api/exec/route.test.ts:确认门 describe(5 测试:202 形态/
+  human approve 200/agent approve 422+pending/reject+再 approve 400/B2 human 直通)。
+
+设计要点:
+1. approve/reject 即普通 exec(HTTP 合同不变):POST /api/exec
+   {rel:'confirmation:c1', action:'approve', actor:'human'};服务层按 rel 前缀
+   路由到引擎裁决入口,guard actor-is-human 在引擎层拒 agent(I4)。
+2. 受影响实体口径:approve → 目标业务实体(效果已应用);reject → 确认实体自身
+  (审计视图);suspended → pending 确认实体。
+3. 挂起非拒绝:三层(声明/guard/schema)拒绝仍先于确认门(schema-invalid
+   测试锚定顺序);挂起不改业务状态,只物化 pending + 落 confirmation-requested。
+4. I5:挂起后与 approve 后增量快照均与 fold(日志) contentVersion 同构(测试断言)。
+
+验证:CI=true pnpm check 全绿(375 tests);另做 Next dev 实机冒烟(自治验收):
+agent archive→202(post 仍 published)→ human approve→200 archived;
+agent approve→422;reject→200;重启 dev server 后 fold 重放 confirmation 链
+(c1 approved/c2 rejected/post-welcome archived)——detail 落库与重放闭环。
+
+=====================================================================
+【T3 Phase B 验证报告(自治验收,编排 agent 代行)】2026-08-21
+=====================================================================
+
+【测试覆盖核查】git diff --name-only d3df9be..HEAD 的代码文件:
+- apps/web/src/domain/cedarPolicy.ts → cedarPolicy.test.ts(15 测试)✓
+- apps/web/src/engine/service.ts → service.test.ts(既有 22)+
+  service.confirmation.test.ts(新增 16,真 PG)✓
+- apps/web/src/app/api/exec/route.ts → route.test.ts(既有 8 + 确认门 5)✓
+- policy.cedar(策略数据,非代码)→ loadPolicyText/文本变更测试覆盖 ✓
+- package.json / pnpm-lock.yaml(非代码,排除)✓
+
+【自动化验证】Command: CI=true pnpm check
+结果:exit 0——typecheck(5 workspaces)+ eslint + vitest 全绿,
+375 tests / 39 files(Phase A 基线 339 → Phase B +36:B1 15 + B2 21)。
+
+【脚本化人工等效验证】(PORT=3100 pnpm dev 实机执行,curl 断言):
+1. agent archive → HTTP 202 {status:'suspended', confirmation:{rel:'confirmation:c1',
+   targetRel, targetAction, proposedBy, channel, policyReason 含 Cedar 原因}};
+   文章仍 published(动作未生效)✓
+2. human approve(POST /api/exec {rel:'confirmation:c1',action:'approve',actor:'human'})
+   → 200,文章 archived;事件链 confirmation-approved(actor=human,channel=
+   confirmation,detail 含 proposed-by agent / decided-by human)+ action-executed
+   (actor=human,principal=user:mike=提议者,channel=confirmation)✓
+3. I4:agent approve → 422 {layer:'guard-failed', reason 含 actor-is-human,
+   detail:[{name:'actor-is-human',pass:false}]};确认仍 pending;action-rejected
+   落库 actor=agent ✓
+4. human reject(带 reason)→ 200;文章保持 published(原动作永不生效)✓
+5. 重启 dev server → fold 重放 confirmation 全链:post-welcome=archived、
+   c1=approved、c2=rejected(detail 落库与重放闭环,I5)✓
+6. inbox 集合投影 count=0(无 pending)✓
+7. 策略即数据实机验证:临时把 policy.cedar 收紧为『仅 human 直通』→ 重启 →
+   agent unpublish(risk=none,无标注)→ 202 挂起(行为随文件改变);恢复
+   文件后 git 工作区干净 ✓
+
+【DoD 核对】
+1. CI=true pnpm check 全绿:Cedar 单测含策略文本变更行为测试(strict 文本使
+   medium 挂起,默认文本不挂)+ 挂起矩阵集成测试(service 16 + route 5,真 PG)✓
+2. spec 验收 5:Cedar 求值原因与 policy id 入事件 detail——route/service 测试
+   断言 detail.policy /^cedar:/ 与 policyReason 含 Cedar ✓
+3. 202 挂起响应形状稳定(status:'suspended'+confirmation{rel,…摘录})且 route
+   测试覆盖(202/200/422/400 路径)✓
+4. B1–B3 语义回归绿:human archive 直通不挂起 + agent 无标注直通 + B1 向导
+   在挂起路径存在时照常(service.confirmation.test 回归组)✓
+5. git:2 任务 commit(ab6eac3 / 94b46f2)+ notes + plan 状态 + 本 checkpoint ✓
+
+【偏差清单】(实现与 spec/prompt 的差异,均已在代码头注/任务 note 记录)
+1. cedar-wasm 版本 4.12.0(Cedar 语言 4.x;spec 写 3.0 方向——4.x 语法超集,
+   策略文本按实际语法写对为准;@cedar-policy/cedar 纯 JS 包不存在于 npm,
+   无需启用备选)。
+2. namespace 块语法在此 wasm 的 PolicySet 解析路径不支持(实测 parse 失败);
+   改用全限定 EUID(UI4A::Action::"executeAction")表达命名空间,语义等价。
+3. @id 注解在 staticPolicies 字符串路径不生效(实测);策略 id 由 Cedar 按
+   声明序自动分配(policy0/policy1…),留痕锚点为自动 id,已注于 policy.cedar 头。
+4. 策略模块位置 apps/web/src/domain(spec 决定 3 原样);依赖加在 apps/web
+  (shared 会与 engine 类型成环,engine 保持纯 TS 无 wasm)。worker 需要评估时
+   按 D3 增 packages/policy。
+5. 未传 Cedar schema(schemaless 模式,实体形状由 TS 构造保证;缺属性访问
+   在 Cedar 侧报错 → fail-closed)。
+6. fail-safe 方向:文件缺失/为空/求值失败 → 带 requires-confirmation 标注的
+   动作一律挂起(fail-closed),无标注动作直通。
+
+结论:Phase B 通过(Cedar 风险策略接入 + web 服务层接线完成),
+进入 Phase C(Temporal worker 与 notify)。

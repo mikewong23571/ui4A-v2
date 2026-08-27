@@ -1,0 +1,3 @@
+Correction to T15 Phase C Eval: collection sub-entity facts and direct entity facts are equivalent authorized Siren observations. U1/U3 latest DeepSeek run passed; U4 latest response correctly reported missing body with zero mutation and direct title-only source. The evaluator no longer requires a fixed navigation/reference granularity.
+
+Phase C autonomous checkpoint: pnpm check passed 1150 tests with 2 Temporal-dependent skips; targeted answer/observation tests 195 passed. Latest real DeepSeek run: U1/U2/U3 passed, U4 semantically passed with zero mutation; U5/U12 remained red as expected for Phase D/E. Manual-equivalent review confirmed grounded, useful answers and no business effects.

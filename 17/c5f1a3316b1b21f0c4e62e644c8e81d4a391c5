@@ -1,0 +1,25 @@
+T2 Phase E — Phase Verification & Checkpoint(自治验收,编排 prompt 代行)
+
+Verification evidence (2026-08-21):
+
+1. CI=true pnpm check —— 全绿:typecheck(3 workspace)+ eslint + vitest 32 files / 264 tests(agent 64 含 LLM driver mock fetch 全套、chat 路由回环 12、flow 合同 12)。
+2. CI=true pnpm e2e —— 全绿:9 passed + 1 skipped(llm-smoke 默认 skip)= baseline B1/B2/B3 + chat(flow 导航/I1/B4/悬浮窗可见可展开)+ smoke×2;8.5s。
+3. 手工等效(起 dev,curl chat route):
+   a. GLM_API_KEY='' 环境 auto → 解析 rule,B1 完成(轨迹 5 行,末条'完成: publish 已成功'),articles 2→3;
+   b. 显式 rule B2(下线 post-welcome)done;
+   c. 真实 key 环境 auto → llm,B1 由 GLM glm-4.7 自编三步内容 30s 完成;浏览器级走查亦过(悬浮窗展开→输入→轨迹渲染,截图留档);
+   d. B4 真实形状:invalid key 直打 open.bigmodel.cn → HTTP 401 {"error":{"code":"401","message":"令牌已过期或验证不正确"}}(0.15s),与 e2e 401 桩同构。
+4. 真实 LLM 冒烟一次:GLM_API_KEY=<secrets> RUN_LLM_E2E=1 CI=true pnpm exec playwright test e2e/llm-smoke.spec.ts → 1 passed (26.3s,场景本体 24.9s)。
+5. key 安全:GLM_API_KEY 仅存 apps/web/.env.local(git check-ignore 确认);git grep key 前缀(deacf3a0)全仓库零命中;无日志输出 key。
+
+Phase E 提交落点:
+- flow:<name> 投影合同补全(articles→向导零特权导航) f0dc65c
+- LLM driver(工具投影:动词5+动态动作工具,guard 嵌 description) f13a9c0 + toolChoice 修复 004e3db
+- chat 路由 + assistant-ui 悬浮窗(集成成功,未触发 D7 偏差) 8677f37(+style 5dfc937)
+- e2e B4/I1/flow 导航 + workers=1 3dab0d3
+- RUN_LLM_E2E 冒烟 8847567
+
+遗留说明:
+- LLM driver toolChoice 缺省 auto(GLM coding 端点对 required 挂起,实测记录于 004e3db);
+- 聊天轨迹一次性 JSON(流式为加分项未做);
+- 悬浮窗完整 UI 走查与 :form 人类路径一并留 Phase F。

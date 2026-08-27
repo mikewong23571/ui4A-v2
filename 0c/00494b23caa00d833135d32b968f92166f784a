@@ -1,0 +1,5 @@
+T21 variant correction: dynamic cross-surface navigation
+
+The four-variant browser batch exposed an English goal whose word overlap selected flow:article-drafting, whose entity had only self navigation. Extended navigate tool projection with authorized scoped sitemap surfaces, excluding current rel, so the LLM can dynamically recover to articles from any legal start without keyword routing or startRel override.
+
+Validation: tools/driver/governance 61 tests and agent typecheck. Real t21-en-smoke-1787503032272 navigated dynamically to articles, presented post:first-post, then answered with ready Canvas receipt.

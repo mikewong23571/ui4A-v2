@@ -1,0 +1,6 @@
+T10 Phase B Task 2: 重放一致扩展(I5 application 维度)
+
+改动:apps/web/src/engine/service.definitions.test.ts(+100,TRUNCATE 回灌重放 + applications 全文一致)、e2e/invariants.spec.ts(+21,I5 组 applications hash 断言)
+Why:spec 验收 3——application 定义事件参与 fold,重放后活跃 app 定义与在线一致。
+Red 构造:fold application-seeded 分支变异中和 → 新用例如期红(反空转锚在线丢表即失败),还原后绿。
+验收(编排 agent 亲自复跑):service.definitions 15/15;CI=true pnpm check 878 passed;invariants e2e 6/6。自治验收。

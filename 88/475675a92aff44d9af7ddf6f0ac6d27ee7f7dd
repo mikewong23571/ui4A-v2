@@ -1,0 +1,11 @@
+Task: RUN_LLM_E2E 冒烟(T2 Phase E / Task E4)
+
+Summary:
+- e2e/llm-smoke.spec.ts:test.skip(!process.env.RUN_LLM_E2E) 门控;真实 GLM coding plan 端点;goal B1 不传 fields,三步向导内容(标题/分类/正文)全由 LLM 自编(断言 category 落在 enum tech|essay|review 内);断言 outcome done、轨迹 3×next+publish、articles 2→3、三篇全 published;420s 超时预算(真实往返 8-20s/步)。
+
+Verification(真实冒烟,2026-08-21):
+- 命令:GLM_API_KEY=$(cat ~/.secrets/glm_coding_plan_key) RUN_LLM_E2E=1 CI=true pnpm exec playwright test e2e/llm-smoke.spec.ts
+- 结果:1 passed (26.3s,场景本体 24.9s)——模型 glm-4.7 自编三步内容并 publish,文章计数 2→3。
+- 默认 CI=true pnpm e2e 中本用例 skip(不产生任何 LLM 网络调用)。
+
+模型选择记录:LLM_MODEL 缺省 glm-4.7(GLM coding plan 旗舰;社区 configs 常用名;实测 tool calling 正常)。

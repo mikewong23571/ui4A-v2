@@ -1,0 +1,14 @@
+Task: T4 Phase A Task 1 — lifecycle flow 定义(machine-as-JSON 自举,meta/self)+ 定义实体投影
+
+变更:
+- packages/shared/src/definition.ts(新):machine-as-JSON 类型从 engine 迁入(避免 shared 谓词反向依赖 engine);KNOWN_FIELD_TYPES/KNOWN_EFFECT_TYPES;meta/flow:、meta/activation: rel 规则;flowEdges/terminalNodes/reachableNodes;DefinitionEntry/ActivationSnapshot/ActivationCheck;FieldType 增 'json'(add-action 携带 action-definition 全文)。
+- packages/engine/src/lifecycle.ts(新):DEFINITION_LIFECYCLE_FLOW 常量(A.4 原样,timeout/expired 除外;validating 无 exec 动作,checks-pass/fail 记为 LIFECYCLE_INTERNAL_EDGES 引擎内边);withLifecycleFlows 保留名注入。
+- packages/engine/src/siren.ts:meta 前缀优先路由(meta/flow:<name> 与 lifecycle 实例同 rel,投影必须是定义视图);meta/self 只读(lifecycle 定义 + 种子 guard 集);meta/flows 集合;A.2 形状:class meta/flow-definition、properties{name,version,status,initial,terminal}、node/action-definition 子实体、按状态挂编辑动词 + guard-results。
+- packages/engine/src/effects.ts:meta-edit 效果(applyMetaEdit 纯函数改工作副本);快照构造恒物化 definitions/activations(confirmation.ts/fold.ts 机械适配:applySeed/suspend/reject 构造点随行携带)。
+- packages/engine/src/types.ts:re-export shared 定义类型(公共面不变)。
+
+为什么:meta 最小核四 rel 的地基——lifecycle 自举(编辑动词是普通 action,过同一 judge)要求生命周期本身是一份 machine-as-JSON 数据;定义实体形状直接取 A.2。
+
+测试:lifecycle.test.ts(13)+ meta-project.test.ts(10)= 23 新用例;全仓 430 全绿。
+
+机械适配记录:fold 空快照/applyEffects 断言补 definitions/activations 空表;purity 源文件计数 13→14。

@@ -1,0 +1,11 @@
+Task: events 表与 appendEvent(T2 Phase B)
+
+- 新增 apps/web/src/db/events.sql:append-only 事件日志迁移工件(seq bigserial PK / ts timestamptz default now() / actor / principal / channel / kind(action-executed|action-rejected|entity-appended|spawn-requested|seed) / rel / action / params jsonb 带出处 / reason / detail jsonb;行级触发器拒绝 UPDATE/DELETE)。
+- 新增 apps/web/src/db/events.ts:EVENTS_DDL(与 events.sql 逐字一致,测试强制)、ensureEventsTable(幂等引导)、appendEvent(单条 INSERT+RETURNING,串行单写)、listEvents(seq 升序,afterSeq 分页)。
+- 新增 apps/web/src/db/events.test.ts:8 用例——DDL 一致性、幂等建表不重置 seq、seq 单调、字段完整往返(jsonb params/reason/detail)、UPDATE/DELETE 被拒且日志原样、升序+分页。
+
+迁移方式决策:启动时幂等 DDL(CREATE TABLE IF NOT EXISTS + CREATE OR REPLACE FUNCTION + DROP/CREATE TRIGGER),不用迁移框架——Next.js 打包对运行时 fs 读 .sql 不友好,幂等 DDL 让 dev/test 同路;events.sql 作为 dba 审阅工件保留,由测试强制与内置 DDL 逐字一致防漂移。
+
+验证:CI=true pnpm check 全绿(116 tests,15 files)。
+
+Commit: c4e9d0f

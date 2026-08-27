@@ -1,0 +1,7 @@
+T10 Phase C Task 1: deriveSitemap applications 分组投影
+
+改动:packages/engine/src/sitemap.ts(SitemapApplication/applications 组/flows.app/surfaces.app/options.applications)、sitemap.test.ts(+6;两条 surfaces 精确断言补 app 字段)、types.ts(re-export ApplicationDefinition)
+口径:surfaces 集合面 app = 首次 append 它的 flow 的 app;options.applications 缺省 → applications: [](shape 稳定);flow.app 指向未定义 app 时仅留扁平表(app-known 保证生产不可达);组序=定义表声明序。
+Why:spec 架构决定 5——sitemap 从扁平 flows 升级为按 app 分组投影,扁平保留向后兼容。
+验收(编排 agent 亲自复跑):sitemap.test.ts 16/16;CI=true pnpm check 884 passed。自治验收。
+遗留:service.ts currentSitemap 尚未传 applications(生产 sitemap 暂空组)——Task 2 接线。

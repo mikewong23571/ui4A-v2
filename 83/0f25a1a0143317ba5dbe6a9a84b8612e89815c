@@ -1,0 +1,25 @@
+Task: T2 Phase F / F1 实体通用渲染页(TDD)
+
+Summary:
+- 路由选择:/entity?rel=…(query 参数),与合同端点 /api/entity?rel=… 同构;
+  rel 含 ':'(post:*/flow:*),query 形态免转义、renderer 零 rel 解析。
+- 新增组件(apps/web/src/components/):
+  - exec-client.ts:renderer 合同客户端(execAction/fetchEntity),人类身份固定
+    actor=human, principal=local-user, channel=renderer(spec FR8)
+  - action-runner.tsx:单个 Siren action 的 :form runner;有 fields → RJSF v6 表单
+    (schema 即 action.fields,draft-07);无 fields → 按钮;guard blocked → disabled
+    + title 原因;拒绝如实呈现
+  - entity-view.tsx:实体四件组装渲染;links/entities[] → /entity?rel=… 导航
+  - rjsf-validator.ts:customizeValidator 注册 textarea 恒真格式(消 ajv 告警)
+- 页面 apps/web/src/app/entity/page.tsx(client):use(searchParams);exec 成功后
+  tick 重拉(重拉期间保留旧投影);404/缺参/服务不可用三态。
+- 依赖:web 增 @rjsf/core@6.8.0 + @rjsf/validator-ajv8@6.8.0(React 19 兼容,
+  peer react>=18,无需 D8 偏差);dev 增 @testing-library/react + dom + jsdom。
+- RJSF v6 缺省 indexed 编码:enum select 的 DOM value=索引,label=枚举值,
+  formData 解码回真实值(组件测试覆盖该往返)。
+- 测试:entity-view.test.tsx 12 例(per-file jsdom environment via docblock,
+  根 vitest 配置未动);全量 CI=true pnpm check 276/276 绿。
+- 手工等效:dev 3100 + Playwright 截图走查 post:post-welcome(按钮 下线/归档、
+  成员/集合链接)与 flow:article-drafting(RJSF 表单渲染),无页面错误。
+
+RJSF 集成结论:v6.8.0 与 React 19.2.8/Next 16.3.1 集成顺畅,未触发偏差流程。

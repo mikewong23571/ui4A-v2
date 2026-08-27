@@ -1,0 +1,19 @@
+T7 Phase B Task 1: 十词条组件接入
+
+## 变更
+- apps/web/src/render/words/:十词条组件(table/chart/stat/timeline/flow/form/diff/kanban/markdown/detail)+ shared.ts(props 收紧,响亮失败)+ fixtures.ts(合同 fixtures)
+- 组件测试 27 例:给 derefSpec 输出 → 组件树对拍(渲染断言 + aria 锚点 + 白名单提交断言)
+- registry.ts:lazy 占位 → 真实词条动态 import;bindSchema 收紧为词条级 JSON Schema(引用节点类型/必需键/additionalProperties:false)
+- word-bind.ts(+test 6 例):Ajv 词条 bind 校验,与 /api/render/catalog 同源
+- globals.css:@source 扫描 Tremor dist(Tailwind v4)
+- apps/worker/tsconfig.json:jsx react-jsx(worker 类型图经 web/db 直引延伸到 .tsx)
+- package.json:+@tanstack/react-table@^8 / recharts / @tremor/react / react-chrono / @xyflow/react / @dnd-kit/core / react-markdown / ajv
+
+## 词条接入结果
+十词全部接成(零占位残留)。依赖偏差见 DECISIONS D13/D14:shadcn 未初始化(chart→recharts 直用,detail→极简卡片);Tremor 3.18.7 peer react^18 告警但 jsdom 实测渲染通过;TanStack v9 是 signal 重写,锁 ^8.21.3 稳定 API;A2UI SDK 装机成功(zod peer 告警为传递性噪音)。
+
+## 测试
+CI=true pnpm check 全绿(762 单测,+33;typecheck 三 workspace + eslint 通过)。
+
+## 核心理由
+词汇表词条 = 渲染侧合同消费面:bind 全引用 → deref 纯函数输出 → 词条组件收紧渲染;bindSchema 与目录同源使 spec 生成路径(Phase C)与画布共用同一形状约束。

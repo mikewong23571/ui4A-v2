@@ -1,0 +1,15 @@
+Phase Verification(T5 Phase B;自治验收,编排代行)——报告挂于本 Phase 最后一个功能提交 173d4b8
+
+自动化验证:
+1. CI=true pnpm check 全绿:typecheck(三 workspace)+ eslint + vitest 70+2 文件 612 用例全过(Phase A 基线 582 → +30:Task1 21 + Task2 9)。
+2. CI=true pnpm e2e:22 passed / 1 skipped(llm-smoke 探活),零回归(chat inline 默认不变;S1/S2/B 系全过)。
+3. 手工等效(真栈:PG 5433 + Temporal dev 7233 + web dev 3100 + worker taskQueue ui4a):
+   a. curl POST /api/chat mode=delegated → 200 {mode:'delegated', delegationId, statusUrl};
+   b. 轮询 statusUrl 至 completed(真 worker 执行,文章落库 articles 2→3);
+   c. **轨迹消息与 inline 语义等价(同构对拍)**:清库对照——inline 基线与 delegated 各发布一篇文章,消息序列逐条同形(next×3→publish→完成),steps=5/successes=4/summary 相同;失败路径亦等价(wizard 已消费态:inline 与 delegated 均产同一条'失败: 无与目标相关的可导航路径…');另有单测级全等对拍(projection.test.ts 直接对拍 trailToMessages);
+   d. /api/delegations 列表返回该委托(completed/5/4/summary);详情含 goal/status/steps/successes/summary/trail/messages。
+4. 舰队页无头走查:Playwright 截图 + 可及性快照确认表格(目标/状态/步数/成功/摘要)渲染至少一个委托(绿色'已完成'),截图 /tmp/ui4a-fleet.png。
+
+**验证发现并修复 1 个集成 bug**(173d4b8):web dispatch 原返回裸 uuid 作 delegationId,而 worker 事件 rel=delegation:<workflowInfo().workflowId>(含 delegation- 前缀)→ statusUrl 永远 404。修复:delegationId=完整 workflowId(与 worker/kill 集成测试约定对齐);舰队页与悬浮窗回执显示剥前缀短 id。单测 mock dispatch 故未能提前拦截,由手工轮询实测暴露——Phase Verification 的价值实证。
+
+偏差:无(悬浮窗小改已做)。过程纪要:测试侧自纠 3 次(route.delegated 回环缺 /api/exec、db 路径深度、GLM key 泄漏),实现侧 lint(set-state-in-effect)与 ts 严格断言各自纠一次;agent-browser daemon 卡死换 Playwright 直连截图(自纠一次)。自起进程已杀净(3100/worker 无残留),编排者 postgres/temporal 保持运行。

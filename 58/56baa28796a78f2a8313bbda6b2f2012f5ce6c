@@ -1,0 +1,19 @@
+Task: T4 Phase C Task 1 — activation 实体投影 diff + deep-object-diff 集成(TDD 红→绿)
+
+改动:
+- packages/shared/src/definition.ts:DefinitionDiff 接口(algorithm:'deep-object-diff'、before/after 全文、changed{added,deleted,updated} 三视角)+ ActivationSnapshot.diff?(older 日志重放可缺省)。
+- packages/engine/src/definition-diff.ts(新):definitionDiff(before,after) 纯函数,基于 deep-object-diff detailedDiff;确定性、JSON 可序列化(纯数据测试:往返一致、无函数成分)。
+- packages/engine/src/meta.ts:executeMeta submit 分支——基线 = activeDefinitionOf(草稿窗口的工作副本不是活跃内容,按 definitionVersions 取),候选 = entry.definition;diff 冻结进 ActivationSnapshot 与 DefinitionSubmittedDetail.activation.diff(事件载荷即真相,重放不重算——注册表漂移不影响审计数据)。
+- packages/engine/src/fold.ts:applyDefinitionSubmitted 从载荷还原 diff(缺省容忍:diff 字段引入前的旧日志重放不破坏;存在时校验 algorithm 标识)。
+- packages/engine/src/siren.ts:projectActivation properties 原样携带 diff(有才注入,形状稳定)。
+- packages/engine/src/purity.test.ts:模块计数 16→17 + definitionDiff 公共导出断言。
+- 依赖:deep-object-diff@1.1.9 → @ui4a/engine(选型见 conductor/tech-stack.md 机械 diff 行);react-diff-view@3.3.3 → @ui4a/web(本次 lockfile 一并更新,组件接线在 Phase C Task 2)。
+
+测试(+6,总 529 全绿;CI=true pnpm check):
+- definition-diff.test.ts:三视角差异(added 含 pin 子树/updated 持新值/deleted 数组下标缺席形状)、纯数据断言(JSON 往返、确定性、零函数)、无差异全空、executeMeta 集成(submit 后 activation.diff 基线=seed v1、候选=草稿)、diff 随 definition-submitted 入日志且 fold 重放 I5 一致、无差异修订仍物化。
+- meta-project.test.ts:激活实体投影 properties.diff 合同断言。
+
+设计口径(报告):
+1. diff 计算位置:engine executeMeta submit 内(倾向方案采纳)——审批数据由裁决器产出而非提交者/渲染器,冻结在 submit 时点,重放零重算。
+2. deep-object-diff 的数组语义:数组按下标当对象比对;删除数组元素时 deleted/updated 视图留下空路径痕迹(值缺席),旧值由渲染器从 before 按同路径机械取回(零 AI 路径的一部分)。
+3. before/after 全文随 diff 携带(自包含审计载荷,渲染器不回查注册表)。

@@ -1,0 +1,18 @@
+T10 Phase B Task 1: boot seed 扩展(application 定义入日志 + fold)
+
+改动:apps/web/src/domain/applications.ts(新增,3 seed)+ flows.ts(app 归属)、engine/service.ts(补种)、engine/fold.ts(application-seeded fold 落 applications 表)、confirmation.ts + db/events.ts(随行/类型镜像机械适配)
+事件形态决策:新增 kind application-seeded 而非复用 definition-seeded——后者 fold 与 flow lifecycle/definitions 键空间深度耦合,复用需判别字段+分支补丁且污染键空间;独立 kind 落表单行、重放确定、旧库 boot 尾部补种。
+Why:spec 架构决定 4/7——application 与 flow 同等入日志;default 恒激活使 app-known 长牙;≥2 语义 app 使两层发现可验。
+验收(编排 agent 亲自复跑):scoped 68/68;CI=true pnpm check 877 passed;s2+baseline e2e 7/7(app-known 长牙后 submit 链零误伤)。自治验收。
+
+---
+
+T10 Phase B Checkpoint 验证报告(自治验收)
+
+阶段范围:26d2097..HEAD(application boot seed 入日志 + fold 落表 + I5 application 维度重放一致)
+自动化验证(编排 agent 亲自执行):
+- CI=true pnpm check → 878 passed | 2 skipped(Temporal 环境性跳过)
+- CI=true pnpm e2e → 33 passed / 11 skipped,与基线一致零回归
+- 关键实证:app-known 长牙(app:'nonexistent' submit 拒且留痕;合法归属零误伤);I5 TRUNCATE 回灌重放 applications 表全文 hash 一致
+- 阶段改动代码均有测试(fold.test.ts/applications.test.ts/service.definitions.test.ts)
+确认:用户离线,编排 agent 代行验收——自治验收,通过。

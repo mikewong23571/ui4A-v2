@@ -1,0 +1,1 @@
+T20 Phase A acceptance and spike contract. Added the frozen U1-U22 human protocol, red baseline, scope/route/performance decisions, deterministic desktop/mobile wireframes, and binding D32. No runtime code or dependencies changed. Verified with git diff --check and live read-only Meta probes.

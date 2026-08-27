@@ -1,0 +1,6 @@
+T14 Phase A Task 1: append 合并源实例字段(D24)
+
+改动:engine/effects.ts(mergedAppendFields + instanceName 口径)、shared/definition.ts(append doc 注释,任务书外但为被改语义权威文档,已申报)、5 测试文件 + e2e human/baseline 断言补强
+重放论证:entity-appended 载荷不变(只带请求参数),fold no-op,合并集由前序事件经同一 applyEffects 确定性重算——载荷塞合并字段会造第二真相源(effects.ts 注释固化)。
+Why:walkthrough #5——向导所填 category/tags 发布时静默丢失;机制层正解,新建 flow 不再踩坑。
+验收(编排 agent 亲自复跑):engine+web 446/446;CI=true pnpm check 1079 passed;human+baseline e2e 6/6(含新断言)。自治验收。

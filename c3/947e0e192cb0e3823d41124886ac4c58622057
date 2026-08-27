@@ -1,0 +1,5 @@
+T10 Phase A Task 2: FlowDefinition.app 字段 + parse 归一化
+
+改动:packages/shared/src/definition.ts(FlowDefinition.app)、packages/engine/src/parse.ts(结构校验+归一化)、parse.test.ts(+4 用例)
+Why:membership 方向 = flow 声明归属,application 不持成员清单(spec 架构决定 2);归一化缺省 'default' 保证两层发现兜底。
+验收(编排 agent 亲自复跑):parse.test.ts 24/24;CI=true pnpm check → 853 passed 全绿。自治验收。

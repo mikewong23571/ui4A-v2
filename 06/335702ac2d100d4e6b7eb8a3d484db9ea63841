@@ -1,0 +1,5 @@
+T21 Phase D multi-decision turn
+
+Added protocol acceptance proving one user turn can navigate, make a second LLM decision, and answer with sources while producing zero business POSTs. Existing Presentation test covers present then answer.
+
+Validation: loop 46 tests passed; agent typecheck; Prettier/diff checks.

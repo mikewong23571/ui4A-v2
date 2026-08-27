@@ -1,0 +1,1 @@
+T17 Phase D: added installable TypeScript ui4a CLI with stable envelope/exit codes, config/redaction/doctor, discovery/entity/action/plan/audit commands, canonical Bundle export, bounded events, GET/HEAD escape hatch, and docs. Autonomous verification: 12 focused tests, CLI build, npm tarball install from isolated /tmp, command-v/help/doctor/live entity/export passed.

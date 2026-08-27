@@ -1,0 +1,16 @@
+Task: T15 Phase B U22 AI-first runtime and model-failure safety
+
+Summary:
+- Removed rule from product DriverKind and chat API; default/auto/llm all resolve to llm.
+- Missing profile returns recoverable LLM-unavailable failure with zero business effects.
+- /api/chat rejects explicit driver=rule before writing events.
+- Deterministic render/discovery shortcuts are bypassed when LLM config is missing.
+- Delegated workflow and web dispatch accept llm only; worker model errors become audited failed steps without /api/exec.
+- Scripted/mock behavior remains test-only dependency injection; kill-resume uses local OpenAI-compatible SSE fixture and unique task queue.
+
+Evidence:
+- targeted: 9 files / 91 tests passed, including kill-resume 1/1.
+- pnpm -r typecheck passed.
+- pnpm check: 121 files passed, 2 skipped; 1138 tests passed, 2 skipped.
+- live: driver=rule rejected HTTP 400; inline default resolved llm and answered; delegated recorded driverKind=llm, one failed step, zero successes/mutations.
+- endpoint/config failure route tests assert zero action/render/delegation effects.

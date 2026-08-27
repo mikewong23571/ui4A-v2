@@ -1,0 +1,7 @@
+T11 Phase C Task 2: SSE thinking 帧
+
+改动:api/chat/route.ts(onReasoning → thinking 帧管道 + 头注释更新)、route.test.ts(+2:llm 帧序列 ['thinking','step','thinking','step','final'] / rule 零帧)、e2e/chat.spec.ts(rule 零帧断言)
+帧格式:{type:'thinking', step, text};step 与同号 step 帧一致;每 llm 步一帧,先于 step 帧。
+Why:spec 架构决定 4——思考流直出前端;rule/端点不返回 reasoning → 零帧逐帧一致(架构决定 5)。
+验收(编排 agent 亲自复跑):api/chat 29/29;CI=true pnpm check 928 passed;chat e2e 5/5。自治验收。
+Task 3 衔接:chat-panel.tsx else 分支对未知帧显示「失败: undefined」——thinking 分支必须消化该路径。

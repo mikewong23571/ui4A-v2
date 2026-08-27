@@ -1,0 +1,17 @@
+Task: flow:<name> 实体投影合同补全(T2 Phase E 先行)
+
+Summary:
+- 新建 apps/web/src/engine/flow-entry.ts:resolveFlowRelAlias(flow:<name> 单实例语义 → 唯一实例 rel)+ withCollectionFlowEntryLinks(集合 links 补 {rel:['flow']} 入口链接,按 append 效果推导)。
+- service.ts:getEntity 与 exec 均吃 flow 别名;exec 落日志记实例 rel,不产生幽灵实体;engine(packages/engine)语义零改动——投影补全纯在 web 服务层(编排 prompt 指定优先路径)。
+- 合同级测试 ×5:flow:article-drafting → 向导实例;articles links 含入口;完整导航(零 startRel 特权);exec 别名等价(日志记 article-drafting:main);多实例/未知 flow 仍 404。
+- 既有 entity route 测试同步更新(articles links 形状演进为 self+flow 入口)。
+
+Files:
+- apps/web/src/engine/flow-entry.ts(新建)
+- apps/web/src/engine/service.ts
+- apps/web/src/app/api/contract.test.ts
+- apps/web/src/app/api/entity/route.test.ts
+
+Why: 处境披露的根基——从 articles 出发沿 links 能到达向导实例,合同不再依赖 startRel 特权;LLM driver(Task E1)据此可从任意入口纯链接导航。
+
+Verification: CI=true pnpm check 全绿(27 files / 229 tests)。

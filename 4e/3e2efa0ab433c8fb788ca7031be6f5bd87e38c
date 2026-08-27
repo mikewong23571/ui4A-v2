@@ -1,0 +1,6 @@
+rebase origin/master(T29 归档)后续修复
+
+- 冲突解决:size-baseline.json 合并双方例外(components/db/t22 14424);tracks.md 采纳远程 T29 归档结构 + T24 [x]。
+- 审计链迁移:24 个 T24 提交 rebase 后新哈希,git notes 全量 copy 到新对象;plan.md 任务/checkpoint sha 重映射(fd9e57f)。
+- 场景 kit 修复:远程『presence 入版本化迁移』后 readiness 只读探测 + 引擎懒 boot 使 waitUntilHealthy 在迁移/自举未完成时永远超时;truncateEvents 现按 bootEngine 非生产序列先落迁移(prepareDatabaseForApplication)再自举(bootstrapAndVerifyApplication),新库与旧库都收敛 ready。
+- 验证:t24-presentation-honesty 3/3;invariants+human+baseline+smoke+chat 18 过/3 门控 skip;governance OK(baseline 7 项含远程 db 4014)。

@@ -1,0 +1,9 @@
+Task: /api/health 端点含 db 检查(TDD)
+
+- TDD:先写 apps/web/src/app/api/health/route.test.ts 契约测试(红:route/pool 模块不存在);实现后绿。
+- 契约:db 可达 → HTTP 200 {status:"ok",db:"ok"}(直连真实 compose PG);db 不可达(坏连接串 postgres://...:5999)→ HTTP 200 {status:"degraded",db:"error"},不抛 500。
+- 降级语义(文档化选择):status 在 db error 时取 "degraded" —— 端点/web 进程存活但依赖子系统故障,不谎报 "ok";HTTP 保持 200,LB/探活不会把整个服务判死。理由写在 route.ts 头注释与测试注释中。
+- 实现:src/db/pool.ts 按连接串 memoize 的 pg Pool 单例(connectionTimeoutMillis 2000, pool.on('error') 吞空闲连接错误);route.ts GET 执行 SELECT 1,try/catch 降级,export const dynamic='force-dynamic' 防构建期静态化;相对导入(vitest 无别名配置,根 vitest 零配置即可解析)。
+- 测试收尾 closeAllPools() 关闭真实连接,避免悬挂 socket。
+
+验证:CI=true pnpm vitest run 15/15 绿;pnpm typecheck 全过。

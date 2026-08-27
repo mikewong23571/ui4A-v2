@@ -1,0 +1,18 @@
+T11 Phase A: GLM-5.3 探针 + 结论入库(D22)
+
+改动:packages/agent/src/llm-probe.ts(新增探针内核)、index.ts(导出)、e2e/glm-probe.spec.ts(门控 spec)、DECISIONS.md(D22)
+实测结论(编排 agent 亲自复跑确认):
+1. reasoning 暴露:@ai-sdk/openai chat 路径 SDK 层零暴露(result.reasoning 0 parts;fullStream 0 reasoning 部件);原始层 reasoning_content 在场。取数路线 = streamText + includeRawChunks:true 解析 raw 部件 delta.reasoning_content。
+2. GLM 端点 reasoning 非增量、末尾齐发(静默 4-9s 后与 tool call 同批)→ thinking 帧语义 = 整段一次性留痕回放,onReasoning 聚合一次回调。
+3. tool calling auto 6/6 正常,与 reasoning 同现;D7 口径复验成立。
+4. 时延:简单步 4.2-8.5s(D7 8-20s 保为上限口径);D20 effort max 上浮未复现。
+D7/D20 冲突已先记 D22 再动。
+验收(编排 agent 亲自复跑):无 key → 1 skipped 不红;有 key → 1 passed(35.1s,6/6 调用成功);CI=true pnpm check 900 passed;CI=true pnpm e2e 33 passed / 12 skipped(探针入跳过集)。自治验收。
+
+---
+
+T11 Phase A Checkpoint 验证报告(自治验收)
+
+阶段范围:T10 闭环后..HEAD(GLM-5.3 探针;唯一功能 commit 即本 commit)
+自动化验证(编排 agent 亲自执行):CI=true pnpm check → 900 passed;CI=true pnpm e2e → 33 passed / 12 skipped(探针无 key 跳过不红,既有零回归);门控实测 1 passed(35.1s)。
+确认:用户离线,编排 agent 代行验收——自治验收,通过。

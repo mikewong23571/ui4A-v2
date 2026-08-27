@@ -1,0 +1,42 @@
+T2 Phase F — Phase Verification & Checkpoint(自治验收,编排协议代行)
+
+## 范围
+git diff 8847567..HEAD(Phase E checkpoint 之后)。代码文件 6 个,测试对应:
+- action-runner.tsx / entity-view.tsx / exec-client.ts / rjsf-validator.ts
+  → entity-view.test.tsx(13 例,含铁律 3 组件级断言与向导状态泄漏回归)
+- app/page.tsx(首页)→ home.test.tsx(4 例)
+- app/entity/page.tsx → 拆出 entity-page-body.tsx + page.test.tsx(5 例;
+  拆分原因:React 19 use(promise) 在 vitest jsdom 环境下不解除挂起,
+  已用最小复现验证为环境限制而非代码缺陷;页面壳由 e2e 走查覆盖)
+
+## 自动化验证(均亲自复跑)
+1. CI=true pnpm check:286/286 绿(typecheck 三 workspace + eslint + vitest;
+   Phase F 前基线 264,+22 例)
+2. CI=true pnpm e2e:12 passed + 1 skipped(9 既有 + human.spec B1/B2/B3 新增;
+   skip 为 RUN_LLM_E2E 门控冒烟,编排者验收时手动跑)
+3. B1/B2/B3 人类路径日志断言在 spec 内:publish/unpublish/approve 的
+   action-executed 事件 actor=human、principal=local-user、channel=renderer
+
+## 手工等效(无头环境以 Playwright 走查脚本代行,截图留档)
+dev 3100 全新库走查:
+- 首页(2 文章 + 向导入口 + 待处理 3)→ flow 入口 → 三步表单
+  (title 文本/category 下拉 essay/tags/body 文本域)→ ready 发布 → 完成;
+  回首页 3 文章(验收文章 published)。
+- post-welcome 下线 → 已下线,仅剩重新发布(offline 未声明 unpublish);
+- comments 队列 pending 3 → 通过一条 → 已通过;
+- /entity?rel=nope → '实体 nope 不存在(404)';
+- 悬浮聊天按钮在人类路径页面在场(spec 验收 7)。
+- 浏览器控制台无 JS 错误(仅 rel=nope 的预期 404 资源日志)。
+
+## DoD 核对
+1. check 全绿(RJSF 组件测试计入)✓
+2. e2e 全过(9+3)✓
+3. 人类路径 B1/B2/B3 全过且日志 actor=human(spec 内断言)✓
+4. 无合同外可提交元素:组件级断言(渲染 form/button 全部背书 actions[])+
+   首页零 button/form ✓
+5. git:3 任务 commit + plan + checkpoint ✓
+
+## 偏差清单
+无技术栈偏差(RJSF v6.8.0 与 React 19.2.8 兼容,D8 未触发)。
+实现注记:RJSF v6 enum 下拉 DOM value 为索引(indexed 编码),label 为枚举值,
+formData 解码回真实值;向导跨节点同名动作须换表单实例(已修,详见 F3 note)。

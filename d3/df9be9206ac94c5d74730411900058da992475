@@ -1,0 +1,110 @@
+Task: T3 Phase A / Task 2 — confirmation 实体与 approve/reject
+
+Summary:
+- packages/shared/src/guards.ts:GuardContext 增可选 actor?: 'human'|'agent'
+  (最小侵入的谓词签名扩展:既有谓词不读它,零改动仍编译;报告影响面)。
+- packages/shared/src/predicates.ts:actorIsHuman 谓词(ctx.actor === 'human';
+  无 actor 上下文 → false,fail-closed,与未注册 guard 同口径)+
+  seedGuardRegistry['actor-is-human']。
+- packages/engine/src/judge.ts:evaluateGuards 增可选尾参 actor,judge 透传
+  request.actor(actor-is-human 在 exec 裁决时拿到行为者;投影路径不传)。
+- packages/engine/src/confirmation.ts:CONFIRMATION_APPROVE_ACTION/REJECT_ACTION
+  动作声明常量(guards: actor-is-human;reject fields reason 必填 minLength=1)、
+  Approver/ConfirmationDecision/ConfirmationDecisionDetail/ConfirmationDeps 类型、
+  approveConfirmation(委托语义:action-executed 的 actor=human、principal=提议者
+  principal、channel='confirmation'——生效动作的信道是确认门,原请求信道保留在
+  confirmation-requested 事件里)、rejectConfirmation(reason 空/缺 schema 拒)、
+  confirmationRel 帮助函数。裁决顺序:存在(undeclared)→ pending 状态
+  (undeclared,approve/reject 只声明于 pending)→ guard(I4:agent 被
+  guard-failed 拒,detail 携带逐项求值)→ schema(仅 reject)→ 生效。
+- packages/engine/src/fold.ts:confirmation-requested(pending 物化,与在线
+  suspendForConfirmation 构造逐字段同构——空参数表/缺信道不落键,I5 hash 一致
+  的前提)、confirmation-approved/rejected(状态流转,approvedBy 从
+  detail.decidedBy 还原含 principal);重复物化/重复裁决/载荷畸形响亮失败带 seq;
+  fold 初始快照与 applySeed 恒携带 confirmations 表。
+- packages/engine/src/siren.ts:projectConfirmation(kebab-case properties:
+  target-rel/target-action/proposed-by/channel/status;links self+target 直达;
+  pending 挂 approve/reject,非 pending 审计视图无动作)+ projectInbox
+  (pending 集合,子实体 rel=[item]+直达 href)+ project 分发顺序
+  实例→集合→确认→inbox。
+- packages/engine/src/types.ts + schema.ts:FieldDefinition.minLength →
+  JSON Schema minLength 透传(RJSF 原生渲染)。
+- packages/engine/src/effects.ts:EngineEvent 增 reason?:string
+  (confirmation-rejected 携带驳回原因;LogEvent 同名列已有)。
+
+TDD: Red 31 用例先行失败 → Green。覆盖:approve 效果应用+事件链+审计保留、
+I4 引擎级(agent approve/reject 均 guard-failed)、重复审批/不存在/漂移拒绝、
+reject reason 空 schema 拒 + 原动作永不生效、fold 三事件重放 + 挂起→approve
+hash 与在线一致(contentVersion)+ 完整性守卫、Siren confirmation/inbox 投影、
+actor-is-human 三态、minLength 透传。
+
+机械适配(语义不变):fold.test.ts '空日志 → 空快照' 断言补 confirmations: {}
+(fold 现恒携带空表;Task 1 已记录同口径的 effects 侧适配)。
+
+与 spec 架构决定 2 对齐:approve/reject guards=[actor-is-human]、reject 必填
+reason、approve → 应用原效果 + confirmation-approved(链 proposed-by/
+approved-by)+ action-executed(actor=human, principal=提议者)、reject →
+confirmation-rejected 原动作不生效、I4 agent 身份 approve 被拒且留痕(留痕由
+调用方按既有 action-rejected 模式落日志,Phase B 接线)。决定 5 对齐:inbox
+集合实体 = pending 视图 + guard-results 注入。
+
+设计决策(文档化):①非 pending 确认投影无 actions(审计视图),重复审批在
+引擎层仍拒;②approve 时不重新跑三层裁决(挂起时已过),但目标动作须仍声明于
+当前节点,漂移 → undeclared 拒绝;③action-executed 的 channel='confirmation'
+(原信道在 requested 事件,审计链完整);④投影时 actor-is-human fail-closed
+(真正裁决在 exec,同一谓词两个投影)。
+
+验证:CI=true pnpm check 全绿(typecheck×5 + eslint + vitest 339 passed,
+T2 基线 288 → 本 Phase 共 +51)。
+
+===== Phase Verification & Checkpoint — T3 Phase A: 确认门引擎语义(自治验收)=====
+
+按 workflow.md Phase Completion Verification and Checkpoint Protocol 执行;
+Step 5(用户确认)由编排 agent 依『自治编排协议』代行——以自动化等效验证
+(全量测试 + 关键用例脚本化逐条执行)作为确认依据。
+
+【阶段范围】git diff 87a4012..HEAD(23 文件):
+engine:confirmation/execute(新模块)、effects/fold/judge/schema/siren/types/index;
+shared:state/guards/predicates;apps/web/src/db/events.ts(仅 EventKind 联合的
+机械类型扩展);plan.md。
+
+【测试覆盖核查】每个改动的代码文件均有对应测试:confirmation.test /
+execute.test / fold.test / siren.test / judge.test / schema.test / effects.test /
+predicates.test / purity.test(两栖性+导出面)。types.ts 纯类型(minLength 由
+schema.test 覆盖);index.ts barrel 由 purity.test 覆盖;web events.ts 行为未变
+(既有 events.test/replay.test 覆盖)。
+
+【自动化验证】Command: CI=true pnpm check
+结果:typecheck(5 workspaces)+ eslint + vitest 全绿,339 tests / 37 files
+(T2 基线 288 → Phase A +51,DoD ≥25 满足)。
+
+【脚本化人工等效验证】(CI=true pnpm vitest run --reporter=verbose 于五个
+核心测试文件,逐条确认):
+1. 挂起矩阵:high+agent→挂起;low+agent→直通;high+human→直通;无标注→
+   直通;actor 缺省 human→直通
+2. executeWithGates:suspended 效果不应用 + confirmation:c1 pending 物化 +
+   confirmation-requested 含原请求全文;guard/schema 失败不进确认门
+3. approve:human→原效果应用(post→archived)+ 事件链 confirmation-approved
+   →action-executed(actor=human/principal=提议者/channel=confirmation)+
+   实体 approved 保留审计
+4. I4:agent approve/reject 均 guard-failed(actor-is-human=false),确认仍
+   pending,human 补审批仍可行
+5. reject:reason 空→schema-invalid(minLength);带原因→confirmation-rejected,
+   目标永不生效
+6. I5 重放一致性:挂起→approve 全链 fold 后效果出现,快照内容 hash
+   (contentVersion/canonicalJson)与在线路径一致;挂起→reject 重放后原动作
+   不生效;重复物化/未知确认/载荷畸形响亮失败带 seq
+7. Siren:confirmation 实体四件组装 + inbox 集合(pending 视图,子实体直达)
+
+以上全部通过(verbose 输出留档于实施会话)。
+
+【已知无害噪音】vitest stderr 出现 Ajv『unknown format textarea ignored』
+——T2 以来 judge 校验 textarea 字段的既有行为,非本阶段引入。
+
+【DoD 核对】
+1. CI=true pnpm check 全绿,+51 用例(矩阵/approve/I4/reject/fold/inbox)
+2. 重放一致性 hash 断言(fold.test.ts『挂起→approve』用例)
+3. 谓词签名扩展影响面报告 → 见本 commit Task 2 note 与实施报告
+4. git:2 任务 commit(5b4b483 / d3df9be)+ notes + plan 状态 + 本 checkpoint
+
+结论:Phase A 通过,进入 Phase B(Cedar 风险策略接入)。

@@ -1,0 +1,58 @@
+Task: web→Temporal 接线(exec 挂起后 startWorkflow;事件流增量:web 读路径按 seq 增量 fold worker 追加的事件)
+
+## 变更
+- apps/web/src/temporal/notify.ts: dispatchNotify(web→Temporal 接线)。取舍:**启动失败不阻塞挂起响应**——任何失败(连接拒绝/already-started/超时)只 console.warn,不抛、不入串行队列(fire-and-forget);失败不缓存连接(下次派发重连,Temporal 恢复自愈)。参数 NotifyWorkflowArgs 镜像 worker 的 NotifyConfirmation(跨 app 不建共享包,由集成测试对齐)。派发开关:vitest 缺省关(单测不派发真实 workflow,防污染/防 stuck workflowId),UI4A_NOTIFY_DISPATCH=on/off 显式覆盖。
+- apps/web/src/engine/service.ts: 双写者方案落地(spec 决定 4)——lastSeq 高水位;自身 appendWithSeq 推进;refreshFromLog(PG max(seq) > lastSeq → readLog(afterSeq=lastSeq) → fold(events, deps, 快照));getEntity 变 async(读前增量)、新增 readSnapshot;exec 开头先 refresh(裁决前同步外部写者进度);挂起分支 fire-and-forget dispatchNotify。
+- packages/engine: fold 增可选 initial 快照参数(增量=全量同构,I5 由测试 hash 断言);notification-delivered fold 分支(notified=true;重复幂等;孤儿响亮失败)。
+- packages/shared/state.ts: ConfirmationSnapshot.notified?: boolean(最小必要字段;偏差清单见下)。
+- packages/engine/siren.ts: inbox properties.delivered 计数;确认实体 properties.notified(仅 true 时注入)。
+- /api/entity: await getEntity;错误分类对齐 /api/exec(ECONN→503,重放完整性→500 如实)。
+
+## 测试
+- engine fold.test +5;siren.test +2;web notify.test +10(mock @temporalio/client);
+- service.incremental.test +4(真 PG:worker 直连写→web 立即可见;跨写者 I5;并发交错);
+- service.notify.integration.test +1(真 PG+真 Temporal+spawn worker;7233 不可达 skipIf 跳过;beforeAll terminate 残留 workflow 防 stuck workflowId)。
+
+---
+Phase Verification Report — T3 Phase C: Temporal worker 与 notify(自治验收,编排协议代行)
+
+## 自动化验证
+命令:CI=true pnpm check
+结果:全绿 —— typecheck(5 workspace)+ eslint + vitest 43 文件 / 398 tests
+(Phase B 基线 375 → +23)。
+
+## 集成测试(真 PG + 真 Temporal dev server + 测试内 spawn worker)
+worker 子进程(独立进程组)轮询 ui4a → agent archive → 202 → dispatchNotify →
+notifyWorkflow → notify activity(worker appendEvent 同一 PG)→ web getEntity 增量
+fold → inbox count=1 delivered=1 notified=true、post 仍 published;实测 1.5s 完成。
+Temporal 依赖保护:TCP 探活(TEMPORAL_ADDRESS 同源,commit de09208 对齐),不可达
+→ skipIf 跳过并 console.warn(实测 localhost:7999 → 1 skipped,CI 不挂)。
+
+## 手工等效验证(DoD 2,真链路 curl)
+1. PORT=3100 web dev + worker dev 双进程;
+2. curl POST /api/exec(agent archive)→ HTTP 202 suspended(id=c1,Cedar 原因);
+3. /api/entity?rel=inbox → 同一 web 进程(未重启)数秒内 count=1 delivered=1、
+   条目 notified=true(事件 ts 与首询差 ~0.5s);
+4. /api/events 含 notification-delivered(channel=notify,detail.notificationId=notif:c1);
+5. post:post-welcome 仍 published(动作未生效);
+6. SIGTERM worker → RUNNING→DRAINING→DRAINED→STOPPED 优雅退出;无残留进程;
+   编排者的 temporal server(7233)与 postgres(5433)保持运行未动。
+
+## DoD 核对
+1. check 全绿(activity 单测/增量 fold/幂等;集成测试真机通过)✓
+2. 手工等效:≤15s(实测 ~1s)inbox 出现确认 + notification-delivered(真链路五段)✓
+3. worker 优雅退出无残留 ✓
+4. 双写一致性:worker appendEvent 后 web entity 查询可见(单测+集成+手工三证)✓
+5. git:2 任务 commit(c09ae38/f390a23)+ plan + checkpoint ✓
+
+## 偏差清单
+- packages/shared/src/state.ts 新增 notified 字段(计划只列 fold.ts;最小必要);
+- heartbeat.ts → banner.ts 改名(心跳删除,横幅保留;plan Task 1 允许);
+- 依赖放置:@temporalio/client → web;worker|workflow|activity → worker(prompt 建议四件全进 worker,按实际使用拆分);
+- worker 跨 app 相对引用 web 的 db/events.ts(appendEvent 唯一写入口,防 SQL 漂移);
+- 探活对齐 TEMPORAL_ADDRESS 为后续测试基建微修(de09208)。
+
+## 已知边界(Phase D 参考)
+- notify 派发在 vitest 下缺省关闭(防单测污染;取舍见上);
+- fold 对孤儿 notification-delivered 响亮失败(当前时序不可能:web 先落 confirmation-requested 再派发);
+- 已完成 workflow 的 workflowId 重用依赖缺省 ALLOW_DUPLICATE 策略。

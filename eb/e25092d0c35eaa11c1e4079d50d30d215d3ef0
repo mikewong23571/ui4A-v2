@@ -1,0 +1,10 @@
+Phase D isolation correction
+Issue: service boot pre-generation inherited short-lived Chat LLM test profiles and consumed the injected route stub concurrently, causing seven unrelated Chat protocol failures. This also demonstrated why Presentation work must never affect Chat outcome/context.
+Fix: automatic snapshot scheduling is disabled only under NODE_ENV=test unless T16_RECIPE_PREGEN_TEST=1; coordinator behavior remains directly tested, while dev/production schedules normally.
+Verification: focused Chat route + coordinator rerun 20/20 passed. No product fallback or runtime behavior changed.
+
+Phase D autonomous verification
+Automated: clean pnpm check passed after isolation correction: 148 Vitest files, 1307 tests; all workspace typechecks; ESLint 0 errors/6 pre-existing warnings. Focused Phase D integration: 9 files/98 tests.
+Real model: deepseek-v4-flash produced and passed a mechanically validated candidate for publishing@1/post-status@1/entity-inspect after the protocol prompt included exact grammar and one bounded binding-only example. Earlier invalid/timed-out outputs failed closed and registered nothing.
+Activation behavior: service scheduling is fire-and-forget, two-worker bounded, idempotent by descriptor/catalog fingerprint, retryable, and unit-test isolated from Chat stubs.
+Autonomous confirmation: accepted under conductor/workflow.md authorization.

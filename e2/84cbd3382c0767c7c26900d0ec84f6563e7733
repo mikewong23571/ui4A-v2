@@ -1,0 +1,5 @@
+T21 Phase C Red: navigation completion audit
+
+Added route-level scripted-LLM tests requiring successful navigate and usable Presentation receipt to produce chat-navigation-completed events with stable provenance. Both tests failed with zero completion events, while the existing focus frame still proved navigate occurred.
+
+Red command: pnpm vitest run apps/web/src/app/api/chat/route.test.ts -t T21 navigation completion audit => 2 failed, 17 skipped.

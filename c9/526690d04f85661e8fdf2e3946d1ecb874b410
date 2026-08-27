@@ -1,0 +1,53 @@
+Task: T4 Phase D Task 1 — S2 全链路 E2E(TDD 红→绿)
+
+产出(e2e/s2.spec.ts,4 新用例,串行 3110 场景栈 withFreshServer/本地 spawn):
+1. S2 主链路(agent 经 /_meta 合同,executor=runAgent+rule driver 起点显式 meta/flows):
+   revise(verb 'revise'→done)→ 非负例 add-action(verb '加动作',to=nonexistent-node
+   → outcome failed + trail rejection guard-failed/to-exists + /api/events
+   action-rejected 带原因,agent 身份)→ 修正(to: done,maxSteps 2 单发预算)→
+   submit(→done)→ activation a1 断言(pending/checks 六项全过/机械 diff:
+   algorithm=deep-object-diff、after.ready=[publish,pin]、changed.added 含 pin、
+   before.ready=[publish])→ BIOS UI 走查(/meta/activations 待审 1 → a1 详情:
+   不变式检查 6 行通过、机械 diff 含 pin/置顶/"to":"done" → approve 按钮 →
+   审计视图)→ definition-activated(actor=human/principal=local-user/channel=bios,
+   detail version=2)→ 业务 sitemap version 变化 + ready actions=[publish,pin]
+   (schema 在)→ 在途 v1:向导面=[publish]、exec pin 400 undeclared 留痕 →
+   二次修订 post-status(revise/加动作/submit,同 driver)→ human 直批 a2 →
+   零 prompt:同一 driver 单例,目标'发布'(lexicon)→ post:s2-pinned-article
+   born v2 面含 pin;目标'置顶'(只表达意图)→ 动态发现 pin → exec 200 →
+   文章 fields.pinned=true + action-executed pin(actor=agent)。
+   对照:seed v1 文章(post-welcome)面=[unpublish,archive] 无 pin。
+2. meta approve 不委托:agent approve a1 → 422 actor-is-human + action-rejected
+   留痕;仍 pending/队列 1/无 definition-activated;human 随后 approve 200。
+3. 重放(I5):直接 exec 全链(双 flow 激活 + publish + pin + 在途 undeclared)
+   → 事件 listEvents 原序 TRUNCATE 回灌(appendEvent,bigserial 重编号)→
+   二次 boot 不 truncate → 全量 fold:活跃定义 v2 含 pin、a1/a2 approved、
+   artifact hash、事件 kind 序列、post pinned 状态、向导终态全部一致。
+4. 跨站:业务 sitemap surfaces 恰为业务五面;业务实体 links 无 _meta href;
+   /_meta/.well-known 200(site=meta,六 meta 面);业务/entity+exec 对 meta rel
+   404;/_meta exec 对业务 rel 404;BIOS 空队列页 200。
+
+关键实现决定(报告口径):
+- executor 选择:meta 链路全程 runAgent 走 /_meta 合同(createContractClient
+  baseUrl 组合,agent 包零改动);向导预走/重放链/a2 直批用直接 exec(装置)。
+- 零 prompt:文件级单例 driver 跨全部 runAgent 复用;packages/agent 与词表零
+  改动;rule driver 的 done 启发式是动作名×词表,中文意图动词(加动作/置顶)
+  无法确认 done → 这些提案循环用 maxSteps=2 单发预算,成功以 successes 断言。
+- S2 语义澄清落法:article-drafting 向导是 seed 单例恒 born v1(pin 落
+  ready→done 仅供 sitemap/面演示,永不可 exec);「激活后出生实例可 exec pin」
+  经第二次修订 post-status:published 加 pin(自环 transition + set-field
+  pinned=true)——publish 派生文章 born post-status v2,面=[unpublish,archive,pin]。
+  这同时给出 v1 在途(seed 文章)undeclared 的正对照。
+- 在途 undeclared 的 HTTP 状态是 400(undeclared→400,422 保留给 guard/schema),
+  任务文案写 422,按引擎合同断言 400 并在此说明。
+
+修复:无 engine/web 改动——链路按 Phase A-C 语义全通。两处测试侧断言修正
+(diff 视图只呈现变更路径,不含未变的 publish;实体 fields 投影摊平为裸值)。
+期间一次不可复现的在线快照瞬态(同 DB 重启后正确)未再出现,两轮全量 e2e
+(22 passed)未复现;环境性双写者(3100 webServer 与场景 server 共库)为既有
+口径,未改。
+
+验证:CI=true pnpm check 全绿(553,零改动);CI=true pnpm e2e 22 passed +
+1 skipped(llm-smoke 无 key 既有口径)= 18 既有零回归 + 4 新 S2,两轮一致。
+
+Commit: c952669

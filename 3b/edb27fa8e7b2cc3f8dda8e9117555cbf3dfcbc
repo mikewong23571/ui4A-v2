@@ -1,0 +1,5 @@
+T16 principal review fix
+
+Finding: Application Recipe validation/generation existed, but the live Broker returned generic on every Sidecar miss and promoted Recipes were only in memory. This violated S9/S27 and made promotion decorative.
+Fix: exact slot instantiation, runtime promoted/candidate Recipe lookup before generic planning, durable human promotion payload replay, validated Sidecar instantiation with recipe provenance.
+Evidence: 14 focused tests passed and repository typecheck passed.

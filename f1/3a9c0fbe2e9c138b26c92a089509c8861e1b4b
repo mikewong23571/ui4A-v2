@@ -1,0 +1,16 @@
+Task: LLM driver + 工具投影生成器(T2 Phase E / Task E1)
+
+Summary:
+- packages/agent/src/tools.ts:buildToolProjection——固定动词 5(navigate/exec/clarify/render/done)+ 当前实体 actions[] 逐个动态工具(action_ 前缀,action.fields JSON Schema 原样内联);guard-results blocked 嵌 description('blocked: <谓词名> 失败',guards 缺省时从 reason 抠 '谓词=false');navigate rel enum 复用 rule-driver 导出的 navigableRels(语义零改动)。保留动词 clarify/render 声明 T2 未实现、禁止调用。
+- packages/agent/src/llm-driver.ts:createLlmDriver(AI SDK v7 generateText + createOpenAI;baseURL 缺省 open.bigmodel.cn/api/coding/paas/v4;模型缺省 glm-4.7,LLM_MODEL 可覆盖;provider.chat() 显式锁定 Chat Completions——v4 provider() 缺省走 /responses,GLM 端点不支持);prompt=目标+实体摘要+轨迹+最近拒绝;toolChoice required;fail-safe:无工具调用/未知工具/保留动词/参数残缺→fail;401/网络错误→fail reason 如实携带状态码与响应体(decide 永不抛异常,B4 前提)。
+- createDriver(kind: rule|llm|auto)+ resolveDriverKind:auto 无 GLM_API_KEY → rule(I1 机械层)。
+- 循环协议:AgentDriver.decide 允许 Promise,loop await(异步决策);rule driver 保持同步。
+- 依赖:pnpm add ai@^7.0.71 @ai-sdk/openai@^4.0.45 zod@^4.4.3(单测 mock fetch,零网络)。
+
+Files: packages/agent/src/{tools.ts,llm-driver.ts,tools.test.ts,llm-driver.test.ts,index.ts,types.ts,loop.ts,loop.test.ts,rule-driver.ts,rule-driver.test.ts}、packages/agent/package.json、pnpm-lock.yaml
+
+Why: arch-brief §6 双 driver 一键互换;合法动作集=工具列表(处境披露 tool 形态);拒绝即数据回流 prompt;AI-optional 铁律的 auto 回退。
+
+模型名选择:glm-4.7(GLM coding plan 旗舰,open.bigmodel.cn/api/coding/paas/v4 兼容端点;GLM-5.x 亦存在但 4.7 为社区 configs 常用名;LLM_MODEL env 可换)。
+
+Verification: CI=true pnpm check 全绿(29 files / 252 tests,agent 64)。

@@ -1,0 +1,5 @@
+T21 Phase D Red: bounded LLM protocol repair
+
+Added failing tests requiring toolChoice required, text-only to one real LLM repair without copying rejected text, and exactly two attempts when unknown tool then invalid answer remain illegal.
+
+Red evidence: 2 focused tests failed; first returned fail instead of repaired answer and both made only one transport call.

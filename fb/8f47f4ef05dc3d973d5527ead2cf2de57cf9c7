@@ -1,0 +1,5 @@
+T14 Phase B Task 2: caption grounding + 非聚合 dimension 禁入
+
+改动:agent grounding 对 caption 限定为 sitemap 集合投影可证明存在的 <collection>.rel,拒绝成员路径挂集合造成 dangling;web bindSchema 将 plain collection 与 dimensioned collection 分离,table/timeline/kanban 禁 dimension;Ajv 错误补非法键名。
+Why:T12 实测遗留的两个过闸后渲染期失败源在凝固前 fail closed。
+TDD:2 条红相验证;targeted 78/78;CI=true pnpm check 117 files / 1091 tests 全绿。自治验收。

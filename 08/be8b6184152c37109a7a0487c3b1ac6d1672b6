@@ -1,0 +1,40 @@
+T7 Phase C 修复性改动(bug 清单 #1/#2,均为既有测试的时序敏感缺陷,
+非本 Phase 引入;全量 e2e 复跑时在负载下暴露):
+1. home.test.tsx 态势 timeline:waitFor 等容器不等内容 → 竞态空读。
+2. home.test.tsx 铁律 3:chrono 箭头钮无 type 属性,HTMLButtonElement.type
+   缺省 'submit' → 误报提交面;真实提交面 = form owner 关联(无 form 的
+   按钮在浏览器语义里不提交)。修正后 6 连跑稳定。
+产品代码零改动(渲染/提交行为未变,仅测试口径对齐浏览器事实)。
+
+========== T7 Phase C — Phase Verification & Checkpoint(自治验收,编排 agent 代行)==========
+
+验证命令与结果(2026-08-21):
+- CI=true pnpm check → 102 files / 821 tests 全绿(typecheck×3 + eslint + vitest)
+- CI=true pnpm e2e → 32 passed + 1 skipped(llm-smoke 需真实 key,既有跳过)
+  = 既有 28 全过 + 新增 4(s5×2 + i3×2),零回归
+
+Phase C 变更文件(6b66e4a..HEAD,conductor 除外)均有对应测试:
+- packages/agent/src/render.ts ↔ render.test.ts(16)
+- apps/web/src/app/api/chat/route.ts ↔ route.render.test.ts(4)
+- apps/web/src/components/floating-chat.tsx ↔ floating-chat.test.tsx(+2)
+- apps/web/src/app/canvas/page.tsx ↔ page.test.tsx(+2)
+- e2e/s5.spec.ts(2)、e2e/i3.spec.ts(2)
+- packages/agent/src/index.ts(纯导出,经 route 测试间接覆盖)
+
+T7 spec 验收 1–7 逐条核对:
+1. check 全绿 + e2e 全过(28 既有 + S5/I3 新增 4)✓
+2. S5 E2E:chat(rule driver)→ chart surface;spec 零字面
+   (e2e 内复用 validateSpec 断言 valid)✓
+3. I2 property test(Phase A 既有)+ e2e 级:画布图表数值与
+   /api/entity?rel=articles 快照逐项一致(aria-label 动态对拍 +
+   总和=成员数)✓
+4. I3 E2E:七页 fuzz 全可点元素映射 data-action/data-nav(白名单:
+   chrono 内部控件);React 树内合成点击未声明按钮零 /api/exec,
+   已声明按钮正控制恰一次 ✓
+5. 骨架五面(Phase B 既有,回归通过);table 词条经生成路径渲染 ✓
+6. 凝固:同 concern 二次 → 同 spec,render-spec-frozen 事件恰一条 ✓
+7. 回归:既有 28 e2e 全过 ✓
+
+等效人工走查(自动化脚本化):e2e s5 即完整走查——悬浮聊天发
+"按分类展示文章" → 响应 render 载荷 → /canvas?concern= 出现 chart
+surface(tech=1/essay=1 与快照一致)→ 二次请求复用凝固布局。

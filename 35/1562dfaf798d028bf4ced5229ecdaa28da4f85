@@ -1,0 +1,18 @@
+T2 Phase D / Task D2: rule driver 决策器(@ui4a/agent)
+
+- createRuleDriver():纯启发式、零 LLM、无私有状态(全部从 DriverContext 的
+  trail/successes/lastRejection 推导),决策次序 arch-brief §5 原样:
+  ①点名资源(links/子实体出现→navigate 直达;已在目标上=停止条件)
+  ②点名动作(goal.verb 与 action name/title 词级交集→exec;guard-results blocked 不选)
+  ③流程推进(向导 next 按 goal.fields∩当前步 schema 组参;队列逐条点名待处理成员;
+    队列成员沿 collection 回链回队列视图)
+  ④自由漫游(沿 links 到词级交集处;无路→fail)。
+- done 判定=完成类动作成功过(相对目标):发布=publish 成功且无剩余目标动作;
+  下线=目标 rel 上 unpublish 成功(点名目标时成功必须在目标上);
+  审核(队列类目标)=≥1 次 approve 成功且在队列视图确认待处理清零。
+- 拒绝即数据:schema-invalid→字段自救(按 schema default,缺省取枚举首项,最多一次);
+  guard-failed/undeclared→换路径(同 rel+action 不再直投)。
+- match.ts:词级匹配原语——ascii 词元相等(publish≠republish,防下线误配 republish)、
+  中文≥2 字包含、小型双语动词词表(下线→unpublish 等)作中英桥。
+- 测试:30 例(match 7 + rule-driver 23:四层×停止条件、done 三类、自救一次、
+  guard 换路径、rule driver×循环 B2 微缩握手)。全仓 224 测试绿。

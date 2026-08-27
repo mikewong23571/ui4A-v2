@@ -1,0 +1,5 @@
+T21 Golden Story refinement: visible presentation success
+
+Defined presentation through user-visible success: when clientView does not prove the requested visible result, the LLM must submit a thin present request; text alone cannot impersonate rendering. Once the same subject is presentation-requested in the current trail, it must not repeat and should continue answer while receipt resolves asynchronously. No phrase examples or routing code added.
+
+Validation: 101 Agent tests and typecheck. Real configured-model list smoke t21-list-smoke-1787502433154 completed present(articles,browse) then answer, outcome answered, with pending then ready receipt and zero effect.

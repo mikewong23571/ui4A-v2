@@ -1,0 +1,6 @@
+T2 Phase A Task 1: machine-as-JSON 类型与解析
+
+- 新建 packages/engine(@ui4a/engine,纯 TS 两栖包):types.ts 按 arch-brief §2 原样定义 FlowDefinition/NodeDefinition/ActionDefinition/FieldDefinition/EffectDefinition(effect 支持数组以承载组合效果,如 publish = transition + append);parse.ts 结构+语义校验(节点/动作/字段唯一性、to 目标存在、effect 词汇表命中、select 必带 options)与规范化(method=POST/guards=[]/fields=[]/effect 数组化、transition 继承 action.to);machine.ts 用 XState v5 createMachine 从 JSON 构造,resolveState+snapshot.can 提供 canTransition/canSendEvent 纯函数校验。
+- 依赖:xstate@5.32.5、ajv@8.20.0(ajv 下一任务用,一并装入);根 eslint.config.mjs 增一行 packages/engine/src glob 使新包纳入 lint 质量门(唯一的根配置改动)。
+- 测试:parse 14 + machine 13 = 27 用例;CI=true pnpm check 全绿(42 tests / typecheck×4 / eslint)。
+- 偏差说明:types:[] 的 tsconfig 使 structuredClone 无类型,测试内用 JSON 往返深拷贝(fixture 为纯 JSON,无损)。

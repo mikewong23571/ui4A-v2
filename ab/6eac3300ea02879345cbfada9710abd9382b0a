@@ -1,0 +1,29 @@
+Task: @cedar-policy/cedar-wasm 集成与 policy.cedar(T3 Phase B Task 1)
+
+变更文件:
+- apps/web/src/domain/policy.cedar(新增):T3 初始策略文本;实体模型
+  UI4A::Executor(actor 属性)/ UI4A::Resource(risk 属性)/ UI4A::Action::"executeAction";
+  规则 permit(principal, action==executeAction, resource) when { actor==human || risk != high }。
+- apps/web/src/domain/cedarPolicy.ts(新增):cedarConfirmationPolicy(text)(纯求值,
+  可注入任意文本——测试与将来的 _meta 实体共用)、loadPolicyText(candidates)(cwd 候选
+  装载,缺文件返回 undefined)、cedarPolicyFromDefaultFile()(服务层 boot 装配)。
+- apps/web/src/domain/cedarPolicy.test.ts(新增):15 测试。
+- apps/web/package.json / pnpm-lock.yaml:依赖 @cedar-policy/cedar-wasm@^4.12.0。
+
+关键实现决定:
+1. 依赖位置:apps/web(非 shared/engine)。理由:ConfirmationPolicy 类型在 engine,
+   shared 反向依赖会成环;engine 承诺纯 TS 两栖零 wasm;worker 需要时按 D3 增
+   packages/policy。spec 架构决定 3 也把 policy.cedar 固定在 apps/web。
+2. cedar-wasm 加载:默认 esm 入口在 Node 24 / vitest 4 原生工作(wasm 内联,
+   同步 API);仅 ExperimentalWarning(WebAssembly module instances),无功能影响。
+   未用 ./nodejs 子路径——esm 入口已验证可用且与 Next 打包兼容性最好。
+3. 策略 id:staticPolicies 字符串形式下 Cedar 按声明序自动分配 policy0/policy1;
+   实测 @id 注解在此 API 路径不生效(策略仍可读,审计锚点为自动 id,已注于文件头)。
+4. fail-safe 方向:缺失/为空/求值失败(含语法损坏)→ 带 requires-confirmation 标注的
+   动作一律挂起(fail-closed),无标注动作直通——标注是进门的门票。
+5. 求值原因留痕:verdict.policy 前缀 cedar:(allow: cedar:policy0;deny:
+   cedar:deny:…;fail-safe: cedar:fail-closed / cedar:fail-safe:none),
+   verdict.reason 为中文人类可读原因——二者随 suspendForConfirmation 进入
+   confirmation-requested 事件 detail(policy/policyReason 字段,Phase A 已落库)。
+
+验证:CI=true pnpm check 全绿(354 tests,含本任务 15 条)。

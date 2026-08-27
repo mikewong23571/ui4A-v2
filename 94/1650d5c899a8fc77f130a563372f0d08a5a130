@@ -1,0 +1,1 @@
+T14 Phase G: canvas loads are latest-wins with cancellation, 15s timeout, disabled concurrent reload, and generation-key boundary reset; chat reasoning deltas commit at most every 50ms. Evidence: 45 focused tests plus web/engine typechecks.

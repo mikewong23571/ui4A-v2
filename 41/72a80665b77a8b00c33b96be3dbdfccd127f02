@@ -1,0 +1,65 @@
+T3 Phase D / Task D2 — S1/I4 确认门全链路 E2E
+
+任务:S1/I4 E2E(agent archive→挂起→notify→inbox 可见→human approve→生效;
+agent approve 被拒;reject 路径;B1–B3 回归)。
+
+新增/改动文件:
+- e2e/s1.spec.ts(新):5 用例(S1 agent 视角 / S1 human 视角双执行者 / I4 /
+  reject / UI 浏览器走查);Temporal 探活(nc -z 同步,Playwright CJS 转译
+  不支持顶层 await)→ 不可达整文件 skip;
+- e2e/server-kit.ts:withWorkerServer + waitForWorkerBanner + killProcessGroup
+  (SIGTERM→SIGKILL 升级)+ 起栈前端口守卫;
+- apps/web/src/temporal/notify.ts:terminateStaleNotifyWorkflows(e2e 导入
+  web 模块复用其 @temporalio/client 依赖,与 getPool 同模式);
+- apps/web/src/temporal/notify.test.ts:+3 单测(逐 id 终止/单失败吞掉/不可达兜底)。
+
+发现并修复的链路 bug(2):
+1. server-kit 残留 server 竞态:场景收尾仅按 webExited 门控杀 web 进程组且
+   无 SIGKILL 兜底——next-server(Next 16 render 子进程)偶发不随组 SIGTERM
+   退出,残留 server 顶掉下一场景的 3110,其内存快照(含已决策确认)污染
+   串行管线(实测:第二场景拿到 confirmation:c2 且日志缺 seed)。修复:
+   无条件杀两组 + SIGKILL 升级 + 起栈前 waitUntilPortFree 硬失败。
+2. 跨轮次 Temporal workflow 残留:确认 id 确定性(c1/…)与 workflowId
+   notify-<id> 复用冲突(already-started/completed)→ terminateStaleNotifyWorkflows
+   每场景前清理。
+
+验证:CI=true npx playwright test e2e/s1.spec.ts 5/5 过;CI=true pnpm e2e
+17 passed + 1 skipped(llm-smoke 无真实 key,既有口径)= 既有 12 + 新 5
++ smoke 细分;CI=true pnpm check 全绿 407 tests(+3)。B1–B3 回归通过
+(human archive 直通不挂起:human.spec B2 下线用例 + s1 场景隔离互不干扰)。
+
+T3 Phase D — Phase Verification & Checkpoint(自治验收,workflow.md 自治编排协议)
+
+范围:4c0653e(Phase C checkpoint 后)…4172a80;变更文件:
+apps/web/src/app/{page.tsx,home.test.tsx}、apps/web/src/components/{entity-view.tsx,entity-view.test.tsx}、
+apps/web/src/temporal/{notify.ts,notify.test.ts}、e2e/{s1.spec.ts,server-kit.ts}。
+全部代码文件均有对应测试(组件 6+4 新用例、notify 3 新用例、e2e 5 新用例)。
+
+自动化验证(命令与结果):
+- CI=true pnpm check → typecheck(5 workspace)+ eslint + vitest 全绿,407 tests
+  (Phase C 基线 398,+9:home inbox 2、entity-view 4、notify cleanup 3);
+- CI=true pnpm e2e → 17 passed + 1 skipped(llm-smoke:无真实 GLM key,既有口径)
+  = 既有 12(baseline B1-B3 / chat B4+I1+flow 导航 / human B1-B3 / llm-smoke skip /
+  smoke 2)+ S1 新 5;50.9s;真 PG(5433)+ 真 Temporal dev server(7233)+
+  e2e 内 spawn 真 worker(taskQueue ui4a);
+- S1/I4 用例 Temporal 探活 skip-if(nc -z 同步探测 TEMPORAL_ADDRESS)。
+
+手动验证的自动化等效(浏览器走查,e2e/s1.spec.ts 'UI 走查' 用例,
+--trace on 复跑,trace.zip 含逐步截图):
+1. agent 挂起(HTTP actor=agent)后,浏览器开首页 → 「收件箱(待确认 1)」可见;
+2. 点入 /entity?rel=inbox → 成员条目含 target-action=archive / proposed-by.actor=agent 摘要;
+3. 点入 /entity?rel=confirmation:c1 → 截图证实:属性表(pending/notified)、
+   「批准」按钮可用(renderer 身份规则)、「驳回」RJSF 表单 reason* 必填;
+4. 点「批准」→ 实体重投影(动作区消失、status=approved);
+5. 回首页 → post-welcome 显示 archived、「收件箱(待确认 0)」。
+截图级证据:本 note 所挂 commit 的运行产物 trace.zip
+(test-results/s1-UI-走查-*/trace.zip,含逐 action 页面截图)。
+
+发现并修复的 bug(2,详见本 commit 与 df9f712 note):
+1. renderer 投影 fail-closed 禁用人类批准按钮(df9f712:renderer 身份规则);
+2. e2e 栈残留 server 竞态 + Temporal workflowId 跨轮次残留(4172a80:无条件杀组
+   +SIGKILL 升级+端口守卫;terminateStaleNotifyWorkflows)。
+
+已知偏差:inbox 成员无「时间摘要」(时钟是 capability,确认投影不含时间字段);
+llm-smoke 维持 skip(无真实 key)。环境恢复:e2e 后无残留进程(3110 空闲、
+无 worker/next-server),编排者 postgres(5433)与 temporal(7233)保持运行。

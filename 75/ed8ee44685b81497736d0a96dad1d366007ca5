@@ -1,0 +1,11 @@
+T21 Phase C recovery and client isolation
+
+Added route acceptance proving lastNavigation replays from the log while the current turn selects client:b only, never client:a; malformed external client routes fail before user-message append. Existing conversation/floating tests cover missing view unknown, ordered replay, and hook-lifetime identity.
+
+Validation: T21 route tests passed; web typecheck; Prettier and diff checks.
+
+Phase C autonomous verification report
+
+Client capture, conversation replay, floating UI, route, T16 route governance, Agent loop/driver and T21 source governance => 8 files, 162 tests passed. Full six-workspace pnpm typecheck passed; git diff check and live CLI health/business/meta probes passed.
+
+Scripted manual equivalent: route tests use real in-process HTTP/SSE with scripted production LLM transport, proving completion persisted before focus/receipt, current client instance isolation, log recovery and invalid-view zero append. No natural-language branch or new store.

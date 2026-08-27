@@ -1,0 +1,1 @@
+T14 Phase G follow-up: an explicit pending-session marker distinguishes a refresh race from an old empty session, preventing endless 1s history polling while preserving in-flight recovery.
