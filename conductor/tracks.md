@@ -4,6 +4,8 @@
 
 ## 活跃 Tracks
 
+- [~] **Track: T33 授权与注意力范畴分离:凭证集合裁决 + presence 单点镜头,破坏性剥离单值 policyScope(D51;生产事故链终态改造)** *Link: [tracks/t33-authority-attention-separation_20260827/index.md](./tracks/t33-authority-attention-separation_20260827/index.md)*
+
 - [~] **Track: T22 生产形态部署、身份认证与双后端 Agent Runtime：mothership K8s/Istio、Docker Compose all-in-one、Keycloak、灾备与首个试验性版本** *Link: [tracks/t22-production-deployment-auth-runtime_20260824/index.md](./tracks/t22-production-deployment-auth-runtime_20260824/index.md)*
 
 方向 program(依据 [product-vision.md](../product-vision.md);站点为天然分割点,limited scope;
