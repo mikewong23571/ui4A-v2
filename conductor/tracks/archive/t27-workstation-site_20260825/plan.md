@@ -146,3 +146,8 @@
 6. CLI 对照三类事实逐项一致;`pnpm check` + `CI=true pnpm e2e invariants` +
    e2e 全量全绿;从确定 SHA 构建的 immutable images 已部署至 mothership,并在
    现场环境完成 DoD 验收与可审计 evidence,系统实际可运行。
+
+## 承接自 T31 评审(R24/R26/R27 落注)
+
+三项归后续(components 收缩窗口兑现证据、thread 指针 D44 sanction 与首页消费线
+接线承诺、components 总量治理去向)已在 spec 承接节登记;T31 只修不建未动范围。

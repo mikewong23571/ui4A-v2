@@ -114,3 +114,8 @@
    抽屉,区域降级不静默;I2 property test 全量通过;
 6. `pnpm check` + `CI=true pnpm e2e invariants` + e2e 全量全绿;accepted source
    镜像部署 mothership 后通过现场系统验收。
+
+## 承接自 T31 评审(R23/R25 落注)
+
+R23 审计下钻 raw 化、R25 canvas-errors/flow 徽章诚实化两项归后续在 spec 承接节
+登记,T31 只修不建未动领土;处置窗口由后续 track 决定。
