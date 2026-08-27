@@ -28,7 +28,7 @@
 - [x] Task: spec/plan 回改对齐 D48 [5951549]
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
-## Phase B: Medium 测试缺口(R1/R2/R3)
+## Phase B: Medium 测试缺口(R1/R2/R3) [checkpoint: 9a11d6a]
 
 - [x] Task: R1 route 级 activity/eventSeq 接线行为测试 [7a4a3e6]
   - 在 route 级测试断言真实 SSE step 帧的 activity/eventSeq 投影(不依赖
