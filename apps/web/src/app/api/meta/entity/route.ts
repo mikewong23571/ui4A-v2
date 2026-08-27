@@ -12,6 +12,7 @@ import {
 import {
   assertRelInPolicyScope,
   filterEntityForPolicyScope,
+  relCoveredByPolicyScope,
 } from '../../../../auth/application-scope';
 
 // GET /_meta/api/entity?rel=… — meta 站点 Siren 实体端点(T4 Phase B,spec 决定 6):
@@ -42,6 +43,14 @@ export async function GET(request: Request) {
       requiredScopes: ['ui4a:read'],
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
       defaultPolicyScope: 'publishing',
+      // 未显式请求 scope 时按 rel 归属选择已授予 scope(与业务 /api/entity 同口径,
+      // plane 用 meta:metaApplications 归属判定,消除多 scope 用户的伪 403)。
+      scopeCoverage: (policyScope) =>
+        relCoveredByPolicyScope(
+          { snapshot: engine.getSnapshot(), sitemap: engine.getSitemap(), plane: 'meta' },
+          rel,
+          policyScope,
+        ),
     });
     const scopeContext = {
       snapshot: engine.getSnapshot(),

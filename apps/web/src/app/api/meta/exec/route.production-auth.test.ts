@@ -46,6 +46,7 @@ const mocks = vi.hoisted(() => {
     executeDraftMeta: vi.fn(),
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getEngine: vi.fn(async () => engine),
+    relCoveredByPolicyScope: vi.fn(() => true),
     requireHumanApprovalScope: vi.fn(),
     resolveTrustedRequestIdentity: vi.fn(),
   };
@@ -75,6 +76,7 @@ vi.mock('../../../../auth/request-identity', () => ({
 
 vi.mock('../../../../auth/application-scope', () => ({
   assertRelInPolicyScope: mocks.assertRelInPolicyScope,
+  relCoveredByPolicyScope: mocks.relCoveredByPolicyScope,
 }));
 
 import { POST } from './route';
@@ -144,6 +146,9 @@ describe('POST /_meta/api/exec production authentication wiring', () => {
         plane: 'meta',
         requiredScopes: ['ui4a:write'],
         untrusted: expect.objectContaining({ principal: 'forged-body-root' }),
+        // T22 验证修复:路由向身份解析传入按 body rel 归属的 meta scopeCoverage 闭包
+        //(rel 已在身份解析前 parse,见下方闭包断言)。
+        scopeCoverage: expect.any(Function),
       }),
     );
     expect(mocks.assertRelInPolicyScope).toHaveBeenCalledWith(
@@ -167,6 +172,17 @@ describe('POST /_meta/api/exec production authentication wiring', () => {
         principal: 'credential-subject',
         channel: 'oidc',
       }),
+    );
+    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as {
+      scopeCoverage?: (policyScope: string) => boolean;
+    };
+    expect(options.scopeCoverage).toBeInstanceOf(Function);
+    expect(options.scopeCoverage?.('development')).toBe(true);
+    // meta/flow:software-change 归属 development:闭包以 meta 平面与 body 解析的 rel 参与判定。
+    expect(mocks.relCoveredByPolicyScope).toHaveBeenCalledWith(
+      expect.objectContaining({ plane: 'meta' }),
+      'meta/flow:software-change',
+      'development',
     );
   });
 });

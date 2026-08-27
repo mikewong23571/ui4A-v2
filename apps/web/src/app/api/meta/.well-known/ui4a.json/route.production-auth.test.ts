@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
     const code = (error as { code?: string }).code;
     return code === undefined ? undefined : Response.json({ error: { code } }, { status: 401 });
   }),
-  getAgentDefinitionCatalog: vi.fn(async () => []),
+  getAgentDefinitionCatalogForScopes: vi.fn(async () => []),
   getDb: vi.fn(() => ({ kind: 'mock-db' })),
   getEngine: vi.fn(async () => ({
     getMetaSitemap: vi.fn(() => ({ site: 'meta', surfaces: [{ rel: 'meta/self' }] })),
@@ -27,7 +27,7 @@ vi.mock('../../../../../engine/service', () => ({
 }));
 
 vi.mock('../../../../../engine/agent/agent-definitions', () => ({
-  getAgentDefinitionCatalog: mocks.getAgentDefinitionCatalog,
+  getAgentDefinitionCatalogForScopes: mocks.getAgentDefinitionCatalogForScopes,
 }));
 
 vi.mock('../../../../../engine/meta-authorization', () => ({
@@ -74,7 +74,7 @@ describe('GET /_meta/.well-known/ui4a.json production authentication wiring', ()
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({ error: { code: 'credential_missing' } });
-    expect(mocks.getAgentDefinitionCatalog).not.toHaveBeenCalled();
+    expect(mocks.getAgentDefinitionCatalogForScopes).not.toHaveBeenCalled();
   });
 
   it('resolves a credential identity and narrows the sitemap to granted scopes', async () => {
@@ -100,10 +100,12 @@ describe('GET /_meta/.well-known/ui4a.json production authentication wiring', ()
       }),
     );
     expect(mocks.metaContextFromRequest).not.toHaveBeenCalled();
-    expect(mocks.getAgentDefinitionCatalog).toHaveBeenCalledWith(
+    // Agent Definition 目录按 granted 并集(authorizedScopes)逐 scope 取,而非冻结在
+    // effectiveScope 单 scope 上;多 scope 用户能看到所有已授权应用的 Agent。
+    expect(mocks.getAgentDefinitionCatalogForScopes).toHaveBeenCalledWith(
       expect.anything(),
       'human-alice',
-      'publishing',
+      ['default', 'publishing'],
     );
   });
 

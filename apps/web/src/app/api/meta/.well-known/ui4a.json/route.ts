@@ -1,7 +1,7 @@
 import { contentVersion } from '@ui4a/engine';
 
 import { getDb, getEngine } from '../../../../../engine/service';
-import { getAgentDefinitionCatalog } from '../../../../../engine/agent/agent-definitions';
+import { getAgentDefinitionCatalogForScopes } from '../../../../../engine/agent/agent-definitions';
 import {
   metaContextFromRequest,
   type MetaRequestContext,
@@ -63,7 +63,14 @@ export async function GET(request?: Request) {
     } else {
       context = metaContextFromRequest(request, authorizedScopes);
     }
-    const agents = await getAgentDefinitionCatalog(db, context.principal, context.effectiveScope);
+    // Agent Definition 目录与 sitemap 内容同为 granted 并集语义:逐 authorizedScope
+    // 取目录后按 name 合并去重(多 scope 用户能看到所有已授权应用的 Agent),而不是
+    // 冻结在 effectiveScope 单 scope 上。
+    const agents = await getAgentDefinitionCatalogForScopes(
+      db,
+      context.principal,
+      context.authorizedScopes,
+    );
     const surfaces = [
       ...current.surfaces,
       { rel: 'meta/drafts', title: 'Governed Drafts', collection: true },
@@ -78,6 +85,8 @@ export async function GET(request?: Request) {
       ...current,
       version: contentVersion(surfaces),
       surfaces,
+      // effectiveScope 是身份解析出的"默认 scope"(单值,受 ?scope= 在 granted 内
+      // 选择);发现内容(surfaces/authorizedScopes)为 granted 并集,不被它冻结。
       effectiveScope: context.effectiveScope,
       authorizedScopes: context.authorizedScopes,
       authorizationMode: context.authorizationMode,

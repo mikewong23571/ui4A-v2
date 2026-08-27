@@ -40,6 +40,7 @@ const mocks = vi.hoisted(() => {
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getDraftMetaEntity: vi.fn(),
     getEngine: vi.fn(async () => engine),
+    relCoveredByPolicyScope: vi.fn(() => true),
     resolveTrustedRequestIdentity: vi.fn(),
   };
 });
@@ -69,6 +70,7 @@ vi.mock('../../../../auth/request-identity', () => ({
 vi.mock('../../../../auth/application-scope', () => ({
   assertRelInPolicyScope: mocks.assertRelInPolicyScope,
   filterEntityForPolicyScope: mocks.filterEntityForPolicyScope,
+  relCoveredByPolicyScope: mocks.relCoveredByPolicyScope,
 }));
 
 import { GET } from './route';
@@ -129,6 +131,8 @@ describe('GET /_meta/api/entity production authentication wiring', () => {
         plane: 'meta',
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: ['development'],
+        // T22 验证修复:路由向身份解析传入按 query rel 归属的 meta scopeCoverage 闭包。
+        scopeCoverage: expect.any(Function),
       }),
     );
     expect(mocks.assertRelInPolicyScope).toHaveBeenCalledWith(
@@ -141,5 +145,16 @@ describe('GET /_meta/api/entity production authentication wiring', () => {
     expect(mocks.engine.getMetaEntity).toHaveBeenCalledWith('meta/flow:software-change');
     expect(mocks.filterEntityForPolicyScope).toHaveBeenCalledTimes(1);
     expect(response.headers.get('x-ui4a-effective-scope')).toBe('development');
+    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]?.[1] as {
+      scopeCoverage?: (policyScope: string) => boolean;
+    };
+    expect(options.scopeCoverage).toBeInstanceOf(Function);
+    expect(options.scopeCoverage?.('development')).toBe(true);
+    // meta/flow:software-change 归属 development:闭包以 meta 平面与 query rel 参与判定。
+    expect(mocks.relCoveredByPolicyScope).toHaveBeenCalledWith(
+      expect.objectContaining({ plane: 'meta' }),
+      'meta/flow:software-change',
+      'development',
+    );
   });
 });

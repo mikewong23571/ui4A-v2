@@ -184,6 +184,28 @@ export async function getAgentDefinitionCatalog(
   return [...entries.values()].sort((left, right) => left.name.localeCompare(right.name));
 }
 
+/** 多 scope 并集:按 granted 顺序逐 scope 取目录后按 name 去重(先到先得)。 */
+export async function getAgentDefinitionCatalogForScopes(
+  db: DbExecutor,
+  principal: string,
+  policyScopes: readonly string[],
+): Promise<AgentDefinitionCatalogEntry[]> {
+  const scopes = [...new Set(policyScopes)];
+  const parts = await Promise.all(
+    scopes.map((policyScope) => getAgentDefinitionCatalog(db, principal, policyScope)),
+  );
+  const seen = new Set<string>();
+  const merged: AgentDefinitionCatalogEntry[] = [];
+  for (const part of parts) {
+    for (const entry of part) {
+      if (seen.has(entry.name)) continue;
+      seen.add(entry.name);
+      merged.push(entry);
+    }
+  }
+  return merged;
+}
+
 function catalogEntry(
   view: NonNullable<Awaited<ReturnType<typeof getAgentDefinitionVersion>>>,
 ): AgentDefinitionCatalogEntry {

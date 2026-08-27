@@ -7,7 +7,10 @@ import {
   requireHumanApprovalScope,
   resolveTrustedRequestIdentity,
 } from '../../../../auth/request-identity';
-import { assertRelInPolicyScope } from '../../../../auth/application-scope';
+import {
+  assertRelInPolicyScope,
+  relCoveredByPolicyScope,
+} from '../../../../auth/application-scope';
 
 import { parseExecBody, rejectionStatus } from '../../exec-request';
 
@@ -50,6 +53,14 @@ export async function POST(request: Request) {
       untrusted: parsed.request,
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
       defaultPolicyScope: 'publishing',
+      // 未显式请求 scope 时按 rel 归属选择已授予 scope(rel 已在身份解析前从
+      // body 解析,见上方 parseExecBody;与业务 /api/exec 同口径,plane 用 meta)。
+      scopeCoverage: (policyScope) =>
+        relCoveredByPolicyScope(
+          { snapshot: engine.getSnapshot(), sitemap: engine.getSitemap(), plane: 'meta' },
+          parsed.request.rel,
+          policyScope,
+        ),
     });
     if (['approve', 'reject'].includes(parsed.request.action)) {
       requireHumanApprovalScope(identity);

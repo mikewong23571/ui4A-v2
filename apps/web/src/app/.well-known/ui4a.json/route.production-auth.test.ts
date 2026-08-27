@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
-  const getAgentDefinitionCatalog = vi.fn(async () => []);
+  const getAgentDefinitionCatalogForScopes = vi.fn(async () => []);
   const getDb = vi.fn(() => ({ kind: 'mock-db' }));
   const engine = {
     getSitemap: vi.fn(() => ({
@@ -42,15 +42,7 @@ const mocks = vi.hoisted(() => {
       if (request.headers.get('authorization') !== 'Bearer valid-agent-token') {
         throw Object.assign(new Error('credential rejected'), { code: 'credential_missing' });
       }
-      return {
-        authorizationMode: 'credential',
-        actor: 'agent',
-        principal: 'human-alice',
-        scopes: ['ui4a:read', 'publishing'],
-        policyScope: 'publishing',
-        channel: 'oidc',
-        humanApprovalEligible: false,
-      };
+      return CREDENTIAL_IDENTITY;
     }
     return {
       authorizationMode: 'self-reported-local-demo',
@@ -69,7 +61,7 @@ const mocks = vi.hoisted(() => {
   return {
     authenticationErrorResponse,
     engine,
-    getAgentDefinitionCatalog,
+    getAgentDefinitionCatalogForScopes,
     getDb,
     getEngine,
     resolveTrustedRequestIdentity,
@@ -82,7 +74,7 @@ vi.mock('../../../engine/service', () => ({
 }));
 
 vi.mock('../../../engine/agent/agent-definitions', () => ({
-  getAgentDefinitionCatalog: mocks.getAgentDefinitionCatalog,
+  getAgentDefinitionCatalogForScopes: mocks.getAgentDefinitionCatalogForScopes,
 }));
 
 vi.mock('../../../auth/request-identity', () => ({
@@ -93,6 +85,18 @@ vi.mock('../../../auth/request-identity', () => ({
 import { GET } from './route';
 
 const originalProfile = process.env.UI4A_DEPLOYMENT_PROFILE;
+
+// 与生产身份解析同形状的 credential 身份;测试里通过 mockResolvedValueOnce 调整
+// scopes 组合,覆盖"冻结单一 scope"的并集修复。
+const CREDENTIAL_IDENTITY = {
+  authorizationMode: 'credential' as const,
+  actor: 'agent' as const,
+  principal: 'human-alice',
+  scopes: ['ui4a:read', 'publishing'],
+  policyScope: 'publishing',
+  channel: 'oidc',
+  humanApprovalEligible: false,
+};
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -128,13 +132,14 @@ describe('GET /.well-known/ui4a.json trusted entry', () => {
         defaultPolicyScope: 'publishing',
       }),
     );
-    expect(mocks.getAgentDefinitionCatalog).toHaveBeenLastCalledWith(
+    expect(mocks.getAgentDefinitionCatalogForScopes).toHaveBeenLastCalledWith(
       expect.anything(),
       'human-alice',
-      'publishing',
+      ['publishing'],
     );
     await expect(authenticated.json()).resolves.toEqual(
       expect.objectContaining({
+        version: 'test-version:publishing',
         surfaces: [expect.objectContaining({ rel: 'articles' })],
         flows: [expect.objectContaining({ name: 'article-drafting' })],
         applications: [expect.objectContaining({ name: 'publishing' })],
@@ -151,10 +156,10 @@ describe('GET /.well-known/ui4a.json trusted entry', () => {
       }),
     );
     expect(local.status).toBe(200);
-    expect(mocks.getAgentDefinitionCatalog).toHaveBeenLastCalledWith(
+    expect(mocks.getAgentDefinitionCatalogForScopes).toHaveBeenLastCalledWith(
       expect.anything(),
       'local-alice',
-      'community',
+      ['publishing', 'community'],
     );
     await expect(local.json()).resolves.toEqual(
       expect.objectContaining({
@@ -163,6 +168,83 @@ describe('GET /.well-known/ui4a.json trusted entry', () => {
           expect.objectContaining({ rel: 'comments' }),
         ],
       }),
+    );
+  });
+
+  it('multi-scope credential: discovery document is the granted union, not one frozen scope', async () => {
+    process.env.UI4A_DEPLOYMENT_PROFILE = 'production';
+    mocks.resolveTrustedRequestIdentity.mockResolvedValueOnce({
+      ...CREDENTIAL_IDENTITY,
+      scopes: ['ui4a:read', 'publishing', 'community'],
+    });
+
+    const response = await GET(
+      new Request('https://ui4a.mothership.internal/.well-known/ui4a.json', {
+        headers: { authorization: 'Bearer valid-agent-token' },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.getAgentDefinitionCatalogForScopes).toHaveBeenLastCalledWith(
+      expect.anything(),
+      'human-alice',
+      ['publishing', 'community'],
+    );
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        // 并集顺序 = granted 顺序逐 scope 拼接后去重;两应用的 rel 都在。
+        version: 'test-version:publishing+community',
+        surfaces: [
+          expect.objectContaining({ rel: 'articles' }),
+          expect.objectContaining({ rel: 'comments' }),
+        ],
+        flows: [
+          expect.objectContaining({ name: 'article-drafting' }),
+          expect.objectContaining({ name: 'comment-moderation' }),
+        ],
+        applications: [
+          expect.objectContaining({ name: 'publishing' }),
+          expect.objectContaining({ name: 'community' }),
+        ],
+      }),
+    );
+  });
+
+  it('union order follows granted claim order deterministically', async () => {
+    process.env.UI4A_DEPLOYMENT_PROFILE = 'production';
+    mocks.resolveTrustedRequestIdentity.mockResolvedValueOnce({
+      ...CREDENTIAL_IDENTITY,
+      scopes: ['ui4a:read', 'community', 'publishing'],
+    });
+
+    const response = await GET(
+      new Request('https://ui4a.mothership.internal/.well-known/ui4a.json', {
+        headers: { authorization: 'Bearer valid-agent-token' },
+      }),
+    );
+
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({ version: 'test-version:community+publishing' }),
+    );
+  });
+
+  it('ignores granted claims outside the engine-known applications', async () => {
+    process.env.UI4A_DEPLOYMENT_PROFILE = 'production';
+    mocks.resolveTrustedRequestIdentity.mockResolvedValueOnce({
+      ...CREDENTIAL_IDENTITY,
+      scopes: ['ui4a:read', 'publishing', 'unknown-app'],
+    });
+
+    await GET(
+      new Request('https://ui4a.mothership.internal/.well-known/ui4a.json', {
+        headers: { authorization: 'Bearer valid-agent-token' },
+      }),
+    );
+
+    expect(mocks.getAgentDefinitionCatalogForScopes).toHaveBeenLastCalledWith(
+      expect.anything(),
+      'human-alice',
+      ['publishing'],
     );
   });
 });
