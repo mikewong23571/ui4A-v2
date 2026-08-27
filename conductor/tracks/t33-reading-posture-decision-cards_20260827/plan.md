@@ -15,7 +15,7 @@
 
 ## Phase A: 裁决固化 → DECISIONS(D50)
 
-- [ ] Task: 读/写姿态裁决落 DECISIONS.md D50
+- [x] Task: 读/写姿态裁决落 DECISIONS.md D50 [a8a143a]
   - 两小节:① D47.4 姿态细化——actions 任何 intent 下始终保留且为一等控件;带参数
     动作的参数表单全站单一默认收起(打开是零业务事件的表现层交互);无双路径;
     ② 读/写通道分工方向判断——复杂写的正典在 chat 原话授权(T15 仪式),UI 保留
@@ -24,11 +24,23 @@
     D47.4 与 T28"每个声明 action 有一等控件");
   - 验收:D50 一条目两小节,各有明确采纳与理由;引用 product-vision §一.1
     "只做你明确要点头的部分"
-- [ ] Task: 误导性验收排查清单落地(spec"误导性验收排查"节为初核)
-  - grep 复核:action-runner 单测、`e2e/human`、`e2e/dual-executor`、`e2e/s1`、
-    `e2e/workstation-home`、chat 套件中默认展开表单依赖项;work-thread 英文 title
-    断言;成员渲染纯链接断言——逐项登记处置(迁移/保留),记录进本任务 notes
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: 误导性验收排查清单落地(spec"误导性验收排查"节为初核)
+  - grep 复核结论(2026-08-27):
+    - 组件测试:`action-runner.t16.test.tsx`、`entity-view.test.tsx:228-332`
+      (ActionRunner RJSF 直渲染/直填)、`annotations.test.tsx`(表单 data-action
+      断言)、`render/words/detail.test.tsx`/`form.test.tsx`(经 ActionGroup 渲染
+      表单)——Phase B Red 时逐一迁移(先点触发键再断言表单);
+    - e2e:`human.spec.ts` B1(向导三步 textbox 直填 ×4)、
+      `dual-executor.spec.ts:158-168`(同)、`invariants.spec.ts:249-259` 与
+      `s1.spec.ts:395-410`(确认页 reason textbox required 直断言——需先点开
+      驳回表单再断言);chat/workstation-home 套件无展开表单依赖,不动;
+    - 英文 title 断言:grep 'Create work thread'/'Thread id'/'Goal source' 在
+      测试中零命中——Phase C 仅需新增中文断言,无旧断言迁移;
+    - 成员纯链接断言:`workstation-home.spec.ts` 区域内容断言在 Phase D 复核;
+    - 关键事实:流程向导(文章三步)表单即实体动作表单,经 entity-view →
+      ActionGroup → ActionRenderer 渲染——默认收起后每步需一次"打开",
+      e2e 按此迁移(D50 单一默认,不留向导特例)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: 写姿态单一默认收起
 
