@@ -36,15 +36,15 @@
   "dirs": [
     {
       "path": "packages/engine/src/presentation",
-      "lines": 4603,
+      "lines": 4624,
       "limit": 4000,
-      "note": "T30 在途:组合 assembly、canonical Recipe slot/promotion 与多源 fastpath 均属 Presentation 纯内核直接模块;按 workflow 业务优先原则不为凑行数拆分,shrink-only 自 T30 关闭起算;收缩窗口=T30 review 或后续 CompositionDefinition 治理晋升时按 compose/recipe/sidecar 子域归档直接文件"
+      "note": "T30 在途:组合 assembly、canonical Recipe slot/promotion 与多源 fastpath 均属 Presentation 纯内核直接模块;按 workflow 业务优先原则不为凑行数拆分,shrink-only 自 T30 关闭起算;收缩窗口=T30 review 或后续 CompositionDefinition 治理晋升时按 compose/recipe/sidecar 子域归档直接文件;T31 R13/T30 组合组在途+21(测试证据为主:promotion.test R13 大写拒绝断言 +30/-7,runtime-composition R12 测试 +49 在 web 侧;recipe.ts 统一正则下沉 shared 后 src 净收缩 -29(24 添 53 删));处置计划=T31 review 按 compose/recipe/sidecar 子域归档直接文件时合并收缩,shrink-only 自 T31 关闭起算"
     },
     {
       "path": "apps/web/src/auth",
-      "lines": 4074,
+      "lines": 4166,
       "limit": 4000,
-      "note": "T26 在途:principal-scoped Work Thread owner/scope 过滤按授权边界归属 auth/;业务优先不为凑行数拆分(workflow 业务优先原则 2026-08-26),shrink-only 自 T26 关闭起算;收缩窗口=T27 workstation 接入时将 principal resource helpers 提炼到独立 auth 子目录"
+      "note": "T26 在途:principal-scoped Work Thread owner/scope 过滤按授权边界归属 auth/;业务优先不为凑行数拆分(workflow 业务优先原则 2026-08-26),shrink-only 自 T26 关闭起算;收缩窗口=T27 workstation 接入时将 principal resource helpers 提炼到独立 auth 子目录;T31 R7 thread 裁剪改声明式 principal member family 推导(governedByPrincipalMemberFamily)+行为测试净增,业务优先不为凑行数拆分(2026-08-27 授权 subagent 自行登记口径),shrink-only 自 T31 关闭起算"
     },
     {
       "path": "apps/web/src/db",
