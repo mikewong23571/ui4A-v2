@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const trackRoot = resolve(
   repositoryRoot,
-  'conductor/tracks/t22-production-deployment-auth-runtime_20260824',
+  'conductor/tracks/archive/t22-production-deployment-auth-runtime_20260824',
 );
 
 const storyIds = Array.from({ length: 17 }, (_, index) => 'U' + (index + 1));

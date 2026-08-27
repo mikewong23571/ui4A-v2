@@ -860,7 +860,7 @@
      措辞(presentation-words 口径),对话内解释由助手生成,禁止模板扩写
      冒充理解。
   五条可执行不变量及其执法映射见
-  `conductor/tracks/t34-authority-attention-separation_20260827/architecture.md`
+  `conductor/tracks/archive/t34-authority-attention-separation_20260827/architecture.md`
   §七;GR6 静态扫描随之退役,执法主体移交类型系统。
 - **理由**:权限属于凭证与对象之间的关系,必须每次行为时就地判定且零语境;
   注意力属于工作台此刻的状态,只能决定先呈现什么。两者合流使"换一篇文章"
@@ -870,3 +870,33 @@
   被取代条目的原始记录仅存本地 git 历史);identity 携带 grantedApplications;chat/presentation/
   sidecar/meta/entity/exec 全部咽喉点换新谓词;应急修复 fix-0a36f20 中
   "durable key 冻结值"缺陷由 T33 Phase B 根除;诚实失败客户端分支随之落地。
+
+## D52 T22 闭环:过期实机验证裁定与 scripts/t22 常驻晋升(2026-08-27,T22 收口)
+
+- **裁定**(用户 2026-08-27 指令:已过期的验证不再重跑):T22 计划中剩余的实机验收项
+  按过期处置闭环,不再补跑。依据是三重事实:(1) D37 已把 `v0.1.0-experimental.1` 的现场
+  证据定格(单 Web 并发/重启/重放、十工件隔离恢复 RPO 0、auth negatives 100% 已验;
+  Runtime matrix 固定 `failed-honest` 且明令不得提升为 passed;rollback/fault injection
+  未实测如实登记为 known-risk 边界);(2) 发布后产品演进(T24–T34)全部发生在 mothership
+  K8s 现场(T26 rev40–42、T34 rev52 生产走查)与当前 main,现在重跑 Compose story
+  corpus 或 Runtime Run 验证的将是后续演进而非 T22 发布物 `d5557bf`;(3) 质量门已常驻化,
+  由后续每个 track 的收口连续执行(T33 2026-08-27 全量 e2e 52 passed;T34 pnpm check
+  终绿)。被裁定的项:Phase G Compose story corpus 与 restart/dual backends smoke 复跑、
+  Phase I K8s/Host 双后端 Agent Run、Phase J 的 T22 专项全量门与最小三次 Runtime Run。
+  未过期且不重跑即闭环的项:其验证在发布前已实际执行,结果(含 failed-honest 与
+  known-risk)即为最终记录;`Critical/High=0` 按"无未登记的身份/数据一致性/恢复问题"
+  口径以在案证据复核通过。本裁定不改变发布边界:该版本仍非 GA/SLA/LTS/生产就绪。
+- **scripts/t22 考古裁决(GR5)**:整目录晋升为常驻部署合同套件,不删除——它守护的
+  `deploy/compose`、`deploy/helm`、`deploy/keycloak`、备份/恢复与 realm bootstrap 合同
+  均为常驻产物,runbook(`docs/t22-production-runbook.md`)与 `package.json`
+  (`migrate:production`、`compose:t22`)持续引用;路径与命名保留原样以免破坏上述引用,
+  "t22"自此只是目录名,不再是在途 track 标记。归档后 `conductor/tracks/archive/` 路径
+  引用同步(`deploy/compose/acceptance-contract.json`、
+  `scripts/t22/t22-compose-acceptance.test.ts`、`scripts/t22/t22-evidence-contract.test.ts`)。
+- **覆盖 D40 的"清空基线"预期**:T22 所属 3 条 GR3 存量(`scripts/t22` 目录 14,425 行、
+  两个 >800 行合同测试)按 2026-08-26 业务优先纪律不拆分、不裁剪,转为常驻登记债务
+  (shrink-only,后续触及内容时收缩);`apps/web/src/app/api/chat/route.ts` 的收缩窗口
+  与 T22 脱钩,改挂在下一次 chat 编排重构。基线条目注记更新归属,行数不变。
+- **GR4 修正**:`governance:strict` 并入 `pnpm check` 的触发条件修正为"整个
+  size-baseline 清空时"——T22 关闭时 baseline 仍登记 T24/T29/T31/T32/e2e 等后续
+  track 授权条目,strict 不具备并入条件;AGENTS.md 同步改写,不再以 T22 关闭为触发点。
