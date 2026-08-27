@@ -17,3 +17,19 @@ floating-chat.test.tsx 最终实测 931 行 ≤ 基线 944(净收缩,无需登�
 反向验证(subagent+编排 agent 各一):恢复 error 帧旧回退(appendAssistant('失败:…'))
 → 迁移后的结构化 reason 断言红 → 复原绿。编排 agent 另验证: floating-chat/sse 31 例
 绿,budget 测试 unit 分类 2 例绿(纯切片不触库,无需清单登记)。自治验收。
+
+==== Phase C Verification & Checkpoint(自治验收,编排 agent 代行)====
+
+验证命令与结果(含 D 组任务插队后的累计状态,详见本提交链):
+1. CI=true pnpm e2e invariants —— 4 passed(I3/I4/I6/I5 重放 hash=e84eb0c3d2ec,
+   与 A/B 两轮一致)/ 2 skipped,exit 0(C 关门时点运行;端口处置同前)。
+2. CI=true pnpm check —— **全绿 exit 0:typecheck×4 workspace/eslint/governance
+   OK/vitest 391 文件 3001 测试通过 0 失败**(此前 darwin 结构性失败的
+   production.test.ts 已由并行提交 7620ac9 以 tmpdir 回退修复,/dev/shm 环境性
+   排除项自此消除)。run 于 12:11。
+
+Phase C 内容:A1 四组修复(fecc9c5/221c1d5/c609170/505370e)+治理基线登记
+(56ae264),subagent 并行实施(c2/c3/c4 三库隔离 ui4a_t31c2-c4)+编排 agent 每
+组亲验(mutation 红×3、反向验证留证);并行授权变更:实施 subagent 遇 GR3/check-compat
+越限可自行登记白名单(用户 2026-08-27 指示),auth/presentation 两处登记即产。
+Phase C 完成。
