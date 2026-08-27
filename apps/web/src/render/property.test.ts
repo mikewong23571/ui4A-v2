@@ -2,6 +2,14 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
 import type { SirenEntity } from '@ui4a/engine';
+import {
+  composeSurfaceRegions,
+  planGenericSurface,
+  type CompositionRegionSurfaceInput,
+  type SurfaceCatalog,
+  type SurfaceNode,
+} from '@ui4a/engine';
+import { parseCompositionDeclaration } from '@ui4a/shared';
 
 import { entityRef, fieldRef, type BindTree, type RenderSpec } from './spec';
 import { deref, type EntityCache } from './deref';
@@ -344,6 +352,195 @@ describe('I2 property:解引用输出逐项溯源', () => {
         },
       ),
       { numRuns: 150 },
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T32 Q2:组合(多区域)surface 的 binding-only 常驻覆盖——声明驱动的组合
+// fixture 走真实 shared parser + generic planner + compose 内核,把 I2 口径
+// (零字面、逐项溯源到实体快照)从单实体面扩展到组合面。
+// ---------------------------------------------------------------------------
+
+const compositionCatalog: SurfaceCatalog = {
+  id: 'catalog:semantic',
+  version: '9',
+  words: {
+    prose: {
+      roles: ['identity', 'primary-content', 'metadata'],
+      bindings: { value: { sources: ['property', 'item'], required: true } },
+    },
+    state: {
+      roles: ['status'],
+      bindings: { value: { sources: ['property'], required: true } },
+    },
+    controls: {
+      roles: ['actions'],
+      bindings: { actions: { sources: ['actions'], required: true } },
+    },
+    references: {
+      roles: ['relation'],
+      bindings: { links: { sources: ['links'], required: true } },
+    },
+    collection: {
+      roles: ['relation'],
+      bindings: { entities: { sources: ['entities'], required: true } },
+    },
+    memberLink: {
+      roles: ['identity'],
+      bindings: {
+        label: { sources: ['item'], required: true },
+        rel: { sources: ['item'], required: true },
+      },
+      pattern: 'member-link',
+    },
+  },
+};
+
+/** 各 binding kind 的合法键全集:多一个键 = 组装进了字面/越界载荷。 */
+const ALLOWED_BINDING_KEYS: Record<string, readonly string[]> = {
+  property: ['kind', 'subject', 'path'],
+  actions: ['kind', 'subject'],
+  links: ['kind', 'subject'],
+  entities: ['kind', 'subject'],
+  item: ['kind', 'path'],
+};
+
+interface ComposedWorld {
+  world: World;
+  /** 组合树根(layout)下的 region slot 名,按声明序。 */
+  regionNames: string[];
+  tree: ReturnType<typeof composeSurfaceRegions>;
+}
+
+const composedWorldArb: fc.Arbitrary<ComposedWorld> = worldArb.chain((world) => {
+  const sources = [...world.entities.map((source) => source.rel), COLLECTION_REL];
+  const sourceArb = fc.constantFrom(...sources);
+  const intentArb = fc.oneof(
+    fc.constantFrom('read', 'review', 'track', 'skim'),
+    fc.string({ minLength: 1, maxLength: 8 }).map((text) => `intent-${text}`),
+  );
+  const regionsArb = fc
+    .tuple(
+      fc.integer({ min: 1, max: Math.min(4, sources.length) }),
+      fc.array(sourceArb, { minLength: 4, maxLength: 4 }),
+      fc.array(intentArb, { minLength: 4, maxLength: 4 }),
+      fc.array(fc.constantFrom('rehydrate' as const, 'invalidate' as const), {
+        minLength: 4,
+        maxLength: 4,
+      }),
+    )
+    .map(([count, sourcePool, intentPool, modePool]) => {
+      const picked = new Set<string>();
+      for (const source of sourcePool) {
+        if (picked.size >= count) break;
+        picked.add(source);
+      }
+      return [...picked].map((source, index) => ({
+        region: `r${index}`,
+        source,
+        intent: intentPool[index]!,
+        mode: modePool[index]!,
+      }));
+    });
+  return regionsArb.map((regions) => {
+    const declaration = parseCompositionDeclaration({
+      id: 'prop-work',
+      version: '1',
+      regions,
+    });
+    const inputs: CompositionRegionSurfaceInput[] = regions.map((region) => {
+      const isCollection = region.source === COLLECTION_REL;
+      return {
+        region: region.region,
+        source: region.source,
+        sourceKind: isCollection ? 'collection' : 'entity',
+        surface: planGenericSurface(
+          region.source,
+          world.cache.get(region.source)!,
+          compositionCatalog,
+          { entityVersion: `contract:${region.source}`, intent: region.intent },
+        ),
+        entityFingerprint: `entity:${region.source}:v1`,
+        ...(isCollection ? { membershipFingerprint: `members:${region.source}:v1` } : {}),
+      };
+    });
+    const tree = composeSurfaceRegions(declaration, inputs, {
+      declarationFingerprint: 'sha256:declaration-prop-v1',
+      catalog: compositionCatalog,
+      catalogFingerprint: 'sha256:catalog-v9',
+      policyRef: 'policy:property',
+      policyFingerprint: 'sha256:policy-v1',
+    });
+    return { world, regionNames: regions.map((region) => region.region), tree };
+  });
+});
+
+/** 深度遍历组合树全部节点(组合面 walker:对 slot 命名空间与 word bindings 溯源)。 */
+function walkNodes(node: SurfaceNode, visit: (node: SurfaceNode) => void): void {
+  visit(node);
+  if (node.kind === 'layout') node.children.forEach((child) => walkNodes(child, visit));
+  else if (node.kind === 'slot') walkNodes(node.child, visit);
+  else if (node.kind === 'repeat') walkNodes(node.item, visit);
+}
+
+describe('I2 property:组合(多区域)surface 组装 binding-only', () => {
+  it('声明驱动的组合树:根 layout + 声明序 slot;全部 binding 零字面且逐项溯源到实体快照', () => {
+    fc.assert(
+      fc.property(composedWorldArb, ({ world, regionNames, tree }) => {
+        // D45 形状:根是 layout,region slot 按声明序命名。
+        expect(tree.surface.root.kind).toBe('layout');
+        const root = tree.surface.root;
+        if (root.kind !== 'layout') return;
+        expect(root.children.map((child) => (child.kind === 'slot' ? child.name : ''))).toEqual(
+          regionNames,
+        );
+        const universe = valueUniverse(world);
+        // 集合实体自身的 properties(rel/count)也是合法事实源:组合 region 的
+        // subject 可以是集合本身,单实体宇宙不含它,局部并入。
+        for (const value of Object.values(world.cache.get(COLLECTION_REL)?.properties ?? {})) {
+          if (value !== null && typeof value !== 'object') {
+            universe.add(`${typeof value}:${String(value)}`);
+          }
+        }
+        walkNodes(root, (node) => {
+          if (node.kind !== 'word') return;
+          for (const binding of Object.values(node.bindings)) {
+            const record = binding as unknown as Record<string, unknown>;
+            // binding-only 剃刀:键集合恰为该 kind 的引用形状,多一个键即
+            // 组装进了字面/越界载荷(校验器对 BindTree 的等价约束)。
+            expect(
+              Object.keys(record).sort(),
+              `binding 应只含引用键,实际 ${JSON.stringify(Object.keys(record))}`,
+            ).toEqual([...(ALLOWED_BINDING_KEYS[record['kind'] as string] ?? [])].sort());
+            if (record['kind'] === 'property' || record['kind'] === 'item') continue;
+            const subject = record['subject'];
+            expect(typeof subject).toBe('string');
+            // 组合不得发明 rel:每个 subject 都是既有合同实体。
+            expect(world.cache.has(subject as string), `subject ${subject} 应在实体缓存`).toBe(
+              true,
+            );
+          }
+          // property/item binding 的解引用值必须能在实体快照找到出处
+          //(与单实体 assertProvenance 的 field 分支同口径)。
+          for (const binding of Object.values(node.bindings)) {
+            const record = binding as unknown as Record<string, unknown>;
+            if (record['kind'] !== 'property') continue;
+            const entity = world.cache.get(record['subject'] as string);
+            let value: unknown = entity?.properties;
+            for (const segment of String(record['path']).split('.').slice(1)) {
+              value = (value as Record<string, unknown> | undefined)?.[segment];
+            }
+            if (value !== null && value !== undefined && typeof value !== 'object') {
+              expect(
+                universe.has(`${typeof value}:${String(value)}`),
+                `组合面字段值应溯源到实体快照(${typeof value}:${String(value)})`,
+              ).toBe(true);
+            }
+          }
+        });
+      }),
+      { numRuns: 100 },
     );
   });
 });
