@@ -58,7 +58,8 @@
 ## Phase E 工作线投影与动作层级(修 F-07/F-11;故事 S8)
 
 - [ ] Task: E0 蓝描边误激活修复(F-24 一部分):active 仅在 ?concern= 匹配时为真;首页/画布回归截图
-- [ ] Task: E-2 应用入口区(F-23):my-work 聚合声明升级,首页从 sitemap applications 派生应用入口区(标题+intent→entry surface),零特判;与工作线叙述页同批验收(S9/S10 可达性)
+- [ ] Task: E-2 应用入口区(F-23+F-26):my-work 聚合声明升级,首页从 sitemap applications 派生应用入口区(标题+intent→entry surface);带 pin(复用用户级 pin 机制,实现期定案)与数量阈值默认收缩(>6 折叠"更多应用");文案按"数词+名词+状态"一眼可读标准,零特判;与工作线叙述页同批验收(S9/S10 可达性)
+- [ ] Task: E-3 canvas 重定位(F-25):无 focus 时主位呈现当前注视(presence/URL 派生),无注视呈现入口层;页题/导航一物一名;与 S5 合并验收
 - [ ] Task: E2 实现——工作线详情投影补全(`apps/web/src/engine` 投影 + 定义数据)
 - [ ] Task: E3 实现——动作分组与危险/常规视觉分层(通用 actions 区,零实体特判)
 - [ ] Task: E4 回归——`pnpm vitest run --project unit` + `pnpm governance` 全绿
