@@ -113,14 +113,20 @@ Prefer extending a nearby pattern. When a change crosses rows, keep the pure con
 
 ## Governance Gates (T23, enforced by `pnpm check`)
 
-Rules GR1–GR6 are mechanically enforced by `scripts/governance/`; run `pnpm governance` for the report.
+Rules GR1–GR5 are mechanically enforced by `scripts/governance/`; run `pnpm governance` for the report.
 
 - **GR1 dependency direction:** `packages/shared ← packages/engine ← packages/agent`; apps compose packages and never import each other. `shared`/`engine` stay free of platform packages (pg, Temporal, Next/React, Node http). Every exception must be registered in `scripts/governance/exceptions.json` with a reason and retirement condition _before_ the code is written; stale entries fail the gate.
 - **GR2 no compatibility code while unreleased:** no legacy/compat dual paths for old wire formats, event shapes, or API behavior — change the single implementation; dev/test databases may be reset. Marker scans fail on unregistered legacy/compat wording.
 - **GR3 size limits (effective lines):** non-test source file ≤ 500, test file ≤ 800, per-directory direct `.ts/.tsx` total ≤ 4000. Current debt lives in `scripts/governance/size-baseline.json` (shrink-only; today only T22-owned entries remain, see DECISIONS.md D40). New violations fail the gate.
 - **GR4 gate semantics:** governance checks run in Red → Green → Gate order; baselines may only shrink; `governance:strict` (empty baselines) joins `pnpm check` once T22 closes.
 - **GR5 archaeology control:** when a Track closes, its bespoke scripts/specs are either promoted to standing gates or deleted (git keeps history); do not add permanent per-track Playwright configs. Completed Tracks live read-only in `conductor/tracks/archive/`.
-- **GR6 identity-resolution scope selection:** every `resolveTrustedRequestIdentity` call under `apps/web/src/app/**` must pass a `scopeCoverage` closure so `policyScope` is selected per target rel from the granted set, never frozen to the `defaultPolicyScope` literal/config-first entry (see DECISIONS.md D50). Endpoints with no single target rel at resolution time, or that never consume `policyScope`, must be registered in `scripts/governance/exceptions.json` (`identity-scope-selection`) with a reason and retirement condition; unregistered offenders and stale entries fail the gate.
+
+### D51 授权/注意力分离纪律(T33;执法主体=类型系统)
+
+- **授权**:任何鉴权路径的输入只能是凭证的应用授予集合(`grantedApplications`)× 事实归属(fold 打标的 audience);禁止引入"当前会话 scope/活跃上下文"类输入。`resolveTrustedRequestIdentity` 不再产出被选择的 policyScope(`?scope=` 仅为导航偏好透传)。
+- **注意力**:lens 只能出自 situation 单点装配(显式 > presence > 未定位),只消费于披露切片、常显位置与导航落点;不得进入任何鉴权签名。
+- **失败语义**:授予内零可见授权事件;授予外与缺失为结构化 denied 回执;404 仅限跨 principal 存在性隐藏。
+- 违反以上任一即架构回退;机制依据见 `DECISIONS.md` D51 与 `conductor/tracks/t33-authority-attention-separation_20260827/architecture.md` §七 执法映射(D50 的 route 级 scopeCoverage 门禁已随该机器退役)。
 
 ## Architectural Invariants
 
