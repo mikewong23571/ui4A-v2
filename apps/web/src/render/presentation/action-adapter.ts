@@ -8,6 +8,7 @@
  */
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
+import { blockedForRenderer } from '../../components/actions/action-group';
 import { createActionGate, type CanvasClientAction, type GateExecFn } from '../canvas/action-gate';
 
 export interface SurfaceActionDependencyExpectation {
@@ -226,7 +227,9 @@ export function createSurfaceActionAdapter(
           true,
         );
       }
-      if (guardResults[0]?.blocked === true) {
+      // renderer 恒为 human:与 ActionGroup 同规(D48 R4 口径),actor-is-human
+      // 单独失败不拦截;状态类 guard 失败仍可见拒绝。
+      if (guardResults[0] !== undefined && blockedForRenderer(guardResults[0])) {
         return refusal(
           input,
           'guard-blocked',

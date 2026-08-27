@@ -187,9 +187,15 @@ function projectConfirmation(
     class: ['confirmation', confirmation.status],
     properties: {
       id: confirmation.id,
+      rel: confirmationRel(confirmation.id),
       'target-rel': confirmation.targetRel,
       'target-action': confirmation.targetAction,
       params: fieldValues(confirmation.params ?? {}),
+      // 决策卡身份行(T33):任务语言身份由投影携带;已决策确认不进收件箱,
+      // 不需要身份行(保持 decided 形状稳定)。
+      ...(pending
+        ? { identity: `${confirmation.targetAction} · 由 ${confirmation.proposedBy.actor} 提议` }
+        : {}),
       'proposed-by': confirmation.proposedBy,
       ...(confirmation.channel !== undefined ? { channel: confirmation.channel } : {}),
       ...(confirmation.riskLevel !== undefined ||

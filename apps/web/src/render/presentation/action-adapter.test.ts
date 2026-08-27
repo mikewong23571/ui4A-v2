@@ -107,6 +107,54 @@ describe('Surface Action Adapter', () => {
     expect(exec).not.toHaveBeenCalled();
   });
 
+  it('lets the human renderer satisfy an actor-is-human-only block (T33 surface seam)', async () => {
+    const entity: SirenEntity = {
+      ...entityOf('confirmation:c1', [actionOf('approve')]),
+      'guard-results': [
+        {
+          action: 'approve',
+          blocked: true,
+          reason: 'guard 不满足: actor-is-human=false',
+          guards: [{ name: 'actor-is-human', pass: false }],
+        },
+      ],
+    };
+    const fetchEntity = vi.fn().mockResolvedValue(entity);
+    const exec = vi.fn().mockResolvedValue({ ok: true, entity });
+    const adapter = createSurfaceActionAdapter({ fetchEntity, exec });
+
+    // renderer 恒为 human:blockedForRenderer 口径下 actor-is-human 不拦截
+    // (与 ActionGroup 同规;状态类 guard 失败仍拒绝)。
+    const result = await adapter.submit({ subject: 'confirmation:c1', action: 'approve' });
+    expect(exec).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ outcome: 'executed', subject: 'confirmation:c1' });
+
+    const stateBlocked: SirenEntity = {
+      ...entity,
+      'guard-results': [
+        {
+          action: 'approve',
+          blocked: true,
+          reason: 'guard 不满足: is-published=false',
+          guards: [
+            { name: 'actor-is-human', pass: false },
+            { name: 'is-published', pass: false },
+          ],
+        },
+      ],
+    };
+    const stateAdapter = createSurfaceActionAdapter({
+      fetchEntity: vi.fn().mockResolvedValue(stateBlocked),
+      exec,
+    });
+    const refused = await stateAdapter.submit({ subject: 'confirmation:c1', action: 'approve' });
+    expect(refused).toMatchObject({
+      outcome: 'refused',
+      code: 'guard-blocked',
+      reason: 'guard 不满足: is-published=false',
+    });
+  });
+
   it('fails closed when the form schema changed after hydration', async () => {
     const exec = vi.fn();
     const currentSchema = {

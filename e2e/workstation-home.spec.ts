@@ -6,7 +6,8 @@ import { expect, test, type Request, type Response } from '@playwright/test';
 import type { SurfaceBinding, SurfaceNode, SurfaceTree } from '@ui4a/engine';
 
 import { MECHANISM_WORDS } from '../apps/web/src/lib/mechanism-words';
-import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
+import { SCENARIO_BASE, withFreshServer, withWorkerServer } from './kits/server-kit';
+import { terminateStaleNotifyWorkflows } from '../apps/web/src/temporal/notify';
 
 const runFile = promisify(execFile);
 const CLI_MAIN = path.join(process.cwd(), 'apps', 'cli', 'dist', 'main.js');
@@ -186,9 +187,10 @@ test('workstation home and the real CLI read the same three declared source enti
       await expect(heading).toHaveCount(1);
       await expect(heading).toBeVisible();
       await expect(heading).toBeInViewport();
+      // T33:链接标签优先合同 title(在等我/在动/我的工作线),回退 target rel
       await expect(
         surface.locator(`a[href="/entity?rel=${encodeURIComponent(canonicalRel)}"]`),
-      ).toHaveText(canonicalRel);
+      ).toHaveText(title);
     }
 
     const expectedScalarFacts = [...entities.values()]
@@ -240,5 +242,67 @@ test('workstation home and the real CLI read the same three declared source enti
     await expect(declaredRegions.locator('li')).toHaveText(
       SOURCE_REGIONS.map(({ region }) => `${region} ·可用`),
     );
+  });
+});
+
+test('waiting-for-me 成员决策卡:批准一击零导航零参数,同一裁决(T33 D50)', async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  // 与 s1 同口径:清掉跨轮次残留的 notify workflow(确认 id 确定性复用)。
+  await terminateStaleNotifyWorkflows(['c1']);
+  await withWorkerServer(async () => {
+    // agent 经 HTTP 合同提议 archive(202 挂起)→ 收件箱出现待决确认。
+    const propose = await fetch(`${SCENARIO_BASE}/api/exec`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        rel: 'post:post-welcome',
+        action: 'archive',
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'e2e',
+      }),
+    });
+    expect(propose.status).toBe(202);
+    expect(((await propose.json()) as { status?: string }).status).toBe('suspended');
+
+    await page.setViewportSize({ width: 1440, height: 1200 });
+    await page.goto(SCENARIO_BASE);
+    const surface = page.locator('[data-surface]');
+    await expect(surface).toHaveCount(1);
+
+    // 在等我区域:成员渲染为决策卡(身份行 = 投影携带的任务语言 identity)。
+    const card = surface.locator('[data-word="member-card"]');
+    await expect(card).toHaveCount(1);
+    await expect(card).toContainText('archive · 由 agent 提议');
+    await expect(card).toContainText('confirmation:c1');
+
+    // 责任点一等:批准为推送按钮(零参数、零导航),data-action 背书同一合同。
+    const approve = card.getByRole('button', { name: '批准', exact: true });
+    await expect(approve).toBeEnabled();
+    await expect(approve).toHaveAttribute('data-action', 'approve');
+    await approve.click();
+
+    // 同一裁决:轮询事件日志,confirmation-approved 的 actor=human
+    // (channel=confirmation:生效动作经确认门落账,渲染器触发)。
+    let decision: { kind: string; actor?: string; channel?: string } | undefined;
+    for (let attempt = 0; attempt < 25 && decision === undefined; attempt += 1) {
+      const events = (await (
+        await fetch(`${SCENARIO_BASE}/api/events`)
+      ).json()) as { events: Array<{ kind: string; actor?: string; channel?: string }> };
+      decision = events.events.find((event) => event.kind === 'confirmation-approved');
+      if (decision === undefined) await page.waitForTimeout(200);
+    }
+    expect(decision?.actor).toBe('human');
+    expect(decision?.channel).toBe('confirmation');
+
+    // 投影随事件更新:重载后在等我清零,决策卡退场。
+    await page.reload();
+    await expect(page.locator('[data-surface] [data-word="member-card"]')).toHaveCount(0);
+    const inbox = (await (
+      await fetch(`${SCENARIO_BASE}/api/entity?rel=inbox`)
+    ).json()) as { properties: { count: number } };
+    expect(inbox.properties.count).toBe(0);
   });
 });

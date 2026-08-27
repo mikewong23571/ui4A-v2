@@ -367,6 +367,12 @@ describe('project — inbox 集合(spec 架构决定 5)', () => {
     expect(entity?.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=inbox', title: '在等我' },
     ]);
+    // T33 决策卡身份行:任务语言身份由投影携带(合同数据,非渲染器模板);
+    // 成员携带 canonical properties.rel(决策卡 exec 目标与通用绑定的前提)
+    expect(entity?.entities?.[0]?.properties).toMatchObject({
+      rel: 'confirmation:c1',
+      identity: 'archive · 由 agent 提议',
+    });
 
     const item = entity?.entities?.[0];
     expect(item?.rel).toEqual(['item']);

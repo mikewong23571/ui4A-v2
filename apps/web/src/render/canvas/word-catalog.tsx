@@ -28,6 +28,7 @@ import { EntityLinkWord } from '../words/entity-link';
 import { FlowWord } from '../words/flow';
 import { FormWord } from '../words/form';
 import { KanbanWord } from '../words/kanban';
+import { MemberCardWord } from '../words/member-card';
 import { MarkdownWord } from '../words/markdown';
 import type { WordProps } from '../words/shared';
 import { StatWord } from '../words/stat';
@@ -145,6 +146,17 @@ const wordImplementations: ReactComponentImplementation[] = [
     'entity-link',
     { label: dynamic(z.string()), rel: dynamic(z.string()) },
     EntityLinkWord,
+  ),
+  wordImplementation(
+    'member-card',
+    {
+      label: dynamic(z.string()),
+      rel: dynamic(z.string()),
+      actions: dynamic(z.array(z.any())).optional(),
+      guardResults: dynamic(z.array(z.any())).optional(),
+      fields: dynamic(z.record(z.string(), z.any())).optional(),
+    },
+    MemberCardWord,
   ),
 ];
 

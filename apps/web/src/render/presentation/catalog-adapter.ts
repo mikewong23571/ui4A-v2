@@ -69,6 +69,16 @@ const words: Readonly<Record<string, A2uiWordAdapter>> = {
       rel: { prop: 'rel', transform: 'value' },
     },
   },
+  'member-card': {
+    component: 'member-card',
+    bindings: {
+      label: { prop: 'label', transform: 'value' },
+      rel: { prop: 'rel', transform: 'value' },
+      actions: { prop: 'actions', transform: 'value' },
+      guardResults: { prop: 'guardResults', transform: 'value' },
+      fields: { prop: 'fields', transform: 'value' },
+    },
+  },
 };
 
 function canonicalValue(value: unknown): unknown {

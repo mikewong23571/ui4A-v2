@@ -466,6 +466,115 @@ describe('generic semantic fallback planner', () => {
     }
   });
 
+  it('plans member decision cards when members declare actions, member links otherwise (T33 D50)', () => {
+    const memberCatalog: SurfaceCatalog = {
+      id: 'catalog:members',
+      version: '1',
+      words: {
+        'member-card': {
+          roles: ['identity'],
+          pattern: 'member-card',
+          bindings: {
+            label: { sources: ['item'], required: true },
+            rel: { sources: ['item'], required: true },
+            actions: { sources: ['item'] },
+            guardResults: { sources: ['item'] },
+            fields: { sources: ['item'] },
+          },
+        },
+        'member-link': {
+          roles: ['identity'],
+          pattern: 'member-link',
+          bindings: {
+            label: { sources: ['item'], required: true },
+            rel: { sources: ['item'], required: true },
+          },
+        },
+      },
+    };
+    const deciding: SirenEntity = {
+      class: ['collection', 'deciding'],
+      properties: { rel: 'col:deciding', count: 1 },
+      actions: [],
+      links: [],
+      entities: [
+        {
+          class: ['confirmation', 'pending'],
+          properties: { rel: 'confirmation:c1', identity: '归档 · 由 agent 提议' },
+          actions: [
+            { name: 'approve', title: '批准', method: 'POST', href: '/exec', fields: {} },
+          ],
+          links: [],
+          'guard-results': [],
+        },
+      ],
+    };
+    const plain: SirenEntity = {
+      class: ['collection', 'plain'],
+      properties: { rel: 'col:plain', count: 1 },
+      actions: [],
+      links: [],
+      entities: [
+        {
+          class: ['delegation', 'running'],
+          properties: { rel: 'delegation:d1', identity: '情报收集' },
+          actions: [],
+          links: [],
+          'guard-results': [],
+        },
+      ],
+    };
+
+    const findRepeatItem = (surface: SurfaceTree): SurfaceNode => {
+      let found: SurfaceNode | undefined;
+      const visit = (node: SurfaceNode): void => {
+        if (node.kind === 'repeat') {
+          found = node.item;
+          return;
+        }
+        if (node.kind === 'layout') node.children.forEach(visit);
+        if (node.kind === 'slot') visit(node.child);
+      };
+      visit(surface.root);
+      if (found === undefined) throw new Error('surface must contain a repeat');
+      return found;
+    };
+
+    const card = findRepeatItem(
+      planGenericSurface('col:deciding', deciding, memberCatalog, {
+        entityVersion: 'entity-v1',
+        intent: 'read',
+      }),
+    );
+    expect(card).toMatchObject({
+      kind: 'word',
+      word: 'member-card',
+      role: 'identity',
+      bindings: {
+        label: { kind: 'item', path: 'properties.identity' },
+        rel: { kind: 'item', path: 'properties.rel' },
+        actions: { kind: 'item', path: 'actions' },
+        guardResults: { kind: 'item', path: 'guard-results' },
+        fields: { kind: 'item', path: 'properties.fields' },
+      },
+    });
+    expect(validateSurfaceTree(
+      planGenericSurface('col:deciding', deciding, memberCatalog, {
+        entityVersion: 'entity-v1',
+        intent: 'read',
+      }),
+      memberCatalog,
+    ).valid).toBe(true);
+
+    const link = findRepeatItem(
+      planGenericSurface('col:plain', plain, memberCatalog, {
+        entityVersion: 'entity-v1',
+        intent: 'read',
+      }),
+    );
+    expect(link).toMatchObject({ kind: 'word', word: 'member-link' });
+  });
+
   it('never consults entity class/type to choose a page or component', () => {
     const guarded = new Proxy(entity, {
       get(target, property, receiver) {
