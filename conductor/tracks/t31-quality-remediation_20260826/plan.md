@@ -13,9 +13,9 @@
 > 并行则逐任务核对冲突面。
 > 实施前必读:根 `AGENTS.md`、`apps/web/AGENTS.md`、`conductor/workflow.md`。
 
-## Phase A: 分歧裁决 → DECISIONS(D47)
+## Phase A: 分歧裁决 → DECISIONS(D48)
 
-- [ ] Task: 四个判断点落 DECISIONS.md D47
+- [ ] Task: 四个判断点落 DECISIONS.md D48
   - R4:`thread-id-available` 层序归位(前移 guard 层 vs 重归类并修正自述;
     不得破坏 declaration → guard → schema 不变量口径);
   - R8:`scopeFrom` 空 grantedScopes 口径(建议 fail-closed);
@@ -23,9 +23,9 @@
     的有意如此及理由);
   - R14:loop_exception/error 帧是否纳入 LLM phrasing(补齐 vs 记录 spec
     边界)
-  - 验收:D47 一条目四小节,各有明确采纳与理由;纯修复项(R5/R6/R7/R10/
+  - 验收:D48 一条目四小节,各有明确采纳与理由;纯修复项(R5/R6/R7/R10/
     R11/R12/R13/R15/R16/R17–R20)确认无需决策,直接进 Phase C/D
-- [ ] Task: spec/plan 回改对齐 D47
+- [ ] Task: spec/plan 回改对齐 D48
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase B: Medium 测试缺口(R1/R2/R3)
@@ -42,13 +42,13 @@
     源码文本断言退役或降为辅助;不钉死 site 词表值(T27 改名中)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
-## Phase C: Low 行为修复(D47 已决项 + 纯修复项)
+## Phase C: Low 行为修复(D48 已决项 + 纯修复项)
 
 - [ ] Task: T29 口径组(R8/R9/R10)
-  - 按 D47 落 scopeFrom 口径、clientView 分层、presence 端点 scope 校验对齐;
+  - 按 D48 落 scopeFrom 口径、clientView 分层、presence 端点 scope 校验对齐;
     各项配行为测试
 - [ ] Task: T26 投影/裁决组(R4/R5/R6/R7)
-  - R4 层序按 D47 归位;R5 context 类 dangling 标记统一(message: 引用可
+  - R4 层序按 D48 归位;R5 context 类 dangling 标记统一(message: 引用可
     审计);R6 attach 失败加结构化可观测(chat 不阻断语义不变);R7
     class 硬编码改声明式 scope/memberRelPrefix 推导
   - Red→Green:各项先补锁合同语义的测试再修
@@ -58,7 +58,7 @@
     name 语法统一为 shared region id 语法
   - GR3 注意:R12/R13 触及 shrink-only 基线目录,净不增长
 - [ ] Task: chat/LLM 组(R14/R15/R16)
-  - R14 按 D47 落地;R15 删除客户端旧 wire-format 回退(GR2 单实现),
+  - R14 按 D48 落地;R15 删除客户端旧 wire-format 回退(GR2 单实现),
     迁移 `floating-chat.test.tsx` 冻结测试,评估 check-compat 中文标记;
     R16 补真实 walkthrough bundle 的 meta scope wire 级 32 KiB 预算断言
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
@@ -92,9 +92,9 @@
 
 ## 验收标准(Track DoD)
 
-1. 登记册 R1–R27 全部终态:R1–R20 修复或经 D47 记录有意偏离,R21/R22 可追溯
+1. 登记册 R1–R27 全部终态:R1–R20 修复或经 D48 记录有意偏离,R21/R22 可追溯
    性恢复,R23–R27 在目标 track 文档落注;
 2. R1/R2/R3 测试缺口补齐且 mutation 抽查证明能红;
-3. D47 四个判断点落 DECISIONS.md,实现与之一致;
+3. D48 四个判断点落 DECISIONS.md,实现与之一致;
 4. GR2:R15 回退双路径清除零残留;governance 全绿、零新增基线;
 5. `pnpm check` + `CI=true pnpm e2e invariants` 全绿;系统实际可运行。

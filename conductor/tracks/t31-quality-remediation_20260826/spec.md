@@ -51,7 +51,7 @@ packages/engine、packages/agent、scripts/governance。CLI 零改动。
 
 - **R4**(←T26)`work-thread-command.ts` 的 `thread-id-available`(重复创建)
   以 guard-failed 层拒绝但执行位置在 schema 校验之后——与 declaration →
-  guard → schema 层序自述不一致(功能等价)。**需 D47 裁决层序归位。**
+  guard → schema 层序自述不一致(功能等价)。**需 D48 裁决层序归位。**
 - **R5**(←T26)`projection/work-thread.ts` 的 context 类引用链接不加
   `dangling` 标记(active/approval 类加);chat 接线写入的 `message:<turnId>`
   href 恒 404 且无可审计标识——D44"不可解析引用保留为可审计 dangling ref"
@@ -64,11 +64,11 @@ packages/engine、packages/agent、scripts/governance。CLI 零改动。
   已有声明式 `scope/memberRelPrefix` 元数据可用——滑梯边缘。
 - **R8**(←T29)`apps/web/src/engine/situation.ts` 的 `scopeFrom` 在
   grantedScopes 为空时不做授权检查即接受候选 scope;当前调用方均保证非空,
-  属潜在误用面,无测试锁语义。**需 D47 裁决口径(建议 fail-closed)。**
+  属潜在误用面,无测试锁语义。**需 D48 裁决口径(建议 fail-closed)。**
 - **R9**(←T29)`apps/web/src/engine/chat-situation.ts` 将
   `clientView.presence` 放入 `explicit` 优先级槽位;clientView 是客户端自报
   信号(与 presence 上报同信任级),与 T29 spec"显式是正典"的字面分层有
-  偏差(scope 越权仍被 grantedScopes 收口,无安全暴露)。**需 D47 裁决分层。**
+  偏差(scope 越权仍被 grantedScopes 收口,无安全暴露)。**需 D48 裁决分层。**
 - **R10**(←T29)`api/presence/route.ts` 的 scope 校验仅用
   `grantedPolicyScopes(identity.scopes)`,不像消费方那样追加
   `identity.policyScope`;无暴露面,口径不齐。
@@ -84,7 +84,7 @@ packages/engine、packages/agent、scripts/governance。CLI 零改动。
   (shared parser);两套正则并存。
 - **R14**(←T24)`route.ts` 的 loop_exception 路径永无 LLM phrasing(注释
   自承"error 帧无 LLM 表述路径");T24 spec 失败分层未豁免该失败来源。
-  **需 D47 裁决(补齐或记录边界)。**
+  **需 D48 裁决(补齐或记录边界)。**
 - **R15**(←T24)客户端保留旧 wire-format 回退双路径:`chat/sse.ts`、
   `thread.tsx` 的 `AssistantText` 无 activity 回退、`use-chat-session.ts` 的
   error 帧 else 与 handleFinal 无 reason 回退,并有专项测试冻结
@@ -153,7 +153,7 @@ packages/engine、packages/agent、scripts/governance。CLI 零改动。
 
 ## 验收方向
 
-- 登记册 27 项全部终态(修复 / D47 有意偏离 / 归后续落注);
+- 登记册 27 项全部终态(修复 / D48 有意偏离 / 归后续落注);
 - R1/R2/R3:新测试 mutation 抽查能红;presence 频率上限入合同测试;
 - R15:全仓 grep 无旧 wire-format 回退残留,floating-chat 冻结测试迁移;
 - R11:`workspace:*` 负向断言(404/sitemap 缺席/不可 exec)常驻;

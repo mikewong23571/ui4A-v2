@@ -1,10 +1,10 @@
 {
   "id": "t31-quality-remediation_20260826",
   "type": "fix",
-  "status": "planned",
+  "status": "in_progress",
   "title": "T31 质量评审修复:T24–T30 实现质量发现项登记与修复",
   "created_at": "2026-08-26T17:55:54Z",
-  "updated_at": "2026-08-26T17:55:54Z",
+  "updated_at": "2026-08-27T01:34:29Z",
   "approved_by": "user (2026-08-26 指令:新建 track 记录评审全部等级问题并规划修复)",
   "depends_on": [
     "t24-presentation-honesty_20260825",
