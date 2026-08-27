@@ -190,10 +190,7 @@ export function filterThreadEntityForPrincipal(
  * 镜头逐成员重审。判定依据 sitemap 声明元数据与实体自身 self rel,不绑定任何
  * per-class 字面量;未参与该声明的实体保持原样。
  */
-function governedByPrincipalMemberFamily(
-  sitemap: Sitemap,
-  entity: SirenEntity,
-): boolean {
+function governedByPrincipalMemberFamily(sitemap: Sitemap, entity: SirenEntity): boolean {
   const rel = relFromHref(entity.links.find((link) => link.rel.includes('self'))?.href);
   return (
     rel !== undefined &&

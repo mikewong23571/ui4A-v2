@@ -14,6 +14,8 @@ import {
 
 export interface PresentationTrustedContext {
   policyScope: string;
+  /** 身份已授予的全部 policy scope;非空时授权点按目标 rel 在集合内做覆盖选择。 */
+  grantedPolicyScopes?: readonly string[];
 }
 
 export interface AuthorizedRegion {
@@ -30,7 +32,12 @@ export interface AuthorizedRoot {
 }
 
 interface WebPresentationBrokerDependencies {
-  getEntity(rel: string, principal: string, policyScope: string): Promise<unknown | undefined>;
+  getEntity(
+    rel: string,
+    principal: string,
+    policyScope: string,
+    grantedPolicyScopes?: readonly string[],
+  ): Promise<unknown | undefined>;
   resolveCompositionSubject?(subject: string): BuiltinCompositionSubjectResolution;
   plan?(
     request: PresentationRequest,
@@ -105,6 +112,7 @@ export function createWebPresentationBroker(
                     declaration.source,
                     candidate.principal,
                     trustedContext.policyScope,
+                    trustedContext.grantedPolicyScopes,
                   ),
                 })),
               );
@@ -128,7 +136,12 @@ export function createWebPresentationBroker(
               : candidate.subject.selection;
           const entities = await Promise.all(
             rels.map((rel) =>
-              dependencies.getEntity(rel, candidate.principal, trustedContext.policyScope),
+              dependencies.getEntity(
+                rel,
+                candidate.principal,
+                trustedContext.policyScope,
+                trustedContext.grantedPolicyScopes,
+              ),
             ),
           );
           if (entities.some((entity) => entity === undefined)) {

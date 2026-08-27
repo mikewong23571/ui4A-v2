@@ -15,7 +15,18 @@ const mocks = vi.hoisted(() => ({
   }),
   getDb: vi.fn(() => ({ kind: 'mock-db' })),
   getEngine: vi.fn(async () => ({
-    getSnapshot: vi.fn(() => ({ applications: { default: {}, publishing: {} } })),
+    getSnapshot: vi.fn(() => ({
+      applications: { default: {}, publishing: {} },
+      instances: { 'post:first': { flow: 'post-flow' } },
+      definitions: { 'post-flow': { version: 1, definition: { app: 'publishing' } } },
+    })),
+    getSitemap: vi.fn(() => ({
+      version: 'test-sitemap',
+      surfaces: [],
+      flows: [],
+      applications: [],
+      capabilities: [],
+    })),
   })),
   getPresentationBroker: vi.fn(() => ({
     present: mocks.present,
@@ -172,11 +183,18 @@ describe('POST /api/presentation production authentication wiring', () => {
         requiredScopes: ['ui4a:read'],
         authorizedPolicyScopes: ['default', 'publishing'],
         defaultPolicyScope: 'default',
+        scopeCoverage: expect.any(Function),
       }),
     );
+    // scopeCoverage 按目标 rel 归属判定:post:first 属 publishing,只有 publishing 覆盖。
+    const options = mocks.resolveTrustedRequestIdentity.mock.calls[0]![1] as {
+      scopeCoverage: (policyScope: string) => boolean;
+    };
+    expect(options.scopeCoverage('publishing')).toBe(true);
+    expect(options.scopeCoverage('default')).toBe(false);
     expect(mocks.present).toHaveBeenCalledWith(
       expect.objectContaining({ principal: 'human-alice' }),
-      { policyScope: 'default' },
+      { policyScope: 'default', grantedPolicyScopes: ['default'] },
     );
   });
 

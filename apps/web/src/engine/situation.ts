@@ -1,4 +1,36 @@
-import type { PresenceProjection, RenderSubject } from '@ui4a/shared';
+import type { EngineSnapshot, PresenceProjection, RenderSubject } from '@ui4a/shared';
+import type { Sitemap } from '@ui4a/engine';
+
+import { relCoveredByPolicyScope } from '../auth/application-scope';
+
+/** Normalize trusted policy claims to the application names used by the assembler. */
+export function grantedPolicyScopes(scopes: readonly string[]): string[] {
+  return [
+    ...new Set(
+      scopes.flatMap((scope) =>
+        scope.startsWith('ui4a:policy:')
+          ? [scope.slice('ui4a:policy:'.length)]
+          : scope.startsWith('ui4a:')
+            ? []
+            : [scope],
+      ),
+    ),
+  ];
+}
+
+/**
+ * 从已授予 scope 集合中按数组顺序确定性地选第一个覆盖目标 rel 的 scope
+ * (与 resolveCredentialPolicyScope 的 scopeCoverage 选择同口径)。供目标 rel 在
+ * 身份解析后才出现的调用方(如 Presentation Broker)在授权点做覆盖选择;
+ * 无覆盖者返回 undefined,与授权失败同语义,不扩大授权。
+ */
+export function selectCoveringPolicyScope(
+  context: { snapshot: EngineSnapshot; sitemap: Sitemap; plane: 'business' | 'meta' },
+  rel: string,
+  grantedScopes: readonly string[],
+): string | undefined {
+  return grantedScopes.find((scope) => relCoveredByPolicyScope(context, rel, scope));
+}
 
 export interface SituationExplicitParameters {
   site?: string;
@@ -35,21 +67,6 @@ export interface Situation {
   thread: string | null;
   focus: RenderSubject | null;
   disclosure: SituationDisclosureSlice;
-}
-
-/** Normalize trusted policy claims to the application names used by the assembler. */
-export function grantedPolicyScopes(scopes: readonly string[]): string[] {
-  return [
-    ...new Set(
-      scopes.flatMap((scope) =>
-        scope.startsWith('ui4a:policy:')
-          ? [scope.slice('ui4a:policy:'.length)]
-          : scope.startsWith('ui4a:')
-            ? []
-            : [scope],
-      ),
-    ),
-  ];
 }
 
 function firstString(...values: Array<string | null | undefined>): string {

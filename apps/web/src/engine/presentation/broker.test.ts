@@ -27,7 +27,12 @@ describe('web Presentation Broker adapter', () => {
       surfaceUrl: '/canvas?focus=post%3Afirst-post',
       reasonCode: 'planning-failed',
     });
-    expect(getEntity).toHaveBeenCalledWith('post:first-post', 'user:local', 'local-demo');
+    expect(getEntity).toHaveBeenCalledWith(
+      'post:first-post',
+      'user:local',
+      'local-demo',
+      undefined,
+    );
   });
 
   it('deduplicates requestId across chat, direct navigation, and flow callers', async () => {
@@ -121,7 +126,22 @@ describe('web Presentation Broker adapter', () => {
       reasonCode: 'partial-authorization',
     });
     expect(getEntity.mock.calls.map(([rel]) => rel)).toEqual(['inbox', 'delegations', 'threads']);
-    expect(getEntity).toHaveBeenCalledWith('threads', 'user:local', 'publishing');
+    expect(getEntity).toHaveBeenCalledWith('threads', 'user:local', 'publishing', undefined);
+  });
+
+  it('threads the trusted granted policy scopes into entity authorization', async () => {
+    const getEntity = vi.fn(async () => ({ properties: { rel: 'post:first-post' } }));
+    const broker = createWebPresentationBroker({ getEntity });
+
+    await broker.present(request, {
+      policyScope: 'default',
+      grantedPolicyScopes: ['default', 'publishing'],
+    });
+
+    expect(getEntity).toHaveBeenCalledWith('post:first-post', 'user:local', 'default', [
+      'default',
+      'publishing',
+    ]);
   });
 
   it.each(['workspace:unknown', 'workspace:'])(

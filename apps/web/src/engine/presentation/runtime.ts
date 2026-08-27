@@ -337,7 +337,10 @@ export function getPresentationBroker(): WebPresentationBroker {
         delivery: request.delivery,
         sourceMessageIds: request.sourceMessageIds,
       });
-      const receipt = await delegate.present(request, { policyScope });
+      const receipt = await delegate.present(request, {
+        policyScope,
+        grantedPolicyScopes: trustedContext?.grantedPolicyScopes,
+      });
       await appendLifecycle(
         receipt.status === 'failed' ? 'presentation-failed' : 'presentation-resolved',
         request,

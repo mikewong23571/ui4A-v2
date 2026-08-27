@@ -44,7 +44,7 @@ import {
   type TrustedRequestAuditContext,
 } from '../../../auth/request-identity';
 import { appendEvent, readLog } from '../../../db/events';
-import { situationForChat } from '../../../engine/chat-situation';
+import { presentationContextForIdentity, situationForChat } from '../../../engine/chat-situation';
 import { attachChatMessageToThread } from '../../../engine/chat-thread';
 import { getDb, getEngine } from '../../../engine/service';
 import {
@@ -456,7 +456,7 @@ async function streamAgentLoop(args: {
   presentationPrincipal: string;
   startRel: string;
   scope: string | null;
-  presentationPolicyScope: string;
+  presentationContext: ReturnType<typeof presentationContextForIdentity>;
   fetchImpl: FetchLike;
   conversationMessages: AgentConversationMessage[];
   conversation: AgentConversationContext;
@@ -535,7 +535,7 @@ async function streamAgentLoop(args: {
           payload: { schemaVersion: 1, requestId: request.requestId, status: 'pending' },
         });
         const job = getPresentationBroker()
-          .present(request, { policyScope: args.presentationPolicyScope })
+          .present(request, args.presentationContext)
           .then(async (payload) => {
             if (
               (payload.status === 'ready' || payload.status === 'fallback') &&
@@ -814,7 +814,9 @@ export async function POST(request: Request) {
   const sessionId = productionIdentity?.principal ?? parsed.sessionId;
   const principal = productionIdentity?.principal ?? `user:${sessionId}`;
   const presentationPrincipal = productionIdentity?.principal ?? LOCAL_PRESENTATION_PRINCIPAL;
-  const presentationPolicyScope = productionIdentity?.policyScope ?? 'local-demo';
+  // Presentation 的目标 rel 在身份解析后才出现:granted scope 集合随上下文下传到
+  // Broker,由授权点按 rel 做覆盖选择(与 /api/entity 的 scopeCoverage 同口径)。
+  const presentationContext = presentationContextForIdentity(productionIdentity);
   const situation = await situationForChat({
     principal,
     identity: productionIdentity,
@@ -984,7 +986,7 @@ export async function POST(request: Request) {
           presentationPrincipal,
           startRel,
           scope: situation.scope,
-          presentationPolicyScope,
+          presentationContext,
           fetchImpl: turnFetch,
           conversationMessages: agentConversation.messages,
           conversation: agentConversation.context,
@@ -1107,7 +1109,7 @@ export async function POST(request: Request) {
       presentationPrincipal,
       startRel,
       scope: situation.scope,
-      presentationPolicyScope,
+      presentationContext,
       fetchImpl: turnFetch,
       conversationMessages: agentConversation.messages,
       conversation: agentConversation.context,

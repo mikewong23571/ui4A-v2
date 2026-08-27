@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   fetcher: vi.fn(),
   getEngine: vi.fn(),
   preflight: vi.fn(),
+  present: vi.fn(),
   readLog: vi.fn(),
   resolveIdentity: vi.fn(),
   runAgent: vi.fn(),
@@ -32,7 +33,7 @@ vi.mock('../../../engine/service', () => ({
 }));
 
 vi.mock('../../../engine/presentation/runtime', () => ({
-  getPresentationBroker: () => ({ present: vi.fn() }),
+  getPresentationBroker: () => ({ present: mocks.present }),
   getPresentationCapabilities: () => ({ markdownWord: false }),
 }));
 
@@ -95,6 +96,7 @@ interface AgentRunContext {
   channel: string;
   app?: string;
   fetchImpl: (url: string, init?: RequestInit) => Promise<Response>;
+  onPresentation?: (intent: Record<string, unknown>) => void;
 }
 
 function browserError(code: 'session_not_found' | 'session_cookie_invalid' | 'session_expired') {
@@ -193,6 +195,8 @@ beforeEach(() => {
     },
     secrets: {},
   });
+  mocks.present.mockReset();
+  mocks.present.mockResolvedValue({ schemaVersion: 1, requestId: 'req', status: 'ready' });
   mocks.readLog.mockReset();
   mocks.readLog.mockResolvedValue([]);
   mocks.resolveIdentity.mockReset();
@@ -401,6 +405,63 @@ describe('production chat turn credential boundary', () => {
     // 在流体内异步落库;不读完,落库会越过本用例边界、在后续用例 mockReset
     // 之后到达,污染其 appendEvent 未调用断言。
     await response.text();
+  });
+
+  it('passes every granted policy scope to the Presentation Broker for per-rel coverage selection', async () => {
+    // 多 scope 身份(defaultPolicyScope 冻结为第一个 granted)下,present 必须
+    // 携带全量 grantedPolicyScopes:目标 rel(如 publishing 的 post)在身份解析后
+    // 才出现,覆盖选择由 Broker 授权点按 rel 完成。
+    mocks.preflight.mockReturnValueOnce({
+      settings: {
+        service: { publicOrigin: APP_ORIGIN },
+        auth: {
+          mode: 'oidc',
+          oidc: {
+            agentScopes: [
+              'ui4a:read',
+              'ui4a:write',
+              'ui4a:policy:development',
+              'ui4a:policy:publishing',
+            ],
+            agentClientId: AGENT_CLIENT_ID,
+          },
+        },
+      },
+      secrets: {},
+    });
+    mocks.resolveIdentity.mockImplementationOnce(async () => ({
+      authorizationMode: 'credential',
+      actor: 'human',
+      principal: 'human-alice',
+      scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development', 'ui4a:policy:publishing'],
+      policyScope: 'development',
+      channel: 'oidc',
+      humanApprovalEligible: true,
+    }));
+    mocks.runAgent.mockImplementationOnce(
+      async (_driver: unknown, _goal: unknown, context: AgentRunContext) => {
+        context.onPresentation?.({
+          subject: 'post:first-post',
+          intent: 'read',
+          delivery: 'canvas',
+        });
+        return { outcome: 'done', summary: 'done', steps: [], successes: [] };
+      },
+    );
+
+    const response = await POST(
+      request(
+        { goal: { verb: '看看第一篇' }, sessionId: 'multi-scope', turnId: 'turn-present' },
+        { cookie: 'valid-session' },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    await response.text();
+    expect(mocks.present).toHaveBeenCalledWith(
+      expect.objectContaining({ subject: 'post:first-post' }),
+      { policyScope: 'development', grantedPolicyScopes: ['development', 'publishing'] },
+    );
   });
 
   it.each([

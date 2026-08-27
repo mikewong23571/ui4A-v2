@@ -5,6 +5,10 @@ import { describe, expect, it } from 'vitest';
 import type { ChatTurnDetail } from '../../../chat/history';
 
 const routeSource = readFileSync(new URL('./route.ts', import.meta.url), 'utf8');
+const chatSituationSource = readFileSync(
+  new URL('../../../engine/chat-situation.ts', import.meta.url),
+  'utf8',
+);
 
 describe('T16 Chat/Presentation source governance', () => {
   it('contains no keyword renderer, business-specific display route, or catalog planning context', () => {
@@ -27,10 +31,13 @@ describe('T16 Chat/Presentation source governance', () => {
     expect(routeSource).toContain('principal: args.presentationPrincipal');
     expect(routeSource).toContain('sourceMessageIds: [turnId]');
     expect(routeSource).toContain('presentationRequestIds');
-    expect(routeSource).toContain(
-      "const presentationPolicyScope = productionIdentity?.policyScope ?? 'local-demo'",
-    );
-    expect(routeSource).toContain('presentationPolicyScope,');
+    // granted scope 集合下穿管线:chat 入口经 presentationContextForIdentity 把全量
+    // granted scopes(identity.scopes 提取 + policyScope 兜底)随可信上下文交给
+    // Broker,目标 rel 的覆盖选择由 Broker 授权点完成;local profile 维持 local-demo。
+    expect(routeSource).toContain('presentationContextForIdentity(productionIdentity)');
+    expect(routeSource).toContain('presentationContext,');
+    expect(chatSituationSource).toContain('grantedPolicyScopes(identity.scopes)');
+    expect(chatSituationSource).toContain("return { policyScope: 'local-demo' }");
     expect(routeSource).not.toMatch(/completePresentationRequest\(intent,[\s\S]{0,300}policyScope/);
 
     const history: ChatTurnDetail = {
@@ -50,7 +57,7 @@ describe('T16 Chat/Presentation source governance', () => {
 
   it('keeps Chat outcome independent while settling governed Presentation jobs before stream close', () => {
     expect(routeSource).toMatch(
-      /getPresentationBroker\(\)[\s\S]*?\.present\(request, \{ policyScope: args\.presentationPolicyScope \}\)/,
+      /getPresentationBroker\(\)[\s\S]*?\.present\(request, args\.presentationContext\)/,
     );
     expect(routeSource).toContain('presentationJobs.push(job)');
     expect(routeSource).toMatch(
