@@ -102,14 +102,14 @@
 - [x] Task: 全量 `pnpm check` 终绿(governance size 基线预期收缩,只减不增) [d60a535]
 - [x] Task: Phase Verification & Checkpoint [d60a535]
 
-## Phase E: 发布与生产走查
+## Phase E: 发布与生产走查 [checkpoint: 生产 rev52 @ 59e12ff]
 
-- [ ] Task: 构建三镜像(SHA=release commit)→ save/scp/ctr 导入 k8s-w-1/w-2 →
-  immutable digest(runbook §3 已验证流程)
+- [x] Task: 构建三镜像(SHA=release commit)→ save/scp/ctr 导入 k8s-w-1/w-2 →
+  immutable digest(runbook §3 已验证流程) [a6be75e→59e12ff]
 - [ ] Task: mothership overlay 更新 web/worker/runner digest(adminWorker/
   pkiRunner 不动)→ verify-overlay PASS → retained jobs diff 零 → helm upgrade;
   image-release.json 证据更新
-- [ ] Task: 生产真人走查
+- [ ] Task: 生产真人走查(待用户浏览器执行:原事故对话一次到位 + focus 直达)
   - 重建原事故对话("我想看看《当前应用的用户故事与操作流程》"+"再试试")
     → 一次到位零授权字眼;focus 直达;d. 景若可造则验
 - [ ] Task: Track 收尾
