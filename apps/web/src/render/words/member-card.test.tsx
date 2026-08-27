@@ -35,7 +35,11 @@ afterEach(() => {
 
 function renderCard(props: Record<string, unknown>): void {
   render(
-    <ActionSubmitProvider submit={createDirectActionSubmit(vi.fn(async () => ({ ok: true as const })))}>
+    <ActionSubmitProvider
+      submit={createDirectActionSubmit(
+        vi.fn(async () => ({ ok: true as const, entity: {} as SirenEntity })),
+      )}
+    >
       <MemberCardWord {...props} />
     </ActionSubmitProvider>,
   );

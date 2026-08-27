@@ -15,6 +15,7 @@ import {
   validateSurfaceCatalog,
   validateSurfaceTree,
   type SurfaceCatalog,
+  type SurfaceNode,
   type SurfaceTree,
 } from './index';
 
