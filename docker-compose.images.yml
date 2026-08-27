@@ -1,0 +1,129 @@
+# 本地实验栈:docker compose 构建 web/worker 镜像,连同 postgres/temporal 一起运行。
+# 用法:docker compose -f docker-compose.images.yml up -d --build --wait
+# 与根 docker-compose.yml(开发 infra,宿主 5433)互不影响;数据可随时丢弃
+# (docker compose -f docker-compose.images.yml down -v)。
+# 本地 profile:不走 T22 生产 settings/secrets,直接用环境变量(见 .env.example 说明)。
+name: ui4a-images
+
+x-ui4a-runtime-env: &ui4a-runtime-env
+  DATABASE_URL: postgres://ui4a:ui4a@postgres:5432/ui4a
+  TEMPORAL_ADDRESS: temporal:7233
+  UI4A_CAPABILITY_CALLBACK_TOKEN: local-experiment-callback-token
+
+# 复用根目录 .env.local 的本地配置(LLM key/中转、Agent profiles);密钥不进 compose
+# 文件,environment 中的容器内专用值(DATABASE_URL 等)优先生效。文件缺失时跳过,
+# 助手按不变量诚实失败。
+x-ui4a-local-env-file: &ui4a-local-env-file
+  - path: .env.local
+    required: false
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ui4a
+      POSTGRES_PASSWORD: ui4a
+      POSTGRES_DB: ui4a
+    volumes:
+      - ui4a-images-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ui4a -d ui4a']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  temporal:
+    image: temporalio/auto-setup:1.28.4
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: '5432'
+      POSTGRES_USER: ui4a
+      POSTGRES_PWD: ui4a
+      POSTGRES_SEEDS: postgres
+      TEMPORAL_BIND_ON_IP: 0.0.0.0
+      BIND_ON_IP: 0.0.0.0
+    healthcheck:
+      test: ['CMD', 'nc', '-z', '127.0.0.1', '7233']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    restart: unless-stopped
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+    ports:
+      - '127.0.0.1:8080:8080'
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NPM_REGISTRY: https://registry.npmjs.org
+    restart: unless-stopped
+    env_file: *ui4a-local-env-file
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+    environment:
+      <<: *ui4a-runtime-env
+      UI4A_PUBLIC_BASE_URL: http://localhost:3100
+    ports:
+      # 本地 profile 无认证(self-reported-local-demo),只绑回环,避免局域网直连。
+      - '127.0.0.1:3100:3100'
+    # /.well-known/ui4a.json 走 getEngine:本地 profile 下首次访问完成幂等迁移与
+    # walkthrough 应用 bootstrap,成功返回 200;worker 依赖 web 健康即可拿到建好的 schema。
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3100/.well-known/ui4a.json').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+      args:
+        NPM_REGISTRY: https://registry.npmjs.org
+    restart: unless-stopped
+    env_file: *ui4a-local-env-file
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    environment:
+      <<: *ui4a-runtime-env
+      UI4A_PUBLIC_BASE_URL: http://web:3100
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3101/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  ui4a-images-pgdata:

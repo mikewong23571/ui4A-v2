@@ -24,7 +24,7 @@ FROM dependencies AS builder
 COPY . .
 RUN pnpm --filter @ui4a/worker build && \
     pnpm --filter @ui4a/worker --prod deploy --config.inject-workspace-packages=true /runtime && \
-    node -e "const fs=require('node:fs'),p=require('node:path'),root='/runtime/node_modules/.pnpm'; for(const entry of fs.readdirSync(root)){if(!entry.startsWith('@temporalio+core-bridge@'))continue; const releases=p.join(root,entry,'node_modules/@temporalio/core-bridge/releases'); if(!fs.existsSync(releases))throw new Error('Temporal releases directory missing'); for(const name of fs.readdirSync(releases)){if(name!=='x86_64-unknown-linux-gnu')fs.rmSync(p.join(releases,name),{recursive:true,force:true});}}"
+    node -e "const fs=require('node:fs'),p=require('node:path'); const keep={x64:'x86_64-unknown-linux-gnu',arm64:'aarch64-unknown-linux-gnu'}[process.arch]; if(!keep)throw new Error('Unsupported build arch: '+process.arch); const root='/runtime/node_modules/.pnpm'; for(const entry of fs.readdirSync(root)){if(!entry.startsWith('@temporalio+core-bridge@'))continue; const releases=p.join(root,entry,'node_modules/@temporalio/core-bridge/releases'); if(!fs.existsSync(releases))throw new Error('Temporal releases directory missing'); let kept=false; for(const name of fs.readdirSync(releases)){if(name===keep)kept=true; else fs.rmSync(p.join(releases,name),{recursive:true,force:true});} if(!kept)throw new Error('Temporal release missing for '+keep);}"
 
 FROM node:${NODE_VERSION}-bookworm-slim AS runtime
 ARG UI4A_VERSION
