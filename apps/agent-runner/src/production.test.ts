@@ -21,7 +21,10 @@ const image = `registry.internal/ui4a/agent-runner@sha256:${'a'.repeat(64)}`;
 const apiKey = '__runner_codex_api_key__';
 const runnerToken = 'runner-token.fixture-123';
 const temporaryRoots: string[] = [];
-const productionWorkspaceRoot = join('/dev/shm', `ui4a-agent-runner-${process.pid}`);
+// /dev/shm 是 Linux 容器的 tmpfs 惯例;darwin 受 SIP 保护不可写,退回
+// 系统 tmpdir(隔离语义相同:一次性、进程私有目录)。
+const shmRoot = process.platform === 'darwin' ? tmpdir() : '/dev/shm';
+const productionWorkspaceRoot = join(shmRoot, `ui4a-agent-runner-${process.pid}`);
 const hostWorkspaceBase = join(productionWorkspaceRoot, 'host');
 const hostWorkspaceRoot = join(hostWorkspaceBase, 'run:writing:1', 'agent');
 const kubernetesWorkspaceBase = join(productionWorkspaceRoot, 'kubernetes');
