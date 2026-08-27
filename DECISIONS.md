@@ -835,3 +835,40 @@
 - **影响**:`/api/meta/entity`、`/api/meta/exec`、`/api/presentation` 等
   入口按同口径补 `scopeCoverage`;新路由引入身份解析调用时默认受门禁
   约束,例外须先登记后合入。
+
+## D51 授权与注意力范畴分离:凭证集合裁决,presence 单点镜头(2026-08-27,T33)
+
+- **背景**:生产事故链(chat present 跨应用 authorization-failed → 应急修复
+  后 durable key 仍冻结 → 毒 sidecar 持久化 → canvas GET 按存储冻结 scope
+  重审 404)暴露同一根因:`identity.policyScope` 单值字段同时被两个互斥
+  范畴消费——授权裁决与认知镜头。product-vision §七 自诊断"scope 作为
+  授权边界做了,作为认知边界没做";§六判据下,T22 式逐调用点补丁
+  (D50/GR6)无法阻止同类问题随新增 application 再现。
+- **决定**:
+  1. **授权 = 数据受众谓词**:事实在 fold 投影时标注归属应用/属主;判定
+     收敛为咽喉守卫(输入仅凭证的应用授予集合 × 事实归属);未知 rel
+     fail-open 交既有三段裁决兜底。defaultPolicyScope/scopeCoverage/
+     会话级选择/selectCoveringPolicyScope 全部退役;UserSidecarKey 剥离
+     scope 维度,授予变化走依赖失效重规划。
+  2. **失败语义分家**:授予内一切路径零可见授权事件;授予外与"不存在"
+     均为结构化 denied 回执(reasonCode);HTTP 404 仅保留跨 principal 的
+     存在性隐藏;越界工件创建期拦截。
+  3. **注意力 = situation 单点装配**:优先序 显式 > presence > 未定位
+     (一等态,不偷选默认);lens 只流向人类常显、agent 披露切片、导航
+     落点三处消费者,类型上不可进入任何鉴权函数。
+  4. **披露收窄只发生在 prompt 层**(CLI 三纪律重申):HTTP 合同恒按授予
+     并集返回;agent 切片全量重建非累积,尺寸不变量成立。
+  5. 结构化原因优先:机械层产 reasonCode 数据,回执条目用有界既定活动
+     措辞(presentation-words 口径),对话内解释由助手生成,禁止模板扩写
+     冒充理解。
+  五条可执行不变量及其执法映射见
+  `conductor/tracks/t33-authority-attention-separation_20260827/architecture.md`
+  §七;GR6 静态扫描随之退役,执法主体移交类型系统。
+- **理由**:权限属于凭证与对象之间的关系,必须每次行为时就地判定且零语境;
+  注意力属于工作台此刻的状态,只能决定先呈现什么。两者合流使"换一篇文章"
+  变成"越权",任何修补都只是移动故障面;范畴分离后该错误类在定义上不可
+  能发生,且满足愿景 §六 换 application 零改码的施工纪律。
+- **影响**:取代 D38/D50 的 route 级 scopeCoverage 口径(D50 与 GR6 扫描器按
+  shrink-only 退役);identity 携带 grantedApplications;chat/presentation/
+  sidecar/meta/entity/exec 全部咽喉点换新谓词;应急修复 fix-0a36f20 中
+  "durable key 冻结值"缺陷由 T33 Phase B 根除;诚实失败客户端分支随之落地。
