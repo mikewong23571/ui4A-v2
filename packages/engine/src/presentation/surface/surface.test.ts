@@ -477,6 +477,8 @@ describe('generic semantic fallback planner', () => {
           bindings: {
             label: { sources: ['item'], required: true },
             rel: { sources: ['item'], required: true },
+            status: { sources: ['item'] },
+            detail: { sources: ['item'] },
             actions: { sources: ['item'] },
             guardResults: { sources: ['item'] },
             fields: { sources: ['item'] },
@@ -488,6 +490,8 @@ describe('generic semantic fallback planner', () => {
           bindings: {
             label: { sources: ['item'], required: true },
             rel: { sources: ['item'], required: true },
+            status: { sources: ['item'] },
+            detail: { sources: ['item'] },
           },
         },
       },
@@ -553,6 +557,8 @@ describe('generic semantic fallback planner', () => {
       bindings: {
         label: { kind: 'item', path: 'properties.identity' },
         rel: { kind: 'item', path: 'properties.rel' },
+        status: { kind: 'item', path: 'properties.status' },
+        detail: { kind: 'item', path: 'properties.resume' },
         actions: { kind: 'item', path: 'actions' },
         guardResults: { kind: 'item', path: 'guard-results' },
         fields: { kind: 'item', path: 'properties.fields' },
@@ -572,7 +578,16 @@ describe('generic semantic fallback planner', () => {
         intent: 'read',
       }),
     );
-    expect(link).toMatchObject({ kind: 'word', word: 'member-link' });
+    expect(link).toMatchObject({
+      kind: 'word',
+      word: 'member-link',
+      bindings: {
+        label: { kind: 'item', path: 'properties.identity' },
+        rel: { kind: 'item', path: 'properties.rel' },
+        status: { kind: 'item', path: 'properties.status' },
+        detail: { kind: 'item', path: 'properties.resume' },
+      },
+    });
   });
 
   it('never consults entity class/type to choose a page or component', () => {

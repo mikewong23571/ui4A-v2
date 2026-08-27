@@ -60,9 +60,9 @@
     },
     {
       "path": "e2e",
-      "lines": 4513,
+      "lines": 4539,
       "limit": 4000,
-      "note": "T27 workstation-home CLI/Sidecar/DOM、workstation-situation presence 留痕、flow 双桥/ghost 诚实失败 standing E2E、I3 双桥覆盖及 S2 raw replay/alias 诚实性修正后累计(tracked total 见行数,按 workflow 业务优先不裁剪验收证据);T28 一等交互已闭环并按 GR5 归并重复 Presentation/server setup 到 e2e/kits,无 bespoke track 配置残留;shrink-only 自 T28 关闭起算;T33 决策卡 e2e 增 6 行(业务优先不裁剪验收证据,workflow 2026-08-26;后续 Phase E/F 若再增以本口径滚动)"
+      "note": "T27 workstation-home CLI/Sidecar/DOM、workstation-situation presence 留痕、flow 双桥/ghost 诚实失败 standing E2E、I3 双桥覆盖及 S2 raw replay/alias 诚实性修正后累计(tracked total 见行数,按 workflow 业务优先不裁剪验收证据);T28 一等交互已闭环并按 GR5 归并重复 Presentation/server setup 到 e2e/kits,无 bespoke track 配置残留;shrink-only 自 T28 关闭起算;T33 决策卡/工作线 resume e2e 增 32 行(业务优先不裁剪验收证据,workflow 2026-08-26;后续 Phase E/F 若再增以本口径滚动)"
     }
   ]
 }

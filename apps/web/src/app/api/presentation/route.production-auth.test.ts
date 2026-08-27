@@ -125,7 +125,7 @@ function presentationBody() {
   return {
     schemaVersion: 1,
     requestId: 'direct:prod',
-    principal: 'user:local',
+    principal: 'local-user',
     subject: 'post:first',
     intent: 'read',
     delivery: 'canvas',
@@ -193,7 +193,7 @@ describe('POST /api/presentation production authentication wiring', () => {
     expect(response.status).toBe(200);
     expect(mocks.resolveTrustedRequestIdentity).not.toHaveBeenCalled();
     expect(mocks.present).toHaveBeenCalledWith(
-      expect.objectContaining({ principal: 'user:local' }),
+      expect.objectContaining({ principal: 'local-user' }),
     );
   });
 });
@@ -244,7 +244,7 @@ describe('GET /api/presentation/sidecar production authentication wiring', () =>
 
     expect(response.status).toBe(200);
     expect(mocks.resolveTrustedRequestIdentity).not.toHaveBeenCalled();
-    expect(mocks.getSidecarById).toHaveBeenCalledWith(expect.anything(), 'sidecar:1', 'user:local');
+    expect(mocks.getSidecarById).toHaveBeenCalledWith(expect.anything(), 'sidecar:1', 'local-user');
   });
 });
 

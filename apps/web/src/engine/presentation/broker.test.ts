@@ -8,7 +8,7 @@ const request: PresentationRequest = completePresentationRequest(
   { subject: 'post:first-post', intent: 'read article', delivery: 'canvas' },
   {
     requestId: 'turn:1:presentation:1',
-    principal: 'user:local',
+    principal: 'local-user',
     sourceMessageIds: ['turn:1'],
   },
 );
@@ -27,7 +27,7 @@ describe('web Presentation Broker adapter', () => {
       surfaceUrl: '/canvas?focus=post%3Afirst-post',
       reasonCode: 'planning-failed',
     });
-    expect(getEntity).toHaveBeenCalledWith('post:first-post', 'user:local', 'local-demo');
+    expect(getEntity).toHaveBeenCalledWith('post:first-post', 'local-user', 'local-demo');
   });
 
   it('deduplicates requestId across chat, direct navigation, and flow callers', async () => {
@@ -83,7 +83,7 @@ describe('web Presentation Broker adapter', () => {
     const broker = createWebPresentationBroker({ getEntity });
     const selection = completePresentationRequest(
       { subject: { selection: ['post:a', 'post:b'] }, intent: 'compare', delivery: 'canvas' },
-      { requestId: 'selection:1', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'selection:1', principal: 'local-user', sourceMessageIds: [] },
     );
 
     await expect(broker.present(selection)).resolves.toMatchObject({
@@ -113,7 +113,7 @@ describe('web Presentation Broker adapter', () => {
     const broker = createWebPresentationBroker({ getEntity, resolve });
     const workspace = completePresentationRequest(
       { subject: 'workspace:my-work', intent: 'work', delivery: 'canvas' },
-      { requestId: 'workspace:1', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'workspace:1', principal: 'local-user', sourceMessageIds: [] },
     );
 
     await expect(broker.present(workspace, { policyScope: 'publishing' })).resolves.toMatchObject({
@@ -121,7 +121,7 @@ describe('web Presentation Broker adapter', () => {
       reasonCode: 'partial-authorization',
     });
     expect(getEntity.mock.calls.map(([rel]) => rel)).toEqual(['inbox', 'delegations', 'threads']);
-    expect(getEntity).toHaveBeenCalledWith('threads', 'user:local', 'publishing');
+    expect(getEntity).toHaveBeenCalledWith('threads', 'local-user', 'publishing');
   });
 
   it.each(['workspace:unknown', 'workspace:'])(
@@ -131,7 +131,7 @@ describe('web Presentation Broker adapter', () => {
       const broker = createWebPresentationBroker({ getEntity });
       const workspace = completePresentationRequest(
         { subject, intent: 'work', delivery: 'canvas' },
-        { requestId: `request:${subject}`, principal: 'user:local', sourceMessageIds: [] },
+        { requestId: `request:${subject}`, principal: 'local-user', sourceMessageIds: [] },
       );
 
       await expect(broker.present(workspace)).resolves.toMatchObject({
@@ -152,7 +152,7 @@ describe('web Presentation Broker adapter', () => {
     });
     const workspace = completePresentationRequest(
       { subject: 'workspace:my-work', intent: 'work', delivery: 'canvas' },
-      { requestId: 'workspace:denied', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'workspace:denied', principal: 'local-user', sourceMessageIds: [] },
     );
 
     await expect(broker.present(workspace)).resolves.toMatchObject({
@@ -172,7 +172,7 @@ describe('web Presentation Broker adapter', () => {
     const workspace = (requestId: string) =>
       completePresentationRequest(
         { subject: 'workspace:my-work', intent: 'work', delivery: 'canvas' },
-        { requestId, principal: 'user:local', sourceMessageIds: [] },
+        { requestId, principal: 'local-user', sourceMessageIds: [] },
       );
 
     await broker.present(workspace('workspace:fresh:1'));

@@ -268,6 +268,8 @@ export function planGenericSurface(
             bindings: {
               label: { kind: 'item', path: itemIdentityPath },
               rel: { kind: 'item', path: 'properties.rel' },
+              status: { kind: 'item', path: 'properties.status' },
+              detail: { kind: 'item', path: 'properties.resume' },
               actions: { kind: 'item', path: 'actions' },
               guardResults: { kind: 'item', path: 'guard-results' },
               fields: { kind: 'item', path: 'properties.fields' },
@@ -292,6 +294,8 @@ export function planGenericSurface(
               bindings: {
                 label: { kind: 'item', path: itemIdentityPath },
                 rel: { kind: 'item', path: 'properties.rel' },
+                status: { kind: 'item', path: 'properties.status' },
+                detail: { kind: 'item', path: 'properties.resume' },
               },
               dependencies: [catalogDependency(catalog)],
               provenance: genericProvenance(provenanceRef),

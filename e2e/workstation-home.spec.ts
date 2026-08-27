@@ -267,15 +267,37 @@ test('waiting-for-me 成员决策卡:批准一击零导航零参数,同一裁决
     expect(propose.status).toBe(202);
     expect(((await propose.json()) as { status?: string }).status).toBe('suspended');
 
+    // 建线先于首次 Presentation 规划(work-lines 为 invalidate 区域,成员
+    // 变化重规划;首版规划即见带动作成员 → 决策卡)。
+    const created = await fetch(`${SCENARIO_BASE}/api/exec`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        rel: 'threads',
+        action: 'create',
+        actor: 'human',
+        principal: 'local-user',
+        channel: 'renderer',
+        params: {
+          id: 'release-t33',
+          goal: 'T33 验收工作线',
+          goalSource: 'chat:e2e-t33',
+        },
+      }),
+    });
+    expect(created.status).toBe(200);
+
     await page.setViewportSize({ width: 1440, height: 1200 });
     await page.goto(SCENARIO_BASE);
     const surface = page.locator('[data-surface]');
     await expect(surface).toHaveCount(1);
 
-    // 在等我区域:成员渲染为决策卡(身份行 = 投影携带的任务语言 identity)。
-    const card = surface.locator('[data-word="member-card"]');
+    // 在等我区域:成员渲染为决策卡(身份行 = 投影携带的任务语言 identity);
+    // 工作线的建线成员同为决策卡(成员带已声明动作),按文本分别定位。
+    const card = surface.locator('[data-word="member-card"]', {
+      hasText: 'archive · 由 agent 提议',
+    });
     await expect(card).toHaveCount(1);
-    await expect(card).toContainText('archive · 由 agent 提议');
     await expect(card).toContainText('confirmation:c1');
 
     // 责任点一等:批准为推送按钮(零参数、零导航),data-action 背书同一合同。
@@ -297,9 +319,18 @@ test('waiting-for-me 成员决策卡:批准一击零导航零参数,同一裁决
     expect(decision?.actor).toBe('human');
     expect(decision?.channel).toBe('confirmation');
 
-    // 投影随事件更新:重载后在等我清零,决策卡退场。
+    // 投影随事件更新:重载后在等我清零,确认决策卡退场;工作线成员卡呈现
+    // 目标 +「停在「open」」(active 空回退线程状态;投影数据,零渲染器模板)。
     await page.reload();
-    await expect(page.locator('[data-surface] [data-word="member-card"]')).toHaveCount(0);
+    await expect(
+      page.locator('[data-word="member-card"]', { hasText: 'archive · 由 agent 提议' }),
+    ).toHaveCount(0);
+    const threadCard = page.locator('[data-word="member-card"]', {
+      hasText: 'T33 验收工作线',
+    });
+    await expect(threadCard).toHaveCount(1);
+    await expect(threadCard).toContainText('停在「open」');
+    await expect(threadCard).toContainText('填写挂载引用参数');
     const inbox = (await (
       await fetch(`${SCENARIO_BASE}/api/entity?rel=inbox`)
     ).json()) as { properties: { count: number } };

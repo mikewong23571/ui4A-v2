@@ -3,7 +3,7 @@ import type { SurfaceCatalog } from '@ui4a/engine';
 /** Semantic catalog planned by AI and compiled to the concrete A2UI catalog at runtime. */
 export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
   id: 'urn:ui4a:presentation:semantic',
-  version: 'semantic-v3',
+  version: 'semantic-v4',
   words: {
     heading: {
       roles: ['identity'],
@@ -35,6 +35,8 @@ export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
       bindings: {
         label: { sources: ['item'], required: true },
         rel: { sources: ['item'], required: true },
+        status: { sources: ['item'] },
+        detail: { sources: ['item'] },
       },
     },
     'member-card': {
@@ -43,6 +45,8 @@ export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
       bindings: {
         label: { sources: ['item'], required: true },
         rel: { sources: ['item'], required: true },
+        status: { sources: ['item'] },
+        detail: { sources: ['item'] },
         actions: { sources: ['item'] },
         guardResults: { sources: ['item'] },
         fields: { sources: ['item'] },

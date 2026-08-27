@@ -21,7 +21,7 @@ function situation(roots: string[], lens: RenderSituation['lens']): RenderSituat
     roots: roots.map((rel) => ({ rel })),
     intent: 'inspect',
     lens,
-    audience: { principal: 'user:local', policyScope: 'local-demo' },
+    audience: { principal: 'local-user', policyScope: 'local-demo' },
     budget: { maxDepth: 3, maxNodes: 8 },
   };
 }

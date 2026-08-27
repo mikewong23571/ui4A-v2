@@ -144,7 +144,12 @@ const wordImplementations: ReactComponentImplementation[] = [
   ),
   wordImplementation(
     'entity-link',
-    { label: dynamic(z.string()), rel: dynamic(z.string()) },
+    {
+      label: dynamic(z.string()),
+      rel: dynamic(z.string()),
+      status: dynamic(z.string()).optional(),
+      detail: dynamic(z.string()).optional(),
+    },
     EntityLinkWord,
   ),
   wordImplementation(
@@ -152,6 +157,8 @@ const wordImplementations: ReactComponentImplementation[] = [
     {
       label: dynamic(z.string()),
       rel: dynamic(z.string()),
+      status: dynamic(z.string()).optional(),
+      detail: dynamic(z.string()).optional(),
       actions: dynamic(z.array(z.any())).optional(),
       guardResults: dynamic(z.array(z.any())).optional(),
       fields: dynamic(z.record(z.string(), z.any())).optional(),

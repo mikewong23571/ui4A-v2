@@ -269,6 +269,8 @@ function projectDelegation(delegation: DelegationSnapshot, deps: ProjectDeps): S
       status: delegation.status,
       steps: delegation.steps,
       successes: delegation.successes,
+      // T33"在动"进度行:机械计数派生(successes/steps + 状态),投影数据。
+      resume: `${delegation.successes}/${delegation.steps} · ${delegation.status}`,
       ...(delegation.summary !== undefined ? { summary: delegation.summary } : {}),
       ...(delegation.reason !== undefined ? { reason: delegation.reason } : {}),
     },

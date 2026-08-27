@@ -33,13 +33,13 @@ describe('durable user Sidecar fastpath', () => {
     ).length;
     const request = completePresentationRequest(
       { subject: 'workspace:my-work', intent: 'work overview', delivery: 'canvas' },
-      { requestId: 'workspace:full', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'workspace:full', principal: 'local-user', sourceMessageIds: [] },
     );
 
     const receipt = await getPresentationBroker().present(request);
     expect(receipt).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
     const sidecar = await findActiveSidecar(getDb(), {
-      principal: 'user:local',
+      principal: 'local-user',
       policyScope: 'local-demo',
       subject: 'workspace:my-work',
       intent: 'work overview',
@@ -69,7 +69,7 @@ describe('durable user Sidecar fastpath', () => {
   it('persists concurrent same-requestId workspaces independently across trusted scopes', async () => {
     const request = completePresentationRequest(
       { subject: 'workspace:my-work', intent: 'concurrent overview', delivery: 'canvas' },
-      { requestId: 'workspace:same-request', principal: 'user:local', sourceMessageIds: [] },
+      { requestId: 'workspace:same-request', principal: 'local-user', sourceMessageIds: [] },
     );
 
     const [local, publishing] = await Promise.all([
@@ -84,7 +84,7 @@ describe('durable user Sidecar fastpath', () => {
     expect(local.sidecar?.id).not.toBe(publishing.sidecar?.id);
     await expect(
       findActiveSidecar(getDb(), {
-        principal: 'user:local',
+        principal: 'local-user',
         policyScope: 'local-demo',
         subject: 'workspace:my-work',
         intent: 'concurrent overview',
@@ -93,7 +93,7 @@ describe('durable user Sidecar fastpath', () => {
     ).resolves.toMatchObject({ id: local.sidecar!.id });
     await expect(
       findActiveSidecar(getDb(), {
-        principal: 'user:local',
+        principal: 'local-user',
         policyScope: 'publishing',
         subject: 'workspace:my-work',
         intent: 'concurrent overview',
@@ -141,7 +141,7 @@ describe('durable user Sidecar fastpath', () => {
     const first = await getPresentationBroker().present(
       completePresentationRequest(intent, {
         requestId: 'chat-a:1',
-        principal: 'user:local',
+        principal: 'local-user',
         sourceMessageIds: ['message:a'],
       }),
     );
@@ -149,7 +149,7 @@ describe('durable user Sidecar fastpath', () => {
     const second = await getPresentationBroker().present(
       completePresentationRequest(intent, {
         requestId: 'chat-b:1',
-        principal: 'user:local',
+        principal: 'local-user',
         sourceMessageIds: ['message:b'],
       }),
     );
@@ -161,7 +161,7 @@ describe('durable user Sidecar fastpath', () => {
     expect(second.surfaceUrl).toContain(`sidecar=${encodeURIComponent(first.sidecar!.id)}`);
     await expect(
       findActiveSidecar(getDb(), {
-        principal: 'user:local',
+        principal: 'local-user',
         policyScope: 'local-demo',
         subject: 'post:first-post',
         intent: 'read',
@@ -186,13 +186,13 @@ describe('durable user Sidecar fastpath', () => {
     const first = await getPresentationBroker().present(
       completePresentationRequest(intent, {
         requestId: 'corrupt:seed',
-        principal: 'user:local',
+        principal: 'local-user',
         sourceMessageIds: [],
       }),
     );
     expect(first.status).toBe('ready');
     const active = await findActiveSidecar(getDb(), {
-      principal: 'user:local',
+      principal: 'local-user',
       policyScope: 'local-demo',
       subject: 'post:first-post',
       intent: 'read',
@@ -226,7 +226,7 @@ describe('durable user Sidecar fastpath', () => {
     const repaired = await getPresentationBroker().present(
       completePresentationRequest(intent, {
         requestId: 'corrupt:repair',
-        principal: 'user:local',
+        principal: 'local-user',
         sourceMessageIds: [],
       }),
     );
@@ -309,7 +309,7 @@ describe('durable user Sidecar fastpath', () => {
       domain: 'presentation',
       kind: 'render-recipe-promoted',
       rel: 'recipe:durable',
-      principal: 'user:local',
+      principal: 'local-user',
       channel: 'presentation',
       detail: {
         eventId: 'promotion:event',
@@ -321,13 +321,13 @@ describe('durable user Sidecar fastpath', () => {
     const receipt = await getPresentationBroker().present(
       completePresentationRequest(
         { subject: 'post:first-post', intent: 'review', delivery: 'canvas' },
-        { requestId: 'recipe:request', principal: 'user:local', sourceMessageIds: [] },
+        { requestId: 'recipe:request', principal: 'local-user', sourceMessageIds: [] },
       ),
     );
     expect(receipt).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
     await expect(
       findActiveSidecar(getDb(), {
-        principal: 'user:local',
+        principal: 'local-user',
         policyScope: 'local-demo',
         subject: 'post:first-post',
         intent: 'review',
@@ -346,7 +346,7 @@ describe('durable user Sidecar fastpath', () => {
       },
     });
     const stored = await findActiveSidecar(getDb(), {
-      principal: 'user:local',
+      principal: 'local-user',
       policyScope: 'local-demo',
       subject: 'post:first-post',
       intent: 'review',

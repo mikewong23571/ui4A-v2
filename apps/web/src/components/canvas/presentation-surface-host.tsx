@@ -261,7 +261,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
           body: JSON.stringify({
             schemaVersion: 1,
             requestId: crypto.randomUUID(),
-            principal: 'user:local',
+            principal: 'local-user',
             subject: requestedFocuses[0],
             intent: 'read',
             delivery: 'canvas',

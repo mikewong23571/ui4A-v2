@@ -184,6 +184,13 @@ export function projectWorkThread(
   deps: ProjectDeps,
 ): SirenEntity {
   const declarations = threadActionsForStatus(thread.status);
+  // T33"上次停在哪":首个 active 引用的状态指针任务语言行(无 active 回退线程
+  // 状态);纯投影派生,渲染器零模板。
+  const firstActive =
+    thread.references.active.length > 0
+      ? statusPointer(thread.references.active[0]!, snapshot)
+      : undefined;
+  const resume = `停在「${firstActive?.status ?? thread.status}」`;
   return {
     class: ['work-thread', thread.status],
     properties: {
@@ -194,6 +201,7 @@ export function projectWorkThread(
       goal: thread.goal,
       status: thread.status,
       context: [...thread.references.context],
+      resume,
       active: thread.references.active.map((rel) => statusPointer(rel, snapshot)),
       approval: thread.references.approval.map((rel) => statusPointer(rel, snapshot)),
       'recent-events': [...thread.recentEventSeqs],

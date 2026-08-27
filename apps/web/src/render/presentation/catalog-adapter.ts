@@ -67,6 +67,8 @@ const words: Readonly<Record<string, A2uiWordAdapter>> = {
     bindings: {
       label: { prop: 'label', transform: 'value' },
       rel: { prop: 'rel', transform: 'value' },
+      status: { prop: 'status', transform: 'value' },
+      detail: { prop: 'detail', transform: 'value' },
     },
   },
   'member-card': {
@@ -74,6 +76,8 @@ const words: Readonly<Record<string, A2uiWordAdapter>> = {
     bindings: {
       label: { prop: 'label', transform: 'value' },
       rel: { prop: 'rel', transform: 'value' },
+      status: { prop: 'status', transform: 'value' },
+      detail: { prop: 'detail', transform: 'value' },
       actions: { prop: 'actions', transform: 'value' },
       guardResults: { prop: 'guardResults', transform: 'value' },
       fields: { prop: 'fields', transform: 'value' },

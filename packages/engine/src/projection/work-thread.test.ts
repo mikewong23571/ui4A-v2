@@ -233,6 +233,31 @@ describe('Work Thread Siren projection', () => {
     expect(THREAD_ARCHIVE_ACTION.title).toBe('归档工作线');
   });
 
+  it('projects a task-language resume line from the first active status pointer (T33)', () => {
+    const entity = project(snapshot(), 'thread:release-1', deps);
+    // active[0]=post:known(node published)→ 停在「published」;合同数据,零渲染器模板
+    expect(entity?.properties).toMatchObject({ resume: '停在「published」' });
+  });
+
+  it('falls back to the thread status when no active reference exists (T33)', () => {
+    const empty: EngineSnapshot = {
+      ...snapshot(),
+      threads: {
+        'release-1': {
+          ...snapshot().threads!['release-1']!,
+          references: {
+            context: [],
+            active: [],
+            approval: [],
+            event: [],
+          },
+        },
+      },
+    };
+    const entity = project(empty, 'thread:release-1', deps);
+    expect(entity?.properties).toMatchObject({ resume: '停在「open」' });
+  });
+
   it('returns undefined for an unknown exact thread without inferring membership', () => {
     expect(project(snapshot(), 'thread:not-created', deps)).toBeUndefined();
   });

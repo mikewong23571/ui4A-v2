@@ -37,6 +37,8 @@ function asOptionalFields(value: unknown): Record<string, unknown> | undefined {
 export function MemberCardWord(props: WordProps) {
   const label = asRequiredString(props.label, 'member-card', 'label');
   const rel = asRequiredString(props.rel, 'member-card', 'rel');
+  const status = asOptionalString(props.status, 'member-card', 'status');
+  const detail = asOptionalString(props.detail, 'member-card', 'detail');
   const actions = asOptionalActions(props.actions);
   const guardResults = asOptionalGuardResults(props.guardResults);
   const fields = asOptionalFields(props.fields);
@@ -57,7 +59,13 @@ export function MemberCardWord(props: WordProps) {
       className="w-full rounded-lg border bg-card p-3 text-card-foreground"
     >
       <p className="text-sm font-medium text-foreground">{label}</p>
-      <p className="mt-0.5 font-mono text-xs text-muted-foreground">{rel}</p>
+      {detail !== undefined && (
+        <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>
+      )}
+      <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+        {status !== undefined ? `${status} · ` : ''}
+        {rel}
+      </p>
       {actions.length > 0 && (
         <section aria-label="动作" className="mt-2">
           <ActionGroup entity={entity} />
