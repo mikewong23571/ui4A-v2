@@ -26,17 +26,17 @@
 - [x] Task: spec/plan 回改对齐 D49 [129388e]
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) [129388e]
 
-## Phase B: Medium 测试缺口(Q1/Q2)
+## Phase B: Medium 测试缺口(Q1/Q2) [checkpoint: 149c7ad]
 
-- [ ] Task: Q1 e2e raw exact 断言强化
+- [x] Task: Q1 e2e raw exact 断言强化 [bc3f2b7]
   - `e2e/interaction/chat-citations.spec.ts` 的 raw 步骤补 `JSON.parse` 后
     与 `/api/entity` 新鲜授权响应深等断言,并断言不含事件/provenance/
     hydrated facts 键;mutation 抽查:在 drawer 输入前拼装额外字段 → 变红
-- [ ] Task: Q2 property 套件组合树覆盖
+- [x] Task: Q2 property 套件组合树覆盖 [149c7ad]
   - `apps/web/src/render/property.test.ts` 加声明驱动的多区域组合 fixture
     (或生成器):组合树 binding 零字面量 + deref 与实体快照一致(I2 口径);
     mutation 抽查:注入字面量值 → 变红
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) [149c7ad]
 
 ## Phase C: Low 行为修复(D49 已决项 + 纯修复项)
 
