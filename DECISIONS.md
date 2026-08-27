@@ -783,3 +783,30 @@
 
 纯修复项确认:R5/R6/R7/R10/R11/R12/R13/R15/R16/R17/R18/R19/R20 无裁决分歧,
 按 spec 直接进入实施;流程项 R21/R22 与归后续 R23–R27 按计划处置。
+
+## D49 T32 质量评审两个判断点的裁决(2026-08-27,T32 Phase A)
+
+1. **Q3 审计下钻落点是否 raw 镜头化(T31 R23 承接)**:候选是(a)豁免记录,
+   维持 `thread.tsx` 的 `stepAuditHref` 指向 `/api/events?afterSeq=N` 的
+   未组装 JSON;(b)把活动条目下钻改为 raw 抽屉的事件镜头。**采纳(a)**:
+   D47 第 3 问明文"事件切片属于审计链接,provenance 属 why;raw v1 只展示
+   原始 Siren JSON"——活动条目是审计链接,落点是事件切片(机械 JSON、
+   零组装、零 AI),与 raw 抽屉(Siren Entity 合同镜头)是两个口径各归其位。
+   **否决(b)**:事件切片不是 Siren Entity,塞进 raw 抽屉违反 D47 "raw 不
+   包含事件"的否决项,且会让审计通道依赖 React 呈现(违背"raw 是验钞灯"
+   的零组装纪律)。T31 R23 的关切(主任务路径落裸 JSON)按本条登记为有意
+   设计;后续若要人话化审计视图,须新决策且不得动 raw 抽屉口径。
+
+2. **Q6 单/组合依赖装配两套 id 方案**:候选是(a)单主体依赖统一经 compose
+   内核产出;(b)注释锚定两套方案的对应关系。**采纳(b)**:`runtime.ts` 的
+   `currentDependencies()`(单主体,`entity:<rel>` 方案)与 `compose.ts` 的
+   canonical 产出(组合,`composition:<id>@<v>:<region>:…` 方案)虽形状不同,
+   但 `dependencyDecision` 比对永远同主体同源(plan 时存入 sidecar 与命中时
+   重算走同一装配),不存在跨方案失配;风险仅在未来单侧修改。锚定注释 +
+   对应关系说明即可达成防御。**否决立即统一(a)**:须改 shrink-only 基线
+   目录内核(`packages/engine/src/presentation`)且使全部既有 sidecar 依赖
+   指纹漂移触发重规划,扰动大于收益;统一装配留待未来真正改 dependency
+   语义的 track(届时按 GR3 净不增长纪律执行)。
+
+纯修复项确认:Q1/Q2/Q4/Q5/Q7/Q8/Q9/Q10 无裁决分歧,按 spec 直接进入实施;
+归后续 Q11–Q14 按计划处置。
