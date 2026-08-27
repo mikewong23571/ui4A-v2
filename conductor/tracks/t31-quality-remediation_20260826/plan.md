@@ -33,7 +33,7 @@
 - [x] Task: R1 route 级 activity/eventSeq 接线行为测试 [7a4a3e6]
   - 在 route 级测试断言真实 SSE step 帧的 activity/eventSeq 投影(不依赖
     合成 SSE);mutation 抽查:破坏 sitemap 标题接线 → 测试变红
-- [ ] Task: R2 presence 频率上限合同测试
+- [x] Task: R2 presence 频率上限合同测试 [bc8d881]
   - 窗口计数达上限 → 429/结构化拒绝;窗口滑动后恢复;有界口径与
     `PRESENCE_MAX_EVENTS_PER_WINDOW` 对拍;mutation 抽查:移除上限 → 变红
 - [ ] Task: R3 消费方矩阵行为化
