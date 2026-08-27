@@ -42,7 +42,7 @@
     源码文本断言退役或降为辅助;不钉死 site 词表值(T27 改名中)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
-## Phase C: Low 行为修复(D48 已决项 + 纯修复项)
+## Phase C: Low 行为修复(D48 已决项 + 纯修复项) [checkpoint: 505370e]
 
 - [x] Task: T29 口径组(R8/R9/R10) [fecc9c5]
   - 按 D48 落 scopeFrom 口径、clientView 分层、presence 端点 scope 校验对齐;
@@ -63,7 +63,7 @@
     R16 补真实 walkthrough bundle 的 meta scope wire 级 32 KiB 预算断言
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
-## Phase D: 卫生与流程可追溯性(R17–R22)
+## Phase D: 卫生与流程可追溯性(R17–R22) [checkpoint: 060d9d2]
 
 - [x] Task: 卫生组(R17/R18/R19/R20) [981a08b]
   - `readSitemapTitles` 死代码退役 + 头注释修正;`DriverContext.sitemap`
@@ -79,7 +79,7 @@
 
 ## Phase E: 归后续落注 + 验收收尾
 
-- [ ] Task: 归后续落注(R23–R27)
+- [x] Task: 归后续落注(R23–R27) [f82d9d2]
   - R23/R25 落注 T28 spec/plan(raw 模式与呈现领土);R24/R26/R27 落注
     T27 spec/plan(收缩窗口与线消费接线);落注为各文档"承接自 T31
     评审"小节一行,不改目标 track 范围
