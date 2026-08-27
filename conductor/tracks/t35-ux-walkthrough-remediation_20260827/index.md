@@ -4,6 +4,7 @@
 - [Plan](./plan.md) — Phase A–F 任务分解;每 Phase 以视觉验收 Checkpoint 收口
 - [User Stories](./user-stories.md) — S1–S8 文档化视觉验收锚(验收只认走查证据)
 - [Findings](./findings.md) — 问题实情台账(唯一事实来源,F-XX 持续追加)
+- [Design Notes](./design-notes.md) — 设计审查记录(工作线承载业务目标的四层判断)
 - [Metadata](./metadata.json)
 - Evidence: `evidence/2026-08-27-initial-walkthrough/`(R1 全站走查 29 张)
 
