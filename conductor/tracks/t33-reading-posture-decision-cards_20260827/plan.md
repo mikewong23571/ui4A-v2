@@ -88,19 +88,26 @@
     卡片退场计数即变;与 chat 写同裁决断言(actor 区分,门相同)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
-## Phase E: 工作线一句话 + 在动进度轨
+## Phase E: 工作线一句话 + 在动进度轨 [checkpoint: cbb58a1]
 
-- [ ] Task: Red→Green——thread/delegation 投影补 `presentation.fields` 角色声明
+- [x] Task: Red→Green——thread/delegation 投影补任务语言 resume 行 [cbb58a1]
+  - 实施口径修正:角色声明通道改为投影派生属性(properties.resume)+ 规划器通用
+    可选绑定(status/detail),替代原计划的两个新词条(resume-point/progress)——
+    更小刀、零新词、同一验收(一句话+进度呈现);计划口径偏差按 in-flight
+    refinement 记录
   - thread:statusPointer/recent-events 进入角色通道;delegation:steps/successes;
     投影单测先行
-- [ ] Task: Red→Green——`resume-point` 与 `progress` 词条
+- [x] Task: Red→Green——成员 status/detail 绑定与词条渲染(替代新词条方案) [cbb58a1]
   - `resume-point`:「停在「X」 · 时间」框架文字通用固定,节点名/时间全部合同
     插值(D47.1 模式,零实体类型分支);`progress`:steps/successes 机械计数条;
     catalog 版本再升级
-- [ ] Task: e2e——首页要素断言
+- [x] Task: e2e——首页要素断言 [cbb58a1]
+  - 施工发现(记入 notes):① 组合区域 rehydrate 模式冻结成员词选择 → my-work
+    声明 v2(invalidate)演进;② 潜伏双 principal 分裂(user:local vs local-user)
+    → 统一为 local-user(生产 3 处+测试 9 文件),否则规划永远看不到 UI 建的线
   - 工作线成员一句话 + 时间;在动成员进度呈现;`data-nav`/`data-action` 注记
     齐全(I3)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase F: 验收收口
 
