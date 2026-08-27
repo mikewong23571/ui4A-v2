@@ -106,8 +106,9 @@ describe('Canvas semantic Presentation runtime', () => {
     expect(screen.getByText(/这是第一篇完整文章/)).toBeTruthy();
     expect(screen.getByText('published')).toBeTruthy();
     expect(screen.queryByText('essay')).toBeNull();
+    // T35 F-24:常规 focus 页不激活蓝框(data-active 只服务 ?concern= 锚点)。
     const surface = document.querySelector('[data-concern="presentation:post:first-post"]');
-    expect(surface?.getAttribute('data-active')).toBe('true');
+    expect(surface?.getAttribute('data-active')).toBeNull();
     expect(surface?.textContent).not.toContain('fields=');
     fireEvent.click(screen.getByRole('button', { name: '查看原始合同' }));
     expect(screen.getByTestId('raw-contract-json').textContent).toContain('essay');

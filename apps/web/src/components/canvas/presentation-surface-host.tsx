@@ -498,10 +498,9 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
                   id: surfaceId,
                   generation,
                   concern,
-                  active:
-                    requestedFocuses.length > 0
-                      ? concern.startsWith('presentation:')
-                      : concern === activeConcern,
+                  // T35 F-24:data-active 只服务 ?concern= 回执锚点(S5);
+                  // 常规 focus 页不得恒亮蓝框。
+                  active: concernParam !== undefined && concern === activeConcern,
                   surface,
                   warnings,
                   diagnostics,
