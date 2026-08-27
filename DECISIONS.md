@@ -748,3 +748,38 @@
    region-unavailable 的 why 细节也只允许声明 region、availability 与固定 code。否决(b)：空 slot
    无法区分合法空集合与授权/编译降级，违反 D45；否决首屏直接显示 code：泄漏机制信息并违反
    T24 诚实化口径。所有文案跨实体通用，禁止区域、Application 或实体类型特判。
+
+## D48 T31 质量评审四个判断点的裁决(2026-08-27,T31 Phase A)
+
+1. **R4 `thread-id-available` 层序归位**:候选是(a)前移 guard 层,在 schema
+   参数校验之前执行重复创建检查;(b)重归类为 schema 后置检查并修正层序自述。
+   **采纳(a)**:`declaration → guard → schema` 是机械裁决不变量,
+   `work-thread-command.ts` 在 Ajv 校验后才以 `guard-failed` 拒绝重复创建,
+   与自述不符。将 `thread-id-available`(需先 parse detail 取 threadId)移到
+   guard 判定之后、参数 schema 校验之前执行;功能等价,层序与 `guard-failed`
+   分类同时成立。**否决(b)**:用重定义检查位置的方式迁就实现顺序,会让
+   "guard 先于 schema"的口径对后续读者失真。
+
+2. **R8 `scopeFrom` 空 grantedScopes 口径**:候选是(a)fail-closed——
+   `grantedScopes` 为空时抛错拒绝;(b)维持现状(空表放行首个非空候选)。
+   **采纳(a)**:授权输入为空意味着"没有任何已授权 scope",此时接受任何候选
+   scope 都是无授权放行。当前调用方均保证非空,但该函数是服务层唯一 scope
+   收口点,fail-closed 使误用面变成显式错误而非静默越权,并配行为测试锁定。
+
+3. **R9 clientView.presence 的优先级分层**:候选是(a)降 presence 同级,
+   新增第三优先档;(b)记录 explicit 槽位的有意如此及理由。**采纳(b)**:
+   `clientView` 是本次请求显式携带的视图信号,与 presence 上报同信任级但
+   时间上最新、且随请求显式给出,放进 explicit 语义准确("显式"指请求明示,
+   不指更高特权);scope 越权始终由 `grantedScopes` 收口,无安全暴露。
+   T29 spec"显式是正典"指的正是请求显式信号的正典地位,不算字面分层偏差。
+   该分层语义由行为测试锁定(改 explicit 值 → situation 同变,仍在授权集内)。
+
+4. **R14 loop_exception/error 帧 LLM phrasing 边界**:候选是(a)补齐——兜底
+   error 帧也接 LLM 表述;(b)记录 spec 边界,保持机械结构化 reason。
+   **采纳(b)**:loop_exception 是循环壳异常的最后兜底,该路径必须零新增
+   故障面(LLM 调用在异常兜底里可能再失败或悬挂,破坏确定性关流);T24 失败
+   分层的 LLM 表述覆盖 final 帧全部失败来源,error 帧由客户端中性结构化展示,
+   诚实呈现不缺位。此边界作为 T24 spec 的既定豁免登记,后续若补齐须新决策。
+
+纯修复项确认:R5/R6/R7/R10/R11/R12/R13/R15/R16/R17/R18/R19/R20 无裁决分歧,
+按 spec 直接进入实施;流程项 R21/R22 与归后续 R23–R27 按计划处置。
