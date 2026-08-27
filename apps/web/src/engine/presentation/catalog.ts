@@ -3,7 +3,7 @@ import type { SurfaceCatalog } from '@ui4a/engine';
 /** Semantic catalog planned by AI and compiled to the concrete A2UI catalog at runtime. */
 export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
   id: 'urn:ui4a:presentation:semantic',
-  version: 'semantic-v4',
+  version: 'semantic-v5', // T35 F-06:规划器簿记数字跳过/成员状态标题化,版本 +1 使缓存面失效
   words: {
     heading: {
       roles: ['identity'],
