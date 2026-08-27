@@ -13,7 +13,7 @@
 > 前置确认:T27/T28/T30 已归档(消费对象);D45/D46/D47 已落 DECISIONS.md。
 > 实施前必读:根 `AGENTS.md`、`apps/web/AGENTS.md`、`conductor/workflow.md`。
 
-## Phase A: 裁决固化 → DECISIONS(D50)
+## Phase A: 裁决固化 → DECISIONS(D50) [checkpoint: b33bc28]
 
 - [x] Task: 读/写姿态裁决落 DECISIONS.md D50 [a8a143a]
   - 两小节:① D47.4 姿态细化——actions 任何 intent 下始终保留且为一等控件;带参数
