@@ -195,6 +195,42 @@
 - **修复方向(Phase D,与 F-13 合并)**: 换 shadcn DropdownMenu(Radix,已有 ui 基座):触发键用 ChevronDown 图标 + aria-expanded;菜单项带图标与说明;路由变化自动收起;点击外部关闭;menu 样式与 meta 控制台卡片区同阶(shadow-md + rounded-lg + min-w)。箭头字符"⌄"从代码库清退。
 - **证据**: `evidence/2026-08-27-initial-walkthrough/23_delegations.png`(菜单悬浮不收)。
 
+
+---
+
+## R2 试用轮(2026-08-28,S9–S11 新应用创建与独立审查)
+
+| 轮次 | 日期 | 环境 | 范围 | 新增 |
+|---|---|---|---|---|
+| R2 新应用独立审查 | 2026-08-28 | 本地 dev(bundle v4,新库) | todo/ideas 全生命周期 + meta 草稿修订闭环 | F-20~F-21(F-17 于本轮发现并当场修复) |
+
+## F-17 flow 别名导致动作适配器 subject-mismatch 误拒(P0,已修复)
+
+- **状态**: rechecked(2026-08-27 关闭,commit 见 fix t35 F-17)
+- **发现**: R2(2026-08-27,S9 首次捕捉实测)
+- **现象**: 向导表单提交报机械错 "[subject-mismatch] Reloaded entity does not identify itself as \"flow:todo-capture\""——surface 动作适配器 fresh-read 按注视 subject 发起,服务端 flow 别名以实例 rel 返回,适配器按 rel 相等性拒绝。
+- **修复**: action-adapter 采纳服务端返回实体的规范 rel 作为 exec 目标(服务端是身份权威;action/guard/schema 校验仍全部针对返回实体,失败保持关闭);单测锁定别名提交与 refreshSubjects 双侧覆盖。
+- **复验记录**: 2026-08-28 新库实测捕捉闭环全通;截图 `evidence/2026-08-28-S9S10/`。
+
+## F-20 meta 加动作草稿静默丢动作(P1)
+
+- **状态**: open
+- **严重度**: P1(产品内治理路径的正确性)
+- **发现**: R2(2026-08-28,S11 激活后实测)
+- **现象**: S11 修订流程(加动作 restore→archived 节点)→提交校验→人类批准→v2 激活,全链路留痕完整;但激活后的 v2 定义里 archived 节点为空——加动作表单只收 node/name/title/to/method,不声明 effect(transition),组稿管线把无 effect 声明的动作静默丢弃,校验器九项检查全部放行。结果:人类批准了一个与预期不符的定义。
+- **复现**: meta → todo-item → 修订 → 填写加动作参数(archived/restore/恢复/open) → 提交校验 → 批准激活 → 查看 v2 定义 archived 节点为空。
+- **证据**: `evidence/2026-08-28-S9S10/`(S11 激活截图);事件 97/99(definition-revised/definition-submitted)。
+- **处置**: 待排期(建议与 D 轮并行修:加动作表单补 effect/transition 声明,或校验器对"有 to 无 effect"报 invalid);修复前 findings 挂账。
+
+## F-21 集合成员状态显示机器节点名而非节点标题(P1)
+
+- **状态**: open
+- **严重度**: P1(任务语言,F-05 家族)
+- **发现**: R2(2026-08-28)
+- **现象**: todos/ideas 集合成员卡显示 `open · todo:t35`、`developing · idea:item`——流程定义里节点明明有中文 title(进行中/已捕捉/发展中),成员卡用的是 node NAME。article 集合同样(published/offline)。
+- **修复方向**: 成员卡状态投影按出生定义取节点 title(合同数据插值,D47.1);节点名至多进 title 悬浮。
+- **证据**: `evidence/2026-08-28-S9S10/S9_completed_reopen.png`。
+
 ---
 
 ## 复验记录(回填区)
