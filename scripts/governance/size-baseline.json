@@ -48,15 +48,15 @@
     },
     {
       "path": "apps/web/src/db",
-      "lines": 4014,
+      "lines": 4155,
       "limit": 4000,
-      "note": "T29 presence 投影(presence.ts/presence.test.ts + 迁移 v2)在 T22 关闭前入库;用户授权登记,db 目录拆分或 T22 基线裁决时一并退役"
+      "note": "T29 presence 投影(presence.ts/presence.test.ts + 迁移 v2)在 T22 关闭前入库;用户授权登记,db 目录拆分或 T22 基线裁决时一并退役;T31 R2 presence 频率上限合同测试(presence.rate-limit.test.ts 等)再 +141(T31 spec 红线强制验收证据),shrink-only 自 T31 登记起算"
     },
     {
       "path": "scripts/t22",
-      "lines": 14424,
+      "lines": 14425,
       "limit": 4000,
-      "note": "T22 在途 track 所有;T23 不处置,T22 关闭时按 GR5 裁决(见 risk-inventory R4);T29 realm-bootstrap 列表视图修复 +16(用户授权)"
+      "note": "T22 在途 track 所有;T23 不处置,T22 关闭时按 GR5 裁决(见 risk-inventory R4);T29 realm-bootstrap 列表视图修复 +16(用户授权);47faabd 非 root darwin chown 守卫净增 +1(2026-08-27 外部修复)"
     },
     {
       "path": "e2e",
