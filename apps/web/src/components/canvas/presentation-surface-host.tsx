@@ -81,6 +81,11 @@ interface SurfaceEntry {
 
 const CANVAS_LOAD_TIMEOUT_MS = 15_000;
 
+// T32 Q5(D47 第 5 问口径):载入失败首屏只显示固定人话,零机制标识
+// (URL/HTTP 状态/sidecar id 不上首屏);结构化细节作为诊断进 why 抽屉。
+const CANVAS_LOAD_FAILED_PHRASE = '画布内容暂时无法载入，请稍后重试';
+const SURFACE_LOAD_FAILED_PHRASE = '部分内容暂时无法显示，详情见「为什么这样展示」';
+
 /** 把不支持 signal 的缓存/规划 Promise 纳入本轮取消域，旧轮结果不得落 state。 */
 async function withAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) throw signal.reason;
@@ -139,6 +144,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
   );
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
+  const [loadIssues, setLoadIssues] = useState<PresentationDiagnostic[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   // T24「为什么这样展示」抽屉数据源与 T28 exact Siren verification lens。
@@ -181,6 +187,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
     );
     setLoading(true);
     setErrors([]);
+    setLoadIssues([]);
     setNotice(null);
     setSidecarMeta(undefined);
     setCatalogId(undefined);
@@ -355,6 +362,16 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
       );
 
       const failed: string[] = [];
+      const failedIssues: PresentationDiagnostic[] = [];
+      const noteFailure = (nodeId: string, error: unknown): void => {
+        failed.push(SURFACE_LOAD_FAILED_PHRASE);
+        failedIssues.push({
+          code: 'surface-load-failed',
+          nodeId,
+          path: '/canvas',
+          message: error instanceof Error ? error.message : String(error),
+        });
+      };
       const planned: {
         surfaceId: string;
         concern: string;
@@ -383,9 +400,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
             diagnostics: plan.bundle.issues,
           });
         } catch (error) {
-          failed.push(
-            `presentation:${requestedFocus}:${error instanceof Error ? error.message : String(error)}`,
-          );
+          noteFailure(`presentation:${requestedFocus}`, error);
         }
       } else {
         for (const requestedFocus of requestedFocuses) {
@@ -410,9 +425,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
               diagnostics: plan.bundle.issues,
             });
           } catch (error) {
-            failed.push(
-              `presentation:${requestedFocus}:${error instanceof Error ? error.message : String(error)}`,
-            );
+            noteFailure(`presentation:${requestedFocus}`, error);
           }
         }
       }
@@ -428,7 +441,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
             diagnostics: [],
           });
         } catch (error) {
-          failed.push(`${spec.concern}:${error instanceof Error ? error.message : String(error)}`);
+          noteFailure(spec.concern, error);
         }
       }
 
@@ -455,11 +468,21 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
         }),
       );
       setErrors(failed);
+      setLoadIssues(failedIssues);
     } catch (error) {
       if (generation !== loadGenerationRef.current) return;
       const reason = controller.signal.aborted ? controller.signal.reason : error;
       if (reason instanceof Error && reason.name === 'AbortError') return;
-      setErrors([reason instanceof Error ? reason.message : String(reason)]);
+      // 首屏固定人话;机制细节(URL/HTTP 状态/原始 message)进抽屉诊断。
+      setErrors([CANVAS_LOAD_FAILED_PHRASE]);
+      setLoadIssues([
+        {
+          code: 'canvas-load-failed',
+          nodeId: 'canvas',
+          path: '/canvas',
+          message: reason instanceof Error ? reason.message : String(reason),
+        },
+      ]);
     } finally {
       clearTimeout(timeout);
       if (generation === loadGenerationRef.current) {
@@ -513,7 +536,10 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
         <CanvasWhyDrawer
           surfaceIds={surfaces.map((entry) => entry.id)}
           catalogId={catalogId}
-          diagnostics={uniqueDiagnostics(surfaces.flatMap((entry) => entry.diagnostics))}
+          diagnostics={uniqueDiagnostics([
+            ...surfaces.flatMap((entry) => entry.diagnostics),
+            ...loadIssues,
+          ])}
           sidecarMeta={sidecarMeta}
           promotionPending={promotionPending}
           explanation={explanation}

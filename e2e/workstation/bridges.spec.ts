@@ -57,7 +57,12 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
       `${SCENARIO_BASE}/canvas?focus=flow%3Aghost&scope=publishing&thread=release-1`,
     );
     await expect(page.locator('[data-surface]')).toHaveCount(0);
+    // T32 Q5:首屏固定人话,机制细节(实体缺失 message)进 why 抽屉。
     await expect(page.locator('[data-testid="canvas-errors"]')).toContainText(
+      '部分内容暂时无法显示',
+    );
+    await page.getByRole('button', { name: '为什么这样展示' }).click();
+    await expect(page.locator('[data-testid="canvas-why-diagnostics"]')).toContainText(
       '实体 "flow:ghost" 不存在',
     );
   });

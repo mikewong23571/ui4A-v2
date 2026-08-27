@@ -300,10 +300,14 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
 
     render(<EntityCacheProvider>{testCase.mount()}</EntityCacheProvider>);
 
-    expect((await screen.findByTestId('canvas-errors')).textContent).toContain(
+    // T32 Q5 迁移:首屏固定人话,机制细节(sidecar id/HTTP)只进 why 抽屉。
+    const errors = await screen.findByTestId('canvas-errors');
+    expect(errors.textContent).toBe('画布内容暂时无法载入，请稍后重试');
+    fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
+    expect(screen.getByTestId('canvas-why-diagnostics').textContent).toContain(
       `Sidecar ${fixture.sidecarId} → HTTP 503`,
     );
-    expect(screen.getByRole('button', { name: '为什么这样展示' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '重新载入' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '重新载入' }));
     await waitFor(() =>
       expect(
@@ -316,5 +320,39 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
         }),
       ).toHaveLength(2),
     );
+  });
+});
+
+describe('canvas 载入失败呈现(T32 Q5:首屏零机制标识,细节进 why 抽屉)', () => {
+  it('sidecar 载入失败:主区域只显示固定人话,HTTP 状态/sidecar id 不上首屏,细节在抽屉可达', async () => {
+    window.history.pushState({}, '', '/canvas?focus=post%3Afail');
+    const source = sourceEntity('post:fail', '失败对象');
+    const fixture = presentationContract({
+      subject: 'post:fail',
+      source,
+      failSidecar: true,
+    });
+    vi.stubGlobal('fetch', fixture.fetchMock);
+
+    render(
+      <EntityCacheProvider>
+        <CanvasBody />
+      </EntityCacheProvider>,
+    );
+
+    const errors = await screen.findByTestId('canvas-errors');
+    const text = errors.textContent ?? '';
+    expect(text.length).toBeGreaterThan(0);
+    // 首屏固定人话(D47 第 5 问口径):不携带 URL、HTTP 状态、sidecar id。
+    expect(text).not.toContain('HTTP');
+    expect(text).not.toContain(fixture.sidecarId);
+    expect(text).not.toContain('/api/');
+
+    // 机制细节保留在 why 抽屉(审计可达,不静默)。
+    fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
+    const diagnostics = await screen.findByTestId('canvas-why-diagnostics');
+    const detail = diagnostics.textContent ?? '';
+    expect(detail).toContain('HTTP 503');
+    expect(detail).toContain(fixture.sidecarId);
   });
 });

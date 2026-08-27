@@ -148,8 +148,13 @@ describe('Canvas semantic Presentation runtime', () => {
     );
     render(<CanvasPage />);
 
-    expect((await screen.findByTestId('canvas-errors')).textContent).toContain('目录协商失败');
+    // T32 Q5 迁移:首屏固定人话零机制词;目录协商细节进 why 抽屉,fail-closed 语义不变。
+    expect((await screen.findByTestId('canvas-errors')).textContent).toBe(
+      '画布内容暂时无法载入，请稍后重试',
+    );
     expect(document.querySelector('[data-surface]')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
+    expect(screen.getByTestId('canvas-why-diagnostics').textContent).toContain('目录协商失败');
   });
 
   it('reloads the Surface while reusing unchanged entity cache entries', async () => {
