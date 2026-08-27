@@ -1,0 +1,19 @@
+T31 Phase C Task: T26 投影/裁决组(R4/R5/R6/R7)
+
+变更(均先 Red→Green→反向验证):
+- R4(D48 a) work-thread-command.ts:thread-id-available 检查移到 ownerGuards 之后、
+  Ajv schema 之前,层序与自述一致;'重复创建+参数非法'组合由 schema-invalid 变为
+  guard-failed(归位语义后果,测试钉住);顺带以 Object.hasOwn 修复 id=constructor
+  这类 Object.prototype 键在旧位置被误判重复创建的问题;
+- R5 work-thread.ts referenceLinks:context 类成员统一走 statusPointer,
+  dangling 时 rel=['context','dangling'](message:<turnId> 成为可审计 dangling ref,
+  D44 兑现到全部成员类);既有 links 断言逐字节相等零漂移;
+- R6 chat-thread.ts:正常 skip 路径保持静默;真异常(readSnapshot/exec throw)记
+  [ui4a] 结构化 warn 后仍 return skipped(chat 不阻断语义不变);
+- R7 application-scope.ts:删除 entity.class.includes('work-thread') 硬编码,裁剪
+  改由 sitemap 声明(scope==='principal' && memberRelPrefix)经
+  governedByPrincipalMemberFamily 推导;service-sitemaps threads surface 已声明该元数据;
+  无声明时 class 也不再触发裁剪(negative control 测试)。
+治理:apps/web/src/auth 目录 4074→4166 登记(随同提交的 governance chore)。
+编排 agent 亲验:R8 mutation 之外,R6 删除 console.warn → 测试红 → 复原绿;
+projection/auth/chat-thread 套件批跑 126 passed。自治验收。
