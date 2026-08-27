@@ -4,7 +4,7 @@
  * ActionRunner(RJSF):字段 schema 来自实体 actions,提交按钮带
  * data-action(铁律 3:可提交元素必映射已声明动作)。
  */
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { derefSpec } from '../deref';
@@ -62,7 +62,8 @@ describe('form 词条', () => {
       </ActionSubmitProvider>,
     );
 
-    // 字段 schema 来自实体 actions(RJSF 输入)
+    // D50:默认收起,先打开表单;字段 schema 来自实体 actions(RJSF 输入)
+    fireEvent.click(screen.getByRole('button', { name: '填写下线参数' }));
     expect(await screen.findByText('下线原因')).toBeTruthy();
     // 推送按钮(无字段动作)
     expect(screen.getByRole('button', { name: '归档' })).toBeTruthy();

@@ -49,7 +49,7 @@ afterEach(() => {
 });
 
 describe('ActionRunner T16 schema-form interaction', () => {
-  it('keeps the inline form accessible and supports cancel, reopen, Escape, and focus return', async () => {
+  it('renders collapsed by default and keeps the opened form accessible (cancel, reopen, Escape, focus return)', async () => {
     const execFn = acceptedExec();
     render(
       <ActionRunner
@@ -59,7 +59,11 @@ describe('ActionRunner T16 schema-form interaction', () => {
       />,
     );
 
+    // D50:参数表单单一默认收起;打开是零业务事件的 presentation interaction。
     const trigger = screen.getByRole('button', { name: '填写编辑元数据参数' });
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByLabelText(/文章标题/)).toBeNull();
+    fireEvent.click(trigger);
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByLabelText(/文章标题/)).toBeTruthy();
     expect(screen.getByText('用于列表和搜索。')).toBeTruthy();
@@ -101,6 +105,7 @@ describe('ActionRunner T16 schema-form interaction', () => {
     );
 
     const trigger = screen.getByRole('button', { name: '填写编辑元数据参数' });
+    fireEvent.click(trigger);
     fireEvent.click(await screen.findByRole('button', { name: '取消' }));
     expect(execFn).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(trigger);

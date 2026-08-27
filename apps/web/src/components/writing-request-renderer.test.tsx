@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { fold, project, type SirenEntity } from '@ui4a/engine';
@@ -39,6 +39,8 @@ describe('Writing request human Renderer contract', () => {
     vi.stubGlobal('fetch', vi.fn());
     const entity = entityAt('brief-draft');
     render(<EntityView rel="writing-request:main" entity={entity} />);
+    // D50:开始写作表单默认收起,先打开再断言 brief 字段
+    fireEvent.click(screen.getByRole('button', { name: '填写开始写作参数' }));
 
     expect(screen.getByLabelText(/写作目标/)).toBeTruthy();
     expect(screen.getByLabelText(/目标读者/)).toBeTruthy();
@@ -59,6 +61,7 @@ describe('Writing request human Renderer contract', () => {
     const declared = review.actions.map(({ name }) => name);
     expect(declared).toEqual(['accept-writing-result', 'reject-writing-result']);
     expect(screen.getByRole('button', { name: '接受写作结果' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '填写驳回写作结果参数' }));
     expect(screen.getByLabelText(/驳回原因/)).toBeTruthy();
     expect(screen.queryByText(/发布/)).toBeNull();
   });

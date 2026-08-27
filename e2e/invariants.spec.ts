@@ -252,6 +252,8 @@ test.describe('I1 零智能完整(已被 T15 AI-first supersede)', () => {
           await member.click();
           const approve = page.getByRole('button', { name: '批准' });
           await expect(approve).toBeEnabled();
+          // D50:驳回表单默认收起,先打开再断言 reason 必填
+          await page.getByRole('button', { name: '填写驳回参数' }).click();
           await expect(page.getByRole('textbox', { name: /reason|原因/i })).toHaveAttribute(
             'required',
             '',
