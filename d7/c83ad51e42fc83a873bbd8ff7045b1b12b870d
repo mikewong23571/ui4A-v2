@@ -1,0 +1,7 @@
+T29 配套:边缘认证放行 authenticated presence reporting(rebase 等价重建挂载)
+
+> 原始提交对象在 2026-08-26 origin/master rebase(T29 归档)后已不在对象库,验收 note 无法复制本体;本条按归档 plan 任务与现役测试证据重建,原始任务 sha 见 conductor/tracks/archive/t29-presence-situation_20260825/plan.md 映射节。
+> 等价提交:6d40417
+
+变更:scripts/t22 auth edge/compose 合同允许已认证 presence 上报经边缘(route 生产形态配套)。
+现役证据:t22-compose-contract/t22-k8s-auth-edge-contract 相应行随 T22 归档套件维护;scripts/t22 基线登记含本次净增记录。
