@@ -33,14 +33,14 @@
     占位防清单缩水;五景完成定义不变——Phase B/D 后五景全部有可执行证据。
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) [49c4e91]
 
-## Phase A: 内核收口(packages/engine + apps/web/src/auth)[in_progress]
+## Phase A: 内核收口(packages/engine + apps/web/src/auth)[checkpoint: 216a6e4]
 
-- [ ] Task: UserSidecarKey 去 policyScope 维度 [`packages/engine/src/presentation/sidecar.ts`]
+- [x] Task: UserSidecarKey 去 policyScope 维度 [216a6e4] [`packages/engine/src/presentation/sidecar.ts`]
   - 键回归 principal/intent/device/subject 四元组;sidecarKeyFingerprint
     逻辑不变;内核内构造/读取点同步;授予变化走既有依赖失效重规划
   - mutation 抽查:恢复 scope 字段参与指纹 → 现有键稳定性测试变红口径重新
     审视而非回退
-- [ ] Task: application-scope 受众语义重写 [`apps/web/src/auth/application-scope.ts`]
+- [x] Task: application-scope 受众语义重写 [216a6e4] [`apps/web/src/auth/application-scope.ts`]
   - 新:`assertReachable(context, rel, grantedApplications)`(fail-open
     unknown → guard 兜底)、`filterEntityForGrantedApplications`;
   - 删:`relCoveredByPolicyScope`、`assertRelInPolicyScope`、
@@ -48,7 +48,7 @@
     ([`apps/web/src/engine/situation.ts`]);
   - filterSitemapForPolicyScope 单 scope 切片保留仅供并集复用;
   - 配套单元测试按 D51 口径新写(audience 边界、unknown fail-open、私有物 owner)
-- [ ] Task: request-identity 减法 [`apps/web/src/auth/request-identity.ts`]
+- [x] Task: request-identity 减法 [216a6e4] [`apps/web/src/auth/request-identity.ts`]
   - 删 defaultPolicyScope/scopeCoverage 与整套默认回退(identity 不再产出
     selected scope);identity 增 grantedApplications(ui4a:policy:* 解析);
     ?scope= 仅作导航偏好透传;
@@ -56,7 +56,7 @@
     fixture 去 policyScope 必填
 - [ ] Task: Phase Verification & Checkpoint(tsc --noEmit 红名单 = Phase B 工作量证明)
 
-## Phase B: 咽喉点与呈现面接线
+## Phase B: 咽喉点与呈现面接线 [in_progress]
 
 - [ ] Task: 六路由换新谓词
   - `api/entity`、`api/exec`、`api/exec-plan`、`api/presentation`、
