@@ -161,6 +161,8 @@ const webGetExact = [
   '/_meta/.well-known/ui4a.json',
   '/api/entity',
   '/api/events',
+  '/api/chat/history',
+  '/api/chat/sessions',
   '/api/delegations',
   '/_meta/api/entity',
   '/api/presentation/sidecar',
@@ -221,10 +223,8 @@ describe('T22 Kubernetes exact authentication edge', () => {
     expect(routeMatches(web)).toEqual(expectedWebMatches);
     expect(staticRouteMatches('ui4a-web')).toEqual(expectedWebMatches);
     expect(defaultDeny(web)).toEqual({ directResponse: { status: 404 } });
-    for (const deferred of ['/api/chat/history', '/api/chat/sessions', '/api/meta/']) {
-      expect(serialized, deferred).not.toContain(`\"exact\":\"${deferred}\"`);
-      expect(serialized, deferred).not.toContain(`\"prefix\":\"${deferred}\"`);
-    }
+    expect(serialized).not.toContain('\"exact\":\"/api/meta/\"');
+    expect(serialized).not.toContain('\"prefix\":\"/api/meta/\"');
   });
 
   it('publishes only the fixed Keycloak realm protocol, login, logout and account surface', async () => {

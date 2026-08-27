@@ -3,6 +3,7 @@ import type {
   ChatTurnDetail,
   ChatTurnStartedDetail,
 } from '../../../../chat/history';
+import { chatHistoryPrincipal, chatHistoryReadError } from '../../../../chat/history-access';
 import { listEvents } from '../../../../db/events';
 import { getDb } from '../../../../engine/service';
 
@@ -15,9 +16,12 @@ import { getDb } from '../../../../engine/service';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const events = await listEvents(getDb());
+    const principal = await chatHistoryPrincipal(request);
+    const events = await listEvents(getDb(), 0, {
+      ...(principal === undefined ? {} : { principal }),
+    });
     const bySession = new Map<string, ChatSessionSummary>();
     const seenTurns = new Set<string>();
     for (const event of events) {
@@ -60,7 +64,7 @@ export async function GET() {
     }
     const sessions = [...bySession.values()].sort((a, b) => b.lastTs.localeCompare(a.lastTs));
     return Response.json({ sessions });
-  } catch {
-    return Response.json({ error: 'events 数据库不可用' }, { status: 503 });
+  } catch (error) {
+    return chatHistoryReadError(error);
   }
 }

@@ -86,6 +86,32 @@ describe('GET /api/events', () => {
     expect(body.events.map((event) => event.seq)).toEqual([first.seq + 1, first.seq + 2]);
   });
 
+  it('order=desc 以最新事件开始,beforeSeq 向更早事件翻页', async () => {
+    const first = await appendEvent(pool, { kind: 'seed', rel: 'seed:test-1' });
+    await appendEvent(pool, { kind: 'seed', rel: 'seed:test-2' });
+    await appendEvent(pool, { kind: 'seed', rel: 'seed:test-3' });
+
+    const latest = await GET(request('?order=desc&limit=2'));
+    expect(latest.status).toBe(200);
+    const latestBody = (await latest.json()) as {
+      events: ApiEvent[];
+      page: { hasMore: boolean; nextBeforeSeq: number | null };
+    };
+    expect(latestBody.events.map((event) => event.seq)).toEqual([first.seq + 2, first.seq + 1]);
+    expect(latestBody.page).toMatchObject({ hasMore: true, nextBeforeSeq: first.seq + 1 });
+
+    const older = await GET(
+      request(`?order=desc&limit=2&beforeSeq=${latestBody.page.nextBeforeSeq}`),
+    );
+    expect(older.status).toBe(200);
+    const olderBody = (await older.json()) as {
+      events: ApiEvent[];
+      page: { hasMore: boolean; nextBeforeSeq: number | null };
+    };
+    expect(olderBody.events.map((event) => event.seq)).toEqual([first.seq]);
+    expect(olderBody.page).toMatchObject({ hasMore: false, nextBeforeSeq: null });
+  });
+
   it('afterSeq=0 等价于全量', async () => {
     await appendEvent(pool, { kind: 'seed', rel: 'seed:test' });
 
@@ -121,6 +147,14 @@ describe('GET /api/events', () => {
       expect(res.status).toBe(400);
       const body = (await res.json()) as { error: string };
       expect(body.error).toContain('afterSeq');
+    }
+  });
+
+  it('拒绝混用正序与倒序游标', async () => {
+    for (const bad of ['?order=desc&afterSeq=1', '?order=asc&beforeSeq=2']) {
+      const res = await GET(request(bad));
+      expect(res.status).toBe(400);
+      await expect(res.json()).resolves.toHaveProperty('error');
     }
   });
 

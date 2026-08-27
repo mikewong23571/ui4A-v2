@@ -143,6 +143,22 @@ describe('listEvents', () => {
     expect(afterFirst.map((event) => event.rel)).toEqual(['seed:test-2', 'seed:test-3']);
   });
 
+  it('按 seq 倒序读取最新事件,并以 beforeSeq 向更早事件翻页', async () => {
+    const first = await appendEvent(pool, { kind: 'seed', rel: 'seed:desc-1' });
+    await appendEvent(pool, { kind: 'seed', rel: 'seed:desc-2' });
+    await appendEvent(pool, { kind: 'seed', rel: 'seed:desc-3' });
+
+    const latest = await listEvents(pool, 0, { order: 'desc', limit: 2 });
+    expect(latest.map((event) => event.seq)).toEqual([first.seq + 2, first.seq + 1]);
+
+    const older = await listEvents(pool, 0, {
+      order: 'desc',
+      beforeSeq: latest.at(-1)!.seq,
+      limit: 2,
+    });
+    expect(older.map((event) => event.seq)).toEqual([first.seq]);
+  });
+
   it('Presentation domain shares the append-only log but never enters Business readLog', async () => {
     await appendEvent(pool, { kind: 'seed', rel: 'seed:business' });
     await appendEvent(pool, {

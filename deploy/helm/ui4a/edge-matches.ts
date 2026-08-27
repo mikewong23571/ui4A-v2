@@ -26,6 +26,8 @@ export const webEdgeMatches: readonly EdgeMatch[] = [
     '/_meta/.well-known/ui4a.json',
     '/api/entity',
     '/api/events',
+    '/api/chat/history',
+    '/api/chat/sessions',
     '/api/delegations',
     '/_meta/api/entity',
     '/api/presentation/sidecar',

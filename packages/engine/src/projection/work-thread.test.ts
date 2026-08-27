@@ -96,6 +96,10 @@ describe('Work Thread Siren projection', () => {
       rel: ['item'],
       href: '/api/entity?rel=thread:release-1',
       class: ['work-thread', 'open'],
+      properties: {
+        rel: 'thread:release-1',
+        identity: 'Ship safely',
+      },
     });
   });
 

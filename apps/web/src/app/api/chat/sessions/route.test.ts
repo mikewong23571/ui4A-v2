@@ -23,8 +23,7 @@ let server: Server;
 let base = '';
 
 async function handler(pathname: string, request: Request): Promise<Response> {
-  void request;
-  if (pathname === '/api/chat/sessions') return getSessions();
+  if (pathname === '/api/chat/sessions') return getSessions(request);
   return Response.json({ error: 'not found' }, { status: 404 });
 }
 

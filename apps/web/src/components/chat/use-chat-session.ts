@@ -77,6 +77,7 @@ export function useChatSession(): ChatSession {
 
   const [view, setView] = useState<'chat' | 'sessions'>('chat');
   const [sessions, setSessions] = useState<ChatSessionSummary[] | null>(null);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
 
   const persistSession = useCallback((next: string) => {
     if (next === '' || next === sessionRef.current) return;
@@ -543,13 +544,19 @@ export function useChatSession(): ChatSession {
   const openSessions = useCallback(() => {
     setView('sessions');
     setSessions(null);
+    setSessionsError(null);
     fetch('/api/chat/sessions')
       .then(async (response) => {
-        if (!response.ok) return { sessions: [] };
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return (await response.json()) as { sessions?: ChatSessionSummary[] };
       })
       .then((body) => setSessions(body.sessions ?? []))
-      .catch(() => setSessions([])); // 投影缺失按空态呈现,日志仍是真相
+      .catch((error: unknown) => {
+        const reason =
+          error instanceof Error && /^HTTP \d+$/.test(error.message) ? error.message : '网络错误';
+        setSessionsError(`读取历史会话失败（${reason}）`);
+        setSessions([]);
+      });
   }, []);
 
   const closeSessions = useCallback(() => setView('chat'), []);
@@ -601,6 +608,7 @@ export function useChatSession(): ChatSession {
     runtime,
     view,
     sessions,
+    sessionsError,
     openSessions,
     closeSessions,
     selectSession,

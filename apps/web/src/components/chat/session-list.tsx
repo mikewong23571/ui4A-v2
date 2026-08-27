@@ -20,6 +20,13 @@ const OUTCOME_LABEL: Record<string, string> = {
 };
 
 export function SessionList({ session }: { session: ChatSession }) {
+  if (session.sessionsError !== null) {
+    return (
+      <p className="py-8 text-center text-xs text-destructive" role="alert">
+        {session.sessionsError}
+      </p>
+    );
+  }
   if (session.sessions === null) {
     return <p className="py-8 text-center text-xs text-muted-foreground">读取会话清单…</p>;
   }

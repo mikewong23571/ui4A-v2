@@ -4,9 +4,8 @@
  * timeline 词条(T9 起为自绘垂直时间线;零 AI——机械叙事摘要 + 可折叠
  * 原始审计层,不经过任何生成路径;铁律 5 审计通道隔离)。
  *
- * 分页口径(afterSeq,与端点合同一致):端点返回 afterSeq 之后的**全部**
- * 事件;视图每页 PAGE_SIZE 条,超页部分丢弃、经 afterSeq=<已显示尾部 seq>
- * 重取(增量窗口)。回包 ≤ PAGE_SIZE 即尾部已到,分页终止。
+ * 人类 feed 使用 desc + beforeSeq，从最新事件向更早事件翻页；底层 replay
+ * 继续使用独立的 afterSeq 升序合同。
  * 唯一可点元素是本地分页控件(data-nav,零可提交合同元素)。
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -15,28 +14,41 @@ import { Button } from '@/components/ui/button';
 import { eventsToMembers, type LogEventRow } from '@/render/situation';
 import { TimelineWord } from '@/render/words/timeline';
 
-/** 视图分页大小(端点无 limit;客户端逐页呈现,afterSeq 增量重取)。 */
+/** 人类审计 feed 的固定页大小。 */
 const PAGE_SIZE = 20;
 
-/** 取一页(afterSeq 严格大于;回包整批 ≤ PAGE_SIZE 即尾部)。 */
-async function fetchPage(afterSeq: number): Promise<{ page: LogEventRow[]; exhausted: boolean }> {
-  const response = await fetch(`/api/events?afterSeq=${afterSeq}`);
+/** 取一页最新优先事件；beforeSeq 严格向更早的 seq 移动。 */
+async function fetchPage(beforeSeq?: number): Promise<{
+  page: LogEventRow[];
+  nextBeforeSeq: number | null;
+  exhausted: boolean;
+}> {
+  const cursor = beforeSeq === undefined ? '' : `&beforeSeq=${beforeSeq}`;
+  const response = await fetch(`/api/events?order=desc&limit=${PAGE_SIZE}${cursor}`);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const body = (await response.json()) as { events?: LogEventRow[] };
-  const batch = body.events ?? [];
-  return { page: batch.slice(0, PAGE_SIZE), exhausted: batch.length <= PAGE_SIZE };
+  const body = (await response.json()) as {
+    events: LogEventRow[];
+    page: { hasMore: boolean; nextBeforeSeq: number | null };
+  };
+  return {
+    page: body.events,
+    nextBeforeSeq: body.page.nextBeforeSeq,
+    exhausted: !body.page.hasMore,
+  };
 }
 
 export default function EventsPage() {
   const [rows, setRows] = useState<LogEventRow[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [exhausted, setExhausted] = useState(false);
+  const [nextBeforeSeq, setNextBeforeSeq] = useState<number | null>(null);
 
   const initialLoad = useCallback(async () => {
     try {
-      const result = await fetchPage(0);
+      const result = await fetchPage();
       setRows(result.page);
       setExhausted(result.exhausted);
+      setNextBeforeSeq(result.nextBeforeSeq);
       setFailed(false);
     } catch {
       setFailed(true); // 如实提示,不粉饰
@@ -49,17 +61,17 @@ export default function EventsPage() {
   }, [initialLoad]);
 
   const loadMore = useCallback(async () => {
-    const displayed = rows ?? [];
-    const afterSeq = displayed.length > 0 ? displayed[displayed.length - 1]!.seq : 0;
+    if (nextBeforeSeq === null) return;
     try {
-      const result = await fetchPage(afterSeq);
+      const result = await fetchPage(nextBeforeSeq);
       setExhausted(result.exhausted);
+      setNextBeforeSeq(result.nextBeforeSeq);
       if (result.page.length > 0) setRows((previous) => [...(previous ?? []), ...result.page]);
       setFailed(false);
     } catch {
       setFailed(true);
     }
-  }, [rows]);
+  }, [nextBeforeSeq]);
 
   return (
     <div>

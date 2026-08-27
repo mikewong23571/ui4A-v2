@@ -190,6 +190,8 @@ export function projectWorkThread(
   return {
     class: ['work-thread', thread.status],
     properties: {
+      rel: threadRel(thread.id),
+      identity: thread.goal.text,
       id: thread.id,
       owner: thread.owner,
       goal: thread.goal,

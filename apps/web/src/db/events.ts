@@ -13,6 +13,10 @@ import type { LogEvent } from '@ui4a/engine';
 import type { FieldValue } from '@ui4a/shared';
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
 
+import { listEvents } from './events/query';
+
+export { listEvents };
+
 /** 事件种类(spec FR2):拒绝事件与执行事件同表(I6);confirmation-* 为 T3 确认门事件;
  *  notification-delivered 为 T3 notify capability 送达事件(worker 第二写者,spec 决定 4);
  *  definition-* 为 T4 定义平面事件(meta 模块产出 + definition-seeded 种子,
@@ -300,73 +304,6 @@ export function appendEventBatch(
     for (const event of events) appended.push(await appendEvent(client, event));
     return appended;
   });
-}
-
-/** 读取事件(只读,seq 升序;afterSeq 分页:返回 seq 严格大于 afterSeq 的事件)。 */
-export async function listEvents(
-  db: DbExecutor,
-  afterSeq = 0,
-  options?: {
-    domain?: EventDomain;
-    rel?: string;
-    kind?: string;
-    principal?: string;
-    limit?: number;
-  },
-): Promise<StoredEvent[]> {
-  const limit = options?.limit;
-  if (limit !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > 101)) {
-    throw new Error('event limit must be an integer between 1 and 101');
-  }
-  const values: unknown[] = [afterSeq];
-  const where = ['seq > $1'];
-  if (options?.domain !== undefined) {
-    values.push(options.domain);
-    where.push(`domain = $${values.length}`);
-  }
-  for (const [column, value] of [
-    ['rel', options?.rel],
-    ['kind', options?.kind],
-    ['principal', options?.principal],
-  ] as const) {
-    if (value !== undefined) {
-      values.push(value);
-      where.push(`${column} = $${values.length}`);
-    }
-  }
-  const limitSql = limit === undefined ? '' : ` LIMIT $${values.push(limit)}`;
-  const result = await db.query<{
-    domain: EventDomain;
-    seq: string | number;
-    ts: Date;
-    actor: 'human' | 'agent' | null;
-    principal: string | null;
-    channel: string | null;
-    kind: EventKind;
-    rel: string | null;
-    action: string | null;
-    params: Record<string, FieldValue>;
-    reason: string | null;
-    detail: unknown;
-  }>(
-    `SELECT seq, ts, domain, actor, principal, channel, kind, rel, action, params, reason, detail
-     FROM events WHERE ${where.join(' AND ')} ORDER BY seq ASC${limitSql}`,
-    values,
-  );
-  return result.rows.map((row) => ({
-    domain: row.domain,
-    seq: Number(row.seq),
-    ts: new Date(row.ts).toISOString(),
-    actor: row.actor,
-    principal: row.principal,
-    channel: row.channel,
-    kind: row.kind,
-    rel: row.rel,
-    action: row.action,
-    params: row.params ?? {},
-    reason: row.reason,
-    detail: row.detail ?? null,
-  }));
 }
 
 // PoolClient 仅用于类型派生,避免运行时引入多余依赖。

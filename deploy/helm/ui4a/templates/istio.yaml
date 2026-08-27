@@ -81,6 +81,10 @@ spec:
         - method: { exact: GET }
           uri: { exact: /api/events }
         - method: { exact: GET }
+          uri: { exact: /api/chat/history }
+        - method: { exact: GET }
+          uri: { exact: /api/chat/sessions }
+        - method: { exact: GET }
           uri: { exact: /api/delegations }
         - method: { exact: GET }
           uri: { prefix: /api/delegations/ }
@@ -217,6 +221,8 @@ spec:
               - /_meta/.well-known/ui4a.json
               - /api/entity
               - /api/events
+              - /api/chat/history
+              - /api/chat/sessions
               - /api/delegations
               - '/api/delegations/*'
               - /_meta/api/entity

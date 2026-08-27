@@ -287,6 +287,32 @@ describe('工作台 · 聊天历史(T9 Phase B / B3)', () => {
       expect(screen.getByText('会话 sess-old')).toBeTruthy();
     });
   });
+
+  it('历史会话读取失败时显示真实错误,不伪装成空历史', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string | URL | RequestInfo) => {
+        if (String(url).includes('/api/chat/sessions')) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ error: 'not found' }), {
+              status: 404,
+              headers: { 'content-type': 'application/json' },
+            }),
+          );
+        }
+        return Promise.resolve(jsonResponse({ turns: [] }));
+      }),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    fireEvent.click(screen.getByRole('button', { name: '历史会话' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('读取历史会话失败（HTTP 404）')).toBeTruthy();
+    });
+    expect(screen.queryByTestId('empty-sessions')).toBeNull();
+  });
 });
 
 describe('工作台 · 三形态壳(T9 Phase B / B4)', () => {

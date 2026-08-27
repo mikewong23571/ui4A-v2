@@ -7,8 +7,9 @@ import {
 } from '../../../auth/request-identity';
 
 // GET /api/events — 事件日志只读审计端点(spec FR2 / I6):
-// - seq 升序返回原始事件(kind/reason 原样,拒绝即数据);
+// - 默认 seq 升序返回原始事件(kind/reason 原样,拒绝即数据);
 // - ?afterSeq=<非负整数> 分页(返回 seq 严格大于 afterSeq 的事件);
+// - 人类审计 feed 可用 ?order=desc&beforeSeq=<正整数> 从最新向更早翻页;
 // - 非法 afterSeq → 400 结构化错误;db 不可达 → 503(不抛 500)。
 // - production profile(T22 验证修复):接入 application credential(Browser Session
 //   或 Bearer,ui4a:read);principal 过滤不得超出 credential(不等 → 403),无过滤时
@@ -24,6 +25,13 @@ function parseAfterSeq(raw: string | null): number | null {
   return value;
 }
 
+function parseBeforeSeq(raw: string | null): number | undefined | null {
+  if (raw === null) return undefined;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1) return null;
+  return value;
+}
+
 function parseLimit(raw: string | null): number | null {
   if (raw === null) return 100;
   const value = Number(raw);
@@ -33,9 +41,25 @@ function parseLimit(raw: string | null): number | null {
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const afterSeq = parseAfterSeq(url.searchParams.get('afterSeq'));
+  const order = url.searchParams.get('order') ?? 'asc';
+  if (order !== 'asc' && order !== 'desc') {
+    return Response.json({ error: 'order 必须是 asc|desc' }, { status: 400 });
+  }
+  const rawAfterSeq = url.searchParams.get('afterSeq');
+  const rawBeforeSeq = url.searchParams.get('beforeSeq');
+  if ((order === 'desc' && rawAfterSeq !== null) || (order === 'asc' && rawBeforeSeq !== null)) {
+    return Response.json(
+      { error: 'asc 只能使用 afterSeq，desc 只能使用 beforeSeq' },
+      { status: 400 },
+    );
+  }
+  const afterSeq = parseAfterSeq(rawAfterSeq);
   if (afterSeq === null) {
     return Response.json({ error: 'afterSeq 必须是非负整数' }, { status: 400 });
+  }
+  const beforeSeq = parseBeforeSeq(rawBeforeSeq);
+  if (beforeSeq === null) {
+    return Response.json({ error: 'beforeSeq 必须是正整数' }, { status: 400 });
   }
   const limit = parseLimit(url.searchParams.get('limit'));
   if (limit === null) {
@@ -44,7 +68,9 @@ export async function GET(request: Request) {
   const domain = url.searchParams.get('domain');
   if (
     domain !== null &&
-    !['core', 'presence', 'presentation', 'draft', 'capability', 'agent-definition'].includes(domain)
+    !['core', 'presence', 'presentation', 'draft', 'capability', 'agent-definition'].includes(
+      domain,
+    )
   ) {
     return Response.json(
       { error: 'domain 必须是 core|presence|presentation|draft|capability|agent-definition' },
@@ -84,28 +110,36 @@ export async function GET(request: Request) {
         ? {}
         : {
             domain: domain as
-              | 'core'
-              | 'presence'
-              | 'presentation'
-              | 'draft'
-              | 'capability'
-              | 'agent-definition',
+              'core' | 'presence' | 'presentation' | 'draft' | 'capability' | 'agent-definition',
           }),
       ...(url.searchParams.get('rel') === null ? {} : { rel: url.searchParams.get('rel')! }),
       ...(url.searchParams.get('kind') === null ? {} : { kind: url.searchParams.get('kind')! }),
       ...(principal === null ? {} : { principal }),
       limit: limit + 1,
+      order,
+      ...(beforeSeq === undefined ? {} : { beforeSeq }),
     });
     const hasMore = rows.length > limit;
     const events = rows.slice(0, limit);
-    return Response.json({
-      events,
-      page: {
-        limit,
-        hasMore,
-        nextAfterSeq: hasMore ? (events.at(-1)?.seq ?? afterSeq) : null,
-      },
-    });
+    return Response.json(
+      order === 'asc'
+        ? {
+            events,
+            page: {
+              limit,
+              hasMore,
+              nextAfterSeq: hasMore ? (events.at(-1)?.seq ?? afterSeq) : null,
+            },
+          }
+        : {
+            events,
+            page: {
+              limit,
+              hasMore,
+              nextBeforeSeq: hasMore ? (events.at(-1)?.seq ?? beforeSeq ?? null) : null,
+            },
+          },
+    );
   } catch (error) {
     const authentication = authenticationErrorResponse(error);
     if (authentication !== undefined) return authentication;

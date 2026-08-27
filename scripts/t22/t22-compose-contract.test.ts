@@ -738,6 +738,8 @@ describe('T22 Docker Compose all-in-one contract', () => {
       '/.well-known/ui4a.json',
       '/api/entity',
       '/api/events',
+      '/api/chat/history',
+      '/api/chat/sessions',
       '/api/delegations',
       '/api/exec',
       '/api/exec-plan',
@@ -751,9 +753,7 @@ describe('T22 Docker Compose all-in-one contract', () => {
     ]) {
       expect(routing, path).toContain(path);
     }
-    for (const path of ['/api/internal/', '/api/chat/history', '/api/chat/sessions', '/api/meta/']) {
-      expect(routing, path).not.toContain(path);
-    }
+    expect(routing).not.toMatch(/\/api\/(?:internal|meta)\//);
     expect(routing).not.toMatch(/handle\s*\{\s*reverse_proxy web:3100/s);
     expect(routing).toMatch(/handle\s*\{\s*respond 404\s*\}/s);
     expect(stack.services.edge?.networks?.default?.aliases).toEqual([

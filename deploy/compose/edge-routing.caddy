@@ -27,7 +27,7 @@ https://{$UI4A_HOST}:8443 {
 
   @ui4aAuthenticatedRead {
     method GET HEAD
-    path /.well-known/ui4a.json /api/entity /api/events /api/delegations /api/delegations/* /_meta/.well-known/ui4a.json /_meta/api/entity /api/presentation/sidecar
+    path /.well-known/ui4a.json /api/entity /api/events /api/chat/history /api/chat/sessions /api/delegations /api/delegations/* /_meta/.well-known/ui4a.json /_meta/api/entity /api/presentation/sidecar
   }
   handle @ui4aAuthenticatedRead {
     reverse_proxy web:3100

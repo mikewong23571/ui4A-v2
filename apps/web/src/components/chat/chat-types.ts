@@ -131,6 +131,8 @@ export interface ChatSession {
   view: 'chat' | 'sessions';
   /** 清单数据(null = 未加载/加载中;[] = 空态)。 */
   sessions: ChatSessionSummary[] | null;
+  /** 清单读取失败的人话错误；失败与合法空历史严格区分。 */
+  sessionsError: string | null;
   /** 打开清单视图(每次重新拉取——清单是日志投影,拉取即最新)。 */
   openSessions: () => void;
   /** 返回会话视图。 */

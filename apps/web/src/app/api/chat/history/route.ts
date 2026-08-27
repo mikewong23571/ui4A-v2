@@ -4,6 +4,7 @@ import type {
   ChatTurnProgressDetail,
   ChatTurnStartedDetail,
 } from '../../../../chat/history';
+import { chatHistoryPrincipal, chatHistoryReadError } from '../../../../chat/history-access';
 import { citationsOrEmpty } from '../../../../chat/citations';
 import { listEvents } from '../../../../db/events';
 import { getDb } from '../../../../engine/service';
@@ -29,7 +30,10 @@ export async function GET(request: Request) {
   }
 
   try {
-    const events = await listEvents(getDb());
+    const principal = await chatHistoryPrincipal(request);
+    const events = await listEvents(getDb(), 0, {
+      ...(principal === undefined ? {} : { principal }),
+    });
     const turnsById = new Map<string, ChatTurn>();
     const citationsByTurnId = new Map<string, ChatTurn['citations']>();
     for (const event of events) {
@@ -86,7 +90,7 @@ export async function GET(request: Request) {
     }
     const turns = [...turnsById.values()].sort((a, b) => a.seq - b.seq);
     return Response.json({ turns });
-  } catch {
-    return Response.json({ error: 'events 数据库不可用' }, { status: 503 });
+  } catch (error) {
+    return chatHistoryReadError(error);
   }
 }
