@@ -225,8 +225,12 @@ describe('Work Thread Siren projection', () => {
       '目标',
       '目标来源',
     ]);
-    expect(THREAD_ATTACH_ACTION.title).toBe('挂载引用');
-    expect(THREAD_DETACH_ACTION.title).toBe('卸载引用');
+    // T35 F-27(用户反馈):机制动词换任务语——"挂载/卸载引用"不可理解。
+    expect(THREAD_ATTACH_ACTION.title).toBe('添加涉及对象');
+    expect(THREAD_DETACH_ACTION.title).toBe('移出涉及对象');
+    expect(
+      THREAD_ATTACH_ACTION.fields?.find((field) => field.name === 'rel')?.description,
+    ).toContain('合同路径');
     expect(THREAD_PAUSE_ACTION.title).toBe('暂停工作线');
     expect(THREAD_RESUME_ACTION.title).toBe('恢复工作线');
     expect(THREAD_COMPLETE_ACTION.title).toBe('完成工作线');

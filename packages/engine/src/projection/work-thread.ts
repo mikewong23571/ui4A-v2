@@ -48,19 +48,26 @@ const referenceFields: ActionDefinition['fields'] = [
     required: true,
     options: [...THREAD_REFERENCE_CATEGORIES],
   },
-  { name: 'rel', type: 'text', title: '引用实体', required: true, minLength: 1 },
+  {
+    name: 'rel',
+    type: 'text',
+    title: '涉及对象',
+    required: true,
+    minLength: 1,
+    description: '对象的合同路径(如 post:first-post);可从画布成员卡或助手处获得',
+  },
 ];
 
 export const THREAD_ATTACH_ACTION: ActionDefinition = {
   name: 'attach',
-  title: '挂载引用',
+  title: '添加涉及对象',
   ...noNodeFields,
   fields: referenceFields,
 };
 
 export const THREAD_DETACH_ACTION: ActionDefinition = {
   name: 'detach',
-  title: '卸载引用',
+  title: '移出涉及对象',
   ...noNodeFields,
   fields: referenceFields,
 };
@@ -178,6 +185,31 @@ function referenceLinks(
   return links;
 }
 
+/** T35 F-11:线程生命周期状态的任务语(数据层,渲染器零模板)。 */
+const THREAD_STATUS_TITLES: Readonly<Record<ThreadStatus, string>> = {
+  open: '进行中',
+  paused: '已暂停',
+  completed: '已完成',
+  archived: '已归档',
+};
+
+/** 被引用对象的一行业务身份:实例取标题,其余取既有投影 identity,回退 rel。 */
+function referenceIdentity(rel: string, snapshot: EngineSnapshot): string {
+  const instance = snapshot.instances[rel];
+  if (instance !== undefined) {
+    const title = instance.fields['title'];
+    if (typeof title === 'string' && title.trim() !== '') return title.trim();
+  }
+  const delegation = snapshot.delegations?.[rel];
+  if (delegation !== undefined) return delegation.goal.verb;
+  const confirmation = snapshot.confirmations?.[rel];
+  if (confirmation !== undefined) {
+    const identity = confirmation.identity;
+    if (typeof identity === 'string' && identity !== '') return identity;
+  }
+  return rel;
+}
+
 export function projectWorkThread(
   thread: ThreadSnapshot,
   snapshot: EngineSnapshot,
@@ -191,24 +223,50 @@ export function projectWorkThread(
       ? statusPointer(thread.references.active[0]!, snapshot)
       : undefined;
   const resume = `停在「${firstActive?.status ?? thread.status}」`;
+  // T35 F-11/F-27:材料清单(上下文包)投影为可导航成员卡——身份解析自被引
+  // 对象(标题/目标/identity),dangling 如实标注;挂载/移除仍是线程动作(W 阶段
+  // 升级为清单内操作)。
+  const contextMembers = thread.references.context.map((ref) => {
+    const pointer = statusPointer(ref, snapshot);
+    return {
+      class: ['thread-reference', ...(pointer.dangling ? ['dangling'] : [])],
+      properties: {
+        rel: ref,
+        identity: referenceIdentity(ref, snapshot),
+        status: pointer.status ?? (pointer.dangling ? '对象不存在' : undefined),
+      },
+      actions: [],
+      links: [{ rel: ['self'], href: entityHref(deps.baseHref, ref) }],
+    };
+  });
   return {
     class: ['work-thread', thread.status],
     properties: {
       rel: threadRel(thread.id),
-      identity: thread.goal.text,
+      identity: thread.goal.text.trim(),
       id: thread.id,
       owner: thread.owner,
       goal: thread.goal,
       status: thread.status,
+      statusText: THREAD_STATUS_TITLES[thread.status],
       context: [...thread.references.context],
       resume,
       active: thread.references.active.map((rel) => statusPointer(rel, snapshot)),
       approval: thread.references.approval.map((rel) => statusPointer(rel, snapshot)),
       'recent-events': [...thread.recentEventSeqs],
+      presentation: {
+        fields: [
+          { path: 'properties.identity', title: '目标', role: 'identity' },
+          { path: 'properties.statusText', title: '状态', role: 'status' },
+          { path: 'properties.resume', title: '上次停在哪', role: 'primary-content' },
+          { path: 'properties.goal.source', title: '目标来源', role: 'metadata' },
+        ],
+      },
     },
     actions: declarations.map((action) => toSirenAction(action, [], deps.baseHref)),
     links: referenceLinks(thread, snapshot, deps),
     'guard-results': unblocked(declarations),
+    entities: contextMembers,
   };
 }
 
