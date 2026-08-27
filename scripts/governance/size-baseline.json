@@ -74,9 +74,9 @@
     },
     {
       "path": "apps/web/src/components",
-      "lines": 4010,
+      "lines": 4115,
       "limit": 4000,
-      "note": "T35 D-2/D-6 呈现层收敛(site-nav 受控菜单/action-group 图例上下文/detail links 降级)+10(2026-08-28,业务优先登记;候选收缩=chat 面板族按 feature 分片,随 D-4 实施评估)",
+      "note": "T35 D-2/D-6/E-2 呈现层收敛与书架层(site-nav 受控菜单/action-group 图例上下文/detail links 降级/application-entry-strip +115)累计(2026-08-28,业务优先登记;候选收缩=chat 面板族按 feature 分片,随 D-4 实施评估)",
       "track": "t35-ux-walkthrough-remediation_20260827"
     }
   ]
