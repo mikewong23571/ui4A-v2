@@ -203,7 +203,8 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
     const after = fixture.fetchMock.mock.calls.filter(([request]) =>
       String(request).startsWith('/api/entity?rel=post%3Acanvas'),
     ).length;
-    expect(after).toBe(before + 1);
+    // T35 F-01:提交前 fresh-read(+1);exec 成功后 executed 协议失效重取(再 +1)。
+    expect(after).toBe(before + 2);
   });
 
   it('Surface 动作组可见呈现当前合同 guard reason', async () => {
@@ -227,6 +228,38 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
 
     expect((await screen.findByRole('status')).textContent).toBe('guard 不满足: item-ready=false');
     expect((screen.getByRole('button', { name: '完成' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('Surface 动作组 executed 后精确失效并整面 reload(T35 F-01)', async () => {
+    window.history.pushState({}, '', '/canvas?focus=post%3Acanvas&scope=publishing');
+    const source = sourceEntity('post:canvas', '画布对象');
+    const fixture = presentationContract({ subject: 'post:canvas', source, scope: 'publishing' });
+    vi.stubGlobal('fetch', fixture.fetchMock);
+
+    render(
+      <EntityCacheProvider scope="publishing">
+        <CanvasBody />
+      </EntityCacheProvider>,
+    );
+    expect(await screen.findByText('你和助手使用同一合同，由同一规则裁决')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: '完成' }));
+
+    // executed 协议与 A2UI 原生动作同口径:exec 成功 → 精确失效 + 整面 reload
+    // (第二次 presentation 规划),实体经失效重取——投影当场活过来,零静默。
+    await waitFor(() =>
+      expect(
+        fixture.fetchMock.mock.calls.filter(
+          ([request, init]) =>
+            String(request) === '/api/presentation?scope=publishing' && init?.method === 'POST',
+        ),
+      ).toHaveLength(2),
+    );
+    const entityFetches = fixture.fetchMock.mock.calls.filter(([request]) =>
+      String(request).startsWith('/api/entity?rel=post%3Acanvas'),
+    ).length;
+    // 初次 hydrate(1) + adapter fresh-read(2) + 失效后重取(3)。
+    expect(entityFetches).toBe(3);
   });
 
   it.each(cases)(

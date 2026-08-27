@@ -140,14 +140,6 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
   const scopeParam = parameters.scope;
   const sidecarParam = parameters.sidecar;
   const focusRefreshParam = parameters.refresh;
-  const surfaceSubmit = useMemo(
-    () =>
-      createSurfaceActionSubmit({
-        fetchEntity: (subject) => fetchEntity(subject, undefined, scopeParam),
-        exec: (input) => execAction({ ...input, scope: scopeParam }),
-      }),
-    [scopeParam],
-  );
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [loadIssues, setLoadIssues] = useState<PresentationDiagnostic[]>([]);
@@ -160,6 +152,24 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
   const reloadRef = useRef<() => void>(() => {});
   const loadGenerationRef = useRef(0);
   const inFlightRef = useRef<AbortController | null>(null);
+
+  // T35 F-01:词汇动作组(detail/member 词条的 ActionGroup)与 A2UI 原生动作
+  // 同走 executed 协议——exec 成功 → 精确失效(rel + collection 回链)→ 整面
+  // reload;投影更新即反馈。此前该路径成功后既不失效也不重载,画布保持旧状态。
+  const surfaceSubmit = useMemo(() => {
+    const submit = createSurfaceActionSubmit({
+      fetchEntity: (subject) => fetchEntity(subject, undefined, scopeParam),
+      exec: (input) => execAction({ ...input, scope: scopeParam }),
+    });
+    return async (input: Parameters<typeof submit>[0]) => {
+      const result = await submit(input);
+      if (result.ok) {
+        cache.invalidateAfterExec(input.rel, result.entity);
+        reloadRef.current();
+      }
+      return result;
+    };
+  }, [cache, scopeParam]);
 
   // Sidecar 个人视图操作(pin/revert/patch/explain/promote)与元信息状态:
   // 搬到 use-sidecar-actions;revert 后的整面重载经 reloadRef 触发(同拦截门口径)。
