@@ -70,8 +70,10 @@ function memoryStore(): PresentationBrokerStore {
 }
 
 /**
- * Web I/O adapter for the pure Broker. Phase B deliberately has no Presentation planner or durable
- * Sidecar store yet: a miss fails honestly and recovers to the existing contract renderer.
+ * Web I/O adapter for the pure Broker: resolves authorization and entity reads over
+ * HTTP-side services and delegates planning/reuse to the pure kernel. T30 起 planner
+ * 与持久 Sidecar store(runtime.ts 经 db/presentation 投影)均已接入;adapter 自身
+ * 不持有规划或存储语义。
  */
 export function createWebPresentationBroker(
   dependencies: WebPresentationBrokerDependencies,

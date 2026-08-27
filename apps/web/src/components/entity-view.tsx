@@ -5,7 +5,8 @@
  *
  * - 渲染的一切动作与链接都来自实体投影,本组件不含任何业务分支;
  * - renderer 的 navigate = 把合同 href(/api/entity?rel=…)换算成页面路由 /entity?rel=…;
- * - 谓词投影:guard-results.blocked → 对应动作 disabled + title 原因;
+ * - 谓词投影:guard-results 的阻断原因在控件下方以 status 语义可见呈现
+ *   (T28 一等动作口径;title 只作冗余提示);
  * - exec 提交 rel 取实体自身 properties.rel(flow: 别名页落在实例 rel 上,直投不绕别名);
  * - T9 Phase C:分区卡片化(shadcn Card/Table/Badge),结构锚点不变
  *   (section[aria-label] / tbody tr / 成员 a / data-rel / data-nav)。
@@ -23,14 +24,8 @@ import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { ActionGroup } from './actions/action-group';
 import { createDirectActionSubmit } from './actions/action-submit';
 import { execAction } from './exec-client';
+import { hrefToRel } from './contract-href';
 import { RawContractDrawer } from './canvas/raw-contract-drawer';
-
-/** 从合同 href 提取 rel(只认 /api/entity?rel=…;其余 href 无 rel 可提)。 */
-function hrefToRel(href: string): string | null {
-  const query = href.split('?')[1] ?? '';
-  const match = /(?:^|&)rel=([^&]*)/.exec(query);
-  return match === null ? null : decodeURIComponent(match[1].replace(/\+/g, ' '));
-}
 
 export { entityPageHref } from '@/presence/navigation';
 

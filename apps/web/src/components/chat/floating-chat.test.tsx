@@ -207,13 +207,8 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
       },
       {
         type: 'step',
-        message: { role: 'assistant', text: '推进流程步骤' },
-        rel: 'flow:article-drafting',
-      },
-      {
-        type: 'step',
         message: { role: 'assistant', text: '完成: 目标完成' },
-        rel: 'article-drafting:main',
+        rel: 'flow:ad',
       },
       {
         type: 'final',
@@ -247,11 +242,9 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
     // final:sessionId 进会话标签(前 8 位)+ localStorage(B1/B3 投影键)。
     expect(screen.getByText('会话 sess-sse')).toBeTruthy();
     expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBe('sess-sse-1');
-    // flow rel 徽章(T32 Q4):只由结构化 `flow:` 前缀驱动——fixture 特意让
-    // 文本含「执行 next(」而 rel 无 flow: 前缀,证明零文本启发式;唯一徽章
-    // 是结构化帧的(flow:article-drafting)。
-    const badges = screen.getAllByTestId('flow-rel-badge');
-    expect(badges.map((badge) => badge.textContent)).toEqual(['flow:article-drafting']);
+    // flow rel 徽章(T32 Q4):仅结构化 `flow:` 前缀驱动;文本含「执行 next(」
+    // 而 rel 无前缀的诱饵帧不出徽章,唯一徽章来自 rel 前缀帧。
+    expect(screen.getAllByTestId('flow-rel-badge').map((b) => b.textContent)).toEqual(['flow:ad']);
   });
 
   it('error 帧(服务端兜底)如实进消息', async () => {

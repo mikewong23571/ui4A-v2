@@ -8,17 +8,11 @@
  * - 与 entity-view 复用同一 contract-driven 动作组,不经页面或实体类型组装。
  */
 import { entityPageHref } from '../../components/entity-view';
+import { hrefToRel } from '../../components/contract-href';
 import { ActionGroup } from '../../components/actions/action-group';
 import { Badge } from '@/components/ui/badge';
 
 import { asEntity, type WordProps } from './shared';
-
-/** 从合同 href 提取 rel(只认 /api/entity?rel=…;与 entity-view 同口径)。 */
-function hrefToRel(href: string): string | null {
-  const query = href.split('?')[1] ?? '';
-  const match = /(?:^|&)rel=([^&]*)/.exec(query);
-  return match === null ? null : decodeURIComponent(match[1].replace(/\+/g, ' '));
-}
 
 export function DetailWord(props: WordProps) {
   const entity = asEntity(props.entity, 'detail', 'entity');
