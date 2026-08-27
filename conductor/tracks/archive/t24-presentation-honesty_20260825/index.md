@@ -9,5 +9,7 @@
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)
 
-当前状态:`planned`。方向依据:`conductor/product-vision.md` §一(AI as
+当前状态:`done`(2026-08-25 实施闭环;2026-08-27 补归档手续——目录迁入
+archive、metadata 状态流转,实施收尾欠账由 T31 评审登记册 R1/R14/R15/R21/
+R23/R24/R25 承接)。方向依据:`conductor/product-vision.md` §一(AI as
 assistant)、§五(减法)、§六(施工纪律·文案滑梯)。
