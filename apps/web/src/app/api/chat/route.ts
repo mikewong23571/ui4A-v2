@@ -263,8 +263,11 @@ function sseResponse(
         send({
           type: 'error',
           error: reason.evidence?.[0] ?? '聊天循环异常',
-          // 结构化 reason(T24 Phase B Task 3):机械层只产数据;表述层
-          // 由客户端中性结构化展示(error 帧无 LLM 表述路径——兜底分支)。
+          // 结构化失败合同(T24 Phase B Task 3;边界为既定裁决,D48):机械层
+          // 只产结构化数据;error 帧恒由客户端中性结构化展示,LLM phrasing 仅
+          // 覆盖 final 帧的失败来源(loop_exception 是循环壳的最后兜底,该路径
+          // 零新增故障面)。补齐 error 帧 LLM 表述须新决策——见 DECISIONS D48
+          // 第 4 小节(R14 边界登记)。
           reason,
         });
       } finally {

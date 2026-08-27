@@ -197,13 +197,21 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
     fireEvent.click(screen.getByRole('button', { name: '新会话' }));
   });
 
-  it('SSE:step 帧逐步各成一条 assistant 消息,final 更新会话标签并持久化', async () => {
+  it('SSE:活动步帧与补充说明帧按合同呈现,final 更新会话标签并持久化', async () => {
     const frames = [
-      { type: 'step', message: { role: 'assistant', text: '导航到 articles' }, rel: 'articles' },
+      {
+        type: 'step',
+        message: { role: 'assistant', text: '导航到 articles' },
+        rel: 'articles',
+        activity: { op: 'navigate', title: '文章列表' },
+        eventSeq: 41,
+      },
       {
         type: 'step',
         message: { role: 'assistant', text: '执行 next(article-drafting:main) {"title":"x"}' },
         rel: 'article-drafting:main',
+        activity: { op: 'exec', title: '完成编辑' },
+        eventSeq: 42,
       },
       {
         type: 'step',
@@ -233,24 +241,39 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
     openChat();
     sendGoal('发布一篇文章');
 
-    // 每步一条(独立气泡),不再是 join('\n') 整坨。
+    // 活动步帧各成一条活动条目(独立链接),轨迹外补充说明帧按原文直出。
     await waitFor(() => {
-      expect(screen.getByText('完成: 目标完成')).toBeTruthy();
+      expect(screen.getByRole('link', { name: '正在读取 文章列表' })).toBeTruthy();
     });
-    expect(screen.getByText('导航到 articles')).toBeTruthy();
-    expect(screen.getByText(/执行 next\(article-drafting:main\)/)).toBeTruthy();
-    // final:sessionId 进会话标签(前 8 位)+ localStorage(B1/B3 投影键)。
+    expect(screen.getByRole('link', { name: '正在执行 完成编辑' })).toBeTruthy();
+    expect(screen.getByText('完成: 目标完成')).toBeTruthy();
+    // 活动条目的机器日志原文不进主呈现(message.text 保留在帧内作机器层)。
+    expect(screen.queryByText(/导航到 articles/)).toBeNull();
+    expect(screen.queryByText(/执行 next\(article-drafting:main\)/)).toBeNull();
+    // final:sessionId 进会话标签(前 8 位)+ localStorage(B1/B3 投影键);
+    // 补充说明帧已含终局内容,final.summary 不再补一条。
     expect(screen.getByText('会话 sess-sse')).toBeTruthy();
     expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBe('sess-sse-1');
+    expect(screen.queryByText('目标完成')).toBeNull();
     // flow rel 徽章(T32 Q4):仅结构化 `flow:` 前缀驱动;文本含「执行 next(」
-    // 而 rel 无前缀的诱饵帧不出徽章,唯一徽章来自 rel 前缀帧。
+    // 而 rel 无前缀的诱饵帧不出徽章,唯一徽章来自 rel 前缀的补充帧。
     expect(screen.getAllByTestId('flow-rel-badge').map((b) => b.textContent)).toEqual(['flow:ad']);
   });
 
-  it('error 帧(服务端兜底)如实进消息', async () => {
+  it('error 帧(服务端兜底)必附结构化 reason:中性结构化展示,不走机器叙句直出', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(sseResponse([{ type: 'error', error: '聊天循环异常: 爆炸' }]))),
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse([
+            {
+              type: 'error',
+              error: '聊天循环异常: 爆炸',
+              reason: { code: 'loop_exception', evidence: ['聊天循环异常: 爆炸'] },
+            },
+          ]),
+        ),
+      ),
     );
 
     render(<FloatingChat />);
@@ -258,8 +281,11 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
     sendGoal('发布一篇文章');
 
     await waitFor(() => {
-      expect(screen.getByText(/失败: 聊天循环异常: 爆炸/)).toBeTruthy();
+      expect(screen.getByText('失败 · code=loop_exception')).toBeTruthy();
     });
+    // 结构化本体可达(evidence 在失败数据区),机器叙句不作主呈现直出。
+    expect(screen.getByText('聊天循环异常: 爆炸')).toBeTruthy();
+    expect(screen.queryByText('失败: 聊天循环异常: 爆炸')).toBeNull();
   });
 });
 
@@ -382,7 +408,7 @@ describe('工作台 · step 活动语言(T24 Phase B)', () => {
     expect(screen.queryByText('机器原文')).toBeNull();
   });
 
-  it('旧形状帧(无 activity):回退 message.text 中性显示,与既有口径一致', async () => {
+  it('无 activity 的轨迹外补充说明帧(如 max-steps 说明):按机器原文中性显示,终局不双份', async () => {
     const frames = [
       { type: 'step', message: { role: 'assistant', text: '导航到 articles' } },
       finalFrame({
@@ -390,7 +416,7 @@ describe('工作台 · step 活动语言(T24 Phase B)', () => {
         driver: 'llm',
         requestedDriver: 'auto',
         outcome: 'done',
-        summary: '目标完成',
+        summary: '导航到 articles',
         steps: [],
         successes: [],
       }),
@@ -404,11 +430,13 @@ describe('工作台 · step 活动语言(T24 Phase B)', () => {
     openChat();
     sendGoal('发布一篇文章');
 
+    // 补充说明帧按机器原文直出(单一实现,不产活动链接、不伪造定位)。
     await waitFor(() => {
       expect(screen.getByText('导航到 articles')).toBeTruthy();
     });
-    // 旧形状不产活动链接(无定位信息,不伪造)。
     expect(screen.queryByRole('link', { name: /正在/ })).toBeNull();
+    // 帧文本已含终局内容时 final.summary 不再补一条(避免双份呈现)。
+    expect(screen.getAllByText('导航到 articles')).toHaveLength(1);
   });
 
   it('活动帧缺 eventSeq:下钻链接仍可达(事件流页,不伪造定位)', async () => {
@@ -479,7 +507,7 @@ describe('工作台 · step 活动语言(T24 Phase B)', () => {
 });
 
 describe('工作台 · 失败措辞分层(T24 Phase B Task 3)', () => {
-  const failedFinal = (reason: Record<string, unknown> | undefined): unknown[] => [
+  const failedFinal = (reason: Record<string, unknown>): unknown[] => [
     {
       type: 'step',
       message: { role: 'assistant', text: '导航到 articles' },
@@ -499,7 +527,7 @@ describe('工作台 · 失败措辞分层(T24 Phase B Task 3)', () => {
         requestedDriver: 'auto',
         outcome: 'failed',
         summary: '检测到无进展导航循环;当前合同未暴露完成目标所需的可执行能力',
-        ...(reason === undefined ? {} : { reason }),
+        reason,
         steps: [],
         successes: [],
       },
@@ -596,49 +624,6 @@ describe('工作台 · 失败措辞分层(T24 Phase B Task 3)', () => {
     expect(screen.getByText('code=driver_fail')).toBeTruthy();
     expect(screen.getByText('已尝试:导航到 articles')).toBeTruthy();
     expect(screen.getByText('LLM 调用失败: HTTP 401 令牌无效')).toBeTruthy();
-  });
-
-  it('旧形状前向兼容:final failed 无 reason → 现状中性回退「失败: {summary}」', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve(sseResponse(failedFinal(undefined)))),
-    );
-
-    render(<FloatingChat />);
-    openChat();
-    sendGoal('发布一篇文章');
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('失败: 检测到无进展导航循环;当前合同未暴露完成目标所需的可执行能力'),
-      ).toBeTruthy();
-    });
-  });
-
-  it('error 帧携带 reason:中性结构化展示(code=loop_exception),旧形状仍回退原文', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() =>
-        Promise.resolve(
-          sseResponse([
-            {
-              type: 'error',
-              error: '聊天循环异常: 爆炸',
-              reason: { code: 'loop_exception', evidence: ['聊天循环异常: 爆炸'] },
-            },
-          ]),
-        ),
-      ),
-    );
-
-    render(<FloatingChat />);
-    openChat();
-    sendGoal('发布一篇文章');
-
-    await waitFor(() => {
-      expect(screen.getByText('失败 · code=loop_exception')).toBeTruthy();
-    });
-    expect(screen.getByText('聊天循环异常: 爆炸')).toBeTruthy();
   });
 });
 
