@@ -1,0 +1,18 @@
+T31 Phase D Task: 卫生组(R17/R18/R19/R20)
+
+变更:
+- R17 readSitemapTitles 死代码退役:step-activity.ts 删除该导出与孤儿 import
+  (route 已归并共享读取;仓库唯一残留引用是 route-ai-first.test.ts 的负向断言
+  字符串——有意保留为'单一读端锁');其 fetch 直读测试块同步移除(纯投影测试
+  sitemapTitlesFromSummary 用例无损保留,套件 10→9);
+- R18 packages/agent/src/types.ts DriverContext.sitemap 注释补齐:循环放入的已是
+  披露切片视图,loop 预切(loop.ts)+ prompts 复切(prompts.ts sliceSitemapDisclosure)
+  幂等属有意设计;
+- R19 project() JSDoc 解析顺序补齐 artifact: 工件分支与 thread:/threads 工作线分支
+  (T26,实际位于 meta 与 instance 之间),复述现状;
+- R20 size-baseline.json 两条 stale note 口径修正:packages/engine/src/presentation
+  与 e2e 条目改写为已闭环 shrink-only(自 T31/T28 关闭起算)口径,数值不变。
+
+验证:web/agent typecheck 干净、eslint 零 error、governance OK、相邻套件绿
+(step-activity 9/route-ai-first(db)20/work-thread 16/disclosure 9/prompt-budget 6)。
+注释级修改按 spec 同标准复核现状。自治验收。
