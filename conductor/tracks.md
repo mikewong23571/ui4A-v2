@@ -4,6 +4,7 @@
 
 ## 活跃 Tracks
 
+- [~] **Track: T35 持续试用与走查修复:全站 GUI 走查问题登记、修复与文档化视觉验收(试用→findings 台账→修复→S1–S8 视觉验收循环;轨道长期活跃)** *Link: [tracks/t35-ux-walkthrough-remediation_20260827/index.md](./tracks/t35-ux-walkthrough-remediation_20260827/index.md)*
 - [~] **Track: T22 生产形态部署、身份认证与双后端 Agent Runtime：mothership K8s/Istio、Docker Compose all-in-one、Keycloak、灾备与首个试验性版本** *Link: [tracks/t22-production-deployment-auth-runtime_20260824/index.md](./tracks/t22-production-deployment-auth-runtime_20260824/index.md)*
 
 方向 program(依据 [product-vision.md](../product-vision.md);站点为天然分割点,limited scope;
