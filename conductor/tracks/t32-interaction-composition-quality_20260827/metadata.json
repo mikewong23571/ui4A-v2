@@ -1,0 +1,14 @@
+{
+  "id": "t32-interaction-composition-quality_20260827",
+  "type": "fix",
+  "status": "new",
+  "title": "T32 交互与组合质量修复:T28/T30 实现质量发现项登记与修复",
+  "created_at": "2026-08-27T00:00:00Z",
+  "updated_at": "2026-08-27T00:00:00Z",
+  "approved_by": "user (2026-08-27 指令:评审 T28/T30 实现并参考 T31 问题点落地为 track)",
+  "depends_on": [
+    "t28-first-class-interaction_20260825",
+    "t30-presentation-composition_20260825",
+    "t31-quality-remediation_20260826"
+  ]
+}
