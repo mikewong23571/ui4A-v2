@@ -7,10 +7,19 @@ const mocks = vi.hoisted(() => {
     getSitemap: vi.fn(() => ({
       version: 'test-version',
       surfaces: [
+        { rel: 'overview', title: 'Overview', app: 'default' },
         { rel: 'articles', title: 'Articles', app: 'publishing' },
         { rel: 'comments', title: 'Comments', app: 'community' },
       ],
       flows: [
+        {
+          name: 'welcome',
+          title: 'Welcome',
+          app: 'default',
+          initial: 'start',
+          nodes: [],
+          edges: [],
+        },
         {
           name: 'article-drafting',
           title: 'Articles',
@@ -29,12 +38,15 @@ const mocks = vi.hoisted(() => {
         },
       ],
       applications: [
+        { name: 'default', title: 'Default', intent: 'overview', flows: [] },
         { name: 'publishing', title: 'Publishing', intent: 'publish', flows: [] },
         { name: 'community', title: 'Community', intent: 'moderate', flows: [] },
       ],
       capabilities: [],
     })),
-    getSnapshot: vi.fn(() => ({ applications: { publishing: {}, community: {} } })),
+    getSnapshot: vi.fn(() => ({
+      applications: { default: {}, publishing: {}, community: {} },
+    })),
   };
   const getEngine = vi.fn(async () => engine);
   const resolveTrustedRequestIdentity = vi.fn(async (request: Request) => {
@@ -129,7 +141,7 @@ describe('GET /.well-known/ui4a.json trusted entry', () => {
       expect.objectContaining({
         plane: 'business',
         requiredScopes: ['ui4a:read'],
-        authorizedPolicyScopes: ['publishing', 'community'],
+        authorizedPolicyScopes: ['default', 'publishing', 'community'],
       }),
     );
     expect(mocks.getAgentDefinitionCatalogForScopes).toHaveBeenLastCalledWith(
@@ -163,7 +175,9 @@ describe('GET /.well-known/ui4a.json trusted entry', () => {
     );
     await expect(local.json()).resolves.toEqual(
       expect.objectContaining({
+        // 本地信任域返回全量 sitemap(全部已安装应用;fixture 含 default/publishing/community)。
         surfaces: [
+          expect.objectContaining({ rel: 'overview' }),
           expect.objectContaining({ rel: 'articles' }),
           expect.objectContaining({ rel: 'comments' }),
         ],
@@ -209,6 +223,40 @@ describe('GET /.well-known/ui4a.json trusted entry', () => {
         ],
       }),
     );
+  });
+
+  // (D51-宽合同)CLI 三纪律锚:HTTP 发现文档恒按授予并集返回,不随 lens/处境
+  // 窄化——"看不到"只发生在 prompt 披露层(对照锚:chat-situation.test.ts
+  // '(D51-窄披露)')。本用例用 grantedApplications=['default','publishing'] 的
+  // 身份显式锁定:两个已授予应用的 flows/surfaces 都在,未授予的 community 不在。
+  it('(D51-宽合同) granted=[default,publishing] 身份返回两应用的 flows/surfaces 并集', async () => {
+    process.env.UI4A_DEPLOYMENT_PROFILE = 'production';
+    mocks.resolveTrustedRequestIdentity.mockResolvedValueOnce({
+      ...CREDENTIAL_IDENTITY,
+      scopes: ['ui4a:read', 'ui4a:policy:default', 'ui4a:policy:publishing'],
+      grantedApplications: ['default', 'publishing'],
+    });
+
+    const response = await GET(
+      new Request('https://ui4a.mothership.internal/.well-known/ui4a.json', {
+        headers: { authorization: 'Bearer valid-agent-token' },
+      }),
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      version: string;
+      surfaces: { rel: string }[];
+      flows: { name: string }[];
+      applications: { name: string }[];
+    };
+    expect(body.version).toBe('test-version:default+publishing');
+    // surfaces/flows/applications 均为两应用并集(顺序 = granted 顺序)。
+    expect(body.surfaces.map(({ rel }) => rel)).toEqual(['overview', 'articles']);
+    expect(body.flows.map(({ name }) => name)).toEqual(['welcome', 'article-drafting']);
+    expect(body.applications.map(({ name }) => name)).toEqual(['default', 'publishing']);
+    // 并集边界:未授予的 community 不进发现文档。
+    expect(body.surfaces.map(({ rel }) => rel)).not.toContain('comments');
+    expect(body.flows.map(({ name }) => name)).not.toContain('comment-moderation');
   });
 
   it('union order follows granted claim order deterministically', async () => {

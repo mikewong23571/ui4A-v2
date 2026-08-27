@@ -1,6 +1,6 @@
 import type { EngineSnapshot } from '@ui4a/shared';
 import type { SirenEntity, Sitemap } from '@ui4a/engine';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   assertReachable,
@@ -9,6 +9,21 @@ import {
   filterSitemapForPolicyScope,
   filterThreadEntityForPrincipal,
 } from './application-scope';
+
+// D51 新应用注册演练(文末 describe):sidecar 读咽喉 getAuthorizedPresentationResult
+// 走真实 engine 边界,这里以 vi.mock 注入 fixture 引擎(纯单元,不触库)。
+const authorizedService = vi.hoisted(() => ({
+  readSnapshot: vi.fn(),
+  getSitemap: vi.fn(),
+  getEntity: vi.fn(),
+}));
+
+vi.mock('../engine/service', () => ({
+  getDb: () => ({ kind: 'test-db' }),
+  getEngine: async () => authorizedService,
+}));
+
+import { getAuthorizedPresentationResult } from '../engine/presentation/authorized-entity';
 
 const snapshot = {
   instances: {
@@ -398,5 +413,107 @@ describe('audience predicate authorization (D51)', () => {
       grantedApplications: ['publishing'],
     });
     expect(Object.keys(filtered.properties)).toEqual(['rel', 'title', 'count']);
+  });
+});
+
+// D51 不变量#5 注册演练:向 snapshot 注册假应用 'fixture-app'(含一条 flow 定义
+// 归属),不改任何产品代码——受众谓词、实体裁剪、sidecar 三态读结果全部直接生效。
+describe('D51-新应用零改码', () => {
+  const item = (rel: string): SirenEntity => ({
+    class: ['item'],
+    href: `/api/entity?rel=${rel}`,
+    properties: {},
+    actions: [],
+    links: [],
+  });
+  // 注册数据:fixture-app 应用 + fixture-flow 定义归属(flowApplication 读
+  // activeDefinitionOf → definitions 条目,故 name/version/status 非必需)。
+  const fixtureAppSnapshot = {
+    ...snapshot,
+    applications: {
+      ...snapshot.applications,
+      'fixture-app': { name: 'fixture-app', title: 'Fixture', intent: 'fixture' },
+    },
+    definitions: {
+      ...snapshot.definitions,
+      'fixture-flow': { definition: { name: 'fixture-flow', app: 'fixture-app' } },
+    },
+    instances: {
+      ...snapshot.instances,
+      'fixture:item-1': { rel: 'fixture:item-1', flow: 'fixture-flow', node: 'open', fields: {} },
+    },
+  } as unknown as EngineSnapshot;
+  const fixtureAppSitemap: Sitemap = {
+    ...sitemap,
+    surfaces: [
+      ...sitemap.surfaces,
+      { rel: 'fixture-items', title: 'Fixture items', collection: true, app: 'fixture-app' },
+    ],
+  };
+  const fixtureContext = {
+    snapshot: fixtureAppSnapshot,
+    sitemap: fixtureAppSitemap,
+    plane: 'business' as const,
+  };
+
+  it('assertReachable 对 fixture-app 注册数据直接生效(含 flow 归属)', () => {
+    for (const rel of ['fixture:item-1', 'fixture-items', 'flow:fixture-flow']) {
+      expect(() => assertReachable(fixtureContext, rel, ['fixture-app'])).not.toThrow();
+      // 授予集合不含 fixture-app → 受众谓词拒绝(mechanical code scope_insufficient;
+      // 呈现层映射 reasonCode=audience-unreachable,见 sidecar 三态用例)。
+      expect(() => assertReachable(fixtureContext, rel, ['publishing'])).toThrowError(
+        'scope_insufficient',
+      );
+    }
+  });
+
+  it('filterEntityForGrantedApplications 按受众集合裁剪 links/entities', () => {
+    const collection: SirenEntity = {
+      class: ['collection'],
+      properties: { count: 2 },
+      actions: [],
+      links: [
+        { rel: ['self'], href: '/api/entity?rel=fixture-items' },
+        { rel: ['related'], href: '/api/entity?rel=fixture%3Aitem-1' },
+        { rel: ['related'], href: '/api/entity?rel=comment%3Ac1' },
+      ],
+      entities: [item('fixture%3Aitem-1'), item('comment%3Ac1')],
+    };
+    const kept = filterEntityForGrantedApplications(collection, {
+      ...fixtureContext,
+      grantedApplications: ['fixture-app', 'publishing'],
+    });
+    expect(kept.entities?.map(({ href }) => href)).toEqual(['/api/entity?rel=fixture%3Aitem-1']);
+    expect(kept.links.map(({ href }) => href)).toEqual([
+      '/api/entity?rel=fixture-items',
+      '/api/entity?rel=fixture%3Aitem-1',
+    ]);
+    expect(kept.properties.count).toBe(1);
+  });
+
+  it('sidecar 读咽喉 getAuthorizedPresentationResult 三态对 fixture-app 同步生效', async () => {
+    authorizedService.readSnapshot.mockResolvedValue(fixtureAppSnapshot);
+    authorizedService.getSitemap.mockReturnValue(fixtureAppSitemap);
+    authorizedService.getEntity.mockImplementation(async (rel: string) =>
+      rel === 'fixture:item-1'
+        ? ({
+            class: ['item'],
+            properties: { id: rel },
+            actions: [],
+            links: [],
+          } as unknown as SirenEntity)
+        : undefined,
+    );
+    // 授予含 fixture-app → authorized(授予内零可见授权事件);不含 →
+    // audience-unreachable;无实体 → subject-unavailable。
+    await expect(
+      getAuthorizedPresentationResult('fixture:item-1', 'user:mike', ['fixture-app']),
+    ).resolves.toMatchObject({ kind: 'authorized' });
+    await expect(
+      getAuthorizedPresentationResult('fixture:item-1', 'user:mike', ['publishing']),
+    ).resolves.toMatchObject({ kind: 'audience-unreachable' });
+    await expect(
+      getAuthorizedPresentationResult('fixture:none', 'user:mike', ['fixture-app']),
+    ).resolves.toMatchObject({ kind: 'subject-unavailable' });
   });
 });

@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { sliceSitemapDisclosure, type SitemapSummary } from '@ui4a/agent';
 import { CHAT_VIEW_PROTOCOL_VERSION, type ClientViewReport } from '@ui4a/shared';
 
 import type { TrustedRequestAuditContext } from '../auth/request-identity';
+import { startRelFromSituation } from '../chat/start-chain';
 import { appendPresenceChange, ensurePresenceTables } from '../db/presence';
 import { getPool } from '../db/pool';
 
@@ -101,5 +103,89 @@ describe('chat situation adapter', () => {
     });
     expect(situation.scope).not.toBe('no-such-app');
     expect(situation.scope).toBe('publishing');
+  });
+});
+
+// (D51-窄披露)CLI 三纪律锚的 prompt 侧:内置 agent 的收窄只发生在披露装配层——
+// 宽合同对照在 .well-known/ui4a.json/route.production-auth.test.ts '(D51-宽合同)'
+// (HTTP 发现文档按授予并集返回 publishing 详情);此处锁定 lens=default 时喂给
+// agent 的披露输入(scope/startRel → sliceSitemapDisclosure)不含 publishing 域
+// surfaces 详情。lens 值只流向披露与落点,不进入任何鉴权判定。
+describe('(D51-窄披露) prompt 披露输入', () => {
+  const DISCLOSURE_SITEMAP: SitemapSummary = {
+    version: 't33-disclosure-fixture',
+    surfaces: [
+      { rel: 'overview', title: '工作台总览', app: 'default' },
+      { rel: 'articles', title: '文章列表', app: 'publishing' },
+    ],
+    applications: [
+      {
+        name: 'default',
+        intent: 'default work',
+        flows: [
+          {
+            name: 'welcome',
+            title: 'Welcome',
+            actions: [{ name: 'advance', title: 'Advance', node: 'start', guards: [] }],
+          },
+        ],
+      },
+      {
+        name: 'publishing',
+        intent: 'publish content',
+        flows: [
+          {
+            name: 'article-drafting',
+            title: 'Articles',
+            actions: [{ name: 'publish', title: 'Publish', node: 'ready', guards: [] }],
+          },
+        ],
+      },
+    ],
+    capabilities: [],
+  };
+
+  it('lens=default 时披露切片不含 publishing 域 surfaces/flow 详情', async () => {
+    // 与 /api/chat 同构:clientView 显式声明 + identity 授予集合 → situation 单点装配。
+    const situation = await situationForChat({
+      principal: PRINCIPAL,
+      identity: identityWith({ grantedApplications: ['default', 'publishing'] }),
+      clientView: clientView({ scope: 'default' }),
+    });
+    expect(situation.scope).toBe('default');
+    expect(situation.disclosure.scope).toBe('default');
+
+    // 导航落点与披露 scope 出自同一 situation(route 的 runAgent options:
+    // app=situation.scope, startRel=startRelFromSituation(situation))。
+    const startRel = startRelFromSituation(situation, {
+      default: { name: 'default', title: 'Default', intent: 'overview', entry: 'overview' },
+      publishing: {
+        name: 'publishing',
+        title: 'Publishing',
+        intent: 'publish',
+        entry: 'articles',
+      },
+    });
+    expect(startRel).toBe('overview');
+
+    // prompts.ts describeSitemap 的装配输入:sliceSitemapDisclosure({scope, currentRel})。
+    const disclosed = sliceSitemapDisclosure(DISCLOSURE_SITEMAP, {
+      scope: situation.disclosure.scope,
+      currentRel: startRel,
+    });
+    // 镜头内应用保留 flows/actions;publishing 域应用整体不出现在分组披露。
+    expect(disclosed.applications.map(({ name }) => name)).toEqual(['default']);
+    // publishing 域 surface 收窄为 rel+title 导航入口,不携带 app/flow/action 详情。
+    expect(disclosed.surfaces.find(({ rel }) => rel === 'articles')).toEqual({
+      rel: 'articles',
+      title: '文章列表',
+    });
+    expect(JSON.stringify(disclosed)).not.toContain('article-drafting');
+    // 宽合同对照:HTTP 发现文档仍按授予并集返回 publishing 详情(另锚
+    // '(D51-宽合同)' 用例)——收窄只发生在 prompt 披露层,不是 HTTP 合同。
+    expect(DISCLOSURE_SITEMAP.applications.map(({ name }) => name)).toEqual([
+      'default',
+      'publishing',
+    ]);
   });
 });
