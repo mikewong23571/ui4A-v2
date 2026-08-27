@@ -1,0 +1,8 @@
+T31 Phase A Task 2: spec/plan 回改对齐 D48
+
+变更:
+- conductor/tracks/t31-quality-remediation_20260826/{spec,plan}.md 全文 D47→D48 引用修正(plan 头部/Phase A/Phase C/验收标准/spec 各发现项与验收方向);
+- index.md 同步:D47→D48、状态 planned→in_progress、T27 冲突面解除说明;
+- metadata.json status→in_progress、updated_at 刷新。
+
+Why: 决策编号从 D47 校正为 D48 后,track 文档引用需一致;状态字段与 tracks registry [~] 对齐。编排 agent 自治验收:rg 确认 t31 文档无残留 D47 引用。
