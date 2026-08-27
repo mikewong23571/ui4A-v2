@@ -34,10 +34,13 @@ export async function POST(request: Request): Promise<Response> {
       authorizedPolicyScopes: Object.keys(engine.getSnapshot().applications ?? {}),
       defaultPolicyScope: 'default',
     });
+    // R10 口径对齐:允许集与消费方(chat-situation.ts、api/entity/route.ts)一致,
+    // 服务端解析出的 policyScope 追加在 granted 声明之后。
+    const authorizedScopes = [...grantedPolicyScopes(identity.scopes), identity.policyScope];
     if (
       change.kind === 'scope' &&
       typeof change.value === 'string' &&
-      !grantedPolicyScopes(identity.scopes).includes(change.value)
+      !authorizedScopes.includes(change.value)
     ) {
       return Response.json({ error: { code: 'scope_insufficient' } }, { status: 403 });
     }
