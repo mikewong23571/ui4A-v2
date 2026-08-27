@@ -42,18 +42,18 @@
       e2e 按此迁移(D50 单一默认,不留向导特例)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
-## Phase B: 写姿态单一默认收起
+## Phase B: 写姿态单一默认收起 [checkpoint: 17a6d11]
 
-- [ ] Task: Red——ActionRunner 组件测试改预期
+- [x] Task: Red——ActionRunner 组件测试改预期 [17a6d11]
   - 默认态断言 `closed`(带参数动作渲染一行触发键,不渲染展开表单);点击打开后
     prefill/schema 校验/焦点/两段式确认行为断言保持;mutation 抽查:恢复默认
     `form` → 变红
-- [ ] Task: Green——`action-runner.tsx` 初始态改 `closed`
+- [x] Task: Green——`action-runner.tsx` 初始态改 `closed` [17a6d11]
   - 触发键/图例/`data-action` 注记保持;打开后的全部既有行为零改动
-- [ ] Task: 读面零展开表单断言 + e2e 迁移
+- [x] Task: 读面零展开表单断言 + e2e 迁移 [17a6d11]
   - 新断言:首页三区域、canvas read surface、实体页首屏无默认展开参数表单;
   - 按 Phase A 清单迁移受影响填表步骤(统一加"打开"一步,GR2 一次性,无双默认)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
 ## Phase C: 任务语言(合同数据层)
 
