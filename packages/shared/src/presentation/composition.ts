@@ -11,11 +11,15 @@ export const MAX_COMPOSITION_INTENT_LENGTH = 256;
 
 export type CompositionMode = (typeof COMPOSITION_MODES)[number];
 
+/** Declared contract shape of one region source; the live entity class stays authoritative. */
+export type CompositionRegionShape = 'entity' | 'collection';
+
 export interface CompositionRegionDeclaration {
   region: string;
   source: string;
   intent: string;
   mode: CompositionMode;
+  shape?: CompositionRegionShape;
 }
 
 /** Platform-neutral data consumed by Composition planners and runtime registries. */
@@ -25,7 +29,14 @@ export interface CompositionDeclaration {
   regions: CompositionRegionDeclaration[];
 }
 
-const identifierPattern = /^[a-z0-9][a-z0-9._-]*$/u;
+/** Grammar shared by composition ids, region names and Recipe slot names. */
+export const compositionRegionIdPattern = /^[a-z0-9][a-z0-9._-]*$/u;
+
+/** Validate one region id against the single shared bounded identifier grammar. */
+export function isCompositionRegionId(value: string): boolean {
+  return value.length <= MAX_COMPOSITION_ID_LENGTH && compositionRegionIdPattern.test(value);
+}
+
 const contractRelPattern = /^[a-z0-9][a-z0-9._@/-]*(?::[a-z0-9][a-z0-9._@/-]*)?$/u;
 const forbiddenSourceSchemes = /^(?:data|file|https?|javascript|mailto):/u;
 
@@ -58,7 +69,7 @@ function boundedText(value: unknown, maximum: number, label: string): string {
 
 function identifier(value: unknown, label: string): string {
   const parsed = boundedText(value, MAX_COMPOSITION_ID_LENGTH, label);
-  if (!identifierPattern.test(parsed)) {
+  if (!isCompositionRegionId(parsed)) {
     throw new Error(`${label} must match [a-z0-9][a-z0-9._-]*`);
   }
   return parsed;
@@ -87,15 +98,24 @@ function mode(value: unknown, label: string): CompositionMode {
   return value as CompositionMode;
 }
 
+function shape(value: unknown, label: string): CompositionRegionShape | undefined {
+  if (value === undefined) return undefined;
+  if (value !== 'entity' && value !== 'collection') {
+    throw new Error(`${label} must be entity or collection`);
+  }
+  return value;
+}
+
 function region(value: unknown, index: number): CompositionRegionDeclaration {
   const label = `Composition region[${index}]`;
   record(value, label);
-  exactKeys(value, ['region', 'source', 'intent', 'mode'], label);
+  exactKeys(value, ['region', 'source', 'intent', 'mode', 'shape'], label);
   return {
     region: identifier(value.region, `${label} region`),
     source: sourceRel(value.source, `${label} source rel`),
     intent: boundedText(value.intent, MAX_COMPOSITION_INTENT_LENGTH, `${label} intent`),
     mode: mode(value.mode, `${label} mode`),
+    ...(value.shape === undefined ? {} : { shape: shape(value.shape, `${label} shape`) }),
   };
 }
 

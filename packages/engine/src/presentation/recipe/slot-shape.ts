@@ -1,12 +1,13 @@
+import { isCompositionRegionId } from '@ui4a/shared';
+
 import type { SurfaceNode, SurfaceTree } from '../surface/index';
 
 export interface RecipeRegionSlot {
   name: string;
 }
 
-const SLOT_SUBJECT = /^\$slot:([a-zA-Z0-9_.-]+)$/;
-
-function nodeSubjects(node: SurfaceNode): string[] {
+/** Collect every entity/region-slot subject reachable in the subtree. */
+export function surfaceSubjects(node: SurfaceNode): string[] {
   const subjects = node.dependencies.flatMap((dependency) =>
     dependency.kind === 'entity' ? [dependency.subject] : [],
   );
@@ -17,11 +18,11 @@ function nodeSubjects(node: SurfaceNode): string[] {
       ),
     );
   } else if (node.kind === 'repeat') {
-    subjects.push(node.source.subject, ...nodeSubjects(node.item));
+    subjects.push(node.source.subject, ...surfaceSubjects(node.item));
   } else if (node.kind === 'layout') {
-    subjects.push(...node.children.flatMap(nodeSubjects));
+    subjects.push(...node.children.flatMap(surfaceSubjects));
   } else if (node.kind === 'slot') {
-    subjects.push(...nodeSubjects(node.child));
+    subjects.push(...surfaceSubjects(node.child));
   }
   return subjects;
 }
@@ -48,13 +49,14 @@ export function canonicalRecipeSlotIssues(
   root.children.forEach((child, index) => {
     if (child.kind !== 'slot') return;
     const expected = slots[index]!.name;
-    const subjects = nodeSubjects(child);
+    const subjects = surfaceSubjects(child);
     if (subjects.length === 0) {
       issues.push(`recipe region "${expected}" must reference $slot:${expected}`);
       return;
     }
     for (const subject of subjects) {
-      if (SLOT_SUBJECT.exec(subject)?.[1] !== expected) {
+      const referenced = subject.startsWith('$slot:') ? subject.slice('$slot:'.length) : undefined;
+      if (referenced !== expected || !isCompositionRegionId(expected)) {
         issues.push(`recipe region "${expected}" must reference only $slot:${expected}`);
         break;
       }

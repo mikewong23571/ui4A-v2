@@ -28,6 +28,7 @@ export const dbTestFiles: readonly string[] = [
   'apps/web/src/app/api/delegations/route.test.ts',
   'apps/web/src/app/api/entity/route.production-auth.test.ts',
   'apps/web/src/app/api/entity/route.test.ts',
+  'apps/web/src/app/api/entity/virtual-subjects.test.ts',
   'apps/web/src/app/api/events/route.production-auth.test.ts',
   'apps/web/src/app/api/events/route.test.ts',
   'apps/web/src/app/api/exec-plan/route.production-auth.test.ts',

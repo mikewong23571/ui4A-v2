@@ -1,6 +1,8 @@
-import type { SurfaceCatalog, SurfaceTree } from '../surface/index';
+import { isCompositionRegionId } from '@ui4a/shared';
+
+import type { SurfaceCatalog, SurfaceNode, SurfaceTree } from '../surface/index';
 import { validateSurfaceTree } from '../surface/index';
-import { canonicalRecipeSlotIssues } from './slot-shape';
+import { canonicalRecipeSlotIssues, surfaceSubjects } from './slot-shape';
 
 export interface ApplicationRecipeKey {
   application: string;
@@ -100,37 +102,15 @@ export function deterministicRecipeKey(key: ApplicationRecipeKey): string {
   return `recipe:${fnv1a64(canonicalJson(key))}`;
 }
 
+const FORBIDDEN_KEY_NAMES = new Set(['principal', 'session', 'sessionid', 'livevalue']);
+
 function hasForbiddenKey(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(hasForbiddenKey);
   if (!isRecord(value)) return false;
   return Object.entries(value).some(([key, child]) => {
     const normalized = key.toLowerCase().replaceAll(/[-_]/g, '');
-    return (
-      normalized === 'principal' ||
-      normalized === 'session' ||
-      normalized === 'sessionid' ||
-      normalized === 'livevalue' ||
-      hasForbiddenKey(child)
-    );
+    return FORBIDDEN_KEY_NAMES.has(normalized) || hasForbiddenKey(child);
   });
-}
-
-function collectSurfaceSubjects(node: SurfaceTree['root'], subjects: string[]): void {
-  for (const dependency of node.dependencies) {
-    if (dependency.kind === 'entity') subjects.push(dependency.subject);
-  }
-  if (node.kind === 'word') {
-    for (const binding of Object.values(node.bindings)) {
-      if (binding.kind !== 'item') subjects.push(binding.subject);
-    }
-  } else if (node.kind === 'repeat') {
-    subjects.push(node.source.subject);
-    collectSurfaceSubjects(node.item, subjects);
-  } else if (node.kind === 'layout') {
-    node.children.forEach((child) => collectSurfaceSubjects(child, subjects));
-  } else if (node.kind === 'slot') {
-    collectSurfaceSubjects(node.child, subjects);
-  }
 }
 
 function validateKey(value: unknown, errors: string[]): value is ApplicationRecipeKey {
@@ -176,6 +156,7 @@ export function validateRecipeCandidate(
         !exactKeys(slot, ['name', 'kind']) ||
         !nonEmpty(slot.name) ||
         !['entity', 'collection', 'flow', 'selection'].includes(String(slot.kind)) ||
+        !isCompositionRegionId(String(slot.name)) ||
         slotNames.has(String(slot.name))
       ) {
         errors.push('recipe slot is invalid or duplicate');
@@ -188,29 +169,21 @@ export function validateRecipeCandidate(
   const surfaceResult = validateSurfaceTree(value.surfaceTemplate, catalog);
   if (!surfaceResult.valid) errors.push(...surfaceResult.issues.map((issue) => issue.message));
   if (JSON.stringify(surfaceResult.surface).includes('$slot:')) {
-    const invalidDependency = (() => {
-      const visit = (node: SurfaceTree['root']): boolean => {
-        if (
-          node.dependencies.some(
-            (dependency) => dependency.kind !== 'entity' && dependency.subject.startsWith('$slot:'),
-          )
-        ) {
-          return true;
-        }
-        if (node.kind === 'layout') return node.children.some(visit);
-        if (node.kind === 'slot') return visit(node.child);
-        if (node.kind === 'repeat') return visit(node.item);
-        return false;
-      };
-      return visit(surfaceResult.surface.root);
-    })();
-    if (invalidDependency) errors.push('only entity dependencies may use Recipe slot subjects');
+    const hasUnresolvedSlotDependency = (node: SurfaceNode): boolean =>
+      node.dependencies.some(
+        (dependency) => dependency.kind !== 'entity' && dependency.subject.startsWith('$slot:'),
+      ) ||
+      (node.kind === 'layout' && node.children.some(hasUnresolvedSlotDependency)) ||
+      (node.kind === 'slot' && hasUnresolvedSlotDependency(node.child)) ||
+      (node.kind === 'repeat' && hasUnresolvedSlotDependency(node.item));
+    if (hasUnresolvedSlotDependency(surfaceResult.surface.root)) {
+      errors.push('only entity dependencies may use Recipe slot subjects');
+    }
   }
-  const subjects: string[] = [];
-  collectSurfaceSubjects(surfaceResult.surface.root, subjects);
+  const subjects = surfaceSubjects(surfaceResult.surface.root);
   for (const subject of subjects) {
-    const slot = /^\$slot:([a-zA-Z0-9_.-]+)$/.exec(subject)?.[1];
-    if (slot === undefined || !slotNames.has(slot)) {
+    const slot = subject.startsWith('$slot:') ? subject.slice('$slot:'.length) : undefined;
+    if (slot === undefined || !isCompositionRegionId(slot) || !slotNames.has(slot)) {
       errors.push(`surface subject "${subject}" is not a declared slot`);
     }
   }
@@ -219,7 +192,9 @@ export function validateRecipeCandidate(
     errors.push(
       ...canonicalRecipeSlotIssues(
         surfaceResult.surface,
-        candidateSlots.map((slot) => ({ name: recordSlotName(slot) ?? '' })),
+        candidateSlots.map((slot) => ({
+          name: isRecord(slot) && typeof slot.name === 'string' ? slot.name : '',
+        })),
       ),
     );
   }
@@ -260,10 +235,6 @@ export function validateRecipeCandidate(
     errors.push('recipe provenance is invalid');
   }
   return { valid: errors.length === 0, errors };
-}
-
-function recordSlotName(value: unknown): string | undefined {
-  return isRecord(value) && typeof value.name === 'string' ? value.name : undefined;
 }
 
 export function createRecipeRegistry(): RecipeRegistry {

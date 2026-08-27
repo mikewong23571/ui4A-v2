@@ -9,6 +9,7 @@ import {
   MAX_COMPOSITION_VERSION_LENGTH,
   parseCompositionId,
   parseCompositionDeclaration,
+  isCompositionRegionId,
   type CompositionDeclaration,
 } from '../index';
 
@@ -175,5 +176,71 @@ describe('composition declaration', () => {
         ],
       }),
     ).toMatchObject({ version: '2026.08.26' });
+  });
+});
+
+describe('shared region-id grammar is the single source for Recipe slot names (T31 R13)', () => {
+  it.each([
+    'waiting',
+    'work-lines',
+    'r1',
+    'a.b_c-d',
+    `a${'z'.repeat(MAX_COMPOSITION_ID_LENGTH - 1)}`,
+  ])('accepts in-grammar region id %j', (value) => {
+    expect(isCompositionRegionId(value)).toBe(true);
+  });
+
+  it.each([
+    '',
+    'Uppercase',
+    '.leading',
+    '-leading',
+    'has space',
+    `$${'a'}`,
+    `a${'z'.repeat(MAX_COMPOSITION_ID_LENGTH)}`,
+  ])('rejects off-grammar or overlong region id %j', (value) => {
+    expect(isCompositionRegionId(value)).toBe(false);
+    expect(() =>
+      parseCompositionDeclaration({
+        ...declaration,
+        regions: [{ ...declaration.regions[0], region: value }],
+      }),
+    ).toThrow(/region/i);
+  });
+});
+
+describe('composition region declared source shape (T31 R12)', () => {
+  it('accepts an optional entity|collection shape and round-trips it', () => {
+    const parsed = parseCompositionDeclaration({
+      ...declaration,
+      regions: [{ ...declaration.regions[0], shape: 'collection' }],
+    });
+
+    expect(parsed.regions[0]?.shape).toBe('collection');
+    expect(parseCompositionDeclaration(JSON.parse(JSON.stringify(parsed)))).toEqual(parsed);
+    expect(parseCompositionDeclaration(declaration).regions[0]?.shape).toBeUndefined();
+  });
+
+  it.each([['Entity'], ['session'], ['collection '], [1], [null]])(
+    'rejects a non-contract source shape %j',
+    (shapeValue) => {
+      expect(() =>
+        parseCompositionDeclaration({
+          ...declaration,
+          regions: [{ ...declaration.regions[0], shape: shapeValue as never }],
+        }),
+      ).toThrow(/shape/i);
+    },
+  );
+
+  it('still rejects unknown sibling fields next to shape', () => {
+    expect(() =>
+      parseCompositionDeclaration({
+        ...declaration,
+        regions: [
+          { ...declaration.regions[0], shape: 'entity', provider: 'openai:gpt-x' } as never,
+        ],
+      }),
+    ).toThrow(/provider/i);
   });
 });

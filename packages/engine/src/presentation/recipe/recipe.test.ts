@@ -337,4 +337,15 @@ describe('Application Recipe validation and registry', () => {
     reversed.slots = [...reversed.slots].reverse();
     expect(validateRecipeCandidate(reversed, catalog)).toMatchObject({ valid: false });
   });
+
+  it('rejects off-grammar uppercase slot names per the shared region id grammar (R13)', () => {
+    const upper = compositionCandidate();
+    upper.slots = [
+      { name: 'Waiting', kind: 'collection' },
+      { name: 'moving', kind: 'entity' },
+    ];
+    expect(validateRecipeCandidate(upper, catalog).errors).toContain(
+      'recipe slot is invalid or duplicate',
+    );
+  });
 });
