@@ -11,9 +11,9 @@
  *   + aria-pressed + data-nav="local:chat-delegated"(全局思考过程开关已在
  *   T24 Phase B 移除:思考区默认折叠常在,无需整体隐藏);
  * - running 指示:三点 typing(替代 stock 的裸「●」);
- * - 轨迹步骤卡:step 帧携带的 rel 经 metadata.custom 传入——flow 实例步
- *   (rel 含 flow 或文本含节点迁移「执行 next(」)以 Badge 弱化呈现 rel
- *   (纯展示层,不改 trail.ts 文本);
+ * - 轨迹步骤卡:step 帧携带的 rel 经 metadata.custom 传入——rel 以 `flow:`
+ *   前缀开头(结构化 flow rel)时以 Badge 弱化呈现 rel(纯展示层,零文本
+ *   启发式:不对 message.text 做任何匹配,T32 Q4);
  * - 轨迹活动条目(T24 Phase B):step 帧携带 activity={op,title?,subject?}
  *   (经 metadata.custom)时主呈现为固定 op 词表的活动语言(「正在读取
  *   <标题>」「正在执行 <动作>」…,标题由服务器取自合同,客户端零猜测);
@@ -124,8 +124,8 @@ function useIsLiveThinking(): boolean {
   return useAuiState((s) => s.thread.isRunning && s.message.isLast);
 }
 
-/** assistant 文本部件:活动语言条目(可点下钻)或 Markdown + flow rel 徽章。 */
-const AssistantText: TextMessagePartComponent = ({ text }) => {
+/** assistant 文本部件:活动语言条目(可点下钻)或 Markdown + 结构化 flow rel 徽章。 */
+const AssistantText: TextMessagePartComponent = () => {
   const rel = useMessageRel();
   const activity = useMessageActivity();
   const eventSeq = useMessageEventSeq();
@@ -144,12 +144,13 @@ const AssistantText: TextMessagePartComponent = ({ text }) => {
       </a>
     );
   }
-  const showRel = rel !== undefined && (rel.includes('flow') || text.includes('执行 next('));
+  const showRel = rel !== undefined && rel.startsWith('flow:');
   return (
     <span className="block">
       {showRel && (
         <Badge
           variant="outline"
+          data-testid="flow-rel-badge"
           className="mb-1 block w-fit text-[10px] font-normal text-muted-foreground"
         >
           {rel}
