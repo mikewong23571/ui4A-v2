@@ -1,0 +1,1 @@
+T33 Phase F 类型收口:surface.test 补 SurfaceNode 类型导入;member-card.test mock 补 entity 形状;engine/src/presentation 目录基线 4624→4639(workflow 业务优先登记)。pnpm check 全绿。
