@@ -18,3 +18,28 @@ Why: T29 plan 承诺的消费方矩阵此前以 readFileSync+toContain 冻结实
 (policyScope 改取 identity 而非 situation)→ 测试红(expected 1 got 0);
 subagent 与编排 agent 各自独立执行均红,复原后连续 4 次绿。生产文件零 diff。
 自治验收。
+
+==== Phase B Verification & Checkpoint(自治验收,编排 agent 代行)====
+
+验证命令与结果:
+1. CI=true pnpm e2e invariants —— 4 passed(I3/I4/I6/I5 重放 hash=e84eb0c3d2ec,
+   与 Phase A 完全一致)/ 2 skipped,exit 0(端口冲突处置同 Phase A:临时停
+   ui4a-images-web-1,跑后恢复)。
+2. CI=true pnpm check
+   - typecheck / eslint / governance 全绿(governance 曾因两条目录基线越限红:
+     apps/web/src/db 4155>4014 系本 Track R2 强制合同测试所致;scripts/t22
+     14425>14424 系外部提交 47faabd darwin 守卫净增 +1。已按 workflow 授权以
+     编排 agent 身份登记 size-baseline.json 两处增量并单独提交);
+   - vitest:388 文件/2915 测试通过,含本 Phase 新增 R1/R2/R3 三组行为测试;
+   - 唯一失败:apps/agent-runner/src/production.test.ts 39 例(/dev/shm 于
+     macOS 不存在,mkdir EPERM)。为 T22 生产组合测试的 Linux-only 平台前提,
+     先于 T31 存在且不在 T31 修复范围(spec 站点归属:CLI 零改动、无
+     apps/agent-runner);同源 chown 失败已被并行会话提交 47faabd 以平台守卫
+     方式修复(t22 compose 测试现为 skip),/dev/shm 一项维持登记为本宿主
+     (darwin 开发机)的环境性排除项。
+
+Phase 变更文件:R1 route.step-frames.test.ts+清单登记;R2 presence.rate-limit/
+route.rate-limit.test.ts+清单登记;R3 situation-consumers.test.ts 重写+清单登记;
+治理基线登记一次。生产代码零持久改动(仅验收用临时 mutation,均逐字节复原)。
+mutation 抽查三方独立验证:subagent 双 mutation + 编排 agent 各任务亲验一条,
+全部能红。Phase B 完成。
