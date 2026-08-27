@@ -1,0 +1,7 @@
+T29 Task: 处境装配模块 situation.ts 与消费方单一来源(rebase 等价重建挂载)
+
+> 原始提交对象在 2026-08-26 origin/master rebase(T29 归档)后已不在对象库,验收 note 无法复制本体;本条按归档 plan 任务与现役测试证据重建,原始任务 sha 见 conductor/tracks/archive/t29-presence-situation_20260825/plan.md 映射节。
+> 等价提交:768263b
+
+变更(Phase C Task 1/2/4 等价):apps/web/src/engine/situation.ts assembleSituation 成为服务层唯一处境装配点(explicit→presence→defaults;scope 经 grantedScopes 收口,D48-R8 后空授权 fail-closed);chat-situation/entity route 双消费方同源(f419535 三任务的矩阵承诺以行为兑现)。
+现役证据:situation.test.ts 8 例(fail-closed 双形态+firstGranted 回退)、chat-situation.test.ts 4 例(explicit 槽位锁)、situation-consumers.test.ts 行为化矩阵(改一处 presence→两处同变);均为 T31 新落护栏,编排 agent 亲验 mutation 红/复原绿。
