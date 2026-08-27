@@ -176,6 +176,25 @@
 - **证据**: `evidence/2026-08-27-initial-walkthrough/08_meta_console.png`、`13_disclosure_panel.png`。
 - **处置**: 待排期(Phase D 顺带)。
 
+
+## F-18 导航无当前项指示(P1)
+
+- **状态**: open
+- **严重度**: P1(对比/定位)
+- **发现**: 用户反馈(2026-08-28):"没有 hint 表明当前在我的事,共同注视,定义管理,系统的哪一个"
+- **现象**: `site-nav.tsx` 全部链接固定 `text-muted-foreground`,不用 `usePathname()` 判定当前路由,无 aria-current/active 样式;用户无法一眼定位自己站在哪个区。
+- **修复方向(Phase D)**: 以 `usePathname()` 派生当前项(前缀匹配:/=我的事,/canvas=共同注视,/meta*=定义管理,系统下拉项按各自路径);当前项加 aria-current="page" + foreground 字重/底色,非当前项保持弱化;零特判逻辑(纯路由前缀映射表)。
+- **证据**: `evidence/2026-08-27-initial-walkthrough/01_home_top.png`(导航区无任何 active 迹象)。
+
+## F-19 "系统"下拉交互与样式低质(P2)
+
+- **状态**: open
+- **严重度**: P2
+- **发现**: 用户反馈(2026-08-28):"系统那个下拉效果很垃圾;很low"
+- **现象**: 原生 `<details>` + 文本字符"⌄"做箭头;展开层为 absolute popover,无动画/无对齐收口;导航后不自动收起(F-13 已记);点击外部区域不关闭;`text-sm` 下拉项与主链接同款 hover,层级感缺失。
+- **修复方向(Phase D,与 F-13 合并)**: 换 shadcn DropdownMenu(Radix,已有 ui 基座):触发键用 ChevronDown 图标 + aria-expanded;菜单项带图标与说明;路由变化自动收起;点击外部关闭;menu 样式与 meta 控制台卡片区同阶(shadow-md + rounded-lg + min-w)。箭头字符"⌄"从代码库清退。
+- **证据**: `evidence/2026-08-27-initial-walkthrough/23_delegations.png`(菜单悬浮不收)。
+
 ---
 
 ## 复验记录(回填区)

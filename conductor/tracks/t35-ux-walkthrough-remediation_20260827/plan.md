@@ -48,7 +48,7 @@
 - [ ] Task: D3 动作文案:action title 数据回归动作语("新建工作线"式),替代"填写XX参数"框架显示;创建表单必填项补合同携带的提示数据(F-08)
 - [ ] Task: D4 聊天面:澄清语走 LLM 人话、证据 chip 结构化可点、JSON path 进可展开审计层;聊天底栏"当前查看"人话化(F-09)
 - [ ] Task: D5 守卫原因:引擎原因结构化(数据),呈现层合同插值/LLM 转述,不硬编码模板(F-10)
-- [ ] Task: D6 顺带修 F-12/F-13/F-16:处境条文案与合法值提示、下拉点击后收起、刷新动词统一、开发注释改使用者视角或入抽屉
+- [ ] Task: D6 顺带修 F-12/F-13/F-16/F-18/F-19:处境条文案与合法值提示、刷新动词统一、开发注释改使用者视角或入抽屉;导航当前项指示(aria-current+视觉层级,F-18);系统下拉换 shadcn DropdownMenu 并在导航后收起(F-13/F-19)
 - [ ] Task: D7 回归——`pnpm vitest run --project unit` + `pnpm governance` + `pnpm format:check` 全绿
 - [ ] Task: D8 Phase 视觉验收 & Checkpoint:S1/S7 走查,截图,findings 回填
 - [ ] Task: D9 提交 `fix(t35): 术语统一与文案收敛(F-05..F-16 相关)`
