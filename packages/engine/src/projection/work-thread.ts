@@ -25,15 +25,15 @@ const noNodeFields = { 'collect-node-fields': false } as const;
 
 export const THREAD_CREATE_ACTION: ActionDefinition = {
   name: 'create',
-  title: 'Create work thread',
+  title: '创建工作线',
   ...noNodeFields,
   fields: [
-    { name: 'id', type: 'text', title: 'Thread id', required: true, minLength: 1 },
-    { name: 'goal', type: 'textarea', title: 'Goal', required: true, minLength: 1 },
+    { name: 'id', type: 'text', title: '工作线标识', required: true, minLength: 1 },
+    { name: 'goal', type: 'textarea', title: '目标', required: true, minLength: 1 },
     {
       name: 'goalSource',
       type: 'text',
-      title: 'Goal source',
+      title: '目标来源',
       required: true,
       minLength: 1,
     },
@@ -44,48 +44,48 @@ const referenceFields: ActionDefinition['fields'] = [
   {
     name: 'category',
     type: 'select',
-    title: 'Category',
+    title: '类别',
     required: true,
     options: [...THREAD_REFERENCE_CATEGORIES],
   },
-  { name: 'rel', type: 'text', title: 'Reference', required: true, minLength: 1 },
+  { name: 'rel', type: 'text', title: '引用实体', required: true, minLength: 1 },
 ];
 
 export const THREAD_ATTACH_ACTION: ActionDefinition = {
   name: 'attach',
-  title: 'Attach reference',
+  title: '挂载引用',
   ...noNodeFields,
   fields: referenceFields,
 };
 
 export const THREAD_DETACH_ACTION: ActionDefinition = {
   name: 'detach',
-  title: 'Detach reference',
+  title: '卸载引用',
   ...noNodeFields,
   fields: referenceFields,
 };
 
 export const THREAD_PAUSE_ACTION: ActionDefinition = {
   name: 'pause',
-  title: 'Pause work thread',
+  title: '暂停工作线',
   ...noNodeFields,
 };
 
 export const THREAD_RESUME_ACTION: ActionDefinition = {
   name: 'resume',
-  title: 'Resume work thread',
+  title: '恢复工作线',
   ...noNodeFields,
 };
 
 export const THREAD_COMPLETE_ACTION: ActionDefinition = {
   name: 'complete',
-  title: 'Complete work thread',
+  title: '完成工作线',
   ...noNodeFields,
 };
 
 export const THREAD_ARCHIVE_ACTION: ActionDefinition = {
   name: 'archive',
-  title: 'Archive work thread',
+  title: '归档工作线',
   ...noNodeFields,
 };
 
@@ -215,7 +215,7 @@ export function projectWorkThreads(snapshot: EngineSnapshot, deps: ProjectDeps):
       presentation: THREADS_PRESENTATION,
     },
     actions: [toSirenAction(THREAD_CREATE_ACTION, [], deps.baseHref)],
-    links: [{ rel: ['self'], href: entityHref(deps.baseHref, THREADS_REL) }],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, THREADS_REL), title: '我的工作线' }],
     'guard-results': unblocked([THREAD_CREATE_ACTION]),
     entities: threads.map((thread) => ({
       ...projectWorkThread(thread, snapshot, deps),

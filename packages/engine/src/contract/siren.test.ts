@@ -364,7 +364,9 @@ describe('project — inbox 集合(spec 架构决定 5)', () => {
         },
       },
     });
-    expect(entity?.links).toEqual([{ rel: ['self'], href: '/api/entity?rel=inbox' }]);
+    expect(entity?.links).toEqual([
+      { rel: ['self'], href: '/api/entity?rel=inbox', title: '在等我' },
+    ]);
 
     const item = entity?.entities?.[0];
     expect(item?.rel).toEqual(['item']);

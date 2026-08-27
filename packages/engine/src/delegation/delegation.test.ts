@@ -258,6 +258,9 @@ describe('project(delegations 投影)', () => {
         fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
       },
     });
+    expect(entity?.links).toEqual([
+      { rel: ['self'], href: '/api/entity?rel=delegations', title: '在动' },
+    ]);
     expect(entity?.entities).toHaveLength(1);
     const sub = entity?.entities?.[0];
     expect(sub?.rel).toEqual(['item']);

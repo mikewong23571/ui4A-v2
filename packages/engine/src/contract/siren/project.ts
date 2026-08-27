@@ -239,7 +239,7 @@ function projectInbox(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity 
       delivered,
     },
     actions: [],
-    links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'inbox') }],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'inbox'), title: '在等我' }],
     'guard-results': [],
     entities,
   };
@@ -288,7 +288,7 @@ function projectDelegations(snapshot: EngineSnapshot, deps: ProjectDeps): SirenE
       count: entries.length,
     },
     actions: [],
-    links: [{ rel: ['self'], href: entityHref(deps.baseHref, DELEGATIONS_REL) }],
+    links: [{ rel: ['self'], href: entityHref(deps.baseHref, DELEGATIONS_REL), title: '在动' }],
     'guard-results': [],
     entities,
   };

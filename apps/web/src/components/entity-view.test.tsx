@@ -436,6 +436,23 @@ describe('EntityView:实体四件组装渲染', () => {
     expect(anchor!.textContent).toContain('published');
   });
 
+  it('links[] 标签优先合同 title(T33:人话归合同数据)', () => {
+    const entity: SirenEntity = {
+      ...wizardEntity,
+      links: [
+        { rel: ['self'], href: '/api/entity?rel=inbox', title: '在等我' },
+        { rel: ['collection'], href: '/api/entity?rel=articles' },
+      ],
+    };
+    render(<EntityView rel="inbox" entity={entity} />);
+
+    const titled = screen.getByRole('link', { name: '在等我' });
+    expect(titled.getAttribute('data-nav')).toBe('self');
+    expect(titled.textContent).not.toContain('inbox');
+    // 无 title 的链接回退 target rel
+    expect(screen.getByRole('link', { name: 'articles' })).toBeTruthy();
+  });
+
   it('links[] 与 entities[] 的通用 thread target 都声明 thread query', () => {
     const threadMember: SirenEntity = {
       class: ['work-thread', 'open'],

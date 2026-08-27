@@ -4,9 +4,13 @@ import { seedGuardRegistry, type EngineSnapshot, type ThreadStatus } from '@ui4a
 
 import { project } from '../contract/siren';
 import {
+  THREAD_ARCHIVE_ACTION,
   THREAD_ATTACH_ACTION,
+  THREAD_COMPLETE_ACTION,
   THREAD_CREATE_ACTION,
   THREAD_DETACH_ACTION,
+  THREAD_PAUSE_ACTION,
+  THREAD_RESUME_ACTION,
   threadActionsForStatus,
 } from './work-thread';
 import { executeThreadCommand } from './work-thread-command';
@@ -84,6 +88,9 @@ describe('Work Thread Siren projection', () => {
         },
       },
     });
+    expect(entity?.links).toEqual([
+      { rel: ['self'], href: '/api/entity?rel=threads', title: '我的工作线' },
+    ]);
     expect(entity?.actions.map((action) => action.name)).toEqual(['create']);
     expect(entity?.actions[0]?.fields).toMatchObject({
       type: 'object',
@@ -209,6 +216,21 @@ describe('Work Thread Siren projection', () => {
       ]);
     }
     expect(threadActionsForStatus('archived')).toEqual([]);
+  });
+
+  it('declares task-language titles for every action and field (T33:人话归合同数据)', () => {
+    expect(THREAD_CREATE_ACTION.title).toBe('创建工作线');
+    expect(THREAD_CREATE_ACTION.fields?.map((field) => field.title)).toEqual([
+      '工作线标识',
+      '目标',
+      '目标来源',
+    ]);
+    expect(THREAD_ATTACH_ACTION.title).toBe('挂载引用');
+    expect(THREAD_DETACH_ACTION.title).toBe('卸载引用');
+    expect(THREAD_PAUSE_ACTION.title).toBe('暂停工作线');
+    expect(THREAD_RESUME_ACTION.title).toBe('恢复工作线');
+    expect(THREAD_COMPLETE_ACTION.title).toBe('完成工作线');
+    expect(THREAD_ARCHIVE_ACTION.title).toBe('归档工作线');
   });
 
   it('returns undefined for an unknown exact thread without inferring membership', () => {
