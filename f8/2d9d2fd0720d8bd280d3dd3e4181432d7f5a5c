@@ -1,0 +1,11 @@
+==== T31 全量验收(Track DoD,自治验收)====
+1. CI=true pnpm check —— 全绿 exit 0(typecheck/eslint/governance OK/vitest 391 文件
+   3001 测试 0 失败;governance 零未登记新增基线,T31 期间三处白名单登记均有档);
+   darwin 环境性排除项已由并行提交 7620ac9 消除。
+2. CI=true pnpm e2e invariants —— 4 passed / 2 skipped,I5 重放 hash=e84eb0c3d2ec,
+   与 A/B/C 三轮完全一致(四次运行恒定)。
+3. pnpm dev:all 实际启动走查(2026-08-27):GET /ready=200;业务 sitemap 正常服务
+   (surfaces 含 publishing/community 等);POST /api/presence 往返 changed=true
+   seq=1006(schemaVersion 缺失被 400 正确拒绝——合同在生效);GET
+   /api/entity?rel=articles=200。验证后栈已停止、ui4a-images-web-1 已恢复。
+临时隔离库 ui4a_t31c2/c3/c4 将随收尾删除。全部五条 Track DoD 达成。
