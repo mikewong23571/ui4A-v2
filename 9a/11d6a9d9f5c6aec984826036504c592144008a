@@ -1,0 +1,20 @@
+T31 Phase B Task R3: 消费方矩阵行为化
+
+变更:
+- 重写 apps/web/src/engine/situation-consumers.test.ts(29→202 行,db project):
+  fixture 用 appendPresenceChange 写 principal 投影;chat 消费方经真实
+  situationForChat(/api/chat L815 实际接线函数)+ 真实受信身份 header 构造;
+  entity 消费方经真实 GET /api/entity handler;观测面为 listAgentRuns 的
+  principal+policyScope 过滤(agent-run seed 双 scope)。主断言:同一 it 内
+  切换一处 presence → 两消费方派生输出同向翻转('改一处→两处同变'的行为兑现);
+  site 断言全用 fixture 值等式,零词表字面比对。
+- 旧文本断言处置:第一个 it(源码文本)退役;第二个 it(clientView 旧 wire
+  形状)降级辅助并升级为 parseClientViewReport exact-keys ingress 行为锁
+  (readFileSync 正则已无残留),注释明示主要保障为行为测试。
+- vitest.db-tests.list.ts 登记 1 行。
+
+Why: T29 plan 承诺的消费方矩阵此前以 readFileSync+toContain 冻结实现形状,
+重构误红/行为漂移不红(R3)。mutation 抽查:破坏 entity route 缺省赋值
+(policyScope 改取 identity 而非 situation)→ 测试红(expected 1 got 0);
+subagent 与编排 agent 各自独立执行均红,复原后连续 4 次绿。生产文件零 diff。
+自治验收。
