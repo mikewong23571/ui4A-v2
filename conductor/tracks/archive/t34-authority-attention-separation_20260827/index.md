@@ -15,7 +15,7 @@
 - [Architecture](./architecture.md)(实现级架构合同:D51 五不变量的执法映射、
   agent navigate 推演、迁移与治理)
 
-当前状态:`in_progress`(Phase 0–D 全部闭环;Phase E 已发布生产 rev52@59e12ff,五景+invariants 定向 e2e 绿;唯一待办=用户真人走查后收尾归档)(用户已定向:不做临时修复,直接终态,减法优先,
+当前状态:`closed`(2026-08-27:rev52@59e12ff 上线,用户生产真人走查确认原事故对话一次到位;五景 E2E 晋升常驻回归锚,c/d 凭证域证据在 Phase B vitest;GR5 无 bespoke 残留)(用户已定向:不做临时修复,直接终态,减法优先,
 允许破坏性重构;开工指令待下达)。验收以 spec"DONE 定义"为准:
 五景 E2E 走查 + D51 五不变量证据 + `pnpm check` 终绿 + 生产真人走查
 一次到位。性质:refactor(净行数预期为负,零新机制/端点/schema)。
