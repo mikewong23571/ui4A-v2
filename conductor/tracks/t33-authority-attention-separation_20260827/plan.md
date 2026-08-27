@@ -79,16 +79,15 @@
     不得以模板扩写冒充理解——§六文案滑梯纪律)
 - [x] Task: Phase Verification & Checkpoint [c0ae492](五景 a/b/e 绿;c/d 锚点落 Phase B vitest——偏离:e2e 层多凭证装置成本不成比例,vitest 即证据,已在 e2e 注释与汇报登记)
 
-## Phase C: 注意力核对与新应用零改动证据
+## Phase C: 注意力核对与新应用零改动证据 [checkpoint: 1257333]
 
-- [ ] Task: agent 披露不回归核对(T25/T29 成果)
+- [x] Task: agent 披露不回归核对(T25/T29 成果) [1257333]
   - L0/L1/L2 切片来源均为 situation 单点;全库 grep 无路由旁路自算 lens;
   - CLI 纪律证据测试:HTTP 合同(sitemap/entity)按授予并集返回不窄化,
     prompt 切片收窄仅发生在披露装配层(§八三纪律)
-- [ ] Task: 新 application 注册演练证据测试(D51 不变量#5)
+- [x] Task: 新 application 注册演练证据测试(D51 不变量#5) [1257333]
   - fixture 级假应用仅动注册数据;断言五景行为与五条不变量全部零代码分叉
-- [ ] Task: Phase Verification & Checkpoint(五景全绿 + `CI=true pnpm e2e invariants`
-  + 重放哈希套件)
+- [x] Task: Phase Verification & Checkpoint [1257333](五景 3p+invariants 4p;重放哈希 I5 hash=43922011b292 与既往一致)
 
 ## Phase D: 治理收尾
 
