@@ -1,0 +1,1 @@
+T22 收尾续:pnpm check 复跑发现 agent-runner production.test 在 darwin 下 mkdir('/dev/shm') EPERM(39 用例全挂)。改 darwin 退 tmpdir(Linux 保持 /dev/shm tmpfs 惯例),隔离语义不变(进程私有一次性目录+afterEach 清理)。39 passed。
