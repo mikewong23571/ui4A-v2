@@ -38,7 +38,7 @@
       "path": "packages/engine/src/presentation",
       "lines": 4624,
       "limit": 4000,
-      "note": "T30 在途:组合 assembly、canonical Recipe slot/promotion 与多源 fastpath 均属 Presentation 纯内核直接模块;按 workflow 业务优先原则不为凑行数拆分,shrink-only 自 T30 关闭起算;收缩窗口=T30 review 或后续 CompositionDefinition 治理晋升时按 compose/recipe/sidecar 子域归档直接文件;T31 R13/T30 组合组在途+21(测试证据为主:promotion.test R13 大写拒绝断言 +30/-7,runtime-composition R12 测试 +49 在 web 侧;recipe.ts 统一正则下沉 shared 后 src 净收缩 -29(24 添 53 删));处置计划=T31 review 按 compose/recipe/sidecar 子域归档直接文件时合并收缩,shrink-only 自 T31 关闭起算"
+      "note": "T26–T31 累计(组合 assembly、canonical Recipe slot/promotion 与多源 fastpath 属 Presentation 纯内核直接模块);T30/T31 R12-R13 已按业务优先不为凑行数拆分(workflow 授权),T31 期间统一 slot 语法后 src 净收缩、基线现值为 R13 后实测;shrink-only 自 T31 关闭起算,处置计划=后续 CompositionDefinition 治理晋升时按 compose/recipe/sidecar 子域归档直接文件合并收缩"
     },
     {
       "path": "apps/web/src/auth",
@@ -62,7 +62,7 @@
       "path": "e2e",
       "lines": 4507,
       "limit": 4000,
-      "note": "T30 既有 4126;T27 workstation-home CLI/Sidecar/DOM、workstation-situation presence 留痕、flow 双桥/ghost 诚实失败 standing E2E、I3 双桥覆盖及 S2 raw replay/alias 诚实性修正后 tracked total=4507;按 workflow 业务优先不裁剪验收证据。处置计划=T28 一等交互验收落地时合并重复 Presentation/server setup 到 e2e/kits 并按 workstation/presentation feature 子目录归位,最终不得遗留 bespoke track 配置"
+      "note": "T27 workstation-home CLI/Sidecar/DOM、workstation-situation presence 留痕、flow 双桥/ghost 诚实失败 standing E2E、I3 双桥覆盖及 S2 raw replay/alias 诚实性修正后累计(tracked total 见行数,按 workflow 业务优先不裁剪验收证据);T28 一等交互已闭环并按 GR5 归并重复 Presentation/server setup 到 e2e/kits,无 bespoke track 配置残留;shrink-only 自 T28 关闭起算"
     }
   ]
 }
