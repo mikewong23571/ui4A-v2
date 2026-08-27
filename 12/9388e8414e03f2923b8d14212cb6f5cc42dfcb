@@ -1,0 +1,1 @@
+T32 Phase A 自治验收:D49 两判断点已落 DECISIONS.md——Q3 采纳豁免记录(stepAuditHref 指向 /api/events 是 D47 既定的审计链接落点,零代码变更,R23 登记为有意设计);Q6 采纳注释锚定(两套依赖 id 方案同主体同源自洽,统一装配留待未来 track)。验证:git show 129388e 仅改 DECISIONS.md(决策条目),conductor 文档回改对齐;零代码行为变更,Phase B 起进入代码修复。
