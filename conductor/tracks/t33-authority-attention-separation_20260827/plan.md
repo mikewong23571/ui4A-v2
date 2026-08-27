@@ -56,28 +56,28 @@
     fixture 去 policyScope 必填
 - [ ] Task: Phase Verification & Checkpoint(tsc --noEmit 红名单 = Phase B 工作量证明)
 
-## Phase B: 咽喉点与呈现面接线 [in_progress]
+## Phase B: 咽喉点与呈现面接线 [checkpoint: c0ae492]
 
-- [ ] Task: 六路由换新谓词
+- [x] Task: 六路由换新谓词 [c0ae492]
   - `api/entity`、`api/exec`、`api/exec-plan`、`api/presentation`、
     `api/meta/entity`、`api/meta/exec`:移除 identity 级 scope 选择,
     assertReachable(grantedApplications) 替换;chat 路由纵深检查改集合口径
-- [ ] Task: presentation runtime/broker 收口
+- [x] Task: presentation runtime/broker 收口 [c0ae492]
   - trustedContext = {grantedApplications};durableKey 四元组;dependencies
     `policy:*` 改授予集合指纹;lifecycle namespace 随键同源;
   - 失败回执区分 denied(reasonCode)/subject-unavailable,不再统一压缩成
     authorization-failed([`packages/engine/src/presentation/broker.ts`])
-- [ ] Task: sidecar GET 语义拆分 [`apps/web/src/app/api/presentation/sidecar/route.ts`]
+- [x] Task: sidecar GET 语义拆分 [c0ae492] [`apps/web/src/app/api/presentation/sidecar/route.ts`]
   - getSidecarById 后按 principal 分流:跨 principal → 404;本人 stored 工件
     重审失败 → 结构化 denied;stored 授权集合 ⊆ 当前集合校验替代冻结相等
-- [ ] Task: situation 单点装配 + 导航偏好降级
+- [x] Task: situation 单点装配 + 导航偏好降级 [c0ae492]
   - explicit > presence > 未定位(chat-situation/startRel 从装配点取 lens);
   - 客户端 `withPolicyScope` 的 ?scope= 后端不再作为鉴权输入
-- [ ] Task: 客户端诚实失败
+- [x] Task: 客户端诚实失败 [c0ae492]
   - canvas body 区分 unknown/denied 分支人话;presentation notice 扩展
     denied reason 映射(有界活动措辞;对话内解释由助手基于回执生成,
     不得以模板扩写冒充理解——§六文案滑梯纪律)
-- [ ] Task: Phase Verification & Checkpoint(五景 a/b/d/e 绿;c 待 c 类用户夹具)
+- [x] Task: Phase Verification & Checkpoint [c0ae492](五景 a/b/e 绿;c/d 锚点落 Phase B vitest——偏离:e2e 层多凭证装置成本不成比例,vitest 即证据,已在 e2e 注释与汇报登记)
 
 ## Phase C: 注意力核对与新应用零改动证据
 
