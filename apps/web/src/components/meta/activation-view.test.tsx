@@ -201,7 +201,7 @@ describe('ActivationView(BIOS 激活详情)', () => {
     render(<ActivationView id="a1" entity={activationEntity('pending-approval')} />);
 
     // D50:驳回表单默认收起,先打开;空原因:RJSF required 校验拦截,不产生任何请求。
-    fireEvent.click(screen.getByRole('button', { name: '填写驳回参数' }));
+    fireEvent.click(screen.getByRole('button', { name: '驳回 ⌄' }));
     fireEvent.click(screen.getByRole('button', { name: '驳回' }));
     await waitFor(() => expect(screen.getByText(/reason|原因|required/i)).toBeTruthy());
     expect(fetchMock).not.toHaveBeenCalled();

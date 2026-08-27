@@ -40,12 +40,7 @@ export function articlesCollection(): SirenEntity {
 }
 
 /** 事件日志成员(事件流页的投影形状:seq/kind/rel/action 标量)。 */
-export function eventMember(
-  seq: number,
-  kind: string,
-  rel: string,
-  action?: string,
-): SirenEntity {
+export function eventMember(seq: number, kind: string, rel: string, action?: string): SirenEntity {
   return {
     class: ['event'],
     rel: ['item'],

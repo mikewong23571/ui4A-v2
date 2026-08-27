@@ -89,9 +89,9 @@ describe('首页 `/` 页面边界', () => {
     // T35 F-23:首页 = 应用目录条(壳级书架,数据来自 sitemap)+ 主面;两者都不是
     // 旧首页的硬编码内容面。
     expect(container.childElementCount).toBe(2);
-    expect(
-      container.firstElementChild?.getAttribute('data-testid'),
-    ).toBe('application-entry-strip');
+    expect(container.firstElementChild?.getAttribute('data-testid')).toBe(
+      'application-entry-strip',
+    );
     expect(container.lastElementChild).toBe(host);
   });
 });

@@ -30,11 +30,7 @@ describe('引用收集', () => {
       caption: { field: 'articles.rel' },
       extra: [{ ref: 'entity:post:post-welcome' }, { collection: 'comments' }],
     };
-    expect(collectRefs(bind)).toEqual([
-      'articles',
-      'post:post-welcome',
-      'comments',
-    ]);
+    expect(collectRefs(bind)).toEqual(['articles', 'post:post-welcome', 'comments']);
   });
 });
 
@@ -49,9 +45,36 @@ describe('surface 规划', () => {
     expect(plan.messages).toHaveLength(3);
     expect(plan.warnings).toEqual([]);
     const [create, data, components] = plan.messages as unknown as [
-      Record<string, { surfaceId: string; catalogId?: string; path?: string; value?: unknown; components?: unknown[] }>,
-      Record<string, { surfaceId: string; catalogId?: string; path?: string; value?: unknown; components?: unknown[] }>,
-      Record<string, { surfaceId: string; catalogId?: string; path?: string; value?: unknown; components?: unknown[] }>,
+      Record<
+        string,
+        {
+          surfaceId: string;
+          catalogId?: string;
+          path?: string;
+          value?: unknown;
+          components?: unknown[];
+        }
+      >,
+      Record<
+        string,
+        {
+          surfaceId: string;
+          catalogId?: string;
+          path?: string;
+          value?: unknown;
+          components?: unknown[];
+        }
+      >,
+      Record<
+        string,
+        {
+          surfaceId: string;
+          catalogId?: string;
+          path?: string;
+          value?: unknown;
+          components?: unknown[];
+        }
+      >,
     ];
     expect(create.createSurface).toMatchObject({
       surfaceId: 'articles-table',

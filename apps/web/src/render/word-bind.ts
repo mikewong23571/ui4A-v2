@@ -35,7 +35,9 @@ export function validateWordBind(bind: unknown, word: string): SpecValidation {
   if (entry === undefined) {
     return {
       valid: false,
-      errors: [{ path: 'component', message: `词条 "${word}" 不在渲染词汇表(目录 /api/render/catalog)` }],
+      errors: [
+        { path: 'component', message: `词条 "${word}" 不在渲染词汇表(目录 /api/render/catalog)` },
+      ],
     };
   }
   if (validatorOf(entry)(bind)) return { valid: true };

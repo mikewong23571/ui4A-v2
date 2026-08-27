@@ -506,9 +506,7 @@ describe('generic semantic fallback planner', () => {
         {
           class: ['confirmation', 'pending'],
           properties: { rel: 'confirmation:c1', identity: '归档 · 由 agent 提议' },
-          actions: [
-            { name: 'approve', title: '批准', method: 'POST', href: '/exec', fields: {} },
-          ],
+          actions: [{ name: 'approve', title: '批准', method: 'POST', href: '/exec', fields: {} }],
           links: [],
           'guard-results': [],
         },
@@ -565,13 +563,15 @@ describe('generic semantic fallback planner', () => {
         fields: { kind: 'item', path: 'properties.fields' },
       },
     });
-    expect(validateSurfaceTree(
-      planGenericSurface('col:deciding', deciding, memberCatalog, {
-        entityVersion: 'entity-v1',
-        intent: 'read',
-      }),
-      memberCatalog,
-    ).valid).toBe(true);
+    expect(
+      validateSurfaceTree(
+        planGenericSurface('col:deciding', deciding, memberCatalog, {
+          entityVersion: 'entity-v1',
+          intent: 'read',
+        }),
+        memberCatalog,
+      ).valid,
+    ).toBe(true);
 
     const link = findRepeatItem(
       planGenericSurface('col:plain', plain, memberCatalog, {

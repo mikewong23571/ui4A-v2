@@ -26,7 +26,11 @@ function displayValue(value: PresenceValue): string {
   return typeof value === 'string' ? value : JSON.stringify(value);
 }
 
-function usePopover(): { open: boolean; setOpen: (next: boolean) => void; ref: React.RefObject<HTMLDivElement | null> } {
+function usePopover(): {
+  open: boolean;
+  setOpen: (next: boolean) => void;
+  ref: React.RefObject<HTMLDivElement | null>;
+} {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -56,7 +60,9 @@ function ThreadSwitcher({ route, currentThreadId }: { route: string; currentThre
   useEffect(() => {
     let cancelled = false;
     fetch('/api/entity?rel=threads')
-      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+      .then((response) =>
+        response.ok ? response.json() : Promise.reject(new Error(String(response.status))),
+      )
       .then((body: { entities?: Array<{ properties: { rel: string; identity?: string } }> }) => {
         if (cancelled) return;
         setThreads(
@@ -108,7 +114,12 @@ export function SituationBar() {
   const siteLabel = SITE_LABELS[displayValue(observation.site)] ?? displayValue(observation.site);
 
   return (
-    <section aria-label="声明的处境" data-testid="situation-bar" ref={ref} className="relative ml-auto flex items-center gap-1.5">
+    <section
+      aria-label="声明的处境"
+      data-testid="situation-bar"
+      ref={ref}
+      className="relative ml-auto flex items-center gap-1.5"
+    >
       {/* 站点常显 */}
       <span
         data-testid="situation-site"
@@ -158,7 +169,10 @@ export function SituationBar() {
         className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
         在哪
-        <ChevronDown aria-hidden="true" className={`size-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown
+          aria-hidden="true"
+          className={`size-3 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
       </button>
 
       {open && (
@@ -210,9 +224,7 @@ export function SituationBar() {
 
           <div className="grid gap-1.5 border-t pt-2.5">
             <p className="text-xs font-medium text-foreground">调整 scope</p>
-            <p className="text-[11px] text-muted-foreground">
-              只影响你看到的内容,不改变权限。
-            </p>
+            <p className="text-[11px] text-muted-foreground">只影响你看到的内容,不改变权限。</p>
             <input
               value={scopeDraft}
               onChange={(event) => setScopeDraft(event.currentTarget.value)}

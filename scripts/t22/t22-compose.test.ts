@@ -314,9 +314,13 @@ describe('T22 Compose single-command operations', () => {
 
   it('emits one stable JSON error envelope from the executable tsx entry', async () => {
     await expect(
-      execFileAsync('apps/worker/node_modules/.bin/tsx', ['scripts/t22/t22-compose.ts', 'invalid'], {
-        cwd: process.cwd(),
-      }),
+      execFileAsync(
+        'apps/worker/node_modules/.bin/tsx',
+        ['scripts/t22/t22-compose.ts', 'invalid'],
+        {
+          cwd: process.cwd(),
+        },
+      ),
     ).rejects.toMatchObject({
       code: 1,
       stdout: '',

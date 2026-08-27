@@ -46,11 +46,7 @@ export interface CollectionBind {
  * 值必须仍是 bind 树——裸字面载荷非法(validator 拒)。
  */
 export type BindTree =
-  | RefBind
-  | FieldBind
-  | CollectionBind
-  | BindTree[]
-  | { [key: string]: BindTree };
+  RefBind | FieldBind | CollectionBind | BindTree[] | { [key: string]: BindTree };
 
 /** render spec:一次渲染的完整声明(agent/生成路径产出的唯一形状)。 */
 export interface RenderSpec {
@@ -83,9 +79,7 @@ export function dimensionRef(collectionRel: string, path: string): string {
 }
 
 /** 字段引用解析:rel 与属性路径(无分隔/空段返回 undefined)。 */
-export function parseFieldRef(
-  ref: string,
-): { rel: string; path: string[] } | undefined {
+export function parseFieldRef(ref: string): { rel: string; path: string[] } | undefined {
   const separator = ref.indexOf('.');
   if (separator <= 0 || separator === ref.length - 1) return undefined;
   return { rel: ref.slice(0, separator), path: ref.slice(separator + 1).split('.') };

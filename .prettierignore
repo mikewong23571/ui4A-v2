@@ -15,3 +15,9 @@ apps/web/public/
 
 # E2E 场景 server 的独立构建目录
 apps/web/.next-e2e/
+
+# 发布时点产物(SHA256SUMS 与内容互相寻址,重排即失配;T22 release 资产)
+release/
+
+# Helm Go 模板(内嵌 {{- }} 指令,非纯 YAML,prettier 不可解析)
+deploy/helm/

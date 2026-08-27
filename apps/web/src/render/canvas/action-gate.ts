@@ -73,7 +73,10 @@ export function createActionGate(execFn: GateExecFn): ActionGate {
       }
       const allowed = declared.get(rel);
       if (allowed === undefined || !allowed.has(action.name)) {
-        const known = allowed === undefined ? '实体未注册(不在任何渲染 surface 的数据模型内)' : `该实体声明的动作是 [${[...allowed].join(', ')}]`;
+        const known =
+          allowed === undefined
+            ? '实体未注册(不在任何渲染 surface 的数据模型内)'
+            : `该实体声明的动作是 [${[...allowed].join(', ')}]`;
         return {
           outcome: 'rejected',
           reason: `动作 "${action.name}" 不在实体 "${rel}" 的已声明动作内(${known})——渲染层拒绝,零 /api/exec 调用`,

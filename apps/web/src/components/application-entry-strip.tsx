@@ -35,7 +35,9 @@ export function ApplicationEntryStrip() {
   useEffect(() => {
     let cancelled = false;
     fetch('/.well-known/ui4a.json')
-      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+      .then((response) =>
+        response.ok ? response.json() : Promise.reject(new Error(String(response.status))),
+      )
       .then((body: { applications?: ApplicationEntry[] }) => {
         if (!cancelled && Array.isArray(body.applications)) setApplications(body.applications);
       })
@@ -55,7 +57,10 @@ export function ApplicationEntryStrip() {
     .map((application) => ({ ...application, entry: entryRel(application) }));
   if (entries.length === 0) return null;
 
-  const visible = expanded || entries.length <= COLLAPSE_THRESHOLD ? entries : entries.slice(0, COLLAPSE_THRESHOLD);
+  const visible =
+    expanded || entries.length <= COLLAPSE_THRESHOLD
+      ? entries
+      : entries.slice(0, COLLAPSE_THRESHOLD);
   const hidden = entries.length - visible.length;
 
   return (

@@ -4,11 +4,7 @@ import { trailToMessages } from '../chat/trail';
 import type { TrailStep } from '@ui4a/agent';
 import type { SirenEntity } from '@ui4a/engine';
 
-import {
-  projectDelegationDetail,
-  toDelegationRow,
-  type DelegationEventRow,
-} from './projection';
+import { projectDelegationDetail, toDelegationRow, type DelegationEventRow } from './projection';
 
 // 委托投影(T5 Phase B / Task 1):事件日志(委托事件族)→ 舰队/详情视图。
 // 详情的 messages 必须与 inline 聊天的 trailToMessages **逐条等值**(spec 验收 6:
@@ -50,7 +46,12 @@ const publishSteps: TrailStep[] = [
     outcome: 'executed',
   },
   { step: 3, rel: 'articles', op: { kind: 'exec', action: 'publish' }, outcome: 'executed' },
-  { step: 4, rel: 'articles', op: { kind: 'done', summary: '目标完成: publish 已成功' }, outcome: 'done' },
+  {
+    step: 4,
+    rel: 'articles',
+    op: { kind: 'done', summary: '目标完成: publish 已成功' },
+    outcome: 'done',
+  },
 ];
 
 /** TrailStep 序列 → 对应 delegation 事件行(轨迹在事件日志,不在快照)。 */
@@ -134,7 +135,12 @@ describe('projectDelegationDetail(事件流 → 详情视图)', () => {
         rel: 'articles',
         op: { kind: 'exec', action: 'archive' },
         outcome: 'rejected',
-        rejection: { rel: 'articles', action: 'archive', layer: 'guard', reason: 'Cedar: 需人类确认' },
+        rejection: {
+          rel: 'articles',
+          action: 'archive',
+          layer: 'guard',
+          reason: 'Cedar: 需人类确认',
+        },
       },
       {
         step: 2,
@@ -160,7 +166,12 @@ describe('projectDelegationDetail(事件流 → 详情视图)', () => {
       { step: 1, rel: 'articles', op: { kind: 'navigate', rel: 'articles' }, outcome: 'navigated' },
     ];
     const detail = projectDelegationDetail(
-      detailEntity({ status: 'max-steps', steps: 1, successes: 0, reason: '达到步数上限 24 未收到 done/fail' }),
+      detailEntity({
+        status: 'max-steps',
+        steps: 1,
+        successes: 0,
+        reason: '达到步数上限 24 未收到 done/fail',
+      }),
       stepsToEvents(steps),
     );
     expect(detail.messages).toEqual([

@@ -49,7 +49,11 @@ function record(value: unknown, label: string): asserts value is Record<string, 
   }
 }
 
-function exactKeys(value: Record<string, unknown>, allowed: readonly string[], label: string): void {
+function exactKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  label: string,
+): void {
   const unexpected = Object.keys(value).find((key) => !allowed.includes(key));
   if (unexpected !== undefined) throw new Error(`${label} contains forbidden key ${unexpected}`);
 }

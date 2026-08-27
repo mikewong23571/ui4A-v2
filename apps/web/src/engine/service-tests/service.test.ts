@@ -402,7 +402,7 @@ describe('投影与 sitemap 接线', () => {
         'idea-capture',
         'idea-item',
       ]),
-    );;
+    );
     expect(engine.getSitemap()).toBe(sitemap);
   });
 });

@@ -132,10 +132,7 @@
               "to": "done",
               "submission": {
                 "mode": "direct",
-                "actors": [
-                  "agent",
-                  "human"
-                ]
+                "actors": ["agent", "human"]
               },
               "method": "POST",
               "guards": [],
@@ -175,10 +172,7 @@
               "to": "open",
               "submission": {
                 "mode": "direct",
-                "actors": [
-                  "agent",
-                  "human"
-                ]
+                "actors": ["agent", "human"]
               },
               "method": "POST",
               "guards": [],

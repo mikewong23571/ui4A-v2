@@ -17,10 +17,7 @@ afterEach(cleanup);
 describe('diff 词条', () => {
   it('deref 输出 → 机械 diff:- 旧值 / + 新值(路径取回,零 AI)', () => {
     const cache = new Map([['activation:a1', diffEntity()]]);
-    const props = derefSpec(
-      specOf('diff', { entity: { ref: 'entity:activation:a1' } }),
-      cache,
-    );
+    const props = derefSpec(specOf('diff', { entity: { ref: 'entity:activation:a1' } }), cache);
     const { container } = render(<DiffWord {...props} />);
 
     const view = container.querySelector('[data-word="diff"]');
@@ -37,9 +34,7 @@ describe('diff 词条', () => {
 
   it('entity 缺 diff 载荷 → 响亮抛错', () => {
     expect(() =>
-      render(
-        <DiffWord entity={{ class: [], properties: { rel: 'x' }, actions: [], links: [] }} />,
-      ),
+      render(<DiffWord entity={{ class: [], properties: { rel: 'x' }, actions: [], links: [] }} />),
     ).toThrow(/diff 的 entity/);
   });
 });

@@ -16,10 +16,7 @@ afterEach(cleanup);
 
 describe('table 词条', () => {
   it('deref 输出 → 表格含字段列头与每行值(列从 fields 键并集派生)', () => {
-    const props = derefSpec(
-      specOf('table', { rows: { collection: 'articles' } }),
-      articlesCache(),
-    );
+    const props = derefSpec(specOf('table', { rows: { collection: 'articles' } }), articlesCache());
     render(<TableWord {...props} />);
 
     // 列头 = 成员 fields 键并集 + 节点列(投影声明什么显示什么)

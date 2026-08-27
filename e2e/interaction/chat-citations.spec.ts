@@ -87,7 +87,10 @@ test('authorized entity exposes its exact Siren contract through the local raw l
  * 深等本身排除事件切片/provenance/Surface/hydrated facts/explain 混入;负向
  * 键断言显式锁定口径,防止将来在实体传入前拼装额外字段而不红。
  */
-async function expectRawContractEqualsFreshEntity(page: import('@playwright/test').Page, rel: string) {
+async function expectRawContractEqualsFreshEntity(
+  page: import('@playwright/test').Page,
+  rel: string,
+) {
   const rawText = await page.getByTestId('raw-contract-json').textContent();
   const rawEntity = JSON.parse(rawText ?? '');
   for (const forbidden of ['events', 'provenance', 'surface', 'hydrated', 'explain']) {

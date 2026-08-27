@@ -108,7 +108,10 @@ describe('解引用器:引用节点', () => {
 
   it('dimension path 全员缺失 → 跳过全部成员且不造默认组', () => {
     expect(
-      deref({ collection: 'posts', dimension: dimensionRef('posts', 'meta.category') }, fixtureCache()),
+      deref(
+        { collection: 'posts', dimension: dimensionRef('posts', 'meta.category') },
+        fixtureCache(),
+      ),
     ).toEqual([]);
   });
 
@@ -125,7 +128,10 @@ describe('解引用器:引用节点', () => {
         ]),
       ],
     ]);
-    const value = deref({ collection: 'posts', dimension: dimensionRef('posts', 'category') }, cache);
+    const value = deref(
+      { collection: 'posts', dimension: dimensionRef('posts', 'category') },
+      cache,
+    );
     expect(value).toEqual([
       { key: 'zeta', count: 2 },
       { key: 'alpha', count: 2 },
@@ -172,13 +178,7 @@ describe('解引用器:响亮失败(事实永不发明)', () => {
 
   it('dimension path 在某成员缺失 → 跳过该成员并给出可行动诊断', () => {
     const cache = new Map<string, SirenEntity>([
-      [
-        'posts',
-        collection('posts', [
-          entity('a', { category: 'x' }),
-          entity('b', { other: 'y' }),
-        ]),
-      ],
+      ['posts', collection('posts', [entity('a', { category: 'x' }), entity('b', { other: 'y' })])],
     ]);
     const result = derefSpecWithDiagnostics(
       {
@@ -200,6 +200,8 @@ describe('解引用器:响亮失败(事实永不发明)', () => {
   });
 
   it('collection 实体无 entities(非集合)→ throw', () => {
-    expect(() => deref({ collection: 'post:post-welcome' }, fixtureCache())).toThrow(/post:post-welcome/);
+    expect(() => deref({ collection: 'post:post-welcome' }, fixtureCache())).toThrow(
+      /post:post-welcome/,
+    );
   });
 });

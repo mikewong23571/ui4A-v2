@@ -37,13 +37,11 @@ export function asEntity(value: unknown, word: string, prop: string): SirenEntit
 }
 
 /** 维度聚合断言:[{key, count}] 形状(chart 的数据源)。 */
-export function asDimensionCounts(
-  value: unknown,
-  word: string,
-  prop: string,
-): DimensionCount[] {
+export function asDimensionCounts(value: unknown, word: string, prop: string): DimensionCount[] {
   if (!Array.isArray(value)) {
-    throw new Error(`词条 ${word} 的 ${prop} 需要维度聚合结果([{key,count}] 数组),得到 ${describe(value)}`);
+    throw new Error(
+      `词条 ${word} 的 ${prop} 需要维度聚合结果([{key,count}] 数组),得到 ${describe(value)}`,
+    );
   }
   return value.map((item, index) => {
     if (typeof item !== 'object' || item === null || Array.isArray(item)) {
@@ -58,11 +56,7 @@ export function asDimensionCounts(
 }
 
 /** 可选字符串 prop(缺省 undefined;类型不符即抛)。 */
-export function asOptionalString(
-  value: unknown,
-  word: string,
-  prop: string,
-): string | undefined {
+export function asOptionalString(value: unknown, word: string, prop: string): string | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== 'string') {
     throw new Error(`词条 ${word} 的 ${prop} 需要字符串,得到 ${describe(value)}`);
@@ -103,7 +97,8 @@ export function memberSummary(sub: SirenEntity): string {
       if (value === null || value === undefined || value === '') continue;
       if (typeof value === 'object') {
         for (const leaf of Object.values(value as Record<string, unknown>)) {
-          if (leaf !== null && typeof leaf !== 'object' && leaf !== '') parts.push(`${key}=${String(leaf)}`);
+          if (leaf !== null && typeof leaf !== 'object' && leaf !== '')
+            parts.push(`${key}=${String(leaf)}`);
         }
         continue;
       }

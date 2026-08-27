@@ -245,9 +245,7 @@ test('workstation home and the real CLI read the same three declared source enti
   });
 });
 
-test('waiting-for-me 成员决策卡:批准一击零导航零参数,同一裁决(T33 D50)', async ({
-  page,
-}) => {
+test('waiting-for-me 成员决策卡:批准一击零导航零参数,同一裁决(T33 D50)', async ({ page }) => {
   test.setTimeout(180_000);
   // 与 s1 同口径:清掉跨轮次残留的 notify workflow(确认 id 确定性复用)。
   await terminateStaleNotifyWorkflows(['c1']);
@@ -310,9 +308,9 @@ test('waiting-for-me 成员决策卡:批准一击零导航零参数,同一裁决
     // (channel=confirmation:生效动作经确认门落账,渲染器触发)。
     let decision: { kind: string; actor?: string; channel?: string } | undefined;
     for (let attempt = 0; attempt < 25 && decision === undefined; attempt += 1) {
-      const events = (await (
-        await fetch(`${SCENARIO_BASE}/api/events`)
-      ).json()) as { events: Array<{ kind: string; actor?: string; channel?: string }> };
+      const events = (await (await fetch(`${SCENARIO_BASE}/api/events`)).json()) as {
+        events: Array<{ kind: string; actor?: string; channel?: string }>;
+      };
       decision = events.events.find((event) => event.kind === 'confirmation-approved');
       if (decision === undefined) await page.waitForTimeout(200);
     }
@@ -331,9 +329,9 @@ test('waiting-for-me 成员决策卡:批准一击零导航零参数,同一裁决
     await expect(threadCard).toHaveCount(1);
     await expect(threadCard).toContainText('停在「open」');
     await expect(threadCard).toContainText('填写挂载引用参数');
-    const inbox = (await (
-      await fetch(`${SCENARIO_BASE}/api/entity?rel=inbox`)
-    ).json()) as { properties: { count: number } };
+    const inbox = (await (await fetch(`${SCENARIO_BASE}/api/entity?rel=inbox`)).json()) as {
+      properties: { count: number };
+    };
     expect(inbox.properties.count).toBe(0);
   });
 });

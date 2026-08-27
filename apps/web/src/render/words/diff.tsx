@@ -30,5 +30,9 @@ function diffPayload(entity: ReturnType<typeof asEntity>): DefinitionDiff {
 
 export function DiffWord(props: WordProps) {
   const entity = asEntity(props.entity, 'diff', 'entity');
-  return <div data-word="diff"><DefinitionDiffView diff={diffPayload(entity)} /></div>;
+  return (
+    <div data-word="diff">
+      <DefinitionDiffView diff={diffPayload(entity)} />
+    </div>
+  );
 }

@@ -21,7 +21,9 @@ export function readThreadPins(threadId: string): string[] {
     const raw = globalThis.localStorage?.getItem(threadPinsKey(threadId));
     if (raw === undefined || raw === null || raw === '') return [];
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === 'string') : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((entry): entry is string => typeof entry === 'string')
+      : [];
   } catch {
     return [];
   }
@@ -59,10 +61,7 @@ export function ThreadRail({ threadId, scope }: ThreadRailProps) {
 
   return (
     <EntityCacheProvider scope={scope}>
-      <PresentationSurfaceHost
-        heading="本线"
-        parameters={{ roots, thread: threadId, scope }}
-      />
+      <PresentationSurfaceHost heading="本线" parameters={{ roots, thread: threadId, scope }} />
     </EntityCacheProvider>
   );
 }

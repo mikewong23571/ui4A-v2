@@ -24,9 +24,7 @@ describe('markdown 词条', () => {
     );
     const { container } = render(<MarkdownWord {...props} />);
 
-    expect(container.querySelector('[data-word="markdown"] h1')?.textContent).toBe(
-      '欢迎来到 UI4A',
-    );
+    expect(container.querySelector('[data-word="markdown"] h1')?.textContent).toBe('欢迎来到 UI4A');
     expect(screen.getByText('界面即合同').tagName).toBe('STRONG');
   });
 

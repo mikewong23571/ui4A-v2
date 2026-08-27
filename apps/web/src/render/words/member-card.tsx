@@ -68,9 +68,7 @@ export function MemberCardWord(props: WordProps) {
       >
         {label}
       </a>
-      {detail !== undefined && (
-        <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>
-      )}
+      {detail !== undefined && <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>}
       <p className="mt-0.5 font-mono text-xs text-muted-foreground">
         {status !== undefined ? `${status} · ` : ''}
         {rel}

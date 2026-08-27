@@ -46,7 +46,18 @@ describe('A2UI 词汇目录(官方 SDK 全链)', () => {
   it('目录身份:catalogId 与 /api/render/catalog 同源,components 含 basic 原语 + 十词条', () => {
     expect(ui4aRenderCatalog.id).toBe(CATALOG_ID);
     const names = [...ui4aRenderCatalog.components.keys()];
-    for (const word of ['table', 'chart', 'stat', 'timeline', 'flow', 'form', 'diff', 'kanban', 'markdown', 'detail']) {
+    for (const word of [
+      'table',
+      'chart',
+      'stat',
+      'timeline',
+      'flow',
+      'form',
+      'diff',
+      'kanban',
+      'markdown',
+      'detail',
+    ]) {
       expect(names, word).toContain(word);
     }
     // 基础目录布局原语仍在(数据词条我们补,原语不重造)
@@ -72,7 +83,11 @@ describe('A2UI 词汇目录(官方 SDK 全链)', () => {
         updateComponents: {
           surfaceId: 'articles-table',
           components: [
-            { component: 'table', id: 'root', rows: { path: '/concerns/articles-table/props/rows' } },
+            {
+              component: 'table',
+              id: 'root',
+              rows: { path: '/concerns/articles-table/props/rows' },
+            },
           ],
         },
       },

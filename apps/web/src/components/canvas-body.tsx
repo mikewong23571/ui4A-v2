@@ -2,6 +2,8 @@
 
 import { useSearchParams } from 'next/navigation';
 
+import { ApplicationEntryStrip } from '@/components/application-entry-strip';
+
 import { PresentationSurfaceHost } from './canvas/presentation-surface-host';
 import { ThreadRail } from './canvas/thread-rail';
 import { EntityCacheProvider } from './entity-cache-provider';
@@ -26,16 +28,28 @@ export function CanvasBody() {
     thread: threadId,
   };
 
-  const gaze = (
-    <PresentationSurfaceHost heading="画布" parameters={gazeParameters} />
-  );
+  // T35 F-25:无注视(无 focus/concern/roots)时主位是入口层(应用目录),
+  // 不再默认落 articles——articles 只是可注视对象之一。
+  const noGaze =
+    gazeParameters.focus === undefined &&
+    gazeParameters.concern === undefined &&
+    gazeParameters.roots === undefined &&
+    threadId === undefined;
+
+  const gaze =
+    noGaze === true ? (
+      <div className="grid gap-4">
+        <ApplicationEntryStrip />
+        <p className="text-sm text-muted-foreground">
+          从上方选择一个应用进入;或从「我的事」进入工作线。
+        </p>
+      </div>
+    ) : (
+      <PresentationSurfaceHost heading="共同注视" parameters={gazeParameters} />
+    );
 
   if (!railOn) {
-    return (
-      <EntityCacheProvider scope={scope}>
-        {gaze}
-      </EntityCacheProvider>
-    );
+    return <EntityCacheProvider scope={scope}>{gaze}</EntityCacheProvider>;
   }
 
   return (

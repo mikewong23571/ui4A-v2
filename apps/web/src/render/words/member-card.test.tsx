@@ -9,7 +9,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
-import { ActionSubmitProvider, createDirectActionSubmit } from '../../components/actions/action-submit';
+import {
+  ActionSubmitProvider,
+  createDirectActionSubmit,
+} from '../../components/actions/action-submit';
 import { MemberCardWord } from './member-card';
 
 const approveAction: SirenAction = {

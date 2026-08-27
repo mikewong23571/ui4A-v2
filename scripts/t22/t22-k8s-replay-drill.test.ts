@@ -264,10 +264,7 @@ describe('T22 Kubernetes single-Web concurrency, restart and replay drill', () =
 
   it('exposes the existing Draft abandon terminal-race audit debt separately from operator work', () => {
     const source = readFileSync(resolve('apps/web/src/engine/drafts/execute.ts'), 'utf8');
-    const helpersSource = readFileSync(
-      resolve('apps/web/src/engine/drafts/helpers.ts'),
-      'utf8',
-    );
+    const helpersSource = readFileSync(resolve('apps/web/src/engine/drafts/helpers.ts'), 'utf8');
     const start = source.indexOf("} else if (request.action === 'abandon') {");
     const end = source.indexOf('\n  } else {', start);
     const abandonBranch = source.slice(start, end);

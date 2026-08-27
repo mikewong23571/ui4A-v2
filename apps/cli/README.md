@@ -28,7 +28,13 @@ treat it as production authentication.
 `--json` writes only a versioned envelope to stdout:
 
 ```json
-{"schemaVersion":1,"ok":true,"command":"entities.get","data":{},"meta":{"cliVersion":"0.1.0","requestId":"..."}}
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "entities.get",
+  "data": {},
+  "meta": { "cliVersion": "0.1.0", "requestId": "..." }
+}
 ```
 
 Errors include `code`, `message`, optional `status/details`, `retryable`, and `requestId`. Exit codes:
@@ -54,4 +60,3 @@ ui4a --json audit draft <draft-id> --after-seq 0 --limit 20
 Draft validation and activation rules live on the server. Human approval is intentionally absent;
 even generic action execution refuses confirmation/activation approval. `request` supports only
 same-origin GET/HEAD, rejects redirects, and bounds responses to 1 MiB.
-

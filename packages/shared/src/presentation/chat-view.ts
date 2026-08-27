@@ -144,8 +144,7 @@ export function parseClientViewReport(value: unknown): ClientViewReport {
           MAX_CHAT_VIEW_ID_LENGTH,
           'Client view presentationRequestId',
         );
-  const focus =
-    value.presence.focus === null ? null : boundedSubject(value.presence.focus);
+  const focus = value.presence.focus === null ? null : boundedSubject(value.presence.focus);
   return {
     schemaVersion: parseSchemaVersion(value.schemaVersion, 'Client view report'),
     presence: {

@@ -329,9 +329,7 @@ describe('I2 property:解引用输出逐项溯源', () => {
           .chain((world) => specArbFor(world).map((spec) => ({ world, spec })))
           .chain((seed) => {
             const positions = positionsOf(seed.spec.bind, [], 'bind');
-            return fc
-              .constantFrom(...positions)
-              .map((position) => ({ spec: seed.spec, position }));
+            return fc.constantFrom(...positions).map((position) => ({ spec: seed.spec, position }));
           }),
         literalArb,
         ({ spec, position }, literal) => {

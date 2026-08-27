@@ -15,7 +15,7 @@ vi.mock('next/navigation', () => ({
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
-  window.history.pushState({}, '', '/canvas');
+  window.history.pushState({}, '', '/canvas?focus=articles');
 });
 
 function post(rel: string, identity: string, body: string, category: string): SirenEntity {

@@ -322,9 +322,7 @@ describe('CanvasBody 首屏零机制词(T24)', () => {
     await waitFor(() => expect(container.querySelectorAll('[data-surface]')).toHaveLength(1));
     const entityReads = fetchMock.mock.calls
       .map(([input]) => String(input))
-      .filter(
-        (url) => url.startsWith('/api/entity?rel=') && !url.includes('rel=render-specs'),
-      );
+      .filter((url) => url.startsWith('/api/entity?rel=') && !url.includes('rel=render-specs'));
     expect(entityReads).toEqual([]);
   });
 
@@ -345,15 +343,13 @@ describe('CanvasBody 首屏零机制词(T24)', () => {
     );
 
     await waitFor(() =>
-      expect(
-        fetchMock.mock.calls.some(([input]) => String(input).includes('rel=threads')),
-      ).toBe(true),
+      expect(fetchMock.mock.calls.some(([input]) => String(input).includes('rel=threads'))).toBe(
+        true,
+      ),
     );
     const entityReads = fetchMock.mock.calls
       .map(([input]) => String(input))
-      .filter(
-        (url) => url.startsWith('/api/entity?rel=') && !url.includes('rel=render-specs'),
-      );
+      .filter((url) => url.startsWith('/api/entity?rel=') && !url.includes('rel=render-specs'));
     expect(entityReads).toHaveLength(1);
     expect(entityReads[0]).toContain('rel=threads');
     expect(entityReads[0]).not.toContain('workspace');

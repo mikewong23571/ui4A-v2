@@ -128,7 +128,9 @@ function canonicalJson(value: unknown): string {
   if (typeof value !== 'object' || value === null) return JSON.stringify(value);
   return `{${Object.keys(value as Record<string, unknown>)
     .sort()
-    .map((key) => `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`)
+    .map(
+      (key) => `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`,
+    )
     .join(',')}}`;
 }
 
@@ -214,10 +216,7 @@ export async function loadPresenceForPrincipal(
       };
 }
 
-async function upsertPresence(
-  db: DbExecutor,
-  projection: PresenceProjection,
-): Promise<void> {
+async function upsertPresence(db: DbExecutor, projection: PresenceProjection): Promise<void> {
   await db.query(
     `INSERT INTO presence_current (principal, site, scope, thread, focus, updated_seq)
      VALUES ($1,$2,$3,$4,$5::jsonb,$6)

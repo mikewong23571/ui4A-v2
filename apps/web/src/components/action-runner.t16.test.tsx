@@ -60,7 +60,7 @@ describe('ActionRunner T16 schema-form interaction', () => {
     );
 
     // D50:参数表单单一默认收起;打开是零业务事件的 presentation interaction。
-    const trigger = screen.getByRole('button', { name: '填写编辑元数据参数' });
+    const trigger = screen.getByRole('button', { name: '编辑元数据 ⌄' });
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByLabelText(/文章标题/)).toBeNull();
     fireEvent.click(trigger);
@@ -104,13 +104,14 @@ describe('ActionRunner T16 schema-form interaction', () => {
       />,
     );
 
-    const trigger = screen.getByRole('button', { name: '填写编辑元数据参数' });
+    const trigger = screen.getByRole('button', { name: '编辑元数据 ⌄' });
     fireEvent.click(trigger);
     fireEvent.click(await screen.findByRole('button', { name: '取消' }));
     expect(execFn).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(trigger);
 
     fireEvent.click(trigger);
+    // 表单内提交按钮 = 动作 title 裸名(触发键带 ⌄ 后缀,二者可区分)
     fireEvent.click(await screen.findByRole('button', { name: '编辑元数据' }));
 
     await waitFor(() => expect(execFn).toHaveBeenCalledTimes(1));

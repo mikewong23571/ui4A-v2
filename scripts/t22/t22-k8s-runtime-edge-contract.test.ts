@@ -30,7 +30,9 @@ describe('T22 Kubernetes Runner production composition', () => {
 
   it('keeps the idle Kubernetes footprint free of a non-delivering Runner daemon', () => {
     const production = source('apps/agent-runner/src/production.ts');
-    const transport = source('apps/worker/src/runtime-backends/kubernetes/runtime-transport-manifests.ts');
+    const transport = source(
+      'apps/worker/src/runtime-backends/kubernetes/runtime-transport-manifests.ts',
+    );
     const deployments = source('deploy/helm/ui4a/templates/deployments.yaml');
     const services = source('deploy/helm/ui4a/templates/services.yaml');
     const renderer = source('deploy/helm/ui4a/render.ts');

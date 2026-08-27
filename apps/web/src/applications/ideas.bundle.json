@@ -123,10 +123,7 @@
               "to": "developing",
               "submission": {
                 "mode": "direct",
-                "actors": [
-                  "agent",
-                  "human"
-                ]
+                "actors": ["agent", "human"]
               },
               "method": "POST",
               "guards": [],
@@ -191,10 +188,7 @@
               "to": "matured",
               "submission": {
                 "mode": "direct",
-                "actors": [
-                  "agent",
-                  "human"
-                ]
+                "actors": ["agent", "human"]
               },
               "method": "POST",
               "guards": [],

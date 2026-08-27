@@ -151,10 +151,7 @@ describe('Work Thread Siren projection', () => {
 
   it('marks unresolvable context references as auditable dangling links like every member class', () => {
     const withChatContext = snapshot();
-    withChatContext.threads!['release-1']!.references.context = [
-      'articles',
-      'message:turn-42',
-    ];
+    withChatContext.threads!['release-1']!.references.context = ['articles', 'message:turn-42'];
 
     const entity = project(withChatContext, 'thread:release-1', deps);
 

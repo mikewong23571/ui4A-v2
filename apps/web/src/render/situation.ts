@@ -94,7 +94,9 @@ const EVENT_NARRATIVE_REGISTRY: Readonly<Record<string, EventNarrator>> = {
   'chat-turn-started': (row) => {
     const goal = detailRecord(row).goal;
     const verb =
-      typeof goal === 'object' && goal !== null && !Array.isArray(goal) &&
+      typeof goal === 'object' &&
+      goal !== null &&
+      !Array.isArray(goal) &&
       typeof (goal as Record<string, unknown>).verb === 'string'
         ? (goal as Record<string, unknown>).verb
         : '未标注目标';
@@ -103,7 +105,9 @@ const EVENT_NARRATIVE_REGISTRY: Readonly<Record<string, EventNarrator>> = {
   'chat-turn-progress': (row) => {
     const step = detailRecord(row).step;
     const number =
-      typeof step === 'object' && step !== null && !Array.isArray(step) &&
+      typeof step === 'object' &&
+      step !== null &&
+      !Array.isArray(step) &&
       typeof (step as Record<string, unknown>).step === 'number'
         ? ` ${(step as Record<string, unknown>).step}`
         : '';
@@ -113,19 +117,24 @@ const EVENT_NARRATIVE_REGISTRY: Readonly<Record<string, EventNarrator>> = {
     const detail = detailRecord(row);
     const goal = detail.goal;
     const verb =
-      typeof goal === 'object' && goal !== null && !Array.isArray(goal) &&
+      typeof goal === 'object' &&
+      goal !== null &&
+      !Array.isArray(goal) &&
       typeof (goal as Record<string, unknown>).verb === 'string'
         ? (goal as Record<string, unknown>).verb
         : '未标注目标';
     const outcome = detail.outcome;
-    const result = outcome === 'done' ? '已完成' : outcome === 'max-steps' ? '达到步数上限' : '已失败';
+    const result =
+      outcome === 'done' ? '已完成' : outcome === 'max-steps' ? '达到步数上限' : '已失败';
     return { verb: `聊天回合「${verb}」`, result };
   },
   'agent-decision': (row) => {
     const detail = detailRecord(row);
     const op = detail.op;
     const operation =
-      typeof op === 'object' && op !== null && !Array.isArray(op) &&
+      typeof op === 'object' &&
+      op !== null &&
+      !Array.isArray(op) &&
       typeof (op as Record<string, unknown>).kind === 'string'
         ? (op as Record<string, unknown>).kind
         : 'unknown';

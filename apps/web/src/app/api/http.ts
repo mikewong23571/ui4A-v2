@@ -7,12 +7,11 @@
 export function apiErrorResponse(error: unknown, context: string): Response {
   const err = error as { code?: string };
   const dbFailure =
-    typeof err.code === 'string' && /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
+    typeof err.code === 'string' &&
+    /ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|28P01|3D000/.test(err.code);
   const message = error instanceof Error ? error.message : String(error);
   return Response.json(
-    dbFailure
-      ? { error: `${context} 数据库不可用` }
-      : { error: `${context} 失败: ${message}` },
+    dbFailure ? { error: `${context} 数据库不可用` } : { error: `${context} 失败: ${message}` },
     { status: dbFailure ? 503 : 500 },
   );
 }

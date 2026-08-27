@@ -44,7 +44,9 @@ describe('Draft meta HTTP contract', () => {
       }),
     );
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { entity: { properties: { rel: string; status: string } } };
+    const body = (await response.json()) as {
+      entity: { properties: { rel: string; status: string } };
+    };
     expect(body.entity.properties.status).toBe('invalid');
 
     const exact = await getEntity(

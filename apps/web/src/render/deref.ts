@@ -102,9 +102,7 @@ function derefNode(
   if (typeof record.collection === 'string' && 'collection' in record) {
     const collection = cache.get(record.collection);
     if (collection === undefined) {
-      throw new Error(
-        `解引用失败:${where} 集合 "${record.collection}" 不在缓存(缺数据,不造数据)`,
-      );
+      throw new Error(`解引用失败:${where} 集合 "${record.collection}" 不在缓存(缺数据,不造数据)`);
     }
     const members = collection.entities;
     if (members === undefined) {

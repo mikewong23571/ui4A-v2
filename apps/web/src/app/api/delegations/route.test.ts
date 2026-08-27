@@ -96,7 +96,12 @@ describe('GET /api/delegations(舰队列表:事件日志聚合)', () => {
       rel: delegationRel('wf-b'),
       actor: 'agent',
       channel: 'delegation',
-      detail: { delegationId: 'wf-b', goal: { verb: '审核' }, driverKind: 'rule', startRel: 'comments' },
+      detail: {
+        delegationId: 'wf-b',
+        goal: { verb: '审核' },
+        driverKind: 'rule',
+        startRel: 'comments',
+      },
     });
     await appendEvent(pool, {
       kind: 'delegation-step',
@@ -183,7 +188,12 @@ describe('GET /api/delegations/[id](详情:实体快照 + 事件流轨迹)', () 
       rel: delegationRel('wf-run'),
       actor: 'agent',
       channel: 'delegation',
-      detail: { delegationId: 'wf-run', goal: { verb: '审核' }, driverKind: 'rule', startRel: 'comments' },
+      detail: {
+        delegationId: 'wf-run',
+        goal: { verb: '审核' },
+        driverKind: 'rule',
+        startRel: 'comments',
+      },
     });
     await appendEvent(pool, {
       kind: 'delegation-step',
@@ -197,7 +207,11 @@ describe('GET /api/delegations/[id](详情:实体快照 + 事件流轨迹)', () 
       params: Promise.resolve({ id: 'wf-run' }),
     });
     expect(response.status).toBe(200);
-    const detail = (await response.json()) as { status: string; steps: number; messages: unknown[] };
+    const detail = (await response.json()) as {
+      status: string;
+      steps: number;
+      messages: unknown[];
+    };
     expect(detail.status).toBe('running');
     expect(detail.steps).toBe(1);
     expect(detail.messages).toEqual([{ role: 'assistant', text: '导航到 comments' }]);

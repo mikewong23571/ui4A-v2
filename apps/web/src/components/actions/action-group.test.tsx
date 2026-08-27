@@ -68,7 +68,7 @@ describe('contract-driven ActionGroup', () => {
       );
       expect(screen.getByRole('button', { name: '完成' })).toBeTruthy();
       // D50:带参数动作(修订)默认收起为一行触发键
-      expect(screen.getByRole('button', { name: '填写修订参数' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: '修订 ⌄' })).toBeTruthy();
       expect(container.querySelectorAll('[data-action-group-item]')).toHaveLength(2);
     },
   );

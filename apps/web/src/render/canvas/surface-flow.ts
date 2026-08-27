@@ -12,11 +12,7 @@
  */
 import type { SirenEntity } from '@ui4a/engine';
 
-import {
-  derefSpecWithDiagnostics,
-  type DerefWarning,
-  type EntityCache,
-} from '../deref';
+import { derefSpecWithDiagnostics, type DerefWarning, type EntityCache } from '../deref';
 import { CATALOG_ID } from '../registry';
 import { ENTITY_REF_PREFIX, parseFieldRef, type BindTree, type RenderSpec } from '../spec';
 import { validateSpec } from '../validator';
@@ -26,7 +22,10 @@ import { validateWordBind } from '../word-bind';
 export type A2uiCanvasMessage =
   | { version: 'v0.9'; createSurface: { surfaceId: string; catalogId: string } }
   | { version: 'v0.9'; updateDataModel: { surfaceId: string; path: string; value: unknown } }
-  | { version: 'v0.9'; updateComponents: { surfaceId: string; components: Record<string, unknown>[] } }
+  | {
+      version: 'v0.9';
+      updateComponents: { surfaceId: string; components: Record<string, unknown>[] };
+    }
   | { version: 'v0.9'; deleteSurface: { surfaceId: string } };
 
 /** 实体拉取函数(fetch 注入;404 → null 其余抛错,exec-client 同口径)。 */
@@ -51,7 +50,9 @@ export function collectRefs(bind: BindTree): string[] {
     }
     if (typeof node !== 'object' || node === null) return;
     if ('ref' in node && typeof node.ref === 'string') {
-      const rel = node.ref.startsWith(ENTITY_REF_PREFIX) ? node.ref.slice(ENTITY_REF_PREFIX.length) : node.ref;
+      const rel = node.ref.startsWith(ENTITY_REF_PREFIX)
+        ? node.ref.slice(ENTITY_REF_PREFIX.length)
+        : node.ref;
       if (!refs.includes(rel)) refs.push(rel);
       return;
     }
@@ -85,7 +86,10 @@ export function surfaceIdOf(concern: string): string {
  * 组件树消息的 props 全为 {path} 绑定:数据与组件分离,数值只经
  * updateDataModel(渲染器私有)注入。
  */
-export async function planSurface(spec: RenderSpec, fetchEntity: FetchEntityFn): Promise<SurfacePlan> {
+export async function planSurface(
+  spec: RenderSpec,
+  fetchEntity: FetchEntityFn,
+): Promise<SurfacePlan> {
   const validation = validateSpec(spec);
   if (!validation.valid) {
     const summary = validation.errors.map((error) => `${error.path}: ${error.message}`);

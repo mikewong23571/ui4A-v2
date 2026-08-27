@@ -28,9 +28,7 @@ export function TimelineWord(props: WordProps) {
       eventSummary: typeof eventSummary === 'string' ? eventSummary : undefined,
       timestamp: typeof timestamp === 'string' ? timestamp : undefined,
       audit:
-        typeof audit === 'object' && audit !== null && !Array.isArray(audit)
-          ? audit
-          : undefined,
+        typeof audit === 'object' && audit !== null && !Array.isArray(audit) ? audit : undefined,
     };
   });
 
@@ -61,7 +59,10 @@ export function TimelineWord(props: WordProps) {
                 )}
                 <p>{item.eventSummary ?? item.cardTitle}</p>
                 {item.audit !== undefined && (
-                  <details data-nav="local:event-detail" className="mt-2 text-xs text-muted-foreground">
+                  <details
+                    data-nav="local:event-detail"
+                    className="mt-2 text-xs text-muted-foreground"
+                  >
                     <summary className="cursor-pointer select-none">查看原始详情</summary>
                     <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-all rounded bg-muted p-2 font-mono text-[11px] text-foreground">
                       {JSON.stringify(item.audit, null, 2)}

@@ -36,14 +36,24 @@ describe('词条 bindSchema 校验', () => {
   });
 
   it('chart:series 须带 dimension(聚合数据源);stat:value 为字段节点', () => {
-    expect(validateWordBind({ series: { collection: 'articles', dimension: 'articles.fields.category' } }, 'chart')).toEqual({ valid: true });
+    expect(
+      validateWordBind(
+        { series: { collection: 'articles', dimension: 'articles.fields.category' } },
+        'chart',
+      ),
+    ).toEqual({ valid: true });
     expect(
       validateWordBind({ series: { collection: 'articles' } } satisfies BindTree, 'chart').valid,
     ).toBe(false);
     expect(
-      validateWordBind({ value: { field: 'metrics.pending' }, label: { field: 'metrics.label' } }, 'stat'),
+      validateWordBind(
+        { value: { field: 'metrics.pending' }, label: { field: 'metrics.label' } },
+        'stat',
+      ),
     ).toEqual({ valid: true });
-    expect(validateWordBind({ value: { collection: 'metrics' } } satisfies BindTree, 'stat').valid).toBe(false);
+    expect(
+      validateWordBind({ value: { collection: 'metrics' } } satisfies BindTree, 'stat').valid,
+    ).toBe(false);
   });
 
   it('实体引用词条(flow[graph]/form/diff/markdown/detail[entity]):ref 节点', () => {
@@ -54,9 +64,11 @@ describe('词条 bindSchema 校验', () => {
       validateWordBind({ graph: { collection: 'sitemap' } } satisfies BindTree, 'flow').valid,
     ).toBe(false);
     for (const word of ['form', 'diff', 'markdown', 'detail']) {
-      expect(validateWordBind({ entity: { ref: 'entity:post:post-welcome' } }, word), word).toEqual({
-        valid: true,
-      });
+      expect(validateWordBind({ entity: { ref: 'entity:post:post-welcome' } }, word), word).toEqual(
+        {
+          valid: true,
+        },
+      );
       expect(
         validateWordBind({ entity: { field: 'post.title' } } satisfies BindTree, word).valid,
         word,
@@ -65,14 +77,18 @@ describe('词条 bindSchema 校验', () => {
   });
 
   it('timeline/kanban:events/columns 为集合节点;caption 可选', () => {
-    expect(validateWordBind({ events: { collection: 'events' } }, 'timeline')).toEqual({ valid: true });
+    expect(validateWordBind({ events: { collection: 'events' } }, 'timeline')).toEqual({
+      valid: true,
+    });
     expect(
       validateWordBind(
         { events: { collection: 'events' }, caption: { field: 'events.name' } },
         'timeline',
       ),
     ).toEqual({ valid: true });
-    expect(validateWordBind({ columns: { collection: 'comments' } }, 'kanban')).toEqual({ valid: true });
+    expect(validateWordBind({ columns: { collection: 'comments' } }, 'kanban')).toEqual({
+      valid: true,
+    });
   });
 
   it('非聚合词条 table/timeline/kanban 禁止 dimension,避免运行时收到聚合条目', () => {

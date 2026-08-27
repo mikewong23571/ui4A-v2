@@ -357,7 +357,7 @@ export function ActionRunner({
           title={hint}
           onClick={openForm}
         >
-          填写{action.title}参数
+          {action.title} ⌄
         </Button>
       </div>
       {interaction === 'form' && (

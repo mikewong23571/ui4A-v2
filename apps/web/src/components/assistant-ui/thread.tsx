@@ -309,7 +309,11 @@ export function ChatThread({ delegated, onToggleDelegated }: ChatThreadProps) {
           variant={delegated ? 'default' : 'secondary'}
           size="sm"
           aria-label="委托模式"
-          title={delegated ? '已切委托:交后台无人值守,进度看「在动」' : '在线协同:助手边问边做,页面可切,进度看这里'}
+          title={
+            delegated
+              ? '已切委托:交后台无人值守,进度看「在动」'
+              : '在线协同:助手边问边做,页面可切,进度看这里'
+          }
           data-nav="local:chat-delegated"
           aria-pressed={delegated}
           onClick={onToggleDelegated}

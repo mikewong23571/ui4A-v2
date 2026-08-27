@@ -87,14 +87,12 @@ describe('可点元素标注抽样(data-action / data-nav)', () => {
   it('舰队页:刷新按钮 = 本地视图控件 data-nav(local: 前缀)', async () => {
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify({ delegations: [] }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ delegations: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
     );
     const { container } = render(<DelegationsPage />);
     await waitFor(() => {

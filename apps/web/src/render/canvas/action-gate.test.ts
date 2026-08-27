@@ -55,7 +55,9 @@ describe('画布 action 拦截门', () => {
     const gate = createActionGate(execFn);
     gate.register(entityOf('post:post-welcome', ['unpublish']));
 
-    const outcome = await gate.handle(clientAction('nuke-everything', { rel: 'post:post-welcome' }));
+    const outcome = await gate.handle(
+      clientAction('nuke-everything', { rel: 'post:post-welcome' }),
+    );
     expect(outcome.outcome).toBe('rejected');
     if (outcome.outcome === 'rejected') {
       expect(outcome.reason).toContain('nuke-everything');
@@ -69,7 +71,9 @@ describe('画布 action 拦截门', () => {
     gate.register(entityOf('post:post-welcome', ['unpublish']));
 
     expect((await gate.handle(clientAction('unpublish'))).outcome).toBe('rejected');
-    expect((await gate.handle(clientAction('unpublish', { rel: 'ghost:rel' }))).outcome).toBe('rejected');
+    expect((await gate.handle(clientAction('unpublish', { rel: 'ghost:rel' }))).outcome).toBe(
+      'rejected',
+    );
     expect(execFn).not.toHaveBeenCalled();
   });
 
@@ -93,9 +97,9 @@ describe('画布 action 拦截门', () => {
     const gate = createActionGate(execFn);
     gate.register(entityOf('post:post-welcome', ['unpublish']));
     gate.clear();
-    expect((await gate.handle(clientAction('unpublish', { rel: 'post:post-welcome' }))).outcome).toBe(
-      'rejected',
-    );
+    expect(
+      (await gate.handle(clientAction('unpublish', { rel: 'post:post-welcome' }))).outcome,
+    ).toBe('rejected');
     expect(execFn).not.toHaveBeenCalled();
   });
 });

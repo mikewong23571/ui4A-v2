@@ -40,13 +40,13 @@ describe('Writing request human Renderer contract', () => {
     const entity = entityAt('brief-draft');
     render(<EntityView rel="writing-request:main" entity={entity} />);
     // D50:开始写作表单默认收起,先打开再断言 brief 字段
-    fireEvent.click(screen.getByRole('button', { name: '填写开始写作参数' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始写作 ⌄' }));
 
     expect(screen.getByLabelText(/写作目标/)).toBeTruthy();
     expect(screen.getByLabelText(/目标读者/)).toBeTruthy();
     expect(screen.getByText('必需章节')).toBeTruthy();
     expect(screen.getByText('授权来源')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '开始写作' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '开始写作 ⌄' })).toBeTruthy();
     expect(screen.queryByText(/provider|endpoint|api key|model/i)).toBeNull();
     expect(entity.actions.map(({ name }) => name)).toEqual(['start-writing']);
   });
@@ -61,7 +61,7 @@ describe('Writing request human Renderer contract', () => {
     const declared = review.actions.map(({ name }) => name);
     expect(declared).toEqual(['accept-writing-result', 'reject-writing-result']);
     expect(screen.getByRole('button', { name: '接受写作结果' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: '填写驳回写作结果参数' }));
+    fireEvent.click(screen.getByRole('button', { name: '驳回写作结果 ⌄' }));
     expect(screen.getByLabelText(/驳回原因/)).toBeTruthy();
     expect(screen.queryByText(/发布/)).toBeNull();
   });

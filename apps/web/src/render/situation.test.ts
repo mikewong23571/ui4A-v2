@@ -57,7 +57,11 @@ describe('态势 stat 绑定(静态,零 AI)', () => {
       properties: { rel: 'delegations', count: 3 },
       actions: [],
       links: [],
-      entities: [delegation('delegation:a', 'running'), delegation('delegation:b', 'completed'), delegation('delegation:c', 'running')],
+      entities: [
+        delegation('delegation:a', 'running'),
+        delegation('delegation:b', 'completed'),
+        delegation('delegation:c', 'running'),
+      ],
     };
     expect(runningDelegationsOf(fleet)).toBe(2);
     expect(runningDelegationsOf({ ...fleet, entities: [] })).toBe(0);
@@ -67,8 +71,28 @@ describe('态势 stat 绑定(静态,零 AI)', () => {
 describe('事件日志成员适配(timeline 词条输入)', () => {
   it('LogEvent 行 → 机械叙事摘要 + 时间戳 + 原始审计载荷,零发明', () => {
     const members = eventsToMembers([
-      { seq: 1, ts: '2026-08-22T01:00:00.000Z', kind: 'seed', rel: 'seed:business-domain', action: null, actor: null, principal: null, channel: null },
-      { seq: 2, ts: '2026-08-22T01:01:00.000Z', kind: 'action-executed', rel: 'post:post-welcome', action: 'unpublish', actor: 'human', principal: 'local-user', channel: 'renderer', reason: null, detail: { layer: 'flow' } },
+      {
+        seq: 1,
+        ts: '2026-08-22T01:00:00.000Z',
+        kind: 'seed',
+        rel: 'seed:business-domain',
+        action: null,
+        actor: null,
+        principal: null,
+        channel: null,
+      },
+      {
+        seq: 2,
+        ts: '2026-08-22T01:01:00.000Z',
+        kind: 'action-executed',
+        rel: 'post:post-welcome',
+        action: 'unpublish',
+        actor: 'human',
+        principal: 'local-user',
+        channel: 'renderer',
+        reason: null,
+        detail: { layer: 'flow' },
+      },
     ]);
     expect(members).toHaveLength(2);
     expect(members[0]!.properties.seq).toBe(1);
@@ -89,11 +113,55 @@ describe('事件日志成员适配(timeline 词条输入)', () => {
 
   it('未知 kind 回退原始字段行;chat-turn/agent-decision 形成回合级摘要', () => {
     const members = eventsToMembers([
-      { seq: 1, kind: 'mystery-event', rel: 'x', action: 'probe', actor: null, principal: null, channel: null },
-      { seq: 2, kind: 'chat-turn-started', rel: 'chat:s1', action: null, actor: 'agent', principal: 'user:s1', channel: 'chat', detail: { goal: { verb: '发布' } } },
-      { seq: 3, kind: 'chat-turn-progress', rel: 'chat:s1', action: null, actor: 'agent', principal: 'user:s1', channel: 'chat', detail: { step: { step: 1 } } },
-      { seq: 4, kind: 'chat-turn', rel: 'chat:s1', action: null, actor: 'agent', principal: 'user:s1', channel: 'chat', detail: { goal: { verb: '发布' }, outcome: 'done', steps: [{ step: 1 }] } },
-      { seq: 5, kind: 'agent-decision', rel: 'chat:s1', action: null, actor: 'agent', principal: 'user:s1', channel: 'chat', detail: { step: 1, driver: 'rule', op: { kind: 'navigate', rel: 'articles' } } },
+      {
+        seq: 1,
+        kind: 'mystery-event',
+        rel: 'x',
+        action: 'probe',
+        actor: null,
+        principal: null,
+        channel: null,
+      },
+      {
+        seq: 2,
+        kind: 'chat-turn-started',
+        rel: 'chat:s1',
+        action: null,
+        actor: 'agent',
+        principal: 'user:s1',
+        channel: 'chat',
+        detail: { goal: { verb: '发布' } },
+      },
+      {
+        seq: 3,
+        kind: 'chat-turn-progress',
+        rel: 'chat:s1',
+        action: null,
+        actor: 'agent',
+        principal: 'user:s1',
+        channel: 'chat',
+        detail: { step: { step: 1 } },
+      },
+      {
+        seq: 4,
+        kind: 'chat-turn',
+        rel: 'chat:s1',
+        action: null,
+        actor: 'agent',
+        principal: 'user:s1',
+        channel: 'chat',
+        detail: { goal: { verb: '发布' }, outcome: 'done', steps: [{ step: 1 }] },
+      },
+      {
+        seq: 5,
+        kind: 'agent-decision',
+        rel: 'chat:s1',
+        action: null,
+        actor: 'agent',
+        principal: 'user:s1',
+        channel: 'chat',
+        detail: { step: 1, driver: 'rule', op: { kind: 'navigate', rel: 'articles' } },
+      },
     ]);
     expect(members[0]!.properties.summary).toContain('kind=mystery-event');
     expect(members[0]!.properties.summary).toContain('rel=x');

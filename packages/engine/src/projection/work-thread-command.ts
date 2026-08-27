@@ -155,10 +155,7 @@ export function executeThreadCommand(
   // 留给 schema 层拒绝;存在性判定用自有属性,不被继承键误触发。
   if (request.rel === THREADS_REL) {
     const requestedId = request.params?.id;
-    if (
-      typeof requestedId === 'string' &&
-      Object.hasOwn(snapshot.threads ?? {}, requestedId)
-    ) {
+    if (typeof requestedId === 'string' && Object.hasOwn(snapshot.threads ?? {}, requestedId)) {
       return rejected('guard-failed', 'guard 不满足: thread-id-available=false', [
         { name: 'thread-id-available', pass: false },
       ]);
