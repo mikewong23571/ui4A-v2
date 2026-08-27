@@ -1,0 +1,7 @@
+T29 Task: 上报端点 POST /api/presence(+module path 修复)(rebase 等价重建挂载)
+
+> 原始提交对象在 2026-08-26 origin/master rebase(T29 归档)后已不在对象库,验收 note 无法复制本体;本条按归档 plan 任务与现役测试证据重建,原始任务 sha 见 conductor/tracks/archive/t29-presence-situation_20260825/plan.md 映射节。
+> 等价提交:c612ad1 / d7c83ad
+
+变更(Phase A Task 3):新增 api/presence/route.ts —— parsePresenceChange→400、受信身份(ui4a:write)、scope 变更授权收口 403 scope_insufficient、PresenceRateLimitError→429 结构化拒绝;d7c83ad 修正 route 模块路径。T31 R10 已将允许集对齐消费方口径([granted…]+policyScope)。
+现役证据:route.test.ts 7 例(含 policyScope 对齐断言)、route.rate-limit.test.ts 3 例(真实 handler 429 合同);编排 agent 亲验红/绿双向。
