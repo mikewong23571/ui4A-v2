@@ -1,0 +1,20 @@
+T31 Phase C Task: T30 组合组(R11/R12/R13)
+
+变更:
+- R11 新增 apps/web/src/app/api/entity/virtual-subjects.test.ts(db project):
+  workspace:* 类 rel 三条负向 standing 断言(entity 404×3 变体/exec 声明层拒绝/
+  sitemap 全文无泄漏扫描),并配三个正向控制断言消解'空库皆 404'的空虚化风险;
+  不钉死 site 词表值;
+- R12 runtime-composition.ts regionSlot:不可用区域 kind 按 declaration.shape 推导
+  (shape??'entity'),compositions.ts 三区域声明补 shape:'collection';可用路径仍以
+  合同类为准;兼容 legacy wire 缺省;
+- R13 slot name 语法统一到唯一出处:shared composition.ts 导出
+  compositionRegionIdPattern/isCompositionRegionId;promotion/recipe/slot-shape
+  三处宽口径([a-zA-Z0-9_.-])消灭;大写自此不被接受(全仓 slot 字面量核实无人依赖);
+  engine/presentation src 净收缩(recipe 统一后 -29),目录基线 4603→4624 登记
+  (+21 为断言为主,note 含收缩计划);
+- 补齐 shared composition.test.ts(+67):isCompositionRegionId 边界与 shape 解析合同。
+反向验证:production 回退硬编码 kind:'entity' → 红;pattern 放宽回旧值 → 9 红;
+移除 sourceRel 的 workspace: 禁令 → shared 红。编排 agent 亲验:共享 pattern 放宽
+mutation → promotion/recipe/composition 3 文件 9 例红 → 复原绿;virtual-subjects
+在专属库 ui4a_t31c3 下 9/9 绿;unit 批量 126 例绿含本组全部。自治验收。
