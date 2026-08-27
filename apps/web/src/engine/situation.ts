@@ -60,9 +60,11 @@ function firstString(...values: Array<string | null | undefined>): string {
 
 function scopeFrom(input: SituationInput): string {
   const candidates = [input.explicit?.scope, input.presence?.scope, input.defaults.scope];
+  // Fail-closed (D48-R8): an empty grant envelope means nothing is authorized,
+  // so every candidate below is rejected by the membership check and this throws.
   for (const candidate of candidates) {
     if (candidate === undefined || candidate === null || candidate === '') continue;
-    if (input.grantedScopes.length === 0 || input.grantedScopes.includes(candidate)) return candidate;
+    if (input.grantedScopes.includes(candidate)) return candidate;
   }
   const firstGranted = input.grantedScopes.find((scope) => scope !== '');
   if (firstGranted !== undefined) return firstGranted;
@@ -73,8 +75,7 @@ function scopeFrom(input: SituationInput): string {
 export function assembleSituation(input: SituationInput): Situation {
   const site = firstString(input.explicit?.site, input.presence?.site, input.defaults.site);
   const scope = scopeFrom(input);
-  const thread =
-    input.explicit?.thread ?? input.presence?.thread ?? input.defaults.thread ?? null;
+  const thread = input.explicit?.thread ?? input.presence?.thread ?? input.defaults.thread ?? null;
   const focus = input.explicit?.focus ?? input.presence?.focus ?? input.defaults.focus ?? null;
   return {
     principal: input.principal,

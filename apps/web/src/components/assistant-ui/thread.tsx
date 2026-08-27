@@ -19,8 +19,8 @@
  *   <标题>」「正在执行 <动作>」…,标题由服务器取自合同,客户端零猜测);
  *   机器日志原文不直出(保留在消息数据作机器层);未知 op 中性回退并显式
  *   携带 op。整条可点下钻事件流(eventSeq 定位到本步 chat-turn-progress
- *   事件;缺失退 /events 页);旧形状帧(无 activity)回退 message.text
- *   中性显示,与历史回放同口径;
+ *   事件;缺失退 /events 页);无 activity 的轨迹外补充说明帧(如 max-steps
+ *   上限说明)按机器原文中性显示;
  * - 思考区(T11 Phase C + T24 Phase B):thinking 增量/终帧条目
  *   (metadata.custom.thinking = 归步步号)按 (turnId, step) 各渲染为一条
  *   可折叠思考区(Collapsible,默认收起——推理是次级信息;aria-expanded/
@@ -32,8 +32,8 @@
  *   reason={code, evidence?, tried?, phrasing?}(经 metadata.custom.failure)
  *   时按 AI-first 分层——LLM 表述在场则主呈现 phrasing(附「助手表述」来源
  *   标注),缺席则中性结构化行「失败 · code=… · 已尝试:…」(零硬编码友好
- *   文案);结构化本体始终收纳于可展开的失败数据区(审计可达)。旧形状帧
- *   无 failure 数据,回退 message.text 中性呈现,与历史回放同口径。
+ *   文案);结构化本体始终收纳于可展开的失败数据区(审计可达)。不携带
+ *   failure 数据的 assistant 消息(回答/摘要等)走常规文本呈现。
  */
 import {
   ComposerPrimitive,
@@ -107,8 +107,8 @@ function useMessageCitations(): unknown {
 
 /**
  * 活动条目的审计下钻目标(T24 Phase B):eventSeq 在场时指向 /api/events 的
- * afterSeq 定位窗口(本步 chat-turn-progress 事件恰为首条);缺失(落库失败/
- * 旧形状)指向事件流页 /events——两者都真实存在,不伪造定位参数。
+ * afterSeq 定位窗口(本步 chat-turn-progress 事件恰为首条);缺失(落库失败)
+ * 指向事件流页 /events——两者都真实存在,不伪造定位参数。
  */
 function stepAuditHref(eventSeq: number | undefined): string {
   if (eventSeq === undefined) return '/events';

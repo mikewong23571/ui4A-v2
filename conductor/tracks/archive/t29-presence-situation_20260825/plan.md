@@ -78,3 +78,13 @@
    合同测试)同步放行 `/api/presence`;
 5. `pnpm check` + `CI=true pnpm e2e invariants` 全绿;生产部署后 Playwright
    验证登录/导航/聊天回归。
+
+## 承接自 T31 评审:rebase 等价 sha 映射(R22 处置,2026-08-27)
+
+2026-08-26 origin/master rebase(T29 归档)后,本 plan 原记录的任务/checkpoint sha
+不在对象库(git cat-file MISSING),其验收 notes 无法复制本体。T31 按 R22 以
+重建式补挂等价验收 notes 于下列 rebase 等价提交(git notes show 可读):
+bd083d5=presence 事件 schema(b7b24aa)、a3cb212=独立 fold 与投影(7c2e57d)、
+c612ad1+d7c83ad=上报端点及模块路径修复(de6adfb)、4f7953f=前端上报器(390546d 链)、
+34d29f6=clientView 一次性切换(f419535)、768263b=situation 装配与消费方单一来源
+(4c75ab1/f419535/a56a2c5)。checkpoint 等价未逐一考证,由任务级证据链覆盖。

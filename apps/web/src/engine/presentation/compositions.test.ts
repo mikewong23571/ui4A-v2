@@ -13,18 +13,21 @@ describe('built-in composition registry', () => {
           source: 'inbox',
           intent: 'Review work waiting for me',
           mode: 'rehydrate',
+          shape: 'collection',
         },
         {
           region: 'in-motion',
           source: 'delegations',
           intent: 'Track work currently in motion',
           mode: 'rehydrate',
+          shape: 'collection',
         },
         {
           region: 'work-lines',
           source: 'threads',
           intent: 'Follow active work lines',
           mode: 'rehydrate',
+          shape: 'collection',
         },
       ],
     });

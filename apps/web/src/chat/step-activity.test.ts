@@ -15,12 +15,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { FetchLike, TrailStep } from '@ui4a/agent';
 
-import {
-  readSitemapTitles,
-  sitemapTitlesFromSummary,
-  stepActivityData,
-  type SitemapTitles,
-} from './step-activity';
+import { sitemapTitlesFromSummary, stepActivityData, type SitemapTitles } from './step-activity';
 
 const SITEMAP = {
   version: 'v1',
@@ -210,26 +205,7 @@ describe('stepActivityData(TrailStep → 结构化活动数据)', () => {
   });
 });
 
-describe('readSitemapTitles(合同 sitemap → 标题投影)', () => {
-  function jsonResponse(body: unknown, status = 200): Response {
-    return new Response(JSON.stringify(body), {
-      status,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
-
-  it('解析 surfaces 与 flows(节点动作标题 + 边);不可得时返回 undefined', async () => {
-    const ok: FetchLike = async () => jsonResponse(SITEMAP);
-    const titles = await readSitemapTitles('http://contract.test', ok);
-    expect(titles?.surfaces.get('articles')).toBe('文章列表');
-    const flow = titles?.flows.find((candidate) => candidate.name === 'article-drafting');
-    expect(flow?.nodes.get('content')?.get('next')).toBe('完成编辑');
-    expect(flow?.edges).toHaveLength(4);
-
-    const failed: FetchLike = async () => jsonResponse({ error: 'x' }, 500);
-    await expect(readSitemapTitles('http://contract.test', failed)).resolves.toBeUndefined();
-  });
-
+describe('sitemapTitlesFromSummary(合同 sitemap → 标题纯投影)', () => {
   it('从已解析 SitemapSummary 纯投影标题，保留同一版本的动作边映射', () => {
     const summary = {
       version: 'summary-v2',

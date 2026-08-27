@@ -285,3 +285,11 @@ D47 已完成五问 spike 并否决所有开放候选;实施只允许以下固�
 - **静默缺口警戒:** I2 e2e 段当前 test.skip,binding-only 回归只靠
   `apps/web/src/render/property.test.ts`——验收必须跑全量 vitest,不能只跑
   e2e;裁剪若引入字面量绑定,e2e 门禁照绿而 I2 已破。
+
+## 承接自 T31 评审(2026-08-27 归后续落注,R23/R25;不改本 track 范围)
+
+- R23:审计下钻主路径仍是裸 JSON API(`assistant-ui/thread.tsx` 的
+  `stepAuditHref` → `/api/events?afterSeq=N`)——归 raw 模式领土,后续若做
+  审计下钻 human 面,应落 raw 镜头而不是新 API;
+- R25:`canvas-errors` 机制标识泄漏主区域与 `thread.tsx` 的 flow 徽章文本启发式
+  (T9 遗留)——归呈现诚实化延伸领土,本轮不修。

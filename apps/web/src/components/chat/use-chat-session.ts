@@ -11,10 +11,9 @@
  *   thread.tsx 呈现为默认折叠、可展开看实时增量的思考区;rule 路径零
  *   思考帧);render 帧(渲染短路 LLM 路径 SSE 化)与一次性
  *   JSON 回执同形处置;final 帧更新 sessionId(localStorage 持久化,纯投影)
- *   与 render 回执;失败终局(T24 Phase B Task 3)final/error 帧携带结构化
- *   reason 时,终局条目携带 failure 数据进 thread(phrasing 主呈现/中性
- *   结构化行分层,见 thread.tsx;旧形状无 reason 回退现状中性呈现);
- *   整体超时 120s 如实报错;
+ *   与 render 回执;失败终局(T24 Phase B Task 3)final/error 帧必附结构化
+ *   reason,终局条目携带 failure 数据进 thread(phrasing 主呈现/中性结构化
+ *   行分层,见 thread.tsx);整体超时 120s 如实报错;
  * - 停止(B2):onCancel 挂 AbortController 中止 fetch,追加「已停止(仅中断
  *   展示,服务端轨迹已在事件日志留痕)」——循环在服务端跑完并落 chat-turn;
  * - 历史(B3):挂载时按 localStorage 的 sessionId 拉 /api/chat/history,
@@ -276,34 +275,31 @@ export function useChatSession(): ChatSession {
     [],
   );
 
-  /** SSE 帧处置:step 逐步追加(活动语言/旧形状回退);final 更新会话/回执;error 如实进消息。 */
+  /** SSE 帧处置:step 逐步追加(活动语言/补充说明帧原文);final 更新会话/回执;error 如实进消息。 */
   const handleFinal = useCallback(
     (payload: ChatFinalPayload, stepCount: number, machineTextSteps: number) => {
       persistSession(payload.sessionId);
       markSessionPending(null);
-      // 失败措辞分层(T24 Phase B Task 3):结构化 reason 在场时,终局条目
-      // 携带 failure 数据(content 保留机器层 summary),thread 按 phrasing /
+      // 失败措辞分层(T24 Phase B Task 3):失败终局必附结构化 reason,终局
+      // 条目携带 failure 数据(content 保留机器层 summary),thread 按 phrasing /
       // 中性结构化行分层呈现;服务器机器叙句不再作为主呈现直出。
-      if (payload.outcome === 'failed' && payload.reason !== undefined) {
+      if (payload.outcome === 'failed') {
         appendAssistant(payload.summary ?? '', { failure: payload.reason });
         return;
       }
-      // 终局内容补一条 assistant 消息:零轨迹步(如起始实体不可得,与旧一次性
-      // JSON 客户端兜底口径一致),或 T24 活动语言回合——活动条目只说「正在
-      // 做什么」,answer/done/fail 的终局内容(answered 的回答、完成/失败
-      // summary)不在步帧主呈现里,经 final.summary 落地,内容不丢。旧形状
-      // 步帧(机器文本已含终局内容,如「完成: …」)不补,避免双份。
+      // 终局内容补一条 assistant 消息:零轨迹步(如起始实体不可得),或 T24
+      // 活动语言回合——活动条目只说「正在做什么」,answered 等结局的终局内容
+      // (回答、完成 summary)不在步帧主呈现里,经 final.summary 落地,内容
+      // 不丢。直出文本帧(轨迹外补充说明,如 max-steps 上限说明)已含终局
+      // 内容时不补,避免双份。
       if (
         (stepCount === 0 || machineTextSteps === 0) &&
         payload.summary !== null &&
         payload.summary !== ''
       ) {
-        appendAssistant(
-          payload.outcome === 'failed' ? `失败: ${payload.summary}` : payload.summary,
-          {
-            citations: payload.sources,
-          },
-        );
+        appendAssistant(payload.summary, {
+          citations: payload.sources,
+        });
       } else if (payload.outcome === 'answered') {
         attachCitationsToLastAssistant(payload.sources);
       }
@@ -364,8 +360,8 @@ export function useChatSession(): ChatSession {
       const idleTimeout = createIdleTimeout(STREAM_IDLE_TIMEOUT_MS);
       const signal = anySignal([controller.signal, idleTimeout.signal]);
       let stepCount = 0;
-      // 机器文本步计数(T24 Phase B):无 activity 的旧形状步帧走 message.text
-      // 回退渲染——它们已含终局内容,final.summary 不再补(避免双份)。
+      // 直出文本步计数:无 activity 的轨迹外补充说明帧(如 max-steps 上限
+      // 说明)按机器原文呈现——终局内容已在帧文本内,final.summary 不再补。
       let machineTextSteps = 0;
       try {
         const response = await fetch('/api/chat', {
@@ -388,8 +384,8 @@ export function useChatSession(): ChatSession {
           if (response.body === null) throw new Error('SSE 响应缺少 body');
           await readChatSseStream(response.body, signal, (frame) => {
             idleTimeout.touch();
-            // 新协议所有回合帧均携 turnId。旧服务端帧没有 turnId 时绑定到
-            // 当前请求以保持兼容；显式属于其他回合的迟到帧直接丢弃。
+            // 本协议回合帧均携 turnId(无 turnId 的连接级帧如 heartbeat/error
+            // 直接处置);显式属于其他回合的迟到帧丢弃,不做归属改绑。
             if ('turnId' in frame && frame.turnId !== turnId) return;
             if (frame.type === 'session') {
               persistSession(frame.sessionId);
@@ -404,9 +400,11 @@ export function useChatSession(): ChatSession {
             } else if (frame.type === 'step') {
               flushThinkingDeltas();
               stepCount += 1;
+              // 轨迹外补充说明帧(如 max-steps 上限说明)无 activity:按机器
+              // 原文直出——终局内容已在帧文本内,final.summary 不再补(避免双份)。
               if (frame.activity === undefined) machineTextSteps += 1;
               // T24 Phase B:活动帧主呈现为活动语言(message.text 机器原文
-              // 保留在消息数据里作机器层,thread 不再直出);旧形状回退原文。
+              // 保留在消息数据里作机器层,thread 不再直出)。
               appendAssistant(frame.message.text, {
                 ...(frame.rel === undefined ? {} : { rel: frame.rel }),
                 ...(frame.activity === undefined ? {} : { activity: frame.activity }),
@@ -437,15 +435,12 @@ export function useChatSession(): ChatSession {
               handleFinal(frame.payload, stepCount, machineTextSteps);
             } else if (frame.type === 'error') {
               markSessionPending(null);
-              // 失败措辞分层(T24 Phase B Task 3):结构化 reason 在场 →
-              // 中性结构化呈现;旧形状回退「失败: {error}」原文。
-              if (frame.reason !== undefined) {
-                appendAssistant(frame.error, { failure: frame.reason });
-              } else {
-                appendAssistant(`失败: ${frame.error}`);
-              }
+              // 失败措辞分层(T24 Phase B Task 3):error 帧必附结构化 reason,
+              // 恒为中性结构化展示(D48:error 帧 LLM 表述边界为不补齐——见
+              // DECISIONS D48 第 4 小节)。
+              appendAssistant(frame.error, { failure: frame.reason });
             }
-            // 未知帧类型:忽略(协议前向兼容——旧客户端对新帧零误伤口径)。
+            // 未知帧类型:忽略(未知新帧对现役客户端零误伤)。
           });
           return;
         }

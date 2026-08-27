@@ -28,7 +28,14 @@ export async function attachChatMessageToThread(
       params: { category: 'context', rel: `message:${args.messageId}` },
     });
     return outcome.kind === 'accepted' ? 'attached' : 'skipped';
-  } catch {
+  } catch (error) {
+    // R6:挂接是尽力而为的投影接线,chat 不阻断(D44)——正常 skip 路径保持静默;
+    // 只有 try 内抛出的真异常(readSnapshot/exec throw,如存储故障)记一条
+    // 结构化日志留可观测性,然后仍按 skipped 收口。
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `[ui4a] chat 消息挂接 Work Thread 失败(尽力而为,聊天不受影响;messageId=${args.messageId}, thread=${args.thread}): ${message}`,
+    );
     return 'skipped';
   }
 }

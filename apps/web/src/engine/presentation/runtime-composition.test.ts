@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { GENERIC_INTENT_POLICY_VERSION, type SirenEntity, type SurfaceNode } from '@ui4a/engine';
+import type { CompositionRegionDeclaration } from '@ui4a/shared';
 
 import { resetRecipeCoordinatorForTests } from './recipes-runtime';
-import { planWorkspaceComposition } from './runtime-composition';
+import { authorizedRegionSlot, planWorkspaceComposition } from './runtime-composition';
 
 function propertyPaths(node: SurfaceNode): string[] {
   if (node.kind === 'layout') return node.children.flatMap(propertyPaths);
@@ -128,5 +129,52 @@ describe('collection region membership fingerprint guard (T32 Q7)', () => {
         })),
       }),
     ).toThrowError(/waiting.*entities/u);
+  });
+});
+
+describe('region slot kind derives from the declared source shape (T31 R12)', () => {
+  const collectionSource: SirenEntity = {
+    class: ['collection'],
+    properties: { rel: 'inbox', node: 'active' },
+    actions: [],
+    links: [],
+  };
+  // 与内置 my-work 的 inbox 区域同构:声明源是集合。
+  const declaredRegion: CompositionRegionDeclaration & { shape: 'collection' } = {
+    region: 'waiting-for-me',
+    source: 'inbox',
+    intent: 'Review work waiting for me',
+    mode: 'rehydrate',
+    shape: 'collection',
+  };
+
+  it('同一声明在可用与不可用两种状态下推导出一致的 kind,inbox 形状 → collection', () => {
+    const unavailable = authorizedRegionSlot({ declaration: declaredRegion });
+    const available = authorizedRegionSlot({
+      declaration: declaredRegion,
+      entity: collectionSource,
+    });
+    expect(unavailable).toMatchObject({ name: 'waiting-for-me', kind: 'collection' });
+    expect(available.kind).toBe(unavailable.kind);
+  });
+
+  it('可用时以活合同类为准,声明过期提示不改写合同真相', () => {
+    const staleDeclaration = { ...declaredRegion, shape: 'entity' as const };
+    expect(
+      authorizedRegionSlot({ declaration: staleDeclaration, entity: collectionSource }).kind,
+    ).toBe('collection');
+  });
+
+  it('未声明形状的存量 wire 数据缺实体时保持单体缺省,不发明集合事实', () => {
+    const legacyRegion: CompositionRegionDeclaration = {
+      region: 'in-motion',
+      source: 'delegations',
+      intent: 'Track work currently in motion',
+      mode: 'rehydrate',
+    };
+    expect(authorizedRegionSlot({ declaration: legacyRegion })).toMatchObject({
+      name: 'in-motion',
+      kind: 'entity',
+    });
   });
 });

@@ -42,30 +42,30 @@
     源码文本断言退役或降为辅助;不钉死 site 词表值(T27 改名中)
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
-## Phase C: Low 行为修复(D48 已决项 + 纯修复项)
+## Phase C: Low 行为修复(D48 已决项 + 纯修复项) [checkpoint: 505370e]
 
-- [ ] Task: T29 口径组(R8/R9/R10)
+- [x] Task: T29 口径组(R8/R9/R10) [fecc9c5]
   - 按 D48 落 scopeFrom 口径、clientView 分层、presence 端点 scope 校验对齐;
     各项配行为测试
-- [ ] Task: T26 投影/裁决组(R4/R5/R6/R7)
+- [x] Task: T26 投影/裁决组(R4/R5/R6/R7) [221c1d5]
   - R4 层序按 D48 归位;R5 context 类 dangling 标记统一(message: 引用可
     审计);R6 attach 失败加结构化可观测(chat 不阻断语义不变);R7
     class 硬编码改声明式 scope/memberRelPrefix 推导
   - Red→Green:各项先补锁合同语义的测试再修
-- [ ] Task: T30 组合组(R11/R12/R13)
+- [x] Task: T30 组合组(R11/R12/R13) [c609170]
   - R11 常驻负向断言(`/api/entity?rel=workspace:*` 404、sitemap 缺席、
     不可 exec);R12 `regionSlot()` kind 按声明源合同形状推导;R13 slot
     name 语法统一为 shared region id 语法
   - GR3 注意:R12/R13 触及 shrink-only 基线目录,净不增长
-- [ ] Task: chat/LLM 组(R14/R15/R16)
+- [x] Task: chat/LLM 组(R14/R15/R16) [505370e]
   - R14 按 D48 落地;R15 删除客户端旧 wire-format 回退(GR2 单实现),
     迁移 `floating-chat.test.tsx` 冻结测试,评估 check-compat 中文标记;
     R16 补真实 walkthrough bundle 的 meta scope wire 级 32 KiB 预算断言
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
-## Phase D: 卫生与流程可追溯性(R17–R22)
+## Phase D: 卫生与流程可追溯性(R17–R22) [checkpoint: 060d9d2]
 
-- [ ] Task: 卫生组(R17/R18/R19/R20)
+- [x] Task: 卫生组(R17/R18/R19/R20) [981a08b]
   - `readSitemapTitles` 死代码退役 + 头注释修正;`DriverContext.sitemap`
     注释修正与切片点说明;`project()` JSDoc 补 threads 分支;
     size-baseline 两条 note 更新为自 T30 关闭起算
@@ -77,16 +77,16 @@
   - 验收:`git notes show` 对 T24/T29 全部任务 sha 可读
 - [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
 
-## Phase E: 归后续落注 + 验收收尾
+## Phase E: 归后续落注 + 验收收尾 [checkpoint: f82d9d2]
 
-- [ ] Task: 归后续落注(R23–R27)
+- [x] Task: 归后续落注(R23–R27) [f82d9d2]
   - R23/R25 落注 T28 spec/plan(raw 模式与呈现领土);R24/R26/R27 落注
     T27 spec/plan(收缩窗口与线消费接线);落注为各文档"承接自 T31
     评审"小节一行,不改目标 track 范围
-- [ ] Task: 全量验收
+- [x] Task: 全量验收 [f82d9d2]
   - `pnpm check` 全绿(含 governance 零新增基线);`CI=true pnpm e2e
     invariants` 全绿;T16/T24/chat 套件全绿;`pnpm dev:all` 实际启动走查
-- [ ] Task: Track 收尾
+- [x] Task: Track 收尾 [见 close commit]
   - `conductor/tracks.md` 状态流转;metadata.json 归档;track 目录按 GR5
     处置(无 bespoke 残留);登记册全部 27 项终态核对
 

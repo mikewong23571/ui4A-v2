@@ -53,9 +53,20 @@ function membershipFingerprint(entity: unknown): string | undefined {
     : undefined;
 }
 
-function regionSlot(region: AuthorizedRegion): ApplicationRecipeSlotBinding {
-  if (region.entity === undefined)
-    return { name: region.declaration.region, kind: 'entity', subject: '' };
+/**
+ * One Recipe slot per authorized region (T30: slot name = region id, kind = source
+ * contract shape). Available regions derive kind from the live entity class; an
+ * unavailable region falls back to its DECLARED source shape so partial
+ * authorization still yields the same kind it will have when available (T31 R12).
+ */
+export function authorizedRegionSlot(region: AuthorizedRegion): ApplicationRecipeSlotBinding {
+  if (region.entity === undefined) {
+    return {
+      name: region.declaration.region,
+      kind: region.declaration.shape ?? 'entity',
+      subject: '',
+    };
+  }
   const context = singleSubjectRecipeContext({
     rels: [region.declaration.source],
     entities: [region.entity],
@@ -69,7 +80,7 @@ export function compositionRecipeContext(
   root: AuthorizedRoot,
 ): { subjectShape: string; slots: ApplicationRecipeSlotBinding[] } | undefined {
   if (root.declaration === undefined || root.regions === undefined) return undefined;
-  const slots = root.regions.map(regionSlot);
+  const slots = root.regions.map(authorizedRegionSlot);
   if (root.regions.some((region) => region.entity === undefined)) return undefined;
   return {
     subjectShape: `composition:${root.declaration.id}@${root.declaration.version}[${slots
@@ -80,7 +91,7 @@ export function compositionRecipeContext(
 }
 
 function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
-  const slot = regionSlot(region);
+  const slot = authorizedRegionSlot(region);
   if (region.entity === undefined) {
     return {
       region: region.declaration.region,
@@ -107,8 +118,7 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
   const fingerprint = contractFingerprint(region.entity);
   // T32 Q7:collection kind 由 class 推导,不保证 entities 数组在场;
   // 显式拒绝并点名区域与原因,不以非空断言把缺陷交给内核兜底。
-  const membership =
-    slot.kind === 'collection' ? membershipFingerprint(region.entity) : undefined;
+  const membership = slot.kind === 'collection' ? membershipFingerprint(region.entity) : undefined;
   if (slot.kind === 'collection' && membership === undefined) {
     throw new Error(
       `composition region "${region.declaration.region}" source "${region.declaration.source}" is class collection but carries no entities array`,

@@ -92,4 +92,30 @@ describe('situation assembler', () => {
       ).scope,
     ).toBe('publishing');
   });
+
+  it('falls back to the first granted scope when every candidate is unauthorized', () => {
+    expect(
+      assembleSituation(
+        input({
+          grantedScopes: ['fallback'],
+          presence: { ...presence, scope: 'unlisted' },
+          explicit: { scope: 'governance' },
+          defaults: { site: 'workstation', scope: 'default' },
+        }),
+      ).scope,
+    ).toBe('fallback');
+  });
+
+  it('fails closed on an empty grant envelope even when candidates exist', () => {
+    // D48-R8: 空 grantedScopes = 无任何已授权 scope,候选(presence 上报)不构成授权。
+    expect(() =>
+      assembleSituation(input({ grantedScopes: [], explicit: { scope: 'publishing' } })),
+    ).toThrowError('situation has no authorized policy scope');
+  });
+
+  it('fails closed on an empty grant envelope without leaning on presence or defaults', () => {
+    expect(() => assembleSituation(input({ grantedScopes: [] }))).toThrowError(
+      'situation has no authorized policy scope',
+    );
+  });
 });

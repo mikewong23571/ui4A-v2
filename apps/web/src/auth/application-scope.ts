@@ -183,6 +183,29 @@ export function filterThreadEntityForPrincipal(
   };
 }
 
+/**
+ * 声明式判定(R7):实体是否属于某个以 scope='principal' + memberRelPrefix 声明
+ * 成员族的 sitemap 面(如 threads → thread:*)。这类面的成员是 Application 中立、
+ * principal 持有的引用承载实体,其 context/active/approval 引用属性需按当前授权
+ * 镜头逐成员重审。判定依据 sitemap 声明元数据与实体自身 self rel,不绑定任何
+ * per-class 字面量;未参与该声明的实体保持原样。
+ */
+function governedByPrincipalMemberFamily(
+  sitemap: Sitemap,
+  entity: SirenEntity,
+): boolean {
+  const rel = relFromHref(entity.links.find((link) => link.rel.includes('self'))?.href);
+  return (
+    rel !== undefined &&
+    sitemap.surfaces.some(
+      (surface) =>
+        surface.scope === 'principal' &&
+        surface.memberRelPrefix !== undefined &&
+        rel.startsWith(surface.memberRelPrefix),
+    )
+  );
+}
+
 /** Strip cross-Application children and links from a collection-style Siren projection. */
 export function filterEntityForPolicyScope(
   entity: SirenEntity,
@@ -198,7 +221,7 @@ export function filterEntityForPolicyScope(
     if (rel === undefined) return true;
     return visibleInPolicyScope(context, rel);
   });
-  const threadProperties = entity.class.includes('work-thread')
+  const referenceProperties = governedByPrincipalMemberFamily(context.sitemap, entity)
     ? {
         ...entity.properties,
         context: filterReferenceProperty(entity.properties.context, context),
@@ -210,8 +233,8 @@ export function filterEntityForPolicyScope(
     ...entity,
     properties:
       entities !== undefined && typeof entity.properties.count === 'number'
-        ? { ...threadProperties, count: entities.length }
-        : threadProperties,
+        ? { ...referenceProperties, count: entities.length }
+        : referenceProperties,
     links,
     ...(entities === undefined ? {} : { entities }),
   };

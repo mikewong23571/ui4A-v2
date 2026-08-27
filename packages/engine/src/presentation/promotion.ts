@@ -1,4 +1,4 @@
-import { parseCompositionId } from '@ui4a/shared';
+import { isCompositionRegionId, parseCompositionId } from '@ui4a/shared';
 
 import type {
   ApplicationRecipeSlot,
@@ -156,7 +156,7 @@ function promotionSlots(options: SidecarPromotionOptions, surface: SurfaceTree) 
   const names = new Set<string>();
   for (const slot of options.slots) {
     if (
-      !/^[a-zA-Z0-9_.-]+$/.test(slot.name) ||
+      !isCompositionRegionId(slot.name) ||
       !['entity', 'collection', 'flow', 'selection'].includes(slot.kind) ||
       slot.subject.trim() === '' ||
       slot.subject.startsWith('$slot:') ||

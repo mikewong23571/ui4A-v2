@@ -347,4 +347,88 @@ describe('application-owned policy scope authorization', () => {
       '/api/entity?rel=confirmation%3Ac1',
     ]);
   });
+
+  it('strips reference properties by declared principal member family, not by class name', () => {
+    // 与 work-thread 同 scope 形状的非 thread 实体:jobs 面声明 scope='principal'
+    // + memberRelPrefix='job:',其成员获得与 thread 成员完全同等的引用裁剪。
+    const jobsSitemap: Sitemap = {
+      ...sitemap,
+      surfaces: [
+        ...sitemap.surfaces,
+        { rel: 'jobs', title: 'Jobs', collection: true, scope: 'principal', memberRelPrefix: 'job:' },
+      ],
+    };
+    const job: SirenEntity = {
+      class: ['job'],
+      properties: {
+        context: ['articles', 'comments'],
+        active: [
+          { rel: 'post:p1', status: 'published', dangling: false },
+          { rel: 'comment:c1', status: 'pending', dangling: false },
+        ],
+        approval: [
+          { rel: 'confirmation:c1', status: 'pending', dangling: false },
+          { rel: 'meta/activation:a1', status: 'pending-approval', dangling: false },
+        ],
+      },
+      actions: [],
+      links: [{ rel: ['self'], href: '/api/entity?rel=job%3Aj1' }],
+    };
+    const filtered = filterEntityForPolicyScope(job, {
+      snapshot,
+      sitemap: jobsSitemap,
+      policyScope: 'publishing',
+      plane: 'business',
+    });
+    expect(filtered.properties).toMatchObject({
+      context: ['articles'],
+      active: [{ rel: 'post:p1', status: 'published', dangling: false }],
+      approval: [{ rel: 'confirmation:c1', status: 'pending', dangling: false }],
+    });
+  });
+
+  it('does not strip references when no surface declares the member family, even for thread classes', () => {
+    // 去类名绑定的反向证明:引用裁剪由 sitemap 声明驱动;没有声明该成员族的
+    // sitemap 上,即便实体带 work-thread 类也不做引用属性裁剪。
+    const withoutThreadsSurface: Sitemap = {
+      ...sitemap,
+      surfaces: sitemap.surfaces.filter((surface) => surface.rel !== 'threads'),
+    };
+    const thread: SirenEntity = {
+      class: ['work-thread', 'open'],
+      properties: {
+        context: ['articles', 'comments'],
+        active: [{ rel: 'comment:c1', status: 'pending', dangling: false }],
+        approval: [],
+      },
+      actions: [],
+      links: [{ rel: ['self'], href: '/api/entity?rel=thread%3Amine' }],
+    };
+    const filtered = filterEntityForPolicyScope(thread, {
+      snapshot,
+      sitemap: withoutThreadsSurface,
+      policyScope: 'publishing',
+      plane: 'business',
+    });
+    expect(filtered.properties.context).toEqual(['articles', 'comments']);
+    expect(filtered.properties.active).toEqual([
+      { rel: 'comment:c1', status: 'pending', dangling: false },
+    ]);
+  });
+
+  it('leaves collection entities untouched without injecting absent reference keys', () => {
+    const collection: SirenEntity = {
+      class: ['collection', 'threads'],
+      properties: { rel: 'threads', title: 'Work Threads', count: 0 },
+      actions: [],
+      links: [{ rel: ['self'], href: '/api/entity?rel=threads' }],
+    };
+    const filtered = filterEntityForPolicyScope(collection, {
+      snapshot,
+      sitemap,
+      policyScope: 'publishing',
+      plane: 'business',
+    });
+    expect(Object.keys(filtered.properties)).toEqual(['rel', 'title', 'count']);
+  });
 });

@@ -377,3 +377,13 @@ human/s1 e2e 故意保留——e2e 正在约束首页设计,本 Track 切断这�
   清单的 `:263` 不存在;`:160/:169` 分类修正如上。
 - 注意:i3 fuzz 机制本身(所有可点元素需 data-action/data-nav、零白名单)
   是常驻不变量,不是误导——workstation 每个新控件都必须遵守。
+
+## 承接自 T31 评审(2026-08-27 归后续落注,R24/R26/R27;不改本 track 范围)
+
+- R24:components 目录收缩窗口(file 级 floating-chat 条目等)随目录重组兑现;
+  T31 收尾实测 components/chat/floating-chat.test.tsx=931 行 ≤ 基线(净收缩);
+- R26:thread 的 agent-run/draft 状态指针恒 dangling 且
+  `enrichEntityWithAgentRuns` 对 thread 不生效——按 D44 sanction dangling,
+  非缺陷;接线承诺归"我的事"首页消费线时兑现;
+- R27:components 目录总量在途治理红(T27 在途期间 4520>4491)已随收尾以
+  size-baseline file 条目+目录重组化解,无 dir 级新增基线。

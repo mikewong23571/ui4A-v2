@@ -3,13 +3,13 @@
  *
  * 帧协议(每帧一条 `data: <json>\n\n`):
  * - {type:'step', turnId, message:{role:'assistant',text}, rel?, activity?,
- *   eventSeq?} —— 轨迹一步(text 为 trail.ts stepToMessage 口径的机器层原文,
- *   保留供审计/回退;rel 供 flow 徽章展示;T24 Phase B 起 activity 携带
- *   {op, title?, subject?} 结构化显示数据——op 为 agent 协议动词,title/
- *   subject 由服务器从实体/动作合同取,客户端按固定 op 词表渲染活动语言;
- *   eventSeq 为本步 chat-turn-progress 事件的日志 seq,供审计下钻定位。
- *   旧服务端帧无 activity/eventSeq 字段:客户端回退 message.text 中性显示,
- *   前向兼容口径与未知帧忽略一致);
+ *   eventSeq?} —— 轨迹一步(text 为 trail.ts stepToMessage 口径的机器层原文;
+ *   rel 供 flow 徽章展示;T24 Phase B 起 activity 携带 {op, title?, subject?}
+ *   结构化显示数据——op 为 agent 协议动词,title/subject 由服务器从实体/
+ *   动作合同取,客户端按固定 op 词表渲染活动语言)。轨迹步帧必附 activity;
+ *   无 activity 的 step 帧仅用于轨迹之外的补充说明(如 max-steps 上限说明),
+ *   客户端按机器原文中性显示。eventSeq 为本步 chat-turn-progress 事件的日志
+ *   seq,供审计下钻定位;落库失败时缺省(下钻退事件流页,不伪造定位参数)。
  * - {type:'thinking-delta', turnId, step, text} —— 推理增量片段(逐 raw chunk 到达
  *   即推;客户端同号原地累积);
  * - {type:'thinking', turnId, step, text} —— llm 步推理自述(T11 Phase C:聚合整段
@@ -20,11 +20,12 @@
  * - {type:'heartbeat'} —— 长回合连接保活(不产生消息,只刷新客户端空闲计时);
  * - {type:'final', turnId, payload:{sessionId, turnId, driver, requestedDriver, outcome,
  *   summary, steps, successes, render?, reason?}} —— 回合终帧;失败终局
- *   (T24 Phase B Task 3)附 reason={code, evidence?, tried?, phrasing?} 结构化
- *   失败数据(phrasing 为 LLM 在场时的表述,缺席=诚实降级),summary 保留为
- *   机器层/审计数据;旧服务端帧无 reason,客户端回退 summary 中性呈现;
- * - {type:'error', error, reason?} —— 服务端兜底(循环异常,200 流内如实报告;
- *   reason 为结构化失败数据,旧服务端帧缺省)。
+ *   (T24 Phase B Task 3)必附 reason={code, evidence?, tried?, phrasing?} 结构化
+ *   失败数据(phrasing 为 LLM 在场时的表述,缺席=诚实降级为中性结构化展示),
+ *   summary 保留为机器层/审计数据;
+ * - {type:'error', error, reason} —— 服务端兜底(循环异常,200 流内如实报告),
+ *   必附结构化失败 reason(D48:error 帧恒为客户端中性结构化呈现,LLM 表述
+ *   仅覆盖 final 帧——见 DECISIONS D48 第 4 小节)。
  *
  * 停止/超时(B2/B1):signal 中止时主动 cancel reader——真实 fetch 的流会随
  * signal 报错,而测试桩的手造流不会;显式 cancel 让两种来源行为一致,
@@ -33,7 +34,7 @@
 import type { AgentOutcome, ExecSuccess, FactRef, TrailStep } from '@ui4a/agent';
 import type { PresentationReceipt } from '@ui4a/shared';
 
-/** step 帧的 assistant 消息(trail.ts stepToMessage 口径;机器层原文,审计/回退用)。 */
+/** step 帧的 assistant 消息(trail.ts stepToMessage 口径;机器层原文)。 */
 export interface ChatStepMessage {
   role: 'assistant';
   text: string;
@@ -72,29 +73,31 @@ export interface ChatFailureReason {
   phrasing?: string;
 }
 
-/** final 帧载荷(inline 回合的完整结果投影)。 */
-export interface ChatFinalPayload {
+/** final 帧载荷的基础字段(结局无关;outcome 决定 reason 的在场性,见下)。 */
+interface ChatFinalPayloadBase {
   sessionId: string;
   turnId: string;
   driver: 'llm';
   requestedDriver: 'llm' | 'auto';
-  outcome: AgentOutcome;
   summary: string | null;
   steps: TrailStep[];
   successes: ExecSuccess[];
   sources?: FactRef[];
   presentationRequestIds?: string[];
-  /**
-   * 失败终局的结构化 reason(T24 Phase B Task 3);outcome=failed 时在场。
-   * summary 仍是机器层/审计数据(真相不从主呈现消失);旧服务端帧缺省,
-   * 客户端回退 summary 中性呈现,前向兼容。
-   */
-  reason?: ChatFailureReason;
   render?: {
     concern: string;
     canvasUrl: string;
   };
 }
+
+/**
+ * final 帧载荷(inline 回合的完整结果投影)。协议不变式(T24 Phase B
+ * Task 3):outcome='failed' 时必附结构化 reason——类型层直接编码该不变式,
+ * 不存在「failed 而 reason 缺席」的第二实现路径。
+ */
+export type ChatFinalPayload =
+  | (ChatFinalPayloadBase & { outcome: Exclude<AgentOutcome, 'failed'> })
+  | (ChatFinalPayloadBase & { outcome: 'failed'; reason: ChatFailureReason });
 
 /** render 帧载荷(渲染短路 LLM 路径的回执;与一次性 JSON 回执同形状)。 */
 export interface ChatRenderPayload {
@@ -123,8 +126,12 @@ export type ChatSseFrame =
       type: 'step';
       turnId: string;
       message: ChatStepMessage;
+      /** 步骤实体的 rel(flow 徽章展示用);轨迹外补充说明帧缺省。 */
       rel?: string;
-      /** 结构化活动数据(T24 Phase B);旧服务端帧缺省,客户端回退 message.text。 */
+      /**
+       * 结构化活动数据(T24 Phase B)。轨迹步帧必附;缺席仅见于轨迹外的
+       * 补充说明帧(如 max-steps 上限说明),客户端按机器原文中性显示。
+       */
       activity?: ChatStepActivity;
       /** 本步 chat-turn-progress 事件的日志 seq(审计下钻定位);落库失败时缺省。 */
       eventSeq?: number;
@@ -137,8 +144,8 @@ export type ChatSseFrame =
   | {
       type: 'error';
       error: string;
-      /** 循环异常兜底的结构化 reason(T24 Phase B Task 3);旧服务端帧缺省。 */
-      reason?: ChatFailureReason;
+      /** 循环异常兜底的结构化 reason(T24 Phase B Task 3);服务端必附。 */
+      reason: ChatFailureReason;
     };
 
 /** AbortSignal.any 的便携版(jsdom 等环境可能缺该静态方法)。 */

@@ -220,9 +220,12 @@ export interface DriverContext {
    */
   observations?: ContractObservation[];
   /**
-   * 应用 sitemap(版本级缓存结构的最外层,架构规定它是 agent 的静态上下文):
-   * surfaces 的 rel/title 供自由漫游层把目标动词映射到可达表面(flow 入口);
-   * applications 按 app 分组呈现发现面(T10 两层发现:选 app〔读 intent〕→ 选 flow)。
+   * 应用 sitemap(版本级缓存结构的最外层,架构规定它是 agent 的静态上下文)。
+   * **循环放入的已经是披露切片视图**(loop 按 scope/intent 预切,prompts 装配时
+   * 再经 sliceSitemapDisclosure 复切;两次切割幂等,属有意设计而非重复实现)——
+   * driver 拿到的不是完整 catalog。surfaces 的 rel/title 供自由漫游层把目标
+   * 动词映射到可达表面(flow 入口);applications 按 app 分组呈现发现面(T10
+   * 两层发现:选 app〔读 intent〕→ 选 flow)。
    * 可选:循环拿不到 sitemap(端点缺失)时为 undefined,driver 须能退化为仅用实体。
    */
   sitemap?: SitemapSummary;

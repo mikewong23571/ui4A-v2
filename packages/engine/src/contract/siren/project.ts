@@ -334,8 +334,9 @@ function projectRenderSpecs(snapshot: EngineSnapshot, deps: ProjectDeps): SirenE
 
 /**
  * rel → Siren 实体;未知 rel 返回 undefined(HTTP 层映射 404)。
- * 解析顺序:meta 前缀(定义层显式意图,优先于实例表——lifecycle 实例与定义
- * 实体同 rel,投影必须是定义视图)→ 实例 → 业务集合 → 确认实体
+ * 解析顺序:capability 工件(artifact:<name>)→ meta 前缀(定义层显式意图,
+ * 优先于实例表——lifecycle 实例与定义实体同 rel,投影必须是定义视图)→
+ * 工作线集合与工作线实体(thread:/threads,T26)→ 实例 → 业务集合 → 确认实体
  * (confirmation:<id>)→ 委托实体(delegation:<id>)→ inbox 视图 →
  * delegations 集合视图(T5)→ 已凝固渲染 spec(render-spec:<concern>,
  * T7)→ render-specs 集合视图(T7)。

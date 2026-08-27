@@ -16,12 +16,7 @@
  * - present subject:字符串原样,selection 以「、」联结;
  * - answer/clarify/exec-plan/done/fail:仅 op(终局内容经 final.summary 呈现)。
  */
-import {
-  createContractClient,
-  type FetchLike,
-  type SitemapSummary,
-  type TrailStep,
-} from '@ui4a/agent';
+import { type SitemapSummary, type TrailStep } from '@ui4a/agent';
 
 import type { ChatStepActivity } from './sse';
 
@@ -59,18 +54,6 @@ export function sitemapTitlesFromSummary(
     };
   });
   return { surfaces, flows };
-}
-
-/**
- * 读合同 sitemap 并投影为标题索引;不可得(端点缺失/非 200/形状异常)时返回
- * undefined——活动数据退 rel/动作名,呈现照常(机械层兜底,不阻断聊天)。
- */
-export async function readSitemapTitles(
-  baseUrl: string,
-  fetchImpl: FetchLike,
-): Promise<SitemapTitles | undefined> {
-  const sitemap = await createContractClient(baseUrl, fetchImpl).getSitemap();
-  return sitemapTitlesFromSummary(sitemap);
 }
 
 /** flow 实体的 Siren class 形如 ['flow-instance', <flow 名>];其余实体无流程可依。 */

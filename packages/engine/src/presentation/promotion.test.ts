@@ -226,9 +226,10 @@ describe('Sidecar promotion and explanation', () => {
       { name: 'moving', kind: 'entity' },
     ]);
     expect(result.diff.subjectSlots).toEqual(['waiting', 'moving']);
-    expect(JSON.stringify(result.candidate.surfaceTemplate)).not.toMatch(/inbox|delegations-v2/);
-    expect(JSON.stringify(result.candidate.surfaceTemplate)).toContain('$slot:waiting');
-    expect(JSON.stringify(result.candidate.surfaceTemplate)).toContain('$slot:moving');
+    const template = JSON.stringify(result.candidate.surfaceTemplate);
+    expect(template).not.toMatch(/inbox|delegations-v2/);
+    expect(template).toContain('$slot:waiting');
+    expect(template).toContain('$slot:moving');
   });
 
   it('promotes real composed generic surfaces by direct region slots only', () => {
@@ -297,10 +298,9 @@ describe('Sidecar promotion and explanation', () => {
     });
 
     expect(result.diff.subjectSlots).toEqual(['waiting', 'moving']);
-    expect(JSON.stringify(result.candidate.surfaceTemplate)).not.toContain('"subject":"inbox"');
-    expect(JSON.stringify(result.candidate.surfaceTemplate)).not.toContain(
-      '"subject":"delegations"',
-    );
+    const template = JSON.stringify(result.candidate.surfaceTemplate);
+    expect(template).not.toContain('"subject":"inbox"');
+    expect(template).not.toContain('"subject":"delegations"');
   });
 
   it.each([
@@ -331,6 +331,29 @@ describe('Sidecar promotion and explanation', () => {
         dependencies: [{ kind: 'catalog', subject: catalog.id, version: catalog.version }],
       }),
     ).toThrow(/slot|subject/i);
+  });
+
+  it('rejects off-grammar uppercase slot names per the shared region id grammar (R13)', () => {
+    const aggregate = compositionSnapshot().sidecars['sidecar:1']!;
+    const root = aggregate.versions[1]!.surface.root;
+    if (root.kind !== 'layout' || root.children[0]?.kind !== 'slot') throw new Error('fixture');
+    root.children[0].name = 'Waiting';
+    // 仅让名字语法越界:表面形状、subject 映射与其余闸全部合法。
+    expect(() =>
+      promoteUserSidecarCandidate(aggregate, {
+        application: 'default',
+        applicationVersion: '1',
+        scenario: 'my-work',
+        subjectShape: 'composition:my-work@3[Waiting:collection,moving:entity]',
+        intent: 'organize',
+        catalog,
+        slots: [
+          { name: 'Waiting', kind: 'collection', subject: 'inbox' },
+          { name: 'moving', kind: 'entity', subject: 'delegations' },
+        ],
+        dependencies: [{ kind: 'catalog', subject: catalog.id, version: catalog.version }],
+      }),
+    ).toThrow(/slot name/u);
   });
 
   it('parameterizes the same real source independently in two intent regions', () => {
