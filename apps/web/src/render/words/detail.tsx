@@ -31,6 +31,40 @@ export function DetailWord(props: WordProps) {
       : {};
   const scalarProperties = Object.entries(entity.properties).filter(([key]) => key !== 'fields');
 
+  // T35 F-06:links 模式是关系辅助信息,降级为弱化内联行,不再套整卡 article 壳
+  // (此前 self 卡与内容卡同级,视觉权重倒置)。
+  if (mode === 'links') {
+    return (
+      <section data-word="detail" aria-label="链接" className="text-xs text-muted-foreground">
+        <ul className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {entity.links.map((link) => {
+            const target = hrefToRel(link.href);
+            return (
+              <li key={`${link.rel.join('/')}:${link.href}`} className="flex items-center gap-1.5">
+                <Badge variant="secondary" className="rounded px-1 py-0 text-[10px]">
+                  {link.rel.join('/')}
+                </Badge>
+                {target !== null ? (
+                  <a
+                    href={entityPageHref(target)}
+                    data-nav={link.rel[0]}
+                    className="text-muted-foreground hover:text-foreground hover:underline"
+                  >
+                    {link.title ?? target}
+                  </a>
+                ) : (
+                  <a href={link.href} className="text-muted-foreground hover:underline">
+                    {link.href}
+                  </a>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    );
+  }
+
   return (
     <article
       data-word="detail"

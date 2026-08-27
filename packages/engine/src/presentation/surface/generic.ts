@@ -61,6 +61,13 @@ const GENERIC_STRUCTURAL_PROPERTY_PATHS = new Set([
   'properties.flow',
 ]);
 
+/**
+ * T35 F-06:簿记数值(count/delivered/limit/total)不进 fallback metadata 词——
+ * 裸数字无信息量且与成员重复;按字段名判定(零 class 分支,特判滑梯红线),
+ * 显式 presentation 声明路径不走 fallback,仍可恢复呈现。
+ */
+const GENERIC_BOOKKEEPING_PROPERTY_NAMES = new Set(['count', 'delivered', 'limit', 'total']);
+
 function isGenericFieldRole(role: SemanticRegionRole): role is GenericFieldCandidate['role'] {
   return role !== 'actions' && role !== 'diagnostic';
 }
@@ -214,6 +221,11 @@ export function planGenericSurface(
       !path.startsWith('properties.presentation.') &&
       !GENERIC_STRUCTURAL_PROPERTY_PATHS.has(path)
     ) {
+      // T35 F-06:簿记数值不进 fallback(GENERIC_BOOKKEEPING_PROPERTY_NAMES,按名判定)。
+      if (GENERIC_BOOKKEEPING_PROPERTY_NAMES.has(path.replace('properties.', ''))) {
+        plannedPaths.add(path);
+        continue;
+      }
       fieldCandidates.push({ role: 'metadata', path });
       plannedPaths.add(path);
     }
@@ -253,11 +265,19 @@ export function planGenericSurface(
     const membersDeclareActions = entity.entities.some((member) => member.actions.length > 0);
     const memberCard =
       membersDeclareActions === true
-        ? Object.entries(catalog.words).find(([, definition]) => definition.pattern === 'member-card')
+        ? Object.entries(catalog.words).find(
+            ([, definition]) => definition.pattern === 'member-card',
+          )
         : undefined;
     const memberLink = Object.entries(catalog.words).find(
       ([, definition]) => definition.pattern === 'member-link',
     );
+    // T35 F-21:成员状态优先取节点标题(任务语),成员缺 title 时回退 node 名。
+    const itemStatusPath =
+      entity.entities.length > 0 &&
+      entity.entities.every((member) => readPath(member, 'properties.title') !== undefined)
+        ? 'properties.title'
+        : 'properties.status';
     const item: SurfaceNode =
       memberCard !== undefined
         ? {
@@ -268,7 +288,7 @@ export function planGenericSurface(
             bindings: {
               label: { kind: 'item', path: itemIdentityPath },
               rel: { kind: 'item', path: 'properties.rel' },
-              status: { kind: 'item', path: 'properties.status' },
+              status: { kind: 'item', path: itemStatusPath },
               detail: { kind: 'item', path: 'properties.resume' },
               actions: { kind: 'item', path: 'actions' },
               guardResults: { kind: 'item', path: 'guard-results' },
@@ -294,7 +314,7 @@ export function planGenericSurface(
               bindings: {
                 label: { kind: 'item', path: itemIdentityPath },
                 rel: { kind: 'item', path: 'properties.rel' },
-                status: { kind: 'item', path: 'properties.status' },
+                status: { kind: 'item', path: itemStatusPath },
                 detail: { kind: 'item', path: 'properties.resume' },
               },
               dependencies: [catalogDependency(catalog)],

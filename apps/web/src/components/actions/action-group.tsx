@@ -1,11 +1,19 @@
 'use client';
 
+import { createContext, useContext } from 'react';
+
 import type { GuardResultEntry, SirenEntity } from '@ui4a/engine';
 
 import { ActionRunner } from '../action-runner';
 import { useActionSubmit, type ActionSubmit } from './action-submit';
 
 export const ACTION_CONTRACT_LEGEND = '你和助手使用同一合同，由同一规则裁决';
+
+/**
+ * T35 F-06:合同图例每个 surface 只渲染一次——外层 ActionGroup 展示后向内层
+ * 传播已展示标记;纯呈现层协调,零业务事件。
+ */
+const ActionLegendContext = createContext(false);
 
 /** Human renderer satisfies actor-is-human; all other failed guards remain visibly blocked. */
 export function blockedForRenderer(entry: GuardResultEntry | undefined): boolean {
@@ -30,6 +38,7 @@ export function ActionGroup({
   submit: explicitSubmit,
   onExecuted,
 }: ActionGroupProps) {
+  const legendShown = useContext(ActionLegendContext);
   const submit = useActionSubmit(explicitSubmit);
   if (entity.actions.length === 0) return null;
   if (submit === undefined) throw new Error('ActionGroup requires an explicit host submit adapter');
@@ -45,31 +54,35 @@ export function ActionGroup({
 
   return (
     <div data-testid="action-contract-group" className="space-y-3">
-      <p data-testid="action-contract-legend" className="text-xs text-muted-foreground">
-        {ACTION_CONTRACT_LEGEND}
-      </p>
-      <div className="space-y-3">
-        {entity.actions.map((action) => {
-          const guard = guards.get(action.name);
-          return (
-            <div
-              key={`${rel}:${action.name}:${JSON.stringify(action.fields)}`}
-              data-action-group-item={action.name}
-              className="rounded-md border bg-card p-3"
-            >
-              <ActionRunner
-                rel={rel}
-                action={action}
-                blocked={blockedForRenderer(guard)}
-                blockReason={guard?.reason}
-                onExecuted={onExecuted}
-                prefill={prefill}
-                submit={submit}
-              />
-            </div>
-          );
-        })}
-      </div>
+      {legendShown ? null : (
+        <p data-testid="action-contract-legend" className="text-xs text-muted-foreground">
+          {ACTION_CONTRACT_LEGEND}
+        </p>
+      )}
+      <ActionLegendContext.Provider value={true}>
+        <div className="space-y-3">
+          {entity.actions.map((action) => {
+            const guard = guards.get(action.name);
+            return (
+              <div
+                key={`${rel}:${action.name}:${JSON.stringify(action.fields)}`}
+                data-action-group-item={action.name}
+                className="rounded-md border bg-card p-3"
+              >
+                <ActionRunner
+                  rel={rel}
+                  action={action}
+                  blocked={blockedForRenderer(guard)}
+                  blockReason={guard?.reason}
+                  onExecuted={onExecuted}
+                  prefill={prefill}
+                  submit={submit}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </ActionLegendContext.Provider>
     </div>
   );
 }
