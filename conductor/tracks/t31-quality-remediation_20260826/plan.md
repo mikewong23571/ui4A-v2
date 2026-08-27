@@ -47,17 +47,17 @@
 - [x] Task: T29 口径组(R8/R9/R10) [fecc9c5]
   - 按 D48 落 scopeFrom 口径、clientView 分层、presence 端点 scope 校验对齐;
     各项配行为测试
-- [ ] Task: T26 投影/裁决组(R4/R5/R6/R7)
+- [x] Task: T26 投影/裁决组(R4/R5/R6/R7) [221c1d5]
   - R4 层序按 D48 归位;R5 context 类 dangling 标记统一(message: 引用可
     审计);R6 attach 失败加结构化可观测(chat 不阻断语义不变);R7
     class 硬编码改声明式 scope/memberRelPrefix 推导
   - Red→Green:各项先补锁合同语义的测试再修
-- [ ] Task: T30 组合组(R11/R12/R13)
+- [x] Task: T30 组合组(R11/R12/R13) [c609170]
   - R11 常驻负向断言(`/api/entity?rel=workspace:*` 404、sitemap 缺席、
     不可 exec);R12 `regionSlot()` kind 按声明源合同形状推导;R13 slot
     name 语法统一为 shared region id 语法
   - GR3 注意:R12/R13 触及 shrink-only 基线目录,净不增长
-- [ ] Task: chat/LLM 组(R14/R15/R16)
+- [x] Task: chat/LLM 组(R14/R15/R16) [505370e]
   - R14 按 D48 落地;R15 删除客户端旧 wire-format 回退(GR2 单实现),
     迁移 `floating-chat.test.tsx` 冻结测试,评估 check-compat 中文标记;
     R16 补真实 walkthrough bundle 的 meta scope wire 级 32 KiB 预算断言
