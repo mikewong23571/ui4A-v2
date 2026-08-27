@@ -1,0 +1,11 @@
+T31 Phase A Task 1: 四个判断点落 DECISIONS.md D48
+
+变更:
+- DECISIONS.md 新增 D48『T31 质量评审四个判断点的裁决』一条目四小节:
+  R4 采纳(a) guard 前移(thread-id-available 移到 schema 校验之前);
+  R8 采纳(a) scopeFrom 空 grantedScopes fail-closed;
+  R9 采纳(b) clientView.presence 保持 explicit 槽位并记录理由(显式=请求明示,授权收口在 grantedScopes);
+  R14 采纳(b) loop_exception/error 帧记录为 T24 spec 边界豁免(兜底路径零新增故障面),补齐须新决策。
+- 纯修复项 R5/R6/R7/R10-R13/R15-R20 确认无需决策。
+
+Why: spec/plan 原文误写 D47(D47 已被 T28 占用),登记册判断点需要正式裁决编号与依据;编排 agent 于实施前复核四个代码锚点(work-thread-command.ts 层序、situation.ts:65、chat-situation.ts explicit 槽位、chat/route.ts 兜底注释)与 D48 描述一致后落档(自治验收)。
