@@ -13,7 +13,7 @@
 > 并行则逐任务核对冲突面。
 > 实施前必读:根 `AGENTS.md`、`apps/web/AGENTS.md`、`conductor/workflow.md`。
 
-## Phase A: 分歧裁决 → DECISIONS(D48)
+## Phase A: 分歧裁决 → DECISIONS(D48) [checkpoint: 5951549]
 
 - [x] Task: 四个判断点落 DECISIONS.md D48 [90743fb]
   - R4:`thread-id-available` 层序归位(前移 guard 层 vs 重归类并修正自述;
