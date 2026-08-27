@@ -100,3 +100,33 @@ describe('runtime composition generic intent fallback', () => {
     );
   });
 });
+
+describe('collection region membership fingerprint guard (T32 Q7)', () => {
+  it('collection 类实体缺 entities 数组时显式拒绝并点名区域与原因,不靠内核兜底', () => {
+    const malformed: SirenEntity = {
+      class: ['collection'],
+      properties: { rel: 'records', node: 'active' },
+      actions: [],
+      links: [],
+    };
+    const declaration = {
+      id: 'broken-collection',
+      version: '1',
+      regions: [
+        { region: 'waiting', source: 'records', intent: 'read', mode: 'rehydrate' as const },
+      ],
+    };
+    expect(() =>
+      planWorkspaceComposition({
+        rels: ['records'],
+        entities: [malformed],
+        policyScope: 'publishing',
+        declaration,
+        regions: declaration.regions.map((region) => ({
+          declaration: region,
+          entity: malformed,
+        })),
+      }),
+    ).toThrowError(/waiting.*entities/u);
+  });
+});

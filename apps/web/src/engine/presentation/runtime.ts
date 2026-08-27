@@ -50,6 +50,14 @@ function durableKey(request: PresentationRequest, policyScope: string): UserSide
   };
 }
 
+/**
+ * 依赖装配(D49-2 锚定):单主体在此手写拼装(id 方案 `entity:<rel>` /
+ * `catalog:` / `policy:`),组合主体由内核 `compose.ts` canonical 产出
+ * (id 方案 `composition:<id>@<version>:<region>:…`)。两套方案按主体类型
+ * 各自同源自洽:plan 时存入 Sidecar 与命中时重算走同一装配,
+ * `dependencyDecision` 比对不跨方案。改任何一侧的 id 形状前必须同步另一侧
+ * 或统一经内核产出(届时按 GR3 净不增长纪律)。
+ */
 function currentDependencies(root: AuthorizedRoot): SidecarDependency[] {
   if (root.declaration !== undefined) return planWorkspaceComposition(root).dependencies;
   const entity = root.entities[0] as {
@@ -214,7 +222,7 @@ async function persistSurface(
   };
 }
 
-/** Process adapter; the Broker store becomes durable/rebuildable in T16 Phase G. */
+/** Process adapter; the Broker store is durable and rebuildable (db/presentation projection). */
 export function getPresentationBroker(): WebPresentationBroker {
   const scope = globalThis as typeof globalThis & PresentationGlobal;
   if (scope[runtimeKey] !== undefined) return scope[runtimeKey];

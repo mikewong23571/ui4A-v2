@@ -105,6 +105,15 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
     },
   );
   const fingerprint = contractFingerprint(region.entity);
+  // T32 Q7:collection kind 由 class 推导,不保证 entities 数组在场;
+  // 显式拒绝并点名区域与原因,不以非空断言把缺陷交给内核兜底。
+  const membership =
+    slot.kind === 'collection' ? membershipFingerprint(region.entity) : undefined;
+  if (slot.kind === 'collection' && membership === undefined) {
+    throw new Error(
+      `composition region "${region.declaration.region}" source "${region.declaration.source}" is class collection but carries no entities array`,
+    );
+  }
   const surface =
     selected?.surface ??
     planGenericSurface(
@@ -124,9 +133,7 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
     sourceKind: slot.kind,
     surface,
     entityFingerprint: fingerprint,
-    ...(slot.kind === 'collection'
-      ? { membershipFingerprint: membershipFingerprint(region.entity)! }
-      : {}),
+    ...(membership !== undefined ? { membershipFingerprint: membership } : {}),
   };
 }
 
