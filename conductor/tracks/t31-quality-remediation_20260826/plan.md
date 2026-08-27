@@ -65,7 +65,7 @@
 
 ## Phase D: 卫生与流程可追溯性(R17–R22)
 
-- [ ] Task: 卫生组(R17/R18/R19/R20)
+- [x] Task: 卫生组(R17/R18/R19/R20) [981a08b]
   - `readSitemapTitles` 死代码退役 + 头注释修正;`DriverContext.sitemap`
     注释修正与切片点说明;`project()` JSDoc 补 threads 分支;
     size-baseline 两条 note 更新为自 T30 关闭起算
