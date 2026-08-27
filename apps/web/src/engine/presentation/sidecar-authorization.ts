@@ -1,7 +1,13 @@
 import type { SurfaceNode, UserSidecarAggregate } from '@ui4a/engine';
 
 import { resolveBuiltinCompositionSubject } from './compositions';
-import { getAuthorizedPresentationEntity } from './authorized-entity';
+import { getAuthorizedPresentationResult } from './authorized-entity';
+
+/** Stored 工件重审失败的最小归因(D51/B3):grants-shrunk | sources-unreachable。 */
+export type StoredSidecarDenialReason = 'grants-shrunk' | 'sources-unreachable';
+
+export type StoredSidecarAuthorization =
+  { ok: true } | { ok: false; reason: StoredSidecarDenialReason };
 
 function collectNodeSources(node: SurfaceNode, sources: Set<string>): void {
   for (const dependency of node.dependencies) {
@@ -76,32 +82,36 @@ function orderedSources(sidecar: UserSidecarAggregate, versionNumber: number): s
  * disclosure/mutation. D51:stored key 无 scope 维度,命中重审口径 =
  * principal 严格相等 + 全部真实 sources 按当前授予集合逐项重审(授予集合变化
  * 由依赖指纹失效触发自动重规划);跨 principal 的存在性隐藏由调用方 404 承担。
+ * B3:返回值携带最小归因——受众越界(grants-shrunk)与不可读/不存在
+ * (sources-unreachable)分流,供路由表达结构化 denied;首个失败源决定 reason。
  */
 export async function authorizeStoredSidecar(
   sidecar: UserSidecarAggregate,
   trusted: { principal: string; grantedApplications: readonly string[] },
   versionNumber = sidecar.activeVersion,
-): Promise<boolean> {
+): Promise<StoredSidecarAuthorization> {
   if (
     sidecar.key.principal !== trusted.principal ||
     sidecar.versions[versionNumber] === undefined
   ) {
-    return false;
+    // 路由已按 principal 过滤读取;此处不区分原因,统一按不可读处理。
+    return { ok: false, reason: 'sources-unreachable' };
   }
   try {
     for (const source of orderedSources(sidecar, versionNumber)) {
-      if (
-        (await getAuthorizedPresentationEntity(
-          source,
-          trusted.principal,
-          trusted.grantedApplications,
-        )) === undefined
-      ) {
-        return false;
-      }
+      const outcome = await getAuthorizedPresentationResult(
+        source,
+        trusted.principal,
+        trusted.grantedApplications,
+      );
+      if (outcome.kind === 'authorized') continue;
+      return {
+        ok: false,
+        reason: outcome.kind === 'audience-unreachable' ? 'grants-shrunk' : 'sources-unreachable',
+      };
     }
   } catch {
-    return false;
+    return { ok: false, reason: 'sources-unreachable' };
   }
-  return true;
+  return { ok: true };
 }

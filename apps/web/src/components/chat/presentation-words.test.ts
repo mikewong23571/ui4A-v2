@@ -34,6 +34,18 @@ describe('presentationFailureText(reasonCode → 失败条目全文)', () => {
     );
   });
 
+  it('D51 taxonomy 两新 code 查表:授予外与不存在分流措辞,原文末尾次要(B1)', () => {
+    expect(presentationFailureText('audience-unreachable')).toBe(
+      '呈现失败 · 所属应用未启用 · reasonCode=audience-unreachable',
+    );
+    expect(presentationFailureText('subject-unavailable')).toBe(
+      '呈现失败 · 没有这个内容 · reasonCode=subject-unavailable',
+    );
+    // 词表条目与 shared taxonomy 常量同源,零字面量漂移。
+    expect(Object.keys(PRESENTATION_FAILURE_WORDS)).toContain('audience-unreachable');
+    expect(Object.keys(PRESENTATION_FAILURE_WORDS)).toContain('subject-unavailable');
+  });
+
   it('未知 reasonCode:通用主行,原文只作次要附属(不编造原因)', () => {
     expect(presentationFailureText('planner-unavailable')).toBe(
       '呈现失败 · reasonCode=planner-unavailable',

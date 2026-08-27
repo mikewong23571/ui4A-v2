@@ -51,10 +51,7 @@ describe('web Presentation Broker adapter', () => {
     );
     const broker = createWebPresentationBroker({
       getEntity,
-      resolve: async (_candidate, situation) => ({
-        kind: 'ready',
-        surfaceUrl: `/canvas?scope=${situation.policyScope ?? ''}`,
-      }),
+      resolve: async () => ({ kind: 'ready', surfaceUrl: '/canvas?grant=envelope' }),
     });
 
     const granted = await broker.present(request, { grantedApplications: ['publishing'] });
@@ -78,6 +75,48 @@ describe('web Presentation Broker adapter', () => {
       reasonCode: 'authorization-failed',
     });
     expect(plan).not.toHaveBeenCalled();
+  });
+
+  it('discloses audience-unreachable when the classifier attributes the denial to grants (B1)', async () => {
+    const broker = createWebPresentationBroker({
+      getEntity: async () => undefined,
+      classifyUnauthorized: async () => 'audience-unreachable',
+      plan: vi.fn(),
+    });
+
+    await expect(
+      broker.present(request, { grantedApplications: ['development'] }),
+    ).resolves.toMatchObject({
+      status: 'failed',
+      reasonCode: 'audience-unreachable',
+    });
+  });
+
+  it('discloses subject-unavailable for a missing subject and keeps workspace mixed denials honest', async () => {
+    const classify = vi.fn(async (rel: string) =>
+      rel === 'post:ghost' ? 'subject-unavailable' : 'audience-unreachable',
+    );
+    const broker = createWebPresentationBroker({
+      getEntity: async () => undefined,
+      classifyUnauthorized: classify,
+    });
+    const ghost = completePresentationRequest(
+      { subject: 'post:ghost', intent: 'read', delivery: 'canvas' },
+      { requestId: 'ghost:1', principal: 'user:local', sourceMessageIds: [] },
+    );
+
+    await expect(
+      broker.present(ghost, { grantedApplications: ['publishing'] }),
+    ).resolves.toMatchObject({ status: 'failed', reasonCode: 'subject-unavailable' });
+
+    // 全区域不可见的 composition:任一受众失败优先表达(确定性归因)。
+    const workspace = completePresentationRequest(
+      { subject: 'workspace:my-work', intent: 'work', delivery: 'canvas' },
+      { requestId: 'ghost:2', principal: 'user:local', sourceMessageIds: [] },
+    );
+    await expect(
+      broker.present(workspace, { grantedApplications: ['publishing'] }),
+    ).resolves.toMatchObject({ status: 'failed', reasonCode: 'audience-unreachable' });
   });
 
   it('reauthorizes every explicit selection root and returns one Canvas selection URL', async () => {

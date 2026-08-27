@@ -145,6 +145,16 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
   };
 }
 
+/**
+ * D51 Phase B:policy 依赖指纹 = 排序后的授予集合(join);空授予集合归一为
+ * 'none'。授予集合变化 → 指纹失效 → dependencyDecision 自动重规划,键不变。
+ */
+export function grantedPolicyRef(grantedApplications?: readonly string[]): string {
+  return grantedApplications === undefined || grantedApplications.length === 0
+    ? 'none'
+    : [...grantedApplications].sort().join('|');
+}
+
 export function planWorkspaceComposition(root: AuthorizedRoot): {
   surface: SurfaceTree;
   dependencies: SidecarDependency[];
@@ -154,6 +164,7 @@ export function planWorkspaceComposition(root: AuthorizedRoot): {
     throw new Error('workspace declaration is unavailable');
   }
   const inputs = root.regions.map(planRegion);
+  const policyRef = grantedPolicyRef(root.grantedApplications);
   const planned = composeSurfaceRegions(
     { ...root.declaration, regions: root.declaration.regions.map((region) => ({ ...region })) },
     inputs,
@@ -161,10 +172,9 @@ export function planWorkspaceComposition(root: AuthorizedRoot): {
       declarationFingerprint: contentVersion(root.declaration),
       catalog: PRESENTATION_SURFACE_CATALOG,
       catalogFingerprint: PRESENTATION_SURFACE_CATALOG.version,
-      // D51:policyRef 不再锚定会话冻结 scope;导航偏好可缺省(占位 'any'),
-      // 授予集合指纹属 Phase B。
-      policyRef: root.policyScope ?? 'any',
-      policyFingerprint: root.policyScope ?? 'any',
+      // D49-2:id 方案与单主体 `policy:` 同源;ref/fingerprint 同值 = 授予集合指纹。
+      policyRef,
+      policyFingerprint: policyRef,
     },
   );
   return {

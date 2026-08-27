@@ -3,8 +3,13 @@ import {
   type PresentationBrokerResolution,
   type PresentationBrokerStore,
 } from '@ui4a/engine';
-import type { PresentationReceipt, PresentationRequest } from '@ui4a/shared';
-import type { CompositionRegionDeclaration } from '@ui4a/shared';
+import {
+  PRESENTATION_DENIED_AUDIENCE_UNREACHABLE,
+  PRESENTATION_DENIED_SUBJECT_UNAVAILABLE,
+  type CompositionRegionDeclaration,
+  type PresentationReceipt,
+  type PresentationRequest,
+} from '@ui4a/shared';
 
 import {
   resolveBuiltinCompositionSubject,
@@ -28,14 +33,15 @@ export interface AuthorizedRegion {
   entity?: unknown;
 }
 
+/** 授权失败的结构化分类(B1 taxonomy);undefined 表示维持既有 authorization-failed。 */
+type UnauthorizedClassification =
+  typeof PRESENTATION_DENIED_AUDIENCE_UNREACHABLE | typeof PRESENTATION_DENIED_SUBJECT_UNAVAILABLE;
+
 export interface AuthorizedRoot {
   rels: string[];
   entities: unknown[];
-  /**
-   * 显式 ?scope= 导航偏好(D51):可缺省;仅作展示与依赖指纹的机械输入,
-   * 不参与任何授权判定。
-   */
-  policyScope?: string;
+  /** 凭证授予的应用集合(D51 Phase B):policy 依赖指纹的唯一来源。 */
+  grantedApplications?: readonly string[];
   declaration?: BuiltinCompositionDeclaration;
   regions?: AuthorizedRegion[];
 }
@@ -46,6 +52,16 @@ interface WebPresentationBrokerDependencies {
     principal: string,
     grantedApplications?: readonly string[],
   ): Promise<unknown | undefined>;
+  /**
+   * 对 getEntity 返回 undefined 的 rel 做结构化归因(B1):授予外 →
+   * audience-unreachable;不存在/不可读 → subject-unavailable。未注入时
+   * 维持无 code 的 authorization-failed 通道。
+   */
+  classifyUnauthorized?(
+    rel: string,
+    principal: string,
+    grantedApplications?: readonly string[],
+  ): Promise<UnauthorizedClassification | undefined>;
   resolveCompositionSubject?(subject: string): BuiltinCompositionSubjectResolution;
   plan?(
     request: PresentationRequest,
@@ -104,6 +120,24 @@ export function createWebPresentationBroker(
         store = memoryStore();
         stores.set(namespace, store);
       }
+      // D51/B1:全部所需 rel 都拿不到实体时按分类抛错(首次失败决定 reasonCode;
+      // 未注入分类器则保持诚实但无 code 的既有通道)。任一 rel 可见即继续。
+      const denialFor = async (
+        message: string,
+        rels: readonly string[],
+        principal: string,
+      ): Promise<Error> => {
+        if (dependencies.classifyUnauthorized === undefined) return new Error(message);
+        const outcomes = await Promise.all(
+          rels.map((rel) =>
+            dependencies.classifyUnauthorized!(rel, principal, grantedApplications),
+          ),
+        );
+        const code = outcomes.includes(PRESENTATION_DENIED_AUDIENCE_UNREACHABLE)
+          ? PRESENTATION_DENIED_AUDIENCE_UNREACHABLE
+          : PRESENTATION_DENIED_SUBJECT_UNAVAILABLE;
+        return Object.assign(new Error(message), { code });
+      };
       return runPresentationBroker(request, {
         store,
         authorize: async (candidate) => {
@@ -129,10 +163,17 @@ export function createWebPresentationBroker(
                 (region): region is AuthorizedRegion & { entity: unknown } =>
                   region.entity !== undefined,
               );
-              if (visible.length === 0) throw new Error('workspace unavailable');
+              if (visible.length === 0) {
+                throw await denialFor(
+                  'workspace unavailable',
+                  composition.declaration.regions.map((declaration) => declaration.source),
+                  candidate.principal,
+                );
+              }
               return {
                 rels: visible.map((region) => region.declaration.source),
                 entities: visible.map((region) => region.entity),
+                grantedApplications,
                 declaration: composition.declaration,
                 regions,
               };
@@ -148,9 +189,13 @@ export function createWebPresentationBroker(
             ),
           );
           if (entities.some((entity) => entity === undefined)) {
-            throw new Error('subject unavailable');
+            throw await denialFor('subject unavailable', rels, candidate.principal);
           }
-          return { rels, entities };
+          return {
+            rels,
+            entities,
+            grantedApplications,
+          };
         },
         buildSituation: async (_candidate, authorization) => authorization,
         resolve: dependencies.resolve ?? (async () => ({ kind: 'miss' })),

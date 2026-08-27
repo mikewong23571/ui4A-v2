@@ -154,7 +154,6 @@ describe('runtime Recipe selection', () => {
       const context = singleSubjectRecipeContext({
         rels: [subject],
         entities: [{ class: classes, properties: { rel: subject }, actions: [], links: [] }],
-        policyScope: 'contract',
       });
       expect(context).toBeDefined();
       const result = selectAndInstantiateRecipe([recipe([{ name: 'subject', kind }], shape)], {

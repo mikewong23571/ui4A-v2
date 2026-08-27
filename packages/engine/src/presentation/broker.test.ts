@@ -1,16 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  PRESENTATION_DENIED_AUDIENCE_UNREACHABLE as AUDIENCE_UNREACHABLE,
   PRESENTATION_PROTOCOL_VERSION,
   type PresentationReceipt,
   type PresentationRequest,
 } from '@ui4a/shared';
 
-import {
-  dispatchPresentation,
-  runPresentationBroker,
-  type PresentationBrokerStore,
-} from '../index';
+import { runPresentationBroker, type PresentationBrokerStore } from '../index';
 
 const request: PresentationRequest = {
   schemaVersion: PRESENTATION_PROTOCOL_VERSION,
@@ -106,8 +103,7 @@ describe('runPresentationBroker', () => {
   });
 
   it('turns planner rejection into an honest failed receipt without rejecting the chat outcome', async () => {
-    const chatOutcome = Object.freeze({ content: 'The article explains the first workflow.' });
-    const dispatch = dispatchPresentation(chatOutcome, request, {
+    const receipt = await runPresentationBroker(request, {
       store: memoryStore(),
       authorize: async () => ({ policyScope: 'own-content' }),
       buildSituation: async () => ({ roots: ['post:first-post'] }),
@@ -117,13 +113,23 @@ describe('runPresentationBroker', () => {
       },
     });
 
-    expect(dispatch.chatOutcome).toBe(chatOutcome);
-    await expect(dispatch.receipt).resolves.toMatchObject({
-      requestId: request.requestId,
-      status: 'failed',
-      reasonCode: 'planning-failed',
+    expect(receipt).toMatchObject({ status: 'failed', reasonCode: 'planning-failed' });
+  });
+
+  it('discloses a structured denial reasonCode carried by the authorize adapter (D51)', async () => {
+    const buildSituation = vi.fn();
+    const receipt = await runPresentationBroker(request, {
+      store: memoryStore(),
+      authorize: async () => {
+        throw Object.assign(new Error('audience'), { code: AUDIENCE_UNREACHABLE });
+      },
+      buildSituation,
+      resolve: vi.fn(),
+      plan: vi.fn(),
     });
-    expect(dispatch.chatOutcome).toEqual({ content: 'The article explains the first workflow.' });
+
+    expect(receipt).toMatchObject({ status: 'failed', reasonCode: AUDIENCE_UNREACHABLE });
+    expect(buildSituation).not.toHaveBeenCalled();
   });
 
   it('can use an explicit mechanical fallback when planning fails', async () => {

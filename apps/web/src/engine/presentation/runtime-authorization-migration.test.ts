@@ -5,10 +5,18 @@ import { completePresentationRequest } from '@ui4a/shared';
 const authorization = vi.hoisted(() => ({
   visible: new Map<string, unknown>(),
   getEntity: vi.fn(async (rel: string) => authorization.visible.get(rel)),
+  // B1 分类器桩:可见性之外的归因统一记为授予外(map 装置无法区分不存在)。
+  getAuthorizedPresentationResult: vi.fn(
+    async (rel: string): Promise<{ kind: string; entity?: unknown }> =>
+      authorization.visible.has(rel)
+        ? { kind: 'authorized', entity: authorization.visible.get(rel) }
+        : { kind: 'audience-unreachable' },
+  ),
 }));
 
 vi.mock('./authorized-entity', () => ({
   getAuthorizedPresentationEntity: authorization.getEntity,
+  getAuthorizedPresentationResult: authorization.getAuthorizedPresentationResult,
 }));
 
 import { ensurePresentationTables, findActiveSidecar } from '../../db/presentation';
@@ -109,10 +117,11 @@ describe('durable composition authorization migration', () => {
     ]);
   });
 
-  it('fails all-denied authorization without creating Sidecar lifecycle events', async () => {
+  it('fails all-denied authorization with a structured denial and without Sidecar lifecycle events', async () => {
     const receipt = await getPresentationBroker().present(request('migration:all-denied'));
 
-    expect(receipt).toMatchObject({ status: 'failed', reasonCode: 'authorization-failed' });
+    // B1 taxonomy:全区域授予外 → audience-unreachable(不再压缩为 authorization-failed)。
+    expect(receipt).toMatchObject({ status: 'failed', reasonCode: 'audience-unreachable' });
     await expect(findActiveSidecar(getDb(), key)).resolves.toBeUndefined();
     expect(sidecarKinds(await listEvents(getDb()))).toEqual([]);
   });

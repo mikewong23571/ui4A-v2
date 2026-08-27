@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SirenEntity, UserSidecarAggregate } from '@ui4a/engine';
 
 const mocks = vi.hoisted(() => ({
-  getAuthorizedPresentationEntity: vi.fn(),
+  getAuthorizedPresentationResult: vi.fn(),
 }));
 
 vi.mock('./authorized-entity', () => ({
-  getAuthorizedPresentationEntity: mocks.getAuthorizedPresentationEntity,
+  getAuthorizedPresentationResult: mocks.getAuthorizedPresentationResult,
 }));
 
 import { authorizeStoredSidecar } from './sidecar-authorization';
@@ -55,53 +55,72 @@ function fixtureSidecar(principal = 'human-alice'): UserSidecarAggregate {
 
 const entityStub = {} as SirenEntity;
 
-describe('authorizeStoredSidecar granted-set semantics (D51)', () => {
+describe('authorizeStoredSidecar granted-set semantics (D51/B3)', () => {
   beforeEach(() => {
-    mocks.getAuthorizedPresentationEntity.mockReset();
+    mocks.getAuthorizedPresentationResult.mockReset();
   });
 
-  it('returns true when the principal matches and every source reauthorizes under the current grants', async () => {
-    mocks.getAuthorizedPresentationEntity.mockResolvedValue(entityStub);
+  it('authorizes when the principal matches and every source reauthorizes under the current grants', async () => {
+    mocks.getAuthorizedPresentationResult.mockResolvedValue({
+      kind: 'authorized',
+      entity: entityStub,
+    });
     const sidecar = fixtureSidecar();
 
-    const authorized = await authorizeStoredSidecar(sidecar, {
+    const decision = await authorizeStoredSidecar(sidecar, {
       principal: 'human-alice',
       grantedApplications: ['publishing'],
     });
 
-    expect(authorized).toBe(true);
+    expect(decision).toEqual({ ok: true });
     // 命中重审按当前授予集合逐源进行;stored key 已无 scope 维度。
-    expect(mocks.getAuthorizedPresentationEntity).toHaveBeenCalledWith(
+    expect(mocks.getAuthorizedPresentationResult).toHaveBeenCalledWith(
       'post:first-post',
       'human-alice',
       ['publishing'],
     );
   });
 
-  it('returns false when the principal does not match, before any source read', async () => {
-    mocks.getAuthorizedPresentationEntity.mockResolvedValue(entityStub);
+  it('denies when the principal does not match, before any source read', async () => {
+    mocks.getAuthorizedPresentationResult.mockResolvedValue({
+      kind: 'authorized',
+      entity: entityStub,
+    });
     const sidecar = fixtureSidecar();
 
-    const authorized = await authorizeStoredSidecar(sidecar, {
+    const decision = await authorizeStoredSidecar(sidecar, {
       principal: 'human-bob',
       grantedApplications: ['publishing'],
     });
 
-    expect(authorized).toBe(false);
-    expect(mocks.getAuthorizedPresentationEntity).not.toHaveBeenCalled();
+    expect(decision).toEqual({ ok: false, reason: 'sources-unreachable' });
+    expect(mocks.getAuthorizedPresentationResult).not.toHaveBeenCalled();
   });
 
-  it('returns false when a stored source fails reauthorization under the current grants', async () => {
-    mocks.getAuthorizedPresentationEntity.mockResolvedValue(undefined);
+  it('attributes a grant-envelope shrink to grants-shrunk', async () => {
+    // 安全边界:source 实体归属的应用不再授予(受众谓词失败)→ grants-shrunk。
+    mocks.getAuthorizedPresentationResult.mockResolvedValue({ kind: 'audience-unreachable' });
     const sidecar = fixtureSidecar();
 
-    const authorized = await authorizeStoredSidecar(sidecar, {
-      principal: 'human-alice',
-      grantedApplications: ['publishing'],
-    });
+    await expect(
+      authorizeStoredSidecar(sidecar, {
+        principal: 'human-alice',
+        grantedApplications: ['community'],
+      }),
+    ).resolves.toEqual({ ok: false, reason: 'grants-shrunk' });
+  });
 
-    expect(authorized).toBe(false);
-    expect(mocks.getAuthorizedPresentationEntity).toHaveBeenCalledWith(
+  it('attributes an unavailable source to sources-unreachable', async () => {
+    mocks.getAuthorizedPresentationResult.mockResolvedValue({ kind: 'subject-unavailable' });
+    const sidecar = fixtureSidecar();
+
+    await expect(
+      authorizeStoredSidecar(sidecar, {
+        principal: 'human-alice',
+        grantedApplications: ['publishing'],
+      }),
+    ).resolves.toEqual({ ok: false, reason: 'sources-unreachable' });
+    expect(mocks.getAuthorizedPresentationResult).toHaveBeenCalledWith(
       'post:first-post',
       'human-alice',
       ['publishing'],

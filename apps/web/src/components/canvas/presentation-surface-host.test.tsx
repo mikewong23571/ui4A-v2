@@ -355,4 +355,101 @@ describe('canvas 载入失败呈现(T32 Q5:首屏零机制标识,细节进 why �
     expect(detail).toContain('HTTP 503');
     expect(detail).toContain(fixture.sidecarId);
   });
+
+  it('sidecar 结构化 denied(403):首屏「部分内容」人话,reasonCode 只进 why 抽屉(D51/B4)', async () => {
+    window.history.pushState({}, '', '/canvas?focus=post%3Adenied');
+    const source = sourceEntity('post:denied', '越界对象');
+    const sidecarId = 'sidecar:denied';
+    const fetchMock = vi.fn((request: RequestInfo | URL) => {
+      const url = String(request);
+      if (url === '/api/render/catalog') {
+        return Promise.resolve(jsonResponse(200, renderCatalogJson()));
+      }
+      if (url.startsWith('/.well-known/ui4a.json')) {
+        return Promise.resolve(jsonResponse(200, { version: 'definition-v1' }));
+      }
+      if (url === '/api/presentation' || url.startsWith('/api/presentation/sidecar?')) {
+        if (url === '/api/presentation') {
+          return Promise.resolve(jsonResponse(200, { sidecar: { id: sidecarId } }));
+        }
+        return Promise.resolve(
+          jsonResponse(403, {
+            error: { code: 'sidecar-denied', detail: 'grants-shrunk' },
+          }),
+        );
+      }
+      if (url.startsWith('/api/entity?rel=')) {
+        const rel = new URL(url, 'http://ui4a.test').searchParams.get('rel');
+        return Promise.resolve(
+          rel === 'render-specs'
+            ? jsonResponse(200, EMPTY_SPECS)
+            : jsonResponse(200, rel === 'post:denied' ? source : { error: 'not found' }),
+        );
+      }
+      return Promise.resolve(jsonResponse(404, { error: `unknown ${url}` }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <EntityCacheProvider>
+        <PresentationSurfaceHost heading="共同注视" parameters={{ focus: 'post:denied' }} />
+      </EntityCacheProvider>,
+    );
+
+    // 首屏诚实人话:denied ≠ 内容不存在,也 ≠ 画布整体失败。
+    const errors = await screen.findByTestId('canvas-errors');
+    expect(errors.textContent).toBe('部分内容暂时无法显示，详情见「为什么这样展示」');
+    fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
+    const diagnostics = await screen.findByTestId('canvas-why-diagnostics');
+    const detail = diagnostics.textContent ?? '';
+    expect(detail).toContain('grants-shrunk');
+    expect(detail).toContain(sidecarId);
+
+    // fetch 全程未发送任何机制词到主区域(surface 未挂载)。
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('sidecar unknown(404):首屏「内容不存在或不可见」,机制细节进抽屉', async () => {
+    window.history.pushState({}, '', '/canvas?focus=post%3Agone');
+    const source = sourceEntity('post:gone', '消失对象');
+    const sidecarId = 'sidecar:gone';
+    const fetchMock = vi.fn((request: RequestInfo | URL) => {
+      const url = String(request);
+      if (url === '/api/render/catalog') {
+        return Promise.resolve(jsonResponse(200, renderCatalogJson()));
+      }
+      if (url.startsWith('/.well-known/ui4a.json')) {
+        return Promise.resolve(jsonResponse(200, { version: 'definition-v1' }));
+      }
+      if (url === '/api/presentation' || url.startsWith('/api/presentation/sidecar?')) {
+        if (url === '/api/presentation') {
+          return Promise.resolve(jsonResponse(200, { sidecar: { id: sidecarId } }));
+        }
+        return Promise.resolve(jsonResponse(404, { error: 'Sidecar not found' }));
+      }
+      if (url.startsWith('/api/entity?rel=')) {
+        const rel = new URL(url, 'http://ui4a.test').searchParams.get('rel');
+        return Promise.resolve(
+          rel === 'render-specs'
+            ? jsonResponse(200, EMPTY_SPECS)
+            : jsonResponse(200, rel === 'post:gone' ? source : { error: 'not found' }),
+        );
+      }
+      return Promise.resolve(jsonResponse(404, { error: `unknown ${url}` }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <EntityCacheProvider>
+        <PresentationSurfaceHost heading="共同注视" parameters={{ focus: 'post:gone' }} />
+      </EntityCacheProvider>,
+    );
+
+    const errors = await screen.findByTestId('canvas-errors');
+    expect(errors.textContent).toBe('内容不存在或不可见');
+    expect(errors.textContent).not.toContain(sidecarId);
+    fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
+    const diagnostics = await screen.findByTestId('canvas-why-diagnostics');
+    expect(diagnostics.textContent ?? '').toContain(`Sidecar ${sidecarId} → HTTP 404`);
+  });
 });

@@ -1,4 +1,6 @@
 import {
+  PRESENTATION_DENIED_AUDIENCE_UNREACHABLE as AUDIENCE_UNREACHABLE,
+  PRESENTATION_DENIED_SUBJECT_UNAVAILABLE as SUBJECT_UNAVAILABLE,
   PRESENTATION_PROTOCOL_VERSION,
   parsePresentationReceipt,
   parsePresentationRequest,
@@ -86,6 +88,17 @@ function failedReceipt(requestId: string, reasonCode: string): PresentationRecei
     status: 'failed',
     reasonCode,
   };
+}
+
+/**
+ * D51 失败回执 taxonomy:authorize 阶段的 adapter 可携带结构化 denial code
+ * (授予外/不存在分流);未携带已登记 code 的错误维持 stage 默认 reasonCode。
+ */
+function authorizationFailureCode(error: unknown): string {
+  const code = (error as { code?: unknown })?.code;
+  return typeof code === 'string' && [AUDIENCE_UNREACHABLE, SUBJECT_UNAVAILABLE].includes(code)
+    ? code
+    : FAILURE_REASON.authorization;
 }
 
 function receiptFromResolution(
@@ -184,10 +197,10 @@ export async function runPresentationBroker<TAuthorization, TSituation>(
   let authorization: TAuthorization;
   try {
     authorization = await dependencies.authorize(request);
-  } catch {
+  } catch (error) {
     return commitTerminal(
       dependencies.store,
-      failedReceipt(request.requestId, FAILURE_REASON.authorization),
+      failedReceipt(request.requestId, authorizationFailureCode(error)),
     );
   }
 
@@ -233,21 +246,4 @@ export async function runPresentationBroker<TAuthorization, TSituation>(
   }
 
   return commitTerminal(dependencies.store, receiptFromResolution(request.requestId, resolution));
-}
-
-export interface PresentationDispatch<TChatOutcome> {
-  chatOutcome: TChatOutcome;
-  receipt: Promise<PresentationReceipt>;
-}
-
-/** Start presentation as a sidecar task while returning the established Chat outcome unchanged. */
-export function dispatchPresentation<TChatOutcome, TAuthorization, TSituation>(
-  chatOutcome: TChatOutcome,
-  request: PresentationRequest,
-  dependencies: PresentationBrokerDependencies<TAuthorization, TSituation>,
-): PresentationDispatch<TChatOutcome> {
-  return {
-    chatOutcome,
-    receipt: runPresentationBroker(request, dependencies),
-  };
 }

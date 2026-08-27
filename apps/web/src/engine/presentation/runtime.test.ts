@@ -138,6 +138,56 @@ describe('durable user Sidecar fastpath', () => {
     ).resolves.toMatchObject({ id: first.sidecar!.id });
   });
 
+  it('replans in place when a grant-envelope change shifts the policy fingerprint (same key)', async () => {
+    const request = completePresentationRequest(
+      { subject: 'post:first-post', intent: 'grant-replan', delivery: 'canvas' },
+      { requestId: 'grant-replan:1', principal: 'user:local', sourceMessageIds: [] },
+    );
+    const policyDependencyOf = async (principal: string) => {
+      const stored = await findActiveSidecar(getDb(), {
+        principal,
+        subject: request.subject as string,
+        intent: request.intent,
+        deviceClass: 'any',
+      });
+      return stored!.versions[stored!.activeVersion]!.dependencies.find(
+        ({ kind }) => kind === 'policy',
+      )!;
+    };
+
+    const first = await getPresentationBroker().present(request);
+    expect(first).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
+    // B2:policy 指纹 = 排序后的授予集合;local profile 即 ['local-demo']。
+    await expect(policyDependencyOf('user:local')).resolves.toEqual(
+      expect.objectContaining({
+        id: 'policy:local-demo',
+        ref: 'local-demo',
+        fingerprint: 'local-demo',
+      }),
+    );
+
+    const second = await getPresentationBroker().present(request, {
+      grantedApplications: ['default', 'publishing'],
+    });
+    expect(second).toMatchObject({
+      status: 'ready',
+      sidecar: { id: first.sidecar!.id, version: 2 },
+    });
+    // 键不变、指纹失效 → dependencyDecision 重规划为最新授予集合指纹。
+    await expect(policyDependencyOf('user:local')).resolves.toEqual(
+      expect.objectContaining({
+        id: 'policy:default|publishing',
+        ref: 'default|publishing',
+        fingerprint: 'default|publishing',
+      }),
+    );
+    const staled = (await listEvents(getDb())).filter(
+      ({ domain, kind }) => domain === 'presentation' && kind === 'user-sidecar-staled',
+    );
+    expect(staled).toHaveLength(1);
+    expect(staled[0]!.detail).toMatchObject({ reason: 'dependency-changed' });
+  });
+
   it('keeps denied regions as non-leaking diagnostics and reports partial authorization', async () => {
     const declaration = getBuiltinComposition('my-work')!;
     const threads = await (await getEngine(getDb())).getEntity('threads');

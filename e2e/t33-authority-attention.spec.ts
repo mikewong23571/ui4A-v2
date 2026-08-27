@@ -1,9 +1,15 @@
 // T33 授权与注意力范畴分离 — 五景走查(spec/plan Phase 0 完成的定义锚)。
 //
 // 覆盖面说明(诚实边界):本文件跑在 local 自报身份剖面(e2e 统一装置),
-// 其中 c/d 两景的判权语义需要多凭证环境,其可执行证据落在 Phase B 的
-// route 级 vitest 锚点(见 plan);此处以 fixme 占位并写明断言意图,
-// 防止五景清单静默缩水。
+// 其中 c/d 两景的判权语义需要多凭证环境,其可执行证据在 Phase B 已落地为
+// route 级 vitest 锚点(与 plan 偏离已登记:不另造 e2e 多凭证装置,时间成本
+// 不成比例):
+//   c(授予外结构化 denied + 人话)→ apps/web/src/app/api/presentation/
+//      route.production-auth.test.ts + engine/presentation/broker.test.ts
+//      (denied reasonCode 分流锚)+ components/chat/presentation-words.test.ts
+//      (人话词表锚)+ components/canvas/presentation-surface-host.test.tsx(denied 分支);
+//   d(跨 principal 404 存在性隐藏)→ apps/web/src/app/api/presentation/
+//      sidecar/route.production-auth.test.ts('keeps 404 existence hiding …')。
 //
 // D51 不变量对应:
 //   a→#2(授予内零可见授权事件)/b→#1+#2 咽喉链全自动/
@@ -22,9 +28,7 @@ test.describe.configure({ mode: 'serial' });
 
 test.beforeEach(() => test.setTimeout(180_000));
 
-test('a. focus 直达:/canvas?focus=<rel> 无 sidecarId 时自动呈现且画布零错误', async ({
-  page,
-}) => {
+test('a. focus 直达:/canvas?focus=<rel> 无 sidecarId 时自动呈现且画布零错误', async ({ page }) => {
   await withFreshServer(async () => {
     await page.goto(`${SCENARIO_BASE}/canvas?focus=post%3Apost-welcome`);
     // 冷启动兜底:dev 首编 + 取数链,统一放宽窗口(与 b 景同口径)
@@ -61,7 +65,9 @@ test('b. 咽喉链全自动:present→ready→sidecar 回放→画布可达', as
     );
     expect(replayed.status).toBe(200);
 
-    await page.goto(`${SCENARIO_BASE}/canvas?sidecar=${encodeURIComponent(sidecarId)}&focus=post%3Afirst-post`);
+    await page.goto(
+      `${SCENARIO_BASE}/canvas?sidecar=${encodeURIComponent(sidecarId)}&focus=post%3Afirst-post`,
+    );
     // 冷启动延迟兜底:dev 首编 + 取数链,5s 默认窗口不够(见 Phase 0 gate 记录)
     await expect(page.locator('[data-surface]').first()).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('[data-testid="canvas-errors"]')).toHaveCount(0);
@@ -69,14 +75,16 @@ test('b. 咽喉链全自动:present→ready→sidecar 回放→画布可达', as
 });
 
 test('c. 授予外访问得到结构化 denied(证据锚点:Phase B vitest)', async () => {
-  // 多凭证语义无法在本 local 剖面表达;route 级证据由 Phase B 新谓词测试承担。
-  // 预期断言意图(落地时迁入):响应为结构化 denied(reasonCode),
-  // 且界面出现人话失败而非 404/静默。占位以防五景清单静默缩水。
+  // 多凭证语义无法在本 local 剖面表达;route 级证据由 Phase B 新谓词测试承担,
+  // 已落地(见文件头路径清单):present reasonCode 分流(broker.test)、
+  // sidecar 403 结构化 denied(sidecar/route.production-auth.test)、人话词表。
   test.skip(true, '凭证域场景:证据锚点在 Phase B vitest(route.production-auth 系列)');
 });
 
 test('d. 他人 sidecar id 得 404(证据锚点:Phase B vitest)', async () => {
-  // 跨 principal 存在性隐藏同样依赖真实双主体;占位理由同 c。
+  // 跨 principal 存在性隐藏同样依赖真实双主体;占位理由同 c。已落地:
+  // apps/web/src/app/api/presentation/sidecar/route.production-auth.test.ts
+  // → 'keeps 404 existence hiding for another principal stored Sidecar id'。
   test.skip(true, '多主体场景:证据锚点在 Phase B vitest(sidecar route production-auth)');
 });
 

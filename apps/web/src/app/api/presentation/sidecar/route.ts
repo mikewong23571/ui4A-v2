@@ -17,6 +17,7 @@ import {
   normalizeDirectRenderPatch,
   promoteUserSidecarCandidate,
 } from '@ui4a/engine';
+import { PRESENTATION_SIDECAR_DENIED } from '@ui4a/shared';
 import { PRESENTATION_SURFACE_CATALOG } from '../../../../engine/presentation/catalog';
 import { currentRecipeCoordinator } from '../../../../engine/presentation/recipes-runtime';
 import { singleSubjectRecipeContext } from '../../../../engine/presentation/recipe-context';
@@ -26,6 +27,7 @@ import { compositionRecipeContext } from '../../../../engine/presentation/runtim
 import {
   authorizeStoredSidecar,
   hasUnavailableRegion,
+  type StoredSidecarDenialReason,
 } from '../../../../engine/presentation/sidecar-authorization';
 
 export const dynamic = 'force-dynamic';
@@ -80,8 +82,17 @@ export async function GET(request: Request): Promise<Response> {
   const identity = await presentationIdentity(request, ['ui4a:read']);
   if (identity instanceof Response) return identity;
   const sidecar = await getSidecarById(getDb(), sidecarId, identity.principal);
-  if (sidecar === undefined || !(await authorizeStoredSidecar(sidecar, identity))) {
+  // D51 §2.3(B3):查不到(他人/不存在)→ 404 存在性隐藏;本人的 stored 工件
+  // 命中重审失败 → 结构化 denied,不再伪装成 Not Found。
+  if (sidecar === undefined) {
     return Response.json({ error: 'Sidecar not found' }, { status: 404 });
+  }
+  const decision = await authorizeStoredSidecar(sidecar, identity);
+  if (!decision.ok) {
+    return Response.json(
+      { error: { code: PRESENTATION_SIDECAR_DENIED, detail: decision.reason } },
+      { status: 403 },
+    );
   }
   if (new URL(request.url).searchParams.get('explain') === '1') {
     try {
@@ -141,13 +152,26 @@ export async function POST(request: Request): Promise<Response> {
   ) {
     return Response.json({ error: 'targetVersion must be a positive integer' }, { status: 400 });
   }
-  if (
-    current === undefined ||
-    !(await authorizeStoredSidecar(current, identity)) ||
-    (body.action === 'revert' &&
-      !(await authorizeStoredSidecar(current, identity, body.targetVersion as number)))
-  ) {
+  if (current === undefined) {
     return Response.json({ error: 'Sidecar not found' }, { status: 404 });
+  }
+  // B3:lifecycle 变更前同样做结构化 denied 分流(本人工件不回 404)。
+  const currentDecision = await authorizeStoredSidecar(current, identity);
+  let denial: StoredSidecarDenialReason | undefined = currentDecision.ok
+    ? undefined
+    : currentDecision.reason;
+  if (
+    denial === undefined &&
+    body.action === 'revert' &&
+    !(await authorizeStoredSidecar(current, identity, body.targetVersion as number)).ok
+  ) {
+    denial = 'sources-unreachable';
+  }
+  if (denial !== undefined) {
+    return Response.json(
+      { error: { code: PRESENTATION_SIDECAR_DENIED, detail: denial } },
+      { status: 403 },
+    );
   }
   const principal = identity.principal;
 

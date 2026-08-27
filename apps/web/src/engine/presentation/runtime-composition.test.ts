@@ -65,7 +65,6 @@ describe('runtime composition generic intent fallback', () => {
     const planned = planWorkspaceComposition({
       rels: ['record:alpha'],
       entities: [source],
-      policyScope: 'publishing',
       declaration,
       regions: declaration.regions.map((region) => ({ declaration: region, entity: source })),
     });
@@ -121,7 +120,6 @@ describe('collection region membership fingerprint guard (T32 Q7)', () => {
       planWorkspaceComposition({
         rels: ['records'],
         entities: [malformed],
-        policyScope: 'publishing',
         declaration,
         regions: declaration.regions.map((region) => ({
           declaration: region,

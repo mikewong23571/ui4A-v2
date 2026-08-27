@@ -60,6 +60,11 @@ import { RawContractDrawer } from './raw-contract-drawer';
 import { SurfaceErrorBoundary } from '../surface-error-boundary';
 import { Button } from '../ui/button';
 import { useSidecarActions } from '../use-sidecar-actions';
+import {
+  sidecarLoadFailure,
+  SURFACE_LOAD_FAILED_PHRASE,
+  SidecarLoadFailure,
+} from './presentation-sidecar-failure';
 import { frozenSpecsOf, uniqueDiagnostics } from './presentation-surface-helpers';
 
 // 注:@a2ui/react 0.10.2 声明的 ./styles/structural.css 在包内缺失(打包缺口);
@@ -83,8 +88,9 @@ const CANVAS_LOAD_TIMEOUT_MS = 15_000;
 
 // T32 Q5(D47 第 5 问口径):载入失败首屏只显示固定人话,零机制标识
 // (URL/HTTP 状态/sidecar id 不上首屏);结构化细节作为诊断进 why 抽屉。
+// T33/D51 denied/unknown 分流的短语、错误类型与解析单点在
+// ./presentation-sidecar-failure(B4),本组件只消费。
 const CANVAS_LOAD_FAILED_PHRASE = '画布内容暂时无法载入，请稍后重试';
-const SURFACE_LOAD_FAILED_PHRASE = '部分内容暂时无法显示，详情见「为什么这样展示」';
 
 /** 把不支持 signal 的缓存/规划 Promise 纳入本轮取消域，旧轮结果不得落 state。 */
 async function withAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
@@ -285,6 +291,12 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
           { signal: controller.signal },
         );
         if (!response.ok) {
+          // D51/B4 诚实分支:denied(403)与 unknown(404)在
+          // presentation-sidecar-failure 单点映射为人话;其余传输失败维持
+          // T32 Q5 通用口径。[data-testid] 契约不变。
+          const failureBody = await response.json().catch(() => undefined);
+          const failure = sidecarLoadFailure(response.status, failureBody, resolvedSidecarId);
+          if (failure !== undefined) throw failure;
           throw new Error(`Sidecar ${resolvedSidecarId} → HTTP ${response.status}`);
         }
         const body = (await response.json()) as {
@@ -473,6 +485,12 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
       if (generation !== loadGenerationRef.current) return;
       const reason = controller.signal.aborted ? controller.signal.reason : error;
       if (reason instanceof Error && reason.name === 'AbortError') return;
+      if (error instanceof SidecarLoadFailure) {
+        // denied/unknown 专属人话 + 独立诊断条目(reasonCode 数据在抽屉可见)。
+        setErrors([error.userPhrase]);
+        setLoadIssues([error.diagnostic]);
+        return;
+      }
       // 首屏固定人话;机制细节(URL/HTTP 状态/原始 message)进抽屉诊断。
       setErrors([CANVAS_LOAD_FAILED_PHRASE]);
       setLoadIssues([

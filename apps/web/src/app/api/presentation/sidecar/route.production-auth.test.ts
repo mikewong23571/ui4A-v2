@@ -18,14 +18,14 @@ import { GET, POST } from './route';
 
 // D51:durable key 无 scope 维度(seed 只落 principal/subject/intent/device);
 // 命中重审 = principal 相等 + 全部真实 sources 在当前授予集合下可达。
-async function seedSidecar(id: string): Promise<void> {
+async function seedSidecar(id: string, principal = 'human-alice'): Promise<void> {
   await appendSidecarCommand(getDb(), {
     kind: 'instantiate',
     eventId: `${id}:event`,
     commandId: `${id}:command`,
     sidecarId: id,
     key: {
-      principal: 'human-alice',
+      principal,
       subject: 'post:first-post',
       intent: 'read',
       deviceClass: 'any',
@@ -114,8 +114,8 @@ describe('Sidecar production grant-set source reauthorization (D51)', () => {
     });
   });
 
-  it('does not disclose a same-principal Sidecar once its sources leave the grant envelope', async () => {
-    // 安全边界:source 实体归属的应用不再授予(受众谓词失败)→ 存在性隐藏 404。
+  it('answers a same-principal Sidecar whose sources left the grant envelope with structured 403 denied', async () => {
+    // D51 §2.3:本人工件重审失败 = 结构化 denied(不再伪装成 Not Found)。
     await seedSidecar('sidecar:ungranted');
     mocks.grantedApplications = ['community'];
 
@@ -123,10 +123,23 @@ describe('Sidecar production grant-set source reauthorization (D51)', () => {
       new Request('http://localhost/api/presentation/sidecar?sidecarId=sidecar%3Aungranted'),
     );
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
     const body = await response.json();
-    expect(body).toEqual({ error: 'Sidecar not found' });
+    expect(body).toEqual({ error: { code: 'sidecar-denied', detail: 'grants-shrunk' } });
+    // body 只携带 reasonCode 归因:零 granted 集合内容、零 surface/依赖泄露。
     expect(JSON.stringify(body)).not.toMatch(/surface|dependencies|post:first-post/);
+    expect(JSON.stringify(body)).not.toContain('community');
+  });
+
+  it('keeps 404 existence hiding for another principal stored Sidecar id (invariant #3)', async () => {
+    await seedSidecar('sidecar:bobs', 'human-bob');
+
+    const response = await GET(
+      new Request('http://localhost/api/presentation/sidecar?sidecarId=sidecar%3Abobs'),
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: 'Sidecar not found' });
   });
 
   it('performs no lifecycle mutation when POST source reauthorization fails', async () => {
@@ -150,7 +163,10 @@ describe('Sidecar production grant-set source reauthorization (D51)', () => {
       `SELECT COUNT(*)::text AS count FROM events WHERE domain='presentation'`,
     );
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: { code: 'sidecar-denied', detail: 'grants-shrunk' },
+    });
     expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
   });
 });

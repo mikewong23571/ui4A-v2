@@ -27,9 +27,9 @@
     },
     {
       "path": "apps/web/src/components/canvas/presentation-surface-host.tsx",
-      "lines": 519,
+      "lines": 531,
       "limit": 500,
-      "note": "T32 Q5 载入失败诚实化(固定人话+why 抽屉诊断)推过单文件上限;处置:T31 闭环后将 load 取数/装配编排提取为独立 hook 模块收缩(与 D49-2 依赖注释同批)",
+      "note": "T32 Q5 载入失败诚实化(固定人话+why 抽屉诊断)推过单文件上限;处置:T31 闭环后将 load 取数/装配编排提取为独立 hook 模块收缩(与 D49-2 依赖注释同批);T33 Phase B denied/unknown 分流人话 +12(D51 失败语义表落地,共享常量已外置 presentation-sidecar-failure.ts,业务优先不为凑行数拆分),收缩窗口同上 hook 提取批次",
       "track": "t32-interaction-composition-quality_20260827"
     }
   ],

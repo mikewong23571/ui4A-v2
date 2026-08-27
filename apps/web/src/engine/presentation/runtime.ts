@@ -29,8 +29,15 @@ import { semanticHintsOf } from './situation';
 import { currentRecipeCoordinator } from './recipes-runtime';
 import { selectAndInstantiateRecipe } from './recipe-selection';
 import { singleSubjectRecipeContext } from './recipe-context';
-import { getAuthorizedPresentationEntity } from './authorized-entity';
-import { compositionRecipeContext, planWorkspaceComposition } from './runtime-composition';
+import {
+  getAuthorizedPresentationEntity,
+  getAuthorizedPresentationResult,
+} from './authorized-entity';
+import {
+  compositionRecipeContext,
+  grantedPolicyRef,
+  planWorkspaceComposition,
+} from './runtime-composition';
 import { genericIntentPolicyDependency } from './generic-intent-policy';
 
 const runtimeKey = Symbol.for('ui4a.presentation-broker');
@@ -73,6 +80,9 @@ function currentDependencies(root: AuthorizedRoot): SidecarDependency[] {
     actions: entity.actions,
     links: entity.links,
   });
+  // D51 Phase B:policy 依赖指纹 = 凭证授予集合(排序 join)。授予集合变化即
+  // 指纹失效 → 重规划;不再锚定会话 scope 或 'any' 占位。
+  const policyRef = grantedPolicyRef(root.grantedApplications);
   const dependencies: SidecarDependency[] = [
     {
       id: `entity:${rel}`,
@@ -96,15 +106,13 @@ function currentDependencies(root: AuthorizedRoot): SidecarDependency[] {
     },
     genericIntentPolicyDependency(),
     {
-      // D51:policy 依赖不再锚定会话冻结 scope;Phase A 机械保留导航偏好转指纹
-      // (未声明用固定占位 'any',授权语义由受众谓词承担),授予集合指纹属 Phase B。
-      id: `policy:${root.policyScope ?? 'any'}`,
+      id: `policy:${policyRef}`,
       subtreeId: 'root',
       kind: 'policy',
-      ref: root.policyScope ?? 'any',
+      ref: policyRef,
       pointers: ['$policy'],
       mode: 'invalidate',
-      fingerprint: root.policyScope ?? 'any',
+      fingerprint: policyRef,
       optional: false,
     },
   ];
@@ -229,6 +237,15 @@ export function getPresentationBroker(): WebPresentationBroker {
   if (scope[runtimeKey] !== undefined) return scope[runtimeKey];
   const delegate = createWebPresentationBroker({
     getEntity: getAuthorizedPresentationEntity,
+    // B1 分类器:getEntity 落空时对 rel 做结构化归因,喂给内核 deny 分流。
+    classifyUnauthorized: async (rel, principal, grantedApplications) => {
+      const outcome = await getAuthorizedPresentationResult(
+        rel,
+        principal,
+        grantedApplications ?? [],
+      );
+      return outcome.kind === 'authorized' ? 'subject-unavailable' : outcome.kind;
+    },
     resolve: async (request, situation) => {
       const key = durableKey(request);
       const sidecar = await findActiveSidecar(getDb(), key);

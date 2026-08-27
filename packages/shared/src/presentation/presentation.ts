@@ -7,6 +7,16 @@ export const MAX_RENDER_SITUATION_DEPTH = 8;
 export const MAX_RENDER_SITUATION_NODES = 256;
 export const MAX_DATA_LENS_SELECTORS = 32;
 
+/**
+ * D51 失败回执 taxonomy(有界 reasonCode 词表,只增不改):授予外与"不存在"
+ * 分流为结构化 denied,与 stage 级机械失败(authorization-failed 等)区分。
+ * 机械层产数据、客户端查表措辞(presentation-words),禁止字面量漂移。
+ */
+export const PRESENTATION_DENIED_AUDIENCE_UNREACHABLE = 'audience-unreachable';
+export const PRESENTATION_DENIED_SUBJECT_UNAVAILABLE = 'subject-unavailable';
+/** Stored Sidecar 命中重审失败(本人工件)的结构化拒绝 code;detail 携带 reason。 */
+export const PRESENTATION_SIDECAR_DENIED = 'sidecar-denied';
+
 export type PresentationDelivery = 'inline' | 'canvas' | 'auto';
 export type PresentationReceiptStatus = 'ready' | 'pending' | 'fallback' | 'failed';
 

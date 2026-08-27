@@ -108,7 +108,8 @@ vi.mock('../../../auth/request-identity', () => ({
 }));
 
 vi.mock('../../../engine/presentation/sidecar-authorization', () => ({
-  authorizeStoredSidecar: vi.fn(async () => true),
+  // B3 决策化返回:{ ok: true } 允许放行;deny 形状由 db 级 production-auth 锚覆盖。
+  authorizeStoredSidecar: vi.fn(async () => ({ ok: true as const })),
   hasUnavailableRegion: vi.fn(() => false),
 }));
 

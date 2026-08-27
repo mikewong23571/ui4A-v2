@@ -6,7 +6,6 @@ function root(rel: string, classes: string[], extra: Record<string, unknown> = {
   return {
     rels: [rel],
     entities: [{ class: classes, properties: { rel }, actions: [], links: [], ...extra }],
-    policyScope: 'contract',
   };
 }
 
@@ -67,11 +66,8 @@ describe('single-subject Recipe context', () => {
           root('articles', ['collection']).entities[0],
           root('comments', ['collection']).entities[0],
         ],
-        policyScope: 'contract',
       }),
     ).toBeUndefined();
-    expect(
-      singleSubjectRecipeContext({ rels: ['articles'], entities: [{}], policyScope: 'contract' }),
-    ).toBeUndefined();
+    expect(singleSubjectRecipeContext({ rels: ['articles'], entities: [{}] })).toBeUndefined();
   });
 });
