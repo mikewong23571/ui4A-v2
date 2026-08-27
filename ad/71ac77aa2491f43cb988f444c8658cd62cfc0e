@@ -1,0 +1,1 @@
+T33 Phase B checkpoint(自治验收):自动化验证 = pnpm governance 全绿 + unit 项目全绿(2521 passed,306 files)+ 定向 e2e:human 6p/dual-executor 6p/invariants 4p/s1 6p(含迁移后的向导四步与确认页 reason 断言)。变更面 b33bc28..17a6d11:action-runner.tsx + 组件测试 8 文件 + e2e 4 文件,全部有对应测试覆盖。手动验证等效脚本化:Playwright 走查即 e2e 本体。环境备注:3100 停 docker web 容器至 T33 收口,temporal dev server 后台运行。
