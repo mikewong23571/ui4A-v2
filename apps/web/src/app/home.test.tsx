@@ -82,11 +82,16 @@ describe('首页 `/` 页面边界', () => {
     expect(screen.getByRole('heading', { name: '我的事', level: 1 })).toBeTruthy();
   });
 
-  it('不再渲染旧首页的硬编码内容面', () => {
+  it('不再渲染旧首页的硬编码内容面;书架层(应用目录条)先于主面(F-23)', () => {
     const { container } = render(<Home />);
     const host = screen.getByTestId('shared-presentation-host');
 
-    expect(container.childElementCount).toBe(1);
-    expect(container.firstElementChild).toBe(host);
+    // T35 F-23:首页 = 应用目录条(壳级书架,数据来自 sitemap)+ 主面;两者都不是
+    // 旧首页的硬编码内容面。
+    expect(container.childElementCount).toBe(2);
+    expect(
+      container.firstElementChild?.getAttribute('data-testid'),
+    ).toBe('application-entry-strip');
+    expect(container.lastElementChild).toBe(host);
   });
 });

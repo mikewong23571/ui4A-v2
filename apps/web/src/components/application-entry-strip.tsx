@@ -40,7 +40,7 @@ export function ApplicationEntryStrip() {
   }, []);
 
   if (applications === null) {
-    return <Skeleton className="mb-4 h-8 w-full max-w-xl" />;
+    return <Skeleton data-testid="application-entry-strip" className="mb-4 h-8 w-full max-w-xl" />;
   }
   const entries = applications.filter((application) => application.name !== 'default');
   if (entries.length === 0) return null;
