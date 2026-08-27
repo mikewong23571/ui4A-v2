@@ -54,7 +54,7 @@
     ?scope= 仅作导航偏好透传;
   - 整体退役 `request-identity-scope-coverage.test.ts`;production-auth 套件
     fixture 去 policyScope 必填
-- [ ] Task: Phase Verification & Checkpoint(tsc --noEmit 红名单 = Phase B 工作量证明)
+- [x] Task: Phase Verification & Checkpoint [216a6e4](tsc 七包绿;红名单由 B 机械适配当场清零,见 D51 影响)
 
 ## Phase B: 咽喉点与呈现面接线 [checkpoint: c0ae492]
 
