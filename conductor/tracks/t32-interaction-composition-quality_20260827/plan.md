@@ -13,9 +13,9 @@
 > 前置确认:T28/T30 已归档(修复对象);D45/D47/D48 已落 DECISIONS.md。
 > 实施前必读:根 `AGENTS.md`、`apps/web/AGENTS.md`、`conductor/workflow.md`。
 
-## Phase A: 分歧裁决 → DECISIONS(D49)
+## Phase A: 分歧裁决 → DECISIONS(D49) [checkpoint: 129388e]
 
-- [ ] Task: 两个判断点落 DECISIONS.md D49
+- [x] Task: 两个判断点落 DECISIONS.md D49 [129388e]
   - Q3:审计下钻 `stepAuditHref` → `/api/events?afterSeq=N` 是否 D47 第 3 问
     既定豁免(事件切片属审计链接)——豁免记录 vs 改为 raw 抽屉镜头;裁决须
     显式核对 D47 原文,不得复辟已否决候选(raw 站点/事件切片混入 raw 抽屉);
@@ -23,8 +23,8 @@
     锚定两套 id 方案对应关系;
   - 验收:D49 一条目两小节,各有明确采纳与理由;纯修复项(Q1/Q2/Q4/Q5/
     Q7/Q8/Q9/Q10)确认无需决策,直接进 Phase B/C/D
-- [ ] Task: spec/plan 回改对齐 D49
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md)
+- [x] Task: spec/plan 回改对齐 D49 [129388e]
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md) [129388e]
 
 ## Phase B: Medium 测试缺口(Q1/Q2)
 

@@ -56,7 +56,8 @@ presentation 接线)与少量 packages/engine。CLI 零改动。
   `apps/web/src/components/assistant-ui/thread.tsx` 的 `stepAuditHref` 返回
   `/api/events?afterSeq=N`,活动条目点击落在未组装 JSON。D47 第 3 问明文
   "事件切片属于审计链接",审计通道用 JSON 是否算 D47 既定豁免需要裁决。
-  **需 D49 裁决(豁免记录 vs 改为 raw 抽屉镜头)。**
+  **已决 D49-1:豁免记录,零代码变更**——活动条目是审计链接,落点事件切片
+  与 raw 抽屉(Siren Entity 镜头)口径各归其位;R23 登记为有意设计。
 
 ### Low(行为/一致性修复)
 
@@ -74,8 +75,8 @@ presentation 接线)与少量 packages/engine。CLI 零改动。
   runtime.ts` 的 `currentDependencies()` 手写拼装单主体依赖,组合路径由
   `compose.ts` canonical 产出;两套 id 方案(`entity:<rel>` vs
   `composition:<id>@<v>:<region>:entity-contract`)并存,`dependencyDecision`
-  两侧比对,将来只改一侧会静默失配。**需 D49 裁决(统一经 compose 内核
-  产出 vs 注释锚定对应关系)。**
+  两侧比对,将来只改一侧会静默失配。**已决 D49-2:注释锚定对应关系**
+  (统一装配留待未来改 dependency 语义的 track)。
 - **Q7**(←T30)`runtime-composition.ts` 的 `planRegion` 用
   `membershipFingerprint(region.entity)!` 非空断言——collection 类实体缺
   `entities` 数组时把显式拒绝藏成运行期 `!`。修复:显式守卫,错误信息点名
