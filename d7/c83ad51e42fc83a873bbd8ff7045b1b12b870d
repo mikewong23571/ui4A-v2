@@ -1,7 +1,7 @@
-T29 配套:边缘认证放行 authenticated presence reporting(rebase 等价重建挂载)
+T29 Task 配套:上报端点模块路径修复(rebase 等价重建挂载)
 
 > 原始提交对象在 2026-08-26 origin/master rebase(T29 归档)后已不在对象库,验收 note 无法复制本体;本条按归档 plan 任务与现役测试证据重建,原始任务 sha 见 conductor/tracks/archive/t29-presence-situation_20260825/plan.md 映射节。
-> 等价提交:6d40417
+> 等价提交:d7c83ad
 
-变更:scripts/t22 auth edge/compose 合同允许已认证 presence 上报经边缘(route 生产形态配套)。
-现役证据:t22-compose-contract/t22-k8s-auth-edge-contract 相应行随 T22 归档套件维护;scripts/t22 基线登记含本次净增记录。
+变更:c612ad1 引入的 api/presence route 在 rebase 链上的模块路径修正,使 Phase A Task 3 合同面归位(端点行为同 note@c612ad1 所述)。
+现役证据:与 c612ad1 同套件(api/presence/route.test.ts 7 例、route.rate-limit.test.ts 3 例)覆盖。
