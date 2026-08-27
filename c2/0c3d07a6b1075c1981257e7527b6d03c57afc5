@@ -1,0 +1,1 @@
+T33 Phase C:任务语言(合同数据层)。(1) work-thread.ts 全部动作/字段 title 中文化(创建工作线/工作线标识/目标/目标来源/挂载引用/类别/引用实体/暂停·恢复·完成·归档工作线;name 零改动,合同身份不变);(2) SirenLink 增可选 title(Siren 规范原生字段),inbox/delegations/threads 三集合 self 链接携带人话标题(在等我/在动/我的工作线),entity-view 与 detail 词条链接标签优先 link.title 回退 target rel。Red 先行:engine 3 处 links 断言 + entity-view title 偏好测试;渲染器零分支(数据驱动)。验证:unit 2528 + db 490 全绿,governance OK。
