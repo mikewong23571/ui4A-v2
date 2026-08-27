@@ -89,17 +89,18 @@
   - fixture 级假应用仅动注册数据;断言五景行为与五条不变量全部零代码分叉
 - [x] Task: Phase Verification & Checkpoint [1257333](五景 3p+invariants 4p;重放哈希 I5 hash=43922011b292 与既往一致)
 
-## Phase D: 治理收尾
+## Phase D: 治理收尾 [checkpoint: d60a535]
 
-- [ ] Task: GR6 扫描器退役
+- [x] Task: GR6 扫描器退役 [d60a535]
   - 删 scripts/governance/check-identity-scope.mjs/.test.ts + run-all 登记 +
     exceptions.json identity-scope-selection section(执法主体移交类型系统,
     理由入 D51);
-- [ ] Task: AGENTS.md / GOAL.md 条目更新
+- [x] Task: AGENTS.md / GOAL.md 条目更新 [d60a535]
+  - 执行记录:GOAL.md 为使命/不变量层无 track 登记位,登记改落 tracks.md(立项时已记)与 DECISIONS D51——按'实现与文档冲突先记录'原则在此如实注明
   - AGENTS.md Governance Gates GR 段改为"D51 分离不变量"(评审准绳非脚本);
     GOAL.md 记录 track 链接
-- [ ] Task: 全量 `pnpm check` 终绿(governance size 基线预期收缩,只减不增)
-- [ ] Task: Phase Verification & Checkpoint
+- [x] Task: 全量 `pnpm check` 终绿(governance size 基线预期收缩,只减不增) [d60a535]
+- [x] Task: Phase Verification & Checkpoint [d60a535]
 
 ## Phase E: 发布与生产走查
 
