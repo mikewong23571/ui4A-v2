@@ -1,0 +1,1 @@
+T22 收尾:config-init 测试在 darwin 非 root 下因 chown EPERM 失败(2 用例)。加 describe.skipIf(process.platform==='darwin' && getuid()!==0) 环境守卫,断言不放松,Linux CI 覆盖不变。验证:scripts/t22 全套 308 passed/3 skipped(守卫生效)。
