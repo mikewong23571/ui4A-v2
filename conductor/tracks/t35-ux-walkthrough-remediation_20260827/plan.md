@@ -57,7 +57,8 @@
 
 ## Phase E 工作线投影与动作层级(修 F-07/F-11;故事 S8)
 
-- [ ] Task: E1 红灯——工作线详情 surface 投影测试:identity 用业务标题;goal/status/引用/近期事件字段以 presentation.fields 角色声明进入 surface(消费 T26 既有投影)
+- [ ] Task: E0 蓝描边误激活修复(F-24 一部分):active 仅在 ?concern= 匹配时为真;首页/画布回归截图
+- [ ] Task: E-2 应用入口区(F-23):my-work 聚合声明升级,首页从 sitemap applications 派生应用入口区(标题+intent→entry surface),零特判;与工作线叙述页同批验收(S9/S10 可达性)
 - [ ] Task: E2 实现——工作线详情投影补全(`apps/web/src/engine` 投影 + 定义数据)
 - [ ] Task: E3 实现——动作分组与危险/常规视觉分层(通用 actions 区,零实体特判)
 - [ ] Task: E4 回归——`pnpm vitest run --project unit` + `pnpm governance` 全绿

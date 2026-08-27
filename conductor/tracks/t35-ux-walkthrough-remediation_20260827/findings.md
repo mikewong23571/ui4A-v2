@@ -249,6 +249,30 @@
 - **证据**: 浏览器现场 `/canvas?focus=todos&scope=todo` 分栏态(用户报告)。
 - **处置**: Phase D-4(与 D-3 芯片化联动实现);复验故事 S6。
 
+
+## F-23 workstation 无应用入口:新建应用不可达(P0)
+
+- **状态**: open
+- **严重度**: P0(业务闭环:应用创建了,用户却进不去——"应用即数据"的最后一公里断了)
+- **发现**: 用户反馈(2026-08-28):"workstation 看不到其他的 application,默认展示 articles,这是问题,我发现我点了首页之后,不知道怎么进入 todo 页面了"
+- **现象**: S9/S10 创建的 todo/ideas 应用在 workstation 首页零入口;首页区域只聚合 inbox/delegations/threads(articles 以工作线形式出现)。到达 todo 界面的唯一方式是手输 `/canvas?focus=flow:todo-capture&scope=todo`。
+- **根因**: my-work 聚合声明(T27/T30 口径)没有"图书馆目录"层——书桌上只有当前事,但应用(sitemap applications + 各自 entry flow 与集合)没有任何投影入口。
+- **修复方向(纯投影,零特判)**: 首页增一排**应用入口区**:从 sitemap `applications` 派生 chip/卡片(标题+intent 一句话),点入即该应用的 entry surface(focus=entry&scope=<name>);各应用的集合(todos/ideas)随 entry 到达。这是 design-notes"首页书桌化"方向项的第一小步(书桌+书架:当前线主角,其余应用是书架),需 my-work 声明版本升级(T30 口径),不动引擎。
+- **证据**: 浏览器现场 `/`(首页无 todo/ideas 痕迹)。
+- **处置**: Phase E-2(依赖 my-work 声明升级,与工作线叙述页同批);复验故事 S9/S10 的"可达性"判定。
+
+## F-24 首页无 dashboard 层级:全 surface 蓝色描边 + 突兀的 0 计数(P1)
+
+- **状态**: open
+- **严重度**: P1(视觉层级,用户反馈)
+- **发现**: 用户反馈(2026-08-28):"进入我的事,整个蓝色边框让我感觉,这个不像一个 dashboard 界面,我觉得应该区分 dashboard 块以及真正的可以聊天变更内容的块;几个 0,显得很突兀"
+- **现象与根因(两条)**:
+  1. **蓝色描边是 bug 级误激活**:`presentation-surface-host.tsx` 的 `active: requestedFocuses.length > 0 ? concern.startsWith('presentation:')` 把**所有** presentation surface 恒标激活,`border-primary ring-2` 于是常驻——而该高亮本设计只服务 `?concern=` 聊天回执锚点(S5)。修法:`active: concernParam !== undefined && concern === activeConcern`。
+  2. **dashboard 块与写交互块无视觉分层**:在等我/在动/工作线投影区与动作表单区同为描边卡片,读面(看)与写面(动)无语言区分。方向:读面区降装饰(弱边框/统计卡语言),写交互保持按钮语言(T33 读多写少);属于 F-07 动作分层的镜像面。
+  3. **0 计数突兀**(并入 F-06 扩展):空区块的大"0"没有信息量——空态应是一句引导("暂无进行中的委托")而非数字;计数只在 >0 且有成员时显示。
+- **证据**: 浏览器现场 `/`。
+- **处置**: 蓝描边修复归 D-2(一行);dashboard 分层归 E(与 F-07/F-11 同批);0 计数并入 F-06。
+
 ---
 
 ## 复验记录(回填区)
