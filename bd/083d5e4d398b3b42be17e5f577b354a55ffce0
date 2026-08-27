@@ -1,0 +1,7 @@
+T29 Task: presence 事件 schema 与有界校验(rebase 等价重建挂载)
+
+> 原始提交对象在 2026-08-26 origin/master rebase(T29 归档)后已不在对象库,验收 note 无法复制本体;本条按归档 plan 任务与现役测试证据重建,原始任务 sha 见 conductor/tracks/archive/t29-presence-situation_20260825/plan.md 映射节。
+> 等价提交:bd083d5
+
+变更(据归档 plan Phase A Task 1):packages/shared 增加 bounded presence change 合同(parsePresenceChange/presenceEventKind/presenceValuesEqual/PRESENCE_MAX_EVENTS_PER_WINDOW),platform-neutral 零 IO。
+现役证据:shared presence 单测与 apps/web/src/db/presence.rate-limit.test.ts(8 例,常量驱动预算)全绿;编排 agent 于 T31 R2/R10 亲验。
