@@ -80,6 +80,8 @@ export interface SitemapApplication {
   name: string;
   title: string;
   intent: string;
+  /** T35 F-23:默认入口(定义 entry 透传;人与 agent 共用的"同一扇门")。 */
+  entry?: string;
   flows: SitemapFlow[];
 }
 
@@ -292,6 +294,7 @@ export function deriveSitemap(
       name: app.name,
       title: app.title,
       intent: app.intent,
+      ...(app.entry === undefined ? {} : { entry: app.entry }),
       flows: sitemapFlows.filter((flow) => flow.app === app.name),
     }),
   );

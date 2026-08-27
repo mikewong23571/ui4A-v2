@@ -15,7 +15,15 @@ interface ApplicationEntry {
   name: string;
   title: string;
   intent: string;
-  entry: string;
+  entry?: string;
+  flows?: Array<{ name: string }>;
+}
+
+/** 入口 rel:定义 entry 优先;回退首流程的 flow: 别名(零发明)。 */
+function entryRel(application: ApplicationEntry): string | undefined {
+  if (application.entry !== undefined && application.entry !== '') return application.entry;
+  const first = application.flows?.[0]?.name;
+  return first === undefined ? undefined : `flow:${first}`;
 }
 
 const COLLAPSE_THRESHOLD = 6;
@@ -42,7 +50,9 @@ export function ApplicationEntryStrip() {
   if (applications === null) {
     return <Skeleton data-testid="application-entry-strip" className="mb-4 h-8 w-full max-w-xl" />;
   }
-  const entries = applications.filter((application) => application.name !== 'default');
+  const entries = applications
+    .filter((application) => application.name !== 'default' && entryRel(application) !== undefined)
+    .map((application) => ({ ...application, entry: entryRel(application) }));
   if (entries.length === 0) return null;
 
   const visible = expanded || entries.length <= COLLAPSE_THRESHOLD ? entries : entries.slice(0, COLLAPSE_THRESHOLD);
@@ -57,6 +67,7 @@ export function ApplicationEntryStrip() {
             key={application.name}
             href={`/canvas?focus=${encodeURIComponent(application.entry)}&scope=${encodeURIComponent(application.name)}`}
             data-nav={`local:app-entry:${application.name}`}
+            aria-label={application.title}
             title={application.intent}
             className="rounded-full border bg-card px-3 py-1 text-sm text-foreground transition-colors hover:bg-accent"
           >
