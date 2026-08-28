@@ -4,9 +4,11 @@
 
 ## 活跃 Tracks
 
-- [ ] **Track: T36 治理例外清退:重构与功能拆解(反模块膨胀)——清零 GR3 size-baseline 12 条 + GR1 dependencyExceptions 2 条,`governance:strict` 并入 `pnpm check`(D52/GR4 触发条件达成;2026-08-28 用户授权治理方向=重构与功能拆解,不为指标机械挪动、证据不删除)** *Link: [tracks/t36-governance-exception-retirement_20260828/index.md](./tracks/t36-governance-exception-retirement_20260828/index.md)*
+- 无(2026-08-29:T36 闭环归档——治理例外全数清偿,strict 常驻 check;后续方向 program 依 [product-vision.md](../product-vision.md) 另行立项)
 
-## 归档 Tracks(T1–T34,只读历史)
+## 归档 Tracks(T1–T36,只读历史)
+
+- [x] **Track: T36 治理例外清退:重构与功能拆解(反模块膨胀)**(2026-08-29 完成:GR3 基线 12 条+GR1 例外 2 条全数清偿,`governance:strict` 并入 `pnpm check`(D53);附带对齐 T34/T35 陈旧 e2e 断言、修复 3 处产品缺陷;全量 e2e/check 双绿) *Link: [tracks/archive/t36-governance-exception-retirement_20260828/index.md](./tracks/archive/t36-governance-exception-retirement_20260828/index.md)*
 
 - [x] **Track: T22 生产形态部署、身份认证与双后端 Agent Runtime：mothership K8s/Istio、Docker Compose all-in-one、Keycloak、灾备与首个试验性版本(已发布 `v0.1.0-experimental.1`;过期实机验证按 D52 裁定不再补跑)** *Link: [tracks/archive/t22-production-deployment-auth-runtime_20260824/index.md](./tracks/archive/t22-production-deployment-auth-runtime_20260824/index.md)*
 
