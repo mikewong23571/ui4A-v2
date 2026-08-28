@@ -1,0 +1,1 @@
+T36 A2 完成:分片边界=呈现 feature(委托/流式基础、step 语言与失败分层、思考区);it 数 25=25 无删减;验证=vitest 3 文件 25 passed + eslint 干净 + governance(baseline 10)。
