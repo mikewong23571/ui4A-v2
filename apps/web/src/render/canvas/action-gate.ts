@@ -29,7 +29,7 @@ export type GateExecFn = (input: {
 
 /** 拦截结果:executed(已提交)/ refused(裁决层拒)/ rejected(白名单外)。 */
 export type GateOutcome =
-  | { outcome: 'executed'; entity: SirenEntity }
+  | { outcome: 'executed'; entity: SirenEntity; subject?: SirenEntity }
   | { outcome: 'refused'; status: number; layer: string; reason: string }
   | { outcome: 'rejected'; reason: string };
 
@@ -83,7 +83,13 @@ export function createActionGate(execFn: GateExecFn): ActionGate {
         };
       }
       const result = await execFn({ rel, action: action.name, params: paramsOf(action.context) });
-      if (result.ok) return { outcome: 'executed', entity: result.entity };
+      if (result.ok) {
+        return {
+          outcome: 'executed',
+          entity: result.entity,
+          ...(result.subject !== undefined ? { subject: result.subject } : {}),
+        };
+      }
       return {
         outcome: 'refused',
         status: result.status,

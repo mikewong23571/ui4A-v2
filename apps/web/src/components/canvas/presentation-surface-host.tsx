@@ -185,7 +185,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
     return async (input: Parameters<typeof submit>[0]) => {
       const result = await submit(input);
       if (result.ok) {
-        cache.invalidateAfterExec(input.rel, result.entity);
+        cache.invalidateAfterExec(input.rel, result.entity, result.subject);
         // §十:广播合同执行(书桌等轨上组件据此放弃本地快照重读);detail=实际
         // 执行的 rel,线面消费方自行过滤。
         notifyThreadUpdated(input.rel);

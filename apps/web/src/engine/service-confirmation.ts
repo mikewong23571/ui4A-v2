@@ -66,7 +66,9 @@ export async function persistRejection(
 /**
  * 确认实体上的裁决动作(rel=confirmation:<id>,仅 approve/reject):
  * 路由到引擎人类裁决入口;受影响实体:approve → 目标实体(效果已应用),
- * reject → 确认实体自身(审计视图)。guard/schema 拒绝同样留痕(I4)。
+ * reject → 确认实体自身(审计视图);两种裁决均随 accepted 携带 subject=
+ * 确认实体投影(其 collection 回链=inbox,渲染层精确失效依据,T35 F-31)。
+ * guard/schema 拒绝同样留痕(I4)。
  */
 export async function execConfirmationDecision(
   db: DbExecutor,
@@ -109,5 +111,10 @@ export async function execConfirmationDecision(
   if (entity === undefined) {
     throw new Error(`exec 后目标实体 "${targetRel}" 不可投影(内部不变式破坏)`);
   }
-  return { kind: 'accepted', entity, appended: [] };
+  // T35 F-31:主体(确认实体)投影随 accepted 携带——它的 collection 回链
+  // (inbox)是渲染层失效「在等我」列表缓存的唯一合同来源;受影响实体(目标)
+  // 的回链只覆盖目标自身集合(articles)。subject 投影失败不阻断裁决回执:
+  // 渲染层缺 subject 时退回整面重载兜底,不产生脏读。
+  const subject = project(state.snapshot, request.rel, deps.projectDeps());
+  return { kind: 'accepted', entity, ...(subject !== undefined ? { subject } : {}), appended: [] };
 }

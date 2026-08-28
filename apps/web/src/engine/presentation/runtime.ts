@@ -20,7 +20,6 @@ import {
 import { PRESENTATION_SURFACE_CATALOG } from './catalog';
 import {
   createWebPresentationBroker,
-  type AuthorizedRegion,
   type AuthorizedRoot,
   type WebPresentationBroker,
 } from './broker';
@@ -321,22 +320,6 @@ export function getPresentationBroker(): WebPresentationBroker {
     },
     plan: async (request, situation) => {
       if (typeof request.subject !== 'string') throw new Error('selection planning unavailable');
-      // T35 F-31 探针:plan 相位的 region 成员数(与 resolve 相位对账)。
-      if (situation.regions !== undefined) {
-        console.log(
-          '[f31-plan]',
-          request.requestId.slice(0, 8),
-          JSON.stringify(
-            situation.regions.map((region: AuthorizedRegion) => ({
-              source: region.declaration?.source,
-              members:
-                (
-                  region.entity as { entities?: unknown[] } | undefined
-                )?.entities?.length ?? -1,
-            })),
-          ),
-        );
-      }
       const key = durableKey(request);
       const composition =
         situation.declaration === undefined ? undefined : planWorkspaceComposition(situation);

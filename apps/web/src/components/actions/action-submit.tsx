@@ -34,7 +34,11 @@ export function createDirectActionSubmit(exec: ExecFn): ActionSubmit {
 
 function outcomeResult(outcome: SurfaceActionOutcome): ExecClientResult {
   return outcome.outcome === 'executed'
-    ? { ok: true, entity: outcome.entity }
+    ? {
+        ok: true,
+        entity: outcome.entity,
+        ...(outcome.subjectEntity !== undefined ? { subject: outcome.subjectEntity } : {}),
+      }
     : {
         ok: false,
         status: outcome.status ?? 409,

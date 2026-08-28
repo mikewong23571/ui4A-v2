@@ -105,7 +105,12 @@ export async function POST(request: Request) {
     }
     const outcome = await engine.exec(resolvedRequest);
     if (outcome.kind === 'accepted') {
-      return Response.json({ entity: responseEntity(outcome.entity) });
+      // T35 F-31:裁决类 exec(approve/reject)随 accepted 携带 subject=
+      // 被操作主体投影;其 collection 回链(inbox)是渲染层精确失效依据。
+      return Response.json({
+        entity: responseEntity(outcome.entity),
+        ...(outcome.subject !== undefined ? { subject: responseEntity(outcome.subject) } : {}),
+      });
     }
     if (outcome.kind === 'suspended') {
       // 202 Accepted:动作已被受理但挂起(非拒绝)——等待人类在确认实体上裁决。

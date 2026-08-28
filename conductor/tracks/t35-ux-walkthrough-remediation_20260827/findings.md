@@ -9,11 +9,10 @@
 
 ---
 
-## 问题地图(截至 2026-08-28,R3 走查中段更新)
+## 问题地图(截至 2026-08-28,R3 走查中段更新;F-31 收口后)
 
-**已关闭(rechecked,6)**: F-01 动作后无反馈/不刷新 · F-02 查看活实例死链 · F-17 别名动作误拒 · F-28 重放一致锚脱节 · F-15 双创建按钮(随 D-2 复查) · F-30 线归档确认门(high,待 R3 复验)。
+**已关闭(rechecked,7)**: F-01 动作后无反馈/不刷新 · F-02 查看活实例死链 · F-17 别名动作误拒 · F-28 重放一致锚脱节 · F-15 双创建按钮(随 D-2 复查) · F-30 线归档确认门(high,待 R3 复验) · **F-31 首页待批卡不退场(2026-08-28 终局修复+S2 四项全过,见 F-31 终局段)**。
 **fixed-pending-recheck(待 R3 复验,10+)**: F-06/11/12/13/18/19/21/22/24/27,及 R3 新增 F-09(文本面)/F-10(Siren 面)——均随 R3 收口批量复验。
-**fixing(阻塞收口,1)**: **F-31 首页待批卡 in-place 不退场**——完整排查记录见 F-31 段(七层假设表/探针证据/锁定病灶=A2uiSurface 渲染层,引擎侧已证无罪);S2 判不通过,修复后重走四项判定。
 **open(随收口评估)**: F-05 术语残余(向导面身份显 rel)、F-14/F-16(原始 JSON/开发注释)、F-20(现码不可复现,S11 终判)。
 **R3 走查状态与剩余事项**: 见下方「R3 阶段状态与剩余事项」专节(唯一权威清单)。
 
@@ -376,7 +375,7 @@
 
 ## F-31 首页待批卡:批准后不退场,in-place reload 渲染旧树(R3,S2 不通过项)
 
-- **状态**: fixing(排查已收口到客户端渲染层;五层修复已落地;剩 A2uiSurface 响应语义一环)
+- **状态**: **rechecked**(2026-08-28 收口轮;终局=假设 9 页面缓存 inbox 陈旧,见下方「F-31 终局」)
 - **严重度**: P1(首页主路径正确性;按故事纪律,S2 不通过则 track 不可收口)
 - **发现**: R3(2026-08-28,S2 走查)
 - **现象与复现(100% 复现,三轮以上)**:
@@ -412,15 +411,23 @@
   3. 修复后重走 **S2 四项判定**(当场退场/重新载入一致/硬刷新一致/结构化回执),通过后 F-31 → rechecked;
   4. 连带回归:S3(书桌 chip 同步依赖同链路)、S1(在等我计数)。
 
+### F-31 终局:真根因与修复(2026-08-28 收口轮)
+
+- **假设 8(A2uiSurface 响应语义)**: ❌ **推翻**。读本仓 SDK 源码(`@a2ui/react` 0.10.2/v0_9 出口):`A2uiSurface`→`DeferredChild` 以 `surface` prop 为 memo 键、经 `useSyncExternalStore` 订阅 `componentsModel.onCreated/onDeleted`;宿主**每轮 load 重建 MessageProcessor**(`presentation-surface-host.tsx` load 内 new),fresh store + 版本烙版 surfaceId 下 DOM 必然前进。旧探针「DOM generation 不前进」的读数受当时长驻 dev 会话(HMR 陈旧 bundle,本会话早前已实证引擎单例同类陈旧)干扰。冷重启 dev 后重演:**判定 1 即 PASS**(退场+generation 前进),但残留新形态——干净树上仍渲染 `confirmation:cN/pending/↗` 裸链卡(仅 in-place 路径;硬刷新无)。
+- **假设 9(页面缓存 inbox 陈旧)= ✅ 真根因**: approve 的 exec 响应实体=**效果目标**(`post:*`,回链 articles;`service-confirmation.ts` 文档化行为),渲染层 `invalidateAfterExec(subjectRel=confirmation:cN, 响应实体)` 只失效 `{confirmation:cN, articles}`;**confirmation 实体的 inbox 回链(假设 1 修复加的)从未到达失效点** → 页面缓存 `inbox` 仍含已决成员 → 重载时干净树的 waiting-for-me 区按数据绑定 deref 出旧成员 → 裸链卡复活。硬刷新(fresh cache)必好、服务端 replan 树干净(假设 6 证据)全部吻合。
+- **修复(合同层,一处知识一处消费)**: exec `accepted` 增携带 `subject`=被操作主体裁决后投影(`ExecOutcome`/route `{entity, subject?}`/`exec-client`);`PageEntityCache.invalidateAfterExecSources(rel, sources)` 以多实体回链并集失效;provider `invalidateAfterExec(rel, entity, subject)` 转发;接线点(surface-host/gate→action-handler/thread-desk/thread-stage-actions/adapter)传递;经典实体页本就以页面实体(=主体)失效,无需改。测试:TDD 服务层(service.confirmation)+路由(route.test subject 断言)+缓存层(entity-cache.test invalidateAfterExecSources 并集)。
+- **复验(2026-08-28,冷重启 dev + 干净种子重演)**: S2 四项全过——①当场退场+generation 1→2;②页内重新载入一致;③硬刷新一致;④投影变化可见。三张复核截图(after-approve/after-reload/after-hard-refresh)**字节级同像**(53070B),屏上即真相。证据:`evidence/2026-08-28-R3/F31-recheck-1..4_*.png`。探针 `[f31-plan]` 已移除;`data-generation` 保留为 standing 诊断锚。
+- **状态**: **rechecked**(2026-08-28)。
+
 ---
 
 ## R3 阶段状态与剩余事项(2026-08-28 汇总)
 
-**已通过**: S1(修复 self 噪音后)、S3、S4、S8、S9、S10;S6 主体通过(澄清话尾一句合同方言,挂 F-09 残余)。
-**不通过**: S2(F-31,见上)。
+**已通过**: S1(修复 self 噪音后)、S3、S4、S8、S9、S10;S6 主体通过(澄清话尾一句合同方言,挂 F-09 残余);**S2(2026-08-28 收口轮四项全过,F-31 rechecked)**。
+**不通过**: (无)。
 **未走查**: S5(查看活实例跨面跳转)、S7(meta 定义读面,含 F-10 已修的复验面)、S11(meta 修订闭环;**含 F-20 终判**——F-20 现码不可复现,需按 S11 在干净种子世界重跑 UI 全序列后终判)。
 **散项(随收口批量处理)**: F-13 刷新动词统一(重新载入 vs 刷新)、F-14/F-16(原始 JSON 展示/开发注释文案)、F-21 节点名标题化残余(向导面/集合状态 chip 仍显机器节点名)、F-05 术语残余(向导面身份显 rel)、S6 方言残句。
-**收口前置(Phase F)**: F-31 修复 → S2/S5/S7/S11 走查全过 → findings 全量对账(全部 fixed 项复验记录回填)→ `pnpm check` + `CI=true pnpm e2e invariants` 复跑 → DONE 报告 → plan.md F1/F3/F4 勾选、track 关闭。
+**收口前置(Phase F)**: ~~F-31 修复~~(✅ 2026-08-28,S2 四项全过)→ S5/S7/S11 走查全过 → findings 全量对账(全部 fixed 项复验记录回填)→ `pnpm check` + `CI=true pnpm e2e invariants` 复跑 → DONE 报告 → plan.md F1/F3/F4 勾选、track 关闭。
 **环境事实**: e2e invariants 的 TRUNCATE 回灌会重置 dev 沙箱库(server-kit 设计使然);R3/复验前需重置重启获得干净种子世界。LLM 走查依赖 `.env.local` 的真实 provider 配置。
 
 ---

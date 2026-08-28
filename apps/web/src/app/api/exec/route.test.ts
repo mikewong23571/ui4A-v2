@@ -262,11 +262,28 @@ describe('POST /api/exec — 确认门(T3 Phase B)', () => {
     );
 
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { entity: { properties: Record<string, unknown> } };
+    const body = (await res.json()) as {
+      entity: { properties: Record<string, unknown> };
+      subject?: {
+        properties: Record<string, unknown>;
+        links: Array<{ rel: string[]; href: string }>;
+      };
+    };
     expect(body.entity.properties).toMatchObject({
       rel: 'post:post-welcome',
       node: 'archived',
     });
+    // T35 F-31:subject=被操作主体(confirmation)投影,携带 inbox 回链——
+    // 渲染层据此失效「在等我」列表缓存。
+    expect(body.subject?.properties).toMatchObject({
+      rel: 'confirmation:c1',
+      status: 'approved',
+    });
+    expect(
+      body.subject?.links.some(
+        (link) => link.rel.includes('collection') && link.href.includes('rel=inbox'),
+      ),
+    ).toBe(true);
 
     const tail = await pool.query(
       "SELECT kind, actor, principal, channel FROM events WHERE kind IN ('confirmation-approved', 'action-executed') ORDER BY seq DESC LIMIT 2",

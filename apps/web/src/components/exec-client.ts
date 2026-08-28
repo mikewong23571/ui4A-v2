@@ -17,7 +17,7 @@ export const HUMAN_CHANNEL = {
 } as const;
 
 export type ExecClientResult =
-  | { ok: true; entity: SirenEntity }
+  | { ok: true; entity: SirenEntity; subject?: SirenEntity }
   | { ok: false; status: number; layer: string; reason: string; detail?: unknown };
 
 function contractPrefix(rel: string): '' | '/_meta' {
@@ -59,7 +59,9 @@ export async function execAction(input: {
 
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (response.ok && body.entity !== undefined) {
-    return { ok: true, entity: body.entity as SirenEntity };
+    // T35 F-31:裁决类 exec 携带被操作主体投影(collection 回链=inbox 等)。
+    const subject = body.subject !== undefined ? { subject: body.subject as SirenEntity } : {};
+    return { ok: true, entity: body.entity as SirenEntity, ...subject };
   }
   // 认证类 401 统一跳转登录(T22 验证修复);其余失败照常如实返回。
   redirectToLoginOnAuthError(response.status, body);

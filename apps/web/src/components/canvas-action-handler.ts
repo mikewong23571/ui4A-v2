@@ -26,7 +26,7 @@ export function createCanvasActionHandler(deps: CanvasActionHandlerDeps) {
       const rel = action.context.rel;
       // gate 已保证 executed 时 rel 是非空字符串;这里仍按合同形状防御一次。
       if (typeof rel === 'string' && rel !== '') {
-        deps.cache.invalidateAfterExec(rel, outcome.entity);
+        deps.cache.invalidateAfterExec(rel, outcome.entity, outcome.subject);
       }
       deps.notify(`动作已执行:${action.name}`);
       deps.reload(); // executed → 数据即事件投影,整面 reload 重建 surface

@@ -51,6 +51,8 @@ export interface SurfaceActionExecuted {
   subject: string;
   action: string;
   entity: SirenEntity;
+  /** 裁决类 exec 的被操作主体投影(collection 回链失效依据,T35 F-31)。 */
+  subjectEntity?: SirenEntity;
   refreshSubjects: string[];
 }
 
@@ -293,6 +295,7 @@ export function createSurfaceActionAdapter(
           subject: targetRel,
           action: input.action,
           entity: result.entity,
+          ...(result.subject !== undefined ? { subjectEntity: result.subject } : {}),
           refreshSubjects: refreshSubjectsOf(input, result.entity),
         };
       }

@@ -242,6 +242,32 @@ describe('页面级实体缓存:真实所属 collection(T12 Task 2 接线闭环)
     expect(collectionBacklinkOf(instance)).toBe('articles');
   });
 
+  // T35 F-31:裁决类 exec(approve)响应实体=效果目标(post,回链 articles),
+  // 被操作主体=confirmation(回链 inbox)——两实体回链并集失效,否则「在
+  // 等我」缓存陈旧成员在 in-place reload 中复活成裸链卡。
+  it('invalidateAfterExecSources:响应实体与 subject 主体回链并集失效', async () => {
+    const post = entity('post:post-welcome');
+    post.links = [{ rel: ['collection'], href: '/api/entity?rel=articles' }];
+    const confirmation = entity('confirmation:c1');
+    confirmation.links = [{ rel: ['collection'], href: '/api/entity?rel=inbox' }];
+    const { fetcher, calls } = countingFetcher({
+      'post:post-welcome': post,
+      'confirmation:c1': confirmation,
+      articles: collection('articles', []),
+      inbox: collection('inbox', []),
+    });
+    const cache = new PageEntityCache(fetcher);
+    await cache.get('articles', 'v1');
+    await cache.get('inbox', 'v1');
+    expect(calls).toHaveLength(2);
+
+    cache.invalidateAfterExecSources('confirmation:c1', [post, confirmation]);
+
+    await cache.get('articles', 'v1');
+    await cache.get('inbox', 'v1');
+    expect(calls).toHaveLength(4);
+  });
+
   it('collectionBacklinkOf:baseHref 前缀与 url 编码的 href 同样解析', () => {
     const instance = entity('post:x');
     instance.links = [

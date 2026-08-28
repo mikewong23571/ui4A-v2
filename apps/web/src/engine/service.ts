@@ -106,9 +106,14 @@ export { LlmArtifactConfigurationError } from './service-artifacts';
 export type { MetaSitemap } from './service-sitemaps';
 export type { FreezeSpecResult } from './service-render-specs';
 
-/** exec 结果(discriminated union;HTTP 层据此映射 200/202/4xx)。 */
+/**
+ * exec 结果(discriminated union;HTTP 层据此映射 200/202/4xx)。
+ * accepted.subject:被操作主体实体的裁决后投影(仅主体≠受影响实体时携带,
+ * 如 approve 主体=confirmation、受影响=目标)——主体的 collection 回链
+ * (如 inbox)是渲染层精确失效的唯一合同来源(T35 F-31)。
+ */
 export type ExecOutcome =
-  | { kind: 'accepted'; entity: SirenEntity; appended: string[] }
+  | { kind: 'accepted'; entity: SirenEntity; appended: string[]; subject?: SirenEntity }
   | { kind: 'suspended'; entity: SirenEntity; confirmation: SuspendedConfirmation }
   | { kind: 'rejected'; layer: JudgeLayer; reason: string; detail?: unknown };
 

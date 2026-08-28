@@ -22,7 +22,7 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 
 import type { SirenEntity } from '@ui4a/engine';
 
-import { collectionBacklinkOf, PageEntityCache, type EntityFetcher } from '@/render/entity-cache';
+import { PageEntityCache, type EntityFetcher } from '@/render/entity-cache';
 
 import { redirectToLoginOnAuthError } from './auth-redirect';
 import { fetchEntity, withPolicyScope } from './exec-client';
@@ -53,9 +53,11 @@ export interface EntityCacheHandle {
   get(rel: string): Promise<SirenEntity | null>;
   /**
    * exec 成功后精确失效:当前 rel + 所属 collection(entity 的 collection
-   * 回链优先,无前缀推导兜底);其他 rel 不动。
+   * 回链优先,无前缀推导兜底);其他 rel 不动。subject=被操作主体投影
+   * (裁决类 exec 携带;其回链如 inbox 是「在等我」列表失效的唯一来源,
+   * T35 F-31——受影响实体与主体不同集合时,两个回链并集失效)。
    */
-  invalidateAfterExec(rel: string, entity?: SirenEntity): void;
+  invalidateAfterExec(rel: string, entity?: SirenEntity, subject?: SirenEntity): void;
   /** 单 rel 失效(别名页:页面入口 rel ≠ exec 实例 rel 时同步失效页面 rel)。 */
   invalidate(rel: string): void;
   /** 外部执行者改写范围未知时，清空当前页面实体缓存。 */
@@ -75,10 +77,8 @@ function createHandle(fetcher: EntityFetcher, versionFetcher: () => Promise<stri
   };
   const handle: EntityCacheHandle = {
     get: (rel) => version().then((stamp) => cache.get(rel, stamp)),
-    invalidateAfterExec: (rel, entity) => {
-      const backlink = entity !== undefined ? collectionBacklinkOf(entity) : undefined;
-      cache.invalidateAfterExec(rel, backlink !== undefined ? { collection: backlink } : undefined);
-    },
+    invalidateAfterExec: (rel, entity, subject) =>
+      cache.invalidateAfterExecSources(rel, [entity, subject]),
     invalidate: (rel) => cache.invalidate(rel),
     invalidateAll: () => cache.invalidateAll(),
   };

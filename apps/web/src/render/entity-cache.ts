@@ -114,6 +114,20 @@ export class PageEntityCache {
   }
 
   /**
+   * exec 成功后精确失效(多实体来源,T35 F-31):各来源实体 collection 回链
+   * 与 invalidateAfterExec 口径取并集。裁决类 exec(approve/reject)的响应
+   * 实体=效果目标(如文章,回链=articles)、被操作主体=confirmation(回链=
+   * inbox)——两个回链都要失效,否则「在等我」等主体集合缓存陈旧,干净树被
+   * 旧成员在 in-place reload 中复活。
+   */
+  invalidateAfterExecSources(rel: string, sources: Array<SirenEntity | undefined>): void {
+    for (const source of sources) {
+      const backlink = source === undefined ? undefined : collectionBacklinkOf(source);
+      this.invalidateAfterExec(rel, backlink !== undefined ? { collection: backlink } : undefined);
+    }
+  }
+
+  /**
    * 单 rel 失效(别名页场景:页面入口 rel ≠ exec 实例 rel 时,exec 只覆盖
    * 实例 rel,页面 rel 的旧投影须由接线点显式失效,否则重拉命中旧缓存)。
    */

@@ -125,6 +125,38 @@ describe('exec 挂起(agent + high → Cedar 拦截)', () => {
 });
 
 describe('human approve(经普通 exec)', () => {
+  // T35 F-31:approve 的受影响实体=目标(archive 生效),但被操作主体
+  // (confirmation)的集合归属(inbox)只有主体投影的 collection 回链能表达;
+  // accepted 携带 subject 投影,渲染层据此失效 inbox(否则页面缓存陈旧成员
+  // 在 in-place reload 里复活成裸链卡)。
+  it('accepted 携带 subject=确认实体投影(含 inbox collection 回链)', async () => {
+    const engine = await getEngine(pool);
+    const confirmationId = await suspendArchive();
+
+    const outcome = await engine.exec({
+      rel: `confirmation:${confirmationId}`,
+      action: 'approve',
+      params: {},
+      actor: 'human',
+      principal: 'user:approver',
+    });
+
+    expect(outcome.kind).toBe('accepted');
+    if (outcome.kind !== 'accepted') return;
+    expect(outcome.entity.properties).toMatchObject({ rel: 'post:post-welcome' });
+    expect(outcome.subject?.properties).toMatchObject({
+      rel: `confirmation:${confirmationId}`,
+      status: 'approved',
+    });
+    expect(
+      outcome.subject?.links.some(
+        (link) =>
+          link.rel.includes('collection') &&
+          decodeURIComponent(link.href).includes('rel=inbox'),
+      ),
+    ).toBe(true);
+  });
+
   it('rolls back every core event when a multi-event decision append fails', async () => {
     let armed = false;
     const shouldFail = (sqlText: string, values?: readonly unknown[]): boolean =>

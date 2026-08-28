@@ -62,7 +62,7 @@ export function ThreadStageActions({ threadId, scope }: ThreadDeskProps) {
     async ({ rel, action, params }: ActionSubmitInput) => {
       const result = await execAction({ rel, action: action.name, params, scope });
       if (result.ok) {
-        cache.invalidateAfterExec(rel, result.entity);
+        cache.invalidateAfterExec(rel, result.entity, result.subject);
         notifyThreadUpdated(rel);
       }
       return result;

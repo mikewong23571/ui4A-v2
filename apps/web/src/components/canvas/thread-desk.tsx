@@ -204,7 +204,7 @@ export function ThreadDesk({ threadId, scope }: ThreadDeskProps) {
           setFailure(`[${result.layer}] ${result.reason}`);
           return false;
         }
-        cache.invalidateAfterExec(threadRel, result.entity);
+        cache.invalidateAfterExec(threadRel, result.entity, result.subject);
         notifyThreadUpdated(threadRel);
         return true;
       } catch (error) {
