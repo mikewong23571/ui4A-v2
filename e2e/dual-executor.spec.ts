@@ -155,22 +155,22 @@ test('B1 双执行者:agent 合同发布 + human 表单发布,同一日志两类
     // ---- human 路径(renderer:保留实体路由直达三步向导)-------------------
     await page.goto('/entity?rel=flow%3Aarticle-drafting');
     await expect(page.locator('h1')).toHaveText('基本信息');
-    await page.getByRole('button', { name: '填写下一步参数' }).click();
+    await page.getByRole('button', { name: '下一步' }).click();
     await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第四篇');
     await page.getByRole('button', { name: '下一步', exact: true }).click();
     await expect(page.locator('h1')).toHaveText('分类');
-    await page.getByRole('button', { name: '填写下一步参数' }).click();
+    await page.getByRole('button', { name: '下一步' }).click();
     await page.getByRole('combobox', { name: /分类/ }).selectOption('essay');
     await page.getByRole('textbox', { name: /标签/ }).fill('dual-human');
     await page.getByRole('button', { name: '下一步', exact: true }).click();
     await expect(page.locator('h1')).toHaveText('正文');
-    await page.getByRole('button', { name: '填写完成编辑参数' }).click();
+    await page.getByRole('button', { name: '完成编辑' }).click();
     await page.getByRole('textbox', { name: /正文/ }).fill('人类经 renderer 表单发布。');
     await page.getByRole('button', { name: '完成编辑', exact: true }).click();
     await expect(page.locator('h1')).toHaveText('就绪');
     await page.getByRole('button', { name: '发布 ⌄' }).click();
     await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第四篇');
-    await page.getByRole('button', { name: '发布 ⌄', exact: true }).click();
+    await page.getByRole('button', { name: '发布', exact: true }).click();
     await expect(page.locator('h1')).toHaveText('基本信息');
 
     // ---- 同一日志:publish 由两类执行者各执行一次,各自正确 ----------------
@@ -207,7 +207,7 @@ test('B2 双执行者:agent 合同下线 post-welcome + human 表单下线 first
     // ---- human 路径(renderer:保留实体路由直达下线按钮)-------------------
     await page.goto('/entity?rel=post%3Afirst-post');
     await expect(page.locator('h1')).toHaveText('已发布');
-    await page.getByRole('button', { name: '下线 ⌄' }).click();
+    await page.getByRole('button', { name: '下线', exact: true }).click();
     await expect(page.locator('h1')).toHaveText('已下线');
 
     // ---- 同一日志:unpublish 两类执行者,各下线各的,互不影响 -------------

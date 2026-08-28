@@ -55,7 +55,8 @@ test.describe('T16 Golden Story presentation lifecycle', () => {
     await expect(drawer.getByRole('button', { name: '确认团队默认' })).toBeVisible();
     await page.locator('[data-presentation-action="cancel-promotion"]').click();
 
-    await page.goto('/canvas');
+    // T35 F-25:裸 /canvas 是入口层;带 articles 注视回到实体面。
+    await page.goto('/canvas?focus=articles');
     await expect(page.getByRole('link', { name: '第一篇' })).toBeVisible();
     await page.getByRole('link', { name: '第一篇' }).click();
     await expect(page.getByRole('heading', { name: '第一篇', exact: true })).toBeVisible();

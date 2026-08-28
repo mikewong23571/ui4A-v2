@@ -7,12 +7,6 @@
       "lines": 4155,
       "limit": 4000,
       "note": "T29 presence 投影(presence.ts/presence.test.ts + 迁移 v2)在 T22 关闭前入库;用户授权登记,db 目录拆分或 T22 基线裁决时一并退役;T31 R2 presence 频率上限合同测试(presence.rate-limit.test.ts 等)再 +141(T31 spec 红线强制验收证据),shrink-only 自 T31 登记起算"
-    },
-    {
-      "path": "e2e",
-      "lines": 4628,
-      "limit": 4000,
-      "note": "T27 workstation-home CLI/Sidecar/DOM、workstation-situation presence 留痕、flow 双桥/ghost 诚实失败 standing E2E、I3 双桥覆盖及 S2 raw replay/alias 诚实性修正后累计(tracked total 见行数,按 workflow 业务优先不裁剪验收证据);T28 一等交互已闭环并按 GR5 归并重复 Presentation/server setup 到 e2e/kits,无 bespoke track 配置残留;shrink-only 自 T28 关闭起算;合并侧归因一:e2e/t33-authority-attention.spec.ts 五景走查锚 +111(T34 授权/注意力分离,D51 完成定义,业务优先不为凑行数裁剪验收证据,2026-08-27 用户授权;T34 关闭时按 GR5 裁决,并入 kits 或随五景证据常驻评估收缩);合并侧归因二:t33-reading-posture 决策卡/工作线 resume e2e +32(业务优先不裁剪验收证据,workflow 2026-08-26;后续 Phase E/F 若再增以本口径滚动);lines 为合并树 check-size 实测"
     }
   ]
 }

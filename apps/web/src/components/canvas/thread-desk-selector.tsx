@@ -130,6 +130,7 @@ export function ObjectSelectorPanel({
         />
         <button
           type="button"
+          data-nav="local:desk-selector-close"
           onClick={onClose}
           className="shrink-0 rounded-md px-1.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
         >
@@ -144,6 +145,7 @@ export function ObjectSelectorPanel({
           对象清单暂时读不到，
           <button
             type="button"
+            data-nav="local:desk-selector-retry"
             onClick={() => {
               setFailed(false);
               load();
@@ -172,6 +174,7 @@ export function ObjectSelectorPanel({
                     <button
                       type="button"
                       data-testid={`desk-selector-pick:${member.rel}`}
+                      data-nav={`local:desk-selector-pick:${member.rel}`}
                       disabled={busy || attached}
                       onClick={() => void onPick(member.rel)}
                       className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left text-xs hover:bg-accent disabled:opacity-60"

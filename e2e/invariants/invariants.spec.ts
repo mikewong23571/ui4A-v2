@@ -30,16 +30,16 @@ import { createRuleDriver } from '@ui4a/agent/testkit/rule-driver';
 import type { AgentDriver, DriverContext, SirenEntity, TrailStep } from '@ui4a/agent';
 import { expect, test, type Page } from '@playwright/test';
 
-import { getPool } from '../apps/web/src/db/pool';
-import { readLog, type DbExecutor } from '../apps/web/src/db/events';
-import { businessFlows } from '../apps/web/src/domain/flows';
-import { terminateStaleNotifyWorkflows } from '../apps/web/src/temporal/notify';
-import { derefSpec, type DimensionCount, type EntityCache } from '../apps/web/src/render/deref';
-import { validateSpec } from '../apps/web/src/render/validator';
-import { contentVersion, fold } from '../packages/engine/src/index';
-import { metaFlowRel } from '../packages/shared/src/definition/definition';
+import { getPool } from '../../apps/web/src/db/pool';
+import { readLog, type DbExecutor } from '../../apps/web/src/db/events';
+import { businessFlows } from '../../apps/web/src/domain/flows';
+import { terminateStaleNotifyWorkflows } from '../../apps/web/src/temporal/notify';
+import { derefSpec, type DimensionCount, type EntityCache } from '../../apps/web/src/render/deref';
+import { validateSpec } from '../../apps/web/src/render/validator';
+import { contentVersion, fold } from '../../packages/engine/src/index';
+import { metaFlowRel } from '../../packages/shared/src/definition/definition';
 
-import { DATABASE_URL, SCENARIO_BASE, withFreshServer } from './kits/server-kit';
+import { DATABASE_URL, SCENARIO_BASE, withFreshServer } from '../kits/server-kit';
 
 const UNUSED_LLM_PROFILE = {
   LLM_API_KEY: 'e2e-unused-key',
@@ -253,7 +253,7 @@ test.describe('I1 零智能完整(已被 T15 AI-first supersede)', () => {
           const approve = page.getByRole('button', { name: '批准' });
           await expect(approve).toBeEnabled();
           // D50:驳回表单默认收起,先打开再断言 reason 必填
-          await page.getByRole('button', { name: '填写驳回参数' }).click();
+          await page.getByRole('button', { name: '驳回' }).click();
           await expect(page.getByRole('textbox', { name: /reason|原因/i })).toHaveAttribute(
             'required',
             '',

@@ -73,7 +73,8 @@ test('canvas 首屏:focus 实体语义上屏,主区域零机制词;机制信息�
     await page.goto(`${SCENARIO_BASE}/canvas?focus=post%3Afirst-post`);
     const surface = page.locator('[data-surface="presentation-post%3Afirst-post"]');
     await expect(surface).toBeVisible();
-    await expect(surface).toHaveAttribute('data-active', 'true');
+    // T35 F-24:data-active 只服务 ?concern= 回执锚点;常规 focus 页不得恒亮。
+    await expect(surface).not.toHaveAttribute('data-active', 'true');
     await expect(page.getByRole('heading', { name: '第一篇', exact: true })).toBeVisible();
     await expect(page.getByText('这是第一篇完整文章')).toBeVisible();
 

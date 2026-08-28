@@ -38,8 +38,8 @@
 import { planFor } from '@ui4a/agent';
 import { expect, test } from '@playwright/test';
 
-import { terminateStaleNotifyWorkflows } from '../apps/web/src/temporal/notify';
-import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
+import { terminateStaleNotifyWorkflows } from '../../apps/web/src/temporal/notify';
+import { SCENARIO_BASE, withFreshServer } from '../kits/server-kit';
 
 // 本文件全部用例指向场景 server(3110)。
 test.use({ baseURL: SCENARIO_BASE });
@@ -272,7 +272,16 @@ test('S4-六步一次决策:单次 exec-plan(next×3 + publish + unpublish + rep
       identity: {
         authorizationMode: 'self-reported-local-demo',
         humanApprovalEligible: false,
-        scopes: ['default', 'publishing', 'community', 'development', 'editorial', 'governance'],
+        scopes: [
+          'default',
+          'publishing',
+          'community',
+          'development',
+          'editorial',
+          'governance',
+          'todo',
+          'ideas',
+        ],
       },
       kind: 'plan-completed',
       steps: [
@@ -360,7 +369,16 @@ test('S4-拒绝截断:计划第 2 步 schema-invalid(枚举外 category)→ 前 
       identity: {
         authorizationMode: 'self-reported-local-demo',
         humanApprovalEligible: false,
-        scopes: ['default', 'publishing', 'community', 'development', 'editorial', 'governance'],
+        scopes: [
+          'default',
+          'publishing',
+          'community',
+          'development',
+          'editorial',
+          'governance',
+          'todo',
+          'ideas',
+        ],
       },
       kind: 'plan-rejected',
       steps: [
@@ -460,7 +478,16 @@ test('S4-挂起交互:agent 计划第 5 步 archive(高危)→ 202 suspended + c
         identity: {
           authorizationMode: 'self-reported-local-demo',
           humanApprovalEligible: false,
-          scopes: ['default', 'publishing', 'community', 'development', 'editorial', 'governance'],
+          scopes: [
+            'default',
+            'publishing',
+            'community',
+            'development',
+            'editorial',
+            'governance',
+            'todo',
+            'ideas',
+          ],
         },
         kind: 'plan-suspended',
         steps: [

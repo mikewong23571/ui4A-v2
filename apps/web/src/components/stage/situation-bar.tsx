@@ -118,7 +118,7 @@ export function SituationBar() {
       aria-label="声明的处境"
       data-testid="situation-bar"
       ref={ref}
-      className="relative ml-auto flex items-center gap-1.5"
+      className="relative ml-auto flex min-w-0 items-center gap-1.5"
     >
       {/* 站点常显 */}
       <span
@@ -135,7 +135,7 @@ export function SituationBar() {
           data-testid="situation-scope"
           title={`scope ${displayValue(observation.scope)}(点击清除)`}
           data-nav="situation:clear-scope"
-          className="max-w-32 truncate rounded-full border bg-card px-2.5 py-0.5 text-[11px] text-foreground transition-colors hover:bg-accent"
+          className="min-w-0 max-w-32 truncate rounded-full border bg-card px-2.5 py-0.5 text-[11px] text-foreground transition-colors hover:bg-accent"
         >
           {displayValue(observation.scope)}
         </Link>
@@ -144,7 +144,7 @@ export function SituationBar() {
         <span
           data-testid="situation-thread"
           title={`工作线 ${displayValue(observation.thread)}`}
-          className="max-w-32 truncate rounded-full border bg-card px-2.5 py-0.5 text-[11px] text-foreground"
+          className="min-w-0 max-w-32 truncate rounded-full border bg-card px-2.5 py-0.5 text-[11px] text-foreground"
         >
           线 {displayValue(observation.thread)}
         </span>
@@ -153,7 +153,7 @@ export function SituationBar() {
         <span
           data-testid="situation-focus"
           title={`注视 ${displayValue(observation.focus)}`}
-          className="max-w-40 truncate rounded-full border bg-card px-2.5 py-0.5 text-[11px] text-foreground"
+          className="min-w-0 max-w-40 truncate rounded-full border bg-card px-2.5 py-0.5 text-[11px] text-foreground"
         >
           注视 {displayValue(observation.focus)}
         </span>

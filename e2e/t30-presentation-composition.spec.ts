@@ -173,12 +173,10 @@ test('my-work request renders one binding-only three-region Canvas and replays i
       const renderedFact = page.getByText(title, { exact: true });
       expect(await renderedFact.count()).toBeGreaterThan(0);
       await expect(renderedFact.first()).toBeVisible();
-      const relLink = page.locator(
-        `[data-surface] a[href="/entity?rel=${encodeURIComponent(rel)}"]`,
-      );
-      expect(await relLink.count()).toBeGreaterThan(0);
-      await expect(relLink.first()).toBeVisible();
     }
+    // T35 D-2:组合面 links 降级——区域标题仍在,实体细节不再以 /entity 链接呈现
+    // (binding-only 事实等值断言在上文 hydration.values 快照对比已覆盖)。
+    await expect(page.locator('[data-surface] a[href^="/entity?rel="]')).toHaveCount(0);
 
     const presentationBefore = await loadPresentationSnapshot(pool);
     const aggregateBefore = await findActiveSidecar(pool, key);

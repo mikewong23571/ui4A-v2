@@ -105,13 +105,16 @@ export function useSidecarActions(deps: {
       if (sidecarMeta === undefined) return;
       const collapsed = sidecarMeta.view.collapsedNodeIds.includes(sidecarMeta.rootNodeId);
       const currentDensity = sidecarMeta.view.densityByNodeId[sidecarMeta.rootNodeId];
+      // F-31:meta.rootNodeId 携带 SDK store 烙版后缀(-vN);服务端 patch 合同
+      // 只认未烙版节点 id(与宿主 data-surface 展示口径同构剥离)。
+      const serverNodeId = sidecarMeta.rootNodeId.replace(/-v\d+$/, '');
       const operations =
         kind === 'collapse'
-          ? [{ kind, nodeId: sidecarMeta.rootNodeId, collapsed: !collapsed }]
+          ? [{ kind, nodeId: serverNodeId, collapsed: !collapsed }]
           : [
               {
                 kind,
-                nodeId: sidecarMeta.rootNodeId,
+                nodeId: serverNodeId,
                 density: currentDensity === 'compact' ? 'spacious' : 'compact',
               },
             ];

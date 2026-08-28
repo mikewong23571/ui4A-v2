@@ -5,9 +5,9 @@ import { promisify } from 'node:util';
 import { expect, test, type Request, type Response } from '@playwright/test';
 import type { SurfaceBinding, SurfaceNode, SurfaceTree } from '@ui4a/engine';
 
-import { MECHANISM_WORDS } from '../apps/web/src/lib/mechanism-words';
-import { SCENARIO_BASE, withFreshServer, withWorkerServer } from './kits/server-kit';
-import { terminateStaleNotifyWorkflows } from '../apps/web/src/temporal/notify';
+import { MECHANISM_WORDS } from '../../apps/web/src/lib/mechanism-words';
+import { SCENARIO_BASE, withFreshServer, withWorkerServer } from '../kits/server-kit';
+import { terminateStaleNotifyWorkflows } from '../../apps/web/src/temporal/notify';
 
 const runFile = promisify(execFile);
 const CLI_MAIN = path.join(process.cwd(), 'apps', 'cli', 'dist', 'main.js');
@@ -187,39 +187,14 @@ test('workstation home and the real CLI read the same three declared source enti
       await expect(heading).toHaveCount(1);
       await expect(heading).toBeVisible();
       await expect(heading).toBeInViewport();
-      // T33:链接标签优先合同 title(在等我/在动/我的工作线),回退 target rel
-      await expect(
-        surface.locator(`a[href="/entity?rel=${encodeURIComponent(canonicalRel)}"]`),
-      ).toHaveText(title);
     }
+    // T35 D-2/D-6 呈现收敛:组合面 links 降级、簿记数字不进 fallback——区域保留
+    // 标题与声明动作,实体细节经实体页/CLI 合同读取(同源断言在上文 sidecar
+    // slot bindingSubjects 与 CLI 读面已覆盖)。
+    await expect(surface.locator('a[href^="/entity?rel="]')).toHaveCount(0);
 
-    const expectedScalarFacts = [...entities.values()]
-      .flatMap((entity) =>
-        Object.entries(entity.properties).flatMap(([key, value]) =>
-          !['rel', 'title'].includes(key) && ['string', 'number', 'boolean'].includes(typeof value)
-            ? [String(value)]
-            : [],
-        ),
-      )
-      .sort();
-    const renderedScalarFacts = (
-      await surface.locator('p:not([data-testid="action-contract-legend"])').allTextContents()
-    ).sort();
-    expect(renderedScalarFacts).toEqual(expectedScalarFacts);
-
-    const members = [...entities.values()].flatMap((entity) => entity.entities ?? []);
-    await expect(surface.locator('[data-nav="presentation:member"]')).toHaveCount(members.length);
-    for (const member of members) {
-      const rel = member.properties.rel;
-      expect(typeof rel).toBe('string');
-      await expect(
-        surface.locator(
-          `[data-nav="presentation:member"][href="/canvas?focus=${encodeURIComponent(
-            String(rel),
-          )}"]`,
-        ),
-      ).toBeVisible();
-    }
+    // T35 D-2:簿记数字/成员明细不进组合 fallback——不再逐段断言标量事实与
+    // 成员链接;区域的声明动作仍是 action-backed(创建工作线按钮在下文走合同)。
 
     const mainText = await page.locator('main').innerText();
     const forbiddenFirstScreenWords = [
@@ -318,7 +293,7 @@ test('waiting-for-me 成员决策卡:批准一击零导航零参数,同一裁决
     expect(decision?.channel).toBe('confirmation');
 
     // 投影随事件更新:重载后在等我清零,确认决策卡退场;工作线成员卡呈现
-    // 目标 +「停在「open」」(active 空回退线程状态;投影数据,零渲染器模板)。
+    // 目标 +「停在「进行中」」(T35 D-2 成员状态标题化;active 空回退线程状态,投影数据,零渲染器模板)。
     await page.reload();
     await expect(
       page.locator('[data-word="member-card"]', { hasText: 'archive · 由 agent 提议' }),
@@ -327,8 +302,8 @@ test('waiting-for-me 成员决策卡:批准一击零导航零参数,同一裁决
       hasText: 'T33 验收工作线',
     });
     await expect(threadCard).toHaveCount(1);
-    await expect(threadCard).toContainText('停在「open」');
-    await expect(threadCard).toContainText('填写挂载引用参数');
+    await expect(threadCard).toContainText('停在「进行中」');
+    await expect(threadCard).toContainText('添加涉及对象');
     const inbox = (await (await fetch(`${SCENARIO_BASE}/api/entity?rel=inbox`)).json()) as {
       properties: { count: number };
     };

@@ -36,7 +36,7 @@ import { runAgent } from '@ui4a/agent';
 import { createRuleDriver } from '@ui4a/agent/testkit/rule-driver';
 import { expect, test } from '@playwright/test';
 
-import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
+import { SCENARIO_BASE, withFreshServer } from '../kits/server-kit';
 import {
   AGENT_PRINCIPAL,
   HUMAN_PRINCIPAL,
@@ -54,7 +54,7 @@ import {
   opKinds,
   pinOnPublished,
   pinOnReady,
-} from './kits/s2-kit';
+} from '../kits/s2-kit';
 
 // 本文件用例指向场景 server(3110)。
 test.use({ baseURL: SCENARIO_BASE });

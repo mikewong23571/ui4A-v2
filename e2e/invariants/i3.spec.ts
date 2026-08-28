@@ -26,19 +26,21 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 
-import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
+import { SCENARIO_BASE, withFreshServer } from '../kits/server-kit';
 
 /** fuzz 页面清单(骨架五面 + 实体页;GOAL I3「所有页面」的本站全集)。 */
-const PAGES: { name: string; path: string; ready: string }[] = [
+const PAGES: { name: string; path: string; ready: string; dialog?: boolean }[] = [
   {
     name: 'workstation flow 桥',
     path: '/canvas?focus=flow:article-drafting&scope=publishing&thread=release-1',
     ready: 'a[data-nav="situation:cross-site-flow"]',
+    dialog: true,
   },
   {
     name: 'meta flow 桥',
     path: '/meta/flow/article-drafting?scope=publishing&thread=release-1',
     ready: 'a[data-nav="situation:cross-site-flow"]',
+    dialog: true,
   },
   { name: '首页', path: '/', ready: '[data-surface]' },
   {
@@ -53,7 +55,9 @@ const PAGES: { name: string; path: string; ready: string }[] = [
     ready: '[data-action]',
   },
   { name: 'BIOS 激活页', path: '/meta/activations', ready: 'a[data-nav="meta-back"]' },
-  { name: '画布', path: '/canvas', ready: '[data-surface]' },
+  // T35 F-25:裸 /canvas 无注视=入口层(应用目录,无 surface);fuzz 覆盖
+  // 带注视的画布面(真 surface 渲染路径)。
+  { name: '画布', path: '/canvas?focus=articles', ready: '[data-surface]' },
   { name: '舰队页', path: '/delegations', ready: '[data-testid="empty-fleet"], table' },
 ];
 
@@ -114,7 +118,16 @@ test('I3 fuzz:全部页面所有可点元素必映射 data-action/data-nav(零�
       const targetPage = await page.context().newPage();
       try {
         await targetPage.goto(`${SCENARIO_BASE}${target.path}`);
-        await targetPage.waitForSelector(target.ready, { timeout: 30_000 });
+        // T35 D-3 起「当前在哪」弹层化:桥接链接只在弹层内渲染。桥接两目标
+        // 先开弹层再等原 ready(弹层内容一并入 fuzz);其余目标维持原 ready。
+        await targetPage.waitForSelector(
+          target.dialog ? '[data-testid="situation-site"]' : target.ready,
+          { timeout: 30_000 },
+        );
+        if (target.dialog) {
+          await targetPage.click('[data-nav="local:situation-adjust"]');
+          await targetPage.waitForSelector(target.ready, { timeout: 30_000 });
+        }
         const clickables = await probeClickables(targetPage);
         // 空泛防护:每页至少一个可点元素(否则 fuzz 无意义)。
         expect(
@@ -165,7 +178,8 @@ test('I3 拒提交:React 树内合成点击未声明按钮 → 零 /api/exec;已
 
     // 画布面同样成立:A2UI surface 宿主内合成点击 → 零提交
     //(画布提交唯一通道 = action 拦截门白名单,单测覆盖;此处 e2e 级复核)。
-    await page.goto(`${SCENARIO_BASE}/canvas`);
+    // T35 F-25:裸 /canvas 是入口层(无 surface),带注视才渲染宿主。
+    await page.goto(`${SCENARIO_BASE}/canvas?focus=articles`);
     await page.waitForSelector('[data-surface]', { timeout: 30_000 });
     const canvasExec = execCounter(page);
     await syntheticClickUndeclared(page);

@@ -12,14 +12,14 @@ import { runAgent } from '@ui4a/agent';
 import { createRuleDriver } from '@ui4a/agent/testkit/rule-driver';
 import { expect, test } from '@playwright/test';
 
-import { appendEvent, listEvents } from '../apps/web/src/db/events';
-import { getPool } from '../apps/web/src/db/pool';
+import { appendEvent, listEvents } from '../../apps/web/src/db/events';
+import { getPool } from '../../apps/web/src/db/pool';
 import {
   DATABASE_URL,
   SCENARIO_BASE,
   truncateLogsForReplay,
   withFreshServer,
-} from './kits/server-kit';
+} from '../kits/server-kit';
 import {
   AGENT_PRINCIPAL,
   HUMAN_PRINCIPAL,
@@ -38,7 +38,7 @@ import {
   pinOnPublished,
   pinOnReady,
   spawnScenarioServer,
-} from './kits/s2-kit';
+} from '../kits/s2-kit';
 
 // 本文件全部用例指向场景 server(3110)。
 test.use({ baseURL: SCENARIO_BASE });
@@ -332,13 +332,25 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
       expect(surface.title.trim(), `业务面 ${surface.rel} 应有标题`).not.toBe('');
       if (!surface.rel.startsWith('flow:')) await getEntity(surface.rel);
     }
-    // flow:* 是定义入口描述；只有恰一活实例的向导可解析为实体。多实例 flow
-    // 保持诚实 404，不因出现在 sitemap 就伪造一个聚合实体。
+    // flow:* 是定义入口描述;恰一活实例的向导可解析为实体。零/多实例 flow
+    // 自 T35 F-02 起兑现为只读实例集合列举(成员=实例自身快照,零新真相);
+    // 未知 flow 名仍诚实 404。
     await getEntity('flow:article-drafting');
     const multiInstanceFlow = await fetch(
       `${SCENARIO_BASE}/api/entity?rel=${encodeURIComponent('flow:post-status')}`,
     );
-    expect(multiInstanceFlow.status).toBe(404);
+    expect(multiInstanceFlow.status).toBe(200);
+    const flowCollection = (await multiInstanceFlow.json()) as {
+      class: string[];
+      properties: { rel: string; flow: string };
+    };
+    expect(flowCollection.class).toEqual(expect.arrayContaining(['collection', 'flow-instances']));
+    expect(flowCollection.properties.rel).toBe('flow:post-status');
+    expect(flowCollection.properties.flow).toBe('post-status');
+    const unknownFlow = await fetch(
+      `${SCENARIO_BASE}/api/entity?rel=${encodeURIComponent('flow:never-defined')}`,
+    );
+    expect(unknownFlow.status).toBe(404);
 
     // 业务实体 links 不携带 /_meta href
     const articles = await getEntity('articles');

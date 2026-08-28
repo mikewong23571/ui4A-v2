@@ -65,20 +65,20 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
 
     // 第一步 basic-info:title(text);D50:参数表单默认收起,先打开
     await expect(page.locator('h1')).toHaveText('基本信息');
-    await page.getByRole('button', { name: '填写下一步参数' }).click();
+    await page.getByRole('button', { name: '下一步' }).click();
     await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第三篇');
     await page.getByRole('button', { name: '下一步', exact: true }).click();
 
     // 第二步 classification:category(select 下拉)+ tags(text)
     await expect(page.locator('h1')).toHaveText('分类');
-    await page.getByRole('button', { name: '填写下一步参数' }).click();
+    await page.getByRole('button', { name: '下一步' }).click();
     await page.getByRole('combobox', { name: /分类/ }).selectOption('tech');
     await page.getByRole('textbox', { name: /标签/ }).fill('human-e2e');
     await page.getByRole('button', { name: '下一步', exact: true }).click();
 
     // 第三步 content:body(textarea 文本域)
     await expect(page.locator('h1')).toHaveText('正文');
-    await page.getByRole('button', { name: '填写完成编辑参数' }).click();
+    await page.getByRole('button', { name: '完成编辑' }).click();
     await page.getByRole('textbox', { name: /正文/ }).fill('第三篇正文:由人类经三步向导发布。');
     await page.getByRole('button', { name: '完成编辑', exact: true }).click();
 
@@ -86,7 +86,7 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
     await expect(page.locator('h1')).toHaveText('就绪');
     await page.getByRole('button', { name: '发布 ⌄' }).click();
     await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第三篇');
-    await page.getByRole('button', { name: '发布 ⌄', exact: true }).click();
+    await page.getByRole('button', { name: '发布', exact: true }).click();
 
     // 向导循环语义(D11):发布后回到基本信息(起草下一篇),不再是 done 终态
     await expect(page.locator('h1')).toHaveText('基本信息');
@@ -125,9 +125,9 @@ test('B2 点名下线(人类):直达 post-welcome → 下线;first-post 不受�
     // 保留的实体路由直达目标文章，不依赖首页成员快照。
     await page.goto('/entity?rel=post%3Apost-welcome');
     await expect(page.locator('h1')).toHaveText('已发布');
-    await expect(page.getByRole('button', { name: '下线 ⌄' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '下线', exact: true })).toBeVisible();
 
-    await page.getByRole('button', { name: '下线 ⌄' }).click();
+    await page.getByRole('button', { name: '下线', exact: true }).click();
 
     // 精确下线这一篇:节点 offline
     await expect(page.locator('h1')).toHaveText('已下线');
@@ -135,7 +135,7 @@ test('B2 点名下线(人类):直达 post-welcome → 下线;first-post 不受�
 
     // guard 投影(声明层):offline 节点未声明 unpublish → 按钮不存在;
     // 该节点唯一声明动作是 republish
-    await expect(page.getByRole('button', { name: '下线 ⌄' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '下线', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: '重新发布' })).toBeVisible();
 
     // 精确业务实体状态：另一篇不受影响，目标文章已下线。

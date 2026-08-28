@@ -24,13 +24,13 @@ import { spawnSync } from 'node:child_process';
 
 import { expect, test } from '@playwright/test';
 
-import { terminateStaleNotifyWorkflows } from '../apps/web/src/temporal/notify';
+import { terminateStaleNotifyWorkflows } from '../../apps/web/src/temporal/notify';
 import {
   SCENARIO_BASE,
   TEMPORAL_ADDRESS,
   withFreshServer,
   withWorkerServer,
-} from './kits/server-kit';
+} from '../kits/server-kit';
 
 // 本文件全部用例指向场景 server(3110)+ 真 worker。
 test.use({ baseURL: SCENARIO_BASE });
@@ -401,7 +401,7 @@ test('UI 走查:收件箱保留路由 → 确认页 RJSF 批准 → 文章实体
     const approve = page.getByRole('button', { name: '批准' });
     await expect(approve).toBeEnabled();
     // D50:驳回表单默认收起,先打开再断言 reason 必填
-    await page.getByRole('button', { name: '填写驳回参数' }).click();
+    await page.getByRole('button', { name: '驳回' }).click();
     await expect(page.getByRole('textbox', { name: /reason|原因/i })).toHaveAttribute(
       'required',
       '',

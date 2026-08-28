@@ -265,6 +265,7 @@ export function ThreadDesk({ threadId, scope }: ThreadDeskProps) {
           <button
             type="button"
             data-testid="desk-add-material"
+            data-nav="local:desk-add-material"
             aria-expanded={selectorOpen}
             disabled={busy}
             onClick={() => setSelectorOpen((open) => !open)}
@@ -304,6 +305,7 @@ export function ThreadDesk({ threadId, scope }: ThreadDeskProps) {
                 <button
                   type="button"
                   data-testid={`desk-remove:${entry.rel}`}
+                  data-nav={`local:desk-remove:${entry.rel}`}
                   disabled={busy}
                   onClick={() => removeEntry(entry)}
                   className="shrink-0 text-[11px] text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:text-destructive disabled:opacity-0"

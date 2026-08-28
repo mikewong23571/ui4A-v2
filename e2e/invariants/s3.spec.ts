@@ -41,14 +41,14 @@ import path from 'node:path';
 
 import { expect, test, type Page } from '@playwright/test';
 
-import { getPool } from '../apps/web/src/db/pool';
+import { getPool } from '../../apps/web/src/db/pool';
 import {
   DATABASE_URL,
   SCENARIO_BASE,
   TEMPORAL_ADDRESS,
   withWorkerServer,
   withWorkerStack,
-} from './kits/server-kit';
+} from '../kits/server-kit';
 
 test.skip(
   !process.env.RUN_LLM_E2E ||
