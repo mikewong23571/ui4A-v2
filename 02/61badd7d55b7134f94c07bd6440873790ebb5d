@@ -1,0 +1,1 @@
+T36 C2 完成:提取边界=机械收敛护栏家族(repeated_rejection+no_progress_loop),T35 C5 语义不变;TDD 红绿;顺带修正 T16 矩阵证据路径(C1 移动所致);验证=agent 269 passed + tsc + governance(baseline 5)。
