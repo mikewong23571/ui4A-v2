@@ -407,6 +407,7 @@ F-17 别名动作 subject-mismatch 误拒 · F-15 双创建按钮(随 D-2 复查
 - **打点定论(2026-08-28,resolve/planned/data-generation 三层探针)**: 布局不变式成立——批准后宿主 reload **确实运行并提交了新 generation 树**;服务端 dependencyDecision 也正确检出漂移并 replan。**残余竞态实锤**: 同一轮里 resolve 相位读到 inbox=0(判定漂移成立)→ 紧随的 replan 相位 getEntity('inbox') 却读回 inbox=1(把已决确认烘进新树)——两次相邻快照读可见性不一致,属 `service.incremental-gap` 同类(引擎会话水位/双单例可见性),与 e2e 无关、dev/prod 同构存在。
 - **本轮已落地修复(全部有效且必要,保留)**: ①确认/委托实体 collection 回链;②区域指纹含成员清单;③surfaceId/SDK store 身份按 sidecar 版本烙版(消息载荷逐面重写,根治跨版本组件残留);④sidecar GET no-store(客户端+路由双侧);⑤面容器 data-generation 诊断属性。
 - **处置**: 下一专项——引擎会话快照可见性增量 gap(getEntity 相邻两次读不一致;复现=批准后 reload 的 replan 相位成员数与 resolve 相位不一致,探针口径已沉淀于本条);修复后重走 S2 四项判定。修复期间 S2 判**不通过**。
+- **请求关联探针定论(2026-08-28 第二轮,commit 见 fix t35 F-31 探针)**: f31-plan 探针带 requestId 后,时间线彻底澄清——**批准后的 replan 相位 getEntity('inbox') 正确读到 0 成员,新树干净**(引擎竞态假设被推翻:此前的 memberCount=1 日志来自批准前的初始加载与无 request 关联的日志交错)。**病灶收敛至客户端渲染层**: setSurfaces 已提交新 generation 树,但 DOM 的 data-generation 不前进、SDK 仍渲染旧树(硬刷新必好)。下一步:检查 A2uiSurface(@a2ui/react v0.9)对 surface prop 更新的响应语义(store 是否挂 mount 期 surfaceId 引用)与 surfaces key 竞态;data-generation 属性与 f31-plan 关联探针已沉淀为下一轮起点工具(修复后移除)。
 
 ---
 
