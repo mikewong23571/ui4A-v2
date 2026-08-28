@@ -10,3 +10,10 @@ writing-requests)诚实保持缺链。
 curl 探针:article-drafting:main 含 collection→articles;articles 含 flow→向导;
 comments/software-changes/writing-requests 如实仅 self。
 Commit: 1b40fa2c
+
+T37 Phase A Checkpoint 验证报告(自治验收)
+- 定向测试: CI=true pnpm vitest run packages/engine/src/contract/siren.test.ts apps/web/src/engine/flow-entry.test.ts --project unit → 37 passed(编排 agent 亲跑)
+- 全量门禁: CI=true UI4A_WORKER_HEALTH_PORT=3199 pnpm check → exit 0,408 files / 3099 tests passed(亲跑;3101 端口碰撞用 env 避让,环境因素非回归)
+- pnpm governance → OK(亲跑)
+- 合同探针(3100): article-drafting:main 含 collection→articles;comments 如实仅 self(亲跑)
+- 滑梯自查(§六): 无页面组件、无 per-app/per-entity 特判、无硬编码文案、无规则特判——仅投影推导
