@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import type { FlowDefinition, SirenEntity } from '@ui4a/engine';
 import type { EngineSnapshot, InstanceSnapshot } from '@ui4a/shared';
 
-import { flowInstancesCollection, resolveFlowRelAlias, withCollectionFlowEntryLinks } from './flow-entry';
+import {
+  flowInstancesCollection,
+  resolveFlowRelAlias,
+  withCollectionFlowEntryLinks,
+} from './flow-entry';
 
 function instance(rel: string, flow = 'article-drafting'): InstanceSnapshot {
   return { rel, flow, node: 'title', fields: {} };
