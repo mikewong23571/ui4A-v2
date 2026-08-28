@@ -21,15 +21,15 @@
 
 ## Phase B 服务编排拆解(FR1.3、FR1.4)
 
-- [ ] Task: B1 chat route 编排提取(FR1.3)
-  - [ ] 识别 route 内编排段(SSE 生命周期/流分段/错误分层/决策投影接线),提取 orchestration helper 模块(如 `src/chat/route-orchestration.ts` 或邻近期 chat 模块);route 收缩为路由壳
-  - [ ] 先迁移/补齐针对 helper 的单测(红→绿),再搬实现;chat 合同测试(SSE/history/recovery)全绿
-  - [ ] 文件 ≤500 行;移除基线条目 `chat/route.ts` 同 commit
-- [ ] Task: B2 service.ts flow 别名解析段提取(FR1.4)
-  - [ ] getEntity/exec 的 `flow:<name>` 别名解析段并入 `flow-entry.ts` 装配边界(基线 note 既定处置);`pnpm --project unit` + service-tests 全绿
-  - [ ] 文件 ≤500 行;移除基线条目 `service.ts` 同 commit
-  - [ ] 注:若 Phase E 采取组合根下沉形态(a),本任务先做最小提取保收缩,E 阶段再深化,避免重复拆
-- [ ] Task: Phase B 检查点(chat 全套件 + service-tests + governance;git notes)
+- [x] Task: B1 chat route 编排提取(FR1.3) `ad55064`
+  - [x] 识别 route 内编排段(SSE 生命周期/流分段/错误分层/决策投影接线),提取 orchestration helper 模块(如 `src/chat/route-orchestration.ts` 或邻近期 chat 模块);route 收缩为路由壳
+  - [x] 先迁移/补齐针对 helper 的单测(红→绿),再搬实现;chat 合同测试(SSE/history/recovery)全绿
+  - [x] 文件 ≤500 行;移除基线条目 `chat/route.ts` 同 commit
+- [x] Task: B2 service.ts flow 别名解析段提取(FR1.4) `37e7938`
+  - [x] getEntity/exec 的 `flow:<name>` 别名解析段并入 `flow-entry.ts` 装配边界(基线 note 既定处置);`pnpm --project unit` + service-tests 全绿
+  - [x] 文件 ≤500 行;移除基线条目 `service.ts` 同 commit
+  - [x] 注:若 Phase E 采取组合根下沉形态(a),本任务先做最小提取保收缩,E 阶段再深化,避免重复拆
+- [x] Task: Phase B 检查点(chat 全套件 + service-tests + governance;git notes) `37e7938`
 
 ## Phase C 纯内核与 agent loop(FR1.5、FR2.1)
 
