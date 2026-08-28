@@ -8,7 +8,7 @@
  * - 状态徽标:running default / completed secondary / failed destructive /
  *   max-steps outline(shadcn Badge,data-status + data-variant 断言);
  * - 空态:暂无委托;
- * - 自动轮询:每 3s 重拉(舰队页零操作刷新)+ 手动刷新按钮;
+ * - 自动轮询:每 3s 重拉(舰队页零操作刷新)+ 手动重新载入;
  * - 失败态:服务不可用如实提示(不粉饰)。
  */
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -166,7 +166,7 @@ describe('委托舰队页(/delegations)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  it('手动刷新按钮:立即重拉', async () => {
+  it('手动重新载入:立即重拉', async () => {
     const fetchMock = mockFleet([row()]);
     vi.stubGlobal('fetch', fetchMock);
 
@@ -176,7 +176,7 @@ describe('委托舰队页(/delegations)', () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole('button', { name: '刷新' }));
+    fireEvent.click(screen.getByRole('button', { name: '重新载入' }));
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });

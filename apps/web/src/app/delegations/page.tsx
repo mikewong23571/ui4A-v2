@@ -101,11 +101,11 @@ export default function DelegationsPage() {
           type="button"
           variant="outline"
           size="sm"
-          aria-label="刷新"
+          aria-label="重新载入"
           data-nav="local:fleet-refresh"
           onClick={() => void load()}
         >
-          刷新
+          重新载入
         </Button>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">

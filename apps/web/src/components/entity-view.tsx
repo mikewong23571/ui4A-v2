@@ -174,8 +174,10 @@ export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
             <TableBody>
               {Object.entries(entity.properties)
                 // fields 单独成行(值人话化);title 是节点标题的纯展示投影,
-                // h1 已呈现、不再上表(#3:与表单字段 title 撞名的根因)。
-                .filter(([key]) => key !== 'fields' && key !== 'title')
+                // h1 已呈现、不再上表(#3:与表单字段 title 撞名的根因);
+                // presentation 是呈现层结构元数据,上属性表即 F-14 的 JSON
+                // 原文泄漏——审计走 RawContractDrawer。
+                .filter(([key]) => !['fields', 'title', 'presentation'].includes(key))
                 .map(([key, value]) => (
                   <TableRow key={key}>
                     <th

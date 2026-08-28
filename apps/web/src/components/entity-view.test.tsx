@@ -65,6 +65,8 @@ const wizardEntity: SirenEntity = {
     node: 'ready',
     title: '就绪',
     fields: { title: '草稿标题' },
+    // T35 F-14 夹具:呈现层结构元数据(生产投影携带)不得上属性表。
+    presentation: { fields: [{ path: 'properties.fields.title', role: 'identity' }] },
   },
   actions: [publishAction, resetAction],
   links: [
@@ -699,6 +701,8 @@ describe('EntityView:属性表人话口径(T14 Phase A,#3 属性表侧)', () => 
     const headers = [...(section?.querySelectorAll('th') ?? [])].map((th) => th.textContent);
     expect(headers).not.toContain('title');
     expect(headers).not.toContain('fields');
+    // T35 F-14:呈现层结构元数据不上属性表(审计走 RawContractDrawer)。
+    expect(headers).not.toContain('presentation');
     expect(headers).toEqual(expect.arrayContaining(['rel', 'flow', 'node', '字段值']));
     // 节点标题投影仍是页面主标题(属性表不再重复)
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('就绪');
