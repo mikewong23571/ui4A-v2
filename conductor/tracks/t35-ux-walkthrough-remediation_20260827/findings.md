@@ -392,6 +392,19 @@ F-17 别名动作 subject-mismatch 误拒 · F-15 双创建按钮(随 D-2 复查
 - **修复**: work-thread 定义 archive 动作补 requires-confirmation: high(合同数据层,与 post 归档同规)。
 - **修复记录(2026-08-28,commit d9e7ea8)**: `THREAD_ARCHIVE_ACTION` 补 `'requires-confirmation': 'high'`;2580 测试通过。浏览器复验归 Phase F(归档 → 两段式确认门)。
 
+## F-31 首页待批卡:批准后不退场,聚合列表冻结(R3,S2 不通过项)
+
+- **状态**: fixing(已修两处必要条件;命中路径重规划仍未触发,专项排查中)
+- **严重度**: P1(首页主路径正确性)
+- **发现**: R3(2026-08-28,S2 走查)
+- **现象**: 首页决策卡点[批准]→exec 成功(实体转 approved)→卡片**不退场**,且退化为 `confirmation:c1/pending` 裸链卡;页内「重新载入」后依旧。硬重载后亦然(sidecar 持久面)。
+- **已定位并修复(必要条件)**:
+  1. 确认/委托实体缺 `['collection']` 回链——F-01 精确失效够不到 inbox/delegations 列表缓存(已补,engine project.ts + 测试锚迁移);
+  2. 组合区域指纹 `contractFingerprint` 不含成员清单——inbox 成员集变化时指纹不变,sidecar 不重规划(runtime-composition.ts 已补 members 序列入指纹,单主体 members: 依赖同口径)。
+- **残余(未闭环)**: 上述两修后,批准→卡仍不退场。resolve 命中路径 `dependencyDecision(active.dependencies, currentDependencies(situation))`(runtime.ts:299)预期因指纹变化 miss→重规划,实测未发生——疑点:命中时 AuthorizedRoot regions 的实体装载形态(是否含 entities/是否走 planWorkspaceComposition)与计划时不同构,或 situation 装配早于快照刷新。需专项:在 resolve 打点对比 stored vs current 指纹。
+- **证据**: `evidence/2026-08-28-R3/S2_home_pending.png`(决策卡正确形态)→ `S2_after_approve.png`(退化裸链卡不退场)。
+- **处置**: 专项修复后重走 S2 全部四项判定;修复期间 S2 判**不通过**。
+
 ---
 
 ## 复验记录(回填区)

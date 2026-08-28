@@ -116,14 +116,26 @@ export function ThreadDesk({ threadId, scope }: ThreadDeskProps) {
     };
   }, [threadId]);
 
-  // 线更新事件(书桌自身 exec / 舞台动作)→ 重读叙述与工作集。
+  // 合同执行事件(任意 rel)→ 重读叙述与工作集:context 成员的状态指针是线的
+  // 派生投影,成员上的 exec(在注视面发生)同样改变它。线缓存未被执行方失效,
+  // 此处先失效再重读(每次合同 exec 多一次线读,正确性优先)。
   useEffect(() => {
-    const sync = (event: Event): void => {
-      if ((event as CustomEvent<string>).detail === threadRel) void reload();
+    const sync = (): void => {
+      cache.invalidate(threadRel);
+      void reload();
     };
     window.addEventListener(THREAD_UPDATED_EVENT, sync);
     return () => window.removeEventListener(THREAD_UPDATED_EVENT, sync);
-  }, [threadRel, reload]);
+  }, [cache, threadRel, reload]);
+
+  // 注视面/任意合同 exec 后,钉住页的缓存身份可能过期(surfaceSubmit 已精确
+  // 失效页面缓存,此处只需放弃书桌侧快照重读)——清空 pinEntities 触发重取。
+  const [pinRefresh, setPinRefresh] = useState(0);
+  useEffect(() => {
+    const sync = (): void => setPinRefresh((n) => n + 1);
+    window.addEventListener(THREAD_UPDATED_EVENT, sync);
+    return () => window.removeEventListener(THREAD_UPDATED_EVENT, sync);
+  }, []);
 
   const contextRels = useMemo(() => {
     const context = thread?.properties.context;
@@ -139,10 +151,13 @@ export function ThreadDesk({ threadId, scope }: ThreadDeskProps) {
   );
   useEffect(() => {
     let cancelled = false;
+    // pinRefresh 变化(任意合同 exec 后)清快照全量重读——cache 已被 surfaceSubmit
+    // 精确失效,重读即新投影。
+    const known = pinRefresh === 0 ? pinEntities : {};
     void (async () => {
       for (const rel of pinOnly) {
         if (cancelled) return;
-        if (pinEntities[rel] !== undefined) continue;
+        if (known[rel] !== undefined) continue;
         const entity = await cache.get(rel).catch(() => null);
         if (cancelled) return;
         if (entity !== null) setPinEntities((prev) => ({ ...prev, [rel]: entity }));
@@ -151,7 +166,7 @@ export function ThreadDesk({ threadId, scope }: ThreadDeskProps) {
     return () => {
       cancelled = true;
     };
-  }, [pinOnly, cache, pinEntities]);
+  }, [pinOnly, cache, pinEntities, pinRefresh]);
 
   const entries = useMemo<DeskEntry[]>(() => {
     const list: DeskEntry[] = [];

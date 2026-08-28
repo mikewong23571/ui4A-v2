@@ -29,14 +29,29 @@ export const THREAD_CREATE_ACTION: ActionDefinition = {
   title: '创建工作线',
   ...noNodeFields,
   fields: [
-    { name: 'id', type: 'text', title: '工作线标识', required: true, minLength: 1 },
-    { name: 'goal', type: 'textarea', title: '目标', required: true, minLength: 1 },
+    {
+      name: 'id',
+      type: 'text',
+      title: '工作线标识',
+      required: true,
+      minLength: 1,
+      description: '唯一的短名字:小写字母或数字加横线,如 fix-webflux-cve',
+    },
+    {
+      name: 'goal',
+      type: 'textarea',
+      title: '目标',
+      required: true,
+      minLength: 1,
+      description: '这条线要达成什么,一句话说清',
+    },
     {
       name: 'goalSource',
       type: 'text',
       title: '目标来源',
       required: true,
       minLength: 1,
+      description: '来源的引用标识(不含空格),如 chat:m41 或 review-0712',
     },
   ],
 };

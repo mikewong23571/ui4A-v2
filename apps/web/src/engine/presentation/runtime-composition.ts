@@ -36,12 +36,19 @@ function contractFingerprint(entity: unknown): string {
     properties?: Record<string, unknown>;
     actions?: unknown;
     links?: unknown;
+    entities?: Array<{ properties?: Record<string, unknown> }>;
   };
   return contentVersion({
     class: value.class,
     presentation: value.properties?.presentation,
     actions: value.actions,
     links: value.links,
+    // T35 R3/S2:区域指纹必须含成员清单——inbox/delegations 的成员集变化
+    // (批准退场、委托终局)否则指纹不变,sidecar 不重规划,首页列表冻结。
+    // 与单主体 members: 依赖同口径(成员 rel 序列)。
+    members: Array.isArray(value.entities)
+      ? value.entities.map((member) => member.properties?.rel)
+      : undefined,
   });
 }
 

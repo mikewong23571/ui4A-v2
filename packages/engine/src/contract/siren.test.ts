@@ -301,6 +301,8 @@ describe('project — confirmation 实体(spec 架构决定 2)', () => {
     expect(entity?.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=confirmation:c1' },
       { rel: ['target'], href: '/api/entity?rel=post:post-welcome' },
+      // T35 R3:collection 回链 inbox——exec 精确失效连同在等我列表(F-01 口径)。
+      { rel: ['collection'], href: '/api/entity?rel=inbox' },
     ]);
   });
 

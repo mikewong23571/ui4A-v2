@@ -216,6 +216,9 @@ function projectConfirmation(
     links: [
       { rel: ['self'], href: entityHref(deps.baseHref, confirmationRel(confirmation.id)) },
       { rel: ['target'], href: entityHref(deps.baseHref, confirmation.targetRel) },
+      // T35 R3/S2:collection 回链 inbox——exec 后精确失效(F-01)必须连同
+      // 在等我列表一起失效,否则已决确认滞留首页(决策卡假 pending)。
+      { rel: ['collection'], href: entityHref(deps.baseHref, 'inbox') },
     ],
     'guard-results': guardResults,
   };
@@ -276,7 +279,11 @@ function projectDelegation(delegation: DelegationSnapshot, deps: ProjectDeps): S
       ...(delegation.reason !== undefined ? { reason: delegation.reason } : {}),
     },
     actions: [],
-    links: [{ rel: ['self'], href: entityHref(deps.baseHref, delegationRel(delegation.id)) }],
+    // collection 回链 delegations(与确认实体同口径:状态终局后列表当次失效)。
+    links: [
+      { rel: ['self'], href: entityHref(deps.baseHref, delegationRel(delegation.id)) },
+      { rel: ['collection'], href: entityHref(deps.baseHref, 'delegations') },
+    ],
     'guard-results': [],
   };
 }

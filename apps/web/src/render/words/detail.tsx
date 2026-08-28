@@ -31,13 +31,18 @@ export function DetailWord(props: WordProps) {
       : {};
   const scalarProperties = Object.entries(entity.properties).filter(([key]) => key !== 'fields');
 
-  // T35 F-06:links 模式是关系辅助信息,降级为弱化内联行,不再套整卡 article 壳
-  // (此前 self 卡与内容卡同级,视觉权重倒置)。
+  // T35 F-06/R3:links 模式是关系辅助信息,降级为弱化内联行,不再套整卡 article
+  // 壳;self 指回实体自身,卡题已在场,属重复噪音——通通不渲染(空区块即留白)。
   if (mode === 'links') {
+    const navigable = entity.links.filter((link) => !link.rel.includes('self'));
+    // 词条组件类型要求返回元素:空区块以隐藏节段留白(不渲染任何可交互内容)。
+    if (navigable.length === 0) {
+      return <section data-word="detail" aria-label="链接" className="hidden" />;
+    }
     return (
       <section data-word="detail" aria-label="链接" className="text-xs text-muted-foreground">
         <ul className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {entity.links.map((link) => {
+          {navigable.map((link) => {
             const target = hrefToRel(link.href);
             return (
               <li key={`${link.rel.join('/')}:${link.href}`} className="flex items-center gap-1.5">

@@ -53,6 +53,7 @@ import {
 } from '@/render/presentation/generic';
 import { createCanvasActionHandler } from '../canvas-action-handler';
 import { readThreadPins, writeThreadPin } from './thread-desk';
+import { notifyThreadUpdated } from './thread-desk-shared';
 import { CanvasWhyDrawer, type PresentationDiagnostic } from '../canvas-why-drawer';
 import { ActionSubmitProvider, createSurfaceActionSubmit } from '../actions/action-submit';
 import { useEntityCache } from '../entity-cache-provider';
@@ -185,6 +186,9 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
       const result = await submit(input);
       if (result.ok) {
         cache.invalidateAfterExec(input.rel, result.entity);
+        // §十:广播合同执行(书桌等轨上组件据此放弃本地快照重读);detail=实际
+        // 执行的 rel,线面消费方自行过滤。
+        notifyThreadUpdated(input.rel);
         reloadRef.current();
       }
       return result;

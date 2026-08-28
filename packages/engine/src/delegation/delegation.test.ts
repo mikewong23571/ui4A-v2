@@ -297,7 +297,11 @@ describe('project(delegations 投影)', () => {
       successes: 1,
       summary: '目标完成',
     });
-    expect(entity?.links).toEqual([{ rel: ['self'], href: '/api/entity?rel=delegation:wf-1' }]);
+    expect(entity?.links).toEqual([
+      { rel: ['self'], href: '/api/entity?rel=delegation:wf-1' },
+      // T35 R3:collection 回链 delegations(状态终局后列表当次失效,F-01 口径)。
+      { rel: ['collection'], href: '/api/entity?rel=delegations' },
+    ]);
     expect(project(snapshot, delegationRel('nope'), deps)).toBeUndefined();
   });
 });
