@@ -1,0 +1,10 @@
+T37 Phase B (B3-B4) canvas 默认消费组合面 — 任务摘要
+
+目标:canvas?scope=<app> 无 focus 渲染应用组合面(替换空屏提示);chip href 改
+canvas?scope=<app> 使组合面成为默认落点;focus 深链行为保持。
+实现:canvas-body 主位挂 workspace:app:<scope>(舞台机械一行 subject 模板推导,
+零应用落点布局组件、零新增词汇)。
+验证:组件测试红(空屏提示)→绿(组合面渲染 + focus 回归不破);受影响 9 文件
+71/71;全量 3116/3116。
+已知限制:长驻开发进程 broker 为 globalThis 单例,HMR 不能替换,重启开发栈后生效。
+Commit: c74a2881
