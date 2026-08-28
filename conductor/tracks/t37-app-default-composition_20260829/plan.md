@@ -8,17 +8,17 @@
 
 ## Phase A:导航合同投影(纯合同层,零像素)
 
-- [ ] Task A1: Red——投影单测(引擎/web 投影测试位):流实例 links 含
+- [x] Task A1: Red——投影单测(引擎/web 投影测试位):流实例 links 含
   append 目标集合(流→集合正向,复用 `appendedCollections` 推导);
   产物→流回链在可推导处补齐(comments/software-changes/writing-requests/
   agent-runs 口径);不可推导处断言诚实缺链。确认测试失败。
-- [ ] Task A2: Green——`apps/web/src/engine/flow-entry.ts` 与
+- [x] Task A2: Green——`apps/web/src/engine/flow-entry.ts` 与
   `packages/engine/src/contract/siren/project.ts` 实现投影规则;
   重放测试保投影一致性;测试全绿。
-- [ ] Task A3: 合同探针验证 + 门禁:curl 断言三应用(publishing/community/
+- [x] Task A3: 合同探针验证 + 门禁:curl 断言三应用(publishing/community/
   development)流实例与集合 links 形状;`pnpm check` + `pnpm governance`
   全绿;commit + git notes。
-- [ ] Task A4: Phase A Checkpoint(复跑测试、留证、plan 标记 checkpoint sha)。
+- [x] Task A4: Phase A Checkpoint(复跑测试、留证、plan 标记 checkpoint sha)。[checkpoint: 1b40fa2c]
 
 ## Phase B:默认落点组合化(消费 T30 组合机器,零特判)
 
