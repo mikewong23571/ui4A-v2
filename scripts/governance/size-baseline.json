@@ -19,13 +19,6 @@
       "limit": 500,
       "note": "T35 C5 反复拒绝机械收敛护栏 +20(2026-08-27,业务优先登记;循环终止语义集中在单文件,拆分会破坏终止判定可读性;处置=F-04 相关终止语义下次演进时按 fail-guard 家族提取收缩)",
       "track": "t35-ux-walkthrough-remediation_20260827"
-    },
-    {
-      "path": "apps/web/src/engine/service.ts",
-      "lines": 503,
-      "limit": 500,
-      "note": "T35 F-02 flow 实例集合投影接线 +3(getEntity 兜底分支,2026-08-27,业务优先登记;处置=与既有 getEntity/exec 别名解析段一并提取 flow-entry 装配模块收缩)",
-      "track": "t35-ux-walkthrough-remediation_20260827"
     }
   ],
   "dirs": [

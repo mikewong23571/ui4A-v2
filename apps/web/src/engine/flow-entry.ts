@@ -116,6 +116,27 @@ function nonEmptySuffixOf(value: string, prefix: string): string | null {
   return suffix.trim() === '' ? null : suffix;
 }
 
+/**
+ * `flow:<name>` 读面补全(T36 B2 自 service.ts getEntity 下沉):别名解析 →
+ * 常规投影;未命中再兑现零/多实例的只读实例集合;命中后补集合入口链接。
+ * 未知 flow 名返回 undefined(404 诚实);projectEntity 由调用方注入
+ * (快照与投影依赖留在 service 装配层)。
+ */
+export function completeFlowEntity(
+  rel: string,
+  snapshot: EngineSnapshot,
+  flows: readonly FlowDefinition[],
+  projectEntity: (target: string) => SirenEntity | undefined,
+): SirenEntity | undefined {
+  const target = resolveFlowRelAlias(rel, snapshot) ?? rel;
+  let entity = projectEntity(target);
+  if (entity === undefined) {
+    entity = flowInstancesCollection(rel, snapshot, flows) ?? undefined;
+  }
+  if (entity === undefined) return undefined;
+  return withCollectionFlowEntryLinks(entity, flows);
+}
+
 /** 实例成员的一行身份:声明 identity 字段优先,回退 rel(零发明)。 */
 function instanceIdentity(instance: InstanceSnapshot): string {
   const declared = instance.fields['identity'];

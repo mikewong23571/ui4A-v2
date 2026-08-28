@@ -78,11 +78,7 @@ import { bootstrapAndVerifyApplication } from './bootstrap';
 export { bootstrapAndVerifyApplication } from './bootstrap';
 import type { RenderSpec } from '../render/spec';
 import { dispatchNotify } from '../temporal/notify';
-import {
-  flowInstancesCollection,
-  resolveFlowRelAlias,
-  withCollectionFlowEntryLinks,
-} from './flow-entry';
+import { completeFlowEntity, resolveFlowRelAlias } from './flow-entry';
 import { preflightCodingResultDecision } from './agent/coding-result-decision';
 import {
   createAndDispatchAgentRun,
@@ -352,18 +348,11 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     getEntity: async (rel) => {
       // 读路径增量 fold(spec 决定 4):返回前同步 worker 等外部写者的新事件。
       await enqueue(state, () => refreshFromLog(db, logState, scheduleRecipesForSnapshot));
-      // flow:<name> 别名(向导类 flow 投影为其实例实体)——纯服务层投影补全,
-      // engine 的 project/judge 语义不动。alias 请求参数缺省仅影响 rel 解析。
-      const target = resolveFlowRelAlias(rel, logState.snapshot) ?? rel;
-      let entity = project(logState.snapshot, target, projectDeps());
-      if (entity === undefined) {
-        // T35 F-02:零/多实例 flow 兑现为只读实例集合列举(sitemap 已声明该
-        // 表面;成员=实例自身快照,零新真相)。未知 flow 名仍 undefined → 404。
-        entity = flowInstancesCollection(rel, logState.snapshot, activeFlowList()) ?? undefined;
-      }
-      if (entity === undefined) return undefined;
-      // 集合入口链接同样吃快照活跃定义(append 目标随定义激活演进)。
-      return withCollectionFlowEntryLinks(entity, activeFlowList());
+      // flow:<name> 读面补全(别名→实例集合兜底→集合入口链接)整体在 flow-entry
+      // 的 completeFlowEntity;alias 请求参数缺省仅影响 rel 解析。
+      return completeFlowEntity(rel, logState.snapshot, activeFlowList(), (target) =>
+        project(logState.snapshot, target, projectDeps()),
+      );
     },
     getMetaEntity: async (rel) => {
       // _meta 站点读路径:同一引擎同一日志(先同步外部写者);href 前缀 /_meta
