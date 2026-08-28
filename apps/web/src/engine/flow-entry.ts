@@ -12,7 +12,7 @@
  *   补 `flow:<name>` 入口链接——从 articles 出发沿 links 能到达向导实例,
  *   零 startRel 特权的完整导航(处境披露的根基)。
  */
-import { actionEffects } from '@ui4a/engine';
+import { appendedCollections } from '@ui4a/engine';
 import type { FlowDefinition, SirenEntity, SirenLink } from '@ui4a/engine';
 import type { EngineSnapshot, InstanceSnapshot } from '@ui4a/shared';
 
@@ -33,22 +33,10 @@ export function resolveFlowRelAlias(rel: string, snapshot: EngineSnapshot): stri
   return instances[0]!.rel;
 }
 
-/** flow 的 append 效果目标集合(article-drafting → articles)。 */
-function appendedCollections(flow: FlowDefinition): string[] {
-  const collections = new Set<string>();
-  for (const node of flow.nodes) {
-    for (const action of node.actions) {
-      for (const effect of actionEffects(action)) {
-        if (effect.type === 'append') collections.add(effect.collection);
-      }
-    }
-  }
-  return [...collections];
-}
-
 /**
  * 集合实体补 flow 入口链接:为每个向该集合 append 成员的 flow 生成
  * `{rel: ['flow'], href: /api/entity?rel=flow:<name>}`。非集合实体原样返回。
+ * 目标集合推导复用引擎 `appendedCollections`(与实例正向链同一口径,T37)。
  */
 export function withCollectionFlowEntryLinks(
   entity: SirenEntity,

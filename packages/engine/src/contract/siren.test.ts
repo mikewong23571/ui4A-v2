@@ -262,6 +262,43 @@ describe('project — 集合实体(entities[] 子实体直达)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 流实例 → 产物集合正向链接(T37 FR1:按出生定义的 append 效果推导,零发明)
+// ---------------------------------------------------------------------------
+
+describe('project — 流实例→产物集合正向链接(T37 FR1)', () => {
+  it('向导实例按 append 效果携带产物集合正向链接(未发布也可见入口)', () => {
+    // article-drafting:main 停在 classification,不是任何集合成员——
+    // 正向链接只能来自 publish 动作的 append 效果声明。
+    const entity = project(seedSnapshot, 'article-drafting:main', deps);
+    expect(entity?.links).toEqual([
+      { rel: ['self'], href: '/api/entity?rel=article-drafting:main' },
+      { rel: ['collection'], href: '/api/entity?rel=articles' },
+    ]);
+  });
+
+  it('正向链接同样经 baseHref 注入绝对前缀', () => {
+    const entity = project(seedSnapshot, 'article-drafting:main', {
+      ...deps,
+      baseHref: 'http://localhost:3100',
+    });
+    expect(entity?.links).toContainEqual({
+      rel: ['collection'],
+      href: 'http://localhost:3100/api/entity?rel=articles',
+    });
+  });
+
+  it('无 append 效果的流实例不发明产物集合链接(成员反查口径不变)', () => {
+    // comment-moderation 无任何 append 效果;comment:c1 的 collection 链
+    // 只来自成员资格反查,不得凭 flow 名/集合名相似性造链。
+    const entity = project(seedSnapshot, 'comment:c1', deps);
+    expect(entity?.links).toEqual([
+      { rel: ['self'], href: '/api/entity?rel=comment:c1' },
+      { rel: ['collection'], href: '/api/entity?rel=comments' },
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // confirmation 实体与 inbox 投影(T3:pending 确认的人类视图)
 // ---------------------------------------------------------------------------
 

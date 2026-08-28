@@ -346,6 +346,23 @@ export function actionEffects(action: ActionDefinition): EffectDefinition[] {
   return effects;
 }
 
+/**
+ * flow 的 append 效果目标集合(去重;效果声明的纯推导,零发明)。
+ * 导航投影两个方向共用同一口径:实例→产物集合正向链(siren/project)与
+ * 集合→flow 入口回链(web flow-entry)。
+ */
+export function appendedCollections(flow: FlowDefinition): string[] {
+  const collections = new Set<string>();
+  for (const node of flow.nodes) {
+    for (const action of node.actions) {
+      for (const effect of actionEffects(action)) {
+        if (effect.type === 'append') collections.add(effect.collection);
+      }
+    }
+  }
+  return [...collections];
+}
+
 function normalizeAction(action: ActionDefinition): ActionDefinition {
   return {
     ...action,

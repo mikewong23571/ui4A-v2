@@ -16,7 +16,7 @@ import {
   confirmationRel,
 } from '../../execution/confirmation';
 import { DELEGATIONS_REL, delegationRel } from '../../delegation/delegation';
-import { actionEffects } from '../../core/parse';
+import { actionEffects, appendedCollections } from '../../core/parse';
 import { flowForInstance } from '../../execution/judge';
 import {
   RENDER_SPECS_REL,
@@ -80,6 +80,17 @@ function projectInstance(
   for (const [collection, members] of Object.entries(snapshot.collections)) {
     if (members.includes(instance.rel)) {
       links.push({ rel: ['collection'], href: entityHref(deps.baseHref, collection) });
+    }
+  }
+  // 效果推导正向链(T37 FR1):按出生定义的 append 效果携带产物集合入口——
+  // 向导实例尚未产出任何成员也可见"产物将归入的集合"。与成员反查按 href 去重。
+  if (flow !== undefined) {
+    const known = new Set(links.map((link) => link.href));
+    for (const collection of appendedCollections(flow)) {
+      const href = entityHref(deps.baseHref, collection);
+      if (known.has(href)) continue;
+      known.add(href);
+      links.push({ rel: ['collection'], href });
     }
   }
   for (const artifact of Object.values(snapshot.artifacts ?? {})) {
