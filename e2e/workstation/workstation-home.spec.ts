@@ -181,8 +181,7 @@ test('workstation home and the real CLI read the same three declared source enti
     expect(presentationRequests).toHaveLength(1);
 
     for (const { rel, title } of SOURCE_REGIONS) {
-      const entity = entities.get(rel)!;
-      const canonicalRel = String(entity.properties.rel);
+      expect(String(entities.get(rel)!.properties.rel)).toBe(rel);
       const heading = surface.getByRole('heading', { name: title, exact: true });
       await expect(heading).toHaveCount(1);
       await expect(heading).toBeVisible();

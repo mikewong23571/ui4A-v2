@@ -9,13 +9,13 @@ import type {
 } from '@ui4a/engine';
 import { contentVersion, fold } from '@ui4a/engine';
 
-import { listEvents, readLog } from '../../packages/db/src/events';
-import { getPool } from '../../packages/db/src/pool';
+import { listEvents, readLog } from '../packages/db/src/events';
+import { getPool } from '../packages/db/src/pool';
 import {
   findActiveSidecar,
   loadPresentationSnapshot,
   rebuildPresentationProjection,
-} from '../../packages/db/src/presentation';
+} from '../packages/db/src/presentation';
 import { businessFlows } from '../apps/web/src/domain/flows';
 import { hydratePresentationSurface } from '../apps/web/src/render/presentation/generic';
 import { DATABASE_URL, SCENARIO_BASE, withFreshServer } from './kits/server-kit';

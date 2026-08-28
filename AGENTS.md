@@ -117,8 +117,8 @@ Rules GR1–GR5 are mechanically enforced by `scripts/governance/`; run `pnpm go
 
 - **GR1 dependency direction:** `packages/shared ← packages/engine ← packages/agent`; apps compose packages and never import each other. `shared`/`engine` stay free of platform packages (pg, Temporal, Next/React, Node http). Every exception must be registered in `scripts/governance/exceptions.json` with a reason and retirement condition _before_ the code is written; stale entries fail the gate.
 - **GR2 no compatibility code while unreleased:** no legacy/compat dual paths for old wire formats, event shapes, or API behavior — change the single implementation; dev/test databases may be reset. Marker scans fail on unregistered legacy/compat wording.
-- **GR3 size limits (effective lines):** non-test source file ≤ 500, test file ≤ 800, per-directory direct `.ts/.tsx` total ≤ 4000. Registered debt lives in `scripts/governance/size-baseline.json` (shrink-only; entries carry their owning track/plan, see the per-entry notes and DECISIONS.md D40/D52). New violations fail the gate.
-- **GR4 gate semantics:** governance checks run in Red → Green → Gate order; baselines may only shrink; `governance:strict` (empty baselines) joins `pnpm check` only when the size baseline is fully cleared (DECISIONS.md D52; it is not tied to any single track closing).
+- **GR3 size limits (effective lines):** non-test source file ≤ 500, test file ≤ 800, per-directory direct `.ts/.tsx` total ≤ 4000. The baseline is empty since T36 (D53): over-limit work is decomposed along functional boundaries at change time; re-registering debt requires a new DECISIONS entry first.
+- **GR4 gate semantics:** governance checks run in Red → Green → Gate order; `pnpm check` runs `governance:strict` (both exception registries empty) since T36 closed the baseline (DECISIONS.md D52/D53).
 - **GR5 archaeology control:** when a Track closes, its bespoke scripts/specs are either promoted to standing gates or deleted (git keeps history); do not add permanent per-track Playwright configs. Completed Tracks live read-only in `conductor/tracks/archive/`.
 
 ### D51 授权/注意力分离纪律(T33;执法主体=类型系统)

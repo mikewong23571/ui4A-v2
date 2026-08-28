@@ -20,7 +20,7 @@
     "test": "NODE_OPTIONS=--no-experimental-webstorage vitest run",
     "governance": "node scripts/governance/run-all.mjs",
     "governance:strict": "node scripts/governance/run-all.mjs --strict",
-    "check": "pnpm typecheck && pnpm lint && pnpm governance && pnpm test",
+    "check": "pnpm typecheck && pnpm lint && pnpm governance:strict && pnpm test",
     "e2e": "CI=true playwright test",
     "eval:llm": "CI=true playwright test --config=playwright.eval.config.ts",
     "cli:build": "pnpm --filter @ui4a/cli build",

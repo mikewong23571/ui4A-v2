@@ -900,3 +900,26 @@
 - **GR4 修正**:`governance:strict` 并入 `pnpm check` 的触发条件修正为"整个
   size-baseline 清空时"——T22 关闭时 baseline 仍登记 T24/T29/T31/T32/e2e 等后续
   track 授权条目,strict 不具备并入条件;AGENTS.md 同步改写,不再以 T22 关闭为触发点。
+
+## D53 治理例外清偿完毕:strict 常驻并确立"膨胀即拆解"纪律(2026-08-29,T36 收口)
+
+- **事实**:`size-baseline.json`(12 条 GR3 债务)与 `exceptions.json`
+  `dependencyExceptions`(2 条 GR1 例外)经 T36 以重构与功能拆解全部清偿:
+  hook/模块提取、测试 describe 分片、五处目录子域归档、`@ui4a/db` 抽包、
+  kill 集成测试与组合根同宿。两登记文件保留空结构(登记机制不删,写入须新决策)。
+- **strict 接线**:D52 设定的触发条件(整个 size-baseline 清空)达成,
+  `pnpm check` 的治理段自本决定起改为 `pnpm governance:strict`。
+- **GR3 处置纪律修订**:超限的默认处置从"登记例外后继续"改为**变更时沿
+  功能边界拆解**(拆分必须沿领域;禁止为凑指标的机械挪动/任意对半切;验收
+  证据只迁移不删减)。workflow.md 业务优先原则相应收窄:保留"不为凑行数
+  裁剪代码/证据",退役"优先登记例外"逃生门——strict 下登记会使 check 失败,
+  如确需登记须先修订本决定。
+- **GR1 边界补充**:`packages/db` 为平台存储包(允许依赖 shared/engine;
+  禁 Next/React/Temporal;web/worker 双端消费,apps 之间仍禁互引)。
+  kill 集成测试与组合根同宿 web 服务测试层——不为单一测试下沉组合根或造
+  harness 包(反膨胀裁决,retireWhen 两形态外的等价达成)。
+- **附带清偿**:全量 e2e 自 T33 以来首次重跑,对齐 T34/T35 未同步的陈旧
+  断言(D-3 动作语两段式/F-24 data-active/F-25 入口层/F-02 集合与结构化
+  空态/D-2 links 降级与状态标题化/D-7 弹层化/站点标签汉化/todo+ideas
+  scopes/芯片前缀);修复三处产品缺陷(thread-desk/selector 控件缺
+  data-nav、F-31 烙版后缀泄入服务端 patch、处境条窄视口横向溢出)。

@@ -20,7 +20,7 @@ import { createRuleDriver } from '@ui4a/agent/testkit/rule-driver';
 import type { SirenEntity, TrailStep } from '@ui4a/agent';
 import { expect, test } from '@playwright/test';
 
-import { getPool } from '../../packages/db/src/pool';
+import { getPool } from '../packages/db/src/pool';
 
 const REPO_ROOT = path.join(__dirname, '..');
 const AGENT_PORT = 3110;

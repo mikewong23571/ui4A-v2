@@ -74,6 +74,8 @@ next 16.3.1 / react 19.2.8 / xstate 5.32.5 / ajv 8.20.0 / zod 4.4.3 / pg 8.23.0 
 
 T16 没有新增 workspace 或基础设施依赖：pure kernel 仍在 `packages/engine/src/presentation/`，LLM adapters 在 `packages/agent`，PostgreSQL/Broker adapters 与 A2UI host 在 `apps/web`。
 
+T36 起 PostgreSQL 存储访问收敛为 `packages/db`（`@ui4a/db` 平台存储包：pg + 事件追加/读、迁移、drafts/agent-definitions/agent-runs/presence/presentation 投影与 recovery；允许依赖 shared/engine，禁 Next/React/Temporal；web 与 worker 双端消费）。
+
 T17 新增 `apps/cli` workspace，但没有新增第三方运行时依赖：Node native `fetch` 访问合同，
 `tsc` 生成可安装的 `ui4a` binary；Draft 继续复用 PostgreSQL append-only `events`，并增加
 immutable payload 与 rebuildable projection 表。

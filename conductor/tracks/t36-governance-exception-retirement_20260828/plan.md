@@ -72,16 +72,16 @@
 
 ## Phase F strict 接线与收口(FR4)
 
-- [ ] Task: F1 清空登记(FR4.1)
+- [x] Task: F1 清空登记(FR4.1)——size-baseline 与 dependencyExceptions 双空(E1 bfcf3ded/E2 a5b01560 内达成;compatAllowlist 8 条正当措辞原样保留)
   - [ ] 确认 12 条基线全部退役、2 条例外全部退役;`size-baseline.json` 置空结构、`dependencyExceptions` 置空数组;compatAllowlist 8 条原样保留
-- [ ] Task: F2 strict 并入 pnpm check + 治理文档(FR4.2、FR4.3)
+- [x] Task: F2 strict 并入 pnpm check + 治理文档(FR4.2、FR4.3)——D53 入 DECISIONS;workflow 业务优先节收窄;AGENTS GR3/GR4/tech-stack 同步
   - [ ] `package.json` `check` 脚本的 governance 段改为 strict 形态;`pnpm check` 全绿
   - [ ] DECISIONS.md 新增 **D53**:strict regime、GR3 膨胀处置转为"变更时沿功能边界拆解"、例外登记逃生门退役、@ui4a/db 包边界(若 E2 未单列则并入)
   - [ ] workflow.md 业务优先节修订 + AGENTS.md GR3/GR4/模块职责同步;tech-stack.md 如涉及新包登记
-- [ ] Task: F3 全量验证与归档(FR4.4)
+- [x] Task: F3 全量验证与归档(FR4.4)——pnpm check(含 strict)3094 passed 全绿;全量 e2e 55 passed exit 0;dev 栈四端点冒烟 200
   - [ ] `pnpm check`(含 strict)+ `CI=true pnpm e2e` 全绿;系统可运行性实测(`pnpm dev:all` 起后 smoke)
   - [ ] `conductor/tracks.md` 归档 T36;完成报告 git notes
-- [ ] Task: Phase F 检查点(全量门禁 + e2e + smoke;git notes 终验报告)
+- [x] Task: Phase F 检查点(全量门禁 + e2e + smoke;git notes 终验报告)
 
 ## 风险与既定缓解
 
