@@ -7,3 +7,4 @@
  */
 export * from './types';
 export { project } from './project';
+export { guardBlockReason } from './build';

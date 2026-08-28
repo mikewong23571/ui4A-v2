@@ -4,6 +4,8 @@
  */
 import type { EngineSnapshot, GuardRegistry } from '@ui4a/shared';
 
+import { GUARD_HINTS } from '@ui4a/shared';
+
 import { evaluateGuards } from '../../execution/judge';
 import { fieldDefinitionsToJsonSchema, mergeFieldDefinitions } from '../schema';
 import type { ActionDefinition, FieldDefinition } from '../../core/types';
@@ -66,10 +68,22 @@ export function guardResultsFor(
       guards: evaluations,
     };
     if (failed.length > 0) {
-      entry.reason = `guard 不满足: ${failed.map((f) => `${f.name}=false`).join(', ')}`;
+      entry.reason = guardBlockReason(failed);
     }
     return entry;
   });
+}
+
+/**
+ * D-5/F-10:被拒守卫的 reason 组合——人话主句(合同数据 GUARD_HINTS)+ 机器
+ * 表达式审计括号;未登记守卫(应用域自定义)整体回退机器串(零发明)。
+ */
+export function guardBlockReason(failed: readonly { name: string }[]): string {
+  const machine = `guard 不满足: ${failed.map((f) => `${f.name}=false`).join(', ')}`;
+  const hints = failed
+    .map((f) => GUARD_HINTS[f.name])
+    .filter((hint): hint is string => hint !== undefined);
+  return hints.length > 0 ? `${hints.join(';')}(${machine})` : machine;
 }
 
 /** 实例字段的 presentation 视图(声明优先,未声明按名字回退角色)。 */

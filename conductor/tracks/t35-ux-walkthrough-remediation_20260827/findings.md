@@ -133,23 +133,21 @@ F-17 别名动作 subject-mismatch 误拒 · F-15 双创建按钮(随 D-2 复查
 
 ## F-09 助手话术与证据引用泄漏内部结构(P1)
 
-- **状态**: open
+- **状态**: fixed-pending-recheck(文本面已修;结构化证据 chip/可展开审计层记残余)
 - **严重度**: P1(文案/概念)
 - **发现**: R1(2026-08-27)
 - **现象**: 助手澄清语"发布流程需要先填写文章标题(当前实体的 next 动作必填字段 title)","(next 动作必填:tech / essay / review)";"依据"chips 直接展示 JSON path(`article-drafting:main/properties/fields`)。聊天底栏"当前查看:flow:article-drafting"裸 URN。
 - **证据**: `evidence/2026-08-27-initial-walkthrough/16_chat_ask_title.png`、`18_chat_evidence_paths.png`。
 - **处置**: plan Phase D;复验故事 S6。
+- **修复记录(2026-08-28)**: 轨迹执行行不再携带参数 JSON(`执行 X(...) {"k":v}` → `已执行 X(...)`);参数全文留轨迹事件日志可审计,结果由实体投影呈现(§五 减暴露;inline/委托同一函数,逐条等值不破)。**残余(记为 D-4 二期)**: 证据引用 chip 化可点、JSON path 进可展开审计层——需聊天消息结构化(现 ChatMessage 为纯文本),随聊天面下轮迭代。## F-10 守卫禁用原因显示 raw 表达式(P1)
 
-## F-10 守卫禁用原因显示 raw 表达式(P1)
-
-- **状态**: open
+- **状态**: fixed-pending-recheck(Siren 面已修;exec 拒绝面保持机器串归 D-4 审计层)
 - **严重度**: P1(文案;诚实机制本身是优点)
 - **发现**: R1(2026-08-27)
 - **现象**: 流程详情"废弃"按钮禁用并显示原因——机制正确,但文案是"guard 不满足: no-live-instances=false",应说人话("还有进行中的文章,不能废弃")。
 - **证据**: `evidence/2026-08-27-initial-walkthrough/11_flow_actions_guard.png`。
 - **处置**: plan Phase D;复验故事 S7。
-
-## F-11 工作线详情页业务信息缺席(P1)
+- **修复记录(2026-08-28)**: 合同数据层新增 `GUARD_HINTS`(shared/definition/guards,平台守卫名→一行人话);Siren guard-results 的 reason 改为人话主句+机器表达式审计括号(`该内容尚未发布(guard 不满足: is-published=false)`),未登记守卫(应用域自定义如 item-ready)整体回退机器串零发明;组合函数 `guardBlockReason` 导出并单测双分支。exec 拒绝 reason(judge/confirmation/work-thread-command)保持机器串——那是 agent/审计面(D-4 口径),聊天展示层另 行处理。## F-11 工作线详情页业务信息缺席(P1)
 
 - **状态**: fixed-pending-recheck(E-1 slice 1 已落地;清单内操作归 W)
 - **严重度**: P1(亲密原则/概念表达)

@@ -45,3 +45,26 @@ export interface GuardEvaluation {
   /** 失败/异常原因(如 guard 未注册、谓词抛错)。 */
   reason?: string;
 }
+
+/**
+ * 平台守卫的人话注记(D-5/F-10,合同数据层):名字 → 一行失败原因描述。
+ * Siren guard-results 的 reason 以此为人话主句,机器表达式退为审计括号;
+ * 未登记的守卫(应用域自定义)回退原机器串——零渲染器文案模板。
+ */
+export const GUARD_HINTS: Readonly<Record<string, string>> = {
+  'is-pending': '该内容不处于待发布状态',
+  'is-published': '该内容尚未发布',
+  'title-not-taken': '该标题已被占用',
+  'actor-is-human': '此操作需要人本人执行(审批不委托)',
+  'principal-is-capability-system': '此操作仅限系统能力回调执行',
+  'artifact-input-valid': '所选产物与该动作不匹配或已失效',
+  'is-draft': '该定义不处于草稿状态',
+  'is-active': '该定义未处于激活状态',
+  'node-exists': '目标节点不存在',
+  'node-not-exists': '目标节点不应存在',
+  'to-exists': '声明的目标位置不存在',
+  'guards-registered': '动作声明了未注册的守卫(定义缺陷)',
+  'effect-known': '动作声明了未知效果(定义缺陷)',
+  'action-not-exists': '动作不存在',
+  'no-live-instances': '仍有进行中的实例,不能删除该定义',
+};

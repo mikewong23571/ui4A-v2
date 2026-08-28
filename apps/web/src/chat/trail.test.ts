@@ -56,8 +56,8 @@ describe('trailToMessages', () => {
       'assistant',
     ]);
     expect(messages[0]!.text).toBe('导航到 flow:article-drafting');
-    expect(messages[1]!.text).toContain('执行 next(article-drafting:main)');
-    expect(messages[1]!.text).toContain('title');
+    // D-4:执行行不再携带参数 JSON(机制泄漏);参数留轨迹日志。
+    expect(messages[1]!.text).toBe('已执行 next(article-drafting:main)');
     expect(messages[2]!.text).toContain('被拒 unpublish(post:post-welcome)');
     expect(messages[2]!.text).toContain('guard 不满足');
     expect(messages[3]!.text).toBe('完成: 文章已发布');

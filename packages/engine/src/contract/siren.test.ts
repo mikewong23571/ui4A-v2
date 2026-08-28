@@ -12,7 +12,7 @@ import {
   postStatusFlow,
   seedSnapshot,
 } from '../core/fixtures';
-import { project } from './siren/index';
+import { guardBlockReason, project } from './siren/index';
 
 const deps = {
   flows: flowRegistry(articleDraftingFlow, postStatusFlow, commentModerationFlow),
@@ -190,7 +190,16 @@ describe('project — 实例实体(四件组装:properties/actions/links/guard-r
     const entity = project(seedSnapshot, 'comment:c1', { ...deps, guards: unmet });
     const approve = entity?.['guard-results']?.[0];
     expect(approve).toMatchObject({ action: 'approve', blocked: true });
+    // D-5:人话主句(合同数据 GUARD_HINTS)+ 机器表达式审计括号。
+    expect(approve?.reason).toContain('该内容不处于待发布状态');
     expect(approve?.reason).toContain('is-pending=false');
+  });
+
+  it('未登记守卫(应用域自定义)的 reason 回退机器串,零发明(D-5)', () => {
+    expect(guardBlockReason([{ name: 'item-ready' }])).toBe('guard 不满足: item-ready=false');
+    expect(guardBlockReason([{ name: 'is-published' }, { name: 'to-exists' }])).toBe(
+      '该内容尚未发布;声明的目标位置不存在(guard 不满足: is-published=false, to-exists=false)',
+    );
   });
 
   it('未注册 guard → fail-closed,reason 注明未注册', () => {

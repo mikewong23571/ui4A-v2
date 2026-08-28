@@ -176,8 +176,8 @@ describe('GET /api/delegations/[id](详情:实体快照 + 事件流轨迹)', () 
     expect(detail.trail).toHaveLength(4);
     expect(detail.messages.map((message) => message.text)).toEqual([
       '导航到 articles',
-      '执行 next(articles) {"title":"舰队首航"}',
-      '执行 publish(articles)',
+      '已执行 next(articles)',
+      '已执行 publish(articles)',
       '完成: 目标完成: publish 已成功',
     ]);
   });

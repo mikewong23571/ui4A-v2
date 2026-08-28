@@ -12,13 +12,6 @@ export interface ChatMessage {
   text: string;
 }
 
-function paramsBrief(params: Record<string, unknown> | undefined): string {
-  if (params === undefined) return '';
-  const entries = Object.entries(params);
-  if (entries.length === 0) return '';
-  return ` ${JSON.stringify(params)}`;
-}
-
 /**
  * 轨迹一步 → 聊天消息(inline 与 delegated 共用:委托详情的 messages 投影
  * 复用本函数,保证两种模式的轨迹消息逐条等值——T5 spec 验收 6)。
@@ -45,8 +38,10 @@ export function stepToMessage(step: TrailStep): ChatMessage {
     case 'exec':
       return outcome === 'executed'
         ? {
+            // D-4/F-09:参数 JSON 不进聊天行(机制泄漏);参数全文留轨迹事件
+            // 日志可审计,结果实体由投影呈现(§五 减暴露;inline/委托同一行)。
             role: 'assistant',
-            text: `执行 ${op.action}(${step.rel})${paramsBrief(op.params)}`,
+            text: `已执行 ${op.action}(${step.rel})`,
           }
         : outcome === 'suspended'
           ? {

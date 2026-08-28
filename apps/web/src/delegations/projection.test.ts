@@ -83,8 +83,8 @@ describe('projectDelegationDetail(事件流 → 详情视图)', () => {
     expect(detail.messages).toEqual(inline);
     expect(detail.messages.map((message) => message.text)).toEqual([
       '导航到 articles',
-      '执行 next(articles) {"title":"投影对拍"}',
-      '执行 publish(articles)',
+      '已执行 next(articles)',
+      '已执行 publish(articles)',
       '完成: 目标完成: publish 已成功',
     ]);
   });
@@ -124,7 +124,7 @@ describe('projectDelegationDetail(事件流 → 详情视图)', () => {
     expect(detail.messages).toEqual([
       { role: 'assistant', text: '导航到 articles' },
       { role: 'assistant', text: '导航到 comments' },
-      { role: 'assistant', text: '执行 approve(comments)' },
+      { role: 'assistant', text: '已执行 approve(comments)' },
     ]);
   });
 
