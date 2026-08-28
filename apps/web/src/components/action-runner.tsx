@@ -19,6 +19,7 @@
  *   (field-definition 的人话标题),缺省回退机器名。
  */
 import Form from '@rjsf/core';
+import { ChevronDown } from 'lucide-react';
 import {
   useEffect,
   useId,
@@ -167,6 +168,17 @@ const FORM_CONTROL_STYLES = [
   '[&_textarea]:focus-visible:border-ring [&_textarea]:focus-visible:ring-[3px] [&_textarea]:focus-visible:ring-ring/50 [&_textarea]:focus-visible:outline-none',
 ].join(' ');
 
+/** 触发键的展开指示:与 site-nav 系统菜单同款的 ChevronDown,展开时旋转 180°;
+ *  纯图标不进可访问名,触发键可访问名 = 动作 title。 */
+function TriggerChevron({ open }: { open: boolean }) {
+  return (
+    <ChevronDown
+      aria-hidden="true"
+      className={`size-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+    />
+  );
+}
+
 export interface ActionRunnerProps {
   /** 提交目标实例 rel(集合页无动作;实例页取实体自身 rel)。 */
   rel: string;
@@ -218,7 +230,12 @@ export function ActionRunner({
     region?.querySelector('input:not([type="hidden"]), select, textarea')?.focus();
   }, [interaction]);
 
+  /** 触发键 = 切换:展开中再点即收起(与 Esc/取消同一 restore 语义)。 */
   function openForm(): void {
+    if (interaction === 'form') {
+      restoreTrigger();
+      return;
+    }
     focusFormOnOpen.current = true;
     setInteraction('form');
   }
@@ -289,6 +306,36 @@ export function ActionRunner({
       </p>
     ) : null;
 
+  /** 可展开动作的触发键:request-risk 与 open-form 两路共用同一外观;
+   *  chevron 只给 open-form(表单展开指示),request-risk 是两步确认,不加。 */
+  function renderTrigger(
+    presentationAction: string,
+    open: boolean,
+    onClick: () => void,
+    controls?: string,
+    chevron = false,
+  ) {
+    return (
+      <Button
+        ref={triggerRef}
+        type="button"
+        variant="outline"
+        size="sm"
+        className={toneClass}
+        data-presentation-action={presentationAction}
+        data-nav={`presentation:${presentationAction}:${action.name}`}
+        aria-controls={controls}
+        aria-expanded={open}
+        disabled={disabled}
+        title={hint}
+        onClick={onClick}
+      >
+        {action.title}
+        {chevron && <TriggerChevron open={open} />}
+      </Button>
+    );
+  }
+
   if (!hasFields && !highRisk) {
     return (
       // data-action 只在可提交元素本体(铁律 3 背书唯一挂点;外包装不带,
@@ -317,21 +364,7 @@ export function ActionRunner({
     return (
       <div className="flex flex-col gap-2" onKeyDown={handleKeyDown}>
         <div>
-          <Button
-            ref={triggerRef}
-            type="button"
-            variant="outline"
-            size="sm"
-            className={toneClass}
-            data-presentation-action="request-risk"
-            data-nav={`presentation:request-risk:${action.name}`}
-            aria-expanded={interaction === 'requested'}
-            disabled={disabled}
-            title={hint}
-            onClick={() => requestHighRisk()}
-          >
-            {action.title}
-          </Button>
+          {renderTrigger('request-risk', interaction === 'requested', () => requestHighRisk())}
         </div>
         {interaction === 'requested' && (
           <RiskRequest
@@ -351,24 +384,7 @@ export function ActionRunner({
 
   return (
     <div className="flex flex-col gap-2" onKeyDown={handleKeyDown}>
-      <div>
-        <Button
-          ref={triggerRef}
-          type="button"
-          variant="outline"
-          size="sm"
-          className={toneClass}
-          data-presentation-action="open-form"
-          data-nav={`presentation:open-form:${action.name}`}
-          aria-controls={formRegionId}
-          aria-expanded={interaction === 'form'}
-          disabled={disabled}
-          title={hint}
-          onClick={openForm}
-        >
-          {action.title} ⌄
-        </Button>
-      </div>
+      <div>{renderTrigger('open-form', interaction === 'form', openForm, formRegionId, true)}</div>
       {interaction === 'form' && (
         <div ref={formRegionRef} id={formRegionId} data-action={action.name}>
           <Form

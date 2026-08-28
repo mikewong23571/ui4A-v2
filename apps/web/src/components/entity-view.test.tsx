@@ -23,6 +23,16 @@ import { execAction } from './exec-client';
 
 const businessSubmit = createDirectActionSubmit(execAction);
 
+/**
+ * 表单内提交按钮按结构定位(铁律 3 的 data-action 挂点)。触发键与提交键
+ * 可访问名同为动作 title,提交侧以 data-action 区分,不依赖触发键装饰。
+ */
+function submitButton(action: string): HTMLElement {
+  const button = document.querySelector(`button[data-action="${action}"]`);
+  if (!(button instanceof HTMLElement)) throw new Error(`missing submit button: ${action}`);
+  return button;
+}
+
 // ---- fixtures(形状与 /api/entity 的 Siren 投影一致)-------------------------
 
 const publishAction: SirenAction = {
@@ -235,7 +245,7 @@ describe('ActionRunner:actions → RJSF 表单/按钮', () => {
     );
 
     // D50:默认收起,先打开表单再断言字段
-    fireEvent.click(screen.getByRole('button', { name: '发布 ⌄' }));
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
     expect(screen.getByLabelText(/标题/)).toBeTruthy();
     const category = screen.getByLabelText(/分类/) as HTMLSelectElement;
     expect(category.tagName).toBe('SELECT');
@@ -244,7 +254,7 @@ describe('ActionRunner:actions → RJSF 表单/按钮', () => {
       expect.arrayContaining(['tech', 'essay', 'review']),
     );
     expect((screen.getByLabelText(/正文/) as HTMLTextAreaElement).tagName).toBe('TEXTAREA');
-    expect(screen.getByRole('button', { name: '发布' })).toBeTruthy();
+    expect(submitButton('publish')).toBeTruthy();
   });
 
   it('无 fields → 渲染按钮而非表单', () => {
@@ -270,12 +280,12 @@ describe('ActionRunner:actions → RJSF 表单/按钮', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '发布 ⌄' }));
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
     fireEvent.change(screen.getByLabelText(/标题/), { target: { value: '第三篇' } });
     // indexed 编码:DOM value 是索引 0,formData 解码回 'tech'
     fireEvent.change(screen.getByLabelText(/分类/), { target: { value: '0' } });
     fireEvent.change(screen.getByLabelText(/正文/), { target: { value: '正文内容' } });
-    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+    fireEvent.click(submitButton('publish'));
 
     await waitFor(() => expect(execCallsOf(fetchMock)).toHaveLength(1));
     const [url, init] = execCallsOf(fetchMock)[0]!;
@@ -325,10 +335,10 @@ describe('ActionRunner:actions → RJSF 表单/按钮', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '发布 ⌄' }));
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
     fireEvent.change(screen.getByLabelText(/标题/), { target: { value: '重名标题' } });
     fireEvent.change(screen.getByLabelText(/正文/), { target: { value: '正文' } });
-    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+    fireEvent.click(submitButton('publish'));
 
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('guard-failed');
@@ -370,7 +380,7 @@ describe('ActionRunner:guard-results 谓词投影', () => {
     );
 
     // D50:默认收起;blocked 时触发键即承载 disabled 与原因,表单不可达
-    const trigger = screen.getByRole('button', { name: '发布 ⌄' }) as HTMLButtonElement;
+    const trigger = screen.getByRole('button', { name: '发布' }) as HTMLButtonElement;
     expect(trigger.disabled).toBe(true);
     expect(trigger.title).toContain('title-not-taken');
   });
@@ -395,7 +405,7 @@ describe('EntityView:实体四件组装渲染', () => {
     vi.stubGlobal('fetch', mockFetch(200, { entity: wizardEntity }));
     const { container } = render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);
     // D50:表单默认收起,先打开再断言完整提交面
-    fireEvent.click(screen.getByRole('button', { name: '发布 ⌄' }));
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
 
     const declared = new Set(wizardEntity.actions.map((action) => action.name));
     const businessControls = [
@@ -504,7 +514,7 @@ describe('EntityView:实体四件组装渲染', () => {
     expect(reset.title).toContain('is-pending');
     // D50:发布表单默认收起,未 blocked 的触发键可打开
     const publishTrigger = screen.getByRole('button', {
-      name: '发布 ⌄',
+      name: '发布',
     }) as HTMLButtonElement;
     expect(publishTrigger.disabled).toBe(false);
   });
@@ -563,18 +573,18 @@ describe('EntityView:实体四件组装渲染', () => {
     const view = render(<EntityView rel="article-drafting:main" entity={stepOne} />);
 
     // step1:打开表单(D50 默认收起)→ 填 title → 下一步
-    fireEvent.click(screen.getByRole('button', { name: '下一步 ⌄' }));
-    fireEvent.change(screen.getByLabelText(/title/), { target: { value: '第三篇' } });
     fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+    fireEvent.change(screen.getByLabelText(/title/), { target: { value: '第三篇' } });
+    fireEvent.click(submitButton('next'));
     await waitFor(() => expect(execCallsOf(fetchMock)).toHaveLength(1));
 
     // exec 成功后页面刷新为 step2 的实体投影(rerender 同一组件树)
     view.rerender(<EntityView rel="article-drafting:main" entity={stepTwo} />);
 
     // step2:重新打开表单(键随 schema 变化重建,仍默认收起)→ 选 category → 下一步
-    fireEvent.click(screen.getByRole('button', { name: '下一步 ⌄' }));
-    fireEvent.change(screen.getByLabelText(/category/), { target: { value: '0' } });
     fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+    fireEvent.change(screen.getByLabelText(/category/), { target: { value: '0' } });
+    fireEvent.click(submitButton('next'));
     await waitFor(() => expect(execCallsOf(fetchMock)).toHaveLength(2));
 
     const body = JSON.parse(String(execCallsOf(fetchMock)[1]![1].body)) as Record<string, unknown>;
@@ -616,7 +626,7 @@ describe('ActionRunner:人话 label 与字段说明(T14 Phase A,#3/#4 表单侧)
         submit={businessSubmit}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: '发布 ⌄' }));
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
 
     expect(screen.getByLabelText(/文章标题/)).toBeTruthy();
     // 机器字段名不作为 label 上屏(label 位已被人话标题占据)
@@ -630,7 +640,7 @@ describe('ActionRunner:实例字段预填(T14 Phase A,#4)', () => {
     vi.stubGlobal('fetch', mockFetch(200, { entity: wizardEntity }));
     render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '发布 ⌄' }));
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
     // wizardEntity.fields = { title: '草稿标题' };publishAction 声明 title/category/body
     expect((screen.getByLabelText(/标题/) as HTMLInputElement).value).toBe('草稿标题');
     expect((screen.getByLabelText(/正文/) as HTMLTextAreaElement).value).toBe('');
@@ -640,10 +650,10 @@ describe('ActionRunner:实例字段预填(T14 Phase A,#4)', () => {
     const fetchMock = mockFetch(200, { entity: wizardEntity });
     vi.stubGlobal('fetch', fetchMock);
     render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);
-    fireEvent.click(screen.getByRole('button', { name: '发布 ⌄' }));
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
 
     fireEvent.change(screen.getByLabelText(/正文/), { target: { value: '正文内容' } });
-    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+    fireEvent.click(submitButton('publish'));
 
     await waitFor(() => expect(execCallsOf(fetchMock)).toHaveLength(1));
     const body = JSON.parse(String(execCallsOf(fetchMock)[0]![1].body)) as {
@@ -657,11 +667,11 @@ describe('ActionRunner:实例字段预填(T14 Phase A,#4)', () => {
     const fetchMock = mockFetch(200, { entity: wizardEntity });
     vi.stubGlobal('fetch', fetchMock);
     render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);
-    fireEvent.click(screen.getByRole('button', { name: '发布 ⌄' }));
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
 
     fireEvent.change(screen.getByLabelText(/标题/), { target: { value: '改过的标题' } });
     fireEvent.change(screen.getByLabelText(/正文/), { target: { value: '正文' } });
-    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+    fireEvent.click(submitButton('publish'));
 
     await waitFor(() => expect(execCallsOf(fetchMock)).toHaveLength(1));
     const body = JSON.parse(String(execCallsOf(fetchMock)[0]![1].body)) as {
@@ -681,10 +691,10 @@ describe('ActionRunner:实例字段预填(T14 Phase A,#4)', () => {
         prefill={{ title: '草稿标题', category: 'tech', meta: { nested: 1 } }}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: '发布 ⌄' }));
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
 
     expect((screen.getByLabelText(/文章标题/) as HTMLInputElement).value).toBe('草稿标题');
-    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+    fireEvent.click(submitButton('publish'));
     await waitFor(() => expect(execCallsOf(fetchMock)).toHaveLength(1));
     const body = JSON.parse(String(execCallsOf(fetchMock)[0]![1].body)) as {
       params: Record<string, unknown>;
@@ -745,7 +755,7 @@ describe('EntityView:确认实体与 inbox 集合渲染', () => {
     const approve = screen.getByRole('button', { name: '批准' }) as HTMLButtonElement;
     expect(approve.dataset.action).toBe('approve');
     // D50:驳回表单默认收起,先打开再断言 reason 必填
-    fireEvent.click(screen.getByRole('button', { name: '驳回 ⌄' }));
+    fireEvent.click(screen.getByRole('button', { name: '驳回' }));
     const reason = container.querySelector<HTMLTextAreaElement>('textarea[required]');
     expect(reason).not.toBeNull();
     expect(reason!.hasAttribute('required')).toBe(true);
@@ -773,7 +783,7 @@ describe('EntityView:确认实体与 inbox 集合渲染', () => {
     const approve = screen.getByRole('button', { name: '批准' }) as HTMLButtonElement;
     expect(approve.disabled).toBe(false);
     const rejectTrigger = screen.getByRole('button', {
-      name: '驳回 ⌄',
+      name: '驳回',
     }) as HTMLButtonElement;
     expect(rejectTrigger.disabled).toBe(false);
   });
@@ -814,7 +824,7 @@ describe('EntityView:确认实体与 inbox 集合渲染', () => {
     expect(approve.disabled).toBe(true);
     // reject 只挂 actor-is-human → 解除(D50:驳回为收起触发键)
     const rejectTrigger = screen.getByRole('button', {
-      name: '驳回 ⌄',
+      name: '驳回',
     }) as HTMLButtonElement;
     expect(rejectTrigger.disabled).toBe(false);
   });

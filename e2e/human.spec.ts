@@ -84,9 +84,10 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
 
     // ready 节点:publish 表单(slug 来源 title)→ 发布
     await expect(page.locator('h1')).toHaveText('就绪');
-    await page.getByRole('button', { name: '发布 ⌄' }).click();
+    await page.getByRole('button', { name: '发布' }).click();
     await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第三篇');
-    await page.getByRole('button', { name: '发布', exact: true }).click();
+    // 触发键与提交键同名;提交按钮按结构定位(铁律 3 的 data-action 挂点)
+    await page.locator('form button[data-action="publish"]').click();
 
     // 向导循环语义(D11):发布后回到基本信息(起草下一篇),不再是 done 终态
     await expect(page.locator('h1')).toHaveText('基本信息');

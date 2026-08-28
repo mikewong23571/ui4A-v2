@@ -7,6 +7,13 @@ import type { SirenAction, SirenEntity } from '@ui4a/engine';
 import { ActionRunner } from './action-runner';
 import { createDirectActionSubmit, type ExecFn } from './actions/action-submit';
 
+/** 表单内提交按钮按结构定位(铁律 3 的 data-action 挂点);触发键与提交键同名。 */
+function submitButton(action: string): HTMLElement {
+  const button = document.querySelector(`button[data-action="${action}"]`);
+  if (!(button instanceof HTMLElement)) throw new Error(`missing submit button: ${action}`);
+  return button;
+}
+
 const entity: SirenEntity = {
   class: ['article'],
   properties: { rel: 'post:first-post', node: 'published' },
@@ -60,9 +67,16 @@ describe('ActionRunner T16 schema-form interaction', () => {
     );
 
     // D50:参数表单单一默认收起;打开是零业务事件的 presentation interaction。
-    const trigger = screen.getByRole('button', { name: '编辑元数据 ⌄' });
+    const trigger = screen.getByRole('button', { name: '编辑元数据' });
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByLabelText(/文章标题/)).toBeNull();
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    // 触发键即开关:展开后再点同一键收起(focus 归还),再点重新展开。
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByLabelText(/文章标题/)).toBeNull();
+    expect(document.activeElement).toBe(trigger);
     fireEvent.click(trigger);
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByLabelText(/文章标题/)).toBeTruthy();
@@ -104,15 +118,16 @@ describe('ActionRunner T16 schema-form interaction', () => {
       />,
     );
 
-    const trigger = screen.getByRole('button', { name: '编辑元数据 ⌄' });
+    const trigger = screen.getByRole('button', { name: '编辑元数据' });
     fireEvent.click(trigger);
     fireEvent.click(await screen.findByRole('button', { name: '取消' }));
     expect(execFn).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(trigger);
 
     fireEvent.click(trigger);
-    // 表单内提交按钮 = 动作 title 裸名(触发键带 ⌄ 后缀,二者可区分)
-    fireEvent.click(await screen.findByRole('button', { name: '编辑元数据' }));
+    // 表单内提交按钮按结构定位(data-action 挂点);触发键与提交键同名。
+    const submit = await waitFor(() => submitButton('edit-metadata'));
+    fireEvent.click(submit);
 
     await waitFor(() => expect(execFn).toHaveBeenCalledTimes(1));
     expect(execFn).toHaveBeenCalledWith({

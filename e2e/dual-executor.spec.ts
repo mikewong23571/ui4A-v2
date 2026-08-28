@@ -168,9 +168,10 @@ test('B1 双执行者:agent 合同发布 + human 表单发布,同一日志两类
     await page.getByRole('textbox', { name: /正文/ }).fill('人类经 renderer 表单发布。');
     await page.getByRole('button', { name: '完成编辑', exact: true }).click();
     await expect(page.locator('h1')).toHaveText('就绪');
-    await page.getByRole('button', { name: '发布 ⌄' }).click();
+    await page.getByRole('button', { name: '发布' }).click();
     await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第四篇');
-    await page.getByRole('button', { name: '发布', exact: true }).click();
+    // 触发键与提交键同名;提交按钮按结构定位(铁律 3 的 data-action 挂点)
+    await page.locator('form button[data-action="publish"]').click();
     await expect(page.locator('h1')).toHaveText('基本信息');
 
     // ---- 同一日志:publish 由两类执行者各执行一次,各自正确 ----------------

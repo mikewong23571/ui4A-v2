@@ -15,6 +15,13 @@ import type { DefinitionDiff, SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ActivationView } from './activation-view';
 
+/** 表单内提交按钮按结构定位(铁律 3 的 data-action 挂点);触发键与提交键同名。 */
+function submitButton(action: string): HTMLElement {
+  const button = document.querySelector(`button[data-action="${action}"]`);
+  if (!(button instanceof HTMLElement)) throw new Error(`missing submit button: ${action}`);
+  return button;
+}
+
 // ---- fixtures(形状与 projectActivation 投影一致)---------------------------
 
 const approveAction: SirenAction = {
@@ -201,14 +208,14 @@ describe('ActivationView(BIOS 激活详情)', () => {
     render(<ActivationView id="a1" entity={activationEntity('pending-approval')} />);
 
     // D50:驳回表单默认收起,先打开;空原因:RJSF required 校验拦截,不产生任何请求。
-    fireEvent.click(screen.getByRole('button', { name: '驳回 ⌄' }));
     fireEvent.click(screen.getByRole('button', { name: '驳回' }));
+    fireEvent.click(submitButton('reject'));
     await waitFor(() => expect(screen.getByText(/reason|原因|required/i)).toBeTruthy());
     expect(fetchMock).not.toHaveBeenCalled();
 
     // 填写原因后提交:params.reason + actor=human。
     fireEvent.change(screen.getByLabelText(/原因/), { target: { value: 'pin 动作不该无 guard' } });
-    fireEvent.click(screen.getByRole('button', { name: '驳回' }));
+    fireEvent.click(submitButton('reject'));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toEqual({
