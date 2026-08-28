@@ -1,0 +1,11 @@
+T37 Phase B (B1-B2) 组合声明推导与接线 — 任务摘要
+
+目标:进入应用默认呈现组合面,声明由 sitemap app 分组运行时推导,零 per-app 代码。
+实现:app-workspace-composition.ts(deriveAppWorkspaceComposition/appWorkspaceScopeOf/
+createDynamicCompositionSubjectResolver);broker/sidecar-authorization 动态重解析接线;
+修复 runtime.ts 丢 getEngine 注入的真实缺陷(esbuild 不查类型,单测先行暴露)。
+D51:授权仍 granted×audience 逐源重审;虚主体不进业务 sitemap、不可 exec、零业务事件
+(测试断言快照 hash 与业务事件数不变)。
+验证:红(import 失败)→绿;db 集成测试走生产 broker 工厂,三应用
+(publishing/community/todo)组合面 ready,comments 成员嵌 approve/reject 动作(U4 数据就绪)。
+Commit: 354edb13
