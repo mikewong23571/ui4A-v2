@@ -10,7 +10,7 @@
  */
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
 
-import { withPolicyScope } from './exec-client';
+import { withPolicyScope } from '../exec-client';
 
 /** 画布侧记录的 Sidecar 元信息(个人呈现横幅与视图操作的状态源)。 */
 export interface SidecarMeta {

@@ -22,7 +22,7 @@ import {
 import { collectionBacklinkOf, PageEntityCache } from '@/render/entity-cache';
 
 import { createCanvasActionHandler } from './canvas-action-handler';
-import type { EntityCacheHandle } from './entity-cache-provider';
+import type { EntityCacheHandle } from '../entity-cache-provider';
 import { SurfaceErrorBoundary } from './surface-error-boundary';
 
 /** 已声明 publish 动作的实例(links 携带 collection 回链,引擎成员反查口径)。 */

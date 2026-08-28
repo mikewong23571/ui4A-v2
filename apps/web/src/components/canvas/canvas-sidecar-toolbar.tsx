@@ -3,7 +3,7 @@
  * 收起/疏密、explain、设为团队默认(预览→确认)的按钮排。全部经 props 回调
  * 触发 use-sidecar-actions 的 /api/presentation/sidecar 调用,自身零状态。
  */
-import { Button } from './ui/button';
+import { Button } from '../ui/button';
 import type { SidecarMeta } from './use-sidecar-actions';
 
 interface CanvasSidecarToolbarProps {

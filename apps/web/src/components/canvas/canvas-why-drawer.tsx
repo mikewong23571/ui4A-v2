@@ -19,7 +19,7 @@
 import { useState } from 'react';
 
 import { CanvasSidecarToolbar } from './canvas-sidecar-toolbar';
-import { Button } from './ui/button';
+import { Button } from '../ui/button';
 import type { SidecarExplanation, SidecarMeta } from './use-sidecar-actions';
 
 const PANEL_ID = 'canvas-why-drawer-panel';

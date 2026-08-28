@@ -25,7 +25,7 @@ import { planGenericPresentationSurface } from '@/render/presentation/generic';
 import { renderCatalogJson } from '@/render/registry';
 
 import { CanvasBody } from './canvas-body';
-import { EntityCacheProvider } from './entity-cache-provider';
+import { EntityCacheProvider } from '../entity-cache-provider';
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),

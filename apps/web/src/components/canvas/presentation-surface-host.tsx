@@ -29,11 +29,11 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { cn } from '@/lib/utils';
 import type { DerefWarning } from '@/render/deref';
-import { CanvasWhyDrawer } from '../canvas-why-drawer';
+import { CanvasWhyDrawer } from './canvas-why-drawer';
 import { ActionSubmitProvider } from '../actions/action-submit';
 import { RawContractDrawer } from './raw-contract-drawer';
 import { readThreadPins, writeThreadPin } from './thread-desk';
-import { SurfaceErrorBoundary } from '../surface-error-boundary';
+import { SurfaceErrorBoundary } from './surface-error-boundary';
 import { Button } from '../ui/button';
 import { SIDECAR_UNAVAILABLE_PHRASE } from './presentation-sidecar-failure';
 import { uniqueDiagnostics } from './presentation-surface-helpers';

@@ -2,7 +2,7 @@ import type { SirenEntity } from '@ui4a/engine';
 
 import type { RenderSpec } from '@/render/spec';
 
-import type { PresentationDiagnostic } from '../canvas-why-drawer';
+import type { PresentationDiagnostic } from './canvas-why-drawer';
 
 /** Extract frozen render specs from the ordinary Siren collection contract. */
 export function frozenSpecsOf(collection: SirenEntity): RenderSpec[] {

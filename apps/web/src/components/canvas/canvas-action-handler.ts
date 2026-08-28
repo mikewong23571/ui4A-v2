@@ -4,7 +4,7 @@
  */
 import type { ActionGate, CanvasClientAction } from '@/render/canvas/action-gate';
 
-import type { EntityCacheHandle } from './entity-cache-provider';
+import type { EntityCacheHandle } from '../entity-cache-provider';
 
 /** 画布动作处理的依赖(拦截门 / 页面缓存 / 告示 / 整面 reload 入口)。 */
 export interface CanvasActionHandlerDeps {

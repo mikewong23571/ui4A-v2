@@ -58,13 +58,6 @@
       "lines": 4628,
       "limit": 4000,
       "note": "T27 workstation-home CLI/Sidecar/DOM、workstation-situation presence 留痕、flow 双桥/ghost 诚实失败 standing E2E、I3 双桥覆盖及 S2 raw replay/alias 诚实性修正后累计(tracked total 见行数,按 workflow 业务优先不裁剪验收证据);T28 一等交互已闭环并按 GR5 归并重复 Presentation/server setup 到 e2e/kits,无 bespoke track 配置残留;shrink-only 自 T28 关闭起算;合并侧归因一:e2e/t33-authority-attention.spec.ts 五景走查锚 +111(T34 授权/注意力分离,D51 完成定义,业务优先不为凑行数裁剪验收证据,2026-08-27 用户授权;T34 关闭时按 GR5 裁决,并入 kits 或随五景证据常驻评估收缩);合并侧归因二:t33-reading-posture 决策卡/工作线 resume e2e +32(业务优先不裁剪验收证据,workflow 2026-08-26;后续 Phase E/F 若再增以本口径滚动);lines 为合并树 check-size 实测"
-    },
-    {
-      "path": "apps/web/src/components",
-      "lines": 4184,
-      "limit": 4000,
-      "note": "T35 D-2/D-6/E-2 呈现层收敛与书架层(site-nav 受控菜单/action-group 图例上下文/detail links 降级/application-entry-strip +115)累计(2026-08-28,业务优先登记;候选收缩=chat 面板族按 feature 分片,随 D-4 实施评估)",
-      "track": "t35-ux-walkthrough-remediation_20260827"
     }
   ]
 }

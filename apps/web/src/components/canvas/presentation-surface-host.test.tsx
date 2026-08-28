@@ -7,7 +7,7 @@ import type { SirenEntity } from '@ui4a/engine';
 import { planGenericPresentationSurface } from '@/render/presentation/generic';
 import { renderCatalogJson } from '@/render/registry';
 
-import { CanvasBody } from '../canvas-body';
+import { CanvasBody } from './canvas-body';
 import { EntityCacheProvider } from '../entity-cache-provider';
 import { PresentationSurfaceHost } from './presentation-surface-host';
 

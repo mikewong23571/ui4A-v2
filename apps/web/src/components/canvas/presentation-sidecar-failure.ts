@@ -5,7 +5,7 @@
  */
 import { PRESENTATION_SIDECAR_DENIED } from '@ui4a/shared';
 
-import type { PresentationDiagnostic } from '../canvas-why-drawer';
+import type { PresentationDiagnostic } from './canvas-why-drawer';
 
 /** T32 Q5 口径延续:denied 用「部分内容」级人话,机制细节只进抽屉。 */
 export const SURFACE_LOAD_FAILED_PHRASE = '部分内容暂时无法显示，详情见「为什么这样展示」';

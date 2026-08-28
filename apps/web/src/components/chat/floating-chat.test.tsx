@@ -280,4 +280,3 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
     expect(screen.queryByText('失败: 聊天循环异常: 爆炸')).toBeNull();
   });
 });
-

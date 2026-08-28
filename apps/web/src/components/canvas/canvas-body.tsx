@@ -4,10 +4,10 @@ import { useSearchParams } from 'next/navigation';
 
 import { ApplicationEntryStrip } from '@/components/application-entry-strip';
 
-import { PresentationSurfaceHost } from './canvas/presentation-surface-host';
-import { ThreadDesk } from './canvas/thread-desk';
-import { ThreadStageActions } from './canvas/thread-stage-actions';
-import { EntityCacheProvider } from './entity-cache-provider';
+import { PresentationSurfaceHost } from './presentation-surface-host';
+import { ThreadDesk } from './thread-desk';
+import { ThreadStageActions } from './thread-stage-actions';
+import { EntityCacheProvider } from '../entity-cache-provider';
 
 /** URL adapter for the shared Presentation host mounted by `/canvas`. */
 export function CanvasBody() {

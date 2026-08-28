@@ -25,12 +25,12 @@ import {
   hydratePresentationSurface,
   planGenericPresentationSurface,
 } from '@/render/presentation/generic';
-import { createCanvasActionHandler } from '../canvas-action-handler';
-import type { PresentationDiagnostic } from '../canvas-why-drawer';
+import { createCanvasActionHandler } from './canvas-action-handler';
+import type { PresentationDiagnostic } from './canvas-why-drawer';
 import { createSurfaceActionSubmit } from '../actions/action-submit';
 import { useEntityCache } from '../entity-cache-provider';
 import { execAction, fetchEntity, withPolicyScope } from '../exec-client';
-import { useSidecarActions } from '../use-sidecar-actions';
+import { useSidecarActions } from './use-sidecar-actions';
 import {
   sidecarLoadFailure,
   SURFACE_LOAD_FAILED_PHRASE,

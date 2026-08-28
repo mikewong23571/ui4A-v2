@@ -8,7 +8,7 @@
  */
 import { Suspense } from 'react';
 
-import { CanvasBody } from '@/components/canvas-body';
+import { CanvasBody } from '@/components/canvas/canvas-body';
 
 export default function CanvasPage() {
   return (
