@@ -22,15 +22,15 @@
 
 ## Phase B:默认落点组合化(消费 T30 组合机器,零特判)
 
-- [ ] Task B1: Red——组合投影单测:按 sitemap app 分组组装「应用组合面」
+- [~] Task B1: Red——组合投影单测:按 sitemap app 分组组装「应用组合面」
   聚合虚主体(产物集合行 × 流入口 × 进行中实例);断言虚主体不进业务
   sitemap、不可 exec;断言组装路径纯数据驱动(通用代码,无 per-app 分支)。
-- [ ] Task B2: Green——engine presentation 内核(`packages/engine/src/
+- [~] Task B2: Green——engine presentation 内核(`packages/engine/src/
   presentation/`)+ web 适配(`apps/web/src/engine/presentation/`、
   `src/render/`)实现;测试全绿;commit + git notes。
-- [ ] Task B3: Red/Green——canvas 壳消费组合面(舞台机械改动,非页面
+- [~] Task B3: Red/Green——canvas 壳消费组合面(舞台机械改动,非页面
   组件):进入应用/无 focus 渲染组合面,不再空屏;组件测试先行。
-- [ ] Task B4: 集合概览密集行:复用现有词条(member-card/table)渲染
+- [~] Task B4: 集合概览密集行:复用现有词条(member-card/table)渲染
   「状态 + 主动作 + 详情」;不新增词汇、不写每应用组件;commit + git notes。
 - [ ] Task B5: Phase B Checkpoint(含 `product-vision.md` §六四滑梯逐项
   自查记录;单测 + governance 全绿)。
