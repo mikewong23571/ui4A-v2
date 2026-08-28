@@ -9,3 +9,10 @@ D51:授权仍 granted×audience 逐源重审;虚主体不进业务 sitemap、不
 验证:红(import 失败)→绿;db 集成测试走生产 broker 工厂,三应用
 (publishing/community/todo)组合面 ready,comments 成员嵌 approve/reject 动作(U4 数据就绪)。
 Commit: 354edb13
+
+T37 Phase B Checkpoint 验证报告(自治验收)
+- 编排 agent 亲跑:受影响测试(app-workspace-composition/presentation-surface-host/application-entry-strip)26 passed;pnpm governance OK
+- 全量: CI=true UI4A_WORKER_HEALTH_PORT=3199 pnpm check → exit 0(409 files / 3116 tests,subagent 与编排 agent 各跑一次)
+- 滑梯自查(§六):git diff 无 per-app/per-entity 分支;同一推导函数吃三应用 fixtures;canvas 壳仅一行 subject 模板推导;零新增词汇;零页面布局组件
+- 已知限制与处置:长驻进程 broker 为 globalThis 单例,HMR 不可替换 → 开发栈已重启,Phase C 视觉审核在新进程上进行
+- Commits: 354edb13 + c74a2881(+fbccf350 格式修复)
