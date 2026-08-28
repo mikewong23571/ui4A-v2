@@ -253,6 +253,7 @@ F-17 别名动作 subject-mismatch 误拒 · F-15 双创建按钮(随 D-2 复查
 - **复现**: meta → todo-item → 修订 → 填写加动作参数(archived/restore/恢复/open) → 提交校验 → 批准激活 → 查看 v2 定义 archived 节点为空。
 - **证据**: `evidence/2026-08-28-S9S10/`(S11 激活截图);事件 97/99(definition-revised/definition-submitted)。
 - **处置**: 待排期(建议与 D 轮并行修:加动作表单补 effect/transition 声明,或校验器对"有 to 无 effect"报 invalid);修复前 findings 挂账。
+- **复现结论(2026-08-28,当前代码现场复验)**: **现码不可复现**。live 序列(revise → add-action{node:archived, action:{name:restore,to:open}} → submit)全链路通过:definition-edited 事件落库,工作副本中 restore 动作**携带派生 transition effect**(`actionEffects` 有 to 无 effect 时补 transition,core/parse.ts:343;normalizeAddedAction 经此规范化)。原现象的"组稿管线丢动作"在当前引擎路径不存在;原始 S11 事件(97/99)所在 dev 库已被 e2e I5 的 TRUNCATE 回灌重置(环境事实:e2e server-kit 默认 DATABASE_URL 指向 dev 沙箱 5433/ui4a,场景跑完 dev 数据即被压缩场景替换——数据可弃,但 R3 走查须知)。**终判归 R3**:按 S11 故事在干净种子世界上重跑完整 UI 修订序列,激活后核对 v2 archived 节点;复现则修,仍不可复现则本条转 wontfix(附证据)。
 
 ## F-21 集合成员状态显示机器节点名而非节点标题(P1)
 
