@@ -8,12 +8,6 @@
       "note": "T22 已关闭(2026-08-27,D52):scripts/t22 按 GR5 晋升常驻部署合同套件;本条转为常驻登记债务,shrink-only,后续触及内容时按 describe 分片收缩"
     },
     {
-      "path": "apps/web/src/app/api/chat/route.ts",
-      "lines": 949,
-      "limit": 500,
-      "note": "T26 chat presence→thread 显式 attach 增 1 行调用(业务优先不为凑行数拆分,workflow 2026-08-26);T22 已关闭(2026-08-27,D52),收缩窗口与 T22 脱钩,改挂下一次 chat 编排重构时按 orchestration helper 收缩"
-    },
-    {
       "path": "scripts/t22/t22-compose-contract.test.ts",
       "lines": 866,
       "limit": 800,
