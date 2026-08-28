@@ -2,6 +2,15 @@
 
 > 原报告生成于 2026-08-21(T1–T8)。T15–T20 与 D28 addendum supersede 旧 AI、渲染、摘要、外部 Agent、Coding Executor、Agent specialization 和 Meta BIOS 口径；旧测试数量与旧 I1 仅是历史快照。当前验收以 `GOAL.md`、`DECISIONS.md`、T15–T20 Story Eval 和最新命令输出为准。
 
+## T35 持续试用与走查修复(2026-08-28 完成)
+
+- 三轮真人视角走查(R1 初筛/R2 新应用/R3 收口)驱动的问题台账方法论:31 项发现全部终态——27 rechecked、F-20 wontfix(双证据终判)、F-05/F-26 转方向项;每项修复走"现象→复现→证据→根因→处置→复验记录"全链留痕于 track findings.md。
+- 11 个用户故事(S1–S11)全部通过,覆盖:决策卡一击闭环、状态即变、直操作建线、跨面跳转、人机同看一页、meta 读面/修订闭环,以及 todo/ideas 两个新应用的全生命周期独立审查(合同工件播种 → 捕捉循环 → 定义演进)。
+- 结构性成果:线工作台 §十定稿(2 轨+1 舞台,pin=上下文条目,按钮跟着注视走)、书架层应用目录(阈值折叠)、canvas 无注视=入口层、危险动作分层、处境条芯片化、守卫人话合同层(GUARD_HINTS)、flow 级 title 投影与定义详情动作区。
+- 关键正确性修复:F-31 首页待批卡不退场(真根因=exec 响应缺被操作主体投影 → 页面缓存 inbox 陈旧;修复=accepted 携带 subject + 缓存失效并集消费双回链,S2 四项判定全过)、F-17 flow 别名误拒、F-28 I5 重放锚对齐。
+- F-20 终判方法示范:干净种子世界全 UI 序列重演——效应派生在场 + 旧 payload 被 terminal-reachable 诚实拒绝,证明旧"激活成功但节点为空"仅可能因丢动作 bug 掩盖非法拓扑。
+- 门禁:pnpm check 绿(3090 tests)+ governance OK + CI=true pnpm e2e invariants 通过;全证据在 track `evidence/`(R1–R3、S9S10、desk、W 系列)。
+
 ## T20 Meta Human Control Plane（2026-08-23）
 
 - `/meta` 从授权 sitemap 动态发现 7 个顶层面；未来 class 零 dashboard 分支进入 generic fallback。

@@ -4,13 +4,14 @@
 
 ## 活跃 Tracks
 
-- [~] **Track: T35 持续试用与走查修复:全站 GUI 走查问题登记、修复与文档化视觉验收(试用→findings 台账→修复→S1–S8 视觉验收循环;轨道长期活跃)** *Link: [tracks/t35-ux-walkthrough-remediation_20260827/index.md](./tracks/t35-ux-walkthrough-remediation_20260827/index.md)*
 - [~] **Track: T22 生产形态部署、身份认证与双后端 Agent Runtime：mothership K8s/Istio、Docker Compose all-in-one、Keycloak、灾备与首个试验性版本** *Link: [tracks/t22-production-deployment-auth-runtime_20260824/index.md](./tracks/t22-production-deployment-auth-runtime_20260824/index.md)*
 
 方向 program(依据 [product-vision.md](../product-vision.md);站点为天然分割点,limited scope;
 执行序:T24 → T25 → T26(spike) → T30 → T27 → T28;T29 已完成):
 
 ## 归档 Tracks(T1–T21、T23–T33,只读历史)
+
+- [x] **Track: T35 持续试用与走查修复**(2026-08-28 完成:R1–R3 走查,S1–S11 全过;findings 27 rechecked + F-20 wontfix 终判 + F-05/F-26 方向项;门禁全绿) *Link: [tracks/archive/t35-ux-walkthrough-remediation_20260827/index.md](./tracks/archive/t35-ux-walkthrough-remediation_20260827/index.md)*
 
 - [x] **Track: T33 读面姿态与责任点:读多写少落地(表单退位、决策卡一击、任务语言;ASCII 用户故事为验收方向锚;mothership 现场验收显式遗留)** *Link: [tracks/archive/t33-reading-posture-decision-cards_20260827/index.md](./tracks/archive/t33-reading-posture-decision-cards_20260827/index.md)*
 

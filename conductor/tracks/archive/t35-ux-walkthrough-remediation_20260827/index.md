@@ -1,5 +1,7 @@
 # T35 持续试用与走查修复 — Track Index
 
+> **状态: 完成(2026-08-28)** — R1–R3 三轮走查;S1–S11 全部故事通过;findings 31 项终态(27 rechecked / F-20 wontfix / F-05·F-26 方向项);pnpm check + governance + e2e invariants 全绿;DONE 摘要入 `conductor/done-report.md`。
+
 - [Specification](./spec.md) — 方向依据(北极星)、目标、验收协议、Scope 边界
 - [Plan](./plan.md) — Phase A–F 任务分解;每 Phase 以视觉验收 Checkpoint 收口
 - [User Stories](./user-stories.md) — S1–S8 文档化视觉验收锚(验收只认走查证据)
