@@ -79,6 +79,7 @@ export function hydratePresentationSurface(
   subject: string,
   surface: SurfaceTree,
   roots: SirenEntity | readonly SirenEntity[],
+  requestedRels?: readonly string[],
 ): GenericPresentationPlan {
   const entities = new Map<string, SirenEntity>();
   const rootList = Array.isArray(roots) ? roots : [roots];
@@ -91,6 +92,19 @@ export function hydratePresentationSurface(
   if (!entities.has(subject) && rootList.length === 1) {
     const only = relOf(rootList[0]!);
     if (only !== undefined && only !== subject) entities.set(subject, rootList[0]!);
+  }
+  // T37:组合面多根 hydrate 时,依赖按声明源 rel 请求(flow:<name>),服务端
+  // flow 别名让对应根的实际 rel 变成实例 rel——已持久化 sidecar 的绑定仍指向
+  // 声明源。逐根按「依赖请求 rel」补别名键(T35 F-03 的多根推广);同一实体
+  // 两个键,零新事实。
+  if (requestedRels !== undefined) {
+    const paired = Math.min(requestedRels.length, rootList.length);
+    for (let index = 0; index < paired; index += 1) {
+      const requested = requestedRels[index]!;
+      if (entities.has(requested)) continue;
+      const actual = relOf(rootList[index]!);
+      if (actual !== undefined && actual !== requested) entities.set(requested, rootList[index]!);
+    }
   }
   const bundle = compileSurfaceTree(surface, {
     surfaceId: `presentation-${encodeURIComponent(subject)}`,

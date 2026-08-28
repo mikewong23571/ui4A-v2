@@ -176,3 +176,69 @@ describe('region slot kind derives from the declared source shape (T31 R12)', ()
     });
   });
 });
+
+describe('region 主体绑定按活合同规范 rel 规划(T37 flow 入口 region)', () => {
+  it('flow 别名实体(rel=实例 rel)的 region 词条绑定规范 rel,不绑定声明源的漂移别名', () => {
+    // 服务端 flow 别名(getEntity(flow:<name>) → 实例实体)返回的实体 rel 是
+    // <name>:main;region 词条若仍绑定声明源 flow:<name>,region deref 会集体
+    // 落空(Phase C 实测 5 条 deref-failed)。与单主体 planner
+    // (planGenericPresentationSurface 的 boundSubject 口径)同一台机器。
+    const wizard: SirenEntity = {
+      class: ['flow-instance'],
+      properties: {
+        rel: 'article-drafting:main',
+        node: 'drafting',
+        fields: { title: '文章发布向导', identity: '发布向导' },
+        presentation: {
+          fields: [{ path: 'properties.fields.title', role: 'identity' }],
+        },
+      },
+      actions: [{ name: 'advance', title: '推进', method: 'POST', href: '/api/exec', fields: {} }],
+      links: [{ rel: ['self'], href: '/api/entity?rel=article-drafting%3Amain' }],
+    };
+    const declaration = {
+      id: 'app-publishing',
+      version: '1',
+      regions: [
+        {
+          region: 'article-drafting',
+          source: 'flow:article-drafting',
+          intent: '发起 内容发布 的流程',
+          mode: 'invalidate' as const,
+          shape: 'entity' as const,
+        },
+      ],
+    };
+    const planned = planWorkspaceComposition({
+      rels: ['flow:article-drafting'],
+      entities: [wizard],
+      declaration,
+      regions: declaration.regions.map((region) => ({ declaration: region, entity: wizard })),
+    });
+
+    const subjects = new Set<string>();
+    const visit = (node: SurfaceNode): void => {
+      if (node.kind === 'layout') {
+        node.children.forEach(visit);
+        return;
+      }
+      if (node.kind === 'slot') {
+        visit(node.child);
+        return;
+      }
+      if (node.kind === 'repeat') {
+        if (node.source.subject !== '$slot:subject') subjects.add(node.source.subject);
+        visit(node.item);
+        return;
+      }
+      if (node.kind === 'word') {
+        for (const binding of Object.values(node.bindings)) {
+          if (binding.kind !== 'item') subjects.add(binding.subject);
+        }
+      }
+    };
+    visit(planned.surface.root);
+    expect(subjects).toContain('article-drafting:main');
+    expect(subjects).not.toContain('flow:article-drafting');
+  });
+});

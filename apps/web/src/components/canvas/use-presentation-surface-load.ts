@@ -404,7 +404,13 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
           }
           const focusEntity = roots.find((entity) => entity.properties.rel === requestedFocus);
           if (focusEntity !== undefined) setFocusEntity(focusEntity);
-          const plan = hydratePresentationSurface(requestedFocus, sidecarSurface, roots);
+          // T37:依赖请求 rel 与根一一对应,供 hydrate 为 flow 别名实体补键。
+          const plan = hydratePresentationSurface(
+            requestedFocus,
+            sidecarSurface,
+            roots,
+            hydrationRels,
+          );
           // T35 F-31:surfaceId 烙 sidecar 版本——SDK store 按 surfaceId 增量
           // upsert 组件、不回收移除节点;版本更替(重规划)落新 store,整树重建。
           // 消息体的 surfaceId 在 createSurface/updateDataModel/updateComponents

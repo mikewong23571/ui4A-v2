@@ -118,6 +118,52 @@ describe('generic Presentation runtime plan', () => {
     expect(plan.bundle.issues).toEqual([]);
   });
 
+  it('hydrate 按依赖请求 rel 为多根实体补别名键,组合面 flow 入口 region 零 deref-failed(T37)', () => {
+    // 组合面(如 workspace:app:publishing)多根 hydrate:依赖按声明源 rel 请求
+    // (articles、flow:article-drafting),服务端 flow 别名让第二个根的实际 rel
+    // 是 article-drafting:main——已持久化 sidecar 的绑定仍指向声明源。T35 F-03
+    // 的单根别名键推广为逐根「请求 rel → 实体」补键;零新事实,同一实体两个键。
+    const collection: SirenEntity = {
+      class: ['collection', 'articles'],
+      properties: { rel: 'articles', title: 'articles', count: 0 },
+      actions: [],
+      links: [{ rel: ['self'], href: '/api/entity?rel=articles' }],
+      entities: [],
+    };
+    const aliasedWizard: SirenEntity = {
+      class: ['flow-instance'],
+      properties: {
+        rel: 'article-drafting:main',
+        node: 'drafting',
+        identity: '发布向导',
+        presentation: {
+          fields: [{ path: 'properties.identity', role: 'identity' }],
+        },
+      },
+      actions: [{ name: 'advance', title: '推进', method: 'POST', href: '/api/exec', fields: {} }],
+      links: [{ rel: ['self'], href: '/api/entity?rel=article-drafting%3Amain' }],
+    };
+    // 模拟既有已持久化 sidecar:主体绑定声明源 flow:article-drafting。
+    const planned = planGenericSurface(
+      'flow:article-drafting',
+      aliasedWizard,
+      PRESENTATION_SURFACE_CATALOG,
+      {
+        entityVersion: 'definition-v1',
+        intent: '发起 内容发布 的流程',
+        semanticHints: semanticHintsOf(aliasedWizard),
+        provenanceRef: 'composition-region:article-drafting',
+      },
+    );
+    const plan = hydratePresentationSurface(
+      'workspace:app:publishing',
+      planned,
+      [collection, aliasedWizard],
+      ['articles', 'flow:article-drafting'],
+    );
+    expect(plan.bundle.issues).toEqual([]);
+  });
+
   it('uses a collection-declared human title as identity while retaining the canonical rel', () => {
     const collection: SirenEntity = {
       class: ['collection', 'threads'],

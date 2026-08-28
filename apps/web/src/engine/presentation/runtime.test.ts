@@ -15,6 +15,7 @@ import { resetRecipeCoordinatorForTests } from './recipes-runtime';
 import { PRESENTATION_SURFACE_CATALOG } from './catalog';
 import { getBuiltinComposition } from './compositions';
 import { planWorkspaceComposition } from './runtime-composition';
+import { hydratePresentationSurface } from '../../render/presentation/generic';
 
 beforeEach(async () => {
   await ensurePresentationTables(getDb());
@@ -97,6 +98,24 @@ describe('durable user Sidecar fastpath', () => {
         .filter((dependency) => dependency.kind === 'entity-contract')
         .map((dependency) => dependency.ref),
     ).toEqual(['articles', 'flow:article-drafting']);
+    // flow 入口 region 端到端零 deref-failed:依赖实体按声明源 rel 取得后,
+    // region 词条 deref 不得因 flow 别名的规范 rel 漂移集体落空(Phase C 实测)。
+    const refs = active.dependencies
+      .filter((dependency) => dependency.kind === 'entity-contract')
+      .map((dependency) => dependency.ref);
+    const roots = [];
+    for (const ref of refs) {
+      const entity = await (await getEngine(getDb())).getEntity(ref);
+      expect(entity).toBeDefined();
+      roots.push(entity!);
+    }
+    const hydration = hydratePresentationSurface(
+      'workspace:app:publishing',
+      active.surface,
+      roots,
+      refs,
+    );
+    expect(hydration.bundle.issues.filter((issue) => issue.code === 'deref-failed')).toEqual([]);
     // 组合不产生真相:零业务事件、快照 hash 不变(虚主体不可 exec、零新事件类型)。
     expect(contentVersion((await getEngine(getDb())).getSnapshot())).toBe(beforeHash);
     expect(

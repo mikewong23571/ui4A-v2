@@ -129,10 +129,17 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
       `composition region "${region.declaration.region}" source "${region.declaration.source}" is class collection but carries no entities array`,
     );
   }
+  // T37:region 词条绑定活合同实体的规范 rel——flow 别名实体(getEntity 流量
+  // flow:<name> → 实例 rel <name>:main)若仍绑定声明源,region deref 会因规范
+  // rel 漂移集体落空。与单主体 planner(planGenericPresentationSurface 的
+  // boundSubject 口径)同一台机器;依赖 ref/fingerprint 仍按声明源计算。
+  const entityRel = (region.entity as { properties?: { rel?: unknown } }).properties?.rel;
+  const boundSubject =
+    typeof entityRel === 'string' && entityRel !== '' ? entityRel : region.declaration.source;
   const surface =
     selected?.surface ??
     planGenericSurface(
-      region.declaration.source,
+      boundSubject,
       region.entity as Parameters<typeof planGenericSurface>[1],
       PRESENTATION_SURFACE_CATALOG,
       {
