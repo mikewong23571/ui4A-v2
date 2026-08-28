@@ -93,6 +93,7 @@ export const THREAD_COMPLETE_ACTION: ActionDefinition = {
 export const THREAD_ARCHIVE_ACTION: ActionDefinition = {
   name: 'archive',
   title: '归档工作线',
+  'requires-confirmation': 'high' as const,
   ...noNodeFields,
 };
 
