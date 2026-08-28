@@ -10,7 +10,7 @@ import type { WorkflowExecutionStatusName } from '@temporalio/client';
 
 import { ensureEventsTable, readLog } from '@ui4a/db/events';
 import { getPool } from '@ui4a/db/pool';
-import { getEngine, resetEngineForTests } from '../../web/src/engine/service';
+import { getEngine, resetEngineForTests } from '../service';
 
 // S3-续跑 真链路集成(T5 Phase A / Task 3;真 Temporal + 真 worker + 真 PG + 真引擎):
 // dispatch delegationWorkflow(发布文章,多步)→ 中途 SIGKILL worker →
@@ -22,13 +22,15 @@ import { getEngine, resetEngineForTests } from '../../web/src/engine/service';
 // 引擎侧真身:测试进程内起最小 HTTP 适配器(/api/entity + /api/exec +
 // /.well-known/ui4a.json → in-process engine runtime + 真 PG)——agent 走
 // HTTP 合同字面成立;适配器对 /api/exec 人为延迟(拉开 kill 窗口)。
+// T36 E2:本测试与组合根同宿 web 服务测试层(worker 由子进程驱动,语义不变),
+// 消除 worker→web 跨应用 import。
 // 依赖:temporal server start-dev(gRPC 7233)+ docker PG(5433);
 // 7233 不可达(如 CI)→ 整个 describe 跳过并说明(与 notify 集成测试同口径)。
 const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? 'localhost:7233';
 const CONNECTION_STRING = process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a';
 const WORKER_DIR = path.join(
-  // 本文件在 apps/worker/src/(比 web 侧集成测试浅一层,三层 '..' 回仓库根)。
-  fileURLToPath(new URL('../../..', import.meta.url)),
+  // 本文件在 apps/web/src/engine/service-tests/(五层 '..' 回仓库根)。
+  fileURLToPath(new URL('../../../../..', import.meta.url)),
   'apps/worker',
 );
 

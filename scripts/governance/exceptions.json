@@ -1,13 +1,6 @@
 {
   "$schema": "T23 governance exceptions registry. dependencyExceptions: GR1 direction exceptions with reason + retireWhen. compatAllowlist: GR2 baseline of legacy/compat markers; pendingRemoval: true = shrink-only debt, false = permanent legitimate wording. identity-scope-selection: D51(T33) 起整体退役——单值 policyScope 会话冻结机器已删除,授权=受众谓词(assertReachable,凭证授予集合×数据归属),本 section 不再新增条目。",
-  "dependencyExceptions": [
-    {
-      "from": "apps/worker/src",
-      "to": "apps/web/src/engine",
-      "reason": "delegation.kill.integration.test 需一个进程内引擎真身(boot/seed + Cedar 裁决 + bundle + 投影的完整组合根)挂在最小 HTTP 适配器后,供独立 worker 进程经真 HTTP 合同驱动多步委托;仅把 kill 证据断言改为 readLog 无法消除该 import(引擎真身是测试固有需求),而复制 composition 或下沉组合根属 Phase D 架构变更,投入产出失衡",
-      "retireWhen": "引擎组合根(service.ts 的 boot/exec/getEntity 装配)下沉到 packages 层或发布为共享测试 harness 后,worker 测试改从该处构造引擎,本例外移除"
-    }
-  ],
+  "dependencyExceptions": [],
   "compatAllowlist": [
     {
       "path": "packages/agent/src/presentation/presentation-revision.ts",

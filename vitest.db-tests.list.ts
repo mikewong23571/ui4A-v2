@@ -98,6 +98,6 @@ export const dbTestFiles: readonly string[] = [
   'apps/worker/src/agents/coding/adapter.real.test.ts',
   'apps/worker/src/agents/coding/adapter.test.ts',
   'apps/worker/src/agents/writing/adapter.test.ts',
-  'apps/worker/src/delegation.kill.integration.test.ts',
+  'apps/web/src/engine/service-tests/delegation.kill.integration.test.ts',
   'apps/worker/src/worker-db.test.ts',
 ];
