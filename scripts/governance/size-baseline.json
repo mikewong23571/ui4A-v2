@@ -12,13 +12,6 @@
       "lines": 866,
       "limit": 800,
       "note": "T22 已关闭(2026-08-27,D52):scripts/t22 按 GR5 晋升常驻部署合同套件;本条转为常驻登记债务,shrink-only,后续触及内容时按 describe 分片收缩"
-    },
-    {
-      "path": "packages/agent/src/loop/loop.ts",
-      "lines": 520,
-      "limit": 500,
-      "note": "T35 C5 反复拒绝机械收敛护栏 +20(2026-08-27,业务优先登记;循环终止语义集中在单文件,拆分会破坏终止判定可读性;处置=F-04 相关终止语义下次演进时按 fail-guard 家族提取收缩)",
-      "track": "t35-ux-walkthrough-remediation_20260827"
     }
   ],
   "dirs": [

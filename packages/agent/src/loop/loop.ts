@@ -16,6 +16,7 @@
 import { createContractClient } from '../contract/http';
 import { sliceSitemapDisclosure } from '../contract/disclosure';
 import { authorizeEffects, type ProposedEffect } from './authorization';
+import { createNoProgressGuard, createRepeatedRejectionGuard } from './fail-guard';
 import type {
   AgentDriver,
   AgentGoal,
@@ -195,33 +196,8 @@ export async function runAgent(
   const successes: ExecSuccess[] = [];
   const observations: ContractObservation[] = [];
   let lastRejection: RejectionRecord | undefined;
-  // T35 C5:同一动作同一参数反复被拒的机械收敛——计划重试被拒动作不烧步数,
-  // 第二次同键拒绝即结构化失败(code=repeated_rejection,原因回流)。
-  const rejectionCounts = new Map<string, number>();
-  const recordRepeatedRejection = async (
-    step: Parameters<typeof pushStep>[0]['step'],
-    rel: string,
-    action: string | undefined,
-    params: Record<string, unknown> | undefined,
-    rejection: RejectionRecord,
-  ): Promise<boolean> => {
-    const key = `${rel}|${action ?? ''}|${JSON.stringify(params ?? {})}`;
-    const count = (rejectionCounts.get(key) ?? 0) + 1;
-    rejectionCounts.set(key, count);
-    if (count < 2) return false;
-    const op = {
-      kind: 'fail' as const,
-      // 结构化失败码(T24 口径):机械终止带 code 供上层组装;原因回流原拒绝。
-      code: 'repeated_rejection',
-      reason: `同一动作反复被拒（${count} 次），机械收敛：${rejection.reason}`,
-      evidence: [`${rejection.rel}#${rejection.action ?? ''}`, `layer:${rejection.layer ?? ''}`],
-    };
-    await pushStep({ step, rel, op, outcome: 'failed' });
-    return true;
-  };
   // 同一合同处境第三次出现且期间没有成功 exec，说明 driver 正在机械绕圈。
   // 循环不猜业务完成条件，只对完全相同的可观察状态做协议级有限性保护。
-  const stateVisits = new Map<string, number>();
 
   /** effect gate 拒绝是协议数据：记轨迹、回流 driver，但绝不触发 POST。 */
   const authorize = (
@@ -267,6 +243,11 @@ export async function runAgent(
     }
   };
 
+  // 机械收敛护栏家族(T36 C2 提取至 ./fail-guard;终止判定语义不变):
+  // 同键反复拒绝计数 + 同处境三次访问检测,触发即经 pushStep 落 fail 步。
+  const repeatedRejection = createRepeatedRejectionGuard(pushStep);
+  const noProgress = createNoProgressGuard();
+
   // 推理自述观测通道(T11 Phase C):llm 步 decide 产出 reasoning 时由 driver
   // 回调一次(聚合整段);rule driver 零回调。异常吞掉口径同 onStep。
   // 增量通道(onReasoningDelta)同構:两通道任一存在即构造 sink。
@@ -303,37 +284,16 @@ export async function runAgent(
     }
     observe(fetched.entity);
 
-    const stateSignature = JSON.stringify({
+    const loopFail = await noProgress.recordVisit({
+      step,
       rel: currentRel,
-      actions: fetched.entity.actions.map((action) => action.name).sort(),
+      actionNames: fetched.entity.actions.map((action) => action.name),
       successes: successes.length,
-      rejection:
-        lastRejection === undefined
-          ? null
-          : {
-              rel: lastRejection.rel,
-              action: lastRejection.action ?? null,
-              layer: lastRejection.layer ?? null,
-            },
+      lastRejection,
+      fail: pushStep,
     });
-    const visits = (stateVisits.get(stateSignature) ?? 0) + 1;
-    stateVisits.set(stateSignature, visits);
-    if (visits >= 3) {
-      const evidence = [
-        `重复处境:${currentRel}`,
-        `可用动作:${fetched.entity.actions.map((action) => action.name).join(',') || '(无)'}`,
-        `已成功执行:${successes.length}`,
-      ];
-      const op = {
-        kind: 'fail' as const,
-        // 结构化失败码(T24 Phase B Task 3):机械层终止原因带出到轨迹,
-        // 供上层组装 {code, evidence, tried};不改终止判定语义。
-        code: 'no_progress_loop',
-        reason: `检测到无进展导航循环；当前合同未暴露完成目标所需的可执行能力`,
-        evidence,
-      };
-      await pushStep({ step, rel: currentRel, op, outcome: 'failed' });
-      return { goal, outcome: 'failed', summary: op.reason, steps: trail, successes };
+    if (loopFail !== undefined) {
+      return { goal, outcome: 'failed', summary: loopFail.reason, steps: trail, successes };
     }
 
     // 上下文是逐步快照(trail/successes 拷贝):decide 之后循环继续追加,
@@ -452,7 +412,7 @@ export async function runAgent(
           rejection: authorizationRejection,
         });
         if (
-          await recordRepeatedRejection(
+          await repeatedRejection.record(
             step,
             currentRel,
             'exec-plan',
@@ -497,7 +457,7 @@ export async function runAgent(
       };
       lastRejection = rejection;
       await pushStep({ step, rel: currentRel, op, outcome: 'rejected', rejection });
-      if (await recordRepeatedRejection(step, currentRel, 'exec-plan', undefined, rejection)) {
+      if (await repeatedRejection.record(step, currentRel, 'exec-plan', undefined, rejection)) {
         return { goal, outcome: 'failed', summary: rejection.reason, steps: trail, successes };
       }
       continue;
@@ -516,7 +476,7 @@ export async function runAgent(
         rejection: authorizationRejection,
       });
       if (
-        await recordRepeatedRejection(
+        await repeatedRejection.record(
           step,
           currentRel,
           op.action,
@@ -569,7 +529,7 @@ export async function runAgent(
       };
       lastRejection = rejection;
       await pushStep({ step, rel: currentRel, op, outcome: 'rejected', rejection });
-      if (await recordRepeatedRejection(step, currentRel, op.action, op.params, rejection)) {
+      if (await repeatedRejection.record(step, currentRel, op.action, op.params, rejection)) {
         return { goal, outcome: 'failed', summary: rejection.reason, steps: trail, successes };
       }
     }
