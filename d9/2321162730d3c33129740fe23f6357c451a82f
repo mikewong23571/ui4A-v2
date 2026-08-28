@@ -1,0 +1,1 @@
+T36 A1 完成:拆分边界=载入编排(hook)/装配渲染(宿主);PresentationSurfaceParameters 移入 hook 并由宿主 re-export 保持公共面;验证=pnpm vitest unit 3 文件 19 passed + tsc --noEmit + pnpm governance(baseline 11);已知预存 lint 错误 no-html-link-for-pages(HEAD 686 行同错,非本任务引入)。
