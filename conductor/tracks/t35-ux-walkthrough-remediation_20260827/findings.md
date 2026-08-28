@@ -403,6 +403,7 @@ F-17 别名动作 subject-mismatch 误拒 · F-15 双创建按钮(随 D-2 复查
   2. 组合区域指纹 `contractFingerprint` 不含成员清单——inbox 成员集变化时指纹不变,sidecar 不重规划(runtime-composition.ts 已补 members 序列入指纹,单主体 members: 依赖同口径)。
 - **残余(未闭环)**: 上述两修后,批准→卡仍不退场。resolve 命中路径 `dependencyDecision(active.dependencies, currentDependencies(situation))`(runtime.ts:299)预期因指纹变化 miss→重规划,实测未发生——疑点:命中时 AuthorizedRoot regions 的实体装载形态(是否含 entities/是否走 planWorkspaceComposition)与计划时不同构,或 situation 装配早于快照刷新。需专项:在 resolve 打点对比 stored vs current 指纹。
 - **证据**: `evidence/2026-08-28-R3/S2_home_pending.png`(决策卡正确形态)→ `S2_after_approve.png`(退化裸链卡不退场)。
+- **探针进展(2026-08-28 续)**: 直接 POST /api/presentation(schemaVersion:1 + subject/intent/delivery 全形)探针:sidecar **v3 已不含 confirmation:c1**——服务端 resolve→dependencyDecision→重规划链路在成员指纹修复后**工作正常**。残余病灶收敛到**浏览器侧**:批准后宿主 reload 拿到的仍是旧树(或渲染旧 React state)。下一差分:对比宿主 reload 时实际 POST 的响应版本 vs 页面渲染树;疑点 1) load effect 早退分支(subject-mismatch/partial-authorization reasonCode)吞掉新版本;2) surfaces state 未被新 generation 替换(generation key 竞态)。
 - **处置**: 专项修复后重走 S2 全部四项判定;修复期间 S2 判**不通过**。
 
 ---
