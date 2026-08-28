@@ -6,18 +6,18 @@
 
 ## Phase A 呈现面拆解(web components/canvas;FR1.1、FR1.2、FR2.2)
 
-- [ ] Task: A1 surface-host 装配编排提取为 hook(FR1.1)
+- [x] Task: A1 surface-host 装配编排提取为 hook(FR1.1) `d923211`
   - [ ] 盘点 `presentation-surface-host.tsx` 的 load 取值/装配/failure 分支边界,确定 hook 契约(输入、载入状态、denied/unknown 分流、surfaceSubmit 回流)
   - [ ] 新建 hook 模块(领域命名,如 `use-presentation-surface-load.ts`),迁移编排逻辑;宿主保留装配+渲染;现有组件测试(presentation-surface-host 相关)全绿
   - [ ] 验证:受影响 vitest 套件全绿;文件 ≤500 行;移除基线条目 `presentation-surface-host.tsx` 同 commit
-- [ ] Task: A2 floating-chat 测试分片与共享 SSE 桩(FR1.2)
-  - [ ] 按 feature(presence attach/thinking 折叠/失败分层/SSE 生命周期等实际 describe 结构)分片为多个 `.test.tsx`;提炼共享 SSE 桩到就近 kit/辅助模块
-  - [ ] 用例只迁移不删除;vitest 套件全绿;各分片 ≤800 行
-  - [ ] 移除基线条目 `floating-chat.test.tsx` 同 commit
-- [ ] Task: A3 components 直接文件按 feature 归档(FR2.2)
-  - [ ] 以现值实测为导向,把 chat 面板族/画布族等直接文件归档进既有 `chat/`、`canvas/` 或新建 feature 子目录;import 路径与相关测试引用同步;**不做任意对半切**
-  - [ ] 验证:目录直接 `.ts/.tsx` 合计 ≤4000 行;`pnpm --filter @ui4a/web build` 通过;移除基线条目 `apps/web/src/components` 同 commit
-- [ ] Task: Phase A 检查点(自动化等效验证:相关 vitest 套件 + `pnpm governance`;git notes 记录拆分边界)
+- [x] Task: A2 floating-chat 测试分片与共享 SSE 桩(FR1.2) `9b9fd19`
+  - [x] 按 feature(presence attach/thinking 折叠/失败分层/SSE 生命周期等实际 describe 结构)分片为多个 `.test.tsx`;提炼共享 SSE 桩到就近 kit/辅助模块
+  - [x] 用例只迁移不删除;vitest 套件全绿;各分片 ≤800 行
+  - [x] 移除基线条目 `floating-chat.test.tsx` 同 commit
+- [x] Task: A3 components 直接文件按 feature 归档(FR2.2) `05238e7`
+  - [x] 以现值实测为导向,把 chat 面板族/画布族等直接文件归档进既有 `chat/`、`canvas/` 或新建 feature 子目录;import 路径与相关测试引用同步;**不做任意对半切**
+  - [x] 验证:目录直接 `.ts/.tsx` 合计 ≤4000 行;`pnpm --filter @ui4a/web build` 通过;移除基线条目 `apps/web/src/components` 同 commit
+- [x] Task: Phase A 检查点(自动化等效验证:相关 vitest 套件 + `pnpm governance`;git notes 记录拆分边界) `05238e7`
 
 ## Phase B 服务编排拆解(FR1.3、FR1.4)
 
