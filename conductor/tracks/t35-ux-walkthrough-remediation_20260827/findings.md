@@ -404,7 +404,9 @@ F-17 别名动作 subject-mismatch 误拒 · F-15 双创建按钮(随 D-2 复查
 - **残余(未闭环)**: 上述两修后,批准→卡仍不退场。resolve 命中路径 `dependencyDecision(active.dependencies, currentDependencies(situation))`(runtime.ts:299)预期因指纹变化 miss→重规划,实测未发生——疑点:命中时 AuthorizedRoot regions 的实体装载形态(是否含 entities/是否走 planWorkspaceComposition)与计划时不同构,或 situation 装配早于快照刷新。需专项:在 resolve 打点对比 stored vs current 指纹。
 - **证据**: `evidence/2026-08-28-R3/S2_home_pending.png`(决策卡正确形态)→ `S2_after_approve.png`(退化裸链卡不退场)。
 - **探针进展(2026-08-28 续)**: 直接 POST /api/presentation(schemaVersion:1 + subject/intent/delivery 全形)探针:sidecar **v3 已不含 confirmation:c1**——服务端 resolve→dependencyDecision→重规划链路在成员指纹修复后**工作正常**。残余病灶收敛到**浏览器侧**:批准后宿主 reload 拿到的仍是旧树(或渲染旧 React state)。下一差分:对比宿主 reload 时实际 POST 的响应版本 vs 页面渲染树;疑点 1) load effect 早退分支(subject-mismatch/partial-authorization reasonCode)吞掉新版本;2) surfaces state 未被新 generation 替换(generation key 竞态)。
-- **处置**: 专项修复后重走 S2 全部四项判定;修复期间 S2 判**不通过**。
+- **打点定论(2026-08-28,resolve/planned/data-generation 三层探针)**: 布局不变式成立——批准后宿主 reload **确实运行并提交了新 generation 树**;服务端 dependencyDecision 也正确检出漂移并 replan。**残余竞态实锤**: 同一轮里 resolve 相位读到 inbox=0(判定漂移成立)→ 紧随的 replan 相位 getEntity('inbox') 却读回 inbox=1(把已决确认烘进新树)——两次相邻快照读可见性不一致,属 `service.incremental-gap` 同类(引擎会话水位/双单例可见性),与 e2e 无关、dev/prod 同构存在。
+- **本轮已落地修复(全部有效且必要,保留)**: ①确认/委托实体 collection 回链;②区域指纹含成员清单;③surfaceId/SDK store 身份按 sidecar 版本烙版(消息载荷逐面重写,根治跨版本组件残留);④sidecar GET no-store(客户端+路由双侧);⑤面容器 data-generation 诊断属性。
+- **处置**: 下一专项——引擎会话快照可见性增量 gap(getEntity 相邻两次读不一致;复现=批准后 reload 的 replan 相位成员数与 resolve 相位不一致,探针口径已沉淀于本条);修复后重走 S2 四项判定。修复期间 S2 判**不通过**。
 
 ---
 

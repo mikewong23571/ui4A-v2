@@ -291,6 +291,8 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
           ? frozenSpecs.filter((spec) => spec.concern === activeConcern)
           : [];
       let resolvedSidecarId = sidecarParam;
+      // T35 F-31:sidecar 活跃版本(surfaces 的 SDK store 身份烙版用)。
+      let resolvedSidecarVersion = 0;
       if (
         resolvedSidecarId === undefined &&
         focusParam !== undefined &&
@@ -323,7 +325,9 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
             `/api/presentation/sidecar?sidecarId=${encodeURIComponent(resolvedSidecarId)}`,
             scopeParam,
           ),
-          { signal: controller.signal },
+          // T35 F-31:sidecar 是会话内可变面(重规划 bump 版本)——禁 HTTP 缓存,
+          // 否则 in-place reload 拿到旧树(批准退场卡残留实测根因)。
+          { signal: controller.signal, cache: 'no-store' },
         );
         if (!response.ok) {
           // D51/B4 诚实分支:denied(403)与 unknown(404)在
@@ -355,6 +359,16 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
           throw new Error('Sidecar subject/surface does not match the requested focus');
         }
         sidecarSurface = body.sidecar.surface;
+        // T35 F-31:活跃版本入 scope——根身份与 surfaceId 都烙版(见 planned 段):
+        // A2UI SDK 的组件状态按面身份存活,版本更替(重规划)必须换店,否则同身份
+        // 增量消息不回收被移除节点(批准退场卡残留实测)。分隔符用 '-v'(原 id 不含
+        // 该尾缀);根改名先于 hydrate,树内编译引用一致;视图里的旧根 id 重映射。
+        if (typeof body.sidecar.version === 'number') {
+          resolvedSidecarVersion = body.sidecar.version;
+        }
+        const originalRootId = sidecarSurface.root.id;
+        const versionedRootId = `${originalRootId}-v${resolvedSidecarVersion}`;
+        sidecarSurface.root.id = versionedRootId;
         sidecarHydrationRels = [
           ...new Set(
             (body.sidecar.dependencies ?? [])
@@ -374,12 +388,12 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
             id: body.sidecar.id,
             version: body.sidecar.version,
             retention: body.sidecar.retention,
-            rootNodeId: body.sidecar.surface.root.id,
+            rootNodeId: versionedRootId,
             view: {
               collapsedNodeIds: Array.isArray(body.sidecar.view?.collapsedNodeIds)
-                ? body.sidecar.view.collapsedNodeIds.filter(
-                    (value): value is string => typeof value === 'string',
-                  )
+                ? body.sidecar.view.collapsedNodeIds
+                    .filter((value): value is string => typeof value === 'string')
+                    .map((value) => (value === originalRootId ? versionedRootId : value))
                 : [],
               densityByNodeId:
                 typeof body.sidecar.view?.densityByNodeId === 'object' &&
@@ -453,6 +467,24 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
           const focusEntity = roots.find((entity) => entity.properties.rel === requestedFocus);
           if (focusEntity !== undefined) setFocusEntity(focusEntity);
           const plan = hydratePresentationSurface(requestedFocus, sidecarSurface, roots);
+          // T35 F-31:surfaceId 烙 sidecar 版本——SDK store 按 surfaceId 增量
+          // upsert 组件、不回收移除节点;版本更替(重规划)落新 store,整树重建。
+          // 消息体的 surfaceId 在 createSurface/updateDataModel/updateComponents
+          // 载荷内,逐载荷重写。
+          const versionedSurfaceId = `${plan.bundle.surfaceId}-v${resolvedSidecarVersion}`;
+          const baseSurfaceId = plan.bundle.surfaceId;
+          plan.bundle.surfaceId = versionedSurfaceId;
+          for (const message of plan.bundle.messages) {
+            for (const payload of Object.values(message)) {
+              if (
+                payload !== null &&
+                typeof payload === 'object' &&
+                (payload as { surfaceId?: unknown }).surfaceId === baseSurfaceId
+              ) {
+                (payload as { surfaceId: string }).surfaceId = versionedSurfaceId;
+              }
+            }
+          }
           for (const hydrated of plan.entities.values()) gate.register(hydrated);
           processor.processMessages(plan.bundle.messages);
           planned.push({
@@ -664,7 +696,8 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
         {surfaces.map((entry) => (
           <div
             key={`${entry.generation}:${entry.id}`}
-            data-surface={entry.id}
+            data-surface={entry.id.replace(/-v\d+$/, '')}
+            data-generation={String(entry.generation)}
             data-concern={entry.concern}
             {...(entry.active ? { 'data-active': 'true' } : {})}
             className={cn(

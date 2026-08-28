@@ -107,18 +107,23 @@ export async function GET(request: Request): Promise<Response> {
     }
   }
   const active = sidecar.versions[sidecar.activeVersion]!;
-  return Response.json({
-    sidecar: {
-      id: sidecar.id,
-      version: sidecar.activeVersion,
-      key: sidecar.key,
-      surface: active.surface,
-      view: active.view ?? { collapsedNodeIds: [], densityByNodeId: {} },
-      dependencies: active.dependencies,
-      retention: active.retention,
-      provenance: active.provenance,
+  // T35 F-31:同 sidecarId 会话内可变(重规划 bump activeVersion)——禁缓存,
+  // 否则浏览器以旧树应答 in-place reload(批准退场卡残留实测根因)。
+  return Response.json(
+    {
+      sidecar: {
+        id: sidecar.id,
+        version: sidecar.activeVersion,
+        key: sidecar.key,
+        surface: active.surface,
+        view: active.view ?? { collapsedNodeIds: [], densityByNodeId: {} },
+        dependencies: active.dependencies,
+        retention: active.retention,
+        provenance: active.provenance,
+      },
     },
-  });
+    { headers: { 'cache-control': 'no-store' } },
+  );
 }
 
 export async function POST(request: Request): Promise<Response> {

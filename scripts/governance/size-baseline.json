@@ -27,9 +27,9 @@
     },
     {
       "path": "apps/web/src/components/canvas/presentation-surface-host.tsx",
-      "lines": 620,
+      "lines": 642,
       "limit": 500,
-      "note": "T32 Q5 载入失败诚实化(固定人话+why 抽屉诊断)推过单文件上限;处置:T31 闭环后将 load 取数/装配编排提取为独立 hook 模块收缩(与 D49-2 依赖注释同批);T34 Phase B denied/unknown 分流人话 +12(D51 失败语义表落地,共享常量已外置 presentation-sidecar-failure.ts,业务优先不为凑行数拆分),收缩窗口同上 hook 提取批次;T35 F-01 surfaceSubmit executed 协议接线 +6(2026-08-27,业务优先登记;随上述 hook 提取批次一并收缩);T35 F-02 focus 结构化空态与错误聚合 +33(2026-08-27,业务优先登记;同一 hook 提取批次收缩);T35 W2 线内钉住控件 +48(2026-08-28,业务优先登记;随 hook 提取批次收缩);R3 surfaceSubmit 广播合同执行事件(+2,2026-08-28)",
+      "note": "T32 Q5 载入失败诚实化(固定人话+why 抽屉诊断)推过单文件上限;处置:T31 闭环后将 load 取数/装配编排提取为独立 hook 模块收缩(与 D49-2 依赖注释同批);T34 Phase B denied/unknown 分流人话 +12(D51 失败语义表落地,共享常量已外置 presentation-sidecar-failure.ts,业务优先不为凑行数拆分),收缩窗口同上 hook 提取批次;T35 F-01 surfaceSubmit executed 协议接线 +6(2026-08-27,业务优先登记;随上述 hook 提取批次一并收缩);T35 F-02 focus 结构化空态与错误聚合 +33(2026-08-27,业务优先登记;同一 hook 提取批次收缩);T35 W2 线内钉住控件 +48(2026-08-28,业务优先登记;随 hook 提取批次收缩);R3 surfaceSubmit 广播合同执行事件(+2,2026-08-28);R3 F-31 SDK store 烙版+no-store+诊断属性(+24,2026-08-28)",
       "track": "t35-ux-walkthrough-remediation_20260827"
     },
     {
