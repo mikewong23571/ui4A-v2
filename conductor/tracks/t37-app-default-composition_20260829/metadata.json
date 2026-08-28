@@ -1,0 +1,10 @@
+{
+  "id": "t37-app-default-composition_20260829",
+  "title": "应用默认展示治理:导航合同修复 + 默认落点组合化",
+  "type": "feature",
+  "status": "new",
+  "createdAt": "2026-08-29T06:03:27+08:00",
+  "updatedAt": "2026-08-29T06:03:27+08:00",
+  "acceptanceModel": "agent-visual-browser-review",
+  "visionRef": "conductor/product-vision.md"
+}
