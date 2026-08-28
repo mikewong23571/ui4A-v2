@@ -1,0 +1,10 @@
+T37 C6 Track 终审(自治验收)
+- 用户故事:U1–U5 全 PASS,覆盖 publishing/todo/community 三应用(review.md 全证据)
+- 修复轮次 2/2:79235bc7(入口 region 规范 rel)、a1159f4d(空值词位诚实空呈现)
+- 最终门禁(编排 agent 亲跑):pnpm check exit 0(409 files/3119 tests);governance OK;
+  pnpm dev:all 运行中,web HTTP 200,组合面对浏览器与合同同门可用
+- §六滑梯自查:无页面组件/无 per-app 或 per-entity 特判(app 名在新增推导文件中出现 0 次)/
+  无硬编码文案/无规则特判;组合不产生真相(虚主体不可 exec、零业务事件)
+- 遗留观察(后续 track):实体页人读/审计分层;视觉去嵌套(卡套卡+单子 Column);
+  组合面标题人话化;exec 失效对 flow: 别名缓存键的瞬态陈旧读;跨面 scope 透传一致性;
+  组合面重规划期交互稳定性
