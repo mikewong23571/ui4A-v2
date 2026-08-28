@@ -9,33 +9,15 @@
 
 ---
 
-## 问题地图(截至 2026-08-28,对话全量汇总)
+## 问题地图(截至 2026-08-28,R3 走查中段更新)
 
-**已修复并复验(6)**: F-01 动作后无反馈/不刷新 · F-02 查看活实例死链 · F-03 向导面
-deref 失败+错误堆叠 · F-04 代理循环重试(收敛护栏;会话"失败"标注经核实为诚实) ·
-F-17 别名动作 subject-mismatch 误拒 · F-15 双创建按钮(随 D-2 复查)。
+**已关闭(rechecked,6)**: F-01 动作后无反馈/不刷新 · F-02 查看活实例死链 · F-17 别名动作误拒 · F-28 重放一致锚脱节 · F-15 双创建按钮(随 D-2 复查) · F-30 线归档确认门(high,待 R3 复验)。
+**fixed-pending-recheck(待 R3 复验,10+)**: F-06/11/12/13/18/19/21/22/24/27,及 R3 新增 F-09(文本面)/F-10(Siren 面)——均随 R3 收口批量复验。
+**fixing(阻塞收口,1)**: **F-31 首页待批卡 in-place 不退场**——完整排查记录见 F-31 段(七层假设表/探针证据/锁定病灶=A2uiSurface 渲染层,引擎侧已证无罪);S2 判不通过,修复后重走四项判定。
+**open(随收口评估)**: F-05 术语残余(向导面身份显 rel)、F-14/F-16(原始 JSON/开发注释)、F-20(现码不可复现,S11 终判)。
+**R3 走查状态与剩余事项**: 见下方「R3 阶段状态与剩余事项」专节(唯一权威清单)。
 
-**P0 未修(2)**:
-- F-23 应用不可达 → E-2:sitemap 派生应用入口区 + pin(F-26) + 阈值收缩;
-- F-27 thread 动作无对象无价值叙事 → E-1:叙述页 + 材料清单 + 对象选择器 +
-  任务语标题(裸填表单退位)。
-
-**P1 未修(按执行波次)**:
-- E 轮(工作台地基): E0 蓝框误激活一行修(F-24a) · E-1 F-11 线叙述页 ·
-  E-2/E-3 F-25 canvas 重定位(无注视=入口层,有注视=共读面) · F-24b dashboard
-  分层(读面/写面视觉语言) · F-07 动作分组与危险分层;
-- D 轮(表达收敛): D-1 术语表一物一名(F-05) · D-2 噪音删减+空态引导+成员状态
-  标题化(F-06/21/24c) · D-3 动作/表单文案任务语(F-08) · D-4 聊天人话与证据
-  分层(F-09) · D-5 守卫原因结构化转述(F-10) · D-6 导航当前项+系统下拉+
-  刷新动词(F-13/18/19) · D-7 处境条芯片化(F-12,方案已认可,三补丁) ·
-  D-8 分栏粘性视口列(F-22);
-- 顺带: F-13/F-16 开发注释与细节、F-20 草稿加动作静默丢(校验器/表单补 effect)、
-  F-26 文案一眼可读标准(全站验收线)。
-
-**设计方向已定档(后续 track)**: ~~thread 工作台三栏/线内 pin/切线三路径/inline-委托话术~~ → **已提前并入本轨落地**(Phase W1–W4 完成);且经用户三轮追问,**pin 语义与布局定稿修订见 design-notes §十**(2 轨 + 1 舞台;pin=上下文引用非实时渲染;按钮跟着注视走)——§六/§七 与此不一致处以 §十 为准。
-
-**原则红线(全程有效)**: 零每实体特判 · 渲染器零文案模板(文案滑梯,改合同数据) ·
-处境单点装配 · 一切皆投影不加新真相 · 北极星为裁判文书。
+**原则红线(全程有效)**: 零每实体特判 · 渲染器零文案模板(文案滑梯,改合同数据) · 处境单点装配 · 一切皆投影不加新真相 · 北极星为裁判文书。
 
 ## 试用轮次索引
 
@@ -392,22 +374,54 @@ F-17 别名动作 subject-mismatch 误拒 · F-15 双创建按钮(随 D-2 复查
 - **修复**: work-thread 定义 archive 动作补 requires-confirmation: high(合同数据层,与 post 归档同规)。
 - **修复记录(2026-08-28,commit d9e7ea8)**: `THREAD_ARCHIVE_ACTION` 补 `'requires-confirmation': 'high'`;2580 测试通过。浏览器复验归 Phase F(归档 → 两段式确认门)。
 
-## F-31 首页待批卡:批准后不退场,聚合列表冻结(R3,S2 不通过项)
+## F-31 首页待批卡:批准后不退场,in-place reload 渲染旧树(R3,S2 不通过项)
 
-- **状态**: fixing(已修两处必要条件;命中路径重规划仍未触发,专项排查中)
-- **严重度**: P1(首页主路径正确性)
+- **状态**: fixing(排查已收口到客户端渲染层;五层修复已落地;剩 A2uiSurface 响应语义一环)
+- **严重度**: P1(首页主路径正确性;按故事纪律,S2 不通过则 track 不可收口)
 - **发现**: R3(2026-08-28,S2 走查)
-- **现象**: 首页决策卡点[批准]→exec 成功(实体转 approved)→卡片**不退场**,且退化为 `confirmation:c1/pending` 裸链卡;页内「重新载入」后依旧。硬重载后亦然(sidecar 持久面)。
-- **已定位并修复(必要条件)**:
-  1. 确认/委托实体缺 `['collection']` 回链——F-01 精确失效够不到 inbox/delegations 列表缓存(已补,engine project.ts + 测试锚迁移);
-  2. 组合区域指纹 `contractFingerprint` 不含成员清单——inbox 成员集变化时指纹不变,sidecar 不重规划(runtime-composition.ts 已补 members 序列入指纹,单主体 members: 依赖同口径)。
-- **残余(未闭环)**: 上述两修后,批准→卡仍不退场。resolve 命中路径 `dependencyDecision(active.dependencies, currentDependencies(situation))`(runtime.ts:299)预期因指纹变化 miss→重规划,实测未发生——疑点:命中时 AuthorizedRoot regions 的实体装载形态(是否含 entities/是否走 planWorkspaceComposition)与计划时不同构,或 situation 装配早于快照刷新。需专项:在 resolve 打点对比 stored vs current 指纹。
-- **证据**: `evidence/2026-08-28-R3/S2_home_pending.png`(决策卡正确形态)→ `S2_after_approve.png`(退化裸链卡不退场)。
-- **探针进展(2026-08-28 续)**: 直接 POST /api/presentation(schemaVersion:1 + subject/intent/delivery 全形)探针:sidecar **v3 已不含 confirmation:c1**——服务端 resolve→dependencyDecision→重规划链路在成员指纹修复后**工作正常**。残余病灶收敛到**浏览器侧**:批准后宿主 reload 拿到的仍是旧树(或渲染旧 React state)。下一差分:对比宿主 reload 时实际 POST 的响应版本 vs 页面渲染树;疑点 1) load effect 早退分支(subject-mismatch/partial-authorization reasonCode)吞掉新版本;2) surfaces state 未被新 generation 替换(generation key 竞态)。
-- **打点定论(2026-08-28,resolve/planned/data-generation 三层探针)**: 布局不变式成立——批准后宿主 reload **确实运行并提交了新 generation 树**;服务端 dependencyDecision 也正确检出漂移并 replan。**残余竞态实锤**: 同一轮里 resolve 相位读到 inbox=0(判定漂移成立)→ 紧随的 replan 相位 getEntity('inbox') 却读回 inbox=1(把已决确认烘进新树)——两次相邻快照读可见性不一致,属 `service.incremental-gap` 同类(引擎会话水位/双单例可见性),与 e2e 无关、dev/prod 同构存在。
-- **本轮已落地修复(全部有效且必要,保留)**: ①确认/委托实体 collection 回链;②区域指纹含成员清单;③surfaceId/SDK store 身份按 sidecar 版本烙版(消息载荷逐面重写,根治跨版本组件残留);④sidecar GET no-store(客户端+路由双侧);⑤面容器 data-generation 诊断属性。
-- **处置**: 下一专项——引擎会话快照可见性增量 gap(getEntity 相邻两次读不一致;复现=批准后 reload 的 replan 相位成员数与 resolve 相位不一致,探针口径已沉淀于本条);修复后重走 S2 四项判定。修复期间 S2 判**不通过**。
-- **请求关联探针定论(2026-08-28 第二轮,commit 见 fix t35 F-31 探针)**: f31-plan 探针带 requestId 后,时间线彻底澄清——**批准后的 replan 相位 getEntity('inbox') 正确读到 0 成员,新树干净**(引擎竞态假设被推翻:此前的 memberCount=1 日志来自批准前的初始加载与无 request 关联的日志交错)。**病灶收敛至客户端渲染层**: setSurfaces 已提交新 generation 树,但 DOM 的 data-generation 不前进、SDK 仍渲染旧树(硬刷新必好)。下一步:检查 A2uiSurface(@a2ui/react v0.9)对 surface prop 更新的响应语义(store 是否挂 mount 期 surfaceId 引用)与 surfaces key 竞态;data-generation 属性与 f31-plan 关联探针已沉淀为下一轮起点工具(修复后移除)。
+- **现象与复现(100% 复现,三轮以上)**:
+  1. agent 对 published post 执行 archive(high-risk)→ 挂起 → 首页「在等我」出现决策卡(身份行 + pending·cN + 批准/驳回);
+  2. 点[批准] → **exec 成功**(事件落库、confirmation approved、inbox count=0);
+  3. 卡片**不退场**,且形态退化(决策卡 → `confirmation:cN/pending/↗` 裸链卡);
+  4. 页内「重新载入」依旧;**浏览器硬刷新后必好**(inbox 空区留白)。
+  复现脚本口径:`/tmp/t35shot` 之外已在证据目录留 S2v3–S2v6 系列截图(退化全过程);探针已沉淀为代码内 `[pres-probe]`/`[f31-plan]` 与 `data-generation` 属性。
+- **排查记录(按层,时间序)**:
+  | # | 假设/动作 | 结论 |
+  |---|---|---|
+  | 1 | 确认/委托实体缺 `['collection']` 回链 → F-01 精确失效够不到 inbox/delegations 列表缓存 | ✅ 真实缺陷,已修(project.ts;测试锚迁移)——必要不充分 |
+  | 2 | 组合区域指纹不含成员清单 → 成员集变化不触发重规划 | ✅ 真实缺陷,已修(runtime-composition.ts contractFingerprint + membershipFingerprint 入区域依赖)——必要不充分 |
+  | 3 | sidecar GET 被浏览器 HTTP 缓存应答旧树 | ✅ 隐患,已双侧修(宿主 fetch cache:'no-store' + 路由响应 cache-control:no-store)——非根因 |
+  | 4 | 引擎 getEntity 相邻两次读可见性竞态(resolve 见 0、replan 见 1) | ❌ **被请求关联探针推翻**(memberCount=1 日志系批准前初始加载与无关联日志交错) |
+  | 5 | A2UI SDK 增量 upsert 不回收被移除节点 → surfaceId/根身份按 sidecar 版本烙版 | ✅ 已修(surfaces 消息载荷逐面重写 `-v<version>`;根 id 改名尝试已回退——树内绑定按节点 id 引用,改名破坏 hydration) |
+  | 6 | 服务端重规划未触发/拿到旧树 | ❌ 探针证实:批准后 replan 相位 `getEntity('inbox')` 正确读到 **0 成员,新树干净**(pres-probe + f31-plan 带 requestId 关联) |
+  | 7 | 宿主 reload 未运行 / surfaces 状态未提交 | ❌ f31-load 生命周期日志:`planned gen2 → setSurfaces → finally gen2` 全部执行 |
+- **当前锁定病灶(客户端渲染层)**: setSurfaces 已提交新 generation 的新树(服务端树干净、消息 surfaceId 已烙版),但 **DOM 的 `data-generation` 不前进、A2uiSurface 仍渲染旧组件集**;硬刷新(全新 React 树 + 全新 SDK 模块状态)必好。指向 `@a2ui/react v0.9` 的 `A2uiSurface` 对 surface prop 更新的响应语义——疑似 store 挂在 mount 期捕获的 surfaceId/对象引用上,后续 prop 更新不再生效;或 surfaces 数组 key 竞态(`key=generation:id` 已在,需实证)。
+- **关键证据(探针日志节选,requestId 关联)**:
+  ```
+  [f31-plan] d12cd683 [{"source":"inbox","members":1},...]   ← 初始加载,决策卡树(正确)
+  [pres-probe] resolve ... valid=false replanned=["region-slot:waiting-for-me"]  ← 批准后,漂移检出
+  [f31-plan] f6bf78e9 [{"source":"inbox","members":0},...]   ← replan 相位:新树干净(引擎无罪)
+  [f31-load] planned 2 [...] → finally gen 2 current 2       ← 宿主 reload 完整执行
+  DOM: data-generation 停留 "1"、data-word 含 entity-link(旧组件集)  ← 渲染层病灶
+  ```
+- **关键信息索引**: 探针落点=runtime.ts resolve 段与 plan 回调(`[pres-probe]`/`[f31-plan]`,修复后移除)、presentation-surface-host.tsx planned 段(`[f31-load]` 已移除)、面容器 `data-generation`(保留至修复);复现数据=任一 published post + agent archive(聊天或 `/api/exec` actor=agent);对照截图=`evidence/2026-08-28-R3/S2v3_–S2v6_、S2_final_*`。
+- **已落地修复(全部保留,均为真实改进)**: ①collection 回链;②区域成员指纹;③surfaceId/SDK store 烙版(含消息载荷重写);④no-store 双侧;⑤data-generation 诊断属性;另修出宿主 `notifyThreadUpdated` 广播(书桌跨面同步依赖它,S3 工作集 chip 同步实测生效)。
+- **处置(剩余事项,按序)**:
+  1. 读 `node_modules/.pnpm/@a2ui+react*/` 的 `A2uiSurface` 实现,确认 store 身份来源与 prop 更新语义;
+  2. 修复方向候选(按侵入度):给 A2uiSurface 传显式 storeKey/version prop(若 SDK 支持)→ 错开 surface 对象身份(保根 id,换单独的 SDK key 层)→ SDK 不可控时,in-place reload 后强制整树 remount(现 key 方案失效需查原因);
+  3. 修复后重走 **S2 四项判定**(当场退场/重新载入一致/硬刷新一致/结构化回执),通过后 F-31 → rechecked;
+  4. 连带回归:S3(书桌 chip 同步依赖同链路)、S1(在等我计数)。
+
+---
+
+## R3 阶段状态与剩余事项(2026-08-28 汇总)
+
+**已通过**: S1(修复 self 噪音后)、S3、S4、S8、S9、S10;S6 主体通过(澄清话尾一句合同方言,挂 F-09 残余)。
+**不通过**: S2(F-31,见上)。
+**未走查**: S5(查看活实例跨面跳转)、S7(meta 定义读面,含 F-10 已修的复验面)、S11(meta 修订闭环;**含 F-20 终判**——F-20 现码不可复现,需按 S11 在干净种子世界重跑 UI 全序列后终判)。
+**散项(随收口批量处理)**: F-13 刷新动词统一(重新载入 vs 刷新)、F-14/F-16(原始 JSON 展示/开发注释文案)、F-21 节点名标题化残余(向导面/集合状态 chip 仍显机器节点名)、F-05 术语残余(向导面身份显 rel)、S6 方言残句。
+**收口前置(Phase F)**: F-31 修复 → S2/S5/S7/S11 走查全过 → findings 全量对账(全部 fixed 项复验记录回填)→ `pnpm check` + `CI=true pnpm e2e invariants` 复跑 → DONE 报告 → plan.md F1/F3/F4 勾选、track 关闭。
+**环境事实**: e2e invariants 的 TRUNCATE 回灌会重置 dev 沙箱库(server-kit 设计使然);R3/复验前需重置重启获得干净种子世界。LLM 走查依赖 `.env.local` 的真实 provider 配置。
 
 ---
 
