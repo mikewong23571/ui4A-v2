@@ -1,0 +1,8 @@
+{
+  "trackId": "t36-governance-exception-retirement_20260828",
+  "type": "chore",
+  "status": "new",
+  "createdAt": "2026-08-28",
+  "description": "治理例外清退:以重构与功能拆解清零 GR3 size-baseline 12 条与 GR1 dependencyExceptions 2 条,终态 governance:strict 并入 pnpm check(D52/GR4)",
+  "principles": "2026-08-28 用户授权:治理方向=重构+功能拆解,反模块膨胀;不为指标机械挪动;证据不删除;零行为变化"
+}

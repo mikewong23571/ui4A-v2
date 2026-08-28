@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-- 无(2026-08-27:T22 闭环归档;后续方向 program 依 [product-vision.md](../product-vision.md) 另行立项)
+- [ ] **Track: T36 治理例外清退:重构与功能拆解(反模块膨胀)——清零 GR3 size-baseline 12 条 + GR1 dependencyExceptions 2 条,`governance:strict` 并入 `pnpm check`(D52/GR4 触发条件达成;2026-08-28 用户授权治理方向=重构与功能拆解,不为指标机械挪动、证据不删除)** *Link: [tracks/t36-governance-exception-retirement_20260828/index.md](./tracks/t36-governance-exception-retirement_20260828/index.md)*
 
 ## 归档 Tracks(T1–T34,只读历史)
 
