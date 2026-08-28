@@ -132,6 +132,9 @@ function projectFlowDefinition(
     {
       name: entry.name,
       version: entry.version,
+      // T35 S7.1:flow 级业务标题随投影携带(声明了才出现,缺省字段不出现
+      // 的形状稳定口径)——meta 读面以标题为主、raw id 退居次要。
+      ...(entry.definition.title !== undefined ? { title: entry.definition.title } : {}),
       ...(entry.bornBy !== undefined ? { bornBy: entry.bornBy } : {}),
     },
     entry.definition,

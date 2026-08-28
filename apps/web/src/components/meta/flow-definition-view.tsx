@@ -38,6 +38,7 @@ import {
 import { DefinitionDiffView } from './diff-render';
 import { FlowTopologyView } from './flow-topology-view';
 import { useMetaEntity } from './meta-client';
+import { MetaActions } from './renderers/common';
 
 /** 按 class 标记选子实体(Siren 子实体惯例:节点/版本各表其区)。 */
 function subEntitiesOf(entity: SirenEntity, marker: string): SirenEntity[] {
@@ -223,10 +224,14 @@ function VersionCompare({ versions }: { versions: readonly VersionRow[] }) {
 export interface FlowDefinitionViewProps {
   rel: string;
   entity: SirenEntity;
+  /** 定义平面 scope(动作提交经 /_meta/api/exec 携带;缺省与合同详情页同)。 */
+  scope?: string;
+  /** 动作 exec 成功后的重拉(事件溯源口径:投影总能由日志重算)。 */
+  onChanged?: () => void;
 }
 
 /** 定义查看(纯渲染;数据来自 /_meta/api/entity?rel=meta/flow:<name>|meta/self)。 */
-export function FlowDefinitionView({ rel, entity }: FlowDefinitionViewProps) {
+export function FlowDefinitionView({ rel, entity, scope, onChanged }: FlowDefinitionViewProps) {
   const properties = entity.properties;
   const heading =
     typeof properties.title === 'string' && properties.title !== ''
@@ -393,13 +398,17 @@ export function FlowDefinitionView({ rel, entity }: FlowDefinitionViewProps) {
           </div>
         </section>
       )}
+
+      {/* T35 S7.3/S11:生命周期动作区(修订/废弃)随详情直达——此前只在通用
+          合同页可达,定义管理主旅程断链;禁用原因走 guard-results 人话主句。 */}
+      <MetaActions entity={entity} rel={rel} scope={scope ?? 'publishing'} onChanged={onChanged} />
     </div>
   );
 }
 
 /** 页面主体:取数状态机 + FlowDefinitionView(404/异常如实呈现)。 */
-export function FlowDefinitionBody({ rel }: { rel: string }) {
-  const { entity, state } = useMetaEntity(rel);
+export function FlowDefinitionBody({ rel, scope }: { rel: string; scope?: string }) {
+  const { entity, state, refresh } = useMetaEntity(rel, scope);
 
   if (state === 'error' || state === 'missing') {
     return (
@@ -422,5 +431,5 @@ export function FlowDefinitionBody({ rel }: { rel: string }) {
       </div>
     );
   }
-  return <FlowDefinitionView rel={rel} entity={entity} />;
+  return <FlowDefinitionView rel={rel} entity={entity} scope={scope} onChanged={refresh} />;
 }

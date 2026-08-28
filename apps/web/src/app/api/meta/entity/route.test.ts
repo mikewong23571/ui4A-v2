@@ -76,6 +76,8 @@ describe('GET /_meta/api/entity', () => {
       // rel 注入(T22 生产修复):与业务实体同口径,canvas deref 按 properties.rel 归键。
       rel: 'meta/flow:post-status',
       name: 'post-status',
+      // T35 S7.1:flow 级 title 随投影携带(声明了才出现)。
+      title: '文章状态',
       version: 1,
       status: 'active',
       initial: 'published',

@@ -65,6 +65,9 @@ const postStatusEntity: SirenEntity = {
   class: ['meta', 'flow-definition'],
   properties: {
     name: 'post-status',
+    // T35 S7.1:引擎投影现携带 flow 级 title(声明了才出现)——详情标题
+    // 以业务标题为主,raw id 在副行(rel)。
+    title: '文章状态',
     version: 2,
     status: 'active',
     initial: 'published',
@@ -185,7 +188,7 @@ describe('FlowDefinitionView(定义查看,纯文本表格)', () => {
     const { container } = render(
       <FlowDefinitionView rel="meta/flow:post-status" entity={postStatusEntity} />,
     );
-    expect(container.querySelector('h1')!.textContent).toBe('post-status');
+    expect(container.querySelector('h1')!.textContent).toBe('文章状态');
     const terminalRow = [...container.querySelectorAll('tr')].find(
       (tr) => tr.querySelector('th')?.textContent === 'terminal',
     )!;
@@ -195,6 +198,47 @@ describe('FlowDefinitionView(定义查看,纯文本表格)', () => {
       (tr) => tr.querySelector('th')?.textContent === 'status',
     )!;
     expect(statusRow.textContent).toContain('active');
+  });
+
+  it('底部生命周期动作区:修订可触发,废弃禁用原因取 guard-results 人话主句(T35 S7.3)', () => {
+    const entity: SirenEntity = {
+      ...postStatusEntity,
+      actions: [
+        {
+          name: 'revise',
+          title: '修订(开新草稿)',
+          method: 'POST',
+          href: '/_meta/api/exec',
+          fields: {},
+        },
+        {
+          name: 'deprecate',
+          title: '废弃',
+          method: 'POST',
+          href: '/_meta/api/exec',
+          fields: {},
+        },
+      ],
+      'guard-results': [
+        {
+          action: 'deprecate',
+          blocked: true,
+          guards: [{ name: 'no-live-instances', pass: false }],
+          reason: '仍有进行中的实例,不能删除该定义(guard 不满足: no-live-instances=false)',
+        },
+      ],
+    };
+    const { container } = render(
+      <FlowDefinitionView rel="meta/flow:post-status" entity={entity} />,
+    );
+    const actionsSection = container.querySelector('#meta-actions-heading')?.closest('section');
+    expect(actionsSection).not.toBeNull();
+    expect(within(actionsSection!).getByRole('button', { name: /修订/ })).toBeTruthy();
+    expect(within(actionsSection!).getByText(/仍有进行中的实例,不能删除该定义/)).toBeTruthy();
+    const deprecateButton = within(actionsSection!)
+      .getAllByRole('button')
+      .find((button) => button.textContent?.includes('废弃'));
+    expect(deprecateButton?.hasAttribute('disabled')).toBe(true);
   });
 
   it('节点表与动作表:节点标题、动作 to/guards/requires-confirmation/effect 可见', () => {

@@ -1,13 +1,21 @@
-'use client';
-/**
- * BIOS 定义查看面(详情):/meta/flow/<name> → meta/flow:<name> 投影的表格视图。
- * 页面壳只解包 params(Next 16 客户端页官方形态);取数与渲染在组件层。
- */
-import { use } from 'react';
+import type { Metadata } from 'next';
 
 import { FlowDefinitionBody } from '@/components/meta/flow-definition-view';
 
-export default function MetaFlowPage({ params }: { params: Promise<{ name: string }> }) {
-  const { name } = use(params);
-  return <FlowDefinitionBody rel={`meta/flow:${decodeURIComponent(name)}`} />;
+export const metadata: Metadata = {
+  title: '流程定义 · 定义控制台 · UI4A',
+};
+
+/** BIOS 定义查看面(详情):/meta/flow/<name> → meta/flow:<name> 投影的表格视图。
+ * scope 经 URL 保留(D51 跨面链接口径;缺省与合同详情页同)。 */
+export default async function MetaFlowPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ name: string }>;
+  searchParams: Promise<{ scope?: string }>;
+}) {
+  const { name } = await params;
+  const { scope } = await searchParams;
+  return <FlowDefinitionBody rel={`meta/flow:${decodeURIComponent(name)}`} scope={scope} />;
 }

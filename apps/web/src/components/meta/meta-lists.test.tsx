@@ -24,7 +24,7 @@ const flowsEntity: SirenEntity = {
       class: ['meta', 'flow-definition'],
       rel: ['item'],
       href: '/_meta/api/entity?rel=meta/flow:article-drafting',
-      properties: { name: 'article-drafting', version: 1, status: 'active' },
+      properties: { name: 'article-drafting', title: '文章发布向导', version: 1, status: 'active' },
       actions: [],
       links: [],
     },
@@ -141,6 +141,11 @@ describe('FlowsListBody(定义清单面)', () => {
     expect(container.querySelector('a[href="/meta/flow/post-status"]')).not.toBeNull();
     expect(screen.getByText(/pending-approval/)).toBeTruthy();
     expect(screen.getByText(/v2/)).toBeTruthy();
+    // T35 S7.1:声明 title 的定义以业务标题为主显示、raw id 退居次要;
+    // 未声明 title 的定义保持 name 主显示(不造数据)。
+    expect(screen.getByText('文章发布向导')).toBeTruthy();
+    expect(screen.getByText('article-drafting')).toBeTruthy();
+    expect(screen.getByText('post-status')).toBeTruthy();
   });
 });
 

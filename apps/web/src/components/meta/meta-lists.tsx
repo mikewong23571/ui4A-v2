@@ -83,7 +83,7 @@ export function FlowsListBody() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="px-3 text-muted-foreground">flow</TableHead>
+              <TableHead className="px-3 text-muted-foreground">流程</TableHead>
               <TableHead className="px-3 text-muted-foreground">版本</TableHead>
               <TableHead className="px-3 text-muted-foreground">状态</TableHead>
             </TableRow>
@@ -92,6 +92,12 @@ export function FlowsListBody() {
             {members.map((sub) => {
               const rel = memberRel(sub) ?? '';
               const name = String(sub.properties.name ?? rel);
+              // T35 S7.1:业务标题为主、raw id 退居次要(未声明 title 的定义
+              // 保持 name 主显示,不造数据)。
+              const title =
+                typeof sub.properties.title === 'string' && sub.properties.title !== ''
+                  ? sub.properties.title
+                  : name;
               const status = String(sub.properties.status ?? '');
               return (
                 <TableRow key={rel}>
@@ -101,8 +107,11 @@ export function FlowsListBody() {
                       data-nav="meta-flow"
                       className="text-primary hover:underline"
                     >
-                      {name}
+                      {title}
                     </a>
+                    {title !== name && (
+                      <span className="ml-2 text-xs text-muted-foreground">{name}</span>
+                    )}
                   </TableCell>
                   <TableCell className="px-3 py-2">
                     v{String(sub.properties.version ?? '')}

@@ -124,6 +124,9 @@ describe('meta/flow:<name> 投影(A.2 定义实体)', () => {
       // 实体缓存一律按 properties.rel 归键,缺 rel 会导致 canvas 全面 deref-failed。
       rel: 'meta/flow:post-status',
       name: 'post-status',
+      // T35 S7.1:flow 级 title 随投影携带(声明了才出现,形状稳定口径)——
+      // meta 读面以业务标题为主、raw id 退居次要。
+      title: '文章状态',
       version: 1,
       status: 'draft',
       initial: 'published',
