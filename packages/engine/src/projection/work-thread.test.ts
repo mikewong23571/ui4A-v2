@@ -162,6 +162,27 @@ describe('Work Thread Siren projection', () => {
     });
   });
 
+  it('context 成员身份解包 FieldValue(identity 优先,title 次之),不回退机器 rel(T35 F-27 回归)', () => {
+    const withMembers = snapshot();
+    withMembers.instances!['post:dual'] = {
+      rel: 'post:dual',
+      flow: 'post-status',
+      node: 'published',
+      fields: {
+        identity: { value: '声明的身份', origin: 'intent' },
+        title: { value: '标题身份', origin: 'intent' },
+      },
+    };
+    withMembers.threads!['release-1']!.references.context = ['post:known', 'post:dual'];
+
+    const entity = project(withMembers, 'thread:release-1', deps);
+
+    expect(entity?.entities?.map((member) => member.properties.identity)).toEqual([
+      'Do not copy me',
+      '声明的身份',
+    ]);
+  });
+
   it('links event:1 to the baseHref-aware audit feed from afterSeq=0', () => {
     const withFirstEvent = snapshot();
     withFirstEvent.threads!['release-1']!.references.event = ['event:1'];
@@ -256,7 +277,8 @@ describe('Work Thread Siren projection', () => {
       },
     };
     const entity = project(empty, 'thread:release-1', deps);
-    expect(entity?.properties).toMatchObject({ resume: '停在「open」' });
+    // 回退线程自身状态时走任务语(F-21:机器名不进界面文案)。
+    expect(entity?.properties).toMatchObject({ resume: '停在「进行中」' });
   });
 
   it('returns undefined for an unknown exact thread without inferring membership', () => {

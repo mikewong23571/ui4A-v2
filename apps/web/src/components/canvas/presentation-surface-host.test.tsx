@@ -266,7 +266,11 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
     window.history.pushState({}, '', '/canvas?focus=post%3Amissing');
     const source = sourceEntity('post:missing', '失踪对象');
     const fixture = presentationContract({ subject: 'post:missing', source });
-    const inner = fixture.fetchMock.getMockImplementation()!;
+    // getMockImplementation 的类型含构造重载;此处只需要可调用签名。
+    const inner = fixture.fetchMock.getMockImplementation() as (
+      request: RequestInfo | URL,
+      init?: RequestInit,
+    ) => Promise<Response>;
     fixture.fetchMock.mockImplementation((request: RequestInfo | URL, init?: RequestInit) => {
       if (String(request).startsWith('/api/entity?rel=post%3Amissing')) {
         return Promise.resolve(jsonResponse(404, { error: '实体 "post:missing" 不存在' }));

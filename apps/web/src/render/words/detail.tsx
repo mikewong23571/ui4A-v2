@@ -98,13 +98,15 @@ export function DetailWord(props: WordProps) {
         </table>
       )}
 
-      {mode !== 'links' && entity.actions.length > 0 && execRel !== '' && (
+      {/* links 模式已在函数头早退;语义模式只呈现对应交互:actions 仅动作,
+          full 才附链接段(detail.test 语义模式契约)。 */}
+      {entity.actions.length > 0 && execRel !== '' && (
         <section aria-label="动作" className="mt-4 space-y-4">
           <ActionGroup entity={entity} />
         </section>
       )}
 
-      {mode !== 'actions' && entity.links.length > 0 && (
+      {mode === 'full' && entity.links.length > 0 && (
         <section aria-label="链接" className="mt-4">
           <ul className="space-y-1 text-sm">
             {entity.links.map((link) => {

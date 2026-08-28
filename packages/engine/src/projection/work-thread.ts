@@ -1,5 +1,6 @@
 import {
   THREAD_REFERENCE_CATEGORIES,
+  fieldValues,
   type EngineSnapshot,
   type ThreadSnapshot,
   type ThreadStatus,
@@ -54,7 +55,7 @@ const referenceFields: ActionDefinition['fields'] = [
     title: '涉及对象',
     required: true,
     minLength: 1,
-    description: '对象的合同路径(如 post:first-post);可从画布成员卡或助手处获得',
+    description: '对象的合同路径(如 post:first-post);通常经「＋添加涉及对象」的选择器挑选,无需手填',
   },
 ];
 
@@ -194,19 +195,24 @@ const THREAD_STATUS_TITLES: Readonly<Record<ThreadStatus, string>> = {
   archived: '已归档',
 };
 
-/** 被引用对象的一行业务身份:实例取标题,其余取既有投影 identity,回退 rel。 */
+/** 被引用对象的一行业务身份:实例取声明字段(identity/title;fields 是带 origin
+ * 的 FieldValue,经 fieldValues 解包),其余取既有投影 identity,回退 rel。 */
 function referenceIdentity(rel: string, snapshot: EngineSnapshot): string {
   const instance = snapshot.instances[rel];
   if (instance !== undefined) {
-    const title = instance.fields['title'];
+    const fields = fieldValues(instance.fields);
+    const declared = fields['identity'];
+    if (typeof declared === 'string' && declared.trim() !== '') return declared.trim();
+    const title = fields['title'];
     if (typeof title === 'string' && title.trim() !== '') return title.trim();
   }
   const delegation = snapshot.delegations?.[rel];
   if (delegation !== undefined) return delegation.goal.verb;
   const confirmation = snapshot.confirmations?.[rel];
   if (confirmation !== undefined) {
-    const identity = confirmation.identity;
-    if (typeof identity === 'string' && identity !== '') return identity;
+    // 与确认投影的身份行同式(project.ts:targetAction · 由 actor 提议;快照无
+    // identity 字段,此前按不存在的字段判型属死分支)。
+    return `${confirmation.targetAction} · 由 ${confirmation.proposedBy.actor} 提议`;
   }
   return rel;
 }
@@ -223,7 +229,9 @@ export function projectWorkThread(
     thread.references.active.length > 0
       ? statusPointer(thread.references.active[0]!, snapshot)
       : undefined;
-  const resume = `停在「${firstActive?.status ?? thread.status}」`;
+  // 无 active 时回退线程自身状态的任务语(F-21 残余:实例节点名标题化随
+  // statusPointer 携带节点 title 后收敛)。
+  const resume = `停在「${firstActive?.status ?? THREAD_STATUS_TITLES[thread.status]}」`;
   // T35 F-11/F-27:材料清单(上下文包)投影为可导航成员卡——身份解析自被引
   // 对象(标题/目标/identity),dangling 如实标注;挂载/移除仍是线程动作(W 阶段
   // 升级为清单内操作)。

@@ -81,15 +81,14 @@ export function FloatingChat() {
 
   // T35 W1:进线(URL 声明 thread)默认分栏停靠——每条线只自动停靠一次,
   // 用户显式切回悬浮后本线内不再强制(尊重显式选择)。
-  const autoDockedThreadRef = useRef<string | null>(null);
+  // render 期调整(React "adjusting state when a prop changes" 模式,替代
+  // effect 内 setState,react-hooks/set-state-in-effect 合规)。
+  const [dockedThread, setDockedThread] = useState<string | null>(null);
   const threadDeclared = useThreadDeclared();
-  useEffect(() => {
-    if (!threadDeclared.declared) return;
-    if (autoDockedThreadRef.current === threadDeclared.threadId) return;
-    if (!open) return;
-    autoDockedThreadRef.current = threadDeclared.threadId;
+  if (threadDeclared.declared && open && dockedThread !== threadDeclared.threadId) {
+    setDockedThread(threadDeclared.threadId);
     setMode('sidebar');
-  }, [threadDeclared.declared, threadDeclared.threadId, open]);
+  }
 
   // 独立窗口(B4):window.open 弹出 /chat(同 sessionId 的历史投影);
   // 本窗收起为 FAB——两边均可继续,会话是同一份日志投影。

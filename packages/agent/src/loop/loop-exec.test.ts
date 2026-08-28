@@ -298,14 +298,10 @@ describe('副作用来源与目标授权门(U10–U12)', () => {
   });
 
   it('同一动作同一参数第二次被拒即机械收敛,不烧后续步数(T35 C5)', async () => {
-    const transport = contractTransport({
-      entities: { 'post:post-welcome': postWelcomeEntity },
-      // exec 全部 409 拒绝(合同结构化拒绝)。
-      execResponses: [],
-    });
+    // exec 全部 409 拒绝(合同结构化拒绝)。
     const base = (url: string, init?: RequestInit): Response => {
       if (url === execUrl(BASE) && init?.method === 'POST') {
-        return jsonResponse({ error: 'guard 不满足: is-published=false' }, { status: 409 });
+        return jsonResponse({ error: 'guard 不满足: is-published=false' }, 409);
       }
       return jsonResponse(postWelcomeEntity);
     };

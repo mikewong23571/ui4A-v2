@@ -302,14 +302,17 @@ context 类引用挂线,会话史在「历史会话」);pin 集按线各自保�
 - D47.4 不破:线动作仍全在合同里(actions/links/members 保留),只是呈现位置
   与常显密度变化——书桌不渲染按钮 ≠ 动作不存在,舞台(线被注视时)全量可操作。
 
-### 实施清单(F-29④ 定稿版)
+### 实施清单(F-29④ 定稿版;2026-08-28 全部落地,浏览器实测见 findings F-29 复验记录)
 
-1. W2 语义改造: pin 记录不变(localStorage 按线集合),渲染从"整面 surface"
-   改为书桌工作集**条目行**(标题+状态 chip+点击唤起+hover 移出);
-2. thread-rail 从 PresentationSurfaceHost 整面容器改为**书桌目录组件**
-   (叙述卡 = §九 现状组排版;工作集 = 线 context 成员 + pin 条目合并去重);
-3. 舞台承载线动作: URL focus=thread:X 时,舞台除协作引导外呈现**线的动作组**
-   (语义分组: 推进/危险,§九 动作组设计),书桌与舞台动作不重复;
-4. F-27② 对象选择器落点 = 书桌工作集"＋";点开面板选对象即挂(category 缺省
-   context),替代裸填 rel;
-5. 三栏顶边基线 + 栏间距常量(§九 对齐项);聊天右栏 sticky(已落地,F-22)。
+1. ✅ W2 语义改造: pin 记录不变(localStorage 按线集合),渲染改为书桌工作集
+   **条目行**(标题+状态 chip+点击唤起+hover 移出/取消钉住)——thread-desk.tsx;
+2. ✅ thread-rail 整面容器**删除**,改为书桌目录组件(叙述卡 = §九 现状组排版;
+   工作集 = 线 context 成员 + pin 条目合并去重,context/pin 去重键=rel);
+3. ✅ 舞台承载线动作: focus=thread:X 时舞台 = 协作引导 + ThreadStageActions
+   (attach/detach 由书桌供项覆盖不重复;危险分组=ActionGroup 按 requires-
+   confirmation 通用派生,F-07 一并落地);
+4. ✅ F-27② 对象选择器落点 = 书桌工作集「＋」(thread-desk-selector):候选=
+   sitemap 集合面成员按集合分组,标题过滤,点击即挂 context,已在本线禁选;
+5. ✅ 三栏顶边基线;聊天右栏 sticky top-12/dvh(已落地,F-22)。
+   附带修复: referenceIdentity FieldValue 解包(成员身份回退 rel 的引擎缺陷)
+   + resume 任务语回退(work-thread.ts,回归测试入档)。

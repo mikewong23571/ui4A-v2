@@ -39,25 +39,23 @@ function linkClassName(current: boolean): string {
 
 export function SiteNav() {
   const pathname = usePathname() ?? '/';
-  const [systemOpen, setSystemOpen] = useState(false);
+  // F-13:open 状态记录打开时的 pathname——路由变化即视为收起(派生比较,
+  // 无需 close-on-route effect,react-hooks/set-state-in-effect 合规)。
+  const [systemOpenAt, setSystemOpenAt] = useState<string | null>(null);
+  const systemOpen = systemOpenAt !== null && systemOpenAt === pathname;
   const systemRef = useRef<HTMLDivElement>(null);
   const systemActive = SYSTEM_ITEMS.some((item) => isCurrent(pathname, item.href));
-
-  // F-13:路由变化即收起(导航后菜单不再悬浮在上一页内容上)。
-  useEffect(() => {
-    setSystemOpen(false);
-  }, [pathname]);
 
   // F-19:外点与 Esc 收起(受控弹出层的基本闭环)。
   useEffect(() => {
     if (!systemOpen) return;
     const onPointerDown = (event: PointerEvent): void => {
       if (systemRef.current !== null && !systemRef.current.contains(event.target as Node)) {
-        setSystemOpen(false);
+        setSystemOpenAt(null);
       }
     };
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') setSystemOpen(false);
+      if (event.key === 'Escape') setSystemOpenAt(null);
     };
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -100,7 +98,7 @@ export function SiteNav() {
           data-nav="local:system-menu"
           aria-expanded={systemOpen}
           aria-haspopup="menu"
-          onClick={() => setSystemOpen((open) => !open)}
+          onClick={() => setSystemOpenAt(systemOpen ? null : pathname)}
           className={`${linkClassName(systemActive && !systemOpen)} flex cursor-pointer items-center gap-1`}
         >
           系统

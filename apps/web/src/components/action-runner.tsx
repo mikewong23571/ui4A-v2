@@ -180,6 +180,8 @@ export interface ActionRunnerProps {
   submit: ActionSubmit;
   /** 当前实体的实例字段值(同名动作字段预填;缺省=无预填,如 _meta 动作)。 */
   prefill?: Record<string, unknown>;
+  /** 危险操作的呈现分层(由 ActionGroup 按合同 requires-confirmation 派生)。 */
+  tone?: 'danger';
 }
 
 export function ActionRunner({
@@ -190,6 +192,7 @@ export function ActionRunner({
   onExecuted,
   submit: submitAction,
   prefill,
+  tone,
 }: ActionRunnerProps) {
   const hasFields = schemaHasFields(action.fields);
   const highRisk = action['requires-confirmation'] === 'high';
@@ -269,6 +272,10 @@ export function ActionRunner({
 
   const disabled = blocked || submitting;
   const hint = blocked ? blockReason : submitting ? '提交中…' : undefined;
+  const toneClass =
+    tone === 'danger'
+      ? 'border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive'
+      : undefined;
   const failureNode =
     failure !== null ? (
       <p role="alert" className="mt-1 text-xs text-destructive">
@@ -315,6 +322,7 @@ export function ActionRunner({
             type="button"
             variant="outline"
             size="sm"
+            className={toneClass}
             data-presentation-action="request-risk"
             data-nav={`presentation:request-risk:${action.name}`}
             aria-expanded={interaction === 'requested'}
@@ -349,6 +357,7 @@ export function ActionRunner({
           type="button"
           variant="outline"
           size="sm"
+          className={toneClass}
           data-presentation-action="open-form"
           data-nav={`presentation:open-form:${action.name}`}
           aria-controls={formRegionId}

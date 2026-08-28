@@ -52,6 +52,40 @@ export function ActionGroup({
       ? (entity.properties.fields as Record<string, unknown>)
       : undefined;
 
+  // T35 F-07/§十:动作语义分层——危险组按合同声明 requires-confirmation 派生
+  // (通用机制,零实体特判),与常规组分隔呈现,不可逆操作不再与普通操作同级。
+  const dangerActions = entity.actions.filter(
+    (action) => action['requires-confirmation'] === 'high',
+  );
+  const normalActions = entity.actions.filter(
+    (action) => action['requires-confirmation'] !== 'high',
+  );
+  const renderItem = (action: (typeof entity.actions)[number], tone: 'normal' | 'danger') => {
+    const guard = guards.get(action.name);
+    return (
+      <div
+        key={`${rel}:${action.name}:${JSON.stringify(action.fields)}`}
+        data-action-group-item={action.name}
+        className={
+          tone === 'danger'
+            ? 'rounded-md border border-destructive/40 bg-card p-3'
+            : 'rounded-md border bg-card p-3'
+        }
+      >
+        <ActionRunner
+          rel={rel}
+          action={action}
+          tone={tone === 'danger' ? 'danger' : undefined}
+          blocked={blockedForRenderer(guard)}
+          blockReason={guard?.reason}
+          onExecuted={onExecuted}
+          prefill={prefill}
+          submit={submit}
+        />
+      </div>
+    );
+  };
+
   return (
     <div data-testid="action-contract-group" className="space-y-3">
       {legendShown ? null : (
@@ -61,26 +95,16 @@ export function ActionGroup({
       )}
       <ActionLegendContext.Provider value={true}>
         <div className="space-y-3">
-          {entity.actions.map((action) => {
-            const guard = guards.get(action.name);
-            return (
-              <div
-                key={`${rel}:${action.name}:${JSON.stringify(action.fields)}`}
-                data-action-group-item={action.name}
-                className="rounded-md border bg-card p-3"
-              >
-                <ActionRunner
-                  rel={rel}
-                  action={action}
-                  blocked={blockedForRenderer(guard)}
-                  blockReason={guard?.reason}
-                  onExecuted={onExecuted}
-                  prefill={prefill}
-                  submit={submit}
-                />
-              </div>
-            );
-          })}
+          {normalActions.map((action) => renderItem(action, 'normal'))}
+          {dangerActions.length > 0 && (
+            <div
+              data-testid="action-danger-group"
+              aria-label="危险操作"
+              className="space-y-3 border-t border-dashed pt-3"
+            >
+              {dangerActions.map((action) => renderItem(action, 'danger'))}
+            </div>
+          )}
         </div>
       </ActionLegendContext.Provider>
     </div>

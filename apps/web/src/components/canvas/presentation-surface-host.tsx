@@ -52,7 +52,7 @@ import {
   planGenericPresentationSurface,
 } from '@/render/presentation/generic';
 import { createCanvasActionHandler } from '../canvas-action-handler';
-import { readThreadPins, writeThreadPin } from './thread-rail';
+import { readThreadPins, writeThreadPin } from './thread-desk';
 import { CanvasWhyDrawer, type PresentationDiagnostic } from '../canvas-why-drawer';
 import { ActionSubmitProvider, createSurfaceActionSubmit } from '../actions/action-submit';
 import { useEntityCache } from '../entity-cache-provider';
@@ -686,8 +686,8 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
                         ? entry.concern.slice('presentation:'.length)
                         : entry.concern,
                     )
-                      ? '取消钉住'
-                      : '钉住到本线'
+                      ? '取消挂进本线'
+                      : '挂进本线工作集(左侧书桌可见)'
                   }
                   className="rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   onClick={() => {
@@ -703,8 +703,8 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
                       ? entry.concern.slice('presentation:'.length)
                       : entry.concern,
                   )
-                    ? '📌 已钉住本线'
-                    : '📌 钉住到本线'}
+                    ? '📌 已挂进本线'
+                    : '📌 挂进本线'}
                 </button>
               </div>
             )}

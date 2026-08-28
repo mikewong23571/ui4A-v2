@@ -52,9 +52,10 @@ export function ApplicationEntryStrip() {
   if (applications === null) {
     return <Skeleton data-testid="application-entry-strip" className="mb-4 h-8 w-full max-w-xl" />;
   }
-  const entries = applications
-    .filter((application) => application.name !== 'default' && entryRel(application) !== undefined)
-    .map((application) => ({ ...application, entry: entryRel(application) }));
+  const entries = applications.flatMap((application) => {
+    const entry = entryRel(application);
+    return application.name !== 'default' && entry !== undefined ? [{ ...application, entry }] : [];
+  });
   if (entries.length === 0) return null;
 
   const visible =
