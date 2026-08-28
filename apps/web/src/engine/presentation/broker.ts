@@ -62,7 +62,13 @@ interface WebPresentationBrokerDependencies {
     principal: string,
     grantedApplications?: readonly string[],
   ): Promise<UnauthorizedClassification | undefined>;
-  resolveCompositionSubject?(subject: string): BuiltinCompositionSubjectResolution;
+  /**
+   * Composition subject resolution; may be async so runtime can layer derived
+   * namespaces (T37 app workspaces) over the static registry.
+   */
+  resolveCompositionSubject?(
+    subject: string,
+  ): BuiltinCompositionSubjectResolution | Promise<BuiltinCompositionSubjectResolution>;
   plan?(
     request: PresentationRequest,
     situation: AuthorizedRoot,
@@ -144,7 +150,7 @@ export function createWebPresentationBroker(
           const resolveComposition =
             dependencies.resolveCompositionSubject ?? resolveBuiltinCompositionSubject;
           if (typeof candidate.subject === 'string') {
-            const composition = resolveComposition(candidate.subject);
+            const composition = await resolveComposition(candidate.subject);
             if (composition.kind === 'rejected-workspace') {
               throw new Error('workspace unavailable');
             }

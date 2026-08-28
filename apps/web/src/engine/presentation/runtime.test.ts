@@ -65,6 +65,94 @@ describe('durable user Sidecar fastpath', () => {
     ).toHaveLength(beforeCoreCount);
   });
 
+  it('derives the publishing app workspace composition from the live sitemap (T37 FR3)', async () => {
+    const engine = await getEngine(getDb());
+    const beforeHash = contentVersion(engine.getSnapshot());
+    const beforeCoreCount = (await listEvents(getDb())).filter(
+      (event) => event.domain !== 'presentation',
+    ).length;
+    const request = completePresentationRequest(
+      { subject: 'workspace:app:publishing', intent: 'app overview', delivery: 'canvas' },
+      { requestId: 'app-workspace:publishing', principal: 'local-user', sourceMessageIds: [] },
+    );
+
+    const receipt = await getPresentationBroker().present(request);
+    expect(receipt).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
+    const sidecar = await findActiveSidecar(getDb(), {
+      principal: 'local-user',
+      subject: 'workspace:app:publishing',
+      intent: 'app overview',
+      deviceClass: 'any',
+    });
+    const active = sidecar!.versions[sidecar!.activeVersion]!;
+    expect(active.surface.root).toMatchObject({
+      kind: 'layout',
+      children: [
+        { kind: 'slot', name: 'articles' },
+        { kind: 'slot', name: 'article-drafting' },
+      ],
+    });
+    expect(
+      active.dependencies
+        .filter((dependency) => dependency.kind === 'entity-contract')
+        .map((dependency) => dependency.ref),
+    ).toEqual(['articles', 'flow:article-drafting']);
+    // 组合不产生真相:零业务事件、快照 hash 不变(虚主体不可 exec、零新事件类型)。
+    expect(contentVersion((await getEngine(getDb())).getSnapshot())).toBe(beforeHash);
+    expect(
+      (await listEvents(getDb())).filter((event) => event.domain !== 'presentation'),
+    ).toHaveLength(beforeCoreCount);
+  });
+
+  it('rejects unknown app workspace scopes honestly without fabricating a declaration (T37)', async () => {
+    const receipt = await getPresentationBroker().present(
+      completePresentationRequest(
+        { subject: 'workspace:app:nonexistent', intent: 'app overview', delivery: 'canvas' },
+        { requestId: 'app-workspace:missing', principal: 'local-user', sourceMessageIds: [] },
+      ),
+    );
+    expect(receipt).toMatchObject({ status: 'failed', reasonCode: 'authorization-failed' });
+    await expect(
+      findActiveSidecar(getDb(), {
+        principal: 'local-user',
+        subject: 'workspace:app:nonexistent',
+        intent: 'app overview',
+        deviceClass: 'any',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it.each([
+    ['community', ['comments'], ['comments']],
+    ['todo', ['todos', 'todo-capture'], ['todos', 'flow:todo-capture']],
+  ] as const)(
+    'derives the %s app workspace face from the same sitemap machinery (T37 zero per-app code)',
+    async (scope, slotNames, sourceRefs) => {
+      const request = completePresentationRequest(
+        { subject: `workspace:app:${scope}`, intent: 'app overview', delivery: 'canvas' },
+        { requestId: `app-workspace:${scope}`, principal: 'local-user', sourceMessageIds: [] },
+      );
+      const receipt = await getPresentationBroker().present(request);
+      expect(receipt).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
+      const sidecar = await findActiveSidecar(getDb(), {
+        principal: 'local-user',
+        subject: `workspace:app:${scope}`,
+        intent: 'app overview',
+        deviceClass: 'any',
+      });
+      const active = sidecar!.versions[sidecar!.activeVersion]!;
+      expect(active.surface.root).toMatchObject({
+        kind: 'layout',
+        children: slotNames.map((name) => ({ kind: 'slot', name })),
+      });
+      expect(
+        active.dependencies
+          .filter((dependency) => dependency.kind === 'entity-contract')
+          .map((dependency) => dependency.ref),
+      ).toEqual(sourceRefs);
+    },
+  );
+
   it('persists concurrent same-requestId workspaces independently across principals', async () => {
     const aliceRequest = completePresentationRequest(
       { subject: 'workspace:my-work', intent: 'concurrent overview', delivery: 'canvas' },

@@ -54,7 +54,8 @@ const builtinCompositionData = [
   },
 ] as const;
 
-function freezeDeclaration(value: unknown): BuiltinCompositionDeclaration {
+/** Strictly parse and deep-freeze one declaration; shared by static and derived registries. */
+export function freezeCompositionDeclaration(value: unknown): BuiltinCompositionDeclaration {
   const declaration = parseCompositionDeclaration(value);
   for (const region of declaration.regions) {
     Object.freeze(region);
@@ -65,7 +66,7 @@ function freezeDeclaration(value: unknown): BuiltinCompositionDeclaration {
 
 const builtinCompositions = new Map<string, BuiltinCompositionDeclaration>(
   builtinCompositionData.map((value) => {
-    const declaration = freezeDeclaration(value);
+    const declaration = freezeCompositionDeclaration(value);
     return [declaration.id, declaration];
   }),
 );

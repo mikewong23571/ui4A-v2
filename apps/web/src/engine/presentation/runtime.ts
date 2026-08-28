@@ -23,7 +23,7 @@ import {
   type AuthorizedRoot,
   type WebPresentationBroker,
 } from './broker';
-import { getDb } from '../service';
+import { getDb, getEngine } from '../service';
 import { RENDER_WORDS } from '../../render/registry';
 import { semanticHintsOf } from './situation';
 import { currentRecipeCoordinator } from './recipes-runtime';
@@ -38,6 +38,7 @@ import {
   grantedPolicyRef,
   planWorkspaceComposition,
 } from './runtime-composition';
+import { createDynamicCompositionSubjectResolver } from './app-workspace-composition';
 import { genericIntentPolicyDependency } from './generic-intent-policy';
 
 const runtimeKey = Symbol.for('ui4a.presentation-broker');
@@ -236,6 +237,12 @@ export function getPresentationBroker(): WebPresentationBroker {
   const scope = globalThis as typeof globalThis & PresentationGlobal;
   if (scope[runtimeKey] !== undefined) return scope[runtimeKey];
   const delegate = createWebPresentationBroker({
+    // T37:`workspace:app:<scope>` 组合面在请求时从当前 sitemap 推导声明;静态
+    // 注册表(my-work)优先,普通合同 rel 不受影响。区域数据仍逐源重授权。
+    resolveCompositionSubject: createDynamicCompositionSubjectResolver(async () => {
+      const engine = await getEngine(getDb());
+      return engine.getSitemap();
+    }),
     getEntity: getAuthorizedPresentationEntity,
     // B1 分类器:getEntity 落空时对 rel 做结构化归因,喂给内核 deny 分流。
     classifyUnauthorized: async (rel, principal, grantedApplications) => {

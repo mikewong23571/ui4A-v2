@@ -21,7 +21,7 @@ import { PRESENTATION_SIDECAR_DENIED } from '@ui4a/shared';
 import { PRESENTATION_SURFACE_CATALOG } from '../../../../engine/presentation/catalog';
 import { currentRecipeCoordinator } from '../../../../engine/presentation/recipes-runtime';
 import { singleSubjectRecipeContext } from '../../../../engine/presentation/recipe-context';
-import { resolveBuiltinCompositionSubject } from '../../../../engine/presentation/compositions';
+import { createDynamicCompositionSubjectResolver } from '../../../../engine/presentation/app-workspace-composition';
 import { getAuthorizedPresentationEntity } from '../../../../engine/presentation/authorized-entity';
 import { compositionRecipeContext } from '../../../../engine/presentation/runtime-composition';
 import {
@@ -33,6 +33,17 @@ import {
 export const dynamic = 'force-dynamic';
 
 const LOCAL_PRESENTATION_PRINCIPAL = 'local-user';
+
+/**
+ * T37:组合 subject 重解析(静态注册 + `workspace:app:<scope>` 运行时推导)——
+ * stored 工件的命中重审与 recipe 晋升都按当前 sitemap 兑现声明来源。
+ */
+function resolveCompositionSubject(subject: string) {
+  return createDynamicCompositionSubjectResolver(async () => {
+    const engine = await getEngine(getDb());
+    return engine.getSitemap();
+  })(subject);
+}
 
 // production profile(T22 验证修复):接入 application credential(Browser Session
 // 或 Bearer),并以已认证 principal 作为 Sidecar 归属——durable Sidecar key 以
@@ -87,7 +98,12 @@ export async function GET(request: Request): Promise<Response> {
   if (sidecar === undefined) {
     return Response.json({ error: 'Sidecar not found' }, { status: 404 });
   }
-  const decision = await authorizeStoredSidecar(sidecar, identity);
+  const decision = await authorizeStoredSidecar(
+    sidecar,
+    identity,
+    undefined,
+    resolveCompositionSubject,
+  );
   if (!decision.ok) {
     return Response.json(
       { error: { code: PRESENTATION_SIDECAR_DENIED, detail: decision.reason } },
@@ -161,14 +177,26 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Sidecar not found' }, { status: 404 });
   }
   // B3:lifecycle 变更前同样做结构化 denied 分流(本人工件不回 404)。
-  const currentDecision = await authorizeStoredSidecar(current, identity);
+  const currentDecision = await authorizeStoredSidecar(
+    current,
+    identity,
+    undefined,
+    resolveCompositionSubject,
+  );
   let denial: StoredSidecarDenialReason | undefined = currentDecision.ok
     ? undefined
     : currentDecision.reason;
   if (
     denial === undefined &&
     body.action === 'revert' &&
-    !(await authorizeStoredSidecar(current, identity, body.targetVersion as number)).ok
+    !(
+      await authorizeStoredSidecar(
+        current,
+        identity,
+        body.targetVersion as number,
+        resolveCompositionSubject,
+      )
+    ).ok
   ) {
     denial = 'sources-unreachable';
   }
@@ -245,7 +273,7 @@ export async function POST(request: Request): Promise<Response> {
       if (typeof current.key.subject !== 'string') {
         throw new Error('Recipe promotion requires a complete ordered slot map');
       }
-      const composition = resolveBuiltinCompositionSubject(current.key.subject);
+      const composition = await resolveCompositionSubject(current.key.subject);
       const recipeContext =
         composition.kind === 'composition'
           ? await (async () => {

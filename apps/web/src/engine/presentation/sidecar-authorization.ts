@@ -1,6 +1,9 @@
 import type { SurfaceNode, UserSidecarAggregate } from '@ui4a/engine';
 
-import { resolveBuiltinCompositionSubject } from './compositions';
+import {
+  resolveBuiltinCompositionSubject,
+  type BuiltinCompositionSubjectResolution,
+} from './compositions';
 import { getAuthorizedPresentationResult } from './authorized-entity';
 
 /** Stored 工件重审失败的最小归因(D51/B3):grants-shrunk | sources-unreachable。 */
@@ -8,6 +11,11 @@ export type StoredSidecarDenialReason = 'grants-shrunk' | 'sources-unreachable';
 
 export type StoredSidecarAuthorization =
   { ok: true } | { ok: false; reason: StoredSidecarDenialReason };
+
+/** Subject resolution hook; async so derived namespaces (T37 app workspaces) can resolve. */
+export type CompositionSubjectResolver = (
+  subject: string,
+) => BuiltinCompositionSubjectResolution | Promise<BuiltinCompositionSubjectResolution>;
 
 function collectNodeSources(node: SurfaceNode, sources: Set<string>): void {
   for (const dependency of node.dependencies) {
@@ -46,7 +54,11 @@ export function hasUnavailableRegion(node: SurfaceNode): boolean {
   return false;
 }
 
-function orderedSources(sidecar: UserSidecarAggregate, versionNumber: number): string[] {
+async function orderedSources(
+  sidecar: UserSidecarAggregate,
+  versionNumber: number,
+  resolveCompositionSubject: CompositionSubjectResolver = resolveBuiltinCompositionSubject,
+): Promise<string[]> {
   const version = sidecar.versions[versionNumber];
   if (version === undefined) return [];
   const discovered = new Set<string>();
@@ -64,7 +76,7 @@ function orderedSources(sidecar: UserSidecarAggregate, versionNumber: number): s
     const roots = sidecar.key.subject.selection;
     return [...roots, ...[...discovered].filter((source) => !roots.includes(source))];
   }
-  const composition = resolveBuiltinCompositionSubject(sidecar.key.subject);
+  const composition = await resolveCompositionSubject(sidecar.key.subject);
   if (composition.kind === 'composition') {
     const declared = composition.declaration.regions
       .map((region) => region.source)
@@ -89,6 +101,7 @@ export async function authorizeStoredSidecar(
   sidecar: UserSidecarAggregate,
   trusted: { principal: string; grantedApplications: readonly string[] },
   versionNumber = sidecar.activeVersion,
+  resolveCompositionSubject?: CompositionSubjectResolver,
 ): Promise<StoredSidecarAuthorization> {
   if (
     sidecar.key.principal !== trusted.principal ||
@@ -98,7 +111,8 @@ export async function authorizeStoredSidecar(
     return { ok: false, reason: 'sources-unreachable' };
   }
   try {
-    for (const source of orderedSources(sidecar, versionNumber)) {
+    const sources = await orderedSources(sidecar, versionNumber, resolveCompositionSubject);
+    for (const source of sources) {
       const outcome = await getAuthorizedPresentationResult(
         source,
         trusted.principal,
