@@ -1,0 +1,12 @@
+T37 Phase A (A1-A3) 导航合同投影 — 任务摘要
+
+目标:补齐流↔产物集合双向导航合同,零发明。
+实现:appendedCollections 提升为引擎纯推导(core/parse.ts 导出,web 层删私有副本);
+projectInstance 按出生 flow 的 append 效果追加 rel=['collection'] 正向链(成员反查去重)。
+零特判:链接完全由效果声明推导;无 append 流的集合(comments/software-changes/
+writing-requests)诚实保持缺链。
+验证:红(3 failed)→绿(37 passed);pnpm governance OK;全量 pnpm check 全绿
+(UI4A_WORKER_HEALTH_PORT=3199 避让开发栈 3101,环境碰撞非回归);
+curl 探针:article-drafting:main 含 collection→articles;articles 含 flow→向导;
+comments/software-changes/writing-requests 如实仅 self。
+Commit: 1b40fa2c
