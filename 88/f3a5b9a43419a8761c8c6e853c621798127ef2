@@ -1,0 +1,1 @@
+T36 D3 完成:e2e 归档边界=不变量族/workstation;全量 e2e 首次重跑暴露并清偿 T34/T35 未同步的 e2e 债(9+ 处陈旧断言对齐既有裁决,3 处产品修复:nav 标记/F-31 id 剥离/窄视口溢出);验证=全量 e2e exit 0(55 passed)+unit 2594+governance(baseline 1)。
