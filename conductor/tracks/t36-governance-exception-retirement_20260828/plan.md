@@ -33,13 +33,13 @@
 
 ## Phase C 纯内核与 agent loop(FR1.5、FR2.1)
 
-- [ ] Task: C1 engine/presentation 直接文件子域归档(FR2.1)
+- [x] Task: C1 engine/presentation 直接文件子域归档(FR2.1) `9215d033`
   - [ ] 直接文件(broker/compose/composition-fastpath/lens/patch/promotion/scenario/sidecar 等)按 compose/recipe/sidecar 子域归档;`index.ts` 公共导出面**不变**(@ui4a/engine barrel 消费者零改动)
   - [ ] 验证:`pnpm --filter @ui4a/engine test` 全绿;目录直接文件合计 ≤4000 行;移除基线条目同 commit
-- [ ] Task: C2 agent loop fail-guard 家族提取(FR1.5)
+- [x] Task: C2 agent loop fail-guard 家族提取(FR1.5) `0261badd`
   - [ ] 先把反复拒绝机械收敛护栏的既有断言固化为针对新模块的红测,再提取 fail-guard 模块;循环终止判定单一可读(T35 C5 语义不回退)
   - [ ] 文件 ≤500 行;`pnpm --filter @ui4a/agent test` 全绿;移除基线条目 `loop.ts` 同 commit
-- [ ] Task: Phase C 检查点(engine+agent 全套件 + governance;git notes)
+- [x] Task: Phase C 检查点(engine+agent 全套件 + governance;git notes) `0261badd`
 
 ## Phase D 部署合同与 e2e 域分解(FR1.6、FR1.7、FR2.4、FR2.5)
 
