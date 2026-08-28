@@ -36,11 +36,23 @@ export function CanvasBody() {
   // 唯一常显处);书桌与舞台不重复渲染同一叙述或材料表单。
   const gazeIsThreadItself =
     threadId !== undefined && gazeParameters.focus === `thread:${threadId}`;
+  // T37 FR3:scope 无任何注视参数时,默认落点 = 该应用的组合面(聚合虚主体,
+  // `workspace:app:<scope>`);纯舞台机械——subject 推导,零应用落点布局组件。
+  // 带 focus 的深链照旧优先,focus 表面不受影响。
+  const appLandingFocus =
+    scope !== undefined &&
+    threadId === undefined &&
+    gazeParameters.focus === undefined &&
+    gazeParameters.concern === undefined &&
+    gazeParameters.roots === undefined
+      ? `workspace:app:${scope}`
+      : undefined;
   const noGaze =
     (gazeParameters.focus === undefined &&
       gazeParameters.concern === undefined &&
       gazeParameters.roots === undefined &&
-      threadId === undefined) ||
+      threadId === undefined &&
+      appLandingFocus === undefined) ||
     gazeIsThreadItself;
 
   const gaze =
@@ -67,7 +79,13 @@ export function CanvasBody() {
         )}
       </div>
     ) : (
-      <PresentationSurfaceHost heading="共同注视" parameters={gazeParameters} />
+      <PresentationSurfaceHost
+        heading="共同注视"
+        parameters={{
+          ...gazeParameters,
+          ...(appLandingFocus === undefined ? {} : { focus: appLandingFocus }),
+        }}
+      />
     );
 
   if (!railOn) {

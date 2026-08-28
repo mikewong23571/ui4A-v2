@@ -15,7 +15,7 @@ function stubApplications(applications: unknown): void {
 }
 
 describe('ApplicationEntryStrip · 应用目录条', () => {
-  it('从 sitemap 派生应用 chips 并链到 entry surface,排除 default(F-23)', async () => {
+  it('从 sitemap 派生应用 chips 并链到应用默认组合面,排除 default(F-23/T37 FR3)', async () => {
     stubApplications([
       { name: 'default', title: '默认应用', intent: '兜底', entry: 'flow:article-drafting' },
       { name: 'todo', title: '待办事项', intent: '捕捉待办', entry: 'flow:todo-capture' },
@@ -23,7 +23,8 @@ describe('ApplicationEntryStrip · 应用目录条', () => {
     render(<ApplicationEntryStrip />);
 
     const todo = await screen.findByRole('link', { name: '待办事项' });
-    expect(todo.getAttribute('href')).toBe('/canvas?focus=flow%3Atodo-capture&scope=todo');
+    // T37:chip 默认落点 = 应用组合面(scope 无 focus),不再携带 entry focus。
+    expect(todo.getAttribute('href')).toBe('/canvas?scope=todo');
     expect(screen.queryByRole('link', { name: '默认应用' })).toBeNull();
     expect(screen.getByText('应用（1 个）')).toBeTruthy();
   });

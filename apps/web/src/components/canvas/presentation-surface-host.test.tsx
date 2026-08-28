@@ -172,6 +172,16 @@ const cases: MountCase[] = [
       <PresentationSurfaceHost heading="我的事" parameters={{ focus: 'workspace:my-work' }} />
     ),
   },
+  {
+    name: 'Canvas 应用默认落点(scope 无 focus)',
+    subject: 'workspace:app:publishing',
+    title: '文章集合',
+    scope: 'publishing',
+    mount: () => {
+      window.history.pushState({}, '', '/canvas?scope=publishing');
+      return <CanvasBody />;
+    },
+  },
 ];
 
 describe('PresentationSurfaceHost 共享单树宿主', () => {
@@ -302,7 +312,7 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
     '$name 走 presentation → sidecar → hydrate → action gate → 单树链',
     async (testCase) => {
       const source = sourceEntity(
-        testCase.subject === 'workspace:my-work' ? 'inbox' : testCase.subject,
+        /^workspace:/.test(testCase.subject) ? 'articles' : testCase.subject,
         testCase.title,
       );
       const fixture = presentationContract({
@@ -354,9 +364,59 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
     },
   );
 
+  it('scope 无 focus 渲染应用组合面,替换空屏提示(T37 FR3)', async () => {
+    const source = sourceEntity('articles', '文章集合');
+    const fixture = presentationContract({
+      subject: 'workspace:app:publishing',
+      source,
+      scope: 'publishing',
+    });
+    vi.stubGlobal('fetch', fixture.fetchMock);
+
+    window.history.pushState({}, '', '/canvas?scope=publishing');
+    const { container } = render(
+      <EntityCacheProvider scope="publishing">
+        <CanvasBody />
+      </EntityCacheProvider>,
+    );
+
+    // 组合面经共享宿主照常渲染;空屏提示不再出现。
+    expect(await screen.findByRole('heading', { name: '文章集合', level: 1 })).toBeTruthy();
+    expect(container.querySelectorAll('[data-surface]')).toHaveLength(1);
+    expect(screen.queryByText('从上方选择一个应用进入;或从「我的事」进入工作线。')).toBeNull();
+    const presentationCall = fixture.fetchMock.mock.calls.find(
+      ([request, init]) =>
+        String(request) === '/api/presentation?scope=publishing' && init?.method === 'POST',
+    );
+    expect(presentationCall).toBeDefined();
+    expect(JSON.parse(String(presentationCall![1]?.body)).subject).toBe('workspace:app:publishing');
+  });
+
+  it('带 focus 的深链优先于应用默认落点(回归不破)', async () => {
+    const source = sourceEntity('flow:todo-capture', '捕捉向导');
+    const fixture = presentationContract({ subject: 'flow:todo-capture', source, scope: 'todo' });
+    vi.stubGlobal('fetch', fixture.fetchMock);
+
+    window.history.pushState({}, '', '/canvas?focus=flow%3Atodo-capture&scope=todo');
+    render(
+      <EntityCacheProvider scope="todo">
+        <CanvasBody />
+      </EntityCacheProvider>,
+    );
+
+    // focus 深链照常渲染 focus 表面(先等 surface 落地再断言请求)。
+    expect(await screen.findByRole('heading', { name: '捕捉向导', level: 1 })).toBeTruthy();
+    const presentationCall = fixture.fetchMock.mock.calls.find(
+      ([request, init]) =>
+        String(request) === '/api/presentation?scope=todo' && init?.method === 'POST',
+    );
+    expect(presentationCall).toBeDefined();
+    expect(JSON.parse(String(presentationCall![1]?.body)).subject).toBe('flow:todo-capture');
+  });
+
   it.each(cases)('$name 共享 sidecar 错误、why 与重载语义', async (testCase) => {
     const source = sourceEntity(
-      testCase.subject === 'workspace:my-work' ? 'inbox' : testCase.subject,
+      /^workspace:/.test(testCase.subject) ? 'articles' : testCase.subject,
       testCase.title,
     );
     const fixture = presentationContract({

@@ -71,7 +71,9 @@ export function ApplicationEntryStrip() {
         {visible.map((application) => (
           <a
             key={application.name}
-            href={`/canvas?focus=${encodeURIComponent(application.entry)}&scope=${encodeURIComponent(application.name)}`}
+            // T37 FR3:默认落点 = 应用组合面(canvas?scope=<app>,无 focus);
+            // canvas 壳把 scope 无注视导航到 workspace:app:<scope> 组合 subject。
+            href={`/canvas?scope=${encodeURIComponent(application.name)}`}
             data-nav={`local:app-entry:${application.name}`}
             aria-label={application.title}
             title={application.intent}
