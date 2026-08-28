@@ -1,1 +1,3 @@
 T36 C2 完成:提取边界=机械收敛护栏家族(repeated_rejection+no_progress_loop),T35 C5 语义不变;TDD 红绿;顺带修正 T16 矩阵证据路径(C1 移动所致);验证=agent 269 passed + tsc + governance(baseline 5)。
+
+T36 Phase C 检查点(自治验收):C1 9215d033(presentation 4633→2084,compose/recipe/sidecar 子域归档,barrel 面不变)/C2 0261badd(loop 520→482,fail-guard 家族提取,TDD 4 新用例);基线 7→5。验证:vitest unit 全量 2594 passed(+4);engine 598 + agent 269 passed;pnpm governance OK。
