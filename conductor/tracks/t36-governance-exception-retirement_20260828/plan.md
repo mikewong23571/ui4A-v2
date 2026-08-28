@@ -43,17 +43,17 @@
 
 ## Phase D 部署合同与 e2e 域分解(FR1.6、FR1.7、FR2.4、FR2.5)
 
-- [ ] Task: D1 scripts/t22 按部署子域分目录(FR2.4)
+- [x] Task: D1 scripts/t22 按部署子域分目录(FR2.4) `44c3f6cd`
   - [ ] 建 `scripts/t22/{compose,k8s,keycloak,backup}/` 子域目录,文件按域归档(backup/recovery 归 backup;helm/pki/runtime 归 k8s;realm 归 keycloak;compose 归 compose;跨域共用件留在顶层或 shared,以引用实态裁定)
   - [ ] 同步全部路径引用:`package.json`(`migrate:production`、`compose:t22`)、`docs/t22-production-runbook.md`、`deploy/compose/acceptance-contract.json`、测试内相对引用
   - [ ] 验证:`pnpm vitest run scripts/t22` 全绿;顶层直接文件合计 ≤4000 行;移除目录基线条目同 commit
-- [ ] Task: D2 两个 t22 合同测试 describe 分片(FR1.6、FR1.7)
+- [x] Task: D2 两个 t22 合同测试 describe 分片(FR1.6、FR1.7) `44c3f6cd`(与 D1 同 commit:移动使旧路径基线 stale,分立将产生无登记违规窗口)
   - [ ] `t22-helm-contract.test.ts`(983)与 `t22-compose-contract.test.ts`(866)按部署关注点分片为多个 ≤800 行测试文件;断言不删减
   - [ ] 移除两条文件基线条目同 commit
-- [ ] Task: D3 e2e 域归档(FR2.5)
+- [x] Task: D3 e2e 域归档(FR2.5) `88f3a5b9`(附:全量 e2e 首次重跑,T35 期陈旧断言全量对齐+3 处产品修复)
   - [ ] 顶层 spec 按业务域归档子目录(不变量/交互/workstation/meta 等;延续 `kits/`、`interaction/`、`workstation/`、`eval/` 既有模式);playwright 配置的 testDir/glob 兼容性验证
   - [ ] 验证:`CI=true pnpm e2e invariants` 抽样 + 全量 e2e 留 Phase F;顶层直接文件合计 ≤4000 行;spec 数量不减;移除基线条目同 commit
-- [ ] Task: Phase D 检查点(vitest scripts/t22 + e2e invariants + governance;git notes)
+- [x] Task: Phase D 检查点(全量 e2e 55 passed exit 0 + unit 2594 + governance;git notes) `88f3a5b9`
 
 ## Phase E GR1 例外清退(FR3.1、FR3.2、FR2.3)
 
