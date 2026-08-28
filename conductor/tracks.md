@@ -4,12 +4,13 @@
 
 ## 活跃 Tracks
 
-- [~] **Track: T22 生产形态部署、身份认证与双后端 Agent Runtime：mothership K8s/Istio、Docker Compose all-in-one、Keycloak、灾备与首个试验性版本** *Link: [tracks/t22-production-deployment-auth-runtime_20260824/index.md](./tracks/t22-production-deployment-auth-runtime_20260824/index.md)*
+- 无(2026-08-27:T22 闭环归档;后续方向 program 依 [product-vision.md](../product-vision.md) 另行立项)
 
-方向 program(依据 [product-vision.md](../product-vision.md);站点为天然分割点,limited scope;
-执行序:T24 → T25 → T26(spike) → T30 → T27 → T28;T29 已完成):
+## 归档 Tracks(T1–T34,只读历史)
 
-## 归档 Tracks(T1–T21、T23–T33,只读历史)
+- [x] **Track: T22 生产形态部署、身份认证与双后端 Agent Runtime：mothership K8s/Istio、Docker Compose all-in-one、Keycloak、灾备与首个试验性版本(已发布 `v0.1.0-experimental.1`;过期实机验证按 D52 裁定不再补跑)** *Link: [tracks/archive/t22-production-deployment-auth-runtime_20260824/index.md](./tracks/archive/t22-production-deployment-auth-runtime_20260824/index.md)*
+
+- [x] **Track: T34 授权与注意力范畴分离:凭证集合裁决 + presence 单点镜头,破坏性剥离单值 policyScope** *Link: [tracks/archive/t34-authority-attention-separation_20260827/index.md](./tracks/archive/t34-authority-attention-separation_20260827/index.md)*
 
 - [x] **Track: T35 持续试用与走查修复**(2026-08-28 完成:R1–R3 走查,S1–S11 全过;findings 27 rechecked + F-20 wontfix 终判 + F-05/F-26 方向项;门禁全绿) *Link: [tracks/archive/t35-ux-walkthrough-remediation_20260827/index.md](./tracks/archive/t35-ux-walkthrough-remediation_20260827/index.md)*
 

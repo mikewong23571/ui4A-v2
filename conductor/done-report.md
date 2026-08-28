@@ -11,6 +11,22 @@
 - F-20 终判方法示范:干净种子世界全 UI 序列重演——效应派生在场 + 旧 payload 被 terminal-reachable 诚实拒绝,证明旧"激活成功但节点为空"仅可能因丢动作 bug 掩盖非法拓扑。
 - 门禁:pnpm check 绿(3090 tests)+ governance OK + CI=true pnpm e2e invariants 通过;全证据在 track `evidence/`(R1–R3、S9S10、desk、W 系列)。
 
+## T22 生产形态部署、身份认证与双后端 Agent Runtime(2026-08-27 闭环)
+
+- 交付并发布 `v0.1.0-experimental.1`(tag 指向 `d5557bf`):mothership K8s/Istio 与 Compose
+  all-in-one 同一配置合同,Keycloak Authorization Code+PKCE / CLI Bearer / Agent Client
+  Credentials+RFC 8693 exchange,canonical delegation `sub + azp`,显式迁移、单 Web 副本
+  CAS/重放完整性、健康语义、19 节 runbook、备份恢复与双后端 Runtime 合同。
+- 现场已验:认证主路径与 auth negatives 100% 拒绝、单 Web 并发/重启/重放、十工件隔离恢复
+  (RPO 0、实测 RTO)、T26 Work Thread 生产部署与 CLI scope hotfix(rev40–42)。
+- 诚实边界(发布 bundle 为准):Runtime matrix 定格 `failed-honest`(零 fallback),镜像
+  known-risk 50C/241H,rollback/fault injection 未实测,U8/accept 延后;非 GA/SLA/LTS。
+- 2026-08-27 按 D52 闭环:剩余实机验证(Compose story corpus 复跑、K8s/Host 双后端 Run、
+  T22 专项全量门)裁定过期不再补跑——重跑验证的是 T24–T34 后演进而非发布物;质量门已
+  常驻化(T33 全量 e2e 52 passed、T34 `pnpm check` 终绿 + rev52 生产走查)。`scripts/t22`
+  按 GR5 晋升常驻部署合同套件(34 套 311 用例,收口现场复核绿)。证据见
+  [T22 DONE](./tracks/archive/t22-production-deployment-auth-runtime_20260824/DONE.md)。
+
 ## T20 Meta Human Control Plane（2026-08-23）
 
 - `/meta` 从授权 sitemap 动态发现 7 个顶层面；未来 class 零 dashboard 分支进入 generic fallback。

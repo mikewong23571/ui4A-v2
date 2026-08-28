@@ -5,19 +5,19 @@
       "path": "scripts/t22/t22-helm-contract.test.ts",
       "lines": 983,
       "limit": 800,
-      "note": "T22 在途 track 所有;T23 不拆分,T22 关闭时随 scripts/t22 一并裁决"
+      "note": "T22 已关闭(2026-08-27,D52):scripts/t22 按 GR5 晋升常驻部署合同套件;本条转为常驻登记债务,shrink-only,后续触及内容时按 describe 分片收缩"
     },
     {
       "path": "apps/web/src/app/api/chat/route.ts",
       "lines": 949,
       "limit": 500,
-      "note": "T22 在途所有;T26 chat presence→thread 显式 attach 增 1 行调用(业务优先不为凑行数拆分,workflow 2026-08-26);待 T22 关闭或 T27 workstation 接入时按 chat orchestration helper 收缩"
+      "note": "T26 chat presence→thread 显式 attach 增 1 行调用(业务优先不为凑行数拆分,workflow 2026-08-26);T22 已关闭(2026-08-27,D52),收缩窗口与 T22 脱钩,改挂下一次 chat 编排重构时按 orchestration helper 收缩"
     },
     {
       "path": "scripts/t22/t22-compose-contract.test.ts",
       "lines": 866,
       "limit": 800,
-      "note": "T22 在途 track 所有;T23 不拆分,T22 关闭时随 scripts/t22 一并裁决"
+      "note": "T22 已关闭(2026-08-27,D52):scripts/t22 按 GR5 晋升常驻部署合同套件;本条转为常驻登记债务,shrink-only,后续触及内容时按 describe 分片收缩"
     },
     {
       "path": "apps/web/src/components/chat/floating-chat.test.tsx",
@@ -64,7 +64,7 @@
       "path": "scripts/t22",
       "lines": 14428,
       "limit": 4000,
-      "note": "T22 在途 track 所有;T23 不处置,T22 关闭时按 GR5 裁决(见 risk-inventory R4);T29 realm-bootstrap 列表视图修复 +16(用户授权);47faabd 非 root darwin chown 守卫净增 +1(2026-08-27 外部修复);T35 期间 prettier 重排 +3(2026-08-28,随批登记)"
+      "note": "T22 已关闭(2026-08-27):按 GR5 裁决(D52)整目录晋升为常驻部署合同套件,路径/命名保留以维持 runbook 与 package.json 引用;本条转为常驻登记债务,shrink-only,后续按部署子域(compose/k8s/keycloak/backup)分目录或触及内容时收缩;T29 realm-bootstrap 列表视图修复 +16(用户授权);47faabd 非 root darwin chown 守卫净增 +1(2026-08-27 外部修复);T35 期间 prettier 重排 +3(2026-08-28,随批登记)"
     },
     {
       "path": "e2e",

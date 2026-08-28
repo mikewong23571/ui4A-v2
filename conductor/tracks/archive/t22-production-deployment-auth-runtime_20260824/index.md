@@ -29,16 +29,16 @@ canonical delegation。两种部署共用固定 realm 文件，首次导入，�
 - [Experimental Authentication Surface](./auth-surface.md)
 - [T26 Work Thread Production and CLI Hotfix Evidence](./evidence-t26-cli-scope-hotfix-20260826.md)
 - [Implementation Plan](./plan.md)
+- [DONE](./DONE.md)
 
-当前状态：`in_progress`(2026-08-27 收敛复核:Phase A–F/H 全部闭环;B/C/E 的验收
-子弹已按常驻合同套件逐项核验勾选,scripts/t22 33 套 308 用例绿 + darwin 非 root
-chown 守卫;arm64 temporal 剪枝修复与本地镜像实验栈已提交)。**剩余 14 项全部
-依赖实机/外部授权,本地会话不可代行**:Phase G Compose story 验收(U1/U3–U9/
-U13/U14/U16 + Golden Story,restart/dual backends/backup-restore smoke——
-operator-authorized-live)、Phase I 的 K8s/Host 双后端 Agent Run 与 Golden Story
-checkpoint(需 mothership 集群,本会话无 kubectl context)、Phase J 全量质量门
-(`pnpm check` 当前受并行 T31 的 db 基线增长在途影响)与终审 DONE 报告。目标发布
-为 `v0.1.0-experimental.1`，不宣称 GA、正式 SLA 或当前两 Worker
-实验集群具备未经验证的高可用能力。多副本 Web/Session、跨副本 single atom、realm 在线升级、
+当前状态：`completed`(2026-08-27 收口闭环:Phase A–J 全部处置完毕;`v0.1.0-experimental.1`
+已发布,tag 指向 `d5557bf`,现场已验认证、单 Web 并发/重启/重放与十工件隔离恢复;Runtime
+matrix 按 D37 定格 `failed-honest`,镜像 known-risk 50C/241H,rollback/fault injection 未实测
+如实登记)。剩余实机验收项按用户 2026-08-27 指令与 **D52** 裁定过期、不再补跑:Phase G
+Compose story corpus 复跑、Phase I K8s/Host 双后端 Agent Run、Phase J T22 专项全量门——
+依据是重跑验证的将是 T24–T34 后续演进而非发布物,质量门已常驻化(T33 全量 e2e 52 passed、
+T34 `pnpm check` 终绿 + rev52 生产走查)。收口现场另跑 `pnpm check` 复核当前树(结果见
+[DONE.md](./DONE.md))。`scripts/t22` 按 GR5/D52 晋升为常驻部署合同套件(路径与命名保留,
+runbook/package.json 引用不变);多副本 Web/Session、跨副本 single atom、realm 在线升级、
 细粒度角色同步、自动 Secret rotation、`act` 扩展、全面 service-to-service OIDC/全 route
-平台化和 HA 明确延后，不阻塞本 Track。
+平台化和 HA 保持延后。本 track 与发布仍不构成 GA、正式 SLA、LTS 或生产就绪。

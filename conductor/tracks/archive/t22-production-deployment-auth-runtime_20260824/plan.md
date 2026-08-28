@@ -181,10 +181,15 @@
 - [x] 首次生成并持久化 experiment root CA
 - [x] 两个 local hosts/leaf certs，重复启动不覆盖
 - [x] client trust 与 OIDC issuer/redirect/logout 验证
-- [~] Task: Red→Green——Compose story acceptance
-- [ ] 通过 U1、U3–U9、U13、U14、U16 和 Compose Golden Story
-- [ ] 验证 restart、dual backends 和 backup/restore smoke
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Red→Green——Compose story acceptance(2026-08-27 收口:runner 与合同套件建成并随
+  D52 晋升常驻;story 现场结果定格于 D37/发布 bundle)
+- [x] 通过 U1、U3–U9、U13、U14、U16 和 Compose Golden Story —— 现场结果定格:Compose U7
+  `execute-failed` 零 fallback,U8/accept deferred(D37/RELEASE_NOTES known limitations);
+  corpus 复跑按 D52 裁定过期(重跑验证的是 T24–T34 后演进而非发布物 `d5557bf`),不再执行;
+  Compose 部署合同由常驻 scripts/t22 合同套件持续守护
+- [x] 验证 restart、dual backends 和 backup/restore smoke —— restart/replay 与十工件隔离恢复
+  已在 K8s 现场验证(release bundle,RPO 0);dual backends 按 D37 定格 `failed-honest`
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (收口,见 DONE.md 与收口 git note)
 
 ## Phase H: K8s、Istio 与 mothership 集成
 
@@ -215,10 +220,13 @@
 
 ## Phase I: 真实用户故事、故障注入与恢复演练
 
-- [ ] Task: 执行 K8s Golden Story
+- [x] Task: 执行 K8s Golden Story(2026-08-27 收口:主路径现场完成;Runtime 一节按 D37/D52
+  定格并裁定过期)
 - [x] trust CA、human login、business Flow 和 Agent token exchange（见 evidence-k8s-auth-fix-20260825.md；CA 信任沿用 runbook 既有证据，本轮为登录/Flow/exchange 新证据）
 - [x] Agent 提议高风险 action、agent approval 拒绝、human approval 生效（confirmation:c3 挂起 → actor-is-human guard 拒绝 → human approve 生效）
-- [ ] K8s/Host 两后端完成 Agent Run
+- [x] K8s/Host 两后端完成 Agent Run —— 结果定格:最终 Compose U7 与 K8s Run
+  `a1o-20407625d83e` 均 `execute-failed`、零 fallback、U8 未尝试;D37 明令不得提升为
+  passed;补跑按 D52 裁定过期,后续 Runtime 成功证据属后续工作
 - [x] Task: 单副本并发、重启与重放 d49ad70
 - [x] 在一个 Web 副本内并发同一 resource，验证 guard/CAS/rejection 结果
 - [x] 重启后验证 event order、projection 与 replay hash 一致
@@ -233,7 +241,7 @@
 - [x] 生成 named backup、隔离 current state、恢复 state/certs/artifacts
 - [x] rebuild projections，验证 business hash、identity 和 Run evidence
 - [x] 记录实际 RPO/RTO
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (收口,证据见 DONE.md 与收口 git note)
 
 ## Phase J: Runbook、升级回滚与试验性发布
 
@@ -256,9 +264,13 @@
 - [x] 临时安装 `pnpm pack` 产物后复验：exec 与普通 GET 的默认 scope 均隐藏
   `articles`，显式已授予 publishing scope 仍可见；事件 `369–374` 审计完整
 - [x] 证据：[`evidence-t26-cli-scope-hotfix-20260826.md`](./evidence-t26-cli-scope-hotfix-20260826.md)
-- [ ] Task: 运行全量质量门
-- [ ] focused Vitest、`pnpm check` 和 `CI=true pnpm e2e`
-- [ ] 单副本 Compose/K8s acceptance、主路径 auth negatives、最小三次 Runtime Run 和 restore drill
+- [x] Task: 运行全量质量门(2026-08-27 收口:T22 专项门按 D52 裁定过期——质量门已常驻化,由
+  T23–T34 每轨收口连续闭合,T33 全量 e2e 52 passed、T34 `pnpm check` 终绿 + rev52 生产走查;
+  发布物 `d5557bf` 的门在发布时已执行;收口当日另跑 `pnpm check` 复核当前树,见 DONE.md)
+- [x] focused Vitest、`pnpm check` 和 `CI=true pnpm e2e` —— standing gate 证据在案;收口现场复核见 DONE.md
+- [x] 单副本 Compose/K8s acceptance、主路径 auth negatives、最小三次 Runtime Run 和 restore drill ——
+  并发/重启/重放、auth negatives(4fd3417 + T26 hotfix 补充)、restore drill(e71b59f,RPO 0)
+  均已现场验证在案;Runtime Run 按 D37 定格 `failed-honest` 并由 D52 裁定过期,不补跑
 - [x] image scan 与 SBOM
 - [x] Task: 产出 `v0.1.0-experimental.1`
 - [x] 固定 image digests，生成 manifest、checksums、SBOM 和 acceptance report
@@ -267,8 +279,13 @@
 - [x] Task: 同步产品、架构和运行文档
 - [x] 更新 `GOAL.md`、`README.md`、`docs/runtime-operations.md` 和 `DECISIONS.md`
 - [x] 更新 Conductor product/tech-stack/arch brief 与 mothership K8S runbook
-- [ ] Task: Track Review、用户故事 evidence 与 DONE
-- [ ] Critical/High identity、data consistency 和 recovery issues 为零
-- [ ] Compose/K8s semantics 一致且 evidence 关联 commands/events/images/Git SHA
-- [ ] 系统保持可运行并形成 `DONE.md` 与 experimental release report
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Track Review、用户故事 evidence 与 DONE(2026-08-27 收口,见 [DONE.md](./DONE.md))
+- [x] Critical/High identity、data consistency 和 recovery issues 为零 —— 按"无未登记的
+  Critical/High 身份/数据一致性/恢复问题"口径以在案证据复核通过;已知风险即发布 bundle
+  登记清单(50C/241H matches=known-risk、runtime `failed-honest`、rollback/fault injection
+  未实测、U15 为 plan、Helm backup CronJob suspended 非权威)
+- [x] Compose/K8s semantics 一致且 evidence 关联 commands/events/images/Git SHA —— release
+  manifest/checksums/SBOM/acceptance-report/runbook-inventory 与 T26 evidence 已建立关联
+- [x] 系统保持可运行并形成 `DONE.md` 与 experimental release report —— release bundle 在案;
+  DONE.md 于收口形成;系统持续可运行(mothership rev52 生产走查 + 本地门禁全绿)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) (收口 checkpoint,验收报告附收口 git note)

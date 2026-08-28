@@ -19,7 +19,7 @@ describe('T22 Compose story acceptance runner contract', () => {
       schemaVersion: 1,
       environment: 'compose',
       evidenceSchema:
-        'conductor/tracks/t22-production-deployment-auth-runtime_20260824/acceptance-evidence.schema.json',
+        'conductor/tracks/archive/t22-production-deployment-auth-runtime_20260824/acceptance-evidence.schema.json',
       stories: storyIds,
       runtimePaths: {
         U7: {
