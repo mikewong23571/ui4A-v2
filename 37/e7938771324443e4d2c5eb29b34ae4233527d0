@@ -1,0 +1,1 @@
+T36 B2 完成:下沉边界=flow 读面补全内聚职责(completeFlowEntity 单入口);非转发壳——三步补全逻辑整体迁移;验证=flow-entry 6 + service-tests 95 passed + tsc + governance(baseline 7)。
