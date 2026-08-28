@@ -37,18 +37,18 @@
 
 ## Phase C:用户故事视觉闭环(≥3 应用;浏览器实操审核)
 
-- [ ] Task C1: U1/U2(publishing):进入内容发布见默认组合面,截图审核
+- [x] Task C1: U1/U2(publishing):进入内容发布见默认组合面,截图审核
   密度与层级;发布一篇文章后两次点击内达该文章(浏览器实操点链);
   证据留 `review.md`。
-- [ ] Task C2: U3(todo 或 ideas):经捕捉流创建一条待办;产物在默认面
+- [x] Task C2: U3(todo 或 ideas):经捕捉流创建一条待办;产物在默认面
   可见并可达;证据留证。
-- [ ] Task C3: U4(community):默认面展示评论集合成员,审核动作行内
+- [x] Task C3: U4(community):默认面展示评论集合成员,审核动作行内
   可达并可用;证据留证。
-- [ ] Task C4: U5 零特判 + agent 同门:三应用同款默认面且 git diff 无
+- [x] Task C4: U5 零特判 + agent 同门:三应用同款默认面且 git diff 无
   per-app 代码;CLI/合同探针从同一投影发现相同入口;全程 scope 保留;
   证据留证。
-- [ ] Task C5: review.md 汇总 pass/fail;发现问题回修(限 B/C 触达面)
+- [x] Task C5: review.md 汇总 pass/fail;发现问题回修(限 B/C 触达面)
   并复审;`pnpm check` + governance 全绿;`pnpm dev:all` 实测可运行。
-- [ ] Task C6: Track Checkpoint:git notes 记录终审(含 §六滑梯自查、
+- [x] Task C6: Track Checkpoint:git notes 记录终审(含 §六滑梯自查、
   用户故事结论汇总);更新 registry 状态;GOAL.md/DECISIONS.md 如有
   沉淀则补记。
