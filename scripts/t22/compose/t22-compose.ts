@@ -105,7 +105,7 @@ export function planComposeCommand(
       preflight: true,
       commands: [],
       report: {
-        contract: 'scripts/t22/t22-backup-contract.ts',
+        contract: 'scripts/t22/backup/t22-backup-contract.ts',
         strategy: 'quiesced-pg-dump',
         requiresVerifiedQuiescenceReceipt: true,
         execution: 'plan-only',
@@ -118,7 +118,7 @@ export function planComposeCommand(
       preflight: true,
       commands: [],
       report: {
-        contract: 'scripts/t22/t22-restore-contract.ts',
+        contract: 'scripts/t22/backup/t22-restore-contract.ts',
         target: 'isolated',
         destructive: false,
         useCleanRestore: false,
@@ -282,7 +282,7 @@ export async function executeComposeCommand(
 function readProcessOutput(executable: string, args: string[]): Promise<string> {
   return new Promise((complete, reject) => {
     const child = spawn(executable, args, {
-      cwd: resolve(import.meta.dirname, '../..'),
+      cwd: resolve(import.meta.dirname, '../../..'),
       env: process.env,
       shell: false,
       stdio: ['ignore', 'pipe', 'ignore'],
@@ -316,7 +316,7 @@ const productionDependencies: ComposeCommandDependencies = {
   async run(command, environment) {
     return new Promise((complete) => {
       const child = spawn(command.executable, command.args, {
-        cwd: resolve(import.meta.dirname, '../..'),
+        cwd: resolve(import.meta.dirname, '../../..'),
         env: { ...process.env, ...environment },
         shell: false,
         stdio: 'inherit',

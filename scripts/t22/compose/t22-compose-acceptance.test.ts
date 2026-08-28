@@ -86,7 +86,7 @@ describe('T22 Compose story acceptance runner contract', () => {
   it('exposes a plan-only CLI and rejects any unplanned live command', async () => {
     const planned = await execFileAsync(
       'apps/worker/node_modules/.bin/tsx',
-      ['scripts/t22/t22-compose-acceptance.ts', 'plan'],
+      ['scripts/t22/compose/t22-compose-acceptance.ts', 'plan'],
       { cwd: process.cwd() },
     );
     expect(JSON.parse(planned.stdout)).toMatchObject({
@@ -98,7 +98,7 @@ describe('T22 Compose story acceptance runner contract', () => {
     await expect(
       execFileAsync(
         'apps/worker/node_modules/.bin/tsx',
-        ['scripts/t22/t22-compose-acceptance.ts', 'run'],
+        ['scripts/t22/compose/t22-compose-acceptance.ts', 'run'],
         { cwd: process.cwd() },
       ),
     ).rejects.toMatchObject({

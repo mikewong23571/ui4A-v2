@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 
 import { describe, expect, it, vi } from 'vitest';
 
-const repositoryRoot = resolve(import.meta.dirname, '../..');
+const repositoryRoot = resolve(import.meta.dirname, '../../..');
 const modulePath = 'deploy/compose/internal-tls.ts';
 const contractPath = 'deploy/compose/internal-tls-contract.json';
 

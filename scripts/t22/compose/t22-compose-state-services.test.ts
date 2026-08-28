@@ -3,9 +3,9 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { renderComposeStack } from '../../deploy/compose/render-stack';
+import { renderComposeStack } from '../../../deploy/compose/render-stack';
 
-const root = resolve(import.meta.dirname, '../..');
+const root = resolve(import.meta.dirname, '../../..');
 const source = (path: string): string => readFileSync(resolve(root, path), 'utf8');
 const digest = (digit: string): string => `sha256:${digit.repeat(64)}`;
 

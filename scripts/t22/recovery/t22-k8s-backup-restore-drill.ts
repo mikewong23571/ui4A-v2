@@ -1,7 +1,7 @@
 import { homedir } from 'node:os';
 import { isAbsolute, resolve, sep } from 'node:path';
 
-import { compareRecoveryFingerprints } from './t22-recovery-fingerprint';
+import { compareRecoveryFingerprints } from '../backup/t22-recovery-fingerprint';
 
 export interface QuiescenceObservation {
   observedAt: string;
@@ -283,7 +283,12 @@ function commandPlan(input: KubernetesDrillInput): DrillCommand[] {
         return {
           phase,
           executable: 'node',
-          args: ['scripts/t22/t22-backup-command.ts', 'backup', '--environment', 'kubernetes'],
+          args: [
+            'scripts/t22/backup/t22-backup-command.ts',
+            'backup',
+            '--environment',
+            'kubernetes',
+          ],
         };
       case 'resume-current-source':
         return {
@@ -312,7 +317,7 @@ function commandPlan(input: KubernetesDrillInput): DrillCommand[] {
           phase,
           executable: 'node',
           args: [
-            'scripts/t22/t22-restore-command.ts',
+            'scripts/t22/backup/t22-restore-command.ts',
             'restore',
             '--target',
             'isolated',
@@ -331,7 +336,12 @@ function commandPlan(input: KubernetesDrillInput): DrillCommand[] {
         return {
           phase,
           executable: 'node',
-          args: ['scripts/t22/t22-recovery-fingerprint.ts', 'compare', '--drill-id', input.drillId],
+          args: [
+            'scripts/t22/backup/t22-recovery-fingerprint.ts',
+            'compare',
+            '--drill-id',
+            input.drillId,
+          ],
         };
     }
   });

@@ -23,7 +23,7 @@ interface RecoveryCommandModule {
   ): Promise<Record<string, unknown>>;
 }
 
-const commandPath = 'scripts/t22/t22-k8s-recovery-command.ts';
+const commandPath = 'scripts/t22/recovery/t22-k8s-recovery-command.ts';
 const execFileAsync = promisify(execFile);
 const secretCanary = '__k8s_recovery_secret_must_not_escape__';
 

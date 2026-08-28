@@ -76,8 +76,8 @@ interface RestoreCliModule {
 
 const backupModulePath = './t22-backup-contract';
 const restoreModulePath = './t22-restore-contract';
-const backupEntryPath = 'scripts/t22/t22-backup-command.ts';
-const restoreEntryPath = 'scripts/t22/t22-restore-command.ts';
+const backupEntryPath = 'scripts/t22/backup/t22-backup-command.ts';
+const restoreEntryPath = 'scripts/t22/backup/t22-restore-command.ts';
 const execFileAsync = promisify(execFile);
 
 async function backupApi(): Promise<BackupExecutorModule> {

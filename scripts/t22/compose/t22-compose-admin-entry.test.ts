@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 const execFileAsync = promisify(execFile);
-const repositoryRoot = resolve(import.meta.dirname, '../..');
+const repositoryRoot = resolve(import.meta.dirname, '../../..');
 const workerRoot = resolve(repositoryRoot, 'apps/worker');
 const pnpmExecutable = process.env.UI4A_PNPM_EXECUTABLE ?? process.env.npm_execpath;
 

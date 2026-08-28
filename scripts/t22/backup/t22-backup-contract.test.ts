@@ -197,7 +197,7 @@ describe('T22 named backup contract', () => {
   it('requires the versioned manifest schema to encode verified quiescence before backup', async () => {
     const schema = JSON.parse(
       await readFile(
-        resolve(import.meta.dirname, '../../deploy/backup/backup-manifest.schema.json'),
+        resolve(import.meta.dirname, '../../../deploy/backup/backup-manifest.schema.json'),
         'utf8',
       ),
     ) as Record<string, unknown>;

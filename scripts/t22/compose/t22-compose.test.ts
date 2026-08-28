@@ -102,7 +102,7 @@ function dependencies(
 describe('T22 Compose single-command operations', () => {
   it('binds production preflight to the operator-owned input validator', async () => {
     const source = await import('node:fs/promises').then(({ readFile }) =>
-      readFile('scripts/t22/t22-compose.ts', 'utf8'),
+      readFile('scripts/t22/compose/t22-compose.ts', 'utf8'),
     );
 
     expect(source).toContain('validateComposeProductionEnvironment');
@@ -258,7 +258,7 @@ describe('T22 Compose single-command operations', () => {
       ok: true,
       code: 'COMPOSE_BACKUP_PLAN',
       plan: {
-        contract: 'scripts/t22/t22-backup-contract.ts',
+        contract: 'scripts/t22/backup/t22-backup-contract.ts',
         strategy: 'quiesced-pg-dump',
       },
     });
@@ -270,7 +270,7 @@ describe('T22 Compose single-command operations', () => {
       ok: true,
       code: 'COMPOSE_RESTORE_PLAN',
       plan: {
-        contract: 'scripts/t22/t22-restore-contract.ts',
+        contract: 'scripts/t22/backup/t22-restore-contract.ts',
         target: 'isolated',
         destructive: false,
       },
@@ -316,7 +316,7 @@ describe('T22 Compose single-command operations', () => {
     await expect(
       execFileAsync(
         'apps/worker/node_modules/.bin/tsx',
-        ['scripts/t22/t22-compose.ts', 'invalid'],
+        ['scripts/t22/compose/t22-compose.ts', 'invalid'],
         {
           cwd: process.cwd(),
         },

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const realmImportPath = 'deploy/keycloak/realm-import.json';
 const deploymentBindingsPath = 'deploy/keycloak/deployment-bindings.json';
 

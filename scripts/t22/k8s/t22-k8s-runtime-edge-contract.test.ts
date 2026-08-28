@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-const repositoryRoot = resolve(import.meta.dirname, '../..');
+const repositoryRoot = resolve(import.meta.dirname, '../../..');
 
 function source(path: string): string {
   const absolutePath = resolve(repositoryRoot, path);

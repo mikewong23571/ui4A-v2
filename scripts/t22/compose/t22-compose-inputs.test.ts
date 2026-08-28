@@ -190,7 +190,7 @@ describe('T22 Compose operator-owned production inputs', () => {
   });
 
   it('preflights two distinct server-owned Runner ids and token refs from canonical settings', () => {
-    const source = readFileSync('scripts/t22/t22-compose-inputs.ts', 'utf8');
+    const source = readFileSync('scripts/t22/compose/t22-compose-inputs.ts', 'utf8');
 
     expect(source).toContain('settings.runtime.profiles');
     expect(source).toContain('compose-container-runner');

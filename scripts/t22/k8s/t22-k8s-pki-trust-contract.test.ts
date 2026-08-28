@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-const repositoryRoot = resolve(import.meta.dirname, '../..');
+const repositoryRoot = resolve(import.meta.dirname, '../../..');
 const chartRoot = resolve(repositoryRoot, 'deploy/helm/ui4a');
 
 type KubernetesObject = Record<string, unknown> & {

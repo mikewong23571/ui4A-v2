@@ -4,9 +4,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { describe, expect, it, vi } from 'vitest';
 
-const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const executorPath = 'deploy/keycloak/realm-bootstrap.ts';
-const entrypointPath = 'scripts/t22/t22-keycloak-realm-bootstrap.ts';
+const entrypointPath = 'scripts/t22/keycloak/t22-keycloak-realm-bootstrap.ts';
 const realmImportPath = 'deploy/keycloak/realm-import.json';
 const keycloakOrigin = 'https://auth.ui4a.mothership.internal';
 const publicOrigin = 'https://ui4a.mothership.internal';

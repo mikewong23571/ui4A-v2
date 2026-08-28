@@ -31,7 +31,7 @@ function runKubectl(
 ): Promise<{ exitCode: number; stdout: string }> {
   return new Promise((complete, reject) => {
     const child = spawn(command.executable, command.args, {
-      cwd: resolve(import.meta.dirname, '../..'),
+      cwd: resolve(import.meta.dirname, '../../..'),
       env: { PATH: process.env.PATH ?? '/usr/bin:/bin' },
       shell: false,
       stdio: ['ignore', 'pipe', 'ignore'],

@@ -2,7 +2,7 @@ import { lstatSync, readFileSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { preflightProductionDeploymentFromEnvironment } from '../../packages/shared/src/production-deployment-config';
+import { preflightProductionDeploymentFromEnvironment } from '../../../packages/shared/src/production-deployment-config';
 
 export const composeSecretFileEnvironmentKeys = [
   'UI4A_POSTGRES_BOOTSTRAP_PASSWORD_FILE',

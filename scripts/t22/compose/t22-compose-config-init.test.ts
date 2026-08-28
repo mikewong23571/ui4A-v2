@@ -15,7 +15,7 @@ import { pathToFileURL } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-const repositoryRoot = resolve(import.meta.dirname, '../..');
+const repositoryRoot = resolve(import.meta.dirname, '../../..');
 const scriptPath = resolve(repositoryRoot, 'deploy/compose/config-init.mjs');
 const roots: string[] = [];
 

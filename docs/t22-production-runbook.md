@@ -108,7 +108,7 @@ ssh k8s-w-2 'sudo crictl --runtime-endpoint unix:///run/containerd/containerd.so
 ### Step 3.2 — Repository image contracts
 
 ```bash
-pnpm vitest run scripts/t22/t22-image-contract.test.ts scripts/t22/t22-helm-contract.test.ts
+pnpm vitest run scripts/t22/t22-image-contract.test.ts scripts/t22/k8s/t22-helm-contract.test.ts
 ```
 
 - Expected output：focused image/Helm contracts 全绿。
@@ -220,8 +220,8 @@ kubectl -n ui4a-system rollout status deployment/temporal-ui --timeout=180s
 ### Step 8.1 — Check 后 apply
 
 ```bash
-pnpm --filter @ui4a/worker exec tsx ../../scripts/t22/t22-keycloak-realm-bootstrap.ts --check
-pnpm --filter @ui4a/worker exec tsx ../../scripts/t22/t22-keycloak-realm-bootstrap.ts --apply
+pnpm --filter @ui4a/worker exec tsx ../../scripts/t22/keycloak/t22-keycloak-realm-bootstrap.ts --check
+pnpm --filter @ui4a/worker exec tsx ../../scripts/t22/keycloak/t22-keycloak-realm-bootstrap.ts --apply
 ```
 
 - Expected output：首次 check 是 `absent`，apply 是 `imported`；后续 check/apply 都是 `skip` 且
@@ -372,7 +372,7 @@ guard/schema/CAS。
 ## 15. Golden Story
 
 单 Web 并发、restart 与 replay 的 operator contract 是
-`scripts/t22/t22-k8s-replay-drill.ts`；它只使用 bounded fixture，不能替代完整业务验收。
+`scripts/t22/recovery/t22-k8s-replay-drill.ts`；它只使用 bounded fixture，不能替代完整业务验收。
 
 ### Step 15.1 — 用户故事 gate
 
@@ -390,9 +390,9 @@ CI=true pnpm e2e invariants
 
 恢复必须隔离，禁止把 current PVC/Service/namespace 当 target。合同入口包括：
 
-- `scripts/t22/t22-k8s-recovery-observe-command.ts`
-- `scripts/t22/t22-k8s-recovery-command.ts`
-- `scripts/t22/t22-k8s-recovery-live.ts`
+- `scripts/t22/recovery/t22-k8s-recovery-observe-command.ts`
+- `scripts/t22/recovery/t22-k8s-recovery-command.ts`
+- `scripts/t22/recovery/t22-k8s-recovery-live.ts`
 
 ### Step 16.0 — Compose backup/restore plan
 
@@ -415,11 +415,11 @@ export UI4A_K8S_RECOVERY_HWM_PROBE_FIRST='<immutable-probe-1>'
 export UI4A_K8S_RECOVERY_HWM_PROBE_SECOND='<immutable-probe-2>'
 export UI4A_K8S_RECOVERY_OBSERVATION_OUTPUT_FILE='<absolute-new-0600-json>'
 pnpm --filter @ui4a/worker exec tsx \
-  ../../scripts/t22/t22-k8s-recovery-observe-command.ts capture
+  ../../scripts/t22/recovery/t22-k8s-recovery-observe-command.ts capture
 
 export UI4A_K8S_RECOVERY_OBSERVATION_FILE="$UI4A_K8S_RECOVERY_OBSERVATION_OUTPUT_FILE"
 export UI4A_K8S_RECOVERY_REQUEST_FILE='<absolute-0600-request-json>'
-pnpm --filter @ui4a/worker exec tsx ../../scripts/t22/t22-k8s-recovery-command.ts plan
+pnpm --filter @ui4a/worker exec tsx ../../scripts/t22/recovery/t22-k8s-recovery-command.ts plan
 ```
 
 - Expected output：observation 写入新 `0600` 文件；plan 是 `mode=isolated`、`destructive=false`，current
@@ -430,8 +430,8 @@ pnpm --filter @ui4a/worker exec tsx ../../scripts/t22/t22-k8s-recovery-command.t
 ### Step 16.2 — Live drill acceptance
 
 ```bash
-pnpm vitest run scripts/t22/t22-k8s-recovery-live.test.ts \
-  scripts/t22/t22-backup-contract.test.ts scripts/t22/t22-restore-contract.test.ts
+pnpm vitest run scripts/t22/recovery/t22-k8s-recovery-live.test.ts \
+  scripts/t22/backup/t22-backup-contract.test.ts scripts/t22/backup/t22-restore-contract.test.ts
 ```
 
 - Expected output：命名 backup 包含四库、workspace、realm/settings/bindings、PKI/private config；manifest

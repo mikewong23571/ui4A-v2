@@ -2,17 +2,17 @@ import { closeSync, constants, fstatSync, openSync, readFileSync } from 'node:fs
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { preflightProductionDeploymentFromEnvironment } from '../../packages/shared/src/production-deployment-config';
+import { preflightProductionDeploymentFromEnvironment } from '../../../packages/shared/src/production-deployment-config';
 
 import {
   bootstrapKeycloakRealm,
   createKeycloakAdminClient,
   KeycloakBootstrapError,
   type RealmImportRepresentation,
-} from '../../deploy/keycloak/realm-bootstrap';
+} from '../../../deploy/keycloak/realm-bootstrap';
 
 const realmImportPath = 'deploy/keycloak/realm-import.json';
-const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const realmImportEnvironmentVariable = 'UI4A_REALM_IMPORT_FILE';
 const adminOriginEnvironmentVariable = 'UI4A_KEYCLOAK_ADMIN_ORIGIN';
 const maximumRealmImportBytes = 1024 * 1024;

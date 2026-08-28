@@ -40,8 +40,8 @@ interface ObserveCommandModule {
   ): Promise<Record<string, unknown>>;
 }
 
-const observePath = 'scripts/t22/t22-k8s-recovery-observe.ts';
-const commandPath = 'scripts/t22/t22-k8s-recovery-observe-command.ts';
+const observePath = 'scripts/t22/recovery/t22-k8s-recovery-observe.ts';
+const commandPath = 'scripts/t22/recovery/t22-k8s-recovery-observe-command.ts';
 const execFileAsync = promisify(execFile);
 const secretCanary = '__observe_secret_must_not_escape__';
 

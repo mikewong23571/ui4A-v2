@@ -1,31 +1,12 @@
 {
   "$schema": "T23 GR3 shrink-only baseline. files/dirs entries record path + effective lines at Red time; entries must only shrink.",
-  "files": [
-    {
-      "path": "scripts/t22/t22-helm-contract.test.ts",
-      "lines": 983,
-      "limit": 800,
-      "note": "T22 已关闭(2026-08-27,D52):scripts/t22 按 GR5 晋升常驻部署合同套件;本条转为常驻登记债务,shrink-only,后续触及内容时按 describe 分片收缩"
-    },
-    {
-      "path": "scripts/t22/t22-compose-contract.test.ts",
-      "lines": 866,
-      "limit": 800,
-      "note": "T22 已关闭(2026-08-27,D52):scripts/t22 按 GR5 晋升常驻部署合同套件;本条转为常驻登记债务,shrink-only,后续触及内容时按 describe 分片收缩"
-    }
-  ],
+  "files": [],
   "dirs": [
     {
       "path": "apps/web/src/db",
       "lines": 4155,
       "limit": 4000,
       "note": "T29 presence 投影(presence.ts/presence.test.ts + 迁移 v2)在 T22 关闭前入库;用户授权登记,db 目录拆分或 T22 基线裁决时一并退役;T31 R2 presence 频率上限合同测试(presence.rate-limit.test.ts 等)再 +141(T31 spec 红线强制验收证据),shrink-only 自 T31 登记起算"
-    },
-    {
-      "path": "scripts/t22",
-      "lines": 14428,
-      "limit": 4000,
-      "note": "T22 已关闭(2026-08-27):按 GR5 裁决(D52)整目录晋升为常驻部署合同套件,路径/命名保留以维持 runbook 与 package.json 引用;本条转为常驻登记债务,shrink-only,后续按部署子域(compose/k8s/keycloak/backup)分目录或触及内容时收缩;T29 realm-bootstrap 列表视图修复 +16(用户授权);47faabd 非 root darwin chown 守卫净增 +1(2026-08-27 外部修复);T35 期间 prettier 重排 +3(2026-08-28,随批登记)"
     },
     {
       "path": "e2e",

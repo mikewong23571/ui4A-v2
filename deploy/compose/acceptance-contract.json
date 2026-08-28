@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "environment": "compose",
-  "runner": "scripts/t22/t22-compose-acceptance.ts",
+  "runner": "scripts/t22/compose/t22-compose-acceptance.ts",
   "evidenceSchema": "conductor/tracks/archive/t22-production-deployment-auth-runtime_20260824/acceptance-evidence.schema.json",
   "stories": ["U1", "U3", "U4", "U5", "U6", "U7", "U8", "U9", "U13", "U14", "U16"],
   "runtimePaths": {

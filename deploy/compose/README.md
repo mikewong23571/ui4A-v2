@@ -12,7 +12,7 @@ commit must exist and be an ancestor of the checkout `HEAD`. Validate it without
 
 ```bash
 unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
-compose_inputs_json="$(pnpm exec tsx scripts/t22/t22-compose-inputs.ts generate --manifest /absolute/private/compose-inputs.json)"
+compose_inputs_json="$(pnpm exec tsx scripts/t22/compose/t22-compose-inputs.ts generate --manifest /absolute/private/compose-inputs.json)"
 eval "$(printf '%s' "$compose_inputs_json" | jq -r '.environment | to_entries[] | "export \(.key)=\(.value|@sh)"')"
 unset compose_inputs_json
 pnpm compose:t22 preflight

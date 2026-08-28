@@ -13,7 +13,7 @@ function source(path: string): string {
 describe('T22 disposable probe source governance', () => {
   it('keeps fixed credentials and repository writes out of probe sources', () => {
     const probes = [
-      source('scripts/t22/t22-keycloak-probe.ts'),
+      source('scripts/t22/keycloak/t22-keycloak-probe.ts'),
       source('scripts/t22/t22-runtime-probe.ts'),
       source('scripts/t22/t22-temporal-probe.ts'),
     ].join('\n');
@@ -26,7 +26,7 @@ describe('T22 disposable probe source governance', () => {
   });
 
   it('requires explicit live gates and cleans disposable Keycloak resources', () => {
-    const keycloak = source('scripts/t22/t22-keycloak-probe.ts');
+    const keycloak = source('scripts/t22/keycloak/t22-keycloak-probe.ts');
     const runtime = source('scripts/t22/t22-runtime-probe.ts');
 
     expect(keycloak).toContain('KEYCLOAK_PROBE_ADMIN_PASSWORD is required');
