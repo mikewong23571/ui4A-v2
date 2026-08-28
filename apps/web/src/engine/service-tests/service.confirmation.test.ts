@@ -151,8 +151,7 @@ describe('human approve(经普通 exec)', () => {
     expect(
       outcome.subject?.links.some(
         (link) =>
-          link.rel.includes('collection') &&
-          decodeURIComponent(link.href).includes('rel=inbox'),
+          link.rel.includes('collection') && decodeURIComponent(link.href).includes('rel=inbox'),
       ),
     ).toBe(true);
   });
