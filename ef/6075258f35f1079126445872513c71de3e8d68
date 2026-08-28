@@ -1,0 +1,1 @@
+T36 F2+F3 终验(自治验收):pnpm check 含 strict 全绿(3094 passed);CI=true pnpm e2e 全量 exit 0(55 passed/22 gated skips);dev:web 栈 smoke=/.well-known//api/entity/articles//_meta 均 200 且 sitemap 含 flow 面。system 可运行性实证(GOAL 里程碑约束)。
