@@ -6,8 +6,8 @@ import {
   type ReadinessResult,
 } from '@ui4a/shared';
 
-import type { DbExecutor } from '../../web/src/db/events';
-import { getApplicationBootstrapStatus, getMigrationStatus } from '../../web/src/db/migrations';
+import type { DbExecutor } from '@ui4a/db/events';
+import { getApplicationBootstrapStatus, getMigrationStatus } from '@ui4a/db/migrations';
 
 export type WorkerDependencyName =
   'config' | 'postgres' | 'migration' | 'bootstrap' | 'replay' | 'temporal';

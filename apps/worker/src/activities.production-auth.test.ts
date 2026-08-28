@@ -5,7 +5,7 @@ import type { AgentDriver, FetchLike } from '@ui4a/agent';
 import type { SirenEntity } from '@ui4a/engine';
 import type { ProductionDeploymentConfig } from '@ui4a/shared';
 
-import type { DbExecutor } from '../../web/src/db/events';
+import type { DbExecutor } from '@ui4a/db/events';
 import type { AgentStepArgs, AgentStepResult } from './workflows';
 
 const PUBLIC_ORIGIN = 'https://ui4a.mothership.internal';

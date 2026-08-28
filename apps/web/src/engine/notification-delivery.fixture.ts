@@ -7,8 +7,8 @@
  * 仅供 web 侧双写一致性/回放测试模拟"worker 写侧追加",不构成生产代码路径
  * (T23 GR1:web 测试不得跨 app import worker 生产代码)。
  */
-import type { DbExecutor } from '../db/events';
-import { appendEvent } from '../db/events';
+import type { DbExecutor } from '@ui4a/db/events';
+import { appendEvent } from '@ui4a/db/events';
 
 /** 与 apps/worker/src/workflows.ts NotifyConfirmation 同构的确认摘要。 */
 export interface NotifyConfirmationFixture {

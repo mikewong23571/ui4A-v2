@@ -8,6 +8,7 @@ import { trackedFiles, findImports, readJson } from './lib.mjs';
 const MODULES = [
   'packages/shared',
   'packages/engine',
+  'packages/db',
   'packages/agent',
   'apps/web',
   'apps/worker',
@@ -18,6 +19,7 @@ const MODULES = [
 const PACKAGE_TO_MODULE = {
   '@ui4a/shared': 'packages/shared',
   '@ui4a/engine': 'packages/engine',
+  '@ui4a/db': 'packages/db',
   '@ui4a/agent': 'packages/agent',
   '@ui4a/web': 'apps/web',
   '@ui4a/worker': 'apps/worker',
@@ -30,8 +32,9 @@ const ALLOWED = {
   'packages/shared': [],
   'packages/engine': ['packages/shared'],
   'packages/agent': ['packages/shared', 'packages/engine'],
-  'apps/web': ['packages/shared', 'packages/engine', 'packages/agent'],
-  'apps/worker': ['packages/shared', 'packages/engine', 'packages/agent'],
+  'packages/db': ['packages/shared', 'packages/engine'],
+  'apps/web': ['packages/shared', 'packages/engine', 'packages/db', 'packages/agent'],
+  'apps/worker': ['packages/shared', 'packages/engine', 'packages/db', 'packages/agent'],
   'apps/cli': [],
   'apps/agent-runner': ['packages/shared'],
 };
@@ -66,6 +69,7 @@ const BANNED_EXTERNAL = {
     'node:net',
   ],
   'packages/agent': ['next', 'react', 'react-dom', 'pg', '@temporalio'],
+  'packages/db': ['next', 'react', 'react-dom', '@temporalio'],
 };
 
 function moduleOf(relPath) {

@@ -39,8 +39,8 @@ import type {
   SitemapSummary,
 } from '@ui4a/agent';
 
-import type { DbExecutor, EventKind } from '../../web/src/db/events';
-import { appendEvent } from '../../web/src/db/events';
+import type { DbExecutor, EventKind } from '@ui4a/db/events';
+import { appendEvent } from '@ui4a/db/events';
 
 import type {
   AgentStepArgs,

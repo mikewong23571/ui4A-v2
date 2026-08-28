@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { delegationRel, DELEGATIONS_REL } from '@ui4a/engine';
 
-import { appendEvent, ensureEventsTable, type DbExecutor } from '../../db/events';
-import { getPool } from '../../db/pool';
+import { appendEvent, ensureEventsTable, type DbExecutor } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { resetEngineForTests } from '../../engine/service';
 
 import { GET as getEntityRoute } from './entity/route';

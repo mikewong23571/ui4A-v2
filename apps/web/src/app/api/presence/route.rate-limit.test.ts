@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { PRESENCE_MAX_EVENTS_PER_WINDOW } from '@ui4a/shared';
 
-import { appendPresenceChange, ensurePresenceTables } from '../../../db/presence';
-import { getPool } from '../../../db/pool';
+import { appendPresenceChange, ensurePresenceTables } from '@ui4a/db/presence';
+import { getPool } from '@ui4a/db/pool';
 import { resetEngineForTests } from '../../../engine/service';
 
 import { POST } from './route';

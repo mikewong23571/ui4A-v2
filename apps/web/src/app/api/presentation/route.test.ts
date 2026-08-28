@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { completePresentationRequest } from '@ui4a/shared';
 
-import { ensureEventsTable } from '../../../db/events';
-import { getPool } from '../../../db/pool';
+import { ensureEventsTable } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { resetPresentationBrokerForTests } from '../../../engine/presentation/runtime';
 import { resetEngineForTests } from '../../../engine/service';
 

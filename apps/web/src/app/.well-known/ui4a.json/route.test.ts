@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { metaApplicationRel } from '@ui4a/shared';
 
-import { appendEvent, ensureEventsTable } from '../../../db/events';
-import { getPool } from '../../../db/pool';
+import { appendEvent, ensureEventsTable } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { getDb, getEngine, resetEngineForTests } from '../../../engine/service';
 
 import { GET } from './route';

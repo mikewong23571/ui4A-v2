@@ -26,6 +26,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@temporalio/client": "1.22.0",
     "@ui4a/agent": "workspace:*",
+    "@ui4a/db": "workspace:*",
     "@ui4a/engine": "workspace:*",
     "@ui4a/shared": "workspace:*",
     "@xyflow/react": "^12.11.3",

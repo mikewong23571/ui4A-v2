@@ -27,8 +27,8 @@ import {
   getAgentDefinitionVersion,
   getSystemSeedAgentDefinitionVersion,
   readAgentDefinitionRegistry,
-} from '../../db/agent-definitions';
-import { appendAgentRunCommand, type ConnectableDb } from '../../db/agent-runs';
+} from '@ui4a/db/agent-definitions';
+import { appendAgentRunCommand, type ConnectableDb } from '@ui4a/db/agent-runs';
 import { dispatchAgentRun } from '../../temporal/agent-run';
 import {
   agentAuthoringProfileFromEnvironment,

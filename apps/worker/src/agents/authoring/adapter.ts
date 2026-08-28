@@ -7,7 +7,7 @@ import {
   listAgentRunRawReceipts,
   readAgentRunPayload,
   storeAgentRunPayload,
-} from '../../../../web/src/db/agent-runs';
+} from '@ui4a/db/agent-runs';
 import {
   CodexTransportCancelledError,
   executeCodexStructured,

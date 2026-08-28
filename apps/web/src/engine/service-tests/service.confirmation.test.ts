@@ -4,8 +4,8 @@ import { contentVersion, fold } from '@ui4a/engine';
 import type { LogEvent } from '@ui4a/engine';
 
 import { businessFlows } from '../../domain/flows';
-import { ensureEventsTable, readLog, type DbExecutor } from '../../db/events';
-import { getPool } from '../../db/pool';
+import { ensureEventsTable, readLog, type DbExecutor } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 
 import { getEngine, resetEngineForTests } from '../service';
 

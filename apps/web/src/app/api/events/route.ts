@@ -1,4 +1,4 @@
-import { listEvents } from '../../../db/events';
+import { listEvents } from '@ui4a/db/events';
 import { getDb, getEngine } from '../../../engine/service';
 import {
   authenticationErrorResponse,

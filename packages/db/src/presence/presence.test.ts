@@ -9,7 +9,7 @@ import {
   rebuildPresenceProjection,
   type PresenceEventRow,
 } from './presence';
-import { getPool } from './pool';
+import { getPool } from '../pool';
 
 const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');
 const fixtureEvents: PresenceEventRow[] = [

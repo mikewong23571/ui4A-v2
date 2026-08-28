@@ -7,7 +7,6 @@ import { ensureDraftTables } from './drafts';
 import { appendEvent, ensureEventsTable, type DbExecutor } from './events';
 import { getPool } from './pool';
 import { ensurePresentationTables } from './presentation';
-import { getEngine, resetEngineForTests } from '../engine/service';
 
 interface MigrationDefinition {
   version: number;
@@ -112,11 +111,9 @@ beforeEach(async () => {
   await client.query(`DROP SCHEMA IF EXISTS ${TEST_SCHEMA} CASCADE`);
   await client.query(`CREATE SCHEMA ${TEST_SCHEMA}`);
   await configureSearchPath(client);
-  resetEngineForTests();
 });
 
 afterEach(() => {
-  resetEngineForTests();
   client.release();
 });
 
@@ -253,95 +250,5 @@ describe('T22 explicit versioned migration contract', () => {
     await expect(migration.runMigrations(client)).rejects.toMatchObject({
       code: 'MIGRATION_VERSION_INCOMPATIBLE',
     });
-  });
-
-  it('boots through a DDL-denying runtime executor only after migration is ready', async () => {
-    const migration = await migrations();
-    await migration.runMigrations(client);
-    const runtime = forwardingExecutor(client, (sqlText) =>
-      /\b(?:CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE)\b/i.test(sqlText)
-        ? new Error('runtime role attempted forbidden DDL')
-        : undefined,
-    );
-
-    await expect(getEngine(runtime)).resolves.toBeDefined();
-    await expect(migration.getMigrationStatus(runtime)).resolves.toMatchObject({
-      state: 'ready',
-      ready: true,
-    });
-  });
-
-  it('fails production boot closed on a pending database without attempting DDL', async () => {
-    const previousProfile = process.env.UI4A_DEPLOYMENT_PROFILE;
-    process.env.UI4A_DEPLOYMENT_PROFILE = 'production';
-    const runtime = forwardingExecutor(client, (sqlText) =>
-      /\b(?:CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE)\b/i.test(sqlText)
-        ? new Error('production boot attempted forbidden DDL')
-        : undefined,
-    );
-    try {
-      await expect(getEngine(runtime)).rejects.toMatchObject({ code: 'MIGRATION_REQUIRED' });
-    } finally {
-      if (previousProfile === undefined) delete process.env.UI4A_DEPLOYMENT_PROFILE;
-      else process.env.UI4A_DEPLOYMENT_PROFILE = previousProfile;
-    }
-  });
-
-  it('requires an explicit production bootstrap receipt after migration and before getEngine', async () => {
-    const migration = await migrations();
-    await migration.runMigrations(client);
-    const previousProfile = process.env.UI4A_DEPLOYMENT_PROFILE;
-    process.env.UI4A_DEPLOYMENT_PROFILE = 'production';
-    const readOnly = forwardingExecutor(client, (sqlText) =>
-      /\b(?:INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE)\b/i.test(sqlText)
-        ? new Error('production getEngine attempted a mutation')
-        : undefined,
-    );
-    try {
-      await expect(migration.getApplicationBootstrapStatus(readOnly)).resolves.toEqual({
-        state: 'pending',
-        ready: false,
-        migrationVersion: 2,
-      });
-      await expect(getEngine(readOnly)).rejects.toMatchObject({ code: 'BOOTSTRAP_REQUIRED' });
-    } finally {
-      if (previousProfile === undefined) delete process.env.UI4A_DEPLOYMENT_PROFILE;
-      else process.env.UI4A_DEPLOYMENT_PROFILE = previousProfile;
-    }
-  });
-
-  it('uses a stable explicit bootstrap receipt for mutation-free production getEngine', async () => {
-    const migration = await migrations();
-    const service = await import('../engine/service');
-    await migration.runMigrations(client);
-    const bootstrapDb = forwardingExecutor(client, () => undefined);
-    const receipt = await service.bootstrapAndVerifyApplication(bootstrapDb);
-    expect(receipt).toMatchObject({
-      state: 'ready',
-      ready: true,
-      migrationVersion: 2,
-      receipt: {
-        schemaVersion: 1,
-        migrationVersion: 2,
-        eventHighWaterMark: expect.any(Number),
-        replayHash: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
-      },
-    });
-
-    const previousProfile = process.env.UI4A_DEPLOYMENT_PROFILE;
-    process.env.UI4A_DEPLOYMENT_PROFILE = 'production';
-    const readOnly = forwardingExecutor(client, (sqlText) =>
-      /\b(?:INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE)\b/i.test(sqlText)
-        ? new Error('production getEngine attempted a mutation')
-        : undefined,
-    );
-    resetEngineForTests();
-    try {
-      await expect(getEngine(readOnly)).resolves.toBeDefined();
-      await expect(migration.getApplicationBootstrapStatus(readOnly)).resolves.toEqual(receipt);
-    } finally {
-      if (previousProfile === undefined) delete process.env.UI4A_DEPLOYMENT_PROFILE;
-      else process.env.UI4A_DEPLOYMENT_PROFILE = previousProfile;
-    }
   });
 });

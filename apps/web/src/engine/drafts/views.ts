@@ -20,8 +20,8 @@ import {
   type JsonValue,
 } from '@ui4a/shared';
 
-import { getDraft, listDrafts, type AtomicCoreMutationPlan } from '../../db/drafts';
-import type { DbExecutor } from '../../db/events';
+import { getDraft, listDrafts, type AtomicCoreMutationPlan } from '@ui4a/db/drafts';
+import type { DbExecutor } from '@ui4a/db/events';
 import type { EngineRuntime } from '../service';
 
 export const DRAFT_REL_PREFIX = 'draft:';

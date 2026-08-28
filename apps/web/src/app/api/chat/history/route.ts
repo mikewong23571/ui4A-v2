@@ -6,7 +6,7 @@ import type {
 } from '../../../../chat/history';
 import { chatHistoryPrincipal, chatHistoryReadError } from '../../../../chat/history-access';
 import { citationsOrEmpty } from '../../../../chat/citations';
-import { listEvents } from '../../../../db/events';
+import { listEvents } from '@ui4a/db/events';
 import { getDb } from '../../../../engine/service';
 
 // GET /api/chat/history?sessionId=<id> — 聊天历史投影(T9 Phase B / B3)。

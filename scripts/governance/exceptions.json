@@ -3,12 +3,6 @@
   "dependencyExceptions": [
     {
       "from": "apps/worker/src",
-      "to": "apps/web/src/db",
-      "reason": "worker 复用 web 的 PostgreSQL pool/事件 adapter(AGENTS.md 承认的存储边界例外),避免两个进程各自维护一套连接与追加读实现",
-      "retireWhen": "存储访问收敛为独立的 @ui4a/db 共享包后,worker 改从该包导入,本例外移除"
-    },
-    {
-      "from": "apps/worker/src",
       "to": "apps/web/src/engine",
       "reason": "delegation.kill.integration.test 需一个进程内引擎真身(boot/seed + Cedar 裁决 + bundle + 投影的完整组合根)挂在最小 HTTP 适配器后,供独立 worker 进程经真 HTTP 合同驱动多步委托;仅把 kill 证据断言改为 readLog 无法消除该 import(引擎真身是测试固有需求),而复制 composition 或下沉组合根属 Phase D 架构变更,投入产出失衡",
       "retireWhen": "引擎组合根(service.ts 的 boot/exec/getEntity 装配)下沉到 packages 层或发布为共享测试 harness 后,worker 测试改从该处构造引擎,本例外移除"

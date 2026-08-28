@@ -9,8 +9,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock('./production-deployment-preflight', () => ({
   runWorkerProductionDeploymentPreflight: mocks.preflight,
 }));
-vi.mock('../../web/src/db/pool', () => ({ getPool: mocks.getLocalPool }));
-vi.mock('../../web/src/db/production-pool', () => ({
+vi.mock('@ui4a/db/pool', () => ({ getPool: mocks.getLocalPool }));
+vi.mock('@ui4a/db/production-pool', () => ({
   getProductionPool: mocks.getProductionPool,
 }));
 

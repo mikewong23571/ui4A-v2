@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ensureAgentRunTables } from '../../../../db/agent-runs';
-import { getPool } from '../../../../db/pool';
+import { ensureAgentRunTables } from '@ui4a/db/agent-runs';
+import { getPool } from '@ui4a/db/pool';
 import { POST } from './route';
 
 const pool = getPool(process.env.DATABASE_URL!);

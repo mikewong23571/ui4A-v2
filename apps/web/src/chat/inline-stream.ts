@@ -40,7 +40,7 @@ import {
   appendNavigationCompletion,
 } from './session-events';
 import type { presentationContextForIdentity } from '../engine/chat-situation';
-import { appendEvent } from '../db/events';
+import { appendEvent } from '@ui4a/db/events';
 import { getDb } from '../engine/service';
 import { getPresentationBroker, getPresentationCapabilities } from '../engine/presentation/runtime';
 

@@ -1,4 +1,4 @@
-import type { DbExecutor } from '../../../web/src/db/events';
+import type { DbExecutor } from '@ui4a/db/events';
 
 /** 幂等键:事件表无业务唯一约束,按 (kind, rel) 精确匹配已写入事件。 */
 export function findEvent(db: DbExecutor, kind: string, rel: string): Promise<number | null> {

@@ -8,8 +8,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client, Connection } from '@temporalio/client';
 import type { WorkflowExecutionStatusName } from '@temporalio/client';
 
-import { ensureEventsTable, readLog } from '../../web/src/db/events';
-import { getPool } from '../../web/src/db/pool';
+import { ensureEventsTable, readLog } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { getEngine, resetEngineForTests } from '../../web/src/engine/service';
 
 // S3-续跑 真链路集成(T5 Phase A / Task 3;真 Temporal + 真 worker + 真 PG + 真引擎):

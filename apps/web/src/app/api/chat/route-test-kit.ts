@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:http';
 
-import { ensureEventsTable } from '../../../db/events';
-import { getPool } from '../../../db/pool';
+import { ensureEventsTable } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { resetEngineForTests } from '../../../engine/service';
 
 import { GET as getSitemapRoute } from '../../.well-known/ui4a.json/route';

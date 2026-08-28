@@ -8,10 +8,10 @@ import {
   ensureAgentDefinitionTables,
   installSeedAgentDefinition,
   registerAgentDefinitionVersion,
-} from '../../db/agent-definitions';
-import { ensureDraftTables } from '../../db/drafts';
-import { ensureEventsTable } from '../../db/events';
-import { getPool } from '../../db/pool';
+} from '@ui4a/db/agent-definitions';
+import { ensureDraftTables } from '@ui4a/db/drafts';
+import { ensureEventsTable } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import {
   agentDefinitionDraftRegistryPort,
   getAgentDefinitionCatalog,

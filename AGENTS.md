@@ -42,15 +42,15 @@ PostgreSQL is the source of truth. Current state, chat history, delegations, inb
 - `src/app/`: Next.js pages and route handlers. Business contract endpoints are `/.well-known/ui4a.json`, `/api/entity`, `/api/exec`, `/api/exec-plan`, and `/api/events`. Canonical meta endpoints are `/_meta/.well-known/ui4a.json`, `/_meta/api/entity`, and `/_meta/api/exec`; `next.config.ts` rewrites them to internal handlers.
 - `src/applications/`: installable application data. `ui4a-walkthrough.bundle.json` is the built-in application artifact; `bundles.ts` parses and registers bundles. Put application definitions here rather than hard-coding production flows into services.
 - `src/engine/`: server-side composition boundary. `service.ts` connects the pure engine to PostgreSQL, Cedar, render specs, application bundles, and Temporal dispatch; event-log state, artifact materialization, confirmation decisions, sitemaps, and render-spec freezing live in `service-*.ts` modules. `flow-entry.ts` owns `flow:<name>` entry aliases. Agent Definition/dispatch modules sit in `src/engine/agent/`; Draft meta execution in `src/engine/drafts/`; service test suites in `src/engine/service-tests/`.
-- `src/db/`: PostgreSQL pool, schema, append/read operations, and replay tests. `events.ts` is the event-log write/read boundary. The worker currently reuses this adapter; do not create a competing writer abstraction casually.
-- `src/db/drafts.ts`: Draft-domain events, immutable SHA-256 payloads, rebuildable projection, CAS, and transactional acceptance.
-- `src/db/agent-definitions/` (types/store/commands/queries/lifecycle) and `src/db/agent-runs.ts`: append-only specialized definition/version registry and canonical Agent Run persistence; the Agent Run is the only run model.
+- Storage access lives in the shared `@ui4a/db` workspace package (`packages/db/src/`; T36 E1 抽包,web 与 worker 双端共同消费): PostgreSQL pool, schema, append/read operations, and replay tests. `events.ts` is the event-log write/read boundary; do not create a competing writer abstraction casually.
+- `packages/db/src/drafts.ts`: Draft-domain events, immutable SHA-256 payloads, rebuildable projection, CAS, and transactional acceptance.
+- `packages/db/src/agent-definitions/` (types/store/commands/queries/lifecycle) and `packages/db/src/agent-runs.ts`: append-only specialized definition/version registry and canonical Agent Run persistence; the Agent Run is the only run model.
 - `src/engine/drafts/` (views/helpers/create/execute): Siren Draft/activation projection, validation/diff adapter, and human-only atomic Flow apply.
 - `src/engine/agent/` (`agent-definitions.ts`, `native-agent-dispatch.ts`, `agent-definition-authoring.ts`, `coding-result-decision.ts`): activation registries, exact specialization task mapping, birth-pinned dispatch, and the result-to-Governed-Draft bridge. They must not accept Provider/profile overrides from requests.
 - `src/domain/`: built-in domain helpers, predicates/flows used for bootstrap or testing, capability declarations, and Cedar policy loading. Production definition truth must still come from activated event-log artifacts.
 - `src/render/`: deterministic A2UI compilation and hydration. `presentation/` compiles semantic Surface Trees; `deref.ts` and the entity cache resolve live facts; `canvas/` hosts surfaces; `words/` contains concrete vocabulary renderers.
 - `src/engine/presentation/`: Presentation Broker, Application Recipe generation/registry, user-level Sidecar fastpath, dependency validation, and receipt production.
-- `src/db/presentation.ts`: replayable Presentation events and the rebuildable user Sidecar projection. It is separate from the Business fold.
+- `packages/db/src/presentation.ts`: replayable Presentation events and the rebuildable user Sidecar projection. It is separate from the Business fold.
 - `src/chat/`: chat-session start, SSE streaming, history, trail, and decision projection. Chat is an event-log projection and an agent entry point, not an alternate command path.
 - `src/temporal/`: web-side Temporal clients for notification, delegation, and canonical Agent Run dispatch/cancellation.
 - `src/delegations/`: delegation-list projection helpers; read status from engine projections, not directly from Temporal.
@@ -90,7 +90,7 @@ Owns parsing and schemas; XState construction; declaration → guard → schema 
 
 Owns the reusable agent loop, navigation/action matching, plan execution, thin Presentation requests, Presentation/Revision LLM adapters, HTTP adapter, projected tools, the production LLM driver, and model probing. Scripted/rule drivers are test fixtures only and must not re-enter product fallback paths. Drivers choose among contract-declared operations; they must not bypass `/api/entity`, `/api/exec`, or engine judgment.
 
-Dependency direction is `shared ← engine ← agent`, with applications composing packages. Do not import application code into packages. The existing worker-to-web DB adapter reuse is a known storage-boundary exception, not a general dependency pattern.
+Dependency direction is `shared ← engine ← agent`, with applications composing packages. `packages/db` is the platform storage package (may depend on `shared`/`engine`; must stay free of Next/React/Temporal). Do not import application code into packages; apps never import each other.
 
 ## Where a Change Belongs
 
@@ -101,7 +101,7 @@ Dependency direction is `shared ← engine ← agent`, with applications composi
 | Agent choice, tools, or LLM behavior | `packages/agent/src/`                            | Scripted/injected driver tests                   |
 | Application flow/resource definition | `apps/web/src/applications/`                     | Bundle parsing, activation, sitemap, E2E         |
 | HTTP status/body/contract            | `apps/web/src/app/api/`                          | Route and contract tests                         |
-| Event persistence/replay             | `apps/web/src/db/`                               | DB integration, replay hash, concurrency         |
+| Event persistence/replay             | `packages/db/src/`                               | DB integration, replay hash, concurrency         |
 | Runtime orchestration/projection     | `apps/web/src/engine/`                           | Service and route tests                          |
 | New render vocabulary                | `apps/web/src/render/words/` and `registry.ts`   | Word test, binding test, canvas E2E              |
 | Meta UI                              | `apps/web/src/components/meta/`, `src/app/meta/` | Component test and meta E2E                      |

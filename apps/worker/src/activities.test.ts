@@ -1,7 +1,7 @@
 import type { QueryResult, QueryResultRow } from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import type { DbExecutor } from '../../web/src/db/events';
+import type { DbExecutor } from '@ui4a/db/events';
 
 import {
   deliverNotification,

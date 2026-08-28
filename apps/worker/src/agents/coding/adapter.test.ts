@@ -20,9 +20,9 @@ import {
   getAgentRun,
   listAgentRunRawReceipts,
   readAgentRunPayload,
-} from '../../../../web/src/db/agent-runs';
-import { ensureEventsTable } from '../../../../web/src/db/events';
-import { getPool } from '../../../../web/src/db/pool';
+} from '@ui4a/db/agent-runs';
+import { ensureEventsTable } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import type { AgentRunWorkflowArgs } from '../host/contracts';
 import {
   collectCodingAgentRunWithDeps,

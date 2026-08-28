@@ -11,8 +11,8 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
 
-import { getPool } from '../../apps/web/src/db/pool';
-import { prepareDatabaseForApplication } from '../../apps/web/src/db/migrations';
+import { getPool } from '../../packages/db/src/pool';
+import { prepareDatabaseForApplication } from '../../packages/db/src/migrations';
 import { bootstrapAndVerifyApplication } from '../../apps/web/src/engine/bootstrap';
 
 // 本文件在 e2e/kits/ 下(T23 Phase D 迁移;750340a 修 import 时 __dirname 层级

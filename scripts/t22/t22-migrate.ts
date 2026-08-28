@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 
-import { runMigrations, MigrationError } from '../../apps/web/src/db/migrations';
-import { createMigrationPool } from '../../apps/web/src/db/pool';
+import { runMigrations, MigrationError } from '../../packages/db/src/migrations';
+import { createMigrationPool } from '../../packages/db/src/pool';
 import { bootstrapAndVerifyApplication } from '../../apps/web/src/engine/bootstrap';
 import { preflightProductionDeploymentFromEnvironment } from '../../packages/shared/src/production-deployment-config';
 

@@ -11,12 +11,12 @@ import {
 } from '@ui4a/engine';
 import type { PresentationRequest } from '@ui4a/shared';
 
-import { appendEvent, listEvents } from '../../db/events';
+import { appendEvent, listEvents } from '@ui4a/db/events';
 import {
   appendSidecarCommand,
   findActiveSidecar,
   loadPresentationSnapshot,
-} from '../../db/presentation';
+} from '@ui4a/db/presentation';
 import { PRESENTATION_SURFACE_CATALOG } from './catalog';
 import {
   createWebPresentationBroker,

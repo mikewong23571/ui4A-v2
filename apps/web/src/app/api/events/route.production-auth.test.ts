@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   resolveTrustedRequestIdentity: vi.fn(),
 }));
 
-vi.mock('../../../db/events', () => ({
+vi.mock('@ui4a/db/events', () => ({
   listEvents: mocks.listEvents,
 }));
 

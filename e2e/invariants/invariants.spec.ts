@@ -30,8 +30,8 @@ import { createRuleDriver } from '@ui4a/agent/testkit/rule-driver';
 import type { AgentDriver, DriverContext, SirenEntity, TrailStep } from '@ui4a/agent';
 import { expect, test, type Page } from '@playwright/test';
 
-import { getPool } from '../../apps/web/src/db/pool';
-import { readLog, type DbExecutor } from '../../apps/web/src/db/events';
+import { getPool } from '../../packages/db/src/pool';
+import { readLog, type DbExecutor } from '../../packages/db/src/events';
 import { businessFlows } from '../../apps/web/src/domain/flows';
 import { terminateStaleNotifyWorkflows } from '../../apps/web/src/temporal/notify';
 import { derefSpec, type DimensionCount, type EntityCache } from '../../apps/web/src/render/deref';
@@ -754,7 +754,7 @@ test.describe('I5 可重放', () => {
 
         // T16 Presentation events/Sidecars use an independent replay projection; this I5 sequence
         // remains the Business Snapshot replay gate. Presentation replay is covered by
-        // apps/web/src/db/presentation.test.ts and the T16 Golden Story.
+        // packages/db/src/presentation.test.ts and the T16 Golden Story.
 
         // 场景收尾:静默(外部写者若存在)→ 日志/rel 枚举/世界态(在线轨道,
         // server A 仍存活时读取)。

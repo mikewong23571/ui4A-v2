@@ -63,10 +63,13 @@ import type { DeploymentEnvironment, EngineSnapshot, FrozenRenderSpec } from '@u
 import type { FieldValue } from '@ui4a/shared';
 import { seedGuardRegistry } from '@ui4a/shared';
 
-import { readLog, type DbExecutor, type EventAppend } from '../db/events';
-import { assertApplicationBootstrapReady, prepareDatabaseForApplication } from '../db/migrations';
-import { getPool } from '../db/pool';
-import { getProductionPool } from '../db/production-pool';
+import { readLog, type DbExecutor, type EventAppend } from '@ui4a/db/events';
+import {
+  assertApplicationBootstrapReady,
+  prepareDatabaseForApplication,
+} from '@ui4a/db/migrations';
+import { getPool } from '@ui4a/db/pool';
+import { getProductionPool } from '@ui4a/db/production-pool';
 import { runWebProductionDeploymentPreflight } from '../production-deployment-preflight';
 import {
   resetRecipeCoordinatorForTests,

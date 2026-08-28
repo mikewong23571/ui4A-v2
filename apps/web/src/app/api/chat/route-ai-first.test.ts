@@ -3,7 +3,7 @@ import { type Server, createServer } from 'node:http';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { readLog } from '../../../db/events';
+import { readLog } from '@ui4a/db/events';
 import { getEngine } from '../../../engine/service';
 
 import {
@@ -22,6 +22,11 @@ import {
 } from './route-test-kit';
 
 const routeSource = readFileSync(new URL('./route.ts', import.meta.url), 'utf8');
+// T36 B1:流内编排(含 sitemap 活动标题投影)提取至 chat/inline-stream.ts。
+const streamSource = readFileSync(
+  new URL('../../../chat/inline-stream.ts', import.meta.url),
+  'utf8',
+);
 
 /**
  * 双角色 LLM 桩(T24 Phase B Task 3):driver 决策请求(SDK 流式,带 tools)
@@ -334,8 +339,10 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
   });
 
   it('route 不再调用 readSitemapTitles 触发第二次 fetch', () => {
-    expect(routeSource).not.toContain('readSitemapTitles');
-    expect(routeSource).toContain('sitemapTitlesFromSummary');
+    for (const source of [routeSource, streamSource]) {
+      expect(source).not.toContain('readSitemapTitles');
+    }
+    expect(streamSource).toContain('sitemapTitlesFromSummary');
   });
 
   it('事件日志:chat 循环的 exec 带 actor=agent、channel=chat、principal', async () => {

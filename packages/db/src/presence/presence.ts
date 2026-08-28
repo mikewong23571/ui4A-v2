@@ -18,7 +18,7 @@ import {
   type ConnectableDb,
   type DbExecutor,
   type EventKind,
-} from './events';
+} from '../events';
 
 export const PRESENCE_DDL = `
 CREATE TABLE IF NOT EXISTS presence_current (

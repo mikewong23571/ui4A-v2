@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   resolveTrustedRequestIdentity: vi.fn(),
 }));
 
-vi.mock('../../../db/events', () => ({ listEvents: mocks.listEvents }));
+vi.mock('@ui4a/db/events', () => ({ listEvents: mocks.listEvents }));
 vi.mock('../../../engine/service', () => ({ getDb: mocks.getDb, getEngine: mocks.getEngine }));
 vi.mock('../../../auth/request-identity', () => ({
   authenticationErrorResponse: mocks.authenticationErrorResponse,

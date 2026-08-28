@@ -1,6 +1,6 @@
 import type { SirenEntity } from '@ui4a/engine';
 
-import { getAgentRunInternal, type ConnectableDb } from '../../db/agent-runs';
+import { getAgentRunInternal, type ConnectableDb } from '@ui4a/db/agent-runs';
 import { materializeDeclaredAgentDefinitionDraft } from './agent-definition-authoring';
 import { getEngine } from '../service';
 

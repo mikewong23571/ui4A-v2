@@ -3,8 +3,8 @@ import {
   appendSidecarCommand,
   getSidecarById,
   loadPresentationSnapshot,
-} from '../../../../db/presentation';
-import { appendEvent } from '../../../../db/events';
+} from '@ui4a/db/presentation';
+import { appendEvent } from '@ui4a/db/events';
 import {
   authenticationErrorResponse,
   requestIdentityProfile,

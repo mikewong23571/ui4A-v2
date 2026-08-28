@@ -1,7 +1,7 @@
 /** Specialization 注册表与 Agent Run 命令 activities(suspension/resolution 落事件)。 */
 import type { ProductionDeploymentConfig } from '@ui4a/shared';
 
-import { appendAgentRunCommand, getAgentRun } from '../../../web/src/db/agent-runs';
+import { appendAgentRunCommand, getAgentRun } from '@ui4a/db/agent-runs';
 
 import type {
   AgentResolutionRecord,

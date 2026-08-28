@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { validateAgentDefinitionDraft, validateFlowDraft, type ExecRequest } from '@ui4a/engine';
 import { DRAFT_LIMITS } from '@ui4a/shared';
 
-import { appendDraftCommand, payloadSha256, type ConnectableDb } from '../../db/drafts';
+import { appendDraftCommand, payloadSha256, type ConnectableDb } from '@ui4a/db/drafts';
 import type { EngineRuntime } from '../service';
 
 import {

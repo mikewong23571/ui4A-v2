@@ -5,7 +5,7 @@ import { createContractClient, type FetchLike, type TrailStep } from '@ui4a/agen
 import type { ChatTurnProgressDetail } from '../../../chat/history';
 import { sitemapTitlesFromSummary, stepActivityData } from '../../../chat/step-activity';
 import type { ChatStepActivity } from '../../../chat/sse';
-import { readLog } from '../../../db/events';
+import { readLog } from '@ui4a/db/events';
 
 import {
   chat,

@@ -9,10 +9,10 @@ import {
 
 import { GET } from '../app/api/entity/route';
 import { resolveTrustedRequestIdentity } from '../auth/request-identity';
-import { appendAgentRunCommand, ensureAgentRunTables } from '../db/agent-runs';
-import { ensureEventsTable } from '../db/events';
-import { appendPresenceChange, ensurePresenceTables } from '../db/presence';
-import { getPool } from '../db/pool';
+import { appendAgentRunCommand, ensureAgentRunTables } from '@ui4a/db/agent-runs';
+import { ensureEventsTable } from '@ui4a/db/events';
+import { appendPresenceChange, ensurePresenceTables } from '@ui4a/db/presence';
+import { getPool } from '@ui4a/db/pool';
 import { situationForChat } from './chat-situation';
 import { getDb, getEngine, resetEngineForTests } from './service';
 

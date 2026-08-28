@@ -13,16 +13,16 @@ import {
   ensureAgentDefinitionTables,
   getActiveAgentDefinition,
   rebuildAgentDefinitionProjection,
-} from '../../db/agent-definitions';
+} from '@ui4a/db/agent-definitions';
 import {
   appendAgentRunCommand,
   ensureAgentRunTables,
   getAgentRun,
   listAgentRuns,
-} from '../../db/agent-runs';
-import { ensureDraftTables, getDraft, listDrafts, rebuildDraftProjection } from '../../db/drafts';
-import { ensureEventsTable, readLog } from '../../db/events';
-import { getPool } from '../../db/pool';
+} from '@ui4a/db/agent-runs';
+import { ensureDraftTables, getDraft, listDrafts, rebuildDraftProjection } from '@ui4a/db/drafts';
+import { ensureEventsTable, readLog } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { dispatchAgentRun } from '../../temporal/agent-run';
 import { agentDefinitionDraftRegistryPort } from './agent-definitions';
 import { finalizeAgentRunSource } from './agent-run-source-callback';

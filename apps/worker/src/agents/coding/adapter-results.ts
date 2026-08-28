@@ -1,7 +1,7 @@
 import type { AgentResultEnvelope, AgentRunJson } from '@ui4a/engine';
 import type { CodingResult } from '@ui4a/shared';
 
-import { storeAgentRunPayload } from '../../../../web/src/db/agent-runs';
+import { storeAgentRunPayload } from '@ui4a/db/agent-runs';
 import { collectGitWorkspace, parseRepositoryRegistry } from '../../capabilities/coding/workspace';
 import type {
   AgentCollectedResult,

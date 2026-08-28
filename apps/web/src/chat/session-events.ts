@@ -17,7 +17,7 @@ import type { ClientViewReport, NavigationCompletion } from '@ui4a/shared';
 import type { ChatTurnDetail, ChatTurnProgressDetail, ChatTurnStartedDetail } from './history';
 import { executionAuditContext } from './audit-context';
 import { conversationView } from './conversation';
-import { appendEvent, readLog } from '../db/events';
+import { appendEvent, readLog } from '@ui4a/db/events';
 import { getDb } from '../engine/service';
 
 export async function appendChatProjection(

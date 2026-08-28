@@ -40,7 +40,7 @@ await build({
 for (const [name, entryPoint] of Object.entries({
   't22-keycloak-realm-bootstrap': resolve(
     repositoryRoot,
-    'scripts/t22/t22-keycloak-realm-bootstrap.ts',
+    'scripts/t22/keycloak/t22-keycloak-realm-bootstrap.ts',
   ),
   't22-migrate': resolve(repositoryRoot, 'scripts/t22/t22-migrate.ts'),
 })) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { StoredEvent } from '../db/events';
+import type { StoredEvent } from '@ui4a/db/events';
 import { conversationView, foldConversation } from './conversation';
 import type { ChatContextUpdatedDetail, ChatMessageAppendedDetail } from './history';
 

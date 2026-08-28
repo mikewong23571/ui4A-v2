@@ -10,10 +10,10 @@ vi.mock('../../temporal/agent-run', () => ({
   cancelAgentRun: vi.fn(async () => undefined),
 }));
 
-import { ensureAgentDefinitionTables } from '../../db/agent-definitions';
-import { appendAgentRunCommand, ensureAgentRunTables, listAgentRuns } from '../../db/agent-runs';
-import { ensureEventsTable, readLog } from '../../db/events';
-import { getPool } from '../../db/pool';
+import { ensureAgentDefinitionTables } from '@ui4a/db/agent-definitions';
+import { appendAgentRunCommand, ensureAgentRunTables, listAgentRuns } from '@ui4a/db/agent-runs';
+import { ensureEventsTable, readLog } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { dispatchAgentRun } from '../../temporal/agent-run';
 import { enrichEntityWithAgentRuns } from './agent-runs';
 import { finalizeAgentRunSource } from './agent-run-source-callback';

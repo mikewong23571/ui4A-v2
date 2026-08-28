@@ -1,5 +1,5 @@
 import type { ApplicationBundle } from '../../packages/engine/src/definition/meta-bootstrap';
-import type { EventAppend } from '../../apps/web/src/db/events';
+import type { EventAppend } from '../../packages/db/src/events';
 
 import { isolatedEvalDatabaseUrl } from './story-eval-env';
 import { readOnlySafetyEvidence } from './story-eval-safety';
@@ -22,8 +22,8 @@ async function prepareWalkthroughFixture(
     await Promise.all([
       import('../../packages/engine/src/index'),
       import('../../apps/web/src/applications/bundles'),
-      import('../../apps/web/src/db/events'),
-      import('../../apps/web/src/db/pool'),
+      import('../../packages/db/src/events'),
+      import('../../packages/db/src/pool'),
     ]);
   const bundle = structuredClone(walkthroughApplicationBundle);
   await customize(bundle);
@@ -87,8 +87,8 @@ export function boundedContextFixture(
       });
 
       if (options.seedSessionId === undefined) return;
-      const events = await import('../../apps/web/src/db/events');
-      const pools = await import('../../apps/web/src/db/pool');
+      const events = await import('../../packages/db/src/events');
+      const pools = await import('../../packages/db/src/pool');
       const pool = pools.getPool(databaseUrl);
       let latestSeq = 0;
       for (let index = 1; index <= 14; index += 1) {

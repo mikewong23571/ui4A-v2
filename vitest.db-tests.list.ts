@@ -3,7 +3,7 @@
 // Classification rule: a test file belongs to the `db` project when its
 // transitive import closure (relative, `@/`, `@ui4a/*` aliases, dynamic
 // imports incl. string-const variables, vi.mock/require) reaches
-// `apps/web/src/db/pool.ts` or bare `pg`.
+// `packages/db/src/pool.ts` or bare `pg`.
 // Regenerate with: node /tmp/classify-db.mjs (one-off script; this list is the
 // committed artifact consumed by vitest.config.ts).
 //
@@ -55,18 +55,18 @@ export const dbTestFiles: readonly string[] = [
   'apps/web/src/app/api/presentation/sidecar/route.test.ts',
   'apps/web/src/app/ready/route.test.ts',
   'apps/web/src/auth/single-process-browser-production.test.ts',
-  'apps/web/src/db/agent-definitions/agent-definitions.test.ts',
-  'apps/web/src/db/agent-runs.test.ts',
-  'apps/web/src/db/drafts.test.ts',
-  'apps/web/src/db/events.test.ts',
-  'apps/web/src/db/migrations.test.ts',
-  'apps/web/src/db/pg.test.ts',
-  'apps/web/src/db/presence.rate-limit.test.ts',
-  'apps/web/src/db/presence.test.ts',
-  'apps/web/src/db/presentation.test.ts',
-  'apps/web/src/db/production-pool.test.ts',
-  'apps/web/src/db/recovery.test.ts',
-  'apps/web/src/db/replay.test.ts',
+  'packages/db/src/agent-definitions/agent-definitions.test.ts',
+  'packages/db/src/agent-runs.test.ts',
+  'packages/db/src/drafts.test.ts',
+  'packages/db/src/events.test.ts',
+  'packages/db/src/migrations.test.ts',
+  'packages/db/src/pg.test.ts',
+  'packages/db/src/presence/presence.rate-limit.test.ts',
+  'packages/db/src/presence/presence.test.ts',
+  'packages/db/src/presentation.test.ts',
+  'packages/db/src/production-pool.test.ts',
+  'packages/db/src/recovery.test.ts',
+  'packages/db/src/replay.test.ts',
   'apps/web/src/engine/agent-run-dispatch.test.ts',
   'apps/web/src/engine/agent/agent-definition-authoring.test.ts',
   'apps/web/src/engine/agent/agent-definitions.test.ts',

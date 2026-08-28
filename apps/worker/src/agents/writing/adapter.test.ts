@@ -8,13 +8,9 @@ import { describe, expect, it } from 'vitest';
 import { hashCanonicalAgentJson, type AgentRunCommand, type AgentRunJson } from '@ui4a/engine';
 import type { WritingBrief, WritingResult } from '@ui4a/shared';
 
-import {
-  appendAgentRunCommand,
-  ensureAgentRunTables,
-  getAgentRun,
-} from '../../../../web/src/db/agent-runs';
-import { ensureEventsTable } from '../../../../web/src/db/events';
-import { getPool } from '../../../../web/src/db/pool';
+import { appendAgentRunCommand, ensureAgentRunTables, getAgentRun } from '@ui4a/db/agent-runs';
+import { ensureEventsTable } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import type { CodexStructuredDeps, CodexStructuredInput } from '../host/codex-transport';
 import type { AgentRunWorkflowArgs } from '../host/contracts';
 import {

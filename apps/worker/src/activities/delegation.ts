@@ -16,7 +16,7 @@ import {
 } from '@ui4a/agent';
 import type { ProductionDeploymentConfig } from '@ui4a/shared';
 
-import type { DbExecutor } from '../../../web/src/db/events';
+import type { DbExecutor } from '@ui4a/db/events';
 
 import {
   fetchSitemap,

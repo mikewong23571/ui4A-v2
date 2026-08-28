@@ -7,8 +7,8 @@ import {
 } from '@ui4a/engine';
 import { seedGuardRegistry, type DraftValidation } from '@ui4a/shared';
 
-import { getDraftByOwner } from '../../db/drafts';
-import { appendEvent, type DbExecutor } from '../../db/events';
+import { getDraftByOwner } from '@ui4a/db/drafts';
+import { appendEvent, type DbExecutor } from '@ui4a/db/events';
 import type { EngineRuntime } from '../service';
 import { codingExecutorProfileRegistryFromEnvironment } from '../agent/coding-executor-config';
 

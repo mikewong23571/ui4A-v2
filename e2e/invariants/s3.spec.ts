@@ -41,7 +41,7 @@ import path from 'node:path';
 
 import { expect, test, type Page } from '@playwright/test';
 
-import { getPool } from '../../apps/web/src/db/pool';
+import { getPool } from '../../packages/db/src/pool';
 import {
   DATABASE_URL,
   SCENARIO_BASE,

@@ -13,7 +13,7 @@ import {
   type ConnectableDb,
   type DbExecutor,
   type EventAppend,
-} from '../db/events';
+} from '@ui4a/db/events';
 
 export interface CoreEventLogState {
   snapshot: EngineSnapshot;

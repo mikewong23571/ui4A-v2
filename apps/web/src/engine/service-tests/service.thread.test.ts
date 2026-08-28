@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { ensureEventsTable, readLog } from '../../db/events';
-import { getPool } from '../../db/pool';
+import { ensureEventsTable, readLog } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { getEngine, resetEngineForTests } from '../service';
 
 const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');

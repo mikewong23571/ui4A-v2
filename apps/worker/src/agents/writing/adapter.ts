@@ -1,7 +1,7 @@
 import type { AgentResultEnvelope } from '@ui4a/engine';
 import { assertWritingResult, type WritingResult } from '@ui4a/shared';
 
-import { storeAgentRunPayload } from '../../../../web/src/db/agent-runs';
+import { storeAgentRunPayload } from '@ui4a/db/agent-runs';
 import {
   CodexTransportCancelledError,
   executeCodexStructured,

@@ -1,4 +1,4 @@
-import { closeAllPools, getPool } from './apps/web/src/db/pool';
+import { closeAllPools, getPool } from './packages/db/src/pool';
 
 const DEFAULT_TEST_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a_test';
 

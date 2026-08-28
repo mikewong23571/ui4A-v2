@@ -1,7 +1,7 @@
 import type { ClientViewReport } from '@ui4a/shared';
 
 import type { TrustedRequestAuditContext } from '../auth/request-identity';
-import { ensurePresenceTables, loadPresenceForPrincipal } from '../db/presence';
+import { ensurePresenceTables, loadPresenceForPrincipal } from '@ui4a/db/presence';
 import type { PresentationTrustedContext } from './presentation/broker';
 import { getDb } from './service';
 import { assembleSituation, type Situation } from './situation';

@@ -12,8 +12,8 @@ import { runAgent } from '@ui4a/agent';
 import { createRuleDriver } from '@ui4a/agent/testkit/rule-driver';
 import { expect, test } from '@playwright/test';
 
-import { appendEvent, listEvents } from '../../apps/web/src/db/events';
-import { getPool } from '../../apps/web/src/db/pool';
+import { appendEvent, listEvents } from '../../packages/db/src/events';
+import { getPool } from '../../packages/db/src/pool';
 import {
   DATABASE_URL,
   SCENARIO_BASE,

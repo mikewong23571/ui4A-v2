@@ -22,7 +22,7 @@ const mocks = vi.hoisted(() => ({
   runAgent: vi.fn(),
 }));
 
-vi.mock('../../../db/events', () => ({
+vi.mock('@ui4a/db/events', () => ({
   appendEvent: mocks.appendEvent,
   readLog: mocks.readLog,
 }));

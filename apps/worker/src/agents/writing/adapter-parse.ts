@@ -6,7 +6,7 @@ import {
 } from '@ui4a/engine';
 import { assertWritingBrief, assertWritingResult } from '@ui4a/shared';
 
-import { appendAgentRunCommand, getAgentRun } from '../../../../web/src/db/agent-runs';
+import { appendAgentRunCommand, getAgentRun } from '@ui4a/db/agent-runs';
 import type { AgentPreparedResult, AgentRunWorkflowArgs } from '../host/contracts';
 import {
   record,

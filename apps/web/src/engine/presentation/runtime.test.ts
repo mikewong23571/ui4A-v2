@@ -7,8 +7,8 @@ import {
   appendSidecarCommand,
   ensurePresentationTables,
   findActiveSidecar,
-} from '../../db/presentation';
-import { appendEvent, listEvents } from '../../db/events';
+} from '@ui4a/db/presentation';
+import { appendEvent, listEvents } from '@ui4a/db/events';
 import { getDb, getEngine, resetEngineForTests } from '../service';
 import { getPresentationBroker, resetPresentationBrokerForTests } from './runtime';
 import { resetRecipeCoordinatorForTests } from './recipes-runtime';

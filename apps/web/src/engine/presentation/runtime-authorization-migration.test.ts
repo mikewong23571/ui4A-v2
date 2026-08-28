@@ -19,8 +19,8 @@ vi.mock('./authorized-entity', () => ({
   getAuthorizedPresentationResult: authorization.getAuthorizedPresentationResult,
 }));
 
-import { ensurePresentationTables, findActiveSidecar } from '../../db/presentation';
-import { listEvents } from '../../db/events';
+import { ensurePresentationTables, findActiveSidecar } from '@ui4a/db/presentation';
+import { listEvents } from '@ui4a/db/events';
 import { getDb, getEngine, resetEngineForTests } from '../service';
 import { resetRecipeCoordinatorForTests } from './recipes-runtime';
 import { getPresentationBroker, resetPresentationBrokerForTests } from './runtime';

@@ -5,7 +5,7 @@ import {
   appendSidecarCommand,
   ensurePresentationTables,
   loadPresentationSnapshot,
-} from '../../../../db/presentation';
+} from '@ui4a/db/presentation';
 import { getDb, getEngine, resetEngineForTests } from '../../../../engine/service';
 import {
   getPresentationBroker,

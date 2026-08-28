@@ -7,7 +7,7 @@ vi.mock('../../../readiness/readiness', () => ({
   getWebReadinessSnapshot: mocks.getWebReadinessSnapshot,
 }));
 
-vi.mock('../../../db/pool', () => ({
+vi.mock('@ui4a/db/pool', () => ({
   getPool: () => ({
     query: async () => {
       throw new Error('health route must not reach a real database');

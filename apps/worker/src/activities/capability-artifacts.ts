@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 
 import { canonicalJson } from '@ui4a/engine';
 
-import type { DbExecutor } from '../../../web/src/db/events';
-import { appendEvent } from '../../../web/src/db/events';
+import type { DbExecutor } from '@ui4a/db/events';
+import { appendEvent } from '@ui4a/db/events';
 
 import { findEvent } from './event-log';
 

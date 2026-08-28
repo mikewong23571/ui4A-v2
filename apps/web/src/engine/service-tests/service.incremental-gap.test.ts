@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { contentVersion, fold } from '@ui4a/engine';
 
 import { businessFlows } from '../../domain/flows';
-import { appendEvent, ensureEventsTable, readLog } from '../../db/events';
-import { getPool } from '../../db/pool';
+import { appendEvent, ensureEventsTable, readLog } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 
 import { getEngine, resetEngineForTests } from '../service';
 

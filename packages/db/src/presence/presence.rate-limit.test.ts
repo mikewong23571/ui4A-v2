@@ -11,7 +11,7 @@ import {
   rebuildPresenceProjection,
   type PresenceEventRow,
 } from './presence';
-import { getPool } from './pool';
+import { getPool } from '../pool';
 
 // presence 频率上限行为测试(T31 R2 ←T29 红线"频率上限入合同测试"的 db 层):
 // - 同一 principal 的窗口预算按 events(domain='presence', principal, ts>now()-1min)

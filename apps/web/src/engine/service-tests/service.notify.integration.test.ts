@@ -6,8 +6,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { Client, Connection } from '@temporalio/client';
 
-import { ensureEventsTable, readLog } from '../../db/events';
-import { getPool } from '../../db/pool';
+import { ensureEventsTable, readLog } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 
 import { getEngine, resetEngineForTests } from '../service';
 

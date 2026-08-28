@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   resolveTrustedRequestIdentity: vi.fn(),
 }));
 
-vi.mock('../../../db/presence', () => ({
+vi.mock('@ui4a/db/presence', () => ({
   appendPresenceChange: mocks.appendPresenceChange,
   ensurePresenceTables: mocks.ensurePresenceTables,
   PresenceRateLimitError: class PresenceRateLimitError extends Error {},

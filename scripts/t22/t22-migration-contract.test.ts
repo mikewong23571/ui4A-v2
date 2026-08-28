@@ -15,7 +15,7 @@ function requiredSource(path: string): string {
 
 describe('T22 explicit migration artifact boundary', () => {
   it('registers all five existing DDL artifacts behind one versioned migration module', () => {
-    const source = requiredSource('apps/web/src/db/migrations.ts');
+    const source = requiredSource('packages/db/src/migrations.ts');
 
     for (const ddl of [
       'EVENTS_DDL',
@@ -48,10 +48,10 @@ describe('T22 explicit migration artifact boundary', () => {
 
   it('keeps idempotent ensure helpers out of production request and Worker runtime paths', () => {
     const runtimePaths = [
-      'apps/web/src/db/drafts.ts',
-      'apps/web/src/db/agent-definitions/index.ts',
-      'apps/web/src/db/agent-runs.ts',
-      'apps/web/src/db/presentation.ts',
+      'packages/db/src/drafts.ts',
+      'packages/db/src/agent-definitions/index.ts',
+      'packages/db/src/agent-runs.ts',
+      'packages/db/src/presentation.ts',
       'apps/web/src/engine/service.ts',
       'apps/web/src/engine/drafts/execute.ts',
       'apps/web/src/engine/agent/agent-definitions.ts',
@@ -66,7 +66,7 @@ describe('T22 explicit migration artifact boundary', () => {
         .flatMap((line, index) => {
           const call = line.trim();
           const legacyHelperComposition =
-            path.startsWith('apps/web/src/db/') && call === 'await ensureEventsTable(db);';
+            path.startsWith('packages/db/src/') && call === 'await ensureEventsTable(db);';
           return /await ensure[A-Za-z]+Tables?\(/.test(line) && !legacyHelperComposition
             ? [`${path}:${index + 1}:${call}`]
             : [];

@@ -91,13 +91,13 @@ vi.mock('../../../engine/presentation/runtime', () => ({
   getPresentationBroker: mocks.getPresentationBroker,
 }));
 
-vi.mock('../../../db/presentation', () => ({
+vi.mock('@ui4a/db/presentation', () => ({
   appendSidecarCommand: mocks.appendSidecarCommand,
   getSidecarById: mocks.getSidecarById,
   loadPresentationSnapshot: mocks.loadPresentationSnapshot,
 }));
 
-vi.mock('../../../db/events', () => ({
+vi.mock('@ui4a/db/events', () => ({
   appendEvent: mocks.appendEvent,
 }));
 

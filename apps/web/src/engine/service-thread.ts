@@ -6,7 +6,7 @@ import {
   type ProjectDeps,
 } from '@ui4a/engine';
 
-import type { DbExecutor, EventAppend } from '../db/events';
+import type { DbExecutor, EventAppend } from '@ui4a/db/events';
 import { persistRejection } from './service-confirmation';
 import { appendWithSeq, applyForeignGaps, type CoreEventLogState } from './service-event-log';
 import type { ExecOutcome } from './service';

@@ -1,7 +1,7 @@
 import { flowForInstance, inspectJsonBudget, type AgentRun, type AgentRunJson } from '@ui4a/engine';
 import { assertAgentAuthoringResult } from '@ui4a/shared';
 
-import type { DbExecutor } from '../../db/events';
+import type { DbExecutor } from '@ui4a/db/events';
 import { agentDefinitionDraftRegistryPort } from './agent-definitions';
 import { executeDraftMeta } from '../drafts/drafts';
 import type { EngineRuntime } from '../service';

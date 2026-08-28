@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { contentVersion, fold } from '@ui4a/engine';
 import type { AgentDefinition, AgentDefinitionRef, FlowDefinition } from '@ui4a/shared';
 
-import { ensureDraftTables, getDraft, rebuildDraftProjection } from '../../db/drafts';
-import { ensureEventsTable, listEvents, readLog } from '../../db/events';
-import { getPool } from '../../db/pool';
+import { ensureDraftTables, getDraft, rebuildDraftProjection } from '@ui4a/db/drafts';
+import { ensureEventsTable, listEvents, readLog } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { businessFlows } from '../../domain/flows';
 import { getEngine, resetEngineForTests } from '../service';
 import {

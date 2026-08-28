@@ -7,7 +7,7 @@
 import { fold, renderSpecRel, type RenderSpecFrozenDetail } from '@ui4a/engine';
 import type { FrozenRenderSpec } from '@ui4a/shared';
 
-import type { DbExecutor } from '../db/events';
+import type { DbExecutor } from '@ui4a/db/events';
 import type { RenderSpec } from '../render/spec';
 import { validateSpec } from '../render/validator';
 import { wordOf } from '../render/registry';

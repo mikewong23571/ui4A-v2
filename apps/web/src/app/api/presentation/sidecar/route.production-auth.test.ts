@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { appendSidecarCommand, ensurePresentationTables } from '../../../../db/presentation';
+import { appendSidecarCommand, ensurePresentationTables } from '@ui4a/db/presentation';
 import { getDb, resetEngineForTests } from '../../../../engine/service';
 
 const mocks = vi.hoisted(() => ({

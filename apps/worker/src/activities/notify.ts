@@ -12,8 +12,8 @@
  * - activity 内先查同 rel 的 notification-delivered 是否已存在,存在即跳过
  *   (重试/重跑不双写);fold 对重复送达事件同样幂等(engine fold 分支)。
  */
-import type { DbExecutor } from '../../../web/src/db/events';
-import { appendEvent } from '../../../web/src/db/events';
+import type { DbExecutor } from '@ui4a/db/events';
+import { appendEvent } from '@ui4a/db/events';
 
 import type { NotifyConfirmation } from '../workflows';
 import { workerDb } from '../worker-db';

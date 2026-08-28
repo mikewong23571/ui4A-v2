@@ -13,8 +13,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { FlowDefinition, SirenEntity } from '@ui4a/engine';
 
-import { ensureEventsTable } from '../../db/events';
-import { getPool } from '../../db/pool';
+import { ensureEventsTable } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { businessFlows } from '../../domain/flows';
 
 import { getEngine, resetEngineForTests } from '../service';

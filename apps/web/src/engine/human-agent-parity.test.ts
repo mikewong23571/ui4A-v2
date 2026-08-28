@@ -13,8 +13,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST as execRoute } from '../app/api/exec/route';
 import { GET as entityRoute } from '../app/api/entity/route';
 import { execAction, fetchEntity, HUMAN_CHANNEL } from '../components/exec-client';
-import { ensureEventsTable } from '../db/events';
-import { getPool } from '../db/pool';
+import { ensureEventsTable } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { resetEngineForTests } from './service';
 
 const pool = getPool(process.env.DATABASE_URL!);

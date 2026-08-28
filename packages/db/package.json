@@ -1,0 +1,35 @@
+{
+  "name": "@ui4a/db",
+  "version": "0.1.0-experimental.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": {
+      "types": "./src/*.ts",
+      "default": "./src/*.ts"
+    },
+    "./agent-definitions": {
+      "types": "./src/agent-definitions/index.ts",
+      "default": "./src/agent-definitions/index.ts"
+    },
+    "./presence": {
+      "types": "./src/presence/presence.ts",
+      "default": "./src/presence/presence.ts"
+    },
+    "./events.sql": "./src/events.sql"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ui4a/engine": "workspace:*",
+    "@ui4a/shared": "workspace:*",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pg": "^8.23.1",
+    "typescript": "^5",
+    "vitest": "^4.1.11"
+  }
+}

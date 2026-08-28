@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { ensureEventsTable, readLog } from '../../../db/events';
-import { getPool } from '../../../db/pool';
+import { ensureEventsTable, readLog } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { resetEngineForTests } from '../../../engine/service';
 import { POST } from './route';
 

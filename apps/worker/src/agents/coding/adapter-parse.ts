@@ -8,7 +8,7 @@ import {
 } from '@ui4a/engine';
 import type { CodingTask, WorkspaceHandle } from '@ui4a/shared';
 
-import { appendAgentRunCommand, getAgentRun } from '../../../../web/src/db/agent-runs';
+import { appendAgentRunCommand, getAgentRun } from '@ui4a/db/agent-runs';
 import type { GitWorkspaceHandle, RepositoryRegistry } from '../../capabilities/coding/workspace';
 import type { AgentRunWorkflowArgs } from '../host/contracts';
 import {

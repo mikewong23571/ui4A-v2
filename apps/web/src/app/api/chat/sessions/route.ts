@@ -4,7 +4,7 @@ import type {
   ChatTurnStartedDetail,
 } from '../../../../chat/history';
 import { chatHistoryPrincipal, chatHistoryReadError } from '../../../../chat/history-access';
-import { listEvents } from '../../../../db/events';
+import { listEvents } from '@ui4a/db/events';
 import { getDb } from '../../../../engine/service';
 
 // GET /api/chat/sessions — 聊天会话清单投影(T9 补:历史会话入口)。

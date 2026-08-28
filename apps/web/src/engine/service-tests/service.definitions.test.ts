@@ -26,8 +26,8 @@ const installedApplications = installedApplicationBundles.flatMap((bundle) => bu
 import { businessCapabilityList } from '../../domain/capabilities';
 import { businessFlows, businessFlowList } from '../../domain/flows';
 import { SEED_REL, seedDetail } from '../../domain/seed';
-import { appendEvent, ensureEventsTable, readLog } from '../../db/events';
-import { getPool } from '../../db/pool';
+import { appendEvent, ensureEventsTable, readLog } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 
 import { getEngine, resetEngineForTests } from '../service';
 

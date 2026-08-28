@@ -11,7 +11,7 @@ import type {
   SitemapSummary,
 } from '@ui4a/agent';
 
-import type { DbExecutor } from '../../web/src/db/events';
+import type { DbExecutor } from '@ui4a/db/events';
 
 import { applyStepToState, type DelegationDriverKind, type DelegationLoopState } from './workflows';
 import {

@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SuspendedConfirmation } from '@ui4a/engine';
 
-import { ensureEventsTable } from '../db/events';
-import { getPool } from '../db/pool';
+import { ensureEventsTable } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { getEngine, resetEngineForTests } from '../engine/service';
 
 // notify 派发(T3 Phase C / Task 2,web→Temporal 接线):

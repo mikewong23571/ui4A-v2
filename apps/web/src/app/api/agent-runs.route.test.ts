@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { AgentRunBirthReferences } from '@ui4a/engine';
 
-import { appendAgentRunCommand, ensureAgentRunTables } from '../../db/agent-runs';
-import { ensureEventsTable } from '../../db/events';
-import { getPool } from '../../db/pool';
+import { appendAgentRunCommand, ensureAgentRunTables } from '@ui4a/db/agent-runs';
+import { ensureEventsTable } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { resetEngineForTests } from '../../engine/service';
 
 import { GET } from './entity/route';

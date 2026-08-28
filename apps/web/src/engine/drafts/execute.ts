@@ -18,8 +18,8 @@ import {
   getDraftByOwner,
   payloadSha256,
   type ConnectableDb,
-} from '../../db/drafts';
-import { readLog } from '../../db/events';
+} from '@ui4a/db/drafts';
+import { readLog } from '@ui4a/db/events';
 import type { EngineRuntime } from '../service';
 
 import {

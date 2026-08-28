@@ -1,7 +1,7 @@
 import type { AgentRunJson } from '@ui4a/engine';
 import type { AgentAuthoringBrief, AgentAuthoringResult, JsonObject } from '@ui4a/shared';
 
-import type { ConnectableDb } from '../../../../web/src/db/agent-runs';
+import type { ConnectableDb } from '@ui4a/db/agent-runs';
 import type { executeCodexStructured } from '../host/codex-transport';
 import type { AgentFinalizeInput } from '../host/contracts';
 

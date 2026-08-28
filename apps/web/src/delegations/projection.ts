@@ -16,7 +16,7 @@ import { delegationRel, type SirenEntity } from '@ui4a/engine';
 import type { DelegationGoal } from '@ui4a/shared';
 
 import { stepToMessage, type ChatMessage } from '../chat/trail';
-import type { DbExecutor } from '../db/events';
+import type { DbExecutor } from '@ui4a/db/events';
 
 /** 委托状态(engine fold 口径;终态与终事件一一对应)。 */
 export type DelegationStatus = 'running' | 'completed' | 'failed' | 'max-steps';

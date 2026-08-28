@@ -1,6 +1,6 @@
 import type { CodingExecutorProfile, CodingTask, WorkspaceHandle } from '@ui4a/shared';
 
-import type { ConnectableDb } from '../../../../web/src/db/agent-runs';
+import type { ConnectableDb } from '@ui4a/db/agent-runs';
 import type {
   CodexCompiledPrompt,
   CodexExecutionOutput,

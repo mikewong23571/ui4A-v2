@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ensureEventsTable, listEvents } from '../../../../db/events';
-import { getPool } from '../../../../db/pool';
+import { ensureEventsTable, listEvents } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { resetEngineForTests } from '../../../../engine/service';
 
 const auth = vi.hoisted(() => {

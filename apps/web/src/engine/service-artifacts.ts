@@ -13,7 +13,7 @@ import {
   type ExecRequest,
 } from '@ui4a/engine';
 
-import type { DbExecutor } from '../db/events';
+import type { DbExecutor } from '@ui4a/db/events';
 import { appendWithSeq, type CoreEventLogState } from './service-event-log';
 
 /** 正式模型工件缺少部署 profile；调用方应映射为可恢复 503，而非内部错误。 */

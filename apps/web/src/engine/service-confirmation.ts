@@ -17,7 +17,7 @@ import {
   type ProjectDeps,
 } from '@ui4a/engine';
 
-import type { DbExecutor, EventAppend } from '../db/events';
+import type { DbExecutor, EventAppend } from '@ui4a/db/events';
 import {
   appendBatchWithSeq,
   appendWithSeq,

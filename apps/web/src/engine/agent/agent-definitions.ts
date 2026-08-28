@@ -13,8 +13,8 @@ import {
   prepareAgentDefinitionActivation,
   readAgentDefinitionRegistry,
   type ConnectableDb,
-} from '../../db/agent-definitions';
-import type { DbExecutor } from '../../db/events';
+} from '@ui4a/db/agent-definitions';
+import type { DbExecutor } from '@ui4a/db/events';
 import type {
   AgentDefinitionDraftRegistryPort,
   AgentDefinitionDraftRegistrySnapshot,

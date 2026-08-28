@@ -4,7 +4,7 @@ import {
   appendPresenceChange,
   ensurePresenceTables,
   PresenceRateLimitError,
-} from '../../../db/presence';
+} from '@ui4a/db/presence';
 import {
   authenticationErrorResponse,
   resolveTrustedRequestIdentity,

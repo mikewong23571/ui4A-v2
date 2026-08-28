@@ -13,8 +13,8 @@ import { createServer, type Server } from 'node:http';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { appendEvent, ensureEventsTable } from '../../../../db/events';
-import { getPool } from '../../../../db/pool';
+import { appendEvent, ensureEventsTable } from '@ui4a/db/events';
+import { getPool } from '@ui4a/db/pool';
 import { GET as getSessions } from './route';
 
 const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');

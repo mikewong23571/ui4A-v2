@@ -130,7 +130,7 @@ const routes: readonly StoryAcceptanceRoute[] = [
   },
   {
     storyId: 'S32',
-    deterministic: ['apps/web/src/db/presentation.test.ts'],
+    deterministic: ['packages/db/src/presentation.test.ts'],
     browser: 'e2e/eval/t16-golden.spec.ts',
   },
 ];

@@ -7,13 +7,13 @@ import { installedApplicationBundles } from '../applications/bundles';
 import {
   installSeedAgentDefinition,
   rebuildAgentDefinitionProjection,
-} from '../db/agent-definitions';
-import { appendEvent, readLog, type DbExecutor } from '../db/events';
+} from '@ui4a/db/agent-definitions';
+import { appendEvent, readLog, type DbExecutor } from '@ui4a/db/events';
 import {
   assertMigrationsReady,
   recordApplicationBootstrapReceipt,
   type ApplicationBootstrapStatus,
-} from '../db/migrations';
+} from '@ui4a/db/migrations';
 
 async function bootstrapApplicationBundles(db: DbExecutor): Promise<void> {
   for (const bundle of installedApplicationBundles) {

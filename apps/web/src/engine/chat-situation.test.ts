@@ -5,8 +5,8 @@ import { CHAT_VIEW_PROTOCOL_VERSION, type ClientViewReport } from '@ui4a/shared'
 
 import type { TrustedRequestAuditContext } from '../auth/request-identity';
 import { startRelFromSituation } from '../chat/start-chain';
-import { appendPresenceChange, ensurePresenceTables } from '../db/presence';
-import { getPool } from '../db/pool';
+import { appendPresenceChange, ensurePresenceTables } from '@ui4a/db/presence';
+import { getPool } from '@ui4a/db/pool';
 
 import { situationForChat } from './chat-situation';
 

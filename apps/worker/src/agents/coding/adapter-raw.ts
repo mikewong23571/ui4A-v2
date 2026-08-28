@@ -5,7 +5,7 @@ import {
   appendAgentRunRawEvent,
   listAgentRunRawReceipts,
   readAgentRunPayload,
-} from '../../../../web/src/db/agent-runs';
+} from '@ui4a/db/agent-runs';
 import type { AgentRunWorkflowArgs } from '../host/contracts';
 import { record, type CodingAgentAdapterDeps } from './adapter-types';
 

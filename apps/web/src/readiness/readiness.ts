@@ -9,7 +9,7 @@ import {
   getMigrationStatus,
   type ApplicationBootstrapStatus,
   type MigrationStatus,
-} from '../db/migrations';
+} from '@ui4a/db/migrations';
 import { runWebProductionDeploymentPreflight } from '../production-deployment-preflight';
 import { getDb } from '../engine/service';
 
