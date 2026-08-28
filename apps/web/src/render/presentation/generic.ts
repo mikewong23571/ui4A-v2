@@ -44,8 +44,15 @@ function readPath(value: unknown, path: string): unknown {
 function derefFrom(entities: ReadonlyMap<string, SirenEntity>, binding: SurfaceBinding): unknown {
   if (binding.kind === 'item') return undefined;
   const entity = entities.get(binding.subject);
+  // subject 实体缺失是结构级失配:维持 undefined → 编译期 deref-failed 区域
+  // 诊断(诚实失配,不静音)。
   if (entity === undefined) return undefined;
-  if (binding.kind === 'property') return readPath(entity, binding.path);
+  if (binding.kind === 'property') {
+    // T37:subject 在场而声明字段尚无值(捕捉回环清空后的空表单、陈旧缓存
+    // 瞬时态)是诚实空态——按空串渲染,不再把整词位打成 deref-failed;null
+    // 同口径。0/false 等其余 falsy 值原样保留,不造事实。
+    return readPath(entity, binding.path) ?? '';
+  }
   if (binding.kind === 'actions') return entity;
   if (binding.kind === 'links') return entity.links;
   return entity.entities;

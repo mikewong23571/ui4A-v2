@@ -164,6 +164,78 @@ describe('generic Presentation runtime plan', () => {
     expect(plan.bundle.issues).toEqual([]);
   });
 
+  it('subject 在场但声明字段无值 → 词位诚实空呈现零 deref-failed;subject 缺失仍诊断(T37)', () => {
+    // 真实时序(Phase C 实测):捕捉成功 → exec 失效 → face 重规划,sidecar
+    // 词条按规划时实体绑定 properties.fields.title(值在场);hydrated 依赖
+    // 实体却是回环清空/陈旧缓存后的同 subject 实体(fields 缺该键)。
+    // 「新表单未填」是诚实空态——词位按空串渲染,不再整词位 deref-failed;
+    // subject 实体缺失(结构级失配)仍必须产 deref-failed 诊断,不静音。
+    const withTitle: SirenEntity = {
+      class: ['flow-instance', 'todo-capture'],
+      properties: {
+        rel: 'todo-capture:main',
+        flow: 'todo-capture',
+        node: 'recorded',
+        title: '已记下',
+        status: 'recorded',
+        fields: { title: 'T37 捕捉闭环验证' },
+        presentation: {
+          fields: [{ path: 'properties.fields.title', title: 'title', role: 'identity' }],
+        },
+      },
+      actions: [
+        { name: 'another', title: '再记一条', method: 'POST', href: '/api/exec', fields: {} },
+      ],
+      links: [{ rel: ['self'], href: '/api/entity?rel=todo-capture%3Amain' }],
+    };
+    const planned = planGenericSurface(
+      'todo-capture:main',
+      withTitle,
+      PRESENTATION_SURFACE_CATALOG,
+      {
+        entityVersion: 'definition-v1',
+        intent: '发起 待办 的流程',
+        semanticHints: semanticHintsOf(withTitle),
+        provenanceRef: 'composition-region:todo-capture',
+      },
+    );
+    // 规划锚定:身份词绑定声明字段(与线上 sidecar 一致)。
+    expect(JSON.stringify(planned)).toContain('properties.fields.title');
+
+    // 捕捉回环后:同 subject 实体在,historical title 键已被清空。
+    const cleared: SirenEntity = {
+      ...withTitle,
+      properties: { ...withTitle.properties, node: 'capture', fields: {} },
+    };
+    const hydrated = hydratePresentationSurface(
+      'workspace:app:todo',
+      planned,
+      [cleared],
+      ['flow:todo-capture'],
+    );
+    expect(hydrated.bundle.issues.filter((issue) => issue.code === 'deref-failed')).toEqual([]);
+    // 身份词位以空值诚实渲染(数据模型含空串),而非诊断兜底。
+    expect(JSON.stringify(hydrated.bundle.messages[1])).toContain('"value":""');
+    expect(JSON.stringify(hydrated.bundle.messages[1])).not.toContain('部分内容暂时无法显示');
+
+    // 结构级失配口径不变:subject 实体缺失仍产 deref-failed 诊断,不静音。
+    const unrelated: SirenEntity = {
+      class: ['collection', 'articles'],
+      properties: { rel: 'articles', count: 0 },
+      actions: [],
+      links: [],
+      entities: [],
+    };
+    const missing = hydratePresentationSurface(
+      'workspace:app:todo',
+      planned,
+      [unrelated],
+      ['articles'],
+    );
+    expect(missing.bundle.issues.some((issue) => issue.code === 'deref-failed')).toBe(true);
+    expect(JSON.stringify(missing.bundle.messages[1])).toContain('部分内容暂时无法显示');
+  });
+
   it('uses a collection-declared human title as identity while retaining the canonical rel', () => {
     const collection: SirenEntity = {
       class: ['collection', 'threads'],
