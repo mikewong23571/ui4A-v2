@@ -1,0 +1,1 @@
+T36 D1+D2 完成(同 commit:目录移动使旧路径基线 stale,与新路径超限耦合,分立会造成无登记违规窗口):子域边界=compose/k8s/keycloak/backup/recovery+跨域顶层;dist 扁平产物名保持(dist/t22-keycloak-realm-bootstrap.js 合同不变);D52 常驻晋升承诺履行(路径引用全量同步);验证=t22 308+3 全同、worker build、governance(baseline 2)。
