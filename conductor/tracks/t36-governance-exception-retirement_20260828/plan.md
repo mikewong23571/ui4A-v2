@@ -57,18 +57,18 @@
 
 ## Phase E GR1 例外清退(FR3.1、FR3.2、FR2.3)
 
-- [ ] Task: E1 @ui4a/db 抽包(FR3.1、FR2.3)
+- [x] Task: E1 @ui4a/db 抽包(FR3.1、FR2.3) `bfcf3ded`
   - [ ] 新建 `packages/db`(@ui4a/db):迁移 `apps/web/src/db` 全部源与测试,内部按域组织(既有文件即域划分,不设聚合 barrel 垃圾场;顶层只留必要入口);`pg` 依赖声明入包
   - [ ] 先扩展治理门禁:`check-deps.mjs` MODULES/ALLOWED 增 `packages/db`(允许→shared;web/worker 增补允许;engine/agent/shared 禁止)+ BANNED_EXTERNAL 相应条目
   - [ ] 工程接线:根/子包 package.json workspace 依赖、tsconfig paths(去掉 worker 的 `@/*`→web 映射与 jsx 注释)、vitest `--project db` 工程指向迁移后的测试路径
   - [ ] 双端改引:web 与 worker 27 文件的 `../../web/src/db/*` 全部改为 `@ui4a/db/*`(直接改引,不留 re-export 壳;web/src/db 目录删除)
   - [ ] 文档同步:AGENTS.md 系统图、模块职责段、依赖方向句;DECISIONS.md 记录包边界决定
   - [ ] 验证:`pnpm --project db` 全绿(重放/迁移/recovery 套件)、web/worker 全套件、`pnpm governance`(例外 #1 退役,同 commit 从 exceptions.json 移除;apps/web/src/db 目录基线条目随之消失,一并移除)
-- [ ] Task: E2 引擎组合根处置(FR3.2)
+- [x] Task: E2 引擎组合根处置(FR3.2)——裁定形态:kill 测试与组合根同宿 web 服务测试层(见 git notes) `$(git log -1 --format=%h)`
   - [ ] 调研并裁定形态:(a) 组合根下沉为包内装配模块(web service.ts 与 kill 测试共用真身,与 B2 协同)优先;(b) 共享测试 harness 包。裁定与理由记入 DECISIONS.md(D53 或独立条目)
   - [ ] 实施:消灭 `delegation.kill.integration.test.ts` 对 `apps/web/src/engine/service` 的 import;kill 测试仍走真 HTTP + 真 PG + 真 Temporal,断言不降级
   - [ ] 验证:kill 集成测试在 Temporal/PG 可用时全绿(不可达按既有口径跳过并说明);`pnpm governance`(例外 #2 退役,同 commit 移除)
-- [ ] Task: Phase E 检查点(db/web/worker 三端全套件 + kill 集成 + governance;git notes)
+- [x] Task: Phase E 检查点(db 500 + kill 集成通过 + governance:strict 双空全绿) 
 
 ## Phase F strict 接线与收口(FR4)
 
