@@ -1,0 +1,1 @@
+T36 A3 完成:归档边界=canvas 呈现域(宿主/hook/抽屉/工具条/动作接线/错误边界/sidecar 操作);git mv 保历史;验证=vitest canvas 38 passed + tsc + pnpm lint 0 errors + governance(baseline 9)。注:apps/web 本地 eslint 配置对既有 <a href=/> 报 error 但根门禁配置为 0 errors 通过(HEAD 同状)。
