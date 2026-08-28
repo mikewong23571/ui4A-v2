@@ -1,0 +1,1 @@
+T36 B1 完成:拆分边界=路由壳(身份/认证/派发)vs 合同解析 vs 事件投影写面 vs 流式编排;源码不变量测试重锚(route.ts+inline-stream.ts),断言无删减且禁词检查面扩大;验证=vitest 78 passed + tsc + governance(baseline 8)。
