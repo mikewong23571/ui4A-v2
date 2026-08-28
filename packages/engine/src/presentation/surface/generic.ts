@@ -3,7 +3,7 @@
  * 词汇选择由 catalog 驱动,绝不按 domain class、rel 或 action 名分支。
  */
 import type { SirenEntity } from '../../contract/siren/index';
-import { assembleSurfaceRegions } from '../compose';
+import { assembleSurfaceRegions } from '../compose/compose';
 import {
   bindingPath,
   diagnosticNode,

@@ -6,7 +6,7 @@ import {
   createPresentationSnapshot,
   type SidecarDependency,
   type UserSidecarKey,
-} from '../sidecar';
+} from '../sidecar/sidecar';
 import type { SurfaceCatalog, SurfaceTree } from '../surface/index';
 import { resolvePresentationFastpath } from './resolver';
 

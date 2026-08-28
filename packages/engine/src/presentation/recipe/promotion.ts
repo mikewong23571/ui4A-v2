@@ -4,15 +4,15 @@ import type {
   ApplicationRecipeSlot,
   ApplicationRenderRecipeCandidate,
   RecipeDependency,
-} from './recipe/recipe';
-import type { PresentationSnapshot, UserSidecarAggregate } from './sidecar';
+} from './recipe';
+import type { PresentationSnapshot, UserSidecarAggregate } from '../sidecar/sidecar';
 import type {
   SurfaceBinding,
   SurfaceCatalog,
   SurfaceDependency,
   SurfaceNode,
   SurfaceTree,
-} from './surface/index';
+} from '../surface/index';
 
 export interface SidecarPromotionOptions {
   application: string;

@@ -1,13 +1,13 @@
 import type { CompositionDeclaration } from '@ui4a/shared';
 import { describe, expect, it } from 'vitest';
 
-import type { SirenEntity } from '../contract/siren/index';
+import type { SirenEntity } from '../../contract/siren/index';
 import {
   assembleSurfaceRegions,
   composeSurfaceRegions,
   type CompositionRegionSurfaceInput,
 } from './compose';
-import { dependencyDecision } from './sidecar';
+import { dependencyDecision } from '../sidecar/sidecar';
 import {
   hashSurfaceTree,
   normalizeSurfaceTree,
@@ -17,7 +17,7 @@ import {
   type SurfaceCatalog,
   type SurfaceNode,
   type SurfaceTree,
-} from './surface/index';
+} from '../surface/index';
 
 const catalog: SurfaceCatalog = {
   id: 'catalog:semantic',

@@ -23,12 +23,6 @@
   ],
   "dirs": [
     {
-      "path": "packages/engine/src/presentation",
-      "lines": 4639,
-      "limit": 4000,
-      "note": "T26–T31 累计(组合 assembly、canonical Recipe slot/promotion 与多源 fastpath 属 Presentation 纯内核直接模块);T30/T31 R12-R13 已按业务优先不为凑行数拆分(workflow 授权),T31 期间统一 slot 语法后 src 净收缩、基线现值为 R13 后实测;shrink-only 自 T31 关闭起算,处置计划=后续 CompositionDefinition 治理晋升时按 compose/recipe/sidecar 子域归档直接文件合并收缩;T33 member-card/resume 规划与组合 v2 增 15 行(workflow 业务优先登记;候选收缩=compose 依赖注释收敛,留后续 track)"
-    },
-    {
       "path": "apps/web/src/db",
       "lines": 4155,
       "limit": 4000,

@@ -6,8 +6,8 @@ import {
   promoteRecipe,
   registerRecipeCandidate,
   type ApplicationRenderRecipeCandidate,
-} from './recipe/recipe';
-import { resolvePresentationFastpath } from './recipe/resolver';
+} from '../recipe/recipe';
+import { resolvePresentationFastpath } from '../recipe/resolver';
 import {
   applySidecarCommand,
   createPresentationSnapshot,
@@ -15,8 +15,8 @@ import {
   type PresentationSnapshot,
   type SidecarDependency,
   type UserSidecarKey,
-} from './sidecar';
-import type { SurfaceCatalog, SurfaceTree } from './surface/index';
+} from '../sidecar/sidecar';
+import type { SurfaceCatalog, SurfaceTree } from '../surface/index';
 
 const catalog: SurfaceCatalog = {
   id: 'catalog:test',

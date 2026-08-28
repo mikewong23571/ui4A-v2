@@ -13,7 +13,7 @@ import {
   type SidecarDependency,
   type UserSidecarAggregate,
   type UserSidecarKey,
-} from '../sidecar';
+} from '../sidecar/sidecar';
 import type { SurfaceTree } from '../surface/index';
 
 export type PresentationHitPath =

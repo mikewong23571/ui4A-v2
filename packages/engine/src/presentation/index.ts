@@ -1,11 +1,11 @@
 export * from './broker';
-export * from './compose';
+export * from './compose/compose';
 export * from './lens';
 export * from './patch';
-export * from './promotion';
+export * from './recipe/promotion';
 export * from './recipe/recipe';
 export * from './recipe/resolver';
 export * from './scenario';
-export * from './sidecar';
+export * from './sidecar/sidecar';
 export * from './surface/index';
 export type { ClientViewFact, LastNavigationFact, PresentationIntent } from '@ui4a/shared';

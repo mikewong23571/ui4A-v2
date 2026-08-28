@@ -1,15 +1,15 @@
 import type { CompositionDeclaration, CompositionMode } from '@ui4a/shared';
 
-import type { SidecarDependency } from './sidecar';
-import { normalizeSurfaceTree } from './surface/normalize';
+import type { SidecarDependency } from '../sidecar/sidecar';
+import { normalizeSurfaceTree } from '../surface/normalize';
 import type {
   SurfaceCatalog,
   SurfaceDependency,
   SurfaceNode,
   SurfaceProvenance,
   SurfaceTree,
-} from './surface/types';
-import { validateSurfaceTree } from './surface/validate';
+} from '../surface/types';
+import { validateSurfaceTree } from '../surface/validate';
 
 export type CompositionSourceKind = 'entity' | 'collection' | 'flow' | 'selection';
 

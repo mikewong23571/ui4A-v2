@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { CompositionDeclaration } from '@ui4a/shared';
 
-import type { SirenEntity } from '../contract/siren/index';
-import { composeSurfaceRegions } from './compose';
-import { planGenericSurface, type SurfaceCatalog } from './surface/index';
-import { applySidecarCommand, createPresentationSnapshot } from './sidecar';
+import type { SirenEntity } from '../../contract/siren/index';
+import { composeSurfaceRegions } from '../compose/compose';
+import { planGenericSurface, type SurfaceCatalog } from '../surface/index';
+import { applySidecarCommand, createPresentationSnapshot } from '../sidecar/sidecar';
 import { explainSidecarPresentation, promoteUserSidecarCandidate } from './promotion';
-import { createRecipeRegistry, promoteRecipe, registerRecipeCandidate } from './recipe/recipe';
+import { createRecipeRegistry, promoteRecipe, registerRecipeCandidate } from './recipe';
 
 const catalog: SurfaceCatalog = {
   id: 'catalog:test',
