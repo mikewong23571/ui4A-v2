@@ -1,1 +1,3 @@
 T36 B2 完成:下沉边界=flow 读面补全内聚职责(completeFlowEntity 单入口);非转发壳——三步补全逻辑整体迁移;验证=flow-entry 6 + service-tests 95 passed + tsc + governance(baseline 7)。
+
+T36 Phase B 检查点(自治验收):B1 ad55064(route 949→423,chat 三模块拆分,route.render 源码不变量断言重锚)/B2 37e7938(service 503→495,completeFlowEntity 下沉);基线 9→7。验证:vitest unit 2590 passed;service-tests db 95 passed;pnpm governance OK;web tsc 通过。
