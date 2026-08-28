@@ -778,6 +778,10 @@ test.describe('I5 可重放', () => {
           'meta/application:development',
           'meta/application:editorial',
           'meta/application:governance',
+          // T35 S9/S10:bundle 扩容后 todo/ideas 随批次入重放输入(与
+          // installedApplicationBundles 同源序,F-28 同口径)。
+          'meta/application:todo',
+          'meta/application:ideas',
         ]);
         // I5 扩展(T13/T18/T19):capability 维度入重放输入——日志须含全部已安装能力
         // capability-seeded(rel=meta/capability:<name>,detail 持定义全文)。
