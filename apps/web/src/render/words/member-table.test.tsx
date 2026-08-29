@@ -245,4 +245,28 @@ describe('member-table 词条', () => {
       expect(screen.getAllByRole('cell')).toHaveLength(4);
     });
   });
+
+  it('概览模式列宽:操作列 ≥ 16%(容纳两个行内按钮并排,不纵向堆叠)', () => {
+    const view = renderRow({
+      label: '甲',
+      rel: 'post:a',
+      status: 'published',
+      actions: [
+        { name: 'unpublish', title: '下线', method: 'POST', href: '/api/exec', fields: {} },
+      ],
+      presentations: [
+        { path: 'properties.fields.title', title: '文章标题', role: 'identity', overview: true },
+        { path: 'properties.fields.category', title: '分类', role: 'metadata', overview: true },
+      ],
+      fields: { title: '甲', category: 'tech' },
+    });
+    const cols = view.container.querySelectorAll('col');
+    const widths = [...cols].map((col) =>
+      Number((col as HTMLElement).style.width.replace('%', '')),
+    );
+    // 主体 24 + 状态 12 + 操作 16;identity 角色被主体列吸收,唯一概览列
+    // (分类)独占均分 (100-52)/1 = 48
+    expect(widths).toEqual([24, 12, 48, 16]);
+    expect(widths[widths.length - 1]).toBeGreaterThanOrEqual(16);
+  });
 });

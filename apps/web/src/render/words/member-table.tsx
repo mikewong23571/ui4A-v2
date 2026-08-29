@@ -38,7 +38,9 @@ import {
 const FALLBACK_COLUMNS = [38, 14, 30, 18] as const;
 const OVERVIEW_IDENTITY_WIDTH = 24;
 const OVERVIEW_STATUS_WIDTH = 12;
-const OVERVIEW_ACTIONS_WIDTH = 12;
+// 操作列需容纳两个紧凑小按钮并排(约 120px 内容宽 @1100px 表宽 ≈ 11%,取
+// 16% 留余量);概览列均分剩余,宽度不足正是按钮纵向堆叠的成因。
+const OVERVIEW_ACTIONS_WIDTH = 16;
 
 /** 概览列取值:呈现元数据 path('properties.fields.<name>')映射到成员字段值。 */
 function overviewValueOf(
