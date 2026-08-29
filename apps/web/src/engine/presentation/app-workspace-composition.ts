@@ -117,6 +117,9 @@ export function deriveAppWorkspaceComposition(
       intent: entryIsCollection ? `浏览 ${title} 的产物` : `发起 ${title} 的流程`,
       mode: 'invalidate',
       shape: entryIsCollection ? 'collection' : 'entity',
+      // 集合形态的入口(如 community 的 comments)同为查询面,与产物集合一致走
+      // 表格密度;实体形态的入口维持缺省 card。
+      ...(entryIsCollection ? { density: 'table' as const } : {}),
     });
   }
   if (regions.length === 0) return undefined;
