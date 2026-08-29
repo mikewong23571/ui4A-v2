@@ -1,0 +1,12 @@
+T38 Phase B (B1-B4) 呈现层查询能力 — 任务摘要
+
+概览列:member-table 按 presentation.fields overview:true 渲染声明列(声明序即列序,
+缺声明回退现状);区域级零件走 generic surface 目录 pattern 机制:page-links 词条
+(只渲染合同声明 next/prev,零页码推算)+ collection-filters 词条(标签/值域全部
+来自声明);URL query 同步(focus+offset+filter.*,scope/thread 保留,永不 exec)。
+缓存:PageEntityCache 键 = rel + 规范读面查询串(offset 前置、filter 字典序);
+exec 失效按 rel 前缀扩散到读面变体;fetchEntity 增 readQuery,scope 仍最后追加。
+目录 bump semantic-v6;sidecar route fixture 改引活目录版本(今后 bump 不破)。
+红→绿:接手前会话未提交产出验证为绿(48),B3 取数缓存 5 项先红后绿;
+全量 414 文件 / 3222 测试绿。
+Commits: 3273affe(上一会话)+ b3029c5d + 76540082
