@@ -1,0 +1,9 @@
+T38 Phase A (A1-A2) 集合分页与声明式过滤 — 任务摘要
+
+分页:offset 分页,页大小 COLLECTION_PAGE_SIZE=20 住投影层(collection-query.ts);
+无参全量逐字节锚定;next/prev 诚实缺链;非法 offset 结构化拒绝。
+过滤:维度声明住 flow 定义 collections[].filters,值域引用流拓扑推导(status=节点集);
+先过滤后分页,链接携带过滤参数;properties.presentation.filters 人机同门携带;
+值域外/声明外维度结构化拒绝;D51 回归专项断言;GR3 两次瞬时超限沿功能边界拆解
+(service-collection-query.ts / parse-collections.ts,基线空)。
+Commits: 0a5c4033 + 24a6e360
