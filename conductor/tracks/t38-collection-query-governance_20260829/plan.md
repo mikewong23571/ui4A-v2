@@ -42,19 +42,19 @@
 
 ## Phase C:用户故事视觉闭环(全应用横扫;浏览器实操审核)
 
-- [ ] Task C1: US1(publishing)分页:合同门批量创建成员(CLI/exec,顺带验
+- [x] Task C1: US1(publishing)分页:合同门批量创建成员(CLI/exec,顺带验
   agent 同门)→ 分页脚翻页、URL 参数、刷新保持、scope 保留;证据留
   `review.md`。
-- [ ] Task C2: US2(community)过滤:声明维度筛选 pending;过滤 +
+- [x] Task C2: US2(community)过滤:声明维度筛选 pending;过滤 +
   翻页组合;概览列按 hint;证据留证。
-- [ ] Task C3: US3(publishing)hint 概览列:声明字段进集合行,详情面全量
+- [x] Task C3: US3(publishing)hint 概览列:声明字段进集合行,详情面全量
   不变;证据留证。
-- [ ] Task C4: US5 全应用横扫:逐一进入 7 个应用默认组合面 + 关键集合,
+- [x] Task C4: US5 全应用横扫:逐一进入 7 个应用默认组合面 + 关键集合,
   截图审展示效果(声明渲染/零件只在声明处/零诊断/行内动作与详情链接
   无回归);证据留证。
-- [ ] Task C5: US4/US6 合同门 + 零特判:curl 六类形状;hint 双门消费;
+- [x] Task C5: US4/US6 合同门 + 零特判:curl 六类形状;hint 双门消费;
   git diff 无 per-app;D51 授权回归;证据留证。
-- [ ] Task C6: review.md 汇总 pass/fail;发现问题回修(限触达面)并复审;
+- [x] Task C6: review.md 汇总 pass/fail;发现问题回修(限触达面)并复审;
   `pnpm check` + governance 全绿;`pnpm dev:all` 实测可运行。
-- [ ] Task C7: Track Checkpoint:git notes 终审(含 §六滑梯自查、全应用
+- [x] Task C7: Track Checkpoint:git notes 终审(含 §六滑梯自查、全应用
   结论);更新 registry;GOAL/DECISIONS 沉淀如有。
