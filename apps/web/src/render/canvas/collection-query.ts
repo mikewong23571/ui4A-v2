@@ -201,6 +201,12 @@ export interface CollectionReadQueryInput {
   sitemapSurfaces?: unknown;
   /** URL 读面参数规范串(优先于初始游标)。 */
   urlQuery?: string;
+  /**
+   * 组合面语境旗标(Phase C):URL 读面参数作用于全部可分页 repeat 集合
+   * 区域(就地翻页/过滤;当前每应用至多一个产物集合,无目标歧义)。缺省
+   * 关闭——单 focus 分支维持「URL 只作用于注视集合」既有语义。
+   */
+  applyUrlToPageable?: boolean;
 }
 
 /**
@@ -224,6 +230,7 @@ export function collectionReadQueryResolver(
     }
     if (!pageableRels.has(rel)) return undefined;
     if (repeatSubjects !== undefined && !repeatSubjects.has(rel)) return undefined;
+    if (input.applyUrlToPageable === true && urlQuery !== undefined) return urlQuery;
     return INITIAL_COLLECTION_READ_QUERY;
   };
 }

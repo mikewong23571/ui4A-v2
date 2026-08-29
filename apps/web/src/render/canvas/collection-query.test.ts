@@ -233,6 +233,32 @@ describe('collectionReadQueryResolver(集合区域初始读游标,声明驱动�
     expect(readQueryOf('flow:article-drafting')).toBeUndefined();
   });
 
+  it('组合面语境(applyUrlToPageable):URL 读面参数作用于可分页 repeat 集合区域(就地翻页)', () => {
+    // 组合面 subject 是 workspace,URL 无 focus——读面参数必须落到可分页的
+    // repeat 集合区域,否则翻页/过滤在组合面永远第一页(Phase C 实测缺陷)。
+    const readQueryOf = collectionReadQueryResolver({
+      surface: repeatSurface('articles'),
+      sitemapSurfaces: surfaces,
+      urlQuery: 'offset=20',
+      applyUrlToPageable: true,
+    });
+    expect(readQueryOf('articles')).toBe('offset=20');
+    // 无 URL 参数 → 回初始游标(诚实首页)。
+    const initialOnly = collectionReadQueryResolver({
+      surface: repeatSurface('articles'),
+      sitemapSurfaces: surfaces,
+      applyUrlToPageable: true,
+    });
+    expect(initialOnly('articles')).toBe(INITIAL_COLLECTION_READ_QUERY);
+    // 缺省(单 focus 分支)语义不变:URL 不因新旗标扩散。
+    const legacy = collectionReadQueryResolver({
+      surface: repeatSurface('articles'),
+      sitemapSurfaces: surfaces,
+      urlQuery: 'offset=20',
+    });
+    expect(legacy('articles')).toBe(INITIAL_COLLECTION_READ_QUERY);
+  });
+
   it('URL 读面参数只作用于注视集合且优先(分享/回放以 URL 为准)', () => {
     const twoRegions: SurfaceTree = {
       schemaVersion: 1,

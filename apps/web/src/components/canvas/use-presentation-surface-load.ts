@@ -406,6 +406,9 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
             surface: sidecarSurface,
             sitemapSurfaces: sitemap.surfaces,
             urlQuery: collectionQueryParam,
+            // 组合面(subject 是 workspace,无 focus):URL 读面参数就地作用于
+            // 可分页集合区域——翻页/过滤不离开组合语境(Phase C 实测缺陷修)。
+            applyUrlToPageable: true,
           });
           const roots: SirenEntity[] = [];
           for (const rel of hydrationRels) {
