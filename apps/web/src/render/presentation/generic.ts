@@ -71,6 +71,10 @@ export function planGenericPresentationSurface(
     intent,
     semanticHints: semanticHintsOf(entity),
     provenanceRef: `generic:${subject}`,
+    // 集合主体 = 查询目标(T38):单主体集合面缺省表格密度——读面参数
+    // (offset/filter)只作用于注视集合,集合的规范形态即表格。组合区域
+    // 的显式声明(runtime-composition)优先于本缺省;§六 通用机制,零 per-app。
+    density: entity.class.includes('collection') ? 'table' : undefined,
   });
   const bundle = compileSurfaceTree(surface, {
     surfaceId: `presentation-${encodeURIComponent(boundSubject)}`,

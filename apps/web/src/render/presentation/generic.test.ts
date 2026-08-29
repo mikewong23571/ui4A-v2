@@ -319,4 +319,28 @@ describe('generic Presentation runtime plan', () => {
       { numRuns: 80 },
     );
   });
+  it('集合主体单主体面缺省表格密度:成员词选 member-table(T38;组合显式声明可覆盖)', () => {
+    // 集合 = 查询目标:读面参数(offset/filter)只作用于注视集合,集合的
+    // 规范形态即表格。组合区域的显式 density 声明优先于本缺省(runtime
+    // 侧测试锚定);此处锚定单主体集合面的缺省推导,零 per-app。
+    const member: SirenEntity = {
+      class: ['flow-instance', 'post-status'],
+      properties: { rel: 'post:a', node: 'published', identity: '甲', status: 'published' },
+      actions: [
+        { name: 'unpublish', title: '下线', method: 'POST', href: '/api/exec', fields: {} },
+      ],
+      links: [],
+    };
+    const collection: SirenEntity = {
+      class: ['collection', 'articles'],
+      properties: { rel: 'articles', title: 'articles', count: 1 },
+      actions: [],
+      links: [],
+      entities: [member],
+    };
+    const plan = planGenericPresentationSurface('articles', collection, 'v1', 'read');
+    expect(plan.bundle.issues).toEqual([]);
+    expect(JSON.stringify(plan.surface)).toContain('"member-table"');
+    expect(JSON.stringify(plan.surface)).not.toContain('"member-card"');
+  });
 });
