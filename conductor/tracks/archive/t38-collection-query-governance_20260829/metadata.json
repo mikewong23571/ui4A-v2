@@ -2,10 +2,11 @@
   "id": "t38-collection-query-governance_20260829",
   "title": "集合查询治理:合同层分页 + 声明式过滤 + 实体显示 hint",
   "type": "feature",
-  "status": "new",
+  "status": "done",
   "createdAt": "2026-08-29T14:45:46+08:00",
   "updatedAt": "2026-08-29T14:45:46+08:00",
   "acceptanceModel": "agent-visual-browser-review",
   "visionRef": "conductor/product-vision.md",
-  "predecessor": "t37-app-default-composition_20260829"
+  "predecessor": "t37-app-default-composition_20260829",
+  "closedAt": "2026-08-29T22:40:00+08:00"
 }
