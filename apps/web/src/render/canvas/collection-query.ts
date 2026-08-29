@@ -105,6 +105,32 @@ export function canvasCollectionQueryHref(
   return `${url.pathname}${search === '' ? '' : `?${search}`}`;
 }
 
+/**
+ * 宿主合并式读面导航目标(Phase C 修复 2):保留当前画布 URL 的 subject 与
+ * 处境声明(focus/scope/thread/…),只以声明的读面状态替换旧读面参数——
+ * offset + filter.*(offset 为 null/'' → 清除,读回首页起点)。组合面语境
+ * 就地翻页/过滤,不再 focus 落点替换单主体面;零发明:参数只来自合同声明
+ * 链接 href 与用户控件选择。
+ */
+export function mergeCollectionReadQueryHref(
+  currentHref: string,
+  read: { offset?: string | null; filter?: ReadonlyArray<CollectionFilterPair> },
+): string {
+  const url = new URL(currentHref, 'http://ui4a.local');
+  const params = new URLSearchParams(url.searchParams);
+  for (const key of [...params.keys()]) {
+    if (key === 'offset' || key.startsWith('filter.')) params.delete(key);
+  }
+  if (read.offset !== undefined && read.offset !== null && read.offset !== '') {
+    params.set('offset', read.offset);
+  }
+  for (const pair of read.filter ?? []) {
+    params.set(`filter.${pair.dimension}`, pair.value);
+  }
+  const search = params.toString();
+  return `${url.pathname}${search === '' ? '' : `?${search}`}`;
+}
+
 /** 可注入导航面(缺省 window.location.assign;window 缺席时诚实不动)。 */
 export const collectionQueryNavigation = {
   assign(href: string): void {

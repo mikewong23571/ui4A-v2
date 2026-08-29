@@ -6,12 +6,17 @@
  * 回显);值变更 → 导航到带参画布查询(翻页复位,scope/thread 保留);清除
  * (「全部」)→ 过滤参数移除,URL 同步清空,回全量读。未声明维度 → 隐藏节段,
  * 零零件。过滤是读面导航机械:永不 exec、零业务事件。
+ *
+ * 导航面(T38 Phase C 修复 2):宿主注入读面导航 → 就地合并读面参数(保留
+ * 当前画布 subject 状态,组合面语境不 focus 落点);宿主未注入(纯词条用法)
+ * 回退 focus 落点(既有行为)。
  */
 import {
   canvasCollectionQueryHref,
   collectionQueryFromContractHref,
   collectionQueryNavigation,
 } from '../canvas/collection-query';
+import { useHostCollectionReadNavigation } from '../canvas/collection-read-navigation';
 
 import { asOptionalFilterDeclarations, asOptionalLinks, type WordProps } from './shared';
 
@@ -26,6 +31,7 @@ export function CollectionFiltersWord(props: WordProps) {
     'declarations',
   );
   const links = asOptionalLinks(props.links, 'collection-filters', 'links');
+  const hostNavigate = useHostCollectionReadNavigation();
   if (declarations.length === 0) {
     return <section data-word="collection-filters" aria-label="过滤" className="hidden" />;
   }
@@ -37,6 +43,10 @@ export function CollectionFiltersWord(props: WordProps) {
     if (current === undefined) return;
     const filter = current.query.filter.filter((pair) => pair.dimension !== dimension);
     if (value !== CLEAR_ALL_VALUE) filter.push({ dimension, value });
+    if (hostNavigate !== undefined) {
+      hostNavigate({ offset: null, filter });
+      return;
+    }
     collectionQueryNavigation.assign(
       canvasCollectionQueryHref(window.location.href, {
         rel: current.rel,
