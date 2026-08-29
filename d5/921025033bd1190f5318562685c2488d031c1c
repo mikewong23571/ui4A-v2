@@ -1,0 +1,7 @@
+T38 Phase A (A3-A4) 实体概览显示 hint — 任务摘要
+
+presentation.overview 布尔 hint(正交字段成员资格,不扩 role 枚举);声明序即列序;
+经 fieldPresentationsOf 单点携带到成员投影(人机同门);声明即结构合法
+(引用未声明字段不可表达);walkthrough post-status 三字段示例;bundle v7。
+注意:bundle 升版,dev 库需重置才能看到新声明(bootstrap 不重播同名 flow)。
+Commits: d5921025
