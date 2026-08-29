@@ -297,6 +297,17 @@ export function planGenericSurface(
               actions: { kind: 'item', path: 'actions' },
               guardResults: { kind: 'item', path: 'guard-results' },
               fields: { kind: 'item', path: 'properties.fields' },
+              // T38 FR4:概览显示 hint 携带——词条目录声明 presentations 绑定时,
+              // 规划器供给成员呈现元数据(properties.presentation.fields,声明序 +
+              // title + overview)。未声明的成员词(如 member-card)零新绑定。
+              ...(memberDecision[1].bindings.presentations === undefined
+                ? {}
+                : {
+                    presentations: {
+                      kind: 'item' as const,
+                      path: 'properties.presentation.fields',
+                    },
+                  }),
             },
             dependencies: [catalogDependency(catalog)],
             provenance: genericProvenance(provenanceRef),
@@ -333,7 +344,64 @@ export function planGenericSurface(
       dependencies: [entityDependencyFor(subject, options.entityVersion, source)],
       provenance: genericProvenance(provenanceRef),
     };
-    children.push(genericSlot(repeatIndex, 'relation', repeat));
+    // T38 FR5:集合查询词汇按目录 pattern 声明入树(零实体特判)——过滤词仅在
+    // 声明维度(properties.presentation.filters)在场时规划;分页词随 repeat
+    // 规划,渲染层只呈现声明的 next/prev 链接(无声明链接 → 渲染为空,零零件;
+    // 服务端组合面从全量实体规划,无分页链接也需词位在场才能消费客户端分页读)。
+    // 目录未声明 pattern → relation 槽形状与历史版本完全一致。
+    const filterDeclarations = readPath(entity, 'properties.presentation.filters');
+    const declareFilters = Array.isArray(filterDeclarations) && filterDeclarations.length > 0;
+    const filtersPattern = declareFilters ? findPattern('collection-filters') : undefined;
+    const pageLinksPattern = findPattern('page-links');
+    let relationChild: SurfaceNode = repeat;
+    if (filtersPattern !== undefined || pageLinksPattern !== undefined) {
+      const parts: SurfaceNode[] = [];
+      if (filtersPattern !== undefined) {
+        const declarations: Extract<SurfaceBinding, { kind: 'property' }> = {
+          kind: 'property',
+          subject,
+          path: 'properties.presentation.filters',
+        };
+        parts.push({
+          kind: 'word',
+          id: `word-${repeatIndex}-filters`,
+          role: 'relation',
+          word: filtersPattern[0],
+          bindings: { declarations },
+          dependencies: [
+            catalogDependency(catalog),
+            entityDependencyFor(subject, options.entityVersion, declarations),
+          ],
+          provenance: genericProvenance(provenanceRef),
+        });
+      }
+      parts.push(repeat);
+      if (pageLinksPattern !== undefined) {
+        const links: Extract<SurfaceBinding, { kind: 'links' }> = { kind: 'links', subject };
+        parts.push({
+          kind: 'word',
+          id: `word-${repeatIndex}-page-links`,
+          role: 'relation',
+          word: pageLinksPattern[0],
+          bindings: { links },
+          dependencies: [
+            catalogDependency(catalog),
+            entityDependencyFor(subject, options.entityVersion, links),
+          ],
+          provenance: genericProvenance(provenanceRef),
+        });
+      }
+      relationChild = {
+        kind: 'layout',
+        id: `relation-${repeatIndex}`,
+        role: 'relation',
+        layout: 'stack',
+        children: parts,
+        dependencies: normalizedDependencies(parts.flatMap((child) => child.dependencies)),
+        provenance: genericProvenance(provenanceRef),
+      };
+    }
+    children.push(genericSlot(repeatIndex, 'relation', relationChild));
   }
 
   const root: SurfaceLayoutNode = {
