@@ -21,10 +21,20 @@ function fixtureSitemap(): AppWorkspaceSitemapView {
       { rel: 'flow:comment-moderation', title: '评论审核', app: 'community' },
       { rel: 'flow:todo-capture', title: '待办捕捉', app: 'todo' },
       { rel: 'flow:todo-item', title: '待办状态', app: 'todo' },
-      { rel: 'articles', title: 'articles', collection: true, app: 'publishing' },
-      { rel: 'todos', title: 'todos', collection: true, app: 'todo' },
-      { rel: 'comments', title: '评论', collection: true, app: 'default' },
+      { rel: 'articles', title: 'articles', collection: true, pageable: true, app: 'publishing' },
+      { rel: 'todos', title: 'todos', collection: true, pageable: true, app: 'todo' },
+      { rel: 'comments', title: '评论', collection: true, pageable: true, app: 'default' },
       { rel: 'inbox', title: '确认收件箱', collection: true, scope: 'principal' },
+      {
+        rel: 'software-changes',
+        title: 'software-changes',
+        collection: true,
+        pageable: true,
+        app: 'development',
+      },
+      // 路由特判读模型:collection 在案但合同分页判定不可达 → 不进组合
+      { rel: 'agent-runs', title: 'Agent Runs', collection: true, app: 'development' },
+      { rel: 'flow:software-change', title: '软件变更实施', app: 'development' },
     ],
     applications: [
       {
@@ -43,6 +53,13 @@ function fixtureSitemap(): AppWorkspaceSitemapView {
         intent: '评论的审核与治理',
         entry: 'comments',
         flows: [{ name: 'comment-moderation', app: 'community' }],
+      },
+      {
+        name: 'development',
+        title: '软件实施',
+        intent: '软件变更的实施与验证',
+        entry: 'flow:software-change',
+        flows: [{ name: 'software-change', app: 'development' }],
       },
       {
         name: 'todo',
@@ -88,6 +105,17 @@ describe('app workspace composition derivation(sitemap 运行时推导,零 per-a
     expect(community!.regions[0]!.density).toBe('table');
   });
 
+  it('路由特判读模型面(collection 无 pageable)不进组合——development 无「区域暂不可用」', () => {
+    // agent-runs 是 /api/entity 路由特判读模型(service 投影不可达):组合机器
+    // 呈现不了它,排除而非渲染整块「区域暂不可用」(T38 横扫实测缺陷)。
+    const declaration = deriveAppWorkspaceComposition('development', fixtureSitemap());
+    expect(declaration).toBeDefined();
+    const sources = declaration!.regions.map((region) => region.source);
+    expect(sources).toContain('software-changes');
+    expect(sources).toContain('flow:software-change');
+    expect(sources).not.toContain('agent-runs');
+  });
+
   it('community:entry 指向跨 app 归属的集合面时,经 entry 兑现唯一 collection region(U4)', () => {
     const declaration = deriveAppWorkspaceComposition('community', fixtureSitemap());
     expect(declaration).toBeDefined();
@@ -107,7 +135,7 @@ describe('app workspace composition derivation(sitemap 运行时推导,零 per-a
   it('同一函数吃任意合成数据仍同构:entry 缺省回退首个 flow 面,region id 经消毒仍合法', () => {
     const declaration = deriveAppWorkspaceComposition('alpha', {
       surfaces: [
-        { rel: 'widgets.x', title: 'widgets', collection: true, app: 'alpha' },
+        { rel: 'widgets.x', title: 'widgets', collection: true, pageable: true, app: 'alpha' },
         { rel: 'meta/flows', title: '异形向导', app: 'alpha' },
       ],
       applications: [{ name: 'alpha', title: 'Alpha', intent: '合成应用' }],

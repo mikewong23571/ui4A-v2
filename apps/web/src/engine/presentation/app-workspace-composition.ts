@@ -23,6 +23,8 @@ export interface AppWorkspaceSurfaceView {
   rel: string;
   title?: string;
   collection?: boolean;
+  /** T38:与合同分页判定同源(isMemberCollectionRel);false/缺省 = 组合机器不可呈现的读模型面。 */
+  pageable?: boolean;
   app?: string;
   scope?: 'application' | 'principal';
 }
@@ -76,9 +78,15 @@ export function deriveAppWorkspaceComposition(
   const application = (sitemap.applications ?? []).find((entry) => entry.name === scope);
   const title = application?.title ?? scope;
   const surfaces = sitemap.surfaces ?? [];
+  // 产物集合区域只收「组合机器可呈现」的集合面:成员集合(合同分页判定同源,
+  // sitemap pageable)——路由特判读模型(如 agent-runs,service 投影不可达)
+  // 不进组合,避免整块「区域暂不可用」上屏(T38 Phase C 横扫实测)。
   const appSurfaces = surfaces.filter(
     (surface) =>
-      surface.app === scope && surface.collection === true && surface.scope !== 'principal',
+      surface.app === scope &&
+      surface.collection === true &&
+      surface.pageable === true &&
+      surface.scope !== 'principal',
   );
   const surfaceOf = (rel: string): AppWorkspaceSurfaceView | undefined =>
     surfaces.find((surface) => surface.rel === rel);
