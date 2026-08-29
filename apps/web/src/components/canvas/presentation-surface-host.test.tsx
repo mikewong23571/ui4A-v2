@@ -679,3 +679,204 @@ describe('canvas 载入失败呈现(T32 Q5:首屏零机制标识,细节进 why �
     expect(diagnostics.textContent ?? '').toContain(`Sidecar ${sidecarId} → HTTP 404`);
   });
 });
+
+describe('T38 Phase C:集合区域初始读(hydrate 携带声明读面参数)', () => {
+  const member: SirenEntity = {
+    class: ['post'],
+    properties: { rel: 'post:p1', identity: '第一篇', fields: { title: '第一篇' } },
+    actions: [],
+    links: [],
+  };
+
+  function articlesPageAt(offset: number): SirenEntity {
+    return {
+      class: ['collection', 'articles'],
+      properties: {
+        rel: 'articles',
+        count: 27,
+        offset,
+        presentation: {
+          fields: [
+            { path: 'properties.fields.title', title: '标题', role: 'identity', overview: true },
+            { path: 'properties.fields.category', title: '分类', role: 'metadata', overview: true },
+          ],
+        },
+      },
+      actions: [],
+      links: [
+        { rel: ['self'], href: `/api/entity?rel=articles&offset=${offset}` },
+        ...(offset + 20 < 27
+          ? [{ rel: ['next'], href: `/api/entity?rel=articles&offset=${offset + 20}` }]
+          : []),
+        ...(offset > 0
+          ? [{ rel: ['prev'], href: `/api/entity?rel=articles&offset=${offset - 20}` }]
+          : []),
+      ],
+      entities: [member],
+    };
+  }
+
+  function sidecarFixture(input: {
+    subject: string;
+    surface: ReturnType<typeof planGenericPresentationSurface>['surface'];
+    dependencies: string[];
+    entities: Record<string, SirenEntity>;
+    surfaces?: unknown[];
+    scope?: string;
+  }): ReturnType<typeof vi.fn> {
+    const scopeQuery = input.scope === undefined ? '' : `?scope=${encodeURIComponent(input.scope)}`;
+    return vi.fn((request: RequestInfo | URL) => {
+      const url = String(request);
+      if (url === '/api/render/catalog') {
+        return Promise.resolve(jsonResponse(200, renderCatalogJson()));
+      }
+      if (url.startsWith('/.well-known/ui4a.json')) {
+        return Promise.resolve(
+          jsonResponse(200, { version: 'definition-v1', surfaces: input.surfaces ?? [] }),
+        );
+      }
+      if (url === `/api/presentation${scopeQuery}`) {
+        return Promise.resolve(jsonResponse(200, { sidecar: { id: 'sidecar:cq' } }));
+      }
+      if (url.startsWith('/api/presentation/sidecar?')) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            sidecar: {
+              id: 'sidecar:cq',
+              version: 1,
+              retention: 'cache',
+              key: { subject: input.subject },
+              surface: input.surface,
+              dependencies: input.dependencies.map((ref) => ({ kind: 'entity-contract', ref })),
+              view: { collapsedNodeIds: [], densityByNodeId: {} },
+            },
+          }),
+        );
+      }
+      if (url.startsWith('/api/entity?rel=')) {
+        const rel = new URL(url, 'http://ui4a.test').searchParams.get('rel');
+        if (rel === 'render-specs') return Promise.resolve(jsonResponse(200, EMPTY_SPECS));
+        const entity = input.entities[rel ?? ''];
+        return entity === undefined
+          ? Promise.resolve(jsonResponse(404, { error: 'not found' }))
+          : Promise.resolve(jsonResponse(200, entity));
+      }
+      return Promise.resolve(jsonResponse(404, { error: `unknown ${url}` }));
+    });
+  }
+
+  function articlesFetches(fetchMock: ReturnType<typeof vi.fn>, prefix: string): string[] {
+    return fetchMock.mock.calls
+      .map(([request]) => String(request))
+      .filter((url) => url.startsWith(prefix));
+  }
+
+  it('集合区域初始取数携带 offset=0(服务端定页大小),声明 next 链接渲染分页脚', async () => {
+    const page = articlesPageAt(0);
+    const surface = planGenericPresentationSurface(
+      'articles',
+      page,
+      'definition-v1',
+      'read',
+    ).surface;
+    const fetchMock = sidecarFixture({
+      subject: 'articles',
+      surface,
+      dependencies: ['articles'],
+      entities: { articles: page },
+      surfaces: [{ rel: 'articles', title: '文章', collection: true, app: 'publishing' }],
+      scope: 'publishing',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    window.history.pushState({}, '', '/canvas?focus=articles&scope=publishing');
+    render(
+      <EntityCacheProvider scope="publishing">
+        <CanvasBody />
+      </EntityCacheProvider>,
+    );
+
+    // 分页脚来自合同声明的 next 链接(集合区域拿到的是第一页,而非全量)。
+    expect(await screen.findByRole('button', { name: '下一页' })).toBeTruthy();
+    const fetches = articlesFetches(fetchMock, '/api/entity?rel=articles');
+    expect(fetches.length).toBeGreaterThan(0);
+    for (const url of fetches) {
+      expect(url).toBe('/api/entity?rel=articles&offset=0&scope=publishing');
+    }
+  });
+
+  it('URL 读面参数优先于初始游标(分享/回放以 URL 为准)', async () => {
+    const page = articlesPageAt(20);
+    const surface = planGenericPresentationSurface(
+      'articles',
+      page,
+      'definition-v1',
+      'read',
+    ).surface;
+    const fetchMock = sidecarFixture({
+      subject: 'articles',
+      surface,
+      dependencies: ['articles'],
+      entities: { articles: page },
+      surfaces: [{ rel: 'articles', title: '文章', collection: true }],
+      scope: 'publishing',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    window.history.pushState(
+      {},
+      '',
+      '/canvas?focus=articles&offset=20&filter.status=pending&scope=publishing',
+    );
+    render(
+      <EntityCacheProvider scope="publishing">
+        <CanvasBody />
+      </EntityCacheProvider>,
+    );
+
+    expect(await screen.findByRole('button', { name: '上一页' })).toBeTruthy();
+    const fetches = articlesFetches(fetchMock, '/api/entity?rel=articles');
+    expect(fetches.length).toBeGreaterThan(0);
+    for (const url of fetches) {
+      expect(url).toBe('/api/entity?rel=articles&offset=20&filter.status=pending&scope=publishing');
+    }
+  });
+
+  it('非成员集合的平台视图(repeat 区域但 sitemap 未声明 collection)零参数(我的事不破)', async () => {
+    const inboxView: SirenEntity = {
+      class: ['collection', 'inbox'],
+      properties: { rel: 'inbox', count: 1 },
+      actions: [],
+      links: [{ rel: ['self'], href: '/api/entity?rel=inbox' }],
+      entities: [member],
+    };
+    const surface = planGenericPresentationSurface(
+      'inbox',
+      inboxView,
+      'definition-v1',
+      'read',
+    ).surface;
+    const fetchMock = sidecarFixture({
+      subject: 'workspace:my-work',
+      surface,
+      dependencies: ['inbox'],
+      entities: { inbox: inboxView },
+      surfaces: [],
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    window.history.pushState({}, '', '/canvas?focus=workspace%3Amy-work');
+    render(
+      <EntityCacheProvider>
+        <CanvasBody />
+      </EntityCacheProvider>,
+    );
+
+    expect(await screen.findByRole('button', { name: '为什么这样展示' })).toBeTruthy();
+    const fetches = articlesFetches(fetchMock, '/api/entity?rel=inbox');
+    expect(fetches.length).toBeGreaterThan(0);
+    for (const url of fetches) {
+      expect(url).toBe('/api/entity?rel=inbox');
+    }
+  });
+});

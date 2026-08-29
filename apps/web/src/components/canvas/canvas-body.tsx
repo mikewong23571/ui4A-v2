@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 
 import { ApplicationEntryStrip } from '@/components/application-entry-strip';
 
-import { canonicalReadQueryOf } from './collection-query';
+import { canonicalReadQueryOf } from '@/render/canvas/collection-query';
 import { PresentationSurfaceHost } from './presentation-surface-host';
 import { ThreadDesk } from './thread-desk';
 import { ThreadStageActions } from './thread-stage-actions';

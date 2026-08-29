@@ -11,7 +11,7 @@ import {
   canvasCollectionQueryHref,
   collectionQueryFromContractHref,
   collectionQueryNavigation,
-} from '../../components/canvas/collection-query';
+} from '../canvas/collection-query';
 
 import { asOptionalFilterDeclarations, asOptionalLinks, type WordProps } from './shared';
 

@@ -25,6 +25,7 @@ import {
   hydratePresentationSurface,
   planGenericPresentationSurface,
 } from '@/render/presentation/generic';
+import { collectionReadQueryResolver } from '@/render/canvas/collection-query';
 import { createCanvasActionHandler } from './canvas-action-handler';
 import type { PresentationDiagnostic } from './canvas-why-drawer';
 import { createSurfaceActionSubmit } from '../actions/action-submit';
@@ -36,7 +37,7 @@ import {
   SURFACE_LOAD_FAILED_PHRASE,
   SidecarLoadFailure,
 } from './presentation-sidecar-failure';
-import { frozenSpecsOf } from './presentation-surface-helpers';
+import { frozenSpecsOf, withAbort } from './presentation-surface-helpers';
 import { notifyThreadUpdated } from './thread-desk-shared';
 
 /** 渲染中的 surface 条目(surface 模型进 state:渲染只读 state,不读 ref)。 */
@@ -83,16 +84,6 @@ const CANVAS_LOAD_TIMEOUT_MS = 15_000;
 // T33/D51 denied/unknown 分流的短语、错误类型与解析单点在
 // ./presentation-sidecar-failure(B4),本 hook 只消费。
 const CANVAS_LOAD_FAILED_PHRASE = '画布内容暂时无法载入，请稍后重试';
-
-/** 把不支持 signal 的缓存/规划 Promise 纳入本轮取消域，旧轮结果不得落 state。 */
-async function withAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-  if (signal.aborted) throw signal.reason;
-  return await new Promise<T>((resolve, reject) => {
-    const abort = (): void => reject(signal.reason);
-    signal.addEventListener('abort', abort, { once: true });
-    promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
-  });
-}
 
 /** 载入编排:一次 load 完成目录/spec/sidecar 前置协商到 surfaces 落 state 的全过程。 */
 export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParameters) {
@@ -204,7 +195,10 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
       if (!sitemapResponse.ok) {
         throw new Error(`GET /.well-known/ui4a.json → HTTP ${sitemapResponse.status}`);
       }
-      const sitemap = (await sitemapResponse.json()) as { version?: unknown };
+      const sitemap = (await sitemapResponse.json()) as {
+        version?: unknown;
+        surfaces?: unknown;
+      };
       if (typeof sitemap.version !== 'string' || sitemap.version === '') {
         throw new Error('sitemap 响应缺 version');
       }
@@ -404,9 +398,18 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
         const requestedFocus = requestedFocuses[0]!;
         try {
           const hydrationRels = sidecarHydrationRels;
+          // T38 Phase C:集合区域初始读携带声明读面参数(repeat 来源 ∧ sitemap
+          // collection 面 → offset=0,服务端定页大小;URL 参数只作用于注视集合
+          // 且优先;实体区域与平台视图零参数)。
+          const readQueryOf = collectionReadQueryResolver({
+            focus: requestedFocus,
+            surface: sidecarSurface,
+            sitemapSurfaces: sitemap.surfaces,
+            urlQuery: collectionQueryParam,
+          });
           const roots: SirenEntity[] = [];
           for (const rel of hydrationRels) {
-            const entity = await withAbort(cache.get(rel), controller.signal);
+            const entity = await withAbort(cache.get(rel, readQueryOf(rel)), controller.signal);
             if (entity === null) throw new Error(`实体 "${rel}" 不存在`);
             roots.push(entity);
           }
@@ -449,11 +452,16 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
           noteFailure(`presentation:${requestedFocus}`, error);
         }
       } else {
+        // T38:读面参数只跟单 focus 视图(roots 多根视图是上一代机械,不混用);
+        // generic 兜底按 sitemap collection 声明给集合 focus 初始游标 offset=0。
+        const readQueryOf = collectionReadQueryResolver({
+          focus: requestedFocuses[0],
+          sitemapSurfaces: sitemap.surfaces,
+          urlQuery: collectionQueryParam,
+        });
         for (const requestedFocus of requestedFocuses) {
           try {
-            // T38:读面参数只跟单 focus 视图的 generic 面(roots 多根视图是
-            // 上一代机械,不混用);缓存键含参数,翻页/过滤不命中陈旧全量。
-            const readQuery = rootsParam === undefined ? collectionQueryParam : undefined;
+            const readQuery = rootsParam === undefined ? readQueryOf(requestedFocus) : undefined;
             const entity = await withAbort(cache.get(requestedFocus, readQuery), controller.signal);
             if (entity === null) throw new Error(`实体 "${requestedFocus}" 不存在`);
             // 主 focus(首项)的原始合同文本:load 已取得的实体直接序列化,

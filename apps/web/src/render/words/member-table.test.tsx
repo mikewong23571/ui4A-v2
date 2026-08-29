@@ -149,7 +149,7 @@ describe('member-table 词条', () => {
       { path: 'properties.fields.category', title: '分类', role: 'metadata', overview: true },
     ];
 
-    it('声明 overview 的字段按声明序进概览行,title 为列语义;发明词位(状态/详情)退场', () => {
+    it('概览列按声明序进概览行(identity 角色跳过),状态列保留(US2 过滤语义锚)', () => {
       renderRow({
         label: '第一篇',
         rel: 'post:p1',
@@ -160,25 +160,51 @@ describe('member-table 词条', () => {
         presentations,
       });
 
-      // 主体 + 3 概览列 + 操作;状态/详情列被声明概览取代(诚实按声明)。
+      // 主体 + 状态 + 2 概览列(title 为 identity 角色,主体列已有,跳过)+ 操作。
       expect(screen.getAllByRole('cell')).toHaveLength(5);
-      expect(screen.getByText('正文内容')).toBeTruthy();
-      expect(screen.getByText('随笔')).toBeTruthy();
-      expect(screen.queryByText('published')).toBeNull();
+      // 状态列保留:US2 过滤的语义锚,不被概览声明挤掉。
+      expect(screen.getByText('published')).toBeTruthy();
+      // 详情位被声明概览取代(诚实按声明)。
       expect(screen.queryByText('resume 文本')).toBeNull();
+      // identity 字段不重复成概览列:主体列(链接+rel)已有,值只出现一次。
+      expect(screen.getAllByText('第一篇')).toHaveLength(1);
       // 列语义来自声明数据(零渲染器发明文案)。
       const bodyCell = screen.getByText('正文内容').closest('td');
       expect(bodyCell?.getAttribute('data-column')).toBe('properties.fields.body');
       expect(bodyCell?.getAttribute('title')).toBe('正文');
-      // 声明序即列序:title → body → category。
+      // 声明序即列序(identity 跳过):body → category。
       const columns = [...screen.getAllByRole('cell')]
         .map((cell) => cell.getAttribute('data-column'))
         .filter((value) => value !== null && value.startsWith('properties.fields.'));
-      expect(columns).toEqual([
-        'properties.fields.title',
-        'properties.fields.body',
-        'properties.fields.category',
-      ]);
+      expect(columns).toEqual(['properties.fields.body', 'properties.fields.category']);
+    });
+
+    it('status 角色的声明字段跳过概览列(状态列即其语义,零重复)', () => {
+      renderRow({
+        label: '第三篇',
+        rel: 'post:p3',
+        status: 'published',
+        actions: [],
+        fields: { state: 'published', body: '正文内容' },
+        presentations: [
+          { path: 'properties.fields.state', title: '状态', role: 'status', overview: true },
+          {
+            path: 'properties.fields.body',
+            title: '正文',
+            role: 'primary-content',
+            overview: true,
+          },
+        ],
+      });
+
+      const cells = screen.getAllByRole('cell');
+      // 主体 + 状态 + 正文概览 + 操作;状态声明字段不另成列。
+      expect(cells).toHaveLength(4);
+      expect(cells[1]!.textContent).toBe('published');
+      expect(screen.getByText('正文内容')).toBeTruthy();
+      expect(
+        [...cells].filter((cell) => cell.getAttribute('data-column') === 'properties.fields.state'),
+      ).toHaveLength(0);
     });
 
     it('成员缺声明字段 → 诚实空单元格,不发明占位事实', () => {
@@ -192,6 +218,7 @@ describe('member-table 词条', () => {
 
       const cells = screen.getAllByRole('cell');
       expect(cells).toHaveLength(5);
+      expect(cells[1]!.textContent).toBe('');
       const bodyCell = cells[2]!;
       expect(bodyCell.getAttribute('data-column')).toBe('properties.fields.body');
       expect(bodyCell.textContent).toBe('');
@@ -200,7 +227,7 @@ describe('member-table 词条', () => {
       expect(categoryCell.textContent).toBe('');
     });
 
-    it('无 overview 声明(含 presentations 缺省)→ 回退现状四列(身份/状态/详情/操作)', () => {
+    it('无有效概览列(含 presentations 缺省)→ 回退现状四列(身份/状态/详情/操作)', () => {
       renderRow({
         label: '裸成员',
         rel: 'record:x',

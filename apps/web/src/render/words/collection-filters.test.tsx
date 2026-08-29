@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenLink } from '@ui4a/engine';
 
-import { collectionQueryNavigation } from '../../components/canvas/collection-query';
+import { collectionQueryNavigation } from '../canvas/collection-query';
 import { CollectionFiltersWord } from './collection-filters';
 
 afterEach(() => {

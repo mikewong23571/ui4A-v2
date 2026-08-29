@@ -1,17 +1,24 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { SurfaceTree } from '@ui4a/engine';
 
 import {
+  INITIAL_COLLECTION_READ_QUERY,
   canvasCollectionQueryHref,
   canonicalReadQueryOf,
   collectionQueryFromContractHref,
   collectionQueryFromSearchParams,
-  collectionQueryString,
   collectionQueryNavigation,
+  collectionQueryString,
+  collectionReadQueryResolver,
+  collectionRepeatSubjects,
+  pageableCollectionRelsOf,
 } from './collection-query';
 
 // 集合读面查询的画布侧机械(T38 FR5):画布 URL 与合同读面参数同形
 // (offset + filter.<dimension>),focus 导航携参、scope/thread 保留;
 // 过滤/翻页是读面导航,零 exec、零页码推算、零页尺寸常量。
+// Phase C:集合区域初始读游标 offset=0 也声明驱动(repeat 来源 ∧ sitemap
+// collection 面),URL 读面参数只作用于注视集合且优先。
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -126,5 +133,138 @@ describe('collectionQueryNavigation(可注入导航面)', () => {
     } finally {
       collectionQueryNavigation.assign = original;
     }
+  });
+});
+
+function repeatSurface(subject: string): SurfaceTree {
+  return {
+    schemaVersion: 1,
+    root: {
+      kind: 'slot',
+      id: 'relation',
+      role: 'relation',
+      name: 'relation',
+      dependencies: [],
+      provenance: [],
+      child: {
+        kind: 'repeat',
+        id: 'repeat-0',
+        role: 'relation',
+        source: { kind: 'entities', subject },
+        dependencies: [],
+        provenance: [],
+        item: {
+          kind: 'word',
+          id: 'member',
+          role: 'identity',
+          word: 'member-card',
+          bindings: { label: { kind: 'item', path: 'properties.identity' } },
+          dependencies: [],
+          provenance: [],
+        },
+      },
+    },
+  };
+}
+
+describe('collectionRepeatSubjects(计划面的 collection 形态区域,声明数据)', () => {
+  it('repeat 的 entities 来源 subject 入集;纯词节点树不入', () => {
+    const surface = repeatSurface('articles');
+    expect([...collectionRepeatSubjects(surface)]).toEqual(['articles']);
+    const wordOnly: SurfaceTree = {
+      schemaVersion: 1,
+      root: {
+        kind: 'word',
+        id: 'w',
+        role: 'identity',
+        word: 'prose',
+        bindings: {
+          value: { kind: 'property', subject: 'articles', path: 'properties.title' },
+        },
+        dependencies: [],
+        provenance: [],
+      },
+    };
+    expect(collectionRepeatSubjects(wordOnly).size).toBe(0);
+  });
+});
+
+describe('pageableCollectionRelsOf(sitemap collection 面 = 合同可分页集合)', () => {
+  it('collection:true 的 rel 入集;缺标记/非法 rel/非数组诚实跳过', () => {
+    expect(
+      pageableCollectionRelsOf([
+        { rel: 'articles', title: '文章', collection: true },
+        { rel: 'flow:article-drafting', title: '向导' },
+        { rel: 'inbox', title: '在等我', collection: false },
+        { collection: true },
+        { rel: '', collection: true },
+        'junk',
+      ]),
+    ).toEqual(new Set(['articles']));
+    expect(pageableCollectionRelsOf(undefined)).toEqual(new Set());
+  });
+});
+
+describe('collectionReadQueryResolver(集合区域初始读游标,声明驱动零特判)', () => {
+  const surfaces = [{ rel: 'articles', collection: true }];
+
+  it('集合形态区域(repeat 来源)∧ 声明可分页 → 初始读 offset=0(服务端定页大小)', () => {
+    const readQueryOf = collectionReadQueryResolver({
+      surface: repeatSurface('articles'),
+      sitemapSurfaces: surfaces,
+    });
+    expect(readQueryOf('articles')).toBe(INITIAL_COLLECTION_READ_QUERY);
+    expect(INITIAL_COLLECTION_READ_QUERY).toBe('offset=0');
+  });
+
+  it('非成员集合的平台视图(repeat 但 sitemap 未声明 collection)→ 零参数(我的事不破)', () => {
+    const readQueryOf = collectionReadQueryResolver({
+      surface: repeatSurface('inbox'),
+      sitemapSurfaces: surfaces,
+    });
+    expect(readQueryOf('inbox')).toBeUndefined();
+  });
+
+  it('实体形态区域(flow 向导,非 repeat)→ 零参数(shape:entity 不受影响)', () => {
+    const readQueryOf = collectionReadQueryResolver({
+      surface: repeatSurface('articles'),
+      sitemapSurfaces: surfaces,
+    });
+    expect(readQueryOf('flow:article-drafting')).toBeUndefined();
+  });
+
+  it('URL 读面参数只作用于注视集合且优先(分享/回放以 URL 为准)', () => {
+    const twoRegions: SurfaceTree = {
+      schemaVersion: 1,
+      root: {
+        kind: 'layout',
+        id: 'root',
+        role: 'relation',
+        layout: 'stack',
+        dependencies: [],
+        provenance: [],
+        children: [repeatSurface('articles').root, repeatSurface('comments').root],
+      },
+    };
+    const readQueryOf = collectionReadQueryResolver({
+      focus: 'articles',
+      surface: twoRegions,
+      sitemapSurfaces: [
+        { rel: 'articles', collection: true },
+        { rel: 'comments', collection: true },
+      ],
+      urlQuery: 'offset=20&filter.status=pending',
+    });
+    expect(readQueryOf('articles')).toBe('offset=20&filter.status=pending');
+    // 非注视集合区域仍走初始游标。
+    expect(readQueryOf('comments')).toBe(INITIAL_COLLECTION_READ_QUERY);
+  });
+
+  it('无计划面(generic 兜底)→ 只按 sitemap 声明判定初始游标', () => {
+    const readQueryOf = collectionReadQueryResolver({
+      sitemapSurfaces: surfaces,
+    });
+    expect(readQueryOf('articles')).toBe(INITIAL_COLLECTION_READ_QUERY);
+    expect(readQueryOf('inbox')).toBeUndefined();
   });
 });
