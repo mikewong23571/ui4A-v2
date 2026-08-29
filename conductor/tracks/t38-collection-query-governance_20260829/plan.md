@@ -8,37 +8,37 @@
 
 ## Phase A:合同层——分页投影、过滤声明、显示 hint 贯通
 
-- [~] Task A1: Red——投影/service 测试:集合实体可选分页参数切片成员嵌入
+- [x] Task A1: Red——投影/service 测试:集合实体可选分页参数切片成员嵌入
   (页大小 = 投影策略,服务端驱动);不带参数响应与现状逐字节一致(既有
   全量测试锚定);非法参数结构化拒绝;分页响应 links 声明 next/prev(无更多
   页诚实缺链;链接携带过滤参数)。
-- [~] Task A2: Red——过滤声明与投影:可过滤维度与值域住定义平面数据
+- [x] Task A2: Red——过滤声明与投影:可过滤维度与值域住定义平面数据
   (bundle 显式声明或流拓扑推导;service 层零「集合名 → 值域」特判映射);
   过滤参数生效(值域外结构化拒绝);过滤 + 分页组合;行级授权投影逐行
   不变(D51 回归断言)。
-- [~] Task A3: Red——显示 hint 贯通:应用定义声明概览字段/标题/顺序(优先
+- [x] Task A3: Red——显示 hint 贯通:应用定义声明概览字段/标题/顺序(优先
   复用既有 presentation.fields 角色体系扩展);实体投影携带 hint;引用未
   声明字段按投影校验处理并留诊断;agent 经同一投影可读 hint(双门)。
-- [~] Task A4: Green——实现定义→投影→成员携带链路(web engine service +
+- [x] Task A4: Green——实现定义→投影→成员携带链路(web engine service +
   packages/db 读取边界;bundle 声明扩展;零新事件类型);全部测试转绿。
-- [~] Task A5: 合同探针 + 门禁:curl 断言无参数全量/带参分页/过滤/组合/
+- [x] Task A5: 合同探针 + 门禁:curl 断言无参数全量/带参分页/过滤/组合/
   非法拒绝/hint 携带六类形状;`pnpm check` + `pnpm governance` 全绿;
   commit + git notes。
-- [ ] Task A6: Phase A Checkpoint(复跑、留证、checkpoint sha)。
+- [x] Task A6: Phase A Checkpoint(复跑、留证、checkpoint sha)。[checkpoint: d5921025]
 
 ## Phase B:呈现层——概览列、分页脚、过滤控件
 
-- [ ] Task B1: Red——member-table 组件测试:概览列按 hint 渲染(标题/顺序/
+- [~] Task B1: Red——member-table 组件测试:概览列按 hint 渲染(标题/顺序/
   缺 hint 回退现状);仅当声明分页链接时渲染分页脚(只跟随声明 next/prev,
   零页码推算/零页大小常量);仅声明维度渲染过滤控件(标签来自声明标题,
   值变更触发携带参数取数;永不 exec);URL query 同步(可分享回放)且
   scope 保留;单页/无维度诚实空态。
-- [ ] Task B2: Green——member-table 概览列与分页脚/过滤控件实现(通用,
+- [~] Task B2: Green——member-table 概览列与分页脚/过滤控件实现(通用,
   零 per-app);member-card 的 detail 位按 hint 升级(无 hint 原样);既有
   词条/组合测试零回归;commit + git notes。
-- [ ] Task B3: 组合面贯通:canvas 取数链路携带分页/过滤参数(声明驱动);
+- [~] Task B3: 组合面贯通:canvas 取数链路携带分页/过滤参数(声明驱动);
   组件与集成测试绿。
-- [ ] Task B4: Phase B Checkpoint(含 §六四滑梯自查;单测 + governance 绿)。
+- [~] Task B4: Phase B Checkpoint(含 §六四滑梯自查;单测 + governance 绿)。
 
 ## Phase C:用户故事视觉闭环(全应用横扫;浏览器实操审核)
 
