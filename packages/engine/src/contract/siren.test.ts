@@ -492,3 +492,72 @@ describe('project — inbox 集合(spec 架构决定 5)', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// 实体显示 hint(T38 FR4):字段声明 presentation.overview → 经 fieldPresentations
+// 携带到实例/成员投影(人机同门);hint 住在字段声明上,「引用未声明字段」
+// 结构上不可表达;声明序即概览列序。
+// ---------------------------------------------------------------------------
+
+describe('project — 实体显示 hint(概览列,T38 FR4)', () => {
+  const hintedPostFlow = {
+    ...postStatusFlow,
+    fields: [
+      {
+        name: 'title',
+        type: 'text' as const,
+        title: '文章标题',
+        presentation: { role: 'identity' as const, overview: true },
+      },
+      {
+        name: 'body',
+        type: 'textarea' as const,
+        title: '正文',
+        presentation: { role: 'primary-content' as const, overview: true },
+      },
+      {
+        name: 'category',
+        type: 'select' as const,
+        title: '分类',
+        options: ['tech', 'essay'],
+        presentation: { role: 'metadata' as const },
+      },
+    ],
+  };
+  const hintedDeps = {
+    flows: flowRegistry(hintedPostFlow),
+    guards: seedGuardRegistry,
+  };
+
+  it('hint 经 fieldPresentations 携带(overview:true),未声明字段零新键', () => {
+    const entity = project(seedSnapshot, 'post:post-welcome', hintedDeps);
+    expect(entity?.properties.presentation).toEqual({
+      fields: [
+        { path: 'properties.fields.title', title: '文章标题', role: 'identity', overview: true },
+        { path: 'properties.fields.body', title: '正文', role: 'primary-content', overview: true },
+        { path: 'properties.fields.category', title: '分类', role: 'metadata' },
+      ],
+    });
+  });
+
+  it('集合成员(带参读法)携带同一 hint(双门同源,agent 与界面同读)', () => {
+    const entity = project(seedSnapshot, 'articles', hintedDeps, { offset: 0, filter: [] });
+    const first = entity?.entities?.[0];
+    expect(first?.properties.presentation).toMatchObject({
+      fields: expect.arrayContaining([
+        expect.objectContaining({ path: 'properties.fields.title', overview: true }),
+      ]),
+    });
+    // 详情面全量不变:字段值与动作不受 hint 影响(hint 只是呈现元数据)。
+    expect(first?.properties.fields).toEqual({ title: 'Welcome to UI4A', category: 'tech' });
+    expect(first?.actions.map((action) => action.name)).toEqual(['unpublish', 'archive']);
+  });
+
+  it('无 hint 的定义零新键(诚实回退现状)', () => {
+    const entity = project(seedSnapshot, 'post:post-welcome', deps);
+    for (const field of (entity?.properties.presentation as { fields: Record<string, unknown>[] })
+      .fields) {
+      expect(field).not.toHaveProperty('overview');
+    }
+  });
+});

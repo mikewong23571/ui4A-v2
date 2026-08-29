@@ -86,7 +86,8 @@ export function guardBlockReason(failed: readonly { name: string }[]): string {
   return hints.length > 0 ? `${hints.join(';')}(${machine})` : machine;
 }
 
-/** 实例字段的 presentation 视图(声明优先,未声明按名字回退角色)。 */
+/** 实例字段的 presentation 视图(声明优先,未声明按名字回退角色;
+ *  概览显示 hint(T38 FR4)overview 标志与声明序原样携带)。 */
 export function fieldPresentationsOf(
   fieldDefinitions: readonly FieldDefinition[],
   fields: Record<string, unknown>,
@@ -102,6 +103,9 @@ export function fieldPresentationsOf(
       path: `properties.fields.${name}`,
       title: field?.title ?? name,
       role: field?.presentation?.role ?? fallbackPresentationRole(name),
+      // 概览显示 hint(T38 FR4):声明 overview 的字段进入成员集合概览行
+      // (声明序即列序);hint 住在字段声明上,引用未声明字段结构上不可表达。
+      ...(field?.presentation?.overview === true ? { overview: true } : {}),
       ...(field?.contentMediaType === undefined
         ? {}
         : { contentMediaType: field.contentMediaType }),

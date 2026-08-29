@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "ui4a-walkthrough",
-    "version": 6
+    "version": 7
   },
   "applications": [
     {
@@ -402,20 +402,20 @@
           "name": "title",
           "type": "text",
           "title": "文章标题",
-          "presentation": { "role": "identity" }
+          "presentation": { "role": "identity", "overview": true }
         },
         {
           "name": "body",
           "type": "textarea",
           "title": "正文",
-          "presentation": { "role": "primary-content" }
+          "presentation": { "role": "primary-content", "overview": true }
         },
         {
           "name": "category",
           "type": "select",
           "options": ["tech", "essay", "review"],
           "title": "分类",
-          "presentation": { "role": "metadata" }
+          "presentation": { "role": "metadata", "overview": true }
         }
       ],
       "nodes": [

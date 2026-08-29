@@ -6,19 +6,13 @@
  * app 缺省 → 'default'(T10 架构决定 2))。
  * T4 的 meta 平台激活不变式(edge-targets-exist 等)在本层之上叠加。
  */
-import { KNOWN_EFFECT_TYPES, KNOWN_FIELD_TYPES } from '@ui4a/shared';
+import { KNOWN_EFFECT_TYPES } from '@ui4a/shared';
 import type { ApplicationDefinition, CapabilityDefinition } from '@ui4a/shared';
 
-import type {
-  ActionDefinition,
-  EffectDefinition,
-  FieldDefinition,
-  FieldType,
-  FlowDefinition,
-  NodeDefinition,
-} from './types';
+import type { ActionDefinition, EffectDefinition, FlowDefinition, NodeDefinition } from './types';
 
 import { collectionSemanticIssues, collectionStructuralIssues } from './parse-collections';
+import { validateFields } from './parse-fields';
 
 /** 校验问题(结构化,供激活 guard 与日志留痕)。 */
 export interface FlowIssue {
@@ -26,18 +20,8 @@ export interface FlowIssue {
   message: string;
 }
 
-/** 已知字段类型注册表(将来由 meta/registries 扩展)。 */
-const FIELD_TYPES: ReadonlySet<FieldType> = KNOWN_FIELD_TYPES;
-
+/** 已知效果类型注册表(将来由 meta/registries 扩展)。 */
 const EFFECT_TYPES: ReadonlySet<string> = KNOWN_EFFECT_TYPES;
-
-const FIELD_PRESENTATION_ROLES: ReadonlySet<string> = new Set([
-  'identity',
-  'status',
-  'primary-content',
-  'metadata',
-  'relation',
-]);
 
 /** 解析失败:携带全部 issues(一次性报告,便于定义编辑流展示)。 */
 export class FlowParseError extends Error {
@@ -225,52 +209,6 @@ export function validateFlowDefinition(flow: FlowDefinition): FlowIssue[] {
     });
   });
   return issues;
-}
-
-function validateFields(fields: FieldDefinition[], path: string, issues: FlowIssue[]): void {
-  const seen = new Set<string>();
-  fields.forEach((field, index) => {
-    const fieldPath = `${path}[${field.name ?? index}]`;
-    if (seen.has(field.name)) {
-      issues.push({ path: fieldPath, message: '存在重复字段名' });
-    }
-    seen.add(field.name);
-    if (typeof field.name !== 'string' || field.name === '') {
-      issues.push({ path: fieldPath, message: '字段 name 必须是非空字符串' });
-    }
-    if (!FIELD_TYPES.has(field.type)) {
-      issues.push({ path: `${fieldPath}.type`, message: `未知字段类型 "${String(field.type)}"` });
-    }
-    if (field.persist !== undefined && typeof field.persist !== 'boolean') {
-      issues.push({ path: `${fieldPath}.persist`, message: 'persist 必须是 boolean' });
-    }
-    if (
-      field.presentation !== undefined &&
-      (typeof field.presentation !== 'object' ||
-        field.presentation === null ||
-        !FIELD_PRESENTATION_ROLES.has(field.presentation.role))
-    ) {
-      issues.push({
-        path: `${fieldPath}.presentation.role`,
-        message: '未知字段呈现角色',
-      });
-    }
-    if (
-      field.contentMediaType !== undefined &&
-      (typeof field.contentMediaType !== 'string' || field.contentMediaType.trim() === '')
-    ) {
-      issues.push({
-        path: `${fieldPath}.contentMediaType`,
-        message: 'contentMediaType 必须是非空字符串',
-      });
-    }
-    if (field.type === 'select' && (!field.options || field.options.length === 0)) {
-      issues.push({
-        path: `${fieldPath}.options`,
-        message: 'select 字段必须声明非空 options',
-      });
-    }
-  });
 }
 
 function validateEffects(

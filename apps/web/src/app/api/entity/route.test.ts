@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { ensureEventsTable } from '@ui4a/db/events';
 import { getPool } from '@ui4a/db/pool';
-import { resetEngineForTests } from '../../../engine/service';
+import { getEngine, resetEngineForTests } from '../../../engine/service';
 
 import { GET } from './route';
 
@@ -309,5 +309,141 @@ describe('GET /api/entity — 声明式过滤(T38)', () => {
     };
     expect(entity.properties.count).toBe(4);
     expect(entity.entities).toHaveLength(4);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 实体显示 hint(T38 FR4):bundle 字段声明 → 成员投影携带(人机同门)。
+// ---------------------------------------------------------------------------
+
+describe('GET /api/entity — 概览显示 hint(T38)', () => {
+  it('publishing 文章成员按声明携带 overview 字段(声明序),详情全量不变', async () => {
+    const res = await GET(request('?rel=articles'));
+
+    expect(res.status).toBe(200);
+    const entity = (await res.json()) as {
+      entities: { properties: { fields: Record<string, unknown> } }[];
+    };
+    const first = entity.entities[0];
+    const presentation = (
+      first?.properties as unknown as { presentation: { fields: Record<string, unknown>[] } }
+    ).presentation;
+    const overviewFields = presentation.fields
+      .filter((field) => field.overview === true)
+      .map((field) => field.path);
+    expect(overviewFields).toEqual([
+      'properties.fields.title',
+      'properties.fields.body',
+      'properties.fields.category',
+    ]);
+    // 详情面全量不变:hint 只影响概览行,字段值/动作原样(字段键序非合同面)。
+    expect(Object.keys(first?.properties.fields ?? {}).sort()).toEqual([
+      'body',
+      'category',
+      'title',
+    ]);
+  });
+
+  it('未声明 hint 的集合成员零 overview 键(comments 诚实回退)', async () => {
+    const res = await GET(request('?rel=comments'));
+
+    expect(res.status).toBe(200);
+    const entity = (await res.json()) as {
+      entities: { properties: { presentation?: { fields: Record<string, unknown>[] } } }[];
+    };
+    const fields = entity.entities[0]?.properties.presentation?.fields ?? [];
+    expect(fields.every((field) => field.overview === undefined)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 多页翻页(合同探针替代证据;页大小 = 投影策略常量,21 名成员跨两页)。
+// ---------------------------------------------------------------------------
+
+describe('GET /api/entity — 多页 next/prev(T38)', () => {
+  it('成员数超过页大小:首页带 next,次页带 prev/next,末页仅 prev', async () => {
+    const engine = await getEngine(pool);
+    // 经合同门批量创建成员(agent 同门路径):向导 ready 节点 publish。
+    await engine.exec({
+      rel: 'article-drafting:main',
+      action: 'next',
+      params: { title: '批量-0' },
+      actor: 'agent',
+      principal: 'user:mike',
+      channel: 'http',
+    });
+    await engine.exec({
+      rel: 'article-drafting:main',
+      action: 'next',
+      params: { category: 'tech', tags: 'batch' },
+      actor: 'agent',
+      principal: 'user:mike',
+      channel: 'http',
+    });
+    await engine.exec({
+      rel: 'article-drafting:main',
+      action: 'next',
+      params: { body: '批量内容' },
+      actor: 'agent',
+      principal: 'user:mike',
+      channel: 'http',
+    });
+    for (let index = 0; index < 19; index += 1) {
+      await engine.exec({
+        rel: 'article-drafting:main',
+        action: 'publish',
+        params: { title: `批量-${index + 1}` },
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'http',
+      });
+      await engine.exec({
+        rel: 'article-drafting:main',
+        action: 'next',
+        params: { title: `批量-${index + 1}-b` },
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'http',
+      });
+      await engine.exec({
+        rel: 'article-drafting:main',
+        action: 'next',
+        params: { category: 'tech', tags: 'batch' },
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'http',
+      });
+      await engine.exec({
+        rel: 'article-drafting:main',
+        action: 'next',
+        params: { body: '批量内容' },
+        actor: 'agent',
+        principal: 'user:mike',
+        channel: 'http',
+      });
+    }
+
+    const first = await GET(request('?rel=articles&offset=0'));
+    const firstBody = (await first.json()) as {
+      properties: { count: number };
+      links: { rel: string[]; href: string }[];
+    };
+    expect(firstBody.properties.count).toBe(20);
+    expect(firstBody.links.find((link) => link.rel.includes('next'))?.href).toBe(
+      '/api/entity?rel=articles&offset=20',
+    );
+
+    const second = await GET(request('?rel=articles&offset=20'));
+    const secondBody = (await second.json()) as {
+      properties: { count: number; offset: number };
+      entities: { properties: { rel: string } }[];
+      links: { rel: string[]; href: string }[];
+    };
+    expect(secondBody.properties).toMatchObject({ count: 1, offset: 20 });
+    expect(secondBody.entities).toHaveLength(1);
+    expect(secondBody.links.find((link) => link.rel.includes('prev'))?.href).toBe(
+      '/api/entity?rel=articles&offset=0',
+    );
+    expect(secondBody.links.find((link) => link.rel.includes('next'))).toBeUndefined();
   });
 });

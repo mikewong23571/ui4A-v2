@@ -508,3 +508,39 @@ describe('parseFlowDefinition — collections 过滤声明(T38)', () => {
     ).toThrow(/filters/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 概览显示 hint(T38 FR4):presentation.overview 必须是 boolean。
+// ---------------------------------------------------------------------------
+
+describe('parseFlowDefinition — presentation.overview(T38 FR4)', () => {
+  it('overview: true 合法保留', () => {
+    const parsed = parseFlowDefinition({
+      ...postStatusFlow,
+      fields: [
+        {
+          name: 'title',
+          type: 'text',
+          title: '文章标题',
+          presentation: { role: 'identity', overview: true },
+        },
+      ],
+    });
+    expect(parsed.fields?.[0]?.presentation).toEqual({ role: 'identity', overview: true });
+  });
+
+  it('overview 非布尔 → 拒绝(拒绝即教育)', () => {
+    expect(() =>
+      parseFlowDefinition({
+        ...postStatusFlow,
+        fields: [
+          {
+            name: 'title',
+            type: 'text',
+            presentation: { role: 'identity', overview: 'yes' },
+          },
+        ],
+      }),
+    ).toThrow(/overview/);
+  });
+});

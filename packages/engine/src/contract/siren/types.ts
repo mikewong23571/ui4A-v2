@@ -16,6 +16,8 @@ export interface SirenFieldPresentation {
   path: string;
   title: string;
   role?: NonNullable<FieldDefinition['presentation']>['role'];
+  /** 概览显示 hint(T38 FR4):声明 overview 的字段进入成员集合概览行(声明序)。 */
+  overview?: boolean;
   contentMediaType?: string;
 }
 

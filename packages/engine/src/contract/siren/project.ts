@@ -31,7 +31,7 @@ import {
   projectWorkThread,
   projectWorkThreads,
 } from '../../projection/work-thread';
-import { entityHref, fallbackPresentationRole, guardResultsFor, toSirenAction } from './build';
+import { entityHref, fieldPresentationsOf, guardResultsFor, toSirenAction } from './build';
 import {
   collectionFilterDeclarations,
   isMemberCollectionRel,
@@ -40,7 +40,7 @@ import {
   type CollectionQuery,
 } from './collection-query';
 import { projectMeta } from './project-meta';
-import type { ProjectDeps, SirenEntity, SirenFieldPresentation, SirenLink } from './types';
+import type { ProjectDeps, SirenEntity, SirenLink } from './types';
 
 function collectionIdentity(title: string): Record<string, unknown> {
   return {
@@ -62,22 +62,8 @@ function projectInstance(
   const node = flow?.nodes.find((candidate) => candidate.name === instance.node);
   const fieldDefinitions = mergeFieldDefinitions(flow?.fields ?? [], node?.fields ?? []);
   const fields = fieldValues(instance.fields);
-  const definitionsByName = new Map(fieldDefinitions.map((field) => [field.name, field]));
-  const presentationFieldNames = [
-    ...fieldDefinitions.map((field) => field.name),
-    ...Object.keys(fields).filter((name) => !definitionsByName.has(name)),
-  ];
-  const fieldPresentations: SirenFieldPresentation[] = presentationFieldNames.map((name) => {
-    const field = definitionsByName.get(name);
-    return {
-      path: `properties.fields.${name}`,
-      title: field?.title ?? name,
-      role: field?.presentation?.role ?? fallbackPresentationRole(name),
-      ...(field?.contentMediaType === undefined
-        ? {}
-        : { contentMediaType: field.contentMediaType }),
-    };
-  });
+  // 字段呈现元数据(含 T38 FR4 概览 hint 携带)单点实现在 build.fieldPresentationsOf。
+  const fieldPresentations = fieldPresentationsOf(fieldDefinitions, fields);
   const identityPresentation = fieldPresentations.find((field) => field.role === 'identity');
   const identityName = identityPresentation?.path.split('.').at(-1);
   const explicitIdentity = identityName === undefined ? undefined : fields[identityName];

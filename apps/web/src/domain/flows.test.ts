@@ -40,19 +40,19 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
     ]);
   });
 
-  it('post-status 声明文章字段的呈现语义，正文不虚构 Markdown content type', () => {
+  it('post-status 声明文章字段的呈现语义(T38:全部进入概览行)，正文不虚构 Markdown content type', () => {
     expect(postStatusFlow.fields).toEqual([
       expect.objectContaining({
         name: 'title',
-        presentation: { role: 'identity' },
+        presentation: { role: 'identity', overview: true },
       }),
       expect.objectContaining({
         name: 'body',
-        presentation: { role: 'primary-content' },
+        presentation: { role: 'primary-content', overview: true },
       }),
       expect.objectContaining({
         name: 'category',
-        presentation: { role: 'metadata' },
+        presentation: { role: 'metadata', overview: true },
       }),
     ]);
     expect(postStatusFlow.fields?.find((field) => field.name === 'body')).not.toHaveProperty(

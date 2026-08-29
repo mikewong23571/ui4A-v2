@@ -66,6 +66,11 @@ export interface FieldDefinition {
   /** 提供给 Presentation Plane 的语义角色；不是 CSS/组件指令。 */
   presentation?: {
     role: FieldPresentationRole;
+    /**
+     * 概览显示 hint(T38 FR4):该字段进入其成员集合的概览行;列序 = 声明序。
+     * hint 住在字段声明上——「引用未声明字段」结构上不可表达,零平行机制。
+     */
+    overview?: boolean;
   };
   /** JSON Schema contentMediaType；只有显式声明才可承诺 Markdown 等内容格式。 */
   contentMediaType?: string;
