@@ -7,3 +7,10 @@ T38 Phase A (A1-A2) 集合分页与声明式过滤 — 任务摘要
 值域外/声明外维度结构化拒绝;D51 回归专项断言;GR3 两次瞬时超限沿功能边界拆解
 (service-collection-query.ts / parse-collections.ts,基线空)。
 Commits: 0a5c4033 + 24a6e360
+
+T38 Phase A Checkpoint 验证报告(自治验收)
+- 编排 agent 亲跑:collection-query 32 passed;route(db)21 passed;governance OK
+- 全量: CI=true UI4A_WORKER_HEALTH_PORT=3199 pnpm check → exit 0(413 files/3195 tests)
+- 滑梯自查:页大小/页码全在服务端;值域零 service 特判;声明数据住 flow 定义;
+  读面参数零事件零 exec;D51 专项断言
+- 已知事项:bundle v7 → dev 库需重置后才见新声明(Phase C 视觉验收前执行)
