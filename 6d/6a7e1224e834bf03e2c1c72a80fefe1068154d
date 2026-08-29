@@ -1,1 +1,14 @@
 T38 C7 Track 终审
+
+T38 C7 Track 终审(自治验收)
+- 用户故事:US1–US6 全 PASS;全应用横扫 7 应用(publishing/community/
+  development/editorial/governance/todo/ideas)零诊断,零件只在声明处
+- 功能提交:0a5c4033(分页)/24a6e360(过滤)/d5921025(hint)/
+  3273affe+b3029c5d+76540082(呈现)/bebfd6ad+b4542fb6+6d6a7e12+
+  4ece31c4+eecacb51+779a35c6(审核期修复与语义统一)
+- 修复轮次:Phase B 2 次 + 编排 agent 直修 1 次,均先红后绿
+- 最终门禁(亲跑):pnpm check exit 0(414 files/3243+ tests);governance OK
+  基线空;format 通过;dev 栈实测可运行
+- §六滑梯自查:页大小/页码全服务端;值域零特判映射(声明住 flow 定义);
+  控件文案来自声明 title;无 per-app/per-entity 分支;过滤翻页零 exec 零事件
+- 遗留观察:focus 直访集合面密度语义统一、重规划期交互稳定性、控件多语言
