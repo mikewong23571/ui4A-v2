@@ -180,6 +180,30 @@ export interface NodeDefinition {
 }
 
 /**
+ * 集合读面过滤维度声明(T38 FR3):可治理的声明数据,引擎只做 fold 与机械
+ * 消费——service 层零「集合名 → 值域」特判映射(§六 规则滑梯)。
+ * 值域不在此重复:引用声明 flow 的拓扑推导(status 维度 = 节点集,select
+ * 字段维度 = options),保证值域与拓扑零漂移。
+ */
+export interface CollectionDimensionDeclaration {
+  /**
+   * 维度名(查询参数 filter.<name>):'status'(实例节点)或本 flow 声明的
+   * select 字段名;其余维度无法给出诚实封闭值域,parse 拒绝。
+   */
+  field: string;
+  /** 维度标题(合同/控件文案的唯一来源,渲染器零发明)。 */
+  title: string;
+}
+
+/** flow 声明其成员族的集合面读面能力(T38):成员集合 → 可过滤维度。 */
+export interface CollectionSurfaceDeclaration {
+  /** 成员集合 rel(如 comments)。 */
+  collection: string;
+  /** 可过滤维度;缺省 = 该集合面未声明过滤(诚实缺省,零机制零件)。 */
+  filters?: CollectionDimensionDeclaration[];
+}
+
+/**
  * flow 定义 = machine-as-JSON(XState v5 运行时构造的真相源)。
  * T2 阶段为代码内 TS 常量;T4 起活跃定义进入事件日志(fold 出)。
  */
@@ -197,6 +221,11 @@ export interface FlowDefinition {
    * application 不持成员清单(避免双重真相),membership 由本字段聚合推导。
    */
   app?: string;
+  /**
+   * 集合面读面能力声明(T38 FR3):该 flow 作为成员族管辖者的集合,可过滤
+   * 维度与(拓扑推导的)值域。定义平面数据;投影/读面机械消费。
+   */
+  collections?: CollectionSurfaceDeclaration[];
   /** Candidate definition/content ingress defaults to Draft unless explicitly tightened. */
   submission?: SubmissionPolicy;
 }

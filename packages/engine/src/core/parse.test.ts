@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { articleDraftingFlow, minimalFlow, postStatusFlow } from './fixtures';
+import {
+  articleDraftingFlow,
+  commentModerationFlow,
+  minimalFlow,
+  postStatusFlow,
+} from './fixtures';
 import {
   AppParseError,
   CapabilityParseError,
@@ -442,5 +447,64 @@ describe('parseCapabilityDefinition — 拒绝非法定义', () => {
       const issues = (error as CapabilityParseError).issues;
       expect(issues.map((i) => i.path)).toEqual(['name', 'title', 'kind', 'intent']);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 集合面读面能力声明(T38 FR3):collections 过滤维度声明解析与语义校验。
+// ---------------------------------------------------------------------------
+
+describe('parseFlowDefinition — collections 过滤声明(T38)', () => {
+  const commentFlowWithFilters = () => ({
+    ...commentModerationFlow,
+    collections: [{ collection: 'comments', filters: [{ field: 'status', title: '状态' }] }],
+  });
+
+  it('status 维度声明合法(值域由节点拓扑推导)', () => {
+    expect(parseFlowDefinition(commentFlowWithFilters()).collections).toEqual([
+      { collection: 'comments', filters: [{ field: 'status', title: '状态' }] },
+    ]);
+  });
+
+  it('select 字段维度声明合法(值域由 options 推导)', () => {
+    const categoryFlow = {
+      ...postStatusFlow,
+      fields: [{ name: 'category', type: 'select' as const, options: ['tech', 'essay'] }],
+      collections: [{ collection: 'articles', filters: [{ field: 'category', title: '分类' }] }],
+    };
+    expect(parseFlowDefinition(categoryFlow).collections).toEqual([
+      { collection: 'articles', filters: [{ field: 'category', title: '分类' }] },
+    ]);
+  });
+
+  it('引用非 select / 未声明字段 → 拒绝(值域须可由流拓扑封闭推导)', () => {
+    expect(() => parseFlowDefinition(commentFlowWithFilters())).not.toThrow();
+    expect(() =>
+      parseFlowDefinition({
+        ...commentModerationFlow,
+        collections: [{ collection: 'comments', filters: [{ field: 'body', title: '内容' }] }],
+      }),
+    ).toThrow(/body/);
+  });
+
+  it('形状非法:collection/field/title 空串、filters 非数组 → 拒绝', () => {
+    expect(() =>
+      parseFlowDefinition({
+        ...commentModerationFlow,
+        collections: [{ collection: '', filters: [] }],
+      }),
+    ).toThrow(/collection/);
+    expect(() =>
+      parseFlowDefinition({
+        ...commentModerationFlow,
+        collections: [{ collection: 'comments', filters: [{ field: 'status', title: '' }] }],
+      }),
+    ).toThrow(/title/);
+    expect(() =>
+      parseFlowDefinition({
+        ...commentModerationFlow,
+        collections: [{ collection: 'comments', filters: 'status' }],
+      }),
+    ).toThrow(/filters/);
   });
 });

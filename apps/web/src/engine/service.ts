@@ -45,8 +45,6 @@ import {
   readRenderSpecsOf,
   THREADS_REL,
   THREAD_REL_PREFIX,
-  type CollectionQuery,
-  type CollectionQueryRejection,
   type ConfirmationDeps,
   type EngineEvent,
   type ExecRequest,
@@ -61,8 +59,6 @@ import {
   type Sitemap,
   type SirenEntity,
   type SuspendedConfirmation,
-  parseCollectionQuery,
-  queryTargetRejection,
 } from '@ui4a/engine';
 import type { DeploymentEnvironment, EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
 import type { FieldValue } from '@ui4a/shared';
@@ -86,7 +82,8 @@ import { bootstrapAndVerifyApplication } from './bootstrap';
 export { bootstrapAndVerifyApplication } from './bootstrap';
 import type { RenderSpec } from '../render/spec';
 import { dispatchNotify } from '../temporal/notify';
-import { completeFlowEntity, resolveFlowRelAlias } from './flow-entry';
+import { resolveFlowRelAlias } from './flow-entry';
+import { readCollectionQueriedEntity } from './service-collection-query';
 import { preflightCodingResultDecision } from './agent/coding-result-decision';
 import {
   createAndDispatchAgentRun,
@@ -139,20 +136,6 @@ export type PlanServiceOutcome =
 /** 定义平面 rel(meta/self 或 meta/ 前缀;HTTP 层的跨站路由键)。 */
 export function isMetaRel(rel: string): boolean {
   return rel === 'meta/self' || rel.startsWith('meta/') || rel.startsWith('draft:');
-}
-
-/**
- * 集合读面查询拒绝(T38):引擎结构化裁决的服务层承载(读面零事件)。
- * HTTP 层据此映射 400 的 layer/reason(拒绝即教育)。
- */
-export class CollectionQueryError extends Error {
-  readonly rejection: CollectionQueryRejection;
-
-  constructor(rejection: CollectionQueryRejection) {
-    super(rejection.message);
-    this.name = 'CollectionQueryError';
-    this.rejection = rejection;
-  }
 }
 
 export interface EngineRuntime {
@@ -371,26 +354,10 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       enqueue(state, () => refreshFromLog(db, logState, scheduleRecipesForSnapshot)).then(
         () => logState.snapshot,
       ),
-    getEntity: async (rel, rawQuery) => {
-      // 读路径增量 fold(spec 决定 4):返回前同步 worker 等外部写者的新事件。
-      await enqueue(state, () => refreshFromLog(db, logState, scheduleRecipesForSnapshot));
-      // 集合读面查询(T38):解析(语法层)→ 投影(切片只对成员集合生效)→
-      // 目标裁决(存在性先行:未知 rel 保持 404;存在的非成员目标结构化拒绝)。
-      const parsed = parseCollectionQuery(rawQuery);
-      if (parsed.kind === 'rejected') throw new CollectionQueryError(parsed.rejection);
-      const query = parsed.kind === 'query' ? parsed.query : undefined;
-      // flow:<name> 读面补全(别名→实例集合兜底→集合入口链接)整体在 flow-entry
-      // 的 completeFlowEntity;alias 请求参数缺省仅影响 rel 解析。
-      const entity = completeFlowEntity(rel, logState.snapshot, activeFlowList(), (target) =>
-        project(logState.snapshot, target, projectDeps(), query),
-      );
-      if (entity !== undefined && query !== undefined) {
-        const target = resolveFlowRelAlias(rel, logState.snapshot) ?? rel;
-        const rejection = queryTargetRejection(logState.snapshot, activeFlows(), target);
-        if (rejection !== undefined) throw new CollectionQueryError(rejection);
-      }
-      return entity;
-    },
+    getEntity: (rel, rawQuery) =>
+      enqueue(state, () => refreshFromLog(db, logState, scheduleRecipesForSnapshot)).then(() =>
+        readCollectionQueriedEntity(rel, logState.snapshot, projectDeps(), activeFlows, rawQuery),
+      ),
     getMetaEntity: async (rel) => {
       // _meta 站点读路径:同一引擎同一日志(先同步外部写者);href 前缀 /_meta
       // (站点自洽:留在定义层;引擎 project 的 baseHref 机制,不改投影语义)。

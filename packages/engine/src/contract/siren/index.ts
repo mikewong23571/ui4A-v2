@@ -10,13 +10,18 @@ export { project } from './project';
 export { guardBlockReason } from './build';
 export {
   COLLECTION_PAGE_SIZE,
+  collectionFilterDeclarations,
   isMemberCollectionRel,
+  memberMatchesFilter,
   parseCollectionQuery,
   queryTargetRejection,
+  resolveCollectionFilters,
 } from './collection-query';
 export type {
   CollectionQuery,
   CollectionQueryRejection,
   ParsedCollectionQuery,
   RawCollectionQuery,
+  ResolvedCollectionFilters,
+  ResolvedFilterDimension,
 } from './collection-query';

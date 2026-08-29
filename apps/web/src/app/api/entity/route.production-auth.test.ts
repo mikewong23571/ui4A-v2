@@ -57,6 +57,9 @@ vi.mock('../../../engine/service', () => ({
   getDb: mocks.getDb,
   getEngine: mocks.getEngine,
   isMetaRel: (rel: string) => rel.startsWith('meta/'),
+}));
+
+vi.mock('../../../engine/service-collection-query', () => ({
   // route 的 catch 判 instanceof 用;本套件不触查询拒绝路径,轻量同形类即可。
   CollectionQueryError: class CollectionQueryError extends Error {},
 }));

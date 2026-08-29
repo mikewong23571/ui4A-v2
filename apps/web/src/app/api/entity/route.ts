@@ -1,4 +1,5 @@
-import { getDb, getEngine, isMetaRel, CollectionQueryError } from '../../../engine/service';
+import { CollectionQueryError } from '../../../engine/service-collection-query';
+import { getDb, getEngine, isMetaRel } from '../../../engine/service';
 import type { RawCollectionQuery } from '@ui4a/engine';
 import {
   enrichEntityWithAgentRuns,
@@ -26,12 +27,20 @@ import {
 export const dynamic = 'force-dynamic';
 
 /**
- * 集合读面查询原始参数(T38):机械提取,判定全部在引擎层(offset 分页;
- * FR3 过滤参数随后)。其余查询参数(如 ?scope= 导航偏好)原样不解析。
+ * 集合读面查询原始参数(T38):机械提取(offset 分页;filter.<dimension>=<value>
+ * 过滤请求对,保请求序),判定全部在引擎层。其余查询参数(如 ?scope= 导航
+ * 偏好)原样不解析。
  */
 function rawCollectionQuery(url: URL): RawCollectionQuery | undefined {
   const offset = url.searchParams.get('offset') ?? undefined;
-  return offset === undefined ? undefined : { offset };
+  const filter: Array<{ dimension: string; value: string }> = [];
+  for (const [key, value] of url.searchParams) {
+    if (key.startsWith('filter.')) {
+      filter.push({ dimension: key.slice('filter.'.length), value });
+    }
+  }
+  if (offset === undefined && filter.length === 0) return undefined;
+  return { offset: offset ?? undefined, filter };
 }
 
 export async function GET(request: Request) {

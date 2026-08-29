@@ -203,3 +203,111 @@ describe('GET /api/entity — 集合分页(T38)', () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 声明式过滤(T38 FR3):维度/值域住定义平面(bundle 声明,流拓扑推导值域);
+// 参数零新事件、行级授权投影不变(D51 专项断言见 auth/application-scope.test.ts)。
+// ---------------------------------------------------------------------------
+
+describe('GET /api/entity — 声明式过滤(T38)', () => {
+  it('按声明维度过滤成员(status=pending → 3 行,排除 approved);响应携带声明', async () => {
+    const res = await GET(request('?rel=comments&filter.status=pending'));
+
+    expect(res.status).toBe(200);
+    const entity = (await res.json()) as {
+      properties: {
+        rel: string;
+        count: number;
+        offset: number;
+        presentation?: { filters: unknown[] };
+      };
+      entities: { properties: { rel: string } }[];
+      links: { rel: string[]; href: string }[];
+    };
+    expect(entity.properties.rel).toBe('comments');
+    expect(entity.properties.count).toBe(3);
+    expect(entity.properties.offset).toBe(0);
+    expect(entity.entities.map((sub) => sub.properties.rel)).toEqual([
+      'comment:c1',
+      'comment:c2',
+      'comment:c3',
+    ]);
+    // 声明发现:定义平面声明的维度与拓扑推导值域经投影携带(人机同门)。
+    expect(entity.properties.presentation?.filters).toEqual([
+      {
+        field: 'status',
+        title: '状态',
+        values: [
+          { value: 'pending', title: '待处理' },
+          { value: 'approved', title: '已通过' },
+          { value: 'rejected', title: '已驳回' },
+        ],
+      },
+    ]);
+  });
+
+  it('过滤 + 分页组合:先过滤后分页,next/prev 携带过滤参数(组合不丢状态)', async () => {
+    const res = await GET(request('?rel=comments&filter.status=pending&offset=2'));
+
+    expect(res.status).toBe(200);
+    const entity = (await res.json()) as {
+      properties: { count: number; offset: number };
+      entities: { properties: { rel: string } }[];
+      links: { rel: string[]; href: string }[];
+    };
+    expect(entity.properties).toMatchObject({ count: 1, offset: 2 });
+    expect(entity.entities.map((sub) => sub.properties.rel)).toEqual(['comment:c3']);
+    expect(entity.links).toEqual([
+      { rel: ['self'], href: '/api/entity?rel=comments&offset=2&filter.status=pending' },
+      { rel: ['prev'], href: '/api/entity?rel=comments&offset=0&filter.status=pending' },
+    ]);
+  });
+
+  it('值域外取值 → 400 结构化拒绝(unknown-filter-value,非静默忽略)', async () => {
+    const res = await GET(request('?rel=comments&filter.status=ghost'));
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { layer: string; reason: string; error: string };
+    expect(body.layer).toBe('query');
+    expect(body.reason).toBe('unknown-filter-value');
+    expect(body.error).toContain('ghost');
+  });
+
+  it('未声明维度 → 400 结构化拒绝(undeclared-filter-dimension);零声明集合同样拒绝', async () => {
+    const undeclared = await GET(request('?rel=comments&filter.author=mike'));
+    expect(undeclared.status).toBe(400);
+    expect(((await undeclared.json()) as { reason: string }).reason).toBe(
+      'undeclared-filter-dimension',
+    );
+
+    // articles 未声明任何过滤维度——声明驱动,零特判映射的负证。
+    const articles = await GET(request('?rel=articles&filter.status=published'));
+    expect(articles.status).toBe(400);
+    expect(((await articles.json()) as { reason: string }).reason).toBe(
+      'undeclared-filter-dimension',
+    );
+  });
+
+  it('重复维度与空维度名 → 400 invalid-filter(语法层拒绝)', async () => {
+    const duplicate = await GET(
+      request('?rel=comments&filter.status=pending&filter.status=approved'),
+    );
+    expect(duplicate.status).toBe(400);
+    expect(((await duplicate.json()) as { reason: string }).reason).toBe('invalid-filter');
+
+    const empty = await GET(request('?rel=comments&filter.=pending'));
+    expect(empty.status).toBe(400);
+    expect(((await empty.json()) as { reason: string }).reason).toBe('invalid-filter');
+  });
+
+  it('过滤参数不改变无参数全量承诺:comments 无参仍返回全部成员', async () => {
+    const res = await GET(request('?rel=comments'));
+    expect(res.status).toBe(200);
+    const entity = (await res.json()) as {
+      properties: { count: number };
+      entities: { properties: { rel: string } }[];
+    };
+    expect(entity.properties.count).toBe(4);
+    expect(entity.entities).toHaveLength(4);
+  });
+});

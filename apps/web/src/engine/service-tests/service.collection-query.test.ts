@@ -4,7 +4,8 @@ import type { SirenEntity } from '@ui4a/engine';
 import { ensureEventsTable } from '@ui4a/db/events';
 import { getPool } from '@ui4a/db/pool';
 
-import { CollectionQueryError, getEngine, resetEngineForTests } from '../service';
+import { getEngine, resetEngineForTests } from '../service';
+import { CollectionQueryError } from '../service-collection-query';
 
 // 集合读面查询(T38 FR1/FR2)服务层测试:
 // - getEntity 透传原始查询参数 → 引擎解析/切片(页大小是投影策略,服务端驱动);

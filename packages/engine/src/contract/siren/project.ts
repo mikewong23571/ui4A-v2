@@ -33,7 +33,9 @@ import {
 } from '../../projection/work-thread';
 import { entityHref, fallbackPresentationRole, guardResultsFor, toSirenAction } from './build';
 import {
+  collectionFilterDeclarations,
   isMemberCollectionRel,
+  memberMatchesFilter,
   COLLECTION_PAGE_SIZE,
   type CollectionQuery,
 } from './collection-query';
@@ -126,9 +128,12 @@ function projectInstance(
 
 /**
  * 集合实体投影:entities[] 子实体(嵌入投影 + 直达 href)。
- * 读面查询(T38 FR1/FR2):query 在场时按 offset 切片(页大小 = 投影策略
- * 常量),links 声明 next/prev(诚实缺链),properties 声明本页 count 与
- * offset;query 缺省 = 全量,形状与历史版本逐字节一致(合同零窄化锚点)。
+ * 读面查询(T38 FR1–FR3):query 在场时先过滤(机械匹配声明维度)后按
+ * offset 切片(页大小 = 投影策略常量),links 声明 next/prev(诚实缺链,
+ * 携带分页 + 过滤参数),properties 声明本页 count 与 offset;query 缺省 =
+ * 全量,形状与历史版本逐字节一致(合同零窄化锚点)。
+ * 过滤维度声明(集合声明了可过滤维度时经 properties.presentation.filters
+ * 携带,人机同门发现)住定义平面数据;无声明的集合零新键。
  */
 function projectCollection(
   rel: string,
@@ -137,38 +142,59 @@ function projectCollection(
   query?: CollectionQuery,
 ): SirenEntity {
   const members = snapshot.collections[rel] ?? [];
+  const filtered =
+    query === undefined || query.filter.length === 0
+      ? members
+      : members.filter((member) => memberMatchesFilter(snapshot.instances[member], query.filter));
   const page =
     query === undefined
-      ? members
-      : members.slice(query.offset, query.offset + COLLECTION_PAGE_SIZE);
+      ? filtered
+      : filtered.slice(query.offset, query.offset + COLLECTION_PAGE_SIZE);
   const entities = page.flatMap((member) => {
     const instance = snapshot.instances[member];
     if (instance === undefined) return [];
     const projected = projectInstance(instance, snapshot, deps);
     return [{ ...projected, rel: ['item'], href: entityHref(deps.baseHref, member) }];
   });
+  // 声明发现(定义平面数据经投影携带;值域已拓扑推导,agent 与渲染器同源)。
+  const declarations = collectionFilterDeclarations(deps.flows, rel);
+  const presentation = declarations.length === 0 ? undefined : { filters: declarations };
   const selfHref = entityHref(deps.baseHref, rel);
   if (query === undefined) {
     return {
       class: ['collection', rel],
-      properties: { rel, count: members.length },
+      properties: {
+        rel,
+        count: filtered.length,
+        ...(presentation !== undefined ? { presentation } : {}),
+      },
       actions: [],
       links: [{ rel: ['self'], href: selfHref }],
       'guard-results': [],
       entities,
     };
   }
-  const pageHref = (offset: number): string => `${selfHref}&offset=${offset}`;
+  const filterParams = query.filter
+    .map(
+      (pair) => `&filter.${encodeURIComponent(pair.dimension)}=${encodeURIComponent(pair.value)}`,
+    )
+    .join('');
+  const pageHref = (offset: number): string => `${selfHref}&offset=${offset}${filterParams}`;
   const links: SirenLink[] = [{ rel: ['self'], href: pageHref(query.offset) }];
   if (query.offset > 0) {
     links.push({ rel: ['prev'], href: pageHref(Math.max(0, query.offset - COLLECTION_PAGE_SIZE)) });
   }
-  if (query.offset + page.length < members.length) {
+  if (query.offset + page.length < filtered.length) {
     links.push({ rel: ['next'], href: pageHref(query.offset + page.length) });
   }
   return {
     class: ['collection', rel],
-    properties: { rel, count: page.length, offset: query.offset },
+    properties: {
+      rel,
+      count: page.length,
+      offset: query.offset,
+      ...(presentation !== undefined ? { presentation } : {}),
+    },
     actions: [],
     links,
     'guard-results': [],

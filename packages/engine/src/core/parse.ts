@@ -18,6 +18,8 @@ import type {
   NodeDefinition,
 } from './types';
 
+import { collectionSemanticIssues, collectionStructuralIssues } from './parse-collections';
+
 /** 校验问题(结构化,供激活 guard 与日志留痕)。 */
 export interface FlowIssue {
   path: string;
@@ -109,6 +111,8 @@ function structuralIssues(input: unknown): FlowIssue[] {
   }
   const flowSubmission = submissionIssue(input.submission, 'submission');
   if (flowSubmission !== undefined) issues.push(flowSubmission);
+  // 集合面读面能力声明(T38 FR3):形状级校验(实现在 parse-collections,GR3 分解)。
+  issues.push(...collectionStructuralIssues(input));
   if (!Array.isArray(input.nodes) || input.nodes.length === 0) {
     issues.push({ path: 'nodes', message: 'nodes 必须是非空数组' });
     return issues;
@@ -169,6 +173,10 @@ export function validateFlowDefinition(flow: FlowDefinition): FlowIssue[] {
 
   const flowFieldNames = new Set((flow.fields ?? []).map((f) => f.name));
   validateFields(flow.fields ?? [], 'fields', issues);
+  // 集合面过滤维度(T38 FR3)语义校验(实现在 parse-collections,GR3 分解):
+  // 维度必须是 'status'(节点拓扑)或本 flow 声明的 select 字段(options 拓扑),
+  // 引用未声明/非 select 字段在此拒绝,投影层零防御分支。
+  issues.push(...collectionSemanticIssues(flow));
   flow.nodes.forEach((node) => {
     validateFields(node.fields ?? [], `nodes[${node.name}].fields`, issues);
 

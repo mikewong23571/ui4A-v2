@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "ui4a-walkthrough",
-    "version": 5
+    "version": 6
   },
   "applications": [
     {
@@ -490,6 +490,12 @@
       "title": "评论审核",
       "app": "community",
       "initial": "pending",
+      "collections": [
+        {
+          "collection": "comments",
+          "filters": [{ "field": "status", "title": "状态" }]
+        }
+      ],
       "nodes": [
         {
           "name": "pending",
