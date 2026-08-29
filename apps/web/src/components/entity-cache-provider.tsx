@@ -47,10 +47,11 @@ async function fetchSitemapVersion(scope?: string): Promise<string> {
 /**
  * 页面级缓存门面:对消费方隐藏 version 一致性戳的取数与失效口径。
  * 实例由 provider 创建并随其销毁;handle 本身无 React 生命周期依赖。
+ * readQuery(T38):集合读面参数的规范查询串,透传给缓存键与 /api/entity 请求。
  */
 export interface EntityCacheHandle {
   /** 读实体:同 version 下命中缓存零 fetch;miss 经 /api/entity 填充。 */
-  get(rel: string): Promise<SirenEntity | null>;
+  get(rel: string, readQuery?: string): Promise<SirenEntity | null>;
   /**
    * exec 成功后精确失效:当前 rel + 所属 collection(entity 的 collection
    * 回链优先,无前缀推导兜底);其他 rel 不动。subject=被操作主体投影
@@ -76,7 +77,7 @@ function createHandle(fetcher: EntityFetcher, versionFetcher: () => Promise<stri
     return versionPromise;
   };
   const handle: EntityCacheHandle = {
-    get: (rel) => version().then((stamp) => cache.get(rel, stamp)),
+    get: (rel, readQuery) => version().then((stamp) => cache.get(rel, stamp, readQuery)),
     invalidateAfterExec: (rel, entity, subject) =>
       cache.invalidateAfterExecSources(rel, [entity, subject]),
     invalidate: (rel) => cache.invalidate(rel),
@@ -106,7 +107,7 @@ export function EntityCacheProvider({
   // 句柄与 provider 同生同灭(useState 惰性初始化 = 每挂载恰一次)。
   const [handle] = useState(() =>
     createHandle(
-      fetcher ?? ((rel) => fetchEntity(rel, undefined, scope)),
+      fetcher ?? ((rel, readQuery) => fetchEntity(rel, undefined, scope, readQuery)),
       versionFetcher ?? (() => fetchSitemapVersion(scope)),
     ),
   );

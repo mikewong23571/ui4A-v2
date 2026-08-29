@@ -414,6 +414,103 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
     expect(JSON.parse(String(presentationCall![1]?.body)).subject).toBe('flow:todo-capture');
   });
 
+  describe('T38 集合读面参数贯通(URL query → 合同取数)', () => {
+    const articlesPage: SirenEntity = {
+      class: ['collection', 'articles'],
+      properties: {
+        rel: 'articles',
+        count: 24,
+        offset: 20,
+        presentation: {
+          filters: [
+            { field: 'status', title: '状态', values: [{ value: 'pending', title: '待处理' }] },
+          ],
+        },
+      },
+      actions: [],
+      links: [
+        { rel: ['self'], href: '/api/entity?rel=articles&offset=20&filter.status=pending' },
+        { rel: ['prev'], href: '/api/entity?rel=articles&offset=0&filter.status=pending' },
+      ],
+      entities: [],
+    };
+
+    function genericFixture(): ReturnType<typeof vi.fn> {
+      // 无 sidecar 回执(空对象)→ focus 走 generic surface 分支(集合区域路径)。
+      const fetchMock = vi.fn((request: RequestInfo | URL) => {
+        const url = String(request);
+        if (url === '/api/render/catalog') {
+          return Promise.resolve(jsonResponse(200, renderCatalogJson()));
+        }
+        if (url.startsWith('/.well-known/ui4a.json')) {
+          return Promise.resolve(jsonResponse(200, { version: 'definition-v1' }));
+        }
+        if (url === '/api/presentation') {
+          return Promise.resolve(jsonResponse(200, {}));
+        }
+        if (url.startsWith('/api/entity?rel=')) {
+          const rel = new URL(url, 'http://ui4a.test').searchParams.get('rel');
+          return Promise.resolve(
+            rel === 'render-specs'
+              ? jsonResponse(200, EMPTY_SPECS)
+              : jsonResponse(200, rel === 'articles' ? articlesPage : { error: 'not found' }),
+          );
+        }
+        return Promise.resolve(jsonResponse(404, { error: `unknown ${url}` }));
+      });
+      return fetchMock;
+    }
+
+    it('URL offset/filter.* 随 focus 取数进合同请求(scope 全程保留);零参数零污染', async () => {
+      window.history.pushState(
+        {},
+        '',
+        '/canvas?focus=articles&offset=20&filter.status=pending&scope=publishing',
+      );
+      const fetchMock = genericFixture();
+      vi.stubGlobal('fetch', fetchMock);
+
+      render(
+        <EntityCacheProvider scope="publishing">
+          <CanvasBody />
+        </EntityCacheProvider>,
+      );
+
+      expect(await screen.findByRole('button', { name: '为什么这样展示' })).toBeTruthy();
+      const entityFetches = fetchMock.mock.calls
+        .map(([request]) => String(request))
+        .filter((url) => url.startsWith('/api/entity?rel=articles'));
+      expect(entityFetches.length).toBeGreaterThan(0);
+      // 每一次 focus 集合取数都携带声明读面参数 + scope(翻页不命中全量缓存)。
+      for (const url of entityFetches) {
+        expect(url).toBe(
+          '/api/entity?rel=articles&offset=20&filter.status=pending&scope=publishing',
+        );
+      }
+    });
+
+    it('无读面参数的 focus 取数与升级前逐字节一致(合同零窄化)', async () => {
+      window.history.pushState({}, '', '/canvas?focus=articles&scope=publishing');
+      const fetchMock = genericFixture();
+      vi.stubGlobal('fetch', fetchMock);
+
+      render(
+        <EntityCacheProvider scope="publishing">
+          <CanvasBody />
+        </EntityCacheProvider>,
+      );
+
+      expect(await screen.findByRole('button', { name: '为什么这样展示' })).toBeTruthy();
+      const entityFetches = fetchMock.mock.calls
+        .map(([request]) => String(request))
+        .filter((url) => url.startsWith('/api/entity?rel=articles'));
+      expect(entityFetches.length).toBeGreaterThan(0);
+      for (const url of entityFetches) {
+        expect(url).toBe('/api/entity?rel=articles&scope=publishing');
+      }
+    });
+  });
+
   it.each(cases)('$name 共享 sidecar 错误、why 与重载语义', async (testCase) => {
     const source = sourceEntity(
       /^workspace:/.test(testCase.subject) ? 'articles' : testCase.subject,

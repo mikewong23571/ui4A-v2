@@ -67,6 +67,13 @@ export interface PresentationSurfaceParameters {
   refresh?: string;
   /** T35 W2:声明中的工作线(线工作台模式;surface 卡出现钉住控件)。 */
   thread?: string;
+  /**
+   * T38 FR5:集合读面查询的规范串(offset + filter.*,URL 声明)。在场的
+   * focus 取数携带同一参数(人机同门,与声明 next/prev/self 链接同参语义),
+   * 实体缓存按参数隔离;仅作用于单 focus 的 generic 面,sidecar/多根/规格
+   * 路径零机制介入。
+   */
+  collectionQuery?: string;
 }
 
 const CANVAS_LOAD_TIMEOUT_MS = 15_000;
@@ -96,6 +103,7 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
   const scopeParam = parameters.scope;
   const sidecarParam = parameters.sidecar;
   const focusRefreshParam = parameters.refresh;
+  const collectionQueryParam = parameters.collectionQuery;
   const [surfaces, setSurfaces] = useState<SurfaceEntry[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   // T35 F-02:主 focus 解析失败(404)的结构化空态——中性措辞(D51 存在性隐藏)
@@ -443,7 +451,10 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
       } else {
         for (const requestedFocus of requestedFocuses) {
           try {
-            const entity = await withAbort(cache.get(requestedFocus), controller.signal);
+            // T38:读面参数只跟单 focus 视图的 generic 面(roots 多根视图是
+            // 上一代机械,不混用);缓存键含参数,翻页/过滤不命中陈旧全量。
+            const readQuery = rootsParam === undefined ? collectionQueryParam : undefined;
+            const entity = await withAbort(cache.get(requestedFocus, readQuery), controller.signal);
             if (entity === null) throw new Error(`实体 "${requestedFocus}" 不存在`);
             // 主 focus(首项)的原始合同文本:load 已取得的实体直接序列化,
             // 零额外取数;只进抽屉,不进主区域渲染。
@@ -536,6 +547,7 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
     }
   }, [
     cache,
+    collectionQueryParam,
     concernParam,
     focusParam,
     focusRefreshParam,

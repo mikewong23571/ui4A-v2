@@ -27,6 +27,8 @@ describe('合同站路由', () => {
     await fetchEntity('post:first-post');
     await fetchEntity('meta/agent-definition:author@1', undefined, 'governance');
     await fetchEntity('draft:d1', undefined, 'governance');
+    // T38:集合读面参数(offset + filter.*)原样进合同请求(人机同门,同参语义)。
+    await fetchEntity('articles', undefined, undefined, 'offset=20&filter.status=pending');
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/_meta/api/entity?rel=meta%2Fflow%3Apost-status');
     expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/entity?rel=post%3Afirst-post');
@@ -34,6 +36,27 @@ describe('合同站路由', () => {
       '/_meta/api/entity?rel=meta%2Fagent-definition%3Aauthor%401&scope=governance',
     );
     expect(fetchMock.mock.calls[3]?.[0]).toBe('/_meta/api/entity?rel=draft%3Ad1&scope=governance');
+    expect(fetchMock.mock.calls[4]?.[0]).toBe(
+      '/api/entity?rel=articles&offset=20&filter.status=pending',
+    );
+  });
+
+  it('集合读面参数与 policy scope 组合:参数在前,scope 追加在后(D51 导航偏好透传)', async () => {
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(entity), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchEntity('articles', undefined, 'publishing', 'offset=20');
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      '/api/entity?rel=articles&offset=20&scope=publishing',
+    );
   });
 
   it('meta action 写入 /_meta，身份仍是 renderer human', async () => {

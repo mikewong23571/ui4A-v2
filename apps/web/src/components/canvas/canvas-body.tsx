@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 
 import { ApplicationEntryStrip } from '@/components/application-entry-strip';
 
+import { canonicalReadQueryOf } from './collection-query';
 import { PresentationSurfaceHost } from './presentation-surface-host';
 import { ThreadDesk } from './thread-desk';
 import { ThreadStageActions } from './thread-stage-actions';
@@ -20,6 +21,11 @@ export function CanvasBody() {
   const threadId = searchParams.get('thread') ?? undefined;
   const railOn = threadId !== undefined;
 
+  // T38 FR5:集合读面查询(offset + filter.*)是 URL 声明的舞台机械,与
+  // scope/focus 同族——规范化后随 focus 取数进同一合同读(零页码推算,
+  // 参数语义与 /api/entity 声明链接同形)。
+  const collectionQuery = canonicalReadQueryOf(searchParams);
+
   const gazeParameters = {
     concern: searchParams.get('concern') ?? undefined,
     focus: searchParams.get('focus') ?? undefined,
@@ -28,6 +34,7 @@ export function CanvasBody() {
     sidecar: searchParams.get('sidecar') ?? undefined,
     refresh: searchParams.get('refresh') ?? undefined,
     thread: threadId,
+    ...(collectionQuery === undefined ? {} : { collectionQuery }),
   };
 
   // T35 F-25:无注视(无 focus/concern/roots)时主位是入口层(应用目录),

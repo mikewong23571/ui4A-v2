@@ -13,6 +13,8 @@ import {
 // sitemap version 一致性戳。version 变 → 全量失效;exec 成功 → 精确失效
 // 当前 rel + 所属 collection rel(宁可多失效不可脏读,I2);读 miss 经
 // 既有 /api/entity 取数路径填充(测试以注入 fetcher 计数替代真实 fetch)。
+// T38:集合读面参数(offset + filter.*)归入缓存键——不同读面各占一条,
+// 失效按 rel 扩散到全部读面变体(翻页/过滤不脏读,I2)。
 
 function entity(rel: string, fields: Record<string, unknown> = {}): SirenEntity {
   return { class: ['instance'], properties: { rel, ...fields }, actions: [], links: [] };
@@ -300,5 +302,78 @@ describe('页面级实体缓存:deref 消费视图', () => {
 
     expect(cache.snapshot().get('articles')).toBe(articles);
     expect(cache.snapshot().size).toBe(1);
+  });
+});
+
+describe('T38 集合读面参数:缓存键隔离', () => {
+  it('同 rel 不同读面参数 → 各自取数(翻页/过滤绝不命中陈旧全量缓存)', async () => {
+    const full = collection('articles', [entity('post:p1')]);
+    const page2 = collection('articles', [entity('post:p2')]);
+    const fetcher = vi.fn(async (rel: string, readQuery?: string): Promise<SirenEntity | null> =>
+      readQuery === undefined ? full : page2,
+    );
+    const cache = new PageEntityCache(fetcher as EntityFetcher);
+
+    expect(await cache.get('articles', 'v1')).toBe(full);
+    expect(await cache.get('articles', 'v1', 'offset=20')).toBe(page2);
+    expect(fetcher.mock.calls).toEqual([
+      ['articles', undefined],
+      ['articles', 'offset=20'],
+    ]);
+  });
+
+  it('同 rel 同读面参数 → 单次 fetch(参数归入键,inflight 去重口径不变)', async () => {
+    const { fetcher, calls } = countingFetcher({ articles: collection('articles', []) });
+    const cache = new PageEntityCache(fetcher);
+
+    const [a, b] = await Promise.all([
+      cache.get('articles', 'v1', 'offset=20&filter.status=pending'),
+      cache.get('articles', 'v1', 'offset=20&filter.status=pending'),
+    ]);
+
+    expect(a).toBe(b);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('exec 精确失效扩散到该 rel 的全部读面变体(分页页不残留旧投影)', async () => {
+    const fetcher = vi.fn(async (): Promise<SirenEntity | null> => collection('articles', []));
+    const cache = new PageEntityCache(fetcher as EntityFetcher);
+
+    await cache.get('articles', 'v1');
+    await cache.get('articles', 'v1', 'offset=20');
+    await cache.get('articles', 'v1', 'offset=40&filter.status=pending');
+    expect(fetcher).toHaveBeenCalledTimes(3);
+
+    cache.invalidateAfterExec('post:p1', { collection: 'articles' });
+
+    await cache.get('articles', 'v1');
+    await cache.get('articles', 'v1', 'offset=20');
+    await cache.get('articles', 'v1', 'offset=40&filter.status=pending');
+    expect(fetcher).toHaveBeenCalledTimes(6);
+    // 无关 rel 的读面变体不动。
+    await cache.get('comments', 'v1', 'offset=20');
+    await cache.get('comments', 'v1', 'offset=20');
+    expect(fetcher).toHaveBeenCalledTimes(7);
+  });
+
+  it('显式 invalidate(rel) 同样清除全部读面变体', async () => {
+    const { fetcher, calls } = countingFetcher({ articles: collection('articles', []) });
+    const cache = new PageEntityCache(fetcher);
+
+    await cache.get('articles', 'v1', 'offset=20');
+    cache.invalidate('articles');
+    await cache.get('articles', 'v1', 'offset=20');
+
+    expect(calls).toHaveLength(2);
+  });
+
+  it('version 变化仍全量失效(读面变体一并作废)', async () => {
+    const { fetcher, calls } = countingFetcher({ articles: collection('articles', []) });
+    const cache = new PageEntityCache(fetcher);
+
+    await cache.get('articles', 'v1', 'offset=20');
+    await cache.get('articles', 'v2', 'offset=20');
+
+    expect(calls).toHaveLength(2);
   });
 });

@@ -79,14 +79,20 @@ export async function execAction(input: {
   };
 }
 
-/** GET 合同实体；meta rel 留在定义合同站。404 → null，其余非 200 → 抛错。 */
+/**
+ * GET 合同实体；meta rel 留在定义合同站。404 → null，其余非 200 → 抛错。
+ * readQuery(T38):集合读面参数的规范查询串(offset + filter.*;人机同门——
+ * 与声明的 next/prev/self 链接同一参数语义),原样追加进合同请求。
+ */
 export async function fetchEntity(
   rel: string,
   signal?: AbortSignal,
   scope?: string,
+  readQuery?: string,
 ): Promise<SirenEntity | null> {
+  const readParams = readQuery === undefined || readQuery === '' ? '' : `&${readQuery}`;
   const endpoint = withPolicyScope(
-    `${contractPrefix(rel)}/api/entity?rel=${encodeURIComponent(rel)}`,
+    `${contractPrefix(rel)}/api/entity?rel=${encodeURIComponent(rel)}${readParams}`,
     scope,
   );
   const response = await fetch(endpoint, { signal });

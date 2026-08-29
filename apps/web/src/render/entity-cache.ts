@@ -27,8 +27,12 @@ import { fetchEntity } from '@/components/exec-client';
 
 import type { EntityCache } from './deref';
 
-/** 取数函数口径:与 exec-client.fetchEntity 同形(/api/entity;404 → null)。 */
-export type EntityFetcher = (rel: string) => Promise<SirenEntity | null>;
+/**
+ * 取数函数口径:与 exec-client.fetchEntity 同形(/api/entity;404 → null)。
+ * readQuery(T38)为集合读面参数的规范查询串(offset + filter.*),由缓存键
+ * 透传——同一 rel 的不同读面各占一条缓存,翻页/过滤绝不命中陈旧全量。
+ */
+export type EntityFetcher = (rel: string, readQuery?: string) => Promise<SirenEntity | null>;
 
 /** 所属 collection rel:`<collection>:<name>` → `<collection>`;无 ":" → 自身。 */
 export function collectionRelOf(rel: string): string {
@@ -62,55 +66,58 @@ export class PageEntityCache {
   private version: string | undefined;
   private readonly fetcher: EntityFetcher;
 
-  constructor(fetcher: EntityFetcher = fetchEntity) {
+  constructor(
+    fetcher: EntityFetcher = (rel, readQuery) => fetchEntity(rel, undefined, undefined, readQuery),
+  ) {
     this.fetcher = fetcher;
   }
 
   /**
    * 读实体:同 version 下命中缓存零 fetch;miss 经 /api/entity 拉取填充;
-   * version 变 → 先全量失效再走 miss 路径。
+   * version 变 → 先全量失效再走 miss 路径。readQuery(T38)为集合读面参数的
+   * 规范查询串——缓存键 = `rel?readQuery`,同 rel 不同读面各自取数,翻页/
+   * 过滤不命中陈旧全量(参数隔离,I2)。
    */
-  async get(rel: string, version: string): Promise<SirenEntity | null> {
+  async get(rel: string, version: string, readQuery?: string): Promise<SirenEntity | null> {
     if (this.version !== version) {
       this.entities.clear();
       this.inflight.clear();
       this.version = version;
     }
-    const cached = this.entities.get(rel);
+    const key = readQuery === undefined || readQuery === '' ? rel : `${rel}?${readQuery}`;
+    const cached = this.entities.get(key);
     if (cached !== undefined) return cached;
 
-    // inflight 去重:同 rel 并发读只发一次取数(换 concern/换词条的并发渲染)。
-    const pending = this.inflight.get(rel);
+    // inflight 去重:同键并发读只发一次取数(换 concern/换词条的并发渲染)。
+    const pending = this.inflight.get(key);
     if (pending !== undefined) return pending;
 
     const requestedVersion = version;
-    const request = this.fetcher(rel)
+    const request = this.fetcher(rel, readQuery)
       .then((fetched) => {
         // 版本在飞行中变了 → 该响应出自旧投影口径,落缓存即脏读(I2),丢弃。
         if (fetched !== null && this.version === requestedVersion) {
-          this.entities.set(rel, fetched);
+          this.entities.set(key, fetched);
         }
         return fetched;
       })
       .finally(() => {
-        if (this.inflight.get(rel) === request) this.inflight.delete(rel);
+        if (this.inflight.get(key) === request) this.inflight.delete(key);
       });
-    this.inflight.set(rel, request);
+    this.inflight.set(key, request);
     return request;
   }
 
   /**
    * exec 成功后精确失效:当前 rel + 所属 collection rel;其他 rel 不动。
    * 所属 collection = 显式 options.collection(接线点从实体回链拿到的真实
-   * 归属)与 rel 前缀推导候选的并集——宁可多失效不可脏读(I2)。
+   * 归属)与 rel 前缀推导候选的并集——宁可多失效不可脏读(I2)。失效按 rel
+   * 扩散到全部读面变体(分页/过滤页不残留旧投影)。
    */
   invalidateAfterExec(rel: string, options?: { collection?: string }): void {
     const targets = new Set([rel, collectionRelOf(rel)]);
     if (options?.collection !== undefined) targets.add(options.collection);
-    for (const target of targets) {
-      this.entities.delete(target);
-      this.inflight.delete(target);
-    }
+    for (const target of targets) this.evictRel(target);
   }
 
   /**
@@ -130,10 +137,10 @@ export class PageEntityCache {
   /**
    * 单 rel 失效(别名页场景:页面入口 rel ≠ exec 实例 rel 时,exec 只覆盖
    * 实例 rel,页面 rel 的旧投影须由接线点显式失效,否则重拉命中旧缓存)。
+   * 同样扩散到全部读面变体。
    */
   invalidate(rel: string): void {
-    this.entities.delete(rel);
-    this.inflight.delete(rel);
+    this.evictRel(rel);
   }
 
   /** 外部执行者改写范围未知时全量失效；仅作用于当前页面生命周期。 */
@@ -145,5 +152,16 @@ export class PageEntityCache {
   /** deref 消费的缓存视图(rel → 实体;消费侧只读,写入只能经 get 填充)。 */
   snapshot(): EntityCache {
     return this.entities;
+  }
+
+  /** 逐出 rel 的缓存/inflight 条目,含全部读面变体键(`rel?readQuery`)。 */
+  private evictRel(rel: string): void {
+    const prefix = `${rel}?`;
+    for (const key of [...this.entities.keys()]) {
+      if (key === rel || key.startsWith(prefix)) this.entities.delete(key);
+    }
+    for (const key of [...this.inflight.keys()]) {
+      if (key === rel || key.startsWith(prefix)) this.inflight.delete(key);
+    }
   }
 }
