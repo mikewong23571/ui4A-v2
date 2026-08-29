@@ -92,6 +92,7 @@ export function deriveAppWorkspaceComposition(
     intent: string;
     mode: 'invalidate';
     shape: 'entity' | 'collection';
+    density?: 'table';
   }> = [];
   const taken = new Set<string>();
   const usedSources = new Set<string>();
@@ -102,6 +103,9 @@ export function deriveAppWorkspaceComposition(
       intent: `浏览 ${title} 的产物`,
       mode: 'invalidate',
       shape: 'collection',
+      // 产物集合区域以表格密度呈现成员(通用词汇 member-table,声明驱动零特判);
+      // 入口 region 不受影响,维持缺省 card。
+      density: 'table',
     });
     usedSources.add(surface.rel);
   }
@@ -120,12 +124,13 @@ export function deriveAppWorkspaceComposition(
   return freezeCompositionDeclaration({
     id: parseCompositionId(`app-${scope.toLowerCase().replace(/[^a-z0-9._-]+/gu, '-') || 'app'}`),
     version: '1',
-    regions: regions.map(({ region, source, intent, mode, shape }) => ({
+    regions: regions.map(({ region, source, intent, mode, shape, density }) => ({
       region,
       source,
       intent,
       mode,
       shape,
+      ...(density === undefined ? {} : { density }),
     })),
   });
 }

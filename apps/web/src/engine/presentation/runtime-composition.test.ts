@@ -242,3 +242,67 @@ describe('region 主体绑定按活合同规范 rel 规划(T37 flow 入口 regio
     expect(subjects).not.toContain('flow:article-drafting');
   });
 });
+
+describe('region density 贯通 generic 规划(数据驱动选词,零特判)', () => {
+  const collectionWithDecisions: SirenEntity = {
+    class: ['collection'],
+    properties: { rel: 'inbox' },
+    actions: [],
+    links: [],
+    entities: [
+      {
+        class: ['confirmation', 'pending'],
+        properties: { rel: 'confirmation:c1', identity: '归档 · 由 agent 提议' },
+        actions: [
+          { name: 'approve', title: '批准', method: 'POST', href: '/api/exec', fields: {} },
+        ],
+        links: [],
+        'guard-results': [],
+      },
+    ],
+  };
+  const declarationOf = (density?: 'table') => ({
+    id: 'density-region',
+    version: '1',
+    regions: [
+      {
+        region: 'waiting-for-me',
+        source: 'inbox',
+        intent: 'Review work waiting for me',
+        mode: 'rehydrate' as const,
+        shape: 'collection' as const,
+        ...(density === undefined ? {} : { density }),
+      },
+    ],
+  });
+  const plannedWordOf = (density?: 'table'): string => {
+    const declaration = declarationOf(density);
+    const planned = planWorkspaceComposition({
+      rels: ['inbox'],
+      entities: [collectionWithDecisions],
+      declaration,
+      regions: declaration.regions.map((region) => ({
+        declaration: region,
+        entity: collectionWithDecisions,
+      })),
+    });
+    let word: string | undefined;
+    const visit = (node: SurfaceNode): void => {
+      if (node.kind === 'repeat') visit(node.item);
+      else if (node.kind === 'word') word = node.word;
+      else if (node.kind === 'layout') node.children.forEach(visit);
+      else if (node.kind === 'slot') visit(node.child);
+    };
+    visit(planned.surface.root);
+    if (word === undefined) throw new Error('planned surface must contain a word node');
+    return word;
+  };
+
+  it("声明 density='table' 的集合 region → repeat item 选 member-table 词", () => {
+    expect(plannedWordOf('table')).toBe('member-table');
+  });
+
+  it('密度缺省 → 决策卡行为完全不变(member-card)', () => {
+    expect(plannedWordOf(undefined)).toBe('member-card');
+  });
+});

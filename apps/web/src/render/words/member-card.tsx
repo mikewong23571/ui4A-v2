@@ -8,42 +8,29 @@
  * properties.fields);动作经宿主 ActionSubmitProvider 提交,同一裁决器,
  * 零实体类型分支。成员无动作时只有身份行(渲染器零分支)。
  */
-import type { SirenAction, GuardResultEntry, SirenEntity } from '@ui4a/engine';
+import type { SirenEntity } from '@ui4a/engine';
 
 import { canvasEntityHref } from '@/presence/navigation';
 
 import { ActionGroup } from '../../components/actions/action-group';
 
-import { asOptionalString, asRequiredString, type WordProps } from './shared';
-
-function asOptionalActions(value: unknown): SirenAction[] {
-  if (value === undefined) return [];
-  if (!Array.isArray(value)) throw new Error('member-card 的 actions 需要动作数组');
-  return value as SirenAction[];
-}
-
-function asOptionalGuardResults(value: unknown): GuardResultEntry[] {
-  if (value === undefined) return [];
-  if (!Array.isArray(value)) throw new Error('member-card 的 guardResults 需要 guard-results 数组');
-  return value as GuardResultEntry[];
-}
-
-function asOptionalFields(value: unknown): Record<string, unknown> | undefined {
-  if (value === undefined || value === null) return undefined;
-  if (typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('member-card 的 fields 需要 properties.fields 字典');
-  }
-  return value as Record<string, unknown>;
-}
+import {
+  asOptionalActions,
+  asOptionalFields,
+  asOptionalGuardResults,
+  asOptionalString,
+  asRequiredString,
+  type WordProps,
+} from './shared';
 
 export function MemberCardWord(props: WordProps) {
   const label = asRequiredString(props.label, 'member-card', 'label');
   const rel = asRequiredString(props.rel, 'member-card', 'rel');
   const status = asOptionalString(props.status, 'member-card', 'status');
   const detail = asOptionalString(props.detail, 'member-card', 'detail');
-  const actions = asOptionalActions(props.actions);
-  const guardResults = asOptionalGuardResults(props.guardResults);
-  const fields = asOptionalFields(props.fields);
+  const actions = asOptionalActions(props.actions, 'member-card', 'actions');
+  const guardResults = asOptionalGuardResults(props.guardResults, 'member-card', 'guardResults');
+  const fields = asOptionalFields(props.fields, 'member-card', 'fields');
 
   // 决策卡只消费动作裁决所需的最小合同面;标识与预填取值来自成员投影。
   const entity: SirenEntity = {

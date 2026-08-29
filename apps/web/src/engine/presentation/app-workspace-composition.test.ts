@@ -76,6 +76,17 @@ describe('app workspace composition derivation(sitemap 运行时推导,零 per-a
     expect(declaration!.regions[1]).toMatchObject({ mode: 'invalidate', shape: 'entity' });
   });
 
+  it('产物集合 region 声明 density=table(成员表格化),入口 region 不受影响', () => {
+    const declaration = deriveAppWorkspaceComposition('publishing', fixtureSitemap());
+    expect(declaration).toBeDefined();
+    // 产物集合(articles)→ 表格密度;入口向导面(article-drafting)→ 缺省 card。
+    expect(declaration!.regions[0]!.density).toBe('table');
+    expect(declaration!.regions[1]!.density).toBeUndefined();
+    // community 的唯一 region 经 entry 兑现集合面——入口 region 密度缺省,不升级。
+    const community = deriveAppWorkspaceComposition('community', fixtureSitemap());
+    expect(community!.regions[0]!.density).toBeUndefined();
+  });
+
   it('community:entry 指向跨 app 归属的集合面时,经 entry 兑现唯一 collection region(U4)', () => {
     const declaration = deriveAppWorkspaceComposition('community', fixtureSitemap());
     expect(declaration).toBeDefined();

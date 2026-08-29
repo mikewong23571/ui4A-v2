@@ -5,9 +5,8 @@
  * 渲染层不做静默默认:形状不符即抛错(缺数据不造数据,铁律 4),
  * 错误信息带词条名与 prop 名(注入防御的审计口径)。
  */
-import type { SirenEntity } from '@ui4a/engine';
-
 import type { DimensionCount } from '../deref';
+import type { GuardResultEntry, SirenAction, SirenEntity } from '@ui4a/engine';
 
 /** 词条组件 props(deref 输出的松散字典;词条内部收紧)。 */
 export type WordProps = Record<string, unknown>;
@@ -62,6 +61,41 @@ export function asOptionalString(value: unknown, word: string, prop: string): st
     throw new Error(`词条 ${word} 的 ${prop} 需要字符串,得到 ${describe(value)}`);
   }
   return value;
+}
+
+/** 成员可选动作数组 prop(actions;member 决策/表格词条共用)。 */
+export function asOptionalActions(value: unknown, word: string, prop: string): SirenAction[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    throw new Error(`词条 ${word} 的 ${prop} 需要动作数组`);
+  }
+  return value as SirenAction[];
+}
+
+/** 成员可选 guard-results 数组 prop(动作裁决投影;member 词条共用)。 */
+export function asOptionalGuardResults(
+  value: unknown,
+  word: string,
+  prop: string,
+): GuardResultEntry[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    throw new Error(`词条 ${word} 的 ${prop} 需要 guard-results 数组`);
+  }
+  return value as GuardResultEntry[];
+}
+
+/** 成员可选 properties.fields 字典 prop(预填取值;member 词条共用)。 */
+export function asOptionalFields(
+  value: unknown,
+  word: string,
+  prop: string,
+): Record<string, unknown> | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`词条 ${word} 的 ${prop} 需要 properties.fields 字典`);
+  }
+  return value as Record<string, unknown>;
 }
 
 /** 必需字符串 prop。 */

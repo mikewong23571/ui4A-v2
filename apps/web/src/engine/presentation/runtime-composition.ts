@@ -147,6 +147,9 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
         intent: region.declaration.intent,
         semanticHints: semanticHintsOf(region.entity as Parameters<typeof planGenericSurface>[1]),
         provenanceRef: `composition-region:${region.declaration.region}`,
+        // 密度贯通:region 声明的成员词条密度原样传给引擎 generic 规划
+        // (缺省 'card' 行为完全不变;词汇选择仍在引擎按 catalog pattern 完成)。
+        density: region.declaration.density,
       },
     );
   return {

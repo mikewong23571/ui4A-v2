@@ -52,5 +52,18 @@ export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
         fields: { sources: ['item'] },
       },
     },
+    'member-table': {
+      roles: ['identity'],
+      pattern: 'member-table',
+      bindings: {
+        label: { sources: ['item'], required: true },
+        rel: { sources: ['item'], required: true },
+        status: { sources: ['item'] },
+        detail: { sources: ['item'] },
+        actions: { sources: ['item'] },
+        guardResults: { sources: ['item'] },
+        fields: { sources: ['item'] },
+      },
+    },
   },
 };

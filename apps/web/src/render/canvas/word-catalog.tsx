@@ -29,6 +29,7 @@ import { FlowWord } from '../words/flow';
 import { FormWord } from '../words/form';
 import { KanbanWord } from '../words/kanban';
 import { MemberCardWord } from '../words/member-card';
+import { MemberTableWord } from '../words/member-table';
 import { MarkdownWord } from '../words/markdown';
 import type { WordProps } from '../words/shared';
 import { StatWord } from '../words/stat';
@@ -164,6 +165,19 @@ const wordImplementations: ReactComponentImplementation[] = [
       fields: dynamic(z.record(z.string(), z.any())).optional(),
     },
     MemberCardWord,
+  ),
+  wordImplementation(
+    'member-table',
+    {
+      label: dynamic(z.string()),
+      rel: dynamic(z.string()),
+      status: dynamic(z.string()).optional(),
+      detail: dynamic(z.string()).optional(),
+      actions: dynamic(z.array(z.any())).optional(),
+      guardResults: dynamic(z.array(z.any())).optional(),
+      fields: dynamic(z.record(z.string(), z.any())).optional(),
+    },
+    MemberTableWord,
   ),
 ];
 
