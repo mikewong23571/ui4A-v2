@@ -93,7 +93,20 @@ const words: Readonly<Record<string, A2uiWordAdapter>> = {
       actions: { prop: 'actions', transform: 'value' },
       guardResults: { prop: 'guardResults', transform: 'value' },
       fields: { prop: 'fields', transform: 'value' },
+      presentations: { prop: 'presentations', transform: 'value' },
     },
+  },
+  // T38 FR3/FR5:集合读面查询词汇(声明驱动)。
+  'collection-filters': {
+    component: 'collection-filters',
+    bindings: {
+      declarations: { prop: 'declarations', transform: 'value' },
+      links: { prop: 'links', transform: 'value' },
+    },
+  },
+  'page-links': {
+    component: 'page-links',
+    bindings: { links: { prop: 'links', transform: 'value' } },
   },
 };
 

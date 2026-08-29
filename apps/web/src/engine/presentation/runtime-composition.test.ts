@@ -286,15 +286,19 @@ describe('region density 贯通 generic 规划(数据驱动选词,零特判)', (
         entity: collectionWithDecisions,
       })),
     });
+    // T38:relation 槽可含集合查询词(stack 包裹)——只考察 repeat item 的词
+    // (本组测试的口径:密度驱动的成员词选择)。
     let word: string | undefined;
-    const visit = (node: SurfaceNode): void => {
-      if (node.kind === 'repeat') visit(node.item);
-      else if (node.kind === 'word') word = node.word;
-      else if (node.kind === 'layout') node.children.forEach(visit);
-      else if (node.kind === 'slot') visit(node.child);
+    const visit = (node: SurfaceNode, item: boolean): void => {
+      if (node.kind === 'repeat') visit(node.item, true);
+      else if (node.kind === 'word') {
+        if (item) word = node.word;
+      } else if (node.kind === 'layout') {
+        node.children.forEach((child) => visit(child, item));
+      } else if (node.kind === 'slot') visit(node.child, item);
     };
-    visit(planned.surface.root);
-    if (word === undefined) throw new Error('planned surface must contain a word node');
+    visit(planned.surface.root, false);
+    if (word === undefined) throw new Error('planned surface must contain a repeat item word');
     return word;
   };
 

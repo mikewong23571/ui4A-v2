@@ -3,7 +3,9 @@ import type { SurfaceCatalog } from '@ui4a/engine';
 /** Semantic catalog planned by AI and compiled to the concrete A2UI catalog at runtime. */
 export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
   id: 'urn:ui4a:presentation:semantic',
-  version: 'semantic-v5', // T35 F-06:规划器簿记数字跳过/成员状态标题化,版本 +1 使缓存面失效
+  // T38:集合查询词汇(collection-filters/page-links)与 member-table 概览绑定
+  // 入目录;版本 +1 使既有缓存面失效(词位与绑定形状变更)。
+  version: 'semantic-v6',
   words: {
     heading: {
       roles: ['identity'],
@@ -63,7 +65,24 @@ export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
         actions: { sources: ['item'] },
         guardResults: { sources: ['item'] },
         fields: { sources: ['item'] },
+        // T38 FR4:成员呈现元数据(声明序 + title + overview hint)→ 概览列。
+        presentations: { sources: ['item'] },
       },
+    },
+    // T38 FR3/FR5:集合读面查询词汇(声明驱动,零实体特判;规划器按 pattern
+    // 供给绑定——过滤词吃声明维度 + 合同 self 链接,分页词吃声明的 next/prev)。
+    'collection-filters': {
+      roles: ['relation'],
+      pattern: 'collection-filters',
+      bindings: {
+        declarations: { sources: ['property'], required: true },
+        links: { sources: ['links'] },
+      },
+    },
+    'page-links': {
+      roles: ['relation'],
+      pattern: 'page-links',
+      bindings: { links: { sources: ['links'], required: true } },
     },
   },
 };

@@ -96,12 +96,7 @@ export interface SurfaceCatalogWord {
   roles: SemanticRegionRole[];
   bindings: Record<string, SurfaceCatalogBinding>;
   /** Optional semantic composition pattern; never a React/component name. */
-  pattern?:
-    | 'member-link'
-    | 'member-card'
-    | 'member-table'
-    | 'collection-filters'
-    | 'page-links';
+  pattern?: 'member-link' | 'member-card' | 'member-table' | 'collection-filters' | 'page-links';
 }
 
 export interface SurfaceCatalog {

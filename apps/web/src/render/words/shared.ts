@@ -6,7 +6,13 @@
  * 错误信息带词条名与 prop 名(注入防御的审计口径)。
  */
 import type { DimensionCount } from '../deref';
-import type { GuardResultEntry, SirenAction, SirenEntity } from '@ui4a/engine';
+import type {
+  GuardResultEntry,
+  SirenAction,
+  SirenEntity,
+  SirenFieldPresentation,
+  SirenLink,
+} from '@ui4a/engine';
 
 /** 词条组件 props(deref 输出的松散字典;词条内部收紧)。 */
 export type WordProps = Record<string, unknown>;
@@ -96,6 +102,96 @@ export function asOptionalFields(
     throw new Error(`词条 ${word} 的 ${prop} 需要 properties.fields 字典`);
   }
   return value as Record<string, unknown>;
+}
+
+/** 成员可选呈现元数据数组 prop(T38 FR4 概览 hint;member-table 消费)。 */
+export function asOptionalPresentations(
+  value: unknown,
+  word: string,
+  prop: string,
+): SirenFieldPresentation[] {
+  if (value === undefined || value === null || value === '') return [];
+  if (!Array.isArray(value)) {
+    throw new Error(
+      `词条 ${word} 的 ${prop} 需要字段呈现元数据数组(properties.presentation.fields)`,
+    );
+  }
+  return value.map((entry, index) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+      throw new Error(`词条 ${word} 的 ${prop}[${index}] 不是字段呈现元数据`);
+    }
+    const candidate = entry as Record<string, unknown>;
+    if (typeof candidate.path !== 'string' || candidate.path === '') {
+      throw new Error(`词条 ${word} 的 ${prop}[${index}] 缺 path`);
+    }
+    if (typeof candidate.title !== 'string' || candidate.title === '') {
+      throw new Error(`词条 ${word} 的 ${prop}[${index}] 缺 title`);
+    }
+    if (candidate.overview !== undefined && typeof candidate.overview !== 'boolean') {
+      throw new Error(`词条 ${word} 的 ${prop}[${index}] 的 overview 必须是 boolean`);
+    }
+    return entry as SirenFieldPresentation;
+  });
+}
+
+/** 可选合同链接数组 prop(集合分页脚/过滤控件消费;形状响亮收紧)。 */
+export function asOptionalLinks(value: unknown, word: string, prop: string): SirenLink[] {
+  if (value === undefined || value === null || value === '') return [];
+  if (!Array.isArray(value)) {
+    throw new Error(`词条 ${word} 的 ${prop} 需要合同链接数组`);
+  }
+  return value.map((entry, index) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+      throw new Error(`词条 ${word} 的 ${prop}[${index}] 不是合同链接`);
+    }
+    const candidate = entry as Record<string, unknown>;
+    if (
+      !Array.isArray(candidate.rel) ||
+      candidate.rel.some((rel) => typeof rel !== 'string') ||
+      typeof candidate.href !== 'string'
+    ) {
+      throw new Error(`词条 ${word} 的 ${prop}[${index}] 缺 rel 数组/href`);
+    }
+    return entry as SirenLink;
+  });
+}
+
+/** 过滤维度声明数组 prop(T38 FR3;维度标题与值域全部来自声明数据)。 */
+export function asOptionalFilterDeclarations(
+  value: unknown,
+  word: string,
+  prop: string,
+): Array<{ field: string; title: string; values: Array<{ value: string; title: string }> }> {
+  if (value === undefined || value === null || value === '') return [];
+  if (!Array.isArray(value)) {
+    throw new Error(`词条 ${word} 的 ${prop} 需要过滤维度声明数组`);
+  }
+  return value.map((entry, index) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+      throw new Error(`词条 ${word} 的 ${prop}[${index}] 不是过滤维度声明`);
+    }
+    const candidate = entry as Record<string, unknown>;
+    if (typeof candidate.field !== 'string' || candidate.field === '') {
+      throw new Error(`词条 ${word} 的 ${prop}[${index}] 缺 field`);
+    }
+    if (typeof candidate.title !== 'string' || candidate.title === '') {
+      throw new Error(`词条 ${word} 的 ${prop}[${index}] 缺 title`);
+    }
+    if (!Array.isArray(candidate.values)) {
+      throw new Error(`词条 ${word} 的 ${prop}[${index}] 缺声明值域 values`);
+    }
+    const values = candidate.values.map((option, optionIndex) => {
+      if (typeof option !== 'object' || option === null) {
+        throw new Error(`词条 ${word} 的 ${prop}[${index}].values[${optionIndex}] 不是值域条目`);
+      }
+      const pair = option as Record<string, unknown>;
+      if (typeof pair.value !== 'string' || typeof pair.title !== 'string') {
+        throw new Error(`词条 ${word} 的 ${prop}[${index}].values[${optionIndex}] 缺 value/title`);
+      }
+      return { value: pair.value, title: pair.title };
+    });
+    return { field: candidate.field, title: candidate.title, values };
+  });
 }
 
 /** 必需字符串 prop。 */

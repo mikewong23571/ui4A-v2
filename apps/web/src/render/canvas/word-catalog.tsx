@@ -22,6 +22,7 @@ import { z } from 'zod';
 
 import { CATALOG_ID } from '../registry';
 import { ChartWord } from '../words/chart';
+import { CollectionFiltersWord } from '../words/collection-filters';
 import { DetailWord } from '../words/detail';
 import { DiffWord } from '../words/diff';
 import { EntityLinkWord } from '../words/entity-link';
@@ -32,6 +33,7 @@ import { MemberCardWord } from '../words/member-card';
 import { MemberTableWord } from '../words/member-table';
 import { MarkdownWord } from '../words/markdown';
 import type { WordProps } from '../words/shared';
+import { PageLinksWord } from '../words/page-links';
 import { StatWord } from '../words/stat';
 import { TableWord } from '../words/table';
 import { TimelineWord } from '../words/timeline';
@@ -176,9 +178,19 @@ const wordImplementations: ReactComponentImplementation[] = [
       actions: dynamic(z.array(z.any())).optional(),
       guardResults: dynamic(z.array(z.any())).optional(),
       fields: dynamic(z.record(z.string(), z.any())).optional(),
+      presentations: dynamic(z.array(z.any())).optional(),
     },
     MemberTableWord,
   ),
+  wordImplementation(
+    'collection-filters',
+    {
+      declarations: dynamic(z.array(z.any())),
+      links: dynamic(z.array(z.any())).optional(),
+    },
+    CollectionFiltersWord,
+  ),
+  wordImplementation('page-links', { links: dynamic(z.array(z.any())) }, PageLinksWord),
 ];
 
 /**

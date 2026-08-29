@@ -93,6 +93,9 @@ function selectCatalogWord(
   for (const [word, definition] of Object.entries(catalog.words).sort(([left], [right]) =>
     left.localeCompare(right),
   )) {
+    // Pattern 词(member-* / collection-*)只经 findPattern 通道选择(repeat 成员
+    // 词与集合查询词),绝不充当通用字段词——否则按名字序劫持同角色的字段区域。
+    if (definition.pattern !== undefined) continue;
     if (!definition.roles.includes(role)) continue;
     const supported = Object.entries(definition.bindings)
       .filter(([, binding]) => binding.sources.includes(source))
@@ -367,10 +370,25 @@ export function planGenericSurface(
           id: `word-${repeatIndex}-filters`,
           role: 'relation',
           word: filtersPattern[0],
-          bindings: { declarations },
+          // 过滤词的 links 绑定按目录声明供给(当前过滤状态住合同 self 链接,
+          // 人机同门;未声明该绑定的目录词只吃声明维度)。
+          bindings: {
+            declarations,
+            ...(filtersPattern[1].bindings.links === undefined
+              ? {}
+              : { links: { kind: 'links', subject } as const }),
+          },
           dependencies: [
             catalogDependency(catalog),
             entityDependencyFor(subject, options.entityVersion, declarations),
+            ...(filtersPattern[1].bindings.links === undefined
+              ? []
+              : [
+                  entityDependencyFor(subject, options.entityVersion, {
+                    kind: 'links',
+                    subject,
+                  } as const),
+                ]),
           ],
           provenance: genericProvenance(provenanceRef),
         });

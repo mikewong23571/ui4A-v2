@@ -141,4 +141,81 @@ describe('member-table 词条', () => {
     expect(() => renderRow({ rel: 'confirmation:c1', actions: [] })).toThrow(/member-table/);
     expect(() => renderRow({ label: 'x', actions: [] })).toThrow(/member-table/);
   });
+
+  describe('T38 FR4 概览列(presentation.fields 的 overview hint,声明驱动)', () => {
+    const presentations = [
+      { path: 'properties.fields.title', title: '标题', role: 'identity', overview: true },
+      { path: 'properties.fields.body', title: '正文', role: 'primary-content', overview: true },
+      { path: 'properties.fields.category', title: '分类', role: 'metadata', overview: true },
+    ];
+
+    it('声明 overview 的字段按声明序进概览行,title 为列语义;发明词位(状态/详情)退场', () => {
+      renderRow({
+        label: '第一篇',
+        rel: 'post:p1',
+        status: 'published',
+        detail: 'resume 文本',
+        actions: [approveAction],
+        fields: { title: '第一篇', body: '正文内容', category: '随笔' },
+        presentations,
+      });
+
+      // 主体 + 3 概览列 + 操作;状态/详情列被声明概览取代(诚实按声明)。
+      expect(screen.getAllByRole('cell')).toHaveLength(5);
+      expect(screen.getByText('正文内容')).toBeTruthy();
+      expect(screen.getByText('随笔')).toBeTruthy();
+      expect(screen.queryByText('published')).toBeNull();
+      expect(screen.queryByText('resume 文本')).toBeNull();
+      // 列语义来自声明数据(零渲染器发明文案)。
+      const bodyCell = screen.getByText('正文内容').closest('td');
+      expect(bodyCell?.getAttribute('data-column')).toBe('properties.fields.body');
+      expect(bodyCell?.getAttribute('title')).toBe('正文');
+      // 声明序即列序:title → body → category。
+      const columns = [...screen.getAllByRole('cell')]
+        .map((cell) => cell.getAttribute('data-column'))
+        .filter((value) => value !== null && value.startsWith('properties.fields.'));
+      expect(columns).toEqual([
+        'properties.fields.title',
+        'properties.fields.body',
+        'properties.fields.category',
+      ]);
+    });
+
+    it('成员缺声明字段 → 诚实空单元格,不发明占位事实', () => {
+      renderRow({
+        label: '第二篇',
+        rel: 'post:p2',
+        actions: [],
+        fields: { title: '第二篇' },
+        presentations,
+      });
+
+      const cells = screen.getAllByRole('cell');
+      expect(cells).toHaveLength(5);
+      const bodyCell = cells[2]!;
+      expect(bodyCell.getAttribute('data-column')).toBe('properties.fields.body');
+      expect(bodyCell.textContent).toBe('');
+      const categoryCell = cells[3]!;
+      expect(categoryCell.getAttribute('data-column')).toBe('properties.fields.category');
+      expect(categoryCell.textContent).toBe('');
+    });
+
+    it('无 overview 声明(含 presentations 缺省)→ 回退现状四列(身份/状态/详情/操作)', () => {
+      renderRow({
+        label: '裸成员',
+        rel: 'record:x',
+        status: '进行中',
+        detail: 'resume',
+        actions: [],
+        presentations: [{ path: 'properties.fields.title', title: '标题', role: 'identity' }],
+      });
+      expect(screen.getAllByRole('cell')).toHaveLength(4);
+      expect(screen.getByText('进行中')).toBeTruthy();
+      expect(screen.getByText('resume')).toBeTruthy();
+
+      cleanup();
+      renderRow({ label: '另一成员', rel: 'record:y', actions: [] });
+      expect(screen.getAllByRole('cell')).toHaveLength(4);
+    });
+  });
 });

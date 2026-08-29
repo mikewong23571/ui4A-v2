@@ -13,6 +13,7 @@ import {
 } from '../../../../engine/presentation/runtime';
 import { resetRecipeCoordinatorForTests } from '../../../../engine/presentation/recipes-runtime';
 import { getBuiltinComposition } from '../../../../engine/presentation/compositions';
+import { PRESENTATION_SURFACE_CATALOG } from '../../../../engine/presentation/catalog';
 import { planWorkspaceComposition } from '../../../../engine/presentation/runtime-composition';
 import { GET, POST } from './route';
 
@@ -73,7 +74,9 @@ beforeEach(async () => {
                   {
                     kind: 'catalog',
                     subject: 'urn:ui4a:presentation:semantic',
-                    version: 'semantic-v5',
+                    // 活目录版本(patch 重校验要求 word 节点依赖 == 活目录版本;
+                    // T38 目录 bump 后随活目录走,不再钉死版本号)。
+                    version: PRESENTATION_SURFACE_CATALOG.version,
                   },
                 ],
                 provenance: [{ kind: 'generic-fallback', ref: 'fixture' }],
