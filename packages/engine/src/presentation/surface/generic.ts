@@ -25,6 +25,7 @@ import {
   type SurfaceBinding,
   type SurfaceBindingKind,
   type SurfaceCatalog,
+  type SurfaceCatalogWord,
   type SurfaceDependency,
   type SurfaceLayoutNode,
   type SurfaceNode,
@@ -261,17 +262,20 @@ export function planGenericSurface(
         ? 'properties.identity'
         : 'properties.rel';
     // T33 D50:成员携带已声明动作(纯结构判定,零 class/rel 分支)→ 决策卡词条;
-    // 否则维持导航卡片(member-link)。
+    // 否则维持导航卡片(member-link)。密度贯通:region 声明 density='table' 时,
+    // 携带动作的成员选 member-table pattern;目录缺该 pattern 时回退决策卡
+    // (回退本身也是通用 pattern 查找,零实体特判);缺省/'card' 行为完全不变。
     const membersDeclareActions = entity.entities.some((member) => member.actions.length > 0);
-    const memberCard =
-      membersDeclareActions === true
-        ? Object.entries(catalog.words).find(
-            ([, definition]) => definition.pattern === 'member-card',
-          )
+    const findPattern = (pattern: NonNullable<SurfaceCatalogWord['pattern']>) =>
+      Object.entries(catalog.words).find(([, definition]) => definition.pattern === pattern);
+    const memberTable =
+      options.density === 'table' && membersDeclareActions
+        ? (findPattern('member-table') ?? findPattern('member-card'))
         : undefined;
-    const memberLink = Object.entries(catalog.words).find(
-      ([, definition]) => definition.pattern === 'member-link',
-    );
+    const memberCard =
+      options.density !== 'table' && membersDeclareActions ? findPattern('member-card') : undefined;
+    const memberDecision = memberTable ?? memberCard;
+    const memberLink = findPattern('member-link');
     // T35 F-21:成员状态优先取节点标题(任务语),成员缺 title 时回退 node 名。
     const itemStatusPath =
       entity.entities.length > 0 &&
@@ -279,12 +283,12 @@ export function planGenericSurface(
         ? 'properties.title'
         : 'properties.status';
     const item: SurfaceNode =
-      memberCard !== undefined
+      memberDecision !== undefined
         ? {
             kind: 'word',
             id: `word-${repeatIndex}-item`,
             role: 'identity',
-            word: memberCard[0],
+            word: memberDecision[0],
             bindings: {
               label: { kind: 'item', path: itemIdentityPath },
               rel: { kind: 'item', path: 'properties.rel' },

@@ -1,4 +1,7 @@
+import type { CompositionRegionDensity } from '@ui4a/shared';
+
 export const SURFACE_SCHEMA_VERSION = 1 as const;
+
 export const SEMANTIC_REGION_ROLES = [
   'identity',
   'status',
@@ -93,7 +96,7 @@ export interface SurfaceCatalogWord {
   roles: SemanticRegionRole[];
   bindings: Record<string, SurfaceCatalogBinding>;
   /** Optional semantic composition pattern; never a React/component name. */
-  pattern?: 'member-link' | 'member-card';
+  pattern?: 'member-link' | 'member-card' | 'member-table';
 }
 
 export interface SurfaceCatalog {
@@ -141,4 +144,10 @@ export interface GenericSurfaceOptions {
   intent: string;
   semanticHints?: Readonly<Record<string, SemanticRegionRole>>;
   provenanceRef?: string;
+  /**
+   * Declared member-vocabulary density (composition region declaration). 'card'
+   * (default) keeps decision cards; 'table' selects the member-table pattern when
+   * members declare actions — vocabulary stays catalog-driven either way.
+   */
+  density?: CompositionRegionDensity;
 }

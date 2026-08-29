@@ -11,6 +11,11 @@ export const MAX_COMPOSITION_INTENT_LENGTH = 256;
 
 export type CompositionMode = (typeof COMPOSITION_MODES)[number];
 
+/** Declared presentation density for one region's member vocabulary; 'card' is the default. */
+export const COMPOSITION_REGION_DENSITIES = ['card', 'table'] as const;
+
+export type CompositionRegionDensity = (typeof COMPOSITION_REGION_DENSITIES)[number];
+
 /** Declared contract shape of one region source; the live entity class stays authoritative. */
 export type CompositionRegionShape = 'entity' | 'collection';
 
@@ -20,6 +25,7 @@ export interface CompositionRegionDeclaration {
   intent: string;
   mode: CompositionMode;
   shape?: CompositionRegionShape;
+  density?: CompositionRegionDensity;
 }
 
 /** Platform-neutral data consumed by Composition planners and runtime registries. */
@@ -106,16 +112,25 @@ function shape(value: unknown, label: string): CompositionRegionShape | undefine
   return value;
 }
 
+function density(value: unknown, label: string): CompositionRegionDensity | undefined {
+  if (value === undefined) return undefined;
+  if (!COMPOSITION_REGION_DENSITIES.includes(value as CompositionRegionDensity)) {
+    throw new Error(`${label} must be card or table`);
+  }
+  return value as CompositionRegionDensity;
+}
+
 function region(value: unknown, index: number): CompositionRegionDeclaration {
   const label = `Composition region[${index}]`;
   record(value, label);
-  exactKeys(value, ['region', 'source', 'intent', 'mode', 'shape'], label);
+  exactKeys(value, ['region', 'source', 'intent', 'mode', 'shape', 'density'], label);
   return {
     region: identifier(value.region, `${label} region`),
     source: sourceRel(value.source, `${label} source rel`),
     intent: boundedText(value.intent, MAX_COMPOSITION_INTENT_LENGTH, `${label} intent`),
     mode: mode(value.mode, `${label} mode`),
     ...(value.shape === undefined ? {} : { shape: shape(value.shape, `${label} shape`) }),
+    ...(value.density === undefined ? {} : { density: density(value.density, `${label} density`) }),
   };
 }
 

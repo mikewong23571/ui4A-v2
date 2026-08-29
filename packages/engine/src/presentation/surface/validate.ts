@@ -62,7 +62,8 @@ export function validateSurfaceCatalog(value: unknown): SurfaceCatalogValidation
       !isRecord(definition.bindings) ||
       (definition.pattern !== undefined &&
         definition.pattern !== 'member-link' &&
-        definition.pattern !== 'member-card')
+        definition.pattern !== 'member-card' &&
+        definition.pattern !== 'member-table')
     ) {
       errors.push(`catalog word "${word}" is invalid`);
       continue;

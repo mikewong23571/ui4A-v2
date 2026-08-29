@@ -244,3 +244,45 @@ describe('composition region declared source shape (T31 R12)', () => {
     ).toThrow(/provider/i);
   });
 });
+
+describe('composition region declared density (成员词条呈现密度)', () => {
+  it('accepts an optional card|table density and round-trips it', () => {
+    const parsed = parseCompositionDeclaration({
+      ...declaration,
+      regions: [{ ...declaration.regions[0], density: 'table' }],
+    });
+
+    expect(parsed.regions[0]?.density).toBe('table');
+    expect(
+      parseCompositionDeclaration({
+        ...declaration,
+        regions: [{ ...declaration.regions[0], density: 'card' }],
+      }).regions[0]?.density,
+    ).toBe('card');
+    expect(parseCompositionDeclaration(JSON.parse(JSON.stringify(parsed)))).toEqual(parsed);
+    expect(parseCompositionDeclaration(declaration).regions[0]?.density).toBeUndefined();
+  });
+
+  it.each([['compact'], ['Table'], [''], [1], [null]])(
+    'rejects a non-vocabulary density %j',
+    (densityValue) => {
+      expect(() =>
+        parseCompositionDeclaration({
+          ...declaration,
+          regions: [{ ...declaration.regions[0], density: densityValue as never }],
+        }),
+      ).toThrow(/density/i);
+    },
+  );
+
+  it('still rejects unknown sibling fields next to density', () => {
+    expect(() =>
+      parseCompositionDeclaration({
+        ...declaration,
+        regions: [
+          { ...declaration.regions[0], density: 'table', provider: 'openai:gpt-x' } as never,
+        ],
+      }),
+    ).toThrow(/provider/i);
+  });
+});

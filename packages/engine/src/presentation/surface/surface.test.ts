@@ -15,6 +15,7 @@ import {
   validateSurfaceCatalog,
   validateSurfaceTree,
   type SurfaceCatalog,
+  type SurfaceCatalogBinding,
   type SurfaceNode,
   type SurfaceTree,
 } from './index';
@@ -588,6 +589,151 @@ describe('generic semantic fallback planner', () => {
         status: { kind: 'item', path: 'properties.status' },
         detail: { kind: 'item', path: 'properties.resume' },
       },
+    });
+  });
+
+  it('plans member tables from declared region density with a generic card fallback (density 贯通)', () => {
+    const memberWordBindings: Record<string, SurfaceCatalogBinding> = {
+      label: { sources: ['item'], required: true },
+      rel: { sources: ['item'], required: true },
+      status: { sources: ['item'] },
+      detail: { sources: ['item'] },
+      actions: { sources: ['item'] },
+      guardResults: { sources: ['item'] },
+      fields: { sources: ['item'] },
+    };
+    const withTable: SurfaceCatalog = {
+      id: 'catalog:members',
+      version: '1',
+      words: {
+        'member-card': {
+          roles: ['identity'],
+          pattern: 'member-card',
+          bindings: memberWordBindings,
+        },
+        'member-table': {
+          roles: ['identity'],
+          pattern: 'member-table',
+          bindings: memberWordBindings,
+        },
+        'member-link': {
+          roles: ['identity'],
+          pattern: 'member-link',
+          bindings: {
+            label: { sources: ['item'], required: true },
+            rel: { sources: ['item'], required: true },
+            status: { sources: ['item'] },
+            detail: { sources: ['item'] },
+          },
+        },
+      },
+    };
+    const deciding: SirenEntity = {
+      class: ['collection', 'deciding'],
+      properties: { rel: 'col:deciding' },
+      actions: [],
+      links: [],
+      entities: [
+        {
+          class: ['confirmation', 'pending'],
+          properties: { rel: 'confirmation:c1', identity: '归档 · 由 agent 提议' },
+          actions: [{ name: 'approve', title: '批准', method: 'POST', href: '/exec', fields: {} }],
+          links: [],
+          'guard-results': [],
+        },
+      ],
+    };
+    const plain: SirenEntity = {
+      class: ['collection', 'plain'],
+      properties: { rel: 'col:plain' },
+      actions: [],
+      links: [],
+      entities: [
+        {
+          class: ['delegation', 'running'],
+          properties: { rel: 'delegation:d1', identity: '情报收集' },
+          actions: [],
+          links: [],
+          'guard-results': [],
+        },
+      ],
+    };
+
+    const findRepeatItem = (surface: SurfaceTree): SurfaceNode => {
+      let found: SurfaceNode | undefined;
+      const visit = (node: SurfaceNode): void => {
+        if (node.kind === 'repeat') {
+          found = node.item;
+          return;
+        }
+        if (node.kind === 'layout') node.children.forEach(visit);
+        if (node.kind === 'slot') visit(node.child);
+      };
+      visit(surface.root);
+      if (found === undefined) throw new Error('surface must contain a repeat');
+      return found;
+    };
+    const plan = (subject: string, source: SirenEntity, target: SurfaceCatalog, density?: string) =>
+      findRepeatItem(
+        planGenericSurface(subject, source, target, {
+          entityVersion: 'entity-v1',
+          intent: 'read',
+          ...(density === undefined ? {} : { density: density as 'card' | 'table' }),
+        }),
+      );
+
+    const table = plan('col:deciding', deciding, withTable, 'table');
+    expect(table).toMatchObject({
+      kind: 'word',
+      word: 'member-table',
+      role: 'identity',
+      bindings: {
+        label: { kind: 'item', path: 'properties.identity' },
+        rel: { kind: 'item', path: 'properties.rel' },
+        status: { kind: 'item', path: 'properties.status' },
+        detail: { kind: 'item', path: 'properties.resume' },
+        actions: { kind: 'item', path: 'actions' },
+        guardResults: { kind: 'item', path: 'guard-results' },
+        fields: { kind: 'item', path: 'properties.fields' },
+      },
+    });
+    expect(
+      validateSurfaceTree(
+        planGenericSurface('col:deciding', deciding, withTable, {
+          entityVersion: 'entity-v1',
+          intent: 'read',
+          density: 'table',
+        }),
+        withTable,
+      ).valid,
+    ).toBe(true);
+
+    // 目录缺 member-table pattern → 通用回退到 member-card(回退本身零特判)。
+    const withoutTable: SurfaceCatalog = {
+      ...withTable,
+      words: Object.fromEntries(
+        Object.entries(withTable.words).filter(([word]) => word !== 'member-table'),
+      ),
+    };
+    expect(plan('col:deciding', deciding, withoutTable, 'table')).toMatchObject({
+      kind: 'word',
+      word: 'member-card',
+    });
+
+    // 密度缺省/'card' → 行为完全不变:目录里有 member-table 也选决策卡。
+    expect(plan('col:deciding', deciding, withTable)).toMatchObject({
+      kind: 'word',
+      word: 'member-card',
+    });
+    expect(plan('col:deciding', deciding, withTable, 'card')).toMatchObject({
+      kind: 'word',
+      word: 'member-card',
+    });
+
+    // 密度只影响携带动作的成员词选择;无动作成员仍走 member-link。
+    expect(plan('col:plain', plain, withTable, 'table')).toMatchObject({
+      kind: 'word',
+      word: 'member-link',
     });
   });
 
