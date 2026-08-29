@@ -57,6 +57,8 @@ vi.mock('../../../engine/service', () => ({
   getDb: mocks.getDb,
   getEngine: mocks.getEngine,
   isMetaRel: (rel: string) => rel.startsWith('meta/'),
+  // route 的 catch 判 instanceof 用;本套件不触查询拒绝路径,轻量同形类即可。
+  CollectionQueryError: class CollectionQueryError extends Error {},
 }));
 
 vi.mock('../../../engine/agent/agent-runs', () => ({
@@ -147,7 +149,8 @@ describe('GET /api/entity production authentication wiring', () => {
       'post:first',
       'credential-subject',
     );
-    expect(mocks.engine.getEntity).toHaveBeenCalledWith('post:first');
+    // T38:第二参为集合读面查询原始参数;无参读取显式传 undefined(全量承诺)。
+    expect(mocks.engine.getEntity).toHaveBeenCalledWith('post:first', undefined);
     expect(mocks.enrichEntityWithAgentRuns).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),

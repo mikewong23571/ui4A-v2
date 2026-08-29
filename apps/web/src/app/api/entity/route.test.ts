@@ -139,3 +139,67 @@ describe('GET /api/entity', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// 集合读面查询(T38 FR1/FR2):分页参数;不带参数 = 全量的既有用例零改动。
+// ---------------------------------------------------------------------------
+
+describe('GET /api/entity — 集合分页(T38)', () => {
+  it('offset 分页:切片成员,properties 声明 count/offset,prev 链接诚实声明', async () => {
+    const res = await GET(request('?rel=articles&offset=1'));
+
+    expect(res.status).toBe(200);
+    const entity = (await res.json()) as {
+      properties: { rel: string; count: number; offset: number };
+      entities: { properties: { rel: string } }[];
+      links: { rel: string[]; href: string }[];
+    };
+    expect(entity.properties).toEqual({ rel: 'articles', count: 1, offset: 1 });
+    expect(entity.entities.map((sub) => sub.properties.rel)).toEqual(['post:first-post']);
+    expect(entity.links).toEqual([
+      { rel: ['self'], href: '/api/entity?rel=articles&offset=1' },
+      { rel: ['prev'], href: '/api/entity?rel=articles&offset=0' },
+      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting' },
+    ]);
+  });
+
+  it('offset=0:首页全页,无 prev/next(短于页大小,诚实缺链)', async () => {
+    const res = await GET(request('?rel=articles&offset=0'));
+
+    expect(res.status).toBe(200);
+    const entity = (await res.json()) as {
+      properties: { count: number; offset: number };
+      links: { rel: string[]; href: string }[];
+    };
+    expect(entity.properties).toEqual({ rel: 'articles', count: 2, offset: 0 });
+    expect(entity.links).toEqual([
+      { rel: ['self'], href: '/api/entity?rel=articles&offset=0' },
+      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting' },
+    ]);
+  });
+
+  it('非法 offset → 400 结构化拒绝(layer/reason)', async () => {
+    for (const offset of ['-1', 'abc', '1.5', '99999999999999999999']) {
+      const res = await GET(request(`?rel=articles&offset=${offset}`));
+      expect(res.status, `offset=${offset}`).toBe(400);
+      const body = (await res.json()) as { error: string; layer: string; reason: string };
+      expect(body.layer).toBe('query');
+      expect(body.reason).toBe('invalid-offset');
+      expect(body.error).toContain('offset');
+    }
+  });
+
+  it('非集合实体 / 非成员集合视图带分页参数 → 400 结构化拒绝', async () => {
+    for (const rel of ['post:post-welcome', 'inbox']) {
+      const res = await GET(request(`?rel=${rel}&offset=0`));
+      expect(res.status, `rel=${rel}`).toBe(400);
+      const body = (await res.json()) as { reason: string };
+      expect(body.reason).toBe('query-target-not-pageable');
+    }
+  });
+
+  it('未知集合 rel 带分页参数 → 仍 404(存在性语义优先于查询教育)', async () => {
+    const res = await GET(request('?rel=nope&offset=0'));
+    expect(res.status).toBe(404);
+  });
+});

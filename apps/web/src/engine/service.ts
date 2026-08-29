@@ -45,6 +45,8 @@ import {
   readRenderSpecsOf,
   THREADS_REL,
   THREAD_REL_PREFIX,
+  type CollectionQuery,
+  type CollectionQueryRejection,
   type ConfirmationDeps,
   type EngineEvent,
   type ExecRequest,
@@ -55,9 +57,12 @@ import {
   type MetaDeps,
   type PlanStepResult,
   type ProjectDeps,
+  type RawCollectionQuery,
   type Sitemap,
   type SirenEntity,
   type SuspendedConfirmation,
+  parseCollectionQuery,
+  queryTargetRejection,
 } from '@ui4a/engine';
 import type { DeploymentEnvironment, EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
 import type { FieldValue } from '@ui4a/shared';
@@ -136,13 +141,31 @@ export function isMetaRel(rel: string): boolean {
   return rel === 'meta/self' || rel.startsWith('meta/') || rel.startsWith('draft:');
 }
 
+/**
+ * 集合读面查询拒绝(T38):引擎结构化裁决的服务层承载(读面零事件)。
+ * HTTP 层据此映射 400 的 layer/reason(拒绝即教育)。
+ */
+export class CollectionQueryError extends Error {
+  readonly rejection: CollectionQueryRejection;
+
+  constructor(rejection: CollectionQueryRejection) {
+    super(rejection.message);
+    this.name = 'CollectionQueryError';
+    this.rejection = rejection;
+  }
+}
+
 export interface EngineRuntime {
   /** 当前内存快照(boot/exec/增量 fold 维护;只读视图,不触库——需外部写者进度用 readSnapshot)。 */
   getSnapshot(): EngineSnapshot;
   /** 读路径快照:先增量 fold worker 等外部写者追加的事件,再返回(spec 决定 4)。 */
   readSnapshot(): Promise<EngineSnapshot>;
-  /** rel → Siren 实体(含 guard-results 注入);返回前增量 fold 新事件;未知 rel 返回 undefined。 */
-  getEntity(rel: string): Promise<SirenEntity | undefined>;
+  /**
+   * rel → Siren 实体(含 guard-results 注入);返回前增量 fold 新事件;未知 rel 返回 undefined。
+   * rawQuery(T38 集合读面查询):分页/过滤原始参数,经引擎解析与目标裁决后
+   * 驱动成员集合切片;不带参数 = 全量;非法参数/非成员集合目标抛 CollectionQueryError。
+   */
+  getEntity(rel: string, rawQuery?: RawCollectionQuery): Promise<SirenEntity | undefined>;
   /** meta rel → Siren 实体(_meta 站点;href 前缀 /_meta,同引擎同日志)。 */
   getMetaEntity(rel: string): Promise<SirenEntity | undefined>;
   /** 应用 sitemap(按活跃定义集内容 hash 缓存;定义激活即重生成)。 */
@@ -348,14 +371,25 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
       enqueue(state, () => refreshFromLog(db, logState, scheduleRecipesForSnapshot)).then(
         () => logState.snapshot,
       ),
-    getEntity: async (rel) => {
+    getEntity: async (rel, rawQuery) => {
       // 读路径增量 fold(spec 决定 4):返回前同步 worker 等外部写者的新事件。
       await enqueue(state, () => refreshFromLog(db, logState, scheduleRecipesForSnapshot));
+      // 集合读面查询(T38):解析(语法层)→ 投影(切片只对成员集合生效)→
+      // 目标裁决(存在性先行:未知 rel 保持 404;存在的非成员目标结构化拒绝)。
+      const parsed = parseCollectionQuery(rawQuery);
+      if (parsed.kind === 'rejected') throw new CollectionQueryError(parsed.rejection);
+      const query = parsed.kind === 'query' ? parsed.query : undefined;
       // flow:<name> 读面补全(别名→实例集合兜底→集合入口链接)整体在 flow-entry
       // 的 completeFlowEntity;alias 请求参数缺省仅影响 rel 解析。
-      return completeFlowEntity(rel, logState.snapshot, activeFlowList(), (target) =>
-        project(logState.snapshot, target, projectDeps()),
+      const entity = completeFlowEntity(rel, logState.snapshot, activeFlowList(), (target) =>
+        project(logState.snapshot, target, projectDeps(), query),
       );
+      if (entity !== undefined && query !== undefined) {
+        const target = resolveFlowRelAlias(rel, logState.snapshot) ?? rel;
+        const rejection = queryTargetRejection(logState.snapshot, activeFlows(), target);
+        if (rejection !== undefined) throw new CollectionQueryError(rejection);
+      }
+      return entity;
     },
     getMetaEntity: async (rel) => {
       // _meta 站点读路径:同一引擎同一日志(先同步外部写者);href 前缀 /_meta

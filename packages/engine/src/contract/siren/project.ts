@@ -16,7 +16,7 @@ import {
   confirmationRel,
 } from '../../execution/confirmation';
 import { DELEGATIONS_REL, delegationRel } from '../../delegation/delegation';
-import { actionEffects, appendedCollections } from '../../core/parse';
+import { appendedCollections } from '../../core/parse';
 import { flowForInstance } from '../../execution/judge';
 import {
   RENDER_SPECS_REL,
@@ -32,6 +32,11 @@ import {
   projectWorkThreads,
 } from '../../projection/work-thread';
 import { entityHref, fallbackPresentationRole, guardResultsFor, toSirenAction } from './build';
+import {
+  isMemberCollectionRel,
+  COLLECTION_PAGE_SIZE,
+  type CollectionQuery,
+} from './collection-query';
 import { projectMeta } from './project-meta';
 import type { ProjectDeps, SirenEntity, SirenFieldPresentation, SirenLink } from './types';
 
@@ -119,20 +124,53 @@ function projectInstance(
   };
 }
 
-/** 集合实体投影:entities[] 子实体(嵌入投影 + 直达 href)。 */
-function projectCollection(rel: string, snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
+/**
+ * 集合实体投影:entities[] 子实体(嵌入投影 + 直达 href)。
+ * 读面查询(T38 FR1/FR2):query 在场时按 offset 切片(页大小 = 投影策略
+ * 常量),links 声明 next/prev(诚实缺链),properties 声明本页 count 与
+ * offset;query 缺省 = 全量,形状与历史版本逐字节一致(合同零窄化锚点)。
+ */
+function projectCollection(
+  rel: string,
+  snapshot: EngineSnapshot,
+  deps: ProjectDeps,
+  query?: CollectionQuery,
+): SirenEntity {
   const members = snapshot.collections[rel] ?? [];
-  const entities = members.flatMap((member) => {
+  const page =
+    query === undefined
+      ? members
+      : members.slice(query.offset, query.offset + COLLECTION_PAGE_SIZE);
+  const entities = page.flatMap((member) => {
     const instance = snapshot.instances[member];
     if (instance === undefined) return [];
     const projected = projectInstance(instance, snapshot, deps);
     return [{ ...projected, rel: ['item'], href: entityHref(deps.baseHref, member) }];
   });
+  const selfHref = entityHref(deps.baseHref, rel);
+  if (query === undefined) {
+    return {
+      class: ['collection', rel],
+      properties: { rel, count: members.length },
+      actions: [],
+      links: [{ rel: ['self'], href: selfHref }],
+      'guard-results': [],
+      entities,
+    };
+  }
+  const pageHref = (offset: number): string => `${selfHref}&offset=${offset}`;
+  const links: SirenLink[] = [{ rel: ['self'], href: pageHref(query.offset) }];
+  if (query.offset > 0) {
+    links.push({ rel: ['prev'], href: pageHref(Math.max(0, query.offset - COLLECTION_PAGE_SIZE)) });
+  }
+  if (query.offset + page.length < members.length) {
+    links.push({ rel: ['next'], href: pageHref(query.offset + page.length) });
+  }
   return {
     class: ['collection', rel],
-    properties: { rel, count: members.length },
+    properties: { rel, count: page.length, offset: query.offset },
     actions: [],
-    links: [{ rel: ['self'], href: entityHref(deps.baseHref, rel) }],
+    links,
     'guard-results': [],
     entities,
   };
@@ -361,6 +399,8 @@ function projectRenderSpecs(snapshot: EngineSnapshot, deps: ProjectDeps): SirenE
 
 /**
  * rel → Siren 实体;未知 rel 返回 undefined(HTTP 层映射 404)。
+ * query(T38):集合读面查询(分页/过滤),仅对业务成员集合投影生效——目标
+ * 是否可查询由服务层经 queryTargetRejection 先行裁决(拒绝即教育)。
  * 解析顺序:capability 工件(artifact:<name>)→ meta 前缀(定义层显式意图,
  * 优先于实例表——lifecycle 实例与定义实体同 rel,投影必须是定义视图)→
  * 工作线集合与工作线实体(thread:/threads,T26)→ 实例 → 业务集合 → 确认实体
@@ -372,6 +412,7 @@ export function project(
   snapshot: EngineSnapshot,
   rel: string,
   deps: ProjectDeps,
+  query?: CollectionQuery,
 ): SirenEntity | undefined {
   if (rel.startsWith('artifact:')) return projectCapabilityArtifact(rel, snapshot, deps);
   if (rel === 'meta/self' || rel.startsWith('meta/')) {
@@ -387,22 +428,12 @@ export function project(
     return projectInstance(instance, snapshot, deps);
   }
   if (rel in snapshot.collections) {
-    return projectCollection(rel, snapshot, deps);
+    return projectCollection(rel, snapshot, deps, query);
   }
   // T35 F-23:已知集合如实投影空态——集合 rel 来自活跃定义的 append 目标
   // (todo/ideas 等新应用零成员时 sitemap 面与实体端点必须一致,不再 404)。
-  const knownAppendTargets = new Set<string>();
-  for (const flow of Object.values(deps.flows)) {
-    for (const node of flow.nodes) {
-      for (const action of node.actions) {
-        for (const effect of actionEffects(action)) {
-          if (effect.type === 'append') knownAppendTargets.add(effect.collection);
-        }
-      }
-    }
-  }
-  if (knownAppendTargets.has(rel)) {
-    return projectCollection(rel, snapshot, deps);
+  if (isMemberCollectionRel(snapshot, deps.flows, rel)) {
+    return projectCollection(rel, snapshot, deps, query);
   }
   const confirmation = snapshot.confirmations?.[rel];
   if (confirmation !== undefined) {

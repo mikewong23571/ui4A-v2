@@ -8,3 +8,15 @@
 export * from './types';
 export { project } from './project';
 export { guardBlockReason } from './build';
+export {
+  COLLECTION_PAGE_SIZE,
+  isMemberCollectionRel,
+  parseCollectionQuery,
+  queryTargetRejection,
+} from './collection-query';
+export type {
+  CollectionQuery,
+  CollectionQueryRejection,
+  ParsedCollectionQuery,
+  RawCollectionQuery,
+} from './collection-query';

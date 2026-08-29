@@ -1,4 +1,5 @@
-import { getDb, getEngine, isMetaRel } from '../../../engine/service';
+import { getDb, getEngine, isMetaRel, CollectionQueryError } from '../../../engine/service';
+import type { RawCollectionQuery } from '@ui4a/engine';
 import {
   enrichEntityWithAgentRuns,
   getAgentRunEntity,
@@ -24,8 +25,18 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * 集合读面查询原始参数(T38):机械提取,判定全部在引擎层(offset 分页;
+ * FR3 过滤参数随后)。其余查询参数(如 ?scope= 导航偏好)原样不解析。
+ */
+function rawCollectionQuery(url: URL): RawCollectionQuery | undefined {
+  const offset = url.searchParams.get('offset') ?? undefined;
+  return offset === undefined ? undefined : { offset };
+}
+
 export async function GET(request: Request) {
-  const rel = new URL(request.url).searchParams.get('rel');
+  const url = new URL(request.url);
+  const rel = url.searchParams.get('rel');
   if (rel === null || rel === '') {
     return Response.json({ error: '缺少必填查询参数 rel' }, { status: 400 });
   }
@@ -55,7 +66,7 @@ export async function GET(request: Request) {
     }
     const projected = isAgentRunRel(rel)
       ? await getAgentRunEntity(db, rel, principal)
-      : await engine.getEntity(rel);
+      : await engine.getEntity(rel, rawCollectionQuery(url));
     const principalScoped =
       projected === undefined || isAgentRunRel(rel)
         ? projected
@@ -76,6 +87,17 @@ export async function GET(request: Request) {
         : entity,
     );
   } catch (error) {
+    // 集合读面查询拒绝(T38):结构化 layer/reason 透出(拒绝即教育)。
+    if (error instanceof CollectionQueryError) {
+      return Response.json(
+        {
+          error: error.rejection.message,
+          layer: error.rejection.layer,
+          reason: error.rejection.reason,
+        },
+        { status: 400 },
+      );
+    }
     const authentication = authenticationErrorResponse(error);
     if (authentication !== undefined) return authentication;
     // db 层故障(pg 连接类错误 code ECONNREFUSED/ETIMEDOUT 等)→ 503;
