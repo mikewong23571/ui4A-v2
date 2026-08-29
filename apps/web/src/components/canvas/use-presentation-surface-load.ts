@@ -25,7 +25,7 @@ import {
   hydratePresentationSurface,
   planGenericPresentationSurface,
 } from '@/render/presentation/generic';
-import { collectionReadQueryResolver } from '@/render/canvas/collection-query';
+import { buildCollectionReadQueryResolvers } from '@/render/canvas/collection-query';
 import { createCanvasActionHandler } from './canvas-action-handler';
 import type { PresentationDiagnostic } from './canvas-why-drawer';
 import { createSurfaceActionSubmit } from '../actions/action-submit';
@@ -394,6 +394,12 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
         warnings: DerefWarning[];
         diagnostics: PresentationDiagnostic[];
       }[] = [];
+      const collectionReadQueryResolvers = buildCollectionReadQueryResolvers(
+        requestedFocuses[0],
+        sidecarSurface,
+        sitemap.surfaces,
+        collectionQueryParam,
+      );
       if (sidecarSurface !== undefined && requestedFocuses.length === 1) {
         const requestedFocus = requestedFocuses[0]!;
         try {
@@ -401,15 +407,7 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
           // T38 Phase C:集合区域初始读携带声明读面参数(repeat 来源 ∧ sitemap
           // collection 面 → offset=0,服务端定页大小;URL 参数只作用于注视集合
           // 且优先;实体区域与平台视图零参数)。
-          const readQueryOf = collectionReadQueryResolver({
-            focus: requestedFocus,
-            surface: sidecarSurface,
-            sitemapSurfaces: sitemap.surfaces,
-            urlQuery: collectionQueryParam,
-            // 组合面(subject 是 workspace,无 focus):URL 读面参数就地作用于
-            // 可分页集合区域——翻页/过滤不离开组合语境(Phase C 实测缺陷修)。
-            applyUrlToPageable: true,
-          });
+          const readQueryOf = collectionReadQueryResolvers.sidecar;
           const roots: SirenEntity[] = [];
           for (const rel of hydrationRels) {
             const entity = await withAbort(cache.get(rel, readQueryOf(rel)), controller.signal);
@@ -457,11 +455,7 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
       } else {
         // T38:读面参数只跟单 focus 视图(roots 多根视图是上一代机械,不混用);
         // generic 兜底按 sitemap collection 声明给集合 focus 初始游标 offset=0。
-        const readQueryOf = collectionReadQueryResolver({
-          focus: requestedFocuses[0],
-          sitemapSurfaces: sitemap.surfaces,
-          urlQuery: collectionQueryParam,
-        });
+        const readQueryOf = collectionReadQueryResolvers.generic;
         for (const requestedFocus of requestedFocuses) {
           try {
             const readQuery = rootsParam === undefined ? readQueryOf(requestedFocus) : undefined;

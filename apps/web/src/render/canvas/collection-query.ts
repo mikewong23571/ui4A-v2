@@ -179,12 +179,8 @@ export function pageableCollectionRelsOf(surfaces: unknown): ReadonlySet<string>
   if (!Array.isArray(surfaces)) return rels;
   for (const surface of surfaces) {
     if (typeof surface !== 'object' || surface === null) continue;
-    const candidate = surface as { rel?: unknown; collection?: unknown };
-    if (
-      candidate.collection === true &&
-      typeof candidate.rel === 'string' &&
-      candidate.rel !== ''
-    ) {
+    const candidate = surface as { rel?: unknown; pageable?: unknown };
+    if (candidate.pageable === true && typeof candidate.rel === 'string' && candidate.rel !== '') {
       rels.add(candidate.rel);
     }
   }
@@ -217,6 +213,62 @@ export interface CollectionReadQueryInput {
  *   → 初始读 offset=0(服务端决定页大小);
  * - 实体形态区域与平台视图 → 零参数(sidecar/多根/规格路径维持既有键设计)。
  */
+/**
+ * 组合面(sidecar 多根)分支的读面解析器:开启 applyUrlToPageable——组合面
+ * subject 是 workspace(无 focus),URL 读面参数就地作用于可分页集合区域
+ * (翻页/过滤不离开组合语境)。接线细节住本模块,宿主 hook 只消费。
+ */
+/** 宿主侧便捷构造(位置参数来自 load hook 现场变量)。 */
+export function buildCollectionReadQueryResolvers(
+  focus: string | undefined,
+  surface: SurfaceTree | undefined,
+  sitemapSurfaces: unknown,
+  urlQuery: string | undefined,
+): {
+  sidecar: (rel: string) => string | undefined;
+  generic: (rel: string) => string | undefined;
+} {
+  return collectionReadQueryResolvers({
+    focus,
+    surface,
+    sitemapSurfaces,
+    urlQuery,
+  });
+}
+
+/**
+ * 两条取数分支的读面解析器对(sidecar 组合面 / generic 兜底):组合面开启
+ * applyUrlToPageable(URL 读面参数就地作用于可分页集合区域),兜底分支维持
+ * 「URL 只作用于注视集合」。宿主 hook 只消费,接线细节住本模块。
+ */
+export function collectionReadQueryResolvers(input: {
+  focus?: string;
+  surface?: SurfaceTree;
+  sitemapSurfaces?: unknown;
+  urlQuery?: string;
+}): {
+  sidecar: (rel: string) => string | undefined;
+  generic: (rel: string) => string | undefined;
+} {
+  return {
+    sidecar: collectionReadQueryResolver({ ...input, applyUrlToPageable: true }),
+    generic: collectionReadQueryResolver({
+      focus: input.focus,
+      sitemapSurfaces: input.sitemapSurfaces,
+      urlQuery: input.urlQuery,
+    }),
+  };
+}
+
+export function sidecarCollectionReadQueryResolver(input: {
+  focus: string;
+  surface?: SurfaceTree;
+  sitemapSurfaces?: unknown;
+  urlQuery?: string;
+}): (rel: string) => string | undefined {
+  return collectionReadQueryResolver({ ...input, applyUrlToPageable: true });
+}
+
 export function collectionReadQueryResolver(
   input: CollectionReadQueryInput,
 ): (rel: string) => string | undefined {

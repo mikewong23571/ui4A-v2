@@ -152,7 +152,9 @@ describe('T38 集合读面贯通(hydrate 携带声明读面参数)', () => {
       surface,
       dependencies: ['articles'],
       entities: { articles: page },
-      surfaces: [{ rel: 'articles', title: '文章', collection: true, app: 'publishing' }],
+      surfaces: [
+        { rel: 'articles', title: '文章', collection: true, pageable: true, app: 'publishing' },
+      ],
       scope: 'publishing',
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -186,7 +188,7 @@ describe('T38 集合读面贯通(hydrate 携带声明读面参数)', () => {
       surface,
       dependencies: ['articles'],
       entities: { articles: page },
-      surfaces: [{ rel: 'articles', title: '文章', collection: true }],
+      surfaces: [{ rel: 'articles', title: '文章', collection: true, pageable: true }],
       scope: 'publishing',
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -274,7 +276,9 @@ describe('T38 Phase C 修复 2:组合面语境的就地读面导航(宿主注入
       surface,
       dependencies: ['articles'],
       entities: { articles: page },
-      surfaces: [{ rel: 'articles', title: '文章', collection: true, app: 'publishing' }],
+      surfaces: [
+        { rel: 'articles', title: '文章', collection: true, pageable: true, app: 'publishing' },
+      ],
       scope: 'publishing',
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -302,7 +306,9 @@ describe('T38 Phase C 修复 2:组合面语境的就地读面导航(宿主注入
       surface,
       dependencies: ['articles'],
       entities: { articles: page },
-      surfaces: [{ rel: 'articles', title: '文章', collection: true, app: 'publishing' }],
+      surfaces: [
+        { rel: 'articles', title: '文章', collection: true, pageable: true, app: 'publishing' },
+      ],
       scope: 'publishing',
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -333,7 +339,9 @@ describe('T38 Phase C 修复 2:组合面语境的就地读面导航(宿主注入
       surface,
       dependencies: ['articles'],
       entities: { articles: page },
-      surfaces: [{ rel: 'articles', title: '文章', collection: true, app: 'publishing' }],
+      surfaces: [
+        { rel: 'articles', title: '文章', collection: true, pageable: true, app: 'publishing' },
+      ],
       scope: 'publishing',
     });
     vi.stubGlobal('fetch', fetchMock);

@@ -189,11 +189,11 @@ describe('collectionRepeatSubjects(计划面的 collection 形态区域,声明�
   });
 });
 
-describe('pageableCollectionRelsOf(sitemap collection 面 = 合同可分页集合)', () => {
+describe('pageableCollectionRelsOf(sitemap pageable 面 = 合同可分页集合)', () => {
   it('collection:true 的 rel 入集;缺标记/非法 rel/非数组诚实跳过', () => {
     expect(
       pageableCollectionRelsOf([
-        { rel: 'articles', title: '文章', collection: true },
+        { rel: 'articles', title: '文章', collection: true, pageable: true },
         { rel: 'flow:article-drafting', title: '向导' },
         { rel: 'inbox', title: '在等我', collection: false },
         { collection: true },
@@ -206,7 +206,7 @@ describe('pageableCollectionRelsOf(sitemap collection 面 = 合同可分页集�
 });
 
 describe('collectionReadQueryResolver(集合区域初始读游标,声明驱动零特判)', () => {
-  const surfaces = [{ rel: 'articles', collection: true }];
+  const surfaces = [{ rel: 'articles', collection: true, pageable: true }];
 
   it('集合形态区域(repeat 来源)∧ 声明可分页 → 初始读 offset=0(服务端定页大小)', () => {
     const readQueryOf = collectionReadQueryResolver({
@@ -217,10 +217,10 @@ describe('collectionReadQueryResolver(集合区域初始读游标,声明驱动�
     expect(INITIAL_COLLECTION_READ_QUERY).toBe('offset=0');
   });
 
-  it('非成员集合的平台视图(repeat 但 sitemap 未声明 collection)→ 零参数(我的事不破)', () => {
+  it('平台视图(collection:true 无 pageable)→ 零参数(我的事不破;T38 sitemap 语义)', () => {
     const readQueryOf = collectionReadQueryResolver({
       surface: repeatSurface('inbox'),
-      sitemapSurfaces: surfaces,
+      sitemapSurfaces: [{ rel: 'inbox', title: '确认收件箱', collection: true }],
     });
     expect(readQueryOf('inbox')).toBeUndefined();
   });
@@ -251,12 +251,12 @@ describe('collectionReadQueryResolver(集合区域初始读游标,声明驱动�
     });
     expect(initialOnly('articles')).toBe(INITIAL_COLLECTION_READ_QUERY);
     // 缺省(单 focus 分支)语义不变:URL 不因新旗标扩散。
-    const legacy = collectionReadQueryResolver({
+    const singleFocus = collectionReadQueryResolver({
       surface: repeatSurface('articles'),
       sitemapSurfaces: surfaces,
       urlQuery: 'offset=20',
     });
-    expect(legacy('articles')).toBe(INITIAL_COLLECTION_READ_QUERY);
+    expect(singleFocus('articles')).toBe(INITIAL_COLLECTION_READ_QUERY);
   });
 
   it('URL 读面参数只作用于注视集合且优先(分享/回放以 URL 为准)', () => {
@@ -276,8 +276,8 @@ describe('collectionReadQueryResolver(集合区域初始读游标,声明驱动�
       focus: 'articles',
       surface: twoRegions,
       sitemapSurfaces: [
-        { rel: 'articles', collection: true },
-        { rel: 'comments', collection: true },
+        { rel: 'articles', collection: true, pageable: true },
+        { rel: 'comments', collection: true, pageable: true },
       ],
       urlQuery: 'offset=20&filter.status=pending',
     });

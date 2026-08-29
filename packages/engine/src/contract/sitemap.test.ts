@@ -62,7 +62,7 @@ describe('deriveSitemap — 结构', () => {
       expect.arrayContaining([
         { rel: 'flow:article-drafting', title: '文章发布向导', app: 'default' },
         { rel: 'flow:post-status', title: '文章状态', app: 'default' },
-        { rel: 'articles', title: 'articles', collection: true, app: 'default' },
+        { rel: 'articles', title: 'articles', collection: true, pageable: true, app: 'default' },
       ]),
     );
     const articlesSurfaces = sitemap.surfaces.filter((s) => s.rel === 'articles');
@@ -230,7 +230,7 @@ describe('deriveSitemap — application 分组投影(T10 Phase C,spec 架构决�
       expect.arrayContaining([
         { rel: 'flow:article-drafting', title: '文章发布向导', app: 'publishing' },
         { rel: 'flow:comment-moderation', title: '评论审核', app: 'community' },
-        { rel: 'articles', title: 'articles', collection: true, app: 'publishing' },
+        { rel: 'articles', title: 'articles', collection: true, pageable: true, app: 'publishing' },
         // extraSurfaces 无归属信息 → 归 'default'。
         { rel: 'comments', title: '评论队列', collection: true, app: 'default' },
       ]),

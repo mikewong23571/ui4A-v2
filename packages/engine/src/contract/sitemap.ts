@@ -22,6 +22,12 @@ export interface SitemapSurface {
   rel: string;
   title: string;
   collection?: boolean;
+  /**
+   * T38:该集合面接受读面查询参数(分页/过滤)——与合同判定同源
+   * (成员集合表在案 ∪ append 声明,isMemberCollectionRel)。缺省 false:
+   * 平台视图(threads/inbox/delegations)是集合类视图但结构化拒绝查询参数。
+   */
+  pageable?: boolean;
   /** Application surfaces bind to app; principal surfaces remain visible in every granted app. */
   scope?: 'application' | 'principal';
   /** Optional exact-member rel family governed by this surface's same scope declaration. */
@@ -272,6 +278,7 @@ export function deriveSitemap(
               rel: effect.collection,
               title: effect.collection,
               collection: true,
+              pageable: true,
               app,
             });
           }

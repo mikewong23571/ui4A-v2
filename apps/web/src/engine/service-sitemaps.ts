@@ -6,6 +6,7 @@
 import {
   contentVersion,
   deriveSitemap,
+  isMemberCollectionRel,
   type FlowDefinition,
   type Sitemap,
   type SitemapSurface,
@@ -66,22 +67,67 @@ export function createSitemapReaders(
   let sitemapCache: { key: string; sitemap: Sitemap } | undefined;
   const currentSitemap = (): Sitemap => {
     const flows = activeFlowList();
-    const applications = getSnapshot().applications;
-    const capabilities = getSnapshot().capabilities;
-    const key = contentVersion({ flows, applications, capabilities });
+    const snapshot = getSnapshot();
+    const applications = snapshot.applications;
+    const capabilities = snapshot.capabilities;
+    // T38:`pageable` 与合同分页判定同源(isMemberCollectionRel = 成员集合表
+    // 在案 ∪ append 声明);`collection` 维持集合类视图语义(threads 等平台
+    // 视图仍是集合导航面但不接受查询参数)。成员表键集进缓存键(首成员出现/
+    // 清空 → sitemap 重生成,标志随之翻转)。
+    const flowRecord = Object.fromEntries(flows.map((flow) => [flow.name, flow]));
+    const pageableFlag = (rel: string): { pageable: boolean } => ({
+      pageable: isMemberCollectionRel(snapshot, flowRecord, rel),
+    });
+    const key = contentVersion({
+      flows,
+      applications,
+      capabilities,
+      collections: Object.keys(snapshot.collections ?? {}),
+    });
     if (sitemapCache?.key === key) return sitemapCache.sitemap;
     const sitemap = deriveSitemap(flows, {
       extraSurfaces: [
-        { rel: 'comments', title: '评论', collection: true },
-        { rel: 'inbox', title: '确认收件箱', collection: true, scope: 'principal' },
-        { rel: 'delegations', title: '委托监控', collection: true, scope: 'principal' },
-        { rel: 'software-changes', title: '软件变更', collection: true, app: 'development' },
-        { rel: 'writing-requests', title: '写作请求', collection: true, app: 'editorial' },
-        { rel: 'agent-runs', title: 'Agent Runs', collection: true, app: 'development' },
+        { rel: 'comments', title: '评论', collection: true, ...pageableFlag('comments') },
+        {
+          rel: 'inbox',
+          title: '确认收件箱',
+          collection: true,
+          ...pageableFlag('inbox'),
+          scope: 'principal',
+        },
+        {
+          rel: 'delegations',
+          title: '委托监控',
+          collection: true,
+          ...pageableFlag('delegations'),
+          scope: 'principal',
+        },
+        {
+          rel: 'software-changes',
+          title: '软件变更',
+          collection: true,
+          ...pageableFlag('software-changes'),
+          app: 'development',
+        },
+        {
+          rel: 'writing-requests',
+          title: '写作请求',
+          collection: true,
+          ...pageableFlag('writing-requests'),
+          app: 'editorial',
+        },
+        {
+          rel: 'agent-runs',
+          title: 'Agent Runs',
+          collection: true,
+          ...pageableFlag('agent-runs'),
+          app: 'development',
+        },
         {
           rel: 'threads',
           title: 'Work Threads',
           collection: true,
+          ...pageableFlag('threads'),
           scope: 'principal',
           memberRelPrefix: 'thread:',
         },

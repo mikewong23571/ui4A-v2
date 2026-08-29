@@ -13,10 +13,13 @@ describe('business sitemap principal surfaces', () => {
       () => [],
     );
 
+    // T38:collection 维持集合类视图语义;pageable 与合同分页判定同源——
+    // threads 是平台视图(无成员表/无 append),collection 在案但不可分页。
     expect(readers.currentSitemap().surfaces).toContainEqual({
       rel: 'threads',
       title: 'Work Threads',
       collection: true,
+      pageable: false,
       scope: 'principal',
       memberRelPrefix: 'thread:',
     });
