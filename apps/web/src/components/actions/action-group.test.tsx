@@ -171,14 +171,16 @@ describe('ActionGroup compact density (member-table 行内动作)', () => {
     expect(screen.getByRole('status').textContent).toBe('guard 不满足: item-ready=false');
   });
 
-  it('default:既有行为零变化(图例 + 边框盒子)', () => {
+  it('default:图例保留,条目扁平(零边框盒子;危险分隔与 tone 语义不变)', () => {
     const submit = acceptedSubmit();
     const { container } = render(<ActionGroup entity={dangerEntity()} submit={submit} />);
 
     expect(screen.getByText(ACTION_CONTRACT_LEGEND)).toBeTruthy();
     const items = [...container.querySelectorAll('[data-action-group-item]')];
     expect(items).toHaveLength(3);
-    expect(items[0]!.className).toContain('rounded-md border');
-    expect(screen.getByTestId('action-danger-group')).toBeTruthy();
+    for (const item of items) expect(item.className).not.toContain('border');
+    const danger = screen.getByTestId('action-danger-group');
+    expect(danger.className).toContain('border-t');
+    expect(screen.getByRole('button', { name: '销毁' }).className).toContain('destructive');
   });
 });

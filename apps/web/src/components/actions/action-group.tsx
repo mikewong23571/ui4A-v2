@@ -81,26 +81,15 @@ export function ActionGroup({
         submit={submit}
       />
     );
-    if (compact) {
-      // compact:行内动作条目,不再套全宽边框盒子;钩子与裁决语义零变化。
-      return (
-        <div
-          key={`${rel}:${action.name}:${JSON.stringify(action.fields)}`}
-          data-action-group-item={action.name}
-        >
-          {runner}
-        </div>
-      );
-    }
+    // 两种密度统一行内条目(零边框盒子)——卡片 chrome 所有权唯一化(视觉
+    // 去嵌套规约):detail 卡/surface 卡是唯一边框持有者,动作条目不再叠框。
+    // 危险动作以 destructive tone + default 密度的虚线分隔呈现,两步确认语义
+    // 在 ActionRunner 内不变。
+    void compact;
     return (
       <div
         key={`${rel}:${action.name}:${JSON.stringify(action.fields)}`}
         data-action-group-item={action.name}
-        className={
-          tone === 'danger'
-            ? 'rounded-md border border-destructive/40 bg-card p-3'
-            : 'rounded-md border bg-card p-3'
-        }
       >
         {runner}
       </div>

@@ -202,6 +202,7 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
               data-surface={entry.id.replace(/-v\d+$/, '')}
               data-generation={String(entry.generation)}
               data-concern={entry.concern}
+              data-surface-embedded="true"
               {...(entry.active ? { 'data-active': 'true' } : {})}
               className={cn(
                 'rounded-lg border bg-card p-4 text-card-foreground shadow-sm',

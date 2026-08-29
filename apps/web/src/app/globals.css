@@ -120,3 +120,14 @@
 */
 
 @custom-variant data-closed (&:where([data-state="closed"], [data-closed]:not([data-closed="false"])));
+
+/*
+ * 视觉去嵌套规约(卡片 chrome 所有权唯一化,T38 后续):surface 卡是所在面
+ * 的唯一边框持有者;surface 内嵌套的卡片级词条(detail)扁平化——保留语义
+ * 标签与间距,去边框/底色/阴影/圆角。独立 focus 面的 detail(无
+ * data-surface-embedded 宿主)不受影响,仍持卡片外观。未分层规则以覆盖
+ * 词条自身的 utility 层样式。
+ */
+[data-surface-embedded='true'] [data-word='detail'] {
+  @apply border-0 bg-transparent p-0 shadow-none rounded-none;
+}
