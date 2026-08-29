@@ -117,13 +117,19 @@ export function ActionGroup({
       {/* 图例已展示标记只在真的渲染过图例时向内传播;compact 自身不披露图例,
           内层 default 组仍要补披露(披露保留在详情面)。 */}
       <ActionLegendContext.Provider value={compact ? legendShown : true}>
-        <div className={compact ? 'flex flex-wrap gap-2' : 'space-y-3'}>
+        <div className={compact ? 'flex flex-wrap items-center gap-2' : 'space-y-3'}>
           {normalActions.map((action) => renderItem(action, 'normal'))}
           {dangerActions.length > 0 && (
             <div
               data-testid="action-danger-group"
               aria-label="危险操作"
-              className="space-y-3 border-t border-dashed pt-3"
+              className={
+                compact
+                  ? // compact:危险动作与常规动作同行,仅以 destructive tone 区分
+                    // (两步确认语义在 ActionRunner 内不变);分隔线属 default 密度。
+                    'flex flex-wrap items-center gap-2'
+                  : 'space-y-3 border-t border-dashed pt-3'
+              }
             >
               {dangerActions.map((action) => renderItem(action, 'danger'))}
             </div>
