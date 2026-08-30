@@ -59,7 +59,7 @@
 - [x] Task B3：Red——编写 `CognitiveSemanticsV1` 派生优先、封闭词表、未知版本和视觉策略拒绝测试，并确认失败。7d2f199
 - [x] Task B4：Green——实现最小认知语义 projector；复用 field presentation，不引入 generic presentation blob。c78d977
 - [x] Task B5：Red——编写 sitemap/exact 双投影同源、hash/fingerprint invalidation、HTTP/CLI 可见与 Assistant allowlist 测试，并确认失败。4d51cdb
-- [ ] Task B6：Green——接入同一 pure projector 双投影和 scoped prompt sanitizer。
+- [x] Task B6：Green——接入同一 pure projector 双投影和 scoped prompt sanitizer。afbf475
 - [ ] Task B7：Red——编写 `caller|client` input ownership、server-owned public params 拒绝、commandId/baseVersion 重试与 Agent/CLI parity 测试，并确认失败。
 - [ ] Task B8：Green——原子迁移 JSON Schema、RJSF、Agent tools、CLI、Siren 与 server validation；Draft create 从 trusted context 取 scope/schema。
 - [ ] Task B9：Red——编写 Meta sitemap base surfaces 按 granted union 披露、lens 不改变授权并集测试，并确认失败。
