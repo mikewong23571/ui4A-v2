@@ -27,6 +27,10 @@ describe('client presence change reporter', () => {
       site: 'meta',
       focus: 'meta/flow:release flow',
     });
+    expect(presenceObservationForLocation('/entity?rel=post%3Afirst-post')).toMatchObject({
+      site: 'workstation',
+      focus: 'post:first-post',
+    });
     expect(presenceObservationForLocation('/meta/flow/article-drafting')).toMatchObject({
       site: 'meta',
       focus: null,

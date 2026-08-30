@@ -42,7 +42,9 @@ function focusFromLocation(url: URL): RenderSubject | null {
     return selection.length === 0 ? null : parseRenderSubject({ selection });
   }
   const rel = boundedQueryValue(url, 'rel');
-  return url.pathname === '/meta/entity' && rel !== null ? parseRenderSubject(rel) : null;
+  return (url.pathname === '/entity' || url.pathname === '/meta/entity') && rel !== null
+    ? parseRenderSubject(rel)
+    : null;
 }
 
 /** Convert only explicit URL protocol fields into a structured presence observation. */

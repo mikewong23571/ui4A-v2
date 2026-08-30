@@ -24,6 +24,20 @@ export const PUBLISH_TEST_AUTHORIZATION = {
   quote: PUBLISH_TEST_GOAL,
 } as const;
 
+/** Explicit local Application attention for route tests that operate the publishing flow. */
+export function defaultApplicationView(clientInstanceId = 'client:route-test') {
+  return {
+    schemaVersion: 2 as const,
+    presence: {
+      clientInstanceId,
+      site: 'workstation',
+      scope: 'default',
+      thread: null,
+      focus: null,
+    },
+  };
+}
+
 export async function handler(pathname: string, request: Request): Promise<Response> {
   if (pathname === '/api/entity') {
     entityRequests.push(new URL(request.url).searchParams.get('rel') ?? '');

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   chat,
   createScriptedLlmStub,
+  defaultApplicationView,
   pool,
   PUBLISH_TEST_AUTHORIZATION,
   PUBLISH_TEST_GOAL,
@@ -68,6 +69,7 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
       const { json } = await chat({
         sessionId: 'sess-decision-llm',
         driver: 'llm',
+        clientView: defaultApplicationView('client:sess-decision-llm'),
         goal: {
           verb: PUBLISH_TEST_GOAL,
           fields: { title: 't', category: 'tech', tags: '', body: 'b' },
@@ -128,6 +130,7 @@ describe('T11 Phase B:agent-decision 审计事件(inline 每步决策一条)', (
       const { status, json } = await chat({
         sessionId: 'sess-decision-fail',
         driver: 'llm',
+        clientView: defaultApplicationView('client:sess-decision-fail'),
         goal: {
           verb: PUBLISH_TEST_GOAL,
           fields: { title: '写失败', category: 'essay', tags: '', body: '正文' },
@@ -186,6 +189,7 @@ describe('T11 Phase C Task 2:thinking 帧(SSE 推理自述管道)', () => {
       const { json, frames } = await chat({
         sessionId: 'sess-thinking-llm',
         driver: 'llm',
+        clientView: defaultApplicationView('client:sess-thinking-llm'),
         goal: {
           verb: PUBLISH_TEST_GOAL,
           fields: { title: 't', category: 'tech', tags: '', body: 'b' },

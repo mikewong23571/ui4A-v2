@@ -11,6 +11,7 @@ import {
   chat,
   chatRouteBase,
   createOperationsLlmStub,
+  defaultApplicationView,
   pool,
   PUBLISH_TEST_AUTHORIZATION,
   PUBLISH_TEST_GOAL,
@@ -117,6 +118,7 @@ describe('T31 R1:inline step 帧的真实 route 接线(activity/eventSeq)', () =
     const { json, frames } = await chat({
       sessionId: 'r1-activity',
       goal: r1Goal(),
+      clientView: defaultApplicationView('client:r1-activity'),
     });
     expect(json.outcome).toBe('done');
 
@@ -154,7 +156,11 @@ describe('T31 R1:inline step 帧的真实 route 接线(activity/eventSeq)', () =
 
   it('eventSeq 是事件日志真实指针:回读恰为本回合 chat-turn-progress,且逐帧递增', async () => {
     const sessionId = 'r1-event-seq';
-    const { json, frames } = await chat({ sessionId, goal: r1Goal() });
+    const { json, frames } = await chat({
+      sessionId,
+      goal: r1Goal(),
+      clientView: defaultApplicationView('client:r1-event-seq'),
+    });
     expect(json.outcome).toBe('done');
 
     const stepFrames = wiredStepFrames(frames);
