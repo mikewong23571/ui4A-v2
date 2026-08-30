@@ -1,0 +1,7 @@
+T39 E4 generic Draft review responsibility.
+
+Verified by orchestrator:
+- Meta components: 23 files, 97 tests
+- Draft DB: 1 file, 7 tests
+- web typecheck and governance strict
+- action titles are contract-driven; no action-name display map
