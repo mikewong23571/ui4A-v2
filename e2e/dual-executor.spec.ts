@@ -155,20 +155,28 @@ test('B1 双执行者:agent 合同发布 + human 表单发布,同一日志两类
     // ---- human 路径(renderer:保留实体路由直达三步向导)-------------------
     await page.goto('/entity?rel=flow%3Aarticle-drafting');
     await expect(page.locator('h1')).toHaveText('基本信息');
-    await page.getByRole('button', { name: '下一步' }).click();
+    await page
+      .locator('[data-action-group-item="next"] button[data-presentation-action="open-form"]')
+      .click();
     await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第四篇');
-    await page.getByRole('button', { name: '下一步', exact: true }).click();
+    await page.locator('[data-action-group-item="next"] form button[data-action="next"]').click();
     await expect(page.locator('h1')).toHaveText('分类');
-    await page.getByRole('button', { name: '下一步' }).click();
+    await page
+      .locator('[data-action-group-item="next"] button[data-presentation-action="open-form"]')
+      .click();
     await page.getByRole('combobox', { name: /分类/ }).selectOption('essay');
     await page.getByRole('textbox', { name: /标签/ }).fill('dual-human');
-    await page.getByRole('button', { name: '下一步', exact: true }).click();
+    await page.locator('[data-action-group-item="next"] form button[data-action="next"]').click();
     await expect(page.locator('h1')).toHaveText('正文');
-    await page.getByRole('button', { name: '完成编辑' }).click();
+    await page
+      .locator('[data-action-group-item="next"] button[data-presentation-action="open-form"]')
+      .click();
     await page.getByRole('textbox', { name: /正文/ }).fill('人类经 renderer 表单发布。');
-    await page.getByRole('button', { name: '完成编辑', exact: true }).click();
+    await page.locator('[data-action-group-item="next"] form button[data-action="next"]').click();
     await expect(page.locator('h1')).toHaveText('就绪');
-    await page.getByRole('button', { name: '发布' }).click();
+    await page
+      .locator('[data-action-group-item="publish"] button[data-presentation-action="open-form"]')
+      .click();
     await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第四篇');
     // 触发键与提交键同名;提交按钮按结构定位(铁律 3 的 data-action 挂点)
     await page.locator('form button[data-action="publish"]').click();
