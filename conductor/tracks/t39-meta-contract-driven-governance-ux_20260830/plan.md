@@ -92,7 +92,7 @@
 - [x] Task D5：浏览器验证 US1、US5、US8：责任点首屏、概览、未来 surface、桌面和 390px 通用策略。1742bdb
 - [x] Task D6：Phase Verification & Checkpoint：无 surface 清单、无 per-app 分支、HTTP/CLI 可读同形认知语义。1742bdb
 
-## Phase E：Draft 审查责任点与注意力语义（provisional）
+## Phase E：Draft 审查责任点与注意力语义 [checkpoint: 68f3757]
 
 **Subagent contract**：Goal=收敛 Draft 人类审查与 lens 文案/连续性；Non-goals=不建设完整 Draft authoring、不重复 Phase B input ownership、不改 Draft 事件/审批语义；Changes=Draft Meta projection/renderer、Meta situation/client 与相邻测试；Blast radius=禁止 Agent authoring runtime、worker/db schema、Application bundles 与 Presentation composition。
 
@@ -103,7 +103,7 @@
 - [x] Task E5：Red——编写“当前视角”任务文案、URL 连续、授权集合只读说明和无 lens UI 状态测试，并确认失败。34bb95c
 - [x] Task E6：Green——更新 lens 展示与审查现场恢复；运行时默认清理和授权并集语义复用 Phase C，不再实现第二处逻辑。bfa3d90
 - [x] Task E7：浏览器验证 US3、US4、US9：审查而非 authoring、键盘、390px、stale/CAS 与 URL 连续性。68f3757
-- [ ] Task E8：Phase Verification & Checkpoint：D51、public schema、human-only、focused tests 与 governance 全绿。
+- [x] Task E8：Phase Verification & Checkpoint：D51、public schema、human-only、focused tests 与 governance 全绿。68f3757
 
 ## Phase F：责任点、关系与披露层级（Meta milestone，provisional）
 
