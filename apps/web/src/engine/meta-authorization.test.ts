@@ -17,14 +17,23 @@ describe('Meta request scope authorization', () => {
     ).toThrow(/not authorized/i);
   });
 
-  it('defaults deterministically and rejects conflicting header/url scope claims', () => {
-    expect(resolveMetaRequestContext({ authorizedScopes: allowed }).effectiveScope).toBe(
-      'publishing',
-    );
+  it('keeps local demo unlocated unless it explicitly selects an authorized lens', () => {
+    const unlocated = resolveMetaRequestContext({ authorizedScopes: allowed });
+    expect(unlocated.effectiveScope).toBeUndefined();
+    expect(unlocated.requestedScope).toBeUndefined();
+
     expect(
-      resolveMetaRequestContext({ authorizedScopes: allowed, defaultScope: 'development' })
-        .effectiveScope,
-    ).toBe('development');
+      resolveMetaRequestContext({ requestedScope: 'development', authorizedScopes: allowed }),
+    ).toEqual(
+      expect.objectContaining({
+        effectiveScope: 'development',
+        requestedScope: 'development',
+        authorizedScopes: allowed,
+      }),
+    );
+  });
+
+  it('rejects conflicting header/url lens claims', () => {
     expect(() =>
       resolveMetaRequestContext({
         requestedScope: 'governance',

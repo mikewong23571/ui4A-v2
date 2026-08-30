@@ -93,17 +93,38 @@ describe('situation assembler', () => {
     ).toBe('publishing');
   });
 
-  it('falls back to the first granted scope when every candidate is unauthorized', () => {
-    expect(
-      assembleSituation(
-        input({
-          grantedScopes: ['fallback'],
-          presence: { ...presence, scope: 'unlisted' },
-          explicit: { scope: 'governance' },
-          defaults: { site: 'workstation', scope: 'default' },
-        }),
-      ).scope,
-    ).toBe('fallback');
+  it('stays unlocated instead of stealing the first grant when no valid lens exists', () => {
+    const grants = ['publishing', 'governance'] as const;
+    const situation = assembleSituation(
+      input({
+        grantedScopes: grants,
+        presence: undefined,
+        explicit: undefined,
+        // The production type still requires scope during Red. The assertion locks the D54 target
+        // without changing production declarations in this task.
+        defaults: { site: 'workstation' } as SituationInput['defaults'],
+      }),
+    );
+
+    expect(situation.scope).toBeUndefined();
+    expect(situation.disclosure.scope).toBeUndefined();
+    expect(grants).toEqual(['publishing', 'governance']);
+  });
+
+  it('drops invalid attention candidates to unlocated without changing the grant envelope', () => {
+    const grants = ['publishing', 'governance'] as const;
+    const situation = assembleSituation(
+      input({
+        grantedScopes: grants,
+        presence: { ...presence, scope: 'outside-presence' },
+        explicit: { scope: 'outside-explicit' },
+        defaults: { site: 'workstation' } as SituationInput['defaults'],
+      }),
+    );
+
+    expect(situation.scope).toBeUndefined();
+    expect(situation.disclosure.scope).toBeUndefined();
+    expect(grants).toEqual(['publishing', 'governance']);
   });
 
   it('fails closed on an empty grant envelope even when candidates exist', () => {

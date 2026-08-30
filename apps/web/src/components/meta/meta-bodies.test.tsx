@@ -5,7 +5,7 @@
  * 纯视图与列表主体已各有组件测试;此处补齐剩余 Web 改动文件的对应测试
  * (workflow Step 2:Phase 变更逐文件覆盖)。
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenEntity } from '@ui4a/engine';
@@ -13,7 +13,7 @@ import type { SirenEntity } from '@ui4a/engine';
 import { stubBrowserApis } from '@/test/browser-stubs';
 
 import { ActivationPageBody } from './activation-view';
-import { FlowDefinitionBody } from './flow-definition-view';
+import { FlowDefinitionBody, FlowDefinitionView } from './flow-definition-view';
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -101,5 +101,32 @@ describe('FlowDefinitionBody(取数状态机)', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(404, { error: '实体不存在' })));
     render(<FlowDefinitionBody rel="meta/flow:ghost" />);
     await waitFor(() => expect(screen.getByText(/定义 "meta\/flow:ghost" 不存在/)).toBeTruthy());
+  });
+
+  it('does not manufacture a publishing lens for an action from the unscoped old view', async () => {
+    const actionable: SirenEntity = {
+      ...flowEntity,
+      actions: [
+        {
+          name: 'revise',
+          title: 'Revise',
+          method: 'POST',
+          href: '/_meta/api/exec',
+          fields: { type: 'object', properties: {} },
+        },
+      ],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, actionable))
+      .mockResolvedValueOnce(jsonResponse(200, { entity: actionable }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<FlowDefinitionView rel="meta/flow:post-status" entity={actionable} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Revise' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/_meta/api/entity?rel=meta%2Fflow%3Apost-status');
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/_meta/api/exec');
   });
 });

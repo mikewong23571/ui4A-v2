@@ -150,4 +150,56 @@ describe('GET /_meta/api/entity production authentication wiring', () => {
     expect(options.defaultPolicyScope).toBeUndefined();
     expect(options.scopeCoverage).toBeUndefined();
   });
+
+  it('keeps exact entity visibility on the credential grant union when only the lens changes', async () => {
+    const grants = ['development', 'publishing'];
+    mocks.resolveTrustedRequestIdentity
+      .mockResolvedValueOnce({
+        ...TRUSTED_IDENTITY,
+        grantedApplications: grants,
+        policyScope: 'development',
+      })
+      .mockResolvedValueOnce({
+        ...TRUSTED_IDENTITY,
+        grantedApplications: grants,
+        policyScope: 'publishing',
+      });
+
+    const developmentLens = await GET(
+      new Request(
+        'https://ui4a.internal/_meta/api/entity?rel=meta%2Fflow%3Asoftware-change&scope=development',
+      ),
+    );
+    const publishingLens = await GET(
+      new Request(
+        'https://ui4a.internal/_meta/api/entity?rel=meta%2Fflow%3Asoftware-change&scope=publishing',
+      ),
+    );
+
+    expect(developmentLens.status).toBe(200);
+    expect(publishingLens.status).toBe(200);
+    await expect(developmentLens.json()).resolves.toEqual(await publishingLens.json());
+    expect(mocks.assertReachable).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ plane: 'meta' }),
+      'meta/flow:software-change',
+      grants,
+    );
+    expect(mocks.assertReachable).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ plane: 'meta' }),
+      'meta/flow:software-change',
+      grants,
+    );
+    expect(mocks.filterEntityForGrantedApplications).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      expect.objectContaining({ grantedApplications: grants }),
+    );
+    expect(mocks.filterEntityForGrantedApplications).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      expect.objectContaining({ grantedApplications: grants }),
+    );
+  });
 });

@@ -57,12 +57,46 @@ beforeEach(async () => {
 });
 
 describe('chat situation adapter', () => {
-  it('keeps headless chat on the workstation deployment default without a client view', async () => {
-    await expect(situationForChat({ principal: 'user:headless' })).resolves.toMatchObject({
-      site: 'workstation',
-      scope: 'default',
-      focus: null,
+  it('keeps local demo headless chat unlocated without a requested lens', async () => {
+    const unlocated = await situationForChat({ principal: 'user:headless' });
+    expect(unlocated).toMatchObject({ site: 'workstation', focus: null });
+    expect(unlocated.scope).toBeUndefined();
+    expect(unlocated.disclosure.scope).toBeUndefined();
+  });
+
+  it('accepts an explicit local-demo lens without deriving it from local grants', async () => {
+    const located = await situationForChat({
+      principal: 'user:headless',
+      clientView: clientView({ scope: 'default' }),
     });
+    expect(located.scope).toBe('default');
+    expect(located.disclosure.scope).toBe('default');
+  });
+
+  it('does not turn the first credential grant into a headless Chat start location', async () => {
+    const situation = await situationForChat({
+      principal: PRINCIPAL,
+      identity: identityWith({ grantedApplications: ['development', 'publishing'] }),
+    });
+
+    expect(situation.scope).toBeUndefined();
+    expect(situation.disclosure.scope).toBeUndefined();
+    expect(
+      startRelFromSituation(situation, {
+        development: {
+          name: 'development',
+          title: 'Development',
+          intent: 'Develop software',
+          entry: 'flow:software-change',
+        },
+        publishing: {
+          name: 'publishing',
+          title: 'Publishing',
+          intent: 'Publish content',
+          entry: 'flow:article-drafting',
+        },
+      }),
+    ).toBe('articles');
   });
 
   // T31 R9(←T29,D48 裁决 b):clientView.presence 进入 explicit 槽位是有意分层——
