@@ -5,3 +5,5 @@ Verified by orchestrator:
 - engine/web typecheck and governance strict
 - responsibility-first mixed trait precedence is order-independent
 - app adapter contains no density or installed-name intent branch
+
+Follow-up: mixed cognitive trait order-independence test passed (2 tests).
