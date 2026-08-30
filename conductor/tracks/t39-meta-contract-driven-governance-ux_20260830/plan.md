@@ -116,7 +116,7 @@
 - [x] Task F5：浏览器验证 US6、US7、US9：两次点击内决定、无需 raw、关系任务化、移动端不遮挡。c01206e
 - [x] Task F6：Meta Milestone Verification & Checkpoint：US1–US10 可独立闭环，系统完整可运行；Application Phase 未开始也不影响 Meta 交付。c01206e
 
-## Phase G：Application 图书馆与默认组合面（独立 milestone，provisional）
+## Phase G：Application 图书馆与默认组合面（独立 milestone） [checkpoint: 6d2e2eb]
 
 **Subagent contract**：Goal=用语义数据改善 Application 图书馆与组合；Non-goals=不把 Application 变成书桌、不改 `/` Work Thread 聚合、不写 per-app runtime 分支；Changes=Application/Sitemap 定义与投影、`app-workspace-composition`、Application 书架、通用 Presentation policy、bundle 数据和相邻测试；Blast radius=禁止 Meta governance Renderer、worker/db、Chat、每应用 React 页面与新依赖。
 
@@ -137,7 +137,7 @@
 - [x] Task G15：Red——编写 Application 书架 discoverability/title/intent、声明顺序、当前 lens 轻强调、全员可达和 runtime 零 Application 名比较测试，并确认失败。64cbf34
 - [x] Task G16：Green——实现书架消费；不新增 pin/recent/个人排序状态。73ce72e
 - [x] Task G17：浏览器验证 US11–US18，逐 app 检查图书馆定位、title/intent、无重复动作、显式跨站、空态和 390px Presentation policy。6d2e2eb
-- [ ] Task G18：Application Milestone Verification & Checkpoint：新增第九个 fixture 只改定义数据即可进入书架/landing；系统完整可运行且不破坏 Meta milestone。
+- [x] Task G18：Application Milestone Verification & Checkpoint：新增第九个 fixture 只改定义数据即可进入书架/landing；系统完整可运行且不破坏 Meta milestone。6d2e2eb
 
 ## Phase H：Assistant 共同注视与全故事终审（provisional）
 
