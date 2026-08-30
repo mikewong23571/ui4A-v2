@@ -24,8 +24,8 @@ export const PUBLISH_TEST_AUTHORIZATION = {
   quote: PUBLISH_TEST_GOAL,
 } as const;
 
-/** Explicit local Application attention for route tests that operate the publishing flow. */
-export function defaultApplicationView(clientInstanceId = 'client:route-test') {
+/** Explicit publishing Flow attention under the local test principal's `default` grant. */
+export function publishingApplicationView(clientInstanceId = 'client:route-test') {
   return {
     schemaVersion: 2 as const,
     presence: {
@@ -33,7 +33,7 @@ export function defaultApplicationView(clientInstanceId = 'client:route-test') {
       site: 'workstation',
       scope: 'default',
       thread: null,
-      focus: null,
+      focus: 'flow:article-drafting',
     },
   };
 }

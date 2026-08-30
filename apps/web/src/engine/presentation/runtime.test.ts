@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { contentVersion } from '@ui4a/engine';
+import { contentVersion, type SurfaceNode } from '@ui4a/engine';
 import { completePresentationRequest } from '@ui4a/shared';
 
 import {
@@ -16,6 +16,50 @@ import { PRESENTATION_SURFACE_CATALOG } from './catalog';
 import { getBuiltinComposition } from './compositions';
 import { planWorkspaceComposition } from './runtime-composition';
 import { hydratePresentationSurface } from '../../render/presentation/generic';
+
+function surfaceNodes(node: SurfaceNode): SurfaceNode[] {
+  if (node.kind === 'layout') return [node, ...node.children.flatMap(surfaceNodes)];
+  if (node.kind === 'slot') return [node, ...surfaceNodes(node.child)];
+  if (node.kind === 'repeat') return [node, ...surfaceNodes(node.item)];
+  return [node];
+}
+
+function expectApplicationSurface(
+  root: SurfaceNode,
+  application: string,
+  slotNames: readonly string[],
+  emptyState: boolean,
+) {
+  expect(root.kind).toBe('layout');
+  if (root.kind !== 'layout') return;
+  const actualSlotNames = root.children.flatMap((child) =>
+    child.kind === 'slot' ? [child.name] : [],
+  );
+  expect(actualSlotNames).toEqual(slotNames);
+  expect(new Set(actualSlotNames).size).toBe(actualSlotNames.length);
+
+  const nodes = surfaceNodes(root);
+  const catalogVersions = nodes.flatMap((node) =>
+    node.dependencies.flatMap((dependency) =>
+      dependency.kind === 'catalog' ? [dependency.version] : [],
+    ),
+  );
+  expect(catalogVersions.length).toBeGreaterThan(0);
+  expect(new Set(catalogVersions)).toEqual(new Set(['semantic-v9']));
+
+  const headings = nodes.filter(
+    (node) =>
+      node.kind === 'word' &&
+      node.word === 'heading' &&
+      node.bindings.value?.kind === 'property' &&
+      node.bindings.value.subject === `application:${application}` &&
+      node.bindings.value.path === 'properties.title',
+  );
+  expect(headings).toHaveLength(1);
+  expect(nodes.some((node) => node.kind === 'word' && node.word === 'empty-state')).toBe(
+    emptyState,
+  );
+}
 
 beforeEach(async () => {
   await ensurePresentationTables(getDb());
@@ -86,18 +130,17 @@ describe('durable user Sidecar fastpath', () => {
       deviceClass: 'any',
     });
     const active = sidecar!.versions[sidecar!.activeVersion]!;
-    expect(active.surface.root).toMatchObject({
-      kind: 'layout',
-      children: [
-        { kind: 'slot', name: 'articles' },
-        { kind: 'slot', name: 'article-drafting' },
-      ],
-    });
+    expectApplicationSurface(
+      active.surface.root,
+      'publishing',
+      ['application-header', 'articles', 'article-drafting'],
+      false,
+    );
     expect(
       active.dependencies
         .filter((dependency) => dependency.kind === 'entity-contract')
         .map((dependency) => dependency.ref),
-    ).toEqual(['articles', 'flow:article-drafting']);
+    ).toEqual(['application:publishing', 'articles', 'flow:article-drafting']);
     // flow 入口 region 端到端零 deref-failed:依赖实体按声明源 rel 取得后,
     // region 词条 deref 不得因 flow 别名的规范 rel 漂移集体落空(Phase C 实测)。
     const refs = active.dependencies
@@ -142,11 +185,16 @@ describe('durable user Sidecar fastpath', () => {
   });
 
   it.each([
-    ['community', ['comments'], ['comments']],
-    ['todo', ['todos', 'todo-capture'], ['todos', 'flow:todo-capture']],
+    ['community', ['application-header', 'comments'], ['application:community', 'comments'], false],
+    [
+      'todo',
+      ['application-header', 'todos', 'todo-capture'],
+      ['application:todo', 'todos', 'flow:todo-capture'],
+      true,
+    ],
   ] as const)(
     'derives the %s app workspace face from the same sitemap machinery (T37 zero per-app code)',
-    async (scope, slotNames, sourceRefs) => {
+    async (scope, slotNames, sourceRefs, emptyState) => {
       const request = completePresentationRequest(
         { subject: `workspace:app:${scope}`, intent: 'app overview', delivery: 'canvas' },
         { requestId: `app-workspace:${scope}`, principal: 'local-user', sourceMessageIds: [] },
@@ -160,10 +208,7 @@ describe('durable user Sidecar fastpath', () => {
         deviceClass: 'any',
       });
       const active = sidecar!.versions[sidecar!.activeVersion]!;
-      expect(active.surface.root).toMatchObject({
-        kind: 'layout',
-        children: slotNames.map((name) => ({ kind: 'slot', name })),
-      });
+      expectApplicationSurface(active.surface.root, scope, slotNames, emptyState);
       expect(
         active.dependencies
           .filter((dependency) => dependency.kind === 'entity-contract')

@@ -13,6 +13,31 @@ import { CollectionQueryError } from '../service-collection-query';
 // - 非法参数与非成员集合目标 → CollectionQueryError(结构化拒绝,拒绝即教育)。
 const CONNECTION_STRING = process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a';
 const pool = getPool(CONNECTION_STRING);
+const ARTICLE_COLLECTION_PRESENTATION = {
+  version: 1,
+  traits: ['output-catalog'],
+  fields: [
+    { path: 'properties.title', title: '标题', role: 'identity' },
+    {
+      path: 'properties.fields.title',
+      title: '文章标题',
+      role: 'identity',
+      overview: true,
+    },
+    {
+      path: 'properties.fields.body',
+      title: '正文',
+      role: 'primary-content',
+      overview: true,
+    },
+    {
+      path: 'properties.fields.category',
+      title: '分类',
+      role: 'metadata',
+      overview: true,
+    },
+  ],
+};
 
 beforeEach(async () => {
   await ensureEventsTable(pool);
@@ -24,7 +49,13 @@ describe('EngineRuntime.getEntity — 集合读面查询(T38)', () => {
   it('无参数 = 全量:articles 返回全部成员与 flow 入口链接', async () => {
     const engine = await getEngine(pool);
     const entity = await engine.getEntity('articles');
-    expect(entity?.properties).toEqual({ rel: 'articles', count: 2 });
+    expect(entity?.properties).toEqual({
+      rel: 'articles',
+      title: '文章',
+      identity: '文章',
+      count: 2,
+      presentation: ARTICLE_COLLECTION_PRESENTATION,
+    });
     expect(entity?.entities?.map((child) => child.properties.rel)).toEqual([
       'post:post-welcome',
       'post:first-post',
@@ -34,7 +65,14 @@ describe('EngineRuntime.getEntity — 集合读面查询(T38)', () => {
   it('offset 分页:切片成员与 next/prev 声明链接(service → project 透传)', async () => {
     const engine = await getEngine(pool);
     const entity = (await engine.getEntity('articles', { offset: '1' })) as SirenEntity;
-    expect(entity.properties).toEqual({ rel: 'articles', count: 1, offset: 1 });
+    expect(entity.properties).toEqual({
+      rel: 'articles',
+      title: '文章',
+      identity: '文章',
+      count: 1,
+      offset: 1,
+      presentation: ARTICLE_COLLECTION_PRESENTATION,
+    });
     expect(entity.entities?.map((child) => child.properties.rel)).toEqual(['post:first-post']);
     expect(entity.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=articles&offset=1' },

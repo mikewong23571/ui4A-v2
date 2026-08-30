@@ -11,7 +11,7 @@ import {
   chat,
   chatRouteBase,
   createOperationsLlmStub,
-  defaultApplicationView,
+  publishingApplicationView,
   pool,
   PUBLISH_TEST_AUTHORIZATION,
   PUBLISH_TEST_GOAL,
@@ -118,7 +118,7 @@ describe('T31 R1:inline step 帧的真实 route 接线(activity/eventSeq)', () =
     const { json, frames } = await chat({
       sessionId: 'r1-activity',
       goal: r1Goal(),
-      clientView: defaultApplicationView('client:r1-activity'),
+      clientView: publishingApplicationView('client:r1-activity'),
     });
     expect(json.outcome).toBe('done');
 
@@ -159,7 +159,7 @@ describe('T31 R1:inline step 帧的真实 route 接线(activity/eventSeq)', () =
     const { json, frames } = await chat({
       sessionId,
       goal: r1Goal(),
-      clientView: defaultApplicationView('client:r1-event-seq'),
+      clientView: publishingApplicationView('client:r1-event-seq'),
     });
     expect(json.outcome).toBe('done');
 

@@ -13,6 +13,31 @@ import { GET } from './route';
 const REAL_DATABASE_URL = process.env.DATABASE_URL;
 const BAD_URL = 'postgres://ui4a:ui4a@localhost:5999/ui4a';
 const pool = getPool(REAL_DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');
+const ARTICLE_COLLECTION_PRESENTATION = {
+  version: 1,
+  traits: ['output-catalog'],
+  fields: [
+    { path: 'properties.title', title: '标题', role: 'identity' },
+    {
+      path: 'properties.fields.title',
+      title: '文章标题',
+      role: 'identity',
+      overview: true,
+    },
+    {
+      path: 'properties.fields.body',
+      title: '正文',
+      role: 'primary-content',
+      overview: true,
+    },
+    {
+      path: 'properties.fields.category',
+      title: '分类',
+      role: 'metadata',
+      overview: true,
+    },
+  ],
+};
 
 function request(query = ''): Request {
   return new Request(`http://localhost:3100/api/entity${query}`);
@@ -36,7 +61,13 @@ describe('GET /api/entity', () => {
       links: { rel: string[]; href: string }[];
     };
     expect(entity.class).toEqual(['collection', 'articles']);
-    expect(entity.properties).toEqual({ rel: 'articles', count: 2 });
+    expect(entity.properties).toEqual({
+      rel: 'articles',
+      title: '文章',
+      identity: '文章',
+      count: 2,
+      presentation: ARTICLE_COLLECTION_PRESENTATION,
+    });
     expect(entity.entities.map((sub) => sub.properties.rel)).toEqual([
       'post:post-welcome',
       'post:first-post',
@@ -154,7 +185,14 @@ describe('GET /api/entity — 集合分页(T38)', () => {
       entities: { properties: { rel: string } }[];
       links: { rel: string[]; href: string }[];
     };
-    expect(entity.properties).toEqual({ rel: 'articles', count: 1, offset: 1 });
+    expect(entity.properties).toEqual({
+      rel: 'articles',
+      title: '文章',
+      identity: '文章',
+      count: 1,
+      offset: 1,
+      presentation: ARTICLE_COLLECTION_PRESENTATION,
+    });
     expect(entity.entities.map((sub) => sub.properties.rel)).toEqual(['post:first-post']);
     expect(entity.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=articles&offset=1' },
@@ -171,7 +209,14 @@ describe('GET /api/entity — 集合分页(T38)', () => {
       properties: { count: number; offset: number };
       links: { rel: string[]; href: string }[];
     };
-    expect(entity.properties).toEqual({ rel: 'articles', count: 2, offset: 0 });
+    expect(entity.properties).toEqual({
+      rel: 'articles',
+      title: '文章',
+      identity: '文章',
+      count: 2,
+      offset: 0,
+      presentation: ARTICLE_COLLECTION_PRESENTATION,
+    });
     expect(entity.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=articles&offset=0' },
       { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting' },
@@ -344,7 +389,7 @@ describe('GET /api/entity — 概览显示 hint(T38)', () => {
     ]);
   });
 
-  it('未声明 hint 的集合成员零 overview 键(comments 诚实回退)', async () => {
+  it('community 评论成员携带新声明的正文/状态 overview 顺序', async () => {
     const res = await GET(request('?rel=comments'));
 
     expect(res.status).toBe(200);
@@ -352,7 +397,12 @@ describe('GET /api/entity — 概览显示 hint(T38)', () => {
       entities: { properties: { presentation?: { fields: Record<string, unknown>[] } } }[];
     };
     const fields = entity.entities[0]?.properties.presentation?.fields ?? [];
-    expect(fields.every((field) => field.overview === undefined)).toBe(true);
+    expect(fields.filter((field) => field.overview === true).map((field) => field.path)).toEqual([
+      'properties.fields.body',
+      'properties.fields.status',
+    ]);
+    // 无 hint 的诚实缺省仍由 synthetic Flow 的纯投影测试固定在
+    // packages/engine/src/contract/siren.test.ts，避免把已声明 comments 伪装成缺省样本。
   });
 });
 

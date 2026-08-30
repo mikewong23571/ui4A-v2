@@ -144,7 +144,7 @@ describe('mode=delegated(委托派发)', () => {
       goal: { verb: '发布一篇文章', fields: { title: '委托发布' } },
       mode: 'delegated',
       sessionId: 'sess-d1',
-      clientView: delegatedView(),
+      clientView: delegatedView('default', 'flow:article-drafting'),
     });
 
     expect(status).toBe(200);
@@ -153,7 +153,7 @@ describe('mode=delegated(委托派发)', () => {
     expect(json.statusUrl).toBe('/api/delegations/11111111-2222-3333-4444-555555555555');
 
     // 派发参数:goal 原样;driverKind 是 AI-first 的 llm;
-    // 无 focus 时 startRel 是 default application 的结构化入口;
+    // startRel 是用户显式聚焦的 publishing Flow,不存在 default 入口回退;
     // principal 沿用 chat 会话口径;
     // baseUrl 是自身 origin(activity 内 fetch 引擎合同的回环本源)。
     expect(dispatchMock).toHaveBeenCalledTimes(1);

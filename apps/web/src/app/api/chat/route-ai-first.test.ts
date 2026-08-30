@@ -11,7 +11,7 @@ import {
   chat,
   createPublishingLlmStub,
   createUnauthorizedStub,
-  defaultApplicationView,
+  publishingApplicationView,
   entityRequestRels,
   eventKinds,
   PUBLISH_TEST_GOAL,
@@ -189,7 +189,7 @@ describe('T15 U22:product chat runtime is AI-first', () => {
       sessionId: 'u22-delegated-unavailable',
       mode: 'delegated',
       goal: { verb: PUBLISH_TEST_GOAL },
-      clientView: defaultApplicationView('client:u22-delegated-unavailable'),
+      clientView: publishingApplicationView('client:u22-delegated-unavailable'),
     });
 
     expect(response.status).toBe(503);
@@ -286,7 +286,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
           body: '第三篇正文:由 chat 路由(LLM)发布。',
         },
       },
-      clientView: defaultApplicationView('client:publish-default'),
+      clientView: publishingApplicationView('client:publish-default'),
     });
 
     expect(status).toBe(200);
@@ -305,7 +305,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
     const { json } = await chat({
       sessionId: 'single-sitemap-read',
       goal: { verb: PUBLISH_TEST_GOAL },
-      clientView: defaultApplicationView('client:single-sitemap-read'),
+      clientView: publishingApplicationView('client:single-sitemap-read'),
     });
 
     expect(json.outcome).toBe('done');
@@ -356,7 +356,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
         verb: PUBLISH_TEST_GOAL,
         fields: { title: '留痕', category: 'essay', tags: '', body: '正文' },
       },
-      clientView: defaultApplicationView('client:sess-42'),
+      clientView: publishingApplicationView('client:sess-42'),
     });
 
     const response = await fetch(`${chatRouteBase()}/api/events`);
@@ -382,7 +382,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
         verb: PUBLISH_TEST_GOAL,
         fields: { title: '帧序', category: 'tech', tags: '', body: '正文' },
       },
-      clientView: defaultApplicationView('client:sse-frames'),
+      clientView: publishingApplicationView('client:sse-frames'),
     });
 
     expect(contentType).toContain('text/event-stream');
@@ -420,7 +420,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
         verb: PUBLISH_TEST_GOAL,
         fields: { title: '回合留痕', category: 'essay', tags: '', body: '正文' },
       },
-      clientView: defaultApplicationView('client:sess-turn'),
+      clientView: publishingApplicationView('client:sess-turn'),
     });
     expect(json.outcome).toBe('done');
 
@@ -465,7 +465,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
         verb: PUBLISH_TEST_GOAL,
         fields: { title: '结构化留痕', category: 'tech', tags: '', body: '正文' },
       },
-      clientView: defaultApplicationView('client:sess-steps'),
+      clientView: publishingApplicationView('client:sess-steps'),
     });
     expect(json.outcome).toBe('done');
 
