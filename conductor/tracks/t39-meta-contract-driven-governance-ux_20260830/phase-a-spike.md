@@ -111,3 +111,51 @@ prompt budget sample wire sizes: 14,642–14,718 bytes (<32 KiB)
 ```
 
 No production source or temporary artifact remained.
+
+## A3 Overview reuse and visual-policy boundary
+
+### Result
+
+`SirenFieldPresentation {path,title,role,overview}` remains the single field-cognition wire shape.
+It already preserves declaration order, honest missing values, identity/status deduplication and
+HTTP/Agent parity for Flow instances. T39 must extend its consumption and projection coverage rather
+than create `summaryFields`, `desktopOverview` or a parallel Meta schema.
+
+Current gaps:
+
+- read-only collection members choose `member-link` and do not consume overview bindings;
+- `member-card` does not consume overview, so a narrow-screen vocabulary change would lose fields;
+- Application/Meta summaries expose derived properties but not a unified
+  `properties.presentation.fields` description;
+- action presence currently chooses decision-card posture, which cannot distinguish an ordinary
+  actionable member from a human responsibility point;
+- the fixed table word has no 390px vocabulary fallback.
+
+### Minimal direction
+
+1. Flow projections continue deriving field presentations from `FieldDefinition`.
+2. Meta/Application/Draft/Activation projections describe their deterministic derived properties
+   through the same Siren field-presentation shape; paths must resolve to projected facts.
+3. `member-link`, `member-card` and `member-table` may all consume the same optional overview
+   semantics, so Presentation policy can change vocabulary without changing cognition.
+4. Entity-level responsibility semantics remain separate from field roles.
+5. Desktop table vs narrow card/decision-list, sticky and heading posture stay in Presentation
+   policy; none enter business or Meta definitions.
+
+### Rejected
+
+- parallel summary/overview schemas;
+- device-specific overview fields or definition-side density/sticky/heading hints;
+- Application/rel/class/action-name mappings for component choice;
+- inferring human responsibility from `approve`/`reject` names or any action presence.
+
+### Orchestrator light verification
+
+Re-ran the exact focused suites:
+
+```text
+unit: 8 files / 123 tests passed
+db route: 1 file / 21 tests passed
+```
+
+The DB output contained only existing textarea-format warnings. No A3 repository change remained.
