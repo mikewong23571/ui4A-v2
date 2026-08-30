@@ -1,0 +1,6 @@
+T39 Phase A Task A3 — overview reuse probe
+
+Summary: proved SirenFieldPresentation role/overview is the reusable cognition shape; identified read-only/card/Application summary gaps and kept responsive density/sticky/heading in Presentation policy.
+Files: phase-a-spike.md.
+Why: prevents a parallel summary schema and definition-side page DSL.
+Verification: orchestrator reran 8 unit files/123 tests and db route 1 file/21 tests.
