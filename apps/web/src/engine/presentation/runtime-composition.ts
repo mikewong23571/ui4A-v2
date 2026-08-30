@@ -5,6 +5,7 @@ import {
   type ApplicationRecipeSlotBinding,
   type CompositionRegionSurfaceInput,
   type SidecarDependency,
+  type SurfaceNode,
   type SurfaceTree,
 } from '@ui4a/engine';
 
@@ -63,6 +64,33 @@ function membershipFingerprint(entity: unknown): string | undefined {
   return Array.isArray(members)
     ? contentVersion(members.map((member) => member.properties?.rel))
     : undefined;
+}
+
+function excludeCanonicalMembers(
+  node: SurfaceNode,
+  subjects: ReadonlySet<string>,
+  excluded: readonly string[],
+): SurfaceNode {
+  if (node.kind === 'layout') {
+    return {
+      ...node,
+      children: node.children.map((child) => excludeCanonicalMembers(child, subjects, excluded)),
+    };
+  }
+  if (node.kind === 'slot') {
+    return { ...node, child: excludeCanonicalMembers(node.child, subjects, excluded) };
+  }
+  if (node.kind === 'repeat') {
+    if (!subjects.has(node.source.subject)) {
+      return { ...node, item: excludeCanonicalMembers(node.item, subjects, excluded) };
+    }
+    return {
+      ...node,
+      exclude: [...new Set([...(node.exclude ?? []), ...excluded])].sort(),
+      item: excludeCanonicalMembers(node.item, subjects, excluded),
+    };
+  }
+  return node;
 }
 
 /**
@@ -143,7 +171,7 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
   const planningEntity = isApplicationHeaderRegion(region.declaration.region)
     ? applicationHeaderPlanningEntity(region.entity as Parameters<typeof planGenericSurface>[1])
     : (region.entity as Parameters<typeof planGenericSurface>[1]);
-  const surface =
+  const plannedSurface =
     selected?.surface ??
     planGenericSurface(boundSubject, planningEntity, PRESENTATION_SURFACE_CATALOG, {
       entityVersion: fingerprint,
@@ -158,7 +186,19 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
       // Static compositions may still declare density. Derived Application workspaces omit it,
       // allowing the generic planner to select posture from the exact cognitive projection.
       density: region.declaration.density,
+      excludedMemberRels: region.excludedMemberRels,
     });
+  const surface =
+    region.excludedMemberRels === undefined
+      ? plannedSurface
+      : {
+          ...plannedSurface,
+          root: excludeCanonicalMembers(
+            plannedSurface.root,
+            new Set([region.declaration.source, boundSubject]),
+            region.excludedMemberRels,
+          ),
+        };
   return {
     region: region.declaration.region,
     source: region.declaration.source,

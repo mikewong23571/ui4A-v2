@@ -288,7 +288,7 @@ export function deriveSitemap(
     const presentation = collectionOwnerPresentation(owner);
     return {
       rel: owner.rel,
-      title: owner.rel,
+      title: owner.title ?? owner.rel,
       collection: true,
       pageable: true,
       app: owner.app,
@@ -303,7 +303,8 @@ export function deriveSitemap(
   // Extra surfaces enrich discovery only. They never establish or override ownership;
   // repeated collection rels merge into one Surface.
   for (const extra of options?.extraSurfaces ?? []) {
-    const { app: _ignoredApp, ...discovery } = extra;
+    const discovery = { ...extra };
+    delete discovery.app;
     const owner = ownership.get(extra.rel);
     const index = collectionIndexes.get(extra.rel);
     if (extra.collection === true && owner !== undefined && index !== undefined) {

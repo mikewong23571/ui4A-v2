@@ -270,4 +270,29 @@ describe('member-table 词条', () => {
     expect(widths).toEqual([24, 12, 48, 16]);
     expect(widths[widths.length - 1]).toBeGreaterThanOrEqual(16);
   });
+
+  it('同一语义 table 在小屏切换为可换行 stack，标签与动作不依赖第二份 DOM', () => {
+    const view = renderRow({
+      label: '需要在窄屏完整阅读的长标题',
+      rel: 'writing-request:main',
+      status: '待提交 Brief',
+      actions: [
+        { name: 'start', title: '开始写作', method: 'POST', href: '/api/exec', fields: {} },
+      ],
+      presentations: [
+        { path: 'properties.fields.result', title: '写作结果', role: 'relation', overview: true },
+      ],
+      fields: { result: '一段需要换行而不是被裁切的结果说明' },
+    });
+
+    const table = view.container.querySelector('[data-word="member-table"]')!;
+    expect(table.className).toContain('block');
+    expect(table.className).toContain('md:table');
+    expect(screen.getByText('需要在窄屏完整阅读的长标题').className).toContain('break-words');
+    expect(screen.getByText('一段需要换行而不是被裁切的结果说明').className).toContain(
+      'break-words',
+    );
+    expect(screen.getByRole('cell', { name: '开始写作' }).dataset.mobileLabel).toBe('操作');
+    expect(screen.getAllByRole('button', { name: '开始写作' })).toHaveLength(1);
+  });
 });

@@ -65,7 +65,8 @@ export function validateSurfaceCatalog(value: unknown): SurfaceCatalogValidation
         definition.pattern !== 'member-card' &&
         definition.pattern !== 'member-table' &&
         definition.pattern !== 'collection-filters' &&
-        definition.pattern !== 'page-links')
+        definition.pattern !== 'page-links' &&
+        definition.pattern !== 'empty-state')
     ) {
       errors.push(`catalog word "${word}" is invalid`);
       continue;
@@ -310,11 +311,16 @@ function validateNode(
         'id',
         'role',
         'source',
+        'exclude',
         'item',
         'dependencies',
         'provenance',
       ]) ||
       source?.kind !== 'entities' ||
+      (value.exclude !== undefined &&
+        (!Array.isArray(value.exclude) ||
+          value.exclude.some((rel) => !nonEmptyString(rel)) ||
+          new Set(value.exclude).size !== value.exclude.length)) ||
       value.item === undefined
     ) {
       issue(localIssues, 'node-invalid', nodeId, path, 'repeat node is invalid');
@@ -327,6 +333,7 @@ function validateNode(
         kind: 'repeat',
         ...base,
         source,
+        ...(value.exclude === undefined ? {} : { exclude: [...value.exclude] as string[] }),
         item: validateNode(value.item, `${path}.item`, true, context),
       };
     }

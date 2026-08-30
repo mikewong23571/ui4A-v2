@@ -18,7 +18,7 @@
  *   colgroup 固定列宽使多行实例对齐成表。
  */
 import type { ReactElement } from 'react';
-import type { SirenEntity, SirenFieldPresentation } from '@ui4a/engine';
+import type { SirenEntity } from '@ui4a/engine';
 
 import { canvasEntityHref } from '@/presence/navigation';
 
@@ -33,6 +33,7 @@ import {
   asRequiredString,
   type WordProps,
 } from './shared';
+import { declaredMemberOverview, type DeclaredMemberOverview } from './member-overview';
 
 /** 现状回退列宽(身份/状态/详情/操作);概览列按声明数均分主体区。 */
 const FALLBACK_COLUMNS = [38, 14, 30, 18] as const;
@@ -41,18 +42,6 @@ const OVERVIEW_STATUS_WIDTH = 12;
 // 操作列需容纳两个紧凑小按钮并排(约 120px 内容宽 @1100px 表宽 ≈ 11%,取
 // 16% 留余量);概览列均分剩余,宽度不足正是按钮纵向堆叠的成因。
 const OVERVIEW_ACTIONS_WIDTH = 16;
-
-/** 概览列取值:呈现元数据 path('properties.fields.<name>')映射到成员字段值。 */
-function overviewValueOf(
-  entry: SirenFieldPresentation,
-  fields: Record<string, unknown> | undefined,
-): string | undefined {
-  const name = entry.path.split('.').at(-1);
-  if (name === undefined) return undefined;
-  const value = fields?.[name];
-  if (value === undefined || value === null || value === '') return undefined;
-  return String(value);
-}
 
 export function MemberTableWord(props: WordProps) {
   const label = asRequiredString(props.label, 'member-table', 'label');
@@ -69,9 +58,7 @@ export function MemberTableWord(props: WordProps) {
   );
   // 概览列:声明 overview 且角色不与既有固定列重复(identity=主体列、
   // status=状态列,声明数据可判,零字段名特判)。
-  const overviewColumns = presentations.filter(
-    (entry) => entry.overview === true && entry.role !== 'identity' && entry.role !== 'status',
-  );
+  const overviewColumns = declaredMemberOverview(presentations, fields);
 
   // 行内动作只消费动作裁决所需的最小合同面;标识与预填取值来自成员投影。
   const entity: SirenEntity = {
@@ -83,45 +70,51 @@ export function MemberTableWord(props: WordProps) {
   };
 
   const identityCell = (
-    <td className="px-2 py-2 align-top">
+    <td className="block min-w-0 px-2 py-2 align-top md:table-cell">
       <a
         data-nav="presentation:member"
         href={canvasEntityHref(rel)}
         title={label}
-        className="block truncate text-sm font-medium text-foreground hover:text-primary hover:underline"
+        className="block break-words text-sm font-medium text-foreground hover:text-primary hover:underline md:truncate"
       >
         {label}
       </a>
-      <p className="truncate font-mono text-xs text-muted-foreground" title={rel}>
+      <p className="break-all font-mono text-xs text-muted-foreground md:truncate" title={rel}>
         {rel}
       </p>
     </td>
   );
   const actionsCell = (
-    <td className="px-2 py-2 align-top">
+    <td
+      data-mobile-label="操作"
+      className="block min-w-0 px-2 py-2 align-top before:mb-1 before:block before:text-[10px] before:font-medium before:text-muted-foreground before:content-[attr(data-mobile-label)] md:table-cell md:before:hidden"
+    >
       <ActionGroup entity={entity} density="compact" />
     </td>
   );
-  const wordCell = (value: string | undefined): ReactElement => (
-    <td className="px-2 py-2 align-top text-xs text-muted-foreground">
+  const wordCell = (value: string | undefined, label: string): ReactElement => (
+    <td
+      data-mobile-label={label}
+      className="block min-w-0 px-2 py-2 align-top text-xs text-muted-foreground before:mb-1 before:block before:text-[10px] before:font-medium before:content-[attr(data-mobile-label)] md:table-cell md:before:hidden"
+    >
       {value === undefined ? null : (
-        <span className="block truncate" title={value}>
+        <span className="block whitespace-pre-wrap break-words md:truncate" title={value}>
           {value}
         </span>
       )}
     </td>
   );
-  const overviewCell = (entry: SirenFieldPresentation): ReactElement => {
-    const value = overviewValueOf(entry, fields);
+  const overviewCell = ({ presentation, value }: DeclaredMemberOverview): ReactElement => {
     return (
       <td
-        key={entry.path}
-        data-column={entry.path}
-        title={entry.title}
-        className="px-2 py-2 align-top text-xs text-muted-foreground"
+        key={presentation.path}
+        data-column={presentation.path}
+        data-mobile-label={presentation.title}
+        title={presentation.title}
+        className="block min-w-0 px-2 py-2 align-top text-xs text-muted-foreground before:mb-1 before:block before:text-[10px] before:font-medium before:content-[attr(data-mobile-label)] md:table-cell md:before:hidden"
       >
         {value === undefined ? null : (
-          <span className="block truncate" title={value}>
+          <span className="block whitespace-pre-wrap break-words md:truncate" title={value}>
             {value}
           </span>
         )}
@@ -140,17 +133,21 @@ export function MemberTableWord(props: WordProps) {
     : [...FALLBACK_COLUMNS];
 
   return (
-    <table data-word="member-table" data-rel={rel} className="w-full table-fixed border-collapse">
-      <colgroup>
+    <table
+      data-word="member-table"
+      data-rel={rel}
+      className="block w-full border-collapse md:table md:table-fixed"
+    >
+      <colgroup className="hidden md:table-column-group">
         {columns.map((width, index) => (
           <col key={index} style={{ width: `${width}%` }} />
         ))}
       </colgroup>
-      <tbody>
-        <tr className="border-b">
+      <tbody className="block md:table-row-group">
+        <tr className="block rounded-lg border bg-card p-2 md:table-row md:rounded-none md:border-x-0 md:border-t-0 md:bg-transparent md:p-0">
           {identityCell}
-          {wordCell(status)}
-          {declaredOverview ? overviewColumns.map(overviewCell) : wordCell(detail)}
+          {wordCell(status, '状态')}
+          {declaredOverview ? overviewColumns.map(overviewCell) : wordCell(detail, '摘要')}
           {actionsCell}
         </tr>
       </tbody>

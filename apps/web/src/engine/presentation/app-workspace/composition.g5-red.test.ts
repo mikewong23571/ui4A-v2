@@ -188,7 +188,7 @@ function sourceEntity(source: string): SirenEntity {
 }
 
 describe('T39 G5 Red: Application landing header is a binding-only contract projection', () => {
-  it('binds title/intent/entry/cognition from application:<name> and never becomes a second desk', () => {
+  it('binds the first-screen title/intent only while exact Application keeps entry cognition', () => {
     const declaration = deriveAppWorkspaceComposition('publishing', landingSitemap());
     expect(declaration).toBeDefined();
     const sources = declaration!.regions.map(({ source }) => source);
@@ -214,15 +214,11 @@ describe('T39 G5 Red: Application landing header is a binding-only contract proj
       binding.kind === 'property' ? [binding.path] : [],
     );
 
-    expect(propertyPaths).toEqual(
-      expect.arrayContaining([
-        'properties.title',
-        'properties.intent',
-        'properties.entry.target',
-        'properties.entry.role',
-      ]),
-    );
-    expect(propertyPaths.some((path) => path.startsWith('properties.presentation'))).toBe(true);
+    expect(propertyPaths).toEqual(['properties.title', 'properties.intent']);
+    expect(applicationEntity().properties.entry).toEqual({
+      target: 'flow:article-drafting',
+      role: 'primary-create',
+    });
 
     const contractArtifacts = JSON.stringify({ declaration, surface: planned.surface });
     expect(contractArtifacts).not.toContain(applicationTitle);
@@ -398,6 +394,95 @@ describe('T39 G5 Red: authorize aliases first, then deduplicate the visible land
     expect(entityDependencies).toEqual(
       expect.arrayContaining(['flow:article-drafting', 'article-drafting:current']),
     );
+  });
+
+  it('filters an exact entry from embedded collection view while retaining full membership dependency', async () => {
+    const declaration = freezeCompositionDeclaration({
+      id: 'app-publishing',
+      version: 'embedded-members-v1',
+      regions: [
+        {
+          region: 'application-header',
+          source: applicationRel,
+          intent: 'application-capability',
+          mode: 'invalidate',
+          shape: 'entity',
+        },
+        {
+          region: 'articles',
+          source: 'articles',
+          intent: 'output-catalog',
+          mode: 'invalidate',
+          shape: 'collection',
+        },
+        {
+          region: 'primary-entry',
+          source: 'flow:article-drafting',
+          intent: 'primary-create',
+          mode: 'invalidate',
+          shape: 'entity',
+        },
+      ],
+    });
+    const current = draftingEntity();
+    const collection: SirenEntity = {
+      ...articleCollection(),
+      properties: {
+        ...articleCollection().properties,
+        count: 1,
+        presentation: {
+          ...(articleCollection().properties.presentation as Record<string, unknown>),
+          emptyMeaning: 'ready-to-start',
+        },
+      },
+      entities: [current],
+    };
+    let situation: AuthorizedRoot | undefined;
+    const broker = createWebPresentationBroker({
+      resolveCompositionSubject: async () => ({ kind: 'composition', declaration }),
+      getEntity: async (rel) =>
+        rel === applicationRel
+          ? applicationEntity()
+          : rel === 'articles'
+            ? collection
+            : rel === 'flow:article-drafting'
+              ? current
+              : undefined,
+      plan: async (_request, root) => {
+        situation = root;
+        return { kind: 'ready', surfaceUrl: '/canvas?sidecar=embedded-members' };
+      },
+    });
+
+    await broker.present(landingRequest('g5:embedded-members'), {
+      grantedApplications: ['publishing'],
+    });
+    expect(
+      situation?.regions?.find(({ declaration: region }) => region.source === 'articles'),
+    ).toMatchObject({ excludedMemberRels: ['article-drafting:main'] });
+
+    const planned = planWorkspaceComposition(situation!);
+    expect(JSON.stringify(planned.surface)).toContain('"exclude":["article-drafting:main"]');
+    expect(JSON.stringify(planned.surface)).toContain('empty-state');
+    expect(planned.dependencies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'collection-membership', ref: 'articles' }),
+      ]),
+    );
+    const hydrated = hydratePresentationSurface(
+      'workspace:app:publishing',
+      planned.surface,
+      [applicationEntity(), collection, current],
+      [applicationRel, 'articles', 'flow:article-drafting'],
+    );
+    const data = hydrated.bundle.messages[1] as {
+      updateDataModel: { value: { repeats: Record<string, SirenEntity[]> } };
+    };
+    expect(
+      Object.values(data.updateDataModel.value.repeats)
+        .flat()
+        .map((entity) => entity.properties.rel),
+    ).toEqual([]);
   });
 
   it('fails the whole Application landing closed when any declared source is unauthorized', async () => {

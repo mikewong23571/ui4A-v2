@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "todo",
-    "version": 6
+    "version": 7
   },
   "applications": [
     {
@@ -106,6 +106,7 @@
       "collections": [
         {
           "collection": "todos",
+          "title": "待办",
           "filters": [{ "field": "status", "title": "待办状态" }]
         }
       ],

@@ -31,6 +31,7 @@ import { FormWord } from '../words/form';
 import { KanbanWord } from '../words/kanban';
 import { MemberCardWord } from '../words/member-card';
 import { MemberTableWord } from '../words/member-table';
+import { EmptyStateWord } from '../words/empty-state';
 import { MarkdownWord } from '../words/markdown';
 import type { WordProps } from '../words/shared';
 import { PageLinksWord } from '../words/page-links';
@@ -165,6 +166,7 @@ const wordImplementations: ReactComponentImplementation[] = [
       actions: dynamic(z.array(z.any())).optional(),
       guardResults: dynamic(z.array(z.any())).optional(),
       fields: dynamic(z.record(z.string(), z.any())).optional(),
+      presentations: dynamic(z.array(z.any())).optional(),
     },
     MemberCardWord,
   ),
@@ -191,6 +193,7 @@ const wordImplementations: ReactComponentImplementation[] = [
     CollectionFiltersWord,
   ),
   wordImplementation('page-links', { links: dynamic(z.array(z.any())) }, PageLinksWord),
+  wordImplementation('empty-state', { meaning: dynamic(z.string()) }, EmptyStateWord),
 ];
 
 /**

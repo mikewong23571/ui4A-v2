@@ -81,6 +81,7 @@ const words: Readonly<Record<string, A2uiWordAdapter>> = {
       actions: { prop: 'actions', transform: 'value' },
       guardResults: { prop: 'guardResults', transform: 'value' },
       fields: { prop: 'fields', transform: 'value' },
+      presentations: { prop: 'presentations', transform: 'value' },
     },
   },
   'member-table': {
@@ -107,6 +108,10 @@ const words: Readonly<Record<string, A2uiWordAdapter>> = {
   'page-links': {
     component: 'page-links',
     bindings: { links: { prop: 'links', transform: 'value' } },
+  },
+  'empty-state': {
+    component: 'empty-state',
+    bindings: { meaning: { prop: 'meaning', transform: 'value' } },
   },
 };
 

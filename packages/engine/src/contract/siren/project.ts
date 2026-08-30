@@ -42,7 +42,11 @@ import {
 import { projectMeta } from './project-meta';
 import { projectApplication } from './project-application';
 import { projectCognitiveSemantics } from '../cognitive-semantics';
-import { collectionOwnerPresentation, resolveCollectionOwnership } from '../collection-ownership';
+import {
+  collectionOwnerPresentation,
+  resolveCollectionOwnership,
+  type CollectionOwner,
+} from '../collection-ownership';
 import type { ProjectDeps, SirenEntity, SirenLink } from './types';
 
 function collectionIdentity(title: string): Record<string, unknown> {
@@ -51,6 +55,30 @@ function collectionIdentity(title: string): Record<string, unknown> {
     presentation: {
       fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
     },
+  };
+}
+
+function exactCollectionIdentity(owner: CollectionOwner): Record<string, unknown> {
+  return owner.title === undefined
+    ? {}
+    : {
+        title: owner.title,
+        identity: owner.title,
+      };
+}
+
+function collectionPresentation(
+  title: string | undefined,
+  presentation: ReturnType<typeof collectionOwnerPresentation>,
+) {
+  if (title === undefined) return presentation;
+  return {
+    version: 1,
+    ...(presentation ?? {}),
+    fields: [
+      { path: 'properties.title', title: '标题', role: 'identity' },
+      ...(presentation?.fields ?? []),
+    ],
   };
 }
 
@@ -136,6 +164,7 @@ function projectCollection(
 ): SirenEntity {
   const owner = resolveCollectionOwnership(Object.values(deps.flows)).get(rel);
   const ownerPresentation = owner === undefined ? undefined : collectionOwnerPresentation(owner);
+  const exactPresentation = collectionPresentation(owner?.title, ownerPresentation);
   const members = snapshot.collections[rel] ?? [];
   const filtered =
     query === undefined || query.filter.length === 0
@@ -152,7 +181,8 @@ function projectCollection(
     if (owner === undefined || ownerPresentation === undefined) {
       return [{ ...projected, rel: ['item'], href: entityHref(deps.baseHref, member) }];
     }
-    const { presentation: _runtimePresentation, ...properties } = projected.properties;
+    const properties = { ...projected.properties };
+    delete properties.presentation;
     return [
       {
         ...projected,
@@ -168,10 +198,10 @@ function projectCollection(
   // 声明发现(定义平面数据经投影携带;值域已拓扑推导,agent 与渲染器同源)。
   const declarations = collectionFilterDeclarations(deps.flows, rel);
   const presentation =
-    ownerPresentation === undefined && declarations.length === 0
+    exactPresentation === undefined && declarations.length === 0
       ? undefined
       : {
-          ...(ownerPresentation ?? {}),
+          ...(exactPresentation ?? {}),
           ...(declarations.length === 0 ? {} : { filters: declarations }),
         };
   const selfHref = entityHref(deps.baseHref, rel);
@@ -180,6 +210,7 @@ function projectCollection(
       class: ['collection', rel],
       properties: {
         rel,
+        ...(owner === undefined ? {} : exactCollectionIdentity(owner)),
         count: filtered.length,
         ...(presentation !== undefined ? { presentation } : {}),
       },
@@ -206,6 +237,7 @@ function projectCollection(
     class: ['collection', rel],
     properties: {
       rel,
+      ...(owner === undefined ? {} : exactCollectionIdentity(owner)),
       count: page.length,
       offset: query.offset,
       ...(presentation !== undefined ? { presentation } : {}),

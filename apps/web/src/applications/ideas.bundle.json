@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "ideas",
-    "version": 6
+    "version": 7
   },
   "applications": [
     {
@@ -97,6 +97,7 @@
       "collections": [
         {
           "collection": "ideas",
+          "title": "想法",
           "filters": [{ "field": "status", "title": "想法阶段" }]
         }
       ],

@@ -210,8 +210,10 @@ export function planGenericSurface(
   }
 
   if (!fieldCandidates.some((candidate) => candidate.role === 'identity')) {
-    const path = 'properties.rel';
-    if (readPath(entity, path) !== undefined) {
+    const path = ['properties.identity', 'properties.title', 'properties.rel'].find(
+      (candidate) => readPath(entity, candidate) !== undefined,
+    );
+    if (path !== undefined) {
       fieldCandidates.push({ role: 'identity', path });
       plannedPaths.add(path);
     }
@@ -271,6 +273,7 @@ export function planGenericSurface(
   if (entity.entities !== undefined) {
     const repeatIndex = children.length;
     const source: Extract<SurfaceBinding, { kind: 'entities' }> = { kind: 'entities', subject };
+    const excludedMembers = new Set(options.excludedMemberRels ?? []);
     const itemIdentityPath =
       entity.entities.length > 0 &&
       entity.entities.every((member) => readPath(member, 'properties.identity') !== undefined)
@@ -359,6 +362,7 @@ export function planGenericSurface(
       id: `repeat-${repeatIndex}`,
       role: 'relation',
       source,
+      ...(excludedMembers.size === 0 ? {} : { exclude: [...excludedMembers].sort() }),
       item,
       dependencies: [entityDependencyFor(subject, options.entityVersion, source)],
       provenance: genericProvenance(provenanceRef),
@@ -372,8 +376,20 @@ export function planGenericSurface(
     const declareFilters = Array.isArray(filterDeclarations) && filterDeclarations.length > 0;
     const filtersPattern = declareFilters ? findPattern('collection-filters') : undefined;
     const pageLinksPattern = findPattern('page-links');
+    const emptyMeaning = readPath(entity, 'properties.presentation.emptyMeaning');
+    const emptyStatePattern =
+      entity.entities.every((member) => {
+        const rel = readPath(member, 'properties.rel');
+        return typeof rel === 'string' && excludedMembers.has(rel);
+      }) && nonEmptyString(emptyMeaning)
+        ? findPattern('empty-state')
+        : undefined;
     let relationChild: SurfaceNode = repeat;
-    if (filtersPattern !== undefined || pageLinksPattern !== undefined) {
+    if (
+      filtersPattern !== undefined ||
+      pageLinksPattern !== undefined ||
+      emptyStatePattern !== undefined
+    ) {
       const parts: SurfaceNode[] = [];
       if (filtersPattern !== undefined) {
         const declarations: Extract<SurfaceBinding, { kind: 'property' }> = {
@@ -405,6 +421,25 @@ export function planGenericSurface(
                     subject,
                   } as const),
                 ]),
+          ],
+          provenance: genericProvenance(provenanceRef),
+        });
+      }
+      if (emptyStatePattern !== undefined) {
+        const meaning: Extract<SurfaceBinding, { kind: 'property' }> = {
+          kind: 'property',
+          subject,
+          path: 'properties.presentation.emptyMeaning',
+        };
+        parts.push({
+          kind: 'word',
+          id: `word-${repeatIndex}-empty-state`,
+          role: 'primary-content',
+          word: emptyStatePattern[0],
+          bindings: { meaning },
+          dependencies: [
+            catalogDependency(catalog),
+            entityDependencyFor(subject, options.entityVersion, meaning),
           ],
           provenance: genericProvenance(provenanceRef),
         });

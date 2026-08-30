@@ -205,6 +205,8 @@ export interface CollectionDimensionDeclaration {
 export interface CollectionSurfaceDeclaration {
   /** 成员集合 rel(如 comments)。 */
   collection: string;
+  /** 集合任务面的人类语义标题；canonical rel 仍由 collection 唯一标识。 */
+  title?: string;
   /** 可过滤维度;缺省 = 该集合面未声明过滤(诚实缺省,零机制零件)。 */
   filters?: CollectionDimensionDeclaration[];
 }

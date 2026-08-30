@@ -146,6 +146,7 @@ function namespaceNode(
         kind: 'repeat',
         ...base,
         source: { ...node.source },
+        ...(node.exclude === undefined ? {} : { exclude: [...node.exclude] }),
         item: namespaceNode(node.item, region, provenance),
       };
     case 'word':

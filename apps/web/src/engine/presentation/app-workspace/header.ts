@@ -11,10 +11,11 @@ export function applicationHeaderPlanningEntity(entity: SirenEntity): SirenEntit
   return {
     ...entity,
     properties: Object.fromEntries(
-      ['rel', 'title', 'intent', 'entry', 'presentation'].flatMap((key) =>
+      ['rel', 'title', 'intent', 'presentation'].flatMap((key) =>
         key in entity.properties ? [[key, entity.properties[key]] as const] : [],
       ),
     ),
+    links: [],
   };
 }
 
@@ -22,8 +23,5 @@ export function applicationHeaderSemanticHints(): Record<string, SemanticRegionR
   return {
     'properties.title': 'identity',
     'properties.intent': 'primary-content',
-    'properties.entry.target': 'relation',
-    'properties.entry.role': 'metadata',
-    'properties.presentation.traits': 'metadata',
   };
 }

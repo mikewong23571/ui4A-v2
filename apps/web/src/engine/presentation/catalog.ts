@@ -5,8 +5,10 @@ export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
   id: 'urn:ui4a:presentation:semantic',
   // T38:集合查询词汇(collection-filters/page-links)与 member-table 概览绑定
   // 入目录;版本 +1 使既有缓存面失效(词位与绑定形状变更)。v7:集合主体
-  // 单主体面缺省表格密度(规划语义变更,已持久化 sidecar 须重规划)。
-  version: 'semantic-v7',
+  // 单主体面缺省表格密度(规划语义变更,已持久化 sidecar 须重规划)。v9:
+  // member-card 概览、声明空态、canonical view filter 与窄屏表格姿态进入
+  // 同一通用目录。
+  version: 'semantic-v9',
   words: {
     heading: {
       roles: ['identity'],
@@ -53,6 +55,7 @@ export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
         actions: { sources: ['item'] },
         guardResults: { sources: ['item'] },
         fields: { sources: ['item'] },
+        presentations: { sources: ['item'] },
       },
     },
     'member-table': {
@@ -84,6 +87,11 @@ export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
       roles: ['relation'],
       pattern: 'page-links',
       bindings: { links: { sources: ['links'], required: true } },
+    },
+    'empty-state': {
+      roles: ['primary-content'],
+      pattern: 'empty-state',
+      bindings: { meaning: { sources: ['property'], required: true } },
     },
   },
 };

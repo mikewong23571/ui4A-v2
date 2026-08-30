@@ -63,6 +63,8 @@ export interface SurfaceSlotNode extends SurfaceNodeBase {
 export interface SurfaceRepeatNode extends SurfaceNodeBase {
   kind: 'repeat';
   source: Extract<SurfaceBinding, { kind: 'entities' }>;
+  /** Presentation-only canonical members already represented by a stronger exact region. */
+  exclude?: string[];
   item: SurfaceNode;
 }
 
@@ -96,7 +98,13 @@ export interface SurfaceCatalogWord {
   roles: SemanticRegionRole[];
   bindings: Record<string, SurfaceCatalogBinding>;
   /** Optional semantic composition pattern; never a React/component name. */
-  pattern?: 'member-link' | 'member-card' | 'member-table' | 'collection-filters' | 'page-links';
+  pattern?:
+    | 'member-link'
+    | 'member-card'
+    | 'member-table'
+    | 'collection-filters'
+    | 'page-links'
+    | 'empty-state';
 }
 
 export interface SurfaceCatalog {
@@ -149,4 +157,6 @@ export interface GenericSurfaceOptions {
    * policy derives posture from the entity's cognitive traits.
    */
   density?: CompositionRegionDensity;
+  /** Canonical members represented by stronger exact regions in the same Presentation view. */
+  excludedMemberRels?: readonly string[];
 }

@@ -25,6 +25,13 @@ export function collectionStructuralIssues(
     if (record === undefined || typeof record.collection !== 'string' || record.collection === '') {
       issues.push({ path: `${entryPath}.collection`, message: 'collection 必须是非空字符串' });
     }
+    if (
+      record !== undefined &&
+      record.title !== undefined &&
+      (typeof record.title !== 'string' || record.title === '')
+    ) {
+      issues.push({ path: `${entryPath}.title`, message: 'title 必须是非空字符串' });
+    }
     if (record === undefined || record.filters === undefined) return;
     if (!Array.isArray(record.filters)) {
       issues.push({ path: `${entryPath}.filters`, message: 'filters 必须是数组' });

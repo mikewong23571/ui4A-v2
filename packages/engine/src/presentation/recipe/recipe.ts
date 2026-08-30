@@ -430,6 +430,7 @@ function instantiateRecipeNode(
       ...base,
       kind: 'repeat',
       source: { ...node.source, subject: bindRecipeSubject(node.source.subject, slots) },
+      ...(node.exclude === undefined ? {} : { exclude: [...node.exclude] }),
       item: instantiateRecipeNode(node.item, slots),
     };
   }

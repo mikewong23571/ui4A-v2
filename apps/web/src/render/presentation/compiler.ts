@@ -237,6 +237,18 @@ function compileNode(
     try {
       items = context.options.deref(node.source, node.id);
       if (!Array.isArray(items)) throw new Error('repeat source must resolve to an array');
+      if (node.exclude !== undefined) {
+        const excluded = new Set(node.exclude);
+        items = items.filter((item) => {
+          if (typeof item !== 'object' || item === null || Array.isArray(item)) return true;
+          const properties = (item as { properties?: unknown }).properties;
+          if (typeof properties !== 'object' || properties === null || Array.isArray(properties)) {
+            return true;
+          }
+          const rel = (properties as Record<string, unknown>).rel;
+          return typeof rel !== 'string' || !excluded.has(rel);
+        });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'repeat deref failed';
       context.issues.push(compileIssue(node, 'deref-failed', message));

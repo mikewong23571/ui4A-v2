@@ -6,6 +6,17 @@ function canonicalEntityRel(entity: unknown, fallback: string): string {
   return typeof rel === 'string' && rel !== '' ? rel : fallback;
 }
 
+function isCollection(entity: unknown): boolean {
+  const classes = (entity as { class?: unknown }).class;
+  return Array.isArray(classes) && classes.includes('collection');
+}
+
+function embeddedCanonicalRels(entity: unknown): string[] {
+  const members = (entity as { entities?: unknown }).entities;
+  if (!Array.isArray(members)) return [];
+  return members.map((member) => canonicalEntityRel(member, '')).filter((rel) => rel !== '');
+}
+
 /** Every declared alias is authorized before this canonical projection is allowed to run. */
 export function deduplicateApplicationRegions(
   declaration: BuiltinCompositionDeclaration,
@@ -21,11 +32,23 @@ export function deduplicateApplicationRegions(
     seen.add(canonicalRel);
     return true;
   });
+  const exact = new Set(
+    unique.flatMap((region) =>
+      isCollection(region.entity)
+        ? []
+        : [canonicalEntityRel(region.entity, region.declaration.source)],
+    ),
+  );
+  const projected = unique.map((region) => {
+    if (!isCollection(region.entity)) return region;
+    const excludedMemberRels = embeddedCanonicalRels(region.entity).filter((rel) => exact.has(rel));
+    return excludedMemberRels.length === 0 ? region : { ...region, excludedMemberRels };
+  });
   return {
     declaration: freezeCompositionDeclaration({
       ...declaration,
-      regions: unique.map(({ declaration: region }) => ({ ...region })),
+      regions: projected.map(({ declaration: region }) => ({ ...region })),
     }),
-    regions: unique,
+    regions: projected,
   };
 }

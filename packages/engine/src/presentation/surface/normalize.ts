@@ -27,6 +27,7 @@ function normalizeNode(node: SurfaceNode): SurfaceNode {
         kind: 'repeat',
         ...base,
         source: { ...node.source },
+        ...(node.exclude === undefined ? {} : { exclude: [...node.exclude].sort() }),
         item: normalizeNode(node.item),
       };
     case 'word':

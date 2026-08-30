@@ -18,10 +18,12 @@ import {
   asOptionalActions,
   asOptionalFields,
   asOptionalGuardResults,
+  asOptionalPresentations,
   asOptionalString,
   asRequiredString,
   type WordProps,
 } from './shared';
+import { declaredMemberOverview } from './member-overview';
 
 export function MemberCardWord(props: WordProps) {
   const label = asRequiredString(props.label, 'member-card', 'label');
@@ -31,6 +33,12 @@ export function MemberCardWord(props: WordProps) {
   const actions = asOptionalActions(props.actions, 'member-card', 'actions');
   const guardResults = asOptionalGuardResults(props.guardResults, 'member-card', 'guardResults');
   const fields = asOptionalFields(props.fields, 'member-card', 'fields');
+  const presentations = asOptionalPresentations(
+    props.presentations,
+    'member-card',
+    'presentations',
+  );
+  const overview = declaredMemberOverview(presentations, fields);
 
   // 决策卡只消费动作裁决所需的最小合同面;标识与预填取值来自成员投影。
   const entity: SirenEntity = {
@@ -60,6 +68,20 @@ export function MemberCardWord(props: WordProps) {
         {status !== undefined ? `${status} · ` : ''}
         {rel}
       </p>
+      {overview.length > 0 && (
+        <div className="mt-2 space-y-2">
+          {overview.map(({ presentation, value }) => (
+            <div key={presentation.path} data-column={presentation.path}>
+              <p className="text-[11px] font-medium text-muted-foreground">{presentation.title}</p>
+              {value !== undefined && (
+                <p className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                  {value}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       {actions.length > 0 && (
         <section aria-label="动作" className="mt-2">
           <ActionGroup entity={entity} />

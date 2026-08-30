@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "future-research",
-    "version": 1
+    "version": 2
   },
   "applications": [
     {
@@ -60,7 +60,7 @@
       "title": "研究线索",
       "app": "research",
       "initial": "open",
-      "collections": [{ "collection": "research-items" }],
+      "collections": [{ "collection": "research-items", "title": "待验证线索" }],
       "cognitive": {
         "version": 1,
         "traits": ["work-queue"],

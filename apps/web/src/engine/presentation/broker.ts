@@ -33,6 +33,8 @@ export interface PresentationTrustedContext {
 export interface AuthorizedRegion {
   declaration: Readonly<CompositionRegionDeclaration>;
   entity?: unknown;
+  /** Exact canonical entities already represented by a stronger Application region. */
+  excludedMemberRels?: readonly string[];
 }
 
 /** 授权失败的结构化分类(B1 taxonomy);undefined 表示维持既有 authorization-failed。 */

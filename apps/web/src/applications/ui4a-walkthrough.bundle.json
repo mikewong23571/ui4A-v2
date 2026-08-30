@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "ui4a-walkthrough",
-    "version": 10
+    "version": 11
   },
   "applications": [
     {
@@ -397,7 +397,7 @@
       "title": "文章状态",
       "app": "publishing",
       "initial": "published",
-      "collections": [{ "collection": "articles" }],
+      "collections": [{ "collection": "articles", "title": "文章" }],
       "cognitive": { "version": 1, "traits": ["output-catalog"] },
       "fields": [
         {
@@ -502,6 +502,7 @@
       "collections": [
         {
           "collection": "comments",
+          "title": "评论",
           "filters": [{ "field": "status", "title": "状态" }]
         }
       ],
@@ -580,6 +581,7 @@
       "collections": [
         {
           "collection": "software-changes",
+          "title": "软件变更",
           "filters": [{ "field": "status", "title": "实施状态" }]
         }
       ],
@@ -748,6 +750,7 @@
       "collections": [
         {
           "collection": "writing-requests",
+          "title": "写作记录",
           "filters": [{ "field": "status", "title": "写作状态" }]
         }
       ],
@@ -945,6 +948,7 @@
       "collections": [
         {
           "collection": "agent-definition-requests",
+          "title": "Agent 定义请求",
           "filters": [{ "field": "status", "title": "起草状态" }]
         }
       ],

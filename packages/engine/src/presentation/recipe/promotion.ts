@@ -103,6 +103,7 @@ function parameterizeNode(
           kind: 'entities',
           subject: parameterizedSubject(node.source.subject, slotsBySubject),
         },
+        ...(node.exclude === undefined ? {} : { exclude: [...node.exclude] }),
         item: parameterizeNode(node.item, slotsBySubject),
       };
     case 'word':

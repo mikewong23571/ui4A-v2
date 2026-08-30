@@ -79,6 +79,31 @@ describe('member-card 词条', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
+  it('与 member-table 共用 presentations 概览，正文可读且 identity/status 不重复', () => {
+    renderCard({
+      label: '评论审核',
+      rel: 'comment:c1',
+      status: '待处理',
+      actions: [approveAction],
+      fields: { body: '这是一条需要先阅读的评论。', status: 'pending', tags: ['产品', '体验'] },
+      presentations: [
+        {
+          path: 'properties.fields.body',
+          title: '评论内容',
+          role: 'primary-content',
+          overview: true,
+        },
+        { path: 'properties.fields.status', title: '状态', role: 'status', overview: true },
+        { path: 'properties.fields.tags', title: '标签', role: 'metadata', overview: true },
+      ],
+    });
+
+    expect(screen.getByText('这是一条需要先阅读的评论。')).toBeTruthy();
+    expect(screen.getByText('产品、体验')).toBeTruthy();
+    expect(screen.queryByText('pending')).toBeNull();
+    expect(document.querySelectorAll('[data-column="properties.fields.body"]')).toHaveLength(1);
+  });
+
   it('label/rel 缺失 → 响亮抛错(合同形状守卫)', () => {
     expect(() => renderCard({ rel: 'confirmation:c1', actions: [] })).toThrow(/member-card/);
     expect(() => renderCard({ label: 'x', actions: [] })).toThrow(/member-card/);

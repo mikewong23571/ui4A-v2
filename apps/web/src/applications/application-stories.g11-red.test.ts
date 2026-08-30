@@ -18,14 +18,19 @@ const installedBundles = installedArtifacts.map((artifact) => parseApplicationBu
 
 function installedSitemap(): Sitemap {
   const applications = installedBundles.flatMap((bundle) => bundle.applications);
-  return deriveSitemap(installedBundles.flatMap((bundle) => bundle.flows), {
-    applications: Object.fromEntries(applications.map((application) => [application.name, application])),
-    capabilities: Object.fromEntries(
-      installedBundles
-        .flatMap((bundle) => bundle.capabilities)
-        .map((capability) => [capability.name, capability]),
-    ),
-  });
+  return deriveSitemap(
+    installedBundles.flatMap((bundle) => bundle.flows),
+    {
+      applications: Object.fromEntries(
+        applications.map((application) => [application.name, application]),
+      ),
+      capabilities: Object.fromEntries(
+        installedBundles
+          .flatMap((bundle) => bundle.capabilities)
+          .map((capability) => [capability.name, capability]),
+      ),
+    },
+  );
 }
 
 interface StoryExpectation {
@@ -33,6 +38,7 @@ interface StoryExpectation {
   title: string;
   entry: { target: string; role: 'primary-create' | 'primary-task' | 'primary-collection' };
   collection: string;
+  collectionTitle: string;
   collectionTraits: readonly string[];
   emptyMeaning?: string;
   groupRole?: string;
@@ -47,6 +53,7 @@ const storyMatrix: readonly StoryExpectation[] = [
     title: '内容发布',
     entry: { target: 'flow:article-drafting', role: 'primary-create' },
     collection: 'articles',
+    collectionTitle: '文章',
     collectionTraits: ['output-catalog'],
     forbiddenSources: ['agent-runs'],
   },
@@ -55,6 +62,7 @@ const storyMatrix: readonly StoryExpectation[] = [
     title: '社区互动',
     entry: { target: 'comments', role: 'primary-collection' },
     collection: 'comments',
+    collectionTitle: '评论',
     collectionTraits: ['review-queue', 'human-responsibility'],
     emptyMeaning: 'no-current-responsibility',
     groupRole: 'responsibility',
@@ -65,6 +73,7 @@ const storyMatrix: readonly StoryExpectation[] = [
     title: '软件实施',
     entry: { target: 'flow:software-change', role: 'primary-task' },
     collection: 'software-changes',
+    collectionTitle: '软件变更',
     collectionTraits: ['work-queue', 'task-history'],
     emptyMeaning: 'ready-to-start',
     forbiddenSources: ['agent-runs'],
@@ -74,6 +83,7 @@ const storyMatrix: readonly StoryExpectation[] = [
     title: '编辑写作',
     entry: { target: 'flow:writing-request', role: 'primary-task' },
     collection: 'writing-requests',
+    collectionTitle: '写作记录',
     collectionTraits: ['output-catalog', 'task-history'],
     emptyMeaning: 'ready-to-start',
     intentIncludes: '接受不等于发布',
@@ -83,6 +93,7 @@ const storyMatrix: readonly StoryExpectation[] = [
     title: 'Agent 治理',
     entry: { target: 'flow:agent-definition-authoring', role: 'primary-task' },
     collection: 'agent-definition-requests',
+    collectionTitle: 'Agent 定义请求',
     collectionTraits: ['review-queue', 'human-responsibility'],
     emptyMeaning: 'ready-to-start',
     groupRole: 'responsibility',
@@ -92,6 +103,7 @@ const storyMatrix: readonly StoryExpectation[] = [
     title: '待办事项',
     entry: { target: 'flow:todo-capture', role: 'primary-create' },
     collection: 'todos',
+    collectionTitle: '待办',
     collectionTraits: ['work-queue'],
     emptyMeaning: 'ready-to-start',
   },
@@ -100,6 +112,7 @@ const storyMatrix: readonly StoryExpectation[] = [
     title: '想法收集',
     entry: { target: 'flow:idea-capture', role: 'primary-create' },
     collection: 'ideas',
+    collectionTitle: '想法',
     collectionTraits: ['work-queue'],
     emptyMeaning: 'ready-to-start',
   },
@@ -113,10 +126,7 @@ function missingCognition(
   for (const trait of expected.collectionTraits) {
     if (presentation?.traits?.includes(trait as never) !== true) problems.push(`trait:${trait}`);
   }
-  if (
-    expected.emptyMeaning !== undefined &&
-    presentation?.emptyMeaning !== expected.emptyMeaning
-  ) {
+  if (expected.emptyMeaning !== undefined && presentation?.emptyMeaning !== expected.emptyMeaning) {
     problems.push(`emptyMeaning:${expected.emptyMeaning}`);
   }
   if (expected.groupRole !== undefined && presentation?.groupRole !== expected.groupRole) {
@@ -154,32 +164,43 @@ describe('T39 US11-US17 installed Application declaration stories (G11 Red)', ()
     expect(deriveAppWorkspaceComposition('default', sitemap)).toBeUndefined();
   });
 
-  it.each(storyMatrix)('$name derives its entry, owned collection and cognitive posture', (story) => {
-    const application = sitemap.applications.find(({ name }) => name === story.name);
-    const collection = sitemap.surfaces.find(({ rel }) => rel === story.collection);
-    const composition = deriveAppWorkspaceComposition(story.name, sitemap);
-    const sources = composition?.regions.map(({ source }) => source) ?? [];
-    const problems: string[] = [];
+  it.each(storyMatrix)(
+    '$name derives its entry, owned collection and cognitive posture',
+    (story) => {
+      const application = sitemap.applications.find(({ name }) => name === story.name);
+      const collection = sitemap.surfaces.find(({ rel }) => rel === story.collection);
+      const composition = deriveAppWorkspaceComposition(story.name, sitemap);
+      const sources = composition?.regions.map(({ source }) => source) ?? [];
+      const problems: string[] = [];
 
-    if (application?.title !== story.title) problems.push(`title:${story.title}`);
-    if (application?.intent.trim() === '') problems.push('intent:non-empty');
-    if (JSON.stringify(application?.entry) !== JSON.stringify(story.entry)) {
-      problems.push(`entry:${JSON.stringify(story.entry)}`);
-    }
-    if (story.intentIncludes !== undefined && !application?.intent.includes(story.intentIncludes)) {
-      problems.push(`intent:${story.intentIncludes}`);
-    }
-    if (collection?.app !== story.name) problems.push(`collection-owner:${story.name}`);
-    problems.push(...missingCognition(collection?.presentation, story));
-    if (!sources.includes(`application:${story.name}`)) problems.push('application-header');
-    if (!sources.includes(story.entry.target)) problems.push(`entry-source:${story.entry.target}`);
-    if (!sources.includes(story.collection)) problems.push(`collection-source:${story.collection}`);
-    for (const source of story.forbiddenSources ?? []) {
-      if (sources.includes(source)) problems.push(`forbidden-source:${source}`);
-    }
+      if (application?.title !== story.title) problems.push(`title:${story.title}`);
+      if (application?.intent.trim() === '') problems.push('intent:non-empty');
+      if (JSON.stringify(application?.entry) !== JSON.stringify(story.entry)) {
+        problems.push(`entry:${JSON.stringify(story.entry)}`);
+      }
+      if (
+        story.intentIncludes !== undefined &&
+        !application?.intent.includes(story.intentIncludes)
+      ) {
+        problems.push(`intent:${story.intentIncludes}`);
+      }
+      if (collection?.app !== story.name) problems.push(`collection-owner:${story.name}`);
+      if (collection?.title !== story.collectionTitle) {
+        problems.push(`collection-title:${story.collectionTitle}`);
+      }
+      problems.push(...missingCognition(collection?.presentation, story));
+      if (!sources.includes(`application:${story.name}`)) problems.push('application-header');
+      if (!sources.includes(story.entry.target))
+        problems.push(`entry-source:${story.entry.target}`);
+      if (!sources.includes(story.collection))
+        problems.push(`collection-source:${story.collection}`);
+      for (const source of story.forbiddenSources ?? []) {
+        if (sources.includes(source)) problems.push(`forbidden-source:${source}`);
+      }
 
-    expect(problems).toEqual([]);
-  });
+      expect(problems).toEqual([]);
+    },
+  );
 
   it('community declares review facts from the comment Flow rather than a Renderer/default guess', () => {
     const comments = installedBundles
@@ -227,10 +248,13 @@ describe('future ninth Application fixture uses the same generic contract', () =
       'research-items',
       'flow:research-capture',
     ]);
-    expect(sitemap.surfaces.find(({ rel }) => rel === 'research-items')?.presentation).toMatchObject({
+    expect(
+      sitemap.surfaces.find(({ rel }) => rel === 'research-items')?.presentation,
+    ).toMatchObject({
       traits: ['work-queue'],
       emptyMeaning: 'ready-to-start',
     });
+    expect(sitemap.surfaces.find(({ rel }) => rel === 'research-items')?.title).toBe('待验证线索');
     expect(
       installedBundles.flatMap((bundle) => bundle.applications).map(({ name }) => name),
     ).not.toContain('research');

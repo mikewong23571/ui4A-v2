@@ -13,6 +13,7 @@ import { fieldPresentationsOf } from './siren/build';
 
 export interface CollectionOwner {
   rel: string;
+  title?: string;
   app: string;
   flow: FlowDefinition;
   source: 'declaration' | 'append';
@@ -53,6 +54,7 @@ export function resolveCollectionOwnership(
       const candidates = explicit.get(declaration.collection) ?? [];
       candidates.push({
         rel: declaration.collection,
+        ...(declaration.title === undefined ? {} : { title: declaration.title }),
         app,
         flow,
         source: 'declaration',
