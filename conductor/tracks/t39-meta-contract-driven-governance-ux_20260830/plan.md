@@ -101,7 +101,7 @@
 - [x] Task E3：Red——编写 valid/invalid/stale Draft 审查、现场保留、返回 author/Assistant 修复和 human-only fresh-read decision 测试，并确认失败。f00ff75
 - [x] Task E4：Green——实现通用 Draft 审查状态与责任点反馈，不生成专属修复表单。15d38b8
 - [x] Task E5：Red——编写“当前视角”任务文案、URL 连续、授权集合只读说明和无 lens UI 状态测试，并确认失败。34bb95c
-- [ ] Task E6：Green——更新 lens 展示与审查现场恢复；运行时默认清理和授权并集语义复用 Phase C，不再实现第二处逻辑。
+- [x] Task E6：Green——更新 lens 展示与审查现场恢复；运行时默认清理和授权并集语义复用 Phase C，不再实现第二处逻辑。bfa3d90
 - [ ] Task E7：浏览器验证 US3、US4、US9：审查而非 authoring、键盘、390px、stale/CAS 与 URL 连续性。
 - [ ] Task E8：Phase Verification & Checkpoint：D51、public schema、human-only、focused tests 与 governance 全绿。
 
