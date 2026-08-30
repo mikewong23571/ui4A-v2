@@ -372,3 +372,57 @@ existing synthetic wire samples: 14,642–14,718 bytes
 ```
 
 No A7 repository or temporary change remained.
+
+## A8 Adopted spike findings
+
+### Track shape
+
+Keep one T39 Track with a shared Phase B and two independent milestones:
+
+- Meta milestone (C–F), complete and revertible without Application work;
+- Application milestone (G), dependent on shared semantics but not on Meta UI implementation;
+- H proves shared gaze and final E2E; it does not add a second disclosure implementation.
+
+### Adopted architecture
+
+1. Derive cognitive semantics whenever existing topology, actions, SubmissionPolicy, ownership or
+   field presentation already provides the meaning. Only irreducible stable semantics are declared.
+2. A minimal versioned cognitive semantics shape is projected by one pure projector into sitemap
+   discovery and exact `properties.presentation`; visual policy stays outside definitions.
+3. Input ownership uses a single `caller|client` JSON Schema annotation; server values leave public
+   params. Draft create removes request `policyScope`, and schemaRef is server-derived where kind is
+   authoritative.
+4. Clear default lens behavior before atomically deleting friendly Meta routes; no redirect or dual
+   wire. Meta mutations invalidate the relevant authorized Meta cache scope, not only one rel.
+5. Add read-only business `application:<name>` Siren projection, minimal `system-fallback`, entry
+   role and surface roles, pure collection ownership and canonical view deduplication.
+6. Replace complete Siren observations with a task-scoped observation projector, one current
+   observation plus bounded structural trail, and a final serialized UTF-8 provider request hard
+   guard at 32,768 bytes before fetch.
+7. Public HTTP/CLI remains complete; Assistant uses an explicit cognitive allowlist and never sees
+   visual policy.
+
+### Rejected or deferred
+
+- generic `ApplicationDefinition.presentation` or visual-policy DSL;
+- density/sticky/heading/device metadata in business or Meta definitions;
+- complete Draft editor as the Meta human path;
+- legacy route redirects or compatible dual action wire;
+- pin/recent Application shelf preference in T39;
+- per-app/per-rel runtime branches, new dependencies, database or event families.
+
+The shelf uses discoverability, declaration order and current lens only. Existing Sidecar pin is not
+reused for a different preference meaning.
+
+### Mandatory A9 document updates
+
+- extend D41/D51 so non-accumulation includes entity observations and the final provider request has
+  a runtime byte guard;
+- supersede D32 friendly route compatibility and D46's `/meta/flow/*` bridge;
+- record the `caller|client` public action annotation and server-owned exclusion;
+- record cognitive-semantics dual projection, Presentation policy boundary, read-only business
+  Application projection, entry/ownership invariants and composition version/intent rules;
+- rewrite Phase B–H ordering, remove shelf pin/recent, move scope cleanup before canonical cutover,
+  and keep two independent milestones.
+
+A8 introduced no code or new test claim; its inputs are the independently verified A1–A7 evidence.
