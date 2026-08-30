@@ -1,17 +1,18 @@
+import type { MetaNavigationContext } from '../meta-navigation';
 import type { DraftReviewResponsibility } from '../view-models/draft-review-responsibility';
 import { browserHrefForContractHref } from './common';
 
 export function DraftResponsibility({
   responsibility,
-  scope,
+  navigation,
 }: {
   responsibility: DraftReviewResponsibility;
-  scope?: string;
+  navigation: MetaNavigationContext;
 }) {
   const repairHref =
     responsibility.repairLink === undefined
       ? null
-      : browserHrefForContractHref(responsibility.repairLink.href, scope);
+      : browserHrefForContractHref(responsibility.repairLink.href, navigation);
 
   return (
     <section

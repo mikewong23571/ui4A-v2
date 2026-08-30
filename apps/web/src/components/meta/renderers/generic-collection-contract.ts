@@ -2,6 +2,8 @@ import type { SirenEntity, SirenFieldPresentation, SirenLink } from '@ui4a/engin
 
 import { asOptionalFilterDeclarations, asOptionalPresentations } from '@/render/words/shared';
 
+import { withMetaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
+
 export interface CollectionSummary {
   returned: number;
   total?: number;
@@ -85,12 +87,17 @@ export function collectionSummaryOf(entity: SirenEntity): CollectionSummary {
  * Convert only an exact same-origin Meta entity contract href. Unknown query parameters are
  * intentionally retained because cursors and future read traits are server-owned opaque values.
  */
-export function canonicalMetaEntityHref(href: string, scope?: string): string | null {
-  const params = canonicalMetaEntityParams(href, scope);
-  return params === null ? null : `/meta/entity?${params.toString()}`;
+export function canonicalMetaEntityHref(
+  href: string,
+  navigation: MetaNavigationContext = {},
+): string | null {
+  const params = canonicalMetaEntityParams(href);
+  return params === null
+    ? null
+    : withMetaNavigationContext(`/meta/entity?${params.toString()}`, navigation);
 }
 
-function canonicalMetaEntityParams(href: string, scope?: string): URLSearchParams | null {
+function canonicalMetaEntityParams(href: string): URLSearchParams | null {
   if (!href.startsWith('/')) return null;
   const url = new URL(href, 'http://ui4a.local');
   if (url.origin !== 'http://ui4a.local' || url.pathname !== '/_meta/api/entity') return null;
@@ -98,18 +105,19 @@ function canonicalMetaEntityParams(href: string, scope?: string): URLSearchParam
     return null;
   const params = new URLSearchParams(url.searchParams);
   params.delete('scope');
-  if (scope !== undefined && scope.length > 0) params.set('scope', scope);
+  params.delete('thread');
+  params.delete('returnTo');
   return params;
 }
 
 export function collectionPageLinks(
   links: readonly SirenLink[],
-  scope?: string,
+  navigation: MetaNavigationContext = {},
 ): Array<{ rel: 'prev' | 'next'; title: string; href: string }> {
   return links.flatMap((link) => {
     const rel = link.rel.includes('prev') ? 'prev' : link.rel.includes('next') ? 'next' : null;
     if (rel === null) return [];
-    const href = canonicalMetaEntityHref(link.href, scope);
+    const href = canonicalMetaEntityHref(link.href, navigation);
     return href === null ? [] : [{ rel, title: link.title ?? rel, href }];
   });
 }
@@ -119,14 +127,14 @@ export function collectionFacetHref(
   selfHref: string,
   field: string,
   value: string,
-  scope?: string,
+  navigation: MetaNavigationContext = {},
 ): string | null {
-  const params = canonicalMetaEntityParams(selfHref, scope);
+  const params = canonicalMetaEntityParams(selfHref);
   if (params === null) return null;
   const key = `filter.${field}`;
   params.delete(key);
   if (value !== '') params.set(key, value);
-  return `/meta/entity?${params.toString()}`;
+  return withMetaNavigationContext(`/meta/entity?${params.toString()}`, navigation);
 }
 
 export function collectionFacetValue(selfHref: string, field: string): string {

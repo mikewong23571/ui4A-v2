@@ -235,7 +235,13 @@ afterEach(() => {
 
 describe('Draft Meta review responsibility', () => {
   it('puts existing review evidence ahead of authoring and keeps revise action-backed', () => {
-    render(<MetaEntityRenderer rel="draft:d1" scope="governance" entity={exactDraft()} />);
+    render(
+      <MetaEntityRenderer
+        rel="draft:d1"
+        navigation={{ scope: 'governance' }}
+        entity={exactDraft()}
+      />,
+    );
 
     const diff = screen.getByRole('heading', { name: 'Mechanical diff' });
     const checks = screen.getByRole('heading', { name: 'Checks' });
@@ -264,7 +270,13 @@ describe('Draft Meta review responsibility', () => {
   });
 
   it('makes existing Drafts the collection path and keeps raw creation behind a secondary disclosure', () => {
-    render(<MetaEntityRenderer rel="meta/drafts" scope="governance" entity={draftCollection()} />);
+    render(
+      <MetaEntityRenderer
+        rel="meta/drafts"
+        navigation={{ scope: 'governance' }}
+        entity={draftCollection()}
+      />,
+    );
 
     expect(screen.getByRole('link', { name: /writer/ })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Create Draft' })).toBeNull();
@@ -294,7 +306,9 @@ describe('Draft Meta review responsibility', () => {
       },
     });
 
-    render(<MetaEntityRenderer rel="draft:d1" scope="governance" entity={entity} />);
+    render(
+      <MetaEntityRenderer rel="draft:d1" navigation={{ scope: 'governance' }} entity={entity} />,
+    );
 
     const responsibility = screen.getByRole('region', { name: '审查责任点' });
     expect(responsibility.textContent).toContain('候选已通过校验');
@@ -322,7 +336,9 @@ describe('Draft Meta review responsibility', () => {
       ],
     });
 
-    render(<MetaEntityRenderer rel="draft:d1" scope="governance" entity={entity} />);
+    render(
+      <MetaEntityRenderer rel="draft:d1" navigation={{ scope: 'governance' }} entity={entity} />,
+    );
 
     const responsibility = screen.getByRole('region', { name: '审查责任点' });
     expect(responsibility.textContent).toContain('候选需要修复');
@@ -364,7 +380,9 @@ describe('Draft Meta review responsibility', () => {
       ],
     });
 
-    render(<MetaEntityRenderer rel="draft:d1" scope="governance" entity={entity} />);
+    render(
+      <MetaEntityRenderer rel="draft:d1" navigation={{ scope: 'governance' }} entity={entity} />,
+    );
 
     const responsibility = screen.getByRole('region', { name: '审查责任点' });
     expect(responsibility.textContent).toContain('候选基线已过期');
@@ -398,7 +416,9 @@ describe('Draft Meta review responsibility', () => {
       },
     });
 
-    render(<MetaEntityRenderer rel="draft:d1" scope="governance" entity={entity} />);
+    render(
+      <MetaEntityRenderer rel="draft:d1" navigation={{ scope: 'governance' }} entity={entity} />,
+    );
 
     expect(await screen.findByText(/Human-only decision/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }));

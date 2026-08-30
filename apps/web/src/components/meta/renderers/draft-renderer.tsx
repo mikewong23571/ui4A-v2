@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
 import { useMetaEntity } from '../meta-client';
+import { withMetaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
 import { draftViewModel } from '../view-models/draft';
 import { browserHrefForContractHref, MetaActions, RawContract } from './common';
 import { DraftResponsibility } from './draft-review-responsibility';
@@ -58,11 +59,11 @@ function DraftDecision({
 
 export function DraftRenderer({
   entity,
-  scope,
+  navigation,
   onChanged,
 }: {
   entity: SirenEntity;
-  scope?: string;
+  navigation: MetaNavigationContext;
   onChanged?: () => void;
 }) {
   const view = draftViewModel(entity);
@@ -75,7 +76,8 @@ export function DraftRenderer({
     <div className="space-y-7 pb-20">
       <header className="space-y-3 border-b pb-5">
         <nav className="text-sm text-muted-foreground">
-          <a href="/meta">定义管理</a> / Drafts / {view.id}
+          <a href={withMetaNavigationContext('/meta', navigation) ?? '/meta'}>定义管理</a> / Drafts
+          / {view.id}
         </nav>
         <div className="flex flex-wrap gap-2">
           <Badge>{view.status}</Badge>
@@ -160,7 +162,7 @@ export function DraftRenderer({
               {view.sources.length === 0 && <span>无 source reference</span>}
               {view.sources.length > 0 && <span>{view.sources.length} 条 source reference</span>}
               {untitledSourceLinks.map((link, index) => {
-                const href = browserHrefForContractHref(link.href, scope);
+                const href = browserHrefForContractHref(link.href, navigation);
                 const source = view.sources[index];
                 if (href === null || source === undefined) return null;
                 return (
@@ -178,16 +180,16 @@ export function DraftRenderer({
           </Card>
         </div>
       </section>
-      <DraftResponsibility responsibility={view.responsibility} scope={scope} />
+      <DraftResponsibility responsibility={view.responsibility} navigation={navigation} />
       <MetaActions
         entity={entity}
         rel={view.rel}
-        scope={scope}
+        scope={navigation.scope}
         onChanged={onChanged}
         prefill={{ payload: view.payload }}
       />
       {activation !== undefined && (
-        <DraftDecision rel={activation} scope={scope} onChanged={onChanged} />
+        <DraftDecision rel={activation} scope={navigation.scope} onChanged={onChanged} />
       )}
       {view.terminalReason !== '' && (
         <Alert>

@@ -42,7 +42,7 @@ describe('Meta sitemap surface projection', () => {
       'meta/flow:post-status',
     );
     expect(relFromMetaApiHref('https://evil.example/_meta/api/entity?rel=meta%2Fflows')).toBeNull();
-    expect(browserHrefForMetaRel('draft:a/b', 'governance')).toBe(
+    expect(browserHrefForMetaRel('draft:a/b', { scope: 'governance' })).toBe(
       '/meta/entity?rel=draft%3Aa%2Fb&scope=governance',
     );
   });

@@ -11,6 +11,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { fetchMetaEntity, fetchMetaSitemap } from './meta-client';
 import { DashboardSurfaceGrid, DashboardSurfaceGroup } from './meta-dashboard-surfaces';
 import {
+  metaNavigationContext,
+  withMetaNavigationContext,
+  type MetaNavigationContext,
+} from './meta-navigation';
+import {
   browserHrefForMetaRel,
   projectMetaSurfaceDescriptors,
   relFromMetaApiHref,
@@ -21,6 +26,7 @@ type DashboardFilter = 'all' | 'pending' | 'invalid';
 type LoadedEntity = Awaited<ReturnType<typeof fetchMetaEntity>>;
 
 const groupOrder = COGNITIVE_SEMANTICS_GROUP_ROLES;
+const emptyNavigation: MetaNavigationContext = {};
 
 interface SearchEntry {
   rel: string;
@@ -32,14 +38,19 @@ interface SearchEntry {
 }
 
 export function MetaDashboard({
-  requestedScope,
+  navigation = emptyNavigation,
   initialQuery = '',
   initialFilter = 'all',
 }: {
-  requestedScope?: string;
+  navigation?: MetaNavigationContext;
   initialQuery?: string;
   initialFilter?: DashboardFilter;
 }) {
+  const { scope, thread, returnTo } = navigation;
+  const parsedNavigation = useMemo(
+    () => metaNavigationContext({ scope, thread, returnTo }),
+    [returnTo, scope, thread],
+  );
   const [sitemap, setSitemap] = useState<MetaSitemapDocument | null>(null);
   const [collections, setCollections] = useState<Record<string, LoadedEntity>>({});
   const [state, setState] = useState<'loading' | 'ready' | 'partial' | 'error'>('loading');
@@ -48,11 +59,11 @@ export function MetaDashboard({
 
   useEffect(() => {
     let cancelled = false;
-    void fetchMetaSitemap(requestedScope)
+    void fetchMetaSitemap(parsedNavigation.scope)
       .then(async (next) => {
         if (cancelled) return;
         setSitemap(next);
-        const descriptors = projectMetaSurfaceDescriptors(next).filter(
+        const descriptors = projectMetaSurfaceDescriptors(next, parsedNavigation).filter(
           (descriptor) => descriptor.kind === 'collection',
         );
         const results = await Promise.allSettled(
@@ -60,7 +71,7 @@ export function MetaDashboard({
             async (descriptor) =>
               [
                 descriptor.rel,
-                await fetchMetaEntity(descriptor.rel, next.effectiveScope, {
+                await fetchMetaEntity(descriptor.rel, parsedNavigation.scope, {
                   revision: next.version,
                 }),
               ] as const,
@@ -80,7 +91,7 @@ export function MetaDashboard({
     return () => {
       cancelled = true;
     };
-  }, [requestedScope]);
+  }, [parsedNavigation]);
 
   const searchIndex = useMemo(() => {
     if (sitemap === null) return [];
@@ -92,7 +103,7 @@ export function MetaDashboard({
         intent: '',
         status: '',
         type: surface.collection ? 'collection' : 'detail',
-        href: browserHrefForMetaRel(surface.rel, sitemap.effectiveScope),
+        href: browserHrefForMetaRel(surface.rel, parsedNavigation),
       });
     }
     for (const collection of Object.values(collections)) {
@@ -114,12 +125,12 @@ export function MetaDashboard({
           intent: typeof member.properties.intent === 'string' ? member.properties.intent : '',
           status: typeof member.properties.status === 'string' ? member.properties.status : '',
           type: member.class.join(' '),
-          href: browserHrefForMetaRel(rel, sitemap.effectiveScope),
+          href: browserHrefForMetaRel(rel, parsedNavigation),
         });
       }
     }
     return [...indexed.values()];
-  }, [collections, sitemap]);
+  }, [collections, parsedNavigation, sitemap]);
 
   const searchResults = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -145,7 +156,8 @@ export function MetaDashboard({
     window.history.replaceState(null, '', suffix === '' ? '/meta' : `/meta?${suffix}`);
   }
 
-  const descriptors = sitemap === null ? [] : projectMetaSurfaceDescriptors(sitemap);
+  const descriptors =
+    sitemap === null ? [] : projectMetaSurfaceDescriptors(sitemap, parsedNavigation);
   const groupedDescriptors = groupOrder.flatMap((groupRole) => {
     const entries = descriptors.filter((descriptor) => {
       if (descriptor.presentation?.groupRole !== groupRole) return false;
@@ -172,7 +184,20 @@ export function MetaDashboard({
         </div>
         {sitemap !== null && (
           <div className="w-full shrink-0 space-y-2 sm:w-64">
-            <form action="/meta" method="get" className="flex items-end gap-2">
+            <form
+              action="/meta"
+              method="get"
+              className="flex items-end gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const selected = new FormData(event.currentTarget).get('scope');
+                const href = withMetaNavigationContext('/meta', {
+                  ...parsedNavigation,
+                  scope: typeof selected === 'string' && selected !== '' ? selected : undefined,
+                });
+                if (href !== null) window.location.assign(href);
+              }}
+            >
               <div className="min-w-0 flex-1">
                 <label htmlFor="meta-scope" className="text-xs font-medium text-muted-foreground">
                   当前视角
@@ -180,9 +205,11 @@ export function MetaDashboard({
                 <select
                   id="meta-scope"
                   name="scope"
-                  defaultValue={sitemap.effectiveScope}
+                  defaultValue={parsedNavigation.scope ?? ''}
+                  data-nav="meta:set-view"
                   className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
+                  <option value="">未选择视角</option>
                   {sitemap.authorizedScopes.map((scope) => (
                     <option key={scope} value={scope}>
                       {scope}
@@ -192,17 +219,35 @@ export function MetaDashboard({
               </div>
               <button
                 type="submit"
+                data-nav="meta:apply-view"
                 className="h-10 rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               >
                 切换
               </button>
             </form>
-            {sitemap.authorizationMode === 'self-reported-local-demo' && (
-              <p className="text-xs text-amber-700 dark:text-amber-300">
-                本地演示身份：可访问应用集合由服务端 allowlist
-                模拟凭证授予；切换视角不扩大或缩小权限。
-              </p>
+            {parsedNavigation.scope === undefined ? (
+              <p className="text-xs text-muted-foreground">未选择视角；默认使用全部已授权应用。</p>
+            ) : (
+              <Badge data-testid="meta-current-view" variant="outline">
+                当前视角 {parsedNavigation.scope}
+              </Badge>
             )}
+            <aside
+              role="region"
+              aria-label="可访问应用"
+              className="rounded-md border bg-muted/20 p-2"
+            >
+              <p className="text-xs text-muted-foreground">
+                由凭证授予；切换视角不扩大或缩小权限。
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {sitemap.authorizedScopes.map((scope) => (
+                  <Badge key={scope} variant="secondary">
+                    {scope}
+                  </Badge>
+                ))}
+              </div>
+            </aside>
           </div>
         )}
       </header>

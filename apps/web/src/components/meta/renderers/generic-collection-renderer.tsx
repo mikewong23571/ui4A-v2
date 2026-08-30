@@ -4,6 +4,7 @@ import type { SirenEntity } from '@ui4a/engine';
 
 import { Card } from '@/components/ui/card';
 
+import type { MetaNavigationContext } from '../meta-navigation';
 import { redactMetaValue } from '../view-models/agent-definition';
 import { browserHrefForContractHref, titleForEntity } from './common';
 import {
@@ -24,7 +25,13 @@ function OverviewValue({ value }: { value: unknown }) {
   return <span className="break-words">{JSON.stringify(safe)}</span>;
 }
 
-function MemberSummary({ member, scope }: { member: SirenEntity; scope?: string }) {
+function MemberSummary({
+  member,
+  navigation,
+}: {
+  member: SirenEntity;
+  navigation: MetaNavigationContext;
+}) {
   const fields = overviewFieldsOf(member);
   const identity = fields.find((field) => field.role === 'identity');
   const declaredTitle =
@@ -38,7 +45,8 @@ function MemberSummary({ member, scope }: { member: SirenEntity; scope?: string 
     const value = valueAtPresentationPath(member, field.path);
     return value === undefined || value === null || value === '' ? [] : [{ field, value }];
   });
-  const href = member.href === undefined ? null : browserHrefForContractHref(member.href, scope);
+  const href =
+    member.href === undefined ? null : browserHrefForContractHref(member.href, navigation);
   const content = (
     <Card className="h-full min-w-0 gap-3 p-4 sm:grid sm:grid-cols-[minmax(12rem,1fr)_2fr] sm:items-start">
       <p className="font-medium text-foreground">{title}</p>
@@ -68,7 +76,13 @@ function MemberSummary({ member, scope }: { member: SirenEntity; scope?: string 
   );
 }
 
-function CollectionFacets({ entity, scope }: { entity: SirenEntity; scope?: string }) {
+function CollectionFacets({
+  entity,
+  navigation,
+}: {
+  entity: SirenEntity;
+  navigation: MetaNavigationContext;
+}) {
   const facets = collectionFacetsOf(entity);
   const self = entity.links.find((link) => link.rel.includes('self'));
   if (facets.length === 0 || self === undefined) return null;
@@ -81,7 +95,12 @@ function CollectionFacets({ entity, scope }: { entity: SirenEntity; scope?: stri
             aria-label={facet.title}
             value={collectionFacetValue(self.href, facet.field)}
             onChange={(event) => {
-              const href = collectionFacetHref(self.href, facet.field, event.target.value, scope);
+              const href = collectionFacetHref(
+                self.href,
+                facet.field,
+                event.target.value,
+                navigation,
+              );
               if (href !== null) window.location.assign(href);
             }}
             className="rounded-md border border-border bg-card px-2 py-1 text-foreground"
@@ -101,14 +120,14 @@ function CollectionFacets({ entity, scope }: { entity: SirenEntity; scope?: stri
 
 export function GenericCollectionRenderer({
   entity,
-  scope,
+  navigation,
 }: {
   entity: SirenEntity;
-  scope?: string;
+  navigation: MetaNavigationContext;
 }) {
   const members = entity.entities ?? [];
   const summary = collectionSummaryOf(entity);
-  const pages = collectionPageLinks(entity.links, scope);
+  const pages = collectionPageLinks(entity.links, navigation);
   return (
     <div className="space-y-4">
       <div
@@ -121,7 +140,7 @@ export function GenericCollectionRenderer({
         {summary.truncated ? '；结果已截断，仅显示当前批次。' : '。'}
       </div>
 
-      <CollectionFacets entity={entity} scope={scope} />
+      <CollectionFacets entity={entity} navigation={navigation} />
 
       {members.length > 0 ? (
         <section aria-labelledby="generic-members-heading">
@@ -139,7 +158,7 @@ export function GenericCollectionRenderer({
                     : `${member.class.join(':')}:${index}`
                 }
                 member={member}
-                scope={scope}
+                navigation={navigation}
               />
             ))}
           </div>

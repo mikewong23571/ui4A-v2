@@ -63,12 +63,12 @@ describe('explicit URL navigation', () => {
   it('derives the workstation-to-meta bridge only from a canonical flow focus', () => {
     expect(
       crossSiteFlowBridge(
-        '/canvas?focus=flow%3Arelease%20flow&scope=publishing&thread=release-1',
+        '/canvas?focus=flow%3Arelease%20flow&scope=publishing&thread=release-1&returnTo=%2Fthreads',
         'flow:release flow',
       ),
     ).toEqual({
       label: '在 meta 中编辑此定义',
-      href: '/meta/entity?rel=meta%2Fflow%3Arelease+flow&scope=publishing&thread=release-1',
+      href: '/meta/entity?rel=meta%2Fflow%3Arelease+flow&scope=publishing&thread=release-1&returnTo=%2Fthreads',
     });
     expect(
       crossSiteFlowBridge('/canvas?focus=flow%3Aarticle-drafting', 'flow:article-drafting'),
@@ -79,6 +79,18 @@ describe('explicit URL navigation', () => {
     expect(
       crossSiteFlowBridge(
         '/canvas?focus=flow%3Aarticle-drafting&scope=&thread=',
+        'flow:article-drafting',
+      ),
+    ).toEqual({
+      label: '在 meta 中编辑此定义',
+      href: '/meta/entity?rel=meta%2Fflow%3Aarticle-drafting',
+    });
+  });
+
+  it('drops unsafe return targets from cross-site bridges', () => {
+    expect(
+      crossSiteFlowBridge(
+        '/canvas?focus=flow%3Aarticle-drafting&returnTo=%2F%2Fevil.example%2Freview',
         'flow:article-drafting',
       ),
     ).toEqual({

@@ -2,6 +2,8 @@
 
 import type { SirenEntity } from '@ui4a/engine';
 
+import { metaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
+
 import { AgentDefinitionRenderer } from './agent-definition-renderer';
 import { ApplicationRenderer } from './application-renderer';
 import {
@@ -18,16 +20,17 @@ const registry = createMetaRendererRegistry(META_RENDERER_REGISTRATIONS);
 export function MetaEntityRenderer({
   rel,
   entity,
-  scope,
+  navigation = {},
   descriptorTitle,
   onChanged,
 }: {
   rel?: string;
   entity: SirenEntity;
-  scope?: string;
+  navigation?: MetaNavigationContext;
   descriptorTitle?: string;
   onChanged?: () => void;
 }) {
+  const parsedNavigation = metaNavigationContext(navigation);
   let renderer;
   try {
     renderer = registry.resolve(entity);
@@ -41,24 +44,37 @@ export function MetaEntityRenderer({
       </div>
     );
   }
-  if (renderer === 'application') return <ApplicationRenderer entity={entity} scope={scope} />;
+  if (renderer === 'application')
+    return <ApplicationRenderer entity={entity} navigation={parsedNavigation} />;
   if (renderer === 'agent-definition')
-    return <AgentDefinitionRenderer entity={entity} scope={scope} />;
+    return <AgentDefinitionRenderer entity={entity} navigation={parsedNavigation} />;
   if (renderer === 'draft')
-    return <DraftRenderer entity={entity} scope={scope} onChanged={onChanged} />;
+    return <DraftRenderer entity={entity} navigation={parsedNavigation} onChanged={onChanged} />;
   if (renderer === 'flow')
-    return <FlowRenderer rel={rel ?? ''} entity={entity} scope={scope} onChanged={onChanged} />;
+    return (
+      <FlowRenderer
+        rel={rel ?? ''}
+        entity={entity}
+        navigation={parsedNavigation}
+        onChanged={onChanged}
+      />
+    );
   if (renderer === 'activation')
     return (
-      <ActivationRenderer rel={rel ?? ''} entity={entity} scope={scope} onChanged={onChanged} />
+      <ActivationRenderer
+        rel={rel ?? ''}
+        entity={entity}
+        navigation={parsedNavigation}
+        onChanged={onChanged}
+      />
     );
   if (renderer === 'capability')
-    return <CapabilityRenderer rel={rel ?? ''} entity={entity} scope={scope} />;
+    return <CapabilityRenderer rel={rel ?? ''} entity={entity} navigation={parsedNavigation} />;
   return (
     <GenericMetaRenderer
       entity={entity}
       rel={rel}
-      scope={scope}
+      navigation={parsedNavigation}
       descriptorTitle={descriptorTitle}
       onChanged={onChanged}
     />

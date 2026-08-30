@@ -133,6 +133,7 @@ export function SituationBar() {
         <Link
           href={locationHrefWithChanges(route, { scope: null })}
           data-testid="situation-scope"
+          aria-label={`当前视角 ${displayValue(observation.scope)}`}
           title={`当前视角 ${displayValue(observation.scope)}(点击清除)`}
           data-nav="situation:clear-scope"
           className="min-w-0 max-w-32 truncate rounded-full border bg-card px-2.5 py-0.5 text-[11px] text-foreground transition-colors hover:bg-accent"
@@ -195,9 +196,15 @@ export function SituationBar() {
                 <dd
                   data-testid={`situation-${field}`}
                   className="max-w-48 truncate font-mono text-foreground"
-                  title={displayValue(observation[field])}
+                  title={
+                    field === 'scope' && observation.scope === null
+                      ? '未选择视角'
+                      : displayValue(observation[field])
+                  }
                 >
-                  {displayValue(observation[field])}
+                  {field === 'scope' && observation.scope === null
+                    ? '未选择视角'
+                    : displayValue(observation[field])}
                 </dd>
               </div>
             ))}
@@ -224,6 +231,11 @@ export function SituationBar() {
 
           <div className="grid gap-1.5 border-t pt-2.5">
             <p className="text-xs font-medium text-foreground">调整视角</p>
+            {observation.scope === null && (
+              <p className="text-[11px] text-muted-foreground">
+                未选择视角时，默认使用全部已授权应用。
+              </p>
+            )}
             <p className="text-[11px] text-muted-foreground">
               可访问应用集合由凭证授予；切换视角不扩大或缩小权限。
             </p>

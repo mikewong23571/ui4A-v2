@@ -1,5 +1,7 @@
 import type { CognitiveSemanticsProjectionV1 } from '@ui4a/engine';
 
+import { metaEntityHref, type MetaNavigationContext } from './meta-navigation';
+
 export interface MetaSitemapSurface {
   rel: string;
   title: string;
@@ -23,10 +25,8 @@ export interface MetaSurfaceDescriptor extends MetaSitemapSurface {
 }
 
 /** Canonical human route for a Meta Siren rel. */
-export function browserHrefForMetaRel(rel: string, scope?: string): string {
-  const query = new URLSearchParams({ rel });
-  if (scope !== undefined && scope.length > 0) query.set('scope', scope);
-  return `/meta/entity?${query.toString()}`;
+export function browserHrefForMetaRel(rel: string, context: MetaNavigationContext = {}): string {
+  return metaEntityHref(rel, context);
 }
 
 /** Same-origin Meta API href to rel; external and malformed links fail closed. */
@@ -41,6 +41,7 @@ export function relFromMetaApiHref(href: string): string | null {
 /** Pure top-level inventory. Exact children stay discoverable through collections and links. */
 export function projectMetaSurfaceDescriptors(
   sitemap: MetaSitemapDocument,
+  context: MetaNavigationContext = metaNavigationContextForSitemap(sitemap),
 ): MetaSurfaceDescriptor[] {
   return sitemap.surfaces.flatMap((surface) => {
     const kind = surface.rel === 'meta/self' ? 'self' : surface.collection ? 'collection' : null;
@@ -50,8 +51,12 @@ export function projectMetaSurfaceDescriptors(
           {
             ...surface,
             kind,
-            href: browserHrefForMetaRel(surface.rel, sitemap.effectiveScope),
+            href: browserHrefForMetaRel(surface.rel, context),
           },
         ];
   });
+}
+
+function metaNavigationContextForSitemap(sitemap: MetaSitemapDocument): MetaNavigationContext {
+  return sitemap.effectiveScope === undefined ? {} : { scope: sitemap.effectiveScope };
 }

@@ -5,6 +5,7 @@ import type { SirenEntity } from '@ui4a/engine';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
+import { metaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
 import { redactMetaValue } from '../view-models/agent-definition';
 import {
   browserHrefForContractHref,
@@ -39,16 +40,17 @@ function hasPresentationTrait(entity: SirenEntity, trait: string): boolean {
 export function GenericMetaRenderer({
   entity,
   rel: requestedRel,
-  scope,
+  navigation = {},
   descriptorTitle,
   onChanged,
 }: {
   entity: SirenEntity;
   rel?: string;
-  scope?: string;
+  navigation?: MetaNavigationContext;
   descriptorTitle?: string;
   onChanged?: () => void;
 }) {
+  const parsedNavigation = metaNavigationContext(navigation);
   const rel =
     typeof entity.properties.rel === 'string' ? entity.properties.rel : (requestedRel ?? '');
   const members = entity.entities ?? [];
@@ -74,7 +76,7 @@ export function GenericMetaRenderer({
       </header>
 
       {isCollection ? (
-        <GenericCollectionRenderer entity={entity} scope={scope} />
+        <GenericCollectionRenderer entity={entity} navigation={parsedNavigation} />
       ) : members.length > 0 ? (
         <section aria-labelledby="generic-members-heading">
           <div className="mb-3 flex items-center justify-between">
@@ -86,7 +88,9 @@ export function GenericMetaRenderer({
           <div className="grid gap-3 sm:grid-cols-2">
             {members.map((member, index) => {
               const href =
-                member.href === undefined ? null : browserHrefForContractHref(member.href, scope);
+                member.href === undefined
+                  ? null
+                  : browserHrefForContractHref(member.href, parsedNavigation);
               const content = (
                 <Card className="h-full min-w-0 p-4">
                   <p className="font-medium">{titleForEntity(member)}</p>
@@ -147,7 +151,7 @@ export function GenericMetaRenderer({
           </h2>
           <div className="flex flex-wrap gap-2">
             {relationshipLinks.map((link, index) => {
-              const href = browserHrefForContractHref(link.href, scope);
+              const href = browserHrefForContractHref(link.href, parsedNavigation);
               return href === null ? null : (
                 <a
                   key={`${link.href}:${index}`}
@@ -167,11 +171,16 @@ export function GenericMetaRenderer({
           title="高级 / 原始输入"
           entity={entity}
           rel={rel}
-          scope={scope}
+          scope={parsedNavigation.scope}
           onChanged={onChanged}
         />
       ) : (
-        <MetaActions entity={entity} rel={rel} scope={scope} onChanged={onChanged} />
+        <MetaActions
+          entity={entity}
+          rel={rel}
+          scope={parsedNavigation.scope}
+          onChanged={onChanged}
+        />
       )}
       <RawContract entity={entity} />
     </div>

@@ -30,6 +30,17 @@ function appendSituationDeclarations(params: URLSearchParams, source: URL): void
     const value = optionalDeclaration(source, key);
     if (value !== null) params.set(key, value);
   }
+  const returnTo = source.searchParams.get('returnTo');
+  if (returnTo !== null && safeRelativeReturnTo(returnTo)) params.set('returnTo', returnTo);
+}
+
+function safeRelativeReturnTo(value: string): boolean {
+  if (!value.startsWith('/') || value.startsWith('//')) return false;
+  try {
+    return new URL(value, 'http://ui4a.local').origin === 'http://ui4a.local';
+  } catch {
+    return false;
+  }
 }
 
 function workstationFlowBridge(source: URL, name: string): CrossSiteFlowBridge {

@@ -50,7 +50,7 @@ describe('Meta dynamic dashboard', () => {
       }),
     );
 
-    render(<MetaDashboard requestedScope="governance" />);
+    render(<MetaDashboard navigation={{ scope: 'governance' }} />);
     await screen.findByRole('heading', { name: '定义控制台' });
     expect(screen.getAllByTestId('meta-surface')).toHaveLength(4);
     expect(screen.getByRole('link', { name: /Widgets/ }).getAttribute('href')).toBe(
@@ -144,7 +144,7 @@ describe('Meta dynamic dashboard', () => {
       }),
     );
 
-    render(<MetaDashboard requestedScope="governance" />);
+    render(<MetaDashboard navigation={{ scope: 'governance' }} />);
     await screen.findByTestId('meta-content-ready');
 
     const currentView = screen.getByTestId('meta-current-view');

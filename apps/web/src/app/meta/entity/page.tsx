@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { MetaEntityPage } from '@/components/meta/meta-entity-page';
+import { metaNavigationContext } from '@/components/meta/meta-navigation';
 
 export const metadata: Metadata = {
   title: '合同详情 · 定义控制台 · UI4A',
@@ -9,9 +10,15 @@ export const metadata: Metadata = {
 export default async function GenericMetaEntityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ rel?: string; scope?: string }>;
+  searchParams: Promise<{
+    rel?: string;
+    scope?: string;
+    thread?: string;
+    returnTo?: string;
+  }>;
 }) {
-  const { rel, scope } = await searchParams;
+  const params = await searchParams;
+  const { rel } = params;
   if (rel === undefined || rel.length === 0) {
     return (
       <div role="alert">
@@ -20,5 +27,5 @@ export default async function GenericMetaEntityPage({
       </div>
     );
   }
-  return <MetaEntityPage rel={rel} scope={scope} />;
+  return <MetaEntityPage rel={rel} navigation={metaNavigationContext(params)} />;
 }

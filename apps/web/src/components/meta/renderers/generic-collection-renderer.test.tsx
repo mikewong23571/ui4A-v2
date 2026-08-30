@@ -112,7 +112,7 @@ describe('generic Meta collection contract', () => {
 
     render(
       <GenericMetaRenderer
-        scope="governance"
+        navigation={{ scope: 'governance' }}
         entity={entity(
           ['collection', 'meta/applications'],
           { rel: 'meta/applications', count: 2 },
@@ -140,7 +140,7 @@ describe('generic Meta collection contract', () => {
   it('distinguishes returned count from server-declared total and announces truncation honestly', () => {
     render(
       <GenericMetaRenderer
-        scope="governance"
+        navigation={{ scope: 'governance' }}
         entity={entity(
           ['collection', 'meta/applications'],
           {
@@ -208,7 +208,9 @@ describe('generic Meta collection contract', () => {
         ],
       },
     );
-    const { unmount } = render(<GenericMetaRenderer scope="governance" entity={declared} />);
+    const { unmount } = render(
+      <GenericMetaRenderer navigation={{ scope: 'governance' }} entity={declared} />,
+    );
 
     const facet = screen.getByRole('combobox', { name: '决策状态' }) as HTMLSelectElement;
     expect([...facet.options].map((option) => option.textContent)).toEqual([
@@ -220,7 +222,7 @@ describe('generic Meta collection contract', () => {
     unmount();
     render(
       <GenericMetaRenderer
-        scope="governance"
+        navigation={{ scope: 'governance' }}
         entity={entity(
           ['collection', 'meta/activations'],
           { rel: 'meta/activations', count: 1 },
@@ -242,7 +244,7 @@ describe('generic Meta collection contract', () => {
   it('follows opaque Siren next/prev href values while preserving canonical rel and scope', () => {
     render(
       <GenericMetaRenderer
-        scope="governance"
+        navigation={{ scope: 'governance' }}
         entity={entity(
           ['collection', 'meta/applications'],
           { rel: 'meta/applications', count: 1, total: 37 },

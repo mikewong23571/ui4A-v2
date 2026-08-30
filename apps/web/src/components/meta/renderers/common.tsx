@@ -14,7 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
 import { execMetaAction } from '../meta-client';
-import { browserHrefForMetaRel, relFromMetaApiHref } from '../meta-surfaces';
+import { withMetaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
+import { relFromMetaApiHref } from '../meta-surfaces';
 import { redactMetaValue } from '../view-models/agent-definition';
 
 export function titleForEntity(entity: SirenEntity): string {
@@ -31,17 +32,20 @@ export function publicMetaActions(entity: SirenEntity): SirenAction[] {
   );
 }
 
-export function browserHrefForContractHref(href: string, scope?: string): string | null {
+export function browserHrefForContractHref(
+  href: string,
+  navigation: MetaNavigationContext,
+): string | null {
   const metaRel = relFromMetaApiHref(href);
-  if (metaRel !== null) return browserHrefForMetaRel(metaRel, scope);
+  if (metaRel !== null) {
+    return withMetaNavigationContext(`/meta/entity?rel=${encodeURIComponent(metaRel)}`, navigation);
+  }
   if (!href.startsWith('/')) return null;
   const url = new URL(href, 'http://ui4a.local');
   if (url.origin !== 'http://ui4a.local' || url.pathname !== '/api/entity') return null;
   const rel = url.searchParams.get('rel');
   if (rel === null) return null;
-  const query = new URLSearchParams({ rel });
-  if (scope !== undefined && scope.length > 0) query.set('scope', scope);
-  return `/entity?${query.toString()}`;
+  return withMetaNavigationContext(`/entity?rel=${encodeURIComponent(rel)}`, navigation);
 }
 
 export function MetaActions({
@@ -129,9 +133,15 @@ export function MetaActionsDisclosure({
 }
 
 /** Canonical relationship navigation derived only from authorized Siren links. */
-export function MetaRelationships({ entity, scope }: { entity: SirenEntity; scope?: string }) {
+export function MetaRelationships({
+  entity,
+  navigation,
+}: {
+  entity: SirenEntity;
+  navigation: MetaNavigationContext;
+}) {
   const relationships = entity.links.flatMap((link, index) => {
-    const href = browserHrefForContractHref(link.href, scope);
+    const href = browserHrefForContractHref(link.href, navigation);
     if (href === null) return [];
     return [
       <a

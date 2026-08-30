@@ -7,40 +7,41 @@ import type { SirenEntity } from '@ui4a/engine';
 import { ActivationView } from '../activation-view';
 import { CapabilityDefinitionView } from '../capability-definition-view';
 import { FlowDefinitionView } from '../flow-definition-view';
+import type { MetaNavigationContext } from '../meta-navigation';
 import { MetaRelationships, RawContract } from './common';
 
 interface CanonicalSpecializationProps {
   rel: string;
   entity: SirenEntity;
-  scope?: string;
+  navigation: MetaNavigationContext;
   onChanged?: () => void;
 }
 
 function CanonicalSpecializedShell({
   entity,
-  scope,
+  navigation,
   children,
 }: {
   entity: SirenEntity;
-  scope?: string;
+  navigation: MetaNavigationContext;
   children: ReactNode;
 }) {
   return (
     <div className="space-y-6">
       {children}
-      <MetaRelationships entity={entity} scope={scope} />
+      <MetaRelationships entity={entity} navigation={navigation} />
       <RawContract entity={entity} />
     </div>
   );
 }
 
-export function FlowRenderer({ rel, entity, scope, onChanged }: CanonicalSpecializationProps) {
+export function FlowRenderer({ rel, entity, navigation, onChanged }: CanonicalSpecializationProps) {
   return (
-    <CanonicalSpecializedShell entity={entity} scope={scope}>
+    <CanonicalSpecializedShell entity={entity} navigation={navigation}>
       <FlowDefinitionView
         rel={rel}
         entity={entity}
-        scope={scope}
+        scope={navigation.scope}
         onChanged={onChanged}
         standalone={false}
       />
@@ -51,17 +52,17 @@ export function FlowRenderer({ rel, entity, scope, onChanged }: CanonicalSpecial
 export function ActivationRenderer({
   rel,
   entity,
-  scope,
+  navigation,
   onChanged,
 }: CanonicalSpecializationProps) {
   const id = typeof entity.properties.id === 'string' ? entity.properties.id : rel;
   return (
-    <CanonicalSpecializedShell entity={entity} scope={scope}>
+    <CanonicalSpecializedShell entity={entity} navigation={navigation}>
       <ActivationView
         id={id}
         rel={rel}
         entity={entity}
-        scope={scope}
+        scope={navigation.scope}
         onChanged={onChanged}
         standalone={false}
       />
@@ -69,9 +70,9 @@ export function ActivationRenderer({
   );
 }
 
-export function CapabilityRenderer({ rel, entity, scope }: CanonicalSpecializationProps) {
+export function CapabilityRenderer({ rel, entity, navigation }: CanonicalSpecializationProps) {
   return (
-    <CanonicalSpecializedShell entity={entity} scope={scope}>
+    <CanonicalSpecializedShell entity={entity} navigation={navigation}>
       <CapabilityDefinitionView rel={rel} entity={entity} standalone={false} />
     </CanonicalSpecializedShell>
   );

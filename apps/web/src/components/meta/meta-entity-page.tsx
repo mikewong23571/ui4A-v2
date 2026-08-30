@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { useMetaEntity, useMetaSitemap, type MetaSitemapState } from './meta-client';
+import type { MetaNavigationContext } from './meta-navigation';
 import { MetaEntityRenderer } from './renderers/meta-entity-renderer';
 
 function LoadingContract() {
@@ -18,14 +19,14 @@ function LoadingContract() {
 
 function MetaEntityResource({
   rel,
-  scope,
+  navigation,
   sitemap,
 }: {
   rel: string;
-  scope?: string;
+  navigation: MetaNavigationContext;
   sitemap: NonNullable<MetaSitemapState['sitemap']>;
 }) {
-  const { entity, state, refresh } = useMetaEntity(rel, scope, sitemap.version);
+  const { entity, state, refresh } = useMetaEntity(rel, navigation.scope, sitemap.version);
   if (state === 'loading') return <LoadingContract />;
   if (state === 'missing') {
     return (
@@ -52,7 +53,7 @@ function MetaEntityResource({
       <MetaEntityRenderer
         rel={rel}
         entity={entity}
-        scope={scope}
+        navigation={navigation}
         descriptorTitle={sitemap.surfaces.find((surface) => surface.rel === rel)?.title}
         onChanged={refresh}
       />
@@ -60,8 +61,14 @@ function MetaEntityResource({
   );
 }
 
-export function MetaEntityPage({ rel, scope }: { rel: string; scope?: string }) {
-  const { sitemap, state } = useMetaSitemap(scope);
+export function MetaEntityPage({
+  rel,
+  navigation,
+}: {
+  rel: string;
+  navigation: MetaNavigationContext;
+}) {
+  const { sitemap, state } = useMetaSitemap(navigation.scope);
   if (state === 'loading') return <LoadingContract />;
   if (state === 'error' || sitemap === null) {
     return (
@@ -73,5 +80,5 @@ export function MetaEntityPage({ rel, scope }: { rel: string; scope?: string }) 
       </Card>
     );
   }
-  return <MetaEntityResource rel={rel} scope={scope} sitemap={sitemap} />;
+  return <MetaEntityResource rel={rel} navigation={navigation} sitemap={sitemap} />;
 }

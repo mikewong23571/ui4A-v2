@@ -130,7 +130,7 @@ describe('Meta dashboard cognitive sitemap contract', () => {
       'meta/bootstrap': { count: 1, intent: '审计系统语义' },
     });
 
-    render(<MetaDashboard requestedScope="governance" />);
+    render(<MetaDashboard navigation={{ scope: 'governance' }} />);
     await screen.findByTestId('meta-content-ready');
 
     expect(
@@ -171,7 +171,7 @@ describe('Meta dashboard cognitive sitemap contract', () => {
       'meta/assets': { count: 2, intent: '浏览定义资产' },
     });
 
-    render(<MetaDashboard requestedScope="governance" />);
+    render(<MetaDashboard navigation={{ scope: 'governance' }} />);
     await screen.findByTestId('meta-content-ready');
 
     expect(screen.queryByRole('region', { name: '需要我决定' })).toBeNull();

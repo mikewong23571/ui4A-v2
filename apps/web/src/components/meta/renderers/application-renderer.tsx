@@ -5,10 +5,17 @@ import type { SirenEntity } from '@ui4a/engine';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
+import { withMetaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
 import { applicationViewModel } from '../view-models/application';
 import { browserHrefForContractHref, RawContract } from './common';
 
-export function ApplicationRenderer({ entity, scope }: { entity: SirenEntity; scope?: string }) {
+export function ApplicationRenderer({
+  entity,
+  navigation,
+}: {
+  entity: SirenEntity;
+  navigation: MetaNavigationContext;
+}) {
   const view = applicationViewModel(entity);
   const flowLinks = entity.links.filter((link) => link.rel.includes('flow'));
   const capabilityLinks = entity.links.filter((link) => link.rel.includes('capability'));
@@ -17,7 +24,7 @@ export function ApplicationRenderer({ entity, scope }: { entity: SirenEntity; sc
       <header className="space-y-3 border-b pb-5">
         <nav className="text-sm text-muted-foreground">
           <a
-            href="/meta"
+            href={withMetaNavigationContext('/meta', navigation) ?? '/meta'}
             className="hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             定义管理
@@ -73,7 +80,7 @@ export function ApplicationRenderer({ entity, scope }: { entity: SirenEntity; sc
               const href =
                 flowLinks[index] === undefined
                   ? null
-                  : browserHrefForContractHref(flowLinks[index]!.href, scope);
+                  : browserHrefForContractHref(flowLinks[index]!.href, navigation);
               const body = (
                 <Card className="h-full p-4">
                   <p className="font-medium">{flow.title}</p>
@@ -108,7 +115,7 @@ export function ApplicationRenderer({ entity, scope }: { entity: SirenEntity; sc
             const href =
               capabilityLinks[index] === undefined
                 ? null
-                : browserHrefForContractHref(capabilityLinks[index]!.href, scope);
+                : browserHrefForContractHref(capabilityLinks[index]!.href, navigation);
             const body = (
               <Card className="p-4">
                 <p className="font-medium">{capability.title}</p>

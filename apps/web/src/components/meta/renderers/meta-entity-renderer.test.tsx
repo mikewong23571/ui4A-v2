@@ -19,7 +19,7 @@ describe('Meta entity renderer', () => {
   it('uses the Application specialization and keeps raw bundle secondary', () => {
     render(
       <MetaEntityRenderer
-        scope="publishing"
+        navigation={{ scope: 'publishing' }}
         entity={siren(['meta', 'application-definition'], {
           name: 'publishing',
           title: '内容发布',
@@ -42,7 +42,7 @@ describe('Meta entity renderer', () => {
   it('uses generic fallback for an unknown legal collection without a white screen', () => {
     render(
       <MetaEntityRenderer
-        scope="publishing"
+        navigation={{ scope: 'publishing' }}
         entity={{
           ...siren(['collection', 'meta/widgets'], { rel: 'meta/widgets', count: 1 }),
           entities: [siren(['meta', 'widget'], { name: 'one', title: 'Widget One' })],
@@ -67,7 +67,7 @@ describe('Meta entity renderer', () => {
     render(
       <MetaEntityRenderer
         rel="meta/widget:secret"
-        scope="governance"
+        navigation={{ scope: 'governance' }}
         entity={siren(['meta', 'widget'], { title: 'Secret widget', apiKey: 'do-not-display' })}
       />,
     );
@@ -78,7 +78,7 @@ describe('Meta entity renderer', () => {
   it('renders Agent authority/binding/runtime boundaries and redacts raw secrets', () => {
     render(
       <MetaEntityRenderer
-        scope="governance"
+        navigation={{ scope: 'governance' }}
         entity={siren(['meta', 'agent-definition', 'active'], {
           ref: 'author@1',
           name: 'author',
@@ -130,7 +130,13 @@ describe('Meta entity renderer', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify(entity), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ entity }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
-    render(<MetaEntityRenderer rel="meta/flow:post-status" scope="publishing" entity={entity} />);
+    render(
+      <MetaEntityRenderer
+        rel="meta/flow:post-status"
+        navigation={{ scope: 'publishing' }}
+        entity={entity}
+      />,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Revise' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
@@ -184,7 +190,9 @@ describe('Meta entity renderer', () => {
       activation: 'meta/activation:draft:d1',
       validation: { valid: true, issues: [] },
     });
-    render(<MetaEntityRenderer rel="draft:d1" scope="governance" entity={draft} />);
+    render(
+      <MetaEntityRenderer rel="draft:d1" navigation={{ scope: 'governance' }} entity={draft} />,
+    );
 
     // D50:带参动作(commandId)默认收起为触发键;身份规则只解除 actor-is-human
     const approve = await screen.findByRole('button', { name: 'Approve' });
@@ -204,7 +212,9 @@ describe('Meta entity renderer', () => {
       provenance: { sources: ['agent-run:r1'] },
     });
     draft.links = [{ rel: ['source'], href: '/api/entity?rel=agent-run%3Ar1' }];
-    render(<MetaEntityRenderer rel="draft:d2" scope="governance" entity={draft} />);
+    render(
+      <MetaEntityRenderer rel="draft:d2" navigation={{ scope: 'governance' }} entity={draft} />,
+    );
     expect(screen.getByRole('link', { name: 'agent-run:r1' }).getAttribute('href')).toBe(
       '/entity?rel=agent-run%3Ar1&scope=governance',
     );

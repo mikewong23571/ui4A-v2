@@ -5,6 +5,7 @@ import type { SirenEntity } from '@ui4a/engine';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
+import { withMetaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
 import { agentDefinitionViewModel, redactMetaValue } from '../view-models/agent-definition';
 import { browserHrefForContractHref, RawContract } from './common';
 
@@ -18,17 +19,20 @@ function JsonPanel({ value }: { value: unknown }) {
 
 export function AgentDefinitionRenderer({
   entity,
-  scope,
+  navigation,
 }: {
   entity: SirenEntity;
-  scope?: string;
+  navigation: MetaNavigationContext;
 }) {
   const view = agentDefinitionViewModel(entity);
   return (
     <div className="space-y-7">
       <header className="space-y-3 border-b pb-5">
         <nav className="text-sm text-muted-foreground">
-          <a href="/meta" className="hover:text-foreground">
+          <a
+            href={withMetaNavigationContext('/meta', navigation) ?? '/meta'}
+            className="hover:text-foreground"
+          >
             定义管理
           </a>{' '}
           / Agent Definitions / {view.ref}
@@ -127,7 +131,7 @@ export function AgentDefinitionRenderer({
           <h2 className="text-lg font-semibold">Versions, Runs & Drafts</h2>
           <div className="flex flex-wrap gap-2">
             {entity.links.flatMap((link, index) => {
-              const href = browserHrefForContractHref(link.href, scope);
+              const href = browserHrefForContractHref(link.href, navigation);
               return href === null
                 ? []
                 : [

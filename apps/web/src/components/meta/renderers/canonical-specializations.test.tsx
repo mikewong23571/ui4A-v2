@@ -214,7 +214,7 @@ describe('canonical Meta specializations', () => {
     const { container } = render(
       <MetaEntityRenderer
         rel="meta/flow:article-drafting"
-        scope="publishing"
+        navigation={{ scope: 'publishing' }}
         entity={flowEntity()}
       />,
     );
@@ -234,7 +234,7 @@ describe('canonical Meta specializations', () => {
     const { container } = render(
       <MetaEntityRenderer
         rel="meta/self"
-        scope="governance"
+        navigation={{ scope: 'governance' }}
         entity={flowEntity('definition-lifecycle')}
       />,
     );
@@ -250,7 +250,7 @@ describe('canonical Meta specializations', () => {
     const { container, rerender } = render(
       <MetaEntityRenderer
         rel="meta/activation:activation-2"
-        scope="governance"
+        navigation={{ scope: 'governance' }}
         entity={activationEntity()}
       />,
     );
@@ -266,7 +266,7 @@ describe('canonical Meta specializations', () => {
     rerender(
       <MetaEntityRenderer
         rel="meta/activation:another-id"
-        scope="governance"
+        navigation={{ scope: 'governance' }}
         entity={activationEntity('approved')}
       />,
     );
@@ -278,7 +278,7 @@ describe('canonical Meta specializations', () => {
     const { container } = render(
       <MetaEntityRenderer
         rel="meta/capability:coding"
-        scope="development"
+        navigation={{ scope: 'development' }}
         entity={capabilityEntity()}
       />,
     );
@@ -323,7 +323,13 @@ describe('canonical Meta specializations', () => {
       href: '/meta/entity?rel=meta%2Fapplication%3Adevelopment&scope=development',
     },
   ])('keeps canonical relationships and RawContract around the $name specialization', (fixture) => {
-    render(<MetaEntityRenderer rel={fixture.rel} scope={fixture.scope} entity={fixture.entity} />);
+    render(
+      <MetaEntityRenderer
+        rel={fixture.rel}
+        navigation={{ scope: fixture.scope }}
+        entity={fixture.entity}
+      />,
+    );
 
     expect(screen.getByRole('link', { name: fixture.relationship }).getAttribute('href')).toBe(
       fixture.href,
@@ -358,7 +364,7 @@ describe('canonical Meta specializations', () => {
       render(
         <MetaEntityRenderer
           rel={fixture.rel}
-          scope={fixture.scope}
+          navigation={{ scope: fixture.scope }}
           entity={fixture.entity}
           onChanged={onChanged}
         />,
