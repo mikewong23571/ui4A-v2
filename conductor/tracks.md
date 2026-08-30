@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-- [ ] **Track: T39 Meta 合同驱动治理与 Application 入口体验：语义 Trait + 有界 Hint、canonical Renderer、任务优先 UI/UX 与八应用双门验收** *Link: [tracks/t39-meta-contract-driven-governance-ux_20260830/index.md](./tracks/t39-meta-contract-driven-governance-ux_20260830/index.md)*
+- [~] **Track: T39 Meta 合同驱动治理与 Application 入口体验：语义 Trait + 有界 Hint、canonical Renderer、任务优先 UI/UX 与八应用双门验收** *Link: [tracks/t39-meta-contract-driven-governance-ux_20260830/index.md](./tracks/t39-meta-contract-driven-governance-ux_20260830/index.md)*
 
 ## 归档 Tracks(T1–T36,只读历史)
 

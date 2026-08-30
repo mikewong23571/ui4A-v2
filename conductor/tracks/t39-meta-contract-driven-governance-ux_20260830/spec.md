@@ -488,7 +488,7 @@ Given 用户分别进入 publishing、community 与 governance 的代表性入�
 - 新代码覆盖率目标不低于 80%，安全和授权边界 100%。
 - 遵守 GR1–GR5、D51、D53；文件增长触线时按功能边界拆解，不登记新例外。
 - 实施前必须进行 disposable spike，验证合同归属、overview 复用、canonical 迁移、字段归属、Application/Presentation 边界、Assistant disclosure 和非法 Hint fallback。
-- Spike 只形成证据和初步架构；必须据此修订 DECISIONS/spec/plan 并获人工批准，批准前后续 Phase 均为 provisional、不得实施。
+- Spike 只形成证据和初步架构；必须据此修订 DECISIONS/spec/plan，并由编排者依据 Product Vision、自动化证据和架构不变量代行批准；批准前后续 Phase 均为 provisional、不得实施。
 - 增加 sitemap/entity payload 与 Assistant prompt slice 字节预算；视觉策略不得进入 Chat prompt。
 - `pnpm eval:llm` 作为 US19 的 opt-in 真实 LLM 证据；缺少 provider 时必须明确记录未运行，不得用 scripted driver 替代。
 

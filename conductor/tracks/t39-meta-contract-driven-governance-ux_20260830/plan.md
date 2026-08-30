@@ -1,7 +1,8 @@
 # T39 Meta 合同驱动治理与 Application 入口体验 — Plan
 
 > 本文件在 Phase A 完成前是 **initial plan**。Phase B–H 均为 provisional；Phase A 的
-> disposable spike 必须产出 architecture/DECISIONS/spec/plan 修订并获人工批准，批准前禁止进入生产实现。
+> disposable spike 必须产出 architecture/DECISIONS/spec/plan 修订并由编排者依据 Product Vision、
+> 自动化证据和架构不变量代行批准，批准前禁止进入生产实现。
 >
 > 固定评审项：Application 是图书馆、Work Thread 是书桌；无每 Application、每实体类型、
 > 具体 rel/action 名展示分支；业务/Meta 定义只承载 Trait 与 Semantic Hint；设备密度、sticky、
@@ -47,7 +48,7 @@
 - [ ] Task A7：测量当前 sitemap/entity/prompt slice 字节基线，验证视觉策略不进入 Assistant prompt，披露仍是 scope → entity → actions 全量重建非累积。
 - [ ] Task A8：产出 spike findings，明确采纳/否决项；允许结论否决当前 spec 中 Trait/Hint 位置或拆分 Track。
 - [ ] Task A9：根据 spike 更新 `DECISIONS.md`、`architecture.md`、`spec.md` 与本 `plan.md`；裁决是否拆为 Meta governance 与 Application experience 两个可独立交付 Track。
-- [ ] Task A10：人工批准详细计划；未批准时停止。Phase Verification & Checkpoint：确认 disposable code 已删除、文档与决定一致、系统零生产改动。
+- [ ] Task A10：编排者审查并批准详细计划；未通过则修订或停止。Phase Verification & Checkpoint：确认 disposable code 已删除、文档与决定一致、系统零生产改动。
 
 ## Phase B：Trait/Semantic Hint 纯合同与披露预算（provisional）
 

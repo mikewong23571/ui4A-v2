@@ -1,6 +1,6 @@
 # T39 Meta 合同驱动治理与 Application 入口体验
 
-- 类型：Feature | 状态：new | 创建：2026-08-30
+- 类型：Feature | 状态：in_progress | 创建：2026-08-30
 - 方向依据：[`../../product-vision.md`](../../product-vision.md)（§二同一扇门、§三 Meta 工具间、§五减暴露加聚合、§六不做传统软件）
 - 规格：[`spec.md`](./spec.md)
 - 计划：[`plan.md`](./plan.md)
