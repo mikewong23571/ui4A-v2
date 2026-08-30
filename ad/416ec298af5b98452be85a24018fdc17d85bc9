@@ -1,0 +1,5 @@
+T39 D1 Red contracts for cognitive Meta Dashboard grouping.
+
+Verified by orchestrator:
+- 2 expected failures: fixed dashboard heading and empty responsibility promotion
+- adjacent dashboard/surface tests remained green by subagent
