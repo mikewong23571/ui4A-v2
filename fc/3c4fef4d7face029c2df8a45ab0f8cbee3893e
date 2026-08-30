@@ -1,0 +1,7 @@
+T39 H2 provider entity cognition sanitizer repair.
+
+Verified by orchestrator:
+- parity/disclosure/budget/observation: 4 files, 33 tests
+- provider wire samples: 14340, 14318, 14392 bytes (<32768)
+- agent typecheck and governance strict
+- one strict V1 cognition parser; filters preserved separately; visual/unknown keys removed
