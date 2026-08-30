@@ -5,3 +5,11 @@ Verified by orchestrator:
 - shared/engine/web typecheck and governance strict
 - Subagent built-in Browser: seven installed Applications and future fixture, desktop/390, headings, overview, dedupe, empty state, responsive actions
 - generic runtime production scan: zero installed Application/rel/action branches
+
+T39 Phase G Application milestone checkpoint verified by orchestrator:
+- CI=true UI4A_WORKER_HEALTH_PORT=3199 pnpm check
+  - 455 test files passed, 4 skipped
+  - 3469 tests passed, 6 skipped
+- Root Browser on fresh 3110: 7 declaration-ordered shelf entries, publishing headings 内容发布/文章/文章发布向导, canonical action dedupe, 390px scrollWidth=clientWidth and all action rects inside viewport
+- Future ninth fixture generic shelf/landing verified by isolated Browser contract injection and unit matrix
+- Meta milestone remained green
