@@ -50,7 +50,7 @@
 - [x] Task A9：根据 spike 更新 `DECISIONS.md`、`architecture.md`、`spec.md` 与本 `plan.md`；保留一个 Track，并确立 Meta/Application 两个独立 milestone。4c531f2
 - [x] Task A10：编排者审查并批准详细计划；Phase Verification & Checkpoint 确认 disposable code 已删除、文档与决定一致、系统零生产改动。4c531f2
 
-## Phase B：Trait/Semantic Hint 纯合同与披露预算（provisional）
+## Phase B：Trait/Semantic Hint 纯合同与披露预算 [checkpoint: 4ba1a9b]
 
 **Subagent contract**：Goal=建立最小语义合同与预算门；Non-goals=不改 Meta 页面、不修八个 Application、不增加视觉 DSL；Changes=`packages/shared/src/definition|presentation/`、`packages/engine/src/contract|presentation/`、Assistant disclosure 的最窄消费点及相邻测试；Blast radius=禁止 `apps/worker`、`packages/db`、Application bundles、`conductor/` 与新依赖。
 
@@ -65,7 +65,7 @@
 - [x] Task B9：Red——编写 Meta sitemap base surfaces 按 granted union 披露、lens 不改变授权并集测试，并确认失败。151ef91
 - [x] Task B10：Green——修正 Meta sitemap 授予并集投影，不引入 route 级 scope 选择。dd63bc9
 - [x] Task B11：增加低误报治理：禁止定义内 CSS/组件/设备策略、runtime per-app/per-rel 分支、server-owned public params 和视觉策略进 prompt；扫描排除合法 bundle 数据。b24fe76
-- [ ] Task B12：Phase Verification & Checkpoint：focused tests、typecheck、`pnpm governance:strict`、D51、真实 prompt budget 和公开合同完整性全绿。
+- [x] Task B12：Phase Verification & Checkpoint：focused tests、typecheck、`pnpm governance:strict`、D51、真实 prompt budget 和公开合同完整性全绿。4ba1a9b
 
 ## Phase C：canonical Meta Renderer 单一真相（provisional）
 
