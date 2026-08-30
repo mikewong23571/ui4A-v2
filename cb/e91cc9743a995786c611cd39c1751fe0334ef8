@@ -1,0 +1,6 @@
+T39 Phase A Task A4 — input ownership probe
+
+Summary: selected JSON Schema x-ui4a-input-owner=client; caller is default and server-owned values leave public params. Defined RJSF/Agent caller schema derivation, host injection, full validation and retry identity semantics; retained Agent/CLI complex Draft ingress.
+Files: phase-a-spike.md.
+Why: removes infrastructure fields without building a low-code Draft editor.
+Verification: orchestrator reran 5 unit files/83 tests and 3 db files/14 tests.
