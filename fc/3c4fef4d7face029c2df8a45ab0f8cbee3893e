@@ -5,3 +5,9 @@ Verified by orchestrator:
 - provider wire samples: 14340, 14318, 14392 bytes (<32768)
 - agent typecheck and governance strict
 - one strict V1 cognition parser; filters preserved separately; visual/unknown keys removed
+
+T39 H3 real LLM eval status:
+- pnpm eval:llm exit 0
+- 0 executed, 12 skipped because opt-in/provider environment was unset
+- US19 REAL LLM = NOT RUN; no mock/rule substitute
+- deterministic prompt budget/visual policy: 5 files, 64 tests; max wire 14392 bytes
