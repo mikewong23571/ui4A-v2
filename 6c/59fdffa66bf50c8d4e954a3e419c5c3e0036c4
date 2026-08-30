@@ -1,0 +1,6 @@
+T39 G14 declaration data for todo and ideas.
+
+Verified by orchestrator:
+- full G11 matrix: 11 tests passed
+- bundle/ownership: 4 files, 22 tests
+- web typecheck and governance strict
