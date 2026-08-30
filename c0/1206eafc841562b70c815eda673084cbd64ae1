@@ -1,0 +1,8 @@
+T39 F5 browser validation repairs for US6/US7/US9.
+
+Verified by orchestrator:
+- unit: 31 files, 154 tests
+- Draft DB: 1 file, 7 tests
+- engine/web typecheck and governance strict
+- Root Browser personally verified live Flow relation title, raw rel demotion, self mechanical relation, scope/thread/return continuity
+- Subagent Browser: two-stage Activation decision, receipt persistence/scope isolation, queue sync, desktop sticky, 390px and keyboard sequence
