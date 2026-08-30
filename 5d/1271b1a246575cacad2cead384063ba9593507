@@ -1,0 +1,6 @@
+T39 Phase A Task A7 — Assistant disclosure byte baseline
+
+Summary: measured real sitemap/entity/messages/tools/provider wire; found meta/flows ~175 KiB and articles ~115 KiB, plus accumulating full observations. Defined public-contract vs prompt-sanitizer boundary and runtime UTF-8 budget requirement.
+Files: phase-a-spike.md.
+Why: Product Vision requires scoped, non-accumulating cognition; visual metadata must not enter prompts.
+Verification: orchestrator reran 6 focused files/84 tests; synthetic budget samples 14,642–14,718 bytes.
