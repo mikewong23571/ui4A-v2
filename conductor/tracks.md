@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-- 无(2026-08-29:T36 闭环归档——治理例外全数清偿,strict 常驻 check;后续方向 program 依 [product-vision.md](../product-vision.md) 另行立项)
+- [ ] **Track: T39 Meta 合同驱动治理体验：语义 Trait + 有界 Hint、canonical 单一 Renderer、任务优先 Meta UI/UX 与双门验收** *Link: [tracks/t39-meta-contract-driven-governance-ux_20260830/index.md](./tracks/t39-meta-contract-driven-governance-ux_20260830/index.md)*
 
 ## 归档 Tracks(T1–T36,只读历史)
 
