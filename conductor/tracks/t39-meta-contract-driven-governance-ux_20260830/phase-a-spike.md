@@ -213,3 +213,48 @@ db: 3 files / 14 tests passed
 ```
 
 No A4 repository or temporary change remained.
+
+## A5 Canonical Meta route cutover
+
+### Result
+
+`/meta/entity?rel=...` already owns sitemap-first loading, revision-aware exact cache, scope-aware
+link adapters, fresh-read actions and safe registry fallback. Flow, Activation and Capability remain
+unregistered, while seven friendly routes own richer topology/version/checks/diff views with separate
+fetch shells and incomplete scope propagation. The migration is therefore a single human-route
+cutover, not an API or engine-projection redesign.
+
+Canonical registry additions:
+
+- `flow-definition` → reuse the pure Flow content view for `meta/self` and `meta/flow:*`;
+- `activation` → reuse checks/diff content and canonical scoped `MetaActions`;
+- `capability-definition` → reuse intent/input/output content.
+
+Canonical shell remains the only owner of sitemap/exact loading, missing/error, revision cache,
+relationships, raw contract and refresh. Collection routes first use generic canonical collection;
+Phase D later improves them through overview semantics instead of retaining hardcoded list views.
+
+### Atomic cutover
+
+1. Red canonical specialization/page tests.
+2. Remove the canonical and Flow-view `publishing` defaults before route convergence.
+3. Connect the three specializations while preserving canonical links/raw/actions.
+4. In one cutover commit, switch all links/presence bridges, delete seven old routes, delete three
+   fetch-body wrappers and `meta-lists`, and migrate unit/E2E expectations.
+5. Scan for old browser paths; keep canonical `meta/flow:*` rels.
+6. Add no redirect, rewrite, flag, compatibility test or dual router. Rollback is an entire cutover
+   revert.
+
+Phase A9 must also revise D32's “friendly route compatibility” wording and D46's explicit
+`/meta/flow/<name>` bridge decision before production changes.
+
+### Orchestrator light verification
+
+Re-ran the exact focused suites:
+
+```text
+Meta/presence unit: 12 files / 66 tests passed
+Meta route/service/engine: 4 files / 43 tests passed
+```
+
+No A5 source or temporary change remained.
