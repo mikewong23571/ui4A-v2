@@ -35,7 +35,7 @@
 - Track 结束由编排者按 US1–US19 做完整 E2E：人类 Renderer 浏览器路径 + CLI/HTTP 同门路径 + 390px + US19 真实 LLM 状态；此时才运行全量 `pnpm check`、`CI=true pnpm e2e` 和 invariants。
 - 不因“以后可能需要”引入依赖、通用 DSL、基础设施或跨 Phase 抽象；只有当前故事与已出现的重复能证明时才抽取。
 
-## Phase A：Disposable Spike、边界裁决与重新规划
+## Phase A：Disposable Spike、边界裁决与重新规划 [checkpoint: 4c531f2]
 
 **Subagent contract（A1–A8）**：Goal=回答当前任务的一个不确定问题；Non-goals=不写生产实现、不定案下一 Phase；Changes=只读分析、focused probe/test 与临时 `mktemp` 工件；Blast radius=可读全仓，写入仅临时目录，禁止生产源码、`conductor/`、数据库与依赖变更。A9–A10 由编排者执行。
 
@@ -48,7 +48,7 @@
 - [x] Task A7：测量当前 sitemap/entity/prompt slice 字节基线，验证视觉策略不进入 Assistant prompt，披露仍是 scope → entity → actions 全量重建非累积。5d1271b
 - [x] Task A8：产出 spike findings，明确采纳/否决项；允许结论否决当前 spec 中 Trait/Hint 位置或拆分 Track。b28ee52
 - [x] Task A9：根据 spike 更新 `DECISIONS.md`、`architecture.md`、`spec.md` 与本 `plan.md`；保留一个 Track，并确立 Meta/Application 两个独立 milestone。4c531f2
-- [ ] Task A10：编排者审查并批准详细计划；未通过则修订或停止。Phase Verification & Checkpoint：确认 disposable code 已删除、文档与决定一致、系统零生产改动。
+- [x] Task A10：编排者审查并批准详细计划；Phase Verification & Checkpoint 确认 disposable code 已删除、文档与决定一致、系统零生产改动。4c531f2
 
 ## Phase B：Trait/Semantic Hint 纯合同与披露预算（provisional）
 
