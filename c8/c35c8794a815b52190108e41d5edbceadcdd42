@@ -1,0 +1,4 @@
+T39 G7 Red contracts for declaration-first collection ownership and field closure.
+
+Verified by orchestrator:
+- 9 expected failures, 1 existing assertion passed
