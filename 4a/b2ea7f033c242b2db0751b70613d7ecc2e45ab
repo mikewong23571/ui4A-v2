@@ -1,0 +1,4 @@
+T39 G1 Red contracts for Application cognitive/entry semantics and ownership invariants.
+
+Verified by orchestrator:
+- 27 expected failures, 3 existing assertions passed
