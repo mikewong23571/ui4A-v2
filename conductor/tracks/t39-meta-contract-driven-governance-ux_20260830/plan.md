@@ -74,7 +74,7 @@
 - [x] Task C1：Red——编写 canonical/旧 view/Situation 无 `publishing`/first-grant 默认 lens、缺 lens 一等态和授权并集不变测试，并确认失败。7187033
 - [x] Task C2：Green——删除默认 lens 残留；URL 只保留显式 attention，服务端授权继续按 granted union。a87a9a3
 - [x] Task C3：Red——编写 Flow/Activation/Capability canonical specialization、relationships/raw/actions parity 测试，并确认当前 generic 失败。ec01258
-- [ ] Task C4：Green——接入三类 specialization，canonical shell 唯一拥有 loading/cache/error/refresh。
+- [x] Task C4：Green——接入三类 specialization，canonical shell 唯一拥有 loading/cache/error/refresh。0a7ef21
 - [ ] Task C5：Red——编写全部 Meta links/presence bridge canonical、友好 route 零残留、写后 exact/collection/dashboard cache 同步测试，并确认失败。
 - [ ] Task C6：Green——原子切换内链/bridge，删除七条旧 route、fetch wrappers 与 lists，并实现授权 Meta cache invalidation；不留兼容路径。
 - [ ] Task C7：增加 registry completeness、ambiguity fail-closed 与旧 URL 源码/E2E 扫描。
