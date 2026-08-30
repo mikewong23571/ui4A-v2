@@ -71,7 +71,7 @@
 
 **Subagent contract**：Goal=已知 Meta class 经 canonical 路径得到单一 Renderer；Non-goals=不改定义语义、Application landing 或业务动作；Changes=`apps/web/src/components/meta/`、`apps/web/src/app/meta/`、必要的 registry/client 测试；Blast radius=禁止 worker/db、业务 bundles、Presentation composition 与无关组件重构。
 
-- [ ] Task C1：Red——编写 canonical/旧 view/Situation 无 `publishing`/first-grant 默认 lens、缺 lens 一等态和授权并集不变测试，并确认失败。
+- [x] Task C1：Red——编写 canonical/旧 view/Situation 无 `publishing`/first-grant 默认 lens、缺 lens 一等态和授权并集不变测试，并确认失败。7187033
 - [ ] Task C2：Green——删除默认 lens 残留；URL 只保留显式 attention，服务端授权继续按 granted union。
 - [ ] Task C3：Red——编写 Flow/Activation/Capability canonical specialization、relationships/raw/actions parity 测试，并确认当前 generic 失败。
 - [ ] Task C4：Green——接入三类 specialization，canonical shell 唯一拥有 loading/cache/error/refresh。
