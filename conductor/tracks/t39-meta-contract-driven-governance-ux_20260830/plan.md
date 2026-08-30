@@ -129,7 +129,7 @@
 - [x] Task G7：Red——编写 Flow `collections` 优先、append 次级、comments→community、多 owner 拒绝、extraSurface 不发明归属和字段闭合测试，并确认失败。c8c35c8
 - [x] Task G8：Green——实现 collection ownership/field closure，不按集合名分支。3a776f2
 - [x] Task G9：Red——编写 composition version 随内容变化、surface role→既有 exact intent、零 per-app intent 表测试，并确认失败。a5154bb
-- [ ] Task G10：Green——修复 composition version/fingerprint 与通用 intent policy，收回 app adapter 的视觉 density 决策。
+- [x] Task G10：Green——修复 composition version/fingerprint 与通用 intent policy，收回 app adapter 的视觉 density 决策。4a3c488
 - [ ] Task G11：Red——为 default/publishing/community/development/editorial/governance/todo/ideas 编写声明夹具与 US11–US17 失败断言。
 - [ ] Task G12：Green——修订 default/publishing/community 声明数据并复跑同一通用实现。
 - [ ] Task G13：Green——修订 development/editorial/governance 声明数据并复跑同一通用实现。
