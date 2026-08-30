@@ -1,0 +1,6 @@
+T39 Phase C Task C2 — unlocated-first Green
+
+Summary: removed publishing/default/first-grant attention fallbacks from canonical Meta, old views, Situation and Chat; made Meta scope optional; added grant-union Draft/Agent reads and structured refusal for writes/delegation without explicit lens.
+Files: Web Meta routes/components, situation/chat adapters, Draft/Agent union projections and adjacent tests.
+Why: D51 grants authorize but never manufacture attention.
+Verification: orchestrator focused unit 50 tests, DB 58 tests, web typecheck and governance:strict passed.
