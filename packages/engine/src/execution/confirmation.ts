@@ -258,6 +258,7 @@ export const CONFIRMATION_APPROVE_ACTION: ActionDefinition = {
   name: 'approve',
   title: '批准',
   guards: ['actor-is-human'],
+  'requires-confirmation': 'high',
 };
 
 /** 确认实体上的 reject 动作声明(reason 必填且非空)。 */
@@ -265,6 +266,7 @@ export const CONFIRMATION_REJECT_ACTION: ActionDefinition = {
   name: 'reject',
   title: '驳回',
   guards: ['actor-is-human'],
+  'requires-confirmation': 'high',
   fields: [{ name: 'reason', type: 'textarea', required: true, minLength: 1, semantics: 'intent' }],
 };
 

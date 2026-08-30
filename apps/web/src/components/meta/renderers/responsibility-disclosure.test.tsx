@@ -151,7 +151,24 @@ describe('contract-driven Meta responsibility and disclosure', () => {
       properties: {
         ...current.properties,
         status: 'settled',
-        decisionReceipt: { outcome: 'accepted', principal: 'user:mike', revision: 12 },
+        decisionReceipt: {
+          outcome: 'accepted',
+          principal: 'user:mike',
+          revision: 12,
+          apiToken: 'never-render-this',
+        },
+        presentation: {
+          ...(current.properties.presentation as Record<string, unknown>),
+          fields: [
+            ...((current.properties.presentation as { fields: Record<string, unknown>[] }).fields ??
+              []),
+            {
+              path: 'properties.decisionReceipt',
+              title: '裁决回执',
+              role: 'metadata',
+            },
+          ],
+        },
       },
       actions: [],
       'guard-results': [],
@@ -184,6 +201,8 @@ describe('contract-driven Meta responsibility and disclosure', () => {
     expect(await screen.findByText(/settled/)).toBeTruthy();
     expect(screen.getByText(/accepted/)).toBeTruthy();
     expect(screen.getByText(/user:mike/)).toBeTruthy();
+    expect(screen.queryByText(/never-render-this/)).toBeNull();
+    expect(screen.getByText(/\[redacted\]/)).toBeTruthy();
   });
 
   it('keeps caller input and the current URL after a stale rejection', async () => {

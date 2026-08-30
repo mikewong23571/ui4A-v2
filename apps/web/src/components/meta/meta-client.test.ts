@@ -3,7 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenEntity } from '@ui4a/engine';
 
-import { execMetaAction, fetchMetaEntity, fetchMetaSitemap } from './meta-client';
+import {
+  execMetaAction,
+  fetchMetaEntity,
+  fetchMetaSitemap,
+  subscribeMetaScopeGeneration,
+} from './meta-client';
 
 const exact: SirenEntity = {
   class: ['meta', 'draft'],
@@ -224,5 +229,40 @@ describe('Meta browser client', () => {
       properties: { status: 'after-write' },
     });
     expect(collectionReads).toBe(2);
+  });
+
+  it('notifies only the written scope generation and stops notifying after unsubscribe', async () => {
+    const written: number[] = [];
+    const untouched: number[] = [];
+    const stopWritten = subscribeMetaScopeGeneration('governance-subscription', () =>
+      written.push(written.length + 1),
+    );
+    const stopUntouched = subscribeMetaScopeGeneration('publishing-subscription', () =>
+      untouched.push(untouched.length + 1),
+    );
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) =>
+      init?.method === 'POST'
+        ? new Response(JSON.stringify({ entity: { ...exact, actions: [] } }), { status: 200 })
+        : new Response(JSON.stringify(exact), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await execMetaAction({
+      rel: 'draft:d1',
+      action: 'approve',
+      scope: 'governance-subscription',
+    });
+    expect(written).toEqual([1]);
+    expect(untouched).toEqual([]);
+
+    stopWritten();
+    stopUntouched();
+    await execMetaAction({
+      rel: 'draft:d1',
+      action: 'approve',
+      scope: 'governance-subscription',
+    });
+    expect(written).toEqual([1]);
+    expect(untouched).toEqual([]);
   });
 });

@@ -218,9 +218,12 @@ describe('ActionRunner T16 high-risk staging', () => {
     });
     expect(screen.getByRole('status').textContent).toContain('已执行');
     expect(onExecuted).toHaveBeenCalledWith('post:first-post');
+    expect(trigger.hasAttribute('disabled')).toBe(true);
+    fireEvent.click(trigger);
+    expect(execFn).toHaveBeenCalledTimes(1);
   });
 
-  it('canceling a high-risk request is event-free and approve/reject remain ordinary human actions', async () => {
+  it('canceling a high-risk request is event-free and an unannotated future action executes once', async () => {
     const execFn = acceptedExec();
     const { rerender } = render(
       <ActionRunner
@@ -236,25 +239,25 @@ describe('ActionRunner T16 high-risk staging', () => {
     expect(execFn).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(trigger);
 
-    const approveAction: SirenAction = {
+    const unannotatedAction: SirenAction = {
       ...archiveAction,
-      name: 'approve',
-      title: '批准',
+      name: 'future-human-decision',
+      title: '记录未来决定',
       'requires-confirmation': undefined,
     };
     rerender(
       <ActionRunner
         rel="confirmation:c1"
-        action={approveAction}
+        action={unannotatedAction}
         submit={createDirectActionSubmit(execFn, { clientParams: () => ({}) })}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: '批准' }));
+    fireEvent.click(screen.getByRole('button', { name: '记录未来决定' }));
 
     await waitFor(() => expect(execFn).toHaveBeenCalledTimes(1));
     expect(execFn).toHaveBeenCalledWith({
       rel: 'confirmation:c1',
-      action: 'approve',
+      action: 'future-human-decision',
       params: undefined,
     });
   });

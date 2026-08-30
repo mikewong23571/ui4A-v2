@@ -20,16 +20,8 @@ function JsonPanel({ value }: { value: unknown }) {
   );
 }
 
-function DraftDecision({
-  rel,
-  scope,
-  onChanged,
-}: {
-  rel: string;
-  scope?: string;
-  onChanged?: () => void;
-}) {
-  const { entity, state, refresh } = useMetaEntity(rel, scope);
+function DraftDecision({ rel, scope }: { rel: string; scope?: string }) {
+  const { entity, state } = useMetaEntity(rel, scope);
   if (state === 'loading')
     return <Card className="p-4 text-sm text-muted-foreground">正在读取当前决策合同…</Card>;
   if (state !== 'ready' || entity === null)
@@ -44,15 +36,7 @@ function DraftDecision({
       <p className="mb-3 text-sm font-medium">
         Human-only decision · 每次提交前重新读取当前 action
       </p>
-      <MetaActions
-        entity={entity}
-        rel={rel}
-        scope={scope}
-        onChanged={() => {
-          refresh();
-          onChanged?.();
-        }}
-      />
+      <MetaActions entity={entity} rel={rel} scope={scope} />
     </div>
   );
 }
@@ -188,9 +172,7 @@ export function DraftRenderer({
         onChanged={onChanged}
         prefill={{ payload: view.payload }}
       />
-      {activation !== undefined && (
-        <DraftDecision rel={activation} scope={navigation.scope} onChanged={onChanged} />
-      )}
+      {activation !== undefined && <DraftDecision rel={activation} scope={navigation.scope} />}
       {view.terminalReason !== '' && (
         <Alert>
           <AlertTitle>Terminal</AlertTitle>

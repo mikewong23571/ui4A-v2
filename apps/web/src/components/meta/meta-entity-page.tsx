@@ -26,7 +26,7 @@ function MetaEntityResource({
   navigation: MetaNavigationContext;
   sitemap: NonNullable<MetaSitemapState['sitemap']>;
 }) {
-  const { entity, state, refresh } = useMetaEntity(rel, navigation.scope, sitemap.version);
+  const { entity, state } = useMetaEntity(rel, navigation.scope, sitemap.version);
   if (state === 'loading') return <LoadingContract />;
   if (state === 'missing') {
     return (
@@ -55,7 +55,6 @@ function MetaEntityResource({
         entity={entity}
         navigation={navigation}
         descriptorTitle={sitemap.surfaces.find((surface) => surface.rel === rel)?.title}
-        onChanged={refresh}
       />
     </div>
   );

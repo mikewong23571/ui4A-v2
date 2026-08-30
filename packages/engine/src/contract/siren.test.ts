@@ -361,7 +361,12 @@ describe('project — confirmation 实体(spec 架构决定 2)', () => {
       properties: { reason: { type: 'string', minLength: 1 } },
       additionalProperties: false,
     });
-    expect(entity?.actions[0]).toMatchObject({ name: 'approve', title: '批准' });
+    expect(entity?.actions[0]).toMatchObject({
+      name: 'approve',
+      title: '批准',
+      'requires-confirmation': 'high',
+    });
+    expect(reject?.['requires-confirmation']).toBe('high');
   });
 
   it('guard-results 注入 actor-is-human 求值(投影无 actor 上下文 → fail-closed)', () => {

@@ -126,12 +126,14 @@ export const DEFINITION_LIFECYCLE_FLOW: FlowDefinition = {
           name: 'approve',
           title: '批准',
           guards: ['actor-is-human'],
+          'requires-confirmation': 'high',
           to: 'active',
         },
         {
           name: 'reject',
           title: '驳回',
           guards: ['actor-is-human'],
+          'requires-confirmation': 'high',
           fields: [
             { name: 'reason', type: 'textarea', required: true, minLength: 1, semantics: 'intent' },
           ],

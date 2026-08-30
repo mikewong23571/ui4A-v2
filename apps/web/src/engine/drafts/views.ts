@@ -92,8 +92,20 @@ export function schema(
   };
 }
 
-export function action(name: string, title: string, fields: Record<string, unknown>): SirenAction {
-  return { name, title, method: 'POST', href: '/_meta/api/exec', fields };
+export function action(
+  name: string,
+  title: string,
+  fields: Record<string, unknown>,
+  risk?: SirenAction['requires-confirmation'],
+): SirenAction {
+  return {
+    name,
+    title,
+    method: 'POST',
+    href: '/_meta/api/exec',
+    fields,
+    ...(risk === undefined ? {} : { 'requires-confirmation': risk }),
+  };
 }
 
 export const COMMAND_ID = {
@@ -147,7 +159,7 @@ export function draftActions(aggregate: DraftAggregate): SirenAction[] {
 
 export function activationActions(): SirenAction[] {
   return [
-    action('approve', 'Approve', schema({ commandId: COMMAND_ID }, ['commandId'])),
+    action('approve', 'Approve', schema({ commandId: COMMAND_ID }, ['commandId']), 'high'),
     action(
       'reject',
       'Reject',
@@ -155,6 +167,7 @@ export function activationActions(): SirenAction[] {
         'commandId',
         'reason',
       ]),
+      'high',
     ),
   ];
 }

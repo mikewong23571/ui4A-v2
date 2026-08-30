@@ -19,6 +19,7 @@ const approve: SirenAction = {
   title: '批准候选版本',
   method: 'POST',
   href: '/_meta/api/exec',
+  'requires-confirmation': 'high',
   fields: {
     type: 'object',
     properties: {},
@@ -88,12 +89,12 @@ function Projection({
   requestedScope: string;
   actions?: boolean;
 }) {
-  const { entity, state, refresh } = useMetaEntity(rel, requestedScope, revision);
+  const { entity, state } = useMetaEntity(rel, requestedScope, revision);
   return (
     <section aria-label={label}>
       <output>{state === 'ready' ? fact(entity) : state}</output>
       {actions && entity !== null && state === 'ready' ? (
-        <MetaActions entity={entity} rel={rel} scope={requestedScope} onChanged={refresh} />
+        <MetaActions entity={entity} rel={rel} scope={requestedScope} />
       ) : null}
     </section>
   );

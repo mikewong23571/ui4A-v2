@@ -317,6 +317,11 @@ describe('ActionRunner:actions → RJSF 表单/按钮', () => {
       principal: 'local-user',
       channel: 'renderer',
     });
+    expect(screen.getByRole('status').textContent).toContain('已执行');
+    const settled = screen.getByRole('button', { name: '重置' });
+    expect(settled.hasAttribute('disabled')).toBe(true);
+    fireEvent.click(settled);
+    expect(execCallsOf(fetchMock)).toHaveLength(1);
   });
 
   it('拒绝如实呈现 layer 与 reason,不触发成功回调', async () => {

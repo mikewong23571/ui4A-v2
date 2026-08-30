@@ -24,6 +24,7 @@ const sitemapInflight = new Map<string, ScopedInflight<MetaSitemapDocument>>();
 const entityInflight = new Map<string, ScopedInflight<SirenEntity | null>>();
 const entityCache = new Map<string, SirenEntity>();
 const scopeGenerations = new Map<string, number>();
+const scopeSubscribers = new Map<string, Set<() => void>>();
 const MAX_ENTITY_CACHE_ENTRIES = 128;
 
 function scopeKey(scope?: string): string {
@@ -32,6 +33,20 @@ function scopeKey(scope?: string): string {
 
 function currentScopeGeneration(scope?: string): number {
   return scopeGenerations.get(scopeKey(scope)) ?? 0;
+}
+
+export function subscribeMetaScopeGeneration(
+  scope: string | undefined,
+  subscriber: () => void,
+): () => void {
+  const key = scopeKey(scope);
+  const subscribers = scopeSubscribers.get(key) ?? new Set<() => void>();
+  subscribers.add(subscriber);
+  scopeSubscribers.set(key, subscribers);
+  return () => {
+    subscribers.delete(subscriber);
+    if (subscribers.size === 0) scopeSubscribers.delete(key);
+  };
 }
 
 function scopedEndpoint(path: string, scope?: string): string {
@@ -169,6 +184,7 @@ function invalidateMetaScope(scope?: string): void {
   for (const cacheKey of entityCache.keys()) {
     if (cacheKey.startsWith(prefix)) entityCache.delete(cacheKey);
   }
+  for (const subscriber of scopeSubscribers.get(invalidatedScope) ?? []) subscriber();
 }
 
 /**
@@ -212,6 +228,8 @@ export function useMetaEntity(rel: string, scope?: string, revision?: string): M
   const [tick, setTick] = useState(0);
   const [entity, setEntity] = useState<SirenEntity | null>(null);
   const [state, setState] = useState<MetaEntityState['state']>('loading');
+
+  useEffect(() => subscribeMetaScopeGeneration(scope, () => setTick((n) => n + 1)), [scope]);
 
   useEffect(() => {
     let cancelled = false;

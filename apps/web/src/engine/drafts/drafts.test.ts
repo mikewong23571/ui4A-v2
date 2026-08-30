@@ -298,6 +298,19 @@ describe('governed Flow Draft vertical slice', () => {
     const activation = String(
       submitted.kind === 'accepted' ? submitted.entity.properties.activation : '',
     );
+    const pendingActivation = await getDraftMetaEntity(
+      pool,
+      engine,
+      activation,
+      'user:mike',
+      'publishing',
+    );
+    expect(pendingActivation?.actions).toHaveLength(2);
+    expect(
+      pendingActivation?.actions.every(
+        (candidate) => candidate['requires-confirmation'] === 'high',
+      ),
+    ).toBe(true);
     expect(contentVersion((await getEngine(pool)).getSnapshot())).toBe(beforeHash);
     expect(engine.getSitemap().version).toBe(beforeSitemap);
 

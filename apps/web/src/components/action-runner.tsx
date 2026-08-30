@@ -30,7 +30,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { callerActionSchema, type SirenAction } from '@ui4a/engine';
+import { callerActionSchema, type SirenAction, type SirenEntity } from '@ui4a/engine';
 
 import { Button } from '@/components/ui/button';
 
@@ -169,6 +169,8 @@ export interface ActionRunnerProps {
   blockReason?: string;
   /** exec 成功后的刷新回调(参数 = 实际提交的 rel)。 */
   onExecuted?: (rel: string) => void;
+  /** Host-owned projection of the returned contract entity; ActionRunner stays domain-neutral. */
+  renderOutcome?: (entity: SirenEntity) => ReactNode;
   /** Host-owned, scope-aware submit adapter; the server remains the final judge. */
   submit: ActionSubmit;
   /** 当前实体的实例字段值(同名动作字段预填;缺省=无预填,如 _meta 动作)。 */
@@ -183,6 +185,7 @@ export function ActionRunner({
   blocked = false,
   blockReason,
   onExecuted,
+  renderOutcome,
   submit: submitAction,
   prefill,
   tone,
@@ -194,6 +197,7 @@ export function ActionRunner({
   const highRisk = action['requires-confirmation'] === 'high';
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<SirenEntity | null>(null);
   // D50:参数表单单一默认收起(打开/关闭是零业务事件的 presentation interaction);
   // 阅读/任务面同默认,无双路径。打开后 prefill/焦点/两段式确认行为不变。
   const [interaction, setInteraction] = useState<'closed' | 'form' | 'requested' | 'executed'>(
@@ -243,7 +247,8 @@ export function ActionRunner({
     try {
       const result = await submitAction({ rel, action, params });
       if (result.ok) {
-        if (highRisk) setInteraction('executed');
+        setOutcome(result.entity);
+        setInteraction('executed');
         onExecuted?.(rel);
         return;
       }
@@ -280,7 +285,7 @@ export function ActionRunner({
     restoreTrigger();
   }
 
-  const disabled = blocked || submitting;
+  const disabled = blocked || submitting || interaction === 'executed';
   const hint = blocked ? blockReason : submitting ? '提交中…' : undefined;
   const toneClass =
     tone === 'danger'
@@ -297,6 +302,14 @@ export function ActionRunner({
       <p role="status" className="mt-1 text-xs text-muted-foreground">
         {blockReason}
       </p>
+    ) : null;
+  const outcomeNode =
+    interaction === 'executed' && outcome !== null ? (
+      renderOutcome === undefined ? (
+        <ExecutedStatus action={action} />
+      ) : (
+        renderOutcome(outcome)
+      )
     ) : null;
 
   /** 可展开动作的触发键:request-risk 与 open-form 两路共用同一外观;
@@ -347,6 +360,7 @@ export function ActionRunner({
             {action.title}
           </Button>
         </div>
+        {outcomeNode}
         {blockedNode}
         {failureNode}
       </div>
@@ -368,7 +382,7 @@ export function ActionRunner({
             onCancel={restoreTrigger}
           />
         )}
-        {interaction === 'executed' && <ExecutedStatus action={action} />}
+        {outcomeNode}
         {blockedNode}
         {failureNode}
       </div>
@@ -441,7 +455,7 @@ export function ActionRunner({
           onCancel={restoreTrigger}
         />
       )}
-      {interaction === 'executed' && <ExecutedStatus action={action} />}
+      {outcomeNode}
       {blockedNode}
       {failureNode}
     </div>

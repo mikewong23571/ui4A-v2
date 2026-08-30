@@ -18,6 +18,7 @@ import { withMetaNavigationContext, type MetaNavigationContext } from '../meta-n
 import { relFromMetaApiHref } from '../meta-surfaces';
 import { redactMetaValue } from '../view-models/agent-definition';
 import { projectGenericRelationships } from './generic-relationship-projection';
+import { MetaActionOutcome } from './meta-action-outcome';
 
 export function titleForEntity(entity: SirenEntity): string {
   for (const key of ['title', 'name', 'ref', 'id', 'rel']) {
@@ -89,6 +90,7 @@ export function MetaActions({
                     observedActionClientParams(current, entity.properties),
                 })}
                 onExecuted={onChanged}
+                renderOutcome={(outcome) => <MetaActionOutcome entity={outcome} />}
               />
             </Card>
           );

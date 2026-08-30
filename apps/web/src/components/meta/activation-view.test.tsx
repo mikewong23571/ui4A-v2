@@ -29,6 +29,7 @@ const approveAction: SirenAction = {
   title: '批准',
   method: 'POST',
   href: '/_meta/api/exec',
+  'requires-confirmation': 'high',
   fields: {
     $schema: 'http://json-schema.org/draft-07/schema#',
     type: 'object',
@@ -43,6 +44,7 @@ const rejectAction: SirenAction = {
   title: '驳回',
   method: 'POST',
   href: '/_meta/api/exec',
+  'requires-confirmation': 'high',
   fields: {
     $schema: 'http://json-schema.org/draft-07/schema#',
     type: 'object',
@@ -235,9 +237,11 @@ describe('ActivationView(BIOS 激活详情)', () => {
     await waitFor(() => expect(screen.getByText(/reason|原因|required/i)).toBeTruthy());
     expect(fetchMock).not.toHaveBeenCalled();
 
-    // 填写原因后提交:params.reason + actor=human。
+    // 填写原因后先进入 high-risk 请求态，再确认提交 params.reason。
     fireEvent.change(screen.getByLabelText(/原因/), { target: { value: 'pin 动作不该无 guard' } });
     fireEvent.click(submitButton('reject'));
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '确认并执行驳回' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toEqual({

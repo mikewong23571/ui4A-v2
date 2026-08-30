@@ -91,6 +91,8 @@ describe('definition-lifecycle 常量(A.4 原样,timeout/expired 除外)', () =>
   it('approve/reject 声明于 pending-approval:actor-is-human(铁律 5),reject 的 reason 必填且非空', () => {
     expect(action('pending-approval', 'approve').guards).toEqual(['actor-is-human']);
     expect(action('pending-approval', 'reject').guards).toEqual(['actor-is-human']);
+    expect(action('pending-approval', 'approve')['requires-confirmation']).toBe('high');
+    expect(action('pending-approval', 'reject')['requires-confirmation']).toBe('high');
     expect(action('pending-approval', 'reject').fields).toEqual([
       { name: 'reason', type: 'textarea', required: true, minLength: 1, semantics: 'intent' },
     ]);

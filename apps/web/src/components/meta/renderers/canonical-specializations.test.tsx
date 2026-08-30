@@ -18,13 +18,18 @@ const emptyFields: SirenAction['fields'] = {
   additionalProperties: false,
 };
 
-function action(name: string, title: string): SirenAction {
+function action(
+  name: string,
+  title: string,
+  risk?: SirenAction['requires-confirmation'],
+): SirenAction {
   return {
     name,
     title,
     method: 'POST',
     href: '/_meta/api/exec',
     fields: emptyFields,
+    ...(risk === undefined ? {} : { 'requires-confirmation': risk }),
   };
 }
 
@@ -159,7 +164,9 @@ function activationEntity(status = 'pending-approval'): SirenEntity {
       diff: activationDiff,
     },
     actions:
-      status === 'pending-approval' ? [action('approve', '批准'), action('reject', '驳回')] : [],
+      status === 'pending-approval'
+        ? [action('approve', '批准', 'high'), action('reject', '驳回', 'high')]
+        : [],
     links: [
       {
         rel: ['target'],
@@ -344,6 +351,7 @@ describe('canonical Meta specializations', () => {
       scope: 'publishing',
       entity: flowEntity(),
       action: '修订',
+      highRisk: false,
     },
     {
       name: 'Activation',
@@ -351,6 +359,7 @@ describe('canonical Meta specializations', () => {
       scope: 'governance',
       entity: activationEntity(),
       action: '批准',
+      highRisk: true,
     },
   ])(
     'fresh-reads and submits the current $name action with the canonical scope',
@@ -371,6 +380,9 @@ describe('canonical Meta specializations', () => {
       );
 
       fireEvent.click(screen.getByRole('button', { name: fixture.action }));
+      if (fixture.highRisk) {
+        fireEvent.click(screen.getByRole('button', { name: `确认并执行${fixture.action}` }));
+      }
 
       await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
       expect(fetchMock.mock.calls[0]?.[0]).toBe(
