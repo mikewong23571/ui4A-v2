@@ -1,0 +1,5 @@
+T39 Phase B checkpoint correction — D54 canonical byte anchor
+
+Summary: updated T38 unparameterized collection byte anchor to include CognitiveSemanticsV1 version while preserving exact current canonical wire equality.
+Verification: orchestrator collection-query 28/28 and engine typecheck passed.
+Why: D54 intentionally changed the single public presentation wire; no compatibility path retained.
