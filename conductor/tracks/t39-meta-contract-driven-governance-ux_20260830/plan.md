@@ -46,7 +46,7 @@
 - [x] Task A5：核对 canonical `/meta/entity` 与 Flow/Activation/Capability 友好路由差异，形成一次性删除双路径的迁移清单。6e322c3
 - [x] Task A6：验证 Application title/intent 的 binding-only 来源、entry/surface semantic roles、canonical 去重、collection 归属和用户 pin 边界；禁止用 `meta/application:*` 隐式跨站供数。df646da
 - [x] Task A7：测量当前 sitemap/entity/prompt slice 字节基线，验证视觉策略不进入 Assistant prompt，披露仍是 scope → entity → actions 全量重建非累积。5d1271b
-- [ ] Task A8：产出 spike findings，明确采纳/否决项；允许结论否决当前 spec 中 Trait/Hint 位置或拆分 Track。
+- [x] Task A8：产出 spike findings，明确采纳/否决项；允许结论否决当前 spec 中 Trait/Hint 位置或拆分 Track。b28ee52
 - [ ] Task A9：根据 spike 更新 `DECISIONS.md`、`architecture.md`、`spec.md` 与本 `plan.md`；裁决是否拆为 Meta governance 与 Application experience 两个可独立交付 Track。
 - [ ] Task A10：编排者审查并批准详细计划；未通过则修订或停止。Phase Verification & Checkpoint：确认 disposable code 已删除、文档与决定一致、系统零生产改动。
 
