@@ -1,0 +1,6 @@
+T39 Phase B Task B4 — bounded cognitive semantics Green
+
+Summary: added strict CognitiveSemanticsDeclarationV1 parser and pure projection merging existing SirenFieldPresentation authority; exported from shared/engine barrels.
+Files: shared/definition/cognitive-semantics.ts, shared index, engine/contract/cognitive-semantics.ts, engine index.
+Why: supplies closed cognition without visual policy or parallel field schema.
+Verification: orchestrator 8 files/136 tests, shared+engine typecheck, governance:strict and diff check passed.
