@@ -258,3 +258,66 @@ Meta route/service/engine: 4 files / 43 tests passed
 ```
 
 No A5 source or temporary change remained.
+
+## A6 Application fact binding and workspace semantics
+
+### Result
+
+Application landing facts use a business-plane read-only Siren projection:
+
+```text
+active ApplicationDefinition
+  → authorized SitemapApplication discovery
+  → application:<name> read-only Siren entity
+  → workspace:app:<name> header region
+  → property bindings and fresh hydration
+```
+
+`application:<name>` derives `title`, `intent`, stable traits and an entry descriptor from active
+definition/sitemap truth, has no actions/events/storage, and is authorized by application name ×
+grantedApplications. Copying values into Surface literals, binding directly to sitemap, attaching
+facts to the virtual workspace, or reading `meta/application:*` from workstation are rejected.
+
+### Minimal stable semantics
+
+- Application trait: only `system-fallback` is currently necessary.
+- Entry roles: `primary-create | primary-task | primary-collection | resume`.
+- Surface traits: `work-queue | review-queue | output-catalog | task-history |
+  human-responsibility | audit-only`.
+- Visual density/sticky/device/layout remains Presentation policy.
+
+Pure invariants:
+
+1. system fallback is absent from the shelf and has no workspace landing/cross-app entry;
+2. ordinary discoverable applications have a same-application business entry; `meta/`, `_meta` and
+   `workspace:` are forbidden implicit entries;
+3. collection ownership comes from Flow `collections`, then append effects; ambiguity rejects rather
+   than defaulting;
+4. extra surfaces cannot invent business collection ownership;
+5. alias/entity sources are authorized then deduplicated by canonical `properties.rel`; the
+   higher-responsibility occurrence wins and lower collection duplicates are view-filtered only;
+6. authoritative collection membership remains in dependency fingerprints, so view deduplication
+   never hides invalidation.
+
+The same rules express current applications: default becomes system fallback; publishing is
+primary-create + output-catalog; community derives comments ownership and review responsibility;
+development/editorial use primary-task + history with canonical deduplication; governance returns to
+its business authoring flow and uses an explicit Meta bridge; todo/ideas use creator surface titles.
+A ninth fixture needs only definition data.
+
+### Preference boundary
+
+Discoverability is definition truth and current lens is Presence attention. Existing Sidecar pin is
+not an Application-shelf pin. Adding pin/recent would need a separate bounded user preference/history
+projection and is not required for the current stories; the minimal plan should retain declaration
+order plus current lens and avoid this expansion.
+
+### Orchestrator light verification
+
+Re-ran the focused baseline:
+
+```text
+6 files / 51 tests passed
+```
+
+No A6 repository or temporary change remained; live CLI was unavailable and no result was invented.
