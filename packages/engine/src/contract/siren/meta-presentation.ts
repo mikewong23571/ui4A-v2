@@ -57,6 +57,24 @@ const META_TOP_LEVEL_COGNITION = {
 export type MetaMemberSummaryKind =
   'application' | 'flow' | 'activation' | 'capability' | 'draft' | 'agent-definition';
 
+export type MetaExactPresentationKind = 'activation';
+
+const META_EXACT_FIELDS = {
+  activation: [
+    { path: 'properties.id', title: '激活请求', role: 'identity' },
+    { path: 'properties.flow', title: '需要批准的 Flow', role: 'primary-content' },
+    { path: 'properties.target', title: '需要批准的目标', role: 'primary-content' },
+    { path: 'properties.status', title: '状态', role: 'status' },
+    { path: 'properties.version', title: '候选版本', role: 'metadata' },
+    { path: 'properties.requested-by', title: '提议来源', role: 'metadata' },
+    { path: 'properties.artifact', title: '候选工件', role: 'metadata' },
+    { path: 'properties.validation', title: '校验依据', role: 'metadata' },
+    { path: 'properties.draft', title: '候选 Draft', role: 'metadata' },
+    { path: 'properties.approved-by', title: '批准回执', role: 'metadata' },
+    { path: 'properties.rejected-reason', title: '驳回原因', role: 'metadata' },
+  ],
+} as const satisfies Record<MetaExactPresentationKind, readonly SirenFieldPresentation[]>;
+
 const META_MEMBER_OVERVIEW_FIELDS = {
   application: [
     { path: 'properties.title', title: '名称', role: 'identity', overview: true },
@@ -115,5 +133,15 @@ export function metaMemberPresentation(
 ): CognitiveSemanticsProjectionV1 {
   return projectCognitiveSemantics({
     fieldPresentations: META_MEMBER_OVERVIEW_FIELDS[kind],
+  })!;
+}
+
+/** Exact task meaning references existing Siren facts and contains no renderer or layout policy. */
+export function metaExactPresentation(
+  kind: MetaExactPresentationKind,
+): CognitiveSemanticsProjectionV1 {
+  return projectCognitiveSemantics({
+    declaration: { version: 1, traits: ['human-responsibility'] },
+    fieldPresentations: META_EXACT_FIELDS[kind],
   })!;
 }

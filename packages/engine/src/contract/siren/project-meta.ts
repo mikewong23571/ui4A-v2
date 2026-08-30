@@ -18,7 +18,11 @@ import { exportDefinitionBundle } from '../../definition/definition-bundle';
 import type { ActionDefinition, FlowDefinition } from '../../core/types';
 import { projectCognitiveSemantics } from '../cognitive-semantics';
 import { entityHref, guardResultsFor, toSirenAction } from './build';
-import { metaMemberPresentation, metaTopLevelPresentation } from './meta-presentation';
+import {
+  metaExactPresentation,
+  metaMemberPresentation,
+  metaTopLevelPresentation,
+} from './meta-presentation';
 import type { ProjectDeps, SirenEntity } from './types';
 
 function topLevelPresentationProperties(rel: string): Record<string, unknown> {
@@ -151,6 +155,8 @@ function projectFlowDefinition(
     snapshot,
     deps,
   );
+  const applicationName = entry.definition.app ?? 'default';
+  const applicationTitle = snapshot.applications?.[applicationName]?.title;
   // 版本历史摘要子实体(T13 Phase B)排在节点子实体之后——子实体按 class
   // 各表其区(node-definition / definition-version),properties 的 A.2 形状不动。
   return {
@@ -159,7 +165,8 @@ function projectFlowDefinition(
       ...entity.links,
       {
         rel: ['application'],
-        href: entityHref(deps.baseHref, `meta/application:${entry.definition.app ?? 'default'}`),
+        href: entityHref(deps.baseHref, `meta/application:${applicationName}`),
+        ...(applicationTitle === undefined ? {} : { title: applicationTitle }),
       },
     ],
     entities: [
@@ -329,11 +336,18 @@ function projectActivation(
       ...(activation.rejectedReason !== undefined
         ? { 'rejected-reason': activation.rejectedReason }
         : {}),
+      presentation: metaExactPresentation('activation'),
     },
     actions: actions.map((action) => toSirenAction(action, [], deps.baseHref)),
     links: [
       { rel: ['self'], href: entityHref(deps.baseHref, rel) },
-      { rel: ['target'], href: entityHref(deps.baseHref, `meta/flow:${activation.flow}`) },
+      {
+        rel: ['target'],
+        href: entityHref(deps.baseHref, `meta/flow:${activation.flow}`),
+        ...(snapshot.definitions?.[activation.flow]?.definition.title === undefined
+          ? {}
+          : { title: snapshot.definitions[activation.flow]!.definition.title }),
+      },
     ],
     'guard-results':
       pending && targetInstance !== undefined
@@ -413,6 +427,9 @@ function projectCapability(
       ...applications.map((name) => ({
         rel: ['application'],
         href: entityHref(deps.baseHref, `meta/application:${name}`),
+        ...(snapshot.applications?.[name]?.title === undefined
+          ? {}
+          : { title: snapshot.applications[name]!.title }),
       })),
     ],
     'guard-results': [],
@@ -479,10 +496,12 @@ function projectApplication(
       ...bundle.flows.map((flow) => ({
         rel: ['flow'],
         href: entityHref(deps.baseHref, `meta/flow:${flow.name}`),
+        ...(flow.title === undefined ? {} : { title: flow.title }),
       })),
       ...bundle.capabilities.map((capability) => ({
         rel: ['capability'],
         href: entityHref(deps.baseHref, `${META_CAPABILITY_PREFIX}${capability.name}`),
+        title: capability.title,
       })),
     ],
     'guard-results': [],

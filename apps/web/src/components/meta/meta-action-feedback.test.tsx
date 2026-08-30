@@ -171,8 +171,8 @@ describe('Meta action outcome and projection synchronization', () => {
 
     await waitFor(() => {
       const exact = screen.getByRole('region', { name: 'exact decision' });
-      expect(within(exact).getByText(/approved/)).toBeTruthy();
-      expect(within(exact).getByText(/user:mike/)).toBeTruthy();
+      expect(within(exact).getAllByText(/approved/).length).toBeGreaterThan(0);
+      expect(within(exact).getAllByText(/user:mike/).length).toBeGreaterThan(0);
       expect(
         within(screen.getByRole('region', { name: 'responsibility collection' })).getByText(
           'count 0',
@@ -184,10 +184,40 @@ describe('Meta action outcome and projection synchronization', () => {
         ),
       ).toBeTruthy();
     });
+    const exact = screen.getByRole('region', { name: 'exact decision' });
+    const receipt = within(exact).getByRole('status', { name: '执行结果' });
+    expect(receipt.textContent).toContain('approved');
+    expect(receipt.textContent).toContain('user:mike');
     expect(
       within(screen.getByRole('region', { name: 'other scope collection' })).getByText('count 7'),
     ).toBeTruthy();
     expect(window.location.href).toBe(originalUrl);
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1);
+  });
+
+  it('drops a transient receipt when the same rel switches authorization scope', async () => {
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return new Response(JSON.stringify({ entity: activation('approved') }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify(activation('pending-approval')));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { rerender } = render(
+      <MetaActions entity={activation('pending-approval')} rel={exactRel} scope={scope} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '批准候选版本' }));
+    fireEvent.click(screen.getByRole('button', { name: '确认并执行批准候选版本' }));
+    expect(await screen.findByRole('status', { name: '执行结果' })).toBeTruthy();
+
+    rerender(
+      <MetaActions entity={activation('pending-approval')} rel={exactRel} scope={otherScope} />,
+    );
+    expect(screen.queryByRole('status', { name: '执行结果' })).toBeNull();
+    expect(screen.getByRole('button', { name: '批准候选版本' })).toBeTruthy();
   });
 });

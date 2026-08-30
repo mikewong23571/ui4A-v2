@@ -8,7 +8,10 @@ import { ActivationView } from '../activation-view';
 import { CapabilityDefinitionView } from '../capability-definition-view';
 import { FlowDefinitionView } from '../flow-definition-view';
 import type { MetaNavigationContext } from '../meta-navigation';
-import { MetaRelationships, RawContract } from './common';
+import { MetaRelationships, publicMetaActions, RawContract } from './common';
+import { GenericEvidenceDisclosure, GenericResponsibilityDisclosure } from './generic-disclosure';
+import { genericDisclosureContract } from './generic-disclosure-contract';
+import { projectGenericTask } from './generic-task-projection';
 
 interface CanonicalSpecializationProps {
   rel: string;
@@ -56,6 +59,24 @@ export function ActivationRenderer({
   onChanged,
 }: CanonicalSpecializationProps) {
   const id = typeof entity.properties.id === 'string' ? entity.properties.id : rel;
+  const disclosure = genericDisclosureContract(entity);
+  const task =
+    disclosure.kind === 'declared'
+      ? projectGenericTask(entity, disclosure, publicMetaActions(entity))
+      : undefined;
+  const responsibility =
+    disclosure.kind === 'declared' && task?.hasHumanResponsibility === true ? (
+      <div className="space-y-4">
+        <GenericResponsibilityDisclosure
+          entity={entity}
+          task={task}
+          rel={rel}
+          scope={navigation.scope}
+          onChanged={onChanged}
+        />
+        <GenericEvidenceDisclosure contract={disclosure} />
+      </div>
+    ) : undefined;
   return (
     <CanonicalSpecializedShell entity={entity} navigation={navigation}>
       <ActivationView
@@ -65,6 +86,9 @@ export function ActivationRenderer({
         scope={navigation.scope}
         onChanged={onChanged}
         standalone={false}
+        responsibility={responsibility}
+        renderActions={responsibility === undefined}
+        renderProperties={responsibility === undefined}
       />
     </CanonicalSpecializedShell>
   );

@@ -186,18 +186,40 @@ describe('ActionRunner T16 schema-form interaction', () => {
       params: { extension: [{ kind: 'future' }], note: 'keep' },
     });
   });
+
+  it('disables native form validation and exposes RJSF required errors inline', async () => {
+    const execFn = acceptedExec();
+    const { container } = render(
+      <ActionRunner
+        rel="post:first-post"
+        action={editAction}
+        submit={createDirectActionSubmit(execFn, { clientParams: () => ({}) })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '编辑元数据' }));
+    const form = container.querySelector('form');
+    expect(form?.noValidate).toBe(true);
+    fireEvent.click(submitButton('edit-metadata'));
+
+    const errors = await screen.findAllByRole('alert');
+    expect(errors.map((error) => error.textContent).join(' ')).toMatch(/required|必填/i);
+    expect(execFn).not.toHaveBeenCalled();
+  });
 });
 
 describe('ActionRunner T16 high-risk staging', () => {
   it('first high-risk request is visibly pending and does not execute until explicit confirmation', async () => {
     const execFn = acceptedExec();
     const onExecuted = vi.fn();
+    const onOutcome = vi.fn();
     render(
       <ActionRunner
         rel="post:first-post"
         action={archiveAction}
         submit={createDirectActionSubmit(execFn, { clientParams: () => ({}) })}
         onExecuted={onExecuted}
+        onOutcome={onOutcome}
       />,
     );
 
@@ -218,6 +240,7 @@ describe('ActionRunner T16 high-risk staging', () => {
     });
     expect(screen.getByRole('status').textContent).toContain('已执行');
     expect(onExecuted).toHaveBeenCalledWith('post:first-post');
+    expect(onOutcome).toHaveBeenCalledWith(entity);
     expect(trigger.hasAttribute('disabled')).toBe(true);
     fireEvent.click(trigger);
     expect(execFn).toHaveBeenCalledTimes(1);

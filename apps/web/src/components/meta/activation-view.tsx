@@ -9,6 +9,8 @@
  *   /_meta/api/exec 且恒 actor=human(审批不委托;agent 侧 approve 引擎层拒);
  * - 已决策(approved/rejected)是审计视图:投影无动作,本组件自然无按钮。
  */
+import type { ReactNode } from 'react';
+
 import type { ActivationCheck, DefinitionDiff, SirenEntity } from '@ui4a/engine';
 
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +35,7 @@ function checksOf(entity: SirenEntity): ActivationCheck[] {
 }
 
 function scalarPairs(entity: SirenEntity, embedded: boolean): [string, string][] {
-  const skipped = new Set(['checks', 'diff']);
+  const skipped = new Set(['checks', 'diff', 'presentation']);
   if (embedded) {
     for (const key of ['id', 'flow', 'status', 'version']) skipped.add(key);
   }
@@ -57,6 +59,12 @@ export interface ActivationViewProps {
   onChanged?: () => void;
   /** 友好路由保留返回导航；canonical shell 已接管页面导航。 */
   standalone?: boolean;
+  /** Contract-driven responsibility layer composed by the canonical host. */
+  responsibility?: ReactNode;
+  /** Fallback for older entities without an exact responsibility declaration. */
+  renderActions?: boolean;
+  /** Canonical responsibility/evidence replaces the standalone scalar audit table. */
+  renderProperties?: boolean;
 }
 
 /** 激活详情(纯渲染;数据来自 /_meta/api/entity?rel=meta/activation:<id>)。 */
@@ -67,6 +75,9 @@ export function ActivationView({
   scope,
   onChanged,
   standalone = true,
+  responsibility,
+  renderActions = true,
+  renderProperties = true,
 }: ActivationViewProps) {
   const properties = entity.properties;
   const checks = checksOf(entity);
@@ -91,26 +102,30 @@ export function ActivationView({
         {String(properties.status ?? '')}
       </p>
 
-      <section aria-label="属性" className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold">属性</h2>
-        <div className="rounded-md border bg-card">
-          <Table>
-            <TableBody>
-              {scalarPairs(entity, !standalone).map(([key, value]) => (
-                <TableRow key={key}>
-                  <th
-                    scope="row"
-                    className="px-3 py-2 text-left align-top font-normal whitespace-nowrap text-muted-foreground"
-                  >
-                    {key}
-                  </th>
-                  <TableCell className="px-3 py-2 break-all whitespace-normal">{value}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </section>
+      {responsibility !== undefined && <div className="mt-6">{responsibility}</div>}
+
+      {renderProperties && (
+        <section aria-label="属性" className="mt-6">
+          <h2 className="mb-2 text-sm font-semibold">属性</h2>
+          <div className="rounded-md border bg-card">
+            <Table>
+              <TableBody>
+                {scalarPairs(entity, !standalone).map(([key, value]) => (
+                  <TableRow key={key}>
+                    <th
+                      scope="row"
+                      className="px-3 py-2 text-left align-top font-normal whitespace-nowrap text-muted-foreground"
+                    >
+                      {key}
+                    </th>
+                    <TableCell className="px-3 py-2 break-all whitespace-normal">{value}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </section>
+      )}
 
       <section aria-label="不变式检查" className="mt-6">
         <h2 className="mb-2 text-sm font-semibold">激活不变式({checks.length})</h2>
@@ -158,9 +173,11 @@ export function ActivationView({
         </Card>
       </section>
 
-      <div className="mt-6">
-        <MetaActions entity={entity} rel={rel} scope={scope} onChanged={onChanged} />
-      </div>
+      {renderActions && (
+        <div className="mt-6">
+          <MetaActions entity={entity} rel={rel} scope={scope} onChanged={onChanged} />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,25 +1,12 @@
 import type { SirenEntity } from '@ui4a/engine';
 
-import { redactMetaValue } from '../view-models/agent-definition';
 import { genericDisclosureContract } from './generic-disclosure-contract';
+import { DisclosureValue } from './generic-disclosure-value';
 
 interface OutcomeFact {
   key: string;
   title: string;
   value: unknown;
-}
-
-function boundedValue(value: unknown, depth = 0): unknown {
-  const safe = redactMetaValue(value);
-  if (typeof safe === 'string') return safe.length > 160 ? `${safe.slice(0, 157)}…` : safe;
-  if (safe === null || typeof safe !== 'object') return safe;
-  if (depth >= 2) return '[summary omitted]';
-  if (Array.isArray(safe)) return safe.slice(0, 4).map((entry) => boundedValue(entry, depth + 1));
-  return Object.fromEntries(
-    Object.entries(safe)
-      .slice(0, 6)
-      .map(([key, child]) => [key, boundedValue(child, depth + 1)]),
-  );
 }
 
 function fallbackFacts(entity: SirenEntity): OutcomeFact[] {
@@ -56,9 +43,7 @@ export function MetaActionOutcome({ entity }: { entity: SirenEntity }) {
             <div key={fact.key} className="min-w-0">
               <dt className="text-muted-foreground">{fact.title}</dt>
               <dd className="break-words">
-                {typeof fact.value === 'object' && fact.value !== null
-                  ? JSON.stringify(boundedValue(fact.value))
-                  : String(boundedValue(fact.value) ?? '—')}
+                <DisclosureValue value={fact.value} />
               </dd>
             </div>
           ))}

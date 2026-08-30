@@ -5,7 +5,6 @@ import type { ReactNode } from 'react';
 import type { SirenEntity } from '@ui4a/engine';
 
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 
 import type { MetaNavigationContext } from '../meta-navigation';
 import { redactMetaValue } from '../view-models/agent-definition';
@@ -15,19 +14,8 @@ import type {
   GenericDisclosureContract,
 } from './generic-disclosure-contract';
 import { projectGenericEvidence } from './generic-evidence-projection';
-import { projectGenericTask } from './generic-task-projection';
-
-function DisclosureValue({ value }: { value: unknown }) {
-  const safe = redactMetaValue(value);
-  if (safe === null || typeof safe !== 'object') {
-    return <span className="break-words">{String(safe ?? '—')}</span>;
-  }
-  return (
-    <pre className="max-h-56 overflow-auto rounded bg-muted/50 p-2 text-xs">
-      {JSON.stringify(safe, null, 2)}
-    </pre>
-  );
-}
+import { DisclosureValue } from './generic-disclosure-value';
+import { projectGenericTask, type GenericTaskProjection } from './generic-task-projection';
 
 function ResponsibilityItem({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -40,6 +28,76 @@ function ResponsibilityItem({ title, children }: { title: string; children: Reac
 
 function FactText({ entry }: { entry?: DeclaredDisclosureField }) {
   return entry === undefined ? null : <DisclosureValue value={entry.value} />;
+}
+
+export function GenericResponsibilityDisclosure({
+  entity,
+  task,
+  rel,
+  scope,
+  onChanged,
+}: {
+  entity: SirenEntity;
+  task: GenericTaskProjection;
+  rel: string;
+  scope?: string;
+  onChanged?: () => void;
+}) {
+  if (!task.hasHumanResponsibility) return null;
+  return (
+    <section
+      aria-label="人类责任点"
+      className="grid min-w-0 gap-4 rounded-xl border bg-card p-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.8fr)]"
+    >
+      <div className="grid min-w-0 gap-4 sm:grid-cols-3">
+        <ResponsibilityItem title="需要决定什么">
+          <FactText entry={task.primaryContent} />
+        </ResponsibilityItem>
+        <ResponsibilityItem title="当前责任">
+          <FactText entry={task.status} />
+        </ResponsibilityItem>
+        <ResponsibilityItem title="下一步">
+          <div className="space-y-2">
+            {task.actions.map((action) => (
+              <p key={action.name}>
+                <span className="text-foreground">{action.title}</span>
+                {task.guardReasons.get(action.name) !== undefined && (
+                  <span className="block text-xs">{task.guardReasons.get(action.name)}</span>
+                )}
+              </p>
+            ))}
+          </div>
+        </ResponsibilityItem>
+      </div>
+      <div className="min-w-0 lg:sticky lg:top-4 lg:self-start">
+        <MetaActions entity={entity} rel={rel} scope={scope} onChanged={onChanged} />
+      </div>
+    </section>
+  );
+}
+
+export function GenericEvidenceDisclosure({
+  contract,
+}: {
+  contract: Extract<GenericDisclosureContract, { kind: 'declared' }>;
+}) {
+  const evidence = projectGenericEvidence(contract);
+  if (evidence.length === 0) return null;
+  return (
+    <dl
+      aria-label="声明证据"
+      className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2"
+    >
+      {evidence.map((entry) => (
+        <div key={entry.field.path} className="min-w-0 bg-card p-3">
+          <dt className="text-xs font-medium text-muted-foreground">{entry.field.title}</dt>
+          <dd className="mt-1 text-sm">
+            <DisclosureValue value={entry.value} />
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 
 export function GenericDeclaredDisclosure({
@@ -59,14 +117,10 @@ export function GenericDeclaredDisclosure({
 }) {
   const actions = publicMetaActions(entity);
   const task = projectGenericTask(entity, contract, actions);
-  const evidence = projectGenericEvidence(contract);
   const identity =
     typeof task.identity?.value === 'string' && task.identity.value.length > 0
       ? task.identity.value
       : (descriptorTitle ?? '合同实体');
-  const taskActions = (
-    <MetaActions entity={entity} rel={rel} scope={navigation.scope} onChanged={onChanged} />
-  );
 
   return (
     <div className="space-y-6">
@@ -88,50 +142,20 @@ export function GenericDeclaredDisclosure({
         </header>
 
         {task.hasHumanResponsibility ? (
-          <section
-            aria-label="人类责任点"
-            className="grid min-w-0 gap-4 rounded-xl border bg-card p-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.8fr)]"
-          >
-            <div className="grid min-w-0 gap-4 sm:grid-cols-3">
-              <ResponsibilityItem title="需要决定什么">
-                <FactText entry={task.primaryContent} />
-              </ResponsibilityItem>
-              <ResponsibilityItem title="当前责任">
-                <FactText entry={task.status} />
-              </ResponsibilityItem>
-              <ResponsibilityItem title="下一步">
-                <div className="space-y-2">
-                  {task.actions.map((action) => (
-                    <p key={action.name}>
-                      <span className="text-foreground">{action.title}</span>
-                      {task.guardReasons.get(action.name) !== undefined && (
-                        <span className="block text-xs">{task.guardReasons.get(action.name)}</span>
-                      )}
-                    </p>
-                  ))}
-                </div>
-              </ResponsibilityItem>
-            </div>
-            <div className="min-w-0 lg:sticky lg:top-4 lg:self-start">{taskActions}</div>
-          </section>
+          <GenericResponsibilityDisclosure
+            entity={entity}
+            task={task}
+            rel={rel}
+            scope={navigation.scope}
+            onChanged={onChanged}
+          />
         ) : (
-          taskActions
+          <MetaActions entity={entity} rel={rel} scope={navigation.scope} onChanged={onChanged} />
         )}
       </section>
 
       <section aria-label="合同证据" className="space-y-5">
-        {evidence.length > 0 && (
-          <dl className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2">
-            {evidence.map((entry) => (
-              <div key={entry.field.path} className="min-w-0 bg-card p-3">
-                <dt className="text-xs font-medium text-muted-foreground">{entry.field.title}</dt>
-                <dd className="mt-1 text-sm">
-                  <DisclosureValue value={entry.value} />
-                </dd>
-              </div>
-            ))}
-          </dl>
-        )}
+        <GenericEvidenceDisclosure contract={contract} />
         <MetaRelationships entity={entity} navigation={navigation} />
       </section>
 

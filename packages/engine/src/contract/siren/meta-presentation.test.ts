@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { contentVersion } from '../sitemap';
 import {
+  metaExactPresentation,
   metaMemberPresentation,
   metaTopLevelPresentation,
   withMetaTopLevelPresentation,
@@ -48,6 +49,28 @@ describe('Meta contract presentation declarations', () => {
       'status',
       'metadata',
     ]);
+  });
+
+  it('declares exact Activation responsibility from fact references without visual policy', () => {
+    const presentation = metaExactPresentation('activation');
+    expect(presentation).toMatchObject({
+      version: 1,
+      traits: ['human-responsibility'],
+    });
+    expect(presentation.fields?.map((field) => [field.path, field.role])).toEqual([
+      ['properties.id', 'identity'],
+      ['properties.flow', 'primary-content'],
+      ['properties.target', 'primary-content'],
+      ['properties.status', 'status'],
+      ['properties.version', 'metadata'],
+      ['properties.requested-by', 'metadata'],
+      ['properties.artifact', 'metadata'],
+      ['properties.validation', 'metadata'],
+      ['properties.draft', 'metadata'],
+      ['properties.approved-by', 'metadata'],
+      ['properties.rejected-reason', 'metadata'],
+    ]);
+    expect(JSON.stringify(presentation)).not.toMatch(/sticky|grid|pixel|component|css/i);
   });
 
   it('makes presentation part of the surface content fingerprint', () => {

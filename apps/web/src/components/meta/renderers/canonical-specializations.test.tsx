@@ -149,10 +149,13 @@ function activationEntity(status = 'pending-approval'): SirenEntity {
   return {
     class: ['meta', 'activation', status],
     properties: {
+      rel: 'meta/activation:activation-2',
       id: 'activation-2',
       flow: 'article-drafting',
       status,
       version: 2,
+      artifact: 'activation-artifact-2',
+      'requested-by': { actor: 'agent', principal: 'user:mike' },
       checks: [
         { name: 'edge-targets-exist', pass: true },
         {
@@ -162,6 +165,17 @@ function activationEntity(status = 'pending-approval'): SirenEntity {
         },
       ],
       diff: activationDiff,
+      presentation: {
+        version: 1,
+        traits: ['human-responsibility'],
+        fields: [
+          { path: 'properties.id', title: '激活请求', role: 'identity' },
+          { path: 'properties.flow', title: '需要批准的 Flow', role: 'primary-content' },
+          { path: 'properties.status', title: '状态', role: 'status' },
+          { path: 'properties.version', title: '候选版本', role: 'metadata' },
+          { path: 'properties.requested-by', title: '提议来源', role: 'metadata' },
+        ],
+      },
     },
     actions:
       status === 'pending-approval'
@@ -174,7 +188,23 @@ function activationEntity(status = 'pending-approval'): SirenEntity {
         href: '/_meta/api/entity?rel=meta/flow:article-drafting',
       },
     ],
-    'guard-results': [],
+    'guard-results':
+      status === 'pending-approval'
+        ? [
+            {
+              action: 'approve',
+              blocked: true,
+              reason: 'guard 不满足: actor-is-human=false',
+              guards: [{ name: 'actor-is-human', pass: false }],
+            },
+            {
+              action: 'reject',
+              blocked: true,
+              reason: 'guard 不满足: actor-is-human=false',
+              guards: [{ name: 'actor-is-human', pass: false }],
+            },
+          ]
+        : [],
   };
 }
 
@@ -266,8 +296,21 @@ describe('canonical Meta specializations', () => {
     expect(container.querySelector('section[aria-label="不变式检查"]')).not.toBeNull();
     expect(container.querySelector('section[aria-label="机械 diff"]')).not.toBeNull();
     expect(screen.getByText('guards-registered')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '批准' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '驳回' })).toBeTruthy();
+    const responsibility = screen.getByRole('region', { name: '人类责任点' });
+    expect(responsibility.textContent).toContain('需要决定什么');
+    expect(responsibility.textContent).toContain('article-drafting');
+    expect(responsibility.textContent).toContain('guard 不满足: actor-is-human=false');
+    expect(screen.getAllByRole('button', { name: '批准' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: '驳回' })).toHaveLength(1);
+    expect(screen.getByText('提议来源').parentElement?.textContent).toContain('actor');
+    expect(screen.getByText('提议来源').parentElement?.textContent).toContain('agent');
+    expect(screen.getByText('提议来源').parentElement?.textContent).toContain('user:mike');
+    expect(screen.getAllByText('user:mike')).toHaveLength(1);
+    expect(screen.queryByRole('region', { name: '属性' })).toBeNull();
+    expect(container.querySelectorAll('section[aria-label="不变式检查"]')).toHaveLength(1);
+    expect(container.querySelectorAll('section[aria-label="机械 diff"]')).toHaveLength(1);
+    expect(screen.getAllByText('guards-registered')).toHaveLength(1);
+    expect(responsibility.querySelector('.lg\\:sticky')).not.toBeNull();
     expect(screen.queryByText(/通用合同视图/)).toBeNull();
 
     rerender(

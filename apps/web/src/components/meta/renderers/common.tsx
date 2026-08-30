@@ -50,52 +50,63 @@ export function browserHrefForContractHref(
   return withMetaNavigationContext(`/entity?rel=${encodeURIComponent(rel)}`, navigation);
 }
 
-export function MetaActions({
-  entity,
-  rel,
-  scope,
-  prefill,
-  excludeActions = [],
-  onChanged,
-}: {
+interface MetaActionsProps {
   entity: SirenEntity;
   rel: string;
   scope?: string;
   prefill?: Record<string, unknown>;
   excludeActions?: string[];
   onChanged?: () => void;
-}) {
+}
+
+export function MetaActions(props: MetaActionsProps) {
+  return <ScopedMetaActions key={JSON.stringify([props.scope ?? null, props.rel])} {...props} />;
+}
+
+function ScopedMetaActions({
+  entity,
+  rel,
+  scope,
+  prefill,
+  excludeActions = [],
+  onChanged,
+}: MetaActionsProps) {
+  const [lastOutcome, setLastOutcome] = useState<SirenEntity | null>(null);
   const excluded = new Set(excludeActions);
   const actions = publicMetaActions(entity).filter((action) => !excluded.has(action.name));
-  if (actions.length === 0) return null;
+  if (actions.length === 0 && lastOutcome === null) return null;
   const guards = new Map((entity['guard-results'] ?? []).map((guard) => [guard.action, guard]));
   return (
     <section aria-labelledby="meta-actions-heading" className="space-y-3">
       <h2 id="meta-actions-heading" className="text-lg font-semibold">
         可用动作
       </h2>
-      <div className="grid gap-3 lg:grid-cols-2">
-        {actions.map((action) => {
-          const guard = guards.get(action.name);
-          return (
-            <Card key={action.name} className="min-w-0 p-4">
-              <ActionRunner
-                rel={rel}
-                action={action}
-                blocked={blockedForRenderer(guard)}
-                blockReason={guard?.reason}
-                prefill={prefill}
-                submit={createDirectActionSubmit((input) => execMetaAction({ ...input, scope }), {
-                  clientParams: ({ action: current }) =>
-                    observedActionClientParams(current, entity.properties),
-                })}
-                onExecuted={onChanged}
-                renderOutcome={(outcome) => <MetaActionOutcome entity={outcome} />}
-              />
-            </Card>
-          );
-        })}
-      </div>
+      {actions.length > 0 && (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {actions.map((action) => {
+            const guard = guards.get(action.name);
+            return (
+              <Card key={action.name} className="min-w-0 p-4">
+                <ActionRunner
+                  rel={rel}
+                  action={action}
+                  blocked={blockedForRenderer(guard)}
+                  blockReason={guard?.reason}
+                  prefill={prefill}
+                  submit={createDirectActionSubmit((input) => execMetaAction({ ...input, scope }), {
+                    clientParams: ({ action: current }) =>
+                      observedActionClientParams(current, entity.properties),
+                  })}
+                  onExecuted={onChanged}
+                  onOutcome={setLastOutcome}
+                  renderOutcome={() => null}
+                />
+              </Card>
+            );
+          })}
+        </div>
+      )}
+      {lastOutcome !== null && <MetaActionOutcome entity={lastOutcome} />}
     </section>
   );
 }

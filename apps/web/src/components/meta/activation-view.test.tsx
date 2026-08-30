@@ -234,7 +234,9 @@ describe('ActivationView(BIOS 激活详情)', () => {
     // D50:驳回表单默认收起,先打开;空原因:RJSF required 校验拦截,不产生任何请求。
     fireEvent.click(screen.getByRole('button', { name: '驳回' }));
     fireEvent.click(submitButton('reject'));
-    await waitFor(() => expect(screen.getByText(/reason|原因|required/i)).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getAllByText(/reason|原因|required/i).length).toBeGreaterThan(0),
+    );
     expect(fetchMock).not.toHaveBeenCalled();
 
     // 填写原因后先进入 high-risk 请求态，再确认提交 params.reason。

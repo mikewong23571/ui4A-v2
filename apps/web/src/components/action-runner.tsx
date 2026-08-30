@@ -128,7 +128,12 @@ function RjsfFieldErrorTemplate(props: RjsfFieldErrorTemplateProps) {
   const { errors = [], fieldPathId } = props;
   if (errors.length === 0) return null;
   return (
-    <ul id={`${fieldPathId.$id}__error`} className="list-disc pl-4 text-xs text-destructive">
+    <ul
+      id={`${fieldPathId.$id}__error`}
+      role="alert"
+      aria-live="polite"
+      className="list-disc pl-4 text-xs text-destructive"
+    >
       {errors
         .filter((error) => error !== null && error !== '')
         .map((error, index) => (
@@ -169,6 +174,8 @@ export interface ActionRunnerProps {
   blockReason?: string;
   /** exec 成功后的刷新回调(参数 = 实际提交的 rel)。 */
   onExecuted?: (rel: string) => void;
+  /** Host-owned transient receipt survives an authorized projection refresh. */
+  onOutcome?: (entity: SirenEntity) => void;
   /** Host-owned projection of the returned contract entity; ActionRunner stays domain-neutral. */
   renderOutcome?: (entity: SirenEntity) => ReactNode;
   /** Host-owned, scope-aware submit adapter; the server remains the final judge. */
@@ -185,6 +192,7 @@ export function ActionRunner({
   blocked = false,
   blockReason,
   onExecuted,
+  onOutcome,
   renderOutcome,
   submit: submitAction,
   prefill,
@@ -249,6 +257,7 @@ export function ActionRunner({
       if (result.ok) {
         setOutcome(result.entity);
         setInteraction('executed');
+        onOutcome?.(result.entity);
         onExecuted?.(rel);
         return;
       }
@@ -402,6 +411,8 @@ export function ActionRunner({
             schema={formSchema}
             uiSchema={formProjection.uiSchema}
             validator={rjsfValidator}
+            noHtml5Validate
+            onError={() => undefined}
             // Uncontrolled initial data keeps edits in place across local parse/server errors.
             initialFormData={initialActionFormData(
               callerSchema,

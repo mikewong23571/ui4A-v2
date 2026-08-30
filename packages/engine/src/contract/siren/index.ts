@@ -9,10 +9,12 @@ export * from './types';
 export { project } from './project';
 export { guardBlockReason } from './build';
 export {
+  metaExactPresentation,
   metaMemberPresentation,
   metaTopLevelPresentation,
   withMetaTopLevelPresentation,
   type MetaMemberSummaryKind,
+  type MetaExactPresentationKind,
 } from './meta-presentation';
 export {
   COLLECTION_PAGE_SIZE,

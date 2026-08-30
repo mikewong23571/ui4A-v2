@@ -17,7 +17,7 @@ import type {
   EngineSnapshot,
   GuardRegistry,
 } from '@ui4a/shared';
-import { postStatusFlow } from '../core/fixtures';
+import { articleDraftingFlow, postStatusFlow } from '../core/fixtures';
 import { DEFINITION_LIFECYCLE_FLOW } from './lifecycle';
 import { project } from '../contract/siren/index';
 import type { SirenEntity } from '../contract/siren/index';
@@ -65,6 +65,9 @@ function metaSnapshot(
         status: status as DefinitionEntry['status'],
         definition,
       },
+    },
+    applications: {
+      default: { name: 'default', title: '默认归属', intent: '未显式归属的系统定义。' },
     },
     ...extras,
   };
@@ -137,7 +140,11 @@ describe('meta/flow:<name> 投影(A.2 定义实体)', () => {
     expect(entity.actions.map((a) => a.name)).toEqual(['add-node', 'add-action', 'submit']);
     expect(entity.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=meta/flow:post-status' },
-      { rel: ['application'], href: '/api/entity?rel=meta/application:default' },
+      {
+        rel: ['application'],
+        href: '/api/entity?rel=meta/application:default',
+        title: '默认归属',
+      },
     ]);
   });
 
@@ -274,7 +281,19 @@ describe('meta/activation:<id> 激活实体投影(A.2 激活请求形状)', () =
       'requested-by': { actor: 'agent', principal: 'user:mike' },
       version: 2,
       flow: 'post-status',
+      presentation: {
+        version: 1,
+        traits: ['human-responsibility'],
+        fields: expect.arrayContaining([
+          expect.objectContaining({ path: 'properties.flow', role: 'primary-content' }),
+          expect.objectContaining({ path: 'properties.requested-by', role: 'metadata' }),
+        ]),
+      },
     });
+    const exactFields = (entity.properties.presentation as { fields: { path: string }[] }).fields;
+    expect(exactFields.map((field) => field.path)).not.toEqual(
+      expect.arrayContaining(['properties.checks', 'properties.diff']),
+    );
     expect(entity.actions.map((a) => a.name)).toEqual(['approve', 'reject']);
     // 机械 diff 原样入 properties(纯数据;渲染在 BIOS 内建面,零 AI)。
     expect(entity.properties.diff).toEqual(activationSnapshot('pending-approval').diff);
@@ -286,7 +305,11 @@ describe('meta/activation:<id> 激活实体投影(A.2 激活请求形状)', () =
     });
     expect(entity.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=meta/activation:a1' },
-      { rel: ['target'], href: '/api/entity?rel=meta/flow:post-status' },
+      {
+        rel: ['target'],
+        href: '/api/entity?rel=meta/flow:post-status',
+        title: '文章状态',
+      },
     ]);
   });
 
@@ -472,6 +495,31 @@ function capabilitySnapshot(): EngineSnapshot {
   };
 }
 
+function applicationSnapshot(): EngineSnapshot {
+  const definition = cloneFlow();
+  definition.app = 'publishing';
+  const article = JSON.parse(JSON.stringify(articleDraftingFlow)) as typeof articleDraftingFlow;
+  article.app = 'publishing';
+  const snapshot = metaSnapshot('active', definition, {
+    applications: {
+      publishing: { name: 'publishing', title: '内容发布', intent: '内容起草与发布。' },
+    },
+    capabilities: { draft: draftCapability },
+  });
+  return {
+    ...snapshot,
+    definitions: {
+      ...snapshot.definitions,
+      'article-drafting': {
+        name: 'article-drafting',
+        version: 1,
+        status: 'active',
+        definition: article,
+      },
+    },
+  };
+}
+
 describe('meta/capability:<name> 投影(T13 Phase C Task 3;spec 架构决定 3)', () => {
   it('属性表形状:class meta/capability-definition,properties {name,title,kind,intent,input,output}', () => {
     const entity = project(capabilitySnapshot(), 'meta/capability:draft', deps)!;
@@ -509,6 +557,35 @@ describe('meta/capability:<name> 投影(T13 Phase C Task 3;spec 架构决定 3)'
 
   it('未知 capability 名 → undefined(HTTP 层映射 404)', () => {
     expect(project(capabilitySnapshot(), 'meta/capability:ghost', deps)).toBeUndefined();
+  });
+
+  it('从 Application 定义事实为 capability 关系声明 title', () => {
+    const entity = project(applicationSnapshot(), 'meta/capability:draft', deps)!;
+    expect(entity.links).toContainEqual({
+      rel: ['application'],
+      href: '/api/entity?rel=meta/application:publishing',
+      title: '内容发布',
+    });
+  });
+});
+
+describe('meta/application:<name> 关系标题', () => {
+  it('从 bundle 中现有 Flow 与 Capability 定义声明任务标题', () => {
+    const entity = project(applicationSnapshot(), 'meta/application:publishing', deps)!;
+    expect(entity.links).toEqual(
+      expect.arrayContaining([
+        {
+          rel: ['flow'],
+          href: '/api/entity?rel=meta/flow:post-status',
+          title: '文章状态',
+        },
+        {
+          rel: ['capability'],
+          href: '/api/entity?rel=meta/capability:draft',
+          title: '工件起草',
+        },
+      ]),
+    );
   });
 });
 

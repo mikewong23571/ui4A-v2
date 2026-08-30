@@ -1,6 +1,7 @@
 import {
   mechanicalAgentDefinitionDiff,
   mechanicalFlowDiff,
+  metaExactPresentation,
   metaMemberPresentation,
   metaTopLevelPresentation,
   resolveRegisteredAgentDefinition,
@@ -389,11 +390,16 @@ export async function getDraftMetaEntity(
         target: found.aggregate.target,
         version: found.aggregate.activeVersion,
         validation: found.aggregate.versions[found.aggregate.activeVersion]!.validation,
+        presentation: metaExactPresentation('activation'),
       },
       actions: pending ? activationActions() : [],
       links: [
         { rel: ['self'], href: `/_meta/api/entity?rel=${encodeURIComponent(rel)}` },
-        { rel: ['draft'], href: `/_meta/api/entity?rel=${encodeURIComponent(`draft:${draftId}`)}` },
+        {
+          rel: ['draft'],
+          href: `/_meta/api/entity?rel=${encodeURIComponent(`draft:${draftId}`)}`,
+          title: `Draft ${draftId}`,
+        },
       ],
       'guard-results': pending
         ? activationActions().map((candidate) => ({
