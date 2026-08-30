@@ -5,3 +5,11 @@ Verified by orchestrator:
 - web typecheck and governance strict
 - Root Browser: RawContract Enter opens/lazy-renders, Escape closes and restores focus
 - Subagent Browser: revise fresh GET/POST/refresh, stale CAS preservation, 390px non-overlap and local raw scroll
+
+T39 Phase E checkpoint verified by orchestrator:
+- CI=true UI4A_WORKER_HEALTH_PORT=3199 pnpm check
+  - 438 test files passed, 4 skipped
+  - 3356 tests passed, 6 skipped
+- D51/public ownership: 5 files, 11 tests
+- Human-only/meta auth DB: 2 files, 10 tests
+- Root Browser personally verified current-view separation and RawContract keyboard/focus behavior
