@@ -1,7 +1,10 @@
+import type { CognitiveSemanticsProjectionV1 } from '@ui4a/engine';
+
 export interface MetaSitemapSurface {
   rel: string;
   title: string;
   collection?: boolean;
+  presentation?: CognitiveSemanticsProjectionV1;
 }
 
 export interface MetaSitemapDocument {

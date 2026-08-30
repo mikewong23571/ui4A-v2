@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+import { COGNITIVE_SEMANTICS_GROUP_ROLES } from '@ui4a/shared';
+
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { fetchMetaEntity, fetchMetaSitemap } from './meta-client';
+import { DashboardSurfaceGrid, DashboardSurfaceGroup } from './meta-dashboard-surfaces';
 import {
   browserHrefForMetaRel,
   projectMetaSurfaceDescriptors,
@@ -16,6 +19,8 @@ import {
 
 type DashboardFilter = 'all' | 'pending' | 'invalid';
 type LoadedEntity = Awaited<ReturnType<typeof fetchMetaEntity>>;
+
+const groupOrder = COGNITIVE_SEMANTICS_GROUP_ROLES;
 
 interface SearchEntry {
   rel: string;
@@ -141,6 +146,17 @@ export function MetaDashboard({
   }
 
   const descriptors = sitemap === null ? [] : projectMetaSurfaceDescriptors(sitemap);
+  const groupedDescriptors = groupOrder.flatMap((groupRole) => {
+    const entries = descriptors.filter((descriptor) => {
+      if (descriptor.presentation?.groupRole !== groupRole) return false;
+      if (groupRole !== 'responsibility') return true;
+      return collections[descriptor.rel]?.properties.count !== 0;
+    });
+    return entries.length === 0 ? [] : [{ groupRole, entries }];
+  });
+  const ungroupedDescriptors = descriptors.filter(
+    (descriptor) => descriptor.presentation?.groupRole === undefined,
+  );
   const ready = state === 'ready' || state === 'partial';
   return (
     <div className="space-y-6" data-testid={ready ? 'meta-content-ready' : undefined}>
@@ -276,44 +292,28 @@ export function MetaDashboard({
             )}
           </div>
 
-          <section aria-labelledby="meta-surfaces-heading">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 id="meta-surfaces-heading" className="text-lg font-semibold">
-                治理工作区
-              </h2>
-              <Badge variant="outline">{descriptors.length} 个授权面</Badge>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {descriptors.map((descriptor) => (
-                <a
-                  key={descriptor.rel}
-                  href={descriptor.href}
-                  data-testid="meta-surface"
-                  className="group rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                >
-                  <Card className="h-full gap-3 transition-colors group-hover:border-primary/50 group-hover:bg-accent/30">
-                    <CardHeader>
-                      <div className="flex items-start justify-between gap-3">
-                        <CardTitle className="text-base">{descriptor.title}</CardTitle>
-                        <Badge variant="secondary">
-                          {descriptor.kind === 'self' ? '系统' : '集合'}
-                        </Badge>
-                      </div>
-                      <CardDescription className="break-all">{descriptor.rel}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex items-center justify-between gap-2 text-sm text-primary">
-                      <span>打开工作区 →</span>
-                      {typeof collections[descriptor.rel]?.properties.count === 'number' && (
-                        <Badge variant="outline">
-                          {String(collections[descriptor.rel]!.properties.count)} 项
-                        </Badge>
-                      )}
-                    </CardContent>
-                  </Card>
-                </a>
-              ))}
-            </div>
-          </section>
+          <div className="flex justify-end">
+            <Badge variant="outline">{descriptors.length} 个授权面</Badge>
+          </div>
+          {groupedDescriptors.map(({ groupRole, entries }) => (
+            <DashboardSurfaceGroup
+              key={groupRole}
+              groupRole={groupRole}
+              descriptors={entries}
+              collections={collections}
+            />
+          ))}
+          {ungroupedDescriptors.length > 0 && (
+            <section aria-labelledby="meta-surfaces-heading">
+              <div className="mb-3">
+                <h2 id="meta-surfaces-heading" className="text-lg font-semibold">
+                  治理工作区
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">尚未声明认知分组的授权面。</p>
+              </div>
+              <DashboardSurfaceGrid descriptors={ungroupedDescriptors} collections={collections} />
+            </section>
+          )}
         </>
       )}
     </div>
