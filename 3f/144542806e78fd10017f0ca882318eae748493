@@ -1,0 +1,6 @@
+T39 Phase B Task B2 — bounded provider disclosure Green
+
+Summary: replaced cumulative full Siren observations with one current cognitive projection and bounded 8-member summaries; structured trail; visual policy sanitizer; final 32KiB UTF-8 provider body guard before fetch; split observation tests along GR3 boundary.
+Files: prompts.ts, llm-driver.ts, prompt-budget.test.ts, llm-driver.test.ts, llm-driver-observation.test.ts.
+Why: fixes real D41/D54 budget violations without narrowing public HTTP.
+Verification: orchestrator 26 files/214 tests, agent typecheck, GR3 size gate, diff check all passed.
