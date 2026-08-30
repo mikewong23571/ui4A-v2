@@ -6,7 +6,12 @@
  *   最近拒绝/当前授权实体的认知投影;原文 role 不被压成单个 prompt。
  */
 import type { DriverContext, TrailStep } from '../types';
-import type { SirenAction, SirenEntity, SirenFieldPresentation } from '@ui4a/engine';
+import {
+  parseCognitiveSemanticsProjection,
+  type SirenAction,
+  type SirenEntity,
+  type SirenFieldPresentation,
+} from '@ui4a/engine';
 import { sliceSitemapDisclosure } from '../contract/disclosure';
 
 const SYSTEM_PROMPT = [
@@ -115,14 +120,54 @@ function sanitizeFieldPresentation(value: unknown): SirenFieldPresentation | und
   };
 }
 
+function cognitiveFieldCandidate(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return {
+    ...(value.path === undefined ? {} : { path: value.path }),
+    ...(value.title === undefined ? {} : { title: value.title }),
+    ...(value.role === undefined ? {} : { role: value.role }),
+    ...(value.overview === undefined ? {} : { overview: value.overview }),
+    ...(value.contentMediaType === undefined
+      ? {}
+      : { contentMediaType: value.contentMediaType }),
+  };
+}
+
+function sanitizeCognitivePresentation(
+  value: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  const hasDeclaration = ['version', 'traits', 'groupRole', 'priority', 'emptyMeaning'].some(
+    (key) => value[key] !== undefined,
+  );
+  const hasFields = value.fields !== undefined;
+  if (!hasDeclaration && !hasFields) return undefined;
+  try {
+    const projection = parseCognitiveSemanticsProjection({
+      version: value.version,
+      ...(value.traits === undefined ? {} : { traits: value.traits }),
+      ...(value.groupRole === undefined ? {} : { groupRole: value.groupRole }),
+      ...(value.priority === undefined ? {} : { priority: value.priority }),
+      ...(value.emptyMeaning === undefined ? {} : { emptyMeaning: value.emptyMeaning }),
+      ...(hasFields
+        ? {
+            fields: Array.isArray(value.fields)
+              ? value.fields.map(cognitiveFieldCandidate)
+              : value.fields,
+          }
+        : {}),
+    });
+    return projection === undefined ? undefined : { ...projection };
+  } catch {
+    return undefined;
+  }
+}
+
 function sanitizePresentation(value: unknown): Record<string, unknown> | undefined {
   if (!isRecord(value)) return undefined;
-  const fields = Array.isArray(value.fields)
-    ? value.fields.map(sanitizeFieldPresentation).filter((field) => field !== undefined)
-    : undefined;
+  const cognition = sanitizeCognitivePresentation(value);
   const sanitized = {
-    ...(fields === undefined ? {} : { fields }),
-    ...(value.overview === undefined ? {} : { overview: value.overview }),
+    ...(cognition ?? {}),
+    // T38 collection filters are contract declarations beside, not part of, V1 cognition.
     ...(value.filters === undefined ? {} : { filters: value.filters }),
   };
   return Object.keys(sanitized).length === 0 ? undefined : sanitized;

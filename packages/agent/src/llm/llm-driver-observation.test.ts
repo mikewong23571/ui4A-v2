@@ -52,6 +52,7 @@ describe('授权合同观察进入 LLM prompt', () => {
       },
     });
     entity.properties.presentation = {
+      version: 1,
       fields: [
         {
           path: 'properties.fields.body',
@@ -87,6 +88,7 @@ describe('授权合同观察进入 LLM prompt', () => {
       fields: { title: '欢迎', body: '欢迎正文' },
     });
     welcome.properties.presentation = {
+      version: 1,
       fields: [
         {
           path: 'properties.fields.body',
@@ -233,6 +235,79 @@ describe('授权合同观察进入 LLM prompt', () => {
     expect(prompt).toContain('"scope"');
     expect(prompt).not.toContain('"inputSchema"');
     expect(prompt).not.toContain('"outputSchema"');
+  });
+
+  it('认知投影复用封闭 V1 词表并删除同层视觉策略', () => {
+    const entity = instanceEntity({
+      rel: 'comment:cognitive',
+      flow: 'comment-moderation',
+      node: 'pending',
+      fields: { body: '待审核内容' },
+    });
+    entity.properties.presentation = {
+      version: 1,
+      traits: ['human-responsibility'],
+      groupRole: 'responsibility',
+      priority: 'high',
+      emptyMeaning: 'no-current-responsibility',
+      fields: [
+        {
+          path: 'properties.fields.body',
+          title: '评论正文',
+          role: 'primary-content',
+          overview: true,
+        },
+      ],
+      layout: 'VISUAL_LAYOUT_MUST_NOT_REACH_PROVIDER',
+      component: 'VISUAL_COMPONENT_MUST_NOT_REACH_PROVIDER',
+      unknownFutureKey: 'UNKNOWN_PRESENTATION_MUST_NOT_REACH_PROVIDER',
+    } as never;
+
+    const prompt = buildUserPrompt(context({ currentRel: 'comment:cognitive', entity }));
+
+    expect(prompt).toContain('"version": 1');
+    expect(prompt).toContain('"human-responsibility"');
+    expect(prompt).toContain('"groupRole": "responsibility"');
+    expect(prompt).toContain('"priority": "high"');
+    expect(prompt).toContain('"emptyMeaning": "no-current-responsibility"');
+    expect(prompt).toContain('"role": "primary-content"');
+    expect(prompt).not.toContain('VISUAL_LAYOUT_MUST_NOT_REACH_PROVIDER');
+    expect(prompt).not.toContain('VISUAL_COMPONENT_MUST_NOT_REACH_PROVIDER');
+    expect(prompt).not.toContain('UNKNOWN_PRESENTATION_MUST_NOT_REACH_PROVIDER');
+  });
+
+  it('非法 cognition 整体 fail closed，独立 T38 filters 声明继续披露', () => {
+    const entity = instanceEntity({
+      rel: 'comments',
+      flow: 'comment-moderation',
+      node: 'pending',
+      fields: { body: '仍由字段合同读取' },
+    });
+    entity.properties.presentation = {
+      version: 1,
+      traits: ['UNDECLARED_COGNITIVE_TRAIT_MUST_NOT_REACH_PROVIDER'],
+      fields: [
+        {
+          path: 'properties.fields.body',
+          title: 'INVALID_COGNITION_FIELD_MUST_NOT_REACH_PROVIDER',
+          role: 'primary-content',
+        },
+      ],
+      filters: [
+        {
+          field: 'status',
+          title: '状态',
+          values: [{ value: 'pending', title: '待处理' }],
+        },
+      ],
+    } as never;
+
+    const prompt = buildUserPrompt(context({ currentRel: 'comments', entity }));
+
+    expect(prompt).toContain('"filters"');
+    expect(prompt).toContain('"field": "status"');
+    expect(prompt).not.toContain('UNDECLARED_COGNITIVE_TRAIT_MUST_NOT_REACH_PROVIDER');
+    expect(prompt).not.toContain('INVALID_COGNITION_FIELD_MUST_NOT_REACH_PROVIDER');
   });
 
   it('动态 action/capability 发现不在 system prompt 中硬编码故事动作名', () => {

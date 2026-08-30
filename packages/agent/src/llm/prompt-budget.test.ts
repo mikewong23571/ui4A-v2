@@ -334,6 +334,7 @@ function d54ObservationContext(): DriverContext {
     guardResults: [{ action: moderate.name, blocked: false }],
   });
   comment.properties.presentation = {
+    version: 1,
     fields: [
       {
         path: 'properties.fields.body',
@@ -648,6 +649,7 @@ describe('D54 current sanitized observation and non-cumulative disclosure', () =
     });
     for (const member of collection.entities ?? []) {
       member.properties.presentation = {
+        version: 1,
         fields: [
           {
             path: 'properties.fields.title',
