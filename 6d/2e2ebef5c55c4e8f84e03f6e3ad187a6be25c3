@@ -1,0 +1,7 @@
+T39 G17 browser validation repairs for US11-US18.
+
+Verified by orchestrator:
+- focused Presentation/Application: 24 files, 170 tests
+- shared/engine/web typecheck and governance strict
+- Subagent built-in Browser: seven installed Applications and future fixture, desktop/390, headings, overview, dedupe, empty state, responsive actions
+- generic runtime production scan: zero installed Application/rel/action branches
