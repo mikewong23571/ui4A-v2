@@ -3,3 +3,11 @@ T39 Phase B checkpoint correction — delegation restart prompt fixture
 Summary: migrated Temporal kill integration mock provider from old full-observation array heading to D54 current cognitive observation object; added restart prompt regression for current node/structural result with no old snapshot/params.
 Why: preserves delegation recovery after disclosure contract change without restoring cumulative observations.
 Verification: orchestrator kill integration 1/1, Agent 27 files/220 tests, agent typecheck and governance:strict passed.
+
+T39 Phase B Verification & Checkpoint
+
+Command: CI=true UI4A_WORKER_HEALTH_PORT=3199 pnpm check
+Result: typecheck passed; lint 0 errors (17 pre-existing warnings); governance:strict including check-d54 passed; 428 test files passed, 4 skipped; 3304 tests passed, 6 skipped.
+Checkpoint corrections: migrated T38 canonical byte anchor for CognitiveSemanticsV1; updated delegation kill mock provider to D54 current observation and added restart prompt regression.
+Contract evidence: provider samples ~14.3 KiB; real-shape/32KiB standing tests pass; Draft caller|client and Meta granted-union DB contracts pass; public HTTP completeness tests remain green.
+Decision: advance to Phase C.
