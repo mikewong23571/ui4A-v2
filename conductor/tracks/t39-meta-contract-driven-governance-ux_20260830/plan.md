@@ -57,7 +57,7 @@
 - [x] Task B1：Red——用真实 articles/comments/meta entity、多 observation、UTF-8、trail 和 conversation 编写最终 provider request 32,768-byte 门禁测试，并确认失败。4c1062d
 - [x] Task B2：Green——实现 current sanitized observation、旧完整 observation 替换、结构化 trail 和 fetch 前 runtime byte guard；公开 HTTP 不窄化。3f14454
 - [x] Task B3：Red——编写 `CognitiveSemanticsV1` 派生优先、封闭词表、未知版本和视觉策略拒绝测试，并确认失败。7d2f199
-- [ ] Task B4：Green——实现最小认知语义 projector；复用 field presentation，不引入 generic presentation blob。
+- [x] Task B4：Green——实现最小认知语义 projector；复用 field presentation，不引入 generic presentation blob。c78d977
 - [ ] Task B5：Red——编写 sitemap/exact 双投影同源、hash/fingerprint invalidation、HTTP/CLI 可见与 Assistant allowlist 测试，并确认失败。
 - [ ] Task B6：Green——接入同一 pure projector 双投影和 scoped prompt sanitizer。
 - [ ] Task B7：Red——编写 `caller|client` input ownership、server-owned public params 拒绝、commandId/baseVersion 重试与 Agent/CLI parity 测试，并确认失败。
