@@ -109,7 +109,7 @@
 
 **Subagent contract**：Goal=通用责任点、关系和三层披露；Non-goals=不按 action/class/rel 写专属页面、不改业务裁决；Changes=Meta common renderers、ActionRunner host adapter、link/raw disclosure 与相邻测试；Blast radius=禁止 engine judge/fold、worker/db、Application bundles 和 Chat。
 
-- [ ] Task F1：Red——编写 responsibility trait、任务/合同/raw 三层、`link.title` 与 `self` 退守测试，并确认失败。
+- [x] Task F1：Red——编写 responsibility trait、任务/合同/raw 三层、`link.title` 与 `self` 退守测试，并确认失败。7a9b032
 - [ ] Task F2：Green——实现通用责任点和关系词汇；inline/sticky、heading 与窄屏姿态由 Presentation policy 决定。
 - [ ] Task F3：Red——编写 guard reason、两段确认、已决原位反馈、待决集合退出和 Dashboard/collection/exact 同步测试，并确认失败。
 - [ ] Task F4：Green——统一 ActionRunner/Meta host 反馈，提交前继续 fresh read，并复用 Phase C cache invalidation。
