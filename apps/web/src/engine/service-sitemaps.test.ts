@@ -48,3 +48,37 @@ describe('business sitemap principal surfaces', () => {
     ]);
   });
 });
+
+describe('Meta sitemap cognitive contract', () => {
+  it('projects cognition as versioned surface data and leaves unknown exact children unclassified', () => {
+    const snapshot: EngineSnapshot = {
+      instances: {},
+      collections: {},
+      definitions: {
+        future: {
+          name: 'future',
+          version: 1,
+          status: 'active',
+          definition: { name: 'future', initial: 'ready', nodes: [{ name: 'ready', actions: [] }] },
+        },
+      },
+    };
+    const readers = createSitemapReaders(
+      () => snapshot,
+      () => [],
+    );
+    const sitemap = readers.currentMetaSitemap();
+    const byRel = new Map(sitemap.surfaces.map((surface) => [surface.rel, surface]));
+
+    expect(byRel.get('meta/activations')?.presentation).toMatchObject({
+      groupRole: 'responsibility',
+      priority: 'high',
+    });
+    expect(byRel.get('meta/applications')?.presentation).toMatchObject({
+      groupRole: 'definition',
+    });
+    expect(byRel.get('meta/self')?.presentation).toMatchObject({ groupRole: 'system' });
+    expect(byRel.get('meta/flow:future')?.presentation).toBeUndefined();
+    expect(readers.currentMetaSitemap()).toBe(sitemap);
+  });
+});

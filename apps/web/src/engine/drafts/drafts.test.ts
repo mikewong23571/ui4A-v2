@@ -487,6 +487,20 @@ describe('governed Agent Definition Draft vertical slice', () => {
     );
     expect(invalid.kind === 'accepted' && invalid.entity.properties.status).toBe('invalid');
     const rel = invalid.kind === 'accepted' ? String(invalid.entity.properties.rel) : '';
+    const collection = await getDraftMetaEntity(
+      pool,
+      engine,
+      'meta/drafts',
+      'user:mike',
+      'development',
+      registry,
+    );
+    expect(collection?.properties.presentation).toMatchObject({ groupRole: 'candidate' });
+    expect(collection?.entities?.[0]?.properties.presentation).toMatchObject({
+      fields: expect.arrayContaining([
+        expect.objectContaining({ path: 'properties.target', role: 'identity' }),
+      ]),
+    });
 
     const candidate = baseAgent({
       ref: 'review-agent@1',

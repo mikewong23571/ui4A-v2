@@ -209,6 +209,12 @@ describe('meta/flows 集合投影', () => {
     expect(entity.entities![0].rel).toEqual(['item']);
     expect(entity.entities![0].href).toBe('/api/entity?rel=meta/flow:post-status');
     expect(entity.entities![0].properties).toMatchObject({ name: 'post-status', status: 'active' });
+    expect(entity.properties.presentation).toMatchObject({ groupRole: 'definition' });
+    expect(
+      (entity.entities![0].properties.presentation as { fields: { path: string }[] }).fields.map(
+        (field) => field.path,
+      ),
+    ).toEqual(['properties.title', 'properties.status', 'properties.version']);
   });
 });
 
@@ -308,6 +314,15 @@ describe('meta/activation:<id> 激活实体投影(A.2 激活请求形状)', () =
     const queue = project(snapshotWith('pending-approval'), 'meta/activations', deps)!;
     expect(queue.class).toEqual(['collection', 'meta/activations']);
     expect(queue.properties).toMatchObject({ rel: 'meta/activations', count: 1 });
+    expect(queue.properties.presentation).toMatchObject({
+      groupRole: 'responsibility',
+      priority: 'high',
+    });
+    expect(queue.entities![0].properties.presentation).toMatchObject({
+      fields: expect.arrayContaining([
+        expect.objectContaining({ path: 'properties.flow', role: 'identity' }),
+      ]),
+    });
     expect(queue.entities![0].href).toBe('/api/entity?rel=meta/activation:a1');
 
     const decidedOnly = {
@@ -506,6 +521,12 @@ describe('meta/capabilities 集合投影', () => {
     expect(entity.entities![0]!.rel).toEqual(['item']);
     expect(entity.entities![0]!.href).toBe('/api/entity?rel=meta/capability:draft');
     expect(entity.entities![0]!.properties).toMatchObject({ name: 'draft', kind: 'extract' });
+    expect(entity.properties.presentation).toMatchObject({ groupRole: 'definition' });
+    expect(entity.entities![0]!.properties.presentation).toMatchObject({
+      fields: expect.arrayContaining([
+        expect.objectContaining({ path: 'properties.intent', role: 'primary-content' }),
+      ]),
+    });
   });
 
   it('capabilities 表缺省(过渡期)→ 空目录 count 0(面在场,成员为空)', () => {

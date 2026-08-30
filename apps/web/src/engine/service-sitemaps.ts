@@ -7,6 +7,7 @@ import {
   contentVersion,
   deriveSitemap,
   isMemberCollectionRel,
+  withMetaTopLevelPresentation,
   type FlowDefinition,
   type Sitemap,
   type SitemapSurface,
@@ -35,10 +36,21 @@ export function createSitemapReaders(
   const currentMetaSitemap = (): MetaSitemap => {
     const snapshot = getSnapshot();
     const surfaces: SitemapSurface[] = [
-      { rel: 'meta/self', title: 'definition-lifecycle(引擎自举)' },
-      { rel: 'meta/flows', title: '流程定义', collection: true },
-      { rel: 'meta/activations', title: '激活队列', collection: true },
-      { rel: 'meta/applications', title: '应用定义', collection: true },
+      withMetaTopLevelPresentation({
+        rel: 'meta/self',
+        title: 'definition-lifecycle(引擎自举)',
+      }),
+      withMetaTopLevelPresentation({ rel: 'meta/flows', title: '流程定义', collection: true }),
+      withMetaTopLevelPresentation({
+        rel: 'meta/activations',
+        title: '激活队列',
+        collection: true,
+      }),
+      withMetaTopLevelPresentation({
+        rel: 'meta/applications',
+        title: '应用定义',
+        collection: true,
+      }),
       ...Object.values(snapshot.applications ?? {}).map((application) => ({
         rel: `meta/application:${application.name}`,
         title: application.title,
@@ -47,7 +59,11 @@ export function createSitemapReaders(
         rel: metaFlowRel(entry.name),
         title: entry.definition.title ?? entry.name,
       })),
-      { rel: 'meta/capabilities', title: '能力目录', collection: true },
+      withMetaTopLevelPresentation({
+        rel: 'meta/capabilities',
+        title: '能力目录',
+        collection: true,
+      }),
       ...Object.values(snapshot.capabilities ?? {}).map((capability) => ({
         rel: metaCapabilityRel(capability.name),
         title: capability.title,

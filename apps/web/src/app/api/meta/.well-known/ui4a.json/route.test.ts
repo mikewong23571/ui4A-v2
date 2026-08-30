@@ -27,7 +27,12 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
     const sitemap = (await res.json()) as {
       version: string;
       site: string;
-      surfaces: { rel: string; title: string; collection?: boolean }[];
+      surfaces: {
+        rel: string;
+        title: string;
+        collection?: boolean;
+        presentation?: { groupRole?: string; priority?: string; fields?: unknown[] };
+      }[];
       effectiveScope: string;
       authorizedScopes: string[];
       authorizationMode: string;
@@ -75,6 +80,19 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
       'meta/drafts',
       'meta/agent-definitions',
     ]);
+    const byRel = new Map(sitemap.surfaces.map((surface) => [surface.rel, surface]));
+    expect(byRel.get('meta/activations')?.presentation).toMatchObject({
+      groupRole: 'responsibility',
+      priority: 'high',
+    });
+    expect(byRel.get('meta/drafts')?.presentation).toMatchObject({
+      groupRole: 'candidate',
+      priority: 'high',
+    });
+    expect(byRel.get('meta/applications')?.presentation).toMatchObject({
+      groupRole: 'definition',
+    });
+    expect(byRel.get('meta/self')?.presentation).toMatchObject({ groupRole: 'system' });
   });
 
   it('rejects a forged URL scope instead of silently widening or falling back', async () => {

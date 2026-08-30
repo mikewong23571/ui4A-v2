@@ -18,7 +18,13 @@ import { exportDefinitionBundle } from '../../definition/definition-bundle';
 import type { ActionDefinition, FlowDefinition } from '../../core/types';
 import { projectCognitiveSemantics } from '../cognitive-semantics';
 import { entityHref, guardResultsFor, toSirenAction } from './build';
+import { metaMemberPresentation, metaTopLevelPresentation } from './meta-presentation';
 import type { ProjectDeps, SirenEntity } from './types';
+
+function topLevelPresentationProperties(rel: string): Record<string, unknown> {
+  const presentation = metaTopLevelPresentation(rel);
+  return presentation === undefined ? {} : { presentation };
+}
 
 /** action-definition 子实体属性(A.2 原样:声明全文,不裁剪)。 */
 function actionDefinitionProperties(action: ActionDefinition): Record<string, unknown> {
@@ -110,6 +116,7 @@ function projectSelf(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
       // validating 的引擎内边参与推导(它无 exec 动作,否则会被误判 terminal)。
       terminal: terminalNodes(DEFINITION_LIFECYCLE_FLOW, LIFECYCLE_INTERNAL_EDGES),
       guards: Object.keys(deps.guards),
+      ...topLevelPresentationProperties('meta/self'),
     },
     entities: DEFINITION_LIFECYCLE_FLOW.nodes.map(projectNodeDefinition),
     actions: [],
@@ -266,13 +273,18 @@ function projectFlows(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity 
     const projected = projectFlowDefinition(snapshot, entry.name, deps)!;
     return {
       ...projected,
+      properties: { ...projected.properties, presentation: metaMemberPresentation('flow') },
       rel: ['item'],
       href: entityHref(deps.baseHref, `meta/flow:${entry.name}`),
     };
   });
   return {
     class: ['collection', 'meta/flows'],
-    properties: { rel: 'meta/flows', count: entries.length },
+    properties: {
+      rel: 'meta/flows',
+      count: entries.length,
+      ...topLevelPresentationProperties('meta/flows'),
+    },
     actions: [],
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'meta/flows') }],
     'guard-results': [],
@@ -335,14 +347,25 @@ function projectActivations(snapshot: EngineSnapshot, deps: ProjectDeps): SirenE
   const pending = Object.values(snapshot.activations ?? {}).filter(
     (activation) => activation.status === 'pending-approval',
   );
-  const entities = pending.map((activation) => ({
-    ...projectActivation(activation, snapshot, deps),
-    rel: ['item'],
-    href: entityHref(deps.baseHref, metaActivationRel(activation.id)),
-  }));
+  const entities = pending.map((activation) => {
+    const projected = projectActivation(activation, snapshot, deps);
+    return {
+      ...projected,
+      properties: {
+        ...projected.properties,
+        presentation: metaMemberPresentation('activation'),
+      },
+      rel: ['item'],
+      href: entityHref(deps.baseHref, metaActivationRel(activation.id)),
+    };
+  });
   return {
     class: ['collection', 'meta/activations'],
-    properties: { rel: 'meta/activations', count: pending.length },
+    properties: {
+      rel: 'meta/activations',
+      count: pending.length,
+      ...topLevelPresentationProperties('meta/activations'),
+    },
     actions: [],
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'meta/activations') }],
     'guard-results': [],
@@ -403,14 +426,25 @@ function projectCapability(
  */
 function projectCapabilities(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
   const entries = Object.values(snapshot.capabilities ?? {});
-  const entities = entries.map((capability) => ({
-    ...projectCapability(snapshot, capability, deps),
-    rel: ['item'],
-    href: entityHref(deps.baseHref, `${META_CAPABILITY_PREFIX}${capability.name}`),
-  }));
+  const entities = entries.map((capability) => {
+    const projected = projectCapability(snapshot, capability, deps);
+    return {
+      ...projected,
+      properties: {
+        ...projected.properties,
+        presentation: metaMemberPresentation('capability'),
+      },
+      rel: ['item'],
+      href: entityHref(deps.baseHref, `${META_CAPABILITY_PREFIX}${capability.name}`),
+    };
+  });
   return {
     class: ['collection', 'meta/capabilities'],
-    properties: { rel: 'meta/capabilities', count: entries.length },
+    properties: {
+      rel: 'meta/capabilities',
+      count: entries.length,
+      ...topLevelPresentationProperties('meta/capabilities'),
+    },
     actions: [],
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'meta/capabilities') }],
     'guard-results': [],
@@ -459,7 +493,11 @@ function projectApplications(snapshot: EngineSnapshot, deps: ProjectDeps): Siren
   const names = Object.keys(snapshot.applications ?? {});
   return {
     class: ['collection', 'meta/applications'],
-    properties: { rel: 'meta/applications', count: names.length },
+    properties: {
+      rel: 'meta/applications',
+      count: names.length,
+      ...topLevelPresentationProperties('meta/applications'),
+    },
     actions: [],
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'meta/applications') }],
     entities: names.map((name) => {
@@ -476,6 +514,7 @@ function projectApplications(snapshot: EngineSnapshot, deps: ProjectDeps): Siren
           flowCount: bundle.flows.length,
           capabilityCount: bundle.capabilities.length,
           policyCount: bundle.policies.length,
+          presentation: metaMemberPresentation('application'),
         },
         actions: [],
         links: [],

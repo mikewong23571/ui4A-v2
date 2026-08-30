@@ -26,12 +26,23 @@ describe('GET /_meta/api/entity', () => {
     expect(res.status).toBe(200);
     const entity = (await res.json()) as {
       class: string[];
-      properties: { rel: string; count: number };
-      entities: { href: string; properties: { name: string; status: string } }[];
+      properties: { rel: string; count: number; presentation: { groupRole: string } };
+      entities: {
+        href: string;
+        properties: {
+          name: string;
+          status: string;
+          presentation: { fields: { path: string }[] };
+        };
+      }[];
       links: { rel: string[]; href: string }[];
     };
     expect(entity.class).toEqual(['collection', 'meta/flows']);
-    expect(entity.properties).toEqual({ rel: 'meta/flows', count: 10 }); // T35 S9/S10:+todo/ideas
+    expect(entity.properties).toMatchObject({
+      rel: 'meta/flows',
+      count: 10,
+      presentation: { groupRole: 'definition' },
+    }); // T35 S9/S10:+todo/ideas
     expect(entity.entities.map((sub) => sub.properties.name)).toEqual([
       'article-drafting',
       'post-status',
@@ -47,6 +58,31 @@ describe('GET /_meta/api/entity', () => {
     ]);
     expect(entity.entities[1]?.href).toBe('/_meta/api/entity?rel=meta/flow:post-status');
     expect(entity.links).toEqual([{ rel: ['self'], href: '/_meta/api/entity?rel=meta/flows' }]);
+    expect(entity.entities[0]?.properties.presentation.fields.map((field) => field.path)).toEqual([
+      'properties.title',
+      'properties.status',
+      'properties.version',
+    ]);
+  });
+
+  it('meta/applications:embedded summaries publish the same declared overview wire', async () => {
+    const response = await GET(
+      new Request('http://localhost:3100/_meta/api/entity?rel=meta%2Fapplications'),
+    );
+    expect(response.status).toBe(200);
+    const entity = (await response.json()) as {
+      properties: { presentation: { groupRole: string } };
+      entities: { properties: { presentation: { fields: { path: string }[] } } }[];
+    };
+    expect(entity.properties.presentation.groupRole).toBe('definition');
+    expect(entity.entities[0]?.properties.presentation.fields.map((field) => field.path)).toEqual([
+      'properties.title',
+      'properties.intent',
+      'properties.version',
+      'properties.flowCount',
+      'properties.capabilityCount',
+      'properties.policyCount',
+    ]);
   });
 
   it('meta/flow:post-status:A.2 定义实体形状(properties/entities/actions=活跃态编辑动词)', async () => {

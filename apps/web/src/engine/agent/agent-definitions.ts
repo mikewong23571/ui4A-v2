@@ -3,6 +3,7 @@ import type {
   AgentEvalEvidence,
   SirenEntity,
 } from '@ui4a/engine';
+import { metaMemberPresentation, metaTopLevelPresentation } from '@ui4a/engine';
 import type { AgentDefinitionRef, JsonValue } from '@ui4a/shared';
 
 import {
@@ -275,7 +276,12 @@ export async function getAgentDefinitionMetaEntity(
     const entries = await getAgentDefinitionCatalog(db, principal, policyScope);
     return {
       class: ['collection', AGENT_DEFINITIONS_REL],
-      properties: { rel, count: entries.length, policyScope },
+      properties: {
+        rel,
+        count: entries.length,
+        policyScope,
+        presentation: metaTopLevelPresentation(AGENT_DEFINITIONS_REL),
+      },
       actions: [],
       entities: entries.map((entry) => ({
         class: ['agent-definition-summary'],
@@ -283,7 +289,7 @@ export async function getAgentDefinitionMetaEntity(
         href: `/_meta/api/entity?rel=${encodeURIComponent(
           `${AGENT_DEFINITION_PREFIX}${entry.ref}`,
         )}`,
-        properties: { ...entry },
+        properties: { ...entry, presentation: metaMemberPresentation('agent-definition') },
         actions: [],
         links: [],
       })),
@@ -336,7 +342,11 @@ export async function getAgentDefinitionMetaEntityForScopes(
   }
   return {
     ...base,
-    properties: { rel, count: members.size },
+    properties: {
+      rel,
+      count: members.size,
+      presentation: metaTopLevelPresentation(AGENT_DEFINITIONS_REL),
+    },
     entities: [...members.values()],
   };
 }

@@ -1,4 +1,4 @@
-import { contentVersion } from '@ui4a/engine';
+import { contentVersion, withMetaTopLevelPresentation } from '@ui4a/engine';
 
 import { getDb, getEngine } from '../../../../../engine/service';
 import { getAgentDefinitionCatalogForScopes } from '../../../../../engine/agent/agent-definitions';
@@ -75,8 +75,16 @@ export async function GET(request?: Request) {
       : current;
     const surfaces = [
       ...disclosed.surfaces,
-      { rel: 'meta/drafts', title: 'Governed Drafts', collection: true },
-      { rel: 'meta/agent-definitions', title: 'Specialized Agents', collection: true },
+      withMetaTopLevelPresentation({
+        rel: 'meta/drafts',
+        title: 'Governed Drafts',
+        collection: true,
+      }),
+      withMetaTopLevelPresentation({
+        rel: 'meta/agent-definitions',
+        title: 'Specialized Agents',
+        collection: true,
+      }),
       ...agents.map((agent) => ({
         rel: `meta/agent-definition:${agent.ref}`,
         title: agent.name,

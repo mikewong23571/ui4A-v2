@@ -156,6 +156,19 @@ describe('Agent Definition registry adapter and Siren', () => {
         'publishing',
       ),
     ).toBeUndefined();
+
+    const collection = await getAgentDefinitionMetaEntity(
+      pool,
+      'meta/agent-definitions',
+      'local-user',
+      'publishing',
+    );
+    expect(collection?.properties.presentation).toMatchObject({ groupRole: 'definition' });
+    expect(collection?.entities?.[0]?.properties.presentation).toMatchObject({
+      fields: expect.arrayContaining([
+        expect.objectContaining({ path: 'properties.intent', role: 'primary-content' }),
+      ]),
+    });
   });
 
   it('merges system seeds for any principal, keeps scope isolation, and lets personal active win', async () => {

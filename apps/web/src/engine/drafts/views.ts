@@ -1,6 +1,8 @@
 import {
   mechanicalAgentDefinitionDiff,
   mechanicalFlowDiff,
+  metaMemberPresentation,
+  metaTopLevelPresentation,
   resolveRegisteredAgentDefinition,
   resolveSubmissionPolicy,
   validateAgentDefinitionDraft,
@@ -173,6 +175,7 @@ export function draftSummary(aggregate: DraftAggregate): SirenEntity {
       owner: aggregate.owner,
       policyScope: aggregate.policyScope,
       expiresAt: aggregate.expiresAt,
+      presentation: metaMemberPresentation('draft'),
     },
     actions: [],
     links: [],
@@ -324,7 +327,13 @@ export async function getDraftMetaEntity(
     const drafts = await listDrafts(db, { owner: principal, policyScope });
     return {
       class: ['collection', 'meta/drafts'],
-      properties: { rel, count: drafts.length, limit: 20, policyScope },
+      properties: {
+        rel,
+        count: drafts.length,
+        limit: 20,
+        policyScope,
+        presentation: metaTopLevelPresentation('meta/drafts'),
+      },
       actions: [
         action(
           'create',
@@ -417,6 +426,7 @@ export async function getDraftMetaEntityForScopes(
       rel,
       count: members.size,
       limit: Number(base.properties.limit ?? 20),
+      presentation: metaTopLevelPresentation('meta/drafts'),
     },
     entities: [...members.values()],
   };
