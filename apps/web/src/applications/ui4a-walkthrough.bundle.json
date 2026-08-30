@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "ui4a-walkthrough",
-    "version": 9
+    "version": 10
   },
   "applications": [
     {
@@ -577,6 +577,17 @@
       "title": "软件变更实施",
       "app": "development",
       "initial": "implementation-ready",
+      "collections": [
+        {
+          "collection": "software-changes",
+          "filters": [{ "field": "status", "title": "实施状态" }]
+        }
+      ],
+      "cognitive": {
+        "version": 1,
+        "traits": ["work-queue", "task-history"],
+        "emptyMeaning": "ready-to-start"
+      },
       "nodes": [
         {
           "name": "implementation-ready",
@@ -708,13 +719,43 @@
         { "name": "accepted", "title": "已接受", "actions": [], "fields": [] },
         { "name": "rejected", "title": "已驳回", "actions": [], "fields": [] }
       ],
-      "fields": []
+      "fields": [
+        {
+          "name": "runId",
+          "title": "Agent Run",
+          "type": "text",
+          "presentation": { "role": "relation", "overview": true }
+        },
+        {
+          "name": "resultId",
+          "title": "实施结果",
+          "type": "text",
+          "presentation": { "role": "relation", "overview": true }
+        },
+        {
+          "name": "reason",
+          "title": "失败或驳回原因",
+          "type": "textarea",
+          "presentation": { "role": "primary-content", "overview": true }
+        }
+      ]
     },
     {
       "name": "writing-request",
       "title": "写作请求",
       "app": "editorial",
       "initial": "brief-draft",
+      "collections": [
+        {
+          "collection": "writing-requests",
+          "filters": [{ "field": "status", "title": "写作状态" }]
+        }
+      ],
+      "cognitive": {
+        "version": 1,
+        "traits": ["output-catalog", "task-history"],
+        "emptyMeaning": "ready-to-start"
+      },
       "nodes": [
         {
           "name": "brief-draft",
@@ -875,13 +916,44 @@
         { "name": "accepted", "title": "已接受（未发布）", "actions": [], "fields": [] },
         { "name": "rejected", "title": "已驳回", "actions": [], "fields": [] }
       ],
-      "fields": []
+      "fields": [
+        {
+          "name": "runId",
+          "title": "Agent Run",
+          "type": "text",
+          "presentation": { "role": "relation", "overview": true }
+        },
+        {
+          "name": "resultId",
+          "title": "写作结果（接受不等于发布）",
+          "type": "text",
+          "presentation": { "role": "relation", "overview": true }
+        },
+        {
+          "name": "reason",
+          "title": "失败原因",
+          "type": "textarea",
+          "presentation": { "role": "primary-content", "overview": true }
+        }
+      ]
     },
     {
       "name": "agent-definition-authoring",
       "title": "专业 Agent 起草",
       "app": "governance",
       "initial": "request-ready",
+      "collections": [
+        {
+          "collection": "agent-definition-requests",
+          "filters": [{ "field": "status", "title": "起草状态" }]
+        }
+      ],
+      "cognitive": {
+        "version": 1,
+        "traits": ["review-queue", "human-responsibility"],
+        "groupRole": "responsibility",
+        "emptyMeaning": "ready-to-start"
+      },
       "nodes": [
         {
           "name": "request-ready",
@@ -986,7 +1058,26 @@
           ]
         }
       ],
-      "fields": []
+      "fields": [
+        {
+          "name": "draftRel",
+          "title": "待审查 Definition Draft",
+          "type": "text",
+          "presentation": { "role": "relation", "overview": true }
+        },
+        {
+          "name": "runId",
+          "title": "Authoring Run",
+          "type": "text",
+          "presentation": { "role": "relation", "overview": true }
+        },
+        {
+          "name": "reason",
+          "title": "起草失败原因",
+          "type": "textarea",
+          "presentation": { "role": "primary-content", "overview": true }
+        }
+      ]
     }
   ],
   "seed": {
