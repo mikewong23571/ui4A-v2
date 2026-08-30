@@ -1,0 +1,4 @@
+T39 D3 Red contracts for Meta collection overview, totals, facets, and opaque links.
+
+Verified by orchestrator:
+- 4 expected failures across overview, total/truncation, declared facets, and opaque pagination
