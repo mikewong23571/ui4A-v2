@@ -98,7 +98,7 @@
 
 - [x] Task E1：Red——编写 Meta UI 消费 Phase B ownership、不把 Create Draft/完整 payload authoring 提升为主路径的测试，并确认失败。f450e12
 - [x] Task E2：Green——收敛 Draft collection/detail 首屏为 validation、diff、checks、sources、provenance 与当前 actions；advanced/raw ingress 退守下钻，不实现第二套 schema。f578847
-- [ ] Task E3：Red——编写 valid/invalid/stale Draft 审查、现场保留、返回 author/Assistant 修复和 human-only fresh-read decision 测试，并确认失败。
+- [x] Task E3：Red——编写 valid/invalid/stale Draft 审查、现场保留、返回 author/Assistant 修复和 human-only fresh-read decision 测试，并确认失败。f00ff75
 - [ ] Task E4：Green——实现通用 Draft 审查状态与责任点反馈，不生成专属修复表单。
 - [ ] Task E5：Red——编写“当前视角”任务文案、URL 连续、授权集合只读说明和无 lens UI 状态测试，并确认失败。
 - [ ] Task E6：Green——更新 lens 展示与审查现场恢复；运行时默认清理和授权并集语义复用 Phase C，不再实现第二处逻辑。
