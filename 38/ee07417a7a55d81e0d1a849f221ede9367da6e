@@ -1,0 +1,6 @@
+T39 D4 generic Meta collection overview implementation.
+
+Verified by orchestrator:
+- collection/generic/word tests: 5 files, 35 tests
+- pnpm --filter @ui4a/web typecheck
+- pnpm governance:strict
