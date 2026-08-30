@@ -1,0 +1,4 @@
+T39 G9 Red contracts for semantic intent policy, membership version, and visual-policy containment.
+
+Verified by orchestrator:
+- 6 expected failures, 5 existing assertions passed
