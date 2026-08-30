@@ -1,0 +1,6 @@
+T39 Phase A Task A8 — adopted spike synthesis
+
+Summary: retained one Track with Meta/Application milestones; adopted layered cognition, input ownership, scope-before-canonical, read-only application projection, prompt sanitizer/32KiB guard; deferred shelf preferences.
+Files: phase-a-spike.md.
+Why: converts A1-A7 evidence into bounded architecture decisions for A9.
+Verification: synthesis only; relies on orchestrator-verified A1-A7 probes and tests.
