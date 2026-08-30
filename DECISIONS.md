@@ -923,3 +923,68 @@
   空态/D-2 links 降级与状态标题化/D-7 弹层化/站点标签汉化/todo+ideas
   scopes/芯片前缀);修复三处产品缺陷(thread-desk/selector 控件缺
   data-nav、F-31 烙版后缀泄入服务端 patch、处境条窄视口横向溢出)。
+
+## D54 认知合同、Meta 单一路由、Application 图书馆与 Assistant 字节门(2026-08-30,T39 Phase A)
+
+- **背景**:T39 现场审计与 disposable probes 证明四类结构性偏差:(1)canonical
+  `/meta/entity` 与七条 richer 友好路由形成两套人类真相;(2)Application landing
+  只按“全部 pageable collection + entry”拼装,无法表达任务语义且有 default 名称
+  特判、跨 Meta entry、重复 entity/action;(3)Draft public schema 暴露 policyScope/
+  commandId 等非 caller 字段;(4)真实 `meta/flows` 与 `articles` provider request 分别
+  约 175 KiB/115 KiB,旧 32 KiB 小 fixture 门不能证明 D41,完整 Siren observations
+  还会跨 step 累积。依据为
+  `conductor/tracks/t39-meta-contract-driven-governance-ux_20260830/phase-a-spike.md`。
+- **决定**:
+  1. **认知语义派生优先、单源双投影**:action/SubmissionPolicy/Flow 归属与拓扑/
+     field presentation 能推导的语义不得重复声明;不可派生的稳定语义使用版本化、
+     封闭 `CognitiveSemanticsV1`。同一 pure projector 投影到 sitemap discovery 与
+     exact `properties.presentation`;前者进入 sitemap content hash,后者进入
+     entity-contract fingerprint。禁止平行 summary schema。
+  2. **视觉策略不是真相**:table/card/decision-list、desktop/narrow density、sticky/
+     inline、heading source、折叠、响应式、CSS/组件名永不进入 Application/Flow/Meta
+     定义。Meta 由通用 Renderer policy 决定姿态;workstation 由既有 Recipe/Sidecar/
+     generic Presentation policy 决定。HTTP/CLI 可见认知语义,Assistant 只消费显式
+     allowlist;“同一扇门”不要求 Agent 消费像素策略。
+  3. **action input ownership 单 wire**:JSON Schema property 可选 annotation
+     `x-ui4a-input-owner: client`;缺省/`caller` 由协议调用方提供并对 human/Agent
+     可见,`client` 由可信宿主在 caller schema 校验后注入再过完整 schema。server-owned
+     值不得出现在 public `action.fields`/params,只来自可信 execution context。Draft
+     create 删除请求 policyScope,kind 唯一决定时删除 schemaRef;commandId/观察到的
+     baseVersion 为 client-owned。同一逻辑重试复用 commandId;变参是新提交。RJSF、
+     Agent tools、CLI、Siren 与 server judgment 原子迁移,无 hidden widget/字段名 fallback/
+     双 schema/兼容 wire。
+  4. **Assistant disclosure 全量重建非累积并设运行时硬门**:扩展 D41/D51,“非累积”
+     包括 entity observations,不只 sitemap/tools。每个 decision 从 immutable full sitemap
+     重建 scoped cognitive slice、一个 current sanitized entity、current actions/tools 与
+     有界 `rel/action/result-ref` trail;禁止旧完整 Siren snapshot、raw bundle/payload/
+     definition、Recipe/Sidecar/Surface 与视觉策略进入 prompt。最终 provider request
+     `UTF-8 JSON <= 32768 bytes`;以发送前完整 body 为权威,超限在 fetch 前结构化诚实
+     失败,零网络/exec/mutation。公开 HTTP/CLI 不因该门窄化。
+  5. **Meta canonical 单一路由且 unlocated-first**:扩展 D51 并 supersede D32 的“旧友好
+     路由兼容”及 D46.5 的 `/meta/flow/*` bridge。先删除 canonical/old view/Situation
+     中 publishing/first-grant 默认 lens,缺 lens 是一等态且不参与授权;再以一个 cutover
+     注册 Flow/Activation/Capability specialization,切换全部内链/presence bridge,删除
+     七条友好 route、fetch wrappers 与硬编码 lists。无 redirect/rewrite/flag/compat test;
+     回滚是整体 revert。成功 Meta 写失效当前授权 Meta exact/collection/dashboard 依赖,
+     不只 executed rel。
+  6. **Application 是图书馆,Work Thread 是书桌**:新增纯投影、只读、零 action/event/
+     storage 的 business `application:<name>` Siren entity,从 active ApplicationDefinition
+     投影 title/intent/最小 traits/entry descriptor,按 name × grantedApplications 判权,
+     供 `workspace:app:<name>` binding;禁止 workstation 偷读 `meta/application:*`、复制
+     Surface literal 或给虚主体造事实。Application landing 只说明/发起能力,不聚合
+     principal 待批/进行中/最近事件;`/` 与 Work Thread 保持工作单位。
+  7. **Application/collection 最小语义与不变式**:当前仅需 Application
+     `system-fallback`,entry `{target,role}`(primary-create/primary-task/primary-collection/
+     resume),surface role(work-queue/review-queue/output-catalog/task-history/
+     human-responsibility/audit-only)。普通 entry 必须指向自身 business surface,禁止
+     `meta/`/`_meta`/`workspace:` 隐式 entry;collection owner 优先 Flow.collections、
+     次 append,歧义拒绝,extra surface 不发明归属。source 授权/alias 解析后按 canonical
+     rel 仅在 view 去重,完整 membership 仍入 dependency fingerprint。composition version
+     随声明内容变化,role 经通用 policy 对齐既有 exact intent,无 per-app intent 表。
+  8. **延期 Application shelf pin/recent**:现有 Sidecar pin 不是书架偏好;新增偏好需要
+     新事件/投影且非当前故事必要。T39 只使用 discoverability、定义顺序与当前 lens 轻强调,
+     不引入个人排序真相。
+- **影响**:T39 保留一个 Track,Phase B 为共享前置;Meta(C–F)与 Application(G)是可独立
+  运行/回滚 milestone,H 只做共同注视与最终 E2E。完整 Draft authoring 继续由外部 Agent/
+  CLI/Assistant 原话授权承担,Meta 人类主路径从 validation/diff/checks/provenance 与责任
+  decision 开始。不新增 package、数据库、事件族、UI framework 或页面 DSL。
