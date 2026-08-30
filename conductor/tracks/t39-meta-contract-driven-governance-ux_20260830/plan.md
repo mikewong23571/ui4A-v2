@@ -63,7 +63,7 @@
 - [x] Task B7：Red——编写 `caller|client` input ownership、server-owned public params 拒绝、commandId/baseVersion 重试与 Agent/CLI parity 测试，并确认失败。49f422a
 - [x] Task B8：Green——原子迁移 JSON Schema、RJSF、Agent tools、CLI、Siren 与 server validation；Draft create 从 trusted context 取 scope/schema。ed0c524
 - [x] Task B9：Red——编写 Meta sitemap base surfaces 按 granted union 披露、lens 不改变授权并集测试，并确认失败。151ef91
-- [ ] Task B10：Green——修正 Meta sitemap 授予并集投影，不引入 route 级 scope 选择。
+- [x] Task B10：Green——修正 Meta sitemap 授予并集投影，不引入 route 级 scope 选择。dd63bc9
 - [ ] Task B11：增加低误报治理：禁止定义内 CSS/组件/设备策略、runtime per-app/per-rel 分支、server-owned public params 和视觉策略进 prompt；扫描排除合法 bundle 数据。
 - [ ] Task B12：Phase Verification & Checkpoint：focused tests、typecheck、`pnpm governance:strict`、D51、真实 prompt budget 和公开合同完整性全绿。
 
