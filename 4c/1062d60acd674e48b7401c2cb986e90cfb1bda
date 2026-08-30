@@ -1,0 +1,6 @@
+T39 Phase B Task B1 — D54 prompt budget Red tests
+
+Summary: added real-shape observations, UTF-8 conversation/trail/visual markers, public HTTP completeness and dynamically calibrated 32,768/32,769 provider body tests.
+Files: packages/agent/src/llm/prompt-budget.test.ts.
+Why: reproduces full observation leakage and missing fetch-time budget guard without fixture/type failures.
+Verification: agent typecheck passed; orchestrator confirmed focused Red 7 pass/2 expected fail and diff-size governance OK.
