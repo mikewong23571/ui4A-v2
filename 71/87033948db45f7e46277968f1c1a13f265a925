@@ -1,0 +1,6 @@
+T39 Phase C Task C1 — unlocated lens Red tests
+
+Summary: defined no-default behavior for canonical Meta page, old Flow view, Situation, Chat headless and local Meta context; preserved explicit>presence>unlocated and grant-union visibility.
+Files: six focused Web tests including new canonical page test.
+Why: D51 attention cannot steal publishing/first grant or alter authorization.
+Verification: orchestrator confirmed unit 5 expected Red/16 pass, DB 2 expected Red/9 pass, web typecheck and GR3 passed.
