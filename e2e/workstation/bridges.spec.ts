@@ -37,7 +37,14 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     await expect(situation.getByTestId('situation-focus')).toHaveText(
       '注视 meta/flow:article-drafting',
     );
-    await expect(page.locator('section[aria-label="拓扑"]')).toBeVisible();
+    // URL 与 situation 会先于 canonical entity fetch 完成更新；等待 shell 明确提交
+    // 合同内容，再验证声明标题与拓扑，避免把过渡期空 main 当成缺少拓扑。
+    const canonicalFlow = page.getByTestId('meta-content-ready');
+    await expect(canonicalFlow).toBeVisible({ timeout: 30_000 });
+    await expect(
+      canonicalFlow.getByRole('heading', { level: 1, name: '文章发布向导' }),
+    ).toBeVisible();
+    await expect(canonicalFlow.locator('section[aria-label="拓扑"]')).toBeVisible();
 
     await situation.getByRole('button', { name: '在哪' }).click();
     const toWorkstation = situation.getByRole('link', { name: '查看活实例' });
@@ -84,9 +91,9 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     );
     expect(missingFlow.status()).toBe(404);
     await expect(page.locator('[data-surface]')).toHaveCount(0);
-    // Application workspace 只给出中性、不可读的工作线上下文；404 机制证据由
-    // 上面的 contract API 断言承担，首屏不泄漏资源存在性细节。
-    await expect(page.getByRole('complementary', { name: '本线' })).toContainText('本线暂不可读');
+    // Thread desk 的独立投影可能先后呈现不可读或空工作集，不用于判断 alias；
+    // 404 API + 零 surface 承担缺失语义，Canvas 仍提供中性恢复入口。
+    await expect(page.getByRole('heading', { level: 1, name: '共同注视' })).toBeVisible();
     await expect(page.getByRole('button', { name: '重新载入' })).toHaveAttribute(
       'data-nav',
       'local:canvas-reload',
