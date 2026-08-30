@@ -32,7 +32,7 @@ export type CognitiveSemanticsEmptyMeaning = (typeof COGNITIVE_SEMANTICS_EMPTY_M
 /** Versioned declaration containing cognition only: no facts, fields, or visual policy. */
 export interface CognitiveSemanticsDeclarationV1 {
   version: 1;
-  traits?: CognitiveSemanticsTrait[];
+  traits?: readonly CognitiveSemanticsTrait[];
   groupRole?: CognitiveSemanticsGroupRole;
   priority?: CognitiveSemanticsPriority;
   emptyMeaning?: CognitiveSemanticsEmptyMeaning;

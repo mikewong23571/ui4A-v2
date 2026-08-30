@@ -532,6 +532,7 @@ describe('project — 实体显示 hint(概览列,T38 FR4)', () => {
   it('hint 经 fieldPresentations 携带(overview:true),未声明字段零新键', () => {
     const entity = project(seedSnapshot, 'post:post-welcome', hintedDeps);
     expect(entity?.properties.presentation).toEqual({
+      version: 1,
       fields: [
         { path: 'properties.fields.title', title: '文章标题', role: 'identity', overview: true },
         { path: 'properties.fields.body', title: '正文', role: 'primary-content', overview: true },

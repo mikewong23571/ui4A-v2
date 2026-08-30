@@ -13,6 +13,7 @@ import type {
   LastNavigationFact,
   PresentationIntent,
   SirenEntity,
+  CognitiveSemanticsProjectionV1,
 } from '@ui4a/engine';
 
 export type { PresentationIntent } from '@ui4a/engine';
@@ -246,6 +247,7 @@ export interface DriverContext {
 export interface SitemapApplicationSummary {
   name: string;
   intent: string;
+  presentation?: CognitiveSemanticsProjectionV1;
   flows: SitemapFlowSummary[];
 }
 
@@ -280,7 +282,12 @@ export interface SitemapCapabilitySummary {
 /** sitemap 中 driver 需要的最小投影(surfaces 的 rel/title + applications 分组)。 */
 export interface SitemapSummary {
   version: string;
-  surfaces: { rel: string; title: string; app?: string }[];
+  surfaces: {
+    rel: string;
+    title: string;
+    app?: string;
+    presentation?: CognitiveSemanticsProjectionV1;
+  }[];
   /**
    * 按 app 分组的发现面(T10):agent 先读 intent 定位 app,再在组内选 flow。
    * 端点未提供(旧形状)时解析为空数组;扁平 surfaces 始终保留(向后兼容)。

@@ -406,7 +406,7 @@ function d54ObservationContext(): DriverContext {
           title: '评论审核',
           app: 'community',
           presentation: { density: 'decision-list', marker: VISUAL_POLICY_MARKER },
-        } as SitemapSummary['surfaces'][number],
+        } as unknown as SitemapSummary['surfaces'][number],
         { rel: 'meta/flows', title: 'Flow 定义', app: 'governance' },
       ],
       applications: [

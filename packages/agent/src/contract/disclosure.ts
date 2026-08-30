@@ -1,3 +1,5 @@
+import { parseCognitiveSemanticsProjection } from '@ui4a/engine';
+
 import type { SitemapApplicationSummary, SitemapCapabilitySummary, SitemapSummary } from '../types';
 
 export interface SitemapDisclosureScope {
@@ -5,15 +7,59 @@ export interface SitemapDisclosureScope {
   currentRel?: string;
 }
 
-function copyApplication(application: SitemapApplicationSummary): SitemapApplicationSummary {
+function cognitiveFieldDisclosure(value: unknown): Record<string, unknown> | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
+  const source = value as Record<string, unknown>;
   return {
-    ...application,
+    path: source.path,
+    title: source.title,
+    ...(source.role === undefined ? {} : { role: source.role }),
+    ...(source.overview === undefined ? {} : { overview: source.overview }),
+    ...(source.contentMediaType === undefined ? {} : { contentMediaType: source.contentMediaType }),
+  };
+}
+
+function copyApplication(application: SitemapApplicationSummary): SitemapApplicationSummary {
+  const presentation = cognitiveDisclosure(application.presentation);
+  return {
+    name: application.name,
+    intent: application.intent,
+    ...(presentation === undefined ? {} : { presentation }),
     flows: application.flows.map((flow) => ({
       ...flow,
       ...(flow.actions === undefined
         ? {}
         : { actions: flow.actions.map((action) => ({ ...action, guards: [...action.guards] })) }),
     })),
+  };
+}
+
+function cognitiveDisclosure(value: unknown) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
+  const source = value as Record<string, unknown>;
+  const fields = Array.isArray(source.fields)
+    ? source.fields.map(cognitiveFieldDisclosure).filter((field) => field !== undefined)
+    : source.fields;
+  try {
+    return parseCognitiveSemanticsProjection({
+      version: source.version,
+      ...(source.traits === undefined ? {} : { traits: source.traits }),
+      ...(source.groupRole === undefined ? {} : { groupRole: source.groupRole }),
+      ...(source.priority === undefined ? {} : { priority: source.priority }),
+      ...(source.emptyMeaning === undefined ? {} : { emptyMeaning: source.emptyMeaning }),
+      ...(source.fields === undefined ? {} : { fields }),
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+function copySurface(surface: SitemapSummary['surfaces'][number]) {
+  const { presentation: sourcePresentation, ...rest } = surface;
+  const presentation = cognitiveDisclosure(sourcePresentation);
+  return {
+    ...rest,
+    ...(presentation === undefined ? {} : { presentation }),
   };
 }
 
@@ -66,7 +112,7 @@ export function sliceSitemapDisclosure(
     version: sitemap.version,
     surfaces: sitemap.surfaces.map((surface) =>
       scope === undefined || surface.app === undefined || surface.app === scope
-        ? { ...surface }
+        ? copySurface(surface)
         : { rel: surface.rel, title: surface.title },
     ),
     applications,

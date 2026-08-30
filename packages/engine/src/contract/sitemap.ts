@@ -16,6 +16,11 @@ import type {
   FlowDefinition,
 } from '../core/types';
 import { fieldDefinitionsToJsonSchema, mergeFieldDefinitions } from './schema';
+import {
+  projectCognitiveSemantics,
+  type CognitiveSemanticsProjectionV1,
+} from './cognitive-semantics';
+import { fieldPresentationsOf } from './siren/build';
 
 /** 界面清单条目:资源 rel / 标题(集合或 flow 定义实体)。 */
 export interface SitemapSurface {
@@ -38,6 +43,7 @@ export interface SitemapSurface {
    * 类型上可选(meta 站 surface 复用本类型、无 app 语义),业务 sitemap 投影恒填。
    */
   app?: string;
+  presentation?: CognitiveSemanticsProjectionV1;
 }
 
 /** action 摘要(含参数 schema,agent 工具投影的原料)。 */
@@ -88,6 +94,7 @@ export interface SitemapApplication {
   intent: string;
   /** T35 F-23:默认入口(定义 entry 透传;人与 agent 共用的"同一扇门")。 */
   entry?: string;
+  presentation?: CognitiveSemanticsProjectionV1;
   flows: SitemapFlow[];
 }
 
@@ -256,11 +263,19 @@ export function deriveSitemap(
   // 界面清单:flow 定义实体 + append 目标集合(首次出现序,去重)。
   // app 归属口径:flow 面取其 flow.app(归一化后);集合面取首次 append 它的
   // flow 的 app(append 效果出现在哪个 flow,集合面就归属哪个 flow)。
-  const surfaces: SitemapSurface[] = sitemapFlows.map((flow) => ({
-    rel: `flow:${flow.name}`,
-    title: flow.title,
-    app: flow.app,
-  }));
+  const surfaces: SitemapSurface[] = sitemapFlows.map((flow, index) => {
+    const definition = flows[index]!;
+    const presentation = projectCognitiveSemantics({
+      declaration: definition.cognitive,
+      fieldPresentations: fieldPresentationsOf(definition.fields ?? [], {}),
+    });
+    return {
+      rel: `flow:${flow.name}`,
+      title: flow.title,
+      app: flow.app,
+      ...(presentation === undefined ? {} : { presentation }),
+    };
+  });
   const seenCollections = new Set<string>();
   for (const flow of flows) {
     const app = flow.app ?? 'default';
@@ -297,13 +312,17 @@ export function deriveSitemap(
   // (与扁平表共享同一份条目)。flow.app 指向未定义 app 时仅留在扁平表——
   // app-known 不变式保证生产侧不可达,此处不静默归并也不炸。
   const applications: SitemapApplication[] = Object.values(options?.applications ?? {}).map(
-    (app) => ({
-      name: app.name,
-      title: app.title,
-      intent: app.intent,
-      ...(app.entry === undefined ? {} : { entry: app.entry }),
-      flows: sitemapFlows.filter((flow) => flow.app === app.name),
-    }),
+    (app) => {
+      const presentation = projectCognitiveSemantics({ declaration: app.cognitive });
+      return {
+        name: app.name,
+        title: app.title,
+        intent: app.intent,
+        ...(app.entry === undefined ? {} : { entry: app.entry }),
+        ...(presentation === undefined ? {} : { presentation }),
+        flows: sitemapFlows.filter((flow) => flow.app === app.name),
+      };
+    },
   );
 
   const capabilityScopes = new Map<string, { applications: Set<string>; flows: string[] }>();

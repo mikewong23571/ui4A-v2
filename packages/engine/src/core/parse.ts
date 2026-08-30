@@ -6,7 +6,7 @@
  * app 缺省 → 'default'(T10 架构决定 2))。
  * T4 的 meta 平台激活不变式(edge-targets-exist 等)在本层之上叠加。
  */
-import { KNOWN_EFFECT_TYPES } from '@ui4a/shared';
+import { KNOWN_EFFECT_TYPES, parseCognitiveSemanticsDeclaration } from '@ui4a/shared';
 import type { ApplicationDefinition, CapabilityDefinition } from '@ui4a/shared';
 
 import type { ActionDefinition, EffectDefinition, FlowDefinition, NodeDefinition } from './types';
@@ -77,6 +77,18 @@ function submissionIssue(value: unknown, path: string): FlowIssue | undefined {
   return undefined;
 }
 
+function cognitiveIssue(value: unknown, path: string): FlowIssue | undefined {
+  try {
+    parseCognitiveSemanticsDeclaration(value);
+    return undefined;
+  } catch (error) {
+    return {
+      path,
+      message: error instanceof Error ? error.message : 'cognitive 必须是合法认知语义声明',
+    };
+  }
+}
+
 /** 结构校验:形状对不对(字段类型级)。 */
 function structuralIssues(input: unknown): FlowIssue[] {
   const issues: FlowIssue[] = [];
@@ -95,6 +107,8 @@ function structuralIssues(input: unknown): FlowIssue[] {
   }
   const flowSubmission = submissionIssue(input.submission, 'submission');
   if (flowSubmission !== undefined) issues.push(flowSubmission);
+  const flowCognitive = cognitiveIssue(input.cognitive, 'cognitive');
+  if (flowCognitive !== undefined) issues.push(flowCognitive);
   // 集合面读面能力声明(T38 FR3):形状级校验(实现在 parse-collections,GR3 分解)。
   issues.push(...collectionStructuralIssues(input));
   if (!Array.isArray(input.nodes) || input.nodes.length === 0) {
@@ -348,6 +362,9 @@ export function parseFlowDefinition(input: unknown): FlowDefinition {
     title: record.title ?? record.name,
     fields: [...(record.fields ?? [])],
     nodes: record.nodes.map(normalizeNode),
+    ...(record.cognitive === undefined
+      ? {}
+      : { cognitive: parseCognitiveSemanticsDeclaration(record.cognitive) }),
   };
 }
 
@@ -371,6 +388,8 @@ function applicationStructuralIssues(input: unknown): FlowIssue[] {
   }
   const submission = submissionIssue(input.submission, 'submission');
   if (submission !== undefined) issues.push(submission);
+  const cognitive = cognitiveIssue(input.cognitive, 'cognitive');
+  if (cognitive !== undefined) issues.push(cognitive);
   return issues;
 }
 
@@ -392,6 +411,9 @@ export function parseApplicationDefinition(input: unknown): ApplicationDefinitio
     intent: record.intent,
     ...(record.entry !== undefined ? { entry: record.entry } : {}),
     ...(record.submission !== undefined ? { submission: record.submission } : {}),
+    ...(record.cognitive === undefined
+      ? {}
+      : { cognitive: parseCognitiveSemanticsDeclaration(record.cognitive) }),
   };
 }
 

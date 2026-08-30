@@ -40,6 +40,7 @@ import {
   type CollectionQuery,
 } from './collection-query';
 import { projectMeta } from './project-meta';
+import { projectCognitiveSemantics } from '../cognitive-semantics';
 import type { ProjectDeps, SirenEntity, SirenLink } from './types';
 
 function collectionIdentity(title: string): Record<string, unknown> {
@@ -64,6 +65,10 @@ function projectInstance(
   const fields = fieldValues(instance.fields);
   // 字段呈现元数据(含 T38 FR4 概览 hint 携带)单点实现在 build.fieldPresentationsOf。
   const fieldPresentations = fieldPresentationsOf(fieldDefinitions, fields);
+  const presentation = projectCognitiveSemantics({
+    declaration: flow?.cognitive,
+    fieldPresentations,
+  });
   const identityPresentation = fieldPresentations.find((field) => field.role === 'identity');
   const identityName = identityPresentation?.path.split('.').at(-1);
   const explicitIdentity = identityName === undefined ? undefined : fields[identityName];
@@ -104,7 +109,7 @@ function projectInstance(
       identity: explicitIdentity ?? flow?.title ?? instance.rel,
       status: instance.node,
       fields,
-      presentation: { fields: fieldPresentations },
+      ...(presentation === undefined ? {} : { presentation }),
     },
     actions: actions.map((action) => toSirenAction(action, node?.fields ?? [], deps.baseHref)),
     links,

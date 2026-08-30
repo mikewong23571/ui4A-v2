@@ -14,6 +14,7 @@
 import type { ParamOrigin } from './state';
 import type { SubmissionPolicy } from '../submission';
 import type { AgentDefinitionRef } from '../agent/agent-definition';
+import type { CognitiveSemanticsDeclarationV1 } from './cognitive-semantics';
 
 /** 字段语义(arch-brief §2:四种)。 */
 export type FieldSemantics = 'org-standard' | 'intent' | 'work-product' | 'elicitation';
@@ -233,6 +234,8 @@ export interface FlowDefinition {
   collections?: CollectionSurfaceDeclaration[];
   /** Candidate definition/content ingress defaults to Draft unless explicitly tightened. */
   submission?: SubmissionPolicy;
+  /** Stable cognitive meaning only; visual posture remains Presentation policy. */
+  cognitive?: CognitiveSemanticsDeclarationV1;
 }
 
 /**
@@ -250,6 +253,8 @@ export interface ApplicationDefinition {
   /** 默认入口(路线 T3 默认页消费;本 track 仅落字段)。 */
   entry?: string;
   submission?: SubmissionPolicy;
+  /** Stable cognitive meaning only; visual posture remains Presentation policy. */
+  cognitive?: CognitiveSemanticsDeclarationV1;
 }
 
 /** capability 类别(arch-brief 第七层三类动词:转换/提取/效应)。 */

@@ -6,7 +6,7 @@
  * 错误语义:网络异常不抛出,折算为"不可得/拒绝"结果交循环按数据处理
  * (失败也是合同的一部分,B4 的委托不崩溃前提)。
  */
-import type { SirenEntity } from '@ui4a/engine';
+import { parseCognitiveSemanticsProjection, type SirenEntity } from '@ui4a/engine';
 
 import type {
   FetchLike,
@@ -178,7 +178,13 @@ function asApplicationSummaries(value: unknown): SitemapApplicationSummary[] {
       title: flow.title,
       ...(flow.actions === undefined ? {} : { actions: flow.actions }),
     }));
-    applications.push({ name: entry.name, intent: entry.intent, flows });
+    const presentation = parseCognitiveSemanticsProjection(entry.presentation);
+    applications.push({
+      name: entry.name,
+      intent: entry.intent,
+      ...(presentation === undefined ? {} : { presentation }),
+      flows,
+    });
   }
   return applications;
 }
@@ -233,16 +239,27 @@ export function createContractClient(baseUrl: string, fetchImpl: FetchLike): Con
         if (!Array.isArray(body.surfaces)) return undefined;
         const surfaces = body.surfaces
           .filter(
-            (surface): surface is { rel: string; title: string; app?: string } =>
+            (
+              surface,
+            ): surface is {
+              rel: string;
+              title: string;
+              app?: string;
+              presentation?: unknown;
+            } =>
               isPlainObject(surface) &&
               typeof surface.rel === 'string' &&
               typeof surface.title === 'string',
           )
-          .map((surface) => ({
-            rel: surface.rel,
-            title: surface.title,
-            ...(typeof surface.app === 'string' ? { app: surface.app } : {}),
-          }));
+          .map((surface) => {
+            const presentation = parseCognitiveSemanticsProjection(surface.presentation);
+            return {
+              rel: surface.rel,
+              title: surface.title,
+              ...(typeof surface.app === 'string' ? { app: surface.app } : {}),
+              ...(presentation === undefined ? {} : { presentation }),
+            };
+          });
         return {
           version: body.version,
           surfaces,

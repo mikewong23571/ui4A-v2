@@ -16,6 +16,7 @@ import { DEFINITION_LIFECYCLE_FLOW, LIFECYCLE_INTERNAL_EDGES } from '../../defin
 import { actionEffects } from '../../core/parse';
 import { exportDefinitionBundle } from '../../definition/definition-bundle';
 import type { ActionDefinition, FlowDefinition } from '../../core/types';
+import { projectCognitiveSemantics } from '../cognitive-semantics';
 import { entityHref, guardResultsFor, toSirenAction } from './build';
 import type { ProjectDeps, SirenEntity } from './types';
 
@@ -426,6 +427,7 @@ function projectApplication(
   if (application === undefined) return undefined;
   const rel = `meta/application:${name}`;
   const bundle = exportDefinitionBundle(snapshot, name);
+  const presentation = projectCognitiveSemantics({ declaration: application.cognitive });
   return {
     class: ['meta', 'application-definition'],
     properties: {
@@ -434,6 +436,7 @@ function projectApplication(
       status: 'active',
       version: bundle.bundle.version,
       bundle,
+      ...(presentation === undefined ? {} : { presentation }),
     },
     actions: [],
     links: [

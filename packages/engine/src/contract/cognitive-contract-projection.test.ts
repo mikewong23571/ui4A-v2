@@ -38,11 +38,11 @@ const applicationCognition = {
   emptyMeaning: 'ready-to-start' as const,
 };
 
-type CognitiveFlow = FlowDefinition & { cognitive?: unknown };
-type CognitiveApplication = ApplicationDefinition & { cognitive?: unknown };
+type CognitiveFlow = FlowDefinition;
+type CognitiveApplication = ApplicationDefinition;
 type PublicPresentation = ReturnType<typeof projectCognitiveSemantics>;
 
-function cognitiveFlow(cognition: unknown = flowCognition): CognitiveFlow {
+function cognitiveFlow(cognition: FlowDefinition['cognitive'] = flowCognition): CognitiveFlow {
   return {
     ...postStatusFlow,
     app: 'publishing',
@@ -64,7 +64,9 @@ function cognitiveFlow(cognition: unknown = flowCognition): CognitiveFlow {
   };
 }
 
-function cognitiveApplication(cognition: unknown = applicationCognition): CognitiveApplication {
+function cognitiveApplication(
+  cognition: ApplicationDefinition['cognitive'] = applicationCognition,
+): CognitiveApplication {
   return {
     name: 'publishing',
     title: '内容发布',
