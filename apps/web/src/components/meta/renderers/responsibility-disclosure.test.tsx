@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
@@ -78,7 +78,11 @@ function futureEntity({ responsibility = true }: { responsibility?: boolean } = 
   };
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe('contract-driven Meta responsibility and disclosure', () => {
   it('promotes a future entity responsibility from traits, facts, guards and actions', () => {
@@ -104,6 +108,140 @@ describe('contract-driven Meta responsibility and disclosure', () => {
     expect(next.parentElement?.textContent).toContain('记录发布裁决');
     expect(next.parentElement?.textContent).toContain('仍需独立安全复核');
     expect(within(responsibility).getByRole('button', { name: '记录发布裁决' })).toBeTruthy();
+  });
+
+  it('keeps an unknown blocked action in place with its contract reason and never submits it', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <MetaEntityRenderer
+        rel="meta/future-gate:rollout-9"
+        navigation={{ scope: 'governance' }}
+        entity={futureEntity()}
+      />,
+    );
+
+    const blocked = screen.getByRole('button', { name: '记录发布裁决' });
+    expect(blocked.hasAttribute('disabled')).toBe(true);
+    expect(blocked.getAttribute('title')).toBe('仍需独立安全复核');
+    expect(screen.getAllByText('仍需独立安全复核').length).toBeGreaterThan(0);
+    fireEvent.click(blocked);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('stages any future high-risk action and renders its returned outcome instead of naming it', async () => {
+    const current = futureEntity();
+    current.actions = [
+      {
+        ...current.actions[0]!,
+        name: 'seal-nebula-window-v12',
+        title: '封闭未来窗口',
+        'requires-confirmation': 'high',
+      },
+    ];
+    current['guard-results'] = [
+      {
+        action: 'seal-nebula-window-v12',
+        blocked: false,
+        guards: [],
+      },
+    ];
+    const decided: SirenEntity = {
+      ...current,
+      properties: {
+        ...current.properties,
+        status: 'settled',
+        decisionReceipt: { outcome: 'accepted', principal: 'user:mike', revision: 12 },
+      },
+      actions: [],
+      'guard-results': [],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(current), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ entity: decided }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <MetaEntityRenderer
+        rel="meta/future-gate:rollout-9"
+        navigation={{ scope: 'governance' }}
+        entity={current}
+      />,
+    );
+
+    const trigger = screen.getByRole('button', { name: '封闭未来窗口' });
+    fireEvent.click(trigger);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/已请求.*尚未执行/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '确认并执行封闭未来窗口' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/settled/)).toBeTruthy();
+    expect(screen.getByText(/accepted/)).toBeTruthy();
+    expect(screen.getByText(/user:mike/)).toBeTruthy();
+  });
+
+  it('keeps caller input and the current URL after a stale rejection', async () => {
+    const current = futureEntity({ responsibility: false });
+    current.actions = [
+      {
+        ...current.actions[0]!,
+        name: 'future-revise-window-v12',
+        title: '修订未来窗口',
+        fields: {
+          type: 'object',
+          properties: { reason: { type: 'string', title: '修订理由' } },
+          required: ['reason'],
+          additionalProperties: false,
+        },
+      },
+    ];
+    current['guard-results'] = [];
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(current), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            layer: 'stale-version',
+            reason: '已被另一个裁决更新',
+            detail: { observed: 11, current: 12 },
+          }),
+          { status: 409, headers: { 'content-type': 'application/json' } },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    window.history.replaceState(
+      null,
+      '',
+      '/meta/entity?rel=meta%2Ffuture-gate%3Arollout-9&scope=governance&returnTo=%2Fmeta',
+    );
+    const originalUrl = window.location.href;
+    render(
+      <MetaEntityRenderer
+        rel="meta/future-gate:rollout-9"
+        navigation={{ scope: 'governance', returnTo: '/meta' }}
+        entity={current}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '修订未来窗口' }));
+    const reason = await screen.findByLabelText(/修订理由/);
+    fireEvent.change(reason, { target: { value: '保留我的现场输入' } });
+    const submit = document.querySelector('button[data-action="future-revise-window-v12"]');
+    if (!(submit instanceof HTMLElement)) throw new Error('missing future submit button');
+    fireEvent.click(submit);
+
+    const rejection = await screen.findByRole('alert');
+    expect(rejection.textContent).toContain('[stale-version]');
+    expect(rejection.textContent).toContain('已被另一个裁决更新');
+    expect((screen.getByLabelText(/修订理由/) as HTMLInputElement).value).toBe('保留我的现场输入');
+    expect(window.location.href).toBe(originalUrl);
   });
 
   it('does not invent a responsibility region when the trait is absent', () => {

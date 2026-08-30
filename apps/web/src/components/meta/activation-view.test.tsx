@@ -178,7 +178,7 @@ describe('ActivationView(BIOS 激活详情)', () => {
     expect(inserts.join('\n')).toContain('pin');
   });
 
-  it('approve 先重读当前 action 再走 /_meta/api/exec，身份由服务端注入', async () => {
+  it('stages the real human-only decision before a fresh read and shows the decided receipt inline', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse(200, activationEntity('pending-approval')))
@@ -187,6 +187,10 @@ describe('ActivationView(BIOS 激活详情)', () => {
     render(<ActivationView id="a1" entity={activationEntity('pending-approval')} />);
 
     fireEvent.click(screen.getByRole('button', { name: '批准' }));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('status').textContent).toMatch(/已请求.*尚未执行/);
+    fireEvent.click(screen.getByRole('button', { name: '确认并执行批准' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/_meta/api/entity?rel=meta%2Factivation%3Aa1');
@@ -197,6 +201,24 @@ describe('ActivationView(BIOS 激活详情)', () => {
       rel: 'meta/activation:a1',
       action: 'approve',
     });
+    const decided = await screen.findByRole('status');
+    expect(decided.textContent).toContain('approved');
+    expect(decided.textContent).toContain('user:mike');
+  });
+
+  it('cancels a real human-only decision with Escape, restores focus, and emits no request', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ActivationView id="a1" entity={activationEntity('pending-approval')} />);
+
+    const trigger = screen.getByRole('button', { name: '批准' });
+    fireEvent.click(trigger);
+    const requested = screen.getByText(/已请求.*尚未执行/);
+    fireEvent.keyDown(requested, { key: 'Escape' });
+
+    expect(screen.queryByText(/已请求.*尚未执行/)).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('reject reason 必填:空原因提交被 RJSF 拦截(不发请求),填写后带 reason 提交', async () => {
