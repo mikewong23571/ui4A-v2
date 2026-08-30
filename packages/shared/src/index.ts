@@ -18,6 +18,8 @@ export * from './definition/guards';
 export * from './definition/predicates';
 // 定义语言与定义平面形状(T4:machine-as-JSON 类型迁入,engine re-export 保持公共面)。
 export * from './definition/definition';
+// Stable, bounded cognition shared by business and Meta contract projections (T39).
+export * from './definition/cognitive-semantics';
 // Chat/runtime 与独立 Presentation Plane 之间的 versioned thin protocol。
 export * from './presentation/presentation';
 // Platform-neutral, bounded declarations for Presentation Composition.
