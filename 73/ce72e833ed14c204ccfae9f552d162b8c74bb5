@@ -1,0 +1,6 @@
+T39 G16 declaration-driven Application shelf.
+
+Verified by orchestrator:
+- shelf/navigation/home/stories: 6 files, 35 tests
+- web typecheck and governance strict
+- subagent Browser desktop/390 canonical landing smoke
