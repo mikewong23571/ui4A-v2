@@ -12,10 +12,13 @@ import {
   ClassBadges,
   MetaActions,
   MetaActionsDisclosure,
+  MetaRelationships,
   RawContract,
   titleForEntity,
 } from './common';
 import { GenericCollectionRenderer } from './generic-collection-renderer';
+import { genericDisclosureContract } from './generic-disclosure-contract';
+import { GenericDeclaredDisclosure } from './generic-disclosure';
 
 function DisplayValue({ value }: { value: unknown }) {
   if (value === null || typeof value !== 'object') {
@@ -60,6 +63,55 @@ export function GenericMetaRenderer({
     ? entity.links.filter((link) => !link.rel.includes('next') && !link.rel.includes('prev'))
     : entity.links;
   const safeProperties = redactMetaValue(entity.properties) as Record<string, unknown>;
+  const disclosure = isCollection ? { kind: 'absent' as const } : genericDisclosureContract(entity);
+  if (disclosure.kind === 'invalid') {
+    return (
+      <div className="space-y-6">
+        <div role="alert" className="rounded-lg border border-destructive/40 p-4">
+          <h1 className="text-lg font-semibold">展示语义无效</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            当前实体的声明式展示语义未通过严格校验；系统未推断任务事实，请从原始合同审计。
+          </p>
+        </div>
+        <RawContract entity={entity} />
+      </div>
+    );
+  }
+  if (disclosure.kind === 'declared') {
+    return (
+      <GenericDeclaredDisclosure
+        entity={entity}
+        contract={disclosure}
+        rel={rel}
+        navigation={parsedNavigation}
+        descriptorTitle={descriptorTitle}
+        onChanged={onChanged}
+      />
+    );
+  }
+  if (!isCollection) {
+    return (
+      <div className="space-y-6">
+        <header className="space-y-2 border-b pb-5">
+          <Badge variant="secondary">通用合同视图</Badge>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {descriptorTitle ?? '未声明展示语义的实体'}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            当前合同未声明可展示字段；动作与关系仍来自 Siren，其他事实仅在原始合同中审计。
+          </p>
+        </header>
+        <MetaActions
+          entity={entity}
+          rel={rel}
+          scope={parsedNavigation.scope}
+          onChanged={onChanged}
+        />
+        <MetaRelationships entity={entity} navigation={parsedNavigation} />
+        <RawContract entity={entity} />
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       <header className="space-y-3 border-b pb-5">

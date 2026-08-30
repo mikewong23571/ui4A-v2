@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
@@ -17,6 +17,7 @@ import { execMetaAction } from '../meta-client';
 import { withMetaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
 import { relFromMetaApiHref } from '../meta-surfaces';
 import { redactMetaValue } from '../view-models/agent-definition';
+import { projectGenericRelationships } from './generic-relationship-projection';
 
 export function titleForEntity(entity: SirenEntity): string {
   for (const key of ['title', 'name', 'ref', 'id', 'rel']) {
@@ -140,28 +141,38 @@ export function MetaRelationships({
   entity: SirenEntity;
   navigation: MetaNavigationContext;
 }) {
-  const relationships = entity.links.flatMap((link, index) => {
-    const href = browserHrefForContractHref(link.href, navigation);
-    if (href === null) return [];
-    return [
-      <a
-        key={`${link.href}:${index}`}
-        href={href}
-        aria-label={link.rel.join(' · ')}
-        className="rounded-md border px-3 py-2 text-sm text-primary hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      >
-        {link.title ?? link.rel.join(' · ')}
-      </a>,
-    ];
-  });
-  if (relationships.length === 0) return null;
+  const id = useId();
+  const relationships = projectGenericRelationships(entity, navigation, browserHrefForContractHref);
+  if (relationships.task.length === 0 && relationships.mechanical.length === 0) return null;
+  const group = (label: string, items: typeof relationships.task) =>
+    items.length === 0 ? null : (
+      <div role="group" aria-label={label} className="flex flex-wrap gap-2">
+        {items.map((relationship, index) => {
+          const descriptionId = `${id}-${label}-${index}`;
+          return (
+            <div key={`${relationship.href}:${index}`} className="flex min-w-0 flex-col gap-1">
+              <a
+                href={relationship.href}
+                aria-describedby={relationship.hasDeclaredTitle ? descriptionId : undefined}
+                className="rounded-md border px-3 py-2 text-sm text-primary hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                {relationship.label}
+              </a>
+              {relationship.hasDeclaredTitle && (
+                <span id={descriptionId} className="px-1 text-xs text-muted-foreground">
+                  {relationship.rawRel}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
   return (
-    <section aria-labelledby="meta-relationships-heading">
-      <h2 id="meta-relationships-heading" className="mb-3 text-lg font-semibold">
-        关系
-      </h2>
-      <div className="flex flex-wrap gap-2">{relationships}</div>
-    </section>
+    <div className="space-y-3">
+      {group('任务关系', relationships.task)}
+      {group('机械关系', relationships.mechanical)}
+    </div>
   );
 }
 

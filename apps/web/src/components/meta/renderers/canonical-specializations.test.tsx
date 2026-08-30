@@ -292,7 +292,7 @@ describe('canonical Meta specializations', () => {
       'application',
       '{"class":"agent","profile":"coding"}',
     ]) {
-      expect(screen.getByText(value)).toBeTruthy();
+      expect(screen.getAllByText(value).length).toBeGreaterThan(0);
     }
     expect(screen.queryByText(/通用合同视图/)).toBeNull();
   });
@@ -303,7 +303,7 @@ describe('canonical Meta specializations', () => {
       rel: 'meta/flow:article-drafting',
       scope: 'publishing',
       entity: flowEntity(),
-      relationship: 'application',
+      relationship: '内容发布',
       href: '/meta/entity?rel=meta%2Fapplication%3Apublishing&scope=publishing',
     },
     {
@@ -311,7 +311,7 @@ describe('canonical Meta specializations', () => {
       rel: 'meta/activation:activation-2',
       scope: 'governance',
       entity: activationEntity(),
-      relationship: 'target',
+      relationship: '文章发布向导',
       href: '/meta/entity?rel=meta%2Fflow%3Aarticle-drafting&scope=governance',
     },
     {
@@ -319,7 +319,7 @@ describe('canonical Meta specializations', () => {
       rel: 'meta/capability:coding',
       scope: 'development',
       entity: capabilityEntity(),
-      relationship: 'application',
+      relationship: '开发',
       href: '/meta/entity?rel=meta%2Fapplication%3Adevelopment&scope=development',
     },
   ])('keeps canonical relationships and RawContract around the $name specialization', (fixture) => {

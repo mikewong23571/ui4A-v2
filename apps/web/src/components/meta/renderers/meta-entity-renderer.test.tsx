@@ -63,7 +63,7 @@ describe('Meta entity renderer', () => {
     expect(screen.queryByText('meta/conflict')).toBeNull();
   });
 
-  it('redacts primitive secret-shaped properties in the generic fact table', () => {
+  it('keeps undeclared properties in the redacted raw disclosure', () => {
     render(
       <MetaEntityRenderer
         rel="meta/widget:secret"
@@ -72,7 +72,8 @@ describe('Meta entity renderer', () => {
       />,
     );
     expect(screen.queryByText('do-not-display')).toBeNull();
-    expect(screen.getByText('[redacted]')).toBeTruthy();
+    fireEvent.click(screen.getByText('原始合同'));
+    expect(screen.getByText(/"apiKey": "\[redacted\]"/)).toBeTruthy();
   });
 
   it('renders Agent authority/binding/runtime boundaries and redacts raw secrets', () => {
