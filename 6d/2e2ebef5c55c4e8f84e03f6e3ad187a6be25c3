@@ -13,3 +13,10 @@ T39 Phase G Application milestone checkpoint verified by orchestrator:
 - Root Browser on fresh 3110: 7 declaration-ordered shelf entries, publishing headings 内容发布/文章/文章发布向导, canonical action dedupe, 390px scrollWidth=clientWidth and all action rects inside viewport
 - Future ninth fixture generic shelf/landing verified by isolated Browser contract injection and unit matrix
 - Meta milestone remained green
+
+T39 H4 root browser story execution:
+- US1-US10 Meta stories passed using Phase C-F fresh/pending/stale scenarios
+- US11-US18 Application stories passed on fresh 3110 plus future-fixture isolated injection
+- Root Browser personally verified live Meta current-view/raw keyboard, Flow relation titles, fresh shelf/publishing/community, and 390px geometry
+- US19 executed as NOT RUN because provider env was unset
+- Screenshot/report roots: .artifacts/t39/phase-c through phase-g
