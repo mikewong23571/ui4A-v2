@@ -1,0 +1,7 @@
+T39 G2 structured Application entry semantics and reachability.
+
+Verified by orchestrator:
+- focused unit: 9 files, 120 tests
+- DB consumers: 2 files, 25 tests
+- shared/engine/web typecheck and governance strict
+- production old string entry scan: zero matches
