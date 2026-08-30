@@ -1,0 +1,7 @@
+T39 E7 browser validation repairs for US3/US4/US9.
+
+Verified by orchestrator:
+- Meta + ActionRunner: 27 files, 111 tests
+- web typecheck and governance strict
+- Root Browser: RawContract Enter opens/lazy-renders, Escape closes and restores focus
+- Subagent Browser: revise fresh GET/POST/refresh, stale CAS preservation, 390px non-overlap and local raw scroll
