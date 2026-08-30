@@ -1,0 +1,6 @@
+T39 G8 declaration-first collection ownership and field closure.
+
+Verified by orchestrator:
+- focused: 8 files, 138 tests
+- engine/web typecheck and governance strict
+- no collection-name runtime branches
