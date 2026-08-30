@@ -27,7 +27,7 @@ function applicationEntity(title = applicationTitle, intent = applicationIntent)
       presentation: {
         version: 1,
         traits: ['output-catalog'],
-        groupRole: 'definitions',
+        groupRole: 'definition',
         priority: 'high',
       },
     },
@@ -50,7 +50,7 @@ function articleCollection(): SirenEntity {
       presentation: {
         version: 1,
         traits: ['output-catalog'],
-        groupRole: 'definitions',
+        groupRole: 'definition',
         priority: 'normal',
       },
     },
@@ -70,7 +70,7 @@ function draftingEntity(): SirenEntity {
       presentation: {
         version: 1,
         traits: ['work-queue'],
-        groupRole: 'definitions',
+        groupRole: 'definition',
         priority: 'high',
         fields: [{ path: 'properties.identity', role: 'identity' }],
       },
@@ -94,7 +94,7 @@ function landingSitemap(): AppWorkspaceSitemapView {
         presentation: {
           version: 1,
           traits: ['work-queue'],
-          groupRole: 'definitions',
+          groupRole: 'definition',
           priority: 'high',
         },
       },
@@ -107,7 +107,7 @@ function landingSitemap(): AppWorkspaceSitemapView {
         presentation: {
           version: 1,
           traits: ['output-catalog'],
-          groupRole: 'definitions',
+          groupRole: 'definition',
           priority: 'normal',
         },
       },

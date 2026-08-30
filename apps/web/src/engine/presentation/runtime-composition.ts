@@ -155,8 +155,8 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
           : {}),
       },
       provenanceRef: `composition-region:${region.declaration.region}`,
-      // 密度贯通:region 声明的成员词条密度原样传给引擎 generic 规划
-      // (缺省 'card' 行为完全不变;词汇选择仍在引擎按 catalog pattern 完成)。
+      // Static compositions may still declare density. Derived Application workspaces omit it,
+      // allowing the generic planner to select posture from the exact cognitive projection.
       density: region.declaration.density,
     });
   return {

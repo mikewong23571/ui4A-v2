@@ -15,6 +15,7 @@ import {
   type BuiltinCompositionDeclaration,
   type BuiltinCompositionSubjectResolution,
 } from '../compositions';
+import { cognitivePresentationRole, genericRegionIntent } from '../generic-intent-policy';
 import {
   resolveAppWorkspaceMembership,
   type AppWorkspaceSitemapView,
@@ -91,55 +92,53 @@ export function deriveAppWorkspaceComposition(
     intent: string;
     mode: 'invalidate';
     shape: 'entity' | 'collection';
-    density?: 'table';
   }> = [];
   const taken = new Set<string>();
   const usedSources = new Set<string>();
   regions.push({
     region: APP_WORKSPACE_HEADER_REGION,
     source: applicationRel,
-    intent: 'review',
+    intent: genericRegionIntent('entity', 'identity'),
     mode: 'invalidate',
     shape: 'entity',
   });
   taken.add(APP_WORKSPACE_HEADER_REGION);
   usedSources.add(applicationRel);
   for (const surface of appSurfaces) {
+    const shape = 'collection' as const;
+    const semanticRole =
+      surface.rel === entry
+        ? application.entry?.role
+        : cognitivePresentationRole(surface.presentation);
     regions.push({
       region: regionIdOf(surface.rel, taken),
       source: surface.rel,
-      intent: 'overview',
+      intent: genericRegionIntent(shape, semanticRole),
       mode: 'invalidate',
-      shape: 'collection',
-      // 产物集合区域以表格密度呈现成员(通用词汇 member-table,声明驱动零特判);
-      // 入口 region 不受影响,维持缺省 card。
-      density: 'table',
+      shape,
     });
     usedSources.add(surface.rel);
   }
   if (entry !== undefined && !usedSources.has(entry)) {
     const entryIsCollection = surfaceOf(entry)?.collection === true;
+    const shape = entryIsCollection ? ('collection' as const) : ('entity' as const);
     regions.push({
       region: regionIdOf(entry, taken),
       source: entry,
-      intent: entryIsCollection ? 'overview' : 'review',
+      intent: genericRegionIntent(shape, application.entry?.role),
       mode: 'invalidate',
-      shape: entryIsCollection ? 'collection' : 'entity',
-      // 集合形态的入口(如 community 的 comments)同为查询面,与产物集合一致走
-      // 表格密度;实体形态的入口维持缺省 card。
-      ...(entryIsCollection ? { density: 'table' as const } : {}),
+      shape,
     });
   }
   return freezeCompositionDeclaration({
     id: parseCompositionId(`app-${scope.toLowerCase().replace(/[^a-z0-9._-]+/gu, '-') || 'app'}`),
     version: membership.version,
-    regions: regions.map(({ region, source, intent, mode, shape, density }) => ({
+    regions: regions.map(({ region, source, intent, mode, shape }) => ({
       region,
       source,
       intent,
       mode,
       shape,
-      ...(density === undefined ? {} : { density }),
     })),
   });
 }

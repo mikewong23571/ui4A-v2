@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   GENERIC_INTENT_POLICY,
+  genericIntentForRole,
+  genericMemberDensity,
   selectGenericFieldCandidates,
   type GenericFieldCandidate,
 } from './intent';
@@ -24,6 +26,28 @@ function selected(intent: string, input = candidates): string[] {
 }
 
 describe('generic exact-intent field selector', () => {
+  it('maps semantic roles and shape-only fallbacks without domain identity', () => {
+    expect(genericIntentForRole('entity', 'primary-create')).toBe('compose');
+    expect(genericIntentForRole('entity', 'primary-task')).toBe('review');
+    expect(genericIntentForRole('collection', 'primary-collection')).toBe('overview');
+    expect(genericIntentForRole('entity', 'resume')).toBe('continue-current-task');
+    expect(genericIntentForRole('collection', 'review-queue')).toBe('review');
+    expect(genericIntentForRole('collection', 'output-catalog')).toBe('overview');
+    expect(genericIntentForRole('collection', 'work-queue')).toBe('review');
+    expect(genericIntentForRole('entity')).toBe('read');
+    expect(genericIntentForRole('collection')).toBe('overview');
+  });
+
+  it('uses cognition only for an undeclared member posture', () => {
+    expect(genericMemberDensity(undefined, ['output-catalog'])).toBe('table');
+    expect(genericMemberDensity(undefined, ['review-queue'])).toBe('card');
+    expect(genericMemberDensity(undefined, ['task-history'])).toBeUndefined();
+    expect(genericMemberDensity('card', ['output-catalog'])).toBe('card');
+    expect(genericMemberDensity('table', ['review-queue'])).toBe('table');
+    expect(genericMemberDensity(undefined, ['output-catalog', 'review-queue'])).toBe('card');
+    expect(genericMemberDensity(undefined, ['review-queue', 'output-catalog'])).toBe('card');
+  });
+
   it('uses exact role budgets and a fixed read fallback for unknown non-empty intents', () => {
     expect(selected('read')).toEqual([
       'identity:properties.fields.title',

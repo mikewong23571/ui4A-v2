@@ -145,9 +145,8 @@ export interface GenericSurfaceOptions {
   semanticHints?: Readonly<Record<string, SemanticRegionRole>>;
   provenanceRef?: string;
   /**
-   * Declared member-vocabulary density (composition region declaration). 'card'
-   * (default) keeps decision cards; 'table' selects the member-table pattern when
-   * members declare actions — vocabulary stays catalog-driven either way.
+   * Optional explicit member-vocabulary density. When absent, the generic Presentation
+   * policy derives posture from the entity's cognitive traits.
    */
   density?: CompositionRegionDensity;
 }

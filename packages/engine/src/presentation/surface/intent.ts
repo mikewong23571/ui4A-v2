@@ -1,4 +1,10 @@
-import type { FieldPresentationRole } from '@ui4a/shared';
+import type {
+  ApplicationEntryRole,
+  CognitiveSemanticsTrait,
+  CompositionRegionDensity,
+  CompositionRegionShape,
+  FieldPresentationRole,
+} from '@ui4a/shared';
 
 import type { SemanticRegionRole } from './types';
 
@@ -45,14 +51,30 @@ const FOLLOW_BUDGET: GenericRoleBudget = Object.freeze({
   relation: 1,
 });
 
+export type GenericPresentationRole = ApplicationEntryRole | CognitiveSemanticsTrait | 'identity';
+
+const REGION_INTENT_BY_ROLE: Readonly<Partial<Record<GenericPresentationRole, string>>> =
+  Object.freeze({
+    identity: 'review',
+    'primary-create': 'compose',
+    'primary-task': 'review',
+    'primary-collection': 'overview',
+    resume: 'continue-current-task',
+    'review-queue': 'review',
+    'output-catalog': 'overview',
+    'work-queue': 'review',
+  });
+
 /** Versioned, exact-match policy. Unlisted non-empty intents use the fixed read budget. */
 export const GENERIC_INTENT_POLICY = Object.freeze({
-  version: 'generic-intent-policy-v1',
+  version: 'generic-intent-policy-v2',
   defaultBudget: READ_BUDGET,
   byIntent: Object.freeze({
     read: READ_BUDGET,
     overview: OVERVIEW_BUDGET,
     review: REVIEW_BUDGET,
+    compose: REVIEW_BUDGET,
+    'continue-current-task': REVIEW_BUDGET,
     track: TRACK_BUDGET,
     'Review work waiting for me': REVIEW_BUDGET,
     'Track work currently in motion': TRACK_BUDGET,
@@ -61,6 +83,32 @@ export const GENERIC_INTENT_POLICY = Object.freeze({
 } satisfies GenericIntentPolicy);
 
 export const GENERIC_INTENT_POLICY_VERSION = GENERIC_INTENT_POLICY.version;
+
+/** Map semantic contract roles to planner intents, with shape-only safe defaults. */
+export function genericIntentForRole(
+  shape: CompositionRegionShape,
+  role?: GenericPresentationRole,
+): string {
+  return (
+    (role === undefined ? undefined : REGION_INTENT_BY_ROLE[role]) ??
+    (shape === 'collection' ? 'overview' : 'read')
+  );
+}
+
+/**
+ * Pick the default member posture from cognition only. Explicit Composition density remains
+ * authoritative for static compositions; an absent declaration lets output catalogs prefer a
+ * table while review queues retain decision cards.
+ */
+export function genericMemberDensity(
+  declared: CompositionRegionDensity | undefined,
+  traits: readonly CognitiveSemanticsTrait[] | undefined,
+): CompositionRegionDensity | undefined {
+  if (declared !== undefined) return declared;
+  if (traits?.includes('review-queue') === true) return 'card';
+  if (traits?.includes('output-catalog') === true) return 'table';
+  return undefined;
+}
 
 export const GENERIC_ROLE_ORDER: Readonly<Record<SemanticRegionRole, number>> = {
   identity: 0,

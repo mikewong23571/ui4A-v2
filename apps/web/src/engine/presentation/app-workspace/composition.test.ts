@@ -88,22 +88,19 @@ describe('app workspace composition derivation(sitemap 运行时推导,零 per-a
     expect(regionTriple(declaration!)).toEqual([
       ['application-header', 'application:publishing', 'review'],
       ['articles', 'articles', 'overview'],
-      ['article-drafting', 'flow:article-drafting', 'review'],
+      ['article-drafting', 'flow:article-drafting', 'compose'],
     ]);
     expect(declaration!.regions[1]).toMatchObject({ mode: 'invalidate', shape: 'collection' });
     expect(declaration!.regions[2]).toMatchObject({ mode: 'invalidate', shape: 'entity' });
   });
 
-  it('产物集合 region 声明 density=table(成员表格化),实体形态入口 region 不受影响', () => {
+  it('Application adapter只声明语义,不携带成员视觉密度', () => {
     const declaration = deriveAppWorkspaceComposition('publishing', fixtureSitemap());
     expect(declaration).toBeDefined();
-    // 产物集合(articles)→ 表格密度;入口向导面(article-drafting)→ 缺省 card。
-    expect(declaration!.regions[1]!.density).toBe('table');
+    expect(declaration!.regions[1]!.density).toBeUndefined();
     expect(declaration!.regions[2]!.density).toBeUndefined();
-    // community 的唯一 region 经 entry 兑现集合面——集合形态的入口同为查询面,
-    // 与产物集合一致升级表格密度。
     const community = deriveAppWorkspaceComposition('community', fixtureSitemap());
-    expect(community!.regions[1]!.density).toBe('table');
+    expect(community!.regions[1]!.density).toBeUndefined();
   });
 
   it('路由特判读模型面(collection 无 pageable)不进组合——development 无「区域暂不可用」', () => {
@@ -133,7 +130,7 @@ describe('app workspace composition derivation(sitemap 运行时推导,零 per-a
     expect(regionTriple(declaration!)).toEqual([
       ['application-header', 'application:todo', 'review'],
       ['todos', 'todos', 'overview'],
-      ['todo-capture', 'flow:todo-capture', 'review'],
+      ['todo-capture', 'flow:todo-capture', 'compose'],
     ]);
   });
 

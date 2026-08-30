@@ -3,6 +3,7 @@
  * 词汇选择由 catalog 驱动,绝不按 domain class、rel 或 action 名分支。
  */
 import type { SirenEntity } from '../../contract/siren/index';
+import { parseCognitiveSemanticsProjection } from '../../contract/cognitive-semantics';
 import { assembleSurfaceRegions } from '../compose/compose';
 import {
   bindingPath,
@@ -14,6 +15,7 @@ import {
 import { normalizeSurfaceTree } from './normalize';
 import {
   GENERIC_ROLE_ORDER,
+  genericMemberDensity,
   selectGenericFieldCandidates,
   type GenericFieldCandidate,
 } from './intent';
@@ -42,6 +44,16 @@ function readPath(root: unknown, path: string): unknown {
     current = current[segment];
   }
   return current;
+}
+
+function cognitiveTraitsOf(value: unknown) {
+  if (!isRecord(value) || value.version === undefined) return undefined;
+  const cognitiveProjection = Object.fromEntries(
+    ['version', 'traits', 'groupRole', 'priority', 'emptyMeaning', 'fields'].flatMap((key) =>
+      key in value ? [[key, value[key]] as const] : [],
+    ),
+  );
+  return parseCognitiveSemanticsProjection(cognitiveProjection)?.traits;
 }
 
 function scalarPropertyPaths(value: unknown, prefix: string): string[] {
@@ -271,12 +283,16 @@ export function planGenericSurface(
     const membersDeclareActions = entity.entities.some((member) => member.actions.length > 0);
     const findPattern = (pattern: NonNullable<SurfaceCatalogWord['pattern']>) =>
       Object.entries(catalog.words).find(([, definition]) => definition.pattern === pattern);
+    const density = genericMemberDensity(
+      options.density,
+      cognitiveTraitsOf(entity.properties.presentation),
+    );
     const memberTable =
-      options.density === 'table' && membersDeclareActions
+      density === 'table' && membersDeclareActions
         ? (findPattern('member-table') ?? findPattern('member-card'))
         : undefined;
     const memberCard =
-      options.density !== 'table' && membersDeclareActions ? findPattern('member-card') : undefined;
+      density !== 'table' && membersDeclareActions ? findPattern('member-card') : undefined;
     const memberDecision = memberTable ?? memberCard;
     const memberLink = findPattern('member-link');
     // T35 F-21:成员状态优先取节点标题(任务语),成员缺 title 时回退 node 名。
