@@ -13,6 +13,7 @@ import {
   RawContract,
   titleForEntity,
 } from './common';
+import { GenericCollectionRenderer } from './generic-collection-renderer';
 
 function DisplayValue({ value }: { value: unknown }) {
   if (value === null || typeof value !== 'object') {
@@ -41,6 +42,10 @@ export function GenericMetaRenderer({
   const rel =
     typeof entity.properties.rel === 'string' ? entity.properties.rel : (requestedRel ?? '');
   const members = entity.entities ?? [];
+  const isCollection = entity.class.includes('collection');
+  const relationshipLinks = isCollection
+    ? entity.links.filter((link) => !link.rel.includes('next') && !link.rel.includes('prev'))
+    : entity.links;
   const safeProperties = redactMetaValue(entity.properties) as Record<string, unknown>;
   return (
     <div className="space-y-6">
@@ -57,7 +62,9 @@ export function GenericMetaRenderer({
         <ClassBadges classes={entity.class} />
       </header>
 
-      {members.length > 0 && (
+      {isCollection ? (
+        <GenericCollectionRenderer entity={entity} scope={scope} />
+      ) : members.length > 0 ? (
         <section aria-labelledby="generic-members-heading">
           <div className="mb-3 flex items-center justify-between">
             <h2 id="generic-members-heading" className="text-lg font-semibold">
@@ -104,11 +111,7 @@ export function GenericMetaRenderer({
             })}
           </div>
         </section>
-      )}
-
-      {members.length === 0 && entity.class.includes('collection') && (
-        <Card className="p-6 text-sm text-muted-foreground">当前 Scope 下没有成员。</Card>
-      )}
+      ) : null}
 
       <section aria-labelledby="generic-properties-heading">
         <h2 id="generic-properties-heading" className="mb-3 text-lg font-semibold">
@@ -126,13 +129,13 @@ export function GenericMetaRenderer({
         </dl>
       </section>
 
-      {entity.links.length > 0 && (
+      {relationshipLinks.length > 0 && (
         <section aria-labelledby="generic-links-heading">
           <h2 id="generic-links-heading" className="mb-3 text-lg font-semibold">
             关系
           </h2>
           <div className="flex flex-wrap gap-2">
-            {entity.links.map((link, index) => {
+            {relationshipLinks.map((link, index) => {
               const href = browserHrefForContractHref(link.href, scope);
               return href === null ? null : (
                 <a
@@ -140,7 +143,7 @@ export function GenericMetaRenderer({
                   href={href}
                   className="rounded-md border px-3 py-2 text-sm text-primary hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
-                  {link.rel.join(' · ')}
+                  {link.title ?? link.rel.join(' · ')}
                 </a>
               );
             })}
