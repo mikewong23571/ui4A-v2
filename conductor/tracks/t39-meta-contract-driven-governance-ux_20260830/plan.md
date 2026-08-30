@@ -42,7 +42,7 @@
 - [x] Task A1：盘点 definition、SitemapSurface、Siren entity、`presentation.fields`、Recipe/Sidecar、Meta Renderer registry、RJSF schema、Assistant disclosure 和 canonical/友好路由。ed0c447
 - [x] Task A2：编写 disposable probe，比较 Trait/Semantic Hint 位于 definition、sitemap、exact projection 或 Presentation declaration 时的传播、缓存版本、Agent 可见性和依赖失效；Spike 不进入生产代码。0e4fe10
 - [x] Task A3：验证 overview 复用 T38 `presentation.fields`，并证明业务定义无需 desktop/narrow density、sticky、heading source 或组件名。7a3e647
-- [ ] Task A4：验证 `human-authored`、`client-generated`、`server-owned` 字段归属；证明 Meta UI 可隐藏系统字段而 Agent/CLI 仍能稳定重试，且无需建设完整 Draft authoring 编辑器。
+- [x] Task A4：验证 `human-authored`、`client-generated`、`server-owned` 字段归属；证明 Meta UI 可隐藏系统字段而 Agent/CLI 仍能稳定重试，且无需建设完整 Draft authoring 编辑器。cbe91cc
 - [ ] Task A5：核对 canonical `/meta/entity` 与 Flow/Activation/Capability 友好路由差异，形成一次性删除双路径的迁移清单。
 - [ ] Task A6：验证 Application title/intent 的 binding-only 来源、entry/surface semantic roles、canonical 去重、collection 归属和用户 pin 边界；禁止用 `meta/application:*` 隐式跨站供数。
 - [ ] Task A7：测量当前 sitemap/entity/prompt slice 字节基线，验证视觉策略不进入 Assistant prompt，披露仍是 scope → entity → actions 全量重建非累积。
