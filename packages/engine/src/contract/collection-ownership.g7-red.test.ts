@@ -14,9 +14,7 @@ function ownerFlow(input: {
     title: input.name,
     app: input.app,
     initial: 'ready',
-    ...(input.collection === undefined
-      ? {}
-      : { collections: [{ collection: input.collection }] }),
+    ...(input.collection === undefined ? {} : { collections: [{ collection: input.collection }] }),
     nodes: [
       {
         name: 'ready',
@@ -31,7 +29,6 @@ function ownerFlow(input: {
                     type: 'append',
                     collection: input.append,
                     flow: input.name,
-                    initial: 'ready',
                   },
                 },
               ],

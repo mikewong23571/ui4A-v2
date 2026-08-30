@@ -74,9 +74,7 @@ describe('deriveSitemap — 结构', () => {
       extraSurfaces: [{ rel: 'comments', title: '评论队列', collection: true }],
     });
     expect(sitemap.surfaces).toEqual(
-      expect.arrayContaining([
-        { rel: 'comments', title: '评论队列', collection: true, app: 'default' },
-      ]),
+      expect.arrayContaining([{ rel: 'comments', title: '评论队列', collection: true }]),
     );
   });
 
@@ -227,7 +225,7 @@ describe('deriveSitemap — application 分组投影(T10 Phase C,spec 架构决�
     expect(normalized.flows.every((flow) => flow.app === 'default')).toBe(true);
   });
 
-  it('surfaces 条目带 app:flow 面取其 flow.app;集合面取首次 append 它的 flow 的 app', () => {
+  it('surfaces 条目带 app:flow 面取其 flow.app;集合 owner 由声明或 append 推导', () => {
     const sitemap = deriveSitemap(appFlows, {
       applications,
       extraSurfaces: [{ rel: 'comments', title: '评论队列', collection: true }],
@@ -237,8 +235,8 @@ describe('deriveSitemap — application 分组投影(T10 Phase C,spec 架构决�
         { rel: 'flow:article-drafting', title: '文章发布向导', app: 'publishing' },
         { rel: 'flow:comment-moderation', title: '评论审核', app: 'community' },
         { rel: 'articles', title: 'articles', collection: true, pageable: true, app: 'publishing' },
-        // extraSurfaces 无归属信息 → 归 'default'。
-        { rel: 'comments', title: '评论队列', collection: true, app: 'default' },
+        // extraSurfaces 无声明 owner 时保持 Application-neutral。
+        { rel: 'comments', title: '评论队列', collection: true },
       ]),
     );
   });

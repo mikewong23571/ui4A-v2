@@ -275,7 +275,7 @@ describe('collectionFilterDeclarations — 声明解析与值域拓扑推导(T38
     });
   });
 
-  it('未声明集合 → 空数组(零发明);多 flow 声明同集合按字段去重,首声明优先', () => {
+  it('未声明集合 → 空数组(零发明);多 Flow owner fail closed', () => {
     expect(collectionFilterDeclarations(deps.flows, 'comments')).toEqual([]);
     const duplicate = {
       ...commentFlowWithFilters,
@@ -290,12 +290,9 @@ describe('collectionFilterDeclarations — 声明解析与值域拓扑推导(T38
         },
       ],
     };
-    const dims = collectionFilterDeclarations(
-      flowRegistry(commentFlowWithFilters, duplicate),
-      'comments',
-    );
-    expect(dims.map((dim) => dim.field)).toEqual(['status', 'category']);
-    expect(dims[0]?.title).toBe('状态');
+    expect(() =>
+      collectionFilterDeclarations(flowRegistry(commentFlowWithFilters, duplicate), 'comments'),
+    ).toThrow(/multiple explicit Flow\.collections owners/);
   });
 });
 

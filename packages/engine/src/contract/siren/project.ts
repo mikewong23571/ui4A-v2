@@ -42,6 +42,7 @@ import {
 import { projectMeta } from './project-meta';
 import { projectApplication } from './project-application';
 import { projectCognitiveSemantics } from '../cognitive-semantics';
+import { collectionOwnerPresentation, resolveCollectionOwnership } from '../collection-ownership';
 import type { ProjectDeps, SirenEntity, SirenLink } from './types';
 
 function collectionIdentity(title: string): Record<string, unknown> {
@@ -133,6 +134,8 @@ function projectCollection(
   deps: ProjectDeps,
   query?: CollectionQuery,
 ): SirenEntity {
+  const owner = resolveCollectionOwnership(Object.values(deps.flows)).get(rel);
+  const ownerPresentation = owner === undefined ? undefined : collectionOwnerPresentation(owner);
   const members = snapshot.collections[rel] ?? [];
   const filtered =
     query === undefined || query.filter.length === 0
@@ -146,11 +149,31 @@ function projectCollection(
     const instance = snapshot.instances[member];
     if (instance === undefined) return [];
     const projected = projectInstance(instance, snapshot, deps);
-    return [{ ...projected, rel: ['item'], href: entityHref(deps.baseHref, member) }];
+    if (owner === undefined || ownerPresentation === undefined) {
+      return [{ ...projected, rel: ['item'], href: entityHref(deps.baseHref, member) }];
+    }
+    const { presentation: _runtimePresentation, ...properties } = projected.properties;
+    return [
+      {
+        ...projected,
+        properties: {
+          ...properties,
+          presentation: ownerPresentation,
+        },
+        rel: ['item'],
+        href: entityHref(deps.baseHref, member),
+      },
+    ];
   });
   // 声明发现(定义平面数据经投影携带;值域已拓扑推导,agent 与渲染器同源)。
   const declarations = collectionFilterDeclarations(deps.flows, rel);
-  const presentation = declarations.length === 0 ? undefined : { filters: declarations };
+  const presentation =
+    ownerPresentation === undefined && declarations.length === 0
+      ? undefined
+      : {
+          ...(ownerPresentation ?? {}),
+          ...(declarations.length === 0 ? {} : { filters: declarations }),
+        };
   const selfHref = entityHref(deps.baseHref, rel);
   if (query === undefined) {
     return {

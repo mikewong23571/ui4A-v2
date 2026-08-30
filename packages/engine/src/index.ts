@@ -31,6 +31,7 @@ export * from './definition/definition-bundle';
 export * from './definition/invariants';
 export * from './contract/siren/index';
 export * from './contract/sitemap';
+export * from './contract/collection-ownership';
 export * from './contract/cognitive-semantics';
 export * from './submission/index';
 // Independently replayable pure Capability Run plane.

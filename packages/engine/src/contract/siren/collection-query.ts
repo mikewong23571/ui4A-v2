@@ -14,8 +14,8 @@
  */
 import type { EngineSnapshot } from '@ui4a/shared';
 
-import { actionEffects } from '../../core/parse';
 import type { FlowDefinition } from '../../core/types';
+import { resolveCollectionOwnership } from '../collection-ownership';
 
 /** 每页成员数(投影策略;服务端驱动分页的唯一页尺寸来源)。 */
 export const COLLECTION_PAGE_SIZE = 20;
@@ -116,16 +116,7 @@ export function isMemberCollectionRel(
   rel: string,
 ): boolean {
   if (rel in snapshot.collections) return true;
-  for (const flow of Object.values(flows)) {
-    for (const node of flow.nodes) {
-      for (const action of node.actions) {
-        for (const effect of actionEffects(action)) {
-          if (effect.type === 'append' && effect.collection === rel) return true;
-        }
-      }
-    }
-  }
-  return false;
+  return resolveCollectionOwnership(Object.values(flows)).has(rel);
 }
 
 /**
@@ -155,14 +146,14 @@ export function collectionFilterDeclarations(
   flows: Readonly<Record<string, FlowDefinition>>,
   collectionRel: string,
 ): ResolvedFilterDimension[] {
+  const owner = resolveCollectionOwnership(Object.values(flows)).get(collectionRel);
+  if (owner === undefined) return [];
   const byField = new Map<string, ResolvedFilterDimension>();
-  for (const flow of Object.values(flows)) {
-    for (const entry of flow.collections ?? []) {
-      if (entry.collection !== collectionRel) continue;
-      for (const dimension of entry.filters ?? []) {
-        if (byField.has(dimension.field)) continue;
-        byField.set(dimension.field, resolveDimension(flow, dimension));
-      }
+  for (const entry of owner.flow.collections ?? []) {
+    if (entry.collection !== collectionRel) continue;
+    for (const dimension of entry.filters ?? []) {
+      if (byField.has(dimension.field)) continue;
+      byField.set(dimension.field, resolveDimension(owner.flow, dimension));
     }
   }
   return [...byField.values()];

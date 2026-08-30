@@ -22,6 +22,11 @@ import {
   type CognitiveSemanticsProjectionV1,
 } from './cognitive-semantics';
 import { fieldPresentationsOf } from './siren/build';
+import {
+  collectionOwnerPresentation,
+  resolveCollectionOwnership,
+  type CollectionOwner,
+} from './collection-ownership';
 
 /** 界面清单条目:资源 rel / 标题(集合或 flow 定义实体)。 */
 export interface SitemapSurface {
@@ -40,8 +45,8 @@ export interface SitemapSurface {
   memberRelPrefix?: string;
   /**
    * 归属 application(T10 架构决定 5):flow 面取其 flow.app(归一化后);
-   * 集合面取首次 append 它的 flow 的 app;无归属信息归 'default'。
-   * 类型上可选(meta 站 surface 复用本类型、无 app 语义),业务 sitemap 投影恒填。
+   * 集合面由 Flow.collections 显式声明优先、append 次级推导。无法证明归属时
+   * 不出现 app(meta 站和 extra-only 业务面均保持 Application-neutral)。
    */
   app?: string;
   presentation?: CognitiveSemanticsProjectionV1;
@@ -132,7 +137,7 @@ export interface Sitemap {
 }
 
 export interface DeriveSitemapOptions {
-  /** 种子域中无 append 来源的资源面(如 comments 集合)。 */
+  /** Runtime discovery metadata; never an Application ownership declaration. */
   extraSurfaces?: SitemapSurface[];
   /**
    * 活跃 application 定义表(snapshot.applications 的形状)。
@@ -263,9 +268,7 @@ export function deriveSitemap(
 ): Sitemap {
   const sitemapFlows = flows.map(toSitemapFlow);
 
-  // 界面清单:flow 定义实体 + append 目标集合(首次出现序,去重)。
-  // app 归属口径:flow 面取其 flow.app(归一化后);集合面取首次 append 它的
-  // flow 的 app(append 效果出现在哪个 flow,集合面就归属哪个 flow)。
+  // 界面清单:flow 定义实体 + declaration-first collection ownership。
   const surfaces: SitemapSurface[] = sitemapFlows.map((flow, index) => {
     const definition = flows[index]!;
     const presentation = projectCognitiveSemantics({
@@ -279,36 +282,49 @@ export function deriveSitemap(
       ...(presentation === undefined ? {} : { presentation }),
     };
   });
-  const seenCollections = new Set<string>();
-  for (const flow of flows) {
-    const app = flow.app ?? 'default';
-    for (const node of flow.nodes) {
-      for (const action of node.actions) {
-        const effects = Array.isArray(action.effect)
-          ? action.effect
-          : action.effect !== undefined
-            ? [action.effect]
-            : [];
-        for (const effect of effects) {
-          if (effect.type === 'append' && !seenCollections.has(effect.collection)) {
-            seenCollections.add(effect.collection);
-            surfaces.push({
-              rel: effect.collection,
-              title: effect.collection,
-              collection: true,
-              pageable: true,
-              app,
-            });
-          }
-        }
-      }
-    }
+  const ownership = resolveCollectionOwnership(flows);
+  const collectionIndexes = new Map<string, number>();
+  const ownerSurface = (owner: CollectionOwner): SitemapSurface => {
+    const presentation = collectionOwnerPresentation(owner);
+    return {
+      rel: owner.rel,
+      title: owner.rel,
+      collection: true,
+      pageable: true,
+      app: owner.app,
+      ...(presentation === undefined ? {} : { presentation }),
+    };
+  };
+  for (const owner of ownership.values()) {
+    collectionIndexes.set(owner.rel, surfaces.length);
+    surfaces.push(ownerSurface(owner));
   }
-  // extraSurfaces 由调用方注入;principal scope 不伪造 app 归属,其余缺省 default。
+
+  // Extra surfaces enrich discovery only. They never establish or override ownership;
+  // repeated collection rels merge into one Surface.
   for (const extra of options?.extraSurfaces ?? []) {
-    surfaces.push(
-      extra.scope === 'principal' ? { ...extra } : { ...extra, app: extra.app ?? 'default' },
-    );
+    const { app: _ignoredApp, ...discovery } = extra;
+    const owner = ownership.get(extra.rel);
+    const index = collectionIndexes.get(extra.rel);
+    if (extra.collection === true && owner !== undefined && index !== undefined) {
+      const owned = ownerSurface(owner);
+      surfaces[index] = {
+        ...owned,
+        ...discovery,
+        app: owned.app,
+        presentation: owned.presentation,
+      };
+      if (owned.presentation === undefined) delete surfaces[index]!.presentation;
+      continue;
+    }
+    if (extra.collection === true) {
+      if (index !== undefined) {
+        surfaces[index] = { ...surfaces[index]!, ...discovery };
+        continue;
+      }
+      collectionIndexes.set(extra.rel, surfaces.length);
+    }
+    surfaces.push({ ...discovery });
   }
 
   // application 分组投影:组序 = 定义表声明序;组内 flows = 扁平表声明序过滤
@@ -374,8 +390,28 @@ export function deriveSitemap(
     },
   );
 
+  const collectionOwnership = [...ownership.values()].map((owner) => ({
+    rel: owner.rel,
+    app: owner.app,
+    flow: owner.flow.name,
+    source: owner.source,
+    ...(owner.source === 'declaration'
+      ? {
+          declaration: owner.flow.collections?.find(
+            (declaration) => declaration.collection === owner.rel,
+          ),
+        }
+      : {}),
+  }));
+
   const sitemap: Sitemap = {
-    version: contentVersion({ applications, capabilities, surfaces, flows: sitemapFlows }),
+    version: contentVersion({
+      applications,
+      capabilities,
+      collectionOwnership,
+      surfaces,
+      flows: sitemapFlows,
+    }),
     surfaces,
     flows: sitemapFlows,
     applications,
