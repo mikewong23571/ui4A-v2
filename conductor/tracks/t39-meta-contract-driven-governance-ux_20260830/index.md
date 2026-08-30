@@ -5,6 +5,7 @@
 - 规格：[`spec.md`](./spec.md)
 - 计划：[`plan.md`](./plan.md)
 - Application 入口审计：[`application-entry-audit.md`](./application-entry-audit.md)
+- Phase A Spike 证据：[`phase-a-spike.md`](./phase-a-spike.md)
 - 元数据：[`metadata.json`](./metadata.json)
 - 验收模型：Agent 浏览器实操 + 截图 + DOM/URL/焦点断言；不新增 per-track Playwright 脚本
 - 执行模型：每实现任务一个自包含 subagent；编排者做任务级轻验收、Phase 完整验收和 Track 末 US1–US19 E2E
