@@ -121,7 +121,7 @@
 **Subagent contract**：Goal=用语义数据改善 Application 图书馆与组合；Non-goals=不把 Application 变成书桌、不改 `/` Work Thread 聚合、不写 per-app runtime 分支；Changes=Application/Sitemap 定义与投影、`app-workspace-composition`、Application 书架、通用 Presentation policy、bundle 数据和相邻测试；Blast radius=禁止 Meta governance Renderer、worker/db、Chat、每应用 React 页面与新依赖。
 
 - [x] Task G1：Red——编写 `system-fallback`、结构化 entry `{target,role}`、same-app business entry、非法隐式 Meta/workspace entry 测试，并确认失败。4ab2ea7
-- [ ] Task G2：Green——实现 Application/Sitemap 最小语义与 parser/invariants；不加入 title/description/layout/device 字段。
+- [x] Task G2：Green——实现 Application/Sitemap 最小语义与 parser/invariants；不加入 title/description/layout/device 字段。0b8601d
 - [ ] Task G3：Red——编写只读 `application:<name>` Siren projection、grantedApplications 授权、零 actions/events/storage 和 HTTP/Agent discovery 测试，并确认失败。
 - [ ] Task G4：Green——实现 business Application projection 与 binding metadata，不读取 `meta/application:*`。
 - [ ] Task G5：Red——编写 binding-only header、Application 不聚合 principal 工作状态、source alias 授权后 canonical entity/action 去重与完整 membership fingerprint 测试，并确认失败。
