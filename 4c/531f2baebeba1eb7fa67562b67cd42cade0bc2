@@ -1,0 +1,6 @@
+T39 Phase A Task A9 — architecture and plan rebaseline
+
+Summary: added D54 and architecture.md; aligned spec with single-source cognitive semantics, visual-policy boundary, caller/client ownership, 32KiB runtime guard, canonical route cutover, read-only business Application projection, entry/ownership invariants and deferred shelf preferences.
+Files: DECISIONS.md, architecture.md, spec.md, index.md.
+Why: converts verified spike evidence into binding decisions before production implementation.
+Verification: Prettier and structural alignment checks passed; plan separately records the revised execution order.
