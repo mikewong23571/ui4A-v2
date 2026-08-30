@@ -146,12 +146,12 @@
 - [x] Task H1：集成测试——验证 publishing/community/governance 的 Situation → sanitized entity → actions、FactRef、clientView/lastNavigation 和视觉策略禁入 prompt；已有行为通过则不强造 Red。35ee403
 - [x] Task H2：仅在 H1 暴露真实缺口时做最小修复；否则记录 no-op 证据，禁止新增第二套 sanitizer 或全量 sitemap 注入。fc3c4fe
 - [x] Task H3：运行 `pnpm eval:llm` 完成 US19 真实 LLM Eval；provider 缺失时记录未运行，禁止 scripted/rule 替代。fc3c4fe（US19 NOT RUN：provider env unset）
-- [ ] Task H4：逐一执行 US1–US19 浏览器实操；记录前态、关键交互态、完成态截图和 DOM/URL/焦点断言。
-- [ ] Task H5：使用 CLI 或 HTTP 合同探针复跑同门路径，比较事实、links、actions、guards、schema、Trait 与 Semantic Hint；不要求像素策略同消耗。
-- [ ] Task H6：执行 390px 全流程视觉审核：Meta、Application 书架、八个 landing、Draft 审查、Activation decision 与错误恢复。
-- [ ] Task H7：执行“换 Application”终审与源码扫描：第九个 fixture 零 runtime 特判，定义内无 CSS/设备策略，Assistant prompt 预算不增长越界。
-- [ ] Task H8：运行 `pnpm format:check`、`pnpm governance:strict`、`pnpm check`、`CI=true pnpm e2e`、invariants 与 prompt budget。
-- [ ] Task H9：汇总 `review.md`，逐故事给出 pass/pass-with-observations/fail、真实 LLM 状态、截图路径、DOM 事实和剩余观察。
+- [x] Task H4：逐一执行 US1–US19 浏览器实操；记录前态、关键交互态、完成态截图和 DOM/URL/焦点断言。6d2e2eb（US19 NOT RUN）
+- [x] Task H5：使用 CLI 或 HTTP 合同探针复跑同门路径，比较事实、links、actions、guards、schema、Trait 与 Semantic Hint；不要求像素策略同消耗。ddc3b77
+- [x] Task H6：执行 390px 全流程视觉审核：Meta、Application 书架、八个 landing、Draft 审查、Activation decision 与错误恢复。ddc3b77
+- [x] Task H7：执行“换 Application”终审与源码扫描：第九个 fixture 零 runtime 特判，定义内无 CSS/设备策略，Assistant prompt 预算不增长越界。ddc3b77
+- [x] Task H8：运行 `pnpm format:check`、`pnpm governance:strict`、`pnpm check`、`CI=true pnpm e2e`、invariants 与 prompt budget。ddc3b77
+- [~] Task H9：汇总 `review.md`，逐故事给出 pass/pass-with-observations/fail、真实 LLM 状态、截图路径、DOM 事实和剩余观察。
 - [ ] Task H10：Track Verification & Checkpoint：系统可运行、工作区无临时产物、Product Vision 门禁和 US1–US19 全部闭环。
 
 ## Phase: Review Fixes
