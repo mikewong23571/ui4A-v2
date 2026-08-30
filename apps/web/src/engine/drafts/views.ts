@@ -94,7 +94,12 @@ export function action(name: string, title: string, fields: Record<string, unkno
   return { name, title, method: 'POST', href: '/_meta/api/exec', fields };
 }
 
-export const COMMAND_ID = { type: 'string', minLength: 1, description: 'Idempotency key' };
+export const COMMAND_ID = {
+  type: 'string',
+  minLength: 1,
+  description: 'Idempotency key',
+  'x-ui4a-input-owner': 'client',
+};
 
 export function draftActions(aggregate: DraftAggregate): SirenAction[] {
   if (['accepted', 'rejected', 'abandoned', 'expired'].includes(aggregate.status)) return [];
@@ -105,7 +110,11 @@ export function draftActions(aggregate: DraftAggregate): SirenAction[] {
     schema(
       {
         commandId: COMMAND_ID,
-        baseVersion: { type: 'integer', minimum: 1 },
+        baseVersion: {
+          type: 'integer',
+          minimum: 1,
+          'x-ui4a-input-owner': 'client',
+        },
         targetBaseVersion: { type: 'string' },
         payload: {},
       },
@@ -324,13 +333,11 @@ export async function getDraftMetaEntity(
             {
               kind: { type: 'string', enum: ['flow-definition', 'agent-definition'] },
               target: { type: 'string', minLength: 1 },
-              policyScope: { type: 'string', minLength: 1 },
               commandId: COMMAND_ID,
               payload: {},
-              schemaRef: { type: 'string' },
               sources: { type: 'array', items: { type: 'string' }, maxItems: 64 },
             },
-            ['kind', 'target', 'policyScope', 'commandId', 'payload'],
+            ['kind', 'target', 'commandId', 'payload'],
           ),
         ),
       ],

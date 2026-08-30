@@ -62,7 +62,7 @@ describe('ActionRunner T16 schema-form interaction', () => {
       <ActionRunner
         rel="post:first-post"
         action={editAction}
-        submit={createDirectActionSubmit(execFn)}
+        submit={createDirectActionSubmit(execFn, { clientParams: () => ({}) })}
       />,
     );
 
@@ -113,7 +113,7 @@ describe('ActionRunner T16 schema-form interaction', () => {
       <ActionRunner
         rel="post:first-post"
         action={editAction}
-        submit={createDirectActionSubmit(execFn)}
+        submit={createDirectActionSubmit(execFn, { clientParams: () => ({}) })}
         prefill={{ title: '第一篇', category: 'essay', injected: 'must-not-submit' }}
       />,
     );
@@ -148,7 +148,7 @@ describe('ActionRunner T16 high-risk staging', () => {
       <ActionRunner
         rel="post:first-post"
         action={archiveAction}
-        submit={createDirectActionSubmit(execFn)}
+        submit={createDirectActionSubmit(execFn, { clientParams: () => ({}) })}
         onExecuted={onExecuted}
       />,
     );
@@ -178,7 +178,7 @@ describe('ActionRunner T16 high-risk staging', () => {
       <ActionRunner
         rel="post:first-post"
         action={archiveAction}
-        submit={createDirectActionSubmit(execFn)}
+        submit={createDirectActionSubmit(execFn, { clientParams: () => ({}) })}
       />,
     );
 
@@ -198,7 +198,7 @@ describe('ActionRunner T16 high-risk staging', () => {
       <ActionRunner
         rel="confirmation:c1"
         action={approveAction}
-        submit={createDirectActionSubmit(execFn)}
+        submit={createDirectActionSubmit(execFn, { clientParams: () => ({}) })}
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: '批准' }));

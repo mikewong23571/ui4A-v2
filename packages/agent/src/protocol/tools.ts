@@ -13,7 +13,7 @@
  * 输出是框架无关的 ToolDescriptor(纯 JSON Schema 载体):llm-driver 经
  * ai sdk 的 jsonSchema() 接线;HTTP 合同是唯一真相,tools/MCP 是投影。
  */
-import type { SirenEntity } from '@ui4a/engine';
+import { callerActionSchema, type SirenEntity } from '@ui4a/engine';
 
 import { navigableRels } from './navigation';
 
@@ -310,7 +310,7 @@ export function buildToolProjection(
       description:
         `[${action.title}] 执行当前实体的动作 "${action.name}"${blockedNote}。` +
         'authorization 必须引用 user 的逐字授权原话。',
-      parameters: withEffectAuthorization(action.fields),
+      parameters: withEffectAuthorization(callerActionSchema(action.fields)),
     });
   }
 

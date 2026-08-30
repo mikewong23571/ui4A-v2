@@ -22,7 +22,7 @@ import { entityPageHref } from '@/presence/navigation';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 
 import { ActionGroup } from './actions/action-group';
-import { createDirectActionSubmit } from './actions/action-submit';
+import { createDirectActionSubmit, observedActionClientParams } from './actions/action-submit';
 import { execAction } from './exec-client';
 import { hrefToRel } from './contract-href';
 import { RawContractDrawer } from './canvas/raw-contract-drawer';
@@ -151,7 +151,9 @@ export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
       ? entity.properties.title
       : rel;
   const members = entity.entities ?? [];
-  const submit = createDirectActionSubmit((input) => execAction({ ...input, scope }));
+  const submit = createDirectActionSubmit((input) => execAction({ ...input, scope }), {
+    clientParams: ({ action }) => observedActionClientParams(action, entity.properties),
+  });
 
   return (
     <div>

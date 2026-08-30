@@ -57,7 +57,9 @@ describe('form 词条', () => {
     const cache = new Map([['post:post-welcome', entity]]);
     const props = derefSpec(specOf('form', { entity: { ref: 'entity:post:post-welcome' } }), cache);
     const { container } = render(
-      <ActionSubmitProvider submit={createDirectActionSubmit(execAction)}>
+      <ActionSubmitProvider
+        submit={createDirectActionSubmit(execAction, { clientParams: () => ({}) })}
+      >
         <FormWord {...props} />
       </ActionSubmitProvider>,
     );
@@ -88,7 +90,9 @@ describe('form 词条', () => {
     const cache = new Map([['post:post-welcome', entity]]);
     const props = derefSpec(specOf('form', { entity: { ref: 'entity:post:post-welcome' } }), cache);
     render(
-      <ActionSubmitProvider submit={createDirectActionSubmit(execAction)}>
+      <ActionSubmitProvider
+        submit={createDirectActionSubmit(execAction, { clientParams: () => ({}) })}
+      >
         <FormWord {...props} />
       </ActionSubmitProvider>,
     );

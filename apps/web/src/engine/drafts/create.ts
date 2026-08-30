@@ -29,18 +29,17 @@ export async function executeDraftCreate(
     return rejected('undeclared', `action ${request.action} is not declared`);
   const kind = stringParam(request, 'kind');
   const target = stringParam(request, 'target');
-  const policyScope = stringParam(request, 'policyScope');
+  const policyScope = context.policyScope;
   const commandId = stringParam(request, 'commandId');
   const payload = request.params?.payload;
   const sources = request.params?.sources;
   if (
     (kind !== 'flow-definition' && kind !== 'agent-definition') ||
     target === undefined ||
-    policyScope === undefined ||
     commandId === undefined ||
     payload === undefined
   ) {
-    return rejected('schema-invalid', 'kind/target/policyScope/commandId/payload are required');
+    return rejected('schema-invalid', 'kind/target/commandId/payload are required');
   }
   if (
     sources !== undefined &&
@@ -49,9 +48,6 @@ export async function executeDraftCreate(
       sources.some((source) => typeof source !== 'string' || source.length === 0))
   ) {
     return rejected('schema-invalid', 'sources must be at most 64 non-empty references');
-  }
-  if (policyScope !== context.policyScope) {
-    return rejected('guard-failed', 'request policy scope does not match credential scope');
   }
   let validation:
     ReturnType<typeof validateFlowDraft> | ReturnType<typeof validateAgentDefinitionDraft>;
@@ -97,9 +93,7 @@ export async function executeDraftCreate(
       target,
       ...(baseVersion === undefined ? {} : { baseVersion }),
       payloadHash: payloadSha256(payload),
-      schemaRef:
-        stringParam(request, 'schemaRef') ??
-        (kind === 'flow-definition' ? FLOW_SCHEMA_REF : AGENT_DEFINITION_SCHEMA_REF),
+      schemaRef: kind === 'flow-definition' ? FLOW_SCHEMA_REF : AGENT_DEFINITION_SCHEMA_REF,
       provenance: {
         actor: request.actor,
         principal: request.principal,

@@ -112,10 +112,8 @@ export async function materializeDeclaredAgentDefinitionDraft(
       params: {
         kind: 'agent-definition',
         target,
-        policyScope: run.policyScope,
         commandId,
         payload: candidate.source,
-        schemaRef: 'ui4a://agent-definition/v1',
         sources: [
           `agent-run:${run.runId}`,
           `agent-result:${run.result!.resultId}`,

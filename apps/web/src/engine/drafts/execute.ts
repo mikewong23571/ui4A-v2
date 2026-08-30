@@ -11,6 +11,7 @@ import {
   type ExecRequest,
 } from '@ui4a/engine';
 import { type JsonValue } from '@ui4a/shared';
+import Ajv from 'ajv';
 
 import {
   acceptDraftWithCoreEvent,
@@ -50,18 +51,25 @@ export async function executeDraftMeta(
   if (request.actor === undefined || request.principal === undefined || request.principal === '') {
     return rejected('guard-failed', 'Draft operations require an explicit resolved actor context');
   }
-  if (
-    request.params?.mode !== undefined ||
-    request.params?.actor !== undefined ||
-    request.params?.principal !== undefined ||
-    request.params?.noDraft !== undefined
-  ) {
-    const outcome = rejected(
-      'guard-failed',
-      'request cannot override SubmissionPolicy or identity',
-    );
-    await rejectionEvent(db, request, outcome);
+  const declaredEntity = await getDraftMetaEntity(
+    db,
+    engine,
+    request.rel,
+    request.principal,
+    context.policyScope,
+    context.agentDefinitions,
+  );
+  const declaration = declaredEntity?.actions.find((action) => action.name === request.action);
+  if (declaration === undefined) {
+    const outcome = rejected('undeclared', `action ${request.action} is not declared`);
+    if (request.rel !== 'meta/drafts') await rejectionEvent(db, request, outcome);
     return outcome;
+  }
+  const ajv = new Ajv({ allErrors: true, strict: false });
+  ajv.addFormat('textarea', true);
+  const validate = ajv.compile(declaration.fields);
+  if (!validate(request.params ?? {})) {
+    return rejected('schema-invalid', '参数不符合 Draft action schema', validate.errors);
   }
   if (request.rel === 'meta/drafts') return executeDraftCreate(db, engine, request, context);
 

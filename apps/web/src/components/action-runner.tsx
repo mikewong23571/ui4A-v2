@@ -30,7 +30,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { SirenAction } from '@ui4a/engine';
+import { callerActionSchema, type SirenAction } from '@ui4a/engine';
 
 import { Button } from '@/components/ui/button';
 
@@ -206,7 +206,8 @@ export function ActionRunner({
   prefill,
   tone,
 }: ActionRunnerProps) {
-  const hasFields = schemaHasFields(action.fields);
+  const formSchema = callerActionSchema(action.fields);
+  const hasFields = schemaHasFields(formSchema);
   const highRisk = action['requires-confirmation'] === 'high';
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -392,10 +393,10 @@ export function ActionRunner({
               /[^A-Za-z0-9_-]/g,
               '_',
             )}
-            schema={action.fields}
+            schema={formSchema}
             validator={rjsfValidator}
             // 实例字段预填(#4):同名标量字段以实例值起手,提交仍以用户确认的参数为准。
-            formData={initialFormData(action.fields, prefill)}
+            formData={initialFormData(formSchema, prefill)}
             templates={{
               FieldTemplate: RjsfFieldTemplate,
               FieldErrorTemplate: RjsfFieldErrorTemplate,

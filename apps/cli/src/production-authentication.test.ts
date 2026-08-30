@@ -163,8 +163,8 @@ describe('production CLI Bearer identity boundary', () => {
     expect(bodies[0]).toMatchObject({
       steps: [expect.not.objectContaining({ channel: expect.anything() })],
     });
-    // Green obligation: once the credential-mode CLI omits this untrusted value, the Meta
-    // Draft route/adapter must inject trustedIdentity.policyScope as the server-owned create param.
+    // D54:scope remains outside public params; the Meta execution context resolves it from the
+    // trusted identity/navigation context without manufacturing a second wire field.
     expect(bodies[1]).not.toHaveProperty('params.policyScope');
   });
 

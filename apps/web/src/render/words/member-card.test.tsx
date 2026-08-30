@@ -41,6 +41,7 @@ function renderCard(props: Record<string, unknown>): void {
     <ActionSubmitProvider
       submit={createDirectActionSubmit(
         vi.fn(async () => ({ ok: true as const, entity: {} as SirenEntity })),
+        { clientParams: () => ({}) },
       )}
     >
       <MemberCardWord {...props} />

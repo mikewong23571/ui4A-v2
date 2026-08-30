@@ -42,6 +42,7 @@ function renderRow(props: Record<string, unknown>): ReturnType<typeof render> {
     <ActionSubmitProvider
       submit={createDirectActionSubmit(
         vi.fn(async () => ({ ok: true as const, entity: {} as SirenEntity })),
+        { clientParams: () => ({}) },
       )}
     >
       <MemberTableWord {...props} />

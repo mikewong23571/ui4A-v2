@@ -245,7 +245,6 @@ describe('Agent Definition registry adapter and Siren', () => {
         params: {
           kind: 'agent-definition',
           target: 'writing-agent',
-          policyScope: 'publishing',
           commandId: 'draft-writing-v2',
           payload: candidate,
         },

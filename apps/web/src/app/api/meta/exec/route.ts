@@ -68,17 +68,7 @@ export async function POST(request: Request) {
     const effectiveScope =
       declaredOrFirstGrantedApplication(identity, authorizedPolicyScopes) ??
       authorizedPolicyScopes[0]!;
-    const trustedRequest = applyTrustedIdentity(parsed.request, identity);
-    const metaRequest =
-      trustedRequest.rel === 'meta/drafts' && trustedRequest.action === 'create'
-        ? {
-            ...trustedRequest,
-            params: {
-              ...trustedRequest.params,
-              policyScope: effectiveScope,
-            },
-          }
-        : trustedRequest;
+    const metaRequest = applyTrustedIdentity(parsed.request, identity);
     const outcome = isDraftMetaRel(parsed.request.rel)
       ? await executeDraftMeta(db, engine, metaRequest, {
           policyScope: effectiveScope,

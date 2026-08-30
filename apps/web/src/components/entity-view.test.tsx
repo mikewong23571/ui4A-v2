@@ -21,7 +21,7 @@ import { createDirectActionSubmit } from './actions/action-submit';
 import { EntityView } from './entity-view';
 import { execAction } from './exec-client';
 
-const businessSubmit = createDirectActionSubmit(execAction);
+const businessSubmit = createDirectActionSubmit(execAction, { clientParams: () => ({}) });
 
 /**
  * 表单内提交按钮按结构定位(铁律 3 的 data-action 挂点)。触发键与提交键

@@ -153,7 +153,6 @@ function DraftDecision({
           refresh();
           onChanged?.();
         }}
-        prefill={{ commandId: `ui:${rel}:${entity.properties.version ?? 1}` }}
       />
     </div>
   );
@@ -169,7 +168,6 @@ export function DraftRenderer({
   onChanged?: () => void;
 }) {
   const view = draftViewModel(entity);
-  const commandId = `ui:${view.id}:${view.version}`;
   const activation =
     typeof entity.properties.activation === 'string' ? entity.properties.activation : undefined;
   const sourceLinks = entity.links.filter((link) => link.rel.includes('source'));
@@ -227,7 +225,7 @@ export function DraftRenderer({
         rel={view.rel}
         scope={scope}
         onChanged={onChanged}
-        prefill={{ commandId, baseVersion: view.version, payload: view.payload }}
+        prefill={{ payload: view.payload }}
         excludeActions={['revise']}
       />
 

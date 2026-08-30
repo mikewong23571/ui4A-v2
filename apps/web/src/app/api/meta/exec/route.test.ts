@@ -136,9 +136,7 @@ describe('POST /_meta/api/exec', () => {
     // D51:?scope= 不再是鉴权输入——越界声明静默丢弃,动作照常过三段裁决。
   });
 
-  it('injects the navigation-preference scope into Draft create and overwrites a forged param (D51)', async () => {
-    // D51:Draft 目标应用槽位来自显式 ?scope= 导航偏好(∈ 授予集合),不再有
-    // 服务端默认回退;伪造的 params.policyScope 仍被服务端值覆写。
+  it('rejects a forged Draft scope while using navigation preference only as trusted context', async () => {
     const response = await POST(
       post(
         {
@@ -158,13 +156,7 @@ describe('POST /_meta/api/exec', () => {
       ),
     );
 
-    expect(response.status).toBe(200);
-    const body = (await response.json()) as {
-      entity: { properties: { policyScope: string; owner: string } };
-    };
-    expect(body.entity.properties).toMatchObject({
-      policyScope: 'publishing',
-      owner: 'local-user',
-    });
+    expect(response.status).toBe(422);
+    expect(await response.json()).toMatchObject({ layer: 'schema-invalid' });
   });
 });

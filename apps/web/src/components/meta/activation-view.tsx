@@ -24,7 +24,7 @@ import {
 
 import { ActionRunner } from '../action-runner';
 import { blockedForRenderer } from '../actions/action-group';
-import { createDirectActionSubmit } from '../actions/action-submit';
+import { createDirectActionSubmit, observedActionClientParams } from '../actions/action-submit';
 import { DefinitionDiffView } from './diff-render';
 import { execMetaAction, useMetaEntity } from './meta-client';
 
@@ -161,7 +161,10 @@ export function ActivationView({ id, entity, onChanged }: ActivationViewProps) {
                     blocked={blockedForRenderer(guard)}
                     blockReason={guard?.reason}
                     onExecuted={onChanged}
-                    submit={createDirectActionSubmit(execMetaAction)}
+                    submit={createDirectActionSubmit(execMetaAction, {
+                      clientParams: ({ action: current }) =>
+                        observedActionClientParams(current, entity.properties),
+                    })}
                   />
                 </Card>
               );

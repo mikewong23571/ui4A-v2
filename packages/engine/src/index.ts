@@ -10,6 +10,7 @@ export * from './core/types';
 export * from './core/parse';
 export * from './core/machine';
 export * from './contract/schema';
+export * from './contract/action-input-ownership';
 export * from './execution/judge';
 export * from './execution/effects';
 export * from './execution/confirmation';

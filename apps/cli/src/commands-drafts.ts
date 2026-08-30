@@ -16,14 +16,13 @@ import {
 const DRAFT_ACTIVATION_PREFIX = 'meta/activation:draft-';
 
 async function draftExec(client: Ui4aHttpClient, rel: string, actionName: string, params: unknown) {
-  return client.post(
-    '/_meta/api/exec',
-    writeIdentity(client, {
-      rel,
-      action: actionName,
-      params,
-    }),
-  );
+  const body = writeIdentity(client, { rel, action: actionName, params });
+  try {
+    return await client.post('/_meta/api/exec', body);
+  } catch (error) {
+    if (!(error instanceof CliError) || error.code !== 'NETWORK') throw error;
+    return client.post('/_meta/api/exec', body);
+  }
 }
 
 async function drafts(args: ParsedArgs, client: Ui4aHttpClient): Promise<SuccessEnvelope> {
@@ -51,7 +50,6 @@ async function drafts(args: ParsedArgs, client: Ui4aHttpClient): Promise<Success
     const response = await draftExec(client, 'meta/drafts', 'create', {
       kind: flagString(args, 'kind', true),
       target: flagString(args, 'target', true),
-      ...(client.config.token === undefined ? { policyScope: client.config.policyScope } : {}),
       commandId: commandId(args),
       payload,
     });

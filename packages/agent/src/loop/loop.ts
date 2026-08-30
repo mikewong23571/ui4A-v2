@@ -17,6 +17,7 @@ import { createContractClient } from '../contract/http';
 import { sliceSitemapDisclosure } from '../contract/disclosure';
 import { authorizeEffects, type ProposedEffect } from './authorization';
 import { createNoProgressGuard, createRepeatedRejectionGuard } from './fail-guard';
+import { withObservedClientParams } from './client-action-params';
 import type {
   AgentDriver,
   AgentGoal,
@@ -495,15 +496,22 @@ export async function runAgent(
       continue;
     }
 
-    const call = await client.exec({
+    const declaredAction = fetched.entity.actions.find((action) => action.name === op.action);
+    const wireParams =
+      declaredAction === undefined
+        ? (op.params ?? {})
+        : withObservedClientParams(declaredAction, fetched.entity, op.params ?? {});
+    const execPayload = {
       rel: currentRel,
       action: op.action,
-      params: op.params ?? {},
+      params: wireParams,
       actor,
       principal: options.principal,
       channel,
       authorization: op.authorization,
-    });
+    };
+    let call = await client.exec(execPayload);
+    if (call.status === 0) call = await client.exec(execPayload);
     if (call.ok) {
       successes.push({ rel: currentRel, action: op.action, params: op.params });
       await pushStep({

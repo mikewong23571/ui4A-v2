@@ -39,7 +39,6 @@ describe('governed Flow Draft vertical slice', () => {
         params: {
           kind: 'flow-definition',
           target: 'post-status',
-          policyScope: 'publishing',
           commandId: 'concurrent:create',
           payload: { name: 'post-status' },
         },
@@ -151,7 +150,6 @@ describe('governed Flow Draft vertical slice', () => {
         params: {
           kind: 'flow-definition',
           target: 'post-status',
-          policyScope: 'publishing',
           commandId: 'replay-drill:create',
           payload: { name: 'post-status' },
         },
@@ -212,7 +210,7 @@ describe('governed Flow Draft vertical slice', () => {
     ).toBe('abandoned');
   });
 
-  it('rejects target and request scopes outside credential policy scope', async () => {
+  it('uses trusted context scope and rejects a target outside it', async () => {
     const engine = await getEngine(pool);
     const request = {
       rel: 'meta/drafts',
@@ -223,14 +221,13 @@ describe('governed Flow Draft vertical slice', () => {
       params: {
         kind: 'flow-definition',
         target: 'comment-moderation',
-        policyScope: 'publishing',
         commandId: 'scope-mismatch',
         payload: { name: 'comment-moderation' },
       },
     };
     await expect(
       executeDraftMeta(pool, engine, request, { policyScope: 'community' }),
-    ).resolves.toMatchObject({ kind: 'rejected', layer: 'guard-failed' });
+    ).resolves.toMatchObject({ kind: 'accepted' });
     await expect(
       executeDraftMeta(pool, engine, request, { policyScope: 'publishing' }),
     ).resolves.toMatchObject({ kind: 'rejected', layer: 'guard-failed' });
@@ -255,7 +252,6 @@ describe('governed Flow Draft vertical slice', () => {
         params: {
           kind: 'flow-definition',
           target: 'post-status',
-          policyScope: 'publishing',
           commandId: 'create:d1',
           payload: { name: 'post-status' },
         },
@@ -483,7 +479,6 @@ describe('governed Agent Definition Draft vertical slice', () => {
         params: {
           kind: 'agent-definition',
           target: 'review-agent',
-          policyScope: 'development',
           commandId: 'agent:create',
           payload: { name: 'review-agent' },
         },
@@ -540,7 +535,6 @@ describe('governed Agent Definition Draft vertical slice', () => {
         params: {
           kind: 'agent-definition',
           target: 'review-agent',
-          policyScope: 'development',
           commandId: 'agent:approval:create',
           payload: candidate,
         },
@@ -645,7 +639,6 @@ describe('governed Agent Definition Draft vertical slice', () => {
         params: {
           kind: 'agent-definition',
           target: 'base-agent',
-          policyScope: 'development',
           commandId: 'agent:stale:create',
           payload: candidate,
         },

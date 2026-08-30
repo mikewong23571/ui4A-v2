@@ -6,7 +6,10 @@ import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ActionRunner } from '@/components/action-runner';
 import { blockedForRenderer } from '@/components/actions/action-group';
-import { createDirectActionSubmit } from '@/components/actions/action-submit';
+import {
+  createDirectActionSubmit,
+  observedActionClientParams,
+} from '@/components/actions/action-submit';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
@@ -67,11 +70,6 @@ export function MetaActions({
       <div className="grid gap-3 lg:grid-cols-2">
         {actions.map((action) => {
           const guard = guards.get(action.name);
-          const commandId = prefill?.commandId;
-          const actionPrefill =
-            typeof commandId === 'string'
-              ? { ...prefill, commandId: `${commandId}:${action.name}` }
-              : prefill;
           return (
             <Card key={action.name} className="min-w-0 p-4">
               <ActionRunner
@@ -79,8 +77,11 @@ export function MetaActions({
                 action={action}
                 blocked={blockedForRenderer(guard)}
                 blockReason={guard?.reason}
-                prefill={actionPrefill}
-                submit={createDirectActionSubmit((input) => execMetaAction({ ...input, scope }))}
+                prefill={prefill}
+                submit={createDirectActionSubmit((input) => execMetaAction({ ...input, scope }), {
+                  clientParams: ({ action: current }) =>
+                    observedActionClientParams(current, entity.properties),
+                })}
                 onExecuted={onChanged}
               />
             </Card>
