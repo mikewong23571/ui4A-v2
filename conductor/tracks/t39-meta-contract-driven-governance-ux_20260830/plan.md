@@ -85,7 +85,7 @@
 
 **Subagent contract**：Goal=让 Meta sitemap/summary 驱动首页与集合；Non-goals=不创建固定 surface 页面、不改 Application workspace；Changes=Meta sitemap adapter、dashboard、generic collection/overview 与相邻测试；Blast radius=禁止业务 Flow/事件语义、worker/db、Canvas composition、Chat 和新依赖。
 
-- [ ] Task D1：Red——编写 sitemap 责任/候选/定义/系统语义分组与未来 surface 自动进入测试，并确认失败。
+- [x] Task D1：Red——编写 sitemap 责任/候选/定义/系统语义分组与未来 surface 自动进入测试，并确认失败。ad416ec
 - [ ] Task D2：Green——实现 Meta Dashboard 只消费语义分组、title、intent、overview 与计数，不维护固定 surface/status 清单。
 - [ ] Task D3：Red——编写 collection overview、搜索总数、facet 声明和合同 links 分页测试，并确认失败。
 - [ ] Task D4：Green——复用 overview role，实现 collection 摘要与诚实截断；不把 table/card 响应式策略写回定义。
