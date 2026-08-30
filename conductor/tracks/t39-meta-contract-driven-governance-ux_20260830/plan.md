@@ -126,7 +126,7 @@
 - [x] Task G4：Green——实现 business Application projection 与 binding metadata，不读取 `meta/application:*`。865f007
 - [x] Task G5：Red——编写 binding-only header、Application 不聚合 principal 工作状态、source alias 授权后 canonical entity/action 去重与完整 membership fingerprint 测试，并确认失败。7ac98de
 - [x] Task G6：Green——扩展通用 `workspace:app:*` 组合，复用既有 Presentation 机器并保持 `/`/Work Thread 主角地位。68cfd47
-- [ ] Task G7：Red——编写 Flow `collections` 优先、append 次级、comments→community、多 owner 拒绝、extraSurface 不发明归属和字段闭合测试，并确认失败。
+- [x] Task G7：Red——编写 Flow `collections` 优先、append 次级、comments→community、多 owner 拒绝、extraSurface 不发明归属和字段闭合测试，并确认失败。c8c35c8
 - [ ] Task G8：Green——实现 collection ownership/field closure，不按集合名分支。
 - [ ] Task G9：Red——编写 composition version 随内容变化、surface role→既有 exact intent、零 per-app intent 表测试，并确认失败。
 - [ ] Task G10：Green——修复 composition version/fingerprint 与通用 intent policy，收回 app adapter 的视觉 density 决策。
