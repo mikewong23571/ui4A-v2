@@ -47,36 +47,39 @@
 - [x] Task A6：验证 Application title/intent 的 binding-only 来源、entry/surface semantic roles、canonical 去重、collection 归属和用户 pin 边界；禁止用 `meta/application:*` 隐式跨站供数。df646da
 - [x] Task A7：测量当前 sitemap/entity/prompt slice 字节基线，验证视觉策略不进入 Assistant prompt，披露仍是 scope → entity → actions 全量重建非累积。5d1271b
 - [x] Task A8：产出 spike findings，明确采纳/否决项；允许结论否决当前 spec 中 Trait/Hint 位置或拆分 Track。b28ee52
-- [ ] Task A9：根据 spike 更新 `DECISIONS.md`、`architecture.md`、`spec.md` 与本 `plan.md`；裁决是否拆为 Meta governance 与 Application experience 两个可独立交付 Track。
+- [x] Task A9：根据 spike 更新 `DECISIONS.md`、`architecture.md`、`spec.md` 与本 `plan.md`；保留一个 Track，并确立 Meta/Application 两个独立 milestone。4c531f2
 - [ ] Task A10：编排者审查并批准详细计划；未通过则修订或停止。Phase Verification & Checkpoint：确认 disposable code 已删除、文档与决定一致、系统零生产改动。
 
 ## Phase B：Trait/Semantic Hint 纯合同与披露预算（provisional）
 
 **Subagent contract**：Goal=建立最小语义合同与预算门；Non-goals=不改 Meta 页面、不修八个 Application、不增加视觉 DSL；Changes=`packages/shared/src/definition|presentation/`、`packages/engine/src/contract|presentation/`、Assistant disclosure 的最窄消费点及相邻测试；Blast radius=禁止 `apps/worker`、`packages/db`、Application bundles、`conductor/` 与新依赖。
 
-- [ ] Task B1：Red——在 spike 裁决的最窄边界编写 Trait/Semantic Hint parse、版本、白名单、非法引用、未知版本和无声明 fallback 测试，并确认失败。
-- [ ] Task B2：Green——实现最小语义类型与纯校验；不得加入设备、sticky、heading 或组件策略。
-- [ ] Task B3：Red——编写 sitemap/entity projection 与缓存版本测试，断言语义 metadata 对 HTTP/CLI 可见、不进入 Business fold、授权签名或事件，并确认失败。
-- [ ] Task B4：Green——实现定义/投影传播与 dependency invalidation，复用现有 presentation field roles/overview。
-- [ ] Task B5：Red——编写字段输入归属、server-owned 隐藏、client-generated 重试和 Agent/CLI parity 测试，并确认失败。
-- [ ] Task B6：Green——实现字段输入归属传播与通用宿主消费，不按 Draft 字段名分支。
-- [ ] Task B7：Red——增加 sitemap/entity payload 与 Assistant prompt slice 字节预算、视觉策略禁入 prompt、披露非累积测试，并确认失败。
-- [ ] Task B8：Green——接入 prompt slicer/serialization 的最小必要过滤，不窄化公开 HTTP 合同。
-- [ ] Task B9：增加低误报治理：禁止定义内 CSS/组件/设备策略、runtime per-app/per-rel 分支和 server-owned 人类输入；扫描范围排除合法 bundle 数据。
-- [ ] Task B10：Phase Verification & Checkpoint：focused tests、typecheck、`pnpm governance:strict`、D51 与 prompt budget 全绿。
+- [ ] Task B1：Red——用真实 articles/comments/meta entity、多 observation、UTF-8、trail 和 conversation 编写最终 provider request 32,768-byte 门禁测试，并确认失败。
+- [ ] Task B2：Green——实现 current sanitized observation、旧完整 observation 替换、结构化 trail 和 fetch 前 runtime byte guard；公开 HTTP 不窄化。
+- [ ] Task B3：Red——编写 `CognitiveSemanticsV1` 派生优先、封闭词表、未知版本和视觉策略拒绝测试，并确认失败。
+- [ ] Task B4：Green——实现最小认知语义 projector；复用 field presentation，不引入 generic presentation blob。
+- [ ] Task B5：Red——编写 sitemap/exact 双投影同源、hash/fingerprint invalidation、HTTP/CLI 可见与 Assistant allowlist 测试，并确认失败。
+- [ ] Task B6：Green——接入同一 pure projector 双投影和 scoped prompt sanitizer。
+- [ ] Task B7：Red——编写 `caller|client` input ownership、server-owned public params 拒绝、commandId/baseVersion 重试与 Agent/CLI parity 测试，并确认失败。
+- [ ] Task B8：Green——原子迁移 JSON Schema、RJSF、Agent tools、CLI、Siren 与 server validation；Draft create 从 trusted context 取 scope/schema。
+- [ ] Task B9：Red——编写 Meta sitemap base surfaces 按 granted union 披露、lens 不改变授权并集测试，并确认失败。
+- [ ] Task B10：Green——修正 Meta sitemap 授予并集投影，不引入 route 级 scope 选择。
+- [ ] Task B11：增加低误报治理：禁止定义内 CSS/组件/设备策略、runtime per-app/per-rel 分支、server-owned public params 和视觉策略进 prompt；扫描排除合法 bundle 数据。
+- [ ] Task B12：Phase Verification & Checkpoint：focused tests、typecheck、`pnpm governance:strict`、D51、真实 prompt budget 和公开合同完整性全绿。
 
 ## Phase C：canonical Meta Renderer 单一真相（provisional）
 
 **Subagent contract**：Goal=已知 Meta class 经 canonical 路径得到单一 Renderer；Non-goals=不改定义语义、Application landing 或业务动作；Changes=`apps/web/src/components/meta/`、`apps/web/src/app/meta/`、必要的 registry/client 测试；Blast radius=禁止 worker/db、业务 bundles、Presentation composition 与无关组件重构。
 
-- [ ] Task C1：Red——编写 Flow canonical 路由测试，期望拓扑、版本、节点和动作通过 registry 呈现，并确认当前 generic 失败。
-- [ ] Task C2：Red——编写 Activation/Capability canonical 测试，锁定 checks、diff、责任语义、intent 和输入/输出边界，并确认失败。
-- [ ] Task C3：Green——将 Flow、Activation、Capability 接入 class/trait registry，不按 rel 或 Application 分支。
-- [ ] Task C4：Red——编写全 Meta 内链 canonical、显式视角保留和旧路由零第二状态机测试，并确认失败。
-- [ ] Task C5：Green——统一内链并删除/收敛旧详情组件树，一次性迁移不留兼容双路径。
-- [ ] Task C6：增加 registry completeness 与 equal-priority ambiguity fail-closed 测试。
-- [ ] Task C7：浏览器验证 US2：Application → Flow 一次点击、canonical URL、完整拓扑/版本/动作、返回路径连续。
-- [ ] Task C8：Phase Verification & Checkpoint：focused tests、`pnpm check`、governance 和 Agent 合同探针。
+- [ ] Task C1：Red——编写 canonical/旧 view/Situation 无 `publishing`/first-grant 默认 lens、缺 lens 一等态和授权并集不变测试，并确认失败。
+- [ ] Task C2：Green——删除默认 lens 残留；URL 只保留显式 attention，服务端授权继续按 granted union。
+- [ ] Task C3：Red——编写 Flow/Activation/Capability canonical specialization、relationships/raw/actions parity 测试，并确认当前 generic 失败。
+- [ ] Task C4：Green——接入三类 specialization，canonical shell 唯一拥有 loading/cache/error/refresh。
+- [ ] Task C5：Red——编写全部 Meta links/presence bridge canonical、友好 route 零残留、写后 exact/collection/dashboard cache 同步测试，并确认失败。
+- [ ] Task C6：Green——原子切换内链/bridge，删除七条旧 route、fetch wrappers 与 lists，并实现授权 Meta cache invalidation；不留兼容路径。
+- [ ] Task C7：增加 registry completeness、ambiguity fail-closed 与旧 URL 源码/E2E 扫描。
+- [ ] Task C8：浏览器验证 US2、US4：canonical Flow/Activation/Capability、完整 topology/diff/checks、无默认 lens、返回路径连续。
+- [ ] Task C9：Phase Verification & Checkpoint：focused tests、web typecheck、`pnpm check`、governance 和 Agent 合同探针。
 
 ## Phase D：任务优先 Meta 首页与声明式集合概览（provisional）
 
@@ -91,14 +94,14 @@
 
 ## Phase E：Draft 审查责任点与注意力语义（provisional）
 
-**Subagent contract**：Goal=收敛 Draft 人类审查与 D51 lens；Non-goals=不建设完整 Draft authoring、不改 Draft 事件/审批语义；Changes=Draft Meta projection/renderer、公共 action field ownership、Meta situation/client 与相邻测试；Blast radius=禁止 Agent authoring runtime、worker/db schema、Application bundles 与 Presentation composition。
+**Subagent contract**：Goal=收敛 Draft 人类审查与 lens 文案/连续性；Non-goals=不建设完整 Draft authoring、不重复 Phase B input ownership、不改 Draft 事件/审批语义；Changes=Draft Meta projection/renderer、Meta situation/client 与相邻测试；Blast radius=禁止 Agent authoring runtime、worker/db schema、Application bundles 与 Presentation composition。
 
-- [ ] Task E1：Red——编写 Meta UI 不暴露 server-owned 字段、不把 Create Draft/完整 payload authoring 提升为主路径的测试，并确认失败。
-- [ ] Task E2：Green——收敛 Draft collection/detail 首屏为 validation、diff、checks、sources、provenance 与当前 actions；advanced/raw ingress 退守下钻。
+- [ ] Task E1：Red——编写 Meta UI 消费 Phase B ownership、不把 Create Draft/完整 payload authoring 提升为主路径的测试，并确认失败。
+- [ ] Task E2：Green——收敛 Draft collection/detail 首屏为 validation、diff、checks、sources、provenance 与当前 actions；advanced/raw ingress 退守下钻，不实现第二套 schema。
 - [ ] Task E3：Red——编写 valid/invalid/stale Draft 审查、现场保留、返回 author/Assistant 修复和 human-only fresh-read decision 测试，并确认失败。
 - [ ] Task E4：Green——实现通用 Draft 审查状态与责任点反馈，不生成专属修复表单。
-- [ ] Task E5：Red——编写无 `publishing` 默认视角、视角/授权分离、URL 连续和 D51 授权并集不变测试，并确认失败。
-- [ ] Task E6：Green——将 Scope 主标签收敛为“当前视角”，无显式 lens 保持一等状态。
+- [ ] Task E5：Red——编写“当前视角”任务文案、URL 连续、授权集合只读说明和无 lens UI 状态测试，并确认失败。
+- [ ] Task E6：Green——更新 lens 展示与审查现场恢复；运行时默认清理和授权并集语义复用 Phase C，不再实现第二处逻辑。
 - [ ] Task E7：浏览器验证 US3、US4、US9：审查而非 authoring、键盘、390px、stale/CAS 与 URL 连续性。
 - [ ] Task E8：Phase Verification & Checkpoint：D51、public schema、human-only、focused tests 与 governance 全绿。
 
@@ -108,8 +111,8 @@
 
 - [ ] Task F1：Red——编写 responsibility trait、任务/合同/raw 三层、`link.title` 与 `self` 退守测试，并确认失败。
 - [ ] Task F2：Green——实现通用责任点和关系词汇；inline/sticky、heading 与窄屏姿态由 Presentation policy 决定。
-- [ ] Task F3：Red——编写 guard reason、两段确认、已决原位反馈和待决集合退出测试，并确认失败。
-- [ ] Task F4：Green——统一 ActionRunner/Meta host 反馈，提交前继续 fresh read。
+- [ ] Task F3：Red——编写 guard reason、两段确认、已决原位反馈、待决集合退出和 Dashboard/collection/exact 同步测试，并确认失败。
+- [ ] Task F4：Green——统一 ActionRunner/Meta host 反馈，提交前继续 fresh read，并复用 Phase C cache invalidation。
 - [ ] Task F5：浏览器验证 US6、US7、US9：两次点击内决定、无需 raw、关系任务化、移动端不遮挡。
 - [ ] Task F6：Meta Milestone Verification & Checkpoint：US1–US10 可独立闭环，系统完整可运行；Application Phase 未开始也不影响 Meta 交付。
 
@@ -117,27 +120,31 @@
 
 **Subagent contract**：Goal=用语义数据改善 Application 图书馆与组合；Non-goals=不把 Application 变成书桌、不改 `/` Work Thread 聚合、不写 per-app runtime 分支；Changes=Application/Sitemap 定义与投影、`app-workspace-composition`、Application 书架、通用 Presentation policy、bundle 数据和相邻测试；Blast radius=禁止 Meta governance Renderer、worker/db、Chat、每应用 React 页面与新依赖。
 
-- [ ] Task G1：Red——编写 discoverability/system-fallback、entry semantic role、归属不变式和非法隐式 Meta entry 测试，并确认失败。
-- [ ] Task G2：Green——扩展 Application/Sitemap 的最小语义投影；不加入设备密度、sticky 或自由布局。
-- [ ] Task G3：Red——编写 binding-only title/intent、surface role、空态、canonical entity/action 去重和 Application 不聚合 principal 工作状态测试，并确认失败。
-- [ ] Task G4：Green——扩展通用 `workspace:app:*` 组合，复用既有 Presentation 机器；`/` 与 Work Thread 主角地位不变。
-- [ ] Task G5：Red——编写 Flow `collections` 归属、comments→community、可展示 seed/instance 字段必须有定义/role 测试，并确认失败。
-- [ ] Task G6：Green——修复 collection 归属和字段闭合治理，不按集合名分支。
-- [ ] Task G7：Red——为 default/publishing/community/development/editorial/governance/todo/ideas 编写声明夹具与 US11–US17 失败断言。
-- [ ] Task G8：Green——修订 default/publishing/community 声明数据并复跑同一通用实现。
-- [ ] Task G9：Green——修订 development/editorial/governance 声明数据并复跑同一通用实现。
-- [ ] Task G10：Green——修订 todo/ideas 声明数据并复跑同一通用实现。
-- [ ] Task G11：Red——编写 Application 书架 discoverability/title/intent、用户 pin/recent 偏好边界和 runtime 零 Application 名比较测试，并确认失败。
-- [ ] Task G12：Green——实现书架消费与用户级排序，不把个人偏好写回 Meta 定义。
-- [ ] Task G13：浏览器验证 US11–US18，逐 app 检查图书馆定位、title/intent、无重复动作、显式跨站、空态和 390px Presentation policy。
-- [ ] Task G14：Application Milestone Verification & Checkpoint：新增第九个 fixture 只改定义数据即可进入书架/landing；系统完整可运行。
+- [ ] Task G1：Red——编写 `system-fallback`、结构化 entry `{target,role}`、same-app business entry、非法隐式 Meta/workspace entry 测试，并确认失败。
+- [ ] Task G2：Green——实现 Application/Sitemap 最小语义与 parser/invariants；不加入 title/description/layout/device 字段。
+- [ ] Task G3：Red——编写只读 `application:<name>` Siren projection、grantedApplications 授权、零 actions/events/storage 和 HTTP/Agent discovery 测试，并确认失败。
+- [ ] Task G4：Green——实现 business Application projection 与 binding metadata，不读取 `meta/application:*`。
+- [ ] Task G5：Red——编写 binding-only header、Application 不聚合 principal 工作状态、source alias 授权后 canonical entity/action 去重与完整 membership fingerprint 测试，并确认失败。
+- [ ] Task G6：Green——扩展通用 `workspace:app:*` 组合，复用既有 Presentation 机器并保持 `/`/Work Thread 主角地位。
+- [ ] Task G7：Red——编写 Flow `collections` 优先、append 次级、comments→community、多 owner 拒绝、extraSurface 不发明归属和字段闭合测试，并确认失败。
+- [ ] Task G8：Green——实现 collection ownership/field closure，不按集合名分支。
+- [ ] Task G9：Red——编写 composition version 随内容变化、surface role→既有 exact intent、零 per-app intent 表测试，并确认失败。
+- [ ] Task G10：Green——修复 composition version/fingerprint 与通用 intent policy，收回 app adapter 的视觉 density 决策。
+- [ ] Task G11：Red——为 default/publishing/community/development/editorial/governance/todo/ideas 编写声明夹具与 US11–US17 失败断言。
+- [ ] Task G12：Green——修订 default/publishing/community 声明数据并复跑同一通用实现。
+- [ ] Task G13：Green——修订 development/editorial/governance 声明数据并复跑同一通用实现。
+- [ ] Task G14：Green——修订 todo/ideas 声明数据并复跑同一通用实现。
+- [ ] Task G15：Red——编写 Application 书架 discoverability/title/intent、声明顺序、当前 lens 轻强调、全员可达和 runtime 零 Application 名比较测试，并确认失败。
+- [ ] Task G16：Green——实现书架消费；不新增 pin/recent/个人排序状态。
+- [ ] Task G17：浏览器验证 US11–US18，逐 app 检查图书馆定位、title/intent、无重复动作、显式跨站、空态和 390px Presentation policy。
+- [ ] Task G18：Application Milestone Verification & Checkpoint：新增第九个 fixture 只改定义数据即可进入书架/landing；系统完整可运行且不破坏 Meta milestone。
 
 ## Phase H：Assistant 共同注视与全故事终审（provisional）
 
-**Subagent contract（H1–H3）**：Goal=证明同一 Situation/entity/action 的 Assistant 消费；Non-goals=不新增意图启发式、不让视觉策略进 prompt、不用 rule driver 冒充验收；Changes=Assistant disclosure/FactRef/Eval 的最窄路径与测试；Blast radius=禁止业务引擎语义、Application 专属分支、worker/db 和新 provider。H4–H10 由编排者执行 Track 级验收。
+**Subagent contract（H1–H3）**：Goal=集成证明 Phase B 的 sanitizer 与同一 Situation/entity/action 消费；Non-goals=不新增第二套 disclosure、不新增意图启发式、不让视觉策略进 prompt、不用 rule driver 冒充验收；Changes=Assistant parity/FactRef/Eval 的最窄路径与测试；Blast radius=禁止业务引擎语义、Application 专属分支、worker/db 和新 provider。H4–H10 由编排者执行 Track 级验收。
 
-- [ ] Task H1：Red——编写 publishing/community/governance 的 Situation → entity → actions disclosure、FactRef、clientView/lastNavigation 和视觉策略禁入 prompt 测试，并确认失败。
-- [ ] Task H2：Green——接通最小必要的 Assistant scoped disclosure 消费；不得新增意图启发式或全量 sitemap 注入。
+- [ ] Task H1：集成测试——验证 publishing/community/governance 的 Situation → sanitized entity → actions、FactRef、clientView/lastNavigation 和视觉策略禁入 prompt；已有行为通过则不强造 Red。
+- [ ] Task H2：仅在 H1 暴露真实缺口时做最小修复；否则记录 no-op 证据，禁止新增第二套 sanitizer 或全量 sitemap 注入。
 - [ ] Task H3：运行 `pnpm eval:llm` 完成 US19 真实 LLM Eval；provider 缺失时记录未运行，禁止 scripted/rule 替代。
 - [ ] Task H4：逐一执行 US1–US19 浏览器实操；记录前态、关键交互态、完成态截图和 DOM/URL/焦点断言。
 - [ ] Task H5：使用 CLI 或 HTTP 合同探针复跑同门路径，比较事实、links、actions、guards、schema、Trait 与 Semantic Hint；不要求像素策略同消耗。
