@@ -1,0 +1,6 @@
+T39 Phase B Task B8 — action input ownership Green
+
+Summary: added strict caller schema derivation; migrated RJSF, Agent tools/loop retry, CLI Draft retry, Meta Draft schema/context and full validation to client-owned commandId/baseVersion; removed policyScope/schemaRef from public create params.
+Files: engine ownership helper, Agent client params/loop/tools, Web submit/Draft/Meta paths, CLI Draft path and adjacent tests.
+Why: one public wire with caller-visible fields and trusted client injection; server-owned data stays outside params.
+Verification: orchestrator 65 unit files/412 tests, 5 DB files/24 tests, four package typechecks and governance:strict passed.
