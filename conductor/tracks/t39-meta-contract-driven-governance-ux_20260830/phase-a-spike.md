@@ -321,3 +321,54 @@ Re-ran the focused baseline:
 ```
 
 No A6 repository or temporary change remained; live CLI was unavailable and no result was invented.
+
+## A7 Assistant disclosure and byte budget baseline
+
+### Measured baseline
+
+Current local data contains 27 articles, 4 comments and 10 Flows.
+
+| Scenario | HTTP sitemap | Typed sitemap | Prompt slice | Entity | Messages | Tools | Full wire |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| publishing `flow:article-drafting` | 52,207 | 17,892 | 2,518 | 1,059 | 7,970 | 7,749 | 19,787 |
+| community `comments` | 52,207 | 17,892 | 1,399 | 4,577 | 15,462 | 6,414 | 25,881 |
+| governance `meta/flows` | 2,507 | 2,223 | 2,212 | 50,121 | 163,954 | 6,987 | 174,947 |
+
+Real `articles` produces an approximately 115 KiB provider wire; the largest Meta Flow and
+Application examples also exceed the current 32 KiB target. Existing budget tests use small
+fixtures and do not cover full collections, Meta bundles, multiple observations, trail or
+conversation.
+
+### Non-accumulation finding
+
+The loop correctly keeps one immutable full sitemap and rebuilds a scoped slice plus current tools
+on every step. It does not provide the same guarantee for observations: up to eight complete Siren
+snapshots and trail entries accumulate. Navigating `article-drafting → articles` grew messages from
+about 8 KiB to 107 KiB because the earlier entity remained alongside the large collection.
+
+Phase A8/A9 must explicitly decide the observation contract; entity-count bounds cannot substitute
+for a UTF-8 byte budget.
+
+### Required boundary
+
+- public HTTP/CLI remains complete and has no Assistant budget narrowing;
+- Assistant sitemap uses an explicit cognitive allowlist and rejects visual policy fields;
+- Assistant entity observations need a dedicated projection/sanitizer rather than full Siren JSON;
+- final serialized provider request is the authoritative runtime budget, measured before fetch;
+- an over-budget request fails structurally and honestly before network or mutation.
+
+Initial budget candidate for the Phase A decision: total provider wire 32,768 bytes, with diagnostic
+component targets for system/tools/messages/envelope and sitemap slice. A8 must confirm whether to
+adopt the exact component numbers; tests must use real-shape articles/comments/meta entities,
+multi-observation, UTF-8, trail and conversation.
+
+### Orchestrator light verification
+
+Re-ran the exact focused suite:
+
+```text
+6 files / 84 tests passed
+existing synthetic wire samples: 14,642–14,718 bytes
+```
+
+No A7 repository or temporary change remained.
