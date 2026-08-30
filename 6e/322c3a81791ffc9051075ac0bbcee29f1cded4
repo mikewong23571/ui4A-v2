@@ -1,0 +1,6 @@
+T39 Phase A Task A5 — canonical Meta cutover inventory
+
+Summary: mapped canonical/friendly route divergence; defined specialization reuse, scope prerequisite, file/test migration, atomic GR2 cutover and rollback slice.
+Files: phase-a-spike.md.
+Why: converges on one human route without changing HTTP/engine truth.
+Verification: orchestrator reran 12 unit files/66 tests and 4 route/service/engine files/43 tests.
