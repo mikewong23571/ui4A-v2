@@ -1,0 +1,6 @@
+T39 Phase B Task B9 — Meta granted-union Red tests
+
+Summary: defined credential union filtering for base Application/Flow/Capability exact surfaces, global-safe collections, lens-independent content/version, unlocated state, local demo allowlist and Agent catalog union.
+Files: Meta well-known route production auth test.
+Why: closes D51 existence/title leakage and lens-as-authorization regression.
+Verification: orchestrator confirmed 4 pass/4 expected Red, web typecheck and GR3 passed.
