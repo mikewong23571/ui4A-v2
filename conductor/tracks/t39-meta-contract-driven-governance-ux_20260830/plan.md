@@ -39,7 +39,7 @@
 
 **Subagent contract（A1–A8）**：Goal=回答当前任务的一个不确定问题；Non-goals=不写生产实现、不定案下一 Phase；Changes=只读分析、focused probe/test 与临时 `mktemp` 工件；Blast radius=可读全仓，写入仅临时目录，禁止生产源码、`conductor/`、数据库与依赖变更。A9–A10 由编排者执行。
 
-- [ ] Task A1：盘点 definition、SitemapSurface、Siren entity、`presentation.fields`、Recipe/Sidecar、Meta Renderer registry、RJSF schema、Assistant disclosure 和 canonical/友好路由。
+- [x] Task A1：盘点 definition、SitemapSurface、Siren entity、`presentation.fields`、Recipe/Sidecar、Meta Renderer registry、RJSF schema、Assistant disclosure 和 canonical/友好路由。ed0c447
 - [ ] Task A2：编写 disposable probe，比较 Trait/Semantic Hint 位于 definition、sitemap、exact projection 或 Presentation declaration 时的传播、缓存版本、Agent 可见性和依赖失效；Spike 不进入生产代码。
 - [ ] Task A3：验证 overview 复用 T38 `presentation.fields`，并证明业务定义无需 desktop/narrow density、sticky、heading source 或组件名。
 - [ ] Task A4：验证 `human-authored`、`client-generated`、`server-owned` 字段归属；证明 Meta UI 可隐藏系统字段而 Agent/CLI 仍能稳定重试，且无需建设完整 Draft authoring 编辑器。
