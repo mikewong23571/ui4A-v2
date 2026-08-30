@@ -4,9 +4,11 @@
 
 ## 活跃 Tracks
 
-- [~] **Track: T39 Meta 合同驱动治理与 Application 入口体验：语义 Trait + 有界 Hint、canonical Renderer、任务优先 UI/UX 与八应用双门验收** *Link: [tracks/t39-meta-contract-driven-governance-ux_20260830/index.md](./tracks/t39-meta-contract-driven-governance-ux_20260830/index.md)*
+当前无活跃 Track。
 
-## 归档 Tracks(T1–T36,只读历史)
+## 归档 Tracks(T1–T39,只读历史)
+
+- [x] **Track: T39 Meta 合同驱动治理与 Application 入口体验：语义 Trait + 有界 Hint、canonical Renderer、任务优先 UI/UX 与八应用双门验收**(2026-08-31 完成：US1–US18 通过，US19 真实 LLM 因 provider 未配置记为 NOT RUN；根级 Browser/CLI/390px/第九 fixture/full E2E/invariants/check 全部闭环) *Link: [tracks/archive/t39-meta-contract-driven-governance-ux_20260830/index.md](./tracks/archive/t39-meta-contract-driven-governance-ux_20260830/index.md)*
 
 - [x] **Track: T36 治理例外清退:重构与功能拆解(反模块膨胀)**(2026-08-29 完成:GR3 基线 12 条+GR1 例外 2 条全数清偿,`governance:strict` 并入 `pnpm check`(D53);附带对齐 T34/T35 陈旧 e2e 断言、修复 3 处产品缺陷;全量 e2e/check 双绿) *Link: [tracks/archive/t36-governance-exception-retirement_20260828/index.md](./tracks/archive/t36-governance-exception-retirement_20260828/index.md)*
 

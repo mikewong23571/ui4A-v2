@@ -151,8 +151,8 @@
 - [x] Task H6：执行 390px 全流程视觉审核：Meta、Application 书架、八个 landing、Draft 审查、Activation decision 与错误恢复。ddc3b77
 - [x] Task H7：执行“换 Application”终审与源码扫描：第九个 fixture 零 runtime 特判，定义内无 CSS/设备策略，Assistant prompt 预算不增长越界。ddc3b77
 - [x] Task H8：运行 `pnpm format:check`、`pnpm governance:strict`、`pnpm check`、`CI=true pnpm e2e`、invariants 与 prompt budget。ddc3b77
-- [~] Task H9：汇总 `review.md`，逐故事给出 pass/pass-with-observations/fail、真实 LLM 状态、截图路径、DOM 事实和剩余观察。
-- [ ] Task H10：Track Verification & Checkpoint：系统可运行、工作区无临时产物、Product Vision 门禁和 US1–US19 全部闭环。
+- [x] Task H9：汇总 `review.md`，逐故事给出 pass/pass-with-observations/fail、真实 LLM 状态、截图路径、DOM 事实和剩余观察。4c2c330
+- [x] Task H10：Track Verification & Checkpoint：系统可运行、工作区无临时产物、Product Vision 门禁和 US1–US19 全部闭环。4c2c330
 
 ## Phase: Review Fixes
 
