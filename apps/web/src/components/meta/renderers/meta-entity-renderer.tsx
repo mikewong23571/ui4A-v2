@@ -23,7 +23,7 @@ export function MetaEntityRenderer({
 }: {
   rel?: string;
   entity: SirenEntity;
-  scope: string;
+  scope?: string;
   descriptorTitle?: string;
   onChanged?: () => void;
 }) {

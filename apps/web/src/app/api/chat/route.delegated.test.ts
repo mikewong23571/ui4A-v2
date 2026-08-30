@@ -67,6 +67,19 @@ async function chat(
   return { status: response.status, json: (await response.json()) as Record<string, unknown> };
 }
 
+function delegatedView(scope = 'default', focus: string | null = null) {
+  return {
+    schemaVersion: 2,
+    presence: {
+      clientInstanceId: 'client:delegated',
+      site: 'workstation',
+      scope,
+      thread: null,
+      focus,
+    },
+  };
+}
+
 beforeEach(async () => {
   await ensureEventsTable(pool);
   await pool.query('TRUNCATE events');
@@ -118,11 +131,20 @@ describe('mode=delegated(委托派发)', () => {
     else process.env.LLM_MODEL = envModel;
   });
 
+  it('缺少显式 Application 视角时结构化拒绝，不从授予集合偷选', async () => {
+    const { status, json } = await chat({ goal: { verb: '发布' }, mode: 'delegated' });
+
+    expect(status).toBe(400);
+    expect(String(json.error)).toContain('显式选择');
+    expect(dispatchMock).not.toHaveBeenCalled();
+  });
+
   it('派发成功 → 200 {mode, delegationId, statusUrl},auto 以 llm 传入', async () => {
     const { status, json } = await chat({
       goal: { verb: '发布一篇文章', fields: { title: '委托发布' } },
       mode: 'delegated',
       sessionId: 'sess-d1',
+      clientView: delegatedView(),
     });
 
     expect(status).toBe(200);
@@ -149,20 +171,11 @@ describe('mode=delegated(委托派发)', () => {
       goal: { verb: '检查当前文章' },
       mode: 'delegated',
       sessionId: 'sess-focused',
-      clientView: {
-        schemaVersion: 2,
-        presence: {
-          clientInstanceId: 'client:focused',
-          site: 'workstation',
-          scope: 'publishing',
-          thread: null,
-          focus: 'post:first-post',
-        },
-      },
+      clientView: delegatedView('default', 'post:first-post'),
     });
 
     expect(dispatchMock).toHaveBeenCalledTimes(1);
-    // Local demo grants only default; the assembler keeps focus but rejects the ungranted scope.
+    // Durable work receives the explicitly selected authorized application and current focus.
     expect((dispatchMock.mock.calls[0]![0] as Record<string, unknown>).scope).toBe('default');
     expect((dispatchMock.mock.calls[0]![0] as Record<string, unknown>).startRel).toBe(
       'post:first-post',
@@ -170,17 +183,26 @@ describe('mode=delegated(委托派发)', () => {
   });
 
   it('auto 与显式 llm 都以 llm 直传', async () => {
-    await chat({ goal: { verb: '发布' }, mode: 'delegated' });
+    await chat({ goal: { verb: '发布' }, mode: 'delegated', clientView: delegatedView() });
     expect((dispatchMock.mock.calls[0]![0] as Record<string, unknown>).driverKind).toBe('llm');
 
-    await chat({ goal: { verb: '发布' }, mode: 'delegated', driver: 'llm' });
+    await chat({
+      goal: { verb: '发布' },
+      mode: 'delegated',
+      driver: 'llm',
+      clientView: delegatedView(),
+    });
     expect((dispatchMock.mock.calls[1]![0] as Record<string, unknown>).driverKind).toBe('llm');
   });
 
   it('派发失败(Temporal 不可达)→ 503 结构化错误,不伪成功', async () => {
     dispatchMock.mockRejectedValueOnce(new Error('ECONNREFUSED 7233'));
 
-    const { status, json } = await chat({ goal: { verb: '发布' }, mode: 'delegated' });
+    const { status, json } = await chat({
+      goal: { verb: '发布' },
+      mode: 'delegated',
+      clientView: delegatedView(),
+    });
     expect(status).toBe(503);
     expect(JSON.stringify(json)).toContain('ECONNREFUSED 7233');
     expect(json.delegationId).toBeUndefined();

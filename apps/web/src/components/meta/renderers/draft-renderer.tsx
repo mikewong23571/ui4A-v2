@@ -35,7 +35,7 @@ function DraftPayloadEditor({
 }: {
   entity: SirenEntity;
   rel: string;
-  scope: string;
+  scope?: string;
   kind: string;
   version: number;
   payload: unknown;
@@ -127,7 +127,7 @@ function DraftDecision({
   onChanged,
 }: {
   rel: string;
-  scope: string;
+  scope?: string;
   onChanged?: () => void;
 }) {
   const { entity, state, refresh } = useMetaEntity(rel, scope);
@@ -164,7 +164,7 @@ export function DraftRenderer({
   onChanged,
 }: {
   entity: SirenEntity;
-  scope: string;
+  scope?: string;
   onChanged?: () => void;
 }) {
   const view = draftViewModel(entity);

@@ -31,16 +31,17 @@ export function publicMetaActions(entity: SirenEntity): SirenAction[] {
   );
 }
 
-export function browserHrefForContractHref(href: string, scope: string): string | null {
+export function browserHrefForContractHref(href: string, scope?: string): string | null {
   const metaRel = relFromMetaApiHref(href);
   if (metaRel !== null) return browserHrefForMetaRel(metaRel, scope);
   if (!href.startsWith('/')) return null;
   const url = new URL(href, 'http://ui4a.local');
   if (url.origin !== 'http://ui4a.local' || url.pathname !== '/api/entity') return null;
   const rel = url.searchParams.get('rel');
-  return rel === null
-    ? null
-    : `/entity?rel=${encodeURIComponent(rel)}&scope=${encodeURIComponent(scope)}`;
+  if (rel === null) return null;
+  const query = new URLSearchParams({ rel });
+  if (scope !== undefined && scope.length > 0) query.set('scope', scope);
+  return `/entity?${query.toString()}`;
 }
 
 export function MetaActions({
@@ -53,7 +54,7 @@ export function MetaActions({
 }: {
   entity: SirenEntity;
   rel: string;
-  scope: string;
+  scope?: string;
   prefill?: Record<string, unknown>;
   excludeActions?: string[];
   onChanged?: () => void;

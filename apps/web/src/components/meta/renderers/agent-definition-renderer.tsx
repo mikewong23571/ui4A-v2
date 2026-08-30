@@ -16,7 +16,13 @@ function JsonPanel({ value }: { value: unknown }) {
   );
 }
 
-export function AgentDefinitionRenderer({ entity, scope }: { entity: SirenEntity; scope: string }) {
+export function AgentDefinitionRenderer({
+  entity,
+  scope,
+}: {
+  entity: SirenEntity;
+  scope?: string;
+}) {
   const view = agentDefinitionViewModel(entity);
   return (
     <div className="space-y-7">

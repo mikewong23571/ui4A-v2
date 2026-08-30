@@ -22,7 +22,7 @@ function MetaEntityResource({
   sitemap,
 }: {
   rel: string;
-  scope: string;
+  scope?: string;
   sitemap: NonNullable<MetaSitemapState['sitemap']>;
 }) {
   const { entity, state, refresh } = useMetaEntity(rel, scope, sitemap.version);
@@ -60,7 +60,7 @@ function MetaEntityResource({
   );
 }
 
-export function MetaEntityPage({ rel, scope }: { rel: string; scope: string }) {
+export function MetaEntityPage({ rel, scope }: { rel: string; scope?: string }) {
   const { sitemap, state } = useMetaSitemap(scope);
   if (state === 'loading') return <LoadingContract />;
   if (state === 'error' || sitemap === null) {

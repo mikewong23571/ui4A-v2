@@ -311,6 +311,36 @@ export async function getAgentDefinitionMetaEntity(
   return view === undefined ? undefined : definitionEntity(view);
 }
 
+/** Project a grant-union read without manufacturing a selected application lens. */
+export async function getAgentDefinitionMetaEntityForScopes(
+  db: DbExecutor,
+  rel: string,
+  principal: string,
+  policyScopes: readonly string[],
+): Promise<SirenEntity | undefined> {
+  const entities = await Promise.all(
+    [...new Set(policyScopes)].map((policyScope) =>
+      getAgentDefinitionMetaEntity(db, rel, principal, policyScope),
+    ),
+  );
+  const visible = entities.filter((entity): entity is SirenEntity => entity !== undefined);
+  if (rel !== AGENT_DEFINITIONS_REL) return visible[0];
+  const base = visible[0];
+  if (base === undefined) return undefined;
+  const members = new Map<string, SirenEntity>();
+  for (const entity of visible) {
+    for (const member of entity.entities ?? []) {
+      const key = member.href ?? String(member.properties.ref ?? members.size);
+      if (!members.has(key)) members.set(key, member);
+    }
+  }
+  return {
+    ...base,
+    properties: { rel, count: members.size },
+    entities: [...members.values()],
+  };
+}
+
 export function isAgentDefinitionMetaRel(rel: string): boolean {
   return rel === AGENT_DEFINITIONS_REL || rel.startsWith(AGENT_DEFINITION_PREFIX);
 }

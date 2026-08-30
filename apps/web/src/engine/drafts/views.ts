@@ -386,6 +386,42 @@ export async function getDraftMetaEntity(
   return projectExactDraft(db, engine, found.aggregate, found.payload, agentDefinitions);
 }
 
+/** Project a grant-union read without turning any granted application into an attention lens. */
+export async function getDraftMetaEntityForScopes(
+  db: DbExecutor,
+  engine: EngineRuntime,
+  rel: string,
+  principal: string,
+  policyScopes: readonly string[],
+  agentDefinitions?: AgentDefinitionDraftRegistryPort,
+): Promise<SirenEntity | undefined> {
+  const entities = await Promise.all(
+    [...new Set(policyScopes)].map((policyScope) =>
+      getDraftMetaEntity(db, engine, rel, principal, policyScope, agentDefinitions),
+    ),
+  );
+  const visible = entities.filter((entity): entity is SirenEntity => entity !== undefined);
+  if (rel !== 'meta/drafts') return visible[0];
+  const base = visible[0];
+  if (base === undefined) return undefined;
+  const members = new Map<string, SirenEntity>();
+  for (const entity of visible) {
+    for (const member of entity.entities ?? []) {
+      const key = member.href ?? String(member.properties.rel ?? members.size);
+      if (!members.has(key)) members.set(key, member);
+    }
+  }
+  return {
+    ...base,
+    properties: {
+      rel,
+      count: members.size,
+      limit: Number(base.properties.limit ?? 20),
+    },
+    entities: [...members.values()],
+  };
+}
+
 export function validateAgentCandidate(
   payload: unknown,
   target: string | undefined,

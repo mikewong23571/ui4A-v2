@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { applicationViewModel } from '../view-models/application';
 import { browserHrefForContractHref, RawContract } from './common';
 
-export function ApplicationRenderer({ entity, scope }: { entity: SirenEntity; scope: string }) {
+export function ApplicationRenderer({ entity, scope }: { entity: SirenEntity; scope?: string }) {
   const view = applicationViewModel(entity);
   const flowLinks = entity.links.filter((link) => link.rel.includes('flow'));
   const capabilityLinks = entity.links.filter((link) => link.rel.includes('capability'));

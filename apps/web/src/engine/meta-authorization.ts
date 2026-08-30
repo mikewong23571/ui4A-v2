@@ -5,7 +5,7 @@ export type MetaAuthorizationMode = typeof META_LOCAL_AUTHORIZATION_MODE | 'cred
 export interface MetaRequestContext {
   principal: string;
   requestedScope?: string;
-  effectiveScope: string;
+  effectiveScope?: string;
   authorizedScopes: string[];
   authorizationMode: MetaAuthorizationMode;
 }
@@ -19,7 +19,6 @@ export function resolveMetaRequestContext(input: {
   requestedScope?: string;
   headerScope?: string;
   authorizedScopes: readonly string[];
-  defaultScope?: string;
 }): MetaRequestContext {
   const authorizedScopes = [...new Set(input.authorizedScopes)];
   if (authorizedScopes.length === 0) throw new Error('no authorized Meta scopes');
@@ -31,16 +30,13 @@ export function resolveMetaRequestContext(input: {
     throw new Error('conflicting Meta scope claims');
   }
   const requestedScope = input.requestedScope ?? input.headerScope;
-  const preferred = input.defaultScope ?? 'publishing';
-  const fallback = authorizedScopes.includes(preferred) ? preferred : authorizedScopes[0]!;
-  const effectiveScope = requestedScope ?? fallback;
-  if (!authorizedScopes.includes(effectiveScope)) {
-    throw new Error(`Meta scope is not authorized: ${effectiveScope}`);
+  if (requestedScope !== undefined && !authorizedScopes.includes(requestedScope)) {
+    throw new Error(`Meta scope is not authorized: ${requestedScope}`);
   }
   return {
     principal: input.principal ?? 'local-user',
     ...(requestedScope === undefined ? {} : { requestedScope }),
-    effectiveScope,
+    ...(requestedScope === undefined ? {} : { effectiveScope: requestedScope }),
     authorizedScopes,
     authorizationMode: META_LOCAL_AUTHORIZATION_MODE,
   };
@@ -49,9 +45,8 @@ export function resolveMetaRequestContext(input: {
 export function metaContextFromRequest(
   request: Request | undefined,
   authorizedScopes: readonly string[],
-  defaultScope?: string,
 ): MetaRequestContext {
-  if (request === undefined) return resolveMetaRequestContext({ authorizedScopes, defaultScope });
+  if (request === undefined) return resolveMetaRequestContext({ authorizedScopes });
   const url = new URL(request.url);
   return resolveMetaRequestContext({
     principal: request.headers.get('x-ui4a-principal') ?? undefined,
@@ -59,6 +54,5 @@ export function metaContextFromRequest(
       url.searchParams.get('scope') ?? url.searchParams.get('policyScope') ?? undefined,
     headerScope: request.headers.get('x-ui4a-policy-scope') ?? undefined,
     authorizedScopes,
-    defaultScope,
   });
 }

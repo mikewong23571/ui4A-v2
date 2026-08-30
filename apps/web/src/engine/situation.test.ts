@@ -11,7 +11,7 @@ const presence = {
   updatedSeq: 12,
 } as const;
 
-const defaults = { site: 'workstation', scope: 'default' } as const;
+const defaults = { site: 'workstation' } as const;
 
 function input(overrides: Partial<SituationInput> = {}): SituationInput {
   return {
@@ -100,9 +100,7 @@ describe('situation assembler', () => {
         grantedScopes: grants,
         presence: undefined,
         explicit: undefined,
-        // The production type still requires scope during Red. The assertion locks the D54 target
-        // without changing production declarations in this task.
-        defaults: { site: 'workstation' } as SituationInput['defaults'],
+        defaults: { site: 'workstation' },
       }),
     );
 
@@ -118,7 +116,7 @@ describe('situation assembler', () => {
         grantedScopes: grants,
         presence: { ...presence, scope: 'outside-presence' },
         explicit: { scope: 'outside-explicit' },
-        defaults: { site: 'workstation' } as SituationInput['defaults'],
+        defaults: { site: 'workstation' },
       }),
     );
 

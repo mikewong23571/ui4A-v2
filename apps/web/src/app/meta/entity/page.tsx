@@ -11,7 +11,7 @@ export default async function GenericMetaEntityPage({
 }: {
   searchParams: Promise<{ rel?: string; scope?: string }>;
 }) {
-  const { rel, scope = 'publishing' } = await searchParams;
+  const { rel, scope } = await searchParams;
   if (rel === undefined || rel.length === 0) {
     return (
       <div role="alert">

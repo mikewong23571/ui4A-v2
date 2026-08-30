@@ -8,7 +8,7 @@ type Applications = NonNullable<EngineSnapshot['applications']>;
 export function startRelFromSituation(situation: Situation, applications: Applications): string {
   if (typeof situation.focus === 'string') return situation.focus;
 
-  const entry = applications[situation.scope]?.entry;
+  const entry = situation.scope === undefined ? undefined : applications[situation.scope]?.entry;
   if (entry !== undefined && entry !== '') return entry;
 
   return situation.site === 'meta' ? 'meta/flows' : 'articles';

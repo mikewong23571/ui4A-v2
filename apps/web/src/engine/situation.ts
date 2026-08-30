@@ -15,21 +15,19 @@ export function grantedPolicyScopes(scopes: readonly string[]): string[] {
   ];
 }
 
-/**
- * 展示/导航偏好槽位(D51 过渡):显式声明优先,否则取授予集合中第一个已登记
- * application。仅供响应元数据(effective-scope 头、sitemap 槽位、Draft 目标
- * 默认值)使用,禁止进入任何授权判定——授权一律吃授予集合 × 事实归属。
- */
-export function declaredOrFirstGrantedApplication(
+/** Return a valid explicitly declared attention lens; grants never create attention. */
+export function declaredApplication(
   identity: { policyScope?: string; grantedApplications: readonly string[] },
   authorizedApplications: readonly string[],
 ): string | undefined {
-  if (identity.policyScope !== undefined && authorizedApplications.includes(identity.policyScope)) {
+  if (
+    identity.policyScope !== undefined &&
+    identity.grantedApplications.includes(identity.policyScope) &&
+    authorizedApplications.includes(identity.policyScope)
+  ) {
     return identity.policyScope;
   }
-  return identity.grantedApplications.find((application) =>
-    authorizedApplications.includes(application),
-  );
+  return undefined;
 }
 
 export interface SituationExplicitParameters {
@@ -41,7 +39,6 @@ export interface SituationExplicitParameters {
 
 export interface SituationDefaults {
   site: string;
-  scope: string;
   thread?: string | null;
   focus?: RenderSubject | null;
 }
@@ -55,7 +52,7 @@ export interface SituationInput {
 }
 
 export interface SituationDisclosureSlice {
-  scope: string;
+  scope?: string;
   thread: string | null;
   focus: RenderSubject | null;
 }
@@ -63,7 +60,7 @@ export interface SituationDisclosureSlice {
 export interface Situation {
   principal: string;
   site: string;
-  scope: string;
+  scope?: string;
   thread: string | null;
   focus: RenderSubject | null;
   disclosure: SituationDisclosureSlice;
@@ -75,17 +72,16 @@ function firstString(...values: Array<string | null | undefined>): string {
   return value;
 }
 
-function scopeFrom(input: SituationInput): string {
-  const candidates = [input.explicit?.scope, input.presence?.scope, input.defaults.scope];
-  // Fail-closed (D48-R8): an empty grant envelope means nothing is authorized,
-  // so every candidate below is rejected by the membership check and this throws.
+function scopeFrom(input: SituationInput): string | undefined {
+  if (input.grantedScopes.length === 0) {
+    throw new Error('situation has no authorized policy scope');
+  }
+  const candidates = [input.explicit?.scope, input.presence?.scope];
   for (const candidate of candidates) {
     if (candidate === undefined || candidate === null || candidate === '') continue;
     if (input.grantedScopes.includes(candidate)) return candidate;
   }
-  const firstGranted = input.grantedScopes.find((scope) => scope !== '');
-  if (firstGranted !== undefined) return firstGranted;
-  throw new Error('situation has no authorized policy scope');
+  return undefined;
 }
 
 /** The sole service-layer answer to “where is this principal and what is in view?”. */

@@ -8,7 +8,7 @@ import {
   resolveTrustedRequestIdentity,
 } from '../../../../auth/request-identity';
 import { assertReachable } from '../../../../auth/application-scope';
-import { declaredOrFirstGrantedApplication } from '../../../../engine/situation';
+import { declaredApplication } from '../../../../engine/situation';
 
 import { parseExecBody, rejectionStatus } from '../../exec-request';
 
@@ -65,15 +65,20 @@ export async function POST(request: Request) {
         identity.grantedApplications,
       );
     }
-    const effectiveScope =
-      declaredOrFirstGrantedApplication(identity, authorizedPolicyScopes) ??
-      authorizedPolicyScopes[0]!;
+    const effectiveScope = declaredApplication(identity, authorizedPolicyScopes);
     const metaRequest = applyTrustedIdentity(parsed.request, identity);
     const outcome = isDraftMetaRel(parsed.request.rel)
-      ? await executeDraftMeta(db, engine, metaRequest, {
-          policyScope: effectiveScope,
-          agentDefinitions: agentDefinitionDraftRegistryPort,
-        })
+      ? effectiveScope === undefined
+        ? {
+            kind: 'rejected' as const,
+            layer: 'schema-invalid' as const,
+            reason: 'Draft action requires an explicit authorized application lens',
+            detail: undefined,
+          }
+        : await executeDraftMeta(db, engine, metaRequest, {
+            policyScope: effectiveScope,
+            agentDefinitions: agentDefinitionDraftRegistryPort,
+          })
       : await engine.exec(metaRequest);
     if (outcome.kind === 'accepted') {
       return Response.json({ entity: outcome.entity });

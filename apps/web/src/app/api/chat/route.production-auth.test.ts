@@ -342,7 +342,7 @@ describe('production chat turn credential boundary', () => {
     expect(mocks.runAgent).toHaveBeenCalledTimes(1);
     expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).principal).toBe('human-alice');
     expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).channel).toBe('chat');
-    expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).app).toBe('development');
+    expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).app).toBeUndefined();
   });
 
   it('carries every granted agent policy scope into the exchange (rel coverage is per-request)', async () => {
@@ -698,6 +698,16 @@ describe('production chat turn credential boundary', () => {
           mode: 'delegated',
           sessionId: 'forged-root',
           turnId: 'turn-6',
+          clientView: {
+            schemaVersion: 2,
+            presence: {
+              clientInstanceId: 'production-delegated',
+              site: 'workstation',
+              scope: 'development',
+              thread: null,
+              focus: null,
+            },
+          },
         },
         { cookie: 'valid-session' },
       ),
@@ -729,6 +739,6 @@ describe('local demo profile', () => {
     expect(mocks.resolveIdentity).not.toHaveBeenCalled();
     expect(mocks.exchangeDelegatedCredential).not.toHaveBeenCalled();
     expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).principal).toBe('user:local-demo');
-    expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).app).toBe('default');
+    expect((mocks.runAgent.mock.calls[0]![2] as AgentRunContext).app).toBeUndefined();
   });
 });

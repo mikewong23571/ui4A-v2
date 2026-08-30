@@ -224,6 +224,12 @@ export async function POST(request: Request) {
     identity: productionIdentity,
     clientView,
   });
+  if (mode === 'delegated' && situation.scope === undefined) {
+    return Response.json(
+      { error: 'delegated 派发需要显式选择已授权的 Application 视角' },
+      { status: 400 },
+    );
+  }
   let turnFetch: FetchLike = (url, init) => fetch(url, init);
   if (
     productionIdentity !== undefined &&
@@ -388,7 +394,7 @@ export async function POST(request: Request) {
           principal,
           presentationPrincipal,
           startRel,
-          scope: situation.scope,
+          scope: situation.scope ?? null,
           presentationContext,
           fetchImpl: turnFetch,
           conversationMessages: agentConversation.messages,
@@ -433,6 +439,9 @@ export async function POST(request: Request) {
   // delegated(T5 Phase B):派发 delegationWorkflow,响应委托 id 与轮询入口;
   // 轨迹/状态经事件日志(/api/delegations/<id>)查询,与 inline 的消息语义等价。
   if (mode === 'delegated') {
+    if (situation.scope === undefined) {
+      throw new Error('delegated scope vanished after validation');
+    }
     try {
       const { delegationId } = await dispatchDelegation({
         goal,
@@ -511,7 +520,7 @@ export async function POST(request: Request) {
       principal,
       presentationPrincipal,
       startRel,
-      scope: situation.scope,
+      scope: situation.scope ?? null,
       presentationContext,
       fetchImpl: turnFetch,
       conversationMessages: agentConversation.messages,

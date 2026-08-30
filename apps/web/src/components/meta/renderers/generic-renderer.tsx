@@ -34,7 +34,7 @@ export function GenericMetaRenderer({
 }: {
   entity: SirenEntity;
   rel?: string;
-  scope: string;
+  scope?: string;
   descriptorTitle?: string;
   onChanged?: () => void;
 }) {

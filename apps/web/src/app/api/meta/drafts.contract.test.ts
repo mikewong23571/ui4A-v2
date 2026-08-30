@@ -22,6 +22,43 @@ beforeEach(async () => {
 });
 
 describe('Draft meta HTTP contract', () => {
+  it('reads the granted Draft union without selecting an application lens', async () => {
+    const response = await getEntity(
+      new Request('http://localhost:3100/_meta/api/entity?rel=meta%2Fdrafts'),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      class: ['collection', 'meta/drafts'],
+      properties: { rel: 'meta/drafts', count: 0, limit: 20 },
+    });
+  });
+
+  it('rejects a Draft write without an explicit authorized application lens', async () => {
+    const response = await exec(
+      new Request('http://localhost:3100/_meta/api/exec', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          rel: 'meta/drafts',
+          action: 'create',
+          params: {
+            kind: 'flow-definition',
+            target: 'post-status',
+            commandId: 'contract:create:unlocated',
+            payload: { name: 'post-status' },
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(422);
+    expect(await response.json()).toMatchObject({
+      layer: 'schema-invalid',
+      reason: expect.stringContaining('explicit authorized application lens'),
+    });
+  });
+
   it('publishes one strict create schema with client commandId and no server-owned params', async () => {
     const response = await getEntity(
       new Request('http://localhost:3100/_meta/api/entity?rel=meta%2Fdrafts', { headers }),

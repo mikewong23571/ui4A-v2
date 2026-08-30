@@ -36,7 +36,7 @@ export async function situationForChat(args: {
           focus: args.clientView.presence.focus,
         };
   // D51:授予集合直接来自凭证;显式 ?scope= 导航偏好只作候选之一,不产生默认回退。
-  const defaults = { site: 'workstation', scope: args.identity?.policyScope ?? 'default' };
+  const defaults = { site: 'workstation' };
   const grantedScopes = args.identity ? [...args.identity.grantedApplications] : ['default'];
   try {
     const db = getDb();
