@@ -55,7 +55,7 @@
 **Subagent contract**：Goal=建立最小语义合同与预算门；Non-goals=不改 Meta 页面、不修八个 Application、不增加视觉 DSL；Changes=`packages/shared/src/definition|presentation/`、`packages/engine/src/contract|presentation/`、Assistant disclosure 的最窄消费点及相邻测试；Blast radius=禁止 `apps/worker`、`packages/db`、Application bundles、`conductor/` 与新依赖。
 
 - [x] Task B1：Red——用真实 articles/comments/meta entity、多 observation、UTF-8、trail 和 conversation 编写最终 provider request 32,768-byte 门禁测试，并确认失败。4c1062d
-- [ ] Task B2：Green——实现 current sanitized observation、旧完整 observation 替换、结构化 trail 和 fetch 前 runtime byte guard；公开 HTTP 不窄化。
+- [x] Task B2：Green——实现 current sanitized observation、旧完整 observation 替换、结构化 trail 和 fetch 前 runtime byte guard；公开 HTTP 不窄化。3f14454
 - [ ] Task B3：Red——编写 `CognitiveSemanticsV1` 派生优先、封闭词表、未知版本和视觉策略拒绝测试，并确认失败。
 - [ ] Task B4：Green——实现最小认知语义 projector；复用 field presentation，不引入 generic presentation blob。
 - [ ] Task B5：Red——编写 sitemap/exact 双投影同源、hash/fingerprint invalidation、HTTP/CLI 可见与 Assistant allowlist 测试，并确认失败。
