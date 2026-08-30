@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "ideas",
-    "version": 5
+    "version": 6
   },
   "applications": [
     {
@@ -94,13 +94,25 @@
       "title": "想法状态",
       "app": "ideas",
       "initial": "captured",
+      "collections": [
+        {
+          "collection": "ideas",
+          "filters": [{ "field": "status", "title": "想法阶段" }]
+        }
+      ],
+      "cognitive": {
+        "version": 1,
+        "traits": ["work-queue"],
+        "emptyMeaning": "ready-to-start"
+      },
       "fields": [
         {
           "name": "title",
           "type": "text",
           "title": "想法标题",
           "presentation": {
-            "role": "identity"
+            "role": "identity",
+            "overview": true
           }
         },
         {
@@ -108,7 +120,8 @@
           "type": "textarea",
           "title": "发展内容",
           "presentation": {
-            "role": "primary-content"
+            "role": "primary-content",
+            "overview": true
           }
         }
       ],

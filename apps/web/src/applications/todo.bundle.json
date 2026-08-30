@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "todo",
-    "version": 5
+    "version": 6
   },
   "applications": [
     {
@@ -103,13 +103,25 @@
       "title": "待办状态",
       "app": "todo",
       "initial": "open",
+      "collections": [
+        {
+          "collection": "todos",
+          "filters": [{ "field": "status", "title": "待办状态" }]
+        }
+      ],
+      "cognitive": {
+        "version": 1,
+        "traits": ["work-queue"],
+        "emptyMeaning": "ready-to-start"
+      },
       "fields": [
         {
           "name": "title",
           "type": "text",
           "title": "待办标题",
           "presentation": {
-            "role": "identity"
+            "role": "identity",
+            "overview": true
           }
         },
         {
@@ -117,7 +129,8 @@
           "type": "textarea",
           "title": "备注",
           "presentation": {
-            "role": "primary-content"
+            "role": "primary-content",
+            "overview": true
           }
         }
       ],
