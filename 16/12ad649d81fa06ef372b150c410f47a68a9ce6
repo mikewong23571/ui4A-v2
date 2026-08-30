@@ -1,0 +1,9 @@
+T39 C8 browser validation and repairs for US2/US4.
+
+Verified by orchestrator:
+- unit: 5 files, 32 tests
+- db route: 2 files, 10 tests
+- pnpm --filter @ui4a/web typecheck
+- pnpm governance:strict
+- env -u CI pnpm exec playwright test e2e/invariants/s2.spec.ts --workers=1 (1 passed)
+- Browser: canonical Flow/Activation/Capability, grant-union view switching, seven retired routes 404
