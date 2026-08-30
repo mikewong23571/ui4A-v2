@@ -16,6 +16,8 @@ import {
   type BuiltinCompositionDeclaration,
   type BuiltinCompositionSubjectResolution,
 } from './compositions';
+import { appWorkspaceScopeOf } from './app-workspace-composition';
+import { deduplicateApplicationRegions } from './app-workspace/authorization';
 
 export interface PresentationTrustedContext {
   /** 身份解析出的 principal(审计便捷透传);实际判权仍以请求自身的 principal 为准。 */
@@ -169,12 +171,35 @@ export function createWebPresentationBroker(
                 (region): region is AuthorizedRegion & { entity: unknown } =>
                   region.entity !== undefined,
               );
+              const applicationWorkspace = appWorkspaceScopeOf(candidate.subject) !== undefined;
+              if (applicationWorkspace && visible.length !== regions.length) {
+                throw await denialFor(
+                  'workspace unavailable',
+                  regions.flatMap((region) =>
+                    region.entity === undefined ? [region.declaration.source] : [],
+                  ),
+                  candidate.principal,
+                );
+              }
               if (visible.length === 0) {
                 throw await denialFor(
                   'workspace unavailable',
                   composition.declaration.regions.map((declaration) => declaration.source),
                   candidate.principal,
                 );
+              }
+              if (applicationWorkspace) {
+                const deduplicated = deduplicateApplicationRegions(
+                  composition.declaration,
+                  visible,
+                );
+                return {
+                  rels: regions.map((region) => region.declaration.source),
+                  entities: regions.map((region) => region.entity as unknown),
+                  grantedApplications,
+                  declaration: deduplicated.declaration,
+                  regions: deduplicated.regions,
+                };
               }
               return {
                 rels: visible.map((region) => region.declaration.source),

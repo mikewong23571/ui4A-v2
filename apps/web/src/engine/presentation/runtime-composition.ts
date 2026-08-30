@@ -15,6 +15,11 @@ import { selectAndInstantiateRecipe } from './recipe-selection';
 import { currentRecipeCoordinator } from './recipes-runtime';
 import { semanticHintsOf } from './situation';
 import { genericIntentPolicyDependency } from './generic-intent-policy';
+import {
+  applicationHeaderPlanningEntity,
+  applicationHeaderSemanticHints,
+  isApplicationHeaderRegion,
+} from './app-workspace/header';
 
 function diagnosticSurface(): SurfaceTree {
   return {
@@ -111,15 +116,14 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
     rels: [region.declaration.source],
     entities: [region.entity],
   })!;
-  const selected = selectAndInstantiateRecipe(
-    Object.values(currentRecipeCoordinator().registry().recipes),
-    {
-      subjectShape: context.subjectShape,
-      intent: region.declaration.intent,
-      catalogVersion: PRESENTATION_SURFACE_CATALOG.version,
-      slots: context.slots,
-    },
-  );
+  const selected = isApplicationHeaderRegion(region.declaration.region)
+    ? undefined
+    : selectAndInstantiateRecipe(Object.values(currentRecipeCoordinator().registry().recipes), {
+        subjectShape: context.subjectShape,
+        intent: region.declaration.intent,
+        catalogVersion: PRESENTATION_SURFACE_CATALOG.version,
+        slots: context.slots,
+      });
   const fingerprint = contractFingerprint(region.entity);
   // T32 Q7:collection kind 由 class 推导,不保证 entities 数组在场;
   // 显式拒绝并点名区域与原因,不以非空断言把缺陷交给内核兜底。
@@ -136,22 +140,25 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
   const entityRel = (region.entity as { properties?: { rel?: unknown } }).properties?.rel;
   const boundSubject =
     typeof entityRel === 'string' && entityRel !== '' ? entityRel : region.declaration.source;
+  const planningEntity = isApplicationHeaderRegion(region.declaration.region)
+    ? applicationHeaderPlanningEntity(region.entity as Parameters<typeof planGenericSurface>[1])
+    : (region.entity as Parameters<typeof planGenericSurface>[1]);
   const surface =
     selected?.surface ??
-    planGenericSurface(
-      boundSubject,
-      region.entity as Parameters<typeof planGenericSurface>[1],
-      PRESENTATION_SURFACE_CATALOG,
-      {
-        entityVersion: fingerprint,
-        intent: region.declaration.intent,
-        semanticHints: semanticHintsOf(region.entity as Parameters<typeof planGenericSurface>[1]),
-        provenanceRef: `composition-region:${region.declaration.region}`,
-        // 密度贯通:region 声明的成员词条密度原样传给引擎 generic 规划
-        // (缺省 'card' 行为完全不变;词汇选择仍在引擎按 catalog pattern 完成)。
-        density: region.declaration.density,
+    planGenericSurface(boundSubject, planningEntity, PRESENTATION_SURFACE_CATALOG, {
+      entityVersion: fingerprint,
+      intent: region.declaration.intent,
+      semanticHints: {
+        ...semanticHintsOf(region.entity as Parameters<typeof planGenericSurface>[1]),
+        ...(isApplicationHeaderRegion(region.declaration.region)
+          ? applicationHeaderSemanticHints()
+          : {}),
       },
-    );
+      provenanceRef: `composition-region:${region.declaration.region}`,
+      // 密度贯通:region 声明的成员词条密度原样传给引擎 generic 规划
+      // (缺省 'card' 行为完全不变;词汇选择仍在引擎按 catalog pattern 完成)。
+      density: region.declaration.density,
+    });
   return {
     region: region.declaration.region,
     source: region.declaration.source,
@@ -160,6 +167,29 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
     entityFingerprint: fingerprint,
     ...(membership !== undefined ? { membershipFingerprint: membership } : {}),
   };
+}
+
+function aliasDependencies(root: AuthorizedRoot, planned: readonly SidecarDependency[]) {
+  const plannedRefs = new Set(
+    planned.filter(({ kind }) => kind === 'entity-contract').map(({ ref }) => ref),
+  );
+  return root.rels.flatMap((rel, index): SidecarDependency[] => {
+    if (plannedRefs.has(rel)) return [];
+    const entity = root.entities[index];
+    if (entity === undefined) return [];
+    return [
+      {
+        id: `composition:${root.declaration!.id}@${root.declaration!.version}:source-alias:${contentVersion(rel)}`,
+        subtreeId: 'root',
+        kind: 'entity-contract',
+        ref: rel,
+        pointers: ['$contract'],
+        mode: 'invalidate',
+        fingerprint: contractFingerprint(entity),
+        optional: false,
+      },
+    ];
+  });
 }
 
 /**
@@ -196,7 +226,11 @@ export function planWorkspaceComposition(root: AuthorizedRoot): {
   );
   return {
     surface: planned.surface,
-    dependencies: [...planned.dependencies, genericIntentPolicyDependency()],
+    dependencies: [
+      ...planned.dependencies,
+      ...aliasDependencies(root, planned.dependencies),
+      genericIntentPolicyDependency(),
+    ],
     partial: root.regions.some((region) => region.entity === undefined),
   };
 }

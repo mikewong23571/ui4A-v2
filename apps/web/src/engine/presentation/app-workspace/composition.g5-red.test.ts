@@ -3,14 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { type SirenEntity, type SurfaceBinding, type SurfaceNode } from '@ui4a/engine';
 import { completePresentationRequest } from '@ui4a/shared';
 
-import {
-  deriveAppWorkspaceComposition,
-  type AppWorkspaceSitemapView,
-} from './app-workspace-composition';
-import { createWebPresentationBroker, type AuthorizedRoot } from './broker';
-import { freezeCompositionDeclaration } from './compositions';
-import { planWorkspaceComposition } from './runtime-composition';
-import { hydratePresentationSurface } from '../../render/presentation/generic';
+import { deriveAppWorkspaceComposition, type AppWorkspaceSitemapView } from './composition';
+import { createWebPresentationBroker, type AuthorizedRoot } from '../broker';
+import { freezeCompositionDeclaration } from '../compositions';
+import { planWorkspaceComposition } from '../runtime-composition';
+import { hydratePresentationSurface } from '../../../render/presentation/generic';
 
 const applicationRel = 'application:publishing';
 const applicationTitle = '内容发布';

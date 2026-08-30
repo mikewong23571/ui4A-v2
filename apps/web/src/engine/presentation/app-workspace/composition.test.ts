@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import type { BuiltinCompositionDeclaration } from './compositions';
+import type { BuiltinCompositionDeclaration } from '../compositions';
 import {
   appWorkspaceScopeOf,
   createDynamicCompositionSubjectResolver,
   deriveAppWorkspaceComposition,
   type AppWorkspaceSitemapView,
-} from './app-workspace-composition';
+} from './composition';
 
 /**
  * T37 Phase B fixtures:与线上业务 sitemap 同构(publishing/community/todo 三个
@@ -81,28 +81,29 @@ function regionTriple(declaration: BuiltinCompositionDeclaration): Array<[string
 }
 
 describe('app workspace composition derivation(sitemap 运行时推导,零 per-app 代码)', () => {
-  it('publishing:产物集合 region 在前,声明 entry 的向导面收尾', () => {
+  it('publishing:binding-only Application header 在前,产物与声明 entry 随后', () => {
     const declaration = deriveAppWorkspaceComposition('publishing', fixtureSitemap());
     expect(declaration).toBeDefined();
     expect(declaration!.id).toBe('app-publishing');
     expect(regionTriple(declaration!)).toEqual([
-      ['articles', 'articles', '浏览 内容发布 的产物'],
-      ['article-drafting', 'flow:article-drafting', '发起 内容发布 的流程'],
+      ['application-header', 'application:publishing', 'review'],
+      ['articles', 'articles', 'overview'],
+      ['article-drafting', 'flow:article-drafting', 'review'],
     ]);
-    expect(declaration!.regions[0]).toMatchObject({ mode: 'invalidate', shape: 'collection' });
-    expect(declaration!.regions[1]).toMatchObject({ mode: 'invalidate', shape: 'entity' });
+    expect(declaration!.regions[1]).toMatchObject({ mode: 'invalidate', shape: 'collection' });
+    expect(declaration!.regions[2]).toMatchObject({ mode: 'invalidate', shape: 'entity' });
   });
 
   it('产物集合 region 声明 density=table(成员表格化),实体形态入口 region 不受影响', () => {
     const declaration = deriveAppWorkspaceComposition('publishing', fixtureSitemap());
     expect(declaration).toBeDefined();
     // 产物集合(articles)→ 表格密度;入口向导面(article-drafting)→ 缺省 card。
-    expect(declaration!.regions[0]!.density).toBe('table');
-    expect(declaration!.regions[1]!.density).toBeUndefined();
+    expect(declaration!.regions[1]!.density).toBe('table');
+    expect(declaration!.regions[2]!.density).toBeUndefined();
     // community 的唯一 region 经 entry 兑现集合面——集合形态的入口同为查询面,
     // 与产物集合一致升级表格密度。
     const community = deriveAppWorkspaceComposition('community', fixtureSitemap());
-    expect(community!.regions[0]!.density).toBe('table');
+    expect(community!.regions[1]!.density).toBe('table');
   });
 
   it('路由特判读模型面(collection 无 pageable)不进组合——development 无「区域暂不可用」', () => {
@@ -119,20 +120,24 @@ describe('app workspace composition derivation(sitemap 运行时推导,零 per-a
   it('community:entry 指向跨 app 归属的集合面时,经 entry 兑现唯一 collection region(U4)', () => {
     const declaration = deriveAppWorkspaceComposition('community', fixtureSitemap());
     expect(declaration).toBeDefined();
-    expect(regionTriple(declaration!)).toEqual([['comments', 'comments', '浏览 社区互动 的产物']]);
-    expect(declaration!.regions[0]).toMatchObject({ mode: 'invalidate', shape: 'collection' });
+    expect(regionTriple(declaration!)).toEqual([
+      ['application-header', 'application:community', 'review'],
+      ['comments', 'comments', 'overview'],
+    ]);
+    expect(declaration!.regions[1]).toMatchObject({ mode: 'invalidate', shape: 'collection' });
   });
 
   it('todo:同一函数吃 todo 数据得同款结构(同一推导路径,零特判)', () => {
     const declaration = deriveAppWorkspaceComposition('todo', fixtureSitemap());
     expect(declaration).toBeDefined();
     expect(regionTriple(declaration!)).toEqual([
-      ['todos', 'todos', '浏览 待办 的产物'],
-      ['todo-capture', 'flow:todo-capture', '发起 待办 的流程'],
+      ['application-header', 'application:todo', 'review'],
+      ['todos', 'todos', 'overview'],
+      ['todo-capture', 'flow:todo-capture', 'review'],
     ]);
   });
 
-  it('同一函数吃任意合成数据仍同构:entry 缺省回退首个 flow 面,region id 经消毒仍合法', () => {
+  it('无结构化 entry 时不从相邻 surface 发明入口', () => {
     const declaration = deriveAppWorkspaceComposition('alpha', {
       surfaces: [
         { rel: 'widgets.x', title: 'widgets', collection: true, pageable: true, app: 'alpha' },
@@ -142,16 +147,39 @@ describe('app workspace composition derivation(sitemap 运行时推导,零 per-a
     });
     expect(declaration).toBeDefined();
     expect(declaration!.regions.map((region) => region.region)).toEqual([
+      'application-header',
       'widgets.x',
-      'meta-flows',
     ]);
-    expect(declaration!.regions[1]!.source).toBe('meta/flows');
-    expect(declaration!.regions[1]!.shape).toBe('entity');
-    expect(declaration!.regions[1]!.intent).toBe('发起 Alpha 的流程');
+    expect(declaration!.regions.map((region) => region.source)).not.toContain('meta/flows');
   });
 
-  it('无成员应用与未知 scope 诚实空态(undefined,不伪装内容)', () => {
-    expect(deriveAppWorkspaceComposition('empty', fixtureSitemap())).toBeUndefined();
+  it('跨 projection app 的显式 entry contract metadata 仍进入完整 version fingerprint', () => {
+    const baseline = fixtureSitemap();
+    const version = deriveAppWorkspaceComposition('community', baseline)!.version;
+    const changed = structuredClone(baseline);
+    const comments = changed.surfaces!.find(({ rel }) => rel === 'comments')!;
+    comments.title = '评论决策队列';
+    comments.presentation = {
+      version: 1,
+      traits: ['review-queue'],
+      groupRole: 'responsibility',
+      priority: 'high',
+    };
+
+    expect(comments.app).toBe('default');
+    expect(deriveAppWorkspaceComposition('community', changed)!.version).not.toBe(version);
+  });
+
+  it('无成员应用仍有 binding-only header,未知 scope 诚实拒绝', () => {
+    expect(deriveAppWorkspaceComposition('empty', fixtureSitemap())?.regions).toEqual([
+      {
+        region: 'application-header',
+        source: 'application:empty',
+        intent: 'review',
+        mode: 'invalidate',
+        shape: 'entity',
+      },
+    ]);
     expect(deriveAppWorkspaceComposition('nonexistent', fixtureSitemap())).toBeUndefined();
   });
 
@@ -187,7 +215,10 @@ describe('workspace:app:<scope> subject 解析', () => {
     expect(derived.kind).toBe('composition');
     if (derived.kind === 'composition') {
       expect(derived.declaration.id).toBe('app-community');
-      expect(derived.declaration.regions.map((region) => region.source)).toEqual(['comments']);
+      expect(derived.declaration.regions.map((region) => region.source)).toEqual([
+        'application:community',
+        'comments',
+      ]);
     }
 
     const ordinary = await resolver('articles');
