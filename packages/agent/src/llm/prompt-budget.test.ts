@@ -5,8 +5,14 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 import { createLlmDriver } from './llm-driver';
 import { buildLlmMessages } from './prompts';
-import { createScriptedTransport, instanceEntity, type RecordedCall } from '../testkit/testkit';
-import type { DriverContext, SitemapSummary } from '../types';
+import { createContractClient } from '../contract/http';
+import {
+  collectionEntity,
+  createScriptedTransport,
+  instanceEntity,
+  type RecordedCall,
+} from '../testkit/testkit';
+import type { DriverContext, FetchLike, SitemapSummary } from '../types';
 
 const DECIDE_WIRE_BUDGET_BYTES = 32 * 1024;
 const textEncoder = new TextEncoder();
@@ -60,6 +66,12 @@ const budgetCases: BudgetCase[] = [
 ];
 
 const measurements: BudgetMeasurement[] = [];
+
+const OLD_ARTICLE_BODY_MARKER = 'OLD_FULL_ARTICLE_BODY_MUST_NOT_REACH_PROVIDER';
+const OLD_META_DEFINITION_MARKER = 'OLD_META_DEFINITION_MUST_NOT_REACH_PROVIDER';
+const CURRENT_RAW_PAYLOAD_MARKER = 'CURRENT_RAW_PAYLOAD_MUST_NOT_REACH_PROVIDER';
+const VISUAL_POLICY_MARKER = 'VISUAL_POLICY_MUST_NOT_REACH_PROVIDER';
+const VERBOSE_TRAIL_MARKER = 'VERBOSE_TRAIL_RESULT_MUST_NOT_REACH_PROVIDER';
 
 function action(name: string, title: string): SirenAction {
   return {
@@ -255,6 +267,282 @@ function requestBody(calls: RecordedCall[]): Record<string, unknown> {
   return calls[0]!.body!;
 }
 
+function d54ObservationContext(): DriverContext {
+  const articles = collectionEntity({
+    rel: 'articles',
+    members: [
+      {
+        rel: 'post:welcome',
+        flow: 'post-status',
+        node: 'published',
+        title: '欢迎使用 UI4A',
+        fields: {
+          body: `${OLD_ARTICLE_BODY_MARKER}:${'旧文章正文。'.repeat(128)}`,
+          author: '内容团队',
+        },
+      },
+      {
+        rel: 'post:contract-first',
+        flow: 'post-status',
+        node: 'published',
+        title: '界面即合同',
+        fields: { body: '人和 Agent 读取同一份授权事实。' },
+      },
+    ],
+  });
+  const metaFlow = {
+    class: ['meta', 'flow-definition'],
+    properties: {
+      rel: 'meta/flow:article-drafting',
+      name: 'article-drafting',
+      title: '文章发布向导',
+      status: 'active',
+      version: 7,
+      detail: {
+        definition: `${OLD_META_DEFINITION_MARKER}:${'定义全文。'.repeat(128)}`,
+        nodes: [{ name: 'basic-info' }, { name: 'content' }, { name: 'review' }],
+      },
+      presentation: {
+        density: 'table',
+        narrowDensity: 'card',
+        sticky: true,
+        marker: VISUAL_POLICY_MARKER,
+      },
+    },
+    actions: [],
+    links: [
+      {
+        rel: ['self'],
+        href: '/_meta/api/entity?rel=meta%2Fflow%3Aarticle-drafting',
+      },
+    ],
+    'guard-results': [],
+  } as DriverContext['entity'];
+  const moderate = action('approve', '通过评论');
+  const comment = instanceEntity({
+    rel: 'comment:pending-1',
+    flow: 'comment-moderation',
+    node: 'pending',
+    title: '待审核评论',
+    fields: {
+      body: '这条评论包含 UTF-8 事实：你好，社区 👋',
+      author: '访客甲',
+      rawPayload: `${CURRENT_RAW_PAYLOAD_MARKER}:${'原始载荷。'.repeat(128)}`,
+    },
+    actions: [moderate],
+    collection: 'comments',
+    guardResults: [{ action: moderate.name, blocked: false }],
+  });
+  comment.properties.presentation = {
+    fields: [
+      {
+        path: 'properties.fields.body',
+        title: '评论正文',
+        role: 'primary-content',
+        overview: true,
+      },
+      {
+        path: 'properties.fields.author',
+        title: '评论者',
+        role: 'metadata',
+        overview: true,
+      },
+    ],
+    density: 'decision-list',
+    sticky: true,
+    marker: VISUAL_POLICY_MARKER,
+  };
+
+  return {
+    goal: { verb: '审核当前评论，并解释为什么可以通过', targetRel: 'comment:pending-1' },
+    app: 'community',
+    currentRel: 'comment:pending-1',
+    entity: comment,
+    observations: [
+      { rel: 'articles', entity: articles },
+      { rel: 'meta/flow:article-drafting', entity: metaFlow },
+      { rel: 'comment:pending-1', entity: comment },
+    ],
+    trail: [
+      {
+        step: 1,
+        rel: 'articles',
+        op: {
+          kind: 'answer',
+          content: `${VERBOSE_TRAIL_MARKER}:${'历史回答。'.repeat(128)}`,
+          sources: [{ rel: 'articles', pointer: '/entities/0/properties/fields/body' }],
+          continue: true,
+        },
+        outcome: 'answered',
+      },
+      {
+        step: 2,
+        rel: 'comment:pending-1',
+        op: { kind: 'navigate', rel: 'comment:pending-1' },
+        outcome: 'navigated',
+      },
+    ],
+    successes: [],
+    conversationMessages: [
+      { messageId: 'm-user-1', role: 'user', content: '请先看文章，再审核这条评论。' },
+      { role: 'assistant', content: '我已转到当前评论。' },
+      { messageId: 'm-user-2', role: 'user', content: '“这条”就是眼前这条，保留中文与 emoji 👋。' },
+    ],
+    conversation: {
+      activeGoal: { verb: '审核当前评论', targetRel: 'comment:pending-1' },
+      focus: {
+        currentRel: 'comment:pending-1',
+        history: [{ rel: 'articles' }, { rel: 'comment:pending-1', sourceMessageId: 'm-user-2' }],
+      },
+      referents: [{ text: '这条', rel: 'comment:pending-1', sourceMessageId: 'm-user-2' }],
+      constraints: [{ text: '保留中文与 emoji 👋', sourceMessageId: 'm-user-2' }],
+    },
+    sitemap: {
+      version: 'd54-real-shape-v1',
+      surfaces: [
+        { rel: 'articles', title: '文章', app: 'publishing' },
+        {
+          rel: 'comments',
+          title: '评论审核',
+          app: 'community',
+          presentation: { density: 'decision-list', marker: VISUAL_POLICY_MARKER },
+        } as SitemapSummary['surfaces'][number],
+        { rel: 'meta/flows', title: 'Flow 定义', app: 'governance' },
+      ],
+      applications: [
+        {
+          name: 'community',
+          intent: '审核社区评论',
+          flows: [
+            {
+              name: 'comment-moderation',
+              title: '评论审核',
+              actions: [
+                { name: 'approve', title: '通过评论', node: 'pending', guards: ['authorized'] },
+              ],
+            },
+          ],
+        },
+      ],
+      capabilities: [],
+    },
+  };
+}
+
+interface RawProviderCapture {
+  rawBody: string;
+  calls: number;
+}
+
+async function captureProviderRequest(context: DriverContext): Promise<RawProviderCapture> {
+  let rawBody: string | undefined;
+  let calls = 0;
+  const fetchImpl: FetchLike = async (_url, init) => {
+    calls += 1;
+    if (typeof init?.body !== 'string') throw new Error('provider request body must be a string');
+    rawBody = init.body;
+    return sseToolResponse('answer', {
+      content: '预算边界请求已读取。',
+      sources: [{ rel: context.currentRel, pointer: '/properties/fields/body' }],
+    });
+  };
+  const driver = createLlmDriver({ ...TEST_LLM_CONFIG, fetchImpl });
+  await expect(driver.decide(context)).resolves.toMatchObject({ kind: 'answer' });
+  expect(calls).toBe(1);
+  expect(rawBody).toBeDefined();
+  return { rawBody: rawBody!, calls };
+}
+
+function boundaryContext(toolPadding: number, goalPadding: number): DriverContext {
+  const boundaryAction: SirenAction = {
+    ...action('approve', '通过评论'),
+    fields: {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        note: {
+          type: 'string',
+          title: '审核说明',
+          description: 't'.repeat(toolPadding),
+        },
+      },
+      required: ['note'],
+      additionalProperties: false,
+    },
+  };
+  return {
+    goal: {
+      verb: '审核 UTF-8 评论 👋',
+      targetRel: 'comment:budget-boundary',
+      resource: 'g'.repeat(goalPadding),
+    },
+    app: 'community',
+    currentRel: 'comment:budget-boundary',
+    entity: instanceEntity({
+      rel: 'comment:budget-boundary',
+      flow: 'comment-moderation',
+      node: 'pending',
+      title: '预算边界评论',
+      fields: { body: '你好，预算边界 👋' },
+      actions: [boundaryAction],
+      collection: 'comments',
+      guardResults: [{ action: 'approve', blocked: false }],
+    }),
+    observations: [],
+    trail: [
+      {
+        step: 1,
+        rel: 'comments',
+        op: { kind: 'navigate', rel: 'comment:budget-boundary' },
+        outcome: 'navigated',
+      },
+    ],
+    successes: [],
+    conversationMessages: [
+      { messageId: 'm-budget', role: 'user', content: '审核这条 UTF-8 评论 👋' },
+    ],
+    conversation: {
+      activeGoal: { verb: '审核评论', targetRel: 'comment:budget-boundary' },
+      focus: { currentRel: 'comment:budget-boundary', history: [{ rel: 'comments' }] },
+    },
+    sitemap: {
+      version: 'budget-boundary-v1',
+      surfaces: [{ rel: 'comments', title: '评论审核', app: 'community' }],
+      applications: [
+        {
+          name: 'community',
+          intent: '审核社区评论',
+          flows: [{ name: 'comment-moderation', title: '评论审核', actions: [] }],
+        },
+      ],
+      capabilities: [],
+    },
+  };
+}
+
+async function exactBoundaryFixture(): Promise<{
+  context: DriverContext;
+  toolPadding: number;
+  goalPadding: number;
+}> {
+  const baseline = await captureProviderRequest(boundaryContext(0, 0));
+  const baselineBytes = utf8Bytes(baseline.rawBody);
+  expect(baselineBytes).toBeLessThan(DECIDE_WIRE_BUDGET_BYTES);
+
+  const oneToolByte = await captureProviderRequest(boundaryContext(1, 0));
+  const toolCoefficient = utf8Bytes(oneToolByte.rawBody) - baselineBytes;
+  expect(toolCoefficient).toBeGreaterThan(0);
+  const toolPadding = Math.floor((DECIDE_WIRE_BUDGET_BYTES - baselineBytes) / toolCoefficient);
+  const toolFilled = await captureProviderRequest(boundaryContext(toolPadding, 0));
+  const remaining = DECIDE_WIRE_BUDGET_BYTES - utf8Bytes(toolFilled.rawBody);
+  expect(remaining).toBeGreaterThanOrEqual(0);
+
+  const context = boundaryContext(toolPadding, remaining);
+  const exact = await captureProviderRequest(context);
+  expect(utf8Bytes(exact.rawBody)).toBe(DECIDE_WIRE_BUDGET_BYTES);
+  return { context, toolPadding, goalPadding: remaining };
+}
+
 describe('32 KiB decide prompt wire budget', () => {
   it.each(budgetCases)('$name: messages stay bounded without capability schemas', (testCase) => {
     const { context, marker, foreignRel } = contextFor(testCase);
@@ -300,6 +588,75 @@ describe('32 KiB decide prompt wire budget', () => {
       expect(serialized).toContain(foreignRel);
     },
   );
+});
+
+describe('D54 current sanitized observation and non-cumulative disclosure', () => {
+  it('rebuilds each Assistant decision from only the current sanitized entity and structural trail', () => {
+    const context = d54ObservationContext();
+    const serialized = JSON.stringify(buildLlmMessages(context));
+
+    expect(serialized).toContain('comment:pending-1');
+    expect(serialized).toContain('这条评论包含 UTF-8 事实：你好，社区 👋');
+    expect(serialized).toContain('通过评论');
+    expect(serialized).toContain('“这条”就是眼前这条，保留中文与 emoji 👋。');
+    expect(serialized).not.toContain(OLD_ARTICLE_BODY_MARKER);
+    expect(serialized).not.toContain(OLD_META_DEFINITION_MARKER);
+    expect(serialized).not.toContain(CURRENT_RAW_PAYLOAD_MARKER);
+    expect(serialized).not.toContain(VERBOSE_TRAIL_MARKER);
+    expect(serialized).not.toContain(VISUAL_POLICY_MARKER);
+  });
+
+  it('keeps the public HTTP Siren entity complete while only provider disclosure is sanitized', async () => {
+    const context = d54ObservationContext();
+    const observations = context.observations!;
+    const client = createContractClient('https://ui4a.test', async (url) => {
+      const rel = new URL(url).searchParams.get('rel');
+      const observation = observations.find((entry) => entry.rel === rel);
+      return observation === undefined
+        ? Response.json({ error: 'not found' }, { status: 404 })
+        : Response.json(observation.entity);
+    });
+
+    const responses = await Promise.all(observations.map(({ rel }) => client.getEntity(rel)));
+
+    expect(responses.map(({ status }) => status)).toEqual([200, 200, 200]);
+    expect(responses.map(({ entity }) => entity)).toEqual(observations.map(({ entity }) => entity));
+    const publicContract = JSON.stringify(responses);
+    expect(publicContract).toContain(OLD_ARTICLE_BODY_MARKER);
+    expect(publicContract).toContain(OLD_META_DEFINITION_MARKER);
+    expect(publicContract).toContain(CURRENT_RAW_PAYLOAD_MARKER);
+    expect(publicContract).toContain(VISUAL_POLICY_MARKER);
+  });
+});
+
+describe('D54 final provider request UTF-8 runtime guard', () => {
+  it('allows exactly 32,768 bytes and rejects 32,769 bytes before a fresh provider fetch', async () => {
+    const exact = await exactBoundaryFixture();
+    const accepted = await captureProviderRequest(exact.context);
+    expect(utf8Bytes(accepted.rawBody)).toBe(DECIDE_WIRE_BUDGET_BYTES);
+
+    const overBudgetContext = boundaryContext(exact.toolPadding, exact.goalPadding + 1);
+    expect(
+      utf8Bytes(buildLlmMessages(overBudgetContext)) - utf8Bytes(buildLlmMessages(exact.context)),
+    ).toBe(1);
+
+    const guardedTransport = createScriptedTransport(() =>
+      sseToolResponse('answer', {
+        content: '超限请求不应到达 provider。',
+        sources: [{ rel: overBudgetContext.currentRel, pointer: '/properties/fields/body' }],
+      }),
+    );
+    const guardedDriver = createLlmDriver({
+      ...TEST_LLM_CONFIG,
+      fetchImpl: guardedTransport.fetch,
+    });
+
+    await expect(guardedDriver.decide(overBudgetContext)).resolves.toMatchObject({
+      kind: 'fail',
+      reason: expect.stringMatching(/UTF-8.*32,769.*32,768|32,769.*32,768.*UTF-8/),
+    });
+    expect(guardedTransport.calls).toHaveLength(0);
+  });
 });
 
 afterAll(() => {
