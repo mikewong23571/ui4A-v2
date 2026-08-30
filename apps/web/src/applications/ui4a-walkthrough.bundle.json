@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "ui4a-walkthrough",
-    "version": 8
+    "version": 9
   },
   "applications": [
     {
@@ -397,6 +397,8 @@
       "title": "文章状态",
       "app": "publishing",
       "initial": "published",
+      "collections": [{ "collection": "articles" }],
+      "cognitive": { "version": 1, "traits": ["output-catalog"] },
       "fields": [
         {
           "name": "title",
@@ -490,6 +492,13 @@
       "title": "评论审核",
       "app": "community",
       "initial": "pending",
+      "cognitive": {
+        "version": 1,
+        "traits": ["review-queue", "human-responsibility"],
+        "groupRole": "responsibility",
+        "priority": "high",
+        "emptyMeaning": "no-current-responsibility"
+      },
       "collections": [
         {
           "collection": "comments",
@@ -547,7 +556,21 @@
           "fields": []
         }
       ],
-      "fields": []
+      "fields": [
+        {
+          "name": "body",
+          "type": "textarea",
+          "title": "评论内容",
+          "presentation": { "role": "primary-content", "overview": true }
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "options": ["pending", "approved", "rejected"],
+          "title": "状态",
+          "presentation": { "role": "status", "overview": true }
+        }
+      ]
     },
     {
       "name": "software-change",
