@@ -144,7 +144,7 @@
 **Subagent contract（H1–H3）**：Goal=集成证明 Phase B 的 sanitizer 与同一 Situation/entity/action 消费；Non-goals=不新增第二套 disclosure、不新增意图启发式、不让视觉策略进 prompt、不用 rule driver 冒充验收；Changes=Assistant parity/FactRef/Eval 的最窄路径与测试；Blast radius=禁止业务引擎语义、Application 专属分支、worker/db 和新 provider。H4–H10 由编排者执行 Track 级验收。
 
 - [x] Task H1：集成测试——验证 publishing/community/governance 的 Situation → sanitized entity → actions、FactRef、clientView/lastNavigation 和视觉策略禁入 prompt；已有行为通过则不强造 Red。35ee403
-- [ ] Task H2：仅在 H1 暴露真实缺口时做最小修复；否则记录 no-op 证据，禁止新增第二套 sanitizer 或全量 sitemap 注入。
+- [x] Task H2：仅在 H1 暴露真实缺口时做最小修复；否则记录 no-op 证据，禁止新增第二套 sanitizer 或全量 sitemap 注入。fc3c4fe
 - [ ] Task H3：运行 `pnpm eval:llm` 完成 US19 真实 LLM Eval；provider 缺失时记录未运行，禁止 scripted/rule 替代。
 - [ ] Task H4：逐一执行 US1–US19 浏览器实操；记录前态、关键交互态、完成态截图和 DOM/URL/焦点断言。
 - [ ] Task H5：使用 CLI 或 HTTP 合同探针复跑同门路径，比较事实、links、actions、guards、schema、Trait 与 Semantic Hint；不要求像素策略同消耗。
