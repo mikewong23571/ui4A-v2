@@ -1,0 +1,6 @@
+T39 Phase B Task B11 — D54 standing governance
+
+Summary: added low-false-positive checks for definition-level cognitive closed keys and installed Application/rel runtime branch special-cases; connected to governance run-all. Standing behavior remains covered by normal Vitest, without brittle marker scans.
+Files: check-d54.mjs/test, run-all.mjs.
+Why: converts recurring high-signal violations into executable governance without AST framework or presentation-policy false positives.
+Verification: orchestrator 5 files/47 tests, Draft DB 4 tests and governance:strict passed.
