@@ -89,7 +89,7 @@
 - [x] Task D2：Green——实现 Meta Dashboard 只消费语义分组、title、intent、overview 与计数，不维护固定 surface/status 清单。296eb0f
 - [x] Task D3：Red——编写 collection overview、搜索总数、facet 声明和合同 links 分页测试，并确认失败。1d97eb7
 - [x] Task D4：Green——复用 overview role，实现 collection 摘要与诚实截断；不把 table/card 响应式策略写回定义。38ee074
-- [ ] Task D5：浏览器验证 US1、US5、US8：责任点首屏、概览、未来 surface、桌面和 390px 通用策略。
+- [x] Task D5：浏览器验证 US1、US5、US8：责任点首屏、概览、未来 surface、桌面和 390px 通用策略。1742bdb
 - [ ] Task D6：Phase Verification & Checkpoint：无 surface 清单、无 per-app 分支、HTTP/CLI 可读同形认知语义。
 
 ## Phase E：Draft 审查责任点与注意力语义（provisional）
