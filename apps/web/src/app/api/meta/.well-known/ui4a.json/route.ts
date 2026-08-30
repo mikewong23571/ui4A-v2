@@ -2,10 +2,8 @@ import { contentVersion } from '@ui4a/engine';
 
 import { getDb, getEngine } from '../../../../../engine/service';
 import { getAgentDefinitionCatalogForScopes } from '../../../../../engine/agent/agent-definitions';
-import {
-  metaContextFromRequest,
-  type MetaRequestContext,
-} from '../../../../../engine/meta-authorization';
+import { metaContextFromRequest } from '../../../../../engine/meta-authorization';
+import { filterMetaSitemapForGrantedApplications } from '../../../../../engine/meta-sitemap-authorization';
 import {
   authenticationErrorResponse,
   requestIdentityProfile,
@@ -29,8 +27,14 @@ export async function GET(request?: Request) {
     const engine = await getEngine(db);
     const current = engine.getMetaSitemap();
     const authorizedScopes = Object.keys(engine.getSnapshot().applications ?? {});
-    let context: MetaRequestContext;
-    if (request !== undefined && requestIdentityProfile() === 'production') {
+    const credentialRequest = request !== undefined && requestIdentityProfile() === 'production';
+    let context: {
+      principal: string;
+      effectiveScope?: string;
+      authorizedScopes: string[];
+      authorizationMode: 'self-reported-local-demo' | 'credential';
+    };
+    if (credentialRequest) {
       const identity = await resolveTrustedRequestIdentity(request, {
         plane: 'meta',
         requiredScopes: ['ui4a:read'],
@@ -42,13 +46,13 @@ export async function GET(request?: Request) {
         authorizedScopes.includes(scope),
       );
       const effectiveScope =
-        identity.policyScope !== undefined && authorizedScopes.includes(identity.policyScope)
+        identity.policyScope !== undefined && granted.includes(identity.policyScope)
           ? identity.policyScope
-          : (granted[0] ?? authorizedScopes[0]!);
+          : undefined;
       context = {
         principal: identity.principal,
-        effectiveScope,
-        authorizedScopes: granted.length > 0 ? granted : [effectiveScope],
+        ...(effectiveScope === undefined ? {} : { effectiveScope }),
+        authorizedScopes: granted,
         authorizationMode: identity.authorizationMode,
       };
     } else {
@@ -62,8 +66,15 @@ export async function GET(request?: Request) {
       context.principal,
       context.authorizedScopes,
     );
+    const disclosed = credentialRequest
+      ? filterMetaSitemapForGrantedApplications(
+          current,
+          engine.getSitemap(),
+          context.authorizedScopes,
+        )
+      : current;
     const surfaces = [
-      ...current.surfaces,
+      ...disclosed.surfaces,
       { rel: 'meta/drafts', title: 'Governed Drafts', collection: true },
       { rel: 'meta/agent-definitions', title: 'Specialized Agents', collection: true },
       ...agents.map((agent) => ({

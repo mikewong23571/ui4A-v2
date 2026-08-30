@@ -9,7 +9,7 @@ export interface MetaSitemapDocument {
   version: string;
   site: 'meta';
   surfaces: MetaSitemapSurface[];
-  effectiveScope: string;
+  effectiveScope?: string;
   authorizedScopes: string[];
   authorizationMode: 'self-reported-local-demo' | 'credential';
 }
