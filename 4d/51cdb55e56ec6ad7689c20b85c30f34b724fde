@@ -1,0 +1,6 @@
+T39 Phase B Task B5 — cognitive dual projection Red tests
+
+Summary: defined one-source sitemap/exact projection, content hash and entity fingerprint invalidation, HTTP completeness and Assistant cognitive allowlist tests.
+Files: engine cognitive-contract-projection.test.ts, agent disclosure.test.ts, web runtime-composition.test.ts.
+Why: prevents sitemap/exact semantic drift and visual-policy prompt leakage.
+Verification: orchestrator confirmed 20 pass/6 expected Red; engine/agent/web typecheck and GR3 passed.
