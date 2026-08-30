@@ -1,0 +1,7 @@
+T39 G10 generic semantic intent and member posture policy.
+
+Verified by orchestrator:
+- focused: 7 files, 42 tests
+- engine/web typecheck and governance strict
+- responsibility-first mixed trait precedence is order-independent
+- app adapter contains no density or installed-name intent branch
