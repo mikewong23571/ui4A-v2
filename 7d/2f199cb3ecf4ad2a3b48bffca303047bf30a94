@@ -1,0 +1,6 @@
+T39 Phase B Task B3 — CognitiveSemanticsV1 Red tests
+
+Summary: defined strict versioned vocabulary, derive-first exclusions, field-presentation authority, visual-policy rejection and honest absence through two focused test files.
+Files: shared/definition/cognitive-semantics.test.ts, engine/contract/cognitive-semantics.test.ts.
+Why: prevents a generic presentation blob and parallel summary schema.
+Verification: shared/engine typecheck passed; orchestrator confirmed 24 expected Red failures caused only by missing parser/projector; GR3 OK.
