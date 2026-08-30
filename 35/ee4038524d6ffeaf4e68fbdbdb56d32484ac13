@@ -1,0 +1,5 @@
+T39 H1 Application Assistant/Human parity integration test.
+
+Verified by orchestrator:
+- 2 expected failures in provider entity cognition sanitizer; 2 scenarios fully passed
+- all non-cognition parity/budget/visual isolation assertions passed
