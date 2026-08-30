@@ -1,0 +1,6 @@
+T39 Phase C Task C3 — canonical specialization Red tests
+
+Summary: added Flow/self, Activation, Capability specialization tests with topology/diff/checks/intent, relationships/raw, scope-aware fresh action submission and unknown/ambiguity parity.
+Files: canonical-specializations.test.tsx.
+Why: canonical /meta/entity must become the only rich human path without per-rel pages.
+Verification: orchestrator confirmed 5 pass/4 expected Red, 32 existing related tests and web typecheck passed; GR3 OK.
