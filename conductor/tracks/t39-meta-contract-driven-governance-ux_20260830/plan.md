@@ -113,7 +113,7 @@
 - [x] Task F2：Green——实现通用责任点和关系词汇；inline/sticky、heading 与窄屏姿态由 Presentation policy 决定。f20a440
 - [x] Task F3：Red——编写 guard reason、两段确认、已决原位反馈、待决集合退出和 Dashboard/collection/exact 同步测试，并确认失败。d31091f
 - [x] Task F4：Green——统一 ActionRunner/Meta host 反馈，提交前继续 fresh read，并复用 Phase C cache invalidation。3b55d15
-- [ ] Task F5：浏览器验证 US6、US7、US9：两次点击内决定、无需 raw、关系任务化、移动端不遮挡。
+- [x] Task F5：浏览器验证 US6、US7、US9：两次点击内决定、无需 raw、关系任务化、移动端不遮挡。c01206e
 - [ ] Task F6：Meta Milestone Verification & Checkpoint：US1–US10 可独立闭环，系统完整可运行；Application Phase 未开始也不影响 Meta 交付。
 
 ## Phase G：Application 图书馆与默认组合面（独立 milestone，provisional）
