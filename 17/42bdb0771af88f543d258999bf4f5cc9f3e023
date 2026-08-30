@@ -6,3 +6,10 @@ Verified by orchestrator:
 - engine/web typecheck
 - governance strict
 - Browser US1/US5/US8 desktop and 390px, isolated pending Activation, Agent sitemap parity
+
+T39 Phase D checkpoint verified by orchestrator:
+- CI=true UI4A_WORKER_HEALTH_PORT=3199 pnpm check
+  - 434 test files passed, 4 skipped
+  - 3331 tests passed, 6 skipped
+- Agent/CLI HTTP cognition parity: 2 files, 21 tests
+- governance D54 scan: no runtime per-app/per-rel branch regression
