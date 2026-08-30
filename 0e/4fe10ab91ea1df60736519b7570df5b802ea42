@@ -1,0 +1,6 @@
+T39 Phase A Task A2 — Trait/Semantic Hint placement probe
+
+Summary: compared definition, sitemap, exact Siren and Presentation declaration placement with disposable runtime probes. Recommended layered authority: facts in definitions/events, cognitive semantics in sitemap + properties.presentation, visual policy in Recipe/Sidecar/catalog.
+Files: phase-a-spike.md.
+Why: prevents ApplicationDefinition UI blob and prompt pollution while preserving binding-only and cache invalidation.
+Verification: orchestrator reran 6 focused test files / 60 tests; prompt samples 14,642–14,718 bytes under 32 KiB.
