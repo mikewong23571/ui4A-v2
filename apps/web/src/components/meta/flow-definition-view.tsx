@@ -37,7 +37,6 @@ import {
 
 import { DefinitionDiffView } from './diff-render';
 import { FlowTopologyView } from './flow-topology-view';
-import { useMetaEntity } from './meta-client';
 import { MetaActions } from './renderers/common';
 
 /** 按 class 标记选子实体(Siren 子实体惯例:节点/版本各表其区)。 */
@@ -133,7 +132,7 @@ function versionRows(entity: SirenEntity): VersionRow[] {
   return subEntitiesOf(entity, 'definition-version')
     .map((sub) => {
       const props = sub.properties;
-      // 断言理由:decided-by 由投影按 {actor, principal?} 形状写入(同 meta-lists 的 requested-by);
+      // 断言理由:decided-by 由投影按 {actor, principal?} 形状写入;
       // definition 由投影内嵌该版 FlowDefinition 全文(版本子实体有意无 href,按版本取
       // 定义只走此内嵌通道,缺省即不可比对——不造数据)。
       const decidedBy = props['decided-by'] as { actor?: string; principal?: string } | undefined;
@@ -422,32 +421,4 @@ export function FlowDefinitionView({
       <MetaActions entity={entity} rel={rel} scope={scope} onChanged={onChanged} />
     </div>
   );
-}
-
-/** 页面主体:取数状态机 + FlowDefinitionView(404/异常如实呈现)。 */
-export function FlowDefinitionBody({ rel, scope }: { rel: string; scope?: string }) {
-  const { entity, state, refresh } = useMetaEntity(rel, scope);
-
-  if (state === 'error' || state === 'missing') {
-    return (
-      <div>
-        <nav className="mb-2 text-sm">
-          <a href="/meta" data-nav="meta-back" className="text-primary hover:underline">
-            ← 定义管理
-          </a>
-        </nav>
-        <p className="text-sm">
-          {state === 'missing' ? `定义 "${rel}" 不存在(404)。` : '读取定义失败(服务不可用)。'}
-        </p>
-      </div>
-    );
-  }
-  if (state === 'loading' || entity === null) {
-    return (
-      <div>
-        <p className="text-sm text-muted-foreground">加载中…</p>
-      </div>
-    );
-  }
-  return <FlowDefinitionView rel={rel} entity={entity} scope={scope} onChanged={refresh} />;
 }

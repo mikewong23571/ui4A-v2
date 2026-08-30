@@ -6,8 +6,6 @@ import {
   type RenderSubject,
 } from '@ui4a/shared';
 
-import { metaFlowFocusForPathname } from './navigation';
-
 export interface PresenceObservation {
   site: string;
   scope: string | null;
@@ -44,9 +42,7 @@ function focusFromLocation(url: URL): RenderSubject | null {
     return selection.length === 0 ? null : parseRenderSubject({ selection });
   }
   const rel = boundedQueryValue(url, 'rel');
-  if (rel !== null) return parseRenderSubject(rel);
-  const metaFlowFocus = metaFlowFocusForPathname(url.pathname);
-  return metaFlowFocus === null ? null : parseRenderSubject(metaFlowFocus);
+  return url.pathname === '/meta/entity' && rel !== null ? parseRenderSubject(rel) : null;
 }
 
 /** Convert only explicit URL protocol fields into a structured presence observation. */

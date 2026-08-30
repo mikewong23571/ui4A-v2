@@ -4,12 +4,12 @@
  * meta/capability:<name> 属性投影渲染——属性表形状(name/title/kind/intent/
  * input/output 原样键值),只读零动作按钮;取数状态机 404/异常如实呈现。
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import type { SirenEntity } from '@ui4a/engine';
 
-import { CapabilityDefinitionBody, CapabilityDefinitionView } from './capability-definition-view';
+import { CapabilityDefinitionView } from './capability-definition-view';
 
 const draftEntity: SirenEntity = {
   class: ['meta', 'capability-definition'],
@@ -26,17 +26,8 @@ const draftEntity: SirenEntity = {
   'guard-results': [],
 };
 
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  });
-}
-
 afterEach(() => {
   cleanup();
-  vi.unstubAllGlobals();
-  vi.restoreAllMocks();
 });
 
 describe('CapabilityDefinitionView(纯渲染)', () => {
@@ -60,23 +51,6 @@ describe('CapabilityDefinitionView(纯渲染)', () => {
       expect(screen.getByText(key)).toBeTruthy();
     }
     expect(screen.getByText('meta/capability:draft')).toBeTruthy();
-    expect(screen.queryByRole('button')).toBeNull();
-  });
-});
-
-describe('CapabilityDefinitionBody(取数状态机)', () => {
-  it('ready:请求 /_meta/api/entity?rel=meta/capability:<name> 并渲染属性', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, draftEntity));
-    vi.stubGlobal('fetch', fetchMock);
-    render(<CapabilityDefinitionBody rel="meta/capability:draft" />);
-    await waitFor(() => expect(screen.getByRole('heading', { name: '工件起草' })).toBeTruthy());
-    expect(fetchMock.mock.calls[0]![0]).toBe('/_meta/api/entity?rel=meta%2Fcapability%3Adraft');
-  });
-
-  it('404 → missing 提示(能力不存在);不造数据', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(404, { error: '实体不存在' })));
-    render(<CapabilityDefinitionBody rel="meta/capability:ghost" />);
-    await waitFor(() => expect(screen.getByText(/不存在/)).toBeTruthy());
     expect(screen.queryByRole('button')).toBeNull();
   });
 });

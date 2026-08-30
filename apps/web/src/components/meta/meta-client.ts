@@ -15,10 +15,24 @@ import { useEffect, useState } from 'react';
 import type { ExecClientResult } from '../exec-client';
 import type { MetaSitemapDocument } from './meta-surfaces';
 
-const sitemapInflight = new Map<string, Promise<MetaSitemapDocument>>();
-const entityInflight = new Map<string, Promise<SirenEntity | null>>();
+interface ScopedInflight<T> {
+  generation: number;
+  promise: Promise<T>;
+}
+
+const sitemapInflight = new Map<string, ScopedInflight<MetaSitemapDocument>>();
+const entityInflight = new Map<string, ScopedInflight<SirenEntity | null>>();
 const entityCache = new Map<string, SirenEntity>();
+const scopeGenerations = new Map<string, number>();
 const MAX_ENTITY_CACHE_ENTRIES = 128;
+
+function scopeKey(scope?: string): string {
+  return scope ?? '';
+}
+
+function currentScopeGeneration(scope?: string): number {
+  return scopeGenerations.get(scopeKey(scope)) ?? 0;
+}
 
 function scopedEndpoint(path: string, scope?: string): string {
   if (scope === undefined || scope.length === 0) return path;
@@ -29,18 +43,20 @@ function scopedEndpoint(path: string, scope?: string): string {
 /** Read the authorized Meta inventory and effective-scope provenance. */
 export async function fetchMetaSitemap(scope?: string): Promise<MetaSitemapDocument> {
   const endpoint = scopedEndpoint('/_meta/.well-known/ui4a.json', scope);
+  const generation = currentScopeGeneration(scope);
   const existing = sitemapInflight.get(endpoint);
-  if (existing !== undefined) return existing;
+  if (existing?.generation === generation) return existing.promise;
   const pending = (async () => {
     const response = await fetch(endpoint);
     if (!response.ok) throw new Error(`GET Meta sitemap → HTTP ${response.status}`);
     return (await response.json()) as MetaSitemapDocument;
   })();
-  sitemapInflight.set(endpoint, pending);
+  const inflight = { generation, promise: pending };
+  sitemapInflight.set(endpoint, inflight);
   try {
     return await pending;
   } finally {
-    sitemapInflight.delete(endpoint);
+    if (sitemapInflight.get(endpoint) === inflight) sitemapInflight.delete(endpoint);
   }
 }
 
@@ -88,7 +104,7 @@ export async function execMetaAction(input: {
 
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (response.ok && body.entity !== undefined) {
-    invalidateMetaEntity(input.rel, input.scope);
+    invalidateMetaScope(input.scope);
     return { ok: true, entity: body.entity as SirenEntity };
   }
   return {
@@ -112,6 +128,7 @@ export async function fetchMetaEntity(
   options: { revision?: string; fresh?: boolean } = {},
 ): Promise<SirenEntity | null> {
   const endpoint = scopedEndpoint(`/_meta/api/entity?rel=${encodeURIComponent(rel)}`, scope);
+  const generation = currentScopeGeneration(scope);
   const cacheKey =
     options.revision === undefined ? undefined : `${scope ?? ''}\0${options.revision}\0${rel}`;
   if (options.fresh !== true && cacheKey !== undefined) {
@@ -119,7 +136,7 @@ export async function fetchMetaEntity(
     if (cached !== undefined) return cached;
   }
   const existing = entityInflight.get(endpoint);
-  if (existing !== undefined) return existing;
+  if (options.fresh !== true && existing?.generation === generation) return existing.promise;
   const pending = (async () => {
     const response = await fetch(endpoint);
     if (response.status === 404) return null;
@@ -127,7 +144,7 @@ export async function fetchMetaEntity(
       throw new Error(`GET /_meta/api/entity?rel=${rel} → HTTP ${response.status}`);
     }
     const entity = (await response.json()) as SirenEntity;
-    if (cacheKey !== undefined) {
+    if (cacheKey !== undefined && currentScopeGeneration(scope) === generation) {
       entityCache.set(cacheKey, entity);
       if (entityCache.size > MAX_ENTITY_CACHE_ENTRIES) {
         const oldest = entityCache.keys().next().value as string | undefined;
@@ -136,19 +153,21 @@ export async function fetchMetaEntity(
     }
     return entity;
   })();
-  entityInflight.set(endpoint, pending);
+  const inflight = { generation, promise: pending };
+  entityInflight.set(endpoint, inflight);
   try {
     return await pending;
   } finally {
-    entityInflight.delete(endpoint);
+    if (entityInflight.get(endpoint) === inflight) entityInflight.delete(endpoint);
   }
 }
 
-function invalidateMetaEntity(rel: string, scope?: string): void {
-  const prefix = `${scope ?? ''}\0`;
-  const suffix = `\0${rel}`;
-  for (const key of entityCache.keys()) {
-    if (key.startsWith(prefix) && key.endsWith(suffix)) entityCache.delete(key);
+function invalidateMetaScope(scope?: string): void {
+  const invalidatedScope = scopeKey(scope);
+  scopeGenerations.set(invalidatedScope, currentScopeGeneration(scope) + 1);
+  const prefix = `${invalidatedScope}\0`;
+  for (const cacheKey of entityCache.keys()) {
+    if (cacheKey.startsWith(prefix)) entityCache.delete(cacheKey);
   }
 }
 

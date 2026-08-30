@@ -3,7 +3,7 @@
  * flow 词条同形的 graph 数据 + 确定性分层布局。
  *
  * - 输入选 **投影实体(SirenEntity)** 而非 FlowDefinition:BIOS 页面
- *   (FlowDefinitionBody)经 useMetaEntity 拿到的就是 flow-definition 投影
+ *   canonical shell 经 useMetaEntity 拿到的就是 flow-definition 投影
  *   (node/action 子实体,meta/self 同形),无需另开原始定义取数通道;
  * - 边经 shared 的 flowEdges 推导(与引擎 terminal/可达性同一口径,含
  *   action.to 缺省回退单条 transition 效果):先把子实体声明还原成

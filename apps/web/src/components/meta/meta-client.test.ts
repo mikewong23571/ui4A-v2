@@ -170,4 +170,59 @@ describe('Meta browser client', () => {
     expect(reads(dashboardCollectionRel, scope)).toHaveLength(2);
     expect(reads(exactRel, 'publishing')).toHaveLength(1);
   });
+
+  it('does not let a pre-write in-flight read refill or serve the mutated scope cache', async () => {
+    const scope = 'governance-race';
+    const revision = 'cache-race-v1';
+    const exactRel = 'meta/activation:cache-race-a1';
+    const collectionRel = 'meta/activations';
+    let resolveStale: ((response: Response) => void) | undefined;
+    const staleResponse = new Promise<Response>((resolve) => {
+      resolveStale = resolve;
+    });
+    let collectionReads = 0;
+    const entityForRel = (rel: string, status: string): SirenEntity => ({
+      class: rel === exactRel ? ['meta', 'activation'] : ['meta', 'collection'],
+      properties: { rel, status },
+      actions:
+        rel === exactRel
+          ? [
+              {
+                name: 'approve',
+                title: 'Approve',
+                method: 'POST',
+                href: '/_meta/api/exec',
+                fields: { type: 'object', properties: {} },
+              },
+            ]
+          : [],
+      links: [],
+      'guard-results': [],
+    });
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return new Response(JSON.stringify({ entity: entityForRel(exactRel, 'approved') }));
+      }
+      const rel = new URL(String(input), 'http://ui4a.local').searchParams.get('rel') ?? '';
+      if (rel === collectionRel) {
+        collectionReads += 1;
+        if (collectionReads === 1) return staleResponse;
+        return new Response(JSON.stringify(entityForRel(rel, 'after-write')));
+      }
+      return new Response(JSON.stringify(entityForRel(rel, 'pending-approval')));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const staleRead = fetchMetaEntity(collectionRel, scope, { revision });
+    await execMetaAction({ rel: exactRel, action: 'approve', scope });
+    const currentRead = fetchMetaEntity(collectionRel, scope, { revision });
+    resolveStale?.(new Response(JSON.stringify(entityForRel(collectionRel, 'before-write'))));
+
+    await expect(currentRead).resolves.toMatchObject({ properties: { status: 'after-write' } });
+    await expect(staleRead).resolves.toMatchObject({ properties: { status: 'before-write' } });
+    await expect(fetchMetaEntity(collectionRel, scope, { revision })).resolves.toMatchObject({
+      properties: { status: 'after-write' },
+    });
+    expect(collectionReads).toBe(2);
+  });
 });

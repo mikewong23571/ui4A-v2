@@ -20,18 +20,6 @@ function nonEmptySuffix(value: string, prefix: string): string | null {
   return suffix.trim() === '' ? null : suffix;
 }
 
-/** Exact `/meta/flow/<encoded-name>` path to its canonical definition focus. */
-export function metaFlowFocusForPathname(pathname: string): string | null {
-  const match = /^\/meta\/flow\/([^/]+)$/.exec(pathname);
-  if (match === null) return null;
-  try {
-    const name = decodeURIComponent(match[1]!);
-    return name.trim() === '' ? null : `${META_FLOW_PREFIX}${name}`;
-  } catch {
-    return null;
-  }
-}
-
 function optionalDeclaration(url: URL, key: 'scope' | 'thread'): string | null {
   const value = url.searchParams.get(key);
   return value === null || value === '' ? null : value;
@@ -45,12 +33,11 @@ function appendSituationDeclarations(params: URLSearchParams, source: URL): void
 }
 
 function workstationFlowBridge(source: URL, name: string): CrossSiteFlowBridge {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ rel: `${META_FLOW_PREFIX}${name}` });
   appendSituationDeclarations(params, source);
-  const search = params.toString();
   return {
     label: '在 meta 中编辑此定义',
-    href: `/meta/flow/${encodeURIComponent(name)}${search === '' ? '' : `?${search}`}`,
+    href: `/meta/entity?${params.toString()}`,
   };
 }
 
@@ -69,13 +56,17 @@ export function crossSiteFlowBridge(
   focus: RenderSubject | null,
 ): CrossSiteFlowBridge | null {
   const source = new URL(route, 'http://ui4a.local');
-  const pathFocus = metaFlowFocusForPathname(source.pathname);
-  const pathName = pathFocus === null ? null : nonEmptySuffix(pathFocus, META_FLOW_PREFIX);
-  if (pathName !== null) return metaFlowBridge(source, pathName);
+  if (source.pathname === '/meta/entity') {
+    const routeRel = source.searchParams.get('rel');
+    const routeName = routeRel === null ? null : nonEmptySuffix(routeRel, META_FLOW_PREFIX);
+    if (routeName !== null) return metaFlowBridge(source, routeName);
+  }
 
   if (typeof focus !== 'string') return null;
   const metaName = nonEmptySuffix(focus, META_FLOW_PREFIX);
-  if (metaName !== null) return metaFlowBridge(source, metaName);
+  if (source.pathname === '/meta/entity' && metaName !== null) {
+    return metaFlowBridge(source, metaName);
+  }
 
   const onMetaSite = source.pathname === '/meta' || source.pathname.startsWith('/meta/');
   const workstationName = onMetaSite ? null : nonEmptySuffix(focus, FLOW_PREFIX);

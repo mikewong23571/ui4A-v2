@@ -120,13 +120,14 @@ describe('SituationBar · 状态芯片(F-12)', () => {
 
     const bridge = screen.getByRole('link', { name: '在 meta 中编辑此定义' });
     expect(bridge.getAttribute('href')).toBe(
-      '/meta/flow/article-drafting?scope=publishing&thread=release-1',
+      '/meta/entity?rel=meta%2Fflow%3Aarticle-drafting&scope=publishing&thread=release-1',
     );
     expect(bridge.getAttribute('data-nav')).toBe('situation:cross-site-flow');
   });
 
   it('meta 站桥接为查看活实例;无桥焦点不渲染(F-25 后续迁移内容上下文)', () => {
-    location.route = '/meta/flow/article-drafting?scope=publishing&thread=release-1';
+    location.route =
+      '/meta/entity?rel=meta%2Fflow%3Aarticle-drafting&scope=publishing&thread=release-1';
     location.observation = {
       site: 'meta',
       scope: 'publishing',

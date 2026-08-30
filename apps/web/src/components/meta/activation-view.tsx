@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/table';
 
 import { DefinitionDiffView } from './diff-render';
-import { useMetaEntity } from './meta-client';
 import { MetaActions } from './renderers/common';
 
 /** properties.checks 的投影形状(ActivationCheck 列表)。 */
@@ -78,7 +77,7 @@ export function ActivationView({
       {standalone && (
         <nav className="mb-2 text-sm">
           <a
-            href="/meta/activations"
+            href="/meta/entity?rel=meta%2Factivations"
             data-nav="meta-activations"
             className="text-primary hover:underline"
           >
@@ -164,36 +163,4 @@ export function ActivationView({
       </div>
     </div>
   );
-}
-
-/** 页面主体:取数状态机 + ActivationView(审批成功后重拉,审计视图自然出现)。 */
-export function ActivationPageBody({ id }: { id: string }) {
-  const { entity, state, refresh } = useMetaEntity(`meta/activation:${id}`);
-
-  if (state === 'error' || state === 'missing') {
-    return (
-      <div>
-        <nav className="mb-2 text-sm">
-          <a
-            href="/meta/activations"
-            data-nav="meta-activations"
-            className="text-primary hover:underline"
-          >
-            ← 激活队列
-          </a>
-        </nav>
-        <p className="text-sm">
-          {state === 'missing' ? `激活 "${id}" 不存在(404)。` : '读取激活失败(服务不可用)。'}
-        </p>
-      </div>
-    );
-  }
-  if (state === 'loading' || entity === null) {
-    return (
-      <div>
-        <p className="text-sm text-muted-foreground">加载中…</p>
-      </div>
-    );
-  }
-  return <ActivationView id={id} entity={entity} onChanged={refresh} />;
 }

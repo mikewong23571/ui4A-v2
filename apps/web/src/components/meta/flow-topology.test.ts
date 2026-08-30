@@ -1,6 +1,6 @@
 /**
  * BIOS flow 拓扑推导(T13 Phase A Task 1,TDD 红→绿;spec 架构决定 1):
- * - 输入 = meta/flow 投影实体(SirenEntity,node/action 子实体;FlowDefinitionBody
+ * - 输入 = meta/flow 投影实体(SirenEntity,node/action 子实体;canonical shell
  *   经 useMetaEntity 拿到的同一对象,meta/self 同形);
  * - 输出 = flow 词条同形 graph 数据(节点 label=title,边 label=action 名,
  *   边经 shared flowEdges 推导)+ 复用 T7 layeredLayout 的确定性布局;
