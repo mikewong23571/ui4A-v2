@@ -134,7 +134,7 @@
 - [x] Task G12：Green——修订 default/publishing/community 声明数据并复跑同一通用实现。5c564dc
 - [x] Task G13：Green——修订 development/editorial/governance 声明数据并复跑同一通用实现。bef55f9
 - [x] Task G14：Green——修订 todo/ideas 声明数据并复跑同一通用实现。6c59fdf
-- [ ] Task G15：Red——编写 Application 书架 discoverability/title/intent、声明顺序、当前 lens 轻强调、全员可达和 runtime 零 Application 名比较测试，并确认失败。
+- [x] Task G15：Red——编写 Application 书架 discoverability/title/intent、声明顺序、当前 lens 轻强调、全员可达和 runtime 零 Application 名比较测试，并确认失败。64cbf34
 - [ ] Task G16：Green——实现书架消费；不新增 pin/recent/个人排序状态。
 - [ ] Task G17：浏览器验证 US11–US18，逐 app 检查图书馆定位、title/intent、无重复动作、显式跨站、空态和 390px Presentation policy。
 - [ ] Task G18：Application Milestone Verification & Checkpoint：新增第九个 fixture 只改定义数据即可进入书架/landing；系统完整可运行且不破坏 Meta milestone。
