@@ -1,0 +1,6 @@
+T39 G12 declaration data for default, publishing, and community.
+
+Verified by orchestrator:
+- targeted stories: 4 pass, 7 skipped
+- parser/ownership: 4 files, 55 tests
+- web typecheck and governance strict
