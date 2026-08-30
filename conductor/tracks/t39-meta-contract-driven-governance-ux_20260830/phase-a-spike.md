@@ -159,3 +159,57 @@ db route: 1 file / 21 tests passed
 ```
 
 The DB output contained only existing textarea-format warnings. No A3 repository change remained.
+
+## A4 Action input ownership and Draft boundary
+
+### Result
+
+Use one language-neutral JSON Schema property annotation:
+
+```json
+{ "x-ui4a-input-owner": "client" }
+```
+
+Wire semantics:
+
+- missing or `caller`: caller supplies it; human RJSF and Agent tool keep the field;
+- `client`: a trusted host generates or derives it; RJSF/LLM omit it, then the host injects it before
+  full-schema validation;
+- server-owned values never appear in public `action.fields` or params and come only from trusted
+  request/execution context.
+
+This maps the specification language to `human-authored → caller`, `client-generated → client`, and
+`server-owned → outside public params`. `caller` is preferred to `human` because external Agent/CLI
+uses the same wire.
+
+### Required single-wire corrections
+
+- remove `policyScope` from Draft create params and consume trusted `context.policyScope` directly;
+- remove request-controlled `schemaRef` when Draft kind uniquely determines it;
+- annotate command IDs and observed base versions as client-owned;
+- derive caller schemas for RJSF and Agent tools by removing client fields and matching `required`
+  entries, inject host values after UI/LLM output, then validate the full action schema;
+- reuse one command ID across transport retries of the same logical submission; parameter changes
+  create a new logical submission;
+- preserve observed `baseVersion` rather than fetching the newest value at submit time.
+
+The project is unreleased, so the change must be atomic across Siren, RJSF, Agent tool projection,
+CLI and server judgment. Field-name fallbacks, hidden widgets, dual schemas, or compatibility branches
+are rejected.
+
+### Product boundary
+
+The ownership model removes infrastructure fields from human controls but does not justify a complete
+Draft editor. Agent/CLI/Assistant remains the main complex-ingress path; Meta UI begins with existing
+Draft review and responsibility actions.
+
+### Orchestrator light verification
+
+Re-ran the reported suites:
+
+```text
+unit: 5 files / 83 tests passed
+db: 3 files / 14 tests passed
+```
+
+No A4 repository or temporary change remained.
