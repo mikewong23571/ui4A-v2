@@ -435,18 +435,28 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
       ).status,
     ).toBe(404);
 
-    // BIOS 页可达(React shell 200;空队列如实呈现)
+    // BIOS 页可达(React shell 200);T39 canonical generic renderer 同时呈现
+    // collection 空结果与声明的 emptyMeaning，不再依赖旧特化页文案。
     const response = await page.goto('/meta/entity?rel=meta%2Factivations');
     expect(response?.status()).toBe(200);
-    await expect(page.getByText('队列为空(无待批准的定义激活)。')).toBeVisible();
+    const activationQueue = page.getByRole('main');
+    await expect(activationQueue.getByRole('heading', { name: '激活队列' })).toBeVisible();
+    await expect(activationQueue.getByRole('status', { name: '集合结果摘要' })).toContainText(
+      '当前返回 0 项',
+    );
+    await expect(activationQueue.getByText('当前视角下没有成员。')).toBeVisible();
+    await expect(activationQueue).toContainText('no-current-responsibility');
 
-    // BIOS capabilities 页(T13 Phase C):三个 seed 可见,链接进详情(属性投影可读)
+    // BIOS capabilities 页(T13 Phase C):三个 seed 的 canonical rel 可直达；
+    // 人类标题来自声明，不再把内部 capability name 当作链接文案。
     const capsResponse = await page.goto('/meta/entity?rel=meta%2Fcapabilities');
     expect(capsResponse?.status()).toBe(200);
     for (const name of ['draft', 'notify', 'clarify']) {
-      await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
+      await expect(
+        page.locator(`a[href="/meta/entity?rel=${encodeURIComponent(`meta/capability:${name}`)}"]`),
+      ).toBeVisible();
     }
-    await page.getByRole('link', { name: 'draft', exact: true }).click();
+    await page.locator('a[href="/meta/entity?rel=meta%2Fcapability%3Adraft"]').click();
     await expect(page).toHaveURL(/\/meta\/entity\?rel=meta%2Fcapability%3Adraft$/);
     await expect(page.getByText('extract', { exact: true })).toBeVisible();
   });

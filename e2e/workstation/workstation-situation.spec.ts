@@ -52,9 +52,9 @@ test('workstation 声明条与 presence 留痕同源，scope/出线保留其他 
     await expect(situation.getByTestId('situation-scope')).toHaveText('publishing');
     await expect(situation.getByTestId('situation-thread')).toHaveText('线 release-1');
     await expect(situation.getByTestId('situation-focus')).toHaveText('注视 post:one');
-    // T35 D-7:免责口径随弹层化更新(scope 声明只影响可见性,不改变权限)。
+    // T39/D51:凭证授予决定权限；scope 只表达当前注意力，不进入授权签名。
     await situation.getByRole('button', { name: '在哪' }).click();
-    await expect(situation).toContainText('只影响你看到的内容,不改变权限。');
+    await expect(situation).toContainText('可访问应用集合由凭证授予；切换视角不扩大或缩小权限。');
 
     await expect
       .poll(() => presenceChangePoints(page), { timeout: 15_000 })
@@ -80,7 +80,7 @@ test('workstation 声明条与 presence 留痕同源，scope/出线保留其他 
       .poll(() => presenceChangePoints(page), { timeout: 15_000 })
       .toEqual(expect.arrayContaining(['presence-thread-changed:null']));
 
-    await situation.getByRole('link', { name: '清除 scope' }).click();
+    await situation.getByRole('link', { name: '清除视角' }).click();
     await expect
       .poll(() => new URL(page.url()).searchParams.get('scope'), { timeout: 15_000 })
       .toBeNull();

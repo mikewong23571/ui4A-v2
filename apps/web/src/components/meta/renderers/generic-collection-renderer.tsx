@@ -69,6 +69,7 @@ function MemberSummary({
   ) : (
     <a
       href={href}
+      data-nav="meta:collection-member"
       className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
       {content}
@@ -174,6 +175,7 @@ export function GenericCollectionRenderer({
               key={`${page.rel}:${page.href}`}
               href={page.href}
               rel={page.rel}
+              data-nav="meta:collection-page"
               className="rounded-md border px-3 py-2 text-sm text-primary hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               {page.title}

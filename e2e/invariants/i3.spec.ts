@@ -57,7 +57,9 @@ const PAGES: { name: string; path: string; ready: string; dialog?: boolean }[] =
   {
     name: 'BIOS 激活页',
     path: '/meta/entity?rel=meta%2Factivations',
-    ready: 'a[data-nav="meta-back"]',
+    // T39:Meta collection 统一走 canonical generic renderer，不再依赖旧特化页的
+    // 返回链接。集合结果摘要由当前 Siren collection 合同稳定投影。
+    ready: '[aria-label="集合结果摘要"]',
   },
   // T35 F-25:裸 /canvas 无注视=入口层(应用目录,无 surface);fuzz 覆盖
   // 带注视的画布面(真 surface 渲染路径)。

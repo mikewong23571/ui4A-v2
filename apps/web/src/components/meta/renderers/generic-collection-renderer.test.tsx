@@ -127,7 +127,11 @@ describe('generic Meta collection contract', () => {
     );
 
     const members = screen.getByRole('region', { name: /成员/ });
-    expect(within(members).getByRole('link', { name: /内容发布/ })).toBeTruthy();
+    expect(
+      within(members)
+        .getByRole('link', { name: /内容发布/ })
+        .getAttribute('data-nav'),
+    ).toBe('meta:collection-member');
     expect(within(members).getByText('起草并发布内容。')).toBeTruthy();
     expect(within(members).getByText('审核并维护讨论。')).toBeTruthy();
     expect(within(members).getAllByText('版本')).toHaveLength(2);
@@ -170,7 +174,9 @@ describe('generic Meta collection contract', () => {
     expect(summary.textContent).toMatch(/当前返回\s*2\s*项/);
     expect(summary.textContent).toMatch(/匹配总数\s*37\s*项/);
     expect(summary.textContent).toMatch(/截断|仅显示/);
-    expect(screen.getByRole('link', { name: '继续查看' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: '继续查看' }).getAttribute('data-nav')).toBe(
+      'meta:collection-page',
+    );
   });
 
   it('renders facets only from presentation declarations and never guesses from status or class', () => {

@@ -166,6 +166,7 @@ export function MetaRelationships({
             <div key={`${relationship.href}:${index}`} className="flex min-w-0 flex-col gap-1">
               <a
                 href={relationship.href}
+                data-nav="meta:relationship"
                 aria-describedby={relationship.hasDeclaredTitle ? descriptionId : undefined}
                 className="rounded-md border px-3 py-2 text-sm text-primary hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               >

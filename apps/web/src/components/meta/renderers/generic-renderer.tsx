@@ -170,6 +170,7 @@ export function GenericMetaRenderer({
                 <a
                   key={href}
                   href={href}
+                  data-nav="meta:member"
                   className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
                   {content}
@@ -208,6 +209,7 @@ export function GenericMetaRenderer({
                 <a
                   key={`${link.href}:${index}`}
                   href={href}
+                  data-nav="meta:relationship"
                   className="rounded-md border px-3 py-2 text-sm text-primary hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
                   {link.title ?? link.rel.join(' · ')}

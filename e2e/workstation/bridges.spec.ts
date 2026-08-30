@@ -63,19 +63,33 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     await page.goto(
       `${SCENARIO_BASE}/meta/entity?rel=meta%2Fflow%3Aghost&scope=publishing&thread=release-1`,
     );
-    await expect(page.getByText('定义 "meta/flow:ghost" 不存在(404)。')).toBeVisible();
+    // T39 canonical shell 对不存在与当前授权视角不可见使用同一中性恢复面；
+    // API 仍必须诚实返回 404，UI 不泄漏存在性细节。
+    const missingMeta = await page.request.get(
+      `${SCENARIO_BASE}/_meta/api/entity?rel=${encodeURIComponent('meta/flow:ghost')}`,
+    );
+    expect(missingMeta.status()).toBe(404);
+    const missingAlert = page.getByRole('alert').filter({
+      has: page.getByRole('heading', { name: '合同不存在或当前视角下定位失败' }),
+    });
+    await expect(missingAlert).toBeVisible();
+    await expect(missingAlert).toContainText('跨 principal 资源仍按不存在处理');
     await situation.getByRole('button', { name: '在哪' }).click();
     await situation.getByRole('link', { name: '查看活实例' }).click();
     await expect(page).toHaveURL(
       `${SCENARIO_BASE}/canvas?focus=flow%3Aghost&scope=publishing&thread=release-1`,
     );
+    const missingFlow = await page.request.get(
+      `${SCENARIO_BASE}/api/entity?rel=${encodeURIComponent('flow:ghost')}`,
+    );
+    expect(missingFlow.status()).toBe(404);
     await expect(page.locator('[data-surface]')).toHaveCount(0);
-    // T35 F-02:主 focus 不可解析走结构化空态(中性措辞 + 恢复出口);
-    // 机制细节(实体缺失 message)进 why 抽屉。
-    await expect(page.getByTestId('canvas-focus-unavailable')).toContainText('内容不存在或不可见');
-    await page.getByRole('button', { name: '为什么这样展示' }).click();
-    await expect(page.locator('[data-testid="canvas-why-diagnostics"]')).toContainText(
-      '实体 "flow:ghost" 不存在',
+    // Application workspace 只给出中性、不可读的工作线上下文；404 机制证据由
+    // 上面的 contract API 断言承担，首屏不泄漏资源存在性细节。
+    await expect(page.getByRole('complementary', { name: '本线' })).toContainText('本线暂不可读');
+    await expect(page.getByRole('button', { name: '重新载入' })).toHaveAttribute(
+      'data-nav',
+      'local:canvas-reload',
     );
   });
 });
