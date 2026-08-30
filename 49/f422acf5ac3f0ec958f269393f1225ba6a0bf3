@@ -1,0 +1,6 @@
+T39 Phase B Task B7 — action input ownership Red tests
+
+Summary: added engine caller schema, Web RJSF/host injection, Agent tool/retry, CLI retry/wire, and Draft HTTP contract tests for caller|client ownership and server-owned exclusion.
+Files: 4 new focused tests plus meta/drafts.contract.test.ts.
+Why: defines one language-neutral wire across all consumers without hidden widgets or compatibility paths.
+Verification: orchestrator confirmed unit 8/8 and DB 3/3 expected Red; four package typechecks and GR3 passed.
