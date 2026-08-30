@@ -1,0 +1,4 @@
+T39 E3 Red contracts for valid, invalid, stale Draft responsibility and fresh human-only decisions.
+
+Verified by orchestrator:
+- 3 expected responsibility-state failures; 3 existing review/fresh-read tests passed
