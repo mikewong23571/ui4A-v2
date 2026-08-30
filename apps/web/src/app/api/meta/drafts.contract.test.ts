@@ -22,6 +22,93 @@ beforeEach(async () => {
 });
 
 describe('Draft meta HTTP contract', () => {
+  it('publishes one strict create schema with client commandId and no server-owned params', async () => {
+    const response = await getEntity(
+      new Request('http://localhost:3100/_meta/api/entity?rel=meta%2Fdrafts', { headers }),
+    );
+    expect(response.status).toBe(200);
+    const entity = (await response.json()) as {
+      actions: Array<{
+        name: string;
+        fields: {
+          properties: Record<string, Record<string, unknown>>;
+          required: string[];
+          additionalProperties: boolean;
+        };
+      }>;
+    };
+    const create = entity.actions.find(({ name }) => name === 'create')!;
+
+    expect(Object.keys(create.fields.properties)).toEqual([
+      'kind',
+      'target',
+      'commandId',
+      'payload',
+      'sources',
+    ]);
+    expect(create.fields.properties.commandId).toMatchObject({
+      type: 'string',
+      'x-ui4a-input-owner': 'client',
+    });
+    expect(create.fields.required).toEqual(['kind', 'target', 'commandId', 'payload']);
+    expect(create.fields.additionalProperties).toBe(false);
+    expect(create.fields.properties).not.toHaveProperty('policyScope');
+    expect(create.fields.properties).not.toHaveProperty('schemaRef');
+  });
+
+  it('injects commandId/scope, derives schemaRef from kind, and rejects every extra identity or mode param', async () => {
+    const accepted = await exec(
+      new Request('http://localhost:3100/_meta/api/exec', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          rel: 'meta/drafts',
+          action: 'create',
+          params: {
+            kind: 'flow-definition',
+            target: 'post-status',
+            payload: { name: 'post-status' },
+          },
+        }),
+      }),
+    );
+    expect(accepted.status).toBe(200);
+    const body = (await accepted.json()) as {
+      entity: { properties: { schemaRef: string; provenance: { commandId: string } } };
+    };
+    expect(body.entity.properties.schemaRef).toBe('ui4a://flow-definition/v1');
+    expect(body.entity.properties.provenance.commandId).toEqual(expect.any(String));
+
+    for (const [name, value] of [
+      ['policyScope', 'development'],
+      ['schemaRef', 'forged://schema'],
+      ['actor', 'agent'],
+      ['principal', 'user:other'],
+      ['mode', 'direct'],
+      ['submissionMode', 'direct'],
+      ['noDraft', true],
+    ] as const) {
+      const rejected = await exec(
+        new Request('http://localhost:3100/_meta/api/exec', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            rel: 'meta/drafts',
+            action: 'create',
+            params: {
+              kind: 'flow-definition',
+              target: 'post-status',
+              payload: { name: 'post-status' },
+              [name]: value,
+            },
+          }),
+        }),
+      );
+      expect(rejected.status, `params.${name} must be rejected`).toBe(422);
+      expect(await rejected.json()).toMatchObject({ layer: 'schema-invalid' });
+    }
+  });
+
   it('creates an invalid system-owned Draft and exact read is owner scoped', async () => {
     const response = await exec(
       new Request('http://localhost:3100/_meta/api/exec', {
@@ -36,8 +123,6 @@ describe('Draft meta HTTP contract', () => {
           params: {
             kind: 'flow-definition',
             target: 'post-status',
-            policyScope: 'publishing',
-            commandId: 'http:create',
             payload: { name: 'post-status' },
           },
         }),
