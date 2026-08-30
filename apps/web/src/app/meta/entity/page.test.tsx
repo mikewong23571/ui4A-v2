@@ -14,6 +14,10 @@ const exact: SirenEntity = {
   'guard-results': [],
 };
 
+function destinationOf(link: HTMLElement): URL {
+  return new URL(link.getAttribute('href') ?? '', 'http://ui4a.local');
+}
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -118,5 +122,129 @@ describe('canonical Meta entity lens', () => {
     ).toBeTruthy();
     expect(screen.getByText(/当前视角已保留，但不会改变权限/)).toBeTruthy();
     expect(screen.queryByText(/当前 Scope/)).toBeNull();
+  });
+
+  it('collection 进入 Draft exact 时保留显式视角、工作线和返回目标', async () => {
+    const collection: SirenEntity = {
+      class: ['collection', 'meta/drafts'],
+      properties: { rel: 'meta/drafts', count: 1 },
+      actions: [],
+      links: [],
+      entities: [
+        {
+          class: ['meta', 'draft', 'agent-definition', 'invalid'],
+          rel: ['item'],
+          href: '/_meta/api/entity?rel=draft%3Acontinuity-d1',
+          properties: {
+            rel: 'draft:continuity-d1',
+            target: 'writer-continuity',
+            status: 'invalid',
+          },
+          actions: [],
+          links: [],
+        },
+      ],
+      'guard-results': [],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              protocolVersion: '1',
+              version: 'collection-continuity-v1',
+              site: 'meta',
+              effectiveScope: 'governance',
+              surfaces: [{ rel: 'meta/drafts', title: 'Drafts', collection: true }],
+              authorizedScopes: ['publishing', 'governance'],
+              authorizationMode: 'credential',
+            }),
+          ),
+        )
+        .mockResolvedValueOnce(new Response(JSON.stringify(collection))),
+    );
+
+    render(
+      await GenericMetaEntityPage({
+        searchParams: Promise.resolve({
+          rel: 'meta/drafts',
+          scope: 'governance',
+          thread: 'release-1',
+          returnTo: '/meta?query=writer',
+        }),
+      }),
+    );
+
+    const target = destinationOf(await screen.findByRole('link', { name: /draft:continuity-d1/ }));
+    expect(Object.fromEntries(target.searchParams)).toMatchObject({
+      rel: 'draft:continuity-d1',
+      scope: 'governance',
+      thread: 'release-1',
+      returnTo: '/meta?query=writer',
+    });
+  });
+
+  it('Draft exact 返回 author/source 保留审查现场；无视角时继续不生成 scope', async () => {
+    const draft: SirenEntity = {
+      class: ['meta', 'draft', 'agent-definition', 'invalid'],
+      properties: {
+        rel: 'draft:continuity-unlocated',
+        id: 'continuity-unlocated',
+        kind: 'agent-definition',
+        target: 'writer-unlocated',
+        status: 'invalid',
+        version: 1,
+        maxVersion: 1,
+        validation: { valid: false, issues: [] },
+        provenance: { sources: ['agent-run:author-1'] },
+      },
+      actions: [],
+      links: [
+        {
+          rel: ['source', 'author'],
+          title: '返回候选作者修复',
+          href: '/api/entity?rel=agent-run%3Aauthor-1',
+        },
+      ],
+      'guard-results': [],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              protocolVersion: '1',
+              version: 'draft-continuity-v1',
+              site: 'meta',
+              surfaces: [{ rel: 'draft:continuity-unlocated', title: 'Writer candidate' }],
+              authorizedScopes: ['publishing', 'governance'],
+              authorizationMode: 'credential',
+            }),
+          ),
+        )
+        .mockResolvedValueOnce(new Response(JSON.stringify(draft))),
+    );
+
+    render(
+      await GenericMetaEntityPage({
+        searchParams: Promise.resolve({
+          rel: 'draft:continuity-unlocated',
+          thread: 'release-1',
+          returnTo: '/meta?query=writer',
+        }),
+      }),
+    );
+
+    const target = destinationOf(await screen.findByRole('link', { name: '返回候选作者修复' }));
+    expect(Object.fromEntries(target.searchParams)).toMatchObject({
+      rel: 'agent-run:author-1',
+      thread: 'release-1',
+      returnTo: '/meta?query=writer',
+    });
+    expect(target.searchParams.has('scope')).toBe(false);
   });
 });

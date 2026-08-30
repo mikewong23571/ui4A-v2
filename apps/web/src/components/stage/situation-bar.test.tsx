@@ -74,22 +74,53 @@ describe('SituationBar · 状态芯片(F-12)', () => {
     expect(screen.queryByTestId('situation-focus')).toBeNull();
   });
 
+  it('无显式视角在「当前在哪」中是清晰的一等态，不暗选首个授予应用', () => {
+    location.route = '/meta?thread=release-1&returnTo=%2Fthreads';
+    location.observation = {
+      site: 'meta',
+      scope: null,
+      thread: 'release-1',
+      focus: null,
+    };
+
+    render(<SituationBar />);
+    expect(screen.queryByTestId('situation-scope')).toBeNull();
+
+    openPopover();
+    expect(screen.getByTestId('situation-scope').textContent).toBe('未选择视角');
+    expect(screen.getByText(/默认使用全部已授权应用/)).toBeTruthy();
+    expect(screen.queryByRole('link', { name: '清除视角' })).toBeNull();
+    expect(screen.queryByText(/publishing/)).toBeNull();
+  });
+
+  it('显式视角是轻量的「当前视角」芯片，不以 Scope 或权限控件命名', () => {
+    render(<SituationBar />);
+
+    const currentView = screen.getByRole('link', { name: '当前视角 publishing' });
+    expect(currentView.getAttribute('data-nav')).toBe('situation:clear-scope');
+    expect(currentView.className).toContain('rounded-full');
+    expect(currentView.className).toContain('text-[11px]');
+    expect(screen.queryByText(/Scope/)).toBeNull();
+  });
+
   it('保留无关 query 字段:退线/清除视角/应用视角(F-12 弹层内)', () => {
+    location.route =
+      '/canvas?mode=raw&scope=publishing&thread=release-1&focus=post%3Aone&returnTo=%2Fthreads';
     render(<SituationBar />);
     openPopover();
 
     expect(screen.getByRole('link', { name: '退出工作线' }).getAttribute('href')).toBe(
-      '/canvas?mode=raw&scope=publishing&focus=post%3Aone',
+      '/canvas?mode=raw&scope=publishing&focus=post%3Aone&returnTo=%2Fthreads',
     );
 
     expect(screen.getByRole('link', { name: '清除视角' }).getAttribute('href')).toBe(
-      '/canvas?mode=raw&thread=release-1&focus=post%3Aone',
+      '/canvas?mode=raw&thread=release-1&focus=post%3Aone&returnTo=%2Fthreads',
     );
     fireEvent.change(screen.getByRole('textbox', { name: '' }), {
       target: { value: 'development' },
     });
     expect(screen.getByRole('link', { name: '应用视角' }).getAttribute('href')).toBe(
-      '/canvas?mode=raw&scope=development&thread=release-1&focus=post%3Aone',
+      '/canvas?mode=raw&scope=development&thread=release-1&focus=post%3Aone&returnTo=%2Fthreads',
     );
   });
 
