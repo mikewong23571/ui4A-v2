@@ -1,0 +1,5 @@
+T39 C5 Red contracts for canonical Meta route cutover and cache invalidation.
+
+Verified by orchestrator:
+- pnpm vitest run --project unit apps/web/src/presence/navigation.test.ts apps/web/src/presence/client.test.ts apps/web/src/components/meta/meta-client.test.ts apps/web/src/components/meta/canonical-route-cutover.test.ts
+- Expected Red: 4 failures, 13 passing
