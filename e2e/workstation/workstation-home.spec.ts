@@ -196,13 +196,20 @@ test('workstation home and the real CLI read the same three declared source enti
     // 成员链接;区域的声明动作仍是 action-backed(创建工作线按钮在下文走合同)。
 
     const mainText = await page.locator('main').innerText();
+    // Application intent 是定义事实与人的任务语言；例如 governance 明确说明
+    // "只有人类审批才能激活版本"，这里的“版本”不是 Presentation 机制泄漏。
+    // 机制门禁继续由固定 MECHANISM_WORDS 与下列实现层词汇承担。
+    await expect(
+      page
+        .getByTestId('application-entry-strip')
+        .getByText(/只有人类审批才能激活版本/, { exact: false }),
+    ).toBeVisible();
     const forbiddenFirstScreenWords = [
       ...MECHANISM_WORDS,
       'Sidecar',
       'Surface',
       'catalog',
       '依赖',
-      '版本',
       ...SOURCE_REGIONS.map(({ region }) => region),
     ];
     const leaked = forbiddenFirstScreenWords.filter((word) => mainText.includes(word));

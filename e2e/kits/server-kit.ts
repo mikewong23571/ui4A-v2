@@ -139,6 +139,9 @@ export async function withFreshServer(
 /** worker 侧 taskQueue 会合点与 Temporal 地址(与 apps/worker、apps/web 同源)。 */
 const WORKER_DIR = path.join(REPO_ROOT, 'apps', 'worker');
 export const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? 'localhost:7233';
+// 场景 worker 不复用本机 dev:all worker 的默认 3101。CI 单 worker 串行复用
+// 3199；调用方仍可用 UI4A_WORKER_HEALTH_PORT 显式指定其他隔离端口。
+export const SCENARIO_WORKER_HEALTH_PORT = process.env.UI4A_WORKER_HEALTH_PORT ?? '3199';
 
 /**
  * 等待 worker 启动横幅(startupBanner:Worker.create 成功、即将 run)。
@@ -256,7 +259,11 @@ export async function withWorkerStack(
     detached: true,
     stdio: 'ignore',
   });
-  let worker: ChildProcess = spawnWorkerProcess({});
+  const workerEnv = {
+    UI4A_WORKER_HEALTH_PORT: SCENARIO_WORKER_HEALTH_PORT,
+    ...extraEnv,
+  };
+  let worker: ChildProcess = spawnWorkerProcess(workerEnv);
   let webExited = false;
   child.on('exit', () => {
     webExited = true;
@@ -289,7 +296,7 @@ export async function withWorkerStack(
             // 已退出。
           }
         }
-        worker = spawnWorkerProcess({});
+        worker = spawnWorkerProcess(workerEnv);
         await waitForWorkerBanner(worker, 30_000);
       },
     });
