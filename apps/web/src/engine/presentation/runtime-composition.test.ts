@@ -310,3 +310,76 @@ describe('region density 贯通 generic 规划(数据驱动选词,零特判)', (
     expect(plannedWordOf(undefined)).toBe('member-card');
   });
 });
+
+describe('D54 exact cognitive contract fingerprint', () => {
+  const declaration = {
+    id: 'cognitive-fingerprint',
+    version: '1',
+    regions: [
+      {
+        region: 'primary',
+        source: 'record:alpha',
+        intent: 'read',
+        mode: 'invalidate' as const,
+        shape: 'entity' as const,
+      },
+    ],
+  };
+
+  function entityContractFingerprint(entity: SirenEntity): string {
+    const planned = planWorkspaceComposition({
+      rels: ['record:alpha'],
+      entities: [entity],
+      declaration,
+      regions: [{ declaration: declaration.regions[0]!, entity }],
+    });
+    const dependency = planned.dependencies.find(({ kind }) => kind === 'entity-contract');
+    if (dependency === undefined) throw new Error('entity-contract dependency must exist');
+    return dependency.fingerprint;
+  }
+
+  function cognitiveEntity(priority: 'high' | 'low'): SirenEntity {
+    return {
+      class: ['flow-instance'],
+      properties: {
+        rel: 'record:alpha',
+        identity: 'Alpha',
+        presentation: {
+          version: 1,
+          traits: ['human-responsibility'],
+          groupRole: 'responsibility',
+          priority,
+          emptyMeaning: 'no-current-responsibility',
+          fields: [
+            {
+              path: 'properties.identity',
+              title: '标题',
+              role: 'identity',
+            },
+          ],
+        },
+      },
+      actions: [],
+      links: [],
+    };
+  }
+
+  it('invalidates the entity-contract dependency when exact cognitive presentation changes', () => {
+    expect(entityContractFingerprint(cognitiveEntity('high'))).not.toBe(
+      entityContractFingerprint(cognitiveEntity('low')),
+    );
+  });
+
+  it('does not let a parallel raw cognitive property impersonate the exact presentation contract', () => {
+    const baseline = cognitiveEntity('high');
+    const parallel = {
+      ...baseline,
+      properties: {
+        ...baseline.properties,
+        cognitive: { version: 1, priority: 'low' },
+      },
+    };
+
+    expect(entityContractFingerprint(parallel)).toBe(entityContractFingerprint(baseline));
+  });
+});

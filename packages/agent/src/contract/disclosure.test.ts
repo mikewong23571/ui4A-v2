@@ -9,6 +9,23 @@ import type { SitemapSummary } from '../types';
 const INPUT_SCHEMA_MARKER = 'INPUT_SCHEMA_MUST_NOT_BE_DISCLOSED';
 const OUTPUT_SCHEMA_MARKER = 'OUTPUT_SCHEMA_MUST_NOT_BE_DISCLOSED';
 const FOREIGN_SURFACE_MARKER = 'FOREIGN_SURFACE_DETAIL_MUST_NOT_BE_DISCLOSED';
+const VISUAL_POLICY_MARKER = 'VISUAL_POLICY_MUST_NOT_ENTER_PROMPT';
+
+const cognitivePresentation = {
+  version: 1,
+  traits: ['human-responsibility'],
+  groupRole: 'responsibility',
+  priority: 'high',
+  emptyMeaning: 'no-current-responsibility',
+  fields: [
+    {
+      path: 'properties.fields.title',
+      title: '标题',
+      role: 'identity',
+      overview: true,
+    },
+  ],
+};
 
 const alphaApplication: SitemapSummary['applications'][number] = {
   name: 'alpha',
@@ -206,6 +223,85 @@ describe('sliceSitemapDisclosure', () => {
       sliceSitemapDisclosure(discovered!, { scope: 'alpha', currentRel: 'alpha-home' })
         .capabilities?.[0]?.inputSchema,
     ).toBeUndefined();
+  });
+
+  it('keeps only explicitly allowlisted cognitive tokens from typed sitemap presentation', () => {
+    const input = sitemapFixture();
+    input.surfaces[0] = {
+      ...input.surfaces[0]!,
+      presentation: {
+        ...cognitivePresentation,
+        density: 'decision-list',
+        component: 'DecisionTable',
+        unknownFutureKey: VISUAL_POLICY_MARKER,
+      },
+    } as SitemapSummary['surfaces'][number];
+    input.applications[0] = {
+      ...input.applications[0]!,
+      presentation: {
+        ...cognitivePresentation,
+        sticky: true,
+        definition: { raw: VISUAL_POLICY_MARKER },
+      },
+    } as SitemapSummary['applications'][number];
+
+    const disclosed = sliceSitemapDisclosure(input, {
+      scope: 'alpha',
+      currentRel: 'alpha-home',
+    });
+    const serialized = JSON.stringify(disclosed);
+
+    expect((disclosed.surfaces[0] as { presentation?: unknown }).presentation).toEqual(
+      cognitivePresentation,
+    );
+    expect((disclosed.applications[0] as { presentation?: unknown }).presentation).toEqual(
+      cognitivePresentation,
+    );
+    expect(serialized).not.toContain('density');
+    expect(serialized).not.toContain('component');
+    expect(serialized).not.toContain('sticky');
+    expect(serialized).not.toContain('definition');
+    expect(serialized).not.toContain(VISUAL_POLICY_MARKER);
+  });
+
+  it('parses the public cognitive sitemap projection without changing its values', async () => {
+    const wireBody = sitemapFixture();
+    wireBody.surfaces[0] = {
+      ...wireBody.surfaces[0]!,
+      presentation: cognitivePresentation,
+    } as SitemapSummary['surfaces'][number];
+    wireBody.applications[0] = {
+      ...wireBody.applications[0]!,
+      presentation: cognitivePresentation,
+    } as SitemapSummary['applications'][number];
+    const client = createContractClient('https://ui4a.test', async () => Response.json(wireBody));
+
+    const discovered = await client.getSitemap();
+
+    expect((discovered?.surfaces[0] as { presentation?: unknown }).presentation).toEqual(
+      cognitivePresentation,
+    );
+    expect((discovered?.applications[0] as { presentation?: unknown }).presentation).toEqual(
+      cognitivePresentation,
+    );
+  });
+
+  it('keeps the public exact Siren presentation complete at the HTTP client boundary', async () => {
+    const entity = {
+      class: ['flow-instance'],
+      properties: {
+        rel: 'record:alpha',
+        presentation: cognitivePresentation,
+      },
+      actions: [],
+      links: [],
+    };
+    const client = createContractClient('https://ui4a.test', async () => Response.json(entity));
+
+    const result = await client.getEntity('record:alpha');
+
+    expect(result.status).toBe(200);
+    expect(result.entity?.properties.presentation).toEqual(cognitivePresentation);
   });
 });
 
