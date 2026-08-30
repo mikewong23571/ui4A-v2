@@ -1,12 +1,7 @@
 import { getDb, getEngine, isMetaRel } from '../../../../engine/service';
-import {
-  getDraftMetaEntity,
-  getDraftMetaEntityForScopes,
-  isDraftMetaRel,
-} from '../../../../engine/drafts/drafts';
+import { getDraftMetaEntityForScopes, isDraftMetaRel } from '../../../../engine/drafts/drafts';
 import {
   agentDefinitionDraftRegistryPort,
-  getAgentDefinitionMetaEntity,
   getAgentDefinitionMetaEntityForScopes,
   isAgentDefinitionMetaRel,
 } from '../../../../engine/agent/agent-definitions';
@@ -18,7 +13,6 @@ import {
   assertReachable,
   filterEntityForGrantedApplications,
 } from '../../../../auth/application-scope';
-import { declaredApplication } from '../../../../engine/situation';
 
 // GET /_meta/api/entity?rel=… — meta 站点 Siren 实体端点(T4 Phase B,spec 决定 6):
 // - rel 以 meta/ 前缀路由到同一引擎的 meta 投影(同日志同串行队列;快照即真相);
@@ -51,38 +45,26 @@ export async function GET(request: Request) {
       requiredScopes: ['ui4a:read'],
       authorizedPolicyScopes,
     });
-    // D51:授权 = 授予集合 × meta 归属;effectiveScope 只作展示槽位(Draft 目录
-    // 默认目标/响应头),不参与判权。
+    // D51:授权 = 授予集合 × meta 归属;显式 scope 仅作为响应 provenance，
+    // Meta read 始终按 grant union 投影。需要目标应用的写路径由 exec 单独消费视角。
     const audienceContext = { snapshot, sitemap, plane: 'meta' as const };
     if (identity.authorizationMode === 'credential') {
       assertReachable(audienceContext, rel, identity.grantedApplications);
     }
-    const effectiveScope = declaredApplication(identity, authorizedPolicyScopes);
     const grantedScopes = identity.grantedApplications.filter((scope) =>
       authorizedPolicyScopes.includes(scope),
     );
     const entity = isDraftMetaRel(rel)
-      ? effectiveScope === undefined
-        ? await getDraftMetaEntityForScopes(
-            db,
-            engine,
-            rel,
-            identity.principal,
-            grantedScopes,
-            agentDefinitionDraftRegistryPort,
-          )
-        : await getDraftMetaEntity(
-            db,
-            engine,
-            rel,
-            identity.principal,
-            effectiveScope,
-            agentDefinitionDraftRegistryPort,
-          )
+      ? await getDraftMetaEntityForScopes(
+          db,
+          engine,
+          rel,
+          identity.principal,
+          grantedScopes,
+          agentDefinitionDraftRegistryPort,
+        )
       : isAgentDefinitionMetaRel(rel)
-        ? effectiveScope === undefined
-          ? await getAgentDefinitionMetaEntityForScopes(db, rel, identity.principal, grantedScopes)
-          : await getAgentDefinitionMetaEntity(db, rel, identity.principal, effectiveScope)
+        ? await getAgentDefinitionMetaEntityForScopes(db, rel, identity.principal, grantedScopes)
         : await engine.getMetaEntity(rel);
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });

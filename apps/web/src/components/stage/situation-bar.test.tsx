@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
  * T35 D-7/F-12(用户认可方案):处境收敛为顶栏状态芯片——
- * 站点常显;scope/工作线/注视有值才出现(默认态不占版面);
- * 「在哪」弹层承载全量字段、调整(scope 带授权边界一句说明)与跨面桥。
+ * 站点常显;视角/工作线/注视有值才出现(默认态不占版面);
+ * 「在哪」弹层承载全量字段、调整视角(带授权边界一句说明)与跨面桥。
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -56,12 +56,12 @@ describe('SituationBar · 状态芯片(F-12)', () => {
     openPopover();
     // 弹层 dl 全量四字段(标签+值)。
     const dialog = screen.getByRole('dialog', { name: '当前在哪' });
-    for (const label of ['站点', 'scope', '工作线', '注视']) {
+    for (const label of ['站点', '视角', '工作线', '注视']) {
       expect(dialog.textContent).toContain(label);
     }
     expect(dialog.textContent).toContain('post:one');
     // 授权边界一句话说明(替代"URL 声明不代表已授权"实现话术)。
-    expect(screen.getByText(/只影响你看到的内容,不改变权限/)).toBeTruthy();
+    expect(screen.getByText(/切换视角不扩大或缩小权限/)).toBeTruthy();
   });
 
   it('默认态不渲染芯片(F-12:未声明不占版面)', () => {
@@ -74,7 +74,7 @@ describe('SituationBar · 状态芯片(F-12)', () => {
     expect(screen.queryByTestId('situation-focus')).toBeNull();
   });
 
-  it('保留无关 query 字段:退线/清 scope/应用 scope(F-12 弹层内)', () => {
+  it('保留无关 query 字段:退线/清除视角/应用视角(F-12 弹层内)', () => {
     render(<SituationBar />);
     openPopover();
 
@@ -82,13 +82,13 @@ describe('SituationBar · 状态芯片(F-12)', () => {
       '/canvas?mode=raw&scope=publishing&focus=post%3Aone',
     );
 
-    expect(screen.getByRole('link', { name: '清除 scope' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: '清除视角' }).getAttribute('href')).toBe(
       '/canvas?mode=raw&thread=release-1&focus=post%3Aone',
     );
     fireEvent.change(screen.getByRole('textbox', { name: '' }), {
       target: { value: 'development' },
     });
-    expect(screen.getByRole('link', { name: '应用 scope' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: '应用视角' }).getAttribute('href')).toBe(
       '/canvas?mode=raw&scope=development&thread=release-1&focus=post%3Aone',
     );
   });

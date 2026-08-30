@@ -255,6 +255,8 @@ export function FlowDefinitionView({
     typeof properties.initial === 'string' &&
     (entity.entities ?? []).some((sub) => sub.class.includes('node-definition'));
   const excludedProperties = new Set(!standalone && versions.length > 0 ? ['status'] : []);
+  const status = typeof properties.status === 'string' ? properties.status : undefined;
+  const version = typeof properties.version === 'number' ? properties.version : undefined;
 
   return (
     <div>
@@ -267,6 +269,17 @@ export function FlowDefinitionView({
       )}
       <h1 className="text-2xl font-semibold tracking-tight">{heading}</h1>
       <p className="mt-1 text-xs text-muted-foreground">{rel}</p>
+
+      {(status !== undefined || version !== undefined) && (
+        <section aria-label="定义摘要" className="mt-4 mb-4 flex flex-wrap items-center gap-2">
+          {status !== undefined && (
+            <Badge variant={status === 'active' ? 'secondary' : 'outline'}>{status}</Badge>
+          )}
+          {version !== undefined && <Badge variant="outline">v{version}</Badge>}
+        </section>
+      )}
+
+      <MetaActions entity={entity} rel={rel} scope={scope} onChanged={onChanged} />
 
       {hasTopology && (
         <section aria-label="拓扑" className="mt-6">
@@ -415,10 +428,6 @@ export function FlowDefinitionView({
           </div>
         </section>
       )}
-
-      {/* T35 S7.3/S11:生命周期动作区(修订/废弃)随详情直达——此前只在通用
-          合同页可达,定义管理主旅程断链;禁用原因走 guard-results 人话主句。 */}
-      <MetaActions entity={entity} rel={rel} scope={scope} onChanged={onChanged} />
     </div>
   );
 }

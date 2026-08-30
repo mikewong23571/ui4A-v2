@@ -2,8 +2,8 @@
 
 /**
  * T35 D-7/F-12(方案经用户认可):处境从"一行文字表"收敛为**状态芯片**——
- * 站点常显;scope/工作线/注视仅在有值时以 chip 呈现(默认态"未声明"不占版面);
- * 点芯片展开「当前在哪」弹层:全量字段 + 调整(scope 合法值提示 + 一句授权
+ * 站点常显;视角/工作线/注视仅在有值时以 chip 呈现(默认态"未声明"不占版面);
+ * 点芯片展开「当前在哪」弹层:全量字段 + 调整(视角合法值提示 + 一句授权
  * 边界说明)+ 跨面桥(W3:线芯片弹层内切换工作线)。
  * 本组件渲染进 AppShell 顶栏行(不再单独占一条 bar),顶栏高度回归确定 h-12。
  */
@@ -133,7 +133,7 @@ export function SituationBar() {
         <Link
           href={locationHrefWithChanges(route, { scope: null })}
           data-testid="situation-scope"
-          title={`scope ${displayValue(observation.scope)}(点击清除)`}
+          title={`当前视角 ${displayValue(observation.scope)}(点击清除)`}
           data-nav="situation:clear-scope"
           className="min-w-0 max-w-32 truncate rounded-full border bg-card px-2.5 py-0.5 text-[11px] text-foreground transition-colors hover:bg-accent"
         >
@@ -185,7 +185,7 @@ export function SituationBar() {
             {(
               [
                 ['site', '站点'],
-                ['scope', 'scope'],
+                ['scope', '视角'],
                 ['thread', '工作线'],
                 ['focus', '注视'],
               ] as const
@@ -223,8 +223,10 @@ export function SituationBar() {
           )}
 
           <div className="grid gap-1.5 border-t pt-2.5">
-            <p className="text-xs font-medium text-foreground">调整 scope</p>
-            <p className="text-[11px] text-muted-foreground">只影响你看到的内容,不改变权限。</p>
+            <p className="text-xs font-medium text-foreground">调整视角</p>
+            <p className="text-[11px] text-muted-foreground">
+              可访问应用集合由凭证授予；切换视角不扩大或缩小权限。
+            </p>
             <input
               value={scopeDraft}
               onChange={(event) => setScopeDraft(event.currentTarget.value)}
@@ -239,7 +241,7 @@ export function SituationBar() {
                   data-nav="situation:set-scope"
                   className="text-xs text-primary hover:underline"
                 >
-                  应用 scope
+                  应用视角
                 </Link>
               )}
               {observation.scope !== null && (
@@ -248,7 +250,7 @@ export function SituationBar() {
                   data-nav="situation:clear-scope"
                   className="text-xs text-primary hover:underline"
                 >
-                  清除 scope
+                  清除视角
                 </Link>
               )}
             </div>

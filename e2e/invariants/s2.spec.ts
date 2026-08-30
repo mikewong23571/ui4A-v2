@@ -200,12 +200,16 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
 
     // ---- ③ human BIOS 批准(UI 走查:队列 → 详情 diff → approve)-------------
     await page.goto('/meta/entity?rel=meta%2Factivations');
-    await expect(page.getByText('激活队列(待审 1)')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '激活队列', level: 1 })).toBeVisible();
+    const activationMembers = page.locator('section[aria-labelledby="generic-members-heading"]');
+    await expect(activationMembers).toBeVisible();
     const activationHref = '/meta/entity?rel=meta%2Factivation%3Aa1';
-    await expect(page.locator(`a[href="${activationHref}"]`)).toContainText(
-      'a1 · article-drafting → v2 · 提议 agent',
-    );
-    await page.click(`a[href="${activationHref}"]`);
+    const activationMember = activationMembers.locator(`a[href="${activationHref}"]`);
+    await expect(activationMember).toHaveCount(1);
+    await expect(activationMember.getByText('meta/activation:a1', { exact: true })).toBeVisible();
+    await expect(activationMember.getByText('status: pending-approval')).toBeVisible();
+    await expect(activationMember.getByText('version: 2')).toBeVisible();
+    await activationMember.click();
 
     // 详情:checks 八行全过;机械 diff 可见且含 pin(react-diff-view 内建渲染,验收 6)
     await expect(page.getByRole('heading', { name: '激活 a1' })).toBeVisible();

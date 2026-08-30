@@ -30,9 +30,9 @@ function MetaEntityResource({
   if (state === 'missing') {
     return (
       <Card role="alert" className="p-6">
-        <h1 className="text-xl font-semibold">合同不存在或当前 Scope 不可见</h1>
+        <h1 className="text-xl font-semibold">合同不存在或当前视角下定位失败</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          检查链接与 Scope。跨 Scope 资源按不存在处理，不泄露身份或数量。
+          检查链接；当前视角已保留，但不会改变权限。跨 principal 资源仍按不存在处理。
         </p>
       </Card>
     );
@@ -68,7 +68,7 @@ export function MetaEntityPage({ rel, scope }: { rel: string; scope?: string }) 
       <Card role="alert" className="border-destructive/40 p-6">
         <h1 className="text-xl font-semibold">读取授权 Meta sitemap 失败</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          当前 Scope 未获授权或服务不可用。URL 已保留，可以刷新恢复。
+          服务不可用。当前视角与 URL 已保留，可以刷新恢复。
         </p>
       </Card>
     );

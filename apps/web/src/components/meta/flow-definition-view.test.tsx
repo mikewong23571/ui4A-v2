@@ -200,7 +200,7 @@ describe('FlowDefinitionView(定义查看,纯文本表格)', () => {
     expect(statusRow.textContent).toContain('active');
   });
 
-  it('底部生命周期动作区:修订可触发,废弃禁用原因取 guard-results 人话主句(T35 S7.3)', () => {
+  it('首屏摘要与生命周期动作优先于拓扑,禁用原因取 guard-results 人话主句', () => {
     const entity: SirenEntity = {
       ...postStatusEntity,
       actions: [
@@ -233,12 +233,19 @@ describe('FlowDefinitionView(定义查看,纯文本表格)', () => {
     );
     const actionsSection = container.querySelector('#meta-actions-heading')?.closest('section');
     expect(actionsSection).not.toBeNull();
+    const summary = container.querySelector<HTMLElement>('section[aria-label="定义摘要"]')!;
+    expect(within(summary).getByText('active')).toBeTruthy();
+    expect(within(summary).getByText('v2')).toBeTruthy();
     expect(within(actionsSection!).getByRole('button', { name: /修订/ })).toBeTruthy();
     expect(within(actionsSection!).getByText(/仍有进行中的实例,不能删除该定义/)).toBeTruthy();
     const deprecateButton = within(actionsSection!)
       .getAllByRole('button')
       .find((button) => button.textContent?.includes('废弃'));
     expect(deprecateButton?.hasAttribute('disabled')).toBe(true);
+    const topology = container.querySelector<HTMLElement>('section[aria-label="拓扑"]')!;
+    expect(
+      actionsSection!.compareDocumentPosition(topology) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it('节点表与动作表:节点标题、动作 to/guards/requires-confirmation/effect 可见', () => {

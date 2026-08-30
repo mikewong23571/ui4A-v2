@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => {
   const engine = {
     getMetaEntity: vi.fn(async () => entity),
     getSnapshot: vi.fn(() => ({
-      applications: { development: {} },
+      applications: { development: {}, publishing: {} },
       definitions: {
         'software-change': {
           definition: { name: 'software-change', app: 'development' },
@@ -37,8 +37,10 @@ const mocks = vi.hoisted(() => {
     engine,
     filterEntityForGrantedApplications: vi.fn((projected) => projected),
     getAgentDefinitionMetaEntity: vi.fn(),
+    getAgentDefinitionMetaEntityForScopes: vi.fn(async () => entity),
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getDraftMetaEntity: vi.fn(),
+    getDraftMetaEntityForScopes: vi.fn(async () => entity),
     getEngine: vi.fn(async () => engine),
     resolveTrustedRequestIdentity: vi.fn(),
   };
@@ -47,18 +49,21 @@ const mocks = vi.hoisted(() => {
 vi.mock('../../../../engine/service', () => ({
   getDb: mocks.getDb,
   getEngine: mocks.getEngine,
-  isMetaRel: (rel: string) => rel.startsWith('meta/'),
+  isMetaRel: (rel: string) => rel.startsWith('meta/') || rel.startsWith('draft:'),
 }));
 
 vi.mock('../../../../engine/drafts/drafts', () => ({
   getDraftMetaEntity: mocks.getDraftMetaEntity,
-  isDraftMetaRel: () => false,
+  getDraftMetaEntityForScopes: mocks.getDraftMetaEntityForScopes,
+  isDraftMetaRel: (rel: string) => rel === 'meta/drafts' || rel.startsWith('draft:'),
 }));
 
 vi.mock('../../../../engine/agent/agent-definitions', () => ({
   agentDefinitionDraftRegistryPort: {},
   getAgentDefinitionMetaEntity: mocks.getAgentDefinitionMetaEntity,
-  isAgentDefinitionMetaRel: () => false,
+  getAgentDefinitionMetaEntityForScopes: mocks.getAgentDefinitionMetaEntityForScopes,
+  isAgentDefinitionMetaRel: (rel: string) =>
+    rel === 'meta/agent-definitions' || rel.startsWith('meta/agent-definition:'),
 }));
 
 vi.mock('../../../../auth/request-identity', () => ({
@@ -130,7 +135,7 @@ describe('GET /_meta/api/entity production authentication wiring', () => {
       expect.objectContaining({
         plane: 'meta',
         requiredScopes: ['ui4a:read'],
-        authorizedPolicyScopes: ['development'],
+        authorizedPolicyScopes: ['development', 'publishing'],
       }),
     );
     expect(mocks.assertReachable).toHaveBeenCalledWith(
@@ -149,6 +154,67 @@ describe('GET /_meta/api/entity production authentication wiring', () => {
     >;
     expect(options.defaultPolicyScope).toBeUndefined();
     expect(options.scopeCoverage).toBeUndefined();
+  });
+
+  it('reads Draft and Agent Definition collections and exact entities from the grant union', async () => {
+    const grants = ['development', 'publishing'];
+    mocks.resolveTrustedRequestIdentity.mockResolvedValue({
+      ...TRUSTED_IDENTITY,
+      grantedApplications: grants,
+      policyScope: 'publishing',
+    });
+
+    const rels = [
+      'meta/drafts',
+      'draft:d1',
+      'meta/agent-definitions',
+      'meta/agent-definition:base-agent@1',
+    ];
+    const responses = await Promise.all(
+      rels.map((rel) =>
+        GET(
+          new Request(
+            `https://ui4a.internal/_meta/api/entity?rel=${encodeURIComponent(rel)}&scope=publishing`,
+          ),
+        ),
+      ),
+    );
+
+    expect(responses.map((response) => response.status)).toEqual([200, 200, 200, 200]);
+    expect(mocks.getDraftMetaEntityForScopes).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      mocks.engine,
+      'meta/drafts',
+      TRUSTED_IDENTITY.principal,
+      grants,
+      expect.anything(),
+    );
+    expect(mocks.getDraftMetaEntityForScopes).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      mocks.engine,
+      'draft:d1',
+      TRUSTED_IDENTITY.principal,
+      grants,
+      expect.anything(),
+    );
+    expect(mocks.getAgentDefinitionMetaEntityForScopes).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      'meta/agent-definitions',
+      TRUSTED_IDENTITY.principal,
+      grants,
+    );
+    expect(mocks.getAgentDefinitionMetaEntityForScopes).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      'meta/agent-definition:base-agent@1',
+      TRUSTED_IDENTITY.principal,
+      grants,
+    );
+    expect(mocks.getDraftMetaEntity).not.toHaveBeenCalled();
+    expect(mocks.getAgentDefinitionMetaEntity).not.toHaveBeenCalled();
   });
 
   it('keeps exact entity visibility on the credential grant union when only the lens changes', async () => {

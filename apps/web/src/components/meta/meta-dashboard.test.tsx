@@ -56,7 +56,9 @@ describe('Meta dynamic dashboard', () => {
     expect(screen.getByRole('link', { name: /Widgets/ }).getAttribute('href')).toBe(
       '/meta/entity?rel=meta%2Fwidgets&scope=governance',
     );
-    expect(screen.getByText(/本地演示身份/)).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: '当前视角' })).toBeTruthy();
+    expect(screen.getByText(/切换视角不扩大或缩小权限/)).toBeTruthy();
+    expect(screen.queryByText('当前 Scope')).toBeNull();
 
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Publishing' } });
     await waitFor(() => expect(screen.getByRole('link', { name: /Publishing/ })).toBeTruthy());

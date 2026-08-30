@@ -159,7 +159,7 @@ export function MetaDashboard({
             <form action="/meta" method="get" className="flex items-end gap-2">
               <div className="min-w-0 flex-1">
                 <label htmlFor="meta-scope" className="text-xs font-medium text-muted-foreground">
-                  当前 Scope
+                  当前视角
                 </label>
                 <select
                   id="meta-scope"
@@ -183,7 +183,8 @@ export function MetaDashboard({
             </form>
             {sitemap.authorizationMode === 'self-reported-local-demo' && (
               <p className="text-xs text-amber-700 dark:text-amber-300">
-                本地演示身份：Scope 由服务端 allowlist 约束，不代表生产 SSO。
+                本地演示身份：可访问应用集合由服务端 allowlist
+                模拟凭证授予；切换视角不扩大或缩小权限。
               </p>
             )}
           </div>
@@ -201,9 +202,7 @@ export function MetaDashboard({
         <Card role="alert" className="border-destructive/40">
           <CardHeader>
             <CardTitle>读取定义合同失败</CardTitle>
-            <CardDescription>
-              服务不可用或请求的 Scope 未获授权。请刷新或返回默认 Scope。
-            </CardDescription>
+            <CardDescription>服务不可用或当前视角无法恢复。请刷新或清除当前视角。</CardDescription>
           </CardHeader>
         </Card>
       )}

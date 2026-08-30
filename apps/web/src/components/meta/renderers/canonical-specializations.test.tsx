@@ -225,7 +225,7 @@ describe('canonical Meta specializations', () => {
     expect(container.querySelector('section[aria-label="动作"]')).not.toBeNull();
     expect(container.querySelector('section[aria-label="字段"]')).not.toBeNull();
     expect(container.querySelector('section[aria-label="版本历史"]')).not.toBeNull();
-    expect(screen.getByText('active')).toBeTruthy();
+    expect(screen.getAllByText('active')).toHaveLength(2);
     expect(screen.getByText('intent')).toBeTruthy();
     expect(screen.queryByText(/通用合同视图/)).toBeNull();
   });

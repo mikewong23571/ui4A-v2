@@ -84,4 +84,39 @@ describe('canonical Meta entity lens', () => {
       '/_meta/api/entity?rel=meta%2Ffuture&scope=governance',
     ]);
   });
+
+  it('describes a missing exact entity as a view-local lookup failure, not a permission change', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              protocolVersion: '1',
+              version: 'meta-v1',
+              site: 'meta',
+              surfaces: [{ rel: 'meta/future', title: 'Future definition' }],
+              effectiveScope: 'publishing',
+              authorizedScopes: ['publishing', 'governance'],
+              authorizationMode: 'self-reported-local-demo',
+            }),
+            { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 404 })),
+    );
+
+    render(
+      await GenericMetaEntityPage({
+        searchParams: Promise.resolve({ rel: 'meta/future', scope: 'publishing' }),
+      }),
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: '合同不存在或当前视角下定位失败' }),
+    ).toBeTruthy();
+    expect(screen.getByText(/当前视角已保留，但不会改变权限/)).toBeTruthy();
+    expect(screen.queryByText(/当前 Scope/)).toBeNull();
+  });
 });
