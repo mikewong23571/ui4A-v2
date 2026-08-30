@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { SirenEntity } from '@ui4a/engine';
+import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { GenericMetaRenderer } from './generic-renderer';
 
@@ -14,12 +14,12 @@ afterEach(() => {
 function entity(
   classes: string[],
   properties: Record<string, unknown>,
-  options: Partial<Pick<SirenEntity, 'href' | 'rel' | 'links' | 'entities'>> = {},
+  options: Partial<Pick<SirenEntity, 'href' | 'rel' | 'links' | 'entities' | 'actions'>> = {},
 ): SirenEntity {
   return {
     class: classes,
     properties,
-    actions: [],
+    actions: options.actions ?? [],
     links: options.links ?? [],
     'guard-results': [],
     ...(options.href === undefined ? {} : { href: options.href }),
@@ -36,6 +36,19 @@ const declaredOverview = {
     { path: 'properties.version', title: '版本', role: 'metadata', overview: true },
     { path: 'properties.status', title: '内部状态', role: 'status' },
   ],
+};
+
+const collectionAction: SirenAction = {
+  name: 'ingest',
+  title: 'Add Candidate',
+  method: 'POST',
+  href: '/_meta/api/exec',
+  fields: {
+    type: 'object',
+    properties: { source: { type: 'string' } },
+    required: ['source'],
+    additionalProperties: false,
+  },
 };
 
 function applicationMember(
@@ -63,6 +76,36 @@ function applicationMember(
 }
 
 describe('generic Meta collection contract', () => {
+  it('uses the review-queue trait for secondary ingress without knowing the collection class', () => {
+    const futureReviewQueue = entity(
+      ['collection', 'future-candidate-surface'],
+      {
+        rel: 'meta/future-candidates',
+        count: 0,
+        presentation: { version: 1, traits: ['review-queue'] },
+      },
+      { actions: [collectionAction] },
+    );
+    const { unmount } = render(<GenericMetaRenderer entity={futureReviewQueue} />);
+
+    expect(screen.queryByRole('button', { name: 'Add Candidate' })).toBeNull();
+    fireEvent.click(screen.getByText('高级 / 原始输入'));
+    expect(screen.getByRole('button', { name: 'Add Candidate' })).toBeTruthy();
+
+    unmount();
+    render(
+      <GenericMetaRenderer
+        entity={entity(
+          ['collection', 'future-catalog'],
+          { rel: 'meta/future-catalog', count: 0 },
+          { actions: [collectionAction] },
+        )}
+      />,
+    );
+    expect(screen.queryByText('高级 / 原始输入')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add Candidate' })).toBeTruthy();
+  });
+
   it('renders member summaries from overview declarations only and performs no exact-member fetches', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

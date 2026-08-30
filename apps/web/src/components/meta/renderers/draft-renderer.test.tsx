@@ -113,7 +113,12 @@ function exactDraft(): SirenEntity {
 function draftCollection(): SirenEntity {
   return {
     class: ['collection', 'meta/drafts'],
-    properties: { rel: 'meta/drafts', count: 1, limit: 20 },
+    properties: {
+      rel: 'meta/drafts',
+      count: 1,
+      limit: 20,
+      presentation: { version: 1, traits: ['review-queue'] },
+    },
     actions: [create],
     links: [{ rel: ['self'], href: '/_meta/api/entity?rel=meta%2Fdrafts' }],
     entities: [
@@ -204,7 +209,7 @@ describe('Draft Meta review responsibility', () => {
     expect(screen.getByRole('link', { name: /writer/ })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Create Draft' })).toBeNull();
 
-    fireEvent.click(screen.getByText('高级 / 原始 Draft 输入'));
+    fireEvent.click(screen.getByText('高级 / 原始输入'));
     fireEvent.click(screen.getByRole('button', { name: 'Create Draft' }));
 
     expect(screen.getByLabelText(/kind/i)).toBeTruthy();

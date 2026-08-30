@@ -10,6 +10,7 @@ import {
   browserHrefForContractHref,
   ClassBadges,
   MetaActions,
+  MetaActionsDisclosure,
   RawContract,
   titleForEntity,
 } from './common';
@@ -24,6 +25,15 @@ function DisplayValue({ value }: { value: unknown }) {
       {JSON.stringify(redactMetaValue(value), null, 2)}
     </pre>
   );
+}
+
+function hasPresentationTrait(entity: SirenEntity, trait: string): boolean {
+  const presentation = entity.properties.presentation;
+  if (typeof presentation !== 'object' || presentation === null || Array.isArray(presentation)) {
+    return false;
+  }
+  const traits = (presentation as Record<string, unknown>).traits;
+  return Array.isArray(traits) && traits.includes(trait);
 }
 
 export function GenericMetaRenderer({
@@ -43,6 +53,7 @@ export function GenericMetaRenderer({
     typeof entity.properties.rel === 'string' ? entity.properties.rel : (requestedRel ?? '');
   const members = entity.entities ?? [];
   const isCollection = entity.class.includes('collection');
+  const isReviewQueue = isCollection && hasPresentationTrait(entity, 'review-queue');
   const relationshipLinks = isCollection
     ? entity.links.filter((link) => !link.rel.includes('next') && !link.rel.includes('prev'))
     : entity.links;
@@ -151,7 +162,17 @@ export function GenericMetaRenderer({
         </section>
       )}
 
-      <MetaActions entity={entity} rel={rel} scope={scope} onChanged={onChanged} />
+      {isReviewQueue ? (
+        <MetaActionsDisclosure
+          title="高级 / 原始输入"
+          entity={entity}
+          rel={rel}
+          scope={scope}
+          onChanged={onChanged}
+        />
+      ) : (
+        <MetaActions entity={entity} rel={rel} scope={scope} onChanged={onChanged} />
+      )}
       <RawContract entity={entity} />
     </div>
   );

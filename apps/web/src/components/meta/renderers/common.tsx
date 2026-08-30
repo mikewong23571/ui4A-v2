@@ -93,6 +93,41 @@ export function MetaActions({
   );
 }
 
+export function MetaActionsDisclosure({
+  title,
+  entity,
+  rel,
+  scope,
+  onChanged,
+}: {
+  title: string;
+  entity: SirenEntity;
+  rel: string;
+  scope?: string;
+  onChanged?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (publicMetaActions(entity).length === 0) return null;
+  return (
+    <details open={open} className="rounded-lg border bg-muted/20 p-4">
+      <summary
+        className="cursor-pointer text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        onClick={(event) => {
+          event.preventDefault();
+          setOpen((current) => !current);
+        }}
+      >
+        {title}
+      </summary>
+      {open && (
+        <div className="mt-4">
+          <MetaActions entity={entity} rel={rel} scope={scope} onChanged={onChanged} />
+        </div>
+      )}
+    </details>
+  );
+}
+
 /** Canonical relationship navigation derived only from authorized Siren links. */
 export function MetaRelationships({ entity, scope }: { entity: SirenEntity; scope?: string }) {
   const relationships = entity.links.flatMap((link, index) => {
