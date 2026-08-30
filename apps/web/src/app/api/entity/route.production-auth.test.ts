@@ -41,7 +41,9 @@ const mocks = vi.hoisted(() => {
     assertThreadOwner: vi.fn(),
     authenticationErrorResponse: vi.fn((error: unknown) => {
       const code = (error as { code?: string }).code;
-      return code === undefined ? undefined : Response.json({ error: { code } }, { status: 401 });
+      return code === undefined
+        ? undefined
+        : Response.json({ error: { code } }, { status: code === 'scope_insufficient' ? 403 : 401 });
     }),
     engine,
     enrichEntityWithAgentRuns: vi.fn(async (_db, projected) => projected),
@@ -175,6 +177,45 @@ describe('GET /api/entity production authentication wiring', () => {
     expect(options.defaultPolicyScope).toBeUndefined();
     expect(options.scopeCoverage).toBeUndefined();
     expect(options.authorizedPolicyScopes).toEqual(['development']);
+  });
+
+  it('authorizes application:<name> from grantedApplications only and returns structured denial', async () => {
+    const applicationEntity = {
+      class: ['application'],
+      properties: {
+        rel: 'application:development',
+        name: 'development',
+        title: 'Software delivery',
+        intent: 'Deliver governed software changes',
+      },
+      actions: [],
+      links: [],
+      'guard-results': [],
+    };
+    mocks.engine.getEntity.mockResolvedValueOnce(applicationEntity);
+    const browserLens = new Request(
+      'https://ui4a.internal/api/entity?rel=application%3Adevelopment&scope=community',
+      { headers: { authorization: 'Bearer verified-token' } },
+    );
+
+    const granted = await GET(browserLens);
+
+    expect(granted.status).toBe(200);
+    expect(mocks.assertReachable).toHaveBeenCalledWith(
+      expect.objectContaining({ plane: 'business' }),
+      'application:development',
+      ['development'],
+    );
+    expect(mocks.engine.getEntity).toHaveBeenCalledWith('application:development', undefined);
+
+    mocks.assertReachable.mockImplementationOnce(() => {
+      throw Object.assign(new Error('scope_insufficient'), { code: 'scope_insufficient' });
+    });
+    const denied = await GET(browserLens);
+
+    expect(denied.status).toBe(403);
+    await expect(denied.json()).resolves.toEqual({ error: { code: 'scope_insufficient' } });
+    expect(mocks.engine.getEntity).toHaveBeenCalledTimes(1);
   });
 
   it('wires trusted-principal filtering for the threads list before credential scope filtering', async () => {

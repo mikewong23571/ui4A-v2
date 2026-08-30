@@ -150,10 +150,21 @@ const metaContext = { snapshot, sitemap, plane: 'meta' as const };
 
 describe('audience predicate authorization (D51)', () => {
   it('binds business instances, aliases, collections, and confirmations to their application', () => {
-    for (const rel of ['post:p1', 'flow:post-status', 'articles', 'confirmation:c1']) {
+    for (const rel of [
+      'application:publishing',
+      'post:p1',
+      'flow:post-status',
+      'articles',
+      'confirmation:c1',
+    ]) {
       expect(() => assertReachable(businessContext, rel, ['publishing'])).not.toThrow();
     }
-    for (const rel of ['comment:c1', 'flow:comment-moderation', 'comments']) {
+    for (const rel of [
+      'application:community',
+      'comment:c1',
+      'flow:comment-moderation',
+      'comments',
+    ]) {
       expect(() => assertReachable(businessContext, rel, ['publishing'])).toThrowError(
         'scope_insufficient',
       );

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 import { contentVersion, fold } from '@ui4a/engine';
 import type { SirenEntity } from '@ui4a/engine';
+import { createContractClient } from '@ui4a/agent';
 
 import { businessFlows } from '../../domain/flows';
 import { ensureEventsTable, readLog } from '@ui4a/db/events';
@@ -254,6 +255,72 @@ describe('sitemap 表面 ↔ entity 端点一致', () => {
       output: expect.any(String),
       scope: { applications: ['publishing'], flows: ['article-drafting'] },
     });
+  });
+
+  it('Agent 经业务 HTTP 同门发现并读取只读 Application，零 Meta 依赖与零事件写入', async () => {
+    await getEngine(pool);
+    const eventCountBefore = (await readLog(pool)).length;
+    const client = createContractClient('http://localhost:3100', async (url) => {
+      const request = new Request(url);
+      if (request.url.endsWith('/.well-known/ui4a.json')) return getSitemap(request);
+      if (new URL(request.url).pathname === '/api/entity') return getEntityRoute(request);
+      return Response.json({ error: 'not found' }, { status: 404 });
+    });
+
+    const discovered = await client.getSitemap();
+    const publishing = discovered?.applications.find(({ name }) => name === 'publishing');
+    const systemFallback = discovered?.applications.find(({ name }) => name === 'default');
+    const publishingSurface = discovered?.surfaces.find(
+      ({ rel }) => rel === 'application:publishing',
+    );
+    const exact = await client.getEntity('application:publishing');
+
+    expect(publishingSurface).toMatchObject({
+      rel: 'application:publishing',
+      title: '内容发布',
+      app: 'publishing',
+    });
+    expect(publishing as unknown).toMatchObject({
+      name: 'publishing',
+      title: '内容发布',
+      intent: expect.stringContaining('内容起草与发布'),
+    });
+    expect(systemFallback as unknown).toMatchObject({
+      name: 'default',
+      title: '默认应用',
+      presentation: { version: 1, traits: ['system-fallback'] },
+    });
+    expect(exact.status).toBe(200);
+    expect(exact.entity).toMatchObject({
+      class: ['application'],
+      properties: {
+        rel: 'application:publishing',
+        name: 'publishing',
+        title: '内容发布',
+        intent: expect.stringContaining('内容起草与发布'),
+        entry: { target: 'flow:article-drafting', role: 'primary-create' },
+      },
+      actions: [],
+      'guard-results': [],
+    });
+    expect(exact.entity?.properties.presentation).toEqual(
+      (publishing as unknown as { presentation?: unknown })?.presentation,
+    );
+    expect(JSON.stringify(exact.entity)).not.toContain('meta/application:publishing');
+    expect((await readLog(pool)).length).toBe(eventCountBefore);
+  });
+
+  it('Application 读取不受 browser scope 镜头扩大或缩小', async () => {
+    const allowed = await getEntityRoute(
+      new Request('http://localhost:3100/api/entity?rel=application%3Apublishing&scope=publishing'),
+    );
+    const foreignLens = await getEntityRoute(
+      new Request('http://localhost:3100/api/entity?rel=application%3Apublishing&scope=community'),
+    );
+
+    expect(allowed.status).toBe(200);
+    expect(foreignLens.status).toBe(200);
+    expect(await foreignLens.json()).toEqual(await allowed.json());
   });
 
   it('chat route 不为测试 action/capability 增加故事专用分支', () => {
