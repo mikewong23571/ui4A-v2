@@ -1,0 +1,13 @@
+T39 H8 follow-up D: align high-risk approval E2E with staged interaction contract.
+
+Changes:
+- e2e/invariants/s1.spec.ts: select the approve action item, assert request-risk trigger provenance, expand the staged confirmation, submit the real data-action=approve control, and verify both controls leave after approval.
+- e2e/workstation/workstation-home.spec.ts: preserve zero-parameter/zero-navigation/human decision assertions while exercising the same two-stage approval on the waiting-for-me decision card.
+
+Why:
+The outer button is a Presentation-only risk request (data-presentation-action=request-risk); only the expanded data-action=approve button executes the Siren action. The old tests mistook the trigger for the action submitter.
+
+Verification:
+- CI=true pnpm exec playwright test e2e/invariants/s1.spec.ts e2e/workstation/workstation-home.spec.ts --workers=1 --grep 'UI 走查|waiting-for-me' (2 passed)
+- pnpm governance:strict
+- prettier check and git diff --check
