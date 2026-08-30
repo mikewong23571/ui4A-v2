@@ -1,0 +1,6 @@
+T39 Phase B Task B6 — cognitive dual projection Green
+
+Summary: added strict cognitive declarations to Flow/Application parsing; projected one source into sitemap and exact Siren with version/fingerprint participation; typed Agent HTTP parser preserves cognition and prompt disclosure allowlists it.
+Files: shared definition, engine parse/sitemap/Siren/cognitive parser, agent types/http/disclosure and adjacent tests.
+Why: provides same cognitive contract to human/CLI/Agent without visual policy leakage or empty presentation fabrication.
+Verification: orchestrator 10 files/159 tests, four package typechecks and governance:strict passed.
