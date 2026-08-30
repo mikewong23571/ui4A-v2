@@ -1,0 +1,17 @@
+T39 H8 E2E repair C: workstation mechanism-language and worker health isolation.
+
+Changes:
+- e2e/workstation/workstation-home.spec.ts: classify the governance Application intent phrase containing 版本 as human task language, retain bounded mechanism-word checks, and assert the declared intent remains visible.
+- e2e/kits/server-kit.ts: default scenario workers to isolated health port 3199, honor UI4A_WORKER_HEALTH_PORT overrides, and propagate the same extra environment to initial and respawned workers.
+
+Why:
+- T39 makes definition intent visible on the Application shelf; banning the generic business word 版本 was an over-broad assertion.
+- local dev:all owns the worker default 3101, so E2E scenario workers must not compete with it.
+
+Verification:
+- CI=true pnpm exec playwright test e2e/workstation/workstation-home.spec.ts e2e/invariants/s1.spec.ts --workers=1 --grep 'workstation home and|S1\(agent 视角\)' (2 passed)
+- pnpm vitest run apps/worker/src/runtime-health.test.ts apps/web/src/components/application-entry-strip.test.tsx (16 passed)
+- pnpm --filter @ui4a/worker typecheck
+- pnpm --filter @ui4a/web typecheck
+- pnpm governance:strict
+- default/override static probes: 3199/3299
