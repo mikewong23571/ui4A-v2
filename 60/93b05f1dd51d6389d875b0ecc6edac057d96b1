@@ -1,0 +1,6 @@
+T39 C7 canonical renderer completeness, ambiguity fail-closed, and retired-route standing governance.
+
+Verified by orchestrator:
+- 20 files, 82 unit tests
+- pnpm --filter @ui4a/web typecheck
+- pnpm governance:strict (266 production/E2E source files scanned)
