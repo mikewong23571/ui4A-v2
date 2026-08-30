@@ -1,0 +1,6 @@
+T39 E6 current-view and review-context continuity.
+
+Verified by orchestrator:
+- Meta/app meta/Situation/Presence: 30 files, 131 tests
+- web typecheck and governance strict
+- single MetaNavigationContext host API; only scope reaches HTTP reads
