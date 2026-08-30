@@ -122,7 +122,7 @@
 
 - [x] Task G1：Red——编写 `system-fallback`、结构化 entry `{target,role}`、same-app business entry、非法隐式 Meta/workspace entry 测试，并确认失败。4ab2ea7
 - [x] Task G2：Green——实现 Application/Sitemap 最小语义与 parser/invariants；不加入 title/description/layout/device 字段。0b8601d
-- [ ] Task G3：Red——编写只读 `application:<name>` Siren projection、grantedApplications 授权、零 actions/events/storage 和 HTTP/Agent discovery 测试，并确认失败。
+- [x] Task G3：Red——编写只读 `application:<name>` Siren projection、grantedApplications 授权、零 actions/events/storage 和 HTTP/Agent discovery 测试，并确认失败。47db991
 - [ ] Task G4：Green——实现 business Application projection 与 binding metadata，不读取 `meta/application:*`。
 - [ ] Task G5：Red——编写 binding-only header、Application 不聚合 principal 工作状态、source alias 授权后 canonical entity/action 去重与完整 membership fingerprint 测试，并确认失败。
 - [ ] Task G6：Green——扩展通用 `workspace:app:*` 组合，复用既有 Presentation 机器并保持 `/`/Work Thread 主角地位。
