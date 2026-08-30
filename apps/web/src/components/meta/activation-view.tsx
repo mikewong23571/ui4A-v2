@@ -22,11 +22,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-import { ActionRunner } from '../action-runner';
-import { blockedForRenderer } from '../actions/action-group';
-import { createDirectActionSubmit, observedActionClientParams } from '../actions/action-submit';
 import { DefinitionDiffView } from './diff-render';
-import { execMetaAction, useMetaEntity } from './meta-client';
+import { useMetaEntity } from './meta-client';
+import { MetaActions } from './renderers/common';
 
 /** properties.checks 的投影形状(ActivationCheck 列表)。 */
 function checksOf(entity: SirenEntity): ActivationCheck[] {
@@ -35,8 +33,11 @@ function checksOf(entity: SirenEntity): ActivationCheck[] {
     : [];
 }
 
-function scalarPairs(entity: SirenEntity): [string, string][] {
+function scalarPairs(entity: SirenEntity, embedded: boolean): [string, string][] {
   const skipped = new Set(['checks', 'diff']);
+  if (embedded) {
+    for (const key of ['id', 'flow', 'status', 'version']) skipped.add(key);
+  }
   return Object.entries(entity.properties)
     .filter(([key]) => !skipped.has(key))
     .map(([key, value]) => {
@@ -49,28 +50,42 @@ function scalarPairs(entity: SirenEntity): [string, string][] {
 export interface ActivationViewProps {
   id: string;
   entity: SirenEntity;
+  /** Canonical rel wins over the friendly-route-derived id. */
+  rel?: string;
+  /** Attention lens carried by canonical reads and writes; never authorization input. */
+  scope?: string;
   /** 动作 exec 成功后的刷新回调(重拉激活实体)。 */
   onChanged?: () => void;
+  /** 友好路由保留返回导航；canonical shell 已接管页面导航。 */
+  standalone?: boolean;
 }
 
 /** 激活详情(纯渲染;数据来自 /_meta/api/entity?rel=meta/activation:<id>)。 */
-export function ActivationView({ id, entity, onChanged }: ActivationViewProps) {
+export function ActivationView({
+  id,
+  entity,
+  rel = `meta/activation:${id}`,
+  scope,
+  onChanged,
+  standalone = true,
+}: ActivationViewProps) {
   const properties = entity.properties;
   const checks = checksOf(entity);
   const diff = properties.diff as DefinitionDiff | undefined;
-  const guardMap = new Map((entity['guard-results'] ?? []).map((entry) => [entry.action, entry]));
 
   return (
     <div>
-      <nav className="mb-2 text-sm">
-        <a
-          href="/meta/activations"
-          data-nav="meta-activations"
-          className="text-primary hover:underline"
-        >
-          ← 激活队列
-        </a>
-      </nav>
+      {standalone && (
+        <nav className="mb-2 text-sm">
+          <a
+            href="/meta/activations"
+            data-nav="meta-activations"
+            className="text-primary hover:underline"
+          >
+            ← 激活队列
+          </a>
+        </nav>
+      )}
       <h1 className="text-2xl font-semibold tracking-tight">激活 {String(properties.id ?? id)}</h1>
       <p className="mt-1 text-xs text-muted-foreground">
         {String(properties.flow ?? '')} · v{String(properties.version ?? '')} · 状态{' '}
@@ -82,7 +97,7 @@ export function ActivationView({ id, entity, onChanged }: ActivationViewProps) {
         <div className="rounded-md border bg-card">
           <Table>
             <TableBody>
-              {scalarPairs(entity).map(([key, value]) => (
+              {scalarPairs(entity, !standalone).map(([key, value]) => (
                 <TableRow key={key}>
                   <th
                     scope="row"
@@ -144,34 +159,9 @@ export function ActivationView({ id, entity, onChanged }: ActivationViewProps) {
         </Card>
       </section>
 
-      {entity.actions.length > 0 && (
-        <section aria-label="审批" className="mt-6">
-          <h2 className="mb-2 text-sm font-semibold">审批(actor=human,不委托)</h2>
-          <div className="space-y-4">
-            {entity.actions.map((action) => {
-              const guard = guardMap.get(action.name);
-              return (
-                <Card
-                  key={`${id}:${action.name}:${JSON.stringify(action.fields)}`}
-                  className="gap-3 p-4"
-                >
-                  <ActionRunner
-                    rel={`meta/activation:${id}`}
-                    action={action}
-                    blocked={blockedForRenderer(guard)}
-                    blockReason={guard?.reason}
-                    onExecuted={onChanged}
-                    submit={createDirectActionSubmit(execMetaAction, {
-                      clientParams: ({ action: current }) =>
-                        observedActionClientParams(current, entity.properties),
-                    })}
-                  />
-                </Card>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      <div className="mt-6">
+        <MetaActions entity={entity} rel={rel} scope={scope} onChanged={onChanged} />
+      </div>
     </div>
   );
 }

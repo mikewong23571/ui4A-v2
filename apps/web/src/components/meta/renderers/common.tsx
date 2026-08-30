@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
@@ -93,6 +93,33 @@ export function MetaActions({
   );
 }
 
+/** Canonical relationship navigation derived only from authorized Siren links. */
+export function MetaRelationships({ entity, scope }: { entity: SirenEntity; scope?: string }) {
+  const relationships = entity.links.flatMap((link, index) => {
+    const href = browserHrefForContractHref(link.href, scope);
+    if (href === null) return [];
+    return [
+      <a
+        key={`${link.href}:${index}`}
+        href={href}
+        aria-label={link.rel.join(' · ')}
+        className="rounded-md border px-3 py-2 text-sm text-primary hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      >
+        {link.title ?? link.rel.join(' · ')}
+      </a>,
+    ];
+  });
+  if (relationships.length === 0) return null;
+  return (
+    <section aria-labelledby="meta-relationships-heading">
+      <h2 id="meta-relationships-heading" className="mb-3 text-lg font-semibold">
+        关系
+      </h2>
+      <div className="flex flex-wrap gap-2">{relationships}</div>
+    </section>
+  );
+}
+
 export function SectionCard({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="min-w-0 space-y-2">
@@ -103,14 +130,20 @@ export function SectionCard({ title, children }: { title: string; children: Reac
 }
 
 export function RawContract({ entity }: { entity: SirenEntity }) {
+  const [open, setOpen] = useState(false);
   return (
-    <details className="rounded-lg border bg-muted/20 p-4">
+    <details
+      className="rounded-lg border bg-muted/20 p-4"
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
       <summary className="cursor-pointer text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
         原始合同
       </summary>
-      <pre className="mt-3 max-h-[32rem] overflow-auto rounded-md bg-background p-3 text-xs leading-5">
-        {JSON.stringify(redactMetaValue(entity), null, 2)}
-      </pre>
+      {open && (
+        <pre className="mt-3 max-h-[32rem] overflow-auto rounded-md bg-background p-3 text-xs leading-5">
+          {JSON.stringify(redactMetaValue(entity), null, 2)}
+        </pre>
+      )}
     </details>
   );
 }

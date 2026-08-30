@@ -109,12 +109,14 @@ function fieldRows(rows: readonly ActionRow[]): FieldRow[] {
 }
 
 /** 属性表键值对(标量与一层数组;guards 列表按逗号连接)。 */
-function propertyPairs(entity: SirenEntity): [string, string][] {
-  return Object.entries(entity.properties).map(([key, value]) => {
-    if (Array.isArray(value)) return [key, value.map(String).join(', ')];
-    if (value !== null && typeof value === 'object') return [key, JSON.stringify(value)];
-    return [key, String(value)];
-  });
+function propertyPairs(entity: SirenEntity, excluded: ReadonlySet<string>): [string, string][] {
+  return Object.entries(entity.properties)
+    .filter(([key]) => !excluded.has(key))
+    .map(([key, value]) => {
+      if (Array.isArray(value)) return [key, value.map(String).join(', ')];
+      if (value !== null && typeof value === 'object') return [key, JSON.stringify(value)];
+      return [key, String(value)];
+    });
 }
 
 /** 版本历史行(definition-version 摘要子实体;版本序排列)。 */
@@ -228,10 +230,18 @@ export interface FlowDefinitionViewProps {
   scope?: string;
   /** 动作 exec 成功后的重拉(事件溯源口径:投影总能由日志重算)。 */
   onChanged?: () => void;
+  /** 友好路由保留返回导航；canonical shell 已接管页面导航。 */
+  standalone?: boolean;
 }
 
 /** 定义查看(纯渲染;数据来自 /_meta/api/entity?rel=meta/flow:<name>|meta/self)。 */
-export function FlowDefinitionView({ rel, entity, scope, onChanged }: FlowDefinitionViewProps) {
+export function FlowDefinitionView({
+  rel,
+  entity,
+  scope,
+  onChanged,
+  standalone = true,
+}: FlowDefinitionViewProps) {
   const properties = entity.properties;
   const heading =
     typeof properties.title === 'string' && properties.title !== ''
@@ -242,28 +252,36 @@ export function FlowDefinitionView({ rel, entity, scope, onChanged }: FlowDefini
   const versions = versionRows(entity);
   // 可比对版本 = 投影内嵌 definition 全文的版本行(缺全文不可比对,不造数据)。
   const comparableVersions = versions.filter((row) => row.definition !== undefined);
+  const hasTopology =
+    typeof properties.initial === 'string' &&
+    (entity.entities ?? []).some((sub) => sub.class.includes('node-definition'));
+  const excludedProperties = new Set(!standalone && versions.length > 0 ? ['status'] : []);
 
   return (
     <div>
-      <nav className="mb-2 text-sm">
-        <a href="/meta" data-nav="meta-back" className="text-primary hover:underline">
-          ← 定义管理
-        </a>
-      </nav>
+      {standalone && (
+        <nav className="mb-2 text-sm">
+          <a href="/meta" data-nav="meta-back" className="text-primary hover:underline">
+            ← 定义管理
+          </a>
+        </nav>
+      )}
       <h1 className="text-2xl font-semibold tracking-tight">{heading}</h1>
       <p className="mt-1 text-xs text-muted-foreground">{rel}</p>
 
-      <section aria-label="拓扑" className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold">拓扑</h2>
-        <FlowTopologyView entity={entity} />
-      </section>
+      {hasTopology && (
+        <section aria-label="拓扑" className="mt-6">
+          <h2 className="mb-2 text-sm font-semibold">拓扑</h2>
+          <FlowTopologyView entity={entity} />
+        </section>
+      )}
 
       <section aria-label="属性" className="mt-6">
         <h2 className="mb-2 text-sm font-semibold">属性</h2>
         <div className="rounded-md border bg-card">
           <Table>
             <TableBody>
-              {propertyPairs(entity).map(([key, value]) => (
+              {propertyPairs(entity, excludedProperties).map(([key, value]) => (
                 <TableRow key={key}>
                   <th
                     scope="row"

@@ -28,10 +28,16 @@ function propertyPairs(entity: SirenEntity): [string, string][] {
 export interface CapabilityDefinitionViewProps {
   rel: string;
   entity: SirenEntity;
+  /** 友好路由保留返回导航；canonical shell 已接管页面导航。 */
+  standalone?: boolean;
 }
 
 /** 能力定义查看(纯渲染;数据来自 /_meta/api/entity?rel=meta/capability:<name>)。 */
-export function CapabilityDefinitionView({ rel, entity }: CapabilityDefinitionViewProps) {
+export function CapabilityDefinitionView({
+  rel,
+  entity,
+  standalone = true,
+}: CapabilityDefinitionViewProps) {
   const properties = entity.properties;
   const heading =
     typeof properties.title === 'string' && properties.title !== ''
@@ -40,11 +46,13 @@ export function CapabilityDefinitionView({ rel, entity }: CapabilityDefinitionVi
 
   return (
     <div>
-      <nav className="mb-2 text-sm">
-        <a href="/meta" data-nav="meta-back" className="text-primary hover:underline">
-          ← 定义管理
-        </a>
-      </nav>
+      {standalone && (
+        <nav className="mb-2 text-sm">
+          <a href="/meta" data-nav="meta-back" className="text-primary hover:underline">
+            ← 定义管理
+          </a>
+        </nav>
+      )}
       <h1 className="text-2xl font-semibold tracking-tight">{heading}</h1>
       <p className="mt-1 text-xs text-muted-foreground">{rel}</p>
 
