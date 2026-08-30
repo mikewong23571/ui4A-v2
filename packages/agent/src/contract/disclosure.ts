@@ -22,8 +22,11 @@ function cognitiveFieldDisclosure(value: unknown): Record<string, unknown> | und
 function copyApplication(application: SitemapApplicationSummary): SitemapApplicationSummary {
   const presentation = cognitiveDisclosure(application.presentation);
   return {
+    ...(application.rel === undefined ? {} : { rel: application.rel }),
     name: application.name,
+    ...(application.title === undefined ? {} : { title: application.title }),
     intent: application.intent,
+    ...(application.entry === undefined ? {} : { entry: { ...application.entry } }),
     ...(presentation === undefined ? {} : { presentation }),
     flows: application.flows.map((flow) => ({
       ...flow,

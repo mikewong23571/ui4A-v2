@@ -6,7 +6,12 @@
  * 错误语义:网络异常不抛出,折算为"不可得/拒绝"结果交循环按数据处理
  * (失败也是合同的一部分,B4 的委托不崩溃前提)。
  */
-import { parseCognitiveSemanticsProjection, type SirenEntity } from '@ui4a/engine';
+import {
+  APPLICATION_ENTRY_ROLES,
+  parseCognitiveSemanticsProjection,
+  type ApplicationEntry,
+  type SirenEntity,
+} from '@ui4a/engine';
 
 import type {
   FetchLike,
@@ -179,9 +184,22 @@ function asApplicationSummaries(value: unknown): SitemapApplicationSummary[] {
       ...(flow.actions === undefined ? {} : { actions: flow.actions }),
     }));
     const presentation = parseCognitiveSemanticsProjection(entry.presentation);
+    const applicationEntry = isPlainObject(entry.entry) ? entry.entry : undefined;
+    const entryRole = applicationEntry?.role;
+    const parsedEntry: ApplicationEntry | undefined =
+      typeof applicationEntry?.target === 'string' &&
+      APPLICATION_ENTRY_ROLES.some((role) => role === entryRole)
+        ? {
+            target: applicationEntry.target,
+            role: entryRole as ApplicationEntry['role'],
+          }
+        : undefined;
     applications.push({
+      ...(typeof entry.rel === 'string' ? { rel: entry.rel } : {}),
       name: entry.name,
+      ...(typeof entry.title === 'string' ? { title: entry.title } : {}),
       intent: entry.intent,
+      ...(parsedEntry === undefined ? {} : { entry: parsedEntry }),
       ...(presentation === undefined ? {} : { presentation }),
       flows,
     });

@@ -90,6 +90,8 @@ export interface SitemapFlow {
  * 无成员的 app 定义也在场(intent 是发现依据,不因空成员缺席)。
  */
 export interface SitemapApplication {
+  /** Exact read-only Business entity rel for this Application. */
+  rel: string;
   name: string;
   title: string;
   intent: string;
@@ -316,6 +318,7 @@ export function deriveSitemap(
     (app) => {
       const presentation = projectCognitiveSemantics({ declaration: app.cognitive });
       return {
+        rel: `application:${app.name}`,
         name: app.name,
         title: app.title,
         intent: app.intent,
@@ -325,6 +328,18 @@ export function deriveSitemap(
       };
     },
   );
+
+  // Application is a first-class Business discovery entity. The system fallback remains
+  // discoverable in applications[] but deliberately has no normal landing surface.
+  for (const application of applications) {
+    if (application.presentation?.traits?.includes('system-fallback')) continue;
+    surfaces.push({
+      rel: application.rel,
+      title: application.title,
+      app: application.name,
+      ...(application.presentation === undefined ? {} : { presentation: application.presentation }),
+    });
+  }
 
   const capabilityScopes = new Map<string, { applications: Set<string>; flows: string[] }>();
   for (const flow of flows) {

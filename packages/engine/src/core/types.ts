@@ -28,7 +28,7 @@ export type {
 } from '@ui4a/shared';
 
 /** 定义语言注册表常量(字段/效果类型清单;meta/registries 的运行时子集)。 */
-export { KNOWN_FIELD_TYPES, KNOWN_EFFECT_TYPES } from '@ui4a/shared';
+export { APPLICATION_ENTRY_ROLES, KNOWN_FIELD_TYPES, KNOWN_EFFECT_TYPES } from '@ui4a/shared';
 
 /**
  * 参数/字段值出处(事件日志记录口径)。

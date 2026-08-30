@@ -7,8 +7,8 @@ import type { MetaSitemap } from './service-sitemaps';
 
 const business: Pick<Sitemap, 'applications' | 'flows' | 'capabilities'> = {
   applications: [
-    { name: 'alpha', title: 'Alpha', intent: 'Alpha work', flows: [] },
-    { name: 'beta', title: 'Beta', intent: 'Beta work', flows: [] },
+    { rel: 'application:alpha', name: 'alpha', title: 'Alpha', intent: 'Alpha work', flows: [] },
+    { rel: 'application:beta', name: 'beta', title: 'Beta', intent: 'Beta work', flows: [] },
   ],
   flows: [
     {

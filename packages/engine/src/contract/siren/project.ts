@@ -40,6 +40,7 @@ import {
   type CollectionQuery,
 } from './collection-query';
 import { projectMeta } from './project-meta';
+import { projectApplication } from './project-application';
 import { projectCognitiveSemantics } from '../cognitive-semantics';
 import type { ProjectDeps, SirenEntity, SirenLink } from './types';
 
@@ -435,6 +436,7 @@ export function project(
   if (rel === 'meta/self' || rel.startsWith('meta/')) {
     return projectMeta(snapshot, rel, deps);
   }
+  if (rel.startsWith('application:')) return projectApplication(snapshot, rel, deps);
   if (rel === THREADS_REL) return projectWorkThreads(snapshot, deps);
   if (rel.startsWith(THREAD_REL_PREFIX)) {
     const thread = snapshot.threads?.[rel.slice(THREAD_REL_PREFIX.length)];

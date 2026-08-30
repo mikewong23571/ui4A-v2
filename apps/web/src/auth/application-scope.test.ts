@@ -124,8 +124,20 @@ const sitemap: Sitemap = {
     },
   ],
   applications: [
-    { name: 'publishing', title: 'Publishing', intent: 'Publish', flows: [] },
-    { name: 'community', title: 'Community', intent: 'Moderate', flows: [] },
+    {
+      rel: 'application:publishing',
+      name: 'publishing',
+      title: 'Publishing',
+      intent: 'Publish',
+      flows: [],
+    },
+    {
+      rel: 'application:community',
+      name: 'community',
+      title: 'Community',
+      intent: 'Moderate',
+      flows: [],
+    },
   ],
   capabilities: [
     {

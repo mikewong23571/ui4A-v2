@@ -14,6 +14,7 @@ import type {
   PresentationIntent,
   SirenEntity,
   CognitiveSemanticsProjectionV1,
+  ApplicationEntry,
 } from '@ui4a/engine';
 
 export type { PresentationIntent } from '@ui4a/engine';
@@ -245,8 +246,11 @@ export interface DriverContext {
 
 /** application 分组的 agent 投影:两层发现第一层(name + intent + 组内 flow 摘要)。 */
 export interface SitemapApplicationSummary {
+  rel?: string;
   name: string;
+  title?: string;
   intent: string;
+  entry?: ApplicationEntry;
   presentation?: CognitiveSemanticsProjectionV1;
   flows: SitemapFlowSummary[];
 }
