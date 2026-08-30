@@ -1,0 +1,101 @@
+{
+  "schema": "https://ui4a.dev/application-bundle/v1",
+  "bundle": {
+    "name": "future-research",
+    "version": 1
+  },
+  "applications": [
+    {
+      "name": "research",
+      "title": "研究线索",
+      "intent": "捕捉研究线索并保留待验证结论，空队列意味着可以开始新的研究。",
+      "entry": { "target": "flow:research-capture", "role": "primary-create" }
+    }
+  ],
+  "capabilities": [],
+  "flows": [
+    {
+      "name": "research-capture",
+      "title": "捕捉研究线索",
+      "app": "research",
+      "initial": "ready",
+      "nodes": [
+        {
+          "name": "ready",
+          "title": "准备捕捉",
+          "fields": [],
+          "actions": [
+            {
+              "name": "capture",
+              "title": "记下线索",
+              "method": "POST",
+              "guards": [],
+              "fields": [
+                {
+                  "name": "title",
+                  "title": "线索标题",
+                  "type": "text",
+                  "required": true,
+                  "semantics": "intent",
+                  "presentation": { "role": "identity" }
+                }
+              ],
+              "effect": [
+                {
+                  "type": "append",
+                  "collection": "research-items",
+                  "resource-type": "research-item",
+                  "flow": "research-item",
+                  "name-from": "title",
+                  "node": "open"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "research-item",
+      "title": "研究线索",
+      "app": "research",
+      "initial": "open",
+      "collections": [{ "collection": "research-items" }],
+      "cognitive": {
+        "version": 1,
+        "traits": ["work-queue"],
+        "emptyMeaning": "ready-to-start"
+      },
+      "fields": [
+        {
+          "name": "title",
+          "title": "线索标题",
+          "type": "text",
+          "presentation": { "role": "identity", "overview": true }
+        }
+      ],
+      "nodes": [
+        {
+          "name": "open",
+          "title": "待验证",
+          "fields": [],
+          "actions": []
+        }
+      ]
+    }
+  ],
+  "seed": {
+    "rel": "seed:future-research-v1",
+    "detail": {
+      "instances": {
+        "research-capture:main": {
+          "rel": "research-capture:main",
+          "flow": "research-capture",
+          "node": "ready",
+          "fields": {}
+        }
+      },
+      "collections": { "research-items": [] }
+    }
+  }
+}
