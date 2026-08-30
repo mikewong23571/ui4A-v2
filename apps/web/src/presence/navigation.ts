@@ -94,6 +94,18 @@ export function locationHrefWithChanges(route: string, changes: LocationQueryCha
   return relativeLocation(url);
 }
 
+/** Enter one canonical Application landing while carrying only thread-return context. */
+export function applicationLandingHref(route: string, applicationName: string): string {
+  const source = new URL(route, 'http://ui4a.local');
+  const returnTo = source.searchParams.get('returnTo');
+  return locationHrefWithChanges('/canvas', {
+    scope: applicationName,
+    focus: `workspace:app:${applicationName}`,
+    thread: optionalDeclaration(source, 'thread'),
+    returnTo: returnTo !== null && safeRelativeReturnTo(returnTo) ? returnTo : null,
+  });
+}
+
 function threadIdForTarget(rel: string): string | null {
   if (!rel.startsWith('thread:')) return null;
   const threadId = rel.slice('thread:'.length);

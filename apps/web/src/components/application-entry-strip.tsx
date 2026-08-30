@@ -1,37 +1,34 @@
 'use client';
-/**
- * T35 F-23/F-26:应用目录条——workstation 的"书架"层。
- * 数据从 sitemap applications 派生(标题+intent→entry surface),零每应用特判;
- * 这与 SiteNav 同属 canvas 壳级导航(舞台机械):换应用不改码,应用即数据。
- * F-26:超过 6 个默认折叠"更多应用";文案"数词+名词"一眼可读。
- */
+
 import { useEffect, useState } from 'react';
 
-import type { ApplicationEntry } from '@ui4a/shared';
-import { ChevronDown } from 'lucide-react';
+import { parseCognitiveSemanticsDeclaration } from '@ui4a/shared';
 
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLocationObservation } from '@/presence/location';
+import { applicationLandingHref } from '@/presence/navigation';
 
 interface ApplicationSitemapEntry {
   name: string;
   title: string;
   intent: string;
-  entry?: ApplicationEntry;
-  flows?: Array<{ name: string }>;
+  presentation?: unknown;
 }
 
-/** 入口 rel:定义 entry 优先;回退首流程的 flow: 别名(零发明)。 */
-function entryRel(application: ApplicationSitemapEntry): string | undefined {
-  if (application.entry !== undefined) return application.entry.target;
-  const first = application.flows?.[0]?.name;
-  return first === undefined ? undefined : `flow:${first}`;
+function isBusinessApplication(application: ApplicationSitemapEntry): boolean {
+  try {
+    const presentation = parseCognitiveSemanticsDeclaration(application.presentation);
+    return presentation?.traits?.includes('system-fallback') !== true;
+  } catch {
+    // Public presentation is a closed contract. Malformed cognition cannot establish membership.
+    return false;
+  }
 }
 
-const COLLAPSE_THRESHOLD = 6;
-
+/** Declaration-ordered Application library. Current attention never narrows authorization. */
 export function ApplicationEntryStrip() {
   const [applications, setApplications] = useState<ApplicationSitemapEntry[] | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const { route, observation } = useLocationObservation();
 
   useEffect(() => {
     let cancelled = false;
@@ -51,49 +48,43 @@ export function ApplicationEntryStrip() {
   }, []);
 
   if (applications === null) {
-    return <Skeleton data-testid="application-entry-strip" className="mb-4 h-8 w-full max-w-xl" />;
+    return <Skeleton data-testid="application-entry-strip" className="mb-4 h-24 w-full" />;
   }
-  const entries = applications.flatMap((application) => {
-    const entry = entryRel(application);
-    return application.name !== 'default' && entry !== undefined ? [{ ...application, entry }] : [];
-  });
+  const entries = applications.filter(isBusinessApplication);
   if (entries.length === 0) return null;
-
-  const visible =
-    expanded || entries.length <= COLLAPSE_THRESHOLD
-      ? entries
-      : entries.slice(0, COLLAPSE_THRESHOLD);
-  const hidden = entries.length - visible.length;
 
   return (
     <section aria-label="应用" data-testid="application-entry-strip" className="mb-6">
-      <p className="mb-1.5 text-xs text-muted-foreground">应用（{entries.length} 个）</p>
-      <div className="flex flex-wrap items-center gap-2">
-        {visible.map((application) => (
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">应用书架</p>
+          <p className="text-xs text-muted-foreground">选择一种能力，进入它的工作入口。</p>
+        </div>
+        <span className="text-xs tabular-nums text-muted-foreground">{entries.length} 个</span>
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {entries.map((application) => (
           <a
             key={application.name}
-            // T37 FR3:默认落点 = 应用组合面(canvas?scope=<app>,无 focus);
-            // canvas 壳把 scope 无注视导航到 workspace:app:<scope> 组合 subject。
-            href={`/canvas?scope=${encodeURIComponent(application.name)}`}
+            href={applicationLandingHref(route, application.name)}
             data-nav={`local:app-entry:${application.name}`}
-            aria-label={application.title}
-            title={application.intent}
-            className="rounded-full border bg-card px-3 py-1 text-sm text-foreground transition-colors hover:bg-accent"
+            aria-current={observation.scope === application.name ? 'page' : undefined}
+            className="group min-w-0 rounded-lg border bg-card px-3 py-2.5 text-foreground transition-colors hover:border-foreground/20 hover:bg-accent aria-[current=page]:border-foreground/30 aria-[current=page]:bg-accent"
           >
-            {application.title}
+            <span className="flex items-baseline justify-between gap-2">
+              <span className="font-medium">{application.title}</span>
+              <span
+                aria-hidden="true"
+                className="truncate font-mono text-[10px] text-muted-foreground"
+              >
+                {application.name}
+              </span>
+            </span>
+            <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+              {application.intent}
+            </span>
           </a>
         ))}
-        {!expanded && hidden > 0 && (
-          <button
-            type="button"
-            data-nav="local:app-entry-more"
-            onClick={() => setExpanded(true)}
-            className="flex items-center gap-1 rounded-full border border-dashed px-3 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            更多应用（{hidden}）
-            <ChevronDown aria-hidden="true" className="size-3.5" />
-          </button>
-        )}
       </div>
     </section>
   );

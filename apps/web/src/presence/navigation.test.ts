@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applicationLandingHref,
   canvasEntityHref,
   citationCanvasHref,
   crossSiteFlowBridge,
@@ -10,6 +11,20 @@ import {
 } from './navigation';
 
 describe('explicit URL navigation', () => {
+  it('builds an explicit Application landing and carries only thread-return context', () => {
+    expect(
+      applicationLandingHref(
+        '/canvas?scope=old&focus=post%3Aone&thread=release-1&returnTo=%2Fthreads%3Fview%3Dmine&refresh=9',
+        'publishing',
+      ),
+    ).toBe(
+      '/canvas?scope=publishing&focus=workspace%3Aapp%3Apublishing&thread=release-1&returnTo=%2Fthreads%3Fview%3Dmine',
+    );
+    expect(
+      applicationLandingHref('/canvas?returnTo=%2F%2Fevil.example%2Freview', 'community'),
+    ).toBe('/canvas?scope=community&focus=workspace%3Aapp%3Acommunity');
+  });
+
   it('adjusts or clears scope while preserving every other query field', () => {
     const route = '/canvas?mode=raw&scope=publishing&thread=release-1&focus=post%3Aone';
 

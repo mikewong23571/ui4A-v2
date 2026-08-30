@@ -155,7 +155,6 @@ describe('ApplicationEntryStrip · T39 Application 图书馆', () => {
       name: 'research',
       title: '研究素材',
       intent: '收集可追溯的研究素材并等待后续整理。',
-      entry: { target: 'flow:research-capture', role: 'primary-create' },
     };
     stubApplications([...installedApplications, research]);
     render(<ApplicationEntryStrip />);
@@ -180,5 +179,21 @@ describe('ApplicationEntryStrip · T39 Application 图书馆', () => {
     expect(shelf.textContent).not.toContain('工作线');
     expect(shelf.textContent).not.toContain('进行中');
     expect(shelf.querySelector('[data-inbox-count], [data-thread-count]')).toBeNull();
+  });
+
+  it('非法 presentation 不能建立业务 Application 书架成员资格', async () => {
+    stubApplications([
+      ...installedApplications,
+      {
+        name: 'malformed',
+        title: '错误声明',
+        intent: '不应以猜测方式进入书架。',
+        presentation: { version: 1, traits: ['unknown-trait'] },
+      } as unknown as ShelfApplication,
+    ]);
+    render(<ApplicationEntryStrip />);
+
+    await screen.findByRole('region', { name: '应用' });
+    expect(screen.queryByText('错误声明')).toBeNull();
   });
 });
