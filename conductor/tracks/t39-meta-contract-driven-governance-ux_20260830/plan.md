@@ -96,7 +96,7 @@
 
 **Subagent contract**：Goal=收敛 Draft 人类审查与 lens 文案/连续性；Non-goals=不建设完整 Draft authoring、不重复 Phase B input ownership、不改 Draft 事件/审批语义；Changes=Draft Meta projection/renderer、Meta situation/client 与相邻测试；Blast radius=禁止 Agent authoring runtime、worker/db schema、Application bundles 与 Presentation composition。
 
-- [ ] Task E1：Red——编写 Meta UI 消费 Phase B ownership、不把 Create Draft/完整 payload authoring 提升为主路径的测试，并确认失败。
+- [x] Task E1：Red——编写 Meta UI 消费 Phase B ownership、不把 Create Draft/完整 payload authoring 提升为主路径的测试，并确认失败。f450e12
 - [ ] Task E2：Green——收敛 Draft collection/detail 首屏为 validation、diff、checks、sources、provenance 与当前 actions；advanced/raw ingress 退守下钻，不实现第二套 schema。
 - [ ] Task E3：Red——编写 valid/invalid/stale Draft 审查、现场保留、返回 author/Assistant 修复和 human-only fresh-read decision 测试，并确认失败。
 - [ ] Task E4：Green——实现通用 Draft 审查状态与责任点反馈，不生成专属修复表单。
