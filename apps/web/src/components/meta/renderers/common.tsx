@@ -171,7 +171,13 @@ export function RawContract({ entity }: { entity: SirenEntity }) {
       className="rounded-lg border bg-muted/20 p-4"
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
-      <summary className="cursor-pointer text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+      <summary
+        className="cursor-pointer text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        onClick={(event) => {
+          event.preventDefault();
+          setOpen((current) => !current);
+        }}
+      >
         原始合同
       </summary>
       {open && (

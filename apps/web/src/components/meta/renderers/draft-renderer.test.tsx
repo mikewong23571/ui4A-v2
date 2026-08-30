@@ -299,7 +299,7 @@ describe('Draft Meta review responsibility', () => {
     const responsibility = screen.getByRole('region', { name: '审查责任点' });
     expect(responsibility.textContent).toContain('候选已通过校验');
     expect(responsibility.textContent).toContain('下一步');
-    expect(responsibility.textContent).toContain('提交审批');
+    expect(responsibility.textContent).toContain('Submit for Approval');
     expect(screen.getByRole('button', { name: 'Submit for Approval' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Abandon Draft' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Revise Draft' })).toBeNull();

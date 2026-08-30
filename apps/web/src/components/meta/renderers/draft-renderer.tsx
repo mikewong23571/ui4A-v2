@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { useMetaEntity } from '../meta-client';
 import { draftViewModel } from '../view-models/draft';
 import { browserHrefForContractHref, MetaActions, RawContract } from './common';
+import { DraftResponsibility } from './draft-review-responsibility';
 
 function JsonPanel({ value }: { value: unknown }) {
   return (
@@ -67,7 +68,9 @@ export function DraftRenderer({
   const view = draftViewModel(entity);
   const activation =
     typeof entity.properties.activation === 'string' ? entity.properties.activation : undefined;
-  const sourceLinks = entity.links.filter((link) => link.rel.includes('source'));
+  const untitledSourceLinks = entity.links.filter(
+    (link) => link.rel.includes('source') && link.title === undefined,
+  );
   return (
     <div className="space-y-7 pb-20">
       <header className="space-y-3 border-b pb-5">
@@ -155,24 +158,27 @@ export function DraftRenderer({
           <Card className="p-4">
             <div className="mb-2 flex flex-wrap gap-2 text-sm">
               {view.sources.length === 0 && <span>无 source reference</span>}
-              {view.sources.map((source, index) => {
-                const href =
-                  sourceLinks[index] === undefined
-                    ? null
-                    : browserHrefForContractHref(sourceLinks[index]!.href, scope);
-                return href === null ? (
-                  <span key={source}>{source}</span>
-                ) : (
-                  <a key={source} href={href} className="text-primary hover:underline">
+              {view.sources.length > 0 && <span>{view.sources.length} 条 source reference</span>}
+              {untitledSourceLinks.map((link, index) => {
+                const href = browserHrefForContractHref(link.href, scope);
+                const source = view.sources[index];
+                if (href === null || source === undefined) return null;
+                return (
+                  <a
+                    key={`${link.href}:${index}`}
+                    href={href}
+                    className="text-primary hover:underline"
+                  >
                     {source}
                   </a>
                 );
               })}
             </div>
-            <JsonPanel value={view.provenance} />
+            <JsonPanel value={view.provenanceDetails} />
           </Card>
         </div>
       </section>
+      <DraftResponsibility responsibility={view.responsibility} scope={scope} />
       <MetaActions
         entity={entity}
         rel={view.rel}

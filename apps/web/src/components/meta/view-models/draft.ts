@@ -1,11 +1,15 @@
 import type { SirenEntity } from '@ui4a/engine';
 
+import { draftReviewResponsibility } from './draft-review-responsibility';
 import { isRecord, numberValue, records, strings, text } from './value';
 
 export function draftViewModel(entity: SirenEntity) {
   const properties = entity.properties;
   const validation = isRecord(properties.validation) ? properties.validation : {};
   const provenance = isRecord(properties.provenance) ? properties.provenance : {};
+  const provenanceDetails = Object.fromEntries(
+    Object.entries(provenance).filter(([key]) => key !== 'sources'),
+  );
   const checks = records(properties.checks)
     .map((check) => ({
       name: text(check.name),
@@ -33,10 +37,12 @@ export function draftViewModel(entity: SirenEntity) {
     evaluation: properties.evaluation,
     sources: strings(provenance.sources),
     provenance,
+    provenanceDetails,
     diff: properties.diff,
     payload: properties.payload,
     payloadHash: text(properties.payloadHash),
     terminalReason: text(properties.terminalReason),
+    responsibility: draftReviewResponsibility(entity),
     actions: entity.actions
       .filter((action) => action.href === '/_meta/api/exec' && !action.name.includes('callback'))
       .map((action) => action.name),
