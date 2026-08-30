@@ -1,0 +1,7 @@
+T39 E2 Draft review-first implementation.
+
+Verified by orchestrator:
+- Draft/generic/ownership: 4 files, 10 tests
+- pnpm --filter @ui4a/web typecheck
+- pnpm governance:strict
+- review-queue trait drives advanced ingress; no Draft rel/class branch
