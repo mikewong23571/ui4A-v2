@@ -99,6 +99,17 @@ interface DecisionAttempt {
 
 const LLM_DECISION_TIMEOUT_MS = 300_000;
 const TERMINATED_MAX_ATTEMPTS = 3;
+const LLM_PROVIDER_REQUEST_BUDGET_BYTES = 32 * 1024;
+
+function assertProviderRequestBudget(body: unknown): void {
+  if (typeof body !== 'string') return;
+  const bytes = new TextEncoder().encode(body).byteLength;
+  if (bytes > LLM_PROVIDER_REQUEST_BUDGET_BYTES) {
+    throw new Error(
+      `provider request UTF-8 JSON is ${bytes.toLocaleString('en-US')} bytes; limit is ${LLM_PROVIDER_REQUEST_BUDGET_BYTES.toLocaleString('en-US')} bytes`,
+    );
+  }
+}
 
 function repairMessage(protocolFailure: string): LlmMessage {
   return {
@@ -267,12 +278,12 @@ export function createLlmChatModel(options: LlmDriverOptions = {}): LanguageMode
   const provider = createOpenAI({
     baseURL: settings.baseURL,
     apiKey: settings.apiKey,
-    ...(settings.fetchImpl !== undefined
-      ? {
-          fetch: (input: string | URL | Request, init?: RequestInit) =>
-            settings.fetchImpl!(String(input), init),
-        }
-      : {}),
+    fetch: (input: string | URL | Request, init?: RequestInit) => {
+      assertProviderRequestBudget(init?.body);
+      return settings.fetchImpl === undefined
+        ? globalThis.fetch(input, init)
+        : settings.fetchImpl(String(input), init);
+    },
   });
   return provider.chat(settings.model);
 }

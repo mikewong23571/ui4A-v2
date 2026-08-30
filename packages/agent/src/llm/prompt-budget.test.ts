@@ -627,6 +627,87 @@ describe('D54 current sanitized observation and non-cumulative disclosure', () =
     expect(publicContract).toContain(CURRENT_RAW_PAYLOAD_MARKER);
     expect(publicContract).toContain(VISUAL_POLICY_MARKER);
   });
+
+  it('projects a large current collection as bounded member summaries without narrowing HTTP', async () => {
+    const rawMarker = 'LARGE_COLLECTION_FULL_BODY_MUST_NOT_REACH_PROVIDER';
+    const collection = collectionEntity({
+      rel: 'articles',
+      members: Array.from({ length: 120 }, (_, index) => ({
+        rel: `post:large-${index}`,
+        flow: 'post-status',
+        node: 'published',
+        title: `文章 ${index}`,
+        fields: {
+          title: `文章 ${index}`,
+          category: index % 2 === 0 ? 'tech' : 'essay',
+          body: `${rawMarker}:${'完整正文。'.repeat(128)}`,
+        },
+        actions: [action('archive', '归档文章')],
+        guardResults: [{ action: 'archive', blocked: index === 0, reason: '需要确认归档范围' }],
+      })),
+    });
+    for (const member of collection.entities ?? []) {
+      member.properties.presentation = {
+        fields: [
+          {
+            path: 'properties.fields.title',
+            title: '标题',
+            role: 'identity',
+            overview: true,
+          },
+          {
+            path: 'properties.fields.category',
+            title: '分类',
+            role: 'metadata',
+            overview: true,
+          },
+          {
+            path: 'properties.fields.body',
+            title: '正文',
+            role: 'primary-content',
+          },
+        ],
+      };
+    }
+    const context: DriverContext = {
+      goal: { verb: '浏览文章目录', targetRel: 'articles' },
+      app: 'publishing',
+      currentRel: 'articles',
+      entity: collection,
+      observations: [{ rel: 'articles', entity: collection }],
+      trail: [],
+      successes: [],
+      sitemap: {
+        version: 'large-collection-v1',
+        surfaces: [{ rel: 'articles', title: '文章目录', app: 'publishing' }],
+        applications: [
+          {
+            name: 'publishing',
+            intent: '管理文章',
+            flows: [{ name: 'post-status', title: '文章生命周期', actions: [] }],
+          },
+        ],
+        capabilities: [],
+      },
+    };
+
+    const captured = await captureProviderRequest(context);
+    const messages = JSON.stringify(buildLlmMessages(context));
+    expect(utf8Bytes(captured.rawBody)).toBeLessThanOrEqual(DECIDE_WIRE_BUDGET_BYTES);
+    expect(messages).toContain('post:large-0');
+    expect(messages).toContain('post:large-7');
+    expect(messages).not.toContain('post:large-8');
+    expect(captured.rawBody).not.toContain(rawMarker);
+    expect(captured.rawBody).toContain('需要确认归档范围');
+
+    const client = createContractClient('https://ui4a.test', async () => Response.json(collection));
+    const response = await client.getEntity('articles');
+    const publicEntity = response.entity;
+    if (publicEntity === undefined) throw new Error('expected public collection entity');
+    expect(publicEntity).toEqual(collection);
+    expect(JSON.stringify(publicEntity)).toContain(rawMarker);
+    expect(publicEntity.entities).toHaveLength(120);
+  });
 });
 
 describe('D54 final provider request UTF-8 runtime guard', () => {
