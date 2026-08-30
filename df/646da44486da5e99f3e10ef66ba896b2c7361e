@@ -1,0 +1,6 @@
+T39 Phase A Task A6 — Application fact binding and workspace semantics
+
+Summary: selected business-plane read-only application:<name> Siren projection; defined minimal traits/entry roles, collection ownership, canonical dedupe and preference boundary; rejected Meta cross-plane facts and virtual literals.
+Files: phase-a-spike.md.
+Why: preserves binding-only, D51 and Application-as-library without per-app runtime code.
+Verification: orchestrator reran 6 focused files/51 tests.
