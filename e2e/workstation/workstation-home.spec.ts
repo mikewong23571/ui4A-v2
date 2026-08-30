@@ -226,7 +226,7 @@ test('workstation home and the real CLI read the same three declared source enti
   });
 });
 
-test('waiting-for-me 成员决策卡:批准一击零导航零参数,同一裁决(T33 D50)', async ({ page }) => {
+test('waiting-for-me 成员决策卡:批准两段确认零导航零参数,同一裁决(T33 D50)', async ({ page }) => {
   test.setTimeout(180_000);
   // 与 s1 同口径:清掉跨轮次残留的 notify workflow(确认 id 确定性复用)。
   await terminateStaleNotifyWorkflows(['c1']);
@@ -279,11 +279,22 @@ test('waiting-for-me 成员决策卡:批准一击零导航零参数,同一裁决
     await expect(card).toHaveCount(1);
     await expect(card).toContainText('confirmation:c1');
 
-    // 责任点一等:批准为推送按钮(零参数、零导航),data-action 背书同一合同。
-    const approve = card.getByRole('button', { name: '批准', exact: true });
-    await expect(approve).toBeEnabled();
-    await expect(approve).toHaveAttribute('data-action', 'approve');
-    await approve.click();
+    // 责任点一等:批准保持 high-risk 两段式确认。外层只发起 Presentation 请求，
+    // 展开后 data-action=approve 才是零参数合同提交点；两步都不发生导航。
+    const approveItem = card.locator('[data-action-group-item="approve"]');
+    const approveRequest = approveItem.locator('button[data-presentation-action="request-risk"]');
+    await expect(approveRequest).toBeEnabled();
+    await expect(approveRequest).toHaveAttribute('data-nav', 'presentation:request-risk:approve');
+    const beforeDecisionUrl = page.url();
+    await approveRequest.click();
+    await expect(approveItem.getByText('已请求“批准”，尚未执行。')).toBeVisible();
+    await expect(approveItem.locator('form')).toHaveCount(0);
+    const approveSubmit = approveItem.locator('button[data-action="approve"]');
+    await expect(approveSubmit).toHaveText('确认并执行批准');
+    await approveSubmit.click();
+    expect(page.url()).toBe(beforeDecisionUrl);
+    await expect(approveItem.locator('[data-presentation-action="request-risk"]')).toHaveCount(0);
+    await expect(approveItem.locator('[data-action="approve"]')).toHaveCount(0);
 
     // 同一裁决:轮询事件日志,confirmation-approved 的 actor=human
     // (channel=confirmation:生效动作经确认门落账,渲染器触发)。

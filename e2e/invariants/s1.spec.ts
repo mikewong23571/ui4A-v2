@@ -397,19 +397,27 @@ test('UI 走查:收件箱保留路由 → 确认页 RJSF 批准 → 文章实体
     await expect(member).toContainText('proposed-by.actor=agent');
     await member.click();
 
-    // 确认页:批准按钮可用(renderer 恒为 human);驳回的 reason 必填(RJSF)。
-    const approve = page.getByRole('button', { name: '批准' });
-    await expect(approve).toBeEnabled();
+    // 确认页:批准是 high-risk 两段式交互(renderer 恒为 human)；外层只请求风险
+    // 确认，展开后 data-action=approve 才是合同提交点。驳回的 reason 必填(RJSF)。
+    const approveItem = page.locator('[data-action-group-item="approve"]');
+    const approveRequest = approveItem.locator('button[data-presentation-action="request-risk"]');
+    await expect(approveRequest).toBeEnabled();
+    await expect(approveRequest).toHaveAttribute('data-nav', 'presentation:request-risk:approve');
     // D50:驳回表单默认收起,先打开再断言 reason 必填
     await page.getByRole('button', { name: '驳回' }).click();
     await expect(page.getByRole('textbox', { name: /reason|原因/i })).toHaveAttribute(
       'required',
       '',
     );
-    await approve.click();
+    await approveRequest.click();
+    await expect(approveItem.getByText('已请求“批准”，尚未执行。')).toBeVisible();
+    const approveSubmit = approveItem.locator('button[data-action="approve"]');
+    await expect(approveSubmit).toHaveText('确认并执行批准');
+    await approveSubmit.click();
 
-    // exec 成功 → 实体重投影:确认转 approved,动作区(批准/驳回)消失。
-    await expect(page.getByRole('button', { name: '批准' })).toHaveCount(0);
+    // exec 成功 → 实体重投影:确认转 approved,staged trigger 与真实 action 均消失。
+    await expect(approveItem.locator('[data-presentation-action="request-risk"]')).toHaveCount(0);
+    await expect(approveItem.locator('[data-action="approve"]')).toHaveCount(0);
     await expect(
       page.locator('section[aria-label="属性"] tbody tr', { hasText: 'approved' }).first(),
     ).toBeVisible();
