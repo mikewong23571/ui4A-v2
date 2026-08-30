@@ -1,0 +1,6 @@
+T39 G6 binding-only Application landing composition.
+
+Verified by orchestrator:
+- app-workspace/broker/runtime: 6 files, 51 tests
+- web typecheck and governance strict
+- no implicit entry fallback; explicit cross-alias entry metadata fingerprints; authorize before dedupe; fail closed
