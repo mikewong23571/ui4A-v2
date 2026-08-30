@@ -1,0 +1,6 @@
+T39 G13 declaration data for development, editorial, and governance.
+
+Verified by orchestrator:
+- targeted stories: 7 pass, 4 skipped
+- bundle/ownership: 3 files, 10 tests
+- web typecheck and governance strict
