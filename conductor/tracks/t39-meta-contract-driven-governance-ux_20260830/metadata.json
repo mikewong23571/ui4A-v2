@@ -4,7 +4,7 @@
   "type": "feature",
   "status": "new",
   "createdAt": "2026-08-30T12:13:55+08:00",
-  "updatedAt": "2026-08-30T12:34:37+08:00",
+  "updatedAt": "2026-08-30T12:45:17+08:00",
   "acceptanceModel": "agent-visual-browser-review",
   "visionRef": "conductor/product-vision.md",
   "predecessor": "t38-collection-query-governance_20260829"

@@ -8,7 +8,35 @@
 > heading 和响应式属于 Presentation Plane；人类与 Agent 共用事实/关系/动作/认知语义，
 > 不要求共用像素策略；Meta Renderer 零 LLM、零 Sidecar；不新增 per-track Playwright 配置。
 
+## 编排与 Subagent 执行协议
+
+### 每任务派发
+
+- 每个实现/探针任务只派发给一个 subagent；任务依赖按计划顺序串行，不为并行而拆分。
+- 编排者在派发前把该任务标记 `[~]`，生成自包含 prompt；subagent 不修改 `conductor/`、`DECISIONS.md`、Track 状态、commit 或 git notes。
+- 每个 prompt 必须写明四要素：
+  1. **Goal**：直接使用任务行的可验收结果，并包含最窄测试命令；
+  2. **Non-goals**：使用对应 Phase 合同，明确不做下一任务、无关重构或新抽象；
+  3. **Changes**：列出预期文件/模块和测试；
+  4. **Blast radius**：列出允许与禁止触碰的目录。
+- Prompt 同时包含 `GOAL.md`、`DECISIONS.md`、`product-vision.md`、本 Track spec/plan、相关 `AGENTS.md` 与 D53“膨胀即拆解、不裁剪功能、不登记例外”。
+
+### 任务级轻验收
+
+- subagent 负责 Red → Green、focused tests 和变更说明；只实现当前任务的最小闭环，不提前建设后续框架。
+- 编排者亲自检查 diff，并只复跑 subagent 声称通过的 focused test/类型命令；不在每任务重复 `pnpm check`、全量 E2E 或全站视觉横扫。
+- 任务通过后由编排者 commit、附 git note、记录 SHA 并推进下一任务；失败最多两轮修复，仍失败按 workflow 回滚该任务。
+
+### Phase 与 Track 验收
+
+- Phase Checkpoint 由编排者执行，不委派：复跑本 Phase 全部相关测试、`pnpm governance:strict`、必要 typecheck/`pnpm check`，并执行该 Phase 对应的浏览器/合同故事。
+- Phase 验收只判断该切片是否完整可运行，不顺手修整其他 Phase；观察项进入 `review.md` 或后续任务。
+- Track 结束由编排者按 US1–US19 做完整 E2E：人类 Renderer 浏览器路径 + CLI/HTTP 同门路径 + 390px + US19 真实 LLM 状态；此时才运行全量 `pnpm check`、`CI=true pnpm e2e` 和 invariants。
+- 不因“以后可能需要”引入依赖、通用 DSL、基础设施或跨 Phase 抽象；只有当前故事与已出现的重复能证明时才抽取。
+
 ## Phase A：Disposable Spike、边界裁决与重新规划
+
+**Subagent contract（A1–A8）**：Goal=回答当前任务的一个不确定问题；Non-goals=不写生产实现、不定案下一 Phase；Changes=只读分析、focused probe/test 与临时 `mktemp` 工件；Blast radius=可读全仓，写入仅临时目录，禁止生产源码、`conductor/`、数据库与依赖变更。A9–A10 由编排者执行。
 
 - [ ] Task A1：盘点 definition、SitemapSurface、Siren entity、`presentation.fields`、Recipe/Sidecar、Meta Renderer registry、RJSF schema、Assistant disclosure 和 canonical/友好路由。
 - [ ] Task A2：编写 disposable probe，比较 Trait/Semantic Hint 位于 definition、sitemap、exact projection 或 Presentation declaration 时的传播、缓存版本、Agent 可见性和依赖失效；Spike 不进入生产代码。
@@ -23,6 +51,8 @@
 
 ## Phase B：Trait/Semantic Hint 纯合同与披露预算（provisional）
 
+**Subagent contract**：Goal=建立最小语义合同与预算门；Non-goals=不改 Meta 页面、不修八个 Application、不增加视觉 DSL；Changes=`packages/shared/src/definition|presentation/`、`packages/engine/src/contract|presentation/`、Assistant disclosure 的最窄消费点及相邻测试；Blast radius=禁止 `apps/worker`、`packages/db`、Application bundles、`conductor/` 与新依赖。
+
 - [ ] Task B1：Red——在 spike 裁决的最窄边界编写 Trait/Semantic Hint parse、版本、白名单、非法引用、未知版本和无声明 fallback 测试，并确认失败。
 - [ ] Task B2：Green——实现最小语义类型与纯校验；不得加入设备、sticky、heading 或组件策略。
 - [ ] Task B3：Red——编写 sitemap/entity projection 与缓存版本测试，断言语义 metadata 对 HTTP/CLI 可见、不进入 Business fold、授权签名或事件，并确认失败。
@@ -36,6 +66,8 @@
 
 ## Phase C：canonical Meta Renderer 单一真相（provisional）
 
+**Subagent contract**：Goal=已知 Meta class 经 canonical 路径得到单一 Renderer；Non-goals=不改定义语义、Application landing 或业务动作；Changes=`apps/web/src/components/meta/`、`apps/web/src/app/meta/`、必要的 registry/client 测试；Blast radius=禁止 worker/db、业务 bundles、Presentation composition 与无关组件重构。
+
 - [ ] Task C1：Red——编写 Flow canonical 路由测试，期望拓扑、版本、节点和动作通过 registry 呈现，并确认当前 generic 失败。
 - [ ] Task C2：Red——编写 Activation/Capability canonical 测试，锁定 checks、diff、责任语义、intent 和输入/输出边界，并确认失败。
 - [ ] Task C3：Green——将 Flow、Activation、Capability 接入 class/trait registry，不按 rel 或 Application 分支。
@@ -47,6 +79,8 @@
 
 ## Phase D：任务优先 Meta 首页与声明式集合概览（provisional）
 
+**Subagent contract**：Goal=让 Meta sitemap/summary 驱动首页与集合；Non-goals=不创建固定 surface 页面、不改 Application workspace；Changes=Meta sitemap adapter、dashboard、generic collection/overview 与相邻测试；Blast radius=禁止业务 Flow/事件语义、worker/db、Canvas composition、Chat 和新依赖。
+
 - [ ] Task D1：Red——编写 sitemap 责任/候选/定义/系统语义分组与未来 surface 自动进入测试，并确认失败。
 - [ ] Task D2：Green——实现 Meta Dashboard 只消费语义分组、title、intent、overview 与计数，不维护固定 surface/status 清单。
 - [ ] Task D3：Red——编写 collection overview、搜索总数、facet 声明和合同 links 分页测试，并确认失败。
@@ -55,6 +89,8 @@
 - [ ] Task D6：Phase Verification & Checkpoint：无 surface 清单、无 per-app 分支、HTTP/CLI 可读同形认知语义。
 
 ## Phase E：Draft 审查责任点与注意力语义（provisional）
+
+**Subagent contract**：Goal=收敛 Draft 人类审查与 D51 lens；Non-goals=不建设完整 Draft authoring、不改 Draft 事件/审批语义；Changes=Draft Meta projection/renderer、公共 action field ownership、Meta situation/client 与相邻测试；Blast radius=禁止 Agent authoring runtime、worker/db schema、Application bundles 与 Presentation composition。
 
 - [ ] Task E1：Red——编写 Meta UI 不暴露 server-owned 字段、不把 Create Draft/完整 payload authoring 提升为主路径的测试，并确认失败。
 - [ ] Task E2：Green——收敛 Draft collection/detail 首屏为 validation、diff、checks、sources、provenance 与当前 actions；advanced/raw ingress 退守下钻。
@@ -67,6 +103,8 @@
 
 ## Phase F：责任点、关系与披露层级（Meta milestone，provisional）
 
+**Subagent contract**：Goal=通用责任点、关系和三层披露；Non-goals=不按 action/class/rel 写专属页面、不改业务裁决；Changes=Meta common renderers、ActionRunner host adapter、link/raw disclosure 与相邻测试；Blast radius=禁止 engine judge/fold、worker/db、Application bundles 和 Chat。
+
 - [ ] Task F1：Red——编写 responsibility trait、任务/合同/raw 三层、`link.title` 与 `self` 退守测试，并确认失败。
 - [ ] Task F2：Green——实现通用责任点和关系词汇；inline/sticky、heading 与窄屏姿态由 Presentation policy 决定。
 - [ ] Task F3：Red——编写 guard reason、两段确认、已决原位反馈和待决集合退出测试，并确认失败。
@@ -75,6 +113,8 @@
 - [ ] Task F6：Meta Milestone Verification & Checkpoint：US1–US10 可独立闭环，系统完整可运行；Application Phase 未开始也不影响 Meta 交付。
 
 ## Phase G：Application 图书馆与默认组合面（独立 milestone，provisional）
+
+**Subagent contract**：Goal=用语义数据改善 Application 图书馆与组合；Non-goals=不把 Application 变成书桌、不改 `/` Work Thread 聚合、不写 per-app runtime 分支；Changes=Application/Sitemap 定义与投影、`app-workspace-composition`、Application 书架、通用 Presentation policy、bundle 数据和相邻测试；Blast radius=禁止 Meta governance Renderer、worker/db、Chat、每应用 React 页面与新依赖。
 
 - [ ] Task G1：Red——编写 discoverability/system-fallback、entry semantic role、归属不变式和非法隐式 Meta entry 测试，并确认失败。
 - [ ] Task G2：Green——扩展 Application/Sitemap 的最小语义投影；不加入设备密度、sticky 或自由布局。
@@ -92,6 +132,8 @@
 - [ ] Task G14：Application Milestone Verification & Checkpoint：新增第九个 fixture 只改定义数据即可进入书架/landing；系统完整可运行。
 
 ## Phase H：Assistant 共同注视与全故事终审（provisional）
+
+**Subagent contract（H1–H3）**：Goal=证明同一 Situation/entity/action 的 Assistant 消费；Non-goals=不新增意图启发式、不让视觉策略进 prompt、不用 rule driver 冒充验收；Changes=Assistant disclosure/FactRef/Eval 的最窄路径与测试；Blast radius=禁止业务引擎语义、Application 专属分支、worker/db 和新 provider。H4–H10 由编排者执行 Track 级验收。
 
 - [ ] Task H1：Red——编写 publishing/community/governance 的 Situation → entity → actions disclosure、FactRef、clientView/lastNavigation 和视觉策略禁入 prompt 测试，并确认失败。
 - [ ] Task H2：Green——接通最小必要的 Assistant scoped disclosure 消费；不得新增意图启发式或全量 sitemap 注入。
