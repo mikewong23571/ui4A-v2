@@ -11,9 +11,7 @@ describe('T39 G7 Red: installed Application collection ownership', () => {
       title: '评论审核',
       app: 'community',
       initial: 'pending',
-      collections: [
-        { collection: 'comments', filters: [{ field: 'status', title: '状态' }] },
-      ],
+      collections: [{ collection: 'comments', filters: [{ field: 'status', title: '状态' }] }],
       nodes: [
         { name: 'pending', title: '待处理', actions: [] },
         { name: 'approved', title: '已通过', actions: [] },

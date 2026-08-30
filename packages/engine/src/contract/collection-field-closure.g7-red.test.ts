@@ -97,8 +97,7 @@ describe('T39 G7 Red: collection field projection closes over its declared owner
       guards: seedGuardRegistry,
     });
     const presentation = entity?.entities?.[0]?.properties.presentation as
-      | { fields?: unknown[] }
-      | undefined;
+      { fields?: unknown[] } | undefined;
 
     expect(presentation?.fields).toEqual(expectedOwnerFields);
     expect(JSON.stringify(presentation)).not.toContain('secret');

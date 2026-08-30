@@ -127,9 +127,7 @@ function cognitiveFieldCandidate(value: unknown): unknown {
     ...(value.title === undefined ? {} : { title: value.title }),
     ...(value.role === undefined ? {} : { role: value.role }),
     ...(value.overview === undefined ? {} : { overview: value.overview }),
-    ...(value.contentMediaType === undefined
-      ? {}
-      : { contentMediaType: value.contentMediaType }),
+    ...(value.contentMediaType === undefined ? {} : { contentMediaType: value.contentMediaType }),
   };
 }
 
