@@ -67,7 +67,7 @@
 - [x] Task B11：增加低误报治理：禁止定义内 CSS/组件/设备策略、runtime per-app/per-rel 分支、server-owned public params 和视觉策略进 prompt；扫描排除合法 bundle 数据。b24fe76
 - [x] Task B12：Phase Verification & Checkpoint：focused tests、typecheck、`pnpm governance:strict`、D51、真实 prompt budget 和公开合同完整性全绿。4ba1a9b
 
-## Phase C：canonical Meta Renderer 单一真相（provisional）
+## Phase C：canonical Meta Renderer 单一真相 [checkpoint: ceb52cf]
 
 **Subagent contract**：Goal=已知 Meta class 经 canonical 路径得到单一 Renderer；Non-goals=不改定义语义、Application landing 或业务动作；Changes=`apps/web/src/components/meta/`、`apps/web/src/app/meta/`、必要的 registry/client 测试；Blast radius=禁止 worker/db、业务 bundles、Presentation composition 与无关组件重构。
 
@@ -79,7 +79,7 @@
 - [x] Task C6：Green——原子切换内链/bridge，删除七条旧 route、fetch wrappers 与 lists，并实现授权 Meta cache invalidation；不留兼容路径。1d940b3
 - [x] Task C7：增加 registry completeness、ambiguity fail-closed 与旧 URL 源码/E2E 扫描。6093b05
 - [x] Task C8：浏览器验证 US2、US4：canonical Flow/Activation/Capability、完整 topology/diff/checks、无默认 lens、返回路径连续。1612ad6
-- [ ] Task C9：Phase Verification & Checkpoint：focused tests、web typecheck、`pnpm check`、governance 和 Agent 合同探针。
+- [x] Task C9：Phase Verification & Checkpoint：focused tests、web typecheck、`pnpm check`、governance 和 Agent 合同探针。ceb52cf
 
 ## Phase D：任务优先 Meta 首页与声明式集合概览（provisional）
 
