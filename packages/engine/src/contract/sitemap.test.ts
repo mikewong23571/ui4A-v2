@@ -165,7 +165,12 @@ describe('deriveSitemap — application 分组投影(T10 Phase C,spec 架构决�
   /** 活跃 app 定义表(snapshot.applications 的形状;声明序 = 投影序)。 */
   const applications: Record<string, ApplicationDefinition> = {
     default: { name: 'default', title: '默认应用', intent: '归一化兜底' },
-    publishing: { name: 'publishing', title: '内容发布', intent: '内容起草与发布' },
+    publishing: {
+      name: 'publishing',
+      title: '内容发布',
+      intent: '内容起草与发布',
+      entry: { target: 'flow:article-drafting', role: 'primary-create' },
+    },
     community: { name: 'community', title: '社区互动', intent: '评论与社区互动' },
   };
   /** 带归属的 flow(fixture 本体不带 app,此处声明 membership)。 */
@@ -187,6 +192,7 @@ describe('deriveSitemap — application 分组投影(T10 Phase C,spec 架构决�
       name: 'publishing',
       title: '内容发布',
       intent: '内容起草与发布',
+      entry: { target: 'flow:article-drafting', role: 'primary-create' },
     });
     // 组内 flows 保持扁平表声明序,且与扁平条目同形状(同一投影)。
     expect(publishing?.flows.map((flow) => flow.name)).toEqual(['article-drafting', 'post-status']);

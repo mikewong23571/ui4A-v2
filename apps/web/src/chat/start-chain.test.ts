@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-import type { ApplicationDefinition, EngineSnapshot } from '@ui4a/shared';
+import type { ApplicationDefinition, ApplicationEntry, EngineSnapshot } from '@ui4a/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Situation } from '../engine/situation';
@@ -8,12 +8,19 @@ import { startRelFromSituation } from './start-chain';
 
 type Applications = NonNullable<EngineSnapshot['applications']>;
 
-function application(name: string, entry?: string): ApplicationDefinition {
+function application(name: string, target?: string): ApplicationDefinition {
   return {
     name,
     title: `${name} application`,
     intent: `Operate the ${name} scope`,
-    ...(entry === undefined ? {} : { entry }),
+    ...(target === undefined
+      ? {}
+      : {
+          entry: {
+            target,
+            role: 'primary-task',
+          } satisfies ApplicationEntry,
+        }),
   };
 }
 

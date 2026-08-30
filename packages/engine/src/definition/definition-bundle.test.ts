@@ -16,7 +16,12 @@ const snapshot: EngineSnapshot = {
   instances: {},
   collections: {},
   applications: {
-    publishing: { name: 'publishing', title: 'Publishing', intent: 'Publish content' },
+    publishing: {
+      name: 'publishing',
+      title: 'Publishing',
+      intent: 'Publish content',
+      entry: { target: 'flow:post-status', role: 'primary-task' },
+    },
   },
   capabilities: {},
   definitions: {
@@ -31,6 +36,10 @@ describe('Application definition Bundle export', () => {
     const parsed = parseDefinitionBundle(exported);
     expect(parsed).toEqual(exported);
     expect(JSON.stringify(exported)).not.toMatch(/instances|session|sidecar|secret/i);
+    expect(exported.applications[0]?.entry).toEqual({
+      target: 'flow:post-status',
+      role: 'primary-task',
+    });
     expect(exported.provenance.flows).toEqual([{ name: 'post-status', version: 2 }]);
   });
 });

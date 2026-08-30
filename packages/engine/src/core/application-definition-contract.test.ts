@@ -107,18 +107,20 @@ describe('ApplicationDefinition entry contract (T39 G1 Red)', () => {
     );
   });
 
-  it.each(['meta/flows', '_meta/api/entity', 'workspace:app:publishing', 'https://example.com/app'])(
-    'rejects non-business or implicit cross-site target %s',
-    (target) => {
-      expectApplicationIssue(
-        {
-          ...baseApplication,
-          entry: { target, role: 'primary-task' },
-        },
-        'entry.target',
-      );
-    },
-  );
+  it.each([
+    'meta/flows',
+    '_meta/api/entity',
+    'workspace:app:publishing',
+    'https://example.com/app',
+  ])('rejects non-business or implicit cross-site target %s', (target) => {
+    expectApplicationIssue(
+      {
+        ...baseApplication,
+        entry: { target, role: 'primary-task' },
+      },
+      'entry.target',
+    );
+  });
 
   it.each(['flows', 'members', 'surfaces'])(
     'rejects Application-owned %s membership because membership derives from Flow.app',

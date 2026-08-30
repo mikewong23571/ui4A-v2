@@ -11,6 +11,7 @@
 import type {
   ActionDefinition,
   ApplicationDefinition,
+  ApplicationEntry,
   CapabilityDefinition,
   FieldDefinition,
   FlowDefinition,
@@ -92,8 +93,8 @@ export interface SitemapApplication {
   name: string;
   title: string;
   intent: string;
-  /** T35 F-23:默认入口(定义 entry 透传;人与 agent 共用的"同一扇门")。 */
-  entry?: string;
+  /** 声明驱动的业务入口，与 ApplicationDefinition 同形保真。 */
+  entry?: ApplicationEntry;
   presentation?: CognitiveSemanticsProjectionV1;
   flows: SitemapFlow[];
 }

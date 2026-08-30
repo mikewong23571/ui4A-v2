@@ -241,13 +241,13 @@ describe('parseApplicationDefinition — 规范化', () => {
       name: 'publishing',
       title: '内容发布',
       intent: '把草稿变成可发布的内容',
-      entry: 'article-drafting',
+      entry: { target: 'flow:article-drafting', role: 'primary-create' },
     });
     expect(parsed).toEqual({
       name: 'publishing',
       title: '内容发布',
       intent: '把草稿变成可发布的内容',
-      entry: 'article-drafting',
+      entry: { target: 'flow:article-drafting', role: 'primary-create' },
     });
   });
 
@@ -288,7 +288,7 @@ describe('parseApplicationDefinition — 拒绝非法定义', () => {
     }
   });
 
-  it('entry 存在时必须是非空字符串', () => {
+  it('entry 存在时必须是严格的结构化对象', () => {
     const valid = { name: 'publishing', title: '内容发布', intent: '发布内容' };
     expect(() => parseApplicationDefinition({ ...valid, entry: '' })).toThrow(/entry/);
     expect(() => parseApplicationDefinition({ ...valid, entry: 42 })).toThrow(/entry/);

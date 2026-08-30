@@ -9,12 +9,12 @@ describe('walkthrough application entries', () => {
         walkthroughApplicationBundle.applications.map(({ name, entry }) => [name, entry]),
       ),
     ).toEqual({
-      default: 'flow:article-drafting',
-      publishing: 'flow:article-drafting',
-      community: 'comments',
-      development: 'flow:software-change',
-      editorial: 'flow:writing-request',
-      governance: 'meta/flows',
+      default: undefined,
+      publishing: { target: 'flow:article-drafting', role: 'primary-create' },
+      community: { target: 'comments', role: 'primary-collection' },
+      development: { target: 'flow:software-change', role: 'primary-task' },
+      editorial: { target: 'flow:writing-request', role: 'primary-task' },
+      governance: { target: 'flow:agent-definition-authoring', role: 'primary-task' },
     });
   });
 });

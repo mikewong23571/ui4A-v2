@@ -7,21 +7,22 @@
  */
 import { useEffect, useState } from 'react';
 
+import type { ApplicationEntry } from '@ui4a/shared';
 import { ChevronDown } from 'lucide-react';
 
 import { Skeleton } from '@/components/ui/skeleton';
 
-interface ApplicationEntry {
+interface ApplicationSitemapEntry {
   name: string;
   title: string;
   intent: string;
-  entry?: string;
+  entry?: ApplicationEntry;
   flows?: Array<{ name: string }>;
 }
 
 /** 入口 rel:定义 entry 优先;回退首流程的 flow: 别名(零发明)。 */
-function entryRel(application: ApplicationEntry): string | undefined {
-  if (application.entry !== undefined && application.entry !== '') return application.entry;
+function entryRel(application: ApplicationSitemapEntry): string | undefined {
+  if (application.entry !== undefined) return application.entry.target;
   const first = application.flows?.[0]?.name;
   return first === undefined ? undefined : `flow:${first}`;
 }
@@ -29,7 +30,7 @@ function entryRel(application: ApplicationEntry): string | undefined {
 const COLLAPSE_THRESHOLD = 6;
 
 export function ApplicationEntryStrip() {
-  const [applications, setApplications] = useState<ApplicationEntry[] | null>(null);
+  const [applications, setApplications] = useState<ApplicationSitemapEntry[] | null>(null);
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
@@ -38,7 +39,7 @@ export function ApplicationEntryStrip() {
       .then((response) =>
         response.ok ? response.json() : Promise.reject(new Error(String(response.status))),
       )
-      .then((body: { applications?: ApplicationEntry[] }) => {
+      .then((body: { applications?: ApplicationSitemapEntry[] }) => {
         if (!cancelled && Array.isArray(body.applications)) setApplications(body.applications);
       })
       .catch(() => {

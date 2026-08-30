@@ -9,7 +9,7 @@ export function startRelFromSituation(situation: Situation, applications: Applic
   if (typeof situation.focus === 'string') return situation.focus;
 
   const entry = situation.scope === undefined ? undefined : applications[situation.scope]?.entry;
-  if (entry !== undefined && entry !== '') return entry;
+  if (entry !== undefined) return entry.target;
 
   return situation.site === 'meta' ? 'meta/flows' : 'articles';
 }

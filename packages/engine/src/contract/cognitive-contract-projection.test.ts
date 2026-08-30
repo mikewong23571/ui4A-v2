@@ -32,10 +32,7 @@ const flowCognition = {
 
 const applicationCognition = {
   version: 1 as const,
-  traits: ['output-catalog'] as const,
-  groupRole: 'definition' as const,
-  priority: 'normal' as const,
-  emptyMeaning: 'ready-to-start' as const,
+  traits: ['system-fallback'] as const,
 };
 
 type CognitiveFlow = FlowDefinition;
@@ -136,7 +133,7 @@ describe('D54 cognitive contract dual projection', () => {
     });
     const changedApplication = deriveSitemap([cognitiveFlow()], {
       applications: {
-        publishing: cognitiveApplication({ ...applicationCognition, priority: 'low' }),
+        publishing: { ...cognitiveApplication(), cognitive: undefined },
       },
     });
 

@@ -176,8 +176,8 @@ beforeEach(() => {
   mocks.getEngine.mockResolvedValue({
     getSnapshot: () => ({
       applications: {
-        default: { entry: 'flow:article-drafting' },
-        development: { entry: 'flow:software-change' },
+        default: { entry: { target: 'flow:article-drafting', role: 'primary-create' } },
+        development: { entry: { target: 'flow:software-change', role: 'primary-task' } },
       },
     }),
   });

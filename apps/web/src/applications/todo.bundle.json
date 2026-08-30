@@ -2,14 +2,14 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "todo",
-    "version": 4
+    "version": 5
   },
   "applications": [
     {
       "name": "todo",
       "title": "待办事项",
       "intent": "捕捉待办并推进到完成:一句话捕捉待办,进行中可完成或重新打开,结束归档。业务目标是让任何时刻都能回答'接下来要做什么、做完了什么'。",
-      "entry": "flow:todo-capture"
+      "entry": { "target": "flow:todo-capture", "role": "primary-create" }
     }
   ],
   "capabilities": [],

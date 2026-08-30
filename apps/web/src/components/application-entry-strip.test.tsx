@@ -17,8 +17,18 @@ function stubApplications(applications: unknown): void {
 describe('ApplicationEntryStrip · 应用目录条', () => {
   it('从 sitemap 派生应用 chips 并链到应用默认组合面,排除 default(F-23/T37 FR3)', async () => {
     stubApplications([
-      { name: 'default', title: '默认应用', intent: '兜底', entry: 'flow:article-drafting' },
-      { name: 'todo', title: '待办事项', intent: '捕捉待办', entry: 'flow:todo-capture' },
+      {
+        name: 'default',
+        title: '默认应用',
+        intent: '兜底',
+        entry: { target: 'flow:article-drafting', role: 'primary-create' },
+      },
+      {
+        name: 'todo',
+        title: '待办事项',
+        intent: '捕捉待办',
+        entry: { target: 'flow:todo-capture', role: 'primary-create' },
+      },
     ]);
     render(<ApplicationEntryStrip />);
 
@@ -35,7 +45,7 @@ describe('ApplicationEntryStrip · 应用目录条', () => {
       name: `app-${index}`,
       title: `应用${index}`,
       intent: '测试',
-      entry: `flow:app-${index}`,
+      entry: { target: `flow:app-${index}`, role: 'primary-create' },
     }));
     stubApplications(many);
     render(<ApplicationEntryStrip />);

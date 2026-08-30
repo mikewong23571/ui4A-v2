@@ -250,11 +250,26 @@ export interface ApplicationDefinition {
   title: string;
   /** 人类与 agent 共读的意图声明(发现层两层发现的第一层依据)。 */
   intent: string;
-  /** 默认入口(路线 T3 默认页消费;本 track 仅落字段)。 */
-  entry?: string;
+  /** 一个声明驱动的业务入口；可达性在 Bundle 边界 fail closed。 */
+  entry?: ApplicationEntry;
   submission?: SubmissionPolicy;
   /** Stable cognitive meaning only; visual posture remains Presentation policy. */
   cognitive?: CognitiveSemanticsDeclarationV1;
+}
+
+export const APPLICATION_ENTRY_ROLES = [
+  'primary-create',
+  'primary-task',
+  'primary-collection',
+  'resume',
+] as const;
+
+export type ApplicationEntryRole = (typeof APPLICATION_ENTRY_ROLES)[number];
+
+/** Application 只声明业务落点与意图，不携带任何视觉策略。 */
+export interface ApplicationEntry {
+  target: string;
+  role: ApplicationEntryRole;
 }
 
 /** capability 类别(arch-brief 第七层三类动词:转换/提取/效应)。 */

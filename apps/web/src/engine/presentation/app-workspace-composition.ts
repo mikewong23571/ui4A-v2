@@ -7,7 +7,7 @@
  * 分支(北极星 §六);组合不产生真相——虚主体不进业务 sitemap、不可 exec,区域
  * 数据仍由 Broker 逐源重授权(D51,授权 = grantedApplications × 事实归属)。
  */
-import { parseCompositionId } from '@ui4a/shared';
+import { parseCompositionId, type ApplicationEntry } from '@ui4a/shared';
 
 import {
   freezeCompositionDeclaration,
@@ -35,7 +35,7 @@ export interface AppWorkspaceSitemapView {
     name: string;
     title?: string;
     intent?: string;
-    entry?: string;
+    entry?: ApplicationEntry;
     flows?: ReadonlyArray<{ name: string; app?: string }>;
   }>;
 }
@@ -91,7 +91,7 @@ export function deriveAppWorkspaceComposition(
   const surfaceOf = (rel: string): AppWorkspaceSurfaceView | undefined =>
     surfaces.find((surface) => surface.rel === rel);
   const entry =
-    application?.entry ??
+    application?.entry?.target ??
     surfaces.find((surface) => surface.app === scope && surface.collection !== true)?.rel;
 
   const regions: Array<{

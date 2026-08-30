@@ -2,14 +2,14 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "ideas",
-    "version": 4
+    "version": 5
   },
   "applications": [
     {
       "name": "ideas",
       "title": "想法收集",
       "intent": "随时捕捉想法并发展成熟:捕捉→发展中→已成熟→归档,发展内容沉淀在想法本体上;可搁置回退。业务目标是让灵感不被丢失、发展有轨迹。",
-      "entry": "flow:idea-capture"
+      "entry": { "target": "flow:idea-capture", "role": "primary-create" }
     }
   ],
   "capabilities": [],

@@ -41,7 +41,7 @@ function fixtureSitemap(): AppWorkspaceSitemapView {
         name: 'publishing',
         title: '内容发布',
         intent: '写、审、发一条龙',
-        entry: 'flow:article-drafting',
+        entry: { target: 'flow:article-drafting', role: 'primary-create' },
         flows: [
           { name: 'article-drafting', app: 'publishing' },
           { name: 'post-status', app: 'publishing' },
@@ -51,21 +51,21 @@ function fixtureSitemap(): AppWorkspaceSitemapView {
         name: 'community',
         title: '社区互动',
         intent: '评论的审核与治理',
-        entry: 'comments',
+        entry: { target: 'comments', role: 'primary-collection' },
         flows: [{ name: 'comment-moderation', app: 'community' }],
       },
       {
         name: 'development',
         title: '软件实施',
         intent: '软件变更的实施与验证',
-        entry: 'flow:software-change',
+        entry: { target: 'flow:software-change', role: 'primary-task' },
         flows: [{ name: 'software-change', app: 'development' }],
       },
       {
         name: 'todo',
         title: '待办',
         intent: '快速捕捉待办',
-        entry: 'flow:todo-capture',
+        entry: { target: 'flow:todo-capture', role: 'primary-create' },
         flows: [
           { name: 'todo-capture', app: 'todo' },
           { name: 'todo-item', app: 'todo' },

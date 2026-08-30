@@ -20,6 +20,7 @@ import type {
   SeedDetail,
 } from '../projection/fold/index';
 import type { DefinitionSeededDetail } from './meta';
+import { validateApplicationEntryReachability } from './application-entry/reachability';
 import {
   parseApplicationDefinition,
   parseCapabilityDefinition,
@@ -158,6 +159,7 @@ export function parseApplicationBundle(input: unknown): ApplicationBundle {
       }
     }
   }
+  validateApplicationEntryReachability(applications, flows, seed.detail.instances);
 
   return {
     schema: APPLICATION_BUNDLE_SCHEMA,

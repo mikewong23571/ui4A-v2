@@ -87,13 +87,13 @@ describe('chat situation adapter', () => {
           name: 'development',
           title: 'Development',
           intent: 'Develop software',
-          entry: 'flow:software-change',
+          entry: { target: 'flow:software-change', role: 'primary-task' },
         },
         publishing: {
           name: 'publishing',
           title: 'Publishing',
           intent: 'Publish content',
-          entry: 'flow:article-drafting',
+          entry: { target: 'flow:article-drafting', role: 'primary-create' },
         },
       }),
     ).toBe('articles');
@@ -192,12 +192,17 @@ describe('(D51-窄披露) prompt 披露输入', () => {
     // 导航落点与披露 scope 出自同一 situation(route 的 runAgent options:
     // app=situation.scope, startRel=startRelFromSituation(situation))。
     const startRel = startRelFromSituation(situation, {
-      default: { name: 'default', title: 'Default', intent: 'overview', entry: 'overview' },
+      default: {
+        name: 'default',
+        title: 'Default',
+        intent: 'overview',
+        entry: { target: 'overview', role: 'primary-collection' },
+      },
       publishing: {
         name: 'publishing',
         title: 'Publishing',
         intent: 'publish',
-        entry: 'articles',
+        entry: { target: 'articles', role: 'primary-collection' },
       },
     });
     expect(startRel).toBe('overview');

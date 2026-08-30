@@ -2,44 +2,44 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "ui4a-walkthrough",
-    "version": 7
+    "version": 8
   },
   "applications": [
     {
       "name": "default",
       "title": "默认应用",
       "intent": "归一化兜底:未显式声明归属的 flow 统一落在这里(parse 缺省 app=default)。boot seed 保证其始终激活,是 app-known 不变式的地板——不承载具体业务语义。",
-      "entry": "flow:article-drafting"
+      "cognitive": { "version": 1, "traits": ["system-fallback"] }
     },
     {
       "name": "publishing",
       "title": "内容发布",
       "intent": "内容起草与发布:三步向导起草文章并发布,发布后管理其状态(下线/归档/重新发布)。",
-      "entry": "flow:article-drafting"
+      "entry": { "target": "flow:article-drafting", "role": "primary-create" }
     },
     {
       "name": "community",
       "title": "社区互动",
       "intent": "评论与社区互动:读者评论进入审核队列,经人工裁决通过或驳回。",
-      "entry": "comments"
+      "entry": { "target": "comments", "role": "primary-collection" }
     },
     {
       "name": "development",
       "title": "软件实施",
       "intent": "把受权的软件变更任务交给隔离 Coding Capability Executor，查看进度、测试与结果，并由人类接受或驳回。",
-      "entry": "flow:software-change"
+      "entry": { "target": "flow:software-change", "role": "primary-task" }
     },
     {
       "name": "editorial",
       "title": "编辑写作",
       "intent": "把有来源约束的写作 Brief 交给 Writing Agent，查看进度、文档、引用与渲染证据，再由人类接受或驳回；接受不等于发布。",
-      "entry": "flow:writing-request"
+      "entry": { "target": "flow:writing-request", "role": "primary-task" }
     },
     {
       "name": "governance",
       "title": "Agent 治理",
       "intent": "把自然语言专业化需求交给 Agent Definition Author，生成可机械验证的定义 Draft、示例和 Eval corpus；只有人类审批才能激活版本。",
-      "entry": "meta/flows"
+      "entry": { "target": "flow:agent-definition-authoring", "role": "primary-task" }
     }
   ],
   "capabilities": [
