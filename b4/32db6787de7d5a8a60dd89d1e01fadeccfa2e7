@@ -1,0 +1,4 @@
+T39 G11 Red data matrix for eight installed Applications plus future fixture.
+
+Verified by orchestrator:
+- 8 expected failures, 3 contract assertions passed
