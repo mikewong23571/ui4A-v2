@@ -68,13 +68,13 @@ describe('explicit URL navigation', () => {
       ),
     ).toEqual({
       label: '在 meta 中编辑此定义',
-      href: '/meta/flow/release%20flow?scope=publishing&thread=release-1',
+      href: '/meta/entity?rel=meta%2Fflow%3Arelease+flow&scope=publishing&thread=release-1',
     });
     expect(
       crossSiteFlowBridge('/canvas?focus=flow%3Aarticle-drafting', 'flow:article-drafting'),
     ).toEqual({
       label: '在 meta 中编辑此定义',
-      href: '/meta/flow/article-drafting',
+      href: '/meta/entity?rel=meta%2Fflow%3Aarticle-drafting',
     });
     expect(
       crossSiteFlowBridge(
@@ -83,14 +83,14 @@ describe('explicit URL navigation', () => {
       ),
     ).toEqual({
       label: '在 meta 中编辑此定义',
-      href: '/meta/flow/article-drafting',
+      href: '/meta/entity?rel=meta%2Fflow%3Aarticle-drafting',
     });
   });
 
   it('derives the meta-to-workstation bridge from an exact route or canonical meta focus', () => {
     expect(
       crossSiteFlowBridge(
-        '/meta/flow/article-drafting?scope=publishing&thread=release-1',
+        '/meta/entity?rel=meta%2Fflow%3Aarticle-drafting&scope=publishing&thread=release-1',
         'meta/flow:article-drafting',
       ),
     ).toEqual({

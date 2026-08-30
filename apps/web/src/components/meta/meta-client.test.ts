@@ -109,4 +109,65 @@ describe('Meta browser client', () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it('invalidates authorized exact, collection, and dashboard dependencies after a successful write', async () => {
+    const scope = 'governance';
+    const revision = 'cache-invalidation-v1';
+    const exactRel = 'meta/activation:cache-invalidation-a1';
+    const collectionRel = 'meta/activations';
+    const dashboardCollectionRel = 'meta/drafts';
+    const entityForRel = (rel: string): SirenEntity => ({
+      class: rel === exactRel ? ['meta', 'activation'] : ['collection', rel],
+      properties: { rel },
+      actions:
+        rel === exactRel
+          ? [
+              {
+                name: 'approve',
+                title: 'Approve',
+                method: 'POST',
+                href: '/_meta/api/exec',
+                fields: { type: 'object', properties: {} },
+              },
+            ]
+          : [],
+      links: [],
+      'guard-results': [],
+    });
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return new Response(JSON.stringify({ entity: entityForRel(exactRel) }), { status: 200 });
+      }
+      const rel = new URL(String(input), 'http://ui4a.local').searchParams.get('rel');
+      return new Response(JSON.stringify(entityForRel(rel ?? 'missing')), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchMetaEntity(exactRel, scope, { revision });
+    await fetchMetaEntity(collectionRel, scope, { revision });
+    await fetchMetaEntity(dashboardCollectionRel, scope, { revision });
+    await fetchMetaEntity(exactRel, 'publishing', { revision });
+
+    await execMetaAction({ rel: exactRel, action: 'approve', scope });
+
+    await fetchMetaEntity(exactRel, scope, { revision });
+    await fetchMetaEntity(collectionRel, scope, { revision });
+    await fetchMetaEntity(dashboardCollectionRel, scope, { revision });
+    await fetchMetaEntity(exactRel, 'publishing', { revision });
+
+    const getRequests = (fetchMock.mock.calls as unknown as [string, RequestInit?][]).flatMap(
+      ([input, init]) =>
+        init?.method === 'POST' ? [] : [new URL(String(input), 'http://ui4a.local')],
+    );
+    const reads = (rel: string, requestedScope: string) =>
+      getRequests.filter(
+        (request) =>
+          request.searchParams.get('rel') === rel &&
+          request.searchParams.get('scope') === requestedScope,
+      );
+    expect(reads(exactRel, scope)).toHaveLength(3);
+    expect(reads(collectionRel, scope)).toHaveLength(2);
+    expect(reads(dashboardCollectionRel, scope)).toHaveLength(2);
+    expect(reads(exactRel, 'publishing')).toHaveLength(1);
+  });
 });

@@ -12,13 +12,24 @@ describe('client presence change reporter', () => {
       thread: 't1',
       focus: null,
     });
-    expect(presenceObservationForLocation('/meta/flow/article-drafting')).toMatchObject({
+    expect(
+      presenceObservationForLocation(
+        '/meta/entity?rel=meta%2Fflow%3Aarticle-drafting&scope=governance',
+      ),
+    ).toMatchObject({
       site: 'meta',
+      scope: 'governance',
       focus: 'meta/flow:article-drafting',
     });
-    expect(presenceObservationForLocation('/meta/flow/release%20flow')).toMatchObject({
+    expect(
+      presenceObservationForLocation('/meta/entity?rel=meta%2Fflow%3Arelease+flow'),
+    ).toMatchObject({
       site: 'meta',
       focus: 'meta/flow:release flow',
+    });
+    expect(presenceObservationForLocation('/meta/flow/article-drafting')).toMatchObject({
+      site: 'meta',
+      focus: null,
     });
     expect(presenceObservationForLocation('/canvas?focus=post%3Aone')).toEqual({
       site: 'workstation',
