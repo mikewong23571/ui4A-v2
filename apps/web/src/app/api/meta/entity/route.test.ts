@@ -128,10 +128,11 @@ describe('GET /_meta/api/entity', () => {
     expect(entity.actions.map((action) => action.name)).toEqual(['revise', 'deprecate']);
     expect(entity.actions[0]?.href).toBe('/_meta/api/exec');
     expect(
-      (entity as unknown as { links: { rel: string[]; href: string }[] }).links,
+      (entity as unknown as { links: { rel: string[]; href: string; title?: string }[] }).links,
     ).toContainEqual({
       rel: ['application'],
       href: '/_meta/api/entity?rel=meta/application:publishing',
+      title: '内容发布',
     });
   });
 

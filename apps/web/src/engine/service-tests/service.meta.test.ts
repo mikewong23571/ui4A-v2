@@ -218,7 +218,11 @@ describe('capabilities 面(T13 Phase C Task 3;spec 架构决定 3)', () => {
     expect(entity?.actions).toEqual([]);
     expect(entity?.links).toEqual([
       { rel: ['self'], href: '/_meta/api/entity?rel=meta/capability:draft' },
-      { rel: ['application'], href: '/_meta/api/entity?rel=meta/application:publishing' },
+      {
+        rel: ['application'],
+        href: '/_meta/api/entity?rel=meta/application:publishing',
+        title: '内容发布',
+      },
     ]);
     expect(await engine.getMetaEntity('meta/capability:ghost')).toBeUndefined();
   });
