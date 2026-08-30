@@ -206,9 +206,11 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     const activationHref = '/meta/entity?rel=meta%2Factivation%3Aa1';
     const activationMember = activationMembers.locator(`a[href="${activationHref}"]`);
     await expect(activationMember).toHaveCount(1);
-    await expect(activationMember.getByText('meta/activation:a1', { exact: true })).toBeVisible();
-    await expect(activationMember.getByText('status: pending-approval')).toBeVisible();
-    await expect(activationMember.getByText('version: 2')).toBeVisible();
+    await expect(activationMember.getByText('article-drafting', { exact: true })).toBeVisible();
+    await expect(activationMember.getByText('状态', { exact: true })).toBeVisible();
+    await expect(activationMember.getByText('pending-approval', { exact: true })).toBeVisible();
+    await expect(activationMember.getByText('候选版本', { exact: true })).toBeVisible();
+    await expect(activationMember.getByText('2', { exact: true })).toBeVisible();
     await activationMember.click();
 
     // 详情:checks 八行全过;机械 diff 可见且含 pin(react-diff-view 内建渲染,验收 6)
@@ -224,12 +226,26 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     await expect(diffSection).toContainText('置顶');
     await expect(diffSection).toContainText('"to":"done"');
 
-    // approve(renderer 恒 human;guard actor-is-human 对 BIOS 面放行)
-    await page.click('button[data-action="approve"]');
+    // approve(renderer 恒 human;高风险合同先显式 staging,确认后才发唯一决策 POST)
+    const decisionPosts: string[] = [];
+    page.on('request', (request) => {
+      if (request.method() !== 'POST') return;
+      if (new URL(request.url()).pathname === '/_meta/api/exec') {
+        decisionPosts.push(request.postData() ?? '');
+      }
+    });
+    await page.getByRole('button', { name: '批准', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('已请求“批准”，尚未执行');
+    expect(decisionPosts, '高风险批准首次点击只 staging,不得执行').toHaveLength(0);
+
+    await page.getByRole('button', { name: '确认并执行批准', exact: true }).click();
     await expect(page.locator('button[data-action="approve"]')).toHaveCount(0);
-    await expect(
-      page.locator('section[aria-label="属性"] tbody tr', { hasText: 'approved' }).first(),
-    ).toBeVisible();
+    expect(decisionPosts, '确认后只允许一次批准决策 POST').toHaveLength(1);
+    expect(JSON.parse(decisionPosts[0]!)).toEqual({
+      rel: 'meta/activation:a1',
+      action: 'approve',
+    });
+    await expect(page.getByRole('status', { name: '执行结果' })).toContainText('approved');
 
     // 事件链:definition-activated(actor=human、principal=local-user、channel=bios)
     const activated = eventsOf(await getEvents(), 'definition-activated');
@@ -408,5 +424,6 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
       principal: AGENT_PRINCIPAL,
       channel: 'e2e',
     });
+    expect(decisionPosts, '整条 S2 的浏览器批准决策只允许一次 POST').toHaveLength(1);
   });
 });
