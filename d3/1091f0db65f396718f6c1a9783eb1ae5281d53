@@ -1,0 +1,4 @@
+T39 F3 Red contracts for guard, two-stage decisions, inline outcomes, and projection sync.
+
+Verified by orchestrator:
+- 4 expected failures, 10 existing lifecycle assertions passed
