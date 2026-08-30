@@ -1,4 +1,4 @@
-# T39 Meta 合同驱动治理体验 — Plan
+# T39 Meta 合同驱动治理与 Application 入口体验 — Plan
 
 > 固定评审项：无每 Application、每实体类型、具体 rel/action 名展示分支；Trait 表达语义，
 > Hint 表达有界展示偏好；Hint 不包含 CSS、像素、组件名或事实值；人类与 Agent 消费同一
@@ -12,8 +12,9 @@
 - [ ] Task A3：验证 overview hint 复用 T38 `presentation.fields` 的可行性，列出可复用字段、缺口和禁止建立的平行 schema。
 - [ ] Task A4：验证 RJSF 对 `human-authored`、`client-generated`、`server-owned` 字段的过滤、预填、校验和提交行为，重点复现 Draft payload 缺控件与 policyScope 暴露。
 - [ ] Task A5：核对 canonical `/meta/entity` 与 Flow/Activation/Capability 友好路由的差异，形成删除双路径的迁移清单。
-- [ ] Task A6：产出 `architecture.md`，定型版本化 Trait/Hint 类型、归属模块、合法值、fallback、缓存失效、字段输入归属和迁移顺序；如需偏离 DECISIONS，先新增决定。
-- [ ] Task A7：Phase Verification & Checkpoint：复跑 probe，确认没有生产代码依赖 disposable spike，并完成“换 Application”架构自查。
+- [ ] Task A6：验证 Application title/intent 的 binding-only 来源、entry/surface roles、canonical 去重、collection 归属与用户 pin 边界；禁止用 `meta/application:*` 隐式跨站供数。
+- [ ] Task A7：产出 `architecture.md`，定型版本化 Trait/Hint、字段输入归属、Application experience metadata、fallback、缓存失效和迁移顺序；如需偏离 DECISIONS，先新增决定。
+- [ ] Task A8：Phase Verification & Checkpoint：复跑 probe，确认没有生产代码依赖 disposable spike，并完成“换 Application”架构自查。
 
 ## Phase B：Trait/Hint 纯合同与机械治理
 
@@ -67,15 +68,25 @@
 - [ ] Task F6：浏览器验证 US6、US7、US9：两次点击内完成决策、无需 raw、sticky 不遮挡、关系任务化。
 - [ ] Task F7：Phase Verification & Checkpoint：human-only approval、fresh-read、stale/CAS、响应式和 Agent parity 回归。
 
-## Phase G：全故事终审与常驻治理
+## Phase G：Application 书架与默认组合面
 
-- [ ] Task G1：逐一执行 US1–US10 浏览器实操；每个故事记录前态、关键交互态、完成态截图和 DOM/URL/焦点断言。
-- [ ] Task G2：使用 CLI 或 HTTP 合同探针复跑每个故事的 Agent 同门路径，比较 entity、links、actions、guards、schema、Trait 和 Hint。
-- [ ] Task G3：执行 390px 全流程视觉审核：Dashboard、Application、Flow、Draft form、Activation decision、错误恢复。
-- [ ] Task G4：执行“换 Application”终审：新增 fixture Application/surface 仅改声明数据，UI 自动获得分组、概览、关系和动作效果。
-- [ ] Task G5：扫描范围内源码，确认无 Application 名、具体 rel/action、固定 surface、状态文案映射和 CSS-in-definition。
-- [ ] Task G6：将重复且低误报的坏模式晋升为常驻测试/governance；删除 disposable spike 和临时证据脚本。
-- [ ] Task G7：运行 `pnpm format:check`、`pnpm governance:strict`、`pnpm check`、`CI=true pnpm e2e`、相关 invariants。
-- [ ] Task G8：汇总 `review.md`，逐故事给出 pass/pass-with-observations/fail、截图路径、DOM 事实和剩余观察。
-- [ ] Task G9：Track Verification & Checkpoint：确认系统可运行、工作区无临时产物、用户故事和北极星门禁全部闭环。
+- [ ] Task G1：Red——为 Application discoverability/system-fallback、entry role、surface traits/hints、entry 归属不变式和非法跨 Meta entry 编写 shared/engine 投影测试。
+- [ ] Task G2：Red——为 Application header 的 binding-only title/intent、surface role 排序、空态、desktop/narrow density 和 canonical entity/action 去重编写组合内核测试。
+- [ ] Task G3：Green——扩展 ApplicationDefinition/Sitemap 投影与通用 `workspace:app:*` 组合推导；复用既有 Presentation 机器，不新增 per-app 页面。
+- [ ] Task G4：Red/Green——让 Flow `collections` 声明提供无 append collection 的归属，修复 comments→default；增加可展示 seed/instance 字段必须有定义/role 的治理断言。
+- [ ] Task G5：Red/Green——Application 书架消费 discoverability/title/intent；default 隐藏不再比较名字；用户 pin/recent 仅走用户级偏好。
+- [ ] Task G6：修订八个 Application 声明数据：publishing 的 create/output、community 的 body/review queue、development/editorial 的 task/history、governance 的 business entry、todo/ideas 的 transient creator、default 的 system fallback。
+- [ ] Task G7：浏览器验证 US11–US17，逐 app 检查 title/intent、区域顺序、无重复动作、显式跨站、空态和 390px 密度。
+- [ ] Task G8：Phase Verification & Checkpoint：focused tests、D51/plane isolation、Presentation replay、governance 与八 Application 合同探针。
 
+## Phase H：全故事终审与常驻治理
+
+- [ ] Task H1：逐一执行 US1–US18 浏览器实操；每个故事记录前态、关键交互态、完成态截图和 DOM/URL/焦点断言。
+- [ ] Task H2：使用 CLI 或 HTTP 合同探针复跑每个故事的 Agent 同门路径，比较 entity、links、actions、guards、schema、Trait 和 Hint。
+- [ ] Task H3：执行 390px 全流程视觉审核：Meta Dashboard、Application 书架、八个 Application landing、Flow、Draft form、Activation decision、错误恢复。
+- [ ] Task H4：执行“换 Application”终审：新增第九个 fixture Application/surface 仅改声明数据，UI 自动获得书架、landing、分组、概览、关系、动作与窄屏效果。
+- [ ] Task H5：扫描范围内源码，确认无 Application 名、具体 rel/action、固定 surface、状态文案映射和 CSS-in-definition。
+- [ ] Task H6：将重复且低误报的坏模式晋升为常驻测试/governance；删除 disposable spike 和临时证据脚本。
+- [ ] Task H7：运行 `pnpm format:check`、`pnpm governance:strict`、`pnpm check`、`CI=true pnpm e2e`、相关 invariants。
+- [ ] Task H8：汇总 `review.md`，逐故事给出 pass/pass-with-observations/fail、截图路径、DOM 事实和剩余观察。
+- [ ] Task H9：Track Verification & Checkpoint：确认系统可运行、工作区无临时产物、用户故事和北极星门禁全部闭环。

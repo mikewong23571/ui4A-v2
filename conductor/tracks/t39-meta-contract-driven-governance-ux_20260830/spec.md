@@ -1,4 +1,4 @@
-# T39 Meta 合同驱动治理体验 — Specification
+# T39 Meta 合同驱动治理与 Application 入口体验 — Specification
 
 ## 类型
 
@@ -14,7 +14,8 @@ Feature：Meta Human Control Plane 的合同驱动 UI/UX 收敛。
 3. Draft 表单和 Scope 呈现暴露部分协议机械细节，未清楚区分人类输入、客户端生成字段、
    服务端字段和注意力镜头。
 
-本 Track 不重做业务引擎，不创建传统的每类型页面。目标是引入可治理的“语义 Trait +
+本 Track 不重做业务引擎，不创建传统的每类型页面。范围同时包括 Meta Human Control Plane
+以及由 Meta/Application 定义驱动的工作站 Application 书架与默认组合面。目标是引入可治理的“语义 Trait +
 有界 Hint”合同，让 Meta sitemap、entity projection 和 Renderer 从同一声明决定：
 
 - 什么是定义资产、候选、责任点或系统对象；
@@ -187,6 +188,26 @@ Hint 必须是版本化白名单，只引用已声明字段、links、actions �
 - canonical 与旧路由不得形成双实现；
 - scope/attention 数据不得进入 authorization 函数签名。
 
+### FR11 Application 书架与定义事实
+
+- Application 总入口必须展示定义 title，并以可访问方式披露 intent；不得只把 intent 放在鼠标 tooltip。
+- Application 是否进入人类书架由 Meta trait 声明；`default` 等系统归属地板不得在 React 中按名字隐藏。
+- Meta 声明只提供 discoverability、默认任务角色和优先级；用户 pin、最近使用和个人顺序属于用户级 Presentation/Sidecar。
+- 点击 Application 后，landing 首屏必须显示 Application title、intent 和当前视角，不得只显示“共同注视”和机器 scope。
+- Application title/intent 必须以 binding-only 方式引用定义事实，不得复制为 Surface literal，也不得通过隐式读取 `meta/application:*` 跨站偷渡。
+- workstation-discoverable Application 的 entry 必须是归属自身的 business surface；Meta rel 只能通过显式 bridge 到达。
+
+### FR12 Application Surface Trait/Hint 与组合
+
+- Application entry 从单一 rel 升级为有语义的入口声明，至少表达 target、`primary-create | primary-task | primary-collection | resume` role、title/description 和空态 posture。
+- Sitemap/Application surface 可声明 `work-queue`、`review-queue`、`output-catalog`、`task-history`、`human-responsibility`、`audit-only` 等稳定 trait。
+- 有界 hint 可声明 priority/order、desktop/narrow density、空态 posture、heading 来源和 responsibility posture；不得声明 CSS、像素、组件名或自由布局树。
+- Collection 归属优先从 Flow 的 `collections`/append 声明推导；不得把无 append 的业务 collection 静默归到 default。
+- 组合 sources 解析后按 canonical entity rel 去重；同一实体和 action 在 Application 首屏只出现一次，保留姿态由 surface role 决定。
+- region heading 可按 hint 使用 surface title 或 entity identity；creator/capture 入口不得因上次输入变成业务对象标题。
+- 窄屏 density 由通用 hint/词汇退化，390px 下 table 不得靠压缩和截断维持“无横向滚动”。
+- 实例/seed 中需要展示的业务字段必须存在定义与 presentation role；未声明事实不得靠页面特判或 generic dump 补救。
+
 ## 用户故事与 UI/UX 验收
 
 ### US1 治理者进入 Meta 首页
@@ -327,12 +348,114 @@ Then：
 - UI 展示效果的变化只需修改声明或通用词汇；
 - `pnpm governance:strict`、`pnpm check` 和相关 E2E 全绿。
 
+### US11 Application 书架说明应用而不是切换 Scope
+
+作为工作者，我想从书架理解每个 Application 的用途并进入常用应用，而不是面对一排同款 scope chip。
+
+Given 安装七个业务 Application 和一个 default 归属地板；When 进入 `/`；Then：
+
+- 业务 Application 的 title 与一行 intent 可由键盘和触屏读取，不依赖 hover；
+- default 依据 `system-fallback/non-discoverable` trait 不进入书架，React 不检查名字；
+- 用户 pin/recent 可调整顺序但不修改 Meta 定义；无个人偏好时使用声明优先级；
+- 视觉效果：常用应用可见，更多应用折叠不再只按安装顺序藏起最后一项；
+- 点击后 landing 首屏显示 Application title/intent，处境 chip 只作辅助；
+- Agent 从同一 sitemap 读取 discoverability、intent、entry 与 surface roles。
+
+### US12 内容发布入口兼顾产物与创建
+
+作为内容工作者，我想进入“内容发布”后同时看到最近产物和明确的发布入口，而不是先滚过二十行文章。
+
+Given articles 超过一页且 article-drafting 可用；When 进入 publishing；Then：
+
+- 首屏显示“内容发布”与 intent；
+- article-drafting 以 `primary-create` 姿态在首屏可见，articles 以 `output-catalog` 呈现；
+- region 标题使用“发布文章/文章”等声明标题，不显示 raw `articles` 或 `article-drafting:main`；
+- 桌面 collection 可保持密集表，390px 自动退化 compact cards，标题/状态/主要动作仍可读；
+- 创建入口与分页列表互不复制，Agent 同门可发现相同 roles/hints。
+
+### US13 社区审核先展示决策事实
+
+作为审核者，我想在通过或驳回前先看到评论正文，以便做负责任的决定。
+
+Given comment seed 含 body 且存在 pending/approved；When 进入 community；Then：
+
+- 每个待审成员的正文是主要内容，状态与通过/驳回紧邻；
+- body 来自 Flow 字段声明的 `primary-content + overview`，不是 Renderer 特判；
+- comments 归属 community，不再作为 default surface；
+- pending 可由声明优先或筛选，已决成员视觉弱化；
+- 390px 使用 decision-list/card，不压缩为空白列；
+- 无需进入详情即可完成审核，Agent 读取同一 body、状态和 actions。
+
+### US14 软件实施与编辑写作不重复任务
+
+作为实施者或编辑，我想在入口只看到一次当前任务和一次主要动作，以免不知道应该操作哪一份。
+
+Given collection member 与 entry alias 解析到同一 canonical entity；When 进入 development 或 editorial；Then：
+
+- 同一实体只呈现一次，“开始编码实施/开始写作”只出现一个可提交控件；
+- entry 以 `primary-task` 呈现，collection 作为历史/队列补充；
+- action fields 具有人话 title/description，repository/sources 等引用使用合同选择器；
+- running/review-ready 状态展示 Agent Run、artifact、tests/引用/render evidence 的声明链接；
+- 接受/驳回在责任点出现，不由 Application 页面写专属组件；
+- 去重按 canonical rel，不按标题或文本猜测。
+
+### US15 Agent 治理从业务入口显式跨到 Meta
+
+作为 Agent 定义维护者，我想先描述专业 Agent 并生成 Draft，再显式进入 Meta 审查，而不是进入全局 Flow 定义表。
+
+Given governance Application 归属 `agent-definition-authoring`；When 进入 governance；Then：
+
+- landing entry 是本 app 的 business flow，不是 `meta/flows`；
+- 首屏显示“描述专业 Agent”和生成 Draft 的动作；
+- 不展示其他 Application 的 Flow 修订/废弃动作；
+- Draft 生成后出现显式、保留视角的 Meta bridge；进入 Meta 是可辨识的站点切换；
+- 增加不变式阻止 discoverable workstation Application 以 Meta rel 作为隐式 entry；
+- Agent 经同一业务 flow 生成候选，human-only approval 仍只在 Meta 完成。
+
+### US16 待办与想法的捕捉入口保持任务身份
+
+作为记录者，我想始终看到“添加待办/捕捉想法”，而不是上一次输入的对象名或实例 rel。
+
+Given capture flow 在 capture/recorded 状态切换；When 进入 todo 或 ideas；Then：
+
+- creator region heading 使用 surface title，不受实例 identity 或上次输入影响；
+- collection 使用 `work-queue`，capture flow 使用 `primary-create/transient-entry`；
+- 空集合显示声明驱动的任务空态并提升 capture CTA；
+- todo 可优先 open、ideas 可区分 captured/developing/matured，facet 来自声明；
+- 视觉效果不出现 raw `todos`、`ideas`、`idea-capture:main` 作为主标题；
+- 新建后列表与 creator 原位更新，不把同一业务语义重复成两张卡。
+
+### US17 default 只作系统归属地板
+
+作为平台守护者，我想让 default 保持定义归一化职责，而不生成混杂业务的 Application 页面。
+
+Then：
+
+- default 不进入业务书架，也不生成正常 workstation landing；
+- direct audit 可说明它是 system fallback，但不组合 comments 与 publishing entry；
+- comments 由 comment Flow 的 collection 声明归属 community；
+- entry 归属不变式拒绝 default 跨到 publishing；
+- 规则来自 trait/归属校验，不在 React 中比较字符串 `default`。
+
+### US18 八 Application 与未来第九个应用横扫
+
+作为平台守护者，我想证明优秀 Application 页面来自 Meta 声明，而不是七套传统页面。
+
+Then：
+
+- default/publishing/community/development/editorial/governance/todo/ideas 逐一通过桌面与 390px 浏览器审核；
+- 页面都显示 Application title/intent，surface role、顺序、空态、密度和 heading 与声明一致；
+- 无重复 canonical entity/action、无隐式跨 Meta、无未声明业务字段缺席；
+- 新增第九个 fixture Application 只修改定义数据即可获得书架、landing、entry、queue/output、空态与窄屏效果；
+- 范围内新增/修改通用代码不出现八个 Application 名或具体业务 rel/action；
+- CLI/HTTP 探针发现与人类页面同形的 Application experience metadata。
+
 ## Non-Functional Requirements
 
 - 不新增 UI framework、state store、router、数据库或业务事件族。
 - 优先复用 Siren projection、presentation field roles、Renderer registry、RJSF、React Flow、diff 和 shadcn。
 - Trait/Hint 解析纯函数化并在正确 package 边界测试。
-- Meta Renderer 保持零 LLM、零 Sidecar；Collection 首屏不进行成员 exact N+1。
+- Meta Renderer 保持零 LLM、零 Sidecar；Application landing 仍走既有 Presentation 机器；Collection 首屏不进行成员 exact N+1。
 - 新代码覆盖率目标不低于 80%，安全和授权边界 100%。
 - 遵守 GR1–GR5、D51、D53；文件增长触线时按功能边界拆解，不登记新例外。
 - 实施前必须进行 disposable spike，验证合同归属、overview 复用、canonical 迁移、RJSF 字段归属和非法 Hint fallback。
@@ -351,9 +474,8 @@ Then：
 - 修改业务 Flow、事件 fold、定义激活语义或 D51 授权模型。
 - 将 Meta 接入 Presentation Agent、Recipe 或 Sidecar。
 - AI 生成审批结论或替代 human approval。
-- workstation、Canvas 或 Chat 的整体视觉改版。
+- workstation 首页、通用 Canvas 或 Chat 的整体视觉改版；Application 书架与 `workspace:app:*` 默认组合在范围内。
 - 建立 raw 独立站点。
 - 自由布局 DSL、页面设计器、CSS-in-definition。
 - 每实体或每 Application 的定制 React 页面。
 - 新增 UI 框架、状态库或第二套路由器。
-
