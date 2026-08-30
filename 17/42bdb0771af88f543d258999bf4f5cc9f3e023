@@ -1,0 +1,8 @@
+T39 D5 browser validation repair: live Meta cognition and overview projection.
+
+Verified by orchestrator:
+- unit: 3 files, 31 tests
+- db: 4 files, 19 tests
+- engine/web typecheck
+- governance strict
+- Browser US1/US5/US8 desktop and 390px, isolated pending Activation, Agent sitemap parity
