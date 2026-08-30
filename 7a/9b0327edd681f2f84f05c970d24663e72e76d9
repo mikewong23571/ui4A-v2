@@ -1,0 +1,4 @@
+T39 F1 Red contracts for trait-driven responsibility, three-layer disclosure, and relation hierarchy.
+
+Verified by orchestrator:
+- 4 expected failures in generic future entity rendering
