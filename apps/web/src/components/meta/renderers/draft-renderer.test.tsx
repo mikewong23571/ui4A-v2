@@ -269,6 +269,49 @@ describe('Draft Meta review responsibility', () => {
     expect(document.querySelector('button[type="submit"][data-action="revise"]')).toBeTruthy();
   });
 
+  it('prefills the unconstrained revise payload as editable JSON and submits the parsed value', async () => {
+    const current = exactDraft();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(current), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ entity: current }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <MetaEntityRenderer rel="draft:d1" navigation={{ scope: 'governance' }} entity={current} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Revise Draft' }));
+    const payload = (await screen.findByLabelText(/payload/i)) as HTMLTextAreaElement;
+    expect(payload.tagName).toBe('TEXTAREA');
+    expect(JSON.parse(payload.value)).toEqual({ name: 'writer', version: 2 });
+    fireEvent.change(payload, { target: { value: '{"name":"writer-v3","version":3}' } });
+    fireEvent.change(screen.getByLabelText(/targetBaseVersion/i), { target: { value: '7' } });
+    fireEvent.click(document.querySelector('button[type="submit"][data-action="revise"]')!);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const [, request] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const body = JSON.parse(String(request.body)) as {
+      rel: string;
+      action: string;
+      params: Record<string, unknown>;
+    };
+    expect(body).toMatchObject({
+      rel: 'draft:d1',
+      action: 'revise',
+      params: {
+        baseVersion: 2,
+        targetBaseVersion: '7',
+        payload: { name: 'writer-v3', version: 3 },
+      },
+    });
+    expect(typeof body.params.commandId).toBe('string');
+  });
+
   it('makes existing Drafts the collection path and keeps raw creation behind a secondary disclosure', () => {
     render(
       <MetaEntityRenderer
@@ -420,7 +463,11 @@ describe('Draft Meta review responsibility', () => {
       <MetaEntityRenderer rel="draft:d1" navigation={{ scope: 'governance' }} entity={entity} />,
     );
 
-    expect(await screen.findByText(/Human-only decision/)).toBeTruthy();
+    const decisionTitle = await screen.findByText(/Human-only decision/);
+    expect(decisionTitle).toBeTruthy();
+    const decision = decisionTitle.parentElement!;
+    expect(decision.className.split(' ')).toContain('sm:sticky');
+    expect(decision.className.split(' ')).not.toContain('sticky');
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
 
     await waitFor(() => expect(screen.getByText(/\[stale-action\]/)).toBeTruthy());

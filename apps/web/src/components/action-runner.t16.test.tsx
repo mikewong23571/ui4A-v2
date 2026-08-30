@@ -138,6 +138,54 @@ describe('ActionRunner T16 schema-form interaction', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('schema-invalid');
     expect(screen.getByRole('alert').textContent).toContain('/category');
   });
+
+  it('derives a JSON textarea for any unconstrained caller field and submits parsed JSON', async () => {
+    const execFn = acceptedExec();
+    const futureAction: SirenAction = {
+      name: 'apply-extension',
+      title: 'Apply extension',
+      method: 'POST',
+      href: '/api/exec',
+      fields: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['extension'],
+        properties: {
+          extension: {},
+          note: { type: 'string' },
+        },
+      },
+    };
+    render(
+      <ActionRunner
+        rel="future:f1"
+        action={futureAction}
+        submit={createDirectActionSubmit(execFn, { clientParams: () => ({}) })}
+        prefill={{ extension: { mode: 'preview', values: [1, 2] }, note: 'keep' }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply extension' }));
+    const json = (await screen.findByLabelText(/extension/)) as HTMLTextAreaElement;
+    expect(json.tagName).toBe('TEXTAREA');
+    expect(JSON.parse(json.value)).toEqual({ mode: 'preview', values: [1, 2] });
+
+    fireEvent.change(json, { target: { value: '{' } });
+    fireEvent.click(submitButton('apply-extension'));
+    expect((await screen.findByRole('alert')).textContent).toContain('合法 JSON');
+    expect(execFn).not.toHaveBeenCalled();
+    expect(json.value).toBe('{');
+
+    fireEvent.change(json, { target: { value: '[{"kind":"future"}]' } });
+    fireEvent.click(submitButton('apply-extension'));
+
+    await waitFor(() => expect(execFn).toHaveBeenCalledTimes(1));
+    expect(execFn).toHaveBeenCalledWith({
+      rel: 'future:f1',
+      action: 'apply-extension',
+      params: { extension: [{ kind: 'future' }], note: 'keep' },
+    });
+  });
 });
 
 describe('ActionRunner T16 high-risk staging', () => {

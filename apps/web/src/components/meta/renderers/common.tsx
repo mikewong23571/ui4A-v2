@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
@@ -176,17 +176,32 @@ export function SectionCard({ title, children }: { title: string; children: Reac
 
 export function RawContract({ entity }: { entity: SirenEntity }) {
   const [open, setOpen] = useState(false);
+  const summaryRef = useRef<HTMLElement>(null);
+
+  function toggleFromKeyboard(event: KeyboardEvent<HTMLElement>): void {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    setOpen((current) => !current);
+  }
+
+  function closeFromEscape(event: KeyboardEvent<HTMLDetailsElement>): void {
+    if (event.key !== 'Escape' || !open) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setOpen(false);
+    summaryRef.current?.focus();
+  }
+
   return (
-    <details
-      className="rounded-lg border bg-muted/20 p-4"
-      onToggle={(event) => setOpen(event.currentTarget.open)}
-    >
+    <details open={open} className="rounded-lg border bg-muted/20 p-4" onKeyDown={closeFromEscape}>
       <summary
+        ref={summaryRef}
         className="cursor-pointer text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         onClick={(event) => {
           event.preventDefault();
           setOpen((current) => !current);
         }}
+        onKeyDown={toggleFromKeyboard}
       >
         原始合同
       </summary>

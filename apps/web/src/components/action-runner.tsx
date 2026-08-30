@@ -14,9 +14,9 @@
  * - T9 Phase C:按钮走 shadcn Button;RJSF 只做模板层样式包装
  *   (FieldTemplate/字段错误样式 + 控件后代选择器外观),控件 id/原生
  *   select/textarea/label 关联/required 零改动。
- * - T14 Phase A(#4):prefill(当前实体实例字段值)同名预填 schema 声明的
- *   标量字段,用户确认而非重输;label 由 RJSF 缺省取 schema.title
- *   (field-definition 的人话标题),缺省回退机器名。
+ * - T14 Phase A(#4):prefill(当前实体实例字段值)同名预填 schema 声明字段,
+ *   标量沿用原生控件；精确 `{}` caller 字段机械投影为可编辑 JSON textarea,
+ *   提交前解析回真实 JSON；label 缺省回退合同字段名。
  */
 import Form from '@rjsf/core';
 import { ChevronDown } from 'lucide-react';
@@ -34,6 +34,11 @@ import { callerActionSchema, type SirenAction } from '@ui4a/engine';
 
 import { Button } from '@/components/ui/button';
 
+import {
+  initialActionFormData,
+  parseActionFormData,
+  projectActionFormSchema,
+} from './actions/action-json-fields';
 import type { ActionSubmit } from './actions/action-submit';
 import { rjsfValidator } from './rjsf-validator';
 
@@ -41,30 +46,6 @@ import { rjsfValidator } from './rjsf-validator';
 function schemaHasFields(schema: SirenAction['fields']): boolean {
   const properties = schema.properties as Record<string, unknown> | undefined;
   return properties !== undefined && Object.keys(properties).length > 0;
-}
-
-/**
- * 实例字段预填(T14 Phase A,#4):动作字段与当前实体 fields 同名时,以实例值
- * 作为表单初始值——用户确认而非重输。只取 schema 声明过、且实例值为标量
- * (string/number/boolean)的字段:合同外键交给 additionalProperties:false,
- * 非标量值不猜控件表示(零发明)。预填不改动值出处:提交仍以用户确认的
- * 参数为准,origin 由引擎按参数口径留痕。
- */
-function initialFormData(
-  schema: SirenAction['fields'],
-  prefill: Record<string, unknown> | undefined,
-): Record<string, unknown> | undefined {
-  if (prefill === undefined) return undefined;
-  const properties = schema.properties as Record<string, unknown> | undefined;
-  if (properties === undefined) return undefined;
-  const data: Record<string, unknown> = {};
-  for (const name of Object.keys(properties)) {
-    const value = prefill[name];
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-      data[name] = value;
-    }
-  }
-  return Object.keys(data).length > 0 ? data : undefined;
 }
 
 // ---- RJSF 模板层样式包装(T9 Phase C)-------------------------------------------
@@ -206,7 +187,9 @@ export function ActionRunner({
   prefill,
   tone,
 }: ActionRunnerProps) {
-  const formSchema = callerActionSchema(action.fields);
+  const callerSchema = callerActionSchema(action.fields);
+  const formProjection = projectActionFormSchema(callerSchema);
+  const formSchema = formProjection.schema;
   const hasFields = schemaHasFields(formSchema);
   const highRisk = action['requires-confirmation'] === 'high';
   const [submitting, setSubmitting] = useState(false);
@@ -279,6 +262,15 @@ export function ActionRunner({
       return;
     }
     void submit(params);
+  }
+
+  function handleProjectedFormSubmit(formData?: Record<string, unknown>): void {
+    const parsed = parseActionFormData(formData, formProjection.unconstrainedJsonFields);
+    if (!parsed.ok) {
+      setFailure(`[schema-invalid] ${parsed.reason}`);
+      return;
+    }
+    handleFormSubmit(parsed.params);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
@@ -394,9 +386,14 @@ export function ActionRunner({
               '_',
             )}
             schema={formSchema}
+            uiSchema={formProjection.uiSchema}
             validator={rjsfValidator}
-            // 实例字段预填(#4):同名标量字段以实例值起手,提交仍以用户确认的参数为准。
-            formData={initialFormData(formSchema, prefill)}
+            // Uncontrolled initial data keeps edits in place across local parse/server errors.
+            initialFormData={initialActionFormData(
+              callerSchema,
+              prefill,
+              formProjection.unconstrainedJsonFields,
+            )}
             templates={{
               FieldTemplate: RjsfFieldTemplate,
               FieldErrorTemplate: RjsfFieldErrorTemplate,
@@ -407,7 +404,7 @@ export function ActionRunner({
             omitExtraData
             liveOmit
             onSubmit={({ formData }) =>
-              handleFormSubmit(formData as Record<string, unknown> | undefined)
+              handleProjectedFormSubmit(formData as Record<string, unknown> | undefined)
             }
           >
             <div className="flex flex-wrap gap-2">

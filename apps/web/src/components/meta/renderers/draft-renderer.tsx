@@ -40,7 +40,7 @@ function DraftDecision({
       </Alert>
     );
   return (
-    <div className="sticky bottom-3 z-10 rounded-xl border bg-background/95 p-4 shadow-lg backdrop-blur">
+    <div className="rounded-xl border bg-background/95 p-4 shadow-lg backdrop-blur sm:sticky sm:bottom-3 sm:z-10">
       <p className="mb-3 text-sm font-medium">
         Human-only decision · 每次提交前重新读取当前 action
       </p>
