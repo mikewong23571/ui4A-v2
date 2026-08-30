@@ -112,6 +112,61 @@ describe('授权合同观察进入 LLM prompt', () => {
     expect(prompt).toContain('post:post-welcome');
   });
 
+  it('重启续跑只需当前 node 与结构化成功引用，不回放旧快照或 exec 参数', () => {
+    const oldEntity = instanceEntity({
+      rel: 'article-drafting:main',
+      flow: 'article-drafting',
+      node: 'basic-info',
+      fields: { title: 'OLD_WIZARD_INPUT_MUST_NOT_RETURN' },
+    });
+    const currentEntity = instanceEntity({
+      rel: 'article-drafting:main',
+      flow: 'article-drafting',
+      node: 'ready',
+      actions: [
+        {
+          ...nextAction,
+          name: 'publish',
+          title: '发布',
+        },
+      ],
+    });
+    const prompt = buildUserPrompt(
+      context({
+        currentRel: 'article-drafting:main',
+        entity: currentEntity,
+        observations: [
+          { rel: 'article-drafting:main', entity: oldEntity },
+          { rel: 'article-drafting:main', entity: currentEntity },
+        ],
+        trail: [
+          {
+            step: 1,
+            rel: 'article-drafting:main',
+            op: {
+              kind: 'exec',
+              action: 'next',
+              params: { title: 'VERBOSE_EXEC_PARAMS_MUST_NOT_RETURN' },
+            },
+            outcome: 'executed',
+            entity: {
+              rel: 'article-drafting:main',
+              class: ['flow-instance', 'article-drafting'],
+              node: 'ready',
+              actions: ['publish'],
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(prompt).toContain('"node": "ready"');
+    expect(prompt).toContain('"action": "next"');
+    expect(prompt).toContain('"result"');
+    expect(prompt).not.toContain('OLD_WIZARD_INPUT_MUST_NOT_RETURN');
+    expect(prompt).not.toContain('VERBOSE_EXEC_PARAMS_MUST_NOT_RETURN');
+  });
+
   it('prompt 同时披露目标约束、facts/links/actions/guards 与 app-bounded capability/action 处境', () => {
     const entity = instanceEntity({
       rel: 'post:first-post',

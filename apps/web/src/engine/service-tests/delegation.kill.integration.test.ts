@@ -239,15 +239,15 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
             const prompt =
               [...(body.messages ?? [])].reverse().find((message) => message.role === 'user')
                 ?.content ?? '';
-            const ledgerText = prompt
-              .split('## 授权合同观察账本(有界，按最近访问顺序；entity 为完整 Siren 快照)\n')[1]
-              ?.split('\n\n## 轨迹(至今)')[0];
+            const observationText = prompt
+              .split('## 当前授权实体的认知投影(完整 HTTP Siren 合同不在 provider prompt 中)\n')[1]
+              ?.split('\n\n## 结构化轨迹(仅 rel/op/outcome/result reference)')[0];
             let currentNode: string | undefined;
-            if (ledgerText !== undefined) {
-              const ledger = JSON.parse(ledgerText) as {
+            if (observationText !== undefined) {
+              const observation = JSON.parse(observationText) as {
                 entity?: { properties?: { node?: unknown } };
-              }[];
-              const node = ledger.at(-1)?.entity?.properties?.node;
+              };
+              const node = observation.entity?.properties?.node;
               if (typeof node === 'string') currentNode = node;
             }
             const authorizedExec = (
