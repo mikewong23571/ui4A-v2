@@ -8,7 +8,7 @@
  *    /api/events action-rejected 带原因);
  * ② 修正(to: done)→ submit → checks 八项过 → pending-approval(activation
  *    实体含机械 diff[新增 pin 可见]与 checks);
- * ③ 机械 diff 上人类批准:BIOS 页 /meta/activations → 详情 diff 可见 →
+ * ③ 机械 diff 上人类批准:canonical Meta 激活队列 → 详情 diff 可见 →
  *    approve(actor=human)→ definition-activated 留痕;
  * ④ sitemap 重生成:/.well-known/ui4a.json version 变化、ready 节点 action
  *    schema 含 pin;
@@ -199,12 +199,13 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     expect(submitted[0].detail).toMatchObject({ name: 'article-drafting', passed: true });
 
     // ---- ③ human BIOS 批准(UI 走查:队列 → 详情 diff → approve)-------------
-    await page.goto('/meta/activations');
+    await page.goto('/meta/entity?rel=meta%2Factivations');
     await expect(page.getByText('激活队列(待审 1)')).toBeVisible();
-    await expect(page.locator('a[href="/meta/activation/a1"]')).toContainText(
+    const activationHref = '/meta/entity?rel=meta%2Factivation%3Aa1';
+    await expect(page.locator(`a[href="${activationHref}"]`)).toContainText(
       'a1 · article-drafting → v2 · 提议 agent',
     );
-    await page.click('a[href="/meta/activation/a1"]');
+    await page.click(`a[href="${activationHref}"]`);
 
     // 详情:checks 八行全过;机械 diff 可见且含 pin(react-diff-view 内建渲染,验收 6)
     await expect(page.getByRole('heading', { name: '激活 a1' })).toBeVisible();
@@ -243,8 +244,8 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
       decidedBy: { actor: 'human', principal: HUMAN_PRINCIPAL },
     });
 
-    // ---- ③' BIOS 拓扑图(T13 验收 2):/meta/flow/<name> 与 /meta/self 只读拓扑可见
-    await page.goto('/meta/flow/article-drafting');
+    // ---- ③' BIOS 拓扑图(T13 验收 2):canonical flow 与 self 只读拓扑可见
+    await page.goto('/meta/entity?rel=meta%2Fflow%3Aarticle-drafting');
     const topology = page.locator('section[aria-label="拓扑"]');
     await expect(topology).toBeVisible();
     // 节点标注 title;边标注 action 名(v2 已激活:ready 节点 publish/pin 双边)。
@@ -254,15 +255,15 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
     await expect(topology).toContainText('pin');
     // 只读口径:拓扑区不提供任何编辑入口(无拖拽连线 handle 交互按钮)。
     await expect(topology.locator('button')).toHaveCount(0);
-    // /meta/self 同形投影:definition-lifecycle 拓扑同样渲染。
-    await page.goto('/meta/self');
+    // self 同形投影:definition-lifecycle 拓扑同样渲染。
+    await page.goto('/meta/entity?rel=meta%2Fself');
     const selfTopology = page.locator('section[aria-label="拓扑"]');
     await expect(selfTopology).toBeVisible();
     await expect(selfTopology).toContainText('待批准');
 
     // ---- ③'' 版本两版对比(T13 Phase B 验收 3):版本区 v1/v2 可见,选 v1×v2 →
     // 机械 diff 含 pin(v2 新增动作;只读对比,数据来自版本子实体嵌入全文)----
-    await page.goto('/meta/flow/article-drafting');
+    await page.goto('/meta/entity?rel=meta%2Fflow%3Aarticle-drafting');
     const versionSection = page.locator('section[aria-label="版本历史"]');
     await expect(versionSection).toBeVisible();
     await expect(versionSection.locator('tr[data-version="1"]')).toBeVisible();

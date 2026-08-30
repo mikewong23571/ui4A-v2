@@ -5,7 +5,13 @@ import path from 'node:path';
 
 const dir = path.dirname(new URL(import.meta.url).pathname);
 const strict = process.argv.includes('--strict');
-const checks = ['check-deps.mjs', 'check-compat.mjs', 'check-size.mjs', 'check-d54.mjs'];
+const checks = [
+  'check-deps.mjs',
+  'check-compat.mjs',
+  'check-size.mjs',
+  'check-d54.mjs',
+  'check-meta-routes.mjs',
+];
 
 let failed = false;
 for (const check of checks) {

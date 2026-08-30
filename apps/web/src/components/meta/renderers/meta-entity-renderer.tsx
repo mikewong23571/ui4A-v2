@@ -11,16 +11,9 @@ import {
 } from './canonical-specialized-renderer';
 import { DraftRenderer } from './draft-renderer';
 import { GenericMetaRenderer } from './generic-renderer';
-import { createMetaRendererRegistry } from './registry';
+import { createMetaRendererRegistry, META_RENDERER_REGISTRATIONS } from './registry';
 
-const registry = createMetaRendererRegistry([
-  { id: 'application', priority: 100, classes: ['application-definition'] },
-  { id: 'agent-definition', priority: 100, classes: ['agent-definition'] },
-  { id: 'draft', priority: 200, classes: ['draft'] },
-  { id: 'flow', priority: 100, classes: ['flow-definition'] },
-  { id: 'activation', priority: 100, classes: ['activation'] },
-  { id: 'capability', priority: 100, classes: ['capability-definition'] },
-]);
+const registry = createMetaRendererRegistry(META_RENDERER_REGISTRATIONS);
 
 export function MetaEntityRenderer({
   rel,
@@ -35,7 +28,19 @@ export function MetaEntityRenderer({
   descriptorTitle?: string;
   onChanged?: () => void;
 }) {
-  const renderer = registry.resolve(entity);
+  let renderer;
+  try {
+    renderer = registry.resolve(entity);
+  } catch {
+    return (
+      <div role="alert" className="rounded-lg border border-destructive/40 p-6">
+        <h1 className="text-xl font-semibold">合同类型冲突</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          当前实体同时匹配多个 Meta Renderer。为避免错误展示，系统已停止渲染；原始实体未被修改。
+        </p>
+      </div>
+    );
+  }
   if (renderer === 'application') return <ApplicationRenderer entity={entity} scope={scope} />;
   if (renderer === 'agent-definition')
     return <AgentDefinitionRenderer entity={entity} scope={scope} />;

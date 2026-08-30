@@ -22,12 +22,12 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     await expect(toMeta).toHaveAttribute('data-nav', 'situation:cross-site-flow');
     await expect(toMeta).toHaveAttribute(
       'href',
-      '/meta/flow/article-drafting?scope=publishing&thread=release-1',
+      '/meta/entity?rel=meta%2Fflow%3Aarticle-drafting&scope=publishing&thread=release-1',
     );
 
     await toMeta.click();
     await expect(page).toHaveURL(
-      `${SCENARIO_BASE}/meta/flow/article-drafting?scope=publishing&thread=release-1`,
+      `${SCENARIO_BASE}/meta/entity?rel=meta%2Fflow%3Aarticle-drafting&scope=publishing&thread=release-1`,
     );
     // 弹层开合状态跨导航保持——收起以免条上芯片与弹层 dd 双命中。
     await situation.getByRole('button', { name: '在哪' }).click();
@@ -60,7 +60,9 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     await situation.getByRole('button', { name: '在哪' }).click();
     await expect(situation.getByRole('link', { name: /meta 中编辑|查看活实例/ })).toHaveCount(0);
 
-    await page.goto(`${SCENARIO_BASE}/meta/flow/ghost?scope=publishing&thread=release-1`);
+    await page.goto(
+      `${SCENARIO_BASE}/meta/entity?rel=meta%2Fflow%3Aghost&scope=publishing&thread=release-1`,
+    );
     await expect(page.getByText('定义 "meta/flow:ghost" 不存在(404)。')).toBeVisible();
     await situation.getByRole('button', { name: '在哪' }).click();
     await situation.getByRole('link', { name: '查看活实例' }).click();

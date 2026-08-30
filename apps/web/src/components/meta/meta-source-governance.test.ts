@@ -7,6 +7,7 @@ const rendererSource = readFileSync(
   new URL('./renderers/meta-entity-renderer.tsx', import.meta.url),
   'utf8',
 );
+const registrySource = readFileSync(new URL('./renderers/registry.ts', import.meta.url), 'utf8');
 const clientSource = readFileSync(new URL('./meta-client.ts', import.meta.url), 'utf8');
 
 describe('Meta renderer executable governance', () => {
@@ -16,9 +17,9 @@ describe('Meta renderer executable governance', () => {
   });
 
   it('routes specialized UX by Siren class instead of product rel/name', () => {
-    expect(rendererSource).toContain("classes: ['application-definition']");
-    expect(rendererSource).toContain("classes: ['agent-definition']");
-    expect(rendererSource).toContain("classes: ['draft']");
+    expect(registrySource).toContain("classes: ['application-definition']");
+    expect(registrySource).toContain("classes: ['agent-definition']");
+    expect(registrySource).toContain("classes: ['draft']");
     expect(rendererSource).not.toMatch(/meta\/(applications|drafts|agent-definitions)/);
   });
 

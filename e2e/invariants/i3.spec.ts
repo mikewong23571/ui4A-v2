@@ -38,7 +38,7 @@ const PAGES: { name: string; path: string; ready: string; dialog?: boolean }[] =
   },
   {
     name: 'meta flow 桥',
-    path: '/meta/flow/article-drafting?scope=publishing&thread=release-1',
+    path: '/meta/entity?rel=meta%2Fflow%3Aarticle-drafting&scope=publishing&thread=release-1',
     ready: 'a[data-nav="situation:cross-site-flow"]',
     dialog: true,
   },
@@ -54,7 +54,11 @@ const PAGES: { name: string; path: string; ready: string; dialog?: boolean }[] =
     path: '/entity?rel=post:post-welcome',
     ready: '[data-action]',
   },
-  { name: 'BIOS 激活页', path: '/meta/activations', ready: 'a[data-nav="meta-back"]' },
+  {
+    name: 'BIOS 激活页',
+    path: '/meta/entity?rel=meta%2Factivations',
+    ready: 'a[data-nav="meta-back"]',
+  },
   // T35 F-25:裸 /canvas 无注视=入口层(应用目录,无 surface);fuzz 覆盖
   // 带注视的画布面(真 surface 渲染路径)。
   { name: '画布', path: '/canvas?focus=articles', ready: '[data-surface]' },

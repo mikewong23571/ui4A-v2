@@ -436,18 +436,18 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
     ).toBe(404);
 
     // BIOS 页可达(React shell 200;空队列如实呈现)
-    const response = await page.goto('/meta/activations');
+    const response = await page.goto('/meta/entity?rel=meta%2Factivations');
     expect(response?.status()).toBe(200);
     await expect(page.getByText('队列为空(无待批准的定义激活)。')).toBeVisible();
 
     // BIOS capabilities 页(T13 Phase C):三个 seed 可见,链接进详情(属性投影可读)
-    const capsResponse = await page.goto('/meta/capabilities');
+    const capsResponse = await page.goto('/meta/entity?rel=meta%2Fcapabilities');
     expect(capsResponse?.status()).toBe(200);
     for (const name of ['draft', 'notify', 'clarify']) {
       await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
     }
     await page.getByRole('link', { name: 'draft', exact: true }).click();
-    await expect(page).toHaveURL(/\/meta\/capability\/draft$/);
+    await expect(page).toHaveURL(/\/meta\/entity\?rel=meta%2Fcapability%3Adraft$/);
     await expect(page.getByText('extract', { exact: true })).toBeVisible();
   });
 });

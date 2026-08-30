@@ -53,6 +53,16 @@ describe('Meta entity renderer', () => {
     expect(screen.getByText('Widget One')).toBeTruthy();
   });
 
+  it('fails closed with a safe error when specializations are ambiguous', () => {
+    render(
+      <MetaEntityRenderer
+        entity={siren(['meta', 'activation', 'capability-definition'], { rel: 'meta/conflict' })}
+      />,
+    );
+    expect(screen.getByRole('alert').textContent).toContain('合同类型冲突');
+    expect(screen.queryByText('meta/conflict')).toBeNull();
+  });
+
   it('redacts primitive secret-shaped properties in the generic fact table', () => {
     render(
       <MetaEntityRenderer
