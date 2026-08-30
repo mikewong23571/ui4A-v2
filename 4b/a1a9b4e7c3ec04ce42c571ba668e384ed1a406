@@ -1,0 +1,5 @@
+T39 Phase B checkpoint correction — delegation restart prompt fixture
+
+Summary: migrated Temporal kill integration mock provider from old full-observation array heading to D54 current cognitive observation object; added restart prompt regression for current node/structural result with no old snapshot/params.
+Why: preserves delegation recovery after disclosure contract change without restoring cumulative observations.
+Verification: orchestrator kill integration 1/1, Agent 27 files/220 tests, agent typecheck and governance:strict passed.
