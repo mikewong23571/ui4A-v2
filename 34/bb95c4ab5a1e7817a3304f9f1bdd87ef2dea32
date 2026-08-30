@@ -1,0 +1,5 @@
+T39 E5 Red contracts for current-view UI and navigation continuity.
+
+Verified by orchestrator:
+- 7 expected failures across unlocated state, view/access separation, and thread/return continuity
+- 11 existing assertions passed
