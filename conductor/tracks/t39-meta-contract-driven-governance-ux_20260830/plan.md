@@ -105,7 +105,7 @@
 - [x] Task E7：浏览器验证 US3、US4、US9：审查而非 authoring、键盘、390px、stale/CAS 与 URL 连续性。68f3757
 - [x] Task E8：Phase Verification & Checkpoint：D51、public schema、human-only、focused tests 与 governance 全绿。68f3757
 
-## Phase F：责任点、关系与披露层级（Meta milestone，provisional）
+## Phase F：责任点、关系与披露层级（Meta milestone） [checkpoint: c01206e]
 
 **Subagent contract**：Goal=通用责任点、关系和三层披露；Non-goals=不按 action/class/rel 写专属页面、不改业务裁决；Changes=Meta common renderers、ActionRunner host adapter、link/raw disclosure 与相邻测试；Blast radius=禁止 engine judge/fold、worker/db、Application bundles 和 Chat。
 
@@ -114,7 +114,7 @@
 - [x] Task F3：Red——编写 guard reason、两段确认、已决原位反馈、待决集合退出和 Dashboard/collection/exact 同步测试，并确认失败。d31091f
 - [x] Task F4：Green——统一 ActionRunner/Meta host 反馈，提交前继续 fresh read，并复用 Phase C cache invalidation。3b55d15
 - [x] Task F5：浏览器验证 US6、US7、US9：两次点击内决定、无需 raw、关系任务化、移动端不遮挡。c01206e
-- [ ] Task F6：Meta Milestone Verification & Checkpoint：US1–US10 可独立闭环，系统完整可运行；Application Phase 未开始也不影响 Meta 交付。
+- [x] Task F6：Meta Milestone Verification & Checkpoint：US1–US10 可独立闭环，系统完整可运行；Application Phase 未开始也不影响 Meta 交付。c01206e
 
 ## Phase G：Application 图书馆与默认组合面（独立 milestone，provisional）
 
