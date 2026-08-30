@@ -1,0 +1,6 @@
+T39 Phase B Task B10 — Meta granted-union discovery Green
+
+Summary: added pure ownership filter for Application/Flow/Capability exact Meta surfaces; kept global catalogs, local demo full behavior, lens-independent content/version and unlocated credential state.
+Files: meta-sitemap-authorization helper/test, Meta well-known route, Meta sitemap client type.
+Why: D51 authorization uses grantedApplications union, never attention lens, and must not leak exact titles.
+Verification: orchestrator helper 1/1, route DB 10/10, web typecheck and governance:strict passed.
