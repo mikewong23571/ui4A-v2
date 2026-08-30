@@ -249,17 +249,22 @@ comment seed 有 body，但 Flow 没有字段声明；系统虽保存事实，�
 
 这些 trait 只决定通用词汇和信息优先级，不绑定实体类型或 Application 名。
 
-### 有界 hints
+### Semantic hints 与 Presentation policy
 
-- `priority/order`；
-- `density: table | card | decision-list`；
-- `narrowDensity`，用于 390px 通用退化；
-- `empty: hide | explain | promote-entry`；
-- `heading: surface-title | entity-identity`；
+- 定义侧只保留 `priority`、认知分组、overview 与空态含义；
+- `density: table | card | decision-list` 属 Presentation policy；
+- 390px 通用退化属 Presentation policy；
+- heading source 与 sticky/inline 属 Presentation policy；
 - `overviewFields` 继续复用现有 field presentation role/overview；
-- `responsibility: inline | sticky`。
 
-Hint 不允许 CSS、像素、组件名、自由布局树或 Application 专属文案模板。
+业务/Meta Hint 不允许 CSS、像素、组件名、设备策略、自由布局树或 Application 专属文案模板。
+
+## 北极星复审补充
+
+- Application landing 是图书馆中的能力说明与发起入口，不拥有“在等我/在动/最近事件”；这些继续属于 `/` 与 Work Thread。
+- 完整 Draft 创建和复杂修订由外部 Agent、CLI 或 Assistant 原话授权承担；Meta 人类主路径聚焦 validation、diff、checks 与责任决定。
+- 同一扇门要求事实、动作、关系和认知语义同源，不要求 Agent 消费 table/card、sticky 或窄屏布局。
+- T39 必须新增真实 Assistant 共同注视故事，并证明视觉 metadata 不进入 scoped prompt。
 
 ### Application header 的事实来源
 
@@ -296,4 +301,3 @@ pin、最近使用、个人排序属于用户级 Presentation/Sidecar；Meta 只
 
 实现必须证明：新增第九个 Application 只需定义数据，即可自动获得标题、intent、入口、队列、
 产物、空态、责任点、窄屏密度与 Agent 同门发现。
-

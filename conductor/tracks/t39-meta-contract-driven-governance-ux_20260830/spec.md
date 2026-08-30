@@ -25,8 +25,9 @@ Feature：Meta Human Control Plane 的合同驱动 UI/UX 收敛。
 - 哪些字段由人填写、客户端生成或服务端注入；
 - raw、合同细节和任务信息如何分层。
 
-人类仍走 Renderer，Agent/CLI 仍走同一 Siren/HTTP 合同；Hint/Trait 是合同数据，
-不是只给像素 UI 使用的第二协议。
+人类仍走 Renderer，Agent/CLI 仍走同一 Siren/HTTP 合同。业务/Meta 定义只承载稳定 Trait
+与认知语义 Hint；设备密度、sticky、具体词汇和响应式策略属于 Presentation Plane，
+不能伪装成合同事实。
 
 ## 北极星与硬门禁
 
@@ -37,6 +38,18 @@ Feature：Meta Human Control Plane 的合同驱动 UI/UX 收敛。
 > 这段代码换一个 Application 是否需要修改？
 
 如果需要修改 Renderer、页面、路由或硬编码文案才能支持新 Application，本 Track 即失败。
+
+### Application 是图书馆，不是书桌
+
+- `/` 与 Work Thread 继续拥有“什么在等我、什么在动、上次停在哪”，不得被 Application 入口取代。
+- Application landing 只负责说明能力、展示可进入的业务面并发起工作，不聚合 principal 的待审批、进行中、最近事件或个人工作状态。
+- 一旦工作形成“一件事”，目标、上下文、进行中、责任点和最近事件继续归 Work Thread 投影。
+
+### AI-first 与共同注视
+
+- 优化页面不能替代 Assistant；用户进入 Application、Flow、Draft 或责任点后，Assistant 必须从同一 Situation → entity → actions 披露切片理解当前对象。
+- 同一扇门指事实、关系、动作和认知语义同源，不要求 Agent 消费设备布局、sticky 或响应式策略。
+- 新增 Trait/Hint 不得扩大 Assistant prompt；公开 HTTP 合同保持可发现，内嵌 Assistant 仍按当前 scope/entity/action 分层披露。
 
 ### 禁止事项
 
@@ -49,6 +62,8 @@ Feature：Meta Human Control Plane 的合同驱动 UI/UX 收敛。
 - 禁止让 Hint/Trait 进入授权判断、业务 fold 或事件真相。
 - 禁止通过 AI/LLM 生成审批事实、diff、checks 或治理决定。
 - 禁止保留 canonical 与旧路由两套不同的实体展示真相。
+- 禁止把 Application landing 做成 principal 工作状态、责任点和最近活动的第二聚合首页。
+- 禁止把完整 Draft authoring、页面设计器或低代码 schema 编辑器提升为 Meta 人类主路径。
 
 ## 合同设计原则
 
@@ -61,22 +76,21 @@ collection summary、human responsibility point。
 Trait 可以影响通用 Renderer 选择呈现词汇，但不得包含 Application 名、具体实体 rel、
 action 名、CSS、组件名、像素尺寸或事实值。
 
-### Hint：可替换的展示偏好
+### Semantic Hint：有界认知偏好
 
-Hint 表达有界、可验证、可降级的呈现偏好，例如：
+Semantic Hint 表达有界、可验证、可降级的认知偏好，例如：
 
 - 概览字段及顺序；
-- 信息密度；
-- 首页分组及顺序；
+- 语义强调与默认优先级；
+- 治理分组角色；
 - 首屏优先级；
-- responsibility 区域采用 inline 或 sticky；
-- 合同细节默认展开或收起；
-- raw 默认保持收起；
-- collection 使用 table、decision-list 或 compact-card 等有限词汇。
+- 空集合的任务含义；
+- 字段是否适合进入概览。
 
-Hint 必须是版本化白名单，只引用已声明字段、links、actions 或 traits；无效时产生结构化
+Semantic Hint 必须是版本化白名单，只引用已声明字段、links、actions 或 traits；无效时产生结构化
 诊断并退回安全 generic；不改变实体事实、权限、action availability 或执行结果；Agent/CLI
-可从同一 sitemap/entity 投影读取。
+可从同一 sitemap/entity 投影读取。table/card、desktop/narrow density、sticky、heading source、
+折叠状态和响应式退化属于 Recipe/Sidecar/通用 Presentation policy，不进入 ApplicationDefinition。
 
 ### 字段输入归属
 
@@ -92,12 +106,12 @@ Hint 必须是版本化白名单，只引用已声明字段、links、actions �
 
 ### FR1 Trait/Hint 合同
 
-- 在 shared definition/Siren projection 中增加版本化 Trait/Hint 类型。
+- 在 Phase A spike 裁决后的正确边界增加版本化 Trait/Semantic Hint 类型；不得预设一定落在业务定义。
 - Meta sitemap surface 可声明治理分组、顺序、摘要角色和首屏优先级。
 - Exact entity 可声明详情 traits、责任点姿态和披露 hint。
 - Collection member 复用现有 presentation field role/overview 体系声明概览字段，避免平行机制。
-- Trait/Hint 同时对 Renderer 与 Agent/CLI 可见。
-- 无 Trait/Hint 的既有合法实体保持安全 generic fallback。
+- Trait/Semantic Hint 同时对 Renderer 与 Agent/CLI 可见；纯视觉策略不要求 Agent 消费。
+- 无 Trait/Semantic Hint 的既有合法实体保持安全 generic fallback。
 
 ### FR2 单一 canonical Renderer 路径
 
@@ -120,15 +134,15 @@ Hint 必须是版本化白名单，只引用已声明字段、links、actions �
 - exact surface 仍可通过搜索或 collection 关系到达。
 - 不因首页聚合而窄化公开 Meta sitemap 或 entity 合同。
 
-### FR4 Draft 创建与字段归属
+### FR4 Draft ingress 边界、字段归属与人类审查
 
 - `policyScope`、actor、principal、authorization、Provider/profile 等服务端字段不得作为人类输入框暴露。
-- `commandId` 等 client-generated 字段由宿主生成，并在提交前进入同一 action schema 校验。
-- Draft payload 必须有明确可操作的编辑入口，不得出现“schema 必填但 UI 无控件”。
-- target 与 sources 优先使用当前授权合同发现出的选择器，不得要求用户记忆 rel。
-- 表单标签、说明、枚举标题来自合同声明。
-- 创建、校验或提交失败时保留已填内容，并在对应字段附近显示结构化、可行动原因。
-- 成功后原位反馈 Draft 身份、状态和下一步，不要求刷新或重新搜索。
+- `commandId` 等 client-generated 字段由 Agent/CLI/可信宿主生成，并在提交前进入同一 action schema 校验。
+- Governed Draft 的复杂创建与 payload 修订继续以外部 Agent、CLI 或 Assistant 原话授权为主路径；Meta UI 不建设完整定义编辑器。
+- 人类默认路径从已存在 Draft 开始，展示 validation、机械 diff、checks、Eval、sources、provenance 和当前 Siren actions。
+- invalid/stale Draft 提供可行动问题与返回 author/Assistant 的修复路径，但不在 Renderer 中生成专属修复表单。
+- 若保留人工 ingress，只能作为明确的 advanced/raw 应急入口，不进入 Golden Story，不暴露 server-owned 字段。
+- 校验、提交或决定失败时保留审查现场；成功后原位反馈 Draft 状态和下一责任点。
 
 ### FR5 Scope/注意力语义
 
@@ -152,7 +166,7 @@ Hint 必须是版本化白名单，只引用已声明字段、links、actions �
 ### FR7 人类责任点
 
 - 带 human responsibility trait 的 pending entity，在详情首屏展示“需要决定什么”。
-- 决策区可由有界 Hint 选择 inline 或 sticky，不由 action 名分支决定。
+- 决策区由通用 Presentation policy 根据 responsibility trait 与设备决定 inline/sticky，不由业务 Hint 或 action 名决定。
 - diff、checks、风险摘要和 provenance 紧邻决策区。
 - approve/reject 仍只来自当前 Siren actions，并在提交前 fresh read。
 - guard 阻断原因必须可见，不得只存在 tooltip。
@@ -182,11 +196,12 @@ Hint 必须是版本化白名单，只引用已声明字段、links、actions �
 
 - 已知 Meta exact class 的 canonical Renderer 决策覆盖；
 - 禁止公开 action schema 暴露 server-owned 字段；
-- Trait/Hint 白名单和版本校验；
-- 禁止 Trait/Hint 包含 CSS、组件名、Application/rel 特判；
+- Trait/Semantic Hint 白名单和版本校验；
+- 禁止定义内 Hint 包含 CSS、组件名、设备密度、sticky、heading layout 或 Application/rel 特判；
 - Meta 页面不得重新出现固定 surface inventory；
 - canonical 与旧路由不得形成双实现；
 - scope/attention 数据不得进入 authorization 函数签名。
+- 纯视觉策略不得进入 Assistant prompt；新增 metadata 必须满足 sitemap/prompt 字节预算。
 
 ### FR11 Application 书架与定义事实
 
@@ -194,6 +209,7 @@ Hint 必须是版本化白名单，只引用已声明字段、links、actions �
 - Application 是否进入人类书架由 Meta trait 声明；`default` 等系统归属地板不得在 React 中按名字隐藏。
 - Meta 声明只提供 discoverability、默认任务角色和优先级；用户 pin、最近使用和个人顺序属于用户级 Presentation/Sidecar。
 - 点击 Application 后，landing 首屏必须显示 Application title、intent 和当前视角，不得只显示“共同注视”和机器 scope。
+- `/` 的“我的事”与 Work Thread 主角地位不变；Application landing 不聚合 principal 工作状态。
 - Application title/intent 必须以 binding-only 方式引用定义事实，不得复制为 Surface literal，也不得通过隐式读取 `meta/application:*` 跨站偷渡。
 - workstation-discoverable Application 的 entry 必须是归属自身的 business surface；Meta rel 只能通过显式 bridge 到达。
 
@@ -201,11 +217,11 @@ Hint 必须是版本化白名单，只引用已声明字段、links、actions �
 
 - Application entry 从单一 rel 升级为有语义的入口声明，至少表达 target、`primary-create | primary-task | primary-collection | resume` role、title/description 和空态 posture。
 - Sitemap/Application surface 可声明 `work-queue`、`review-queue`、`output-catalog`、`task-history`、`human-responsibility`、`audit-only` 等稳定 trait。
-- 有界 hint 可声明 priority/order、desktop/narrow density、空态 posture、heading 来源和 responsibility posture；不得声明 CSS、像素、组件名或自由布局树。
+- Semantic Hint 只声明 priority、认知分组、overview 和空态含义；desktop/narrow density、sticky、heading source 与具体词汇由 Presentation policy 决定。
 - Collection 归属优先从 Flow 的 `collections`/append 声明推导；不得把无 append 的业务 collection 静默归到 default。
 - 组合 sources 解析后按 canonical entity rel 去重；同一实体和 action 在 Application 首屏只出现一次，保留姿态由 surface role 决定。
-- region heading 可按 hint 使用 surface title 或 entity identity；creator/capture 入口不得因上次输入变成业务对象标题。
-- 窄屏 density 由通用 hint/词汇退化，390px 下 table 不得靠压缩和截断维持“无横向滚动”。
+- region heading 的选择由通用 Presentation policy 结合 surface role 决定；creator/capture 入口不得因上次输入变成业务对象标题。
+- 390px 退化由通用 Presentation policy 负责，table 不得靠压缩和截断维持“无横向滚动”。
 - 实例/seed 中需要展示的业务字段必须存在定义与 presentation role；未声明事实不得靠页面特判或 generic dump 补救。
 
 ## 用户故事与 UI/UX 验收
@@ -239,20 +255,19 @@ Given `publishing` Application 关联 `article-drafting`；When 从 Application 
 - canonical 与旧友好路由不存在内容差异；
 - Agent 对同一 rel 读取的 nodes/actions/links 与页面消费一致。
 
-### US3 人类提交一个 Governed Draft
+### US3 人类审查一个 Governed Draft
 
-作为定义维护者，我想通过明确的候选定义入口提交 Draft，以便不用填写身份、Scope 或幂等键等系统字段。
+作为定义维护者，我想审查外部 Agent/CLI 产生的候选，并在责任点决定下一步，而不是先学习定义编辑器。
 
-Given 当前视角为 publishing；When 展开“提交候选定义”；Then：
+Given 外部 Agent/CLI 已创建 valid、invalid 或 stale Draft；When 人类进入 Draft；Then：
 
-- 表单只显示 human-authored 字段；`policyScope`、actor、principal 不出现；`commandId` 由宿主自动生成；
-- kind 使用带人话标题的选择器，target 从可达定义中选择，payload 有结构化编辑/粘贴/导入区域，sources 使用可搜索对象选择器；
-- 视觉效果：基础信息先显示，高级 provenance 默认收起；
-- 字段错误在对应字段附近显示，保留输入并自动聚焦首个错误；
-- Esc/取消关闭表单并恢复焦点到触发按钮；
-- 成功后原位显示 Draft id、状态和“继续校验/审查”入口；
-- 390px 下字段、按钮和 JSON 编辑区无页面级横向滚动；
-- Agent/CLI 从同一 action schema 读取相同字段归属，并可生成稳定 commandId。
+- 首屏回答候选目标、状态、谁提出、为什么需要关注和下一责任点；
+- validation、机械 diff、checks、Eval、sources 与 provenance 均来自合同事实；
+- `policyScope`、actor、principal、Provider/profile 等 server-owned 字段不作为输入暴露；
+- invalid/stale 问题可行动且保留现场，可返回 author/Assistant 修复；Meta UI 不摊开完整 payload authoring；
+- submit/approve/reject 只在当前 Siren action 声明时出现，human-only 决策前 fresh read；
+- 390px 下 diff/JSON 仅局部滚动，责任动作不遮挡正文；
+- Agent/CLI 使用同一 Draft、validation、diff、actions 和稳定 commandId 语义。
 
 ### US4 当前视角不冒充权限
 
@@ -290,7 +305,7 @@ Given Activation 处于 pending-approval；When 进入详情；Then：
 
 - 首屏显示“需要批准什么”、目标 Flow、候选版本和提议来源；
 - checks 以通过/失败摘要呈现，失败项优先；diff 紧邻决策上下文并可局部展开；
-- approve/reject 区域按 Hint sticky 或首屏 inline，动作只来自当前 Siren actions；
+- approve/reject 区域按通用 Presentation policy sticky 或首屏 inline，动作只来自当前 Siren actions；
 - reject reason 必填且错误原位显示，guard reason 可见；
 - 视觉效果：批准为主要责任动作，驳回与危险语义清晰区分，raw 不参与主决策层；
 - 无需打开 raw 即可完成决定，从待审批集合进入并完成决定不超过两次页面点击；
@@ -343,7 +358,7 @@ Then：
 - 范围内源码不存在 Application 名、具体 rel、具体 action 名驱动的展示分支；
 - Dashboard 不维护固定 surface 清单，Renderer 不维护状态或关系文案映射表；
 - Trait/Hint 不包含 CSS、像素或组件名；换一个 Application 无需修改页面代码；
-- 人类与 Agent 对同一场景发现同一 entity、links、actions、guard、schema、Trait 和 Hint；
+- 人类与 Agent 对同一场景发现同一 entity、links、actions、guard、schema、Trait 和认知 Hint；像素策略不要求同消耗；
 - 所有功能按钮都能追溯到当前 Siren action；
 - UI 展示效果的变化只需修改声明或通用词汇；
 - `pnpm governance:strict`、`pnpm check` 和相关 E2E 全绿。
@@ -359,6 +374,7 @@ Given 安装七个业务 Application 和一个 default 归属地板；When 进�
 - 用户 pin/recent 可调整顺序但不修改 Meta 定义；无个人偏好时使用声明优先级；
 - 视觉效果：常用应用可见，更多应用折叠不再只按安装顺序藏起最后一项；
 - 点击后 landing 首屏显示 Application title/intent，处境 chip 只作辅助；
+- `/` 仍以“我的事/工作线”为主，Application 书架只是图书馆入口；
 - Agent 从同一 sitemap 读取 discoverability、intent、entry 与 surface roles。
 
 ### US12 内容发布入口兼顾产物与创建
@@ -370,8 +386,8 @@ Given articles 超过一页且 article-drafting 可用；When 进入 publishing�
 - 首屏显示“内容发布”与 intent；
 - article-drafting 以 `primary-create` 姿态在首屏可见，articles 以 `output-catalog` 呈现；
 - region 标题使用“发布文章/文章”等声明标题，不显示 raw `articles` 或 `article-drafting:main`；
-- 桌面 collection 可保持密集表，390px 自动退化 compact cards，标题/状态/主要动作仍可读；
-- 创建入口与分页列表互不复制，Agent 同门可发现相同 roles/hints。
+- 桌面 collection 可保持密集表，390px 由通用 Presentation policy 自动退化，标题/状态/主要动作仍可读；
+- 创建入口与分页列表互不复制，Agent 同门可发现相同 semantic roles/overview。
 
 ### US13 社区审核先展示决策事实
 
@@ -444,11 +460,24 @@ Then：
 Then：
 
 - default/publishing/community/development/editorial/governance/todo/ideas 逐一通过桌面与 390px 浏览器审核；
-- 页面都显示 Application title/intent，surface role、顺序、空态、密度和 heading 与声明一致；
+- 页面都显示 Application title/intent，surface role、overview 与空态语义来自声明；顺序、密度和 heading 由通用 Presentation policy 一致处理；
 - 无重复 canonical entity/action、无隐式跨 Meta、无未声明业务字段缺席；
 - 新增第九个 fixture Application 只修改定义数据即可获得书架、landing、entry、queue/output、空态与窄屏效果；
 - 范围内新增/修改通用代码不出现八个 Application 名或具体业务 rel/action；
 - CLI/HTTP 探针发现与人类页面同形的 Application experience metadata。
+
+### US19 Assistant 与人类共同注视
+
+作为用户，我想在进入 Application、Flow、Draft 或责任点后直接追问助手，以便不用重新解释“我在看什么”。
+
+Given 用户分别进入 publishing、community 与 governance 的代表性入口；When 询问“这个应用做什么”“当前需要我决定什么”“为什么这个动作不可用”；Then：
+
+- Assistant 从同一 Situation、当前 entity、links、actions 和 guard reason 回答；
+- 回答引用 canonical FactRef，点击后落到同一 Canvas/Meta 对象，clientView 与 lastNavigation 不互相覆盖；
+- publishing 能解释当前创建/产物入口，community 能引用待审评论事实，governance 能区分业务 authoring 与显式 Meta 审查；
+- prompt 只披露当前 scope → entity → actions 所需切片，不包含全量 sitemap、定义全文、density、sticky 或响应式 Hint；
+- 真实 LLM Eval 无 rule fallback；LLM 不可用时诚实失败且人工 Renderer 仍可审查和决定；
+- 页面优化不改变业务动作、授权或 Assistant 事实来源。
 
 ## Non-Functional Requirements
 
@@ -458,8 +487,10 @@ Then：
 - Meta Renderer 保持零 LLM、零 Sidecar；Application landing 仍走既有 Presentation 机器；Collection 首屏不进行成员 exact N+1。
 - 新代码覆盖率目标不低于 80%，安全和授权边界 100%。
 - 遵守 GR1–GR5、D51、D53；文件增长触线时按功能边界拆解，不登记新例外。
-- 实施前必须进行 disposable spike，验证合同归属、overview 复用、canonical 迁移、RJSF 字段归属和非法 Hint fallback。
-- Spike 只形成证据和详细方案，不直接成为生产实现。
+- 实施前必须进行 disposable spike，验证合同归属、overview 复用、canonical 迁移、字段归属、Application/Presentation 边界、Assistant disclosure 和非法 Hint fallback。
+- Spike 只形成证据和初步架构；必须据此修订 DECISIONS/spec/plan 并获人工批准，批准前后续 Phase 均为 provisional、不得实施。
+- 增加 sitemap/entity payload 与 Assistant prompt slice 字节预算；视觉策略不得进入 Chat prompt。
+- `pnpm eval:llm` 作为 US19 的 opt-in 真实 LLM 证据；缺少 provider 时必须明确记录未运行，不得用 scripted driver 替代。
 
 ## 验收证据
 
@@ -471,10 +502,12 @@ Then：
 ## Out of Scope
 
 - 创建完整新 Application 的产品内向导。
+- Meta 人类路径中的完整 Draft authoring/低代码定义编辑器；外部 Agent/CLI ingress 保持规范可用。
 - 修改业务 Flow、事件 fold、定义激活语义或 D51 授权模型。
 - 将 Meta 接入 Presentation Agent、Recipe 或 Sidecar。
 - AI 生成审批结论或替代 human approval。
 - workstation 首页、通用 Canvas 或 Chat 的整体视觉改版；Application 书架与 `workspace:app:*` 默认组合在范围内。
+- Application landing 聚合 principal 的待审批、进行中、最近事件或替代 Work Thread。
 - 建立 raw 独立站点。
 - 自由布局 DSL、页面设计器、CSS-in-definition。
 - 每实体或每 Application 的定制 React 页面。

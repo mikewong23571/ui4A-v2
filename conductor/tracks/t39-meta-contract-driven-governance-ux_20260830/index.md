@@ -7,4 +7,4 @@
 - Application 入口审计：[`application-entry-audit.md`](./application-entry-audit.md)
 - 元数据：[`metadata.json`](./metadata.json)
 - 验收模型：Agent 浏览器实操 + 截图 + DOM/URL/焦点断言；不新增 per-track Playwright 脚本
-- 用户故事：US1–US18，覆盖 Meta 治理、Application 书架与默认组合、八应用入口、响应式、未来 surface 与双门一致
+- 用户故事：US1–US19，覆盖 Meta 治理、Application 图书馆与默认组合、八应用入口、Assistant 共同注视、响应式、未来 surface 与双门一致
