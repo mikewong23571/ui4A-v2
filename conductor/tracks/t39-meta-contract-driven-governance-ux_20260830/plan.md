@@ -81,7 +81,7 @@
 - [x] Task C8：浏览器验证 US2、US4：canonical Flow/Activation/Capability、完整 topology/diff/checks、无默认 lens、返回路径连续。1612ad6
 - [x] Task C9：Phase Verification & Checkpoint：focused tests、web typecheck、`pnpm check`、governance 和 Agent 合同探针。ceb52cf
 
-## Phase D：任务优先 Meta 首页与声明式集合概览（provisional）
+## Phase D：任务优先 Meta 首页与声明式集合概览 [checkpoint: 1742bdb]
 
 **Subagent contract**：Goal=让 Meta sitemap/summary 驱动首页与集合；Non-goals=不创建固定 surface 页面、不改 Application workspace；Changes=Meta sitemap adapter、dashboard、generic collection/overview 与相邻测试；Blast radius=禁止业务 Flow/事件语义、worker/db、Canvas composition、Chat 和新依赖。
 
@@ -90,7 +90,7 @@
 - [x] Task D3：Red——编写 collection overview、搜索总数、facet 声明和合同 links 分页测试，并确认失败。1d97eb7
 - [x] Task D4：Green——复用 overview role，实现 collection 摘要与诚实截断；不把 table/card 响应式策略写回定义。38ee074
 - [x] Task D5：浏览器验证 US1、US5、US8：责任点首屏、概览、未来 surface、桌面和 390px 通用策略。1742bdb
-- [ ] Task D6：Phase Verification & Checkpoint：无 surface 清单、无 per-app 分支、HTTP/CLI 可读同形认知语义。
+- [x] Task D6：Phase Verification & Checkpoint：无 surface 清单、无 per-app 分支、HTTP/CLI 可读同形认知语义。1742bdb
 
 ## Phase E：Draft 审查责任点与注意力语义（provisional）
 
