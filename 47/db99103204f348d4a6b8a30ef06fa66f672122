@@ -1,0 +1,5 @@
+T39 G3 Red contracts for business Application projection, authorization, and Agent discovery.
+
+Verified by orchestrator:
+- unit: 7 expected failures, 14 pass
+- DB/HTTP: 2 expected failures, 19 pass
