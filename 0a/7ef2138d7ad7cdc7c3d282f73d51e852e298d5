@@ -1,0 +1,6 @@
+T39 C4 canonical Meta specialization implementation.
+
+Verified by orchestrator:
+- pnpm vitest run --project unit apps/web/src/components/meta (19 files, 88 tests)
+- pnpm --filter @ui4a/web typecheck
+- pnpm governance:strict
