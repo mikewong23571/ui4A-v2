@@ -78,7 +78,7 @@
 - [x] Task C5：Red——编写全部 Meta links/presence bridge canonical、友好 route 零残留、写后 exact/collection/dashboard cache 同步测试，并确认失败。ffb4936
 - [x] Task C6：Green——原子切换内链/bridge，删除七条旧 route、fetch wrappers 与 lists，并实现授权 Meta cache invalidation；不留兼容路径。1d940b3
 - [x] Task C7：增加 registry completeness、ambiguity fail-closed 与旧 URL 源码/E2E 扫描。6093b05
-- [ ] Task C8：浏览器验证 US2、US4：canonical Flow/Activation/Capability、完整 topology/diff/checks、无默认 lens、返回路径连续。
+- [x] Task C8：浏览器验证 US2、US4：canonical Flow/Activation/Capability、完整 topology/diff/checks、无默认 lens、返回路径连续。1612ad6
 - [ ] Task C9：Phase Verification & Checkpoint：focused tests、web typecheck、`pnpm check`、governance 和 Agent 合同探针。
 
 ## Phase D：任务优先 Meta 首页与声明式集合概览（provisional）
