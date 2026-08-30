@@ -1,0 +1,7 @@
+T39 G4 read-only business Application projection and discovery.
+
+Verified by orchestrator:
+- unit: 6 files, 55 tests
+- DB/HTTP: 3 files, 42 tests
+- engine/agent/web typecheck and governance strict
+- production scan: zero Meta dependency, writer, storage, event, or app-name branch
