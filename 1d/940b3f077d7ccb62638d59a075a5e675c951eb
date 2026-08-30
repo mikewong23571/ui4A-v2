@@ -1,0 +1,8 @@
+T39 C6 canonical route cutover and scope-safe Meta cache invalidation.
+
+Verified by orchestrator:
+- C5 focused: 4 files, 18 tests
+- Meta/presence/situation focused: 23 files, 98 tests
+- pnpm --filter @ui4a/web typecheck
+- pnpm governance:strict
+- production old friendly URL scan: zero matches
