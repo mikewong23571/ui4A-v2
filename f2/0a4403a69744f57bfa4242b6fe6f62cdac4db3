@@ -1,0 +1,6 @@
+T39 F2 generic responsibility and disclosure layers.
+
+Verified by orchestrator:
+- Meta components: 26 files, 108 tests
+- web typecheck and governance strict
+- no Application, entity, future-rel, or action-name branches in new runtime files
