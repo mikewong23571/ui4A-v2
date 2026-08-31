@@ -125,12 +125,13 @@ export function useChatSession(): ChatSession {
               replayed.push({ role: 'user', content: turn.goal.verb });
               const citations = citationsOrEmpty(turn.citations);
               for (const [index, entry] of turn.messages.entries()) {
-                const isCitedAnswer =
-                  turn.outcome === 'answered' && index === turn.messages.length - 1;
+                // F-12:citations 不再仅属 answered——done 回合的轨迹派生引用
+                // 同样持久化并随重放恢复(挂在回合末条 assistant 消息)。
+                const isCitedFinal = index === turn.messages.length - 1;
                 replayed.push({
                   role: 'assistant',
                   content: entry.text,
-                  ...(isCitedAnswer && citations.length > 0 ? { citations } : {}),
+                  ...(isCitedFinal && citations.length > 0 ? { citations } : {}),
                 });
               }
             }
