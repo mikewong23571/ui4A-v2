@@ -123,13 +123,21 @@
   固定文案撞上捕捉流单例的上次 recorded 状态(字段逐字匹配),LLM 合理判定
   「已添加」;换唯一标题后 navigate→another→add→done 全链路 exec 成功。
 
-## F-07(P2,现场待核)未登录行为不一致
+## F-07(P2,已裁定并修复)未登录行为不一致
 
 - **现象**(部署实例):未登录访问 `/` 302 跳 Keycloak;访问 `/meta` 渲染页面外壳+数据区报
   "读取定义合同失败"。同一认证态两种表现。
 - **影响**:外壳渲染让"未登录"看起来像"服务坏了"。
-- **复核状态**:本地 dev 为隐式 local-user 无法复现;需在 Phase E 现场复核后裁定归属
-  (本 Track 或部署配置)。
+- **裁定(2026-08-31,Phase E 源码裁定)**:**当前代码缺陷,归属本 Track**,不是部署
+  配置——T22 的 `redirectToLoginOnAuthError`(认证类 401 → /auth/login)只接线在
+  exec-client 与 entity-cache-provider;meta 面自有客户端 `meta-client.ts` 未接线,
+  sitemap/entity 读取遇 401 直接抛错,dashboard 渲染外壳+错误卡。部署实例只是
+  旧代码观测起点,当前代码同样会复现。
+- **修复(已闭环)**:meta-client 的 sitemap 与 entity 读路径在 !ok 时先把
+  (status, body) 交给 redirectToLoginOnAuthError 再抛错;404 存在性隐藏语义不变
+  (先行返回,不触发跳转)。
+- **证据**:`meta-client.test.ts` F-07 两用例(401 双路径接线 + 404 不跳转);meta
+  全套 27 文件 117 用例绿。
 
 ## F-08(P3,观察)工作线"来源"显示原始标识符
 
