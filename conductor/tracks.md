@@ -4,9 +4,11 @@
 
 ## 活跃 Tracks
 
-- [~] **Track: T41 Application 发现入口分层：缩略书架与独立应用目录** *Link: [tracks/t41-application-directory_20260901/index.md](./tracks/t41-application-directory_20260901/index.md)*
+(当前无活跃 Track)
 
-## 归档 Tracks(T1–T40,只读历史)
+## 归档 Tracks(T1–T41,只读历史)
+
+- [x] **Track: T41 Application 发现入口分层：缩略书架与独立应用目录**（2026-09-01：主页最多 9 个、30 应用目录增量验收、四屏宽及真实 HTTP/CLI 同源通过；全量 check 3529 tests passed） *Link: [tracks/archive/t41-application-directory_20260901/index.md](./tracks/archive/t41-application-directory_20260901/index.md)*
 
 - [x] **Track: T40 深路径体验闭环:应用内实体页 × Chat 共同注视的走查修复**(2026-08-31 完成:S1–S10 深路径用户故事全部浏览器/CLI 实测通过,S4/S6 真实 LLM;F-01~F-12 全闭环;S6 引用点击白屏经 dev/生产对照定案为 dev 编译开销;全量门禁绿) *Link: [tracks/archive/t40-deep-path-experience_20260831/index.md](./tracks/archive/t40-deep-path-experience_20260831/index.md)*
 
