@@ -105,6 +105,24 @@
   落地、「当前查看」链接在场、router.push 零调用、输入框仍可继续);chat 全套 10 文件
   69 用例绿。
 
+## F-12(P1,Phase E 新发现)exec 回合终局消息无实体引用,chat 成果不可达
+
+- **现象**(S6 三次浏览器实测):chat 驱动添加待办,轨迹 navigate → exec another →
+  exec add → done 全部成功(事件日志证实 todo:0914 建成),但终局消息
+  「已添加待办:整理走查照片 0914。」零引用——`done` op 无 sources 字段,回答
+  回合才有的「依据」chips 缺席,用户无法从 chat 点进新建实体页(S6 期望 2)。
+- **影响**:chat 办成的事在界面上不可达,深路径断在最后一跳。
+- **修复(2026-08-31,已闭环)**:终局引用确定性退守——`finalTurnCitations` LLM
+  sources 优先,缺席时从轨迹 `executed` 步的动作后实体摘要派生引用(append 类
+  动作的动作后实体即新实体 rel;导航步不收;去重上限 4)。纯轨迹数据派生,零模型
+  措辞,符合 binding-only(引用而非事实值)。
+- **证据**:`page.test.tsx` F-12 用例(final 无 sources、轨迹含 executed 步 → 终局
+  消息带 `citation:todo:*` chip 且 href 指向实体画布);chat 全套 70 用例绿;浏览器
+  复测见 review.md S6。
+- **排障记录**:前两次复测 LLM 未 exec 的直接原因不是 driver 缺陷——verify 脚本
+  固定文案撞上捕捉流单例的上次 recorded 状态(字段逐字匹配),LLM 合理判定
+  「已添加」;换唯一标题后 navigate→another→add→done 全链路 exec 成功。
+
 ## F-07(P2,现场待核)未登录行为不一致
 
 - **现象**(部署实例):未登录访问 `/` 302 跳 Keycloak;访问 `/meta` 渲染页面外壳+数据区报
