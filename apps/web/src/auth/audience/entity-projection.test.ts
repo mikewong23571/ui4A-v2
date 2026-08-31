@@ -5,7 +5,7 @@ import { seedGuardRegistry, type EngineSnapshot, type ThreadSnapshot } from '@ui
 import {
   filterEntityForGrantedApplications,
   filterThreadEntityForPrincipal,
-} from './application-scope';
+} from '../application-scope';
 
 function workline(id: string, owner: string, source: string, refs: string[]): ThreadSnapshot {
   return {
