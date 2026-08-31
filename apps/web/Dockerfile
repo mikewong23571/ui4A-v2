@@ -18,6 +18,7 @@ COPY apps/agent-runner/package.json apps/agent-runner/package.json
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/engine/package.json packages/engine/package.json
 COPY packages/agent/package.json packages/agent/package.json
+COPY packages/db/package.json packages/db/package.json
 RUN pnpm install --filter @ui4a/web... --frozen-lockfile
 
 FROM dependencies AS builder

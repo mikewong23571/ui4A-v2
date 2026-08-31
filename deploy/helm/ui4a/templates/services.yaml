@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgres
-  namespace: { { .Values.namespace.name | quote } }
+  namespace: {{ .Values.namespace.name | quote }}
 spec:
   selector: { app.kubernetes.io/name: postgres, app.kubernetes.io/instance: ui4a }
   ports:
@@ -12,7 +12,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: temporal
-  namespace: { { .Values.namespace.name | quote } }
+  namespace: {{ .Values.namespace.name | quote }}
 spec:
   selector: { app.kubernetes.io/name: temporal, app.kubernetes.io/instance: ui4a }
   ports:
@@ -22,7 +22,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: temporal-ui
-  namespace: { { .Values.namespace.name | quote } }
+  namespace: {{ .Values.namespace.name | quote }}
 spec:
   selector: { app.kubernetes.io/name: temporal-ui, app.kubernetes.io/instance: ui4a }
   ports:
@@ -32,7 +32,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: keycloak
-  namespace: { { .Values.namespace.name | quote } }
+  namespace: {{ .Values.namespace.name | quote }}
 spec:
   selector: { app.kubernetes.io/name: keycloak, app.kubernetes.io/instance: ui4a }
   ports:
@@ -42,7 +42,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: web
-  namespace: { { .Values.namespace.name | quote } }
+  namespace: {{ .Values.namespace.name | quote }}
 spec:
   selector: { app.kubernetes.io/name: web, app.kubernetes.io/instance: ui4a }
   ports:
@@ -52,7 +52,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: worker
-  namespace: { { .Values.namespace.name | quote } }
+  namespace: {{ .Values.namespace.name | quote }}
 spec:
   selector: { app.kubernetes.io/name: worker, app.kubernetes.io/instance: ui4a }
   ports:
