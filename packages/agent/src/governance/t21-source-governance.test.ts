@@ -49,9 +49,11 @@ describe('T21 AI-first dual-focus source governance', () => {
   it('derives the start rel from the assembled situation without lexical or request probing', () => {
     expect(chatRoute).toContain('situationForChat');
     expect(chatRoute).toContain('getEngine(getDb())');
-    expect(chatRoute).toContain('engine.getSnapshot().applications');
-    expect(chatRoute).toContain('startRelFromSituation(situation,');
-    expect(chatRoute).not.toContain('resolveStartRel');
+    expect(chatRoute).toContain('engine.getSnapshot()');
+    // T40 B1:起步解析器为纯函数 resolveStartRel(存在性表 + 受众谓词,零 I/O);
+    // 反向门禁由下一行的探测词正则承担(与 c6fc710 退役的词级探测实现同名不同质)。
+    expect(chatRoute).toContain('resolveStartRel({');
+    expect(startChain).toContain('knownBusinessRels');
     expect(startChain).not.toMatch(/\b(?:overlaps|match|fetch|baseUrl|goal)\b/);
   });
 
