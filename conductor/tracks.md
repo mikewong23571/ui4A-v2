@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-(当前无活跃 Track)
+- [ ] **Track: T41 Application 发现入口分层：缩略书架与独立应用目录** *Link: [tracks/t41-application-directory_20260901/index.md](./tracks/t41-application-directory_20260901/index.md)*
 
 ## 归档 Tracks(T1–T40,只读历史)
 
