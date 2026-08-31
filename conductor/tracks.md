@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-(当前无活跃 Track)
+- [ ] **Track: T42 共同工作上下文：全局发现、跨应用工作线与简洁处境入口** *Link: [tracks/t42-shared-working-context_20260901/index.md](./tracks/t42-shared-working-context_20260901/index.md)*
 
 ## 归档 Tracks(T1–T41,只读历史)
 
