@@ -116,6 +116,8 @@ const PROPERTY_DISPLAY_LABELS: Readonly<Record<string, string>> = {
   'policy-reason': '挂起原因',
   status: '状态',
   notified: '通知已送达',
+  result: '运行结果',
+  failure: '失败原因',
 };
 
 function propertyDisplayLabel(name: string): string {
@@ -134,6 +136,34 @@ function propertyDisplayValue(name: string, value: unknown): string {
     const proposed = value as Record<string, unknown>;
     return [proposed.actor, proposed.principal].filter(Boolean).map(String).join(' · ');
   }
+  if (name === 'result' && typeof value === 'object' && value !== null) {
+    // Agent Run 结果信封(AgentResultEnvelope):人读面呈现 resultId、payload
+    // 标量叶、证据与工件引用;信封元数据(schemaVersion/contract/proposedEffects)
+    // 退守 RawContractDrawer 审计层。内嵌键原样,不替合同造标签。
+    const envelope = value as Record<string, unknown>;
+    const parts: string[] = [];
+    if (typeof envelope.resultId === 'string') parts.push(`resultId=${envelope.resultId}`);
+    if (typeof envelope.payload === 'object' && envelope.payload !== null) {
+      flattenDeep(parts, '', envelope.payload);
+    }
+    const evidence = Array.isArray(envelope.evidence) ? envelope.evidence : [];
+    for (const entry of evidence) {
+      if (typeof entry !== 'object' || entry === null) continue;
+      const item = entry as Record<string, unknown>;
+      parts.push([item.kind, item.ref].filter(Boolean).map(String).join(' '));
+    }
+    const artifacts = Array.isArray(envelope.artifacts) ? envelope.artifacts : [];
+    for (const entry of artifacts) {
+      if (typeof entry !== 'object' || entry === null) continue;
+      const ref = (entry as Record<string, unknown>).ref;
+      if (typeof ref === 'string') parts.push(ref);
+    }
+    return parts.length === 0 ? '无' : parts.join(' · ');
+  }
+  if (name === 'failure' && typeof value === 'object' && value !== null) {
+    const failure = value as Record<string, unknown>;
+    return [failure.code, failure.reason].filter(Boolean).map(String).join(': ');
+  }
   if (name === 'risk-level') {
     return value === 'high'
       ? '高'
@@ -145,6 +175,22 @@ function propertyDisplayValue(name: string, value: unknown): string {
   }
   if (typeof value === 'object' && value !== null) return JSON.stringify(value);
   return String(value);
+}
+
+/** 深遍历对象,收集 `path=value` 标量叶(数组逐项同路径展开)。 */
+function flattenDeep(parts: string[], path: string, value: unknown): void {
+  if (value === null || value === '' || typeof value === 'undefined') return;
+  if (Array.isArray(value)) {
+    for (const item of value) flattenDeep(parts, path, item);
+    return;
+  }
+  if (typeof value === 'object') {
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      flattenDeep(parts, path === '' ? key : `${path}.${key}`, child);
+    }
+    return;
+  }
+  parts.push(`${path}=${String(value)}`);
 }
 
 /** 展平一个 properties 值:标量 → `key=value`;一层对象 → `key.sub=value`。 */
@@ -230,6 +276,16 @@ export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
       ? entity.properties.title
       : undefined;
   const fieldRows = declaredFieldRows(entity);
+  // T40 F-02/F-08 补(工作线等无 node 实体):原始属性行与声明字段的分工——
+  // 声明过的路径不再重复上原始行;无 node 但声明了 status role 字段(如
+  // statusText)时裸 status 机器枚举退守 raw;未特判(params/proposed-by/
+  // result/failure 除外,均有结构化人读呈现)的对象/数组值(JSON blob、
+  // 机器 seq 数组、空壳 [])一律退守 RawContractDrawer。
+  const declaredPaths = new Set(declaredFieldsOf(entity).map((field) => field.path));
+  const declaredStatusElsewhere = declaredFieldsOf(entity).some(
+    (field) => field.role === 'status' && field.path !== 'properties.status',
+  );
+  const HANDLED_OBJECT_KEYS = new Set(['params', 'proposed-by', 'result', 'failure']);
   const submit = createDirectActionSubmit((input) => execAction({ ...input, scope }), {
     clientParams: ({ action }) => observedActionClientParams(action, entity.properties),
   });
@@ -255,10 +311,21 @@ export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
                 // presentation 是呈现层结构元数据,上属性表即 F-14 的 JSON
                 // 原文泄漏——审计走 RawContractDrawer;
                 // fields 由声明字段区呈现(下段);T40 F-02:有 node 的实体
-                // 过滤裸 node 行(机器 id 退守 raw 层)。
-                .filter(([key]) => {
+                // 过滤裸 node 行(机器 id 退守 raw 层);声明覆盖的路径、
+                // 无 node 实体的裸 status(声明 status 在别处时)、未特判
+                // 对象/数组值一并退守(F-02/F-08 补,工作线实体形态)。
+                .filter(([key, value]) => {
                   if (['fields', 'title', 'presentation'].includes(key)) return false;
                   if (nodePresent && key === 'node') return false;
+                  if (declaredPaths.has(`properties.${key}`)) return false;
+                  if (key === 'status' && !nodePresent && declaredStatusElsewhere) return false;
+                  if (
+                    typeof value === 'object' &&
+                    value !== null &&
+                    !HANDLED_OBJECT_KEYS.has(key)
+                  ) {
+                    return false;
+                  }
                   return true;
                 })
                 .map(([key, value]) => (

@@ -118,4 +118,62 @@ describe('EntityView:T40 实体页深路径(F-02 状态词 / F-03 字段分层)'
     expect(anchor!.textContent).toContain('进行中');
     expect(anchor!.textContent).not.toContain('open');
   });
+
+  /** 形状与 /api/entity?rel=thread:weekly-report 实测合同一致(无 node,statusText/resume 为声明路径)。 */
+  const threadEntity: SirenEntity = {
+    class: ['work-thread', 'open'],
+    properties: {
+      rel: 'thread:weekly-report',
+      identity: '产出本周 UI 周报',
+      id: 'weekly-report',
+      owner: 'local-user',
+      goal: { text: '产出本周 UI 周报', source: 'chat:walkthrough' },
+      status: 'open',
+      statusText: '进行中',
+      context: [],
+      resume: '停在「进行中」',
+      active: [],
+      approval: [],
+      'recent-events': [],
+      presentation: {
+        fields: [
+          { path: 'properties.identity', title: '目标', role: 'identity' },
+          { path: 'properties.statusText', title: '状态', role: 'status' },
+          { path: 'properties.resume', title: '上次停在哪', role: 'primary-content' },
+        ],
+      },
+    },
+    actions: [],
+    links: [{ rel: ['self'], href: '/api/entity?rel=thread%3Aweekly-report' }],
+    'guard-results': [],
+  };
+
+  it('F-02/F-08:工作线实体——声明路径去重,裸 status/goal JSON/空壳数组退守 raw 层', () => {
+    const { container } = render(<EntityView rel="thread:weekly-report" entity={threadEntity} />);
+
+    const rows = propertyRows(container);
+    // 声明行在场(合同 title,状态词为中文)。
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        ['目标', '产出本周 UI 周报'],
+        ['状态', '进行中'],
+        ['上次停在哪', '停在「进行中」'],
+      ]),
+    );
+    // 状态行唯一(声明行),裸机器枚举/声明路径原文/JSON blob/空壳数组全部退守。
+    expect(rows.filter((row) => row[0] === '状态')).toHaveLength(1);
+    for (const retired of [
+      'statusText',
+      'resume',
+      'goal',
+      'context',
+      'active',
+      'approval',
+      'recent-events',
+    ]) {
+      expect(rows.some((row) => row[0] === retired)).toBe(false);
+    }
+    expect(container.textContent).not.toContain('chat:walkthrough');
+    expect(container.textContent).not.toContain('open');
+  });
 });
