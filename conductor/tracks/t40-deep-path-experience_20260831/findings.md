@@ -89,6 +89,22 @@
   全 wire 广域用例(≤32KiB)、`walkthrough-prompt-budget.test.ts` 真实制品广域切片
   ≤10KiB;浏览器复跑 S7 线内 chat 正常回答(见 review.md S7)。
 
+## F-11(P1,Phase E 新发现)/chat 独立窗口 focus 帧把整页拽离会话
+
+- **现象**(S6 浏览器实测,证据 s6/02-created.png):/chat 独立页发「帮我添加一个
+  待办」→ 助手 navigate 到 flow:todo-capture → focus 帧触发 `router.push(canvasUrl)`
+  → 整页跳离 /chat,会话界面消失(剩 FAB),输入框不可用,追问「你刚才做了什么」
+  无从进行。
+- **影响**:window 态下「会话即页面」被 focus 自动导航破坏;float/sidebar 的跟随
+  跳转是同屏协同设计,不受影响。
+- **修复(2026-08-31,已闭环)**:`chat-panel.tsx` lastFocus effect 首行
+  `if (variant === 'window') return;`——window 态 focus 只更新底部「当前查看」
+  入口链接,零编程式导航;float/sidebar 跟随行为由 floating-chat-session.test.tsx
+  既有用例钉住不变。
+- **证据**:`apps/web/src/app/chat/page.test.tsx`(window 态:focus 帧后 summary 照常
+  落地、「当前查看」链接在场、router.push 零调用、输入框仍可继续);chat 全套 10 文件
+  69 用例绿。
+
 ## F-07(P2,现场待核)未登录行为不一致
 
 - **现象**(部署实例):未登录访问 `/` 302 跳 Keycloak;访问 `/meta` 渲染页面外壳+数据区报
