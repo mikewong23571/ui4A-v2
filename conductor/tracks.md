@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-当前无活跃 Track。
+- [~] **Track: T40 深路径体验闭环:应用内实体页 × Chat 共同注视的走查修复**(2026-08-31 创建:双环境走查登记 F-01~F-08;S1–S10 深路径用户故事验收,路径深入应用内实体页与 chat 交互;S4/S6 真实 LLM) *Link: [tracks/t40-deep-path-experience_20260831/index.md](./tracks/t40-deep-path-experience_20260831/index.md)*
 
 ## 归档 Tracks(T1–T39,只读历史)
 
