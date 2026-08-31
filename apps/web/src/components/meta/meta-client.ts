@@ -8,10 +8,14 @@
  * - 身份 channel=bios(人类经 BIOS 面的显式操作;actor 恒 human——铁律 5
  *   "审批不委托":renderer 只能以人类身份提交,agent 侧 approve 在引擎层被拒);
  * - 渲染零 AI:本模块与使用它的 BIOS 组件不引入任何 AI/LLM 依赖(源级测试断言)。
+ *
+ * 认证类 401 与业务面同一处理(T22/F-07):redirectToLoginOnAuthError 统一跳
+ * /auth/login,不渲染「读取定义合同失败」外壳伪装服务故障;404 存在性隐藏不变。
  */
 import type { SirenEntity } from '@ui4a/engine';
 import { useEffect, useState } from 'react';
 
+import { redirectToLoginOnAuthError } from '../auth-redirect';
 import type { ExecClientResult } from '../exec-client';
 import type { MetaSitemapDocument } from './meta-surfaces';
 
@@ -63,7 +67,11 @@ export async function fetchMetaSitemap(scope?: string): Promise<MetaSitemapDocum
   if (existing?.generation === generation) return existing.promise;
   const pending = (async () => {
     const response = await fetch(endpoint);
-    if (!response.ok) throw new Error(`GET Meta sitemap → HTTP ${response.status}`);
+    if (!response.ok) {
+      // F-07:认证类 401 统一跳登录(与业务面 T22 同口径),不让外壳假装服务故障。
+      redirectToLoginOnAuthError(response.status, await response.json().catch(() => undefined));
+      throw new Error(`GET Meta sitemap → HTTP ${response.status}`);
+    }
     return (await response.json()) as MetaSitemapDocument;
   })();
   const inflight = { generation, promise: pending };
@@ -156,6 +164,8 @@ export async function fetchMetaEntity(
     const response = await fetch(endpoint);
     if (response.status === 404) return null;
     if (!response.ok) {
+      // F-07:认证类 401 统一跳登录;404 存在性隐藏语义不变(先行返回)。
+      redirectToLoginOnAuthError(response.status, await response.json().catch(() => undefined));
       throw new Error(`GET /_meta/api/entity?rel=${rel} → HTTP ${response.status}`);
     }
     const entity = (await response.json()) as SirenEntity;

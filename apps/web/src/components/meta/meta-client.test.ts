@@ -3,6 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenEntity } from '@ui4a/engine';
 
+// F-07:401 跳转决策本体在 auth-redirect(自测覆盖);此处桩化,只钉接线。
+const redirectMock = vi.hoisted(() => vi.fn());
+vi.mock('../auth-redirect', () => ({
+  redirectToLoginOnAuthError: redirectMock,
+}));
+
 import {
   execMetaAction,
   fetchMetaEntity,
@@ -264,5 +270,30 @@ describe('Meta browser client', () => {
     });
     expect(written).toEqual([1]);
     expect(untouched).toEqual([]);
+  });
+
+  it('F-07:sitemap 与 entity 读取遇 401 接入统一登录跳转,错误照常抛出', async () => {
+    const body = { error: { code: 'credential_missing' } };
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(body), { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+    redirectMock.mockClear();
+
+    await expect(fetchMetaSitemap('f07-scope')).rejects.toThrow('HTTP 401');
+    await expect(fetchMetaEntity('draft:f07', 'f07-scope')).rejects.toThrow('HTTP 401');
+    // 两条读路径都把 (status, body) 交给统一跳转决策(由它判定认证类 401)。
+    expect(redirectMock).toHaveBeenCalledTimes(2);
+    expect(redirectMock).toHaveBeenNthCalledWith(1, 401, body);
+    expect(redirectMock).toHaveBeenNthCalledWith(2, 401, body);
+  });
+
+  it('F-07:404 仍返回 null(存在性隐藏语义不变),不触发登录跳转', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ error: 'not found' }), { status: 404 })),
+    );
+    redirectMock.mockClear();
+
+    await expect(fetchMetaEntity('draft:ghost', 'f07-404')).resolves.toBeNull();
+    expect(redirectMock).not.toHaveBeenCalled();
   });
 });
