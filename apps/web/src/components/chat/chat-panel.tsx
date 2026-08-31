@@ -69,10 +69,14 @@ export function ChatPanel({
   }, [lastRender, router]);
   const lastFocus = session.lastFocus;
   useEffect(() => {
+    // T40 F-11:window 态(/chat 独立页)会话即页面,focus 帧不得把整页
+    // 拽去画布(导航即销毁会话上下文);画布入口由底部「当前查看」链接承担。
+    // float/sidebar 态保持跟随跳转(背景画布/实体页当场反映动作后果)。
+    if (variant === 'window') return;
     if (lastFocus === undefined) return;
     if (`${window.location.pathname}${window.location.search}` === lastFocus.canvasUrl) return;
     router.push(lastFocus.canvasUrl);
-  }, [lastFocus, router]);
+  }, [lastFocus, router, variant]);
   const lastPresentation = session.lastPresentation;
   useEffect(() => {
     if (lastPresentation === undefined) return;
