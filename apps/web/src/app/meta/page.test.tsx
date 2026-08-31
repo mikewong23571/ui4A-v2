@@ -14,7 +14,8 @@ describe('定义管理入口文案', () => {
     render(await DefinitionManagementPage());
 
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('定义控制台');
-    expect(screen.getByText(/Meta Human Control Plane/)).toBeTruthy();
+    // 371f041 起控制台壳层文案全中文;退役的英文副标不得回潮。
+    expect(screen.queryByText(/Meta Human Control Plane/)).toBeNull();
     expect(metadata.title).toBe('定义控制台 · UI4A');
   });
 
