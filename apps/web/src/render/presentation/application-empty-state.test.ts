@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SirenEntity } from '@ui4a/engine';
+import { project, type SirenEntity } from '@ui4a/engine';
+import { seedGuardRegistry, type EngineSnapshot } from '@ui4a/shared';
 
 import { planGenericPresentationSurface } from './generic';
 
@@ -63,5 +64,22 @@ describe('generic collection empty meaning', () => {
       'read',
     );
     expect(JSON.stringify(populated.surface)).not.toContain('empty-state');
+  });
+
+  it('plans an empty-state word for the three real home projections, bound to each declared meaning (F-04)', () => {
+    const empty: EngineSnapshot = { instances: {}, collections: {}, threads: {} };
+    const deps = { flows: {}, guards: seedGuardRegistry };
+    const cases = [
+      ['inbox', 'no-current-responsibility'],
+      ['delegations', 'nothing-in-motion'],
+      ['threads', 'ready-to-start'],
+    ] as const;
+    for (const [rel, meaning] of cases) {
+      const entity = project(empty, rel, deps);
+      expect(entity).toBeDefined();
+      const planned = planGenericPresentationSurface(rel, entity!, 'definition-v1', 'read');
+      expect(JSON.stringify(planned.surface)).toContain('empty-state');
+      expect(JSON.stringify(planned.surface)).toContain('properties.presentation.emptyMeaning');
+    }
   });
 });

@@ -240,6 +240,13 @@ describe('project(delegations 投影)', () => {
     expect(entity?.entities).toEqual([]);
   });
 
+  it('声明 nothing-in-motion 空态语义,「在动」空区消费引导而非裸标题(F-04)', () => {
+    const entity = project({ instances: {}, collections: {} }, DELEGATIONS_REL, deps);
+    expect(entity?.properties).toMatchObject({
+      presentation: { emptyMeaning: 'nothing-in-motion' },
+    });
+  });
+
   it('集合:entities[] 各委托 goal/status/steps/successes,子实体直达 delegation:<id>', () => {
     const snapshot = fold(
       [
@@ -256,6 +263,7 @@ describe('project(delegations 投影)', () => {
       count: 1,
       presentation: {
         fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+        emptyMeaning: 'nothing-in-motion',
       },
     });
     expect(entity?.links).toEqual([

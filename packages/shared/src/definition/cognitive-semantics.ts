@@ -20,6 +20,7 @@ export const COGNITIVE_SEMANTICS_PRIORITIES = ['high', 'normal', 'low'] as const
 
 export const COGNITIVE_SEMANTICS_EMPTY_MEANINGS = [
   'no-current-responsibility',
+  'nothing-in-motion',
   'no-results',
   'ready-to-start',
 ] as const;

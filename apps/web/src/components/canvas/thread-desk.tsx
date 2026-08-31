@@ -232,8 +232,10 @@ export function ThreadDesk({ threadId, scope }: ThreadDeskProps) {
 
   const statusText = firstString(thread?.properties.statusText);
   const resume = firstString(thread?.properties.resume);
+  // F-08:来源只消费投影的可读字段(goalSourceText);不可解析时投影省略该键,
+  // 书桌干净省略来源行,裸 source 只在 raw 层可达。
   const goalSource = firstString(
-    (thread?.properties.goal as { source?: unknown } | undefined)?.source,
+    (thread?.properties as { goalSourceText?: unknown } | undefined)?.goalSourceText,
   );
 
   return (

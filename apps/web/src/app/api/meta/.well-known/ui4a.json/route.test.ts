@@ -89,6 +89,8 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
       groupRole: 'candidate',
       priority: 'high',
     });
+    expect(byRel.get('meta/drafts')?.title).toBe('受治理草稿');
+    expect(byRel.get('meta/agent-definitions')?.title).toBe('专职 Agent');
     expect(byRel.get('meta/applications')?.presentation).toMatchObject({
       groupRole: 'definition',
     });

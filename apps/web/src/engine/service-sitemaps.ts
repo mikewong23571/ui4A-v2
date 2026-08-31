@@ -38,7 +38,7 @@ export function createSitemapReaders(
     const surfaces: SitemapSurface[] = [
       withMetaTopLevelPresentation({
         rel: 'meta/self',
-        title: 'definition-lifecycle(引擎自举)',
+        title: '引擎自举(definition-lifecycle)',
       }),
       withMetaTopLevelPresentation({ rel: 'meta/flows', title: '流程定义', collection: true }),
       withMetaTopLevelPresentation({
@@ -134,14 +134,14 @@ export function createSitemapReaders(
         },
         {
           rel: 'agent-runs',
-          title: 'Agent Runs',
+          title: 'Agent 运行',
           collection: true,
           ...pageableFlag('agent-runs'),
           app: 'development',
         },
         {
           rel: 'threads',
-          title: 'Work Threads',
+          title: '工作线',
           collection: true,
           ...pageableFlag('threads'),
           scope: 'principal',

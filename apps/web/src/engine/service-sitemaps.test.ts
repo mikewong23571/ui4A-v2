@@ -17,12 +17,30 @@ describe('business sitemap principal surfaces', () => {
     // threads 是平台视图(无成员表/无 append),collection 在案但不可分页。
     expect(readers.currentSitemap().surfaces).toContainEqual({
       rel: 'threads',
-      title: 'Work Threads',
+      title: '工作线',
       collection: true,
       pageable: false,
       scope: 'principal',
       memberRelPrefix: 'thread:',
     });
+  });
+
+  it('projects Chinese task titles for platform collections and meta top-level surfaces (F-05)', () => {
+    const snapshot: EngineSnapshot = { instances: {}, collections: {}, threads: {} };
+    const readers = createSitemapReaders(
+      () => snapshot,
+      () => [],
+    );
+    const business = new Map(
+      readers.currentSitemap().surfaces.map((surface) => [surface.rel, surface]),
+    );
+    expect(business.get('threads')?.title).toBe('工作线');
+    expect(business.get('agent-runs')?.title).toBe('Agent 运行');
+
+    const meta = new Map(
+      readers.currentMetaSitemap().surfaces.map((surface) => [surface.rel, surface]),
+    );
+    expect(meta.get('meta/self')?.title).toBe('引擎自举(definition-lifecycle)');
   });
 
   it('makes every my-work composition source a principal business surface', () => {

@@ -77,12 +77,12 @@ export async function GET(request?: Request) {
       ...disclosed.surfaces,
       withMetaTopLevelPresentation({
         rel: 'meta/drafts',
-        title: 'Governed Drafts',
+        title: '受治理草稿',
         collection: true,
       }),
       withMetaTopLevelPresentation({
         rel: 'meta/agent-definitions',
-        title: 'Specialized Agents',
+        title: '专职 Agent',
         collection: true,
       }),
       ...agents.map((agent) => ({

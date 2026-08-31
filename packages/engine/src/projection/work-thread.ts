@@ -20,6 +20,8 @@ export const THREAD_REL_PREFIX = 'thread:';
 
 const THREADS_PRESENTATION = {
   fields: [{ path: 'properties.title', title: '标题', role: 'identity' as const }],
+  // F-04/T40:空工作线区消费声明引导,而非裸标题。
+  emptyMeaning: 'ready-to-start' as const,
 };
 
 const noNodeFields = { 'collect-node-fields': false } as const;
@@ -211,8 +213,9 @@ const THREAD_STATUS_TITLES: Readonly<Record<ThreadStatus, string>> = {
 };
 
 /** 被引用对象的一行业务身份:实例取声明字段(identity/title;fields 是带 origin
- * 的 FieldValue,经 fieldValues 解包),其余取既有投影 identity,回退 rel。 */
-function referenceIdentity(rel: string, snapshot: EngineSnapshot): string {
+ * 的 FieldValue,经 fieldValues 解包),其余取既有投影 identity。解析不出时
+ * 返回 undefined——调用方决定兜底(导航成员回退 rel,来源显示干净省略)。 */
+function resolvedReferenceLabel(rel: string, snapshot: EngineSnapshot): string | undefined {
   const instance = snapshot.instances[rel];
   if (instance !== undefined) {
     const fields = fieldValues(instance.fields);
@@ -229,7 +232,15 @@ function referenceIdentity(rel: string, snapshot: EngineSnapshot): string {
     // identity 字段,此前按不存在的字段判型属死分支)。
     return `${confirmation.targetAction} · 由 ${confirmation.proposedBy.actor} 提议`;
   }
-  return rel;
+  // 来源可指向另一条工作线(thread:<id> 或裸 thread id 同 statusPointer 口径)。
+  const threadId = rel.startsWith(THREAD_REL_PREFIX) ? rel.slice(THREAD_REL_PREFIX.length) : rel;
+  const thread = snapshot.threads?.[threadId];
+  if (thread !== undefined) return thread.goal.text.trim();
+  return undefined;
+}
+
+function referenceIdentity(rel: string, snapshot: EngineSnapshot): string {
+  return resolvedReferenceLabel(rel, snapshot) ?? rel;
 }
 
 export function projectWorkThread(
@@ -263,6 +274,9 @@ export function projectWorkThread(
       links: [{ rel: ['self'], href: entityHref(deps.baseHref, ref) }],
     };
   });
+  // F-08/T40 来源可读物优先:goal.source 是规范审计引用,可解析为合同指代时
+  // 投影任务语,不可解析(chat/message UUID 等)干净省略——裸标识只在 raw 层。
+  const goalSourceText = resolvedReferenceLabel(thread.goal.source, snapshot);
   return {
     class: ['work-thread', thread.status],
     properties: {
@@ -278,12 +292,17 @@ export function projectWorkThread(
       active: thread.references.active.map((rel) => statusPointer(rel, snapshot)),
       approval: thread.references.approval.map((rel) => statusPointer(rel, snapshot)),
       'recent-events': [...thread.recentEventSeqs],
+      ...(goalSourceText === undefined ? {} : { goalSourceText }),
       presentation: {
         fields: [
           { path: 'properties.identity', title: '目标', role: 'identity' },
           { path: 'properties.statusText', title: '状态', role: 'status' },
           { path: 'properties.resume', title: '上次停在哪', role: 'primary-content' },
-          { path: 'properties.goal.source', title: '目标来源', role: 'metadata' },
+          ...(goalSourceText === undefined
+            ? []
+            : [
+                { path: 'properties.goalSourceText', title: '目标来源', role: 'metadata' as const },
+              ]),
         ],
       },
     },

@@ -110,6 +110,15 @@ describe('Work Thread Siren projection', () => {
     });
   });
 
+  it('声明 ready-to-start 空态语义,「工作线」空区消费引导而非裸标题(F-04)', () => {
+    const empty: EngineSnapshot = { instances: {}, collections: {}, threads: {} };
+    const entity = project(empty, 'threads', deps);
+    expect(entity?.properties).toMatchObject({
+      presentation: { emptyMeaning: 'ready-to-start' },
+    });
+    expect(entity?.entities).toEqual([]);
+  });
+
   it('projects only explicit membership, status pointers, dangling refs, and no messages', () => {
     const entity = project(snapshot(), 'thread:release-1', deps);
 
@@ -181,6 +190,34 @@ describe('Work Thread Siren projection', () => {
       'Do not copy me',
       '声明的身份',
     ]);
+  });
+
+  it('来源可读物优先:可解析的 source 投影任务语,不可解析则干净省略,裸标识只在 raw 层(F-08)', () => {
+    // 可解析:source 指向实例 → 显示实例身份;原始 rel 不再进呈现字段。
+    const resolvable = snapshot();
+    resolvable.threads!['release-1']!.goal.source = 'post:known';
+    const entity = project(resolvable, 'thread:release-1', deps);
+    expect(entity?.properties).toMatchObject({
+      goalSourceText: 'Do not copy me',
+      presentation: {
+        fields: [
+          { path: 'properties.identity', title: '目标', role: 'identity' },
+          { path: 'properties.statusText', title: '状态', role: 'status' },
+          { path: 'properties.resume', title: '上次停在哪', role: 'primary-content' },
+          { path: 'properties.goalSourceText', title: '目标来源', role: 'metadata' },
+        ],
+      },
+    });
+    expect(JSON.stringify(entity?.properties?.presentation)).not.toContain(
+      'properties.goal.source',
+    );
+
+    // 不可解析(message:* 等无合同事实的标识):无派生字段、无来源呈现字段,
+    // 原始 goal.source 保留在属性层(raw 可达),不泄漏为可见文案。
+    const unresolved = project(snapshot(), 'thread:release-1', deps);
+    expect(unresolved?.properties).not.toHaveProperty('goalSourceText');
+    expect(JSON.stringify(unresolved?.properties?.presentation)).not.toContain('目标来源');
+    expect(unresolved?.properties).toMatchObject({ goal: { source: 'message:goal-1' } });
   });
 
   it('links event:1 to the baseHref-aware audit feed from afterSeq=0', () => {

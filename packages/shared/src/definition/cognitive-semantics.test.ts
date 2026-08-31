@@ -60,7 +60,12 @@ describe('CognitiveSemanticsV1 declaration', () => {
     for (const priority of ['high', 'normal', 'low']) {
       expect(parse({ version: 1, priority })).toEqual({ version: 1, priority });
     }
-    for (const emptyMeaning of ['no-current-responsibility', 'no-results', 'ready-to-start']) {
+    for (const emptyMeaning of [
+      'no-current-responsibility',
+      'nothing-in-motion',
+      'no-results',
+      'ready-to-start',
+    ]) {
       expect(parse({ version: 1, emptyMeaning })).toEqual({ version: 1, emptyMeaning });
     }
   });

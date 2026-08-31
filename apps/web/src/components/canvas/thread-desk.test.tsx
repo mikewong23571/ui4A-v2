@@ -64,6 +64,8 @@ function threadEntity(): SirenEntity {
       identity: '处理 CVE 批次',
       id: 't1',
       goal: { text: '处理 CVE 批次', source: 'chat 消息' },
+      // 投影已把可解析来源转成任务语;书桌只消费投影字段,不直读 raw source。
+      goalSourceText: 'chat 消息',
       status: 'open',
       statusText: '进行中',
       context: ['todo:t35'],
@@ -161,6 +163,15 @@ describe('ThreadDesk(书桌目录)', () => {
     // 纯读轨:书桌不承载任何合同动作按钮(data-action 唯一挂点),无属性表
     expect(container.querySelector('[data-action]')).toBeNull();
     expect(container.querySelector('table')).toBeNull();
+  });
+
+  it('来源不可解析时干净省略来源行,裸标识不泄漏为可见文案(F-08)', async () => {
+    const entity = threadEntity();
+    delete entity.properties.goalSourceText;
+    const { container } = renderDesk({ 'thread:t1': entity });
+    await screen.findByText('处理 CVE 批次');
+    expect(container.textContent).not.toContain('来源:');
+    expect(container.textContent).not.toContain('chat 消息');
   });
 
   it('工作集 = context 成员 + 钉住页合并;context 移出走合同 detach,钉住页仅本地取消', async () => {

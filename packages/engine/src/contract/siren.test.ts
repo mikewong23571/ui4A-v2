@@ -463,6 +463,13 @@ describe('project — inbox 集合(spec 架构决定 5)', () => {
     expect(entity?.entities).toEqual([]);
   });
 
+  it('声明 no-current-responsibility 空态语义,首页空区消费引导而非裸标题(F-04)', () => {
+    const entity = project(seedSnapshot, 'inbox', deps);
+    expect(entity?.properties).toMatchObject({
+      presentation: { emptyMeaning: 'no-current-responsibility' },
+    });
+  });
+
   it('delivered 计数:已送达(notified)的 pending 确认计入,未送达不计(T3 Phase C)', () => {
     const suspended = suspendedSnapshot();
     const c1 = suspended.confirmations?.['confirmation:c1'];

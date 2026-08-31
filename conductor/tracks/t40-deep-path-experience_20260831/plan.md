@@ -77,12 +77,19 @@ prompt 结构变更。
 显示裁定与相邻测试;Blast radius=禁止 React 字典、per-app 分支、Presentation composition
 拓扑变更。
 
-- [ ] Task D1:Green——"在等我/在动"空态引导消费合同声明;无声明时干净留白,不渲染裸标题。
-- [ ] Task D2:Green——Meta 控制台分组/卡片术语中文化(sitemap/定义数据),含 Governed
-  Drafts、Specialized Agents、definition-lifecycle。
-- [ ] Task D3:裁定并落实工作线"来源"显示:可读物优先,原始标识退守次级;结论记入 findings。
-- [ ] Task D4:浏览器验证 S8、S9(含视角连续性与计数文案)。
-- [ ] Task D5:Phase D Checkpoint——focused tests、governance、首页与 meta 截图对照。
+- [x] Task D1(2026-08-31):Green——inbox/delegations/threads 三投影补 emptyMeaning 声明
+  (no-current-responsibility / 新增枚举 nothing-in-motion / ready-to-start),文案走
+  empty-state 词框架;无声明干净留白维持不变。
+- [x] Task D2(2026-08-31):Green——Meta 术语数据层中文化:受治理草稿、专职 Agent、
+  Agent 运行、工作线、引擎自举(definition-lifecycle)(route.ts + service-sitemaps.ts,
+  零渲染改动)。
+- [x] Task D3(2026-08-31):F-08 裁定落实——可读物优先(resolvedReferenceLabel 同一合同
+  指代链),不可解析干净省略,裸 UUID 退守 raw;thread-desk 只消费 goalSourceText;
+  裁定结论已记入 findings.md F-08。
+- [x] Task D4(2026-08-31):浏览器验证 S8(首页三空态引导文案在场)、S9(定义控制台
+  全中文术语,视角切换后一致)通过;截图入 evidence/2026-08-31-phase-d/。
+- [x] Task D5(2026-08-31):Phase D Checkpoint——编排者复跑 focused tests 全绿
+  (unit 106 + db 2),governance:strict 过。
 
 ## Phase E:深路径终审(编排者执行,不委派)
 

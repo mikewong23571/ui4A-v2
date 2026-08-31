@@ -3,6 +3,7 @@
  * 纯函数;rel → Siren 实体,未知 rel 返回 undefined(HTTP 层映射 404)。
  */
 import type {
+  CognitiveSemanticsEmptyMeaning,
   ConfirmationSnapshot,
   DelegationSnapshot,
   EngineSnapshot,
@@ -49,11 +50,16 @@ import {
 } from '../collection-ownership';
 import type { ProjectDeps, SirenEntity, SirenLink } from './types';
 
-function collectionIdentity(title: string): Record<string, unknown> {
+function collectionIdentity(
+  title: string,
+  emptyMeaning?: CognitiveSemanticsEmptyMeaning,
+): Record<string, unknown> {
   return {
     title,
     presentation: {
       fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+      // 空态语义(F-04/T40):首页组合区消费声明引导;无声明时渲染侧干净留白。
+      ...(emptyMeaning === undefined ? {} : { emptyMeaning }),
     },
   };
 }
@@ -366,7 +372,7 @@ function projectInbox(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity 
     class: ['collection', 'inbox'],
     properties: {
       rel: 'inbox',
-      ...collectionIdentity('在等我'),
+      ...collectionIdentity('在等我', 'no-current-responsibility'),
       count: pending.length,
       delivered,
     },
@@ -422,7 +428,7 @@ function projectDelegations(snapshot: EngineSnapshot, deps: ProjectDeps): SirenE
     class: ['collection', DELEGATIONS_REL],
     properties: {
       rel: DELEGATIONS_REL,
-      ...collectionIdentity('在动'),
+      ...collectionIdentity('在动', 'nothing-in-motion'),
       count: entries.length,
     },
     actions: [],
