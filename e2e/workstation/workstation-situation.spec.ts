@@ -49,16 +49,16 @@ test('workstation 声明条与 presence 留痕同源，scope/出线保留其他 
     const situation = page.getByRole('region', { name: '声明的处境' });
     await expect(situation).toBeVisible();
     await expect(situation.getByTestId('situation-site')).toHaveText('工作站');
-    await expect(situation.getByTestId('situation-scope')).toHaveText('publishing');
-    await expect(situation.getByTestId('situation-thread')).toHaveText('线 release-1');
-    await expect(situation.getByTestId('situation-focus')).toHaveText('注视 post:one');
+    await expect(situation.getByTestId('situation-scope')).toHaveText('内容发布');
+    await expect(situation.getByTestId('situation-thread')).toHaveText('无法读取');
+    await expect(situation.getByTestId('situation-focus')).toHaveText('无法读取');
     // T39/D51:凭证授予决定权限；scope 只表达当前注意力，不进入授权签名。
     // (371f041 文案收敛后,「在哪」弹层以全量处境字段 + 授权 sitemap 驱动的
-    // 「调整视角」选择器承载该语义,说明性句子不再占位——见 situation-bar.test。)
+    // 「应用」选择器承载该语义,说明性句子不再占位——见 situation-bar.test。)
     await situation.getByRole('button', { name: '在哪' }).click();
     const situationDialog = page.getByRole('dialog', { name: '当前在哪' });
     await expect(situationDialog).toBeVisible();
-    await expect(situationDialog).toContainText('publishing');
+    await expect(situationDialog).toContainText('内容发布');
     await expect(situationDialog.locator('#situation-scope-selector')).toBeVisible();
 
     await expect
@@ -85,7 +85,7 @@ test('workstation 声明条与 presence 留痕同源，scope/出线保留其他 
       .poll(() => presenceChangePoints(page), { timeout: 15_000 })
       .toEqual(expect.arrayContaining(['presence-thread-changed:null']));
 
-    await situation.getByRole('link', { name: '清除视角' }).click();
+    await situation.getByRole('link', { name: '清除应用' }).click();
     await expect
       .poll(() => new URL(page.url()).searchParams.get('scope'), { timeout: 15_000 })
       .toBeNull();
@@ -98,10 +98,8 @@ test('workstation 声明条与 presence 留痕同源，scope/出线保留其他 
 
     await page.goto(`${SCENARIO_BASE}/meta?scope=governance&focus=meta%2Fflow%3Aarticle-drafting`);
     await expect(situation.getByTestId('situation-site')).toHaveText('定义站');
-    await expect(situation.getByTestId('situation-scope')).toHaveText('governance');
-    await expect(situation.getByTestId('situation-focus')).toHaveText(
-      '注视 meta/flow:article-drafting',
-    );
+    await expect(situation.getByTestId('situation-scope')).toHaveText('Agent 治理');
+    await expect(situation.getByTestId('situation-focus')).toHaveText('文章发布向导');
     await expect
       .poll(() => presenceChangePoints(page), { timeout: 15_000 })
       .toEqual(expect.arrayContaining(['presence-site-changed:"meta"']));

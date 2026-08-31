@@ -61,7 +61,7 @@ test('structured citation click focuses the same Canvas entity and preserves onl
     // T35 F-24:data-active 只服务 ?concern= 回执锚点;引用点击是 focus 导航,
     // 断言注视面存在与处境条同步,不再断言恒亮标记。
     await expect(page.locator('[data-surface]')).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId('situation-focus')).toHaveText('注视 post:first-post');
+    await expect(page.getByTestId('situation-focus')).toHaveText('第一篇');
     await expect(citation).toHaveAttribute('aria-current', 'location');
 
     await page.getByRole('button', { name: '查看原始合同' }).click();

@@ -1,80 +1,30 @@
 'use client';
 
-/**
- * T35 D-7/F-12(方案经用户认可):处境从"一行文字表"收敛为**状态芯片**——
- * 站点常显;视角/工作线/注视仅在有值时以 chip 呈现(默认态"未声明"不占版面);
- * 点芯片展开「当前在哪」弹层:全量字段 + 授权 sitemap 驱动的视角选择 +
- * 跨面桥(W3:线芯片弹层内切换工作线)。
- * 本组件渲染进 AppShell 顶栏行(不再单独占一条 bar),顶栏高度回归确定 h-12。
- */
+/** Existing situation chips and popover consume authorized contract labels. */
 
 import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
-import type { PresenceValue } from '@ui4a/shared';
-
 import { useLocationObservation } from '@/presence/location';
 import { crossSiteFlowBridge, locationHrefWithChanges } from '@/presence/navigation';
+
+import {
+  applicationOptions,
+  contextEntityEndpoint,
+  contextReferenceHref,
+  situationDocumentLabel,
+  situationFocusLabel,
+  threadOptions,
+  useSituationDocument,
+  useThreadContextReferences,
+  workspaceFocusLabel,
+} from './situation-contract';
 
 const SITE_LABELS: Record<string, string> = {
   workstation: '工作站',
   meta: '定义站',
 };
-
-function displayValue(value: PresenceValue): string {
-  return typeof value === 'string' ? value : JSON.stringify(value);
-}
-
-type ScopeOptionsState =
-  | { status: 'idle' | 'loading'; values: string[] }
-  | { status: 'ready'; values: string[] }
-  | { status: 'error'; values: string[] };
-
-type ResolvedScopeOptions = Extract<ScopeOptionsState, { status: 'ready' | 'error' }> & {
-  site: string;
-};
-
-function scopeOptionsFromDocument(document: unknown): string[] {
-  if (typeof document !== 'object' || document === null || Array.isArray(document)) return [];
-  const record = document as Record<string, unknown>;
-  const candidates = Array.isArray(record.authorizedScopes)
-    ? record.authorizedScopes
-    : Array.isArray(record.applications)
-      ? record.applications.map((application) =>
-          typeof application === 'object' && application !== null && !Array.isArray(application)
-            ? (application as Record<string, unknown>).name
-            : undefined,
-        )
-      : [];
-  return [...new Set(candidates.filter((value): value is string => typeof value === 'string'))];
-}
-
-function useScopeOptions(open: boolean, site: string): ScopeOptionsState {
-  const [resolved, setResolved] = useState<ResolvedScopeOptions | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    const endpoint = site === 'meta' ? '/_meta/.well-known/ui4a.json' : '/.well-known/ui4a.json';
-    fetch(endpoint)
-      .then((response) =>
-        response.ok ? response.json() : Promise.reject(new Error(String(response.status))),
-      )
-      .then((document: unknown) => {
-        if (!cancelled) {
-          setResolved({ status: 'ready', site, values: scopeOptionsFromDocument(document) });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setResolved({ status: 'error', site, values: [] });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, site]);
-  if (!open) return { status: 'idle', values: [] };
-  return resolved?.site === site ? resolved : { status: 'loading', values: [] };
-}
 
 function usePopover(): {
   open: boolean;
@@ -103,47 +53,28 @@ function usePopover(): {
 
 /** 线芯片弹层内的切线路径二(W3):我的线清单来自 threads 投影。 */
 function ThreadSwitcher({ route, currentThreadId }: { route: string; currentThreadId: string }) {
-  const [threads, setThreads] = useState<Array<{ rel: string; identity: string }> | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/entity?rel=threads')
-      .then((response) =>
-        response.ok ? response.json() : Promise.reject(new Error(String(response.status))),
-      )
-      .then((body: { entities?: Array<{ properties: { rel: string; identity?: string } }> }) => {
-        if (cancelled) return;
-        setThreads(
-          (body.entities ?? []).map((entity) => ({
-            rel: String(entity.properties.rel ?? ''),
-            identity: String(entity.properties.identity ?? entity.properties.rel ?? ''),
-          })),
-        );
-      })
-      .catch(() => {
-        if (!cancelled) setThreads([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (threads === null) return <p className="text-xs text-muted-foreground">读取我的线…</p>;
-  const others = threads.filter((thread) => thread.rel !== `thread:${currentThreadId}`);
-  if (others.length === 0) return <p className="text-xs text-muted-foreground">暂无其他工作线。</p>;
+  const document = useSituationDocument('/api/entity?rel=threads', route);
+  if (document.status === 'loading')
+    return <p className="text-xs text-muted-foreground">读取中…</p>;
+  if (document.status === 'error')
+    return <p className="text-xs text-destructive">无法读取工作线</p>;
+  const others = threadOptions(document.value).filter(
+    (thread) => thread.rel !== `thread:${currentThreadId}`,
+  );
+  if (others.length === 0) return null;
   return (
-    <div className="grid gap-1">
+    <div className="grid gap-1 border-t pt-2.5">
       <p className="text-xs font-medium text-foreground">切换到其他工作线</p>
       {others.map((thread) => {
         const id = thread.rel.replace('thread:', '');
         return (
           <Link
             key={thread.rel}
-            href={locationHrefWithChanges(route, { thread: id })}
+            href={contextReferenceHref(route, thread.rel)}
             data-nav={`situation:switch-thread:${id}`}
             className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            onClick={() => {}}
           >
-            {thread.identity.trim() !== '' ? thread.identity.trim() : thread.rel}
+            {thread.title}
           </Link>
         );
       })}
@@ -157,24 +88,50 @@ export function SituationBar() {
   const bridge = crossSiteFlowBridge(route, observation.focus);
   const { open, setOpen, ref } = usePopover();
   const [scopeDraft, setScopeDraft] = useState(observation.scope ?? '');
+  const threadId = observation.thread?.startsWith('thread:')
+    ? observation.thread.slice('thread:'.length)
+    : observation.thread;
 
-  const site = displayValue(observation.site);
+  const site = observation.site;
   const siteLabel = SITE_LABELS[site] ?? site;
-  const scopeOptions = useScopeOptions(open, site);
+  const refreshKey = `${route}\0${open}`;
+  const applications = useSituationDocument('/.well-known/ui4a.json', refreshKey);
+  const options = applicationOptions(applications.value);
+  const applicationLabel =
+    observation.scope === null
+      ? '全部已授权应用'
+      : (options.find((option) => option.name === observation.scope)?.title ??
+        (applications.status === 'loading' ? '读取中…' : '无法读取'));
+  const thread = useSituationDocument(
+    threadId === null ? null : contextEntityEndpoint(`thread:${threadId}`),
+    refreshKey,
+  );
+  const focusEndpoint =
+    typeof observation.focus === 'string' ? contextEntityEndpoint(observation.focus) : null;
+  const focus = useSituationDocument(focusEndpoint, refreshKey);
+  const metaDiscovery = useSituationDocument(
+    focusEndpoint?.startsWith('/_meta/') ? '/_meta/.well-known/ui4a.json' : null,
+    refreshKey,
+  );
+  const references = useThreadContextReferences(thread.value, open && thread.status === 'ready');
+  const threadLabel = observation.thread === null ? '未进入工作线' : situationDocumentLabel(thread);
+  const focusLabel =
+    observation.focus === null
+      ? '未聚焦对象'
+      : typeof observation.focus === 'string'
+        ? (workspaceFocusLabel(observation.focus, options) ??
+          situationFocusLabel(
+            focus,
+            observation.focus,
+            focusEndpoint?.startsWith('/_meta/') ? metaDiscovery : applications,
+          ))
+        : `已选 ${observation.focus.selection.length} 个对象`;
 
   const situationDetails = [
     ['site', '站点', siteLabel],
-    [
-      'scope',
-      '视角',
-      observation.scope === null ? '全部已授权应用' : displayValue(observation.scope),
-    ],
-    [
-      'thread',
-      '工作线',
-      observation.thread === null ? '未进入工作线' : displayValue(observation.thread),
-    ],
-    ['focus', '注视', observation.focus === null ? '未聚焦对象' : displayValue(observation.focus)],
+    ['scope', '应用', applicationLabel],
+    ['thread', '工作线', threadLabel],
+    ['focus', '当前对象', focusLabel],
   ] as const;
 
   return (
@@ -182,13 +139,13 @@ export function SituationBar() {
       aria-label="声明的处境"
       data-testid="situation-bar"
       ref={ref}
-      className="relative ml-auto flex min-w-0 items-center gap-1.5"
+      className="relative ml-auto flex min-w-0 max-w-full items-center gap-1.5"
     >
       {/* 站点常显 */}
       <span
         data-testid="situation-site"
         title={`站点:${siteLabel}`}
-        className="rounded-full border bg-card px-2.5 py-0.5 text-[11px] font-medium text-foreground"
+        className="shrink-0 rounded-full border bg-card px-2.5 py-0.5 text-[11px] font-medium text-foreground"
       >
         {siteLabel}
       </span>
@@ -197,32 +154,33 @@ export function SituationBar() {
         <Link
           href={locationHrefWithChanges(route, { scope: null })}
           data-testid="situation-scope"
-          aria-label={`当前视角 ${displayValue(observation.scope)}`}
-          title={`当前视角 ${displayValue(observation.scope)}(点击清除)`}
+          aria-label={`当前应用 ${applicationLabel}`}
+          title={`当前应用 ${applicationLabel}(点击清除)`}
           data-nav="situation:clear-scope"
           className="min-w-0 max-w-32 truncate rounded-full border bg-card px-2.5 py-0.5 text-[11px] text-foreground transition-colors hover:bg-accent"
         >
-          {displayValue(observation.scope)}
+          {applicationLabel}
         </Link>
       )}
       {observation.thread !== null && (
         <span
           data-testid="situation-thread"
-          title={`工作线 ${displayValue(observation.thread)}`}
+          title={`工作线 ${threadLabel}`}
           className="min-w-0 max-w-32 truncate rounded-full border bg-card px-2.5 py-0.5 text-[11px] text-foreground"
         >
-          线 {displayValue(observation.thread)}
+          {threadLabel}
         </span>
       )}
-      {observation.focus !== null && (
-        <span
-          data-testid="situation-focus"
-          title={`注视 ${displayValue(observation.focus)}`}
-          className="min-w-0 max-w-40 truncate rounded-full border bg-card px-2.5 py-0.5 text-[11px] text-foreground"
-        >
-          注视 {displayValue(observation.focus)}
-        </span>
-      )}
+      {observation.focus !== null &&
+        (threadId === null || observation.focus !== `thread:${threadId}`) && (
+          <span
+            data-testid="situation-focus"
+            title={`当前对象 ${focusLabel}`}
+            className="min-w-0 max-w-40 truncate rounded-full border bg-card px-2.5 py-0.5 text-[11px] text-foreground"
+          >
+            {focusLabel}
+          </span>
+        )}
 
       {/* 「当前在哪」弹层触发键 */}
       <button
@@ -234,7 +192,7 @@ export function SituationBar() {
           if (!open) setScopeDraft(observation.scope ?? '');
           setOpen(!open);
         }}
-        className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
         在哪
         <ChevronDown
@@ -247,7 +205,7 @@ export function SituationBar() {
         <div
           role="dialog"
           aria-label="当前在哪"
-          className="absolute right-0 top-full z-50 mt-2 grid w-80 gap-3 rounded-lg border bg-popover p-3 text-popover-foreground shadow-md"
+          className="absolute right-0 top-full z-50 mt-2 grid max-h-[70dvh] w-80 max-w-[calc(100vw-3rem)] gap-3 overflow-y-auto rounded-lg border bg-popover p-3 text-popover-foreground shadow-md"
         >
           <dl className="grid gap-1.5 text-xs">
             {situationDetails.map(([field, label, value]) => (
@@ -255,14 +213,52 @@ export function SituationBar() {
                 <dt className="text-muted-foreground">{label}</dt>
                 <dd
                   data-testid={`situation-${field}`}
-                  className="max-w-48 truncate font-mono text-foreground"
+                  className="min-w-0 max-w-48 truncate text-foreground"
                   title={value}
                 >
-                  {value}
+                  {field === 'thread' &&
+                  observation.thread !== null &&
+                  thread.status === 'ready' ? (
+                    <Link
+                      href={contextReferenceHref(route, `thread:${threadId}`)}
+                      data-nav="situation:thread"
+                      className="text-primary hover:underline"
+                    >
+                      {value}
+                    </Link>
+                  ) : field === 'focus' &&
+                    typeof observation.focus === 'string' &&
+                    focus.status === 'ready' ? (
+                    <Link
+                      href={contextReferenceHref(route, observation.focus)}
+                      data-nav="situation:focus"
+                      className="text-primary hover:underline"
+                    >
+                      {value}
+                    </Link>
+                  ) : (
+                    value
+                  )}
                 </dd>
               </div>
             ))}
           </dl>
+
+          {references.status === 'ready' && references.value.length > 0 && (
+            <nav aria-label="关联对象" className="grid gap-1 border-t pt-2.5">
+              {references.value.map((reference) => (
+                <Link
+                  key={reference.rel}
+                  href={contextReferenceHref(route, reference.rel)}
+                  data-nav="situation:reference"
+                  title={reference.title}
+                  className="truncate text-xs text-primary hover:underline"
+                >
+                  {reference.title}
+                </Link>
+              ))}
+            </nav>
+          )}
 
           {bridge !== null && (
             <Link
@@ -288,29 +284,29 @@ export function SituationBar() {
               htmlFor="situation-scope-selector"
               className="text-xs font-medium text-foreground"
             >
-              调整视角
+              应用
             </label>
             <select
               id="situation-scope-selector"
               value={scopeDraft}
               onChange={(event) => setScopeDraft(event.currentTarget.value)}
               data-nav="local:situation-scope-value"
-              className="h-8 rounded-md border bg-background px-2 font-mono text-sm"
-              disabled={scopeOptions.status !== 'ready'}
+              className="h-8 min-w-0 rounded-md border bg-background px-2 text-sm"
+              disabled={applications.status !== 'ready'}
             >
               <option value="">全部已授权应用</option>
-              {scopeOptions.values.map((scope) => (
-                <option key={scope} value={scope}>
-                  {scope}
+              {options.map((option) => (
+                <option key={option.name} value={option.name}>
+                  {option.title}
                 </option>
               ))}
             </select>
-            {scopeOptions.status === 'loading' && (
-              <p className="text-[11px] text-muted-foreground">正在读取可访问应用…</p>
+            {applications.status === 'loading' && (
+              <p className="text-[11px] text-muted-foreground">读取中…</p>
             )}
-            {scopeOptions.status === 'error' && (
+            {applications.status === 'error' && (
               <p role="status" className="text-[11px] text-destructive">
-                无法读取可访问应用，请稍后重试。
+                无法读取应用
               </p>
             )}
             <div className="flex items-center gap-3">
@@ -322,7 +318,7 @@ export function SituationBar() {
                   data-nav="situation:set-scope"
                   className="text-xs text-primary hover:underline"
                 >
-                  应用视角
+                  切换应用
                 </Link>
               )}
               {observation.scope !== null && (
@@ -331,17 +327,13 @@ export function SituationBar() {
                   data-nav="situation:clear-scope"
                   className="text-xs text-primary hover:underline"
                 >
-                  清除视角
+                  清除应用
                 </Link>
               )}
             </div>
           </div>
 
-          {observation.thread !== null && (
-            <div className="border-t pt-2.5">
-              <ThreadSwitcher route={route} currentThreadId={displayValue(observation.thread)} />
-            </div>
-          )}
+          {threadId !== null && <ThreadSwitcher route={route} currentThreadId={threadId} />}
         </div>
       )}
     </section>

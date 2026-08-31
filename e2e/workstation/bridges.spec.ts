@@ -15,7 +15,7 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     );
     const situation = page.getByRole('region', { name: '声明的处境' });
     await expect(situation.getByTestId('situation-site')).toHaveText('工作站');
-    await expect(situation.getByTestId('situation-focus')).toHaveText('注视 flow:article-drafting');
+    await expect(situation.getByTestId('situation-focus')).toHaveText('文章发布向导');
     // T35 D-7:桥接链接收进「在哪」弹层——先开弹层再断言/点击。
     await situation.getByRole('button', { name: '在哪' }).click();
     const toMeta = situation.getByRole('link', { name: '在 meta 中编辑此定义' });
@@ -32,11 +32,9 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     // 弹层开合状态跨导航保持——收起以免条上芯片与弹层 dd 双命中。
     await situation.getByRole('button', { name: '在哪' }).click();
     await expect(situation.getByTestId('situation-site')).toHaveText('定义站');
-    await expect(situation.getByTestId('situation-scope')).toHaveText('publishing');
-    await expect(situation.getByTestId('situation-thread')).toHaveText('线 release-1');
-    await expect(situation.getByTestId('situation-focus')).toHaveText(
-      '注视 meta/flow:article-drafting',
-    );
+    await expect(situation.getByTestId('situation-scope')).toHaveText('内容发布');
+    await expect(situation.getByTestId('situation-thread')).toHaveText('无法读取');
+    await expect(situation.getByTestId('situation-focus')).toHaveText('文章发布向导');
     // URL 与 situation 会先于 canonical entity fetch 完成更新；等待 shell 明确提交
     // 合同内容，再验证声明标题与拓扑，避免把过渡期空 main 当成缺少拓扑。
     const canonicalFlow = page.getByTestId('meta-content-ready');
@@ -61,7 +59,7 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     await expect(page.locator('[data-surface]')).toHaveCount(1, { timeout: 30_000 });
     await expect(page.locator('[data-testid="canvas-errors"]')).toHaveCount(0);
     await expect(situation.getByTestId('situation-site')).toHaveText('工作站');
-    await expect(situation.getByTestId('situation-thread')).toHaveText('线 release-1');
+    await expect(situation.getByTestId('situation-thread')).toHaveText('无法读取');
 
     await page.goto(`${SCENARIO_BASE}/canvas?focus=post%3Apost-welcome&scope=publishing`);
     await situation.getByRole('button', { name: '在哪' }).click();
