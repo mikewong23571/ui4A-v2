@@ -4,9 +4,11 @@
 
 ## 活跃 Tracks
 
-- [~] **Track: T40 深路径体验闭环:应用内实体页 × Chat 共同注视的走查修复**(2026-08-31 创建:双环境走查登记 F-01~F-08;S1–S10 深路径用户故事验收,路径深入应用内实体页与 chat 交互;S4/S6 真实 LLM) *Link: [tracks/t40-deep-path-experience_20260831/index.md](./tracks/t40-deep-path-experience_20260831/index.md)*
+(当前无活跃 Track)
 
-## 归档 Tracks(T1–T39,只读历史)
+## 归档 Tracks(T1–T40,只读历史)
+
+- [x] **Track: T40 深路径体验闭环:应用内实体页 × Chat 共同注视的走查修复**(2026-08-31 完成:S1–S10 深路径用户故事全部浏览器/CLI 实测通过,S4/S6 真实 LLM;F-01~F-12 全闭环;S6 引用点击白屏经 dev/生产对照定案为 dev 编译开销;全量门禁绿) *Link: [tracks/archive/t40-deep-path-experience_20260831/index.md](./tracks/archive/t40-deep-path-experience_20260831/index.md)*
 
 - [x] **Track: T39 Meta 合同驱动治理与 Application 入口体验：语义 Trait + 有界 Hint、canonical Renderer、任务优先 UI/UX 与八应用双门验收**(2026-08-31 完成：US1–US18 通过，US19 真实 LLM 因 provider 未配置记为 NOT RUN；根级 Browser/CLI/390px/第九 fixture/full E2E/invariants/check 全部闭环) *Link: [tracks/archive/t39-meta-contract-driven-governance-ux_20260830/index.md](./tracks/archive/t39-meta-contract-driven-governance-ux_20260830/index.md)*
 

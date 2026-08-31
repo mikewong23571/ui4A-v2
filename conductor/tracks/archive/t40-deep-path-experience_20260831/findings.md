@@ -122,6 +122,14 @@
 - **排障记录**:前两次复测 LLM 未 exec 的直接原因不是 driver 缺陷——verify 脚本
   固定文案撞上捕捉流单例的上次 recorded 状态(字段逐字匹配),LLM 合理判定
   「已添加」;换唯一标题后 navigate→another→add→done 全链路 exec 成功。
+- **引用点击白屏定案(2026-08-31)**:dev 模式两次复测点击 citation chip 后 /canvas
+  内容区白屏 20s+(verify-s6 两次一致)。定位链:种会话重放点击两类 chip(流实例
+  todo-capture:main / 条目别名 todo:1009)均 <3s 渲染;直接加载同一 URL 正常;服务端
+  presentation 解析事件时间戳恒定 <100ms;dev 实盘全插桩复现为 11s 无反馈窗口后自愈
+  (全程零 pageerror/console error/失败请求);**生产构建(next build && start)同路径
+  实盘实测 1s 内完整渲染**(todo:1037)。裁定:Next dev 按需编译开销,非产品缺陷;
+  verify-s6 当时的 waitForFunction 因导航上下文销毁的假阴性加重了误判。S6 最终判定以
+  生产模式 verify-s6-prod 9/9 全绿为准(evidence:s6-01~s6-04)。
 
 ## F-07(P2,已裁定并修复)未登录行为不一致
 

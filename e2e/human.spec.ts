@@ -8,12 +8,22 @@
  *
  * 复用 server-kit:每场景 TRUNCATE + 自起 3110 场景 server(独立 distDir)。
  */
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 import { SCENARIO_BASE, withFreshServer } from './kits/server-kit';
 
 // 本文件全部用例指向场景 server(3110),与 baseline/chat 同源复用。
 test.use({ baseURL: SCENARIO_BASE });
+
+// T40 F-02:实体页 h1 = 实例身份;属性表「状态」行 = 当前节点中文标题(向导步骤名
+// 与业务状态词同源,与列表成员状态词一致),裸 node 枚举退守 raw 层不再上表。
+async function expectNodeStatusRow(page: Page, nodeTitle: string): Promise<void> {
+  await expect(
+    page
+      .locator('section[aria-label="属性"] tr')
+      .filter({ has: page.locator('th', { hasText: '状态' }) }),
+  ).toContainText(nodeTitle);
+}
 
 // ---- 事件日志读取形状(/api/events)--------------------------------------
 
@@ -64,7 +74,9 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
     await page.goto('/entity?rel=flow%3Aarticle-drafting');
 
     // 第一步 basic-info:title(text);D50:参数表单默认收起,先打开
-    await expect(page.locator('h1')).toHaveText('基本信息');
+    // 起步时尚无草稿标题,实例身份 = 向导标题(T40 F-02)。
+    await expect(page.locator('h1')).toHaveText('文章发布向导');
+    await expectNodeStatusRow(page, '基本信息');
     await page
       .locator('[data-action-group-item="next"] button[data-presentation-action="open-form"]')
       .click();
@@ -72,7 +84,7 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
     await page.locator('[data-action-group-item="next"] form button[data-action="next"]').click();
 
     // 第二步 classification:category(select 下拉)+ tags(text)
-    await expect(page.locator('h1')).toHaveText('分类');
+    await expectNodeStatusRow(page, '分类');
     await page
       .locator('[data-action-group-item="next"] button[data-presentation-action="open-form"]')
       .click();
@@ -81,7 +93,7 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
     await page.locator('[data-action-group-item="next"] form button[data-action="next"]').click();
 
     // 第三步 content:body(textarea 文本域)
-    await expect(page.locator('h1')).toHaveText('正文');
+    await expectNodeStatusRow(page, '正文');
     await page
       .locator('[data-action-group-item="next"] button[data-presentation-action="open-form"]')
       .click();
@@ -89,7 +101,7 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
     await page.locator('[data-action-group-item="next"] form button[data-action="next"]').click();
 
     // ready 节点:publish 表单(slug 来源 title)→ 发布
-    await expect(page.locator('h1')).toHaveText('就绪');
+    await expectNodeStatusRow(page, '就绪');
     await page
       .locator('[data-action-group-item="publish"] button[data-presentation-action="open-form"]')
       .click();
@@ -98,7 +110,7 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
     await page.locator('form button[data-action="publish"]').click();
 
     // 向导循环语义(D11):发布后回到基本信息(起草下一篇),不再是 done 终态
-    await expect(page.locator('h1')).toHaveText('基本信息');
+    await expectNodeStatusRow(page, '基本信息');
 
     // 文章集合合同可导航，且新文章实体真实存在并处于 published。
     await page.goto('/entity?rel=articles');
@@ -108,7 +120,8 @@ test('B1 委托发布(人类):三步向导表单逐字段填写 → 发布 → �
       hasText: '人类的第三篇',
     });
     await expect(created).toBeVisible();
-    await expect(created).toContainText('published');
+    // T40 F-02:成员行状态词为节点中文标题(已发布),裸 node 枚举不进读面。
+    await expect(created).toContainText('已发布');
 
     // B1 字段保真(D24):向导分类步所填 category/tags 经 set-field 落在向导
     // 实例上,publish 只带 title 参数——合并语义下必须出现在发布文章实体上。
@@ -133,14 +146,15 @@ test('B2 点名下线(人类):直达 post-welcome → 下线;first-post 不受�
   await withFreshServer(async () => {
     // 保留的实体路由直达目标文章，不依赖首页成员快照。
     await page.goto('/entity?rel=post%3Apost-welcome');
-    await expect(page.locator('h1')).toHaveText('已发布');
+    // T40 F-02:h1 = 实例身份(文章标题);节点中文状态词在属性表「状态」行。
+    await expect(page.locator('h1')).toHaveText('欢迎来到 UI4A');
+    await expectNodeStatusRow(page, '已发布');
     await expect(page.getByRole('button', { name: '下线', exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: '下线', exact: true }).click();
 
-    // 精确下线这一篇:节点 offline
-    await expect(page.locator('h1')).toHaveText('已下线');
-    await expect(page.getByText('节点 offline')).toBeVisible();
+    // 精确下线这一篇:节点 offline(状态行中文词;裸 node 行退守 raw,不再上表)
+    await expectNodeStatusRow(page, '已下线');
 
     // guard 投影(声明层):offline 节点未声明 unpublish → 按钮不存在;
     // 该节点唯一声明动作是 republish
@@ -164,30 +178,31 @@ test('B2 点名下线(人类):直达 post-welcome → 下线;first-post 不受�
 test('B3 审核队列(人类):逐条 approve 至 pending 清零;c4 终态无重复按钮', async ({ page }) => {
   await withFreshServer(async () => {
     // 保留的评论集合路由可导航；pending 状态来自成员实体，而非首页摘要。
+    // T40 F-02:成员行状态词为节点中文标题(待处理),裸 node 枚举不进读面。
     await page.goto('/entity?rel=comments');
-    await expect(page.locator('section[aria-label="成员"] a', { hasText: 'pending' })).toHaveCount(
+    await expect(page.locator('section[aria-label="成员"] a', { hasText: '待处理' })).toHaveCount(
       3,
     );
     await expect(page.getByText('成员(4)')).toBeVisible();
 
     // c4 已 approved:终态节点零声明动作 → 详情页无任何动作按钮(approve 不重复)
     await page.click('a[data-rel="comment:c4"]');
-    await expect(page.locator('h1')).toHaveText('已通过');
+    await expectNodeStatusRow(page, '已通过');
     await expect(page.locator('main button[data-action]')).toHaveCount(0);
 
     // 逐条 approve 3 条 pending(每次从队列点进成员 → 通过 → 回队列)
     for (let round = 0; round < 3; round += 1) {
       await page.goto('/entity?rel=comments');
-      const pending = page.locator('section[aria-label="成员"] a', { hasText: 'pending' });
+      const pending = page.locator('section[aria-label="成员"] a', { hasText: '待处理' });
       await expect(pending).toHaveCount(3 - round);
       await pending.first().click();
       await page.getByRole('button', { name: '通过' }).click();
-      await expect(page.getByText('节点 approved')).toBeVisible();
+      await expectNodeStatusRow(page, '已通过');
     }
 
     // 队列清空:无 pending 成员
     await page.goto('/entity?rel=comments');
-    await expect(page.locator('section[aria-label="成员"] a', { hasText: 'pending' })).toHaveCount(
+    await expect(page.locator('section[aria-label="成员"] a', { hasText: '待处理' })).toHaveCount(
       0,
     );
 

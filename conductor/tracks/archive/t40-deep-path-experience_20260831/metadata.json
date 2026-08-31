@@ -2,9 +2,9 @@
   "id": "t40-deep-path-experience_20260831",
   "title": "T40 深路径体验闭环:应用内实体页 × Chat 共同注视的走查修复",
   "type": "remediation",
-  "status": "active",
+  "status": "done",
   "createdAt": "2026-08-31T10:40:00+08:00",
-  "updatedAt": "2026-08-31T10:40:00+08:00",
+  "updatedAt": "2026-08-31T19:10:00+08:00",
   "acceptanceModel": "agent-visual-browser-review",
   "visionRef": "conductor/product-vision.md",
   "predecessor": "t39-meta-contract-driven-governance-ux_20260830",
@@ -12,6 +12,13 @@
     "t35-ux-walkthrough-remediation_20260827",
     "t39-meta-contract-driven-governance-ux_20260830"
   ],
-  "artifacts": ["spec.md", "plan.md", "user-stories.md", "findings.md", "evidence/"],
+  "artifacts": [
+    "spec.md",
+    "plan.md",
+    "user-stories.md",
+    "findings.md",
+    "review.md",
+    "evidence/"
+  ],
   "notes": "以『书架→landing→动作→实体页→chat』完整深路径为验收骨架;实体页与 chat 交互是一等验收面;真实 LLM 故事 provider 缺失记 NOT RUN,禁止 rule driver 冒充。"
 }

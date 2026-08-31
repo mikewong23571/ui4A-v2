@@ -93,11 +93,25 @@ prompt 结构变更。
 
 ## Phase E:深路径终审(编排者执行,不委派)
 
-- [ ] Task E1:S1/S2/S7 业务深路径浏览器实测(本地 dev),逐条判定加粗句,截图入库。
-- [ ] Task E2:S4/S6 真实 LLM 故事实测;provider 缺失记 NOT RUN,禁止 rule driver 替代。
-- [ ] Task E3:S10 双门同径(CLI/HTTP 对照)+ 390px 窄屏深路径。
-- [ ] Task E4:现场实例复核 S1/S4 形态,裁定 F-07 归属(本 Track 修复或部署配置),登记差异。
-- [ ] Task E5:全量门禁——`pnpm format:check`、`pnpm governance:strict`、`pnpm check`、
-  `CI=true pnpm e2e`、invariants。
-- [ ] Task E6:汇总 `review.md`,逐故事 pass/pass-with-observations/fail、真实 LLM 状态、
-  截图路径、剩余观察;更新 GOAL.md/tracks.md,归档 Track。
+- [x] Task E1(2026-08-31):S1/S2/S7 业务深路径浏览器实测通过——S1 六屏证据(landing→表单→
+  提交→实体页→完成后状态当场翻转→回首页一致)s1-01~06;S2 6/6(brief 表单/实体页中文状态/
+  执行环境诚实失败/责任点决策)s2-01~04;S7 7/7(工作线首屏/涉及对象可点/线内 chat 起步/
+  投影反映进展)e-thread-after-fix + s7-01~07。
+- [x] Task E2(2026-08-31):S4 8/8(实体页就地 chat,注视 chip 在场,助手引用同一实体事实,
+  推进经确认门执行后状态当场变)s4-01~02;S6 生产模式 9/9(含引用点击进实体页 todo:1039、
+  F-12 重放引用恢复)s6-01~04;真实 LLM(gpt-5.6-sol)全程,无 rule driver 替代。
+- [x] Task E3(2026-08-31):S10 双门同径——CLI(flows list/entities get/dry-run→exec→读回/
+  结构化错误信封)与浏览器同源一致;390px 首页/实体页/工作线/chat 浮窗 7/7 零横向滚动
+  s10-*-390.png。
+- [x] Task E4(2026-08-31):现场实例(mothership)复核——Keycloak 登录、首页书架、meta
+  控制台登录态渲染全通;/canvas?focus=todos 呈「内容不存在或不可见」结构化回执(部署旧
+  代码无 todo 集合,诚实降级形态正确);F-07 裁定为当前代码缺陷并修复(meta-client 接
+  redirectToLoginOnAuthError,692db8d)。
+- [x] Task E5(2026-08-31):全量门禁——`pnpm format:check` pass、`pnpm governance:strict`
+  pass(空基线)、7 包逐包 typecheck 全绿(`pnpm check` 字面因本机 pnpm shim 不支持 `-r`
+  以等价分项覆盖)、ESLint 0 errors、vitest unit/db 全量 exit 0、invariants 13 passed/
+  14 skipped、全量 e2e 55 passed / 22 skipped / 0 failed exit 0(4 个 spec 的 F-02/F-04
+  陈旧断言按 T36 先例对齐本 Track 有意合同改动)。
+- [x] Task E6(2026-08-31):汇总 `review.md`,S1–S10 逐故事判定、真实 LLM 状态、截图
+  路径、剩余观察落盘;tracks.md 归档区登记,Track 归档进 `conductor/tracks/archive/`
+  (GOAL.md 不动,沿 T35/T39 闭环先例)。

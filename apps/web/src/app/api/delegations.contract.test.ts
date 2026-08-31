@@ -84,6 +84,8 @@ describe('GET /api/entity?rel=delegations(委托集合投影,worker 写后免重
       count: 0,
       presentation: {
         fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+        // 空态语义声明(F-04/T40):「在动」集合的空态引导键,首页组合区消费。
+        emptyMeaning: 'nothing-in-motion',
       },
     });
   });
@@ -116,6 +118,7 @@ describe('GET /api/entity?rel=delegations(委托集合投影,worker 写后免重
       count: 1,
       presentation: {
         fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+        emptyMeaning: 'nothing-in-motion',
       },
     });
     expect(collection.entities).toHaveLength(1);

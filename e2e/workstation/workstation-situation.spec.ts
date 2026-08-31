@@ -53,8 +53,13 @@ test('workstation 声明条与 presence 留痕同源，scope/出线保留其他 
     await expect(situation.getByTestId('situation-thread')).toHaveText('线 release-1');
     await expect(situation.getByTestId('situation-focus')).toHaveText('注视 post:one');
     // T39/D51:凭证授予决定权限；scope 只表达当前注意力，不进入授权签名。
+    // (371f041 文案收敛后,「在哪」弹层以全量处境字段 + 授权 sitemap 驱动的
+    // 「调整视角」选择器承载该语义,说明性句子不再占位——见 situation-bar.test。)
     await situation.getByRole('button', { name: '在哪' }).click();
-    await expect(situation).toContainText('可访问应用集合由凭证授予；切换视角不扩大或缩小权限。');
+    const situationDialog = page.getByRole('dialog', { name: '当前在哪' });
+    await expect(situationDialog).toBeVisible();
+    await expect(situationDialog).toContainText('publishing');
+    await expect(situationDialog.locator('#situation-scope-selector')).toBeVisible();
 
     await expect
       .poll(() => presenceChangePoints(page), { timeout: 15_000 })

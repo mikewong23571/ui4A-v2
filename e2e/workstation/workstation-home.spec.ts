@@ -12,9 +12,15 @@ import { terminateStaleNotifyWorkflows } from '../../apps/web/src/temporal/notif
 const runFile = promisify(execFile);
 const CLI_MAIN = path.join(process.cwd(), 'apps', 'cli', 'dist', 'main.js');
 const SOURCE_REGIONS = [
-  { region: 'waiting-for-me', rel: 'inbox', title: '在等我' },
-  { region: 'in-motion', rel: 'delegations', title: '在动' },
-  { region: 'work-lines', rel: 'threads', title: '我的工作线' },
+  // F-04/T40:集合 presentation 声明 emptyMeaning(首页空态引导的数据源),CLI 与浏览器同源。
+  {
+    region: 'waiting-for-me',
+    rel: 'inbox',
+    title: '在等我',
+    emptyMeaning: 'no-current-responsibility',
+  },
+  { region: 'in-motion', rel: 'delegations', title: '在动', emptyMeaning: 'nothing-in-motion' },
+  { region: 'work-lines', rel: 'threads', title: '我的工作线', emptyMeaning: 'ready-to-start' },
 ] as const;
 
 interface CliEnvelope<T> {
@@ -136,12 +142,13 @@ test('workstation home and the real CLI read the same three declared source enti
     });
 
     const entities = new Map<string, SirenEntity>();
-    for (const { rel, title } of SOURCE_REGIONS) {
+    for (const { rel, title, emptyMeaning } of SOURCE_REGIONS) {
       const entity = expectSuccess(await cli<SirenEntity>('entities', 'get', rel), 'entities.get');
       expect(entity.properties.rel).toBe(rel);
       expect(entity.properties.title).toBe(title);
       expect(entity.properties.presentation).toEqual({
         fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+        emptyMeaning,
       });
       entities.set(rel, entity);
     }
@@ -267,7 +274,11 @@ test('waiting-for-me 成员决策卡:批准两段确认零导航零参数,同一
     expect(created.status).toBe(200);
 
     await page.setViewportSize({ width: 1440, height: 1200 });
+    // 冷编译下 sidecar 首读可能超过 expect 默认 5s:与本文首个用例同口径,
+    // 显式等 sidecar 响应落地再断言 surface(避免环境速度造成的假阴性)。
+    const decisionSidecar = page.waitForResponse(sidecarRead);
     await page.goto(SCENARIO_BASE);
+    await decisionSidecar;
     const surface = page.locator('[data-surface]');
     await expect(surface).toHaveCount(1);
 

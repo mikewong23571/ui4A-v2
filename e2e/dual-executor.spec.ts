@@ -18,7 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { runAgent } from '@ui4a/agent';
 import { createRuleDriver } from '@ui4a/agent/testkit/rule-driver';
 import type { TrailStep } from '@ui4a/agent';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 import { terminateStaleNotifyWorkflows } from '../apps/web/src/temporal/notify';
 
@@ -28,6 +28,16 @@ import {
   withFreshServer,
   withWorkerServer,
 } from './kits/server-kit';
+
+// T40 F-02:实体页 h1 = 实例身份;属性表「状态」行 = 当前节点中文标题(向导步骤名
+// 与业务状态词同源,与列表成员状态词一致),裸 node 枚举退守 raw 层不再上表。
+async function expectNodeStatusRow(page: Page, nodeTitle: string): Promise<void> {
+  await expect(
+    page
+      .locator('section[aria-label="属性"] tr')
+      .filter({ has: page.locator('th', { hasText: '状态' }) }),
+  ).toContainText(nodeTitle);
+}
 
 // 本文件全部用例指向场景 server(3110)。
 test.use({ baseURL: SCENARIO_BASE });
@@ -154,33 +164,35 @@ test('B1 双执行者:agent 合同发布 + human 表单发布,同一日志两类
 
     // ---- human 路径(renderer:保留实体路由直达三步向导)-------------------
     await page.goto('/entity?rel=flow%3Aarticle-drafting');
-    await expect(page.locator('h1')).toHaveText('基本信息');
+    // 起步时尚无草稿标题,实例身份 = 向导标题(T40 F-02;agent 上一轮 publish 后已回环重置)。
+    await expect(page.locator('h1')).toHaveText('文章发布向导');
+    await expectNodeStatusRow(page, '基本信息');
     await page
       .locator('[data-action-group-item="next"] button[data-presentation-action="open-form"]')
       .click();
     await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第四篇');
     await page.locator('[data-action-group-item="next"] form button[data-action="next"]').click();
-    await expect(page.locator('h1')).toHaveText('分类');
+    await expectNodeStatusRow(page, '分类');
     await page
       .locator('[data-action-group-item="next"] button[data-presentation-action="open-form"]')
       .click();
     await page.getByRole('combobox', { name: /分类/ }).selectOption('essay');
     await page.getByRole('textbox', { name: /标签/ }).fill('dual-human');
     await page.locator('[data-action-group-item="next"] form button[data-action="next"]').click();
-    await expect(page.locator('h1')).toHaveText('正文');
+    await expectNodeStatusRow(page, '正文');
     await page
       .locator('[data-action-group-item="next"] button[data-presentation-action="open-form"]')
       .click();
     await page.getByRole('textbox', { name: /正文/ }).fill('人类经 renderer 表单发布。');
     await page.locator('[data-action-group-item="next"] form button[data-action="next"]').click();
-    await expect(page.locator('h1')).toHaveText('就绪');
+    await expectNodeStatusRow(page, '就绪');
     await page
       .locator('[data-action-group-item="publish"] button[data-presentation-action="open-form"]')
       .click();
     await page.getByRole('textbox', { name: /文章标题/ }).fill('人类的第四篇');
     // 触发键与提交键同名;提交按钮按结构定位(铁律 3 的 data-action 挂点)
     await page.locator('form button[data-action="publish"]').click();
-    await expect(page.locator('h1')).toHaveText('基本信息');
+    await expectNodeStatusRow(page, '基本信息');
 
     // ---- 同一日志:publish 由两类执行者各执行一次,各自正确 ----------------
     // 文章集合实体状态是业务合同；不依赖首页文章计数快照。
@@ -215,9 +227,11 @@ test('B2 双执行者:agent 合同下线 post-welcome + human 表单下线 first
 
     // ---- human 路径(renderer:保留实体路由直达下线按钮)-------------------
     await page.goto('/entity?rel=post%3Afirst-post');
-    await expect(page.locator('h1')).toHaveText('已发布');
+    // T40 F-02:h1 = 实例身份(文章标题);节点中文状态词在属性表「状态」行。
+    await expect(page.locator('h1')).toHaveText('第一篇');
+    await expectNodeStatusRow(page, '已发布');
     await page.getByRole('button', { name: '下线', exact: true }).click();
-    await expect(page.locator('h1')).toHaveText('已下线');
+    await expectNodeStatusRow(page, '已下线');
 
     // ---- 同一日志:unpublish 两类执行者,各下线各的,互不影响 -------------
     expect((await getEntity('post:post-welcome')).properties.node).toBe('offline');
@@ -246,16 +260,17 @@ test('B3 双执行者:agent 合同 approve c1 + human 表单 approve c2/c3,同�
     expect(agentApprove.status).toBe(200);
 
     // ---- human 路径(renderer:队列逐条通过,human.spec 走查核心)----------
+    // T40 F-02:成员行状态词为节点中文标题(待处理),裸 node 枚举不进读面。
     for (let round = 0; round < 2; round += 1) {
       await page.goto('/entity?rel=comments');
-      const pending = page.locator('section[aria-label="成员"] a', { hasText: 'pending' });
+      const pending = page.locator('section[aria-label="成员"] a', { hasText: '待处理' });
       await expect(pending).toHaveCount(2 - round);
       await pending.first().click();
       await page.getByRole('button', { name: '通过' }).click();
-      await expect(page.getByText('节点 approved')).toBeVisible();
+      await expectNodeStatusRow(page, '已通过');
     }
     await page.goto('/entity?rel=comments');
-    await expect(page.locator('section[aria-label="成员"] a', { hasText: 'pending' })).toHaveCount(
+    await expect(page.locator('section[aria-label="成员"] a', { hasText: '待处理' })).toHaveCount(
       0,
     );
 
