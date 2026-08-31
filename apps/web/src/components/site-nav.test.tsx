@@ -47,6 +47,7 @@ describe('SiteNav · workstation / meta / 系统区', () => {
 
     expectLink(workstation, '我的事', '/', 'home');
     expectLink(workstation, '共同注视', '/canvas', 'canvas');
+    expectLink(workstation, '应用', '/applications', 'applications');
     expectLink(meta, '定义管理', '/meta', 'meta');
     expect(container.querySelector('a[href="/raw"]')).toBeNull();
   });

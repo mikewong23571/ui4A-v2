@@ -95,7 +95,7 @@ afterEach(() => {
 });
 
 describe('ApplicationEntryStrip · T39 Application 图书馆', () => {
-  it('按 sitemap 声明顺序展示全部 authorized business Applications 的 title 与可触达 intent', async () => {
+  it('缩略入口按 sitemap 声明顺序展示中文名，完整用途留在目录', async () => {
     stubApplications(installedApplications);
     render(<ApplicationEntryStrip />);
 
@@ -113,11 +113,33 @@ describe('ApplicationEntryStrip · T39 Application 图书馆', () => {
       );
       expect(link, `${application.name} 应在书架中`).toBeDefined();
       expect(within(link!).getByText(application.title)).toBeTruthy();
-      expect(within(link!).getByText(application.intent)).toBeTruthy();
+      expect(within(link!).queryByText(application.intent)).toBeNull();
+      expect(link!.getAttribute('title')).toBe(application.intent);
     }
 
     expect(screen.queryByRole('button', { name: /更多应用/ })).toBeNull();
     expect(screen.queryByText('默认应用')).toBeNull();
+    expect(screen.getByRole('link', { name: '全部应用' }).getAttribute('href')).toBe(
+      '/applications',
+    );
+  });
+
+  it('30 个应用时首页只展示前 9 个，完整目录可从固定入口到达', async () => {
+    const applications = Array.from({ length: 30 }, (_, index) => ({
+      name: `app-${index}`,
+      title: `应用 ${index}`,
+      intent: `用途 ${index}`,
+    }));
+    stubApplications(applications);
+    render(<ApplicationEntryStrip />);
+    await screen.findByRole('region', { name: '应用' });
+    expect(shelfLinks()).toHaveLength(9);
+    expect(shelfLinks().map((link) => link.textContent)).toEqual(
+      applications.slice(0, 9).map((app) => app.title),
+    );
+    expect(screen.queryByText('应用 9')).toBeNull();
+    expect(screen.getByText('30 个')).toBeTruthy();
+    expect(screen.getByRole('link', { name: '全部应用' })).toBeTruthy();
   });
 
   it('当前 lens 仅作 aria-current 轻强调,不收窄授权集合;每个入口保留 thread/returnTo 并显式进入 canonical landing', async () => {
@@ -165,7 +187,7 @@ describe('ApplicationEntryStrip · T39 Application 图书馆', () => {
     expect(links.at(-1)?.getAttribute('data-nav')).toBe('local:app-entry:research');
     const futureLink = links.at(-1)!;
     expect(within(futureLink).getByText('研究素材')).toBeTruthy();
-    expect(within(futureLink).getByText(research.intent)).toBeTruthy();
+    expect(futureLink.getAttribute('title')).toBe(research.intent);
     expect(hrefOf(futureLink).searchParams.get('focus')).toBe('workspace:app:research');
   });
 

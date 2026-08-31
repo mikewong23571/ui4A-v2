@@ -22,8 +22,8 @@ export function AppShell({ children, aside }: { children: ReactNode; aside?: Rea
   return (
     <>
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        {/* 窄视口允许换行(响应式无横向溢出;常规宽度恢复 D-7 单行 h-12 定高)。 */}
-        <div className="mx-auto flex min-h-12 w-full max-w-5xl flex-wrap items-center gap-x-4 gap-y-1 px-6 py-1 sm:h-12 sm:flex-nowrap sm:py-0">
+        {/* 按可用空间自然换行，避免新增固定导航入口后被定高顶栏裁切。 */}
+        <div className="mx-auto flex min-h-12 w-full max-w-5xl flex-wrap items-center gap-x-4 gap-y-1 px-6 py-1">
           <a href="/" data-nav="home" className="flex shrink-0 items-baseline gap-2">
             <span className="text-sm font-semibold tracking-tight">{APP_NAME}</span>
             <span className="text-xs text-muted-foreground">v{VERSION}</span>

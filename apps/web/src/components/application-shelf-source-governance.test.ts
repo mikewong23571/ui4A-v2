@@ -2,7 +2,14 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-const source = readFileSync(new URL('./application-entry-strip.tsx', import.meta.url), 'utf8');
+const source = [
+  './application-entry-strip.tsx',
+  './applications/application-catalog.ts',
+  './applications/application-link.tsx',
+  './applications/application-directory.tsx',
+]
+  .map((file) => readFileSync(new URL(file, import.meta.url), 'utf8'))
+  .join('\n');
 
 const installedApplicationNames = [
   'default',

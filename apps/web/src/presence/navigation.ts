@@ -94,6 +94,14 @@ export function locationHrefWithChanges(route: string, changes: LocationQueryCha
   return relativeLocation(url);
 }
 
+/** Open the directory without stale object focus or local filters. */
+export function applicationDirectoryHref(route: string): string {
+  const params = new URLSearchParams();
+  appendSituationDeclarations(params, new URL(route, 'http://ui4a.local'));
+  const search = params.toString();
+  return search === '' ? '/applications' : `/applications?${search}`;
+}
+
 /** Enter one canonical Application landing while carrying only thread-return context. */
 export function applicationLandingHref(route: string, applicationName: string): string {
   const source = new URL(route, 'http://ui4a.local');

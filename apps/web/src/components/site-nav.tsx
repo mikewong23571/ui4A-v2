@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react';
 const WORKSTATION_ITEMS = [
   { label: '我的事', href: '/', nav: 'home' },
   { label: '共同注视', href: '/canvas', nav: 'canvas' },
+  { label: '应用', href: '/applications', nav: 'applications' },
 ] as const;
 
 const SYSTEM_ITEMS = [

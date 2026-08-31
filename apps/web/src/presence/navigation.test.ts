@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applicationDirectoryHref,
   applicationLandingHref,
   canvasEntityHref,
   citationCanvasHref,
@@ -11,6 +12,14 @@ import {
 } from './navigation';
 
 describe('explicit URL navigation', () => {
+  it('enters the directory with explicit attention context but no stale focus', () => {
+    expect(
+      applicationDirectoryHref(
+        '/?scope=publishing&thread=release-1&returnTo=%2Fthreads&focus=post%3Aone&query=old',
+      ),
+    ).toBe('/applications?scope=publishing&thread=release-1&returnTo=%2Fthreads');
+    expect(applicationDirectoryHref('/?returnTo=%2F%2Fevil.example')).toBe('/applications');
+  });
   it('builds an explicit Application landing and carries only thread-return context', () => {
     expect(
       applicationLandingHref(
