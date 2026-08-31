@@ -35,6 +35,7 @@ import type { ChatSessionSummary, ChatTurn } from '@/chat/history';
 import { citationsOrEmpty } from '@/chat/citations';
 import { clientViewReportForLocation, type ActivePresentationView } from '@/chat/client-view';
 import type { ChatFailureReason, ChatRenderPayload, ChatStepActivity } from '@/chat/sse';
+import type { ChatStartNotice } from '@/chat/sse';
 import { anySignal, createIdleTimeout, readChatSseStream, type ChatFinalPayload } from '@/chat/sse';
 
 import {
@@ -187,6 +188,7 @@ export function useChatSession(): ChatSession {
         activity?: ChatStepActivity;
         eventSeq?: number;
         failure?: ChatFailureReason;
+        notice?: ChatStartNotice;
         citations?: unknown;
       } = {},
     ): void => {
@@ -200,6 +202,7 @@ export function useChatSession(): ChatSession {
           ...(options.activity !== undefined ? { activity: options.activity } : {}),
           ...(options.eventSeq !== undefined ? { eventSeq: options.eventSeq } : {}),
           ...(options.failure !== undefined ? { failure: options.failure } : {}),
+          ...(options.notice !== undefined ? { notice: options.notice } : {}),
           ...(citations.length > 0 ? { citations } : {}),
         },
       ]);
@@ -291,6 +294,10 @@ export function useChatSession(): ChatSession {
         appendAssistant(payload.summary ?? '', { failure: payload.reason });
         return;
       }
+      // 起步降级 notice(T40 B1):注视失效降级到 entry/站点兜底,回合照常完成;
+      // 结构化 notice 独立成条(机械 code 进折叠层,人话主行来自合同 sitemap 标题)。
+      if (payload.notice !== undefined)
+        appendAssistant(payload.summary ?? '', { notice: payload.notice });
       // 终局内容补一条 assistant 消息:零轨迹步(如起始实体不可得),或 T24
       // 活动语言回合——活动条目只说「正在做什么」,answered 等结局的终局内容
       // (回答、完成 summary)不在步帧主呈现里,经 final.summary 落地,内容

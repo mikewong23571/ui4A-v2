@@ -279,4 +279,48 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
     expect(screen.getByText('聊天循环异常: 爆炸')).toBeTruthy();
     expect(screen.queryByText('失败: 聊天循环异常: 爆炸')).toBeNull();
   });
+
+  it('final 帧带起步降级 notice:主行来自合同标题,机械 code 退折叠层,不冒充失败', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse([
+            {
+              type: 'final',
+              payload: {
+                sessionId: 'sess-notice',
+                driver: 'llm',
+                requestedDriver: 'auto',
+                outcome: 'done',
+                summary: '已从文章列表继续',
+                steps: [],
+                successes: [],
+                notice: {
+                  code: 'focus_degraded',
+                  droppedRel: 'workspace:app:editorial',
+                  startedRel: 'articles',
+                  startedTitle: '文章',
+                },
+              },
+            },
+          ]),
+        ),
+      ),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('检查当前对象');
+
+    // 主行为合同 sitemap 标题的 D47.1 式固定框架插值,机械 code 不进主行。
+    await waitFor(() => {
+      expect(screen.getByText('已从「文章」继续')).toBeTruthy();
+    });
+    // 机械 code 与 rel 事实退折叠层(注视数据区),且不呈现失败措辞。
+    expect(screen.getByText('code=focus_degraded')).toBeTruthy();
+    expect(screen.getByText('原注视:workspace:app:editorial')).toBeTruthy();
+    expect(screen.getByText('起步:articles')).toBeTruthy();
+    expect(screen.queryByText('失败 · code=focus_degraded')).toBeNull();
+  });
 });

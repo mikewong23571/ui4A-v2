@@ -19,10 +19,12 @@
  *   payload 与一次性 JSON 回执同形状,rule 命中路径仍走 JSON);
  * - {type:'heartbeat'} —— 长回合连接保活(不产生消息,只刷新客户端空闲计时);
  * - {type:'final', turnId, payload:{sessionId, turnId, driver, requestedDriver, outcome,
- *   summary, steps, successes, render?, reason?}} —— 回合终帧;失败终局
+ *   summary, steps, successes, render?, reason?, notice?}} —— 回合终帧;失败终局
  *   (T24 Phase B Task 3)必附 reason={code, evidence?, tried?, phrasing?} 结构化
  *   失败数据(phrasing 为 LLM 在场时的表述,缺席=诚实降级为中性结构化展示),
- *   summary 保留为机器层/审计数据;
+ *   summary 保留为机器层/审计数据;起步降级(T40 B1)附
+ *   notice={code, droppedRel, startedRel, startedTitle?}(注视失效降级到
+ *   entry/站点兜底时,机械 code 客户端退折叠层);
  * - {type:'error', error, reason} —— 服务端兜底(循环异常,200 流内如实报告),
  *   必附结构化失败 reason(D48:error 帧恒为客户端中性结构化呈现,LLM 表述
  *   仅覆盖 final 帧——见 DECISIONS D48 第 4 小节)。
@@ -73,6 +75,22 @@ export interface ChatFailureReason {
   phrasing?: string;
 }
 
+/**
+ * 起步降级 notice(T40 B1):focus 失效(虚主体/不存在/授权外)时起步不阻断,
+ * 结构化 notice 随 final 帧下发。与 reason 同形纪律——机械 code 是结构化数据,
+ * 客户端折叠层呈现;人话主行的数据来源是合同 sitemap 表面标题(startedTitle)。
+ */
+export interface ChatStartNotice {
+  /** 机械码(结构化数据,不是面向用户叙句)。 */
+  code: 'focus_degraded';
+  /** 被丢弃的注视 rel(机械事实)。 */
+  droppedRel: string;
+  /** 实际起步 rel(机械事实)。 */
+  startedRel: string;
+  /** 起点实体标题(合同 sitemap 表面 title;人话主行数据,缺省省略)。 */
+  startedTitle?: string;
+}
+
 /** final 帧载荷的基础字段(结局无关;outcome 决定 reason 的在场性,见下)。 */
 interface ChatFinalPayloadBase {
   sessionId: string;
@@ -84,6 +102,8 @@ interface ChatFinalPayloadBase {
   successes: ExecSuccess[];
   sources?: FactRef[];
   presentationRequestIds?: string[];
+  /** 起步降级 notice(注视失效降级到 entry/站点兜底时随帧下发)。 */
+  notice?: ChatStartNotice;
   render?: {
     concern: string;
     canvasUrl: string;

@@ -9,6 +9,7 @@ import { getEngine } from '../../../engine/service';
 import {
   articleCount,
   chat,
+  createOperationsLlmStub,
   createPublishingLlmStub,
   createUnauthorizedStub,
   publishingApplicationView,
@@ -312,35 +313,43 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
     expect(sitemapRequestCount()).toBe(1);
   });
 
-  it('事实 focus 首实体不可得:final 精确为 start_entity_unavailable 且不预探测其他实体', async () => {
-    const { json, frames } = await chat({
-      sessionId: 'focused-start-unavailable',
-      goal: { verb: '检查当前对象' },
-      clientView: {
-        schemaVersion: 2,
-        presence: {
-          clientInstanceId: 'client:start-unavailable',
-          site: 'workstation',
-          scope: 'default',
-          thread: null,
-          focus: 'ghost',
-        },
-      },
-    });
+  it.each(['workspace:app:editorial', 'ghost'])(
+    '失效 focus(%s):起步降级不阻断,结构化 notice 随 final 下发,无裸错误码直出',
+    async (focus) => {
+      const stub = await createOperationsLlmStub([
+        { name: 'done', args: { summary: '注视降级后正常起步' } },
+      ]);
+      process.env.LLM_BASE_URL = `http://127.0.0.1:${stub.port()}/v4`;
+      try {
+        const { json, frames } = await chat({
+          sessionId: 'focused-start-degraded',
+          goal: { verb: '检查当前对象' },
+          clientView: {
+            schemaVersion: 2,
+            presence: {
+              clientInstanceId: 'client:start-degraded',
+              site: 'workstation',
+              scope: 'default',
+              thread: null,
+              focus,
+            },
+          },
+        });
 
-    expect(json.outcome).toBe('failed');
-    expect(json.steps).toEqual([]);
-    expect((json as { reason?: { code?: string; evidence?: string[] } }).reason).toEqual({
-      code: 'start_entity_unavailable',
-      evidence: ['实体 "ghost" 不存在'],
-    });
-    expect(frames.find((frame) => frame.type === 'final')?.payload).toMatchObject({
-      outcome: 'failed',
-      reason: { code: 'start_entity_unavailable' },
-    });
-    expect(sitemapRequestCount()).toBe(1);
-    expect(entityRequestRels()).toEqual(['ghost']);
-  });
+        // 起步不阻断:回落 articles(scope=default 无 entry),回合正常完成。
+        expect(json.outcome).toBe('done');
+        expect((json as { reason?: unknown }).reason).toBeUndefined();
+        expect(frames.find((frame) => frame.type === 'final')?.payload).toMatchObject({
+          outcome: 'done',
+          notice: { code: 'focus_degraded', droppedRel: focus, startedRel: 'articles' },
+        });
+        expect(sitemapRequestCount()).toBe(1);
+        expect(entityRequestRels()).toEqual(['articles']);
+      } finally {
+        await new Promise<void>((resolve) => stub.close(() => resolve()));
+      }
+    },
+  );
 
   it('route 不再调用 readSitemapTitles 触发第二次 fetch', () => {
     for (const source of [routeSource, streamSource]) {

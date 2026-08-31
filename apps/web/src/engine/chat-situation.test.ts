@@ -4,7 +4,7 @@ import { sliceSitemapDisclosure, type SitemapSummary } from '@ui4a/agent';
 import { CHAT_VIEW_PROTOCOL_VERSION, type ClientViewReport } from '@ui4a/shared';
 
 import type { TrustedRequestAuditContext } from '../auth/request-identity';
-import { startRelFromSituation } from '../chat/start-chain';
+import { resolveStartRel } from '../chat/start-chain';
 import { appendPresenceChange, ensurePresenceTables } from '@ui4a/db/presence';
 import { getPool } from '@ui4a/db/pool';
 
@@ -12,6 +12,14 @@ import { situationForChat } from './chat-situation';
 
 const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');
 const PRINCIPAL = 'user:client-view-lock';
+/** 空业务 sitemap(上述断言只走 entry/站点兜底,不触碰存在性表与标题)。 */
+const EMPTY_SITEMAP = {
+  version: 'test',
+  surfaces: [],
+  flows: [],
+  applications: [],
+  capabilities: [],
+};
 
 /** 与本地 profile resolveTrustedRequestIdentity 产物同构的受信身份(D51:授予集合口径)。 */
 function identityWith(
@@ -82,21 +90,30 @@ describe('chat situation adapter', () => {
     expect(situation.scope).toBeUndefined();
     expect(situation.disclosure.scope).toBeUndefined();
     expect(
-      startRelFromSituation(situation, {
-        development: {
-          name: 'development',
-          title: 'Development',
-          intent: 'Develop software',
-          entry: { target: 'flow:software-change', role: 'primary-task' },
+      resolveStartRel({
+        situation,
+        snapshot: {
+          instances: {},
+          collections: {},
+          applications: {
+            development: {
+              name: 'development',
+              title: 'Development',
+              intent: 'Develop software',
+              entry: { target: 'flow:software-change', role: 'primary-task' },
+            },
+            publishing: {
+              name: 'publishing',
+              title: 'Publishing',
+              intent: 'Publish content',
+              entry: { target: 'flow:article-drafting', role: 'primary-create' },
+            },
+          },
         },
-        publishing: {
-          name: 'publishing',
-          title: 'Publishing',
-          intent: 'Publish content',
-          entry: { target: 'flow:article-drafting', role: 'primary-create' },
-        },
+        sitemap: EMPTY_SITEMAP,
+        granted: null,
       }),
-    ).toBe('articles');
+    ).toEqual({ rel: 'articles' });
   });
 
   // T31 R9(←T29,D48 裁决 b):clientView.presence 进入 explicit 槽位是有意分层——
@@ -190,27 +207,36 @@ describe('(D51-窄披露) prompt 披露输入', () => {
     expect(situation.disclosure.scope).toBe('default');
 
     // 导航落点与披露 scope 出自同一 situation(route 的 runAgent options:
-    // app=situation.scope, startRel=startRelFromSituation(situation))。
-    const startRel = startRelFromSituation(situation, {
-      default: {
-        name: 'default',
-        title: 'Default',
-        intent: 'overview',
-        entry: { target: 'overview', role: 'primary-collection' },
+    // app=situation.scope, startRel=resolveStartRel(situation))。
+    const startRel = resolveStartRel({
+      situation,
+      snapshot: {
+        instances: {},
+        collections: {},
+        applications: {
+          default: {
+            name: 'default',
+            title: 'Default',
+            intent: 'overview',
+            entry: { target: 'overview', role: 'primary-collection' },
+          },
+          publishing: {
+            name: 'publishing',
+            title: 'Publishing',
+            intent: 'publish',
+            entry: { target: 'articles', role: 'primary-collection' },
+          },
+        },
       },
-      publishing: {
-        name: 'publishing',
-        title: 'Publishing',
-        intent: 'publish',
-        entry: { target: 'articles', role: 'primary-collection' },
-      },
+      sitemap: EMPTY_SITEMAP,
+      granted: null,
     });
-    expect(startRel).toBe('overview');
+    expect(startRel).toEqual({ rel: 'overview' });
 
     // prompts.ts describeSitemap 的装配输入:sliceSitemapDisclosure({scope, currentRel})。
     const disclosed = sliceSitemapDisclosure(DISCLOSURE_SITEMAP, {
       scope: situation.disclosure.scope,
-      currentRel: startRel,
+      currentRel: startRel.rel,
     });
     // 镜头内应用保留 flows/actions;publishing 域应用整体不出现在分组披露。
     expect(disclosed.applications.map(({ name }) => name)).toEqual(['default']);

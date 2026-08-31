@@ -33,6 +33,7 @@ import {
 } from './failure-reason';
 import { sitemapTitlesFromSummary, stepActivityData } from './step-activity';
 import { stepToMessage, trailToMessages } from './trail';
+import type { ChatStartNotice } from './sse';
 import {
   appendChatProjection,
   appendConversationContext,
@@ -117,6 +118,8 @@ export async function streamAgentLoop(args: {
   principal: string;
   presentationPrincipal: string;
   startRel: string;
+  /** 起步降级 notice(T40 B1);focus 失效降级时随 final 帧下发。 */
+  startNotice?: ChatStartNotice;
   scope: string | null;
   presentationContext: ReturnType<typeof presentationContextForIdentity>;
   fetchImpl: FetchLike;
@@ -377,6 +380,7 @@ export async function streamAgentLoop(args: {
       summary: result.summary ?? null,
       steps: result.steps,
       successes: result.successes,
+      ...(args.startNotice !== undefined ? { notice: args.startNotice } : {}),
       ...(failureReason !== undefined
         ? { reason: phrasing === undefined ? failureReason : { ...failureReason, phrasing } }
         : {}),

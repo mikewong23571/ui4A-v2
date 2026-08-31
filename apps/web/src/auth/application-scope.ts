@@ -54,7 +54,8 @@ function applicationsForRel(context: AudienceContext, rel: string): string[] {
     : metaApplications(context.snapshot, context.sitemap, rel);
 }
 
-function reachableForGranted(
+/** 与咽喉同谓词的受众判定(business/meta 两平面共用;start-chain 复用同一权威)。 */
+export function reachableForGranted(
   context: AudienceContext,
   rel: string,
   grantedApplications: readonly string[],

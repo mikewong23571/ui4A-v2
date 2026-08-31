@@ -33,7 +33,11 @@
  *   时按 AI-first 分层——LLM 表述在场则主呈现 phrasing(附「助手表述」来源
  *   标注),缺席则中性结构化行「失败 · code=… · 已尝试:…」(零硬编码友好
  *   文案);结构化本体始终收纳于可展开的失败数据区(审计可达)。不携带
- *   failure 数据的 assistant 消息(回答/摘要等)走常规文本呈现。
+ *   failure 数据的 assistant 消息(回答/摘要等)走常规文本呈现;
+ * - 起步降级条目(T40 B1):final 帧携带 notice={code, droppedRel, startedRel,
+ *   startedTitle?}(经 metadata.custom.notice)时渲染注视调整条目——主行只做
+ *   D47.1 式固定框架插值(合同 sitemap 标题)或结构标签,机械 code 与 rel
+ *   退折叠的注视数据区(与失败回执同形,不冒充失败)。
  */
 import {
   ComposerPrimitive,
@@ -44,11 +48,16 @@ import {
 } from '@assistant-ui/react';
 import { Suspense } from 'react';
 
-import type { ChatFailureReason, ChatStepActivity } from '@/chat/sse';
+import type { ChatFailureReason, ChatStartNotice, ChatStepActivity } from '@/chat/sse';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { isChatStepActivity, stepActivityText } from '@/components/chat/step-activity-words';
 import { CitationList } from '@/components/chat/citation-list';
-import { failureNeutralLine, isChatFailureReason } from '@/components/chat/failure-words';
+import {
+  failureNeutralLine,
+  isChatFailureReason,
+  isChatStartNotice,
+  noticeNeutralLine,
+} from '@/components/chat/failure-words';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -97,6 +106,17 @@ function useMessageFailure(): ChatFailureReason | undefined {
   return useAuiState((s) => {
     const value: unknown = s.message.metadata.custom['failure'];
     return isChatFailureReason(value) ? value : undefined;
+  });
+}
+
+/**
+ * 当前消息的起步降级 notice(T40 B1:convertMessage 的 metadata.custom.notice;
+ * 守卫命中返回原引用,Object.is 稳定)。
+ */
+function useMessageNotice(): ChatStartNotice | undefined {
+  return useAuiState((s) => {
+    const value: unknown = s.message.metadata.custom['notice'];
+    return isChatStartNotice(value) ? value : undefined;
   });
 }
 
@@ -239,13 +259,41 @@ function FailureMessage({ failure }: { failure: ChatFailureReason }) {
   );
 }
 
+/**
+ * 起步降级 notice 条目(T40 B1,与 T35 失败回执同形):主行只做 D47.1 式固定
+ * 框架插值(「已从「{合同 sitemap 标题}」继续」)或结构标签 + 机械数据;
+ * 机械 code 与 rel 事实收纳于可展开的注视数据区,不进主行。
+ */
+function NoticeMessage({ notice }: { notice: ChatStartNotice }) {
+  return (
+    <MessagePrimitive.Root className="flex w-full justify-start">
+      <div className="max-w-[85%] space-y-1 rounded-2xl rounded-bl-sm bg-muted px-3 py-1.5 text-sm text-foreground">
+        <p>{noticeNeutralLine(notice)}</p>
+        <details className="text-xs text-muted-foreground">
+          <summary>注视数据</summary>
+          <div className="mt-1 space-y-0.5">
+            <div>code={notice.code}</div>
+            <div>原注视:{notice.droppedRel}</div>
+            <div>起步:{notice.startedRel}</div>
+          </div>
+        </details>
+      </div>
+    </MessagePrimitive.Root>
+  );
+}
+
 function AssistantMessage() {
   const thinkingStep = useMessageThinkingStep();
   const failure = useMessageFailure();
+  const notice = useMessageNotice();
   const citations = useMessageCitations();
   // thinking 帧条目:可折叠思考区(与气泡步骤消息按到达序相邻)。
   if (thinkingStep !== undefined) {
     return <ThinkingMessage step={thinkingStep} />;
+  }
+  // 起步降级条目(T40 B1):注视失效降级时独立成条(见 NoticeMessage)。
+  if (notice !== undefined) {
+    return <NoticeMessage notice={notice} />;
   }
   // 失败终局条目(T24 Phase B Task 3):按措辞分层呈现(见 FailureMessage)。
   if (failure !== undefined) {

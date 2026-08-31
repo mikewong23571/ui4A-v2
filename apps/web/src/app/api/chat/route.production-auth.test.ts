@@ -175,10 +175,19 @@ beforeEach(() => {
   mocks.getEngine.mockReset();
   mocks.getEngine.mockResolvedValue({
     getSnapshot: () => ({
+      instances: {},
+      collections: {},
       applications: {
         default: { entry: { target: 'flow:article-drafting', role: 'primary-create' } },
         development: { entry: { target: 'flow:software-change', role: 'primary-task' } },
       },
+    }),
+    getSitemap: () => ({
+      version: 'test',
+      surfaces: [],
+      flows: [],
+      applications: [],
+      capabilities: [],
     }),
   });
   mocks.preflight.mockReset();

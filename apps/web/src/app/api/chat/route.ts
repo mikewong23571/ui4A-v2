@@ -42,8 +42,10 @@
 //   (taskQueue ui4a;baseUrl=自身 origin,worker activity 回环走本源合同)→
 //   响应 {mode:'delegated', delegationId, statusUrl};派发失败(Temporal 不可达)
 //   据实 503——委托没派出去不能假装成功;
-// - 起始 rel 来自同一回合的 Situation:focus → scope application entry → 站点兜底；
-//   不做 sitemap 词级猜测或实体可达性预探测；
+// - 起始 rel(T40 B1):同一回合 Situation 的 focus 仅当指向业务面真实实体且授权内
+//   才保留;虚主体/不存在/授权外一律降级 scope application entry → 站点兜底,
+//   起步不因 focus 失效阻断;降级附结构化 notice 随 final 帧下发。无 focus 时
+//   entry → 站点兜底;不做 sitemap 词级猜测或实体可达性预探测;
 // - 一次性 JSON 仅剩参数错误/delegated；inline 始终使用同一 SSE agent loop。
 //   B4:LLM 失败(401 等)如实进入 step 帧文本与 final.summary,route 不 5xx。
 // 服务无会话态:事件日志是真相,聊天会话是客户端投影(localStorage)。
@@ -61,7 +63,7 @@ import {
   appendConversationMessage,
   loadAgentConversation,
 } from '../../../chat/session-events';
-import { startRelFromSituation } from '../../../chat/start-chain';
+import { resolveStartRel } from '../../../chat/start-chain';
 import { getProductionAgentTokenProvider } from '../../../auth/production-agent-token-provider';
 import { getProductionBrowserAuthentication } from '../../../auth/production-browser-authentication';
 import {
@@ -354,7 +356,21 @@ export async function POST(request: Request) {
   }
 
   const engine = await getEngine(getDb());
-  const startRel = startRelFromSituation(situation, engine.getSnapshot().applications ?? {});
+  // T40 B1:起步 rel 只保留业务面真实且授权内的 focus;虚主体/不存在/授权外
+  // 一律降级到 scope entry → 站点兜底,起步永不因 focus 失效阻断。降级 notice
+  // 随 final 帧下发(机械 code 客户端退折叠层,人话主行来自合同 sitemap 标题)。
+  const snapshot = engine.getSnapshot();
+  const start = resolveStartRel({
+    situation,
+    snapshot,
+    sitemap: engine.getSitemap(),
+    granted:
+      productionIdentity !== undefined && productionIdentity.authorizationMode === 'credential'
+        ? productionIdentity.grantedApplications
+        : null,
+  });
+  const startRel = start.rel;
+  const startNotice = start.notice;
 
   const userMessageId = turnId;
   await appendConversationMessage({
@@ -394,6 +410,7 @@ export async function POST(request: Request) {
           principal,
           presentationPrincipal,
           startRel,
+          startNotice,
           scope: situation.scope ?? null,
           presentationContext,
           fetchImpl: turnFetch,
@@ -520,6 +537,7 @@ export async function POST(request: Request) {
       principal,
       presentationPrincipal,
       startRel,
+      startNotice,
       scope: situation.scope ?? null,
       presentationContext,
       fetchImpl: turnFetch,

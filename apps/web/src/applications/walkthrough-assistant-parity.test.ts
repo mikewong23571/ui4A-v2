@@ -19,7 +19,7 @@ import {
 import { seedGuardRegistry, type EngineSnapshot } from '@ui4a/shared';
 import { describe, expect, it } from 'vitest';
 
-import { startRelFromSituation } from '../chat/start-chain';
+import { resolveStartRel } from '../chat/start-chain';
 import { assembleSituation } from '../engine/situation';
 import artifact from './ui4a-walkthrough.bundle.json';
 
@@ -285,7 +285,19 @@ describe('T39 real Application Assistant/Human contract parity', () => {
           focus: scenario.currentRel,
         },
       });
-      expect(startRelFromSituation(situation, applications)).toBe(scenario.currentRel);
+      expect(
+        resolveStartRel({
+          situation,
+          snapshot,
+          sitemap: deriveSitemap(bundle.flows, {
+            applications,
+            capabilities: Object.fromEntries(
+              bundle.capabilities.map((capability) => [capability.name, capability]),
+            ),
+          }),
+          granted: null,
+        }),
+      ).toEqual({ rel: scenario.currentRel });
 
       const humanEntity = project(snapshot, scenario.currentRel, {
         flows,

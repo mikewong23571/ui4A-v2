@@ -9,7 +9,7 @@ import type { PresentationReceipt } from '@ui4a/shared';
 
 import type { ChatSessionSummary } from '@/chat/history';
 import { citationsOrEmpty } from '@/chat/citations';
-import type { ChatFailureReason, ChatStepActivity } from '@/chat/sse';
+import type { ChatFailureReason, ChatStartNotice, ChatStepActivity } from '@/chat/sse';
 
 import { PRESENTATION_PENDING_WORD, presentationFailureText } from './presentation-words';
 
@@ -33,6 +33,8 @@ export interface ChatUiMessage {
   eventSeq?: number;
   /** 结构化失败数据(SSE final/error 帧 reason);在场时 thread 按措辞分层渲染。 */
   failure?: ChatFailureReason;
+  /** 起步降级 notice(T40 B1,SSE final 帧 notice);在场时 thread 渲染注视调整条目。 */
+  notice?: ChatStartNotice;
   /** 呈现回执条目(SSE presentation 帧,pending 占位/failed 终局);仅 hook
    * 内部作替换/移除标识,thread 按 content 文本呈现(不新增渲染分支)。 */
   presentation?: ChatPresentationNotice;
@@ -102,6 +104,7 @@ export function convertMessage(message: ChatUiMessage): ThreadMessageLike {
   if (message.activity !== undefined) custom['activity'] = message.activity;
   if (message.eventSeq !== undefined) custom['eventSeq'] = message.eventSeq;
   if (message.failure !== undefined) custom['failure'] = message.failure;
+  if (message.notice !== undefined) custom['notice'] = message.notice;
   if (message.citations !== undefined) {
     custom['citations'] = message.citations.map((citation) => ({ ...citation }));
   }
@@ -125,6 +128,7 @@ export function withCitationsOnLastAssistant(
       message.role === 'assistant' &&
       message.thinking === undefined &&
       message.failure === undefined &&
+      message.notice === undefined &&
       message.presentation === undefined
     ) {
       const next = [...messages];
