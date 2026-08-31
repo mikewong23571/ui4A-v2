@@ -32,7 +32,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useExternalStoreRuntime, type AppendMessage } from '@assistant-ui/react';
 
 import type { ChatSessionSummary, ChatTurn } from '@/chat/history';
-import { citationsOrEmpty } from '@/chat/citations';
+import { citationsOrEmpty, finalTurnCitations } from '@/chat/citations';
 import { clientViewReportForLocation, type ActivePresentationView } from '@/chat/client-view';
 import type { ChatFailureReason, ChatRenderPayload, ChatStepActivity } from '@/chat/sse';
 import type { ChatStartNotice } from '@/chat/sse';
@@ -41,7 +41,6 @@ import { anySignal, createIdleTimeout, readChatSseStream, type ChatFinalPayload 
 import {
   applyPresentationReceipt,
   convertMessage,
-  finalTurnCitations,
   loadSessionId,
   PENDING_SESSION_STORAGE_KEY,
   SESSION_STORAGE_KEY,
@@ -310,9 +309,11 @@ export function useChatSession(): ChatSession {
         payload.summary !== null &&
         payload.summary !== ''
       ) {
-        appendAssistant(payload.summary, { citations: finalTurnCitations(payload) });
+        appendAssistant(payload.summary, {
+          citations: finalTurnCitations(payload.sources, payload.steps),
+        });
       } else if (payload.outcome === 'answered') {
-        attachCitationsToLastAssistant(finalTurnCitations(payload));
+        attachCitationsToLastAssistant(finalTurnCitations(payload.sources, payload.steps));
       }
     },
     [appendAssistant, attachCitationsToLastAssistant, markSessionPending, persistSession],

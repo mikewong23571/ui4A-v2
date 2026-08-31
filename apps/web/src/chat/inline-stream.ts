@@ -24,6 +24,7 @@ import {
 } from '@ui4a/shared';
 
 import type { ChatTurnDetail } from './history';
+import { finalTurnCitations } from './citations';
 import { wrapDriverForAudit, type AgentDecisionDetail } from './decisions';
 import { conversationView } from './conversation';
 import {
@@ -335,7 +336,9 @@ export async function streamAgentLoop(args: {
       role: 'assistant',
       content: assistantContent,
       model: process.env.LLM_MODEL,
-      citations: result.sources,
+      // F-12:引用随消息持久化——LLM sources 优先,缺席退守轨迹 executed 步
+      // 派生的实体引用(与客户端 finalTurnCitations 同一纯函数),历史重放不丢。
+      citations: finalTurnCitations(result.sources, result.steps),
     });
     if (result.outcome === 'clarification-needed' && result.continuation !== undefined) {
       await appendConversationContext({
