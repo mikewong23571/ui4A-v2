@@ -15,8 +15,9 @@
  *   (FieldTemplate/字段错误样式 + 控件后代选择器外观),控件 id/原生
  *   select/textarea/label 关联/required 零改动。
  * - T14 Phase A(#4):prefill(当前实体实例字段值)同名预填 schema 声明字段,
- *   标量沿用原生控件；精确 `{}` caller 字段机械投影为可编辑 JSON textarea,
- *   提交前解析回真实 JSON；label 缺省回退合同字段名。
+ *   标量沿用原生控件；JSON 复合字段(精确 `{}` 无约束值,及声明
+ *   type:array/object 的受约束字段,F-09)机械投影为可编辑 JSON textarea,
+ *   提交前解析回真实 JSON 并由原始 schema 裁决；label 缺省回退合同字段名。
  */
 import Form from '@rjsf/core';
 import { ChevronDown } from 'lucide-react';
@@ -279,7 +280,7 @@ export function ActionRunner({
   }
 
   function handleProjectedFormSubmit(formData?: Record<string, unknown>): void {
-    const parsed = parseActionFormData(formData, formProjection.unconstrainedJsonFields);
+    const parsed = parseActionFormData(formData, formProjection.jsonTextFields);
     if (!parsed.ok) {
       setFailure(`[schema-invalid] ${parsed.reason}`);
       return;
@@ -417,7 +418,7 @@ export function ActionRunner({
             initialFormData={initialActionFormData(
               callerSchema,
               prefill,
-              formProjection.unconstrainedJsonFields,
+              formProjection.jsonTextFields,
             )}
             templates={{
               FieldTemplate: RjsfFieldTemplate,

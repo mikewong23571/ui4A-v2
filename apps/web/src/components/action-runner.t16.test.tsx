@@ -187,6 +187,107 @@ describe('ActionRunner T16 schema-form interaction', () => {
     });
   });
 
+  it('F-09: projects constrained array/object caller fields to JSON textareas with contract titles and submits parsed JSON', async () => {
+    const execFn = acceptedExec();
+    const writingAction: SirenAction = {
+      name: 'start-writing',
+      title: '开始写作',
+      method: 'POST',
+      href: '/api/exec',
+      fields: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['objective', 'requiredSections', 'sources'],
+        properties: {
+          objective: { type: 'string', minLength: 1, title: '写作目标' },
+          requiredSections: { type: 'array', items: { type: 'string' }, title: '必需章节' },
+          constraints: { type: 'array', items: { type: 'string' }, title: '写作约束' },
+          sources: {
+            type: 'array',
+            title: '授权来源',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', minLength: 1 },
+                title: { type: 'string', minLength: 1 },
+                mediaType: { type: 'string', enum: ['text/plain', 'text/markdown'] },
+                content: { type: 'string' },
+                hash: { type: 'string', pattern: '^sha256:[0-9a-f]{64}$' },
+              },
+              required: ['id', 'title', 'mediaType', 'content', 'hash'],
+              additionalProperties: false,
+            },
+          },
+        },
+      },
+    };
+    const source = {
+      id: 'src-1',
+      title: '来源一',
+      mediaType: 'text/plain',
+      content: '内容',
+      hash: `sha256:${'a'.repeat(64)}`,
+    };
+    render(
+      <ActionRunner
+        rel="writing-request:main"
+        action={writingAction}
+        submit={createDirectActionSubmit(execFn, { clientParams: () => ({}) })}
+        prefill={{
+          objective: '写一篇',
+          requiredSections: ['Summary', 'Evidence'],
+          constraints: ['正式文风'],
+          sources: [source],
+          injected: 'must-not-submit',
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '开始写作' }));
+
+    // 受约束 array/object 字段投影为 textarea,label 用合同 title(中文),预填为缩进 JSON 文本。
+    const sections = (await screen.findByLabelText(/必需章节/)) as HTMLTextAreaElement;
+    expect(sections.tagName).toBe('TEXTAREA');
+    expect(JSON.parse(sections.value)).toEqual(['Summary', 'Evidence']);
+    const sources = (await screen.findByLabelText(/授权来源/)) as HTMLTextAreaElement;
+    expect(JSON.parse(sources.value)).toEqual([source]);
+    const constraints = screen.getByLabelText(/写作约束/) as HTMLTextAreaElement;
+    expect(JSON.parse(constraints.value)).toEqual(['正式文风']);
+    // 标量字段仍是原生控件。
+    expect((screen.getByLabelText(/写作目标/) as HTMLInputElement).value).toBe('写一篇');
+
+    // 非法 JSON → schema-invalid 人话原因,exec 不被调用,编辑保留。
+    fireEvent.change(sources, { target: { value: '[{"id":' } });
+    fireEvent.click(await waitFor(() => submitButton('start-writing')));
+    expect((await screen.findByRole('alert')).textContent).toContain('合法 JSON');
+    expect(execFn).not.toHaveBeenCalled();
+    expect(sources.value).toBe('[{"id":');
+
+    // 合法 JSON 但违反原 schema(items 缺 required)→ caller schema 裁决拒绝。
+    fireEvent.change(sources, { target: { value: '[{"id":"x"}]' } });
+    fireEvent.click(await waitFor(() => submitButton('start-writing')));
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toContain('caller action schema'),
+    );
+    expect(execFn).not.toHaveBeenCalled();
+
+    // 恢复合法值后提交:JSON 文本解析回数组/对象,标量保留,注入字段被 omitExtraData 剥离;
+    // 成功后表单按设计关闭(executed 态)。
+    fireEvent.change(sources, { target: { value: JSON.stringify([source]) } });
+    fireEvent.click(await waitFor(() => submitButton('start-writing')));
+    await waitFor(() => expect(execFn).toHaveBeenCalledTimes(1));
+    expect(execFn).toHaveBeenCalledWith({
+      rel: 'writing-request:main',
+      action: 'start-writing',
+      params: {
+        objective: '写一篇',
+        requiredSections: ['Summary', 'Evidence'],
+        constraints: ['正式文风'],
+        sources: [source],
+      },
+    });
+  });
+
   it('disables native form validation and exposes RJSF required errors inline', async () => {
     const execFn = acceptedExec();
     const { container } = render(
