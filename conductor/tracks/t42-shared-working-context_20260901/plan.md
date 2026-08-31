@@ -20,6 +20,7 @@
 
 ## Phase D：整体验收与闭环
 
-- [~] Task D1：S1–S8 逐故事验收，真实 LLM 阅读故事、全量 check/format/e2e，系统启动与健康验证。
-- [~] Task D2：按 conductor-review 审查并修复，复跑验证，记录证据及 git notes。
-- [ ] Task D3：同步必要文档、清理探针、归档 Track，提交闭环（不 push/deploy）。
+- [x] Task D1：S1–S8代码验收：check3585通过、E2E65通过、实模2通过、覆盖率96.64%、format通过；见evidence。
+- [x] Task D2：按 conductor-review 审查并修复，主进程复跑；测试隔离前置检查已加固。
+- [ ] Task D3：开发环境恢复：备份后仅移除编排测试误写的seq524；等待用户授权，不清库、不绕过重放校验。
+- [ ] Task D4：恢复后核对应用/工作树，归档 Track，提交闭环（不 push/deploy）。

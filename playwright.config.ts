@@ -1,4 +1,16 @@
 import { defineConfig } from '@playwright/test';
+import { assertIsolatedTemporal, assertTestDatabase } from './e2e/kits/test-isolation';
+
+const databaseUrl =
+  process.env.TEST_DATABASE_URL ??
+  process.env.DATABASE_URL ??
+  'postgres://ui4a:ui4a@localhost:5433/ui4a_test';
+const temporalAddress = process.env.TEMPORAL_ADDRESS ?? 'localhost:7235';
+assertTestDatabase(databaseUrl);
+assertIsolatedTemporal(temporalAddress);
+process.env.DATABASE_URL = databaseUrl;
+process.env.TEST_DATABASE_URL = databaseUrl;
+process.env.TEMPORAL_ADDRESS = temporalAddress;
 
 // 端口固定 3100(DECISIONS.md D5:本机 3000 被 ui4A v1 占用,不可杀)。
 // webServer 由 Playwright 拉起根级 `pnpm dev`(过滤到 @ui4a/web 的 next dev);

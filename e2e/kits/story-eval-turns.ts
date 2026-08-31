@@ -1,4 +1,5 @@
 import type { BusinessProjection, EvalFrame, EvalTurn, StoredEventBody } from './story-eval-types';
+import type { ClientViewReport } from '@ui4a/shared';
 
 function parseSseFrames(raw: string): EvalFrame[] {
   return raw
@@ -13,6 +14,7 @@ export async function runEvalTurn(
   sessionId: string,
   turnId: string,
   input: string,
+  clientView?: ClientViewReport,
 ): Promise<EvalTurn> {
   const response = await fetch(`${baseUrl}/api/chat`, {
     method: 'POST',
@@ -22,6 +24,7 @@ export async function runEvalTurn(
       turnId,
       driver: 'llm',
       goal: { verb: input },
+      ...(clientView === undefined ? {} : { clientView }),
     }),
   });
   const contentType = response.headers.get('content-type') ?? '';

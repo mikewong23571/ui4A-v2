@@ -14,6 +14,7 @@ import path from 'node:path';
 import { getPool } from '../../packages/db/src/pool';
 import { prepareDatabaseForApplication } from '../../packages/db/src/migrations';
 import { bootstrapAndVerifyApplication } from '../../apps/web/src/engine/bootstrap';
+import { assertIsolatedTemporal, assertTestDatabase } from './test-isolation';
 
 // 本文件在 e2e/kits/ 下(T23 Phase D 迁移;750340a 修 import 时 __dirname 层级
 // 漏改一层——REPO_ROOT 曾解析到 e2e/,WORKER_DIR=e2e/apps/worker 不存在导致
@@ -26,6 +27,7 @@ export const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@lo
 export type ScenarioEnv = Record<string, string>;
 
 export async function truncateEvents(): Promise<void> {
+  assertTestDatabase(DATABASE_URL);
   const pool = getPool(DATABASE_URL);
   await pool.query('TRUNCATE events').catch((error: unknown) => {
     if ((error as { code?: string }).code !== '42P01') throw error;
@@ -43,6 +45,7 @@ export async function truncateEvents(): Promise<void> {
 
 /** Empty persisted logs for a caller-controlled replay without reseeding between truncate and append. */
 export async function truncateLogsForReplay(): Promise<void> {
+  assertTestDatabase(DATABASE_URL);
   const pool = getPool(DATABASE_URL);
   await pool.query('TRUNCATE events RESTART IDENTITY');
   await pool.query('TRUNCATE presentation_user_sidecars');
@@ -97,6 +100,9 @@ export async function withFreshServer(
   extraEnv: ScenarioEnv = {},
   options: FreshServerOptions = {},
 ): Promise<void> {
+  assertTestDatabase(DATABASE_URL);
+  assertTestDatabase(extraEnv.DATABASE_URL ?? DATABASE_URL);
+  assertIsolatedTemporal(extraEnv.TEMPORAL_ADDRESS ?? TEMPORAL_ADDRESS);
   if (options.keepLog !== true) {
     await truncateEvents();
   }
@@ -105,6 +111,8 @@ export async function withFreshServer(
     env: {
       ...process.env,
       PORT: String(SCENARIO_PORT),
+      DATABASE_URL,
+      TEMPORAL_ADDRESS,
       // 独立 distDir:Next 16 的 next dev 对同目录持单实例锁,须与 3100 webServer 隔离
       UI4A_DIST_DIR: '.next-e2e',
       ...extraEnv,
@@ -138,7 +146,7 @@ export async function withFreshServer(
 
 /** worker 侧 taskQueue 会合点与 Temporal 地址(与 apps/worker、apps/web 同源)。 */
 const WORKER_DIR = path.join(REPO_ROOT, 'apps', 'worker');
-export const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? 'localhost:7233';
+export const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? 'localhost:7235';
 // 场景 worker 不复用本机 dev:all worker 的默认 3101。CI 单 worker 串行复用
 // 3199；调用方仍可用 UI4A_WORKER_HEALTH_PORT 显式指定其他隔离端口。
 export const SCENARIO_WORKER_HEALTH_PORT = process.env.UI4A_WORKER_HEALTH_PORT ?? '3199';
@@ -241,6 +249,8 @@ export async function withWorkerStack(
   scenario: (stack: WorkerStackHandle) => Promise<void>,
   extraEnv: ScenarioEnv = {},
 ): Promise<void> {
+  assertTestDatabase(DATABASE_URL);
+  assertIsolatedTemporal(TEMPORAL_ADDRESS);
   // 起栈前确认 3110 空闲:上一场景若泄漏,waitUntilHealthy 会误连残留 server
   //(其内存快照携带旧确认状态),整个串行管线被污染——宁可直接失败。
   await waitUntilPortFree(SCENARIO_PORT, 15_000);

@@ -246,6 +246,16 @@ context/active/approval/event。ThreadSnapshot 只保存 goal、owner、lifecycl
 可发现性；HTTP exact/list 重新校验 owner，credentialed 成员再按当前 policy scope 裁剪。Chat presence
 只为当前 user message 选择默认线并调用同一 attach action；CLI 无 presence 是同等正典路径。
 
+### 8.10 T42 共同工作上下文
+
+D58 取代业务 articles/Meta flows 的未定位兜底：真实只读 `applications` /
+`meta/applications` 为发现起点，有 owned 工作线而无对象时从工作线起步。
+`app` 只保留应用选择，`observedApplication` 决定本轮详情，其他已授权应用仍保留
+导航摘要。inline/delegated 固定 `contextRel` 而非工作线快照，每个新决策重读工作线及
+最多四个显式相关对象；工作段上限6KiB、provider总wire上限32KiB。动作工具仍只来自
+当前实体，范围外导航重新授权。人类复用处境弹层显示合同标题和关联对象。
+授权读面递归裁剪嵌套成员、派生状态和目标来源；原始事件不改写。
+
 ## 9. 五条垂直切片(第五部,施工顺序)
 
 1. **确认门切片**:agent 执行高危动作 → guard 挂起 → pending 实体化 → notification capability 送达 → 人类在推送上 approve → 事件留痕带 actor/principal。一次验证 guard 第三语义、确认实体、出站能力、委托模型四个论点。构成(README):Cedar 风险策略 + guard 挂起语义 + Temporal notify activity + RJSF 渲染 pending 实体 + 收件箱。GOAL S1 断言:动作未生效挂起 → human approve(actor=human)→ 生效,日志含 actor/principal/信道。

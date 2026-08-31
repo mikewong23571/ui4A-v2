@@ -29,7 +29,7 @@
 
 ## 非目标
 
-不新增 Scope CRUD、通用上下文配置系统、新数据库/依赖/LLM 路由规则；不全仓改名，
+不新增 Scope CRUD、通用上下文配置系统、新数据库/运行时依赖/LLM 路由规则；不全仓改名，
 不改变 OAuth scope、Draft 归属/配额或人类审批规则；不自动创建工作线、不隐式
 扩张成员、不新增跨应用内容搬运工作流；不推送/部署、不清空开发数据库。
 
@@ -38,3 +38,6 @@
 user-stories 的 S1–S8 均有可复跑证据；针对性 Red→Green、全量 check、format、
 Playwright 和真实 LLM 只读故事验证完成；截图覆盖桌面与窄屏，审查问题闭环；
 每阶段提交和 git notes 记录自治验收，Track 归档。外部限制如实记为未完成而非假绿。
+
+实施注：仓库缺少 workflow 覆盖率所需 provider，补充同版 @vitest/coverage-v8
+开发工具，tech-stack 先记录；不引入任何产品运行时依赖。

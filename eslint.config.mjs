@@ -9,8 +9,7 @@ import tseslint from 'typescript-eslint';
 // - e2e 目录(Node 环境 Playwright spec)同样走 typescript-eslint。
 export default defineConfig([
   globalIgnores([
-    '**/.next/**',
-    '**/.next-e2e/**',
+    '**/.next*/**',
     '**/out/**',
     '**/build/**',
     '**/dist/**',
