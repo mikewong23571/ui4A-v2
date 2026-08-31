@@ -1,16 +1,24 @@
+import { ArrowUpRight } from 'lucide-react';
+
 import type { SirenEntity } from '@ui4a/engine';
 import type { CognitiveSemanticsGroupRole } from '@ui4a/shared';
 
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
 import { projectMetaSurfaceDescriptors, type MetaSurfaceDescriptor } from './meta-surfaces';
 
-const groupCopy: Record<CognitiveSemanticsGroupRole, { title: string; description: string }> = {
-  responsibility: { title: '需要我决定', description: '当前需要人类判断或推进的治理责任。' },
-  candidate: { title: '候选与异常', description: '等待检查、修正或接受的候选结果。' },
-  definition: { title: '定义资产', description: '应用合同及其可审计的定义资产。' },
-  system: { title: '系统自举', description: '系统生命周期与自举语义。' },
+const groupTitles: Record<CognitiveSemanticsGroupRole, string> = {
+  responsibility: '需要我决定',
+  candidate: '候选与异常',
+  definition: '定义资产',
+  system: '系统自举',
 };
 
 type LoadedCollections = Record<string, SirenEntity | null>;
@@ -38,16 +46,21 @@ export function DashboardSurfaceGroup({
   descriptors: ReturnType<typeof projectMetaSurfaceDescriptors>;
   collections: LoadedCollections;
 }) {
-  const copy = groupCopy[groupRole];
+  const title = groupTitles[groupRole];
   const headingId = `meta-group-${groupRole}`;
+  const layout = groupRole === 'definition' ? 'primary' : 'rail';
   return (
-    <section role="region" aria-labelledby={headingId}>
-      <div className="mb-3">
-        <h2 id={headingId} className="text-lg font-semibold">
-          {copy.title}
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">{copy.description}</p>
-      </div>
+    <section
+      role="region"
+      aria-labelledby={headingId}
+      data-layout={layout}
+      className={
+        layout === 'primary' ? 'lg:col-start-1 lg:row-start-1 lg:row-span-3' : 'lg:col-start-2'
+      }
+    >
+      <h2 id={headingId} className="mb-2 text-sm font-semibold">
+        {title}
+      </h2>
       <DashboardSurfaceGrid descriptors={descriptors} collections={collections} />
     </section>
   );
@@ -75,7 +88,7 @@ export function DashboardSurfaceGrid({
   collections: LoadedCollections;
 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className={`grid gap-2 ${descriptors.length > 1 ? 'sm:grid-cols-2' : ''}`}>
       {descriptors.map((descriptor) => {
         const collection = collections[descriptor.rel];
         const intent = displayValue(collection?.properties.intent);
@@ -84,19 +97,23 @@ export function DashboardSurfaceGrid({
           <a
             key={descriptor.rel}
             href={descriptor.href}
+            aria-label={`打开 ${descriptor.title}`}
             data-testid="meta-surface"
             data-priority={descriptor.presentation?.priority}
-            className={`group rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${descriptor.presentation?.priority === 'high' ? 'sm:col-span-2' : ''}`}
+            className="group rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
-            <Card className="h-full gap-3 transition-colors group-hover:border-primary/50 group-hover:bg-accent/30">
-              <CardHeader>
-                <div className="flex items-start justify-between gap-3">
-                  <CardTitle className="text-base">{descriptor.title}</CardTitle>
-                  <Badge variant="secondary">{descriptor.kind === 'self' ? '系统' : '集合'}</Badge>
-                </div>
+            <Card className="h-full gap-3 rounded-lg py-4 shadow-none transition-[border-color,background-color,box-shadow,transform] group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:bg-accent/20 group-hover:shadow-sm motion-reduce:transform-none">
+              <CardHeader className="px-4">
+                <CardTitle className="text-sm leading-5">{descriptor.title}</CardTitle>
                 {intent === null ? null : <CardDescription>{intent}</CardDescription>}
+                <CardAction
+                  aria-hidden="true"
+                  className="flex size-7 items-center justify-center rounded-full border bg-background text-muted-foreground transition-colors group-hover:border-primary/40 group-hover:text-primary"
+                >
+                  <ArrowUpRight className="size-3.5" />
+                </CardAction>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
+              <CardContent className="mt-auto space-y-2 px-4 text-sm">
                 {fields.length > 0 && (
                   <dl className="space-y-1 text-muted-foreground">
                     {fields.map((field) => (
@@ -107,12 +124,11 @@ export function DashboardSurfaceGrid({
                     ))}
                   </dl>
                 )}
-                <div className="flex items-center justify-between gap-2 text-primary">
-                  <span>打开工作区 →</span>
-                  {typeof collection?.properties.count === 'number' && (
-                    <Badge variant="outline">{String(collection.properties.count)} 项</Badge>
-                  )}
-                </div>
+                {typeof collection?.properties.count === 'number' && (
+                  <p className="text-xs tabular-nums text-muted-foreground">
+                    {String(collection.properties.count)} 项
+                  </p>
+                )}
               </CardContent>
             </Card>
           </a>

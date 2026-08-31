@@ -138,12 +138,19 @@ describe('Meta dashboard cognitive sitemap contract', () => {
     ).toEqual(['需要我决定', '候选与异常', '定义资产', '系统自举']);
 
     const definitionGroup = screen.getByRole('region', { name: '定义资产' });
+    expect(definitionGroup.getAttribute('data-layout')).toBe('primary');
+    expect(screen.getByRole('region', { name: '候选与异常' }).getAttribute('data-layout')).toBe(
+      'rail',
+    );
     expect(
       within(definitionGroup)
         .getAllByTestId('meta-surface')
         .map((entry) => entry.textContent),
     ).toEqual([expect.stringContaining('未来星云定义'), expect.stringContaining('现有定义资产')]);
     expect(within(definitionGroup).getByText('管理未来才安装的定义资产')).toBeTruthy();
+    expect(screen.queryAllByText('打开工作区 →')).toHaveLength(0);
+    expect(screen.queryByText('等待检查、修正或接受的候选结果。')).toBeNull();
+    expect(within(definitionGroup).getByRole('link', { name: '打开 未来星云定义' })).toBeTruthy();
     expect(
       within(screen.getByRole('region', { name: '候选与异常' })).queryByText('未来星云定义'),
     ).toBeNull();

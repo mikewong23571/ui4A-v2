@@ -56,17 +56,17 @@ describe('Meta dynamic dashboard', () => {
     expect(screen.getByRole('link', { name: /Widgets/ }).getAttribute('href')).toBe(
       '/meta/entity?rel=meta%2Fwidgets&scope=governance',
     );
-    expect(screen.getByRole('combobox', { name: '当前视角' })).toBeTruthy();
-    expect(screen.getByText(/切换视角不扩大或缩小权限/)).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: '视角' })).toBeTruthy();
+    expect(screen.queryByText(/凭证授予|不扩大或缩小权限/)).toBeNull();
     expect(screen.queryByText('当前 Scope')).toBeNull();
 
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Publishing' } });
     await waitFor(() => expect(screen.getByRole('link', { name: /Publishing/ })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Invalid' }));
+    fireEvent.click(screen.getByRole('button', { name: '无效' }));
     expect(window.location.search).toContain('filter=invalid');
   });
 
-  it('把无显式视角显示为未选择，不从 authorizedScopes 暗选首项', async () => {
+  it('把无显式视角显示为全部已授权应用，不从 authorizedScopes 暗选首项', async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
       if (url.includes('.well-known')) {
@@ -97,10 +97,11 @@ describe('Meta dynamic dashboard', () => {
     render(<MetaDashboard />);
     await screen.findByTestId('meta-content-ready');
 
-    expect(screen.getByText('未选择视角')).toBeTruthy();
-    expect((screen.getByRole('combobox', { name: '当前视角' }) as HTMLSelectElement).value).toBe(
-      '',
-    );
+    const viewSelector = screen.getByRole('combobox', { name: '视角' }) as HTMLSelectElement;
+    expect(viewSelector.value).toBe('');
+    expect(viewSelector.selectedOptions[0]?.textContent).toBe('全部已授权应用');
+    expect(screen.queryByText(/当前浏览全部已授权应用/)).toBeNull();
+    expect(screen.queryByText(/未选择视角/)).toBeNull();
     expect(screen.queryByTestId('meta-current-view')).toBeNull();
 
     const collection = screen.getByRole('link', { name: /Drafts/ });
@@ -113,7 +114,7 @@ describe('Meta dynamic dashboard', () => {
     ]);
   });
 
-  it('分离轻量当前视角与 sitemap 授予并集的只读说明', async () => {
+  it('当前视角只列出 sitemap 已授权应用，不额外堆叠权限说明', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: string | URL | Request) => {
@@ -147,17 +148,12 @@ describe('Meta dynamic dashboard', () => {
     render(<MetaDashboard navigation={{ scope: 'governance' }} />);
     await screen.findByTestId('meta-content-ready');
 
-    const currentView = screen.getByTestId('meta-current-view');
-    expect(currentView.textContent).toContain('当前视角');
-    expect(currentView.textContent).toContain('governance');
-    expect(currentView.className).toContain('rounded-full');
-
-    const applications = screen.getByRole('region', { name: '可访问应用' });
-    expect(within(applications).getByText('publishing')).toBeTruthy();
-    expect(within(applications).getByText('governance')).toBeTruthy();
-    expect(within(applications).queryByRole('combobox')).toBeNull();
-    expect(applications.textContent).toContain('由凭证授予');
-    expect(applications.textContent).not.toContain('切换权限');
+    const selector = screen.getByRole('combobox', { name: '视角' }) as HTMLSelectElement;
+    expect(selector.value).toBe('governance');
+    expect(within(selector).getByRole('option', { name: 'publishing' })).toBeTruthy();
+    expect(within(selector).getByRole('option', { name: 'governance' })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: '可访问应用' })).toBeNull();
+    expect(screen.queryByText(/由凭证授予|切换权限|不扩大或缩小权限/)).toBeNull();
     expect(screen.queryByText(/Scope/)).toBeNull();
   });
 });

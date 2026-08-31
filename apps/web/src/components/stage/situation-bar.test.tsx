@@ -2,9 +2,9 @@
 /**
  * T35 D-7/F-12(用户认可方案):处境收敛为顶栏状态芯片——
  * 站点常显;视角/工作线/注视有值才出现(默认态不占版面);
- * 「在哪」弹层承载全量字段、调整视角(带授权边界一句说明)与跨面桥。
+ * 「在哪」弹层承载全量字段、授权选项驱动的视角选择与跨面桥。
  */
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const location = vi.hoisted(() => ({
@@ -23,7 +23,10 @@ vi.mock('@/presence/location', () => ({
 
 import { SituationBar } from './situation-bar';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 beforeEach(() => {
   location.route = '/canvas?mode=raw&scope=publishing&thread=release-1&focus=post%3Aone';
@@ -33,6 +36,36 @@ beforeEach(() => {
     thread: 'release-1',
     focus: 'post:one',
   };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes('rel=threads')) return new Response(JSON.stringify({ entities: [] }));
+      if (url.startsWith('/_meta/')) {
+        return new Response(
+          JSON.stringify({
+            authorizedScopes: [
+              'default',
+              'publishing',
+              'community',
+              'development',
+              'editorial',
+              'governance',
+              'todo',
+              'ideas',
+            ],
+          }),
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          applications: ['default', 'publishing', 'community', 'development'].map((name) => ({
+            name,
+          })),
+        }),
+      );
+    }),
+  );
 });
 
 function openPopover(): void {
@@ -60,8 +93,7 @@ describe('SituationBar · 状态芯片(F-12)', () => {
       expect(dialog.textContent).toContain(label);
     }
     expect(dialog.textContent).toContain('post:one');
-    // 授权边界一句话说明(替代"URL 声明不代表已授权"实现话术)。
-    expect(screen.getByText(/切换视角不扩大或缩小权限/)).toBeTruthy();
+    expect(screen.queryByText(/凭证授予|不扩大或缩小权限/)).toBeNull();
   });
 
   it('默认态不渲染芯片(F-12:未声明不占版面)', () => {
@@ -74,7 +106,7 @@ describe('SituationBar · 状态芯片(F-12)', () => {
     expect(screen.queryByTestId('situation-focus')).toBeNull();
   });
 
-  it('无显式视角在「当前在哪」中是清晰的一等态，不暗选首个授予应用', () => {
+  it('无显式视角在「当前在哪」中显示全部已授权应用，不暗选首个授予应用', async () => {
     location.route = '/meta?thread=release-1&returnTo=%2Fthreads';
     location.observation = {
       site: 'meta',
@@ -87,10 +119,26 @@ describe('SituationBar · 状态芯片(F-12)', () => {
     expect(screen.queryByTestId('situation-scope')).toBeNull();
 
     openPopover();
-    expect(screen.getByTestId('situation-scope').textContent).toBe('未选择视角');
-    expect(screen.getByText(/默认使用全部已授权应用/)).toBeTruthy();
+    expect(screen.getByTestId('situation-scope').textContent).toBe('全部已授权应用');
+    expect(screen.getByTestId('situation-focus').textContent).toBe('未聚焦对象');
+    expect(screen.queryByText(/当前浏览全部已授权应用/)).toBeNull();
     expect(screen.queryByRole('link', { name: '清除视角' })).toBeNull();
-    expect(screen.queryByText(/publishing/)).toBeNull();
+    const selector = await screen.findByRole('combobox', { name: '调整视角' });
+    expect((selector as HTMLSelectElement).value).toBe('');
+    expect(screen.getByRole('option', { name: 'publishing' })).toBeTruthy();
+  });
+
+  it('未进入工作线或聚焦对象时使用任务文案，不暴露原始 null', () => {
+    location.route = '/meta';
+    location.observation = { site: 'meta', scope: null, thread: null, focus: null };
+
+    render(<SituationBar />);
+    openPopover();
+
+    const dialog = screen.getByRole('dialog', { name: '当前在哪' });
+    expect(screen.getByTestId('situation-thread').textContent).toBe('未进入工作线');
+    expect(screen.getByTestId('situation-focus').textContent).toBe('未聚焦对象');
+    expect(dialog.textContent).not.toContain('null');
   });
 
   it('显式视角是轻量的「当前视角」芯片，不以 Scope 或权限控件命名', () => {
@@ -103,7 +151,7 @@ describe('SituationBar · 状态芯片(F-12)', () => {
     expect(screen.queryByText(/Scope/)).toBeNull();
   });
 
-  it('保留无关 query 字段:退线/清除视角/应用视角(F-12 弹层内)', () => {
+  it('保留无关 query 字段:退线/清除视角/应用视角(F-12 弹层内)', async () => {
     location.route =
       '/canvas?mode=raw&scope=publishing&thread=release-1&focus=post%3Aone&returnTo=%2Fthreads';
     render(<SituationBar />);
@@ -116,18 +164,21 @@ describe('SituationBar · 状态芯片(F-12)', () => {
     expect(screen.getByRole('link', { name: '清除视角' }).getAttribute('href')).toBe(
       '/canvas?mode=raw&thread=release-1&focus=post%3Aone&returnTo=%2Fthreads',
     );
-    fireEvent.change(screen.getByRole('textbox', { name: '' }), {
+    const selector = await screen.findByRole('combobox', { name: '调整视角' });
+    fireEvent.change(selector, {
       target: { value: 'development' },
     });
-    expect(screen.getByRole('link', { name: '应用视角' }).getAttribute('href')).toBe(
-      '/canvas?mode=raw&scope=development&thread=release-1&focus=post%3Aone&returnTo=%2Fthreads',
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: '应用视角' }).getAttribute('href')).toBe(
+        '/canvas?mode=raw&scope=development&thread=release-1&focus=post%3Aone&returnTo=%2Fthreads',
+      ),
     );
   });
 
   it('所有可点控件均有 data-nav,且不含授权语义文案(I3 探针)', () => {
     const { container } = render(<SituationBar />);
     openPopover();
-    const controls = container.querySelectorAll('a, button, input');
+    const controls = container.querySelectorAll('a, button, input, select');
     expect(controls.length).toBeGreaterThan(0);
     expect(
       [...controls].filter(

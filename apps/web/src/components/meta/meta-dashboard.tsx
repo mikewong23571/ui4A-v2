@@ -1,10 +1,10 @@
 'use client';
 
+import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { COGNITIVE_SEMANTICS_GROUP_ROLES } from '@ui4a/shared';
 
-import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -172,83 +172,49 @@ export function MetaDashboard({
   const ready = state === 'ready' || state === 'partial';
   return (
     <div className="space-y-6" data-testid={ready ? 'meta-content-ready' : undefined}>
-      <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-            Meta Human Control Plane
-          </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">定义控制台</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            发现应用合同、审查候选变更，并以同一份 Siren action 完成人类治理。
-          </p>
-        </div>
+      <header className="flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-center lg:justify-between">
+        <h1 className="text-3xl font-semibold tracking-tight">定义控制台</h1>
         {sitemap !== null && (
-          <div className="w-full shrink-0 space-y-2 sm:w-64">
-            <form
-              action="/meta"
-              method="get"
-              className="flex items-end gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const selected = new FormData(event.currentTarget).get('scope');
-                const href = withMetaNavigationContext('/meta', {
-                  ...parsedNavigation,
-                  scope: typeof selected === 'string' && selected !== '' ? selected : undefined,
-                });
-                if (href !== null) window.location.assign(href);
-              }}
+          <form
+            action="/meta"
+            method="get"
+            aria-label="切换当前视角"
+            className="flex w-full items-center gap-2 lg:w-auto"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const selected = new FormData(event.currentTarget).get('scope');
+              const href = withMetaNavigationContext('/meta', {
+                ...parsedNavigation,
+                scope: typeof selected === 'string' && selected !== '' ? selected : undefined,
+              });
+              if (href !== null) window.location.assign(href);
+            }}
+          >
+            <label htmlFor="meta-scope" className="shrink-0 text-sm text-muted-foreground">
+              视角
+            </label>
+            <select
+              id="meta-scope"
+              name="scope"
+              defaultValue={parsedNavigation.scope ?? ''}
+              data-nav="meta:set-view"
+              className="h-9 min-w-0 flex-1 rounded-md border bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:w-52 lg:flex-none"
             >
-              <div className="min-w-0 flex-1">
-                <label htmlFor="meta-scope" className="text-xs font-medium text-muted-foreground">
-                  当前视角
-                </label>
-                <select
-                  id="meta-scope"
-                  name="scope"
-                  defaultValue={parsedNavigation.scope ?? ''}
-                  data-nav="meta:set-view"
-                  className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                >
-                  <option value="">未选择视角</option>
-                  {sitemap.authorizedScopes.map((scope) => (
-                    <option key={scope} value={scope}>
-                      {scope}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button
-                type="submit"
-                data-nav="meta:apply-view"
-                className="h-10 rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
-                切换
-              </button>
-            </form>
-            {parsedNavigation.scope === undefined ? (
-              <p className="text-xs text-muted-foreground">未选择视角；默认使用全部已授权应用。</p>
-            ) : (
-              <Badge data-testid="meta-current-view" variant="outline">
-                当前视角 {parsedNavigation.scope}
-              </Badge>
-            )}
-            <aside
-              role="region"
-              aria-label="可访问应用"
-              className="rounded-md border bg-muted/20 p-2"
+              <option value="">全部已授权应用</option>
+              {sitemap.authorizedScopes.map((scope) => (
+                <option key={scope} value={scope}>
+                  {scope}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              data-nav="meta:apply-view"
+              className="h-9 shrink-0 rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
-              <p className="text-xs text-muted-foreground">
-                由凭证授予；切换视角不扩大或缩小权限。
-              </p>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {sitemap.authorizedScopes.map((scope) => (
-                  <Badge key={scope} variant="secondary">
-                    {scope}
-                  </Badge>
-                ))}
-              </div>
-            </aside>
-          </div>
+              应用
+            </button>
+          </form>
         )}
       </header>
 
@@ -275,41 +241,49 @@ export function MetaDashboard({
             </Card>
           )}
           <div>
-            <label htmlFor="meta-search" className="text-sm font-medium">
-              搜索授权对象
-            </label>
-            <input
-              id="meta-search"
-              type="search"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                replaceUrlState(event.target.value, filter);
-              }}
-              placeholder="名称、intent、类型、状态或 rel"
-              className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            />
-            <div className="mt-2 flex flex-wrap gap-2" aria-label="状态筛选">
-              {(
-                [
-                  ['all', '全部'],
-                  ['pending', '待审批'],
-                  ['invalid', 'Invalid'],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={filter === value}
-                  onClick={() => {
-                    setFilter(value);
-                    replaceUrlState(query, value);
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                />
+                <label htmlFor="meta-search" className="sr-only">
+                  搜索授权对象
+                </label>
+                <input
+                  id="meta-search"
+                  type="search"
+                  value={query}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    replaceUrlState(event.target.value, filter);
                   }}
-                  className="rounded-full border px-3 py-1 text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-                >
-                  {label}
-                </button>
-              ))}
+                  placeholder="搜索定义、状态或 rel"
+                  className="h-9 w-full rounded-md border bg-background pr-3 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                />
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2" aria-label="状态筛选">
+                {(
+                  [
+                    ['all', '全部'],
+                    ['pending', '待审批'],
+                    ['invalid', '无效'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={filter === value}
+                    onClick={() => {
+                      setFilter(value);
+                      replaceUrlState(query, value);
+                    }}
+                    className="rounded-full border px-3 py-1 text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
             {(query.trim() !== '' || filter !== 'all') && (
               <div className="mt-2 rounded-md border bg-card p-2" aria-live="polite">
@@ -337,25 +311,21 @@ export function MetaDashboard({
             )}
           </div>
 
-          <div className="flex justify-end">
-            <Badge variant="outline">{descriptors.length} 个授权面</Badge>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+            {groupedDescriptors.map(({ groupRole, entries }) => (
+              <DashboardSurfaceGroup
+                key={groupRole}
+                groupRole={groupRole}
+                descriptors={entries}
+                collections={collections}
+              />
+            ))}
           </div>
-          {groupedDescriptors.map(({ groupRole, entries }) => (
-            <DashboardSurfaceGroup
-              key={groupRole}
-              groupRole={groupRole}
-              descriptors={entries}
-              collections={collections}
-            />
-          ))}
           {ungroupedDescriptors.length > 0 && (
             <section aria-labelledby="meta-surfaces-heading">
-              <div className="mb-3">
-                <h2 id="meta-surfaces-heading" className="text-lg font-semibold">
-                  治理工作区
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">尚未声明认知分组的授权面。</p>
-              </div>
+              <h2 id="meta-surfaces-heading" className="mb-2 text-sm font-semibold">
+                治理工作区
+              </h2>
               <DashboardSurfaceGrid descriptors={ungroupedDescriptors} collections={collections} />
             </section>
           )}

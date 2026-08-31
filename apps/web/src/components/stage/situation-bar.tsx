@@ -3,8 +3,8 @@
 /**
  * T35 D-7/F-12(方案经用户认可):处境从"一行文字表"收敛为**状态芯片**——
  * 站点常显;视角/工作线/注视仅在有值时以 chip 呈现(默认态"未声明"不占版面);
- * 点芯片展开「当前在哪」弹层:全量字段 + 调整(视角合法值提示 + 一句授权
- * 边界说明)+ 跨面桥(W3:线芯片弹层内切换工作线)。
+ * 点芯片展开「当前在哪」弹层:全量字段 + 授权 sitemap 驱动的视角选择 +
+ * 跨面桥(W3:线芯片弹层内切换工作线)。
  * 本组件渲染进 AppShell 顶栏行(不再单独占一条 bar),顶栏高度回归确定 h-12。
  */
 
@@ -24,6 +24,56 @@ const SITE_LABELS: Record<string, string> = {
 
 function displayValue(value: PresenceValue): string {
   return typeof value === 'string' ? value : JSON.stringify(value);
+}
+
+type ScopeOptionsState =
+  | { status: 'idle' | 'loading'; values: string[] }
+  | { status: 'ready'; values: string[] }
+  | { status: 'error'; values: string[] };
+
+type ResolvedScopeOptions = Extract<ScopeOptionsState, { status: 'ready' | 'error' }> & {
+  site: string;
+};
+
+function scopeOptionsFromDocument(document: unknown): string[] {
+  if (typeof document !== 'object' || document === null || Array.isArray(document)) return [];
+  const record = document as Record<string, unknown>;
+  const candidates = Array.isArray(record.authorizedScopes)
+    ? record.authorizedScopes
+    : Array.isArray(record.applications)
+      ? record.applications.map((application) =>
+          typeof application === 'object' && application !== null && !Array.isArray(application)
+            ? (application as Record<string, unknown>).name
+            : undefined,
+        )
+      : [];
+  return [...new Set(candidates.filter((value): value is string => typeof value === 'string'))];
+}
+
+function useScopeOptions(open: boolean, site: string): ScopeOptionsState {
+  const [resolved, setResolved] = useState<ResolvedScopeOptions | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    const endpoint = site === 'meta' ? '/_meta/.well-known/ui4a.json' : '/.well-known/ui4a.json';
+    fetch(endpoint)
+      .then((response) =>
+        response.ok ? response.json() : Promise.reject(new Error(String(response.status))),
+      )
+      .then((document: unknown) => {
+        if (!cancelled) {
+          setResolved({ status: 'ready', site, values: scopeOptionsFromDocument(document) });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setResolved({ status: 'error', site, values: [] });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, site]);
+  if (!open) return { status: 'idle', values: [] };
+  return resolved?.site === site ? resolved : { status: 'loading', values: [] };
 }
 
 function usePopover(): {
@@ -50,9 +100,6 @@ function usePopover(): {
   }, [open]);
   return { open, setOpen, ref };
 }
-
-const chipClassName =
-  'flex max-w-40 items-center gap-1 rounded-full border bg-card px-2.5 py-0.5 text-[11px] text-foreground transition-colors hover:bg-accent';
 
 /** 线芯片弹层内的切线路径二(W3):我的线清单来自 threads 投影。 */
 function ThreadSwitcher({ route, currentThreadId }: { route: string; currentThreadId: string }) {
@@ -109,9 +156,26 @@ export function SituationBar() {
   const { route, observation } = useLocationObservation();
   const bridge = crossSiteFlowBridge(route, observation.focus);
   const { open, setOpen, ref } = usePopover();
-  const [scopeDraft, setScopeDraft] = useState('');
+  const [scopeDraft, setScopeDraft] = useState(observation.scope ?? '');
 
-  const siteLabel = SITE_LABELS[displayValue(observation.site)] ?? displayValue(observation.site);
+  const site = displayValue(observation.site);
+  const siteLabel = SITE_LABELS[site] ?? site;
+  const scopeOptions = useScopeOptions(open, site);
+
+  const situationDetails = [
+    ['site', '站点', siteLabel],
+    [
+      'scope',
+      '视角',
+      observation.scope === null ? '全部已授权应用' : displayValue(observation.scope),
+    ],
+    [
+      'thread',
+      '工作线',
+      observation.thread === null ? '未进入工作线' : displayValue(observation.thread),
+    ],
+    ['focus', '注视', observation.focus === null ? '未聚焦对象' : displayValue(observation.focus)],
+  ] as const;
 
   return (
     <section
@@ -166,7 +230,10 @@ export function SituationBar() {
         data-nav="local:situation-adjust"
         aria-expanded={open}
         aria-haspopup="dialog"
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          if (!open) setScopeDraft(observation.scope ?? '');
+          setOpen(!open);
+        }}
         className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
         在哪
@@ -183,28 +250,15 @@ export function SituationBar() {
           className="absolute right-0 top-full z-50 mt-2 grid w-80 gap-3 rounded-lg border bg-popover p-3 text-popover-foreground shadow-md"
         >
           <dl className="grid gap-1.5 text-xs">
-            {(
-              [
-                ['site', '站点'],
-                ['scope', '视角'],
-                ['thread', '工作线'],
-                ['focus', '注视'],
-              ] as const
-            ).map(([field, label]) => (
+            {situationDetails.map(([field, label, value]) => (
               <div key={field} className="flex items-baseline justify-between gap-2">
                 <dt className="text-muted-foreground">{label}</dt>
                 <dd
                   data-testid={`situation-${field}`}
                   className="max-w-48 truncate font-mono text-foreground"
-                  title={
-                    field === 'scope' && observation.scope === null
-                      ? '未选择视角'
-                      : displayValue(observation[field])
-                  }
+                  title={value}
                 >
-                  {field === 'scope' && observation.scope === null
-                    ? '未选择视角'
-                    : displayValue(observation[field])}
+                  {value}
                 </dd>
               </div>
             ))}
@@ -230,26 +284,41 @@ export function SituationBar() {
           )}
 
           <div className="grid gap-1.5 border-t pt-2.5">
-            <p className="text-xs font-medium text-foreground">调整视角</p>
-            {observation.scope === null && (
-              <p className="text-[11px] text-muted-foreground">
-                未选择视角时，默认使用全部已授权应用。
-              </p>
-            )}
-            <p className="text-[11px] text-muted-foreground">
-              可访问应用集合由凭证授予；切换视角不扩大或缩小权限。
-            </p>
-            <input
+            <label
+              htmlFor="situation-scope-selector"
+              className="text-xs font-medium text-foreground"
+            >
+              调整视角
+            </label>
+            <select
+              id="situation-scope-selector"
               value={scopeDraft}
               onChange={(event) => setScopeDraft(event.currentTarget.value)}
-              placeholder={observation.scope ?? '如 publishing、todo'}
               data-nav="local:situation-scope-value"
               className="h-8 rounded-md border bg-background px-2 font-mono text-sm"
-            />
+              disabled={scopeOptions.status !== 'ready'}
+            >
+              <option value="">全部已授权应用</option>
+              {scopeOptions.values.map((scope) => (
+                <option key={scope} value={scope}>
+                  {scope}
+                </option>
+              ))}
+            </select>
+            {scopeOptions.status === 'loading' && (
+              <p className="text-[11px] text-muted-foreground">正在读取可访问应用…</p>
+            )}
+            {scopeOptions.status === 'error' && (
+              <p role="status" className="text-[11px] text-destructive">
+                无法读取可访问应用，请稍后重试。
+              </p>
+            )}
             <div className="flex items-center gap-3">
-              {scopeDraft.trim() !== '' && (
+              {scopeDraft !== (observation.scope ?? '') && (
                 <Link
-                  href={locationHrefWithChanges(route, { scope: scopeDraft.trim() })}
+                  href={locationHrefWithChanges(route, {
+                    scope: scopeDraft === '' ? null : scopeDraft,
+                  })}
                   data-nav="situation:set-scope"
                   className="text-xs text-primary hover:underline"
                 >
