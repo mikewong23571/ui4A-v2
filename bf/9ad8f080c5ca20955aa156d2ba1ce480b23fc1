@@ -1,0 +1,1 @@
+T42 Phase B 自治验收：目录/清空/上下文/授权/后台均Red→Green。主进程12文件83通过含真实Temporal SIGKILL恢复；修复嵌套/来源/跨principal泄漏后主进程15文件125通过。Agent298单测；核心覆盖率statements91.95/branches85.71/lines94.87。真实LLM全局与跨应用工作线2故事通过。首轮全check8失败全部为旧目录/默认值断言，已按新故事修正并定向复跑。权限/32KiB/事件不变量保留。未push/deploy。
