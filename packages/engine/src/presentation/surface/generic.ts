@@ -56,31 +56,6 @@ function cognitiveTraitsOf(value: unknown) {
   return parseCognitiveSemanticsProjection(cognitiveProjection)?.traits;
 }
 
-function scalarPropertyPaths(value: unknown, prefix: string): string[] {
-  if (!isRecord(value)) return [];
-  return Object.entries(value).flatMap(([key, child]) => {
-    const path = `${prefix}.${key}`;
-    return isRecord(child) ? scalarPropertyPaths(child, path) : [path];
-  });
-}
-
-const GENERIC_STRUCTURAL_PROPERTY_PATHS = new Set([
-  'properties.rel',
-  'properties.node',
-  'properties.title',
-  'properties.identity',
-  'properties.status',
-  'properties.presentation',
-  'properties.flow',
-]);
-
-/**
- * T35 F-06:簿记数值(count/delivered/limit/total)不进 fallback metadata 词——
- * 裸数字无信息量且与成员重复;按字段名判定(零 class 分支,特判滑梯红线),
- * 显式 presentation 声明路径不走 fallback,仍可恢复呈现。
- */
-const GENERIC_BOOKKEEPING_PROPERTY_NAMES = new Set(['count', 'delivered', 'limit', 'total']);
-
 function isGenericFieldRole(role: SemanticRegionRole): role is GenericFieldCandidate['role'] {
   return role !== 'actions' && role !== 'diagnostic';
 }
@@ -196,7 +171,6 @@ export function planGenericSurface(
       provenanceRef,
     );
   }
-  const plannedPaths = new Set<string>();
   const fieldCandidates: GenericFieldCandidate[] = [];
   const hints = Object.entries(options.semanticHints ?? {}).sort(([left], [right]) =>
     left.localeCompare(right),
@@ -205,49 +179,40 @@ export function planGenericSurface(
   for (const [path, role] of hints) {
     if (isGenericFieldRole(role) && readPath(entity, path) !== undefined) {
       fieldCandidates.push({ path, role });
-      plannedPaths.add(path);
     }
   }
 
   if (!fieldCandidates.some((candidate) => candidate.role === 'identity')) {
-    const path = ['properties.identity', 'properties.title', 'properties.rel'].find(
-      (candidate) => readPath(entity, candidate) !== undefined,
-    );
+    // 有 node 的实体(flow 实例)title 是节点标题(状态词汇,任务语),身份回退
+    // 不抢占它——否则 T40 F-02 的状态链拿不到同一合同数据源(selector 按路径
+    // 去重,先占先得)。身份回退身份属性 → rel;无 node 实体维持 title 兜底。
+    const identityFallback =
+      readPath(entity, 'properties.node') === undefined
+        ? ['properties.identity', 'properties.title', 'properties.rel']
+        : ['properties.identity', 'properties.rel'];
+    const path = identityFallback.find((candidate) => readPath(entity, candidate) !== undefined);
     if (path !== undefined) {
       fieldCandidates.push({ role: 'identity', path });
-      plannedPaths.add(path);
     }
   }
+  // T40 F-02:状态词唯一来源 = 合同数据。有 node 的实体(flow 实例)优先取
+  // 节点标题(任务语,与列表成员 itemStatusPath 同一数据源),回退 status →
+  // node 裸枚举;无 node 的实体(集合/确认等)不产生状态词(维持原状)。
   if (!fieldCandidates.some((candidate) => candidate.role === 'status')) {
-    const path = 'properties.node';
-    if (readPath(entity, path) !== undefined) {
-      fieldCandidates.push({ role: 'status', path });
-      plannedPaths.add(path);
+    if (readPath(entity, 'properties.node') !== undefined) {
+      const path = ['properties.title', 'properties.status', 'properties.node'].find(
+        (candidate) => readPath(entity, candidate) !== undefined,
+      );
+      if (path !== undefined) {
+        fieldCandidates.push({ role: 'status', path });
+      }
     }
   }
 
-  for (const path of scalarPropertyPaths(entity.properties.fields, 'properties.fields').sort()) {
-    if (!plannedPaths.has(path)) {
-      fieldCandidates.push({ role: 'primary-content', path });
-      plannedPaths.add(path);
-    }
-  }
-  for (const path of scalarPropertyPaths(entity.properties, 'properties').sort()) {
-    if (
-      !plannedPaths.has(path) &&
-      !path.startsWith('properties.fields.') &&
-      !path.startsWith('properties.presentation.') &&
-      !GENERIC_STRUCTURAL_PROPERTY_PATHS.has(path)
-    ) {
-      // T35 F-06:簿记数值不进 fallback(GENERIC_BOOKKEEPING_PROPERTY_NAMES,按名判定)。
-      if (GENERIC_BOOKKEEPING_PROPERTY_NAMES.has(path.replace('properties.', ''))) {
-        plannedPaths.add(path);
-        continue;
-      }
-      fieldCandidates.push({ role: 'metadata', path });
-      plannedPaths.add(path);
-    }
-  }
+  // T40 F-03:字段候选只来自显式声明(语义提示/合同 presentation.fields)。
+  // 不再把全部 properties.fields 标成 primary-content、把全部非结构属性标成
+  // metadata——未声明字段不发明、不渲染空壳;已填但未声明的字段同样不进详情。
+  // 身份/状态回退仍保留(纯结构判定)。
   const regions: Array<{ role: SemanticRegionRole; binding: SurfaceBinding }> =
     selectGenericFieldCandidates(options.intent, fieldCandidates).map(({ path, role }) => ({
       role,

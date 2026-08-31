@@ -78,7 +78,7 @@ describe('GET /api/entity', () => {
     // Phase E 合同补全:集合 links 除 self 外携带 flow 入口链接(向导可达)。
     expect(entity.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=articles' },
-      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting' },
+      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting', title: '文章发布向导' },
     ]);
   });
 
@@ -197,7 +197,7 @@ describe('GET /api/entity — 集合分页(T38)', () => {
     expect(entity.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=articles&offset=1' },
       { rel: ['prev'], href: '/api/entity?rel=articles&offset=0' },
-      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting' },
+      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting', title: '文章发布向导' },
     ]);
   });
 
@@ -219,7 +219,7 @@ describe('GET /api/entity — 集合分页(T38)', () => {
     });
     expect(entity.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=articles&offset=0' },
-      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting' },
+      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting', title: '文章发布向导' },
     ]);
   });
 

@@ -105,7 +105,8 @@ describe('Canvas semantic Presentation runtime', () => {
     expect(await screen.findByRole('heading', { name: '第一篇', level: 1 })).toBeTruthy();
     expect(screen.getByText(/这是第一篇完整文章/)).toBeTruthy();
     expect(screen.getByText('published')).toBeTruthy();
-    expect(screen.queryByText('essay')).toBeNull();
+    // T40 F-03:声明为 metadata 的字段(分类)进入详情层,不再因预算归零缺席。
+    expect(screen.getByText('essay')).toBeTruthy();
     // T35 F-24:常规 focus 页不激活蓝框(data-active 只服务 ?concern= 锚点)。
     const surface = document.querySelector('[data-concern="presentation:post:first-post"]');
     expect(surface?.getAttribute('data-active')).toBeNull();

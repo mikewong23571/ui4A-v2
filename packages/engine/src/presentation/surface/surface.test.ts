@@ -315,10 +315,12 @@ describe('generic semantic fallback planner', () => {
     expect(result.valid).toBe(true);
     expect(serialized).toContain('properties.fields.displayName');
     expect(serialized).toContain('properties.fields.summary');
+    // T40 F-02:状态词绑节点标题(合同数据源),不再直出裸 node 枚举。
+    expect(serialized).toContain('properties.title');
+    expect(serialized).not.toContain('properties.node');
     expect(serialized).not.toContain('Node label must not become identity');
     expect(serialized).not.toContain('A factual value');
     expect(serialized).not.toContain('do-something');
-    expect(serialized).not.toContain('properties.title');
     expect(serialized).toContain('"role":"actions"');
     expect(serialized).toContain('"role":"relation"');
     expect(surface.root).toMatchObject({
@@ -388,7 +390,8 @@ describe('generic semantic fallback planner', () => {
     expect(bindings).toEqual(
       new Set([
         'property:record:alpha:properties.fields.displayName',
-        'property:record:alpha:properties.node',
+        // T40 F-02:状态词绑节点标题(同一合同数据源),node 裸枚举不再直出。
+        'property:record:alpha:properties.title',
         'property:record:alpha:properties.fields.summary',
         'actions:record:alpha:',
         'links:record:alpha:',
@@ -398,7 +401,7 @@ describe('generic semantic fallback planner', () => {
       new Set([
         'catalog:catalog:baseline:7:',
         'entity:record:alpha:entity-v3:properties.fields.displayName',
-        'entity:record:alpha:entity-v3:properties.node',
+        'entity:record:alpha:entity-v3:properties.title',
         'entity:record:alpha:entity-v3:properties.fields.summary',
         'entity:record:alpha:entity-v3:$actions',
         'entity:record:alpha:entity-v3:$links',
@@ -797,14 +800,17 @@ describe('generic semantic fallback planner', () => {
       return result;
     };
 
+    // T40 F-02/F-03:read 状态绑节点标题、metadata ≥1;primary-content 放量
+    // (此处仅声明一个 primary-content)。overview 预算不变,仅状态来源换标题。
     expect(paths('read')).toEqual([
       'properties.fields.displayName',
-      'properties.node',
+      'properties.title',
       'properties.fields.summary',
+      'properties.fields.alpha',
     ]);
     expect(paths('overview')).toEqual([
       'properties.fields.displayName',
-      'properties.node',
+      'properties.title',
       'properties.fields.alpha',
       'properties.fields.zeta',
     ]);

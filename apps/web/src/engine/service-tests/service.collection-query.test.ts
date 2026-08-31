@@ -77,7 +77,7 @@ describe('EngineRuntime.getEntity — 集合读面查询(T38)', () => {
     expect(entity.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=articles&offset=1' },
       { rel: ['prev'], href: '/api/entity?rel=articles&offset=0' },
-      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting' },
+      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting', title: '文章发布向导' },
     ]);
     // 集合入口链接补全(flow-entry)与分页共存。
     const flowEntry = await engine.getEntity('articles', { offset: '0' });

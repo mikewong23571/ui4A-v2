@@ -55,13 +55,20 @@ prompt 结构变更。
 拓扑;Changes=合同数据(状态 title/字段 presentation role)、generic 渲染机器消费点与相邻
 测试;Blast radius=禁止 per-class/per-app 分支、React 文案模板、worker/db、chat。
 
-- [ ] Task C1:Green——状态词一致性:状态文案唯一来源(合同数据/文案框架),列表与详情同源;
-  英文枚举不再直出。
-- [ ] Task C2:Green——实体页字段分层:声明字段按概览/详情出现,未填字段不渲染空壳;
-  时间/来源按既有投影事实披露,不发明新真相。
-- [ ] Task C3:Green——flow/collection/kind 等机械标签退守次级或 raw 层,首屏主文案为任务语言。
-- [ ] Task C4:浏览器验证 S1、S3(todo/editorial/publishing 三应用实体页同一约定)。
-- [ ] Task C5:Phase C Checkpoint——无特判 diff、三应用截图对照、focused tests 全绿。
+- [x] Task C1(2026-08-31):Green——状态词唯一来源:详情(generic.ts 回退链 title→status→node)
+  与列表成员(itemStatusPath)同绑节点中文 title;EntityView h1 改 identity→title→rel 链、
+  状态行消费节点 title、副标题裸 node 退守 raw。英文枚举不再直出(实测无裸 open/published)。
+- [x] Task C2(2026-08-31):Green——字段只来自显式声明:generic 候选发明循环删除,
+  READ_BUDGET 放量(primary-content 不限席、metadata:1,policy v3,DECISIONS D55);
+  EntityView 拆 FIELD_DISPLAY_LABELS 字典,改消费 properties.presentation.fields
+  (备注独立成行,未填/未声明不渲染)。
+- [x] Task C3(2026-08-31):Green——flow 链接补 title(flow-entry.ts),锚文本任务语言;
+  detail.tsx/entity-view.tsx 的 Badge rel 直出移除,机械标签退守 raw 层。
+- [x] Task C4(2026-08-31):浏览器验证 S1、S3 通过(todo:v2 三问齐、备注分层;
+  todos/articles/post:post-welcome 同一约定;截图入 evidence/2026-08-31-phase-c/)。
+- [x] Task C5(2026-08-31):Phase C Checkpoint——编排者复跑 focused tests 全绿
+  (entity-view/detail/flow-entry/generic-detail-surface/intent/surface),governance:strict 过,
+  diff 零特判;t21 源码门禁与 meta page 陈旧断言随本轮一并矫正(见 review.md)。
 
 ## Phase D:首页空态、Meta 术语与来源可读性(F-04/F-05/F-08)
 

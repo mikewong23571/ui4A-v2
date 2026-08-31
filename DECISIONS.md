@@ -988,3 +988,28 @@
   运行/回滚 milestone,H 只做共同注视与最终 E2E。完整 Draft authoring 继续由外部 Agent/
   CLI/Assistant 原话授权承担,Meta 人类主路径从 validation/diff/checks/provenance 与责任
   decision 开始。不新增 package、数据库、事件族、UI framework 或页面 DSL。
+
+## D55 实体读面预算修订与详情状态回退链(2026-08-31,T40 Phase C)
+
+- **背景**:T40 走查(findings F-02/F-03)证明 D47.4 的默认预算
+  `identity:1、status:1、primary-content:1,其余为 0` 在深路径实体页上产出两类
+  系统性读面缺陷:(1)详情层状态回退绑 `properties.node` 裸枚举(英文状态词直出),
+  而列表成员绑节点中文 title,同一实体两个状态词来源;(2)声明过 presentation role
+  的业务字段(metadata/第二个 primary-content,如备注)永远进不了详情层,而 generic
+  候选生成又用"全部 fields→primary-content、全部属性→metadata"的循环发明未声明
+  字段——声明分层与"未声明不发明"原则同时被破坏。
+- **决定**:
+  1. **修订 D47.4 默认预算**:`read` intent 预算改为 identity:1、status:1、
+     primary-content 放量(不限席)、metadata:1,其余 role 仍为 0;同 role 内选取/
+     去重/排序规则不变,`GENERIC_INTENT_POLICY` version 随预算语义升 v3(sidecar 失
+     效重规划走既有机制)。未知 intent 固定 read fallback、selector 只接收 path/role
+     等 D47.4 其余约束不变。
+  2. **详情状态回退链**:有 node 时绑 `properties.title`(节点中文 title,与列表成
+     员同源)→ `properties.status` → `properties.node` 裸枚举;纯结构判定,零
+     entity class/字段名特判。
+  3. **字段只来自显式声明**:删除 generic 候选生成中"全部 fields/属性自动入层"的
+     发明循环;未声明 presentation role 的字段不进入读面,已声明未填的字段不渲染空
+     壳。React 侧字段名→文案字典(FIELD_DISPLAY_LABELS 模式)仍为禁止项。
+- **影响**:实体页首屏三问(是什么/状态/能做什么)由同一合同数据源回答;预算变化
+  经 policy version 触发既有 sidecar 重规划,无兼容双路径。后续如需更多 metadata 席
+  位,在本条预算上继续修订而非在渲染层加分支。

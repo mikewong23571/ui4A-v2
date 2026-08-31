@@ -24,7 +24,12 @@ export interface GenericIntentPolicy {
 const READ_BUDGET: GenericRoleBudget = Object.freeze({
   identity: 1,
   status: 1,
-  'primary-content': 1,
+  // T40 F-03:详情读面字段分层——已声明 primary-content 字段全部进入
+  // (Infinity = 放量);metadata 至少 1 席(声明过的业务字段不再因预算
+  // 归零而缺席)。未声明字段不成为候选(规划器只消费声明路径),预算
+  // 只裁剪声明字段间的竞争,不发明字段。
+  'primary-content': Number.POSITIVE_INFINITY,
+  metadata: 1,
 });
 const OVERVIEW_BUDGET: GenericRoleBudget = Object.freeze({
   identity: 1,
@@ -67,7 +72,9 @@ const REGION_INTENT_BY_ROLE: Readonly<Partial<Record<GenericPresentationRole, st
 
 /** Versioned, exact-match policy. Unlisted non-empty intents use the fixed read budget. */
 export const GENERIC_INTENT_POLICY = Object.freeze({
-  version: 'generic-intent-policy-v2',
+  // T40 F-03:read 预算放量(primary-content 全量、metadata ≥1)使既有 sidecar
+  // 重规划——版本 +1。
+  version: 'generic-intent-policy-v3',
   defaultBudget: READ_BUDGET,
   byIntent: Object.freeze({
     read: READ_BUDGET,
@@ -141,7 +148,8 @@ export function selectGenericFieldCandidates(
     seenPaths.add(candidate.path);
     const limit = budget[candidate.role] ?? 0;
     const count = roleCounts.get(candidate.role) ?? 0;
-    if (!Number.isSafeInteger(limit) || limit < 0) {
+    // Infinity = 放量(该 role 的已声明候选全部进入);其余必须是非负安全整数。
+    if ((!Number.isSafeInteger(limit) && limit !== Number.POSITIVE_INFINITY) || limit < 0) {
       throw new Error(`generic intent role budget for ${candidate.role} is invalid`);
     }
     if (count >= limit) continue;

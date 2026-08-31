@@ -74,9 +74,11 @@ describe('generic Presentation runtime plan', () => {
     expect(components).not.toContain('第一篇');
     expect(data).toContain('完整正文');
     expect(data).toContain('第一篇');
-    expect(data).toContain('published');
+    // T40 F-02:状态词绑节点标题(任务语)而非裸 node 枚举——published 不再
+    // 进入数据模型,节点标题「已发布」取代它。
+    expect(data).toContain('已发布');
+    expect(data).not.toContain('published');
     expect(data).toContain('essay');
-    expect(data).not.toContain('已发布');
   });
 
   it('binds a Flow alias request to the canonical entity rel returned by Siren', () => {

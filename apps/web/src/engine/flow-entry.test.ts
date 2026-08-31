@@ -127,7 +127,7 @@ describe('collection flow entry links (T37 FR1)', () => {
     ]);
     expect(entity.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=articles' },
-      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting' },
+      { rel: ['flow'], href: '/api/entity?rel=flow%3Aarticle-drafting', title: '文章发布向导' },
     ]);
   });
 

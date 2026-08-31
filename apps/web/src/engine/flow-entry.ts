@@ -35,8 +35,9 @@ export function resolveFlowRelAlias(rel: string, snapshot: EngineSnapshot): stri
 
 /**
  * 集合实体补 flow 入口链接:为每个向该集合 append 成员的 flow 生成
- * `{rel: ['flow'], href: /api/entity?rel=flow:<name>}`。非集合实体原样返回。
- * 目标集合推导复用引擎 `appendedCollections`(与实例正向链同一口径,T37)。
+ * `{rel: ['flow'], href: /api/entity?rel=flow:<name>, title: flow.title}`。
+ * title(T40 F-06)使渲染锚文本为任务语言(flow 标题),裸 rel 不再直出首屏;
+ * 非集合实体原样返回。
  */
 export function withCollectionFlowEntryLinks(
   entity: SirenEntity,
@@ -49,7 +50,11 @@ export function withCollectionFlowEntryLinks(
     if (!appendedCollections(flow).includes(entity.properties.rel as string)) continue;
     const href = `/api/entity?rel=${encodeURIComponent(`${FLOW_REL_PREFIX}${flow.name}`)}`;
     if (existing.has(href)) continue;
-    entryLinks.push({ rel: ['flow'], href });
+    entryLinks.push({
+      rel: ['flow'],
+      href,
+      ...(typeof flow.title === 'string' && flow.title !== '' ? { title: flow.title } : {}),
+    });
   }
   if (entryLinks.length === 0) return entity;
   return { ...entity, links: [...entity.links, ...entryLinks] };

@@ -8,15 +8,17 @@
  * - 谓词投影:guard-results 的阻断原因在控件下方以 status 语义可见呈现
  *   (T28 一等动作口径;title 只作冗余提示);
  * - exec 提交 rel 取实体自身 properties.rel(flow: 别名页落在实例 rel 上,直投不绕别名);
- * - T9 Phase C:分区卡片化(shadcn Card/Table/Badge),结构锚点不变
+ * - T9 Phase C:分区卡片化(shadcn Card/Table),结构锚点不变
  *   (section[aria-label] / tbody tr / 成员 a / data-rel / data-nav)。
- * - T14 Phase A(#3/#4):属性表人话口径——title 投影不上表(h1 已呈现),
- *   字段值行的业务字段名映射中文标签(未知名原样,零发明),rel/flow/node
- *   合同标识保留机器名;properties.fields 作为 ActionRunner 的预填取值源。
+ * - T40 Phase C(F-02/F-03):状态词与字段全部消费合同数据——
+ *   h1 取 properties.identity(实例身份),属性表状态行显示节点中文标题
+ *   (properties.title,与列表成员同源),node 机器 id 退守 RawContractDrawer;
+ *   字段区按 properties.presentation.fields 声明逐字段独立成行(合同 title),
+ *   未声明/未填字段不渲染空壳;T14 的字段名字典(FIELD_DISPLAY_LABELS)已拆除,
+ *   标签唯一来源是合同 title。properties.fields 仍作为 ActionRunner 的预填取值源。
  */
 import type { SirenEntity } from '@ui4a/engine';
 
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { entityPageHref } from '@/presence/navigation';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
@@ -29,29 +31,79 @@ import { RawContractDrawer } from './canvas/raw-contract-drawer';
 
 export { entityPageHref } from '@/presence/navigation';
 
-/**
- * 字段键值对的展示文本。properties.fields 是投影后的扁平形状
- * `{ name: value }`(engine fieldValues 已剥离开出处——出处只在事件日志里)。
- * 字段名经 fieldDisplayLabel 人话化(#3:机器字段名不直接上屏)。
- */
-function fieldsSummary(fields: unknown): string {
-  if (typeof fields !== 'object' || fields === null) return '';
-  return Object.entries(fields as Record<string, unknown>)
-    .map(([name, value]) => `${fieldDisplayLabel(name)}=${String(value)}`)
-    .join(' · ');
+/** 字段分层顺序(T40 F-03):identity → primary-content → metadata;未列 role 殿后。 */
+const FIELD_ROLE_ORDER: Readonly<Record<string, number>> = {
+  identity: 0,
+  'primary-content': 1,
+  metadata: 2,
+};
+
+interface DeclaredField {
+  path: string;
+  title?: string;
+  role?: string;
+  overview?: boolean;
 }
 
-/**
- * 属性表字段名的人话标签(T14 Phase A,#3):已知业务字段映射中文标题。
- * 未知名原样呈现——零发明:renderer 不替合同造标签;rel/flow/node 是合同
- * 标识(实体地址与状态机词汇),不在此表、保留机器名原样。
- */
-const FIELD_DISPLAY_LABELS: Readonly<Record<string, string>> = {
-  title: '文章标题',
-  category: '分类',
-  tags: '标签',
-  body: '正文',
-};
+/** 按 path 读实体值(声明路径是 'properties.…' 引用,值不复制)。 */
+function readPathValue(root: unknown, path: string): unknown {
+  let current: unknown = root;
+  for (const segment of path.split('.')) {
+    if (typeof current !== 'object' || current === null || Array.isArray(current)) return undefined;
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+}
+
+/** presentation.fields 声明数组(非数组/非对象条目跳过,零发明)。 */
+function declaredFieldsOf(entity: SirenEntity): DeclaredField[] {
+  const presentation = entity.properties.presentation;
+  if (typeof presentation !== 'object' || presentation === null || Array.isArray(presentation)) {
+    return [];
+  }
+  const fields = (presentation as { fields?: unknown }).fields;
+  if (!Array.isArray(fields)) return [];
+  return fields.flatMap((field) => {
+    if (typeof field !== 'object' || field === null || Array.isArray(field)) return [];
+    const { path, title, role, overview } = field as Record<string, unknown>;
+    if (typeof path !== 'string' || path === '') return [];
+    return [
+      {
+        path,
+        ...(typeof title === 'string' && title !== '' ? { title } : {}),
+        ...(typeof role === 'string' && role !== '' ? { role } : {}),
+        ...(overview === true ? { overview: true as const } : {}),
+      },
+    ];
+  });
+}
+
+/** 字段标签唯一来源 = 合同 title;缺席回退 path 尾段(零发明)。 */
+function fieldLabel(field: DeclaredField): string {
+  return field.title ?? field.path.split('.').at(-1) ?? field.path;
+}
+
+/** 实体页字段区:按声明遍历,已填字段按 role 顺序独立成行(同 role 声明序)。 */
+function declaredFieldRows(entity: SirenEntity): Array<{ label: string; value: unknown }> {
+  const byRole = new Map<string, DeclaredField[]>();
+  for (const field of declaredFieldsOf(entity)) {
+    const value = readPathValue(entity, field.path);
+    if (value === undefined || value === null || value === '') continue;
+    const role = field.role ?? 'metadata';
+    const list = byRole.get(role) ?? [];
+    list.push(field);
+    byRole.set(role, list);
+  }
+  const rows: Array<{ label: string; value: unknown }> = [];
+  for (const [, list] of [...byRole.entries()].sort(
+    ([left], [right]) => (FIELD_ROLE_ORDER[left] ?? 99) - (FIELD_ROLE_ORDER[right] ?? 99),
+  )) {
+    for (const field of list) {
+      rows.push({ label: fieldLabel(field), value: readPathValue(entity, field.path) });
+    }
+  }
+  return rows;
+}
 
 const PROPERTY_DISPLAY_LABELS: Readonly<Record<string, string>> = {
   'target-rel': '目标对象',
@@ -66,21 +118,17 @@ const PROPERTY_DISPLAY_LABELS: Readonly<Record<string, string>> = {
   notified: '通知已送达',
 };
 
-/** 字段名的展示标签:已知业务字段取人话标题,未知原样。 */
-function fieldDisplayLabel(name: string): string {
-  return FIELD_DISPLAY_LABELS[name] ?? name;
-}
-
 function propertyDisplayLabel(name: string): string {
   return PROPERTY_DISPLAY_LABELS[name] ?? name;
 }
 
 function propertyDisplayValue(name: string, value: unknown): string {
   if (name === 'params' && typeof value === 'object' && value !== null) {
+    // T40:params 内嵌键原样呈现(零字段名字典);未知键原样,不替合同造标签。
     const entries = Object.entries(value as Record<string, unknown>);
     return entries.length === 0
       ? '无'
-      : entries.map(([key, entry]) => `${fieldDisplayLabel(key)}=${String(entry)}`).join(' · ');
+      : entries.map(([key, entry]) => `${key}=${String(entry)}`).join(' · ');
   }
   if (name === 'proposed-by' && typeof value === 'object' && value !== null) {
     const proposed = value as Record<string, unknown>;
@@ -114,19 +162,41 @@ function flattenProperty(parts: string[], key: string, value: unknown): void {
 }
 
 /**
- * 集合成员条目的展示文本:零硬编码字段名,两条通用路径——
- * - 流程实例(fields 扁平值 + 节点);
- * - 通用回退(确认等非实例成员):无 fields/node 时按 properties 展平呈现
- *   (标量 + 一层对象,如 target-action=archive、proposed-by.actor=agent)。
+ * 集合成员条目的展示文本(T40 F-02/F-03):零硬编码字段名——
+ * - 有 presentation.fields 声明的成员:按声明取 identity/primary-content 或
+ *   overview 标记的已填字段值(备注等不再整段倒进列表行,声明驱动,不自造过滤);
+ * - 无声明成员(确认/委托等):fields 扁平值兜底(现状,零发明);
+ * - 有 node 的成员以节点中文标题(properties.title)作状态词,不再直出裸 node;
+ * - 两者皆缺 → properties 展平(标量 + 一层对象,如 target-action=archive)。
  */
 function memberSummary(sub: SirenEntity): string {
   const parts: string[] = [];
-  if (typeof sub.properties.fields === 'object' && sub.properties.fields !== null) {
+  const declared = declaredFieldsOf(sub);
+  if (declared.length > 0) {
+    for (const field of declared) {
+      if (
+        field.overview !== true &&
+        field.role !== 'identity' &&
+        field.role !== 'primary-content'
+      ) {
+        continue;
+      }
+      const value = readPathValue(sub, field.path);
+      if (value === undefined || value === null || value === '') continue;
+      parts.push(String(value));
+    }
+  } else if (typeof sub.properties.fields === 'object' && sub.properties.fields !== null) {
     for (const value of Object.values(sub.properties.fields as Record<string, unknown>)) {
       if (typeof value !== 'object' || value === null) parts.push(String(value));
     }
   }
-  if (sub.properties.node !== undefined) parts.push(String(sub.properties.node));
+  if (
+    sub.properties.node !== undefined &&
+    typeof sub.properties.title === 'string' &&
+    sub.properties.title !== ''
+  ) {
+    parts.push(sub.properties.title);
+  }
   if (parts.length === 0) {
     for (const [key, value] of Object.entries(sub.properties)) {
       if (key === 'rel') continue;
@@ -146,11 +216,20 @@ export interface EntityViewProps {
 }
 
 export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
+  // T40 F-02:h1 先回答"是什么"——实例身份(identity)优先,回退节点标题/rel。
   const heading =
+    typeof entity.properties.identity === 'string' && entity.properties.identity !== ''
+      ? entity.properties.identity
+      : typeof entity.properties.title === 'string' && entity.properties.title !== ''
+        ? entity.properties.title
+        : rel;
+  const members = entity.entities ?? [];
+  const nodePresent = entity.properties.node !== undefined;
+  const nodeTitle =
     typeof entity.properties.title === 'string' && entity.properties.title !== ''
       ? entity.properties.title
-      : rel;
-  const members = entity.entities ?? [];
+      : undefined;
+  const fieldRows = declaredFieldRows(entity);
   const submit = createDirectActionSubmit((input) => execAction({ ...input, scope }), {
     clientParams: ({ action }) => observedActionClientParams(action, entity.properties),
   });
@@ -163,10 +242,7 @@ export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
         </a>
       </nav>
       <h1 className="text-2xl font-semibold tracking-tight">{heading}</h1>
-      <p className="mt-1 text-xs text-muted-foreground">
-        {rel}
-        {entity.properties.node !== undefined ? ` · 节点 ${String(entity.properties.node)}` : ''}
-      </p>
+      <p className="mt-1 text-xs text-muted-foreground">{rel}</p>
       <RawContractDrawer entity={entity} />
 
       <section aria-label="属性" className="mt-6">
@@ -175,11 +251,16 @@ export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
           <Table>
             <TableBody>
               {Object.entries(entity.properties)
-                // fields 单独成行(值人话化);title 是节点标题的纯展示投影,
-                // h1 已呈现、不再上表(#3:与表单字段 title 撞名的根因);
+                // title 是节点标题的纯展示投影,h1 已呈现、不再上表;
                 // presentation 是呈现层结构元数据,上属性表即 F-14 的 JSON
-                // 原文泄漏——审计走 RawContractDrawer。
-                .filter(([key]) => !['fields', 'title', 'presentation'].includes(key))
+                // 原文泄漏——审计走 RawContractDrawer;
+                // fields 由声明字段区呈现(下段);T40 F-02:有 node 的实体
+                // 过滤裸 node 行(机器 id 退守 raw 层)。
+                .filter(([key]) => {
+                  if (['fields', 'title', 'presentation'].includes(key)) return false;
+                  if (nodePresent && key === 'node') return false;
+                  return true;
+                })
                 .map(([key, value]) => (
                   <TableRow key={key}>
                     <th
@@ -189,23 +270,29 @@ export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
                       {propertyDisplayLabel(key)}
                     </th>
                     <TableCell className="px-3 py-2 break-all whitespace-normal">
-                      {propertyDisplayValue(key, value)}
+                      {propertyDisplayValue(
+                        key,
+                        // T40 F-02:状态行值 = 节点中文标题(与列表同源),机器枚举退守。
+                        key === 'status' && nodePresent && nodeTitle !== undefined
+                          ? nodeTitle
+                          : value,
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
-              {fieldsSummary(entity.properties.fields) !== '' && (
-                <TableRow>
+              {fieldRows.map(({ label, value }) => (
+                <TableRow key={label}>
                   <th
                     scope="row"
                     className="px-3 py-2 text-left align-top font-normal whitespace-nowrap text-muted-foreground"
                   >
-                    字段值
+                    {label}
                   </th>
                   <TableCell className="px-3 py-2 break-all whitespace-normal">
-                    {fieldsSummary(entity.properties.fields)}
+                    {propertyDisplayValue(label, value)}
                   </TableCell>
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
         </div>
@@ -227,9 +314,6 @@ export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
                 const target = hrefToRel(link.href);
                 return (
                   <li key={`${link.rel.join('/')}:${link.href}`}>
-                    <Badge variant="secondary" className="mr-2 font-mono font-normal">
-                      {link.rel.join('/')}
-                    </Badge>
                     {target !== null ? (
                       <a
                         href={entityPageHref(target, scope)}

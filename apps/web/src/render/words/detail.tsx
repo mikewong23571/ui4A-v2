@@ -10,7 +10,6 @@
 import { entityPageHref } from '../../components/entity-view';
 import { hrefToRel } from '../../components/contract-href';
 import { ActionGroup } from '../../components/actions/action-group';
-import { Badge } from '@/components/ui/badge';
 
 import { asEntity, type WordProps } from './shared';
 
@@ -33,6 +32,8 @@ export function DetailWord(props: WordProps) {
 
   // T35 F-06/R3:links 模式是关系辅助信息,降级为弱化内联行,不再套整卡 article
   // 壳;self 指回实体自身,卡题已在场,属重复噪音——通通不渲染(空区块即留白)。
+  // T40 F-06:机械 rel 标签(Badge)退守 raw 层(RawContractDrawer),首屏主文案
+  // 为链接 title/target 任务语言。
   if (mode === 'links') {
     const navigable = entity.links.filter((link) => !link.rel.includes('self'));
     // 词条组件类型要求返回元素:空区块以隐藏节段留白(不渲染任何可交互内容)。
@@ -46,9 +47,6 @@ export function DetailWord(props: WordProps) {
             const target = hrefToRel(link.href);
             return (
               <li key={`${link.rel.join('/')}:${link.href}`} className="flex items-center gap-1.5">
-                <Badge variant="secondary" className="rounded px-1 py-0 text-[10px]">
-                  {link.rel.join('/')}
-                </Badge>
                 {target !== null ? (
                   <a
                     href={entityPageHref(target)}
@@ -118,9 +116,6 @@ export function DetailWord(props: WordProps) {
               const target = hrefToRel(link.href);
               return (
                 <li key={`${link.rel.join('/')}:${link.href}`}>
-                  <Badge variant="secondary" className="mr-2 rounded-md px-1.5 py-0.5 text-[10px]">
-                    {link.rel.join('/')}
-                  </Badge>
                   {target !== null ? (
                     <a
                       href={entityPageHref(target)}

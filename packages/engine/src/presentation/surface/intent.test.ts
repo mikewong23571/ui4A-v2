@@ -49,10 +49,13 @@ describe('generic exact-intent field selector', () => {
   });
 
   it('uses exact role budgets and a fixed read fallback for unknown non-empty intents', () => {
+    // T40 F-03:read 放量——全部声明的 primary-content + metadata ≥1 进入。
     expect(selected('read')).toEqual([
       'identity:properties.fields.title',
       'status:properties.fields.state',
       'primary-content:properties.fields.appendix',
+      'primary-content:properties.fields.body',
+      'metadata:properties.fields.alpha',
     ]);
     expect(selected('overview')).toEqual([
       'identity:properties.fields.title',

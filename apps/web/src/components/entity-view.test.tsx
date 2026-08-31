@@ -444,13 +444,15 @@ describe('EntityView:实体四件组装渲染', () => {
     expect(hrefs).toContain('http://localhost:3000/entity?rel=flow%3Aarticle-drafting');
   });
 
-  it('集合子实体 entities[] 渲染为成员链接(含标题与节点)', () => {
+  it('集合子实体 entities[] 渲染为成员链接(含字段值与中文状态词)', () => {
     const { container } = render(<EntityView rel="articles" entity={articlesEntity} />);
 
     const anchor = container.querySelector<HTMLAnchorElement>('a[href*="post%3Apost-welcome"]');
     expect(anchor).not.toBeNull();
     expect(anchor!.textContent).toContain('欢迎来到 UI4A');
-    expect(anchor!.textContent).toContain('published');
+    // T40 F-02:成员状态词 = 节点中文标题,裸 node 枚举不再直出。
+    expect(anchor!.textContent).toContain('已发布');
+    expect(anchor!.textContent).not.toContain('published');
   });
 
   it('links[] 标签优先合同 title(T33:人话归合同数据)', () => {
@@ -467,6 +469,18 @@ describe('EntityView:实体四件组装渲染', () => {
     expect(titled.getAttribute('data-nav')).toBe('self');
     expect(titled.textContent).not.toContain('inbox');
     // 无 title 的链接回退 target rel
+    expect(screen.getByRole('link', { name: 'articles' })).toBeTruthy();
+  });
+
+  it('F-06:机械 rel 标签(flow/collection)退守 raw 层,不作首屏主文案', () => {
+    const { container } = render(<EntityView rel="articles" entity={wizardEntity} />);
+
+    // 链接区主文案只有 title/target;裸 rel 标签(Badge)不再直出(原始合同在抽屉)。
+    const linksSection = container.querySelector('section[aria-label="链接"]');
+    expect(linksSection).not.toBeNull();
+    const linksText = linksSection!.textContent ?? '';
+    expect(linksText).not.toMatch(/(?:^|\s)flow(?:\s|$)/);
+    expect(linksText).not.toMatch(/(?:^|\s)collection(?:\s|$)/);
     expect(screen.getByRole('link', { name: 'articles' })).toBeTruthy();
   });
 
@@ -503,11 +517,15 @@ describe('EntityView:实体四件组装渲染', () => {
     ).toBe('/entity?rel=thread%3Arelease-2&scope=publishing&thread=release-2');
   });
 
-  it('properties 简表呈现字段值', () => {
+  it('properties 简表呈现字段值(声明驱动,node 机器 id 退守)', () => {
     render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);
 
+    // 声明字段行:label = 合同 title(缺席回退 path 尾段),值原样。
+    expect(screen.getByText('title')).toBeTruthy();
     expect(screen.getByText(/草稿标题/)).toBeTruthy();
-    expect(screen.getByText('ready')).toBeTruthy();
+    // T40 F-02:裸 node 枚举退守 raw 层,h1 仍是节点标题。
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('就绪');
+    expect(screen.queryByText('ready')).toBeNull();
   });
 
   it('blocked 的 guard-results 注入 disabled(整页接线)', () => {
@@ -709,21 +727,27 @@ describe('ActionRunner:实例字段预填(T14 Phase A,#4)', () => {
 });
 
 describe('EntityView:属性表人话口径(T14 Phase A,#3 属性表侧)', () => {
-  it('title 投影不再上表(h1 已呈现);rel/flow/node 合同标识保留原样', () => {
+  it('title 投影不再上表(h1 已呈现);rel/flow 保留,node 退守 raw 层', () => {
     const { container } = render(<EntityView rel="article-drafting:main" entity={wizardEntity} />);
     const section = container.querySelector('section[aria-label="属性"]');
     expect(section).not.toBeNull();
     const headers = [...(section?.querySelectorAll('th') ?? [])].map((th) => th.textContent);
-    expect(headers).not.toContain('title');
-    expect(headers).not.toContain('fields');
+    // title 属性(节点标题)不上表(h1 已呈现);'title' 是 identity 字段声明行
+    // 的 path 尾段标签(合同缺 title 字段名时零发明回退),可合法出现。
+    expect(headers).not.toContain('就绪');
+    expect(headers).toContain('title');
     // T35 F-14:呈现层结构元数据不上属性表(审计走 RawContractDrawer)。
     expect(headers).not.toContain('presentation');
-    expect(headers).toEqual(expect.arrayContaining(['rel', 'flow', 'node', '字段值']));
+    // T40 F-02:有 node 的实体,node 机器 id 退守 raw 层;rel/flow 保留;
+    // 声明字段行替代旧「字段值」整段行。
+    expect(headers).toEqual(expect.arrayContaining(['rel', 'flow']));
+    expect(headers).not.toContain('node');
+    expect(headers).not.toContain('字段值');
     // 节点标题投影仍是页面主标题(属性表不再重复)
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('就绪');
   });
 
-  it('实例字段值以人话标签呈现;未知字段名原样(零发明,不造标签)', () => {
+  it('实例字段值以合同 title 标签呈现;未声明字段名不渲染(零发明,不造标签)', () => {
     const entity: SirenEntity = {
       ...wizardEntity,
       properties: {
@@ -731,9 +755,12 @@ describe('EntityView:属性表人话口径(T14 Phase A,#3 属性表侧)', () => 
         fields: { title: '草稿标题', mystery: 'x' },
       },
     };
-    render(<EntityView rel="article-drafting:main" entity={entity} />);
+    const { container } = render(<EntityView rel="article-drafting:main" entity={entity} />);
 
-    expect(screen.getByText('文章标题=草稿标题 · mystery=x')).toBeTruthy();
+    // 声明字段(properties.fields.title)按合同呈现;mystery 未声明 → 不发明不渲染。
+    expect(screen.getByText('title')).toBeTruthy();
+    expect(screen.getByText(/草稿标题/)).toBeTruthy();
+    expect(container.textContent).not.toContain('mystery');
   });
 });
 

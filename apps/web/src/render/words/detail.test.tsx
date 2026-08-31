@@ -89,4 +89,20 @@ describe('detail 词条', () => {
     expect(screen.queryByRole('button', { name: '下线' })).toBeNull();
     expect(container.querySelector('table')).toBeNull();
   });
+
+  it('F-06:链接锚文本优先 flow title,机械 rel 标签不作首屏主文案', () => {
+    const entity = detailEntity();
+    entity.links = [
+      { rel: ['collection'], href: '/api/entity?rel=articles' },
+      { rel: ['flow'], href: '/api/entity?rel=flow%3Atodo-capture', title: '待办捕捉' },
+    ];
+    render(
+      <ActionSubmitProvider submit={submit}>
+        <DetailWord entity={entity} mode="links" />
+      </ActionSubmitProvider>,
+    );
+    expect(screen.getByText('待办捕捉')).toBeTruthy();
+    expect(screen.queryByText('collection')).toBeNull();
+    expect(screen.queryByText('flow')).toBeNull();
+  });
 });
