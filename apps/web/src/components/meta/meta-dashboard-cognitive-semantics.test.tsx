@@ -138,10 +138,6 @@ describe('Meta dashboard cognitive sitemap contract', () => {
     ).toEqual(['需要我决定', '候选与异常', '定义资产', '系统自举']);
 
     const definitionGroup = screen.getByRole('region', { name: '定义资产' });
-    expect(definitionGroup.getAttribute('data-layout')).toBe('primary');
-    expect(screen.getByRole('region', { name: '候选与异常' }).getAttribute('data-layout')).toBe(
-      'rail',
-    );
     expect(
       within(definitionGroup)
         .getAllByTestId('meta-surface')

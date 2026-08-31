@@ -40,7 +40,7 @@ describe('business sitemap principal surfaces', () => {
     const meta = new Map(
       readers.currentMetaSitemap().surfaces.map((surface) => [surface.rel, surface]),
     );
-    expect(meta.get('meta/self')?.title).toBe('引擎自举(definition-lifecycle)');
+    expect(meta.get('meta/self')?.title).toBe('定义生命周期');
   });
 
   it('makes every my-work composition source a principal business surface', () => {

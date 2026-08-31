@@ -42,23 +42,15 @@ export function DashboardSurfaceGroup({
   descriptors,
   collections,
 }: {
-  groupRole: CognitiveSemanticsGroupRole;
+  groupRole?: CognitiveSemanticsGroupRole;
   descriptors: ReturnType<typeof projectMetaSurfaceDescriptors>;
   collections: LoadedCollections;
 }) {
-  const title = groupTitles[groupRole];
-  const headingId = `meta-group-${groupRole}`;
-  const layout = groupRole === 'definition' ? 'primary' : 'rail';
+  const title = groupRole === undefined ? '治理工作区' : groupTitles[groupRole];
+  const headingId = groupRole === undefined ? 'meta-surfaces-heading' : `meta-group-${groupRole}`;
   return (
-    <section
-      role="region"
-      aria-labelledby={headingId}
-      data-layout={layout}
-      className={
-        layout === 'primary' ? 'lg:col-start-1 lg:row-start-1 lg:row-span-3' : 'lg:col-start-2'
-      }
-    >
-      <h2 id={headingId} className="mb-2 text-sm font-semibold">
+    <section role="region" aria-labelledby={headingId} className="@container min-w-0 space-y-3">
+      <h2 id={headingId} className="border-b pb-2 text-sm font-semibold">
         {title}
       </h2>
       <DashboardSurfaceGrid descriptors={descriptors} collections={collections} />
@@ -88,7 +80,7 @@ export function DashboardSurfaceGrid({
   collections: LoadedCollections;
 }) {
   return (
-    <div className={`grid gap-2 ${descriptors.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+    <div className="grid grid-cols-1 gap-2 @min-[32rem]:grid-cols-2 @min-[56rem]:grid-cols-4">
       {descriptors.map((descriptor) => {
         const collection = collections[descriptor.rel];
         const intent = displayValue(collection?.properties.intent);
@@ -100,36 +92,40 @@ export function DashboardSurfaceGrid({
             aria-label={`打开 ${descriptor.title}`}
             data-testid="meta-surface"
             data-priority={descriptor.presentation?.priority}
-            className="group rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="group min-w-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
-            <Card className="h-full gap-3 rounded-lg py-4 shadow-none transition-[border-color,background-color,box-shadow,transform] group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:bg-accent/20 group-hover:shadow-sm motion-reduce:transform-none">
-              <CardHeader className="px-4">
-                <CardTitle className="text-sm leading-5">{descriptor.title}</CardTitle>
-                {intent === null ? null : <CardDescription>{intent}</CardDescription>}
-                <CardAction
-                  aria-hidden="true"
-                  className="flex size-7 items-center justify-center rounded-full border bg-background text-muted-foreground transition-colors group-hover:border-primary/40 group-hover:text-primary"
-                >
-                  <ArrowUpRight className="size-3.5" />
+            <Card className="h-full gap-2 rounded-lg py-3 shadow-none transition-[border-color,background-color,box-shadow,transform] group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:bg-accent/20 group-hover:shadow-sm motion-reduce:transform-none">
+              <CardHeader className="grid-rows-[auto] items-center px-4">
+                <CardTitle className="min-w-0 text-sm leading-5 wrap-anywhere">
+                  {descriptor.title}
+                </CardTitle>
+                {intent === null ? null : (
+                  <CardDescription className="min-w-0 wrap-anywhere">{intent}</CardDescription>
+                )}
+                <CardAction className="row-span-1 flex h-6 items-center gap-3 self-center text-muted-foreground">
+                  {typeof collection?.properties.count === 'number' && (
+                    <span className="text-xs whitespace-nowrap tabular-nums">
+                      {String(collection.properties.count)} 项
+                    </span>
+                  )}
+                  <ArrowUpRight
+                    aria-hidden="true"
+                    className="size-3.5 shrink-0 transition-colors group-hover:text-primary"
+                  />
                 </CardAction>
               </CardHeader>
-              <CardContent className="mt-auto space-y-2 px-4 text-sm">
-                {fields.length > 0 && (
+              {fields.length > 0 && (
+                <CardContent className="px-4 text-sm">
                   <dl className="space-y-1 text-muted-foreground">
                     {fields.map((field) => (
                       <div key={field.path} className="flex gap-2">
                         <dt>{field.title}</dt>
-                        <dd className="text-foreground">{field.value}</dd>
+                        <dd className="min-w-0 text-foreground wrap-anywhere">{field.value}</dd>
                       </div>
                     ))}
                   </dl>
-                )}
-                {typeof collection?.properties.count === 'number' && (
-                  <p className="text-xs tabular-nums text-muted-foreground">
-                    {String(collection.properties.count)} 项
-                  </p>
-                )}
-              </CardContent>
+                </CardContent>
+              )}
             </Card>
           </a>
         );

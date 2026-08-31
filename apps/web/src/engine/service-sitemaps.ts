@@ -5,6 +5,7 @@
  */
 import {
   contentVersion,
+  DEFINITION_LIFECYCLE_FLOW,
   deriveSitemap,
   isMemberCollectionRel,
   withMetaTopLevelPresentation,
@@ -38,7 +39,7 @@ export function createSitemapReaders(
     const surfaces: SitemapSurface[] = [
       withMetaTopLevelPresentation({
         rel: 'meta/self',
-        title: '引擎自举(definition-lifecycle)',
+        title: DEFINITION_LIFECYCLE_FLOW.title ?? DEFINITION_LIFECYCLE_FLOW.name,
       }),
       withMetaTopLevelPresentation({ rel: 'meta/flows', title: '流程定义', collection: true }),
       withMetaTopLevelPresentation({

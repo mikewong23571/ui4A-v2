@@ -9,7 +9,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { fetchMetaEntity, fetchMetaSitemap } from './meta-client';
-import { DashboardSurfaceGrid, DashboardSurfaceGroup } from './meta-dashboard-surfaces';
+import { DashboardSurfaceGroup } from './meta-dashboard-surfaces';
 import {
   metaNavigationContext,
   withMetaNavigationContext,
@@ -311,7 +311,7 @@ export function MetaDashboard({
             )}
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+          <div className="space-y-6">
             {groupedDescriptors.map(({ groupRole, entries }) => (
               <DashboardSurfaceGroup
                 key={groupRole}
@@ -320,15 +320,10 @@ export function MetaDashboard({
                 collections={collections}
               />
             ))}
+            {ungroupedDescriptors.length > 0 && (
+              <DashboardSurfaceGroup descriptors={ungroupedDescriptors} collections={collections} />
+            )}
           </div>
-          {ungroupedDescriptors.length > 0 && (
-            <section aria-labelledby="meta-surfaces-heading">
-              <h2 id="meta-surfaces-heading" className="mb-2 text-sm font-semibold">
-                治理工作区
-              </h2>
-              <DashboardSurfaceGrid descriptors={ungroupedDescriptors} collections={collections} />
-            </section>
-          )}
         </>
       )}
     </div>
