@@ -4,13 +4,13 @@
 
 ## Phase A：用户故事与探针
 
-- [~] Task A1：先定义 S1–S8，验证发现起点/工作线读取/后台传递的最小路径，固化 D58 与详细接口。
-- [ ] Task A2：Phase Verification & Checkpoint（workflow）：运行可抛弃探针、记录事实和选型，删除探针代码或晋升为常驻测试。
+- [x] Task A1：先定义 S1–S8，验证发现起点/工作线读取/后台传递的最小路径，固化 D58 与详细接口。
+- [x] Task A2：Phase Verification & Checkpoint（workflow）：探针完成并删除，目录2项Red晋升常驻测试；基线与选型见spike.md。
 
 ## Phase B：合同与 Agent 工作上下文
 
-- [ ] Task B1：Red→Green：发现起点、显式清空、工作线 HTTP 读取、按当前观察披露；S1–S5/S8。
-- [ ] Task B2：Red→Green：inline/delegated 的引用传递、恢复与授权一致；S6。
+- [~] Task B1：Red→Green：发现起点、显式清空、工作线 HTTP 读取、按当前观察披露；S1–S5/S8。
+- [~] Task B2：Red→Green：inline/delegated 的引用传递、恢复与授权一致；S6。
 - [ ] Task B3：Phase Verification & Checkpoint：复跑上述测试、typecheck/governance、覆盖率与 HTTP。
 
 ## Phase C：简洁的人类入口

@@ -1051,3 +1051,28 @@
   目录到应用仍由 `applicationLandingHref` 生成，scope 只代表注意力。
 - **验收**：合成 30 应用时首页恰好前 9 个，完整目录可发现全部 30 个；
   新名字无需改前端或顶层导航。D46 的工作站首页、D51 授权与 D54 的图书馆语义不变。
+
+## D58 共同工作上下文与中立发现起点(2026-09-01,T42)
+
+- **背景**：a6f8e1cf 会话在客户端 scope/thread/focus 均为空时，由 articles 兜底
+  推导出 publishing 并宣称“主应用”。Situation 的工作线没有进入 Agent 披露。
+- **决定**：
+  1. 新增只读、零 action/event/storage 的业务 `applications` 集合，由现有 active
+     Application 定义派生；按 grants 过滤成员、按 system-fallback trait 排除系统地板。
+     它成为未定位业务起点，替代 D41 的 articles 兜底；扩展 D57 的“不新增业务实体”
+     仅至这个同源发现投影，不新建目录真相。Meta 未定位起点为 meta/applications。
+  2. 当前对象优先；无对象而有有效且 owned 工作线时，从 thread 起步；其次应用
+     entry，再到中立目录。显式 null 清空阻止旧 presence 回填。应用偏好不再由
+     Agent 观察对象反推；观察应用仅决定详情披露，其他应用仍保留导航级摘要。
+  3. Agent/后台只传出生时固定的 `contextRel` 工作线引用。每次新决策经授权 HTTP
+     重读工作线及最多四个显式 context/active/approval 引用；无递归、无自动 attach、
+     不保存业务事实副本。Prompt 只含有界认知摘要，主实体独占 action tools。
+     工作线拒绝不可恢复旧事实，已完成步骤幂等重试仍返回原回执。
+  4. scope 仍是已有 URL/Presence 的应用选择字段，本次不改事件 wire 或 OAuth/Draft
+     scope。人类标签改为“应用”并使用合同标题；复用处境弹层展示有限引用，不
+     增加帮助段落或配置中心。临时问答不要求建线。
+  5. 授权继续 D51；Thread 根、内嵌成员、相关链接和派生落点都不得泄漏授予外事实。
+     后台 service 凭证不能读取人类工作线时诚实拒绝，不用请求 principal 冒充用户。
+     本地 Chat 处境按与工作台相同的 local-user 主体装配；生产主体始终来自凭证。
+- **验收**：T42 S1–S8、真实 LLM 只读故事、32 KiB wire、HTTP/浏览器同源、重放、
+  后台新步重读与幂等恢复；不以旧默认测试限制故事，不放松权限/审批/来源不变量。
