@@ -189,17 +189,38 @@ describe('sliceSitemapDisclosure', () => {
       currentRel: 'alpha-create:item-1',
     });
 
+    // 无 scope 且不猜词:广域模式覆盖全部应用/入口,但只给导航级细节
+    // (F-10:flow 动作/守卫/边与 capability 的 I/O 描述留在 scoped 切片)。
     expect(disclosed.applications.map(({ name }) => name)).toEqual(['alpha', 'beta']);
-    expect(disclosed.surfaces).toEqual(sitemapFixture().surfaces);
+    expect(disclosed.applications[0]?.flows).toEqual([
+      { name: 'alpha-create', title: 'Create alpha item' },
+      { name: 'alpha-review', title: 'Review alpha item' },
+    ]);
+    expect(disclosed.applications[0]?.intent).toBe('prepare alpha work');
+    expect(disclosed.surfaces).toEqual([
+      { rel: 'alpha-home', title: 'Alpha entry', app: 'alpha' },
+      { rel: 'alpha-review', title: 'Alpha review', app: 'alpha' },
+      { rel: 'beta-home', title: 'Beta entry', app: 'beta' },
+    ]);
     expect(disclosed.capabilities?.map(({ name }) => name)).toEqual([
       'alpha-visible',
       'alpha-wrong-flow',
       'alpha-flow-wrong-app',
       'beta-visible',
     ]);
+    expect(disclosed.capabilities?.[0]).toEqual({
+      name: 'alpha-visible',
+      title: 'alpha-visible title',
+      kind: 'transform',
+      intent: 'alpha-visible intent',
+      scope: { applications: ['alpha'], flows: ['alpha-create'] },
+    });
     const serialized = JSON.stringify(disclosed);
     expect(serialized).not.toContain(INPUT_SCHEMA_MARKER);
     expect(serialized).not.toContain(OUTPUT_SCHEMA_MARKER);
+    expect(serialized).not.toContain(FOREIGN_SURFACE_MARKER);
+    expect(serialized).not.toContain('guards');
+    expect(serialized).not.toContain('input reference');
   });
 
   it('never mutates the input sitemap', () => {

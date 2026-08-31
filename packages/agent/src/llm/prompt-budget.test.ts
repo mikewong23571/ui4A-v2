@@ -712,6 +712,84 @@ describe('D54 current sanitized observation and non-cumulative disclosure', () =
   });
 });
 
+describe('F-10 无 scope 广域披露的 decide wire 预算', () => {
+  it('scope-less + 非 surface 起点(线程书桌):含 tools 的真实请求 ≤ 32 KiB', async () => {
+    // 生产形状(T40 S7 实证 38,345B 破口):8 应用 × 多 flow × 动作守卫边,
+    // 28 surface 带 presentation 认知,6 capability 带句级 intent/input/output。
+    const applications: SitemapSummary['applications'] = Array.from(
+      { length: 8 },
+      (_, appIndex) => ({
+        name: `app-${appIndex}`,
+        intent: `应用 ${appIndex} 的意图描述:把一类业务工作交给受治理的流程与能力,人类在责任点决策。`,
+        flows: Array.from({ length: 2 }, (_, flowIndex) => ({
+          name: `app-${appIndex}-flow-${flowIndex}`,
+          title: `应用${appIndex}流程${flowIndex}`,
+          actions: Array.from({ length: 3 }, (_, actionIndex) => ({
+            name: `action-${appIndex}-${flowIndex}-${actionIndex}`,
+            title: `动作${appIndex}${flowIndex}${actionIndex}`,
+            node: `node-${actionIndex}`,
+            guards: ['actor-is-human', 'has-input'],
+          })),
+          edges: [
+            { from: 'start', to: 'node-0', action: `action-${appIndex}-${flowIndex}-0` },
+            { from: 'node-0', to: 'node-1', action: `action-${appIndex}-${flowIndex}-1` },
+          ],
+        })),
+      }),
+    );
+    const sitemap: SitemapSummary = {
+      version: 'broad-mode-v1',
+      surfaces: Array.from({ length: 28 }, (_, index) => ({
+        rel: `surface-${index}`,
+        title: `入口 ${index}`,
+        app: `app-${index % 8}`,
+        presentation: {
+          version: 1,
+          traits: ['human-responsibility'],
+          fields: [
+            { path: 'properties.fields.title', title: '标题', role: 'identity', overview: true },
+          ],
+        },
+      })) as SitemapSummary['surfaces'],
+      applications,
+      capabilities: Array.from({ length: 6 }, (_, index) => ({
+        name: `capability-${index}`,
+        title: `能力 ${index}`,
+        kind: 'transform' as const,
+        intent: `能力 ${index} 的路由意图:产出候选工件,经选择门裁决后落字段,事实永不发明。`,
+        input: `能力 ${index} 的输入约定:字段语义与上下文工件。`,
+        output: `能力 ${index} 的输出约定:候选集供人类选择。`,
+        scope: { applications: [`app-${index % 8}`], flows: [`app-${index % 8}-flow-0`] },
+      })),
+    };
+    const context: DriverContext = {
+      goal: { verb: '这条线现在进展如何,线内有哪些对象?' },
+      // 无线程 scope:thread rel 不在 surfaces 内,exactSurfaceScope 落空 → 广域模式。
+      currentRel: 'thread:weekly-report',
+      entity: instanceEntity({
+        rel: 'thread:weekly-report',
+        flow: 'work-thread',
+        node: 'open',
+        title: '产出本周 UI 周报',
+        fields: { goal: '产出本周 UI 周报' },
+        actions: [action('pause-thread', '暂停工作线'), action('complete-thread', '完成工作线')],
+        collection: 'threads',
+      }),
+      trail: [],
+      successes: [],
+      sitemap,
+    };
+
+    const captured = await captureProviderRequest(context);
+    expect(utf8Bytes(captured.rawBody)).toBeLessThanOrEqual(DECIDE_WIRE_BUDGET_BYTES);
+    // 广域仍保留导航/路由信号:应用名、入口 rel、能力名在场;动作守卫细节退场。
+    expect(captured.rawBody).toContain('app-0');
+    expect(captured.rawBody).toContain('surface-0');
+    expect(captured.rawBody).toContain('capability-0');
+    expect(captured.rawBody).not.toContain('actor-is-human');
+  });
+});
+
 describe('D54 final provider request UTF-8 runtime guard', () => {
   it('allows exactly 32,768 bytes and rejects 32,769 bytes before a fresh provider fetch', async () => {
     const exact = await exactBoundaryFixture();

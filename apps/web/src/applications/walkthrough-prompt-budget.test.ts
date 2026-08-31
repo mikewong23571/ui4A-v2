@@ -111,6 +111,37 @@ describe('真实 walkthrough 制品的 meta scope 披露切片 wire 预算(T31 R
       expect(Object.keys(surface).sort()).toEqual(['rel', 'title']);
     }
   });
+
+  it('无 scope 广域切片(线程书桌等非 surface 起点)为导航级且留足 wire 余量(F-10)', async () => {
+    const summary = await summaryFromWire();
+
+    // thread:* 等动态 rel 不在 sitemap surfaces 内,scope 推导落空 → 广域模式。
+    // 生产实证(T40 S7):广域全量复制使 decide wire 达 38,345B 超 32KiB,chat 首步即死。
+    const sliced = sliceSitemapDisclosure(summary, { currentRel: 'thread:weekly-report' });
+
+    // 覆盖完整性:全部应用与能力仍在场(导航/路由信号不丢),但无动作/守卫/schema 细节。
+    expect(sliced.applications.length).toBe(summary.applications.length);
+    expect(sliced.capabilities?.length).toBe(summary.capabilities?.length);
+    const serialized = JSON.stringify(sliced, null, 2);
+    expect(serialized).not.toContain('guards');
+    expect(serialized).not.toContain('inputSchema');
+    for (const application of sliced.applications) {
+      for (const flow of application.flows) {
+        expect(flow.actions).toBeUndefined();
+        expect(flow.edges).toBeUndefined();
+      }
+    }
+
+    // 余量口径:system+固定动词 tools+当前实体认知投影等固定开销约 22 KiB(生产实测),
+    // 广域切片必须给 decide wire 留出这段空间。
+    const prettyBytes = utf8Bytes(serialized);
+    measurements.push({
+      name: 'walkthrough 广域(无 scope)切片',
+      prettyBytes,
+      compactBytes: utf8Bytes(JSON.stringify(sliced)),
+    });
+    expect(prettyBytes).toBeLessThanOrEqual(10 * 1024);
+  });
 });
 
 afterAll(() => {

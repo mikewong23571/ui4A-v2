@@ -71,6 +71,24 @@
 - **遗留边界**:`{ title: 'x' }` 类「带 title 无 type」字段既非精确 `{}` 也非 array/object,
   仍留 RJSF;后续发现此类字段再放宽(单独决策)。
 
+## F-10(P0,Phase E 新发现)无 scope 广域披露超 32KiB,chat 首步即死
+
+- **现象**(S7 浏览器实测):线程书桌(无 `?scope=`、currentRel=`thread:*` 非 sitemap
+  surface)内 chat 提问,LLM 首 decide 的 provider wire 达 38,345B,超 D41 固定 32KiB
+  预算,回合以「请求超过 32,768 字节限制」的结构化失败收尾——失败形态诚实(T24 分层
+  措辞正常),但 chat 在默认书桌/首页态功能不可用。
+- **诊断**(agent-decision 事件 prompt 分段实测):user 21,212B 中 sitemap 披露段
+  16,351B(广域模式全量复制 8 应用 flows/actions/guards/edges 8.7KB + capabilities
+  I/O 描述 3.8KB),tools 约 13.6KB,system 3.5KB。破口变量是广域披露;scoped 路径
+  (S5 editorial)正常。
+- **修复(2026-08-31,已闭环)**:D56——广域模式降为导航级:applications 保留
+  name/title/intent/entry、flows 只留 {name,title};surfaces 全部 {rel,title,app?};
+  capabilities 保留 name/title/kind/intent/scope、I/O 描述留到 scoped 切片。scoped
+  切片与公开 HTTP discovery 合同零变化。真实制品广域切片 16.4KB→7.2KB(pretty)。
+- **证据**:`disclosure.test.ts` 广域导航级契约用例、`prompt-budget.test.ts` 含 tools
+  全 wire 广域用例(≤32KiB)、`walkthrough-prompt-budget.test.ts` 真实制品广域切片
+  ≤10KiB;浏览器复跑 S7 线内 chat 正常回答(见 review.md S7)。
+
 ## F-07(P2,现场待核)未登录行为不一致
 
 - **现象**(部署实例):未登录访问 `/` 302 跳 Keycloak;访问 `/meta` 渲染页面外壳+数据区报

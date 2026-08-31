@@ -1013,3 +1013,26 @@
 - **影响**:实体页首屏三问(是什么/状态/能做什么)由同一合同数据源回答;预算变化
   经 policy version 触发既有 sidecar 重规划,无兼容双路径。后续如需更多 metadata 席
   位,在本条预算上继续修订而非在渲染层加分支。
+
+## D56 广域披露降为导航级:无 scope 不等于全量细节(2026-08-31,T40 Phase E)
+
+- **背景**:T40 S7 实测,线程书桌等「无 scope 且 currentRel 非 sitemap surface」的
+  chat 起点(如 `thread:weekly-report`)使 `sliceSitemapDisclosure` 落入广域模式并
+  全量复制 8 应用 × flows/actions/guards/edges 与全部 capability 的 I/O 描述,首次
+  decide 的 provider wire 达 38,345B,超 D41 固定的 32 KiB 预算,chat 首步即死。
+  D41 已明言「超限视为披露层缺陷」,故修复落在披露层,不动预算、不窄化公开合同。
+- **决定**:广域模式(scope 缺省且 exactSurfaceScope 落空)的披露一律降为导航级——
+  1. applications:全量保留 name/title/intent/entry 路由信号;flows 只留
+     `{name, title}`,actions/guards/edges 属执行细节,导航进入 scope 后由 scoped
+     切片与当前实体合同披露;
+  2. surfaces:全部为 `{rel, title, app?}` 导航入口(原「无 app 的 surface 全量
+     复制」行为废止);
+  3. capabilities:全量保留 name/title/kind/intent/scope 路由信号,I/O 描述
+     (input/output)留到 scoped 切片;schema 永不进 prompt 的纪律不变。
+  scoped 切片(explicit scope 或 exact surface rel 推导)内容零变化;D41 的 32 KiB
+  wire budget、同一披露函数服务 inline/delegated、公开 HTTP discovery 合同完整,
+  全部不变。
+- **边界**:披露层不做词级 scope 猜测(既有测试纪律保留);线程是跨应用上下文,
+  广域导航级是其诚实形态——assistant 先导航落点再获得 scoped 细节。真实制品回归:
+  `walkthrough-prompt-budget.test.ts` 广域切片 ≤10 KiB(固定开销余量口径),
+  `prompt-budget.test.ts` 含 tools 的全 wire 广域用例 ≤32 KiB。
