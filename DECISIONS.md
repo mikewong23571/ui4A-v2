@@ -1036,3 +1036,18 @@
   广域导航级是其诚实形态——assistant 先导航落点再获得 scoped 细节。真实制品回归:
   `walkthrough-prompt-budget.test.ts` 广域切片 ≤10 KiB(固定开销余量口径),
   `prompt-budget.test.ts` 含 tools 的全 wire 广域用例 ≤32 KiB。
+
+## D57 Application 发现分为首页缩略与完整目录(2026-09-01,T41)
+
+- **背景**：应用书架全量展示用途会随新增应用撑高首页，挤占“我的事”。用户明确要求
+  缩略形态、独立目录，以及首页最多 9 个入口。
+- **决定**：`/` 按授权 business sitemap 声明顺序展示最多 9 个中文名缩略入口；
+  `/applications` 展示全部已授权业务应用及用途并提供搜索。顶层导航只增加稳定的
+  “应用”入口，不按安装应用增长。9 是通用视觉预算，不窄化 HTTP/CLI 发现合同。
+- **单源边界**：两处复用 reader、`system-fallback` 成员过滤与 canonical landing；
+  目录不读取 Meta application，不建立新业务实体、授权范围、收藏/最近使用存储，
+  不复制 `workspace:app:<name>` 工作区。目录搜索只是已披露集合的本地筛选。
+- **上下文**：首页到目录保留显式 scope/thread 与安全 returnTo，移除旧对象 focus；
+  目录到应用仍由 `applicationLandingHref` 生成，scope 只代表注意力。
+- **验收**：合成 30 应用时首页恰好前 9 个，完整目录可发现全部 30 个；
+  新名字无需改前端或顶层导航。D46 的工作站首页、D51 授权与 D54 的图书馆语义不变。
