@@ -1,0 +1,1 @@
+T42 review follow-up：真实投影授权用例移至audience/entity-projection.test.ts，与新读面裁剪模块相邻，不删除或裁剪任何用例；解决auth直接目录GR3超限。主进程42项unit与governance通过。
