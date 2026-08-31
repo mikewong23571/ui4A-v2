@@ -4,12 +4,17 @@
  * useChatSession 的对外会话契约。纯类型/常量/纯函数,零 React 状态。
  */
 import type { ThreadMessageLike, useExternalStoreRuntime } from '@assistant-ui/react';
-import type { FactRef } from '@ui4a/agent';
+import type { FactRef, TrailStep } from '@ui4a/agent';
 import type { PresentationReceipt } from '@ui4a/shared';
 
 import type { ChatSessionSummary } from '@/chat/history';
 import { citationsOrEmpty } from '@/chat/citations';
-import type { ChatFailureReason, ChatStartNotice, ChatStepActivity } from '@/chat/sse';
+import type {
+  ChatFailureReason,
+  ChatFinalPayload,
+  ChatStartNotice,
+  ChatStepActivity,
+} from '@/chat/sse';
 
 import { PRESENTATION_PENDING_WORD, presentationFailureText } from './presentation-words';
 
@@ -212,4 +217,32 @@ export interface ChatSession {
   closeSessions: () => void;
   /** 切换到指定历史会话(持久化 sessionId + 重放该会话回合)。 */
   selectSession: (sessionId: string) => void;
+}
+
+/**
+ * 终局引用的确定性退守(T40 F-12):LLM sources 缺席时,从轨迹 executed 步的
+ * 动作后实体摘要派生引用——append 类动作的动作后实体即新实体,引用可直接
+ * 点进实体页。纯轨迹数据派生,零模型措辞;导航步不产生动作后果,不收。
+ */
+export function trailEntityRefs(steps: readonly TrailStep[]): FactRef[] {
+  const refs: FactRef[] = [];
+  const seen = new Set<string>();
+  for (const step of steps) {
+    if (step.outcome !== 'executed') continue;
+    const rel = step.entity?.rel;
+    if (rel === undefined || rel === '' || seen.has(rel)) continue;
+    seen.add(rel);
+    refs.push({ rel, pointer: '/' });
+    if (refs.length >= 4) break;
+  }
+  return refs;
+}
+
+/**
+ * 终局消息的引用选择(T40 F-12):LLM sources 优先;缺席时退守轨迹 executed
+ * 步派生的实体引用——exec 回合(done 无 sources)的终局消息因此可点进实体页。
+ */
+export function finalTurnCitations(payload: ChatFinalPayload): FactRef[] {
+  if (payload.sources !== undefined && payload.sources.length > 0) return payload.sources;
+  return trailEntityRefs(payload.steps);
 }

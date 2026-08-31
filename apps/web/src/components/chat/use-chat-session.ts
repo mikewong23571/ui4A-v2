@@ -41,6 +41,7 @@ import { anySignal, createIdleTimeout, readChatSseStream, type ChatFinalPayload 
 import {
   applyPresentationReceipt,
   convertMessage,
+  finalTurnCitations,
   loadSessionId,
   PENDING_SESSION_STORAGE_KEY,
   SESSION_STORAGE_KEY,
@@ -303,16 +304,15 @@ export function useChatSession(): ChatSession {
       // (回答、完成 summary)不在步帧主呈现里,经 final.summary 落地,内容
       // 不丢。直出文本帧(轨迹外补充说明,如 max-steps 上限说明)已含终局
       // 内容时不补,避免双份。
+      // 终局引用(T40 F-12):LLM sources 优先,缺席退守轨迹执行实体引用。
       if (
         (stepCount === 0 || machineTextSteps === 0) &&
         payload.summary !== null &&
         payload.summary !== ''
       ) {
-        appendAssistant(payload.summary, {
-          citations: payload.sources,
-        });
+        appendAssistant(payload.summary, { citations: finalTurnCitations(payload) });
       } else if (payload.outcome === 'answered') {
-        attachCitationsToLastAssistant(payload.sources);
+        attachCitationsToLastAssistant(finalTurnCitations(payload));
       }
     },
     [appendAssistant, attachCitationsToLastAssistant, markSessionPending, persistSession],

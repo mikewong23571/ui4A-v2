@@ -21,6 +21,8 @@ const { routerPushMock } = vi.hoisted(() => ({ routerPushMock: vi.fn() }));
 vi.mock('next/navigation', () => ({
   usePathname: () => '/chat',
   useRouter: () => ({ push: routerPushMock }),
+  // CitationList 的位置观察需要 search params(F-12 用例渲染依据 chips)。
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
 beforeEach(() => {
@@ -91,5 +93,83 @@ describe('/chat window 态:focus 帧不夺主(T40 F-11)', () => {
     expect(routerPushMock).not.toHaveBeenCalled();
     // 会话仍可继续(输入框在场可用)。
     expect(screen.getByPlaceholderText('输入目标…')).toBeTruthy();
+  });
+});
+
+describe('/chat 回合终局引用(T40 S6 / F-12)', () => {
+  it('exec 回合 LLM 未给 sources 时,终局消息退守轨迹执行实体引用(可点进实体页)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string | URL | RequestInfo, init?: RequestInit) => {
+        if (String(url).includes('/api/chat/history')) {
+          return Promise.resolve(jsonResponse({ turns: [] }));
+        }
+        if (init?.method === 'POST' || String(url).includes('/api/chat')) {
+          return Promise.resolve(
+            sseResponse([
+              { type: 'session', sessionId: 'sess-exec-refs' },
+              {
+                type: 'step',
+                rel: 'flow:todo-capture',
+                message: { role: 'assistant', text: '正在执行 添加待办' },
+                activity: { op: 'exec', title: '添加待办' },
+              },
+              {
+                type: 'final',
+                payload: {
+                  sessionId: 'sess-exec-refs',
+                  driver: 'llm',
+                  requestedDriver: 'auto',
+                  outcome: 'done',
+                  summary: '已添加待办:整理走查照片。',
+                  // 轨迹:exec 步的 entity 摘要是动作后实体(add 追加进新待办)。
+                  steps: [
+                    {
+                      step: 1,
+                      rel: 'flow:todo-capture',
+                      op: { kind: 'navigate', rel: 'flow:todo-capture' },
+                      outcome: 'navigated',
+                      entity: {
+                        rel: 'todo-capture:main',
+                        class: ['flow-instance', 'todo-capture'],
+                        node: 'capture',
+                        actions: ['add'],
+                      },
+                    },
+                    {
+                      step: 2,
+                      rel: 'flow:todo-capture',
+                      op: { kind: 'exec', action: 'add', params: { title: '整理走查照片' } },
+                      outcome: 'executed',
+                      entity: {
+                        rel: 'todo:walkthrough-1',
+                        class: ['flow-instance', 'todo-item'],
+                        node: 'open',
+                        actions: ['complete', 'archive'],
+                      },
+                    },
+                  ],
+                  successes: [
+                    { rel: 'todo-capture:main', action: 'add', params: { title: '整理走查照片' } },
+                  ],
+                },
+              },
+            ]),
+          );
+        }
+        return Promise.resolve(jsonResponse({ error: '未预期请求' }));
+      }),
+    );
+
+    render(<ChatPage />);
+    const input = await screen.findByPlaceholderText('输入目标…');
+    fireEvent.change(input, { target: { value: '帮我添加一个待办:整理走查照片' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
+
+    await waitFor(() => expect(screen.getByText('已添加待办:整理走查照片。')).toBeTruthy());
+    // 终局消息带轨迹推断引用:执行实体可点进实体页(navigate 步不算动作后果)。
+    const itemRef = document.querySelector('[data-nav="citation:todo:walkthrough-1"]');
+    expect(itemRef).not.toBeNull();
+    expect(itemRef!.getAttribute('href')).toContain(encodeURIComponent('todo:walkthrough-1'));
   });
 });
