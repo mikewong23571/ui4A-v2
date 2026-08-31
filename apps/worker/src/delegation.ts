@@ -13,7 +13,7 @@
  * - 拒绝即数据(I6):lastRejection 只影响紧接着的下一步(消费即清——
  *   清空动作在 workflow 侧的 applyStepToState,与 runAgent 同口径);
  * - 起始实体不可得:不产轨迹步,直接 fail 出口(runAgent 同口径);
- * - sitemap 是静态上下文,循环外取一次(fetchSitemap),逐步注入。
+ * - 每个新步骤重读 sitemap 与出生时固定的工作线引用。
  *
  * 幂等与确定性(Temporal 重放,arch-brief §3/§4):
  * - 决策(含 LLM 网络)+ 执行 + 步事件落库全部在本 activity 内——workflow
@@ -27,6 +27,8 @@ import {
   authorizeEffects,
   createContractClient,
   createDriver,
+  loadWorkingContext,
+  observedApplication,
   sliceSitemapDisclosure,
   summarizeEntity,
 } from '@ui4a/agent';
@@ -142,6 +144,7 @@ export async function recordDelegationStart(
       driverKind: args.driverKind,
       ...(args.model !== undefined ? { model: args.model } : {}),
       startRel: args.startRel,
+      ...(args.contextRel === undefined ? {} : { contextRel: args.contextRel }),
       ...(args.principal !== undefined ? { principal: args.principal } : {}),
     },
   });
@@ -173,7 +176,7 @@ export async function recordDelegationFinish(
   });
 }
 
-// ---- sitemap 静态上下文(循环外取一次;不可得则 driver 退化为仅实体导航)----
+// ---- 独立 sitemap 合同读取(不可得则返回 undefined)----------------------
 
 export async function fetchSitemap(
   baseUrl: string,
@@ -236,6 +239,7 @@ export async function runAgentStep(
       driverKind: args.driverKind,
       ...(model ? { model } : {}),
       startRel: args.currentRel,
+      contextRel: args.contextRel,
       principal: args.principal,
     });
   }
@@ -256,7 +260,10 @@ export async function runAgentStep(
     };
   }
 
-  // 上下文是逐步快照(trail/successes 拷贝传入,与 runAgent 同口径)。
+  const sitemap = await client.getSitemap();
+  const observedApp = observedApplication(sitemap, fetched.entity);
+  const workingContext = await loadWorkingContext(client, args.contextRel, fetched.entity);
+  // 只在新决策时重建实时合同；已记录步骤的幂等恢复不重读。
   const context: DriverContext = {
     goal: args.goal,
     conversationMessages: [
@@ -272,13 +279,15 @@ export async function runAgentStep(
     successes: [...args.successes],
     lastRejection: args.lastRejection,
     sitemap:
-      args.sitemap === undefined
+      sitemap === undefined
         ? undefined
-        : sliceSitemapDisclosure(args.sitemap, {
-            scope: args.scope,
+        : sliceSitemapDisclosure(sitemap, {
+            observedApplication: observedApp,
             currentRel: args.currentRel,
           }),
     app: args.scope,
+    observedApplication: observedApp,
+    workingContext,
   };
   const driver = deps.driver ?? createDriver('llm');
   // 推理自述捕获(T11 Phase C):llm driver 决策产出 reasoning 时经 sink 回调

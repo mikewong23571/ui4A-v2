@@ -222,16 +222,10 @@ export async function POST(request: Request) {
   // 随上下文下传 Broker,授权由咽喉点按授予集合 × 事实归属判定(D51)。
   const presentationContext = presentationContextForIdentity(productionIdentity);
   const situation = await situationForChat({
-    principal,
+    principal: presentationPrincipal,
     identity: productionIdentity,
     clientView,
   });
-  if (mode === 'delegated' && situation.scope === undefined) {
-    return Response.json(
-      { error: 'delegated 派发需要显式选择已授权的 Application 视角' },
-      { status: 400 },
-    );
-  }
   let turnFetch: FetchLike = (url, init) => fetch(url, init);
   if (
     productionIdentity !== undefined &&
@@ -371,6 +365,8 @@ export async function POST(request: Request) {
   });
   const startRel = start.rel;
   const startNotice = start.notice;
+  const contextRel =
+    situation.thread === null ? undefined : `thread:${situation.thread.replace(/^thread:/, '')}`;
 
   const userMessageId = turnId;
   await appendConversationMessage({
@@ -412,6 +408,7 @@ export async function POST(request: Request) {
           startRel,
           startNotice,
           scope: situation.scope ?? null,
+          contextRel,
           presentationContext,
           fetchImpl: turnFetch,
           conversationMessages: agentConversation.messages,
@@ -456,14 +453,12 @@ export async function POST(request: Request) {
   // delegated(T5 Phase B):派发 delegationWorkflow,响应委托 id 与轮询入口;
   // 轨迹/状态经事件日志(/api/delegations/<id>)查询,与 inline 的消息语义等价。
   if (mode === 'delegated') {
-    if (situation.scope === undefined) {
-      throw new Error('delegated scope vanished after validation');
-    }
     try {
       const { delegationId } = await dispatchDelegation({
         goal,
         driverKind: resolved,
         scope: situation.scope,
+        contextRel,
         startRel,
         principal,
         baseUrl,
@@ -539,6 +534,7 @@ export async function POST(request: Request) {
       startRel,
       startNotice,
       scope: situation.scope ?? null,
+      contextRel,
       presentationContext,
       fetchImpl: turnFetch,
       conversationMessages: agentConversation.messages,

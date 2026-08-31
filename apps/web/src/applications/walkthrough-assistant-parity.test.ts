@@ -4,6 +4,7 @@ import {
   buildSystemPrompt,
   createContractClient,
   createLlmDriver,
+  observedApplication,
   sliceSitemapDisclosure,
   type DriverContext,
   type FetchLike,
@@ -201,6 +202,28 @@ function section(content: string, heading: string, nextHeading: string): Record<
   return JSON.parse(payload.slice(jsonStart)) as Record<string, unknown>;
 }
 
+function expectApplicationDisclosure(
+  disclosed: SitemapSummary['applications'],
+  full: SitemapSummary['applications'],
+  observed: string,
+): void {
+  expect(disclosed.map(({ name }) => name)).toEqual(full.map(({ name }) => name));
+  for (const application of disclosed) {
+    const source = full.find(({ name }) => name === application.name)!;
+    expect(application.title).toBe(source.title);
+    expect(application.intent).toBe(source.intent);
+    expect(application.entry).toEqual(source.entry);
+    expect(application.flows).toEqual(
+      application.name === observed
+        ? source.flows
+        : source.flows.map(({ name, title }) => ({ name, title })),
+    );
+  }
+  expect(
+    disclosed.find(({ name }) => name === observed)?.flows.some(({ actions }) => actions?.length),
+  ).toBe(true);
+}
+
 interface Scenario {
   app: 'publishing' | 'community' | 'governance';
   currentRel: string;
@@ -306,16 +329,23 @@ describe('T39 real Application Assistant/Human contract parity', () => {
       if (humanEntity === undefined) throw new Error(`missing exact Siren ${scenario.currentRel}`);
       const agentEntity = withProviderExcludedPayload(humanEntity);
       const fullSitemap = await sitemapFromRealWire();
+      const observedApp = observedApplication(fullSitemap, agentEntity);
+      expect(observedApp).toBe(scenario.app);
       const disclosedSitemap = sliceSitemapDisclosure(fullSitemap, {
-        scope: situation.disclosure.scope,
+        observedApplication: observedApp,
         currentRel: scenario.currentRel,
       });
-      expect(disclosedSitemap.applications.map(({ name }) => name)).toEqual([scenario.app]);
+      expectApplicationDisclosure(
+        disclosedSitemap.applications,
+        fullSitemap.applications,
+        scenario.app,
+      );
 
       const returnRoute = `/applications/${scenario.app}?thread=${encodeURIComponent(attention.thread)}&focus=${encodeURIComponent(scenario.currentRel)}&return=%2Fapplications`;
       const context: DriverContext = {
         goal: { verb: `读取 ${scenario.app} 当前工作`, targetRel: scenario.currentRel },
         app: situation.scope,
+        observedApplication: observedApp,
         currentRel: scenario.currentRel,
         entity: agentEntity,
         observations: [
@@ -387,12 +417,14 @@ describe('T39 real Application Assistant/Human contract parity', () => {
 
       const sitemapSection = section(
         prompt,
-        '## 当前 app/scope 的动态 sitemap 分层披露',
+        '## 应用发现与当前观察的合同详情',
         '## 当前授权实体的认知投影',
       );
-      expect(
-        (sitemapSection.applications as Array<{ name: string }>).map(({ name }) => name),
-      ).toEqual([scenario.app]);
+      expectApplicationDisclosure(
+        sitemapSection.applications as SitemapSummary['applications'],
+        fullSitemap.applications,
+        scenario.app,
+      );
 
       const observation = section(
         prompt,

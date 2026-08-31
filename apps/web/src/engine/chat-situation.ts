@@ -3,7 +3,7 @@ import type { ClientViewReport } from '@ui4a/shared';
 import type { TrustedRequestAuditContext } from '../auth/request-identity';
 import { ensurePresenceTables, loadPresenceForPrincipal } from '@ui4a/db/presence';
 import type { PresentationTrustedContext } from './presentation/broker';
-import { getDb } from './service';
+import { getDb, getEngine } from './service';
 import { assembleSituation, type Situation } from './situation';
 
 /**
@@ -37,9 +37,12 @@ export async function situationForChat(args: {
         };
   // D51:授予集合直接来自凭证;显式 ?scope= 导航偏好只作候选之一,不产生默认回退。
   const defaults = { site: 'workstation' };
-  const grantedScopes = args.identity ? [...args.identity.grantedApplications] : ['default'];
+  let grantedScopes = args.identity ? [...args.identity.grantedApplications] : ['default'];
   try {
     const db = getDb();
+    if (args.identity === undefined) {
+      grantedScopes = Object.keys((await getEngine(db)).getSnapshot().applications ?? {});
+    }
     await ensurePresenceTables(db);
     return assembleSituation({
       principal: args.principal,

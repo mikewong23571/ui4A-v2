@@ -80,6 +80,7 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     const snapshot = structuredClone(sitemap);
 
     await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
       sitemap,
@@ -101,7 +102,11 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     });
     const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
 
-    await runAgent(driver, GOAL, { baseUrl: BASE, fetchImpl: transport.fetch });
+    await runAgent(driver, GOAL, {
+      startRel: 'articles',
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+    });
 
     expect(
       transport.calls.filter((call) => call.url.endsWith('/.well-known/ui4a.json')),
@@ -113,6 +118,7 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
 
     await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
       sitemap: undefined,
@@ -131,11 +137,15 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     });
     const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
 
-    await runAgent(driver, GOAL, { baseUrl: BASE, fetchImpl: transport.fetch });
+    await runAgent(driver, GOAL, {
+      startRel: 'articles',
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+    });
 
     const sitemap = driver.contexts[0]!.sitemap;
     expect(sitemap?.version).toBe('v-apps');
-    expect(sitemap?.applications.map((app) => app.name)).toEqual(['publishing']);
+    expect(sitemap?.applications.map((app) => app.name)).toEqual(['publishing', 'community']);
     const publishing = sitemap?.applications.find((app) => app.name === 'publishing');
     expect(publishing?.intent).toBe('内容起草与发布');
     expect(publishing?.flows).toEqual([
@@ -143,7 +153,7 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     ]);
     expect(sitemap?.surfaces).toEqual([
       { rel: 'articles', title: '文章集合', app: 'publishing' },
-      { rel: 'comments', title: '评论队列' },
+      { rel: 'comments', title: '评论队列', app: 'community' },
     ]);
   });
 
@@ -154,7 +164,11 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     });
     const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
 
-    await runAgent(driver, GOAL, { baseUrl: BASE, fetchImpl: transport.fetch });
+    await runAgent(driver, GOAL, {
+      startRel: 'articles',
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+    });
 
     const sitemap = driver.contexts[0]!.sitemap;
     expect(sitemap?.version).toBe('v-flat');
@@ -163,7 +177,7 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     expect(sitemap?.surfaces).toEqual([{ rel: 'articles', title: '文章集合' }]);
   });
 
-  it('指定 app 后只向 driver 披露该 app 的 surfaces/flows/actions/capabilities', async () => {
+  it('当前观察应用披露详情，其他应用保持导航摘要', async () => {
     const sitemap = structuredClone(groupedSitemapBody);
     (
       sitemap.applications[0]!.flows[0] as unknown as {
@@ -182,6 +196,7 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
 
     await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
       app: 'publishing',
@@ -190,7 +205,7 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     expect(driver.contexts[0]!.sitemap).toMatchObject({
       surfaces: [
         { rel: 'articles', title: '文章集合', app: 'publishing' },
-        { rel: 'comments', title: '评论队列' },
+        { rel: 'comments', title: '评论队列', app: 'community' },
       ],
       applications: [
         {
@@ -202,6 +217,7 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
             },
           ],
         },
+        { name: 'community', flows: [{ name: 'comment-moderation', title: '评论审核' }] },
       ],
       capabilities: [
         {
@@ -210,13 +226,14 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
           kind: 'extract',
           scope: { applications: ['publishing'], flows: ['article-drafting'] },
         },
+        { name: 'moderate', title: '评论审核建议', kind: 'transform' },
       ],
     });
     expect(JSON.stringify(driver.contexts[0]!.sitemap)).not.toContain('inputSchema');
     expect(JSON.stringify(driver.contexts[0]!.sitemap)).not.toContain('outputSchema');
-    expect(driver.contexts[0]!.sitemap?.capabilities).not.toContainEqual(
-      expect.objectContaining({ name: 'moderate' }),
-    );
+    expect(
+      driver.contexts[0]!.sitemap?.capabilities?.find(({ name }) => name === 'moderate'),
+    ).not.toHaveProperty('input');
   });
 
   it('未显式指定 app 时，从当前实体 flow 推导 app 并按 capability scope 有界披露', async () => {
@@ -237,12 +254,14 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
       startRel: 'article-drafting:main',
     });
 
-    expect(driver.contexts[0]!.app).toBe('publishing');
+    expect(driver.contexts[0]!.app).toBeUndefined();
+    expect(driver.contexts[0]!.observedApplication).toBe('publishing');
     expect(driver.contexts[0]!.sitemap?.applications.map((app) => app.name)).toEqual([
       'publishing',
+      'community',
     ]);
     expect(driver.contexts[0]!.sitemap?.capabilities?.map((capability) => capability.name)).toEqual(
-      ['draft'],
+      ['draft', 'moderate'],
     );
   });
 
@@ -274,14 +293,20 @@ describe('静态上下文:sitemap 按 app 分组呈现(T10 Phase D)', () => {
     const transport = contractTransport({ entities: { articles: articlesEntity }, sitemap });
     const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
 
-    await runAgent(driver, GOAL, { baseUrl: BASE, fetchImpl: transport.fetch });
+    await runAgent(driver, GOAL, {
+      startRel: 'articles',
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+    });
 
-    expect(driver.contexts[0]!.app).toBe('publishing');
+    expect(driver.contexts[0]!.app).toBeUndefined();
+    expect(driver.contexts[0]!.observedApplication).toBe('publishing');
     expect(driver.contexts[0]!.sitemap?.applications.map((app) => app.name)).toEqual([
       'publishing',
+      'community',
     ]);
     expect(driver.contexts[0]!.sitemap?.capabilities?.map((capability) => capability.name)).toEqual(
-      ['draft', 'summarize'],
+      ['draft', 'moderate', 'summarize'],
     );
   });
 });
@@ -292,6 +317,7 @@ describe('role/app 上下文槽位:数据注入路径(T10 Phase D)', () => {
     const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
 
     await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
       role: '内容审核员',
@@ -308,7 +334,11 @@ describe('role/app 上下文槽位:数据注入路径(T10 Phase D)', () => {
     const transport = contractTransport({ entities: { articles: articlesEntity } });
     const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
 
-    await runAgent(driver, GOAL, { baseUrl: BASE, fetchImpl: transport.fetch });
+    await runAgent(driver, GOAL, {
+      startRel: 'articles',
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+    });
 
     expect(driver.contexts[0]!.role).toBeUndefined();
     expect(driver.contexts[0]!.app).toBeUndefined();
@@ -328,6 +358,7 @@ describe('有界多轮会话与结构化处境', () => {
     const snapshot = structuredClone(messages);
 
     await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
       conversationMessages: messages,

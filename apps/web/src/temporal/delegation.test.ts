@@ -76,6 +76,22 @@ describe('dispatchDelegation(委托派发)', () => {
     expect(first.delegationId).not.toBe(second.delegationId);
   });
 
+  it('pins only a workline reference without requiring an application preference', async () => {
+    const contextual: DelegationDispatchArgs = {
+      goal: { verb: '进展如何' },
+      driverKind: 'llm',
+      baseUrl: args.baseUrl,
+      contextRel: 'thread:release',
+      startRel: 'thread:release',
+    };
+    await dispatchDelegation(contextual);
+
+    const sent = (startMock.mock.calls[0]![1]!.args as DelegationDispatchArgs[])[0];
+    expect(sent).toEqual(contextual);
+    expect(sent).not.toHaveProperty('scope');
+    expect(sent).not.toHaveProperty('workingContext');
+  });
+
   it('连接失败 → 向上抛(调用方据实 503,不吞)', async () => {
     connectMock.mockRejectedValueOnce(new Error('ECONNREFUSED'));
     await expect(dispatchDelegation(args)).rejects.toThrow('ECONNREFUSED');

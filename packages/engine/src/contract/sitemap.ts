@@ -328,6 +328,8 @@ export function deriveSitemap(
     surfaces.push({ ...discovery });
   }
 
+  surfaces.push({ rel: 'applications', title: '应用', collection: true, scope: 'principal' });
+
   // application 分组投影:组序 = 定义表声明序;组内 flows = 扁平表声明序过滤
   // (与扁平表共享同一份条目)。flow.app 指向未定义 app 时仅留在扁平表——
   // app-known 不变式保证生产侧不可达,此处不静默归并也不炸。

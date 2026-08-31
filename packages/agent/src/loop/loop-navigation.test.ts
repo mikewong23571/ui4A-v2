@@ -32,6 +32,7 @@ describe('薄 Presentation 请求', () => {
     const requested: PresentationIntent[] = [];
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
       onPresentation(intent) {
@@ -64,6 +65,7 @@ describe('navigate 操作', () => {
     ]);
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
     });
@@ -85,6 +87,7 @@ describe('navigate 操作', () => {
     ]);
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
     });
@@ -110,6 +113,7 @@ describe('navigate 操作', () => {
     ]);
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
     });

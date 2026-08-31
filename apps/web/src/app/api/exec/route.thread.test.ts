@@ -4,6 +4,7 @@ import { ensureEventsTable, readLog } from '@ui4a/db/events';
 import { getPool } from '@ui4a/db/pool';
 import { resetEngineForTests } from '../../../engine/service';
 import { POST } from './route';
+import { GET } from '../entity/route';
 
 const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');
 
@@ -45,6 +46,44 @@ describe('POST /api/exec Work Thread contract', () => {
     expect(tail.some((event) => event.rel === 'threads' && event.kind === 'action-executed')).toBe(
       false,
     );
+  });
+
+  it('hides foreign-owned thread references from local exec receipts and exact/list reads', async () => {
+    for (const [id, principal, goal] of [
+      ['mine', 'user:mike', 'My work'],
+      ['other', 'user:other', 'OTHER_OWNER_SECRET'],
+    ]) {
+      const created = await exec({
+        rel: 'threads',
+        action: 'create',
+        principal,
+        params: { id, goal, goalSource: 'message:goal' },
+      });
+      expect(created.status).toBe(200);
+    }
+    const response = await exec({
+      rel: 'thread:mine',
+      action: 'attach',
+      principal: 'user:mike',
+      params: { category: 'context', rel: 'thread:other' },
+    });
+    expect(response.status).toBe(200);
+    const receipt = await response.text();
+    expect(receipt).not.toContain('OTHER_OWNER_SECRET');
+    expect(receipt).not.toContain('thread:other');
+    for (const rel of ['thread:mine', 'threads']) {
+      const read = await GET(
+        new Request(`http://localhost:3100/api/entity?rel=${encodeURIComponent(rel)}`, {
+          headers: { 'x-ui4a-principal': 'user:mike' },
+        }),
+      );
+      expect(read.status).toBe(200);
+      const body = await read.text();
+      expect(body).not.toContain('OTHER_OWNER_SECRET');
+      expect(body).not.toContain('thread:other');
+    }
+    // Redaction is read-side only; the explicit source event remains auditable.
+    expect((await readLog(pool)).at(-1)?.detail).toMatchObject({ rel: 'thread:other' });
   });
 
   it.each([

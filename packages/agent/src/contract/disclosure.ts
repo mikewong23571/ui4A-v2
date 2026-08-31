@@ -1,10 +1,11 @@
-import { parseCognitiveSemanticsProjection } from '@ui4a/engine';
+import { parseCognitiveSemanticsProjection, type SirenEntity } from '@ui4a/engine';
 
 import type { SitemapApplicationSummary, SitemapCapabilitySummary, SitemapSummary } from '../types';
 
 export interface SitemapDisclosureScope {
   scope?: string;
   currentRel?: string;
+  observedApplication?: string;
 }
 
 function cognitiveFieldDisclosure(value: unknown): Record<string, unknown> | undefined {
@@ -119,27 +120,53 @@ function exactSurfaceScope(
   return sitemap.surfaces.find((surface) => surface.rel === currentRel)?.app;
 }
 
+/** Resolve observation ownership from declared surfaces/flows, never from words or preferences. */
+export function observedApplication(
+  sitemap: SitemapSummary | undefined,
+  entity: SirenEntity,
+): string | undefined {
+  if (sitemap === undefined) return undefined;
+  const exact = exactSurfaceScope(
+    sitemap,
+    typeof entity.properties.rel === 'string' ? entity.properties.rel : undefined,
+  );
+  if (exact !== undefined) return exact;
+  const flows = new Set<string>();
+  const visit = (candidate: SirenEntity): void => {
+    if (typeof candidate.properties.flow === 'string') flows.add(candidate.properties.flow);
+    for (const child of candidate.entities ?? []) visit(child);
+  };
+  visit(entity);
+  const owners = sitemap.applications.filter((application) =>
+    application.flows.some((flow) => flows.has(flow.name)),
+  );
+  return owners.length === 1 ? owners[0]!.name : undefined;
+}
+
 /**
  * Produce the bounded sitemap view used by an embedded Agent prompt.
  *
- * Scope is a structured application name. When absent, only an exact current
- * surface rel may supply it; otherwise discovery remains broad — but broad is
- * navigation-level (F-10): every application/capability/surface stays listed
- * for routing, while flow actions/guards/edges and capability I/O prose are
- * disclosed only inside a resolved scope. Capability schemas are never part
- * of this prompt-facing view.
+ * Every authorized application/capability/surface stays listed for navigation.
+ * Observed ownership (or an explicit disclosure request without an observation)
+ * adds one application's flow/action and capability I/O details. User selection
+ * is not ownership. Capability schemas never enter this prompt-facing view.
  */
 export function sliceSitemapDisclosure(
   sitemap: SitemapSummary,
   disclosure: SitemapDisclosureScope,
 ): SitemapSummary {
-  const scope = disclosure.scope ?? exactSurfaceScope(sitemap, disclosure.currentRel);
+  const scope =
+    disclosure.observedApplication ??
+    exactSurfaceScope(sitemap, disclosure.currentRel) ??
+    disclosure.scope;
   const broad = scope === undefined;
-  const applications = broad
-    ? sitemap.applications.map(broadApplication)
-    : sitemap.applications.filter((application) => application.name === scope).map(copyApplication);
+  const applications = sitemap.applications.map((application) =>
+    application.name === scope ? copyApplication(application) : broadApplication(application),
+  );
   const applicationFlows = new Set(
-    applications.flatMap((application) => application.flows.map((flow) => flow.name)),
+    applications
+      .filter((application) => application.name === scope)
+      .flatMap((application) => application.flows.map((flow) => flow.name)),
   );
 
   return {
@@ -153,16 +180,15 @@ export function sliceSitemapDisclosure(
           }
         : surface.app === undefined || surface.app === scope
           ? copySurface(surface)
-          : { rel: surface.rel, title: surface.title },
+          : { rel: surface.rel, title: surface.title, app: surface.app },
     ),
     applications,
-    capabilities: (sitemap.capabilities ?? [])
-      .filter(
-        (capability) =>
-          broad ||
-          (capability.scope.applications.includes(scope) &&
-            capability.scope.flows.some((flow) => applicationFlows.has(flow))),
-      )
-      .map((capability) => (broad ? broadCapability(capability) : withoutSchemas(capability))),
+    capabilities: (sitemap.capabilities ?? []).map((capability) =>
+      !broad &&
+      capability.scope.applications.includes(scope) &&
+      capability.scope.flows.some((flow) => applicationFlows.has(flow))
+        ? withoutSchemas(capability)
+        : broadCapability(capability),
+    ),
   };
 }

@@ -119,6 +119,10 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
   let worker: ChildProcess | null = null;
   const articleTitle = `kill-resume-${Date.now()}`;
   const workflowId = `delegation-kill-${Date.now()}`;
+  const contextRel = 'thread:kill-resume';
+  const contextReads: Array<{ status: unknown; context: unknown }> = [];
+  const entityReads: string[] = [];
+  const decisionContexts: string[] = [];
 
   /** 起真 worker(独立进程组;测试内可整组 SIGKILL/SIGTERM)。 */
   function spawnWorker(): ChildProcess {
@@ -239,9 +243,10 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
             const prompt =
               [...(body.messages ?? [])].reverse().find((message) => message.role === 'user')
                 ?.content ?? '';
+            decisionContexts.push(prompt);
             const observationText = prompt
               .split('## 当前授权实体的认知投影(完整 HTTP Siren 合同不在 provider prompt 中)\n')[1]
-              ?.split('\n\n## 结构化轨迹(仅 rel/op/outcome/result reference)')[0];
+              ?.split('\n\n## ')[0];
             let currentNode: string | undefined;
             if (observationText !== undefined) {
               const observation = JSON.parse(observationText) as {
@@ -285,7 +290,15 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
             return;
           }
           if (req.method === 'GET' && url.pathname === '/api/entity') {
-            const entity = await engine.getEntity(url.searchParams.get('rel') ?? '');
+            const rel = url.searchParams.get('rel') ?? '';
+            entityReads.push(rel);
+            const entity = await engine.getEntity(rel);
+            if (rel === contextRel && entity !== undefined) {
+              contextReads.push({
+                status: entity.properties.status,
+                context: entity.properties.context,
+              });
+            }
             if (entity === undefined) {
               res.writeHead(404, { 'content-type': 'application/json' });
               res.end(JSON.stringify({ error: '实体不存在' }));
@@ -375,6 +388,30 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
     { timeout: 150_000 },
     async () => {
       const engine = await getEngine(pool);
+      for (const id of ['kill-resume', 'other-browser-line']) {
+        expect(
+          (
+            await engine.exec({
+              rel: 'threads',
+              action: 'create',
+              actor: 'human',
+              principal: 'user:kill-test',
+              params: { id, goal: id, goalSource: 'message:kill-goal' },
+            })
+          ).kind,
+        ).toBe('accepted');
+      }
+      expect(
+        (
+          await engine.exec({
+            rel: contextRel,
+            action: 'attach',
+            actor: 'human',
+            principal: 'user:kill-test',
+            params: { category: 'context', rel: 'articles' },
+          })
+        ).kind,
+      ).toBe('accepted');
       const goal = {
         verb: '发布',
         fields: { title: articleTitle, category: 'tech', tags: 't5', body: 'kill 续跑验证正文' },
@@ -387,6 +424,7 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
             goal,
             driverKind: 'llm',
             scope: 'publishing',
+            contextRel,
             startRel: 'articles',
             principal: 'user:kill-test',
             maxSteps: 24,
@@ -412,6 +450,25 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
       killGroup(worker!, 'SIGKILL');
       await sleep(1000);
       expect(await workflowStatus()).toBe('RUNNING');
+      expect(contextReads.some((read) => read.status === 'open')).toBe(true);
+      for (const request of [
+        { action: 'detach', params: { category: 'context', rel: 'articles' } },
+        { action: 'attach', params: { category: 'context', rel: 'comments' } },
+        { action: 'pause', params: {} },
+      ]) {
+        expect(
+          (
+            await engine.exec({
+              ...request,
+              rel: contextRel,
+              actor: 'human',
+              principal: 'user:kill-test',
+            })
+          ).kind,
+        ).toBe('accepted');
+      }
+      const resumedReadStart = contextReads.length;
+      const resumedDecisionStart = decisionContexts.length;
 
       // 重启 worker:同一 workflow 由新 worker 续跑(最后完成的 activity 之后)。
       worker = spawnWorker();
@@ -440,6 +497,16 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
         Array.from({ length: ordered.length }, (_, index) => index + 1),
       );
       expect(ordered.length).toBeGreaterThanOrEqual(4); // 至少 navigate + 3×next + publish
+      expect(contextReads.slice(resumedReadStart)).not.toHaveLength(0);
+      for (const read of contextReads.slice(resumedReadStart)) {
+        expect(read).toEqual({ status: 'paused', context: ['comments'] });
+      }
+      expect(entityReads).not.toContain('thread:other-browser-line');
+      expect(
+        decisionContexts
+          .slice(resumedDecisionStart)
+          .every((prompt) => prompt.includes(contextRel) && prompt.includes('paused')),
+      ).toBe(true);
 
       // 目标业务结果成立:文章落库(标题 slug 直达,节点 published)。
       const articles = await engine.getEntity('articles');

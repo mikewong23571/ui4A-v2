@@ -302,7 +302,7 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
     expect(await articleCount()).toBe(3);
   });
 
-  it('单个 inline 回合对 sitemap 只 GET 一次', async () => {
+  it('inline 首步复用预载目录,后续决策重新读取授权目录', async () => {
     const { json } = await chat({
       sessionId: 'single-sitemap-read',
       goal: { verb: PUBLISH_TEST_GOAL },
@@ -310,7 +310,11 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
     });
 
     expect(json.outcome).toBe('done');
-    expect(sitemapRequestCount()).toBe(1);
+    const decisions = (await readLog(pool)).filter(
+      (event) => event.kind === 'agent-decision' && event.rel === 'chat:single-sitemap-read',
+    );
+    expect(decisions.length).toBeGreaterThan(1);
+    expect(sitemapRequestCount()).toBe(decisions.length);
   });
 
   it.each(['workspace:app:editorial', 'ghost'])(
@@ -336,15 +340,15 @@ describe('AI-first 路由循环:配置 LLM 完成 B1', () => {
           },
         });
 
-        // 起步不阻断:回落 articles(scope=default 无 entry),回合正常完成。
+        // 起步不阻断:default 无入口时回落应用目录,不偷选内容发布。
         expect(json.outcome).toBe('done');
         expect((json as { reason?: unknown }).reason).toBeUndefined();
         expect(frames.find((frame) => frame.type === 'final')?.payload).toMatchObject({
           outcome: 'done',
-          notice: { code: 'focus_degraded', droppedRel: focus, startedRel: 'articles' },
+          notice: { code: 'focus_degraded', droppedRel: focus, startedRel: 'applications' },
         });
         expect(sitemapRequestCount()).toBe(1);
-        expect(entityRequestRels()).toEqual(['articles']);
+        expect(entityRequestRels()).toEqual(['applications']);
       } finally {
         await new Promise<void>((resolve) => stub.close(() => resolve()));
       }

@@ -1,7 +1,7 @@
 /**
  * delegation activities(T5 Phase A / spec 架构决定 1):
  * - startDelegation / finishDelegation:委托首尾事件落 PG(幂等);
- * - loadSitemap:agent 静态上下文,循环外取一次;
+ * - loadSitemap:独立授权发现读取；agentStep 在每个新决策内重新获取合同;
  * - agentStep:决策+执行合一的单步核心(见 delegation.ts;llm 决策的网络
  *   调用因此天然在 activity 内,workflow 重放确定性)。
  */

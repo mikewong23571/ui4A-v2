@@ -29,8 +29,10 @@ export interface DelegationDispatchArgs {
   driverKind: DelegationDriverKind;
   /** 引擎合同本源(activity 内 fetch /api/entity+/api/exec 的回环本源)。 */
   baseUrl: string;
-  /** T29 Situation 装配的 application scope;显式值是 delegated 执行正典。 */
-  scope: string;
+  /** Situation 装配的应用注意力，未定位不阻止后台工作。 */
+  scope?: string;
+  /** 出生时固定的工作线引用，不携带其事实副本。 */
+  contextRel?: string;
   startRel?: string;
   principal?: string;
   maxSteps?: number;

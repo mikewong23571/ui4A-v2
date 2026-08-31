@@ -77,6 +77,7 @@ function sitemapFixture(): Sitemap {
   return {
     version: 'test',
     surfaces: [
+      { rel: 'applications', title: '应用', collection: true, scope: 'principal' },
       { rel: 'flow:article-drafting', title: '文章草稿', app: 'publishing' },
       { rel: 'articles', title: '文章', collection: true, app: 'publishing' },
       { rel: 'todos', title: '待办', collection: true, app: 'default' },
@@ -122,6 +123,36 @@ describe('knownBusinessRels(存在性权威)', () => {
 });
 
 describe('resolveStartRel', () => {
+  it('starts unlocated users at application discovery without choosing publishing', () => {
+    const current = situation();
+    current.scope = undefined;
+    expect(start({ situation: current })).toEqual({ rel: 'applications' });
+  });
+
+  it('uses an owned workline before an application entry, but preserves explicit focus', () => {
+    const current = { ...situation(), thread: 'release-1' };
+    const snapshot = {
+      ...snapshotFixture(),
+      threads: {
+        'release-1': {
+          id: 'release-1',
+          owner: current.principal,
+          status: 'open' as const,
+          goal: { text: '发布公告', source: 'message:goal' },
+          references: { context: [], active: [], approval: [], event: [] },
+          recentEventSeqs: [],
+        },
+      },
+    };
+    expect(start({ situation: current, snapshot })).toEqual({ rel: 'thread:release-1' });
+    expect(start({ situation: { ...current, focus: 'post:welcome' }, snapshot })).toEqual({
+      rel: 'post:welcome',
+    });
+    expect(start({ situation: { ...current, principal: 'another-user' }, snapshot })).toEqual({
+      rel: 'flow:article-drafting',
+    });
+  });
+
   it('合法业务实体 focus 原样保留,无 notice', () => {
     for (const focus of ['post:welcome', 'flow:article-drafting', 'articles']) {
       expect(start({ situation: situation({ focus }) })).toEqual({ rel: focus });
@@ -154,12 +185,12 @@ describe('resolveStartRel', () => {
     };
 
     expect(start({ situation: situation({ focus: 'ghost' }), snapshot: noEntry })).toEqual({
-      rel: 'articles',
+      rel: 'applications',
       notice: {
         code: 'focus_degraded',
         droppedRel: 'ghost',
-        startedRel: 'articles',
-        startedTitle: '文章',
+        startedRel: 'applications',
+        startedTitle: '应用',
       },
     });
   });
@@ -184,7 +215,7 @@ describe('resolveStartRel', () => {
     });
   });
 
-  it('meta 站:站内 focus 原样起步(meta rel 不进业务存在性表),无 focus 走 meta/flows', () => {
+  it('meta 站:站内 focus 原样起步,无 focus 走应用定义目录', () => {
     expect(
       start({
         situation: situation({
@@ -195,17 +226,17 @@ describe('resolveStartRel', () => {
       }),
     ).toEqual({ rel: 'meta/flow:article-drafting' });
     expect(start({ situation: situation({ site: 'meta', scope: 'governance' }) })).toEqual({
-      rel: 'meta/flows',
+      rel: 'meta/applications',
     });
   });
 
-  it('缺 application/entry 时回落站点兜底(articles)', () => {
+  it('缺 application/entry 时回落应用目录', () => {
     expect(
       start({
         situation: situation({ focus: null }),
         snapshot: { ...snapshotFixture(), applications: {} },
       }),
-    ).toEqual({ rel: 'articles' });
+    ).toEqual({ rel: 'applications' });
   });
 
   it('纯函数:不做可达性探测、零 I/O;args 对象单参 API', () => {

@@ -26,6 +26,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { jsonSchema, streamText, type LanguageModel, type ToolSet } from 'ai';
 
 import type { AgentDriver, AgentOperation, DecideSink, DriverContext, FetchLike } from '../types';
+import { workingContextRels } from '../context/prompt';
 import { buildToolProjection } from '../protocol/tools';
 import { LlmConfigurationError, resolveLlmConfig, type LlmConfigOverrides } from './llm-config';
 import { buildLlmMessages, buildSystemPrompt, type LlmMessage } from './prompts';
@@ -151,10 +152,10 @@ async function llmDecisionAttempt(
       ...(protocolFailure === undefined ? [] : [repairMessage(protocolFailure)]),
     ],
     tools: toToolSet(
-      buildToolProjection(
-        context.entity,
-        context.sitemap?.surfaces.map((surface) => surface.rel) ?? [],
-      ),
+      buildToolProjection(context.entity, [
+        ...(context.sitemap?.surfaces.map((surface) => surface.rel) ?? []),
+        ...workingContextRels(context.workingContext),
+      ]),
     ),
     toolChoice: 'auto',
     abortSignal: AbortSignal.timeout(LLM_DECISION_TIMEOUT_MS),

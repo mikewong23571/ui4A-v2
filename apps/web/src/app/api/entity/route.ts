@@ -92,6 +92,7 @@ export async function GET(request: Request) {
         ? filterEntityForGrantedApplications(entity, {
             ...audienceContext,
             grantedApplications: identity.grantedApplications,
+            principal,
           })
         : entity,
     );

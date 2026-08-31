@@ -23,6 +23,7 @@ describe('循环终止', () => {
     const driver = new ScriptedDriver([{ kind: 'done', summary: '目标完成' }]);
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
     });
@@ -34,11 +35,15 @@ describe('循环终止', () => {
     expect(result.steps[0]!.outcome).toBe('done');
   });
 
-  it('起始 rel 缺省 articles;第一步上下文携带该实体', async () => {
+  it('显式起始 articles;第一步上下文携带该实体', async () => {
     const transport = contractTransport({ entities: { articles: articlesEntity } });
     const driver = new ScriptedDriver([{ kind: 'done', summary: 'ok' }]);
 
-    await runAgent(driver, GOAL, { baseUrl: BASE, fetchImpl: transport.fetch });
+    await runAgent(driver, GOAL, {
+      startRel: 'articles',
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+    });
 
     expect(driver.contexts[0]!.currentRel).toBe('articles');
     expect(driver.contexts[0]!.entity).toEqual(articlesEntity);
@@ -50,7 +55,11 @@ describe('循环终止', () => {
     const transport = contractTransport({ entities: { articles: articlesEntity } });
     const driver = new AsyncScriptedDriver([{ kind: 'done', summary: '异步完成' }]);
 
-    const result = await runAgent(driver, GOAL, { baseUrl: BASE, fetchImpl: transport.fetch });
+    const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+    });
 
     expect(result.outcome).toBe('done');
     expect(result.summary).toBe('异步完成');
@@ -61,6 +70,7 @@ describe('循环终止', () => {
     const driver = new ScriptedDriver([{ kind: 'fail', reason: '无路可走' }]);
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
     });
@@ -132,10 +142,7 @@ describe('循环终止', () => {
     const result = await runAgent(
       driver,
       { verb: '一次走完发布向导' },
-      {
-        baseUrl: BASE,
-        fetchImpl: transport.fetch,
-      },
+      { startRel: 'articles', baseUrl: BASE, fetchImpl: transport.fetch },
     );
 
     expect(result.outcome).toBe('done');
@@ -176,7 +183,7 @@ describe('循环终止', () => {
     await runAgent(
       driver,
       { verb: '一次走完发布向导' },
-      { baseUrl: BASE, fetchImpl: transport.fetch },
+      { startRel: 'articles', baseUrl: BASE, fetchImpl: transport.fetch },
     );
 
     expect(driver.contexts[1]?.lastRejection).toMatchObject({
@@ -241,11 +248,7 @@ describe('循环终止', () => {
     const result = await runAgent(
       driver,
       { verb: '删除所有文章' },
-      {
-        baseUrl: BASE,
-        fetchImpl: transport.fetch,
-        maxSteps: 24,
-      },
+      { startRel: 'articles', baseUrl: BASE, fetchImpl: transport.fetch, maxSteps: 24 },
     );
 
     expect(result.outcome).toBe('failed');
@@ -265,6 +268,7 @@ describe('循环终止', () => {
     const driver = new ScriptedDriver([{ kind: 'fail', reason: '无路可走' }]);
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
     });

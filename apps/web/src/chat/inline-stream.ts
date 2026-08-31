@@ -17,11 +17,7 @@ import {
   type ConversationMessage as AgentConversationMessage,
   type FetchLike,
 } from '@ui4a/agent';
-import {
-  CHAT_NAVIGATION_PROTOCOL_VERSION,
-  completePresentationRequest,
-  type NavigationCompletion,
-} from '@ui4a/shared';
+import { CHAT_NAVIGATION_PROTOCOL_VERSION, completePresentationRequest } from '@ui4a/shared';
 
 import type { ChatTurnDetail } from './history';
 import { finalTurnCitations } from './citations';
@@ -122,6 +118,7 @@ export async function streamAgentLoop(args: {
   /** 起步降级 notice(T40 B1);focus 失效降级时随 final 帧下发。 */
   startNotice?: ChatStartNotice;
   scope: string | null;
+  contextRel?: string;
   presentationContext: ReturnType<typeof presentationContextForIdentity>;
   fetchImpl: FetchLike;
   conversationMessages: AgentConversationMessage[];
@@ -170,6 +167,7 @@ export async function streamAgentLoop(args: {
       channel: 'chat',
       startRel: args.startRel,
       app: args.scope ?? undefined,
+      contextRel: args.contextRel,
       conversationMessages,
       conversation,
       clientView,

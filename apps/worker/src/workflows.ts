@@ -37,7 +37,6 @@ import type {
   EntitySummary,
   ExecSuccess,
   RejectionRecord,
-  SitemapSummary,
   TrailStep,
 } from '@ui4a/agent';
 
@@ -282,9 +281,11 @@ export interface DelegationWorkflowArgs {
   driverKind: DelegationDriverKind;
   /** 引擎合同本源,如 http://localhost:3100(activity 内 fetch /api/entity+/api/exec)。 */
   baseUrl: string;
-  /** 派发方 Situation 装配的 application scope;显式值是 worker 执行正典。 */
-  scope: string;
-  /** 起始实体 rel(缺省 articles——种子域的入口集合,与 runAgent 同口径)。 */
+  /** 派发方 Situation 的应用注意力；缺省表示未定位。 */
+  scope?: string;
+  /** 出生时固定的工作线引用；每个新步骤重新读取授权合同。 */
+  contextRel?: string;
+  /** 起始实体 rel，缺省为应用发现目录。 */
   startRel?: string;
   principal?: string;
   /** 步数上限(缺省 24,与 runAgent 同口径)。 */
@@ -311,6 +312,7 @@ export interface DelegationStartArgs {
   driverKind: DelegationDriverKind;
   model?: string;
   startRel: string;
+  contextRel?: string;
   principal?: string;
 }
 
@@ -340,9 +342,9 @@ export interface AgentStepArgs {
   goal: AgentGoal;
   driverKind: DelegationDriverKind;
   baseUrl: string;
-  scope: string;
+  scope?: string;
+  contextRel?: string;
   principal?: string;
-  sitemap?: SitemapSummary;
   currentRel: string;
   trail: TrailStep[];
   successes: ExecSuccess[];
@@ -419,15 +421,14 @@ export function applyStepToState(
 }
 
 const DEFAULT_MAX_STEPS = 24;
-const DEFAULT_START_REL = 'articles';
+const DEFAULT_START_REL = 'applications';
 
-const { startDelegation, loadSitemap, agentStep, finishDelegation } =
-  proxyActivities<DelegationActivities>({
-    // agentStep 兼容 LLM 决策(网络可达数十秒);被杀后续跑延迟 ≤ 此超时
-    //(StartToClose 从任务投递起算,worker 死后到期即重试)。
-    startToCloseTimeout: '30 seconds',
-    retry: { maximumAttempts: 10 },
-  });
+const { startDelegation, agentStep, finishDelegation } = proxyActivities<DelegationActivities>({
+  // agentStep 兼容 LLM 决策(网络可达数十秒);被杀后续跑延迟 ≤ 此超时
+  //(StartToClose 从任务投递起算,worker 死后到期即重试)。
+  startToCloseTimeout: '30 seconds',
+  retry: { maximumAttempts: 10 },
+});
 
 /**
  * 委托执行 workflow:agent 循环的 durable 宿主。
@@ -448,11 +449,9 @@ export async function delegationWorkflow(
     goal: args.goal,
     driverKind: 'llm',
     startRel,
+    contextRel: args.contextRel,
     principal: args.principal,
   });
-  // sitemap:agent 的静态上下文,循环外取一次(runAgent 同口径)。
-  const sitemap = await loadSitemap({ baseUrl: args.baseUrl });
-
   let state: DelegationLoopState = { currentRel: startRel, trail: [], successes: [] };
   for (let step = 1; step <= maxSteps; step += 1) {
     const result = await agentStep({
@@ -462,8 +461,8 @@ export async function delegationWorkflow(
       driverKind: 'llm',
       baseUrl: args.baseUrl,
       scope: args.scope,
+      contextRel: args.contextRel,
       principal: args.principal,
-      sitemap,
       currentRel: state.currentRel,
       trail: state.trail,
       successes: state.successes,

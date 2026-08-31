@@ -2,6 +2,7 @@ import type { SirenEntity, Sitemap } from '@ui4a/engine';
 import type { EngineSnapshot } from '@ui4a/shared';
 
 import { ProductionIdentityError } from './production/request-identity';
+import { entityRel, filterEntityTree } from './audience/entity-projection';
 import {
   businessApplications,
   flowApplication,
@@ -105,26 +106,15 @@ export function filterSitemapForPolicyScope(sitemap: Sitemap, policyScope: strin
   };
 }
 
-function relFromHref(href: string | undefined): string | undefined {
-  if (href === undefined) return undefined;
-  try {
-    return new URL(href, 'https://ui4a.invalid').searchParams.get('rel') ?? undefined;
-  } catch {
-    return undefined;
-  }
+function ownedThreadReference(snapshot: EngineSnapshot, rel: string, principal: string): boolean {
+  return (
+    !rel.startsWith('thread:') ||
+    snapshot.threads?.[rel.slice('thread:'.length)]?.owner === principal
+  );
 }
 
-function filterReferenceProperty(
-  value: unknown,
-  context: AudienceContext & { grantedApplications: readonly string[] },
-): unknown {
-  if (!Array.isArray(value)) return value;
-  return value.filter((item) => {
-    const rel = typeof item === 'string' ? item : (item as { rel?: unknown })?.rel;
-    return (
-      typeof rel !== 'string' || reachableForGranted(context, rel, context.grantedApplications)
-    );
-  });
+function sourceRel(snapshot: EngineSnapshot, rel: string): string {
+  return snapshot.threads?.[rel] === undefined ? rel : `thread:${rel}`;
 }
 
 /** Exact thread reads and writes are always constrained by the trusted request principal. */
@@ -143,16 +133,21 @@ export function filterThreadEntityForPrincipal(
   rel: string,
   principal: string,
 ): SirenEntity {
-  if (rel !== 'threads' || entity.entities === undefined) return entity;
-  const entities = entity.entities.filter((child) => {
-    const id = child.properties.id;
-    return typeof id === 'string' && snapshot.threads?.[id]?.owner === principal;
-  });
-  return {
-    ...entity,
-    properties: { ...entity.properties, count: entities.length },
-    entities,
-  };
+  const entities =
+    rel === 'threads'
+      ? entity.entities?.filter((child) => {
+          const id = child.properties.id;
+          return typeof id === 'string' && snapshot.threads?.[id]?.owner === principal;
+        })
+      : entity.entities;
+  return filterEntityTree(
+    { ...entity, ...(entities === undefined ? {} : { entities }) },
+    {
+      readable: (reference) => ownedThreadReference(snapshot, reference, principal),
+      referenceHolder: (child) => entityRel(child)?.startsWith('thread:') === true,
+      sourceRel: (reference) => sourceRel(snapshot, reference),
+    },
+  );
 }
 
 /**
@@ -163,7 +158,7 @@ export function filterThreadEntityForPrincipal(
  * per-class 字面量;未参与该声明的实体保持原样。
  */
 function governedByPrincipalMemberFamily(sitemap: Sitemap, entity: SirenEntity): boolean {
-  const rel = relFromHref(entity.links.find((link) => link.rel.includes('self'))?.href);
+  const rel = entityRel(entity);
   return (
     rel !== undefined &&
     sitemap.surfaces.some(
@@ -178,33 +173,13 @@ function governedByPrincipalMemberFamily(sitemap: Sitemap, entity: SirenEntity):
 /** Strip granted-application-external children and links from a collection-style Siren projection. */
 export function filterEntityForGrantedApplications(
   entity: SirenEntity,
-  context: AudienceContext & { grantedApplications: readonly string[] },
+  context: AudienceContext & { grantedApplications: readonly string[]; principal: string },
 ): SirenEntity {
-  const entities = entity.entities?.filter((child) => {
-    const rel = relFromHref(child.href);
-    if (rel === undefined) return true;
-    return reachableForGranted(context, rel, context.grantedApplications);
+  return filterEntityTree(entity, {
+    readable: (rel) =>
+      ownedThreadReference(context.snapshot, rel, context.principal) &&
+      reachableForGranted(context, rel, context.grantedApplications),
+    referenceHolder: (child) => governedByPrincipalMemberFamily(context.sitemap, child),
+    sourceRel: (rel) => sourceRel(context.snapshot, rel),
   });
-  const links = entity.links.filter((link) => {
-    const rel = relFromHref(link.href);
-    if (rel === undefined) return true;
-    return reachableForGranted(context, rel, context.grantedApplications);
-  });
-  const referenceProperties = governedByPrincipalMemberFamily(context.sitemap, entity)
-    ? {
-        ...entity.properties,
-        context: filterReferenceProperty(entity.properties.context, context),
-        active: filterReferenceProperty(entity.properties.active, context),
-        approval: filterReferenceProperty(entity.properties.approval, context),
-      }
-    : entity.properties;
-  return {
-    ...entity,
-    properties:
-      entities !== undefined && typeof entity.properties.count === 'number'
-        ? { ...referenceProperties, count: entities.length }
-        : referenceProperties,
-    links,
-    ...(entities === undefined ? {} : { entities }),
-  };
 }

@@ -244,6 +244,7 @@ describe('audience predicate authorization (D51)', () => {
     const filtered = filterEntityForGrantedApplications(collection, {
       ...businessContext,
       grantedApplications: ['publishing'],
+      principal: 'user:mike',
     });
     expect(filtered.entities?.map(({ href }) => href)).toEqual(['/api/entity?rel=post%3Ap1']);
     expect(filtered.properties.count).toBe(1);
@@ -332,6 +333,7 @@ describe('audience predicate authorization (D51)', () => {
     const filtered = filterEntityForGrantedApplications(thread, {
       ...businessContext,
       grantedApplications: ['publishing'],
+      principal: 'user:mike',
     });
     expect(filtered.properties).toMatchObject({
       context: ['articles'],
@@ -387,6 +389,7 @@ describe('audience predicate authorization (D51)', () => {
       sitemap: jobsSitemap,
       plane: 'business',
       grantedApplications: ['publishing'],
+      principal: 'user:mike',
     });
     expect(filtered.properties).toMatchObject({
       context: ['articles'],
@@ -417,6 +420,7 @@ describe('audience predicate authorization (D51)', () => {
       sitemap: withoutThreadsSurface,
       plane: 'business',
       grantedApplications: ['publishing'],
+      principal: 'user:mike',
     });
     expect(filtered.properties.context).toEqual(['articles', 'comments']);
     expect(filtered.properties.active).toEqual([
@@ -434,6 +438,7 @@ describe('audience predicate authorization (D51)', () => {
     const filtered = filterEntityForGrantedApplications(collection, {
       ...businessContext,
       grantedApplications: ['publishing'],
+      principal: 'user:mike',
     });
     expect(Object.keys(filtered.properties)).toEqual(['rel', 'title', 'count']);
   });
@@ -505,6 +510,7 @@ describe('D51-新应用零改码', () => {
     const kept = filterEntityForGrantedApplications(collection, {
       ...fixtureContext,
       grantedApplications: ['fixture-app', 'publishing'],
+      principal: 'user:mike',
     });
     expect(kept.entities?.map(({ href }) => href)).toEqual(['/api/entity?rel=fixture%3Aitem-1']);
     expect(kept.links.map(({ href }) => href)).toEqual([

@@ -26,6 +26,7 @@ describe('clarify 协议终态', () => {
     ]);
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
     });
@@ -79,6 +80,7 @@ describe('onReasoning 推理自述回调(T11 Phase C)', () => {
     const seen: string[] = [];
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
       onReasoning: (text) => seen.push(text),
@@ -93,6 +95,7 @@ describe('onReasoning 推理自述回调(T11 Phase C)', () => {
     const driver = new ReasoningDriver([{ kind: 'done', summary: 'ok' }]);
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
       onReasoning: () => {
@@ -111,6 +114,7 @@ describe('onReasoning 推理自述回调(T11 Phase C)', () => {
     const full: string[] = [];
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
       onReasoning: (text) => full.push(text),
@@ -128,6 +132,7 @@ describe('onReasoning 推理自述回调(T11 Phase C)', () => {
     const deltas: string[] = [];
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
       onReasoningDelta: (piece) => deltas.push(piece),
@@ -142,6 +147,7 @@ describe('onReasoning 推理自述回调(T11 Phase C)', () => {
     const driver = new ReasoningDeltaDriver([{ kind: 'done', summary: 'ok' }]);
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
       onReasoningDelta: () => {
@@ -161,6 +167,7 @@ describe('onReasoning 推理自述回调(T11 Phase C)', () => {
       createRuleDriver(),
       { verb: 'zzqqx 无交集' },
       {
+        startRel: 'articles',
         baseUrl: BASE,
         fetchImpl: transport.fetch,
         onReasoning: (text) => seen.push(text),

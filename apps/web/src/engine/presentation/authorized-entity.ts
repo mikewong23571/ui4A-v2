@@ -61,6 +61,7 @@ export async function getAuthorizedPresentationResult(
       sitemap,
       plane: 'business',
       grantedApplications,
+      principal,
     }),
   };
 }

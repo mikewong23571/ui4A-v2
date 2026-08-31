@@ -117,7 +117,7 @@ describe('固定协议动词', () => {
     const parameters = navigate.parameters as { properties: { rel: { enum?: string[] } } };
 
     expect(parameters.properties.rel.enum).toEqual(['articles', 'alpha-home', 'beta-home']);
-    expect(disclosure.surfaces[1]).toEqual({ rel: 'beta-home', title: 'Beta' });
+    expect(disclosure.surfaces[1]).toEqual({ rel: 'beta-home', title: 'Beta', app: 'beta' });
   });
 
   it('done 要求 summary;exec 枚举当前实体动作名并要求授权证据', () => {

@@ -76,6 +76,7 @@ function scopeFrom(input: SituationInput): string | undefined {
   if (input.grantedScopes.length === 0) {
     throw new Error('situation has no authorized policy scope');
   }
+  if (input.explicit?.scope === null || input.explicit?.scope === '') return undefined;
   const candidates = [input.explicit?.scope, input.presence?.scope];
   for (const candidate of candidates) {
     if (candidate === undefined || candidate === null || candidate === '') continue;
@@ -88,8 +89,14 @@ function scopeFrom(input: SituationInput): string | undefined {
 export function assembleSituation(input: SituationInput): Situation {
   const site = firstString(input.explicit?.site, input.presence?.site, input.defaults.site);
   const scope = scopeFrom(input);
-  const thread = input.explicit?.thread ?? input.presence?.thread ?? input.defaults.thread ?? null;
-  const focus = input.explicit?.focus ?? input.presence?.focus ?? input.defaults.focus ?? null;
+  const thread =
+    input.explicit?.thread !== undefined
+      ? input.explicit.thread
+      : (input.presence?.thread ?? input.defaults.thread ?? null);
+  const focus =
+    input.explicit?.focus !== undefined
+      ? input.explicit.focus
+      : (input.presence?.focus ?? input.defaults.focus ?? null);
   return {
     principal: input.principal,
     site,

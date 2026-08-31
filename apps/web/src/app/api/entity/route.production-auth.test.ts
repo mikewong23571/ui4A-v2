@@ -162,6 +162,10 @@ describe('GET /api/entity production authentication wiring', () => {
       'credential-subject',
     );
     expect(mocks.filterEntityForGrantedApplications).toHaveBeenCalledTimes(1);
+    expect(mocks.filterEntityForGrantedApplications).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ principal: 'credential-subject' }),
+    );
     expect(mocks.filterThreadEntityForPrincipal).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),

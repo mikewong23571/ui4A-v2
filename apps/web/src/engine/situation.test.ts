@@ -24,6 +24,21 @@ function input(overrides: Partial<SituationInput> = {}): SituationInput {
 }
 
 describe('situation assembler', () => {
+  it('treats explicit null as a cleared application, thread and focus', () => {
+    expect(
+      assembleSituation(
+        input({
+          explicit: { scope: null, thread: null, focus: null },
+        }),
+      ),
+    ).toMatchObject({
+      scope: undefined,
+      thread: null,
+      focus: null,
+      disclosure: { scope: undefined, thread: null, focus: null },
+    });
+  });
+
   it('normalizes production policy claim names without admitting infrastructure scopes', () => {
     expect(grantedPolicyScopes(['ui4a:read', 'ui4a:policy:publishing', 'default'])).toEqual([
       'publishing',

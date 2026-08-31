@@ -76,13 +76,23 @@ describe('真实 walkthrough 制品的 meta scope 披露切片 wire 预算(T31 R
     });
 
     // 非空切片证明真的接入了真实制品,不是空壳满足预算。
-    expect(sliced.applications.map((application) => application.name)).toEqual(['governance']);
-    const governanceFlows = sliced.applications[0]!.flows.map((flow) => flow.name);
+    expect(sliced.applications.map((application) => application.name)).toEqual(
+      summary.applications.map((application) => application.name),
+    );
+    const governance = sliced.applications.find(({ name }) => name === 'governance')!;
+    expect(governance.flows).toEqual(
+      summary.applications.find(({ name }) => name === 'governance')!.flows,
+    );
+    const governanceFlows = governance.flows.map((flow) => flow.name);
     expect(governanceFlows).toContain('agent-definition-authoring');
+    expect(governance.flows.some(({ actions }) => actions?.length)).toBe(true);
     expect(sliced.surfaces.some((surface) => surface.rel === currentRel)).toBe(true);
     expect((sliced.capabilities ?? []).map((capability) => capability.name)).toContain(
       'agent-definition.author',
     );
+    const authoring = sliced.capabilities?.find(({ name }) => name === 'agent-definition.author');
+    expect(authoring?.input).toBeDefined();
+    expect(authoring?.output).toBeDefined();
 
     // 披露纪律:prompt 视图不携带 capability schema。
     const serialized = JSON.stringify(sliced, null, 2);
@@ -97,7 +107,7 @@ describe('真实 walkthrough 制品的 meta scope 披露切片 wire 预算(T31 R
     expect(prettyBytes).toBeLessThanOrEqual(DECIDE_WIRE_BUDGET_BYTES);
   });
 
-  it('非 scope 条目按披露口径降为导航入口(rel + title),不随行复制', async () => {
+  it('其他应用保留导航归属和摘要，不复制执行细节', async () => {
     const summary = await summaryFromWire();
     const sliced = sliceSitemapDisclosure(summary, {
       scope: 'governance',
@@ -108,7 +118,20 @@ describe('真实 walkthrough 制品的 meta scope 披露切片 wire 预算(T31 R
     );
     expect(foreignSurfaces.length).toBeGreaterThanOrEqual(2);
     for (const surface of foreignSurfaces) {
-      expect(Object.keys(surface).sort()).toEqual(['rel', 'title']);
+      expect(Object.keys(surface).sort()).toEqual(['app', 'rel', 'title']);
+    }
+    for (const application of sliced.applications.filter(({ name }) => name !== 'governance')) {
+      const source = summary.applications.find(({ name }) => name === application.name)!;
+      expect(application.title).toBe(source.title);
+      expect(application.intent).toBe(source.intent);
+      expect(application.entry).toEqual(source.entry);
+      expect(application.flows).toEqual(source.flows.map(({ name, title }) => ({ name, title })));
+    }
+    for (const capability of sliced.capabilities ?? []) {
+      if (!capability.scope.applications.includes('governance')) {
+        expect(capability.input).toBeUndefined();
+        expect(capability.output).toBeUndefined();
+      }
     }
   });
 

@@ -122,7 +122,11 @@ describe('sliceSitemapDisclosure', () => {
       currentRel: 'alpha-home',
     });
 
-    expect(disclosed.applications).toEqual([alphaApplication]);
+    expect(disclosed.applications.map(({ name }) => name)).toEqual(['alpha', 'beta']);
+    expect(disclosed.applications[0]).toEqual(alphaApplication);
+    expect(disclosed.applications[1]?.flows).toEqual([
+      { name: 'beta-triage', title: 'Triage beta item' },
+    ]);
     expect(disclosed.applications[0]?.flows).toEqual(alphaApplication.flows);
   });
 
@@ -135,7 +139,7 @@ describe('sliceSitemapDisclosure', () => {
     expect(disclosed.surfaces).toEqual([
       { rel: 'alpha-home', title: 'Alpha entry', app: 'alpha' },
       { rel: 'alpha-review', title: 'Alpha review', app: 'alpha' },
-      { rel: 'beta-home', title: 'Beta entry' },
+      { rel: 'beta-home', title: 'Beta entry', app: 'beta' },
     ]);
     expect(disclosed.surfaces.map(({ rel }) => rel)).toContain('beta-home');
     expect(JSON.stringify(disclosed.surfaces)).not.toContain(FOREIGN_SURFACE_MARKER);
@@ -147,7 +151,7 @@ describe('sliceSitemapDisclosure', () => {
       currentRel: 'alpha-home',
     });
 
-    expect(disclosed.capabilities).toEqual([
+    expect(disclosed.capabilities?.filter(({ input }) => input !== undefined)).toEqual([
       {
         name: 'alpha-visible',
         title: 'alpha-visible title',
@@ -157,6 +161,12 @@ describe('sliceSitemapDisclosure', () => {
         output: 'alpha-visible output reference',
         scope: { applications: ['alpha'], flows: ['alpha-create'] },
       },
+    ]);
+    expect(disclosed.capabilities?.map(({ name }) => name)).toEqual([
+      'alpha-visible',
+      'alpha-wrong-flow',
+      'alpha-flow-wrong-app',
+      'beta-visible',
     ]);
     const serialized = JSON.stringify(disclosed);
     expect(serialized).not.toContain('inputSchema');
@@ -168,11 +178,17 @@ describe('sliceSitemapDisclosure', () => {
   it('infers scope only from an exact current surface rel carrying an app', () => {
     const disclosed = sliceSitemapDisclosure(sitemapFixture(), { currentRel: 'beta-home' });
 
-    expect(disclosed.applications).toEqual([betaApplication]);
-    expect(disclosed.capabilities?.map(({ name }) => name)).toEqual(['beta-visible']);
+    expect(disclosed.applications.map(({ name }) => name)).toEqual(['alpha', 'beta']);
+    expect(disclosed.applications[1]).toEqual(betaApplication);
+    expect(disclosed.applications[0]?.flows.every(({ actions }) => actions === undefined)).toBe(
+      true,
+    );
+    expect(
+      disclosed.capabilities?.filter(({ input }) => input !== undefined).map(({ name }) => name),
+    ).toEqual(['beta-visible']);
     expect(disclosed.surfaces).toEqual([
-      { rel: 'alpha-home', title: 'Alpha entry' },
-      { rel: 'alpha-review', title: 'Alpha review' },
+      { rel: 'alpha-home', title: 'Alpha entry', app: 'alpha' },
+      { rel: 'alpha-review', title: 'Alpha review', app: 'alpha' },
       {
         rel: 'beta-home',
         title: 'Beta entry',
@@ -346,11 +362,12 @@ describe('disclosure source governance', () => {
 
     expect(publicIndex).toContain("export * from './contract/disclosure'");
     expect(inlinePrompt).toMatch(
-      /import \{ sliceSitemapDisclosure \} from ['"]\.\.\/contract\/disclosure['"]/,
+      /import \{[^}]*sliceSitemapDisclosure[^}]*\} from ['"]\.\.\/contract\/disclosure['"]/,
     );
     expect(workerStep).toMatch(
       /import \{[^}]*sliceSitemapDisclosure[^}]*\} from ['"]@ui4a\/agent['"]/s,
     );
-    expect(workerStep).toContain('sliceSitemapDisclosure(args.sitemap, {');
+    expect(workerStep).toMatch(/sliceSitemapDisclosure\(sitemap,\s*\{/);
+    expect(workerStep).toContain('observedApplication: observedApp');
   });
 });

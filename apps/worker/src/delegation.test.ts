@@ -80,6 +80,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 interface TransportOptions {
   entities?: Record<string, SirenEntity>;
+  sitemap?: SitemapSummary;
   execResponses?: Response[];
 }
 
@@ -90,6 +91,9 @@ function contractTransport(options: TransportOptions = {}) {
   const calls: { url: string; method: string }[] = [];
   const fetch: FetchLike = async (url, init) => {
     calls.push({ url, method: init?.method ?? 'GET' });
+    if (new URL(url).pathname === '/.well-known/ui4a.json' && options.sitemap !== undefined) {
+      return jsonResponse(options.sitemap);
+    }
     if (init?.method === 'POST') {
       const response = execResponses.shift();
       if (response !== undefined) return response;
@@ -259,6 +263,7 @@ describe('runAgentStep(scripted protocol driver,决策+执行合一)', () => {
     const driver = new ContextCapturingDriver();
     const transport = contractTransport({
       entities: { articles: articlesEntity, 'meta/flows': articlesEntity },
+      sitemap,
     });
     const { db } = fakeDb();
 
@@ -270,7 +275,6 @@ describe('runAgentStep(scripted protocol driver,决策+执行合一)', () => {
         goal: { verb: '查看定义入口' },
         driverKind: 'llm',
         baseUrl: BASE,
-        sitemap,
         ...BASE_STATE,
       },
     );
@@ -278,10 +282,12 @@ describe('runAgentStep(scripted protocol driver,决策+执行合一)', () => {
     expect(driver.context?.app).toBe(PUBLISHING_SCOPE);
     expect(driver.context?.sitemap?.applications.map(({ name }) => name)).toEqual([
       PUBLISHING_SCOPE,
+      'governance',
     ]);
     expect(driver.context?.sitemap?.surfaces).toContainEqual({
       rel: 'meta/flows',
       title: 'Flow definitions',
+      app: 'governance',
     });
     expect(JSON.stringify(driver.context?.sitemap)).not.toContain(
       'SCHEMA_MUST_NOT_ENTER_DRIVER_CONTEXT',
@@ -448,7 +454,7 @@ describe('runAgentStep(scripted protocol driver,决策+执行合一)', () => {
       outcome: 'done',
     });
 
-    // 首实体不可得(runAgent 同口径):即使携带 scoped disclosure，也不进入
+    // 首实体不可得(runAgent 同口径):即使选择应用注意力，也不进入
     // driver、不产 delegation-step；workflow 以零步 failed 终态收口。
     const missing = contractTransport({});
     const missingDb = fakeDb();
@@ -464,12 +470,6 @@ describe('runAgentStep(scripted protocol driver,决策+执行合一)', () => {
         goal: { verb: '任意' },
         driverKind: 'llm',
         baseUrl: BASE,
-        sitemap: {
-          version: 'missing-start-v1',
-          surfaces: [{ rel: 'meta/flows', title: 'Definitions', app: 'governance' }],
-          applications: [{ name: 'governance', intent: 'govern', flows: [] }],
-          capabilities: [],
-        },
         scope: PUBLISHING_SCOPE,
         currentRel: 'ghost',
         trail: [],

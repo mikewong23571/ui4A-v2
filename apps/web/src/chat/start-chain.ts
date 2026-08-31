@@ -15,7 +15,7 @@ type Applications = NonNullable<EngineSnapshot['applications']>;
  * 不变量),不存在性表是它最简的机械判据。
  */
 export function knownBusinessRels(snapshot: EngineSnapshot, sitemap: Sitemap): ReadonlySet<string> {
-  const rels = new Set<string>();
+  const rels = new Set<string>(['applications']);
   for (const rel of Object.keys(snapshot.instances)) rels.add(rel);
   for (const rel of Object.keys(snapshot.collections)) rels.add(rel);
   for (const id of Object.keys(snapshot.threads ?? {})) rels.add(`thread:${id}`);
@@ -30,11 +30,12 @@ export function knownBusinessRels(snapshot: EngineSnapshot, sitemap: Sitemap): R
   return rels;
 }
 
-/** scope application entry → 站点兜底(meta/flows 或 articles)。 */
+/** An application entry is optional; the neutral discovery root never invents a selection. */
 function siteFallbackRel(situation: Situation, applications: Applications): string {
+  if (situation.site === 'meta') return 'meta/applications';
   const entry = situation.scope === undefined ? undefined : applications[situation.scope]?.entry;
   if (entry !== undefined) return entry.target;
-  return situation.site === 'meta' ? 'meta/flows' : 'articles';
+  return 'applications';
 }
 
 /**
@@ -67,7 +68,12 @@ export function resolveStartRel(args: {
           : siteFallbackRel(situation, applications),
     };
   }
-  const fallback = siteFallbackRel(situation, applications);
+  const threadId = situation.thread?.replace(/^thread:/, '');
+  const thread = threadId === undefined ? undefined : snapshot.threads?.[threadId];
+  const fallback =
+    thread !== undefined && thread.owner === situation.principal
+      ? `thread:${thread.id}`
+      : siteFallbackRel(situation, applications);
   if (typeof situation.focus !== 'string') return { rel: fallback };
   const focus = situation.focus;
   const known = knownBusinessRels(snapshot, sitemap);

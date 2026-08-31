@@ -222,22 +222,21 @@ export interface DriverContext {
    */
   observations?: ContractObservation[];
   /**
-   * 应用 sitemap(版本级缓存结构的最外层,架构规定它是 agent 的静态上下文)。
-   * **循环放入的已经是披露切片视图**(loop 按 scope/intent 预切,prompts 装配时
-   * 再经 sliceSitemapDisclosure 复切;两次切割幂等,属有意设计而非重复实现)——
-   * driver 拿到的不是完整 catalog。surfaces 的 rel/title 供自由漫游层把目标
-   * 动词映射到可达表面(flow 入口);applications 按 app 分组呈现发现面(T10
-   * 两层发现:选 app〔读 intent〕→ 选 flow)。
+   * 已授权应用的导航摘要，以及当前观察所属应用的合同详情。
+   * loop 与 prompt 使用同一 observedApplication 切片；再次切片保持幂等。
+   * app 是人的应用偏好，不参与这份观察披露，也不参与授权。
    * 可选:循环拿不到 sitemap(端点缺失)时为 undefined,driver 须能退化为仅用实体。
    */
   sitemap?: SitemapSummary;
   /**
-   * role/app 上下文槽位(T10 Phase D,架构决定 6):角色职责组合的数据载体
-   * (D19 路线 T3/T5 的钩子)。值由 RunAgentOptions 注入,循环原样随行每步
-   * 上下文;空槽(未提供)= 现状,零行为变化——prompt 只装不变协议核心。
+   * 角色和人的显式应用偏好，由 RunAgentOptions 注入；观察不能反写这些值。
    */
   role?: string;
   app?: string;
+  /** Ownership of the current observation, independent from the user's application preference. */
+  observedApplication?: string;
+  /** Fresh direct work-thread context for this decision, never a persisted fact cache. */
+  workingContext?: import('./context/working-context').WorkingContext;
   /** Host 注入的聊天 renderer 能力事实；缺省时 Agent 不得猜测。 */
   chatMarkdown?: boolean;
   /** Presentation Plane 注入的当前 catalog 摘要；不是完整 catalog payload。 */
@@ -332,8 +331,8 @@ export interface RunAgentOptions {
   baseUrl: string;
   fetchImpl: FetchLike;
   /**
-   * 上层已读取的 sitemap 静态上下文。显式提供该属性（包括 undefined）
-   * 时循环不再发起 sitemap GET；未提供时独立 runAgent 仍自行读一次。
+   * 上层已读取的首步 sitemap。显式提供（包括 undefined）时首步不重复 GET；
+   * 后续每个新决定重读授权发现面，失败不沿用旧合同。
    */
   sitemap?: SitemapSummary;
   /** 步数上限(终止条件之一;缺省 24)。 */
@@ -358,8 +357,10 @@ export interface RunAgentOptions {
   principal?: string;
   /** 缺省 'http'。 */
   channel?: string;
-  /** 起始实体 rel(缺省 articles——种子域的入口集合)。 */
+  /** 起始实体 rel(缺省 applications——已授权应用的中立发现集合)。 */
   startRel?: string;
+  /** Fixed work-thread reference; facts are re-read through authorized HTTP each decision. */
+  contextRel?: string;
   /**
    * role/app 上下文槽位(T10 Phase D):原样注入每步 DriverContext,
    * LLM driver 据此渲染 SYSTEM_PROMPT 槽位;缺省 = 空槽,零行为变化。

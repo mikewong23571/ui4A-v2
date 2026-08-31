@@ -30,6 +30,7 @@ describe('onStep 流式轨迹回调(T9 Phase B)', () => {
     const seen: TrailStep[] = [];
 
     const result = await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
       onStep: (step) => seen.push(step),

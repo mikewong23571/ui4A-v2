@@ -14,7 +14,8 @@
  * 循环零智能:不解释拒绝、不判断完成——决策全在 driver。
  */
 import { createContractClient } from '../contract/http';
-import { sliceSitemapDisclosure } from '../contract/disclosure';
+import { observedApplication, sliceSitemapDisclosure } from '../contract/disclosure';
+import { loadWorkingContext } from '../context/working-context';
 import { authorizeEffects, type ProposedEffect } from './authorization';
 import { createNoProgressGuard, createRepeatedRejectionGuard } from './fail-guard';
 import { withObservedClientParams } from './client-action-params';
@@ -38,7 +39,7 @@ import type { SirenEntity } from '@ui4a/engine';
 const DEFAULT_MAX_STEPS = 24;
 const DEFAULT_MAX_OBSERVATIONS = 8;
 const DEFAULT_MAX_CONVERSATION_MESSAGES = 12;
-const DEFAULT_START_REL = 'articles';
+const DEFAULT_START_REL = 'applications';
 const DEFAULT_CHANNEL = 'http';
 
 /** Siren 实体 → 轨迹摘要(rel/class/node/count/动作清单)。 */
@@ -132,30 +133,6 @@ function copyConversation(
   };
 }
 
-function entityFlowNames(entity: SirenEntity): Set<string> {
-  const names = new Set<string>();
-  const visit = (candidate: SirenEntity): void => {
-    const flow = candidate.properties.flow;
-    if (typeof flow === 'string') names.add(flow);
-    for (const child of candidate.entities ?? []) visit(child);
-  };
-  visit(entity);
-  return names;
-}
-
-/** Infer one unambiguous app from the current entity or its embedded collection members. */
-function inferEntityApplication(
-  sitemap: SitemapSummary | undefined,
-  entity: SirenEntity,
-): string | undefined {
-  if (sitemap === undefined) return undefined;
-  const flowNames = entityFlowNames(entity);
-  const applications = sitemap.applications.filter((application) =>
-    application.flows.some((flow) => flowNames.has(flow.name)),
-  );
-  return applications.length === 1 ? applications[0]!.name : undefined;
-}
-
 export async function runAgent(
   driver: AgentDriver,
   goal: AgentGoal,
@@ -179,10 +156,7 @@ export async function runAgent(
   const actor = options.actor ?? 'agent';
   const channel = options.channel ?? DEFAULT_CHANNEL;
 
-  // sitemap 是版本级缓存结构的最外层,架构规定它是 agent 的静态上下文(取一次,
-  // 全程复用);拿不到不致命——driver 退化为仅用实体导航。
-  // T10:投影保留两层发现结构——扁平 surfaces(向后兼容)+ applications 分组
-  //(name/intent/组内 flows 摘要;选 app〔读 intent〕→ 选 flow)。
+  // 首步复用宿主预读；之后每个新决定重读授权发现面，失败不保留旧应用信息。
   let sitemap: SitemapSummary | undefined;
   try {
     const supplied = Object.prototype.hasOwnProperty.call(options, 'sitemap');
@@ -299,11 +273,13 @@ export async function runAgent(
 
     // 上下文是逐步快照(trail/successes 拷贝):decide 之后循环继续追加,
     // 不应经由引用改写 driver 已见的历史。
-    const currentApp = options.app ?? inferEntityApplication(sitemap, fetched.entity);
+    if (step > 1) sitemap = await client.getSitemap();
+    const currentApp = observedApplication(sitemap, fetched.entity);
+    const workingContext = await loadWorkingContext(client, options.contextRel, fetched.entity);
     const scopedSitemap =
       sitemap === undefined
         ? undefined
-        : sliceSitemapDisclosure(sitemap, { scope: currentApp, currentRel });
+        : sliceSitemapDisclosure(sitemap, { observedApplication: currentApp, currentRel });
     const context: DriverContext = {
       goal,
       conversationMessages: conversationMessages.map((message) => ({ ...message })),
@@ -318,7 +294,9 @@ export async function runAgent(
       observations: [...observations],
       sitemap: scopedSitemap,
       role: options.role,
-      app: currentApp,
+      app: options.app,
+      observedApplication: currentApp,
+      workingContext,
       chatMarkdown: options.chatMarkdown,
       presentationMarkdown: options.presentationMarkdown,
     };

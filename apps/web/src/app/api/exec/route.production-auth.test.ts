@@ -54,6 +54,7 @@ const mocks = vi.hoisted(() => {
     exec,
     executeAgentRunAction: vi.fn(),
     filterEntityForGrantedApplications: vi.fn((entity: unknown) => entity),
+    filterThreadEntityForPrincipal: vi.fn((entity: unknown) => entity),
     getDb: vi.fn(() => ({ kind: 'mock-db' })),
     getEngine: vi.fn(async () => engine),
     requireHumanApprovalScope: vi.fn(),
@@ -84,6 +85,7 @@ vi.mock('../../../auth/application-scope', () => ({
   assertReachable: mocks.assertReachable,
   assertThreadOwner: mocks.assertThreadOwner,
   filterEntityForGrantedApplications: mocks.filterEntityForGrantedApplications,
+  filterThreadEntityForPrincipal: mocks.filterThreadEntityForPrincipal,
 }));
 
 import { POST } from './route';

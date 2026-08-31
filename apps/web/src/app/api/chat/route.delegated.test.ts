@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ensureEventsTable } from '@ui4a/db/events';
 import { getPool } from '@ui4a/db/pool';
-import { resetEngineForTests } from '../../../engine/service';
+import { getEngine, resetEngineForTests } from '../../../engine/service';
 
 import { GET as getSitemapRoute } from '../../.well-known/ui4a.json/route';
 import { GET as getEntityRoute } from '../entity/route';
@@ -67,14 +67,18 @@ async function chat(
   return { status: response.status, json: (await response.json()) as Record<string, unknown> };
 }
 
-function delegatedView(scope = 'default', focus: string | null = null) {
+function delegatedView(
+  scope: string | null = 'default',
+  focus: string | null = null,
+  thread: string | null = null,
+) {
   return {
     schemaVersion: 2,
     presence: {
       clientInstanceId: 'client:delegated',
       site: 'workstation',
       scope,
-      thread: null,
+      thread,
       focus,
     },
   };
@@ -131,12 +135,14 @@ describe('mode=delegated(委托派发)', () => {
     else process.env.LLM_MODEL = envModel;
   });
 
-  it('缺少显式 Application 视角时结构化拒绝，不从授予集合偷选', async () => {
+  it('未选应用仍从中立应用目录派发，不从授予集合偷选', async () => {
     const { status, json } = await chat({ goal: { verb: '发布' }, mode: 'delegated' });
 
-    expect(status).toBe(400);
-    expect(String(json.error)).toContain('显式选择');
-    expect(dispatchMock).not.toHaveBeenCalled();
+    expect(status).toBe(200);
+    expect(json.mode).toBe('delegated');
+    expect(dispatchMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMock.mock.calls[0]![0]).toMatchObject({ startRel: 'applications' });
+    expect(dispatchMock.mock.calls[0]![0].scope).toBeUndefined();
   });
 
   it('派发成功 → 200 {mode, delegationId, statusUrl},auto 以 llm 传入', async () => {
@@ -180,6 +186,44 @@ describe('mode=delegated(委托派发)', () => {
     expect((dispatchMock.mock.calls[0]![0] as Record<string, unknown>).startRel).toBe(
       'post:first-post',
     );
+  });
+
+  it('dispatches the owned workline reference independently of later browser selection', async () => {
+    const engine = await getEngine(pool);
+    for (const id of ['release-a', 'release-b']) {
+      const created = await engine.exec({
+        rel: 'threads',
+        action: 'create',
+        actor: 'human',
+        principal: 'local-user',
+        params: { id, goal: id, goalSource: 'message:source' },
+      });
+      expect(created.kind).toBe('accepted');
+    }
+
+    const first = await chat({
+      goal: { verb: '进展如何' },
+      mode: 'delegated',
+      sessionId: 's6',
+      clientView: delegatedView(null, null, 'release-a'),
+    });
+    const second = await chat({
+      goal: { verb: '进展如何' },
+      mode: 'delegated',
+      sessionId: 's6',
+      clientView: delegatedView(null, null, 'release-b'),
+    });
+
+    expect([first.status, second.status]).toEqual([200, 200]);
+    expect(dispatchMock.mock.calls[0]![0]).toMatchObject({
+      contextRel: 'thread:release-a',
+      startRel: 'thread:release-a',
+    });
+    expect(dispatchMock.mock.calls[1]![0]).toMatchObject({
+      contextRel: 'thread:release-b',
+      startRel: 'thread:release-b',
+    });
+    expect(dispatchMock.mock.calls[0]![0]).not.toHaveProperty('workingContext');
   });
 
   it('auto 与显式 llm 都以 llm 直传', async () => {

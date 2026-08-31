@@ -65,6 +65,13 @@ beforeEach(async () => {
 });
 
 describe('chat situation adapter', () => {
+  it('recognizes an explicitly selected installed application in local demo', async () => {
+    const located = await situationForChat({
+      principal: 'local-user',
+      clientView: clientView({ scope: 'publishing' }),
+    });
+    expect(located.scope).toBe('publishing');
+  });
   it('keeps local demo headless chat unlocated without a requested lens', async () => {
     const unlocated = await situationForChat({ principal: 'user:headless' });
     expect(unlocated).toMatchObject({ site: 'workstation', focus: null });
@@ -113,7 +120,7 @@ describe('chat situation adapter', () => {
         sitemap: EMPTY_SITEMAP,
         granted: null,
       }),
-    ).toEqual({ rel: 'articles' });
+    ).toEqual({ rel: 'applications' });
   });
 
   // T31 R9(←T29,D48 裁决 b):clientView.presence 进入 explicit 槽位是有意分层——
@@ -238,14 +245,19 @@ describe('(D51-窄披露) prompt 披露输入', () => {
       scope: situation.disclosure.scope,
       currentRel: startRel.rel,
     });
-    // 镜头内应用保留 flows/actions;publishing 域应用整体不出现在分组披露。
-    expect(disclosed.applications.map(({ name }) => name)).toEqual(['default']);
-    // publishing 域 surface 收窄为 rel+title 导航入口,不携带 app/flow/action 详情。
+    // 其他已授权应用保留导航摘要,不复制执行细节。
+    expect(disclosed.applications.map(({ name }) => name)).toEqual(['default', 'publishing']);
+    expect(
+      disclosed.applications
+        .find(({ name }) => name === 'publishing')
+        ?.flows.every((flow) => flow.actions === undefined),
+    ).toBe(true);
+    // publishing 保留路由所属应用,不携带动作详情。
     expect(disclosed.surfaces.find(({ rel }) => rel === 'articles')).toEqual({
       rel: 'articles',
       title: '文章列表',
+      app: 'publishing',
     });
-    expect(JSON.stringify(disclosed)).not.toContain('article-drafting');
     // 宽合同对照:HTTP 发现文档仍按授予并集返回 publishing 详情(另锚
     // '(D51-宽合同)' 用例)——收窄只发生在 prompt 披露层,不是 HTTP 合同。
     expect(DISCLOSURE_SITEMAP.applications.map(({ name }) => name)).toEqual([

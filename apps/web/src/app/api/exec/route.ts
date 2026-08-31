@@ -17,6 +17,7 @@ import {
   assertReachable,
   assertThreadOwner,
   filterEntityForGrantedApplications,
+  filterThreadEntityForPrincipal,
 } from '../../../auth/application-scope';
 
 import { parseExecBody, rejectionStatus } from '../exec-request';
@@ -84,15 +85,24 @@ export async function POST(request: Request) {
       );
     }
     const resolvedRequest = applyTrustedIdentity(parsed.request, identity);
-    const responseEntity = (entity: SirenEntity): SirenEntity =>
-      identity.authorizationMode === 'credential'
-        ? filterEntityForGrantedApplications(entity, {
-            snapshot,
+    const responseEntity = (entity: SirenEntity): SirenEntity => {
+      const currentSnapshot = engine.getSnapshot();
+      const principalScoped = filterThreadEntityForPrincipal(
+        entity,
+        currentSnapshot,
+        typeof entity.properties.rel === 'string' ? entity.properties.rel : resolvedRequest.rel,
+        identity.principal,
+      );
+      return identity.authorizationMode === 'credential'
+        ? filterEntityForGrantedApplications(principalScoped, {
+            snapshot: currentSnapshot,
             sitemap,
             plane: 'business',
             grantedApplications: identity.grantedApplications,
+            principal: identity.principal,
           })
-        : entity;
+        : principalScoped;
+    };
     if (identity.authorizationMode === 'credential') {
       assertThreadOwner(snapshot, resolvedRequest.rel, resolvedRequest.principal ?? '');
     }

@@ -65,6 +65,7 @@ describe('filterEntityForGrantedApplications × 集合读面查询(D51 回归,T3
     } as Sitemap,
     plane: 'business' as const,
     grantedApplications: ['publishing'],
+    principal: 'user:mike',
   };
   const rowsOf = (entity: SirenEntity | undefined): Map<string, string> => {
     // project 可能返回 undefined(未知 rel);此处断言三读法全部命中。

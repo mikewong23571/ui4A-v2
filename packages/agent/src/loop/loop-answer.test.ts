@@ -38,10 +38,7 @@ describe('授权观察 → 推理 → 临时 answer(U1–U4)', () => {
     const result = await runAgent(
       driver,
       { verb: '总结第一篇文章' },
-      {
-        baseUrl: BASE,
-        fetchImpl: transport.fetch,
-      },
+      { startRel: 'articles', baseUrl: BASE, fetchImpl: transport.fetch },
     );
 
     expect(result.outcome).toBe('answered');
@@ -65,10 +62,7 @@ describe('授权观察 → 推理 → 临时 answer(U1–U4)', () => {
     const result = await runAgent(
       driver,
       { verb: '当前有几篇文章？' },
-      {
-        baseUrl: BASE,
-        fetchImpl: transport.fetch,
-      },
+      { startRel: 'articles', baseUrl: BASE, fetchImpl: transport.fetch },
     );
 
     expect(result).toMatchObject({ outcome: 'answered', sources: [source], successes: [] });
@@ -110,10 +104,7 @@ describe('授权观察 → 推理 → 临时 answer(U1–U4)', () => {
     const result = await runAgent(
       driver,
       { verb: '比较这两篇文章' },
-      {
-        baseUrl: BASE,
-        fetchImpl: transport.fetch,
-      },
+      { startRel: 'articles', baseUrl: BASE, fetchImpl: transport.fetch },
     );
 
     expect(result.outcome).toBe('answered');
@@ -181,6 +172,7 @@ describe('授权观察 → 推理 → 临时 answer(U1–U4)', () => {
     ]);
 
     await runAgent(driver, GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
       maxObservations: 2,
@@ -207,6 +199,7 @@ describe('授权观察 → 推理 → 临时 answer(U1–U4)', () => {
     };
 
     const result = await runAgent(new ScriptedDriver([first, final]), GOAL, {
+      startRel: 'articles',
       baseUrl: BASE,
       fetchImpl: transport.fetch,
     });

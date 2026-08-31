@@ -1,7 +1,7 @@
 import type { QueryResult, QueryResultRow } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AgentDriver, FetchLike } from '@ui4a/agent';
+import type { AgentDriver, DriverContext, FetchLike } from '@ui4a/agent';
 import type { SirenEntity } from '@ui4a/engine';
 import type { ProductionDeploymentConfig } from '@ui4a/shared';
 
@@ -194,7 +194,11 @@ describe('T22 Worker production Agent service credential boundary', () => {
 
     expect(result.outcome).toBe('executed');
     expect(provider.getClientCredential).toHaveBeenCalledTimes(1);
-    expect(requests.map(({ url }) => new URL(url).pathname)).toEqual(['/api/entity', '/api/exec']);
+    expect(requests.map(({ url }) => new URL(url).pathname)).toEqual([
+      '/api/entity',
+      '/.well-known/ui4a.json',
+      '/api/exec',
+    ]);
     expect(requests.every(({ url }) => new URL(url).origin === PUBLIC_ORIGIN)).toBe(true);
     expect(requests.every(({ authorization }) => authorization === `Bearer ${ACCESS_TOKEN}`)).toBe(
       true,
@@ -211,6 +215,48 @@ describe('T22 Worker production Agent service credential boundary', () => {
       expect(serialized).not.toContain(ACCESS_TOKEN);
       expect(serialized).not.toContain(CLIENT_SECRET);
     }
+  });
+
+  it('keeps the service identity when a human-owned workline is denied', async () => {
+    const requests: Array<{ rel: string | null; headers: Headers }> = [];
+    let context: DriverContext | undefined;
+    const fetchImpl: FetchLike = vi.fn(async (url, init) => {
+      const target = new URL(url);
+      requests.push({ rel: target.searchParams.get('rel'), headers: new Headers(init?.headers) });
+      if (target.searchParams.get('rel') === 'thread:human-owned') {
+        return jsonResponse({ error: { code: 'scope_insufficient' } }, 403);
+      }
+      if (target.pathname === '/.well-known/ui4a.json') {
+        return jsonResponse({ version: '1', surfaces: [], applications: [] });
+      }
+      return jsonResponse(entity);
+    });
+    const driver: AgentDriver = {
+      decide: (value) => {
+        context = value;
+        return { kind: 'answer', content: '工作线不可读取', sources: [] };
+      },
+    };
+    const { deps } = activityDeps({ fetchImpl, driver });
+    const api = await plannedApi();
+
+    await api.agentStepWithProductionAuth(deps, {
+      ...stepArgs(),
+      principal: 'human-not-service',
+      contextRel: 'thread:human-owned',
+    });
+
+    expect(requests.some(({ rel }) => rel === 'thread:human-owned')).toBe(true);
+    expect(
+      requests.every(({ headers }) => headers.get('authorization') === `Bearer ${ACCESS_TOKEN}`),
+    ).toBe(true);
+    expect(requests.every(({ headers }) => !headers.has('x-ui4a-principal'))).toBe(true);
+    expect(context?.workingContext).toMatchObject({
+      unavailable: true,
+      references: [],
+      observations: [],
+    });
+    expect(context?.workingContext?.entity).toBeUndefined();
   });
 
   it.each([

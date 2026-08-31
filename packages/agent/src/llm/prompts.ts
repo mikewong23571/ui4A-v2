@@ -6,13 +6,9 @@
  *   最近拒绝/当前授权实体的认知投影;原文 role 不被压成单个 prompt。
  */
 import type { DriverContext, TrailStep } from '../types';
-import {
-  parseCognitiveSemanticsProjection,
-  type SirenAction,
-  type SirenEntity,
-  type SirenFieldPresentation,
-} from '@ui4a/engine';
-import { sliceSitemapDisclosure } from '../contract/disclosure';
+import { observedApplication, sliceSitemapDisclosure } from '../contract/disclosure';
+import { sanitizeEntity } from '../contract/cognition';
+import { describeWorkingContext } from '../context/prompt';
 
 const SYSTEM_PROMPT = [
   '你是 UI4A 合同 agent，也是 AI-first 合同助手:读取授权超媒体合同、动态理解用户目标，并通过协议工具回答或安全执行。',
@@ -68,229 +64,6 @@ export function buildSystemPrompt(slots: SystemPromptSlots = {}): string {
   return `${SYSTEM_PROMPT}\n\n## 角色与应用上下文\n${lines.join('\n')}`;
 }
 
-const MAX_COLLECTION_MEMBER_SUMMARIES = 8;
-const COGNITIVE_PROPERTY_KEYS = [
-  'rel',
-  'name',
-  'title',
-  'identity',
-  'status',
-  'node',
-  'flow',
-  'version',
-  'count',
-  'intent',
-  'kind',
-] as const;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-type FieldPresentationRole = NonNullable<SirenFieldPresentation['role']>;
-
-function fieldPresentationRole(value: unknown): FieldPresentationRole | undefined {
-  switch (value) {
-    case 'identity':
-    case 'status':
-    case 'primary-content':
-    case 'metadata':
-    case 'relation':
-      return value;
-    default:
-      return undefined;
-  }
-}
-
-function sanitizeFieldPresentation(value: unknown): SirenFieldPresentation | undefined {
-  if (!isRecord(value) || typeof value.path !== 'string' || typeof value.title !== 'string') {
-    return undefined;
-  }
-  const role = fieldPresentationRole(value.role);
-  const overview = value.overview === true;
-  if (role === undefined && !overview) return undefined;
-  return {
-    path: value.path,
-    title: value.title,
-    ...(role === undefined ? {} : { role }),
-    ...(typeof value.overview === 'boolean' ? { overview: value.overview } : {}),
-    ...(typeof value.contentMediaType === 'string'
-      ? { contentMediaType: value.contentMediaType }
-      : {}),
-  };
-}
-
-function cognitiveFieldCandidate(value: unknown): unknown {
-  if (!isRecord(value)) return value;
-  return {
-    ...(value.path === undefined ? {} : { path: value.path }),
-    ...(value.title === undefined ? {} : { title: value.title }),
-    ...(value.role === undefined ? {} : { role: value.role }),
-    ...(value.overview === undefined ? {} : { overview: value.overview }),
-    ...(value.contentMediaType === undefined ? {} : { contentMediaType: value.contentMediaType }),
-  };
-}
-
-function sanitizeCognitivePresentation(
-  value: Record<string, unknown>,
-): Record<string, unknown> | undefined {
-  const hasDeclaration = ['version', 'traits', 'groupRole', 'priority', 'emptyMeaning'].some(
-    (key) => value[key] !== undefined,
-  );
-  const hasFields = value.fields !== undefined;
-  if (!hasDeclaration && !hasFields) return undefined;
-  try {
-    const projection = parseCognitiveSemanticsProjection({
-      version: value.version,
-      ...(value.traits === undefined ? {} : { traits: value.traits }),
-      ...(value.groupRole === undefined ? {} : { groupRole: value.groupRole }),
-      ...(value.priority === undefined ? {} : { priority: value.priority }),
-      ...(value.emptyMeaning === undefined ? {} : { emptyMeaning: value.emptyMeaning }),
-      ...(hasFields
-        ? {
-            fields: Array.isArray(value.fields)
-              ? value.fields.map(cognitiveFieldCandidate)
-              : value.fields,
-          }
-        : {}),
-    });
-    return projection === undefined ? undefined : { ...projection };
-  } catch {
-    return undefined;
-  }
-}
-
-function sanitizePresentation(value: unknown): Record<string, unknown> | undefined {
-  if (!isRecord(value)) return undefined;
-  const cognition = sanitizeCognitivePresentation(value);
-  const sanitized = {
-    ...(cognition ?? {}),
-    // T38 collection filters are contract declarations beside, not part of, V1 cognition.
-    ...(value.filters === undefined ? {} : { filters: value.filters }),
-  };
-  return Object.keys(sanitized).length === 0 ? undefined : sanitized;
-}
-
-function declaredFields(
-  properties: Record<string, unknown>,
-  overviewOnly: boolean,
-): SirenFieldPresentation[] {
-  const presentation = isRecord(properties.presentation) ? properties.presentation : undefined;
-  if (presentation === undefined || !Array.isArray(presentation.fields)) return [];
-  return presentation.fields.flatMap((entry) => {
-    const field = sanitizeFieldPresentation(entry);
-    return field === undefined || (overviewOnly && field.overview !== true) ? [] : [field];
-  });
-}
-
-function declaredFieldName(field: SirenFieldPresentation): string | undefined {
-  return /^properties\.fields\.([^.[\]]+)$/.exec(field.path)?.[1];
-}
-
-function sanitizeProperties(
-  properties: Record<string, unknown>,
-  overviewOnly: boolean,
-): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const key of COGNITIVE_PROPERTY_KEYS) {
-    const value = properties[key];
-    if (
-      typeof value === 'string' ||
-      typeof value === 'number' ||
-      typeof value === 'boolean' ||
-      value === null
-    ) {
-      result[key] = value;
-    }
-  }
-  const fieldPresentations = declaredFields(properties, overviewOnly);
-  const fields = isRecord(properties.fields) ? properties.fields : undefined;
-  if (fields !== undefined && fieldPresentations.length > 0) {
-    result.fields = Object.fromEntries(
-      fieldPresentations.flatMap((field) => {
-        const name = declaredFieldName(field);
-        return name === undefined || !(name in fields) ? [] : [[name, fields[name]]];
-      }),
-    );
-  }
-  const presentation = sanitizePresentation(properties.presentation);
-  if (presentation !== undefined) {
-    result.presentation = {
-      ...presentation,
-      ...(Array.isArray(presentation.fields) ? { fields: fieldPresentations } : {}),
-    };
-  }
-  return result;
-}
-
-function sanitizeAction(action: SirenAction): Record<string, unknown> {
-  return {
-    name: action.name,
-    title: action.title,
-    fields: action.fields,
-    ...(action['requires-confirmation'] === undefined
-      ? {}
-      : { 'requires-confirmation': action['requires-confirmation'] }),
-    ...(action.submission === undefined
-      ? {}
-      : {
-          submission: {
-            mode: action.submission.mode,
-            ...(action.submission.actors === undefined
-              ? {}
-              : { actors: [...action.submission.actors] }),
-            ...(action.submission.scopes === undefined
-              ? {}
-              : { scopes: [...action.submission.scopes] }),
-            ...(action.submission.reason === undefined ? {} : { reason: action.submission.reason }),
-          },
-        }),
-  };
-}
-
-function sanitizeGuardResults(entity: SirenEntity): Record<string, unknown>[] | undefined {
-  return entity['guard-results']?.map((entry) => ({
-    action: entry.action,
-    blocked: entry.blocked,
-    ...(entry.reason === undefined ? {} : { reason: entry.reason }),
-  }));
-}
-
-function summarizeCollectionMember(entity: SirenEntity): Record<string, unknown> {
-  return {
-    class: [...entity.class],
-    properties: sanitizeProperties(entity.properties, true),
-    actions: entity.actions.map(({ name, title }) => ({ name, title })),
-    ...(sanitizeGuardResults(entity) === undefined
-      ? {}
-      : { 'guard-results': sanitizeGuardResults(entity) }),
-  };
-}
-
-/** Provider-facing entity cognition; the complete Siren entity remains available over HTTP. */
-function sanitizeEntity(entity: SirenEntity): Record<string, unknown> {
-  return {
-    class: [...entity.class],
-    ...(entity.rel === undefined ? {} : { rel: [...entity.rel] }),
-    properties: sanitizeProperties(entity.properties, false),
-    actions: entity.actions.map(sanitizeAction),
-    links: entity.links.map((link) => ({
-      rel: [...link.rel],
-      ...(link.title === undefined ? {} : { title: link.title }),
-    })),
-    ...(sanitizeGuardResults(entity) === undefined
-      ? {}
-      : { 'guard-results': sanitizeGuardResults(entity) }),
-    ...(entity.entities === undefined
-      ? {}
-      : {
-          entities: entity.entities
-            .slice(0, MAX_COLLECTION_MEMBER_SUMMARIES)
-            .map(summarizeCollectionMember),
-        }),
-  };
-}
-
 /** Each decision discloses one freshly sanitized current entity, never old snapshots. */
 function describeObservation(context: DriverContext): string {
   return JSON.stringify(
@@ -303,7 +76,8 @@ function describeObservation(context: DriverContext): string {
 function describeSitemap(context: DriverContext): string {
   if (context.sitemap === undefined) return '{}';
   const disclosed = sliceSitemapDisclosure(context.sitemap, {
-    scope: context.app,
+    observedApplication:
+      context.observedApplication ?? observedApplication(context.sitemap, context.entity),
     currentRel: context.currentRel,
   });
   return JSON.stringify(
@@ -316,7 +90,9 @@ function describeSitemap(context: DriverContext): string {
       })),
       applications: disclosed.applications.map((application) => ({
         name: application.name,
+        ...(application.title === undefined ? {} : { title: application.title }),
         intent: application.intent,
+        ...(application.entry === undefined ? {} : { entry: application.entry }),
         flows: application.flows.map((flow) => ({
           name: flow.name,
           title: flow.title,
@@ -406,10 +182,15 @@ export function buildUserPrompt(context: DriverContext): string {
     `## 本轮合同读取位置 rel(不是客户端当前页面)\n${context.currentRel}`,
     `## 最近成功导航/呈现(历史完成事实，不是客户端当前页面)\n${JSON.stringify(context.lastNavigation ?? null, null, 2)}`,
     `## 当前消息的客户端可见视图(客户端观察，不是业务事实或授权)\n${JSON.stringify(context.clientView ?? null, null, 2)}`,
-    `## 当前 app/scope 的动态 sitemap 分层披露\n当前 scope 保留 surfaces/flows/actions；其他 scope 仅保留 rel + title 导航入口；capabilities 按 scope/flow 以摘要引用披露且不含 schema。执行仍以当前实体合同为准。\n${describeSitemap(context)}`,
+    `## 应用发现与当前观察的合同详情\n应用摘要用于发现；当前观察所属应用展开流程与能力详情，观察位置不改变用户的应用选择或授权。执行以当前实体合同为准。\n${describeSitemap(context)}`,
     `## 当前授权实体的认知投影(完整 HTTP Siren 合同不在 provider prompt 中)\n${describeObservation(context)}`,
     `## 结构化轨迹(仅 rel/op/outcome/result reference)\n${describeTrail(context)}`,
   ];
+  if (context.workingContext !== undefined) {
+    parts.push(
+      `## 当前工作线及显式关联对象（本步授权读取）\n${describeWorkingContext(context.workingContext)}`,
+    );
+  }
   if (executionAudit !== undefined && executionAudit.length > 0) {
     parts.push(
       `## 执行审计处境(事件日志机械投影，不是模型推断；integrity 错误不得补造理由)\n${JSON.stringify(executionAudit, null, 2)}`,
