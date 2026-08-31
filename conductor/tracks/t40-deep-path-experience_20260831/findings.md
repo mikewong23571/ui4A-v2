@@ -54,6 +54,23 @@
 - **证据**:`canvas-mechanical-labels.png`、`entity-page-raw-status.png`。
 - **复核状态**:当前代码成立。
 
+## F-09(P1,Phase E 新发现)动作表单受约束 JSON 字段无可用控件
+
+- **现象**(S1 走查实证):声明 `type:array/object` 的动作字段(写作 `requiredSections`/
+  `constraints`/`sources` 等)在 RJSF 当前 FieldTemplate/样式下只渲染 label,array 的
+  add 按钮无样式无文本,人类无法填写;提交时 RJSF 默认 `[]` 过 schema(无 minItems),
+  直达 executor 才以 `[http-500] document-agent profile editorial-default is not configured`
+  裸行炸出。
+- **影响**:写作类深路径的主表单对人类不可用;失败语义穿透到能力层,读面只剩机器错误。
+- **修复(2026-08-31,已闭环)**:`action-json-fields.ts` 投影谓词由「精确 `{}`」放宽为
+  「精确 `{}` 或 `type:array/object`」,投影 schema 保留合同 `title`(无 title 才回退机器名);
+  `parseActionFormData`/`initialActionFormData` 随清单(`unconstrainedJsonFields` →
+  `jsonTextFields`)同步覆盖。提交解析回真实 JSON 仍由原始 caller/full schema 双重裁决,
+  交互形状变化不放松校验。证据:`action-json-fields.test.ts`(10 用例,含 ajv 对原 schema
+  裁决)、`action-runner.t16.test.tsx` F-09 集成用例。
+- **遗留边界**:`{ title: 'x' }` 类「带 title 无 type」字段既非精确 `{}` 也非 array/object,
+  仍留 RJSF;后续发现此类字段再放宽(单独决策)。
+
 ## F-07(P2,现场待核)未登录行为不一致
 
 - **现象**(部署实例):未登录访问 `/` 302 跳 Keycloak;访问 `/meta` 渲染页面外壳+数据区报
