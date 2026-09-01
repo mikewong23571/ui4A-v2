@@ -1,0 +1,1 @@
+T25 Phase D DeepSeek tool-choice evidence: focused Vitest 50/50 passed; governance OK with existing 7-entry whitelist; deepseek-v4-flash NewAPI Chat Completions auto probe produced tool calls 6/6; scoped-context real-LLM article creation passed in 21.7s. required was rejected by provider thinking mode, so D42 preserves one-repair honest-failure semantics under auto.

@@ -1,0 +1,1 @@
+T22 Phase H live correction: Postgres admin/backup use numeric 70:70; Temporal server/UI/schema/namespace use verified 1000:1000, avoiding kubelet nonnumeric/root runAsNonRoot rejection. 54/54 contracts and real Helm lint/template/dry-run pass.

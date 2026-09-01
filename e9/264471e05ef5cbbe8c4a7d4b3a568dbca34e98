@@ -1,0 +1,22 @@
+Task: 区域组装 planner
+
+Summary:
+- Added a pure composition planner that assembles validated region surfaces into one layout/slot tree.
+- Namespaced subtree node ids without changing real binding subjects.
+- Added composition declaration provenance, canonical subject shape and stable Sidecar dependency union.
+- Rejected missing, duplicate, unknown, mismatched and invalid region inputs.
+
+Files:
+- packages/engine/src/presentation/compose.ts
+- packages/engine/src/presentation/compose.test.ts
+- packages/engine/src/presentation/index.ts
+- packages/engine/src/presentation/surface/types.ts
+- packages/engine/src/presentation/surface/validate.ts
+
+Why:
+A workspace must be assembled by the same binding-only Surface machine without per-region or domain branching.
+
+Verification:
+- 16 focused tests passed
+- @ui4a/engine typecheck passed
+- pnpm governance passed

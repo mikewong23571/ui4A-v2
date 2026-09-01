@@ -1,0 +1,18 @@
+T27 Phase A Task: spike 五问决断，落 DECISIONS.md D46
+
+Summary:
+- 决定首页以内嵌共享 Presentation 宿主承载 workspace:my-work。
+- 决定处境常显复用 URL-derived presence observation 与显式 URL 声明。
+- 将 presence site 一次性定为 workstation/meta，raw 保持模式。
+- 决定导航按站点组织并把零件表折叠进壳级系统区，同时保留画布入口。
+- 决定以 flow:<name> 与 meta/flow:<name> canonical rel 规则实现双桥。
+
+Files:
+- DECISIONS.md
+
+Why:
+在实现前冻结 T27 的关键架构分歧，避免首页渲染链、处境事实、站点语义、导航和跨站映射出现双路径。
+
+Verification:
+- pnpm exec prettier --check DECISIONS.md
+- git diff --check -- DECISIONS.md

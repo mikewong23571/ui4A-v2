@@ -1,0 +1,5 @@
+T27 principal my-work test alignment
+
+Live production authorization established that all three built-in my-work sources are principal surfaces. Runtime tests now expect complete my-work Sidecars in both local-demo and publishing scopes, while partial-region planning and promotion rejection use an explicit missing-region fixture. The generic partial-authorization and migration contracts remain covered without relying on an obsolete Application ownership assumption.
+
+Verification: runtime, sidecar route, and authorization migration DB suites 13/13 PASS.

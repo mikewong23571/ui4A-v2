@@ -1,0 +1,20 @@
+T28 Phase E Task: exact intent policy enters generic presentation
+
+Summary:
+- Added pure versioned exact-intent to FieldPresentationRole budget selection with canonical path dedupe/order, read fallback for unknown non-empty intents, and blank-intent fail-closed behavior.
+- Added exact policies for T30 built-in Review/Track/Follow region intents; actions, links, and collection members remain unconditional.
+- Made GenericSurfaceOptions.intent required and passed request/region/read intents through broker, composition, and generic Canvas adapters.
+- Added generic-intent-policy as a required definition Sidecar dependency so policy version drift invalidates/replans.
+- Extended semantic catalog relation property support and bumped its version to semantic-v2.
+- Added selector determinism/budget tests, generic path subset tests, compiled binding-only fast-check evidence, same-source production-intent composition evidence, and dependency invalidation evidence.
+
+TDD evidence:
+- Red: 4 expected failures (missing ./intent; read and composition still bound metadata; compiled property selector missing).
+- Green: pnpm vitest run --project unit packages/engine/src/presentation plus adjacent Web presentation suites => 20 files / 139 tests passed.
+- Green: pnpm vitest run --project db apps/web/src/engine/presentation/runtime.test.ts => 6 tests passed.
+- Green: pnpm --filter @ui4a/engine typecheck; pnpm --filter @ui4a/web typecheck.
+- Green: changed-file ESLint and Prettier; git diff --check.
+- Governance: GR1/GR2 passed; intent changes remain within the existing Presentation directory baseline after removing two redundant fixture provenance overrides. Whole-worktree size still reports concurrent, unstaged presentation-surface-host.tsx >500, outside this commit.
+
+Integration boundary:
+- presentation-surface-host.tsx and its test were deliberately excluded because concurrent action/raw/diagnostic work owns those files. Their generic fallback/test calls already carry the required explicit read intent in the shared worktree and must be verified by the integration commit.

@@ -1,0 +1,39 @@
+Task: prompt 预算断言
+
+Summary:
+- Added three parameterized prompt/wire budget scenarios for article reading, a business wizard, and meta definition governance.
+- Each fixture proves its unsliced sitemap exceeds 32 KiB while the scoped messages and real provider request body remain below 32 KiB.
+- Preserved current action tools and foreign navigation rels while rejecting capability schema leakage.
+
+Files:
+- packages/agent/src/llm/prompt-budget.test.ts
+
+Why:
+The 32 KiB decide wire ceiling is a mechanical disclosure gate and must include the actual tools projection, not just prompt text.
+
+Verification:
+- 4 files / 66 tests passed
+- Exact bytes: article messages=3878 wire=14666; wizard messages=3874 wire=14646; meta messages=3931 wire=14722
+- pnpm --filter @ui4a/agent typecheck
+- pnpm governance
+- Autonomous acceptance by the orchestrating agent.
+
+TDD note:
+This plan task is a post-Green budget assertion following the preceding disclosure implementation; its first run passed, so no artificial Red failure was created.
+
+Phase B autonomous verification report
+
+Automated commands:
+- NODE_OPTIONS=--no-experimental-webstorage pnpm check
+  Result: typecheck/lint/governance passed; 355 test files passed, 6 skipped; 2674 tests passed, 10 skipped.
+- CI=true NODE_OPTIONS=--no-experimental-webstorage pnpm e2e invariants
+  Result: 4 passed, 2 established skips; I5 replay hash 4c6822cece4b over 53 events / 30 rels.
+
+Scripted manual-equivalent verification:
+1. Confirm full HTTP sitemap fixtures still carry capability schemas.
+2. Confirm prompt-facing messages and wire bodies contain no schema marker/inputSchema/outputSchema.
+3. Confirm current entity action tools and foreign-scope navigation rel remain present.
+4. Confirm article/wizard/meta wire sizes are 14666/14646/14722 bytes, all <= 32768.
+
+Confirmation:
+Autonomously accepted by the orchestrating agent under conductor/workflow.md; all scripted expectations and full phase gates passed.

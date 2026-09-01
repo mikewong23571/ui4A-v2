@@ -1,0 +1,26 @@
+Task: 运行 disposable 认证探针
+
+Summary:
+- Added a disposable Keycloak 26.7.1 probe that creates and removes an isolated realm and uses real Chrome for Authorization Code + S256 PKCE.
+- Verified confidential client credentials, supported RFC 8693 internal-to-internal token exchange, subject/requester preservation, and rejection of public-client exchange.
+- Verified experimental delegation consent produces may_act; the subsequent standard exchange preserves human sub + agent azp but emits neither act nor may_act.
+- Documented the Istio/application authorization split and pinned official distribution/container digests.
+
+Files:
+- scripts/t22-keycloak-probe.ts
+- scripts/t22-evidence-contract.test.ts
+- conductor/tracks/t22-production-deployment-auth-runtime_20260824/{auth-probe.json,auth-probe.md,index.md,plan.md}
+
+Why:
+UI4A must base its identity model on observed Keycloak token semantics. The probe prevents falsely claiming that Keycloak directly supplies a stable JWT act chain or that Istio authentication is business authorization.
+
+Verification:
+- Red: focused contract failed because auth-probe.json was absent.
+- Live: Keycloak 26.7.1 start-dev + real Chrome PKCE + client credentials + token exchange completed successfully.
+- Delegation: may_act present before exchange; exchanged act=false and may_act=false.
+- Green: ./node_modules/.bin/vitest run --config vitest.t22-contract.config.mts => 6/6 passed.
+- Prettier, JSON parse, secret string scan, and git diff --check passed.
+- Disposable realm deleted; Keycloak stopped gracefully; ports and temporary node hosts configs cleaned.
+
+Known platform gap:
+The Nexus quay manifest is reachable, but containerd rewrites the HTTP API root to HTTPS and gets HTTP 400. No node mirror was changed; immutable image import remains Phase H work.

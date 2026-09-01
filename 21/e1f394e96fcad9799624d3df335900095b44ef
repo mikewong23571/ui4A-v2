@@ -1,0 +1,7 @@
+D35 single-replica browser session simplification.
+
+Replaced the PostgreSQL AuthPrivateStore with closure-private process memory. Opaque signed cookies, TTL, one-time state consumption, refresh, logout, and the independent session secret remain; production browser composition no longer opens a database or requires auth_private_records.
+
+Web restart intentionally clears browser login transactions and sessions and requires re-login. UI4A business events, Drafts, Runs, and projections remain PostgreSQL-backed and are unaffected.
+
+Main-agent verification: five focused files passed 43 of 43; Web typecheck, scoped ESLint, scoped Prettier, and git diff check passed.

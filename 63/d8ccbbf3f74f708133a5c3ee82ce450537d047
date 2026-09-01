@@ -1,0 +1,7 @@
+T22 Phase C shared production browser session store Green.
+
+Canonical production OIDC config now requires an independent sessionSecretRef whose Secret exists and does not reuse the client credential or clientId. Added explicit migration-owned auth_private_records DDL and a PostgreSQL AuthPrivateStore with TTL, cleanup, CRUD, and single-statement DELETE RETURNING take semantics.
+
+Main-agent verification: config plus real test-database store suites passed 50 of 50; Shared and Web typechecks passed; scoped ESLint passed with only the repository pages-directory notice; scoped Prettier and git diff check passed. Two independent adapters concurrently consumed exactly one record.
+
+Runtime request paths do not execute DDL and auth records remain outside events. Phase D still owns installing this schema through the versioned migration command and runtime versus migration grants.

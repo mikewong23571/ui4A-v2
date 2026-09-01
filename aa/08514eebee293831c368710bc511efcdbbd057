@@ -1,0 +1,7 @@
+T22 experimental scoped Runner Secret Helm projection.
+
+Worker receives only server-owned ui4a-runner-secrets plus runner-secrets.json key for dynamic one-shot Jobs; the full ui4a-runtime-secrets name remains limited to Web/Worker deployment configuration consumers. No Secret material is rendered.
+
+Verification: t22-k8s-runner-isolation, t22-helm-contract and t22-k8s-runtime-edge-contract (49 tests); Prettier; ESLint focused (configuration ignores these files); diff-check; Helm 3.16.3 lint/template on k8s-cp-1 via a temporary chart copy, 0 failures. Temporary directory removed. No cluster resources changed.
+
+Known experimental limit: no dynamic Runner NetworkPolicy is added in this release scope; NetworkPolicy hardening is deferred rather than falsely claimed.

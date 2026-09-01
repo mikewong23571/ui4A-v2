@@ -1,0 +1,1 @@
+Correction for T29 situation consumers: normalized ui4a:policy names to application policy names before assembly, and applied that normalization consistently to Chat, Entity, and presence scope authorization. Focused matrix/presence/chat/entity tests (20/20) and web typecheck passed.

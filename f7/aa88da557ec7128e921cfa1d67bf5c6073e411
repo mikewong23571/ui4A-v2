@@ -1,0 +1,7 @@
+Task: Phase E Temporal production config
+
+Summary: Extended canonical config for Temporal identities/test queue/TLS/external default+visibility PostgreSQL stores; unified four Web consumers on one closeable connection; added bounded Worker NativeConnection; fixed non-HA external-PG production contract.
+
+Verification: combined Phase E 14 files/124 tests; Temporal baseline 60/60 and focused 95/95; Shared/Web/Worker typechecks; lint/format green.
+
+Boundary: no Compose/Helm deployment or live Temporal startup; those remain G/H/I.

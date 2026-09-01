@@ -1,0 +1,50 @@
+Task: T28 Phase C structured chat citations
+
+Why:
+Expose canonical FactRef evidence as assistant terminal-message chips without parsing answer text, while preserving current URL scope/thread declarations and fresh Canvas authorization.
+
+Changes:
+- Added strict FactRef validation and exact-pair first-seen deduplication.
+- Joined canonical chat-message-appended citations to history by exact turnId.
+- Carried live final sources and refresh history citations through ChatUiMessage metadata.
+- Rendered accessible tail chips with URL-focus-derived aria-current and local Suspense.
+- Added pure citation Canvas href construction preserving only scope/thread with thread-target override.
+- Preserved legacy machine-text answers by attaching final sources to the latest terminal assistant message without text comparison or duplicate summary.
+- Added standing browser evidence and focused route/component/projection tests.
+
+Files:
+apps/web/src/app/api/chat/history/route.test.ts
+apps/web/src/app/api/chat/history/route.ts
+apps/web/src/app/api/chat/route-test-kit.ts
+apps/web/src/app/api/chat/route.test.ts
+apps/web/src/chat/citations.test.ts
+apps/web/src/chat/citations.ts
+apps/web/src/chat/conversation.test.ts
+apps/web/src/chat/conversation.ts
+apps/web/src/chat/history.ts
+apps/web/src/components/assistant-ui/thread.tsx
+apps/web/src/components/chat/chat-citations-live.test.tsx
+apps/web/src/components/chat/chat-types.ts
+apps/web/src/components/chat/citation-list.test.tsx
+apps/web/src/components/chat/citation-list.tsx
+apps/web/src/components/chat/use-chat-session.ts
+apps/web/src/presence/navigation.test.ts
+apps/web/src/presence/navigation.ts
+e2e/chat-citations.spec.ts
+
+TDD evidence:
+Red: missing citation parser/component/helper; navigation helper absent; conversation retained duplicate and malformed citations; history returned undefined citations for same-text distinct turns; live and refresh UI had no citation links.
+Green: pnpm vitest run on 7 focused files passed 42/42; dedicated live, legacy-machine-text, and history UI tests passed 3/3. Earlier full focused run with deterministic storage passed 82/82 before final legacy addition.
+
+Verification:
+- CI=true pnpm e2e e2e/chat-citations.spec.ts: 1 passed.
+- Combined citation + I3 run: citation E2E passed; I3 all-page clickable fuzz passed. The remaining I3 submission-control test was blocked by a concurrent raw-phase module move (RawContractDrawer old import missing), not citation behavior.
+- Web typecheck passed.
+- Next production build passed before the concurrent raw module move.
+- Changed-file ESLint passed.
+- Prettier check passed.
+- git diff --cached --check passed.
+- Governance cleared citation-owned file limits and old floating-chat baseline growth; the shared worktree still reported concurrent raw/canvas PresentationSurfaceHost and aggregate components size violations for the orchestrator to resolve.
+
+Boundaries:
+No protocol or event-schema changes; no Markdown interception, regex, answer-text scan, new endpoint, global citation selection state, or authorization shortcut.

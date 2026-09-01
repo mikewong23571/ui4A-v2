@@ -1,0 +1,14 @@
+Task: Close Kubernetes Writing Golden Story execution prerequisites
+
+Summary:
+- Web maps writing birth to the canonical production default profile without legacy env or request overrides; local compatibility remains.
+- Worker composes one canonical production Writing profile for prepare/execute/collect/verify/finalize, skips local Provider probing, and validates the prepared per-Run workspace.
+- Runner accepts only the normalized <canonical-base>/<sealed-runId>/agent workspace for Kubernetes oneshot delivery; base, cross-run and escape paths fail closed. Host daemon exact-root behavior remains.
+- Helm mounts the retained runtime-data PVC into Worker at /workspaces, shared with dynamic Jobs.
+
+Verification:
+- Focused production Writing/K8s/Helm: 101 tests passed.
+- Broader related regression: 146 passed, 1 skipped.
+- @ui4a/web, @ui4a/worker and @ui4a/agent-runner typecheck passed.
+- Helm lint passed; Helm template plus kubectl client dry-run passed; rendered Worker contains runtime-data:/workspaces.
+- No cluster mutation, real Run, image build/import, Compose, backup, realm or Secret change.

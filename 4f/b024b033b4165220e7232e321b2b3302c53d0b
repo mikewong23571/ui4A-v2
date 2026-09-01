@@ -1,0 +1,17 @@
+Task: Phase D health/readiness
+
+Summary: Added shared readiness adapters to Web /ready and diagnostic health, Worker starting/serving/draining with independent config/postgres/migration/bootstrap/replay/Temporal facts, and honest Runner backend-unavailable /ready seam. Runner build now bundles shared contract and Docker builder copies shared source.
+
+Verification: unified 11 files/79 tests; Worker follow-up 3 files/32; four workspace typechecks; Runner frozen-lock/build/dist health; root lint 0 errors; format/diff green.
+
+Boundary: optional Web capabilities may be degraded without removing safe readiness; Runner remains 503 until Phase F backend registration/delivery. Compose/K8s probe wiring remains Phase G/H.
+
+Phase D Verification & Checkpoint (autonomous acceptance)
+
+Gate: unset proxies; NODE_OPTIONS=--no-experimental-webstorage CI=true pnpm check => exit 0. 283 files passed/7 skipped; 2033 tests passed/13 skipped; all workspace typechecks; ESLint 0 errors with 6 pre-existing warnings.
+
+Evidence: migration/bootstrap 13/13 and production read-only boot; replay core 26/26 and expanded 82/82; readiness unified 79/79 plus Worker follow-up 32/32; Runner build/frozen lock/dist health; service definition boundary 25/25.
+
+Manual-equivalent: explicit migration CLI stable JSON, bootstrap receipt/replay hash, DDL/DML-denying production boot, Worker lifecycle drain state, Web /ready and Runner honest 503 are executable tests. Compose/K8s probe wiring remains Phase G/H.
+
+D35 boundary: single Web only; multi-replica atom/session and HA deferred.

@@ -1,0 +1,25 @@
+Task: worker delegated 路径收窄(显式正典)
+
+Summary:
+- Made scope mandatory across Chat delegation dispatch, Temporal workflow args, and each worker AgentStep.
+- Passed Situation.scope unchanged and set DriverContext.app from that explicit value.
+- Reused @ui4a/agent sliceSitemapDisclosure in the worker; schemas are removed and foreign navigation entries remain reachable.
+- Preserved delegation event payloads and startRel semantics.
+
+Files:
+- apps/web/src/app/api/chat/route.ts and delegated/auth tests
+- apps/web/src/temporal/delegation.ts and runtime tests
+- apps/worker/src/workflows.ts and workflows-delegation.test.ts
+- apps/worker/src/delegation.ts and delegation/auth/kill fixtures
+- packages/agent/src/contract/disclosure.test.ts
+
+Why:
+Delegated execution has no client view; dispatch-side explicit scope is canonical and both execution paths must consume one disclosure implementation.
+
+TDD evidence:
+- Red: 5 expected failures for missing chat scope, missing workflow/step scope, unsliced DriverContext, and absent shared implementation reference.
+- Green: focused tests passed (orchestrator: 6 files / 61 tests; subagent extended set: 8 files / 70 tests).
+- pnpm --filter @ui4a/web typecheck
+- pnpm --filter @ui4a/worker typecheck
+- pnpm governance
+- Autonomous acceptance by the orchestrating agent.

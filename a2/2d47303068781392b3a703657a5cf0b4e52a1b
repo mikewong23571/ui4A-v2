@@ -1,0 +1,1 @@
+Correction: a56a2c5 extracted situationForChat but left the route on the inline assembly, breaking the T29 consumer-matrix assertion. The route now delegates to situationForChat; focused chat route suites (54 tests) and the consumer matrix pass.

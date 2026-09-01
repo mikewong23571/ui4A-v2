@@ -1,0 +1,9 @@
+T22 Phase C CLI and Agent identity Green.
+
+Bearer CLI requests now send no self-reported principal, policy scope, actor, or channel; token-missing local demo retains the compatibility adapter. Production exec-plan resolves one trusted identity for every step, Meta Draft create injects the trusted policy scope, and both paths persist identity audit.
+
+Added a server-owned confidential Agent token provider for OAuth2 Client Credentials and RFC 8693 Standard Token Exchange. Fixed endpoint, client, audience, grant types, and allowed scopes cannot be task-overridden. Token responses remain opaque, Client Credentials and exchange response shapes are grant-aware, and exchanged scopes may not exceed the current request.
+
+Main-agent verification: seven focused files passed 68 of 68 including real test-database route audit; CLI typecheck and build passed; Web typecheck passed; scoped Web ESLint passed with only the repository pages-directory notice; scoped Prettier and git diff check passed.
+
+Live client registration, secrets, realm import, and token exchange acceptance remain the next Keycloak bootstrap task. The provider does not decode tokens as authority; existing request verification remains the trust boundary.

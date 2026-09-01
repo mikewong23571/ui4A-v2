@@ -1,0 +1,5 @@
+T22 Phase I platform-neutral fault-injection operator
+
+Added the exact 11-scenario Kubernetes/Compose inventory and a fully injected, fail-closed lifecycle runner. The operator owns no kubectl, Docker, network, process, deployment, or Secret primitive. It validates a canonical scenario, requires a ready zero-active-Run pre-state, admits exactly one reversible mutation receipt, verifies degraded/not-ready behavior with zero false successes and unauthorized side effects, always invokes restore after lifecycle entry, checks equal or explicitly replaced post-state, and permits exactly one CAS-enforced retry. Every failure maps to a stable phase code without retaining hook messages or receipts.
+
+Verification: CI=true pnpm vitest run scripts/t22-fault-injection.test.ts (3/3); strict standalone TypeScript for module and test; Prettier and diff-check. No live fault, scale, stop, NetworkPolicy, RBAC, process kill, deployment, or Secret read occurred.

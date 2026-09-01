@@ -1,0 +1,8 @@
+T27 mothership acceptance regression fix
+
+Revision 44 live browser acceptance authenticated successfully but the my-work surface failed with scope_insufficient for inbox and delegations while threads remained readable. The sitemap declared only threads as principal-scoped even though all three are user-level my-work composition sources. Added the failing declaration regression and marked inbox/delegations as principal surfaces; no projection, event, or authorization bypass was added.
+
+Verification:
+- Red: service-sitemaps [undefined, undefined, principal]
+- Green: service-sitemaps, application-scope, request-identity scope coverage, entity production auth: 19/19 PASS
+- Prettier and diff checks: PASS

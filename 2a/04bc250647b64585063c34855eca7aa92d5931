@@ -1,0 +1,7 @@
+Task: Phase E recovery consistency (database/workspace)
+
+Summary: Added repeatable-read authority fingerprint and five-plane projection rebuild proof; added portable Coding Git evidence plan and safe Writing/Authoring archive manifests.
+
+Verification: DB recovery 3/3, workspace 18/18, Web+Worker typechecks, lint/format green. No real dump/restore/git/tar/network.
+
+Evidence: projection rebuild preserves event high-water/count/payload/run/business authority hash and excludes Secret canary; Coding linked worktrees cannot be direct-tarred.

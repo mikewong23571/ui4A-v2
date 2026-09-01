@@ -1,0 +1,24 @@
+Task: Phase B checkpoint production entrypoint coverage
+
+Summary:
+- Added direct Web instrumentation startup tests.
+- Refactored Runner command dispatch for injected testing while preserving direct process behavior; oneshot remains unavailable with exit 78 until Phase F.
+- Added Runner HTTP lifecycle, invalid port, daemon close, health/version/404 tests.
+- Extracted Worker startup composition so production Temporal parameters, preflight ordering, local fallback, signals, drain, health close, and connection close are directly tested.
+- Added Worker health handler tests for live/version/404/invalid ports.
+
+Files:
+- apps/web/src/instrumentation.test.ts
+- apps/agent-runner/src/main.ts and main.test.ts
+- apps/agent-runner/src/runtime.ts and runtime.test.ts
+- apps/worker/src/main.ts
+- apps/worker/src/worker-startup.ts and worker-startup.test.ts
+- apps/worker/src/runtime-health.ts and runtime-health.test.ts
+
+Verification:
+- Orchestrator focused rerun: 6 test files passed, 38 tests passed.
+- Web, Runner, Worker typecheck passed.
+- Runner and Worker production build passed.
+- Compiled Runner oneshot exited 78 with structured unavailable JSON.
+- Worker dist/workflows.js contained no startup, health, preflight, or node:http code.
+- git diff --check passed.

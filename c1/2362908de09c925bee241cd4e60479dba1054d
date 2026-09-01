@@ -1,0 +1,21 @@
+Task: 内建声明注册表与 my-work 首声明
+
+Summary:
+- Added a validated, deeply frozen built-in composition registry in the web Presentation adapter.
+- Registered my-work with waiting-for-me/inbox, in-motion/delegations and work-lines/threads regions.
+- Added fail-closed workspace subject resolution without treating ordinary rels as compositions.
+- Exported the shared composition id parser so declaration and workspace grammars cannot drift.
+
+Files:
+- apps/web/src/engine/presentation/compositions.ts
+- apps/web/src/engine/presentation/compositions.test.ts
+- packages/shared/src/presentation/composition.ts
+- packages/shared/src/presentation/composition.test.ts
+
+Why:
+T27 needs an app-neutral declared workspace aggregate, while business sitemap/entity truth must remain unchanged.
+
+Verification:
+- 39 focused tests passed
+- @ui4a/web typecheck passed
+- pnpm governance passed

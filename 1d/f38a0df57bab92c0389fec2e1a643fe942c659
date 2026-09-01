@@ -1,0 +1,19 @@
+Task: Phase C Principal review corrections
+
+Summary: Bound policy scope to server-owned Applications across Golden sitemap/entity/exec/plan and Meta routes; prevented RFC8693 subject scope expansion and reverified delegated sub+azp; fixed CLI HTTPS, OIDC/JWKS redirect, bounded process sessions, fixed realm/config/secret invariants, and persisted agent/service human-approval rejections with policy-scope audit.
+
+Files: 42 auth, route, CLI, shared config, engine audit, Keycloak import/bootstrap and test files.
+
+Verification: NODE_OPTIONS=--no-experimental-webstorage CI=true pnpm check => exit 0; 275 files passed, 7 skipped; 1973 tests passed, 13 skipped; all workspace typechecks; ESLint 0 errors (7 pre-existing warnings). Focused Phase C route/auth/realm suites and approval DB matrix also passed.
+
+Why: Principal review found Golden-path scope confusion, exchange privilege expansion, credential redirect/HTTP exposure, unbounded session state, realm/config mismatch, and approval rejection audit gaps. D35 remains single-replica and fixed-realm; no HA, online reconciliation, act, rotation, or comprehensive route OIDC added.
+
+Phase C Verification & Checkpoint (autonomous acceptance)
+
+Automated gate: unset all proxy variables; NODE_OPTIONS=--no-experimental-webstorage CI=true pnpm check => exit 0. All 7 workspace typechecks passed; ESLint 0 errors with 7 pre-existing warnings; Vitest 275 passed/7 skipped files and 1973 passed/13 skipped tests.
+
+Story evidence: fixed Keycloak realm/config/bootstrap 82/82; consolidated Phase C auth/route/realm corpus 163/163; production approval route+DB audit 10/10; four production business/meta route conformance files 12/12; existing local confirmation/plan regression 38/38; CLI regression 17/17. Browser Code+PKCE/session, CLI external Bearer, Chat token exchange, Worker per-Activity client credential, bounded same-origin fetch, sub+azp audit, agent approval rejection and realm import/check/skip are mechanically covered.
+
+Autonomous manual-equivalent verification: executable route/composition tests cover login callback/session resolution, identity derivation, Golden contract fetches, approval rejection persistence and Keycloak fake Admin import/skip. Real Compose/Istio/Keycloak/K8s edge evidence is intentionally deferred to Phases G-H-I and is not claimed here.
+
+Declared exclusions: auth-surface.md remains authoritative for public, credentialed, shared-secret and deferred routes; comprehensive route/S2S OIDC, multi-replica session/atom, act, realm reconciliation/online upgrade, automatic rotation and HA are outside D35 v0.1 Phase C.

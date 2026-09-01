@@ -1,0 +1,1 @@
+T28 integration migration after first full check. Updated standing fixtures for semantic-v2 intent cropping and the local raw-contract control; no production behavior changed. Red: pnpm check found 3 failures. Green: focused 3 files / 13 tests. Full check rerun follows.

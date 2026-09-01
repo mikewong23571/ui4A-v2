@@ -1,0 +1,9 @@
+T22 Phase C Keycloak realm bootstrap Red.
+
+Defined ten executable contracts for one Keycloak 26.7.1 realm artifact shared by Compose and Kubernetes, confidential PKCE Web and service-account Agent clients, Standard Token Exchange, API audience, permission and policy scopes, approval-eligible human roles, Secret-referenced fixture users, and CLI external Bearer consumption.
+
+Reconciliation contracts require create, noop, and managed drift updates while preserving existing fixture user credentials, profiles, roles, and all operator-owned realm data. Plans contain Secret references only.
+
+Main-agent Red proof: 10 of 10 failed solely because the planned realm artifacts and pure reconciler are absent. No network, Keycloak, Docker, K8s, environment, or real Secret participated. Prettier and git diff check passed.
+
+This Red defines planning and artifacts; a subsequent executable Admin API adapter remains required before the bootstrap task can be marked complete.

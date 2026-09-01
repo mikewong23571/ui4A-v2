@@ -1,0 +1,24 @@
+Task: key 与 recipe slot 一般化
+
+Summary:
+- Generalized promotion to exact ordered slot bindings and per-source parameterization.
+- Enforced complete Recipe slot order/kind and zero unresolved slot subjects after instantiation.
+- Added subjectShape-aware multi-slot runtime selection.
+- Kept single-subject as the explicit subject/entity degeneration.
+- Added fail-closed promotion route behavior until workspace region slot context is wired in Phase E.
+
+Files:
+- packages/engine/src/presentation/promotion.ts and tests
+- packages/engine/src/presentation/recipe/recipe.ts and tests
+- packages/engine/src/presentation/sidecar.test.ts
+- apps/web/src/engine/presentation/recipe-selection.ts and tests
+- apps/web/src/engine/presentation/runtime.ts
+- apps/web/src/app/api/presentation/sidecar/route.ts and tests
+
+Why:
+Recipe identity and promotion must be parameterized by the full declared region shape, not a fixed subject slot.
+
+Verification:
+- 36 focused tests passed
+- engine/web typecheck passed
+- pnpm governance passed

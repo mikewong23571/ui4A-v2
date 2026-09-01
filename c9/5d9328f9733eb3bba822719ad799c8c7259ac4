@@ -1,0 +1,1 @@
+T23 收口(自治验收):净 HEAD pnpm check exit 0(346 文件/2602 测试),CI=true pnpm e2e invariants 4 passed。验收判据全满足:governance 并入 check;依赖例外 2 条(db 存储边界 + kill 测试引擎真身);compatAllowlist 无 pendingRemoval;size-baseline 仅剩 4 个 T22 所有条目(D40);AGENTS.md GR1-GR5 迁移;T1-T21 归档。

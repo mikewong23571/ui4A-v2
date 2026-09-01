@@ -1,0 +1,40 @@
+T27 Phase A Task: spec/plan 回改对齐 D46
+
+Summary:
+- 把 spec 的五项开放决策改为 D46 已决投影。
+- 将 Phase B–F 的任务合同具体化为共享宿主、URL-derived presence observation、workstation/meta、站点导航与系统区、canonical flow 双桥。
+- 删除推荐默认、可降级和未决选择措辞。
+
+Files:
+- conductor/tracks/t27-workstation-site_20260825/spec.md
+- conductor/tracks/t27-workstation-site_20260825/plan.md
+
+Why:
+让后续实现只执行 D46 的单一路径，防止已否决形态在任务执行中复辟。
+
+Verification:
+- rg 未决选择措辞（零命中）
+- pnpm exec prettier --check <spec> <plan>
+- git diff --check
+
+T27 Phase A Verification (自治验收)
+
+Scope:
+- DECISIONS.md
+- conductor/tracks/t27-workstation-site_20260825/spec.md
+- conductor/tracks/t27-workstation-site_20260825/plan.md
+
+Automated verification:
+- pnpm check: PASS (372 files passed, 6 skipped; 2889 tests passed, 10 skipped; governance OK)
+- CI=true pnpm e2e invariants: PASS (4 passed, 2 skipped)
+- pnpm exec prettier --check affected Markdown: PASS
+- unresolved-choice rg audit: zero matches
+
+Manual-equivalent verification:
+1. Inspect D46 and confirm all five decisions include constraints, adopted shape, and rejected alternatives.
+2. Inspect T27 spec Phase A projection and confirm it states one implementation path.
+3. Inspect T27 Phase B-F tasks and confirm shared host, URL-derived observation, workstation/meta, system navigation, and canonical flow bridges are explicit.
+Expected: no open recommendation or deferral remains; application runtime behavior is unchanged in this documentation-only phase.
+
+Confirmation:
+- 自治验收（conductor/workflow.md authorization）：automated gates and scripted document audit satisfy the phase checkpoint.

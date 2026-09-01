@@ -1,0 +1,7 @@
+T22 Phase C browser authentication lifecycle Red.
+
+Added 19 deterministic cases for Authorization Code plus S256 PKCE, state and nonce, safe return target, parallel tabs and replay rejection, authenticated opaque host cookies, refresh and rotation, absolute expiry, revocation, logout, provider outages, and convergence into the existing trusted request identity adapter.
+
+Main-agent Red proof: the single focused file failed 19 of 19 solely because the planned browser-session module does not exist. No network, random clock, database, production code, or deployment mutation participated.
+
+Green boundary must use a shared auth-private store adapter for multi-replica production; an in-process Map is test-only and must not be represented as production persistence. Tokens and login transactions must never enter the UI4A business event log.

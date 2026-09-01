@@ -1,0 +1,25 @@
+Task: canvas 挂载与抽屉组合信息
+
+Summary:
+- Hydrated one workspace Sidecar Surface from its freshly authorized entity-contract dependency roots.
+- Removed any empty-dependency fallback to the workspace query focus.
+- Extended mechanical explanation with declaration id/version, ordered region availability and declaration provenance.
+- Rendered composition mechanism details only inside the existing Why drawer, with no new controls or region renderers.
+- Added single-Surface/three-slot, partial visible-only hydration, no-leak and first-screen honesty tests.
+
+Files:
+- Engine Sidecar explanation and tests
+- Web Canvas body/Why drawer/Sidecar actions and tests
+- Presentation hydration/compiler tests and Sidecar explain route tests
+
+Why:
+Canvas must consume the composed binding-only tree without treating the workspace virtual subject as an entity or exposing denied region sources.
+
+Verification:
+- Main focused run: 19 files / 156 tests passed
+- Security correction run: 4 files / 26 tests passed
+- Independent re-audit: PASS (2 files / 11 tests)
+- engine/web typecheck and pnpm governance passed after baseline fe84a30
+
+Governance:
+T30 in-flight baselines: engine Presentation 4532/4000; web components 4491/4000.

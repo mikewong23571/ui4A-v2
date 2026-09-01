@@ -1,0 +1,1 @@
+T26 Phase C Task — 开放 sitemap 验收。\n\nSummary: 将两处闭式 surface 全量快照迁移为必要 surface 的开放存在性/字段/可导航断言，并继续拒绝 meta surface 混入 business sitemap。\nFiles: apps/web/src/app/api/contract.test.ts; e2e/s2-meta.spec.ts。\nWhy: 合法新增 threads surface 不应被旧实现清单反向阻塞。\nRed: 假想新增 threads 使旧严格深等失败；Green: contract 14 tests, Playwright static load 3 tests, governance pass。

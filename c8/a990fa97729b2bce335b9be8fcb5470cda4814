@@ -1,0 +1,3 @@
+Dependency gate init containers use immutable images.adminWorker across Deployments and finite Jobs. This prevents unrelated Temporal/Keycloak rollouts during rolling Worker image refresh while retaining exact Job PodTemplates.
+
+Verification: Helm contracts 49 passed; final mothership Helm server dry-run passed; deployed revision 18 with state services remaining ready.

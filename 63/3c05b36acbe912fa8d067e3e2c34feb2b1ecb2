@@ -1,0 +1,38 @@
+T22 Phase G Compose live identity evidence — 2026-08-24
+
+Scope and release
+- Rootless Compose release images: 9f7729a12f4553ed47f75d25e69b0ce0fe0f37a7; operator checkout accepted as descendant.
+- No token, client secret, password, refresh token, session value, or private key was written to stdout, files, or this note.
+
+U1 base deployment
+- compose:t22 up completed with PostgreSQL, Temporal, Temporal UI, Keycloak, Edge, Web, Worker, and container Runner healthy; admin/schema/migration/realm/PKI jobs exited 0.
+- Repeated up completed; PKI reported reused, realm-bootstrap reported compatible skip, migration replay hash stayed stable, and Temporal namespace remained registered with 72h retention.
+- This run started from retained prepared volumes, not an authorized destructive empty-volume reset; absolute clean-start and Golden Story remain outside this evidence.
+
+U3 browser identity
+- Isolated system Chrome followed Authorization Code + PKCE S256 through Keycloak and Web callback, restored returnTo=/events, and obtained authenticated sitemap HTTP 200.
+- __Host session evidence: HttpOnly=true, Secure=true, SameSite=Lax, Path=/; no cookie value recorded.
+- POST logout reached the canonical Keycloak logout flow, removed the session cookie, and the subsequent sitemap request returned 401.
+- Event evidence: seq39 confirmation-requested recorded the verified human subject, actor=human, channel=oidc, policyScope=publishing, humanApprovalEligible=true; seq43/44 retained the same human identity despite forged actor/principal request fields.
+
+U4 external CLI Bearer
+- A real ui4a-agent client-credentials Bearer (claims observed only as sub/azp/aud/scope) drove the built ui4a CLI in an ephemeral rootless host-network container.
+- doctor health/business/meta probes all returned 200 after authenticated Meta discovery was exposed; apps list, flows list, entity get, and action list succeeded for publishing scope.
+- The same command without a token returned stable AUTH HTTP 401.
+- Event seq41 supplies application identity evidence for the service credential: actor=agent, channel=oidc, humanApprovalEligible=false; forged actor=human/principal did not alter the recorded identity.
+
+U5 RFC8693 delegation
+- A fresh browser Authorization Code + PKCE human token was exchanged server-side with ui4a-agent using RFC8693.
+- Exchanged claims preserved human sub, set azp=ui4a-agent and aud=ui4a-api, omitted act, and reduced scopes to ui4a:read/ui4a:write/ui4a:policy:publishing; every delegated scope was a human-token subset.
+- Requesting ui4a:approve plus governance scope returned HTTP 400 invalid_scope.
+- A deliberately schema-invalid delegated business action returned 422 and event seq33 action-rejected recorded principal=human sub, actor=agent, channel=oidc, policyScope=publishing, delegation source=token-exchange-sub-azp and actorClientId=ui4a-agent; forged principal/actor fields were ignored.
+
+U6 human-only approval
+- Safe fixture post:compose-u6-fixture-1787588896633 was created through four real human Siren actions; archive returned confirmation:c1 pending with approve/reject actions.
+- ui4a-agent service token approve returned 422 and confirmation stayed pending; event seq41 reason actor-is-human=false.
+- Human-sub delegated agent token approve returned 422 and confirmation stayed pending; event seq42 reason actor-is-human=false with canonical sub+azp delegation.
+- Browser human session intentionally self-reported actor=agent/principal=forged-agent, but approve returned 200, confirmation became approved, fixture became archived, and seq43/44 recorded the verified human identity.
+
+Persistence and exclusions
+- After another non-destructive compose:t22 up, realm-bootstrap still skipped, browser login/session worked, and seq41-44 remained queryable.
+- U7/U8 Agent Run and Runner Golden Story were not executed or claimed; backup/restore, destructive clean, K8s, and mothership were untouched.

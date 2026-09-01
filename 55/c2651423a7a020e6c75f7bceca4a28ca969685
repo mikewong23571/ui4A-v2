@@ -1,0 +1,1 @@
+T28 Phase A task: spike five decisions. Read-only inspection covered action submission paths, canonical chat citation persistence/render gaps, raw contract access, generic intent fallback, and diagnostic compilation. D47 records adopted and rejected options with D45 non-silent degradation explicitly preserved. Verification: prettier; git diff --check.

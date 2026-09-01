@@ -1,0 +1,1 @@
+T26 Phase A — spike 五问决断。\n\nSummary: 在 DECISIONS.md 新增 D44，确定 Work Thread 的显式引用成员规则、生命周期、principal ownership、跨 scope 授权、收编而非复制以及 presence/chat 边界。\nFiles: DECISIONS.md。\nWhy: 先固定零第二真相、CLI 正典和授权边界，再实施 fold 与合同，防止以 chat/session 隐式聚合。\nVerification: git diff --check；自治验收。

@@ -1,0 +1,1 @@
+T22 Phase H regression: Postgres 17 Alpine runtime identity verified as uid/gid 70; TLS handoff root init capabilities and 70:70 private-key ownership are now contract assertions.

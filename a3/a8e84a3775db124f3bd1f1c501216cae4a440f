@@ -1,0 +1,20 @@
+Task: 单主体退化统一
+
+Summary:
+- Extracted assembleSurfaceRegions as the shared composition primitive.
+- Routed generic single-subject normal and diagnostic surfaces through a subject region wrapper.
+- Preserved binding, dependency and provenance semantics while namespacing subtree ids.
+- Added deterministic normalize/serialize/hash and semantic-equivalence coverage.
+
+Files:
+- packages/engine/src/presentation/compose.ts
+- packages/engine/src/presentation/surface/generic.ts
+- packages/engine/src/presentation/surface/surface.test.ts
+
+Why:
+Single-subject presentation is the one-region degeneration of the composition machine; retaining an unwrapped path would create two presentation architectures.
+
+Verification:
+- All engine presentation tests passed (67/67)
+- @ui4a/engine typecheck passed
+- pnpm governance passed

@@ -1,0 +1,56 @@
+Phase B checkpoint verification report
+
+Target functional commit:
+- c6092620a5c792c68aff6aa87a2b2938f23377e9
+- Previous checkpoint: f50b8af
+
+Phase scope:
+- Canonical production configuration and startup preflight.
+- Web, Worker, and Agent Runner OCI images.
+- Experimental release identity and public non-GA metadata.
+- Direct production entrypoint coverage and explicit standalone bootstrap.
+
+Automated verification:
+1. Full checkpoint command before final entrypoint supplements:
+   NODE_OPTIONS=--no-experimental-webstorage CI=true pnpm check
+   Result: all 7 workspaces typechecked; ESLint 0 errors and 7 existing warnings; 249 test files passed, 7 skipped; 1752 tests passed, 13 skipped.
+2. Production config suite: 3 files, 48 tests passed; shared/web/worker typecheck passed.
+3. OCI and process suite: 4 files, 14 tests passed; Web, Worker, Runner production builds passed.
+4. Release suite: 10 files, 41 tests passed; five workspace typechecks and CLI build passed; CLI --version and -V passed without config or network.
+5. Checkpoint entrypoint supplements: 6 files, 38 tests passed; Web, Worker, Runner typecheck passed; Worker and Runner builds passed.
+6. Standalone gate regression: 1 file, 6 tests passed; Web typecheck passed.
+7. Explicit bootstrap and OCI regression: 3 files, 20 tests passed; Web typecheck and production build passed.
+8. Phase-scoped Prettier check for all changed TS, TSX, MTS, MJS, JSON, CSS, and Markdown files passed; git diff --check passed.
+9. Repository-wide pnpm format:check still reports 45 pre-existing files outside the T22 change scope. They were not rewritten.
+
+Current-SHA image evidence:
+- ui4a/web@sha256:2699bc04cd103fd6f622da3a5dedd0798958a5b6f3c8fb29ce4f56eee77ccdca
+- ui4a/worker@sha256:4481cb1547bdb05d4d82f4f33ff6d4f18a561a59507c0201550721a9845537c0
+- ui4a/agent-runner@sha256:ef3a8aef6c35f1a15df30755eff01b07f67bb4f06e208b8422b1e31f112338fb
+- All three report User=node, version 0.1.0-experimental.1, revision c6092620a5c792c68aff6aa87a2b2938f23377e9, and experimental channel.
+- All three images remain present in the local Docker daemon at checkpoint completion.
+
+Autonomous manual-equivalent verification:
+1. Web production image with UI4A_DEPLOYMENT_PROFILE=production and missing settings exited 1 before server import. Log contained only the bounded bootstrap error and never Ready.
+2. Web local image ran with read-only root and declared tmpfs paths; /live and /version returned canonical version, tag, Git SHA, build date, experimental channel, and ga/productionReady/sla/lts all false.
+3. Runner ran with read-only root and declared tmpfs paths; health returned canonical metadata; oneshot exited 78 with structured status unavailable.
+4. Worker --version ran with read-only root. With a controlled Temporal dev server, the workflow bundle compiled, Worker entered RUNNING, and /live returned canonical metadata. Temporary Worker and Temporal processes were stopped and ports cleared.
+5. CLI --version and -V returned ui4a v0.1.0-experimental.1 (experimental) without endpoint config.
+6. Production config negative corpus rejected demo identity, localhost/loopback fallbacks, default Temporal namespace, missing/empty Secret references, floating Runtime images, root workspaces, request overrides, and backend fallback without leaking Secret canaries.
+
+SBOM and vulnerability status:
+- Not passed and not claimed.
+- Host has no syft, grype, or Docker Scout.
+- Internal daocloud denied or timed out for anchore/syft and anchore/grype; docker-hosted and docker-quay catalogs do not contain them.
+- Exact syft CycloneDX and grype high-severity commands are declared in deploy/oci/image-contract.json.
+- Execution remains a mandatory Phase J release gate.
+
+Operational cleanup disclosure:
+- The delegated image task earlier ran docker builder prune --force before the orchestrator no-prune message arrived, removing 4.588GB of rebuildable BuildKit cache only.
+- During disk-pressure recovery, the orchestrator removed only explicitly identified UI4A verification images and task-specific BuildKit cache IDs, then rebuilt the final three images above. Those removed items were reproducible artifacts; no volume or PostgreSQL data was removed.
+- Docker events also show a concurrent unused-image cleanup at 05:00-05:02 UTC that removed unrelated stopped containers and unused tagged images. Its origin could not be proven from daemon logs. Running ui4a-postgres and its named volume remained healthy; no volume-delete event occurred. Unrelated removed images are recoverable by pull/build, while stopped container metadata is not automatically restored.
+
+Confirmation:
+- Autonomous acceptance performed by the orchestrating agent under conductor/workflow.md.
+- Phase B user outcomes are met for config, builds, runtime startup, version reporting, and current-SHA image smoke.
+- No GA, production-ready, SLA, LTS, SBOM, or vulnerability-pass claim is made.

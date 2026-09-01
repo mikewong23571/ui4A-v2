@@ -1,0 +1,5 @@
+T22 Kubernetes auth edge canonical realm follow-up
+
+Self-review found that the fixed /realms/ui4a edge inventory still accepted an issuer value for another realm. The pure renderer and Helm values schema now require the canonical configured Keycloak host with exact /realms/ui4a issuer path and no query/fragment, preventing issuer/edge route drift.
+
+TDD: one focused Red failed because /realms/other rendered; Green auth edge/runtime tests 10/10. Strict TypeScript, JSON parse, Prettier and diff check passed. Helm 3.16.3 lint/template and kubectl 1.31 client dry-run passed with the mothership overlay. No live cluster mutation.

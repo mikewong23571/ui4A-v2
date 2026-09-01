@@ -1,0 +1,17 @@
+Task: 起点事实链测试(Red)
+
+Summary:
+- Added a pure start-chain contract covering string focus, selection skipping, scoped application entry, and site fallbacks.
+- Added mechanical assertions for a two-input API, zero fetch probing, and no lexical matching dependencies.
+
+Files:
+- apps/web/src/chat/start-chain.test.ts
+
+Why:
+The fact-based start contract must be executable evidence before replacing the heuristic resolveStartRel path.
+
+Red evidence:
+- pnpm vitest run apps/web/src/chat/start-chain.test.ts
+- Expected failure: Cannot find module './start-chain'; 0 tests executed.
+- git diff --check
+- Autonomous acceptance by the orchestrating agent.

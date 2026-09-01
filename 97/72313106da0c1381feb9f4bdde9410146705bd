@@ -1,0 +1,1 @@
+T28 full E2E migration. Red: full suite exposed three standing assertions that counted the new local raw control as a business action, expected raw inside why, or treated the action-contract legend as a fact. Green: exact three failing stories rerun 3/3. Production change only adds a stable test id to the contract legend. Full suite rerun follows.

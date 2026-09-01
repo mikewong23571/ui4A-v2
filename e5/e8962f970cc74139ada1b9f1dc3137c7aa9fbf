@@ -1,0 +1,1 @@
+T22 Phase H PKI: runtime inventory schema v2 adds Postgres server leaf bound to canonical host and exact service SANs; validates chain/key/mode/reuse/partial/host drift. Verified 77 Runner tests, typecheck/build/lint/format, and real OpenSSL created-to-reused smoke.

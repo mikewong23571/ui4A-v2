@@ -1,0 +1,13 @@
+T22 收口验收报告(2026-08-27,自治验收)
+
+裁决依据:用户指令'剩余验证已过期则不再验证';DECISIONS.md D52;D37 现场证据定格;release/v0.1.0-experimental.1 bundle。
+
+过期裁定不再补跑:Phase G Compose story corpus 复跑与 restart/dual backends smoke、Phase I K8s/Host 双后端 Agent Run、Phase J T22 专项全量门与最小三次 Runtime Run。理由:重跑验证的是 T24–T34 后续演进而非发布物 d5557bf;质量门已常驻化(T33 全量 e2e 52 passed;T34 pnpm check 终绿+rev52 生产走查,均 2026-08-27)。
+
+收口现场验证(本会话实测):
+1. typecheck:@ui4a/shared|engine|agent|agent-runner|cli|web|worker 全部 tsc --noEmit 绿。
+2. lint:eslint . — 0 errors / 12 既有 warnings。
+3. governance:pnpm governance OK(GR1 两条登记例外;GR2 pending removal 0;GR3 baseline remaining 9 条均为已登记 shrink-only)。
+4. vitest 全量:3062 passed / 10 skipped(环境性跳过:Temporal dev 7233 不可达、真实 Provider 门控);scripts/t22 34 套 311 用例绿(归档路径同步后复跑确认)。
+
+变更:16f5838(track 收口文档+注册表)与 e2b4711(D52+治理注记+归档路径引用同步)。工作区遗留 conductor/product-vision.md 修改与 docs/design-reviews.md 未跟踪文件为会话前既有,未纳入。未 push、未改动 tag(v0.1.0-experimental.1 指向 d5557bf 维持原状)。

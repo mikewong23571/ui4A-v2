@@ -1,0 +1,49 @@
+Task: 组合命名空间碰撞与真实 generic 集成修正
+
+Summary:
+- Separated outer slot and subtree node id namespaces.
+- Applied the same region-node mapping to diagnostic failedNodeId.
+- Replaced obsolete hand-built generic fixtures with real planGenericSurface inputs.
+- Added adversarial collision, binding-only, provenance, validation and hash determinism coverage.
+
+Files:
+- packages/engine/src/presentation/compose.ts
+- packages/engine/src/presentation/compose.test.ts
+- packages/engine/src/presentation/surface/surface.test.ts
+
+Why:
+Phase C audit found valid region/node names could collide across the assembled tree, and the old fixture hid the real generic-to-composition path.
+
+Verification:
+- All presentation tests passed (70/70)
+- @ui4a/engine typecheck passed
+- pnpm governance passed
+
+Boundary:
+Phase C is the pure assembly core for surfaces already planned with each region intent; web-side intent routing remains Phase E.
+
+Phase C Verification Report (autonomous acceptance)
+
+Scope:
+- Pure region assembly planner, composition provenance and dependency union.
+- Shared assembly primitive used by multi-region composition and single-subject generic fallback.
+- Namespace collision correction and real generic-planner integration tests.
+
+Automated evidence:
+- NODE_OPTIONS=--no-experimental-webstorage pnpm check: PASS (367 files passed, 6 skipped; 2825 tests passed, 10 skipped)
+- CI=true NODE_OPTIONS=--no-experimental-webstorage pnpm e2e invariants: PASS (4 passed, 2 skipped; I5 replay hash matched)
+- All engine Presentation tests: PASS (70/70)
+- @ui4a/engine typecheck: PASS
+- pnpm governance: PASS
+
+Autonomous manual verification:
+- Outer slots and subtree nodes use disjoint region-slot/region-node namespaces.
+- diagnostic.failedNodeId uses the same node mapping.
+- Composition integration tests call the real planGenericSurface path.
+- compose.ts imports no platform/I/O packages.
+
+Boundary:
+Phase C verifies pure assembly of region surfaces already planned with each declaration intent. Choosing generic/Recipe/planner per region intent is intentionally a Phase E web-runtime responsibility.
+
+Confirmation:
+Autonomous orchestration accepted Phase C after audit-discovered collision and obsolete-fixture blockers were corrected and all gates passed.

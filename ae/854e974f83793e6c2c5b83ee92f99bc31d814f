@@ -1,0 +1,7 @@
+Task: Phase D Green - versioned migration command
+
+Summary: Added v1 schema registry/history/advisory-locked transaction, migration-role CLI, explicit application bootstrap receipt/replay hash, production read-only engine boot, and removed 31 runtime DDL helper calls.
+
+Verification: migration/bootstrap contracts 13/13; related DB/service/worker regression 130/130; Web+Worker typecheck; stable invalid-argument JSON smoke; lint/format/diff-check green.
+
+Boundary: local/test may auto-migrate/bootstrap; production requires migration+bootstrap receipt and never executes DDL or bootstrap DML from getEngine. No readiness HTTP, HA or cross-replica lock added.

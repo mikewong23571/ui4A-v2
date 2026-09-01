@@ -1,0 +1,26 @@
+T27 Phase C Task: presence site 值域一次性切换
+
+Summary:
+- 非 meta URL 的 presence site canonical value 从 business 改为 workstation；/meta 与 /meta/* 保持 meta，raw 参数仍属于 workstation。
+- Chat Situation 与 /api/entity Situation default 改为 workstation。
+- start-chain、clientView、conversation、shared/agent/chat route 与 eval fixtures 一次性迁移。
+- 全仓实际 site:'business' / site==='business' 零命中；未加入双值兼容路径。
+
+Files:
+- apps/web/src/presence/client.ts and test
+- apps/web/src/engine/chat-situation.ts and tests
+- apps/web/src/app/api/entity/route.ts
+- related web/shared/agent/e2e site fixtures
+
+Why:
+D46 把人的工作站点命名定为 workstation/meta；business 是架构平面术语，不应继续作为人的 presence site 值。
+
+TDD:
+- Red: 22 focused tests, 9 failures showing old business results.
+- Green: root verification 17 test files / 172 tests passed (159 + 13), including entity route consumers.
+
+Verification:
+- pnpm -r typecheck: PASS
+- pnpm governance: PASS
+- actual-site business rg audit: zero matches
+- Prettier and git diff --check: PASS

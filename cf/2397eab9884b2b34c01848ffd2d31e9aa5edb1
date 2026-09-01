@@ -1,0 +1,1 @@
+T23 Phase B 主任务(自治验收):删除 legacy Capability Run 子系统与 T18 wire 兼容,67 文件 +305/-4537。编排 agent 复跑验证:vitest 122 文件/994 测试全绿,governance check-deps/compat OK。遗留:deploy token secretRef 保留(canonical 回调仍在用);check-size 4 个 grown 属并发 T22 会话增长,Phase D 处理。

@@ -1,0 +1,1 @@
+T22 Phase H live correction: Temporal vendor images lack the ServiceAccount mountpoint under read-only rootfs. Server/schema permit writable rootfs for projected token; UI/namespace omit unnecessary token automount. 54/54 contracts and strict TS pass.

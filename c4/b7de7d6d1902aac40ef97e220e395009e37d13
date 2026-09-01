@@ -1,0 +1,7 @@
+T22 Phase C production browser wiring Red.
+
+Added executable contracts for three thin Next handlers, session-cookie credential selection through the shared request identity adapter, conflict rejection for two credential sources, an independent canonical session secret, and PostgreSQL auth-private store TTL plus cross-replica atomic take semantics.
+
+Main-agent Red proof: 57 tests total with 45 passing, 8 expected behavior failures, and 4 store cases skipped only because the planned store module is absent. Existing browser core plus credential negative tests remained 44 of 44 Green. No network, random clock, Keycloak, K8s, Docker, or production database mutation.
+
+Canonical callback remains /api/auth/callback. Request handlers must not create tables; store DDL is exported only for explicit migration or test installation. Auth records must remain outside the business event log.

@@ -1,0 +1,25 @@
+Task: T30 Phase F — my-work end-to-end proof
+
+Summary:
+- Added one standing Playwright scenario using the existing withFreshServer harness; no bespoke config or script.
+- Proves POST /api/presentation for workspace:my-work returns ready with one Sidecar-backed Canvas Surface whose root contains waiting-for-me, in-motion, and work-lines slots.
+- Proves binding-only output by rejecting literal value fields, then running the real Canvas hydratePresentationSurface path and comparing every property binding at its entity dot-path against fresh /api/entity snapshots; repeat membership is compared against entity.entities.
+- Proves the browser mounts one governed Surface with no Canvas errors and renders facts from all three sources.
+- Proves Presentation events rebuild the disposable projection byte-equivalently while the production Business fold hash remains unchanged before presentation, after presentation, and after rebuild.
+
+TDD evidence:
+- Initial Red run failed because the new test used Playwright APIResponse ok() syntax against native Fetch Response.ok; the second run reached the real Canvas and failed because an exact text locator matched both heading and self-link. These were test-harness defects and were corrected transparently. No product defect or synthetic failing assertion was introduced.
+- After strengthening I2 from rel visibility to exact binding-path hydration comparison, the existing production implementation passed without application-code changes.
+
+Verification:
+- CI=true NODE_OPTIONS=--no-experimental-webstorage pnpm exec playwright test e2e/t30-presentation-composition.spec.ts — 1 passed.
+- pnpm exec eslint e2e/t30-presentation-composition.spec.ts — passed.
+- pnpm --filter @ui4a/web typecheck — passed.
+- pnpm governance — GR1, GR2, GR3 passed.
+- git diff --cached --check — passed before commit.
+
+Files:
+- e2e/t30-presentation-composition.spec.ts
+
+Decision:
+- Reused public HTTP, the production Canvas hydrator, production event folds, and the normal PostgreSQL projection rebuild boundary. No runtime code, database schema, wire contract, Conductor plan, or Playwright configuration changed.

@@ -1,0 +1,1 @@
+T22 Phase H live correction: dynamic one-shot Runner Jobs opt out of namespace Istio injection so successful main completion can terminate the Job. Verified focused 8/8, Worker typecheck and lint.

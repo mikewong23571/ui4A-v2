@@ -1,0 +1,13 @@
+T27 Phase F local full-E2E correction
+
+Full suite exposed S2 manual replay calling the ordinary reset, which now bootstraps stable Agent Definition events before replay and caused duplicate eventId. Added truncateLogsForReplay so caller-controlled replay has an empty event log between truncate and append. The next serial cross-site case then exposed an invalid assumption that every sitemap flow alias is readable; it now requires non-flow surfaces and the unique article wizard to read, while multi-instance post-status must return honest 404.
+
+Files:
+- e2e/kits/server-kit.ts
+- e2e/s2-meta.spec.ts
+- scripts/governance/size-baseline.json
+
+Verification:
+- isolated e2e/s2-meta.spec.ts: 3/3 PASS
+- Prettier/ESLint/governance/diff: PASS
+- e2e baseline 4507 with T28 consolidation plan

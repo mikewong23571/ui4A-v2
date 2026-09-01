@@ -1,0 +1,1 @@
+T28 Phase A checkpoint. Task commits: 55c2651 (D47 spike), 3f4f5e8 (spec/plan alignment). Verification: pnpm check — 378 files passed, 6 skipped; 2908 tests passed, 10 skipped; governance OK. CI=true pnpm e2e invariants — 4 passed, 2 superseded/standing skips. No production code changed in Phase A.

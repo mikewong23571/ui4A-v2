@@ -1,0 +1,7 @@
+Task: Phase E backup/restore commands
+
+Summary: Added quiescence-gated four-DB custom dump executor, controlled Runtime/PKI archive seam, atomic incomplete-to-completed manifest/checksum flow, isolated prevalidated restore with no --clean, recovery fingerprints and RPO/RTO schemas.
+
+Verification: pure+temp-dir executor 25/25; strategy reconciliation 41/41; combined Phase E 142/142; strict TS/lint/format/schema/diff green. No real command/DB/network executed.
+
+Boundary: Phase G/H provide actual quiesce orchestration and mounts; Phase I performs real backup/restore and measures RPO/RTO.

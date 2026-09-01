@@ -1,0 +1,1 @@
+T22 Phase H live correction: postgres-bootstrap waits only on TCP Postgres and no longer automounts a ServiceAccount token into a read-only Postgres rootfs. 54/54 contracts, strict TS and real rendered kubectl dry-run pass.

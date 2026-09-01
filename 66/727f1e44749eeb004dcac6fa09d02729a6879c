@@ -1,0 +1,3 @@
+Phase D readiness foundation: platform-neutral deterministic readiness aggregation.
+
+Verification: readiness 8/8, shared typecheck, lint/format/diff green. Required dependencies gate readiness; optional faults only degrade health; stable codes and whitelisted detached output.

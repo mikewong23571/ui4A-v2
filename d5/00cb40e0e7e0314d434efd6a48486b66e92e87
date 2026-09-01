@@ -1,0 +1,1 @@
+T22 Phase H PKI trust Green: canonical PG FQDN issuance, PG17 Alpine 70:70 root handoff, external Panel CA plus runtime root deterministic bundle for five Node consumers. 48/48 focused; real Helm lint, template 45 resources and kubectl client dry-run pass.

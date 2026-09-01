@@ -1,0 +1,13 @@
+Task: Correct K8s idle Runner topology truthfulness
+
+Summary:
+- Added D36 and aligned T22 spec, U2, and Phase H plan: Kubernetes Runtime is one one-shot Job/Pod per Run and has no idle daemon.
+- Removed only the static Helm/pure-renderer Runner Deployment and Service.
+- Preserved Runner image digest, ServiceAccount, runtime PVC, Worker RBAC/config refs, and Compose/Host daemon behavior.
+- Added Red-to-Green contract evidence that a Kubernetes daemon with deliveryAvailable=false is never rendered.
+
+Verification:
+- NODE_OPTIONS=--no-experimental-webstorage pnpm vitest run scripts/t22-k8s-runtime-edge-contract.test.ts scripts/t22-helm-contract.test.ts scripts/t22-k8s-pki-trust-contract.test.ts apps/worker/src/runtime-backends/kubernetes-runtime-transport.test.ts (61 passed)
+- helm lint with mothership overlay (passed)
+- helm template plus kubectl apply --dry-run=client --validate=false (passed)
+- rendered static Runner Deployment/Service absent

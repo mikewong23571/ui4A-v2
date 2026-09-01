@@ -1,0 +1,7 @@
+Task: Phase D single-Web command and replay integrity
+
+Summary: Detect late lower-seq commits with count+max and rebuild ordered truth; append multi-event commands in a single acquired-client transaction; convert concurrent Draft decision conflicts into audited guard rejections; add confirmation concurrency/crash and mixed restart replay evidence.
+
+Verification: core 4 files/26 tests; expanded 12 files/82 tests; Web+Engine typecheck; scoped lint/format/diff green.
+
+Boundary: D35 single Web only; no cross-replica judgment lock or HA claim.

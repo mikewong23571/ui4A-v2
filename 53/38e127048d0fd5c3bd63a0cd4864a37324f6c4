@@ -1,0 +1,24 @@
+Task: fastpath 与失效同机制
+
+Summary:
+- Proved workspace composition keys use the existing pinned/cache/Recipe/generic/planner ladder.
+- Added aggregate dependency drift coverage across inbox, delegations, threads, definition, catalog and policy.
+- Made dependency decisions stable and ensured invalidate/replan wins over rehydrate for the same subtree.
+- Proved stale, pin, revert and eviction behavior is shared with single-subject Sidecars.
+- Proved exact multi-slot subjectShape Recipe fastpaths.
+
+Files:
+- packages/engine/src/presentation/composition-fastpath.test.ts
+- packages/engine/src/presentation/sidecar.ts
+- packages/engine/src/presentation/recipe/resolver.test.ts
+
+Why:
+Composition must reuse the same Sidecar lifecycle and resolver ladder rather than introduce a second cache/invalidation path.
+
+Verification:
+- All engine Presentation tests passed (89/89)
+- @ui4a/engine typecheck passed
+- pnpm governance passed
+
+Boundary:
+Fresh per-region authorization remains a Phase E web Broker responsibility.

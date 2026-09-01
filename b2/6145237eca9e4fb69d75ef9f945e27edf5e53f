@@ -1,0 +1,8 @@
+T22 Runner sealed CODEX_HOME startup fix.
+
+Diagnostic: rootless B without tools/read-only failed pre-event. B2 changed only one fact by precreating `<sealed workspace>/.codex` as current uid mode 0700; it succeeded with thread.started, turn.started, item.completed and turn.completed plus strict result. This proved missing CODEX_HOME, not tool/workspace sandbox, caused the pre-event failure.
+
+Red: production test had 3 focused failures: no home creation, symlink accepted and 0755 directory accepted; 32 adjacent tests stayed green.
+Green: before SDK construction Runner verifies the canonical workspace is a real current-uid RWX directory, creates only the direct `.codex` child at 0700 when absent, and then verifies real-directory/current-uid/exact-mode/RWX facts. Existing drift fails closed; no chmod repair, fallback or sandbox relaxation.
+
+Verification: 95 Runner tests; Runner typecheck/build; Prettier; ESLint 0 errors (existing warnings); diff-check. Rootless production image sha256:0de338e55bca4fe579bba8f6a622d12ccf64d170940f9898ebc96c426ea5760b. Real B2 with the diagnostic script explicitly not precreating CODEX_HOME succeeded: exit0, complete event sequence, strict result, codexHomeReady=true. Security remained read-only, no-new-privileges and cap-drop ALL. Diagnostic containers/workspaces retained. No business Run, K8s resource, deployment, Secret, prompt or credential output was changed.

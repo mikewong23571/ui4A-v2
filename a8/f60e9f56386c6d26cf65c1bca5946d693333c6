@@ -1,0 +1,16 @@
+Task: 披露切片纯函数测试(Red)
+
+Summary:
+- Defined scoped sitemap disclosure expectations for application/flow/action retention, foreign navigation-only surfaces, capability schema stripping, exact-rel scope inference, unresolved-scope behavior, immutability, and no special cases.
+
+Files:
+- packages/agent/src/contract/disclosure.test.ts
+
+Why:
+The shared inline/delegated disclosure behavior needs an executable pure contract before loop and prompt integration.
+
+Red evidence:
+- pnpm vitest run packages/agent/src/contract/disclosure.test.ts
+- Expected failure: Cannot find module './disclosure'; 0 tests executed.
+- git diff --check
+- Autonomous acceptance by the orchestrating agent.
