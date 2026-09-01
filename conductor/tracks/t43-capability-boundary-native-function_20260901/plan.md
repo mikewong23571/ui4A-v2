@@ -22,13 +22,13 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 探测 worker crash、Activity retry 和确定性 execution identity
   - [x] 探测 callback receipt 与业务 Action 的事务边界
   - [x] 删除 spike 产品代码，保留测试 fixture、结论和失败证据
-- [ ] Task: 固定详细架构
-  - [ ] 新增 `architecture.md`
-  - [ ] 记录 Capability Port、Native Function Adapter、Temporal 和 callback 的依赖方向
-  - [ ] 决定 binding wire、execution identity、receipt event 和 callback 原子性
-  - [ ] 在 `DECISIONS.md` 记录新决定后再进入实现
-  - [ ] 若需要新增依赖，先更新 `tech-stack.md`；否则明确零新增运行时依赖
-  - [ ] 根据 spike 结果修订后续 Phase 任务，不允许未经证据扩大范围
+- [x] Task: 固定详细架构 8eb6e58
+  - [x] 新增 `architecture.md`
+  - [x] 记录 Capability Port、Native Function Adapter、Temporal 和 callback 的依赖方向
+  - [x] 决定 binding wire、execution identity、receipt event 和 callback 原子性
+  - [x] 在 `DECISIONS.md` 记录新决定后再进入实现
+  - [x] 若需要新增依赖，先更新 `tech-stack.md`；否则明确零新增运行时依赖
+  - [x] 根据 spike 结果修订后续 Phase 任务，不允许未经证据扩大范围
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
   - [ ] 复跑 Red 基线和 spike fixture
   - [ ] 运行 `pnpm governance`
@@ -40,6 +40,7 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
 - [ ] Task: Red — Native Function deployment contract
   - [ ] 为 Profile parser 编写合法、缺字段、未知字段、重复 profile 测试
   - [ ] 为 handler ref、timeout、retry、network policy 和 payload budget 编写边界测试
+  - [ ] 覆盖 `network=denied`、cooperative cancellation 与不声称 hard CPU/memory isolation
   - [ ] 为 invocation/result/receipt envelope 编写版本与大小限制测试
   - [ ] 运行测试并确认预期失败
 - [ ] Task: Green — 实现部署合同
@@ -51,6 +52,7 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
 - [ ] Task: Red — Capability input binding
   - [ ] 覆盖 Action 参数来源和 source entity 显式字段来源
   - [ ] 覆盖未声明字段、缺字段、跨实体读取和 whole-snapshot 注入拒绝
+  - [ ] 覆盖最大字段数、深度/节点/bytes 与 wildcard/spread/expression 禁止项
   - [ ] 覆盖 binding 后 input schema 二次校验
   - [ ] 运行测试并确认预期失败
 - [ ] Task: Green — 实现纯 binding kernel
@@ -84,6 +86,8 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [ ] 覆盖 `function` 走新的 Function dispatch
   - [ ] 覆盖未知 class、缺 profile 和不可用 handler
   - [ ] 断言 preflight 失败时零业务事件、零 Activity 调用
+  - [ ] 覆盖 prepared invocation 进入 spawn birth detail
+  - [ ] 覆盖 DB commit 后、workflow start 前 crash 产生可重协调 outbox
   - [ ] 断言 dispatcher 不读取 capability name 或 Application name
   - [ ] 运行测试并确认预期失败
 - [ ] Task: Green — 提取通用 dispatch composition
@@ -91,11 +95,13 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [ ] 保留现有 Agent Run 行为不变
   - [ ] 增加 Native Function prepare/dispatch port
   - [ ] 在 source event append 前完成静态 preflight，append 后按 source seq 派发 Temporal
+  - [ ] 增加 boot/有界周期 outbox reconciler，幂等启动确定性 workflow ID
   - [ ] 避免扩大 `service.ts` 和相关目录体积
 - [ ] Task: Red — Native Function registry 与 Activity
   - [ ] 覆盖 handler 注册、唯一解析和无名称特判
   - [ ] 覆盖成功、异常、非法输出、超预算、timeout 和 cancellation
   - [ ] 覆盖 maximum attempts 和不可重试错误
+  - [ ] 覆盖 retryable exception、permanent contract failure 与 birth-pinned timeout/retry determinism
   - [ ] 覆盖 handler 无 PostgreSQL/Web/EngineSnapshot 依赖
   - [ ] 运行测试并确认预期失败
 - [ ] Task: Green — Worker Native Function Adapter
@@ -108,6 +114,8 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [ ] 覆盖 output schema、receipt/output hash、重复 finalize 和重复 callback
   - [ ] 覆盖 stale source、guard/schema rejection
   - [ ] 覆盖伪造 source seq、capability hash 和 callback identity
+  - [ ] 覆盖 mixed-domain single transaction、partial unique index 和同 key 不同 hash collision
+  - [ ] 覆盖 receipt/callback commit 后、Activity 回包前 crash
   - [ ] 覆盖成功 receipt 已保存但业务状态未被非法覆盖
   - [ ] 运行测试并确认预期失败
 - [ ] Task: Green — 实现受治理结果回流
@@ -116,11 +124,13 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [ ] output 通过 schema 后生成 content hash 和 receipt
   - [ ] callback 参数标记 `origin=effect` 并重新执行 declaration → guard → schema
   - [ ] receipt 和 callback 结果按已决定的事务协议提交
+  - [ ] 使用 DB 唯一约束与 advisory lock，不使用 check-then-insert 去重
   - [ ] 失败进入声明的 `on-error`，不造业务事实
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
   - [ ] 启动真实 PostgreSQL、Temporal、Worker 和 Web
   - [ ] 执行成功、异常、非法输出、timeout、cancel 和重复 callback
   - [ ] 在 Activity 完成后、finalize 前终止 Worker并验证恢复
+  - [ ] 验证 orphan spawn 经 reconciler 最终启动且不重复业务效果
   - [ ] 运行 DB replay、幂等、coverage、typecheck、lint 和 governance
   - [ ] 记录真实 Temporal checkpoint 证据
 
@@ -136,6 +146,7 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [ ] 增加最小 Security Application 定义和一个 CVE reference entity
   - [ ] 增加 `cve.enrich` Capability 与声明式 binding
   - [ ] 增加部署侧 reference Native Function handler
+  - [ ] handler 保持 network-denied、pure/idempotent extract；外部 effect 继续 fail closed
   - [ ] 使用受控测试情报，不冒充实时漏洞数据
   - [ ] 保持 Application 内容全部由 Bundle 驱动
 - [ ] Task: Red — Work Thread 与 Presentation
