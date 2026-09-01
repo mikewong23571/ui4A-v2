@@ -3,6 +3,7 @@
 - [规格](./spec.md)
 - [计划](./plan.md)
 - [验收证据](./evidence.md)
+- [完成报告](./DONE.md)
 - [元数据](./metadata.json)
 
 让 `aliyun-sz` Caddy 以 `ui4a.styleofwong.cn`/`auth.ui4a.styleofwong.cn` 提供公网入口，

@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-- [~] **Track: T45 Tailnet Edge 公网 Origin 与内部 TLS Host 分离**（`aliyun-sz` Caddy → Tailscale → `home` UI4A edge） *Link: [tracks/t45-tailnet-edge-origin-separation_20260902/index.md](./tracks/t45-tailnet-edge-origin-separation_20260902/index.md)*
+- [x] **Track: T45 Tailnet Edge 公网 Origin 与内部 TLS Host 分离**（`aliyun-sz` Caddy → Tailscale → `home` UI4A edge） *Link: [tracks/archive/t45-tailnet-edge-origin-separation_20260902/index.md](./tracks/archive/t45-tailnet-edge-origin-separation_20260902/index.md)*
 
 - [x] **Track: T44 Home Compose 部署：公共 Origin 可移植性与实机上线**（`home` 完整 Compose healthy；Tailnet HTTPS、OIDC 登录、重启持久性闭环） *Link: [tracks/archive/t44-home-compose-deployment_20260901/index.md](./tracks/archive/t44-home-compose-deployment_20260901/index.md)*
 

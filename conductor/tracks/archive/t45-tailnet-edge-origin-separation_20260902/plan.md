@@ -25,7 +25,7 @@
   - [x] 两域名公共证书、关键路由、issuer/callback 与 Keycloak 登录表单 action 正确
   - [x] `mike` 账户 enabled、无 required action，密码登录通过
   - [x] 用户在实际浏览器完成 Authorization Code + PKCE 登录确认
-- [ ] Task: 记录 evidence、DONE、归档并推送
+- [x] Task: 记录 evidence、DONE、归档并推送 2e9dbc3f
 
 ## Review Fixes：认证体验闭环
 
