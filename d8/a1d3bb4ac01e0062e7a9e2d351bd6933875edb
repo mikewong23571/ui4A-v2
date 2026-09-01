@@ -1,0 +1,4 @@
+Final unrelated E2E flake correction
+Summary: Extended only the Sidecar collapse persistence assertion to the repository's established 30-second cold-dev window.
+Evidence: the failing T16 Golden Story passed immediately when rerun; no product code changed.
+Why: Avoid treating transient Next/dev persistence latency as a semantic failure during the 93-test CI run.
