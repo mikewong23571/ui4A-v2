@@ -67,14 +67,21 @@ describe('Security Application boundary slice', () => {
     });
     expect(
       checks.every((check) => check.pass),
-      checks,
+      JSON.stringify(checks),
     ).toBe(true);
   });
 
   it('discovers the collection and flow from the generic sitemap without deployment leakage', () => {
     const sitemap = deriveSitemap(securityApplicationBundle.flows, {
-      applications: securityApplicationBundle.applications,
-      capabilities: securityApplicationBundle.capabilities,
+      applications: Object.fromEntries(
+        securityApplicationBundle.applications.map((application) => [
+          application.name,
+          application,
+        ]),
+      ),
+      capabilities: Object.fromEntries(
+        securityApplicationBundle.capabilities.map((capability) => [capability.name, capability]),
+      ),
     });
     expect(sitemap.applications?.[0]).toMatchObject({ name: 'security', title: '安全响应' });
     expect(sitemap.surfaces.some((surface) => surface.rel === 'cves')).toBe(true);

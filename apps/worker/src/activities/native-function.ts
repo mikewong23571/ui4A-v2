@@ -7,6 +7,7 @@ import {
   createNativeFunctionHandlerRegistry,
   executeNativeFunction,
 } from '../capabilities/function/adapter';
+import { nativeFunctionHandlerEntries } from '../capabilities/function/handlers';
 
 export interface NativeFunctionFinalizeInput {
   context: NativeFunctionWorkflowInputV1;
@@ -20,7 +21,7 @@ export interface NativeFunctionActivities {
   finalizeNativeFunctionActivity(input: NativeFunctionFinalizeInput): Promise<void>;
 }
 
-const registry = createNativeFunctionHandlerRegistry([]);
+const registry = createNativeFunctionHandlerRegistry(nativeFunctionHandlerEntries);
 
 export async function executeNativeFunctionActivity(
   input: NativeFunctionWorkflowInputV1,

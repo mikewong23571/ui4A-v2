@@ -2,6 +2,7 @@
 import { parseApplicationBundle, type ApplicationBundle } from '@ui4a/engine';
 
 import ideasArtifact from './ideas.bundle.json';
+import securityArtifact from './security.bundle.json';
 import todoArtifact from './todo.bundle.json';
 import walkthroughArtifact from './ui4a-walkthrough.bundle.json';
 
@@ -11,8 +12,11 @@ export const todoApplicationBundle = parseApplicationBundle(todoArtifact);
 
 export const ideasApplicationBundle = parseApplicationBundle(ideasArtifact);
 
+export const securityApplicationBundle = parseApplicationBundle(securityArtifact);
+
 export const installedApplicationBundles: readonly ApplicationBundle[] = [
   walkthroughApplicationBundle,
   todoApplicationBundle,
   ideasApplicationBundle,
+  securityApplicationBundle,
 ];
