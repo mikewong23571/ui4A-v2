@@ -15,11 +15,15 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     );
     const situation = page.getByRole('region', { name: '声明的处境' });
     await expect(situation.getByTestId('situation-site')).toHaveText('工作站');
-    await expect(situation.getByTestId('situation-focus')).toHaveText('文章发布向导');
+    await expect(situation.getByTestId('situation-focus')).toHaveText('文章发布向导', {
+      timeout: 30_000,
+    });
     // T35 D-7:桥接链接收进「在哪」弹层——先开弹层再断言/点击。
     await situation.getByRole('button', { name: '在哪' }).click();
     const toMeta = situation.getByRole('link', { name: '在 meta 中编辑此定义' });
-    await expect(toMeta).toHaveAttribute('data-nav', 'situation:cross-site-flow');
+    await expect(toMeta).toHaveAttribute('data-nav', 'situation:cross-site-flow', {
+      timeout: 30_000,
+    });
     await expect(toMeta).toHaveAttribute(
       'href',
       '/meta/entity?rel=meta%2Fflow%3Aarticle-drafting&scope=publishing&thread=release-1',
@@ -28,6 +32,7 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     await toMeta.click();
     await expect(page).toHaveURL(
       `${SCENARIO_BASE}/meta/entity?rel=meta%2Fflow%3Aarticle-drafting&scope=publishing&thread=release-1`,
+      { timeout: 30_000 },
     );
     // 弹层开合状态跨导航保持——收起以免条上芯片与弹层 dd 双命中。
     await situation.getByRole('button', { name: '在哪' }).click();
@@ -53,10 +58,11 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     await toWorkstation.click();
     await expect(page).toHaveURL(
       `${SCENARIO_BASE}/canvas?focus=flow%3Aarticle-drafting&scope=publishing&thread=release-1`,
+      { timeout: 30_000 },
     );
     await situation.getByRole('button', { name: '在哪' }).click();
     // Cold dev-compile grace window(与 t33-a 冷启动兜底同口径):非减窗不断言。
-    await expect(page.locator('[data-surface]')).toHaveCount(1, { timeout: 30_000 });
+    await expect(page.locator('[data-surface]')).toHaveCount(1, { timeout: 60_000 });
     await expect(page.locator('[data-testid="canvas-errors"]')).toHaveCount(0);
     await expect(situation.getByTestId('situation-site')).toHaveText('工作站');
     await expect(situation.getByTestId('situation-thread')).toHaveText('无法读取');

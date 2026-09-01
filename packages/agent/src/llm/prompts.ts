@@ -80,40 +80,36 @@ function describeSitemap(context: DriverContext): string {
       context.observedApplication ?? observedApplication(context.sitemap, context.entity),
     currentRel: context.currentRel,
   });
-  return JSON.stringify(
-    {
-      version: disclosed.version,
-      surfaces: disclosed.surfaces.map((surface) => ({
-        rel: surface.rel,
-        title: surface.title,
-        ...(surface.app === undefined ? {} : { app: surface.app }),
+  return JSON.stringify({
+    version: disclosed.version,
+    surfaces: disclosed.surfaces.map((surface) => ({
+      rel: surface.rel,
+      title: surface.title,
+      ...(surface.app === undefined ? {} : { app: surface.app }),
+    })),
+    applications: disclosed.applications.map((application) => ({
+      name: application.name,
+      ...(application.title === undefined ? {} : { title: application.title }),
+      intent: application.intent,
+      ...(application.entry === undefined ? {} : { entry: application.entry }),
+      flows: application.flows.map((flow) => ({
+        name: flow.name,
+        title: flow.title,
+        ...(flow.actions === undefined
+          ? {}
+          : {
+              actions: flow.actions.map((action) => ({
+                name: action.name,
+                title: action.title,
+                node: action.node,
+                guards: [...action.guards],
+              })),
+            }),
+        ...(flow.edges === undefined ? {} : { edges: flow.edges.map((edge) => ({ ...edge })) }),
       })),
-      applications: disclosed.applications.map((application) => ({
-        name: application.name,
-        ...(application.title === undefined ? {} : { title: application.title }),
-        intent: application.intent,
-        ...(application.entry === undefined ? {} : { entry: application.entry }),
-        flows: application.flows.map((flow) => ({
-          name: flow.name,
-          title: flow.title,
-          ...(flow.actions === undefined
-            ? {}
-            : {
-                actions: flow.actions.map((action) => ({
-                  name: action.name,
-                  title: action.title,
-                  node: action.node,
-                  guards: [...action.guards],
-                })),
-              }),
-          ...(flow.edges === undefined ? {} : { edges: flow.edges.map((edge) => ({ ...edge })) }),
-        })),
-      })),
-      capabilities: disclosed.capabilities ?? [],
-    },
-    null,
-    2,
-  );
+    })),
+    capabilities: disclosed.capabilities ?? [],
+  });
 }
 
 function structuralTrailOperation(step: TrailStep): Record<string, unknown> {
