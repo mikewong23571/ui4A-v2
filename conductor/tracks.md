@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-(当前无活跃 Track)
+- [~] **Track: T43 Application Capability 边界：Native Function Adapter 与受治理结果回流**（首个 `cve.enrich` 垂直切片；S1–S14 用户故事；Capability 是 Application Port，函数只是部署侧 Adapter） *Link: [tracks/t43-capability-boundary-native-function_20260901/index.md](./tracks/t43-capability-boundary-native-function_20260901/index.md)*
 
 ## 归档 Tracks(T1–T42,只读历史)
 
