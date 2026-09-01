@@ -55,11 +55,11 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 覆盖最大字段数、深度/节点/bytes 与 wildcard/spread/expression 禁止项
   - [x] 覆盖 binding 后 input schema 二次校验
   - [x] 运行测试并确认预期失败
-- [ ] Task: Green — 实现纯 binding kernel
-  - [ ] 在纯 engine 边界解析声明式 binding
-  - [ ] 只产生有界、可序列化的 typed input并保留字段来源引用
-  - [ ] 禁止读取 Work Thread、Sitemap、凭证或任意上下文对象
-  - [ ] 添加 property tests 验证未声明字段永不进入输入
+- [x] Task: Green — 实现纯 binding kernel 4956201
+  - [x] 在纯 engine 边界解析声明式 binding
+  - [x] 只产生有界、可序列化的 typed input并保留字段来源引用
+  - [x] 禁止读取 Work Thread、Sitemap、凭证或任意上下文对象
+  - [x] 添加 property tests 验证未声明字段永不进入输入
 - [ ] Task: Red — Activation invariants
   - [ ] 覆盖 Capability/Profile 缺失与 class 不匹配
   - [ ] 覆盖 Function executor 不要求 Agent Definition
