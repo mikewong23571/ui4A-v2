@@ -1,0 +1,16 @@
+T46 Phase A disposable probes
+
+Summary:
+- Verified Keycloak 26.7.1 public Device Authorization, offline role/consent, 24h access, 90d offline refresh, rotation, claims mappers, and revoke.
+- Verified macOS Keychain add/read/update/delete through double-line stdin without token argv/stdout.
+- Removed the disposable realm/container/browser state/Keychain item/token files and rechecked all production services healthy.
+- Recorded D63 and refined the implementation plan.
+
+Files:
+- DECISIONS.md
+- conductor/tracks/t46-cli-device-credential_20260902/probe.md
+- conductor/tracks/t46-cli-device-credential_20260902/index.md
+- conductor/tracks/t46-cli-device-credential_20260902/plan.md
+
+Why:
+This spike resolved Keycloak import attributes, required claims mappers, offline role behavior, refresh/revoke semantics, and the safe Keychain invocation before production code or realm mutation.
