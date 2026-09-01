@@ -197,26 +197,31 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 检查是否增加无意义确认、追状态或页面切换
   - [x] 检查“在等我、在进行、已完成、为什么”是否清晰
   - [x] 将发现项在本 Track 内闭环或明确记录非目标
-- [~] Task: Principal Engineering Review
-  - [ ] 对照 GOAL、product-vision、DECISIONS 和 AGENTS.md 审查
-  - [ ] 检查单日志、授权、来源、回调、幂等和依赖方向
-  - [ ] 检查无每 Application/Capability 特判
-  - [ ] 将修复作为正式计划任务跟踪并复验
+- [x] Task: Principal Engineering Review a3ebf0d
+  - [x] 对照 GOAL、product-vision、DECISIONS 和 AGENTS.md 审查
+  - [x] 检查单日志、授权、来源、回调、幂等和依赖方向
+  - [x] 检查无每 Application/Capability 特判
+  - [x] 将修复作为正式计划任务跟踪并复验
 
 ## Review Fixes
 
-- [~] Task: Red — 审查发现的边界与恢复回归
-  - [ ] 覆盖 outbox 重投已启动 Workflow 时的 invocation hash 对齐
-  - [ ] 覆盖并发重复 finalize 在裁决前读取已提交 receipt
-  - [ ] 覆盖 Native Function 对外部 effect capability 的 fail-closed 激活
-  - [ ] 覆盖 Profile payload 上限与实际 binder/hash 上限一致
-- [ ] Task: Green — 修复并复验审查发现
-  - [ ] 已启动 Workflow 仅在 memo 中的 invocation hash 一致时视为幂等成功
-  - [ ] finalize 在 engine 串行队列内二次检查 terminal receipt
-  - [ ] 激活门拒绝 Native Function `kind=effect`
-  - [ ] 删除未使用且可误导为非原子写路径的 persisted-dispatch helper
-  - [ ] 收紧 Profile input/output ceiling，禁止声明运行时无法兑现的 payload budget
-- [ ] Task: Review Fixes Verification & Checkpoint
+- [x] Task: Red — 审查发现的边界与恢复回归 d0f70eb
+  - [x] 覆盖公开 exec 伪造 internal callback 的拒绝路径
+  - [x] 覆盖 outbox 重投已启动 Workflow 时的 invocation hash 对齐
+  - [x] 覆盖并发重复 finalize 在裁决前读取已提交 receipt
+  - [x] 覆盖非法 output 进入声明的 failure callback
+  - [x] 覆盖 Native Function 对外部 effect capability 的 fail-closed 激活
+  - [x] 覆盖 Profile payload/limits hash 与实际 binder/hash 上限一致
+  - [x] 覆盖 Draft registry、artifact-ref 与跨授权 receipt 审计边界
+- [x] Task: Green — 修复并复验审查发现 a3ebf0d
+  - [x] internal callback 仅接受部署认证后的 trusted ingress
+  - [x] 已启动 Workflow 仅在 memo 中的 invocation hash 一致时视为幂等成功
+  - [x] finalize 在 engine 串行队列内二次检查 terminal receipt
+  - [x] 激活门拒绝 Native Function `kind=effect`、非法和超预算 schema
+  - [x] 删除未使用且可误导为非原子写路径的 persisted-dispatch helper
+  - [x] Profile limits 纳入 birth hash，并收紧无法兑现的 payload budget
+  - [x] Draft、artifact、审计受众和第二 Adapter 证据闭环
+- [~] Task: Review Fixes Verification & Checkpoint
   - [ ] 运行 focused tests、coverage、format、typecheck、lint、governance 与全量 tests
   - [ ] 复跑真实 Temporal recovery/idempotency 和最终 E2E
 
