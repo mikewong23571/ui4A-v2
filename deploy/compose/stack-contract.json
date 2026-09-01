@@ -11,6 +11,7 @@
   },
   "edge": {
     "publicOriginsSource": "canonical-deployment-settings",
+    "internalTlsHostsSource": "canonical-deployment-settings.tls",
     "bindAddress": "127.0.0.1",
     "publishedPortSource": "UI4A_EDGE_HTTPS_PORT",
     "internalHttpsPort": 8443,

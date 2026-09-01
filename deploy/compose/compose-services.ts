@@ -22,8 +22,8 @@ import type { ComposeRenderInput, ComposeService } from './compose-types';
 
 export function composeServices(input: ComposeRenderInput): Record<string, ComposeService> {
   const { images } = input;
-  const ui4aHost = new URL(input.edge.webPublicOrigin).hostname;
-  const keycloakHost = new URL(input.edge.keycloakPublicOrigin).hostname;
+  const ui4aHost = input.edge.ui4aTlsHost;
+  const keycloakHost = input.edge.keycloakTlsHost;
   const runnerOrigins = JSON.stringify({
     'compose-container-runner': `https://${ui4aHost}:8443`,
     'compose-host-runner': `https://${ui4aHost}:9444`,

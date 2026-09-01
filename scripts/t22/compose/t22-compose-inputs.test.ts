@@ -78,10 +78,10 @@ function fixture() {
     loadCanonical() {
       return {
         settings: {
-          service: { publicOrigin: 'https://ui4a.home-linux.tail.styleofwong.com' },
+          service: { publicOrigin: 'https://ui4a.styleofwong.cn' },
           auth: {
             oidc: {
-              issuer: 'https://auth-ui4a.home-linux.tail.styleofwong.com/realms/ui4a',
+              issuer: 'https://auth.ui4a.styleofwong.cn/realms/ui4a',
             },
           },
           tls: {
@@ -137,8 +137,8 @@ function environment(): Record<string, string> {
     UI4A_RELEASE_GIT_SHA: ui4aGitSha,
     UI4A_DEPLOYMENT_SETTINGS_FILE: settingsFile,
     UI4A_DEPLOYMENT_SECRETS_FILE: secretsFile,
-    UI4A_PUBLIC_ORIGIN: 'https://ui4a.home-linux.tail.styleofwong.com',
-    UI4A_KEYCLOAK_PUBLIC_ORIGIN: 'https://auth-ui4a.home-linux.tail.styleofwong.com',
+    UI4A_PUBLIC_ORIGIN: 'https://ui4a.styleofwong.cn',
+    UI4A_KEYCLOAK_PUBLIC_ORIGIN: 'https://auth.ui4a.styleofwong.cn',
     UI4A_HOST: 'ui4a.home-linux.tail.styleofwong.com',
     KEYCLOAK_HOST: 'auth-ui4a.home-linux.tail.styleofwong.com',
     UI4A_EDGE_HTTPS_PORT: String(edgePublishedPort),

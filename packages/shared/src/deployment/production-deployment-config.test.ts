@@ -401,6 +401,23 @@ describe('T22 production deployment config contract', () => {
     );
   });
 
+  it('allows public OIDC origins to differ from internal edge TLS hosts', () => {
+    const candidate = validInput();
+    candidate.settings.service.publicOrigin = 'https://ui4a.styleofwong.cn';
+    candidate.settings.auth.oidc.issuer = 'https://auth.ui4a.styleofwong.cn/realms/ui4a';
+    candidate.settings.auth.oidc.callbackUrl = 'https://ui4a.styleofwong.cn/api/auth/callback';
+    candidate.settings.keycloak.host = 'auth.ui4a.styleofwong.cn';
+
+    const parsed = parseProductionDeploymentConfig(candidate);
+
+    expect(parsed.settings.service.publicOrigin).toBe('https://ui4a.styleofwong.cn');
+    expect(parsed.settings.auth.oidc.issuer).toBe('https://auth.ui4a.styleofwong.cn/realms/ui4a');
+    expect(parsed.settings.tls).toMatchObject({
+      ui4aHost: 'ui4a.mothership.internal',
+      keycloakHost: 'auth.ui4a.mothership.internal',
+    });
+  });
+
   it('shares one bounded Agent OIDC client contract across Compose and Helm', () => {
     const canonical = validInput();
     type AgentOidcFields = {
@@ -618,9 +635,9 @@ describe('T22 production deployment config contract', () => {
         (candidate.settings.keycloak.host = 'localhost'),
     ],
     [
-      'TLS host mismatch',
+      'OIDC and Keycloak host mismatch',
       (candidate: ReturnType<typeof validInput>) =>
-        (candidate.settings.tls.keycloakHost = 'other-auth.internal'),
+        (candidate.settings.auth.oidc.issuer = 'https://other-auth.internal/realms/ui4a'),
     ],
     [
       'disabled PostgreSQL TLS',
@@ -644,7 +661,7 @@ describe('T22 production deployment config contract', () => {
   ])('rejects a dangerous production default: %s', (_case, mutate) => {
     const candidate = validInput();
     mutate(candidate);
-    expectInvalid(candidate, /production|localhost|temporal|tls|pool|image|workspace/i);
+    expectInvalid(candidate, /production|localhost|temporal|tls|pool|image|workspace|issuer/i);
   });
 
   it('rejects demo identity and every implicit localhost fallback in production', () => {

@@ -249,17 +249,16 @@ export function validateComposeProductionEnvironment(
     'COMPOSE_EDGE_BINDING_INVALID',
   );
   if (
-    webPublicOrigin.hostname !== settings.tls.ui4aHost ||
-    keycloakPublicOrigin.hostname !== settings.tls.keycloakHost ||
-    webPublicOrigin.hostname === keycloakPublicOrigin.hostname
+    webPublicOrigin.hostname === keycloakPublicOrigin.hostname ||
+    settings.tls.ui4aHost === settings.tls.keycloakHost
   ) {
     fail('COMPOSE_EDGE_BINDING_INVALID');
   }
   const expectedIngress = {
     UI4A_PUBLIC_ORIGIN: webPublicOrigin.origin,
     UI4A_KEYCLOAK_PUBLIC_ORIGIN: keycloakPublicOrigin.origin,
-    UI4A_HOST: webPublicOrigin.hostname,
-    KEYCLOAK_HOST: keycloakPublicOrigin.hostname,
+    UI4A_HOST: settings.tls.ui4aHost,
+    KEYCLOAK_HOST: settings.tls.keycloakHost,
     UI4A_EDGE_HTTPS_PORT: edgePort(environment.UI4A_EDGE_HTTPS_PORT),
   } as const;
   for (const [key, expected] of Object.entries(expectedIngress)) {

@@ -259,8 +259,10 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     const renderer = await loadRenderer();
     const input = renderInput();
     input.edge = {
-      webPublicOrigin: 'https://ui4a.home-linux.tail.styleofwong.com',
-      keycloakPublicOrigin: 'https://auth-ui4a.home-linux.tail.styleofwong.com',
+      webPublicOrigin: 'https://ui4a.styleofwong.cn',
+      keycloakPublicOrigin: 'https://auth.ui4a.styleofwong.cn',
+      ui4aTlsHost: 'ui4a.home-linux.tail.styleofwong.com',
+      keycloakTlsHost: 'auth-ui4a.home-linux.tail.styleofwong.com',
       publishedPort: 10443,
     };
 
@@ -288,21 +290,29 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
       {
         webPublicOrigin: 'http://ui4a.home.internal',
         keycloakPublicOrigin: 'https://auth.home.internal',
+        ui4aTlsHost: 'ui4a.internal',
+        keycloakTlsHost: 'auth.internal',
         publishedPort: 10_443,
       },
       {
         webPublicOrigin: 'https://ui4a.home.internal/path',
         keycloakPublicOrigin: 'https://auth.home.internal',
+        ui4aTlsHost: 'ui4a.internal',
+        keycloakTlsHost: 'auth.internal',
         publishedPort: 10_443,
       },
       {
         webPublicOrigin: 'https://ui4a.home.internal',
         keycloakPublicOrigin: 'https://ui4a.home.internal',
+        ui4aTlsHost: 'ui4a.internal',
+        keycloakTlsHost: 'auth.internal',
         publishedPort: 10_443,
       },
       {
         webPublicOrigin: 'https://ui4a.home.internal',
         keycloakPublicOrigin: 'https://auth.home.internal',
+        ui4aTlsHost: 'ui4a.internal',
+        keycloakTlsHost: 'auth.internal',
         publishedPort: 443,
       },
     ];

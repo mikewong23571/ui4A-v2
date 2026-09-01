@@ -57,12 +57,6 @@ export function parseProductionDeploymentConfig(input: unknown): ProductionDeplo
     runtime: parseRuntime(rawSettings.runtime),
   };
 
-  if (new URL(settings.service.publicOrigin).hostname !== settings.tls.ui4aHost) {
-    fail('service.publicOrigin', 'hostname must equal settings.tls.ui4aHost');
-  }
-  if (settings.keycloak.host !== settings.tls.keycloakHost) {
-    fail('settings.tls.keycloakHost', 'must equal settings.keycloak.host');
-  }
   const issuer = new URL(settings.auth.oidc.issuer);
   if (
     issuer.hostname !== settings.keycloak.host ||

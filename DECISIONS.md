@@ -1131,3 +1131,20 @@
 - **影响**：mothership 默认 public origin 与 `8443` 行为不变；新环境只贡献 operator settings、
   Secret、image inventory、published port 与外层入口事实。零新增 runtime dependency、数据库、
   权威状态或应用级分支。
+
+## D61 公网 Origin 与 Compose 内部 TLS Host 分属两层入口事实(2026-09-02,T45)
+
+- **背景与修订**：D60 已分离公共 origin 与宿主 published port，但仍把 public origin hostname 强制
+  等同 `settings.tls.*Host`。该假设只适用于外层代理与 Compose 同机。`aliyun-sz` Caddy 经 Tailscale
+  回源 `home` 时，浏览器/OIDC 使用 `*.styleofwong.cn`，内部 TLS/SNI 继续使用 home 已持久化证书
+  `*.home-linux.tail.styleofwong.com`；强制相等会迫使无意义地轮换 CA/leaf inventory。
+- **决定**：`service.publicOrigin`、OIDC issuer/callback 与 `keycloak.host` 是公共身份和浏览器 origin
+  真相；`settings.tls.ui4aHost/keycloakHost` 只表示 Compose edge 内部 leaf certificate、network alias
+  与 Runner delivery host。两组分别严格解析、各自保持 UI/Keycloak 两 host 不相等，但允许跨组不同。
+  Operator generator 从 public settings 导出 public origins，从 TLS settings 导出 internal hosts；
+  环境变量不能覆盖任一来源。
+- **信任边界**：外层 Caddy 必须经私网/Tailnet 访问 edge，以内部 TLS host 做 SNI 并验证证书；它只
+  改变浏览器入口，不直接代理 Web/Keycloak，不公开 home 新端口，也不改授权、issuer、audience、
+  callback、Runner 或业务裁决。
+- **影响**：同机部署的默认值与 D60/T22 行为不变；跨机入口无需轮换 home CA 或删除任何 volume。
+  零新增依赖、协议 wire、数据库、权威状态或环境名称分支。

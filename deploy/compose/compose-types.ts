@@ -20,6 +20,8 @@ export interface ComposeRenderInput {
   edge: {
     webPublicOrigin: string;
     keycloakPublicOrigin: string;
+    ui4aTlsHost: string;
+    keycloakTlsHost: string;
     publishedPort: number;
   };
   images: Record<ComposeImageKey, string>;

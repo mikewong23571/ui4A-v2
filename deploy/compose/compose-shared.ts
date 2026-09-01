@@ -148,6 +148,21 @@ function assertPublicOrigin(value: unknown, label: string): asserts value is str
   }
 }
 
+function assertTlsHost(value: unknown, label: string): asserts value is string {
+  if (typeof value !== 'string' || value.trim() !== value || value === '') {
+    fail(`${label} must be a hostname`);
+  }
+  let url: URL;
+  try {
+    url = new URL(`https://${value}`);
+  } catch {
+    fail(`${label} must be a hostname`);
+  }
+  if (url.hostname !== value || url.port !== '' || url.pathname !== '/') {
+    fail(`${label} must be a hostname`);
+  }
+}
+
 export function validateInput(input: ComposeRenderInput): void {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     fail('input must be an object');
@@ -169,16 +184,21 @@ export function validateInput(input: ComposeRenderInput): void {
   }
   assertExactKeys(
     input.edge as unknown as Record<string, unknown>,
-    ['webPublicOrigin', 'keycloakPublicOrigin', 'publishedPort'],
+    ['webPublicOrigin', 'keycloakPublicOrigin', 'ui4aTlsHost', 'keycloakTlsHost', 'publishedPort'],
     'edge',
   );
   assertPublicOrigin(input.edge.webPublicOrigin, 'edge.webPublicOrigin');
   assertPublicOrigin(input.edge.keycloakPublicOrigin, 'edge.keycloakPublicOrigin');
+  assertTlsHost(input.edge.ui4aTlsHost, 'edge.ui4aTlsHost');
+  assertTlsHost(input.edge.keycloakTlsHost, 'edge.keycloakTlsHost');
   if (
     new URL(input.edge.webPublicOrigin).hostname ===
     new URL(input.edge.keycloakPublicOrigin).hostname
   ) {
     fail('edge public origins must use distinct hosts');
+  }
+  if (input.edge.ui4aTlsHost === input.edge.keycloakTlsHost) {
+    fail('edge TLS hosts must be distinct');
   }
   if (
     !Number.isSafeInteger(input.edge.publishedPort) ||

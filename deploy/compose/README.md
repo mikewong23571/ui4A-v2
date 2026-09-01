@@ -19,10 +19,13 @@ unset compose_inputs_json
 pnpm compose:t22 preflight
 ```
 
-The generator derives `UI4A_PUBLIC_ORIGIN`, `UI4A_KEYCLOAK_PUBLIC_ORIGIN`, `UI4A_HOST`, and
-`KEYCLOAK_HOST` from the canonical settings after strict parsing. It rejects mismatched overrides.
+The generator derives `UI4A_PUBLIC_ORIGIN` and `UI4A_KEYCLOAK_PUBLIC_ORIGIN` from the canonical
+service/OIDC settings, and derives internal `UI4A_HOST`/`KEYCLOAK_HOST` from canonical TLS settings
+after strict parsing. It rejects mismatched overrides. Public origins may differ from the internal
+TLS hosts when a separate trusted reverse proxy reaches the Compose edge over a private network.
 The published edge port maps loopback to the unchanged internal `8443` listener; a host reverse
-proxy may provide public `443`, but it must forward through the UI4A edge and trust the persisted
+proxy may provide public `443`, but it must forward through the UI4A edge using the internal TLS
+host as SNI and trust the persisted
 public CA rather than bypassing verification. The Web and Keycloak public origins must use distinct
 hosts, so path-prefix deployment is not supported.
 

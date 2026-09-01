@@ -18,6 +18,8 @@ function stack() {
     edge: {
       webPublicOrigin: 'https://ui4a.mothership.internal:8443',
       keycloakPublicOrigin: 'https://auth.ui4a.mothership.internal:8443',
+      ui4aTlsHost: 'ui4a.mothership.internal',
+      keycloakTlsHost: 'auth.ui4a.mothership.internal',
       publishedPort: 8443,
     },
     images: {
