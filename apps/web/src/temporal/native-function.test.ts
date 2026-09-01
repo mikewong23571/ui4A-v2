@@ -1,13 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const start = vi.fn();
+const mocks = vi.hoisted(() => {
+  class AlreadyStartedError extends Error {}
+  return { start: vi.fn(), describe: vi.fn(), AlreadyStartedError };
+});
 
 vi.mock('@temporalio/client', () => ({
+  WorkflowExecutionAlreadyStartedError: mocks.AlreadyStartedError,
   Connection: { connect: vi.fn(async () => ({})) },
   Client: class {
-    workflow = { start };
+    workflow = { start: mocks.start, getHandle: vi.fn(() => ({ describe: mocks.describe })) };
   },
 }));
+
+import { hashCanonicalAgentJson } from '@ui4a/engine';
 
 import {
   dispatchNativeFunction,
@@ -71,7 +77,7 @@ describe('Native Function Temporal client', () => {
       invocation,
       profile,
     });
-    expect(start).toHaveBeenCalledWith('nativeFunctionWorkflow', {
+    expect(mocks.start).toHaveBeenCalledWith('nativeFunctionWorkflow', {
       args: [{ executionId, invocation, profile }],
       taskQueue: 'ui4a-function-test',
       workflowId: `function-${executionId}`,
@@ -83,6 +89,33 @@ describe('Native Function Temporal client', () => {
     await expect(
       dispatchNativeFunction({ executionId, workflowId: 'function-wrong', invocation, profile }),
     ).rejects.toThrow('identity mismatch');
-    expect(start).not.toHaveBeenCalled();
+    expect(mocks.start).not.toHaveBeenCalled();
+  });
+
+  it('accepts an already-started workflow only when its invocation memo matches', async () => {
+    const invocationHash = hashCanonicalAgentJson(invocation as never);
+    mocks.start.mockRejectedValueOnce(new mocks.AlreadyStartedError('already started'));
+    mocks.describe.mockResolvedValueOnce({ memo: { invocationHash } });
+    await expect(
+      dispatchNativeFunction({
+        executionId,
+        workflowId: nativeFunctionWorkflowId(executionId),
+        invocation,
+        profile,
+      }),
+    ).resolves.toBeUndefined();
+
+    mocks.start.mockRejectedValueOnce(new mocks.AlreadyStartedError('already started'));
+    mocks.describe.mockResolvedValueOnce({
+      memo: { invocationHash: `sha256:${'f'.repeat(64)}` },
+    });
+    await expect(
+      dispatchNativeFunction({
+        executionId,
+        workflowId: nativeFunctionWorkflowId(executionId),
+        invocation,
+        profile,
+      }),
+    ).rejects.toThrow(/invocation/i);
   });
 });

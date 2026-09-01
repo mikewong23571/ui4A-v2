@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { parseApplicationBundle } from '@ui4a/engine';
+import { parseApplicationBundle, validateDefinition } from '@ui4a/engine';
+import { seedGuardRegistry } from '@ui4a/shared';
 
 import secondArtifact from './test-fixtures/native-function-second.bundle.json';
 import { prepareCapabilityDispatch } from '../engine/capability/dispatch';
@@ -40,6 +41,25 @@ describe('second Native Function Capability extension', () => {
       'on-done': 'normalized',
       'on-error': 'normalization-failed',
     };
+    expect(
+      validateDefinition(bundle.flows[0]!, {
+        guards: seedGuardRegistry,
+        applications: new Set(['reference']),
+        capabilities: new Set([capability.name]),
+        capabilityDefinitions: { [capability.name]: capability },
+        executorProfiles: new Map([[profile.ref, profile.executorClass]]),
+        nativeFunctionProfiles: new Map([
+          [
+            profile.ref,
+            {
+              executorClass: profile.executorClass,
+              handlerRef: profile.handlerRef,
+              available: true,
+            },
+          ],
+        ]),
+      }).find((check) => check.name === 'executor-profile-valid'),
+    ).toEqual({ name: 'executor-profile-valid', pass: true });
     await expect(
       prepareCapabilityDispatch(
         {

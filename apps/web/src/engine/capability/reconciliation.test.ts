@@ -118,11 +118,12 @@ describe('Native Function spawn outbox reconciliation', () => {
     );
   });
 
-  it('does no database or Temporal work when no Function profile is deployed', async () => {
+  it('delivers persisted birth-pinned work even when current profile config is empty', async () => {
     const database = db();
-    await expect(reconcilePersistedNativeFunctions(database, new Map())).resolves.toEqual({
-      started: [],
+    await expect(reconcilePersistedNativeFunctions(database, new Map())).resolves.toMatchObject({
+      started: [expect.stringMatching(/^nf-/)],
     });
-    expect(database.query).not.toHaveBeenCalled();
+    expect(database.query).toHaveBeenCalled();
+    expect(dispatchNativeFunction).toHaveBeenCalledOnce();
   });
 });

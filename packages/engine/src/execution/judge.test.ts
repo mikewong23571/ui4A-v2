@@ -51,6 +51,29 @@ describe('三层裁决 — 通过路径', () => {
     });
   });
 
+  it('内部 capability callback 只接受受信 ingress，普通 exec 看作未声明', () => {
+    const callbackFlow = structuredClone(commentModerationFlow);
+    callbackFlow.nodes[0]!.actions[0]!.internal = 'capability-callback';
+    const callbackDeps = {
+      flows: flowRegistry(callbackFlow),
+      guards: testGuards,
+    };
+    expect(judge({ rel: 'comment:c1', action: 'approve' }, seedSnapshot, callbackDeps)).toMatchObject(
+      { kind: 'rejected', layer: 'undeclared' },
+    );
+    expect(
+      judge(
+        {
+          rel: 'comment:c1',
+          action: 'approve',
+          trustedIngress: 'capability-callback',
+        } as ExecRequest,
+        seedSnapshot,
+        callbackDeps,
+      ),
+    ).toMatchObject({ kind: 'accepted' });
+  });
+
   it('带字段动作参数合法 → accepted,schema 含字段定义(select 枚举)', () => {
     const result = exec('article-drafting:main', 'next', {
       category: 'tech',

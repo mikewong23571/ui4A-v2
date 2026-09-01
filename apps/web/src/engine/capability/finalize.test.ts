@@ -219,8 +219,16 @@ describe('Native Function governed finalization', () => {
           outcome: { ...outcome(), outputHash: `sha256:${'f'.repeat(64)}` },
         },
       ),
-    ).resolves.toMatchObject({ ok: false, code: 'output-invalid' });
-    expect(mocks.commit).not.toHaveBeenCalled();
+    ).resolves.toMatchObject({ ok: true, deduplicated: false });
+    expect(mocks.commit.mock.calls[0]![1]).toMatchObject({
+      receipt: { outcome: { status: 'failed', failure: { code: 'output-invalid' } } },
+      coreEvents: [
+        expect.objectContaining({
+          action: 'enrichment-failed',
+          params: expect.objectContaining({ failure: expect.objectContaining({ origin: 'effect' }) }),
+        }),
+      ],
+    });
   });
 
   it('records a stale guard rejection without overwriting current business state', async () => {
@@ -241,5 +249,40 @@ describe('Native Function governed finalization', () => {
     expect(mocks.commit.mock.calls[0]![1].coreEvents[0]).toMatchObject({
       kind: 'action-rejected',
     });
+  });
+
+  it('rechecks a concurrent terminal receipt inside the engine queue before judgment', async () => {
+    const identity = nativeFunctionExecutionIdentity(42, prepared);
+    const invocationHash = hashCanonicalAgentJson(nativeFunctionInvocation(42, prepared) as never);
+    const terminal = {
+      schemaVersion: 1 as const,
+      executionId: identity.executionId,
+      sourceEventId: 'core:42' as const,
+      invocationHash,
+      capability: prepared.birth.capability,
+      profile: prepared.birth.profile,
+      inputHash: prepared.input.hash,
+      outcome: outcome(),
+      callback: {
+        commandId: `function-finalize:${identity.executionId}`,
+        action: 'enrichment-succeeded',
+        outcome: 'accepted' as const,
+      },
+    };
+    mocks.readReceipt.mockResolvedValueOnce(undefined).mockResolvedValueOnce(terminal);
+
+    await expect(
+      finalizeNativeFunctionSource(
+        { query: vi.fn() },
+        {
+          schemaVersion: 1,
+          executionId: identity.executionId,
+          sourceEventId: 'core:42',
+          invocationHash,
+          outcome: outcome(),
+        },
+      ),
+    ).resolves.toMatchObject({ ok: true, deduplicated: true });
+    expect(mocks.commit).not.toHaveBeenCalled();
   });
 });

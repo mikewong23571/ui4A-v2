@@ -214,4 +214,20 @@ describe('Native Function execute Activity boundary', () => {
     ).resolves.toMatchObject({ status: 'failed', failure: { code: 'profile-birth-mismatch' } });
     expect(handler).not.toHaveBeenCalled();
   });
+
+  it('rejects birth-pinned limit drift before invoking a handler', async () => {
+    const handler = vi.fn(async () => ({ output: { severity: 'high' } }));
+    const drifted = {
+      ...profile,
+      limits: { ...profile.limits, maximumAttempts: profile.limits.maximumAttempts + 1 },
+    };
+    await expect(
+      executeNativeFunction(request({ profile: drifted }), {
+        registry: createNativeFunctionHandlerRegistry([{ ref: drifted.handlerRef, handler }]),
+        signal: new AbortController().signal,
+        attempt: 1,
+      }),
+    ).resolves.toMatchObject({ status: 'failed', failure: { code: 'profile-birth-mismatch' } });
+    expect(handler).not.toHaveBeenCalled();
+  });
 });

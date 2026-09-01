@@ -197,11 +197,29 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 检查是否增加无意义确认、追状态或页面切换
   - [x] 检查“在等我、在进行、已完成、为什么”是否清晰
   - [x] 将发现项在本 Track 内闭环或明确记录非目标
-- [ ] Task: Principal Engineering Review
+- [~] Task: Principal Engineering Review
   - [ ] 对照 GOAL、product-vision、DECISIONS 和 AGENTS.md 审查
   - [ ] 检查单日志、授权、来源、回调、幂等和依赖方向
   - [ ] 检查无每 Application/Capability 特判
   - [ ] 将修复作为正式计划任务跟踪并复验
+
+## Review Fixes
+
+- [~] Task: Red — 审查发现的边界与恢复回归
+  - [ ] 覆盖 outbox 重投已启动 Workflow 时的 invocation hash 对齐
+  - [ ] 覆盖并发重复 finalize 在裁决前读取已提交 receipt
+  - [ ] 覆盖 Native Function 对外部 effect capability 的 fail-closed 激活
+  - [ ] 覆盖 Profile payload 上限与实际 binder/hash 上限一致
+- [ ] Task: Green — 修复并复验审查发现
+  - [ ] 已启动 Workflow 仅在 memo 中的 invocation hash 一致时视为幂等成功
+  - [ ] finalize 在 engine 串行队列内二次检查 terminal receipt
+  - [ ] 激活门拒绝 Native Function `kind=effect`
+  - [ ] 删除未使用且可误导为非原子写路径的 persisted-dispatch helper
+  - [ ] 收紧 Profile input/output ceiling，禁止声明运行时无法兑现的 payload budget
+- [ ] Task: Review Fixes Verification & Checkpoint
+  - [ ] 运行 focused tests、coverage、format、typecheck、lint、governance 与全量 tests
+  - [ ] 复跑真实 Temporal recovery/idempotency 和最终 E2E
+
 - [ ] Task: Phase Verification & Track Closure (Refer to workflow.md)
   - [ ] 确认 S1–S14 全部有可复跑证据且系统可运行
   - [ ] 更新 GOAL/DECISIONS/tech-stack 中实际形成的合同

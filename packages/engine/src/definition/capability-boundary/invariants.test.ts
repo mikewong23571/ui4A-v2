@@ -172,6 +172,36 @@ describe('validateDefinition — Native Function boundary activation gate', () =
     ).toBe(false);
   });
 
+  it('rejects malformed or unbounded Function schemas during activation', () => {
+    expect(
+      executorCheck(flow, {
+        capabilityDefinitions: {
+          'cve.enrich': { ...capability, inputSchema: { type: 'not-a-json-schema-type' } },
+        },
+      }).pass,
+    ).toBe(false);
+    expect(
+      executorCheck(flow, {
+        capabilityDefinitions: {
+          'cve.enrich': {
+            ...capability,
+            outputSchema: { type: 'object', description: 'x'.repeat(70_000) },
+          },
+        },
+      }).pass,
+    ).toBe(false);
+  });
+
+  it('fails closed when a Native Function claims an external effect capability', () => {
+    expect(
+      executorCheck(flow, {
+        capabilityDefinitions: {
+          'cve.enrich': { ...capability, kind: 'effect' },
+        },
+      }).pass,
+    ).toBe(false);
+  });
+
   it('keeps exact Agent Definition mandatory for non-Function executors', () => {
     expect(
       executorCheck(flow, {

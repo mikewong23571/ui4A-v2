@@ -7,7 +7,23 @@ const mocks = vi.hoisted(() => ({
   }),
   getDb: vi.fn(() => ({ kind: 'mock-db' })),
   getEngine: vi.fn(async () => ({
-    getSnapshot: vi.fn(() => ({ applications: { default: {}, publishing: {} } })),
+    getSnapshot: vi.fn(() => ({
+      applications: { default: {}, publishing: {}, security: {} },
+      instances: {
+        'post:first': { rel: 'post:first', flow: 'post-flow', node: 'ready', fields: {} },
+        'cve:CVE-2026-0001': {
+          rel: 'cve:CVE-2026-0001',
+          flow: 'cve-flow',
+          node: 'ready',
+          fields: {},
+        },
+      },
+      definitions: {
+        'post-flow': { definition: { name: 'post-flow', app: 'publishing' } },
+        'cve-flow': { definition: { name: 'cve-flow', app: 'security' } },
+      },
+    })),
+    getSitemap: vi.fn(() => ({ surfaces: [] })),
   })),
   listEvents: vi.fn(async () => [{ seq: 1, kind: 'seed', rel: 'seed:a' }]),
   requestIdentityProfile: vi.fn((): 'local' | 'production' => 'production'),
@@ -108,6 +124,29 @@ describe('GET /api/events production authentication wiring', () => {
       0,
       expect.objectContaining({ principal: 'human-alice' }),
     );
+  });
+
+  it('filters raw capability receipts by the credential Application grants', async () => {
+    mocks.resolveTrustedRequestIdentity.mockResolvedValueOnce({
+      ...CREDENTIAL_IDENTITY,
+      scopes: ['ui4a:read', 'ui4a:policy:publishing'],
+      grantedApplications: ['publishing'],
+    });
+    mocks.listEvents.mockResolvedValueOnce([
+      {
+        seq: 1,
+        domain: 'capability',
+        kind: 'function-execution-finalized',
+        rel: 'cve:CVE-2026-0001',
+      },
+      { seq: 2, domain: 'core', kind: 'action-executed', rel: 'post:first' },
+    ]);
+
+    const response = await GET(request());
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      events: [{ rel: 'post:first' }],
+    });
   });
 
   it('keeps local profile behavior unchanged (no identity resolution)', async () => {

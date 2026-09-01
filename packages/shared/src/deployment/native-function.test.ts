@@ -103,6 +103,19 @@ describe('Native Function deployment contract', () => {
     );
   });
 
+  it('rejects payload budgets that the binder and canonical hash cannot honor', () => {
+    expect(() =>
+      parseNativeFunctionProfiles([
+        profile({ limits: { ...profile().limits, inputBytes: 65_537 } }),
+      ]),
+    ).toThrow(/inputBytes/);
+    expect(() =>
+      parseNativeFunctionProfiles([
+        profile({ limits: { ...profile().limits, outputBytes: 262_145 } }),
+      ]),
+    ).toThrow(/outputBytes/);
+  });
+
   it('requires unavailable profiles to carry one bounded reason', () => {
     expect(
       parseNativeFunctionProfiles([

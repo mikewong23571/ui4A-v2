@@ -7,6 +7,7 @@ import {
   nativeFunctionExecutionIdentity,
   prepareCapabilityDispatch,
   reconcileNativeFunctionSpawns,
+  selectAuthorizedCapabilityArtifacts,
   startPersistedCapabilityDispatch,
   type NativeFunctionStartInput,
 } from './dispatch';
@@ -115,6 +116,29 @@ describe('Capability executor dispatch composition', () => {
     expect(prepared.prepared.callback).toEqual({
       onDoneAction: 'enrichment-succeeded',
       onErrorAction: 'enrichment-failed',
+    });
+  });
+
+  it('selects only action-referenced artifacts owned by the source entity', () => {
+    expect(
+      selectAuthorizedCapabilityArtifacts(
+        { evidenceRef: 'artifact:owned', foreignRef: 'artifact:foreign' },
+        {
+          'artifact:owned': {
+            rel: 'artifact:owned',
+            source: { rel: 'cve:CVE-2026-0001' },
+            content: { evidence: 'owned' },
+          },
+          'artifact:foreign': {
+            rel: 'artifact:foreign',
+            source: { rel: 'post:other' },
+            content: { evidence: 'foreign' },
+          },
+        },
+        'cve:CVE-2026-0001',
+      ),
+    ).toEqual({
+      evidenceRef: { rel: 'artifact:owned', value: { evidence: 'owned' } },
     });
   });
 
