@@ -1,6 +1,6 @@
 # T46 实施计划
 
-## Phase A：Disposable Probe 与架构定案
+## Phase A：Disposable Probe 与架构定案 [checkpoint: e079644]
 
 - [x] Task: Keycloak 26.7.1 disposable Device/Offline probe
   - [x] 验证 public device client、discovery endpoints、poll/refresh/revoke 与 token claims
@@ -10,7 +10,7 @@
   - [x] 验证 token 不进入 argv/stdout/stderr 的 add/read/update/delete 调用形态
   - [x] 固定 injectable credential-store adapter 边界，不增加 runtime dependency
 - [x] Task: 记录 D63，细化后续计划
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) e079644
 
 ## Phase B：Realm、身份与 Edge 合同 Red/Green
 
