@@ -1,0 +1,1 @@
+T42 D3：用户授权后修复本次测试误写。完整备份/tmp/ui4a-t42-event-524-backup.json，SHA256 ee2e240bfc51f09fad5463abae8885e210ce853249a8b732c3dbdc5edc6f1626。事务内锁表、精确匹配seq524、临时停用并恢复append-only触发器、仅删除1行；未清库。CLI复验health/business/meta=200，Application定义8，业务目录7，articles=2。
