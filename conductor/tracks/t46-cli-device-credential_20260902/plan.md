@@ -12,18 +12,18 @@
 - [x] Task: 记录 D63，细化后续计划
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) e079644
 
-## Phase B：Realm、身份与 Edge 合同 Red/Green
+## Phase B：Realm、身份与 Edge 合同 Red/Green [checkpoint: e2a5409]
 
-- [ ] Task: Red — realm v2 与 CLI Agent identity
-  - [ ] realm client/scopes/lifespans/禁止项合同先失败
-  - [ ] `azp=ui4a-cli` Agent provenance、no-approve 与负向 claims 先失败
-- [ ] Task: Green — realm v2 与可信请求身份
-  - [ ] 更新 realm import/compatibility/deployment config，不恢复 request-owned scope
-  - [ ] 扩展 production credential policy 与审计 provenance
-- [ ] Task: Red/Green — Compose/Kubernetes Keycloak device edge
-  - [ ] 固定 GET/POST route allowlist 与 admin/master negative
-  - [ ] standing Compose/Helm/static projection 同源更新
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Red — realm v2 与 CLI Agent identity e2a5409
+  - [x] realm client/scopes/lifespans/禁止项合同先失败
+  - [x] `azp=ui4a-cli` Agent provenance、no-approve 与负向 claims 先失败
+- [x] Task: Green — realm v2 与可信请求身份 e2a5409
+  - [x] 更新 realm import/compatibility/deployment config，不恢复 request-owned scope
+  - [x] 扩展 production credential policy 与审计 provenance
+- [x] Task: Red/Green — Compose/Kubernetes Keycloak device edge e2a5409
+  - [x] 固定 GET/POST route allowlist 与 admin/master negative
+  - [x] standing Compose/Helm/static projection 同源更新
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) e2a5409
 
 ## Phase C：CLI 长期凭证生命周期 Red/Green
 
