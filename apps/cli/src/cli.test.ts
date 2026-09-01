@@ -24,10 +24,34 @@ describe('ui4a CLI contract', () => {
   });
 
   it('documents composable resources and omits approval commands', () => {
+    expect(HELP).toContain('auth login|status|logout');
     expect(HELP).toContain('apps list');
     expect(HELP).toContain('drafts create');
     expect(HELP).toContain('request get|head');
     expect(HELP).not.toMatch(/activations approve/);
+  });
+
+  it('loads production Device endpoints and applications without treating them as identity', async () => {
+    const config = await loadConfig(
+      { configPath: '/definitely/missing' },
+      {
+        UI4A_BASE_URL: 'https://ui4a.example',
+        UI4A_ISSUER: 'https://auth.ui4a.example/realms/ui4a',
+        UI4A_CLIENT_ID: 'ui4a-cli',
+        UI4A_APPLICATIONS: 'development,governance',
+      },
+    );
+    expect(config).toMatchObject({
+      issuer: 'https://auth.ui4a.example/realms/ui4a',
+      clientId: 'ui4a-cli',
+      applications: ['development', 'governance'],
+    });
+    expect(config.sources).toMatchObject({
+      issuer: 'env',
+      clientId: 'env',
+      applications: 'env',
+      token: 'missing',
+    });
   });
 
   it('rejects identity and Draft bypass flags', () => {

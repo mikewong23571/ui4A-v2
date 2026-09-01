@@ -13,6 +13,7 @@ export const HELP = `ui4a ${CLI_RELEASE_TAG} (experimental) — UI4A HTTP/Siren/
 Usage: ui4a [--json] [--base-url URL] <noun> <verb> [arguments]
 
 Discover and read:
+  auth login|status|logout            Manage long-lived Device credential
   doctor                              Check endpoint, protocol and auth source
   apps list | apps show <name>        Discover authorized Applications
   flows list | flows show <name>      Discover active Flows

@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 import { parseArgs } from './args.js';
 import { HELP, runCommand } from './commands.js';
+import {
+  defaultAuthDependencies,
+  resolveStoredAccessCredential,
+  runAuthCommand,
+} from './commands-auth.js';
 import { loadConfig } from './config.js';
 import { CliError, failure, redact } from './envelope.js';
 import { Ui4aHttpClient } from './http.js';
@@ -26,7 +31,15 @@ async function main(): Promise<void> {
       ...(args.token === undefined ? {} : { token: args.token }),
       ...(args.configPath === undefined ? {} : { configPath: args.configPath }),
     });
-    const result = redact(await runCommand(args, new Ui4aHttpClient(config)));
+    const authDependencies = defaultAuthDependencies();
+    const authResult = await runAuthCommand(args, config, authDependencies);
+    const result = redact(
+      authResult ??
+        (await runCommand(
+          args,
+          new Ui4aHttpClient(await resolveStoredAccessCredential(config, authDependencies)),
+        )),
+    );
     process.stdout.write(`${JSON.stringify(result, null, json ? 0 : 2)}\n`);
   } catch (error) {
     const cliError =

@@ -18,10 +18,39 @@ export UI4A_POLICY_SCOPE=publishing
 ui4a --json doctor
 ```
 
+For a production Device credential, keep endpoint metadata in
+`$XDG_CONFIG_HOME/ui4a/config.json` and keep all credential material out of the file:
+
+```json
+{
+  "baseUrl": "https://ui4a.example",
+  "issuer": "https://auth.ui4a.example/realms/ui4a",
+  "clientId": "ui4a-cli",
+  "applications": ["development"]
+}
+```
+
+```bash
+chmod 600 "$XDG_CONFIG_HOME/ui4a/config.json"
+ui4a auth login
+ui4a --json auth status
+ui4a --json doctor
+ui4a auth logout
+```
+
+`auth login` opens Keycloak Device Authorization in the browser. The offline/refresh credential is
+stored only in macOS Keychain; each command refreshes a memory-only access token and atomically stores
+the returned refresh rotation. `auth logout` revokes the offline credential before deleting the
+Keychain item. The CLI client never receives `ui4a:approve`.
+
 Config precedence is one-off `--base-url`/`--token`, then `UI4A_*` environment variables, then
 `$XDG_CONFIG_HOME/ui4a/config.json`, then the localhost demo defaults. Tokens are sent as Bearer
 credentials and never returned. The current local server reports `self-reported-local-demo`; do not
 treat it as production authentication.
+
+Device endpoint environment keys are `UI4A_ISSUER`, `UI4A_CLIENT_ID`, and comma-separated
+`UI4A_APPLICATIONS`. `--token`/`UI4A_TOKEN` remains a one-off external Bearer path and takes precedence
+over Keychain; never persist an offline credential in configuration or shell history.
 
 ## Stable JSON
 
