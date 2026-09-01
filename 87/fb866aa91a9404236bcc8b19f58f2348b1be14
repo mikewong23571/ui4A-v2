@@ -1,0 +1,14 @@
+T46 Phase C CLI Device credential lifecycle
+
+Summary:
+- Added issuer/client/application endpoint config while preserving one-off Bearer precedence and local demo behavior.
+- Added auth login/status/logout, Device polling, refresh rotation, revocation, and automatic memory-only Bearer resolution.
+- Added macOS Keychain adapter using double-line stdin; refresh material never enters argv/stdout/config.
+- Added CLI help/README, build/pack behavior, and fail-closed scope/discovery/platform handling.
+
+Verification:
+- CLI suite: 36 passed.
+- New auth coverage: statements 85.32%, functions 84.21%, lines 87.2%.
+- CLI typecheck passed; pnpm lint 0 errors (existing warnings only).
+- CLI build, pack, temporary-prefix install, version/help/auth-status independent cwd smoke passed.
+- governance:strict passed.
