@@ -1,0 +1,4 @@
+Phase D registry correction
+Summary: Replaced closed T35 counts/lists with installedApplicationBundles-derived Flow/Application/Capability expectations and added Security entries to Meta projections. Existing first-bundle ordering anchors remain.
+Verification: six formerly failing DB suites, including chat situation, now pass 66 tests.
+Why: Adding an Application must extend data-driven registries without rewriting closed numeric assumptions.
