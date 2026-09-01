@@ -17,6 +17,11 @@ export interface ComposeRenderInput {
   settingsFile: string;
   secretsFile: string;
   realmFile: string;
+  edge: {
+    webPublicOrigin: string;
+    keycloakPublicOrigin: string;
+    publishedPort: number;
+  };
   images: Record<ComposeImageKey, string>;
 }
 

@@ -1114,3 +1114,20 @@
   PostgreSQL events、Temporal SDK、Next.js internal route、Ajv 与 callback token。详细 wire、事务与
   模块落位见
   `conductor/tracks/t43-capability-boundary-native-function_20260901/architecture.md`。
+
+## D60 Compose 公共 Origin 与内部 TLS Listener 分离(2026-09-01,T44)
+
+- **背景**：T22 Compose 把 Keycloak `KC_HOSTNAME`、证书 host、Runner 内部 origin 和宿主 published
+  port 一起固定为 mothership `:8443`。`home` 已有服务占用宿主 `8443`，而现有 Tailnet Caddy 在
+  `443` 提供入口；仅改 port mapping 会使 OIDC issuer/callback 与浏览器实际 origin 分裂。
+- **决定**：canonical settings 的 `service.publicOrigin` 与 OIDC issuer 是公共 origin 单一真相；
+  Compose input generator 在严格解析后派生 Web/Keycloak host，拒绝环境覆盖不一致。宿主只允许
+  一个 operator-owned、非特权 loopback published port；容器内部 UI4A edge `8443`、Keycloak admin
+  `9443` 与两个 Runner delivery listener `8443/9444` 保持不变。TypeScript renderer、静态 YAML、
+  operator preflight 与合同测试原子迁移，不保留第二套 home Compose。
+- **入口边界**：外层 Caddy 可以在公共 `443` 终止证书，但必须 TLS 回源 UI4A edge、校验持久化
+  public CA、保留两个独立 host，并继续由 edge route allowlist 决定可达路径。禁止 path-prefix、
+  `tls_insecure_skip_verify`、直接代理 Web/Keycloak 或公开数据库/Temporal/admin listener。
+- **影响**：mothership 默认 public origin 与 `8443` 行为不变；新环境只贡献 operator settings、
+  Secret、image inventory、published port 与外层入口事实。零新增 runtime dependency、数据库、
+  权威状态或应用级分支。

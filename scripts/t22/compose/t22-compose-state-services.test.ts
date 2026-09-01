@@ -15,6 +15,11 @@ function stack() {
     settingsFile: '/srv/ui4a/config/settings.json',
     secretsFile: '/srv/ui4a/secrets/deployment-secrets.json',
     realmFile: 'deploy/keycloak/realm-import.json',
+    edge: {
+      webPublicOrigin: 'https://ui4a.mothership.internal:8443',
+      keycloakPublicOrigin: 'https://auth.ui4a.mothership.internal:8443',
+      publishedPort: 8443,
+    },
     images: {
       postgres: `registry.internal/postgres@${digest('1')}`,
       temporal: `registry.internal/temporal@${digest('2')}`,

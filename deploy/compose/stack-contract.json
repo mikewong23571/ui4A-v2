@@ -9,6 +9,13 @@
       "clients": ["ui4a-web", "ui4a-agent", "ui4a-api"]
     }
   },
+  "edge": {
+    "publicOriginsSource": "canonical-deployment-settings",
+    "bindAddress": "127.0.0.1",
+    "publishedPortSource": "UI4A_EDGE_HTTPS_PORT",
+    "internalHttpsPort": 8443,
+    "publicProxyMustPreserveEdge": true
+  },
   "stateServices": {
     "postgresMajor": 17,
     "temporalServerVersion": "1.31.2",

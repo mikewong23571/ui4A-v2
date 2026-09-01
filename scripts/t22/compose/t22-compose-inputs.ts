@@ -37,11 +37,15 @@ export interface ComposeProductionInput {
   secretsFile: string;
   secretFiles: Record<SecretFileEnvironmentKey, string>;
   images: Record<ImageEnvironmentKey, string>;
+  edgePublishedPort: number;
 }
 
 interface ComposeCanonicalBindingView {
   settings: {
     deploymentMode?: string;
+    service: { publicOrigin: string };
+    auth: { oidc: { issuer: string } };
+    tls: { ui4aHost: string; keycloakHost: string };
     postgres: {
       migrationPasswordRef: string;
       runtimePasswordRef: string;
@@ -133,6 +137,36 @@ function requiredEnvironmentValue(
   return value;
 }
 
+function edgePort(value: string | undefined): string {
+  if (value === undefined || !/^\d+$/.test(value)) fail('COMPOSE_EDGE_BINDING_INVALID');
+  const port = Number(value);
+  if (!Number.isSafeInteger(port) || port < 1024 || port > 65_535) {
+    fail('COMPOSE_EDGE_BINDING_INVALID');
+  }
+  return String(port);
+}
+
+function publicOrigin(value: string, code: string): URL {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    fail(code);
+  }
+  if (
+    url.protocol !== 'https:' ||
+    url.username !== '' ||
+    url.password !== '' ||
+    url.pathname !== '/' ||
+    url.search !== '' ||
+    url.hash !== '' ||
+    url.origin !== value
+  ) {
+    fail(code);
+  }
+  return url;
+}
+
 function sameMaterial(
   environment: Readonly<Record<string, string | undefined>>,
   key: SecretFileEnvironmentKey,
@@ -206,6 +240,32 @@ export function validateComposeProductionEnvironment(
     fail('COMPOSE_CANONICAL_INPUT_INVALID');
   }
   const { settings } = canonical;
+  const webPublicOrigin = publicOrigin(
+    settings.service.publicOrigin,
+    'COMPOSE_EDGE_BINDING_INVALID',
+  );
+  const keycloakPublicOrigin = publicOrigin(
+    new URL(settings.auth.oidc.issuer).origin,
+    'COMPOSE_EDGE_BINDING_INVALID',
+  );
+  if (
+    webPublicOrigin.hostname !== settings.tls.ui4aHost ||
+    keycloakPublicOrigin.hostname !== settings.tls.keycloakHost ||
+    webPublicOrigin.hostname === keycloakPublicOrigin.hostname
+  ) {
+    fail('COMPOSE_EDGE_BINDING_INVALID');
+  }
+  const expectedIngress = {
+    UI4A_PUBLIC_ORIGIN: webPublicOrigin.origin,
+    UI4A_KEYCLOAK_PUBLIC_ORIGIN: keycloakPublicOrigin.origin,
+    UI4A_HOST: webPublicOrigin.hostname,
+    KEYCLOAK_HOST: keycloakPublicOrigin.hostname,
+    UI4A_EDGE_HTTPS_PORT: edgePort(environment.UI4A_EDGE_HTTPS_PORT),
+  } as const;
+  for (const [key, expected] of Object.entries(expectedIngress)) {
+    const configured = environment[key];
+    if (configured !== undefined && configured !== expected) fail('COMPOSE_EDGE_BINDING_INVALID');
+  }
   const expectedRunnerTokenRefs = {
     'compose-container-runner': 'compose-container-runner-token',
     'compose-host-runner': 'compose-host-runner-token',
@@ -315,9 +375,13 @@ export function validateComposeProductionEnvironment(
       'UI4A_RELEASE_GIT_SHA',
       'UI4A_DEPLOYMENT_SETTINGS_FILE',
       'UI4A_DEPLOYMENT_SECRETS_FILE',
+      ...Object.keys(expectedIngress),
       ...composeSecretFileEnvironmentKeys,
       ...composeImageEnvironmentKeys,
-    ].map((key) => [key, environment[key]!]),
+    ].map((key) => [
+      key,
+      expectedIngress[key as keyof typeof expectedIngress] ?? environment[key]!,
+    ]),
   );
   return {
     environment: Object.freeze(safeEnvironment),
@@ -335,6 +399,7 @@ export function generateComposeProductionEnvironment(
       UI4A_RELEASE_GIT_SHA: input.ui4aGitSha,
       UI4A_DEPLOYMENT_SETTINGS_FILE: input.settingsFile,
       UI4A_DEPLOYMENT_SECRETS_FILE: input.secretsFile,
+      UI4A_EDGE_HTTPS_PORT: String(input.edgePublishedPort),
       ...input.secretFiles,
       ...input.images,
     },

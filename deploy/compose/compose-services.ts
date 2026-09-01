@@ -22,6 +22,12 @@ import type { ComposeRenderInput, ComposeService } from './compose-types';
 
 export function composeServices(input: ComposeRenderInput): Record<string, ComposeService> {
   const { images } = input;
+  const ui4aHost = new URL(input.edge.webPublicOrigin).hostname;
+  const keycloakHost = new URL(input.edge.keycloakPublicOrigin).hostname;
+  const runnerOrigins = JSON.stringify({
+    'compose-container-runner': `https://${ui4aHost}:8443`,
+    'compose-host-runner': `https://${ui4aHost}:9444`,
+  });
 
   return {
     postgres: {
@@ -139,7 +145,7 @@ export function composeServices(input: ComposeRenderInput): Record<string, Compo
         KC_HEALTH_ENABLED: 'true',
         KC_HTTP_ENABLED: 'true',
         KC_PROXY_HEADERS: 'xforwarded',
-        KC_HOSTNAME: 'https://auth.ui4a.mothership.internal:8443',
+        KC_HOSTNAME: input.edge.keycloakPublicOrigin,
       },
       entrypoint: ['/bin/bash', '-ec'],
       command: [
@@ -186,7 +192,7 @@ export function composeServices(input: ComposeRenderInput): Record<string, Compo
       environment: {
         ...canonicalRuntimeEnvironment,
         UI4A_REALM_IMPORT_FILE: '/opt/ui4a/realm-import.json',
-        UI4A_KEYCLOAK_ADMIN_ORIGIN: 'https://auth.ui4a.mothership.internal:9443',
+        UI4A_KEYCLOAK_ADMIN_ORIGIN: `https://${keycloakHost}:9443`,
       },
       command: ['node', 'dist/t22-keycloak-realm-bootstrap.js', '--apply'],
       volumes: [
@@ -212,8 +218,8 @@ export function composeServices(input: ComposeRenderInput): Record<string, Compo
         UI4A_DEPLOYMENT_SETTINGS_FILE: '/run/ui4a/settings.json',
         UI4A_DEPLOYMENT_SECRETS_FILE: '/run/secrets/ui4a-deployment-secrets',
         UI4A_PKI_ROOT: '/var/lib/ui4a/ca',
-        UI4A_HOST: 'ui4a.mothership.internal',
-        KEYCLOAK_HOST: 'auth.ui4a.mothership.internal',
+        UI4A_HOST: ui4aHost,
+        KEYCLOAK_HOST: keycloakHost,
         UI4A_POSTGRES_HOST: 'postgres',
       },
       command: ['node', 'dist/main.js', 'pki-init'],
@@ -254,8 +260,7 @@ export function composeServices(input: ComposeRenderInput): Record<string, Compo
         UI4A_PUBLIC_BASE_URL: 'http://web:3100',
         UI4A_CAPABILITY_CALLBACK_TOKEN_FILE: `${runtimeConfigRoot}/capability-callback-token`,
         UI4A_RUNNER_IMAGE: images.runner,
-        UI4A_HOST_RUNNER_ORIGINS:
-          '{"compose-container-runner":"https://ui4a.mothership.internal:8443","compose-host-runner":"https://ui4a.mothership.internal:9444"}',
+        UI4A_HOST_RUNNER_ORIGINS: runnerOrigins,
       },
       healthcheck: health([
         'CMD',
@@ -341,17 +346,17 @@ export function composeServices(input: ComposeRenderInput): Record<string, Compo
         'https://127.0.0.1:8443/_edge_live',
       ]),
       environment: {
-        UI4A_HOST: 'ui4a.mothership.internal',
-        KEYCLOAK_HOST: 'auth.ui4a.mothership.internal',
+        UI4A_HOST: ui4aHost,
+        KEYCLOAK_HOST: keycloakHost,
         HOME: '/tmp',
         XDG_CONFIG_HOME: '/tmp/caddy-config',
         XDG_DATA_HOME: '/tmp/caddy-data',
       },
       volumes: ['experiment-ca:/var/lib/ui4a/ca:ro', `${edgeRoutingFile}:/etc/caddy/Caddyfile:ro`],
-      ports: ['127.0.0.1:8443:8443'],
+      ports: [`127.0.0.1:${input.edge.publishedPort}:8443`],
       networks: {
         default: {
-          aliases: ['ui4a.mothership.internal', 'auth.ui4a.mothership.internal'],
+          aliases: [ui4aHost, keycloakHost],
         },
       },
       command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile'],

@@ -188,7 +188,7 @@ services:
       KC_HEALTH_ENABLED: 'true'
       KC_HTTP_ENABLED: 'true'
       KC_PROXY_HEADERS: xforwarded
-      KC_HOSTNAME: https://${KEYCLOAK_HOST:-auth.ui4a.mothership.internal}:8443
+      KC_HOSTNAME: ${UI4A_KEYCLOAK_PUBLIC_ORIGIN:-https://auth.ui4a.mothership.internal:8443}
     entrypoint: [/bin/bash, -ec]
     command:
       - >-

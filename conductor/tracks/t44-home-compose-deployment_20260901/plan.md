@@ -22,8 +22,8 @@ Red → Green，并以 `home` 实机 Ready 与 Tailnet HTTPS 为最终完成条�
 
 ## Phase B：公共 Origin 合同
 
-- [ ] Task: Red — Operator-defined public origins
-  - [ ] 为完整 HTTPS Web/Keycloak origin、默认值、非法 origin 与 canonical settings mismatch 编写失败测试
+- [~] Task: Red — Operator-defined public origins
+  - [~] 为完整 HTTPS Web/Keycloak origin、默认值、非法 origin 与 canonical settings mismatch 编写失败测试
   - [ ] 为宿主 edge bind address/port 与内部 listener 分离编写失败测试
   - [ ] 运行测试并确认预期失败
 - [ ] Task: Green — Compose renderer 与静态投影

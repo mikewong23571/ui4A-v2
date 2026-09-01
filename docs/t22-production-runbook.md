@@ -40,6 +40,12 @@ cd "$UI4A_REPOSITORY"
 Compose 的完整环境变量、11 个 Secret files 和 9 个 image refs 以
 `deploy/compose/README.md` 为准；不要在本手册重复 Secret 值。
 
+Compose 允许宿主反向代理把 canonical Web/Keycloak HTTPS origin 暴露在公共 `443`，同时把
+UI4A edge 只发布到一个未占用的 loopback 高位端口。完整 public origins 来自 canonical settings，
+host 与 published port 由 operator input generator 封闭导出；容器内部 edge/Runner/admin listener
+端口不随宿主入口改变。外层代理必须继续经过 UI4A edge allowlist，并信任持久化 public CA，禁止
+`tls_insecure_skip_verify`、path-prefix 部署或直接代理 Web/Keycloak 容器。
+
 ## 1. 目标集群和节点预检
 
 ### Step 1.1 — 固定集群事实

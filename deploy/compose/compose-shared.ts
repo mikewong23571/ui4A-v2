@@ -125,13 +125,36 @@ function assertPath(value: unknown, label: string, absolute: boolean): asserts v
   }
 }
 
+function assertPublicOrigin(value: unknown, label: string): asserts value is string {
+  if (typeof value !== 'string' || value.trim() !== value || value === '') {
+    fail(`${label} must be an HTTPS origin`);
+  }
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    fail(`${label} must be an HTTPS origin`);
+  }
+  if (
+    url.protocol !== 'https:' ||
+    url.username !== '' ||
+    url.password !== '' ||
+    url.pathname !== '/' ||
+    url.search !== '' ||
+    url.hash !== '' ||
+    url.origin !== value
+  ) {
+    fail(`${label} must be an HTTPS origin`);
+  }
+}
+
 export function validateInput(input: ComposeRenderInput): void {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     fail('input must be an object');
   }
   assertExactKeys(
     input as unknown as Record<string, unknown>,
-    ['projectName', 'settingsFile', 'secretsFile', 'realmFile', 'images'],
+    ['projectName', 'settingsFile', 'secretsFile', 'realmFile', 'edge', 'images'],
     'input',
   );
   if (input.projectName !== 'ui4a') fail('projectName must be ui4a');
@@ -140,6 +163,29 @@ export function validateInput(input: ComposeRenderInput): void {
   assertPath(input.realmFile, 'realmFile', false);
   if (input.realmFile !== 'deploy/keycloak/realm-import.json') {
     fail('realmFile must reuse deploy/keycloak/realm-import.json');
+  }
+  if (typeof input.edge !== 'object' || input.edge === null || Array.isArray(input.edge)) {
+    fail('edge must be an object');
+  }
+  assertExactKeys(
+    input.edge as unknown as Record<string, unknown>,
+    ['webPublicOrigin', 'keycloakPublicOrigin', 'publishedPort'],
+    'edge',
+  );
+  assertPublicOrigin(input.edge.webPublicOrigin, 'edge.webPublicOrigin');
+  assertPublicOrigin(input.edge.keycloakPublicOrigin, 'edge.keycloakPublicOrigin');
+  if (
+    new URL(input.edge.webPublicOrigin).hostname ===
+    new URL(input.edge.keycloakPublicOrigin).hostname
+  ) {
+    fail('edge public origins must use distinct hosts');
+  }
+  if (
+    !Number.isSafeInteger(input.edge.publishedPort) ||
+    input.edge.publishedPort < 1024 ||
+    input.edge.publishedPort > 65_535
+  ) {
+    fail('edge.publishedPort must be an unprivileged TCP port');
   }
   if (typeof input.images !== 'object' || input.images === null || Array.isArray(input.images)) {
     fail('images must be an object');

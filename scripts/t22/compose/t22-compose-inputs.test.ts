@@ -12,6 +12,7 @@ const secretValue = (name: string): string => `__private_${name}__`;
 const settingsFile = '/operator/ui4a/settings.json';
 const secretsFile = '/operator/ui4a/deployment-secrets.json';
 const ui4aGitSha = 'c'.repeat(40);
+const edgePublishedPort = 10443;
 const secretFiles = {
   UI4A_POSTGRES_BOOTSTRAP_PASSWORD_FILE: '/operator/ui4a/postgres-bootstrap-password',
   UI4A_MIGRATION_PASSWORD_FILE: '/operator/ui4a/ui4a-migration-password',
@@ -77,6 +78,16 @@ function fixture() {
     loadCanonical() {
       return {
         settings: {
+          service: { publicOrigin: 'https://ui4a.home-linux.tail.styleofwong.com' },
+          auth: {
+            oidc: {
+              issuer: 'https://auth-ui4a.home-linux.tail.styleofwong.com/realms/ui4a',
+            },
+          },
+          tls: {
+            ui4aHost: 'ui4a.home-linux.tail.styleofwong.com',
+            keycloakHost: 'auth-ui4a.home-linux.tail.styleofwong.com',
+          },
           postgres: {
             migrationPasswordRef: refs.migration,
             runtimePasswordRef: refs.runtime,
@@ -126,6 +137,11 @@ function environment(): Record<string, string> {
     UI4A_RELEASE_GIT_SHA: ui4aGitSha,
     UI4A_DEPLOYMENT_SETTINGS_FILE: settingsFile,
     UI4A_DEPLOYMENT_SECRETS_FILE: secretsFile,
+    UI4A_PUBLIC_ORIGIN: 'https://ui4a.home-linux.tail.styleofwong.com',
+    UI4A_KEYCLOAK_PUBLIC_ORIGIN: 'https://auth-ui4a.home-linux.tail.styleofwong.com',
+    UI4A_HOST: 'ui4a.home-linux.tail.styleofwong.com',
+    KEYCLOAK_HOST: 'auth-ui4a.home-linux.tail.styleofwong.com',
+    UI4A_EDGE_HTTPS_PORT: String(edgePublishedPort),
     ...secretFiles,
     ...images,
   };
@@ -135,7 +151,7 @@ describe('T22 Compose operator-owned production inputs', () => {
   it('generates only a sealed path/digest environment and verifies all eight Secret bindings', () => {
     const { dependencies, secrets } = fixture();
     const generated = generateComposeProductionEnvironment(
-      { ui4aGitSha, settingsFile, secretsFile, secretFiles, images },
+      { ui4aGitSha, settingsFile, secretsFile, secretFiles, images, edgePublishedPort },
       dependencies,
     );
 
@@ -183,10 +199,52 @@ describe('T22 Compose operator-owned production inputs', () => {
 
     expect(() =>
       generateComposeProductionEnvironment(
-        { ui4aGitSha: 'not-a-sha', settingsFile, secretsFile, secretFiles, images },
+        {
+          ui4aGitSha: 'not-a-sha',
+          settingsFile,
+          secretsFile,
+          secretFiles,
+          images,
+          edgePublishedPort,
+        },
         dependencies,
       ),
     ).toThrowError('COMPOSE_RELEASE_REVISION_INVALID');
+  });
+
+  it('rejects a privileged or out-of-range published edge port', () => {
+    const { dependencies } = fixture();
+
+    for (const publishedPort of [443, 0, 65_536, 10_443.5]) {
+      expect(() =>
+        generateComposeProductionEnvironment(
+          {
+            ui4aGitSha,
+            settingsFile,
+            secretsFile,
+            secretFiles,
+            images,
+            edgePublishedPort: publishedPort,
+          },
+          dependencies,
+        ),
+      ).toThrowError('COMPOSE_EDGE_BINDING_INVALID');
+    }
+  });
+
+  it('rejects an environment origin or host that differs from canonical settings', () => {
+    const { dependencies } = fixture();
+
+    for (const mismatch of [
+      { UI4A_PUBLIC_ORIGIN: 'https://other.home.internal' },
+      { UI4A_KEYCLOAK_PUBLIC_ORIGIN: 'https://other-auth.home.internal' },
+      { UI4A_HOST: 'other.home.internal' },
+      { KEYCLOAK_HOST: 'other-auth.home.internal' },
+    ]) {
+      expect(() =>
+        validateComposeProductionEnvironment({ ...environment(), ...mismatch }, dependencies),
+      ).toThrowError('COMPOSE_EDGE_BINDING_INVALID');
+    }
   });
 
   it('preflights two distinct server-owned Runner ids and token refs from canonical settings', () => {

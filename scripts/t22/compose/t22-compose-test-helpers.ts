@@ -162,6 +162,11 @@ export interface ComposeRenderInput {
   settingsFile: string;
   secretsFile: string;
   realmFile: string;
+  edge: {
+    webPublicOrigin: string;
+    keycloakPublicOrigin: string;
+    publishedPort: number;
+  };
   images: Record<
     | 'postgres'
     | 'temporal'
@@ -208,6 +213,11 @@ export function renderInput(): ComposeRenderInput {
     settingsFile: '/srv/ui4a/config/settings.json',
     secretsFile: '/srv/ui4a/secrets/deployment-secrets.json',
     realmFile: 'deploy/keycloak/realm-import.json',
+    edge: {
+      webPublicOrigin: 'https://ui4a.mothership.internal:8443',
+      keycloakPublicOrigin: 'https://auth.ui4a.mothership.internal:8443',
+      publishedPort: 8443,
+    },
     images: {
       postgres: `nexus.internal/ui4a/postgres@${digest('1')}`,
       temporal: `nexus.internal/ui4a/temporal@${digest('2')}`,

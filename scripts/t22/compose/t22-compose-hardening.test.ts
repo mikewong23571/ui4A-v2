@@ -255,6 +255,65 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     });
   });
 
+  it('separates operator public origins and published port from internal TLS listeners', async () => {
+    const renderer = await loadRenderer();
+    const input = renderInput();
+    input.edge = {
+      webPublicOrigin: 'https://ui4a.home-linux.tail.styleofwong.com',
+      keycloakPublicOrigin: 'https://auth-ui4a.home-linux.tail.styleofwong.com',
+      publishedPort: 10443,
+    };
+
+    const stack = renderer.renderComposeStack(input);
+
+    expect(stack.services.keycloak?.environment?.KC_HOSTNAME).toBe(input.edge.keycloakPublicOrigin);
+    expect(stack.services['pki-init']?.environment).toMatchObject({
+      UI4A_HOST: 'ui4a.home-linux.tail.styleofwong.com',
+      KEYCLOAK_HOST: 'auth-ui4a.home-linux.tail.styleofwong.com',
+    });
+    expect(stack.services.edge?.ports).toEqual(['127.0.0.1:10443:8443']);
+    expect(stack.services.edge?.networks?.default?.aliases).toEqual([
+      'ui4a.home-linux.tail.styleofwong.com',
+      'auth-ui4a.home-linux.tail.styleofwong.com',
+    ]);
+    expect(stack.services.worker?.environment?.UI4A_HOST_RUNNER_ORIGINS).toBe(
+      '{"compose-container-runner":"https://ui4a.home-linux.tail.styleofwong.com:8443","compose-host-runner":"https://ui4a.home-linux.tail.styleofwong.com:9444"}',
+    );
+    expect(edgeRoutingSource()).toContain('https://{$UI4A_HOST}:8443');
+  });
+
+  it('rejects insecure, path-bearing, same-host, or privileged edge inputs', async () => {
+    const renderer = await loadRenderer();
+    const cases = [
+      {
+        webPublicOrigin: 'http://ui4a.home.internal',
+        keycloakPublicOrigin: 'https://auth.home.internal',
+        publishedPort: 10_443,
+      },
+      {
+        webPublicOrigin: 'https://ui4a.home.internal/path',
+        keycloakPublicOrigin: 'https://auth.home.internal',
+        publishedPort: 10_443,
+      },
+      {
+        webPublicOrigin: 'https://ui4a.home.internal',
+        keycloakPublicOrigin: 'https://ui4a.home.internal',
+        publishedPort: 10_443,
+      },
+      {
+        webPublicOrigin: 'https://ui4a.home.internal',
+        keycloakPublicOrigin: 'https://auth.home.internal',
+        publishedPort: 443,
+      },
+    ];
+
+    for (const edge of cases) {
+      expect(() => renderer.renderComposeStack({ ...renderInput(), edge })).toThrow(
+        /edge|HTTPS|origin|port/i,
+      );
+    }
+  });
+
   it('wires the server-owned Compose Runner identity and HTTPS origin without token material', async () => {
     const stack = await renderedStack();
     const worker = stack.services.worker;
@@ -468,6 +527,8 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     expect(compose).toContain('- ${UI4A_HOST:-ui4a.mothership.internal}');
     expect(compose).toContain('- ${KEYCLOAK_HOST:-auth.ui4a.mothership.internal}');
     expect(compose).toContain('UI4A_KEYCLOAK_ADMIN_ORIGIN:');
+    expect(compose).toContain('UI4A_KEYCLOAK_PUBLIC_ORIGIN');
+    expect(compose).toContain('UI4A_EDGE_HTTPS_PORT');
     expect(compose).not.toMatch(/fetch\('http:\/\/127\.0\.0\.1:310[01]\/live'/);
     expect(compose).not.toMatch(/Bearer |runner-token|authorization/i);
   });

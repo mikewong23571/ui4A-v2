@@ -6,7 +6,8 @@ eight independently mounted password files plus the callback credential file ref
 `compose.yaml`. Every file and the input
 manifest must be an absolute, non-symlink regular file with mode `0600`.
 
-The manifest contains `ui4aGitSha`, paths, and nine digest-pinned image references only. The three
+The manifest contains `ui4aGitSha`, paths, nine digest-pinned image references, and one
+`edgePublishedPort` (an unprivileged loopback port). The three
 UI4A OCI revisions must equal `ui4aGitSha`; the operator checkout may be newer, but that release
 commit must exist and be an ancestor of the checkout `HEAD`. Validate it without starting the stack:
 
@@ -17,6 +18,13 @@ eval "$(printf '%s' "$compose_inputs_json" | jq -r '.environment | to_entries[] 
 unset compose_inputs_json
 pnpm compose:t22 preflight
 ```
+
+The generator derives `UI4A_PUBLIC_ORIGIN`, `UI4A_KEYCLOAK_PUBLIC_ORIGIN`, `UI4A_HOST`, and
+`KEYCLOAK_HOST` from the canonical settings after strict parsing. It rejects mismatched overrides.
+The published edge port maps loopback to the unchanged internal `8443` listener; a host reverse
+proxy may provide public `443`, but it must forward through the UI4A edge and trust the persisted
+public CA rather than bypassing verification. The Web and Keycloak public origins must use distinct
+hosts, so path-prefix deployment is not supported.
 
 Successful generator output contains only the environment variable names, filesystem paths, image
 digests, release SHA, and a count summary. It never contains credential material. Successful
