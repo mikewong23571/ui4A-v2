@@ -118,14 +118,14 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 覆盖 receipt/callback commit 后、Activity 回包前 crash
   - [x] 覆盖成功 receipt 已保存但业务状态未被非法覆盖
   - [x] 运行测试并确认预期失败
-- [ ] Task: Green — 实现受治理结果回流
-  - [ ] 增加部署侧受保护 callback ingress
-  - [ ] 重新读取 source spawn、Capability birth 和当前实体
-  - [ ] output 通过 schema 后生成 content hash 和 receipt
-  - [ ] callback 参数标记 `origin=effect` 并重新执行 declaration → guard → schema
-  - [ ] receipt 和 callback 结果按已决定的事务协议提交
-  - [ ] 使用 DB 唯一约束与 advisory lock，不使用 check-then-insert 去重
-  - [ ] 失败进入声明的 `on-error`，不造业务事实
+- [x] Task: Green — 实现受治理结果回流 6fdd581
+  - [x] 增加部署侧受保护 callback ingress
+  - [x] 重新读取 source spawn、Capability birth 和当前实体
+  - [x] output 通过 schema 后生成 content hash 和 receipt
+  - [x] callback 参数标记 `origin=effect` 并重新执行 declaration → guard → schema
+  - [x] receipt 和 callback 结果按已决定的事务协议提交
+  - [x] 使用 DB 唯一约束与 advisory lock，不使用 check-then-insert 去重
+  - [x] 失败进入声明的 `on-error`，不造业务事实
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
   - [ ] 启动真实 PostgreSQL、Temporal、Worker 和 Web
   - [ ] 执行成功、异常、非法输出、timeout、cancel 和重复 callback
