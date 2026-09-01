@@ -64,8 +64,8 @@ export interface NativeFunctionInvocationV1 {
       handlerRef: string;
       adapterVersion: string;
     };
-    inputContract: { hash: `sha256:${string}` };
-    outputContract: { hash: `sha256:${string}` };
+    inputContract: { hash: `sha256:${string}`; schema: JsonObject };
+    outputContract: { hash: `sha256:${string}`; schema: JsonObject };
   };
   callback: { onDoneAction: string; onErrorAction: string };
   input: {
@@ -74,6 +74,12 @@ export interface NativeFunctionInvocationV1 {
     hash: `sha256:${string}`;
     byteLength: number;
   };
+}
+
+export interface NativeFunctionWorkflowInputV1 {
+  executionId: string;
+  invocation: NativeFunctionInvocationV1;
+  profile: NativeFunctionProfileV1;
 }
 
 export type NativeFunctionOutcomeV1 =
@@ -209,6 +215,13 @@ function compactRef(value: unknown, where: string, keys: readonly string[]): voi
   }
 }
 
+function schemaContract(value: unknown, where: string): void {
+  object(value, where);
+  exactKeys(value, new Set(['hash', 'schema']), where);
+  hash(value.hash, `${where}.hash`);
+  object(value.schema, `${where}.schema`);
+}
+
 function parseSourceRef(value: unknown, where: string): CapabilityInputSourceRef {
   object(value, where);
   if (value.from === 'action-param') {
@@ -258,8 +271,8 @@ export function parseNativeFunctionInvocation(value: unknown): NativeFunctionInv
     'handlerRef',
     'adapterVersion',
   ]);
-  compactRef(value.birth.inputContract, `${where}.birth.inputContract`, ['hash']);
-  compactRef(value.birth.outputContract, `${where}.birth.outputContract`, ['hash']);
+  schemaContract(value.birth.inputContract, `${where}.birth.inputContract`);
+  schemaContract(value.birth.outputContract, `${where}.birth.outputContract`);
 
   object(value.callback, `${where}.callback`);
   exactKeys(value.callback, new Set(['onDoneAction', 'onErrorAction']), `${where}.callback`);

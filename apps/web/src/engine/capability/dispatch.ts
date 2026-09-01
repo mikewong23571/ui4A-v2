@@ -114,8 +114,11 @@ export async function prepareCapabilityDispatch<TAgent>(
           handlerRef: profile.handlerRef,
           adapterVersion: profile.adapterVersion,
         },
-        inputContract: { hash: hashCanonicalAgentJson(inputSchema as never) },
-        outputContract: { hash: hashCanonicalAgentJson(outputSchema as never) },
+        inputContract: { hash: hashCanonicalAgentJson(inputSchema as never), schema: inputSchema },
+        outputContract: {
+          hash: hashCanonicalAgentJson(outputSchema as never),
+          schema: outputSchema,
+        },
       },
       callback: {
         onDoneAction: callbackAction(input.event['on-done'], 'on-done callback'),

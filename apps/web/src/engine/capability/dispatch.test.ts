@@ -176,8 +176,8 @@ describe('Capability executor dispatch composition', () => {
             handlerRef: profile.handlerRef,
             adapterVersion: profile.adapterVersion,
           },
-          inputContract: { hash },
-          outputContract: { hash },
+          inputContract: { hash, schema: { type: 'object' } },
+          outputContract: { hash, schema: { type: 'object' } },
         },
         callback: { onDoneAction: 'enrichment-succeeded', onErrorAction: 'enrichment-failed' },
         input: {

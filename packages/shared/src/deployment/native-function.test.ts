@@ -47,8 +47,8 @@ function invocation(overrides: Record<string, unknown> = {}) {
         handlerRef: 'security/cve-enrich@1',
         adapterVersion: 'native-function@1',
       },
-      inputContract: { hash },
-      outputContract: { hash },
+      inputContract: { hash, schema: { type: 'object' } },
+      outputContract: { hash, schema: { type: 'object' } },
     },
     callback: {
       onDoneAction: 'enrichment-succeeded',
