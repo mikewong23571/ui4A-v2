@@ -1,16 +1,16 @@
 # T45 实施计划
 
-## Phase A：合同 Red/Green
+## Phase A：合同 Red/Green [checkpoint: 357270a]
 
-- [~] Task: Red — public origin 与 internal TLS host 分离
-  - [ ] production config 接受不同 host，同时保持 issuer/callback cross-check
-  - [ ] Compose renderer/operator generator 分别投影 public 与 internal host
-  - [ ] 非法 origin、TLS host 和环境 mismatch 继续拒绝
-- [ ] Task: Green — 最小实现与 D61
-  - [ ] 更新 shared parser、Compose types/services/static projection
-  - [ ] 更新 standing tests、runbook 与 DECISIONS
-- [ ] Task: Phase Verification & Checkpoint
-  - [ ] focused tests、format、typecheck、lint、governance、`pnpm check`
+- [x] Task: Red — public origin 与 internal TLS host 分离 357270a
+  - [x] production config 接受不同 host，同时保持 issuer/callback cross-check
+  - [x] Compose renderer/operator generator 分别投影 public 与 internal host
+  - [x] 非法 origin、TLS host 和环境 mismatch 继续拒绝
+- [x] Task: Green — 最小实现与 D61 357270a
+  - [x] 更新 shared parser、Compose types/services/static projection
+  - [x] 更新 standing tests、runbook 与 DECISIONS
+- [x] Task: Phase Verification & Checkpoint 357270a
+  - [x] focused tests、format、typecheck、lint、governance、`pnpm check`
 
 ## Phase B：Home 原地升级
 
