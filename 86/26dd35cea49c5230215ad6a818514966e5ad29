@@ -1,0 +1,4 @@
+Phase C outbox evidence
+Summary: Added a real PostgreSQL outbox test proving a persisted Native Function spawn starts through reconciliation and is excluded after its terminal receipt.
+Verification: DB test and web typecheck passed; governance green.
+Why: Close the DB-commit/workflow-start crash window with event-log evidence, not an additional outbox table.
