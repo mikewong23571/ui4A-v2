@@ -281,6 +281,7 @@ test('S4-六步一次决策:单次 exec-plan(next×3 + publish + unpublish + rep
           'governance',
           'todo',
           'ideas',
+          'security',
         ],
       },
       kind: 'plan-completed',

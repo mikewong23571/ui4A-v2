@@ -782,6 +782,7 @@ test.describe('I5 可重放', () => {
           // installedApplicationBundles 同源序,F-28 同口径)。
           'meta/application:todo',
           'meta/application:ideas',
+          'meta/application:security',
         ]);
         // I5 扩展(T13/T18/T19):capability 维度入重放输入——日志须含全部已安装能力
         // capability-seeded(rel=meta/capability:<name>,detail 持定义全文)。
@@ -794,6 +795,7 @@ test.describe('I5 可重放', () => {
           'meta/capability:coding.execute',
           'meta/capability:writing.compose',
           'meta/capability:agent-definition.author',
+          'meta/capability:cve.enrich',
         ]);
       }, UNUSED_LLM_PROFILE);
     } finally {

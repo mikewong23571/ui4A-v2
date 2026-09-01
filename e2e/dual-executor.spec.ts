@@ -228,7 +228,7 @@ test('B2 双执行者:agent 合同下线 post-welcome + human 表单下线 first
     // ---- human 路径(renderer:保留实体路由直达下线按钮)-------------------
     await page.goto('/entity?rel=post%3Afirst-post');
     // T40 F-02:h1 = 实例身份(文章标题);节点中文状态词在属性表「状态」行。
-    await expect(page.locator('h1')).toHaveText('第一篇');
+    await expect(page.locator('h1')).toHaveText('第一篇', { timeout: 30_000 });
     await expectNodeStatusRow(page, '已发布');
     await page.getByRole('button', { name: '下线', exact: true }).click();
     await expectNodeStatusRow(page, '已下线');

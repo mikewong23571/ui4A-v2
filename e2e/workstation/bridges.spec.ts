@@ -34,11 +34,11 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     await expect(situation.getByTestId('situation-site')).toHaveText('定义站');
     await expect(situation.getByTestId('situation-scope')).toHaveText('内容发布');
     await expect(situation.getByTestId('situation-thread')).toHaveText('无法读取');
-    await expect(situation.getByTestId('situation-focus')).toHaveText('文章发布向导');
     // URL 与 situation 会先于 canonical entity fetch 完成更新；等待 shell 明确提交
     // 合同内容，再验证声明标题与拓扑，避免把过渡期空 main 当成缺少拓扑。
     const canonicalFlow = page.getByTestId('meta-content-ready');
     await expect(canonicalFlow).toBeVisible({ timeout: 30_000 });
+    await expect(situation.getByTestId('situation-focus')).toHaveText('文章发布向导');
     await expect(
       canonicalFlow.getByRole('heading', { level: 1, name: '文章发布向导' }),
     ).toBeVisible();

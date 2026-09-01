@@ -397,11 +397,12 @@ test('跨站规则:业务 sitemap 无 _meta 入口;/_meta well-known 可达;业�
     ).toBe(true);
     // meta/capabilities 集合投影:全部已安装 seed 成员直达
     const capabilities = await getMetaEntity('meta/capabilities');
-    expect(capabilities.properties).toMatchObject({ count: 6 });
+    expect(capabilities.properties).toMatchObject({ count: 7 });
     expect((capabilities.entities ?? []).map((sub) => sub.properties.name).sort()).toEqual([
       'agent-definition.author',
       'clarify',
       'coding.execute',
+      'cve.enrich',
       'draft',
       'notify',
       'writing.compose',
