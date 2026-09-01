@@ -1164,3 +1164,31 @@
   业务 Action，也不写业务事件。
 - **边缘**：Compose/Kubernetes 只增加 `/auth/account` UI route，以及固定 `ui4a` realm 的 account
   GET/POST surface；`/admin`、master realm、数据库和内部 listener 继续不可达。
+
+## D63 CLI 使用 Device Authorization 与长期 Offline Credential(2026-09-02,T46 Phase A)
+
+- **覆盖关系**：本决定只覆盖 D35“realm 只有三个 client”及“CLI 只消费外部 Bearer、不管理 token”
+  的实验版最小范围；D34/D35 的 OIDC 强身份、request 不可覆盖 actor/principal/授权、Agent
+  `sub + azp` provenance、human-only approval、固定 realm 合同与 fail-closed 兼容检查继续有效。
+- **CLI 登录**：新增 public client `ui4a-cli`，只开启 OAuth 2.0 Device Authorization；关闭 client
+  authentication、Standard Flow、Direct Access Grants、Service Account 和 Standard Token Exchange。
+  CLI 无 client secret，不读取用户密码，不复制浏览器 session。Keycloak 26.7.1 disposable probe 证明
+  public Device Flow、consent、poll、offline refresh 和 revoke 可用。
+- **长期凭证**：`ui4a-cli` access token lifespan 固定 24 小时；realm/client offline idle 固定 90 天，
+  offline max 固定 180 天。`offline_access` 是显式用户授权，要求 realm role + optional client scope。
+  offline/refresh token 只进入 macOS Keychain，access token 只进内存；每次 refresh 都原子保存响应中的
+  最新 refresh token。config、stdout/stderr、进程 argv、Git、日志与部署文档禁止出现 token。
+- **身份与授权**：Device access token 必须显式带 `sub` mapper、`aud=ui4a-api`、`azp=ui4a-cli` 和
+  `ui4a:read/write`/application grants。UI4A 将该 client 分类为 Agent 通道，provenance 为
+  `device-authorization-sub-azp`，`humanApprovalEligible=false`；永不授予 `ui4a:approve`。CLI 即使由
+  人直接敲命令也不成为人工批准通道，批准仍只走 browser human credential。
+- **撤销与边缘**：CLI logout 调 Keycloak revocation endpoint 并删除 Keychain item；Account Console
+  或管理员也可撤销 offline consent。edge 只增加固定 `ui4a` realm 的 device authorization、device
+  verification、token 与 revoke 必需路径，不放开 admin/master realm。
+- **Realm 生命周期**：新环境首次导入 realm v2。既有 realm 不启用启动期通用 reconcile；只允许
+  显式 versioned additive migration：先核对 exact v1、导出备份，再增加 client/role/timeouts 并写入
+  contract version v2，最后重新执行 compatibility check。任何 precondition、partial apply 或 post-check
+  失败都停止部署并按备份恢复。
+- **实现边界**：CLI 继续无 LLM、业务路由与 approve/reject。Device/poll/refresh/revoke 使用 Node native
+  fetch；Keychain 使用 macOS `security` 命令的 stdin prompt 形态与 injectable adapter，不新增 npm
+  runtime dependency。非 macOS 仍可使用外部 `--token`/`UI4A_TOKEN`，本 Track 不提供弱文件 fallback。

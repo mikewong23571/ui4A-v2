@@ -2,14 +2,14 @@
 
 ## Phase A：Disposable Probe 与架构定案
 
-- [ ] Task: Keycloak 26.7.1 disposable Device/Offline probe
-  - [ ] 验证 public device client、discovery endpoints、poll/refresh/revoke 与 token claims
-  - [ ] 验证 90 天 offline idle、180 天 max、24 小时 access lifespan 的 import/export keys
-  - [ ] 删除 probe realm/user/client，保存无 secret 证据
-- [ ] Task: macOS Keychain disposable probe
-  - [ ] 验证 token 不进入 argv/stdout/stderr 的 add/read/update/delete 调用形态
-  - [ ] 固定 injectable credential-store adapter 边界，不增加 runtime dependency
-- [ ] Task: 记录 D63，细化后续计划
+- [x] Task: Keycloak 26.7.1 disposable Device/Offline probe
+  - [x] 验证 public device client、discovery endpoints、poll/refresh/revoke 与 token claims
+  - [x] 验证 90 天 offline idle、180 天 max、24 小时 access lifespan 的 import/export keys
+  - [x] 删除 probe realm/user/client，保存无 secret 证据
+- [x] Task: macOS Keychain disposable probe
+  - [x] 验证 token 不进入 argv/stdout/stderr 的 add/read/update/delete 调用形态
+  - [x] 固定 injectable credential-store adapter 边界，不增加 runtime dependency
+- [x] Task: 记录 D63，细化后续计划
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase B：Realm、身份与 Edge 合同 Red/Green
