@@ -1,0 +1,3 @@
+T46 live migration fix
+
+The first migration attempt backed up successfully and stopped after creating the CLI client and offline role because the un-published Compose Keycloak admin listener allowed GET/POST but rejected the required realm PUT. Added PUT only to the internal :9443 listener; public :8443 remains default-deny for admin/master paths. Focused hardening suite: 23 passed.
