@@ -1,0 +1,5 @@
+Task: Red — Security Application Bundle
+Summary: Added user-facing contract tests for Security/CVE installation, identified-to-enriching lifecycle, internal callbacks, Function activation gates, generic sitemap discovery, deployment secrecy, and one explicitly non-live reference CVE seed.
+Files: apps/web/src/applications/security-application.test.ts
+Verification: expected Red with 5 failures because Security bundle is not installed.
+Why: Make the first real Application prove the boundary rather than adding an infrastructure-only demo.
