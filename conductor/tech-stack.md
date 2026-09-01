@@ -33,6 +33,7 @@
 | 外置 App Authoring | 外部 Agent + UI4A meta HTTP contracts | Agent 起草 Bundle；UI4A 负责机械校验、diff、human approval、激活、审计和 replay；不进入产品 Chat runtime |
 | Agent CLI | TypeScript/Node `apps/cli`，native fetch + `tsc` | `ui4a` 是 HTTP/Siren/meta 的稳定 JSON 参考客户端；无内置 LLM、无 Web 内部依赖 |
 | Coding Capability Executor | `@openai/codex-sdk@0.149.0` + Temporal + Git worktree | Codex 是首个真实 reference adapter；Provider/Workspace 分层，Hermes 仅作设计参考 |
+| Native Function Capability Adapter | Strict TypeScript wire + JSON Schema/Ajv + Temporal Workflow/Activity + PostgreSQL receipt | Application 声明 Port；部署 registry 解析 network-denied pure transform/extract handler；无新 Run/状态库/依赖 |
 | Specialized Agent Contracts | Versioned AgentDefinition + typed Prompt blocks/bindings + JSON Schema/Ajv + Temporal Agent Run + Codex structured transport | Capability/AgentDefinition/RuntimeProfile 三层；Coding/Writing/Authoring 共享 Host，分别使用 Git、document、read-only structured runtime 与独立 verifier |
 | Meta Human Control Plane | Next.js App Router + Siren sitemap/entities + shadcn + RJSF + existing diff/graph components | class registry + generic fallback；scope/action 服务端复核；审批渲染零 AI；无新依赖 |
 

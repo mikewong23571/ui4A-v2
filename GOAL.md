@@ -90,6 +90,19 @@ accept/reject。Codex 是首个真实 reference executor；Hermes 只提供 Runt
 trajectory/approval 分层启发，不进入依赖或产品运行时。Coding Agent 无权直接 merge、activate、
 deploy 或批准自己的结果。
 
+### Native Function Capability Boundary
+
+`conductor/tracks/archive/t43-capability-boundary-native-function_20260901/` 将 Capability 明确定义为
+Application 面向外部执行环境的 Port。Application Bundle 只声明 schema、binding、executor class/profile
+需求与 callback Action；部署侧 Adapter 才解析 handler。首个 Native Function Adapter 只支持
+network-denied、pure/idempotent transform/extract，不创建 Agent/Capability Run；`spawn-requested` 是不可变
+birth 与 outbox，Temporal 只负责恢复、重试和取消，terminal receipt 与经重新裁决的 callback core events
+原子提交，后者才是业务事实。
+
+Security Application 的 `cve.enrich` 是首个真实垂直切片；第二个 `document.normalize` fixture 证明扩展
+只需增加合同、Profile 与 handler registration。外部网络 Adapter、side-effect Function 及其独立幂等
+协议、硬 CPU/memory sandbox 继续不属于当前 DONE。
+
 ### Specialized Agent Contracts
 
 `conductor/tracks/archive/t19-specialized-agent-contracts_20260823/` 将业务 Capability、版本化

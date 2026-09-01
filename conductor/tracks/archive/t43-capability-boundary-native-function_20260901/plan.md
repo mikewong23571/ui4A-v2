@@ -173,7 +173,7 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 运行 bundle、service、component、DB 与 E2E focused suites
   - [x] 记录 checkpoint 证据
 
-## Phase E：用户故事验收与 Track 闭环
+## Phase E：用户故事验收与 Track 闭环 [checkpoint: f2c52c8]
 
 - [x] Task: S1–S14 自动化验收 8ee8bcf
   - [x] 建立 Story → 测试 → 证据矩阵
@@ -203,7 +203,7 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 检查无每 Application/Capability 特判
   - [x] 将修复作为正式计划任务跟踪并复验
 
-## Review Fixes
+## Review Fixes [checkpoint: f2c52c8]
 
 - [x] Task: Red — 审查发现的边界与恢复回归 d0f70eb
   - [x] 覆盖公开 exec 伪造 internal callback 的拒绝路径
@@ -221,13 +221,13 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 删除未使用且可误导为非原子写路径的 persisted-dispatch helper
   - [x] Profile limits 纳入 birth hash，并收紧无法兑现的 payload budget
   - [x] Draft、artifact、审计受众和第二 Adapter 证据闭环
-- [~] Task: Review Fixes Verification & Checkpoint
-  - [ ] 运行 focused tests、coverage、format、typecheck、lint、governance 与全量 tests
-  - [ ] 复跑真实 Temporal recovery/idempotency 和最终 E2E
+- [x] Task: Review Fixes Verification & Checkpoint f2c52c8
+  - [x] 运行 focused tests、coverage、format、typecheck、lint、governance 与全量 tests
+  - [x] 复跑真实 Temporal recovery/idempotency 和最终 E2E
 
-- [ ] Task: Phase Verification & Track Closure (Refer to workflow.md)
-  - [ ] 确认 S1–S14 全部有可复跑证据且系统可运行
-  - [ ] 更新 GOAL/DECISIONS/tech-stack 中实际形成的合同
-  - [ ] 按 GR5 删除 spike 和 bespoke Track 脚本
-  - [ ] 归档 Track，并记录未完成的远端 Adapter 后续方向
-  - [ ] 创建最终 checkpoint 和审计报告
+- [x] Task: Phase Verification & Track Closure (Refer to workflow.md) f2c52c8
+  - [x] 确认 S1–S14 全部有可复跑证据且系统可运行
+  - [x] 更新 GOAL/DECISIONS/tech-stack 中实际形成的合同
+  - [x] 按 GR5 删除 spike 和 bespoke Track 脚本
+  - [x] 归档 Track，并记录未完成的远端 Adapter 后续方向
+  - [x] 创建最终 checkpoint 和审计报告

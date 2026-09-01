@@ -185,3 +185,35 @@ Standing Eval `e2e/eval/capability-boundary.spec.ts` 使用配置的真实 LLM�
 
 全量 E2E 修正仅涉及新增 Application 后的闭合清单和三处既有 dev 冷编译等待；最终 S4 completed/
 rejected/suspended 三态同跑全绿，T16 Golden Story 单跑及最终全量均绿。
+
+## Principal Review 修复与最终闭环
+
+Principal Review 在原实现上发现并闭环：公开 exec 伪造 internal callback、非法 output 卡死进行中、
+already-started outbox 阻塞、并发 terminal collision、external effect 未 fail closed、跨 Application receipt
+审计泄漏、Draft registry 缺 Function Profile、schema 未在激活时编译、profile limits 未进入 birth、真实
+artifact-ref 未接线和第二 Adapter 证据不足。完整 findings 与精确处置见 `review.md`；Red commit
+`d0f70eb9`，Green commit `a3ebf0d3`。
+
+最终新增 Security Application 后，B4 第二轮失败暴露 provider wire 只超 122 bytes；没有提高 D54 的
+32 KiB 机械上限，而是把结构化 sitemap JSON 改为等价紧凑编码。三组真实 prompt wire 从约 15.6 KiB
+降至 14.6–14.7 KiB；B4 focused 与完整 E2E 均恢复。canonical bridge 只增加 cold dev compile 等待，
+不改变产品语义。
+
+### 最终可复跑门
+
+- `UI4A_WORKER_HEALTH_PORT=3199 pnpm check`（Temporal 7233 在线）：490 files passed、3683 tests
+  passed、6 skipped；typecheck、lint（仅既有 warnings）、strict governance green。
+- 最终提交后的 `UI4A_WORKER_HEALTH_PORT=3199 pnpm check`：486 files passed、3674 tests passed、15
+  environment-gated skipped，exit 0。
+- 独立 Temporal 7235 下 `CI=true pnpm e2e`：67 passed、26 既有 real-LLM/S3/S5 gate skipped，exit
+  0，耗时约 3.4 分钟。
+- `apps/worker/src/capabilities/function/temporal.integration.test.ts`：2 passed，覆盖 Worker SIGKILL
+  recovery/finalize once 与 cancellation。
+- real Assistant capability-boundary Eval：2 passed；成功选择共享 CVE Action，缺 Profile 零 mutation。
+- 开发栈已恢复：Web `3100`、Temporal `7233`、Worker `ui4a` task queue；`/api/health` readiness=`ready`、
+  db=`ok`。
+
+### 归档边界
+
+GR5 清理了 disposable `spike.md`，无 bespoke Track script 或 Playwright config 遗留。远端网络 Adapter、
+side-effect Function 的幂等协议与 hard resource sandbox 仍为明确后续方向，不由 T43 假装完成。
