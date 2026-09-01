@@ -25,19 +25,19 @@
   - [x] standing Compose/Helm/static projection 同源更新
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) e2a5409
 
-## Phase C：CLI 长期凭证生命周期 Red/Green
+## Phase C：CLI 长期凭证生命周期 Red/Green [checkpoint: 87fb866]
 
-- [ ] Task: Red — auth command、device poll 与 credential lifecycle
-  - [ ] `auth login/status/logout` envelope、错误码与无 token 输出
-  - [ ] pending/slow_down/expiry/cancel/refresh rotation/revoke negatives
-- [ ] Task: Green — OIDC Device client 与 macOS Keychain store
-  - [ ] discovery、device code、poll、refresh、revoke 实现
-  - [ ] Keychain 原子替换、权限/平台失败与自动 refresh
-- [ ] Task: CLI 连接与兼容
-  - [ ] config 增 issuer/clientId，保留 flag/env/config precedence 与外部 Bearer
-  - [ ] doctor/业务/Draft/audit 命令统一消费 credential provider
-- [ ] Task: CLI focused coverage、build/pack 与独立 cwd smoke
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Red — auth command、device poll 与 credential lifecycle 87fb866
+  - [x] `auth login/status/logout` envelope、错误码与无 token 输出
+  - [x] pending/slow_down/expiry/cancel/refresh rotation/revoke negatives
+- [x] Task: Green — OIDC Device client 与 macOS Keychain store 87fb866
+  - [x] discovery、device code、poll、refresh、revoke 实现
+  - [x] Keychain 原子替换、权限/平台失败与自动 refresh
+- [x] Task: CLI 连接与兼容 87fb866
+  - [x] config 增 issuer/clientId，保留 flag/env/config precedence 与外部 Bearer
+  - [x] doctor/业务/Draft/audit 命令统一消费 credential provider
+- [x] Task: CLI focused coverage、build/pack 与独立 cwd smoke 87fb866
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 87fb866
 
 ## Phase D：Existing Realm 一次性迁移与部署合同
 
