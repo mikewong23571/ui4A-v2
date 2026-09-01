@@ -33,3 +33,34 @@
 
 自治验收结论：Phase A 达成；进入 Phase B 前的不确定运行时、事务与幂等边界已经由 probe 和 D59
 固定，没有把函数平台提升为产品概念，也没有恢复第二套 Run。
+
+## Phase B — 纯合同、绑定与激活门禁 checkpoint
+
+日期：2026-09-01。Checkpoint functional commit：`89dac9cc`。
+
+### Red → Green 证据
+
+| 边界 | Red | Green |
+| --- | --- | --- |
+| Deployment contract | module missing，suite exit 1 | 21 tests passed |
+| Capability input binding | module missing，suite exit 1 | 13 tests passed，含 100 property runs |
+| Activation invariants | 4 expected failures / 33 passed | 4 files / 88 passed |
+
+Focused coverage：71 tests passed；statements 91.51%、branches 87.62%、functions 94.87%、lines
+92.83%。`native-function.ts`、`capability-input-binding.ts` 与 `invariants.ts` 各项均超过 80%。
+
+全量 `UI4A_WORKER_HEALTH_PORT=3199 pnpm check`：474 files passed、3624 tests passed、6 skipped；
+typecheck、lint（仅既有 warnings）、strict governance 全绿。
+
+### 自治人工等效检查
+
+1. Profile、invocation、outcome、receipt 均是平台中立共享合同；Application 定义没有 endpoint、
+   credential、handler module 或 Temporal 参数。
+2. Binder 只接受 Action params、source entity 显式 fields 与已授权 artifact refs；property test 证明额外
+   source fields 不进入 payload。
+3. Native Function 激活要求 input/output schema、可用 handler profile、封闭 binding 与 internal
+   success/error callbacks；Function 不携带 Agent Definition，Agent 仍必须携带 exact Definition。
+4. 新增测试沿 `definition/capability-boundary/` 拆分，GR3 零例外；没有 renderer/service 重复判断。
+
+自治验收结论：Phase B 达成；Capability Port 的输入、部署需求和回流入口已在 pure/activation 层
+fail closed，可进入 Web/Worker 执行组合。

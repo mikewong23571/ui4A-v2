@@ -35,7 +35,7 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 审查无第二 Run、无平台泄漏、无 Capability 名称分支
   - [x] 记录自治验收证据与 Phase checkpoint
 
-## Phase B：纯合同、绑定与激活门禁
+## Phase B：纯合同、绑定与激活门禁 [checkpoint: 89dac9c]
 
 - [x] Task: Red — Native Function deployment contract f6dba38
   - [x] 为 Profile parser 编写合法、缺字段、未知字段、重复 profile 测试
@@ -73,11 +73,11 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] Meta checks 投影结构化失败原因
   - [x] 不在 renderer 或服务层重复业务判断
   - [x] 复跑 definition、Draft、activation 回归套件
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
-  - [ ] 运行 focused unit tests 与 coverage
-  - [ ] 新 pure modules 覆盖率大于 80%，Safety 路径 100%
-  - [ ] 运行 typecheck、lint、`pnpm governance`
-  - [ ] 记录 checkpoint 和验证报告
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 89dac9c
+  - [x] 运行 focused unit tests 与 coverage
+  - [x] 新 pure modules 覆盖率大于 80%，Safety 路径 100%
+  - [x] 运行 typecheck、lint、`pnpm governance`
+  - [x] 记录 checkpoint 和验证报告
 
 ## Phase C：Web 派发、Temporal 执行与结果回流
 
