@@ -1,0 +1,3 @@
+T43 presentation acceptance correction
+Summary: Added explicit proof that an enriching CVE is not auto-attached to a Work Thread, plus raw audit proof that the complete Function terminal receipt is available only through the capability-domain event query.
+Verification: Security presentation 4 passed; events route DB 9 passed; web typecheck green.
