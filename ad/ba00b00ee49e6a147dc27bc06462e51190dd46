@@ -1,0 +1,4 @@
+Task: 固化用户故事与验收矩阵
+Summary: Confirmed S1-S14 as the T43 acceptance contract, with human renderer and Agent/CLI parity plus HTTP, Temporal, DB replay, browser, and Safety evidence mapping.
+Files: conductor/tracks/t43-capability-boundary-native-function_20260901/user-stories.md; spec.md; plan.md
+Why: Capability boundary work must be accepted by product stories before implementation, not by adapter mechanics alone.
