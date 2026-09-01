@@ -13,7 +13,6 @@ import { readFileSync } from 'node:fs';
 import { contentVersion } from '@ui4a/engine';
 import type { FlowDefinition, LogEvent, SirenEntity } from '@ui4a/engine';
 
-import { businessApplicationList } from '../../domain/applications';
 import { installedApplicationBundles } from '../../applications/bundles';
 
 /**
@@ -23,8 +22,9 @@ import { installedApplicationBundles } from '../../applications/bundles';
  * 的 walkthrough 前 6 + 追加 2,逐条 detail 校验保持)。
  */
 const installedApplications = installedApplicationBundles.flatMap((bundle) => bundle.applications);
-import { businessCapabilityList } from '../../domain/capabilities';
-import { businessFlows, businessFlowList } from '../../domain/flows';
+const installedFlows = installedApplicationBundles.flatMap((bundle) => bundle.flows);
+const installedCapabilities = installedApplicationBundles.flatMap((bundle) => bundle.capabilities);
+import { businessFlows } from '../../domain/flows';
 import { SEED_REL, seedDetail } from '../../domain/seed';
 import { appendEvent, ensureEventsTable, readLog } from '@ui4a/db/events';
 import { getPool } from '@ui4a/db/pool';
@@ -70,20 +70,10 @@ describe('boot:定义 seed 迁移(空库)', () => {
   it('四 flow definition-seeded 入日志:rel=meta/flow:<name>,detail 全文 + active v1', async () => {
     await boot();
     const seeds = await definitionSeeds();
-    expect(seeds.map((event) => event.rel)).toEqual([
-      'meta/flow:article-drafting',
-      'meta/flow:post-status',
-      'meta/flow:comment-moderation',
-      'meta/flow:software-change',
-      'meta/flow:writing-request',
-      'meta/flow:agent-definition-authoring',
-      // T35 S9/S10:bundle 追加 todo/ideas。
-      'meta/flow:todo-capture',
-      'meta/flow:todo-item',
-      'meta/flow:idea-capture',
-      'meta/flow:idea-item',
-    ]);
-    for (const [index, flow] of businessFlowList.entries()) {
+    expect(seeds.map((event) => event.rel)).toEqual(
+      installedFlows.map((flow) => `meta/flow:${flow.name}`),
+    );
+    for (const [index, flow] of installedFlows.entries()) {
       expect(seeds[index]?.detail).toEqual({
         name: flow.name,
         version: 1,
@@ -96,7 +86,7 @@ describe('boot:定义 seed 迁移(空库)', () => {
   it('fold 快照:definitions 三条目 active v1 + lifecycle 实例(node=active)', async () => {
     const engine = await boot();
     const snapshot = engine.getSnapshot();
-    for (const flow of businessFlowList) {
+    for (const flow of installedFlows) {
       expect(snapshot.definitions?.[flow.name]).toMatchObject({
         name: flow.name,
         version: 1,
@@ -114,7 +104,7 @@ describe('boot:定义 seed 迁移(空库)', () => {
     await boot();
     resetEngineForTests();
     await boot();
-    expect(await definitionSeeds()).toHaveLength(10);
+    expect(await definitionSeeds()).toHaveLength(installedFlows.length);
   });
 });
 
@@ -139,7 +129,9 @@ describe('旧库迁移(业务 seed 在前,定义追加尾部)', () => {
 
     const log = await readLog(pool);
     expect(log[0]?.kind).toBe('seed');
-    expect(log.filter((event) => event.kind === 'definition-seeded')).toHaveLength(10);
+    expect(log.filter((event) => event.kind === 'definition-seeded')).toHaveLength(
+      installedFlows.length,
+    );
 
     const snapshot = (await boot()).getSnapshot();
     expect(snapshot.instances['post:post-welcome']?.bornVersion).toBe(1);
@@ -240,18 +232,10 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
   it('application 以 application-seeded 入日志(T35 后 8 个):rel=meta/application:<name>,detail 全文', async () => {
     await boot();
     const seeds = (await readLog(pool)).filter((event) => event.kind === 'application-seeded');
-    expect(seeds.map((event) => event.rel)).toEqual([
-      'meta/application:default',
-      'meta/application:publishing',
-      'meta/application:community',
-      'meta/application:development',
-      'meta/application:editorial',
-      'meta/application:governance',
-      // T35 S9/S10:bundle 追加 todo/ideas。
-      'meta/application:todo',
-      'meta/application:ideas',
-    ]);
-    for (const [index, app] of businessApplicationList.entries()) {
+    expect(seeds.map((event) => event.rel)).toEqual(
+      installedApplications.map((application) => `meta/application:${application.name}`),
+    );
+    for (const [index, app] of installedApplications.entries()) {
       expect(seeds[index]?.detail).toEqual({ name: app.name, definition: app });
     }
   });
@@ -269,6 +253,7 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
         'governance',
         'todo',
         'ideas',
+        'security',
       ]),
     );
     expect(applications?.['publishing']?.intent).toContain('发布');
@@ -280,12 +265,12 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
     resetEngineForTests();
     await boot();
     const seeds = (await readLog(pool)).filter((event) => event.kind === 'application-seeded');
-    expect(seeds).toHaveLength(8);
+    expect(seeds).toHaveLength(installedApplications.length);
   });
 
   it('旧库迁移:既有日志(flow 定义 + 业务 seed)无 application 事件 → boot 尾部补种', async () => {
     // 旧库形态:三个 flow definition-seeded + 业务 seed 已在日志(无 application 事件)。
-    for (const flow of businessFlowList) {
+    for (const flow of installedFlows) {
       await appendEvent(pool, {
         kind: 'definition-seeded',
         rel: `meta/flow:${flow.name}`,
@@ -299,7 +284,7 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
     // meta bundle 安装器只补缺项；receipt 收口迁移，不依赖脆弱的尾部切片。
     expect(
       log.filter((event) => event.kind === 'application-seeded').map((event) => event.kind),
-    ).toHaveLength(8); // T35 S9/S10:6+todo/ideas,boot 尾部一并补种
+    ).toHaveLength(installedApplications.length);
     expect(log.at(-1)?.kind).toBe('meta-bootstrap-applied');
     expect(Object.keys(engine.getSnapshot().applications ?? {})).toEqual(
       expect.arrayContaining([
@@ -311,6 +296,7 @@ describe('boot:application seed(T10 Phase B;spec 架构决定 4/7)', () => {
         'governance',
         'todo',
         'ideas',
+        'security',
       ]),
     );
   });
@@ -320,15 +306,10 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
   it('五个 capability 以 capability-seeded 入日志:rel=meta/capability:<name>,detail 全文', async () => {
     await boot();
     const seeds = (await readLog(pool)).filter((event) => event.kind === 'capability-seeded');
-    expect(seeds.map((event) => event.rel)).toEqual([
-      'meta/capability:draft',
-      'meta/capability:notify',
-      'meta/capability:clarify',
-      'meta/capability:coding.execute',
-      'meta/capability:writing.compose',
-      'meta/capability:agent-definition.author',
-    ]);
-    for (const [index, capability] of businessCapabilityList.entries()) {
+    expect(seeds.map((event) => event.rel)).toEqual(
+      installedCapabilities.map((capability) => `meta/capability:${capability.name}`),
+    );
+    for (const [index, capability] of installedCapabilities.entries()) {
       expect(seeds[index]?.detail).toEqual({ name: capability.name, definition: capability });
     }
   });
@@ -336,14 +317,9 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
   it('fold 快照:capabilities 表落五个已注册定义(capability-registered 注册表来源)', async () => {
     const engine = await boot();
     const capabilities = engine.getSnapshot().capabilities;
-    expect(Object.keys(capabilities ?? {})).toEqual([
-      'draft',
-      'notify',
-      'clarify',
-      'coding.execute',
-      'writing.compose',
-      'agent-definition.author',
-    ]);
+    expect(Object.keys(capabilities ?? {})).toEqual(
+      installedCapabilities.map((capability) => capability.name),
+    );
     expect(capabilities?.['draft']?.kind).toBe('extract');
     expect(capabilities?.['notify']?.kind).toBe('effect');
     expect(capabilities?.['coding.execute']?.executor).toMatchObject({
@@ -385,20 +361,20 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
     resetEngineForTests();
     await boot();
     const seeds = (await readLog(pool)).filter((event) => event.kind === 'capability-seeded');
-    expect(seeds).toHaveLength(6);
+    expect(seeds).toHaveLength(installedCapabilities.length);
   });
 
   it('旧库迁移:既有日志(flow 定义 + application + 业务 seed)无 capability 事件 → boot 尾部补种', async () => {
     // 旧库形态(T10 落定后):flow definition-seeded + application-seeded +
     // 业务 seed 已在日志(无 capability 事件)。
-    for (const flow of businessFlowList) {
+    for (const flow of installedFlows) {
       await appendEvent(pool, {
         kind: 'definition-seeded',
         rel: `meta/flow:${flow.name}`,
         detail: { name: flow.name, version: 1, status: 'active', definition: flow },
       });
     }
-    for (const app of businessApplicationList) {
+    for (const app of installedApplications) {
       await appendEvent(pool, {
         kind: 'application-seeded',
         rel: `meta/application:${app.name}`,
@@ -412,23 +388,11 @@ describe('boot:capability seed(T13 Phase C Task 2;spec 架构决定 3)', () => {
     // meta bundle 安装器只补 capability 缺项，最后以 receipt 收口。
     expect(
       log.filter((event) => event.kind === 'capability-seeded').map((event) => event.kind),
-    ).toEqual([
-      'capability-seeded',
-      'capability-seeded',
-      'capability-seeded',
-      'capability-seeded',
-      'capability-seeded',
-      'capability-seeded',
-    ]);
+    ).toEqual(installedCapabilities.map(() => 'capability-seeded'));
     expect(log.at(-1)?.kind).toBe('meta-bootstrap-applied');
-    expect(Object.keys(engine.getSnapshot().capabilities ?? {})).toEqual([
-      'draft',
-      'notify',
-      'clarify',
-      'coding.execute',
-      'writing.compose',
-      'agent-definition.author',
-    ]);
+    expect(Object.keys(engine.getSnapshot().capabilities ?? {})).toEqual(
+      installedCapabilities.map((capability) => capability.name),
+    );
   });
 });
 
@@ -497,7 +461,7 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
     // T35 S9/S10:bundle 追加 todo/ideas → application×8、definition×10;
     // 安装序 = 逐 bundle 完整安装且每 bundle 各带 seed/applied 收据。断言:
     // 头 18 帧 = walkthrough(6app→6cap→6def),后续为 todo/ideas 的增量段。
-    const headKinds = rows.slice(0, 29).map((event) => event.kind);
+    const headKinds = rows.slice(0, 20).map((event) => event.kind);
     expect(headKinds.slice(0, 18)).toEqual([
       'application-seeded',
       'application-seeded',
@@ -518,25 +482,20 @@ describe('I5 重放一致:application 维度(T10 Phase B Task 2;spec 验收 3)',
       'definition-seeded',
       'definition-seeded',
     ]);
-    expect(headKinds.filter((kind) => kind === 'application-seeded')).toHaveLength(8);
-    expect(headKinds.filter((kind) => kind === 'definition-seeded')).toHaveLength(10);
+    expect(rows.filter((event) => event.kind === 'application-seeded')).toHaveLength(
+      installedApplications.length,
+    );
+    expect(rows.filter((event) => event.kind === 'definition-seeded')).toHaveLength(
+      installedFlows.length,
+    );
     expect(headKinds[18]).toBe('seed');
     expect(headKinds[19]).toBe('meta-bootstrap-applied');
     expect(rows.some((event) => event.kind === 'action-executed')).toBe(true);
     const appSeeds = rows.filter((event) => event.kind === 'application-seeded');
     expect(appSeeds.map((event) => event.rel)).toEqual(
-      expect.arrayContaining([
-        'meta/application:default',
-        'meta/application:publishing',
-        'meta/application:community',
-        'meta/application:development',
-        'meta/application:editorial',
-        'meta/application:governance',
-        'meta/application:todo',
-        'meta/application:ideas',
-      ]),
+      installedApplications.map((application) => `meta/application:${application.name}`),
     );
-    for (const [index, app] of businessApplicationList.entries()) {
+    for (const [index, app] of installedApplications.entries()) {
       expect(appSeeds[index]?.detail).toEqual({ name: app.name, definition: app });
     }
 
@@ -583,24 +542,21 @@ describe('I5 重放一致:capability 维度(T13 Phase C Task 2;spec 验收 4)', 
     // 反空转锚:在线 capabilities 表先钉在种子常量(独立于"两侧同 fold"的
     // 对称性)——fold 若丢表/落错内容,本断言先红,保证下面的对比非空转。
     expect(onlineSnapshot.capabilities).toEqual(
-      Object.fromEntries(businessCapabilityList.map((capability) => [capability.name, capability])),
+      Object.fromEntries(installedCapabilities.map((capability) => [capability.name, capability])),
     );
 
     // 导出事件(重放的唯一输入)并守卫 capability 定义全文与安装顺序。
     const rows = await readLog(pool);
-    expect(rows.filter((event) => event.kind === 'capability-seeded')).toHaveLength(6);
+    expect(rows.filter((event) => event.kind === 'capability-seeded')).toHaveLength(
+      installedCapabilities.length,
+    );
     expect(rows.some((event) => event.kind === 'meta-bootstrap-applied')).toBe(true);
     expect(rows.some((event) => event.kind === 'action-executed')).toBe(true);
     const capabilitySeeds = rows.filter((event) => event.kind === 'capability-seeded');
-    expect(capabilitySeeds.map((event) => event.rel)).toEqual([
-      'meta/capability:draft',
-      'meta/capability:notify',
-      'meta/capability:clarify',
-      'meta/capability:coding.execute',
-      'meta/capability:writing.compose',
-      'meta/capability:agent-definition.author',
-    ]);
-    for (const [index, capability] of businessCapabilityList.entries()) {
+    expect(capabilitySeeds.map((event) => event.rel)).toEqual(
+      installedCapabilities.map((capability) => `meta/capability:${capability.name}`),
+    );
+    for (const [index, capability] of installedCapabilities.entries()) {
       expect(capabilitySeeds[index]?.detail).toEqual({
         name: capability.name,
         definition: capability,

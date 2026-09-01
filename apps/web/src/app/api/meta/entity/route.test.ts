@@ -40,7 +40,7 @@ describe('GET /_meta/api/entity', () => {
     expect(entity.class).toEqual(['collection', 'meta/flows']);
     expect(entity.properties).toMatchObject({
       rel: 'meta/flows',
-      count: 10,
+      count: 11,
       presentation: { groupRole: 'definition' },
     }); // T35 S9/S10:+todo/ideas
     expect(entity.entities.map((sub) => sub.properties.name)).toEqual([
@@ -55,6 +55,7 @@ describe('GET /_meta/api/entity', () => {
       'todo-item',
       'idea-capture',
       'idea-item',
+      'cve-enrichment',
     ]);
     expect(entity.entities[1]?.href).toBe('/_meta/api/entity?rel=meta/flow:post-status');
     expect(entity.links).toEqual([{ rel: ['self'], href: '/_meta/api/entity?rel=meta/flows' }]);

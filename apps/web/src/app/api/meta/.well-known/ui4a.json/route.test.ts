@@ -60,6 +60,7 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
       'meta/application:governance',
       'meta/application:todo',
       'meta/application:ideas',
+      'meta/application:security',
       'meta/flow:article-drafting',
       'meta/flow:post-status',
       'meta/flow:comment-moderation',
@@ -70,6 +71,7 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
       'meta/flow:todo-item',
       'meta/flow:idea-capture',
       'meta/flow:idea-item',
+      'meta/flow:cve-enrichment',
       'meta/capabilities',
       'meta/capability:draft',
       'meta/capability:notify',
@@ -77,6 +79,7 @@ describe('GET /_meta/.well-known/ui4a.json', () => {
       'meta/capability:coding.execute',
       'meta/capability:writing.compose',
       'meta/capability:agent-definition.author',
+      'meta/capability:cve.enrich',
       'meta/drafts',
       'meta/agent-definitions',
     ]);
