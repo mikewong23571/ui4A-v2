@@ -4,9 +4,11 @@
 
 ## 活跃 Tracks
 
-- [~] **Track: T42 共同工作上下文：全局发现、跨应用工作线与简洁处境入口** *Link: [tracks/t42-shared-working-context_20260901/index.md](./tracks/t42-shared-working-context_20260901/index.md)*
+(当前无活跃 Track)
 
-## 归档 Tracks(T1–T41,只读历史)
+## 归档 Tracks(T1–T42,只读历史)
+
+- [x] **Track: T42 共同工作上下文：全局发现、跨应用工作线与简洁处境入口**（2026-09-01：S1–S8全过；check3585、E2E65、真实LLM2、核心行覆盖96.64%；真实Temporal恢复、授权负例、桌面/390px与开发环境恢复闭环） *Link: [tracks/archive/t42-shared-working-context_20260901/index.md](./tracks/archive/t42-shared-working-context_20260901/index.md)*
 
 - [x] **Track: T41 Application 发现入口分层：缩略书架与独立应用目录**（2026-09-01：主页最多 9 个、30 应用目录增量验收、四屏宽及真实 HTTP/CLI 同源通过；全量 check 3529 tests passed） *Link: [tracks/archive/t41-application-directory_20260901/index.md](./tracks/archive/t41-application-directory_20260901/index.md)*
 
