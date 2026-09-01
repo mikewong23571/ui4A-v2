@@ -3,3 +3,7 @@ Summary: Added protected callback claim parsing, exact spawn/birth/identity reva
 Files: shared Native Function claim; DB events DDL/function-receipts; web capability finalize/reconciliation; protected route and tests.
 Verification: 31 unit + 16 DB/route tests passed; all workspace typechecks, strict governance, focused ESLint, Prettier, DDL parity, and diff check passed.
 Why: External success is only a claim until the current Application action accepts it in the same transaction as its audit receipt.
+
+Phase C verification checkpoint
+Automated: focused coverage 84.9% statements / 88.05% functions / 86.68% lines; real Temporal SIGKILL+cancel 2 passed; real PostgreSQL outbox 1 passed; full UI4A_WORKER_HEALTH_PORT=3199 pnpm check -> 484 files, 3657 tests passed, strict governance green.
+Manual-equivalent: confirmed class-only dispatch, Agent Run preservation, sealed handler input, spawn-as-outbox recovery, double output validation, atomic receipt+callback, stale rejection, and no second business truth.
