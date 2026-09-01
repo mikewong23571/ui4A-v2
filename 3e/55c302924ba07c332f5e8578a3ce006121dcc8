@@ -1,0 +1,5 @@
+Task: Green — Worker Native Function Adapter
+Summary: Added handler-ref registry, sealed invocation/profile/hash validation, shared schema checks, output hash/budget verification, retryable/permanent failure separation, cooperative cancellation, birth-pinned Activity options, execute/finalize activities, and deterministic nativeFunctionWorkflow with non-cancellable terminal callback.
+Files: apps/worker/src/capabilities/function/adapter.ts; adapter.test.ts; activities/native-function.ts; activities.ts; workflows.ts; packages/engine/src/execution/capability-input-binding.ts
+Verification: adapter+binder 20 tests passed; worker/shared/engine typecheck, worker build including workflows bundle, ESLint, governance, Prettier, and diff check passed.
+Why: Execute the boundary in Worker/Temporal without database, Web, snapshot, credential, or callback-selection access inside handlers.
