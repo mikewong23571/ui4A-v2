@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-- [ ] **Track: T46 CLI Device Credential 与长期 Agent 访问**（Keycloak Device Authorization + 90 天 Offline Access + macOS Keychain） *Link: [tracks/t46-cli-device-credential_20260902/index.md](./tracks/t46-cli-device-credential_20260902/index.md)*
+- [~] **Track: T46 CLI Device Credential 与长期 Agent 访问**（Keycloak Device Authorization + 90 天 Offline Access + macOS Keychain） *Link: [tracks/t46-cli-device-credential_20260902/index.md](./tracks/t46-cli-device-credential_20260902/index.md)*
 
 - [x] **Track: T45 Tailnet Edge 公网 Origin 与内部 TLS Host 分离**（`aliyun-sz` Caddy → Tailscale → `home` UI4A edge） *Link: [tracks/archive/t45-tailnet-edge-origin-separation_20260902/index.md](./tracks/archive/t45-tailnet-edge-origin-separation_20260902/index.md)*
 
