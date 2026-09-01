@@ -1,0 +1,5 @@
+Task: Red — Executor dispatcher
+Summary: Added composition tests for Agent path preservation, Native Function class dispatch, fail-before-append, sealed birth persistence before start, deterministic workflow identity, and orphan spawn reconciliation without capability/Application name routing.
+Files: apps/web/src/engine/capability/dispatch.test.ts
+Verification: expected Red exit 1 because capability/dispatch implementation does not exist.
+Why: Extract a testable dispatcher seam before rewiring service.ts.
