@@ -1,0 +1,5 @@
+Task: Green — 实现激活门禁
+Summary: Extended executor-profile-valid to enforce Native Function schemas, bounded bindings, available server profile/handler, no Agent Definition leakage, and exact internal success/error callback fields; non-Function executors retain exact Agent Definition requirements. Split T43 tests into a capability-boundary subdirectory to keep GR3 green.
+Files: packages/engine/src/definition/invariants.ts; definition/invariants.test.ts; definition/capability-boundary/invariants.test.ts
+Verification: 4 files / 88 tests passed; engine typecheck, ESLint, governance, Prettier, and diff check passed.
+Why: Fail activation before a boundary can dispatch without a valid handler or governed return path.
