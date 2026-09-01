@@ -61,10 +61,9 @@ import {
   type SuspendedConfirmation,
 } from '@ui4a/engine';
 import type { DeploymentEnvironment, EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
-import type { FieldValue } from '@ui4a/shared';
 import { seedGuardRegistry } from '@ui4a/shared';
 
-import { readLog, type DbExecutor, type EventAppend } from '@ui4a/db/events';
+import { readLog, type DbExecutor } from '@ui4a/db/events';
 import {
   assertApplicationBootstrapReady,
   prepareDatabaseForApplication,
@@ -90,7 +89,18 @@ import {
   prepareNativeAgentDispatch,
   type PreparedNativeAgentDispatch,
 } from './agent/native-agent-dispatch';
-import { codingExecutorProfileRegistryFromEnvironment } from './agent/coding-executor-config';
+import {
+  prepareCapabilityDispatch,
+  startNativeFunctionDispatch,
+  type PreparedCapabilityDispatch,
+} from './capability/dispatch';
+import {
+  capabilityExecutorClassRegistryFromEnvironment,
+  nativeFunctionActivationRegistryFromEnvironment,
+  nativeFunctionProfileMapFromEnvironment,
+} from './capability/profile-config';
+import { dispatchNativeFunction } from '../temporal/native-function';
+import { scheduleNativeFunctionReconciliation } from './capability/reconciliation';
 import {
   appendBatchWithSeq,
   applyForeignGaps,
@@ -99,6 +109,7 @@ import {
 } from './service-event-log';
 import { artifactModelFor, materializeSpawnArtifacts } from './service-artifacts';
 import { execConfirmationDecision, persistRejection } from './service-confirmation';
+import { engineEventToAppend as toAppend } from './service-event-append';
 import { execThreadAction } from './service-thread';
 import { createSitemapReaders, type MetaSitemap } from './service-sitemaps';
 import { freezeSpecCore, toRenderSpec, type FreezeSpecResult } from './service-render-specs';
@@ -106,6 +117,8 @@ import { freezeSpecCore, toRenderSpec, type FreezeSpecResult } from './service-r
 export { LlmArtifactConfigurationError } from './service-artifacts';
 export type { MetaSitemap } from './service-sitemaps';
 export type { FreezeSpecResult } from './service-render-specs';
+import { CONFIRMATION_REL_PREFIX, isMetaRel, paramsWithOrigins } from './service-request';
+export { CONFIRMATION_REL_PREFIX, isMetaRel, paramsWithOrigins } from './service-request';
 
 /**
  * exec 结果(discriminated union;HTTP 层据此映射 200/202/4xx)。
@@ -132,11 +145,6 @@ export type PlanServiceOutcome =
       entities: string[];
       confirmation: SuspendedConfirmation;
     };
-
-/** 定义平面 rel(meta/self 或 meta/ 前缀;HTTP 层的跨站路由键)。 */
-export function isMetaRel(rel: string): boolean {
-  return rel === 'meta/self' || rel.startsWith('meta/') || rel.startsWith('draft:');
-}
 
 export interface EngineRuntime {
   /** 当前内存快照(boot/exec/增量 fold 维护;只读视图,不触库——需外部写者进度用 readSnapshot)。 */
@@ -192,19 +200,6 @@ export function getDb(environment: DeploymentEnvironment = process.env): DbExecu
     : getProductionPool(productionConfig);
 }
 
-/** 请求参数 → 带出处的字段(出处缺省 intent;与 engine effects 的 originOf 同口径)。 */
-export function paramsWithOrigins(request: ExecRequest): Record<string, FieldValue> {
-  return Object.fromEntries(
-    Object.entries(request.params ?? {}).map(([name, value]) => [
-      name,
-      { value, origin: request.paramOrigins?.[name] ?? 'intent' },
-    ]),
-  );
-}
-
-/** 确认实体 rel 前缀(与 engine confirmationRel 同口径;approve/reject 的路由键)。 */
-export const CONFIRMATION_REL_PREFIX = 'confirmation:';
-
 // ---- globalThis 单例(见文件头注释)----------------------------------------
 
 interface EngineGlobalState {
@@ -247,6 +242,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   // 核心事件日志状态(快照 + 已折叠进度 seq 高水位 + foreignGaps):自身 append
   // 推进水位;读路径/exec 开头按此增量 fold 外部写者(多写者水位铁律见下)。
   const logState = createCoreEventLogState(events);
+  scheduleNativeFunctionReconciliation(db);
   // Application/Flow/Catalog activation 的旁路预生成；配置/模型失败只进入
   // Presentation coordinator failure，不阻断 boot 或业务引擎。
   scheduleRecipesForSnapshot(logState.snapshot);
@@ -265,9 +261,8 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   // 出生版本注册表(在途实例按出生定义走完):definitions 历史原样注入。
   const versions = (): Record<string, Record<number, FlowDefinition>> =>
     logState.snapshot.definitionVersions ?? {};
-  const guards = seedGuardRegistry;
   // 确认门依赖:Cedar 策略在 boot 时装配一次(策略文件改动重启生效,T4 起 _meta 热更新)。
-  const policy = cedarPolicyFromDefaultFile();
+  const [guards, policy] = [seedGuardRegistry, cedarPolicyFromDefaultFile()];
   const gateDeps = (): ExecuteDeps => ({
     flows: activeFlows(),
     guards,
@@ -285,7 +280,8 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   const metaDeps = (): MetaDeps => ({
     guards,
     policy,
-    executorProfiles: codingExecutorProfileRegistryFromEnvironment(),
+    executorProfiles: capabilityExecutorClassRegistryFromEnvironment(),
+    nativeFunctionProfiles: nativeFunctionActivationRegistryFromEnvironment(),
   });
 
   // sitemap 读者(业务/meta 两面;按活跃定义集内容 hash 缓存,工厂与缓存在
@@ -294,41 +290,6 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     () => logState.snapshot,
     activeFlowList,
   );
-
-  const withIdentityAudit = (detail: unknown, identity: ExecRequest['identity']): unknown => {
-    if (identity === undefined) return detail;
-    const base =
-      typeof detail === 'object' && detail !== null && !Array.isArray(detail)
-        ? (detail as Record<string, unknown>)
-        : detail === undefined
-          ? {}
-          : { value: detail };
-    return { ...base, identity };
-  };
-
-  /** 引擎事件 → 日志层追加形状(identity 寄存 detail，不增加第二套 DB schema)。 */
-  const toAppend = (event: EngineEvent): EventAppend => {
-    const eventDetail =
-      event.kind === 'spawn-requested'
-        ? {
-            capability: event.capability,
-            ...(event.bind !== undefined ? { bind: event.bind } : {}),
-            ...(event['on-done'] !== undefined ? { 'on-done': event['on-done'] } : {}),
-            ...(event['on-error'] !== undefined ? { 'on-error': event['on-error'] } : {}),
-          }
-        : event.detail;
-    return {
-      kind: event.kind,
-      rel: event.rel,
-      action: event.action,
-      actor: event.actor,
-      principal: event.principal,
-      channel: event.channel,
-      params: event.params,
-      detail: withIdentityAudit(eventDetail, event.identity),
-      reason: event.reason,
-    };
-  };
 
   /**
    * 追加并推进 lastSeq(自身事件不进入增量 fold,防双算)。
@@ -408,7 +369,11 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         if (outcome.kind === 'suspended') {
           // 挂起(非拒绝):confirmation-requested 落库(detail 含 Cedar 策略 id
           // 与原因,spec 验收 5),pending 实体物化进快照,业务状态不动。
-          await appendBatchWithSeq(db, logState, outcome.events.map(toAppend));
+          await appendBatchWithSeq(
+            db,
+            logState,
+            outcome.events.map((event) => toAppend(event)),
+          );
           logState.snapshot = outcome.snapshot;
           applyForeignGaps(logState);
           const rel = `confirmation:${outcome.confirmation.id}`;
@@ -471,38 +436,57 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
             : activeDefinitionOf(logState.snapshot, sourceInstance.flow)?.app) ?? 'default';
         const spawnPrincipal = aliased.principal ?? 'local-user';
         const productionConfig = runWebProductionDeploymentPreflight();
-        const preparedNativeRuns = new Map<EngineEvent, PreparedNativeAgentDispatch>();
+        const preparedDispatches = new Map<
+          EngineEvent,
+          PreparedCapabilityDispatch<PreparedNativeAgentDispatch>
+        >();
+        const nativeFunctionProfiles = nativeFunctionProfileMapFromEnvironment();
         for (const event of effectiveEvents) {
           if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
           const capability = logState.snapshot.capabilities?.[event.capability];
           if (capability === undefined) continue;
           if (capability.executor === undefined) continue;
-          if (capability.executor.agentDefinition === undefined) {
-            throw new Error(
-              `capability ${capability.name} executor has no Agent Definition; only canonical Agent Runs can be dispatched`,
-            );
-          }
-          preparedNativeRuns.set(
+          if (sourceInstance === undefined) throw new Error('spawn source instance is missing');
+          preparedDispatches.set(
             event,
-            await prepareNativeAgentDispatch(db, {
-              principal: spawnPrincipal,
-              policyScope: spawnPolicyScope,
-              params: aliased.params ?? {},
-              capability,
-              ...(productionConfig === undefined ? {} : { productionConfig }),
-            }),
+            await prepareCapabilityDispatch(
+              {
+                event,
+                capability,
+                principal: spawnPrincipal,
+                policyScope: spawnPolicyScope,
+                actionParams: aliased.params ?? {},
+                source: { rel: sourceInstance.rel, fields: sourceInstance.fields },
+                artifacts: {},
+              },
+              {
+                nativeFunctionProfiles,
+                prepareAgent: async () =>
+                  prepareNativeAgentDispatch(db, {
+                    principal: spawnPrincipal,
+                    policyScope: spawnPolicyScope,
+                    params: aliased.params ?? {},
+                    capability,
+                    ...(productionConfig === undefined ? {} : { productionConfig }),
+                  }),
+              },
+            ),
           );
         }
         const spawned: {
           event: EngineEvent;
           seq: number;
-          prepared?: PreparedNativeAgentDispatch;
+          prepared?: PreparedCapabilityDispatch<PreparedNativeAgentDispatch>;
         }[] = [];
-        const effectiveSeqs = await appendBatchWithSeq(db, logState, effectiveEvents.map(toAppend));
+        const effectiveSeqs = await appendBatchWithSeq(
+          db,
+          logState,
+          effectiveEvents.map((event) => toAppend(event, preparedDispatches.get(event))),
+        );
         for (const [index, event] of effectiveEvents.entries()) {
           const seq = effectiveSeqs[index]!;
           if (event.kind === 'spawn-requested') {
-            const prepared = preparedNativeRuns.get(event);
+            const prepared = preparedDispatches.get(event);
             spawned.push({ event, seq, ...(prepared === undefined ? {} : { prepared }) });
           }
         }
@@ -515,11 +499,16 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
           const capability = logState.snapshot.capabilities?.[event.capability];
           if (capability?.executor === undefined) continue;
-          if (prepared === undefined) {
-            throw new Error('spawn dispatch missed its prepared native Agent Run');
+          if (prepared === undefined)
+            throw new Error('spawn dispatch missed its prepared executor');
+          if (prepared.kind === 'native-function') {
+            await startNativeFunctionDispatch(prepared.prepared, seq, {
+              start: dispatchNativeFunction,
+            });
+            continue;
           }
           const run = await createAndDispatchAgentRun(db, {
-            prepared,
+            prepared: prepared.prepared,
             sourceSeq: seq,
             sourceRel: aliased.rel,
             sourceAction: aliased.action,
@@ -555,7 +544,11 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
                 }`,
               );
             }
-            await appendBatchWithSeq(db, logState, callback.events.map(toAppend));
+            await appendBatchWithSeq(
+              db,
+              logState,
+              callback.events.map((event) => toAppend(event)),
+            );
             logState.snapshot = callback.snapshot;
           }
         }
@@ -585,7 +578,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         const outcome = executePlan(aliased, logState.snapshot, gateDeps());
 
         // 落库顺序 = 日志顺序:各步伴随事件 → 拒绝步留痕 → 批量裁决记录标记。
-        const batch = outcome.events.map(toAppend);
+        const batch = outcome.events.map((event) => toAppend(event));
         const rejected = outcome.results.find((result) => result.outcome === 'rejected');
         if (rejected !== undefined && rejected.rejection !== undefined) {
           const request = aliased[rejected.step - 1]!;

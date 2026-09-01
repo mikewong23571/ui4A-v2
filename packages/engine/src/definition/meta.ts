@@ -43,6 +43,7 @@ export interface MetaDeps {
   fieldTypes?: DefinitionRegistries['fieldTypes'];
   effectTypes?: DefinitionRegistries['effectTypes'];
   executorProfiles?: DefinitionRegistries['executorProfiles'];
+  nativeFunctionProfiles?: DefinitionRegistries['nativeFunctionProfiles'];
 }
 
 /** meta exec 结果(与业务 exec 同构:executed / suspended / rejected)。 */
@@ -329,6 +330,9 @@ export function executeMeta(
         ? { capabilityDefinitions: verdict.snapshot.capabilities }
         : {}),
       ...(deps.executorProfiles !== undefined ? { executorProfiles: deps.executorProfiles } : {}),
+      ...(deps.nativeFunctionProfiles !== undefined
+        ? { nativeFunctionProfiles: deps.nativeFunctionProfiles }
+        : {}),
     });
     const passed = checks.every((check) => check.pass);
     const detail: DefinitionSubmittedDetail = { name: flowName, passed, checks };

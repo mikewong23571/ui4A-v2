@@ -24,7 +24,8 @@ import {
   applyForeignGaps,
   type CoreEventLogState,
 } from './service-event-log';
-import { CONFIRMATION_REL_PREFIX, paramsWithOrigins, type ExecOutcome } from './service';
+import type { ExecOutcome } from './service';
+import { CONFIRMATION_REL_PREFIX, paramsWithOrigins } from './service-request';
 
 /** execConfirmationDecision 的编排依赖(bootEngine 内闭包,调用点注入)。 */
 export interface ConfirmationDecisionDeps {

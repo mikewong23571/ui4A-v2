@@ -8,6 +8,7 @@ import {
   prepareCapabilityDispatch,
   reconcileNativeFunctionSpawns,
   startPersistedCapabilityDispatch,
+  type NativeFunctionStartInput,
 } from './dispatch';
 
 const hash = `sha256:${'a'.repeat(64)}` as const;
@@ -146,8 +147,8 @@ describe('Capability executor dispatch composition', () => {
       nativeFunctionProfiles: new Map([[profile.ref, profile]]),
     });
     if (dispatch.kind !== 'native-function') throw new Error('wrong executor kind');
-    const append = vi.fn(async () => 42);
-    const start = vi.fn(async () => undefined);
+    const append = vi.fn<(event: Record<string, unknown>) => Promise<number>>(async () => 42);
+    const start = vi.fn<(input: NativeFunctionStartInput) => Promise<void>>(async () => undefined);
     const result = await startPersistedCapabilityDispatch(dispatch.prepared, { append, start });
     expect(append).toHaveBeenCalledBefore(start);
     expect(append.mock.calls[0]![0]).toMatchObject({
@@ -161,10 +162,11 @@ describe('Capability executor dispatch composition', () => {
   });
 
   it('reconciles an orphaned persisted spawn with the same workflow ID exactly once', async () => {
-    const start = vi.fn(async () => undefined);
+    const start = vi.fn<(input: NativeFunctionStartInput) => Promise<void>>(async () => undefined);
     const orphan = {
       seq: 42,
       prepared: {
+        event: spawnEvent(),
         profile,
         birth: {
           capability: { name: 'cve.enrich', hash },
@@ -206,6 +208,6 @@ describe('Capability executor dispatch composition', () => {
     });
     expect(result.started).toHaveLength(1);
     expect(start).toHaveBeenCalledOnce();
-    expect(start.mock.calls[0]![0].workflowId).toBe(`function-${result.started[0]}`);
+    expect(start.mock.calls[0]![0].workflowId).toBe(`function-${result.started[0]!}`);
   });
 });
