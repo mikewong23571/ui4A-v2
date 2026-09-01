@@ -64,3 +64,37 @@ typecheck、lint（仅既有 warnings）、strict governance 全绿。
 
 自治验收结论：Phase B 达成；Capability Port 的输入、部署需求和回流入口已在 pure/activation 层
 fail closed，可进入 Web/Worker 执行组合。
+
+## Phase C — Web/Temporal/Worker/DB 执行闭环 checkpoint
+
+日期：2026-09-01。Checkpoint functional commit：`6fdd581b`。
+
+### 自动化与真实运行证据
+
+| 证据 | 结果 |
+| --- | --- |
+| Dispatcher/Profile/Temporal client/Reconciliation | class-based dispatch、fail-before-append、birth detail、deterministic workflow ID 全绿 |
+| Worker Adapter | registry、double schema/hash/bytes、retryable/permanent、cancel、profile drift 全绿 |
+| Governed Finalize | success、forged birth、invalid output、stale guard、effect origin 全绿 |
+| DB receipt transaction | receipt+core atomic、dedup、collision、rollback、partial unique index 全绿 |
+| Real Temporal | 2 stories passed：Worker SIGKILL retry/finalize once；cancel 后 finalize 且 Workflow CANCELLED |
+| Real PostgreSQL outbox | persisted orphan 启动；terminal receipt 后不再派发 |
+| Full check | 484 files passed、3657 tests passed、6 skipped；strict governance green |
+
+Focused coverage：55 tests passed；statements 84.9%、functions 88.05%、lines 86.68%。Reconciliation
+unit 分支由真实 DB outbox test 补证。所有 workspace typechecks 与 worker workflows build 通过。
+
+### 自治人工等效检查
+
+1. Agent executor 仍走 exact Agent Definition + canonical Agent Run；Native Function 只按 executor class
+   进入 Function Adapter，dispatcher 不读取 Capability/Application 名称。
+2. `spawn-requested` 在同一 core batch 中保存 sealed birth；Temporal start 失败留下可重协调 outbox，
+   不回滚已合法执行的 Application Action，也不新建 outbox 表。
+3. Handler 只收到 payload、executionId、AbortSignal；无 DB/Web/Snapshot/credential/callback 选择能力。
+4. Worker 与 Web 各自按同一 birth schema/hash/bytes 验证；成功 claim 仍须当前 callback Action 接受。
+5. Terminal receipt 与 callback core events 同事务；advisory lock + partial unique index 处理 retry；stale
+   callback 留拒绝事件且不覆盖当前状态。
+6. 普通业务 fold 只消费 callback core events；Temporal history 与 capability receipt 不成为业务真相。
+
+自治验收结论：Phase C 达成；本地 Function Adapter 已形成可恢复、可重放、可审计的受治理执行闭环，
+可以进入真实 Security Application 垂直切片。

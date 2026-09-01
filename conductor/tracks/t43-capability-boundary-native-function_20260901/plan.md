@@ -79,7 +79,7 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 运行 typecheck、lint、`pnpm governance`
   - [x] 记录 checkpoint 和验证报告
 
-## Phase C：Web 派发、Temporal 执行与结果回流
+## Phase C：Web 派发、Temporal 执行与结果回流 [checkpoint: 6fdd581]
 
 - [x] Task: Red — Executor dispatcher b853b90
   - [x] 覆盖 `agent` 继续走现有 Agent dispatch
@@ -126,13 +126,13 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] receipt 和 callback 结果按已决定的事务协议提交
   - [x] 使用 DB 唯一约束与 advisory lock，不使用 check-then-insert 去重
   - [x] 失败进入声明的 `on-error`，不造业务事实
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
-  - [ ] 启动真实 PostgreSQL、Temporal、Worker 和 Web
-  - [ ] 执行成功、异常、非法输出、timeout、cancel 和重复 callback
-  - [ ] 在 Activity 完成后、finalize 前终止 Worker并验证恢复
-  - [ ] 验证 orphan spawn 经 reconciler 最终启动且不重复业务效果
-  - [ ] 运行 DB replay、幂等、coverage、typecheck、lint 和 governance
-  - [ ] 记录真实 Temporal checkpoint 证据
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 6fdd581
+  - [x] 启动真实 PostgreSQL、Temporal、Worker 和 Web
+  - [x] 执行成功、异常、非法输出、timeout、cancel 和重复 callback
+  - [x] 在 Activity 完成后、finalize 前终止 Worker并验证恢复
+  - [x] 验证 orphan spawn 经 reconciler 最终启动且不重复业务效果
+  - [x] 运行 DB replay、幂等、coverage、typecheck、lint 和 governance
+  - [x] 记录真实 Temporal checkpoint 证据
 
 ## Phase D：Security Application 垂直切片
 
