@@ -209,7 +209,8 @@ artifact-ref 未接线和第二 Adapter 证据不足。完整 findings 与精确
   0，耗时约 3.4 分钟。
 - `apps/worker/src/capabilities/function/temporal.integration.test.ts`：2 passed，覆盖 Worker SIGKILL
   recovery/finalize once 与 cancellation。
-- real Assistant capability-boundary Eval：2 passed；成功选择共享 CVE Action，缺 Profile 零 mutation。
+- 最终 prompt 紧凑化后的 real Assistant capability-boundary Eval：2 passed，exit 0，耗时 6.0 分钟；
+  成功选择共享 CVE Action，缺 Profile 零 mutation。
 - 开发栈已恢复：Web `3100`、Temporal `7233`、Worker `ui4a` task queue；`/api/health` readiness=`ready`、
   db=`ok`。
 
