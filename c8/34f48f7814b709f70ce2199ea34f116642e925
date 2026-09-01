@@ -1,0 +1,4 @@
+Phase D authorization evidence
+Summary: Added explicit Security entity grant positive/negative proof through the existing D51 reachability predicate.
+Verification: Security application 6 tests passed; web typecheck green.
+Why: A new Application must inherit authorization without a new scope system or per-Application code.
