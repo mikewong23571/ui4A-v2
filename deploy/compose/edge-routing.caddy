@@ -84,7 +84,7 @@ https://{$KEYCLOAK_HOST}:9443 {
   tls /var/lib/ui4a/ca/keycloak/tls.crt /var/lib/ui4a/ca/keycloak/tls.key
 
   @keycloakAdmin {
-    method GET POST
+    method GET POST PUT
     path /realms/master/protocol/openid-connect/token /admin/realms*
   }
   handle @keycloakAdmin {

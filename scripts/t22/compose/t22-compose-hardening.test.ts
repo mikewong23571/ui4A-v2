@@ -507,6 +507,7 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     expect(routing.slice(internalListener)).toContain(
       '/realms/master/protocol/openid-connect/token',
     );
+    expect(routing.slice(internalListener)).toContain('method GET POST PUT');
     expect(routing.slice(internalListener)).toContain('/admin/realms*');
     expect(stack.services.edge?.ports).toEqual(['127.0.0.1:8443:8443']);
     expect(stack.services.edge?.ports?.join(' ')).not.toContain('9443');
