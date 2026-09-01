@@ -37,12 +37,12 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
 
 ## Phase B：纯合同、绑定与激活门禁
 
-- [ ] Task: Red — Native Function deployment contract
-  - [ ] 为 Profile parser 编写合法、缺字段、未知字段、重复 profile 测试
-  - [ ] 为 handler ref、timeout、retry、network policy 和 payload budget 编写边界测试
-  - [ ] 覆盖 `network=denied`、cooperative cancellation 与不声称 hard CPU/memory isolation
-  - [ ] 为 invocation/result/receipt envelope 编写版本与大小限制测试
-  - [ ] 运行测试并确认预期失败
+- [x] Task: Red — Native Function deployment contract f6dba38
+  - [x] 为 Profile parser 编写合法、缺字段、未知字段、重复 profile 测试
+  - [x] 为 handler ref、timeout、retry、network policy 和 payload budget 编写边界测试
+  - [x] 覆盖 `network=denied`、cooperative cancellation 与不声称 hard CPU/memory isolation
+  - [x] 为 invocation/result/receipt envelope 编写版本与大小限制测试
+  - [x] 运行测试并确认预期失败
 - [ ] Task: Green — 实现部署合同
   - [ ] 在 `packages/shared/src/deployment/` 增加平台中立的 Native Function Profile 类型
   - [ ] 增加严格 parser 和 server-owned profile registry
