@@ -1,0 +1,4 @@
+Tasks: Red — Work Thread 与 Presentation; Green — 复用通用工作台呈现
+Summary: Added jsdom and pure projection evidence that the Security entity uses generic EntityView actions/progress/result fields, internal callbacks stay hidden, Function mechanics do not leak, and an explicitly attached CVE appears in the existing Work Thread with human-readable identity.
+Verification: initial expectations exposed two test mistakes (human title and canonical href); after aligning to existing contract truth, 3 tests, web typecheck, and governance passed with no product code change.
+Why: Existing generic presentation already satisfies the story; adding a CVE renderer would be architectural regression.
