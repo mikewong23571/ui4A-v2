@@ -6,6 +6,7 @@
 export * from './types';
 export { parseProductionDeploymentConfig } from './config';
 export { parseProductionRunnerDeploymentConfig } from './runner';
+export * from './native-function';
 export {
   preflightProductionDeploymentFromEnvironment,
   preflightProductionRunnerFromEnvironment,

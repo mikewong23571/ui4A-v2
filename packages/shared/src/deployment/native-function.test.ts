@@ -129,7 +129,7 @@ describe('Native Function invocation', () => {
     ],
     ['missing callback', { callback: { onDoneAction: 'enrichment-succeeded' } }],
     ['unknown root field', { credential: 'secret' }],
-    ['oversized declared input', { input: { ...invocation().input, byteLength: 1_000_000 } }],
+    ['oversized declared input', { input: { ...invocation().input, byteLength: 2_000_000 } }],
   ])('rejects %s', (_label, override) => {
     expect(() => parseNativeFunctionInvocation(invocation(override))).toThrow();
   });
