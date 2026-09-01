@@ -1,0 +1,3 @@
+T46 live Keychain correction
+
+A real Keycloak offline refresh token exceeded macOS security -w's roughly 128-character prompt limit and was truncated. Replaced the single-item payload with Keychain-only generation-scoped 96-character chunks and an atomic manifest pointer. A 2048-character real Keychain round-trip/delete probe passed; CLI suite 37 passed; auth coverage remained above 80%; typecheck/governance passed. Also renamed the realm pure-check module to realm-match and removed its now-stale GR2 allowlist entry.
