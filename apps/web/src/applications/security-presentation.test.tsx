@@ -103,4 +103,12 @@ describe('Security slice generic presentation', () => {
       href: '/api/entity?rel=cve:CVE-2026-0001',
     });
   });
+
+  it('does not auto-attach a CVE from presence, scope, or execution state', () => {
+    const current = snapshot('enriching');
+    current.threads!['security-response']!.references.context = [];
+    const thread = projectWorkThread(current.threads!['security-response']!, current, deps);
+    expect(thread.entities).toEqual([]);
+    expect(thread.links.some((link) => link.href.includes('cve:'))).toBe(false);
+  });
 });

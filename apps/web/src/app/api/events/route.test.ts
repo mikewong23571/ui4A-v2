@@ -122,6 +122,31 @@ describe('GET /api/events', () => {
     expect(body.events).toHaveLength(1);
   });
 
+  it('capability raw audit exposes the exact terminal Function receipt on demand', async () => {
+    await appendEvent(pool, {
+      domain: 'capability',
+      kind: 'function-execution-finalized',
+      rel: 'core:42',
+      detail: {
+        schemaVersion: 1,
+        executionId: 'nf-16-aaaaaaaaaaaa',
+        outcome: { status: 'succeeded', outputHash: `sha256:${'a'.repeat(64)}` },
+        profile: { handlerRef: 'security/cve-enrich@1' },
+      },
+    });
+    const response = await GET(request('?domain=capability&kind=function-execution-finalized'));
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { events: Array<{ detail: unknown }> };
+    expect(body.events).toEqual([
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          executionId: 'nf-16-aaaaaaaaaaaa',
+          profile: { handlerRef: 'security/cve-enrich@1' },
+        }),
+      }),
+    ]);
+  });
+
   it('credential principal scopes audit results and cannot be overridden', async () => {
     await appendEvent(pool, { kind: 'seed', rel: 'seed:a', principal: 'user:a' });
     await appendEvent(pool, { kind: 'seed', rel: 'seed:b', principal: 'user:b' });
