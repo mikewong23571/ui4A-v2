@@ -1,0 +1,5 @@
+Task: Green — 实现部署合同
+Summary: Added platform-neutral Native Function profile, invocation, outcome, and receipt contracts with strict exact-key parsers, bounded strings/integers/payloads, network-denied profiles, duplicate rejection, hashes, callback identity, and deployment export.
+Files: packages/shared/src/deployment/native-function.ts; native-function.test.ts; index.ts
+Verification: 21 focused tests passed; shared typecheck, focused ESLint, governance, Prettier, and diff check passed.
+Why: Give Web and Worker one sealed, provider-free execution wire without exposing handler selection to Applications or requests.
