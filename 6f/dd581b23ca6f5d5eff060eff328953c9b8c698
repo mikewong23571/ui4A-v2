@@ -1,0 +1,5 @@
+Task: Green — 实现受治理结果回流
+Summary: Added protected callback claim parsing, exact spawn/birth/identity revalidation, independent output hash/byte/schema validation, effect-origin callback judgment, stale rejection receipts, append-only terminal receipts, advisory-lock/partial-unique idempotency, collision rejection, and atomic capability+core event transaction. Reconciliation now reads the same persisted birth.
+Files: shared Native Function claim; DB events DDL/function-receipts; web capability finalize/reconciliation; protected route and tests.
+Verification: 31 unit + 16 DB/route tests passed; all workspace typechecks, strict governance, focused ESLint, Prettier, DDL parity, and diff check passed.
+Why: External success is only a claim until the current Application action accepts it in the same transaction as its audit receipt.
