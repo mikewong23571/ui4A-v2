@@ -180,11 +180,11 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 人类 renderer 与 CLI/HTTP Agent 路径使用同一 Siren Action
   - [x] 覆盖全部成功、失败、授权、并发、恢复和重放故事
   - [x] Safety 故事达到 100%
-- [ ] Task: 真实 Assistant 验收
-  - [ ] 使用配置的真实 LLM 执行“补充这个 CVE 的影响信息”
-  - [ ] 验证 Assistant 选择 Entity Action，而非直接调用 Native Function
-  - [ ] 验证失败解释使用业务语言且零副作用
-  - [ ] 保留真实 provider evidence，不以 fixture 冒充
+- [x] Task: 真实 Assistant 验收 dd4d523
+  - [x] 使用配置的真实 LLM 执行“补充这个 CVE 的影响信息”
+  - [x] 验证 Assistant 选择 Entity Action，而非直接调用 Native Function
+  - [x] 验证失败解释使用业务语言且零副作用
+  - [x] 保留真实 provider evidence，不以 fixture 冒充
 - [ ] Task: 全量质量门
   - [ ] 运行 `pnpm format:check`
   - [ ] 运行 `pnpm check`

@@ -163,3 +163,12 @@ unit 分支由真实 DB outbox test 补证。所有 workspace typechecks 与 wor
 
 最终 focused story command：11 unit files / 72 tests、4 DB files / 16 tests、真实 Temporal 2 tests，全部
 通过。Safety stories S4/S6/S8/S9/S10/S14 的已登记用例无 skip、无失败。
+
+### 真实 Assistant
+
+Standing Eval `e2e/eval/capability-boundary.spec.ts` 使用配置的真实 LLM、隔离 Web/Worker/DB/Temporal
+执行“补充这个 CVE 的影响信息。”：LLM decision 选择 `exec/enrich-impact`，source Action actor=agent，
+实体最终 enriched，唯一 terminal receipt 为 `cve.enrich` succeeded + `enrichment-succeeded` accepted。
+第二个 story 移除 Function profile：真实 LLM 仍选择共享 Action，但服务在 mutation 前诚实失败；CVE
+保持 identified，零 action/spawn，用户侧输出无 stack/handlerRef/Temporal 泄漏。最终 2/2 passed，耗时
+约 2.0 分钟；没有 scripted/rule driver、固定 tool trace 或直接 Function 调用。
