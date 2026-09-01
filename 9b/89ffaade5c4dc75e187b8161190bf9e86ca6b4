@@ -1,0 +1,13 @@
+T46 Phase D versioned realm migration
+
+Summary:
+- Added explicit v1-to-v2 additive Keycloak migration with exact source normalization, pre-mutation backup, bounded partial retry, CLI client creation, offline default-role composite, timeout/version update, and v2 post-check.
+- Extended the authenticated Admin adapter only with fixed realm/client/role endpoints.
+- Added a compiled Worker admin entry and ui4a-compose realm-migrate command with a volume-contained 0600 backup path.
+- Updated standing runbook/inventory and compiled artifact contracts.
+
+Verification:
+- Migration/Keycloak/Compose/admin-entry/image/runbook focused suites passed (88 tests in the final focused set).
+- format:check passed; production Web build passed.
+- full workspace typecheck/lint/governance passed (lint 0 errors, existing warnings only).
+- full Vitest: 494 files passed, 8 skipped; 3734 tests passed, 15 skipped.
