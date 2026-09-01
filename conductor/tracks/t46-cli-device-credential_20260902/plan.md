@@ -39,14 +39,14 @@
 - [x] Task: CLI focused coverage、build/pack 与独立 cwd smoke 87fb866
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 87fb866
 
-## Phase D：Existing Realm 一次性迁移与部署合同
+## Phase D：Existing Realm 一次性迁移与部署合同 [checkpoint: 9b89ffa]
 
-- [ ] Task: Red/Green — versioned additive realm migration
-  - [ ] exact v1 precondition、realm export backup、v2 apply、post-check、retry/partial negatives
-  - [ ] 新环境 import v2 与既有 home migration 共用同一 canonical client representation
-- [ ] Task: runbook、operator evidence 与 recovery instructions
-- [ ] Task: focused deployment/auth negatives、Web build、governance、`pnpm check`
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Red/Green — versioned additive realm migration 9b89ffa
+  - [x] exact v1 precondition、realm export backup、v2 apply、post-check、retry/partial negatives
+  - [x] 新环境 import v2 与既有 home migration 共用同一 canonical client representation
+- [x] Task: runbook、operator evidence 与 recovery instructions 9b89ffa
+- [x] Task: focused deployment/auth negatives、Web build、governance、`pnpm check` 9b89ffa
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 9b89ffa
 
 ## Phase E：Current Deployment 上线与真实验收
 
