@@ -104,12 +104,12 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 覆盖 retryable exception、permanent contract failure 与 birth-pinned timeout/retry determinism
   - [x] 覆盖 handler 无 PostgreSQL/Web/EngineSnapshot 依赖
   - [x] 运行测试并确认预期失败
-- [ ] Task: Green — Worker Native Function Adapter
-  - [ ] 在 `apps/worker/src/capabilities/function/` 建立最小 registry/adapter
-  - [ ] handler 只接收 sealed invocation
-  - [ ] Activity 负责 I/O、校验和结构化结果
-  - [ ] Workflow 只负责编排，不访问 Node API、数据库或网络
-  - [ ] 使用确定性 workflow/execution identity，不新增 Capability Run projection
+- [x] Task: Green — Worker Native Function Adapter 3e55c30
+  - [x] 在 `apps/worker/src/capabilities/function/` 建立最小 registry/adapter
+  - [x] handler 只接收 sealed invocation
+  - [x] Activity 负责 I/O、校验和结构化结果
+  - [x] Workflow 只负责编排，不访问 Node API、数据库或网络
+  - [x] 使用确定性 workflow/execution identity，不新增 Capability Run projection
 - [ ] Task: Red — Finalize 与 callback ingress
   - [ ] 覆盖 output schema、receipt/output hash、重复 finalize 和重复 callback
   - [ ] 覆盖 stale source、guard/schema rejection
