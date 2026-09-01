@@ -1,0 +1,1 @@
+T42 CLOSED：S1-S8按用户故事自治验收；check3585/6既有跳过，完整E2E65/24可选或退役跳过，真实LLM2通过，核心行覆盖96.64%，Temporal SIGKILL恢复通过。审查发现授权、切线、标题及测试隔离问题全部修复。开发误写seq524获授权后备份并精确删除，append-only触发器同事务恢复，CLI业务/meta=200。未push/deploy。
