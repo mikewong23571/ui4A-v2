@@ -12,3 +12,5 @@ Verification:
 - CLI typecheck passed; pnpm lint 0 errors (existing warnings only).
 - CLI build, pack, temporary-prefix install, version/help/auth-status independent cwd smoke passed.
 - governance:strict passed.
+
+Phase C checkpoint: full workspace pnpm typecheck and governance:strict passed after functional commit.
