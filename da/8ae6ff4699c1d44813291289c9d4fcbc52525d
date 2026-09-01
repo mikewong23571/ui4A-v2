@@ -1,0 +1,4 @@
+Final S4 registry correction
+Summary: Added Security to completed/rejected/suspended plan identity expectations without duplicates.
+Verification: all three S4 Playwright stories passed in one CI run.
+Why: Every local identity audit carries the complete installed Application grant set.
