@@ -37,6 +37,7 @@ import {
   CollectionReadNavigationProvider,
   type CollectionReadNavigation,
 } from '@/render/canvas/collection-read-navigation';
+import { PresentationDensityProvider } from '@/render/presentation-density';
 import { CanvasWhyDrawer } from './canvas-why-drawer';
 import { ActionSubmitProvider } from '../actions/action-submit';
 import { RawContractDrawer } from './raw-contract-drawer';
@@ -264,7 +265,13 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
               ) : (
                 <SurfaceErrorBoundary surfaceId={entry.id}>
                   <ActionSubmitProvider submit={surfaceSubmit}>
-                    <A2uiSurface surface={entry.surface} />
+                    <PresentationDensityProvider
+                      density={
+                        sidecarMeta?.view.densityByNodeId[sidecarMeta.rootNodeId] ?? 'comfortable'
+                      }
+                    >
+                      <A2uiSurface surface={entry.surface} />
+                    </PresentationDensityProvider>
                   </ActionSubmitProvider>
                 </SurfaceErrorBoundary>
               )}

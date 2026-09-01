@@ -20,6 +20,7 @@
 import type { ReactElement } from 'react';
 import type { SirenEntity } from '@ui4a/engine';
 
+import { cn } from '@/lib/utils';
 import { canvasEntityHref } from '@/presence/navigation';
 
 import { ActionGroup } from '../../components/actions/action-group';
@@ -59,6 +60,11 @@ export function MemberTableWord(props: WordProps) {
   // 概览列:声明 overview 且角色不与既有固定列重复(identity=主体列、
   // status=状态列,声明数据可判,零字段名特判)。
   const overviewColumns = declaredMemberOverview(presentations, fields);
+  // 用户级密度偏好(T38 疏密贯通):compact 收紧行内上下留白;comfortable/
+  // spacious 保持既有排版。
+  const density = asOptionalString(props.density, 'member-table', 'density');
+  const compact = density === 'compact';
+  const cellClass = compact ? 'px-2 py-1' : 'px-2 py-2';
 
   // 行内动作只消费动作裁决所需的最小合同面;标识与预填取值来自成员投影。
   const entity: SirenEntity = {
@@ -70,7 +76,7 @@ export function MemberTableWord(props: WordProps) {
   };
 
   const identityCell = (
-    <td className="block min-w-0 px-2 py-2 align-top md:table-cell">
+    <td className={cn('block min-w-0 align-top md:table-cell', cellClass)}>
       <a
         data-nav="presentation:member"
         href={canvasEntityHref(rel)}
@@ -87,7 +93,10 @@ export function MemberTableWord(props: WordProps) {
   const actionsCell = (
     <td
       data-mobile-label="操作"
-      className="block min-w-0 px-2 py-2 align-top before:mb-1 before:block before:text-[10px] before:font-medium before:text-muted-foreground before:content-[attr(data-mobile-label)] md:table-cell md:before:hidden"
+      className={cn(
+        'block min-w-0 align-top before:mb-1 before:block before:text-[10px] before:font-medium before:text-muted-foreground before:content-[attr(data-mobile-label)] md:table-cell md:before:hidden',
+        cellClass,
+      )}
     >
       <ActionGroup entity={entity} density="compact" />
     </td>
@@ -95,7 +104,10 @@ export function MemberTableWord(props: WordProps) {
   const wordCell = (value: string | undefined, label: string): ReactElement => (
     <td
       data-mobile-label={label}
-      className="block min-w-0 px-2 py-2 align-top text-xs text-muted-foreground before:mb-1 before:block before:text-[10px] before:font-medium before:content-[attr(data-mobile-label)] md:table-cell md:before:hidden"
+      className={cn(
+        'block min-w-0 align-top text-xs text-muted-foreground before:mb-1 before:block before:text-[10px] before:font-medium before:content-[attr(data-mobile-label)] md:table-cell md:before:hidden',
+        cellClass,
+      )}
     >
       {value === undefined ? null : (
         <span className="block whitespace-pre-wrap break-words md:truncate" title={value}>
@@ -111,7 +123,10 @@ export function MemberTableWord(props: WordProps) {
         data-column={presentation.path}
         data-mobile-label={presentation.title}
         title={presentation.title}
-        className="block min-w-0 px-2 py-2 align-top text-xs text-muted-foreground before:mb-1 before:block before:text-[10px] before:font-medium before:content-[attr(data-mobile-label)] md:table-cell md:before:hidden"
+        className={cn(
+          'block min-w-0 align-top text-xs text-muted-foreground before:mb-1 before:block before:text-[10px] before:font-medium before:content-[attr(data-mobile-label)] md:table-cell md:before:hidden',
+          cellClass,
+        )}
       >
         {value === undefined ? null : (
           <span className="block whitespace-pre-wrap break-words md:truncate" title={value}>
@@ -136,6 +151,7 @@ export function MemberTableWord(props: WordProps) {
     <table
       data-word="member-table"
       data-rel={rel}
+      data-density={density}
       className="block w-full border-collapse md:table md:table-fixed"
     >
       <colgroup className="hidden md:table-column-group">

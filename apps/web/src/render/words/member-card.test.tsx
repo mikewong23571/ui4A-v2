@@ -108,4 +108,37 @@ describe('member-card 词条', () => {
     expect(() => renderCard({ rel: 'confirmation:c1', actions: [] })).toThrow(/member-card/);
     expect(() => renderCard({ label: 'x', actions: [] })).toThrow(/member-card/);
   });
+
+  it('density=compact → 卡片收紧留白与行距(标题/详情单行截断,零布局分支)', () => {
+    renderCard({
+      label: '一篇需要截断的长标题文章',
+      rel: 'post:a',
+      status: '已发布',
+      detail: '摘要也很长,compact 下单行截断',
+      actions: [approveAction],
+      density: 'compact',
+    });
+
+    const card = document.querySelector('[data-word="member-card"]')!;
+    expect(card.getAttribute('data-density')).toBe('compact');
+    expect(card.className).toContain('p-1.5');
+    expect(card.className).not.toContain('p-3');
+    // 标题与详情在 compact 下都是单行截断(truncate),不是多行换行
+    expect(screen.getByText('一篇需要截断的长标题文章').className).toContain('truncate');
+    expect(screen.getByText('摘要也很长,compact 下单行截断').className).toContain('truncate');
+  });
+
+  it('未声明密度 → comfortable 缺省(既有排版零变化)', () => {
+    renderCard({
+      label: '普通卡片',
+      rel: 'post:b',
+      status: '已发布',
+      actions: [approveAction],
+    });
+
+    const card = document.querySelector('[data-word="member-card"]')!;
+    expect(card.getAttribute('data-density')).toBeNull();
+    expect(card.className).toContain('p-3');
+    expect(card.className).not.toContain('p-1.5');
+  });
 });

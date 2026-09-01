@@ -10,6 +10,7 @@
  */
 import type { SirenEntity } from '@ui4a/engine';
 
+import { cn } from '@/lib/utils';
 import { canvasEntityHref } from '@/presence/navigation';
 
 import { ActionGroup } from '../../components/actions/action-group';
@@ -39,6 +40,10 @@ export function MemberCardWord(props: WordProps) {
     'presentations',
   );
   const overview = declaredMemberOverview(presentations, fields);
+  // 用户级密度偏好(T38 疏密贯通):compact 收紧卡片留白与行距、detail 单行
+  // 截断;comfortable/spacious 保持既有排版(容器留白由宿主另行处理)。
+  const density = asOptionalString(props.density, 'member-card', 'density');
+  const compact = density === 'compact';
 
   // 决策卡只消费动作裁决所需的最小合同面;标识与预填取值来自成员投影。
   const entity: SirenEntity = {
@@ -53,28 +58,49 @@ export function MemberCardWord(props: WordProps) {
     <article
       data-word="member-card"
       data-rel={rel}
-      className="w-full rounded-lg border bg-card p-3 text-card-foreground"
+      data-density={density}
+      className={cn(
+        'w-full rounded-lg border bg-card text-card-foreground',
+        compact ? 'p-1.5' : 'p-3',
+      )}
     >
       {/* 标题行保持成员导航(合同 href → 画布落面),动作行承载责任点 */}
       <a
         data-nav="presentation:member"
         href={canvasEntityHref(rel)}
-        className="block text-sm font-medium text-foreground hover:text-primary hover:underline"
+        className={cn(
+          'block text-sm font-medium text-foreground hover:text-primary hover:underline',
+          compact && 'truncate',
+        )}
       >
         {label}
       </a>
-      {detail !== undefined && <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>}
-      <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+      {detail !== undefined && (
+        <p className={cn('text-xs text-muted-foreground', compact ? 'mt-0 truncate' : 'mt-0.5')}>
+          {detail}
+        </p>
+      )}
+      <p
+        className={cn(
+          'font-mono text-xs text-muted-foreground',
+          compact ? 'mt-0 truncate' : 'mt-0.5',
+        )}
+      >
         {status !== undefined ? `${status} · ` : ''}
         {rel}
       </p>
       {overview.length > 0 && (
-        <div className="mt-2 space-y-2">
+        <div className={cn(compact ? 'mt-1 space-y-0.5' : 'mt-2 space-y-2')}>
           {overview.map(({ presentation, value }) => (
             <div key={presentation.path} data-column={presentation.path}>
               <p className="text-[11px] font-medium text-muted-foreground">{presentation.title}</p>
               {value !== undefined && (
-                <p className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                <p
+                  className={cn(
+                    'whitespace-pre-wrap break-words text-sm text-foreground',
+                    compact ? 'leading-5' : 'leading-6',
+                  )}
+                >
                   {value}
                 </p>
               )}
@@ -83,7 +109,7 @@ export function MemberCardWord(props: WordProps) {
         </div>
       )}
       {actions.length > 0 && (
-        <section aria-label="动作" className="mt-2">
+        <section aria-label="动作" className={compact ? 'mt-1' : 'mt-2'}>
           <ActionGroup entity={entity} />
         </section>
       )}

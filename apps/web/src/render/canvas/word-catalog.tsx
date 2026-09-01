@@ -21,6 +21,7 @@ import type { ComponentApi } from '@a2ui/web_core/v0_9';
 import { z } from 'zod';
 
 import { CATALOG_ID } from '../registry';
+import { usePresentationDensity } from '../presentation-density';
 import { ChartWord } from '../words/chart';
 import { CollectionFiltersWord } from '../words/collection-filters';
 import { DetailWord } from '../words/detail';
@@ -79,6 +80,9 @@ function wordImplementation(
     schema: z.object({ ...commonProps, ...shape }).strict(),
   };
   return createBinderlessComponentImplementation(api, ({ context }) => {
+    // 用户级密度偏好贯通:同面偏好注入每个词条(词条按需消费,零 per-app;
+    // 无 Provider 时 hook 取 comfortable,行为不变)。
+    const density = usePresentationDensity();
     const raw = context.componentModel.properties as Record<string, unknown>;
     const resolved = Object.fromEntries(
       Object.entries(raw).map(([key, value]) => [
@@ -90,7 +94,7 @@ function wordImplementation(
         ),
       ]),
     );
-    return <Word {...toWordProps(resolved as WordRenderProps)} />;
+    return <Word {...toWordProps(resolved as WordRenderProps)} density={density} />;
   });
 }
 

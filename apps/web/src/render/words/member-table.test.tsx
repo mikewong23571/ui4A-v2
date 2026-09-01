@@ -295,4 +295,38 @@ describe('member-table 词条', () => {
     expect(screen.getByRole('cell', { name: '开始写作' }).dataset.mobileLabel).toBe('操作');
     expect(screen.getAllByRole('button', { name: '开始写作' })).toHaveLength(1);
   });
+
+  it('density=compact → 行内上下留白收紧(py-1),列结构不变', () => {
+    const view = renderRow({
+      label: '紧凑行',
+      rel: 'post:c',
+      status: '已发布',
+      actions: [approveAction],
+      density: 'compact',
+    });
+
+    const table = view.container.querySelector('[data-word="member-table"]')!;
+    expect(table.getAttribute('data-density')).toBe('compact');
+    const cells = screen.getAllByRole('cell');
+    expect(cells).toHaveLength(4);
+    for (const cell of cells) {
+      expect(cell.className).toContain('py-1');
+      expect(cell.className).not.toContain('py-2');
+    }
+  });
+
+  it('未声明密度 → 既有行距(py-2)零变化', () => {
+    const view = renderRow({
+      label: '普通行',
+      rel: 'post:d',
+      status: '已发布',
+      actions: [approveAction],
+    });
+
+    const table = view.container.querySelector('[data-word="member-table"]')!;
+    expect(table.getAttribute('data-density')).toBeNull();
+    for (const cell of screen.getAllByRole('cell')) {
+      expect(cell.className).toContain('py-2');
+    }
+  });
 });
