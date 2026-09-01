@@ -110,14 +110,14 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] Activity 负责 I/O、校验和结构化结果
   - [x] Workflow 只负责编排，不访问 Node API、数据库或网络
   - [x] 使用确定性 workflow/execution identity，不新增 Capability Run projection
-- [ ] Task: Red — Finalize 与 callback ingress
-  - [ ] 覆盖 output schema、receipt/output hash、重复 finalize 和重复 callback
-  - [ ] 覆盖 stale source、guard/schema rejection
-  - [ ] 覆盖伪造 source seq、capability hash 和 callback identity
-  - [ ] 覆盖 mixed-domain single transaction、partial unique index 和同 key 不同 hash collision
-  - [ ] 覆盖 receipt/callback commit 后、Activity 回包前 crash
-  - [ ] 覆盖成功 receipt 已保存但业务状态未被非法覆盖
-  - [ ] 运行测试并确认预期失败
+- [x] Task: Red — Finalize 与 callback ingress 1a724d3
+  - [x] 覆盖 output schema、receipt/output hash、重复 finalize 和重复 callback
+  - [x] 覆盖 stale source、guard/schema rejection
+  - [x] 覆盖伪造 source seq、capability hash 和 callback identity
+  - [x] 覆盖 mixed-domain single transaction、partial unique index 和同 key 不同 hash collision
+  - [x] 覆盖 receipt/callback commit 后、Activity 回包前 crash
+  - [x] 覆盖成功 receipt 已保存但业务状态未被非法覆盖
+  - [x] 运行测试并确认预期失败
 - [ ] Task: Green — 实现受治理结果回流
   - [ ] 增加部署侧受保护 callback ingress
   - [ ] 重新读取 source spawn、Capability birth 和当前实体
