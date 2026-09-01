@@ -136,12 +136,12 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
 
 ## Phase D：Security Application 垂直切片
 
-- [ ] Task: Red — Security Application Bundle
-  - [ ] 定义 `cves`、`cve:<id>` 和最小状态机预期
-  - [ ] 覆盖 `enrich-impact` Action、Capability、callbacks 与状态可达性
-  - [ ] 覆盖 Application/Sitemap/CLI 发现
-  - [ ] 断言 Bundle 不含 handler、Temporal 或 credential
-  - [ ] 运行测试并确认预期失败
+- [x] Task: Red — Security Application Bundle ae69afe
+  - [x] 定义 `cves`、`cve:<id>` 和最小状态机预期
+  - [x] 覆盖 `enrich-impact` Action、Capability、callbacks 与状态可达性
+  - [x] 覆盖 Application/Sitemap/CLI 发现
+  - [x] 断言 Bundle 不含 handler、Temporal 或 credential
+  - [x] 运行测试并确认预期失败
 - [ ] Task: Green — 实现 CVE 参考切片
   - [ ] 增加最小 Security Application 定义和一个 CVE reference entity
   - [ ] 增加 `cve.enrich` Capability 与声明式 binding
