@@ -1,0 +1,4 @@
+Task: Red→Green — 第二 Capability 可扩展性证明
+Summary: Added a non-installed document.normalize transform Bundle fixture, a second network-denied handler registration, and source audits proving generic dispatcher/service/EntityView contain no cve.enrich, document.normalize, or Security routing branches.
+Verification: expected Red from missing fixture, then 4 tests, web/worker typecheck, governance, Prettier, and diff check passed.
+Why: Demonstrate predictable growth by registration rather than per-Capability or per-Application code paths.
