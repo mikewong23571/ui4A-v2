@@ -4,6 +4,7 @@ import { deriveSitemap, validateDefinition } from '@ui4a/engine';
 import { seedGuardRegistry } from '@ui4a/shared';
 
 import { installedApplicationBundles, securityApplicationBundle } from './bundles';
+import { assertReachable } from '../auth/application-scope';
 
 describe('Security Application boundary slice', () => {
   it('installs one contract-driven Security application, CVE flow, and extract capability', () => {
@@ -97,5 +98,33 @@ describe('Security Application boundary slice', () => {
       node: 'identified',
     });
     expect(securityApplicationBundle.seed.detail.collections?.cves).toEqual(['cve:CVE-2026-0001']);
+  });
+
+  it('denies the Security entity when the credential grants only another Application', () => {
+    const flow = securityApplicationBundle.flows[0]!;
+    const application = securityApplicationBundle.applications[0]!;
+    const capability = securityApplicationBundle.capabilities[0]!;
+    const snapshot = {
+      instances: securityApplicationBundle.seed.detail.instances,
+      collections: securityApplicationBundle.seed.detail.collections ?? {},
+      definitions: {
+        [flow.name]: { name: flow.name, version: 1, status: 'active' as const, definition: flow },
+      },
+      definitionVersions: { [flow.name]: { 1: flow } },
+      applications: { [application.name]: application },
+      capabilities: { [capability.name]: capability },
+    };
+    const sitemap = deriveSitemap([flow], {
+      applications: snapshot.applications,
+      capabilities: snapshot.capabilities,
+    });
+    expect(() =>
+      assertReachable({ snapshot, sitemap, plane: 'business' }, 'cve:CVE-2026-0001', [
+        'publishing',
+      ]),
+    ).toThrow('scope_insufficient');
+    expect(() =>
+      assertReachable({ snapshot, sitemap, plane: 'business' }, 'cve:CVE-2026-0001', ['security']),
+    ).not.toThrow();
   });
 });
