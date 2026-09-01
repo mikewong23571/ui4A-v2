@@ -1,0 +1,4 @@
+In-flight T43 correction
+Summary: Added bounded input/output schemas beside their birth hashes so the Worker can validate without database access and Web finalize can independently revalidate the same contract.
+Verification: 4 files / 32 tests passed; shared/web typecheck and governance green.
+Why: Hash-only birth references were insufficient for the mandated double validation at an isolated Worker boundary.
