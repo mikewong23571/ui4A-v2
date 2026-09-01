@@ -43,12 +43,12 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 覆盖 `network=denied`、cooperative cancellation 与不声称 hard CPU/memory isolation
   - [x] 为 invocation/result/receipt envelope 编写版本与大小限制测试
   - [x] 运行测试并确认预期失败
-- [ ] Task: Green — 实现部署合同
-  - [ ] 在 `packages/shared/src/deployment/` 增加平台中立的 Native Function Profile 类型
-  - [ ] 增加严格 parser 和 server-owned profile registry
-  - [ ] 增加 invocation/result/receipt wire
-  - [ ] 保持 endpoint、credential、handler 配置不进入 Application Bundle
-  - [ ] 复跑 targeted tests、typecheck 和 governance
+- [x] Task: Green — 实现部署合同 8b08503
+  - [x] 在 `packages/shared/src/deployment/` 增加平台中立的 Native Function Profile 类型
+  - [x] 增加严格 parser 和 server-owned profile registry
+  - [x] 增加 invocation/result/receipt wire
+  - [x] 保持 endpoint、credential、handler 配置不进入 Application Bundle
+  - [x] 复跑 targeted tests、typecheck 和 governance
 - [ ] Task: Red — Capability input binding
   - [ ] 覆盖 Action 参数来源和 source entity 显式字段来源
   - [ ] 覆盖未声明字段、缺字段、跨实体读取和 whole-snapshot 注入拒绝
