@@ -14,3 +14,8 @@ Files:
 
 Why:
 This spike resolved Keycloak import attributes, required claims mappers, offline role behavior, refresh/revoke semantics, and the safe Keychain invocation before production code or realm mutation.
+
+Phase A verification
+
+Automated: pnpm governance:strict (passed).
+Autonomous manual equivalent: real Device consent/login, claim/lifetime/refresh/revoke checks, Keychain add/read/update/delete, disposable cleanup, and home compose status (8 long-running services healthy).
