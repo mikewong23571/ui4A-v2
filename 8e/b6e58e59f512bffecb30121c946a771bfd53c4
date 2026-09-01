@@ -1,0 +1,5 @@
+Task: 固定详细架构
+Summary: Added D59 and the T43 architecture for Capability Port / Native Function Adapter separation, bounded binding, spawn-as-outbox reconciliation, birth-pinned execution, Temporal activity boundaries, atomic mixed-domain finalize, receipt uniqueness, callback re-judgment, and no-Run presentation.
+Files: DECISIONS.md; conductor/tracks/t43-capability-boundary-native-function_20260901/architecture.md; index.md
+Verification: Prettier, git diff --check, and governance passed; zero new dependency or tech-stack change.
+Why: Convert spike evidence into binding implementation decisions before Phase B.
