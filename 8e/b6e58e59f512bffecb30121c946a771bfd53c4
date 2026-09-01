@@ -3,3 +3,8 @@ Summary: Added D59 and the T43 architecture for Capability Port / Native Functio
 Files: DECISIONS.md; conductor/tracks/t43-capability-boundary-native-function_20260901/architecture.md; index.md
 Verification: Prettier, git diff --check, and governance passed; zero new dependency or tech-stack change.
 Why: Convert spike evidence into binding implementation decisions before Phase B.
+
+Phase A verification checkpoint
+Automated: UI4A_WORKER_HEALTH_PORT=3199 pnpm check -> 471 files passed, 3585 tests passed, strict governance green; focused engine/Agent 65 passed; real Temporal 32 passed with SIGKILL recovery and cancellation; Prettier/diff clean.
+Manual-equivalent: verified docs-only Phase A diff, no second Run, no platform leakage, no capability-name dispatch, zero new dependencies, and plan amendments for outbox/mixed-domain/idempotency risks.
+Note: initial full check without port override hit existing dev worker health port 3101; rerun on isolated 3199 passed without stopping user services.
