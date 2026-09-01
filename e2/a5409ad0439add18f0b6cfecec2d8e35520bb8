@@ -1,0 +1,14 @@
+T46 Phase B realm, identity, and edge contract
+
+Summary:
+- Added Keycloak realm contract v2 with public ui4a-cli Device client, 24h access, 90d offline idle, 180d max, offline role, subject/API audience mappers, and no approval/client secret.
+- Classified verified ui4a-cli tokens as Agent identity with device-authorization-sub-azp provenance and humanApprovalEligible=false.
+- Added fixed Compose/Helm device authorization and verification routes while preserving default deny/admin isolation.
+- Added positive and negative realm, compatibility, identity, scope, and edge tests.
+
+Verification:
+- 176 focused tests passed.
+- targeted Prettier passed.
+- ESLint 0 errors (7 out-of-config warnings for deployment scripts).
+- pnpm typecheck passed.
+- pnpm governance:strict passed.
