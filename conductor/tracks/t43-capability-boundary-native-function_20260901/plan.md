@@ -149,18 +149,18 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] handler 保持 network-denied、pure/idempotent extract；外部 effect 继续 fail closed
   - [x] 使用受控测试情报，不冒充实时漏洞数据
   - [x] 保持 Application 内容全部由 Bundle 驱动
-- [ ] Task: Red — Work Thread 与 Presentation
-  - [ ] 覆盖显式 thread attach 后的进行中/成功/失败投影
-  - [ ] 覆盖未 attach 时不自动扩张成员
-  - [ ] 覆盖桌面和窄屏无 handler/profile/attempt 泄漏
-  - [ ] 覆盖 raw/audit 可读取完整 receipt
-  - [ ] 运行测试并确认预期失败
-- [ ] Task: Green — 复用通用工作台呈现
-  - [ ] 通过现有实体状态和事件投影表达能力进展
-  - [ ] 必要时增加通用 capability status trait，不增加 CVE renderer
-  - [ ] 普通 UI 只显示任务语言、结果、来源和责任点
-  - [ ] Meta 显示 Capability contract、profile requirement 和 checks
-  - [ ] raw/audit 显示执行回执
+- [x] Task: Red — Work Thread 与 Presentation e9915bc
+  - [x] 覆盖显式 thread attach 后的进行中/成功/失败投影
+  - [x] 覆盖未 attach 时不自动扩张成员
+  - [x] 覆盖桌面和窄屏无 handler/profile/attempt 泄漏
+  - [x] 覆盖 raw/audit 可读取完整 receipt
+  - [x] 运行测试并确认预期失败
+- [x] Task: Green — 复用通用工作台呈现 e9915bc
+  - [x] 通过现有实体状态和事件投影表达能力进展
+  - [x] 必要时增加通用 capability status trait，不增加 CVE renderer
+  - [x] 普通 UI 只显示任务语言、结果、来源和责任点
+  - [x] Meta 显示 Capability contract、profile requirement 和 checks
+  - [x] raw/audit 显示执行回执
 - [ ] Task: Red→Green — 第二 Capability 可扩展性证明
   - [ ] 增加第二个 Native Function fixture
   - [ ] 证明只增加定义、profile 和 handler registration
