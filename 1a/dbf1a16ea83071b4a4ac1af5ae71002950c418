@@ -1,0 +1,4 @@
+Phase C real Temporal evidence
+Summary: Added a standing Native Function workflow integration fixture proving birth-pinned timeout/attempt retry after Worker SIGKILL and non-cancellable finalize on cancellation while the workflow remains CANCELLED.
+Verification: worker typecheck and 2 real Temporal tests passed in 13.68s.
+Why: T43 Function durability must have its own evidence rather than borrowing Agent Host results.
