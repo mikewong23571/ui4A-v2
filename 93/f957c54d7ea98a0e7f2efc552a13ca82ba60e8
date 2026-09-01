@@ -1,0 +1,5 @@
+Task: 执行 disposable Native Function spike
+Summary: Probed Native Function execution against existing Temporal Activity, Agent Host recovery/finalize, event append, and callback seams. Pinned spawn-as-outbox, no-Run, birth-pinned wire, mixed-domain atomic finalize, receipt uniqueness, and reconciliation requirements.
+Files: conductor/tracks/t43-capability-boundary-native-function_20260901/spike.md
+Verification: 4 focused files / 32 tests passed with real Temporal SIGKILL recovery, retry/resume, cancellation, and terminal finalize; Prettier and diff clean.
+Why: Resolve runtime and transaction uncertainty before formal contracts and implementation.
