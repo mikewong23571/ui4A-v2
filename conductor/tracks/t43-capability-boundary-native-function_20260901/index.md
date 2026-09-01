@@ -3,6 +3,8 @@
 - [规格](./spec.md)
 - [用户故事](./user-stories.md)
 - [计划](./plan.md)
+- [探针](./spike.md)
+- [架构](./architecture.md)
 - [元数据](./metadata.json)
 
 首个垂直切片以 `cve.enrich` 证明 Capability 是 Application 面向外部执行环境的

@@ -1076,3 +1076,41 @@
      本地 Chat 处境按与工作台相同的 local-user 主体装配；生产主体始终来自凭证。
 - **验收**：T42 S1–S8、真实 LLM 只读故事、32 KiB wire、HTTP/浏览器同源、重放、
   后台新步重读与幂等恢复；不以旧默认测试限制故事，不放松权限/审批/来源不变量。
+
+## D59 Capability Port 以 Native Function Adapter 扩展执行边界，不新增 Run(2026-09-01,T43 Phase A)
+
+- **背景与覆盖关系**：当前 Web 只允许带 exact `agentDefinition` 的 executable Capability，
+  `spawn-requested` 后一律创建 canonical Agent Run。T43 probe 证明现有 Temporal 单 Activity、
+  bounded retry、SIGKILL recovery、cancellation 与 non-cancellable finalize 已足以承载本地
+  Native Function。D59 只 supersede D39 的“所有 executable Capability 都只能走 Agent Run”现状；
+  D39 删除 legacy Capability Run、Agent executor 只使用 canonical Agent Run、callback token 保留
+  三项继续完全有效。
+- **Port/Adapter 分界**：Application Capability 只声明 intent/kind、input/output JSON Schema、
+  scope 与 `{class:'native-function', profile}` requirement；Flow 只声明封闭 input binding 与
+  on-done/on-error。handler/module/endpoint/credential/Temporal 参数属于部署侧 Profile/registry，
+  请求、人类、Assistant、CLI 与 Bundle 均不能选择或覆盖。Function executor 不带
+  `agentDefinition`；Agent executor 的 exact Definition、birth references 与 canonical Run 不退化。
+- **单一执行记录**：已持久化的 `spawn-requested` 同时是不可变 birth record 与 transactional
+  outbox；executionId/workflowId 由 source seq + capability/profile/input birth hash 确定性派生。
+  Web immediate start 加 boot/有界周期 reconciliation 关闭 DB commit 后、Temporal start 前崩溃
+  窗口。Temporal history 只负责编排，`function-execution-finalized` 只作 capability-domain 终局
+  回执；不新增 Function/Capability Run table、aggregate、projection、Siren resource 或页面。
+- **最小披露与执行纪律**：纯 binder 只接收已过 Action schema 的 params、source entity 显式
+  fields 与已授权显式 artifact refs；V1 禁 wildcard/spread/JSONPath/expression，受字段数、深度、
+  节点与 bytes 硬门，绑定后再过 input schema。Handler 只收 payload、executionId 与 AbortSignal，
+  不收 EngineSnapshot、Work Thread、Sitemap、credential、DB/Web handle 或 callback 选择。首个本地
+  Adapter network denied，只承诺 payload/timeout/attempt 与 cooperative cancellation，不虚称同进程
+  CPU/内存硬隔离；外部 effect 的幂等协议延期。
+- **受治理回流与原子性**：Activity 校验 output contract/hash/bytes，Web protected finalize 按 birth
+  再校验并重读 exact spawn/current source；on-done/on-error 使用受控 system principal，全部 params
+  `origin=effect`，重新经过 declaration → guard → schema，不能绕过 confirmation/human-only。
+  capability terminal receipt 与 callback core events 在同一 PostgreSQL transaction 提交；
+  executionId partial unique index + advisory lock 裁决 retry，重复 key 必须比较 invocation/outcome
+  hash，碰撞 fail closed。Business fold 只吃 callback core events，Temporal/receipt 不是业务真相。
+- **呈现与扩展**：source Application state 表达进行中/完成/失败，Work Thread 只显式引用 source
+  entity；普通 Workstation 不显示 handler/profile/attempt/Temporal/raw output，机制回执只进
+  raw/audit。通用 dispatcher 只按 executor class 组合，不按 capability/Application/业务名分支。
+- **技术栈**：零新增 runtime dependency、workspace 或基础设施；复用现有 shared/engine/db、
+  PostgreSQL events、Temporal SDK、Next.js internal route、Ajv 与 callback token。详细 wire、事务与
+  模块落位见
+  `conductor/tracks/t43-capability-boundary-native-function_20260901/architecture.md`。
