@@ -90,13 +90,13 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 覆盖 DB commit 后、workflow start 前 crash 产生可重协调 outbox
   - [x] 断言 dispatcher 不读取 capability name 或 Application name
   - [x] 运行测试并确认预期失败
-- [ ] Task: Green — 提取通用 dispatch composition
-  - [ ] 从 `service.ts` 提取 capability dispatch composition
-  - [ ] 保留现有 Agent Run 行为不变
-  - [ ] 增加 Native Function prepare/dispatch port
-  - [ ] 在 source event append 前完成静态 preflight，append 后按 source seq 派发 Temporal
-  - [ ] 增加 boot/有界周期 outbox reconciler，幂等启动确定性 workflow ID
-  - [ ] 避免扩大 `service.ts` 和相关目录体积
+- [x] Task: Green — 提取通用 dispatch composition c32b500
+  - [x] 从 `service.ts` 提取 capability dispatch composition
+  - [x] 保留现有 Agent Run 行为不变
+  - [x] 增加 Native Function prepare/dispatch port
+  - [x] 在 source event append 前完成静态 preflight，append 后按 source seq 派发 Temporal
+  - [x] 增加 boot/有界周期 outbox reconciler，幂等启动确定性 workflow ID
+  - [x] 避免扩大 `service.ts` 和相关目录体积
 - [ ] Task: Red — Native Function registry 与 Activity
   - [ ] 覆盖 handler 注册、唯一解析和无名称特判
   - [ ] 覆盖成功、异常、非法输出、超预算、timeout 和 cancellation
