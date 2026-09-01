@@ -1,0 +1,5 @@
+Task: Green — 实现 CVE 参考切片
+Summary: Installed a contract-driven Security Application with one seeded non-live CVE, cve.enrich extract Capability, identified/enriching/enriched/failed Flow, sealed source-field binding, internal governed callbacks, generic collection discovery, server-owned profile documentation, and a network-denied deterministic reference handler registered by handler ref.
+Files: security.bundle.json; bundles.ts; Security tests; worker Function handlers/registry; activities/native-function.ts; .env.example
+Verification: 16 focused tests passed; web/worker typecheck, governance, Prettier, and diff check passed.
+Why: Prove the Capability boundary through a real Application story without a CVE page or live-intelligence claim.
