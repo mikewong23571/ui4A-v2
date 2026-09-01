@@ -97,13 +97,13 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 在 source event append 前完成静态 preflight，append 后按 source seq 派发 Temporal
   - [x] 增加 boot/有界周期 outbox reconciler，幂等启动确定性 workflow ID
   - [x] 避免扩大 `service.ts` 和相关目录体积
-- [ ] Task: Red — Native Function registry 与 Activity
-  - [ ] 覆盖 handler 注册、唯一解析和无名称特判
-  - [ ] 覆盖成功、异常、非法输出、超预算、timeout 和 cancellation
-  - [ ] 覆盖 maximum attempts 和不可重试错误
-  - [ ] 覆盖 retryable exception、permanent contract failure 与 birth-pinned timeout/retry determinism
-  - [ ] 覆盖 handler 无 PostgreSQL/Web/EngineSnapshot 依赖
-  - [ ] 运行测试并确认预期失败
+- [x] Task: Red — Native Function registry 与 Activity ff1392f
+  - [x] 覆盖 handler 注册、唯一解析和无名称特判
+  - [x] 覆盖成功、异常、非法输出、超预算、timeout 和 cancellation
+  - [x] 覆盖 maximum attempts 和不可重试错误
+  - [x] 覆盖 retryable exception、permanent contract failure 与 birth-pinned timeout/retry determinism
+  - [x] 覆盖 handler 无 PostgreSQL/Web/EngineSnapshot 依赖
+  - [x] 运行测试并确认预期失败
 - [ ] Task: Green — Worker Native Function Adapter
   - [ ] 在 `apps/worker/src/capabilities/function/` 建立最小 registry/adapter
   - [ ] handler 只接收 sealed invocation
