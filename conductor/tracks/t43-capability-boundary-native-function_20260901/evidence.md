@@ -172,3 +172,16 @@ Standing Eval `e2e/eval/capability-boundary.spec.ts` 使用配置的真实 LLM�
 第二个 story 移除 Function profile：真实 LLM 仍选择共享 Action，但服务在 mutation 前诚实失败；CVE
 保持 identified，零 action/spawn，用户侧输出无 stack/handlerRef/Temporal 泄漏。最终 2/2 passed，耗时
 约 2.0 分钟；没有 scripted/rule driver、固定 tool trace 或直接 Function 调用。
+
+### 最终质量门
+
+- `pnpm format:check`：green。
+- `UI4A_WORKER_HEALTH_PORT=3199 pnpm check`：488 files passed、3672 tests passed、6 skipped；
+  typecheck、lint（仅既有 warnings）、strict governance green。
+- `CI=true pnpm e2e`：单次最终 67 passed、26 按既有 LLM/S3/S5/证据门控 skipped，exit 0，耗时约
+  3.0 分钟。
+- `capability-boundary` real LLM：2 passed，exit 0。
+- I5 最终在线/回灌：68 events、40 rels，hash `342412cf4f50` 两相一致。
+
+全量 E2E 修正仅涉及新增 Application 后的闭合清单和三处既有 dev 冷编译等待；最终 S4 completed/
+rejected/suspended 三态同跑全绿，T16 Golden Story 单跑及最终全量均绿。

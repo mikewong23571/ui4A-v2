@@ -185,12 +185,12 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 验证 Assistant 选择 Entity Action，而非直接调用 Native Function
   - [x] 验证失败解释使用业务语言且零副作用
   - [x] 保留真实 provider evidence，不以 fixture 冒充
-- [ ] Task: 全量质量门
-  - [ ] 运行 `pnpm format:check`
-  - [ ] 运行 `pnpm check`
-  - [ ] 运行 `CI=true pnpm e2e`
-  - [ ] 运行 focused coverage 并核对阈值
-  - [ ] 运行真实 Temporal crash/retry 与全量 replay
+- [x] Task: 全量质量门 d8a1d3b
+  - [x] 运行 `pnpm format:check`
+  - [x] 运行 `pnpm check`
+  - [x] 运行 `CI=true pnpm e2e`
+  - [x] 运行 focused coverage 并核对阈值
+  - [x] 运行真实 Temporal crash/retry 与全量 replay
 - [ ] Task: 产品走查
   - [ ] 桌面和 390px 完整走查 S1–S14
   - [ ] 检查用户是否被迫理解 Native Function 或 Temporal
