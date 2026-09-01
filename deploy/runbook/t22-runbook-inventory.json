@@ -151,6 +151,13 @@
           "expectedOutput": "A missing realm reports absent; an existing compatible realm reports skip without mutation.",
           "failureCriterion": "KEYCLOAK_REALM_INCOMPATIBLE, an unexpected client set, or any request for drift repair.",
           "recoveryAction": "Back up identity state and stop. Replace/rebuild explicitly; never reconcile an existing realm online."
+        },
+        {
+          "id": "realm-v1-v2-migration",
+          "command": "pnpm compose:t22 realm-migrate --backup-file /var/lib/ui4a/realm/backups/ui4a-before-v2.json",
+          "expectedOutput": "The exact v1 realm is backed up and migrated additively to contract v2; post-check passes.",
+          "failureCriterion": "Source drift, backup failure, partial apply outside the bounded steps, or v2 post-check failure.",
+          "recoveryAction": "Stop before startup reconciliation. Preserve the backup and use the recorded v1 state for explicit recovery."
         }
       ]
     },
@@ -237,8 +244,8 @@
       "commands": [
         {
           "id": "auth-gate",
-          "command": "pnpm cli:build; UI4A_TOKEN='<memory-only-bearer>' node apps/cli/dist/main.js doctor; pnpm vitest run apps/web/src/auth/authentication-negative.test.ts apps/cli/src/production-authentication.test.ts",
-          "expectedOutput": "PKCE human login, CLI Bearer reads and bounded sub+azp delegation pass; malformed/expired/forged credentials fail closed.",
+          "command": "pnpm cli:build; ui4a auth login; ui4a --json doctor; pnpm vitest run apps/web/src/auth/authentication-negative.test.ts apps/cli/src/production-authentication.test.ts",
+          "expectedOutput": "PKCE human login, CLI Device/Offline credential reads and bounded sub+azp Agent provenance pass; malformed/expired/forged credentials fail closed.",
           "failureCriterion": "Any Agent approval succeeds, scope expands, identity comes from request fields, or credential material appears in output.",
           "recoveryAction": "Revoke the test credential, stop acceptance, inspect issuer/audience/JWKS/application identity checks, and do not weaken policy."
         }

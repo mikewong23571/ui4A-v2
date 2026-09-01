@@ -6,6 +6,18 @@ export interface KeycloakAdmin {
   importRealm(realm: RealmImportRepresentation): Promise<void>;
 }
 
+export interface KeycloakRealmMigrationAdmin extends KeycloakAdmin {
+  createClient(realm: string, client: Record<string, unknown>): Promise<void>;
+  updateRealm(realm: string, changes: Record<string, unknown>): Promise<void>;
+  getRealmRole(realm: string, role: string): Promise<Record<string, unknown>>;
+  getRoleComposites(realm: string, roleId: string): Promise<Array<Record<string, unknown>>>;
+  addRoleComposites(
+    realm: string,
+    roleId: string,
+    roles: Array<Record<string, unknown>>,
+  ): Promise<void>;
+}
+
 interface AdminClientInput {
   baseUrl: string;
   adminUsername: string;
@@ -26,7 +38,21 @@ export function assertAdmin(input: unknown): asserts input is KeycloakAdmin {
   }
 }
 
-export function createKeycloakAdminClient(input: AdminClientInput): KeycloakAdmin {
+export function assertMigrationAdmin(input: unknown): asserts input is KeycloakRealmMigrationAdmin {
+  assertAdmin(input);
+  const candidate = input as Partial<KeycloakRealmMigrationAdmin>;
+  if (
+    typeof candidate.createClient !== 'function' ||
+    typeof candidate.updateRealm !== 'function' ||
+    typeof candidate.getRealmRole !== 'function' ||
+    typeof candidate.getRoleComposites !== 'function' ||
+    typeof candidate.addRoleComposites !== 'function'
+  ) {
+    fail('KEYCLOAK_REALM_IMPORT_INVALID', 'Keycloak migration Admin client is invalid');
+  }
+}
+
+export function createKeycloakAdminClient(input: AdminClientInput): KeycloakRealmMigrationAdmin {
   let baseUrl: URL;
   try {
     baseUrl = new URL(input.baseUrl);
@@ -163,6 +189,58 @@ export function createKeycloakAdminClient(input: AdminClientInput): KeycloakAdmi
         method: 'POST',
         body: JSON.stringify(realm),
       });
+      if (!response.ok) {
+        fail('KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED', 'Keycloak Admin request failed');
+      }
+    },
+    async createClient(realm, client) {
+      const response = await authorized(`/admin/realms/${encodeURIComponent(realm)}/clients`, {
+        method: 'POST',
+        body: JSON.stringify(client),
+      });
+      if (!response.ok) {
+        fail('KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED', 'Keycloak Admin request failed');
+      }
+    },
+    async updateRealm(realm, changes) {
+      const response = await authorized(`/admin/realms/${encodeURIComponent(realm)}`, {
+        method: 'PUT',
+        body: JSON.stringify(changes),
+      });
+      if (!response.ok) {
+        fail('KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED', 'Keycloak Admin request failed');
+      }
+    },
+    async getRealmRole(realm, role) {
+      const response = await authorized(
+        `/admin/realms/${encodeURIComponent(realm)}/roles/${encodeURIComponent(role)}`,
+      );
+      if (!response.ok) {
+        fail('KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED', 'Keycloak Admin request failed');
+      }
+      return (
+        object(await json(response)) ??
+        fail('KEYCLOAK_BOOTSTRAP_INVALID_RESPONSE', 'Keycloak Admin response was invalid')
+      );
+    },
+    async getRoleComposites(realm, roleId) {
+      const response = await authorized(
+        `/admin/realms/${encodeURIComponent(realm)}/roles-by-id/${encodeURIComponent(roleId)}/composites`,
+      );
+      if (!response.ok) {
+        fail('KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED', 'Keycloak Admin request failed');
+      }
+      const body = await json(response);
+      if (!Array.isArray(body) || body.some((entry) => object(entry) === undefined)) {
+        fail('KEYCLOAK_BOOTSTRAP_INVALID_RESPONSE', 'Keycloak Admin response was invalid');
+      }
+      return body as Array<Record<string, unknown>>;
+    },
+    async addRoleComposites(realm, roleId, roles) {
+      const response = await authorized(
+        `/admin/realms/${encodeURIComponent(realm)}/roles-by-id/${encodeURIComponent(roleId)}/composites`,
+        { method: 'POST', body: JSON.stringify(roles) },
+      );
       if (!response.ok) {
         fail('KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED', 'Keycloak Admin request failed');
       }

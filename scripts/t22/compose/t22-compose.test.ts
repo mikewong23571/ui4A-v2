@@ -302,6 +302,45 @@ describe('T22 Compose single-command operations', () => {
     ]);
   });
 
+  it('plans one explicit realm migration with a volume-contained backup path', () => {
+    expect(() => planComposeCommand(['realm-migrate'], {})).toThrowError('COMPOSE_USAGE_INVALID');
+    expect(() =>
+      planComposeCommand(['realm-migrate', '--backup-file', '/tmp/realm.json'], {}),
+    ).toThrowError('COMPOSE_REALM_BACKUP_PATH_INVALID');
+
+    const backup = '/var/lib/ui4a/realm/backups/ui4a-before-v2.json';
+    expect(planComposeCommand(['realm-migrate', '--backup-file', backup], {}).commands).toEqual([
+      {
+        executable: 'docker',
+        args: [
+          'compose',
+          '--project-name',
+          'ui4a',
+          '-f',
+          'deploy/compose/compose.yaml',
+          'run',
+          '--rm',
+          '--no-deps',
+          'realm-bootstrap',
+          'node',
+          'dist/t22-keycloak-realm-migration.js',
+          '--backup-file',
+          backup,
+        ],
+      },
+    ]);
+  });
+
+  it('preflights and executes the explicit realm migration once', async () => {
+    const backup = '/var/lib/ui4a/realm/backups/ui4a-before-v2.json';
+    const deps = dependencies();
+    await expect(
+      executeComposeCommand(deps, ['realm-migrate', '--backup-file', backup], await environment()),
+    ).resolves.toEqual({ ok: true, code: 'COMPOSE_REALM_MIGRATION_COMPLETED' });
+    expect(deps.commands).toHaveLength(1);
+    expect(deps.validateCanonicalDeployment).toHaveBeenCalledOnce();
+  });
+
   it('rejects unknown arguments with a stable usage code before preflight', async () => {
     const deps = dependencies();
     expect(await executeComposeCommand(deps, ['deploy'], {})).toEqual({

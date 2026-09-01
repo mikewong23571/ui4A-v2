@@ -47,7 +47,7 @@ beforeAll(async () => {
 }, 130_000);
 
 describe('T22 Compose Worker admin entry artifacts', () => {
-  it.each(['t22-migrate.js', 't22-keycloak-realm-bootstrap.js'])(
+  it.each(['t22-migrate.js', 't22-keycloak-realm-bootstrap.js', 't22-keycloak-realm-migration.js'])(
     'ships compiled %s in the Worker runtime payload',
     (file) => {
       const artifact = resolve(workerRoot, 'dist', file);
@@ -78,6 +78,19 @@ describe('T22 Compose Worker admin entry artifacts', () => {
       ok: false,
       code: 'KEYCLOAK_REALM_IMPORT_INVALID',
       message: 'Usage: t22-keycloak-realm-bootstrap.ts --check|--apply',
+    });
+  });
+
+  it('returns a stable JSON failure envelope from the compiled realm migration entry', async () => {
+    const result = await executeAdminEntry('t22-keycloak-realm-migration.js', ['unexpected']);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toBe('');
+    expect(JSON.parse(result.stderr)).toEqual({
+      ok: false,
+      code: 'KEYCLOAK_REALM_IMPORT_INVALID',
+      message:
+        'Usage: t22-keycloak-realm-migration.ts --backup-file /var/lib/ui4a/realm/backups/<name>.json',
     });
   });
 });

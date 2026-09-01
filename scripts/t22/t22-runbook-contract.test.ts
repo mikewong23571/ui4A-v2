@@ -106,6 +106,8 @@ describe('T22 production-shaped runbook contract', () => {
       'deploy/helm/ui4a',
       'deploy/keycloak/realm-import.json',
       'scripts/t22/keycloak/t22-keycloak-realm-bootstrap.ts',
+      'scripts/t22/keycloak/t22-keycloak-realm-migration.ts',
+      'ui4a auth login',
       'scripts/t22/recovery/t22-k8s-recovery-observe-command.ts',
       'scripts/t22/recovery/t22-k8s-recovery-command.ts',
       'scripts/t22/recovery/t22-k8s-recovery-live.ts',

@@ -35,7 +35,8 @@ const imageEnvironmentKeys = [
   'UI4A_EDGE_IMAGE',
 ] as const;
 
-type ComposeAction = 'preflight' | 'up' | 'status' | 'down' | 'backup' | 'restore-plan' | 'clean';
+type ComposeAction =
+  'preflight' | 'up' | 'status' | 'down' | 'backup' | 'restore-plan' | 'realm-migrate' | 'clean';
 
 export interface ComposeProcessCommand {
   executable: 'docker';
@@ -124,6 +125,34 @@ export function planComposeCommand(
         useCleanRestore: false,
         execution: 'plan-only',
       },
+    };
+  }
+  if (action === 'realm-migrate') {
+    if (options.length !== 2 || options[0] !== '--backup-file') {
+      fail('COMPOSE_USAGE_INVALID');
+    }
+    const backupFile = options[1]!;
+    if (
+      !backupFile.startsWith('/var/lib/ui4a/realm/backups/') ||
+      !/^\/var\/lib\/ui4a\/realm\/backups\/[a-zA-Z0-9][a-zA-Z0-9._-]*\.json$/.test(backupFile)
+    ) {
+      fail('COMPOSE_REALM_BACKUP_PATH_INVALID');
+    }
+    return {
+      action,
+      preflight: true,
+      commands: [
+        composeCommand(
+          'run',
+          '--rm',
+          '--no-deps',
+          'realm-bootstrap',
+          'node',
+          'dist/t22-keycloak-realm-migration.js',
+          '--backup-file',
+          backupFile,
+        ),
+      ],
     };
   }
   if (action === 'clean') {
@@ -222,6 +251,7 @@ const successCode: Record<Exclude<ComposeAction, 'backup' | 'restore-plan'>, str
   status: 'COMPOSE_STATUS_COMPLETED',
   down: 'COMPOSE_DOWN_COMPLETED',
   clean: 'COMPOSE_CLEAN_COMPLETED',
+  'realm-migrate': 'COMPOSE_REALM_MIGRATION_COMPLETED',
 };
 
 const failureCode: Record<Exclude<ComposeAction, 'backup' | 'restore-plan'>, string> = {
@@ -230,6 +260,7 @@ const failureCode: Record<Exclude<ComposeAction, 'backup' | 'restore-plan'>, str
   status: 'COMPOSE_STATUS_FAILED',
   down: 'COMPOSE_DOWN_FAILED',
   clean: 'COMPOSE_CLEAN_FAILED',
+  'realm-migrate': 'COMPOSE_REALM_MIGRATION_FAILED',
 };
 
 export async function executeComposeCommand(

@@ -43,12 +43,13 @@ describe('T22 production OCI image contract', () => {
     expect(`${scripts.build ?? ''}\n${scripts.start ?? ''}`).not.toMatch(/\btsx\b|src\/main\.ts/);
   });
 
-  it('builds both Compose admin commands into the Worker runtime payload', () => {
+  it('builds all Compose admin commands into the Worker runtime payload', () => {
     const build = requiredSource('apps/worker/build.mjs');
     const dockerfile = requiredSource(imageFiles.worker);
 
     expect(build).toContain("'t22-migrate'");
     expect(build).toContain("'t22-keycloak-realm-bootstrap'");
+    expect(build).toContain("'t22-keycloak-realm-migration'");
     expect(build).toMatch(/dist\/\$\{name\}\.js/);
     expect(dockerfile).toContain('/runtime');
     expect(dockerfile).toContain('COPY --from=builder --chown=node:node /runtime ./');

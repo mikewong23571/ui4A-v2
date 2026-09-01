@@ -222,6 +222,22 @@ kubectl -n ui4a-system rollout status deployment/temporal-ui --timeout=180s
 
 ## 8. Keycloak 固定 realm 首次导入与兼容性检查
 
+### Step 8.0 — 既有 v1 realm 的显式加法迁移
+
+仅当当前 realm 已通过 exact v1 precondition 且目标 release 使用 realm contract v2 时执行：
+常驻入口为 `scripts/t22/keycloak/t22-keycloak-realm-migration.ts`。
+
+```bash
+pnpm compose:t22 realm-migrate \
+  --backup-file /var/lib/ui4a/realm/backups/ui4a-before-v2.json
+```
+
+- Expected output：先以 0600 文件备份 realm/client/default-role facts，再只增加 `ui4a-cli`、
+  `offline_access` default-role composite 和 24h/90d/180d timeout，最后写 contract v2 并通过 post-check。
+- Failure criterion：v1 source drift、backup 已存在/不可写、非有界 partial state 或 v2 post-check 失败。
+- Recovery action：停止 `up`，保留 backup 与当前 Keycloak database；按备份显式恢复。该命令是一次性
+  versioned migration，不是启动期 online realm reconciliation。
+
 共享来源是 `deploy/keycloak/realm-import.json`；Compose 和 K8s 使用同一文件语义。
 
 ### Step 8.1 — Check 后 apply
@@ -233,7 +249,8 @@ pnpm --filter @ui4a/worker exec tsx ../../scripts/t22/keycloak/t22-keycloak-real
 
 - Expected output：首次 check 是 `absent`，apply 是 `imported`；后续 check/apply 都是 `skip` 且
   `no changes made`。
-- Failure criterion：`KEYCLOAK_REALM_INCOMPATIBLE`、client 集合不是 ui4a-web/ui4a-agent/ui4a-api，或尝试
+- Failure criterion：`KEYCLOAK_REALM_INCOMPATIBLE`、client 集合不是
+  ui4a-web/ui4a-agent/ui4a-cli/ui4a-api，或尝试
   自动修复 drift。
 - Recovery action：先备份 Keycloak/realm，停止部署并采用直接替换/重建流程；禁止 online realm
   reconciliation。
@@ -359,22 +376,24 @@ pnpm vitest run apps/web/src/auth/authentication-negative.test.ts \
 - Failure criterion：伪造 header/body 改变 principal、Agent/service account approve 成功或 token 泄露。
 - Recovery action：停止验收并撤销测试 credential；修复 Istio 与应用二次验证，不能只加 edge policy。
 
-### Step 14.2 — 正向只读 CLI
+### Step 14.2 — Device Authorization 长期 CLI credential
 
 ```bash
 pnpm cli:build
-export UI4A_TOKEN='<memory-only-bearer>'
-node apps/cli/dist/main.js doctor
-unset UI4A_TOKEN
+ui4a auth login
+ui4a --json auth status
+ui4a --json doctor
 ```
 
-- Expected output：doctor/sitemap/entity read 成功，principal 来自 verified token；delegation 记录 canonical
-  `sub + azp`。
-- Failure criterion：CLI 负责登录/refresh、token 出现在 stdout，或交换 scope 不是原 grants 子集。
-- Recovery action：清除内存 credential，检查 Keycloak client scopes/audience 和应用身份映射。
+- Expected output：浏览器 Device consent 后，offline credential 只进入 macOS Keychain；doctor/sitemap/entity
+  read 成功，identity 为 `sub + azp=ui4a-cli` Agent provenance，access token 只在进程内存。
+- Failure criterion：CLI 获得 `ui4a:approve`、offline token 进入 config/argv/stdout、scope 超出 consent、
+  refresh rotation 未保存，或 logout 未先 revoke。
+- Recovery action：运行 `ui4a auth logout` 或从 Account Console 撤销 offline consent；检查 Device client
+  scopes、subject/API audience mapper 和应用身份映射，不能启用 password grant。
 
-浏览器仅支持 Authorization Code + PKCE；人类 approval 仍要重新读取当前 Siren action 并通过
-guard/schema/CAS。
+人类 Web 登录使用 Authorization Code + PKCE；CLI 使用 Device Authorization。CLI 始终是 Agent 通道，
+人类 approval 仍要重新读取当前 Siren action 并通过 browser credential、guard/schema/CAS。
 
 生产 UI 页面使用 opaque session cookie 做渲染前的乐观跳转：缺 cookie 时进入 `/auth/login`，但
 API/Siren/meta 合同仍在原边界返回结构化 401，Proxy 不替代 credential verification。顶栏系统区的
