@@ -15,13 +15,13 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 固化当前服务层只允许 Agent Run 派发的限制
   - [x] 固化 `spawn` binding、callback、artifact 和 profile registry 当前语义
   - [x] 确认 Red 来自缺少 Function Adapter，而非测试环境错误
-- [ ] Task: 执行 disposable Native Function spike
-  - [ ] 探测 Worker/Temporal Activity 调用本地 handler 的最小路径
-  - [ ] 探测 source field/action param 到 Capability input 的声明式 binding
-  - [ ] 探测 output schema、payload budget 和结构化 failure
-  - [ ] 探测 worker crash、Activity retry 和确定性 execution identity
-  - [ ] 探测 callback receipt 与业务 Action 的事务边界
-  - [ ] 删除 spike 产品代码，保留测试 fixture、结论和失败证据
+- [x] Task: 执行 disposable Native Function spike 93f957c
+  - [x] 探测 Worker/Temporal Activity 调用本地 handler 的最小路径
+  - [x] 探测 source field/action param 到 Capability input 的声明式 binding
+  - [x] 探测 output schema、payload budget 和结构化 failure
+  - [x] 探测 worker crash、Activity retry 和确定性 execution identity
+  - [x] 探测 callback receipt 与业务 Action 的事务边界
+  - [x] 删除 spike 产品代码，保留测试 fixture、结论和失败证据
 - [ ] Task: 固定详细架构
   - [ ] 新增 `architecture.md`
   - [ ] 记录 Capability Port、Native Function Adapter、Temporal 和 callback 的依赖方向
