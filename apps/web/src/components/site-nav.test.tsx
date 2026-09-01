@@ -17,7 +17,7 @@ vi.mock('next/navigation', () => ({
 afterEach(cleanup);
 
 function renderNav(): HTMLElement {
-  const { container } = render(<SiteNav />);
+  const { container } = render(<SiteNav sessionControls />);
   return container;
 }
 
@@ -77,6 +77,11 @@ describe('SiteNav · workstation / meta / 系统区', () => {
     expectLink(menu, '收件箱', '/entity?rel=inbox', 'inbox', 'menuitem');
     expectLink(menu, '事件流', '/events', 'events', 'menuitem');
     expectLink(menu, '委托监控', '/delegations', 'delegations', 'menuitem');
+    expectLink(menu, '账户与密码', '/auth/account', 'local:account', 'menuitem');
+    const logout = within(menu).getByRole('menuitem', { name: '退出登录' });
+    expect(logout.getAttribute('data-nav')).toBe('local:logout');
+    expect(logout.closest('form')?.getAttribute('action')).toBe('/auth/logout');
+    expect(logout.closest('form')?.getAttribute('method')).toBe('post');
 
     // 路由变化(pathname 改变触发 effect)后菜单自动收起。
     pathnameMock.value = '/events';

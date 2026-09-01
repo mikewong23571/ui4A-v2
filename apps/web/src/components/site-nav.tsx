@@ -38,7 +38,7 @@ function linkClassName(current: boolean): string {
   }`;
 }
 
-export function SiteNav() {
+export function SiteNav({ sessionControls = false }: { sessionControls?: boolean }) {
   const pathname = usePathname() ?? '/';
   // F-13:open 状态记录打开时的 pathname——路由变化即视为收起(派生比较,
   // 无需 close-on-route effect,react-hooks/set-state-in-effect 合规)。
@@ -130,6 +130,28 @@ export function SiteNav() {
                 {item.label}
               </Link>
             ))}
+            {sessionControls && (
+              <>
+                <Link
+                  href="/auth/account"
+                  data-nav="local:account"
+                  role="menuitem"
+                  className="block whitespace-nowrap rounded-md border-t px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  账户与密码
+                </Link>
+                <form action="/auth/logout" method="post">
+                  <button
+                    type="submit"
+                    role="menuitem"
+                    data-nav="local:logout"
+                    className="block w-full cursor-pointer rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    退出登录
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         )}
       </div>

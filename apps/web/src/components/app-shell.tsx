@@ -28,7 +28,7 @@ export function AppShell({ children, aside }: { children: ReactNode; aside?: Rea
             <span className="text-sm font-semibold tracking-tight">{APP_NAME}</span>
             <span className="text-xs text-muted-foreground">v{VERSION}</span>
           </a>
-          <SiteNav />
+          <SiteNav sessionControls={process.env.UI4A_DEPLOYMENT_PROFILE === 'production'} />
           {/* T35 D-7:处境芯片进顶栏行——"你在哪"常显为芯片,顶栏高度确定 h-12。 */}
           <Suspense fallback={<SituationBarFallback />}>
             <SituationBar />

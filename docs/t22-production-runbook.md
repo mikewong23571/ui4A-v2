@@ -376,6 +376,11 @@ unset UI4A_TOKEN
 浏览器仅支持 Authorization Code + PKCE；人类 approval 仍要重新读取当前 Siren action 并通过
 guard/schema/CAS。
 
+生产 UI 页面使用 opaque session cookie 做渲染前的乐观跳转：缺 cookie 时进入 `/auth/login`，但
+API/Siren/meta 合同仍在原边界返回结构化 401，Proxy 不替代 credential verification。顶栏系统区的
+“账户与密码”只跳转固定 realm account console；“退出登录”只 POST `/auth/logout`，撤销 Keycloak
+refresh token、删除服务端 session 并清除 `__Host-` cookie。两者不是业务 Action，也不扩大授权。
+
 ## 15. Golden Story
 
 单 Web 并发、restart 与 replay 的 operator contract 是

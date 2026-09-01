@@ -21,6 +21,7 @@ export const webEdgeMatches: readonly EdgeMatch[] = [
     '/api/health',
     '/api/render/catalog',
     '/auth/login',
+    '/auth/account',
     '/api/auth/callback',
     '/.well-known/ui4a.json',
     '/_meta/.well-known/ui4a.json',

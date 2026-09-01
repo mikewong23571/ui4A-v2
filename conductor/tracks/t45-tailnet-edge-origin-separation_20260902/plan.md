@@ -26,3 +26,14 @@
   - [x] `mike` 账户 enabled、无 required action，密码登录通过
   - [ ] 用户在实际浏览器完成 Authorization Code + PKCE 登录确认
 - [ ] Task: 记录 evidence、DONE、归档并推送
+
+## Review Fixes：认证体验闭环
+
+- [~] Task: 未登录页面边界
+  - [ ] 无 session cookie 的 UI 页面在渲染前跳转 `/auth/login?returnTo=...`
+  - [ ] API、Siren、health、auth callback 与静态资源保持既有 401/公开语义
+- [ ] Task: 账户与会话入口
+  - [ ] 顶栏系统区增加“账户与密码”和 POST“退出登录”
+  - [ ] Compose Keycloak edge 放行固定 realm account console，禁止 admin 扩张
+- [ ] Task: Review Fixes Verification
+  - [ ] focused tests、全量 check、公网未登录/登录/logout/account 浏览器验收

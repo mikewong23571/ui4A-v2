@@ -71,6 +71,8 @@ spec:
         - method: { exact: GET }
           uri: { exact: /auth/login }
         - method: { exact: GET }
+          uri: { exact: /auth/account }
+        - method: { exact: GET }
           uri: { exact: /api/auth/callback }
         - method: { exact: GET }
           uri: { exact: /.well-known/ui4a.json }
@@ -218,6 +220,7 @@ spec:
               - /api/health
               - /api/render/catalog
               - /auth/login
+              - /auth/account
               - /api/auth/callback
               - /.well-known/ui4a.json
               - /_meta/.well-known/ui4a.json

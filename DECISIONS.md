@@ -1148,3 +1148,19 @@
   callback、Runner 或业务裁决。
 - **影响**：同机部署的默认值与 D60/T22 行为不变；跨机入口无需轮换 home CA 或删除任何 volume。
   零新增依赖、协议 wire、数据库、权威状态或环境名称分支。
+
+## D62 生产页面壳采用 session 乐观门，账户生命周期仍归 Keycloak(2026-09-02,T45 Review Fixes)
+
+- **背景**：T45 公网走查发现三处同一类缺口：未登录仍能渲染静态工作站轮廓，只有 API 返回 401；
+  已登录页面没有 logout；用户不知道从哪里修改密码。OIDC logout 与 Keycloak account console 已有
+  后端合同，但没有产品入口。
+- **决定**：Next `proxy.ts` 只对 UI 页面检查 opaque `__Host-ui4a_session` cookie 是否存在；缺失时在
+  filesystem/static render 前跳转 `/auth/login?returnTo=...`。这是渲染泄漏的乐观门，不解析身份、
+  scope 或授权；API、Siren、`_meta`、health、callback 与静态资源继续绕过 Proxy，并在原 DAL/route
+  边界执行完整 credential verification 与结构化 401。stale/tampered cookie 仍由 API fail closed。
+- **账户入口**：生产顶栏系统区增加 `/auth/account` 与 POST `/auth/logout`。前者只从 canonical OIDC
+  issuer 派生固定 realm account console，密码/MFA/profile 仍由 Keycloak 管理；后者复用既有 token
+  revocation、private session 删除和 `__Host-` cookie 清理。两者是身份/会话控制，不成为 Siren
+  业务 Action，也不写业务事件。
+- **边缘**：Compose/Kubernetes 只增加 `/auth/account` UI route，以及固定 `ui4a` realm 的 account
+  GET/POST surface；`/admin`、master realm、数据库和内部 listener 继续不可达。

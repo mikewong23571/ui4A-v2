@@ -11,7 +11,7 @@ https://{$UI4A_HOST}:8443 {
 
   @ui4aPublic {
     method GET HEAD
-    path / /applications /canvas /chat /delegations /entity /events /meta /meta/* /_next/* /favicon.ico /file.svg /globe.svg /next.svg /vercel.svg /window.svg /live /version /api/health /api/render/catalog /auth/login /api/auth/callback
+    path / /applications /canvas /chat /delegations /entity /events /meta /meta/* /_next/* /favicon.ico /file.svg /globe.svg /next.svg /vercel.svg /window.svg /live /version /api/health /api/render/catalog /auth/login /auth/account /api/auth/callback
   }
   handle @ui4aPublic {
     reverse_proxy web:3100
@@ -61,7 +61,7 @@ https://{$KEYCLOAK_HOST}:8443 {
 
   @keycloakProtocolRead {
     method GET HEAD
-    path /realms/ui4a/.well-known/openid-configuration /realms/ui4a/protocol/openid-connect/auth /realms/ui4a/protocol/openid-connect/certs /realms/ui4a/protocol/openid-connect/logout /realms/ui4a/login-actions/* /resources/*
+    path /realms/ui4a/.well-known/openid-configuration /realms/ui4a/protocol/openid-connect/auth /realms/ui4a/protocol/openid-connect/certs /realms/ui4a/protocol/openid-connect/logout /realms/ui4a/login-actions/* /realms/ui4a/account /realms/ui4a/account/* /resources/*
   }
   handle @keycloakProtocolRead {
     reverse_proxy keycloak:8080
@@ -69,7 +69,7 @@ https://{$KEYCLOAK_HOST}:8443 {
 
   @keycloakProtocolWrite {
     method POST
-    path /realms/ui4a/protocol/openid-connect/token /realms/ui4a/protocol/openid-connect/revoke /realms/ui4a/protocol/openid-connect/logout /realms/ui4a/login-actions/*
+    path /realms/ui4a/protocol/openid-connect/token /realms/ui4a/protocol/openid-connect/revoke /realms/ui4a/protocol/openid-connect/logout /realms/ui4a/login-actions/* /realms/ui4a/account /realms/ui4a/account/*
   }
   handle @keycloakProtocolWrite {
     reverse_proxy keycloak:8080

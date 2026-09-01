@@ -249,6 +249,8 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
       'tls /var/lib/ui4a/ca/keycloak/tls.crt /var/lib/ui4a/ca/keycloak/tls.key',
     );
     expect(routing).toContain('reverse_proxy keycloak:8080');
+    expect(routing).toContain('/realms/ui4a/account');
+    expect(routing).toContain('/realms/ui4a/account/*');
     expect(stack.services.edge?.environment).toMatchObject({
       UI4A_HOST: 'ui4a.mothership.internal',
       KEYCLOAK_HOST: 'auth.ui4a.mothership.internal',
