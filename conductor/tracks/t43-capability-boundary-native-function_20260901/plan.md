@@ -49,12 +49,12 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 增加 invocation/result/receipt wire
   - [x] 保持 endpoint、credential、handler 配置不进入 Application Bundle
   - [x] 复跑 targeted tests、typecheck 和 governance
-- [ ] Task: Red — Capability input binding
-  - [ ] 覆盖 Action 参数来源和 source entity 显式字段来源
-  - [ ] 覆盖未声明字段、缺字段、跨实体读取和 whole-snapshot 注入拒绝
-  - [ ] 覆盖最大字段数、深度/节点/bytes 与 wildcard/spread/expression 禁止项
-  - [ ] 覆盖 binding 后 input schema 二次校验
-  - [ ] 运行测试并确认预期失败
+- [x] Task: Red — Capability input binding 16ded47
+  - [x] 覆盖 Action 参数来源和 source entity 显式字段来源
+  - [x] 覆盖未声明字段、缺字段、跨实体读取和 whole-snapshot 注入拒绝
+  - [x] 覆盖最大字段数、深度/节点/bytes 与 wildcard/spread/expression 禁止项
+  - [x] 覆盖 binding 后 input schema 二次校验
+  - [x] 运行测试并确认预期失败
 - [ ] Task: Green — 实现纯 binding kernel
   - [ ] 在纯 engine 边界解析声明式 binding
   - [ ] 只产生有界、可序列化的 typed input并保留字段来源引用
