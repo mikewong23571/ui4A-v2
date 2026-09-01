@@ -1,0 +1,4 @@
+Final E2E correction
+Summary: Added Security to installed application/capability/audit expectations and extended cold-dev waits for two pre-existing route compilation races.
+Verification: all five previously failed specs passed individually, including I5 online/replay hash equality with 68 events and 40 rels.
+Why: E2E contracts must grow from installed data and avoid treating Next dev compilation latency as product failure.
