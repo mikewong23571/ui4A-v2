@@ -31,6 +31,7 @@ export const webEdgeMatches: readonly EdgeMatch[] = [
     '/api/delegations',
     '/_meta/api/entity',
     '/api/presentation/sidecar',
+    '/applications',
   ].map((path): EdgeMatch => ({ method: 'GET', path })),
   { method: 'GET', path: '/api/delegations/', kind: 'prefix' },
   { method: 'GET', path: '/meta/', kind: 'prefix' },

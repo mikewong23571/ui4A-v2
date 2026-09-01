@@ -92,6 +92,8 @@ spec:
           uri: { exact: /_meta/api/entity }
         - method: { exact: GET }
           uri: { exact: /api/presentation/sidecar }
+        - method: { exact: GET }
+          uri: { exact: /applications }
         - method: { exact: POST }
           uri: { exact: /auth/logout }
         - method: { exact: POST }
@@ -227,6 +229,7 @@ spec:
               - '/api/delegations/*'
               - /_meta/api/entity
               - /api/presentation/sidecar
+              - /applications
     - to:
         - operation:
             methods: [POST]
