@@ -60,13 +60,13 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 只产生有界、可序列化的 typed input并保留字段来源引用
   - [x] 禁止读取 Work Thread、Sitemap、凭证或任意上下文对象
   - [x] 添加 property tests 验证未声明字段永不进入输入
-- [ ] Task: Red — Activation invariants
-  - [ ] 覆盖 Capability/Profile 缺失与 class 不匹配
-  - [ ] 覆盖 Function executor 不要求 Agent Definition
-  - [ ] 覆盖 Agent executor 既有 exact Agent Definition 不退化
-  - [ ] 覆盖 callback Action 缺失、非 internal、schema 不相容
-  - [ ] 覆盖 handler 不可用和非法 Bundle 部署字段
-  - [ ] 运行测试并确认预期失败
+- [x] Task: Red — Activation invariants 5a6dba6
+  - [x] 覆盖 Capability/Profile 缺失与 class 不匹配
+  - [x] 覆盖 Function executor 不要求 Agent Definition
+  - [x] 覆盖 Agent executor 既有 exact Agent Definition 不退化
+  - [x] 覆盖 callback Action 缺失、非 internal、schema 不相容
+  - [x] 覆盖 handler 不可用和非法 Bundle 部署字段
+  - [x] 运行测试并确认预期失败
 - [ ] Task: Green — 实现激活门禁
   - [ ] 扩展 definition registries 和 invariants
   - [ ] 保持检查在 Application activation 前 fail closed
