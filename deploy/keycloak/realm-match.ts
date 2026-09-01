@@ -53,7 +53,7 @@ function sameStringSet(input: unknown, expected: readonly string[]): boolean {
   );
 }
 
-export function compatibleRealm(
+export function realmMatches(
   realm: Record<string, unknown>,
   clients: Array<Record<string, unknown>>,
   expected: RealmImportRepresentation,

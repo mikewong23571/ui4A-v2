@@ -28,6 +28,9 @@
 - 新建时 prompt 要求输入和确认两次；adapter 必须向 stdin 写入相同 secret 两行。
 - disposable probe 完成 add → read → update → read latest → delete → not-found。
 - token 未进入 argv、stdout/stderr 或仓库文件；probe Keychain item 已删除。
+- 真实 Keycloak refresh token 超过 prompt 的约 128 字符单 item 上限，首次 production login 因截断被
+  CLI fail closed 为 `CREDENTIAL_STORE_INVALID`。修订为 Keychain-only generation/chunk manifest 后，
+  2048 字符实机 round-trip 与 delete 通过；每个 stdin chunk 不超过 96 字符。
 
 ## Plan Refinement
 

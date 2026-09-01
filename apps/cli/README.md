@@ -40,7 +40,8 @@ ui4a auth logout
 
 `auth login` opens Keycloak Device Authorization in the browser. The offline/refresh credential is
 stored only in macOS Keychain; each command refreshes a memory-only access token and atomically stores
-the returned refresh rotation. `auth logout` revokes the offline credential before deleting the
+the returned refresh rotation. Long refresh tokens use generation-scoped bounded Keychain chunks and
+an atomic manifest pointer; no plaintext credential file is created. `auth logout` revokes the offline credential before deleting the
 Keychain item. The CLI client never receives `ui4a:approve`.
 
 Config precedence is one-off `--base-url`/`--token`, then `UI4A_*` environment variables, then

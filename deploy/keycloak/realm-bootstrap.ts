@@ -1,5 +1,5 @@
 import { assertAdmin, createKeycloakAdminClient } from './realm-admin';
-import { compatibleRealm } from './realm-compatibility';
+import { realmMatches } from './realm-match';
 import {
   fail,
   KeycloakBootstrapError,
@@ -42,7 +42,7 @@ export async function bootstrapKeycloakRealm(input: BootstrapInput): Promise<Boo
   }
 
   const clients = await input.admin.getClients(compatibilityView.realm);
-  if (!compatibleRealm(existingRealm, clients, compatibilityView)) {
+  if (!realmMatches(existingRealm, clients, compatibilityView)) {
     fail(
       'KEYCLOAK_REALM_INCOMPATIBLE',
       'The existing ui4a realm is incompatible; back it up and replace or rebuild it.',

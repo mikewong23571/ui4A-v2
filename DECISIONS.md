@@ -1191,4 +1191,6 @@
   失败都停止部署并按备份恢复。
 - **实现边界**：CLI 继续无 LLM、业务路由与 approve/reject。Device/poll/refresh/revoke 使用 Node native
   fetch；Keychain 使用 macOS `security` 命令的 stdin prompt 形态与 injectable adapter，不新增 npm
-  runtime dependency。非 macOS 仍可使用外部 `--token`/`UI4A_TOKEN`，本 Track 不提供弱文件 fallback。
+  runtime dependency。实机发现该 prompt 单 item 约 128 字符截断，因此 credential 使用同一 Keychain
+  内的 generation + 96 字符 chunks：先写新 generation，最后原子切 manifest，再删旧 chunks；token
+  仍不进入文件或 argv。非 macOS 仍可使用外部 `--token`/`UI4A_TOKEN`，本 Track 不提供弱文件 fallback。

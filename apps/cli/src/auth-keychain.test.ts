@@ -14,6 +14,48 @@ const key = {
 };
 
 describe('macOS Keychain credential store', () => {
+  it('round-trips a long refresh token through bounded Keychain chunks', async () => {
+    const items = new Map<string, string>();
+    const calls: Array<{ args: string[]; stdin?: string }> = [];
+    const run = vi.fn<KeychainCommandRunner>(async (args, stdin) => {
+      calls.push({ args, stdin });
+      const service = args[args.indexOf('-s') + 1]!;
+      if (args[0] === 'add-generic-password') {
+        const firstLine = stdin?.split('\n')[0] ?? '';
+        items.set(service, firstLine.slice(0, 128));
+        return { exitCode: 0, stdout: '', stderr: '' };
+      }
+      if (args[0] === 'find-generic-password') {
+        const value = items.get(service);
+        return value === undefined
+          ? { exitCode: 44, stdout: '', stderr: 'not found' }
+          : { exitCode: 0, stdout: value, stderr: '' };
+      }
+      items.delete(service);
+      return { exitCode: 0, stdout: '', stderr: '' };
+    });
+    const store = new MacOsKeychainCredentialStore({
+      platform: 'darwin',
+      run,
+      generation: () => 'generation-one',
+    });
+    const refreshToken = 'r'.repeat(1_024);
+
+    await store.write(key, { schemaVersion: 1, refreshToken });
+    await expect(store.read(key)).resolves.toEqual({ schemaVersion: 1, refreshToken });
+
+    const writes = calls.filter(({ args }) => args[0] === 'add-generic-password');
+    expect(writes.length).toBeGreaterThan(2);
+    expect(
+      writes.every(
+        ({ args, stdin }) =>
+          args.every((argument) => !argument.includes(refreshToken.slice(0, 32))) &&
+          (stdin?.split('\n')[0]?.length ?? 0) <= 128,
+      ),
+    ).toBe(true);
+    expect(writes.at(-1)?.args.join(' ')).toContain(':manifest');
+  });
+
   it('bounds the native security process and sends credential bytes only to stdin', async () => {
     const child = new EventEmitter() as EventEmitter & {
       stdin: { end(input?: string): void };
@@ -46,39 +88,61 @@ describe('macOS Keychain credential store', () => {
 
   it('writes the secret twice through stdin and never places it in argv or output', async () => {
     const refreshToken = 'offline-refresh-secret';
-    const run = vi.fn<KeychainCommandRunner>(async (_args, stdin) => ({
-      exitCode: 0,
+    const run = vi.fn<KeychainCommandRunner>(async (args, stdin) => ({
+      exitCode: args[0] === 'find-generic-password' ? 44 : 0,
       stdout: '',
       stderr: stdin === undefined ? '' : 'password prompts only',
     }));
-    const store = new MacOsKeychainCredentialStore({ platform: 'darwin', run });
+    const store = new MacOsKeychainCredentialStore({
+      platform: 'darwin',
+      run,
+      generation: () => 'generation-one',
+    });
 
     await store.write(key, { schemaVersion: 1, refreshToken });
 
-    expect(run).toHaveBeenCalledTimes(1);
-    const [args, stdin] = run.mock.calls[0]!;
+    const writes = run.mock.calls.filter(([args]) => args[0] === 'add-generic-password');
+    expect(writes).toHaveLength(2);
+    const [args, stdin] = writes[0]!;
     expect(args).toEqual(
       expect.arrayContaining(['add-generic-password', '-a', 'ui4a-cli', '-U', '-w']),
     );
     expect(args.join(' ')).not.toContain(refreshToken);
-    expect(stdin).toBe(
-      `${JSON.stringify({ schemaVersion: 1, refreshToken })}\n${JSON.stringify({ schemaVersion: 1, refreshToken })}\n`,
-    );
+    expect(stdin).toBe(`${refreshToken}\n${refreshToken}\n`);
+    expect(writes[1]?.[0].join(' ')).toContain(':manifest');
   });
 
   it('reads, validates, and deletes one bounded credential', async () => {
-    const stored = JSON.stringify({ schemaVersion: 1, refreshToken: 'refresh-value' });
-    const run = vi.fn<KeychainCommandRunner>(async (args) => {
-      if (args[0] === 'find-generic-password') return { exitCode: 0, stdout: stored, stderr: '' };
+    const items = new Map<string, string>();
+    const run = vi.fn<KeychainCommandRunner>(async (args, stdin) => {
+      const service = args[args.indexOf('-s') + 1]!;
+      if (args[0] === 'find-generic-password') {
+        const value = items.get(service);
+        return value === undefined
+          ? { exitCode: 44, stdout: '', stderr: '' }
+          : { exitCode: 0, stdout: value, stderr: '' };
+      }
+      if (args[0] === 'add-generic-password') {
+        items.set(service, stdin?.split('\n')[0] ?? '');
+        return { exitCode: 0, stdout: '', stderr: '' };
+      }
+      items.delete(service);
       return { exitCode: 0, stdout: '', stderr: '' };
     });
-    const store = new MacOsKeychainCredentialStore({ platform: 'darwin', run });
+    const store = new MacOsKeychainCredentialStore({
+      platform: 'darwin',
+      run,
+      generation: () => 'generation-one',
+    });
+
+    await store.write(key, { schemaVersion: 1, refreshToken: 'refresh-value' });
 
     await expect(store.read(key)).resolves.toEqual({
       schemaVersion: 1,
       refreshToken: 'refresh-value',
     });
     await expect(store.delete(key)).resolves.toBeUndefined();
+    await expect(store.read(key)).resolves.toBeUndefined();
     expect(run.mock.calls.flatMap(([args]) => args).join(' ')).not.toContain('refresh-value');
   });
 

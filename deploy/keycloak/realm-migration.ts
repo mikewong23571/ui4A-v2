@@ -1,4 +1,4 @@
-import { compatibleRealm } from './realm-compatibility';
+import { realmMatches } from './realm-match';
 import { assertMigrationAdmin, type KeycloakRealmMigrationAdmin } from './realm-admin';
 import {
   fail,
@@ -117,7 +117,7 @@ export async function migrateKeycloakRealmV1ToV2(input: MigrationInput): Promise
 
   if (currentVersion === '2') {
     if (
-      !compatibleRealm(realm, clients, expected) ||
+      !realmMatches(realm, clients, expected) ||
       !hasOfflineRole(roles.composites, roles.offlineRole)
     ) {
       return fail('KEYCLOAK_REALM_POSTCHECK_FAILED', 'Keycloak realm v2 post-check failed');
@@ -128,7 +128,7 @@ export async function migrateKeycloakRealmV1ToV2(input: MigrationInput): Promise
     return fail('KEYCLOAK_REALM_INCOMPATIBLE', 'Keycloak realm migration source is incompatible');
   }
   const normalized = normalizedSource(realm, clients, expected);
-  if (!compatibleRealm(normalized.realm, normalized.clients, expected)) {
+  if (!realmMatches(normalized.realm, normalized.clients, expected)) {
     return fail('KEYCLOAK_REALM_INCOMPATIBLE', 'Keycloak realm migration source is incompatible');
   }
 
@@ -169,7 +169,7 @@ export async function migrateKeycloakRealmV1ToV2(input: MigrationInput): Promise
   }
   const migratedRoles = await roleState(input.admin, migratedRealm);
   if (
-    !compatibleRealm(migratedRealm, migratedClients, expected) ||
+    !realmMatches(migratedRealm, migratedClients, expected) ||
     !hasOfflineRole(migratedRoles.composites, migratedRoles.offlineRole)
   ) {
     return fail('KEYCLOAK_REALM_POSTCHECK_FAILED', 'Keycloak realm v2 post-check failed');
