@@ -1,0 +1,1 @@
+T45 Phase A: separated browser/OIDC public origins from Compose internal TLS/SNI hosts without rotating CA or changing authorization. Red produced 23 expected failures. Green verification: 149 focused tests passed (3 skipped); pnpm typecheck; lint 0 errors; governance strict; full pnpm check 3683 tests passed, 15 skipped.
