@@ -7,7 +7,12 @@
  */
 import Ajv from 'ajv';
 
-import type { GuardEvaluation, GuardRegistry, EngineSnapshot } from '@ui4a/shared';
+import type {
+  AgentCredentialSource,
+  GuardEvaluation,
+  GuardRegistry,
+  EngineSnapshot,
+} from '@ui4a/shared';
 
 import { actionEffects } from '../core/parse';
 import { fieldDefinitionsToJsonSchema, mergeFieldDefinitions } from '../contract/schema';
@@ -28,7 +33,7 @@ export interface RequestIdentityAudit {
   delegation?: {
     subject: string;
     actorClientId: string;
-    source: 'token-exchange-sub-azp';
+    source: AgentCredentialSource;
   };
 }
 

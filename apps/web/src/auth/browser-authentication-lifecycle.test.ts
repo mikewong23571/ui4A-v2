@@ -677,6 +677,9 @@ describe('one trusted request identity adapter for browser business and meta req
           humanClientIds: [CLIENT_ID],
           agentClientIds: ['ui4a-agent'],
           delegatedScopesByClient: { 'ui4a-agent': ['ui4a:read'] },
+          agentCredentialSourcesByClient: {
+            'ui4a-agent': 'token-exchange-sub-azp',
+          },
         },
         productionDependencies: {
           clock: () => NOW_MILLISECONDS,

@@ -4,6 +4,7 @@
  */
 export type ProductionDeploymentMode = 'compose' | 'kubernetes';
 export type ProductionAgentSpecialization = 'coding' | 'writing' | 'authoring';
+export type AgentCredentialSource = 'token-exchange-sub-azp' | 'device-authorization-sub-azp';
 
 export interface ProductionTemporalPersistenceStore {
   database: string;

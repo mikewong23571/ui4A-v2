@@ -22,7 +22,10 @@ export interface RealmClientRepresentation extends Record<string, unknown> {
 export interface RealmImportRepresentation extends Record<string, unknown> {
   realm: string;
   enabled: boolean;
-  attributes: { 'ui4a.experimental.contract.version': '1' };
+  offlineSessionIdleTimeout: 7776000;
+  offlineSessionMaxLifespanEnabled: true;
+  offlineSessionMaxLifespan: 15552000;
+  attributes: { 'ui4a.experimental.contract.version': '2' };
   clients: RealmClientRepresentation[];
   clientScopes: RealmClientScopeRepresentation[];
   users?: Array<Record<string, unknown>>;
@@ -58,7 +61,7 @@ export class KeycloakBootstrapError extends Error {
 
 type JsonObject = Record<string, unknown>;
 
-export const managedClientIds = ['ui4a-web', 'ui4a-agent', 'ui4a-api'] as const;
+export const managedClientIds = ['ui4a-web', 'ui4a-agent', 'ui4a-cli', 'ui4a-api'] as const;
 const permissionScopes = ['ui4a:read', 'ui4a:write', 'ui4a:approve'] as const;
 const policyScopes = [
   'ui4a:policy:default',
@@ -80,6 +83,10 @@ export const expectedClientScopeAssignments: Record<
   'ui4a-agent': {
     defaults: ['ui4a:read', 'ui4a:write'],
     optional: policyScopes,
+  },
+  'ui4a-cli': {
+    defaults: ['ui4a:read', 'ui4a:write'],
+    optional: ['offline_access', ...policyScopes],
   },
   'ui4a-api': {
     defaults: ['ui4a:read'],
@@ -149,19 +156,36 @@ function validateRealmImport(input: unknown): RealmImportRepresentation {
   const root = requiredObject(input, 'realm import');
   exactKeys(
     root,
-    new Set(['realm', 'enabled', 'attributes', 'clients', 'clientScopes', 'users']),
+    new Set([
+      'realm',
+      'enabled',
+      'offlineSessionIdleTimeout',
+      'offlineSessionMaxLifespanEnabled',
+      'offlineSessionMaxLifespan',
+      'attributes',
+      'clients',
+      'clientScopes',
+      'users',
+    ]),
     'realm import',
   );
   if (root.realm !== 'ui4a' || root.enabled !== true || !Array.isArray(root.clients)) {
     fail('KEYCLOAK_REALM_IMPORT_INVALID', 'realm import must define the enabled ui4a realm');
   }
+  if (
+    root.offlineSessionIdleTimeout !== 7_776_000 ||
+    root.offlineSessionMaxLifespanEnabled !== true ||
+    root.offlineSessionMaxLifespan !== 15_552_000
+  ) {
+    fail('KEYCLOAK_REALM_IMPORT_INVALID', 'realm import offline lifetime is incompatible');
+  }
   if (root.clients.length !== managedClientIds.length) {
-    fail('KEYCLOAK_REALM_IMPORT_INVALID', 'realm import must define exactly three clients');
+    fail('KEYCLOAK_REALM_IMPORT_INVALID', 'realm import must define exactly four clients');
   }
   const realmAttributes = stringRecord(root.attributes, 'realm import attributes');
   if (
     Object.keys(realmAttributes).length !== 1 ||
-    realmAttributes['ui4a.experimental.contract.version'] !== '1'
+    realmAttributes['ui4a.experimental.contract.version'] !== '2'
   ) {
     fail('KEYCLOAK_REALM_IMPORT_INVALID', 'realm import contract version is incompatible');
   }
@@ -238,6 +262,12 @@ function validateRealmImport(input: unknown): RealmImportRepresentation {
   if (!Array.isArray(root.users) || root.users.length !== 1) {
     fail('KEYCLOAK_REALM_IMPORT_INVALID', 'realm import must define one experimental user');
   }
+  const user = requiredObject(root.users[0], 'users[0]');
+  exactKeys(user, new Set(['username', 'enabled', 'realmRoles', 'credentials']), 'users[0]');
+  if (user.username !== 'ui4a-experiment-human' || user.enabled !== true) {
+    fail('KEYCLOAK_REALM_IMPORT_INVALID', 'realm import experimental user is incompatible');
+  }
+  exactStringArray(user.realmRoles, ['offline_access'], 'users[0].realmRoles');
 
   return root as RealmImportRepresentation;
 }

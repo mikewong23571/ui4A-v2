@@ -61,6 +61,9 @@ export function compatibleRealm(
   const realmAttributes = object(realm.attributes);
   if (
     realm.enabled !== true ||
+    realm.offlineSessionIdleTimeout !== expected.offlineSessionIdleTimeout ||
+    realm.offlineSessionMaxLifespanEnabled !== expected.offlineSessionMaxLifespanEnabled ||
+    realm.offlineSessionMaxLifespan !== expected.offlineSessionMaxLifespan ||
     realmAttributes?.['ui4a.experimental.contract.version'] !==
       expected.attributes['ui4a.experimental.contract.version']
   ) {
@@ -124,6 +127,28 @@ export function compatibleRealm(
       expectedClientScopeAssignments['ui4a-agent'].optional,
     ) ||
     !hasAccessTokenAudience(agent, 'ui4a-api')
+  ) {
+    return false;
+  }
+
+  const cli = byId.get('ui4a-cli')!;
+  const cliAttributes = object(cli.attributes);
+  if (
+    cli.enabled !== true ||
+    cli.publicClient !== true ||
+    cli.bearerOnly !== false ||
+    cli.standardFlowEnabled !== false ||
+    cli.serviceAccountsEnabled !== false ||
+    cli.directAccessGrantsEnabled !== false ||
+    cliAttributes?.['oauth2.device.authorization.grant.enabled'] !== 'true' ||
+    cliAttributes['access.token.lifespan'] !== '86400' ||
+    cliAttributes['client.offline.session.idle.timeout'] !== '7776000' ||
+    cliAttributes['client.offline.session.max.lifespan'] !== '15552000' ||
+    !sameStringSet(cli.defaultClientScopes, expectedClientScopeAssignments['ui4a-cli'].defaults) ||
+    !sameStringSet(cli.optionalClientScopes, expectedClientScopeAssignments['ui4a-cli'].optional) ||
+    !hasExactAccessTokenSubjectMapper(cli) ||
+    !hasAccessTokenAudience(cli, 'ui4a-api') ||
+    typeof cli.secret === 'string'
   ) {
     return false;
   }

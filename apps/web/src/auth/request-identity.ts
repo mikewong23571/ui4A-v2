@@ -83,18 +83,25 @@ function policyFor(
   authorizedPolicyScopes: readonly string[],
 ): ProductionCredentialPolicy {
   const { agentClientId, agentScopes } = config.settings.auth.oidc;
+  const cliClientId = 'ui4a-cli';
+  const allowedAgentScopes = agentScopes.filter(
+    (scope) =>
+      !scope.startsWith('ui4a:policy:') ||
+      authorizedPolicyScopes.includes(scope.slice('ui4a:policy:'.length)),
+  );
   return {
     issuer: config.settings.auth.oidc.issuer,
     audience: config.settings.auth.oidc.audience,
     algorithms: ['RS256'],
     humanClientIds: [config.settings.auth.oidc.clientId],
-    agentClientIds: [agentClientId],
+    agentClientIds: [agentClientId, cliClientId],
     delegatedScopesByClient: {
-      [agentClientId]: agentScopes.filter(
-        (scope) =>
-          !scope.startsWith('ui4a:policy:') ||
-          authorizedPolicyScopes.includes(scope.slice('ui4a:policy:'.length)),
-      ),
+      [agentClientId]: allowedAgentScopes,
+      [cliClientId]: allowedAgentScopes,
+    },
+    agentCredentialSourcesByClient: {
+      [agentClientId]: 'token-exchange-sub-azp',
+      [cliClientId]: 'device-authorization-sub-azp',
     },
   };
 }

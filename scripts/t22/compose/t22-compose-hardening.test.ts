@@ -497,6 +497,8 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     expect(internalListener).toBeGreaterThan(publicListener);
     expect(publicRouting).toContain('/realms/ui4a/.well-known/openid-configuration');
     expect(publicRouting).toContain('/realms/ui4a/protocol/openid-connect/token');
+    expect(publicRouting).toContain('/realms/ui4a/protocol/openid-connect/auth/device');
+    expect(publicRouting).toContain('/realms/ui4a/device/*');
     expect(publicRouting.match(/\/realms\/ui4a\/protocol\/openid-connect\/logout/g)).toHaveLength(
       2,
     );

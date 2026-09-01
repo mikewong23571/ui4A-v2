@@ -145,6 +145,10 @@ spec:
         - method: { exact: GET }
           uri: { exact: /realms/ui4a/protocol/openid-connect/logout }
         - method: { exact: GET }
+          uri: { exact: /realms/ui4a/device }
+        - method: { exact: GET }
+          uri: { prefix: /realms/ui4a/device/ }
+        - method: { exact: GET }
           uri: { exact: /realms/ui4a/account }
         - method: { exact: GET }
           uri: { prefix: /realms/ui4a/account/ }
@@ -158,6 +162,8 @@ spec:
           uri: { exact: /realms/ui4a/protocol/openid-connect/revoke }
         - method: { exact: POST }
           uri: { exact: /realms/ui4a/protocol/openid-connect/logout }
+        - method: { exact: POST }
+          uri: { exact: /realms/ui4a/protocol/openid-connect/auth/device }
         - method: { exact: POST }
           uri: { exact: /realms/ui4a/account }
         - method: { exact: POST }

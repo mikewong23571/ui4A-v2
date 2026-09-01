@@ -33,6 +33,9 @@ interface RealmClientRepresentation extends Record<string, unknown> {
 interface RealmImportRepresentation extends Record<string, unknown> {
   realm: string;
   enabled: boolean;
+  offlineSessionIdleTimeout: number;
+  offlineSessionMaxLifespanEnabled: boolean;
+  offlineSessionMaxLifespan: number;
   attributes?: Record<string, string>;
   clients: RealmClientRepresentation[];
 }
@@ -187,6 +190,9 @@ class ImportOrSkipKeycloakAdmin {
       this.realm = {
         realm: imported.realm,
         enabled: imported.enabled,
+        offlineSessionIdleTimeout: imported.offlineSessionIdleTimeout,
+        offlineSessionMaxLifespanEnabled: imported.offlineSessionMaxLifespanEnabled,
+        offlineSessionMaxLifespan: imported.offlineSessionMaxLifespan,
         attributes: structuredClone(imported.attributes),
       };
       this.clients = imported.clients.map((candidate, index) => ({
@@ -287,6 +293,7 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
     expect(imported.clients.map(({ clientId }) => clientId).sort()).toEqual([
       'ui4a-agent',
       'ui4a-api',
+      'ui4a-cli',
       'ui4a-web',
     ]);
     expect(
@@ -341,6 +348,12 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
       'realm contract version drift',
       (fake: ImportOrSkipKeycloakAdmin) => {
         fake.realm!.attributes = { 'ui4a.experimental.contract.version': '0' };
+      },
+    ],
+    [
+      'realm offline idle drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        fake.realm!.offlineSessionIdleTimeout = 2_592_000;
       },
     ],
     [
@@ -439,6 +452,37 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
       },
     ],
     [
+      'CLI Device Grant drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const cli = fake.clients.find(({ clientId }) => clientId === 'ui4a-cli')!;
+        cli.attributes = {
+          ...cli.attributes,
+          'oauth2.device.authorization.grant.enabled': 'false',
+        };
+      },
+    ],
+    [
+      'CLI standard-flow drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const cli = fake.clients.find(({ clientId }) => clientId === 'ui4a-cli')!;
+        cli.standardFlowEnabled = true;
+      },
+    ],
+    [
+      'CLI secret drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const cli = fake.clients.find(({ clientId }) => clientId === 'ui4a-cli')!;
+        cli.secret = '__forbidden_cli_secret__';
+      },
+    ],
+    [
+      'CLI approval scope drift',
+      (fake: ImportOrSkipKeycloakAdmin) => {
+        const cli = fake.clients.find(({ clientId }) => clientId === 'ui4a-cli')!;
+        cli.optionalClientScopes = [...(cli.optionalClientScopes ?? []), 'ui4a:approve'];
+      },
+    ],
+    [
       'Web default scope drift',
       (fake: ImportOrSkipKeycloakAdmin) => {
         const web = fake.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
@@ -494,7 +538,7 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
     expect(resolveSecret).not.toHaveBeenCalled();
   });
 
-  it('ignores non-managed Keycloak clients while checking the three UI4A clients', async () => {
+  it('ignores non-managed Keycloak clients while checking the four UI4A clients', async () => {
     const fake = new ImportOrSkipKeycloakAdmin();
     await execute(fake, 'apply');
     fake.clients.push({ id: 'account-builtin', clientId: 'account', enabled: true });

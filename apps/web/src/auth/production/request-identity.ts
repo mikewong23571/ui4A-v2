@@ -1,5 +1,7 @@
 import { createPublicKey, verify } from 'node:crypto';
 
+import type { AgentCredentialSource } from '@ui4a/shared';
+
 export type ProductionIdentityErrorCode =
   | 'credential_missing'
   | 'credential_malformed'
@@ -99,6 +101,7 @@ export interface ProductionCredentialPolicy {
   humanClientIds: readonly string[];
   agentClientIds: readonly string[];
   delegatedScopesByClient: Readonly<Record<string, readonly string[]>>;
+  agentCredentialSourcesByClient: Readonly<Record<string, AgentCredentialSource>>;
 }
 
 export interface ProductionCredentialDependencies {
@@ -125,7 +128,7 @@ export interface ProductionRequestIdentity {
   delegation?: {
     subject: string;
     actorClientId: string;
-    source: 'token-exchange-sub-azp';
+    source: AgentCredentialSource;
   };
 }
 
@@ -377,6 +380,8 @@ export function buildProductionRequestIdentity(
   }
   const allowedScopes = effectivePolicy.delegatedScopesByClient[authorizedParty] ?? [];
   if (scopes.some((scope) => !allowedScopes.includes(scope))) fail('delegation_scope_exceeded');
+  const source = effectivePolicy.agentCredentialSourcesByClient[authorizedParty];
+  if (source === undefined) fail('delegation_actor_not_allowed');
   const service =
     typeof claims.preferred_username === 'string' &&
     claims.preferred_username.startsWith('service-account-');
@@ -392,7 +397,7 @@ export function buildProductionRequestIdentity(
           delegation: {
             subject,
             actorClientId: authorizedParty,
-            source: 'token-exchange-sub-azp' as const,
+            source,
           },
         }),
   };

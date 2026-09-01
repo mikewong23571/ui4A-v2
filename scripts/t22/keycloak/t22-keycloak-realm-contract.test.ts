@@ -32,6 +32,9 @@ interface RealmClientRepresentation {
 interface RealmImportRepresentation {
   realm: string;
   enabled: boolean;
+  offlineSessionIdleTimeout?: number;
+  offlineSessionMaxLifespanEnabled?: boolean;
+  offlineSessionMaxLifespan?: number;
   attributes?: Record<string, string>;
   clients: RealmClientRepresentation[];
   clientScopes?: Array<{
@@ -42,6 +45,7 @@ interface RealmImportRepresentation {
   users?: Array<{
     username: string;
     enabled: boolean;
+    realmRoles?: string[];
     credentials: Array<{ type: 'password'; value: string; temporary: boolean }>;
   }>;
   [key: string]: unknown;
@@ -85,22 +89,62 @@ describe('T22 experimental Keycloak realm import contract', () => {
     expect(input).toMatchObject({
       realm: 'ui4a',
       enabled: true,
-      attributes: { 'ui4a.experimental.contract.version': '1' },
+      offlineSessionIdleTimeout: 7_776_000,
+      offlineSessionMaxLifespanEnabled: true,
+      offlineSessionMaxLifespan: 15_552_000,
+      attributes: { 'ui4a.experimental.contract.version': '2' },
     });
     expect(bindings.schemaVersion).toBe(1);
     expect(bindings.consumers.compose.realmImportRef).toBe(realmImportPath);
     expect(bindings.consumers.kubernetes.realmImportRef).toBe(realmImportPath);
   });
 
-  it('contains exactly Web, Agent, and API clients', () => {
+  it('contains exactly Web, Agent, CLI, and API clients', () => {
     const input = requiredJson<RealmImportRepresentation>(realmImportPath);
 
     expect(input.clients.map(({ clientId }) => clientId).sort()).toEqual([
       'ui4a-agent',
       'ui4a-api',
+      'ui4a-cli',
       'ui4a-web',
     ]);
     expect(input.clients.every((candidate) => !candidate.directAccessGrantsEnabled)).toBe(true);
+  });
+
+  it('configures CLI as a public Device client with 24h access and 90d offline access', () => {
+    const input = requiredJson<RealmImportRepresentation>(realmImportPath);
+    const cli = client(input, 'ui4a-cli');
+
+    expect(cli).toMatchObject({
+      enabled: true,
+      publicClient: true,
+      bearerOnly: false,
+      standardFlowEnabled: false,
+      serviceAccountsEnabled: false,
+      directAccessGrantsEnabled: false,
+      attributes: {
+        'oauth2.device.authorization.grant.enabled': 'true',
+        'access.token.lifespan': '86400',
+        'client.offline.session.idle.timeout': '7776000',
+        'client.offline.session.max.lifespan': '15552000',
+      },
+    });
+    expect(cli).not.toHaveProperty('secret');
+    expect(cli.defaultClientScopes).toEqual(['ui4a:read', 'ui4a:write']);
+    expect(cli.optionalClientScopes?.toSorted()).toEqual(
+      [...policyScopes, 'offline_access'].toSorted(),
+    );
+    expect(
+      cli.protocolMappers?.filter(({ protocolMapper }) => protocolMapper === 'oidc-sub-mapper'),
+    ).toHaveLength(1);
+    expect(
+      cli.protocolMappers?.some(
+        ({ protocolMapper, config }) =>
+          protocolMapper === 'oidc-audience-mapper' &&
+          config['included.client.audience'] === 'ui4a-api' &&
+          config['access.token.claim'] === 'true',
+      ),
+    ).toBe(true);
   });
 
   it('configures Web for confidential Authorization Code with S256 PKCE', () => {
@@ -217,13 +261,14 @@ describe('T22 experimental Keycloak realm import contract', () => {
     );
   });
 
-  it('keeps CLI as an external Bearer consumer and delegation as standard sub plus azp', () => {
+  it('keeps CLI free of password grants, secrets, approval, and experimental delegation', () => {
     const source = requiredSource(realmImportPath);
     const input = requiredJson<RealmImportRepresentation>(realmImportPath);
 
-    expect(input.clients).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ clientId: 'ui4a-cli' })]),
-    );
+    const cli = client(input, 'ui4a-cli');
+    expect(cli.defaultClientScopes).not.toContain('ui4a:approve');
+    expect(cli.optionalClientScopes).not.toContain('ui4a:approve');
+    expect(cli.attributes).not.toHaveProperty('standard.token.exchange.enabled');
     expect(source).not.toMatch(/password-grant|direct-access-grant/i);
     expect(source).not.toMatch(/"act"|act-claim|delegation-chain/i);
   });
@@ -236,6 +281,7 @@ describe('T22 experimental Keycloak realm import contract', () => {
       {
         username: 'ui4a-experiment-human',
         enabled: true,
+        realmRoles: ['offline_access'],
         credentials: [
           {
             type: 'password',

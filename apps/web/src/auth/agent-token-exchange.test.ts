@@ -165,6 +165,9 @@ async function trustedIdentity(authorizationHeader: string, requiredScopes: stri
         delegatedScopesByClient: {
           [CLIENT_ID]: ['ui4a:read', 'ui4a:write', 'development'],
         },
+        agentCredentialSourcesByClient: {
+          [CLIENT_ID]: 'token-exchange-sub-azp',
+        },
       },
       productionDependencies: {
         clock: () => NOW_MILLISECONDS,

@@ -56,6 +56,7 @@ const productionPolicy: ProductionCredentialPolicy = {
   humanClientIds: ['ui4a-web'],
   agentClientIds: ['ui4a-agent'],
   delegatedScopesByClient: { 'ui4a-agent': ['ui4a:read'] },
+  agentCredentialSourcesByClient: { 'ui4a-agent': 'token-exchange-sub-azp' },
 };
 
 const productionDependencies: ProductionCredentialDependencies = {

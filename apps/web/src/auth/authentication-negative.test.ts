@@ -95,6 +95,9 @@ const POLICY = {
   delegatedScopesByClient: {
     'ui4a-agent': ['ui4a:read', 'ui4a:write'],
   },
+  agentCredentialSourcesByClient: {
+    'ui4a-agent': 'token-exchange-sub-azp' as const,
+  },
 };
 
 const VALID_DEPENDENCIES = {
