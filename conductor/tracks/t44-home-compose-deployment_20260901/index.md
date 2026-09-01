@@ -3,6 +3,7 @@
 - [规格](./spec.md)
 - [计划](./plan.md)
 - [验收证据](./evidence.md)
+- [DONE](./DONE.md)
 - [元数据](./metadata.json)
 
 把 T22 的通用单副本 Compose 合同部署到 `home`：保留 digest、Secret、迁移、身份、回放和

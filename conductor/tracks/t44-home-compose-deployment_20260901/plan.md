@@ -36,36 +36,36 @@ Red → Green，并以 `home` 实机 Ready 与 Tailnet HTTPS 为最终完成条�
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) dfbeee6
   - [x] 运行 focused tests、format、typecheck、lint 与 governance
 
-## Phase C：Home Release 与 Compose 上线
+## Phase C：Home Release 与 Compose 上线 [checkpoint: pending]
 
-- [ ] Task: 构建 digest-pinned OCI inventory
-  - [ ] 以 exact release SHA 构建 Web、Worker、Runner linux/amd64 镜像
-  - [ ] 固定 PostgreSQL、Temporal、Temporal UI/Admin、Keycloak 与 Caddy digest
-  - [ ] 核对 UI4A image revision labels
-- [ ] Task: 创建 home operator inputs
-  - [ ] 创建 canonical settings、Secret JSON、九个独立 Secret files 和 manifest
-  - [ ] 所有文件为绝对路径、普通文件、`0600`，且不打印 Secret
-  - [ ] 运行 production preflight
-- [ ] Task: 启动完整 Compose
-  - [ ] 初始化 PKI、PostgreSQL roles、Temporal schema/namespace、Keycloak realm 和 migration
-  - [ ] Web、Worker、Runner、edge 达到 healthy/ready
-- [ ] Task: 接入 home gateway
-  - [ ] 使用独立 UI4A/Keycloak host 与 Tailnet-only Caddy route
-  - [ ] 反向代理信任 UI4A public CA，不跳过 TLS 校验
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
-  - [ ] 记录 preflight、container health、digests 与入口证据
+- [x] Task: 构建 digest-pinned OCI inventory 42317d2
+  - [x] 以 exact release SHA 构建 Web、Worker、Runner linux/amd64 镜像
+  - [x] 固定 PostgreSQL、Temporal、Temporal UI/Admin、Keycloak 与 Caddy digest
+  - [x] 核对 UI4A image revision labels
+- [x] Task: 创建 home operator inputs 42317d2
+  - [x] 创建 canonical settings、Secret JSON、九个独立 Secret files 和 manifest
+  - [x] 所有文件为绝对路径、普通文件、`0600`，且不打印 Secret
+  - [x] 运行 production preflight
+- [x] Task: 启动完整 Compose 42317d2
+  - [x] 初始化 PKI、PostgreSQL roles、Temporal schema/namespace、Keycloak realm 和 migration
+  - [x] Web、Worker、Runner、edge 达到 healthy/ready
+- [x] Task: 接入 home gateway 42317d2
+  - [x] 使用独立 UI4A/Keycloak host 与 Tailnet-only Caddy route
+  - [x] 反向代理信任 UI4A public CA，不跳过 TLS 校验
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 42317d2
+  - [x] 记录 preflight、container health、digests 与入口证据
 
-## Phase D：实机验收与闭环
+## Phase D：实机验收与闭环 [checkpoint: pending]
 
-- [ ] Task: HTTP、认证与关键页面验收
-  - [ ] 验证首页、Applications、Meta、Siren discovery、OIDC discovery 与版本
-  - [ ] 验证登录跳转与 callback origin
-- [ ] Task: Runtime 与持久性验收
-  - [ ] 验证 Worker、Temporal 与 Runner 状态
-  - [ ] 重启长期服务并确认重新 Ready、volume identity 不变
-- [ ] Task: 运维与回滚记录
-  - [ ] 记录 status、日志、普通 down、backup plan 和 digest rollback 命令
-  - [ ] 明示 experimental/known-risk 与未执行项
-- [ ] Task: Phase Verification & Track Closure (Refer to workflow.md)
-  - [ ] 运行最终 focused gates 与 home smoke
-  - [ ] 更新 evidence、metadata、registry 并归档 Track
+- [x] Task: HTTP、认证与关键页面验收 42317d2
+  - [x] 验证首页、Applications、Meta、Siren discovery、OIDC discovery 与版本
+  - [x] 验证登录跳转与 callback origin
+- [x] Task: Runtime 与持久性验收 42317d2
+  - [x] 验证 Worker、Temporal 与 Runner 状态
+  - [x] 重启长期服务并确认重新 Ready、volume identity 不变
+- [x] Task: 运维与回滚记录 42317d2
+  - [x] 记录 status、日志、普通 down、backup plan 和 digest rollback 命令
+  - [x] 明示 experimental/known-risk 与未执行项
+- [x] Task: Phase Verification & Track Closure (Refer to workflow.md) 42317d2
+  - [x] 运行最终 focused gates 与 home smoke
+  - [x] 更新 evidence、metadata、registry 并归档 Track
