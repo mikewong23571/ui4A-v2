@@ -81,15 +81,15 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
 
 ## Phase C：Web 派发、Temporal 执行与结果回流
 
-- [ ] Task: Red — Executor dispatcher
-  - [ ] 覆盖 `agent` 继续走现有 Agent dispatch
-  - [ ] 覆盖 `function` 走新的 Function dispatch
-  - [ ] 覆盖未知 class、缺 profile 和不可用 handler
-  - [ ] 断言 preflight 失败时零业务事件、零 Activity 调用
-  - [ ] 覆盖 prepared invocation 进入 spawn birth detail
-  - [ ] 覆盖 DB commit 后、workflow start 前 crash 产生可重协调 outbox
-  - [ ] 断言 dispatcher 不读取 capability name 或 Application name
-  - [ ] 运行测试并确认预期失败
+- [x] Task: Red — Executor dispatcher b853b90
+  - [x] 覆盖 `agent` 继续走现有 Agent dispatch
+  - [x] 覆盖 `function` 走新的 Function dispatch
+  - [x] 覆盖未知 class、缺 profile 和不可用 handler
+  - [x] 断言 preflight 失败时零业务事件、零 Activity 调用
+  - [x] 覆盖 prepared invocation 进入 spawn birth detail
+  - [x] 覆盖 DB commit 后、workflow start 前 crash 产生可重协调 outbox
+  - [x] 断言 dispatcher 不读取 capability name 或 Application name
+  - [x] 运行测试并确认预期失败
 - [ ] Task: Green — 提取通用 dispatch composition
   - [ ] 从 `service.ts` 提取 capability dispatch composition
   - [ ] 保留现有 Agent Run 行为不变
