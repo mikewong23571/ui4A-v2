@@ -1,0 +1,5 @@
+Task: Red — Capability input binding
+Summary: Added focused and property tests for declared action/source/artifact inputs, provenance, schema revalidation, missing/unresolved data, wildcard/spread/expression rejection, field/depth/node/byte budgets, and non-disclosure of unbound facts.
+Files: packages/engine/src/execution/capability-input-binding.test.ts
+Verification: expected Red exit 1 because capability-input-binding module does not exist.
+Why: Freeze a closed, auditable Port input rather than passing snapshots or arbitrary context to handlers.
