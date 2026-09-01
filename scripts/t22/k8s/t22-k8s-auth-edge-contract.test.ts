@@ -139,6 +139,7 @@ function staticRouteMatches(name: string): string[] {
 
 const webGetExact = [
   '/',
+  '/applications',
   '/canvas',
   '/chat',
   '/delegations',

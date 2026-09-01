@@ -11,7 +11,7 @@ https://{$UI4A_HOST}:8443 {
 
   @ui4aPublic {
     method GET HEAD
-    path / /canvas /chat /delegations /entity /events /meta /meta/* /_next/* /favicon.ico /file.svg /globe.svg /next.svg /vercel.svg /window.svg /live /version /api/health /api/render/catalog /auth/login /api/auth/callback
+    path / /applications /canvas /chat /delegations /entity /events /meta /meta/* /_next/* /favicon.ico /file.svg /globe.svg /next.svg /vercel.svg /window.svg /live /version /api/health /api/render/catalog /auth/login /api/auth/callback
   }
   handle @ui4aPublic {
     reverse_proxy web:3100

@@ -443,6 +443,7 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     expect(routing).toContain('@ui4aAuthenticated');
     for (const path of [
       '/.well-known/ui4a.json',
+      '/applications',
       '/api/entity',
       '/api/events',
       '/api/chat/history',
