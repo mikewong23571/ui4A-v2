@@ -1,0 +1,4 @@
+Task: 真实 Assistant 验收
+Summary: Added a standing real-LLM capability-boundary Eval with isolated Web/Worker/PostgreSQL/Temporal. Natural Chinese intent selected the shared cve.enrich-impact Entity Action, then the Native Function result returned through the governed callback receipt.
+Verification: capability-boundary Playwright project passed 1/1 in 1.1 minutes using the configured real model; attached decision and receipt evidence. No fixed tool trace or rule driver.
+Why: Prove Assistant intelligence maps intent to the Application contract while the Function remains mechanically governed.
