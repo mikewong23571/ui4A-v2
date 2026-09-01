@@ -134,3 +134,51 @@ test('real Assistant selects the shared CVE Action and the Function result retur
     contentType: 'application/json',
   });
 });
+
+test('real Assistant reports a missing Function deployment honestly with zero business mutation', async ({}, info) => {
+  const profile = loadLlmEvalProfile();
+  let evidence: unknown;
+  await withWorkerStack(
+    async () => {
+      const turn = await runEvalTurn(
+        SCENARIO_BASE,
+        'capability-boundary-failure',
+        'capability-boundary-failure-1',
+        '补充这个 CVE 的影响信息。',
+        clientView(),
+      );
+      expect(turn.driver).toBe('llm');
+      const entity = (await readEvalEntity(SCENARIO_BASE, 'cve:CVE-2026-0001')) as {
+        properties: { node: string };
+      };
+      expect(entity.properties.node).toBe('identified');
+      const core = await events();
+      expect(
+        core.some(
+          (event) =>
+            event.rel === 'cve:CVE-2026-0001' &&
+            (event.kind === 'spawn-requested' || event.kind === 'action-executed'),
+        ),
+      ).toBe(false);
+      const explanation = [turn.summary, ...turn.messages, turn.error]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .join('\n');
+      expect(explanation.length).toBeGreaterThan(0);
+      expect(explanation).not.toMatch(/TypeError|stack trace|handlerRef|Temporal/iu);
+      evidence = { model: profile.model, turn, node: entity.properties.node };
+    },
+    {
+      DATABASE_URL: isolatedEvalDatabaseUrl(),
+      LLM_API_KEY: profile.apiKey,
+      LLM_BASE_URL: profile.baseUrl,
+      LLM_MODEL: profile.model,
+      UI4A_NATIVE_FUNCTION_PROFILES: '[]',
+      UI4A_CAPABILITY_CALLBACK_TOKEN: 'capability-boundary-eval-token',
+      UI4A_PUBLIC_BASE_URL: SCENARIO_BASE,
+    },
+  );
+  await info.attach('capability-boundary-failure-real-llm.json', {
+    body: JSON.stringify(evidence, null, 2),
+    contentType: 'application/json',
+  });
+});
