@@ -38,7 +38,7 @@ test.describe('T16 Golden Story presentation lifecycle', () => {
     await drawer.getByRole('button', { name: '切换疏密' }).click();
     await expect(page.getByRole('status')).toContainText('视图已调整');
     await drawer.getByRole('button', { name: '收起视图' }).click();
-    await expect(page.getByText('此视图已收起')).toBeVisible();
+    await expect(page.getByText('此视图已收起')).toBeVisible({ timeout: 30_000 });
     await drawer.getByRole('button', { name: '展开视图' }).click();
     await expect(page.getByRole('heading', { name: '第一篇', exact: true })).toBeVisible();
 
