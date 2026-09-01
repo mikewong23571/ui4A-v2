@@ -1,0 +1,5 @@
+Task: Red — Activation invariants
+Summary: Added Native Function activation tests for available profiles, no Agent Definition leakage, internal declared callbacks, callback field contracts, bounded binding, required input/output schemas, and preservation of exact Agent Definition requirements.
+Files: packages/engine/src/definition/invariants.test.ts
+Verification: expected Red with 4 failures / 33 passed, each failure at a missing T43 invariant rather than baseline behavior.
+Why: Prevent an Application definition from activating a boundary that cannot execute or return through governed actions.
