@@ -4,6 +4,8 @@
 
 ## 活跃 Tracks
 
+- [~] **Track: T44 Home Compose 部署：公共 Origin 可移植性与实机上线**（最终目标：`home` 上完整 Compose Ready，并通过 Tailnet HTTPS 可访问） *Link: [tracks/t44-home-compose-deployment_20260901/index.md](./tracks/t44-home-compose-deployment_20260901/index.md)*
+
 - [x] **Track: T43 Application Capability 边界：Native Function Adapter 与受治理结果回流**（首个 `cve.enrich` 垂直切片；S1–S14 用户故事；Capability 是 Application Port，函数只是部署侧 Adapter） *Link: [tracks/archive/t43-capability-boundary-native-function_20260901/index.md](./tracks/archive/t43-capability-boundary-native-function_20260901/index.md)*
 
 ## 归档 Tracks(T1–T42,只读历史)
