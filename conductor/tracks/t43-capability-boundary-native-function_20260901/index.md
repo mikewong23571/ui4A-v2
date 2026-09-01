@@ -6,6 +6,7 @@
 - [探针](./spike.md)
 - [架构](./architecture.md)
 - [验收证据](./evidence.md)
+- [产品走查](./walkthrough.md)
 - [Security CVE 桌面截图](./screenshots/security-cve-desktop.png)
 - [Security Work Thread 390px 截图](./screenshots/security-thread-mobile-full.png)
 - [元数据](./metadata.json)

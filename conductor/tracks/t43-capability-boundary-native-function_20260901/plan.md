@@ -191,12 +191,12 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 运行 `CI=true pnpm e2e`
   - [x] 运行 focused coverage 并核对阈值
   - [x] 运行真实 Temporal crash/retry 与全量 replay
-- [ ] Task: 产品走查
-  - [ ] 桌面和 390px 完整走查 S1–S14
-  - [ ] 检查用户是否被迫理解 Native Function 或 Temporal
-  - [ ] 检查是否增加无意义确认、追状态或页面切换
-  - [ ] 检查“在等我、在进行、已完成、为什么”是否清晰
-  - [ ] 将发现项在本 Track 内闭环或明确记录非目标
+- [x] Task: 产品走查 8ee8bcf
+  - [x] 桌面和 390px 完整走查 S1–S14
+  - [x] 检查用户是否被迫理解 Native Function 或 Temporal
+  - [x] 检查是否增加无意义确认、追状态或页面切换
+  - [x] 检查“在等我、在进行、已完成、为什么”是否清晰
+  - [x] 将发现项在本 Track 内闭环或明确记录非目标
 - [ ] Task: Principal Engineering Review
   - [ ] 对照 GOAL、product-vision、DECISIONS 和 AGENTS.md 审查
   - [ ] 检查单日志、授权、来源、回调、幂等和依赖方向
