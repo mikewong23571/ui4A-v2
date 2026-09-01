@@ -142,13 +142,13 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 覆盖 Application/Sitemap/CLI 发现
   - [x] 断言 Bundle 不含 handler、Temporal 或 credential
   - [x] 运行测试并确认预期失败
-- [ ] Task: Green — 实现 CVE 参考切片
-  - [ ] 增加最小 Security Application 定义和一个 CVE reference entity
-  - [ ] 增加 `cve.enrich` Capability 与声明式 binding
-  - [ ] 增加部署侧 reference Native Function handler
-  - [ ] handler 保持 network-denied、pure/idempotent extract；外部 effect 继续 fail closed
-  - [ ] 使用受控测试情报，不冒充实时漏洞数据
-  - [ ] 保持 Application 内容全部由 Bundle 驱动
+- [x] Task: Green — 实现 CVE 参考切片 d244317
+  - [x] 增加最小 Security Application 定义和一个 CVE reference entity
+  - [x] 增加 `cve.enrich` Capability 与声明式 binding
+  - [x] 增加部署侧 reference Native Function handler
+  - [x] handler 保持 network-denied、pure/idempotent extract；外部 effect 继续 fail closed
+  - [x] 使用受控测试情报，不冒充实时漏洞数据
+  - [x] 保持 Application 内容全部由 Bundle 驱动
 - [ ] Task: Red — Work Thread 与 Presentation
   - [ ] 覆盖显式 thread attach 后的进行中/成功/失败投影
   - [ ] 覆盖未 attach 时不自动扩张成员
