@@ -1,13 +1,8 @@
-import {
-  parseNativeFunctionInvocation,
-  parseNativeFunctionProfiles,
-  type NativeFunctionProfileV1,
-} from '@ui4a/shared';
+import { parseNativeFunctionInvocation, parseNativeFunctionProfiles } from '@ui4a/shared';
 import type { EngineEvent } from '@ui4a/engine';
 import type { DbExecutor } from '@ui4a/db/events';
 
 import { reconcileNativeFunctionSpawns, type PreparedNativeFunctionDispatch } from './dispatch';
-import { nativeFunctionProfileMapFromEnvironment } from './profile-config';
 import { dispatchNativeFunction } from '../../temporal/native-function';
 
 export interface NativeFunctionSpawnRow {
@@ -71,12 +66,7 @@ export function preparedNativeFunctionFromRow(
 
 export async function reconcilePersistedNativeFunctions(
   db: DbExecutor,
-  profiles: ReadonlyMap<
-    string,
-    NativeFunctionProfileV1
-  > = nativeFunctionProfileMapFromEnvironment(),
 ): Promise<{ started: string[] }> {
-  if (profiles.size === 0) return { started: [] };
   const [spawnResult, receiptResult] = await Promise.all([
     db.query<NativeFunctionSpawnRow>(
       `SELECT seq, rel, action, actor, principal, channel, detail
@@ -121,9 +111,7 @@ let reconciliationTimer: ReturnType<typeof setInterval> | undefined;
 
 /** Best-effort outbox delivery; persisted spawns remain recoverable while Temporal is unavailable. */
 export function scheduleNativeFunctionReconciliation(db: DbExecutor): void {
-  if (nativeFunctionProfileMapFromEnvironment().size === 0 || reconciliationTimer !== undefined) {
-    return;
-  }
+  if (reconciliationTimer !== undefined) return;
   const run = () => void reconcilePersistedNativeFunctions(db).catch(() => undefined);
   run();
   reconciliationTimer = setInterval(run, 30_000);

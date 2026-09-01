@@ -46,6 +46,7 @@ function invocation(overrides: Record<string, unknown> = {}) {
         version: '1',
         handlerRef: 'security/cve-enrich@1',
         adapterVersion: 'native-function@1',
+        limitsHash: hash,
       },
       inputContract: { hash, schema: { type: 'object' } },
       outputContract: { hash, schema: { type: 'object' } },

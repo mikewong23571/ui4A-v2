@@ -127,6 +127,15 @@ describe.skipIf(!temporalUp)('Native Function Temporal durability', () => {
             version: '1',
             handlerRef: 'fixture/handler@1',
             adapterVersion: 'fixture@1',
+            limitsHash: hashCanonicalAgentJson({
+              limits: {
+                startToCloseTimeoutMs: 30_000,
+                maximumAttempts: 3,
+                inputBytes: 4096,
+                outputBytes: 4096,
+              },
+              network: 'denied',
+            }),
           },
           inputContract: { hash: hashCanonicalAgentJson(inputSchema), schema: inputSchema },
           outputContract: { hash: hashCanonicalAgentJson(outputSchema), schema: outputSchema },

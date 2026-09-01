@@ -21,6 +21,29 @@ interface CapabilityDispatchInput {
   artifacts: Record<string, { rel: string; value: unknown }>;
 }
 
+interface CapabilityArtifactLike {
+  rel: string;
+  source: { rel: string };
+  content: unknown;
+}
+
+/** Resolve only action-referenced artifacts already owned by the source entity. */
+export function selectAuthorizedCapabilityArtifacts(
+  actionParams: Record<string, unknown>,
+  artifacts: Readonly<Record<string, CapabilityArtifactLike>>,
+  sourceRel: string,
+): Record<string, { rel: string; value: unknown }> {
+  return Object.fromEntries(
+    Object.entries(actionParams).flatMap(([param, value]) => {
+      if (typeof value !== 'string') return [];
+      const artifact = artifacts[value];
+      return artifact?.source.rel === sourceRel
+        ? [[param, { rel: artifact.rel, value: artifact.content }] as const]
+        : [];
+    }),
+  );
+}
+
 export interface PreparedNativeFunctionDispatch {
   event: EngineEvent;
   source: { rel: string; action: string; principal: string; policyScope: string };
@@ -113,6 +136,10 @@ export async function prepareCapabilityDispatch<TAgent>(
           version: profile.version,
           handlerRef: profile.handlerRef,
           adapterVersion: profile.adapterVersion,
+          limitsHash: hashCanonicalAgentJson({
+            limits: profile.limits,
+            network: profile.network,
+          }),
         },
         inputContract: { hash: hashCanonicalAgentJson(inputSchema as never), schema: inputSchema },
         outputContract: {
@@ -194,27 +221,6 @@ export async function startNativeFunctionDispatch(
     profile: prepared.profile,
   });
   return identity;
-}
-
-export async function startPersistedCapabilityDispatch(
-  prepared: PreparedNativeFunctionDispatch,
-  deps: NativeFunctionStartDeps & { append(event: Record<string, unknown>): Promise<number> },
-) {
-  const sourceSeq = await deps.append({
-    kind: 'spawn-requested',
-    rel: prepared.event.rel,
-    action: prepared.event.action,
-    actor: prepared.event.actor,
-    principal: prepared.event.principal,
-    detail: {
-      capability: prepared.event.capability,
-      bind: prepared.event.bind,
-      'on-done': prepared.event['on-done'],
-      'on-error': prepared.event['on-error'],
-      nativeFunction: preparedNativeFunctionDetail(prepared),
-    },
-  });
-  return startNativeFunctionDispatch(prepared, sourceSeq, deps);
 }
 
 export async function reconcileNativeFunctionSpawns(input: {

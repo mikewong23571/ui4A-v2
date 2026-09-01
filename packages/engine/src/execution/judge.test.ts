@@ -58,9 +58,9 @@ describe('三层裁决 — 通过路径', () => {
       flows: flowRegistry(callbackFlow),
       guards: testGuards,
     };
-    expect(judge({ rel: 'comment:c1', action: 'approve' }, seedSnapshot, callbackDeps)).toMatchObject(
-      { kind: 'rejected', layer: 'undeclared' },
-    );
+    expect(
+      judge({ rel: 'comment:c1', action: 'approve' }, seedSnapshot, callbackDeps),
+    ).toMatchObject({ kind: 'rejected', layer: 'undeclared' });
     expect(
       judge(
         {

@@ -110,6 +110,7 @@ import {
 import { artifactModelFor, materializeSpawnArtifacts } from './service-artifacts';
 import { execConfirmationDecision, persistRejection } from './service-confirmation';
 import { engineEventToAppend as toAppend } from './service-event-append';
+import { persistFailedAgentDispatchCallback } from './service-capability-callback';
 import { execThreadAction } from './service-thread';
 import { createSitemapReaders, type MetaSitemap } from './service-sitemaps';
 import { freezeSpecCore, toRenderSpec, type FreezeSpecResult } from './service-render-specs';
@@ -117,7 +118,12 @@ import { freezeSpecCore, toRenderSpec, type FreezeSpecResult } from './service-r
 export { LlmArtifactConfigurationError } from './service-artifacts';
 export type { MetaSitemap } from './service-sitemaps';
 export type { FreezeSpecResult } from './service-render-specs';
-import { CONFIRMATION_REL_PREFIX, isMetaRel, paramsWithOrigins } from './service-request';
+import {
+  capabilityArtifactsForRequest,
+  CONFIRMATION_REL_PREFIX,
+  isMetaRel,
+  paramsWithOrigins,
+} from './service-request';
 export { CONFIRMATION_REL_PREFIX, isMetaRel, paramsWithOrigins } from './service-request';
 
 /**
@@ -457,7 +463,11 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
                 policyScope: spawnPolicyScope,
                 actionParams: aliased.params ?? {},
                 source: { rel: sourceInstance.rel, fields: sourceInstance.fields },
-                artifacts: {},
+                artifacts: capabilityArtifactsForRequest(
+                  aliased,
+                  logState.snapshot,
+                  sourceInstance.rel,
+                ),
               },
               {
                 nativeFunctionProfiles,
@@ -517,40 +527,7 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
             onDoneAction: event['on-done'],
             onErrorAction: event['on-error'],
           });
-          if (run.status === 'failed') {
-            const callbackAction = run.source.onErrorAction;
-            if (callbackAction === undefined) {
-              throw new Error('failed capability dispatch has no declared on-error action');
-            }
-            const callback = executeWithGates(
-              {
-                rel: run.source.rel,
-                action: callbackAction,
-                actor: 'agent',
-                principal: `system:capability:${run.runId}`,
-                channel: 'capability-callback',
-                params: {
-                  runId: run.runId,
-                  reason: run.failure?.reason ?? 'capability dispatch failed',
-                },
-              },
-              logState.snapshot,
-              gateDeps(),
-            );
-            if (callback.kind !== 'executed') {
-              throw new Error(
-                `failed capability dispatch callback rejected: ${
-                  callback.kind === 'rejected' ? callback.reason : 'confirmation suspended'
-                }`,
-              );
-            }
-            await appendBatchWithSeq(
-              db,
-              logState,
-              callback.events.map((event) => toAppend(event)),
-            );
-            logState.snapshot = callback.snapshot;
-          }
+          await persistFailedAgentDispatchCallback(db, logState, run, gateDeps());
         }
         applyForeignGaps(logState);
 

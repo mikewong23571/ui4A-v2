@@ -55,6 +55,7 @@ const invocation = {
       version: profile.version,
       handlerRef: profile.handlerRef,
       adapterVersion: profile.adapterVersion,
+      limitsHash: hash,
     },
     inputContract: { hash, schema: { type: 'object' } },
     outputContract: { hash, schema: { type: 'object' } },
@@ -81,6 +82,7 @@ describe('Native Function Temporal client', () => {
       args: [{ executionId, invocation, profile }],
       taskQueue: 'ui4a-function-test',
       workflowId: `function-${executionId}`,
+      memo: { invocationHash: hashCanonicalAgentJson(invocation as never) },
     });
   });
 

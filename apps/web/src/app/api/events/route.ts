@@ -5,6 +5,7 @@ import {
   requestIdentityProfile,
   resolveTrustedRequestIdentity,
 } from '../../../auth/request-identity';
+import { reachableForGranted } from '../../../auth/application-scope';
 
 // GET /api/events — 事件日志只读审计端点(spec FR2 / I6):
 // - 默认 seq 升序返回原始事件(kind/reason 原样,拒绝即数据);
@@ -88,6 +89,13 @@ export async function GET(request: Request) {
   const principal = headerPrincipal ?? queryPrincipal;
 
   try {
+    let productionAudience:
+      | {
+          snapshot: ReturnType<Awaited<ReturnType<typeof getEngine>>['getSnapshot']>;
+          sitemap: ReturnType<Awaited<ReturnType<typeof getEngine>>['getSitemap']>;
+          grantedApplications: readonly string[];
+        }
+      | undefined;
     // production:不信任 header/query 身份,先建立 credential identity;principal 过滤
     // 只允许收窄到 credential 自身(审计读,无过滤时返回全部,不做 rel scope 断言)。
     if (requestIdentityProfile() === 'production') {
@@ -103,6 +111,11 @@ export async function GET(request: Request) {
           { status: 403 },
         );
       }
+      productionAudience = {
+        snapshot: engine.getSnapshot(),
+        sitemap: engine.getSitemap(),
+        grantedApplications: identity.grantedApplications,
+      };
     }
     const rows = await listEvents(getDb(), afterSeq, {
       ...(domain === null
@@ -119,7 +132,24 @@ export async function GET(request: Request) {
       ...(beforeSeq === undefined ? {} : { beforeSeq }),
     });
     const hasMore = rows.length > limit;
-    const events = rows.slice(0, limit);
+    const scanned = rows.slice(0, limit);
+    const events =
+      productionAudience === undefined
+        ? scanned
+        : scanned.filter(
+            (event) =>
+              event.rel === null ||
+              reachableForGranted(
+                {
+                  snapshot: productionAudience.snapshot,
+                  sitemap: productionAudience.sitemap,
+                  plane: 'business',
+                },
+                event.rel,
+                productionAudience.grantedApplications,
+              ),
+          );
+    const nextSeq = scanned.at(-1)?.seq;
     return Response.json(
       order === 'asc'
         ? {
@@ -127,7 +157,7 @@ export async function GET(request: Request) {
             page: {
               limit,
               hasMore,
-              nextAfterSeq: hasMore ? (events.at(-1)?.seq ?? afterSeq) : null,
+              nextAfterSeq: hasMore ? (nextSeq ?? afterSeq) : null,
             },
           }
         : {
@@ -135,7 +165,7 @@ export async function GET(request: Request) {
             page: {
               limit,
               hasMore,
-              nextBeforeSeq: hasMore ? (events.at(-1)?.seq ?? beforeSeq ?? null) : null,
+              nextBeforeSeq: hasMore ? (nextSeq ?? beforeSeq ?? null) : null,
             },
           },
     );

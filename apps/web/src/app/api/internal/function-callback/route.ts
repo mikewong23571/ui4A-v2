@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { parseNativeFunctionCallbackClaim } from '@ui4a/shared';
+import { NATIVE_FUNCTION_OUTPUT_BYTES_MAX, parseNativeFunctionCallbackClaim } from '@ui4a/shared';
 
 import { finalizeNativeFunctionSource } from '../../../../engine/capability/finalize';
 import { getDb } from '../../../../engine/service';
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   }
   let claim;
   try {
-    claim = parseNativeFunctionCallbackClaim(body, 1_048_576);
+    claim = parseNativeFunctionCallbackClaim(body, NATIVE_FUNCTION_OUTPUT_BYTES_MAX);
   } catch (error) {
     return Response.json(
       { error: error instanceof Error ? error.message : String(error) },

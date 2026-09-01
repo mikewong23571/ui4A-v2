@@ -10,7 +10,10 @@ import { seedGuardRegistry, type DraftValidation } from '@ui4a/shared';
 import { getDraftByOwner } from '@ui4a/db/drafts';
 import { appendEvent, type DbExecutor } from '@ui4a/db/events';
 import type { EngineRuntime } from '../service';
-import { codingExecutorProfileRegistryFromEnvironment } from '../agent/coding-executor-config';
+import {
+  capabilityExecutorClassRegistryFromEnvironment,
+  nativeFunctionActivationRegistryFromEnvironment,
+} from '../capability/profile-config';
 
 import {
   projectExactDraft,
@@ -34,7 +37,8 @@ export function registries(snapshot: ReturnType<EngineRuntime['getSnapshot']>) {
     applications: new Set(Object.keys(snapshot.applications ?? {})),
     capabilities: new Set(Object.keys(snapshot.capabilities ?? {})),
     capabilityDefinitions: snapshot.capabilities ?? {},
-    executorProfiles: codingExecutorProfileRegistryFromEnvironment(),
+    executorProfiles: capabilityExecutorClassRegistryFromEnvironment(),
+    nativeFunctionProfiles: nativeFunctionActivationRegistryFromEnvironment(),
   };
 }
 

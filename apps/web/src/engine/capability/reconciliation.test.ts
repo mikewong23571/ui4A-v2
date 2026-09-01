@@ -62,6 +62,7 @@ function db(receipts: string[] = []): DbExecutor {
                         version: profile.version,
                         handlerRef: profile.handlerRef,
                         adapterVersion: profile.adapterVersion,
+                        limitsHash: hash,
                       },
                       inputContract: { hash, schema: { type: 'object' } },
                       outputContract: { hash, schema: { type: 'object' } },
@@ -107,7 +108,7 @@ function db(receipts: string[] = []): DbExecutor {
 describe('Native Function spawn outbox reconciliation', () => {
   it('starts one persisted orphan using its birth-pinned profile and deterministic identity', async () => {
     dispatchNativeFunction.mockClear();
-    const result = await reconcilePersistedNativeFunctions(db(), new Map([[profile.ref, profile]]));
+    const result = await reconcilePersistedNativeFunctions(db());
     expect(result.started).toHaveLength(1);
     expect(dispatchNativeFunction).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -119,8 +120,9 @@ describe('Native Function spawn outbox reconciliation', () => {
   });
 
   it('delivers persisted birth-pinned work even when current profile config is empty', async () => {
+    dispatchNativeFunction.mockClear();
     const database = db();
-    await expect(reconcilePersistedNativeFunctions(database, new Map())).resolves.toMatchObject({
+    await expect(reconcilePersistedNativeFunctions(database)).resolves.toMatchObject({
       started: [expect.stringMatching(/^nf-/)],
     });
     expect(database.query).toHaveBeenCalled();

@@ -6,9 +6,10 @@ import type { EngineEvent } from '@ui4a/engine';
 import {
   nativeFunctionExecutionIdentity,
   prepareCapabilityDispatch,
+  preparedNativeFunctionDetail,
   reconcileNativeFunctionSpawns,
   selectAuthorizedCapabilityArtifacts,
-  startPersistedCapabilityDispatch,
+  startNativeFunctionDispatch,
   type NativeFunctionStartInput,
 } from './dispatch';
 
@@ -173,7 +174,11 @@ describe('Capability executor dispatch composition', () => {
     if (dispatch.kind !== 'native-function') throw new Error('wrong executor kind');
     const append = vi.fn<(event: Record<string, unknown>) => Promise<number>>(async () => 42);
     const start = vi.fn<(input: NativeFunctionStartInput) => Promise<void>>(async () => undefined);
-    const result = await startPersistedCapabilityDispatch(dispatch.prepared, { append, start });
+    const sourceSeq = await append({
+      kind: 'spawn-requested',
+      detail: { nativeFunction: preparedNativeFunctionDetail(dispatch.prepared) },
+    });
+    const result = await startNativeFunctionDispatch(dispatch.prepared, sourceSeq, { start });
     expect(append).toHaveBeenCalledBefore(start);
     expect(append.mock.calls[0]![0]).toMatchObject({
       kind: 'spawn-requested',
@@ -199,6 +204,7 @@ describe('Capability executor dispatch composition', () => {
             version: profile.version,
             handlerRef: profile.handlerRef,
             adapterVersion: profile.adapterVersion,
+            limitsHash: hash,
           },
           inputContract: { hash, schema: { type: 'object' } },
           outputContract: { hash, schema: { type: 'object' } },

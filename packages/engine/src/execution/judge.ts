@@ -44,6 +44,8 @@ export interface ExecRequest {
   channel?: string;
   /** Trusted HTTP-boundary provenance; deliberately excluded from declaration/guard/schema. */
   identity?: RequestIdentityAudit;
+  /** Set only by a deployment-authenticated capability callback composition. */
+  trustedIngress?: 'capability-callback';
   /**
    * 上游机械 effect gate 已核验的用户原话索引。引擎不据此放行动作；它只随
    * 裁决事件留痕，审计投影会再次对 append-only user message 做引用校验。
@@ -166,6 +168,9 @@ export function judge(
       'undeclared',
       `动作 "${request.action}" 未声明于节点 "${node.name}"(流程 "${flow.name}")`,
     );
+  }
+  if (action.internal === 'capability-callback' && request.trustedIngress !== action.internal) {
+    return reject('undeclared', `动作 "${request.action}" 未声明于公开合同(流程 "${flow.name}")`);
   }
 
   // ② guard 层:全部求值,任一 false 即拒,原因含谓词名与求值结果。

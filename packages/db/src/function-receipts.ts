@@ -1,5 +1,5 @@
 import type { NativeFunctionReceiptV1 } from '@ui4a/shared';
-import { parseNativeFunctionReceipt } from '@ui4a/shared';
+import { NATIVE_FUNCTION_OUTPUT_BYTES_MAX, parseNativeFunctionReceipt } from '@ui4a/shared';
 import { canonicalAgentJson } from '@ui4a/engine';
 
 import {
@@ -9,8 +9,6 @@ import {
   type DbExecutor,
   type EventAppend,
 } from './events';
-
-const MAX_RECEIPT_OUTPUT_BYTES = 1_048_576;
 
 async function readReceiptFrom(
   db: DbExecutor,
@@ -25,7 +23,7 @@ async function readReceiptFrom(
   const detail = result.rows[0]?.detail;
   return detail === undefined
     ? undefined
-    : parseNativeFunctionReceipt(detail, MAX_RECEIPT_OUTPUT_BYTES);
+    : parseNativeFunctionReceipt(detail, NATIVE_FUNCTION_OUTPUT_BYTES_MAX);
 }
 
 export function readNativeFunctionReceipt(
@@ -37,14 +35,18 @@ export function readNativeFunctionReceipt(
 
 export async function commitNativeFunctionFinalization(
   db: ConnectableDb,
-  input: { receipt: NativeFunctionReceiptV1; coreEvents: readonly EventAppend[] },
+  input: {
+    receipt: NativeFunctionReceiptV1;
+    sourceRel: string;
+    coreEvents: readonly EventAppend[];
+  },
 ): Promise<{
   deduplicated: boolean;
   receipt: NativeFunctionReceiptV1;
   receiptSeq?: number;
   coreSeqs: number[];
 }> {
-  const receipt = parseNativeFunctionReceipt(input.receipt, MAX_RECEIPT_OUTPUT_BYTES);
+  const receipt = parseNativeFunctionReceipt(input.receipt, NATIVE_FUNCTION_OUTPUT_BYTES_MAX);
   return withDatabaseTransaction(db, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
       receipt.executionId,
@@ -62,7 +64,7 @@ export async function commitNativeFunctionFinalization(
       actor: 'agent',
       principal: `system:capability:${receipt.executionId}`,
       channel: 'native-function-callback',
-      rel: receipt.sourceEventId,
+      rel: input.sourceRel,
       action: receipt.callback.action,
       detail: receipt,
     });

@@ -22,7 +22,10 @@ import type {
 } from '@ui4a/shared';
 import { KNOWN_EFFECT_TYPES, KNOWN_FIELD_TYPES, reachableNodes, terminalNodes } from '@ui4a/shared';
 import type { ActionDefinition, FieldDefinition, FieldType } from '../core/types';
-import { parseCapabilityInputBinding } from '../execution/capability-input-binding';
+import {
+  assertCapabilitySchema,
+  parseCapabilityInputBinding,
+} from '../execution/capability-input-binding';
 import { validateSubmissionPolicy } from '../submission/policy';
 
 /** 检查器依赖的注册表(meta/registries 的运行时子集)。 */
@@ -267,6 +270,21 @@ export function validateDefinition(
                 executorProfileIssues.push(
                   `${where}.effect: Native Function capability requires input/output schemas`,
                 );
+              }
+              if (capability?.kind === 'effect') {
+                executorProfileIssues.push(
+                  `${where}.effect: Native Function external effects require a deferred idempotency protocol`,
+                );
+              }
+              if (capability?.inputSchema !== undefined && capability.outputSchema !== undefined) {
+                try {
+                  assertCapabilitySchema(capability.inputSchema, 'Native Function input schema');
+                  assertCapabilitySchema(capability.outputSchema, 'Native Function output schema');
+                } catch (error) {
+                  executorProfileIssues.push(
+                    `${where}.effect: ${error instanceof Error ? error.message : String(error)}`,
+                  );
+                }
               }
               try {
                 parseCapabilityInputBinding(effect.bind);

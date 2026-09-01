@@ -43,6 +43,7 @@ export async function finalizeAgentRunSource(
     actor: 'agent',
     principal: `system:capability:${runId}`,
     channel: 'agent-run-callback',
+    trustedIngress: 'capability-callback',
     params: succeeded
       ? {
           runId,

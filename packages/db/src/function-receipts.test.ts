@@ -20,6 +20,7 @@ const receipt: NativeFunctionReceiptV1 = {
     version: '1',
     handlerRef: 'security/cve-enrich@1',
     adapterVersion: 'native-function@1',
+    limitsHash: hash,
   },
   inputHash: hash,
   outcome: {
@@ -47,6 +48,7 @@ describe('Native Function terminal receipt transaction', () => {
   it('atomically appends one capability receipt and its callback core events', async () => {
     const result = await commitNativeFunctionFinalization(pool, {
       receipt,
+      sourceRel: 'cve:CVE-2026-0001',
       coreEvents: [
         {
           kind: 'action-executed',
@@ -65,13 +67,22 @@ describe('Native Function terminal receipt transaction', () => {
   });
 
   it('deduplicates an identical execution and rejects a different invocation hash', async () => {
-    await commitNativeFunctionFinalization(pool, { receipt, coreEvents: [] });
+    await commitNativeFunctionFinalization(pool, {
+      receipt,
+      sourceRel: 'cve:CVE-2026-0001',
+      coreEvents: [],
+    });
     await expect(
-      commitNativeFunctionFinalization(pool, { receipt, coreEvents: [] }),
+      commitNativeFunctionFinalization(pool, {
+        receipt,
+        sourceRel: 'cve:CVE-2026-0001',
+        coreEvents: [],
+      }),
     ).resolves.toMatchObject({ deduplicated: true });
     await expect(
       commitNativeFunctionFinalization(pool, {
         receipt: { ...receipt, invocationHash: `sha256:${'b'.repeat(64)}` },
+        sourceRel: 'cve:CVE-2026-0001',
         coreEvents: [],
       }),
     ).rejects.toThrow(/collision/i);
@@ -84,6 +95,7 @@ describe('Native Function terminal receipt transaction', () => {
     await expect(
       commitNativeFunctionFinalization(pool, {
         receipt,
+        sourceRel: 'cve:CVE-2026-0001',
         coreEvents: [{ kind: 'action-executed', detail: cyclic }],
       }),
     ).rejects.toThrow();

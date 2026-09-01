@@ -89,16 +89,13 @@ export async function notifyWorkflow(confirmation: NotifyConfirmation): Promise<
 // nativeFunctionWorkflow(T43:Capability Port local Adapter)
 // ---------------------------------------------------------------------------
 
-function functionFailure(
-  input: NativeFunctionWorkflowInputV1,
-  error: unknown,
-): NativeFunctionOutcomeV1 {
+function functionFailure(input: NativeFunctionWorkflowInputV1): NativeFunctionOutcomeV1 {
   return {
     schemaVersion: 1,
     status: 'failed',
     failure: {
       code: 'execution-failed',
-      reason: error instanceof Error ? error.message : String(error),
+      reason: 'Native Function execution exhausted its retry policy',
       retryable: false,
     },
     attempt: input.profile.limits.maximumAttempts,
@@ -125,7 +122,7 @@ export async function nativeFunctionWorkflow(
       outcome = await execute.executeNativeFunctionActivity(input);
     } catch (error) {
       if (isCancellation(error)) throw error;
-      outcome = functionFailure(input, error);
+      outcome = functionFailure(input);
     }
     await finalize.finalizeNativeFunctionActivity({ context: input, outcome });
     return outcome;
@@ -134,7 +131,7 @@ export async function nativeFunctionWorkflow(
     const outcome: NativeFunctionOutcomeV1 = {
       schemaVersion: 1,
       status: 'cancelled',
-      reason: error instanceof Error ? error.message : String(error),
+      reason: 'requested',
       attempt: 1,
     };
     await CancellationScope.nonCancellable(() =>

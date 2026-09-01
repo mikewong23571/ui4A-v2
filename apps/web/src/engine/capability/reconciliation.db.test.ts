@@ -100,7 +100,7 @@ describe('Native Function persisted spawn outbox', () => {
         nativeFunction: preparedNativeFunctionDetail(dispatch.prepared),
       },
     });
-    const first = await reconcilePersistedNativeFunctions(pool, new Map([[profile.ref, profile]]));
+    const first = await reconcilePersistedNativeFunctions(pool);
     expect(first.started).toHaveLength(1);
     expect(dispatchNativeFunction).toHaveBeenCalledOnce();
 
@@ -129,12 +129,11 @@ describe('Native Function persisted spawn outbox', () => {
           outcome: 'accepted',
         },
       },
+      sourceRel: event.rel,
       coreEvents: [],
     });
     dispatchNativeFunction.mockClear();
-    await expect(
-      reconcilePersistedNativeFunctions(pool, new Map([[profile.ref, profile]])),
-    ).resolves.toEqual({ started: [] });
+    await expect(reconcilePersistedNativeFunctions(pool)).resolves.toEqual({ started: [] });
     expect(dispatchNativeFunction).not.toHaveBeenCalled();
   });
 });

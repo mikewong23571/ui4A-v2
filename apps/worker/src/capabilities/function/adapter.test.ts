@@ -62,6 +62,7 @@ const invocation: NativeFunctionInvocationV1 = {
       version: profile.version,
       handlerRef: profile.handlerRef,
       adapterVersion: profile.adapterVersion,
+      limitsHash: hashCanonicalAgentJson({ limits: profile.limits, network: profile.network }),
     },
     inputContract: { hash: inputContractHash, schema: inputSchema },
     outputContract: { hash: outputContractHash, schema: outputSchema },

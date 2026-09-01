@@ -17,7 +17,8 @@ const LIMIT_KEYS = new Set([
 ]);
 const MAX_TIMEOUT_MS = 86_400_000;
 const MAX_ATTEMPTS = 10;
-const MAX_PAYLOAD_BYTES = 1_048_576;
+export const NATIVE_FUNCTION_INPUT_BYTES_MAX = 65_536;
+export const NATIVE_FUNCTION_OUTPUT_BYTES_MAX = 256 * 1024;
 const MAX_STRING_LENGTH = 512;
 const HASH_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const CORE_EVENT_PATTERN = /^core:[1-9][0-9]*$/;
@@ -63,6 +64,7 @@ export interface NativeFunctionInvocationV1 {
       version: string;
       handlerRef: string;
       adapterVersion: string;
+      limitsHash: `sha256:${string}`;
     };
     inputContract: { hash: `sha256:${string}`; schema: JsonObject };
     outputContract: { hash: `sha256:${string}`; schema: JsonObject };
@@ -198,8 +200,12 @@ function profileValue(value: unknown, index: number): NativeFunctionProfileV1 {
     MAX_TIMEOUT_MS,
   );
   integer(value.limits.maximumAttempts, `${where}.limits.maximumAttempts`, MAX_ATTEMPTS);
-  integer(value.limits.inputBytes, `${where}.limits.inputBytes`, MAX_PAYLOAD_BYTES);
-  integer(value.limits.outputBytes, `${where}.limits.outputBytes`, MAX_PAYLOAD_BYTES);
+  integer(value.limits.inputBytes, `${where}.limits.inputBytes`, NATIVE_FUNCTION_INPUT_BYTES_MAX);
+  integer(
+    value.limits.outputBytes,
+    `${where}.limits.outputBytes`,
+    NATIVE_FUNCTION_OUTPUT_BYTES_MAX,
+  );
   return value as unknown as NativeFunctionProfileV1;
 }
 
@@ -278,6 +284,7 @@ export function parseNativeFunctionInvocation(value: unknown): NativeFunctionInv
     'version',
     'handlerRef',
     'adapterVersion',
+    'limitsHash',
   ]);
   schemaContract(value.birth.inputContract, `${where}.birth.inputContract`);
   schemaContract(value.birth.outputContract, `${where}.birth.outputContract`);
@@ -296,7 +303,7 @@ export function parseNativeFunctionInvocation(value: unknown): NativeFunctionInv
     parseSourceRef(source, `${where}.input.sources.${key}`);
   }
   hash(value.input.hash, `${where}.input.hash`);
-  integer(value.input.byteLength, `${where}.input.byteLength`, MAX_PAYLOAD_BYTES);
+  integer(value.input.byteLength, `${where}.input.byteLength`, NATIVE_FUNCTION_INPUT_BYTES_MAX);
   return value as unknown as NativeFunctionInvocationV1;
 }
 
@@ -307,7 +314,7 @@ export function parseNativeFunctionOutcome(
   const where = 'nativeFunctionOutcome';
   object(value, where);
   schemaVersion(value.schemaVersion, where);
-  integer(maximumOutputBytes, 'maximumOutputBytes', MAX_PAYLOAD_BYTES);
+  integer(maximumOutputBytes, 'maximumOutputBytes', NATIVE_FUNCTION_OUTPUT_BYTES_MAX);
   integer(value.attempt, `${where}.attempt`, MAX_ATTEMPTS);
   if (value.status === 'succeeded') {
     exactKeys(
@@ -328,7 +335,7 @@ export function parseNativeFunctionOutcome(
     const outputBytes = integer(
       value.outputByteLength,
       `${where}.outputByteLength`,
-      MAX_PAYLOAD_BYTES,
+      NATIVE_FUNCTION_OUTPUT_BYTES_MAX,
     );
     if (outputBytes > maximumOutputBytes) throw new Error(`${where}.output exceeds budget`);
     if (!Array.isArray(value.evidenceRefs) || value.evidenceRefs.length > 64) {
@@ -402,7 +409,13 @@ export function parseNativeFunctionReceipt(
   eventId(value.sourceEventId, `${where}.sourceEventId`);
   hash(value.invocationHash, `${where}.invocationHash`);
   compactRef(value.capability, `${where}.capability`, ['name', 'hash']);
-  compactRef(value.profile, `${where}.profile`, ['ref', 'version', 'handlerRef', 'adapterVersion']);
+  compactRef(value.profile, `${where}.profile`, [
+    'ref',
+    'version',
+    'handlerRef',
+    'adapterVersion',
+    'limitsHash',
+  ]);
   hash(value.inputHash, `${where}.inputHash`);
   parseNativeFunctionOutcome(value.outcome, maximumOutputBytes);
   object(value.callback, `${where}.callback`);

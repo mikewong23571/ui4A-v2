@@ -1,5 +1,7 @@
 import type { ExecRequest } from '@ui4a/engine';
-import type { FieldValue } from '@ui4a/shared';
+import type { EngineSnapshot, FieldValue } from '@ui4a/shared';
+
+import { selectAuthorizedCapabilityArtifacts } from './capability/dispatch';
 
 /** Definition-plane rel discriminator shared by entity and exec routes. */
 export function isMetaRel(rel: string): boolean {
@@ -13,6 +15,19 @@ export function paramsWithOrigins(request: ExecRequest): Record<string, FieldVal
       name,
       { value, origin: request.paramOrigins?.[name] ?? 'intent' },
     ]),
+  );
+}
+
+/** Project the request's same-source artifact references into the sealed Function binder port. */
+export function capabilityArtifactsForRequest(
+  request: ExecRequest,
+  snapshot: EngineSnapshot,
+  sourceRel: string,
+) {
+  return selectAuthorizedCapabilityArtifacts(
+    request.params ?? {},
+    snapshot.artifacts ?? {},
+    sourceRel,
   );
 }
 

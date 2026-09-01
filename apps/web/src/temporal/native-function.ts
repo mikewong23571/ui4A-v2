@@ -1,4 +1,6 @@
 import type { NativeFunctionInvocationV1, NativeFunctionProfileV1 } from '@ui4a/shared';
+import { hashCanonicalAgentJson } from '@ui4a/engine';
+import { WorkflowExecutionAlreadyStartedError } from '@temporalio/client';
 
 import type { NativeFunctionStartInput } from '../engine/capability/dispatch';
 import { getWebTemporalRuntime, resetWebTemporalRuntimeForTests } from './production-runtime';
@@ -22,17 +24,27 @@ export async function dispatchNativeFunction(input: NativeFunctionStartInput): P
     throw new Error('native function workflow identity mismatch');
   }
   const { client, taskQueue } = await getWebTemporalRuntime();
-  await client.workflow.start('nativeFunctionWorkflow', {
-    args: [
-      {
-        executionId: input.executionId,
-        invocation: input.invocation,
-        profile: input.profile,
-      } satisfies NativeFunctionWorkflowArgs,
-    ],
-    taskQueue,
-    workflowId: input.workflowId,
-  });
+  const invocationHash = hashCanonicalAgentJson(input.invocation as never);
+  try {
+    await client.workflow.start('nativeFunctionWorkflow', {
+      args: [
+        {
+          executionId: input.executionId,
+          invocation: input.invocation,
+          profile: input.profile,
+        } satisfies NativeFunctionWorkflowArgs,
+      ],
+      taskQueue,
+      workflowId: input.workflowId,
+      memo: { invocationHash },
+    });
+  } catch (error) {
+    if (!(error instanceof WorkflowExecutionAlreadyStartedError)) throw error;
+    const existing = await client.workflow.getHandle(input.workflowId).describe();
+    if (existing.memo?.invocationHash !== invocationHash) {
+      throw new Error('already-started Native Function invocation does not match persisted birth');
+    }
+  }
 }
 
 export function resetTemporalNativeFunctionClientForTests(): void {

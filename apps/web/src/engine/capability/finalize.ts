@@ -38,33 +38,47 @@ function sourceSeq(sourceEventId: string): number | undefined {
 function sameClaim(
   receipt: NativeFunctionReceiptV1,
   claim: NativeFunctionCallbackClaimV1,
+  outcome: NativeFunctionOutcomeV1,
 ): boolean {
   return (
     receipt.invocationHash === claim.invocationHash &&
-    canonicalAgentJson(receipt.outcome as never) === canonicalAgentJson(claim.outcome as never)
+    canonicalAgentJson(receipt.outcome as never) === canonicalAgentJson(outcome as never)
   );
 }
 
-function validatedOutcome(
+function governedOutcome(
   outcome: NativeFunctionOutcomeV1,
   prepared: NonNullable<Awaited<ReturnType<typeof readPersistedNativeFunctionSpawn>>>['prepared'],
 ): NativeFunctionOutcomeV1 {
   if (outcome.status !== 'succeeded') return outcome;
-  const canonical = canonicalAgentJson(outcome.output as never);
-  const bytes = new TextEncoder().encode(canonical).byteLength;
-  if (
-    bytes !== outcome.outputByteLength ||
-    bytes > prepared.profile.limits.outputBytes ||
-    hashCanonicalAgentJson(outcome.output as never) !== outcome.outputHash
-  ) {
-    throw new Error('function output hash or byte length is invalid');
+  try {
+    const canonical = canonicalAgentJson(outcome.output as never);
+    const bytes = new TextEncoder().encode(canonical).byteLength;
+    if (
+      bytes !== outcome.outputByteLength ||
+      bytes > prepared.profile.limits.outputBytes ||
+      hashCanonicalAgentJson(outcome.output as never) !== outcome.outputHash
+    ) {
+      throw new Error('function output hash or byte length is invalid');
+    }
+    assertCapabilityPayload(
+      prepared.birth.outputContract.schema,
+      outcome.output,
+      'native function callback output',
+    );
+    return outcome;
+  } catch {
+    return {
+      schemaVersion: 1,
+      status: 'failed',
+      failure: {
+        code: 'output-invalid',
+        reason: 'function output failed governed validation',
+        retryable: false,
+      },
+      attempt: outcome.attempt,
+    };
   }
-  assertCapabilityPayload(
-    prepared.birth.outputContract.schema,
-    outcome.output,
-    'native function callback output',
-  );
-  return outcome;
 }
 
 function callbackRequest(
@@ -92,6 +106,7 @@ function callbackRequest(
     actor: 'agent',
     principal: `system:capability:${executionId}`,
     channel: 'native-function-callback',
+    trustedIngress: 'capability-callback',
     params,
     paramOrigins: Object.fromEntries(Object.keys(params).map((name) => [name, 'effect'])),
   };
@@ -111,17 +126,6 @@ export async function finalizeNativeFunctionSource(
       reason: 'source event is invalid',
     };
   }
-  const existing = await readNativeFunctionReceipt(db, claim.executionId);
-  if (existing !== undefined) {
-    return sameClaim(existing, claim)
-      ? { ok: true, deduplicated: true, callback: existing.callback }
-      : {
-          ok: false,
-          status: 409,
-          code: 'idempotency-collision',
-          reason: 'terminal claim differs from the committed receipt',
-        };
-  }
   const spawn = await readPersistedNativeFunctionSpawn(db, seq);
   if (spawn === undefined) {
     return { ok: false, status: 404, code: 'spawn-not-found', reason: 'source spawn not found' };
@@ -139,19 +143,22 @@ export async function finalizeNativeFunctionSource(
       reason: 'callback identity does not match the persisted spawn',
     };
   }
-  let outcome: NativeFunctionOutcomeV1;
-  try {
-    outcome = validatedOutcome(claim.outcome, spawn.prepared);
-  } catch (error) {
-    return {
-      ok: false,
-      status: 422,
-      code: 'output-invalid',
-      reason: error instanceof Error ? error.message : String(error),
-    };
-  }
+  const outcome = governedOutcome(claim.outcome, spawn.prepared);
+  const terminalResult = (receipt: NativeFunctionReceiptV1): NativeFunctionFinalizeResult =>
+    sameClaim(receipt, claim, outcome)
+      ? { ok: true, deduplicated: true, callback: receipt.callback }
+      : {
+          ok: false,
+          status: 409,
+          code: 'idempotency-collision',
+          reason: 'terminal claim differs from the committed receipt',
+        };
+  const existing = await readNativeFunctionReceipt(db, claim.executionId);
+  if (existing !== undefined) return terminalResult(existing);
   const engine = await getEngine(db);
   return engine.runExclusive(async () => {
+    const concurrent = await readNativeFunctionReceipt(db, claim.executionId);
+    if (concurrent !== undefined) return terminalResult(concurrent);
     const snapshot = engine.getSnapshot();
     const flows = Object.fromEntries(
       Object.keys(snapshot.definitions ?? {}).flatMap((name) => {
@@ -196,10 +203,19 @@ export async function finalizeNativeFunctionSource(
       outcome,
       callback,
     };
-    const committed = await commitNativeFunctionFinalization(db, {
-      receipt,
-      coreEvents: events.map((event) => engineEventToAppend(event)),
-    });
+    let committed;
+    try {
+      committed = await commitNativeFunctionFinalization(db, {
+        receipt,
+        sourceRel: spawn.prepared.source.rel,
+        coreEvents: events.map((event) => engineEventToAppend(event)),
+      });
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes('receipt collision')) throw error;
+      const winner = await readNativeFunctionReceipt(db, claim.executionId);
+      if (winner === undefined) throw error;
+      return terminalResult(winner);
+    }
     if (committed.deduplicated) {
       return { ok: true, deduplicated: true, callback: committed.receipt.callback };
     }

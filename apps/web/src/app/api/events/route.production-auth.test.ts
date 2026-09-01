@@ -25,7 +25,11 @@ const mocks = vi.hoisted(() => ({
     })),
     getSitemap: vi.fn(() => ({ surfaces: [] })),
   })),
-  listEvents: vi.fn(async () => [{ seq: 1, kind: 'seed', rel: 'seed:a' }]),
+  listEvents: vi.fn(
+    async (): Promise<Array<{ seq: number; kind: string; rel: string; domain?: string }>> => [
+      { seq: 1, kind: 'seed', rel: 'seed:a' },
+    ],
+  ),
   requestIdentityProfile: vi.fn((): 'local' | 'production' => 'production'),
   resolveTrustedRequestIdentity: vi.fn(),
 }));
@@ -95,7 +99,7 @@ describe('GET /api/events production authentication wiring', () => {
       expect.objectContaining({
         plane: 'business',
         requiredScopes: ['ui4a:read'],
-        authorizedPolicyScopes: ['default', 'publishing'],
+        authorizedPolicyScopes: ['default', 'publishing', 'security'],
       }),
     );
     expect(mocks.listEvents).toHaveBeenCalledWith(

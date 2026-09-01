@@ -1,6 +1,7 @@
 import Ajv from 'ajv';
 
 import type { CapabilityInputSourceRef, FieldValue, JsonValue } from '@ui4a/shared';
+import { NATIVE_FUNCTION_INPUT_BYTES_MAX } from '@ui4a/shared';
 
 import { hashCanonicalAgentJson } from '../agent-definition/parse';
 
@@ -44,6 +45,28 @@ export function assertCapabilityPayload(
       .map((error) => `${error.instancePath || '/'} ${error.message ?? 'is invalid'}`)
       .join('; ');
     throw new Error(`${where} schema rejected: ${detail}`);
+  }
+}
+
+/** Compile one bounded capability schema during activation, before it can become runtime truth. */
+export function assertCapabilitySchema(
+  schema: Record<string, unknown>,
+  where = 'capability schema',
+): void {
+  assertJsonBudget(schema, {
+    maxFields: MAX_BINDINGS,
+    maxDepth: 16,
+    maxNodes: 1024,
+    maxBytes: NATIVE_FUNCTION_INPUT_BYTES_MAX,
+  });
+  const bytes = new TextEncoder().encode(JSON.stringify(schema)).byteLength;
+  if (bytes > NATIVE_FUNCTION_INPUT_BYTES_MAX) throw new Error(`${where} exceeds bytes budget`);
+  try {
+    new Ajv({ allErrors: true, strict: false }).compile(schema);
+  } catch (error) {
+    throw new Error(
+      `${where} is invalid: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
@@ -194,7 +217,11 @@ export function bindCapabilityInput(options: BindCapabilityInputOptions): BoundC
   assertJsonBudget(payload, options.limits);
   const canonical = JSON.stringify(payload);
   const byteLength = new TextEncoder().encode(canonical).byteLength;
-  const maxBytes = positiveLimit(options.limits.maxBytes, 'limits.maxBytes', 65_536);
+  const maxBytes = positiveLimit(
+    options.limits.maxBytes,
+    'limits.maxBytes',
+    NATIVE_FUNCTION_INPUT_BYTES_MAX,
+  );
   if (byteLength > maxBytes) throw new Error('capability input exceeds bytes budget');
 
   assertCapabilityPayload(options.inputSchema, payload, 'capability input');

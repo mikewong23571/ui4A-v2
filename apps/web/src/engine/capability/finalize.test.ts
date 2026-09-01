@@ -108,6 +108,15 @@ const prepared: PreparedNativeFunctionDispatch = {
       version: '1',
       handlerRef: 'security/cve-enrich@1',
       adapterVersion: 'native-function@1',
+      limitsHash: hashCanonicalAgentJson({
+        limits: {
+          startToCloseTimeoutMs: 30_000,
+          maximumAttempts: 3,
+          inputBytes: 16_384,
+          outputBytes: 32_768,
+        },
+        network: 'denied',
+      }),
     },
     inputContract: { hash: hashCanonicalAgentJson(inputSchema), schema: inputSchema },
     outputContract: { hash: hashCanonicalAgentJson(outputSchema), schema: outputSchema },
@@ -225,7 +234,9 @@ describe('Native Function governed finalization', () => {
       coreEvents: [
         expect.objectContaining({
           action: 'enrichment-failed',
-          params: expect.objectContaining({ failure: expect.objectContaining({ origin: 'effect' }) }),
+          params: expect.objectContaining({
+            failure: expect.objectContaining({ origin: 'effect' }),
+          }),
         }),
       ],
     });

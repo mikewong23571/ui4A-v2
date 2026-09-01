@@ -78,6 +78,8 @@ function profileMatchesBirth(
     profile.version === birth.version &&
     profile.handlerRef === birth.handlerRef &&
     profile.adapterVersion === birth.adapterVersion &&
+    hashCanonicalAgentJson({ limits: profile.limits, network: profile.network }) ===
+      birth.limitsHash &&
     profile.executorClass === 'native-function' &&
     profile.availability.status === 'available'
   );
