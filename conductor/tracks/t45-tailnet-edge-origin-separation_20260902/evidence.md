@@ -33,4 +33,30 @@
 - 新建用户 `mike`，enabled、emailVerified、requiredActions 为空。
 - Keycloak password login 验证通过；凭证只保存在 home `0600` 文件
   `/home/mikewong/services/ui4a/operator/private/mike-login.json`，未写入 evidence/log。
-- 实际浏览器 Authorization Code + PKCE 登录等待用户确认后闭环 Track。
+- 用户已确认实际浏览器 Authorization Code + PKCE 登录成功。
+
+## Authentication UX Review Fixes
+
+- 实现提交：`74b3185b89c86898cdb0e803d016cef579cc313b`。
+- 无 session cookie 的 `/` 与 `/meta?query=x` 在页面渲染前返回 307，并保留编码后的
+  `returnTo`；`/.well-known/ui4a.json` 与 `/api/entity?rel=root` 继续返回结构化 401。
+- production 顶栏系统区提供“账户与密码”和 POST“退出登录”；local profile 不显示。
+- `/auth/account` 返回 302 至
+  `https://auth.ui4a.styleofwong.cn/realms/ui4a/account/`，Account Console 返回 200。
+- `/auth/logout` 返回 303，清除 `__Host-ui4a_session` 后回到站点根路径。
+- focused verification：120 passed、3 skipped；production web build、typecheck、lint、
+  governance strict 通过；全量 `pnpm check` 重跑为 3700 passed、15 skipped。
+
+## Authentication UX Deployment
+
+- Release SHA：`74b3185b89c86898cdb0e803d016cef579cc313b`。
+- Web：`sha256:ff913711a0e4577a774907f38f2c6865c1b6c6b3fef41194210e7ddcc4496ae4`。
+- Worker：`sha256:1b55d6c56bb00c82e798ba1e0945f18c85806457aab6b040db3d8ba5d4f82e00`。
+- Runner：`sha256:6cb1f89dee879a736c98d849ea068a5878121ffa14dad9fb3128dc68789b84ba`。
+- `COMPOSE_PREFLIGHT_COMPLETED`、`COMPOSE_UP_COMPLETED`；八个长期服务 healthy；最近部署日志无
+  error/exception/fatal。
+- edge routing 是只读 bind mount；本次新增 account allowlist 后单独重启 edge 使 Caddy 载入新配置，
+  其余长期服务无需再次重启。
+- Retained volume identity hash 仍为
+  `9c1398f8a9f79a648d3ded6b716d8fcd1fa81c42c48724f61a268bc224b13a99`。
+- 部署后清理 home Docker build cache：`5.112GB` → `0B`；未清理数据卷。
