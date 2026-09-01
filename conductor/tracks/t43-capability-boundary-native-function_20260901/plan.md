@@ -6,10 +6,10 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
 
 ## Phase A：用户故事固化与边界探针
 
-- [ ] Task: 固化用户故事与验收矩阵
-  - [ ] 复核 S1–S14 的 human、Assistant、CLI、HTTP、Temporal、DB replay 和 browser 证据
-  - [ ] 明确同一故事的人类/Agent 双执行者路径
-  - [ ] 标注 Safety 故事必须 100% 通过
+- [x] Task: 固化用户故事与验收矩阵 adba00b
+  - [x] 复核 S1–S14 的 human、Assistant、CLI、HTTP、Temporal、DB replay 和 browser 证据
+  - [x] 明确同一故事的人类/Agent 双执行者路径
+  - [x] 标注 Safety 故事必须 100% 通过
 - [ ] Task: 建立当前行为 Red 基线
   - [ ] 为无 `agentDefinition` 的 executable Capability 编写失败测试
   - [ ] 固化当前服务层只允许 Agent Run 派发的限制
