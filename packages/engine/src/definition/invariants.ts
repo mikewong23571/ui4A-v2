@@ -21,7 +21,8 @@ import type {
   GuardRegistry,
 } from '@ui4a/shared';
 import { KNOWN_EFFECT_TYPES, KNOWN_FIELD_TYPES, reachableNodes, terminalNodes } from '@ui4a/shared';
-import type { FieldDefinition, FieldType } from '../core/types';
+import type { ActionDefinition, FieldDefinition, FieldType } from '../core/types';
+import { parseCapabilityInputBinding } from '../execution/capability-input-binding';
 import { validateSubmissionPolicy } from '../submission/policy';
 
 /** 检查器依赖的注册表(meta/registries 的运行时子集)。 */
@@ -50,12 +51,20 @@ export interface DefinitionRegistries {
   /** Capability definitions and configured executor profile classes (T18). */
   capabilityDefinitions?: Readonly<Record<string, CapabilityDefinition>>;
   executorProfiles?: ReadonlyMap<string, string>;
+  /** Server-resolved Native Function handler availability; deployment details remain private. */
+  nativeFunctionProfiles?: ReadonlyMap<
+    string,
+    { executorClass: string; handlerRef: string; available: boolean }
+  >;
 }
 
 interface EffectLike {
   type: string;
   to?: unknown;
   capability?: unknown;
+  bind?: unknown;
+  'on-done'?: unknown;
+  'on-error'?: unknown;
 }
 
 /** 动作的效果列表(单/缺省数组化,不规范化——校验看声明原样)。 */
@@ -74,6 +83,12 @@ export function validateDefinition(
   const effectTypes = registries.effectTypes ?? KNOWN_EFFECT_TYPES;
   const guardNames = new Set(Object.keys(registries.guards));
   const nodeNames = new Set(draft.nodes.map((node) => node.name));
+  const actionsByName = new Map<string, ActionDefinition[]>();
+  for (const node of draft.nodes) {
+    for (const action of node.actions) {
+      actionsByName.set(action.name, [...(actionsByName.get(action.name) ?? []), action]);
+    }
+  }
 
   const edgeIssues: string[] = [];
   const guardIssues: string[] = [];
@@ -82,6 +97,43 @@ export function validateDefinition(
   const capabilityIssues: string[] = [];
   const executorProfileIssues: string[] = [];
   const submissionIssues: string[] = [];
+
+  const validateFunctionCallback = (
+    actionName: unknown,
+    kind: 'success' | 'failure',
+    where: string,
+  ): void => {
+    if (typeof actionName !== 'string' || actionName === '') {
+      executorProfileIssues.push(`${where}: ${kind} callback action is required`);
+      return;
+    }
+    const candidates = actionsByName.get(actionName) ?? [];
+    if (candidates.length !== 1) {
+      executorProfileIssues.push(
+        `${where}: callback action "${actionName}" must resolve exactly once`,
+      );
+      return;
+    }
+    const callback = candidates[0]!;
+    if (callback.internal !== 'capability-callback') {
+      executorProfileIssues.push(
+        `${where}: callback action "${actionName}" must be internal capability ingress`,
+      );
+    }
+    const expected =
+      kind === 'success'
+        ? { executionId: 'text', result: 'json', receipt: 'json' }
+        : { executionId: 'text', failure: 'json' };
+    const fields = new Map((callback.fields ?? []).map((field) => [field.name, field]));
+    for (const [name, type] of Object.entries(expected)) {
+      const field = fields.get(name);
+      if (field === undefined || field.type !== type || field.persist !== false) {
+        executorProfileIssues.push(
+          `${where}: callback action "${actionName}" field ${name} must be ${type} persist:false`,
+        );
+      }
+    }
+  };
 
   if (draft.submission?.mode === 'none' && draft.nodes.some((node) => node.actions.length > 0)) {
     submissionIssues.push('flow submission none cannot expose write actions');
@@ -202,6 +254,44 @@ export function validateDefinition(
             } else if (configuredClass !== requirement.class) {
               executorProfileIssues.push(
                 `${where}.effect: executor profile "${requirement.profile}" class 应为 "${requirement.class}"，实际为 "${configuredClass}"`,
+              );
+            }
+            const capability = registries.capabilityDefinitions[effect.capability];
+            if (requirement.class === 'native-function') {
+              if (requirement.agentDefinition !== undefined) {
+                executorProfileIssues.push(
+                  `${where}.effect: Native Function executor must not declare an Agent Definition`,
+                );
+              }
+              if (capability?.inputSchema === undefined || capability.outputSchema === undefined) {
+                executorProfileIssues.push(
+                  `${where}.effect: Native Function capability requires input/output schemas`,
+                );
+              }
+              try {
+                parseCapabilityInputBinding(effect.bind);
+              } catch (error) {
+                executorProfileIssues.push(
+                  `${where}.effect: invalid Native Function binding: ${
+                    error instanceof Error ? error.message : String(error)
+                  }`,
+                );
+              }
+              const deployed = registries.nativeFunctionProfiles?.get(requirement.profile);
+              if (
+                deployed === undefined ||
+                deployed.executorClass !== requirement.class ||
+                !deployed.available
+              ) {
+                executorProfileIssues.push(
+                  `${where}.effect: Native Function profile "${requirement.profile}" handler is unavailable`,
+                );
+              }
+              validateFunctionCallback(effect['on-done'], 'success', `${where}.effect`);
+              validateFunctionCallback(effect['on-error'], 'failure', `${where}.effect`);
+            } else if (requirement.agentDefinition === undefined) {
+              executorProfileIssues.push(
+                `${where}.effect: Agent executor requires an exact Agent Definition`,
               );
             }
           }
