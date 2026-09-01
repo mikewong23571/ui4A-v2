@@ -1,0 +1,5 @@
+Task: Red — Finalize 与 callback ingress
+Summary: Added DB transaction tests for atomic receipt+core events, identical deduplication, hash collision rejection, rollback on serialization failure, plus protected route tests for credentials, body validation, governed finalization, and structured stale failures.
+Files: packages/db/src/function-receipts.test.ts; apps/web/src/app/api/internal/function-callback/route.test.ts; vitest.db-tests.list.ts
+Verification: expected Red with both suites failing because persistence and route modules do not exist.
+Why: Freeze atomicity and protected ingress before business callback implementation.
