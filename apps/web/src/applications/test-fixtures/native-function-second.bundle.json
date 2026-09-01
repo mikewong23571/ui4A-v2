@@ -1,0 +1,111 @@
+{
+  "schema": "https://ui4a.dev/application-bundle/v1",
+  "bundle": { "name": "native-function-second-fixture", "version": 1 },
+  "applications": [
+    {
+      "name": "reference",
+      "title": "参考转换",
+      "intent": "证明第二个 Function Capability 只增加合同与 Adapter 注册。",
+      "entry": { "target": "flow:reference-normalization", "role": "primary-task" }
+    }
+  ],
+  "capabilities": [
+    {
+      "name": "document.normalize",
+      "title": "规范化文本",
+      "kind": "transform",
+      "intent": "把文本空白规范化为稳定表示，不改变业务语义。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": { "text": { "type": "string" } }
+      },
+      "outputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": { "text": { "type": "string" } }
+      },
+      "scope": { "applications": ["reference"], "flows": ["reference-normalization"] },
+      "executor": { "class": "native-function", "profile": "reference-normalize-default" }
+    }
+  ],
+  "flows": [
+    {
+      "name": "reference-normalization",
+      "title": "参考文本转换",
+      "app": "reference",
+      "initial": "ready",
+      "fields": [{ "name": "text", "type": "text", "title": "文本" }],
+      "nodes": [
+        {
+          "name": "ready",
+          "actions": [
+            {
+              "name": "normalize",
+              "title": "规范化",
+              "to": "running",
+              "effect": [
+                { "type": "transition", "to": "running" },
+                {
+                  "type": "spawn",
+                  "capability": "document.normalize",
+                  "bind": {
+                    "schemaVersion": 1,
+                    "fields": { "text": { "from": "source-field", "name": "text" } }
+                  },
+                  "on-done": "normalized",
+                  "on-error": "normalization-failed"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "running",
+          "actions": [
+            {
+              "name": "normalized",
+              "title": "记录结果",
+              "to": "done",
+              "internal": "capability-callback",
+              "fields": [
+                { "name": "executionId", "type": "text", "persist": false },
+                { "name": "result", "type": "json", "persist": false },
+                { "name": "receipt", "type": "json", "persist": false }
+              ],
+              "effect": [{ "type": "transition", "to": "done" }]
+            },
+            {
+              "name": "normalization-failed",
+              "title": "记录失败",
+              "to": "failed",
+              "internal": "capability-callback",
+              "fields": [
+                { "name": "executionId", "type": "text", "persist": false },
+                { "name": "failure", "type": "json", "persist": false }
+              ],
+              "effect": [{ "type": "transition", "to": "failed" }]
+            }
+          ]
+        },
+        { "name": "done", "actions": [] },
+        { "name": "failed", "actions": [] }
+      ]
+    }
+  ],
+  "seed": {
+    "rel": "seed:native-function-second-fixture",
+    "detail": {
+      "instances": {
+        "reference-text:one": {
+          "rel": "reference-text:one",
+          "flow": "reference-normalization",
+          "node": "ready",
+          "fields": { "text": { "value": "  one   two ", "origin": "default" } }
+        }
+      }
+    }
+  }
+}
