@@ -7,6 +7,7 @@ const evalSpecs = [
   'llm-thinking',
   'scoped-context',
   'working-context',
+  'capability-boundary',
   't15-ai-first-phase-gh',
   't16-real-llm',
 ] as const;
