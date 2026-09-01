@@ -4,7 +4,7 @@
 `intent → initial plan → disposable spike → detailed plan → implementation`，所有正式实现任务执行
 Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git notes 与 Phase checkpoint。
 
-## Phase A：用户故事固化与边界探针
+## Phase A：用户故事固化与边界探针 [checkpoint: 8eb6e58]
 
 - [x] Task: 固化用户故事与验收矩阵 adba00b
   - [x] 复核 S1–S14 的 human、Assistant、CLI、HTTP、Temporal、DB replay 和 browser 证据
@@ -29,11 +29,11 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 在 `DECISIONS.md` 记录新决定后再进入实现
   - [x] 若需要新增依赖，先更新 `tech-stack.md`；否则明确零新增运行时依赖
   - [x] 根据 spike 结果修订后续 Phase 任务，不允许未经证据扩大范围
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
-  - [ ] 复跑 Red 基线和 spike fixture
-  - [ ] 运行 `pnpm governance`
-  - [ ] 审查无第二 Run、无平台泄漏、无 Capability 名称分支
-  - [ ] 记录自治验收证据与 Phase checkpoint
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 8eb6e58
+  - [x] 复跑 Red 基线和 spike fixture
+  - [x] 运行 `pnpm governance`
+  - [x] 审查无第二 Run、无平台泄漏、无 Capability 名称分支
+  - [x] 记录自治验收证据与 Phase checkpoint
 
 ## Phase B：纯合同、绑定与激活门禁
 
