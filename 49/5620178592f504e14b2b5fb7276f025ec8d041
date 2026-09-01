@@ -1,0 +1,5 @@
+Task: Green — 实现纯 binding kernel
+Summary: Added a closed V1 binder for explicit action params, source fields, and already-authorized artifact refs. It records provenance, rejects expression/spread/wildcard/nested destinations, enforces field/depth/node/byte budgets, revalidates input schema, and hashes bounded canonical JSON.
+Files: packages/engine/src/execution/capability-input-binding.ts; packages/engine/src/index.ts
+Verification: 13 focused tests including 100 property runs passed; engine typecheck, ESLint, governance, Prettier, and diff check passed.
+Why: Native handlers must receive only declared typed input, never snapshots or context bags.
