@@ -52,6 +52,12 @@ export {
   specializationAdapterForTask,
 } from './activities/agent-registry';
 export type { AgentSpecializationAdapter } from './activities/agent-shared';
+export {
+  executeNativeFunctionActivity,
+  finalizeNativeFunctionActivity,
+  type NativeFunctionActivities,
+  type NativeFunctionFinalizeInput,
+} from './activities/native-function';
 
 function hostRunnerOrigins(environment: NodeJS.ProcessEnv): Record<string, string> {
   const source = environment.UI4A_HOST_RUNNER_ORIGINS;

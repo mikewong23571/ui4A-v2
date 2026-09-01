@@ -5,6 +5,7 @@ import type {
   NativeFunctionProfileV1,
   NativeFunctionWorkflowInputV1,
 } from '@ui4a/shared';
+import { hashCanonicalAgentJson } from '@ui4a/engine';
 
 import {
   createNativeFunctionHandlerRegistry,
@@ -42,6 +43,9 @@ const outputSchema = {
   required: ['severity'],
   properties: { severity: { type: 'string' } },
 };
+const inputContractHash = hashCanonicalAgentJson(inputSchema);
+const outputContractHash = hashCanonicalAgentJson(outputSchema);
+const inputHash = hashCanonicalAgentJson({ cveId: 'CVE-2026-0001' });
 const invocation: NativeFunctionInvocationV1 = {
   schemaVersion: 1,
   source: {
@@ -59,15 +63,15 @@ const invocation: NativeFunctionInvocationV1 = {
       handlerRef: profile.handlerRef,
       adapterVersion: profile.adapterVersion,
     },
-    inputContract: { hash, schema: inputSchema },
-    outputContract: { hash, schema: outputSchema },
+    inputContract: { hash: inputContractHash, schema: inputSchema },
+    outputContract: { hash: outputContractHash, schema: outputSchema },
   },
   callback: { onDoneAction: 'enrichment-succeeded', onErrorAction: 'enrichment-failed' },
   input: {
     payload: { cveId: 'CVE-2026-0001' },
     sources: {},
-    hash,
-    byteLength: 27,
+    hash: inputHash,
+    byteLength: 25,
   },
 };
 

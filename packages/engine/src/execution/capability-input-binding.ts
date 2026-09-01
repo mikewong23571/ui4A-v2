@@ -32,6 +32,21 @@ export interface CapabilityInputLimits {
   maxBytes: number;
 }
 
+export function assertCapabilityPayload(
+  schema: Record<string, unknown>,
+  payload: unknown,
+  where = 'capability payload',
+): void {
+  const ajv = new Ajv({ allErrors: true, strict: false });
+  const validate = ajv.compile(schema);
+  if (!validate(payload)) {
+    const detail = (validate.errors ?? [])
+      .map((error) => `${error.instancePath || '/'} ${error.message ?? 'is invalid'}`)
+      .join('; ');
+    throw new Error(`${where} schema rejected: ${detail}`);
+  }
+}
+
 interface BindCapabilityInputOptions {
   binding: CapabilityInputBindingV1 | unknown;
   actionParams: Record<string, unknown>;
@@ -182,14 +197,7 @@ export function bindCapabilityInput(options: BindCapabilityInputOptions): BoundC
   const maxBytes = positiveLimit(options.limits.maxBytes, 'limits.maxBytes', 65_536);
   if (byteLength > maxBytes) throw new Error('capability input exceeds bytes budget');
 
-  const ajv = new Ajv({ allErrors: true, strict: false });
-  const validate = ajv.compile(options.inputSchema);
-  if (!validate(payload)) {
-    const detail = (validate.errors ?? [])
-      .map((error) => `${error.instancePath || '/'} ${error.message ?? 'is invalid'}`)
-      .join('; ');
-    throw new Error(`capability input schema rejected: ${detail}`);
-  }
+  assertCapabilityPayload(options.inputSchema, payload, 'capability input');
   return {
     payload,
     sources,

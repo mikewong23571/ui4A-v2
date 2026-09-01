@@ -39,8 +39,13 @@ import type {
   RejectionRecord,
   TrailStep,
 } from '@ui4a/agent';
+import type { NativeFunctionOutcomeV1, NativeFunctionWorkflowInputV1 } from '@ui4a/shared';
 
-import type { DelegationActivities, NotifyActivities } from './activities';
+import type {
+  DelegationActivities,
+  NativeFunctionActivities,
+  NotifyActivities,
+} from './activities';
 import type {
   AgentExecutionNeedsInput,
   AgentExecutionWaitingApproval,
@@ -78,6 +83,65 @@ const { notify } = proxyActivities<NotifyActivities>({
 /** 送达一条确认通知:单 activity,幂等;同名 workflowId 重跑安全。 */
 export async function notifyWorkflow(confirmation: NotifyConfirmation): Promise<void> {
   await notify(confirmation);
+}
+
+// ---------------------------------------------------------------------------
+// nativeFunctionWorkflow(T43:Capability Port local Adapter)
+// ---------------------------------------------------------------------------
+
+function functionFailure(
+  input: NativeFunctionWorkflowInputV1,
+  error: unknown,
+): NativeFunctionOutcomeV1 {
+  return {
+    schemaVersion: 1,
+    status: 'failed',
+    failure: {
+      code: 'execution-failed',
+      reason: error instanceof Error ? error.message : String(error),
+      retryable: false,
+    },
+    attempt: input.profile.limits.maximumAttempts,
+  };
+}
+
+/** Durable single-Activity Function execution with a non-cancellable governed finalize. */
+export async function nativeFunctionWorkflow(
+  input: NativeFunctionWorkflowInputV1,
+): Promise<NativeFunctionOutcomeV1> {
+  const execute = proxyActivities<Pick<NativeFunctionActivities, 'executeNativeFunctionActivity'>>({
+    startToCloseTimeout: `${input.profile.limits.startToCloseTimeoutMs}ms`,
+    retry: { maximumAttempts: input.profile.limits.maximumAttempts },
+  });
+  const finalize = proxyActivities<
+    Pick<NativeFunctionActivities, 'finalizeNativeFunctionActivity'>
+  >({
+    startToCloseTimeout: '30 seconds',
+    retry: { maximumAttempts: 5 },
+  });
+  try {
+    let outcome: NativeFunctionOutcomeV1;
+    try {
+      outcome = await execute.executeNativeFunctionActivity(input);
+    } catch (error) {
+      if (isCancellation(error)) throw error;
+      outcome = functionFailure(input, error);
+    }
+    await finalize.finalizeNativeFunctionActivity({ context: input, outcome });
+    return outcome;
+  } catch (error) {
+    if (!isCancellation(error)) throw error;
+    const outcome: NativeFunctionOutcomeV1 = {
+      schemaVersion: 1,
+      status: 'cancelled',
+      reason: error instanceof Error ? error.message : String(error),
+      attempt: 1,
+    };
+    await CancellationScope.nonCancellable(() =>
+      finalize.finalizeNativeFunctionActivity({ context: input, outcome }),
+    );
+    throw error;
+  }
 }
 
 // ---------------------------------------------------------------------------
