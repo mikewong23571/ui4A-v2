@@ -158,3 +158,77 @@ fi
 
 这些边界保持 PostgreSQL 单日志为业务真相，不引入 Capability Run，不泄漏部署配置，也不增加
 capability-name/Application-name 分支。
+
+## Native Function durable execution probe
+
+独立 probe 对照当前 notify 单 Activity、Agent Host 恢复/finalize、事件批量追加与 callback 路径，结论
+是首切片不需要新建 Function/Capability Run：
+
+```text
+spawn-requested
+  = durable request + immutable birth record + transactional outbox
+
+Temporal workflow history
+  = retry / crash recovery / cancellation coordination
+
+native-function-finalized
+  = terminal receipt + callback audit
+
+callback Action events
+  = only business truth
+```
+
+`sourceSeq` 是 execution identity 的稳定根；workflow ID 从 source seq 与 birth hash 确定性派生。Handler
+只接收有界 payload、execution ID 与 cooperative AbortSignal，不接收 EngineSnapshot、DB/Web handle、
+principal grants、Sitemap、callback action 或 profile-selection controls。
+
+### Invocation、outcome 与 receipt
+
+正式 wire 应包含：
+
+- source event ID/rel/action/principal/policy scope；
+- birth-pinned capability/profile/handler/adapter 与 input/output contract hashes；
+- 声明的 success/error callback actions；
+- bound payload、逐字段 source refs、input hash 与 byte length；
+- succeeded/failed/cancelled outcome、attempt、output hash/length、evidence refs 或结构化 failure；
+- terminal receipt 的 execution ID、invocation hash 与 callback accepted/rejected/suspended outcome。
+
+成功 callback 用一个结构化 `result` 参数承载 output，并附带 `executionId` 与 receipt 摘要；失败 callback
+使用结构化 failure。全部 callback 参数 origin 固定为 `effect`，避免输出键碰撞或新增 nested-path effect
+语义。
+
+### Finalize 原子性
+
+Finalize 必须在 Web serialized command boundary 内重新读取 exact `spawn-requested`，验证 immutable
+birth/input/outcome hashes，重新校验 output schema 与 byte budget，再通过 `executeWithGates` 裁决 callback。
+同一 PostgreSQL 事务原子追加 capability-domain terminal receipt 与 callback core events；重复 execution
+ID 的相同 outcome 返回既有回执，hash 冲突则拒绝。
+
+现有 `appendBatchWithSeq` 把整批都计为 core event，不能直接用于 capability/core mixed-domain 批次；
+正式实现需要 mixed-domain append helper 或安全泛化，只 fold/count core rows。Terminal receipt 还需要 DB
+唯一约束，不能采用 notify 的 check-then-insert 作为并发幂等依据。
+
+### Dispatch outbox gap
+
+DB 提交 `spawn-requested` 后、Temporal `workflow.start` 前崩溃会遗留 orphan。仅有确定性 workflow ID 不足
+以闭环；正式实现必须把 spawn event 作为 outbox，在 boot 与周期 reconciliation 中扫描未终结 Function
+spawn，并幂等启动相同 workflow ID，不新增 outbox 表。
+
+### First-adapter honesty
+
+Native in-process handler 不能宣称 hard CPU/memory sandbox，也无法强制取消同步 CPU-bound 代码。首切片只
+承诺有界 payload、Temporal deadline/retry、cooperative cancellation 和无阻塞 handler，并仅支持
+pure/idempotent transform/extract。外部 `effect` 需要独立幂等合同，留给后续 Track。
+
+Probe 命令：
+
+```bash
+pnpm vitest run --project unit \
+  packages/engine/src/execution/effects.test.ts \
+  apps/web/src/temporal/agent-run.test.ts \
+  apps/worker/src/agents/host/finalize.test.ts \
+  apps/worker/src/agents/host/temporal.integration.test.ts
+```
+
+独立执行结果：4 files / 32 tests passed，包含真实 Temporal Worker SIGKILL 恢复、Activity retry/resume、
+cancellation 与 non-cancellable terminal finalize；无持久 probe 代码或新依赖。
