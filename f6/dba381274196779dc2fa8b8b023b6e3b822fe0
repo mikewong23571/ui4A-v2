@@ -1,0 +1,5 @@
+Task: Red — Native Function deployment contract
+Summary: Added focused contract tests for strict profiles, network-denied execution, bounded retry/payloads, sealed invocation, terminal outcomes, and receipts.
+Files: packages/shared/src/deployment/native-function.test.ts
+Verification: expected Red exit 1 because ./native-function implementation does not exist; no environment or unrelated failure.
+Why: Freeze the platform-neutral deployment and terminal wire before implementation.
