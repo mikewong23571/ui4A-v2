@@ -30,6 +30,12 @@ LTS 或生产就绪。详见 [release notes](./release/v0.1.0-experimental.1/REL
 [acceptance report](./release/v0.1.0-experimental.1/acceptance-report.json) 与
 [T22 DONE](./conductor/tracks/archive/t22-production-deployment-auth-runtime_20260824/DONE.md)。
 
+T44 于 2026-09-02 将 release `42317d2264a54e1f1e22470da15b754d499e3438` 以同一 T22
+single-replica Compose 合同部署到 `home`：八个长期服务 healthy，Tailnet HTTPS、OIDC 浏览器登录、
+同时 restart 与 retained volume identity 均验收通过。该环境继续继承 internal experiment、non-HA
+与 known vulnerability risk，不扩大为 GA/production-ready。证据见
+[T44 DONE](./conductor/tracks/archive/t44-home-compose-deployment_20260901/DONE.md)。
+
 ### AI-first 用户故事
 
 Assistant 的阅读、总结、比较、解释、多轮目标形成和动态能力发现，以 `conductor/tracks/archive/t15-ai-first-dynamic-assistant_20260822/user-stories.md` 的 U1–U23 为准。验收必须运行配置的真实 LLM；rule/scripted driver 只能证明协议机制，不能证明 Assistant 用户故事成立。

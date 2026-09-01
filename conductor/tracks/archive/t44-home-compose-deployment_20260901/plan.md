@@ -36,7 +36,7 @@ Red → Green，并以 `home` 实机 Ready 与 Tailnet HTTPS 为最终完成条�
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) dfbeee6
   - [x] 运行 focused tests、format、typecheck、lint 与 governance
 
-## Phase C：Home Release 与 Compose 上线 [checkpoint: pending]
+## Phase C：Home Release 与 Compose 上线 [checkpoint: 0d365ec]
 
 - [x] Task: 构建 digest-pinned OCI inventory 42317d2
   - [x] 以 exact release SHA 构建 Web、Worker、Runner linux/amd64 镜像
@@ -55,7 +55,7 @@ Red → Green，并以 `home` 实机 Ready 与 Tailnet HTTPS 为最终完成条�
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 42317d2
   - [x] 记录 preflight、container health、digests 与入口证据
 
-## Phase D：实机验收与闭环 [checkpoint: pending]
+## Phase D：实机验收与闭环 [checkpoint: 0d365ec]
 
 - [x] Task: HTTP、认证与关键页面验收 42317d2
   - [x] 验证首页、Applications、Meta、Siren discovery、OIDC discovery 与版本
