@@ -1,0 +1,5 @@
+Task: Green — 提取通用 dispatch composition
+Summary: Added class-based Agent/Native Function dispatch preparation, sealed birth persistence, deterministic Temporal identity/start, server-owned profile registries, spawn-as-outbox reconciliation, Function activation registry wiring, and service helper decomposition. Existing Agent dispatch remains birth-pinned. Reconciliation scans persisted native spawns and terminal receipts without a second Run.
+Files: apps/web/src/engine/capability/*; apps/web/src/temporal/native-function*; service.ts; service-event-append.ts; service-request.ts; service-confirmation.ts; packages/engine/src/definition/meta.ts
+Verification: dispatcher/profile/Temporal/reconciliation unit suites green; Agent dispatch DB 15 passed; web/engine typecheck, ESLint, governance, Prettier, and diff check passed.
+Why: Close fail-before-append and DB-commit/workflow-start boundaries while keeping the event log as the outbox.
