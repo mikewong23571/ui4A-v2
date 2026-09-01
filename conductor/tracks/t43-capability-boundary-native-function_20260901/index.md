@@ -6,6 +6,8 @@
 - [探针](./spike.md)
 - [架构](./architecture.md)
 - [验收证据](./evidence.md)
+- [Security CVE 桌面截图](./screenshots/security-cve-desktop.png)
+- [Security Work Thread 390px 截图](./screenshots/security-thread-mobile-full.png)
 - [元数据](./metadata.json)
 
 首个垂直切片以 `cve.enrich` 证明 Capability 是 Application 面向外部执行环境的

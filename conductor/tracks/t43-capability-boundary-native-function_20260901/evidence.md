@@ -98,3 +98,46 @@ unit 分支由真实 DB outbox test 补证。所有 workspace typechecks 与 wor
 
 自治验收结论：Phase C 达成；本地 Function Adapter 已形成可恢复、可重放、可审计的受治理执行闭环，
 可以进入真实 Security Application 垂直切片。
+
+## Phase D — Security Application 真实垂直切片 checkpoint
+
+日期：2026-09-01。Checkpoint functional commit：`40045813`。
+
+### 真实双执行者闭环
+
+隔离现场使用 Web `3200`、Worker health `3198`、独立 Temporal task queue 与临时
+`ui4a_t43_acceptance` PostgreSQL database；未停止或修改用户当前 3100/7233 开发栈。验收后 Web/Worker
+正常停止，临时数据库删除，生成 `.next-t43-acceptance` 已移至 Trash，可恢复。
+
+1. **Human renderer/HTTP**：从 `cve:CVE-2026-0001` 的 `enrich-impact` Action 发起，先投影
+   `enriching/正在补充影响信息`，随后 callback 推进 `enriched/影响信息已补充`。
+2. **CLI Agent contract**：`ui4a doctor`、`apps list`、`entities get`、`actions exec --dry-run` 与 live
+   `actions exec` 使用同一 Siren Action；结果同样进入 enriched。
+3. **业务结果**：severity=high、affectedComponents=`ui4a-web/ui4a-worker`、source 明示
+   `reference-catalog:security-v1`，页面常显“受控参考漏洞（非实时情报）”。
+4. **事件链**：human/CLI source Action → spawn → capability terminal receipt → system callback Action；
+   callback 的 executionId/result/receipt 均 `origin=effect`。
+5. **Work Thread**：CLI 经公共 `threads/create` + `thread/attach` 显式挂载 CVE；未 attach 的纯测试证明
+   scope/presence/execution 不自动扩张成员。
+
+### UI、授权、审计与扩展证据
+
+- Desktop 1512×982：CVE 详情显示业务状态、影响信息、参考来源；无 handler/profile/attempt/Temporal。
+- Mobile 390×844/full：Work Thread 显示目标、进行中、显式 CVE 成员和责任动作，布局无横向破坏。
+- D51 正负例：grants=`publishing` 拒绝 Security CVE；grants=`security` 允许。
+- raw audit：`/api/events?domain=capability&kind=function-execution-finalized` 返回完整 handler/profile/hash/
+  attempt/callback receipt，机制信息不进入普通实体。
+- 第二 `document.normalize` fixture 只增加 Bundle、profile 和 handler registration；dispatcher、service、
+  EntityView source audit 无业务名分支。
+
+### 自动化门
+
+- Focused Playwright：Application Directory 四宽度 + HTTP 同源 + Work Thread CLI，共 6 passed。
+- Focused bundle/handler/presentation/auth/event tests 全绿。
+- 首次 full check 的 17 个失败均为旧测试硬编码 10/8/6/22 封闭清单；改为
+  `installedApplicationBundles` 派生后，相关 6 DB suites / 66 tests 通过。
+- 最终 `UI4A_WORKER_HEALTH_PORT=3199 pnpm check`：488 files passed、3672 tests passed、6 skipped；
+  typecheck、lint（仅既有 warnings）、strict governance 全绿。
+
+自治验收结论：Phase D 达成；Security Application 证明新增领域只贡献合同、Adapter registration 与
+参考数据，workstation、Assistant/CLI 合同、Work Thread 和授权机制无需业务特判。

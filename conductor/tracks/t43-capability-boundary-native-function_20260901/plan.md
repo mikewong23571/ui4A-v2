@@ -134,7 +134,7 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 运行 DB replay、幂等、coverage、typecheck、lint 和 governance
   - [x] 记录真实 Temporal checkpoint 证据
 
-## Phase D：Security Application 垂直切片
+## Phase D：Security Application 垂直切片 [checkpoint: 4004581]
 
 - [x] Task: Red — Security Application Bundle ae69afe
   - [x] 定义 `cves`、`cve:<id>` 和最小状态机预期
@@ -166,12 +166,12 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 证明只增加定义、profile 和 handler registration
   - [x] 通过静态/测试门禁禁止 capability-name 与 Application-name dispatcher 分支
   - [x] 证明 workstation、Assistant 和通用投影无需修改
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
-  - [ ] 执行 renderer、HTTP、CLI 三条真实路径
-  - [ ] 验证 Security grant 正例、跨 grant 负例、Work Thread 引用和重放
-  - [ ] 捕获桌面与 390px 证据并目视检查
-  - [ ] 运行 bundle、service、component、DB 与 E2E focused suites
-  - [ ] 记录 checkpoint 证据
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 4004581
+  - [x] 执行 renderer、HTTP、CLI 三条真实路径
+  - [x] 验证 Security grant 正例、跨 grant 负例、Work Thread 引用和重放
+  - [x] 捕获桌面与 390px 证据并目视检查
+  - [x] 运行 bundle、service、component、DB 与 E2E focused suites
+  - [x] 记录 checkpoint 证据
 
 ## Phase E：用户故事验收与 Track 闭环
 
