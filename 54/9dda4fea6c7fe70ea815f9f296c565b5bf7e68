@@ -1,0 +1,5 @@
+Task: 建立当前行为 Red 基线
+Summary: Reproduced the future Function capability contract failure at service.ts before event mutation; documented spawn binding, profile, Agent-only dispatch, callback, and artifact seams. Existing focused suites stayed green.
+Files: conductor/tracks/t43-capability-boundary-native-function_20260901/spike.md
+Verification: expected Red probe exit 1 at service.ts:481; engine effects/invariants 55 passed; native Agent dispatch DB 10 passed; diff and Prettier clean.
+Why: Isolate the missing Function Adapter from baseline or environment failures before architecture decisions.
