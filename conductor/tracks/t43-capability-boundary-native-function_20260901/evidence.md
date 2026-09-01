@@ -141,3 +141,25 @@ unit 分支由真实 DB outbox test 补证。所有 workspace typechecks 与 wor
 
 自治验收结论：Phase D 达成；Security Application 证明新增领域只贡献合同、Adapter registration 与
 参考数据，workstation、Assistant/CLI 合同、Work Thread 和授权机制无需业务特判。
+
+## Phase E — S1–S14 最终验收矩阵
+
+| Story | 可复跑证据 | 结果 |
+| --- | --- | --- |
+| S1 Human Action | `security-presentation.test.tsx` + Phase D live renderer/HTTP | PASS |
+| S2 Agent same Action | dispatcher/contract tests + Phase D CLI live；真实 LLM 单列下一任务 | MECHANICAL PASS |
+| S3 Application 不知道实现 | Security bundle/sitemap deployment-leak scan | PASS |
+| S4 最小输入披露 | binder unit/property + sealed dispatch birth | PASS |
+| S5 合法输出回流 | Worker adapter + finalize + DB receipt + live enriched entity | PASS |
+| S6 非法输出不是事实 | adapter output schema/budget + finalize invalid hash/schema | PASS |
+| S7 异常诚实失败 | retryable/permanent/timeout/cancel + on-error contracts | PASS |
+| S8 重试不重复效果 | partial unique/advisory lock + real Temporal SIGKILL + duplicate callback | PASS |
+| S9 Callback 仍受裁决 | stale-node finalize test records `action-rejected` | PASS |
+| S10 缺配置 | activation/dispatcher missing/unavailable profile tests | PASS |
+| S11 重放一致 | full DB replay suites + receipt/outbox tests | PASS |
+| S12 不暴露机制 | EntityView/Work Thread tests + desktop/mobile screenshots + raw audit split | PASS |
+| S13 第二 Capability | `document.normalize` fixture + source audits + handler registration | PASS |
+| S14 授权隔离 | Security grant positive/negative + sealed handler input | PASS |
+
+最终 focused story command：11 unit files / 72 tests、4 DB files / 16 tests、真实 Temporal 2 tests，全部
+通过。Safety stories S4/S6/S8/S9/S10/S14 的已登记用例无 skip、无失败。

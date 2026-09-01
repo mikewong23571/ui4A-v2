@@ -175,11 +175,11 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
 
 ## Phase E：用户故事验收与 Track 闭环
 
-- [ ] Task: S1–S14 自动化验收
-  - [ ] 建立 Story → 测试 → 证据矩阵
-  - [ ] 人类 renderer 与 CLI/HTTP Agent 路径使用同一 Siren Action
-  - [ ] 覆盖全部成功、失败、授权、并发、恢复和重放故事
-  - [ ] Safety 故事达到 100%
+- [x] Task: S1–S14 自动化验收 8ee8bcf
+  - [x] 建立 Story → 测试 → 证据矩阵
+  - [x] 人类 renderer 与 CLI/HTTP Agent 路径使用同一 Siren Action
+  - [x] 覆盖全部成功、失败、授权、并发、恢复和重放故事
+  - [x] Safety 故事达到 100%
 - [ ] Task: 真实 Assistant 验收
   - [ ] 使用配置的真实 LLM 执行“补充这个 CVE 的影响信息”
   - [ ] 验证 Assistant 选择 Entity Action，而非直接调用 Native Function
