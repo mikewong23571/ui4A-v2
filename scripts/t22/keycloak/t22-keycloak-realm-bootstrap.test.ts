@@ -648,7 +648,7 @@ describe('T22 Keycloak bootstrap executable entrypoint', () => {
     expect(source).toContain('preflightProductionDeploymentFromEnvironment');
     expect(source).toMatch(/settings\.auth\.oidc\.issuer/);
     expect(source).toContain('UI4A_KEYCLOAK_ADMIN_ORIGIN');
-    expect(source).toMatch(/adminOrigin\.hostname.*settings\.keycloak\.host/s);
+    expect(source).toMatch(/adminOrigin\.hostname.*settings\.tls\.keycloakHost/s);
     expect(source).toMatch(/settings\.service\.publicOrigin/);
     expect(source).toMatch(/settings\.keycloak\.bootstrapAdminUser/);
     expect(source).toMatch(/settings\.keycloak\.bootstrapAdminPasswordRef/);

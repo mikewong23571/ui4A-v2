@@ -86,7 +86,7 @@ async function main(): Promise<void> {
   }
   if (
     adminOrigin.protocol !== 'https:' ||
-    adminOrigin.hostname !== settings.keycloak.host ||
+    adminOrigin.hostname !== settings.tls.keycloakHost ||
     adminOrigin.pathname !== '/' ||
     adminOrigin.search !== '' ||
     adminOrigin.hash !== '' ||
