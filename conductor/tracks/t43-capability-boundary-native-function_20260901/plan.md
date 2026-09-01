@@ -161,11 +161,11 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 普通 UI 只显示任务语言、结果、来源和责任点
   - [x] Meta 显示 Capability contract、profile requirement 和 checks
   - [x] raw/audit 显示执行回执
-- [ ] Task: Red→Green — 第二 Capability 可扩展性证明
-  - [ ] 增加第二个 Native Function fixture
-  - [ ] 证明只增加定义、profile 和 handler registration
-  - [ ] 通过静态/测试门禁禁止 capability-name 与 Application-name dispatcher 分支
-  - [ ] 证明 workstation、Assistant 和通用投影无需修改
+- [x] Task: Red→Green — 第二 Capability 可扩展性证明 4004581
+  - [x] 增加第二个 Native Function fixture
+  - [x] 证明只增加定义、profile 和 handler registration
+  - [x] 通过静态/测试门禁禁止 capability-name 与 Application-name dispatcher 分支
+  - [x] 证明 workstation、Assistant 和通用投影无需修改
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
   - [ ] 执行 renderer、HTTP、CLI 三条真实路径
   - [ ] 验证 Security grant 正例、跨 grant 负例、Work Thread 引用和重放
