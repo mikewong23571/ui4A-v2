@@ -3,3 +3,7 @@ Summary: Extended executor-profile-valid to enforce Native Function schemas, bou
 Files: packages/engine/src/definition/invariants.ts; definition/invariants.test.ts; definition/capability-boundary/invariants.test.ts
 Verification: 4 files / 88 tests passed; engine typecheck, ESLint, governance, Prettier, and diff check passed.
 Why: Fail activation before a boundary can dispatch without a valid handler or governed return path.
+
+Phase B verification checkpoint
+Automated: focused 71 tests passed; coverage statements 91.51%, branches 87.62%, functions 94.87%, lines 92.83%; full UI4A_WORKER_HEALTH_PORT=3199 pnpm check -> 474 files, 3624 tests passed, strict governance green.
+Manual-equivalent: confirmed provider-free deployment wire, sealed source/action/artifact binding, no unbound source disclosure, internal callback activation gates, Agent exact-definition preservation, and GR3-compliant module split.
