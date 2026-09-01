@@ -1,0 +1,5 @@
+Task: Red — Native Function registry 与 Activity
+Summary: Added tests for handler-ref routing, duplicate/missing registrations, success validation, invalid/oversized output, retryable vs permanent failure, cooperative cancellation, profile birth drift, and birth-pinned Temporal timeout/attempt options.
+Files: apps/worker/src/capabilities/function/adapter.test.ts
+Verification: expected Red exit 1 because function/adapter implementation does not exist.
+Why: Define the isolated Worker boundary before registering a workflow or handler.
