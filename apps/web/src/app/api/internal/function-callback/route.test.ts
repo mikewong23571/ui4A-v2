@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const finalizeNativeFunctionSource = vi.fn();
-vi.mock('../../../../../engine/capability/finalize', () => ({ finalizeNativeFunctionSource }));
-vi.mock('../../../../../engine/service', () => ({ getDb: () => ({ marker: 'db' }) }));
+const { finalizeNativeFunctionSource } = vi.hoisted(() => ({
+  finalizeNativeFunctionSource: vi.fn(),
+}));
+vi.mock('../../../../engine/capability/finalize', () => ({ finalizeNativeFunctionSource }));
+vi.mock('../../../../engine/service', () => ({ getDb: () => ({ marker: 'db' }) }));
 
 import { POST } from './route';
 

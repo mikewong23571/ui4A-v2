@@ -82,6 +82,14 @@ export interface NativeFunctionWorkflowInputV1 {
   profile: NativeFunctionProfileV1;
 }
 
+export interface NativeFunctionCallbackClaimV1 {
+  schemaVersion: 1;
+  executionId: string;
+  sourceEventId: `core:${number}`;
+  invocationHash: `sha256:${string}`;
+  outcome: NativeFunctionOutcomeV1;
+}
+
 export type NativeFunctionOutcomeV1 =
   | {
       schemaVersion: 1;
@@ -343,6 +351,27 @@ export function parseNativeFunctionOutcome(
     throw new Error(`${where}.status is invalid`);
   }
   return value as unknown as NativeFunctionOutcomeV1;
+}
+
+export function parseNativeFunctionCallbackClaim(
+  value: unknown,
+  maximumOutputBytes: number,
+): NativeFunctionCallbackClaimV1 {
+  const where = 'nativeFunctionCallbackClaim';
+  object(value, where);
+  exactKeys(
+    value,
+    new Set(['schemaVersion', 'executionId', 'sourceEventId', 'invocationHash', 'outcome']),
+    where,
+  );
+  schemaVersion(value.schemaVersion, where);
+  if (typeof value.executionId !== 'string' || !EXECUTION_ID_PATTERN.test(value.executionId)) {
+    throw new Error(`${where}.executionId is invalid`);
+  }
+  eventId(value.sourceEventId, `${where}.sourceEventId`);
+  hash(value.invocationHash, `${where}.invocationHash`);
+  parseNativeFunctionOutcome(value.outcome, maximumOutputBytes);
+  return value as unknown as NativeFunctionCallbackClaimV1;
 }
 
 export function parseNativeFunctionReceipt(

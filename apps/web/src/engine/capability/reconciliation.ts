@@ -10,7 +10,7 @@ import { reconcileNativeFunctionSpawns, type PreparedNativeFunctionDispatch } fr
 import { nativeFunctionProfileMapFromEnvironment } from './profile-config';
 import { dispatchNativeFunction } from '../../temporal/native-function';
 
-interface SpawnRow {
+export interface NativeFunctionSpawnRow {
   seq: string | number;
   rel: string;
   action: string;
@@ -27,7 +27,9 @@ function object(value: unknown, where: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function preparedFromRow(row: SpawnRow): PreparedNativeFunctionDispatch {
+export function preparedNativeFunctionFromRow(
+  row: NativeFunctionSpawnRow,
+): PreparedNativeFunctionDispatch {
   const detail = object(row.detail, 'spawn detail');
   const native = object(detail.nativeFunction, 'spawn nativeFunction');
   const source = object(native.source, 'spawn nativeFunction source');
@@ -76,7 +78,7 @@ export async function reconcilePersistedNativeFunctions(
 ): Promise<{ started: string[] }> {
   if (profiles.size === 0) return { started: [] };
   const [spawnResult, receiptResult] = await Promise.all([
-    db.query<SpawnRow>(
+    db.query<NativeFunctionSpawnRow>(
       `SELECT seq, rel, action, actor, principal, channel, detail
        FROM events
        WHERE domain='core' AND kind='spawn-requested' AND detail ? 'nativeFunction'
@@ -90,13 +92,29 @@ export async function reconcilePersistedNativeFunctions(
   ]);
   const spawns = spawnResult.rows.map((row) => ({
     seq: Number(row.seq),
-    prepared: preparedFromRow(row),
+    prepared: preparedNativeFunctionFromRow(row),
   }));
   return reconcileNativeFunctionSpawns({
     spawns,
     finalizedExecutionIds: new Set(receiptResult.rows.map((row) => row.execution_id)),
     start: dispatchNativeFunction,
   });
+}
+
+export async function readPersistedNativeFunctionSpawn(
+  db: DbExecutor,
+  sourceSeq: number,
+): Promise<{ seq: number; prepared: PreparedNativeFunctionDispatch } | undefined> {
+  const result = await db.query<NativeFunctionSpawnRow>(
+    `SELECT seq, rel, action, actor, principal, channel, detail
+     FROM events
+     WHERE seq=$1 AND domain='core' AND kind='spawn-requested' AND detail ? 'nativeFunction'`,
+    [sourceSeq],
+  );
+  const row = result.rows[0];
+  return row === undefined
+    ? undefined
+    : { seq: Number(row.seq), prepared: preparedNativeFunctionFromRow(row) };
 }
 
 let reconciliationTimer: ReturnType<typeof setInterval> | undefined;

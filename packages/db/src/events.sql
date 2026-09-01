@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE INDEX IF NOT EXISTS events_seq_asc ON events (seq);
 CREATE INDEX IF NOT EXISTS events_domain_seq_asc ON events (domain, seq);
+CREATE UNIQUE INDEX IF NOT EXISTS function_execution_terminal_unique
+  ON events ((detail->>'executionId'))
+  WHERE domain='capability' AND kind='function-execution-finalized';
 
 -- append-only 强制:行级触发器拒绝 UPDATE/DELETE。
 -- TRUNCATE 不触发行级触发器,保留为测试/运维清库口(测试自清理依赖它)。
