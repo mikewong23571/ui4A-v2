@@ -82,3 +82,17 @@ rel=confirmation:c1，principal=user:mike，channel=notify，notificationId=noti
 该误写由本次编排操作造成，已向用户说明并请求“备份后仅移除这条测试记录”的授权。
 未授权前不删除、不清库，不把Track标成完成。当前开发dev:all已重启，但业务读面因
 该单条记录仍不可用。测试已改用临时内存Temporal7235，与开发7233隔离。
+
+## 开发环境恢复结果
+
+- 用户明确授权后，以事务锁定events表；先导出seq524完整行到
+  `/tmp/ui4a-t42-event-524-backup.json`（0600），SHA-256为
+  `ee2e240bfc51f09fad5463abae8885e210ce853249a8b732c3dbdc5edc6f1626`，
+  校验文件为同路径加`.sha256`。
+- append-only触发器先按设计拒绝DELETE，事务回滚。随后在同一锁定事务中临时停用
+  `events_append_only_trigger`，以seq/kind/rel/actor/principal/channel/action/
+  notificationId/1ms时间窗精确匹配并删除1行，立即恢复触发器、确认seq不存在后提交。
+- 未清库、未重排序列、未改其他记录；备份校验通过，可据此手工恢复。
+- 主进程用CLI重新验证：health/business/meta均200；8个Application定义可发现；
+  业务`applications`目录7项（排除system-fallback）；articles保持2项。
+- `pnpm dev:all` 已恢复并继续运行。Track现在满足可运行里程碑要求。

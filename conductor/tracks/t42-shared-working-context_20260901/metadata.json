@@ -3,6 +3,5 @@
   "type": "feature",
   "status": "in_progress",
   "created_at": "2026-09-01",
-  "updated_at": "2026-09-01",
-  "blocked_on": "待用户授权备份并移除开发日志中本次测试误写的单条seq524通知，再恢复应用与归档"
+  "updated_at": "2026-09-01"
 }

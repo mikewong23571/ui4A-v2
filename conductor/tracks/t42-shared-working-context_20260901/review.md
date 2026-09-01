@@ -3,7 +3,7 @@
 ## Summary
 
 按S1–S8审查；代码和故事门禁通过，已发现的授权泄漏、切线和集合标题问题均已修复。
-开发环境仍需用户授权修复编排操作误写的单条通知，Track不能关闭。
+开发环境的单条测试误写已按用户授权完成备份和精确修复，应用与合同读面恢复。
 
 ## Verification Checks
 
@@ -33,9 +33,10 @@
 - **File**: apps/web/src/components/stage/situation-contract.ts。
 - **Resolution**: exact成功但无名称时使用当前授权sitemap标题；403不降级成旧标题。
 
-### [High] 测试队列串入开发Worker（环境恢复待授权）
+### [High] 测试队列串入开发Worker（已修复）
 
 - **Context**: 编排首次运行全E2E时未隔离Temporal，测试通知误写开发日志seq524；
   重放完整性检查因此失败。已定位且未绕过校验。
 - **Prevention**: 测试库与Temporal前置检查已加入并通过；临时缓存统一忽略。
-- **Pending**: 待用户授权后备份并仅移除该误写记录，再验证开发应用恢复。不清库。
+- **Resolution**: 用户授权后备份并仅移除seq524，触发器在同一事务中恢复；CLI确认
+  business/meta/Application目录/文章集合可读。备份SHA-256见evidence；未清库。
