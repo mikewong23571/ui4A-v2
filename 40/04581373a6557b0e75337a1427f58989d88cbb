@@ -2,3 +2,8 @@ Task: Red→Green — 第二 Capability 可扩展性证明
 Summary: Added a non-installed document.normalize transform Bundle fixture, a second network-denied handler registration, and source audits proving generic dispatcher/service/EntityView contain no cve.enrich, document.normalize, or Security routing branches.
 Verification: expected Red from missing fixture, then 4 tests, web/worker typecheck, governance, Prettier, and diff check passed.
 Why: Demonstrate predictable growth by registration rather than per-Capability or per-Application code paths.
+
+Phase D verification checkpoint
+Live: isolated Web 3200 + Worker 3198 + temporary DB; renderer and CLI both executed cve:CVE-2026-0001 enrich-impact to enriched with effect-origin callback. CLI doctor/apps/entity/dry-run/live and explicit thread attach passed. Desktop 1512 and mobile 390 visual inspection passed without Function mechanics.
+Automated: Application directory + Work Thread Playwright 6 passed; final full check 488 files / 3672 tests passed; strict governance green. Security grant negative/positive, raw receipt audit, second Capability extension, replay, and installed-bundle scaling tests passed.
+Cleanup: isolated processes stopped, temporary DB dropped, generated Next dist moved to Trash; user dev stack untouched.
