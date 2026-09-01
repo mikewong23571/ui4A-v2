@@ -166,7 +166,10 @@ T17 把 `ui4a` 定义为 HTTP/Siren/meta 的可安装参考客户端，不是新
 Flow Draft 的 human approval 在同一 PostgreSQL 事务追加
 `definition-candidate-applied` 与 `draft-accepted`。core event 独立重放完整定义、版本、diff、
 checks 与审批 provenance；旧实例保留 bornVersion，新实例读取新 active pointer。CLI 无 LLM、
-approve/reject、身份 flag 或 raw write；local demo 身份仍按 D8/D10 明示为 self-reported。
+approve/reject、身份 flag 或 raw write；local demo 身份仍按 D8/D10 明示为 self-reported。生产 CLI
+按 D63 使用 Keycloak public Device Authorization：offline refresh 只进入 macOS Keychain，access token
+只在内存；`azp=ui4a-cli` 投影为 Agent provenance，永不成为 human approval 通道。既有 realm 通过
+备份后的显式 versioned migration 增加该 client，不恢复启动期通用 reconciliation。
 
 ### 8.4 Coding Capability Executor Host
 

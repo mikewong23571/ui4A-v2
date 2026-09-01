@@ -109,9 +109,13 @@ npm install --global --prefix "$HOME/.local" /tmp/ui4a-pack/*.tgz
 ui4a --json doctor
 ```
 
-Configure `UI4A_BASE_URL`, `UI4A_TOKEN`, `UI4A_PRINCIPAL`, and `UI4A_POLICY_SCOPE`. The local demo
-may run without a token and reports `self-reported-local-demo`; this is not production auth. See
-`apps/cli/README.md` for discovery, action, Bundle, Draft, audit and read-only request commands.
+For production, configure `UI4A_BASE_URL`, `UI4A_ISSUER`, `UI4A_CLIENT_ID=ui4a-cli`, and
+`UI4A_APPLICATIONS`, then run `ui4a auth login`. Device Authorization stores the 90-day offline
+credential only in macOS Keychain and refreshes a 24-hour memory-only access token. The CLI channel is
+always Agent identity and never receives `ui4a:approve`. One-off `UI4A_TOKEN` remains an external
+Bearer override. The local demo may run without a token and reports `self-reported-local-demo`; this
+is not production auth. See `apps/cli/README.md` for discovery, action, Bundle, Draft, audit and
+read-only request commands.
 
 Vitest uses the isolated `ui4a_test` database unless `TEST_DATABASE_URL` overrides it. Never point tests at the development database. Test totals are deliberately not copied into documentation; the command output is authoritative.
 

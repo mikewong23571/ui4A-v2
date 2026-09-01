@@ -48,13 +48,13 @@
 - [x] Task: focused deployment/auth negatives、Web build、governance、`pnpm check` 9b89ffa
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 9b89ffa
 
-## Phase E：Current Deployment 上线与真实验收
+## Phase E：Current Deployment 上线与真实验收 [checkpoint: 9a8622f]
 
-- [ ] Task: 构建 exact SHA linux/amd64 images，更新 home operator digest inventory
-- [ ] Task: 备份并迁移 home realm，preflight/up/status，必要的 edge/Caddy reload
-- [ ] Task: 安装本地 CLI，写入非 secret endpoint config
-- [ ] Task: disposable credential logout/revoke 验收
-- [ ] Task: 真实 Device login，doctor/discovery/read/no-approve 与 Keychain 90 天凭证验收
-- [ ] Task: 公网、日志、retained volume、重启恢复与 secret absence 验收
-- [ ] Task: 更新本地 deployment runbook、同步 home、记录 evidence/DONE 并推送
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: 构建 exact SHA linux/amd64 images，更新 home operator digest inventory 9b89ffa
+- [x] Task: 备份并迁移 home realm，preflight/up/status，必要的 edge/Caddy reload 9360f64
+- [x] Task: 安装本地 CLI，写入非 secret endpoint config 9a8622f
+- [x] Task: disposable credential logout/revoke 验收 e079644
+- [x] Task: 真实 Device login，doctor/discovery/read/no-approve 与 Keychain 90 天凭证验收 9a8622f
+- [x] Task: 公网、日志、retained volume、重启恢复与 secret absence 验收 9a8622f
+- [x] Task: 更新本地 deployment runbook、同步 home、记录 evidence/DONE 并推送 9a8622f
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 9a8622f
