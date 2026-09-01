@@ -20,21 +20,21 @@ Red → Green，并以 `home` 实机 Ready 与 Tailnet HTTPS 为最终完成条�
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
   - [x] 记录空间、路由、镜像 revision 与 readiness 证据
 
-## Phase B：公共 Origin 合同
+## Phase B：公共 Origin 合同 [checkpoint: dfbeee6]
 
-- [~] Task: Red — Operator-defined public origins
-  - [~] 为完整 HTTPS Web/Keycloak origin、默认值、非法 origin 与 canonical settings mismatch 编写失败测试
-  - [ ] 为宿主 edge bind address/port 与内部 listener 分离编写失败测试
-  - [ ] 运行测试并确认预期失败
-- [ ] Task: Green — Compose renderer 与静态投影
-  - [ ] 扩展严格 Compose input、renderer、静态 YAML 和 contracts
-  - [ ] Keycloak hostname、PKI host、edge aliases 与 worker origins 使用同一受控输入
-  - [ ] 保持内部 admin/Runner listener 不公开且默认行为不变
-- [ ] Task: D60 与 runbook
-  - [ ] 在 `DECISIONS.md` 记录 public origin 和内部 listener 分离
-  - [ ] 更新 Compose operator 文档与部署运行手册
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
-  - [ ] 运行 focused tests、format、typecheck、lint 与 governance
+- [x] Task: Red — Operator-defined public origins dfbeee6
+  - [x] 为完整 HTTPS Web/Keycloak origin、默认值、非法 origin 与 canonical settings mismatch 编写失败测试
+  - [x] 为宿主 edge bind address/port 与内部 listener 分离编写失败测试
+  - [x] 运行测试并确认预期失败
+- [x] Task: Green — Compose renderer 与静态投影 dfbeee6
+  - [x] 扩展严格 Compose input、renderer、静态 YAML 和 contracts
+  - [x] Keycloak hostname、PKI host、edge aliases 与 worker origins 使用同一受控输入
+  - [x] 保持内部 admin/Runner listener 不公开且默认行为不变
+- [x] Task: D60 与 runbook dfbeee6
+  - [x] 在 `DECISIONS.md` 记录 public origin 和内部 listener 分离
+  - [x] 更新 Compose operator 文档与部署运行手册
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) dfbeee6
+  - [x] 运行 focused tests、format、typecheck、lint 与 governance
 
 ## Phase C：Home Release 与 Compose 上线
 
