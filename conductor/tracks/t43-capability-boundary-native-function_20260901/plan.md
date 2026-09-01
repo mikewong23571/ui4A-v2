@@ -67,12 +67,12 @@ Red → Green → Refactor，并按 `conductor/workflow.md` 提交、记录 git 
   - [x] 覆盖 callback Action 缺失、非 internal、schema 不相容
   - [x] 覆盖 handler 不可用和非法 Bundle 部署字段
   - [x] 运行测试并确认预期失败
-- [ ] Task: Green — 实现激活门禁
-  - [ ] 扩展 definition registries 和 invariants
-  - [ ] 保持检查在 Application activation 前 fail closed
-  - [ ] Meta checks 投影结构化失败原因
-  - [ ] 不在 renderer 或服务层重复业务判断
-  - [ ] 复跑 definition、Draft、activation 回归套件
+- [x] Task: Green — 实现激活门禁 89dac9c
+  - [x] 扩展 definition registries 和 invariants
+  - [x] 保持检查在 Application activation 前 fail closed
+  - [x] Meta checks 投影结构化失败原因
+  - [x] 不在 renderer 或服务层重复业务判断
+  - [x] 复跑 definition、Draft、activation 回归套件
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
   - [ ] 运行 focused unit tests 与 coverage
   - [ ] 新 pure modules 覆盖率大于 80%，Safety 路径 100%
