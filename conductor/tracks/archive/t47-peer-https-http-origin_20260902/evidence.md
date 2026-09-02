@@ -2,16 +2,29 @@
 
 ## Release
 
-- Git SHA：`2a0c4c4e3a7448eaee8a7e05725cfdacdbae09f4`
-- Build date：`2026-09-02T13:42:34Z`
-- Web：`sha256:216046066c340b5be7354edfeadbc9641f796e6ab40892f4544aed5fe6d6336d`
-- Worker：`sha256:31b26718ce70ecd917672f14391151a872eb11796a296a3c52878bd4c73f942f`
-- Runner：`sha256:c69bcb3772a329c04fd19f28212124f60da711ae4c516778848fef8e2ccd9065`
+- Git SHA：`298d0f9e31e83e7104f9cbb248cef0fca88edfbd`
+- Build date：`2026-09-02T15:48:24Z`
+- Web：`sha256:e4c42a9fc64ffbc33dd79f982f0705e0f91a3264264d99cffb14494f50120efb`
+- Worker：`sha256:4fe27f718fcce37471f66418bcefb73dc3c14e39dce6f4aecf7c60af81ddbd15`
+- Runner：`sha256:5b091f25f1dc2badafe3b8b4b796d307e199292962cf30f5948df3952276ca2d`
 
-Runner component source did not change from `951541aa` to `2a0c4c4e`. Docker Hub base metadata
-timed out repeatedly, so the final Runner image was derived from the verified `951541aa` digest by
-overriding only OCI revision/build-date and release environment. Parent and child
-`RootFS.Layers` were exactly equal.
+Review Fixes 的 Web 使用 exact SHA production build 重打包；Worker 包含 Keycloak Account
+Console migration；Runner 源码未变化，仅覆盖 release metadata/environment。
+
+## Review Fixes：账户与 session 生命周期
+
+- 请求期 `__Host-ui4a_session` cookie 决定生产菜单是否显示“账户与密码”和“退出登录”；不再由
+  image build 时的 `UI4A_DEPLOYMENT_PROFILE` 烘焙 UI。
+- Compose edge 补齐 Keycloak Account Console 所需的 OPTIONS、3p-cookie 与 login-status iframe
+  allowlist；public admin route 仍不开放。
+- 原 realm import 只创建 UI4A scopes，导致 built-in `account-console` token 缺少
+  `resource_access.account.roles` 与 `preferred_username`，Account REST 因而 403。backup-first migration
+  创建并绑定固定 `ui4a:account-console` scope，没有扩大用户或 realm admin 权限。
+- 迁移结果：`migration=already-applied`、`accountConsole=updated`、`origins=already-applied`。快照
+  `realm-data:/var/lib/ui4a/realm/backups/t47-account-console-20260902T1539Z.json` 为 0600，SHA-256
+  `44d424bc6d5477b38572a43fa571caa724eb90a06fe8681ad91776bd4fbf86ed`。
+- Web logout 在 revoke 和本地 session 删除后，携带原 ID Token 进入 Keycloak OIDC RP-Initiated
+  Logout；浏览器最终停在 Keycloak 登录页，不再因残留 SSO cookie 立即无感回登录态。
 
 ## Executable topology
 
@@ -51,6 +64,9 @@ tailnet browser -> HTTPS home Caddy ------HTTP-----------> 100.64.0.2:10443
 - Public `POST /api/chat` without a session: `401 session_not_found`, not
   `400 request_origin_invalid`.
 - Public OIDC discovery/account: 200/302; public admin route remains 404.
+- 登录后的系统菜单显示“账户与密码”和“退出登录”；Account Console 显示 `mike`、Personal info、
+  Account security / Signing in 以及 Password `Update`。
+- POST logout 经过 Keycloak OIDC logout，回到 UI origin 后重新进入登录页；没有自动 callback。
 - Public authenticated Chat returned 200 after the final provider egress change and correctly
   listed one implementation-ready work item.
 - Internal authenticated Chat initially exposed and then verified the canonical self-fetch fix:
@@ -59,13 +75,13 @@ tailnet browser -> HTTPS home Caddy ------HTTP-----------> 100.64.0.2:10443
 
 ## Verification gates
 
-- `pnpm check`: 495 test files passed, 8 skipped; 3753 tests passed, 15 skipped.
+- `pnpm check`: 497 test files passed, 8 skipped; 3760 tests passed, 15 skipped.
 - `pnpm governance:strict`: passed with empty baselines.
 - `pnpm format:check`: passed.
 - Caddy config adapted with the deployed digest; Home reload and aliyun-sz full validate/reload
   succeeded.
-- External runbook local/Home SHA-256 after final release and egress values:
-  `971160c3c25f4abf5e22ca2dff81ee72954304da8b06e24e6bebf849be9b6405`.
+- External runbook local/Home SHA-256 after final synchronization:
+  `2bc86aab8ed1db6ab45f79f00a71feea5fdad211f5ce803fd5469fd17fb7f918`.
 
 ## Provider egress resolution
 

@@ -40,11 +40,11 @@
   - [x] 删除 AppShell 对 build-time deployment env 的 UI 决策
 - [x] Task: Verification & Checkpoint 7c8e133
   - [x] focused tests、Web typecheck、format、strict governance、`pnpm check`、production build
-- [~] Task: Exact SHA 部署与浏览器验收
-  - [ ] 8 服务 healthy；系统菜单显示两个操作项
-  - [ ] “账户与密码”进入 Keycloak Account Console
-  - [ ] POST“退出登录”清 cookie，随后 UI 重新进入登录流程
-- [ ] Task: 更新 evidence/DONE/runbook、重新归档并推送
+- [x] Task: Exact SHA 部署与浏览器验收 298d0f9
+  - [x] 8 服务 healthy；系统菜单显示两个操作项
+  - [x] “账户与密码”进入 Keycloak Account Console，Personal info 与 Password Update 可用
+  - [x] POST“退出登录”清 UI4A session，并经 OIDC logout 结束 Keycloak SSO
+- [x] Task: 更新 evidence/DONE/runbook、重新归档并推送
 
 ## Phase D：端到端验收、文档与关闭 [checkpoint: 2a0c4c4]
 
