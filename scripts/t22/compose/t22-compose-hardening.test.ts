@@ -254,6 +254,12 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     expect(routing).toContain('reverse_proxy keycloak:8080');
     expect(routing).toContain('/realms/ui4a/account');
     expect(routing).toContain('/realms/ui4a/account/*');
+    const keycloakRead = routing.slice(
+      routing.indexOf('@keycloakProtocolRead'),
+      routing.indexOf('@keycloakProtocolWrite'),
+    );
+    expect(keycloakRead).toContain('method GET HEAD OPTIONS');
+    expect(keycloakRead).toContain('/realms/ui4a/protocol/openid-connect/3p-cookies/*');
     expect(stack.services.edge?.environment).toMatchObject({
       UI4A_HOST: 'ui4a.mothership.internal',
       KEYCLOAK_HOST: 'auth.ui4a.mothership.internal',
