@@ -155,6 +155,7 @@ async function main(): Promise<void> {
     admin,
     realmImport: readRealmImport(process.env),
     publicOrigin: config.settings.service.publicOrigin,
+    trustedRequestOrigins: config.settings.service.trustedRequestOrigins,
     backup,
   });
   const accountConsole = await reconcileKeycloakAccountConsole({

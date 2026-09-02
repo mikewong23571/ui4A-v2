@@ -11,6 +11,7 @@ import {
 } from '../../../deploy/keycloak/realm-migration';
 
 const publicOrigin = 'https://ui4a.example';
+const trustedRequestOrigins = [publicOrigin];
 const expected = renderCompatibilityRealmImport(
   JSON.parse(
     readFileSync(
@@ -111,7 +112,13 @@ describe('Keycloak realm v1 to v2 additive migration', () => {
     });
 
     await expect(
-      migrateKeycloakRealmV1ToV2({ admin, realmImport: expected, publicOrigin, backup }),
+      migrateKeycloakRealmV1ToV2({
+        admin,
+        realmImport: expected,
+        publicOrigin,
+        trustedRequestOrigins,
+        backup,
+      }),
     ).resolves.toMatchObject({ outcome: 'migrated', fromVersion: '1', toVersion: '2' });
 
     expect(backup).toHaveBeenCalledTimes(1);
@@ -134,6 +141,7 @@ describe('Keycloak realm v1 to v2 additive migration', () => {
         admin,
         realmImport: expected,
         publicOrigin,
+        trustedRequestOrigins,
         backup: async () => {},
       }),
     ).resolves.toMatchObject({ outcome: 'migrated' });
@@ -145,6 +153,7 @@ describe('Keycloak realm v1 to v2 additive migration', () => {
         admin,
         realmImport: expected,
         publicOrigin,
+        trustedRequestOrigins,
         backup: async () => {
           throw new Error('must not back up an already-applied migration');
         },
@@ -163,6 +172,7 @@ describe('Keycloak realm v1 to v2 additive migration', () => {
         admin: drifted,
         realmImport: expected,
         publicOrigin,
+        trustedRequestOrigins,
         backup: driftBackup,
       }),
     ).rejects.toMatchObject({ code: 'KEYCLOAK_REALM_INCOMPATIBLE' });
@@ -175,6 +185,7 @@ describe('Keycloak realm v1 to v2 additive migration', () => {
         admin: backupFailed,
         realmImport: expected,
         publicOrigin,
+        trustedRequestOrigins,
         backup: async () => {
           throw new Error('disk full');
         },
@@ -191,9 +202,46 @@ describe('Keycloak realm v1 to v2 additive migration', () => {
         admin,
         realmImport: expected,
         publicOrigin,
+        trustedRequestOrigins,
         backup: async () => {},
       }),
     ).rejects.toMatchObject({ code: 'KEYCLOAK_REALM_POSTCHECK_FAILED' });
+  });
+
+  it('accepts a v2 realm with every configured trusted browser origin', async () => {
+    const internalOrigin = 'https://ui4a.home.internal';
+    const rendered = renderCompatibilityRealmImport(expected, publicOrigin, [
+      publicOrigin,
+      internalOrigin,
+    ]);
+    const admin = new FakeMigrationAdmin();
+    admin.realm = {
+      ...admin.realm,
+      attributes: { 'ui4a.experimental.contract.version': '2' },
+      offlineSessionIdleTimeout: 7_776_000,
+      offlineSessionMaxLifespanEnabled: true,
+      offlineSessionMaxLifespan: 15_552_000,
+    };
+    admin.clients = ['ui4a-web', 'ui4a-agent', 'ui4a-api', 'ui4a-cli'].map((clientId) => {
+      const source = rendered.clients.find((candidate) => candidate.clientId === clientId)!;
+      return {
+        ...structuredClone(source),
+        id: `${clientId}-id`,
+        bearerOnly: source.bearerOnly ?? false,
+        secret: undefined,
+      };
+    });
+    admin.composites.push(admin.offlineRole);
+
+    await expect(
+      migrateKeycloakRealmV1ToV2({
+        admin,
+        realmImport: expected,
+        publicOrigin,
+        trustedRequestOrigins: [publicOrigin, internalOrigin],
+        backup: async () => {},
+      }),
+    ).resolves.toEqual({ outcome: 'already-applied', fromVersion: '2', toVersion: '2' });
   });
 });
 

@@ -22,6 +22,7 @@ interface MigrationInput {
   admin: unknown;
   realmImport: RealmImportRepresentation;
   publicOrigin: string;
+  trustedRequestOrigins: readonly string[];
   backup(snapshot: MigrationBackup): Promise<void>;
 }
 
@@ -106,9 +107,11 @@ function normalizedSource(
 
 export async function migrateKeycloakRealmV1ToV2(input: MigrationInput): Promise<MigrationResult> {
   assertMigrationAdmin(input.admin);
-  const expected = renderCompatibilityRealmImport(input.realmImport, input.publicOrigin, [
+  const expected = renderCompatibilityRealmImport(
+    input.realmImport,
     input.publicOrigin,
-  ]);
+    input.trustedRequestOrigins,
+  );
   const realm = await input.admin.getRealm('ui4a');
   if (realm === undefined) {
     return fail('KEYCLOAK_REALM_INCOMPATIBLE', 'The ui4a realm is absent');
