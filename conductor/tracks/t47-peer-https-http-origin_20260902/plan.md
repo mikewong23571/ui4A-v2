@@ -11,12 +11,12 @@
 
 ## Phase B：最小实现
 
-- [~] Task: Green — canonical browser origins、身份绑定与纯 HTTP gateway
-  - [ ] 扩展平台中立 deployment settings 和 Web request-origin/auth adapter
-  - [ ] 扩展 Keycloak Web client callback contract，保持唯一 issuer
-  - [ ] 将 UI/Keycloak public edge listener 改为 HTTP，保留 allowlist 和内部 TLS listener
-  - [ ] 生成 Tailscale-only bind，更新静态 Compose 与 operator inputs
-  - [ ] 记录 superseding DECISIONS 条目并更新 standing deployment docs
+- [x] Task: Green — canonical browser origins、身份绑定与纯 HTTP gateway ab48c43
+  - [x] 扩展平台中立 deployment settings 和 Web request-origin/auth adapter
+  - [x] 扩展 Keycloak Web client callback contract，保持唯一 issuer
+  - [x] 将 UI/Keycloak public edge listener 改为 HTTP，保留 allowlist 和内部 TLS listener
+  - [x] 生成 Tailscale-only bind，更新静态 Compose 与 operator inputs
+  - [x] 记录 superseding DECISIONS 条目并更新 standing deployment docs
 - [ ] Task: Phase A+B Verification & Checkpoint
 
 ## Phase C：Home 原地升级与双入口切换
