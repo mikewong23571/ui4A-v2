@@ -19,23 +19,23 @@
   - [x] 记录 superseding DECISIONS 条目并更新 standing deployment docs
 - [x] Task: Phase A+B Verification & Checkpoint ab48c43
 
-## Phase C：Home 原地升级与双入口切换
+## Phase C：Home 原地升级与双入口切换 [checkpoint: 2a0c4c4]
 
-- [ ] Task: 构建 exact SHA images 与不可变 digest inventory
-- [ ] Task: Home 原地升级
-  - [ ] 备份/核对数据身份，更新 canonical settings 与 operator inputs
-  - [ ] preflight、up、edge reload、八服务 healthy 与 HTTP source-policy probe
-- [ ] Task: 切换 Home 与 aliyun-sz Caddy 为并列 HTTPS -> HTTP
-  - [ ] Home 入口 HTTP 回源同一 gateway
-  - [ ] Aliyun 入口经 Tailscale HTTP 直达同一 gateway并保留 public Host
-- [ ] Task: Phase Verification & Checkpoint
+- [x] Task: 构建 exact SHA images 与不可变 digest inventory 2a0c4c4
+- [x] Task: Home 原地升级 2a0c4c4
+  - [x] 备份/核对数据身份，更新 canonical settings 与 operator inputs
+  - [x] preflight、up、edge reload、八服务 healthy 与 HTTP source-policy probe
+- [x] Task: 切换 Home 与 aliyun-sz Caddy 为并列 HTTPS -> HTTP 2a0c4c4
+  - [x] Home 入口 HTTP 回源同一 gateway
+  - [x] Aliyun 入口经 Tailscale HTTP 直达同一 gateway并保留 public Host
+- [x] Task: Phase Verification & Checkpoint 2a0c4c4
 
 ## Phase D：端到端验收、文档与关闭
 
-- [ ] Task: 公网与 Tailnet 双入口验收
-  - [ ] TLS、live/version、UI/API 未登录分流、OIDC discovery/account/logout
-  - [ ] 公网与内部 Authorization Code + PKCE 登录及 Chat 真实请求
-  - [ ] admin/internal route 负例、重启恢复与日志复核
-- [ ] Task: 同步仓库外部署 runbook 与 Home mirror，比较 SHA-256
+- [~] Task: 公网与 Tailnet 双入口验收
+  - [x] TLS、live/version、UI/API 未登录分流、OIDC discovery/account/logout
+  - [~] 公网与内部 Authorization Code + PKCE 登录及 Chat 真实请求（两入口登录通过；等待 CPA Kimi OAuth 续期后重放最终 Chat）
+  - [x] admin/internal route 负例、重启恢复与日志复核
+- [x] Task: 同步仓库外部署 runbook 与 Home mirror，比较 SHA-256
 - [ ] Task: 完成 evidence/DONE、归档 Track、推送 exact release
 - [ ] Task: Phase Verification & Checkpoint
