@@ -38,9 +38,9 @@
 - [x] Task: Green — 请求期 cookie 驱动的最小 Server/Client 边界 7c8e133
   - [x] 在 Suspense 内读取 `__Host-ui4a_session`，保持 SiteNav 客户端交互与本地行为
   - [x] 删除 AppShell 对 build-time deployment env 的 UI 决策
-- [~] Task: Verification & Checkpoint
-  - [ ] focused tests、Web typecheck、format、strict governance、`pnpm check`、production build
-- [ ] Task: Exact SHA 部署与浏览器验收
+- [x] Task: Verification & Checkpoint 7c8e133
+  - [x] focused tests、Web typecheck、format、strict governance、`pnpm check`、production build
+- [~] Task: Exact SHA 部署与浏览器验收
   - [ ] 8 服务 healthy；系统菜单显示两个操作项
   - [ ] “账户与密码”进入 Keycloak Account Console
   - [ ] POST“退出登录”清 cookie，随后 UI 重新进入登录流程
