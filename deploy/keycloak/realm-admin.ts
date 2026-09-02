@@ -8,6 +8,7 @@ export interface KeycloakAdmin {
 
 export interface KeycloakRealmMigrationAdmin extends KeycloakAdmin {
   createClient(realm: string, client: Record<string, unknown>): Promise<void>;
+  updateClient(realm: string, clientId: string, client: Record<string, unknown>): Promise<void>;
   updateRealm(realm: string, changes: Record<string, unknown>): Promise<void>;
   getRealmRole(realm: string, role: string): Promise<Record<string, unknown>>;
   getRoleComposites(realm: string, roleId: string): Promise<Array<Record<string, unknown>>>;
@@ -43,6 +44,7 @@ export function assertMigrationAdmin(input: unknown): asserts input is KeycloakR
   const candidate = input as Partial<KeycloakRealmMigrationAdmin>;
   if (
     typeof candidate.createClient !== 'function' ||
+    typeof candidate.updateClient !== 'function' ||
     typeof candidate.updateRealm !== 'function' ||
     typeof candidate.getRealmRole !== 'function' ||
     typeof candidate.getRoleComposites !== 'function' ||
@@ -198,6 +200,15 @@ export function createKeycloakAdminClient(input: AdminClientInput): KeycloakReal
         method: 'POST',
         body: JSON.stringify(client),
       });
+      if (!response.ok) {
+        fail('KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED', 'Keycloak Admin request failed');
+      }
+    },
+    async updateClient(realm, clientId, client) {
+      const response = await authorized(
+        `/admin/realms/${encodeURIComponent(realm)}/clients/${encodeURIComponent(clientId)}`,
+        { method: 'PUT', body: JSON.stringify(client) },
+      );
       if (!response.ok) {
         fail('KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED', 'Keycloak Admin request failed');
       }

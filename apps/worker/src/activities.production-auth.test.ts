@@ -47,7 +47,9 @@ async function plannedApi(): Promise<ProductionAgentActivityModule> {
 }
 
 const config = {
-  settings: { service: { publicOrigin: PUBLIC_ORIGIN } },
+  settings: {
+    service: { publicOrigin: PUBLIC_ORIGIN, trustedRequestOrigins: [PUBLIC_ORIGIN] },
+  },
   secrets: {},
 } as unknown as ProductionDeploymentConfig;
 

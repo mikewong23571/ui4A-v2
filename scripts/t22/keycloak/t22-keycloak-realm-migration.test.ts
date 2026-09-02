@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import { renderCompatibilityRealmImport } from '../../../deploy/keycloak/realm-contract';
+import { reconcileKeycloakRealmBrowserOrigins } from '../../../deploy/keycloak/realm-bindings';
 import {
   migrateKeycloakRealmV1ToV2,
   type KeycloakRealmMigrationAdmin,
@@ -18,6 +19,7 @@ const expected = renderCompatibilityRealmImport(
     ),
   ),
   publicOrigin,
+  [publicOrigin],
 );
 
 function sourceClient(clientId: string): Record<string, unknown> {
@@ -61,6 +63,12 @@ class FakeMigrationAdmin implements KeycloakRealmMigrationAdmin {
   async createClient(_realm: string, client: Record<string, unknown>) {
     this.mutations.push('create-client');
     this.clients.push({ ...structuredClone(client), id: 'ui4a-cli-id', bearerOnly: false });
+  }
+
+  async updateClient(_realm: string, clientId: string, client: Record<string, unknown>) {
+    this.mutations.push('update-client');
+    const index = this.clients.findIndex((candidate) => candidate.id === clientId);
+    if (index >= 0) this.clients[index] = structuredClone(client);
   }
 
   async updateRealm(_realm: string, changes: Record<string, unknown>) {
@@ -174,5 +182,72 @@ describe('Keycloak realm v1 to v2 additive migration', () => {
         backup: async () => {},
       }),
     ).rejects.toMatchObject({ code: 'KEYCLOAK_REALM_POSTCHECK_FAILED' });
+  });
+});
+
+describe('Keycloak browser-origin binding reconciliation', () => {
+  function v2Admin(): FakeMigrationAdmin {
+    const admin = new FakeMigrationAdmin();
+    admin.realm = {
+      ...admin.realm,
+      attributes: { 'ui4a.experimental.contract.version': '2' },
+      offlineSessionIdleTimeout: 7_776_000,
+      offlineSessionMaxLifespanEnabled: true,
+      offlineSessionMaxLifespan: 15_552_000,
+    };
+    admin.clients.push({ ...sourceClient('ui4a-cli'), id: 'ui4a-cli-id' });
+    admin.composites.push(admin.offlineRole);
+    return admin;
+  }
+
+  it('backs up and adds the internal callback while retaining the public callback', async () => {
+    const admin = v2Admin();
+    const backup = vi.fn(async () => {
+      expect(admin.mutations).toEqual([]);
+    });
+    const internalOrigin = 'https://ui4a.home-linux.tail.styleofwong.com';
+
+    await expect(
+      reconcileKeycloakRealmBrowserOrigins({
+        admin,
+        realmImport: expected,
+        publicOrigin,
+        trustedRequestOrigins: [publicOrigin, internalOrigin],
+        backup,
+      }),
+    ).resolves.toEqual({ outcome: 'updated' });
+
+    expect(backup).toHaveBeenCalledOnce();
+    expect(admin.mutations).toEqual(['update-client']);
+    const web = admin.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
+    expect(web.redirectUris).toEqual([
+      `${publicOrigin}/api/auth/callback`,
+      `${internalOrigin}/api/auth/callback`,
+    ]);
+  });
+
+  it('is idempotent and rejects unrelated client drift before mutation', async () => {
+    const admin = v2Admin();
+    const internalOrigin = 'https://ui4a.home-linux.tail.styleofwong.com';
+    const input = {
+      admin,
+      realmImport: expected,
+      publicOrigin,
+      trustedRequestOrigins: [publicOrigin, internalOrigin],
+      backup: async () => {},
+    };
+    await reconcileKeycloakRealmBrowserOrigins(input);
+    admin.mutations.length = 0;
+    await expect(reconcileKeycloakRealmBrowserOrigins(input)).resolves.toEqual({
+      outcome: 'already-applied',
+    });
+    expect(admin.mutations).toEqual([]);
+
+    const drifted = v2Admin();
+    drifted.clients.find(({ clientId }) => clientId === 'ui4a-web')!.standardFlowEnabled = false;
+    await expect(
+      reconcileKeycloakRealmBrowserOrigins({ ...input, admin: drifted }),
+    ).rejects.toMatchObject({ code: 'KEYCLOAK_REALM_INCOMPATIBLE' });
+    expect(drifted.mutations).toEqual([]);
   });
 });

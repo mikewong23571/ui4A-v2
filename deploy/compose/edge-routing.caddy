@@ -1,102 +1,124 @@
 {
-  auto_https off
-  admin off
+	auto_https off
+	admin off
+}
+
+:8080 {
+	handle /_edge_live {
+		respond 200
+	}
+
+	@ui4aHost host {$UI4A_PUBLIC_HOST} {$UI4A_INTERNAL_HOST}
+	handle @ui4aHost {
+		@ui4aPublic {
+			method GET HEAD
+			path / /applications /canvas /chat /delegations /entity /events /meta /meta/* /_next/* /favicon.ico /file.svg /globe.svg /next.svg /vercel.svg /window.svg /live /version /api/health /api/render/catalog /auth/login /auth/account /api/auth/callback
+		}
+		handle @ui4aPublic {
+			reverse_proxy web:3100 {
+				header_up X-Forwarded-Proto https
+			}
+		}
+
+		@ui4aPublicWrite {
+			method POST
+			path /auth/logout
+		}
+		handle @ui4aPublicWrite {
+			reverse_proxy web:3100 {
+				header_up X-Forwarded-Proto https
+			}
+		}
+
+		@ui4aAuthenticatedRead {
+			method GET HEAD
+			path /.well-known/ui4a.json /api/entity /api/events /api/chat/history /api/chat/sessions /api/delegations /api/delegations/* /_meta/.well-known/ui4a.json /_meta/api/entity /api/presentation/sidecar
+		}
+		handle @ui4aAuthenticatedRead {
+			reverse_proxy web:3100 {
+				header_up X-Forwarded-Proto https
+			}
+		}
+
+		@ui4aAuthenticatedWrite {
+			method POST
+			path /api/exec /api/exec-plan /api/chat /api/presence /_meta/api/exec /api/presentation /api/presentation/sidecar
+		}
+		handle @ui4aAuthenticatedWrite {
+			reverse_proxy web:3100 {
+				header_up X-Forwarded-Proto https
+			}
+		}
+
+		handle {
+			respond 404
+		}
+	}
+
+	@keycloakHost host {$KEYCLOAK_PUBLIC_HOST} {$KEYCLOAK_INTERNAL_HOST}
+	handle @keycloakHost {
+		@keycloakProtocolRead {
+			method GET HEAD
+			path /realms/ui4a/.well-known/openid-configuration /realms/ui4a/protocol/openid-connect/auth /realms/ui4a/protocol/openid-connect/certs /realms/ui4a/protocol/openid-connect/logout /realms/ui4a/device /realms/ui4a/device/* /realms/ui4a/login-actions/* /realms/ui4a/account /realms/ui4a/account/* /resources/*
+		}
+		handle @keycloakProtocolRead {
+			reverse_proxy keycloak:8080 {
+				header_up X-Forwarded-Proto https
+			}
+		}
+
+		@keycloakProtocolWrite {
+			method POST
+			path /realms/ui4a/protocol/openid-connect/token /realms/ui4a/protocol/openid-connect/revoke /realms/ui4a/protocol/openid-connect/logout /realms/ui4a/protocol/openid-connect/auth/device /realms/ui4a/login-actions/* /realms/ui4a/account /realms/ui4a/account/*
+		}
+		handle @keycloakProtocolWrite {
+			reverse_proxy keycloak:8080 {
+				header_up X-Forwarded-Proto https
+			}
+		}
+
+		handle {
+			respond 404
+		}
+	}
+
+	handle {
+		respond 404
+	}
 }
 
 https://{$UI4A_HOST}:8443 {
-  tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key
-  handle /deliver {
-    reverse_proxy runner:3102
-  }
-
-  @ui4aPublic {
-    method GET HEAD
-    path / /applications /canvas /chat /delegations /entity /events /meta /meta/* /_next/* /favicon.ico /file.svg /globe.svg /next.svg /vercel.svg /window.svg /live /version /api/health /api/render/catalog /auth/login /auth/account /api/auth/callback
-  }
-  handle @ui4aPublic {
-    reverse_proxy web:3100
-  }
-
-  @ui4aPublicWrite {
-    method POST
-    path /auth/logout
-  }
-  handle @ui4aPublicWrite {
-    reverse_proxy web:3100
-  }
-
-  @ui4aAuthenticatedRead {
-    method GET HEAD
-    path /.well-known/ui4a.json /api/entity /api/events /api/chat/history /api/chat/sessions /api/delegations /api/delegations/* /_meta/.well-known/ui4a.json /_meta/api/entity /api/presentation/sidecar
-  }
-  handle @ui4aAuthenticatedRead {
-    reverse_proxy web:3100
-  }
-
-  @ui4aAuthenticatedWrite {
-    method POST
-    path /api/exec /api/exec-plan /api/chat /api/presence /_meta/api/exec /api/presentation /api/presentation/sidecar
-  }
-  handle @ui4aAuthenticatedWrite {
-    reverse_proxy web:3100
-  }
-
-  handle {
-    respond 404
-  }
+	tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key
+	handle /deliver {
+		reverse_proxy runner:3102
+	}
+	handle {
+		respond 404
+	}
 }
 
 https://{$UI4A_HOST}:9444 {
-  tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key
-  handle /deliver {
-    reverse_proxy host-runner:3102
-  }
-  handle {
-    respond 404
-  }
-}
-
-https://{$KEYCLOAK_HOST}:8443 {
-  tls /var/lib/ui4a/ca/keycloak/tls.crt /var/lib/ui4a/ca/keycloak/tls.key
-
-  @keycloakProtocolRead {
-    method GET HEAD
-    path /realms/ui4a/.well-known/openid-configuration /realms/ui4a/protocol/openid-connect/auth /realms/ui4a/protocol/openid-connect/certs /realms/ui4a/protocol/openid-connect/logout /realms/ui4a/device /realms/ui4a/device/* /realms/ui4a/login-actions/* /realms/ui4a/account /realms/ui4a/account/* /resources/*
-  }
-  handle @keycloakProtocolRead {
-    reverse_proxy keycloak:8080
-  }
-
-  @keycloakProtocolWrite {
-    method POST
-    path /realms/ui4a/protocol/openid-connect/token /realms/ui4a/protocol/openid-connect/revoke /realms/ui4a/protocol/openid-connect/logout /realms/ui4a/protocol/openid-connect/auth/device /realms/ui4a/login-actions/* /realms/ui4a/account /realms/ui4a/account/*
-  }
-  handle @keycloakProtocolWrite {
-    reverse_proxy keycloak:8080
-  }
-
-  handle {
-    respond 404
-  }
+	tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key
+	handle /deliver {
+		reverse_proxy host-runner:3102
+	}
+	handle {
+		respond 404
+	}
 }
 
 https://{$KEYCLOAK_HOST}:9443 {
-  tls /var/lib/ui4a/ca/keycloak/tls.crt /var/lib/ui4a/ca/keycloak/tls.key
+	tls /var/lib/ui4a/ca/keycloak/tls.crt /var/lib/ui4a/ca/keycloak/tls.key
 
-  @keycloakAdmin {
-    method GET POST PUT
-    path /realms/master/protocol/openid-connect/token /admin/realms*
-  }
-  handle @keycloakAdmin {
-    reverse_proxy keycloak:8080
-  }
+	@keycloakAdmin {
+		method GET POST PUT
+		path /realms/master/protocol/openid-connect/token /admin/realms*
+	}
+	handle @keycloakAdmin {
+		reverse_proxy keycloak:8080
+	}
 
-  handle {
-    respond 404
-  }
-}
-
-https://127.0.0.1:8443 {
-  tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key
-  respond /_edge_live 200
+	handle {
+		respond 404
+	}
 }

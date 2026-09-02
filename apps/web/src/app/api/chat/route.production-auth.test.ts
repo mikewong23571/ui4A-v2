@@ -42,7 +42,7 @@ vi.mock('../../../temporal/delegation', () => ({
   dispatchDelegation: mocks.dispatchDelegation,
 }));
 
-vi.mock('../../../auth/production-browser-authentication', () => ({
+vi.mock('../../../auth/production/browser-authentication-runtime', () => ({
   getProductionBrowserAuthentication: () => ({ resolveSession: mocks.browserSession }),
 }));
 
@@ -194,7 +194,10 @@ beforeEach(() => {
   mocks.preflight.mockReset();
   mocks.preflight.mockReturnValue({
     settings: {
-      service: { publicOrigin: APP_ORIGIN, trustedRequestOrigins: [APP_ORIGIN, INTERNAL_APP_ORIGIN] },
+      service: {
+        publicOrigin: APP_ORIGIN,
+        trustedRequestOrigins: [APP_ORIGIN, INTERNAL_APP_ORIGIN],
+      },
       auth: {
         mode: 'oidc',
         oidc: {
@@ -360,7 +363,10 @@ describe('production chat turn credential boundary', () => {
     // 接收端授权按授予集合 × 归属逐请求判定。
     mocks.preflight.mockReturnValueOnce({
       settings: {
-        service: { publicOrigin: APP_ORIGIN },
+        service: {
+          publicOrigin: APP_ORIGIN,
+          trustedRequestOrigins: [APP_ORIGIN, INTERNAL_APP_ORIGIN],
+        },
         auth: {
           mode: 'oidc',
           oidc: {
@@ -420,7 +426,10 @@ describe('production chat turn credential boundary', () => {
     // 的 post)在身份解析后才出现,授权由 Broker 咽喉点按授予集合 × 归属完成。
     mocks.preflight.mockReturnValueOnce({
       settings: {
-        service: { publicOrigin: APP_ORIGIN },
+        service: {
+          publicOrigin: APP_ORIGIN,
+          trustedRequestOrigins: [APP_ORIGIN, INTERNAL_APP_ORIGIN],
+        },
         auth: {
           mode: 'oidc',
           oidc: {

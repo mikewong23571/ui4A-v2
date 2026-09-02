@@ -21,6 +21,7 @@ interface BootstrapInput {
   admin: unknown;
   realmImport: RealmImportRepresentation;
   publicOrigin: string;
+  trustedRequestOrigins: readonly string[];
   resolveSecret: (reference: string) => string;
   mode: 'check' | 'apply';
 }
@@ -30,7 +31,11 @@ export async function bootstrapKeycloakRealm(input: BootstrapInput): Promise<Boo
   if (input.mode !== 'check' && input.mode !== 'apply') {
     fail('KEYCLOAK_REALM_IMPORT_INVALID', 'bootstrap mode must be check or apply');
   }
-  const compatibilityView = renderCompatibilityRealmImport(input.realmImport, input.publicOrigin);
+  const compatibilityView = renderCompatibilityRealmImport(
+    input.realmImport,
+    input.publicOrigin,
+    input.trustedRequestOrigins,
+  );
   const existingRealm = await input.admin.getRealm(compatibilityView.realm);
   if (existingRealm === undefined) {
     if (input.mode === 'check') {

@@ -24,6 +24,11 @@ export function composeServices(input: ComposeRenderInput): Record<string, Compo
   const { images } = input;
   const ui4aHost = input.edge.ui4aTlsHost;
   const keycloakHost = input.edge.keycloakTlsHost;
+  const ui4aPublicHost = new URL(input.edge.webPublicOrigin).host;
+  const keycloakPublicHost = new URL(input.edge.keycloakPublicOrigin).host;
+  const internalUiOrigin =
+    input.edge.trustedRequestOrigins.find((origin) => origin !== input.edge.webPublicOrigin) ??
+    input.edge.webPublicOrigin;
   const runnerOrigins = JSON.stringify({
     'compose-container-runner': `https://${ui4aHost}:8443`,
     'compose-host-runner': `https://${ui4aHost}:9444`,
@@ -337,23 +342,20 @@ export function composeServices(input: ComposeRenderInput): Record<string, Compo
       depends_on: dependencies({
         'pki-init': 'service_completed_successfully',
       }),
-      healthcheck: health([
-        'CMD',
-        'wget',
-        '-q',
-        '--no-check-certificate',
-        '--spider',
-        'https://127.0.0.1:8443/_edge_live',
-      ]),
+      healthcheck: health(['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:8080/_edge_live']),
       environment: {
         UI4A_HOST: ui4aHost,
         KEYCLOAK_HOST: keycloakHost,
+        UI4A_PUBLIC_HOST: ui4aPublicHost,
+        UI4A_INTERNAL_HOST: new URL(internalUiOrigin).host,
+        KEYCLOAK_PUBLIC_HOST: keycloakPublicHost,
+        KEYCLOAK_INTERNAL_HOST: keycloakHost,
         HOME: '/tmp',
         XDG_CONFIG_HOME: '/tmp/caddy-config',
         XDG_DATA_HOME: '/tmp/caddy-data',
       },
       volumes: ['experiment-ca:/var/lib/ui4a/ca:ro', `${edgeRoutingFile}:/etc/caddy/Caddyfile:ro`],
-      ports: [`127.0.0.1:${input.edge.publishedPort}:8443`],
+      ports: [`${input.edge.bindAddress}:${input.edge.publishedPort}:8080`],
       networks: {
         default: {
           aliases: [ui4aHost, keycloakHost],

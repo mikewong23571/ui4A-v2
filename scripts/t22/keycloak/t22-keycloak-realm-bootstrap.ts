@@ -123,6 +123,7 @@ async function main(): Promise<void> {
     admin,
     realmImport,
     publicOrigin: settings.service.publicOrigin,
+    trustedRequestOrigins: settings.service.trustedRequestOrigins,
     resolveSecret(reference) {
       const configuredReference = realmSecretReferences[reference];
       const value =

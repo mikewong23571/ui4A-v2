@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 import { preflightProductionDeploymentFromEnvironment } from '../../../packages/shared/src/production-deployment-config';
 import { createKeycloakAdminClient } from '../../../deploy/keycloak/realm-admin';
+import { reconcileKeycloakRealmBrowserOrigins } from '../../../deploy/keycloak/realm-bindings';
 import {
   KeycloakBootstrapError,
   type RealmImportRepresentation,
@@ -143,13 +144,26 @@ async function main(): Promise<void> {
     fetch,
     timeoutMs: 10_000,
   });
-  const result = await migrateKeycloakRealmV1ToV2({
+  let backupWritten = false;
+  const backup = async (snapshot: unknown) => {
+    if (backupWritten) return;
+    writeBackup(path, snapshot);
+    backupWritten = true;
+  };
+  const migration = await migrateKeycloakRealmV1ToV2({
     admin,
     realmImport: readRealmImport(process.env),
     publicOrigin: config.settings.service.publicOrigin,
-    backup: async (snapshot) => writeBackup(path, snapshot),
+    backup,
   });
-  process.stdout.write(`${JSON.stringify({ ok: true, backupFile: path, ...result })}\n`);
+  const origins = await reconcileKeycloakRealmBrowserOrigins({
+    admin,
+    realmImport: readRealmImport(process.env),
+    publicOrigin: config.settings.service.publicOrigin,
+    trustedRequestOrigins: config.settings.service.trustedRequestOrigins,
+    backup,
+  });
+  process.stdout.write(`${JSON.stringify({ ok: true, backupFile: path, migration, origins })}\n`);
 }
 
 main().catch((error: unknown) => {

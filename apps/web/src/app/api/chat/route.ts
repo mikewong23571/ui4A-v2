@@ -65,7 +65,8 @@ import {
 } from '../../../chat/session-events';
 import { resolveStartRel } from '../../../chat/start-chain';
 import { getProductionAgentTokenProvider } from '../../../auth/production-agent-token-provider';
-import { getProductionBrowserAuthentication } from '../../../auth/production-browser-authentication';
+import { getProductionBrowserAuthentication } from '../../../auth/production/browser-authentication-runtime';
+import { resolveTrustedRequestOrigin } from '../../../auth/production/request-origin';
 import {
   authenticationErrorResponse,
   requestIdentityProfile,
@@ -149,21 +150,12 @@ export async function POST(request: Request) {
     if (config === undefined) {
       return Response.json({ error: { code: 'deployment_config_invalid' } }, { status: 503 });
     }
-    const configuredOrigin = new URL(config.settings.service.publicOrigin);
-    const requestHost = request.headers.get('host');
-    // TLS 在 edge(Istio gateway / Caddy)终止,pod 内 request.url 协议恒为 http;
-    // origin 比较采用 edge 覆写的 x-forwarded-proto + Host 重建外部 origin(edge
-    // default-deny 保证外部流量必经 gateway,伪造头到不了 pod;直接集群内访问仍按
-    // request.url 兜底)。Host 本身仍必须等于配置 host。
-    const forwardedProto = request.headers.get('x-forwarded-proto');
-    const effectiveOrigin =
-      requestHost !== null
-        ? `${forwardedProto ?? requestUrl.protocol.replace(/:$/, '')}://${requestHost}`
-        : requestUrl.origin;
-    if (
-      effectiveOrigin !== configuredOrigin.origin ||
-      (requestHost !== null && requestHost !== configuredOrigin.host)
-    ) {
+    // TLS 在受控 edge 终止；只接受 canonical deployment 明确列出的浏览器 origin。
+    const effectiveOrigin = resolveTrustedRequestOrigin(
+      request,
+      config.settings.service.trustedRequestOrigins,
+    );
+    if (effectiveOrigin === undefined) {
       return Response.json({ error: { code: 'request_origin_invalid' } }, { status: 400 });
     }
 
@@ -175,7 +167,8 @@ export async function POST(request: Request) {
       return Response.json({ error: { code: 'deployment_config_invalid' } }, { status: 503 });
     }
     try {
-      const browserSession = await getProductionBrowserAuthentication().resolveSession(request);
+      const browserSession =
+        await getProductionBrowserAuthentication(request).resolveSession(request);
       const subjectToken = bearerToken(browserSession.authorizationHeader);
       if (subjectToken === undefined) {
         return Response.json({ error: { code: 'credential_malformed' } }, { status: 401 });
@@ -191,7 +184,7 @@ export async function POST(request: Request) {
         plane: 'business',
       });
       productionSubjectToken = subjectToken;
-      productionOrigin = configuredOrigin.origin;
+      productionOrigin = effectiveOrigin;
       productionAgentScopes = [...agentScopes];
       productionConfig = config;
     } catch (error) {

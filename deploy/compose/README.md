@@ -6,8 +6,9 @@ eight independently mounted password files plus the callback credential file ref
 `compose.yaml`. Every file and the input
 manifest must be an absolute, non-symlink regular file with mode `0600`.
 
-The manifest contains `ui4aGitSha`, paths, nine digest-pinned image references, and one
-`edgePublishedPort` (an unprivileged loopback port). The three
+The manifest contains `ui4aGitSha`, paths, nine digest-pinned image references, one
+`edgeBindAddress` (loopback or Tailscale CGNAT only), and one unprivileged
+`edgePublishedPort`. The three
 UI4A OCI revisions must equal `ui4aGitSha`; the operator checkout may be newer, but that release
 commit must exist and be an ancestor of the checkout `HEAD`. Validate it without starting the stack:
 
@@ -19,15 +20,14 @@ unset compose_inputs_json
 pnpm compose:t22 preflight
 ```
 
-The generator derives `UI4A_PUBLIC_ORIGIN` and `UI4A_KEYCLOAK_PUBLIC_ORIGIN` from the canonical
-service/OIDC settings, and derives internal `UI4A_HOST`/`KEYCLOAK_HOST` from canonical TLS settings
-after strict parsing. It rejects mismatched overrides. Public origins may differ from the internal
-TLS hosts when a separate trusted reverse proxy reaches the Compose edge over a private network.
-The published edge port maps loopback to the unchanged internal `8443` listener; a host reverse
-proxy may provide public `443`, but it must forward through the UI4A edge using the internal TLS
-host as SNI and trust the persisted
-public CA rather than bypassing verification. The Web and Keycloak public origins must use distinct
-hosts, so path-prefix deployment is not supported.
+The generator derives the public UI/Keycloak origins and hosts from canonical service/OIDC
+settings, derives internal Runner/admin TLS hosts from canonical TLS settings, and rejects
+mismatched overrides. The published edge port maps the selected loopback/Tailscale address to the
+HTTP-only `8080` application gateway. HTTPS browser ingresses terminate TLS independently and
+forward the real Host with `X-Forwarded-Proto: https`; they do not chain through another HTTPS
+ingress. The gateway retains one centralized UI/realm route allowlist. Runner delivery remains TLS
+on `8443/9444`, Keycloak admin remains TLS on unpublished `9443`, and path-prefix deployment is not
+supported.
 
 Successful generator output contains only the environment variable names, filesystem paths, image
 digests, release SHA, and a count summary. It never contains credential material. Successful

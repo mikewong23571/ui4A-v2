@@ -165,8 +165,10 @@ export interface ComposeRenderInput {
   edge: {
     webPublicOrigin: string;
     keycloakPublicOrigin: string;
+    trustedRequestOrigins: string[];
     ui4aTlsHost: string;
     keycloakTlsHost: string;
+    bindAddress: string;
     publishedPort: number;
   };
   images: Record<
@@ -218,8 +220,10 @@ export function renderInput(): ComposeRenderInput {
     edge: {
       webPublicOrigin: 'https://ui4a.mothership.internal:8443',
       keycloakPublicOrigin: 'https://auth.ui4a.mothership.internal:8443',
+      trustedRequestOrigins: ['https://ui4a.mothership.internal:8443'],
       ui4aTlsHost: 'ui4a.mothership.internal',
       keycloakTlsHost: 'auth.ui4a.mothership.internal',
+      bindAddress: '127.0.0.1',
       publishedPort: 8443,
     },
     images: {

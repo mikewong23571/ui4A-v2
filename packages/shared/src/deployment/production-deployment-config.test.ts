@@ -16,6 +16,7 @@ function validInput() {
       deploymentMode: 'compose',
       service: {
         publicOrigin: 'https://ui4a.mothership.internal',
+        trustedRequestOrigins: ['https://ui4a.mothership.internal'],
       },
       auth: {
         mode: 'oidc',
@@ -404,6 +405,10 @@ describe('T22 production deployment config contract', () => {
   it('allows public OIDC origins to differ from internal edge TLS hosts', () => {
     const candidate = validInput();
     candidate.settings.service.publicOrigin = 'https://ui4a.styleofwong.cn';
+    candidate.settings.service.trustedRequestOrigins = [
+      'https://ui4a.styleofwong.cn',
+      'https://ui4a.home-linux.tail.styleofwong.com',
+    ];
     candidate.settings.auth.oidc.issuer = 'https://auth.ui4a.styleofwong.cn/realms/ui4a';
     candidate.settings.auth.oidc.callbackUrl = 'https://ui4a.styleofwong.cn/api/auth/callback';
     candidate.settings.keycloak.host = 'auth.ui4a.styleofwong.cn';
@@ -411,6 +416,7 @@ describe('T22 production deployment config contract', () => {
     const parsed = parseProductionDeploymentConfig(candidate);
 
     expect(parsed.settings.service.publicOrigin).toBe('https://ui4a.styleofwong.cn');
+    expect(parsed.settings.service.trustedRequestOrigins).toHaveLength(2);
     expect(parsed.settings.auth.oidc.issuer).toBe('https://auth.ui4a.styleofwong.cn/realms/ui4a');
     expect(parsed.settings.tls).toMatchObject({
       ui4aHost: 'ui4a.mothership.internal',
@@ -418,39 +424,13 @@ describe('T22 production deployment config contract', () => {
     });
   });
 
-  it('accepts an explicit, unique HTTPS request-origin set containing the canonical origin', () => {
-    const candidate = validInput();
-    candidate.settings.service = {
-      publicOrigin: 'https://ui4a.styleofwong.cn',
-      trustedRequestOrigins: [
-        'https://ui4a.styleofwong.cn',
-        'https://ui4a.home-linux.tail.styleofwong.com',
-      ],
-    } as typeof candidate.settings.service;
-    candidate.settings.auth.oidc.callbackUrl = 'https://ui4a.styleofwong.cn/api/auth/callback';
-
-    const parsed = parseProductionDeploymentConfig(candidate);
-
-    expect(parsed.settings.service.trustedRequestOrigins).toEqual([
-      'https://ui4a.styleofwong.cn',
-      'https://ui4a.home-linux.tail.styleofwong.com',
-    ]);
-  });
-
   it.each([
     ['missing canonical origin', ['https://ui4a.home-linux.tail.styleofwong.com']],
-    [
-      'duplicate origin',
-      ['https://ui4a.mothership.internal', 'https://ui4a.mothership.internal'],
-    ],
+    ['duplicate origin', ['https://ui4a.mothership.internal', 'https://ui4a.mothership.internal']],
     ['plain HTTP origin', ['https://ui4a.mothership.internal', 'http://ui4a.home.internal']],
   ])('rejects a %s in trusted request origins', (_case, trustedRequestOrigins) => {
     const candidate = validInput();
-    candidate.settings.service = {
-      ...candidate.settings.service,
-      trustedRequestOrigins,
-    } as typeof candidate.settings.service;
-
+    candidate.settings.service = { ...candidate.settings.service, trustedRequestOrigins };
     expectInvalid(candidate, /service\.trustedRequestOrigins/);
   });
 

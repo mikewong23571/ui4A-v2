@@ -101,9 +101,7 @@ export function realmMatches(
     !hasExactAccessTokenSubjectMapper(web) ||
     !hasAccessTokenAudience(web, 'ui4a-api') ||
     !hasAccessTokenAudience(web, 'ui4a-agent') ||
-    !Array.isArray(web.redirectUris) ||
-    web.redirectUris.length !== 1 ||
-    web.redirectUris[0] !== expectedWeb.redirectUris?.[0]
+    !sameStringSet(web.redirectUris, expectedWeb.redirectUris ?? [])
   ) {
     return false;
   }

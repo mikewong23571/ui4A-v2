@@ -17,12 +17,34 @@ import {
 import type { ProductionDeploymentSettings } from './types';
 
 export function parseService(value: unknown): ProductionDeploymentSettings['service'] {
-  const candidate = exactObject(value, 'settings.service', ['publicOrigin']);
+  const candidate = exactObject(value, 'settings.service', [
+    'publicOrigin',
+    'trustedRequestOrigins',
+  ]);
   const publicOrigin = httpsUrl(candidate.publicOrigin, 'service.publicOrigin');
   if (publicOrigin.pathname !== '/' || publicOrigin.search !== '' || publicOrigin.hash !== '') {
     fail('service.publicOrigin', 'must be an HTTPS origin without path, query or fragment');
   }
-  return { publicOrigin: publicOrigin.origin };
+  const trustedRequestOrigins = stringList(
+    candidate.trustedRequestOrigins,
+    'service.trustedRequestOrigins',
+  ).map((value, index) => {
+    const origin = httpsUrl(value, `service.trustedRequestOrigins[${index}]`);
+    if (origin.pathname !== '/' || origin.search !== '' || origin.hash !== '') {
+      fail(
+        `service.trustedRequestOrigins[${index}]`,
+        'must be an HTTPS origin without path, query or fragment',
+      );
+    }
+    return origin.origin;
+  });
+  if (new Set(trustedRequestOrigins).size !== trustedRequestOrigins.length) {
+    fail('service.trustedRequestOrigins', 'must not contain duplicates');
+  }
+  if (!trustedRequestOrigins.includes(publicOrigin.origin)) {
+    fail('service.trustedRequestOrigins', 'must contain service.publicOrigin');
+  }
+  return { publicOrigin: publicOrigin.origin, trustedRequestOrigins };
 }
 
 export function parseAuth(value: unknown): ProductionDeploymentSettings['auth'] {

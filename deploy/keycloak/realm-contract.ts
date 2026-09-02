@@ -308,10 +308,24 @@ function httpsOrigin(input: string, label: string): string {
 export function renderCompatibilityRealmImport(
   input: RealmImportRepresentation,
   publicOrigin: string,
+  trustedRequestOrigins: readonly string[],
 ): RealmImportRepresentation {
   const origin = httpsOrigin(publicOrigin, 'public origin');
+  const browserOrigins = trustedRequestOrigins.map((candidate) =>
+    httpsOrigin(candidate, 'trusted request origin'),
+  );
+  if (
+    browserOrigins.length === 0 ||
+    new Set(browserOrigins).size !== browserOrigins.length ||
+    !browserOrigins.includes(origin)
+  ) {
+    fail(
+      'KEYCLOAK_REALM_IMPORT_INVALID',
+      'trusted request origins must be unique and contain public origin',
+    );
+  }
   const validated = validateRealmImport(input);
-  return mapJson(validated, (value) => {
+  const rendered = mapJson(validated, (value) => {
     const rendered = value.replaceAll('{{UI4A_ORIGIN}}', origin);
     const withoutSecrets = rendered.replace(/\{\{secret:[a-z][a-z0-9-]*\}\}/g, '');
     if (/\{\{[^{}]+\}\}/.test(withoutSecrets)) {
@@ -319,6 +333,15 @@ export function renderCompatibilityRealmImport(
     }
     return rendered;
   }) as RealmImportRepresentation;
+  const web = rendered.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
+  web.redirectUris = browserOrigins.map((browserOrigin) => `${browserOrigin}/api/auth/callback`);
+  web.attributes = {
+    ...web.attributes,
+    'post.logout.redirect.uris': browserOrigins
+      .map((browserOrigin) => `${browserOrigin}/*`)
+      .join('##'),
+  };
+  return rendered;
 }
 
 export function resolveRealmImportSecrets(

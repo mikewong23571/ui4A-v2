@@ -50,7 +50,7 @@ interface PkiAdapter {
 }
 
 interface ComposeTlsSettings {
-  service: { publicOrigin: string };
+  service: { publicOrigin: string; trustedRequestOrigins: string[] };
   auth: {
     oidc: {
       issuer: string;
@@ -154,7 +154,10 @@ const validMaterial: Record<MaterialId, StoredMaterial> = {
 
 function settings(): ComposeTlsSettings {
   return {
-    service: { publicOrigin: 'https://ui4a.mothership.internal' },
+    service: {
+      publicOrigin: 'https://ui4a.mothership.internal',
+      trustedRequestOrigins: ['https://ui4a.mothership.internal'],
+    },
     auth: {
       oidc: {
         issuer: 'https://auth.ui4a.mothership.internal/realms/ui4a',

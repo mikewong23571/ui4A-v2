@@ -28,7 +28,7 @@ const routeAuthentication = vi.hoisted(() => ({
   logout: vi.fn(),
 }));
 
-vi.mock('./production-browser-authentication', () => ({
+vi.mock('./production/browser-authentication-runtime', () => ({
   getProductionBrowserAuthentication: () => routeAuthentication,
 }));
 

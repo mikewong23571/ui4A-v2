@@ -30,6 +30,7 @@ export interface ProductionDeploymentSettings {
   deploymentMode: ProductionDeploymentMode;
   service: {
     publicOrigin: string;
+    trustedRequestOrigins: string[];
   };
   auth: {
     mode: 'oidc';

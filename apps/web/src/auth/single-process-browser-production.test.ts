@@ -15,11 +15,14 @@ vi.mock('../production-deployment-preflight', () => ({
   runWebProductionDeploymentPreflight: composition.preflight,
 }));
 
-import { getProductionBrowserAuthentication } from './production-browser-authentication';
+import { getProductionBrowserAuthentication } from './production/browser-authentication-runtime';
 
 const CONFIG = {
   settings: {
-    service: { publicOrigin: 'https://ui4a.mothership.internal' },
+    service: {
+      publicOrigin: 'https://ui4a.mothership.internal',
+      trustedRequestOrigins: ['https://ui4a.mothership.internal'],
+    },
     auth: {
       mode: 'oidc',
       oidc: {
@@ -60,7 +63,7 @@ describe('single-process production browser composition', () => {
 
   it('has no production composition dependency on the database store or engine database', () => {
     const source = readFileSync(
-      new URL('./production-browser-authentication.ts', import.meta.url),
+      new URL('./production/browser-authentication-runtime.ts', import.meta.url),
       'utf8',
     );
 

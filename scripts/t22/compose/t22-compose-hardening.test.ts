@@ -222,7 +222,7 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
       restart: 'unless-stopped',
       user: '1000:1000',
       read_only: true,
-      ports: ['127.0.0.1:8443:8443'],
+      ports: ['127.0.0.1:8443:8080'],
     });
     expect(edge?.volumes).toContain('experiment-ca:/var/lib/ui4a/ca:ro');
     expect(edge?.volumes).toContain('deploy/compose/edge-routing.caddy:/etc/caddy/Caddyfile:ro');
@@ -237,14 +237,17 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     expect(stack.services.web?.ports ?? []).toEqual([]);
   });
 
-  it('routes both canonical internal hosts over persisted leaf certificates', async () => {
+  it('routes public and internal hosts through one HTTP gateway while retaining internal TLS', async () => {
     const stack = await renderedStack();
     const routing = edgeRoutingSource();
 
     expect(routing).toContain('https://{$UI4A_HOST}:8443');
     expect(routing).toContain('tls /var/lib/ui4a/ca/ui4a/tls.crt /var/lib/ui4a/ca/ui4a/tls.key');
     expect(routing).toContain('reverse_proxy web:3100');
-    expect(routing).toContain('https://{$KEYCLOAK_HOST}:8443');
+    expect(routing).toContain(':8080');
+    expect(routing).toContain(
+      '@keycloakHost host {$KEYCLOAK_PUBLIC_HOST} {$KEYCLOAK_INTERNAL_HOST}',
+    );
     expect(routing).toContain(
       'tls /var/lib/ui4a/ca/keycloak/tls.crt /var/lib/ui4a/ca/keycloak/tls.key',
     );
@@ -296,7 +299,9 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     });
     expect(edgeRoutingSource()).toContain(':8080');
     expect(edgeRoutingSource()).toContain('header_up X-Forwarded-Proto https');
-    expect(edgeRoutingSource()).not.toContain('https://{$UI4A_HOST}:8443');
+    expect(edgeRoutingSource()).toMatch(
+      /https:\/\/\{\$UI4A_HOST\}:8443\s*\{[\s\S]*handle \/deliver[\s\S]*respond 404[\s\S]*\}/,
+    );
     expect(edgeRoutingSource()).not.toContain('https://{$KEYCLOAK_HOST}:8443');
     expect(edgeRoutingSource()).toContain('https://{$UI4A_HOST}:9444');
     expect(edgeRoutingSource()).toContain('https://{$KEYCLOAK_HOST}:9443');
@@ -308,29 +313,37 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
       {
         webPublicOrigin: 'http://ui4a.home.internal',
         keycloakPublicOrigin: 'https://auth.home.internal',
+        trustedRequestOrigins: ['https://ui4a.home.internal'],
         ui4aTlsHost: 'ui4a.internal',
         keycloakTlsHost: 'auth.internal',
+        bindAddress: '127.0.0.1',
         publishedPort: 10_443,
       },
       {
         webPublicOrigin: 'https://ui4a.home.internal/path',
         keycloakPublicOrigin: 'https://auth.home.internal',
+        trustedRequestOrigins: ['https://ui4a.home.internal'],
         ui4aTlsHost: 'ui4a.internal',
         keycloakTlsHost: 'auth.internal',
+        bindAddress: '127.0.0.1',
         publishedPort: 10_443,
       },
       {
         webPublicOrigin: 'https://ui4a.home.internal',
         keycloakPublicOrigin: 'https://ui4a.home.internal',
+        trustedRequestOrigins: ['https://ui4a.home.internal'],
         ui4aTlsHost: 'ui4a.internal',
         keycloakTlsHost: 'auth.internal',
+        bindAddress: '127.0.0.1',
         publishedPort: 10_443,
       },
       {
         webPublicOrigin: 'https://ui4a.home.internal',
         keycloakPublicOrigin: 'https://auth.home.internal',
+        trustedRequestOrigins: ['https://ui4a.home.internal'],
         ui4aTlsHost: 'ui4a.internal',
         keycloakTlsHost: 'auth.internal',
+        bindAddress: '127.0.0.1',
         publishedPort: 443,
       },
     ];
@@ -452,7 +465,7 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     expect(routing).toMatch(
       /https:\/\/\{\$UI4A_HOST\}:9444[\s\S]+handle \/deliver[\s\S]+reverse_proxy host-runner:3102/,
     );
-    expect(stack.services.edge?.ports).toEqual(['127.0.0.1:8443:8443']);
+    expect(stack.services.edge?.ports).toEqual(['127.0.0.1:8443:8080']);
     expect(JSON.stringify({ worker, containerRunner, hostRunner })).not.toMatch(
       /FALLBACK|compose-(?:container|host)-runner-token/i,
     );
@@ -502,7 +515,7 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     const stack = await renderedStack();
     const routing = edgeRoutingSource();
     const realmBootstrap = stack.services['realm-bootstrap'];
-    const publicListener = routing.indexOf('https://{$KEYCLOAK_HOST}:8443');
+    const publicListener = routing.indexOf('@keycloakHost host');
     const internalListener = routing.indexOf('https://{$KEYCLOAK_HOST}:9443');
     const publicRouting = routing.slice(publicListener, internalListener);
 
@@ -525,7 +538,7 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     );
     expect(routing.slice(internalListener)).toContain('method GET POST PUT');
     expect(routing.slice(internalListener)).toContain('/admin/realms*');
-    expect(stack.services.edge?.ports).toEqual(['127.0.0.1:8443:8443']);
+    expect(stack.services.edge?.ports).toEqual(['127.0.0.1:8443:8080']);
     expect(stack.services.edge?.ports?.join(' ')).not.toContain('9443');
   });
 
@@ -560,7 +573,7 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     expect(compose).toContain('- ${KEYCLOAK_HOST:-auth.ui4a.mothership.internal}');
     expect(compose).toContain('UI4A_KEYCLOAK_ADMIN_ORIGIN:');
     expect(compose).toContain('UI4A_KEYCLOAK_PUBLIC_ORIGIN');
-    expect(compose).toContain('UI4A_EDGE_HTTPS_PORT');
+    expect(compose).toContain('UI4A_EDGE_HTTP_PORT');
     expect(compose).not.toMatch(/fetch\('http:\/\/127\.0\.0\.1:310[01]\/live'/);
     expect(compose).not.toMatch(/Bearer |runner-token|authorization/i);
   });

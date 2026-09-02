@@ -1194,3 +1194,25 @@
   runtime dependency。实机发现该 prompt 单 item 约 128 字符截断，因此 credential 使用同一 Keychain
   内的 generation + 96 字符 chunks：先写新 generation，最后原子切 manifest，再删旧 chunks；token
   仍不进入文件或 argv。非 macOS 仍可使用外部 `--token`/`UI4A_TOKEN`，本 Track 不提供弱文件 fallback。
+
+## D64 双 HTTPS 入口并列终止 TLS，Compose Origin 只提供受限 HTTP(T47)
+
+- **覆盖关系**：本决定覆盖 D60/D61“外层 Caddy 必须 TLS 回源 Compose public edge”的入口传输部分；
+  canonical public origin、唯一 OIDC issuer、集中 route allowlist、Runner delivery TLS、Keycloak admin
+  TLS、PostgreSQL/Temporal 安全边界及所有业务授权决定继续有效。
+- **拓扑**：`aliyun-sz` 公网 Caddy 与 `home` Tailnet Caddy 是并列 HTTPS 入口，各自在浏览器边界终止
+  TLS，然后直接访问 Home 上同一个纯 HTTP Compose application gateway。禁止
+  `aliyun HTTPS -> home HTTPS -> Compose HTTPS` 串联，也不让两个入口互相回源。
+- **HTTP Origin 边界**：Compose 只把 public UI/realm allowlist listener 发布到 operator 明确给出的
+  loopback 或 Tailscale CGNAT 地址，不绑定公网、普通 LAN 或 `0.0.0.0`。Docker NAT 会隐藏原始 Tailnet
+  source IP，因此节点级限制只能放在 NAT 前的 Tailnet ACL/宿主防火墙；容器内不实现虚假的
+  `remote_ip` allowlist。Keycloak admin、数据库、Temporal 和 internal callback 不进入该 listener。
+- **Origin 与转发事实**：`service.publicOrigin` 仍是 canonical public URL；新增
+  `service.trustedRequestOrigins` 是严格、唯一、必须包含 canonical origin 的 HTTPS 集合。入口保留真实
+  `Host`，HTTP gateway 固定向 Web/Keycloak 传 `X-Forwarded-Proto: https`。Chat、browser session 与
+  callback 只接受集合成员，未知 Host fail closed。
+- **身份**：两个 UI origin 共享同一个 Keycloak realm、client、账户和公共 issuer；`ui4a-web` 只增加
+  对应 callback/post-logout URI。环境绑定更新必须先备份、只改 Web client origins、再 exact post-check，
+  不创建第二 issuer 或第二套身份数据。
+- **实现影响**：Compose public gateway 使用 `:8080` HTTP；`8443/9444` 继续只承载 Runner delivery
+  TLS，`9443` 继续只承载 Keycloak admin TLS。零新增 runtime dependency、数据库或权威状态。

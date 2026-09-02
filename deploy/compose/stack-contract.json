@@ -10,11 +10,13 @@
     }
   },
   "edge": {
-    "publicOriginsSource": "canonical-deployment-settings",
+    "publicOriginsSource": "canonical-deployment-settings.service.trustedRequestOrigins",
     "internalTlsHostsSource": "canonical-deployment-settings.tls",
-    "bindAddress": "127.0.0.1",
-    "publishedPortSource": "UI4A_EDGE_HTTPS_PORT",
-    "internalHttpsPort": 8443,
+    "bindAddressSource": "UI4A_EDGE_BIND_ADDRESS",
+    "publishedPortSource": "UI4A_EDGE_HTTP_PORT",
+    "internalHttpPort": 8080,
+    "retainedInternalTlsPorts": [8443, 9443, 9444],
+    "transport": "http-over-loopback-or-tailnet",
     "publicProxyMustPreserveEdge": true
   },
   "stateServices": {

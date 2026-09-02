@@ -163,6 +163,21 @@ function assertTlsHost(value: unknown, label: string): asserts value is string {
   }
 }
 
+function assertEdgeBindAddress(value: unknown): asserts value is string {
+  if (value === '127.0.0.1') return;
+  if (typeof value !== 'string') fail('edge.bindAddress must be loopback or Tailscale IPv4');
+  const octets = value.split('.').map(Number);
+  if (
+    octets.length !== 4 ||
+    octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255) ||
+    octets[0] !== 100 ||
+    octets[1]! < 64 ||
+    octets[1]! > 127
+  ) {
+    fail('edge.bindAddress must be loopback or Tailscale IPv4');
+  }
+}
+
 export function validateInput(input: ComposeRenderInput): void {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     fail('input must be an object');
@@ -184,13 +199,47 @@ export function validateInput(input: ComposeRenderInput): void {
   }
   assertExactKeys(
     input.edge as unknown as Record<string, unknown>,
-    ['webPublicOrigin', 'keycloakPublicOrigin', 'ui4aTlsHost', 'keycloakTlsHost', 'publishedPort'],
+    [
+      'webPublicOrigin',
+      'keycloakPublicOrigin',
+      'trustedRequestOrigins',
+      'ui4aTlsHost',
+      'keycloakTlsHost',
+      'bindAddress',
+      'publishedPort',
+    ],
     'edge',
   );
   assertPublicOrigin(input.edge.webPublicOrigin, 'edge.webPublicOrigin');
   assertPublicOrigin(input.edge.keycloakPublicOrigin, 'edge.keycloakPublicOrigin');
+  if (
+    !Array.isArray(input.edge.trustedRequestOrigins) ||
+    input.edge.trustedRequestOrigins.length === 0
+  ) {
+    fail('edge.trustedRequestOrigins must be a non-empty origin array');
+  }
+  input.edge.trustedRequestOrigins.forEach((origin, index) =>
+    assertPublicOrigin(origin, `edge.trustedRequestOrigins[${index}]`),
+  );
+  if (
+    new Set(input.edge.trustedRequestOrigins).size !== input.edge.trustedRequestOrigins.length ||
+    !input.edge.trustedRequestOrigins.includes(input.edge.webPublicOrigin) ||
+    input.edge.trustedRequestOrigins.length > 2
+  ) {
+    fail('edge.trustedRequestOrigins must be unique and contain webPublicOrigin');
+  }
   assertTlsHost(input.edge.ui4aTlsHost, 'edge.ui4aTlsHost');
   assertTlsHost(input.edge.keycloakTlsHost, 'edge.keycloakTlsHost');
+  const internalUiOrigin = input.edge.trustedRequestOrigins.find(
+    (origin) => origin !== input.edge.webPublicOrigin,
+  );
+  if (
+    internalUiOrigin !== undefined &&
+    new URL(internalUiOrigin).hostname !== input.edge.ui4aTlsHost
+  ) {
+    fail('edge internal request origin must use ui4aTlsHost');
+  }
+  assertEdgeBindAddress(input.edge.bindAddress);
   if (
     new URL(input.edge.webPublicOrigin).hostname ===
     new URL(input.edge.keycloakPublicOrigin).hostname

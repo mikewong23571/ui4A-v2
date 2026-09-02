@@ -37,13 +37,14 @@ export interface ComposeProductionInput {
   secretsFile: string;
   secretFiles: Record<SecretFileEnvironmentKey, string>;
   images: Record<ImageEnvironmentKey, string>;
+  edgeBindAddress: string;
   edgePublishedPort: number;
 }
 
 interface ComposeCanonicalBindingView {
   settings: {
     deploymentMode?: string;
-    service: { publicOrigin: string };
+    service: { publicOrigin: string; trustedRequestOrigins: string[] };
     auth: { oidc: { issuer: string } };
     tls: { ui4aHost: string; keycloakHost: string };
     postgres: {
@@ -85,7 +86,7 @@ export interface ComposeInputDependencies {
 
 export interface GeneratedComposeProductionEnvironment {
   environment: Readonly<Record<string, string>>;
-  summary: { files: 11; secretFiles: 9; images: 9; bindings: 9 };
+  summary: { files: 11; secretFiles: 9; images: 9; bindings: 12 };
 }
 
 const digestImage = /^[a-zA-Z0-9][a-zA-Z0-9._/:~-]*@sha256:[0-9a-f]{64}$/;
@@ -144,6 +145,22 @@ function edgePort(value: string | undefined): string {
     fail('COMPOSE_EDGE_BINDING_INVALID');
   }
   return String(port);
+}
+
+function edgeBindAddress(value: string | undefined): string {
+  if (value === '127.0.0.1') return value;
+  if (value === undefined) fail('COMPOSE_EDGE_BINDING_INVALID');
+  const octets = value.split('.').map(Number);
+  if (
+    octets.length !== 4 ||
+    octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255) ||
+    octets[0] !== 100 ||
+    octets[1]! < 64 ||
+    octets[1]! > 127
+  ) {
+    fail('COMPOSE_EDGE_BINDING_INVALID');
+  }
+  return value;
 }
 
 function publicOrigin(value: string, code: string): URL {
@@ -248,6 +265,18 @@ export function validateComposeProductionEnvironment(
     new URL(settings.auth.oidc.issuer).origin,
     'COMPOSE_EDGE_BINDING_INVALID',
   );
+  const trustedRequestOrigins = settings.service.trustedRequestOrigins.map((origin) =>
+    publicOrigin(origin, 'COMPOSE_EDGE_BINDING_INVALID'),
+  );
+  if (
+    trustedRequestOrigins.length > 2 ||
+    !trustedRequestOrigins.some(({ origin }) => origin === webPublicOrigin.origin)
+  ) {
+    fail('COMPOSE_EDGE_BINDING_INVALID');
+  }
+  const internalWebOrigin =
+    trustedRequestOrigins.find(({ origin }) => origin !== webPublicOrigin.origin) ??
+    webPublicOrigin;
   if (
     webPublicOrigin.hostname === keycloakPublicOrigin.hostname ||
     settings.tls.ui4aHost === settings.tls.keycloakHost
@@ -257,10 +286,16 @@ export function validateComposeProductionEnvironment(
   const expectedIngress = {
     UI4A_PUBLIC_ORIGIN: webPublicOrigin.origin,
     UI4A_KEYCLOAK_PUBLIC_ORIGIN: keycloakPublicOrigin.origin,
+    UI4A_PUBLIC_HOST: webPublicOrigin.host,
+    KEYCLOAK_PUBLIC_HOST: keycloakPublicOrigin.host,
     UI4A_HOST: settings.tls.ui4aHost,
     KEYCLOAK_HOST: settings.tls.keycloakHost,
-    UI4A_EDGE_HTTPS_PORT: edgePort(environment.UI4A_EDGE_HTTPS_PORT),
+    UI4A_EDGE_BIND_ADDRESS: edgeBindAddress(environment.UI4A_EDGE_BIND_ADDRESS),
+    UI4A_EDGE_HTTP_PORT: edgePort(environment.UI4A_EDGE_HTTP_PORT),
   } as const;
+  if (internalWebOrigin.hostname !== settings.tls.ui4aHost) {
+    fail('COMPOSE_EDGE_BINDING_INVALID');
+  }
   for (const [key, expected] of Object.entries(expectedIngress)) {
     const configured = environment[key];
     if (configured !== undefined && configured !== expected) fail('COMPOSE_EDGE_BINDING_INVALID');
@@ -384,7 +419,7 @@ export function validateComposeProductionEnvironment(
   );
   return {
     environment: Object.freeze(safeEnvironment),
-    summary: { files: 11, secretFiles: 9, images: 9, bindings: 9 },
+    summary: { files: 11, secretFiles: 9, images: 9, bindings: 12 },
   };
 }
 
@@ -398,7 +433,8 @@ export function generateComposeProductionEnvironment(
       UI4A_RELEASE_GIT_SHA: input.ui4aGitSha,
       UI4A_DEPLOYMENT_SETTINGS_FILE: input.settingsFile,
       UI4A_DEPLOYMENT_SECRETS_FILE: input.secretsFile,
-      UI4A_EDGE_HTTPS_PORT: String(input.edgePublishedPort),
+      UI4A_EDGE_BIND_ADDRESS: input.edgeBindAddress,
+      UI4A_EDGE_HTTP_PORT: String(input.edgePublishedPort),
       ...input.secretFiles,
       ...input.images,
     },

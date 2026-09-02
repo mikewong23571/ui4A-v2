@@ -146,6 +146,8 @@ function environment(): Record<string, string> {
     UI4A_DEPLOYMENT_SECRETS_FILE: secretsFile,
     UI4A_PUBLIC_ORIGIN: 'https://ui4a.styleofwong.cn',
     UI4A_KEYCLOAK_PUBLIC_ORIGIN: 'https://auth.ui4a.styleofwong.cn',
+    UI4A_PUBLIC_HOST: 'ui4a.styleofwong.cn',
+    KEYCLOAK_PUBLIC_HOST: 'auth.ui4a.styleofwong.cn',
     UI4A_HOST: 'ui4a.home-linux.tail.styleofwong.com',
     KEYCLOAK_HOST: 'auth-ui4a.home-linux.tail.styleofwong.com',
     UI4A_EDGE_BIND_ADDRESS: edgeBindAddress,
@@ -172,7 +174,7 @@ describe('T22 Compose operator-owned production inputs', () => {
     );
 
     expect(generated.environment).toEqual(environment());
-    expect(generated.summary).toEqual({ files: 11, secretFiles: 9, images: 9, bindings: 9 });
+    expect(generated.summary).toEqual({ files: 11, secretFiles: 9, images: 9, bindings: 12 });
     for (const material of Object.values(secrets)) {
       expect(JSON.stringify(generated)).not.toContain(material);
     }

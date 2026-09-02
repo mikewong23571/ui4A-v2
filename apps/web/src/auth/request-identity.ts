@@ -18,7 +18,7 @@ import {
   BrowserAuthenticationError,
   type BrowserAuthentication,
 } from './browser-session';
-import { getProductionBrowserAuthentication } from './production-browser-authentication';
+import { getProductionBrowserAuthentication } from './production/browser-authentication-runtime';
 
 export type RequestIdentityProfile = 'local' | 'production';
 

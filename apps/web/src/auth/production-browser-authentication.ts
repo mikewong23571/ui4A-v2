@@ -2,8 +2,6 @@ import { createHash, randomBytes } from 'node:crypto';
 
 import type { ProductionDeploymentConfig } from '@ui4a/shared';
 
-import { runWebProductionDeploymentPreflight } from '../production-deployment-preflight';
-
 import {
   BROWSER_LOGIN_COOKIE_NAME,
   BROWSER_SESSION_COOKIE_NAME,
@@ -13,7 +11,6 @@ import {
   type BrowserAuthentication,
   type BrowserTokenSet,
 } from './browser-session';
-import { createInMemoryAuthPrivateStore } from './in-memory-auth-private-store';
 import {
   createRemoteJwksLoader,
   ProductionIdentityError,
@@ -188,6 +185,7 @@ export function createKeycloakBrowserTokenAdapter(input: {
 export interface ProductionBrowserAuthenticationInput {
   config: ProductionDeploymentConfig;
   store: AuthPrivateStore;
+  browserOrigin?: string;
   clock?: () => number;
   fetch?: typeof globalThis.fetch;
   randomBytes?: (size: number) => Uint8Array;
@@ -201,6 +199,10 @@ export function createProductionBrowserAuthentication(
 ): BrowserAuthentication {
   const { config } = input;
   const oidc = config.settings.auth.oidc;
+  const browserOrigin = input.browserOrigin ?? config.settings.service.publicOrigin;
+  if (!config.settings.service.trustedRequestOrigins.includes(browserOrigin)) {
+    throw new Error('production browser origin is not trusted');
+  }
   const clock = input.clock ?? Date.now;
   const tokenAdapter = createKeycloakBrowserTokenAdapter({
     issuer: oidc.issuer,
@@ -226,7 +228,7 @@ export function createProductionBrowserAuthentication(
       authorizationEndpoint: `${oidc.issuer}/protocol/openid-connect/auth`,
       clientId: oidc.clientId,
       audience: oidc.clientId,
-      redirectUri: oidc.callbackUrl,
+      redirectUri: `${browserOrigin}/api/auth/callback`,
       scopes: [...oidc.scopes],
       sessionCookieName: PRODUCTION_BROWSER_SESSION_COOKIE,
       loginCookieName: PRODUCTION_BROWSER_LOGIN_COOKIE,
@@ -234,7 +236,7 @@ export function createProductionBrowserAuthentication(
       loginTtlMs: 10 * 60_000,
       refreshBeforeExpiryMs: 60_000,
       defaultReturnTo: '/',
-      allowedReturnOrigin: config.settings.service.publicOrigin,
+      allowedReturnOrigin: browserOrigin,
     },
     sessionKey: deriveBrowserSessionKey(config.secrets[oidc.sessionSecretRef]!),
     clock,
@@ -258,23 +260,4 @@ export function createProductionBrowserAuthentication(
       }
     },
   });
-}
-
-let productionBrowserAuthentication: BrowserAuthentication | undefined;
-const productionAuthPrivateStore = createInMemoryAuthPrivateStore();
-
-/** Lazily compose the process singleton after production preflight has resolved canonical config. */
-export function getProductionBrowserAuthentication(): BrowserAuthentication {
-  if (productionBrowserAuthentication !== undefined) return productionBrowserAuthentication;
-  const config = runWebProductionDeploymentPreflight();
-  if (config === undefined) {
-    throw new Error('production browser authentication requires the production deployment profile');
-  }
-  const clock = Date.now;
-  productionBrowserAuthentication = createProductionBrowserAuthentication({
-    config,
-    clock,
-    store: productionAuthPrivateStore,
-  });
-  return productionBrowserAuthentication;
 }

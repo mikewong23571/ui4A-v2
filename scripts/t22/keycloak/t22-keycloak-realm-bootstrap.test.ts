@@ -57,6 +57,7 @@ interface BootstrapModule {
     admin: unknown;
     realmImport: RealmImportRepresentation;
     publicOrigin: string;
+    trustedRequestOrigins: readonly string[];
     resolveSecret: (reference: string) => string;
     mode: 'check' | 'apply';
   }): Promise<BootstrapResult>;
@@ -216,6 +217,7 @@ async function execute(
   fake: ImportOrSkipKeycloakAdmin,
   mode: 'check' | 'apply' = 'apply',
   resolveSecret: (reference: string) => string = secret,
+  trustedRequestOrigins: readonly string[] = [publicOrigin],
 ): Promise<BootstrapResult> {
   const module = await bootstrapModule();
   const admin = module.createKeycloakAdminClient({
@@ -229,6 +231,7 @@ async function execute(
     admin,
     realmImport: realmImport(),
     publicOrigin,
+    trustedRequestOrigins,
     resolveSecret,
     mode,
   });
@@ -310,6 +313,23 @@ describe('T22 experimental Keycloak import-or-check-skip bootstrap', () => {
       'ui4a-agent-client-secret',
       'ui4a-experiment-human-password',
     ]);
+  });
+
+  it('materializes every trusted UI callback without changing the Keycloak issuer', async () => {
+    const fake = new ImportOrSkipKeycloakAdmin();
+    const internalOrigin = 'https://ui4a.home-linux.tail.styleofwong.com';
+
+    await execute(fake, 'apply', secret, [publicOrigin, internalOrigin]);
+
+    const imported = JSON.parse(fake.mutations[0]!.body) as RealmImportRepresentation;
+    const web = imported.clients.find(({ clientId }) => clientId === 'ui4a-web')!;
+    expect(web.redirectUris).toEqual([
+      `${publicOrigin}/api/auth/callback`,
+      `${internalOrigin}/api/auth/callback`,
+    ]);
+    expect(web.attributes?.['post.logout.redirect.uris']).toBe(
+      `${publicOrigin}/*##${internalOrigin}/*`,
+    );
   });
 
   it('checks an existing matching realm and skips without mutation', async () => {
@@ -611,6 +631,7 @@ describe('T22 Keycloak Admin network boundary', () => {
         admin,
         realmImport: realmImport(),
         publicOrigin: 'http://ui4a.mothership.internal',
+        trustedRequestOrigins: ['http://ui4a.mothership.internal'],
         resolveSecret: secret,
         mode: 'check',
       }),
@@ -655,6 +676,7 @@ describe('T22 Keycloak Admin network boundary', () => {
         admin: timedAdmin,
         realmImport: realmImport(),
         publicOrigin,
+        trustedRequestOrigins: [publicOrigin],
         resolveSecret: secret,
         mode: 'check',
       }),
@@ -678,6 +700,7 @@ describe('T22 Keycloak Admin network boundary', () => {
         admin: invalidAdmin,
         realmImport: realmImport(),
         publicOrigin,
+        trustedRequestOrigins: [publicOrigin],
         resolveSecret: secret,
         mode: 'check',
       }),
