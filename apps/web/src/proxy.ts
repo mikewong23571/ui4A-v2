@@ -14,6 +14,6 @@ export function proxy(request: NextRequest): NextResponse {
 
 export const config = {
   matcher: [
-    '/((?!api(?:/|$)|_meta(?:/|$)|\\.well-known(?:/|$)|auth(?:/|$)|_next/static|_next/image|favicon\\.ico$|file\\.svg$|globe\\.svg$|next\\.svg$|vercel\\.svg$|window\\.svg$|live$|version$).*)',
+    '/((?!api(?:/|$)|_meta(?:/|$)|\\.well-known(?:/|$)|auth(?:/|$)|_next/static|_next/image|favicon\\.ico$|file\\.svg$|globe\\.svg$|next\\.svg$|vercel\\.svg$|window\\.svg$|ready$|live$|version$).*)',
   ],
 };

@@ -25,6 +25,7 @@ describe('production UI page authentication proxy', () => {
     '/api/auth/callback',
     '/_next/static/chunk.js',
     '/favicon.ico',
+    '/ready',
     '/live',
     '/version',
   ])('does not turn the contract or public route %s into a browser redirect', (url) => {
