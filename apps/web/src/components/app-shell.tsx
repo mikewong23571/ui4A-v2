@@ -15,6 +15,7 @@ import { Suspense, type ReactNode } from 'react';
 
 import { APP_NAME, VERSION } from '@ui4a/shared';
 
+import { SessionAwareSiteNav } from '@/components/session-aware-site-nav';
 import { SiteNav } from '@/components/site-nav';
 import { SituationBar, SituationBarFallback } from '@/components/stage/situation-bar';
 
@@ -28,7 +29,9 @@ export function AppShell({ children, aside }: { children: ReactNode; aside?: Rea
             <span className="text-sm font-semibold tracking-tight">{APP_NAME}</span>
             <span className="text-xs text-muted-foreground">v{VERSION}</span>
           </a>
-          <SiteNav sessionControls={process.env.UI4A_DEPLOYMENT_PROFILE === 'production'} />
+          <Suspense fallback={<SiteNav />}>
+            <SessionAwareSiteNav />
+          </Suspense>
           {/* T35 D-7:处境芯片进顶栏行——"你在哪"常显为芯片,顶栏高度确定 h-12。 */}
           <Suspense fallback={<SituationBarFallback />}>
             <SituationBar />

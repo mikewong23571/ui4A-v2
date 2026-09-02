@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -33,13 +34,12 @@ describe('request-time session controls navigation', () => {
     await renderNavigation();
 
     expect(requestCookies.has).toHaveBeenCalledWith(BROWSER_SESSION_COOKIE_NAME);
-    expect(screen.getByRole('menuitem', { name: '账户与密码' })).toHaveAttribute(
-      'href',
+    expect(screen.getByRole('menuitem', { name: '账户与密码' }).getAttribute('href')).toBe(
       '/auth/account',
     );
     const logout = screen.getByRole('menuitem', { name: '退出登录' });
-    expect(logout.closest('form')).toHaveAttribute('action', '/auth/logout');
-    expect(logout.closest('form')).toHaveAttribute('method', 'post');
+    expect(logout.closest('form')?.getAttribute('action')).toBe('/auth/logout');
+    expect(logout.closest('form')?.getAttribute('method')).toBe('post');
   });
 
   it('does not expose unavailable account controls without a browser session cookie', async () => {
@@ -52,7 +52,7 @@ describe('request-time session controls navigation', () => {
   });
 
   it('keeps build-time deployment environment out of the shell UI decision', () => {
-    const source = readFileSync(new URL('./app-shell.tsx', import.meta.url), 'utf8');
+    const source = readFileSync(resolve(import.meta.dirname, 'app-shell.tsx'), 'utf8');
 
     expect(source).not.toContain('process.env.UI4A_DEPLOYMENT_PROFILE');
     expect(source).toContain('<SessionAwareSiteNav />');
