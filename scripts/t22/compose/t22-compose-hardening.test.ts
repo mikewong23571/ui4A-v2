@@ -263,10 +263,15 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     input.edge = {
       webPublicOrigin: 'https://ui4a.styleofwong.cn',
       keycloakPublicOrigin: 'https://auth.ui4a.styleofwong.cn',
+      trustedRequestOrigins: [
+        'https://ui4a.styleofwong.cn',
+        'https://ui4a.home-linux.tail.styleofwong.com',
+      ],
       ui4aTlsHost: 'ui4a.home-linux.tail.styleofwong.com',
       keycloakTlsHost: 'auth-ui4a.home-linux.tail.styleofwong.com',
+      bindAddress: '100.64.0.2',
       publishedPort: 10443,
-    };
+    } as typeof input.edge;
 
     const stack = renderer.renderComposeStack(input);
 
@@ -275,7 +280,7 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
       UI4A_HOST: 'ui4a.home-linux.tail.styleofwong.com',
       KEYCLOAK_HOST: 'auth-ui4a.home-linux.tail.styleofwong.com',
     });
-    expect(stack.services.edge?.ports).toEqual(['127.0.0.1:10443:8443']);
+    expect(stack.services.edge?.ports).toEqual(['100.64.0.2:10443:8080']);
     expect(stack.services.edge?.networks?.default?.aliases).toEqual([
       'ui4a.home-linux.tail.styleofwong.com',
       'auth-ui4a.home-linux.tail.styleofwong.com',
@@ -283,7 +288,18 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     expect(stack.services.worker?.environment?.UI4A_HOST_RUNNER_ORIGINS).toBe(
       '{"compose-container-runner":"https://ui4a.home-linux.tail.styleofwong.com:8443","compose-host-runner":"https://ui4a.home-linux.tail.styleofwong.com:9444"}',
     );
-    expect(edgeRoutingSource()).toContain('https://{$UI4A_HOST}:8443');
+    expect(stack.services.edge?.environment).toMatchObject({
+      UI4A_PUBLIC_HOST: 'ui4a.styleofwong.cn',
+      UI4A_INTERNAL_HOST: 'ui4a.home-linux.tail.styleofwong.com',
+      KEYCLOAK_PUBLIC_HOST: 'auth.ui4a.styleofwong.cn',
+      KEYCLOAK_INTERNAL_HOST: 'auth-ui4a.home-linux.tail.styleofwong.com',
+    });
+    expect(edgeRoutingSource()).toContain(':8080');
+    expect(edgeRoutingSource()).toContain('header_up X-Forwarded-Proto https');
+    expect(edgeRoutingSource()).not.toContain('https://{$UI4A_HOST}:8443');
+    expect(edgeRoutingSource()).not.toContain('https://{$KEYCLOAK_HOST}:8443');
+    expect(edgeRoutingSource()).toContain('https://{$UI4A_HOST}:9444');
+    expect(edgeRoutingSource()).toContain('https://{$KEYCLOAK_HOST}:9443');
   });
 
   it('rejects insecure, path-bearing, same-host, or privileged edge inputs', async () => {

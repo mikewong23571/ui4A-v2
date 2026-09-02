@@ -13,6 +13,7 @@ const settingsFile = '/operator/ui4a/settings.json';
 const secretsFile = '/operator/ui4a/deployment-secrets.json';
 const ui4aGitSha = 'c'.repeat(40);
 const edgePublishedPort = 10443;
+const edgeBindAddress = '100.64.0.2';
 const secretFiles = {
   UI4A_POSTGRES_BOOTSTRAP_PASSWORD_FILE: '/operator/ui4a/postgres-bootstrap-password',
   UI4A_MIGRATION_PASSWORD_FILE: '/operator/ui4a/ui4a-migration-password',
@@ -78,7 +79,13 @@ function fixture() {
     loadCanonical() {
       return {
         settings: {
-          service: { publicOrigin: 'https://ui4a.styleofwong.cn' },
+          service: {
+            publicOrigin: 'https://ui4a.styleofwong.cn',
+            trustedRequestOrigins: [
+              'https://ui4a.styleofwong.cn',
+              'https://ui4a.home-linux.tail.styleofwong.com',
+            ],
+          },
           auth: {
             oidc: {
               issuer: 'https://auth.ui4a.styleofwong.cn/realms/ui4a',
@@ -141,7 +148,8 @@ function environment(): Record<string, string> {
     UI4A_KEYCLOAK_PUBLIC_ORIGIN: 'https://auth.ui4a.styleofwong.cn',
     UI4A_HOST: 'ui4a.home-linux.tail.styleofwong.com',
     KEYCLOAK_HOST: 'auth-ui4a.home-linux.tail.styleofwong.com',
-    UI4A_EDGE_HTTPS_PORT: String(edgePublishedPort),
+    UI4A_EDGE_BIND_ADDRESS: edgeBindAddress,
+    UI4A_EDGE_HTTP_PORT: String(edgePublishedPort),
     ...secretFiles,
     ...images,
   };
@@ -151,7 +159,15 @@ describe('T22 Compose operator-owned production inputs', () => {
   it('generates only a sealed path/digest environment and verifies all eight Secret bindings', () => {
     const { dependencies, secrets } = fixture();
     const generated = generateComposeProductionEnvironment(
-      { ui4aGitSha, settingsFile, secretsFile, secretFiles, images, edgePublishedPort },
+      {
+        ui4aGitSha,
+        settingsFile,
+        secretsFile,
+        secretFiles,
+        images,
+        edgeBindAddress,
+        edgePublishedPort,
+      },
       dependencies,
     );
 
@@ -205,6 +221,7 @@ describe('T22 Compose operator-owned production inputs', () => {
           secretsFile,
           secretFiles,
           images,
+          edgeBindAddress,
           edgePublishedPort,
         },
         dependencies,
@@ -224,12 +241,32 @@ describe('T22 Compose operator-owned production inputs', () => {
             secretsFile,
             secretFiles,
             images,
+            edgeBindAddress,
             edgePublishedPort: publishedPort,
           },
           dependencies,
         ),
       ).toThrowError('COMPOSE_EDGE_BINDING_INVALID');
     }
+  });
+
+  it.each(['0.0.0.0', '192.168.1.7', '47.106.70.24'])('rejects unsafe edge bind %s', (bind) => {
+    const { dependencies } = fixture();
+
+    expect(() =>
+      generateComposeProductionEnvironment(
+        {
+          ui4aGitSha,
+          settingsFile,
+          secretsFile,
+          secretFiles,
+          images,
+          edgeBindAddress: bind,
+          edgePublishedPort,
+        },
+        dependencies,
+      ),
+    ).toThrowError('COMPOSE_EDGE_BINDING_INVALID');
   });
 
   it('rejects an environment origin or host that differs from canonical settings', () => {

@@ -114,7 +114,13 @@ class MemoryStore implements AuthPrivateStore {
 
 const COMPOSITION_CONFIG = {
   settings: {
-    service: { publicOrigin: 'https://ui4a.mothership.internal' },
+    service: {
+      publicOrigin: 'https://ui4a.mothership.internal',
+      trustedRequestOrigins: [
+        'https://ui4a.mothership.internal',
+        'https://ui4a.home-linux.tail.styleofwong.com',
+      ],
+    },
     auth: {
       mode: 'oidc',
       oidc: {
@@ -167,6 +173,30 @@ describe('production Keycloak browser protocol adapters', () => {
     );
     expect(response.headers.get('set-cookie')).toContain(`${PRODUCTION_BROWSER_LOGIN_COOKIE}=`);
     expect(response.headers.get('set-cookie')).not.toContain(CLIENT_SECRET);
+  });
+
+  it('uses a trusted internal UI origin for callback and return URLs without changing issuer', async () => {
+    const internalOrigin = 'https://ui4a.home-linux.tail.styleofwong.com';
+    const authentication = createProductionBrowserAuthentication({
+      config: COMPOSITION_CONFIG,
+      browserOrigin: internalOrigin,
+      store: new MemoryStore(),
+      clock: () => NOW_MILLISECONDS,
+      randomBytes: (size) => Uint8Array.from({ length: size }, (_, index) => index + 1),
+      sha256: (value) => Buffer.from(value),
+      fetch: vi.fn() as typeof globalThis.fetch,
+      credentialDependencies: ID_TOKEN_DEPENDENCIES,
+    });
+
+    const response = await authentication.beginLogin(
+      new Request(`${internalOrigin}/auth/login?returnTo=%2Fmeta`),
+    );
+    const authorization = new URL(response.headers.get('location')!);
+
+    expect(authorization.origin).toBe(new URL(ISSUER).origin);
+    expect(authorization.searchParams.get('redirect_uri')).toBe(
+      `${internalOrigin}/api/auth/callback`,
+    );
   });
 
   it('completes a callback with an ID Token addressed to the browser client', async () => {

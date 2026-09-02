@@ -6,6 +6,7 @@ const HUMAN_ACCESS_TOKEN = 'human-access-token-fixture';
 const EXCHANGED_ACCESS_TOKEN = 'turn-exchanged-token-fixture';
 const AGENT_CLIENT_SECRET = 'agent-client-secret-fixture';
 const APP_ORIGIN = 'https://ui4a.internal';
+const INTERNAL_APP_ORIGIN = 'https://ui4a.home-linux.tail.styleofwong.com';
 const AGENT_CLIENT_ID = 'ui4a-agent';
 
 const mocks = vi.hoisted(() => ({
@@ -193,7 +194,7 @@ beforeEach(() => {
   mocks.preflight.mockReset();
   mocks.preflight.mockReturnValue({
     settings: {
-      service: { publicOrigin: APP_ORIGIN },
+      service: { publicOrigin: APP_ORIGIN, trustedRequestOrigins: [APP_ORIGIN, INTERNAL_APP_ORIGIN] },
       auth: {
         mode: 'oidc',
         oidc: {
@@ -603,6 +604,22 @@ describe('production chat turn credential boundary', () => {
       ),
     );
     expect(behindEdge.status).toBe(200);
+  });
+
+  it('accepts an internal trusted Host while retaining the public origin as canonical', async () => {
+    const internal = await POST(
+      request(
+        { goal: { verb: 'browse articles' }, sessionId: 'internal', turnId: 'turn-internal' },
+        {
+          cookie: 'valid-session',
+          url: 'http://web:3100/api/chat',
+          host: new URL(INTERNAL_APP_ORIGIN).host,
+          forwardedProto: 'https',
+        },
+      ),
+    );
+
+    expect(internal.status).toBe(200);
   });
 
   it('still rejects a plain http origin that matches neither forwarded proto nor config', async () => {
