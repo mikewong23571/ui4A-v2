@@ -9,7 +9,7 @@
   - [x] 为 canonical settings、Compose renderer/operator 和 edge allowlist 写失败测试
   - [x] 为 Chat/internal callback 的受信 Origin 选择写失败测试
 
-## Phase B：最小实现
+## Phase B：最小实现 [checkpoint: ab48c43]
 
 - [x] Task: Green — canonical browser origins、身份绑定与纯 HTTP gateway ab48c43
   - [x] 扩展平台中立 deployment settings 和 Web request-origin/auth adapter
@@ -17,7 +17,7 @@
   - [x] 将 UI/Keycloak public edge listener 改为 HTTP，保留 allowlist 和内部 TLS listener
   - [x] 生成 Tailscale-only bind，更新静态 Compose 与 operator inputs
   - [x] 记录 superseding DECISIONS 条目并更新 standing deployment docs
-- [ ] Task: Phase A+B Verification & Checkpoint
+- [x] Task: Phase A+B Verification & Checkpoint ab48c43
 
 ## Phase C：Home 原地升级与双入口切换
 
