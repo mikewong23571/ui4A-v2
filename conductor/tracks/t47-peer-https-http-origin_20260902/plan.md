@@ -5,9 +5,9 @@
 - [x] Task: Disposable Probe — 验证 Home Tailscale-only HTTP published port c3612c8
   - [x] 用临时容器验证 Home 自身与 `aliyun-sz` 能经 HTTP 访问、普通绑定不扩张
   - [x] 记录 Docker NAT source IP 限制、Tailnet bind 决策并移除临时容器
-- [~] Task: Red — 双入口、纯 HTTP edge 与受信 Origin 合同
-  - [ ] 为 canonical settings、Compose renderer/operator 和 edge allowlist 写失败测试
-  - [ ] 为 Chat/internal callback 的受信 Origin 选择写失败测试
+- [x] Task: Red — 双入口、纯 HTTP edge 与受信 Origin 合同 585049c
+  - [x] 为 canonical settings、Compose renderer/operator 和 edge allowlist 写失败测试
+  - [x] 为 Chat/internal callback 的受信 Origin 选择写失败测试
 
 ## Phase B：最小实现
 
