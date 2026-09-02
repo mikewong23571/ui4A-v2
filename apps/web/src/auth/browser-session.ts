@@ -21,6 +21,7 @@ export interface BrowserTokenSet {
 export interface BrowserAuthenticationPolicy {
   issuer: string;
   authorizationEndpoint: string;
+  endSessionEndpoint: string;
   clientId: string;
   audience: string;
   redirectUri: string;
@@ -509,11 +510,14 @@ export function createBrowserAuthentication(
         clearedCookie,
       );
     }
-    return redirect(
-      new URL(policy.defaultReturnTo, policy.allowedReturnOrigin).toString(),
-      303,
-      clearedCookie,
-    );
+    const postLogoutRedirectUri = new URL(
+      policy.defaultReturnTo,
+      policy.allowedReturnOrigin,
+    ).toString();
+    const endSessionUrl = new URL(policy.endSessionEndpoint);
+    endSessionUrl.searchParams.set('id_token_hint', stored.tokens.idToken);
+    endSessionUrl.searchParams.set('post_logout_redirect_uri', postLogoutRedirectUri);
+    return redirect(endSessionUrl.toString(), 303, clearedCookie);
   }
 
   return { beginLogin, completeCallback, resolveSession, logout };

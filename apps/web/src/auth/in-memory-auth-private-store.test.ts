@@ -61,6 +61,7 @@ describe('single-process AuthPrivateStore', () => {
         issuer: 'https://auth.ui4a.internal/realms/ui4a',
         authorizationEndpoint:
           'https://auth.ui4a.internal/realms/ui4a/protocol/openid-connect/auth',
+        endSessionEndpoint: 'https://auth.ui4a.internal/realms/ui4a/protocol/openid-connect/logout',
         clientId: 'ui4a-web',
         audience: 'ui4a-web',
         redirectUri: 'https://ui4a.internal/api/auth/callback',

@@ -226,6 +226,7 @@ export function createProductionBrowserAuthentication(
     policy: {
       issuer: oidc.issuer,
       authorizationEndpoint: `${oidc.issuer}/protocol/openid-connect/auth`,
+      endSessionEndpoint: `${oidc.issuer}/protocol/openid-connect/logout`,
       clientId: oidc.clientId,
       audience: oidc.clientId,
       redirectUri: `${browserOrigin}/api/auth/callback`,

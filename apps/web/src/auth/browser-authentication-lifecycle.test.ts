@@ -2,6 +2,12 @@ import { createHash, createPrivateKey, sign } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
+import type {
+  AuthPrivateStore,
+  BrowserAuthentication,
+  BrowserAuthenticationDependencies,
+  BrowserTokenSet,
+} from './browser-session';
 import { resolveTrustedRequestIdentity } from './request-identity';
 
 const NOW_SECONDS = 1_788_739_200;
@@ -52,67 +58,8 @@ const PUBLIC_JWK = {
   e: 'AQAB',
 } as const;
 
-interface AuthPrivateStore {
-  get(key: string): Promise<unknown>;
-  put(key: string, value: unknown, expiresAtMs: number): Promise<void>;
-  take(key: string): Promise<unknown>;
-  delete(key: string): Promise<void>;
-}
-
-interface BrowserTokenSet {
-  accessToken: string;
-  idToken: string;
-  refreshToken: string;
-  accessExpiresAtMs: number;
-  refreshExpiresAtMs: number;
-}
-
-interface BrowserAuthentication {
-  beginLogin(request: Request): Promise<Response>;
-  completeCallback(request: Request): Promise<Response>;
-  resolveSession(request: Request): Promise<{
-    authorizationHeader: string;
-    expiresAtMs: number;
-  }>;
-  logout(request: Request): Promise<Response>;
-}
-
 interface BrowserAuthenticationModule {
-  createBrowserAuthentication(input: {
-    policy: {
-      issuer: string;
-      authorizationEndpoint: string;
-      clientId: string;
-      audience: string;
-      redirectUri: string;
-      scopes: string[];
-      sessionCookieName: string;
-      loginCookieName: string;
-      sessionTtlMs: number;
-      loginTtlMs: number;
-      refreshBeforeExpiryMs: number;
-      defaultReturnTo: string;
-      allowedReturnOrigin: string;
-    };
-    sessionKey: Uint8Array;
-    clock(): number;
-    randomBytes(size: number): Uint8Array;
-    sha256(value: Uint8Array): Uint8Array;
-    loginTransactions: AuthPrivateStore;
-    sessions: AuthPrivateStore;
-    exchangeCode(input: {
-      code: string;
-      codeVerifier: string;
-      redirectUri: string;
-      clientId: string;
-    }): Promise<BrowserTokenSet>;
-    refresh(refreshToken: string): Promise<BrowserTokenSet>;
-    revoke(refreshToken: string): Promise<void>;
-    verifyIdToken(
-      idToken: string,
-      expected: { issuer: string; nonce: string; audience: string },
-    ): Promise<void>;
-  }): BrowserAuthentication;
+  createBrowserAuthentication(input: BrowserAuthenticationDependencies): BrowserAuthentication;
 }
 
 class MemoryAuthPrivateStore implements AuthPrivateStore {
@@ -225,6 +172,7 @@ function makeHarness(overrides: Record<string, unknown> = {}) {
     policy: {
       issuer: ISSUER,
       authorizationEndpoint: `${ISSUER}/protocol/openid-connect/auth`,
+      endSessionEndpoint: `${ISSUER}/protocol/openid-connect/logout`,
       clientId: CLIENT_ID,
       audience: AUDIENCE,
       redirectUri: `${UI4A_ORIGIN}/api/auth/callback`,
@@ -591,7 +539,12 @@ describe('opaque secure browser session lifecycle', () => {
     const logout = await auth.logout(requestWithCookie(`${UI4A_ORIGIN}/auth/logout`, cookie));
 
     expect(logout.status).toBe(303);
-    expect(logout.headers.get('location')).toBe(`${UI4A_ORIGIN}/`);
+    const endSession = new URL(logout.headers.get('location')!);
+    expect(`${endSession.origin}${endSession.pathname}`).toBe(
+      `${ISSUER}/protocol/openid-connect/logout`,
+    );
+    expect(endSession.searchParams.get('id_token_hint')).toBe('fixed-id-token');
+    expect(endSession.searchParams.get('post_logout_redirect_uri')).toBe(`${UI4A_ORIGIN}/`);
     expect(logout.headers.get('set-cookie')).toMatch(
       new RegExp(`${SESSION_COOKIE}=;.*Max-Age=0`, 'i'),
     );
