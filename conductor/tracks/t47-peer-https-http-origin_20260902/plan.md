@@ -32,10 +32,10 @@
 
 ## Review Fixes：生产 Session Controls 与账户生命周期入口
 
-- [~] Task: Red — 生产请求期 session controls 合同
-  - [ ] 证明 build-time `UI4A_DEPLOYMENT_PROFILE` 会把操作项错误烘焙为隐藏
-  - [ ] 认证 cookie 存在时必须渲染“账户与密码”和 POST“退出登录”；无 cookie 时不渲染
-- [ ] Task: Green — 请求期 cookie 驱动的最小 Server/Client 边界
+- [x] Task: Red — 生产请求期 session controls 合同 f139c6c
+  - [x] 证明 build-time `UI4A_DEPLOYMENT_PROFILE` 会把操作项错误烘焙为隐藏
+  - [x] 认证 cookie 存在时必须渲染“账户与密码”和 POST“退出登录”；无 cookie 时不渲染
+- [~] Task: Green — 请求期 cookie 驱动的最小 Server/Client 边界
   - [ ] 在 Suspense 内读取 `__Host-ui4a_session`，保持 SiteNav 客户端交互与本地行为
   - [ ] 删除 AppShell 对 build-time deployment env 的 UI 决策
 - [ ] Task: Verification & Checkpoint
