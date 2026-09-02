@@ -51,8 +51,8 @@ tailnet browser -> HTTPS home Caddy ------HTTP-----------> 100.64.0.2:10443
 - Public `POST /api/chat` without a session: `401 session_not_found`, not
   `400 request_origin_invalid`.
 - Public OIDC discovery/account: 200/302; public admin route remains 404.
-- Public authenticated Chat returned 200 and correctly listed one implementation-ready work item
-  before the external provider credential expired.
+- Public authenticated Chat returned 200 after the final provider egress change and correctly
+  listed one implementation-ready work item.
 - Internal authenticated Chat initially exposed and then verified the canonical self-fetch fix:
   contract reads now traverse `service.publicOrigin`; no internal-host fetch failure remains.
 - Local CLI `auth status` and `doctor` passed; health/business/meta probes were all 200.
@@ -64,14 +64,22 @@ tailnet browser -> HTTPS home Caddy ------HTTP-----------> 100.64.0.2:10443
 - `pnpm format:check`: passed.
 - Caddy config adapted with the deployed digest; Home reload and aliyun-sz full validate/reload
   succeeded.
-- External runbook local/Home SHA-256 after final release values:
-  `3b396db4573cf946d9eaac240ed0aba5017416ea835e240cc21433539243360c`.
+- External runbook local/Home SHA-256 after final release and egress values:
+  `971160c3c25f4abf5e22ca2dff81ee72954304da8b06e24e6bebf849be9b6405`.
 
-## Open external credential action
+## Provider egress resolution
 
-The current UI4A stack and both ingress paths are healthy. The configured external CPA now returns
-`auth_unavailable`; `journalctl -u cliproxyapi` identifies Kimi OAuth
-`invalid_grant: Refresh token expired`. A current container-side completion therefore returns HTTP
-500. This requires a new Kimi OAuth login on `aliyun-sz`; changing UI4A apiKey, Caddy headers, or
-request origins is not a valid fix. Track closure waits for that external authorization and one
-final successful completion/Chat replay.
+`deepseek-v4-flash` correctly maps to the single API-key-based
+`openai-compatibility[name=opencode-go]` provider. Direct `aliyun-sz -> ocgo:9453` TCPing measured
+40% loss and second-scale connects; unrelated Kimi refresh warnings initially obscured this fact.
+Only this provider's `proxy-url` changed from `direct` to `http://127.0.0.1:10808`. The loopback
+sing-box mixed proxy selected `vless[hk-entry]`; no other provider or API key changed. After restart:
+
+- direct OpenCode Go completion through the configured egress: HTTP 200, model/choice/usage valid;
+- UI4A Web container completion: HTTP 200, model `deepseek-v4-flash`, choice/usage valid;
+- isolated-browser PKCE Chat: HTTP 200 and one real implementation-ready work item.
+
+Config backup:
+`/var/lib/cliproxyapi/config.yaml.before-opencode-egress-20260902T141034Z.bak`, SHA-256
+`10bb852307f53ee981cf2869edd14926162b39245c41fc9623a787d828a20c3d`. Current config SHA-256:
+`9b63ba1fdbe713251bec508b913d479da090e18210b0f0313c5d2110ae2f9a09`.

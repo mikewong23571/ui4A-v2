@@ -30,12 +30,12 @@
   - [x] Aliyun 入口经 Tailscale HTTP 直达同一 gateway并保留 public Host
 - [x] Task: Phase Verification & Checkpoint 2a0c4c4
 
-## Phase D：端到端验收、文档与关闭
+## Phase D：端到端验收、文档与关闭 [checkpoint: 2a0c4c4]
 
-- [~] Task: 公网与 Tailnet 双入口验收
+- [x] Task: 公网与 Tailnet 双入口验收 2a0c4c4
   - [x] TLS、live/version、UI/API 未登录分流、OIDC discovery/account/logout
-  - [~] 公网与内部 Authorization Code + PKCE 登录及 Chat 真实请求（两入口登录通过；等待 CPA Kimi OAuth 续期后重放最终 Chat）
+  - [x] 公网与内部 Authorization Code + PKCE 登录及 Chat 真实请求
   - [x] admin/internal route 负例、重启恢复与日志复核
 - [x] Task: 同步仓库外部署 runbook 与 Home mirror，比较 SHA-256
-- [ ] Task: 完成 evidence/DONE、归档 Track、推送 exact release
-- [ ] Task: Phase Verification & Checkpoint
+- [x] Task: 完成 evidence/DONE、归档 Track、推送 exact release 2a0c4c4
+- [x] Task: Phase Verification & Checkpoint 2a0c4c4
