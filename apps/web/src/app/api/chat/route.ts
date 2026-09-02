@@ -184,7 +184,7 @@ export async function POST(request: Request) {
         plane: 'business',
       });
       productionSubjectToken = subjectToken;
-      productionOrigin = effectiveOrigin;
+      productionOrigin = config.settings.service.publicOrigin;
       productionAgentScopes = [...agentScopes];
       productionConfig = config;
     } catch (error) {

@@ -629,6 +629,16 @@ describe('production chat turn credential boundary', () => {
     );
 
     expect(internal.status).toBe(200);
+    expect(
+      mocks.fetcher.mock.calls.map(
+        ([input]) => new URL(input instanceof Request ? input.url : String(input)).origin,
+      ),
+    ).toEqual(expect.arrayContaining([APP_ORIGIN]));
+    expect(
+      mocks.fetcher.mock.calls.some(([input]) =>
+        String(input instanceof Request ? input.url : input).startsWith(INTERNAL_APP_ORIGIN),
+      ),
+    ).toBe(false);
   });
 
   it('still rejects a plain http origin that matches neither forwarded proto nor config', async () => {
