@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 import { preflightProductionDeploymentFromEnvironment } from '../../../packages/shared/src/production-deployment-config';
 import { createKeycloakAdminClient } from '../../../deploy/keycloak/realm-admin';
+import { reconcileKeycloakAccountConsole } from '../../../deploy/keycloak/realm-account-console';
 import { reconcileKeycloakRealmBrowserOrigins } from '../../../deploy/keycloak/realm-bindings';
 import {
   KeycloakBootstrapError,
@@ -156,6 +157,11 @@ async function main(): Promise<void> {
     publicOrigin: config.settings.service.publicOrigin,
     backup,
   });
+  const accountConsole = await reconcileKeycloakAccountConsole({
+    admin,
+    realmImport: readRealmImport(process.env),
+    backup,
+  });
   const origins = await reconcileKeycloakRealmBrowserOrigins({
     admin,
     realmImport: readRealmImport(process.env),
@@ -163,7 +169,9 @@ async function main(): Promise<void> {
     trustedRequestOrigins: config.settings.service.trustedRequestOrigins,
     backup,
   });
-  process.stdout.write(`${JSON.stringify({ ok: true, backupFile: path, migration, origins })}\n`);
+  process.stdout.write(
+    `${JSON.stringify({ ok: true, backupFile: path, migration, accountConsole, origins })}\n`,
+  );
 }
 
 main().catch((error: unknown) => {

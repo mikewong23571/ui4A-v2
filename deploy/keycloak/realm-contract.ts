@@ -31,10 +31,16 @@ export interface RealmImportRepresentation extends Record<string, unknown> {
   users?: Array<Record<string, unknown>>;
 }
 
-interface RealmClientScopeRepresentation extends Record<string, unknown> {
+export interface RealmClientScopeRepresentation extends Record<string, unknown> {
   name: string;
   protocol: 'openid-connect';
-  attributes: { 'include.in.token.scope': 'true' };
+  attributes: Record<string, string>;
+  protocolMappers?: Array<{
+    name: string;
+    protocol: string;
+    protocolMapper: string;
+    config: Record<string, string>;
+  }>;
 }
 
 export interface BootstrapResult {
@@ -73,7 +79,12 @@ const policyScopes = [
   'ui4a:policy:editorial',
   'ui4a:policy:governance',
 ] as const;
-const managedClientScopes = [...permissionScopes, ...policyScopes] as const;
+export const accountConsoleClientScopeName = 'ui4a:account-console';
+const managedClientScopes = [
+  ...permissionScopes,
+  ...policyScopes,
+  accountConsoleClientScopeName,
+] as const;
 export const expectedClientScopeAssignments: Record<
   (typeof managedClientIds)[number],
   { defaults: readonly string[]; optional: readonly string[] }
@@ -137,6 +148,21 @@ function stringRecord(input: unknown, label: string): Record<string, string> {
     fail('KEYCLOAK_REALM_IMPORT_INVALID', `${label} must contain only strings`);
   }
   return value as Record<string, string>;
+}
+
+function exactStringRecord(
+  input: unknown,
+  expected: Readonly<Record<string, string>>,
+  label: string,
+): Record<string, string> {
+  const value = stringRecord(input, label);
+  if (
+    Object.keys(value).length !== Object.keys(expected).length ||
+    Object.entries(expected).some(([key, expectedValue]) => value[key] !== expectedValue)
+  ) {
+    fail('KEYCLOAK_REALM_IMPORT_INVALID', `${label} is incompatible`);
+  }
+  return value;
 }
 
 function exactStringArray(input: unknown, expected: readonly string[], label: string): string[] {
@@ -250,15 +276,82 @@ function validateRealmImport(input: unknown): RealmImportRepresentation {
   );
   root.clientScopes.forEach((candidate, index) => {
     const scope = requiredObject(candidate, `clientScopes[${index}]`);
-    exactKeys(scope, new Set(['name', 'protocol', 'attributes']), `clientScopes[${index}]`);
+    const isAccountConsole = scope.name === accountConsoleClientScopeName;
+    exactKeys(
+      scope,
+      new Set(['name', 'protocol', 'attributes', ...(isAccountConsole ? ['protocolMappers'] : [])]),
+      `clientScopes[${index}]`,
+    );
     const attributes = stringRecord(scope.attributes, `clientScopes[${index}].attributes`);
     if (
       typeof scope.name !== 'string' ||
       scope.protocol !== 'openid-connect' ||
-      attributes['include.in.token.scope'] !== 'true' ||
-      Object.keys(attributes).length !== 1
+      (isAccountConsole
+        ? attributes['include.in.token.scope'] !== 'false' ||
+          attributes['display.on.consent.screen'] !== 'false' ||
+          Object.keys(attributes).length !== 2
+        : attributes['include.in.token.scope'] !== 'true' || Object.keys(attributes).length !== 1)
     ) {
       fail('KEYCLOAK_REALM_IMPORT_INVALID', `clientScopes[${index}] has an invalid contract`);
+    }
+    if (isAccountConsole) {
+      const mappers = scope.protocolMappers;
+      if (!Array.isArray(mappers) || mappers.length !== 2) {
+        fail('KEYCLOAK_REALM_IMPORT_INVALID', 'Account Console client scope is incompatible');
+      }
+      for (const [mapperIndex, candidateMapper] of mappers.entries()) {
+        const mapper = requiredObject(
+          candidateMapper,
+          `clientScopes[${index}].protocolMappers[${mapperIndex}]`,
+        );
+        exactKeys(
+          mapper,
+          new Set(['name', 'protocol', 'protocolMapper', 'config']),
+          `clientScopes[${index}].protocolMappers[${mapperIndex}]`,
+        );
+        stringRecord(
+          mapper.config,
+          `clientScopes[${index}].protocolMappers[${mapperIndex}].config`,
+        );
+      }
+      const byName = new Map(
+        mappers.map((candidateMapper) => [object(candidateMapper)?.name, object(candidateMapper)]),
+      );
+      const clientRoles = byName.get('client roles');
+      const username = byName.get('username');
+      if (
+        clientRoles?.protocol !== 'openid-connect' ||
+        clientRoles.protocolMapper !== 'oidc-usermodel-client-role-mapper' ||
+        username?.protocol !== 'openid-connect' ||
+        username.protocolMapper !== 'oidc-usermodel-attribute-mapper'
+      ) {
+        fail('KEYCLOAK_REALM_IMPORT_INVALID', 'Account Console client scope is incompatible');
+      }
+      exactStringRecord(
+        clientRoles.config,
+        {
+          'user.attribute': 'foo',
+          'introspection.token.claim': 'true',
+          'access.token.claim': 'true',
+          'claim.name': 'resource_access.${client_id}.roles',
+          'jsonType.label': 'String',
+          multivalued: 'true',
+        },
+        'Account Console client roles mapper config',
+      );
+      exactStringRecord(
+        username.config,
+        {
+          'introspection.token.claim': 'true',
+          'userinfo.token.claim': 'true',
+          'user.attribute': 'username',
+          'id.token.claim': 'true',
+          'access.token.claim': 'true',
+          'claim.name': 'preferred_username',
+          'jsonType.label': 'String',
+        },
+        'Account Console username mapper config',
+      );
     }
   });
   if (!Array.isArray(root.users) || root.users.length !== 1) {

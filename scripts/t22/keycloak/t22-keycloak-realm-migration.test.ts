@@ -71,6 +71,18 @@ class FakeMigrationAdmin implements KeycloakRealmMigrationAdmin {
     if (index >= 0) this.clients[index] = structuredClone(client);
   }
 
+  async getClientScopes() {
+    return [];
+  }
+
+  async createClientScope() {
+    throw new Error('not used by the v1 to v2 migration');
+  }
+
+  async addClientDefaultScope() {
+    throw new Error('not used by the v1 to v2 migration');
+  }
+
   async updateRealm(_realm: string, changes: Record<string, unknown>) {
     this.mutations.push('update-realm');
     this.realm = { ...this.realm, ...structuredClone(changes) };

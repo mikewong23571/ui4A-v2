@@ -9,6 +9,9 @@ export interface KeycloakAdmin {
 export interface KeycloakRealmMigrationAdmin extends KeycloakAdmin {
   createClient(realm: string, client: Record<string, unknown>): Promise<void>;
   updateClient(realm: string, clientId: string, client: Record<string, unknown>): Promise<void>;
+  getClientScopes(realm: string): Promise<Array<Record<string, unknown>>>;
+  createClientScope(realm: string, scope: Record<string, unknown>): Promise<void>;
+  addClientDefaultScope(realm: string, clientId: string, scopeId: string): Promise<void>;
   updateRealm(realm: string, changes: Record<string, unknown>): Promise<void>;
   getRealmRole(realm: string, role: string): Promise<Record<string, unknown>>;
   getRoleComposites(realm: string, roleId: string): Promise<Array<Record<string, unknown>>>;
@@ -45,6 +48,9 @@ export function assertMigrationAdmin(input: unknown): asserts input is KeycloakR
   if (
     typeof candidate.createClient !== 'function' ||
     typeof candidate.updateClient !== 'function' ||
+    typeof candidate.getClientScopes !== 'function' ||
+    typeof candidate.createClientScope !== 'function' ||
+    typeof candidate.addClientDefaultScope !== 'function' ||
     typeof candidate.updateRealm !== 'function' ||
     typeof candidate.getRealmRole !== 'function' ||
     typeof candidate.getRoleComposites !== 'function' ||
@@ -208,6 +214,35 @@ export function createKeycloakAdminClient(input: AdminClientInput): KeycloakReal
       const response = await authorized(
         `/admin/realms/${encodeURIComponent(realm)}/clients/${encodeURIComponent(clientId)}`,
         { method: 'PUT', body: JSON.stringify(client) },
+      );
+      if (!response.ok) {
+        fail('KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED', 'Keycloak Admin request failed');
+      }
+    },
+    async getClientScopes(realm) {
+      const response = await authorized(`/admin/realms/${encodeURIComponent(realm)}/client-scopes`);
+      if (!response.ok) {
+        fail('KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED', 'Keycloak Admin request failed');
+      }
+      const body = await json(response);
+      if (!Array.isArray(body) || body.some((entry) => object(entry) === undefined)) {
+        fail('KEYCLOAK_BOOTSTRAP_INVALID_RESPONSE', 'Keycloak Admin response was invalid');
+      }
+      return body as Array<Record<string, unknown>>;
+    },
+    async createClientScope(realm, scope) {
+      const response = await authorized(
+        `/admin/realms/${encodeURIComponent(realm)}/client-scopes`,
+        { method: 'POST', body: JSON.stringify(scope) },
+      );
+      if (!response.ok) {
+        fail('KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED', 'Keycloak Admin request failed');
+      }
+    },
+    async addClientDefaultScope(realm, clientId, scopeId) {
+      const response = await authorized(
+        `/admin/realms/${encodeURIComponent(realm)}/clients/${encodeURIComponent(clientId)}/default-client-scopes/${encodeURIComponent(scopeId)}`,
+        { method: 'PUT' },
       );
       if (!response.ok) {
         fail('KEYCLOAK_BOOTSTRAP_ADMIN_REQUEST_FAILED', 'Keycloak Admin request failed');

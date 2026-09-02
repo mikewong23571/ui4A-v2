@@ -10,6 +10,10 @@ import {
   KeycloakBootstrapError,
   type RealmImportRepresentation,
 } from '../../../deploy/keycloak/realm-bootstrap';
+import {
+  reconcileKeycloakAccountConsole,
+  verifyKeycloakAccountConsole,
+} from '../../../deploy/keycloak/realm-account-console';
 
 const realmImportPath = 'deploy/keycloak/realm-import.json';
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -138,7 +142,13 @@ async function main(): Promise<void> {
     },
     mode,
   });
-  process.stdout.write(`${JSON.stringify({ ok: true, mode, ...result })}\n`);
+  const accountConsole =
+    result.outcome === 'absent'
+      ? { outcome: 'absent' as const }
+      : result.outcome === 'imported'
+        ? await reconcileKeycloakAccountConsole({ admin, realmImport, backup: async () => {} })
+        : await verifyKeycloakAccountConsole({ admin, realmImport });
+  process.stdout.write(`${JSON.stringify({ ok: true, mode, ...result, accountConsole })}\n`);
 }
 
 main().catch((error: unknown) => {

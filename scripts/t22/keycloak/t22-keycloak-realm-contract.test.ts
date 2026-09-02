@@ -41,6 +41,12 @@ interface RealmImportRepresentation {
     name: string;
     protocol: string;
     attributes: Record<string, string>;
+    protocolMappers?: Array<{
+      name: string;
+      protocol: string;
+      protocolMapper: string;
+      config: Record<string, string>;
+    }>;
   }>;
   users?: Array<{
     username: string;
@@ -236,10 +242,11 @@ describe('T22 experimental Keycloak realm import contract', () => {
     );
   });
 
-  it('defines only the fixed permission and policy client scopes emitted in access tokens', () => {
+  it('defines fixed application scopes plus the Account Console token contract', () => {
     const input = requiredJson<RealmImportRepresentation>(realmImportPath);
 
     expect(input.clientScopes?.map(({ name }) => name).toSorted()).toEqual([
+      'ui4a:account-console',
       'ui4a:approve',
       'ui4a:policy:community',
       'ui4a:policy:default',
@@ -250,15 +257,56 @@ describe('T22 experimental Keycloak realm import contract', () => {
       'ui4a:read',
       'ui4a:write',
     ]);
-    expect(input.clientScopes).toEqual(
+    const applicationScopes = input.clientScopes!.filter(
+      ({ name }) => name !== 'ui4a:account-console',
+    );
+    expect(applicationScopes).toEqual(
       expect.arrayContaining(
-        input.clientScopes!.map(({ name }) => ({
+        applicationScopes.map(({ name }) => ({
           name,
           protocol: 'openid-connect',
           attributes: { 'include.in.token.scope': 'true' },
         })),
       ),
     );
+
+    const accountConsole = input.clientScopes?.find(({ name }) => name === 'ui4a:account-console');
+    expect(accountConsole).toMatchObject({
+      protocol: 'openid-connect',
+      attributes: {
+        'include.in.token.scope': 'false',
+        'display.on.consent.screen': 'false',
+      },
+    });
+    expect(accountConsole?.protocolMappers).toEqual([
+      {
+        name: 'client roles',
+        protocol: 'openid-connect',
+        protocolMapper: 'oidc-usermodel-client-role-mapper',
+        config: {
+          'user.attribute': 'foo',
+          'introspection.token.claim': 'true',
+          'access.token.claim': 'true',
+          'claim.name': 'resource_access.${client_id}.roles',
+          'jsonType.label': 'String',
+          multivalued: 'true',
+        },
+      },
+      {
+        name: 'username',
+        protocol: 'openid-connect',
+        protocolMapper: 'oidc-usermodel-attribute-mapper',
+        config: {
+          'introspection.token.claim': 'true',
+          'userinfo.token.claim': 'true',
+          'user.attribute': 'username',
+          'id.token.claim': 'true',
+          'access.token.claim': 'true',
+          'claim.name': 'preferred_username',
+          'jsonType.label': 'String',
+        },
+      },
+    ]);
   });
 
   it('keeps CLI free of password grants, secrets, approval, and experimental delegation', () => {
