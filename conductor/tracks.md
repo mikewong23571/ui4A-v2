@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-- [x] **Track: T47 双 HTTPS 入口与纯 HTTP Origin**（`aliyun-sz`/`home` 并列 TLS 终止，HTTP/Tailscale 回源同一 application gateway；release `2a0c4c4e`，DeepSeek/Chat 终验通过） *Link: [tracks/archive/t47-peer-https-http-origin_20260902/index.md](./tracks/archive/t47-peer-https-http-origin_20260902/index.md)*
+- [~] **Track: T47 双 HTTPS 入口与纯 HTTP Origin**（Review Fixes：生产请求期账户/改密/退出操作恢复与真实 logout 验收） *Link: [tracks/t47-peer-https-http-origin_20260902/index.md](./tracks/t47-peer-https-http-origin_20260902/index.md)*
 
 - [x] **Track: T46 CLI Device Credential 与长期 Agent 访问**（Keycloak Device Authorization + 90 天 Offline Access + macOS Keychain） *Link: [tracks/archive/t46-cli-device-credential_20260902/index.md](./tracks/archive/t46-cli-device-credential_20260902/index.md)*
 

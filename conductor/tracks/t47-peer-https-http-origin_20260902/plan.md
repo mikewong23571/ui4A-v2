@@ -30,6 +30,22 @@
   - [x] Aliyun 入口经 Tailscale HTTP 直达同一 gateway并保留 public Host
 - [x] Task: Phase Verification & Checkpoint 2a0c4c4
 
+## Review Fixes：生产 Session Controls 与账户生命周期入口
+
+- [ ] Task: Red — 生产请求期 session controls 合同
+  - [ ] 证明 build-time `UI4A_DEPLOYMENT_PROFILE` 会把操作项错误烘焙为隐藏
+  - [ ] 认证 cookie 存在时必须渲染“账户与密码”和 POST“退出登录”；无 cookie 时不渲染
+- [ ] Task: Green — 请求期 cookie 驱动的最小 Server/Client 边界
+  - [ ] 在 Suspense 内读取 `__Host-ui4a_session`，保持 SiteNav 客户端交互与本地行为
+  - [ ] 删除 AppShell 对 build-time deployment env 的 UI 决策
+- [ ] Task: Verification & Checkpoint
+  - [ ] focused tests、Web typecheck、format、strict governance、`pnpm check`、production build
+- [ ] Task: Exact SHA 部署与浏览器验收
+  - [ ] 8 服务 healthy；系统菜单显示两个操作项
+  - [ ] “账户与密码”进入 Keycloak Account Console
+  - [ ] POST“退出登录”清 cookie，随后 UI 重新进入登录流程
+- [ ] Task: 更新 evidence/DONE/runbook、重新归档并推送
+
 ## Phase D：端到端验收、文档与关闭 [checkpoint: 2a0c4c4]
 
 - [x] Task: 公网与 Tailnet 双入口验收 2a0c4c4

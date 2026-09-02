@@ -1,4 +1,7 @@
-# T47 完成报告
+# T47 完成报告（Review Fixes 重新打开）
+
+> 该报告记录首次关闭时的架构交付；生产浏览器发现 session controls 被 build-time 条件隐藏，
+> T47 已重新打开并在原 Track 追加 Review Fixes。最终关闭时更新本报告。
 
 ## Outcome
 
