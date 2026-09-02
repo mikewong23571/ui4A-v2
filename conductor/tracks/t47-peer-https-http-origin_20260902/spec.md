@@ -16,8 +16,8 @@
   同一 gateway，不再串联另一个 HTTPS 入口。
 - Compose edge 的外部 UI/Keycloak listener 改为纯 HTTP，继续集中保留 route allowlist；Runner
   delivery、Keycloak admin、PostgreSQL、Temporal 及其他内部 TLS 合同不因本 Track降级。
-- HTTP published port 只绑定 Home 的 Tailscale 地址，并在 gateway 层只接受 Home 与
-  `aliyun-sz` 的 Tailnet source IP；不得绑定公网或普通 LAN 地址。
+- HTTP published port 只绑定 Home 的 Tailscale 地址，不得绑定公网或普通 LAN 地址；更细的节点级
+  来源限制属于 Docker NAT 之前的 Tailnet ACL/宿主防火墙，不在容器内伪造 source allowlist。
 - 两个入口必须保留浏览器实际 `Host`，并固定向后端传递 `X-Forwarded-Proto: https`；不得用内部
   backend host 覆盖公网 `Host`。
 - canonical deployment settings 显式声明受信浏览器 request origins。Chat、登录回调和 session
@@ -41,7 +41,8 @@
 - Red/Green focused tests、`pnpm governance`、相关 typecheck/lint 与 `pnpm check` 全绿。
 - 现网拓扑为：`aliyun-sz HTTPS -> HTTP/Tailscale -> Home gateway` 和
   `home HTTPS -> HTTP -> Home gateway`；配置中不存在这两个入口到 UI4A 的 HTTPS 回源。
-- Home HTTP origin 从普通 LAN/公网不可达，非 allowlist Tailnet source 被拒。
+- Home HTTP origin 从普通 LAN/公网不可达，只能经本机 Tailscale 地址访问；admin/internal listener
+  不随 HTTP origin 发布。
 - 公网无 session `POST /api/chat` 返回结构化 `401 session_not_found`，不再返回
   `400 request_origin_invalid`；带真实 session 的 Chat 请求能到达 LLM。
 - 两个 UI HTTPS 入口的 `/live`、未登录页面重定向、OIDC Authorization Code + PKCE 登录、账户入口

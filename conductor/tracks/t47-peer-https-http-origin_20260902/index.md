@@ -2,6 +2,7 @@
 
 - [规格](./spec.md)
 - [计划](./plan.md)
+- [Probe 证据](./probe.md)
 - [元数据](./metadata.json)
 
 将 `aliyun-sz` 公网入口和 `home` Tailnet 入口改为并列的 TLS 终止点；两者直接回源同一个
