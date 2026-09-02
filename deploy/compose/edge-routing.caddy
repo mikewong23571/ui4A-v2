@@ -59,7 +59,7 @@
 	handle @keycloakHost {
 		@keycloakProtocolRead {
 			method GET HEAD OPTIONS
-			path /realms/ui4a/.well-known/openid-configuration /realms/ui4a/protocol/openid-connect/auth /realms/ui4a/protocol/openid-connect/certs /realms/ui4a/protocol/openid-connect/logout /realms/ui4a/protocol/openid-connect/3p-cookies/* /realms/ui4a/device /realms/ui4a/device/* /realms/ui4a/login-actions/* /realms/ui4a/account /realms/ui4a/account/* /resources/*
+			path /realms/ui4a/.well-known/openid-configuration /realms/ui4a/protocol/openid-connect/auth /realms/ui4a/protocol/openid-connect/certs /realms/ui4a/protocol/openid-connect/logout /realms/ui4a/protocol/openid-connect/3p-cookies/* /realms/ui4a/protocol/openid-connect/login-status-iframe.html* /realms/ui4a/device /realms/ui4a/device/* /realms/ui4a/login-actions/* /realms/ui4a/account /realms/ui4a/account/* /resources/*
 		}
 		handle @keycloakProtocolRead {
 			reverse_proxy keycloak:8080 {

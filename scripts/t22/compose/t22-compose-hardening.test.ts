@@ -260,6 +260,9 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
     );
     expect(keycloakRead).toContain('method GET HEAD OPTIONS');
     expect(keycloakRead).toContain('/realms/ui4a/protocol/openid-connect/3p-cookies/*');
+    expect(keycloakRead).toContain(
+      '/realms/ui4a/protocol/openid-connect/login-status-iframe.html*',
+    );
     expect(stack.services.edge?.environment).toMatchObject({
       UI4A_HOST: 'ui4a.mothership.internal',
       KEYCLOAK_HOST: 'auth.ui4a.mothership.internal',
