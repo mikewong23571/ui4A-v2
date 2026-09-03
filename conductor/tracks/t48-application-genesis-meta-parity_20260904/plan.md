@@ -42,16 +42,10 @@
 
 ## Phase 5 — Meta UI 人机同门(D67.1/D67.2)
 
-- [ ] Task: GenericCollectionRenderer 渲染集合级 actions
-  - [ ] 红测(component):meta/drafts 集合页渲染 create 控件;提交前 fresh-read;无 actions 集合零变化;I3 fuzz 断言控件均映射声明 action
-  - [ ] 绿:MetaActions 集成,scope-preserving
-- [ ] Task: application-bundle 人类编辑 schema
-  - [ ] 红测:view-models/draft-editor-schema 对 application-bundle 给出结构化必填根 + blocking-fields 聚焦
-  - [ ] 绿:实现(零 AI)
-- [ ] Task: Draft 视图/创建流 kind 支持
-  - [ ] 红测(component):draft detail 对 application-bundle 呈现 validation/diff/checks;创建→详情导航闭环
-  - [ ] 绿:实现;registry/classes 不新增特化则走既有 generic
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: GenericCollectionRenderer 渲染集合级 actions [0a41ac]（复用 MetaActions;空集合零渲染;I3 合同驱动;T39 旧断言按 D67 修订）
+- [x] Task: application-bundle 人类编辑 schema [0a41ac]（APPLICATION_BUNDLE_EDITOR_SCHEMA 对照解析合同;blocking-fields/merge 复用;零 AI）
+- [x] Task: Draft 视图/创建流 kind 支持 [0a41ac]（view-model 天然通用,component 测试固定;创建→详情经 onChanged 刷新）
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 0a41ac]（自治验收 meta 127/127;t22 脚本路径跟进 [9b61f9]）
 
 ## Phase 6 — 同门闭环验收(两门同跑;agent 双通道端到端)
 
