@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-- [ ] **Track: T48 Application Genesis 产品内闭环与 Meta 人机同门**（application-bundle 受治理 Draft → 原子 seed 事件 → scope 全集自动生长；集合级 create 人类渲染与 agent 同门） *Link: [tracks/t48-application-genesis-meta-parity_20260904/index.md](./tracks/t48-application-genesis-meta-parity_20260904/index.md)*
+- [~] **Track: T48 Application Genesis 产品内闭环与 Meta 人机同门**（application-bundle 受治理 Draft → 原子 seed 事件 → scope 全集自动生长；集合级 create 人类渲染与 agent 同门） *Link: [tracks/t48-application-genesis-meta-parity_20260904/index.md](./tracks/t48-application-genesis-meta-parity_20260904/index.md)*
 
 - [x] **Track: T47 双 HTTPS 入口与纯 HTTP Origin**（Review Fixes：生产请求期账户/改密/退出操作恢复与真实 logout 验收） *Link: [tracks/archive/t47-peer-https-http-origin_20260902/index.md](./tracks/archive/t47-peer-https-http-origin_20260902/index.md)*
 
