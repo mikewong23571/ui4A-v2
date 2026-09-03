@@ -54,6 +54,8 @@ interface MetaActionsProps {
   entity: SirenEntity;
   rel: string;
   scope?: string;
+  /** Section heading; hosts place the same action surface under their own semantics (e.g. 集合动作). */
+  title?: string;
   prefill?: Record<string, unknown>;
   excludeActions?: string[];
   onChanged?: () => void;
@@ -67,6 +69,7 @@ function ScopedMetaActions({
   entity,
   rel,
   scope,
+  title = '可用动作',
   prefill,
   excludeActions = [],
   onChanged,
@@ -79,7 +82,7 @@ function ScopedMetaActions({
   return (
     <section aria-labelledby="meta-actions-heading" className="space-y-3">
       <h2 id="meta-actions-heading" className="text-lg font-semibold">
-        可用动作
+        {title}
       </h2>
       {actions.length > 0 && (
         <div className="grid gap-3 lg:grid-cols-2">

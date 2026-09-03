@@ -47,7 +47,7 @@ const create = action(
   'create',
   'Create Draft',
   {
-    kind: { type: 'string', enum: ['flow-definition', 'agent-definition'] },
+    kind: { type: 'string', enum: ['flow-definition', 'agent-definition', 'application-bundle'] },
     target: { type: 'string', minLength: 1 },
     commandId: clientField('string'),
     payload: {},
@@ -312,7 +312,7 @@ describe('Draft Meta review responsibility', () => {
     expect(typeof body.params.commandId).toBe('string');
   });
 
-  it('makes existing Drafts the collection path and keeps raw creation behind a secondary disclosure', () => {
+  it('makes existing Drafts the collection path with a first-class declared create entry (D67.1)', () => {
     render(
       <MetaEntityRenderer
         rel="meta/drafts"
@@ -322,13 +322,17 @@ describe('Draft Meta review responsibility', () => {
     );
 
     expect(screen.getByRole('link', { name: /writer/ })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Create Draft' })).toBeNull();
+    // 集合级 create 不再藏在二级 disclosure;与 agent 同一份 Siren 合同、同一裁决路径。
+    expect(screen.getByRole('heading', { name: '集合动作' })).toBeTruthy();
+    expect(screen.queryByText('高级 / 原始输入')).toBeNull();
 
-    fireEvent.click(screen.getByText('高级 / 原始输入'));
     fireEvent.click(screen.getByRole('button', { name: 'Create Draft' }));
 
-    expect(screen.getByLabelText(/kind/i)).toBeTruthy();
-    expect(screen.getByLabelText(/target/i)).toBeTruthy();
+    const kindOptions = [...(screen.getByLabelText(/^kind/i) as HTMLSelectElement).options].map(
+      (option) => option.textContent,
+    );
+    expect(kindOptions).toContain('application-bundle');
+    expect(screen.getByLabelText(/^target/i)).toBeTruthy();
     expect(screen.queryByLabelText(/^commandId/i)).toBeNull();
     expect(screen.queryByLabelText(/^policyScope/i)).toBeNull();
     expect(screen.queryByLabelText(/^actor/i)).toBeNull();
@@ -477,5 +481,150 @@ describe('Draft Meta review responsibility', () => {
       '/_meta/api/entity?rel=meta%2Factivation%3Ad1&scope=governance',
       '/_meta/api/entity?rel=meta%2Factivation%3Ad1&scope=governance',
     ]);
+  });
+});
+
+const notesBundlePayload = {
+  schema: 'https://ui4a.dev/application-bundle/v1',
+  bundle: { name: 'notes', version: 1 },
+  applications: [
+    {
+      name: 'notes',
+      title: 'Notes',
+      intent: 'Capture notes.',
+      entry: { target: 'flow:notes-capture', role: 'primary-create' },
+    },
+  ],
+  capabilities: [],
+  flows: [
+    {
+      name: 'notes-capture',
+      title: 'Capture',
+      app: 'notes',
+      initial: 'capture',
+      nodes: [{ name: 'capture', title: 'Capture', actions: [], fields: [] }],
+    },
+  ],
+  seed: { rel: 'seed:notes', detail: { instances: {} } },
+};
+
+function applicationBundleDraft(): SirenEntity {
+  return {
+    class: ['meta', 'draft', 'application-bundle', 'invalid'],
+    properties: {
+      rel: 'draft:d9',
+      id: 'd9',
+      owner: 'local-user',
+      policyScope: 'governance',
+      kind: 'application-bundle',
+      target: 'ideas',
+      status: 'invalid',
+      version: 1,
+      maxVersion: 1,
+      validation: {
+        valid: false,
+        issues: [
+          {
+            code: 'target-name-mismatch',
+            path: '/bundle/name',
+            message: 'bundle name notes does not match target ideas',
+          },
+        ],
+      },
+      checks: [
+        { name: 'bundle-parseable', pass: true },
+        { name: 'target-name-match', pass: false },
+        { name: 'application-not-installed', pass: true },
+      ],
+      payload: notesBundlePayload,
+      diff: {
+        algorithm: 'bundle-inventory',
+        bundle: { name: 'notes', version: 1 },
+        inventory: { applications: ['notes'], capabilities: [], flows: ['notes-capture'] },
+        added: { applications: ['notes'], capabilities: [], flows: ['notes-capture'] },
+        conflicts: { applications: [], capabilities: [], flows: [] },
+        hash: 'sha256:opaque',
+      },
+      provenance: { actor: 'human', principal: 'local-user', sources: [] },
+    },
+    actions: [revise],
+    links: [{ rel: ['self'], href: '/_meta/api/entity?rel=draft%3Ad9' }],
+    'guard-results': [],
+  };
+}
+
+describe('application-bundle Draft review (T48 Phase 5)', () => {
+  it('presents validation issues, mechanical inventory diff, and checks for the new kind', () => {
+    render(
+      <MetaEntityRenderer
+        rel="draft:d9"
+        navigation={{ scope: 'governance' }}
+        entity={applicationBundleDraft()}
+      />,
+    );
+
+    expect(screen.getAllByText('application-bundle').length).toBeGreaterThan(0);
+    expect(screen.getByText('/bundle/name')).toBeTruthy();
+    expect(screen.getByText(/bundle name notes does not match target ideas/)).toBeTruthy();
+
+    const diff = screen.getByRole('heading', { name: 'Mechanical diff' }).parentElement!;
+    expect(diff.textContent).toContain('bundle-inventory');
+    expect(diff.textContent).toContain('notes-capture');
+
+    const checks = screen.getByRole('heading', { name: 'Checks' }).parentElement!;
+    expect(checks.textContent).toContain('bundle-parseable');
+    expect(checks.textContent).toContain('target-name-match');
+    expect(checks.textContent).toContain('application-not-installed');
+    // 失败 check 排在前面(修复优先)。
+    const failed = checks.textContent!.indexOf('target-name-match');
+    const passed = checks.textContent!.indexOf('bundle-parseable');
+    expect(failed).toBeGreaterThan(-1);
+    expect(failed).toBeLessThan(passed);
+
+    expect(screen.getByRole('button', { name: 'Revise Draft' })).toBeTruthy();
+  });
+
+  it('revise prefills the bundle payload and submits the parsed candidate through the same contract', async () => {
+    const current = applicationBundleDraft();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(current), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ entity: current }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <MetaEntityRenderer rel="draft:d9" navigation={{ scope: 'governance' }} entity={current} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Revise Draft' }));
+    const payload = (await screen.findByLabelText(/payload/i)) as HTMLTextAreaElement;
+    expect(payload.tagName).toBe('TEXTAREA');
+    expect(JSON.parse(payload.value)).toEqual(notesBundlePayload);
+
+    const repaired = JSON.parse(payload.value) as typeof notesBundlePayload;
+    repaired.bundle.name = 'ideas';
+    fireEvent.change(payload, { target: { value: JSON.stringify(repaired) } });
+    fireEvent.click(document.querySelector('button[type="submit"][data-action="revise"]')!);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const [, request] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const body = JSON.parse(String(request.body)) as {
+      rel: string;
+      action: string;
+      params: Record<string, unknown>;
+    };
+    expect(body).toMatchObject({
+      rel: 'draft:d9',
+      action: 'revise',
+      params: {
+        baseVersion: 1,
+        payload: { ...notesBundlePayload, bundle: { name: 'ideas', version: 1 } },
+      },
+    });
+    expect(typeof body.params.commandId).toBe('string');
   });
 });

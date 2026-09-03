@@ -1,27 +1,32 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
+import { useMetaEntity } from '../meta-client';
 import { GenericMetaRenderer } from './generic-renderer';
+import { MetaEntityRenderer } from './meta-entity-renderer';
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 function entity(
   classes: string[],
   properties: Record<string, unknown>,
-  options: Partial<Pick<SirenEntity, 'href' | 'rel' | 'links' | 'entities' | 'actions'>> = {},
+  options: Partial<
+    Pick<SirenEntity, 'href' | 'rel' | 'links' | 'entities' | 'actions' | 'guard-results'>
+  > = {},
 ): SirenEntity {
   return {
     class: classes,
     properties,
     actions: options.actions ?? [],
     links: options.links ?? [],
-    'guard-results': [],
+    'guard-results': options['guard-results'] ?? [],
     ...(options.href === undefined ? {} : { href: options.href }),
     ...(options.rel === undefined ? {} : { rel: options.rel }),
     ...(options.entities === undefined ? {} : { entities: options.entities }),
@@ -76,7 +81,7 @@ function applicationMember(
 }
 
 describe('generic Meta collection contract', () => {
-  it('uses the review-queue trait for secondary ingress without knowing the collection class', () => {
+  it('renders declared collection actions directly for review-queue collections (D67.1)', () => {
     const futureReviewQueue = entity(
       ['collection', 'future-candidate-surface'],
       {
@@ -86,13 +91,14 @@ describe('generic Meta collection contract', () => {
       },
       { actions: [collectionAction] },
     );
-    const { unmount } = render(<GenericMetaRenderer entity={futureReviewQueue} />);
+    render(<GenericMetaRenderer entity={futureReviewQueue} />);
 
-    expect(screen.queryByRole('button', { name: 'Add Candidate' })).toBeNull();
-    fireEvent.click(screen.getByText('高级 / 原始输入'));
+    // T48/D67.1:集合级 actions 是人类主路径的一等入口,不再藏进二级 disclosure。
+    expect(screen.queryByText('高级 / 原始输入')).toBeNull();
+    expect(screen.getByRole('heading', { name: '集合动作' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Add Candidate' })).toBeTruthy();
 
-    unmount();
+    cleanup();
     render(
       <GenericMetaRenderer
         entity={entity(
@@ -103,6 +109,7 @@ describe('generic Meta collection contract', () => {
       />,
     );
     expect(screen.queryByText('高级 / 原始输入')).toBeNull();
+    expect(screen.getByRole('heading', { name: '集合动作' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Add Candidate' })).toBeTruthy();
   });
 
@@ -292,5 +299,245 @@ describe('generic Meta collection contract', () => {
       expect(url.searchParams.get('filter.status')).toBe('pending');
     }
     expect(screen.queryByRole('spinbutton')).toBeNull();
+  });
+
+  it('renders the declared create action on the meta/drafts collection with contract-mapped controls only', () => {
+    const create: SirenAction = {
+      name: 'create',
+      title: 'Create Draft',
+      method: 'POST',
+      href: '/_meta/api/exec',
+      fields: {
+        type: 'object',
+        properties: {
+          kind: {
+            type: 'string',
+            enum: ['flow-definition', 'agent-definition', 'application-bundle'],
+          },
+          target: { type: 'string', minLength: 1 },
+          payload: {},
+        },
+        required: ['kind', 'target', 'payload'],
+        additionalProperties: false,
+      },
+    };
+    const purge: SirenAction = {
+      name: 'purge',
+      title: 'Purge Drafts',
+      method: 'POST',
+      href: '/_meta/api/exec',
+      fields: { type: 'object', properties: {}, required: [], additionalProperties: false },
+    };
+    render(
+      <GenericMetaRenderer
+        navigation={{ scope: 'governance-p5-a1' }}
+        entity={entity(
+          ['collection', 'meta/drafts'],
+          { rel: 'meta/drafts', count: 1, presentation: { version: 1, traits: ['review-queue'] } },
+          {
+            actions: [create, purge],
+            entities: [applicationMember('publishing', '内容发布', '起草并发布内容。', 3)],
+            'guard-results': [
+              {
+                action: 'purge',
+                blocked: true,
+                reason: 'guard 不满足: quota-exceeded',
+                guards: [{ name: 'quota', pass: false }],
+              },
+            ],
+          },
+        )}
+      />,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Create Draft' });
+    expect(trigger.getAttribute('data-presentation-action')).toBe('open-form');
+
+    fireEvent.click(trigger);
+    expect(document.querySelector('button[type="submit"][data-action="create"]')).toBeTruthy();
+    const kind = screen.getByLabelText(/^kind/i) as HTMLSelectElement;
+    expect([...kind.options].map((option) => option.textContent)).toContain('application-bundle');
+    expect(screen.getByLabelText(/^target/i)).toBeTruthy();
+    expect(screen.getByLabelText(/^payload/i)).toBeTruthy();
+    // I3:页面上的每个可提交控件都映射当前合同声明的 action。
+    const declared = new Set(['create', 'purge']);
+    for (const button of document.querySelectorAll('button[data-action]')) {
+      expect(declared.has(button.getAttribute('data-action')!)).toBe(true);
+    }
+    // guard 投影:被合同 guard 拦截的声明动作渲染为 disabled 并如实给出原因。
+    const purgeButton = screen.getByRole('button', { name: 'Purge Drafts' }) as HTMLButtonElement;
+    expect(purgeButton.disabled).toBe(true);
+    expect(purgeButton.title).toContain('quota-exceeded');
+  });
+
+  it('omits the collection actions section entirely for read-only collections', () => {
+    render(
+      <GenericMetaRenderer
+        navigation={{ scope: 'governance' }}
+        entity={entity(
+          ['collection', 'meta/flows'],
+          { rel: 'meta/flows', count: 1 },
+          { entities: [applicationMember('publishing', '内容发布', '起草并发布内容。', 3)] },
+        )}
+      />,
+    );
+
+    expect(screen.queryByRole('heading', { name: '集合动作' })).toBeNull();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('refreshes the collection and surfaces the created Draft after a successful create', async () => {
+    const scope = 'governance-p5-loop';
+    const draftsCreate: SirenAction = {
+      name: 'create',
+      title: 'Create Draft',
+      method: 'POST',
+      href: '/_meta/api/exec',
+      fields: {
+        type: 'object',
+        properties: {
+          kind: {
+            type: 'string',
+            enum: ['flow-definition', 'agent-definition', 'application-bundle'],
+          },
+          target: { type: 'string', minLength: 1 },
+          commandId: { type: 'string', minLength: 1, 'x-ui4a-input-owner': 'client' },
+          payload: {},
+        },
+        required: ['kind', 'target', 'commandId', 'payload'],
+        additionalProperties: false,
+      },
+    };
+    const draftMember = (target: string): SirenEntity => ({
+      class: ['meta', 'draft', 'application-bundle', 'invalid'],
+      rel: ['item'],
+      href: `/_meta/api/entity?rel=${encodeURIComponent(`draft:${target}`)}`,
+      properties: {
+        rel: `draft:${target}`,
+        target,
+        kind: 'application-bundle',
+        status: 'invalid',
+        version: 1,
+        presentation: {
+          version: 1,
+          fields: [
+            { path: 'properties.target', title: '目标', role: 'identity', overview: true },
+            { path: 'properties.kind', title: '类型', role: 'metadata', overview: true },
+          ],
+        },
+      },
+      actions: [],
+      links: [],
+      'guard-results': [],
+    });
+    const collectionOf = (targets: string[]): SirenEntity =>
+      entity(
+        ['collection', 'meta/drafts'],
+        {
+          rel: 'meta/drafts',
+          count: targets.length,
+          presentation: { version: 1, traits: ['review-queue'] },
+        },
+        {
+          actions: [draftsCreate],
+          links: [{ rel: ['self'], href: '/_meta/api/entity?rel=meta%2Fdrafts' }],
+          entities: targets.map(draftMember),
+        },
+      );
+    const createdDraft: SirenEntity = {
+      class: ['meta', 'draft', 'application-bundle', 'invalid'],
+      properties: {
+        rel: 'draft:notes',
+        id: 'notes',
+        kind: 'application-bundle',
+        target: 'notes',
+        status: 'invalid',
+        version: 1,
+      },
+      actions: [],
+      links: [],
+      'guard-results': [],
+    };
+
+    let created = false;
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        created = true;
+        return new Response(JSON.stringify({ entity: createdDraft }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response(
+        JSON.stringify(collectionOf(created ? ['writer', 'notes'] : ['writer'])),
+        {
+          status: 200,
+        },
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    function DraftsCollectionPage() {
+      const { entity: current, state } = useMetaEntity('meta/drafts', scope);
+      if (state !== 'ready' || current === null) return <output>{state}</output>;
+      return <MetaEntityRenderer rel="meta/drafts" navigation={{ scope }} entity={current} />;
+    }
+    render(<DraftsCollectionPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: /成员/ })).toBeTruthy();
+    });
+    expect(screen.queryByRole('link', { name: /notes/ })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Draft' }));
+    const kindOption = [...(screen.getByLabelText(/^kind/i) as HTMLSelectElement).options].find(
+      (option) => option.textContent === 'application-bundle',
+    )!;
+    fireEvent.change(screen.getByLabelText(/^kind/i), { target: { value: kindOption.value } });
+    fireEvent.change(screen.getByLabelText(/^target/i), { target: { value: 'notes' } });
+    fireEvent.change(screen.getByLabelText(/^payload/i), {
+      target: {
+        value: JSON.stringify({
+          schema: 'https://ui4a.dev/application-bundle/v1',
+          bundle: { name: 'notes', version: 1 },
+          applications: [
+            {
+              name: 'notes',
+              title: 'Notes',
+              intent: 'Capture notes.',
+              entry: { target: 'flow:notes-capture', role: 'primary-create' },
+            },
+          ],
+          capabilities: [],
+          flows: [],
+          seed: { rel: 'seed:notes', detail: { instances: {} } },
+        }),
+      },
+    });
+    fireEvent.click(document.querySelector('button[type="submit"][data-action="create"]')!);
+
+    await waitFor(() => {
+      expect(screen.getByRole('status', { name: '执行结果' })).toBeTruthy();
+    });
+    // 创建→详情闭环:同一 scope 投影刷新后,新 Draft 作为集合成员出现(成员链接即详情入口)。
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /notes/ })).toBeTruthy();
+    });
+    const posts = fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST');
+    expect(posts).toHaveLength(1);
+    const body = JSON.parse(String(posts[0]![1]!.body)) as {
+      rel: string;
+      action: string;
+      params: Record<string, unknown>;
+    };
+    expect(body).toMatchObject({
+      rel: 'meta/drafts',
+      action: 'create',
+      params: {
+        kind: 'application-bundle',
+        target: 'notes',
+        payload: { bundle: { name: 'notes', version: 1 } },
+      },
+    });
+    expect(typeof body.params.commandId).toBe('string');
   });
 });

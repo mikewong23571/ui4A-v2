@@ -1,3 +1,5 @@
+import { APPLICATION_BUNDLE_SCHEMA } from '@ui4a/engine';
+
 type EditorSchema = Record<string, unknown>;
 
 const STRING_ARRAY: EditorSchema = { type: 'array', items: { type: 'string' } };
@@ -101,6 +103,135 @@ export const AGENT_DEFINITION_EDITOR_SCHEMA: EditorSchema = {
   additionalProperties: false,
 };
 
+const APPLICATION_ENTRY_FIELD: EditorSchema = {
+  type: 'object',
+  title: 'Declared entry',
+  properties: {
+    target: { type: 'string', title: 'Entry target' },
+    role: {
+      type: 'string',
+      title: 'Entry role',
+      enum: ['primary-create', 'primary-task', 'primary-collection', 'resume'],
+    },
+  },
+  required: ['target', 'role'],
+  additionalProperties: false,
+};
+
+/**
+ * Human-oriented structured subset of the Application Bundle v1 source contract
+ * (T48 D67.2). Fields mirror parseApplicationBundle: schema/bundle/applications/
+ * capabilities/flows/seed are required roots; deep contract objects (flow nodes,
+ * seed detail, JSON Schemas) stay mechanical free-form JSON — the server re-judges
+ * every candidate against the real parser. Zero generation, zero AI.
+ */
+export const APPLICATION_BUNDLE_EDITOR_SCHEMA: EditorSchema = {
+  type: 'object',
+  title: 'Application Bundle candidate',
+  properties: {
+    schema: { type: 'string', title: 'Bundle schema', enum: [APPLICATION_BUNDLE_SCHEMA] },
+    bundle: {
+      type: 'object',
+      title: 'Bundle identity',
+      properties: {
+        name: { type: 'string', title: 'Application name' },
+        version: { type: 'integer', title: 'Bundle version', minimum: 1 },
+      },
+      required: ['name', 'version'],
+      additionalProperties: false,
+    },
+    applications: {
+      type: 'array',
+      title: 'Applications',
+      items: {
+        type: 'object',
+        title: 'Application',
+        properties: {
+          name: { type: 'string', title: 'Application name' },
+          title: { type: 'string', title: 'Application title' },
+          intent: { type: 'string', title: 'Application intent' },
+          entry: APPLICATION_ENTRY_FIELD,
+          submission: { type: 'object', title: 'Submission policy', additionalProperties: true },
+          cognitive: { type: 'object', title: 'Cognitive semantics', additionalProperties: true },
+        },
+        required: ['name', 'title', 'intent'],
+        additionalProperties: false,
+      },
+    },
+    capabilities: {
+      type: 'array',
+      title: 'Capabilities',
+      items: {
+        type: 'object',
+        title: 'Capability',
+        properties: {
+          name: { type: 'string', title: 'Capability name' },
+          title: { type: 'string', title: 'Capability title' },
+          kind: {
+            type: 'string',
+            title: 'Capability kind',
+            enum: ['transform', 'extract', 'effect'],
+          },
+          intent: { type: 'string', title: 'Capability intent' },
+          input: { type: 'string', title: 'Input description' },
+          output: { type: 'string', title: 'Output description' },
+          inputSchema: { type: 'object', title: 'Input JSON Schema', additionalProperties: true },
+          outputSchema: { type: 'object', title: 'Output JSON Schema', additionalProperties: true },
+          scope: { type: 'object', title: 'Capability scope', additionalProperties: true },
+          executor: { type: 'object', title: 'Executor contract', additionalProperties: true },
+        },
+        required: ['name', 'title', 'kind', 'intent'],
+        additionalProperties: false,
+      },
+    },
+    flows: {
+      type: 'array',
+      title: 'Flows',
+      items: {
+        type: 'object',
+        title: 'Flow',
+        properties: {
+          name: { type: 'string', title: 'Flow name' },
+          title: { type: 'string', title: 'Flow title' },
+          app: { type: 'string', title: 'Owning application' },
+          initial: { type: 'string', title: 'Initial node' },
+          fields: {
+            type: 'array',
+            title: 'Flow fields',
+            items: { type: 'object', additionalProperties: true },
+          },
+          nodes: {
+            type: 'array',
+            title: 'Flow nodes',
+            items: { type: 'object', additionalProperties: true },
+          },
+          collections: {
+            type: 'array',
+            title: 'Collection surfaces',
+            items: { type: 'object', additionalProperties: true },
+          },
+          submission: { type: 'object', title: 'Submission policy', additionalProperties: true },
+          cognitive: { type: 'object', title: 'Cognitive semantics', additionalProperties: true },
+        },
+        required: ['name', 'initial', 'nodes'],
+        additionalProperties: false,
+      },
+    },
+    seed: {
+      type: 'object',
+      title: 'Seed instances',
+      properties: {
+        rel: { type: 'string', title: 'Seed rel' },
+        detail: { type: 'object', title: 'Seed detail', additionalProperties: true },
+      },
+      required: ['rel', 'detail'],
+      additionalProperties: false,
+    },
+  },
+  required: ['schema', 'bundle', 'applications', 'capabilities', 'flows', 'seed'],
+  additionalProperties: false,
+};
+
 function inferSchema(value: unknown): EditorSchema {
   if (typeof value === 'string') return { type: 'string' };
   if (typeof value === 'number') return { type: Number.isInteger(value) ? 'integer' : 'number' };
@@ -136,7 +267,11 @@ export function draftEditorSchema(
   issuePaths: readonly string[] = [],
 ): EditorSchema {
   const complete =
-    kind === 'agent-definition' ? AGENT_DEFINITION_EDITOR_SCHEMA : inferSchema(payload);
+    kind === 'agent-definition'
+      ? AGENT_DEFINITION_EDITOR_SCHEMA
+      : kind === 'application-bundle'
+        ? APPLICATION_BUNDLE_EDITOR_SCHEMA
+        : inferSchema(payload);
   const issueRoots = new Set(issuePaths.flatMap((path) => pointerRoot(path) ?? []));
   if (issueRoots.size === 0 || typeof complete.properties !== 'object') return complete;
   const properties = Object.fromEntries(

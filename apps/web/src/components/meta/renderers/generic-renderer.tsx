@@ -3,7 +3,6 @@
 import type { SirenEntity } from '@ui4a/engine';
 
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 
 import { metaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
 import { redactMetaValue } from '../view-models/agent-definition';
@@ -11,7 +10,6 @@ import {
   browserHrefForContractHref,
   ClassBadges,
   MetaActions,
-  MetaActionsDisclosure,
   MetaRelationships,
   RawContract,
   titleForEntity,
@@ -31,15 +29,6 @@ function DisplayValue({ value }: { value: unknown }) {
   );
 }
 
-function hasPresentationTrait(entity: SirenEntity, trait: string): boolean {
-  const presentation = entity.properties.presentation;
-  if (typeof presentation !== 'object' || presentation === null || Array.isArray(presentation)) {
-    return false;
-  }
-  const traits = (presentation as Record<string, unknown>).traits;
-  return Array.isArray(traits) && traits.includes(trait);
-}
-
 export function GenericMetaRenderer({
   entity,
   rel: requestedRel,
@@ -56,13 +45,12 @@ export function GenericMetaRenderer({
   const parsedNavigation = metaNavigationContext(navigation);
   const rel =
     typeof entity.properties.rel === 'string' ? entity.properties.rel : (requestedRel ?? '');
-  const members = entity.entities ?? [];
   const isCollection = entity.class.includes('collection');
-  const isReviewQueue = isCollection && hasPresentationTrait(entity, 'review-queue');
-  const relationshipLinks = isCollection
-    ? entity.links.filter((link) => !link.rel.includes('next') && !link.rel.includes('prev'))
-    : entity.links;
   const safeProperties = redactMetaValue(entity.properties) as Record<string, unknown>;
+  // 集合关系不含翻页游标(next/prev 由集合渲染器自己的分页区消费)。
+  const relationshipLinks = entity.links.filter(
+    (link) => !link.rel.includes('next') && !link.rel.includes('prev'),
+  );
   const disclosure = isCollection ? { kind: 'absent' as const } : genericDisclosureContract(entity);
   if (disclosure.kind === 'invalid') {
     return (
@@ -127,59 +115,13 @@ export function GenericMetaRenderer({
         <ClassBadges classes={entity.class} />
       </header>
 
-      {isCollection ? (
-        <GenericCollectionRenderer entity={entity} navigation={parsedNavigation} />
-      ) : members.length > 0 ? (
-        <section aria-labelledby="generic-members-heading">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 id="generic-members-heading" className="text-lg font-semibold">
-              成员
-            </h2>
-            <Badge variant="outline">{members.length}</Badge>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {members.map((member, index) => {
-              const href =
-                member.href === undefined
-                  ? null
-                  : browserHrefForContractHref(member.href, parsedNavigation);
-              const content = (
-                <Card className="h-full min-w-0 p-4">
-                  <p className="font-medium">{titleForEntity(member)}</p>
-                  <p className="mt-1 break-all text-xs text-muted-foreground">
-                    {typeof member.properties.rel === 'string'
-                      ? member.properties.rel
-                      : member.class.join(' · ')}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {['status', 'version', 'kind', 'runtimeClass'].flatMap((key) =>
-                      member.properties[key] === undefined
-                        ? []
-                        : [
-                            <Badge key={key} variant="outline">
-                              {key}: {String(member.properties[key])}
-                            </Badge>,
-                          ],
-                    )}
-                  </div>
-                </Card>
-              );
-              return href === null ? (
-                <div key={index}>{content}</div>
-              ) : (
-                <a
-                  key={href}
-                  href={href}
-                  data-nav="meta:member"
-                  className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                >
-                  {content}
-                </a>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
+      {/* 集合级 actions(D67.1 人机同门)由集合渲染器在本体渲染,提交前 fresh-read。 */}
+      <GenericCollectionRenderer
+        entity={entity}
+        rel={rel}
+        navigation={parsedNavigation}
+        onChanged={onChanged}
+      />
 
       <section aria-labelledby="generic-properties-heading">
         <h2 id="generic-properties-heading" className="mb-3 text-lg font-semibold">
@@ -220,22 +162,6 @@ export function GenericMetaRenderer({
         </section>
       )}
 
-      {isReviewQueue ? (
-        <MetaActionsDisclosure
-          title="高级 / 原始输入"
-          entity={entity}
-          rel={rel}
-          scope={parsedNavigation.scope}
-          onChanged={onChanged}
-        />
-      ) : (
-        <MetaActions
-          entity={entity}
-          rel={rel}
-          scope={parsedNavigation.scope}
-          onChanged={onChanged}
-        />
-      )}
       <RawContract entity={entity} />
     </div>
   );

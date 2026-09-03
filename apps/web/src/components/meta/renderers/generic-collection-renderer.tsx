@@ -6,7 +6,12 @@ import { Card } from '@/components/ui/card';
 
 import type { MetaNavigationContext } from '../meta-navigation';
 import { redactMetaValue } from '../view-models/agent-definition';
-import { browserHrefForContractHref, titleForEntity } from './common';
+import {
+  browserHrefForContractHref,
+  MetaActions,
+  publicMetaActions,
+  titleForEntity,
+} from './common';
 import {
   collectionFacetHref,
   collectionFacetsOf,
@@ -121,14 +126,22 @@ function CollectionFacets({
 
 export function GenericCollectionRenderer({
   entity,
+  rel,
   navigation,
+  onChanged,
 }: {
   entity: SirenEntity;
+  /** 提交目标集合 rel(集合级 actions 的 fresh-read/exec 都锚定在集合合同上)。 */
+  rel: string;
   navigation: MetaNavigationContext;
+  onChanged?: () => void;
 }) {
   const members = entity.entities ?? [];
   const summary = collectionSummaryOf(entity);
   const pages = collectionPageLinks(entity.links, navigation);
+  // D67.1 人机同门:集合实体的声明 actions 在人类主路径渲染(同一 /_meta/api/exec
+  // 裁决、提交前 fresh-read);零声明动作时整个 section 不出现,零视觉噪音。
+  const collectionActions = publicMetaActions(entity);
   return (
     <div className="space-y-4">
       <div
@@ -142,6 +155,16 @@ export function GenericCollectionRenderer({
       </div>
 
       <CollectionFacets entity={entity} navigation={navigation} />
+
+      {collectionActions.length > 0 && (
+        <MetaActions
+          entity={entity}
+          rel={rel}
+          title="集合动作"
+          scope={navigation.scope}
+          onChanged={onChanged}
+        />
+      )}
 
       {members.length > 0 ? (
         <section aria-labelledby="generic-members-heading">

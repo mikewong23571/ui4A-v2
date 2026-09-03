@@ -57,4 +57,69 @@ describe('Draft review view model', () => {
       actions: ['revise'],
     });
   });
+
+  it('maps application-bundle drafts through the same generic payload/diff/checks contract', () => {
+    const bundleDraft: SirenEntity = {
+      class: ['meta', 'draft', 'application-bundle', 'invalid'],
+      properties: {
+        rel: 'draft:d9',
+        id: 'd9',
+        owner: 'local-user',
+        policyScope: 'governance',
+        kind: 'application-bundle',
+        target: 'ideas',
+        status: 'invalid',
+        version: 1,
+        maxVersion: 1,
+        validation: {
+          valid: false,
+          issues: [
+            {
+              code: 'target-name-mismatch',
+              path: '/bundle/name',
+              message: 'bundle name notes does not match target ideas',
+            },
+          ],
+        },
+        checks: [
+          { name: 'bundle-parseable', pass: true },
+          { name: 'target-name-match', pass: false },
+        ],
+        payload: {
+          schema: 'https://ui4a.dev/application-bundle/v1',
+          bundle: { name: 'notes', version: 1 },
+        },
+        diff: { algorithm: 'bundle-inventory', bundle: { name: 'notes', version: 1 } },
+        provenance: { actor: 'human', principal: 'local-user', sources: [] },
+      },
+      actions: [
+        {
+          name: 'revise',
+          title: 'Revise Draft',
+          method: 'POST',
+          href: '/_meta/api/exec',
+          fields: { type: 'object', properties: {} },
+        },
+      ],
+      links: [],
+      'guard-results': [],
+    };
+
+    expect(draftViewModel(bundleDraft)).toMatchObject({
+      kind: 'application-bundle',
+      target: 'ideas',
+      status: 'invalid',
+      issues: [{ code: 'target-name-mismatch', path: '/bundle/name' }],
+      checks: [
+        { name: 'target-name-match', pass: false },
+        { name: 'bundle-parseable', pass: true },
+      ],
+      payload: {
+        schema: 'https://ui4a.dev/application-bundle/v1',
+        bundle: { name: 'notes', version: 1 },
+      },
+      diff: { algorithm: 'bundle-inventory' },
+      actions: ['revise'],
+    });
+  });
 });
