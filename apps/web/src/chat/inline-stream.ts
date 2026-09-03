@@ -118,6 +118,13 @@ export async function streamAgentLoop(args: {
   /** 起步降级 notice(T40 B1);focus 失效降级时随 final 帧下发。 */
   startNotice?: ChatStartNotice;
   scope: string | null;
+  /**
+   * D66 附录:meta 平面(baseUrl 指向 /_meta)Draft 写门的显式 lens。由
+   * route 从 situation 单点装配(显式 > presence)注入,仅作为 exec 请求的
+   * ?scope= 传输查询参数;模型工具 schema 不暴露 scope,无显式 lens 时
+   * 不附加(保持现状诚实拒绝)。
+   */
+  metaLens?: string;
   contextRel?: string;
   presentationContext: ReturnType<typeof presentationContextForIdentity>;
   fetchImpl: FetchLike;
@@ -167,6 +174,7 @@ export async function streamAgentLoop(args: {
       channel: 'chat',
       startRel: args.startRel,
       app: args.scope ?? undefined,
+      execScope: args.metaLens,
       contextRel: args.contextRel,
       conversationMessages,
       conversation,

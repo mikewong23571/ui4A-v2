@@ -2,6 +2,7 @@ import { createServer, type Server } from 'node:http';
 
 import { ensureEventsTable } from '@ui4a/db/events';
 import { getPool } from '@ui4a/db/pool';
+import { ensurePresenceTables } from '@ui4a/db/presence';
 import { resetEngineForTests } from '../../../engine/service';
 
 import { GET as getSitemapRoute } from '../../.well-known/ui4a.json/route';
@@ -26,6 +27,7 @@ let entityRequests: string[] = [];
 let metaSitemapRequests = 0;
 let metaEntityRels: string[] = [];
 let metaExecBodies: Record<string, unknown>[] = [];
+let metaExecUrls: string[] = [];
 export const PUBLISH_TEST_GOAL = '对 article-drafting:main 执行 next 并 publish，发布一篇文章';
 export const PUBLISH_TEST_AUTHORIZATION = {
   sourceMessageId: 'route-test-turn',
@@ -68,6 +70,7 @@ export async function handler(pathname: string, request: Request): Promise<Respo
     return getMetaEntityRoute(request);
   }
   if (pathname === '/_meta/api/exec') {
+    metaExecUrls.push(request.url);
     metaExecBodies.push(
       (await request
         .clone()
@@ -359,13 +362,19 @@ export async function eventKinds(): Promise<string[]> {
 
 export async function startChatRouteFixtures(): Promise<void> {
   await ensureEventsTable(pool);
-  await pool.query('TRUNCATE events');
+  // 测试隔离(T48 P6b 附带修复):presence_current 是独立于 events 表的投影,
+  // TRUNCATE events 不会清掉它;e2e/其他套件残留的行(如 local-user/site=meta)
+  // 会让无 clientView 的 chat 用例被残留 presence 劫持到 meta 合同站(间歇
+  // 失败根源)。每套 setup 一并清空,保持"零残留起步"。
+  await ensurePresenceTables(pool);
+  await pool.query('TRUNCATE events, presence_current');
   resetEngineForTests();
   sitemapRequests = 0;
   entityRequests = [];
   metaSitemapRequests = 0;
   metaEntityRels = [];
   metaExecBodies = [];
+  metaExecUrls = [];
   server = createServer(async (req, res) => {
     // 用真实 host 构造 Request:聊天路由经 request.url 的 origin 回环 fetch 自身。
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`);
@@ -416,4 +425,10 @@ export function metaEntityRequestRels(): string[] {
 /** chat 循环经 /_meta/api/exec(CLI 同门)发出的 exec 请求体序列。 */
 export function metaExecRequestBodies(): Record<string, unknown>[] {
   return metaExecBodies.map((body) => ({ ...body }));
+}
+
+/** chat 循环经 /_meta/api/exec 发出的请求 URL 序列(完整 URL,含查询参数——
+ * D66 附录的显式 lens(?scope=)声明在传输层,不在 POST 体)。 */
+export function metaExecRequestUrls(): string[] {
+  return [...metaExecUrls];
 }

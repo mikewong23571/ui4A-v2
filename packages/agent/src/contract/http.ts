@@ -73,6 +73,16 @@ export interface ContractClient {
   getSitemap(): Promise<SitemapSummary | undefined>;
 }
 
+/**
+ * D66 附录:exec 请求的传输级显式 lens。execScope 由宿主路由/适配层从
+ * situation 单点装配注入(仅 meta 平面 Draft 写门需要),以 ?scope= 查询参数
+ * 声明;服务端按授予集合重裁,集合外的声明照常被丢弃/拒绝。
+ * 它不是模型可设字段:不进 driver 工具 schema、不进 ExecPayload。
+ */
+export interface ContractClientOptions {
+  execScope?: string;
+}
+
 interface JsonObject {
   [key: string]: unknown;
 }
@@ -245,8 +255,17 @@ function asCapabilitySummaries(value: unknown): SitemapCapabilitySummary[] {
   });
 }
 
-export function createContractClient(baseUrl: string, fetchImpl: FetchLike): ContractClient {
+export function createContractClient(
+  baseUrl: string,
+  fetchImpl: FetchLike,
+  options?: ContractClientOptions,
+): ContractClient {
   const root = baseUrl.replace(/\/+$/, '');
+  // D66 附录:lens 声明只存在于传输层 URL(?scope=),永不出现在 POST 体。
+  const execUrl =
+    options?.execScope === undefined || options.execScope === ''
+      ? `${root}/api/exec`
+      : `${root}/api/exec?scope=${encodeURIComponent(options.execScope)}`;
   return {
     async getSitemap(): Promise<SitemapSummary | undefined> {
       try {
@@ -311,7 +330,7 @@ export function createContractClient(baseUrl: string, fetchImpl: FetchLike): Con
     },
     async exec(payload: ExecPayload): Promise<ExecCallResult> {
       try {
-        const response = await fetchImpl(`${root}/api/exec`, {
+        const response = await fetchImpl(execUrl, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(payload),

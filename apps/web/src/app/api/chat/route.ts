@@ -327,9 +327,17 @@ export async function POST(request: Request) {
   }
   // 平面归属:跟用户当下位置走(meta 控制台/正在查看定义实体 → 定义合同站;
   // 其余 → 业务站);`_meta` 原话记号保留为显式越界入口。不做自然语言意图猜测。
-  if (goal.verb.includes('_meta') || situation.site === 'meta') {
+  const metaPlane = goal.verb.includes('_meta') || situation.site === 'meta';
+  if (metaPlane) {
     baseUrl = `${baseUrl.replace(/\/$/, '')}/_meta`;
   }
+  // D66 附录显式 lens 通道:meta 平面的 Draft 写门要求显式授权 application
+  // lens,chat 的 meta exec 请求由服务端从 situation 单点装配注入(显式 >
+  // presence),仅在合同适配层以 ?scope= 传输——模型工具 schema 不含 scope
+  // 参数,注意力不来自模型发明;无显式 lens 时不附加(保持诚实拒绝),授予
+  // 集合外的声明仍被 /_meta/api/exec 现有逻辑丢弃/拒绝(D51:lens 不进鉴权
+  // 签名,服务端按授予集合重裁)。
+  const metaLens = metaPlane ? situation.scope : undefined;
 
   // AI-first 产品边界:缺少模型配置时不进入任何确定性 chat
   // 短路(render/focus/discovery),也不派发注定失败的委托。inline
@@ -401,6 +409,7 @@ export async function POST(request: Request) {
           startRel,
           startNotice,
           scope: situation.scope ?? null,
+          metaLens,
           contextRel,
           presentationContext,
           fetchImpl: turnFetch,
@@ -527,6 +536,7 @@ export async function POST(request: Request) {
       startRel,
       startNotice,
       scope: situation.scope ?? null,
+      metaLens,
       contextRel,
       presentationContext,
       fetchImpl: turnFetch,

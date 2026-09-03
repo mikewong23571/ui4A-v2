@@ -138,7 +138,10 @@ export async function runAgent(
   goal: AgentGoal,
   options: RunAgentOptions,
 ): Promise<AgentRunResult> {
-  const client = createContractClient(options.baseUrl, options.fetchImpl);
+  // execScope(D66 附录)是路由层注入的传输声明,只影响 exec URL 的 ?scope=。
+  const client = createContractClient(options.baseUrl, options.fetchImpl, {
+    execScope: options.execScope,
+  });
   const maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
   const maxObservations = Math.max(1, options.maxObservations ?? DEFAULT_MAX_OBSERVATIONS);
   const requestedConversationLimit =

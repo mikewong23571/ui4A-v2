@@ -367,6 +367,13 @@ export interface RunAgentOptions {
    */
   role?: string;
   app?: string;
+  /**
+   * D66 附录:显式 lens 的传输通道——宿主路由/适配层从 situation 单点装配
+   * (显式 > presence)注入后,以 ?scope= 查询参数附在 exec 请求 URL 上,
+   * 由服务端按授予集合重裁。这是路由层传输字段,不是模型可设参数:不进
+   * driver 工具 schema、不进 ExecPayload;缺省不附加(无 lens 保持诚实拒绝)。
+   */
+  execScope?: string;
   /** 当前聊天 renderer 是否支持 Markdown；由 host 运行时提供，不在 prompt 写死。 */
   chatMarkdown?: boolean;
   /** 当前 Presentation catalog 是否含 Markdown word；由 Plane 动态投影。 */

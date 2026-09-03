@@ -11,6 +11,7 @@ import {
   entityRequestRels,
   metaEntityRequestRels,
   metaExecRequestBodies,
+  metaExecRequestUrls,
   metaSitemapRequestCount,
   pool,
   sitemapRequestCount,
@@ -26,27 +27,33 @@ import {
 //   kind;commandId 为客户端持有字段,不在模型可填参数中);
 // - 执行:exec POST 落在 /_meta/api/exec(CLI 同一裁决端点),载荷形状与 CLI
 //   完全一致(rel/action/params/actor=agent/principal/channel=chat);
-// - 当前边界(如实固定):Draft 写要求显式授权 application lens
+// - 无 lens 边界(如实固定):Draft 写要求显式授权 application lens
 //   (request-identity 只认 ?policyScope=/?scope= 查询参数或
-//   x-ui4a-policy-scope 头),而 agent 协议的 exec 工具/载荷没有 lens 通道
-//   (packages/agent tools.ts / loop.ts execPayload / contract http.ts)。
-//   因此 chat 的 create 提案在同一门被结构化拒绝(422 schema-invalid),
-//   不产生 Draft;同一载荷补上 lens 声明后经同一裁决路径即创建 Draft——
-//   证明缺口仅在 lens 声明通道(架构待编排者决定,不在本测试私搭)。
+//   x-ui4a-policy-scope 头)。clientView 未声明 scope 时,同一 create 提案在
+//   同一门被结构化拒绝(422 schema-invalid),不产生 Draft——拒绝即数据(I6)。
+// - 显式 lens 通道(D66 附录,Phase 6b-2):situation 带显式 scope(显式 >
+//   presence,单点装配)时,chat route 对 meta 平面的 exec 请求附加
+//   ?scope=<lens>(模型工具 schema 不含 scope 参数,注意力不来自模型发明);
+//   授予集合外的声明仍由服务端现有逻辑丢弃/拒绝。同一 create 全链成功:
+//   draft-created 落库(owner=user:<session>,provenance actor=agent)。
 
 const SESSION_ID = 'us6-meta-parity';
+const LENS_SESSION_ID = 'us6-lens-channel';
 const GOAL_VERB = '请提议安装一个新 application:chat-genesis';
+const LENS_GOAL_VERB = '请提议安装一个新 application:chat-genesis-lens';
 const TARGET = 'chat-genesis';
+const LENS_TARGET = 'chat-genesis-lens';
 const LENS = 'publishing';
 
-/** meta 控制台在场(clientView presence.site='meta'):chat route 把合同站切到 /_meta。 */
-function metaConsoleView() {
+/** meta 控制台在场(clientView presence.site='meta'):chat route 把合同站切到 /_meta。
+ * scope 为显式声明的 attention lens(D66 附录);null = 未声明(无 lens 边界)。 */
+function metaConsoleView(scope: string | null = null) {
   return {
     schemaVersion: 2 as const,
     presence: {
       clientInstanceId: 'client:us6-meta-parity',
       site: 'meta',
-      scope: null,
+      scope,
       thread: null,
       focus: null,
     },
@@ -313,5 +320,64 @@ describe('T48 US6:chat Assistant 与 CLI 的 meta Draft 同门(meta 站注入驱
       commandId,
     });
     expect(await listEvents(pool, 0, { domain: 'draft', kind: 'draft-created' })).toHaveLength(1);
+  });
+
+  it('显式 lens 通道(D66 附录):situation 显式 scope 由服务端注入 ?scope=,create(application-bundle) 全链成功', async () => {
+    await useStub([
+      { name: 'navigate', args: { rel: 'meta/drafts' } },
+      {
+        name: 'exec',
+        args: {
+          action: 'create',
+          params: {
+            kind: 'application-bundle',
+            target: LENS_TARGET,
+            payload: bundlePayload(LENS_TARGET),
+          },
+          authorization: { sourceMessageId: 'route-test-turn', quote: LENS_GOAL_VERB },
+        },
+      },
+      { name: 'done', args: { summary: '已提交 application-bundle 提案,Draft 等待人类裁决' } },
+    ]);
+
+    const { json } = await chat({
+      sessionId: LENS_SESSION_ID,
+      goal: { verb: LENS_GOAL_VERB },
+      clientView: metaConsoleView(LENS),
+    });
+
+    expect(json.outcome, JSON.stringify(json.messages)).toBe('done');
+
+    // 注入点证明:exec 恰好一次,URL 落在 CLI 同一门 /_meta/api/exec 且携带
+    // 服务端注入的 ?scope=publishing(lens 来自 situation 单点装配的显式声明,
+    // 不是模型参数);POST 体形状与 CLI 一致且零 scope 键(传输声明,非载荷)。
+    const urls = metaExecRequestUrls();
+    expect(urls).toHaveLength(1);
+    const execUrl = new URL(urls[0]!);
+    expect(execUrl.pathname).toBe('/_meta/api/exec');
+    expect(execUrl.searchParams.get('scope')).toBe(LENS);
+    const execBody = metaExecRequestBodies()[0]!;
+    expect(execBody).not.toHaveProperty('scope');
+    expect((execBody.params as { kind?: string }).kind).toBe('application-bundle');
+    expect((execBody.params as { target?: string }).target).toBe(LENS_TARGET);
+
+    // 全链成功:Draft 出生落库——owner=user:<session>(事件 principal),
+    // provenance actor=agent(事件 actor 列来自 version.provenance.actor)。
+    const draftEvents = await listEvents(pool, 0, { domain: 'draft', kind: 'draft-created' });
+    expect(draftEvents).toHaveLength(1);
+    expect(draftEvents[0]).toMatchObject({
+      actor: 'agent',
+      principal: `user:${LENS_SESSION_ID}`,
+      rel: expect.any(String),
+    });
+    expect(draftEvents[0]!.rel).toMatch(/^draft:/);
+
+    // 实体回执:exec 成功步的实体摘要指向 draft:* 合同投影。
+    const executedStep = (json.steps as unknown[]).find(
+      (step) =>
+        (step as { op?: { kind?: string } }).op?.kind === 'exec' &&
+        (step as { outcome?: string }).outcome === 'executed',
+    ) as { entity?: { rel?: string } } | undefined;
+    expect(executedStep?.entity?.rel).toMatch(/^draft:/);
   });
 });

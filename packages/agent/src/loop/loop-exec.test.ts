@@ -72,6 +72,35 @@ describe('exec 操作与拒绝即数据', () => {
     expect(post.body).not.toHaveProperty('principal');
   });
 
+  it('execScope(D66 附录传输通道):显式 lens 以 ?scope= 附在 exec URL,不进 POST 体;缺省不附加', async () => {
+    const transport = contractTransport({
+      entities: { 'post:post-welcome': postWelcomeEntity },
+      execResponses: [jsonResponse({ entity: postWelcomeEntity })],
+    });
+    const driver = new ScriptedDriver([
+      { kind: 'exec', action: 'unpublish', params: { note: '委托' } },
+      { kind: 'done', summary: 'ok' },
+    ]);
+
+    await runAgent(driver, GOAL, {
+      baseUrl: BASE,
+      fetchImpl: transport.fetch,
+      startRel: 'post:post-welcome',
+      execScope: 'publishing',
+    });
+
+    const post = transport.calls.find((call) => call.url === `${execUrl(BASE)}?scope=publishing`)!;
+    expect(post).toBeDefined();
+    // lens 是路由/适配层注入的传输声明,不是模型可设字段:POST 体零 scope 键。
+    expect(post.body).toEqual({
+      rel: 'post:post-welcome',
+      action: 'unpublish',
+      params: { note: '委托' },
+      actor: 'agent',
+      channel: 'http',
+    });
+  });
+
   it('exec 被拒(422):lastRejection 携带 layer/reason 回流下一步,且只回流一步', async () => {
     const transport = contractTransport({
       entities: { 'post:post-welcome': postWelcomeEntity },
