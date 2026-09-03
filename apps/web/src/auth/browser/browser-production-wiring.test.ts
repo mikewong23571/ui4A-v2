@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { BrowserAuthentication } from './browser-session';
+import type { BrowserAuthentication } from '../browser-session';
 import {
   ProductionIdentityError,
   type ProductionCredentialDependencies,
   type ProductionCredentialPolicy,
-} from './production/request-identity';
+} from '../production/request-identity';
 
 const credentialMocks = vi.hoisted(() => ({
   verify: vi.fn(),
   build: vi.fn(),
 }));
 
-vi.mock('./production/request-identity', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./production/request-identity')>();
+vi.mock('../production/request-identity', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../production/request-identity')>();
   return {
     ...actual,
     verifyProductionCredential: credentialMocks.verify,
@@ -28,14 +28,14 @@ const routeAuthentication = vi.hoisted(() => ({
   logout: vi.fn(),
 }));
 
-vi.mock('./production/browser-authentication-runtime', () => ({
+vi.mock('../production/browser-authentication-runtime', () => ({
   getProductionBrowserAuthentication: () => routeAuthentication,
 }));
 
 import {
   resolveTrustedRequestIdentity,
   type ResolveRequestIdentityOptions,
-} from './request-identity';
+} from '../request-identity';
 
 const ORIGIN = 'https://ui4a.mothership.internal';
 const SESSION_COOKIE = '__Host-ui4a_session';
@@ -101,9 +101,9 @@ beforeEach(() => {
 
 describe('production browser Route Handler wiring', () => {
   it.each([
-    ['login GET', '../app/auth/login/route', 'GET', 'beginLogin'],
-    ['callback GET', '../app/api/auth/callback/route', 'GET', 'completeCallback'],
-    ['logout POST', '../app/auth/logout/route', 'POST', 'logout'],
+    ['login GET', '../../app/auth/login/route', 'GET', 'beginLogin'],
+    ['callback GET', '../../app/api/auth/callback/route', 'GET', 'completeCallback'],
+    ['logout POST', '../../app/auth/logout/route', 'POST', 'logout'],
   ] as const)(
     '%s delegates the real request to browser authentication',
     async (_name, path, verb, method) => {

@@ -7,8 +7,8 @@ import type {
   BrowserAuthentication,
   BrowserAuthenticationDependencies,
   BrowserTokenSet,
-} from './browser-session';
-import { resolveTrustedRequestIdentity } from './request-identity';
+} from '../browser-session';
+import { resolveTrustedRequestIdentity } from '../request-identity';
 
 const NOW_SECONDS = 1_788_739_200;
 const NOW_MILLISECONDS = NOW_SECONDS * 1_000;
@@ -84,7 +84,7 @@ class MemoryAuthPrivateStore implements AuthPrivateStore {
   }
 }
 
-const plannedModulePath = './browser-session';
+const plannedModulePath = '../browser-session';
 
 async function plannedApi(): Promise<BrowserAuthenticationModule> {
   return (await import(plannedModulePath)) as BrowserAuthenticationModule;

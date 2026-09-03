@@ -10,12 +10,12 @@ const composition = vi.hoisted(() => ({
   preflight: vi.fn(),
 }));
 
-vi.mock('../engine/service', () => ({ getDb: composition.getDb }));
-vi.mock('../production-deployment-preflight', () => ({
+vi.mock('../../engine/service', () => ({ getDb: composition.getDb }));
+vi.mock('../../production-deployment-preflight', () => ({
   runWebProductionDeploymentPreflight: composition.preflight,
 }));
 
-import { getProductionBrowserAuthentication } from './production/browser-authentication-runtime';
+import { getProductionBrowserAuthentication } from '../production/browser-authentication-runtime';
 
 const CONFIG = {
   settings: {
@@ -63,7 +63,7 @@ describe('single-process production browser composition', () => {
 
   it('has no production composition dependency on the database store or engine database', () => {
     const source = readFileSync(
-      new URL('./production/browser-authentication-runtime.ts', import.meta.url),
+      new URL('../production/browser-authentication-runtime.ts', import.meta.url),
       'utf8',
     );
 

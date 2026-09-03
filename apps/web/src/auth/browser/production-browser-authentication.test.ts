@@ -8,10 +8,10 @@ import {
   createProductionBrowserAuthentication,
   PRODUCTION_BROWSER_LOGIN_COOKIE,
   PRODUCTION_BROWSER_SESSION_COOKIE,
-} from './production-browser-authentication';
-import { createRemoteJwksLoader, verifyProductionIdToken } from './production/request-identity';
-import { BrowserAuthenticationError, type AuthPrivateStore } from './browser-session';
-import { authenticationErrorResponse, resolveTrustedRequestIdentity } from './request-identity';
+} from '../production-browser-authentication';
+import { createRemoteJwksLoader, verifyProductionIdToken } from '../production/request-identity';
+import { BrowserAuthenticationError, type AuthPrivateStore } from '../browser-session';
+import { authenticationErrorResponse, resolveTrustedRequestIdentity } from '../request-identity';
 
 const NOW_SECONDS = 1_788_739_200;
 const NOW_MILLISECONDS = NOW_SECONDS * 1_000;
