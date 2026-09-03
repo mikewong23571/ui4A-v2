@@ -538,7 +538,8 @@ describe('trusted production request identity versus ordinary body/header fields
     expect(context).toMatchObject({
       principal: 'human-alice',
       authorizationMode: 'credential',
-      grantedApplications: ['publishing', 'governance'],
+      // D66.4:授予集合含 governance 时展开为与已安装全集的并集(排序确定)。
+      grantedApplications: ['governance', 'publishing'],
     });
     // ?scope= ∈ 授予集合才作为导航偏好透传;production 一律忽略普通头。
     expect(context.policyScope).toBe('governance');

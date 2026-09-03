@@ -44,6 +44,7 @@ export const dbTestFiles: readonly string[] = [
   'apps/web/src/app/api/meta/.well-known/ui4a.json/route.test.ts',
   'apps/web/src/app/api/meta/drafts.contract.test.ts',
   'apps/web/src/app/api/meta/exec-credential-lens.contract.test.ts',
+  'apps/web/src/app/api/meta/exec-governance-expansion.contract.test.ts',
   'apps/web/src/app/api/meta/entity/route.production-auth.test.ts',
   'apps/web/src/app/api/meta/entity/route.test.ts',
   'apps/web/src/app/api/meta/exec/route.production-approval-audit.test.ts',

@@ -22,6 +22,14 @@ import { getProductionBrowserAuthentication } from './production/browser-authent
 
 export type RequestIdentityProfile = 'local' | 'production';
 
+/**
+ * 治理授予词(D66.4,DECISIONS.md):credential 分支中,凭证授予集合含该
+ * scope 时,grantedApplications 展开为「当前已安装 application 全集」,治理
+ * 凭证无需 IdP/部署旁路即可到达受治理 genesis 新装的应用。IdP 只断言稳定
+ * 身份事实;逐 app `ui4a:policy:<app>` 保留给细粒度业务委托。
+ */
+const GOVERNANCE_APPLICATION_SCOPE = 'governance';
+
 export interface TrustedRequestAuditContext {
   authorizationMode: 'self-reported-local-demo' | 'credential';
   actor: 'human' | 'agent';
@@ -30,6 +38,8 @@ export interface TrustedRequestAuditContext {
   /**
    * 凭证授予的应用集合(D51):授权裁决的唯一会话外输入,由 ui4a:policy:*
    * (及同名 plain scope)解析而来。取代已退役的 policyScope 会话冻结值。
+   * credential 分支下,授予集合含 `governance` scope 时按 D66.4 展开为当前
+   * 已安装 application 全集;`scopes` 字段始终保留 token 原词。
    */
   grantedApplications: string[];
   /**
@@ -223,13 +233,25 @@ export async function resolveTrustedRequestIdentity(
   if (grantedApplications.length === 0) {
     throw new ProductionIdentityError('scope_insufficient');
   }
+  // D66.4 授权推导补充:授予集合含治理词时,展开为与已安装 application 全集
+  // 的并集(与 local profile 既有推导同构;去重后排序保确定性)。这是显式且
+  // 被接受的权限放大——治理者需要可达并验证新生 app。不含治理词则 token
+  // 逐 app 语义不变;scopes 字段保留 token 原词,推导不污染审计事实。
+  const effectiveGrantedApplications = grantedApplications.includes(GOVERNANCE_APPLICATION_SCOPE)
+    ? [
+        ...new Set([
+          ...grantedApplications,
+          ...grantedPolicyScopes(options.authorizedPolicyScopes),
+        ]),
+      ].sort()
+    : grantedApplications;
   return {
     authorizationMode: 'credential',
     actor: identity.actor === 'human' ? 'human' : 'agent',
     principal: identity.principal,
     scopes: identity.scopes,
-    grantedApplications,
-    policyScope: declaredScopePreference(new URL(request.url), grantedApplications),
+    grantedApplications: effectiveGrantedApplications,
+    policyScope: declaredScopePreference(new URL(request.url), effectiveGrantedApplications),
     channel: 'oidc',
     humanApprovalEligible: identity.humanApprovalEligible,
     ...(identity.delegation === undefined ? {} : { delegation: identity.delegation }),
