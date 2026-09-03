@@ -23,16 +23,10 @@
 
 ## Phase 2 — 激活事务:人类 approve → 原子 seed 事件
 
-- [ ] Task: packages/db — 多事件原子激活计划(测试先行)
-  - [ ] 红测:acceptDraftWithCoreEvent 回调可返回多事件计划;draft accepted 与 seed 事件同事务
-  - [ ] 绿:扩展 AtomicCoreMutationPlan/回调合同;vitest --project db
-- [ ] Task: apps/web engine/drafts — application-bundle 激活分支(execute.ts 沿功能边界拆出 activate-application 模块)
-  - [ ] 红测:approve 追加 application-seeded/capability-seeded/definition-seeded/receipt(复用 planMetaBootstrap 规划);agent approve 拒绝(I4);stale/冲突拒绝留痕
-  - [ ] 绿:实现;execute.ts 拆解后各文件 ≤500
-- [ ] Task: 重放与完整性
-  - [ ] 红测:I5 空库重放(含新生 app)hash 一致;assertMetaBootstrapIntegrity 通过;重启 bootstrap 对同名 bundle no-op;snapshot.applications/sitemap 生长
-  - [ ] 绿:修复至全绿(纯引擎侧预期免改,证据留档)
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: packages/db — 多事件原子激活计划(测试先行) [75247a0]（AtomicCoreMutationPlan 数组合同统一,GR2 消除单/双形态;回滚/重试覆盖）
+- [x] Task: apps/web engine/drafts — application-bundle 激活分支(execute.ts 沿功能边界拆出 activate-application/flow/agent) [75247a0]（449→352 行;锁内重验+planMetaBootstrap 原子落库;I4/竞态 stale 留痕）
+- [x] Task: 重放与完整性 [75247a0]（applications/sitemap 生长;assertMetaBootstrapIntegrity;receipt 幂等重跑空;I5 全 log 重放一致）
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 75247a0]（自治验收 27+4 绿;补救:definition/ GR3 超限→definition/bundle/ 子目录 [31d78f8]）
 
 ## Phase 3 — 授权推导:治理角色展开(D66.4)
 
