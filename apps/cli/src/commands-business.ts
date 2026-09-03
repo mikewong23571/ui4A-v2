@@ -2,7 +2,14 @@ import { flagString } from './args.js';
 import type { ParsedArgs } from './args.js';
 import { CliError, type SuccessEnvelope } from './envelope.js';
 import type { Ui4aHttpClient } from './http.js';
-import { entityPath, envelope, jsonFlagOrFile, record, writeIdentity } from './command-helpers.js';
+import {
+  entityPath,
+  envelope,
+  jsonFlagOrFile,
+  metaExecPath,
+  record,
+  writeIdentity,
+} from './command-helpers.js';
 
 function actionRows(entity: unknown): Record<string, unknown>[] {
   if (!record(entity) || !Array.isArray(entity.actions))
@@ -44,7 +51,7 @@ async function actions(args: ParsedArgs, client: Ui4aHttpClient): Promise<Succes
     });
   }
   const path =
-    rel.startsWith('meta/') || rel.startsWith('draft:') ? '/_meta/api/exec' : '/api/exec';
+    rel.startsWith('meta/') || rel.startsWith('draft:') ? metaExecPath(client.config) : '/api/exec';
   const response = await client.post(
     path,
     writeIdentity(client, {

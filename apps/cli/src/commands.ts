@@ -10,7 +10,7 @@ import { CLI_RELEASE_TAG } from './release.js';
 
 export const HELP = `ui4a ${CLI_RELEASE_TAG} (experimental) — UI4A HTTP/Siren/meta reference client
 
-Usage: ui4a [--json] [--base-url URL] <noun> <verb> [arguments]
+Usage: ui4a [--json] [--base-url URL] [--scope APPLICATION] <noun> <verb> [arguments]
 
 Discover and read:
   auth login|status|logout            Manage long-lived Device credential
@@ -27,6 +27,8 @@ Business operations:
   plans submit --file FILE
 
 Definition Bundles and governed Drafts:
+  (--scope APPLICATION declares the meta-plane application lens; Draft writes
+  require it, and the server only honors a scope the credential already grants)
   bundles export <application> [--out FILE]
   bundles validate --file FILE
   bundles diff --before FILE --after FILE

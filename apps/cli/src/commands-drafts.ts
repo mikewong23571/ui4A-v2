@@ -9,6 +9,7 @@ import {
   entityPath,
   envelope,
   jsonFlagOrFile,
+  metaExecPath,
   record,
   writeIdentity,
 } from './command-helpers.js';
@@ -17,11 +18,12 @@ const DRAFT_ACTIVATION_PREFIX = 'meta/activation:draft-';
 
 async function draftExec(client: Ui4aHttpClient, rel: string, actionName: string, params: unknown) {
   const body = writeIdentity(client, { rel, action: actionName, params });
+  const path = metaExecPath(client.config);
   try {
-    return await client.post('/_meta/api/exec', body);
+    return await client.post(path, body);
   } catch (error) {
     if (!(error instanceof CliError) || error.code !== 'NETWORK') throw error;
-    return client.post('/_meta/api/exec', body);
+    return client.post(path, body);
   }
 }
 

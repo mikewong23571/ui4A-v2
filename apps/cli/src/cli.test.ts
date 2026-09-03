@@ -27,6 +27,7 @@ describe('ui4a CLI contract', () => {
     expect(HELP).toContain('auth login|status|logout');
     expect(HELP).toContain('apps list');
     expect(HELP).toContain('drafts create');
+    expect(HELP).toContain('[--scope APPLICATION]');
     expect(HELP).toContain('request get|head');
     expect(HELP).not.toMatch(/activations approve/);
   });

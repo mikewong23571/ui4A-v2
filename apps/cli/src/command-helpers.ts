@@ -54,11 +54,23 @@ export async function jsonFlagOrFile(
   }
 }
 
+// D65: a declared lens rides as the explicit ?scope= attention query (D51);
+// the server rechecks grants, so this declares attention, never authorization.
+export function metaExecPath(config: CliConfig): string {
+  const scope = config.declaredScope;
+  return scope === undefined
+    ? '/_meta/api/exec'
+    : `/_meta/api/exec?scope=${encodeURIComponent(scope)}`;
+}
+
 export function entityPath(rel: string, config: CliConfig): string {
   const meta = rel.startsWith('meta/') || rel.startsWith('draft:');
   const base = meta ? '/_meta/api/entity' : '/api/entity';
   const query = new URLSearchParams({ rel });
-  if (meta && config.token === undefined) query.set('policyScope', config.policyScope);
+  if (meta) {
+    if (config.declaredScope !== undefined) query.set('scope', config.declaredScope);
+    else if (config.token === undefined) query.set('policyScope', config.policyScope);
+  }
   return `${base}?${query}`;
 }
 

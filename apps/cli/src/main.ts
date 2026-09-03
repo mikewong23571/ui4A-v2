@@ -30,6 +30,7 @@ async function main(): Promise<void> {
       ...(args.baseUrl === undefined ? {} : { baseUrl: args.baseUrl }),
       ...(args.token === undefined ? {} : { token: args.token }),
       ...(args.configPath === undefined ? {} : { configPath: args.configPath }),
+      ...(args.scope === undefined ? {} : { scope: args.scope }),
     });
     const authDependencies = defaultAuthDependencies();
     const authResult = await runAuthCommand(args, config, authDependencies);

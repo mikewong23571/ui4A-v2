@@ -12,6 +12,8 @@ export interface CliConfig {
   token?: string;
   principal: string;
   policyScope: string;
+  /** Explicitly declared application lens (D65); absent means the operator declared none. */
+  declaredScope?: string;
   sources: {
     baseUrl: 'flag' | 'env' | 'config' | 'default';
     issuer: 'env' | 'config' | 'missing';
@@ -19,7 +21,7 @@ export interface CliConfig {
     applications: 'env' | 'config' | 'default';
     token: 'flag' | 'env' | 'config' | 'keychain' | 'missing';
     principal: 'env' | 'config' | 'local-demo-default';
-    policyScope: 'env' | 'config' | 'local-demo-default';
+    policyScope: 'flag' | 'env' | 'config' | 'local-demo-default';
   };
 }
 
@@ -27,6 +29,7 @@ export interface ConfigFlags {
   baseUrl?: string;
   token?: string;
   configPath?: string;
+  scope?: string;
 }
 
 interface ConfigFile {
@@ -109,7 +112,10 @@ export async function loadConfig(
   const rawApplications = env.UI4A_APPLICATIONS ?? file.applications ?? [];
   const token = flags.token ?? env.UI4A_TOKEN ?? file.token;
   const principal = env.UI4A_PRINCIPAL ?? file.principal ?? 'local-user';
-  const policyScope = env.UI4A_POLICY_SCOPE ?? file.policyScope ?? 'publishing';
+  // D65: only an operator declaration (flag/env/config) is a lens; the
+  // 'publishing' fallback below is a local-demo display default, never a lens.
+  const declaredScope = flags.scope ?? env.UI4A_POLICY_SCOPE ?? file.policyScope;
+  const policyScope = declaredScope ?? 'publishing';
   let baseUrl: string;
   let issuer: string | undefined;
   let applications: string[];
@@ -118,6 +124,9 @@ export async function loadConfig(
     issuer = rawIssuer === undefined || rawIssuer === '' ? undefined : cleanIssuer(rawIssuer);
     if (!/^[a-z][a-z0-9-]*$/.test(clientId)) throw new Error('UI4A client ID is invalid');
     applications = applicationList(rawApplications);
+    if (declaredScope !== undefined && !/^[a-z][a-z0-9-]*$/.test(declaredScope)) {
+      throw new Error('UI4A scope must be an application identifier');
+    }
   } catch (error) {
     throw new CliError('CONFIG', error instanceof Error ? error.message : String(error), 3);
   }
@@ -132,6 +141,7 @@ export async function loadConfig(
     ...(token === undefined || token === '' ? {} : { token }),
     principal,
     policyScope,
+    ...(declaredScope === undefined ? {} : { declaredScope }),
     sources: {
       baseUrl:
         flags.baseUrl !== undefined
@@ -170,11 +180,13 @@ export async function loadConfig(
             ? 'config'
             : 'local-demo-default',
       policyScope:
-        env.UI4A_POLICY_SCOPE !== undefined
-          ? 'env'
-          : file.policyScope !== undefined
-            ? 'config'
-            : 'local-demo-default',
+        flags.scope !== undefined
+          ? 'flag'
+          : env.UI4A_POLICY_SCOPE !== undefined
+            ? 'env'
+            : file.policyScope !== undefined
+              ? 'config'
+              : 'local-demo-default',
     },
   };
 }

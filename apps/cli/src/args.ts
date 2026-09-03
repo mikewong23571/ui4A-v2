@@ -7,15 +7,15 @@ export interface ParsedArgs {
   baseUrl?: string;
   token?: string;
   configPath?: string;
+  scope?: string;
   words: string[];
   flags: Record<string, string | boolean>;
 }
 
-const GLOBAL_VALUE = new Set(['base-url', 'token', 'config']);
+const GLOBAL_VALUE = new Set(['base-url', 'token', 'config', 'scope']);
 const FORBIDDEN_FLAGS = new Set([
   'actor',
   'principal',
-  'scope',
   'policy-scope',
   'submission-mode',
   'submission-policy',
@@ -47,6 +47,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
         index += 1;
         if (name === 'base-url') result.baseUrl = next;
         else if (name === 'token') result.token = next;
+        else if (name === 'scope') result.scope = next;
         else result.configPath = next;
       } else if (next !== undefined && !next.startsWith('--')) {
         result.flags[name] = next;

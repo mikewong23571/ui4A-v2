@@ -260,10 +260,11 @@ describe('production CLI Bearer identity boundary', () => {
   );
 
   it('rejects identity, authority, and SubmissionPolicy overrides before any HTTP request', () => {
+    // D65: --scope is an attention declaration, not an authorization input, and
+    // is accepted; the policy-named spelling stays server-owned.
     for (const flag of [
       '--actor',
       '--principal',
-      '--scope',
       '--policy-scope',
       '--submission-mode',
       '--submission-policy',
@@ -273,5 +274,6 @@ describe('production CLI Bearer identity boundary', () => {
         'server-owned',
       );
     }
+    expect(parseArgs(['--scope', 'development']).scope).toBe('development');
   });
 });

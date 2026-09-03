@@ -1216,3 +1216,20 @@
   不创建第二 issuer 或第二套身份数据。
 - **实现影响**：Compose public gateway 使用 `:8080` HTTP；`8443/9444` 继续只承载 Runner delivery
   TLS，`9443` 继续只承载 Keycloak admin TLS。零新增 runtime dependency、数据库或权威状态。
+
+## D65 CLI meta 写路径以显式 --scope 声明应用 lens(2026-09-04,ops 缺口修复)
+
+- **背景**：生产 credential 模式下，meta Draft 写动作要求显式授权应用 lens（D51 口径，
+  credential 分支只认 `?scope=` 查询参数）；而 CLI 此前把 `--scope` 列入 FORBIDDEN_FLAGS
+  且没有任何 lens 通道，导致外部 ops 站实证 CLI 无法创建 Draft（所有真实创建同因
+  "Draft action requires an explicit authorized application lens" 被拒，dry-run 因不触
+  服务端而通过）。本地 demo 模式因 `x-ui4a-policy-scope` 头被 local profile 接受而
+  未暴露该缺口；人的 meta UI 走 `scopedEndpoint` 恒附加 `?scope=`，不受影响。
+- **决策**：CLI 增加全局 `--scope APPLICATION`，仅作为显式注意力声明（D51：显式 lens；
+  grants never create attention）随 meta 读/写请求以 `?scope=` 透传；授权仍完全由服务端
+  授予集合 × 归属裁决，CLI 不做也不得做授予判定。仅操作员显式声明（flag/env/config）
+  构成 lens，`publishing` 本地默认不是声明、不进写路径；`--policy-scope` 保持禁止
+  （规范旗标名是 `--scope`）。
+- **证据**：CLI 单测（lens 配置与读写路径）、meta exec credential 合同测试
+  （无 lens 422 / 授予内 lens 200 / 授予外声明视为未声明）、
+  `e2e/cli-meta-drafts.spec.ts`（CLI 二进制对真实 server 的端到端闭环）。
