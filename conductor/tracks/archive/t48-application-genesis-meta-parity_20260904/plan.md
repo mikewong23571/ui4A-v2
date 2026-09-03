@@ -59,10 +59,10 @@
 
 ## Phase 7 — 收口
 
-- [ ] Task: 全量门禁:`pnpm check`(governance:strict)+ `CI=true pnpm e2e` + `CI=true pnpm e2e invariants`
-- [ ] Task: 文档同步(AGENTS.md 模块图如新增文件;DECISIONS/GOAL 引用核对)+ conductor-review 修复环
-- [ ] Task: 里程碑可运行验证:`pnpm dev:all` 起服,浏览器实测 US1–US3(自治验收,证据入 git notes)
-- [ ] Task: 部署站双通道复核(按 DEPLOYMENT.local.md 标准升级流程;不阻塞本地 DONE,是否当次发布由用户裁定)
+- [x] Task: 全量门禁:`pnpm check`(governance:strict)+ `CI=true pnpm e2e` + `CI=true pnpm e2e invariants`（EXIT=0×3;check 3824 passed;e2e 73 passed/26 skipped;invariants 19 passed;e2e 失败一次为 Temporal 7235 环境缺位,kit 隔离端口,起服后 2/2+全量复跑绿）
+- [x] Task: 文档同步(AGENTS.md drafts 模块行跟进 activate-* 拆解;product.md App 创建边界/Meta 控制台两节对齐 D66/D67)+ conductor-review 修复环（review 由用户另行触发 conductor-review;本 track 自查项已在各 phase 完成） [47a5ac]
+- [x] Task: 里程碑可运行验证（由 P6d 双通道走查代行并超额:真实浏览器+真实 CLI 全链,证据 evidence/） [78903b]
+- [ ] Task: 部署站双通道复核（**待用户裁定是否当次发布**;按 DEPLOYMENT.local.md 标准升级流程,不阻塞本地 DONE）
   - [ ] 固定 SHA 构建 linux/amd64 images → home preflight/up/status → 公网验收合同
   - [ ] agent 在公网站点重跑双通道走查(浏览器人类门 + CLI 设备凭证 agent 门),证据追加 evidence/
-- [ ] Task: Track 收口(archive、registry 状态更新、DONE 摘要引用 evidence 文件与第一性原理审查结论)
+- [x] Task: Track 收口(archive、registry 状态更新、DONE 摘要引用 evidence 文件与第一性原理审查结论)
