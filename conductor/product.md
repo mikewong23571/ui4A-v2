@@ -130,7 +130,13 @@ Chat Agent 只决定是否呈现、呈现哪个 subject 和 intent；完整 cata
 
 ### App 创建边界
 
-当前产品不在内置 Chat 中创建完整 App。候选方向是由应用外置 Agent 理解需求、整理用户故事并起草 Application Bundle，再通过 UI4A meta 合同提交；UI4A 负责机械 schema/invariant 校验、版本 diff、human approval、激活、审计和 replay。内置 `create-app` 向导、页面设计器和 rule-based App 生成器不属于当前 DONE。
+自 T48 起，application 的定义级出生在产品内受治理闭环：`application-bundle` 类型的
+Governed Draft（人或 agent 经同一 `/_meta` 合同，显式授权 lens）→ 机械
+schema/invariant 校验、版本 diff、human approval → 激活事务原子追加与启动 bootstrap
+同种的 seed 事件，scope 全集随事件日志自动生长；在已授权 lens 内为已有 app 提案新
+flow（genesis）同样允许。内置 `create-app` 对话向导、页面设计器和 rule-based App
+生成器不属于 DONE；Chat/Assistant 参与创建时走同一 meta 合同（situation lens 注入，
+模型不得发明注意力），不是独立写路径。
 
 ### Coding Capability Executor
 
@@ -154,10 +160,12 @@ approve 永久拒绝，人类激活使用 CAS。该机制是受治理的“Agent
 
 ### Meta Human Control Plane
 
-Meta sitemap 是定义控制台的发现真相；人类从 `/meta` 浏览授权的 Application、Flow、Capability、
-Agent Definition、Draft 和 Activation。Renderer registry 只按 Siren class/shape 选择特化视图，
-未知合法实体安全兜底。Application 保持只读；Agent Definition/Draft 决策只使用实时 action、机械
-diff/checks/Eval/provenance 与 human-only approval。控制台零 LLM/Sidecar 依赖，不成为第二定义平面。
+Meta sitemap 是定义控制台的发现真相；人类从 `/meta` 浏览授权的 Application、Flow、
+Capability、Agent Definition、Draft 和 Activation。Renderer registry 只按 Siren class/shape
+选择特化视图，未知合法实体安全兜底。集合级 `create` 等定义操作对人类渲染并与 agent
+同门（T48/D67）；Agent Definition/Draft 决策只使用实时 action、机械
+diff/checks/Eval/provenance 与 human-only approval。控制台零 LLM/Sidecar 依赖，不成为
+第二定义平面。
 
 ### 参考 Assistant 组合合同
 
