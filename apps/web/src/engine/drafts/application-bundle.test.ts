@@ -9,8 +9,8 @@ import { executeDraftMeta, getDraftMetaEntity } from './drafts';
 
 // T48 Phase 1 / T1.2–T1.4:application-bundle Draft 的 apps/web 合同层。
 // 覆盖 create(合法/非法 payload/guard 拒绝留痕)、revise 重算、validate 重算与
-// stale、inventory 机械 diff、submit;激活(approve)是 Phase 2,本套件只固定
-// 现状边界(unsupported Draft kind)。
+// stale、inventory 机械 diff、submit 与人类激活门(I4)。激活出生效果
+// (approve 的原子安装/重放/竞态)在 application-bundle-activation.test.ts(Phase 2)。
 const pool = getPool(process.env.DATABASE_URL!);
 const OWNER = 'user:mike';
 const SCOPE = 'development';
@@ -308,7 +308,7 @@ describe('governed application-bundle Draft contract', () => {
     });
   });
 
-  it('submits to pending-approval and keeps human activation a Phase 2 boundary', async () => {
+  it('submits to pending-approval and gates activation on humans', async () => {
     const created = await bundleCreate('demo-bundle', 'bundle:submit:create', bundlePayload());
     const rel = draftRelOf(created);
     const submitted = await executeDraftMeta(
@@ -345,23 +345,6 @@ describe('governed application-bundle Draft contract', () => {
       { policyScope: SCOPE },
     );
     expect(denied).toMatchObject({ kind: 'rejected', layer: 'guard-failed' });
-
-    // Phase 1 边界:application-bundle 的激活分支尚未实现,现状是显式 unsupported。
-    await expect(
-      executeDraftMeta(
-        pool,
-        engine,
-        {
-          rel: activation,
-          action: 'approve',
-          actor: 'human',
-          principal: OWNER,
-          channel: 'human-renderer',
-          params: { commandId: 'bundle:submit:human-approve' },
-        },
-        { policyScope: SCOPE },
-      ),
-    ).rejects.toThrow('unsupported Draft kind');
     expect((await getDraftMetaEntity(pool, engine, rel, OWNER, SCOPE))?.properties.status).toBe(
       'pending-approval',
     );

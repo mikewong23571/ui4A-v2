@@ -136,16 +136,20 @@ async function storedPayload(hash: string): Promise<unknown> {
   return result.rows[0]?.payload;
 }
 
-/** 激活即播种:accept 回调产出的最小 application-seeded 核心事件(与 core 事件原子同事务)。 */
-function seedCoreEvent(aggregate: DraftAggregate, payload: unknown) {
+/** 激活即播种:accept 回调产出的最小 application-seeded 核心事件计划(统一数组合同)。 */
+function seedCorePlan(aggregate: DraftAggregate, payload: unknown) {
   return {
-    domain: 'core' as const,
-    kind: 'application-seeded' as const,
-    rel: `meta/application:${aggregate.target}`,
-    actor: 'human' as const,
-    principal: OWNER,
-    channel: 'meta',
-    detail: { name: aggregate.target, definition: payload },
+    events: [
+      {
+        domain: 'core' as const,
+        kind: 'application-seeded' as const,
+        rel: `meta/application:${aggregate.target}`,
+        actor: 'human' as const,
+        principal: OWNER,
+        channel: 'meta',
+        detail: { name: aggregate.target, definition: payload },
+      },
+    ],
   };
 }
 
@@ -157,7 +161,7 @@ async function driveAcceptedDraft(draftId: string): Promise<void> {
   await appendDraftCommand(pool, validateCommand(draftId, 2, VALID));
   await appendDraftCommand(pool, submitCommand(draftId, 2));
   await acceptDraftWithCoreEvent(pool, acceptCommand(draftId, 2), async ({ aggregate, payload }) =>
-    seedCoreEvent(aggregate, payload),
+    seedCorePlan(aggregate, payload),
   );
 }
 
@@ -219,7 +223,7 @@ describe('Draft persistence (application-bundle)', () => {
     const accepted = await acceptDraftWithCoreEvent(
       pool,
       acceptCommand('bundle-accept', 2),
-      async ({ aggregate, payload }) => seedCoreEvent(aggregate, payload),
+      async ({ aggregate, payload }) => seedCorePlan(aggregate, payload),
     );
     expect(accepted.aggregate.status).toBe('accepted');
     expect(accepted.coreSeq).toBeDefined();

@@ -242,17 +242,31 @@ export async function appendDraftCommand(
 }
 
 /**
+ * Multi-event core mutation applied atomically before the Draft acceptance event.
+ * The events array is the unified contract: one planned append batch in array
+ * order, plus an optional projection hook that runs inside the same transaction
+ * with the actually allocated sequence numbers.
+ */
+export interface AtomicCoreMutationPlan {
+  events: EventAppend[];
+  applyProjection?: (input: { client: DbExecutor; seqs: number[] }) => Promise<void>;
+}
+
+/**
  * Append one validated core change set and `draft-accepted` in the same transaction. The callback
- * runs after Draft locks and receives exact payload; it must re-read and validate current core truth.
+ * runs after Draft locks and receives exact payload; it must re-read and validate current core
+ * truth and return one atomic plan: every core event of the acceptance (array order is the
+ * append order) and an optional same-transaction projection hook. Any failure anywhere in the
+ * batch rolls the whole acceptance back.
  */
 export async function acceptDraftWithCoreEvent(
   db: ConnectableDb,
   command: Extract<DraftCommand, { kind: 'accept' }>,
-  buildCoreEvent: (input: {
+  planCoreMutation: (input: {
     client: DbExecutor;
     aggregate: DraftAggregate;
     payload: unknown;
-  }) => Promise<EventAppend | AtomicCoreMutationPlan>,
+  }) => Promise<AtomicCoreMutationPlan>,
 ): Promise<{
   aggregate: DraftAggregate;
   coreSeq?: number;
@@ -281,17 +295,16 @@ export async function acceptDraftWithCoreEvent(
     if (payload === undefined || payloadSha256(payload) !== payloadHash) {
       throw new Error('draft payload integrity failure');
     }
-    const coreMutation = await buildCoreEvent({ client, aggregate, payload });
+    const plan = await planCoreMutation({ client, aggregate, payload });
     const result = applyDraftCommand(snapshot, command);
     const event = result.events[0]!;
-    const coreEvents = 'events' in coreMutation ? coreMutation.events : [coreMutation];
-    if (coreEvents.length === 0) throw new Error('draft acceptance requires a core event');
+    if (plan.events.length === 0) throw new Error('draft acceptance requires a core event');
     const coreSeqs: number[] = [];
-    for (const coreEvent of coreEvents) {
+    for (const coreEvent of plan.events) {
       coreSeqs.push((await appendEvent(client, coreEvent)).seq);
     }
-    if ('applyProjection' in coreMutation && coreMutation.applyProjection !== undefined) {
-      await coreMutation.applyProjection({ client, seqs: coreSeqs });
+    if (plan.applyProjection !== undefined) {
+      await plan.applyProjection({ client, seqs: coreSeqs });
     }
     const draft = await appendEvent(client, {
       domain: 'draft',
@@ -311,12 +324,6 @@ export async function acceptDraftWithCoreEvent(
       draftSeq: draft.seq,
     };
   });
-}
-
-/** Multi-event core mutation applied atomically before the Draft acceptance event. */
-export interface AtomicCoreMutationPlan {
-  events: EventAppend[];
-  applyProjection?: (input: { client: DbExecutor; seqs: number[] }) => Promise<void>;
 }
 
 export async function getDraft(
