@@ -32,7 +32,8 @@ Definition Bundles and governed Drafts:
   bundles export <application> [--out FILE]
   bundles validate --file FILE
   bundles diff --before FILE --after FILE
-  drafts create --kind flow-definition --target FLOW --payload-file FILE [--command-id ID]
+  drafts create --kind KIND --target NAME --payload-file FILE [--command-id ID]
+                 (KIND: flow-definition | agent-definition | application-bundle)
   drafts get|diff|validate|submit|abandon <draft-id> [options]
   drafts list [--status STATUS] [--limit N]
   drafts revise <draft-id> --base-version N --payload-file FILE [--target-base-version N]
