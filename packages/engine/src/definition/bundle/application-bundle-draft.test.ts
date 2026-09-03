@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { APPLICATION_BUNDLE_SCHEMA } from './meta-bootstrap';
+import { APPLICATION_BUNDLE_SCHEMA } from '../meta-bootstrap';
 import { validateApplicationBundleDraft } from './application-bundle-draft';
 
 // T48 Phase 1 / T1.2:application-bundle Draft 的纯校验器单测。

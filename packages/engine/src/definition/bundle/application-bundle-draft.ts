@@ -8,7 +8,7 @@
  */
 import type { DraftValidation } from '@ui4a/shared';
 
-import { parseApplicationBundle, type ApplicationBundle } from './meta-bootstrap';
+import { parseApplicationBundle, type ApplicationBundle } from '../meta-bootstrap';
 
 export interface ApplicationBundleDraftValidation extends DraftValidation {
   value?: ApplicationBundle;
