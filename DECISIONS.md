@@ -1265,6 +1265,10 @@
   扩展，TDD）；CLI/Chat/浏览器人类门共用同一 `/_meta/api/exec` 裁决路径；approve 不
   出现在 CLI 面。最终验收形态：agent 操作真实浏览器（人类门）与真实 CLI（agent 门）
   双通道端到端、逐步留痕，并按第一性原理清单审查操作路径（T48 spec §6.8）。
+  **T48 附录（2026-09-04）**：Chat/Agent 协议的 meta Draft 写通道以 D65 同义方式补齐——
+  chat 的 meta exec 请求由服务端从 situation 单点装配注入显式 lens（`?scope=`，授予
+  集合外的声明仍被服务端丢弃/拒绝）；模型工具 schema **不**增加 scope 参数，注意力
+  声明只能来自用户处境（显式 > presence），不来自模型发明。
 - **证据**：T48 track spec/plan 与 evidence 目录；合同/重放/invariants 测试与
   Playwright golden spec + agent 双通道走查记录。
 
