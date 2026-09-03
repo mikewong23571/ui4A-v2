@@ -69,23 +69,27 @@ decision；Provider 用 required tool envelope，非法输出最多进行一次�
 
 ### App 创建边界
 
-当前阶段**不在产品运行时内闭环“通过 Chat 创建一个全新 App”**。UI4A 应提供可被外部工具消费的 Application/Flow/Entity/Action/Guard/Policy 定义合同、机械校验、diff、激活和 replay 基础，但不增加内置 `create-app` 对话向导、页面设计器或业务关键词编排。
+自 T48（D66/D67）起，**application 的定义级出生在产品内受治理闭环**：全新
+Application 以 `application-bundle` 类型的 Governed Draft 提案（人或 agent，经同一
+`/_meta` 合同），复用机械 schema/invariant 校验、版本 diff、human approval；人类批准
+的激活事务原子追加与启动 bootstrap 同种的 seed 事件，scope 全集随事件日志自动生长，
+持有治理 lens 的凭证无需部署/IdP 旁路即可到达新 app。在已授权 lens 内为已有 app
+提案新 flow（target 尚不存在）同样允许（flow genesis）。
 
-候选方向是由**应用外置 Agent**完成需求理解、用户故事整理和 Application Bundle 起草，再通过 UI4A 的 meta 协议提交候选定义；UI4A 继续负责确定性的 schema/invariant 检查、版本 diff、human approval、激活、审计和重放。外置 Agent 可以更换或独立部署，其认知能力不成为应用运行时的一部分。
+仍然排除的形态不变：内置 `create-app` 对话向导、页面设计器、业务关键词编排和
+rule-based App 生成器不属于 DONE；Chat/Assistant 参与创建时走的是同一 meta 合同与
+裁决路径，不是独立写路径。
 
-在该方向形成独立用户故事和验收 Track 之前，DONE 不要求：
+应用外置 Agent 起草 Application Bundle 再经 meta 协议提交的候选方向，由此成为同一
+Draft 环的天然 ingress（`ui4a` CLI 全环：发现 → 起草 → 校验/diff/submit → watch →
+批准后立即发现新 app），无需第四种机制。已有 publishing/community 等 Application 的
+运行、发现、操作与呈现照旧。
 
-- 产品内创建、编辑或废弃 Application 的完整交互闭环；
-- Chat 自动把一句需求扩写为完整 App/Flow/Policy 并直接激活；
-- 为 App 创建过程内置固定表单、固定页面或 rule-based 生成器。
-
-已有 publishing/community Application 的运行、发现、操作与呈现仍属于当前 DONE；“创建新 App”属于后续外置 Agent 集成范围。
-
-该方向已由 `conductor/tracks/archive/t17-external-agent-cli-drafts_20260823/` 首切片闭环：可安装
-`ui4a` CLI 是 HTTP/Siren/meta 协议的 agent-friendly 参考客户端；第三方 Agent 可参与受权
-业务操作，并把 Flow 候选作为系统内 Draft 修订、校验、diff 和提交。Draft 是否适用由激活
-合同的 `draft|direct|none` SubmissionPolicy 决定，Agent 无权在请求侧绕过；human approval
-以同事务 core apply + Draft accepted 原子落地。创建完整新 Application 仍不属于当前 DONE。
+该方向已由 `conductor/tracks/archive/t17-external-agent-cli-drafts_20260823/` 首切片
+闭环：可安装 `ui4a` CLI 是 HTTP/Siren/meta 协议的 agent-friendly 参考客户端；第三方
+Agent 可参与受权业务操作，并把 Flow 候选作为系统内 Draft 修订、校验、diff 和提交。Draft
+是否适用由激活合同的 `draft|direct|none` SubmissionPolicy 决定，Agent 无权在请求侧绕过；
+human approval 以同事务 core apply + Draft accepted 原子落地。
 
 ### Coding Capability Executor
 

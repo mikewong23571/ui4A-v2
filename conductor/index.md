@@ -10,7 +10,7 @@ Use current documents in this order:
 4. Active Track spec/plan — bounded implementation contract.
 5. Completed Tracks, spikes, walkthroughs, and `../docs/` — historical evidence; they may describe superseded behavior.
 
-Do not revive AI-optional rule fallback, concern-key render freezing, summary artifacts, or in-product App creation from historical documents.
+Do not revive AI-optional rule fallback, concern-key render freezing, or summary artifacts from historical documents. In-product Application creation exists only as the T48 governed genesis contract (D66/D67: `application-bundle` Draft → human approval → bootstrap-kind seed events); wizards, designers, and rule-based generators remain excluded.
 
 ## Definition
 
