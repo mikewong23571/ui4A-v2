@@ -4,7 +4,7 @@ import { canonicalJson } from '@ui4a/engine';
 
 import { rebuildAgentDefinitionProjection } from './agent-definitions';
 import { rebuildAgentRunProjection } from './agent-runs';
-import { rebuildDraftProjection } from './drafts';
+import { rebuildDraftProjection } from './drafts/index';
 import type { ConnectableDb, DbExecutor } from './events';
 import { rebuildPresentationProjection } from './presentation';
 

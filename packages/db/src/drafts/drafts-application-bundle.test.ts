@@ -12,8 +12,8 @@ import {
   payloadSha256,
   rebuildDraftProjection,
 } from './drafts';
-import { ensureEventsTable } from './events';
-import { getPool } from './pool';
+import { ensureEventsTable } from '../events';
+import { getPool } from '../pool';
 
 // T48 Phase 1 / T1.1:证明 Draft 持久层对 draftKind='application-bundle' 全生命周期可用。
 // 持久层本身 kind 无关(kind 以 TEXT 存储并透传纯引擎判定);本套件固定该 kind 与

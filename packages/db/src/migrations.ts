@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 
 import { AGENT_DEFINITION_DDL } from './agent-definitions';
 import { AGENT_RUN_DDL } from './agent-runs';
-import { DRAFT_DDL } from './drafts';
+import { DRAFT_DDL } from './drafts/index';
 import { EVENTS_DDL, type DbExecutor } from './events';
 import { PRESENCE_DDL } from './presence/presence';
 import { PRESENTATION_DDL } from './presentation';

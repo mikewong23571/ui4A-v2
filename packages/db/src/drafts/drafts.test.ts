@@ -10,8 +10,8 @@ import {
   payloadSha256,
   rebuildDraftProjection,
 } from './drafts';
-import { ensureEventsTable, readLog } from './events';
-import { getPool } from './pool';
+import { ensureEventsTable, readLog } from '../events';
+import { getPool } from '../pool';
 
 const pool = getPool(process.env.DATABASE_URL!);
 const provenance = {

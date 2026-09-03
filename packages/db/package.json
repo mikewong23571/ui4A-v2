@@ -12,6 +12,10 @@
       "types": "./src/agent-definitions/index.ts",
       "default": "./src/agent-definitions/index.ts"
     },
+    "./drafts": {
+      "types": "./src/drafts/index.ts",
+      "default": "./src/drafts/index.ts"
+    },
     "./presence": {
       "types": "./src/presence/presence.ts",
       "default": "./src/presence/presence.ts"

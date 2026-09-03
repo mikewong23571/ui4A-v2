@@ -13,7 +13,7 @@ import type { DraftAggregate } from '@ui4a/shared';
 import { DRAFT_LIMITS } from '@ui4a/shared';
 import type { PoolClient } from 'pg';
 
-import { appendEvent, ensureEventsTable, type DbExecutor, type EventAppend } from './events';
+import { appendEvent, ensureEventsTable, type DbExecutor, type EventAppend } from '../events';
 
 export const DRAFT_DDL = `
 CREATE TABLE IF NOT EXISTS draft_payloads (

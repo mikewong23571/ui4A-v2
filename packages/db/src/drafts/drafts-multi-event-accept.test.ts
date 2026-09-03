@@ -10,8 +10,8 @@ import {
   payloadSha256,
   type AtomicCoreMutationPlan,
 } from './drafts';
-import { ensureEventsTable, type EventAppend } from './events';
-import { getPool } from './pool';
+import { ensureEventsTable, type EventAppend } from '../events';
+import { getPool } from '../pool';
 
 // T48 Phase 2 / T2.1:acceptDraftWithCoreEvent 的统一多事件数组合同。
 // 回调在 Draft 锁+事务内返回 AtomicCoreMutationPlan(events 数组,可选投影钩子):
