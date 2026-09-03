@@ -59,6 +59,7 @@ export const dbTestFiles: readonly string[] = [
   'apps/web/src/auth/single-process-browser-production.test.ts',
   'packages/db/src/agent-definitions/agent-definitions.test.ts',
   'packages/db/src/agent-runs.test.ts',
+  'packages/db/src/drafts-application-bundle.test.ts',
   'packages/db/src/drafts.test.ts',
   'packages/db/src/events.test.ts',
   'packages/db/src/function-receipts.test.ts',
