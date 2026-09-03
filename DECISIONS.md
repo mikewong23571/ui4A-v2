@@ -1233,3 +1233,53 @@
 - **证据**：CLI 单测（lens 配置与读写路径）、meta exec credential 合同测试
   （无 lens 422 / 授予内 lens 200 / 授予外声明视为未声明）、
   `e2e/cli-meta-drafts.spec.ts`（CLI 二进制对真实 server 的端到端闭环）。
+
+## D66 Application Genesis:application-bundle 受治理 Draft 与授权推导补充(T48)
+
+- **覆盖关系**：本决定修订 GOAL.md「App 创建边界」与 T39 北极星中"Meta 人类主路径不含
+  创建/修订入口"的取舍；D51 的授权输入合同（授予集合 × 归属）不变，仅按 D66.4 增补
+  推导规则；T4/T10/T17 的定义生命周期与 Draft 环语义不变，本决定为其增加一种 kind 的
+  出生 ingress。
+- **D66.1 载体**：Draft kind 增加 `application-bundle`（schemaRef
+  `ui4a://application-bundle/v1`）。payload 即 Application Bundle JSON，校验复用
+  `parseApplicationBundle` 与既有 invariants，零新校验器。target = bundle 的
+  application name，必须不与已安装 application 冲突（fail-closed 拒绝并按 I6 留痕）。
+- **D66.2 提案锚定**：application-bundle 提案锚定在提案者已授权的显式 lens 下（实践上
+  为 `governance`）；新 app 名只是 payload 内容，lens 永远指向已存在且已授予的 scope。
+  这是 agent-definition v1（新名字、version=1、已授权 scope 内起草）先例的推广。
+  flow-definition 同步放开 genesis：target 不存在时允许提案，要求 payload 的 `app`
+  等于声明 lens。
+- **D66.3 激活语义**：人类 approve 的激活事务原子追加与启动 bootstrap **同种**事件
+  （`application-seeded`/`capability-seeded`×n/`definition-seeded`×n 与同 kind 同 rel
+  的 receipt），事件规划复用纯函数 `planMetaBootstrap`。重启 bootstrap 对同名 bundle 因
+  receipt 已存在而 no-op；`assertMetaBootstrapIntegrity` 与 I5 重放原样成立。agent
+  approve 永久拒绝（I4）。scope 全集（`Object.keys(snapshot.applications)`）随事件
+  自动生长，无需部署/IdP 旁路步骤。
+- **D66.4 授权推导补充（D51 增补）**：credential 分支中，凭证授予集合含 `governance`
+  scope 时，`grantedApplications` 展开为「当前已安装 application 全集」（与 local
+  profile 既有推导同构）。IdP 只断言稳定身份事实；逐 app `ui4a:policy:<app>` 保留给
+  细粒度业务委托。**该展开是显式且被接受的权限放大**：治理者可达全部业务面——语义上
+  治理者需要验证新生 app。专用 `ui4a:operator` 词表为已考虑替代方案，多租户需要时另立
+  决定；展开不影响 `?scope=` 导航偏好的丢弃规则。
+- **实现边界**：激活事务在 `acceptDraftWithCoreEvent` 回调内返回多事件计划（db 层合同
+  扩展，TDD）；CLI/Chat/浏览器人类门共用同一 `/_meta/api/exec` 裁决路径；approve 不
+  出现在 CLI 面。最终验收形态：agent 操作真实浏览器（人类门）与真实 CLI（agent 门）
+  双通道端到端、逐步留痕，并按第一性原理清单审查操作路径（T48 spec §6.8）。
+- **证据**：T48 track spec/plan 与 evidence 目录；合同/重放/invariants 测试与
+  Playwright golden spec + agent 双通道走查记录。
+
+## D67 Meta 人机同门:集合级动作渲染与人类定义操作(T48)
+
+- **背景**：合同层 `meta/drafts` 集合一直挂着 `create` 动作（Siren 同门成立），但
+  `GenericCollectionRenderer` 不渲染集合级 actions，人类在 `/meta` 无任何定义级创建
+  入口；T39 北极星当时刻意把起草排除在人类主路径外。2026-09-03 部署站实测暴露该
+  取舍与人机同门原则的冲突。
+- **决策**：`GenericCollectionRenderer` 渲染集合实体的 `actions`（经既有 `MetaActions`，
+  提交前 fresh-read、scope-preserving）；控件只来自当前 Siren 合同，不新增 hardcoded
+  按钮（I3）。`application-bundle` 的人类编辑 schema 复用
+  `AGENT_DEFINITION_EDITOR_SCHEMA`/`draft-editor-schema` 模式：结构化必填根 + issue
+  聚焦 blocking-fields；JSON 级编辑、零 AI 生成（铁律 5）。T39 北极星修订为"人类主
+  路径包含创建/修订入口，但零 AI、合同驱动、责任决定仍是核心"。
+- **文档同步**：GOAL.md「App 创建边界」改写为"产品内受治理 genesis 经 Draft 合同
+  存在；create-app 对话向导/页面设计器/rule-based 生成器仍排除"；
+  `conductor/index.md` 禁止复活清单中 "in-product App creation" 条目移除。
