@@ -8,13 +8,10 @@
 
 ## Phase 0 — 决定与文档先行(先记录,再动代码)
 
-- [ ] Task: 提交遗留 D65 工作区改动并核对门禁
-  - [ ] 复核 apps/cli + e2e/cli-meta-drafts.spec.ts + DECISIONS.md D65 diff
-  - [ ] `pnpm --filter @ui4a/cli build && CI=true pnpm vitest run apps/cli` + meta exec credential 合同测试
-  - [ ] 独立 commit(fix(cli) 范畴),不与本 track 混杂
-- [ ] Task: DECISIONS.md 落盘 D66/D67(spec §3 全文:载体/锚定/激活语义/授权推导补充/同门与文档修订)
-- [ ] Task: GOAL.md「App 创建边界」改写 + conductor/index.md 禁止复活清单修订 + T39 北极星修订注记
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: 提交遗留 D65 工作区改动并核对门禁 [b20982c]
+- [x] Task: DECISIONS.md 落盘 D66/D67(spec §3 全文:载体/锚定/激活语义/授权推导补充/同门与文档修订) [e6af748]
+- [x] Task: GOAL.md「App 创建边界」改写 + conductor/index.md 禁止复活清单修订 + T39 北极星修订注记(D67 记录,归档按 GR5 只读) [3de6142]
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 3de6142]
 
 ## Phase 1 — 合同层:application-bundle Draft kind
 
