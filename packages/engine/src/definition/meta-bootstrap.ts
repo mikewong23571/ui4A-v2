@@ -175,6 +175,27 @@ function bootstrapRel(bundle: ApplicationBundle): string {
   return `meta/bootstrap:${bundle.bundle.name}@${bundle.bundle.version}`;
 }
 
+/**
+ * 单个 flow 的出生事件(definition-seeded v1/active):启动 bootstrap 与
+ * flow-genesis Draft 激活(T48 Phase 4 / D67.3)共用同一构造器——
+ * 全系统只有这一种 flow 出生事件的 kind/rel/detail 形状。
+ */
+export function flowSeedEvent(flow: FlowDefinition): MetaBootstrapEvent {
+  return {
+    kind: 'definition-seeded',
+    rel: metaFlowRel(flow.name),
+    actor: 'agent',
+    principal: 'system:meta-bootstrap',
+    channel: 'meta',
+    detail: {
+      name: flow.name,
+      version: 1,
+      status: 'active',
+      definition: flow,
+    } satisfies DefinitionSeededDetail,
+  };
+}
+
 function receiptInventory(
   detail: unknown,
 ):
@@ -267,19 +288,7 @@ export function planMetaBootstrap(
   for (const flow of bundle.flows) {
     if (flows.has(flow.name)) continue;
     flowCount += 1;
-    events.push({
-      kind: 'definition-seeded',
-      rel: metaFlowRel(flow.name),
-      actor: 'agent',
-      principal: 'system:meta-bootstrap',
-      channel: 'meta',
-      detail: {
-        name: flow.name,
-        version: 1,
-        status: 'active',
-        definition: flow,
-      } satisfies DefinitionSeededDetail,
-    });
+    events.push(flowSeedEvent(flow));
   }
   if (!seedPresent) {
     events.push({

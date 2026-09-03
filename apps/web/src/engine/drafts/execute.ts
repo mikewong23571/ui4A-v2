@@ -261,8 +261,14 @@ export async function executeDraftMeta(
       const snapshot = await engine.readSnapshot();
       const current =
         aggregate.target === undefined ? undefined : snapshot.definitions?.[aggregate.target];
-      if (current !== undefined && String(current.version) !== aggregate.baseVersion) {
-        staleReason = `base ${aggregate.baseVersion}, current ${current.version}`;
+      if (current !== undefined) {
+        if (aggregate.baseVersion === undefined) {
+          // genesis 的基准是"target 名尚未存在";此后同名被创建(冲突出现)
+          // 即 stale(对称 application-bundle 的 installed 口径)。
+          staleReason = `flow ${aggregate.target} already exists`;
+        } else if (String(current.version) !== aggregate.baseVersion) {
+          staleReason = `base ${aggregate.baseVersion}, current ${current.version}`;
+        }
       }
       validation = validateFlowDraft(payload, registries(snapshot));
     } else if (aggregate.kind === 'application-bundle') {

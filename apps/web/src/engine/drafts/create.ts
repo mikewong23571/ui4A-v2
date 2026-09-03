@@ -30,6 +30,12 @@ import {
   stringParam,
 } from './helpers';
 
+/**
+ * genesis 目标名口径:复用 engine 标识符约定(agent-definition IDENTIFIER,
+ * 见 packages/engine/src/agent-definition/parse.ts)——小写 kebab,≤64 字符。
+ */
+const FLOW_GENESIS_NAME = /^[a-z][a-z0-9-]{0,63}$/;
+
 export async function executeDraftCreate(
   db: ConnectableDb,
   engine: EngineRuntime,
@@ -92,15 +98,49 @@ export async function executeDraftCreate(
   } else if (kind === 'flow-definition') {
     const snapshot = await engine.readSnapshot();
     const entry = snapshot.definitions?.[target];
-    if (entry === undefined)
-      return rejected('guard-failed', 'target flow is not authorized or does not exist');
-    const activeDefinition =
-      snapshot.definitionVersions?.[target]?.[entry.version] ?? entry.definition;
-    if ((activeDefinition.app ?? 'default') !== context.policyScope) {
-      return rejected('guard-failed', 'target flow is outside the credential policy scope');
+    if (entry === undefined) {
+      // flow-genesis(T48 Phase 4 / D67.3):target 不存在 → 提案新 flow。
+      // 名称口径与 engine 标识符约定同形(agent-definition IDENTIFIER:kebab ≤64)。
+      if (!FLOW_GENESIS_NAME.test(target)) {
+        const outcome = rejected(
+          'guard-failed',
+          `target ${target} is not a valid flow name (expected [a-z][a-z0-9-]{0,63})`,
+        );
+        await rejectionEvent(db, request, outcome);
+        return outcome;
+      }
+      validation = validateFlowDraft(payload, registries(snapshot));
+      // 目标合同与 bundle/agent 同纪律:候选名必须等于 target;归属 lens 必须是
+      // 凭证 policy scope(声明 lens)。不满足是 guard 拒绝事件(I6),不是 Draft。
+      if (validation.value !== undefined && validation.value.name !== target) {
+        const outcome = rejected(
+          'guard-failed',
+          `target ${target} does not match candidate flow name ${validation.value.name}`,
+        );
+        await rejectionEvent(db, request, outcome);
+        return outcome;
+      }
+      if (
+        validation.value !== undefined &&
+        (validation.value.app ?? 'default') !== context.policyScope
+      ) {
+        const outcome = rejected(
+          'guard-failed',
+          'target flow is outside the credential policy scope',
+        );
+        await rejectionEvent(db, request, outcome);
+        return outcome;
+      }
+      // genesis 无基准版本(全新 flow),baseVersion 保持 undefined。
+    } else {
+      const activeDefinition =
+        snapshot.definitionVersions?.[target]?.[entry.version] ?? entry.definition;
+      if ((activeDefinition.app ?? 'default') !== context.policyScope) {
+        return rejected('guard-failed', 'target flow is outside the credential policy scope');
+      }
+      validation = validateFlowDraft(payload, registries(snapshot));
+      baseVersion = String(entry.version);
     }
-    validation = validateFlowDraft(payload, registries(snapshot));
-    baseVersion = String(entry.version);
   } else {
     if (context.agentDefinitions === undefined) {
       return rejected('guard-failed', 'Agent Definition registry is unavailable');
