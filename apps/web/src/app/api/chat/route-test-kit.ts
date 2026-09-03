@@ -5,6 +5,9 @@ import { getPool } from '@ui4a/db/pool';
 import { resetEngineForTests } from '../../../engine/service';
 
 import { GET as getSitemapRoute } from '../../.well-known/ui4a.json/route';
+import { GET as getMetaSitemapRoute } from '../meta/.well-known/ui4a.json/route';
+import { GET as getMetaEntityRoute } from '../meta/entity/route';
+import { POST as postMetaExecRoute } from '../meta/exec/route';
 import { GET as getEntityRoute } from '../entity/route';
 import { POST as postExecRoute } from '../exec/route';
 import { GET as getEventsRoute } from '../events/route';
@@ -18,6 +21,11 @@ let server: Server;
 let base = '';
 let sitemapRequests = 0;
 let entityRequests: string[] = [];
+// T48 US6:meta 平面回环(canonical /_meta/* → 内部 /api/meta/* 处理器,
+// 与 next.config.ts rewrites 同一映射)——chat 循环经 baseUrl=/_meta 抓取。
+let metaSitemapRequests = 0;
+let metaEntityRels: string[] = [];
+let metaExecBodies: Record<string, unknown>[] = [];
 export const PUBLISH_TEST_GOAL = '对 article-drafting:main 执行 next 并 publish，发布一篇文章';
 export const PUBLISH_TEST_AUTHORIZATION = {
   sourceMessageId: 'route-test-turn',
@@ -49,6 +57,24 @@ export async function handler(pathname: string, request: Request): Promise<Respo
   if (pathname === '/.well-known/ui4a.json') {
     sitemapRequests += 1;
     return getSitemapRoute();
+  }
+  // meta 站 canonical 路径(next.config.ts rewrites 的回环镜像)
+  if (pathname === '/_meta/.well-known/ui4a.json') {
+    metaSitemapRequests += 1;
+    return getMetaSitemapRoute(request);
+  }
+  if (pathname === '/_meta/api/entity') {
+    metaEntityRels.push(new URL(request.url).searchParams.get('rel') ?? '');
+    return getMetaEntityRoute(request);
+  }
+  if (pathname === '/_meta/api/exec') {
+    metaExecBodies.push(
+      (await request
+        .clone()
+        .json()
+        .catch(() => ({}))) as Record<string, unknown>,
+    );
+    return postMetaExecRoute(request);
   }
   if (pathname === '/api/chat') return postChat(request);
   return Response.json({ error: 'not found' }, { status: 404 });
@@ -337,6 +363,9 @@ export async function startChatRouteFixtures(): Promise<void> {
   resetEngineForTests();
   sitemapRequests = 0;
   entityRequests = [];
+  metaSitemapRequests = 0;
+  metaEntityRels = [];
+  metaExecBodies = [];
   server = createServer(async (req, res) => {
     // 用真实 host 构造 Request:聊天路由经 request.url 的 origin 回环 fetch 自身。
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`);
@@ -372,4 +401,19 @@ export function sitemapRequestCount(): number {
 
 export function entityRequestRels(): string[] {
   return [...entityRequests];
+}
+
+/** meta 站 sitemap 抓取次数(baseUrl=/_meta 的回合,业务 sitemap 计数不混入)。 */
+export function metaSitemapRequestCount(): number {
+  return metaSitemapRequests;
+}
+
+/** chat 循环经 /_meta/api/entity 读取过的 rel 序列。 */
+export function metaEntityRequestRels(): string[] {
+  return [...metaEntityRels];
+}
+
+/** chat 循环经 /_meta/api/exec(CLI 同门)发出的 exec 请求体序列。 */
+export function metaExecRequestBodies(): Record<string, unknown>[] {
+  return metaExecBodies.map((body) => ({ ...body }));
 }

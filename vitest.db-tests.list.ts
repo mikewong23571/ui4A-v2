@@ -18,6 +18,7 @@ export const dbTestFiles: readonly string[] = [
   'apps/web/src/app/api/chat/route-ai-first.test.ts',
   'apps/web/src/app/api/chat/route-audit.test.ts',
   'apps/web/src/app/api/chat/route.delegated.test.ts',
+  'apps/web/src/app/api/chat/route.meta-parity.test.ts',
   'apps/web/src/app/api/chat/route.production-auth.test.ts',
   'apps/web/src/app/api/chat/route.step-frames.test.ts',
   'apps/web/src/app/api/chat/route.test.ts',
