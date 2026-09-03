@@ -30,13 +30,9 @@
 
 ## Phase 3 — 授权推导:治理角色展开(D66.4)
 
-- [ ] Task: apps/web auth/request-identity.ts — credential 授予集合治理展开
-  - [ ] 红测:授予含 governance → grantedApplications = 授予 ∪ 已安装全集;不含则原样;agent token 语义不变;展开不影响 ?scope= 丢弃规则
-  - [ ] 绿:实现(展开发生在 authorizedPolicyScopes 已知之后)
-- [ ] Task: meta exec/entity credential 合同测试扩展
-  - [ ] 红测:治理凭证对新出生 app 的 entity/exec 可达;非治理凭证结构化 denied 留痕;US4 证据
-  - [ ] 绿:实现/修测
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: apps/web auth/request-identity.ts — credential 授予集合治理展开 [5b560a]
+- [x] Task: meta exec/entity credential 合同测试扩展 [5b560a]（治理凭证激活后立即可达新 app+新 lens 写;逐 app 对照 422;空集合语义不变）
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 5b560a]（自治验收 30/30;补救:db/src GR3 超限抽 src/drafts/ [650e707];验收纪律修正:governance 显式 EXIT 核验）
 
 ## Phase 4 — flow-definition genesis(D67.3)
 
