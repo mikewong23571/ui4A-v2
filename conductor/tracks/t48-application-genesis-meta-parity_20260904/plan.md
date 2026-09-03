@@ -78,17 +78,27 @@
   - [ ] 绿:实现;registry/classes 不新增特化则走既有 generic
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
-## Phase 6 — 同门闭环验收(两门同跑)
+## Phase 6 — 同门闭环验收(两门同跑;agent 双通道端到端)
 
-- [ ] Task: CLI application-bundle 写路径
-  - [ ] 红测:apps/cli 单测(--kind application-bundle 显式 lens);e2e/cli-meta-drafts.spec.ts 增例(真实 server)
+- [ ] Task: CLI application-bundle 全环(G3/US9,agent 门)
+  - [ ] 红测:apps/cli 单测(--kind application-bundle 显式 lens;create/revise/validate/diff/submit/get/watch envelope 全链)
+  - [ ] 红测:CLI approve 尝试拒绝(APPROVAL_FORBIDDEN 口径回归)
+  - [ ] e2e/cli-meta-drafts.spec.ts 增例(真实 server):批准后 apps/flows 立即发现新 app/新动作
   - [ ] 绿:实现
 - [ ] Task: Chat 同门故事(US6)
   - [ ] 注入驱动协议测试:Assistant 经 meta exec 合同提交 application-bundle 提案(同一裁决路径);可选真实 LLM eval(pnpm eval:llm 口径)
-- [ ] Task: Playwright Golden Story(US1–US3 浏览器门)
+- [ ] Task: Playwright Golden Story(US1–US3 浏览器门;agent 验收路径的可重放回归镜像)
   - [ ] e2e 新 spec:提案→修正→diff→approve→出生→集合可见→重启 bootstrap no-op
 - [ ] Task: agent 同门与不变量扩展(US5/US8)
   - [ ] 批准后 CLI/HTTP 立即发现新 app/新动作(S2 精神);I3/I4/I5/I6 相关断言入 invariants 套件
+- [ ] Task: 端到端 agent 双通道验收(US10;编排 agent 代行,逐步留痕)
+  - [ ] 准备:`pnpm dev:all` + `pnpm cli:build`,干净本地环境与 CLI 配置
+  - [ ] 浏览器门:agent 操作真实浏览器走完人类 Golden Story(导航/创建/修正/diff/approve/出生确认)
+  - [ ] CLI 门:agent 以真实 CLI 二进制走完 US9 全环
+  - [ ] 留痕:每步记入 evidence/evidence-agent-acceptance-<date>.md(步骤号/通道/动作/命令或 URL/合同证据/断言/结果)+ 截图与命令抄本目录
+- [ ] Task: 第一性原理路径审查(US10;spec §6.8 清单)
+  - [ ] 逐步核对:合同动作映射/裁决序可见/agent 零 approve/拒绝留痕/事实合同来源/人机同门/出生仅事件日志/授权仅授予集合×归属
+  - [ ] 发现项登记→修复→复跑(≤2 轮,workflow 口径);审查结论写入 evidence 文件
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 7 — 收口
@@ -96,4 +106,7 @@
 - [ ] Task: 全量门禁:`pnpm check`(governance:strict)+ `CI=true pnpm e2e` + `CI=true pnpm e2e invariants`
 - [ ] Task: 文档同步(AGENTS.md 模块图如新增文件;DECISIONS/GOAL 引用核对)+ conductor-review 修复环
 - [ ] Task: 里程碑可运行验证:`pnpm dev:all` 起服,浏览器实测 US1–US3(自治验收,证据入 git notes)
-- [ ] Task: Track 收口(archive、registry 状态更新)
+- [ ] Task: 部署站双通道复核(按 DEPLOYMENT.local.md 标准升级流程;不阻塞本地 DONE,是否当次发布由用户裁定)
+  - [ ] 固定 SHA 构建 linux/amd64 images → home preflight/up/status → 公网验收合同
+  - [ ] agent 在公网站点重跑双通道走查(浏览器人类门 + CLI 设备凭证 agent 门),证据追加 evidence/
+- [ ] Task: Track 收口(archive、registry 状态更新、DONE 摘要引用 evidence 文件与第一性原理审查结论)

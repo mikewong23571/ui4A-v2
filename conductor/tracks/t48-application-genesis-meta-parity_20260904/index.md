@@ -20,4 +20,9 @@ seed 事件 → scope 全集自动生长 → 治理凭证立即可达);meta 站�
   零 AI 与合同驱动约束不变;
 - D66.4 治理展开触发词选 `governance`(既有安装应用,零新词表);专用
   `ui4a:operator` 词表为已考虑的替代方案,多租户需要时再立决定;
-- D65(CLI --scope)为本 track 前置,Phase 0 先行提交,避免历史混杂。
+- D65(CLI --scope)为本 track 前置,Phase 0 先行提交,避免历史混杂;
+- 验收形态(用户 2026-09-04 追加裁定):CLI 全环为一等验收对象(G3/US9);
+  最终验收由 agent 双通道代行——操作真实浏览器(人类门)+ 操作真实 CLI(agent 门)
+  端到端走完 Golden Story,每一步留痕于 evidence 文件,并按第一性原理清单
+  (spec §6.8)逐步审查操作路径;Playwright golden spec 作为可重放回归镜像,
+  部署站复核走 DEPLOYMENT.local.md 标准流程。

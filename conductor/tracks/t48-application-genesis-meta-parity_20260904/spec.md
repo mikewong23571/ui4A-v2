@@ -39,6 +39,13 @@ Draft 合同:提案(人或 agent)→ 同源校验 → 机械 diff → human appr
 修订、校验、读 diff、提交;agent 经 HTTP/CLI/Chat 走的是同一份 Siren 合同与同一
 裁决路径。**同一动作面,两种执行者,一份事件日志**(product.md 验收总纲)。
 
+**G3 CLI Agent 闭环**(用户 2026-09-04 追加裁定):可安装 `ui4a` CLI 作为参考
+agent 客户端在新能力上**全环闭合**:发现(`apps`/`flows`/`entity`)→ 起草
+(`drafts create --kind application-bundle`,显式 lens)→ 修正/校验/diff/submit →
+`watch` 等待人类决定 → 批准后 CLI **立即**发现新 app 与新动作(S2 精神)。approve
+永不出现在 CLI 面(`APPROVAL_FORBIDDEN` 口径回归);CLI 不内嵌 LLM、不做授权判定的
+边界不变。
+
 ## 3. 设计决定(实现前先落 DECISIONS.md)
 
 ### D66 Application Genesis:application-bundle Draft 与授权推导补充
@@ -91,6 +98,19 @@ Draft 合同:提案(人或 agent)→ 同源校验 → 机械 diff → human appr
 | US6 | Chat 同门 | Assistant 在 chat 中提议创建 application,经同一 meta exec 合同进入 Draft(协议层注入驱动;真实 LLM 故事可选) |
 | US7 | flow genesis | 已授权 lens 内为已有 app 提案新 flow(target 不存在)→ 激活 → sitemap 出现新 flow 入口 |
 | US8 | 负例 | agent approve 拒绝(I4);名称冲突拒绝;越权 lens 拒绝;stale 拒绝;全部留痕(I6) |
+| US9 | CLI 全环(agent 门) | 从干净配置出发仅用 CLI 完成 G3 全链;每步 envelope 留痕;approve 尝试 `APPROVAL_FORBIDDEN` |
+| US10 | 端到端 agent 双通道验收 | 编排 agent 操作**真实浏览器**(人类门)与**真实 CLI 二进制**(agent 门)各跑一遍完整 Golden Story;每一步(通道/动作/命令或 URL/合同证据/断言/结果/截图)记录于 track evidence 文件;随后按 §6.8 第一性原理清单逐步审查操作路径 |
+
+### 验收留痕纪律(US10)
+
+- 证据落盘 `conductor/tracks/t48-application-genesis-meta-parity_20260904/evidence/`:
+  `evidence-agent-acceptance-<date>.md`(步骤表)+ 截图/命令抄本目录;
+- 浏览器验收沿用 T37/T38 "agent 浏览器视觉审核" 先例(agent 操作浏览器,人类会话
+  即人类门);CLI 验收用真实构建产物对真实 server 执行;
+- Playwright golden spec 是该 agent 验收路径的**可重放回归镜像**(agent 走查是
+  一次性证据,Playwright 是长期回归,双轨缺一不可);
+- 部署站复核:按 `DEPLOYMENT.local.md` 标准升级流程发布后,在公网站点重跑双通道
+  走查并追加证据(不阻塞本地 DONE,由用户裁定是否当次发布)。
 
 ## 5. 非目标(Out of Scope)
 
@@ -112,7 +132,14 @@ Draft 合同:提案(人或 agent)→ 同源校验 → 机械 diff → human appr
 4. `pnpm check`(含 governance:strict)与 `CI=true pnpm e2e` 全绿;
 5. DECISIONS.md D66/D67 与 GOAL/conductor/index.md 修订先行落盘(仓库纪律:先记录
    再动代码);
-6. 里程碑结束系统可运行:`pnpm dev:all` 起服后浏览器实测 US1–US3。
+6. 里程碑结束系统可运行:`pnpm dev:all` 起服后浏览器实测 US1–US3;
+7. 端到端验收由 agent 双通道代行(US10):真实浏览器 + 真实 CLI,全过程逐步留痕于
+   evidence 文件;Playwright golden spec 作为可重放回归镜像;
+8. **第一性原理路径审查通过**:对记录的每一步核对——(a) 交互均映射已声明合同
+   动作,无带外写入;(b) 裁决序 declaration→guard→schema 在拒绝证据中可见;
+   (c) agent 零 approve;(d) 拒绝均为带理由事件/回执;(e) 事实全部来自合同读取,
+   无发明;(f) 人机同门(同一 rel/action/href);(g) 出生仅经事件日志,无第二权威;
+   (h) 授权仅由授予集合×归属推导,lens 显式。发现项登记并闭环,结论写入 evidence。
 
 ## 7. 风险与对策
 
@@ -122,4 +149,5 @@ Draft 合同:提案(人或 agent)→ 同源校验 → 机械 diff → human appr
 | GR3 行数红线(views.ts 483/500、execute.ts 434/500、drafts.test.ts 714/800) | 变更时沿功能边界拆解(activate/create 模块分文件;新测试独立文件);D53 纪律,不为行数裁功能 |
 | 激活事务多事件原子性 | 事务边界在 `acceptDraftWithCoreEvent` 回调内返回计划;packages/db 先行 TDD |
 | bootstrap 与激活事件重复 | receipt 同 kind 同 rel 幂等去重;重启回归测试 |
+| agent 走查不可重放 | 双轨:一次性走查留证据文件,Playwright golden spec 作长期回归镜像 |
 | 工作区遗留 D65 未提交改动 | Phase 0 前先核对/提交 D65(CLI --scope 修复),保持历史干净 |
