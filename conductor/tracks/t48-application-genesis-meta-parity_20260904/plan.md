@@ -15,19 +15,11 @@
 
 ## Phase 1 — 合同层:application-bundle Draft kind
 
-- [ ] Task: packages/shared + packages/db — kind 联合与 Draft 存储面扩展(测试先行)
-  - [ ] 红测:draft 事件/projection 接受 `application-bundle` kind(schemaRef `ui4a://application-bundle/v1`)
-  - [ ] 绿:类型联合、db 写读;vitest --project db
-- [ ] Task: apps/web engine/drafts/views.ts — create 动作与投影扩展
-  - [ ] 红测:`meta/drafts` create 的 kind enum 含 application-bundle;draft 实体投影新 kind
-  - [ ] 绿:enum/投影;views.ts 若超 GR3 则拆出投影模块
-- [ ] Task: apps/web engine/drafts/create.ts — application-bundle 校验与冲突 guard
-  - [ ] 红测:合法 bundle 入 Draft(复用 parseApplicationBundle);名称冲突 guard-failed 留痕;lens 必须 = 已授予已安装 scope
-  - [ ] 绿:实现;负例全部留痕(I6)
-- [ ] Task: revise/validate/diff 路径覆盖 application-bundle
-  - [ ] 红测:revise 修正 payload、validate 重算、diff 投影(inventory 级机械 diff)
-  - [ ] 绿:实现
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: packages/shared + packages/db — kind 联合与 Draft 存储面扩展(测试先行) [a27c83]（shared 已含该值,db kind 无关;新增 lifecycle/重放幂等测试直接绿）
+- [x] Task: apps/web engine/drafts/views.ts — create 动作与投影扩展 [13b4b8]
+- [x] Task: apps/web engine/drafts/create.ts — application-bundle 校验与冲突 guard [13b4b8]
+- [x] Task: revise/validate/diff 路径覆盖 application-bundle [13b4b8]（GR3 拆解 application-bundle.ts;engine 纯校验器 validateApplicationBundleDraft）
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 13b4b8]（自治验收:20/20 复跑绿+governance OK;改动文件均有对应测试）
 
 ## Phase 2 — 激活事务:人类 approve → 原子 seed 事件
 
