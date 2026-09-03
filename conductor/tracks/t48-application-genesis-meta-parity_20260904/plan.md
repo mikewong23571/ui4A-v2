@@ -36,13 +36,9 @@
 
 ## Phase 4 — flow-definition genesis(D67.3)
 
-- [ ] Task: create.ts — target 不存在时允许新 flow 提案
-  - [ ] 红测:lens scope 内新 flow 名合法、payload.app == lens → Draft 建立;跨 lens/非法名拒绝留痕
-  - [ ] 绿:实现
-- [ ] Task: 激活分支 — 新 flow 的 definition-seeded v1 事件
-  - [ ] 红测:approve → definition-seeded v1 → sitemap/flow-entry 生长;bornVersion=1;I5 一致
-  - [ ] 绿:实现
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: create.ts — target 不存在时允许新 flow 提案 [d84637]（名称/lens 校验+I6 留痕;修订路径零变化）
+- [x] Task: 激活分支 — 新 flow 的 definition-seeded v1 事件 [d84637]（复用 planMetaBootstrap 提取的 flowSeedEvent,同种事件;sitemap/flow-entry 生长;I5 一致;竞态 stale）
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: d84637]（自治验收 27/27;补救:auth/ GR3 超限→auth/browser/ [863785f]）
 
 ## Phase 5 — Meta UI 人机同门(D67.1/D67.2)
 
