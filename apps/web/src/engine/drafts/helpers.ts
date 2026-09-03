@@ -1,10 +1,4 @@
-import {
-  validateAgentDefinitionDraft,
-  validateFlowDraft,
-  type ExecRequest,
-  type JudgeLayer,
-  type SirenEntity,
-} from '@ui4a/engine';
+import { type ExecRequest, type JudgeLayer, type SirenEntity } from '@ui4a/engine';
 import { seedGuardRegistry, type DraftValidation } from '@ui4a/shared';
 
 import { getDraftByOwner } from '@ui4a/db/drafts';
@@ -42,10 +36,8 @@ export function registries(snapshot: ReturnType<EngineRuntime['getSnapshot']>) {
   };
 }
 
-export function persistedValidation(
-  validation:
-    ReturnType<typeof validateFlowDraft> | ReturnType<typeof validateAgentDefinitionDraft>,
-): DraftValidation {
+/** Persist any Draft validator result (flow / agent-definition / application-bundle). */
+export function persistedValidation(validation: DraftValidation): DraftValidation {
   return {
     valid: validation.valid,
     issues: validation.issues,

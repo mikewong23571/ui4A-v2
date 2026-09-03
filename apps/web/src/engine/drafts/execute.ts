@@ -7,6 +7,7 @@ import {
   validateDefinition,
   validateAgentDefinitionDraft,
   validateFlowDraft,
+  type ApplicationBundleDraftValidation,
   type DefinitionCandidateAppliedDetail,
   type ExecRequest,
 } from '@ui4a/engine';
@@ -41,6 +42,7 @@ import {
   rejectionEvent,
   stringParam,
 } from './helpers';
+import { applicationBundleInstalled, validateBundleCandidate } from './application-bundle';
 import { executeDraftCreate } from './create';
 export async function executeDraftMeta(
   db: ConnectableDb,
@@ -310,10 +312,14 @@ export async function executeDraftMeta(
     if (!Number.isInteger(baseVersion) || nextPayload === undefined)
       return rejected('schema-invalid', 'baseVersion and payload are required');
     let validation:
-      ReturnType<typeof validateFlowDraft> | ReturnType<typeof validateAgentDefinitionDraft>;
+      | ReturnType<typeof validateFlowDraft>
+      | ReturnType<typeof validateAgentDefinitionDraft>
+      | ApplicationBundleDraftValidation;
     if (aggregate.kind === 'flow-definition') {
       const snapshot = await engine.readSnapshot();
       validation = validateFlowDraft(nextPayload, registries(snapshot));
+    } else if (aggregate.kind === 'application-bundle') {
+      validation = validateBundleCandidate(nextPayload, aggregate.target);
     } else if (aggregate.kind === 'agent-definition' && context.agentDefinitions !== undefined) {
       const registry = await context.agentDefinitions.readSnapshot({
         db,
@@ -345,7 +351,9 @@ export async function executeDraftMeta(
   } else if (request.action === 'validate') {
     let staleReason: string | undefined;
     let validation:
-      ReturnType<typeof validateFlowDraft> | ReturnType<typeof validateAgentDefinitionDraft>;
+      | ReturnType<typeof validateFlowDraft>
+      | ReturnType<typeof validateAgentDefinitionDraft>
+      | ApplicationBundleDraftValidation;
     if (aggregate.kind === 'flow-definition') {
       const snapshot = await engine.readSnapshot();
       const current =
@@ -354,6 +362,13 @@ export async function executeDraftMeta(
         staleReason = `base ${aggregate.baseVersion}, current ${current.version}`;
       }
       validation = validateFlowDraft(payload, registries(snapshot));
+    } else if (aggregate.kind === 'application-bundle') {
+      const snapshot = await engine.readSnapshot();
+      // bundle 的基准是"target 名尚未被安装";此后同名被安装(冲突出现)即 stale。
+      if (applicationBundleInstalled(snapshot, aggregate.target)) {
+        staleReason = `application ${aggregate.target} is already installed`;
+      }
+      validation = validateBundleCandidate(payload, aggregate.target);
     } else if (aggregate.kind === 'agent-definition' && context.agentDefinitions !== undefined) {
       const registry = await context.agentDefinitions.readSnapshot({
         db,

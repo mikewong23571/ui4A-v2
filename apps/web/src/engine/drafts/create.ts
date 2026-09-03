@@ -1,19 +1,34 @@
 import { createHash } from 'node:crypto';
 
-import { validateAgentDefinitionDraft, validateFlowDraft, type ExecRequest } from '@ui4a/engine';
+import {
+  validateAgentDefinitionDraft,
+  validateApplicationBundleDraft,
+  validateFlowDraft,
+  type ApplicationBundleDraftValidation,
+  type ExecRequest,
+} from '@ui4a/engine';
 import { DRAFT_LIMITS } from '@ui4a/shared';
 
 import { appendDraftCommand, payloadSha256, type ConnectableDb } from '@ui4a/db/drafts';
 import type { EngineRuntime } from '../service';
 
+import { applicationBundleInstalled } from './application-bundle';
 import {
   AGENT_DEFINITION_SCHEMA_REF,
+  APPLICATION_BUNDLE_SCHEMA_REF,
   FLOW_SCHEMA_REF,
   type AgentDefinitionDraftRegistryPort,
   type DraftMetaOutcome,
   validateAgentCandidate,
 } from './views';
-import { persistedValidation, projectForOwner, registries, rejected, stringParam } from './helpers';
+import {
+  persistedValidation,
+  projectForOwner,
+  registries,
+  rejected,
+  rejectionEvent,
+  stringParam,
+} from './helpers';
 
 export async function executeDraftCreate(
   db: ConnectableDb,
@@ -34,7 +49,7 @@ export async function executeDraftCreate(
   const payload = request.params?.payload;
   const sources = request.params?.sources;
   if (
-    (kind !== 'flow-definition' && kind !== 'agent-definition') ||
+    (kind !== 'flow-definition' && kind !== 'agent-definition' && kind !== 'application-bundle') ||
     target === undefined ||
     commandId === undefined ||
     payload === undefined
@@ -50,9 +65,31 @@ export async function executeDraftCreate(
     return rejected('schema-invalid', 'sources must be at most 64 non-empty references');
   }
   let validation:
-    ReturnType<typeof validateFlowDraft> | ReturnType<typeof validateAgentDefinitionDraft>;
+    | ReturnType<typeof validateFlowDraft>
+    | ReturnType<typeof validateAgentDefinitionDraft>
+    | ApplicationBundleDraftValidation;
   let baseVersion: string | undefined;
-  if (kind === 'flow-definition') {
+  if (kind === 'application-bundle') {
+    // 安装目标合同(I6):target 是待安装 application 名,不得与已安装冲突,
+    // 且必须等于制品解析出的 bundle 名;不满足是 guard 拒绝事件,不是 Draft。
+    const snapshot = await engine.readSnapshot();
+    if (applicationBundleInstalled(snapshot, target)) {
+      const outcome = rejected('guard-failed', `application ${target} is already installed`);
+      await rejectionEvent(db, request, outcome);
+      return outcome;
+    }
+    const parsed = validateApplicationBundleDraft(payload);
+    if (parsed.value !== undefined && parsed.value.bundle.name !== target) {
+      const outcome = rejected(
+        'guard-failed',
+        `target ${target} does not match bundle application name ${parsed.value.bundle.name}`,
+      );
+      await rejectionEvent(db, request, outcome);
+      return outcome;
+    }
+    validation = parsed;
+    // bundle 安装无基准版本(全新 application),baseVersion 保持 undefined。
+  } else if (kind === 'flow-definition') {
     const snapshot = await engine.readSnapshot();
     const entry = snapshot.definitions?.[target];
     if (entry === undefined)
@@ -93,7 +130,12 @@ export async function executeDraftCreate(
       target,
       ...(baseVersion === undefined ? {} : { baseVersion }),
       payloadHash: payloadSha256(payload),
-      schemaRef: kind === 'flow-definition' ? FLOW_SCHEMA_REF : AGENT_DEFINITION_SCHEMA_REF,
+      schemaRef:
+        kind === 'flow-definition'
+          ? FLOW_SCHEMA_REF
+          : kind === 'application-bundle'
+            ? APPLICATION_BUNDLE_SCHEMA_REF
+            : AGENT_DEFINITION_SCHEMA_REF,
       provenance: {
         actor: request.actor,
         principal: request.principal,

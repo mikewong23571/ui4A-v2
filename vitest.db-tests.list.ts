@@ -77,6 +77,7 @@ export const dbTestFiles: readonly string[] = [
   'apps/web/src/engine/agent/agent-runs.test.ts',
   'apps/web/src/engine/agent/native-agent-dispatch.test.ts',
   'apps/web/src/engine/chat-situation.test.ts',
+  'apps/web/src/engine/drafts/application-bundle.test.ts',
   'apps/web/src/engine/drafts/drafts.test.ts',
   'apps/web/src/engine/human-agent-parity.test.ts',
   'apps/web/src/engine/presentation/runtime-authorization-migration.test.ts',

@@ -27,6 +27,7 @@ export * from './execution/capability-input-binding';
 export * from './definition/lifecycle';
 export * from './definition/meta';
 export * from './definition/meta-bootstrap';
+export * from './definition/application-bundle-draft';
 export * from './definition/definition-diff';
 export * from './definition/definition-bundle';
 export * from './definition/invariants';

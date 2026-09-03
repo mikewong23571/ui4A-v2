@@ -16,6 +16,7 @@ import {
   type SirenEntity,
 } from '@ui4a/engine';
 import {
+  type ActivationCheck,
   type AgentDefinitionRef,
   type AgentDefinitionSource,
   type DraftAggregate,
@@ -26,11 +27,13 @@ import {
 import { getDraft, listDrafts, type AtomicCoreMutationPlan } from '@ui4a/db/drafts';
 import type { DbExecutor } from '@ui4a/db/events';
 import type { EngineRuntime } from '../service';
+import { projectApplicationBundleDraft } from './application-bundle';
 
 export const DRAFT_REL_PREFIX = 'draft:';
 export const DRAFT_ACTIVATION_PREFIX = 'meta/activation:draft-';
 export const FLOW_SCHEMA_REF = 'ui4a://flow-definition/v1';
 export const AGENT_DEFINITION_SCHEMA_REF = 'ui4a://agent-definition/v1';
+export const APPLICATION_BUNDLE_SCHEMA_REF = 'ui4a://application-bundle/v1';
 
 export interface AgentDefinitionDraftRegistrySnapshot {
   definitions: AgentDefinitionSourceRegistry;
@@ -211,9 +214,14 @@ export async function projectExactDraft(
           snapshot.definitions?.[aggregate.target]?.version ?? -1
         ];
   let diff: unknown;
-  let checks: AgentDefinitionActivationCheck[] | undefined;
+  let checks: AgentDefinitionActivationCheck[] | ActivationCheck[] | undefined;
   let evaluation:
     { refs: string[]; payloads: Record<string, JsonValue>; missing: string[] } | undefined;
+  if (aggregate.kind === 'application-bundle') {
+    const projected = projectApplicationBundleDraft(snapshot, aggregate.target, payload);
+    diff = projected.diff;
+    checks = projected.checks;
+  }
   if (current !== undefined && aggregate.kind === 'flow-definition') {
     try {
       diff = mechanicalFlowDiff(current, payload);
@@ -305,7 +313,9 @@ export async function projectExactDraft(
               href: `/_meta/api/entity?rel=${encodeURIComponent(
                 aggregate.kind === 'agent-definition'
                   ? `meta/agent-definition:${aggregate.target}`
-                  : `meta/flow:${aggregate.target}`,
+                  : aggregate.kind === 'application-bundle'
+                    ? `meta/application:${aggregate.target}`
+                    : `meta/flow:${aggregate.target}`,
               )}`,
             },
           ]),
@@ -354,7 +364,10 @@ export async function getDraftMetaEntity(
           'Create Draft',
           schema(
             {
-              kind: { type: 'string', enum: ['flow-definition', 'agent-definition'] },
+              kind: {
+                type: 'string',
+                enum: ['flow-definition', 'agent-definition', 'application-bundle'],
+              },
               target: { type: 'string', minLength: 1 },
               commandId: COMMAND_ID,
               payload: {},
