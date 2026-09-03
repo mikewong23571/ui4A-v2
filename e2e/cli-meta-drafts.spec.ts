@@ -285,10 +285,10 @@ test('human approval of a CLI-submitted bundle installs it and apps list discove
   const bundleName = freshBundleName();
   const created = createBundleDraft(bundleName);
   expect(created.status).toBe(0);
-  const rel = created.envelope.data?.entity?.properties?.rel!;
+  const rel = created.envelope.data?.entity?.properties?.rel ?? '';
   const submitted = submitBundleDraft(rel, bundleName);
   expect(submitted.status).toBe(0);
-  const activation = submitted.envelope.data?.entity?.properties?.activation!;
+  const activation = submitted.envelope.data?.entity?.properties?.activation ?? '';
   expect(activation).toMatch(/^meta\/activation:draft-/);
 
   // CLI 永不审批:面内无 approve 命令,generic 通道同样拒绝(APPROVAL_FORBIDDEN)。
