@@ -10,8 +10,8 @@
 
 ## Phase 0 — 决定与 track 工件
 
-- [ ] Task: DECISIONS.md 落盘 D70(spec §3:披露口径/auth 平面控件/投影端点/刷新授权语义)
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: DECISIONS.md 落盘 D70(spec §3:披露口径/auth 平面控件/投影端点/刷新授权语义) [ad16630]
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: ad16630]（自治验收:决定先于代码;track 工件 b9ad3fc9 已注册;文档变更无代码测试需求）
 
 ## Phase 1 — F1 服务端:激活披露纯函数 + meta exec 响应
 
