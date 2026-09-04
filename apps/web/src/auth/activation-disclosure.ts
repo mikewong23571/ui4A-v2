@@ -47,7 +47,13 @@ function outcomeFor(
   input: ActivationDisclosureInput,
 ): ActivationDisclosureOutcome {
   if (input.grantedApplications.includes(application)) return 'immediately-visible';
-  if (input.browserLoginScopes?.includes(GOVERNANCE_LOGIN_SCOPE) === true) {
+  // D70.1 附录:治理词或该应用的逐 app 词任一在登录 scope 表内,刷新授权即可见。
+  // 当前 settings 校验器限定六固定词,逐 app 分支留给 realm 演进,判定语义不变。
+  if (
+    input.browserLoginScopes?.some(
+      (scope) => scope === GOVERNANCE_LOGIN_SCOPE || scope === `ui4a:policy:${application}`,
+    ) === true
+  ) {
     return 'visible-after-relogin';
   }
   return 'requires-idp-grant';

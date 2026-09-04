@@ -7,6 +7,10 @@ import {
   requireHumanApprovalScope,
   resolveTrustedRequestIdentity,
 } from '../../../../auth/request-identity';
+import {
+  browserLoginPolicyScopes,
+  computeActivationDisclosure,
+} from '../../../../auth/activation-disclosure';
 import { assertReachable } from '../../../../auth/application-scope';
 import { declaredApplication } from '../../../../engine/situation';
 
@@ -48,6 +52,8 @@ export async function POST(request: Request) {
     const snapshot = engine.getSnapshot();
     const sitemap = engine.getSitemap();
     const authorizedPolicyScopes = Object.keys(snapshot.applications ?? {});
+    // D70.1 披露锚点之一:批准前的应用全集(exec 后 diff 出新装应用)。
+    const applicationsBefore = new Set(authorizedPolicyScopes);
     const identity = await resolveTrustedRequestIdentity(request, {
       plane: 'meta',
       requiredScopes: ['ui4a:write'],
@@ -81,7 +87,21 @@ export async function POST(request: Request) {
           })
       : await engine.exec(metaRequest);
     if (outcome.kind === 'accepted') {
-      return Response.json({ entity: outcome.entity });
+      // D70.1:approve 装入新应用时,对批准者本人附可见性披露(不落日志、不跨面)。
+      let disclosure: ReturnType<typeof computeActivationDisclosure> = undefined;
+      if (parsed.request.action === 'approve') {
+        const installedAfter = Object.keys(engine.getSnapshot().applications ?? {});
+        disclosure = computeActivationDisclosure({
+          newApplications: installedAfter.filter((name) => !applicationsBefore.has(name)),
+          grantedApplications: identity.grantedApplications,
+          tokenScopes: identity.scopes,
+          browserLoginScopes: browserLoginPolicyScopes(),
+        });
+      }
+      return Response.json({
+        entity: outcome.entity,
+        ...(disclosure === undefined ? {} : { disclosure }),
+      });
     }
     if (outcome.kind === 'suspended') {
       // 理论不可达:lifecycle 动作无 requires-confirmation 声明;保持与业务端点

@@ -71,6 +71,26 @@ describe('computeActivationDisclosure', () => {
     expect(disclosure!.applications).toEqual([{ application: 'todo', outcome: 'requires-idp-grant' }]);
   });
 
+  it('recommends relogin for a per-app scope in the browser login scopes (D70.1 附录泛化)', () => {
+    const disclosure = computeActivationDisclosure(
+      input({
+        newApplications: ['todo', 'ideas'],
+        browserLoginScopes: [
+          'openid',
+          'ui4a:read',
+          'ui4a:write',
+          'ui4a:approve',
+          'ui4a:policy:development',
+          'ui4a:policy:todo',
+        ],
+      }),
+    );
+    expect(disclosure!.applications).toEqual([
+      { application: 'ideas', outcome: 'requires-idp-grant' },
+      { application: 'todo', outcome: 'visible-after-relogin' },
+    ]);
+  });
+
   it('classifies a mixed installation per application in deterministic order', () => {
     const disclosure = computeActivationDisclosure(
       input({
