@@ -46,15 +46,18 @@
 
 ## Phase 3 — 裁决路径与全联动收缩
 
-- [~] Task: APPLICATION_LIFECYCLE 伪流(镜像 DEFINITION_LIFECYCLE:声明 deprecate、
+- [x] Task: APPLICATION_LIFECYCLE 伪流(镜像 DEFINITION_LIFECYCLE:声明 deprecate、
   guard actor-is-human、requires-confirmation high)注入 executeMeta flows 映射 +
   实体投影动作镜像 + 伴随事件对(action-executed + application-deprecated;独立
   文件 application-deprecation.ts);confirmGate 对 high 动作接线验证(第三轮复审 15);
-  default 地板守卫(D71.6,自 P2 移入:guard 拒绝 target==='default',拒绝留痕 I6)
-- [~] Task: 并发双停用 stale-action 留痕测试(US5;fresh-read 口径)
-- [~] Task: 受众反 fail-open(businessApplications/metaApplications 归属解析扩为
+  default 地板守卫(D71.6,自 P2 移入:guard 拒绝 target==='default',拒绝留痕 I6) `47f3edc1`
+  (确认门核实:默认策略 human+high 直通,high 为 UI/策略标注,approve/reject 先例同构)
+- [x] Task: 并发双停用 stale-action 留痕测试(US5;fresh-read 口径) `47f3edc1`
+  (已停用实体二次 deprecate → undeclared 未声明于节点 deprecated)
+- [x] Task: 受众反 fail-open(businessApplications/metaApplications 归属解析扩为
   active ∪ deprecated 双集查询(D71.3),停用应用 rel 解析非空归属→无交集即拒)
-  + 逐面合同测试(application:/flow:/实例/surface)
+  + 逐面合同测试(application:/flow:/实例/surface) `954db2b5`
+  (逐面覆盖矩阵见 git note;P3b 锚抓出并推动修正 P3a 投影语义)
 - [~] Task: sitemap 扁平面过滤(flows/surfaces/capabilities 随 active map 收缩)+
   flow-entry 别名 + chat 发现链/recipes 收缩;治理展开收缩 + 「我的授权」面板
   反映(T51 联动断言)
