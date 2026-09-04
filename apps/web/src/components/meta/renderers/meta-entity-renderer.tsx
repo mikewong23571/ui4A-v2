@@ -45,7 +45,14 @@ export function MetaEntityRenderer({
     );
   }
   if (renderer === 'application')
-    return <ApplicationRenderer entity={entity} navigation={parsedNavigation} />;
+    return (
+      <ApplicationRenderer
+        rel={rel ?? ''}
+        entity={entity}
+        navigation={parsedNavigation}
+        onChanged={onChanged}
+      />
+    );
   if (renderer === 'agent-definition')
     return <AgentDefinitionRenderer entity={entity} navigation={parsedNavigation} />;
   if (renderer === 'draft')

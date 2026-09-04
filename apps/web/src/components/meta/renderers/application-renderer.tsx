@@ -7,14 +7,18 @@ import { Card } from '@/components/ui/card';
 
 import { withMetaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
 import { applicationViewModel } from '../view-models/application';
-import { browserHrefForContractHref, RawContract } from './common';
+import { browserHrefForContractHref, MetaActions, RawContract } from './common';
 
 export function ApplicationRenderer({
+  rel,
   entity,
   navigation,
+  onChanged,
 }: {
+  rel: string;
   entity: SirenEntity;
   navigation: MetaNavigationContext;
+  onChanged?: () => void;
 }) {
   const view = applicationViewModel(entity);
   const flowLinks = entity.links.filter((link) => link.rel.includes('flow'));
@@ -39,6 +43,10 @@ export function ApplicationRenderer({
         <h1 className="text-3xl font-semibold tracking-tight">{view.title}</h1>
         <p className="max-w-3xl text-base leading-7 text-muted-foreground">{view.intent}</p>
       </header>
+
+      {/* T52 P4:应用生命周期动词(如 deprecate)经同一 canonical MetaActions 合同
+          渲染(I3 零硬编码控件:按钮只来自当前 Siren actions + guard-results 投影)。 */}
+      <MetaActions entity={entity} rel={rel} scope={navigation.scope} onChanged={onChanged} />
 
       <section aria-labelledby="application-summary-heading">
         <h2 id="application-summary-heading" className="sr-only">
