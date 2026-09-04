@@ -18,6 +18,7 @@ import {
   effectKnown,
   actionNotExists,
   noLiveInstances,
+  applicationNotDefault,
 } from './predicates';
 import type { EngineSnapshot } from './state';
 import type { FlowDefinition } from './definition';
@@ -115,6 +116,31 @@ describe('actor-is-human(铁律 5:审批不委托)', () => {
 
   it('进入种子注册表(actor-is-human)', () => {
     expect(seedGuardRegistry['actor-is-human']).toBe(actorIsHuman);
+  });
+});
+
+describe('application-not-default(T52/D71.6:default 应用地板守卫)', () => {
+  /** application-lifecycle 实例上下文(meta/application:<name>,node=active)。 */
+  function applicationContext(rel: string): GuardContext {
+    const snapshot: EngineSnapshot = {
+      instances: { [rel]: { rel, flow: 'application-lifecycle', node: 'active', fields: {} } },
+      collections: {},
+    };
+    return { instance: snapshot.instances[rel]!, snapshot, params: {} };
+  }
+
+  it('非 default 应用 → true;default → false(停用地板,拒绝留痕 I6 由调用方)', () => {
+    expect(applicationNotDefault(applicationContext('meta/application:publishing'))).toBe(true);
+    expect(applicationNotDefault(applicationContext('meta/application:default'))).toBe(false);
+  });
+
+  it('非 meta/application 前缀的实例 → false(fail-closed;谓词只服务 application-lifecycle 声明)', () => {
+    expect(applicationNotDefault(contextAt('pending'))).toBe(false);
+    expect(applicationNotDefault(metaContext('active'))).toBe(false);
+  });
+
+  it('进入种子注册表(application-not-default)', () => {
+    expect(seedGuardRegistry['application-not-default']).toBe(applicationNotDefault);
   });
 });
 

@@ -19,6 +19,7 @@ import type { ConfirmationSnapshot, EngineSnapshot, GuardRegistry } from '@ui4a/
 
 import Ajv from 'ajv';
 
+import type { FoldSnapshot } from '../projection/fold/state';
 import { applyEffects, paramsToFields } from './effects';
 import type { EngineEvent } from './effects';
 import {
@@ -136,7 +137,7 @@ export interface SuspendedConfirmation {
 
 /** 挂起物化结果:新快照(pending 实体已入表)+ 待追加事件。 */
 export interface SuspendOutcome {
-  snapshot: EngineSnapshot;
+  snapshot: FoldSnapshot;
   events: EngineEvent[];
   confirmation: SuspendedConfirmation;
 }
@@ -149,7 +150,7 @@ export function suspendForConfirmation(
   request: ExecRequest,
   action: ActionDefinition,
   verdict: ConfirmationVerdict,
-  snapshot: EngineSnapshot,
+  snapshot: FoldSnapshot,
 ): SuspendOutcome {
   const table = snapshot.confirmations ?? {};
   const id = nextConfirmationId(table);
@@ -221,6 +222,11 @@ export function suspendForConfirmation(
       ...(snapshot.capabilities !== undefined
         ? { capabilities: { ...snapshot.capabilities } }
         : {}),
+      // T52:deprecatedApplications 停用审计表随行,与 applications 同口径
+      // (仅在场时携带;挂起不产停用,防停用后挂起链路与重放漂移)。
+      ...(snapshot.deprecatedApplications !== undefined
+        ? { deprecatedApplications: { ...snapshot.deprecatedApplications } }
+        : {}),
       artifacts: { ...(snapshot.artifacts ?? {}) },
       threads: snapshot.threads ?? {},
     },
@@ -283,7 +289,7 @@ export interface ConfirmationDecisionDetail {
 
 /** 裁决结果:confirmed(新快照+事件链)或 rejected(裁决层拒绝形态,留痕由调用方)。 */
 export type ConfirmationDecision =
-  | { kind: 'confirmed'; snapshot: EngineSnapshot; events: EngineEvent[] }
+  | { kind: 'confirmed'; snapshot: FoldSnapshot; events: EngineEvent[] }
   | { kind: 'rejected'; layer: JudgeLayer; reason: string; detail?: unknown };
 
 export interface ConfirmationDeps {
@@ -381,7 +387,7 @@ function decidedByOf(approver: Approver): Approver {
  * confirmation 状态 → approved,实体保留供审计。
  */
 export function approveConfirmation(
-  snapshot: EngineSnapshot,
+  snapshot: FoldSnapshot,
   confirmationId: string,
   approver: Approver,
   deps: ConfirmationDeps,
@@ -471,7 +477,7 @@ export function approveConfirmation(
  * (实体保留)。agent 身份被 guard 拒;reason 空/缺被 schema 拒(minLength=1)。
  */
 export function rejectConfirmation(
-  snapshot: EngineSnapshot,
+  snapshot: FoldSnapshot,
   confirmationId: string,
   approver: Approver,
   reason: string,
@@ -544,6 +550,11 @@ export function rejectConfirmation(
       // capability-registered 以"表不存在"为过渡期 vacuous pass 信号)。
       ...(snapshot.capabilities !== undefined
         ? { capabilities: { ...snapshot.capabilities } }
+        : {}),
+      // T52:deprecatedApplications 停用审计表随行,与 applications 同口径
+      // (仅在场时携带;驳回不产停用,防停用后驳回链路与重放漂移)。
+      ...(snapshot.deprecatedApplications !== undefined
+        ? { deprecatedApplications: { ...snapshot.deprecatedApplications } }
         : {}),
       artifacts: { ...(snapshot.artifacts ?? {}) },
       threads: snapshot.threads ?? {},

@@ -13,6 +13,10 @@
  * 仅供 terminal/可达性推导与文档(arch-brief §10 A.4)。
  */
 import type { FlowDefinition, FlowEdge } from '../core/types';
+import {
+  APPLICATION_LIFECYCLE,
+  APPLICATION_LIFECYCLE_FLOW,
+} from './application-lifecycle/lifecycle';
 
 /** 保留 flow 名。 */
 export const DEFINITION_LIFECYCLE = 'definition-lifecycle';
@@ -165,12 +169,16 @@ export const DEFINITION_LIFECYCLE_FLOW: FlowDefinition = {
 };
 
 /**
- * flow 注册表注入 lifecycle 常量(保留名恒覆盖)。
- * executeMeta 与 fold 都经它组装依赖:meta 裁决/重放永远用这份常量,
- * 调用方无须(也不能)自带 definition-lifecycle。
+ * flow 注册表注入 lifecycle 常量(保留名恒覆盖):definition-lifecycle(T4)
+ * 与 application-lifecycle(T52)一起注入。executeMeta 与 fold 都经它组装依赖:
+ * meta 裁决/重放永远用这两份常量,调用方无须(也不能)自带 lifecycle。
  */
 export function withLifecycleFlows(
   flows: Readonly<Record<string, FlowDefinition>>,
 ): Record<string, FlowDefinition> {
-  return { ...flows, [DEFINITION_LIFECYCLE]: DEFINITION_LIFECYCLE_FLOW };
+  return {
+    ...flows,
+    [DEFINITION_LIFECYCLE]: DEFINITION_LIFECYCLE_FLOW,
+    [APPLICATION_LIFECYCLE]: APPLICATION_LIFECYCLE_FLOW,
+  };
 }

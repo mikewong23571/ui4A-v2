@@ -34,6 +34,7 @@ const metaTestGuards: GuardRegistry = {
   'action-not-exists': () => true,
   'no-live-instances': () => true,
   'actor-is-human': (ctx) => ctx.actor === 'human',
+  'application-not-default': (ctx) => !ctx.instance.rel.endsWith(':default'),
 };
 
 const deps = {
@@ -508,6 +509,15 @@ function applicationSnapshot(): EngineSnapshot {
   });
   return {
     ...snapshot,
+    instances: {
+      ...snapshot.instances,
+      'meta/application:publishing': {
+        rel: 'meta/application:publishing',
+        flow: 'application-lifecycle',
+        node: 'active',
+        fields: {},
+      },
+    },
     definitions: {
       ...snapshot.definitions,
       'article-drafting': {
@@ -586,6 +596,20 @@ describe('meta/application:<name> 关系标题', () => {
         },
       ]),
     );
+  });
+
+  it('T52:active 应用镜像 deprecate 动作(APPLICATION_LIFECYCLE 声明;guard-results 注入)', () => {
+    const entity = project(applicationSnapshot(), 'meta/application:publishing', deps)!;
+    expect(entity.properties).toMatchObject({
+      rel: 'meta/application:publishing',
+      status: 'active',
+    });
+    expect(entity.actions.map((action) => action.name)).toEqual(['deprecate']);
+    expect(entity.actions[0]).toMatchObject({ 'requires-confirmation': 'high' });
+    // 同一个谓词的两个投影:actor-is-human 无 actor 上下文 fail-closed。
+    expect(entity['guard-results']!.map((entry) => entry.action)).toEqual(['deprecate']);
+    expect(entity['guard-results']![0]!.blocked).toBe(true);
+    expect(entity['guard-results']![0]!.reason).toContain('actor-is-human=false');
   });
 });
 

@@ -23,13 +23,23 @@ import type {
   FlowDefinition,
   GuardRegistry,
 } from '@ui4a/shared';
-import { flowNameFromMetaRel, metaFlowRel, metaActivationRel } from '@ui4a/shared';
+import {
+  flowNameFromMetaRel,
+  applicationNameFromMetaRel,
+  metaFlowRel,
+  metaActivationRel,
+} from '@ui4a/shared';
 
 import type { EngineEvent } from '../execution/effects';
 import { definitionDiff } from './definition-diff';
 import { executeWithGates } from '../execution/execute';
 import type { ExecWithGatesOutcome } from '../execution/execute';
 import type { ExecRequest } from '../execution/judge';
+import {
+  APPLICATION_LIFECYCLE,
+  APPLICATION_LIFECYCLE_FLOW,
+} from './application-lifecycle/lifecycle';
+import { deprecateApplication } from './application-lifecycle/application-deprecation';
 import { DEFINITION_LIFECYCLE, DEFINITION_LIFECYCLE_FLOW } from './lifecycle';
 import type { LogEvent } from '../projection/fold/index';
 import { validateDefinition, type DefinitionRegistries } from './invariants';
@@ -243,12 +253,23 @@ export function executeMeta(
     activation !== undefined ? { ...request, rel: metaFlowRel(activation.flow) } : request;
 
   const verdict = executeWithGates(judgeRequest, snapshot, {
-    flows: { [DEFINITION_LIFECYCLE]: DEFINITION_LIFECYCLE_FLOW },
+    flows: {
+      [DEFINITION_LIFECYCLE]: DEFINITION_LIFECYCLE_FLOW,
+      [APPLICATION_LIFECYCLE]: APPLICATION_LIFECYCLE_FLOW,
+    },
     guards: deps.guards,
     ...(deps.policy !== undefined ? { policy: deps.policy } : {}),
   });
   if (verdict.kind !== 'executed') {
     return verdict;
+  }
+
+  // T52(D71.2):meta/application:<name> 派发到 application-lifecycle 停用分支
+  //(伴随事件 + 在线事实级联;default 地板由 guard 在上方裁决层拒绝)。
+  const applicationName = applicationNameFromMetaRel(judgeRequest.rel);
+  if (applicationName !== undefined) {
+    if (request.action !== 'deprecate') return verdict; // 理论不可达:judge 按节点声明裁决
+    return deprecateApplication(verdict, request, applicationName);
   }
 
   const flowName = flowNameFromMetaRel(judgeRequest.rel);

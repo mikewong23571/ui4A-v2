@@ -8,12 +8,14 @@ import {
   builtinConfirmationPolicy,
   confirmGate,
   rejectConfirmation,
+  suspendForConfirmation,
 } from './confirmation';
 import type { ConfirmationPolicy } from './confirmation';
 import { executeWithGates } from './execute';
 import type { ExecRequest } from './judge';
 import { flowRegistry, postStatusFlow, seedSnapshot } from '../core/fixtures';
 import type { ActionDefinition } from '../core/types';
+import type { FoldSnapshot } from '../projection/fold/index';
 
 // 确认门策略裁决(TDD 红→绿;arch-brief §3:guard 第三语义"挂起";
 // requires-confirmation 是策略标注不是状态谓词——标注答"这个 actor 是否需要
@@ -366,5 +368,52 @@ describe('rejectConfirmation — 驳回路径', () => {
     const before = JSON.stringify(snapshot);
     rejectConfirmation(snapshot, 'c1', { actor: 'human' }, '不要', deps);
     expect(JSON.stringify(snapshot)).toBe(before);
+  });
+});
+
+describe('T52 — deprecatedApplications 停用审计表随行(P1 遗留修复:挂起/驳回不丢)', () => {
+  const audit = { publishing: { name: 'publishing', reason: '走查残留清理', seq: 42 } };
+
+  /** 停用过应用的快照(经 fold 物化 deprecatedApplications 后的在线形状)。 */
+  function snapshotWithDeprecated(): FoldSnapshot {
+    return { ...seedSnapshot, deprecatedApplications: { ...audit } };
+  }
+
+  const alwaysConfirm = (): ConfirmationPolicy => () => ({
+    required: true,
+    reason: 'test:always 策略要求确认',
+    policy: 'test:always',
+  });
+
+  it('suspendForConfirmation:挂起快照携带审计表(与 effects.ts 同口径条件携带)', () => {
+    const suspended = suspendForConfirmation(
+      agentArchiveRequest,
+      archiveHigh,
+      { required: true, reason: 'test:always 策略要求确认', policy: 'test:always' },
+      snapshotWithDeprecated(),
+    );
+    expect(suspended.snapshot.deprecatedApplications).toEqual(audit);
+  });
+
+  it('rejectConfirmation:停用后的在线驳回快照携带审计表(与重放不漂移)', () => {
+    const outcome = executeWithGates(agentArchiveRequest, snapshotWithDeprecated(), {
+      ...deps,
+      policy: alwaysConfirm(),
+    });
+    if (outcome.kind !== 'suspended') throw new Error('前置失败:期望 suspended');
+    const decision = rejectConfirmation(outcome.snapshot, 'c1', { actor: 'human' }, '不要', deps);
+    if (decision.kind !== 'confirmed') throw new Error('前置失败:驳回应通过');
+    expect(decision.snapshot.deprecatedApplications).toEqual(audit);
+  });
+
+  it('approveConfirmation:批准快照经 applyEffects 已随行(既有口径回归)', () => {
+    const outcome = executeWithGates(agentArchiveRequest, snapshotWithDeprecated(), {
+      ...deps,
+      policy: alwaysConfirm(),
+    });
+    if (outcome.kind !== 'suspended') throw new Error('前置失败:期望 suspended');
+    const decision = approveConfirmation(outcome.snapshot, 'c1', { actor: 'human' }, deps);
+    if (decision.kind !== 'confirmed') throw new Error('前置失败:批准应通过');
+    expect(decision.snapshot.deprecatedApplications).toEqual(audit);
   });
 });

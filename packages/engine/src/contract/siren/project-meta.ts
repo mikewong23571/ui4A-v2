@@ -16,8 +16,8 @@ import { DEFINITION_LIFECYCLE_FLOW, LIFECYCLE_INTERNAL_EDGES } from '../../defin
 import { actionEffects } from '../../core/parse';
 import { exportDefinitionBundle } from '../../definition/definition-bundle';
 import type { ActionDefinition, FlowDefinition } from '../../core/types';
-import { projectCognitiveSemantics } from '../cognitive-semantics';
 import { entityHref, guardResultsFor, toSirenAction } from './build';
+import { projectMetaApplication, projectMetaApplications } from './application-lifecycle';
 import {
   metaExactPresentation,
   metaMemberPresentation,
@@ -469,86 +469,11 @@ function projectCapabilities(snapshot: EngineSnapshot, deps: ProjectDeps): Siren
   };
 }
 
-function projectApplication(
-  snapshot: EngineSnapshot,
-  name: string,
-  deps: ProjectDeps,
-): SirenEntity | undefined {
-  const application = snapshot.applications?.[name];
-  if (application === undefined) return undefined;
-  const rel = `meta/application:${name}`;
-  const bundle = exportDefinitionBundle(snapshot, name);
-  const presentation = projectCognitiveSemantics({ declaration: application.cognitive });
-  return {
-    class: ['meta', 'application-definition'],
-    properties: {
-      rel,
-      ...application,
-      status: 'active',
-      version: bundle.bundle.version,
-      bundle,
-      ...(presentation === undefined ? {} : { presentation }),
-    },
-    actions: [],
-    links: [
-      { rel: ['self'], href: entityHref(deps.baseHref, rel) },
-      { rel: ['collection'], href: entityHref(deps.baseHref, 'meta/applications') },
-      ...bundle.flows.map((flow) => ({
-        rel: ['flow'],
-        href: entityHref(deps.baseHref, `meta/flow:${flow.name}`),
-        ...(flow.title === undefined ? {} : { title: flow.title }),
-      })),
-      ...bundle.capabilities.map((capability) => ({
-        rel: ['capability'],
-        href: entityHref(deps.baseHref, `${META_CAPABILITY_PREFIX}${capability.name}`),
-        title: capability.title,
-      })),
-    ],
-    'guard-results': [],
-  };
-}
-
-function projectApplications(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
-  const names = Object.keys(snapshot.applications ?? {});
-  return {
-    class: ['collection', 'meta/applications'],
-    properties: {
-      rel: 'meta/applications',
-      count: names.length,
-      ...topLevelPresentationProperties('meta/applications'),
-    },
-    actions: [],
-    links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'meta/applications') }],
-    entities: names.map((name) => {
-      const application = snapshot.applications![name]!;
-      const bundle = exportDefinitionBundle(snapshot, name);
-      return {
-        class: ['meta', 'application-definition-summary'],
-        properties: {
-          name,
-          title: application.title,
-          intent: application.intent,
-          status: 'active',
-          version: bundle.bundle.version,
-          flowCount: bundle.flows.length,
-          capabilityCount: bundle.capabilities.length,
-          policyCount: bundle.policies.length,
-          presentation: metaMemberPresentation('application'),
-        },
-        actions: [],
-        links: [],
-        'guard-results': [],
-        rel: ['item'],
-        href: entityHref(deps.baseHref, `meta/application:${name}`),
-      };
-    }),
-    'guard-results': [],
-  };
-}
-
 /**
  * meta 平面路由:self / flows / flow:<name> / activation:<id> / activations /
  * capabilities / capability:<name>(T13 Phase C)。
+ * application:<name> / applications 的投影主体在 application-lifecycle 模块
+ * (T52:status 按快照两表推导 + lifecycle 动作镜像;GR3 自本文件迁出)。
  * 未知 meta rel → undefined(HTTP 层映射 404)。
  */
 export function projectMeta(
@@ -560,9 +485,9 @@ export function projectMeta(
   if (rel === 'meta/flows') return projectFlows(snapshot, deps);
   if (rel === 'meta/activations') return projectActivations(snapshot, deps);
   if (rel === 'meta/capabilities') return projectCapabilities(snapshot, deps);
-  if (rel === 'meta/applications') return projectApplications(snapshot, deps);
+  if (rel === 'meta/applications') return projectMetaApplications(snapshot, deps);
   if (rel.startsWith('meta/application:')) {
-    return projectApplication(snapshot, rel.slice('meta/application:'.length), deps);
+    return projectMetaApplication(snapshot, rel.slice('meta/application:'.length), deps);
   }
   if (rel.startsWith('meta/flow:')) {
     return projectFlowDefinition(snapshot, rel.slice('meta/flow:'.length), deps);

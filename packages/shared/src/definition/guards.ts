@@ -67,4 +67,5 @@ export const GUARD_HINTS: Readonly<Record<string, string>> = {
   'effect-known': '动作声明了未知效果(定义缺陷)',
   'action-not-exists': '动作不存在',
   'no-live-instances': '仍有进行中的实例,不能删除该定义',
+  'application-not-default': '默认应用不可停用(系统地板)',
 };

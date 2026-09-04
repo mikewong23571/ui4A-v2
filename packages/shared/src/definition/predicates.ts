@@ -6,6 +6,7 @@
  */
 import {
   KNOWN_EFFECT_TYPES,
+  applicationNameFromMetaRel,
   flowNameFromMetaRel,
   terminalNodes,
   type FlowDefinition,
@@ -182,6 +183,17 @@ export const noLiveInstances: GuardPredicate = (context) => {
 };
 
 /**
+ * 目标应用不是 default(T52/D71.6 停用地板守卫,application-lifecycle deprecate):
+ * 从 lifecycle 实例 rel(meta/application:<name>)解析应用名——名 === 'default'
+ * 即 false(系统地板应用不可停用,拒绝留痕 I6);非该前缀 fail-closed。
+ */
+export const applicationNotDefault: GuardPredicate = (context) => {
+  const name = applicationNameFromMetaRel(context.instance.rel);
+  if (name === undefined) return false;
+  return name !== 'default';
+};
+
+/**
  * 本次 exec 的行为者是人类(铁律 5"审批不委托":确认实体的 approve/reject guard)。
  * 无 actor 上下文(Siren 投影求值)时 fail-closed 为 false——
  * 投影不是裁决,真正判定永远发生在 exec 时(同一个谓词的两个投影)。
@@ -236,4 +248,6 @@ export const seedGuardRegistry: GuardRegistry = {
   'effect-known': effectKnown,
   'action-not-exists': actionNotExists,
   'no-live-instances': noLiveInstances,
+  // T52 应用停用地板(application-lifecycle deprecate)。
+  'application-not-default': applicationNotDefault,
 };

@@ -3,7 +3,9 @@
  * capability-seeded(T13)。只补缺、不覆盖——boot 重放安全。
  */
 import type { EngineSnapshot } from '@ui4a/shared';
+import { metaApplicationRel } from '@ui4a/shared';
 
+import { APPLICATION_LIFECYCLE } from '../../definition/application-lifecycle/lifecycle';
 import type {
   ApplicationSeededDetail,
   CapabilitySeededDetail,
@@ -64,11 +66,15 @@ export function applySeed(snapshot: FoldSnapshot, event: LogEvent): FoldSnapshot
 }
 
 /**
- * application-seeded 重放:活跃 app 定义落 applications 表(幂等:已存在跳过)。
- * seeded 即 active——applications 表的键集即 app-known 不变式的已激活集合;
- * 表经本事件增长、经 application-deprecated(T52/D71.1)删键(停用级联见
- * apply-application-deprecated;此处只管装载,不物化 lifecycle 实例,
- * 与 definition-seeded 的 definitions 表/lifecycle 实例双轨不同)。
+ * application-seeded 重放:活跃 app 定义落 applications 表 + lifecycle 实例
+ * (幂等:已存在跳过)。T52 Phase 3 起镜像 definition-seeded 的双轨
+ * (definitions 表 + lifecycle 实例):meta/application:<name> 实例
+ * (flow=application-lifecycle,seeded 即 active,node='active')是 deprecate
+ * 裁决的宿主——此前「无 app 生命周期动词、不物化实例」的前提已随
+ * APPLICATION_LIFECYCLE(D71.2)推翻。重放兼容:全量重放时 seeded 事件先于
+ * deprecate,实例必在场;applications 表的键集即 app-known 不变式的已激活
+ * 集合,表经本事件增长、经 application-deprecated(T52/D71.1)删键
+ * (停用级联见 apply-application-deprecated)。
  */
 export function applyApplicationSeeded(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
   const detail = event.detail as Partial<ApplicationSeededDetail> | undefined;
@@ -80,11 +86,20 @@ export function applyApplicationSeeded(snapshot: EngineSnapshot, event: LogEvent
   ) {
     throw new Error(`重放失败:seq=${event.seq} application-seeded 缺少 detail 载荷(日志完整性)`);
   }
-  if (snapshot.applications?.[detail.name] !== undefined) {
+  const rel = metaApplicationRel(detail.name);
+  const instanceSeeded = snapshot.instances[rel] !== undefined;
+  if (snapshot.applications?.[detail.name] !== undefined && instanceSeeded) {
     return snapshot; // 幂等:重复 seed 不覆盖(boot 重放安全)。
   }
   return {
     ...snapshot,
+    // 实例物化与表装载同批(仅缺时补;旧引擎折叠的增量快照缺实例时在此补齐)。
+    instances: instanceSeeded
+      ? snapshot.instances
+      : {
+          ...snapshot.instances,
+          [rel]: { rel, flow: APPLICATION_LIFECYCLE, node: 'active', fields: {} },
+        },
     applications: { ...(snapshot.applications ?? {}), [detail.name]: detail.definition },
   };
 }
