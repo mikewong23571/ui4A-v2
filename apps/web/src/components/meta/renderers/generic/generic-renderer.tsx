@@ -4,8 +4,8 @@ import type { SirenEntity } from '@ui4a/engine';
 
 import { Badge } from '@/components/ui/badge';
 
-import { metaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
-import { redactMetaValue } from '../view-models/agent-definition';
+import { metaNavigationContext, type MetaNavigationContext } from '../../meta-navigation';
+import { redactMetaValue } from '../../view-models/agent-definition';
 import {
   browserHrefForContractHref,
   ClassBadges,
@@ -13,7 +13,7 @@ import {
   MetaRelationships,
   RawContract,
   titleForEntity,
-} from './common';
+} from '../common';
 import { GenericCollectionRenderer } from './generic-collection-renderer';
 import { genericDisclosureContract } from './generic-disclosure-contract';
 import { GenericDeclaredDisclosure } from './generic-disclosure';

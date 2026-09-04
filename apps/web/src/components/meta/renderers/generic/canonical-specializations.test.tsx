@@ -6,7 +6,7 @@ import type { DefinitionDiff, FlowDefinition, SirenAction, SirenEntity } from '@
 
 import { stubBrowserApis } from '@/test/browser-stubs';
 
-import { MetaEntityRenderer } from './meta-entity-renderer';
+import { MetaEntityRenderer } from '../meta-entity-renderer';
 
 stubBrowserApis();
 

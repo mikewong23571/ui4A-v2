@@ -4,11 +4,11 @@ import type { ReactNode } from 'react';
 
 import type { SirenEntity } from '@ui4a/engine';
 
-import { ActivationView } from '../activation-view';
-import { CapabilityDefinitionView } from '../capability-definition-view';
-import { FlowDefinitionView } from '../flow-definition-view';
-import type { MetaNavigationContext } from '../meta-navigation';
-import { MetaRelationships, publicMetaActions, RawContract } from './common';
+import { ActivationView } from '../../activation-view';
+import { CapabilityDefinitionView } from '../../capability-definition-view';
+import { FlowDefinitionView } from '../../flow-definition-view';
+import type { MetaNavigationContext } from '../../meta-navigation';
+import { MetaRelationships, publicMetaActions, RawContract } from '../common';
 import { GenericEvidenceDisclosure, GenericResponsibilityDisclosure } from './generic-disclosure';
 import { genericDisclosureContract } from './generic-disclosure-contract';
 import { projectGenericTask } from './generic-task-projection';

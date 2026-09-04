@@ -1,6 +1,6 @@
 import type { SirenEntity } from '@ui4a/engine';
 
-import type { MetaNavigationContext } from '../meta-navigation';
+import type { MetaNavigationContext } from '../../meta-navigation';
 
 export interface GenericRelationship {
   href: string;

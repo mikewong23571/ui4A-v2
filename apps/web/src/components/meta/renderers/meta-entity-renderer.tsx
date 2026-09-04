@@ -10,9 +10,9 @@ import {
   ActivationRenderer,
   CapabilityRenderer,
   FlowRenderer,
-} from './canonical-specialized-renderer';
+} from './generic/canonical-specialized-renderer';
 import { DraftRenderer } from './draft-renderer';
-import { GenericMetaRenderer } from './generic-renderer';
+import { GenericMetaRenderer } from './generic/generic-renderer';
 import { createMetaRendererRegistry, META_RENDERER_REGISTRATIONS } from './registry';
 
 const registry = createMetaRendererRegistry(META_RENDERER_REGISTRATIONS);

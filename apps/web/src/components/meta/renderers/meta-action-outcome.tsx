@@ -1,7 +1,7 @@
 import type { SirenEntity } from '@ui4a/engine';
 
-import { genericDisclosureContract } from './generic-disclosure-contract';
-import { DisclosureValue } from './generic-disclosure-value';
+import { genericDisclosureContract } from './generic/generic-disclosure-contract';
+import { DisclosureValue } from './generic/generic-disclosure-value';
 
 interface OutcomeFact {
   key: string;

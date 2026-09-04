@@ -4,9 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
-import { useMetaEntity } from '../meta-client';
+import { useMetaEntity } from '../../meta-client';
 import { GenericMetaRenderer } from './generic-renderer';
-import { MetaEntityRenderer } from './meta-entity-renderer';
+import { MetaEntityRenderer } from '../meta-entity-renderer';
 
 afterEach(() => {
   cleanup();

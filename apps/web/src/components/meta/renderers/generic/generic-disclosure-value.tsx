@@ -1,4 +1,4 @@
-import { redactMetaValue } from '../view-models/agent-definition';
+import { redactMetaValue } from '../../view-models/agent-definition';
 
 const MAX_SHALLOW_ENTRIES = 8;
 const MAX_VALUE_CHARACTERS = 240;

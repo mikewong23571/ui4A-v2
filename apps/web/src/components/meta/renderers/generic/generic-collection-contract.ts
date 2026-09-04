@@ -2,7 +2,7 @@ import type { SirenEntity, SirenFieldPresentation, SirenLink } from '@ui4a/engin
 
 import { asOptionalFilterDeclarations, asOptionalPresentations } from '@/render/words/shared';
 
-import { withMetaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
+import { withMetaNavigationContext, type MetaNavigationContext } from '../../meta-navigation';
 
 export interface CollectionSummary {
   returned: number;

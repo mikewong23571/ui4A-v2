@@ -19,7 +19,7 @@ import type { ActivationDisclosureView } from '../activation-disclosure';
 import { withMetaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
 import { relFromMetaApiHref } from '../meta-surfaces';
 import { redactMetaValue } from '../view-models/agent-definition';
-import { projectGenericRelationships } from './generic-relationship-projection';
+import { projectGenericRelationships } from './generic/generic-relationship-projection';
 import { MetaActionOutcome } from './meta-action-outcome';
 
 export function titleForEntity(entity: SirenEntity): string {

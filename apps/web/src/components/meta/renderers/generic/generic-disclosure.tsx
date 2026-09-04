@@ -6,9 +6,9 @@ import type { SirenEntity } from '@ui4a/engine';
 
 import { Badge } from '@/components/ui/badge';
 
-import type { MetaNavigationContext } from '../meta-navigation';
-import { redactMetaValue } from '../view-models/agent-definition';
-import { MetaActions, MetaRelationships, publicMetaActions, RawContract } from './common';
+import type { MetaNavigationContext } from '../../meta-navigation';
+import { redactMetaValue } from '../../view-models/agent-definition';
+import { MetaActions, MetaRelationships, publicMetaActions, RawContract } from '../common';
 import type {
   DeclaredDisclosureField,
   GenericDisclosureContract,

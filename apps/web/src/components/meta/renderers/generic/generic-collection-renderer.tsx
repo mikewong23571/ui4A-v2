@@ -4,14 +4,14 @@ import type { SirenEntity } from '@ui4a/engine';
 
 import { Card } from '@/components/ui/card';
 
-import type { MetaNavigationContext } from '../meta-navigation';
-import { redactMetaValue } from '../view-models/agent-definition';
+import type { MetaNavigationContext } from '../../meta-navigation';
+import { redactMetaValue } from '../../view-models/agent-definition';
 import {
   browserHrefForContractHref,
   MetaActions,
   publicMetaActions,
   titleForEntity,
-} from './common';
+} from '../common';
 import {
   collectionFacetHref,
   collectionFacetsOf,
