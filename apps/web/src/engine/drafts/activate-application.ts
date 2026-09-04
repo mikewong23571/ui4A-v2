@@ -10,11 +10,12 @@
  * 回调内必须重验(与 flow/agent 激活同纪律):
  * - payloadHash 对齐锁定版本(装载完整性另由 accept 事务核 SHA,此处再对齐一次);
  * - bundle 仍可解析且解析名等于 target;
- * - target 名尚未被任何路径安装——同名即双写者竞态,判 stale 留痕(I6),
+ * - target 名尚未被任何路径占用(D71.5 烧毁集 log 口径:application-seeded ∪
+ *   application-deprecated)——同名即双写者竞态或停用烧毁,判 stale 留痕(I6),
  *   绝不把冲突 bundle 部分并入库;
  * - 全量清单 fail-closed(D66.1,评审修复):制品可声明多个 application,
- *   任何已安装名称(applications/capabilities/flows)都判 stale 留痕,
- *   不得按 bootstrap 幂等语义静默跳过部分安装。
+ *   任何已占用名称(applications 侧含烧毁名 / capabilities / flows)都判
+ *   stale 留痕,不得按 bootstrap 幂等语义静默跳过部分安装。
  */
 import {
   bundleInventoryConflicts,
@@ -56,10 +57,20 @@ export async function planApplicationBundleActivation(input: {
     `application:${locked.target}`,
   ]);
   const log = await readLog(client);
+  const eventName = (event: (typeof log)[number]): unknown =>
+    (event.detail as { name?: unknown } | undefined)?.name;
+  // D71.5 烧毁集(log 口径,显式双集):target 名占用 = application-seeded
+  // (历史安装,事件永存)∪ application-deprecated(停用烧毁)。烧毁判在前——
+  // seeded→deprecated 是正常次序,停用是更强的终局事实;显式计入停用事件名,
+  // 防未来读面改为只查活跃表时漏掉烧毁侧。
+  const burned = log.some(
+    (event) => event.kind === 'application-deprecated' && eventName(event) === locked.target,
+  );
+  if (burned) {
+    throw new Error(`draft stale: application name ${locked.target} is burned (deprecated)`);
+  }
   const installed = log.some(
-    (event) =>
-      event.kind === 'application-seeded' &&
-      (event.detail as { name?: unknown } | undefined)?.name === locked.target,
+    (event) => event.kind === 'application-seeded' && eventName(event) === locked.target,
   );
   if (installed) {
     throw new Error(`draft stale: application ${locked.target} is installed concurrently`);
@@ -71,8 +82,16 @@ export async function planApplicationBundleActivation(input: {
         .map((event) => (event.detail as { name?: unknown } | undefined)?.name)
         .filter((name): name is string => typeof name === 'string'),
     );
+  const deprecatedNames = new Set(
+    log
+      .filter((event) => event.kind === 'application-deprecated')
+      .map(eventName)
+      .filter((name): name is string => typeof name === 'string'),
+  );
+  // 全量清单冲突的 applications 侧同口径(D71.5):seeded ∪ deprecated——
+  // 停用不释放名字,声明的次级 application 名命中任一侧即冲突。
   const installedNames: InstalledBundleNames = {
-    applications: seededNames('application-seeded'),
+    applications: new Set([...seededNames('application-seeded'), ...deprecatedNames]),
     capabilities: seededNames('capability-seeded'),
     flows: seededNames('definition-seeded'),
   };

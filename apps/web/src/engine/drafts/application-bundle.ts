@@ -12,6 +12,7 @@ import {
   payloadFingerprint,
   validateApplicationBundleDraft,
   type ApplicationBundleDraftValidation,
+  type FoldSnapshot,
 } from '@ui4a/engine';
 import type { ActivationCheck } from '@ui4a/shared';
 
@@ -57,6 +58,39 @@ export function applicationBundleInstalled(
   target: string | undefined,
 ): boolean {
   return target !== undefined && snapshot.applications?.[target] !== undefined;
+}
+
+/**
+ * D71.5 应用名烧毁集的 deprecated 侧:target 命中 deprecatedApplications 审计
+ * 表键。停用级联会删 applications 键,故与 applicationBundleInstalled(active
+ * 侧)互为独立真相源;守卫面(create/validate)必须两侧都查——「尚未激活」
+ * 是 checks 面(application-not-installed)的可视口径,「停用烧毁」是更强的
+ * fail-closed 拒绝,两者语义不同,不共用谓词。
+ *
+ * 运行时快照是 fold 产物(FoldSnapshot,审计表在场时随行);EngineRuntime
+ * 接口按 shared EngineSnapshot 收窄,读 deprecatedApplications 在此单点下探。
+ */
+export function applicationNameBurned(
+  snapshot: EngineSnapshot,
+  target: string | undefined,
+): boolean {
+  return (
+    target !== undefined &&
+    (snapshot as FoldSnapshot).deprecatedApplications?.[target] !== undefined
+  );
+}
+
+/**
+ * D71.5 应用名占用全集:taken = active(applications 键)∪ deprecated
+ * (deprecatedApplications 审计表键)。全量清单冲突(bundleInventoryConflicts)
+ * 的 applications 侧用本集——停用不释放名字,声明的次级 application 名命中
+ * 任一侧即冲突。
+ */
+export function takenApplicationNames(snapshot: EngineSnapshot): Set<string> {
+  return new Set([
+    ...Object.keys(snapshot.applications ?? {}),
+    ...Object.keys((snapshot as FoldSnapshot).deprecatedApplications ?? {}),
+  ]);
 }
 
 function partition(

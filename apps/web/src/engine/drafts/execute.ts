@@ -34,7 +34,12 @@ import {
   rejectionEvent,
   stringParam,
 } from './helpers';
-import { applicationBundleInstalled, validateBundleCandidate } from './application-bundle';
+import {
+  applicationBundleInstalled,
+  applicationNameBurned,
+  takenApplicationNames,
+  validateBundleCandidate,
+} from './application-bundle';
 import { planAgentDefinitionActivation } from './activate-agent';
 import { planApplicationBundleActivation } from './activate-application';
 import { planFlowDefinitionActivation } from './activate-flow';
@@ -274,16 +279,20 @@ export async function executeDraftMeta(
       validation = validateFlowDraft(payload, registries(snapshot));
     } else if (aggregate.kind === 'application-bundle') {
       const snapshot = await engine.readSnapshot();
-      // bundle 的基准是"target 名尚未被安装";此后同名被安装(冲突出现)即 stale。
+      // bundle 的基准是"target 名尚未被占用"(D71.5:active ∪ deprecated——
+      // 停用不释放名字);此后同名被安装或停用烧毁都判 stale,理由可区分。
       if (applicationBundleInstalled(snapshot, aggregate.target)) {
         staleReason = `application ${aggregate.target} is already installed`;
+      } else if (applicationNameBurned(snapshot, aggregate.target)) {
+        staleReason = `application ${aggregate.target} is deprecated (name burned)`;
       }
       validation = validateBundleCandidate(payload, aggregate.target);
       // D66.1 fail-closed(评审修复):全量清单与激活门禁同口径——次级名称
-      // 冲突同样判 stale,不留给批准阶段静默跳过。
+      // 冲突同样判 stale,不留给批准阶段静默跳过。applications 侧按 D71.5
+      // 烧毁集(active ∪ deprecated)取占用全集。
       if (validation.value !== undefined && staleReason === undefined) {
         const conflicts = bundleInventoryConflicts(validation.value, {
-          applications: new Set(Object.keys(snapshot.applications ?? {})),
+          applications: takenApplicationNames(snapshot),
           capabilities: new Set(Object.keys(snapshot.capabilities ?? {})),
           flows: new Set(Object.keys(snapshot.definitions ?? {})),
         });

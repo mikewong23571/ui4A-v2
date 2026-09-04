@@ -12,7 +12,7 @@ import { DRAFT_LIMITS } from '@ui4a/shared';
 import { appendDraftCommand, payloadSha256, type ConnectableDb } from '@ui4a/db/drafts';
 import type { EngineRuntime } from '../service';
 
-import { applicationBundleInstalled } from './application-bundle';
+import { applicationBundleInstalled, applicationNameBurned } from './application-bundle';
 import {
   AGENT_DEFINITION_SCHEMA_REF,
   APPLICATION_BUNDLE_SCHEMA_REF,
@@ -84,9 +84,16 @@ export async function executeDraftCreate(
     }
     // 安装目标合同(I6):target 是待安装 application 名,不得与已安装冲突,
     // 且必须等于制品解析出的 bundle 名;不满足是 guard 拒绝事件,不是 Draft。
+    // D71.5 烧毁集:同名停用(deprecatedApplications 审计集)同样占用名字,
+    // 拒绝理由与「同名已装」可区分——两者都是 guard 拒绝事件。
     const snapshot = await engine.readSnapshot();
     if (applicationBundleInstalled(snapshot, target)) {
       const outcome = rejected('guard-failed', `application ${target} is already installed`);
+      await rejectionEvent(db, request, outcome);
+      return outcome;
+    }
+    if (applicationNameBurned(snapshot, target)) {
+      const outcome = rejected('guard-failed', `application ${target} is deprecated (name burned)`);
       await rejectionEvent(db, request, outcome);
       return outcome;
     }
