@@ -12,8 +12,8 @@
 
 ## Phase 0 — 决策先行(先记录,再动代码)
 
-- [ ] Task: DECISIONS.md 落盘 D68(spec §Decision 全文:双轴模型/sessionId 输入合同/读侧三路 principal 过滤/forged-root 测试意图迁移/旧数据诚实投影) [U1–U10]
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: DECISIONS.md 落盘 D68(spec §Decision 全文:双轴模型/sessionId 输入合同/读侧三路 principal 过滤/forged-root 测试意图迁移/旧数据诚实投影) [U1–U10] [a2f2772]
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: a2f2772]（自治验收:Phase 0 仅 DECISIONS.md 非代码变更,governance OK 复跑绿;无代码文件需测试覆盖）
 
 ## Phase 1 — 请求体合同:sessionId 输入卫生(FR1 · U5/U10)
 
