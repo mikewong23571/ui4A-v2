@@ -78,6 +78,7 @@ describe('SiteNav · workstation / meta / 系统区', () => {
     expectLink(menu, '事件流', '/events', 'events', 'menuitem');
     expectLink(menu, '委托监控', '/delegations', 'delegations', 'menuitem');
     expectLink(menu, '账户与密码', '/auth/account', 'local:account', 'menuitem');
+    expectLink(menu, '我的授权', '/session', 'local:session', 'menuitem');
     const logout = within(menu).getByRole('menuitem', { name: '退出登录' });
     expect(logout.getAttribute('data-nav')).toBe('local:logout');
     expect(logout.closest('form')?.getAttribute('action')).toBe('/auth/logout');

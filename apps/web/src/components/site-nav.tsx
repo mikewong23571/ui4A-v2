@@ -140,6 +140,14 @@ export function SiteNav({ sessionControls = false }: { sessionControls?: boolean
                 >
                   账户与密码
                 </Link>
+                <Link
+                  href="/session"
+                  data-nav="local:session"
+                  role="menuitem"
+                  className="block whitespace-nowrap rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  我的授权
+                </Link>
                 <form action="/auth/logout" method="post">
                   <button
                     type="submit"
