@@ -200,7 +200,7 @@ export function MetaDashboard({
               data-nav="meta:set-view"
               className="h-9 min-w-0 flex-1 rounded-md border bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:w-52 lg:flex-none"
             >
-              <option value="">全部已授权应用</option>
+              <option value="">已授权应用</option>
               {sitemap.authorizedScopes.map((scope) => (
                 <option key={scope} value={scope}>
                   {scope}

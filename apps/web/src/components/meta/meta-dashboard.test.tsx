@@ -66,7 +66,7 @@ describe('Meta dynamic dashboard', () => {
     expect(window.location.search).toContain('filter=invalid');
   });
 
-  it('把无显式视角显示为全部已授权应用，不从 authorizedScopes 暗选首项', async () => {
+  it('把无显式视角显示为已授权应用,不宣称全集，不从 authorizedScopes 暗选首项', async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
       if (url.includes('.well-known')) {
@@ -99,8 +99,8 @@ describe('Meta dynamic dashboard', () => {
 
     const viewSelector = screen.getByRole('combobox', { name: '视角' }) as HTMLSelectElement;
     expect(viewSelector.value).toBe('');
-    expect(viewSelector.selectedOptions[0]?.textContent).toBe('全部已授权应用');
-    expect(screen.queryByText(/当前浏览全部已授权应用/)).toBeNull();
+    expect(viewSelector.selectedOptions[0]?.textContent).toBe('已授权应用');
+    expect(screen.queryByText(/当前浏览已授权应用/)).toBeNull();
     expect(screen.queryByText(/未选择视角/)).toBeNull();
     expect(screen.queryByTestId('meta-current-view')).toBeNull();
 

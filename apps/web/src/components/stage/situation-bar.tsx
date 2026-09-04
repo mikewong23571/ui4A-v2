@@ -99,7 +99,7 @@ export function SituationBar() {
   const options = applicationOptions(applications.value);
   const applicationLabel =
     observation.scope === null
-      ? '全部已授权应用'
+      ? '已授权应用'
       : (options.find((option) => option.name === observation.scope)?.title ??
         (applications.status === 'loading' ? '读取中…' : '无法读取'));
   const thread = useSituationDocument(
@@ -294,7 +294,7 @@ export function SituationBar() {
               className="h-8 min-w-0 rounded-md border bg-background px-2 text-sm"
               disabled={applications.status !== 'ready'}
             >
-              <option value="">全部已授权应用</option>
+              <option value="">已授权应用</option>
               {options.map((option) => (
                 <option key={option.name} value={option.name}>
                   {option.title}

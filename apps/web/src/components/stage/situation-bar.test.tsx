@@ -239,7 +239,7 @@ describe('SituationBar · 状态芯片(F-12)', () => {
     expect(screen.queryByTestId('situation-focus')).toBeNull();
   });
 
-  it('无显式视角在「当前在哪」中显示全部已授权应用，不暗选首个授予应用', async () => {
+  it('无显式视角在「当前在哪」中显示已授权应用,不宣称全集，不暗选首个授予应用', async () => {
     location.route = '/meta?thread=release-1&returnTo=%2Fthreads';
     location.observation = {
       site: 'meta',
@@ -252,9 +252,9 @@ describe('SituationBar · 状态芯片(F-12)', () => {
     expect(screen.queryByTestId('situation-scope')).toBeNull();
 
     openPopover();
-    expect(screen.getByTestId('situation-scope').textContent).toBe('全部已授权应用');
+    expect(screen.getByTestId('situation-scope').textContent).toBe('已授权应用');
     expect(screen.getByTestId('situation-focus').textContent).toBe('未聚焦对象');
-    expect(screen.queryByText(/当前浏览全部已授权应用/)).toBeNull();
+    expect(screen.queryByText(/当前浏览已授权应用/)).toBeNull();
     expect(screen.queryByRole('link', { name: '清除应用' })).toBeNull();
     const selector = await screen.findByRole('combobox', { name: '应用' });
     expect((selector as HTMLSelectElement).value).toBe('');

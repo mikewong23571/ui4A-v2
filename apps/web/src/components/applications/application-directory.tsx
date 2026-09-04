@@ -24,7 +24,9 @@ export function ApplicationDirectory() {
     <div className="space-y-6">
       <header className="border-b pb-5">
         <h1 className="text-3xl font-semibold tracking-tight">应用</h1>
-        <p className="mt-2 text-sm text-muted-foreground">浏览可用能力，选择应用进入工作区。</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          浏览可用能力，选择应用进入工作区。仅显示当前会话已授权的应用。
+        </p>
       </header>
       {state.status === 'loading' && <Skeleton aria-label="正在读取应用" className="h-24 w-full" />}
       {state.status === 'error' && <CatalogError retry={retry} />}
@@ -69,7 +71,16 @@ export function ApplicationDirectory() {
             </button>
           )}
           {entries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无可用应用。</p>
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <p>暂无可用应用。</p>
+              <a
+                href="/session"
+                data-nav="local:applications-session"
+                className="text-primary underline underline-offset-4"
+              >
+                查看我的授权
+              </a>
+            </div>
           ) : matches.length === 0 ? (
             <p role="status" className="text-sm text-muted-foreground">
               没有匹配的应用。

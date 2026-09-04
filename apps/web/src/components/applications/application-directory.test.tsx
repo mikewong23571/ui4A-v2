@@ -73,5 +73,9 @@ describe('ApplicationDirectory', () => {
     fireEvent.click(screen.getByRole('button', { name: '重试' }));
     expect(await screen.findByText('暂无可用应用。')).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+    // US4.2:空态提供「查看我的授权」出口,授权状态可自查。
+    expect(screen.getByRole('link', { name: '查看我的授权' }).getAttribute('href')).toBe(
+      '/session',
+    );
   });
 });
