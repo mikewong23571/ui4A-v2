@@ -45,12 +45,13 @@
 
 ## Phase 3 — F1 前端渲染 + F4 措辞诚实
 
-- [ ] Task: ExecClientResult ok 分支扩展 + execMetaAction 透传 disclosure +
+- [x] Task: ExecClientResult ok 分支扩展 + execMetaAction 透传 disclosure +
   MetaActivationDisclosure 组件(三分支文案 + 恢复动作链接 + requires-idp-grant
-  双路径文案快照;US1.1/US3.1/US7)
-- [ ] Task: situation-bar「全部已授权应用」措辞修正 + 应用目录授权出口(测试更新;
-  US4.1/US4.2;发现文档过滤回归绿,US4.3)
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+  双路径文案快照;US1.1/US3.1/US7) [9c3a8c8]（严格 wire parser+6 组视图测试;
+  onOutcome 扩签名,t16 断言更新;140/140）
+- [x] Task: situation-bar「全部已授权应用」措辞修正 + 应用目录授权出口(测试更新;
+  US4.1/US4.2;发现文档过滤回归绿,US4.3) [2eb21ab]（三处 UI 措辞+空态出口;26/26）
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 2eb21ab]（自治验收:components 全量 400/400 绿、tsc 绿;D51 过滤语义零变化）
 
 ## Phase 4 — 验收与收口
 
