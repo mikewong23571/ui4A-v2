@@ -15,6 +15,7 @@ function input(overrides: Partial<ActivationDisclosureInput> = {}): ActivationDi
     grantedApplications: ['development'],
     tokenScopes: ['ui4a:read', 'ui4a:write', 'ui4a:approve', 'ui4a:policy:development'],
     browserLoginScopes: undefined,
+    sessionGrantsGrowWithInstalls: false,
     ...overrides,
   };
 }
@@ -34,11 +35,14 @@ describe('computeActivationDisclosure', () => {
     expect(disclosure!.browserLoginScopes).toBeUndefined();
   });
 
-  it('marks governance-expanded sessions as immediately visible with expansion provenance', () => {
+  it('marks growing sessions immediately visible even before the grant set covers the new app', () => {
+    // 治理展开(credential)与 local 自报域:exec 前解析的授予集合尚不含新装应用,
+    // 但下一次请求即覆盖(D66.4 按请求现算)——如实判 immediately-visible。
     const disclosure = computeActivationDisclosure(
       input({
-        grantedApplications: ['development', 'governance', 'todo'],
+        grantedApplications: ['development', 'governance'],
         tokenScopes: ['ui4a:write', 'ui4a:approve', 'ui4a:policy:development', GOVERNANCE_SCOPE],
+        sessionGrantsGrowWithInstalls: true,
       }),
     );
     expect(disclosure!.applications).toEqual([{ application: 'todo', outcome: 'immediately-visible' }]);
@@ -112,8 +116,8 @@ describe('computeActivationDisclosure', () => {
     expect(disclosure!.grantedApplications).toEqual(['development', 'todo']);
   });
 
-  it('falls back to requires-idp-grant outside credential mode when an app is unreachable', () => {
-    // local 模式授予集合=已安装全集,该分支防御性存在:不可达即无重登可修路径。
+  it('falls back to requires-idp-grant when a static grant set misses the new app', () => {
+    // 非生长型会话(逐 app 授予、无治理词)的防御分支:授予集合不含且无重登通道。
     const disclosure = computeActivationDisclosure(
       input({ grantedApplications: [], tokenScopes: [] }),
     );

@@ -121,10 +121,11 @@ describe('POST /_meta/api/exec activation disclosure wiring (D70.1)', () => {
     mocks.engine.getSnapshot
       .mockReturnValueOnce({ applications: { ...mocks.applicationsBefore } })
       .mockReturnValueOnce({ applications: { ...mocks.applicationsBefore, todo: {} } });
+    // exec 前解析的授予集合尚不含 todo(治理展开按请求现算,下一次请求即覆盖)。
     mocks.resolveTrustedRequestIdentity.mockResolvedValue({
       ...IDENTITY,
       scopes: [...IDENTITY.scopes, 'ui4a:policy:governance'],
-      grantedApplications: ['development', 'governance', 'todo'],
+      grantedApplications: ['development', 'governance'],
     });
 
     const body = (await (await POST(approveRequest())).json()) as Record<string, unknown>;
@@ -132,7 +133,7 @@ describe('POST /_meta/api/exec activation disclosure wiring (D70.1)', () => {
     expect(body.disclosure).toEqual({
       kind: 'activation-visibility',
       applications: [{ application: 'todo', outcome: 'immediately-visible' }],
-      grantedApplications: ['development', 'governance', 'todo'],
+      grantedApplications: ['development', 'governance'],
       governanceExpansion: true,
     });
   });

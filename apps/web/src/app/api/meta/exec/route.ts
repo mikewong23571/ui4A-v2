@@ -10,6 +10,7 @@ import {
 import {
   browserLoginPolicyScopes,
   computeActivationDisclosure,
+  GOVERNANCE_LOGIN_SCOPE,
 } from '../../../../auth/activation-disclosure';
 import { assertReachable } from '../../../../auth/application-scope';
 import { declaredApplication } from '../../../../engine/situation';
@@ -96,6 +97,11 @@ export async function POST(request: Request) {
           grantedApplications: identity.grantedApplications,
           tokenScopes: identity.scopes,
           browserLoginScopes: browserLoginPolicyScopes(),
+          // exec 前解析的授予集合不含本次新装应用;治理展开与 local 自报域在
+          // 下一次请求即覆盖它们(D66.4 按请求现算),如实判 immediately-visible。
+          sessionGrantsGrowWithInstalls:
+            identity.authorizationMode === 'self-reported-local-demo' ||
+            identity.scopes.includes(GOVERNANCE_LOGIN_SCOPE),
         });
       }
       return Response.json({

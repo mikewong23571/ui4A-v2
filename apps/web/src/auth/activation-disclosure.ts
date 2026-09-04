@@ -40,6 +40,12 @@ export interface ActivationDisclosureInput {
   grantedApplications: readonly string[];
   tokenScopes: readonly string[];
   browserLoginScopes: readonly string[] | undefined;
+  /**
+   * 授予集合是否随已装全集逐请求生长:credential 治理词展开(D66.4,exec 后的下一次
+   * 请求即覆盖新装应用)与 local 自报域(授予=请求时已装全集)为 true。exec 前解析
+   * 的 grantedApplications 尚不含本次新装应用,该标志修正「下一次请求即可见」语义。
+   */
+  sessionGrantsGrowWithInstalls: boolean;
 }
 
 function outcomeFor(
@@ -47,6 +53,7 @@ function outcomeFor(
   input: ActivationDisclosureInput,
 ): ActivationDisclosureOutcome {
   if (input.grantedApplications.includes(application)) return 'immediately-visible';
+  if (input.sessionGrantsGrowWithInstalls) return 'immediately-visible';
   // D70.1 附录:治理词或该应用的逐 app 词任一在登录 scope 表内,刷新授权即可见。
   // 当前 settings 校验器限定六固定词,逐 app 分支留给 realm 演进,判定语义不变。
   if (
