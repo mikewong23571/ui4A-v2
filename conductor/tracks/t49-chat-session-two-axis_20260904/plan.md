@@ -41,9 +41,9 @@
 
 ## Phase 5 — 前端与用户故事闭环(FR5 · U1/U2/U3/U4/U8/U10)
 
-- [ ] Task: use-chat-session/floating-chat 组件测试——新会话语义(消息清空、不回放旧会话、principal 不变 sessionId 换新)、清单多行、selectSession 重放不串台 [U1/U2/U3]
-- [ ] Task: e2e/chat.spec.ts——本地 profile 全路径:两轮对话 → 新会话一轮 → 清单两行 → 切换旧会话重放并继续(指代可解析)→ 新会话上下文干净;刷新重放回归(含 running 轮询);预置 principal 形状旧事件验证并存 [U1–U4/U8/U10]
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: use-chat-session/floating-chat 组件测试——新会话语义(消息清空、不回放旧会话、principal 不变 sessionId 换新)、清单多行、selectSession 重放不串台 [U1/U2/U3] [e4470a8]（2 用例首跑即绿=客户端零改动即正确语义）
+- [x] Task: e2e/chat.spec.ts——本地 profile 全路径:两轮对话 → 新会话一轮 → 清单两行 → 切换旧会话重放并继续(指代可解析)→ 新会话上下文干净;刷新重放回归(含 running 轮询);预置 principal 形状旧事件验证并存 [U1–U4/U8/U10] [e4470a8]（1 场景覆盖清单/旧形状/代铸/400/读回隔离/续投;LLM 指代语义由组件与装配测试锚定,E2E 确定性;编排复跑 e2e chat 9/9）
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: e4470a8]（自治验收:组件 17/17 + e2e 9/9 + tsc + governance 复跑绿;客户端源码零改动符合预期）
 
 ## Phase 6 — 收口:门禁、系统验证与 DONE
 
