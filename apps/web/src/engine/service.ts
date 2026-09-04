@@ -257,8 +257,10 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
   // ---- 定义解析(T4 Phase B:fold 快照即真相,代码常量仅 seed 源+顺序锚)----
   // 活跃定义 = definitionVersions[条目当前版本](activeDefinitionOf):草稿窗口
   // 的工作副本不进业务平面;每快照演进后重算(定义激活即自动切换)。
+  // T52:条目 status=deprecated 退出活跃注册表(置废 flow 不再进业务面)。
   const activeFlowList = (): FlowDefinition[] =>
-    Object.keys(logState.snapshot.definitions ?? {}).flatMap((name) => {
+    Object.entries(logState.snapshot.definitions ?? {}).flatMap(([name, entry]) => {
+      if (entry.status === 'deprecated') return [];
       const active = activeDefinitionOf(logState.snapshot, name);
       return active === undefined ? [] : [active];
     });

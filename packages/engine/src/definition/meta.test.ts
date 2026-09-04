@@ -18,7 +18,7 @@ import type { JudgeResult } from '../execution/judge';
 import { articleDraftingFlow, postStatusFlow, seedSnapshot } from '../core/fixtures';
 import { fold, type LogEvent } from '../projection/fold/index';
 import { DEFINITION_LIFECYCLE_FLOW } from './lifecycle';
-import { definitionSeedEvent, executeMeta } from './meta';
+import { activeDefinitionOf, definitionSeedEvent, executeMeta } from './meta';
 
 const deps = { guards: seedGuardRegistry };
 
@@ -490,6 +490,10 @@ describe('deprecate(no-live-instances)', () => {
     if (outcome.kind !== 'executed') return;
     expect(outcome.snapshot.instances['meta/flow:post-status']?.node).toBe('deprecated');
     expect(outcome.snapshot.definitions?.['post-status'].status).toBe('deprecated');
+    // T52:deprecated 退出活跃注册表的过滤在 service 组装层(activeFlowList);
+    // activeDefinitionOf 保持版本指针语义(status 无关)——bundle 导出/受众
+    // 归属/在途实例裁决仍按当前版本取内容,置废条目同样可解析。
+    expect(activeDefinitionOf(outcome.snapshot, 'post-status')).toEqual(postStatusFlow);
     expect(outcome.events.map((e) => e.kind)).toEqual(['action-executed', 'definition-deprecated']);
     const log: LogEvent[] = [
       seedPostStatus,
