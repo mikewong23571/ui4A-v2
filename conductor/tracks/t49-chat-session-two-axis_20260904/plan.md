@@ -29,9 +29,9 @@
 
 ## Phase 3 — 生产路由解耦:写侧两轴分离(FR2 · U1/U2/U5)
 
-- [ ] Task: route.production-auth.test.ts 先红——同 principal 两个 sessionId 各一回合 → 事件落两组 rel、principal 恒为认证主体;forged 用例语义迁移(伪造 principal 形状 sessionId 只作分组键,绝不进身份字段);缺省 sessionId → 代铸 UUID 经 session 帧下发 [U1/U5]
-- [ ] Task: route.ts 解耦——删除 `sessionId = productionIdentity?.principal` 折叠(211 行),principal 保持 `productionIdentity?.principal ?? user:<sessionId>`;delegated 回执落请求会话(sessionId 解耦值) [U1/U2/U5]
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: route.production-auth.test.ts 先红——同 principal 两个 sessionId 各一回合 → 事件落两组 rel、principal 恒为认证主体;forged 用例语义迁移(伪造 principal 形状 sessionId 只作分组键,绝不进身份字段);缺省 sessionId → 代铸 UUID 经 session 帧下发 [U1/U5] [1486155]（红 4 用例:多会话/代铸/forged 迁移/委托回执)
+- [x] Task: route.ts 解耦——删除 `sessionId = productionIdentity?.principal` 折叠(211 行),principal 保持 `productionIdentity?.principal ?? user:<sessionId>`;delegated 回执落请求会话(sessionId 解耦值) [U1/U2/U5] [1486155]（diff 净 -1 行;前置修复 P2 遗留的 mock 缺 listEvents 基线破损,如实记入 git note)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 1486155]（自治验收:api/chat 全目录 78/78 复跑绿 + tsc + eslint + governance OK;local profile 用例零改动通过;教训:P2 验收半径应含消费者目录,P3 起复跑扩至 api/chat 全目录）
 
 ## Phase 4 — 读端点投影锚定(FR4/FR6 · U1/U6/U8/U9)
 
