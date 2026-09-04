@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
@@ -6,11 +6,30 @@ import { expect, test, type Request, type Response } from '@playwright/test';
 import type { SurfaceBinding, SurfaceNode, SurfaceTree } from '@ui4a/engine';
 
 import { MECHANISM_WORDS } from '../../apps/web/src/lib/mechanism-words';
-import { SCENARIO_BASE, withFreshServer, withWorkerServer } from '../kits/server-kit';
+import {
+  SCENARIO_BASE,
+  TEMPORAL_ADDRESS,
+  withFreshServer,
+  withWorkerServer,
+} from '../kits/server-kit';
 import { terminateStaleNotifyWorkflows } from '../../apps/web/src/temporal/notify';
 
 const runFile = promisify(execFile);
 const CLI_MAIN = path.join(process.cwd(), 'apps', 'cli', 'dist', 'main.js');
+
+// ---- Temporal 探活(仅 worker 栈用例;与 invariants s1/s3 同步探活同口径)----
+// 本文件是混合套件:canvas 组合用例不依赖 Temporal,skip 必须限定在
+// withWorkerServer 用例内,不得文件级跳过。Playwright CJS 转译不支持顶层
+// await,探活须同步求值(spawnSync + nc,与 server-kit 端口探测同工具)。
+const [temporalHost = 'localhost', temporalPort = '7235'] = TEMPORAL_ADDRESS.split(':');
+const temporalUp =
+  spawnSync('nc', ['-z', temporalHost, temporalPort], { stdio: 'ignore' }).status === 0;
+if (!temporalUp) {
+  console.warn(
+    `[ui4e-e2e] Temporal dev server 不可达(${TEMPORAL_ADDRESS}),worker 栈用例跳过(与 s1/s3 同口径)`,
+  );
+}
+
 const SOURCE_REGIONS = [
   // F-04/T40:集合 presentation 声明 emptyMeaning(首页空态引导的数据源),CLI 与浏览器同源。
   {
@@ -230,6 +249,8 @@ test('workstation home and the real CLI read the same three declared source enti
 });
 
 test('waiting-for-me 成员决策卡:批准两段确认零导航零参数,同一裁决(T33 D50)', async ({ page }) => {
+  // worker 栈前置(见文件头探活注释):不可达即跳过,不再以 30s 横幅超时红。
+  test.skip(!temporalUp, `Temporal dev server 不可达(${TEMPORAL_ADDRESS})`);
   test.setTimeout(180_000);
   // 与 s1 同口径:清掉跨轮次残留的 notify workflow(确认 id 确定性复用)。
   await terminateStaleNotifyWorkflows(['c1']);
