@@ -23,9 +23,9 @@
 
 ## Phase 2 — 会话装配双键收敛(FR3 · U2/U7)
 
-- [ ] Task: conversation.test.ts 先红——双 principal 同 sessionId 碰撞:conversationView 只装配请求 principal 名下事件;loadAgentConversation 对同 principal 新 sessionId 返回空会话 [U2/U7]
-- [ ] Task: session-events.ts — loadAgentConversation 由 `readLog` 全量改为 `listEvents` principal 过滤读,conversationView 与 executionAuditContext 同源喂数(principal 过滤一次、两投影共用) [U7]
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: conversation.test.ts 先红——双 principal 同 sessionId 碰撞:conversationView 只装配请求 principal 名下事件;loadAgentConversation 对同 principal 新 sessionId 返回空会话 [U2/U7] [6686faf]（红 3 用例:碰撞/null-principal 排斥/签名迁移;U2 空视图为回归锚点)
+- [x] Task: session-events.ts — loadAgentConversation 由 `readLog` 全量改为 `listEvents` principal 过滤读,conversationView 与 executionAuditContext 同源喂数(principal 过滤一次、两投影共用) [U7] [6686faf]（核准偏差:增 domain:'core' + toLogEvent,与 readLog 口径一致仅收窄 principal）
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 6686faf]（自治验收:src/chat 100/100 复跑绿 + tsc + eslint + governance OK;改动文件均有测试覆盖）
 
 ## Phase 3 — 生产路由解耦:写侧两轴分离(FR2 · U1/U2/U5)
 
