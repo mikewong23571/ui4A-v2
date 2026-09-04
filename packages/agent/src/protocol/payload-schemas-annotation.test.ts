@@ -123,7 +123,7 @@ describe('D69 附录(T50):模型视图剥离 x-ui4a-payload-schemas 注解', () 
   });
 
   it('注解值非 { <kind>: record } 形状(无 kind 条目的宽松分支)原样透传', () => {
-    for (const loose of ['legacy-string', 42, null, ['not', 'a', 'record'], {}]) {
+    for (const loose of ['preceding-string', 42, null, ['not', 'a', 'record'], {}]) {
       const tool = createActionTool({
         type: 'object',
         properties: {},
