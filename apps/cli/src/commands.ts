@@ -36,6 +36,7 @@ Definition Bundles and governed Drafts:
                  (KIND: flow-definition | agent-definition | application-bundle)
   drafts get|diff|validate|submit|abandon <draft-id> [options]
   drafts list [--status STATUS] [--limit N]
+  drafts schema [--kind KIND]               Read server-annotated payload schemas
   drafts revise <draft-id> --base-version N --payload-file FILE [--target-base-version N]
   drafts watch <draft-id> [--after-seq N]
   activations get|watch <activation-rel>

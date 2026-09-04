@@ -23,6 +23,7 @@ interface Envelope {
     properties?: { rel?: string; status?: string };
     algorithm?: string;
     added?: { applications?: string[]; flows?: string[] };
+    schemas?: Record<string, { schema?: unknown; example?: Record<string, unknown> }>;
   };
   error?: { code?: string; message?: string };
 }
@@ -328,4 +329,93 @@ test('human approval of a CLI-submitted bundle installs it and apps list discove
   const resolved = runCli([...cliBase(), 'activations', 'get', activation]);
   expect(resolved.status).toBe(0);
   expect(resolved.envelope.data?.properties?.status).toBe('accepted');
+});
+
+// ---- T50 Phase 5 / D69.5:`drafts schema` 语法糖 ----
+// 零内嵌真相的读门:CLI 只透传 meta/drafts create 动作 fields 顶层的
+// x-ui4a-payload-schemas 合同注解,不持任何本地 schema 副本。本组证明:
+// (1) CLI 输出与直连服务端读到的注解等值(全量与 --kind 过滤两态);
+// (2) 注解 example 经机械改名(序列化文本的字符串替换,不手工构造结构)
+// 即可作为 payload-file 创建 ready Draft——P6「机械自足」的预演。
+
+async function serverPayloadSchemas(): Promise<Record<string, unknown>> {
+  // 与 CLI --scope publishing 构建的同一条 meta 实体读(本地 demo 身份默认
+  // local-user,与服务端缺省回退一致);直连取得合同注解原值。
+  const response = await fetch(
+    'http://localhost:3100/_meta/api/entity?rel=meta%2Fdrafts&scope=publishing',
+  );
+  expect(response.status).toBe(200);
+  const entity = (await response.json()) as {
+    actions?: { name?: string; fields?: Record<string, unknown> }[];
+  };
+  const create = entity.actions?.find((action) => action.name === 'create');
+  const annotation = create?.fields?.['x-ui4a-payload-schemas'];
+  expect(annotation, 'server must annotate the create action fields').toBeTruthy();
+  return annotation as Record<string, unknown>;
+}
+
+test('CLI drafts schema mirrors the server payload-schemas annotation, full and filtered', async () => {
+  const serverSchemas = await serverPayloadSchemas();
+
+  const full = runCli([...cliBase(), 'drafts', 'schema']);
+  expect(full.status).toBe(0);
+  expect(full.envelope.ok).toBe(true);
+  expect(full.envelope.command).toBe('drafts.schema');
+  expect(full.envelope.data?.schemas).toEqual(serverSchemas);
+
+  const filtered = runCli([...cliBase(), 'drafts', 'schema', '--kind', 'application-bundle']);
+  expect(filtered.status).toBe(0);
+  expect(filtered.envelope.data?.schemas).toEqual({
+    'application-bundle': serverSchemas['application-bundle'],
+  });
+});
+
+test('the annotated example mechanically derives a ready application-bundle Draft', async () => {
+  const filtered = runCli([...cliBase(), 'drafts', 'schema', '--kind', 'application-bundle']);
+  expect(filtered.status).toBe(0);
+  const example = filtered.envelope.data?.schemas?.['application-bundle']?.example;
+  expect(example, 'application-bundle annotation carries an example').toBeTruthy();
+
+  // 机械派生:example 是最小合法 bundle 但名字固定('example-bundle'),
+  // 与历史安装可能冲突;仅对序列化文本做名字字符串替换(bundle/app/flow/
+  // seed 引用一致跟随),结构零改动。target 必须等于 bundle.name。
+  const bundleName = freshBundleName();
+  const derived = JSON.parse(
+    JSON.stringify(example)
+      .replaceAll('example-bundle', bundleName)
+      .replaceAll('example-entry', `${bundleName}-entry`),
+  ) as Record<string, unknown>;
+
+  const directory = mkdtempSync(join(tmpdir(), 'ui4a-e2e-cli-schema-'));
+  const path = join(directory, 'bundle.json');
+  writeFileSync(path, JSON.stringify(derived), 'utf8');
+
+  const created = runCli([
+    ...cliBase(),
+    'drafts',
+    'create',
+    '--kind',
+    'application-bundle',
+    '--target',
+    bundleName,
+    '--payload-file',
+    path,
+    '--command-id',
+    `e2e:schema:create:${bundleName}`,
+  ]);
+  expect(created.status).toBe(0);
+  expect(created.envelope.ok).toBe(true);
+  const rel = created.envelope.data?.entity?.properties?.rel;
+  expect(rel).toMatch(/^draft:/);
+
+  const validated = runCli([
+    ...cliBase(),
+    'drafts',
+    'validate',
+    rel!,
+    '--command-id',
+    `e2e:schema:validate:${bundleName}`,
+  ]);
+  expect(validated.status).toBe(0);
+  expect(validated.envelope.data?.entity?.properties?.status).toBe('ready');
 });

@@ -16,6 +16,22 @@ import {
 
 const DRAFT_ACTIVATION_PREFIX = 'meta/activation:draft-';
 
+const PAYLOAD_SCHEMAS_FIELD = 'x-ui4a-payload-schemas';
+
+// T50 Phase 5 / D69.5:零内嵌真相的 schema 语法糖——只读取 meta/drafts create
+// 动作 fields 顶层的 x-ui4a-payload-schemas 合同注解(kind → { schema,
+// example? })并原样透传;create 动作缺失、注解缺失或 kind 未被服务端注解
+// 时诚实输出空表——不造默认 schema,也没有本地 kind 白名单。
+function payloadSchemas(entity: Record<string, unknown>, kind?: string): Record<string, unknown> {
+  const actions = Array.isArray(entity.actions) ? entity.actions.filter(record) : [];
+  const create = actions.find((row) => row.name === 'create');
+  const fields = create !== undefined && record(create.fields) ? create.fields : undefined;
+  const annotation = fields?.[PAYLOAD_SCHEMAS_FIELD];
+  if (!record(annotation)) return {};
+  if (kind === undefined) return annotation;
+  return kind in annotation ? { [kind]: annotation[kind] } : {};
+}
+
 async function draftExec(client: Ui4aHttpClient, rel: string, actionName: string, params: unknown) {
   const body = writeIdentity(client, { rel, action: actionName, params });
   const path = metaExecPath(client.config);
@@ -56,6 +72,13 @@ async function drafts(args: ParsedArgs, client: Ui4aHttpClient): Promise<Success
       payload,
     });
     return envelope('drafts.create', response.data);
+  }
+  if (verb === 'schema') {
+    const response = await client.get(entityPath('meta/drafts', client.config));
+    const entity = dataOf(response);
+    return envelope('drafts.schema', {
+      schemas: payloadSchemas(entity, flagString(args, 'kind')),
+    });
   }
   const id = args.words[2];
   if (id === undefined) throw new CliError('USAGE', `drafts ${verb ?? ''} requires draft id`, 2);
@@ -107,7 +130,7 @@ async function drafts(args: ParsedArgs, client: Ui4aHttpClient): Promise<Success
   if (!['validate', 'submit', 'abandon'].includes(verb ?? ''))
     throw new CliError(
       'USAGE',
-      'drafts supports create|get|list|revise|validate|diff|submit|watch|abandon',
+      'drafts supports create|get|list|revise|schema|validate|diff|submit|watch|abandon',
       2,
     );
   const response = await draftExec(client, rel, verb!, {

@@ -173,3 +173,130 @@ describe('T48 CLI application-bundle Draft authoring', () => {
     expect(fetcher, 'no write may leave the CLI for approve').toHaveBeenCalledTimes(1);
   });
 });
+
+// ---- T50 Phase 5 / D69.5:`drafts schema` 语法糖 ----
+// 零内嵌真相:只读取 meta/drafts create 动作 fields 顶层的
+// x-ui4a-payload-schemas 合同注解并原样透传(kind → { schema, example? });
+// 动作缺失、无注解或 kind 未被服务端注解时诚实输出空表,不造默认 schema,
+// 也没有本地 kind 白名单。读失败沿既有 HTTP 错误 envelope。
+
+const PAYLOAD_ANNOTATION: Record<string, unknown> = {
+  'application-bundle': {
+    schema: { type: 'object', required: ['schema', 'bundle'], properties: {} },
+    example: BUNDLE,
+  },
+  'flow-definition': { schema: {} },
+  'agent-definition': { schema: {} },
+};
+
+function draftsEntity(fields: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    properties: { rel: 'meta/drafts' },
+    entities: [],
+    actions: [
+      {
+        name: 'create',
+        href: '/_meta/api/exec',
+        fields: {
+          $schema: 'http://json-schema.org/draft-07/schema#',
+          type: 'object',
+          properties: { kind: { type: 'string' }, payload: {} },
+          required: ['kind', 'payload'],
+          additionalProperties: false,
+          'x-ui4a-payload-schemas': PAYLOAD_ANNOTATION,
+          ...fields,
+        },
+      },
+    ],
+  };
+}
+
+describe('T50 CLI drafts schema sugar', () => {
+  it('documents the drafts schema read sugar in HELP', () => {
+    expect(HELP).toContain('drafts schema [--kind KIND]');
+  });
+
+  it('reads the annotated payload schemas from the meta create action verbatim', async () => {
+    const urls: string[] = [];
+    const fetcher = vi.fn<typeof fetch>(async (input) => {
+      urls.push(String(input));
+      return response(draftsEntity());
+    });
+    const config = await loadConfig(
+      { scope: 'development', configPath: '/definitely/missing' },
+      { UI4A_BASE_URL: 'https://ui4a.internal', UI4A_TOKEN: 'opaque-token' },
+    );
+    const result = await runCommand(
+      parseArgs(['drafts', 'schema']),
+      new Ui4aHttpClient(config, fetcher),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.command).toBe('drafts.schema');
+    expect(urls).toEqual([
+      'https://ui4a.internal/_meta/api/entity?rel=meta%2Fdrafts&scope=development',
+    ]);
+    // 逐字节等值透传:CLI 不改写、不裁剪、不补默认。
+    expect(result.data).toEqual({ schemas: PAYLOAD_ANNOTATION });
+  });
+
+  it('filters to a single kind entry with --kind', async () => {
+    const fetcher = vi.fn<typeof fetch>(async () => response(draftsEntity()));
+    const config = await loadConfig(
+      { scope: 'development', configPath: '/definitely/missing' },
+      {},
+    );
+    const result = await runCommand(
+      parseArgs(['drafts', 'schema', '--kind', 'application-bundle']),
+      new Ui4aHttpClient(config, fetcher),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toEqual({
+      schemas: { 'application-bundle': PAYLOAD_ANNOTATION['application-bundle'] },
+    });
+  });
+
+  it('reports honest empty schemas when the create action or annotation is missing', async () => {
+    // JSON 序列化丢弃 undefined 键,与真实 wire 上"无注解"的形状一致。
+    const withoutAnnotation = JSON.parse(
+      JSON.stringify(draftsEntity({ 'x-ui4a-payload-schemas': undefined })),
+    ) as Record<string, unknown>;
+    const withoutActions = { properties: { rel: 'meta/drafts' } };
+    const queue: Record<string, unknown>[] = [withoutAnnotation, withoutActions];
+    const fetcher = vi.fn<typeof fetch>(async () => response(queue.shift()));
+    const config = await loadConfig(
+      { scope: 'development', configPath: '/definitely/missing' },
+      {},
+    );
+
+    const first = await runCommand(
+      parseArgs(['drafts', 'schema']),
+      new Ui4aHttpClient(config, fetcher),
+    );
+    expect(first.ok).toBe(true);
+    expect(first.data).toEqual({ schemas: {} });
+
+    const second = await runCommand(
+      parseArgs(['drafts', 'schema']),
+      new Ui4aHttpClient(config, fetcher),
+    );
+    expect(second.ok).toBe(true);
+    expect(second.data).toEqual({ schemas: {} });
+  });
+
+  it('reports honest empty schemas for a kind the server did not annotate', async () => {
+    const fetcher = vi.fn<typeof fetch>(async () => response(draftsEntity()));
+    const config = await loadConfig(
+      { scope: 'development', configPath: '/definitely/missing' },
+      {},
+    );
+    const result = await runCommand(
+      parseArgs(['drafts', 'schema', '--kind', 'not-a-draft-kind']),
+      new Ui4aHttpClient(config, fetcher),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toEqual({ schemas: {} });
+  });
+});
