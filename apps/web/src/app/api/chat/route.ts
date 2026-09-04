@@ -7,7 +7,9 @@
 //   关键词/业务实体特判；Presentation 失败不改变 Chat outcome。
 // - inline(T9 Phase B 起为 SSE 流式,text/event-stream):服务端只组装
 //   LLM driver(default/auto 均是 llm),runAgent 循环过本源
-//   HTTP 合同(actor=agent,principal=user:<sessionId>,channel=chat)——
+//   HTTP 合同(actor=agent,channel=chat;principal=所有权轴[D68:生产=认证
+//   principal,本地 demo=user:<sessionId>],sessionId 只是会话分组键,
+//   绝不参与身份推导)——
 //   "agent 走合同"字面成立;onStep 每步推一帧
 //   {type:'step', message:{role:'assistant',text}, rel, activity, eventSeq?}
 //   (text 为 trail.ts stepToMessage 口径的机器层原文;T24 Phase B 起
@@ -207,8 +209,7 @@ export async function POST(request: Request) {
     return Response.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { goal, turnId, driver: requested, mode, clientView } = parsed;
-  const sessionId = productionIdentity?.principal ?? parsed.sessionId;
+  const { goal, turnId, driver: requested, mode, clientView, sessionId } = parsed;
   const principal = productionIdentity?.principal ?? `user:${sessionId}`;
   const presentationPrincipal = productionIdentity?.principal ?? LOCAL_PRESENTATION_PRINCIPAL;
   // Presentation 的目标 rel 在身份解析后才出现:授予集合(grantedApplications)

@@ -8,6 +8,18 @@ const AGENT_CLIENT_SECRET = 'agent-client-secret-fixture';
 const APP_ORIGIN = 'https://ui4a.internal';
 const INTERNAL_APP_ORIGIN = 'https://ui4a.home-linux.tail.styleofwong.com';
 const AGENT_CLIENT_ID = 'ui4a-agent';
+// D68.2:缺省 sessionId 由服务端代铸(UUID v4)。
+const MINTED_SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+// 两个 policy 应用全授予的 human 身份(多 scope 交换/Broker 用例共用 fixture)。
+const MULTI_SCOPE_HUMAN = {
+  authorizationMode: 'credential',
+  actor: 'human',
+  principal: 'human-alice',
+  scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development', 'ui4a:policy:publishing'],
+  grantedApplications: ['development', 'publishing'],
+  channel: 'oidc',
+  humanApprovalEligible: true,
+};
 
 const mocks = vi.hoisted(() => ({
   appendEvent: vi.fn(),
@@ -16,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   exchangeDelegatedCredential: vi.fn(),
   fetcher: vi.fn(),
   getEngine: vi.fn(),
+  listEvents: vi.fn(),
   preflight: vi.fn(),
   present: vi.fn(),
   readLog: vi.fn(),
@@ -23,10 +36,15 @@ const mocks = vi.hoisted(() => ({
   runAgent: vi.fn(),
 }));
 
-vi.mock('@ui4a/db/events', () => ({
-  appendEvent: mocks.appendEvent,
-  readLog: mocks.readLog,
-}));
+vi.mock('@ui4a/db/events', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@ui4a/db/events')>();
+  return {
+    ...actual,
+    appendEvent: mocks.appendEvent,
+    readLog: mocks.readLog,
+    listEvents: mocks.listEvents,
+  };
+});
 
 vi.mock('../../../engine/service', () => ({
   getDb: () => ({ kind: 'test-db' }),
@@ -102,6 +120,19 @@ interface AgentRunContext {
 
 function browserError(code: 'session_not_found' | 'session_cookie_invalid' | 'session_expired') {
   return Object.assign(new Error(code), { name: 'BrowserAuthenticationError', code });
+}
+
+function preflightSettings(agentScopes: string[]) {
+  return {
+    settings: {
+      service: {
+        publicOrigin: APP_ORIGIN,
+        trustedRequestOrigins: [APP_ORIGIN, INTERNAL_APP_ORIGIN],
+      },
+      auth: { mode: 'oidc', oidc: { agentScopes, agentClientId: AGENT_CLIENT_ID } },
+    },
+    secrets: {},
+  };
 }
 
 function request(
@@ -192,26 +223,15 @@ beforeEach(() => {
     }),
   });
   mocks.preflight.mockReset();
-  mocks.preflight.mockReturnValue({
-    settings: {
-      service: {
-        publicOrigin: APP_ORIGIN,
-        trustedRequestOrigins: [APP_ORIGIN, INTERNAL_APP_ORIGIN],
-      },
-      auth: {
-        mode: 'oidc',
-        oidc: {
-          agentScopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development'],
-          agentClientId: AGENT_CLIENT_ID,
-        },
-      },
-    },
-    secrets: {},
-  });
+  mocks.preflight.mockReturnValue(
+    preflightSettings(['ui4a:read', 'ui4a:write', 'ui4a:policy:development']),
+  );
   mocks.present.mockReset();
   mocks.present.mockResolvedValue({ schemaVersion: 1, requestId: 'req', status: 'ready' });
   mocks.readLog.mockReset();
   mocks.readLog.mockResolvedValue([]);
+  mocks.listEvents.mockReset();
+  mocks.listEvents.mockResolvedValue([]);
   mocks.resolveIdentity.mockReset();
   mocks.resolveIdentity.mockImplementation(async (identityRequest: Request) => {
     const authorization = identityRequest.headers.get('authorization');
@@ -361,36 +381,15 @@ describe('production chat turn credential boundary', () => {
   it('carries every granted agent policy scope into the exchange (rel coverage is per-request)', async () => {
     // D51:human 与 agentScopes 交集含两个 policy 应用时,交换请求必须全量携带——
     // 接收端授权按授予集合 × 归属逐请求判定。
-    mocks.preflight.mockReturnValueOnce({
-      settings: {
-        service: {
-          publicOrigin: APP_ORIGIN,
-          trustedRequestOrigins: [APP_ORIGIN, INTERNAL_APP_ORIGIN],
-        },
-        auth: {
-          mode: 'oidc',
-          oidc: {
-            agentScopes: [
-              'ui4a:read',
-              'ui4a:write',
-              'ui4a:policy:development',
-              'ui4a:policy:publishing',
-            ],
-            agentClientId: AGENT_CLIENT_ID,
-          },
-        },
-      },
-      secrets: {},
-    });
-    mocks.resolveIdentity.mockImplementationOnce(async () => ({
-      authorizationMode: 'credential',
-      actor: 'human',
-      principal: 'human-alice',
-      scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development', 'ui4a:policy:publishing'],
-      grantedApplications: ['development', 'publishing'],
-      channel: 'oidc',
-      humanApprovalEligible: true,
-    }));
+    mocks.preflight.mockReturnValueOnce(
+      preflightSettings([
+        'ui4a:read',
+        'ui4a:write',
+        'ui4a:policy:development',
+        'ui4a:policy:publishing',
+      ]),
+    );
+    mocks.resolveIdentity.mockImplementationOnce(async () => MULTI_SCOPE_HUMAN);
 
     const response = await POST(
       request(
@@ -424,36 +423,15 @@ describe('production chat turn credential boundary', () => {
   it('passes every granted policy scope to the Presentation Broker for per-rel coverage selection', async () => {
     // D51:present 携带凭证授予集合(grantedApplications):目标 rel(如 publishing
     // 的 post)在身份解析后才出现,授权由 Broker 咽喉点按授予集合 × 归属完成。
-    mocks.preflight.mockReturnValueOnce({
-      settings: {
-        service: {
-          publicOrigin: APP_ORIGIN,
-          trustedRequestOrigins: [APP_ORIGIN, INTERNAL_APP_ORIGIN],
-        },
-        auth: {
-          mode: 'oidc',
-          oidc: {
-            agentScopes: [
-              'ui4a:read',
-              'ui4a:write',
-              'ui4a:policy:development',
-              'ui4a:policy:publishing',
-            ],
-            agentClientId: AGENT_CLIENT_ID,
-          },
-        },
-      },
-      secrets: {},
-    });
-    mocks.resolveIdentity.mockImplementationOnce(async () => ({
-      authorizationMode: 'credential',
-      actor: 'human',
-      principal: 'human-alice',
-      scopes: ['ui4a:read', 'ui4a:write', 'ui4a:policy:development', 'ui4a:policy:publishing'],
-      grantedApplications: ['development', 'publishing'],
-      channel: 'oidc',
-      humanApprovalEligible: true,
-    }));
+    mocks.preflight.mockReturnValueOnce(
+      preflightSettings([
+        'ui4a:read',
+        'ui4a:write',
+        'ui4a:policy:development',
+        'ui4a:policy:publishing',
+      ]),
+    );
+    mocks.resolveIdentity.mockImplementationOnce(async () => MULTI_SCOPE_HUMAN);
     mocks.runAgent.mockImplementationOnce(
       async (_driver: unknown, _goal: unknown, context: AgentRunContext) => {
         context.onPresentation?.({
@@ -708,6 +686,39 @@ describe('production chat turn credential boundary', () => {
     expect(mocks.fetcher).not.toHaveBeenCalled();
   });
 
+  it('keeps one principal across multiple client sessionIds (D68.1)', async () => {
+    // D68.1:sessionId 是会话分组键,同一认证 principal 名下多会话并存。
+    for (const sessionId of ['session-alpha', 'session-beta']) {
+      const response = await POST(
+        request({ goal: { verb: 'browse articles' }, sessionId, turnId: `turn-${sessionId}` }),
+      );
+      expect(response.status).toBe(200);
+      await response.text();
+    }
+    const eventInputs = mocks.appendEvent.mock.calls.map((call) => call[1]);
+    expect(eventInputs.every((event) => event.principal === 'human-alice')).toBe(true);
+    expect(eventInputs.every((event) => event.rel !== 'chat:human-alice')).toBe(true);
+    for (const sessionId of ['session-alpha', 'session-beta']) {
+      const group = eventInputs.filter((event) => event.rel === `chat:${sessionId}`);
+      expect(group.length).toBeGreaterThan(0);
+      expect(group.every((event) => event.detail.sessionId === sessionId)).toBe(true);
+    }
+  });
+
+  it('mints a UUID sessionId when the request omits one and groups events under it', async () => {
+    const response = await POST(
+      request({ goal: { verb: 'browse articles' }, turnId: 'turn-mint' }),
+    );
+    expect(response.status).toBe(200);
+    const sessionFrame = (await frames(response)).find((frame) => frame.type === 'session');
+    const minted = String(sessionFrame?.sessionId);
+    expect(minted).toMatch(MINTED_SESSION_ID);
+    const eventInputs = mocks.appendEvent.mock.calls.map((call) => call[1]);
+    expect(eventInputs.length).toBeGreaterThan(0);
+    expect(eventInputs.every((event) => event.rel === `chat:${minted}`)).toBe(true);
+    expect(eventInputs.every((event) => event.principal === 'human-alice')).toBe(true);
+  });
+
   it('uses the trusted principal and never serializes human token, exchanged token, or client secret', async () => {
     const response = await POST(
       request(
@@ -719,6 +730,9 @@ describe('production chat turn credential boundary', () => {
     const eventInputs = mocks.appendEvent.mock.calls.map((call) => call[1]);
     expect(eventInputs.length).toBeGreaterThan(0);
     expect(eventInputs.every((event) => event.principal === 'human-alice')).toBe(true);
+    // D68.4:自报 sessionId 是合法分组键(以 rel 落库/回显是预期行为),伪造值
+    // 绝不进入任何身份绑定字段(principal 恒为认证主体)。
+    expect(eventInputs.some((event) => event.rel === 'chat:forged-root')).toBe(true);
 
     const observable = secretsIn({
       sse,
@@ -732,7 +746,6 @@ describe('production chat turn credential boundary', () => {
     expect(observable).not.toContain(HUMAN_ACCESS_TOKEN);
     expect(observable).not.toContain(EXCHANGED_ACCESS_TOKEN);
     expect(observable).not.toContain(AGENT_CLIENT_SECRET);
-    expect(observable).not.toContain('forged-root');
   });
 
   it('keeps durable delegation token-free and leaves credential acquisition to the Worker Activity', async () => {
@@ -758,12 +771,20 @@ describe('production chat turn credential boundary', () => {
       ),
     );
     expect(response.status).toBe(200);
-    await response.text();
+    const receipt = JSON.parse(await response.text()) as Record<string, unknown>;
+    // D68:回执与 chat-turn 的 sessionId 为请求会话值;dispatch 不携带 sessionId。
+    expect(receipt.sessionId).toBe('forged-root');
     expect(mocks.exchangeDelegatedCredential).not.toHaveBeenCalled();
     expect(mocks.dispatchDelegation).toHaveBeenCalledTimes(1);
     const dispatch = mocks.dispatchDelegation.mock.calls[0]![0] as Record<string, unknown>;
     expect(dispatch.principal).toBe('human-alice');
     expect(dispatch.scope).toBe('development');
+    const chatTurn = mocks.appendEvent.mock.calls
+      .map((call) => call[1])
+      .find((event) => event.kind === 'chat-turn');
+    expect(chatTurn?.rel).toBe('chat:forged-root');
+    expect(chatTurn?.principal).toBe('human-alice');
+    expect(chatTurn?.detail.sessionId).toBe('forged-root');
     expect(secretsIn(dispatch)).not.toContain(HUMAN_ACCESS_TOKEN);
     expect(secretsIn(dispatch)).not.toContain(EXCHANGED_ACCESS_TOKEN);
     expect(secretsIn(dispatch)).not.toContain(AGENT_CLIENT_SECRET);
