@@ -16,6 +16,7 @@ import { flowNameFromMetaRel } from '@ui4a/shared';
 
 import { canTransition } from '../core/machine';
 import { actionEffects } from '../core/parse';
+import type { FoldSnapshot } from '../projection/fold/state';
 import { flowForInstance } from './judge';
 import type { DefinitionVersionTable } from './judge';
 import type { ExecRequest, RequestIdentityAudit } from './judge';
@@ -46,6 +47,10 @@ export interface EngineEvent {
     | 'definition-rejected'
     | 'definition-revised'
     | 'definition-deprecated'
+    // T52 受治理应用停用(D71.1/D71.2):meta 裁决路径在 action-executed 同批
+    // 伴随追加(detail = ApplicationDeprecatedDetail,见 projection/fold);
+    // fold 级联:applications 删键、deprecatedApplications 审计集、定义置废。
+    | 'application-deprecated'
     // T6 plan-executed:批量裁决记录事件(executePlan 每计划恰一条;标记性
     // 事件——状态由同批各步伴随事件重放,fold 不物化,见 plan.ts)。
     | 'plan-executed'
@@ -245,7 +250,7 @@ export function applyMetaEdit(
 export function applyEffects(
   request: ExecRequest,
   effects: readonly EffectDefinition[],
-  snapshot: EngineSnapshot,
+  snapshot: FoldSnapshot,
   deps: EffectDeps,
 ): EffectOutcome {
   const instance = snapshot.instances[request.rel];
@@ -407,6 +412,11 @@ export function applyEffects(
       // capability-registered 以"表不存在"为过渡期 vacuous pass 信号)。
       ...(snapshot.capabilities !== undefined
         ? { capabilities: { ...snapshot.capabilities } }
+        : {}),
+      // T52:deprecatedApplications 停用审计表随行,与 applications 同口径
+      // (仅在场时携带;经 application-deprecated 折叠落表,exec 不产停用)。
+      ...(snapshot.deprecatedApplications !== undefined
+        ? { deprecatedApplications: { ...snapshot.deprecatedApplications } }
         : {}),
       artifacts: { ...(snapshot.artifacts ?? {}) },
       threads: snapshot.threads ?? {},

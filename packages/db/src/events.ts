@@ -31,6 +31,8 @@ export { listEvents };
  *  engine fold 忽略——纯留痕);
  *  application-seeded 为 T10 Phase B application 定义种子(boot 装载,
  *  与 engine LogEventKind 对齐——机械适配);
+ *  application-deprecated 为 T52 受治理应用停用事件(engine meta 裁决路径
+ *  伴随追加;fold 级联见 engine,D71.1);
  *  capability-seeded 为 T13 Phase C capability 定义种子(boot 装载,
  *  与 engine LogEventKind 对齐——机械适配)。 */
 export type EventKind =
@@ -45,6 +47,7 @@ export type EventKind =
   | 'seed'
   | 'definition-seeded'
   | 'application-seeded'
+  | 'application-deprecated'
   | 'capability-seeded'
   | 'capability-artifact-created'
   | 'function-execution-finalized'

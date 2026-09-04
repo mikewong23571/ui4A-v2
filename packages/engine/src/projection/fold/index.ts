@@ -34,6 +34,7 @@ import {
   type DefinitionCandidateAppliedDetail,
 } from '../../submission/apply';
 import { applyApplicationSeeded, applyCapabilitySeeded, applySeed } from './apply-seed';
+import { applyApplicationDeprecated } from './apply-application-deprecated';
 import {
   applyConfirmationDecision,
   applyConfirmationRequested,
@@ -48,9 +49,11 @@ import {
   applyDefinitionSubmitted,
 } from './apply-definition';
 import type { LogEvent } from './log-event';
+import type { FoldSnapshot } from './state';
 import { applyThreadEvent } from './apply-thread';
 
 export * from './log-event';
+export * from './state';
 
 /** 由事件参数(带出处)还原 exec 请求的求值输入。 */
 function toExecRequest(event: LogEvent): ExecRequest {
@@ -144,6 +147,9 @@ function applyExecuted(
  * - definition-seeded(T4):建立 definitions 条目 + lifecycle 实例(幂等);
  * - application-seeded(T10):活跃 app 定义落 applications 表(幂等;
  *   seeded 即 active,键集 = app-known 已激活集合);
+ * - application-deprecated(T52/D71.1):受治理应用停用级联——applications
+ *   删键、deprecatedApplications 审计集留痕、app === name 的定义条目置
+ *   deprecated(幂等:重复停用审计首写为准);
  * - capability-seeded(T13):已注册 capability 定义落 capabilities 表(幂等;
  *   seeded 即 registered,键集 = capability-registered 已注册集合);
  * - definition-edited:伴随事件——工作副本已由同批 action-executed 重放
@@ -164,12 +170,12 @@ function applyExecuted(
 export function fold(
   events: readonly LogEvent[],
   deps: { flows: Readonly<Record<string, FlowDefinition>> },
-  initial?: EngineSnapshot,
-): EngineSnapshot {
+  initial?: FoldSnapshot,
+): FoldSnapshot {
   // T4:lifecycle 常量自动注入(保留名)——meta 动作的 action-executed 重放
   // 需要 definition-lifecycle,调用方无须自带。
   const flows = withLifecycleFlows(deps.flows);
-  let snapshot: EngineSnapshot =
+  let snapshot: FoldSnapshot =
     initial === undefined
       ? {
           instances: {},
@@ -203,6 +209,11 @@ export function fold(
           // T13:capabilities 表随行,与 applications 同口径(仅在场时携带;
           // capability-registered 过渡期 vacuous pass 信号)。
           ...(initial.capabilities !== undefined ? { capabilities: initial.capabilities } : {}),
+          // T52:deprecatedApplications 停用审计表随行,与 applications 同口径
+          // (仅在场时携带;经 application-deprecated 折叠落表)。
+          ...(initial.deprecatedApplications !== undefined
+            ? { deprecatedApplications: initial.deprecatedApplications }
+            : {}),
           artifacts: initial.artifacts ?? {},
           threads: initial.threads ?? {},
         };
@@ -216,6 +227,9 @@ export function fold(
         break;
       case 'application-seeded':
         snapshot = applyApplicationSeeded(snapshot, event);
+        break;
+      case 'application-deprecated':
+        snapshot = applyApplicationDeprecated(snapshot, event);
         break;
       case 'capability-seeded':
         snapshot = applyCapabilitySeeded(snapshot, event);

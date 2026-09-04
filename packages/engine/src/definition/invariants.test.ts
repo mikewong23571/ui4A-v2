@@ -26,7 +26,7 @@ import {
   postStatusFlow,
   seedSnapshot,
 } from '../core/fixtures';
-import { fold, type LogEvent } from '../projection/fold/index';
+import { fold, type FoldSnapshot, type LogEvent } from '../projection/fold/index';
 import { DEFINITION_LIFECYCLE_FLOW } from './lifecycle';
 import { definitionSeedEvent, executeMeta } from './meta';
 import { validateDefinition } from './invariants';
@@ -693,7 +693,7 @@ describe('submit — capability-registered(快照 capabilities 表接线)', () =
   });
 
   it('快照无 capabilities 表(过渡期)→ capability-registered vacuous pass,submit 不受阻', () => {
-    // capability 即使指向未注册名,无表即不校验(Phase C 落表后长牙)。
+    // app 即使指向不存在的 application,无表即不校验(Phase B 后长牙)。
     const { snapshot } = draftFlow(withProposalCapability('nonexistent'));
     const submitted = executeMeta(
       { rel: 'meta/flow:article-drafting', action: 'submit', actor: 'agent' },
@@ -708,5 +708,98 @@ describe('submit — capability-registered(快照 capabilities 表接线)', () =
       checks: Array<{ name: string; pass: boolean }>;
     };
     expect(detail.checks.find((c) => c.name === 'capability-registered')?.pass).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T52(D71.1)应用停用级联后的 app-known:停用事件把 applications 删键、
+// 该 app 的定义条目级联置 status:'deprecated'——app-known 不变式因此保持
+// 成立:级联置废的条目不再是活跃定义,不进入激活求值;检查以「停用后
+// applications 键集」为注册表时,幸存 app 的活跃定义照常通过,而引用停用
+// app 的新候选被拒(fail-closed,D71.5/D71.8 烧毁集意图)。
+// validateDefinition 是 draft 级检查(入参 = 候选定义 + 注册表),不读
+// state.definitions 的条目状态——谓词无需为 status:'deprecated' 豁免,
+// 以下测试钉住该口径。
+// ---------------------------------------------------------------------------
+
+describe('app-known — 应用停用级联后的 state(T52/D71.1)', () => {
+  const defaultApp: ApplicationDefinition = {
+    name: 'default',
+    title: '默认应用',
+    intent: '无归属 flow 的兜底归组',
+  };
+  const publishingApp: ApplicationDefinition = {
+    name: 'publishing',
+    title: '发布',
+    intent: '文章生产与发布',
+  };
+
+  function appSeedEvent(seq: number, app: ApplicationDefinition): LogEvent {
+    return {
+      seq,
+      kind: 'application-seeded',
+      rel: `meta/application:${app.name}`,
+      detail: { name: app.name, definition: app },
+    };
+  }
+
+  function appDeprecatedEvent(seq: number, name: string): LogEvent {
+    return {
+      seq,
+      kind: 'application-deprecated',
+      rel: `meta/application:${name}`,
+      action: 'deprecate',
+      actor: 'human',
+      detail: { name, commandId: 'cmd:t52-deprecate', reason: '走查残留清理' },
+    };
+  }
+
+  /** 停用 publishing 后的折叠态(post-status 级联置废;comment-moderation 幸存)。 */
+  function deprecatedState(): FoldSnapshot {
+    return fold(
+      [
+        appSeedEvent(1, defaultApp),
+        appSeedEvent(2, publishingApp),
+        definitionSeedEvent(3, { ...postStatusFlow, app: 'publishing' }),
+        definitionSeedEvent(4, commentModerationFlow),
+        appDeprecatedEvent(5, 'publishing'),
+      ],
+      { flows: {} },
+    );
+  }
+
+  it('应用已停用 + 定义已级联置废:app-known 对停用后 state 通过', () => {
+    const state = deprecatedState();
+    // 级联口径:post-status 置废、applications 删键、审计集留痕。
+    expect(state.definitions?.['post-status']?.status).toBe('deprecated');
+    expect(state.applications && 'publishing' in state.applications).toBe(false);
+    expect(state.deprecatedApplications).toEqual({
+      publishing: { name: 'publishing', reason: '走查残留清理', seq: 5 },
+    });
+
+    // 注册表接线与 meta.ts submit 同口径:停用后 applications 键集。
+    const registriesAfter = {
+      guards: seedGuardRegistry,
+      applications: new Set(Object.keys(state.applications ?? {})),
+    };
+    // 幸存活跃定义(app 缺省 → 'default')通过 app-known;级联置废条目不再是
+    // 活跃定义,不进入求值——检查对「应用已停用 + 定义已级联置废」的 state 成立。
+    expect(state.definitions?.['comment-moderation']?.status).toBe('active');
+    expect(
+      byName(validateDefinition(commentModerationFlow, registriesAfter))['app-known'].pass,
+    ).toBe(true);
+  });
+
+  it('引用停用 app 的新候选 → app-known fail(fail-closed:停用面不可经新提案复活)', () => {
+    const state = deprecatedState();
+    const registriesAfter = {
+      guards: seedGuardRegistry,
+      applications: new Set(Object.keys(state.applications ?? {})),
+    };
+    const candidate: FlowDefinition = { ...articleDraftingFlow, app: 'publishing' };
+
+    const check = byName(validateDefinition(candidate, registriesAfter))['app-known'];
+    expect(check.pass).toBe(false);
+    expect(check.detail?.join('\n')).toContain('publishing');
   });
 });

@@ -20,6 +20,9 @@ import type { EngineEvent } from '../../execution/effects';
  *  纯留痕,fold 不改状态)+
  *  application-seeded(T10 Phase B:application 定义种子,boot 装载;
  *  fold 落 applications 表——seeded 即 active,键集 = app-known 已激活集合)+
+ *  application-deprecated(T52/D71.1:受治理应用停用事件,engine meta 裁决
+ *  路径伴随追加——经 EngineEvent kind 继承进入本联合,无日志层独立字面量;
+ *  fold 级联删 applications 键、落 deprecatedApplications 审计表)+
  *  capability-seeded(T13 Phase C:capability 定义种子,boot 装载;
  *  fold 落 capabilities 表——seeded 即 registered,键集 =
  *  capability-registered 已注册集合)。 */
@@ -78,13 +81,25 @@ export interface SeedDetail {
 
 /**
  * application-seeded 事件的 detail 载荷(T10 Phase B;机器可重放:定义全文入日志)。
- * 与 DefinitionSeededDetail 同哲学(seeded 即 active),但 application 无版本/
- * 生命周期(本 track 不扩展 meta 动词)——applications 表的存在即激活,
- * 键集就是 app-known 不变式的已激活集合。
+ * 与 DefinitionSeededDetail 同哲学(seeded 即 active);T52 起有停用动词
+ * (application-deprecated 删键,见 apply-application-deprecated)——
+ * applications 表的存在即激活,键集就是 app-known 不变式的已激活集合。
  */
 export interface ApplicationSeededDetail {
   name: string;
   definition: ApplicationDefinition;
+}
+
+/**
+ * application-deprecated 事件的 detail 载荷(T52/D71.1)。
+ * name = 被停用 application;reason? = 可选停用理由(审计留痕);
+ * commandId = 触发停用的治理命令标识(与 Draft/命令回执 provenance 同口径,
+ * fold 不消费、按载荷合同校验在场)。
+ */
+export interface ApplicationDeprecatedDetail {
+  name: string;
+  reason?: string;
+  commandId: string;
 }
 
 /**

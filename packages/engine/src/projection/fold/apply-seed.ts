@@ -10,11 +10,12 @@ import type {
   LogEvent,
   SeedDetail,
 } from './log-event';
+import type { FoldSnapshot } from './state';
 
 /** seed 合并:只补缺、不覆盖(幂等种子装载;重复 seed 事件无害)。
  *  T4 Phase B:新装实例按当时活跃定义盖出生版本戳(空库序:定义先于业务 seed,
  *  天然可解析;定义未入日志的 flow 不盖戳,保持既有形状)。 */
-export function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
+export function applySeed(snapshot: FoldSnapshot, event: LogEvent): FoldSnapshot {
   const detail = event.detail as Partial<SeedDetail> | undefined;
   if (detail === undefined || typeof detail !== 'object' || detail.instances === undefined) {
     throw new Error(`seed 事件(seq=${event.seq})缺少 detail.instances`);
@@ -54,13 +55,19 @@ export function applySeed(snapshot: EngineSnapshot, event: LogEvent): EngineSnap
     // T13:capabilities 表随行,与 applications 同口径(仅在场时携带,
     // 缺省不物化为 {}——capability-registered 的过渡期 vacuous pass 信号)。
     ...(snapshot.capabilities !== undefined ? { capabilities: { ...snapshot.capabilities } } : {}),
+    // T52:deprecatedApplications 停用审计表随行,与 applications 同口径
+    // (仅在场时携带;seed 只补实体与集合,不动停用审计)。
+    ...(snapshot.deprecatedApplications !== undefined
+      ? { deprecatedApplications: { ...snapshot.deprecatedApplications } }
+      : {}),
   };
 }
 
 /**
  * application-seeded 重放:活跃 app 定义落 applications 表(幂等:已存在跳过)。
  * seeded 即 active——applications 表的键集即 app-known 不变式的已激活集合;
- * 本 track 无 app 生命周期动词,表只经本事件增长(不物化 lifecycle 实例,
+ * 表经本事件增长、经 application-deprecated(T52/D71.1)删键(停用级联见
+ * apply-application-deprecated;此处只管装载,不物化 lifecycle 实例,
  * 与 definition-seeded 的 definitions 表/lifecycle 实例双轨不同)。
  */
 export function applyApplicationSeeded(snapshot: EngineSnapshot, event: LogEvent): EngineSnapshot {
