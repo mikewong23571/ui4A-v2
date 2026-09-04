@@ -1,6 +1,6 @@
 # T52 Application Deprecation — Plan
 
-> 状态:规划完成,**未开工**(用户裁定:先 track + 设计 review,不立即执行)。
+> 状态:**已完成**(2026-09-05,五阶段全闭环;US1–US6 全绿,US7 部署站走查待发布后执行)。
 > 执行纪律:严格 TDD(先红后绿);每任务完成即 commit + git note;Phase 结束跑
 > Phase Checkpoint(自治验收);GR1–GR5 全程生效。spec §6 已含设计复审记录,
 > 执行期发现新事实按 workflow「Task Correction」回写 plan 并注明。
@@ -86,15 +86,18 @@
   补折;invariants 以真进程重启覆盖重放一致;口径 C 如实记录)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `6f22ce33`
 
-## Phase 5 — 收口
+## Phase 5 — 收口 [checkpoint: 1d92b2e9]
 
-- [ ] Task: 全量门禁:`pnpm check`(governance:strict)+ `CI=true pnpm e2e` +
-  `CI=true pnpm e2e invariants`
-- [ ] Task: 文档同步(AGENTS.md 事件词汇/模块行;GOAL.md 修订判定显式记录)
-- [ ] Task: Track 收口(archive、registry、DONE;部署站清理走查 US7 待用户按
+- [x] Task: 全量门禁:`pnpm check`(governance:strict)+ `CI=true pnpm e2e` +
+  `CI=true pnpm e2e invariants` `1d92b2e9`
+  (check 4034 passed/0 failed;e2e 全量 79 passed/26 skipped;invariants 20/8)
+- [x] Task: 文档同步(AGENTS.md 事件词汇/模块行;GOAL.md 修订判定显式记录) `1d92b2e9`
+  (AGENTS engine 双伪流/应用生命周期行 + drafts D71.5 谓词行;GOAL「App 创建边界」
+  补对称死亡段;product/tech-stack/guidelines 判定无需修订,理由入 git note)
+- [x] Task: Track 收口(archive、registry、DONE;部署站清理走查 US7 待用户按
   DEPLOYMENT 流程发布后另行执行)
 
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `1d92b2e9`
 
 ## 附录 A — 开工前事实复核记录(2026-09-04,Phase 0 Task 2 产出)
 
