@@ -1353,3 +1353,33 @@
   `example`(与既有 `x-ui4a-input-owner` 的协议级处理同模式);HTTP 合同不窄化,外部
   agent(CLI/e2e)仍见全量注解。预算常量不动。chat 测试断言相应改为:模型视图含
   example 不含 schema;HTTP 回放含全量。
+
+## D70 授权可见性披露与 auth 平面控件合同(T51)
+
+- **背景**:2026-09-04 部署站实测,genesis 新装应用对批准者本人的浏览器会话不可见
+  (会话令牌早于 settings scope 变更签发,refresh 不升级 scope),且产品内无任何
+  授权状态可见性与恢复入口——授权语义正确,人通道断裂。本决定补披露与恢复面,
+  D51(授权输入=凭证授予集合×归属)与 D66.4(治理词展开)零改动。
+- **D70.1 激活披露口径**:meta exec 的 approve 成功响应可携带 `disclosure` 字段,由
+  纯函数从「新装应用(exec 前后 snapshot 应用全集 diff)× 批准者有效授予集合 ×
+  运行时浏览器登录 scope 表(`settings.auth.oidc.scopes`)」推导,三分支:
+  `immediately-visible`(授予集合已含,D66.4 展开天然覆盖)/ `visible-after-relogin`
+  (不含,但治理词在浏览器登录 scope 表内——刷新授权即可见)/ `requires-idp-grant`
+  (两者皆无)。披露是给批准者本人的表现层回执,**不落事件日志、不进入跨 principal
+  可见面**(存在性不泄露);发现文档过滤语义零变化。
+- **D70.2 auth 平面控件**:「我的授权」面板与「刷新授权」动作是认证平面控件,与
+  顶栏既有「账户与密码」「退出登录」(T22/T47)同门;I3 action-backed 约束业务功能
+  控件,不约束 auth 平面。面板为只读投影,不是第二权威;不含业务动作。
+- **D70.3 授权事实投影端点**:`GET /api/auth/session` 返回当前会话 resolved identity
+  的授权投影(principal/scopes/grantedApplications/authorizationMode/浏览器登录
+  scope 表),复用 `resolveTrustedRequestIdentity`,零新授权输入。**不返回已安装应用
+  全集**——该事实仅经授予集合(含治理展开)对主体可得;授予集合为空沿用结构化
+  拒绝口径。
+- **D70.4 刷新授权语义**:「刷新授权」= 导航 `/auth/login?returnTo=…`(既有
+  beginLogin 以当前 scope 表发起新授权请求;Keycloak SSO 会话有效时无感回跳,新
+  令牌携带更新后的 scope 集合)。否决方案:prompt=none 静默 iframe(第三方 cookie
+  限制下不可靠)、服务端会话重签(引入第二信任路径)、改 refresh 流程(OIDC 语义
+  上 refresh 不升级 grant)。会话 TTL 与 refresh 行为零变化。
+- **验收形态**:US1–US7 用户故事(spec §5);US5 为防回归锚——CLI 零改动,web 面板
+  与 `ui4a auth status` 同 token 事实下集合语义对齐;运维侧 US6 把浏览器通道复核
+  写进 DEPLOYMENT 验收合同(scope 类变更的既有缺口)。
