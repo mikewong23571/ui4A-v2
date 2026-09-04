@@ -15,7 +15,7 @@
   `definition/application-deprecation.ts`,D53;`sitemap.ts` 427 行余量评估) `82565b22`
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `82565b22`
 
-## Phase 1 — 事件与 fold 级联(engine 纯层)
+## Phase 1 — 事件与 fold 级联(engine 纯层) [checkpoint: 9beeace7]
 
 - [x] Task: 事件词汇三处同步(packages/db EventKind、engine LogEventKind、
   effects EngineEvent)+ fold `application-deprecated` case(fold/index default:
@@ -27,7 +27,7 @@
 - [x] Task: `activeFlowList` 口径修订(现不筛 definitions.status,service.ts:260-265)
   ——废弃 flow 定义退出活跃注册表;全量回归钉住无意外收缩 `8ed551b8`
   (全量回归移至 Phase checkpoint 统一执行,并行改动在途)
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `9beeace7`
 
 ## Phase 2 — 守卫与烧毁
 
