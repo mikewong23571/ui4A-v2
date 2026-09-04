@@ -4,6 +4,10 @@
  * 只做形状校验与缺省补全:goal 五键逐键校验、driver 仅 llm|auto(rule 已退出
  * 产品运行时)、mode inline|delegated、clientView 经 parseClientViewReport
  * 结构化解析;sessionId/turnId 缺省 crypto.randomUUID()。
+ *
+ * D68.2:sessionId 存在时须匹配 `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`
+ * (首字符字母数字,总长 ≤128);sessionId 只是会话分组键,身份轴在 principal,
+ * 故字符集合法的任意串都放行,不做 UUID-only 校验。纯函数路径,零 profile 分支。
  */
 import type { AgentGoal } from '@ui4a/agent';
 import { parseClientViewReport, type ClientViewReport } from '@ui4a/shared';
@@ -27,6 +31,9 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+// D68.2 sessionId 输入卫生合同:首字符字母数字,其余允许 A-Za-z0-9._:-,总长 ≤128。
+const SESSION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+
 export function parseBody(body: unknown): ParsedChatBody | ParseError {
   if (!isPlainObject(body)) {
     return { ok: false, error: '请求体必须是 JSON 对象' };
@@ -45,6 +52,12 @@ export function parseBody(body: unknown): ParsedChatBody | ParseError {
   }
   if (sessionId !== undefined && typeof sessionId !== 'string') {
     return { ok: false, error: 'sessionId 必须是字符串' };
+  }
+  if (typeof sessionId === 'string' && !SESSION_ID_PATTERN.test(sessionId)) {
+    return {
+      ok: false,
+      error: 'sessionId 含非法字符或超长(允许字母数字与 . _ : -,≤128 字符,首字符须字母数字)',
+    };
   }
   if (turnId !== undefined && typeof turnId !== 'string') {
     return { ok: false, error: 'turnId 必须是字符串' };
