@@ -1383,3 +1383,12 @@
 - **验收形态**:US1–US7 用户故事(spec §5);US5 为防回归锚——CLI 零改动,web 面板
   与 `ui4a auth status` 同 token 事实下集合语义对齐;运维侧 US6 把浏览器通道复核
   写进 DEPLOYMENT 验收合同(scope 类变更的既有缺口)。
+  **T51 设计复审附录(2026-09-04)**:依主工程师设计复审修订三点——(a) relogin 判定
+  泛化:`visible-after-relogin` = 治理词**或**该应用 `ui4a:policy:<app>` 任一在浏览器
+  登录 scope 表内(当前 settings 校验器限定六固定词,实践等价于治理词;泛化防 realm
+  逐 app 挂载演进时误导);(b) 新路由面合同:`/session` 与 `/api/auth/session` 必须
+  进入部署 edge 路由白名单(`deploy/compose/edge-routing.caddy`;后者归
+  authenticated-read 组,未认证结构化 401)——否则部署站 404,重演「测试绿、人通道
+  坏」,新路由面一律以 edge 白名单为交付边界;(c) 披露全集 diff 在极窄并发窗口可能
+  并入他人并发装入的应用(对批准者可见性结论仍正确,归因偏宽为已接受近似);relogin
+  分支隐含 realm optional-scope 挂载不漂移,漂移时由授权面板如实暴露。

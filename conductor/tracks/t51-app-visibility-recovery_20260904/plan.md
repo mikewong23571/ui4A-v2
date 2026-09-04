@@ -7,6 +7,10 @@
 > helpers.ts、views.ts、drafts.ts、chat route.meta-parity.test.ts、
 > vitest.db-tests.list.ts)——本 track 不触碰这些文件,提交时显式圈定路径。
 > 披露计算放路由组合层(exec 前后 snapshot 应用全集 diff),与 drafts 内部零耦合。
+> **暂存状态(2026-09-04 设计复审后暂停)**:P1 Task 1 已提交(c045ba57,其 tsc
+> 类型修正在暂存 patch 内);P1 Task 2 已实现未提交,完整备份 `/tmp/t51-p1-parking/`
+> (patch 已验证可干净 apply);恢复时先 apply + 复跑 30/30 再收口。本计划已按
+> 设计复审 F1–F3 修订(edge 白名单任务、e2e 独立文件、文档同步、relogin 判定泛化)。
 
 ## Phase 0 — 决定与 track 工件
 
@@ -15,11 +19,14 @@
 
 ## Phase 1 — F1 服务端:激活披露纯函数 + meta exec 响应
 
-- [ ] Task: `apps/web/src/auth/activation-disclosure.ts` 纯函数(测试先行:三分支 ×
-  多应用混合 × local(undefined browserScopes)× 空 diff;US1.2)
+- [x] Task: `apps/web/src/auth/activation-disclosure.ts` 纯函数(测试先行:三分支 ×
+  多应用混合 × local(undefined browserScopes)× 空 diff;US1.2) [c045ba5]（恢复时
+  修订:relogin 判定泛化为治理词或 `ui4a:policy:<app>` 任一 ∈ 登录 scope 表,F2-3;
+  tsc 类型修正随暂存 patch 收口）
 - [ ] Task: meta exec route 接线(approve accepted 后 diff 应用全集 → disclosure 字段;
   合同测试:production-auth 注入 config 覆盖 relogin/idp 分支,local 覆盖 immediately;
-  现有 route 测试回归;US1.1/US1.4/US1.5)
+  现有 route 测试回归;US1.1/US1.4/US1.5)（已实现未提交,暂存 /tmp/t51-p1-parking,
+  恢复时 apply + 30/30 复跑后收口）
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 2 — F2/F3 会话授权面板与刷新授权
@@ -28,6 +35,10 @@
   governance 展开来源、401 结构化;local 模式 self-reported;US2.1/US2.2/US2.4)
 - [ ] Task: `/session` 页面 + 顶栏系统区「我的授权」入口 + 「刷新授权」动作(组件
   测试;local 渲染冒烟;US2.2/US2.3/US3.1)
+- [ ] Task: edge 路由白名单(设计复审 F1,阻断级):`/session` 入
+  `@ui4aPublic` 页面 GET 名单,`/api/auth/session` 入 `@ui4aAuthenticatedRead`
+  组(`deploy/compose/edge-routing.caddy`);caddy 配置测试/校验;部署侧
+  restart-edge 步骤并入 F6 合同;US2.5
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 3 — F1 前端渲染 + F4 措辞诚实
@@ -41,10 +52,13 @@
 
 ## Phase 4 — 验收与收口
 
-- [ ] Task: e2e 扩展(golden story approve 断言披露渲染;/session 页浏览器冒烟;
-  US3.3/US1.3)
-- [ ] Task: DEPLOYMENT.local.md §7/变更记录合同更新(F6;US6;git-excluded 本地
-  文件,不入 commit)
+- [ ] Task: e2e 扩展(设计复审 F2-1:**新建独立 `e2e/t51-*.spec.ts`**,不碰
+  `e2e/t48-application-genesis.spec.ts` 避免并行冲突;approve 断言披露渲染;
+  /session 页浏览器冒烟;US3.3/US1.3)
+- [ ] Task: DEPLOYMENT.local.md §7/变更记录合同更新(F6;US6;含 edge 白名单变更的
+  restart-edge 步骤与 /auth/login scope 参数检查;git-excluded 本地文件,不入 commit)
+- [ ] Task: 文档同步(设计复审 F2-2):AGENTS.md 系统图补 auth 平面控件与
+  /api/auth/session;GOAL.md 修订判定显式记录(参照 T49 收口先例)
 - [ ] Task: 全量门禁:`pnpm check`(governance:strict)+ `CI=true pnpm e2e` +
   `CI=true pnpm e2e invariants`;T50 工作区隔离终核
 - [ ] Task: Track 收口(archive、registry 状态、DONE 摘要;部署站复核由用户按
