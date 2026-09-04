@@ -4,6 +4,8 @@
 
 ## 活跃 Tracks
 
+- [ ] **Track: T50 定义提案合同自披露**（payload schema 进 action 注解,人/AI/CLI 同门;拒绝携带结构化 expected;target 裸名守卫;CLI drafts schema） *Link: [tracks/t50-draft-contract-self-disclosure_20260904/index.md](./tracks/t50-draft-contract-self-disclosure_20260904/index.md)*
+
 - [x] **Track: T48 Application Genesis 产品内闭环与 Meta 人机同门**（2026-09-04 完成：application-bundle 受治理 Draft→原子 seed 事件→scope 全集自动生长；flow genesis；治理授权展开；集合级 create 人类渲染/CLI 全环/chat lens 通道同门；agent 双通道端到端验收+第一性原理八条审查全过;check 3824/e2e 73/invariants 19 全绿;部署站复核待用户裁定） *Link: [tracks/archive/t48-application-genesis-meta-parity_20260904/index.md](./tracks/archive/t48-application-genesis-meta-parity_20260904/index.md)*
 
 - [x] **Track: T47 双 HTTPS 入口与纯 HTTP Origin**（Review Fixes：生产请求期账户/改密/退出操作恢复与真实 logout 验收） *Link: [tracks/archive/t47-peer-https-http-origin_20260902/index.md](./tracks/archive/t47-peer-https-http-origin_20260902/index.md)*
