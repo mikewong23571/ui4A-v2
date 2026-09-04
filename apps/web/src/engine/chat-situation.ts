@@ -1,7 +1,7 @@
 import type { ClientViewReport } from '@ui4a/shared';
 
 import type { TrustedRequestAuditContext } from '../auth/request-identity';
-import { ensurePresenceTables, loadPresenceForPrincipal } from '@ui4a/db/presence';
+import { loadPresenceForPrincipal } from '@ui4a/db/presence';
 import type { PresentationTrustedContext } from './presentation/broker';
 import { getDb, getEngine } from './service';
 import { assembleSituation, type Situation } from './situation';
@@ -43,7 +43,6 @@ export async function situationForChat(args: {
     if (args.identity === undefined) {
       grantedScopes = Object.keys((await getEngine(db)).getSnapshot().applications ?? {});
     }
-    await ensurePresenceTables(db);
     return assembleSituation({
       principal: args.principal,
       grantedScopes: [...new Set(grantedScopes)],

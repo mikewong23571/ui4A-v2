@@ -41,7 +41,6 @@ export async function POST(request: Request): Promise<Response> {
     ) {
       return Response.json({ error: { code: 'scope_insufficient' } }, { status: 403 });
     }
-    await ensurePresenceTables(db);
     return Response.json(
       await appendPresenceChange(db, change, {
         principal: identity.principal,

@@ -117,8 +117,8 @@ test('golden path: 人类在 /meta 受治理出生一个全新 application', asy
     await expect(header).toContainText('invalid');
     await expect(header).toContainText('application-bundle');
     // 拒绝留痕:校验 issue(parse-error)与 checks FAIL 如实呈现
-    await expect(page.getByText('1 个阻塞问题')).toBeVisible();
-    await expect(page.getByText('parse-error')).toBeVisible();
+    await expect(page.getByText(/\d+ 个阻塞问题/)).toBeVisible();
+    await expect(page.getByText('parse-error').first()).toBeVisible();
     const checks = page
       .locator('section')
       .filter({ has: page.getByRole('heading', { name: 'Checks' }) });

@@ -104,7 +104,7 @@ describe('computeActivationDisclosure', () => {
 describe('browserLoginPolicyScopes', () => {
   it('returns undefined outside the production profile', () => {
     expect(
-      browserLoginPolicyScopes({ environment: { UI4A_DEPLOYMENT_PROFILE: 'local' } as NodeJS.ProcessEnv }),
+      browserLoginPolicyScopes({ environment: { UI4A_DEPLOYMENT_PROFILE: 'local' } as unknown as NodeJS.ProcessEnv }),
     ).toBeUndefined();
   });
 
@@ -113,7 +113,7 @@ describe('browserLoginPolicyScopes', () => {
       settings: { auth: { oidc: { scopes: ['openid', 'ui4a:read', GOVERNANCE_SCOPE] } } },
     } as unknown as ProductionDeploymentConfig;
     const scopes = browserLoginPolicyScopes({
-      environment: { UI4A_DEPLOYMENT_PROFILE: 'production' } as NodeJS.ProcessEnv,
+      environment: { UI4A_DEPLOYMENT_PROFILE: 'production' } as unknown as NodeJS.ProcessEnv,
       productionConfig: config,
     });
     expect(scopes).toEqual(['openid', 'ui4a:read', GOVERNANCE_SCOPE]);
