@@ -70,10 +70,12 @@
 
 ## Phase 4 — 同门与验收
 
-- [ ] Task: 浏览器门:实体页动作渲染/两步确认(T39 canonical renderer 复用,
+- [~] Task: 浏览器门:实体页动作渲染/两步确认(T39 canonical renderer 复用,
   零新增硬编码,I3)
-- [ ] Task: CLI 门(meta 写通道;形态按 P0 复核结论:通用 meta actions exec 或
+- [~] Task: CLI 门(meta 写通道;形态按 P0 复核结论:通用 meta actions exec 或
   最小 `apps deprecate` 适配)+ audit 回读
+  (P0 复核后口径:CLI=agent 通道,deprecate 获引擎 actor-is-human 诚实拒绝(I4
+  同门),人通道执行、agent 通道拒绝+审计回读;测试固化此裁定)
 - [ ] Task: e2e 独立 spec(t52-*.spec.ts):genesis 出生→写数据→停用→全收缩断言
   (发现/目录/实体/集合/授予/面板)→ 同名重建被拒 → 重放一致;invariants 扩展
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
