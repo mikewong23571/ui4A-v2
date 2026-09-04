@@ -68,3 +68,31 @@
 US1/US2(经 CLI 提案+浏览器批准的等价路径)、US3(出生)、US5(agent 同门立即发现)、
 US8(负例:越权/不完整提案)双通道全过;第一性原理八条审查通过,无发现项遗留。
 Chat 通道(US6)的协议级同门证据见 `route.meta-parity.test.ts`(P6b/P6b-2)。
+
+## 六、部署站双通道复核(2026-09-04 发布 4f89f4f6 后)
+
+环境:release `4f89f4f670af` 镜像 digest(web 81e27d10/worker dd30eb83/runner 964bd184),
+8 服务 healthy,volume hash 不变,§7 公网验收合同全绿(/live 返回该 SHA)。CLI 为
+release SHA 构建,Keychain 设备凭证(grant=development);浏览器为 mike PKCE 会话
+(登录 URL scope 显示 web token 仅 `ui4a:policy:development`,无 governance)。
+
+| # | 通道 | 动作 | 断言 | 结果 |
+|---|------|------|------|------|
+| P1 | CLI | `doctor` / `apps list` 基线 | bearer/keychain;三探针 200;apps=[development](凭据过滤) | ✅ |
+| P2 | CLI | 不完整提案(--scope development) | draft:6f7466cc1decbce6a740 invalid + parse-error(I6) | ✅ |
+| P3 | CLI | revise/validate/diff/submit | ready v2/3 checks PASS/bundle-inventory/pending-approval + activation | ✅ |
+| P4 | CLI | 越权审批尝试 | exit 4 APPROVAL_FORBIDDEN | ✅ |
+| P5 | 浏览器 | Drafts 集合 | **CLI(设备凭证)提案对 web 会话可见**——owner 同为 mike 的 Keycloak sub 38d075e5(跨 client 同门) | ✅ 截图 p02 |
+| P6 | 浏览器 | 详情 | scope development/bundle-inventory/3 PASS/Human-only | ✅ 截图 p03 |
+| P7 | 浏览器 | 两步确认 Approve | 首次以未授予 lens(governance,被丢弃)尝试被合同拒绝;以 development lens 重试 → accepted | ✅ 截图 p04/p05 |
+| P8 | 事件日志 | 出生链 | seq 209-220:draft lifecycle(actor=agent, principal=mike sub)→ application-seeded/definition-seeded/meta-bootstrap-applied(principal=system:meta-bootstrap) | ✅ |
+| P9 | 双门 | 新生可见性 | 浏览器 applications 与 CLI apps list 均**不含** t48-prod-65a800——mike 两通道授予均为 {development},无 governance scope,D66.4 展开未触发;受众谓词诚实过滤 | ✅(按设计) |
+
+### 复核发现
+
+1. **机制在生产成立**:提案→批准→出生事件→审计链全程真实凭证/公网闭环;
+2. **操作备注**:meta 实体深链规范路径为 `/meta/entity?rel=…`(`/meta?rel=` 落仪表板 fallback,复核中已纠正,非产品缺陷);approve 的 lens 必须与 Draft 的 policyScope 一致(合同如实拒绝错配);
+3. **行动项(授权配置,非代码)**:当前部署 mike 的 web/CLI 凭证均无 `ui4a:policy:governance`
+   scope,D66.4 治理展开未被行使——新生 app 出生后需 IdP 侧授予(逐 app 或给
+   operator 会话加 governance scope,经 backup-first realm-migrate)才对人类/CLI 可见。
+   机制已由合同测试覆盖(exec-governance-expansion);是否调整 realm 授权面由用户裁定。
