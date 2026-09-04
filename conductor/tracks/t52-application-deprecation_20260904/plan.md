@@ -44,7 +44,7 @@
 > (拒绝 target==='default')的宿主是 APPLICATION_LIFECYCLE 伪流声明,P2 单独实现
 > 是无宿主悬空守卫;随 P3 伪流一并落地并同测。
 
-## Phase 3 — 裁决路径与全联动收缩
+## Phase 3 — 裁决路径与全联动收缩 [checkpoint: 1bd95f07]
 
 - [x] Task: APPLICATION_LIFECYCLE 伪流(镜像 DEFINITION_LIFECYCLE:声明 deprecate、
   guard actor-is-human、requires-confirmation high)注入 executeMeta flows 映射 +
@@ -58,11 +58,15 @@
   active ∪ deprecated 双集查询(D71.3),停用应用 rel 解析非空归属→无交集即拒)
   + 逐面合同测试(application:/flow:/实例/surface) `954db2b5`
   (逐面覆盖矩阵见 git note;P3b 锚抓出并推动修正 P3a 投影语义)
-- [~] Task: sitemap 扁平面过滤(flows/surfaces/capabilities 随 active map 收缩)+
+- [x] Task: sitemap 扁平面过滤(flows/surfaces/capabilities 随 active map 收缩)+
   flow-entry 别名 + chat 发现链/recipes 收缩;治理展开收缩 + 「我的授权」面板
-  反映(T51 联动断言)
-- [~] Task: 存量实例 existence-hidden(读取 404、集合不含;事件留痕可审计;US5)
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+  反映(T51 联动断言) `1bd95f07`
+  (核实:deriveSitemap 参数驱动,service 链路经 activeFlowList 已收缩,零引擎改动
+  + 引擎级钉测;flow-entry 补 isDeprecatedFlowName 守卫;chat/membership 自动跟随钉测;
+  授权收缩经 P3b auth/session 钉测 + 面板读该 API,T51 面板测试自动覆盖)
+- [x] Task: 存量实例 existence-hidden(读取 404、集合不含;事件留痕可审计;US5) `1bd95f07`
+  (读取面受众层 P3b 954db2b5 钉 403/404;别名/集合/补全面本提交收缩;联合覆盖)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `1bd95f07`
 
 ## Phase 4 — 同门与验收
 
