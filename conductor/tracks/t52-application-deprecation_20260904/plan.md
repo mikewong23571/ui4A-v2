@@ -1,0 +1,70 @@
+# T52 Application Deprecation — Plan
+
+> 状态:规划完成,**未开工**(用户裁定:先 track + 设计 review,不立即执行)。
+> 执行纪律:严格 TDD(先红后绿);每任务完成即 commit + git note;Phase 结束跑
+> Phase Checkpoint(自治验收);GR1–GR5 全程生效。spec §6 已含设计复审记录,
+> 执行期发现新事实按 workflow「Task Correction」回写 plan 并注明。
+
+## Phase 0 — 决定与开工核对
+
+- [ ] Task: DECISIONS.md 落盘 D71(spec §3 全文:载体与级联/直连动作/反 fail-open
+  受众/实例不阻塞/烧毁集/default 守卫)
+- [ ] Task: 开工前事实复核(代码可能已漂移):复核 spec §1/§6 引用的 file:line
+  仍成立;CLI meta 动作通道现状(spec §6.10)定 P4 任务形态;GR3 行数口径核对
+  (`definition/meta.ts` 521 原始行——新裁决分支落独立文件
+  `definition/application-deprecation.ts`,D53;`sitemap.ts` 427 行余量评估)
+- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+
+## Phase 1 — 事件与 fold 级联(engine 纯层)
+
+- [ ] Task: 事件词汇三处同步(packages/db EventKind、engine LogEventKind、
+  effects EngineEvent)+ fold `application-deprecated` case(fold/index default:
+  throw 纪律:先加测试钉住未知 kind 炸,再同步加 case)
+- [ ] Task: 级联 fold(测试先行):applications 删键 + deprecatedApplications 审计集
+  + 同 app 全部 definitions 置 status:'deprecated';幂等重放;I5 全 log 重放一致;
+  app-known 不变式保持
+- [ ] Task: `activeFlowList` 口径修订(现不筛 definitions.status,service.ts:260-265)
+  ——废弃 flow 定义退出活跃注册表;全量回归钉住无意外收缩
+- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+
+## Phase 2 — 守卫与烧毁
+
+- [ ] Task: 烧毁集统一(create/validate snapshot 口径扩为 active ∪ deprecated;
+  activate log 口径显式计入 application-deprecated;三处同测,D71.5)
+- [ ] Task: default 守卫(engine 裁决层拒绝 target==='default',拒绝留痕,I6;D71.6)
+- [ ] Task: flow 名烧毁级联(D71.8):停用应用的 flow 名在 flow-definition
+  genesis/激活路径 fail-closed;核实 activate-flow 目标检查数据源(snapshot/log)
+  后钉测试
+- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+
+## Phase 3 — 裁决路径与全联动收缩
+
+- [ ] Task: meta/application 实体投影声明 `deprecate` 动作(仅 active;human-only
+  guard;requires-confirmation high)+ engine meta 裁决分支(action-executed +
+  application-deprecated 伴随事件对,镜像 definition deprecate 模式)
+- [ ] Task: 受众反 fail-open(businessApplications/metaApplications 归属解析扩为
+  active ∪ deprecated 双集查询(D71.3),停用应用 rel 解析非空归属→无交集即拒)
+  + 逐面合同测试(application:/flow:/实例/surface)
+- [ ] Task: sitemap 扁平面过滤(flows/surfaces/capabilities 随 active map 收缩)+
+  flow-entry 别名 + chat 发现链/recipes 收缩;治理展开收缩 + 「我的授权」面板
+  反映(T51 联动断言)
+- [ ] Task: 存量实例 existence-hidden(读取 404、集合不含;事件留痕可审计;US5)
+- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+
+## Phase 4 — 同门与验收
+
+- [ ] Task: 浏览器门:实体页动作渲染/两步确认(T39 canonical renderer 复用,
+  零新增硬编码,I3)
+- [ ] Task: CLI 门(meta 写通道;形态按 P0 复核结论:通用 meta actions exec 或
+  最小 `apps deprecate` 适配)+ audit 回读
+- [ ] Task: e2e 独立 spec(t52-*.spec.ts):genesis 出生→写数据→停用→全收缩断言
+  (发现/目录/实体/集合/授予/面板)→ 同名重建被拒 → 重放一致;invariants 扩展
+- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+
+## Phase 5 — 收口
+
+- [ ] Task: 全量门禁:`pnpm check`(governance:strict)+ `CI=true pnpm e2e` +
+  `CI=true pnpm e2e invariants`
+- [ ] Task: 文档同步(AGENTS.md 事件词汇/模块行;GOAL.md 修订判定显式记录)
+- [ ] Task: Track 收口(archive、registry、DONE;部署站清理走查 US7 待用户按
+  DEPLOYMENT 流程发布后另行执行)

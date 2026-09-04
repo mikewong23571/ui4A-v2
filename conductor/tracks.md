@@ -4,7 +4,9 @@
 
 ## 活跃 Tracks
 
-（无;T51 已完成归档）
+- [ ] **Track: T52 Application Deprecation 受治理应用停用**（规划完成未开工:D71 草案——直连 deprecate 动作 + application-deprecated 事件全联动收缩、反 fail-open 受众、名字/flow 名烧毁、default 地板守卫、agent 凭证砖化运维口径;US1–US7;经两轮设计复审定稿） *Link: [tracks/t52-application-deprecation_20260904/index.md](./tracks/t52-application-deprecation_20260904/index.md)*
+
+（T51 已完成归档）
 
 - [x] **Track: T51 新生应用可见性恢复链路**（2026-09-04 完成:D70 批准即披露(三分支,含 e2e 抓出的 exec 前授予集合语义修正)、/api/auth/session + /session 我的授权面板与刷新授权、edge 路由白名单(设计复审 F1)、措辞诚实、DEPLOYMENT §7 授权类变更浏览器通道强制合同;US1–US7 全绿;check 3934/e2e 69/invariants 13;部署站复核留用户按新合同执行） *Link: [tracks/archive/t51-app-visibility-recovery_20260904/index.md](./tracks/archive/t51-app-visibility-recovery_20260904/index.md)*
 
