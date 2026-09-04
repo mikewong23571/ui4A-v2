@@ -76,6 +76,12 @@ Application 以 `application-bundle` 类型的 Governed Draft 提案（人或 ag
 持有治理 lens 的凭证无需部署/IdP 旁路即可到达新 app。在已授权 lens 内为已有 app
 提案新 flow（target 尚不存在）同样允许（flow genesis）。
 
+自 T52（D71）起,出生有了对称的死亡:已安装 application 的停用是 `meta/application:<name>`
+上声明的 `deprecate` 直连动作(human-only + high 两步确认,`default` 有地板守卫),原子追加
+`application-deprecated` 事件并确定性级联——应用退出 active map、其 flow 定义置废、
+sitemap/发现/授予全集同步收缩、存量面存在性隐藏、应用名与 flow 名在 log 级永久烧毁
+(create/validate/activate 三门 fail-closed)。审计经事件日志与重放,不经实体面。
+
 仍然排除的形态不变：内置 `create-app` 对话向导、页面设计器、业务关键词编排和
 rule-based App 生成器不属于 DONE；Chat/Assistant 参与创建时走的是同一 meta 合同与
 裁决路径，不是独立写路径。
