@@ -23,8 +23,9 @@
 - [~] Task: 级联 fold(测试先行):applications 删键 + deprecatedApplications 审计集
   + 同 app 全部 definitions 置 status:'deprecated';幂等重放;I5 全 log 重放一致;
   app-known 不变式保持
-- [~] Task: `activeFlowList` 口径修订(现不筛 definitions.status,service.ts:260-265)
-  ——废弃 flow 定义退出活跃注册表;全量回归钉住无意外收缩
+- [x] Task: `activeFlowList` 口径修订(现不筛 definitions.status,service.ts:260-265)
+  ——废弃 flow 定义退出活跃注册表;全量回归钉住无意外收缩 `8ed551b8`
+  (全量回归移至 Phase checkpoint 统一执行,并行改动在途)
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 2 — 守卫与烧毁
