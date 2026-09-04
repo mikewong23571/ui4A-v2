@@ -92,6 +92,7 @@ export const dbTestFiles: readonly string[] = [
   'apps/web/src/engine/presentation/runtime.test.ts',
   'apps/web/src/engine/capability/reconciliation.db.test.ts',
   'apps/web/src/engine/situation-consumers.test.ts',
+  'apps/web/src/engine/service-tests/service.application-deprecation.test.ts',
   'apps/web/src/engine/service-tests/service.bornversion.test.ts',
   'apps/web/src/engine/service-tests/service.confirmation.test.ts',
   'apps/web/src/engine/service-tests/service.definition-versions.test.ts',

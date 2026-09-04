@@ -41,6 +41,7 @@ import {
   executeMeta,
   executeWithGates,
   executePlan,
+  fold,
   project,
   readRenderSpecsOf,
   THREADS_REL,
@@ -503,6 +504,24 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
           }
         }
         logState.snapshot = outcome.snapshot;
+        // T52 终验缺陷 B 修复:application-deprecated 的选择性补折。appendBatchWithSeq
+        // 推进水位使自身事件不进增量 fold(防双算,见 appendBatchWithSeq 注释);
+        // 本 kind 是该纪律的例外——deprecatedApplications 审计表是 fold 侧专属
+        // 物化(条目 seq 由日志层分配,纯裁决层在线不可知),不补折则同进程内
+        // 烧毁名 create/validate 守卫读不到审计集(US4/D71.5 三门须即时
+        // fail-closed)。仅折该 kind:其 applier 与在线级联逐表幂等收敛
+        // (applications 删键 no-op、definitions 置废同值、审计首写补上真 seq),
+        // 在线快照与全量重放零漂移;其余自身事件(action-executed 等)不折——
+        // 在线已由 outcome.snapshot 推进,重折会以旧输入重裁决而漂移。
+        // flows 依赖与 applyForeignGaps 同口径({flows:{}}:该 applier 不消费)。
+        const deprecatedEvents: LogEvent[] = [];
+        for (const [index, event] of effectiveEvents.entries()) {
+          if (event.kind !== 'application-deprecated') continue;
+          deprecatedEvents.push({ ...event, seq: effectiveSeqs[index]! });
+        }
+        if (deprecatedEvents.length > 0) {
+          logState.snapshot = fold(deprecatedEvents, { flows: {} }, logState.snapshot);
+        }
         if (effectiveEvents.some((event) => event.kind === 'definition-activated')) {
           scheduleRecipesForSnapshot(logState.snapshot);
         }
@@ -536,9 +555,18 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
         // 受影响实体:append 产出新实例时返回新实体,否则返回执行实体的新投影。
         const appended = effectiveEvents[0]?.appended ?? [];
         const targetRel = appended.length > 0 ? appended[appended.length - 1]! : aliased.rel;
-        const entity = project(logState.snapshot, targetRel, projectDeps());
+        // T52 终验缺陷 A 修复(D71.3):受治理停用的受影响面是集合——伴随事件
+        // application-deprecated 使 meta/application:<name> 与「从未安装」同形
+        // (存在性隐藏恒 undefined,不是内部错误);回执改投影收缩后的
+        // meta/applications 集合(停用即离场,成员不含停用名)。其余 kind 保持
+        // 通用不变式:undefined 即内部不变式破坏,不静默放行。
+        const receiptRel =
+          effectiveEvents.at(-1)?.kind === 'application-deprecated'
+            ? 'meta/applications'
+            : targetRel;
+        const entity = project(logState.snapshot, receiptRel, projectDeps());
         if (entity === undefined) {
-          throw new Error(`exec 后目标实体 "${targetRel}" 不可投影(内部不变式破坏)`);
+          throw new Error(`exec 后目标实体 "${receiptRel}" 不可投影(内部不变式破坏)`);
         }
         return { kind: 'accepted', entity, appended };
       });
