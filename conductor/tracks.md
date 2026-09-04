@@ -6,7 +6,7 @@
 
 - [~] **Track: T51 新生应用可见性恢复链路**（批准即披露、我的授权面板、刷新授权、措辞诚实、运维验收合同;D70;US1–US7 用户故事验收闭环） *Link: [tracks/t51-app-visibility-recovery_20260904/index.md](./tracks/t51-app-visibility-recovery_20260904/index.md)*
 
-- [~] **Track: T50 定义提案合同自披露**（payload schema 进 action 注解,人/AI/CLI 同门;拒绝携带结构化 expected;target 裸名守卫;CLI drafts schema） *Link: [tracks/t50-draft-contract-self-disclosure_20260904/index.md](./tracks/t50-draft-contract-self-disclosure_20260904/index.md)*
+- [x] **Track: T50 定义提案合同自披露**（2026-09-04 完成:payload schema 注解三门同门(模型视图 example-only,D69 附录);拒绝结构化 expected;裸名守卫;CLI drafts schema;机械自足证明 1 次迭代 vs 基线 12;顺带修复 presence 每请求 DDL 死锁(T29 潜伏缺陷);check 3913/e2e 76/invariants 19 全绿） *Link: [tracks/archive/t50-draft-contract-self-disclosure_20260904/index.md](./tracks/archive/t50-draft-contract-self-disclosure_20260904/index.md)*
 
 - [x] **Track: T48 Application Genesis 产品内闭环与 Meta 人机同门**（2026-09-04 完成：application-bundle 受治理 Draft→原子 seed 事件→scope 全集自动生长；flow genesis；治理授权展开；集合级 create 人类渲染/CLI 全环/chat lens 通道同门；agent 双通道端到端验收+第一性原理八条审查全过;check 3824/e2e 73/invariants 19 全绿;部署站复核待用户裁定） *Link: [tracks/archive/t48-application-genesis-meta-parity_20260904/index.md](./tracks/archive/t48-application-genesis-meta-parity_20260904/index.md)*
 
