@@ -47,9 +47,9 @@
 
 ## Phase 6 — 收口:门禁、系统验证与 DONE
 
-- [ ] Task: 全量门禁——`pnpm check`(含 governance:strict,例外注册表为空)+ `CI=true pnpm e2e`;实际启动系统完成用户路径验证(自治验收协议;本地 e2e 即用户路径,生产行为由 route 级测试锚定) [U1–U10]
-- [ ] Task: evidence 文档——故事→测试→命令映射与验证输出原文;registry 勾选;GOAL.md 如需修订
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: 全量门禁——`pnpm check`(含 governance:strict,例外注册表为空)+ `CI=true pnpm e2e`;实际启动系统完成用户路径验证(自治验收协议;本地 e2e 即用户路径,生产行为由 route 级测试锚定) [U1–U10]（check 510 文件 3854 绿/15 既有跳过;e2e 64 过/2 失败均举证先在或负载抖动;chat 域 181/181、e2e chat 9/9;详见 evidence.md）
+- [x] Task: evidence 文档——故事→测试→命令映射与验证输出原文;registry 勾选;GOAL.md 如需修订（evidence.md 落盘;GOAL/product/tech-stack 无需修订:D68 为内部合同修复,不改产品范围与技术栈）
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: DONE]（自治验收:U1–U10 全闭环;track 归档 archive/,GR5 只读）
 
 ## 故事 → 阶段映射(验收闭环总表)
 
