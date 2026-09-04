@@ -1,0 +1,51 @@
+# T51 新生应用可见性恢复链路 — Plan
+
+> 执行纪律:严格 TDD(先红后绿);每任务完成即 commit + git note;Phase 结束跑
+> Phase Checkpoint(workflow.md;审批点由编排 agent 按自治协议代行,验证证据记入
+> git notes)。GR1–GR5 全程生效。**工作区隔离**:T50 有未提交改动
+> (draft-action-schemas*、activate-application.ts、application-bundle*、create.ts、
+> helpers.ts、views.ts、drafts.ts、chat route.meta-parity.test.ts、
+> vitest.db-tests.list.ts)——本 track 不触碰这些文件,提交时显式圈定路径。
+> 披露计算放路由组合层(exec 前后 snapshot 应用全集 diff),与 drafts 内部零耦合。
+
+## Phase 0 — 决定与 track 工件
+
+- [ ] Task: DECISIONS.md 落盘 D70(spec §3:披露口径/auth 平面控件/投影端点/刷新授权语义)
+- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+
+## Phase 1 — F1 服务端:激活披露纯函数 + meta exec 响应
+
+- [ ] Task: `apps/web/src/auth/activation-disclosure.ts` 纯函数(测试先行:三分支 ×
+  多应用混合 × local(undefined browserScopes)× 空 diff;US1.2)
+- [ ] Task: meta exec route 接线(approve accepted 后 diff 应用全集 → disclosure 字段;
+  合同测试:production-auth 注入 config 覆盖 relogin/idp 分支,local 覆盖 immediately;
+  现有 route 测试回归;US1.1/US1.4/US1.5)
+- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+
+## Phase 2 — F2/F3 会话授权面板与刷新授权
+
+- [ ] Task: `GET /api/auth/session` 路由(production-auth 测试:200 投影形状含
+  governance 展开来源、401 结构化;local 模式 self-reported;US2.1/US2.2/US2.4)
+- [ ] Task: `/session` 页面 + 顶栏系统区「我的授权」入口 + 「刷新授权」动作(组件
+  测试;local 渲染冒烟;US2.2/US2.3/US3.1)
+- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+
+## Phase 3 — F1 前端渲染 + F4 措辞诚实
+
+- [ ] Task: ExecClientResult ok 分支扩展 + execMetaAction 透传 disclosure +
+  MetaActivationDisclosure 组件(三分支文案 + 恢复动作链接 + requires-idp-grant
+  双路径文案快照;US1.1/US3.1/US7)
+- [ ] Task: situation-bar「全部已授权应用」措辞修正 + 应用目录授权出口(测试更新;
+  US4.1/US4.2;发现文档过滤回归绿,US4.3)
+- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+
+## Phase 4 — 验收与收口
+
+- [ ] Task: e2e 扩展(golden story approve 断言披露渲染;/session 页浏览器冒烟;
+  US3.3/US1.3)
+- [ ] Task: DEPLOYMENT.local.md §7/变更记录合同更新(F6;US6;git-excluded 本地
+  文件,不入 commit)
+- [ ] Task: 全量门禁:`pnpm check`(governance:strict)+ `CI=true pnpm e2e` +
+  `CI=true pnpm e2e invariants`;T50 工作区隔离终核
+- [ ] Task: Track 收口(archive、registry 状态、DONE 摘要;部署站复核由用户按
+  DEPLOYMENT 流程另行裁定)
