@@ -1317,3 +1317,32 @@
   不回填、不改写、不双轨。
 - **D68.6 语义统一**:本地与生产对同一套用户操作(新会话/清单/切换/刷新)行为一致;
   「新会话」在两个 profile 下都同时重置 UI 与 agent 上下文。
+
+## D69 定义提案合同自披露:payload schema 注解、拒绝数据化与裸名守卫(T50)
+
+- **D69.1 落位=action 字段注解**:`meta/drafts` create/revise 动作的 `payload` 字段
+  新增注解关键字 `x-ui4a-payload-schemas`,值 `{ <kind>: { schema, example } }`。
+  依据 product-vision §二"同一扇门,两个读者"(exec 工具 schema 原样保留字段→模型
+  可见;RJSF 忽略未知关键字→人类表单零退化;CLI/外部 agent 经实体读取同门获得)与
+  §八"披露收窄发生在 prompt 层,不窄化 HTTP 合同"。否决方案:CLI 内置 schema
+  (第二真相源漂移)、entity properties 携带(chat 的 summarizeEntity 摘要层会丢弃)、
+  oneOf 三分支(宽松分支吞掉约束)。
+- **D69.2 schema 有界**:engine 从 parseApplicationBundle 同一合同派生结构层 schema
+  ——顶层必填键、类型、封闭词表 enum、seed 条目四必填形状;flows[]/nodes[] 深层
+  保持开放。跨字段引用(flow∈flows、node∈flow)不进 schema,交给服务端裁决与
+  D69.3。fixture 回环为防漂移不变量:派生 schema 必须结构化接受全部已安装 bundle
+  工件。
+- **D69.3 拒绝数据化**:`DraftValidationIssue`(packages/shared)增加可选
+  `expected?: unknown`;结构化 issue 在 engine 源头产出——parse 内部错误改造为携带
+  {code, path(精确到 seed.instances.<key> 等), message, expected} 的结构化问题,
+  validateApplicationBundleDraft 透传,禁止 adapter 侧字符串匹配。机械 message 不改
+  "友好模板"(product-vision §六 文案滑梯);抛出式 parseApplicationBundle 公共行为
+  零变化。
+- **D69.4 守卫**:application-bundle 的 target 必须匹配 `^[a-z][a-z0-9-]*$`(与 flow
+  genesis IDENTIFIER 同口径,常量共用提取);create 与激活重验同判,违规 guard-failed
+  + rejectionEvent 留痕。闭合 ui4a-ops GAP-4(`application:` 前缀绕过已安装冲突守卫)。
+- **D69.5 语法糖**:CLI `drafts schema [--kind]` 读取合同注解并打印 schema/example;
+  零新依赖、零内嵌真相,真相唯一来源是服务端合同。
+- **验收形态**:US1 为机械证明——e2e 从注解 schema+example 程序化合成 payload(不抄
+  fixture)一次 create 即 ready,对照 ui4a-ops 实证基线 12 次迭代;愿景四条对齐评审
+  (含错误面 grep 无友好模板拼接)入 evidence。
