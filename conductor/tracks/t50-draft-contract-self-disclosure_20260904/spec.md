@@ -50,10 +50,12 @@ exec 工具 schema)、外部 agent(CLI)经**同一份投影**获得,不需要文
   区域保持开放类型。跨字段引用(flow∈flows、node∈flow)不进 schema,交给服务端
   裁决 + D69.3。尺寸约束:注解序列化后不超过既有 action schema 的量级。
 - **D69.3 拒绝数据化**:`DraftValidationIssue`(packages/shared)增加可选
-  `expected?: unknown` 字段;形状类解析错误(seed 条目、顶层必填键等)在 issue 上
-  携带期望形状的结构化数据(schema 片段或形状描述)。**机械 message 文案不改成
-  "友好模板"**(product-vision §六 文案滑梯:机械层只产结构化原因,人话是 LLM
-  原生认知)。
+  `expected?: unknown` 字段;**结构化 issue 在 engine 源头产出**——parse 内部错误
+  改造为携带 {code, path(精确到 seed.instances.<key> 等), message, expected} 的
+  结构化问题,由 validateApplicationBundleDraft 透传,禁止 adapter 侧字符串匹配。
+  机械 message 文案不改成"友好模板"(product-vision §六 文案滑梯:机械层只产
+  结构化原因,人话是 LLM 原生认知)。抛出式 parseApplicationBundle 的公共行为
+  零变化(结构化为内部通道)。
 - **D69.4 守卫**:application-bundle create(与激活重验)对 target 施加与 flow
   genesis 相同的 IDENTIFIER 校验(提取共用常量);违规 guard-failed + rejectionEvent
   留痕(I6)。
@@ -64,7 +66,7 @@ exec 工具 schema)、外部 agent(CLI)经**同一份投影**获得,不需要文
 
 | # | 故事 | 断言 |
 |---|---|---|
-| US1 | 外置 Agent 自足起草 | 仅持公开凭据+CLI(无外部文档),构造合法 application-bundle Draft 的 create/revise 迭代 ≤2 次(对照实证基线 12 次);`drafts schema --kind application-bundle` 一步给出 schema+example |
+| US1 | 外置 Agent 自足起草 | **机械证明**:e2e 从注解 schema+example 程序化合成 payload(不抄 fixture),一次 create 即 ready(对照实证基线 12 次);`drafts schema --kind application-bundle` 一步给出 schema+example;fixture 回环——派生 schema 结构化接受全部已安装 bundle 工件(防漂移) |
 | US2 | 合同三可见 | `entities get meta/drafts` 的 create 动作 fields 含 `x-ui4a-payload-schemas`(CLI 原样);chat exec 工具 schema 含同一注解(meta-parity 测试扩展);浏览器合同测试确认 RJSF 渲染零变化 |
 | US3 | 拒绝可行动 | seed 条目形状错误的 Draft issue 携带 `expected` 结构化数据(合同测试);错误消息仍为机械描述(无友好模板,评审项) |
 | US4 | 守卫闭合 | `--target application:foo`(前缀/非法字符)guard-failed + 事件留痕;裸名不受影响;激活重验同判 |
