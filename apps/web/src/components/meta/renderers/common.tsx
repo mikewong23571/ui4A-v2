@@ -14,6 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
 import { execMetaAction } from '../meta-client';
+import { MetaActivationDisclosure } from '../activation-disclosure-view';
+import type { ActivationDisclosureView } from '../activation-disclosure';
 import { withMetaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
 import { relFromMetaApiHref } from '../meta-surfaces';
 import { redactMetaValue } from '../view-models/agent-definition';
@@ -75,6 +77,7 @@ function ScopedMetaActions({
   onChanged,
 }: MetaActionsProps) {
   const [lastOutcome, setLastOutcome] = useState<SirenEntity | null>(null);
+  const [lastDisclosure, setLastDisclosure] = useState<ActivationDisclosureView | undefined>();
   const excluded = new Set(excludeActions);
   const actions = publicMetaActions(entity).filter((action) => !excluded.has(action.name));
   if (actions.length === 0 && lastOutcome === null) return null;
@@ -101,7 +104,10 @@ function ScopedMetaActions({
                       observedActionClientParams(current, entity.properties),
                   })}
                   onExecuted={onChanged}
-                  onOutcome={setLastOutcome}
+                  onOutcome={(entity, result) => {
+                    setLastOutcome(entity);
+                    setLastDisclosure(result.ok ? result.disclosure : undefined);
+                  }}
                   renderOutcome={() => null}
                 />
               </Card>
@@ -110,6 +116,7 @@ function ScopedMetaActions({
         </div>
       )}
       {lastOutcome !== null && <MetaActionOutcome entity={lastOutcome} />}
+      <MetaActivationDisclosure disclosure={lastDisclosure} />
     </section>
   );
 }
