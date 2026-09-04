@@ -35,9 +35,9 @@
 
 ## Phase 4 — 读端点投影锚定(FR4/FR6 · U1/U6/U8/U9)
 
-- [ ] Task: sessions/history route tests——同 principal 多 sessionId 多行(lastTs 倒序、回合数聚合);跨 principal 不可见(空态非错误);混合旧形状(sessionId=principal)与新 UUID 事件的并存投影 [U1/U6/U8]
-- [ ] Task: 审计口径锚定——同 principal 全量 chat 事件可查,actor/principal/channel 口径断言复用既有 credential 用例(不松动 T22 语义) [U9]
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: sessions/history route tests——同 principal 多 sessionId 多行(lastTs 倒序、回合数聚合);跨 principal 不可见(空态非错误);混合旧形状(sessionId=principal)与新 UUID 事件的并存投影 [U1/U6/U8] [27f861b]（4 用例首跑即绿=锚定成立;fixture 措辞 legacy→preD68 过 GR2）
+- [x] Task: 审计口径锚定——同 principal 全量 chat 事件可查,actor/principal/channel 口径断言复用既有 credential 用例(不松动 T22 语义) [U9] [27f861b]（聚合不丢断言进生产投影用例;actor 口径复用 P3 用例）
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 27f861b]（自治验收:api/chat 81/81 + db events 11/11 + tsc + governance OK 复跑;教训:subagent 门禁声明与编排复跑不符一次,GR2 措辞已修——验收协议复跑必要性得证;附修 P2 prettier 漂移）
 
 ## Phase 5 — 前端与用户故事闭环(FR5 · U1/U2/U3/U4/U8/U10)
 
