@@ -20,14 +20,14 @@
 ## Phase 1 — F1 服务端:激活披露纯函数 + meta exec 响应
 
 - [x] Task: `apps/web/src/auth/activation-disclosure.ts` 纯函数(测试先行:三分支 ×
-  多应用混合 × local(undefined browserScopes)× 空 diff;US1.2) [c045ba5]（恢复时
-  修订:relogin 判定泛化为治理词或 `ui4a:policy:<app>` 任一 ∈ 登录 scope 表,F2-3;
-  tsc 类型修正随暂存 patch 收口）
-- [ ] Task: meta exec route 接线(approve accepted 后 diff 应用全集 → disclosure 字段;
+  多应用混合 × local(undefined browserScopes)× 空 diff;US1.2) [c045ba5→334ff6c]（F2-3
+  泛化修订(治理词或 `ui4a:policy:<app>` 任一 ∈ 登录 scope 表,+1 测试)随 Task 2 收口;
+  tsc 类型修正由 T50 收口先行合入)
+- [x] Task: meta exec route 接线(approve accepted 后 diff 应用全集 → disclosure 字段;
   合同测试:production-auth 注入 config 覆盖 relogin/idp 分支,local 覆盖 immediately;
-  现有 route 测试回归;US1.1/US1.4/US1.5)（已实现未提交,暂存 /tmp/t51-p1-parking,
-  恢复时 apply + 30/30 复跑后收口）
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+  现有 route 测试回归;US1.1/US1.4/US1.5) [334ff6c]（恢复自 /tmp/t51-p1-parking;31/31
+  绿,tsc 绿;patch 中测试文件类型修正与 T50 先行修复冗余,已丢弃）
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 334ff6c]（自治验收:meta+auth 179/179 绿、tsc 绿、governance OK;改动文件均有对应测试）
 
 ## Phase 2 — F2/F3 会话授权面板与刷新授权
 
