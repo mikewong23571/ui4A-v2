@@ -1,4 +1,4 @@
-import { activeDefinitionOf, type Sitemap } from '@ui4a/engine';
+import { activeDefinitionOf, type FoldSnapshot, type Sitemap } from '@ui4a/engine';
 import type { EngineSnapshot } from '@ui4a/shared';
 
 export const UNRESOLVED_APPLICATION = '\u0000unresolved';
@@ -7,6 +7,24 @@ export function flowApplication(snapshot: EngineSnapshot, flowName: string): str
   const definition =
     activeDefinitionOf(snapshot, flowName) ?? snapshot.definitions?.[flowName]?.definition;
   return definition === undefined ? undefined : (definition.app ?? 'default');
+}
+
+/**
+ * 应用名归属的双集查询(T52 Phase 3 / D71.3):active(applications 键)∪
+ * deprecated(deprecatedApplications 审计表键)。停用的 fold 级联会删
+ * applications 键,但归属仍可判定——受众谓词据此对停用面给出确定性
+ * 「授予集合无交集」拒绝,不落入空受众 fail-open;后者只保留给从未
+ * 安装/无法归属的 rel(D51 语义本身不变)。
+ *
+ * 运行时快照是 fold 产物(FoldSnapshot,审计表在场时随行);接口按
+ * shared EngineSnapshot 收窄,读 deprecatedApplications 在此单点下探
+ * (与 engine/drafts/application-bundle.ts 的 applicationNameBurned 同惯例)。
+ */
+export function applicationOwned(snapshot: EngineSnapshot, name: string): boolean {
+  return (
+    snapshot.applications?.[name] !== undefined ||
+    (snapshot as FoldSnapshot).deprecatedApplications?.[name] !== undefined
+  );
 }
 
 export function businessApplications(
@@ -19,7 +37,7 @@ export function businessApplications(
   visited.add(rel);
   if (rel.startsWith('application:')) {
     const name = rel.slice('application:'.length);
-    return snapshot.applications?.[name] === undefined ? [] : [name];
+    return applicationOwned(snapshot, name) ? [name] : [];
   }
   if (rel.startsWith('confirmation:')) {
     const confirmation = snapshot.confirmations?.[rel];

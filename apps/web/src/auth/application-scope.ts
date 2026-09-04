@@ -4,6 +4,7 @@ import type { EngineSnapshot } from '@ui4a/shared';
 import { ProductionIdentityError } from './production/request-identity';
 import { entityRel, filterEntityTree } from './audience/entity-projection';
 import {
+  applicationOwned,
   businessApplications,
   flowApplication,
   UNRESOLVED_APPLICATION,
@@ -23,8 +24,10 @@ export interface AudienceContext {
 
 function metaApplications(snapshot: EngineSnapshot, sitemap: Sitemap, rel: string): string[] {
   if (rel.startsWith('meta/application:')) {
+    // D71.3 双集口径与 business application: 同源:停用应用经审计表解析出
+    // 非空归属,咽喉据此拒绝;只有从未安装/无法归属才落空受众 fail-open。
     const name = rel.slice('meta/application:'.length);
-    return snapshot.applications?.[name] === undefined ? [] : [name];
+    return applicationOwned(snapshot, name) ? [name] : [];
   }
   if (rel.startsWith('meta/flow:')) {
     const application = flowApplication(snapshot, rel.slice('meta/flow:'.length));

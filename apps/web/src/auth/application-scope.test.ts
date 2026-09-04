@@ -9,6 +9,7 @@ import {
   filterSitemapForPolicyScope,
   filterThreadEntityForPrincipal,
 } from './application-scope';
+import { businessApplications } from './audience/business-applications';
 
 // D51 新应用注册演练(文末 describe):sidecar 读咽喉 getAuthorizedPresentationResult
 // 走真实 engine 边界,这里以 vi.mock 注入 fixture 引擎(纯单元,不触库)。
@@ -544,5 +545,107 @@ describe('D51-新应用零改码', () => {
     await expect(
       getAuthorizedPresentationResult('fixture:none', 'user:mike', ['fixture-app']),
     ).resolves.toMatchObject({ kind: 'subject-unavailable' });
+  });
+});
+
+// T52 Phase 3(D71.3 反 fail-open):应用停用的 fold 级联会删 applications 键,
+// 但 deprecatedApplications 审计表在场、同 app 定义/实例条目保留(app 字段在)。
+// 受众归属解析必须双集化(active ∪ deprecated):停用应用的事实解析出非空归属,
+// 咽喉对「授予集合无交集」给出确定性拒绝;空受众 fail-open 只保留给从未安装/
+// 无法归属的 rel(D51 语义本身不变)。
+describe('停用应用受众双集解析(T52 P3 / D71.3)', () => {
+  // P1 级联后的快照形状:publishing 被停用——applications 删键、审计表留痕、
+  // post-status 条目置 status:'deprecated'(键与 app 字段保留)、实例保留。
+  const deprecatedSnapshot = {
+    ...snapshot,
+    applications: { community: (snapshot.applications as Record<string, unknown>).community },
+    deprecatedApplications: {
+      publishing: { name: 'publishing', reason: 'T52 P3 fixture', seq: 42 },
+    },
+    definitions: {
+      ...snapshot.definitions,
+      'post-status': {
+        ...(snapshot.definitions as Record<string, { status?: string }>)['post-status'],
+        status: 'deprecated',
+      },
+    },
+  } as unknown as EngineSnapshot;
+  const deprecatedBusiness = {
+    snapshot: deprecatedSnapshot,
+    sitemap,
+    plane: 'business' as const,
+  };
+  const deprecatedMeta = { snapshot: deprecatedSnapshot, sitemap, plane: 'meta' as const };
+  const item = (rel: string): SirenEntity => ({
+    class: ['item'],
+    href: `/api/entity?rel=${rel}`,
+    properties: {},
+    actions: [],
+    links: [],
+  });
+
+  it('business application: 停用名经双集解析出非空归属:无交集拒绝,授予内放行', () => {
+    // 最窄纯边界:解析函数本身返回停用名(而非 [])。
+    expect(businessApplications(deprecatedSnapshot, sitemap, 'application:publishing')).toEqual([
+      'publishing',
+    ]);
+    // 咽喉:授予集合(治理展开后亦不含停用名)无交集 → 结构化拒绝。
+    expect(() =>
+      assertReachable(deprecatedBusiness, 'application:publishing', [
+        'community',
+        'default',
+        'governance',
+      ]),
+    ).toThrowError('scope_insufficient');
+    // 停用名仍在凭证授予集合内 → 不由受众谓词拒绝(授予内零可见授权事件)。
+    expect(() =>
+      assertReachable(deprecatedBusiness, 'application:publishing', ['publishing']),
+    ).not.toThrow();
+  });
+
+  it('meta application: 同一双集口径(meta/application: 不因停用变空受众)', () => {
+    expect(() =>
+      assertReachable(deprecatedMeta, 'meta/application:publishing', ['community', 'governance']),
+    ).toThrowError('scope_insufficient');
+    expect(() =>
+      assertReachable(deprecatedMeta, 'meta/application:publishing', ['publishing']),
+    ).not.toThrow();
+  });
+
+  it('从未安装/无法归属的 rel 维持 D51 fail-open(空受众兜底只属于这一类)', () => {
+    expect(() =>
+      assertReachable(deprecatedBusiness, 'application:never-installed', []),
+    ).not.toThrow();
+    expect(() =>
+      assertReachable(deprecatedMeta, 'meta/application:never-installed', []),
+    ).not.toThrow();
+  });
+
+  it('停用应用的 flow:/实例/确认/集合面归属保持非空(级联保留 app 字段,只钉不改)', () => {
+    for (const rel of ['flow:post-status', 'post:p1', 'confirmation:c1', 'articles']) {
+      expect(() => assertReachable(deprecatedBusiness, rel, ['community'])).toThrowError(
+        'scope_insufficient',
+      );
+      expect(() => assertReachable(deprecatedBusiness, rel, ['publishing'])).not.toThrow();
+    }
+  });
+
+  it('集合成员过滤:停用应用成员被逐子裁剪,活跃成员保留', () => {
+    const collection: SirenEntity = {
+      class: ['collection'],
+      properties: { count: 2 },
+      actions: [],
+      links: [],
+      entities: [item('application%3Apublishing'), item('application%3Acommunity')],
+    };
+    const filtered = filterEntityForGrantedApplications(collection, {
+      ...deprecatedBusiness,
+      grantedApplications: ['community'],
+      principal: 'user:mike',
+    });
+    expect(filtered.entities?.map(({ href }) => href)).toEqual([
+      '/api/entity?rel=application%3Acommunity',
+    ]);
+    expect(filtered.properties.count).toBe(1);
   });
 });
