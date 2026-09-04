@@ -1287,3 +1287,33 @@
 - **文档同步**：GOAL.md「App 创建边界」改写为"产品内受治理 genesis 经 Draft 合同
   存在；create-app 对话向导/页面设计器/rule-based 生成器仍排除"；
   `conductor/index.md` 禁止复活清单中 "in-product App creation" 条目移除。
+
+## D68 聊天会话双轴:principal 所有权轴 × sessionId 会话轴(T49)
+
+- **覆盖关系**:本决定修订 T22 生产认证接线中的实现捷径(`c18eaadc` 把生产 sessionId
+  强制折叠为认证 principal,见 `apps/web/src/app/api/chat/route.ts` 原第 211 行),
+  不修订 T22 的身份立场;T9/T15 的"服务端零会话态、聊天 = 事件日志投影"不变;
+  D28/D51 对 Presentation durable key 禁 sessionId 的口径仅约束 Presentation 平面,
+  不外溢到 chat。
+- **D68.1 双轴定义**:principal 是唯一所有权/授权轴(生产 = 认证主体,本地 demo =
+  `user:<sessionId>`);sessionId 只是会话分组键。一切 chat 事件写入
+  `principal=<所有权轴>`、`rel=chat:<sessionId>`;sessionId 绝不参与生产身份推导。
+- **D68.2 sessionId 输入合同**:客户端铸发(现行为 `crypto.randomUUID()`)或服务端
+  代铸(缺省时)。服务端只做输入卫生校验:字符集 `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`
+  (覆盖 UUID 与既有本地 fixture);缺省 → 服务端代铸 UUID v4;存在但非法 → 400
+  结构化拒绝。纯函数、零 profile 分支。
+- **D68.3 读侧三路 principal 过滤**:`/api/chat/sessions`、`/api/chat/history` 与
+  `loadAgentConversation`/`conversationView`(回合前 agent 会话上下文装配)全部按
+  principal 过滤,sessionId 仅作组内分组/选择键。conversationView 原仅按
+  rel 过滤(不设 principal)——sessionId 恢复客户端自报后跨 principal 碰撞可污染
+  agent 上下文,随本决定一并收敛。
+- **D68.4 测试意图迁移**:`route.production-auth.test.ts` 的 forged-root 断言
+  (自报 sessionId 绝不出现于可观面)原生于 sessionId 即身份的实验期;D68 下合法
+  自报 sessionId 作为分组键落库/回显是预期行为,安全断言迁移为「伪造值绝不进入
+  任何身份绑定字段(principal),事件 principal 恒为认证主体」。
+- **D68.5 旧数据诚实投影(GR2)**:不写兼容/迁移路径。已落库的 `sessionId=<principal>`
+  旧事件自然投影为一条以 principal 字符串为键的历史会话行;生产客户端 localStorage
+  中的旧 principal 形状值(字符集合法)合法延续为该旧会话,点「新会话」即进入新模型。
+  不回填、不改写、不双轨。
+- **D68.6 语义统一**:本地与生产对同一套用户操作(新会话/清单/切换/刷新)行为一致;
+  「新会话」在两个 profile 下都同时重置 UI 与 agent 上下文。
