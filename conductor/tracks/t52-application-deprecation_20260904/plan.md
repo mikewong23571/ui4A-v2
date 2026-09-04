@@ -68,7 +68,7 @@
   (读取面受众层 P3b 954db2b5 钉 403/404;别名/集合/补全面本提交收缩;联合覆盖)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `1bd95f07`
 
-## Phase 4 — 同门与验收
+## Phase 4 — 同门与验收 [checkpoint: 6f22ce33]
 
 - [x] Task: 浏览器门:实体页动作渲染/两步确认(T39 canonical renderer 复用,
   零新增硬编码,I3) `e2cc3a73`
@@ -80,9 +80,11 @@
   特判,引擎拒绝为唯一权威;零生产改动)
   (GR3 顺带拆解:meta/renderers 目录超限,P4a 测试推过线,按 D53 拆 generic/ 子
   目录 91201168)
-- [~] Task: e2e 独立 spec(t52-*.spec.ts):genesis 出生→写数据→停用→全收缩断言
-  (发现/目录/实体/集合/授予/面板)→ 同名重建被拒 → 重放一致;invariants 扩展
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: e2e 独立 spec(t52-*.spec.ts):genesis 出生→写数据→停用→全收缩断言
+  (发现/目录/实体/集合/授予/面板)→ 同名重建被拒 → 重放一致;invariants 扩展 `6f22ce33`
+  (终验抓出缺陷 A/B 并修复 ebbe184d:停用回执 500→集合回执;烧毁集同进程选择性
+  补折;invariants 以真进程重启覆盖重放一致;口径 C 如实记录)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `6f22ce33`
 
 ## Phase 5 — 收口
 
