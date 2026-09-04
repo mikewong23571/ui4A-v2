@@ -1,0 +1,8 @@
+{
+  "trackId": "t49-chat-session-two-axis_20260904",
+  "type": "bug",
+  "status": "new",
+  "createdAt": "2026-09-04",
+  "updatedAt": "2026-09-04",
+  "summary": "修复生产模式聊天会话折叠:解耦 principal(所有权轴)与 sessionId(会话轴),恢复多会话、修正「新会话」上下文语义、收敛会话装配 principal 过滤;U1–U10 用户故事验收闭环;决策 D68。"
+}
