@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-- [ ] **Track: T52 Application Deprecation 受治理应用停用**（规划完成未开工:D71 草案——直连 deprecate 动作 + application-deprecated 事件全联动收缩、反 fail-open 受众、名字/flow 名烧毁、default 地板守卫、agent 凭证砖化运维口径;US1–US7;经两轮设计复审定稿） *Link: [tracks/t52-application-deprecation_20260904/index.md](./tracks/t52-application-deprecation_20260904/index.md)*
+- [~] **Track: T52 Application Deprecation 受治理应用停用**（规划完成未开工:D71 草案——直连 deprecate 动作 + application-deprecated 事件全联动收缩、反 fail-open 受众、名字/flow 名烧毁、default 地板守卫、agent 凭证砖化运维口径;US1–US7;经两轮设计复审定稿） *Link: [tracks/t52-application-deprecation_20260904/index.md](./tracks/t52-application-deprecation_20260904/index.md)*
 
 （T51 已完成归档）
 
