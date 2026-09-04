@@ -29,7 +29,7 @@
   (全量回归移至 Phase checkpoint 统一执行,并行改动在途)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `9beeace7`
 
-## Phase 2 — 守卫与烧毁
+## Phase 2 — 守卫与烧毁 [checkpoint: 036dd46f]
 
 - [x] Task: 烧毁集统一(create/validate snapshot 口径扩为 active ∪ deprecated;
   activate log 口径显式计入 application-deprecated;三处同测,D71.5) `036dd46f`
@@ -38,7 +38,7 @@
   后钉测试 `036dd46f`
   (数据源=definitions 键集,deprecated 键保留天然 fail-closed,纯钉测试;
   顺带修复 audit-only 烧毁名 approve 安装洞)
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `036dd46f`
 
 > 顺序修订(2026-09-04 执行期):原「default 守卫」任务移入 Phase 3——guard 语义
 > (拒绝 target==='default')的宿主是 APPLICATION_LIFECYCLE 伪流声明,P2 单独实现
