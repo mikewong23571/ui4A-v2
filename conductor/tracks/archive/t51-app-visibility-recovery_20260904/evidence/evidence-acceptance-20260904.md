@@ -39,3 +39,26 @@
 本地浏览器门已闭环(e2e):起草→批准→披露回执(immediately-visible)→应用目录
 出现新应用→「我的授权」面板自查一致。生产通道(真实 OIDC/SSO 刷新授权往返)按
 合同属部署站复核,由用户发布后按 DEPLOYMENT §7 新步骤执行。
+
+## 部署站双通道复核(2026-09-04,release bb718533)
+
+按 DEPLOYMENT §6 标准流程发布(三镜像 digest 固定 + edge 白名单变更 restart)。
+§7 合同全绿(root/meta 307、API 结构化 401、OIDC 200、account 302;新增
+`/session` 307、`/api/auth/session` 401 credential_missing;`/auth/login` 302
+scope= 含 `ui4a:policy:governance`;volume hash 不变)。
+
+- **CLI 门**:`auth status`(development+governance);`apps list` 10 应用含
+  todo/ideas/security/t48-prod-*(治理展开)。
+- **浏览器门**(home 系统 Chrome + playwright,部署内置 `ui4a-experiment-human`
+  凭证,凭证仅 home 受限文件内流转):7 步全过——真实 PKCE 登录 → 我的授权面板
+  (登录凭证/治理展开/授予全集含 todo-ideas) → 应用目录(新应用批准前不可见)
+  → 浏览器内受治理出生(`t51-prod-748704`,create→submit→pending) → 两步确认
+  approve → **D70.1 披露回执「已对当前会话可见」+ 新应用徽标 + 前往应用目录** →
+  目录无需重登出现新应用 → 刷新授权 SSO 无感往返返回面板。截图
+  `screenshots/01–05`。
+
+**凭证事实(§1.6 漂移记录)**:`mike` 个人密码与 `mike-login.json` 不一致(疑似
+经 Account Console 改密未同步文件);浏览器门改用 realm 内置实验人工账户,其
+密码由部署 secret 维护、realm-bootstrap 每次 up 校验。`mike-login.json` 待用户
+核对;另留一份 mike 所有的 pending-approval Draft(`t51-prod-2694`,CLI 起草后
+由浏览器门改走全内流程)待 mike 本人在浏览器 reject。
