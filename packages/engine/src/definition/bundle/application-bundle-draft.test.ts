@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { APPLICATION_BUNDLE_SCHEMA } from '../meta-bootstrap';
-import { validateApplicationBundleDraft } from './application-bundle-draft';
+import { bundleInventoryConflicts, validateApplicationBundleDraft } from './application-bundle-draft';
 
 // T48 Phase 1 / T1.2:application-bundle Draft 的纯校验器单测。
 // 只测适配器合同:unknown payload → DraftValidation 形状;解析细节由
@@ -66,5 +66,38 @@ describe('validateApplicationBundleDraft', () => {
     expect(validation.valid).toBe(false);
     expect(validation.issues[0]?.message).toContain('demo-entry');
     expect(validation.issues[0]?.message).toContain('other-app');
+  });
+});
+
+describe('bundleInventoryConflicts', () => {
+  // T48 评审修复(D66.1 fail-closed):bundle 制品可声明多个 application,
+  // genesis 门禁必须校验全量清单,而非仅 target 名。
+  const conflicting = validateApplicationBundleDraft({
+    ...artifact,
+    applications: [
+      ...artifact.applications,
+      { name: 'default', title: 'Conflict', intent: 'Already installed by bootstrap' },
+    ],
+    capabilities: [{ name: 'shared-capability', title: 'C', kind: 'transform', intent: 'I' }],
+  });
+  const installed = {
+    applications: new Set(['default', 'development']),
+    capabilities: new Set(['shared-capability']),
+    flows: new Set(['unrelated-installed-flow']),
+  };
+
+  it('reports every declared name already present in the installed sets', () => {
+    expect(conflicting.value).toBeDefined();
+    expect(bundleInventoryConflicts(conflicting.value!, installed)).toEqual({
+      applications: ['default'],
+      capabilities: ['shared-capability'],
+      flows: [],
+    });
+  });
+
+  it('returns undefined when the inventory is fully fresh', () => {
+    const fresh = validateApplicationBundleDraft(artifact);
+    expect(fresh.value).toBeDefined();
+    expect(bundleInventoryConflicts(fresh.value!, installed)).toBeUndefined();
   });
 });

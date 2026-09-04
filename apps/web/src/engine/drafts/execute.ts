@@ -1,4 +1,5 @@
 import {
+  bundleInventoryConflicts,
   validateAgentDefinitionDraft,
   validateFlowDraft,
   type ApplicationBundleDraftValidation,
@@ -278,6 +279,18 @@ export async function executeDraftMeta(
         staleReason = `application ${aggregate.target} is already installed`;
       }
       validation = validateBundleCandidate(payload, aggregate.target);
+      // D66.1 fail-closed(评审修复):全量清单与激活门禁同口径——次级名称
+      // 冲突同样判 stale,不留给批准阶段静默跳过。
+      if (validation.value !== undefined && staleReason === undefined) {
+        const conflicts = bundleInventoryConflicts(validation.value, {
+          applications: new Set(Object.keys(snapshot.applications ?? {})),
+          capabilities: new Set(Object.keys(snapshot.capabilities ?? {})),
+          flows: new Set(Object.keys(snapshot.definitions ?? {})),
+        });
+        if (conflicts !== undefined) {
+          staleReason = `bundle inventory conflicts with installed definitions ${JSON.stringify(conflicts)}`;
+        }
+      }
     } else if (aggregate.kind === 'agent-definition' && context.agentDefinitions !== undefined) {
       const registry = await context.agentDefinitions.readSnapshot({
         db,

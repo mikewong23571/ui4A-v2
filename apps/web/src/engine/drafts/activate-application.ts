@@ -11,9 +11,17 @@
  * - payloadHash 对齐锁定版本(装载完整性另由 accept 事务核 SHA,此处再对齐一次);
  * - bundle 仍可解析且解析名等于 target;
  * - target 名尚未被任何路径安装——同名即双写者竞态,判 stale 留痕(I6),
- *   绝不把冲突 bundle 部分并入库。
+ *   绝不把冲突 bundle 部分并入库;
+ * - 全量清单 fail-closed(D66.1,评审修复):制品可声明多个 application,
+ *   任何已安装名称(applications/capabilities/flows)都判 stale 留痕,
+ *   不得按 bootstrap 幂等语义静默跳过部分安装。
  */
-import { planMetaBootstrap, validateApplicationBundleDraft } from '@ui4a/engine';
+import {
+  bundleInventoryConflicts,
+  planMetaBootstrap,
+  validateApplicationBundleDraft,
+  type InstalledBundleNames,
+} from '@ui4a/engine';
 import { payloadSha256, type AtomicCoreMutationPlan } from '@ui4a/db/drafts';
 import { readLog, type DbExecutor } from '@ui4a/db/events';
 import type { DraftAggregate } from '@ui4a/shared';
@@ -48,6 +56,24 @@ export async function planApplicationBundleActivation(input: {
   );
   if (installed) {
     throw new Error(`draft stale: application ${locked.target} is installed concurrently`);
+  }
+  const seededNames = (kind: string): Set<string> =>
+    new Set(
+      log
+        .filter((event) => event.kind === kind)
+        .map((event) => (event.detail as { name?: unknown } | undefined)?.name)
+        .filter((name): name is string => typeof name === 'string'),
+    );
+  const installedNames: InstalledBundleNames = {
+    applications: seededNames('application-seeded'),
+    capabilities: seededNames('capability-seeded'),
+    flows: seededNames('definition-seeded'),
+  };
+  const conflicts = bundleInventoryConflicts(validation.value, installedNames);
+  if (conflicts !== undefined) {
+    throw new Error(
+      `draft stale: bundle inventory conflicts with installed definitions ${JSON.stringify(conflicts)}`,
+    );
   }
   return { events: planMetaBootstrap(validation.value, log) };
 }

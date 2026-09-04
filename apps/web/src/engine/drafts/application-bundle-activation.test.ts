@@ -219,6 +219,72 @@ describe('governed application-bundle Draft activation', () => {
     );
   });
 
+  it('marks the Draft stale when the bundle inventory conflicts with installed names (D66.1 fail-closed)', async () => {
+    // 评审修复:bundle 名(target)全新,但 applications 声明了 boot 已安装的
+    // 次级名称 default。机器门禁必须 fail-closed 拒绝并留痕(I6),不得按
+    // bootstrap 幂等语义静默跳过部分安装。
+    const payload = bundlePayload('fresh-bundle');
+    (payload.applications as unknown[]).push({
+      name: 'default',
+      title: 'Conflicting secondary application',
+      intent: 'Already installed by the built-in bootstrap',
+    });
+    const created = await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel: 'meta/drafts',
+        action: 'create',
+        actor: 'agent',
+        principal: OWNER,
+        channel: 'cli',
+        params: {
+          kind: 'application-bundle',
+          target: 'fresh-bundle',
+          commandId: 'act:conflict:create',
+          payload,
+        },
+      },
+      { policyScope: SCOPE },
+    );
+    expect(created.kind).toBe('accepted');
+    const rel = created.kind === 'accepted' ? String(created.entity.properties.rel) : '';
+    const submitted = await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel,
+        action: 'submit',
+        actor: 'agent',
+        principal: OWNER,
+        channel: 'cli',
+        params: { commandId: 'act:conflict:submit' },
+      },
+      { policyScope: SCOPE },
+    );
+    expect(submitted.kind).toBe('accepted');
+    const activation = String(
+      submitted.kind === 'accepted' ? submitted.entity.properties.activation : '',
+    );
+
+    await expect(approve(activation, 'act:conflict:approve')).rejects.toThrow(
+      'conflicts with installed',
+    );
+    expect((await getDraftMetaEntity(pool, engine, rel, OWNER, SCOPE))?.properties.status).toBe(
+      'stale',
+    );
+    // 拒绝留痕之外零安装:无出生事件、无 receipt、无 draft-accepted。
+    const events = await listEvents(pool);
+    expect(events.filter((event) => event.kind === 'draft-staled')).toHaveLength(1);
+    expect(JSON.stringify(events.find((event) => event.kind === 'draft-staled')?.detail)).toContain(
+      'default',
+    );
+    expect(events.filter((event) => event.rel === 'meta/application:fresh-bundle')).toEqual([]);
+    expect(events.filter((event) => event.rel === 'meta/flow:fresh-bundle-entry')).toEqual([]);
+    expect(events.filter((event) => event.rel === 'meta/bootstrap:fresh-bundle@1')).toEqual([]);
+    expect(events.filter((event) => event.kind === 'draft-accepted')).toEqual([]);
+  });
+
   it('marks the Draft stale when another path installs the same application first', async () => {
     const { rel, activation } = await submitBundle('demo-bundle', 'act:race');
 
