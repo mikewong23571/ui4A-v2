@@ -508,6 +508,9 @@ describe('T22 Docker Compose identity, mounts, edges and recovery hooks', () => 
       '/_meta/api/exec',
       '/api/presentation',
       '/api/presentation/sidecar',
+      // T51/D70:auth 平面投影面(「我的授权」页面与 API)是声明过的受治理面。
+      '/session',
+      '/api/auth/session',
     ]) {
       expect(routing, path).toContain(path);
     }
