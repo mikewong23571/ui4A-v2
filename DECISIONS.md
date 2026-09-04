@@ -1346,3 +1346,10 @@
 - **验收形态**:US1 为机械证明——e2e 从注解 schema+example 程序化合成 payload(不抄
   fixture)一次 create 即 ready,对照 ui4a-ops 实证基线 12 次迭代;愿景四条对齐评审
   (含错误面 grep 无友好模板拼接)入 evidence。
+  **T50 附录(2026-09-04,prompt 预算冲突裁定)**:注解落地实测 chat meta 决策请求
+  35.9KB > 32KiB provider 预算(基线已占 ~96%)。依 D69.1 所引 §八"披露收窄发生在
+  prompt 层"裁定:**模型视图剥离注解中的 schema 大对象,保留 example**——agent 工具
+  投影(packages/agent)对 `x-ui4a-payload-schemas` 剥离 per-kind `schema` 键、保留
+  `example`(与既有 `x-ui4a-input-owner` 的协议级处理同模式);HTTP 合同不窄化,外部
+  agent(CLI/e2e)仍见全量注解。预算常量不动。chat 测试断言相应改为:模型视图含
+  example 不含 schema;HTTP 回放含全量。
