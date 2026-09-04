@@ -62,3 +62,11 @@ scope= 含 `ui4a:policy:governance`;volume hash 不变)。
 密码由部署 secret 维护、realm-bootstrap 每次 up 校验。`mike-login.json` 待用户
 核对;另留一份 mike 所有的 pending-approval Draft(`t51-prod-2694`,CLI 起草后
 由浏览器门改走全内流程)待 mike 本人在浏览器 reject。
+
+## 补充:mike 本人通道复核(2026-09-04,密码文件同步后)
+
+用户同步 `mike-login.json` 后,以 mike 真实凭证复跑浏览器门:PKCE 登录 → 我的授权
+面板(登录凭证 + 治理展开 + 授予全集含 todo/ideas)→ 应用目录出现 todo/ideas。
+截图 `screenshots/06–07`。至此三个通道(CLI/experiment-human/mike)全部实证。
+遗留:`t51-prod-2694` Draft 保持 pending-approval(reject UI 两次未达成,按验收
+失败协议停止重试;`expiresAt 2026-10-04` 自动过期,mike 亦可手动 reject)。
