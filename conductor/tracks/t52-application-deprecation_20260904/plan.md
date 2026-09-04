@@ -31,11 +31,13 @@
 
 ## Phase 2 — 守卫与烧毁
 
-- [ ] Task: 烧毁集统一(create/validate snapshot 口径扩为 active ∪ deprecated;
-  activate log 口径显式计入 application-deprecated;三处同测,D71.5)
-- [ ] Task: flow 名烧毁级联(D71.8):停用应用的 flow 名在 flow-definition
+- [x] Task: 烧毁集统一(create/validate snapshot 口径扩为 active ∪ deprecated;
+  activate log 口径显式计入 application-deprecated;三处同测,D71.5) `036dd46f`
+- [x] Task: flow 名烧毁级联(D71.8):停用应用的 flow 名在 flow-definition
   genesis/激活路径 fail-closed;核实 activate-flow 目标检查数据源(snapshot/log)
-  后钉测试
+  后钉测试 `036dd46f`
+  (数据源=definitions 键集,deprecated 键保留天然 fail-closed,纯钉测试;
+  顺带修复 audit-only 烧毁名 approve 安装洞)
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 > 顺序修订(2026-09-04 执行期):原「default 守卫」任务移入 Phase 3——guard 语义
