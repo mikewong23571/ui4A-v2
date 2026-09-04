@@ -17,12 +17,13 @@
 
 ## Phase 1 — 事件与 fold 级联(engine 纯层)
 
-- [~] Task: 事件词汇三处同步(packages/db EventKind、engine LogEventKind、
+- [x] Task: 事件词汇三处同步(packages/db EventKind、engine LogEventKind、
   effects EngineEvent)+ fold `application-deprecated` case(fold/index default:
-  throw 纪律:先加测试钉住未知 kind 炸,再同步加 case)
-- [~] Task: 级联 fold(测试先行):applications 删键 + deprecatedApplications 审计集
+  throw 纪律:先加测试钉住未知 kind 炸,再同步加 case) `9beeace7`
+- [x] Task: 级联 fold(测试先行):applications 删键 + deprecatedApplications 审计集
   + 同 app 全部 definitions 置 status:'deprecated';幂等重放;I5 全 log 重放一致;
-  app-known 不变式保持
+  app-known 不变式保持 `9beeace7`
+  (两任务同文件同测试簇,合一提交;confirmation.ts 携带缺口记 P3)
 - [x] Task: `activeFlowList` 口径修订(现不筛 definitions.status,service.ts:260-265)
   ——废弃 flow 定义退出活跃注册表;全量回归钉住无意外收缩 `8ed551b8`
   (全量回归移至 Phase checkpoint 统一执行,并行改动在途)
