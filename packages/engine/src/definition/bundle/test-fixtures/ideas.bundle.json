@@ -1,0 +1,278 @@
+{
+  "schema": "https://ui4a.dev/application-bundle/v1",
+  "bundle": {
+    "name": "ideas",
+    "version": 7
+  },
+  "applications": [
+    {
+      "name": "ideas",
+      "title": "想法收集",
+      "intent": "随时捕捉想法并发展成熟:捕捉→发展中→已成熟→归档,发展内容沉淀在想法本体上;可搁置回退。业务目标是让灵感不被丢失、发展有轨迹。",
+      "entry": { "target": "flow:idea-capture", "role": "primary-create" }
+    }
+  ],
+  "capabilities": [],
+  "flows": [
+    {
+      "name": "idea-capture",
+      "title": "想法捕捉",
+      "app": "ideas",
+      "initial": "capture",
+      "nodes": [
+        {
+          "name": "capture",
+          "title": "捕捉",
+          "fields": [
+            {
+              "name": "title",
+              "type": "text",
+              "required": true,
+              "semantics": "intent",
+              "presentation": {
+                "role": "identity"
+              },
+              "title": "想法标题"
+            }
+          ],
+          "actions": [
+            {
+              "name": "keep",
+              "title": "记下想法",
+              "to": "recorded",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "recorded"
+                },
+                {
+                  "type": "append",
+                  "collection": "ideas",
+                  "resource-type": "idea",
+                  "flow": "idea-item",
+                  "name-from": "title",
+                  "node": "captured"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "done",
+          "title": "完成",
+          "actions": [],
+          "fields": []
+        },
+        {
+          "name": "recorded",
+          "title": "已记下",
+          "actions": [
+            {
+              "name": "another",
+              "title": "再记一条",
+              "to": "capture",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "capture"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        }
+      ]
+    },
+    {
+      "name": "idea-item",
+      "title": "想法状态",
+      "app": "ideas",
+      "initial": "captured",
+      "collections": [
+        {
+          "collection": "ideas",
+          "title": "想法",
+          "filters": [{ "field": "status", "title": "想法阶段" }]
+        }
+      ],
+      "cognitive": {
+        "version": 1,
+        "traits": ["work-queue"],
+        "emptyMeaning": "ready-to-start"
+      },
+      "fields": [
+        {
+          "name": "title",
+          "type": "text",
+          "title": "想法标题",
+          "presentation": {
+            "role": "identity",
+            "overview": true
+          }
+        },
+        {
+          "name": "insight",
+          "type": "textarea",
+          "title": "发展内容",
+          "presentation": {
+            "role": "primary-content",
+            "overview": true
+          }
+        }
+      ],
+      "nodes": [
+        {
+          "name": "captured",
+          "title": "已捕捉",
+          "actions": [
+            {
+              "name": "develop",
+              "title": "开始发展",
+              "to": "developing",
+              "submission": {
+                "mode": "direct",
+                "actors": ["agent", "human"]
+              },
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "developing"
+                }
+              ]
+            },
+            {
+              "name": "archive",
+              "title": "归档",
+              "to": "archived",
+              "requires-confirmation": "high",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "archived"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "developing",
+          "title": "发展中",
+          "actions": [
+            {
+              "name": "advance",
+              "title": "提交发展内容",
+              "to": "developing",
+              "method": "POST",
+              "guards": [],
+              "fields": [
+                {
+                  "name": "insight",
+                  "type": "textarea",
+                  "required": true,
+                  "semantics": "work-product",
+                  "presentation": {
+                    "role": "primary-content"
+                  },
+                  "title": "发展内容"
+                }
+              ],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "developing"
+                }
+              ]
+            },
+            {
+              "name": "mature",
+              "title": "标记成熟",
+              "to": "matured",
+              "submission": {
+                "mode": "direct",
+                "actors": ["agent", "human"]
+              },
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "matured"
+                }
+              ]
+            },
+            {
+              "name": "shelve",
+              "title": "搁置",
+              "to": "captured",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "captured"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "matured",
+          "title": "已成熟",
+          "actions": [
+            {
+              "name": "archive",
+              "title": "归档",
+              "to": "archived",
+              "requires-confirmation": "high",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "archived"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "archived",
+          "title": "已归档",
+          "actions": [],
+          "fields": []
+        }
+      ]
+    }
+  ],
+  "seed": {
+    "rel": "seed:ideas-domain-v2",
+    "detail": {
+      "instances": {
+        "idea-capture:main": {
+          "rel": "idea-capture:main",
+          "flow": "idea-capture",
+          "node": "capture",
+          "fields": {}
+        }
+      }
+    }
+  }
+}

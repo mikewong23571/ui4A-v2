@@ -1,0 +1,226 @@
+{
+  "schema": "https://ui4a.dev/application-bundle/v1",
+  "bundle": {
+    "name": "todo",
+    "version": 7
+  },
+  "applications": [
+    {
+      "name": "todo",
+      "title": "待办事项",
+      "intent": "捕捉待办并推进到完成:一句话捕捉待办,进行中可完成或重新打开,结束归档。业务目标是让任何时刻都能回答'接下来要做什么、做完了什么'。",
+      "entry": { "target": "flow:todo-capture", "role": "primary-create" }
+    }
+  ],
+  "capabilities": [],
+  "flows": [
+    {
+      "name": "todo-capture",
+      "title": "待办捕捉",
+      "app": "todo",
+      "initial": "capture",
+      "nodes": [
+        {
+          "name": "capture",
+          "title": "捕捉",
+          "fields": [
+            {
+              "name": "title",
+              "type": "text",
+              "required": true,
+              "semantics": "intent",
+              "presentation": {
+                "role": "identity"
+              },
+              "title": "待办标题"
+            },
+            {
+              "name": "note",
+              "type": "textarea",
+              "semantics": "intent",
+              "presentation": {
+                "role": "metadata"
+              },
+              "title": "备注"
+            }
+          ],
+          "actions": [
+            {
+              "name": "add",
+              "title": "添加待办",
+              "to": "recorded",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "recorded"
+                },
+                {
+                  "type": "append",
+                  "collection": "todos",
+                  "resource-type": "todo",
+                  "flow": "todo-item",
+                  "name-from": "title",
+                  "node": "open"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "done",
+          "title": "完成",
+          "actions": [],
+          "fields": []
+        },
+        {
+          "name": "recorded",
+          "title": "已记下",
+          "actions": [
+            {
+              "name": "another",
+              "title": "再记一条",
+              "to": "capture",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "capture"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        }
+      ]
+    },
+    {
+      "name": "todo-item",
+      "title": "待办状态",
+      "app": "todo",
+      "initial": "open",
+      "collections": [
+        {
+          "collection": "todos",
+          "title": "待办",
+          "filters": [{ "field": "status", "title": "待办状态" }]
+        }
+      ],
+      "cognitive": {
+        "version": 1,
+        "traits": ["work-queue"],
+        "emptyMeaning": "ready-to-start"
+      },
+      "fields": [
+        {
+          "name": "title",
+          "type": "text",
+          "title": "待办标题",
+          "presentation": {
+            "role": "identity",
+            "overview": true
+          }
+        },
+        {
+          "name": "note",
+          "type": "textarea",
+          "title": "备注",
+          "presentation": {
+            "role": "primary-content",
+            "overview": true
+          }
+        }
+      ],
+      "nodes": [
+        {
+          "name": "open",
+          "title": "进行中",
+          "actions": [
+            {
+              "name": "complete",
+              "title": "完成",
+              "to": "done",
+              "submission": {
+                "mode": "direct",
+                "actors": ["agent", "human"]
+              },
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "done"
+                }
+              ]
+            },
+            {
+              "name": "archive",
+              "title": "归档",
+              "to": "archived",
+              "requires-confirmation": "high",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "archived"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "done",
+          "title": "已完成",
+          "actions": [
+            {
+              "name": "reopen",
+              "title": "重新打开",
+              "to": "open",
+              "submission": {
+                "mode": "direct",
+                "actors": ["agent", "human"]
+              },
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "open"
+                }
+              ]
+            }
+          ],
+          "fields": []
+        },
+        {
+          "name": "archived",
+          "title": "已归档",
+          "actions": [],
+          "fields": []
+        }
+      ]
+    }
+  ],
+  "seed": {
+    "rel": "seed:todo-domain-v2",
+    "detail": {
+      "instances": {
+        "todo-capture:main": {
+          "rel": "todo-capture:main",
+          "flow": "todo-capture",
+          "node": "capture",
+          "fields": {}
+        }
+      }
+    }
+  }
+}

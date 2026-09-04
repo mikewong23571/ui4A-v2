@@ -1,14 +1,20 @@
 /**
- * application-bundle Draft 纯校验器(T48 Phase 1 / T1.2)。
+ * application-bundle Draft 纯校验器(T48 Phase 1 / T1.2;T50 Phase 2 / D69.3 透传)。
  *
- * 把安装边界的 parseApplicationBundle 适配为 Draft 校验合同:unknown payload →
+ * 把安装边界的结构化拒绝通道适配为 Draft 校验合同:unknown payload →
  * {valid, issues, value};解析失败是 invalid + issues(拒绝是有理由的事件,
- * 不是异常),永不 throw。安装语义(planMetaBootstrap)属于激活阶段(T48
- * Phase 2),本模块只回答"这份制品是否是一份完整可安装的 bundle"。
+ * 不是异常),永不 throw。issues 由 engine 源头(parseApplicationBundle 同一走查)
+ * 结构化产出 {code, path, message, expected},本适配器零字符串匹配、零改写。
+ * 安装语义(planMetaBootstrap)属于激活阶段(T48 Phase 2),本模块只回答
+ * "这份制品是否是一份完整可安装的 bundle"。
  */
-import type { DraftValidation } from '@ui4a/shared';
+import type { DraftValidation, DraftValidationIssue } from '@ui4a/shared';
 
-import { parseApplicationBundle, type ApplicationBundle } from '../meta-bootstrap';
+import {
+  applicationBundleIssues,
+  parseApplicationBundle,
+  type ApplicationBundle,
+} from './payload-issues';
 
 export interface ApplicationBundleDraftValidation extends DraftValidation {
   value?: ApplicationBundle;
@@ -50,20 +56,20 @@ export function bundleInventoryConflicts(
 
 /** Parse and validate an application bundle candidate without planning installation. */
 export function validateApplicationBundleDraft(payload: unknown): ApplicationBundleDraftValidation {
-  let value: ApplicationBundle;
-  try {
-    value = parseApplicationBundle(payload);
-  } catch (error) {
-    return {
-      valid: false,
-      issues: [
-        {
-          code: 'parse-error',
-          path: '/',
-          message: error instanceof Error ? error.message : String(error),
-        },
-      ],
-    };
+  const issues = applicationBundleIssues(payload);
+  if (issues.length > 0) {
+    return { valid: false, issues };
   }
-  return { valid: true, issues: [], value };
+  try {
+    return { valid: true, issues: [], value: parseApplicationBundle(payload) };
+  } catch (error) {
+    // 防御回退:结构化通道与 parse 共享同一次走查,正常不会走到这里;
+    // 万一未来漂移,仍守住"拒绝是有理由的事件,永不 throw"的合同。
+    const fallback: DraftValidationIssue = {
+      code: 'parse-error',
+      path: '/',
+      message: error instanceof Error ? error.message : String(error),
+    };
+    return { valid: false, issues: [fallback] };
+  }
 }

@@ -360,7 +360,7 @@ export function parseFlowDefinition(input: unknown): FlowDefinition {
 }
 
 /** capability 类别注册表(arch-brief 第七层三类动词:转换/提取/效应)。 */
-const CAPABILITY_KINDS: ReadonlySet<string> = new Set(['transform', 'extract', 'effect']);
+export const CAPABILITY_KINDS: ReadonlySet<string> = new Set(['transform', 'extract', 'effect']);
 
 /** capability 定义的结构校验(与 applicationStructuralIssues 同构:形状级,逐字段收集)。 */
 function capabilityStructuralIssues(input: unknown): FlowIssue[] {

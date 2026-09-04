@@ -39,6 +39,8 @@ export interface DraftValidationIssue {
   path: string;
   message: string;
   evidence?: unknown;
+  /** 期望形状描述(T50 D69.3 拒绝数据化):message 保持机械原文,expected 供程序化修复。 */
+  expected?: unknown;
 }
 
 export interface DraftValidation {

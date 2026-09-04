@@ -28,6 +28,9 @@ export * from './definition/lifecycle';
 export * from './definition/meta';
 export * from './definition/meta-bootstrap';
 export * from './definition/bundle/application-bundle-draft';
+// T50 D69.2:定义提案合同自披露的派生 schema/example(经 meta-bootstrap 透传
+// applicationBundleIssues 等 payload-issues API,此处只补 schema 面)。
+export { applicationBundlePayloadSchema } from './definition/bundle/payload-schema';
 export * from './definition/definition-diff';
 export * from './definition/definition-bundle';
 export * from './definition/invariants';

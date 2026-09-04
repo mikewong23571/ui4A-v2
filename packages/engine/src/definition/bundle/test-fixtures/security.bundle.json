@@ -1,0 +1,211 @@
+{
+  "schema": "https://ui4a.dev/application-bundle/v1",
+  "bundle": { "name": "security", "version": 1 },
+  "applications": [
+    {
+      "name": "security",
+      "title": "安全响应",
+      "intent": "围绕明确漏洞推进影响分析、验证和责任决定；参考数据不冒充实时漏洞情报。",
+      "entry": { "target": "cves", "role": "primary-collection" }
+    }
+  ],
+  "capabilities": [
+    {
+      "name": "cve.enrich",
+      "title": "补充漏洞影响信息",
+      "kind": "extract",
+      "intent": "根据 CVE 编号返回受控参考目录中的结构化严重度、影响组件和来源。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cveId"],
+        "properties": { "cveId": { "type": "string", "pattern": "^CVE-[0-9]{4}-[0-9]{4,}$" } }
+      },
+      "outputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "affectedComponents", "sources"],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["unknown", "low", "medium", "high", "critical"]
+          },
+          "affectedComponents": { "type": "array", "items": { "type": "string" } },
+          "sources": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "scope": { "applications": ["security"], "flows": ["cve-enrichment"] },
+      "executor": { "class": "native-function", "profile": "security-enrichment-default" }
+    }
+  ],
+  "flows": [
+    {
+      "name": "cve-enrichment",
+      "title": "漏洞影响分析",
+      "app": "security",
+      "initial": "identified",
+      "collections": [{ "collection": "cves", "title": "漏洞" }],
+      "cognitive": {
+        "version": 1,
+        "traits": ["work-queue"],
+        "emptyMeaning": "ready-to-start"
+      },
+      "fields": [
+        {
+          "name": "cveId",
+          "type": "text",
+          "title": "CVE 编号",
+          "presentation": { "role": "identity", "overview": true }
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "title": "漏洞说明",
+          "presentation": { "role": "metadata", "overview": true }
+        },
+        {
+          "name": "enrichment",
+          "type": "json",
+          "title": "影响信息",
+          "source": { "kind": "effect", "capability": "cve.enrich" },
+          "presentation": { "role": "primary-content" }
+        },
+        {
+          "name": "failure",
+          "type": "json",
+          "title": "失败原因",
+          "source": { "kind": "effect", "capability": "cve.enrich" },
+          "presentation": { "role": "metadata" }
+        }
+      ],
+      "nodes": [
+        {
+          "name": "identified",
+          "title": "待分析",
+          "fields": [],
+          "actions": [
+            {
+              "name": "enrich-impact",
+              "title": "补充影响分析",
+              "to": "enriching",
+              "method": "POST",
+              "guards": [],
+              "submission": { "mode": "direct", "actors": ["agent", "human"] },
+              "fields": [],
+              "effect": [
+                { "type": "transition", "to": "enriching" },
+                {
+                  "type": "spawn",
+                  "capability": "cve.enrich",
+                  "bind": {
+                    "schemaVersion": 1,
+                    "fields": { "cveId": { "from": "source-field", "name": "cveId" } }
+                  },
+                  "on-done": "enrichment-succeeded",
+                  "on-error": "enrichment-failed"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "enriching",
+          "title": "正在补充影响信息",
+          "fields": [],
+          "actions": [
+            {
+              "name": "enrichment-succeeded",
+              "title": "记录影响信息",
+              "to": "enriched",
+              "internal": "capability-callback",
+              "method": "POST",
+              "guards": [],
+              "fields": [
+                { "name": "executionId", "type": "text", "persist": false },
+                { "name": "result", "type": "json", "persist": false },
+                { "name": "receipt", "type": "json", "persist": false }
+              ],
+              "effect": [
+                {
+                  "type": "set-field",
+                  "field": "enrichment",
+                  "from-param": "result",
+                  "origin": "effect"
+                },
+                { "type": "transition", "to": "enriched" }
+              ]
+            },
+            {
+              "name": "enrichment-failed",
+              "title": "记录失败",
+              "to": "enrichment-failed",
+              "internal": "capability-callback",
+              "method": "POST",
+              "guards": [],
+              "fields": [
+                { "name": "executionId", "type": "text", "persist": false },
+                { "name": "failure", "type": "json", "persist": false }
+              ],
+              "effect": [
+                {
+                  "type": "set-field",
+                  "field": "failure",
+                  "from-param": "failure",
+                  "origin": "effect"
+                },
+                { "type": "transition", "to": "enrichment-failed" }
+              ]
+            }
+          ]
+        },
+        { "name": "enriched", "title": "影响信息已补充", "fields": [], "actions": [] },
+        {
+          "name": "enrichment-failed",
+          "title": "影响分析失败",
+          "fields": [],
+          "actions": [
+            {
+              "name": "retry-enrichment",
+              "title": "重试影响分析",
+              "to": "enriching",
+              "method": "POST",
+              "guards": [],
+              "submission": { "mode": "direct", "actors": ["agent", "human"] },
+              "fields": [],
+              "effect": [
+                { "type": "transition", "to": "enriching" },
+                {
+                  "type": "spawn",
+                  "capability": "cve.enrich",
+                  "bind": {
+                    "schemaVersion": 1,
+                    "fields": { "cveId": { "from": "source-field", "name": "cveId" } }
+                  },
+                  "on-done": "enrichment-succeeded",
+                  "on-error": "enrichment-failed"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "seed": {
+    "rel": "seed:security-reference-v1",
+    "detail": {
+      "instances": {
+        "cve:CVE-2026-0001": {
+          "rel": "cve:CVE-2026-0001",
+          "flow": "cve-enrichment",
+          "node": "identified",
+          "fields": {
+            "cveId": { "value": "CVE-2026-0001", "origin": "default" },
+            "title": { "value": "受控参考漏洞（非实时情报）", "origin": "default" }
+          }
+        }
+      },
+      "collections": { "cves": ["cve:CVE-2026-0001"] }
+    }
+  }
+}
