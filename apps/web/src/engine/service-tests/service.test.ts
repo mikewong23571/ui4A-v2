@@ -79,7 +79,9 @@ describe('boot:建表 + 幂等 seed + fold', () => {
     // 7 业务实例 + 3 个 lifecycle 实例(T4 Phase B:definition-seeded 落
     // meta/flow:<name> 实例,见 service.definitions.test.ts)。
     // T43:+1 CVE 业务实例 +1 Security flow lifecycle 实例 = 24。
-    expect(Object.keys(snapshot.instances)).toHaveLength(24);
+    // T52(P3a):application-seeded 现物化 meta/application:<name> 生命周期
+    // 实例(应用停用动作的裁决宿主),9 个已装应用 = 24+9 = 33。
+    expect(Object.keys(snapshot.instances)).toHaveLength(33);
     expect(snapshot.collections.articles).toEqual(['post:post-welcome', 'post:first-post']);
     expect(snapshot.collections.comments).toHaveLength(4);
   });
@@ -90,7 +92,8 @@ describe('boot:建表 + 幂等 seed + fold', () => {
     const second = await boot();
 
     expect(await seedEventCount()).toBe(1);
-    expect(Object.keys(second.getSnapshot().instances)).toHaveLength(24);
+    // 33 = 24(T43 口径)+ 9 个 meta/application:* 生命周期实例(T52 P3a)。
+    expect(Object.keys(second.getSnapshot().instances)).toHaveLength(33);
     expect(second.getSnapshot().collections.articles).toHaveLength(2);
   });
 

@@ -124,7 +124,11 @@ export function projectMetaApplications(snapshot: FoldSnapshot, deps: ProjectDep
     properties: {
       rel: 'meta/applications',
       count: names.length,
-      ...metaTopLevelPresentation('meta/applications'),
+      // 顶层认知投影按 wire 惯例嵌套在 properties.presentation 下
+      // (同 project-meta.ts 其余集合的 topLevelPresentationProperties 口径)。
+      ...(metaTopLevelPresentation('meta/applications') === undefined
+        ? {}
+        : { presentation: metaTopLevelPresentation('meta/applications') }),
     },
     actions: [],
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'meta/applications') }],
