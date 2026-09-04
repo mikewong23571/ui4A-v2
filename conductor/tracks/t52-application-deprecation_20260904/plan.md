@@ -33,18 +33,22 @@
 
 - [ ] Task: 烧毁集统一(create/validate snapshot 口径扩为 active ∪ deprecated;
   activate log 口径显式计入 application-deprecated;三处同测,D71.5)
-- [ ] Task: default 守卫(engine 裁决层拒绝 target==='default',拒绝留痕,I6;D71.6)
 - [ ] Task: flow 名烧毁级联(D71.8):停用应用的 flow 名在 flow-definition
   genesis/激活路径 fail-closed;核实 activate-flow 目标检查数据源(snapshot/log)
   后钉测试
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+
+> 顺序修订(2026-09-04 执行期):原「default 守卫」任务移入 Phase 3——guard 语义
+> (拒绝 target==='default')的宿主是 APPLICATION_LIFECYCLE 伪流声明,P2 单独实现
+> 是无宿主悬空守卫;随 P3 伪流一并落地并同测。
 
 ## Phase 3 — 裁决路径与全联动收缩
 
 - [ ] Task: APPLICATION_LIFECYCLE 伪流(镜像 DEFINITION_LIFECYCLE:声明 deprecate、
   guard actor-is-human、requires-confirmation high)注入 executeMeta flows 映射 +
   实体投影动作镜像 + 伴随事件对(action-executed + application-deprecated;独立
-  文件 application-deprecation.ts);confirmGate 对 high 动作接线验证(第三轮复审 15)
+  文件 application-deprecation.ts);confirmGate 对 high 动作接线验证(第三轮复审 15);
+  default 地板守卫(D71.6,自 P2 移入:guard 拒绝 target==='default',拒绝留痕 I6)
 - [ ] Task: 并发双停用 stale-action 留痕测试(US5;fresh-read 口径)
 - [ ] Task: 受众反 fail-open(businessApplications/metaApplications 归属解析扩为
   active ∪ deprecated 双集查询(D71.3),停用应用 rel 解析非空归属→无交集即拒)
