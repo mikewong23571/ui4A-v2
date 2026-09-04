@@ -17,6 +17,10 @@
 - [x] Task: DECISIONS.md 落盘 D70(spec §3:披露口径/auth 平面控件/投影端点/刷新授权语义) [ad16630]
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: ad16630]（自治验收:决定先于代码;track 工件 b9ad3fc9 已注册;文档变更无代码测试需求）
 
+> DONE(2026-09-04,自治验收):US1–US7 全绿;三门禁 EXIT=0(check 3934、e2e 69、
+> invariants 13;skip 为环境口径);浏览器门闭环 approve→披露→目录→面板;部署站
+> 复核由用户按 DEPLOYMENT §7 新合同执行。证据:evidence/。
+
 ## Phase 1 — F1 服务端:激活披露纯函数 + meta exec 响应
 
 - [x] Task: `apps/web/src/auth/activation-disclosure.ts` 纯函数(测试先行:三分支 ×
@@ -55,14 +59,21 @@
 
 ## Phase 4 — 验收与收口
 
-- [ ] Task: e2e 扩展(设计复审 F2-1:**新建独立 `e2e/t51-*.spec.ts`**,不碰
+- [x] Task: e2e 扩展(设计复审 F2-1:**新建独立 `e2e/t51-*.spec.ts`**,不碰
   `e2e/t48-application-genesis.spec.ts` 避免并行冲突;approve 断言披露渲染;
-  /session 页浏览器冒烟;US3.3/US1.3)
-- [ ] Task: DEPLOYMENT.local.md §7/变更记录合同更新(F6;US6;含 edge 白名单变更的
+  /session 页浏览器冒烟;US3.3/US1.3) [8166570]（e2e 抓到真实缺陷:披露误用 exec 前
+  授予集合,治理/local 被判 requires-idp-grant——sessionGrantsGrowWithInstalls 修正;
+  纯函数/路由测试同步按真实形态更新;浏览器门 1/1 绿）
+- [x] Task: DEPLOYMENT.local.md §7/变更记录合同更新(F6;US6;含 edge 白名单变更的
   restart-edge 步骤与 /auth/login scope 参数检查;git-excluded 本地文件,不入 commit)
-- [ ] Task: 文档同步(设计复审 F2-2):AGENTS.md 系统图补 auth 平面控件与
-  /api/auth/session;GOAL.md 修订判定显式记录(参照 T49 收口先例)
-- [ ] Task: 全量门禁:`pnpm check`(governance:strict)+ `CI=true pnpm e2e` +
-  `CI=true pnpm e2e invariants`;T50 工作区隔离终核
-- [ ] Task: Track 收口(archive、registry 状态、DONE 摘要;部署站复核由用户按
-  DEPLOYMENT 流程另行裁定)
+  [本地文件]（授权/scope 类变更强制浏览器通道复核 5 步;CLI 验收不可替代）
+- [x] Task: 文档同步(设计复审 F2-2):AGENTS.md 系统图补 auth 平面控件与
+  /api/auth/session;GOAL.md 修订判定显式记录(参照 T49 收口先例) [50e42ab]（GOAL
+  判定:无需修订——不改产品范围与 invariants,新增面为 D70 auth 平面;git note 在案）
+- [x] Task: 全量门禁:`pnpm check`(governance:strict)+ `CI=true pnpm e2e` +
+  `CI=true pnpm e2e invariants`;T50 工作区隔离终核 [无新提交]（check 3934/15 skip;
+  e2e 69/34 skip;invariants 13/14 skip——skip 均为 Temporal/真实 LLM 环境口径;
+  工作区隔离:本 track diff 不含 T50 文件与 apps/cli）
+- [x] Task: Track 收口(archive、registry 状态、DONE 摘要;部署站复核由用户按
+  DEPLOYMENT 流程另行裁定)（evidence/evidence-acceptance-20260904.md 故事→测试→
+  命令映射与诚实记录含 e2e 缺陷发现）

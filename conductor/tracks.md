@@ -4,7 +4,9 @@
 
 ## 活跃 Tracks
 
-- [~] **Track: T51 新生应用可见性恢复链路**（批准即披露、我的授权面板、刷新授权、措辞诚实、运维验收合同;D70;US1–US7 用户故事验收闭环） *Link: [tracks/t51-app-visibility-recovery_20260904/index.md](./tracks/t51-app-visibility-recovery_20260904/index.md)*
+（无;T51 已完成归档）
+
+- [x] **Track: T51 新生应用可见性恢复链路**（2026-09-04 完成:D70 批准即披露(三分支,含 e2e 抓出的 exec 前授予集合语义修正)、/api/auth/session + /session 我的授权面板与刷新授权、edge 路由白名单(设计复审 F1)、措辞诚实、DEPLOYMENT §7 授权类变更浏览器通道强制合同;US1–US7 全绿;check 3934/e2e 69/invariants 13;部署站复核留用户按新合同执行） *Link: [tracks/archive/t51-app-visibility-recovery_20260904/index.md](./tracks/archive/t51-app-visibility-recovery_20260904/index.md)*
 
 - [x] **Track: T50 定义提案合同自披露**（2026-09-04 完成:payload schema 注解三门同门(模型视图 example-only,D69 附录);拒绝结构化 expected;裸名守卫;CLI drafts schema;机械自足证明 1 次迭代 vs 基线 12;顺带修复 presence 每请求 DDL 死锁(T29 潜伏缺陷);check 3913/e2e 76/invariants 19 全绿） *Link: [tracks/archive/t50-draft-contract-self-disclosure_20260904/index.md](./tracks/archive/t50-draft-contract-self-disclosure_20260904/index.md)*
 
