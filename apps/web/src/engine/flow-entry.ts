@@ -19,6 +19,16 @@ import type { EngineSnapshot, InstanceSnapshot } from '@ui4a/shared';
 const FLOW_REL_PREFIX = 'flow:';
 
 /**
+ * T52 停用口径:definitions 条目 status='deprecated'(flow 直接置废,或 app
+ * 停用 fold 级联——两者同一落点,键与定义全文保留)后,`flow:<name>` 的别名/
+ * 实例集合/补全面整体收缩。存量实例读取仍由受众层裁决(P3b 已钉 403/404),
+ * 本模块只管别名/集合/补全面。条目缺失(老日志/测试 fixture)不扩大过滤。
+ */
+function isDeprecatedFlowName(flowName: string, snapshot: EngineSnapshot): boolean {
+  return snapshot.definitions?.[flowName]?.status === 'deprecated';
+}
+
+/**
  * `flow:<name>` → 唯一实例 rel;非 flow rel 原样返回(undefined 表示不适用)。
  * 单实例才具备"向导入口"语义;恰一个实例时别名,否则不解析。
  */
@@ -26,6 +36,8 @@ export function resolveFlowRelAlias(rel: string, snapshot: EngineSnapshot): stri
   if (!rel.startsWith(FLOW_REL_PREFIX)) return undefined;
   const flowName = rel.slice(FLOW_REL_PREFIX.length);
   if (flowName === '') return undefined;
+  // T52:置废 flow(直废或 app 停用级联)的存量实例保留,但别名不再指向它。
+  if (isDeprecatedFlowName(flowName, snapshot)) return undefined;
   const instances = Object.values(snapshot.instances).filter(
     (instance) => instance.flow === flowName,
   );
@@ -74,6 +86,9 @@ export function flowInstancesCollection(
 ): SirenEntity | null {
   const flowName = nonEmptySuffixOf(rel, FLOW_REL_PREFIX);
   if (flowName === null) return null;
+  // T52:置废 flow(直废或 app 停用级联)即使定义仍在调用方注册表也不兑现
+  // (收缩不依赖调用方预过滤——条目状态是 fold 单一真相)。
+  if (isDeprecatedFlowName(flowName, snapshot)) return null;
   const definition = flows.find((flow) => flow.name === flowName);
   if (definition === undefined) return null;
   const members = Object.values(snapshot.instances).filter(

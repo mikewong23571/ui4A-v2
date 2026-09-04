@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { activeDefinitionOf, definitionSeedEvent, deriveSitemap, fold } from '@ui4a/engine';
+import type { FlowDefinition, LogEvent, Sitemap } from '@ui4a/engine';
+import type { ApplicationDefinition } from '@ui4a/shared';
+
 import type { BuiltinCompositionDeclaration } from '../compositions';
 import {
   appWorkspaceScopeOf,
@@ -230,5 +234,124 @@ describe('workspace:app:<scope> subject 解析', () => {
   it('sitemap 暂不可得时 app 前缀 subject 诚实拒绝,不伪造声明', async () => {
     const resolver = createDynamicCompositionSubjectResolver(async () => undefined);
     expect(await resolver('workspace:app:publishing')).toEqual({ kind: 'rejected-workspace' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T52 Phase 3:membership 随 sitemap 收缩钉测。resolveAppWorkspaceMembership 的
+// application/flows/capabilities 全部源自 sitemap(service 链路:activeFlowList
+// 过滤 + snapshot.applications fold 删键)——停用应用在 sitemap.applications
+// 缺席 → membership/composition 诚实拒绝(workspace:app:<停用> 不再推导组合)。
+// 用引擎真链路(fold 折叠停用态 → deriveSitemap)钉住,防组装口径回退。
+// ---------------------------------------------------------------------------
+describe('T52 停用联动:app workspace membership 随 sitemap 收缩', () => {
+  const PUBLISHING_FLOW: FlowDefinition = {
+    name: 'article-drafting',
+    title: '文章发布向导',
+    initial: 'ready',
+    app: 'publishing',
+    nodes: [
+      {
+        name: 'ready',
+        title: '就绪',
+        actions: [
+          {
+            name: 'publish',
+            title: '发布',
+            to: 'done',
+            effect: [{ type: 'append', collection: 'articles' }],
+          },
+        ],
+      },
+      { name: 'done', title: '完成', actions: [] },
+    ],
+  };
+  const DEFAULT_FLOW: FlowDefinition = {
+    name: 'todo-lifecycle',
+    title: '待办',
+    initial: 'open',
+    app: 'default',
+    nodes: [
+      {
+        name: 'open',
+        title: '打开',
+        actions: [
+          {
+            name: 'close',
+            title: '完成',
+            to: 'closed',
+            effect: [{ type: 'append', collection: 'todos' }],
+          },
+        ],
+      },
+      { name: 'closed', title: '已关闭', actions: [] },
+    ],
+  };
+  const APPLICATIONS: Record<string, ApplicationDefinition> = {
+    publishing: {
+      name: 'publishing',
+      title: '内容发布',
+      intent: '内容起草与发布',
+      entry: { target: 'flow:article-drafting', role: 'primary-create' },
+    },
+    default: {
+      name: 'default',
+      title: '默认应用',
+      intent: '兜底归组',
+      entry: { target: 'todos', role: 'primary-collection' },
+    },
+  };
+
+  /** 停用 publishing 后的引擎真链路 sitemap(fold → service 口径 → deriveSitemap)。 */
+  function deprecatedSitemap(): Sitemap {
+    const registry = Object.fromEntries(
+      [PUBLISHING_FLOW, DEFAULT_FLOW].map((flow) => [flow.name, flow]),
+    );
+    const log: LogEvent[] = [
+      ...Object.values(APPLICATIONS).map((app, index) => ({
+        seq: index + 1,
+        kind: 'application-seeded' as const,
+        rel: `meta/application:${app.name}`,
+        detail: { name: app.name, definition: app },
+      })),
+      definitionSeedEvent(3, PUBLISHING_FLOW),
+      definitionSeedEvent(4, DEFAULT_FLOW),
+      {
+        seq: 5,
+        kind: 'application-deprecated',
+        rel: 'meta/application:publishing',
+        action: 'deprecate',
+        actor: 'human',
+        principal: 'user:mike',
+        detail: { name: 'publishing', commandId: 'cmd:t52-membership-pin' },
+      },
+    ];
+    const snapshot = fold(log, { flows: registry });
+    const activeFlows = Object.entries(snapshot.definitions ?? {}).flatMap(([name, entry]) => {
+      if (entry.status === 'deprecated') return [];
+      const active = activeDefinitionOf(snapshot, name);
+      return active === undefined ? [] : [active];
+    });
+    return deriveSitemap(activeFlows, { applications: snapshot.applications });
+  }
+
+  it('停用应用:membership 缺席 → 组合与 subject 解析诚实拒绝', async () => {
+    const sitemap = deprecatedSitemap();
+    // sitemap.applications 不含停用应用(membership 的唯一入口)。
+    expect(sitemap.applications.map((app) => app.name)).toEqual(['default']);
+
+    expect(deriveAppWorkspaceComposition('publishing', sitemap)).toBeUndefined();
+    const resolver = createDynamicCompositionSubjectResolver(async () => sitemap);
+    expect(await resolver('workspace:app:publishing')).toEqual({ kind: 'rejected-workspace' });
+  });
+
+  it('反向锚:活跃应用照常推导组合(收缩不波及未停用侧)', () => {
+    const sitemap = deprecatedSitemap();
+    const declaration = deriveAppWorkspaceComposition('default', sitemap);
+    expect(declaration).toBeDefined();
+    expect(declaration!.regions.map((region) => region.source)).toEqual([
+      'application:default',
+      'todos',
+    ]);
   });
 });

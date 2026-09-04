@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { articleDraftingFlow, commentModerationFlow, postStatusFlow } from '../core/fixtures';
+import {
+  articleDraftingFlow,
+  commentModerationFlow,
+  flowRegistry,
+  postStatusFlow,
+} from '../core/fixtures';
+import { activeDefinitionOf, definitionSeedEvent } from '../definition/meta';
+import { fold, type LogEvent } from '../projection/fold';
 import { deriveSitemap } from './sitemap';
 import type { ApplicationDefinition, CapabilityDefinition, FlowDefinition } from '../core/types';
 
@@ -330,5 +337,138 @@ describe('deriveSitemap — 动态 capability 处境(T15 U14/U17)', () => {
 
   it('旧调用方不提供 capability 定义时保持兼容：字段存在但为空', () => {
     expect(deriveSitemap([publishing], { applications }).capabilities).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T52 Phase 3:停用应用的全联动收缩(引擎级钉测)。
+//
+// 数据源结论:deriveSitemap 参数驱动(flows/applications/capabilities 全由
+// 调用方注入,引擎不直读 snapshot.definitions)。service 链路(service.ts
+// activeFlowList 过滤 deprecated + snapshot.applications 已被 fold 删键)已
+// 完成收缩;本组钉测把「fold 折叠出停用态 → 按 service 同一口径组装 →
+// deriveSitemap 扁平面/分组不含停用物」的语义钉在引擎层,防组装口径回退。
+// ---------------------------------------------------------------------------
+describe('deriveSitemap — T52 停用联动收缩(引擎级钉测)', () => {
+  const defaultApp: ApplicationDefinition = {
+    name: 'default',
+    title: '默认应用',
+    intent: '无归属 flow 的兜底归组',
+  };
+  const publishingApp: ApplicationDefinition = {
+    name: 'publishing',
+    title: '内容发布',
+    intent: '内容起草与发布',
+    entry: { target: 'flow:post-status', role: 'primary-task' },
+  };
+
+  /** publishing 专属 flow:spawn 引用 'draft'(仅停用侧)与 'moderate'(双侧)。 */
+  const publishingFlow: FlowDefinition = structuredClone({
+    ...postStatusFlow,
+    app: 'publishing',
+  });
+  publishingFlow.nodes[0]!.actions[0]!.effect = { type: 'spawn', capability: 'draft' };
+  publishingFlow.nodes[0]!.actions[1]!.effect = { type: 'spawn', capability: 'moderate' };
+  /** default 侧 flow:spawn 引用 'moderate'(双侧共享,收缩后 scope 保 default)。 */
+  const defaultFlow: FlowDefinition = structuredClone(commentModerationFlow);
+  defaultFlow.nodes[0]!.actions[0]!.effect = { type: 'spawn', capability: 'moderate' };
+
+  const capabilities: Record<string, CapabilityDefinition> = {
+    draft: { name: 'draft', title: '工件起草', kind: 'extract', intent: '生成候选草稿' },
+    moderate: { name: 'moderate', title: '内容审核', kind: 'transform', intent: '识别内容风险' },
+  };
+
+  /** 完整场景日志:两 app 种子 + 两 capability 种子 + 两 flow 种子 + 停用 publishing。 */
+  const log: LogEvent[] = [
+    {
+      seq: 1,
+      kind: 'application-seeded',
+      rel: 'meta/application:default',
+      detail: { name: 'default', definition: defaultApp },
+    },
+    {
+      seq: 2,
+      kind: 'application-seeded',
+      rel: 'meta/application:publishing',
+      detail: { name: 'publishing', definition: publishingApp },
+    },
+    {
+      seq: 3,
+      kind: 'capability-seeded',
+      rel: 'meta/capability:draft',
+      detail: { name: 'draft', definition: capabilities.draft! },
+    },
+    {
+      seq: 4,
+      kind: 'capability-seeded',
+      rel: 'meta/capability:moderate',
+      detail: { name: 'moderate', definition: capabilities.moderate! },
+    },
+    definitionSeedEvent(5, publishingFlow),
+    definitionSeedEvent(6, defaultFlow),
+    {
+      seq: 7,
+      kind: 'application-deprecated',
+      rel: 'meta/application:publishing',
+      action: 'deprecate',
+      actor: 'human',
+      principal: 'user:mike',
+      detail: { name: 'publishing', commandId: 'cmd:t52-sitemap-pin' },
+    },
+  ];
+
+  /** service.ts activeFlowList 同源组装口径:deprecated 条目退出活跃注册表。 */
+  function activeFlowListOf(snapshot: ReturnType<typeof fold>): FlowDefinition[] {
+    return Object.entries(snapshot.definitions ?? {}).flatMap(([name, entry]) => {
+      if (entry.status === 'deprecated') return [];
+      const active = activeDefinitionOf(snapshot, name);
+      return active === undefined ? [] : [active];
+    });
+  }
+
+  it('fold 前置锚:同 app 条目级联置废、applications 删键(收缩输入即真相)', () => {
+    const snapshot = fold(log, { flows: flowRegistry(publishingFlow, defaultFlow) });
+    expect(snapshot.definitions?.['post-status']?.status).toBe('deprecated');
+    expect(snapshot.definitions?.['comment-moderation']?.status).toBe('active');
+    expect(Object.keys(snapshot.applications ?? {})).toEqual(['default']);
+  });
+
+  it('扁平面三分量 + applications 分组不含停用物;未停用侧不受波及', () => {
+    const snapshot = fold(log, { flows: flowRegistry(publishingFlow, defaultFlow) });
+    const sitemap = deriveSitemap(activeFlowListOf(snapshot), {
+      applications: snapshot.applications,
+      capabilities: snapshot.capabilities,
+    });
+
+    // 扁平 flows:停用 app 的 flow 退出,其余 flow 保留。
+    expect(sitemap.flows.map((flow) => flow.name)).toEqual(['comment-moderation']);
+    // surfaces:停用 flow 面与停用 application 面缺席;活跃侧照常在场。
+    const surfaceRels = sitemap.surfaces.map((surface) => surface.rel);
+    expect(surfaceRels).not.toContain('flow:post-status');
+    expect(surfaceRels).not.toContain('application:publishing');
+    expect(surfaceRels).toContain('flow:comment-moderation');
+    expect(surfaceRels).toContain('application:default');
+    // applications 分组:停用应用出局,活跃应用组内只剩活跃成员。
+    expect(sitemap.applications.map((app) => app.name)).toEqual(['default']);
+    expect(sitemap.applications[0]?.flows.map((flow) => flow.name)).toEqual(['comment-moderation']);
+  });
+
+  it('capability 目录保留条目,scope 收缩:停用侧引用退出,共享 capability 保活跃侧', () => {
+    const snapshot = fold(log, { flows: flowRegistry(publishingFlow, defaultFlow) });
+    const sitemap = deriveSitemap(activeFlowListOf(snapshot), {
+      applications: snapshot.applications,
+      capabilities: snapshot.capabilities,
+    });
+
+    const draft = sitemap.capabilities.find((capability) => capability.name === 'draft');
+    const moderate = sitemap.capabilities.find((capability) => capability.name === 'moderate');
+    // 仅被停用 flow 引用的 capability:scope 收缩为空(≠ 授予全局 scope)。
+    expect(draft?.scope).toEqual({ applications: [], flows: [] });
+    // 双侧共享的 capability:停用侧退出,活跃侧保留。
+    expect(moderate?.scope).toEqual({ applications: ['default'], flows: ['comment-moderation'] });
+    // 全目录无任何 scope 残留停用应用名。
+    expect(
+      sitemap.capabilities.flatMap((capability) => capability.scope.applications),
+    ).not.toContain('publishing');
   });
 });

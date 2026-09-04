@@ -6,9 +6,11 @@ import { CHAT_VIEW_PROTOCOL_VERSION, type ClientViewReport } from '@ui4a/shared'
 import type { TrustedRequestAuditContext } from '../auth/request-identity';
 import { resolveStartRel } from '../chat/start-chain';
 import { appendPresenceChange, ensurePresenceTables } from '@ui4a/db/presence';
+import { appendEvent, ensureEventsTable } from '@ui4a/db/events';
 import { getPool } from '@ui4a/db/pool';
 
 import { situationForChat } from './chat-situation';
+import { getEngine, resetEngineForTests } from './service';
 
 const pool = getPool(process.env.DATABASE_URL ?? 'postgres://ui4a:ui4a@localhost:5433/ui4a');
 const PRINCIPAL = 'user:client-view-lock';
@@ -264,5 +266,56 @@ describe('(D51-窄披露) prompt 披露输入', () => {
       'default',
       'publishing',
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T52 Phase 3:local grantedScopes 收缩钉测(chat-situation.ts 消费口径)。
+// local 模式(无 identity)的授予集合 = Object.keys(snapshot.applications)——
+// 应用停用经 fold 删键后自动收缩;显式 clientView scope 指向停用应用时不在
+// 授予集合内,situation 折回未定位(注意力不产生授权,授权也不产生注意力)。
+// ---------------------------------------------------------------------------
+describe('T52 停用联动:local grantedScopes 随 applications 键收缩', () => {
+  beforeEach(async () => {
+    await ensureEventsTable(pool);
+    await pool.query('TRUNCATE events');
+    resetEngineForTests();
+  });
+
+  it('停用后 local 授予集合不再含停用名;显式 scope 指向停用应用折回未定位', async () => {
+    const engine = await getEngine(pool);
+    const before = Object.keys(engine.getSnapshot().applications ?? {});
+    expect(before).toContain('editorial');
+    expect(before).toContain('publishing');
+
+    await appendEvent(pool, {
+      kind: 'application-deprecated',
+      rel: 'meta/application:editorial',
+      action: 'deprecate',
+      actor: 'human',
+      principal: 'system:governance',
+      channel: 'meta',
+      detail: { name: 'editorial', commandId: 'cmd:t52-chat-situation-pin' },
+    });
+    await engine.readSnapshot();
+
+    // fold 删键 → local grantedScopes(= Object.keys(applications))收缩。
+    const after = Object.keys(engine.getSnapshot().applications ?? {});
+    expect(after).not.toContain('editorial');
+    expect(after).toContain('publishing');
+
+    const situation = await situationForChat({
+      principal: 'user:t52-local-shrink',
+      clientView: clientView({ scope: 'editorial' }),
+    });
+    expect(situation.scope).toBeUndefined();
+    expect(situation.disclosure.scope).toBeUndefined();
+
+    // 反向锚:未停用应用照常定位。
+    const control = await situationForChat({
+      principal: 'user:t52-local-shrink',
+      clientView: clientView({ scope: 'publishing' }),
+    });
+    expect(control.scope).toBe('publishing');
   });
 });

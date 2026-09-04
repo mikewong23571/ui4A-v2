@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 
-import type { Sitemap } from '@ui4a/engine';
+import { activeDefinitionOf, definitionSeedEvent, deriveSitemap, fold } from '@ui4a/engine';
+import type { FlowDefinition, LogEvent, Sitemap } from '@ui4a/engine';
 import type { ApplicationDefinition, ApplicationEntry, EngineSnapshot } from '@ui4a/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -259,5 +260,164 @@ describe('resolveStartRel', () => {
     expect(implementation).not.toContain('protocol/match');
     expect(implementation).not.toMatch(/\boverlaps\b/);
     expect(implementation).not.toMatch(/\b(?:fetch|baseUrl|goal)\b/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T52 Phase 3:停用应用的 chat 发现链收缩钉测(sitemap 消费口径)。
+//
+// knownBusinessRels/siteFallbackRel 只消费 sitemap.surfaces 与
+// snapshot.applications(入口声明)——两者在停用后分别经 service activeFlowList
+// 过滤与 fold 删键收缩。本组用引擎真链路(fold 折叠停用态 → 按 service 同一
+// 口径组装 deriveSitemap)钉住:停用应用的入口/表面不再进入发现面,存量实例
+// 的存在性诚实保留(可读性由受众层裁决,P3b 已钉 403/404)。
+// ---------------------------------------------------------------------------
+describe('T52 停用联动:chat 发现链随 sitemap/applications 收缩', () => {
+  const ARTICLE_FLOW: FlowDefinition = {
+    name: 'article-drafting',
+    title: '文章发布向导',
+    initial: 'ready',
+    app: 'publishing',
+    nodes: [
+      {
+        name: 'ready',
+        title: '就绪',
+        actions: [
+          {
+            name: 'publish',
+            title: '发布',
+            to: 'done',
+            effect: [{ type: 'append', collection: 'articles' }],
+          },
+        ],
+      },
+      { name: 'done', title: '完成', actions: [] },
+    ],
+  };
+  const TODO_FLOW: FlowDefinition = {
+    name: 'todo-lifecycle',
+    title: '待办',
+    initial: 'open',
+    app: 'default',
+    nodes: [
+      {
+        name: 'open',
+        title: '打开',
+        actions: [{ name: 'close', title: '完成', to: 'closed' }],
+      },
+      { name: 'closed', title: '已关闭', actions: [] },
+    ],
+  };
+  const PUBLISHING_APP: ApplicationDefinition = {
+    name: 'publishing',
+    title: '内容发布',
+    intent: '内容起草与发布',
+    entry: { target: 'articles', role: 'primary-collection' },
+  };
+  const DEFAULT_APP: ApplicationDefinition = {
+    name: 'default',
+    title: '默认应用',
+    intent: '兜底归组',
+  };
+
+  /** 停用后折叠态 + service 同口径组装的 sitemap(真链路,非手写 fixture)。 */
+  function deprecatedChain(): { snapshot: EngineSnapshot; sitemap: Sitemap } {
+    const registry = Object.fromEntries([ARTICLE_FLOW, TODO_FLOW].map((flow) => [flow.name, flow]));
+    const log: LogEvent[] = [
+      {
+        seq: 1,
+        kind: 'application-seeded',
+        rel: 'meta/application:publishing',
+        detail: { name: 'publishing', definition: PUBLISHING_APP },
+      },
+      {
+        seq: 2,
+        kind: 'application-seeded',
+        rel: 'meta/application:default',
+        detail: { name: 'default', definition: DEFAULT_APP },
+      },
+      definitionSeedEvent(3, ARTICLE_FLOW),
+      definitionSeedEvent(4, TODO_FLOW),
+      // 停用前写入的业务数据:存量实例保留(D71.4)。
+      {
+        seq: 5,
+        kind: 'seed',
+        detail: {
+          instances: {
+            'draft:one': { rel: 'draft:one', flow: 'article-drafting', node: 'ready', fields: {} },
+          },
+        },
+      },
+      {
+        seq: 6,
+        kind: 'application-deprecated',
+        rel: 'meta/application:publishing',
+        action: 'deprecate',
+        actor: 'human',
+        principal: 'user:mike',
+        detail: { name: 'publishing', commandId: 'cmd:t52-start-chain-pin' },
+      },
+    ];
+    const snapshot = fold(log, { flows: registry });
+    const activeFlows = Object.entries(snapshot.definitions ?? {}).flatMap(([name, entry]) => {
+      if (entry.status === 'deprecated') return [];
+      const active = activeDefinitionOf(snapshot, name);
+      return active === undefined ? [] : [active];
+    });
+    return {
+      snapshot,
+      sitemap: deriveSitemap(activeFlows, { applications: snapshot.applications }),
+    };
+  }
+
+  it('knownBusinessRels:停用应用的表面与入口目标缺席;存量实例的存在性诚实保留', () => {
+    const { snapshot, sitemap } = deprecatedChain();
+    const known = knownBusinessRels(snapshot, sitemap);
+
+    // 停用侧:flow 面、归属集合面、application 面与入口目标均不进发现面。
+    expect(known.has('flow:article-drafting')).toBe(false);
+    expect(known.has('articles')).toBe(false);
+    expect(known.has('application:publishing')).toBe(false);
+    // 存量实例保留在存在性表(可读性由受众层裁决,不是发现层的入口)。
+    expect(known.has('draft:one')).toBe(true);
+    // 活跃侧照常:另一应用的 flow 面与站点根仍在场。
+    expect(known.has('flow:todo-lifecycle')).toBe(true);
+    expect(known.has('application:default')).toBe(true);
+    expect(known.has('applications')).toBe(true);
+  });
+
+  it('siteFallbackRel 消费口径:scope 指向停用应用时入口缺位,回落应用目录', () => {
+    const { snapshot, sitemap } = deprecatedChain();
+    // applications[scope] 已被 fold 删键 → 站点兜底不指向停用入口。
+    expect(start({ situation: situation({ scope: 'publishing' }), snapshot, sitemap })).toEqual({
+      rel: 'applications',
+    });
+  });
+
+  it('停用应用的 focus 走降级回执(结构化 notice + 站点兜底),活跃应用照常起步', () => {
+    const { snapshot, sitemap } = deprecatedChain();
+    expect(
+      start({
+        situation: situation({ scope: 'publishing', focus: 'flow:article-drafting' }),
+        snapshot,
+        sitemap,
+      }),
+    ).toEqual({
+      rel: 'applications',
+      notice: {
+        code: 'focus_degraded',
+        droppedRel: 'flow:article-drafting',
+        startedRel: 'applications',
+        startedTitle: '应用',
+      },
+    });
+    // 反向锚:活跃应用的 flow 面照常起步,无 notice。
+    expect(
+      start({
+        situation: situation({ scope: 'default', focus: 'flow:todo-lifecycle' }),
+        snapshot,
+        sitemap,
+      }),
+    ).toEqual({ rel: 'flow:todo-lifecycle' });
   });
 });
