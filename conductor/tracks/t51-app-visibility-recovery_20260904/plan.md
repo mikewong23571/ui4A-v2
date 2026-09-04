@@ -31,15 +31,17 @@
 
 ## Phase 2 — F2/F3 会话授权面板与刷新授权
 
-- [ ] Task: `GET /api/auth/session` 路由(production-auth 测试:200 投影形状含
-  governance 展开来源、401 结构化;local 模式 self-reported;US2.1/US2.2/US2.4)
-- [ ] Task: `/session` 页面 + 顶栏系统区「我的授权」入口 + 「刷新授权」动作(组件
-  测试;local 渲染冒烟;US2.2/US2.3/US3.1)
-- [ ] Task: edge 路由白名单(设计复审 F1,阻断级):`/session` 入
+- [x] Task: `GET /api/auth/session` 路由(production-auth 测试:200 投影形状含
+  governance 展开来源、401 结构化;local 模式 self-reported;US2.1/US2.2/US2.4) [acda3c2]（4/4;非治理不泄露全集/治理展开回显/local/401 结构化）
+- [x] Task: `/session` 页面 + 顶栏系统区「我的授权」入口 + 「刷新授权」动作(组件
+  测试;local 渲染冒烟;US2.2/US2.3/US3.1) [877aa25]（SessionPanel 4/4 + site-nav
+  断言;刷新授权仅 credential 模式,href /auth/login?returnTo=/session）
+- [x] Task: edge 路由白名单(设计复审 F1,阻断级):`/session` 入
   `@ui4aPublic` 页面 GET 名单,`/api/auth/session` 入 `@ui4aAuthenticatedRead`
   组(`deploy/compose/edge-routing.caddy`);caddy 配置测试/校验;部署侧
-  restart-edge 步骤并入 F6 合同;US2.5
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+  restart-edge 步骤并入 F6 合同;US2.5 [1cf83ba]（t22 declared-surface 守卫
+  TDD 23/23）
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 1cf83ba]（自治验收:api/auth+components/session+site-nav+auth+t22 共 476 绿/3 skip、tsc 绿、governance OK）
 
 ## Phase 3 — F1 前端渲染 + F4 措辞诚实
 
