@@ -18,7 +18,8 @@
  *   delta.reasoning_content 累积;GLM 末尾齐发(非打字机),聚合整段后经
  *   DecideSink 一次性回调;端点不返回则零回调(如实缺席);
  * - provider profile 仅从 LLM_API_KEY/LLM_BASE_URL/LLM_MODEL 或测试注入解析,
- *   源码不携带供应商 endpoint/model 默认值。
+ *   源码不携带供应商 endpoint/model 默认值;provider request 字节预算经
+ *   LLM_PROVIDER_REQUEST_BUDGET_BYTES 可配(D72),缺省保守值见 llm-config。
  *
  * prompt 组装见 ./prompts;工具调用 → 循环操作映射见 ./tool-call-mapping。
  */
@@ -52,6 +53,7 @@ interface ResolvedLlmSettings {
   apiKey: string;
   baseURL: string;
   model: string;
+  requestBudgetBytes: number;
   fetchImpl?: FetchLike;
 }
 
@@ -100,14 +102,13 @@ interface DecisionAttempt {
 
 const LLM_DECISION_TIMEOUT_MS = 300_000;
 const TERMINATED_MAX_ATTEMPTS = 3;
-const LLM_PROVIDER_REQUEST_BUDGET_BYTES = 32 * 1024;
 
-function assertProviderRequestBudget(body: unknown): void {
+function assertProviderRequestBudget(body: unknown, budgetBytes: number): void {
   if (typeof body !== 'string') return;
   const bytes = new TextEncoder().encode(body).byteLength;
-  if (bytes > LLM_PROVIDER_REQUEST_BUDGET_BYTES) {
+  if (bytes > budgetBytes) {
     throw new Error(
-      `provider request UTF-8 JSON is ${bytes.toLocaleString('en-US')} bytes; limit is ${LLM_PROVIDER_REQUEST_BUDGET_BYTES.toLocaleString('en-US')} bytes`,
+      `provider request UTF-8 JSON is ${bytes.toLocaleString('en-US')} bytes; limit is ${budgetBytes.toLocaleString('en-US')} bytes`,
     );
   }
 }
@@ -280,7 +281,7 @@ export function createLlmChatModel(options: LlmDriverOptions = {}): LanguageMode
     baseURL: settings.baseURL,
     apiKey: settings.apiKey,
     fetch: (input: string | URL | Request, init?: RequestInit) => {
-      assertProviderRequestBudget(init?.body);
+      assertProviderRequestBudget(init?.body, settings.requestBudgetBytes);
       return settings.fetchImpl === undefined
         ? globalThis.fetch(input, init)
         : settings.fetchImpl(String(input), init);

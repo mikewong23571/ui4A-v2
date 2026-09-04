@@ -21,6 +21,10 @@ const TEST_LLM_CONFIG = {
   apiKey: 'test-key',
   baseURL: 'https://provider.test/v1',
   model: 'test-model',
+  // 本文件验证预算门禁的字节级语义(精确边界/诚实失败),与部署默认值解耦:
+  // 显式钉住 32 KiB,默认值变化(D72 起为 512 KiB,经 LLM_PROVIDER_REQUEST_
+  // BUDGET_BYTES 可配)不影响本套件的边界构造。
+  requestBudgetBytes: 32 * 1024,
 } as const;
 
 interface BudgetCase {

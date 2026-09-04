@@ -1438,3 +1438,19 @@
 - **验收形态**:US1–US7(spec §5);终验含部署站停用 `t48-prod-65a800` 与
   `t51-prod-748704` 走查(待用户按 DEPLOYMENT 流程发布后执行)。设计复审记录与
   否决方案全文见 spec §6。
+
+## D72 Provider request 预算可配置化:固定 32 KiB 修订为保守默认 + 部署覆盖(T53 热修)
+
+- **背景**:D54.4 将最终 provider request 定为硬编码 `UTF-8 JSON <= 32768 bytes`。
+  该值是本仓库自设的保守门,不是任何提供商的请求体上限;披露切片(D54.4/F-10)
+  在合成与 walkthrough 单制品夹具下留有余量,但生产站点的活跃定义集随事件日志
+  增长(release bb718533 实测:全新会话一条短消息的 decide wire 即 36,809 B,
+  且随定义累积继续增长),广域/scoped 切片体积在 9 应用 11 flow 规模超过固定门,
+  预算门在 fetch 前结构化失败,聊天/Agent 主路径 100% `driver_fail`。
+- **决定**:预算机制不变(发送前完整 body 为权威、超限在 fetch 前诚实失败、零
+  网络/exec/mutation、公开 HTTP/CLI 不因门窄化),数值从固定常量修订为
+  `override > LLM_PROVIDER_REQUEST_BUDGET_BYTES > 默认 524288 bytes(512 KiB)`。
+  默认值仍是防失控保护门(D54 实测最大真实请求约 175 KiB 在余量内),不再贴着
+  真实装配体积;环境变量非法(非正整数)回落默认,预算不因配置笔误拖垮主路径。
+  本决定修订 D54.4 的数值条款;D54.4 其余披露纪律(sanitized 非累积、schema/
+  视觉策略不进 prompt)不变。
