@@ -7,8 +7,8 @@
 
 ## Phase 0 — 决定与开工核对
 
-- [ ] Task: DECISIONS.md 落盘 D71(spec §3 全文:载体与级联/直连动作/反 fail-open
-  受众/实例不阻塞/烧毁集/default 守卫)
+- [x] Task: DECISIONS.md 落盘 D71(spec §3 全文:载体与级联/直连动作/反 fail-open
+  受众/实例不阻塞/烧毁集/default 守卫) `9394b2b9`
 - [ ] Task: 开工前事实复核(代码可能已漂移):复核 spec §1/§6 引用的 file:line
   仍成立;CLI meta 动作通道现状(spec §6.10)定 P4 任务形态;GR3 行数口径核对
   (`definition/meta.ts` 521 原始行——新裁决分支落独立文件
