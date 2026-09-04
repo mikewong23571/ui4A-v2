@@ -39,9 +39,11 @@
 
 ## Phase 3 — 裁决路径与全联动收缩
 
-- [ ] Task: meta/application 实体投影声明 `deprecate` 动作(仅 active;human-only
-  guard;requires-confirmation high)+ engine meta 裁决分支(action-executed +
-  application-deprecated 伴随事件对,镜像 definition deprecate 模式)
+- [ ] Task: APPLICATION_LIFECYCLE 伪流(镜像 DEFINITION_LIFECYCLE:声明 deprecate、
+  guard actor-is-human、requires-confirmation high)注入 executeMeta flows 映射 +
+  实体投影动作镜像 + 伴随事件对(action-executed + application-deprecated;独立
+  文件 application-deprecation.ts);confirmGate 对 high 动作接线验证(第三轮复审 15)
+- [ ] Task: 并发双停用 stale-action 留痕测试(US5;fresh-read 口径)
 - [ ] Task: 受众反 fail-open(businessApplications/metaApplications 归属解析扩为
   active ∪ deprecated 双集查询(D71.3),停用应用 rel 解析非空归属→无交集即拒)
   + 逐面合同测试(application:/flow:/实例/surface)

@@ -59,11 +59,17 @@ agent 永不可触发;`authorizedPolicyScopes = Object.keys(applications)` 随�
   D53 膨胀即拆解)。fold 新 case:
   级联置废弃——`applications` 删除键、`deprecatedApplications` 记录审计集、
   全部 `definitions` 中 `app === name` 的条目置 `status:'deprecated'`。
-- **D71.2 直连动作而非 Draft**(已否决替代方案):draft 对称(D66 同型)为已考虑
-  替代;否决理由——停用是对既有事实的裁决而非新内容提案,直连与 definition
-  deprecate 先例同构,且少动 8+ 处 kind 枚举面(shared/db/create/execute/views/
-  draft-action-schemas/editor-schema);human guard + high confirmation 提供等价的
-  人类门,I6 拒绝留痕同源。
+- **D71.2 直连动作而非 Draft,以 application-lifecycle 伪流为宿主**:已否决
+  替代方案一:draft 对称(D66 同型)——停用是对既有事实的裁决而非新内容提案,
+  与「definitions are proposals」哲学不冲突(该口径约束新内容经提案入环;死亡
+  是治理决定),且少动 8+ 处 kind 枚举面。**接线事实(第三轮复审查实)**:
+  `executeMeta` 的动作声明与 guard 由注入 `executeWithGates` 的常量伪流承载
+  (`DEFINITION_LIFECYCLE`,`meta.ts:246-249`);`meta/application:` 的
+  `deprecate` 因此需要镜像的 `APPLICATION_LIFECYCLE` 伪流(声明 deprecate、
+  guard actor-is-human、requires-confirmation high),同源喂实体投影的动作镜像
+  (`meta.ts:238-240` 注释口径)。确认门走 executeWithGates 既有 confirmGate
+  (P3 接线验证并测试)。已否决替代方案二:裁决层特判分支——绕过声明式裁决,
+  违反「控件只来自当前 Siren 合同」(I3)。
 - **D71.3 受众语义(反 fail-open)**:`businessApplications`/`metaApplications` 的
   归属解析扩展为「active ∪ deprecated 双集查询」——停用应用的任何 rel
   (application:/flow:/实例/surface)解析出**非空**归属(应用名本身,经
@@ -101,14 +107,21 @@ agent 永不可触发;`authorizedPolicyScopes = Object.keys(applications)` 随�
 - **US1 裁决门**:`meta/application:<name>` 声明 `deprecate`(仅 active 应用;
   human-only;high 两步确认);执行走 `/_meta/api/exec`;agent 提交被引擎拒
   (I4 同口径);`default` 拒绝留痕。
-- **US2 原子级联**:执行后单事件入 log;fold 级联(应用退场/flow 定义置废/capability
+- **US2 原子级联**:执行后伴随事件对(action-executed + application-deprecated)原子入 log;fold 级联(应用退场/flow 定义置废/capability
   消失);全 log 重放一致(I5);app-known 不变式保持;`assertMetaBootstrapIntegrity`
   不受影响;重启无复活(receipt 幂等)。
 - **US3 全集收缩**:sitemap/flow-entry/发现文档/chat 发现链/`authorizedPolicyScopes`
   同步收缩;治理持有者授予集合收缩,「我的授权」面板如实反映;被停用应用的任何
   rel 呈现存在性隐藏,无 fail-open 可达(合同测试逐面断言)。
 - **US4 名字烧毁**:停用名上 create/validate/activate 全部 fail-closed 留痕(I6)。
-- **US5 存量隐藏**:停用应用的实例读取 404、集合不含;事件与审计完整。
+- **US5 存量隐藏与终态语义**:停用应用的实例读取 404、集合不含;`meta/application:
+  <name>` 实体对所有主体存在性隐藏(受众非空但授权全集已收缩、无人再有交集);
+  审计经事件日志/audit 面,不在实体面;`deprecatedApplications` 仅供受众与烧毁
+  内部使用。并发双停用:动作仅声明于 active 应用,二次执行经 fresh-read 判
+  stale-action(409)留痕。
+- **US5b 已接受行为(记录)**:停用时在途的 capability/Temporal run 允许完成并
+  写事件,其面随后隐藏;chat 线程本身 principal-owned 可读,指向停用实例的焦点
+  引用优雅失效,线程不删。
 - **US6 三门同门**:浏览器两步确认走查;CLI meta 写通道可执行并回读审计;
   合同/重放/invariants 测试族。
 - **US7 部署站清理**:发布后用本机制停用 `t48-prod-65a800` 与 `t51-prod-748704`,
@@ -156,6 +169,17 @@ agent 永不可触发;`authorizedPolicyScopes = Object.keys(applications)` 随�
     扁平面过滤增量后注意余量。
 14. **US7 计数口径**:停用两个走查残留后,已装 11→9,目录显示 9−1(default
     过滤)= 8 个,与「回到产品面」表述一致。
+
+第三轮复审(定稿后,用户质询触发;全部已回写):
+
+15. **接线宿主缺失**(阻断级,→D71.2):executeMeta 以常量伪流承载声明与 guard,
+    `meta/application:` 动作无宿主——补 APPLICATION_LIFECYCLE 伪流设计;确认门
+    confirmGate 支持列为 P3 验证项。
+16. **自身措辞矛盾**:US2「单事件」与 D71.1「伴随事件对」不一致,已统一为事件对。
+17. **停用后实体终态未指定**(高,→US5):明确存在性隐藏 + 事件日志审计,实体面
+    不保留治理审计视图(如需另立决定,入非目标)。
+18. **在途 run 与 chat 线程行为未记录**(中,→US5b)。
+19. **并发双停用语义未钉**(中,→US5 fresh-read stale-action)。
 
 ## 7. 全景验收走查(终验)
 
