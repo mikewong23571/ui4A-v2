@@ -1392,3 +1392,49 @@
   坏」,新路由面一律以 edge 白名单为交付边界;(c) 披露全集 diff 在极窄并发窗口可能
   并入他人并发装入的应用(对批准者可见性结论仍正确,归因偏宽为已接受近似);relogin
   分支隐含 realm optional-scope 挂载不漂移,漂移时由授权面板如实暴露。
+
+## D71 受治理的应用停用:application-deprecated 级联与反 fail-open 受众(T52)
+
+- **背景**:D66 给了应用受治理的出生,产品内却没有对称的死亡——事件词汇仅有
+  `application-seeded`,无反向动词;genesis 同名守卫使每次验收走查必须全新命名并
+  永久装入,部署站应用结构性累积(2026-09-04 实况 11 个已装,2 个为走查残留)。
+  代码核查暴露四个硬点:fold 无移除键先例;空受众 fail-open 陷阱(停用若只删 map
+  键,归属解析为空数组时 `reachableForGranted` 直接放行,可能比停用前更可达);
+  守卫双源不一致(create/validate 查 snapshot,activate 扫 log);`default` 无守卫,
+  停用后 receipt 幂等阻止 bootstrap 重 seed,app-known 地板永久失守。
+- **D71.1 载体与级联**:新核心事件 `application-deprecated`(detail: name/reason?/
+  commandId),由 engine meta 裁决路径在 action-executed 伴随追加(镜像
+  `definition-deprecated` 模式;裁决分支落独立文件,D53 膨胀即拆解)。fold 级联:
+  `applications` 删除键、`deprecatedApplications` 记录审计集、全部 `definitions` 中
+  `app === name` 的条目置 `status:'deprecated'`——app-known 不变式因此保持成立。
+- **D71.2 直连动作,APPLICATION_LIFECYCLE 伪流为宿主**:停用是对既有事实的裁决而非
+  新内容提案,与「definitions are proposals」不冲突,且少动 8+ 处 kind 枚举面——
+  否决 Draft 对称方案。`executeMeta` 的动作声明与 guard 由注入 `executeWithGates`
+  的常量伪流承载(`DEFINITION_LIFECYCLE` 先例);`meta/application:<name>` 的
+  `deprecate` 需要镜像的 `APPLICATION_LIFECYCLE` 伪流(声明 deprecate、guard
+  actor-is-human、requires-confirmation high),同源喂实体投影的动作镜像。否决
+  裁决层特判分支(绕过声明式裁决,违反 I3)。
+- **D71.3 受众语义(反 fail-open)**:`businessApplications`/`metaApplications` 的
+  归属解析扩展为「active ∪ deprecated 双集查询」——停用应用的任何 rel
+  (application:/flow:/实例/surface)解析出**非空**归属(经 `deprecatedApplications`
+  命中),咽喉判「授予集合无交集」→ 结构化拒绝/存在性隐藏;禁止落入空受众
+  fail-open 放行。最终用户语义:停用面 = 存在性隐藏(404),与「从未安装」同形
+  (D51 口径)。审计经事件日志,不在实体面。
+- **D71.4 实例不阻塞**:应用停用**不要求**零存活实例(与 definition deprecate 的
+  `no-live-instances` guard 不同)——停用即隐藏存量;清理场景恰恰需要带数据停用;
+  实例与事件在 log 中完整保留,重放可见。
+- **D71.5 烧毁集**:`takenApplicationNames = seeded(log) ∪ deprecated(log)`。
+  create/validate 的 snapshot 口径扩展为「active ∪ deprecated」;activate 的 log 口径
+  把 `application-deprecated` 同样计入已占用名。三处守卫同测,防「一半拦一半放」。
+- **D71.6 default 守卫**:engine 裁决层显式拒绝 `target === 'default'`(guard 语义,
+  拒绝留痕);理由:app-known 地板 + receipt 幂等会形成不可恢复真空。
+- **D71.7 运维后果口径(凭证砖化)**:停用应用后,显式携带 `ui4a:policy:<app>` 的
+  agent 凭证将**整体** 403(`delegation_scope_exceeded`:任一 scope 超出允许集即整
+  凭证拒绝)——诚实失败而非部分降级,接受。运维合同:停用应用后同步轮换相关
+  CLI/agent 凭证的 applications 配置并重新设备登录(DEPLOYMENT 联动)。
+- **D71.8 flow 名烧毁级联**:停用级联置废的 flow 名同样进入烧毁集——flow-definition
+  genesis/激活路径对「active ∪ deprecated」flow 名 fail-closed,防止经 flow 提案
+  复活已停用应用的面。
+- **验收形态**:US1–US7(spec §5);终验含部署站停用 `t48-prod-65a800` 与
+  `t51-prod-748704` 走查(待用户按 DEPLOYMENT 流程发布后执行)。设计复审记录与
+  否决方案全文见 spec §6。
