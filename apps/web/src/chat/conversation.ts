@@ -108,11 +108,7 @@ function sessionOf(detail: unknown): string | undefined {
   return isRecord(detail) && typeof detail.sessionId === 'string' ? detail.sessionId : undefined;
 }
 
-function belongsToSession(
-  event: ConversationEvent,
-  sessionId: string,
-  principal: string,
-): boolean {
+function belongsToSession(event: ConversationEvent, sessionId: string, principal: string): boolean {
   return (
     event.principal === principal &&
     event.rel === `chat:${sessionId}` &&

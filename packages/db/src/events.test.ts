@@ -159,6 +159,30 @@ describe('listEvents', () => {
     expect(older.map((event) => event.seq)).toEqual([first.seq]);
   });
 
+  it('principal 过滤:仅返回该 principal 名下事件,他人不可见(T49 D68.3 读侧收窄锚点)', async () => {
+    const chatTurn = (principal: string, sessionId: string, turnId: string) =>
+      appendEvent(pool, {
+        kind: 'chat-turn',
+        rel: `chat:${sessionId}`,
+        actor: 'agent',
+        principal,
+        channel: 'chat',
+        detail: { sessionId, turnId },
+      });
+    await chatTurn('user:a', 'sess-a', 'turn-a1');
+    await chatTurn('user:b', 'sess-b', 'turn-b1');
+    await chatTurn('user:a', 'sess-a', 'turn-a2');
+
+    const scoped = await listEvents(pool, 0, { principal: 'user:a' });
+
+    // 仅 user:a 的回合,seq 升序(a1 → a2);user:b 的事件在收窄读取中不可达。
+    expect(scoped.map((event) => (event.detail as { turnId: string }).turnId)).toEqual([
+      'turn-a1',
+      'turn-a2',
+    ]);
+    expect(scoped.every((event) => event.principal === 'user:a')).toBe(true);
+  });
+
   it('Presentation domain shares the append-only log but never enters Business readLog', async () => {
     await appendEvent(pool, { kind: 'seed', rel: 'seed:business' });
     await appendEvent(pool, {

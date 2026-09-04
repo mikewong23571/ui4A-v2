@@ -50,7 +50,13 @@ function context(
   sessionId = 'sess-main',
   principal: string | null = PRINCIPAL,
 ): StoredEvent {
-  return event(seq, 'chat-context-updated', { sessionId, ...detail }, `chat:${sessionId}`, principal);
+  return event(
+    seq,
+    'chat-context-updated',
+    { sessionId, ...detail },
+    `chat:${sessionId}`,
+    principal,
+  );
 }
 
 function clientView(clientInstanceId: string, focus: string) {
