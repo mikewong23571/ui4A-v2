@@ -16,6 +16,7 @@
 import { callerActionSchema, type SirenEntity } from '@ui4a/engine';
 
 import { navigableRels } from './navigation';
+import { stripPayloadSchemasForModelView } from './payload-schemas-annotation';
 
 /** 动作工具名前缀(避免与固定动词撞名,映射时剥掉)。 */
 export const ACTION_TOOL_PREFIX = 'action_';
@@ -310,7 +311,10 @@ export function buildToolProjection(
       description:
         `[${action.title}] 执行当前实体的动作 "${action.name}"${blockedNote}。` +
         'authorization 必须引用 user 的逐字授权原话。',
-      parameters: withEffectAuthorization(callerActionSchema(action.fields)),
+      parameters: withEffectAuthorization(
+        // 引擎先剥客户端持有字段;随后按 D69 附录剥注解 schema 大对象(仅模型视图)。
+        stripPayloadSchemasForModelView(callerActionSchema(action.fields)),
+      ),
     });
   }
 

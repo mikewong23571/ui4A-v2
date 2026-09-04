@@ -5,6 +5,8 @@ import {
   type SirenFieldPresentation,
 } from '@ui4a/engine';
 
+import { stripPayloadSchemasForModelView } from '../protocol/payload-schemas-annotation';
+
 const MAX_COLLECTION_MEMBER_SUMMARIES = 8;
 const COGNITIVE_PROPERTY_KEYS = [
   'rel',
@@ -171,7 +173,9 @@ function sanitizeAction(action: SirenAction): Record<string, unknown> {
   return {
     name: action.name,
     title: action.title,
-    fields: action.fields,
+    // D69 T50 附录:认知投影是模型视图——注解剥离 per-kind schema 大对象、保留
+    // example(与工具 schema 投影同一窄函数;HTTP 合同仍见全量注解)。
+    fields: stripPayloadSchemasForModelView(action.fields),
     ...(action['requires-confirmation'] === undefined
       ? {}
       : { 'requires-confirmation': action['requires-confirmation'] }),

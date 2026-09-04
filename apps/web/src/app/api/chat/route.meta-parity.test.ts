@@ -2,8 +2,11 @@ import { type Server, createServer } from 'node:http';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { applicationBundlePayloadSchema } from '@ui4a/engine';
 import { ensureDraftTables } from '@ui4a/db/drafts';
 import { ensureEventsTable, listEvents } from '@ui4a/db/events';
+
+import { draftPayloadSchemasAnnotation } from '@/engine/drafts/draft-action-schemas';
 
 import { POST as postMetaExecRoute } from '../meta/exec/route';
 import {
@@ -83,14 +86,16 @@ function bundlePayload(name: string): Record<string, unknown> {
 
 /**
  * 记录型 LLM 桩(SSE 流式;route-test-kit 同口径):按序返回注入的协议操作,
- * 同时捕获每次 driver 决策请求原文(证明模型看到的是合同工具投影)。
+ * 同时捕获每次 driver 决策请求原文与字节预算(证明模型看到的是合同工具投影,
+ * 且 prompt 层披露收窄后请求回到 provider 预算内)。
  */
 function createRecordingLlmStub(
   operations: { name: string; args: Record<string, unknown> }[],
-): Promise<Server & { port(): number; driverCalls: unknown[] }> {
+): Promise<Server & { port(): number; driverCalls: unknown[]; driverCallBytes: number[] }> {
   return new Promise((resolve) => {
     let calls = 0;
     const driverCalls: unknown[] = [];
+    const driverCallBytes: number[] = [];
     const chunk = (delta: Record<string, unknown>, finishReason: string | null = null) =>
       `data: ${JSON.stringify({
         id: 'chatcmpl-t48-us6',
@@ -102,8 +107,10 @@ function createRecordingLlmStub(
     const stub = createServer(async (req, res) => {
       const chunks: Buffer[] = [];
       for await (const piece of req) chunks.push(Buffer.from(piece));
+      const raw = Buffer.concat(chunks).toString('utf8');
+      driverCallBytes.push(Buffer.byteLength(raw));
       try {
-        driverCalls.push(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+        driverCalls.push(JSON.parse(raw));
       } catch {
         driverCalls.push({});
       }
@@ -127,9 +134,10 @@ function createRecordingLlmStub(
           'data: [DONE]',
         ].join('\n\n')}\n\n`,
       );
-    }) as Server & { port(): number; driverCalls: unknown[] };
+    }) as Server & { port(): number; driverCalls: unknown[]; driverCallBytes: number[] };
     stub.port = () => (stub.address() as { port: number }).port;
     stub.driverCalls = driverCalls;
+    stub.driverCallBytes = driverCallBytes;
     stub.listen(0, '127.0.0.1', () => resolve(stub));
   });
 }
@@ -180,7 +188,8 @@ describe('T48 US6:chat Assistant 与 CLI 的 meta Draft 同门(meta 站注入驱
   const envKey = process.env.LLM_API_KEY;
   const envBase = process.env.LLM_BASE_URL;
   const envModel = process.env.LLM_MODEL;
-  let stub: (Server & { port(): number; driverCalls: unknown[] }) | undefined;
+  let stub:
+    (Server & { port(): number; driverCalls: unknown[]; driverCallBytes: number[] }) | undefined;
 
   beforeEach(async () => {
     await ensureDraftTables(pool);
@@ -236,6 +245,28 @@ describe('T48 US6:chat Assistant 与 CLI 的 meta Draft 同门(meta 站注入驱
     expect((properties.kind as { enum?: string[] }).enum).toContain('application-bundle');
     expect(properties.commandId).toBeUndefined();
     expect(properties.policyScope).toBeUndefined();
+    // T50 P3 / D69 附录(prompt 预算冲突裁定):同一扇门、两个视图——HTTP 合同
+    // 携带全量 x-ui4a-payload-schemas 注解,模型视图(prompt 层披露收窄)只保留
+    // example:action_create 工具 schema 的注解含 application-bundle 的 example、
+    // 不含其 schema(剥离在 packages/agent 投影,web 合同装配零变化);kind 枚举
+    // 仍在;payload 字段 schema 原样保留(宽松 {})。
+    const derived = applicationBundlePayloadSchema();
+    const modelAnnotation = createParameters['x-ui4a-payload-schemas'] as Record<string, unknown>;
+    const modelBundle = modelAnnotation['application-bundle'] as { example?: unknown };
+    expect(Object.keys(modelAnnotation).sort()).toEqual([
+      'agent-definition',
+      'application-bundle',
+      'flow-definition',
+    ]);
+    expect(JSON.stringify(modelBundle.example)).toBe(JSON.stringify(derived.example));
+    expect(modelBundle).not.toHaveProperty('schema');
+    expect(JSON.stringify(createParameters)).not.toContain(
+      JSON.stringify(derived.schema).slice(0, 80),
+    );
+    expect(JSON.stringify(properties.payload)).toBe('{}');
+    // 预算恢复(D69 附录裁定动机):第二次决策请求回到 32KiB provider 预算内
+    // (留余量断言 < 32,000;实测见 driverCallBytes)。
+    expect(stub?.driverCallBytes[1]).toBeLessThan(32_000);
   });
 
   it('写面同门与当前边界:exec 落在 /_meta/api/exec 同一裁决端点;缺显式 lens 被结构化拒绝且不产生 Draft;同一载荷补 lens 后经同一裁决路径创建 Draft', async () => {
@@ -304,6 +335,7 @@ describe('T48 US6:chat Assistant 与 CLI 的 meta Draft 同门(meta 站注入驱
           schemaRef: string;
           provenance: { actor: string; principal: string; commandId: string };
         };
+        actions?: { name: string; fields: Record<string, unknown> }[];
       };
     };
     expect(receipt.entity.properties.rel).toMatch(/^draft:/);
@@ -319,6 +351,15 @@ describe('T48 US6:chat Assistant 与 CLI 的 meta Draft 同门(meta 站注入驱
       principal: `user:${SESSION_ID}`,
       commandId,
     });
+    // T50 P3 / D69 附录:合同不窄化的直接证据——同一 HTTP 裁决门(/_meta/api/exec)
+    // 回执的 Draft 实体动作仍携带全量 x-ui4a-payload-schemas 注解(与
+    // draftPayloadSchemasAnnotation 逐字节等值);剥离只发生在 packages/agent
+    // 的模型视图(工具 schema 与认知投影),CLI/e2e 经实体读取同门见全量。
+    const revise = receipt.entity.actions?.find((action) => action.name === 'revise');
+    expect(revise).toBeDefined();
+    expect(JSON.stringify(revise?.fields['x-ui4a-payload-schemas'])).toBe(
+      JSON.stringify(draftPayloadSchemasAnnotation()),
+    );
     expect(await listEvents(pool, 0, { domain: 'draft', kind: 'draft-created' })).toHaveLength(1);
   });
 
