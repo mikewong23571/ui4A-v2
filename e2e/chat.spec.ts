@@ -13,6 +13,8 @@
  * 终帧)——chat() helper 解析帧并把 step 文本聚回 messages,既有断言口径
  * 不变;新增:帧序断言(step 先于 final)与「停止」按钮可点的 UI 走查。
  * T11 Phase C:thinking 帧为 LLM 推理自述；配置缺失时自然零帧。
+ * T49 D68(会话双轴):sessionId=会话分组键(旧形状键并存/缺省代铸/非法 400),
+ * 清单多会话与 history 读回隔离的本地 profile 全路径(U1–U5/U8/U10)。
  */
 import { createServer } from 'node:http';
 
@@ -31,9 +33,11 @@ interface ChatResponseBody {
 
 /** SSE 帧(T9 Phase B):step 逐步消息 / final 终帧 / error 兜底;
  * T11 Phase C 增 thinking 帧(llm 步推理自述;rule 路径零帧,仅作类型容错);
- * 本轮增 thinking-delta(推理增量)与 render(渲染 LLM 路径 SSE 化的回执帧)。 */
+ * 本轮增 thinking-delta(推理增量)与 render(渲染 LLM 路径 SSE 化的回执帧);
+ * T49:session 帧(P3 起首帧必达,携带服务端确认的会话分组键)。 */
 interface SseFrame {
-  type: 'step' | 'final' | 'error' | 'thinking' | 'thinking-delta' | 'render';
+  type: 'session' | 'step' | 'final' | 'error' | 'thinking' | 'thinking-delta' | 'render';
+  sessionId?: string;
   message?: { role: 'assistant'; text: string };
   step?: number;
   text?: string;
@@ -84,6 +88,15 @@ async function articleCount(): Promise<number> {
   const response = await fetch(`${SCENARIO_BASE}/api/entity?rel=articles`);
   const body = (await response.json()) as { properties: { count: number } };
   return body.properties.count;
+}
+
+/** GET /api/chat/history?sessionId= 的回合投影(T49 读回隔离断言)。 */
+async function chatHistory(sessionId: string): Promise<{ turns: { goal: { verb: string } }[] }> {
+  const response = await fetch(
+    `${SCENARIO_BASE}/api/chat/history?sessionId=${encodeURIComponent(sessionId)}`,
+  );
+  expect(response.status).toBe(200);
+  return (await response.json()) as { turns: { goal: { verb: string } }[] };
 }
 
 /** 本地 401 桩:任何路径返回 401(B4 的确定性错误源,真实 GLM 401 同构)。 */
@@ -250,6 +263,70 @@ test('渲染路径 SSE 化兜底:展示意图 rule miss + 无 key → 同流交�
       expect(frames.some((frame) => frame.type === 'step')).toBe(true);
     },
     // 显式空配置:e2e 进程无 LLM profile(U22 故障安全口径)
+    { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
+  );
+});
+
+test('T49 D68:会话双轴——多会话清单/旧形状并存/缺省代铸/非法拒绝', async () => {
+  await withFreshServer(
+    async () => {
+      // 旧形状键(修复前部署 sessionId=principal 的落库形状):字符集合法,
+      // D68 下作为普通会话分组键延续(U8 诚实投影,零迁移零双轨)。
+      const preD68 = await chat({ sessionId: 'e2e-pre-d68', goal: { verb: '旧形状会话回合' } });
+      expect(preD68.status).toBe(200);
+      expect(preD68.json.outcome, '空 LLM profile:回合确定性诚实失败').toBe('failed');
+      expect(preD68.frames[0]!.type).toBe('session');
+      expect(preD68.frames[0]!.sessionId).toBe('e2e-pre-d68');
+
+      // 现行客户端铸发的 UUID 会话键(U1 第二会话)。
+      const uuidKey = '11111111-2222-4333-8444-555555555555';
+      const uuidTurn = await chat({ sessionId: uuidKey, goal: { verb: 'UUID 会话回合' } });
+      expect(uuidTurn.status).toBe(200);
+
+      // 缺省 sessionId → 服务端代铸 UUID v4 经 session 帧下发(U5 自愈链路起点)。
+      const minted = await chat({ goal: { verb: '缺省会话回合' } });
+      expect(minted.status).toBe(200);
+      expect(minted.frames[0]!.type).toBe('session');
+      expect(minted.frames[0]!.sessionId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      );
+
+      // 非法 sessionId → 400 结构化拒绝,不 5xx(U5)。
+      const bad = await chat({ sessionId: '!bad', goal: { verb: '非法键回合' } });
+      expect(bad.status).toBe(400);
+      expect(typeof bad.json.error).toBe('string');
+      expect(bad.json.error).toContain('sessionId');
+
+      // 清单(本地 demo 全量分组):三会话并存,每行 turns ≥ 1(U1/U8/U10)。
+      const sessionsResponse = await fetch(`${SCENARIO_BASE}/api/chat/sessions`);
+      expect(sessionsResponse.status).toBe(200);
+      const sessionsBody = (await sessionsResponse.json()) as {
+        sessions: { sessionId: string; turns: number }[];
+      };
+      expect(sessionsBody.sessions.length).toBeGreaterThanOrEqual(3);
+      const ids = sessionsBody.sessions.map((row) => row.sessionId);
+      expect(ids).toContain('e2e-pre-d68');
+      expect(ids).toContain(uuidKey);
+      expect(ids).toContain(minted.frames[0]!.sessionId!);
+      for (const row of sessionsBody.sessions) {
+        expect(row.turns, `${row.sessionId} 应至少一回合`).toBeGreaterThanOrEqual(1);
+      }
+
+      // history 读回隔离(U3):各会话只见自己的回合,goal 原样、互不串台。
+      const preD68History = await chatHistory('e2e-pre-d68');
+      expect(preD68History.turns).toHaveLength(1);
+      expect(preD68History.turns[0]!.goal.verb).toBe('旧形状会话回合');
+      const uuidHistory = await chatHistory(uuidKey);
+      expect(uuidHistory.turns).toHaveLength(1);
+      expect(uuidHistory.turns[0]!.goal.verb).toBe('UUID 会话回合');
+
+      // 同会话第二回合 → turns=2(刷新续会回归口径的代理锚定,U4)。
+      const second = await chat({ sessionId: uuidKey, goal: { verb: 'UUID 会话第二回合' } });
+      expect(second.status).toBe(200);
+      const afterSecond = await chatHistory(uuidKey);
+      expect(afterSecond.turns).toHaveLength(2);
+    },
+    // 显式空配置:回合确定性 failed,chat 事件仍全量落库(既有 U22 口径)。
     { LLM_API_KEY: '', LLM_BASE_URL: '', LLM_MODEL: '' },
   );
 });

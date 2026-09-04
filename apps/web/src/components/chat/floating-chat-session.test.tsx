@@ -15,6 +15,10 @@
  *
  * T7 Phase C / S5(render capability):focus/render 回执 → 画布入口链接
  * (data-nav)+ 回执即达即跳(router.push 客户端导航)。
+ *
+ * T49 Phase 5(D68 会话双轴锚定):「新会话」= 下一轮携带全新 sessionId 且
+ * 消息区不含旧会话回合(U2);清单多行 + selectSession 切换只重放所选会话、
+ * 不串台(U1/U3)。客户端行为既有,此处锚定不改实现。
  * jsdom 无 ResizeObserver(assistant-ui 的 viewport/composer 尺寸观测),桩替换;
  * next/navigation 的 usePathname 桩为 '/'(非 /chat,壳正常渲染)。
  */
@@ -615,5 +619,169 @@ describe('悬浮聊天窗 · render capability(T7 Phase C / S5)', () => {
       expect(screen.getByText(/完成: 目标完成/)).toBeTruthy();
     });
     expect(screen.queryByRole('link', { name: /在画布查看/ })).toBeNull();
+  });
+});
+
+describe('工作台 · 会话双轴锚定(T49 Phase 5 / D68 · FR5)', () => {
+  /** POST /api/chat 的请求体形状(断言 sessionId 分组键)。 */
+  interface ChatPostBody {
+    sessionId: string;
+    turnId: string;
+    goal: { verb: string };
+  }
+
+  /** history 回合桩(goal 在前、messages 逐条重放的投影形状)。 */
+  const turnFixture = (sessionId: string, seq: number, verb: string, reply: string) => ({
+    seq,
+    ts: '2026-09-04T09:00:00.000Z',
+    sessionId,
+    turnId: `turn-${sessionId}-${seq}`,
+    goal: { verb },
+    outcome: 'done',
+    summary: null,
+    messages: [{ role: 'assistant', text: reply }],
+    steps: [],
+    driver: 'llm',
+  });
+
+  it('U2:「新会话」后下一轮 POST 携带全新 sessionId,消息区不含旧会话回合', async () => {
+    // SSE 流回显请求 sessionId(session 帧先行,final 终帧)——服务端双轴解耦
+    // 后 sessionId=请求值,锚点只关心客户端铸发与持久化链路。
+    const postBodies: ChatPostBody[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string | URL | RequestInfo, init?: RequestInit) => {
+        const payload = JSON.parse(String(init?.body ?? '{}')) as ChatPostBody;
+        postBodies.push(payload);
+        return Promise.resolve(
+          sseResponse([
+            { type: 'session', sessionId: payload.sessionId, turnId: payload.turnId },
+            {
+              type: 'final',
+              payload: {
+                sessionId: payload.sessionId,
+                turnId: payload.turnId,
+                driver: 'llm',
+                requestedDriver: 'auto',
+                outcome: 'done',
+                summary: `完成: ${payload.goal.verb}`,
+                steps: [],
+                successes: [],
+              },
+            },
+          ]),
+        );
+      }),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    sendGoal('旧会话目标');
+    await waitFor(() => expect(screen.getByText('完成: 旧会话目标')).toBeTruthy());
+    const first = postBodies[0]!.sessionId;
+    // 回显的 session 帧已持久化(客户端自愈链路既有)。
+    expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBe(first);
+
+    fireEvent.click(screen.getByRole('button', { name: '新会话' }));
+    expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBeNull();
+    expect(screen.queryByText('旧会话目标')).toBeNull();
+
+    sendGoal('新会话目标');
+    await waitFor(() => expect(screen.getByText('完成: 新会话目标')).toBeTruthy());
+    expect(postBodies.length).toBe(2);
+    const second = postBodies[1]!.sessionId;
+    expect(second).not.toBe(first);
+    // 现行客户端铸发形状:UUID v4(sessionRef 清空后 onNew 重新铸发)。
+    expect(second).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    // 消息区只有新会话回合:旧会话目标与回答均不回放(U2 干净上下文)。
+    expect(screen.queryByText('旧会话目标')).toBeNull();
+    expect(screen.queryByText('完成: 旧会话目标')).toBeNull();
+    expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBe(second);
+  });
+
+  it('U1/U3:清单多行渲染;切换会话只拉并重放所选回合,不串台', async () => {
+    window.localStorage.setItem('ui4a.chat.sessionId', 'session-a');
+    const historyHrefs: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string | URL | RequestInfo) => {
+        const href = String(url);
+        if (href.includes('/api/chat/sessions')) {
+          return Promise.resolve(
+            jsonResponse({
+              sessions: [
+                {
+                  sessionId: 'session-b',
+                  turns: 1,
+                  firstTs: '2026-09-04T00:00:00.000Z',
+                  lastTs: '2026-09-04T09:00:00.000Z',
+                  lastGoal: 'B 清单摘要',
+                  lastOutcome: 'done',
+                },
+                {
+                  sessionId: 'session-a',
+                  turns: 2,
+                  firstTs: '2026-09-03T00:00:00.000Z',
+                  lastTs: '2026-09-03T09:00:00.000Z',
+                  lastGoal: 'A 清单摘要',
+                  lastOutcome: 'done',
+                },
+              ],
+            }),
+          );
+        }
+        if (href.includes('/api/chat/history')) {
+          historyHrefs.push(href);
+          if (href.includes('sessionId=session-b')) {
+            return Promise.resolve(
+              jsonResponse({ turns: [turnFixture('session-b', 1, 'B 回合目标', 'B 的回答')] }),
+            );
+          }
+          return Promise.resolve(
+            jsonResponse({
+              turns: [
+                turnFixture('session-a', 1, 'A 第一回合', 'A 的回答一'),
+                turnFixture('session-a', 2, 'A 第二回合', 'A 的回答二'),
+              ],
+            }),
+          );
+        }
+        return Promise.resolve(jsonResponse({ error: '未预期请求' }));
+      }),
+    );
+
+    render(<FloatingChat />);
+    openChat();
+    // 挂载重放当前会话(session-a)两回合。
+    await waitFor(() => expect(screen.getByText('A 的回答二')).toBeTruthy());
+
+    // 打开清单:两行 + 各自回合数(U1 多会话并存)。
+    fireEvent.click(screen.getByRole('button', { name: '历史会话' }));
+    await waitFor(() => {
+      expect(screen.getByText('B 清单摘要')).toBeTruthy();
+      expect(screen.getByText('A 清单摘要')).toBeTruthy();
+      expect(screen.getByText('1 回合')).toBeTruthy();
+      expect(screen.getByText('2 回合')).toBeTruthy();
+    });
+
+    // 进入 session-b:history 只拉该会话,消息区只重放 B 的回合(U3 不串台)。
+    fireEvent.click(screen.getByText('B 清单摘要'));
+    expect(window.localStorage.getItem('ui4a.chat.sessionId')).toBe('session-b');
+    await waitFor(() => expect(screen.getByText('B 的回答')).toBeTruthy());
+    expect(historyHrefs.some((href) => href.includes('sessionId=session-b'))).toBe(true);
+    expect(screen.queryByText('A 第一回合')).toBeNull();
+    expect(screen.queryByText('A 的回答一')).toBeNull();
+
+    // 切回 session-a:重新拉取并完整重放两回合,B 的回合不再在场。
+    fireEvent.click(screen.getByRole('button', { name: '历史会话' }));
+    await waitFor(() => expect(screen.getByText('A 清单摘要')).toBeTruthy());
+    fireEvent.click(screen.getByText('A 清单摘要'));
+    await waitFor(() => expect(screen.getByText('A 第一回合')).toBeTruthy());
+    expect(screen.getByText('A 第二回合')).toBeTruthy();
+    expect(screen.getByText('A 的回答一')).toBeTruthy();
+    expect(screen.getByText('A 的回答二')).toBeTruthy();
+    expect(screen.queryByText('B 的回答')).toBeNull();
+    expect(screen.queryByText('B 回合目标')).toBeNull();
+    expect(historyHrefs.filter((href) => href.includes('sessionId=session-a'))).toHaveLength(2);
   });
 });
