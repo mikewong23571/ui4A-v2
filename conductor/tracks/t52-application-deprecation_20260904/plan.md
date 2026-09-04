@@ -5,15 +5,15 @@
 > Phase Checkpoint(自治验收);GR1–GR5 全程生效。spec §6 已含设计复审记录,
 > 执行期发现新事实按 workflow「Task Correction」回写 plan 并注明。
 
-## Phase 0 — 决定与开工核对
+## Phase 0 — 决定与开工核对 [checkpoint: 82565b22]
 
 - [x] Task: DECISIONS.md 落盘 D71(spec §3 全文:载体与级联/直连动作/反 fail-open
   受众/实例不阻塞/烧毁集/default 守卫) `9394b2b9`
 - [x] Task: 开工前事实复核(代码可能已漂移):复核 spec §1/§6 引用的 file:line
   仍成立;CLI meta 动作通道现状(spec §6.10)定 P4 任务形态;GR3 行数口径核对
   (`definition/meta.ts` 521 原始行——新裁决分支落独立文件
-  `definition/application-deprecation.ts`,D53;`sitemap.ts` 427 行余量评估)
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+  `definition/application-deprecation.ts`,D53;`sitemap.ts` 427 行余量评估) `82565b22`
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `82565b22`
 
 ## Phase 1 — 事件与 fold 级联(engine 纯层)
 
