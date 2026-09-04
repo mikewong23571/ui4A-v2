@@ -17,9 +17,9 @@
 
 ## Phase 1 — 请求体合同:sessionId 输入卫生(FR1 · U5/U10)
 
-- [ ] Task: request-body.test.ts 先红——缺省代铸 UUID v4(既有)、合法字符集 `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$` 通过、非法(超长/非法字符/空串)→ 400 结构化错误;校验为纯函数、零 profile 分支 [U5/U10]
-- [ ] Task: request-body.ts 实现校验(替换式修改;不引入 UUID-only,保住本地 fixture 如 `i1-e2e`) [U5/U10]
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: request-body.test.ts 先红——缺省代铸 UUID v4(既有)、合法字符集 `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$` 通过、非法(超长/非法字符/空串)→ 400 结构化错误;校验为纯函数、零 profile 分支 [U5/U10] [3a7009e]（红 8 例→绿 19/19）
+- [x] Task: request-body.ts 实现校验(替换式修改;不引入 UUID-only,保住本地 fixture 如 `i1-e2e`) [U5/U10] [3a7009e]
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 3a7009e]（自治验收:编排 agent 复跑 19/19 + tsc + eslint + governance 全绿;改动文件均有对应测试;e2e fixture 'session:a' 含 ':' 合法)
 
 ## Phase 2 — 会话装配双键收敛(FR3 · U2/U7)
 
