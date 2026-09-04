@@ -8,6 +8,7 @@
 import type { SirenEntity } from '@ui4a/engine';
 
 import { redirectToLoginOnAuthError } from './auth-redirect';
+import type { ActivationDisclosureView } from './meta/activation-disclosure';
 
 /** 人类执行者的固定身份(与 e2e 断言的日志口径一致)。 */
 export const HUMAN_CHANNEL = {
@@ -17,7 +18,8 @@ export const HUMAN_CHANNEL = {
 } as const;
 
 export type ExecClientResult =
-  | { ok: true; entity: SirenEntity; subject?: SirenEntity }
+  // ok 分支的 disclosure 仅由 meta exec(approve 激活,D70.1)携带;业务 exec 恒缺省。
+  | { ok: true; entity: SirenEntity; subject?: SirenEntity; disclosure?: ActivationDisclosureView }
   | { ok: false; status: number; layer: string; reason: string; detail?: unknown };
 
 function contractPrefix(rel: string): '' | '/_meta' {

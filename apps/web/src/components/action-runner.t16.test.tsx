@@ -341,7 +341,10 @@ describe('ActionRunner T16 high-risk staging', () => {
     });
     expect(screen.getByRole('status').textContent).toContain('已执行');
     expect(onExecuted).toHaveBeenCalledWith('post:first-post');
-    expect(onOutcome).toHaveBeenCalledWith(entity);
+    expect(onOutcome).toHaveBeenCalledWith(
+      entity,
+      expect.objectContaining({ ok: true, entity }),
+    );
     expect(trigger.hasAttribute('disabled')).toBe(true);
     fireEvent.click(trigger);
     expect(execFn).toHaveBeenCalledTimes(1);

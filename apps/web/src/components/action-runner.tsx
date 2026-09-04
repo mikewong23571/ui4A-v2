@@ -33,6 +33,7 @@ import {
 
 import { callerActionSchema, type SirenAction, type SirenEntity } from '@ui4a/engine';
 
+import type { ExecClientResult } from '@/components/exec-client';
 import { Button } from '@/components/ui/button';
 
 import {
@@ -176,7 +177,7 @@ export interface ActionRunnerProps {
   /** exec 成功后的刷新回调(参数 = 实际提交的 rel)。 */
   onExecuted?: (rel: string) => void;
   /** Host-owned transient receipt survives an authorized projection refresh. */
-  onOutcome?: (entity: SirenEntity) => void;
+  onOutcome?: (entity: SirenEntity, result: ExecClientResult) => void;
   /** Host-owned projection of the returned contract entity; ActionRunner stays domain-neutral. */
   renderOutcome?: (entity: SirenEntity) => ReactNode;
   /** Host-owned, scope-aware submit adapter; the server remains the final judge. */
@@ -258,7 +259,7 @@ export function ActionRunner({
       if (result.ok) {
         setOutcome(result.entity);
         setInteraction('executed');
-        onOutcome?.(result.entity);
+        onOutcome?.(result.entity, result);
         onExecuted?.(rel);
         return;
       }
