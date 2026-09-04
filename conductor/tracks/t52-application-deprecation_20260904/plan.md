@@ -9,7 +9,7 @@
 
 - [x] Task: DECISIONS.md 落盘 D71(spec §3 全文:载体与级联/直连动作/反 fail-open
   受众/实例不阻塞/烧毁集/default 守卫) `9394b2b9`
-- [ ] Task: 开工前事实复核(代码可能已漂移):复核 spec §1/§6 引用的 file:line
+- [x] Task: 开工前事实复核(代码可能已漂移):复核 spec §1/§6 引用的 file:line
   仍成立;CLI meta 动作通道现状(spec §6.10)定 P4 任务形态;GR3 行数口径核对
   (`definition/meta.ts` 521 原始行——新裁决分支落独立文件
   `definition/application-deprecation.ts`,D53;`sitemap.ts` 427 行余量评估)
@@ -70,3 +70,20 @@
 - [ ] Task: 文档同步(AGENTS.md 事件词汇/模块行;GOAL.md 修订判定显式记录)
 - [ ] Task: Track 收口(archive、registry、DONE;部署站清理走查 US7 待用户按
   DEPLOYMENT 流程发布后另行执行)
+
+- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+
+## 附录 A — 开工前事实复核记录(2026-09-04,Phase 0 Task 2 产出)
+
+只读复核(17 项清单 + 11 项新增发现)全文见 git note;对执行形态有直接影响的结论:
+
+1. **路径更正**(spec 引用随执行更新):sitemap 实为 `packages/engine/src/contract/sitemap.ts`(非 projection/);meta-bootstrap 实为 `packages/engine/src/definition/meta-bootstrap.ts`(非 apps/web)。行号/机制均吻合。
+2. **CLI 通用 meta 执行通道已存在**(`apps/cli/src/commands-business.ts:53-54`,`meta/`/`draft:` rel 自动走 `/_meta/api/exec`,exec 前读实体 actions 要求已声明)→ **P4 CLI 任务收窄为「合同测试 + 审计回读验证」,零新命令**。spec §6.10 遗留验证点关闭。
+3. **GR3 双触顶风险(落位决定)**:`definition/` 目录 effective 合计 3861/4000(余 139);`contract/siren/project-meta.ts` 485/500(余 15,而 `meta/application:` 实体 actions 现硬编码 `[]` 于 :492,恰需扩)→ 新引擎文件一律落**新功能子目录** `definition/application-lifecycle/`(镜像 `definition/bundle/` 先例,D53 沿功能边界拆解);实体动作镜像逻辑落**新投影文件**(不进 project-meta.ts)。
+4. **事件词汇落点**:EngineEvent 现不含 seed 族;`application-deprecated` 走 meta exec events 数组伴随追加(镜像 definition-deprecated)→ **三处都要加字面量**:db `events.ts` EventKind、engine `log-event.ts`、engine `effects.ts` EngineEvent(kind union :31-53)。
+5. **受众 fail-open 面比 spec 宽**:`metaApplications` 对集合 rel 恒 `[]`(集合本身永远 reachable),成员靠 `filterEntityForGrantedApplications` 逐子过滤——停用应用的 `meta/application:<name>` 子项若解析 `[]` 则**不被过滤、集合内仍可见**。D71.3 实施必须同时覆盖:rel 级解析(business/meta 双函数)与集合成员过滤两层面。
+6. **确认门先例口径**:definition `deprecate` 只有 `no-live-instances` guard 无确认门;human+high 组合先例是 approve/reject(lifecycle.ts:124-142)。APPLICATION_LIFECYCLE 的 deprecate 声明 high 后,`/_meta/api/exec` 既有 suspended 分支(route.ts:112-124,现注释「理论不可达」)即被激活——P3 验证含 **CLI 对 202+confirmation 的消费**。
+7. **重启不复活双保险**:planMetaBootstrap 除 receipt 整包幂等外另有 per-identity 按 `application-seeded` 事件名集补缺判重(:102-116)→ G4 依据比 spec 更强。
+8. **披露钩子只覆盖 approve 方向**(D70.1);deprecate 收缩方向无披露——非目标,不扩。
+9. **并发互斥先例**:activate-application 的 `pg_advisory_xact_lock` + 锁内重读;引擎 exec 走 service 串行队列。
+10. **fold 未知 kind 纪律落点**:fold/index.ts:306 default throw;app-known 不变式实现于 definition/invariants.ts:334-343;fold 主测试 `projection/fold.test.ts`。
