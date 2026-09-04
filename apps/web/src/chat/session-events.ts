@@ -17,7 +17,7 @@ import type { ClientViewReport, NavigationCompletion } from '@ui4a/shared';
 import type { ChatTurnDetail, ChatTurnProgressDetail, ChatTurnStartedDetail } from './history';
 import { executionAuditContext } from './audit-context';
 import { conversationView } from './conversation';
-import { appendEvent, readLog } from '@ui4a/db/events';
+import { appendEvent, listEvents, toLogEvent } from '@ui4a/db/events';
 import { getDb } from '../engine/service';
 
 export async function appendChatProjection(
@@ -121,8 +121,10 @@ export async function loadAgentConversation(
   clientView: ReturnType<typeof conversationView>['clientView'];
   lastNavigation: ReturnType<typeof conversationView>['lastNavigation'];
 }> {
-  const events = await readLog(getDb());
-  const view = conversationView(events, sessionId);
+  // D68.3：一次 principal 过滤读（core 域归一同 readLog 口径），conversationView
+  // （双键再校验，纵深防御）与 executionAuditContext 共用同一事件流。
+  const events = (await listEvents(getDb(), 0, { domain: 'core', principal })).map(toLogEvent);
+  const view = conversationView(events, sessionId, principal);
   const executionAudit = executionAuditContext(events, principal);
   return {
     messages: view.recentMessages.map(({ messageId, role, content }) => ({

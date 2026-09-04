@@ -4,17 +4,21 @@ import type { StoredEvent } from '@ui4a/db/events';
 import { conversationView, foldConversation } from './conversation';
 import type { ChatContextUpdatedDetail, ChatMessageAppendedDetail } from './history';
 
+/** D68.3 双键装配的既有会话 fixture 主 principal(本地 demo 口径 user:<sessionId>)。 */
+const PRINCIPAL = 'user:sess-main';
+
 function event(
   seq: number,
   kind: StoredEvent['kind'],
   detail: unknown,
   rel = 'chat:sess-main',
+  principal: string | null = PRINCIPAL,
 ): StoredEvent {
   return {
     seq,
     ts: `2026-08-22T00:00:${String(seq).padStart(2, '0')}.000Z`,
     actor: null,
-    principal: null,
+    principal,
     channel: null,
     kind,
     rel,
@@ -29,16 +33,24 @@ function message(
   seq: number,
   detail: Omit<ChatMessageAppendedDetail, 'sessionId'>,
   sessionId = 'sess-main',
+  principal: string | null = PRINCIPAL,
 ): StoredEvent {
-  return event(seq, 'chat-message-appended', { sessionId, ...detail }, `chat:${sessionId}`);
+  return event(
+    seq,
+    'chat-message-appended',
+    { sessionId, ...detail },
+    `chat:${sessionId}`,
+    principal,
+  );
 }
 
 function context(
   seq: number,
   detail: Omit<ChatContextUpdatedDetail, 'sessionId'>,
   sessionId = 'sess-main',
+  principal: string | null = PRINCIPAL,
 ): StoredEvent {
-  return event(seq, 'chat-context-updated', { sessionId, ...detail }, `chat:${sessionId}`);
+  return event(seq, 'chat-context-updated', { sessionId, ...detail }, `chat:${sessionId}`, principal);
 }
 
 function clientView(clientInstanceId: string, focus: string) {
@@ -58,12 +70,14 @@ function navigation(
   seq: number,
   detail: Record<string, unknown>,
   sessionId = 'sess-main',
+  principal: string | null = PRINCIPAL,
 ): StoredEvent {
   return event(
     seq,
     'chat-navigation-completed' as StoredEvent['kind'],
     { sessionId, ...detail },
     `chat:${sessionId}`,
+    principal,
   );
 }
 
@@ -92,6 +106,7 @@ describe('event-sourced conversation context', () => {
         }),
       ],
       'sess-main',
+      PRINCIPAL,
     );
 
     expect(folded.clientView).toEqual({
@@ -127,6 +142,7 @@ describe('event-sourced conversation context', () => {
         }),
       ],
       'sess-main',
+      PRINCIPAL,
     );
 
     expect(folded.clientView).toBeNull();
@@ -157,6 +173,7 @@ describe('event-sourced conversation context', () => {
         }),
       ],
       'sess-main',
+      PRINCIPAL,
     );
 
     expect(folded.messages.map((item) => item.clientView?.presence.clientInstanceId)).toEqual([
@@ -215,6 +232,7 @@ describe('event-sourced conversation context', () => {
         ),
       ],
       'sess-main',
+      PRINCIPAL,
     );
 
     expect(folded.lastNavigation).toMatchObject({
@@ -244,6 +262,7 @@ describe('event-sourced conversation context', () => {
         }),
       ],
       'sess-main',
+      PRINCIPAL,
     );
 
     expect(folded.lastNavigation).toBeNull();
@@ -286,7 +305,7 @@ describe('event-sourced conversation context', () => {
       }),
     ];
 
-    const folded = foldConversation(events, 'sess-main');
+    const folded = foldConversation(events, 'sess-main', PRINCIPAL);
 
     expect(
       folded.messages.map(({ messageId, role, content }) => ({ messageId, role, content })),
@@ -321,7 +340,7 @@ describe('event-sourced conversation context', () => {
       citations: [{ rel: 'post:ghost', pointer: 'properties/body' }],
     });
 
-    expect(foldConversation([valid, malformed], 'sess-main').messages).toMatchObject([
+    expect(foldConversation([valid, malformed], 'sess-main', PRINCIPAL).messages).toMatchObject([
       {
         messageId: 'turn-1:assistant',
         citations: [
@@ -385,7 +404,7 @@ describe('event-sourced conversation context', () => {
       }),
     ];
 
-    const folded = foldConversation(events, 'sess-main');
+    const folded = foldConversation(events, 'sess-main', PRINCIPAL);
 
     expect(folded.context).toMatchObject({
       activeGoal: { verb: '总结', targetRel: 'post:first-post' },
@@ -470,7 +489,7 @@ describe('event-sourced conversation context', () => {
       }),
     ];
 
-    expect(foldConversation(events, 'sess-main').context).toMatchObject({
+    expect(foldConversation(events, 'sess-main', PRINCIPAL).context).toMatchObject({
       focus: {
         currentRel: 'post:first-post',
         history: [
@@ -511,10 +530,9 @@ describe('event-sourced conversation context', () => {
       }),
     ];
 
-    expect(foldConversation(events, 'sess-main').messages.map((item) => item.content)).toEqual([
-      '总结一下',
-      '这篇文章用于验证正文阅读链路。',
-    ]);
+    expect(
+      foldConversation(events, 'sess-main', PRINCIPAL).messages.map((item) => item.content),
+    ).toEqual(['总结一下', '这篇文章用于验证正文阅读链路。']);
   });
 
   it('chat-turn 完成事件不进入 dialogue:原话只来自 chat-message-appended', () => {
@@ -540,6 +558,7 @@ describe('event-sourced conversation context', () => {
         }),
       ],
       'sess-main',
+      PRINCIPAL,
     );
 
     expect(folded.messages).toEqual([]);
@@ -570,12 +589,163 @@ describe('event-sourced conversation context', () => {
       }),
     ];
 
-    const view = conversationView(events, 'sess-main', { maxMessages: 2 });
+    const view = conversationView(events, 'sess-main', PRINCIPAL, { maxMessages: 2 });
 
     expect(view.recentMessages.map((item) => item.content)).toEqual([
       '第二条',
       '  第三条保留空白  ',
     ]);
     expect(view.truncatedMessageCount).toBe(1);
+  });
+
+  it('D68.3 双键:同 sessionId 跨 principal 碰撞,各自视图互不可见', () => {
+    const events = [
+      message(
+        1,
+        {
+          turnId: 'turn-a1',
+          messageId: 'm-a1',
+          role: 'user',
+          content: 'alice 的目标',
+          provenance: { kind: 'user-input' },
+        },
+        'sess-main',
+        'human-alice',
+      ),
+      context(
+        2,
+        {
+          basedOnSeq: 1,
+          provenance: {
+            kind: 'llm-interpretation',
+            model: 'configured-model',
+            sourceMessageIds: ['m-a1'],
+          },
+          patch: { activeGoal: { verb: '总结', targetRel: 'post:alice' } },
+        },
+        'sess-main',
+        'human-alice',
+      ),
+      message(
+        3,
+        {
+          turnId: 'turn-b1',
+          messageId: 'm-b1',
+          role: 'user',
+          content: 'bob 的目标',
+          provenance: { kind: 'user-input' },
+        },
+        'sess-main',
+        'human-bob',
+      ),
+      context(
+        4,
+        {
+          basedOnSeq: 3,
+          provenance: {
+            kind: 'llm-interpretation',
+            model: 'configured-model',
+            sourceMessageIds: ['m-b1'],
+          },
+          patch: { activeGoal: { verb: '总结', targetRel: 'post:bob' } },
+        },
+        'sess-main',
+        'human-bob',
+      ),
+    ];
+
+    const aliceView = conversationView(events, 'sess-main', 'human-alice');
+    const bobView = conversationView(events, 'sess-main', 'human-bob');
+
+    expect(aliceView.recentMessages.map((item) => item.messageId)).toEqual(['m-a1']);
+    expect(aliceView.context.activeGoal).toMatchObject({ targetRel: 'post:alice' });
+    expect(aliceView.recentMessages.some((item) => item.content === 'bob 的目标')).toBe(false);
+
+    expect(bobView.recentMessages.map((item) => item.messageId)).toEqual(['m-b1']);
+    expect(bobView.context.activeGoal).toMatchObject({ targetRel: 'post:bob' });
+    expect(bobView.recentMessages.some((item) => item.content === 'alice 的目标')).toBe(false);
+  });
+
+  it('principal 为 null/undefined 的事件不属于任何 principal 视图', () => {
+    const nullPrincipal = message(
+      1,
+      {
+        turnId: 'turn-1',
+        messageId: 'm-null',
+        role: 'user',
+        content: '无主消息',
+        provenance: { kind: 'user-input' },
+      },
+      'sess-main',
+      null,
+    );
+    const undefinedPrincipal = {
+      ...message(1, {
+        turnId: 'turn-1',
+        messageId: 'm-undefined',
+        role: 'user',
+        content: '缺主消息',
+        provenance: { kind: 'user-input' },
+      }),
+      principal: undefined,
+    } as unknown as StoredEvent;
+
+    for (const viewer of [PRINCIPAL, 'human-alice', 'human-bob']) {
+      const view = conversationView([nullPrincipal, undefinedPrincipal], 'sess-main', viewer);
+      expect(view.recentMessages).toEqual([]);
+      expect(view.context).toMatchObject({ activeGoal: null, basedOnSeq: 0, updatedAtSeq: 0 });
+      expect(view.clientView).toBeNull();
+      expect(view.lastNavigation).toBeNull();
+    }
+  });
+
+  it('同 principal 新 sessionId:空视图,旧会话回合不得混入(U2)', () => {
+    const events = [
+      message(1, {
+        turnId: 'turn-1',
+        messageId: 'm1',
+        role: 'user',
+        content: '总结第一篇文章',
+        provenance: { kind: 'user-input' },
+      }),
+      context(2, {
+        basedOnSeq: 1,
+        provenance: {
+          kind: 'llm-interpretation',
+          model: 'configured-model',
+          sourceMessageIds: ['m1'],
+        },
+        patch: {
+          activeGoal: { verb: '总结', targetRel: 'post:first-post' },
+          referents: [{ text: '第一篇文章', rel: 'post:first-post', sourceMessageId: 'm1' }],
+        },
+      }),
+      message(3, {
+        turnId: 'turn-1',
+        messageId: 'm3',
+        role: 'assistant',
+        content: '这篇文章用于验证正文阅读链路。',
+        provenance: { kind: 'assistant-output', model: 'configured-model' },
+      }),
+    ];
+
+    const view = conversationView(events, 'sess-fresh', PRINCIPAL);
+
+    expect(view.sessionId).toBe('sess-fresh');
+    expect(view.recentMessages).toEqual([]);
+    expect(view.truncatedMessageCount).toBe(0);
+    expect(view.clientView).toBeNull();
+    expect(view.lastNavigation).toBeNull();
+    expect(view.context).toEqual({
+      activeGoal: null,
+      focus: null,
+      referents: [],
+      constraints: [],
+      pendingClarification: null,
+      authorizedEffects: [],
+      basedOnSeq: 0,
+      updatedAtSeq: 0,
+      provenance: null,
+    });
   });
 });

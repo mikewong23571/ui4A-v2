@@ -4,6 +4,8 @@
  * 该模块只做纯投影：raw user/assistant 原话保持不可变，derived context 可按
  * basedOnSeq 修订。thinking、agent-decision 与 chat-turn-progress 不属于 dialogue。
  * 它不读取数据库、不调用 LLM，也不改变任何业务实体状态。
+ * 会话归属按 (principal, sessionId) 双键判定（D68.3）：principal 是唯一所有权轴，
+ * sessionId 只是会话分组键；principal 缺失（null/undefined）的事件不属于任何视图。
  */
 import type { AgentGoal, FactRef } from '@ui4a/agent';
 import {
@@ -77,6 +79,8 @@ type ConversationEvent = {
   ts?: string;
   kind: string;
   rel?: string | null;
+  /** 所有权轴（D68.3 双键之一）；null/undefined 的事件不属于任何 principal 视图。 */
+  principal?: string | null;
   detail?: unknown;
 };
 
@@ -104,8 +108,16 @@ function sessionOf(detail: unknown): string | undefined {
   return isRecord(detail) && typeof detail.sessionId === 'string' ? detail.sessionId : undefined;
 }
 
-function belongsToSession(event: ConversationEvent, sessionId: string): boolean {
-  return event.rel === `chat:${sessionId}` && sessionOf(event.detail) === sessionId;
+function belongsToSession(
+  event: ConversationEvent,
+  sessionId: string,
+  principal: string,
+): boolean {
+  return (
+    event.principal === principal &&
+    event.rel === `chat:${sessionId}` &&
+    sessionOf(event.detail) === sessionId
+  );
 }
 
 function isMessageDetail(value: unknown): value is ChatMessageAppendedDetail {
@@ -236,13 +248,15 @@ function rawMessage(
 }
 
 /**
- * 从全局日志纯重建单个 session。输入顺序不会被修改；投影按 seq 排序。
- * dialogue 原话只来自 chat-message-appended；chat-turn / chat-turn-started /
- * chat-turn-progress 是回合审计与在途进度事件，不进入对话投影。
+ * 从全局日志纯重建单个 session（按 (principal, sessionId) 双键归属，D68.3）。
+ * 输入顺序不会被修改；投影按 seq 排序。dialogue 原话只来自 chat-message-appended；
+ * chat-turn / chat-turn-started / chat-turn-progress 是回合审计与在途进度事件，
+ * 不进入对话投影。
  */
 export function foldConversation(
   events: readonly ConversationEvent[],
   sessionId: string,
+  principal: string,
 ): ConversationState {
   const ordered = [...events].sort((left, right) => left.seq - right.seq);
   const messages: ConversationMessage[] = [];
@@ -259,7 +273,7 @@ export function foldConversation(
   };
 
   for (const event of ordered) {
-    if (!belongsToSession(event, sessionId)) continue;
+    if (!belongsToSession(event, sessionId, principal)) continue;
 
     if (event.kind === 'chat-message-appended' && isMessageDetail(event.detail)) {
       const item = rawMessage(event, event.detail);
@@ -301,9 +315,10 @@ export function foldConversation(
 export function conversationView(
   events: readonly ConversationEvent[],
   sessionId: string,
+  principal: string,
   options: { maxMessages?: number } = {},
 ): ConversationView {
-  const state = foldConversation(events, sessionId);
+  const state = foldConversation(events, sessionId, principal);
   const requested = options.maxMessages ?? DEFAULT_MAX_MESSAGES;
   const maxMessages = Number.isFinite(requested) ? Math.max(0, Math.floor(requested)) : 0;
   const recentMessages =
