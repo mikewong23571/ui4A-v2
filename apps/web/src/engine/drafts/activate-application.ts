@@ -26,6 +26,8 @@ import { payloadSha256, type AtomicCoreMutationPlan } from '@ui4a/db/drafts';
 import { readLog, type DbExecutor } from '@ui4a/db/events';
 import type { DraftAggregate } from '@ui4a/shared';
 
+import { BARE_TARGET_NAME } from './helpers';
+
 /** Revalidated bundle installation plan; runs inside the accept transaction and Draft locks. */
 export async function planApplicationBundleActivation(input: {
   client: DbExecutor;
@@ -34,6 +36,11 @@ export async function planApplicationBundleActivation(input: {
 }): Promise<AtomicCoreMutationPlan> {
   const { client, locked, payload } = input;
   if (locked.target === undefined) throw new Error('Draft target is missing');
+  // 裸名守卫重验(T50 D69.4):与 create 同判——预守卫事件形状的带前缀
+  // target(如 `application:` 前缀绕过 GAP-4)不得在激活时安装进库。
+  if (!BARE_TARGET_NAME.test(locked.target)) {
+    throw new Error('application bundle target must be a bare application name');
+  }
   if (payloadSha256(payload) !== locked.versions[locked.activeVersion]?.payloadHash) {
     throw new Error('draft payload hash mismatch');
   }

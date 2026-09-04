@@ -129,7 +129,19 @@ describe('governed application-bundle Draft contract', () => {
       status: 'invalid',
       validation: {
         valid: false,
-        issues: [{ code: 'parse-error', path: '/' }],
+        // T50 P1+P2(D69.3):结构化 issue——精确 path + expected,不再是 '/' 兜底。
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            code: 'parse-error',
+            path: 'schema',
+            expected: 'https://ui4a.dev/application-bundle/v1',
+          }),
+          expect.objectContaining({
+            code: 'parse-error',
+            path: 'bundle',
+            expected: { type: 'object', required: ['name', 'version'] },
+          }),
+        ]),
       },
       checks: [
         { name: 'bundle-parseable', pass: false },
@@ -355,3 +367,43 @@ function draftIdOf(outcome: Awaited<ReturnType<typeof executeDraftMeta>>): strin
   expect(outcome.kind).toBe('accepted');
   return outcome.kind === 'accepted' ? String(outcome.entity.properties.id) : '';
 }
+
+// T50 Phase 4 / D69.4:application-bundle target 裸名守卫(与 flow genesis
+// IDENTIFIER 同口径)。前缀(如 application:)/大写/下划线目标在 create 入口
+// 即被 guard 拒绝并留痕(I6),闭合 `application:` 前缀绕过已安装冲突守卫的
+// GAP-4;合法裸名不受影响。激活锁内重验见 application-bundle-activation.test.ts。
+describe('application-bundle bare application name guard (T50 P4 / D69.4)', () => {
+  it('rejects prefixed, uppercase and underscore targets as audited guard failures', async () => {
+    const before = (await listEvents(pool)).filter(({ kind }) => kind === 'action-rejected');
+    const illegalTargets = ['application:notes', 'Demo-Bundle', 'demo_bundle'];
+    for (const [index, target] of illegalTargets.entries()) {
+      const outcome = await bundleCreate(target, `bundle:bare:${index}`, bundlePayload(), target);
+      expect(outcome).toMatchObject({
+        kind: 'rejected',
+        layer: 'guard-failed',
+        reason: 'application bundle target must be a bare application name',
+      });
+    }
+    const rejectedEvents = (await listEvents(pool)).filter(
+      ({ kind }) => kind === 'action-rejected',
+    );
+    expect(rejectedEvents).toHaveLength(before.length + illegalTargets.length);
+    expect(rejectedEvents.slice(-illegalTargets.length)).toEqual(
+      illegalTargets.map(() =>
+        expect.objectContaining({
+          rel: 'meta/drafts',
+          action: 'create',
+          detail: { layer: 'guard-failed', domain: 'draft' },
+        }),
+      ),
+    );
+    // 三次拒绝都不建立 Draft。
+    expect((await listEvents(pool)).filter(({ kind }) => kind === 'draft-created')).toHaveLength(0);
+  });
+
+  it('keeps legal bare application names unaffected by the guard', async () => {
+    const created = await bundleCreate('demo-bundle', 'bundle:bare:legal', bundlePayload());
+    expect(created.kind).toBe('accepted');
+    expect(created.kind === 'accepted' && created.entity.properties.target).toBe('demo-bundle');
+  });
+});

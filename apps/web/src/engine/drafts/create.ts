@@ -22,6 +22,7 @@ import {
   validateAgentCandidate,
 } from './views';
 import {
+  BARE_TARGET_NAME,
   persistedValidation,
   projectForOwner,
   registries,
@@ -29,12 +30,6 @@ import {
   rejectionEvent,
   stringParam,
 } from './helpers';
-
-/**
- * genesis 目标名口径:复用 engine 标识符约定(agent-definition IDENTIFIER,
- * 见 packages/engine/src/agent-definition/parse.ts)——小写 kebab,≤64 字符。
- */
-const FLOW_GENESIS_NAME = /^[a-z][a-z0-9-]{0,63}$/;
 
 export async function executeDraftCreate(
   db: ConnectableDb,
@@ -76,6 +71,17 @@ export async function executeDraftCreate(
     | ApplicationBundleDraftValidation;
   let baseVersion: string | undefined;
   if (kind === 'application-bundle') {
+    // 裸名守卫(T50 D69.4,闭合 ui4a-ops GAP-4):target 必须是小写 kebab 裸
+    // application 名——`application:` 等前缀形式不得绕过已安装冲突守卫进入
+    // 提案;与 flow genesis 的 IDENTIFIER 共用同一常量口径。
+    if (!BARE_TARGET_NAME.test(target)) {
+      const outcome = rejected(
+        'guard-failed',
+        'application bundle target must be a bare application name',
+      );
+      await rejectionEvent(db, request, outcome);
+      return outcome;
+    }
     // 安装目标合同(I6):target 是待安装 application 名,不得与已安装冲突,
     // 且必须等于制品解析出的 bundle 名;不满足是 guard 拒绝事件,不是 Draft。
     const snapshot = await engine.readSnapshot();
@@ -101,7 +107,7 @@ export async function executeDraftCreate(
     if (entry === undefined) {
       // flow-genesis(T48 Phase 4 / D67.3):target 不存在 → 提案新 flow。
       // 名称口径与 engine 标识符约定同形(agent-definition IDENTIFIER:kebab ≤64)。
-      if (!FLOW_GENESIS_NAME.test(target)) {
+      if (!BARE_TARGET_NAME.test(target)) {
         const outcome = rejected(
           'guard-failed',
           `target ${target} is not a valid flow name (expected [a-z][a-z0-9-]{0,63})`,

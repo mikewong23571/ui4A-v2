@@ -82,6 +82,7 @@ export const dbTestFiles: readonly string[] = [
   'apps/web/src/engine/chat-situation.test.ts',
   'apps/web/src/engine/drafts/application-bundle-activation.test.ts',
   'apps/web/src/engine/drafts/application-bundle.test.ts',
+  'apps/web/src/engine/drafts/draft-action-schemas.test.ts',
   'apps/web/src/engine/drafts/drafts.test.ts',
   'apps/web/src/engine/drafts/flow-genesis.test.ts',
   'apps/web/src/engine/human-agent-parity.test.ts',

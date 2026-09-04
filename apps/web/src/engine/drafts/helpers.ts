@@ -14,6 +14,15 @@ import {
   type AgentDefinitionDraftRegistryPort,
   type DraftMetaOutcome,
 } from './views';
+
+/**
+ * genesis/安装目标名口径:与 engine 标识符约定同形(agent-definition
+ * IDENTIFIER,见 packages/engine/src/agent-definition/parse.ts)——小写
+ * kebab,≤64 字符。flow genesis(D67.3)与 application-bundle 裸名守卫
+ * (T50 D69.4)共用同一常量,单一口径。
+ */
+export const BARE_TARGET_NAME = /^[a-z][a-z0-9-]{0,63}$/;
+
 export function rejected(layer: JudgeLayer, reason: string, detail?: unknown): DraftMetaOutcome {
   return detail === undefined
     ? { kind: 'rejected', layer, reason }

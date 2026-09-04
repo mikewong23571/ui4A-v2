@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -5,7 +7,13 @@ import {
   planMetaBootstrap,
   validateApplicationBundleDraft,
 } from '@ui4a/engine';
-import { ensureDraftTables, getDraft, rebuildDraftProjection } from '@ui4a/db/drafts';
+import {
+  appendDraftCommand,
+  ensureDraftTables,
+  getDraft,
+  payloadSha256,
+  rebuildDraftProjection,
+} from '@ui4a/db/drafts';
 import { appendEvent, ensureEventsTable, listEvents, readLog } from '@ui4a/db/events';
 import { getPool } from '@ui4a/db/pool';
 
@@ -313,5 +321,67 @@ describe('governed application-bundle Draft activation', () => {
     // 拒绝留痕之外不落任何该 bundle 的安装事件(无 flows、无 receipt)。
     expect(events.filter((event) => event.rel === 'meta/flow:demo-bundle-entry')).toEqual([]);
     expect(events.filter((event) => event.rel === 'meta/bootstrap:demo-bundle@1')).toEqual([]);
+  });
+
+  it('re-verifies the bare application name contract at activation (T50 P4 / D69.4)', async () => {
+    // 预守卫事件形状:直接落库 target 带 `application:` 前缀的既有 Draft
+    // (绕过 create 守卫,模拟守卫出生前已存在的事件流;engine 对 bundle.name
+    // 只做非空校验,该 payload 可解析为 ready)。激活必须在 Draft 锁内
+    // 重验同判,绝不把带前缀的 application 名安装进库。
+    const target = 'application:preceding-notes';
+    const payload = bundlePayload(target);
+    const commandId = 'act:bare:preceding-create';
+    const draftId = createHash('sha256')
+      .update(`${OWNER}\0${SCOPE}\0${commandId}`)
+      .digest('hex')
+      .slice(0, 20);
+    await appendDraftCommand(
+      pool,
+      {
+        kind: 'create',
+        eventId: `event:${commandId}`,
+        commandId,
+        draftId,
+        owner: OWNER,
+        policyScope: SCOPE,
+        draftKind: 'application-bundle',
+        target,
+        payloadHash: payloadSha256(payload),
+        schemaRef: 'ui4a://application-bundle/v1',
+        provenance: { actor: 'agent', principal: OWNER, commandId, sources: [] },
+        validation: { valid: true, issues: [] },
+        expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+      },
+      payload,
+    );
+    const rel = `draft:${draftId}`;
+    const submitted = await executeDraftMeta(
+      pool,
+      engine,
+      {
+        rel,
+        action: 'submit',
+        actor: 'agent',
+        principal: OWNER,
+        channel: 'cli',
+        params: { commandId: 'act:bare:submit' },
+      },
+      { policyScope: SCOPE },
+    );
+    expect(submitted.kind).toBe('accepted');
+    const activation = String(
+      submitted.kind === 'accepted' ? submitted.entity.properties.activation : '',
+    );
+
+    await expect(approve(activation, 'act:bare:approve')).rejects.toThrow(
+      'application bundle target must be a bare application name',
+    );
+    // 同判拒绝之外零安装:无出生事件、无 receipt、无 draft-accepted。
+    const events = await listEvents(pool);
+    expect(events.filter((event) => event.kind === 'draft-accepted')).toEqual([]);
+    expect(events.filter((event) => event.rel === 'meta/application:preceding-notes')).toEqual([]);
+    expect((await getDraftMetaEntity(pool, engine, rel, OWNER, SCOPE))?.properties.status).toBe(
+      'pending-approval',
+    );
   });
 });

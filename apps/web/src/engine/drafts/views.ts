@@ -12,7 +12,6 @@ import {
   type AgentDefinitionSourceRegistry,
   type JudgeLayer,
   type MechanicalAgentDefinitionDiff,
-  type SirenAction,
   type SirenEntity,
 } from '@ui4a/engine';
 import {
@@ -28,6 +27,7 @@ import { getDraft, listDrafts, type AtomicCoreMutationPlan } from '@ui4a/db/draf
 import type { DbExecutor } from '@ui4a/db/events';
 import type { EngineRuntime } from '../service';
 import { projectApplicationBundleDraft } from './application-bundle';
+import { activationActions, draftActions, draftCreateAction } from './draft-action-schemas';
 
 export const DRAFT_REL_PREFIX = 'draft:';
 export const DRAFT_ACTIVATION_PREFIX = 'meta/activation:draft-';
@@ -82,99 +82,6 @@ export interface AgentDefinitionDraftRegistryPort {
 export type DraftMetaOutcome =
   | { kind: 'accepted'; entity: SirenEntity }
   | { kind: 'rejected'; layer: JudgeLayer; reason: string; detail?: unknown };
-
-export function schema(
-  properties: Record<string, Record<string, unknown>>,
-  required: string[] = [],
-): Record<string, unknown> {
-  return {
-    $schema: 'http://json-schema.org/draft-07/schema#',
-    type: 'object',
-    properties,
-    required,
-    additionalProperties: false,
-  };
-}
-
-export function action(
-  name: string,
-  title: string,
-  fields: Record<string, unknown>,
-  risk?: SirenAction['requires-confirmation'],
-): SirenAction {
-  return {
-    name,
-    title,
-    method: 'POST',
-    href: '/_meta/api/exec',
-    fields,
-    ...(risk === undefined ? {} : { 'requires-confirmation': risk }),
-  };
-}
-
-export const COMMAND_ID = {
-  type: 'string',
-  minLength: 1,
-  description: 'Idempotency key',
-  'x-ui4a-input-owner': 'client',
-};
-
-export function draftActions(aggregate: DraftAggregate): SirenAction[] {
-  if (['accepted', 'rejected', 'abandoned', 'expired'].includes(aggregate.status)) return [];
-  if (aggregate.status === 'pending-approval') return [];
-  const revise = action(
-    'revise',
-    'Revise Draft',
-    schema(
-      {
-        commandId: COMMAND_ID,
-        baseVersion: {
-          type: 'integer',
-          minimum: 1,
-          'x-ui4a-input-owner': 'client',
-        },
-        targetBaseVersion: { type: 'string' },
-        payload: {},
-      },
-      ['commandId', 'baseVersion', 'payload'],
-    ),
-  );
-  const validate = action(
-    'validate',
-    'Validate Draft',
-    schema({ commandId: COMMAND_ID }, ['commandId']),
-  );
-  const abandon = action(
-    'abandon',
-    'Abandon Draft',
-    schema({ commandId: COMMAND_ID, reason: { type: 'string' } }, ['commandId']),
-  );
-  if (aggregate.status === 'ready') {
-    return [
-      revise,
-      validate,
-      action('diff', 'Read Mechanical Diff', schema({})),
-      action('submit', 'Submit for Approval', schema({ commandId: COMMAND_ID }, ['commandId'])),
-      abandon,
-    ];
-  }
-  return [revise, validate, action('diff', 'Read Mechanical Diff', schema({})), abandon];
-}
-
-export function activationActions(): SirenAction[] {
-  return [
-    action('approve', 'Approve', schema({ commandId: COMMAND_ID }, ['commandId']), 'high'),
-    action(
-      'reject',
-      'Reject',
-      schema({ commandId: COMMAND_ID, reason: { type: 'string', minLength: 1 } }, [
-        'commandId',
-        'reason',
-      ]),
-      'high',
-    ),
-  ];
-}
 
 export function draftSummary(aggregate: DraftAggregate): SirenEntity {
   return {
@@ -358,25 +265,7 @@ export async function getDraftMetaEntity(
         policyScope,
         presentation: metaTopLevelPresentation('meta/drafts'),
       },
-      actions: [
-        action(
-          'create',
-          'Create Draft',
-          schema(
-            {
-              kind: {
-                type: 'string',
-                enum: ['flow-definition', 'agent-definition', 'application-bundle'],
-              },
-              target: { type: 'string', minLength: 1 },
-              commandId: COMMAND_ID,
-              payload: {},
-              sources: { type: 'array', items: { type: 'string' }, maxItems: 64 },
-            },
-            ['kind', 'target', 'commandId', 'payload'],
-          ),
-        ),
-      ],
+      actions: [draftCreateAction()],
       links: [{ rel: ['self'], href: '/_meta/api/entity?rel=meta%2Fdrafts' }],
       entities: drafts.map(draftSummary),
       'guard-results': [],
