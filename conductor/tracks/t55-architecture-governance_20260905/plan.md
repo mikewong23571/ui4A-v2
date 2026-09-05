@@ -4,21 +4,21 @@
 - 顺序原则:决策先行(Phase 0)→ 门禁(1)→ 文档(2)→ chat 重构(3)→ service 重构(4)→ 卫生与收口(5)。Phase 1/2 可与 Phase 0 并行准备,但 checkpoint 按序。
 - 每 Task 的测试先行:治理类改动先在对应 `scripts/governance/*.test.mjs`/`.test.ts` 写失败用例;重构类改动先固化特征化基线再动实现。
 
-## Phase 0 开工核查与决策先行
+## Phase 0 开工核查与决策先行 [checkpoint: 9edbdd9]
 
-- [ ] Task: 开工前事实复核(spec §7 AC-0)
-  - [ ] 复验 type 环:`service-confirmation.ts:29`/`service-thread.ts:12` 仍 `import type { ExecOutcome } from './service'`;
-  - [ ] 复验 `route.ts` POST 起始行(≈136)与体量(≈415 行)、9 个既有测试文件清单;
-  - [ ] 复验贴限目录测试占比(definition≈72%、app/api/chat≈77%)与 D52 原文(DECISIONS.md:885-905);
-  - [ ] 结论写入 notes:断言全部成立 / 失配项与 spec 修订。
-- [ ] Task: D75 chat 编排重构裁定入 DECISIONS.md
-  - [ ] 四段边界(鉴权身份/请求体/会话编排/SSE)、模块落位(`src/chat` vs `app/api/chat` 邻域)、测试迁移策略(新增并存,既有 9 文件断言零删除);
-  - [ ] 明确 D52 基线条目 `route.ts` 在重构完成后从 shrink-only 语义自然清空(基线本为空则记录确认)。
-- [ ] Task: D76 service hub 降权裁定入 DECISIONS.md
-  - [ ] `ExecOutcome`/`PlanServiceOutcome` 叶子模块落点;`exec()` 六类编排段归位表;单原子队列保持声明(不移动原子点);
-  - [ ] 明确 `EngineRuntime` 接口本 track 不强拆(扇入 8,低收益),仅解环 + 闭包分解。
-- [ ] Task: D77 t22 位置 D52 修订案裁定入 DECISIONS.md(迁移 or 保留,二选一并写明理由)
-- [ ] Task: Phase Verification & Checkpoint(Refer to workflow.md;AC-0 证据:DECISIONS diff + 复核 notes)
+- [x] Task: 开工前事实复核(spec §7 AC-0)9edbdd9
+  - [x] 复验 type 环:`service-confirmation.ts:29`/`service-thread.ts:12` 仍 `import type { ExecOutcome } from './service'`(成立);
+  - [x] 复验 `route.ts` POST 起始行(实测 136)与体量(实测 raw 550/POST ≈414/有效 440)、9 个既有测试文件清单(全在位);
+  - [x] 复验贴限目录测试占比(definition 实测 65% vs spec ≈72%,chat 实测 76% vs ≈77%;方向性结论不变,漂移记 notes)与 D52 原文(DECISIONS.md ≈885-905,在位);
+  - [x] 结论写入 notes:核心断言全部成立;行号/占比漂移为同期演进,不改 spec。
+- [x] Task: D75 chat 编排重构裁定入 DECISIONS.md 9edbdd9
+  - [x] 四段边界(鉴权身份/请求体/会话编排/SSE)、模块落位(`src/chat` 邻接,route 壳化)、测试迁移策略(新增并存,既有 9 文件断言零删除);
+  - [x] 明确 D52 基线条目 `route.ts`:size-baseline 本为空,重构完成后收缩窗口语句自然兑现,无需基线操作。
+- [x] Task: D76 service hub 降权裁定入 DECISIONS.md 9edbdd9
+  - [x] `ExecOutcome`/`PlanServiceOutcome` 下沉新叶子 `service-outcome.ts`;exec() 六段归位表(挂起物化→service-confirmation/coding-result→新模块/spawn→新模块/T52 refold→service-event-log/路由+回执→新编排入口 service-exec.ts);单原子队列保持声明(不移动原子点);
+  - [x] 明确 `EngineRuntime` 接口本 track 不强拆(非测试扇入实测 17,高扇入低收益),仅解环 + 闭包分解。
+- [x] Task: D77 t22 位置 D52 修订案裁定入 DECISIONS.md 9edbdd9(批准迁移:对象为 `apps/worker/src/t22-temporal-probe-workflows.ts` 8 行工作流文件 → `scripts/t22/` 同址唯一消费者;同步 workflowsPath 与 t22-probes-source.test.ts 断言)
+- [x] Task: Phase Verification & Checkpoint(Refer to workflow.md;AC-0 证据:DECISIONS diff + 复核 notes;验证:pnpm governance 全绿 + 事实复核命令留痕 git notes @9edbdd9)
 
 ## Phase 1 治理盲区修补(FR1 → AC-1)
 
