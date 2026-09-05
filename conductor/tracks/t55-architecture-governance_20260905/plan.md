@@ -46,18 +46,18 @@
 - [x] Task: 全库叙述一致性 grep(`agent-runner` 在 AGENTS.md 3 处命中;`apps/web/src/db` 在 conductor/refs/GOAL/AGENTS 零命中;GOAL.md 无计数表述无需同步)e3bd2031
 - [x] Task: Phase Verification & Checkpoint(AC-2 证据:grep 输出留痕 git notes @e3bd20;commit e3bd2031)
 
-## Phase 3 chat POST 编排重构(FR3 → AC-3;D75 边界)
+## Phase 3 chat POST 编排重构(FR3 → AC-3;D75 边界)[checkpoint: 269fe4c]
 
-- [ ] Task: 特征化基线固化
-  - [ ] 记录 9 个既有测试文件与通过状态(`git status` 干净时跑全量 chat route 测试留输出摘要)。
-- [ ] Task: 四段模块(Red)
-  - [ ] 为鉴权身份/请求体/会话编排/SSE 四段新模块各写失败测试(行为对齐既有语义,不含新功能)。
-- [ ] Task: 四段提取(Green)
-  - [ ] POST 内对应段落替换为模块调用;`route.ts` 收缩为编排壳;
-  - [ ] 既有 9 文件断言零删除、全绿;`pnpm check` 绿。
-- [ ] Task: E2E 验证(`CI=true pnpm e2e chat.spec.ts` 全绿;notes 留输出摘要)
-- [ ] Task: 度量与门禁(AC-3:`route.ts` 有效行 ≤200 **且 POST handler 体 ≤150**;`pnpm check` 绿;四段各有独立测试文件)
-- [ ] Task: Phase Verification & Checkpoint(AC-3 证据:两项行数度量 + 测试输出 + e2e 摘要 + commit)
+- [x] Task: 特征化基线固化
+  - [x] 记录 9 个既有测试文件与通过状态(git status 干净;11 文件/81 测试全绿,留痕 notes)。
+- [x] Task: 四段模块(Red)
+  - [x] post-identity/turn-context/turn-response 三新模块(请求体段复用既有 request-body)各写失败测试;提取前 3 文件 18 用例全部失败(行为对齐既有语义,不含新功能)。
+- [x] Task: 四段提取(Green)
+  - [x] POST 内对应段落替换为模块调用;`route.ts` 收缩为编排壳(有效行 47);
+  - [x] 既有 9 文件断言零删除、全绿(route.render/t21 源码锚点按 wiring 归属迁移,只增不删);`pnpm check` 绿(549 文件/4132 测试)。
+- [x] Task: E2E 验证(`CI=true pnpm e2e chat.spec.ts` 7 passed;notes 留输出摘要)
+- [x] Task: 度量与门禁(AC-3:route.ts 有效行 47 ≤200 **且 POST handler 体 41 ≤150**;`pnpm check` 绿;四段各有独立测试文件)
+- [x] Task: Phase Verification & Checkpoint(AC-3 证据:两项行数度量 + 测试输出 + e2e 摘要 + commit 269fe4c8;git notes @269fe4c)
 
 ## Phase 4 service hub 降权(FR4 → AC-4;D76 边界)
 
