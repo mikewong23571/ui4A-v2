@@ -31,12 +31,15 @@ function outcomeFacts(entity: SirenEntity): OutcomeFact[] {
   }));
 }
 
-/** Meta host projection for an executed action's returned, already-authorized Siren entity. */
-export function MetaActionOutcome({ entity }: { entity: SirenEntity }) {
+/**
+ * Meta host projection for an executed action's returned, already-authorized Siren entity.
+ * caption 可覆盖默认标题(稳定宿主以「历史回执」口径展示,不冒充当前事实,G02b)。
+ */
+export function MetaActionOutcome({ entity, caption }: { entity: SirenEntity; caption?: string }) {
   const facts = outcomeFacts(entity);
   return (
     <section role="status" aria-label="执行结果" className="rounded-md border bg-muted/30 p-3">
-      <p className="text-sm font-medium">已执行，当前合同结果</p>
+      <p className="text-sm font-medium">{caption ?? '已执行，当前合同结果'}</p>
       {facts.length > 0 && (
         <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
           {facts.map((fact) => (

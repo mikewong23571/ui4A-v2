@@ -8,7 +8,7 @@
 import type { SirenEntity } from '@ui4a/engine';
 
 import { redirectToLoginOnAuthError } from './auth-redirect';
-import type { ActivationDisclosureView } from './meta/activation-disclosure';
+import type { ActivationDisclosureView } from './meta/activation/activation-disclosure';
 
 /** 人类执行者的固定身份(与 e2e 断言的日志口径一致)。 */
 export const HUMAN_CHANNEL = {

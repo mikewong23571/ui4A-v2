@@ -244,7 +244,7 @@ describe('Draft Meta review responsibility', () => {
     );
 
     const diff = screen.getByRole('heading', { name: 'Mechanical diff' });
-    const checks = screen.getByRole('heading', { name: 'Checks' });
+    const checks = screen.getByRole('heading', { name: 'Checks（按当前事实重算）' });
     const provenance = screen.getByRole('heading', { name: 'Sources & provenance' });
     const actions = screen.getByRole('heading', { name: '可用动作' });
 
@@ -571,7 +571,7 @@ describe('application-bundle Draft review (T48 Phase 5)', () => {
     expect(diff.textContent).toContain('bundle-inventory');
     expect(diff.textContent).toContain('notes-capture');
 
-    const checks = screen.getByRole('heading', { name: 'Checks' }).parentElement!;
+    const checks = screen.getByRole('heading', { name: 'Checks（按当前事实重算）' }).parentElement!;
     expect(checks.textContent).toContain('bundle-parseable');
     expect(checks.textContent).toContain('target-name-match');
     expect(checks.textContent).toContain('application-not-installed');

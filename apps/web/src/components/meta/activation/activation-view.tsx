@@ -24,8 +24,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-import { DefinitionDiffView } from './diff-render';
-import { MetaActions } from './renderers/common';
+import { DefinitionDiffView } from '../diff-render';
+import { MetaActions } from '../renderers/common';
 
 /** properties.checks 的投影形状(ActivationCheck 列表)。 */
 function checksOf(entity: SirenEntity): ActivationCheck[] {
@@ -166,9 +166,20 @@ export function ActivationView({
           {diff !== undefined ? (
             <DefinitionDiffView diff={diff} />
           ) : (
-            <p className="text-sm text-muted-foreground">
-              本激活无 diff 载荷(diff 字段引入前的旧日志)。
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                本激活未附 diff 载荷:提交事件未携带该项证据(证据不可得,不作时间推断)。
+              </p>
+              {typeof properties.flow === 'string' && properties.flow !== '' && (
+                <a
+                  className="inline-flex text-sm font-medium text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  href={`/meta/entity?rel=${encodeURIComponent(`meta/flow:${properties.flow}`)}`}
+                  data-nav="meta-activation-flow-versions"
+                >
+                  查看该定义的版本与当前事实 →
+                </a>
+              )}
+            </div>
           )}
         </Card>
       </section>

@@ -3,7 +3,11 @@ import type { EngineSnapshot } from '@ui4a/shared';
 
 import { ProductionIdentityError } from './production/request-identity';
 import { entityRel, filterEntityTree } from './audience/entity-projection';
-import { businessApplications, metaApplications } from './audience/business-applications';
+import {
+  applicationDeprecated,
+  businessApplications,
+  metaApplications,
+} from './audience/business-applications';
 
 type Plane = 'business' | 'meta';
 
@@ -41,6 +45,11 @@ export function reachableForGranted(
 /**
  * 咽喉守卫(D51):目标 rel 的归属应用与凭证授予的应用集合无交集 → 结构化拒绝。
  * 未知 rel(无可判定归属)直接放行,扩大边界由 declaration→guard→schema 裁决兜底。
+ *
+ * D73 拒绝码分型:归属全集全部位于停用审计表 → `application_deprecated`
+ * (「不可再访问:应用已停用」——停用是全局终态而非权限事实);否则
+ * `scope_insufficient`(存在活跃归属,真正无权限)。两码同 403 族,不泄露
+ * 跨 principal 存在性,不把所有 403 粗暴改 404。
  */
 export function assertReachable(
   context: AudienceContext,
@@ -48,7 +57,11 @@ export function assertReachable(
   grantedApplications: readonly string[],
 ): void {
   if (!reachableForGranted(context, rel, grantedApplications)) {
-    throw new ProductionIdentityError('scope_insufficient');
+    const applications = applicationsForRel(context, rel);
+    const onlyDeprecated =
+      applications.length > 0 &&
+      applications.every((application) => applicationDeprecated(context.snapshot, application));
+    throw new ProductionIdentityError(onlyDeprecated ? 'application_deprecated' : 'scope_insufficient');
   }
 }
 

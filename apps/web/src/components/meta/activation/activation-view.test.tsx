@@ -180,6 +180,15 @@ describe('ActivationView(BIOS 激活详情)', () => {
     expect(inserts.join('\n')).toContain('pin');
   });
 
+  it('G04a:无 diff 载荷时如实说明证据不可得(不作时间推断),并提供定义版本出口', () => {
+    render(<ActivationView id="a1" entity={activationEntity('approved', { diff: undefined })} />);
+    expect(screen.getByText(/本激活未附 diff 载荷/)).toBeTruthy();
+    expect(screen.getByText(/不作时间推断/)).toBeTruthy();
+    expect(screen.queryByText(/旧日志/)).toBeNull();
+    const link = screen.getByRole('link', { name: /查看该定义的版本与当前事实/ });
+    expect(link.getAttribute('href')).toBe('/meta/entity?rel=meta%2Fflow%3Aarticle-drafting');
+  });
+
   it('stages the real human-only decision before a fresh read and shows the decided receipt inline', async () => {
     const fetchMock = vi
       .fn()

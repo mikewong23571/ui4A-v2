@@ -17,7 +17,7 @@ import { useEffect, useState } from 'react';
 
 import { redirectToLoginOnAuthError } from '../auth-redirect';
 import { suspendedExecResult, type ExecClientResult } from '../exec-client';
-import { parseActivationDisclosure } from './activation-disclosure';
+import { parseActivationDisclosure } from './activation/activation-disclosure';
 import type { MetaSitemapDocument } from './meta-surfaces';
 
 interface ScopedInflight<T> {
@@ -153,6 +153,23 @@ export async function execMetaAction(input: {
   };
 }
 
+/**
+ * G02b(T54/D73):实体读取的非 2xx(非 404)失败,携带 HTTP 状态与结构化错误码
+ * (application_deprecated / scope_insufficient / …)——「不可再访问」「无权限」
+ * 与网络/5xx 故障三态分型,UI 不再把 403 族误判为服务故障。
+ */
+export class MetaEntityHttpError extends Error {
+  readonly status: number;
+  readonly errorCode?: string;
+
+  constructor(status: number, errorCode?: string) {
+    super(`GET /_meta/api/entity → HTTP ${status}`);
+    this.name = 'MetaEntityHttpError';
+    this.status = status;
+    this.errorCode = errorCode;
+  }
+}
+
 /** GET /_meta/api/entity?rel=…;404 → null(实体不存在),其余非 200 → 抛错。 */
 export async function fetchMetaEntity(
   rel: string,
@@ -174,8 +191,13 @@ export async function fetchMetaEntity(
     if (response.status === 404) return null;
     if (!response.ok) {
       // F-07:认证类 401 统一跳登录;404 存在性隐藏语义不变(先行返回)。
-      redirectToLoginOnAuthError(response.status, await response.json().catch(() => undefined));
-      throw new Error(`GET /_meta/api/entity?rel=${rel} → HTTP ${response.status}`);
+      const body = await response.json().catch(() => undefined);
+      redirectToLoginOnAuthError(response.status, body);
+      const code = body as { error?: { code?: string } } | undefined;
+      throw new MetaEntityHttpError(
+        response.status,
+        typeof code?.error?.code === 'string' ? code.error.code : undefined,
+      );
     }
     const entity = (await response.json()) as SirenEntity;
     if (cacheKey !== undefined && currentScopeGeneration(scope) === generation) {
@@ -213,6 +235,9 @@ function invalidateMetaScope(scope?: string): void {
 export interface MetaEntityState {
   entity: SirenEntity | null;
   state: 'loading' | 'ready' | 'missing' | 'error';
+  /** state='error' 时的结构化失败事实(D73 分型;网络/5xx 无码)。 */
+  errorCode?: string;
+  errorStatus?: number;
   refresh: () => void;
 }
 
@@ -247,6 +272,7 @@ export function useMetaEntity(rel: string, scope?: string, revision?: string): M
   const [tick, setTick] = useState(0);
   const [entity, setEntity] = useState<SirenEntity | null>(null);
   const [state, setState] = useState<MetaEntityState['state']>('loading');
+  const [errorFact, setErrorFact] = useState<{ status?: number; code?: string }>({});
 
   useEffect(() => subscribeMetaScopeGeneration(scope, () => setTick((n) => n + 1)), [scope]);
 
@@ -257,9 +283,16 @@ export function useMetaEntity(rel: string, scope?: string, revision?: string): M
         const next = await fetchMetaEntity(rel, scope, { revision, fresh: tick > 0 });
         if (cancelled) return;
         setEntity(next);
+        setErrorFact({});
         setState(next === null ? 'missing' : 'ready');
-      } catch {
-        if (!cancelled) setState('error');
+      } catch (error) {
+        if (cancelled) return;
+        if (error instanceof MetaEntityHttpError) {
+          setErrorFact({ status: error.status, code: error.errorCode });
+        } else {
+          setErrorFact({});
+        }
+        setState('error');
       }
     };
     void load();
@@ -268,5 +301,12 @@ export function useMetaEntity(rel: string, scope?: string, revision?: string): M
     };
   }, [rel, revision, scope, tick]);
 
-  return { entity, state, refresh: () => setTick((n) => n + 1) };
+  return {
+    entity,
+    state,
+    ...(state === 'error'
+      ? { errorStatus: errorFact.status, errorCode: errorFact.code }
+      : {}),
+    refresh: () => setTick((n) => n + 1),
+  };
 }

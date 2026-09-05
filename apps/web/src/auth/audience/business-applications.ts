@@ -27,6 +27,14 @@ export function applicationOwned(snapshot: EngineSnapshot, name: string): boolea
   );
 }
 
+/** D73:应用是否已停用(审计表在场且不在活跃表——停用即删活跃键)。 */
+export function applicationDeprecated(snapshot: EngineSnapshot, name: string): boolean {
+  return (
+    snapshot.applications?.[name] === undefined &&
+    (snapshot as FoldSnapshot).deprecatedApplications?.[name] !== undefined
+  );
+}
+
 export function metaApplications(
   snapshot: EngineSnapshot,
   sitemap: Sitemap,

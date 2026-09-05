@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 import type { SirenEntity } from '@ui4a/engine';
 
-import { ActivationView } from '../../activation-view';
+import { ActivationView } from '../../activation/activation-view';
 import { CapabilityDefinitionView } from '../../capability-definition-view';
 import { FlowDefinitionView } from '../../flow-definition-view';
 import type { MetaNavigationContext } from '../../meta-navigation';

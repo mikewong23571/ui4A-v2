@@ -14,8 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
 import { execMetaAction } from '../meta-client';
-import { MetaActivationDisclosure } from '../activation-disclosure-view';
-import type { ActivationDisclosureView } from '../activation-disclosure';
+import { MetaActivationDisclosure } from '../activation/activation-disclosure-view';
+import type { ActivationDisclosureView } from '../activation/activation-disclosure';
+import { useMetaReceiptRecorder } from './meta-receipt';
 import { withMetaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
 import { relFromMetaApiHref } from '../meta-surfaces';
 import { redactMetaValue } from '../view-models/agent-definition';
@@ -89,6 +90,8 @@ function ScopedMetaActions({
 }: MetaActionsProps) {
   const [lastOutcome, setLastOutcome] = useState<SirenEntity | null>(null);
   const [lastDisclosure, setLastDisclosure] = useState<ActivationDisclosureView | undefined>();
+  // G02b:同一回执记入页面级稳定宿主(无 Provider 时为 no-op,行为不变)。
+  const recordStableReceipt = useMetaReceiptRecorder(rel);
   const excluded = new Set(excludeActions);
   const actions = publicMetaActions(entity).filter((action) => !excluded.has(action.name));
   if (actions.length === 0 && lastOutcome === null) return null;
@@ -117,7 +120,9 @@ function ScopedMetaActions({
                   onExecuted={onChanged}
                   onOutcome={(entity, result) => {
                     setLastOutcome(entity);
-                    setLastDisclosure(result.ok ? result.disclosure : undefined);
+                    const disclosure = result.ok ? result.disclosure : undefined;
+                    setLastDisclosure(disclosure);
+                    if (result.ok) recordStableReceipt({ outcome: entity, disclosure });
                   }}
                   renderOutcome={() => null}
                 />

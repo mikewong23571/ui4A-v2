@@ -110,7 +110,7 @@ export function DraftRenderer({
         </Card>
       </section>
       <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Checks</h2>
+        <h2 className="text-lg font-semibold">Checks（按当前事实重算）</h2>
         <div className="space-y-2">
           {view.checks.map((check) => (
             <Card key={check.name} className="flex items-start gap-3 p-4">

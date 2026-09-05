@@ -104,6 +104,7 @@ const GOVERNANCE_CREDENTIAL = token(
   'openid ui4a:read ui4a:write governance ui4a:policy:governance',
 );
 const EDITORIAL_CREDENTIAL = token('openid ui4a:read ui4a:write ui4a:policy:editorial');
+const COMMUNITY_CREDENTIAL = token('openid ui4a:read ui4a:write ui4a:policy:community');
 
 // 真实 resolveTrustedRequestIdentity(production 分支)+ 注入的凭证策略/依赖:
 // 路由传出的 authorizedPolicyScopes(= Object.keys(snapshot.applications))原样
@@ -187,9 +188,15 @@ describe('deprecated application audience semantics (T52 P3 / D71.3)', () => {
 
     // fail-open 封堵:归属经双集解析出非空(editorial),治理展开(= 活跃全集)
     // 与之无交集 → 咽喉结构化拒绝,而非空受众放行后由投影层 404 兜底。
+    // D73:归属全集全停用 → application_deprecated(403 族,「不可再访问」)。
     const denied = await businessGet('application:editorial', GOVERNANCE_CREDENTIAL);
     expect(denied.status).toBe(403);
-    await expect(denied.json()).resolves.toEqual({ error: { code: 'scope_insufficient' } });
+    await expect(denied.json()).resolves.toEqual({ error: { code: 'application_deprecated' } });
+
+    // D73 分型对照:活跃应用(publishing)未授予 → scope_insufficient,不得一刀切。
+    const ungrantedLive = await businessGet('application:publishing', COMMUNITY_CREDENTIAL);
+    expect(ungrantedLive.status).toBe(403);
+    await expect(ungrantedLive.json()).resolves.toEqual({ error: { code: 'scope_insufficient' } });
 
     // 授予内(stale 逐 app 凭证):受众谓词放行,实体缺位如实 404
     //(授予内零可见授权事件)。
@@ -202,7 +209,7 @@ describe('deprecated application audience semantics (T52 P3 / D71.3)', () => {
 
     const denied = await metaGet('meta/application:editorial', GOVERNANCE_CREDENTIAL);
     expect(denied.status).toBe(403);
-    await expect(denied.json()).resolves.toEqual({ error: { code: 'scope_insufficient' } });
+    await expect(denied.json()).resolves.toEqual({ error: { code: 'application_deprecated' } });
 
     const stale = await metaGet('meta/application:editorial', EDITORIAL_CREDENTIAL);
     expect(stale.status).toBe(404);
@@ -211,11 +218,12 @@ describe('deprecated application audience semantics (T52 P3 / D71.3)', () => {
   it('US3 停用应用的实例/flow 面归属非空:治理展开凭证同样拒绝(钉测)', async () => {
     await deprecateApplication('editorial', 'audience:faces:deprecate');
     // writing-request:main 为 editorial 的种子实例(级联保留),flow: 别名经
-    // 保留的定义条目(app 字段在)解析——两面对无交集授予都是确定性拒绝。
+    // 保留的定义条目(app 字段在)解析——两面对无交集授予都是确定性拒绝
+    //(D73:归属全集全停用 → application_deprecated)。
     for (const rel of ['writing-request:main', 'flow:writing-request']) {
       const denied = await businessGet(rel, GOVERNANCE_CREDENTIAL);
       expect(denied.status, rel).toBe(403);
-      await expect(denied.json()).resolves.toEqual({ error: { code: 'scope_insufficient' } });
+      await expect(denied.json()).resolves.toEqual({ error: { code: 'application_deprecated' } });
     }
     // 授予内(stale 逐 app 凭证)实例仍可读:停用不清实例,受众判定不变。
     const staleInstance = await businessGet('writing-request:main', EDITORIAL_CREDENTIAL);

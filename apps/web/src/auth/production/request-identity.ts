@@ -15,6 +15,7 @@ export type ProductionIdentityErrorCode =
   | 'jwks_unavailable'
   | 'jwks_stale'
   | 'scope_insufficient'
+  | 'application_deprecated'
   | 'oidc_nonce_mismatch'
   | 'delegation_actor_not_allowed'
   | 'delegation_scope_exceeded';

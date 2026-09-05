@@ -310,6 +310,9 @@ export function authenticationErrorResponse(error: unknown): Response | undefine
   if (!(error instanceof ProductionIdentityError)) return undefined;
   const forbidden = new Set([
     'scope_insufficient',
+    // D73:停用面「不可再访问」与「无权限」同为 403 族(结构化 denied 回执),
+    // 客户端按细分码分型,不与网络/5xx 故障混淆。
+    'application_deprecated',
     'delegation_actor_not_allowed',
     'delegation_scope_exceeded',
   ]);

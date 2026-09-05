@@ -589,24 +589,34 @@ describe('停用应用受众双集解析(T52 P3 / D71.3)', () => {
     expect(businessApplications(deprecatedSnapshot, sitemap, 'application:publishing')).toEqual([
       'publishing',
     ]);
-    // 咽喉:授予集合(治理展开后亦不含停用名)无交集 → 结构化拒绝。
+    // 咽喉:授予集合(治理展开后亦不含停用名)无交集 → 结构化拒绝;
+    // D73:归属全集全停用 → application_deprecated(「不可再访问」),
+    // 与「真正无权限」分型,不与从未安装混淆。
     expect(() =>
       assertReachable(deprecatedBusiness, 'application:publishing', [
         'community',
         'default',
         'governance',
       ]),
-    ).toThrowError('scope_insufficient');
+    ).toThrowError('application_deprecated');
     // 停用名仍在凭证授予集合内 → 不由受众谓词拒绝(授予内零可见授权事件)。
     expect(() =>
       assertReachable(deprecatedBusiness, 'application:publishing', ['publishing']),
     ).not.toThrow();
   });
 
+  it('D73 分型:活跃应用无交集维持 scope_insufficient(不得一刀切改码)', () => {
+    // 对照组:同一 rel 形状,应用活跃(publishing 未停用)、凭证未授予 →
+    // 真正无权限语义,拒绝码不变。
+    expect(() =>
+      assertReachable(businessContext, 'application:publishing', ['community', 'default']),
+    ).toThrowError('scope_insufficient');
+  });
+
   it('meta application: 同一双集口径(meta/application: 不因停用变空受众)', () => {
     expect(() =>
       assertReachable(deprecatedMeta, 'meta/application:publishing', ['community', 'governance']),
-    ).toThrowError('scope_insufficient');
+    ).toThrowError('application_deprecated');
     expect(() =>
       assertReachable(deprecatedMeta, 'meta/application:publishing', ['publishing']),
     ).not.toThrow();
@@ -624,7 +634,7 @@ describe('停用应用受众双集解析(T52 P3 / D71.3)', () => {
   it('停用应用的 flow:/实例/确认/集合面归属保持非空(级联保留 app 字段,只钉不改)', () => {
     for (const rel of ['flow:post-status', 'post:p1', 'confirmation:c1', 'articles']) {
       expect(() => assertReachable(deprecatedBusiness, rel, ['community'])).toThrowError(
-        'scope_insufficient',
+        'application_deprecated',
       );
       expect(() => assertReachable(deprecatedBusiness, rel, ['publishing'])).not.toThrow();
     }

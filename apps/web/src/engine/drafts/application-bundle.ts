@@ -142,13 +142,21 @@ export function mechanicalBundleInventoryDiff(
   return { ...diff, hash: payloadFingerprint(diff) };
 }
 
-/** Exact Draft 投影的 application-bundle 分支:checks 汇总 + 可解析时的机械 diff。 */
+/**
+ * Exact Draft 投影的 application-bundle 分支:checks 汇总 + 可解析时的机械 diff。
+ *
+ * G04b(T54 证据时点):checks 按投影时刻的**当前事实**求值。批准通过、应用安装
+ * 完成后,`application-not-installed` 按当前事实为 false——这不是批准失败的
+ * 证据(批准时依据以提交/接受事件为准),projection 为该时点歧义附注明细,
+ * 不给历史补造 PASS,也不在 UI 层特判业务名。
+ */
 export function projectApplicationBundleDraft(
   snapshot: EngineSnapshot,
   target: string | undefined,
   payload: unknown,
 ): { diff?: MechanicalApplicationBundleDiff; checks: ActivationCheck[] } {
   const validation = validateApplicationBundleDraft(payload);
+  const installedNow = applicationBundleInstalled(snapshot, target);
   const checks: ActivationCheck[] = [
     {
       name: 'bundle-parseable',
@@ -159,7 +167,17 @@ export function projectApplicationBundleDraft(
       name: 'target-name-match',
       pass: validation.value !== undefined && validation.value.bundle.name === target,
     },
-    { name: 'application-not-installed', pass: !applicationBundleInstalled(snapshot, target) },
+    {
+      name: 'application-not-installed',
+      pass: !installedNow,
+      ...(installedNow
+        ? {
+            detail: [
+              '应用现已安装:这是批准后的当前事实,不是批准失败;批准时依据以提交/接受事件为准',
+            ],
+          }
+        : {}),
+    },
   ];
   if (validation.value === undefined) return { checks };
   return { diff: mechanicalBundleInventoryDiff(snapshot, validation.value), checks };
