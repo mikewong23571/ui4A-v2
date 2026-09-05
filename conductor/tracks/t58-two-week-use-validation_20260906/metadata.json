@@ -1,0 +1,26 @@
+{
+  "trackId": "t58-two-week-use-validation_20260906",
+  "title": "T58 目标工作台：连续两周真实使用与冻结验收",
+  "type": "validation",
+  "status": "new",
+  "createdAt": "2026-09-06",
+  "updatedAt": "2026-09-06",
+  "description": "将开发者监督疲劳与此前产品审查转为真实目标使用验证；允许准备期验证、编码、重构和UIUX redesign，经review发布固定候选，再通过连续至少14天无产品修补的真人试用，证明目标承接、跟踪、验收与便利性。",
+  "dependsOn": ["t56-work-thread-workspace_20260905", "t57-home-presentation-semantics_20260906"],
+  "trial": {
+    "status": "not-started",
+    "attemptId": null,
+    "startedAt": null,
+    "earliestEndAt": null,
+    "releaseSha": null
+  },
+  "artifacts": [
+    "index.md",
+    "spec.md",
+    "human-feedback.md",
+    "design.md",
+    "trial-protocol.md",
+    "plan.md",
+    "planning-review.md"
+  ]
+}

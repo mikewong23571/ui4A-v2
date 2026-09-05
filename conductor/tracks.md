@@ -92,3 +92,5 @@
 - [ ] **Track: T56 工作线工作台重构：目标、责任与共同上下文**（规划完成，未开工；自包含 spec/design/acceptance/plan，P0 三个探针与 P5 实现后 review/fixes/re-review 为必需门禁） *Link: [tracks/t56-work-thread-workspace_20260905/index.md](./tracks/t56-work-thread-workspace_20260905/index.md)*
 
 - [ ] **Track: T57 首页工作简报与组件呈现语义**（规划完成，未开工；依赖 T56 完成及 review；含整体架构承载审查、语义选型/来源探针、12 条用户故事及 review/fixes/re-review 门禁） *Link: [tracks/t57-home-presentation-semantics_20260906/index.md](./tracks/t57-home-presentation-semantics_20260906/index.md)*
+
+- [ ] **Track: T58 目标工作台：连续两周真实使用与冻结验收**（规划完成，未开工；依赖T56/T57交付及review；准备期允许验证/编码/重构/UIUX redesign，最终固定候选连续≥336h真人试用，M1–M8与review通过才可关闭） *Link: [tracks/t58-two-week-use-validation_20260906/index.md](./tracks/t58-two-week-use-validation_20260906/index.md)*
