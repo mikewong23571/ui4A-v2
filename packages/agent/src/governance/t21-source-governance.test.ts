@@ -7,6 +7,11 @@ function source(path: string): string {
 }
 
 const chatRoute = source('../../../../apps/web/src/app/api/chat/route.ts');
+// T55/D75:route.ts 收缩为编排壳,Situation/起步 rel 接线随会话编排段迁至
+// turn-context.ts;源码不变量断言随 wiring 归属迁移(语义不变,指针更新)。
+const chatTurnContext = source('../../../../apps/web/src/chat/turn-context.ts');
+const chatTurnResponse = source('../../../../apps/web/src/chat/turn-response.ts');
+const chatPostIdentity = source('../../../../apps/web/src/chat/post-identity.ts');
 const chatPanel = source('../../../../apps/web/src/components/chat/chat-panel.tsx');
 const conversation = source('../../../../apps/web/src/chat/conversation.ts');
 const startChain = source('../../../../apps/web/src/chat/start-chain.ts');
@@ -28,6 +33,9 @@ describe('T21 AI-first dual-focus source governance', () => {
       /(?:includes|startsWith|endsWith|match|test)\s*\(\s*(?:['"`][^'"`]*(?:看看|列表|详情)|\/[^/\n]*(?:看看|列表|详情))/;
     for (const [name, content] of [
       ['chat route', chatRoute],
+      ['chat turn context', chatTurnContext],
+      ['chat turn response', chatTurnResponse],
+      ['chat post identity', chatPostIdentity],
       ['chat client', chatPanel],
       ['LLM driver', llmDriver],
       ['Agent loop', agentLoop],
@@ -47,12 +55,12 @@ describe('T21 AI-first dual-focus source governance', () => {
   });
 
   it('derives the start rel from the assembled situation without lexical or request probing', () => {
-    expect(chatRoute).toContain('situationForChat');
-    expect(chatRoute).toContain('getEngine(getDb())');
-    expect(chatRoute).toContain('engine.getSnapshot()');
+    expect(chatTurnContext).toContain('situationForChat');
+    expect(chatTurnContext).toContain('getEngine(getDb())');
+    expect(chatTurnContext).toContain('engine.getSnapshot()');
     // T40 B1:起步解析器为纯函数 resolveStartRel(存在性表 + 受众谓词,零 I/O);
     // 反向门禁由下一行的探测词正则承担(与 c6fc710 退役的词级探测实现同名不同质)。
-    expect(chatRoute).toContain('resolveStartRel({');
+    expect(chatTurnContext).toContain('resolveStartRel({');
     expect(startChain).toContain('knownBusinessRels');
     expect(startChain).not.toMatch(/\b(?:overlaps|match|fetch|baseUrl|goal)\b/);
   });
@@ -60,6 +68,9 @@ describe('T21 AI-first dual-focus source governance', () => {
   it('keeps the production runtime free of the rule driver', () => {
     for (const [name, content] of [
       ['chat route', chatRoute],
+      ['chat turn context', chatTurnContext],
+      ['chat turn response', chatTurnResponse],
+      ['chat post identity', chatPostIdentity],
       ['LLM driver', llmDriver],
       ['Agent loop', agentLoop],
     ] as const) {
