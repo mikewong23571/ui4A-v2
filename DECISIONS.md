@@ -1517,3 +1517,107 @@
   (I5)自然保持。
 - **影响**:engine execution/confirmation.ts(approveConfirmation meta 钩子);
   web engine/service.ts(confirmDeps 装配);服务层/引擎测试族翻红转绿。
+
+## D75 chat POST 编排重构:四段边界与模块落位(T55;兑现 D52 收缩窗口)
+
+- **背景**:arch-review-2026-09-05 A03:`app/api/chat/route.ts` 触达次数全库第一,
+  单一 POST 承担鉴权身份、请求体校验、会话编排、SSE 响应四类职责。开工复核:文件
+  raw 550 行(有效 440),POST 起始 `:136`、体约 414 行。D52 已把该文件收缩窗口挂在
+  「下一次 chat 编排重构」,本条即该窗口的执行裁定。
+- **裁定**:
+  1. **四段边界**(POST 分解为四个可独立测试的职责段,行为零变化):
+     - 鉴权身份段:production preflight、`resolveTrustedRequestIdentity`、delegated
+       credential 交换(`isCanonicalDelegatedIdentity` 校验)与 `turnFetch`(bounded
+       bearer fetch)构造;输入 Request,输出身份束(identity/subjectToken/origin/
+       agentScopes/config/turnFetch)或结构化错误 Response;全部错误码
+       (`deployment_config_invalid`/`request_origin_invalid`/`credential_malformed`/
+       `agent_*` 族)与 D51 收窄语义逐字保持。
+     - 请求体段:复用既有 `src/chat/request-body.ts`(`parseBody`),不新建模块。
+     - 会话编排段:`situationForChat` → `resolveStartRel` → 用户消息
+       (`appendConversationMessage` + `attachChatMessageToThread`)→
+       `loadAgentConversation` → `chat-turn-started`;输出回合上下文(situation/
+       startRel/startNotice/contextRel/conversation/principal 双轴/presentationContext)。
+     - 响应段:mode 三分支(configurationFailure inline SSE、delegated
+       `dispatchDelegation` + JSON、inline SSE)与 LLM 配置失败 503 JSON;帧序列/
+       审计落库口径仍全在 `src/chat/inline-stream.ts` 与 `session-events.ts`。
+  2. **模块落位**:新段模块放 `src/chat/`(与 request-body/sse/start-chain/
+     session-events 同域邻接,附近模式优先);`route.ts` 收缩为编排壳(依次调四段、
+     串结果);`app/api/chat/` 不新增业务模块(保持仅 route.ts + 测试)。模块命名
+     实施期按内容定(如 post-identity/turn-setup 类),硬约束:四段各自独立成
+     模块、互不成环、route.ts 不再内联业务逻辑。
+  3. **测试迁移策略**:既有 9 测试文件为特征化基线,断言零删除、文件不迁移;新增
+     四段各自的独立测试文件与模块同域 colocated;不新增 e2e。
+  4. **验收锚(AC-3)**:route.ts 有效行 ≤200 且 POST handler 体 ≤150;既有 9 文件
+     全绿;`CI=true pnpm e2e chat.spec.ts` 全绿。
+  5. **D52 基线注记**:`size-baseline.json` 自 T36/D53 起为空,route.ts 无登记条目;
+     本重构完成后 D52「收缩窗口改挂在下一次 chat 编排重构」语句自然兑现清空,
+     无需基线操作。
+- **理由**:四段是 POST 内天然的最长同质职责块,`src/chat/` 已有 request-body/
+  sse/start-chain 等域模块先例,route 壳化后触达热点文件的读者只需面对编排顺序;
+  不新增域目录、不移动既有模块,与 spec 非目标(chat 域五目录重组)一致。
+- **影响**:`apps/web/src/app/api/chat/route.ts`(收缩);`apps/web/src/chat/`
+  (新增 2–3 个编排模块 + 测试);既有 9 测试文件与其断言不动。
+
+## D76 service hub 降权:ExecOutcome 解环与 exec() 编排段归位(T55)
+
+- **背景**:arch-review-2026-09-05 A02:`apps/web/src/engine/service.ts` 已拆出 10 个
+  `service-*` 域模块,但 `exec()` 闭包仍内联六类业务编排;且
+  `service-confirmation.ts:29`/`service-thread.ts:12` 以
+  `import type { ExecOutcome } from './service'` 形成 type 环。开工复核:exec 闭包
+  实测 `:348-582`(spec 称 ≈339–573,同期演进漂移),service.ts 有效行 497(贴 500)。
+- **裁定**:
+  1. **ExecOutcome/PlanServiceOutcome 下沉**:移至新叶子模块
+     `apps/web/src/engine/service-outcome.ts`(仅依赖 engine/shared 类型,零反向
+     依赖);`service-confirmation.ts`/`service-thread.ts` 改指叶子,环消解;service.ts
+     保留 re-export 作为 hub 公共面,既有消费方 import 路径不动。AC-4 以
+     `npx --yes madge --extensions ts --circular apps/web/src/engine` 零环为证。
+  2. **exec() 六段归位表**(service.ts 只留装配 + 编排入口):
+     | 段 | 现位置(exec 闭包内) | 归位 |
+     | --- | --- | --- |
+     | confirmation 路由 + suspended 物化/notify | 别名后 CONFIRMATION 分支;挂起物化块(append/project/dispatchNotify) | 路由分支随编排入口移入新 `service-exec.ts`;挂起物化收进 `service-confirmation.ts` 新函数 |
+     | thread 串联 | THREADS_REL 分支 → `execThreadAction` | 分支随编排入口移入 `service-exec.ts`(域逻辑已在 `service-thread.ts`,不动) |
+     | meta 特例 | `isMetaRel` 三元(executeMeta vs executeWithGates) | 分支随编排入口移入 `service-exec.ts`(executeMeta 本体在 engine,不动) |
+     | coding-result 预检 + 事件装饰 | decision 动作查表 + preflight + effectiveEvents 装饰 | 新 `service-coding-result.ts` |
+     | spawn-dispatch 准备与派发 | artifactModel + preparedDispatches + spawned 记账 + 派发循环 | 新 `service-spawn.ts` |
+     | T52 application-deprecated 选择性 refold | deprecatedEvents 补折块 | `service-event-log.ts`(fold 域助手) |
+     编排入口 = 新 `service-exec.ts` 的 `execCore`(别名解析 → 三面路由 → 各域模块
+     调用 → 回执投影);`service.ts` 的 `exec()`/`execPlan()` 收缩为
+     `enqueue(state, () => execCore(...))` 形态的装配壳。受影响实体回执
+     (receiptRel 收缩语义)随编排入口留在 `service-exec.ts`。
+  3. **单原子队列保持(声明)**:`enqueue`/模块级 promise tail 与四处
+     `enqueue(...)` 调用点(exec/execPlan/freezeSpec/runExclusive)全部留在
+     service.ts,不移动原子点(D34「裁决器即并发控制」);域模块在队列回调内被
+     调用,不自建队列、不重入 enqueue。
+  4. **EngineRuntime 接口本 track 不强拆**:非测试消费方实测 17 文件(plan 记 8,
+     口径差异;结论一致:高扇入),接口重排低收益高风险;本 track 仅解环 + 闭包分解。
+  5. **验收锚(AC-4)**:零环输出;service.ts 有效行 ≤350;`service-tests` 断言零删除
+     全绿;单原子队列并发/裁决用例点名列出留痕。
+- **理由**:exec 闭包内六段各有清晰域归属,归位后 service.ts 只剩 boot 装配、依赖
+  闭包与队列——「装配根」与「编排管线」分层;type 环以叶子类型模块消解是零行为
+  变化的最小修复;不强拆接口避免 17 处消费方的机械翻改。
+- **影响**:`apps/web/src/engine/` 新增 service-outcome.ts、service-exec.ts、
+  service-coding-result.ts、service-spawn.ts;service-confirmation.ts、
+  service-event-log.ts 扩展;service.ts 收缩;HTTP/事件/Siren/审计合同零变化。
+
+## D77 t22 探针工作流文件迁移:批准迁至 scripts/t22/(D52 修订案,T55)
+
+- **背景**:T55 spec FR5.1/P5.1 将 t22 探针迁移列为可选 D52 修订案。复核事实:探针
+  客户端 `scripts/t22/t22-temporal-probe.ts` 已与套件同址;迁移对象实为
+  `apps/worker/src/t22-temporal-probe-workflows.ts`(8 行,未注册进 worker 运行时,
+  唯一消费者是探针脚本经 `workflowsPath` 引用;常驻合同测试
+  `t22-probes-source.test.ts:43` 断言其路径与内容)。arch-review A06(v2)已裁定:
+  可迁至 `scripts/t22/` 与唯一消费者同址,`workflowsPath` 机制兼容迁移,但须以
+  D52 修订案形式提出、不能按 GR5 执法处理。
+- **裁定**:**批准迁移**。`apps/worker/src/t22-temporal-probe-workflows.ts` →
+  `scripts/t22/t22-temporal-probe-workflows.ts`;同步两处引用——探针
+  `workflowsPath`(`../../apps/worker/src/…` → `./…`)与 `t22-probes-source.test.ts`
+  路径断言;`scripts/t22` 套件全绿为验收。归档 track 文档(topology-probe.md)为
+  只读历史,不回改。
+- **理由**:(1) A06 残留的位置争议就此闭口,arch-review 处置项全数落地;(2) 8 行
+  文件 + 2 处路径,churn 极小;(3) 未注册进运行时的探针工作流放在
+  `apps/worker/src` 误导读者(看似 worker 代码,实为探针夹具),与唯一消费者同址后
+  「常驻部署合同套件」自包含于 `scripts/t22`;(4) 该文件本身无 node_modules 伸手,
+  迁移不影响 FR1.2a 对探针客户端 `../../apps/worker/node_modules` 借用的处置。
+- **后果**:Phase 5 P5.1 按本裁定执行(非跳过);D52「路径与命名保留原样」语句按
+  本条修订——修订范围仅此一文件,`scripts/t22` 套件自身的路径与命名不变;
+  探针客户端的 node_modules 伸手仍按 FR1.2a 处置,不因本条豁免。
