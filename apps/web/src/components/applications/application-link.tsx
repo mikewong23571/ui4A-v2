@@ -19,7 +19,7 @@ export function ApplicationLink({
       href={applicationLandingHref(route, application.name)}
       data-nav={`local:app-entry:${application.name}`}
       aria-current={currentScope === application.name ? 'page' : undefined}
-      title={compact ? `${application.title} · ${application.intent}` : undefined}
+      title={compact ? application.title : undefined}
       className={`group min-w-0 rounded-lg border bg-card text-foreground transition-colors hover:border-foreground/20 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-[current=page]:border-foreground/30 aria-[current=page]:bg-accent ${compact ? 'flex min-h-11 items-center justify-center px-2 py-2 text-sm' : 'block h-full p-4'}`}
     >
       {compact ? (

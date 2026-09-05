@@ -114,7 +114,7 @@ describe('ApplicationEntryStrip · T39 Application 图书馆', () => {
       expect(link, `${application.name} 应在书架中`).toBeDefined();
       expect(within(link!).getByText(application.title)).toBeTruthy();
       expect(within(link!).queryByText(application.intent)).toBeNull();
-      expect(link!.getAttribute('title')).toBe(`${application.title} · ${application.intent}`);
+      expect(link!.getAttribute('title')).toBe(application.title);
     }
 
     expect(screen.queryByRole('button', { name: /更多应用/ })).toBeNull();
@@ -140,7 +140,7 @@ describe('ApplicationEntryStrip · T39 Application 图书馆', () => {
       {
         name: 'long-named',
         title: '超长应用名称用于悬浮完整名称验证',
-        intent: '用途说明照旧保留在目录。',
+        intent: '用途说明不出现在悬浮提示里。',
       },
     ]);
     render(<ApplicationEntryStrip />);
@@ -150,9 +150,7 @@ describe('ApplicationEntryStrip · T39 Application 图书馆', () => {
     expect(link?.querySelector('span.truncate')?.textContent).toBe(
       '超长应用名称用于悬浮完整名称验证',
     );
-    expect(link?.getAttribute('title')).toBe(
-      '超长应用名称用于悬浮完整名称验证 · 用途说明照旧保留在目录。',
-    );
+    expect(link?.getAttribute('title')).toBe('超长应用名称用于悬浮完整名称验证');
   });
 
   it('30 个应用时首页只展示前 9 个，完整目录可从固定入口到达', async () => {
@@ -218,7 +216,7 @@ describe('ApplicationEntryStrip · T39 Application 图书馆', () => {
     expect(links.at(-1)?.getAttribute('data-nav')).toBe('local:app-entry:research');
     const futureLink = links.at(-1)!;
     expect(within(futureLink).getByText('研究素材')).toBeTruthy();
-    expect(futureLink.getAttribute('title')).toBe(`${research.title} · ${research.intent}`);
+    expect(futureLink.getAttribute('title')).toBe(research.title);
     expect(hrefOf(futureLink).searchParams.get('focus')).toBe('workspace:app:research');
   });
 
