@@ -73,19 +73,14 @@
 - [x] Task: Phase Verification & Checkpoint(AC-4 证据:零环输出 + 211 行数 + 测试摘要 + commit 8fd9ddfa;git notes @8fd9ddf)
 - [x] 实施期附记:chat 编排模块迁 `src/chat/post/` 子域(GR3 拆解,依 D53;D75 修订条款落盘 DECISIONS.md)8fd9ddf
 
-## Phase 5 卫生收尾与收口(FR5 → AC-5/AC-6)
+## Phase 5 卫生收尾与收口(FR5 → AC-5/AC-6)[checkpoint: 7457088]
 
-- [ ] Task: [可选,依 D77] t22 探针迁移至 `scripts/t22/`
-  - [ ] 更新 `t22-temporal-probe.ts#workflowsPath` 与 `t22-probes-source.test.ts` 断言;`scripts/t22` 套件全绿;D77 状态回写 DECISIONS。
-- [ ] Task: `.next*` 构建根收敛
-  - [ ] 统一 e2e/probe 构建根或落地回收脚本;演示回收并留命令;磁盘 `.next*` 根数 ≤2。
-- [ ] Task: arch-review 文档状态更新与复测报告
-  - [ ] `arch-review-2026-09-05.md` 各处置项标注落地 commit;
-  - [ ] 重跑度量口径(churn 前二、贴限清单、GR 计数)与 v2 基线对比入 notes;**复测命令清单固化于 notes**(若形成常驻脚本,按 GR5 晋升或删除)。
-- [ ] Task: GR5 处置与全量门禁
-  - [ ] 本 track bespoke 脚本/配置晋升或删除;
-  - [ ] `pnpm check`(strict 空基线)+ `CI=true pnpm e2e` + `CI=true pnpm e2e invariants` 全绿。
-- [ ] Task: 归档与 registry 打勾(notes 汇总 AC-0–AC-6 三元证据;移入 `tracks/archive/`)
+- [x] Task: [依 D77] t22 探针工作流迁移至 `scripts/t22/`(8 行文件与唯一消费者同址;workflowsPath 与 t22-probes-source.test.ts 断言同步;scripts/t22 套件 338 测试全绿;D52 修订范围仅此一文件)85ba2470
+- [x] Task: `.next*` 构建根收敛(盘点 5 根;3 个无引用残留;常驻脚本 `pnpm next:recover-roots`(白名单 .next/.next-e2e);演示回收:根数 5→2,释放约 1.2GB)85ba2470
+- [x] Task: arch-review 文档状态更新与复测报告(「落地状态」表各处置项→commit @142bc997;复测:churn route.ts 60/service.ts 54,贴限 10 目录分列,GR1 0/GR2 13/GR3 0/披露 2,环 8→1;复测命令清单固化于 notes)
+- [x] Task: 实施期 GR3 拆解(chat/post 与 engine/exec 子域;D75/D76 修订落盘)8fd9ddfa+7457088e
+- [x] Task: GR5 处置与全量门禁(治理测试/回收脚本/披露段全部常驻晋升,无遗留 bespoke;`pnpm check` 554 文件/4147 测试绿 + `CI=true pnpm e2e` 79 passed + `CI=true pnpm e2e invariants` 20 passed)7457088e
+- [x] Task: 归档与 registry 打勾(notes 汇总 AC-0–AC-6 三元证据;移入 `tracks/archive/`)
 
 ## 里程碑与验收映射
 
