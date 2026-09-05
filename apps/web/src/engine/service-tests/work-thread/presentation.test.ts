@@ -9,10 +9,7 @@ import { getPool } from '@ui4a/db/pool';
 
 import { getDb, getEngine, resetEngineForTests } from '../../service';
 import { getAuthorizedPresentationResult } from '../../presentation/authorized-entity';
-import {
-  getPresentationBroker,
-  resetPresentationBrokerForTests,
-} from '../../presentation/runtime';
+import { getPresentationBroker, resetPresentationBrokerForTests } from '../../presentation/runtime';
 
 /**
  * Work Thread 呈现链路服务层探针(T56 S1 → P1.1 种子)。
@@ -48,7 +45,14 @@ async function execAccepted(
   principal: string = OWNER,
 ): Promise<void> {
   const engine = await getEngine(pool);
-  const outcome = await engine.exec({ rel, action, params, actor: 'human', principal, channel: 'http' });
+  const outcome = await engine.exec({
+    rel,
+    action,
+    params,
+    actor: 'human',
+    principal,
+    channel: 'http',
+  });
   if (outcome.kind !== 'accepted') {
     throw new Error(`${rel}.${action} 预期 accepted,实际 ${outcome.kind}`);
   }
@@ -189,7 +193,7 @@ function summarizeTree(root: SurfaceNode): NodeSummary[] {
 }
 
 describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
-  it('exact Siren:properties 携带 active/approval 状态指针,entities 仅 context 成员卡', async () => {
+  it('exact Siren:properties 携带 active/approval 状态指针,entities 携带全部角色成员卡(P1.2 升级)', async () => {
     const { threadRel, pendingApprovalRel, decidedApprovalRel } = await buildFixtureA();
     const engine = await getEngine(pool);
     const entity = await engine.getEntity(threadRel);
@@ -207,8 +211,7 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
       context: ['post:first-post', 'comment:c2'],
       resume: '停在「implementation-ready」',
     });
-    // active/approval 是 {rel,status,dangling} 状态指针数组——没有可读标题、
-    // 没有目标身份、没有动作可用性(P1 的角色读语义缺口在此锚定)。
+    // active/approval 是 {rel,status,dangling} 状态指针数组(可重建派生,形状不变)。
     expect(entity!.properties.active).toEqual([
       { rel: 'software-change:main', status: 'implementation-ready', dangling: false },
     ]);
@@ -222,15 +225,22 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
     ]) {
       expect(Object.keys(entry).sort()).toEqual(['dangling', 'rel', 'status']);
     }
-    // entities 仅 context 导航成员卡;active/approval/event 无成员实体。
+    // P1.2(D78 决定 2):成员卡与 properties 引用序同构(context → active →
+    // approval),角色以 category 标注;approval 卡携带被引确认的声明动作。
     const memberRels = (entity!.entities ?? []).map(
       (member) => (member.properties as { rel?: unknown }).rel,
     );
-    expect(memberRels).toEqual(['post:first-post', 'comment:c2']);
+    expect(memberRels).toEqual([
+      'post:first-post',
+      'comment:c2',
+      'software-change:main',
+      pendingApprovalRel,
+      decidedApprovalRel,
+    ]);
     expect(entity!.entities?.[0]).toMatchObject({
       class: ['thread-reference'],
       actions: [],
-      properties: { rel: 'post:first-post', identity: '第一篇' },
+      properties: { rel: 'post:first-post', identity: '第一篇', category: 'context' },
     });
     // links:self + 每类引用逐条 link + event 审计链接。
     const linkRels = entity!.links.map((link) => link.rel.join('>'));
@@ -296,6 +306,7 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
 
     // 少授予 publishing:两个 approval(target 均为 publishing 文章)与
     // publishing context 退场,development active 保留;hidden 成员无计数披露。
+    // P1.2:成员卡逐引用同门退场,可见卡 = 可见引用条目(Comment context + active)。
     const noPublishing = await getAuthorizedPresentationResult(threadRel, OWNER, [
       'community',
       'development',
@@ -307,10 +318,8 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
     expect(noPublishing.entity?.properties.approval).toEqual([]);
     expect(noPublishing.entity?.properties.context).toEqual(['comment:c2']);
     expect(
-      noPublishing.entity?.entities?.map(
-        (member) => (member.properties as { rel?: unknown }).rel,
-      ),
-    ).toEqual(['comment:c2']);
+      noPublishing.entity?.entities?.map((member) => (member.properties as { rel?: unknown }).rel),
+    ).toEqual(['comment:c2', 'software-change:main']);
   });
 
   it('线程生命周期动作不经确认门:agent archive 直通 accepted(声明标注 requires-confirmation 在 thread 路径不生效)', async () => {
@@ -360,7 +369,7 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
     expect(receipt.sidecar).toBeUndefined();
   });
 
-  it('呈现链路:focus=thread 走 generic planner 落 Sidecar——字段/动作/链接/context 卡入树,active/approval 无区域', async () => {
+  it('呈现链路:focus=thread 走 generic planner 落 Sidecar——字段/动作/链接入树,角色成员卡入 repeat 区(P1.2 升级)', async () => {
     const { threadRel } = await buildFixtureA();
     const receipt = await getPresentationBroker().present(
       {
@@ -409,7 +418,7 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
     expect(version.dependencies.find(({ id }) => id === `members:${threadRel}`)?.mode).toBe(
       'rehydrate',
     );
-    // 已声明字段入树;事件审计 link 与 context 成员卡入树。
+    // 已声明字段入树;事件审计 link 与成员卡入树。
     const boundPaths = nodes.flatMap((node) => node.bindings ?? []).map((binding) => binding.ref);
     expect(boundPaths).toContain('property:properties.identity');
     expect(boundPaths).toContain('property:properties.statusText');
@@ -418,14 +427,21 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
     expect(boundPaths.some((ref) => ref.startsWith('links:'))).toBe(true);
     const repeat = nodes.find((node) => node.kind === 'repeat');
     expect(repeat).toBeDefined();
-    // P1 缺口锚定:active/approval 状态指针没有任何 surface 区域;thread 投影
-    // 无 versioned cognitive traits(无 work-queue/human-responsibility 等声明)。
+    // P1.2(D78 决定 2):active/approval 角色成员卡经 entities 进 repeat 区
+    //(状态指针数组本身不作为 property 词位绑定——成员事实由 item 绑定 + deref 携带)。
     expect(boundPaths.some((ref) => ref.startsWith('property:properties.active'))).toBe(false);
     expect(boundPaths.some((ref) => ref.startsWith('property:properties.approval'))).toBe(false);
+    // 责任卡成员声明动作(membersDeclareActions 结构判定)→ member-card 词条;
+    // human-responsibility/work-queue 声明 → repeat 区角色 = 主内容(责任区优先)。
+    expect(nodes.some((node) => node.kind === 'word' && node.word === 'member-card')).toBe(true);
+    expect(repeat!.role).toBe('primary-content');
     const entity = await getEngine(pool).then((engine) => engine.getEntity(threadRel));
     const presentation = entity!.properties.presentation as Record<string, unknown>;
-    expect(presentation).not.toHaveProperty('version');
-    expect(presentation).not.toHaveProperty('traits');
+    // P1.2(D78 决定 2/D54 单一落点):version:1 认知声明经服务层同合同可见。
+    expect(presentation.version).toBe(1);
+    expect(presentation.traits).toEqual(['human-responsibility', 'work-queue']);
+    expect(presentation.groupRole).toBe('responsibility');
+    expect(presentation.emptyMeaning).toBe('ready-to-start');
   });
 
   it('新鲜度:值变化不重规划(同 Sidecar 命中);成员/授权变化触发 invalidate 重规划', async () => {

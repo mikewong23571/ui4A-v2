@@ -270,6 +270,94 @@ describe('T40 F-03 字段分层:声明字段按角色进入详情,未声明/未�
   });
 });
 
+describe('T56/D78 非密度 trait 消费通路:成员区角色与排布由 version:1 声明驱动', () => {
+  /** 穿过 subject 槽位包装,树序收集区域槽位(role + 槽内首节点 kind/word)。 */
+  function topLevelSlots(surface: SurfaceTree): Array<{ role: string; inner: string }> {
+    let node: SurfaceNode = surface.root;
+    while (
+      node.kind === 'layout' &&
+      node.children.length === 1 &&
+      node.children[0]!.kind === 'slot' &&
+      node.children[0]!.name === 'subject'
+    ) {
+      node = node.children[0]!.child;
+    }
+    if (node.kind !== 'layout') throw new Error('expected region layout');
+    return node.children.map((slot) => {
+      if (slot.kind !== 'slot') throw new Error('expected top-level slots');
+      const inner =
+        slot.child.kind === 'repeat'
+          ? `repeat:${slot.child.role}`
+          : slot.child.kind === 'word'
+            ? `word:${slot.child.word}`
+            : slot.child.kind;
+      return { role: slot.role, inner };
+    });
+  }
+
+  const member: SirenEntity = {
+    class: ['thread-reference'],
+    properties: { rel: 'post:known', identity: 'Do not copy me', status: 'published' },
+    actions: [],
+    links: [{ rel: ['self'], href: '/api/entity?rel=post%3Aknown' }],
+  };
+  const base: Omit<SirenEntity, 'properties' | 'class'> = {
+    actions: [{ name: 'pause', title: '暂停', method: 'POST', href: '/api/exec', fields: {} }],
+    links: [
+      { rel: ['self'], href: '/api/entity?rel=thread%3Aone' },
+      { rel: ['context'], href: '/api/entity?rel=articles' },
+    ],
+    entities: [member],
+  };
+
+  it('human-responsibility/work-queue 声明 → 成员区为主内容并优先于动作/关系词位', () => {
+    const entity: SirenEntity = {
+      ...base,
+      class: ['work-thread', 'open'],
+      properties: {
+        rel: 'thread:one',
+        identity: 'Ship safely',
+        presentation: {
+          version: 1,
+          traits: ['human-responsibility', 'work-queue'],
+          groupRole: 'responsibility',
+          emptyMeaning: 'ready-to-start',
+          fields: [{ path: 'properties.identity', title: '目标', role: 'identity' }],
+        },
+      },
+    };
+    const slots = topLevelSlots(plan('thread:one', entity));
+    // 责任成员区(primary-content)排在 identity 之后的字段层,先于 actions/relation。
+    expect(slots.map(({ role, inner }) => `${role}:${inner}`)).toEqual([
+      'identity:word:prose',
+      'primary-content:repeat:primary-content',
+      'actions:word:controls',
+      'relation:word:references',
+    ]);
+  });
+
+  it('未声明责任 traits 的实体维持历史树形:成员区 relation 槽位在最后', () => {
+    const entity: SirenEntity = {
+      ...base,
+      class: ['collection', 'articles'],
+      properties: {
+        rel: 'articles',
+        title: '文章',
+        presentation: {
+          fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+        },
+      },
+    };
+    const slots = topLevelSlots(plan('articles', entity));
+    expect(slots.map(({ role, inner }) => `${role}:${inner}`)).toEqual([
+      'identity:word:prose',
+      'actions:word:controls',
+      'relation:word:references',
+      'relation:repeat:relation',
+    ]);
+  });
+});
+
 describe('G09 捕捉回环:区域标题绑声明任务名,不绑上一轮产物名', () => {
   /** 连续捕捉回环后的捕捉实例:残留字段在,呈现角色不再是 identity(声明数据)。 */
   const captureInstance: SirenEntity = {

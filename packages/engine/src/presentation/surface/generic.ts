@@ -16,6 +16,7 @@ import { normalizeSurfaceTree } from './normalize';
 import {
   GENERIC_ROLE_ORDER,
   genericMemberDensity,
+  genericMemberRegionRole,
   selectGenericFieldCandidates,
   type GenericFieldCandidate,
 } from './intent';
@@ -224,37 +225,40 @@ export function planGenericSurface(
   if (entity.links.length > 0) {
     regions.push({ role: 'relation', binding: { kind: 'links', subject } });
   }
+  // T56/D78(非密度 trait 消费通路):成员区角色由 version:1 声明的
+  // human-responsibility/work-queue 决定(责任/进行中区 = 主内容),与字段/动作/
+  // 关系词位一起按语义角色排序——责任区优先排布。未声明实体的 relation 角色经
+  // 稳定排序落在最后,树形与历史版本完全一致。version:1 声明的严格解析只在
+  // 成员区在场时进行(与既有密度通路的读取域一致,不扩大解析面)。
+  let memberTraits: ReturnType<typeof cognitiveTraitsOf>;
+  if (entity.entities !== undefined) {
+    memberTraits = cognitiveTraitsOf(entity.properties.presentation);
+    regions.push({
+      role: genericMemberRegionRole(memberTraits),
+      binding: { kind: 'entities', subject },
+    });
+  }
 
   regions.sort((left, right) => GENERIC_ROLE_ORDER[left.role] - GENERIC_ROLE_ORDER[right.role]);
 
-  const children = regions.map(({ role, binding }, index) =>
-    genericSlot(
-      index,
-      role,
-      genericWord(`word-${index}`, role, binding, catalog, options.entityVersion, provenanceRef),
-    ),
-  );
-
-  if (entity.entities !== undefined) {
-    const repeatIndex = children.length;
+  // 成员区(repeat + 声明驱动词位)在合并排序后的自身位置构建;index 即区域序,
+  // 用作节点 id 前缀(唯一性由区域序保证)。
+  const memberRegion = (index: number, role: SemanticRegionRole): SurfaceNode => {
     const source: Extract<SurfaceBinding, { kind: 'entities' }> = { kind: 'entities', subject };
     const excludedMembers = new Set(options.excludedMemberRels ?? []);
     const itemIdentityPath =
-      entity.entities.length > 0 &&
-      entity.entities.every((member) => readPath(member, 'properties.identity') !== undefined)
+      entity.entities!.length > 0 &&
+      entity.entities!.every((member) => readPath(member, 'properties.identity') !== undefined)
         ? 'properties.identity'
         : 'properties.rel';
     // T33 D50:成员携带已声明动作(纯结构判定,零 class/rel 分支)→ 决策卡词条;
     // 否则维持导航卡片(member-link)。密度贯通:region 声明 density='table' 时,
     // 携带动作的成员选 member-table pattern;目录缺该 pattern 时回退决策卡
     // (回退本身也是通用 pattern 查找,零实体特判);缺省/'card' 行为完全不变。
-    const membersDeclareActions = entity.entities.some((member) => member.actions.length > 0);
+    const membersDeclareActions = entity.entities!.some((member) => member.actions.length > 0);
     const findPattern = (pattern: NonNullable<SurfaceCatalogWord['pattern']>) =>
       Object.entries(catalog.words).find(([, definition]) => definition.pattern === pattern);
-    const density = genericMemberDensity(
-      options.density,
-      cognitiveTraitsOf(entity.properties.presentation),
-    );
+    const density = genericMemberDensity(options.density, memberTraits);
     const memberTable =
       density === 'table' && membersDeclareActions
         ? (findPattern('member-table') ?? findPattern('member-card'))
@@ -265,15 +269,15 @@ export function planGenericSurface(
     const memberLink = findPattern('member-link');
     // T35 F-21:成员状态优先取节点标题(任务语),成员缺 title 时回退 node 名。
     const itemStatusPath =
-      entity.entities.length > 0 &&
-      entity.entities.every((member) => readPath(member, 'properties.title') !== undefined)
+      entity.entities!.length > 0 &&
+      entity.entities!.every((member) => readPath(member, 'properties.title') !== undefined)
         ? 'properties.title'
         : 'properties.status';
     const item: SurfaceNode =
       memberDecision !== undefined
         ? {
             kind: 'word',
-            id: `word-${repeatIndex}-item`,
+            id: `word-${index}-item`,
             role: 'identity',
             word: memberDecision[0],
             bindings: {
@@ -301,7 +305,7 @@ export function planGenericSurface(
           }
         : memberLink === undefined
           ? genericWord(
-              `word-${repeatIndex}-item`,
+              `word-${index}-item`,
               'identity',
               { kind: 'item', path: itemIdentityPath },
               catalog,
@@ -310,7 +314,7 @@ export function planGenericSurface(
             )
           : {
               kind: 'word',
-              id: `word-${repeatIndex}-item`,
+              id: `word-${index}-item`,
               role: 'identity',
               word: memberLink[0],
               bindings: {
@@ -324,8 +328,8 @@ export function planGenericSurface(
             };
     const repeat: SurfaceRepeatNode = {
       kind: 'repeat',
-      id: `repeat-${repeatIndex}`,
-      role: 'relation',
+      id: `repeat-${index}`,
+      role,
       source,
       ...(excludedMembers.size === 0 ? {} : { exclude: [...excludedMembers].sort() }),
       item,
@@ -343,7 +347,7 @@ export function planGenericSurface(
     const pageLinksPattern = findPattern('page-links');
     const emptyMeaning = readPath(entity, 'properties.presentation.emptyMeaning');
     const emptyStatePattern =
-      entity.entities.every((member) => {
+      entity.entities!.every((member) => {
         const rel = readPath(member, 'properties.rel');
         return typeof rel === 'string' && excludedMembers.has(rel);
       }) && nonEmptyString(emptyMeaning)
@@ -364,7 +368,7 @@ export function planGenericSurface(
         };
         parts.push({
           kind: 'word',
-          id: `word-${repeatIndex}-filters`,
+          id: `word-${index}-filters`,
           role: 'relation',
           word: filtersPattern[0],
           // 过滤词的 links 绑定按目录声明供给(当前过滤状态住合同 self 链接,
@@ -398,7 +402,7 @@ export function planGenericSurface(
         };
         parts.push({
           kind: 'word',
-          id: `word-${repeatIndex}-empty-state`,
+          id: `word-${index}-empty-state`,
           role: 'primary-content',
           word: emptyStatePattern[0],
           bindings: { meaning },
@@ -414,7 +418,7 @@ export function planGenericSurface(
         const links: Extract<SurfaceBinding, { kind: 'links' }> = { kind: 'links', subject };
         parts.push({
           kind: 'word',
-          id: `word-${repeatIndex}-page-links`,
+          id: `word-${index}-page-links`,
           role: 'relation',
           word: pageLinksPattern[0],
           bindings: { links },
@@ -427,16 +431,33 @@ export function planGenericSurface(
       }
       relationChild = {
         kind: 'layout',
-        id: `relation-${repeatIndex}`,
-        role: 'relation',
+        id: `members-${index}`,
+        role,
         layout: 'stack',
         children: parts,
         dependencies: normalizedDependencies(parts.flatMap((child) => child.dependencies)),
         provenance: genericProvenance(provenanceRef),
       };
     }
-    children.push(genericSlot(repeatIndex, 'relation', relationChild));
-  }
+    return relationChild;
+  };
+
+  const children = regions.map(({ role, binding }, index) =>
+    genericSlot(
+      index,
+      role,
+      binding.kind === 'entities'
+        ? memberRegion(index, role)
+        : genericWord(
+            `word-${index}`,
+            role,
+            binding,
+            catalog,
+            options.entityVersion,
+            provenanceRef,
+          ),
+    ),
+  );
 
   const root: SurfaceLayoutNode = {
     kind: 'layout',

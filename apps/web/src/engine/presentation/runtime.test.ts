@@ -45,7 +45,7 @@ function expectApplicationSurface(
     ),
   );
   expect(catalogVersions.length).toBeGreaterThan(0);
-  expect(new Set(catalogVersions)).toEqual(new Set(['semantic-v9']));
+  expect(new Set(catalogVersions)).toEqual(new Set(['semantic-v10']));
 
   const headings = nodes.filter(
     (node) =>

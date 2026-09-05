@@ -73,8 +73,9 @@ const REGION_INTENT_BY_ROLE: Readonly<Partial<Record<GenericPresentationRole, st
 /** Versioned, exact-match policy. Unlisted non-empty intents use the fixed read budget. */
 export const GENERIC_INTENT_POLICY = Object.freeze({
   // T40 F-03:read 预算放量(primary-content 全量、metadata ≥1)使既有 sidecar
-  // 重规划——版本 +1。
-  version: 'generic-intent-policy-v3',
+  // 重规划——版本 +1。v4:非密度 trait 消费通路(T56/D78 路线 A)——本模块新增
+  // genericMemberRegionRole 责任区排布语义,已持久化 sidecar 须重规划,版本 +1。
+  version: 'generic-intent-policy-v4',
   defaultBudget: READ_BUDGET,
   byIntent: Object.freeze({
     read: READ_BUDGET,
@@ -115,6 +116,20 @@ export function genericMemberDensity(
   if (traits?.includes('review-queue') === true) return 'card';
   if (traits?.includes('output-catalog') === true) return 'table';
   return undefined;
+}
+
+/**
+ * 非密度 trait 消费通路(T56/D78 路线 A;P0 review P1+ 项 2):version:1 声明
+ * human-responsibility/work-queue 的实体,其成员区是主体的主内容(责任/进行中区,
+ * 优先排布),而非附带关系列表;其余声明维持 relation。只消费封闭词表认知,零
+ * class/rel/业务 status 输入——布局不写领域分支。
+ */
+export function genericMemberRegionRole(
+  traits: readonly CognitiveSemanticsTrait[] | undefined,
+): SemanticRegionRole {
+  if (traits?.includes('human-responsibility') === true) return 'primary-content';
+  if (traits?.includes('work-queue') === true) return 'primary-content';
+  return 'relation';
 }
 
 export const GENERIC_ROLE_ORDER: Readonly<Record<SemanticRegionRole, number>> = {

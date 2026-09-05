@@ -5,6 +5,7 @@ import {
   GENERIC_INTENT_POLICY,
   genericIntentForRole,
   genericMemberDensity,
+  genericMemberRegionRole,
   selectGenericFieldCandidates,
   type GenericFieldCandidate,
 } from './intent';
@@ -46,6 +47,16 @@ describe('generic exact-intent field selector', () => {
     expect(genericMemberDensity('table', ['review-queue'])).toBe('table');
     expect(genericMemberDensity(undefined, ['output-catalog', 'review-queue'])).toBe('card');
     expect(genericMemberDensity(undefined, ['review-queue', 'output-catalog'])).toBe('card');
+  });
+
+  it('reads non-density cognition for the member region role (T56/D78 责任区通路)', () => {
+    // 责任/进行中声明 → 成员区是主内容(优先排布);其余声明与缺省维持 relation。
+    expect(genericMemberRegionRole(['human-responsibility', 'work-queue'])).toBe('primary-content');
+    expect(genericMemberRegionRole(['work-queue'])).toBe('primary-content');
+    expect(genericMemberRegionRole(['human-responsibility'])).toBe('primary-content');
+    expect(genericMemberRegionRole(['review-queue'])).toBe('relation');
+    expect(genericMemberRegionRole(['task-history', 'output-catalog'])).toBe('relation');
+    expect(genericMemberRegionRole(undefined)).toBe('relation');
   });
 
   it('uses exact role budgets and a fixed read fallback for unknown non-empty intents', () => {

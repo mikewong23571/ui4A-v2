@@ -7,8 +7,10 @@ export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
   // 入目录;版本 +1 使既有缓存面失效(词位与绑定形状变更)。v7:集合主体
   // 单主体面缺省表格密度(规划语义变更,已持久化 sidecar 须重规划)。v9:
   // member-card 概览、声明空态、canonical view filter 与窄屏表格姿态进入
-  // 同一通用目录。
-  version: 'semantic-v9',
+  // 同一通用目录。v10:非密度 trait 消费通路(T56/D78 路线 A)——成员区
+  // 角色与排布由 human-responsibility/work-queue 声明驱动(规划语义变更,
+  // 已持久化 sidecar 须重规划;词表零增)。
+  version: 'semantic-v10',
   words: {
     heading: {
       roles: ['identity'],

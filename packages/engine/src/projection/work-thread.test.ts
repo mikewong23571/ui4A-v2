@@ -193,9 +193,18 @@ describe('Work Thread Siren projection', () => {
 
     const entity = project(withMembers, 'thread:release-1', deps);
 
+    // T56 P1.2 联动升级(D78 决定 2):entities 现含全部角色成员卡(context →
+    // active → approval,与 properties 引用序同构);F-27 意图保留——context 卡
+    // 之外,active 卡同样解包声明字段(identity 优先,title 次之),机器 rel 只作
+    // 兜底,不进可读身份。
     expect(entity?.entities?.map((member) => member.properties.identity)).toEqual([
       'Do not copy me',
       '声明的身份',
+      'Do not copy me',
+      'publish',
+      'agent-run:missing',
+      'archive · 由 agent 提议',
+      'draft:missing',
     ]);
   });
 
