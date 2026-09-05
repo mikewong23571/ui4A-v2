@@ -581,7 +581,12 @@ export function rejectConfirmation(
   const rel = confirmationRel(confirmationId);
   const confirmations = {
     ...(snapshot.confirmations ?? {}),
-    [rel]: { ...confirmation, status: 'rejected' as const, rejectedReason: reason },
+    [rel]: {
+      ...confirmation,
+      status: 'rejected' as const,
+      rejectedBy: decidedByOf(approver),
+      rejectedReason: reason,
+    },
   };
 
   return {

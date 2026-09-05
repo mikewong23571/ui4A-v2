@@ -14,8 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
 import { execMetaAction } from '../meta-client';
-import { MetaActivationDisclosure } from '../activation/activation-disclosure-view';
-import type { ActivationDisclosureView } from '../activation/activation-disclosure';
+import { MetaActivationDisclosure } from '../../activation/activation-disclosure-view';
+import type { ActivationDisclosureView } from '../../activation/activation-disclosure';
 import { useMetaReceiptRecorder } from './meta-receipt';
 import { withMetaNavigationContext, type MetaNavigationContext } from '../meta-navigation';
 import { relFromMetaApiHref } from '../meta-surfaces';

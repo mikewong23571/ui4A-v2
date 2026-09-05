@@ -73,6 +73,8 @@ export interface ConfirmationSnapshot {
   riskLevel?: 'low' | 'medium' | 'high';
   /** 审批者(铁律 5"审批不委托":approved 时 actor 必为 human)。 */
   approvedBy?: { actor: 'human' | 'agent'; principal?: string };
+  /** 驳回者(与 approvedBy 对称;T54/G03 决定回读,事件 detail 为 fold 真相源)。 */
+  rejectedBy?: { actor: 'human' | 'agent'; principal?: string };
   /** 驳回原因(human reject 必填)。 */
   rejectedReason?: string;
   /**

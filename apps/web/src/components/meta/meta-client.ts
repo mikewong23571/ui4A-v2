@@ -17,7 +17,7 @@ import { useEffect, useState } from 'react';
 
 import { redirectToLoginOnAuthError } from '../auth-redirect';
 import { suspendedExecResult, type ExecClientResult } from '../exec-client';
-import { parseActivationDisclosure } from './activation/activation-disclosure';
+import { parseActivationDisclosure } from '../activation/activation-disclosure';
 import type { MetaSitemapDocument } from './meta-surfaces';
 
 interface ScopedInflight<T> {

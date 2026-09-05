@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { seedGuardRegistry } from '@ui4a/shared';
 import type { EngineSnapshot, GuardRegistry } from '@ui4a/shared';
 
-import { approveConfirmation } from '../execution/confirmation';
+import { approveConfirmation, rejectConfirmation } from '../execution/confirmation';
 import { executeWithGates } from '../execution/execute';
 import {
   articleDraftingFlow,
@@ -343,6 +343,50 @@ describe('project — confirmation 实体(spec 架构决定 2)', () => {
     ]);
   });
 
+  it('G03 知情确认:身份行含风险标注与提议者;resume 携带对象与参数摘要(detail 绑定通道)', () => {
+    const entity = project(suspendedSnapshot(), 'confirmation:c1', deps);
+    const properties = entity?.properties as Record<string, unknown>;
+    // archive 声明 requires-confirmation high → 风险标注入身份行。
+    expect(properties.identity).toBe('archive〔需high确认〕 · 由 agent 提议');
+    expect(properties.resume).toContain('对象 post:post-welcome');
+    // 策略原因(Cedar 判定留痕)进入「为何需决定」摘要。
+    expect(String(properties.resume)).toContain('需确认:');
+  });
+
+  it('G03 决定回读:已批准/已驳回确认携带决定者与驳回理由,身份行反映终态', () => {
+    const suspended = suspendedSnapshot();
+    const rejected = rejectConfirmation(
+      suspended,
+      'c1',
+      { actor: 'human', principal: 'user:mike' },
+      '这篇文章还在服务中,不归档',
+      deps,
+    );
+    if (rejected.kind !== 'confirmed') throw new Error('前置失败:期望 confirmed');
+    const entity = project(rejected.snapshot, 'confirmation:c1', deps);
+    expect(entity?.properties).toMatchObject({
+      status: 'rejected',
+      identity: 'archive · 已由 human 驳回',
+      'decided-by': { actor: 'human', principal: 'user:mike' },
+      'rejected-reason': '这篇文章还在服务中,不归档',
+    });
+    expect(entity?.actions).toEqual([]); // 终态不可再审批(陈旧确认无动作面)
+
+    const approved = approveConfirmation(
+      suspendedSnapshot(),
+      'c1',
+      { actor: 'human', principal: 'user:mike' },
+      deps,
+    );
+    if (approved.kind !== 'confirmed') throw new Error('前置失败:期望 confirmed');
+    const approvedEntity = project(approved.snapshot, 'confirmation:c1', deps);
+    expect(approvedEntity?.properties).toMatchObject({
+      status: 'approved',
+      identity: 'archive · 已由 human 批准',
+      'decided-by': { actor: 'human', principal: 'user:mike' },
+    });
+  });
+
   it('actions:approve 与 reject;reject 的 reason 必填且 minLength=1(RJSF 直接渲染)', () => {
     const entity = project(suspendedSnapshot(), 'confirmation:c1', deps);
     const names = entity?.actions.map((action) => action.name);
@@ -424,7 +468,7 @@ describe('project — inbox 集合(spec 架构决定 5)', () => {
     // 成员携带 canonical properties.rel(决策卡 exec 目标与通用绑定的前提)
     expect(entity?.entities?.[0]?.properties).toMatchObject({
       rel: 'confirmation:c1',
-      identity: 'archive · 由 agent 提议',
+      identity: 'archive〔需high确认〕 · 由 agent 提议',
     });
 
     const item = entity?.entities?.[0];

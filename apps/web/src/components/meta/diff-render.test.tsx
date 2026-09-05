@@ -128,7 +128,7 @@ describe('DefinitionDiffView(纯数据 → react-diff-view 组件树)', () => {
 describe('铁律 5:BIOS 渲染路径零 AI(源级断言)', () => {
   const RENDER_PATH_SOURCES = [
     'diff-render.tsx',
-    'activation/activation-view.tsx',
+    '../activation/activation-view.tsx',
     'flow-definition-view.tsx',
     'flow-topology-view.tsx',
     'capability-definition-view.tsx',

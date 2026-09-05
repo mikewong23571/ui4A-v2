@@ -15,6 +15,7 @@ import { executeWithGates } from './execute';
 import type { ExecRequest } from './judge';
 import { flowRegistry, postStatusFlow, seedSnapshot } from '../core/fixtures';
 import type { ActionDefinition } from '../core/types';
+import { fold } from '../projection/fold/index';
 import type { FoldSnapshot } from '../projection/fold/index';
 
 // 确认门策略裁决(TDD 红→绿;arch-brief §3:guard 第三语义"挂起";
@@ -323,11 +324,22 @@ describe('rejectConfirmation — 驳回路径', () => {
       decidedBy: { actor: 'human', principal: 'user:mike' },
       reason: '这篇文章还在服务中,不归档',
     });
-    // 状态 → rejected,原因入快照,实体保留。
+    // 状态 → rejected,原因与驳回者入快照(与 fold 的 detail 还原逐字段同构,
+    // T54/G03 决定回读),实体保留。
     expect(decision.snapshot.confirmations?.['confirmation:c1']).toMatchObject({
       status: 'rejected',
+      rejectedBy: { actor: 'human', principal: 'user:mike' },
       rejectedReason: '这篇文章还在服务中,不归档',
     });
+    // I5:驳回事件折叠还原的确认与在线逐字段一致(rejectedBy 含 principal)。
+    const replayed = fold(
+      decision.events.map((event, index) => ({ ...event, seq: 10 + index })),
+      { flows: flowRegistry(postStatusFlow) },
+      suspendedSnapshot(),
+    );
+    expect(replayed.confirmations?.['confirmation:c1']).toEqual(
+      decision.snapshot.confirmations?.['confirmation:c1'],
+    );
   });
 
   it('agent reject → guard 拒绝(I4 同样适用于驳回)', () => {

@@ -13,7 +13,7 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 
 import type { SirenEntity } from '@ui4a/engine';
 
-import type { ActivationDisclosureView } from '../activation/activation-disclosure';
+import type { ActivationDisclosureView } from '../../activation/activation-disclosure';
 
 export interface MetaReceipt {
   rel: string;

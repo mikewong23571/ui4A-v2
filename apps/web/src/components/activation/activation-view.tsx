@@ -24,8 +24,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-import { DefinitionDiffView } from '../diff-render';
-import { MetaActions } from '../renderers/common';
+import { DefinitionDiffView } from '../meta/diff-render';
+import { MetaActions } from '../meta/renderers/common';
 
 /** properties.checks 的投影形状(ActivationCheck 列表)。 */
 function checksOf(entity: SirenEntity): ActivationCheck[] {

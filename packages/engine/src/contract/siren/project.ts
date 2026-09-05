@@ -312,6 +312,31 @@ function projectConfirmation(
     pending && target !== undefined
       ? guardResultsFor(confirmationActions, target, snapshot, deps.guards)
       : [];
+  // G03(T54):确认卡「对谁、做什么、为何需决定」。身份行覆盖全生命周期
+  //(决定后的可读回执);resume 为机械事实摘要(对象 rel + 参数值 + 策略原因),
+  // 消费 surface 的 detail 绑定(properties.resume);缺前值不猜测。
+  const risk = confirmation.riskLevel ?? targetAction?.['requires-confirmation'];
+  const decidedBy = confirmation.approvedBy ?? confirmation.rejectedBy;
+  const identity = pending
+    ? `${confirmation.targetAction}${risk === undefined ? '' : `〔需${risk}确认〕`} · 由 ${confirmation.proposedBy.actor} 提议`
+    : confirmation.status === 'approved'
+      ? `${confirmation.targetAction} · 已由 ${decidedBy?.actor ?? 'human'} 批准`
+      : `${confirmation.targetAction} · 已由 ${decidedBy?.actor ?? 'human'} 驳回`;
+  const bounded = (value: unknown): string => {
+    const text = String(value);
+    return text.length > 40 ? `${text.slice(0, 39)}…` : text;
+  };
+  const paramSummary = Object.entries(fieldValues(confirmation.params ?? {}))
+    .slice(0, 3)
+    .map(([name, value]) => `${name}=${bounded(value)}`)
+    .join(' · ');
+  const resume = [
+    `对象 ${confirmation.targetRel}`,
+    ...(paramSummary === '' ? [] : [paramSummary]),
+    ...(pending && confirmation.policyReason !== undefined
+      ? [`需确认:${bounded(confirmation.policyReason)}`]
+      : []),
+  ].join(' · ');
   return {
     class: ['confirmation', confirmation.status],
     properties: {
@@ -320,22 +345,20 @@ function projectConfirmation(
       'target-rel': confirmation.targetRel,
       'target-action': confirmation.targetAction,
       params: fieldValues(confirmation.params ?? {}),
-      // 决策卡身份行(T33):任务语言身份由投影携带;已决策确认不进收件箱,
-      // 不需要身份行(保持 decided 形状稳定)。
-      ...(pending
-        ? { identity: `${confirmation.targetAction} · 由 ${confirmation.proposedBy.actor} 提议` }
-        : {}),
+      identity,
+      resume,
       'proposed-by': confirmation.proposedBy,
       ...(confirmation.channel !== undefined ? { channel: confirmation.channel } : {}),
-      ...(confirmation.riskLevel !== undefined ||
-      targetAction?.['requires-confirmation'] !== undefined
-        ? { 'risk-level': confirmation.riskLevel ?? targetAction?.['requires-confirmation'] }
-        : {}),
+      ...(risk !== undefined ? { 'risk-level': risk } : {}),
       ...(confirmation.policy !== undefined ? { policy: confirmation.policy } : {}),
       ...(confirmation.policyReason !== undefined
         ? { 'policy-reason': confirmation.policyReason }
         : {}),
       status: confirmation.status,
+      ...(decidedBy !== undefined ? { 'decided-by': decidedBy } : {}),
+      ...(confirmation.rejectedReason !== undefined
+        ? { 'rejected-reason': confirmation.rejectedReason }
+        : {}),
       // 送达状态(T3 Phase C:notification-delivered 折叠而来;仅已送达时注入,
       // 保持未送达实体的 properties 形状稳定)。
       ...(confirmation.notified === true ? { notified: true } : {}),

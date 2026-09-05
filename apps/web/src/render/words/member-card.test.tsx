@@ -79,6 +79,30 @@ describe('member-card 词条', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
+  it('G03 知情确认:detail(resume)呈现对象与参数摘要;已决成员无动作面(陈旧确认无虚假操作)', () => {
+    renderCard({
+      label: 'archive〔需high确认〕 · 由 agent 提议',
+      rel: 'confirmation:c1',
+      detail: '对象 post:post-welcome · 需确认:requires-confirmation=high 且 actor=agent',
+      status: 'pending',
+      actions: [approveAction, rejectAction],
+    });
+    expect(screen.getByText(/对象 post:post-welcome/)).toBeTruthy();
+    expect(screen.getByText(/需确认:/)).toBeTruthy();
+
+    cleanup();
+    renderCard({
+      label: 'archive · 已由 human 驳回',
+      rel: 'confirmation:c1',
+      detail: '对象 post:post-welcome',
+      status: 'rejected',
+      actions: [],
+    });
+    expect(screen.getByText('archive · 已由 human 驳回')).toBeTruthy();
+    expect(screen.getByText(/对象 post:post-welcome/)).toBeTruthy();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
   it('与 member-table 共用 presentations 概览，正文可读且 identity/status 不重复', () => {
     renderCard({
       label: '评论审核',

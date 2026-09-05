@@ -90,7 +90,7 @@ export function applyConfirmationDecision(
   const updated: ConfirmationSnapshot =
     status === 'approved'
       ? { ...existing, status, approvedBy: decidedBy }
-      : { ...existing, status, rejectedReason: event.reason };
+      : { ...existing, status, rejectedBy: decidedBy, rejectedReason: event.reason };
   return {
     ...snapshot,
     confirmations: { ...(snapshot.confirmations ?? {}), [rel]: updated },
