@@ -649,3 +649,43 @@ describe('停用应用受众双集解析(T52 P3 / D71.3)', () => {
     expect(filtered.properties.count).toBe(1);
   });
 });
+
+it('shows a Meta-target confirmation only to principals granted its target application', () => {
+  const withMetaConfirmation = {
+    ...snapshot,
+    confirmations: {
+      ...snapshot.confirmations,
+      'confirmation:meta-stop': {
+        id: 'meta-stop',
+        targetRel: 'meta/application:publishing',
+        targetAction: 'deprecate',
+        proposedBy: { actor: 'human' as const },
+        status: 'pending' as const,
+      },
+    },
+  };
+  expect(businessApplications(withMetaConfirmation, sitemap, 'confirmation:meta-stop')).toEqual([
+    'publishing',
+  ]);
+  expect(() =>
+    assertReachable(
+      { snapshot: withMetaConfirmation, sitemap, plane: 'business' },
+      'confirmation:meta-stop',
+      ['publishing'],
+    ),
+  ).not.toThrow();
+  expect(() =>
+    assertReachable(
+      { snapshot: withMetaConfirmation, sitemap, plane: 'business' },
+      'confirmation:meta-stop',
+      ['community'],
+    ),
+  ).toThrow();
+  expect(() =>
+    assertReachable(
+      { snapshot: withMetaConfirmation, sitemap, plane: 'business' },
+      'meta/application:publishing',
+      ['publishing'],
+    ),
+  ).toThrow();
+});

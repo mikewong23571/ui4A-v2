@@ -3,12 +3,7 @@ import type { EngineSnapshot } from '@ui4a/shared';
 
 import { ProductionIdentityError } from './production/request-identity';
 import { entityRel, filterEntityTree } from './audience/entity-projection';
-import {
-  applicationOwned,
-  businessApplications,
-  flowApplication,
-  UNRESOLVED_APPLICATION,
-} from './audience/business-applications';
+import { businessApplications, metaApplications } from './audience/business-applications';
 
 type Plane = 'business' | 'meta';
 
@@ -20,36 +15,6 @@ export interface AudienceContext {
   snapshot: EngineSnapshot;
   sitemap: Sitemap;
   plane: Plane;
-}
-
-function metaApplications(snapshot: EngineSnapshot, sitemap: Sitemap, rel: string): string[] {
-  if (rel.startsWith('meta/application:')) {
-    // D71.3 双集口径与 business application: 同源:停用应用经审计表解析出
-    // 非空归属,咽喉据此拒绝;只有从未安装/无法归属才落空受众 fail-open。
-    const name = rel.slice('meta/application:'.length);
-    return applicationOwned(snapshot, name) ? [name] : [];
-  }
-  if (rel.startsWith('meta/flow:')) {
-    const application = flowApplication(snapshot, rel.slice('meta/flow:'.length));
-    return application === undefined ? [] : [application];
-  }
-  if (rel.startsWith('meta/activation:')) {
-    const activation = snapshot.activations?.[rel];
-    if (activation === undefined) return [];
-    const flow = activation.flow;
-    const application = flow === undefined ? undefined : flowApplication(snapshot, flow);
-    return application === undefined ? [UNRESOLVED_APPLICATION] : [application];
-  }
-  if (rel.startsWith('meta/capability:')) {
-    const capability = snapshot.capabilities?.[rel.slice('meta/capability:'.length)];
-    if (capability === undefined) return [];
-    const applications =
-      sitemap.capabilities.find(
-        (capability) => capability.name === rel.slice('meta/capability:'.length),
-      )?.scope.applications ?? [];
-    return applications.length === 0 ? [UNRESOLVED_APPLICATION] : applications;
-  }
-  return [];
 }
 
 function applicationsForRel(context: AudienceContext, rel: string): string[] {

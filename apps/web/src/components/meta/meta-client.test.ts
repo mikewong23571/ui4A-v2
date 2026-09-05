@@ -297,3 +297,33 @@ describe('Meta browser client', () => {
     expect(redirectMock).not.toHaveBeenCalled();
   });
 });
+
+it('preserves the pending confirmation returned by a governed Meta action', async () => {
+  const rel = 'meta/application:pending-fixture';
+  const current = {
+    ...exact,
+    class: ['meta', 'application'],
+    properties: { rel },
+    actions: [{ ...exact.actions[0]!, name: 'deprecate' }],
+  };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async (_url, init) =>
+        new Response(
+          JSON.stringify(
+            init?.method === 'POST'
+              ? { status: 'suspended', confirmation: { rel: 'confirmation:c6' } }
+              : current,
+          ),
+          { status: init?.method === 'POST' ? 202 : 200 },
+        ),
+    ),
+  );
+  expect(await execMetaAction({ rel, action: 'deprecate', scope: 'governance' })).toMatchObject({
+    ok: false,
+    status: 202,
+    layer: 'confirmation-required',
+    confirmation: { rel: 'confirmation:c6' },
+  });
+});

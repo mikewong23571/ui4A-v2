@@ -16,7 +16,7 @@ import type { SirenEntity } from '@ui4a/engine';
 import { useEffect, useState } from 'react';
 
 import { redirectToLoginOnAuthError } from '../auth-redirect';
-import type { ExecClientResult } from '../exec-client';
+import { suspendedExecResult, type ExecClientResult } from '../exec-client';
 import { parseActivationDisclosure } from './activation-disclosure';
 import type { MetaSitemapDocument } from './meta-surfaces';
 
@@ -127,6 +127,8 @@ export async function execMetaAction(input: {
   }
 
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  const pending = suspendedExecResult(response.status, body);
+  if (pending !== undefined) return pending;
   if (response.ok && body.entity !== undefined) {
     invalidateMetaScope(input.scope);
     // D70.1:approve 激活披露(malformed 一律丢弃,不渲染伪造回执)。

@@ -44,6 +44,7 @@ WORKDIR /app
 COPY --from=builder --chown=node:node /workspace/apps/web/.next/standalone ./
 COPY --from=builder --chown=node:node /workspace/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=node:node /workspace/apps/web/public ./apps/web/public
+COPY --from=builder --chown=node:node /workspace/apps/web/src/domain/policy.cedar ./apps/web/src/domain/policy.cedar
 COPY --from=builder --chown=node:node /workspace/apps/web/production-entrypoint.mjs ./apps/web/production-entrypoint.mjs
 COPY --from=builder --chown=node:node /workspace/apps/web/file-secret.mjs ./apps/web/file-secret.mjs
 RUN mkdir -p /app/apps/web/.next/cache /tmp && chown -R node:node /app/apps/web/.next/cache /tmp

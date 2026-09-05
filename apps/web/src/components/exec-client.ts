@@ -39,6 +39,29 @@ export function withPolicyScope(endpoint: string, scope?: string): string {
   return `${endpoint}${endpoint.includes('?') ? '&' : '?'}scope=${encodeURIComponent(scope)}`;
 }
 
+/** Shared Business/Meta pending receipt; no claim that the requested effect has executed. */
+export function suspendedExecResult(
+  status: number,
+  body: Record<string, unknown>,
+): ExecClientResult | undefined {
+  const confirmation = body.confirmation as { rel?: unknown } | undefined;
+  if (
+    status === 202 &&
+    body.status === 'suspended' &&
+    typeof confirmation?.rel === 'string' &&
+    confirmation.rel.startsWith('confirmation:')
+  ) {
+    return {
+      ok: false,
+      status: 202,
+      layer: 'confirmation-required',
+      reason: '操作尚未执行，等待确认。',
+      confirmation: { rel: confirmation.rel },
+    };
+  }
+  return undefined;
+}
+
 /** 提交一个已声明动作；meta rel 留在定义合同站，业务 rel 留在业务站。 */
 export async function execAction(input: {
   rel: string;
@@ -67,21 +90,8 @@ export async function execAction(input: {
   }
 
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-  const confirmation = body.confirmation as { rel?: unknown } | undefined;
-  if (
-    response.status === 202 &&
-    body.status === 'suspended' &&
-    typeof confirmation?.rel === 'string' &&
-    confirmation.rel.startsWith('confirmation:')
-  ) {
-    return {
-      ok: false,
-      status: 202,
-      layer: 'confirmation-required',
-      reason: '操作尚未执行，等待确认。',
-      confirmation: { rel: confirmation.rel },
-    };
-  }
+  const pending = suspendedExecResult(response.status, body);
+  if (pending !== undefined) return pending;
   if (response.ok && body.entity !== undefined) {
     // T35 F-31:裁决类 exec 携带被操作主体投影(collection 回链=inbox 等)。
     const subject = body.subject !== undefined ? { subject: body.subject as SirenEntity } : {};

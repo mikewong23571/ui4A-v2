@@ -241,3 +241,10 @@ describe('T22 production OCI image contract', () => {
     expect(contract.verification.vulnerability).toMatch(/grype.+--fail-on high/);
   });
 });
+
+it('ships the declared Cedar policy as an explicit Web runtime asset', () => {
+  expect(requiredSource(imageFiles.web)).toContain(
+    '/workspace/apps/web/src/domain/policy.cedar ./apps/web/src/domain/policy.cedar',
+  );
+  expect(requiredSource('apps/web/src/domain/policy.cedar')).toContain('permit(');
+});

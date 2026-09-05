@@ -27,6 +27,40 @@ export function applicationOwned(snapshot: EngineSnapshot, name: string): boolea
   );
 }
 
+export function metaApplications(
+  snapshot: EngineSnapshot,
+  sitemap: Sitemap,
+  rel: string,
+): string[] {
+  if (rel.startsWith('meta/application:')) {
+    // D71.3 双集口径与 business application: 同源:停用应用经审计表解析出
+    // 非空归属,咽喉据此拒绝;只有从未安装/无法归属才落空受众 fail-open。
+    const name = rel.slice('meta/application:'.length);
+    return applicationOwned(snapshot, name) ? [name] : [];
+  }
+  if (rel.startsWith('meta/flow:')) {
+    const application = flowApplication(snapshot, rel.slice('meta/flow:'.length));
+    return application === undefined ? [] : [application];
+  }
+  if (rel.startsWith('meta/activation:')) {
+    const activation = snapshot.activations?.[rel];
+    if (activation === undefined) return [];
+    const flow = activation.flow;
+    const application = flow === undefined ? undefined : flowApplication(snapshot, flow);
+    return application === undefined ? [UNRESOLVED_APPLICATION] : [application];
+  }
+  if (rel.startsWith('meta/capability:')) {
+    const capability = snapshot.capabilities?.[rel.slice('meta/capability:'.length)];
+    if (capability === undefined) return [];
+    const applications =
+      sitemap.capabilities.find(
+        (capability) => capability.name === rel.slice('meta/capability:'.length),
+      )?.scope.applications ?? [];
+    return applications.length === 0 ? [UNRESOLVED_APPLICATION] : applications;
+  }
+  return [];
+}
+
 export function businessApplications(
   snapshot: EngineSnapshot,
   sitemap: Sitemap,
@@ -42,7 +76,9 @@ export function businessApplications(
   if (rel.startsWith('confirmation:')) {
     const confirmation = snapshot.confirmations?.[rel];
     if (confirmation === undefined) return [];
-    const applications = businessApplications(snapshot, sitemap, confirmation.targetRel, visited);
+    const applications = confirmation.targetRel.startsWith('meta/')
+      ? metaApplications(snapshot, sitemap, confirmation.targetRel)
+      : businessApplications(snapshot, sitemap, confirmation.targetRel, visited);
     return applications.length === 0 ? [UNRESOLVED_APPLICATION] : applications;
   }
   if (rel.startsWith('flow:')) {
