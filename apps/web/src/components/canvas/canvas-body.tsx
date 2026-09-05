@@ -101,15 +101,15 @@ export function CanvasBody() {
 
   return (
     <EntityCacheProvider scope={scope}>
-      <div className="flex items-start gap-6">
+      <div className="flex flex-col items-start gap-6 lg:flex-row">
         <aside
           data-testid="thread-desk-rail"
           aria-label="本线"
-          className="sticky top-12 max-h-[calc(100dvh-3rem)] w-96 shrink-0 overflow-x-hidden overflow-y-auto pr-1"
+          className="w-full min-w-0 lg:sticky lg:top-12 lg:max-h-[calc(100dvh-3rem)] lg:w-96 lg:shrink-0 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1"
         >
           <ThreadDesk threadId={threadId} scope={scope} />
         </aside>
-        <div className="min-w-0 flex-1">{gaze}</div>
+        <div className="w-full min-w-0 flex-1">{gaze}</div>
       </div>
     </EntityCacheProvider>
   );
