@@ -253,4 +253,18 @@
   (改钉「批准经同一编排产出伴随事件」);补引擎级纯函数测试(钩子注入/拒绝
   透传/非 meta 不变)。
 
-## 附录 C — G05 预填丢失点探针结论(Phase 4 Task 1 产出,待回填)
+## 附录 C — G05 预填丢失点探针结论(Phase 4 Task 1 产出,commit 6f698882)
+
+逐段探测(service-tests/g05-prefill-probe,ideas 应用全链):
+①fresh entity properties.fields ✓ → ②集合成员子实体 ✓ → ③surface 依赖 +
+repeat 水合载荷(updateDataModel.repeats)✓ → ④member 词 item 路径
+(properties/fields)编译 ✓——服务端与成员词全链存活。
+
+**丢失点**:entity 形状区域(detail controls 词)的 `actions-entity` transform
+切片只携带 rel/actions/guard-results,不带 properties.fields(render/presentation/
+compiler.ts transformedValue)→ 工作区编辑表单 ActionGroup 预填为空;实体页
+直连全量实体故可预填(R17/R18 现象完全解释)。
+
+**修复**:切片携带源实体 properties.fields(合同事实);探针断言翻绿。
+表单新鲜度/冲突语义:提交 fresh-read 既有合同(T28);未保存输入不被背景刷新
+覆盖=表单本地状态,浏览器复验项。
