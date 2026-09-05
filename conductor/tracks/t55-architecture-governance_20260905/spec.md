@@ -27,7 +27,7 @@
 
 ## 4. 范围裁定(规划期决策记录)
 
-- **为什么 chat 与 service 两个重构放进同一个治理 track**:二者同源于审查的最高优先级(1/2),共享「决策先行 + 特征化测试 + 行为不变」方法论,且 D52 已为 chat 命名窗口;分立 track 会重复决策/验收开销。若 Phase 4 实施中发现与 T54 冲突面过大,允许只关闭 Phase 0–3 + 5 的文档/门禁部分,Phase 4 移交后继 track(须在 notes 记录移交裁定)。
+- **为什么 chat 与 service 两个重构放进同一个治理 track**:二者同源于审查的最高优先级(1/2),共享「决策先行 + 特征化测试 + 行为不变」方法论,且 D52 已为 chat 命名窗口;分立 track 会重复决策/验收开销。若 Phase 4 实施中发现与 T54 冲突面过大,允许只关闭 Phase 0–3 + 5 的文档/门禁部分,Phase 4 移交后继 track(须在 notes 记录移交裁定;移交时 AC-4 改记「移交裁定已记录 + 环检测与 service-tests 基线快照留痕」,AC-6 的 DoD 以移交后的剩余项为准)。
 - **t22 探针迁移降为可选**(P5.1,标 `[可选]`):D52 已裁定「路径与命名保留原样」,迁移属 D52 修订案,收益仅是位置语义;若 DECISIONS 修订未获通过则仅保留登记。
 - **依赖与协调**:无硬依赖(`dependsOn: []`)。与在途 T54(ux-gaps)的潜在冲突面 = `apps/web/src/components`(确认卡片)与 chat 域外围;两 track 并行时,Phase 3 开工前须 rebase 检查 T54 是否已动 `app/api/chat/**`,冲突则串行化并在 notes 记录。
 
@@ -36,7 +36,9 @@
 ### FR1 治理盲区修补(对应 N1/N2/A04)
 
 - FR1.1 `scripts/governance/check-compat.mjs` 的 `MARKER_RE` 增加中文词形(至少 `兼容|向后兼容|旧路径|遗留`);存量命中要么改写措辞、要么按 allowlist 机制登记(`pendingRemoval` 语义照旧);`check-compat` 自身测试覆盖中文词形检出。
-- FR1.2 文件系统级跨包读依赖显式化:`scripts/governance/exceptions.json` 新增登记段(或等价扩展 `check-deps`),至少覆盖审查点名的三处——`packages/agent/src/governance/t21-source-governance.test.ts`(readFileSync×4 读 apps/web 源)、`t16-acceptance-matrix.test.ts`(依赖 e2e/kits)、`scripts/t22/t22-temporal-probe.ts`(import apps/worker/node_modules)——每条带 `reason` + `retireWhen`。
+- FR1.2 跨工作区隐性依赖显式化,拆为两个最小机械子项:
+  - FR1.2a **执法**:`check-deps` 增加相对 import 逃逸工作区根的检测(现状 `findImports` 只看包名说明符,`scripts/t22/t22-temporal-probe.ts:3-7` 以 `../../apps/worker/node_modules/...` 相对路径伸手即不可见);Red 用例先行,捕获该形态。
+  - FR1.2b **披露**:`scripts/governance/exceptions.json` 新增披露登记段(不执法),至少覆盖 `packages/agent/src/governance/t21-source-governance.test.ts`(readFileSync×4 读 apps/web 源)与 `t16-acceptance-matrix.test.ts`(依赖 e2e/kits),每条带 `reason` + `retireWhen: 读依赖扫描器落地后转执法或移除`。
 - FR1.3 `scripts/governance/check-size.mjs` 目录报告增加测试/非测试有效行分列;`pnpm governance` 报告可见(用于解读贴限:如 `engine/src/definition` 报告非测试 1,134)。
 
 ### FR2 文档真源对齐(对应 A05/A07)
@@ -80,8 +82,8 @@
 
 ### AC-1 治理盲区(Phase 1 出口条件)
 
-- AC-1.1 中文兼容词形被检出:`pnpm vitest run scripts/governance/check-compat.mjs 的测试`(或等价命令)含中文标记用例且通过;`pnpm governance` 全绿(存量经登记或改写)。
-- AC-1.2 读依赖登记可查:`scripts/governance/exceptions.json` 含 FR1.2 三处登记(每条 reason+retireWhen);`pnpm governance` 不因新登记失败。
+- AC-1.1 中文兼容词形被检出:新建 `scripts/governance/check-compat.test.mjs` 并以 `pnpm vitest run scripts/governance/check-compat.test.mjs` 验证(vitest 已确认可执行 `scripts/governance/*.test.mjs`,参照既有 check-d54/check-meta-routes 测试);含中文标记用例(「兼容深路径入口」等)必须被检出;`pnpm governance` 全绿(存量经登记或改写)。
+- AC-1.2 隐性依赖可见:`pnpm governance` 对 `scripts/t22/t22-temporal-probe.ts` 的 node_modules 伸手报错/要求登记(FR1.2a);exceptions.json 披露段含 FR1.2b 两处登记(reason+retireWhen),新登记不使 governance 失败。
 - AC-1.3 分列输出:`pnpm governance` 的 check-size 段对超限/贴限目录显示 test/non-test 分列;`engine/src/definition` 显示非测试约 1,134(±漂移)。
 
 ### AC-2 文档对齐(Phase 2 出口条件)
@@ -93,7 +95,7 @@
 
 - `route.ts` 有效行 ≤ 200,且 POST handler 体 ≤ 150(编排壳);四段职责各自有独立测试文件覆盖(新增测试与既有 9 文件并存)。
 - 既有 9 测试文件 `git diff` 审查:断言零删除;`pnpm --filter @ui4a/web test`(或 `pnpm vitest run` 等价)chat 相关全绿。
-- E2E:`CI=true pnpm e2e` 中 chat 相关 spec 全绿(如存在 chat 专用 spec,点名列出)。
+- E2E:`CI=true pnpm e2e chat.spec.ts`(`e2e/chat.spec.ts` 已存在)全绿;其余 e2e 套件回归由 AC-6 覆盖。
 
 ### AC-4 service hub 降权(Phase 4 出口条件)
 
@@ -109,7 +111,7 @@
 ### AC-6 收口(Track DoD)
 
 - `pnpm check`(含 `governance:strict`,size-baseline 仍为空)、`CI=true pnpm e2e`、`CI=true pnpm e2e invariants` 全绿。
-- 复测报告:重跑 arch-review 的度量口径(churn 前二、贴限清单、GR 计数),与 v2 基线对比写入 track notes;`arch-review-2026-09-05.md` 各处置项标注已落地(指向 commit)。
+- 复测报告:重跑 arch-review 的度量口径(churn 前二、贴限清单、GR 计数),与 v2 基线对比写入 track notes;**复测命令清单须固化于 notes**(若固化为常驻脚本,按 GR5 晋升或删除);`arch-review-2026-09-05.md` 各处置项标注已落地(指向 commit)。
 - GR5 处置:本 track 的 bespoke 脚本/配置晋升为常设门禁或删除;track 归档,registry 打勾。
 
 ### 验证命令速查
