@@ -1,14 +1,15 @@
 // @vitest-environment jsdom
 /**
- * T35 §十定稿:线工作台书桌(纯读目录)与舞台动作组的组件契约。
+ * T35 §十定稿、T56 P2.2 收编:线工作台书桌(纯读目录)的组件契约。
  *
  * - 书桌 = 叙述(目标/状态/停在哪/来源) + 工作集条目;**零整面 surface、零
  *   属性表**(此前 W2 左栏实时渲染整面是塞爆根因,pin=上下文引用);
  * - 工作集 = 线 context 成员(合同 detach 移出) + 钉住页(本地取消)合并去重;
  * - 「＋添加涉及对象」→ 对象选择器(sitemap 集合面成员,机械派生),点击即挂
  *   category=context(F-27② 裸填 rel 退位),已挂对象标记"已在本线";
- * - 舞台动作组:生命周期操作呈现,书桌覆盖的 attach/detach 不重复;
- *   危险组按 requires-confirmation 通用分层(归档与推进操作分隔)。
+ * - T56 P2.2(D78):书桌不再是常驻左轨,由 thread-workspace-bar 的
+ *   「相关材料」入口按需展开;线生命周期动作由本线 surface 的声明动作区
+ *   承载(ThreadStageActions 旁路退场,不再重复渲染)。
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -16,8 +17,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ThreadDesk, threadPinsKey } from './thread-desk';
-import { THREAD_UPDATED_EVENT } from './thread-desk-shared';
-import { ThreadStageActions } from './thread-stage-actions';
 import { EntityCacheProvider } from '../../entity-cache-provider';
 
 const referenceFields = {
@@ -293,50 +292,5 @@ describe('ThreadDesk(书桌目录)', () => {
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('guard');
     expect(alert.textContent).toContain('仅人类可执行');
-  });
-});
-
-describe('ThreadStageActions(舞台动作组)', () => {
-  afterEach(() => {
-    cleanup();
-    vi.unstubAllGlobals();
-  });
-
-  it('生命周期操作呈现;attach/detach 不重复(书桌覆盖);归档落危险组', async () => {
-    const { container } = render(
-      <EntityCacheProvider
-        fetcher={async (rel) => (rel === 'thread:t1' ? threadEntity() : null)}
-        versionFetcher={async () => 'v-test'}
-      >
-        <ThreadStageActions threadId="t1" />
-      </EntityCacheProvider>,
-    );
-    expect(await screen.findByRole('button', { name: '暂停工作线' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '完成工作线' })).toBeTruthy();
-    expect(container.querySelector('[data-action="attach"]')).toBeNull();
-    expect(container.querySelector('[data-action="detach"]')).toBeNull();
-    const danger = screen.getByTestId('action-danger-group');
-    expect(danger.querySelector('[data-action-group-item="archive"]')).not.toBeNull();
-  });
-
-  it('exec 成功后广播线程更新事件(书桌据此重读)', async () => {
-    const updated = vi.fn();
-    window.addEventListener(THREAD_UPDATED_EVENT, updated);
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => jsonResponse({ entity: threadEntity() })),
-    );
-    const { container } = render(
-      <EntityCacheProvider
-        fetcher={async (rel) => (rel === 'thread:t1' ? threadEntity() : null)}
-        versionFetcher={async () => 'v-test'}
-      >
-        <ThreadStageActions threadId="t1" />
-      </EntityCacheProvider>,
-    );
-    fireEvent.click(await screen.findByRole('button', { name: '完成工作线' }));
-    await waitFor(() => expect(updated).toHaveBeenCalled());
-    window.removeEventListener(THREAD_UPDATED_EVENT, updated);
-    container.remove();
   });
 });

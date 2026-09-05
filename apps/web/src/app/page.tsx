@@ -13,7 +13,8 @@ export default function Home() {
       <EntityCacheProvider>
         {/* T35 F-23/F-26:书架层——应用目录条(书桌=工作线,书架=应用目录)。 */}
         <ApplicationEntryStrip />
-        <PresentationSurfaceHost heading="我的事" parameters={{ focus: 'workspace:my-work' }} />
+        {/* T56 D78:宿主不再携带机制标题;唯一业务 H1 由 surface 内容自携。 */}
+        <PresentationSurfaceHost parameters={{ focus: 'workspace:my-work' }} />
       </EntityCacheProvider>
     </Suspense>
   );

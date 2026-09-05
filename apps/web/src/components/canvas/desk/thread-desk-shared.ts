@@ -133,4 +133,7 @@ export function collapseSharedFallbackLabel<
 export interface ThreadDeskProps {
   threadId: string;
   scope?: string;
+  /** 条目发起导航后的回调(材料覆盖层据此关闭并聚焦目标;导航本体由
+   * Link 客户端路由承担,S3:硬导航丢草稿根因)。 */
+  onEntryNavigate?: () => void;
 }

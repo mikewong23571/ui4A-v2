@@ -24,7 +24,7 @@ import type { SidecarExplanation, SidecarMeta } from './use-sidecar-actions';
 
 const PANEL_ID = 'canvas-why-drawer-panel';
 
-interface CanvasWhyDrawerProps {
+export interface CanvasWhyDrawerProps {
   /** 当前渲染中的 surface ID(canvas 主区域不再展示;抽屉内如实列出)。 */
   surfaceIds: readonly string[];
   /** 目录协商结果(与本地词汇表同源才到达渲染;未协商时 undefined)。 */

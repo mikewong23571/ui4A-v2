@@ -322,6 +322,9 @@ describe('工作台 · 聊天历史(T9 Phase B / B3)', () => {
 describe('工作台 · 三形态壳(T9 Phase B / B4)', () => {
   it('FAB → 悬浮窗(默认,float 卡片,锚点齐);收起回 FAB', async () => {
     vi.stubGlobal('fetch', vi.fn());
+    // D78 并排判定按剩余宽度计算;jsdom 缺省 1024 是覆盖形态,宽视口下
+    // 「分栏」入口在场(锚点齐全口径)。
+    vi.stubGlobal('innerWidth', 1440);
 
     const { container } = render(<FloatingChat />);
     // 收起态:FAB。
@@ -349,6 +352,8 @@ describe('工作台 · 三形态壳(T9 Phase B / B4)', () => {
 
   it('悬浮窗 ⇄ 分栏互切(同一 ChatPanel 界面,形态记忆 localStorage)', async () => {
     vi.stubGlobal('fetch', vi.fn());
+    // 并排需剩余宽度足够(D78:vw−48−助手宽≥640);jsdom 缺省 1024 是覆盖形态。
+    vi.stubGlobal('innerWidth', 1440);
 
     const { container } = render(<FloatingChat />);
     openChat();

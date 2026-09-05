@@ -1,6 +1,8 @@
 'use client';
 /**
- * T35 §十定稿:线工作台左轨 = 书桌(纯读目录)。
+ * T35 §十定稿、T56 P2.2 收编:线工作台书桌 = 纯读目录(叙述 + 工作集条目)。
+ * D78 决定 1 撤销恒三栏后,书桌不再是常驻左轨,由 thread-workspace-bar 的
+ * 「相关材料」入口按需展开为覆盖层;组件契约不变:
  *
  * - **pin = 挂进本线工作集(上下文引用)**,不渲染整面 surface——此前 W2 把
  *   pin 做成"左栏实时渲染整面",是竖向塞爆的结构性根因;实时展示是舞台(注视)
@@ -15,6 +17,8 @@
  * - 零每实体特判:身份/状态一律读实体声明字段(identity/title/statusText)。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+
+import Link from 'next/link';
 
 import type { SirenEntity } from '@ui4a/engine';
 
@@ -70,7 +74,7 @@ interface DeskEntry {
 }
 
 /** 线工作台书桌:本线叙述(纯读) + 工作集条目 + 对象选择器。 */
-export function ThreadDesk({ threadId, scope }: ThreadDeskProps) {
+export function ThreadDesk({ threadId, scope, onEntryNavigate }: ThreadDeskProps) {
   const cache = useEntityCache();
   const threadRel = `thread:${threadId}`;
   const [thread, setThread] = useState<SirenEntity | null>(null);
@@ -288,14 +292,17 @@ export function ThreadDesk({ threadId, scope }: ThreadDeskProps) {
                 className="group flex items-center gap-2 py-1.5"
                 data-desk-entry={entry.rel}
               >
-                <a
+                {/* T56 P2.2(S3 §2 存续矩阵根因):条目走客户端路由导航——
+                  整页硬导航会塌回 FAB 并丢未发送草稿与在途回合。 */}
+                <Link
                   href={`/canvas?thread=${encodeURIComponent(threadId)}&focus=${encodeURIComponent(entry.rel)}${scope !== undefined ? `&scope=${encodeURIComponent(scope)}` : ''}`}
                   data-nav={`local:desk-entry:${entry.rel}`}
                   title={entry.identity}
+                  onClick={onEntryNavigate}
                   className="min-w-0 flex-1 truncate hover:underline"
                 >
                   {entry.identity}
-                </a>
+                </Link>
                 {entry.status !== undefined && (
                   <Badge
                     variant="secondary"

@@ -3,10 +3,11 @@
  * DECISIONS D78 实测断点)。期望值基线 = `conductor/tracks/
  * t56-work-thread-workspace_20260905/probes/s3-layout-session.md` §1/§2 实测表。
  *
- * P2.1 Red 阶段骨架:实现未落地(P2.2 壳重构)前无法通过的用例一律 `test.fixme`
- * 并注明等 P2.2(不跑浏览器,只要求被 Playwright 收录、TS/lint 干净);现状应绿
- * 且必须保持的用例写成活跃 test。fixture 走规范 `/api/exec` create/attach
- * (acceptance §1 A 线;每次运行唯一前缀 `t56-<runId>`,隔离库由 server-kit 保证)。
+ * P2.2 起,壳重构已落地(去 noGaze 旁路/无永久材料栏/剩余宽度助手/覆盖层
+ * 交互/客户端导航),「等 P2.2」的 fixme 转为活跃 test;仅 clientView 断言
+ * (依赖 P3 ChatTurn 投影)保留 fixme 并注明。fixture 走规范 `/api/exec`
+ * create/attach(acceptance §1 A 线;每次运行唯一前缀 `t56-<runId>`,隔离库
+ * 由 server-kit 保证)。
  */
 import { expect, test, type Page } from '@playwright/test';
 
@@ -75,28 +76,30 @@ interface Geometry {
   assistantRight: number;
 }
 
+/** 助手宿主:并排形态是 aside;覆盖悬浮是右下 fixed 容器——两者都以
+ * ChatPanel 头部「UI4A 助手」文本定位。 */
 async function measureGeometry(page: Page): Promise<Geometry> {
   return page.evaluate(() => {
     const box = (el: Element): DOMRect => el.getBoundingClientRect();
     const main = document.querySelector('main');
-    const aside = [...document.querySelectorAll('aside')].find((el) =>
+    const assistant = [...document.querySelectorAll('aside, .fixed')].find((el) =>
       (el.textContent ?? '').includes('UI4A 助手'),
     );
     const mainRect = main === null ? null : box(main);
-    const asideRect = aside === null ? null : box(aside);
+    const assistantRect = assistant === null ? null : box(assistant);
     return {
       vw: window.innerWidth,
       mainWidth: Math.round(mainRect?.width ?? 0),
-      assistantWidth: Math.round(asideRect?.width ?? 0),
+      assistantWidth: Math.round(assistantRect?.width ?? 0),
       sideBySide:
         mainRect !== null &&
-        asideRect !== null &&
+        assistantRect !== null &&
         mainRect.width > 0 &&
-        asideRect.width > 0 &&
-        mainRect.right <= asideRect.left + 1,
+        assistantRect.width > 0 &&
+        mainRect.right <= assistantRect.left + 1,
       hscroll: document.documentElement.scrollWidth > window.innerWidth,
-      assistantLeft: Math.round(asideRect?.left ?? 0),
-      assistantRight: Math.round(asideRect?.right ?? 0),
+      assistantLeft: Math.round(assistantRect?.left ?? 0),
+      assistantRight: Math.round(assistantRect?.right ?? 0),
     };
   });
 }
@@ -126,7 +129,7 @@ test.describe('work-thread-workspace', () => {
     });
   });
 
-  test.fixme('US01 深链进入本线:目标/生命周期/当前可见责任为主内容,非说明书+应用书架(等 P2.2 去 noGaze 旁路)', async ({
+  test('US01 深链进入本线:目标/生命周期/当前可见责任为主内容,非说明书+应用书架(D78 去 noGaze 旁路)', async ({
     page,
   }) => {
     test.setTimeout(180_000);
@@ -136,7 +139,7 @@ test.describe('work-thread-workspace', () => {
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto(`${SCENARIO_BASE}/canvas?thread=${thread}&focus=thread%3A${thread}`);
       const main = page.locator('main');
-      // 目标完整可读 + 唯一 H1(线身份/目标,D78/design §1)+ 生命周期状态。
+      // 目标完整可读 + 唯一 H1(线目标,D78/design §1)+ 生命周期状态。
       await expect(main.getByText('完成一项跨应用评审并记录决定')).toBeVisible();
       await expect(main.locator('h1')).toHaveCount(1);
       // 主区域不是旁路说明书/应用书架(F02/FR1/US01)。
@@ -149,7 +152,7 @@ test.describe('work-thread-workspace', () => {
     });
   });
 
-  test.fixme('US01 thread=T 无显式 focus:落本线概览而非默认对象注视(等 P2.2)', async ({ page }) => {
+  test('US01 thread=T 无显式 focus:落本线概览而非默认对象注视(D78)', async ({ page }) => {
     test.setTimeout(180_000);
     await withFreshServer(async () => {
       const thread = runId();
@@ -163,7 +166,7 @@ test.describe('work-thread-workspace', () => {
     });
   });
 
-  test.fixme('US05 五视口×助手开/关:默认无永久材料栏、主区≥640 且≥两栏净宽 60%、无 body 横滚(D78 阈值 1072/1008,按剩余宽度判断;等 P2.2)', async ({
+  test('US05 五视口×助手开/关:默认无永久材料栏、主区≥640 且≥两栏净宽 60%、无 body 横滚(D78 阈值 1072/1008,按剩余宽度判断)', async ({
     page,
   }) => {
     test.setTimeout(300_000);
@@ -173,7 +176,7 @@ test.describe('work-thread-workspace', () => {
       for (const viewport of D78_VIEWPORTS) {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await page.goto(`${SCENARIO_BASE}/canvas?thread=${thread}&focus=thread%3A${thread}`);
-        // 默认无永久材料栏(FR4/D78 决定 1;现状书桌常驻栏 → Red)。
+        // 默认无永久材料栏(FR4/D78 决定 1)。
         await expect(page.getByTestId('thread-desk-rail')).toHaveCount(0);
         // 关助手:主面全宽可读,无 body 横滚。
         let geometry = await measureGeometry(page);
@@ -191,7 +194,7 @@ test.describe('work-thread-workspace', () => {
     });
   });
 
-  test.fixme('US05 390px 覆盖助手不超出屏幕 + Escape 可关 + 关闭后焦点恢复(design §1;等 P2.2)', async ({
+  test('US05 390px 覆盖助手不超出屏幕 + Escape 可关 + 关闭后焦点恢复(design §1)', async ({
     page,
   }) => {
     test.setTimeout(180_000);
@@ -202,21 +205,20 @@ test.describe('work-thread-workspace', () => {
       await page.goto(`${SCENARIO_BASE}/canvas?thread=${thread}&focus=thread%3A${thread}`);
       const fab = page.getByRole('button', { name: '展开聊天窗' });
       await fab.click();
-      // 覆盖助手整体在视口内(现状 float 左缘 −10 / 停靠横滚 → Red)。
+      // 覆盖助手(剩余宽度不足 → float 覆盖层,宽度收窄 min(24rem, 100vw−2rem))
+      // 整体在视口内,不带动 body 横滚。
       const geometry = await measureGeometry(page);
-      expect(geometry.assistantLeft).toBeGreaterThanOrEqual(0);
-      expect(geometry.assistantRight).toBeLessThanOrEqual(geometry.vw);
+      expect(geometry.assistantLeft, '覆盖助手左缘不裁出屏').toBeGreaterThanOrEqual(0);
+      expect(geometry.assistantRight, '覆盖助手右缘不出屏').toBeLessThanOrEqual(geometry.vw);
       expect(geometry.hscroll).toBe(false);
-      // Escape 关闭 + 焦点恢复到唤起元素(现状无 keydown 处理/无恢复 → Red)。
+      // Escape 关闭 + 焦点恢复到唤起元素(design §1 覆盖层交互下限)。
       await page.keyboard.press('Escape');
-      await expect(page.locator('aside', { hasText: 'UI4A 助手' })).toHaveCount(0);
+      await expect(page.getByPlaceholder('输入目标…')).toHaveCount(0);
       await expect(fab).toBeFocused();
     });
   });
 
-  test.fixme('US05 200% 缩放(布局视口 960 CSS px):助手必须覆盖/单面,不得并排(D78;等 P2.2)', async ({
-    page,
-  }) => {
+  test('US05 200% 缩放(布局视口 960 CSS px):助手必须覆盖/单面,不得并排(D78)', async ({ page }) => {
     test.setTimeout(180_000);
     await withFreshServer(async () => {
       const thread = runId();
@@ -231,7 +233,7 @@ test.describe('work-thread-workspace', () => {
     });
   });
 
-  test.fixme('US07 材料 X→Y→返回本线→后退:URL/常显/clientView 指向一致,线与 scope 保留(等 P2.2 客户端导航+材料入口;clientView 断言随 P3 ChatTurn 投影)', async ({
+  test('US07 材料 X→Y→返回本线→后退:URL/覆盖层/线保留一致(FR4·FR7/US07;客户端导航+材料入口)', async ({
     page,
   }) => {
     test.setTimeout(180_000);
@@ -240,11 +242,33 @@ test.describe('work-thread-workspace', () => {
       await createThreadFixture(page, thread);
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto(`${SCENARIO_BASE}/canvas?thread=${thread}&focus=thread%3A${thread}`);
-      // 打开「相关材料」入口(FR4;等 P2.2)进入材料 X,再 Y:
-      // 每步 URL 保留 thread(+scope),常显「当前对象」与 URL 一致;
-      // 点「返回本线」回概览;浏览器后退回到 Y 且 thread/scope 不丢(US07)。
-      // 书桌条目裸 <a> 硬导航(丢草稿根因)由组件 Red
-      // thread-desk-navigation.test.tsx 钉住,P2.2 改 Link 后本用例转活跃。
+      // 「相关材料」入口(FR4)默认收起;展开覆盖层进 X(articles,context 成员)。
+      const materials = page.getByRole('button', { name: /相关材料/ });
+      await expect(materials).toHaveAttribute('aria-expanded', 'false');
+      await materials.click();
+      await page.locator('[data-desk-entry="articles"] a').click();
+      await expect(page).toHaveURL(new RegExp(`thread=${thread}&focus=articles`));
+      // 选中即关覆盖层(不自动打开下一条材料)。
+      await expect(page.getByTestId('thread-materials-dialog')).toHaveCount(0);
+      // 再进 Y(article-drafting:main,active 成员):URL 保留 thread。
+      await page.getByRole('button', { name: /相关材料/ }).click();
+      await page.locator('[data-desk-entry="article-drafting:main"] a').click();
+      await expect(page).toHaveURL(new RegExp(`thread=${thread}&focus=article-drafting%3Amain`));
+      // 「返回本线」客户端导航回概览,线保留(US01)。
+      await page.getByRole('link', { name: '返回本线' }).click();
+      await expect(page).toHaveURL(new RegExp(`thread=${thread}&focus=thread%3A${thread}`));
+      // 浏览器后退:回到 Y 且 thread 不丢(US07;客户端导航历史)。
+      await page.goBack();
+      await expect(page).toHaveURL(new RegExp(`thread=${thread}&focus=article-drafting%3Amain`));
     });
   });
+
+  test.fixme(
+    'US07 clientView:X→Y→本线每步发送的 clientView.presence 与 URL 一致,历史回合当时上下文未知显式呈现' +
+      '(等 P3:ChatTurn 投影 clientView/userContextKnown 与引用时点语义)',
+    async () => {
+      // P3.3/P3.4 落地后补:发送侧 clientView 由 URL 单一来源捕获(S3 §3 实测
+      // 无漂移),历史侧按 principal×session×turn 精确 join、不回填。
+    },
+  );
 });

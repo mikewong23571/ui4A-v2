@@ -21,6 +21,11 @@ afterEach(() => {
   window.history.pushState({}, '', '/canvas');
 });
 
+/** T56 D78:机制工具收进「页面工具」入口——重新载入/why/原始合同二步可达。 */
+function openPageTools(): void {
+  fireEvent.click(screen.getByRole('button', { name: '页面工具' }));
+}
+
 const EMPTY_SPECS: SirenEntity = {
   class: ['collection', 'render-specs'],
   properties: { rel: 'render-specs', count: 0 },
@@ -168,9 +173,7 @@ const cases: MountCase[] = [
     name: '固定 workspace subject',
     subject: 'workspace:my-work',
     title: '我的事源',
-    mount: () => (
-      <PresentationSurfaceHost heading="我的事" parameters={{ focus: 'workspace:my-work' }} />
-    ),
+    mount: () => <PresentationSurfaceHost parameters={{ focus: 'workspace:my-work' }} />,
   },
   {
     name: 'Canvas 应用默认落点(scope 无 focus)',
@@ -232,7 +235,7 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
 
     render(
       <EntityCacheProvider>
-        <PresentationSurfaceHost heading="共同注视" parameters={{ focus: 'post:blocked' }} />
+        <PresentationSurfaceHost parameters={{ focus: 'post:blocked' }} />
       </EntityCacheProvider>,
     );
 
@@ -291,7 +294,7 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
 
     render(
       <EntityCacheProvider>
-        <PresentationSurfaceHost heading="共同注视" parameters={{ focus: 'post:missing' }} />
+        <PresentationSurfaceHost parameters={{ focus: 'post:missing' }} />
       </EntityCacheProvider>,
     );
 
@@ -302,6 +305,7 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
     const home = screen.getByRole('link', { name: '返回首页' });
     expect(home.getAttribute('href')).toBe('/');
     // 机制细节(实体名/原始报错)只进 why 抽屉诊断。
+    openPageTools();
     fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
     expect(screen.getByTestId('canvas-why-diagnostics').textContent).toContain('post:missing');
     // 同文错误行不堆叠:errors 列表不再重复渲染同一句。
@@ -327,6 +331,8 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
       expect(await screen.findByRole('heading', { name: testCase.title, level: 1 })).toBeTruthy();
       expect(container.querySelectorAll('[data-surface]')).toHaveLength(1);
       expect(container.querySelector('[data-action="complete"]')).not.toBeNull();
+      // D78:机制工具默认收进「页面工具」面板;开面板后 why 抽屉入口在场。
+      openPageTools();
       expect(screen.getByRole('button', { name: '为什么这样展示' })).toBeTruthy();
 
       const urls = fixture.fetchMock.mock.calls.map(([request]) => String(request));
@@ -354,6 +360,7 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
         sourceMessageIds: [],
       });
 
+      // 工具面板已由上文 openPageTools 打开;重新载入仍在面板内可达。
       fireEvent.click(screen.getByRole('button', { name: '重新载入' }));
       await waitFor(() =>
         expect(
@@ -476,7 +483,7 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
         </EntityCacheProvider>,
       );
 
-      expect(await screen.findByRole('button', { name: '为什么这样展示' })).toBeTruthy();
+      expect(await screen.findByRole('button', { name: '页面工具' })).toBeTruthy();
       const entityFetches = fetchMock.mock.calls
         .map(([request]) => String(request))
         .filter((url) => url.startsWith('/api/entity?rel=articles'));
@@ -500,7 +507,7 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
         </EntityCacheProvider>,
       );
 
-      expect(await screen.findByRole('button', { name: '为什么这样展示' })).toBeTruthy();
+      expect(await screen.findByRole('button', { name: '页面工具' })).toBeTruthy();
       const entityFetches = fetchMock.mock.calls
         .map(([request]) => String(request))
         .filter((url) => url.startsWith('/api/entity?rel=articles'));
@@ -529,6 +536,7 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
     // T32 Q5 迁移:首屏固定人话,机制细节(sidecar id/HTTP)只进 why 抽屉。
     const errors = await screen.findByTestId('canvas-errors');
     expect(errors.textContent).toBe('画布内容暂时无法载入，请稍后重试');
+    openPageTools();
     fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
     expect(screen.getByTestId('canvas-why-diagnostics').textContent).toContain(
       `Sidecar ${fixture.sidecarId} → HTTP 503`,
@@ -575,6 +583,7 @@ describe('canvas 载入失败呈现(T32 Q5:首屏零机制标识,细节进 why �
     expect(text).not.toContain('/api/');
 
     // 机制细节保留在 why 抽屉(审计可达,不静默)。
+    openPageTools();
     fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
     const diagnostics = await screen.findByTestId('canvas-why-diagnostics');
     const detail = diagnostics.textContent ?? '';
@@ -618,13 +627,14 @@ describe('canvas 载入失败呈现(T32 Q5:首屏零机制标识,细节进 why �
 
     render(
       <EntityCacheProvider>
-        <PresentationSurfaceHost heading="共同注视" parameters={{ focus: 'post:denied' }} />
+        <PresentationSurfaceHost parameters={{ focus: 'post:denied' }} />
       </EntityCacheProvider>,
     );
 
     // 首屏诚实人话:denied ≠ 内容不存在,也 ≠ 画布整体失败。
     const errors = await screen.findByTestId('canvas-errors');
     expect(errors.textContent).toBe('部分内容暂时无法显示，详情见「为什么这样展示」');
+    openPageTools();
     fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
     const diagnostics = await screen.findByTestId('canvas-why-diagnostics');
     const detail = diagnostics.textContent ?? '';
@@ -667,13 +677,14 @@ describe('canvas 载入失败呈现(T32 Q5:首屏零机制标识,细节进 why �
 
     render(
       <EntityCacheProvider>
-        <PresentationSurfaceHost heading="共同注视" parameters={{ focus: 'post:gone' }} />
+        <PresentationSurfaceHost parameters={{ focus: 'post:gone' }} />
       </EntityCacheProvider>,
     );
 
     const errors = await screen.findByTestId('canvas-errors');
     expect(errors.textContent).toBe('内容不存在或不可见');
     expect(errors.textContent).not.toContain(sidecarId);
+    openPageTools();
     fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
     const diagnostics = await screen.findByTestId('canvas-why-diagnostics');
     expect(diagnostics.textContent ?? '').toContain(`Sidecar ${sidecarId} → HTTP 404`);

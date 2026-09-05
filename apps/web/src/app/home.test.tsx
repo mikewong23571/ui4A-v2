@@ -15,11 +15,11 @@ const { presentationSurfaceHostSpy } = vi.hoisted(() => ({
 }));
 
 vi.mock('@/components/canvas/presentation-surface-host', () => ({
-  PresentationSurfaceHost: (props: { heading: string; parameters: { focus: string } }) => {
+  PresentationSurfaceHost: (props: { parameters: { focus: string } }) => {
     presentationSurfaceHostSpy(props);
     return (
       <section data-testid="shared-presentation-host">
-        <h1>{props.heading}</h1>
+        {/* T56 D78:宿主不渲染机制 H1——唯一业务标题由 surface 内容自携。 */}
         <div data-surface="presentation-workspace%3Amy-work" />
       </section>
     );
@@ -75,11 +75,9 @@ describe('首页 `/` 页面边界', () => {
 
     expect(presentationSurfaceHostSpy).toHaveBeenCalledTimes(1);
     expect(presentationSurfaceHostSpy).toHaveBeenCalledWith({
-      heading: '我的事',
       parameters: { focus: 'workspace:my-work' },
     });
     expect(screen.getByTestId('shared-presentation-host')).toBeTruthy();
-    expect(screen.getByRole('heading', { name: '我的事', level: 1 })).toBeTruthy();
   });
 
   it('不再渲染旧首页的硬编码内容面;书架层(应用目录条)先于主面(F-23)', () => {

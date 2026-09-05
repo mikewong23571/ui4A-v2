@@ -20,10 +20,19 @@ import { ThreadDesk } from './thread-desk';
 import { EntityCacheProvider } from '../../entity-cache-provider';
 
 // 客户端路由导航标记桩:Next Link 渲染为锚点,本桩额外携带 data-client-nav,
-// 供断言「条目走客户端导航」而非裸 <a> 硬导航(S3 存续矩阵 FAIL 根因)。
+// 供断言「条目走客户端导航」而非裸 <a> 硬导航(S3 存续矩阵 FAIL 根因);
+// 透传其余 props(data-nav 合同导航标注必须留在锚点上,I3)。
 vi.mock('next/link', () => ({
-  default: ({ href, children }: { href: string; children?: ReactNode }) => (
-    <a href={href} data-client-nav="true">
+  default: ({
+    href,
+    children,
+    ...rest
+  }: {
+    href: string;
+    children?: ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={href} data-client-nav="true" {...rest}>
       {children}
     </a>
   ),

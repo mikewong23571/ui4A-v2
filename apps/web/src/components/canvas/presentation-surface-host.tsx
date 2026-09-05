@@ -2,7 +2,7 @@
 /**
  * 共享 Presentation Surface 宿主(T7/T12 Canvas 链路;T27 D46 提炼)。
  *
- * 调用方只提供结构化呈现参数与标题;本组件唯一拥有取数、Sidecar、
+ * 调用方只提供结构化呈现参数;本组件唯一拥有取数、Sidecar、
  * hydrate、action gate、单树渲染与 why 状态链。调用树必须提供 EntityCacheProvider。
  *
  * T36 A1 拆分:取数/装配编排(目录协商、spec 凝固、sidecar 解析、hydrate、
@@ -20,9 +20,10 @@
  * 异常隔离 → surface-error-boundary.tsx;Sidecar 个人视图操作 →
  * use-sidecar-actions.ts;Sidecar 工具条 → canvas-sidecar-toolbar.tsx。
  *
- * T24 Phase A Task 4:主区域不再渲染 CanvasSidecarToolbar——控制条只经
- * 「为什么这样展示」抽屉(canvas-why-drawer)可达,首屏零机制文案;
- * sidecar 视图语义(收起/疏密渲染)与 useSidecarActions 操作保持不变。
+ * T24 Phase A Task 4:主区域不渲染机制控制条;T56 D78(P2.2):机制标题与
+ * raw/why/reload 收进次要工具入口(./page-tools,最多两步可达)——业务
+ * H1 唯一,取授权实体身份/本线目标,由 surface 内容自携;机制细节默认
+ * 关闭,零机制词上首屏。审批证据不在工具面板(责任在声明动作区)。
  */
 import { A2uiSurface } from '@a2ui/react/v0_9';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -38,12 +39,11 @@ import {
   type CollectionReadNavigation,
 } from '@/render/canvas/collection-read-navigation';
 import { PresentationDensityProvider } from '@/render/presentation-density';
-import { CanvasWhyDrawer } from './canvas-why-drawer';
 import { ActionSubmitProvider } from '../actions/action-submit';
-import { RawContractDrawer } from './raw-contract-drawer';
+import { Button } from '../ui/button';
 import { readThreadPins, writeThreadPin } from './desk/thread-desk';
 import { SurfaceErrorBoundary } from './surface-error-boundary';
-import { Button } from '../ui/button';
+import { CanvasPageTools } from './page-tools';
 import { SIDECAR_UNAVAILABLE_PHRASE } from './presentation-sidecar-failure';
 import { uniqueDiagnostics } from './presentation-surface-helpers';
 import {
@@ -58,9 +58,7 @@ import {
 export type { PresentationSurfaceParameters } from './use-presentation-surface-load';
 
 export interface PresentationSurfaceHostProps {
-  /** Human-facing stage heading; it does not participate in subject resolution. */
-  heading: string;
-  /** Structured Presentation inputs; no value is inferred from the heading. */
+  /** Structured Presentation inputs; no value is inferred from presentation state. */
   parameters: PresentationSurfaceParameters;
 }
 
@@ -72,7 +70,7 @@ function warningText(warning: DerefWarning): string {
 }
 
 /** Shared binding-only Presentation host for URL-driven and fixed-subject mounts. */
-export function PresentationSurfaceHost({ heading, parameters }: PresentationSurfaceHostProps) {
+export function PresentationSurfaceHost({ parameters }: PresentationSurfaceHostProps) {
   const threadParam = parameters.thread;
   const rootsParam = parameters.roots;
   const {
@@ -117,40 +115,30 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
   return (
     <CollectionReadNavigationProvider navigate={hostReadNavigate}>
       <div>
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight">{heading}</h1>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            data-nav="local:canvas-reload"
-            disabled={loading}
-            onClick={() => void load()}
-          >
-            重新载入
-          </Button>
-        </div>
-
-        {/* T24:机制信息收口进抽屉(默认关闭,零机制词泄漏;数据全部来自
-          内部状态与 sidecar 操作,能力与主区域控制条等价)。 */}
-        <div className="flex flex-wrap gap-2">
-          <CanvasWhyDrawer
-            surfaceIds={surfaces.map((entry) => entry.id)}
-            catalogId={catalogId}
-            diagnostics={uniqueDiagnostics([
-              ...surfaces.flatMap((entry) => entry.diagnostics),
-              ...loadIssues,
-            ])}
-            sidecarMeta={sidecarMeta}
-            promotionPending={promotionPending}
-            explanation={explanation}
-            mutateSidecar={mutateSidecar}
-            patchSidecar={patchSidecar}
-            explainSidecar={explainSidecar}
-            promoteSidecar={promoteSidecar}
-            cancelPromotion={() => setPromotionPending(false)}
+        {/* D78/design §1:重新载入/为什么/原始合同收进次要工具入口,默认
+          收起;业务标题唯一 H1 由 surface 内容自携,机制标题退场。 */}
+        <div className="flex justify-end">
+          <CanvasPageTools
+            loading={loading}
+            onReload={() => void load()}
+            rawEntity={focusEntity}
+            why={{
+              surfaceIds: surfaces.map((entry) => entry.id),
+              catalogId,
+              diagnostics: uniqueDiagnostics([
+                ...surfaces.flatMap((entry) => entry.diagnostics),
+                ...loadIssues,
+              ]),
+              sidecarMeta,
+              promotionPending,
+              explanation,
+              mutateSidecar,
+              patchSidecar,
+              explainSidecar,
+              promoteSidecar,
+              cancelPromotion: () => setPromotionPending(false),
+            }}
           />
-          <RawContractDrawer entity={focusEntity} />
         </div>
 
         {notice !== null && (
@@ -162,8 +150,8 @@ export function PresentationSurfaceHost({ heading, parameters }: PresentationSur
             {notice}
           </p>
         )}
-        {/* T24 Phase A Task 4:Sidecar 控制条已从主区域移除,抽屉入口是唯一
-          机制入口(能力等价:同一 CanvasSidecarToolbar 嵌在抽屉内)。 */}
+        {/* T24/D78:Sidecar 控制条不在主区域;抽屉入口在页面工具面板内
+          (能力等价:同一 CanvasSidecarToolbar 嵌在抽屉内)。 */}
         {errors.length > 0 && (
           <ul className="mt-4 space-y-1 text-sm text-destructive" data-testid="canvas-errors">
             {errors.map((error) => (

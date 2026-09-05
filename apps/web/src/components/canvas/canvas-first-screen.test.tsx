@@ -295,6 +295,8 @@ describe('CanvasBody 首屏零机制词(T24)', () => {
       fetchMock.mock.calls.some(([input]) => String(input).includes('rel=workspace%3Amy-work')),
     ).toBe(false);
 
+    // T56 D78:机制工具收进「页面工具」入口——先开工具,再开 why 抽屉。
+    fireEvent.click(screen.getByRole('button', { name: '页面工具' }));
     fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
     fireEvent.click(screen.getByTestId('canvas-why-explain'));
     expect((await screen.findByTestId('canvas-why-composition-regions')).textContent).toContain(
@@ -389,11 +391,13 @@ describe('CanvasBody 首屏零机制词(T24)', () => {
     );
     expect(leaked).toEqual([]);
 
-    // 抽屉入口(默认关闭)是唯一机制入口:主区域不再有控制条自带的
-    // explain 按钮,同名按钮只剩入口一处。
+    // T56 D78:抽屉入口收进「页面工具」面板(默认收起,重新载入/原始合同
+    // 同面板);开面板后同名 why 抽屉入口只剩一处,aria-expanded 如实。
+    fireEvent.click(screen.getByRole('button', { name: '页面工具' }));
     const entries = screen.getAllByRole('button', { name: '为什么这样展示' });
     expect(entries).toHaveLength(1);
     expect(entries[0]!.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: '重新载入' })).toBeTruthy();
   });
 
   it('带 Sidecar(pinned)的成功渲染:主区域零「已固定」等控制条机制文案', async () => {
@@ -403,6 +407,7 @@ describe('CanvasBody 首屏零机制词(T24)', () => {
       text.includes(word),
     );
     expect(leaked).toEqual([]);
+    fireEvent.click(screen.getByRole('button', { name: '页面工具' }));
     expect(screen.getAllByRole('button', { name: '为什么这样展示' })).toHaveLength(1);
   });
 });

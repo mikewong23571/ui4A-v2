@@ -111,6 +111,8 @@ describe('Canvas semantic Presentation runtime', () => {
     const surface = document.querySelector('[data-concern="presentation:post:first-post"]');
     expect(surface?.getAttribute('data-active')).toBeNull();
     expect(surface?.textContent).not.toContain('fields=');
+    // T56 D78:机制工具收进「页面工具」入口(默认收起,二步可达)。
+    fireEvent.click(screen.getByRole('button', { name: '页面工具' }));
     fireEvent.click(screen.getByRole('button', { name: '查看原始合同' }));
     expect(screen.getByTestId('raw-contract-json').textContent).toContain('essay');
     expect(callsOf(mock, '/api/entity?rel=post%3Afirst-post')).toHaveLength(1);
@@ -155,6 +157,7 @@ describe('Canvas semantic Presentation runtime', () => {
       '画布内容暂时无法载入，请稍后重试',
     );
     expect(document.querySelector('[data-surface]')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '页面工具' }));
     fireEvent.click(screen.getByRole('button', { name: '为什么这样展示' }));
     expect(screen.getByTestId('canvas-why-diagnostics').textContent).toContain('目录协商失败');
   });
@@ -165,6 +168,7 @@ describe('Canvas semantic Presentation runtime', () => {
     render(<CanvasPage />);
     await screen.findByRole('link', { name: /第一篇/ });
 
+    fireEvent.click(screen.getByRole('button', { name: '页面工具' }));
     fireEvent.click(screen.getByRole('button', { name: '重新载入' }));
     await waitFor(() => expect(callsOf(mock, '/api/entity?rel=render-specs')).toHaveLength(2));
     expect(callsOf(mock, '/api/entity?rel=articles')).toHaveLength(1);
