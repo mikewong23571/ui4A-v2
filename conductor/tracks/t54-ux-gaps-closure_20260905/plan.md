@@ -76,18 +76,27 @@
   (GR3/D53 顺带拆解:components/meta 超限 → activation/ 子目录,镜像 renderers/generic 先例)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `ada58d41`
 
-## Phase 3 — G03 知情确认与决定回执
+## Phase 3 — G03 知情确认与决定回执 [checkpoint: 8d973ed8]
 
-- [ ] Task: 投影与呈现扩展(测试先行):projectConfirmation 补决定者/理由等缺口
+- [x] Task: 投影与呈现扩展(测试先行):projectConfirmation 补决定者/理由等缺口
   字段;确认卡默认展示「对谁、做什么、为何需决定」——目标身份与动作 title 复用
-  授权实体,字段摘要按合同 presentation/schema 生成,缺前值不猜测
-- [ ] Task: 决定后回读:状态/理由从日志投影恢复(临时反馈只作即时补充);首页/
+  授权实体,字段摘要按合同 presentation/schema 生成,缺前值不猜测 `8d973ed8`
+  (身份行全生命周期+风险标注;resume=对象 rel+参数有界摘要+策略原因,经既有
+  inbox detail 绑定通道;缺前值不猜测)
+- [x] Task: 决定后回读:状态/理由从日志投影恢复(临时反馈只作即时补充);首页/
   画布/实体页共用决策词汇与动作组,减少重复图例与嵌套盒子;批准/驳回/high 两步
-  确认仍按当前合同与机制执行,不新增按钮分支、不一律加确认
-- [ ] Task: 边界验收:归档想法与停用实验应用两类对象知情判断;无权限目标不泄露
+  确认仍按当前合同与机制执行,不新增按钮分支、不一律加确认 `8d973ed8`
+  (rejectedBy 线上/fold 双侧持久化(逐字段 parity 钉测);decided-by/rejected-reason
+  入投影,确认 rel 直读即回执;共用决策词汇=member-card 单一词条面;图例压缩归 G15)
+- [x] Task: 边界验收:归档想法与停用实验应用两类对象知情判断;无权限目标不泄露
   名称或参数;长内容可展开;390px 按钮可达;陈旧确认不显示虚假成功;需要批准时
-  快照才能解释历史变化的,先定义有界证据合同(不用今天的字段值充当昨日前值)
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+  快照才能解释历史变化的,先定义有界证据合同(不用今天的字段值充当昨日前值) `8d973ed8`
+  (无权限不泄露:确认读取受众门既有套件覆盖;陈旧确认:终态无动作面+member-card
+  钉测;两类对象知情判断与 390px 走 G15/部署站复验;有界证据合同:本阶段无强制
+  需求,挂起请求原文已完整保留于确认实体,不预建)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `8d973ed8`
+  (顺带:activation/ 移至 components/activation/——meta 路由扫描误判模块路径
+  +meta 目录预算双因素;gr/单测/全量复跑绿)
 
 ## Phase 4 — G05/G07/G09 操作顺畅性
 
