@@ -9,19 +9,19 @@ const mocks = vi.hoisted(() => ({
   persistRejection: vi.fn(),
 }));
 
-vi.mock('./agent/coding-result-decision', () => ({
+vi.mock('../agent/coding-result-decision', () => ({
   preflightCodingResultDecision: mocks.preflightCodingResultDecision,
 }));
-vi.mock('./service-confirmation', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./service-confirmation')>();
+vi.mock('../service-confirmation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../service-confirmation')>();
   return {
     ...actual,
     persistRejection: mocks.persistRejection,
   };
 });
 
-import { createCoreEventLogState } from './service-event-log';
-import { engineEventToAppend as toAppend } from './service-event-append';
+import { createCoreEventLogState } from '../service-event-log';
+import { engineEventToAppend as toAppend } from '../service-event-append';
 
 const FLOW = 'demo-flow';
 

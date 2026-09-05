@@ -22,8 +22,8 @@ const mocks = vi.hoisted(() => ({
   scheduleRecipes: vi.fn(),
 }));
 
-vi.mock('./service-confirmation', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./service-confirmation')>();
+vi.mock('../service-confirmation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../service-confirmation')>();
   return {
     ...actual,
     execConfirmationDecision: mocks.execConfirmationDecision,
@@ -31,9 +31,9 @@ vi.mock('./service-confirmation', async (importOriginal) => {
     materializeSuspension: mocks.materializeSuspension,
   };
 });
-vi.mock('./service-thread', () => ({ execThreadAction: mocks.execThreadAction }));
-vi.mock('./service-event-log', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./service-event-log')>();
+vi.mock('../service-thread', () => ({ execThreadAction: mocks.execThreadAction }));
+vi.mock('../service-event-log', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../service-event-log')>();
   return {
     ...actual,
     refreshFromLog: mocks.refreshFromLog,
@@ -51,16 +51,16 @@ vi.mock('@ui4a/engine', async (importOriginal) => {
     project: mocks.project,
   };
 });
-vi.mock('./flow-entry', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./flow-entry')>();
+vi.mock('../flow-entry', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../flow-entry')>();
   return {
     ...actual,
     resolveFlowRelAlias: mocks.resolveFlowRelAlias,
   };
 });
 
-import { createCoreEventLogState } from './service-event-log';
-import { engineEventToAppend as toAppend } from './service-event-append';
+import { createCoreEventLogState } from '../service-event-log';
+import { engineEventToAppend as toAppend } from '../service-event-append';
 
 async function buildExecCore() {
   const mod = await import('./service-exec');

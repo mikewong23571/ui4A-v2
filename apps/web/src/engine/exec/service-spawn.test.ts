@@ -14,34 +14,34 @@ const mocks = vi.hoisted(() => ({
   artifactModelFor: vi.fn(() => ({ model: 'fixture' })),
 }));
 
-vi.mock('./capability/dispatch', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./capability/dispatch')>();
+vi.mock('../capability/dispatch', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../capability/dispatch')>();
   return {
     ...actual,
     prepareCapabilityDispatch: mocks.prepareCapabilityDispatch,
     startNativeFunctionDispatch: mocks.startNativeFunctionDispatch,
   };
 });
-vi.mock('./agent/native-agent-dispatch', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./agent/native-agent-dispatch')>();
+vi.mock('../agent/native-agent-dispatch', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../agent/native-agent-dispatch')>();
   return {
     ...actual,
     createAndDispatchAgentRun: mocks.createAndDispatchAgentRun,
     prepareNativeAgentDispatch: mocks.prepareNativeAgentDispatch,
   };
 });
-vi.mock('./service-artifacts', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./service-artifacts')>();
+vi.mock('../service-artifacts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../service-artifacts')>();
   return {
     ...actual,
     artifactModelFor: mocks.artifactModelFor,
   };
 });
-vi.mock('./service-capability-callback', () => ({
+vi.mock('../service-capability-callback', () => ({
   persistFailedAgentDispatchCallback: mocks.persistFailedAgentDispatchCallback,
 }));
 
-import { createCoreEventLogState } from './service-event-log';
+import { createCoreEventLogState } from '../service-event-log';
 
 const SOURCE_INSTANCE = { rel: 'application:1', flow: 'demo-flow', node: 'run', fields: {} };
 

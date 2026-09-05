@@ -80,7 +80,7 @@ import { scheduleNativeFunctionReconciliation } from './capability/reconciliatio
 import { createCoreEventLogState, refreshFromLog } from './service-event-log';
 import { execConfirmationDecision, persistRejection } from './service-confirmation';
 import { engineEventToAppend as toAppend } from './service-event-append';
-import { execCore, execPlanCore, type ExecCoreDeps } from './service-exec';
+import { execCore, execPlanCore, type ExecCoreDeps } from './exec/service-exec';
 import type { EngineRuntime } from './service-outcome';
 import { execThreadAction } from './service-thread';
 import { createSitemapReaders, type MetaSitemap } from './service-sitemaps';

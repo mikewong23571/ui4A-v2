@@ -15,23 +15,23 @@ import {
 } from '@ui4a/engine';
 
 import type { DbExecutor } from '@ui4a/db/events';
-import { runWebProductionDeploymentPreflight } from '../production-deployment-preflight';
-import { dispatchNativeFunction } from '../temporal/native-function';
+import { runWebProductionDeploymentPreflight } from '../../production-deployment-preflight';
+import { dispatchNativeFunction } from '../../temporal/native-function';
 import {
   createAndDispatchAgentRun,
   prepareNativeAgentDispatch,
   type PreparedNativeAgentDispatch,
-} from './agent/native-agent-dispatch';
+} from '../agent/native-agent-dispatch';
 import {
   prepareCapabilityDispatch,
   startNativeFunctionDispatch,
   type PreparedCapabilityDispatch,
-} from './capability/dispatch';
-import { nativeFunctionProfileMapFromEnvironment } from './capability/profile-config';
-import { artifactModelFor } from './service-artifacts';
-import { capabilityArtifactsForRequest } from './service-request';
-import type { CoreEventLogState } from './service-event-log';
-import { persistFailedAgentDispatchCallback } from './service-capability-callback';
+} from '../capability/dispatch';
+import { nativeFunctionProfileMapFromEnvironment } from '../capability/profile-config';
+import { artifactModelFor } from '../service-artifacts';
+import { capabilityArtifactsForRequest } from '../service-request';
+import type { CoreEventLogState } from '../service-event-log';
+import { persistFailedAgentDispatchCallback } from '../service-capability-callback';
 
 export interface SpawnPlan {
   artifactModel: ReturnType<typeof artifactModelFor>;

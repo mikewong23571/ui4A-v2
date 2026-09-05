@@ -1605,6 +1605,13 @@
   service-coding-result.ts、service-spawn.ts;service-confirmation.ts、
   service-event-log.ts 扩展;service.ts 收缩;HTTP/事件/Siren/审计合同零变化。
 
+- **修订(2026-09-05,实施期 GR3 拆解)**:exec 管线三模块(service-exec/
+  service-coding-result/service-spawn 及其测试)落位后 `apps/web/src/engine` 直含
+  文件达 4093 有效行,触达 GR3 目录上限(4000)。按 D53 拆解纪律,三模块迁入
+  `src/engine/exec/` 子域(与既有 agent/、capability/ 子域模式一致;文件名与
+  对外 import 由 service.ts 单点引用不变);原句「engine/ 新增 service-exec.ts…」
+  按此修订。service-outcome.ts 留在 engine 根(drafts 族 + hub 公共面引用)。
+
 ## D77 t22 探针工作流文件迁移:批准迁至 scripts/t22/(D52 修订案,T55)
 
 - **背景**:T55 spec FR5.1/P5.1 将 t22 探针迁移列为可选 D52 修订案。复核事实:探针

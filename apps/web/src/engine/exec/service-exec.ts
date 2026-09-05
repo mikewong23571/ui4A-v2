@@ -25,13 +25,13 @@ import {
 import type { EngineSnapshot } from '@ui4a/shared';
 
 import type { DbExecutor } from '@ui4a/db/events';
-import { resolveFlowRelAlias } from './flow-entry';
-import { materializeSpawnArtifacts } from './service-artifacts';
+import { resolveFlowRelAlias } from '../flow-entry';
+import { materializeSpawnArtifacts } from '../service-artifacts';
 import {
   execConfirmationDecision,
   materializeSuspension,
   persistRejection,
-} from './service-confirmation';
+} from '../service-confirmation';
 import { resolveCodingResultDecision } from './service-coding-result';
 import {
   appendBatchWithSeq,
@@ -39,13 +39,13 @@ import {
   refoldApplicationDeprecations,
   refreshFromLog,
   type CoreEventLogState,
-} from './service-event-log';
-import type { engineEventToAppend } from './service-event-append';
-import type { ExecOutcome, PlanServiceOutcome } from './service-outcome';
-import { CONFIRMATION_REL_PREFIX, isMetaRel, paramsWithOrigins } from './service-request';
+} from '../service-event-log';
+import type { engineEventToAppend } from '../service-event-append';
+import type { ExecOutcome, PlanServiceOutcome } from '../service-outcome';
+import { CONFIRMATION_REL_PREFIX, isMetaRel, paramsWithOrigins } from '../service-request';
 import { dispatchSpawnPlan, prepareSpawnPlan } from './service-spawn';
-import { execThreadAction } from './service-thread';
-import { runWebProductionDeploymentPreflight } from '../production-deployment-preflight';
+import { execThreadAction } from '../service-thread';
+import { runWebProductionDeploymentPreflight } from '../../production-deployment-preflight';
 
 export interface ExecCoreDeps {
   db: DbExecutor;

@@ -124,6 +124,17 @@ describe('ApplicationEntryStrip · T39 Application 图书馆', () => {
     );
   });
 
+  it('书架栅格跟随条自身宽度而非视口，半宽容器（工作线书桌旁）不退化为九列截断', async () => {
+    stubApplications(installedApplications);
+    render(<ApplicationEntryStrip />);
+
+    const shelf = await screen.findByRole('region', { name: '应用' });
+    const grid = shelf.querySelector<HTMLElement>('div.grid');
+    expect(grid?.className).toContain('@xl:grid-cols-5');
+    expect(grid?.className).toContain('@5xl:grid-cols-9');
+    expect(grid?.className).not.toMatch(/\blg:grid-cols-9\b/);
+  });
+
   it('30 个应用时首页只展示前 9 个，完整目录可从固定入口到达', async () => {
     const applications = Array.from({ length: 30 }, (_, index) => ({
       name: `app-${index}`,
