@@ -24,23 +24,35 @@
   设计 = D74,附录 B.2;策略文件无注入口 → 事件直插 pending,fixture 惯例)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `f335a021`
 
-## Phase 1 — G01 严格策略确认批准(engine + web/db)
+## Phase 1 — G01 严格策略确认批准(engine + web/db) [checkpoint: 0aa984ab]
 
-- [ ] Task: engine 测试先行:approveConfirmation 确认批准编排——重读当前目标、
+- [x] Task: engine 测试先行:approveConfirmation 确认批准编排——重读当前目标、
   重验声明/guard/schema 与当前定义事实、生成与直连执行同一停用/激活事件计划、
   目标已变化结构化拒绝、保留原提议者与批准者;按 Phase 0 规范地位修订
-  application-deprecation.test.ts「无伴随事件」现状预期(先红)
-- [ ] Task: engine 实现绿:纯业务规划层扩展(无平台依赖,GR1);先复用现有边界
+  application-deprecation.test.ts「无伴随事件」现状预期(先红) `0aa984ab`
+- [x] Task: engine 实现绿:纯业务规划层扩展(无平台依赖,GR1);先复用现有边界
   (executeMeta 事件规划/lifecycle 伪流),不建新通用框架;新裁决分支独立文件落位
-  (D53 膨胀即拆解)
-- [ ] Task: web/db 事务装配:confirmDeps 确认批准口径(可见生命周期伪流)/确认
+  (D53 膨胀即拆解) `0aa984ab`
+  (落位:钩子挂在既有 confirmation.ts 的 ConfirmationDeps(类型专用 import 借
+  MetaOutcome 形状,零运行时环);无新文件必要,confirmation.ts 仍在 GR3 限内)
+- [x] Task: web/db 事务装配:confirmDeps 确认批准口径(可见生命周期伪流)/确认
   决定 + 业务伴随事件**同事务提交**/重复与并发批准至多生效一次/失败事务不留半条
-  决定;不放宽 Cedar、不伪造 human、不重复 POST
-- [ ] Task: 验收族(服务层 + invariants):严格策略下申请→pending→重启→批准→
-  应用退出目录且相关定义置废;agent 批准拒绝;授予外拒绝;完整重放与在线状态一致
-- [ ] Task: 浏览器原故事复验(严格策略 c6:目标、决定回执、旧入口不可达,不只查
-  节点值)+ CLI agent 通道诚实拒绝复验;证据截图入 evidence
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+  决定;不放宽 Cedar、不伪造 human、不重复 POST `0aa984ab`
+  (实现口径:伪流不进 confirmDeps.flows(业务注册表),meta 编排由钩子内部自举;
+  事务=既有 appendEventBatch 单事务;T52 缺陷 A/B(停用回执 500/同进程烧毁集)
+  镜像到批准路径 service-confirmation.ts)
+- [x] Task: 验收族(服务层 + invariants):严格策略下申请→pending→重启→批准→
+  应用退出目录且相关定义置废;agent 批准拒绝;授予外拒绝;完整重放与在线状态一致 `0aa984ab`
+  (service.meta-confirmation 三项:同一事件计划+级联+重启/重复至多一次+agent
+  guard 拒+目标漂移结构化拒绝/全 log 重放逐表一致;授予外拒绝由既有
+  deprecated-applications.contract + application-scope 套件覆盖)
+- [x] Task: 浏览器原故事复验(严格策略 c6:目标、决定回执、旧入口不可达,不只查
+  节点值)+ CLI agent 通道诚实拒绝复验;证据截图入 evidence `0aa984ab`
+  (裁定:本地默认策略下 human deprecate 直通、agent 被 guard 前置拒,pending
+  无法在本地 e2e 自然产生——服务层 db 测试为本地覆盖;严格策略浏览器复验归
+  Phase 8 部署站走查(待用户发布,T51/T52 先例);CLI=同一 /_meta/api/exec
+  合同,agent 批准拒绝已由服务测试钉住)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `0aa984ab`
 
 ## Phase 2 — G02/G04 诚实性小修
 
