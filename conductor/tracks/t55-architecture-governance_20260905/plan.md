@@ -59,18 +59,19 @@
 - [x] Task: 度量与门禁(AC-3:route.ts 有效行 47 ≤200 **且 POST handler 体 41 ≤150**;`pnpm check` 绿;四段各有独立测试文件)
 - [x] Task: Phase Verification & Checkpoint(AC-3 证据:两项行数度量 + 测试输出 + e2e 摘要 + commit 269fe4c8;git notes @269fe4c)
 
-## Phase 4 service hub 降权(FR4 → AC-4;D76 边界)
+## Phase 4 service hub 降权(FR4 → AC-4;D76 边界)[checkpoint: 8fd9ddf]
 
-- [ ] Task: ExecOutcome 下沉解环(Red→Green)
-  - [ ] 失败判据先行:环检测命令(`npx --yes madge --extensions ts --circular apps/web/src/engine`)当前输出含 service 环,记录之;
-  - [ ] `ExecOutcome`/`PlanServiceOutcome` 移至叶子模块,双向 import 改指叶;环检测复跑为零环。
-- [ ] Task: exec() 闭包分解(Red)
-  - [ ] 为六类编排段(confirmation/thread/meta/coding-result/spawn/T52 refold)在目标域模块写失败测试(语义取自现闭包行为)。
-- [ ] Task: exec() 闭包分解(Green)
-  - [ ] 逐段归位(优先既有 `service-*` 模块,新模块按 D76 归位表);`service.ts` 只留装配+入口;
-  - [ ] `service-tests` 断言零删除全绿;单原子队列并发用例点名列出留痕。
-- [ ] Task: 度量与门禁(`service.ts` 有效行 ≤350;`pnpm check` 绿;六类分支不在闭包内的 diff 佐证)
-- [ ] Task: Phase Verification & Checkpoint(AC-4 证据:零环输出 + 行数 + 测试摘要 + commit)
+- [x] Task: ExecOutcome 下沉解环(Red→Green)8fd9ddf
+  - [x] Red 基线:madge 环检测输出 8 环(7 个 service 相关),留痕 notes;
+  - [x] `ExecOutcome`/`PlanServiceOutcome`/`EngineRuntime`(类型,形状不变)迁至叶子 `service-outcome.ts`,service-confirmation/service-thread/drafts 族/agent-definition-authoring 改指叶子,service.ts 保留 re-export;复跑:service 相关环清零(剩 1 个非 service 既有环,presentation/broker)。
+- [x] Task: exec() 闭包分解(Red)8fd9ddf
+  - [x] 六段域模块失败测试 15 用例(service-exec/service-confirmation/service-coding-result/service-spawn/service-event-log;语义取自现闭包行为)。
+- [x] Task: exec() 闭包分解(Green)8fd9ddf
+  - [x] 逐段归位:路由+回执→`service-exec.ts` 编排入口(execCore/execPlanCore);挂起物化→`service-confirmation.ts`;coding-result→新 `service-coding-result.ts`;spawn→新 `service-spawn.ts`;T52 refold→`service-event-log.ts`;`service.ts` 只留装配+入口(有效行 211);
+  - [x] `service-tests` 断言零删除全绿(113 passed);单原子队列并发用例点名:service.test.ts:269「串行化:exec 单 atom(裁决器即并发控制)」。
+- [x] Task: 度量与门禁(service.ts 211 ≤350;`pnpm check` 554 文件/4147 测试绿;六段不在 service.ts 的 diff 佐证 git show 8fd9ddfa)
+- [x] Task: Phase Verification & Checkpoint(AC-4 证据:零环输出 + 211 行数 + 测试摘要 + commit 8fd9ddfa;git notes @8fd9ddf)
+- [x] 实施期附记:chat 编排模块迁 `src/chat/post/` 子域(GR3 拆解,依 D53;D75 修订条款落盘 DECISIONS.md)8fd9ddf
 
 ## Phase 5 卫生收尾与收口(FR5 → AC-5/AC-6)
 
