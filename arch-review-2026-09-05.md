@@ -4,6 +4,26 @@
 > **方法**：静态结构统计（文件数/原始行数/GR3 有效行数）+ 全历史 git churn（`git log --name-only` 文件触达次数）。**口径**：原始行含注释空行；有效行按 `scripts/governance/lib.mjs#effectiveLineCount`（非空非注释）；churn 含已搬移路径的历史触达，文中单独标注。v1 的合计 90,722 行误纳入 `.next-e2e*` 构建产物，已按 git 跟踪文件重算为 86,529。
 > **标记**：🔴 结构性风险；🟡 职责/一致性缺陷；🔵 卫生类。编号 A01–A10、N1–N2；仅为记录，不构成已批准决定（改动需先过 DECISIONS.md）。
 
+## 落地状态(T55 架构治理,2026-09-05 收口;证据见 track git notes)
+
+| 项 | 处置 | 落地 commit |
+| --- | --- | --- |
+| N1 GR2 中文词形盲区 | `MARKER_RE` 扩中文词形;33 文件存量=27 改写+6 术语登记;新测 check-compat.test.mjs | 5e6a0d20 |
+| N2 GR1 文件系统级耦合 | 相对 import 逃逸检测(node_modules 伸手/逃逸根;t22 探针改声明依赖);fs 读依赖披露段 fsReadDisclosures(t21/t16) | 316f186f + dae74a92 |
+| A04 贴限=测试行,报告可见性 | check-size 目录报告 test/non-test 分列,贴限(≥90%)清单 CLI 可见 | 1f69a8dc |
+| A05 AGENTS.md 第四应用 | 系统图补 `apps/agent-runner`(引 D34/D36 + 部署链路),「三个→四个」 | e3bd2031 |
+| A07 arch-brief 陈旧路径 | §8.1 `apps/web/src/db/presentation` → `packages/db/src/presentation.ts` | e3bd2031 |
+| A03 chat POST 单体 | D75 四段重构:route.ts 有效行 440→47(POST 体 41);四段模块落位 `src/chat/post/`(GR3 拆解修订) | 269fe4c8 |
+| A02 service 编排未拆 | D76:契约类型下沉 `service-outcome.ts`(接口形状不变),exec 六段归位 service-exec/coding-result/spawn/event-log/confirmation;service.ts 有效行 497→211;service 相关环 7→0 | 8fd9ddfa |
+| A06 t22 位置优化 | D77 批准(修订 D52):工作流文件迁 `scripts/t22/` 与唯一消费者同址 | 85ba2470 |
+| A10 工作区卫生(.next*) | 回收脚本 `pnpm next:recover-roots`(白名单 .next/.next-e2e);构建根 5→2,释放约 1.2GB | 85ba2470 |
+| A01/A08/A09 | 无操作项(设计语境/计数修正/文档化代码),不在 T55 范围 | — |
+| 候选 6 presentation 改名 | 已降级缓做(spec 非目标) | — |
+
+复测(2026-09-05,详见 track notes):churn 前二 route.ts 60 触/service.ts 54 触;
+GR1 例外 0、GR2 登记 13(全部 pendingRemoval:false)、GR3 基线 0、披露段 2;
+madge 环 8→1(余 1 为非 service 既有环)。
+
 ## 1. 总体结构画像
 
 | 工作区 | 非测试文件 | 测试文件 | 非测试原始行 | 全历史 churn | churn 密度（触/千行，全触达/仅非测试） |
