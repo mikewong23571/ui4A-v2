@@ -142,9 +142,18 @@ function transformedValue(
   const subject = binding.kind === 'item' ? '' : binding.subject;
   if (transform === 'actions-entity') {
     const source = value as SirenEntity;
+    // G05(T54):动作切片携带源实体的 properties.fields——detail controls 词的
+    // ActionGroup 预填取 entity.properties.fields,缺则工作区编辑表单空白
+    //(实体页直连全量实体故可预填);fields 是合同事实,非模型输出。
+    const fields = (source.properties as { fields?: unknown } | undefined)?.fields;
     return {
       class: ['presentation-action-slice'],
-      properties: { rel: subject },
+      properties: {
+        rel: subject,
+        ...(fields !== undefined && typeof fields === 'object' && fields !== null
+          ? { fields }
+          : {}),
+      },
       actions: source.actions,
       links: [],
       'guard-results': source['guard-results'] ?? [],
