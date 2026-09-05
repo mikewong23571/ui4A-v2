@@ -20,24 +20,24 @@
 - [x] Task: D77 t22 位置 D52 修订案裁定入 DECISIONS.md 9edbdd9(批准迁移:对象为 `apps/worker/src/t22-temporal-probe-workflows.ts` 8 行工作流文件 → `scripts/t22/` 同址唯一消费者;同步 workflowsPath 与 t22-probes-source.test.ts 断言)
 - [x] Task: Phase Verification & Checkpoint(Refer to workflow.md;AC-0 证据:DECISIONS diff + 复核 notes;验证:pnpm governance 全绿 + 事实复核命令留痕 git notes @9edbdd9)
 
-## Phase 1 治理盲区修补(FR1 → AC-1)
+## Phase 1 治理盲区修补(FR1 → AC-1)[checkpoint: 1f69a8d]
 
-- [ ] Task: GR2 中文词形(Red)
-  - [ ] 新建 `scripts/governance/check-compat.test.mjs`:含「兼容深路径入口」「向后兼容」「旧路径」的临时夹具必须被检出(先失败)。
-- [ ] Task: GR2 中文词形(Green)
-  - [ ] 扩展 `MARKER_RE`(至少 `兼容|向后兼容|旧路径|遗留`);确认治理目录排除规则不误伤;
-  - [ ] 跑只读扫描清单评估存量;逐条改写措辞或 allowlist 登记(reason + pendingRemoval);
-  - [ ] `pnpm governance` 全绿;`pnpm vitest run scripts/governance/check-compat.test.mjs` 通过。
-- [ ] Task: 相对 import 逃逸检测(FR1.2a,Red→Green)
-  - [ ] 失败用例:`scripts/t22/t22-temporal-probe.ts` 的 `../../apps/worker/node_modules/...` 伸手必须被 `check-deps` 检出;
-  - [ ] 实现「相对 import 逃逸工作区根」检测;登记或改写该处(优先改为声明依赖或搬移);`pnpm governance` 全绿。
-- [ ] Task: fs 读依赖披露登记(FR1.2b)
-  - [ ] `exceptions.json` 新增披露段(不执法):t21 readFileSync×4、t16 e2e/kits 依赖,各带 reason + retireWhen;
-  - [ ] 登记存在性测试(披露段可被读取且不使 governance 失败)。
-- [ ] Task: check-size 测试/非测试分列(Red→Green)
-  - [ ] 失败用例:目录报告必须分列;
-  - [ ] 实现 `effectiveLineCount` 聚合分列并在 `pnpm governance` 输出可见;抽查 `engine/src/definition` 非测试≈1,134。
-- [ ] Task: Phase Verification & Checkpoint(AC-1 三元证据:`pnpm governance` 输出 + 测试命令 + commit)
+- [x] Task: GR2 中文词形(Red)5e6a0d20
+  - [x] 新建 `scripts/governance/check-compat.test.mjs`:含「兼容深路径入口」「向后兼容」「旧路径」「遗留」的注入夹具被检出(先行失败 6 用例)。
+- [x] Task: GR2 中文词形(Green)5e6a0d20
+  - [x] 扩展 `MARKER_RE`(`兼容|向后兼容|旧路径|遗留` + 英文词形);checkCompat 注入 API;治理目录排除规则未误伤;
+  - [x] 只读扫描 33 文件:27 文件措辞等义改写、6 术语文件 allowlist 登记(reason + pendingRemoval: false);
+  - [x] `pnpm governance` 全绿;`pnpm vitest run scripts/governance/` 15 用例通过。
+- [x] Task: 相对 import 逃逸检测(FR1.2a,Red→Green)316f186f
+  - [x] 失败用例:`scripts/t22/t22-temporal-probe.ts` 的 `../../apps/worker/node_modules/...` 伸手被 `check-deps` 检出(另有逃逸根/误报防护/方向回归 3 用例);
+  - [x] 实现 relativeEscapeReason(node_modules 段/逃出仓库根);全库实扫仅该 2 行,改写为声明依赖(root devDeps `@temporalio/client+worker` 1.22.0 + 标准说明符);`pnpm governance` 全绿。
+- [x] Task: fs 读依赖披露登记(FR1.2b)dae74a92
+  - [x] `exceptions.json` 新增披露段 `fsReadDisclosures`(不执法):t21 readFileSync×4(逐文件明细)、t16 e2e/kits 依赖,各带 reason + retireWhen;
+  - [x] 登记存在性测试(check-deps.test.mjs:披露可读 + governance 不失败)。
+- [x] Task: check-size 测试/非测试分列(Red→Green)1f69a8dc
+  - [x] 失败用例:目录报告必须分列(聚合纯函数 + 仓库锚点);
+  - [x] 实现 `aggregateDirStats`/`nearLimitDirs`,`pnpm governance` 输出可见;抽查 `engine/src/definition` 非测试 = 1,134(精确)。
+- [x] Task: Phase Verification & Checkpoint(AC-1 三元证据:git notes @1f69a8d;`CI=true pnpm check` 546 文件/4112 测试全绿)
 
 ## Phase 2 文档真源对齐(FR2 → AC-2)
 
