@@ -5,7 +5,7 @@
 每阶段遵循 `conductor/workflow.md` 的 Red→Green→Gate、checkpoint、commit 与 git notes。
 任务失败不得绕过其依赖；范围内必做故事保持开放，不能以降低验收标准取得 DONE。
 
-## P0 开工复核、隔离探针与设计定案
+## P0 开工复核、隔离探针与设计定案 [checkpoint: 593d9a8]
 
 - [x] Task: P0.1 记录执行基线与约束 (c8e61a4)
   - [ ] 读取本 track 全部文档与仓库正典；记录 HEAD/dirty/现行 DECISIONS、相关模块与测试路径。
@@ -22,11 +22,11 @@
 - [x] Task: P0.4 执行 S3 布局与会话存续探针 (7b4b029)
   - [ ] 测指定尺寸/缩放/DOM 几何，验证草稿、SSE、停止、focus/back 及 `/chat` 不丢状态。
   - [ ] 定案并排阈值、覆盖交互与稳定 chat 状态拥有者；不引入布局依赖。
-- [~] Task: P0.5 先记录决定并 review 详细设计
+- [x] Task: P0.5 先记录决定并 review 详细设计 (593d9a8)
   - [ ] 在 DECISIONS 追加证据支持的决定，明确 supersede 恒三栏/本线 noGaze；不改历史 track。
   - [ ] 回写 design、spec、acceptance、plan 的确定 shape/模块/命令/范围；不存在的功能不得标已有。
   - [ ] 以 FR1–FR10/US01–US12 检查设计覆盖、授权/缓存/历史边界；记录定案 review 与修订。
-- [ ] Task: P0 Phase Verification & Checkpoint
+- [x] Task: P0 Phase Verification & Checkpoint (593d9a8)
   - [ ] 核对 S1–S3 出口全部有实证，规划未决已收敛、代码无废墟；记录命令/结果与 checkpoint。
 
 ## P1 本线读投影与声明驱动呈现（US01–04/10/11）
