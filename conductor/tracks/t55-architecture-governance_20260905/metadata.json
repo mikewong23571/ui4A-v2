@@ -1,0 +1,10 @@
+{
+  "trackId": "t55-architecture-governance_20260905",
+  "title": "T55 架构治理落地:审查结论 → 决策 → 门禁 → 重构",
+  "type": "remediation",
+  "status": "new",
+  "createdAt": "2026-09-05",
+  "description": "落地 arch-review-2026-09-05.md(v2,经独立双重审核)的裁定项:治理盲区修补(GR2 中文词形/GR1 读依赖/check-size 测试分列)、文档真源对齐(AGENTS.md 第四应用/arch-brief 陈旧路径)、chat POST 编排重构(D52 已命名窗口)、service hub 降权(ExecOutcome 解环+exec() 闭包分解,单原子队列不变)、卫生收尾(t22 探针 D52 修订案/构建根收敛)与收口复测;每项按 AC-0..AC-6 机械验收",
+  "dependsOn": [],
+  "artifacts": ["spec.md", "plan.md"]
+}
