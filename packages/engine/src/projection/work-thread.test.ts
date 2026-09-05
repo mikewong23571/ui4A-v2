@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { seedGuardRegistry, type EngineSnapshot, type ThreadStatus } from '@ui4a/shared';
+import {
+  COGNITIVE_SEMANTICS_EMPTY_MEANINGS,
+  COGNITIVE_SEMANTICS_GROUP_ROLES,
+  COGNITIVE_SEMANTICS_TRAITS,
+  seedGuardRegistry,
+  type EngineSnapshot,
+  type ThreadStatus,
+} from '@ui4a/shared';
 
 import { project } from '../contract/siren';
 import {
@@ -475,5 +482,178 @@ describe('Work Thread Siren projection', () => {
         expect(outcome.event.detail).toMatchObject({ source: 'action' });
       }
     }
+  });
+});
+
+/** 结构化读取 thread-reference 成员卡(运行时对象断言,不引入未来类型)。 */
+interface ThreadCardView {
+  class: string[];
+  properties: Record<string, unknown>;
+  actions: Array<{ name: string }>;
+  links: Array<{ rel: string[]; href: string }>;
+}
+
+function threadCards(entity: unknown): Map<string, ThreadCardView> {
+  const cards = ((entity as { entities?: ThreadCardView[] } | undefined)?.entities ??
+    []) as ThreadCardView[];
+  return new Map(cards.map((card) => [card.properties.rel as string, card]));
+}
+
+function cardRels(entity: unknown): string[] {
+  return [...threadCards(entity).keys()];
+}
+
+// T56 P1.1 Red:D78 决定 2(路线 A)钉死的目标读语义——实现前必须失败(断言失败,
+// 而非类型/语法错误);P1.2 落码后转绿。
+describe('Work Thread 角色读语义与认知声明(D78 路线 A 目标合同;Red)', () => {
+  it('A1 角色成员卡:active/approval 产出与 context 同构的 thread-reference 卡,approval 卡携带被引确认的声明动作(D78 决定 2;US01)', () => {
+    const entity = project(snapshot(), 'thread:release-1', deps);
+    // 与 properties 引用序同构:context → active → approval 全部落卡(当前仅 context 落卡)。
+    expect(cardRels(entity)).toEqual([
+      'articles',
+      'post:known',
+      'delegation:publish',
+      'agent-run:missing',
+      'confirmation:approve-1',
+      'draft:missing',
+    ]);
+    const cards = threadCards(entity);
+    // 与 context 成员卡同构:class thread-reference + properties{rel,identity,status,category}
+    //(category 取 THREAD_REFERENCE_CATEGORIES 封闭词表,是 D78 的「角色标注」)。
+    expect(cards.get('articles')).toMatchObject({
+      class: ['thread-reference'],
+      properties: { rel: 'articles', identity: 'articles', category: 'context' },
+    });
+    expect(cards.get('post:known')).toMatchObject({
+      class: ['thread-reference'],
+      properties: {
+        rel: 'post:known',
+        identity: 'Do not copy me',
+        status: 'published',
+        category: 'active',
+      },
+      links: [{ rel: ['self'], href: '/api/entity?rel=post:known' }],
+    });
+    expect(cards.get('delegation:publish')).toMatchObject({
+      class: ['thread-reference'],
+      properties: {
+        rel: 'delegation:publish',
+        identity: 'publish',
+        status: 'running',
+        category: 'active',
+      },
+    });
+    // 责任卡:身份行复用确认投影任务语;携带被引确认实体的声明动作(人机同权,
+    // membersDeclareActions 纯结构判定 → generic 规划器自动选 member-card,D50)。
+    const pendingCard = cards.get('confirmation:approve-1');
+    expect(pendingCard).toMatchObject({
+      class: ['thread-reference'],
+      properties: {
+        rel: 'confirmation:approve-1',
+        identity: 'archive · 由 agent 提议',
+        status: 'pending',
+        category: 'approval',
+      },
+      links: [{ rel: ['self'], href: '/api/entity?rel=confirmation:approve-1' }],
+    });
+    const confirmationEntity = project(snapshot(), 'confirmation:approve-1', deps);
+    expect(pendingCard?.actions.map((action) => action.name)).toEqual(
+      confirmationEntity?.actions.map((action) => action.name),
+    );
+    expect(pendingCard?.actions.map((action) => action.name)).toEqual(['approve', 'reject']);
+    // dangling 责任卡被引实体不存在 → 无动作组可声明。
+    expect(cards.get('draft:missing')?.actions).toEqual([]);
+  });
+
+  it('A2 空/未知/终局:dangling 卡诚实标注「对象不存在」,合同状态原词携带不翻译(D78 决定 2;US03)', () => {
+    const entity = project(snapshot(), 'thread:release-1', deps);
+    const cards = threadCards(entity);
+    // dangling 卡:class 带 dangling 限定,状态=既有「对象不存在」语义。
+    expect(cards.get('agent-run:missing')).toMatchObject({
+      class: ['thread-reference', 'dangling'],
+      properties: { rel: 'agent-run:missing', status: '对象不存在', category: 'active' },
+    });
+    expect(cards.get('draft:missing')).toMatchObject({
+      class: ['thread-reference', 'dangling'],
+      properties: { status: '对象不存在', category: 'approval' },
+    });
+    // 终局合同状态原词:published 逐字携带,不翻译成任务语/新业务词。
+    expect(cards.get('post:known')?.properties.status).toBe('published');
+    // 未知状态字符串不推断:实例落在任意节点名,卡片原样携带合同字符串,不做词表外归类。
+    const odd = snapshot();
+    odd.instances!['post:odd'] = {
+      rel: 'post:odd',
+      flow: 'post-status',
+      node: 'halfway-unknown',
+      fields: {},
+    };
+    odd.threads!['release-1']!.references.active = ['post:odd'];
+    const oddEntity = project(odd, 'thread:release-1', deps);
+    expect(threadCards(oddEntity).get('post:odd')?.properties.status).toBe('halfway-unknown');
+  });
+
+  it('A3 归档仍有责任:archived 线责任卡仍在且可到达;无验收来源不得出现验收通过语义(D78 决定 2;US04)', () => {
+    const entity = project(snapshot('archived'), 'thread:release-1', deps);
+    // archived 合同动作组为空(既有不变量再验);线状态保持任务语「已归档」。
+    expect(entity?.actions).toEqual([]);
+    expect(entity?.properties).toMatchObject({ status: 'archived', statusText: '已归档' });
+    // 责任成员卡不因归档消失,仍携带完整声明动作组与可达 self 链接。
+    const pendingCard = threadCards(entity).get('confirmation:approve-1');
+    expect(pendingCard).toMatchObject({
+      class: ['thread-reference'],
+      properties: { rel: 'confirmation:approve-1', status: 'pending', category: 'approval' },
+    });
+    expect(pendingCard?.actions.map((action) => action.name)).toEqual(['approve', 'reject']);
+    expect(pendingCard?.links.some((link) => link.rel.includes('self'))).toBe(true);
+    // 无验收来源:completed/archived 不得出现任何「验收通过/成果 PASS」语义字段。
+    expect(Object.keys(entity?.properties ?? {}).join(' ')).not.toMatch(/acceptance|outcome|pass/i);
+    expect(JSON.stringify(entity ?? null)).not.toContain('验收通过');
+    expect(JSON.stringify(entity ?? null)).not.toContain('成果');
+  });
+
+  it('A4 认知声明:thread presentation 升级 version:1 封闭词表声明,空线 emptyMeaning 用「当前可见」口径(D78 决定 2;US01)', () => {
+    const entity = project(snapshot(), 'thread:release-1', deps);
+    const presentation = entity?.properties.presentation as Record<string, unknown>;
+    // D54 单一落点:version:1 版本化认知声明(当前 presentation 仅含 fields)。
+    expect(presentation.version).toBe(1);
+    // traits 封闭词表;责任与进行中区域必须声明(US01 责任/材料区分的声明前提)。
+    const traits = presentation.traits as readonly string[];
+    expect(traits.length).toBeGreaterThan(0);
+    for (const trait of traits) expect(COGNITIVE_SEMANTICS_TRAITS).toContain(trait);
+    expect(traits).toContain('human-responsibility');
+    expect(traits).toContain('work-queue');
+    // groupRole 封闭词表:工作线是 principal 的责任组。
+    expect(presentation.groupRole).toBe('responsibility');
+    expect(COGNITIVE_SEMANTICS_GROUP_ROLES).toContain(presentation.groupRole);
+    // 字段声明保持既有三个读字段(目标/生命周期/进行中);材料区由成员卡承载(A1)。
+    expect(presentation.fields).toEqual(
+      expect.arrayContaining([
+        { path: 'properties.identity', title: '目标', role: 'identity' },
+        { path: 'properties.statusText', title: '状态', role: 'status' },
+        { path: 'properties.resume', title: '上次停在哪', role: 'primary-content' },
+      ]),
+    );
+    // 空线起步:emptyMeaning 声明起步引导(T40 先例词),不写「无进行中/无责任」
+    // 全称否定——真空与裁剪同形时合同只出封闭词,文案口径在渲染层(D78 决定 3)。
+    const blank: EngineSnapshot = {
+      instances: {},
+      collections: {},
+      threads: {
+        'blank-1': {
+          id: 'blank-1',
+          owner: 'user:mike',
+          goal: { text: 'Blank thread', source: 'message:goal-1' },
+          status: 'open',
+          references: { context: [], active: [], approval: [], event: [] },
+          recentEventSeqs: [],
+        },
+      },
+    };
+    const blankPresentation = project(blank, 'thread:blank-1', deps)?.properties
+      .presentation as Record<string, unknown>;
+    expect(blankPresentation.version).toBe(1);
+    expect(blankPresentation.emptyMeaning).toBe('ready-to-start');
+    expect(COGNITIVE_SEMANTICS_EMPTY_MEANINGS).toContain(blankPresentation.emptyMeaning);
+    expect(JSON.stringify(blankPresentation)).not.toMatch(/无(进行中|责任)/);
   });
 });
