@@ -6,6 +6,7 @@ import {
   getAgentRunEntity,
   isAgentRunRel,
 } from '../../../engine/agent/agent-runs';
+import { getMessageEntity, isMessageRel } from '../../../chat/message-entity';
 import {
   authenticationErrorResponse,
   resolveTrustedRequestIdentity,
@@ -75,13 +76,16 @@ export async function GET(request: Request) {
     }
     const projected = isAgentRunRel(rel)
       ? await getAgentRunEntity(db, rel, principal)
-      : await engine.getEntity(rel, rawCollectionQuery(url));
+      : isMessageRel(rel)
+        ? await getMessageEntity(db, rel, principal)
+        : await engine.getEntity(rel, rawCollectionQuery(url));
+    const specialRel = isAgentRunRel(rel) || isMessageRel(rel);
     const principalScoped =
-      projected === undefined || isAgentRunRel(rel)
+      projected === undefined || specialRel
         ? projected
         : filterThreadEntityForPrincipal(projected, snapshot, rel, principal);
     const entity =
-      principalScoped === undefined || isAgentRunRel(rel)
+      principalScoped === undefined || specialRel
         ? principalScoped
         : await enrichEntityWithAgentRuns(db, principalScoped, principal);
     if (entity === undefined) {

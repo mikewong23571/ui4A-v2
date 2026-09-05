@@ -11,13 +11,13 @@ import { describe, expect, it } from 'vitest';
 import { completePresentationRequest } from '@ui4a/shared';
 import { findActiveSidecar, ensurePresentationTables } from '@ui4a/db/presentation';
 
-import { getDb, getEngine, resetEngineForTests } from '../service';
+import { getDb, getEngine, resetEngineForTests } from '../../service';
 import {
   getPresentationBroker,
   resetPresentationBrokerForTests,
-} from '../presentation/runtime';
-import { resetRecipeCoordinatorForTests } from '../presentation/recipes-runtime';
-import { hydratePresentationSurface } from '../../render/presentation/generic';
+} from '../../presentation/runtime';
+import { resetRecipeCoordinatorForTests } from '../../presentation/recipes-runtime';
+import { hydratePresentationSurface } from '../../../render/presentation/generic';
 
 describe('G05 workspace prefill probe', () => {
   it('字段在 fresh entity/集合成员/repeat 水合逐段存活;item 路径指向 properties/fields', async () => {
