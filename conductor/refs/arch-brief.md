@@ -130,7 +130,7 @@ binding-only semantic Surface，不是 hydrated facts 或 SDK model。
 packages/shared/presentation     thin request/receipt
 packages/engine/presentation     pure lens/surface/recipe/sidecar/patch folds
 packages/agent                   bounded Presentation and Revision LLM adapters
-apps/web/src/db/presentation     append-only projection adapter
+packages/db/src/presentation.ts   append-only projection adapter(packages/db,T36 起为共享存储包)
 apps/web/src/engine/presentation Broker, Recipe pregen and fastpath
 apps/web/src/render/presentation deterministic A2UI compile/hydrate
 ```

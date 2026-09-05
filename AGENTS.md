@@ -12,7 +12,7 @@ UI4A is a pnpm/TypeScript monorepo implementing “interface as contract”: hum
 
 ## System and Application Map
 
-There are three deployable workspace applications (`web`, `worker`, `cli`), six installed product Applications (`default`, `publishing`, `community`, `development`, `editorial`, `governance`), one shared event log, and four architectural planes:
+There are four deployable workspace applications (`web`, `worker`, `cli`, `agent-runner`), six installed product Applications (`default`, `publishing`, `community`, `development`, `editorial`, `governance`), one shared event log, and four architectural planes:
 
 ```text
 human UI / agent / script
@@ -26,7 +26,10 @@ apps/web routes + service
 
 packages/shared ◄── packages/engine ◄── packages/agent
 apps/cli ──HTTP/Siren/meta──► apps/web
+apps/agent-runner ◄── Agent Run delivery ── apps/worker (Runtime Backend; D34/D36)
 ```
+
+`apps/agent-runner` is the experimental Agent Run Runner (D34/D36): per-Run one-shot Job on the Kubernetes backend, daemon on the trusted host. It is deployed from `apps/agent-runner/Dockerfile` via the release manifest (`deploy/oci/image-contract.json`) and `DEPLOYMENT.local.md`; it is not a Siren/HTTP contract participant and takes no event-log write path.
 
 - **Business plane:** application instances, flows, actions, and projections.
 - **Definition plane (`_meta`):** Flow definitions, Applications, Agent Definitions, Drafts, and Activations share a sitemap/Siren contract. The deterministic Meta Human Control Plane renders authorized governance; Application creation is not an in-product workflow.
