@@ -1,0 +1,19 @@
+{
+  "trackId": "t57-home-presentation-semantics_20260906",
+  "title": "T57 首页工作简报与组件呈现语义",
+  "type": "refactor",
+  "status": "new",
+  "createdAt": "2026-09-06",
+  "updatedAt": "2026-09-06",
+  "description": "以产品愿景组织首页注意力，按任务语义选择列表/决定卡/表格/输入宿主，复用同一合同与呈现平面，补齐组件层防特判门禁；含架构承载审查与实施后 review 闭环，当前仅规划。",
+  "dependsOn": ["t56-work-thread-workspace_20260905"],
+  "artifacts": [
+    "index.md",
+    "spec.md",
+    "architecture-review.md",
+    "design.md",
+    "acceptance.md",
+    "plan.md",
+    "planning-review.md"
+  ]
+}
