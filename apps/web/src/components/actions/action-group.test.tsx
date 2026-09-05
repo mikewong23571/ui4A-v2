@@ -184,3 +184,21 @@ describe('ActionGroup compact density (member-table 行内动作)', () => {
     expect(screen.getByRole('button', { name: '销毁' }).className).toContain('destructive');
   });
 });
+
+it('allows a second edit after the host supplies the updated entity fields', async () => {
+  const original = entityOf(['opaque']);
+  const submit = acceptedSubmit();
+  const view = render(<ActionGroup entity={original} submit={submit} />);
+  fireEvent.click(screen.getByRole('button', { name: '修订' }));
+  fireEvent.change(screen.getByRole('textbox', { name: /原因/ }), { target: { value: 'updated' } });
+  fireEvent.submit(view.container.querySelector('form')!);
+  await waitFor(() => expect(screen.getByRole('status').textContent).toContain('已执行'));
+  const updated = {
+    ...original,
+    properties: { ...original.properties, fields: { reason: 'updated' } },
+  };
+  view.rerender(<ActionGroup entity={updated} submit={submit} />);
+  expect((screen.getByRole('button', { name: '修订' }) as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(screen.getByRole('button', { name: '修订' }));
+  expect((screen.getByRole('textbox', { name: /原因/ }) as HTMLInputElement).value).toBe('updated');
+});

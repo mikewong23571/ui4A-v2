@@ -88,7 +88,7 @@ export function ActionGroup({
     void compact;
     return (
       <div
-        key={`${rel}:${action.name}:${JSON.stringify(action.fields)}`}
+        key={`${rel}:${action.name}:${JSON.stringify([action.fields, prefill])}`}
         data-action-group-item={action.name}
       >
         {runner}

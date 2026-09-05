@@ -96,7 +96,11 @@ export class PageEntityCache {
     const request = this.fetcher(rel, readQuery)
       .then((fetched) => {
         // 版本在飞行中变了 → 该响应出自旧投影口径,落缓存即脏读(I2),丢弃。
-        if (fetched !== null && this.version === requestedVersion) {
+        if (
+          fetched !== null &&
+          this.version === requestedVersion &&
+          this.inflight.get(key) === request
+        ) {
           this.entities.set(key, fetched);
         }
         return fetched;
@@ -156,12 +160,21 @@ export class PageEntityCache {
 
   /** 逐出 rel 的缓存/inflight 条目,含全部读面变体键(`rel?readQuery`)。 */
   private evictRel(rel: string): void {
-    const prefix = `${rel}?`;
+    // The read key may be an entry alias while actions use the returned canonical rel.
+    // Discover aliases from observed contract identity, never from application naming rules.
+    const targets = new Set([rel]);
+    for (const [key, entity] of this.entities) {
+      if (key === rel || entity.properties.rel === rel) {
+        targets.add(key.split('?')[0]);
+        if (typeof entity.properties.rel === 'string') targets.add(entity.properties.rel);
+      }
+    }
+    const matches = (key: string) => targets.has(key.split('?')[0]);
     for (const key of [...this.entities.keys()]) {
-      if (key === rel || key.startsWith(prefix)) this.entities.delete(key);
+      if (matches(key)) this.entities.delete(key);
     }
     for (const key of [...this.inflight.keys()]) {
-      if (key === rel || key.startsWith(prefix)) this.inflight.delete(key);
+      if (matches(key)) this.inflight.delete(key);
     }
   }
 }

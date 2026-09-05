@@ -21,6 +21,7 @@ import { relFromMetaApiHref } from '../meta-surfaces';
 import { redactMetaValue } from '../view-models/agent-definition';
 import { projectGenericRelationships } from './generic/generic-relationship-projection';
 import { MetaActionOutcome } from './meta-action-outcome';
+import { DraftScopeChoice } from './draft-scope-choice';
 
 export function titleForEntity(entity: SirenEntity): string {
   for (const key of ['title', 'name', 'ref', 'id', 'rel']) {
@@ -64,6 +65,16 @@ interface MetaActionsProps {
 }
 
 export function MetaActions(props: MetaActionsProps) {
+  if (
+    !props.scope &&
+    (props.entity.class.includes('draft') ||
+      props.entity.class.includes('meta/drafts') ||
+      (props.entity.class.includes('activation') &&
+        typeof props.entity.properties.draft === 'string')) &&
+    publicMetaActions(props.entity).length > 0
+  ) {
+    return <DraftScopeChoice rel={props.rel} />;
+  }
   return <ScopedMetaActions key={JSON.stringify([props.scope ?? null, props.rel])} {...props} />;
 }
 
