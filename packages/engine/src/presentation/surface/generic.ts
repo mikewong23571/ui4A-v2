@@ -54,7 +54,14 @@ function cognitiveTraitsOf(value: unknown) {
       key in value ? [[key, value[key]] as const] : [],
     ),
   );
-  return parseCognitiveSemanticsProjection(cognitiveProjection)?.traits;
+  try {
+    return parseCognitiveSemanticsProjection(cognitiveProjection)?.traits;
+  } catch {
+    // T56 P1.3(Fixture H「未知认知语义合同」;US11):version 在场但词表外
+    // (未来版本/未知 trait)的声明按「未声明」诚实回退 generic 路径——规划器
+    // 不因合同数据抛错;严格解析仍是类型化客户端的合同,呈现端只降级不破坏。
+    return undefined;
+  }
 }
 
 function isGenericFieldRole(role: SemanticRegionRole): role is GenericFieldCandidate['role'] {

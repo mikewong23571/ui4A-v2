@@ -356,6 +356,50 @@ describe('T56/D78 非密度 trait 消费通路:成员区角色与排布由 versi
       'relation:repeat:relation',
     ]);
   });
+
+  // T56 P1.3(A8/US11;Fixture H「未知认知语义合同」):version 在场但词表外的
+  // 认知声明(未来版本/未知 trait)不得破坏 trait 通路——generic 规划必须按
+  // 「未声明」诚实回退到既有 relation 树形,而不是规划抛错让整面不可载。
+  it('未知认知语义声明(版本在场但词表外)按未声明诚实回退,不抛错', () => {
+    const entity: SirenEntity = {
+      ...base,
+      class: ['future-app', 'record'],
+      properties: {
+        rel: 'future:one',
+        identity: 'Future record',
+        presentation: {
+          version: 1,
+          traits: ['future-review-queue'],
+          groupRole: 'responsibility',
+          emptyMeaning: 'future-empty',
+        },
+      },
+    };
+    const slots = topLevelSlots(plan('future:one', entity));
+    expect(slots.map(({ role, inner }) => `${role}:${inner}`)).toEqual([
+      'identity:word:prose',
+      'actions:word:controls',
+      'relation:word:references',
+      'relation:repeat:relation',
+    ]);
+
+    const newerVersion: SirenEntity = {
+      ...base,
+      class: ['future-app', 'record'],
+      properties: {
+        rel: 'future:two',
+        identity: 'Future record two',
+        presentation: { version: 2, traits: ['human-responsibility'] },
+      },
+    };
+    const newerSlots = topLevelSlots(plan('future:two', newerVersion));
+    expect(newerSlots.map(({ role, inner }) => `${role}:${inner}`)).toEqual([
+      'identity:word:prose',
+      'actions:word:controls',
+      'relation:word:references',
+      'relation:repeat:relation',
+    ]);
+  });
 });
 
 describe('G09 捕捉回环:区域标题绑声明任务名,不绑上一轮产物名', () => {

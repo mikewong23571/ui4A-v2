@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenEntity } from '@ui4a/engine';
@@ -14,6 +15,7 @@ import {
   fetchMetaEntity,
   fetchMetaSitemap,
   subscribeMetaScopeGeneration,
+  useMetaEntity,
 } from './meta-client';
 
 const exact: SirenEntity = {
@@ -32,7 +34,10 @@ const exact: SirenEntity = {
   'guard-results': [],
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe('Meta browser client', () => {
   it('carries the same URL scope through sitemap and entity reads without identity headers', async () => {
@@ -295,6 +300,47 @@ describe('Meta browser client', () => {
 
     await expect(fetchMetaEntity('draft:ghost', 'f07-404')).resolves.toBeNull();
     expect(redirectMock).not.toHaveBeenCalled();
+  });
+});
+
+// T56 P1.3(US11/FR10):过期请求不覆盖新主体——同一 client 连续请求主体 A→B,
+// B 慢 A 快时,A 的迟到响应不得覆盖 B 的主面/标题/成员卡(useMetaEntity 消费口径)。
+describe('Meta entity hook stale-subject guard (T56 P1.3)', () => {
+  it('a late response for the previous subject never overwrites the current subject', async () => {
+    const entityFor = (rel: string): SirenEntity => ({
+      class: ['meta', 'draft'],
+      properties: { rel, identity: `identity-of-${rel}` },
+      actions: [],
+      links: [],
+      'guard-results': [],
+    });
+    let resolveStale: ((response: Response) => void) | undefined;
+    const staleResponse = new Promise<Response>((resolve) => {
+      resolveStale = resolve;
+    });
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const rel = new URL(String(input), 'http://ui4a.local').searchParams.get('rel') ?? '';
+      if (rel === 'draft:p13-a') return staleResponse;
+      return new Response(JSON.stringify(entityFor(rel)), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result, rerender } = renderHook(({ rel }) => useMetaEntity(rel), {
+      initialProps: { rel: 'draft:p13-a' },
+    });
+    expect(result.current.state).toBe('loading');
+    rerender({ rel: 'draft:p13-b' });
+    await waitFor(() => expect(result.current.state).toBe('ready'));
+    expect(result.current.entity).toMatchObject({ properties: { rel: 'draft:p13-b' } });
+
+    // A 的迟到响应落地:当前主面仍为 B(乱序 resolve 不回写)。
+    await act(async () => {
+      resolveStale?.(new Response(JSON.stringify(entityFor('draft:p13-a')), { status: 200 }));
+    });
+    expect(result.current.state).toBe('ready');
+    expect(result.current.entity).toMatchObject({
+      properties: { rel: 'draft:p13-b', identity: 'identity-of-draft:p13-b' },
+    });
   });
 });
 
