@@ -22,7 +22,7 @@ async function execute(): Promise<void> {
     namespace,
     taskQueue,
     workflowsPath: fileURLToPath(
-      new URL('../../apps/worker/src/t22-temporal-probe-workflows.ts', import.meta.url),
+      new URL('./t22-temporal-probe-workflows.ts', import.meta.url),
     ),
   });
   const workerRun = worker.run();

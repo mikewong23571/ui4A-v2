@@ -40,7 +40,7 @@ describe('T22 disposable probe source governance', () => {
 
   it('keeps the Temporal probe configurable and its workflow deterministic', () => {
     const temporal = source('scripts/t22/t22-temporal-probe.ts');
-    const workflow = source('apps/worker/src/t22-temporal-probe-workflows.ts');
+    const workflow = source('scripts/t22/t22-temporal-probe-workflows.ts');
 
     expect(temporal).toContain("process.env.TEMPORAL_NAMESPACE ?? 'ui4a-probe'");
     expect(temporal).toContain("process.env.TEMPORAL_ADDRESS ?? '127.0.0.1:17233'");
