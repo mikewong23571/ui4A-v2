@@ -19,7 +19,11 @@ export function ApplicationEntryStrip() {
   const entries = state.status === 'ready' ? state.entries : [];
 
   return (
-    <section aria-label="应用" data-testid="application-entry-strip" className="@container mb-6 min-w-0">
+    <section
+      aria-label="应用"
+      data-testid="application-entry-strip"
+      className="@container mb-6 min-w-0"
+    >
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <div className="flex items-baseline gap-2">
           <h2 className="text-sm font-medium text-foreground">应用书架</h2>
@@ -41,10 +45,10 @@ export function ApplicationEntryStrip() {
         (entries.length === 0 ? (
           <p className="text-sm text-muted-foreground">暂无可用应用。</p>
         ) : (
-          {/* Columns track the strip's own width, not the viewport: the same strip renders
-              full-width on home and beside the thread desk rail on /canvas, where a viewport
-              lg breakpoint would force nine columns into a half-width container. */}
           <div className="grid grid-cols-3 gap-2 @xl:grid-cols-5 @5xl:grid-cols-9">
+            {/* Columns track the strip's own width, not the viewport: the same strip renders
+                full-width on home and beside the thread desk rail on /canvas, where a viewport
+                lg breakpoint would force nine columns into a half-width container. */}
             {entries.slice(0, HOME_APPLICATION_LIMIT).map((application) => (
               <ApplicationLink
                 key={application.name}
