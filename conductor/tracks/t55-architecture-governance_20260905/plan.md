@@ -23,14 +23,17 @@
 ## Phase 1 治理盲区修补(FR1 → AC-1)
 
 - [ ] Task: GR2 中文词形(Red)
-  - [ ] 在 check-compat 的测试中新增用例:含「兼容深路径入口」「向后兼容」「旧路径」的临时夹具必须被检出(先失败)。
+  - [ ] 新建 `scripts/governance/check-compat.test.mjs`:含「兼容深路径入口」「向后兼容」「旧路径」的临时夹具必须被检出(先失败)。
 - [ ] Task: GR2 中文词形(Green)
   - [ ] 扩展 `MARKER_RE`(至少 `兼容|向后兼容|旧路径|遗留`);确认治理目录排除规则不误伤;
   - [ ] 跑只读扫描清单评估存量;逐条改写措辞或 allowlist 登记(reason + pendingRemoval);
-  - [ ] `pnpm governance` 全绿。
-- [ ] Task: 读依赖显式登记(Red→Green)
-  - [ ] 为 exceptions.json 新登记段写失败测试(三处 FR1.2 点名项必须被要求登记);
-  - [ ] 补齐三处登记(reason + retireWhen);`pnpm governance` 全绿。
+  - [ ] `pnpm governance` 全绿;`pnpm vitest run scripts/governance/check-compat.test.mjs` 通过。
+- [ ] Task: 相对 import 逃逸检测(FR1.2a,Red→Green)
+  - [ ] 失败用例:`scripts/t22/t22-temporal-probe.ts` 的 `../../apps/worker/node_modules/...` 伸手必须被 `check-deps` 检出;
+  - [ ] 实现「相对 import 逃逸工作区根」检测;登记或改写该处(优先改为声明依赖或搬移);`pnpm governance` 全绿。
+- [ ] Task: fs 读依赖披露登记(FR1.2b)
+  - [ ] `exceptions.json` 新增披露段(不执法):t21 readFileSync×4、t16 e2e/kits 依赖,各带 reason + retireWhen;
+  - [ ] 登记存在性测试(披露段可被读取且不使 governance 失败)。
 - [ ] Task: check-size 测试/非测试分列(Red→Green)
   - [ ] 失败用例:目录报告必须分列;
   - [ ] 实现 `effectiveLineCount` 聚合分列并在 `pnpm governance` 输出可见;抽查 `engine/src/definition` 非测试≈1,134。
@@ -52,8 +55,9 @@
 - [ ] Task: 四段提取(Green)
   - [ ] POST 内对应段落替换为模块调用;`route.ts` 收缩为编排壳;
   - [ ] 既有 9 文件断言零删除、全绿;`pnpm check` 绿。
-- [ ] Task: E2E 验证(`CI=true pnpm e2e` chat 相关 spec 全绿;notes 点名 spec)
-- [ ] Task: Phase Verification & Checkpoint(AC-3 证据:行数度量 + 测试输出 + e2e 摘要 + commit;route.ts 有效行 ≤200)
+- [ ] Task: E2E 验证(`CI=true pnpm e2e chat.spec.ts` 全绿;notes 留输出摘要)
+- [ ] Task: 度量与门禁(AC-3:`route.ts` 有效行 ≤200 **且 POST handler 体 ≤150**;`pnpm check` 绿;四段各有独立测试文件)
+- [ ] Task: Phase Verification & Checkpoint(AC-3 证据:两项行数度量 + 测试输出 + e2e 摘要 + commit)
 
 ## Phase 4 service hub 降权(FR4 → AC-4;D76 边界)
 
@@ -76,7 +80,7 @@
   - [ ] 统一 e2e/probe 构建根或落地回收脚本;演示回收并留命令;磁盘 `.next*` 根数 ≤2。
 - [ ] Task: arch-review 文档状态更新与复测报告
   - [ ] `arch-review-2026-09-05.md` 各处置项标注落地 commit;
-  - [ ] 重跑度量口径(churn 前二、贴限清单、GR 计数)与 v2 基线对比入 notes。
+  - [ ] 重跑度量口径(churn 前二、贴限清单、GR 计数)与 v2 基线对比入 notes;**复测命令清单固化于 notes**(若形成常驻脚本,按 GR5 晋升或删除)。
 - [ ] Task: GR5 处置与全量门禁
   - [ ] 本 track bespoke 脚本/配置晋升或删除;
   - [ ] `pnpm check`(strict 空基线)+ `CI=true pnpm e2e` + `CI=true pnpm e2e invariants` 全绿。
@@ -89,6 +93,12 @@
 | 0 | AC-0 | DECISIONS D75/D76/D77 + 复核 notes |
 | 1 | AC-1 | `pnpm governance` 输出(中文检出/登记/分列) |
 | 2 | AC-2 | grep 证据 |
-| 3 | AC-3 | route.ts ≤200 行 + 9 测试全绿 + e2e |
+| 3 | AC-3 | route.ts ≤200 行 + POST ≤150 + 9 测试全绿 + e2e chat.spec |
 | 4 | AC-4 | 零环 + service.ts ≤350 行 + service-tests 全绿 |
 | 5 | AC-5/AC-6 | 回收演示 + 复测报告 + 全量门禁 + 归档 |
+
+## Phase R 规划期审查修订(2026-09-05)
+
+- [x] Task: Apply review suggestions 8aa32d8b(Principal review:1H/2M/3L,均针对验收方案自身)
+  - spec:AC-1.1 验证命令改为新建 `check-compat.test.mjs` + 可执行 vitest 命令(H);FR1.2 拆为执法(a:相对 import 逃逸检测)+ 披露(b:fs 读依赖登记)并同步 AC-1.2(M);AC-3 e2e 点名 `chat.spec.ts`、AC-6 复测命令清单固化、§4 移交时 DoD 改写规则(L);
+  - plan:Phase 3 补 POST ≤150 度量任务与里程碑列(M)、Phase 1 任务与 FR1.2a/b 对齐、Phase 5 命令清单措辞。
