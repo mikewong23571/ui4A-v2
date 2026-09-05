@@ -188,7 +188,12 @@ describe('B1 投影联动:exec → /api/entity', () => {
 
     const welcome = (await (await entity('post:post-welcome')).json()) as SirenEntity;
     expect(welcome.properties.node).toBe('offline');
-    expect(welcome.actions.map((action) => action.name)).toEqual(['republish']);
+    expect(welcome.actions.map((action) => action.name)).toEqual([
+      // T54/G06:下线后可编辑正文与归档。
+      'edit',
+      'republish',
+      'archive',
+    ]);
 
     const other = (await (await entity('post:first-post')).json()) as SirenEntity;
     expect(other.properties.node).toBe('published');
