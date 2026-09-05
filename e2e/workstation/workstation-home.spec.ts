@@ -302,7 +302,8 @@ test('waiting-for-me 成员决策卡:批准两段确认零导航零参数,同一
     // 在等我区域:成员渲染为决策卡(身份行 = 投影携带的任务语言 identity);
     // 工作线的建线成员同为决策卡(成员带已声明动作),按文本分别定位。
     const card = surface.locator('[data-word="member-card"]', {
-      hasText: 'archive · 由 agent 提议',
+      // G03(T54):身份行携带风险标注(archive 声明 requires-confirmation=high)。
+      hasText: 'archive〔需high确认〕 · 由 agent 提议',
     });
     await expect(card).toHaveCount(1);
     await expect(card).toContainText('confirmation:c1');
@@ -341,7 +342,9 @@ test('waiting-for-me 成员决策卡:批准两段确认零导航零参数,同一
     // 目标 +「停在「进行中」」(T35 D-2 成员状态标题化;active 空回退线程状态,投影数据,零渲染器模板)。
     await page.reload();
     await expect(
-      page.locator('[data-word="member-card"]', { hasText: 'archive · 由 agent 提议' }),
+      page.locator('[data-word="member-card"]', {
+        hasText: 'archive〔需high确认〕 · 由 agent 提议',
+      }),
     ).toHaveCount(0);
     const threadCard = page.locator('[data-word="member-card"]', {
       hasText: 'T33 验收工作线',

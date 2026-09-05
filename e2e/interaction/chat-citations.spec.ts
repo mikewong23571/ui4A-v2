@@ -50,7 +50,12 @@ test('structured citation click focuses the same Canvas entity and preserves onl
 
     const citation = page.locator('[data-nav="citation:post:first-post"]');
     await expect(citation).toHaveCount(1);
-    await expect(citation).toContainText('/properties/fields/body');
+    // G10(T54):JSON Pointer 退审计(title 属性);可见标签为授权实体声明名
+    //(本地 fixture 无实体会话时回退 rel 本身)。
+    await expect(citation).toHaveAttribute(
+      'title',
+      /\/properties\/fields\/body/,
+    );
     await expect(page.locator('[data-nav="citation:post:ghost"]')).toHaveCount(0);
     await expect(citation).not.toHaveAttribute('aria-current', 'location');
 
