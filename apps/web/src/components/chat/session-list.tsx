@@ -19,6 +19,17 @@ const OUTCOME_LABEL: Record<string, string> = {
   'max-steps': '步数上限',
 };
 
+/**
+ * 末回合终态的清单口径(G11 / 证据 A33/R22):清单行是事件日志投影的末回合
+ * 快照,其后的批准/驳回裁决不回写本行——suspended 裸呈「待确认」会被误读为
+ * 当前待办,故按历史口径加「上次回合:」前缀;done/failed/max-steps 的措辞
+ * 本身即是已然事实,维持直出。
+ */
+function lastOutcomeWord(outcome: string): string {
+  const label = OUTCOME_LABEL[outcome] ?? outcome;
+  return outcome === 'suspended' ? `上次回合:${label}` : label;
+}
+
 export function SessionList({ session }: { session: ChatSession }) {
   if (session.sessionsError !== null) {
     return (
@@ -68,7 +79,7 @@ export function SessionList({ session }: { session: ChatSession }) {
                 {item.lastOutcome !== '' && (
                   <>
                     <span>·</span>
-                    <span>{OUTCOME_LABEL[item.lastOutcome] ?? item.lastOutcome}</span>
+                    <span>{lastOutcomeWord(item.lastOutcome)}</span>
                   </>
                 )}
                 {current && <span className="text-primary">· 当前</span>}

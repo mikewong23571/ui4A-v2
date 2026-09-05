@@ -9,37 +9,57 @@
       "name": "default",
       "title": "默认应用",
       "intent": "归一化兜底:未显式声明归属的 flow 统一落在这里(parse 缺省 app=default)。boot seed 保证其始终激活,是 app-known 不变式的地板——不承载具体业务语义。",
-      "cognitive": { "version": 1, "traits": ["system-fallback"] }
+      "cognitive": {
+        "version": 1,
+        "traits": [
+          "system-fallback"
+        ]
+      }
     },
     {
       "name": "publishing",
       "title": "内容发布",
       "intent": "内容起草与发布:三步向导起草文章并发布,发布后管理其状态(下线/归档/重新发布)。",
-      "entry": { "target": "flow:article-drafting", "role": "primary-create" }
+      "entry": {
+        "target": "flow:article-drafting",
+        "role": "primary-create"
+      }
     },
     {
       "name": "community",
       "title": "社区互动",
       "intent": "评论与社区互动:读者评论进入审核队列,经人工裁决通过或驳回。",
-      "entry": { "target": "comments", "role": "primary-collection" }
+      "entry": {
+        "target": "comments",
+        "role": "primary-collection"
+      }
     },
     {
       "name": "development",
       "title": "软件实施",
       "intent": "把受权的软件变更任务交给隔离 Coding Capability Executor，查看进度、测试与结果，并由人类接受或驳回。",
-      "entry": { "target": "flow:software-change", "role": "primary-task" }
+      "entry": {
+        "target": "flow:software-change",
+        "role": "primary-task"
+      }
     },
     {
       "name": "editorial",
       "title": "编辑写作",
       "intent": "把有来源约束的写作 Brief 交给 Writing Agent，查看进度、文档、引用与渲染证据，再由人类接受或驳回；接受不等于发布。",
-      "entry": { "target": "flow:writing-request", "role": "primary-task" }
+      "entry": {
+        "target": "flow:writing-request",
+        "role": "primary-task"
+      }
     },
     {
       "name": "governance",
       "title": "Agent 治理",
       "intent": "把自然语言专业化需求交给 Agent Definition Author，生成可机械验证的定义 Draft、示例和 Eval corpus；只有人类审批才能激活版本。",
-      "entry": { "target": "flow:agent-definition-authoring", "role": "primary-task" }
+      "entry": {
+        "target": "flow:agent-definition-authoring",
+        "role": "primary-task"
+      }
     }
   ],
   "capabilities": [
@@ -77,12 +97,36 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "repositoryRef": { "type": "string", "minLength": 1 },
-          "baseRevision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
-          "goal": { "type": "string", "minLength": 1 },
-          "constraints": { "type": "array", "items": { "type": "string" } },
-          "acceptanceCriteria": { "type": "array", "items": { "type": "string" } },
-          "allowedPaths": { "type": "array", "items": { "type": "string" } }
+          "repositoryRef": {
+            "type": "string",
+            "minLength": 1
+          },
+          "baseRevision": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "goal": {
+            "type": "string",
+            "minLength": 1
+          },
+          "constraints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "acceptanceCriteria": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowedPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         },
         "required": [
           "repositoryRef",
@@ -97,21 +141,57 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "resultId": { "type": "string" },
-          "patch": { "type": "string" },
-          "trajectory": { "type": "string" },
-          "changedFiles": { "type": "array", "items": { "type": "string" } },
-          "tests": { "type": "array", "items": { "type": "object" } },
-          "summary": { "type": "string" }
+          "resultId": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "trajectory": {
+            "type": "string"
+          },
+          "changedFiles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "summary": {
+            "type": "string"
+          }
         },
-        "required": ["resultId", "patch", "trajectory", "changedFiles", "tests", "summary"]
+        "required": [
+          "resultId",
+          "patch",
+          "trajectory",
+          "changedFiles",
+          "tests",
+          "summary"
+        ]
       },
-      "scope": { "applications": ["development"], "flows": ["software-change"] },
+      "scope": {
+        "applications": [
+          "development"
+        ],
+        "flows": [
+          "software-change"
+        ]
+      },
       "executor": {
         "class": "coding-agent",
         "profile": "default",
         "agentDefinition": "coding-agent@1",
-        "requiredFeatures": ["resume", "structured-events", "workspace-write"]
+        "requiredFeatures": [
+          "resume",
+          "structured-events",
+          "workspace-write"
+        ]
       }
     },
     {
@@ -124,44 +204,113 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "objective": { "type": "string", "minLength": 1 },
-          "audience": { "type": "string", "minLength": 1 },
-          "requiredSections": { "type": "array", "items": { "type": "string" } },
-          "constraints": { "type": "array", "items": { "type": "string" } },
+          "objective": {
+            "type": "string",
+            "minLength": 1
+          },
+          "audience": {
+            "type": "string",
+            "minLength": 1
+          },
+          "requiredSections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "constraints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "sources": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "id": { "type": "string", "minLength": 1 },
-                "title": { "type": "string", "minLength": 1 },
-                "mediaType": {
-                  "enum": ["text/plain", "text/markdown", "application/json"]
+                "id": {
+                  "type": "string",
+                  "minLength": 1
                 },
-                "content": { "type": "string" },
-                "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+                "title": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "mediaType": {
+                  "enum": [
+                    "text/plain",
+                    "text/markdown",
+                    "application/json"
+                  ]
+                },
+                "content": {
+                  "type": "string"
+                },
+                "hash": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                }
               },
-              "required": ["id", "title", "mediaType", "content", "hash"],
+              "required": [
+                "id",
+                "title",
+                "mediaType",
+                "content",
+                "hash"
+              ],
               "additionalProperties": false
             }
           }
         },
-        "required": ["objective", "audience", "requiredSections", "constraints", "sources"],
+        "required": [
+          "objective",
+          "audience",
+          "requiredSections",
+          "constraints",
+          "sources"
+        ],
         "additionalProperties": false
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "resultId": { "type": "string" },
-          "summary": { "type": "string" },
-          "artifact": { "type": "object" },
-          "citations": { "type": "array", "items": { "type": "object" } },
-          "safety": { "type": "object" }
+          "resultId": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "artifact": {
+            "type": "object"
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "safety": {
+            "type": "object"
+          }
         },
-        "required": ["resultId", "summary", "artifact", "citations", "safety"],
+        "required": [
+          "resultId",
+          "summary",
+          "artifact",
+          "citations",
+          "safety"
+        ],
         "additionalProperties": false
       },
-      "scope": { "applications": ["editorial"], "flows": ["writing-request"] },
+      "scope": {
+        "applications": [
+          "editorial"
+        ],
+        "flows": [
+          "writing-request"
+        ]
+      },
       "executor": {
         "class": "document-agent",
         "profile": "editorial-default",
@@ -186,30 +335,54 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "description": { "type": "string", "minLength": 1 }
+          "description": {
+            "type": "string",
+            "minLength": 1
+          }
         },
-        "required": ["description"],
+        "required": [
+          "description"
+        ],
         "additionalProperties": false
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "source": { "type": "object" },
-          "examples": { "type": "array" },
-          "evalCorpus": { "type": "array" }
+          "source": {
+            "type": "object"
+          },
+          "examples": {
+            "type": "array"
+          },
+          "evalCorpus": {
+            "type": "array"
+          }
         },
-        "required": ["source", "examples", "evalCorpus"],
+        "required": [
+          "source",
+          "examples",
+          "evalCorpus"
+        ],
         "additionalProperties": false
       },
       "scope": {
-        "applications": ["governance"],
-        "flows": ["agent-definition-authoring"]
+        "applications": [
+          "governance"
+        ],
+        "flows": [
+          "agent-definition-authoring"
+        ]
       },
       "executor": {
         "class": "agent-definition-authoring",
         "profile": "authoring-default",
         "agentDefinition": "agent-definition-author@1",
-        "requiredFeatures": ["structured-result", "streamed-events", "cancel", "resume"]
+        "requiredFeatures": [
+          "structured-result",
+          "streamed-events",
+          "cancel",
+          "resume"
+        ]
       }
     }
   ],
@@ -229,7 +402,9 @@
               "type": "text",
               "required": true,
               "semantics": "intent",
-              "presentation": { "role": "identity" },
+              "presentation": {
+                "role": "identity"
+              },
               "title": "文章标题"
             }
           ],
@@ -273,9 +448,15 @@
               "name": "category",
               "type": "select",
               "required": true,
-              "options": ["tech", "essay", "review"],
+              "options": [
+                "tech",
+                "essay",
+                "review"
+              ],
               "semantics": "org-standard",
-              "presentation": { "role": "metadata" },
+              "presentation": {
+                "role": "metadata"
+              },
               "title": "分类",
               "source": {
                 "kind": "static"
@@ -314,7 +495,9 @@
               "type": "textarea",
               "required": true,
               "semantics": "work-product",
-              "presentation": { "role": "primary-content" },
+              "presentation": {
+                "role": "primary-content"
+              },
               "title": "正文",
               "source": {
                 "kind": "proposal",
@@ -349,14 +532,18 @@
               "name": "publish",
               "title": "发布",
               "to": "basic-info",
-              "guards": ["title-not-taken"],
+              "guards": [
+                "title-not-taken"
+              ],
               "fields": [
                 {
                   "name": "title",
                   "type": "text",
                   "required": true,
                   "semantics": "intent",
-                  "presentation": { "role": "identity" },
+                  "presentation": {
+                    "role": "identity"
+                  },
                   "title": "文章标题",
                   "description": "用于生成文章地址(slug),与前序所填一致"
                 }
@@ -397,27 +584,50 @@
       "title": "文章状态",
       "app": "publishing",
       "initial": "published",
-      "collections": [{ "collection": "articles", "title": "文章" }],
-      "cognitive": { "version": 1, "traits": ["output-catalog"] },
+      "collections": [
+        {
+          "collection": "articles",
+          "title": "文章"
+        }
+      ],
+      "cognitive": {
+        "version": 1,
+        "traits": [
+          "output-catalog"
+        ]
+      },
       "fields": [
         {
           "name": "title",
           "type": "text",
           "title": "文章标题",
-          "presentation": { "role": "identity", "overview": true }
+          "presentation": {
+            "role": "identity",
+            "overview": true
+          }
         },
         {
           "name": "body",
           "type": "textarea",
           "title": "正文",
-          "presentation": { "role": "primary-content", "overview": true }
+          "presentation": {
+            "role": "primary-content",
+            "overview": true
+          }
         },
         {
           "name": "category",
           "type": "select",
-          "options": ["tech", "essay", "review"],
+          "options": [
+            "tech",
+            "essay",
+            "review"
+          ],
           "title": "分类",
-          "presentation": { "role": "metadata", "overview": true }
+          "presentation": {
+            "role": "metadata",
+            "overview": true
+          }
         }
       ],
       "nodes": [
@@ -428,9 +638,17 @@
             {
               "name": "unpublish",
               "title": "下线",
-              "submission": { "mode": "direct", "actors": ["agent", "human"] },
+              "submission": {
+                "mode": "direct",
+                "actors": [
+                  "agent",
+                  "human"
+                ]
+              },
               "to": "offline",
-              "guards": ["is-published"],
+              "guards": [
+                "is-published"
+              ],
               "method": "POST",
               "fields": [],
               "effect": [
@@ -444,7 +662,9 @@
               "name": "archive",
               "title": "归档",
               "to": "archived",
-              "guards": ["is-published"],
+              "guards": [
+                "is-published"
+              ],
               "requires-confirmation": "high",
               "method": "POST",
               "fields": [],
@@ -463,6 +683,40 @@
           "title": "已下线",
           "actions": [
             {
+              "name": "edit",
+              "title": "编辑正文",
+              "method": "POST",
+              "guards": [],
+              "fields": [
+                {
+                  "name": "title",
+                  "type": "text",
+                  "semantics": "intent",
+                  "title": "标题"
+                },
+                {
+                  "name": "body",
+                  "type": "textarea",
+                  "semantics": "intent",
+                  "title": "正文"
+                }
+              ],
+              "effect": [
+                {
+                  "type": "set-field",
+                  "field": "title",
+                  "from-param": "title",
+                  "origin": "body"
+                },
+                {
+                  "type": "set-field",
+                  "field": "body",
+                  "from-param": "body",
+                  "origin": "body"
+                }
+              ]
+            },
+            {
               "name": "republish",
               "title": "重新发布",
               "to": "published",
@@ -473,6 +727,20 @@
                 {
                   "type": "transition",
                   "to": "published"
+                }
+              ]
+            },
+            {
+              "name": "archive",
+              "title": "归档",
+              "to": "archived",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "archived"
                 }
               ]
             }
@@ -494,7 +762,10 @@
       "initial": "pending",
       "cognitive": {
         "version": 1,
-        "traits": ["review-queue", "human-responsibility"],
+        "traits": [
+          "review-queue",
+          "human-responsibility"
+        ],
         "groupRole": "responsibility",
         "priority": "high",
         "emptyMeaning": "no-current-responsibility"
@@ -503,7 +774,12 @@
         {
           "collection": "comments",
           "title": "评论",
-          "filters": [{ "field": "status", "title": "状态" }]
+          "filters": [
+            {
+              "field": "status",
+              "title": "状态"
+            }
+          ]
         }
       ],
       "nodes": [
@@ -514,9 +790,17 @@
             {
               "name": "approve",
               "title": "通过",
-              "submission": { "mode": "direct", "actors": ["agent", "human"] },
+              "submission": {
+                "mode": "direct",
+                "actors": [
+                  "agent",
+                  "human"
+                ]
+              },
               "to": "approved",
-              "guards": ["is-pending"],
+              "guards": [
+                "is-pending"
+              ],
               "method": "POST",
               "fields": [],
               "effect": [
@@ -529,9 +813,17 @@
             {
               "name": "reject",
               "title": "驳回",
-              "submission": { "mode": "direct", "actors": ["agent", "human"] },
+              "submission": {
+                "mode": "direct",
+                "actors": [
+                  "agent",
+                  "human"
+                ]
+              },
               "to": "rejected",
-              "guards": ["is-pending"],
+              "guards": [
+                "is-pending"
+              ],
               "method": "POST",
               "fields": [],
               "effect": [
@@ -562,14 +854,24 @@
           "name": "body",
           "type": "textarea",
           "title": "评论内容",
-          "presentation": { "role": "primary-content", "overview": true }
+          "presentation": {
+            "role": "primary-content",
+            "overview": true
+          }
         },
         {
           "name": "status",
           "type": "select",
-          "options": ["pending", "approved", "rejected"],
+          "options": [
+            "pending",
+            "approved",
+            "rejected"
+          ],
           "title": "状态",
-          "presentation": { "role": "status", "overview": true }
+          "presentation": {
+            "role": "status",
+            "overview": true
+          }
         }
       ]
     },
@@ -582,12 +884,20 @@
         {
           "collection": "software-changes",
           "title": "软件变更",
-          "filters": [{ "field": "status", "title": "实施状态" }]
+          "filters": [
+            {
+              "field": "status",
+              "title": "实施状态"
+            }
+          ]
         }
       ],
       "cognitive": {
         "version": 1,
-        "traits": ["work-queue", "task-history"],
+        "traits": [
+          "work-queue",
+          "task-history"
+        ],
         "emptyMeaning": "ready-to-start"
       },
       "nodes": [
@@ -601,7 +911,12 @@
               "to": "implementation-running",
               "guards": [],
               "fields": [
-                { "name": "repositoryRef", "type": "text", "required": true, "persist": false },
+                {
+                  "name": "repositoryRef",
+                  "type": "text",
+                  "required": true,
+                  "persist": false
+                },
                 {
                   "name": "baseRevision",
                   "type": "text",
@@ -609,31 +924,54 @@
                   "minLength": 40,
                   "persist": false
                 },
-                { "name": "goal", "type": "textarea", "required": true, "persist": false },
+                {
+                  "name": "goal",
+                  "type": "textarea",
+                  "required": true,
+                  "persist": false
+                },
                 {
                   "name": "constraints",
                   "type": "json",
                   "required": true,
                   "persist": false,
-                  "schema": { "type": "array", "items": { "type": "string" } }
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
                 },
                 {
                   "name": "acceptanceCriteria",
                   "type": "json",
                   "required": true,
                   "persist": false,
-                  "schema": { "type": "array", "items": { "type": "string" } }
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
                 },
                 {
                   "name": "allowedPaths",
                   "type": "json",
                   "required": true,
                   "persist": false,
-                  "schema": { "type": "array", "items": { "type": "string" } }
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
                 }
               ],
               "effect": [
-                { "type": "transition", "to": "implementation-running" },
+                {
+                  "type": "transition",
+                  "to": "implementation-running"
+                },
                 {
                   "type": "spawn",
                   "capability": "coding.execute",
@@ -654,24 +992,54 @@
               "title": "实施成功回调",
               "internal": "capability-callback",
               "to": "review-ready",
-              "guards": ["principal-is-capability-system"],
-              "fields": [
-                { "name": "runId", "type": "text", "required": true },
-                { "name": "resultId", "type": "text", "required": true }
+              "guards": [
+                "principal-is-capability-system"
               ],
-              "effect": [{ "type": "transition", "to": "review-ready" }]
+              "fields": [
+                {
+                  "name": "runId",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "name": "resultId",
+                  "type": "text",
+                  "required": true
+                }
+              ],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "review-ready"
+                }
+              ]
             },
             {
               "name": "implementation-failed",
               "title": "实施失败回调",
               "internal": "capability-callback",
               "to": "implementation-failed",
-              "guards": ["principal-is-capability-system"],
-              "fields": [
-                { "name": "runId", "type": "text", "required": true },
-                { "name": "reason", "type": "textarea", "required": true }
+              "guards": [
+                "principal-is-capability-system"
               ],
-              "effect": [{ "type": "transition", "to": "implementation-failed" }]
+              "fields": [
+                {
+                  "name": "runId",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "name": "reason",
+                  "type": "textarea",
+                  "required": true
+                }
+              ],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "implementation-failed"
+                }
+              ]
             }
           ],
           "fields": []
@@ -685,20 +1053,39 @@
               "title": "接受实施结果",
               "decision": "accept-capability-result",
               "to": "accepted",
-              "guards": ["actor-is-human"],
+              "guards": [
+                "actor-is-human"
+              ],
               "fields": [],
-              "effect": [{ "type": "transition", "to": "accepted" }]
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "accepted"
+                }
+              ]
             },
             {
               "name": "reject-implementation",
               "title": "驳回实施结果",
               "decision": "reject-capability-result",
               "to": "rejected",
-              "guards": ["actor-is-human"],
-              "fields": [
-                { "name": "reason", "type": "textarea", "required": true, "minLength": 1 }
+              "guards": [
+                "actor-is-human"
               ],
-              "effect": [{ "type": "transition", "to": "rejected" }]
+              "fields": [
+                {
+                  "name": "reason",
+                  "type": "textarea",
+                  "required": true,
+                  "minLength": 1
+                }
+              ],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "rejected"
+                }
+              ]
             }
           ],
           "fields": []
@@ -713,32 +1100,56 @@
               "to": "implementation-ready",
               "guards": [],
               "fields": [],
-              "effect": [{ "type": "transition", "to": "implementation-ready" }]
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "implementation-ready"
+                }
+              ]
             }
           ],
           "fields": []
         },
-        { "name": "accepted", "title": "已接受", "actions": [], "fields": [] },
-        { "name": "rejected", "title": "已驳回", "actions": [], "fields": [] }
+        {
+          "name": "accepted",
+          "title": "已接受",
+          "actions": [],
+          "fields": []
+        },
+        {
+          "name": "rejected",
+          "title": "已驳回",
+          "actions": [],
+          "fields": []
+        }
       ],
       "fields": [
         {
           "name": "runId",
           "title": "Agent Run",
           "type": "text",
-          "presentation": { "role": "relation", "overview": true }
+          "presentation": {
+            "role": "relation",
+            "overview": true
+          }
         },
         {
           "name": "resultId",
           "title": "实施结果",
           "type": "text",
-          "presentation": { "role": "relation", "overview": true }
+          "presentation": {
+            "role": "relation",
+            "overview": true
+          }
         },
         {
           "name": "reason",
           "title": "失败或驳回原因",
           "type": "textarea",
-          "presentation": { "role": "primary-content", "overview": true }
+          "presentation": {
+            "role": "primary-content",
+            "overview": true
+          }
         }
       ]
     },
@@ -751,12 +1162,20 @@
         {
           "collection": "writing-requests",
           "title": "写作记录",
-          "filters": [{ "field": "status", "title": "写作状态" }]
+          "filters": [
+            {
+              "field": "status",
+              "title": "写作状态"
+            }
+          ]
         }
       ],
       "cognitive": {
         "version": 1,
-        "traits": ["output-catalog", "task-history"],
+        "traits": [
+          "output-catalog",
+          "task-history"
+        ],
         "emptyMeaning": "ready-to-start"
       },
       "nodes": [
@@ -790,7 +1209,12 @@
                   "type": "json",
                   "required": true,
                   "persist": false,
-                  "schema": { "type": "array", "items": { "type": "string" } }
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
                 },
                 {
                   "name": "constraints",
@@ -798,7 +1222,12 @@
                   "type": "json",
                   "required": true,
                   "persist": false,
-                  "schema": { "type": "array", "items": { "type": "string" } }
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
                 },
                 {
                   "name": "sources",
@@ -811,22 +1240,46 @@
                     "items": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "string", "minLength": 1 },
-                        "title": { "type": "string", "minLength": 1 },
-                        "mediaType": {
-                          "enum": ["text/plain", "text/markdown", "application/json"]
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
                         },
-                        "content": { "type": "string" },
-                        "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+                        "title": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "mediaType": {
+                          "enum": [
+                            "text/plain",
+                            "text/markdown",
+                            "application/json"
+                          ]
+                        },
+                        "content": {
+                          "type": "string"
+                        },
+                        "hash": {
+                          "type": "string",
+                          "pattern": "^sha256:[0-9a-f]{64}$"
+                        }
                       },
-                      "required": ["id", "title", "mediaType", "content", "hash"],
+                      "required": [
+                        "id",
+                        "title",
+                        "mediaType",
+                        "content",
+                        "hash"
+                      ],
                       "additionalProperties": false
                     }
                   }
                 }
               ],
               "effect": [
-                { "type": "transition", "to": "writing-running" },
+                {
+                  "type": "transition",
+                  "to": "writing-running"
+                },
                 {
                   "type": "spawn",
                   "capability": "writing.compose",
@@ -847,24 +1300,54 @@
               "title": "写作成功回调",
               "internal": "capability-callback",
               "to": "review-ready",
-              "guards": ["principal-is-capability-system"],
-              "fields": [
-                { "name": "runId", "type": "text", "required": true },
-                { "name": "resultId", "type": "text", "required": true }
+              "guards": [
+                "principal-is-capability-system"
               ],
-              "effect": [{ "type": "transition", "to": "review-ready" }]
+              "fields": [
+                {
+                  "name": "runId",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "name": "resultId",
+                  "type": "text",
+                  "required": true
+                }
+              ],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "review-ready"
+                }
+              ]
             },
             {
               "name": "writing-failed-callback",
               "title": "写作失败回调",
               "internal": "capability-callback",
               "to": "writing-failed",
-              "guards": ["principal-is-capability-system"],
-              "fields": [
-                { "name": "runId", "type": "text", "required": true },
-                { "name": "reason", "type": "textarea", "required": true }
+              "guards": [
+                "principal-is-capability-system"
               ],
-              "effect": [{ "type": "transition", "to": "writing-failed" }]
+              "fields": [
+                {
+                  "name": "runId",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "name": "reason",
+                  "type": "textarea",
+                  "required": true
+                }
+              ],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "writing-failed"
+                }
+              ]
             }
           ],
           "fields": []
@@ -877,15 +1360,24 @@
               "name": "accept-writing-result",
               "title": "接受写作结果",
               "to": "accepted",
-              "guards": ["actor-is-human"],
+              "guards": [
+                "actor-is-human"
+              ],
               "fields": [],
-              "effect": [{ "type": "transition", "to": "accepted" }]
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "accepted"
+                }
+              ]
             },
             {
               "name": "reject-writing-result",
               "title": "驳回写作结果",
               "to": "rejected",
-              "guards": ["actor-is-human"],
+              "guards": [
+                "actor-is-human"
+              ],
               "fields": [
                 {
                   "name": "reason",
@@ -896,7 +1388,12 @@
                   "persist": false
                 }
               ],
-              "effect": [{ "type": "transition", "to": "rejected" }]
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "rejected"
+                }
+              ]
             }
           ],
           "fields": []
@@ -911,32 +1408,56 @@
               "to": "brief-draft",
               "guards": [],
               "fields": [],
-              "effect": [{ "type": "transition", "to": "brief-draft" }]
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "brief-draft"
+                }
+              ]
             }
           ],
           "fields": []
         },
-        { "name": "accepted", "title": "已接受（未发布）", "actions": [], "fields": [] },
-        { "name": "rejected", "title": "已驳回", "actions": [], "fields": [] }
+        {
+          "name": "accepted",
+          "title": "已接受（未发布）",
+          "actions": [],
+          "fields": []
+        },
+        {
+          "name": "rejected",
+          "title": "已驳回",
+          "actions": [],
+          "fields": []
+        }
       ],
       "fields": [
         {
           "name": "runId",
           "title": "Agent Run",
           "type": "text",
-          "presentation": { "role": "relation", "overview": true }
+          "presentation": {
+            "role": "relation",
+            "overview": true
+          }
         },
         {
           "name": "resultId",
           "title": "写作结果（接受不等于发布）",
           "type": "text",
-          "presentation": { "role": "relation", "overview": true }
+          "presentation": {
+            "role": "relation",
+            "overview": true
+          }
         },
         {
           "name": "reason",
           "title": "失败原因",
           "type": "textarea",
-          "presentation": { "role": "primary-content", "overview": true }
+          "presentation": {
+            "role": "primary-content",
+            "overview": true
+          }
         }
       ]
     },
@@ -949,12 +1470,20 @@
         {
           "collection": "agent-definition-requests",
           "title": "Agent 定义请求",
-          "filters": [{ "field": "status", "title": "起草状态" }]
+          "filters": [
+            {
+              "field": "status",
+              "title": "起草状态"
+            }
+          ]
         }
       ],
       "cognitive": {
         "version": 1,
-        "traits": ["review-queue", "human-responsibility"],
+        "traits": [
+          "review-queue",
+          "human-responsibility"
+        ],
         "groupRole": "responsibility",
         "emptyMeaning": "ready-to-start"
       },
@@ -981,7 +1510,10 @@
                 }
               ],
               "effect": [
-                { "type": "transition", "to": "authoring-running" },
+                {
+                  "type": "transition",
+                  "to": "authoring-running"
+                },
                 {
                   "type": "spawn",
                   "capability": "agent-definition.author",
@@ -1001,27 +1533,63 @@
               "name": "authoring-succeeded",
               "title": "起草成功回调",
               "internal": "capability-callback",
-              "agent-result-bridge": { "kind": "agent-definition-draft" },
+              "agent-result-bridge": {
+                "kind": "agent-definition-draft"
+              },
               "to": "draft-ready",
-              "guards": ["principal-is-capability-system"],
-              "fields": [
-                { "name": "runId", "type": "text", "required": true },
-                { "name": "resultId", "type": "text", "required": true },
-                { "name": "draftRel", "type": "text", "required": true }
+              "guards": [
+                "principal-is-capability-system"
               ],
-              "effect": [{ "type": "transition", "to": "draft-ready" }]
+              "fields": [
+                {
+                  "name": "runId",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "name": "resultId",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "name": "draftRel",
+                  "type": "text",
+                  "required": true
+                }
+              ],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "draft-ready"
+                }
+              ]
             },
             {
               "name": "authoring-failed-callback",
               "title": "起草失败回调",
               "internal": "capability-callback",
               "to": "authoring-failed",
-              "guards": ["principal-is-capability-system"],
-              "fields": [
-                { "name": "runId", "type": "text", "required": true },
-                { "name": "reason", "type": "textarea", "required": true }
+              "guards": [
+                "principal-is-capability-system"
               ],
-              "effect": [{ "type": "transition", "to": "authoring-failed" }]
+              "fields": [
+                {
+                  "name": "runId",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "name": "reason",
+                  "type": "textarea",
+                  "required": true
+                }
+              ],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "authoring-failed"
+                }
+              ]
             }
           ]
         },
@@ -1034,11 +1602,18 @@
               "name": "author-another",
               "title": "起草另一个 Agent",
               "to": "request-ready",
-              "guards": ["actor-is-human"],
+              "guards": [
+                "actor-is-human"
+              ],
               "fields": [],
               "effect": [
-                { "type": "transition", "to": "request-ready" },
-                { "type": "clear-fields" }
+                {
+                  "type": "transition",
+                  "to": "request-ready"
+                },
+                {
+                  "type": "clear-fields"
+                }
               ]
             }
           ]
@@ -1055,8 +1630,13 @@
               "guards": [],
               "fields": [],
               "effect": [
-                { "type": "transition", "to": "request-ready" },
-                { "type": "clear-fields" }
+                {
+                  "type": "transition",
+                  "to": "request-ready"
+                },
+                {
+                  "type": "clear-fields"
+                }
               ]
             }
           ]
@@ -1067,19 +1647,28 @@
           "name": "draftRel",
           "title": "待审查 Definition Draft",
           "type": "text",
-          "presentation": { "role": "relation", "overview": true }
+          "presentation": {
+            "role": "relation",
+            "overview": true
+          }
         },
         {
           "name": "runId",
           "title": "Authoring Run",
           "type": "text",
-          "presentation": { "role": "relation", "overview": true }
+          "presentation": {
+            "role": "relation",
+            "overview": true
+          }
         },
         {
           "name": "reason",
           "title": "起草失败原因",
           "type": "textarea",
-          "presentation": { "role": "primary-content", "overview": true }
+          "presentation": {
+            "role": "primary-content",
+            "overview": true
+          }
         }
       ]
     }
@@ -1196,11 +1785,25 @@
         }
       },
       "collections": {
-        "articles": ["post:post-welcome", "post:first-post"],
-        "comments": ["comment:c1", "comment:c2", "comment:c3", "comment:c4"],
-        "software-changes": ["software-change:main"],
-        "writing-requests": ["writing-request:main"],
-        "agent-definition-requests": ["agent-definition-request:main"]
+        "articles": [
+          "post:post-welcome",
+          "post:first-post"
+        ],
+        "comments": [
+          "comment:c1",
+          "comment:c2",
+          "comment:c3",
+          "comment:c4"
+        ],
+        "software-changes": [
+          "software-change:main"
+        ],
+        "writing-requests": [
+          "writing-request:main"
+        ],
+        "agent-definition-requests": [
+          "agent-definition-request:main"
+        ]
       }
     }
   }

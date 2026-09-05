@@ -48,11 +48,23 @@ export function applicationOptions(document: unknown): ApplicationOption[] {
 export function contextEntityTitle(document: unknown): string | null {
   const properties = record(record(document)?.properties);
   const rel = text(properties?.rel);
-  return (
-    [text(properties?.identity), text(properties?.title)].find(
-      (value) => value !== null && value !== rel,
-    ) ?? null
+  const direct = [text(properties?.identity), text(properties?.title)].find(
+    (value) => value !== null && value !== rel,
   );
+  if (direct !== undefined) return direct;
+  // G08(T54):meta 定义面实体的合同身份键——Draft 的 target、Activation 的
+  // flow+version。仍是声明事实(正文可读而顶栏「无法读取」的读取缺口),
+  // 零猜测、不内置名称表;业务实例不受影响(其身份键在前两行命中)。
+  const target = text(properties?.target);
+  if (target !== null) return target;
+  const flow = text(properties?.flow);
+  const version = properties?.version;
+  if (flow !== null) {
+    return typeof version === 'number' || typeof version === 'string'
+      ? `${flow} · v${String(version)}`
+      : flow;
+  }
+  return null;
 }
 
 /** Canonical contract read, independent of application selection. */

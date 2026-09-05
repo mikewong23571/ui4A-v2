@@ -90,6 +90,19 @@ describe('situation contract labels and references', () => {
     ).toBe('文章');
   });
 
+  it('G08:meta 定义面实体的合同身份键(Draft target / Activation flow+version)可读', () => {
+    // Draft:正文可读而顶栏「无法读取」——target 是声明事实。
+    expect(
+      contextEntityTitle({ properties: { rel: 'draft:d1', kind: 'flow-definition', target: 'post-status' } }),
+    ).toBe('post-status');
+    // Activation:flow + version 组合身份。
+    expect(
+      contextEntityTitle({ properties: { rel: 'meta/activation:a1', flow: 'article-drafting', version: 2 } }),
+    ).toBe('article-drafting · v2');
+    // 无任何身份键仍诚实为 null(不猜名称)。
+    expect(contextEntityTitle({ properties: { rel: 'meta/self' } })).toBeNull();
+  });
+
   it('follows at most four unique explicit context/active/approval links', () => {
     const document = thread('post:1', 'post:1', 'post:2', 'post:3', 'post:4', 'post:5');
     document.links.unshift(

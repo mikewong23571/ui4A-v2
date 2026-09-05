@@ -88,9 +88,12 @@ describe('G05 workspace prefill probe', () => {
     expect(plan.bundle.issues.filter((issue) => issue.code === 'deref-failed')).toEqual([]);
 
     // ③ repeat items(数据模型载荷)中,该成员仍携带 fields(item 路径可解析)。
-    const dataModel = plan.bundle.messages.find((message) => message.updateDataModel !== undefined)
-      ?.updateDataModel as { value: { repeats?: Record<string, unknown[]> } } | undefined;
-    const allItems = Object.values(dataModel?.value.repeats ?? {}).flat();
+    const dataModel = (
+      plan.bundle.messages.find(
+        (message) => 'updateDataModel' in message && message.updateDataModel !== undefined,
+      ) as { updateDataModel?: { value?: Record<string, unknown> } } | undefined
+    )?.updateDataModel;
+    const allItems = Object.values(dataModel?.value?.repeats ?? {}).flat();
     const hydratedMember = allItems.find(
       (item) =>
         typeof item === 'object' &&
@@ -101,19 +104,21 @@ describe('G05 workspace prefill probe', () => {
     expect(hydratedMember!.properties?.fields?.title).toBeDefined();
 
     // ④ member 词的 fields 绑定编译为 item 路径 properties/fields(binding-only)。
-    const components = plan.bundle.messages.find(
-      (message) => message.updateComponents !== undefined,
-    )?.updateComponents as { components?: unknown[] } | undefined;
+    const components = (
+      plan.bundle.messages.find(
+        (message) => 'updateComponents' in message && message.updateComponents !== undefined,
+      ) as { updateComponents?: { components?: unknown[] } } | undefined
+    )?.updateComponents;
     const componentsJson = JSON.stringify(components?.components ?? []);
     expect(componentsJson).toContain('"path":"properties/fields"');
 
     // ⑤ G05 缺口(R17):entity 形状区域(detail controls 词)的动作切片
     //    (actions-entity transform)必须携带源实体的 properties.fields——
     //    否则工作区编辑表单预填为空(实体页直连全量实体故可预填)。
-    const values = (dataModel?.value.values ?? {}) as Record<
-      string,
-      Record<string, { class?: string[]; properties?: { fields?: Record<string, unknown> } }>
-    >;
+    const values = ((dataModel?.value ?? {}) as { values?: Record<string, Record<string, {
+      class?: string[];
+      properties?: { fields?: Record<string, unknown> };
+    }>> }).values ?? {};
     const actionSlices = Object.values(values).flatMap((bindings) => Object.values(bindings));
     const sliceWithFields = actionSlices.find(
       (slice) =>
