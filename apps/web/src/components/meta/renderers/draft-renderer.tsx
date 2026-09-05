@@ -75,7 +75,7 @@ export function DraftRenderer({
         </h1>
         <p className="text-sm text-muted-foreground">
           owner {view.owner} · scope {view.policyScope}
-          {view.expiresAt === '' ? '' : ` · expires ${view.expiresAt}`}
+          {view.expiresAt === '' ? '' : ` · 过期 ${formatExpiresAt(view.expiresAt)}`}
         </p>
       </header>
 
@@ -182,4 +182,10 @@ export function DraftRenderer({
       <RawContract entity={entity} />
     </div>
   );
+}
+
+/** G15(T54):过期时间按用户时区呈现;无法解析时原文直出(不猜格式)。 */
+function formatExpiresAt(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false });
 }
