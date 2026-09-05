@@ -11,15 +11,15 @@
   - [ ] 读取本 track 全部文档与仓库正典；记录 HEAD/dirty/现行 DECISIONS、相关模块与测试路径。
   - [ ] 重测 `pnpm governance` 与目录余量，核查 T54/T55 已有实现；检查测试隔离和 3100 使用情况。
   - [ ] 创建 evidence.md 与 spike-report.md；标明环境、已有事实、未验证项、原始观察不等于部署事实。
-- [ ] Task: P0.2 执行 S1 工作线呈现探针
+- [x] Task: P0.2 执行 S1 工作线呈现探针 (c403b81)
   - [ ] 按 acceptance fixtures 搭隔离本线，记录 exact Siren/授权/依赖；尝试单主体首选路线。
   - [ ] 必要时与 derived Composition 对比；验证角色/责任/产出来源、同门、更新、部分授权和未知状态。
   - [ ] 输出最终数据/rel/path/词汇/声明/模块方案及探针代码去向，不复制第二个 dashboard。
-- [ ] Task: P0.3 执行 S2 历史与引用探针
+- [~] Task: P0.3 执行 S2 历史与引用探针
   - [ ] 跑 A→B 同 session→刷新、未知 clientView、集合重排、改名、权限撤回与迟到响应。
   - [ ] 核查历史过滤/读取页边界，验证超过默认上限仍能精确重建该回合，不误判缺失。
   - [ ] 定案 live/history 精确 turn join、时点显示、集合级诚实降级和缓存失效；列必要字段变更。
-- [ ] Task: P0.4 执行 S3 布局与会话存续探针
+- [~] Task: P0.4 执行 S3 布局与会话存续探针
   - [ ] 测指定尺寸/缩放/DOM 几何，验证草稿、SSE、停止、focus/back 及 `/chat` 不丢状态。
   - [ ] 定案并排阈值、覆盖交互与稳定 chat 状态拥有者；不引入布局依赖。
 - [ ] Task: P0.5 先记录决定并 review 详细设计
