@@ -29,7 +29,7 @@
 - [x] Task: P0 Phase Verification & Checkpoint (593d9a8)
   - [ ] 核对 S1–S3 出口全部有实证，规划未决已收敛、代码无废墟；记录命令/结果与 checkpoint。
 
-## P1 本线读投影与声明驱动呈现（US01–04/10/11）
+## P1 本线读投影与声明驱动呈现（US01–04/10/11） [checkpoint: f2f469d]
 
 - [x] Task: P1.1 Red：工作线读语义与授权 (a38c224)
   - [ ] 在最窄 pure 边界补角色/空/未知/终局/归档未验收与“归档仍有责任”的失败测试。
@@ -41,7 +41,7 @@
 - [x] Task: P1.3 Red→Green：失效与失败恢复 (f2f469d)
   - [ ] 钉住成员/同 rel 值/动作/授权变化后的更新与重放一致性；过期请求不得覆盖新主体。
   - [ ] 跑第二应用、未知语义、大工作集与部分不可读；验证有界读、计数和分页口径。
-- [ ] Task: P1 Phase Verification & Checkpoint
+- [x] Task: P1 Phase Verification & Checkpoint (f2f469d)
   - [ ] 执行 G1 与相关 G5 子门禁，实际查看本线 Surface/HTTP 输出并核对来源，附 checkpoint。
 
 ## P2 主工作面与响应式壳（US01/03/05/07）
