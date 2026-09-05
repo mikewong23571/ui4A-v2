@@ -160,8 +160,65 @@
   先例记「待用户按 DEPLOYMENT 流程发布后执行」)
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
-## 附录 A — 开工前事实复核记录(Phase 0 Task 1 产出,待回填)
+## 附录 A — 开工前事实复核记录(Phase 0 Task 1 产出)
 
-## 附录 B — G01 探针与确认编排详细设计(Phase 0 Task 3 产出,待回填)
+复核时点:2026-09-05,HEAD 29e33032(T54 初始化提交;其后仅本 track 改动)。
+方法:spec §6 全部 16 处 file:line 引用逐条机械抽查(sed 定位行内容比对)。
+
+1. **零漂移**:16/16 引用全部命中(规划期 Explore 核查在 d980f797 完成,
+   其后仅 conductor 文档变更);G01/G05/G09 探针方案无需修订。
+2. **补充核证(规划期未列)**:
+   - `appendEventBatch` 单事务(`packages/db/src/events.ts:305-314`,
+     `withDatabaseTransaction`)——D74「伴随事件入决定事务」由既有机制满足,
+     不新增事务边界;
+   - `executeWithGates` = judge → confirmGate → applyEffects 三段
+     (`packages/engine/src/execution/execute.ts:68-116`),`MetaDeps.policy`
+     即确认策略,缺省内置(human 直通)——meta 钩子复用该编排时天然不再挂起;
+   - Cedar 策略自文件装载且 boot 无注入口(`service.ts:274`
+     `cedarPolicyFromDefaultFile()`)——探针以事件直插 `confirmation-requested`
+     物化 pending(仓库 fixture 惯例);
+   - fold 对 `confirmation-requested` 的物化与 `suspendForConfirmation` 逐字段
+     同构(`projection/fold/apply-confirmation.ts:15-54`),fixture 形状有据。
+3. **G02 裁定输入**:D51 权威文本(DECISIONS.md:837)「HTTP 404 仅保留跨
+   principal 的存在性隐藏」与 D71.3 尾句「停用面=404」冲突;实现钉 403/404
+   两态(治理展开 403 `scope_insufficient`;遗留逐 app 凭证投影缺位 404)。
+   裁定 = D73(403 族细化 `application_deprecated`)。
+
+## 附录 B — G01 探针结论与确认编排详细设计(Phase 0 Task 3 产出)
+
+### B.1 探针结果(service.meta-confirmation.test.ts,隔离测试库,2026-09-05)
+
+| 路径 | 事件序列(业务 rel 维度) | 业务状态 |
+| --- | --- | --- |
+| 直连(默认策略 human 直通) | `[action-executed, application-deprecated]` | applications 删键 + 同 app 定义置废 |
+| 批准(严格策略挂起 → approve) | `[action-rejected]`(reason:目标动作未声明于节点) | 不动(应用仍在目录) |
+
+根因双层:①confirmDeps 仅活跃业务定义,生命周期伪流(`application-lifecycle`)
+不在注册表,approveConfirmation 声明层拒绝(execution/confirmation.ts:414-422);
+②即便声明可解析,approveConfirmation 只 applyEffects 重放目标动作
+(confirmation.ts:439),不产 `application-deprecated` 伴随事件与级联
+(该现状被 application-deprecation.test.ts:276-313 钉死)。
+
+### B.2 设计(D74)
+
+- **engine**:approveConfirmation 对 meta 目标(confirmation.targetRel 前缀
+  `meta/` 且 deps 提供 meta 执行钩子)跳过本地声明定位与 applyEffects,改以
+  委托请求(挂起 params/paramOrigins 原文,actor=human、principal=提议者
+  principal、channel='confirmation')调用钩子(= executeMeta,内置确认策略,
+  不再挂起);钩子 rejected → 原样结构化拒绝留痕;executed → 前置
+  confirmation-approved 事件 + 确认表置 approved,事件序列
+  `[confirmation-approved, action-executed, application-deprecated]`。
+  业务面(非 meta)路径与语义不变。
+- **web**:service.ts confirmDeps 装配钩子 `executeMeta(request, snapshot,
+  { ...metaDeps(), policy: undefined })`(纯引擎函数,装配留在 web);
+  confirmDeps.flows 维持仅活跃业务定义。
+- **事务**:批准决定 + 伴随事件经既有 appendEventBatch 单事务(附录 A.2);
+  重复/并发批准由 pending 状态裁决至多一次。
+- **重放**:fold 已按 [confirmation-approved → action-executed →
+  application-deprecated] 顺序折叠(I5 由既有 fold 语义保证,测试钉住)。
+- **测试翻红**:service.meta-confirmation.test.ts 第二项断言改为 accepted +
+  同一事件计划;application-deprecation.test.ts:276-313 现状预期按 D74.5 修订
+  (改钉「批准经同一编排产出伴随事件」);补引擎级纯函数测试(钩子注入/拒绝
+  透传/非 meta 不变)。
 
 ## 附录 C — G05 预填丢失点探针结论(Phase 4 Task 1 产出,待回填)

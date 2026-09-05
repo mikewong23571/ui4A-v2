@@ -1454,3 +1454,66 @@
   真实装配体积;环境变量非法(非正整数)回落默认,预算不因配置笔误拖垮主路径。
   本决定修订 D54.4 的数值条款;D54.4 其余披露纪律(sanitized 非累积、schema/
   视觉策略不进 prompt)不变。
+
+## D73 停用面响应语义:拒绝码细化 application_deprecated,维持 403 族(T54/G02)
+
+- **背景**:G02 发现三处不一致——D71.3 尾句「停用面 = 存在性隐藏(404),与
+  『从未安装』同形(D51 口径)」;D51 硬规「HTTP 404 仅保留跨 principal 的
+  存在性隐藏,授予外与『不存在』均为结构化 denied 回执」;实现与合同测试
+  (deprecated-applications.contract.test.ts)钉的是 403 `scope_insufficient`
+  (授予集合与停用归属无交集)/ 404(停用名仍在授予集合,投影缺位)两态。
+  停用是**全局终态**而非权限事实,与「真正无权限」混用同一错误码使 UI 误判
+  为服务故障、用户误判为可申请权限。
+- **裁定**:
+  1. D51 失败语义优先,D71.3 尾句按本条修订:停用面**不**改 404,维持结构化
+     denied(403 族);D71.3 主体(反 fail-open 双集归属解析)不变。
+  2. 拒绝码细化:rel 归属应用全集与凭证授予集合无交集时——归属全集全部位于
+     停用审计表(`deprecatedApplications`)→ 403 `application_deprecated`
+     (「不可再访问:应用已停用」);否则(存在活跃归属)→ 403
+     `scope_insufficient`(「无权限」)。两码同族,不泄露跨 principal 存在性,
+     不把所有 403 粗暴改 404。
+  3. 停用名仍在授予集合的遗留凭证维持现状:受众谓词放行(授予内零可见授权
+     事件),实体投影缺位如实 404。
+  4. 客户端合同:`application_deprecated` / `scope_insufficient` / 网络 5xx
+     三态分型;UI 不得把 403 族渲染为「服务不可用」,并提供目录/返回出口。
+- **理由**:403+细分码在不泄露存在性的前提下诚实区分「应用已结束」与「你
+  没有权限」;404 方案既违背 D51 的 404 专属口径,也无法与「活跃但未授予」
+  区分,反而扩大歧义面。
+- **影响**:auth/application-scope.ts 咽喉细化;production/request-identity.ts
+  403 集合扩展;deprecated-applications.contract.test.ts 断言更新;Meta/业务
+  UI 错误分支按细分码渲染(G02b 稳定回执一并落地)。
+
+## D74 Meta 确认批准编排:批准执行经同一 executeMeta 事件计划,伴随事件入决定事务(T54/G01)
+
+- **背景**:G01 探针(T54 Phase 0,service.meta-confirmation.test.ts)证实:
+  严格策略(挂起 human+high)下 `meta/application:<name>` 的 deprecate 挂起后,
+  approveConfirmation 以 confirmDeps(仅活跃业务定义)重判 → 结构化拒绝
+  「目标动作未声明于节点」;且其只重放目标动作效果,即便声明可解析也不产
+  `application-deprecated` 伴随事件与级联(现状被
+  application-deprecation.test.ts:276-313 钉死)——直连 [action-executed,
+  application-deprecated] 与批准 [action-rejected] 两条路径事件计划不一致,
+  批准对 meta 面不完整。
+- **决定**:
+  1. 确认批准对 meta 目标(rel 前缀 `meta/`)改经 executeMeta 同一编排重执行:
+     以挂起请求原文(params/paramOrigins 自确认实体)构造委托请求
+     (actor=human、principal=提议者 principal、channel='confirmation'),经
+     ConfirmationDeps 注入的 meta 执行钩子完整重跑 judge(声明→guard→schema,
+     内置确认策略——批准即人类已决定,不再过确认门、不再次挂起、不重复公开
+     POST)与全部伴随事件计划;目标漂移按结构化拒绝留痕(拒绝即数据 I6)。
+  2. 事件计划同一:直连执行与确认批准产出同一业务事件序列(批准路径前置
+     `confirmation-approved`);确认决定与伴随业务事件经 appendEventBatch
+     单事务落库(既有机制,不新增事务边界);重复/并发批准由 pending→approved
+     状态裁决至多生效一次。
+  3. 边界:纯业务规划留 engine(钩子即 executeMeta 本体),装配留 web
+     (confirmDeps 注入);confirmDeps.flows 维持仅活跃业务定义,生命周期伪流
+     由 meta 编排内部自举,不进业务注册表。
+  4. 业务面(非 meta)确认批准语义不变(声明漂移拒绝 + 效果重放);铁律
+     actor-is-human、授予外拒绝、Cedar 严格性均不放宽。
+  5. application-deprecation.test.ts「确认链路无伴随事件」现状预期按本条修订
+     (该现状自此不再是规范)。
+- **理由**:确认门挂起的是「效果应用」不是「裁决」;批准后的执行必须与直连
+  执行同一事实计划,否则出现「节点已 deprecated 但应用仍可用」的假成功
+  (G01 明示风险)。复用 executeMeta 单一代码路径,免双实现漂移,重放一致
+  (I5)自然保持。
+- **影响**:engine execution/confirmation.ts(approveConfirmation meta 钩子);
+  web engine/service.ts(confirmDeps 装配);服务层/引擎测试族翻红转绿。
