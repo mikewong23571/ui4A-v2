@@ -18,7 +18,7 @@ import type { SirenAction, SirenEntity } from '@ui4a/engine';
 import { ThreadDesk, threadPinsKey } from './thread-desk';
 import { THREAD_UPDATED_EVENT } from './thread-desk-shared';
 import { ThreadStageActions } from './thread-stage-actions';
-import { EntityCacheProvider } from '../entity-cache-provider';
+import { EntityCacheProvider } from '../../entity-cache-provider';
 
 const referenceFields = {
   $schema: 'http://json-schema.org/draft-07/schema#',

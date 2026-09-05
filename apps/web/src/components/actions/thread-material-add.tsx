@@ -17,8 +17,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
-import { ObjectSelectorPanel } from '../canvas/thread-desk-selector';
-import { THREAD_UPDATED_EVENT, notifyThreadUpdated } from '../canvas/thread-desk-shared';
+import { ObjectSelectorPanel } from '../canvas/desk/thread-desk-selector';
+import { THREAD_UPDATED_EVENT, notifyThreadUpdated } from '../canvas/desk/thread-desk-shared';
 import { useEntityCache } from '../entity-cache-provider';
 import { ActionRunner } from '../action-runner';
 import { Button } from '../ui/button';

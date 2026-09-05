@@ -41,7 +41,7 @@ import { PresentationDensityProvider } from '@/render/presentation-density';
 import { CanvasWhyDrawer } from './canvas-why-drawer';
 import { ActionSubmitProvider } from '../actions/action-submit';
 import { RawContractDrawer } from './raw-contract-drawer';
-import { readThreadPins, writeThreadPin } from './thread-desk';
+import { readThreadPins, writeThreadPin } from './desk/thread-desk';
 import { SurfaceErrorBoundary } from './surface-error-boundary';
 import { Button } from '../ui/button';
 import { SIDECAR_UNAVAILABLE_PHRASE } from './presentation-sidecar-failure';

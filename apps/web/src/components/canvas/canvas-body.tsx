@@ -6,8 +6,8 @@ import { ApplicationEntryStrip } from '@/components/application-entry-strip';
 
 import { canonicalReadQueryOf } from '@/render/canvas/collection-query';
 import { PresentationSurfaceHost } from './presentation-surface-host';
-import { ThreadDesk } from './thread-desk';
-import { ThreadStageActions } from './thread-stage-actions';
+import { ThreadDesk } from './desk/thread-desk';
+import { ThreadStageActions } from './desk/thread-stage-actions';
 import { EntityCacheProvider } from '../entity-cache-provider';
 
 /** URL adapter for the shared Presentation host mounted by `/canvas`. */

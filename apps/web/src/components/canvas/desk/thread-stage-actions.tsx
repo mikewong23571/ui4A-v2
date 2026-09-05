@@ -12,10 +12,10 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type { SirenEntity } from '@ui4a/engine';
 
-import { ActionGroup } from '../actions/action-group';
-import type { ActionSubmit, ActionSubmitInput } from '../actions/action-submit';
-import { useEntityCache } from '../entity-cache-provider';
-import { execAction } from '../exec-client';
+import { ActionGroup } from '../../actions/action-group';
+import type { ActionSubmit, ActionSubmitInput } from '../../actions/action-submit';
+import { useEntityCache } from '../../entity-cache-provider';
+import { execAction } from '../../exec-client';
 import {
   THREAD_UPDATED_EVENT,
   notifyThreadUpdated,

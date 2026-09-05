@@ -38,7 +38,7 @@ import {
   SidecarLoadFailure,
 } from './presentation-sidecar-failure';
 import { frozenSpecsOf, withAbort } from './presentation-surface-helpers';
-import { notifyThreadUpdated } from './thread-desk-shared';
+import { notifyThreadUpdated } from './desk/thread-desk-shared';
 
 /** 渲染中的 surface 条目(surface 模型进 state:渲染只读 state,不读 ref)。 */
 export interface SurfaceEntry {

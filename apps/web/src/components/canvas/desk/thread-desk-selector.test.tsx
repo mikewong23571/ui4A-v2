@@ -16,7 +16,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SirenEntity } from '@ui4a/engine';
 
 import { ObjectSelectorPanel } from './thread-desk-selector';
-import { EntityCacheProvider } from '../entity-cache-provider';
+import { EntityCacheProvider } from '../../entity-cache-provider';
 
 function commentMember(rel: string, body: string): SirenEntity {
   return {

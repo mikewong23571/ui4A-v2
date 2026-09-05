@@ -20,8 +20,8 @@ import type { SirenEntity } from '@ui4a/engine';
 
 import { Badge } from '@/components/ui/badge';
 
-import { useEntityCache } from '../entity-cache-provider';
-import { execAction } from '../exec-client';
+import { useEntityCache } from '../../entity-cache-provider';
+import { execAction } from '../../exec-client';
 import { ObjectSelectorPanel } from './thread-desk-selector';
 import {
   THREAD_UPDATED_EVENT,

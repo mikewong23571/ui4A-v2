@@ -14,9 +14,9 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 
-import { useEntityCache } from '../entity-cache-provider';
-import { withPolicyScope } from '../exec-client';
-import { hrefToRel } from '../contract-href';
+import { useEntityCache } from '../../entity-cache-provider';
+import { withPolicyScope } from '../../exec-client';
+import { hrefToRel } from '../../contract-href';
 import {
   collapseSharedFallbackLabel,
   firstString,

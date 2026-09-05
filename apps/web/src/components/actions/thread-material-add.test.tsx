@@ -18,7 +18,7 @@ import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ThreadMaterialAdd } from './thread-material-add';
 import type { ActionSubmit } from './action-submit';
-import { THREAD_UPDATED_EVENT } from '../canvas/thread-desk-shared';
+import { THREAD_UPDATED_EVENT } from '../canvas/desk/thread-desk-shared';
 import { EntityCacheProvider } from '../entity-cache-provider';
 
 const attachAction: SirenAction = {
