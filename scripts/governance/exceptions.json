@@ -1,5 +1,5 @@
 {
-  "$schema": "T23 governance exceptions registry. dependencyExceptions: GR1 direction exceptions with reason + retireWhen. compatAllowlist: GR2 baseline of legacy/compat markers; pendingRemoval: true = shrink-only debt, false = permanent legitimate wording. identity-scope-selection: D51(T33) 起整体退役——单值 policyScope 会话冻结机器已删除,授权=受众谓词(assertReachable,凭证授予集合×数据归属),本 section 不再新增条目。",
+  "$schema": "T23 governance exceptions registry. dependencyExceptions: GR1 direction exceptions with reason + retireWhen. compatAllowlist: GR2 baseline of legacy/compat markers; pendingRemoval: true = shrink-only debt, false = permanent legitimate wording. identity-scope-selection: D51(T33) 起整体退役——单值 policyScope 会话冻结机器已删除,授权=受众谓词(assertReachable,凭证授予集合×数据归属),本 section 不再新增条目。 fsReadDisclosures: T55 FR1.2b 披露登记段(不执法)——跨工作区文件系统读依赖的可见化;retireWhen 到期后转执法或移除。",
   "dependencyExceptions": [],
   "compatAllowlist": [
     {
@@ -66,6 +66,18 @@
       "path": "scripts/t22/keycloak/t22-keycloak-realm-bootstrap.test.ts",
       "reason": "T55 正当语义:「兼容性判定」指 Keycloak mapper 列表视图缺省的详情判定合同,随 t22 常驻部署套件存续",
       "pendingRemoval": false
+    }
+  ],
+  "fsReadDisclosures": [
+    {
+      "path": "packages/agent/src/governance/t21-source-governance.test.ts",
+      "reason": "治理测试以 readFileSync×4 直读 apps/web 源文件(app/api/chat/route.ts、components/chat/chat-panel.tsx、chat/conversation.ts、chat/start-chain.ts),断言双焦点/AI-first 呈现纪律在源码层成立;属 GR1 说明符扫描不可见的文件系统级反向耦合,据此披露",
+      "retireWhen": "读依赖扫描器(源码文本级跨包读取检测)落地后转执法或移除"
+    },
+    {
+      "path": "packages/agent/src/governance/t16-acceptance-matrix.test.ts",
+      "reason": "治理测试 import e2e/kits/t16-evidence(相对路径跨入 e2e 工作区),复用 T16 验收 story 清单;说明符合法但物理上跨工作区,据此披露",
+      "retireWhen": "story 清单下沉到 packages/shared 或读依赖扫描器落地后转执法或移除"
     }
   ]
 }

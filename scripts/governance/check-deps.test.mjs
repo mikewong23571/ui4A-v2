@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { checkDeps } from './check-deps.mjs';
+import { readJson } from './lib.mjs';
 
 const IMPORT_RE = /(?:import|export)\s+(?:type\s+)?(?:[^'";]*?\sfrom\s+)?['"]([^'"]+)['"]/g;
 
@@ -59,5 +60,28 @@ describe('GR1 relative-import escape scan (T55 FR1.2a)', () => {
     ]);
     expect(violations).toHaveLength(1);
     expect(violations[0].reason).toContain('must not depend on');
+  });
+});
+
+describe('fs read disclosures registry (T55 FR1.2b)', () => {
+  const expected = [
+    'packages/agent/src/governance/t21-source-governance.test.ts',
+    'packages/agent/src/governance/t16-acceptance-matrix.test.ts',
+  ];
+
+  it('discloses the known cross-workspace file-system read dependencies', () => {
+    const disclosures = readJson('scripts/governance/exceptions.json').fsReadDisclosures ?? [];
+    const byPath = new Map(disclosures.map((d) => [d.path, d]));
+    for (const path of expected) {
+      const entry = byPath.get(path);
+      expect(entry, `missing disclosure for ${path}`).toBeDefined();
+      expect(entry.reason.length).toBeGreaterThan(0);
+      expect(entry.retireWhen.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('disclosure entries are informative only — governance stays green with them', () => {
+    const { violations } = checkDeps();
+    expect(violations).toEqual([]);
   });
 });
