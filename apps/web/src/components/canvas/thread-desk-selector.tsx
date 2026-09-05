@@ -6,6 +6,8 @@
  *   共用的发现面,机械派生零特判;flow 面不是集合,不入候选;
  * - 集合实体读取走页面级缓存(useEntityCache);顶部标题过滤;点击即挂由
  *   宿主执行(attach category 缺省 context);已在本线的成员禁选并标注;
+ * - G07 DoD2:候选标题消费合同声明字段(selectorCandidateLabel)——声明
+ *   identity/内容字段值如实使用;全组只剩集合级同名兜底时退 rel,不猜测;
  * - 零每实体特判:身份/状态一律读实体声明字段。
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -15,11 +17,16 @@ import { Badge } from '@/components/ui/badge';
 import { useEntityCache } from '../entity-cache-provider';
 import { withPolicyScope } from '../exec-client';
 import { hrefToRel } from '../contract-href';
-import { firstString } from './thread-desk-shared';
+import {
+  collapseSharedFallbackLabel,
+  firstString,
+  selectorCandidateLabel,
+} from './thread-desk-shared';
 
 interface SelectorMember {
   rel: string;
   identity: string;
+  labelDeclared: boolean;
   status?: string;
 }
 
@@ -73,9 +80,12 @@ export function ObjectSelectorPanel({
                   .find((rel): rel is string => rel !== null) ??
                 null;
               if (rel === null || rel === '') return null;
+              // G07 DoD2:可区分标题 = 声明字段值优先;缺标题回退 rel,不猜测。
+              const label = selectorCandidateLabel(member);
               return {
                 rel,
-                identity: firstString(member.properties.identity, member.properties.title) ?? rel,
+                identity: label?.text ?? rel,
+                labelDeclared: label?.declared ?? false,
                 status: firstString(member.properties.title, member.properties.statusText),
               };
             })
@@ -83,7 +93,7 @@ export function ObjectSelectorPanel({
           loaded.push({
             collection: collection.rel,
             title: firstString(entity?.properties.title) ?? collection.title ?? collection.rel,
-            members,
+            members: collapseSharedFallbackLabel(members),
           });
         }
         if (!cancelled) setGroups(loaded);

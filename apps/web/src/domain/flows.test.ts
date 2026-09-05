@@ -216,7 +216,10 @@ describe('种子 flow 常量(machine-as-JSON)', () => {
     const offline = nodeOf(postStatusFlow, 'offline');
     expect(offline.title).toBe('已下线');
     expect(offline.actions).toEqual([
+      // T54/G06:下线后可编辑正文(set-field,不迁移节点)与归档(直达终态)。
+      expect.objectContaining({ name: 'edit', title: '编辑正文' }),
       expect.objectContaining({ name: 'republish', to: 'published' }),
+      expect.objectContaining({ name: 'archive', title: '归档', to: 'archived' }),
     ]);
 
     expect(nodeOf(postStatusFlow, 'archived').actions).toEqual([]);

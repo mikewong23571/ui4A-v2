@@ -618,3 +618,165 @@ describe('project — 实体显示 hint(概览列,T38 FR4)', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// G09 捕捉流程与产物身份(T54):捕捉节点的输入字段是「正在新建」的动作输入,
+// 不认领向导实例身份(role=metadata);连续捕捉回环后上一轮残留的产物名只
+// 是向导字段值,实例身份回退声明的流程任务标题(flow.title),产物身份由
+// 产物流的流级 identity 字段携带。全链经声明数据驱动,零 flow.name 特判,
+// 不清除业务字段。
+// ---------------------------------------------------------------------------
+
+describe('project — G09 捕捉回环:实例身份=流程任务标题,产物身份=产物字段', () => {
+  const captureFlow = {
+    name: 'idea-capture',
+    title: '想法捕捉',
+    initial: 'capture',
+    nodes: [
+      {
+        name: 'capture',
+        title: '捕捉',
+        fields: [
+          {
+            name: 'title',
+            type: 'text' as const,
+            required: true,
+            semantics: 'intent' as const,
+            presentation: { role: 'metadata' as const },
+            title: '想法标题',
+          },
+        ],
+        actions: [
+          {
+            name: 'keep',
+            title: '记下想法',
+            to: 'recorded',
+            method: 'POST' as const,
+            guards: [],
+            fields: [],
+            effect: [
+              { type: 'transition' as const, to: 'recorded' },
+              {
+                type: 'append' as const,
+                collection: 'ideas',
+                'resource-type': 'idea',
+                flow: 'idea-item',
+                'name-from': 'title',
+                node: 'captured',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        name: 'recorded',
+        title: '已记下',
+        actions: [
+          {
+            name: 'another',
+            title: '再记一条',
+            to: 'capture',
+            method: 'POST' as const,
+            guards: [],
+            fields: [],
+            effect: [{ type: 'transition' as const, to: 'capture' }],
+          },
+        ],
+        fields: [],
+      },
+    ],
+  };
+  const itemFlow = {
+    name: 'idea-item',
+    title: '想法状态',
+    initial: 'captured',
+    collections: [{ collection: 'ideas', title: '想法' }],
+    fields: [
+      {
+        name: 'title',
+        type: 'text' as const,
+        title: '想法标题',
+        presentation: { role: 'identity' as const },
+      },
+    ],
+    nodes: [{ name: 'captured', title: '已捕捉', actions: [], fields: [] }],
+  };
+  const g09Deps = {
+    flows: flowRegistry(captureFlow, itemFlow),
+    guards: seedGuardRegistry,
+  };
+  const baseSnapshot: EngineSnapshot = {
+    instances: {
+      'idea-capture:main': {
+        rel: 'idea-capture:main',
+        flow: 'idea-capture',
+        node: 'capture',
+        fields: {},
+      },
+    },
+    collections: {},
+  };
+
+  function exec(
+    snapshot: EngineSnapshot,
+    rel: string,
+    action: string,
+    params: Record<string, unknown>,
+  ) {
+    const outcome = executeWithGates(
+      { rel, action, params, actor: 'human', principal: 'user:mike', channel: 'http' },
+      snapshot,
+      g09Deps,
+    );
+    if (outcome.kind !== 'executed') {
+      throw new Error(`前置失败:${action} 期望 executed,得到 ${outcome.kind}`);
+    }
+    return outcome.snapshot;
+  }
+
+  /** 连续捕捉一轮:keep(创建 A)→ another(回到 capture 准备下一次)。 */
+  function captureRound(snapshot: EngineSnapshot, title: string): EngineSnapshot {
+    return exec(
+      exec(snapshot, 'idea-capture:main', 'keep', { title }),
+      'idea-capture:main',
+      'another',
+      {},
+    );
+  }
+
+  it('回环后捕捉实例身份是流程任务标题,不是上一轮产物名(残留字段仍在)', () => {
+    const looped = captureRound(baseSnapshot, 'UX0905 连续编辑回归');
+    const wizard = looped.instances['idea-capture:main']!;
+    // 残留业务字段未被清除(不为改标题清字段)。
+    expect(wizard.node).toBe('capture');
+    expect(wizard.fields.title).toEqual({ value: 'UX0905 连续编辑回归', origin: 'intent' });
+
+    const entity = project(looped, 'idea-capture:main', g09Deps);
+    expect(entity?.properties).toMatchObject({
+      title: '捕捉',
+      identity: '想法捕捉',
+      status: 'capture',
+      presentation: {
+        fields: [{ path: 'properties.fields.title', title: '想法标题', role: 'metadata' }],
+      },
+    });
+    expect(entity?.properties.identity).not.toBe('UX0905 连续编辑回归');
+  });
+
+  it('产物身份与集合可见性不回归:刚保存的产物在集合区可达', () => {
+    const looped = captureRound(baseSnapshot, 'UX0905 连续编辑回归');
+    const artifact = project(looped, 'idea:ux0905', g09Deps);
+    expect(artifact?.properties).toMatchObject({
+      identity: 'UX0905 连续编辑回归',
+      node: 'captured',
+      title: '已捕捉',
+    });
+
+    const collection = project(looped, 'ideas', g09Deps);
+    expect(collection?.entities?.map((member) => member.properties.rel)).toEqual(['idea:ux0905']);
+    expect(collection?.entities?.[0]?.properties.identity).toBe('UX0905 连续编辑回归');
+    // 捕捉实例携带产物集合入口(旧产物经明确关系可达)。
+    const wizard = project(looped, 'idea-capture:main', g09Deps);
+    expect(wizard?.links).toContainEqual({ rel: ['collection'], href: '/api/entity?rel=ideas' });
+  });
+});

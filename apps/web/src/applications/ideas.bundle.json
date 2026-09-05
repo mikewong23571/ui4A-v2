@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "ideas",
-    "version": 7
+    "version": 8
   },
   "applications": [
     {
@@ -30,7 +30,7 @@
               "required": true,
               "semantics": "intent",
               "presentation": {
-                "role": "identity"
+                "role": "metadata"
               },
               "title": "想法标题"
             }

@@ -308,9 +308,12 @@ describe('generic Presentation runtime plan', () => {
               ({ path }) => path,
             ),
           );
+          // G05(T54):actions-entity 切片携带源实体 fields(工作区编辑表单预填
+          // 通道),字段值可经该通道进入数据模型——「未选⇒不在场」的反向断言
+          // 因此退役;保留「已选⇒在场」与「组件零字面」两条不变量。
           hints.forEach(({ path }, index) => {
             const value = fields[`field${index}`]!;
-            expect(dataValues.has(value)).toBe(selectedPaths.has(path));
+            if (selectedPaths.has(path)) expect(dataValues.has(value)).toBe(true);
           });
           expect(JSON.stringify(plan.surface)).not.toMatch(/FACT_/);
           expect(JSON.stringify(plan.surface)).toContain('"kind":"actions"');

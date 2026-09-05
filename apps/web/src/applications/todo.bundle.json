@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "todo",
-    "version": 7
+    "version": 8
   },
   "applications": [
     {
@@ -33,7 +33,7 @@
               "required": true,
               "semantics": "intent",
               "presentation": {
-                "role": "identity"
+                "role": "metadata"
               },
               "title": "待办标题"
             },
@@ -120,9 +120,7 @@
       ],
       "cognitive": {
         "version": 1,
-        "traits": [
-          "work-queue"
-        ],
+        "traits": ["work-queue"],
         "emptyMeaning": "ready-to-start"
       },
       "fields": [
@@ -156,10 +154,7 @@
               "to": "done",
               "submission": {
                 "mode": "direct",
-                "actors": [
-                  "agent",
-                  "human"
-                ]
+                "actors": ["agent", "human"]
               },
               "method": "POST",
               "guards": [],
@@ -199,10 +194,7 @@
               "to": "open",
               "submission": {
                 "mode": "direct",
-                "actors": [
-                  "agent",
-                  "human"
-                ]
+                "actors": ["agent", "human"]
               },
               "method": "POST",
               "guards": [],

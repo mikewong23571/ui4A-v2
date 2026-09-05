@@ -269,3 +269,71 @@ describe('T40 F-03 字段分层:声明字段按角色进入详情,未声明/未�
     expect(paths).not.toContain('properties.fields.note');
   });
 });
+
+describe('G09 捕捉回环:区域标题绑声明任务名,不绑上一轮产物名', () => {
+  /** 连续捕捉回环后的捕捉实例:残留字段在,呈现角色不再是 identity(声明数据)。 */
+  const captureInstance: SirenEntity = {
+    class: ['flow-instance', 'idea-capture'],
+    properties: {
+      rel: 'idea-capture:main',
+      flow: 'idea-capture',
+      node: 'capture',
+      title: '捕捉',
+      identity: '想法捕捉',
+      status: 'capture',
+      fields: { title: 'UX0905 连续编辑回归' },
+      presentation: {
+        fields: [{ path: 'properties.fields.title', title: '想法标题', role: 'metadata' }],
+      },
+    },
+    actions: [{ name: 'keep', title: '记下想法', method: 'POST', href: '/api/exec', fields: {} }],
+    links: [
+      { rel: ['self'], href: '/api/entity?rel=idea-capture%3Amain' },
+      { rel: ['collection'], href: '/api/entity?rel=ideas' },
+    ],
+  };
+
+  it('身份词绑 properties.identity(流程任务标题),残留产物名只按声明角色进 metadata', () => {
+    const bindings = bindingPaths(plan('idea-capture:main', captureInstance, 'compose'));
+    expect(
+      bindings.some(
+        ({ role, kind, path }) =>
+          role === 'identity' && kind === 'property' && path === 'properties.identity',
+      ),
+    ).toBe(true);
+    expect(
+      bindings.some(({ role, path }) => role === 'identity' && path === 'properties.fields.title'),
+    ).toBe(false);
+    // 状态词仍是节点标题(任务语),与既有 T40 F-02 口径一致。
+    expect(
+      bindings.some(({ role, path }) => role === 'status' && path === 'properties.title'),
+    ).toBe(true);
+  });
+
+  it('产物流实例(字段声明 identity)不受影响:身份词仍绑产物字段', () => {
+    const artifact: SirenEntity = {
+      class: ['flow-instance', 'idea-item'],
+      properties: {
+        rel: 'idea:ux0905',
+        flow: 'idea-item',
+        node: 'captured',
+        title: '已捕捉',
+        identity: 'UX0905 连续编辑回归',
+        status: 'captured',
+        fields: { title: 'UX0905 连续编辑回归' },
+        presentation: {
+          fields: [{ path: 'properties.fields.title', title: '想法标题', role: 'identity' }],
+        },
+      },
+      actions: [],
+      links: [],
+    };
+    const bindings = bindingPaths(plan('idea:ux0905', artifact, 'compose'));
+    expect(
+      bindings.some(
+        ({ role, kind, path }) =>
+          role === 'identity' && kind === 'property' && path === 'properties.fields.title',
+      ),
+    ).toBe(true);
+  });
+});

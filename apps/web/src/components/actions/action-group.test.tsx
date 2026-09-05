@@ -2,10 +2,11 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { SirenEntity } from '@ui4a/engine';
+import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ACTION_CONTRACT_LEGEND, ActionGroup } from './action-group';
 import type { ActionSubmit } from './action-submit';
+import { EntityCacheProvider } from '../entity-cache-provider';
 
 function entityOf(classes: string[], blocked = false): SirenEntity {
   return {
@@ -201,4 +202,93 @@ it('allows a second edit after the host supplies the updated entity fields', asy
   expect((screen.getByRole('button', { name: '修订' }) as HTMLButtonElement).disabled).toBe(false);
   fireEvent.click(screen.getByRole('button', { name: '修订' }));
   expect((screen.getByRole('textbox', { name: /原因/ }) as HTMLInputElement).value).toBe('updated');
+});
+
+describe('G07 材料入口收敛(线 attach 动作 → 选择器主路径)', () => {
+  const referenceFields: SirenAction['fields'] = {
+    $schema: 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+    properties: {
+      category: { type: 'string', enum: ['context', 'active', 'approval', 'event'], title: '类别' },
+      rel: { type: 'string', title: '涉及对象', minLength: 1 },
+    },
+    required: ['category', 'rel'],
+    additionalProperties: false,
+  };
+
+  function threadEntity(action: SirenAction, rel = 'thread:t1'): SirenEntity {
+    return {
+      class: ['work-thread', 'open'],
+      properties: { rel, identity: '完成跨应用评审闭环', context: [] },
+      actions: [action],
+      links: [],
+      'guard-results': [{ action: action.name, blocked: false, guards: [] }],
+    };
+  }
+
+  function renderGroup(entity: SirenEntity, submit: ActionSubmit) {
+    return render(
+      <EntityCacheProvider
+        fetcher={async (rel) => (rel === entity.properties.rel ? entity : null)}
+        versionFetcher={async () => 'v-test'}
+      >
+        <ActionGroup entity={entity} submit={submit} />
+      </EntityCacheProvider>,
+    );
+  }
+
+  it('线上的合同 attach 动作呈现选择器主路径(无裸 rel 表单直出)', () => {
+    const submit = acceptedSubmit();
+    const { container } = renderGroup(
+      threadEntity({
+        name: 'attach',
+        title: '添加涉及对象',
+        method: 'POST',
+        href: '/api/exec',
+        fields: referenceFields,
+      }),
+      submit,
+    );
+    expect(screen.getByTestId('thread-add-material')).toBeTruthy();
+    // 裸 rel 输入不出现在主路径(仅为高级回退)。
+    expect(screen.queryByLabelText(/涉及对象/)).toBeNull();
+    expect(container.querySelector('[data-action-group-item="attach"]')).not.toBeNull();
+  });
+
+  it('线上非 attach 动作与其余实体的 attach 同名动作保持通用表单零变化', () => {
+    const submit = acceptedSubmit();
+    // 线上的 detach:移出语义仍是通用表单(书桌外不引入选择器)。
+    renderGroup(
+      threadEntity({
+        name: 'detach',
+        title: '移出涉及对象',
+        method: 'POST',
+        href: '/api/exec',
+        fields: referenceFields,
+      }),
+      submit,
+    );
+    expect(screen.queryByTestId('thread-add-material')).toBeNull();
+    expect(screen.getByRole('button', { name: '移出涉及对象' })).toBeTruthy();
+    cleanup();
+    // 非线实体的同名 attach 动作:通用表单(识别键 = 线 rel,零误伤)。
+    const todo: SirenEntity = {
+      class: ['flow-instance', 'todo-item'],
+      properties: { rel: 'todo:x' },
+      actions: [
+        {
+          name: 'attach',
+          title: '添加涉及对象',
+          method: 'POST',
+          href: '/api/exec',
+          fields: referenceFields,
+        },
+      ],
+      links: [],
+      'guard-results': [{ action: 'attach', blocked: false, guards: [] }],
+    };
+    renderGroup(todo, submit);
+    expect(screen.queryByTestId('thread-add-material')).toBeNull();
+    expect(screen.getByRole('button', { name: '添加涉及对象' })).toBeTruthy();
+  });
 });

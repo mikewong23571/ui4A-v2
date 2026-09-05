@@ -23,8 +23,8 @@ describe('walkthrough application entries', () => {
   });
 
   it('keeps direct bundle versions aligned with changed installed declaration data', () => {
-    expect(todoApplicationBundle.bundle).toEqual({ name: 'todo', version: 7 });
-    expect(ideasApplicationBundle.bundle).toEqual({ name: 'ideas', version: 7 });
+    expect(todoApplicationBundle.bundle).toEqual({ name: 'todo', version: 8 });
+    expect(ideasApplicationBundle.bundle).toEqual({ name: 'ideas', version: 8 });
 
     expect(todoApplicationBundle.flows.find(({ name }) => name === 'todo-item')).toMatchObject({
       collections: [{ collection: 'todos', filters: [{ field: 'status' }] }],
@@ -42,5 +42,18 @@ describe('walkthrough application entries', () => {
         { name: 'insight', presentation: { role: 'primary-content', overview: true } },
       ],
     });
+  });
+
+  it('G09 捕捉输入不认领向导实例身份:呈现角色降为 metadata,身份回退声明的流程任务标题', () => {
+    // 捕捉节点输入是「正在新建」的动作输入,不是向导实例的身份;role=identity 会
+    // 让上一轮残留的产物名顶替区域标题。产物身份由产物流(todo-item/idea-item)
+    // 的流级字段声明携带(上例钉住),流程任务身份由投影回退 flow.title 承载。
+    for (const bundle of [todoApplicationBundle, ideasApplicationBundle]) {
+      const captureNode = bundle.flows
+        .find(({ name }) => name.endsWith('-capture'))!
+        .nodes.find(({ name }) => name === 'capture')!;
+      const titleField = (captureNode.fields ?? []).find(({ name }) => name === 'title');
+      expect(titleField?.presentation).toEqual({ role: 'metadata' });
+    }
   });
 });

@@ -2,12 +2,24 @@
 
 import { createContext, useContext } from 'react';
 
-import type { GuardResultEntry, SirenEntity } from '@ui4a/engine';
+import { THREAD_ATTACH_ACTION, THREAD_REL_PREFIX } from '@ui4a/engine';
+import type { GuardResultEntry, SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ActionRunner } from '../action-runner';
+import { ThreadMaterialAdd } from './thread-material-add';
 import { useActionSubmit, type ActionSubmit } from './action-submit';
 
 export const ACTION_CONTRACT_LEGEND = '你和助手使用同一合同，由同一规则裁决';
+
+/**
+ * G07 材料入口收敛:线 rel 上的合同 attach 动作(识别键 = 引擎导出的
+ * THREAD_REL_PREFIX/THREAD_ATTACH_ACTION 声明,零发明字符串)在非书桌宿主
+ * (首页工作线区成员卡/实体页)改走授权发现选择器主路径,与书桌同一扇门;
+ * 其余动作与实体保持通用 ActionRunner,零行为改动。
+ */
+export function isThreadMaterialAttach(rel: string, action: SirenAction): boolean {
+  return action.name === THREAD_ATTACH_ACTION.name && rel.startsWith(THREAD_REL_PREFIX);
+}
 
 /**
  * T35 F-06:合同图例每个 surface 只渲染一次——外层 ActionGroup 展示后向内层
@@ -69,7 +81,16 @@ export function ActionGroup({
   );
   const renderItem = (action: (typeof entity.actions)[number], tone: 'normal' | 'danger') => {
     const guard = guards.get(action.name);
-    const runner = (
+    const runner = isThreadMaterialAttach(rel, action) ? (
+      <ThreadMaterialAdd
+        rel={rel}
+        action={action}
+        submit={submit}
+        onExecuted={onExecuted}
+        blocked={blockedForRenderer(guard)}
+        blockReason={guard?.reason}
+      />
+    ) : (
       <ActionRunner
         rel={rel}
         action={action}
