@@ -1,10 +1,9 @@
 import { fileURLToPath } from 'node:url';
 
-import { Client, Connection } from '../../apps/worker/node_modules/@temporalio/client/lib/index.js';
-import {
-  NativeConnection,
-  Worker,
-} from '../../apps/worker/node_modules/@temporalio/worker/lib/index.js';
+// T55 FR1.2a:依赖声明于根 package.json devDependencies(@temporalio 1.22.0,
+// 与 apps/worker 同版本),不再经相对路径伸手 apps/worker/node_modules。
+import { Client, Connection } from '@temporalio/client';
+import { NativeConnection, Worker } from '@temporalio/worker';
 
 const address = process.env.TEMPORAL_ADDRESS ?? '127.0.0.1:17233';
 const namespace = process.env.TEMPORAL_NAMESPACE ?? 'ui4a-probe';

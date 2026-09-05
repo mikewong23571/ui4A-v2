@@ -110,15 +110,41 @@ function exceptionFor(exceptions, relPath, target) {
   });
 }
 
-export function checkDeps() {
-  const exceptions = readJson('scripts/governance/exceptions.json').dependencyExceptions ?? [];
-  const files = trackedFiles('*.ts', '*.tsx', '*.mts').filter((f) => moduleOf(f));
+function relativeEscapeReason(relPath, specifier) {
+  if (!specifier.startsWith('.')) return null;
+  const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(relPath), specifier));
+  if (resolved.split('/').includes('node_modules')) {
+    return `relative import reaches into node_modules; declare the dependency instead ('${specifier}')`;
+  }
+  if (resolved.startsWith('..')) {
+    return `relative import escapes the workspace root ('${specifier}')`;
+  }
+  return null;
+}
+
+export function checkDeps(deps = {}) {
+  const exceptions = deps.exceptions ?? readJson('scripts/governance/exceptions.json').dependencyExceptions ?? [];
+  const allFiles = deps.files ?? trackedFiles('*.ts', '*.tsx', '*.mts');
+  // 注入契约:importsOf(file) 返回 [{specifier, line}](findImports 形状)。
+  const importsOf = deps.importsOf ?? findImports;
+  const files = allFiles.filter((f) => moduleOf(f));
   const violations = [];
   const usedExceptions = new Set();
 
+  for (const file of allFiles) {
+    for (const { specifier, line } of importsOf(file)) {
+      // T55 FR1.2a: relative imports are structural facts independent of module
+      // membership — reaching into any node_modules or out of the workspace root
+      // is a hidden dependency even where direction rules do not apply.
+      const escape = relativeEscapeReason(file, specifier);
+      if (escape) violations.push({ file, line, specifier, reason: escape });
+    }
+  }
+
   for (const file of files) {
     const fromModule = moduleOf(file);
-    for (const { specifier, line } of findImports(file)) {
+    for (const { specifier, line } of importsOf(file)) {
+      if (specifier.startsWith('.')) continue; // escape rule already covered above
       const target = resolveTarget(fromModule, file, specifier);
       if (!target) continue;
 

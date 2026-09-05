@@ -11,6 +11,12 @@ importers:
       '@playwright/test':
         specifier: ^1.62.1
         version: 1.62.1
+      '@temporalio/client':
+        specifier: 1.22.0
+        version: 1.22.0
+      '@temporalio/worker':
+        specifier: 1.22.0
+        version: 1.22.0(@swc/helpers@0.5.23)(esbuild@0.28.2)
       '@types/node':
         specifier: ^26.2.0
         version: 26.2.0
