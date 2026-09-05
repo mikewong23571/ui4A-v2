@@ -2,9 +2,17 @@
   "trackId": "t54-ux-gaps-closure_20260905",
   "title": "T54 深度体验遗留缺口闭环(G01–G15)",
   "type": "remediation",
-  "status": "new",
+  "status": "completed",
   "createdAt": "2026-09-05",
   "description": "闭环 docs/ux-review/2026-09-05/remaining-gaps.md 的 G01–G15 遗留缺口:P1(G01 严格策略确认批准/G02 停用响应语义与成功回执/G03 知情确认/G04 证据时点)+ P2(G05/G07/G09 操作顺畅性、G06 业务收尾另立小故事、G08/G10–G15 注意力与复现收敛);每缺口按 commit+测试命令+部署 digest+浏览器原故事复验证据关闭",
-  "dependsOn": ["t52-application-deprecation_20260904"],
-  "artifacts": ["spec.md", "plan.md"]
+  "dependsOn": [
+    "t52-application-deprecation_20260904"
+  ],
+  "artifacts": [
+    "spec.md",
+    "plan.md",
+    "evidence.md",
+    "DONE.md"
+  ],
+  "completedAt": "2026-09-05"
 }

@@ -2,4 +2,6 @@
 
 - [Spec](./spec.md)
 - [Plan](./plan.md)
+- [Evidence](./evidence.md)
+- [DONE](./DONE.md)
 - [Metadata](./metadata.json)

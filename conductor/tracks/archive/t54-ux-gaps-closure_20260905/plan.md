@@ -1,6 +1,6 @@
 # T54 深度体验遗留缺口闭环 — Plan
 
-> 状态:**new**(2026-09-05,规划完成未开工)。执行纪律:严格 TDD(先红后绿);
+> 状态:**已完成**(2026-09-05,八阶段全闭环;G01–G15 除明示遗留项外本地闭环;部署站复验待用户发布,先例 T51/T52)。执行纪律:严格 TDD(先红后绿);
 > 每任务完成即 commit + git note;Phase 结束跑 Phase Checkpoint(自治验收,workflow
 > 自治编排协议);GR1–GR5 全程生效(治理失败只如实报告,不裁剪代码,D53);
 > 逐缺口闭环证据标准见 spec §4(逐缺口验收细节以 remaining-gaps.md 各节「验收」段
@@ -163,18 +163,20 @@
 - [x] Task: G15:已定型语义下小修(过期时间本地化 1921d6cc;标点纪律);三断点
   走查/确认区层级/图标短标签归部署站复验批次;B18 未证实不改 `1921d6cc`
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `bbef6eb0`
-## Phase 8 — 收口 [checkpoint: 待终验后回填]
+## Phase 8 — 收口 [checkpoint: 终验见本节]
 
-- [ ] Task: 全量门禁:pnpm check(governance:strict)+ CI=true pnpm e2e +
-  CI=true pnpm e2e invariants(结果回填)
+- [x] Task: 全量门禁:pnpm check(governance:strict)+ CI=true pnpm e2e +
+  CI=true pnpm e2e invariants
+  (check 4097 passed/15 skipped;e2e 79 passed/26 skipped;invariants 20/8;
+  eval:llm 16 skipped=provider 未配置,G10 真实 LLM 项记 NOT RUN,先例 T39 US19)
 - [x] Task: 闭环证据汇总:evidence.md(G01–G15 逐缺口 commit/命令/结果/边界
   裁定;G12 保留开放与部署站清单如实);remaining-gaps.md 状态列+收口注记
   `49294655`
 - [x] Task: 文档同步:AGENTS.md chat 模块行补 message: 投影 `82e74d4a`;
   GOAL/product/tech-stack 判定无需修订(T54 为修复与呈现细节+两 bundle 动作,
   不改 DONE 范围与栈;理由入 git note)
-- [ ] Task: Track 收口(archive、registry、DONE;部署站复验待用户发布)
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Track 收口(archive、registry、DONE;部署站复验待用户发布)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 ## 附录 A — 开工前事实复核记录(Phase 0 Task 1 产出)
 
 复核时点:2026-09-05,HEAD 29e33032(T54 初始化提交;其后仅本 track 改动)。
