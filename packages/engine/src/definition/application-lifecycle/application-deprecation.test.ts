@@ -22,7 +22,6 @@ import { fold, type LogEvent } from '../../projection/fold/index';
 import type { FoldSnapshot } from '../../projection/fold/index';
 import { definitionSeedEvent, executeMeta } from '../meta';
 import type { MetaDeps } from '../meta';
-import { withLifecycleFlows } from '../lifecycle';
 
 const deps: MetaDeps = { guards: seedGuardRegistry };
 
@@ -273,7 +272,7 @@ describe('确认门 — 挂起语义(注入严策略;builtin/随附 Cedar 对 hu
     expect(fold([...log, ...suspendedLog], { flows: {} })).toEqual(suspended.snapshot);
   });
 
-  it('确认后批准:效果经 applyEffects 应用(节点→deprecated);确认链路只重放目标动作效果、不产 meta 伴随事件(机制事实,与 definition approve 同口径)', () => {
+  it('确认后批准(D74):批准经 executeMeta 同一编排,事件计划与直连一致 + 级联落态', () => {
     const { snapshot, log } = seeded();
     const suspended = deprecatePublishing(snapshot, { reason: '清理', deps: strictDeps });
     if (suspended.kind !== 'suspended') throw new Error('前置失败:期望 suspended');
@@ -282,33 +281,57 @@ describe('确认门 — 挂起语义(注入严策略;builtin/随附 Cedar 对 hu
       suspended.snapshot,
       'c1',
       { actor: 'human', principal: 'user:admin' },
-      { flows: withLifecycleFlows({}), guards: seedGuardRegistry },
+      {
+        flows: {},
+        guards: seedGuardRegistry,
+        // D74:meta 目标批准执行钩子 = executeMeta 本体(内置确认策略,不再挂起)。
+        executeMetaTarget: (request, current) => executeMeta(request, current, deps),
+      },
     );
     expect(approved.kind).toBe('confirmed');
     if (approved.kind !== 'confirmed') return;
 
     // 委托语义生效:节点迁移到 deprecated。
     expect(approved.snapshot.instances['meta/application:publishing']?.node).toBe('deprecated');
-    // 机制事实(如实钉测):approveConfirmation 只重放目标动作效果,
-    // 事件链为 [confirmation-approved, action-executed]——不产 application-deprecated
-    // 伴随事件,也不做 applications 删键/定义级联(与 definition approve 在确认
-    // 链路不产 definition-activated 同口径;内置/随附 Cedar 策略对 human 直通,
-    // 该路径仅在更严策略下可达,fold 与在线在该链路上仍逐字段同构)。
+    // 事件计划与直连执行一致(批准路径前置 confirmation-approved):
+    // [confirmation-approved, action-executed, application-deprecated]。
     expect(approved.events.map((event) => event.kind)).toEqual([
       'confirmation-approved',
       'action-executed',
+      'application-deprecated',
     ]);
-    expect(approved.snapshot.applications).toEqual({
-      default: defaultApp,
-      publishing: publishingApp,
-    });
+    // 级联落态与直连同口径:applications 删键 + 同 app 定义置废(无假成功)。
+    expect(approved.snapshot.applications).toEqual({ default: defaultApp });
+    expect(approved.snapshot.definitions?.['post-status']?.status).toBe('deprecated');
+    expect(approved.snapshot.definitions?.['comment-moderation']?.status).toBe('active');
 
-    // 该链路的 fold 同构:confirmation-requested/approved/action-executed 重放
-    // 与在线批准快照逐字段一致(无伴随事件,故两边都无级联——不产生漂移)。
+    // 批准链路的 fold 同构:request/approved/executed/application-deprecated 重放
+    // 与在线批准快照逐字段一致(审计表除外——seq 属日志层)。
     const suspendedLog = suspended.events.map((event, index) => ({ ...event, seq: 10 + index }));
     const approvedLog = approved.events.map((event, index) => ({ ...event, seq: 20 + index }));
-    expect(fold([...log, ...suspendedLog, ...approvedLog], { flows: {} })).toEqual(
-      approved.snapshot,
+    const replayed = fold([...log, ...suspendedLog, ...approvedLog], { flows: {} });
+    expect(replayed.instances).toEqual(approved.snapshot.instances);
+    expect(replayed.applications).toEqual(approved.snapshot.applications);
+    expect(replayed.definitions).toEqual(approved.snapshot.definitions);
+    expect(replayed.confirmations).toEqual(approved.snapshot.confirmations);
+    expect(replayed.deprecatedApplications).toEqual({
+      publishing: expect.objectContaining({ name: 'publishing', reason: '清理' }),
+    });
+  });
+
+  it('确认后批准(D74 遗留防回归):未注入 meta 钩子时,声明层结构化拒绝(不得假成功)', () => {
+    const { snapshot } = seeded();
+    const suspended = deprecatePublishing(snapshot, { reason: '清理', deps: strictDeps });
+    if (suspended.kind !== 'suspended') throw new Error('前置失败:期望 suspended');
+
+    // 业务面 deps(无钩子、无生命周期伪流):approve 不得以「只重放效果」的
+    // 半执行蒙混——结构化拒绝留痕,由装配方(web)负责注入钩子。
+    const denied = approveConfirmation(
+      suspended.snapshot,
+      'c1',
+      { actor: 'human', principal: 'user:admin' },
+      { flows: {}, guards: seedGuardRegistry },
     );
+    expect(denied).toMatchObject({ kind: 'rejected', layer: 'undeclared' });
   });
 });

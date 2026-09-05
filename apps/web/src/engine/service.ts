@@ -282,6 +282,15 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     flows: activeFlows(),
     guards,
     versions: versions(),
+    // D74:meta 目标批准执行钩子 = executeMeta 同一编排(重验声明/guard/schema +
+    // 全部伴随事件计划);确认策略不注入——内置直通,批准即人类已决定,
+    // 不再次挂起、不重复公开 POST。业务面(非 meta)批准语义不变。
+    executeMetaTarget: (request, current) =>
+      executeMeta(request, current, {
+        guards,
+        executorProfiles: capabilityExecutorClassRegistryFromEnvironment(),
+        nativeFunctionProfiles: nativeFunctionActivationRegistryFromEnvironment(),
+      }),
   });
   const projectDeps = (): ProjectDeps => ({ flows: activeFlows(), guards, versions: versions() });
   // meta 平面编排依赖(编辑动词裁决用 lifecycle 常量自举,executeMeta 内部注入;

@@ -6,6 +6,7 @@
 import {
   actionRejectedEvent,
   approveConfirmation,
+  fold,
   project,
   rejectConfirmation,
   type Approver,
@@ -24,6 +25,7 @@ import {
   applyForeignGaps,
   type CoreEventLogState,
 } from './service-event-log';
+import type { LogEvent } from '@ui4a/engine';
 import type { ExecOutcome } from './service';
 import { CONFIRMATION_REL_PREFIX, paramsWithOrigins } from './service-request';
 
@@ -100,17 +102,34 @@ export async function execConfirmationDecision(
     return persistRejection(db, state, deps.toAppend, request, decision);
   }
 
-  await appendBatchWithSeq(db, state, decision.events.map(deps.toAppend));
+  const seqs = await appendBatchWithSeq(db, state, decision.events.map(deps.toAppend));
   state.snapshot = decision.snapshot;
+  // T52 终验缺陷 B 同口径(D74 批准路径镜像):application-deprecated 是自身事件
+  // 不进增量 fold 纪律的唯一例外——审计表是 fold 侧专属物化,不补折则同进程
+  // 烧毁名守卫(US4/D71.5)读不到审计集;仅折该 kind,applier 幂等收敛。
+  const deprecatedEvents: LogEvent[] = [];
+  for (const [index, event] of decision.events.entries()) {
+    if (event.kind !== 'application-deprecated') continue;
+    deprecatedEvents.push({ ...event, seq: seqs[index]! });
+  }
+  if (deprecatedEvents.length > 0) {
+    state.snapshot = fold(deprecatedEvents, { flows: {} }, state.snapshot);
+  }
   applyForeignGaps(state);
 
+  // 受影响实体:approve → 目标实体(reject → 确认实体自身,审计视图)。
+  // T52 终验缺陷 A 同口径(D74 镜像):伴随 application-deprecated 的批准,
+  // 其目标实体存在性隐藏恒 undefined(不是内部错误)——回执改投影收缩后的
+  // meta/applications 集合(停用即离场,成员不含停用名)。
   const targetRel =
     request.action === 'approve'
       ? (state.snapshot.confirmations?.[request.rel]?.targetRel ?? request.rel)
       : request.rel;
-  const entity = project(state.snapshot, targetRel, deps.projectDeps());
+  const receiptRel =
+    decision.events.at(-1)?.kind === 'application-deprecated' ? 'meta/applications' : targetRel;
+  const entity = project(state.snapshot, receiptRel, deps.projectDeps());
   if (entity === undefined) {
-    throw new Error(`exec 后目标实体 "${targetRel}" 不可投影(内部不变式破坏)`);
+    throw new Error(`exec 后目标实体 "${receiptRel}" 不可投影(内部不变式破坏)`);
   }
   // T35 F-31:主体(确认实体)投影随 accepted 携带——它的 collection 回链
   // (inbox)是渲染层失效「在等我」列表缓存的唯一合同来源;受影响实体(目标)

@@ -20,6 +20,9 @@ import type { ConfirmationSnapshot, EngineSnapshot, GuardRegistry } from '@ui4a/
 import Ajv from 'ajv';
 
 import type { FoldSnapshot } from '../projection/fold/state';
+// D74:类型专用 import(编译期擦除,不构成运行时依赖环;定义平面运行时反向
+// 依赖 execution/*,此处仅借 MetaOutcome 形状)。
+import type { MetaOutcome } from '../definition/meta';
 import { applyEffects, paramsToFields } from './effects';
 import type { EngineEvent } from './effects';
 import {
@@ -297,6 +300,13 @@ export interface ConfirmationDeps {
   guards: GuardRegistry;
   /** 按出生版本解析的注册表(T4 Phase B,与 JudgeDeps 同口径;缺省回退 flows)。 */
   versions?: DefinitionVersionTable;
+  /**
+   * D74:meta 目标(targetRel 前缀 meta/)批准执行钩子 = executeMeta 同一编排
+   * (声明→guard→schema 重验 + 全部伴随事件计划;确认策略必须用内置直通——
+   * 批准即人类已决定,不再挂起)。不注入时 meta 批准按业务面声明层结构化
+   * 拒绝(装配方负责注入;返回 suspended 是装配违约,引擎抛内部不变式错)。
+   */
+  executeMetaTarget?: (request: ExecRequest, snapshot: EngineSnapshot) => MetaOutcome;
 }
 
 /** 确认 rel(id → confirmation:<id>)。 */
@@ -344,6 +354,25 @@ function adjudicateStatus(
 }
 
 /**
+ * guard 求值上下文实例:直查 instances;meta/activation:<id> 审批按 executeMeta
+ * 同一归一化落到其 lifecycle 实例(D74;同一谓词的两个投影)。
+ */
+function guardContextTarget(
+  snapshot: EngineSnapshot,
+  rel: string,
+): EngineSnapshot['instances'][string] | undefined {
+  const direct = snapshot.instances[rel];
+  if (direct !== undefined) return direct;
+  if (rel.startsWith('meta/activation:')) {
+    const activation = snapshot.activations?.[rel];
+    if (activation !== undefined) {
+      return snapshot.instances[`meta/flow:${activation.flow}`];
+    }
+  }
+  return undefined;
+}
+
+/**
  * guard 层:求值动作声明的全部 guard(actor-is-human 等),任一 false 即拒。
  * 求值上下文以**目标实例**为 instance(确认不是流程实例;actor-is-human 只读 actor)。
  */
@@ -354,7 +383,7 @@ function guardCheck(
   approver: Approver,
   guards: GuardRegistry,
 ): ConfirmationDecision | undefined {
-  const target = snapshot.instances[confirmation.targetRel];
+  const target = guardContextTarget(snapshot, confirmation.targetRel);
   if (target === undefined) {
     throw new Error(
       `确认 "${confirmation.id}" 的目标实体 "${confirmation.targetRel}" 不存在(日志与状态漂移)`,
@@ -376,9 +405,53 @@ function decidedByOf(approver: Approver): Approver {
   };
 }
 
+/** 决定落态共用:前置 confirmation-approved 事件 + 确认表置 approved(实体保留审计)。 */
+function decidedOutcome(
+  snapshot: FoldSnapshot,
+  events: readonly EngineEvent[],
+  confirmation: ConfirmationSnapshot,
+  confirmationId: string,
+  approver: Approver,
+): ConfirmationDecision {
+  const approvedEvent: EngineEvent = {
+    kind: 'confirmation-approved',
+    rel: confirmationRel(confirmationId),
+    action: 'approve',
+    actor: approver.actor,
+    principal: approver.principal,
+    channel: 'confirmation',
+    ...(approver.identity !== undefined ? { identity: approver.identity } : {}),
+    detail: {
+      id: confirmationId,
+      proposedBy: confirmation.proposedBy,
+      decidedBy: decidedByOf(approver),
+    },
+  };
+  const rel = confirmationRel(confirmationId);
+  const confirmations = {
+    ...(snapshot.confirmations ?? {}),
+    [rel]: {
+      ...confirmation,
+      status: 'approved' as const,
+      approvedBy: decidedByOf(approver),
+    },
+  };
+  return {
+    kind: 'confirmed',
+    snapshot: { ...snapshot, confirmations },
+    events: [approvedEvent, ...events],
+  };
+}
+
 /**
  * human approve → 应用**原目标动作效果**(复用 applyEffects;挂起时的三层裁决
  * 已通过,此处不重新裁决——但目标动作须仍声明于当前节点,漂移则拒绝)。
+ *
+ * D74:meta 目标(targetRel 前缀 meta/ 且注入 executeMetaTarget 钩子)不走本地
+ * 声明定位与裸 applyEffects——以挂起请求原文构造委托请求,经钩子(= executeMeta
+ * 同一编排,内置确认策略不再挂起)重验声明/guard/schema 并产出**与直连执行
+ * 同一**的伴随事件计划(如 [action-executed, application-deprecated]),批准
+ * 决定与伴随事件由调用方同批落库;目标漂移按结构化拒绝留痕。
  *
  * 事件链:confirmation-approved(链:proposed-by 原值 + approved-by 审批者)
  * → action-executed(委托语义:actor=human、principal=提议者的 principal、
@@ -405,23 +478,8 @@ export function approveConfirmation(
   );
   if (guardFailed !== undefined) return guardFailed;
 
-  // 定位目标动作(与 fold.applyExecuted 同口径:按实例当前节点查声明;
-  // 目标实例存在性已由 guardCheck 抛错保证)。
-  const target = snapshot.instances[confirmation.targetRel];
-  if (target === undefined) {
-    throw new Error(`确认 "${confirmationId}" 的目标实体不存在(日志与状态漂移)`);
-  }
-  const flow = flowForInstance(deps, target);
-  const node = flow?.nodes.find((candidate) => candidate.name === target.node);
-  const action = node?.actions.find((candidate) => candidate.name === confirmation.targetAction);
-  if (action === undefined) {
-    return reject(
-      'undeclared',
-      `目标动作 "${confirmation.targetAction}" 未声明于节点 "${target.node}"(确认 ${confirmationId} 挂起后状态漂移)`,
-    );
-  }
-
   // 委托语义:guard 已确保审批者是 human;生效动作归属提议者的 principal。
+  // 只消费挂起时的精确请求(params/paramOrigins 原文),不重新公开提交。
   const request: ExecRequest = {
     rel: confirmation.targetRel,
     action: confirmation.targetAction,
@@ -436,40 +494,40 @@ export function approveConfirmation(
     channel: 'confirmation',
     ...(approver.identity !== undefined ? { identity: approver.identity } : {}),
   };
+
+  const metaHook = deps.executeMetaTarget;
+  if (metaHook !== undefined && confirmation.targetRel.startsWith('meta/')) {
+    const metaOutcome = metaHook(request, snapshot);
+    if (metaOutcome.kind === 'rejected') return metaOutcome;
+    if (metaOutcome.kind !== 'executed') {
+      throw new Error(
+        `确认 "${confirmationId}" 的 meta 批准执行钩子返回 ${metaOutcome.kind}(D74 装配违约:批准即已决定,不得再挂起)`,
+      );
+    }
+    return decidedOutcome(metaOutcome.snapshot, metaOutcome.events, confirmation, confirmationId, approver);
+  }
+
+  // 业务面(非 meta):定位目标动作(与 fold.applyExecuted 同口径:按实例当前
+  // 节点查声明;目标实例存在性已由 guardCheck 抛错保证)。
+  const target = snapshot.instances[confirmation.targetRel];
+  if (target === undefined) {
+    throw new Error(`确认 "${confirmationId}" 的目标实体不存在(日志与状态漂移)`);
+  }
+  const flow = flowForInstance(deps, target);
+  const node = flow?.nodes.find((candidate) => candidate.name === target.node);
+  const action = node?.actions.find((candidate) => candidate.name === confirmation.targetAction);
+  if (action === undefined) {
+    return reject(
+      'undeclared',
+      `目标动作 "${confirmation.targetAction}" 未声明于节点 "${target.node}"(确认 ${confirmationId} 挂起后状态漂移)`,
+    );
+  }
+
   const outcome = applyEffects(request, actionEffects(action), snapshot, {
     flows: deps.flows,
     versions: deps.versions,
   });
-
-  const approvedEvent: EngineEvent = {
-    kind: 'confirmation-approved',
-    rel: confirmationRel(confirmationId),
-    action: 'approve',
-    actor: approver.actor,
-    principal: approver.principal,
-    channel: 'confirmation',
-    ...(approver.identity !== undefined ? { identity: approver.identity } : {}),
-    detail: {
-      id: confirmationId,
-      proposedBy: confirmation.proposedBy,
-      decidedBy: decidedByOf(approver),
-    },
-  };
-  const rel = confirmationRel(confirmationId);
-  const confirmations = {
-    ...(outcome.snapshot.confirmations ?? {}),
-    [rel]: {
-      ...confirmation,
-      status: 'approved' as const,
-      approvedBy: decidedByOf(approver),
-    },
-  };
-
-  return {
-    kind: 'confirmed',
-    snapshot: { ...outcome.snapshot, confirmations },
-    events: [approvedEvent, ...outcome.events],
-  };
+  return decidedOutcome(outcome.snapshot, outcome.events, confirmation, confirmationId, approver);
 }
 
 /**
