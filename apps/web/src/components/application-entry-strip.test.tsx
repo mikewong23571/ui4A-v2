@@ -114,7 +114,7 @@ describe('ApplicationEntryStrip · T39 Application 图书馆', () => {
       expect(link, `${application.name} 应在书架中`).toBeDefined();
       expect(within(link!).getByText(application.title)).toBeTruthy();
       expect(within(link!).queryByText(application.intent)).toBeNull();
-      expect(link!.getAttribute('title')).toBe(application.intent);
+      expect(link!.getAttribute('title')).toBe(`${application.title} · ${application.intent}`);
     }
 
     expect(screen.queryByRole('button', { name: /更多应用/ })).toBeNull();
@@ -135,22 +135,24 @@ describe('ApplicationEntryStrip · T39 Application 图书馆', () => {
     expect(grid?.className).not.toMatch(/\blg:grid-cols-9\b/);
   });
 
-  it('名称超过显示宽度被截断时，悬浮名字本体显示完整名称（用途提示保留在入口上）', async () => {
+  it('名称超过显示宽度被截断时，悬浮入口 tooltip 展示完整名称', async () => {
     stubApplications([
       {
         name: 'long-named',
         title: '超长应用名称用于悬浮完整名称验证',
-        intent: '悬浮应能看到未截断的名称。',
+        intent: '用途说明照旧保留在目录。',
       },
     ]);
     render(<ApplicationEntryStrip />);
 
     const shelf = await screen.findByRole('region', { name: '应用' });
     const link = shelf.querySelector<HTMLAnchorElement>('a[data-nav="local:app-entry:long-named"]');
-    const label = link?.querySelector('span.truncate');
-    expect(label?.textContent).toBe('超长应用名称用于悬浮完整名称验证');
-    expect(label?.getAttribute('title')).toBe('超长应用名称用于悬浮完整名称验证');
-    expect(link?.getAttribute('title')).toBe('悬浮应能看到未截断的名称。');
+    expect(link?.querySelector('span.truncate')?.textContent).toBe(
+      '超长应用名称用于悬浮完整名称验证',
+    );
+    expect(link?.getAttribute('title')).toBe(
+      '超长应用名称用于悬浮完整名称验证 · 用途说明照旧保留在目录。',
+    );
   });
 
   it('30 个应用时首页只展示前 9 个，完整目录可从固定入口到达', async () => {
@@ -216,7 +218,7 @@ describe('ApplicationEntryStrip · T39 Application 图书馆', () => {
     expect(links.at(-1)?.getAttribute('data-nav')).toBe('local:app-entry:research');
     const futureLink = links.at(-1)!;
     expect(within(futureLink).getByText('研究素材')).toBeTruthy();
-    expect(futureLink.getAttribute('title')).toBe(research.intent);
+    expect(futureLink.getAttribute('title')).toBe(`${research.title} · ${research.intent}`);
     expect(hrefOf(futureLink).searchParams.get('focus')).toBe('workspace:app:research');
   });
 
