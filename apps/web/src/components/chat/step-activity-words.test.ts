@@ -19,7 +19,7 @@ import {
 } from './step-activity-words';
 
 describe('STEP_ACTIVITY_WORDS(固定 op 词表)', () => {
-  it('覆盖 agent 协议全部实际 op,无遗留', () => {
+  it('覆盖 agent 协议全部实际 op,无缺漏', () => {
     expect(Object.keys(STEP_ACTIVITY_WORDS).sort()).toEqual(
       ['answer', 'clarify', 'done', 'exec', 'exec-plan', 'fail', 'navigate', 'present'].sort(),
     );

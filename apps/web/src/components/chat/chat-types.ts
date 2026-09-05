@@ -55,7 +55,7 @@ export interface ChatPresentationNotice {
   reasonCode?: string;
 }
 
-/** 一次性 JSON 响应形状(render 短路/兼容路径;inline 已转 SSE)。 */
+/** 一次性 JSON 响应形状(render 短路/非 inline 回合;inline 已转 SSE)。 */
 export interface ChatJsonResponse {
   sessionId?: string;
   outcome?: string;
@@ -80,7 +80,7 @@ export const SESSION_STORAGE_KEY = 'ui4a.chat.sessionId';
 export const PENDING_SESSION_STORAGE_KEY = 'ui4a.chat.pendingSessionId';
 
 // 思考过程开关的持久化键 'ui4a.chat.thinking' 已随 T24 Phase B 退役:思考区
-// 默认折叠常在(可展开),无需全局隐藏偏好。该键不再被读写,遗留值失效、
+// 默认折叠常在(可展开),无需全局隐藏偏好。该键不再被读写,残留值失效、
 // 无迁移(呈现层偏好不再持久化,折叠/展开是即时交互态)。
 
 /** 客户端流空闲超时:有效帧/heartbeat 会续期，不再把总时长误判为超时。 */

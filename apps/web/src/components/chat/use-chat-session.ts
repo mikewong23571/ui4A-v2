@@ -259,7 +259,7 @@ export function useChatSession(): ChatSession {
 
   /**
    * thinking 帧(T11 Phase C):聚合整段权威终帧——同号条目替换为全文
-   * (兼容增量丢失/关闭后补放),无同步号条目时独立成条。
+   * (容忍增量丢失/关闭后补放),无同步号条目时独立成条。
    */
   const appendThinking = useCallback((turnId: string, step: number, text: string) => {
     // 聚合终帧是权威全文：丢弃尚未提交的同号片段，避免先追加后替换的双渲染。
@@ -462,7 +462,7 @@ export function useChatSession(): ChatSession {
           return;
         }
 
-        // 一次性 JSON:委托派发回执 / render 短路 / 参数错误 / 兼容旧 inline 形状。
+        // 一次性 JSON:委托派发回执 / render 短路 / 参数错误 / 旧 inline 形状回执。
         const body = (await response.json()) as ChatJsonResponse & DelegatedResponse;
         if (body.mode === 'delegated' && typeof body.delegationId === 'string') {
           if (body.sessionId !== undefined) persistSession(body.sessionId);

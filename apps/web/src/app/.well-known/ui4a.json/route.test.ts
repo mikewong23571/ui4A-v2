@@ -134,7 +134,7 @@ describe('GET /.well-known/ui4a.json', () => {
     const development = sitemap.applications.find((app) => app.name === 'development');
     expect(development?.flows.map((flow) => flow.name)).toEqual(['software-change']);
 
-    // 扁平 flows 索引保留(向后兼容),条目带归一化后的 app 归属。
+    // 扁平 flows 索引保留(既有消费方口径),条目带归一化后的 app 归属。
     // T35 S9/S10:含 bundle 追加的 todo/ideas 归属(arrayContaining 基准集)。
     expect(sitemap.flows.map((flow) => `${flow.name}:${flow.app}`)).toEqual(
       expect.arrayContaining([

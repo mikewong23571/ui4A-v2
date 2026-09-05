@@ -71,7 +71,7 @@ export function applySeed(snapshot: FoldSnapshot, event: LogEvent): FoldSnapshot
  * (definitions 表 + lifecycle 实例):meta/application:<name> 实例
  * (flow=application-lifecycle,seeded 即 active,node='active')是 deprecate
  * 裁决的宿主——此前「无 app 生命周期动词、不物化实例」的前提已随
- * APPLICATION_LIFECYCLE(D71.2)推翻。重放兼容:全量重放时 seeded 事件先于
+ * APPLICATION_LIFECYCLE(D71.2)推翻。重放一致:全量重放时 seeded 事件先于
  * deprecate,实例必在场;applications 表的键集即 app-known 不变式的已激活
  * 集合,表经本事件增长、经 application-deprecated(T52/D71.1)删键
  * (停用级联见 apply-application-deprecated)。

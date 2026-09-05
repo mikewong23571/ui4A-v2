@@ -86,7 +86,7 @@ export interface ConfirmationSnapshot {
 
 /**
  * 委托目标(镜像 @ui4a/agent 的 AgentGoal——shared 不依赖 agent 包[依赖方向:
- * agent→engine→shared],结构兼容:worker 侧 AgentGoal 可直赋)。
+ * agent→engine→shared],结构同形:worker 侧 AgentGoal 可直赋)。
  */
 export interface DelegationGoal {
   /** 目标动词,如「发布」「审核」。 */
@@ -159,19 +159,19 @@ export interface EngineSnapshot {
   collections: Record<string, string[]>;
   /**
    * 确认门实体表:T3 起 fold/applyEffects 等引擎产出函数恒携带(空表也为 {});
-   * 可选是为了不破坏既有快照构造点(种子数据、测试 fixture)的类型兼容。
+   * 可选是为了不破坏既有快照构造点(种子数据、测试 fixture)的类型稳定。
    * approved/rejected 的确认保留供审计(不删除)。
    */
   confirmations?: Record<string, ConfirmationSnapshot>;
   /**
    * 委托实体表(T5):delegation:<workflowId> → 委托快照(worker 第二写者的
    * 委托事件折叠;舰队页/delegations 集合投影的数据源)。可选与 confirmations
-   * 同口径:既有快照构造点的类型兼容;fold/applyEffects 恒携带(空表也为 {})。
+   * 同口径:既有快照构造点的类型稳定;fold/applyEffects 恒携带(空表也为 {})。
    */
   delegations?: Record<string, DelegationSnapshot>;
   /**
    * definitions 表(T4):flow 名 → 定义条目(版本/状态/工作副本)。
-   * 可选是为了不破坏既有快照构造点(种子数据、测试 fixture)的类型兼容;
+   * 可选是为了不破坏既有快照构造点(种子数据、测试 fixture)的类型稳定;
    * fold/applyEffects 等引擎产出函数恒携带(空表也为 {})。
    */
   definitions?: Record<string, DefinitionEntry>;
@@ -182,7 +182,7 @@ export interface EngineSnapshot {
    * definitions 条目只持"活跃指针"(name/version/status + 工作副本),
    * 历史由 definition-seeded(boot 迁移)与 definition-activated(approve)
    * 沉淀——旧版本定义保留于此,仅在途实例按 bornVersion 回取。
-   * 可选与 definitions 同口径:既有快照构造点的类型兼容;
+   * 可选与 definitions 同口径:既有快照构造点的类型稳定;
    * fold/applyEffects 等引擎产出函数恒携带(空表也为 {})。
    */
   definitionVersions?: Record<string, Record<number, FlowDefinition>>;
@@ -190,14 +190,14 @@ export interface EngineSnapshot {
    * application 定义表(T10):app 名 → 应用定义(已激活集合,app-known
    * 不变式的注册表来源)。Phase A 仅落类型与 submit 接线;Phase B 的
    * boot seed/fold 负责落表(seed 保证 'default' 恒在)。
-   * 可选与 definitions 同口径:既有快照构造点的类型兼容。
+   * 可选与 definitions 同口径:既有快照构造点的类型稳定。
    */
   applications?: Record<string, ApplicationDefinition>;
   /**
    * capability 定义表(T13):capability 名 → 能力定义(已注册集合,
    * capability-registered 不变式[Phase D]的注册表来源)。boot seed
    * (capability-seeded)落表;与 applications 同口径——可选是为了不破坏
-   * 既有快照构造点(种子数据、测试 fixture)的类型兼容,缺省不物化为 {}
+   * 既有快照构造点(种子数据、测试 fixture)的类型稳定,缺省不物化为 {}
    * (表不存在 = 过渡期 vacuous pass 信号)。
    */
   capabilities?: Record<string, CapabilityDefinition>;

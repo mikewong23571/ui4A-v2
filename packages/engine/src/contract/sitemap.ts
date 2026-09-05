@@ -127,7 +127,7 @@ export interface SitemapCapability {
 export interface Sitemap {
   version: string;
   surfaces: SitemapSurface[];
-  /** 扁平 flows 索引(向后兼容:既有消费方;条目带 app 归属)。 */
+  /** 扁平 flows 索引(既有消费方口径;条目带 app 归属)。 */
   flows: SitemapFlow[];
   /** 按 app 分组的投影;无 app 定义(applications 缺省)时为空数组。 */
   applications: SitemapApplication[];

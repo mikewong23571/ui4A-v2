@@ -1,7 +1,7 @@
 import { getWebReadinessSnapshot } from '../../../readiness/readiness';
 
 // 诊断端点始终 HTTP 200；部署 readiness 必须使用 /ready 的 200/503 语义。
-// status/db 保留旧客户端兼容字段，完整 dependency snapshot 与 /ready 同源。
+// status/db 为 /health 既有字段，完整 dependency snapshot 与 /ready 同源。
 
 export const dynamic = 'force-dynamic';
 

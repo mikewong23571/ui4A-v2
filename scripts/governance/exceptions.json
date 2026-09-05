@@ -36,6 +36,36 @@
       "path": "packages/shared/src/presentation/chat-view.test.ts",
       "reason": "T29 presence 合同测试的 '/legacy' 路由夹具串(断言其被禁),非历史兼容债务",
       "pendingRemoval": false
+    },
+    {
+      "path": "packages/agent/src/llm/llm-config.ts",
+      "reason": "T55 正当语义:「OpenAI 兼容端点」是行业标准术语(OpenAI-compatible,Chat Completions 协议),非 legacy/compat 代码",
+      "pendingRemoval": false
+    },
+    {
+      "path": "packages/agent/src/llm/llm-driver.ts",
+      "reason": "T55 正当语义:「OpenAI 兼容 tool calling/SSE」描述协议传输形态(OpenAI-compatible),非 legacy/compat 代码",
+      "pendingRemoval": false
+    },
+    {
+      "path": "packages/agent/src/llm/llm-driver.test.ts",
+      "reason": "T55 正当语义:测试夹具使用「OpenAI 兼容」协议术语(chat.completion.chunk 流),随 llm-driver.ts 协议存续",
+      "pendingRemoval": false
+    },
+    {
+      "path": "packages/agent/src/presentation/render.test.ts",
+      "reason": "T55 正当语义:测试夹具的「OpenAI 兼容 SSE 流」协议术语,随 render LLM 传输形态存续",
+      "pendingRemoval": false
+    },
+    {
+      "path": "deploy/keycloak/realm-admin.ts",
+      "reason": "T55 正当语义:「兼容性判定」指 Keycloak mapper 配置在列表/详情视图间的判定语义,非 legacy/compat 代码",
+      "pendingRemoval": false
+    },
+    {
+      "path": "scripts/t22/keycloak/t22-keycloak-realm-bootstrap.test.ts",
+      "reason": "T55 正当语义:「兼容性判定」指 Keycloak mapper 列表视图缺省的详情判定合同,随 t22 常驻部署套件存续",
+      "pendingRemoval": false
     }
   ]
 }

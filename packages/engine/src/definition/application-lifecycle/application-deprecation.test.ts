@@ -319,7 +319,7 @@ describe('确认门 — 挂起语义(注入严策略;builtin/随附 Cedar 对 hu
     });
   });
 
-  it('确认后批准(D74 遗留防回归):未注入 meta 钩子时,声明层结构化拒绝(不得假成功)', () => {
+  it('确认后批准(D74 防回归):未注入 meta 钩子时,声明层结构化拒绝(不得假成功)', () => {
     const { snapshot } = seeded();
     const suspended = deprecatePublishing(snapshot, { reason: '清理', deps: strictDeps });
     if (suspended.kind !== 'suspended') throw new Error('前置失败:期望 suspended');

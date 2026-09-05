@@ -84,7 +84,7 @@ export async function refreshFromLog(
   const maxSeq = Number(result.rows[0]?.max_seq ?? 0);
   const eventCount = Number(result.rows[0]?.event_count ?? 0);
   if (eventCount === state.committedCoreCount) {
-    applyForeignGaps(state); // 上一队列操作若中途抛错可能遗留未补折的外部事件
+    applyForeignGaps(state); // 上一队列操作若中途抛错可能残留未补折的外部事件
     return;
   }
   const fresh = maxSeq > state.lastSeq ? await readLog(db, state.lastSeq) : [];
@@ -103,8 +103,8 @@ export async function refreshFromLog(
     }
     return;
   }
-  // 先折遗留 foreignGaps 再折 fresh:gaps 构造上恒更旧(seq < 收集时的
-  // lastSeq),先折保持时序;若先折 fresh,遗留 gap 与 fresh 中相邻的
+  // 先折残留 foreignGaps 再折 fresh:gaps 构造上恒更旧(seq < 收集时的
+  // lastSeq),先折保持时序;若先折 fresh,残留 gap 与 fresh 中相邻的
   // 委托步号会触发折叠层「步号不连续」响亮报错且确定性复发(终审 M-1)。
   applyForeignGaps(state);
   state.snapshot = fold(fresh, { flows: {} }, state.snapshot);

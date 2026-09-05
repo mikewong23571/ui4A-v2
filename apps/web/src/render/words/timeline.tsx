@@ -5,7 +5,7 @@
  * - events = 集合引用的解引用结果(成员 append 序即时间序,零 AI);
  * - 事件流成员带 summary/timestamp/audit 时:摘要与时间戳一行直出,
  *   原始字段/reason/detail 放进默认折叠的本地审计下钻;普通集合成员仍走
- *   `rel · 摘要`兼容路径;
+ *   `rel · 摘要`直出路径;
  * - 事件流页(/events)与画布共用本词条:原始数据渲染,不经过任何生成路径;
  * - 审计下钻是 `<details data-nav=local:event-detail>` 本地视图控件,
  *   不产生合同提交面;其余为左侧轨道线 + seq 徽章 + 摘要卡。

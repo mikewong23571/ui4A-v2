@@ -352,7 +352,7 @@ describe('工作台 · 思考增量与渲染回执帧', () => {
     const triggers = screen.getAllByRole('button', { name: /思考 · 步骤 1/ });
     expect(triggers).toHaveLength(1);
     fireEvent.click(triggers[0]!);
-    // 终帧全文替换累积(权威;兼容丢增量)。
+    // 终帧全文替换累积(权威;容忍增量丢失)。
     expect(screen.getByText('先补标题,再推进向导(聚合全文)')).toBeTruthy();
     expect(screen.queryByText(/先补标题$/)).toBeNull();
   });
@@ -476,8 +476,8 @@ describe('工作台 · 思考增量与渲染回执帧', () => {
   });
 
   it('思考区常在(T24 Phase B):无全局隐藏开关;旧 ui4a.chat.thinking 键失效不隐藏', async () => {
-    // 旧开关退役后遗留的 '0'(原「关闭思考」)不再是任何读写的键:思考区
-    // 默认折叠常在,不因遗留偏好被整体隐藏。
+    // 旧开关退役后残留的 '0'(原「关闭思考」)不再是任何读写的键:思考区
+    // 默认折叠常在,不因残留偏好被整体隐藏。
     window.localStorage.setItem('ui4a.chat.thinking', '0');
     const frames = [
       { type: 'thinking', step: 1, text: '先补标题,再推进向导' },
@@ -502,7 +502,7 @@ describe('工作台 · 思考增量与渲染回执帧', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '发送' })).toBeTruthy();
     });
-    // 遗留 '0' 不隐藏:展开仍读得到全文。
+    // 残留 '0' 不隐藏:展开仍读得到全文。
     fireEvent.click(screen.getByRole('button', { name: /思考 · 步骤 1/ }));
     expect(screen.getByText('先补标题,再推进向导')).toBeTruthy();
   });

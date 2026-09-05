@@ -217,7 +217,7 @@ export function assertMetaBootstrapIntegrity(events: readonly LogEvent[]): void 
   for (const receipt of receipts) {
     const inventory = receiptInventory(receipt.detail);
     if (inventory === undefined) {
-      // 早期 receipt 没有 inventory;同 rel 的升级 receipt 在场即可安全兼容。
+      // 早期 receipt 没有 inventory;同 rel 的升级 receipt 在场即可安全判定。
       if (!upgradedRels.has(receipt.rel)) {
         throw new Error(`meta bootstrap receipt "${receipt.rel ?? ''}" 缺少完整 inventory`);
       }

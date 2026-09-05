@@ -11,7 +11,7 @@
  *
  * T9 Phase B(B1 流式轨迹):inline 响应为 SSE——step 帧逐步追加 assistant
  * 消息(每步一条),final 帧更新 sessionId(localStorage 持久化);
- * 一次性 JSON 兼容路径(render 短路/委托派发/参数错误)仍覆盖。
+ * 一次性 JSON 路径(render 短路/委托派发/参数错误)仍覆盖。
  * jsdom 无 ResizeObserver(assistant-ui 的 viewport/composer 尺寸观测),桩替换;
  * next/navigation 的 usePathname 桩为 '/'(非 /chat,壳正常渲染)。
  */
@@ -91,7 +91,7 @@ describe('悬浮聊天窗 · 委托模式(T5 Phase B)', () => {
     expect(screen.getByText(/委托监控页 \/delegations/)).toBeTruthy();
   });
 
-  it('一次性 JSON 兼容路径(旧 inline 形状):消息逐条呈现,请求无 mode 字段', async () => {
+  it('一次性 JSON 路径(非流式形状):消息逐条呈现,请求无 mode 字段', async () => {
     const fetchMock = vi.fn((...args: [string | URL | RequestInfo, RequestInit?]) => {
       void args;
       return Promise.resolve(

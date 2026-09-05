@@ -203,7 +203,7 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
         throw new Error('sitemap 响应缺 version');
       }
 
-      // 2/3. focus/default 走语义 Surface Tree；旧 concern 只保留兼容读取。
+      // 2/3. focus/default 走语义 Surface Tree；旧 concern 键仅保留只读取值。
       // ?concern= 激活的 spec 排最前(S5:聊天 render 回执的画布入口;命中与否
       // 不改变渲染集)。
       const frozenSpecs = frozenCollection !== null ? frozenSpecsOf(frozenCollection) : [];

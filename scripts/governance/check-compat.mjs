@@ -15,21 +15,32 @@ const FORBIDDEN_PATHS = [
   'packages/engine/src/agent-run/legacy-capability-run.ts',
 ];
 
-const MARKER_RE = /\blegacy\b|\bbackward[- ]?compat\w*|\bcompat(?:ibility|ible|ibilites)?\b/i;
+// T55 FR1.1: 中文词形与英文词形同扫(「兼容深路径入口」类措辞此前不可见)。
+// 向后兼容 为 兼容 的冗余列示(照 spec 词形清单),便于逐词追踪。
+const MARKER_RE =
+  /\blegacy\b|\bbackward[- ]?compat\w*|\bcompat(?:ibility|ible|ibilites)?\b|向后兼容|兼容|旧路径|遗留/i;
 const SCAN_ROOTS = ['apps', 'packages', 'scripts', 'e2e', 'deploy'];
 
-export function checkCompat() {
-  const exceptions = readJson('scripts/governance/exceptions.json');
-  const allowlist = exceptions.compatAllowlist ?? [];
-  const files = trackedFiles('*.ts', '*.tsx', '*.mts').filter(
-    (f) => SCAN_ROOTS.some((r) => f.startsWith(r + '/')) && !f.startsWith('scripts/governance/'),
-  );
+/**
+ * 扫描 legacy/compat 标记。默认扫真实仓库(trackedFiles + 磁盘读取 +
+ * exceptions.json compatAllowlist);测试可注入 files/readText/allowlist 夹具。
+ */
+export function checkCompat(deps = {}) {
+  const exceptions =
+    deps.allowlist ?? readJson('scripts/governance/exceptions.json').compatAllowlist ?? [];
+  const allowlist = exceptions;
+  const files =
+    deps.files ??
+    trackedFiles('*.ts', '*.tsx', '*.mts').filter(
+      (f) => SCAN_ROOTS.some((r) => f.startsWith(r + '/')) && !f.startsWith('scripts/governance/'),
+    );
+  const readText = deps.readText ?? ((file) => readFileSync(path.join(REPO_ROOT, file), 'utf8'));
 
   const forbiddenPresent = FORBIDDEN_PATHS.filter((p) => files.includes(p));
 
   const findingsByFile = new Map();
   for (const file of files) {
-    const text = readFileSync(path.join(REPO_ROOT, file), 'utf8');
+    const text = readText(file);
     const lines = [];
     text.split('\n').forEach((line, i) => {
       if (MARKER_RE.test(line)) lines.push(i + 1);

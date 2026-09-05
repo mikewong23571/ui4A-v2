@@ -221,7 +221,7 @@ describe('deriveSitemap — application 分组投影(T10 Phase C,spec 架构决�
     ]);
   });
 
-  it('扁平 flows 条目带 app(向后兼容:既有字段不变,缺省归一化 default)', () => {
+  it('扁平 flows 条目带 app(既有字段不变,缺省归一化 default)', () => {
     const sitemap = deriveSitemap(appFlows, { applications });
     expect(sitemap.flows.map((flow) => `${flow.name}:${flow.app}`)).toEqual([
       'article-drafting:publishing',
@@ -335,7 +335,7 @@ describe('deriveSitemap — 动态 capability 处境(T15 U14/U17)', () => {
     expect(after.version).not.toBe(before.version);
   });
 
-  it('旧调用方不提供 capability 定义时保持兼容：字段存在但为空', () => {
+  it('调用方不提供 capability 定义时字段存在但为空', () => {
     expect(deriveSitemap([publishing], { applications }).capabilities).toEqual([]);
   });
 });

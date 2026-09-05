@@ -1,4 +1,4 @@
-/** 测试/fixture 兼容门面；application 定义来自 JSON 应用制品。 */
+/** 测试/fixture 门面；application 定义来自 JSON 应用制品。 */
 import type { ApplicationDefinition } from '@ui4a/shared';
 
 import { walkthroughApplicationBundle } from '../applications/bundles';

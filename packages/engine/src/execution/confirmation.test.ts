@@ -383,7 +383,7 @@ describe('rejectConfirmation — 驳回路径', () => {
   });
 });
 
-describe('T52 — deprecatedApplications 停用审计表随行(P1 遗留修复:挂起/驳回不丢)', () => {
+describe('T52 — deprecatedApplications 停用审计表随行(P1 修复:挂起/驳回不丢)', () => {
   const audit = { publishing: { name: 'publishing', reason: '走查残留清理', seq: 42 } };
 
   /** 停用过应用的快照(经 fold 物化 deprecatedApplications 后的在线形状)。 */

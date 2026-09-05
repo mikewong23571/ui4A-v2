@@ -485,7 +485,7 @@ const DEFAULT_MAX_STEPS = 24;
 const DEFAULT_START_REL = 'applications';
 
 const { startDelegation, agentStep, finishDelegation } = proxyActivities<DelegationActivities>({
-  // agentStep 兼容 LLM 决策(网络可达数十秒);被杀后续跑延迟 ≤ 此超时
+  // agentStep 容纳 LLM 决策耗时(网络可达数十秒);被杀后续跑延迟 ≤ 此超时
   //(StartToClose 从任务投递起算,worker 死后到期即重试)。
   startToCloseTimeout: '30 seconds',
   retry: { maximumAttempts: 10 },

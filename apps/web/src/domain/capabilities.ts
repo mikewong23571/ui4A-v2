@@ -1,4 +1,4 @@
-/** 测试/fixture 兼容门面；capability 定义来自 JSON 应用制品。 */
+/** 测试/fixture 门面；capability 定义来自 JSON 应用制品。 */
 import type { CapabilityDefinition } from '@ui4a/shared';
 
 import { walkthroughApplicationBundle } from '../applications/bundles';

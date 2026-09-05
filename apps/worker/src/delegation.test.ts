@@ -33,7 +33,7 @@ import {
 // - T11(验收 6):delegation-step detail 恒携带 reasoning 字段——driver 经
 //   DecideSink 产出推理自述时填真值(llm 路径,Phase C streamText 起),无自述
 //   (scripted/mock driver)落库 null;幂等恢复载荷同构扩展,旧形状事件(无
-//   reasoning 字段)读出兼容。
+//   reasoning 字段)按缺省读出。
 // 真 Temporal + 真 worker 链路由 kill 续跑集成测试覆盖(delegation.kill.integration.test.ts)。
 const BASE = 'http://contract.test';
 
@@ -711,7 +711,7 @@ describe('delegation-step reasoning 留痕(T11 / 验收 6)', () => {
     expect(inserts).toHaveLength(0);
   });
 
-  it('旧形状兼容:存量事件 detail 无 reasoning 字段 → 恢复结果同旧形状(不炸、不重执行、不双写)', async () => {
+  it('缺 reasoning 字段的存量事件:恢复结果同旧形状(不炸、不重执行、不双写)', async () => {
     // T11 之前落库的旧事件:detail 只有 {step, op, outcome, ...},无 reasoning 键。
     const recorded: AgentStepResult = {
       op: { kind: 'navigate', rel: 'post:post-welcome' },

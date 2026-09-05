@@ -1,5 +1,5 @@
 /**
- * 测试/fixture 兼容门面。业务定义来自版本化 JSON 应用制品；生产 service 不导入本模块。
+ * 测试/fixture 门面。业务定义来自版本化 JSON 应用制品；生产 service 不导入本模块。
  */
 import type { FlowDefinition } from '@ui4a/engine';
 

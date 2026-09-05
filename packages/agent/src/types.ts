@@ -218,7 +218,7 @@ export interface DriverContext {
   lastRejection?: RejectionRecord;
   /**
    * 本轮 run 已读取的有界授权观察，按最近访问顺序排列。循环按 rel 去重并
-   * 刷新快照；可选是为旧的外部协议 fixture 保持源码兼容，runAgent 始终提供。
+   * 刷新快照；可选是为既有外部协议 fixture 保持可编译，runAgent 始终提供。
    */
   observations?: ContractObservation[];
   /**
@@ -293,7 +293,7 @@ export interface SitemapSummary {
   }[];
   /**
    * 按 app 分组的发现面(T10):agent 先读 intent 定位 app,再在组内选 flow。
-   * 端点未提供(旧形状)时解析为空数组;扁平 surfaces 始终保留(向后兼容)。
+   * 端点未提供(缺省)时解析为空数组;扁平 surfaces 始终保留(既有消费方口径)。
    */
   applications: SitemapApplicationSummary[];
   /** 顶层流程发现摘要；旧端点形状或 meta sitemap 缺席时为空。 */
@@ -320,7 +320,7 @@ export interface DecideSink {
 /**
  * driver 插件接口:rule driver(本包)与 LLM driver(Phase E)共用。
  * decide 允许异步(LLM 决策要等网络);rule driver 保持同步实现。
- * sink 为可选第二参(向后兼容:单参实现的 mock/既有 driver 零改动)。
+ * sink 为可选第二参(单参实现的 mock/既有 driver 零改动)。
  */
 export interface AgentDriver {
   decide(context: DriverContext, sink?: DecideSink): AgentOperation | Promise<AgentOperation>;

@@ -62,7 +62,7 @@ export const DELEGATION_CHANNEL = 'delegation';
  * delegation-step 事件的 detail 载荷:步号 + 步结果 + 推理自述(activity 重试的
  * 恢复输入)。reasoning 恒落库(T11 / spec 架构决定 3:无则 null,与 agent-decision
  * 同口径;llm 路径自 Phase C streamText 改造起填真值);幂等恢复对旧事件
- * (无 reasoning 字段)读出兼容。
+ * (无 reasoning 字段)按缺省读出。
  */
 export interface DelegationStepRecord extends AgentStepResult {
   step: number;
