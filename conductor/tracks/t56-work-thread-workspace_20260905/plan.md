@@ -22,7 +22,7 @@
 - [x] Task: P0.4 执行 S3 布局与会话存续探针 (7b4b029)
   - [ ] 测指定尺寸/缩放/DOM 几何，验证草稿、SSE、停止、focus/back 及 `/chat` 不丢状态。
   - [ ] 定案并排阈值、覆盖交互与稳定 chat 状态拥有者；不引入布局依赖。
-- [ ] Task: P0.5 先记录决定并 review 详细设计
+- [~] Task: P0.5 先记录决定并 review 详细设计
   - [ ] 在 DECISIONS 追加证据支持的决定，明确 supersede 恒三栏/本线 noGaze；不改历史 track。
   - [ ] 回写 design、spec、acceptance、plan 的确定 shape/模块/命令/范围；不存在的功能不得标已有。
   - [ ] 以 FR1–FR10/US01–US12 检查设计覆盖、授权/缓存/历史边界；记录定案 review 与修订。
@@ -35,7 +35,7 @@
   - [ ] 在最窄 pure 边界补角色/空/未知/终局/归档未验收与“归档仍有责任”的失败测试。
   - [ ] 补 owner/跨应用授权裁剪/派生计数与名称不泄露，以及只读 HTTP 与 UI 同源的合同负例。
 - [ ] Task: P1.2 Green：沿 P0 定案实现投影与呈现适配
-  - [ ] 复用四类显式关系；必要读字段可重建，生命周期与成员写语义不变；不推断新真相。
+  - [ ] 沿 D78 路线 A：active/approval 补 `thread-reference` 成员卡与 `presentation` version:1 认知声明；必要读字段可重建，生命周期与成员写语义不变；不推断新真相。
   - [ ] 将本线接入同一 Presentation/Recipe/Sidecar；语义声明与依赖版本接线，布局不写领域类型分支。
   - [ ] 沿功能边界拆分贴限模块；更新 DB 测试分类，不删验证证据。
 - [ ] Task: P1.3 Red→Green：失效与失败恢复
@@ -51,7 +51,7 @@
   - [ ] 写助手/材料开关几何、手机/缩放、焦点/键盘、草稿/SSE 存续与旧响应竞争测试。
 - [ ] Task: P2.2 Green：壳重构
   - [ ] 去掉线程 noGaze/说明书/应用书架旁路，移除默认材料常驻栏；内容消费 P1 呈现。
-  - [ ] 实现剩余宽度优先的助手并排/覆盖，尊重用户选择；复用稳定 session，保留 float/popout。
+  - [ ] 实现剩余宽度优先的助手并排/覆盖（`vw−48−助手宽≥640`：384px→阈值 1072、320px→1008，200% 缩放必覆盖），尊重用户选择并保留 dockedThread 记忆；复用稳定 session（根布局唯一拥有者），保留 float/popout。
   - [ ] 对象身份成为主要标题，合并次要工具入口；保留 raw/why/恢复/显式 Meta 桥。
 - [ ] Task: P2.3 Gate：浏览器交互与视觉
   - [ ] 跑 G2/G3 对应故事；逐尺寸截图检查正文、关键按钮、滚动、层级、焦点与触屏操作。
@@ -69,11 +69,11 @@
   - [ ] 复用现有确认/决定词汇与稳定回执宿主，补到达/绑定缺口；Meta 仍进入可信治理宿主。
 - [ ] Task: P3.3 Red→Green：历史与当前范围
   - [ ] 钉 principal/session/turn 精确 join、缺失上下文、刷新、同 session 跨线、旧 SSE 与跨 principal 负例。
-  - [ ] 钉超过默认历史页边界的重建，读路径使用既有过滤/分页；保留既有消息挂线与日志语义。
-  - [ ] 将发送时上下文与历史时点沿既有投影接到 UI；当前输入范围取同源 observation。
+  - [ ] 钉超过默认历史页边界的重建，读路径按 `{rel,principal}` 过滤取界、不引入默认页 limit；保留既有消息挂线与日志语义。
+  - [ ] ChatTurn 投影增 `clientView?`/`userContextKnown`（principal×sessionId×turnId 精确 join，不回填），历史未知显式接到 UI；当前输入范围取同源 observation。
 - [ ] Task: P3.4 Red→Green：可辨引用
   - [ ] 钉同对象多字段、集合重排、缺历史 identity、改名、权限撤回/读取失败及导航参数保留。
-  - [ ] 实现 P0 确定的身份/依据标签和时点边界，保留原 FactRef；不从当前索引猜历史实体。
+  - [ ] 实现精确型/集合型两型引用 chip 与时点边界（无全局标签缓存），保留原 FactRef；不从当前索引猜历史实体。
 - [ ] Task: P3 Phase Verification & Checkpoint
   - [ ] 运行 G1/G2/G3 受影响范围，亲走添加→阅读→决定→回执→历史→依据，记录 checkpoint。
 

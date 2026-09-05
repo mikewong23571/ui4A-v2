@@ -80,11 +80,15 @@ F01–F06 的原观察分别由 US05、US01、US04、US05/07、US06、US08/09 �
 pnpm vitest run packages/shared/src/work-thread.test.ts packages/engine/src/projection/work-thread.test.ts packages/engine/src/projection/fold/apply-thread.test.ts
 pnpm vitest run apps/web/src/engine/service-tests/service.thread.test.ts apps/web/src/engine/service-tests/service.confirmation.test.ts apps/web/src/engine/service-tests/service.meta-confirmation.test.ts
 pnpm vitest run apps/web/src/engine/presentation/runtime-composition.test.ts apps/web/src/engine/presentation/authorized-entity.test.ts apps/web/src/engine/presentation/sidecar-authorization.test.ts
+pnpm vitest run apps/web/src/engine/service-tests/work-thread/presentation.test.ts
 ```
 
 这些是回归基座，不代表已覆盖全部新故事。必须新增 Red 断言覆盖角色投影、归档未验收、
 权限变化、Sidecar 命中后的 membership/value/action 变化和 replay 派生一致性。
 若读投影无新写入，复用已有重放 fixture；若确有事件 shape 变化，必须补对应 parser/DB replay 门禁。
+第四行是 S1 探针种子（P0.2 已常驻，独立 GR3 子目录预算）：现刻画 exact Siren/授权裁剪/
+呈现链/新鲜度四面与生命周期动作绕过确认门的现状（D78 决定 4 的回归锚），
+P1.2 改投影时按新期望（成员卡 + version:1 认知声明）升级为 Red→Green。
 
 ### G2 壳、动作、历史与引用
 
@@ -93,6 +97,13 @@ pnpm vitest run apps/web/src/components/canvas apps/web/src/components/actions/t
 pnpm vitest run apps/web/src/components/chat apps/web/src/app/api/chat/history/route.test.ts apps/web/src/chat/conversation.test.ts
 ```
 
+第二条的 `components/chat` 为目录级运行，已覆盖 S2 两枚种子
+`citation-list.s2-probe.test.tsx` 与 `history-replay.s2-probe.test.tsx`
+（P3 定案后反转为正式断言）。history 路由的 join/`clientView`/`userContextKnown`/
+页边界正式 DB 测试落 `apps/web/src/app/api/chat/history/`（S2 临时探针文件已按 GR5
+删除，8 个场景录于 `probes/s2-history-citations.md` §1 可原样重建；触库测试正式化时
+按分类规则登记/重生成 `vitest.db-tests.list.ts`）；P3 创建 `apps/web/src/chat/history/`
+子目录后随实现把该路径纳入本行命令。
 断言必须检验用户行为与事实，不仅检查 class 字符串。US06/US08/US09 的失败、unknown、
 旧请求覆盖和授权缓存负例必须显式存在。必要的读模块拆解后更新路径，不能漏跑。
 
@@ -108,6 +119,9 @@ CI=true pnpm e2e e2e/workstation e2e/t26-work-thread.spec.ts e2e/interaction/cha
 Temporal 使用已有隔离配置（Playwright 缺省 `localhost:7235`），不可复用开发 Temporal。
 CI 会启动独立 web server；先检查 3100 占用，不杀无关服务或让测试打到线上/开发库。
 需要真实日常栈走查时使用 `pnpm dev:all`，与隔离 E2E 分开运行。
+几何/存续断言的期望值基线 = `probes/s3-layout-session.md` §1/§2 实测表（断点 1072/1008、
+200% 覆盖、存续矩阵）；受控 SSE 注入手法制剂见 `probes/scripts/s3-sse.mjs`（P2 可转正
+为 e2e kit，按 GR5 处理）。
 
 必留截图：本线概览、决定前/后、归档有/无验收、材料及 pin 区分、历史 A/B 与当前范围、
 集合引用未知边界、错误恢复，以及 §1 全尺寸助手开/关。每张记录 viewport/route/fixture/SHA。

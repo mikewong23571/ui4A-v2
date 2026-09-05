@@ -1,132 +1,108 @@
-# T56 Spike Report(S1/S2/S3)
+# T56 Spike Report（探针定案索引）
 
-> 用途:登记 P0 三个必做探针(design.md §3)的执行结果与定案依据。
-> **当前状态:P0.1 仅建立骨架与「已核实」的已知事实;S1–S3 探针本体由 P0.2–P0.4 执行后
-> 回填,三节现均为 NOT RUN。** 探针代码去向(保留为常驻测试/删除)按 GR5 在出口记录,
-> 探索代码不直接当产品实现。纪律:原始观察 ≠ 部署事实;每个出口结论必须能指回
-> evidence.md 的正式证据条目。
+> 用途：登记 P0 三个必做探针（design.md §3）的执行状态，并作为详细报告的索引。
+> **当前状态（2026-09-06，P0.5 回写）：S1/S2/S3 已全部执行完成**；各出口定案以 `probes/`
+> 下详细报告为唯一事实来源，本文件每节只保留一段结论与链接。原骨架的待回填清单已全部
+> 完成（各项标记 [x]）。探针代码去向按 GR5 记录于各报告相应小节。纪律：原始观察 ≠
+> 部署事实；每个出口结论必须能指回 `evidence.md` 的正式证据条目（E-P0.2–E-P0.4）。
+> 三探针定案已并入 **DECISIONS.md D78**（T56 P0.5）。
 
-| 探针 | 任务  | 状态     | 结论位    |
-| ---- | ----- | -------- | --------- |
-| S1   | P0.2  | NOT RUN  | 本文件 §1 |
-| S2   | P0.3  | NOT RUN  | 本文件 §2 |
-| S3   | P0.4  | NOT RUN  | 本文件 §3 |
+| 探针 | 任务 | 状态   | 详细报告                        | 结论位（本文件） | 证据条目 |
+| ---- | ---- | ------ | ------------------------------- | ---------------- | -------- |
+| S1   | P0.2 | 已完成 | [probes/s1-presentation.md](probes/s1-presentation.md)               | 本文件 §1 | E-P0.2   |
+| S2   | P0.3 | 已完成 | [probes/s2-history-citations.md](probes/s2-history-citations.md)     | 本文件 §2 | E-P0.3   |
+| S3   | P0.4 | 已完成 | [probes/s3-layout-session.md](probes/s3-layout-session.md)           | 本文件 §3 | E-P0.4   |
 
-共同基线:HEAD `c38883b074d30620008eeacbf4bfe5c5f864b1f5`(工作树仅 plan.md [~]);
-环境约定与治理基线见 `evidence.md` E-P0.1。
-
----
-
-## §1 S1:本线整体如何进入现有呈现链路(P0.2)— NOT RUN
-
-design.md §3-S1 出口要求:选定路线(thread 单实体 Surface vs 必要时 derived Composition)、
-来源 rel/JSON path/声明形状与授权位置、空/终局/未知/授权裁剪分组语义、
-rehydrate/invalidate 触发、词汇缺口与最小语义扩展;若两条路线都需要第二套状态或
-硬编码应用页,判探针失败并修订设计。
-
-### 已知事实(P0.1 已核实,探针输入)
-
-- `projectWorkThread` 已返回 goal/status/context/active/approval/recent-events
-  (`packages/engine/src/projection/work-thread.ts:280-313`),但 **`entities` 仅含
-  context 导航成员卡**(:264-276);active/approval 只是 properties 里的 statusPointer
-  数组与 links,**没有成员卡**;event 是审计链接(:201-203)。
-- 归档线(`archived`)**动作集为空**(`actionsByStatus.archived: []`,:139)——
-  「归档仍有责任」的呈现只能来自 references/关联实体,不能来自线自身动作(F03/FR3)。
-- `CanvasBody` 把 focus=本线归入 **noGaze 旁路**(`canvas-body.tsx:44-45` 判定,
-  :57-63 noGaze,:68-78 本线分支渲染协作引导文字 + ThreadStageActions + 应用书架),
-  未走 `PresentationSurfaceHost`——本线今天没有 Surface。
-- 已有认知 surface role 词表:work-queue/review-queue/output-catalog/task-history/
-  human-responsibility/audit-only(D54.7);generic intent 走精确匹配 + role budget
-  (D47.4);组合走 D45 `workspace:` 声明 registry
-  (`apps/web/src/engine/presentation/compositions.ts`)与 `runtime-composition.ts`。
-- 授权读面入口:`apps/web/src/engine/presentation/authorized-entity.ts`;
-  服务线程域逻辑在 `apps/web/src/engine/service-thread.ts`(38 行)。
-- 测试基座:`packages/engine/src/projection/work-thread.test.ts`(pure 投影)、
-  `e2e/t26-work-thread.spec.ts`(合同 E2E)已存在。
-
-### 探针结果与定案(待 P0.2 回填)
-
-- [ ] 隔离 fixture(一目标、两个跨应用 context、一 active、一当前 approval、一历史决定、
-      一显式 event)搭建记录
-- [ ] exact Siren/授权/依赖记录(首选路线:thread 单实体 Surface)
-- [ ] 必要时 derived Composition 对比记录
-- [ ] 角色/责任/产出来源、同门、更新、部分授权与未知状态验证记录
-- [ ] 最终数据/rel/path/词汇/声明/模块方案及探针代码去向
-- [ ] 出口结论(选定路线 + 理由 + 失败判定检查)
+共同基线：HEAD `c38883b074d30620008eeacbf4bfe5c5f864b1f5`（S3 被测 HEAD `493dc67d`，
+仅差编排 agent 的 plan.md [~] 标注）；环境约定与治理基线见 `evidence.md` E-P0.1。
+隔离库分别为 `ui4a_s1_test` / `ui4a_s2_test` / `ui4a_s3_test`（5433；未触 dev 库与
+`ui4a_test`），复跑命令与退出码见各证据条目。
 
 ---
 
-## §2 S2:历史上下文与引用的时间边界(P0.3)— NOT RUN
+## §1 S1：本线整体如何进入现有呈现链路（P0.2）— 已完成
 
-design.md §3-S2 出口要求:live/history 精确 turn join、时点显示、集合级诚实降级、
-缓存失效策略、读取/事件 shape 变化结论、测试位置;历史取数不得全站扫描或因默认页
-上限漏判 unknown。
+**结论**：选定**路线 A**——以原 `thread:<id>` 作为公共认知根，在
+`packages/engine/src/projection/work-thread.ts` 纯投影中为 active/approval 补与 context
+同构的 `thread-reference` 成员卡（approval 卡携带被引确认实体的声明动作），并把
+`presentation` 经 `projectCognitiveSemantics` 升级为 `version:1` 认知声明；复用既有
+Broker/generic/Sidecar，member/value/action/授权四类新鲜度接线实测已存在——零新增 rel、
+零第二套状态、零新增授权机制、前端数据面零改动。备选路线 B
+（derived Composition `workspace:thread:<id>`）实核机械可行但读放大与声明换版重规划
+不省任何工作，否决为主路线，D45 机器留给 app workspace。两个需决策知悉的现状事实：
+线程生命周期动作不经确认门（`service-exec.ts` 直入 `execThreadAction`）——本 track
+维持不改（D78 决定 4）；授权裁剪与真空合同同形——UI 用「当前可见」口径（D78 决定 3）。
+失败判定检查：两条路线均无需第二套状态或硬编码应用页，探针不判失败。
+详见报告 §5（路线对比）、§6（空/终局/未知/裁剪分组）、§7（最小扩展清单）、§8（代码去向：
+`service-tests/work-thread/presentation.test.ts` 保留为 P1.1 Red 种子）。
 
-### 已知事实(P0.1 已核实,探针输入)
+原待回填清单（P0.2 已完成）：
 
-- 用户原话事件已带 `clientView?: ClientViewReport`
-  (`apps/web/src/chat/history.ts:76-77`,ChatMessageAppendedDetail,仅 user 角色);
-  **`ChatTurn` 投影不含 clientView**(history.ts:35-42)——历史回合无法回放发送时观察。
-  事件级 `ConversationMessage` 已同时保 `citations` 与 `clientView`
-  (`apps/web/src/chat/conversation.ts:32-44`),缺口在 ChatTurn join 层。
-- history 路由(`apps/web/src/app/api/chat/history/route.ts`):principal 过滤 production
-  生效(:33,`chat/history-access.ts`);**`listEvents(getDb(), 0, {principal})` 从 seq 0
-  全量拉取后按 `rel === 'chat:<sessionId>'` 内存过滤**(:34-40)——S2 必须实测默认
-  读取上限与分页口径,确认超过页边界时同回合 user 事件不漏判 unknown。
-- citations join:仅 assistant 角色 + 精确 turnId,注入 final 回合(:71-90)。
-- **FactRef = `{rel, pointer}` 二字段**(`packages/agent/src/types.ts:104-107`),
-  parseCitations 拒绝额外键——**无证据快照/版本/identity**;集合 JSON Pointer 数组位置
-  不是永久实体身份(FR8)。CitationList 只按 rel 读当前顶层身份
-  (`citation-list.tsx:17-35`),pointer 不参与字段级定位,仅进 title 审计属性(:106)。
-- 会话归属双轴 (principal, sessionId)(D68);切线不换绑会话(spec §3.5)。
-- 探针范围参考:`e2e/interaction/chat-citations.spec.ts`(现存引用行为锚)。
-
-### 探针结果与定案(待 P0.3 回填)
-
-- [ ] A 线问 A 对象 → 切 B 线问 B 对象 → 刷新 的 live/history 对照记录
-- [ ] 缺 clientView 的历史回合、集合重排、改名/权限撤回、SSE 迟到 各负例记录
-- [ ] 原 event → history → ChatUiMessage → 展示 的映射链记录
-- [ ] `listEvents` 读取页边界实测(超过默认上限的同一回合重建)
-- [ ] 定案:join 与缺失策略、live/history 一致性、引用降级示例、标签缓存失效、
-      必要字段变更与测试位置
-- [ ] 出口结论
+- [x] 隔离 fixture（一目标、两个跨应用 context、一 active、一当前 approval、一历史决定、一显式 event）搭建记录
+- [x] exact Siren/授权/依赖记录（首选路线：thread 单实体 Surface）
+- [x] 必要时 derived Composition 对比记录
+- [x] 角色/责任/产出来源、同门、更新、部分授权与未知状态验证记录
+- [x] 最终数据/rel/path/词汇/声明/模块方案及探针代码去向
+- [x] 出口结论（选定路线 + 理由 + 失败判定检查）
 
 ---
 
-## §3 S3:剩余宽度、草稿与流式生命周期(P0.4)— NOT RUN
+## §2 S2：历史上下文与引用的时间边界（P0.3）— 已完成
 
-design.md §3-S3 出口要求:并排/覆盖切换条件、唯一 chat 状态拥有者、同一 session
-生命周期连续、保留 float/popout 与 `/chat` 回归;不引入布局依赖。
+**结论**：**写侧零变化，读侧一处扩展**。事件种类、chat-message-appended detail、
+`FactRef{rel,pointer}`（D47）均不动、不加快照/版本字段；`ChatTurn` 只读投影新增
+`clientView?` 与 `userContextKnown`（history 路由按 principal×sessionId×turnId 精确 join
+同 rel 下 user 原话事件，join 键双全），存量历史不回填，历史未知显式「当时上下文未知」、
+禁止用当前观察补旧消息。历史读取按 `{rel:'chat:<sessionId>', principal}` 过滤取界，
+**不引入默认页 limit**——实测 `listEvents` 无默认上限、显式 limit 硬顶 101 会把页外回合
+静默截没；既有 `order:'desc'+beforeSeq` 游标可用于未来真分页。引用 chip 分精确型
+（「当前名」标注）与集合/成员型（集合级来源 + 时点边界行）两型，判别用纯指针前缀；
+不建全局标签缓存（现状 no-store 即无失效残留问题）。live/history 缺口唯一在 ChatTurn
+join 层；`withCitationsOnLastAssistant` 并发跨回合错挂为理论缺口，列入 P3 处理项。
+测试落位：history 路由 DB 测试回原目录、映射纯函数落新子目录 `apps/web/src/chat/history/`、
+CitationList 用例留 `components/chat/`、E2E 扩展现有 `chat-citations.spec.ts`（GR5）。
+详见报告 §1（步骤 1–7 分步实证）、§2（出口逐项定案）、§2.7（代码去向：路由 DB 探针
+文件删除、两枚组件种子保留为 P3 种子）。
 
-### 已知事实(P0.1 已核实,探针输入)
+原待回填清单（P0.3 已完成）：
 
-- 宽度常量:ThreadDesk rail `lg:w-96`(`canvas-body.tsx:108`);FloatingChat FAB 态与
-  sidebar 态均 `w-96`(`floating-chat.tsx:120,133`);**进线(railOn)首屏即并排,
-  无剩余宽度检查**——与 design.md §1「主区至少 640 CSS px 且 ≥60% 净宽」阈值无关,
-  1080px 视口的 F01 拥挤由此而来(待 S3 实测几何)。
-- 断点用 `lg:`(Tailwind 整屏宽),非容器/剩余宽度查询。
-- **chat 状态拥有者:`useChatSession`(`use-chat-session.ts:56`,628 行)不是全局单例**
-  ——FloatingChat 内部实例化(`floating-chat.tsx:66`),`/chat` 页另起实例
-  (`chat/page.tsx:16`);跨实例仅共享 localStorage sessionId 与服务端零会话态投影。
-  S3 需验证:响应式切换若重建宿主,session/草稿/SSE 是否存续。
-- 壳挂接:`AppShell aside={<FloatingChat />}`(`app/layout.tsx:20`);`/chat` 页
-  FloatingChat 自隐藏避免窗中窗(`chat/page.tsx:20`)。
-- SSE/停止、草稿能力在 ChatPanel/use-chat-session 内部(本轮未深挖,S3 实测)。
-- 浏览器验收纪律:3100 端口须确认为本 HEAD 的干净 server(见 evidence.md 环境约定)。
+- [x] A 线问 A 对象 → 切 B 线问 B 对象 → 刷新 的 live/history 对照记录
+- [x] 缺 clientView 的历史回合、集合重排、改名/权限撤回、SSE 迟到 各负例记录
+- [x] 原 event → history → ChatUiMessage → 展示 的映射链记录
+- [x] `listEvents` 读取页边界实测（超过默认上限的同一回合重建）
+- [x] 定案：join 与缺失策略、live/history 一致性、引用降级示例、标签缓存失效、必要字段变更与测试位置
+- [x] 出口结论
 
-### 探针结果与定案(待 P0.4 回填)
+---
 
-- [ ] 指定视口(1440×900/1280×800/1080×820/768×1024/390×844/200% 缩放)DOM 几何记录
-- [ ] 草稿未发送 + 可控 SSE + 切 focus/history/back + 关开层 的状态存续记录
-- [ ] `/chat` 独立页与 float/popout 回归记录
-- [ ] 定案:并排/覆盖阈值、覆盖交互、唯一 chat 状态拥有者
-- [ ] 出口结论
+## §3 S3：剩余宽度、草稿与流式生命周期（P0.4）— 已完成
+
+**结论**：**640px 阅读下限在当前壳内结构性不可达**（main `max-w-5xl` 1024 + 书桌 384 +
+padding/gap 72 → 注视列最多 568；1080 三栏中栏 240 实锤 F01）。并排/覆盖切换条件定案为
+剩余宽度判断 `vw − 48 − 助手宽 ≥ 640`（且 ≥ 两栏净宽 60%，此时恒满足）：助手 384px →
+阈值视口 1072，320px → 1008；200% 缩放（960 CSS px）必须覆盖/单面；不使用整屏 `lg:`
+内层断点。chat 状态拥有者定案：根布局 FloatingChat 内 `useChatSession` 是工作站点唯一
+拥有者（单文档内草稿/SSE/停止/会话选择全部存续，一切整页加载才丢）；消除硬导航是存续
+契约前置（书桌条目 `thread-desk.tsx:290` 与壳内 `<a href>` 为裸 `<a>`，切对象丢草稿的
+根因）；「进线必停靠」替换为剩余宽度判断并保留 dockedThread 记忆；Escape/焦点恢复现状
+缺失，入 P2。探针脚本 5 个 `.mjs` 转正保留为 P2 Red 母本，34 张截图在 `probes/shots/`。
+详见报告 §1（几何实测与阈值推导）、§2（存续矩阵与受控 SSE）、§6（唯一拥有者定案）、
+§7（P2 Red 测试落位）。
+
+原待回填清单（P0.4 已完成）：
+
+- [x] 指定视口（1440×900/1280×800/1080×820/768×1024/390×844/200% 缩放）DOM 几何记录
+- [x] 草稿未发送 + 可控 SSE + 切 focus/history/back + 关开层 的状态存续记录
+- [x] `/chat` 独立页与 float/popout 回归记录
+- [x] 定案：并排/覆盖阈值、覆盖交互、唯一 chat 状态拥有者
+- [x] 出口结论
 
 ---
 
 ## 原始观察 ≠ 部署事实
 
-- spec §2 的线上样例(ui4a.styleofwong.cn 工作线)是规划期浏览器观察,**未与本地 SHA
-  核对,不作为本报告任何结论的依据**;探针一律在本地隔离 fixture 上执行。
-- 本文件「已知事实」均为 P0.1 对 HEAD `c38883b` 的只读代码核查(带路径/行号),
-  不含任何运行时行为结论;运行时行为以 S1–S3 探针与 evidence.md 正式条目为准。
+- spec §2 的线上样例（ui4a.styleofwong.cn 工作线）是规划期浏览器观察，**未与本地 SHA
+  核对，不作为本报告任何结论的依据**；三探针一律在本地隔离 fixture 上执行。
+- P0.1 的「已知事实」均为对 HEAD `c38883b` 的只读代码核查（原骨架已由各探针报告与
+  `evidence.md` E-P0.3 吸收）；运行时行为结论以 probes/ 详细报告与 evidence.md 正式
+  条目为准，定案以 DECISIONS.md D78 为准。

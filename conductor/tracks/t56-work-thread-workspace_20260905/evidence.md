@@ -12,11 +12,12 @@
 | ID      | Story/Gate | 内容                               | Result   |
 | ------- | ---------- | ---------------------------------- | -------- |
 | E-P0.1  | P0.1       | 执行基线、治理基线、环境与约束核查 | PASS(含 NOT RUN 子项) |
-| E-P0.2  | P0.2       | S1 工作线呈现探针                  | NOT RUN  |
-| E-P0.3  | P0.3       | S2 历史与引用探针                  | NOT RUN  |
-| E-P0.4  | P0.4       | S3 布局与会话存续探针              | NOT RUN  |
+| E-P0.2  | P0.2       | S1 工作线呈现探针                  | PASS(含 NOT RUN 子项) |
+| E-P0.3  | P0.3       | S2 历史与引用探针                  | PASS(含 NOT RUN 子项) |
+| E-P0.4  | P0.4       | S3 布局与会话存续探针              | PASS(含 NOT RUN 子项) |
 
-E-P0.2–E-P0.4 的已知事实骨架见 `spike-report.md`;探针执行后在此追加正式条目。
+E-P0.2–E-P0.4 的详细报告在 `probes/`(本目录),定案已并入 `DECISIONS.md` D78,
+结论索引见 `spike-report.md`。
 
 ## Environment 约定(全 track 共用,2026-09-06 核实)
 
@@ -274,3 +275,95 @@ engine/presentation 3707)与本次实测**逐一吻合**。本次跑的是默认
 - 未做任何浏览器手工走查;3100 端口 dev server 的运行状态只验证了「在听 + HTTP 200」,
   未验证其渲染内容与本 HEAD 一致。
 - 数据库内容未检查(除容器/端口健康状态);未执行任何写操作。
+
+---
+
+## E-P0.2 S1 工作线呈现探针(P0.2)
+
+- **Story/Gate**:P0.2(S1 出口 → D78 决定 2/3/4;design §3-S1)。
+- **Version**:base = 被测 HEAD = `c38883b074d30620008eeacbf4bfe5c5f864b1f5`(与
+  E-P0.1 基线一致)。dirty 见 `probes/s1-presentation.md` 头注(并行窗口文件非本任务
+  产物)。执行时间:2026-09-06。
+- **Environment**:隔离库 `ui4a_s1_test`(docker `ui4a-postgres`,宿主 5433),全程
+  `TEST_DATABASE_URL` 指向该库,未触 dev 库 `ui4a` 与 `ui4a_test`;fixture 前缀
+  `t56s1-<runId>`。
+- **Reproduction**:
+  ```bash
+  TEST_DATABASE_URL=postgres://ui4a:ui4a@localhost:5433/ui4a_s1_test \
+    pnpm vitest run apps/web/src/engine/service-tests/work-thread/presentation.test.ts
+  # → Test Files 1 passed (1); Tests 6 passed (6); exit code 0
+  ```
+- **Result**:PASS。
+- **Evidence**:详细报告 `probes/s1-presentation.md`(exact Siren/授权裁剪六处/呈现链
+  surface 树/依赖五条/新鲜度四类接线/路线 A vs B 对比/分组语义/最小扩展清单)。要点:
+  路线 A 选定(纯投影补 `thread-reference` 成员卡 + `version:1` 认知声明,零新增
+  rel/授权机制);裁剪与真空同形 →「当前可见」口径;生命周期动作绕过确认门
+  (`service-exec.ts:87-89`)实测固化(用例 3)。探针种子常驻于
+  `apps/web/src/engine/service-tests/work-thread/presentation.test.ts`(P1.1 Red 种子,
+  GR3 独立子目录预算);路线 B scratch 已删。
+- **NOT RUN**:浏览器渲染断言(A2uiSurface 实际视觉,属 P2/P4);`pnpm check` 全量、
+  `CI=true pnpm e2e`、真实 LLM 门禁、`pnpm --filter @ui4a/web build`(非目标);
+  路线 A 的实施(成员卡/traits 落码,P1);归档线完整呈现 fixture 组合未展开
+  (归档无动作与成员卡解耦两点已有断言/代码事实覆盖)。
+
+## E-P0.3 S2 历史与引用探针(P0.3)
+
+- **Story/Gate**:P0.3(S2 出口 → D78 决定 5;design §3-S2)。
+- **Version**:base = 被测 HEAD = `c38883b074d30620008eeacbf4bfe5c5f864b1f5`(与
+  E-P0.1 基线一致;P0.1 行号事实经复核,个别修正录于报告头部)。执行时间:2026-09-06。
+- **Environment**:隔离库 `ui4a_s2_test`(5433);探针运行配置在仓库外
+  `/tmp/vitest.s2.config.ts`(复用仓库 `vitest.global-setup.ts`),未改任何仓库测试基座
+  文件;未占用 3100/3110;所有 principal/session/rel 用 `t56s2-<rand>` 前缀,每例
+  `TRUNCATE events` 自清理。定点质量门(仅探针文件):eslint exit 0、tsc 探针相关
+  0 error、prettier 通过。
+- **Reproduction**:
+  ```bash
+  TEST_DATABASE_URL='postgres://ui4a:ui4a@localhost:5433/ui4a_s2_test' \
+    pnpm vitest run --config /tmp/vitest.s2.config.ts
+  # → exit 0;Test Files 3 passed (3);Tests 17 passed (17)
+  ```
+  (三文件中 `apps/web/src/app/api/chat/history/s2-probe.test.ts` 已按报告 §2.7 删除
+  ——其 8 个场景与断言完整录于报告 §1,可原样重建;另两枚保留为 P3 种子,由 G2 的
+  `components/chat` 目录级命令覆盖。)
+- **Result**:PASS。
+- **Evidence**:详细报告 `probes/s2-history-citations.md`。要点:`ChatTurn` 丢
+  clientView 实测(`'clientView' in turn === false`,三态坍缩);live/history 缺口唯一在
+  ChatTurn join;`listEvents` 无默认 LIMIT、显式 limit 硬顶 101 会静默截没页外回合;
+  `{rel,principal}` 过滤与 `desc+beforeSeq` 游标既有可用;local profile history 路由无
+  principal 过滤(生产走凭证轴);集合引用风险=无时点边界的「心智错位」;无缓存即无
+  失效残留;`withCitationsOnLastAssistant` 并发归属缺口(P3 处理项)。
+- **NOT RUN**:production profile 的 history principal 过滤端到端实测(仅代码路径核查
+  `history-access.ts:9-18`);大会话规模下按 rel 过滤读取的性能曲线(正确性实证至
+  134 事件量级);`(principal, rel, seq)` 索引收益(属 schema 决策,本 track 默不做);
+  meta 平面聊天历史一致性;真实 LLM。完整 `pnpm check`/`pnpm governance`/Playwright
+  E2E 未跑(非目标)。
+
+## E-P0.4 S3 布局与会话存续探针(P0.4)
+
+- **Story/Gate**:P0.4(S3 出口 → D78 决定 1;design §1/§3-S3)。
+- **Version**:被测 HEAD = `493dc67ddfa6dd8828daf8837c22ffd55ce50cc8`(基线
+  `c38883b` + 编排 agent 的 plan.md [~] 标注,无代码差异)。执行时间:2026-09-06。
+- **Environment**:隔离库 `ui4a_s3_test`(5433)+ 隔离 server
+  `PORT=3110 UI4A_DIST_DIR='.next-t56s3'`(`.next-t56s3` 603MB 已删,`tsconfig.json`
+  已还原);用户 3100 dev server、dev 库、7233/7235 未触碰;Temporal/worker 未起
+  (允许);受控 SSE 经 fetch shim 注入协议正确帧以省真实 LLM 配额,下游消息态/
+  isRunning/停止/localStorage/布局全为真实产品代码。探针执行方式:仓库内 Playwright
+  chromium + node 脚本量 DOM bounding boxes;自起进程全部正常结束(3110 已释放)。
+- **Reproduction**:`probes/scripts/` 下 5 个脚本(运行于 3110 隔离栈):
+  `s3-geometry.mjs`(几何+截图)、`s3-persist.mjs`(存续矩阵)、`s3-sse.mjs`(受控 SSE)、
+  `s3-clientview-keyboard.mjs`(clientView/键盘)、`s3-popout-session.mjs`(/chat 会话
+  采纳);34 张截图在 `probes/shots/`(关键:`1080x820-thread-itself-chat.png`、
+  `390x844-chat-float.png`、`sse-4-narrow-390-streaming.png`)。
+- **Result**:PASS。
+- **Evidence**:详细报告 `probes/s3-layout-session.md`。要点:640px 在当前壳内任何视口
+  不可达(关 chat 恒 568);并排阈值定案 384px→1072、320px→1008,200% 缩放必覆盖;
+  存续矩阵单文档切换(客户端导航/back/收起重开/形态切换/缩放)全 PASS,FAIL 根因唯一
+  为裸 `<a>` 硬导航(书桌条目 `thread-desk.tsx:290`、品牌链接 `app-shell.tsx:28`);
+  Escape 不关面板、无焦点恢复、无初始焦点管理;本线页 0 个 H1、对象页 2 个 H1;
+  clientView 发送侧与 URL 同源无漂移;重开不回停靠的 dockedThread 记忆为正确现状,
+  P2 保留。
+- **NOT RUN**:真实服务端 SSE 全链路(chat-turn 落库/history join/pendingSession 轮询,
+  属 S2/US12 范围);真实 LLM 回答质量、委托模式、eval 门禁;200% 缩放以
+  960×540 CSS + deviceScaleFactor 2 等效模拟(真实浏览器缩放交互未用);SessionList
+  切会话 abort(仅代码级核对);读屏器/真人键盘走查、打印/RTL;用户 3100 dev server
+  渲染内容与本 HEAD 一致性。`ui4a_s3_test` 库保留供并行复核,清理由编排 agent 决定。

@@ -33,6 +33,15 @@
 - 验证视口：1440×900、1280×800、1080×820、768×1024、390×844，以及桌面 200% 缩放。
 - 默认并排条件：扣除全局 padding/gap 后，主区至少 **640 CSS px** 且至少占两栏净宽的 60%；
   助手建议 320–380px。任一条件不成立切为覆盖/单面模式，不使用仅按整屏 `lg` 的内层断点。
+- P0 实测定案（S3，`probes/s3-layout-session.md` §1，已并入 DECISIONS D78）：当前壳内
+  640px 结构性不可达——main `max-w-5xl`（1024）+ 书桌栏 384 + padding/gap 72，关 chat
+  也只有 568。移除永久材料栏后注视列 = `min(vw−助手宽, 1024)−48`，切换条件即
+  `vw − 48 − 助手宽 ≥ 640`（60% 条件此时恒满足 62.5%，640 为绑定约束）：助手 384px →
+  并排阈值视口 **1072**（实测 1080 通过、1024 不通过）；助手 320px → **1008**；200% 缩放
+  = 960 CSS px 布局视口，**必须覆盖/单面模式**。现状违反基线（P2 Red 对照）：1080 三栏
+  中栏 240；390 停靠 body 横滚、float 面板左缘裁出屏；768 停靠挤唯一主列至 336；本线页
+  0 个 H1、对象页 2 个 H1；书桌条目（`thread-desk.tsx:290`）与壳内 `<a href>` 为硬导航，
+  是切对象丢草稿/在途回合的根因；Escape 不关面板、收起后无焦点恢复。
 - 640px 是并排保护下限，不是手机最小宽。手机主面使用可用全宽，正文建议 16px、次级文字
   不低于 12px；标题可换行。不得通过 body 横向滚动、缩放整个界面或缩小字号满足断点。
 - 普通正文建议约 65–85 字符的舒适行长；代码/diff/表格可在其专属区域横滚，不能带动全页。
@@ -78,6 +87,10 @@
 
 ### S1：本线整体如何进入现有呈现链路
 
+> 状态（2026-09-06，P0.2）：**已完成，出口见 `probes/s1-presentation.md`**
+> （结论摘要见 `spike-report.md` §1；证据 `evidence.md` E-P0.2）。定案：路线 A，
+> 已并入 DECISIONS D78 决定 2/3/4。
+
 **已知**：`projectWorkThread` 已返回 goal/status/context/active/approval/recent-events，
 但 `entities` 仅含 context 导航摘要；`CanvasBody` 把 focus=本线归入 noGaze。
 已有认知 traits 含 work-queue/review-queue/output-catalog/task-history/human-responsibility/audit-only；
@@ -92,19 +105,24 @@
 一个显式 event。先记录 exact Siren、Sidecar/Recipe 请求、hydration、动作到达与依赖变化；
 分别尝试首选与必要时 Composition，实际验证，不把探索代码直接当产品实现。
 
-**出口必须记录在本目录 `spike-report.md`**：
+**出口已记录**：`probes/s1-presentation.md`（`spike-report.md` §1 为索引）：
 
-- 选定路线、来源 rel/JSON path/声明形状与授权位置；必要的新只读合同如何可发现。
-- 两种应用无需改前端，责任完整可读；所有展示事实能由同源 HTTP 读取。
-- active/approval/context 分组如何处理空、终局、未知、授权裁剪；无全库扫描。
-- member/value/action/授权变化怎样触发 rehydrate 或 invalidate，旧 Sidecar 如何失效。
-- 哪些现有 schema/word 足够，哪些最小语义扩展必要；新增 rel 若需要必须先验证 parser、
-  discoverability、owner guard、客户端引用与不递归组合，不能仅发明一个浏览器私有 URL。
+- 选定路线 A（thread 单主体 + 纯投影扩展）、来源 rel/声明形状与授权位置（零新增授权机制）；
+  无新增 rel，故无 parser/discoverability 负担。
+- 两种应用无需改前端，责任经 approval 成员卡完整可读；所有展示事实由同源 HTTP 读取。
+- active/approval/context 分组的空、终局、未知、授权裁剪语义已逐项定案（报告 §6）；
+  无全库扫描。
+- member/value/action/授权四类变化的 rehydrate/invalidate 接线实测已存在（报告 §4）。
+- 现有 schema/word 足够项与最小语义扩展清单见报告 §7；`spike-report.md` 为索引。
 
 若两条路线均需第二套状态或硬编码应用页，判定探针失败，修订设计再进入 P1；
 不得用纯 CSS 修复替代 US01–US04 的业务交付。
 
 ### S2：历史上下文与引用的时间边界
+
+> 状态（2026-09-06，P0.3）：**已完成，出口见 `probes/s2-history-citations.md`**
+> （结论摘要见 `spike-report.md` §2；证据 `evidence.md` E-P0.3）。定案：写侧零变化、
+> ChatTurn 只读投影扩展，已并入 DECISIONS D78 决定 5。
 
 **已知**：用户原话事件已有 clientView；ChatTurn/history UI 目前未完整带出这一信息；
 CitationList 只按 citation.rel 读取当前顶层身份，忽略 pointer 对应字段/成员身份；
@@ -127,6 +145,10 @@ live 路径沿用该次发送的 clientView，刷新路径保持相同语义。�
 
 ### S3：剩余宽度、草稿与流式生命周期
 
+> 状态（2026-09-06，P0.4）：**已完成，出口见 `probes/s3-layout-session.md`**
+> （结论摘要见 `spike-report.md` §3；证据 `evidence.md` E-P0.4）。定案：实测断点与
+> 唯一 chat 状态拥有者，已并入 DECISIONS D78 决定 1 与本文件 §1。
+
 **已知**：ThreadDesk 与 FloatingChat 均使用 w-96；进线首次展开会强制 sidebar。
 useChatSession 挂在外壳，不应因为响应式切换而重建。
 
@@ -143,28 +165,34 @@ P0 必须在 DECISIONS 新增一个有证据的决定：撤销 T35 的“恒三�
 明确 D46 壳与内容边界、D47 历史引用限制、D54 认知声明与本线读投影的关系。
 原 T35 归档文件只读；用新决定和新测试 supersede，不能偷偷删除旧断言。
 P0 允许在本 track 内收敛组件/只读合同形状，但不得自动扩大为新业务生命周期、生产迁移或部署。
+**已完成（2026-09-06，P0.5）**：DECISIONS **D78**（三探针定案并入；T35 归档零改动）。
 
 ## 4. 模块落位与复用路径（均为仓库相对路径）
 
 | 改动边界             | 当前入口                                                                                                                                  | 必须复用/避免                                                  |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| 线程纯投影           | packages/engine/src/projection/work-thread.ts；packages/shared/src/work-thread.ts                                                         | 显式引用与生命周期，不把派生摘要写进事件                       |
-| 语义/呈现            | packages/shared/src/definition/cognitive-semantics.ts；packages/engine/src/presentation/                                                  | 版本化认知、generic、bindings、依赖；无领域组件                |
-| 服务授权             | apps/web/src/engine/service.ts；service-thread.ts；presentation/authorized-entity.ts                                                      | 从服务授权读面接线，别让纯 snapshot 派生值越过授权             |
-| 组合适配             | apps/web/src/engine/presentation/compositions.ts；app-workspace/composition.ts；runtime-composition.ts                                    | 对比 derived registry，沿子目录落线程适配，不塞进 service hub  |
-| 页面与主面           | apps/web/src/components/canvas/canvas-body.tsx；presentation-surface-host.tsx；apps/web/src/components/app-shell.tsx                      | 同一个 entity cache 与 Presentation host；清理 noGaze 线程旁路 |
-| 材料与 pin           | apps/web/src/components/canvas/desk/；apps/web/src/components/actions/thread-material-add.tsx                                             | ObjectSelectorPanel、已有 submit；pin 与 membership 分离       |
-| 责任词汇             | apps/web/src/render/words/member-card.tsx；apps/web/src/components/actions/                                                               | T54 知情确认/决定回执、fresh submit；不复制批准实现            |
-| 聊天壳               | apps/web/src/components/chat/floating-chat.tsx；chat-panel.tsx；use-chat-session.ts；chat-types.ts                                        | 稳定 session、草稿、SSE/停止，不把 thread 用作会话 key         |
-| 历史与依据           | apps/web/src/chat/history.ts；conversation.ts；apps/web/src/app/api/chat/history/route.ts；apps/web/src/components/chat/citation-list.tsx | 精确 turn join、FactRef、授权缓存、unknown 诚实性              |
-| 处境导航             | apps/web/src/presence/；apps/web/src/components/stage/situation-bar.tsx                                                                   | URL observation/clientView 单一来源、保留 thread/scope         |
+| 线程纯投影           | packages/engine/src/projection/work-thread.ts（S1 定案：≈唯一必改产品文件）；packages/shared/src/work-thread.ts（如需类型）               | active/approval 补与 context 同构的 `thread-reference` 成员卡（含 dangling）+ `presentation` 升级 `projectCognitiveSemantics` version:1 声明；事件/写入模型零变化，不把派生摘要写进事件 |
+| 语义/呈现            | packages/shared/src/definition/cognitive-semantics.ts；packages/engine/src/presentation/                                                  | version:1 认知声明单一落点（D54/D78）；generic 规划器非密度 trait 消费通路按需扩展（P1.2，`PRESENTATION_SURFACE_CATALOG`/`generic-intent-policy` 版本随语义递增），禁止 class/rel 分支 |
+| 服务授权             | apps/web/src/engine/service.ts；service-thread.ts；presentation/authorized-entity.ts                                                      | S1 定案：授权裁剪六处逐引用已生效且成员卡天然继承，零新增授权机制；不让纯 snapshot 派生值越过授权 |
+| 组合适配             | apps/web/src/engine/presentation/compositions.ts；app-workspace/composition.ts；runtime-composition.ts                                    | S1 定案路线 A：**不派生 `workspace:thread:<id>`**（路线 B 已实核否决）；D45 机器留给 app workspace；本行仅保留对比结论（probes/s1 §5） |
+| 页面与主面           | apps/web/src/components/canvas/canvas-body.tsx；presentation-surface-host.tsx；apps/web/src/components/app-shell.tsx                      | P2 撤 noGaze 旁路（`canvas-body.tsx:57-63/68-78`），同一 entity cache 与 Presentation host；壳内裸 `<a href>`（`app-shell.tsx:28`）改客户端导航（S3：硬导航丢草稿根因） |
+| 材料与 pin           | apps/web/src/components/canvas/desk/（`thread-desk.tsx:290` 裸 `<a>` 改 Next Link，S3 存续契约前置）；apps/web/src/components/actions/thread-material-add.tsx | ObjectSelectorPanel、已有 submit；pin 与 membership 分离       |
+| 责任词汇             | apps/web/src/render/words/member-card.tsx；apps/web/src/components/actions/                                                               | approval 成员卡携带被引确认实体声明动作，generic 按 membersDeclareActions 自动选 member-card（D50 责任卡）；T54 知情确认/决定回执、fresh submit；不复制批准实现 |
+| 聊天壳               | apps/web/src/components/chat/floating-chat.tsx；chat-panel.tsx；use-chat-session.ts；chat-types.ts                                        | S3 定案：根布局 FloatingChat 内 useChatSession = 工作站唯一拥有者（P2 只换壳不换宿主）；剩余宽度停靠替换「进线必停靠」并保留 dockedThread 记忆；补 Escape/焦点恢复；不把 thread 用作会话 key |
+| 历史与依据           | apps/web/src/chat/history.ts；conversation.ts；apps/web/src/app/api/chat/history/route.ts；apps/web/src/components/chat/citation-list.tsx  | P3：ChatTurn 增 `clientView?`/`userContextKnown`（principal×sessionId×turnId 精确 join，不回填）；历史读取按 `{rel,principal}` 过滤取界、无默认页 limit；引用精确型/集合型两型 chip + 时点边界；无全局标签缓存 |
+| 处境导航             | apps/web/src/presence/；apps/web/src/components/stage/situation-bar.tsx                                                                   | URL observation/clientView 单一来源、保留 thread/scope（S3 实测发送侧与 URL 已同源） |
 | Agent 若确有接线需要 | packages/agent/src/；apps/web/src/chat/post/                                                                                              | 最小披露/transport 改动；不重写决策 loop/provider/执行路径     |
+| 测试与探针母本       | apps/web/src/engine/service-tests/work-thread/（S1 种子已常驻，独立 GR3 预算）；apps/web/src/chat/history/（P3 计划新子目录，chat 本体 3974/4000 近限）；apps/web/src/components/chat/（S2 两枚种子已落）；e2e/workstation/（P2/P4 新建）；probes/scripts/*.mjs（S3 五脚本转正保留，P2 Red 母本） | 新测试沿功能子目录避让贴限目录（D53）；不新增 per-track Playwright 配置（GR5） |
 
-以上是影响范围，不要求全部修改。新增文件路径与最终 shape 在 S1–S3 后回写此表及 plan。
-`packages/db` 仅在确需读投影支持时触及；默认零存储 schema/事件种类变化。
+以上是影响范围，不要求全部修改。新增文件路径与最终 shape 已按 S1–S3 定案回写此表
+（P0.5，2026-09-06）并同步 plan。
+`packages/db` 仅在确需读投影支持时触及；默认零存储 schema/事件种类变化（S2 定案：
+写侧零变化，S2 步骤 6 实测的 `(principal, rel, seq)` 索引属 schema 决策，本 track 默不做）。
 
 规划期 GR3 事实（仅作开工提示，P0 必须重测）：chat 3974、engine/execution 3986、
-service-tests 3918、engine/presentation 3707 有效行。不要把测试集中堆在贴限目录；
+service-tests 3918、engine/presentation 3707 有效行（P0.1 重测逐一吻合，见 evidence
+E-P0.1）。不要把测试集中堆在贴限目录；S1 已在 `service-tests/work-thread/` 建独立
+预算子目录（父目录 3918 不变），S2 计划新子目录 `apps/web/src/chat/history/`；
 需要增加时沿功能拆进历史读取/线程呈现等相邻子目录，保留原测试意图、更新路径和 DB 分类。
 
 ## 5. 稳定性与失败路径

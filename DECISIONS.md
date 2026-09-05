@@ -1634,3 +1634,91 @@
 - **后果**:Phase 5 P5.1 按本裁定执行(非跳过);D52「路径与命名保留原样」语句按
   本条修订——修订范围仅此一文件,`scripts/t22` 套件自身的路径与命名不变;
   探针客户端的 node_modules 伸手仍按 FR1.2a 处置,不因本条豁免。
+
+## D78 工作线本线呈现路线 A、实测布局契约与聊天历史时点读语义(T56 P0.5;撤销 T35 恒三栏假设)
+
+- **背景**:T56 P0 三探针(S1 呈现链路、S2 历史与引用时点、S3 布局与会话存续;报告见
+  `conductor/tracks/t56-work-thread-workspace_20260905/probes/`,证据登记 E-P0.2–E-P0.4)
+  实证三类现状:(1)本线页面被 `canvas-body.tsx` 归入 noGaze 旁路,渲染协作说明与应用
+  书架而非内容;该处理源于 T35 track 级设计定稿「栏数恒为 3 / 本线即无注视」假设——
+  出自 `conductor/tracks/archive/t35-ux-walkthrough-remediation_20260827/design-notes.md`
+  §十(2026-08-28),**DECISIONS.md 中无编号条目**;S3 实测其后果是 640px 阅读下限在
+  当前壳内结构性不可达(main `max-w-5xl` 1024 + 书桌栏 384 + padding/gap 72 → 注视列
+  最多 568,任何视口)。(2)thread 投影的 active/approval 仅为 statusPointer 数组与
+  links,无成员卡、无认知声明,「当前责任/进行中工作」不可读(S1 exact Siren 固化)。
+  (3)`ChatTurn` 历史投影整体丢弃 clientView(实测 `'clientView' in turn === false`),
+  「当时上下文未知」在现 shape 下无处落笔,三态坍缩为一态(S2 步骤 1/2)。
+- **决定**:
+  1. **撤销 T35「恒三栏/本线视为 noGaze」假设**(归档文件只读不改,仅以本条
+     supersede):工作线页面成为主内容主体,`thread=T&focus=thread:T` 与对象详情共用
+     同一条 Presentation 管线,不再旁路渲染说明书/应用书架。布局契约采用 S3 实测
+     断点:并排条件为「扣除全局 padding(48px)与助手宽度后,主区 ≥640 CSS px 且
+     ≥两栏净宽 60%」——60% 条件在 ≥640 时恒满足(62.5%),640 是绑定约束;按
+     `min(vw−助手宽,1024)−48 ≥ 640` 推导并经 DOM 实测核对,助手 384px → 并排阈值
+     视口 ≥1072(1080 通过、1024 不通过),收窄到 320px → ≥1008;200% 缩放(布局
+     视口 960 CSS px)必须覆盖/单面模式;默认无永久材料栏。切换判断按剩余宽度计算,
+     不使用仅整屏 `lg:` 的内层断点。
+  2. **本线呈现选定路线 A(纯投影扩展,单主体 Surface)**:以原 `thread:<id>` 为公共
+     认知根,在 `packages/engine/src/projection/work-thread.ts` 为 active/approval 补与
+     context 同构的 `thread-reference` 成员卡(含 dangling 限定;approval 成员卡携带
+     被引确认实体的声明动作,经既有 membersDeclareActions 结构判定自动选 member-card,
+     D50 责任卡语义继承),并经 `projectCognitiveSemantics` 把 thread 实体
+     `presentation` 升级为 `version:1` 版本化认知声明(traits/groupRole/emptyMeaning,
+     封闭词表零增,D54 单一落点);复用既有 Broker/generic/Sidecar 与依赖失效链路
+     ——member/value/action/授权四类变化的 rehydrate/invalidate 接线 S1 实测全部已
+     存在,零新增 rel、零第二套状态、零新增授权机制(裁剪 machinery 六处逐引用生效,
+     成员卡作为 entities 子实体天然吃同一 readable 谓词)、前端数据面零改动。D45
+     `workspace:` 机器继续留给 app workspace,不派生 `workspace:thread:<id>`。
+  3. **授权裁剪与真空同形 → UI「当前可见」口径纪律**:合同上「被裁剪」与「真空」
+     不可区分(裁剪后 `active:[]` 与真空 `active:[]` 同形,这是 D51 授予内零可见
+     授权事件的既定设计后果而非缺陷),UI 文案必须用「当前可见的关联工作/当前可见
+     责任」,禁止「无进行中工作」类全称量词;`resume` 被裁时该行消失,不加
+     「不可见」占位。「被裁剪 vs 真空」可辨读字段须过 D51 审查另议,本 track 不默认做。
+  4. **线程生命周期动作不经确认门的现状在本 track 维持不改(显式边界,防误读为
+     遗漏)**:`apps/web/src/engine/exec/service-exec.ts` 把 `threads`/`thread:*` 直入
+     `execThreadAction`(纯裁决),不进 `executeWithGates` 的 Cedar 确认门,thread
+     archive 的 `'requires-confirmation': 'high'` 标注在该路径不生效(S1 用例 3 实测
+     agent archive 直通 accepted 并固化)。本 track 明确维持该现状:工作线生命周期
+     只改呈现重心,不改变执行合法性;「当前责任」只来自显式 approval 引用(业务确认)
+     的成员卡语义,不来自线自身动作;后续如需为线程生命周期加确认门,属新范围,
+     须另行决策,不并入 T56。
+  5. **聊天历史时点读语义(S2 定案)**:写侧零变化——事件种类、
+     chat-message-appended detail、`FactRef{rel,pointer}` 二字段(D47 口径)均不动,
+     不加快照/版本/identity 字段。读侧唯一扩展:`ChatTurn` 投影新增 `clientView?` 与
+     `userContextKnown`(history 路由按 principal×sessionId×turnId 精确 join 同 rel 下
+     user 角色 chat-message-appended,join 键两侧事件已双全),区分「事件存在但无
+     clientView(旧版)」与「user 事件整体缺失」,两者 UI 都按「当时上下文未知」显式
+     呈现;存量历史回合**不回填**(与 D68.5 同纪律);禁止用最新 presence、当前 URL
+     或最近一条 clientView 给旧消息补上下文(D51 注意力纪律)。历史读取按
+     `{rel:'chat:<sessionId>', principal}` 过滤取界(既有存储参数,生产 principal
+     过滤经 `chatHistoryPrincipal` 保持),**不引入默认页 limit**——`listEvents` 显式
+     limit 硬顶 101,任何默认页上限都会把页外回合与 citations 静默截没(S2 实测);
+     未来确需真分页用既有 `order:'desc'+beforeSeq` 游标,且 join 语义须「读到该回合
+     全部事件为止」。引用 chip 按可证明性分两型:精确型(声明身份 +「当前名」时点
+     标注 + rel 对照)与集合/成员型(集合级来源 + 成员路径 +「回答依据当时的集合
+     内容,不指向今天同一位置的条目」边界行),判别用纯指针前缀、不解析回答自然
+     语言;点击落点仍为 `citationCanvasHref(rel)` 不变。**不建全局标签缓存**、不
+     持久化失败结果——现状组件内 no-store 语义即无「撤回后残留旧标题」问题。
+- **理由**:备选路线 B(derived Composition `workspace:thread:<id>`)经 S1 实核机械
+  可行,但引入第二认知主体、每次 present 的逐区域授权读放大(N+1)与成员变化的
+  声明换版全量重规划,且区域内容仍由同一 generic 规划器逐实体产出,不减少路线 A
+  任何工作,故否决为主路线;断点数字来自 S3 六视口 DOM bounding box 实测而非纯
+  推导(1080 三栏中栏 240px 的 F01 实锤);历史读语义扩展全部只动只读投影,写入
+  模型、事件种类与 D68 双轴归属不变。与现行决定无冲突:D44 四类显式引用与生命周期
+  写语义不变;D45 机器归属不变;D47 FactRef 不变;D51 裁剪同形是既定失败语义的
+  呈现推论;D54 认知声明单源落点升级;D68.3 principal 过滤与不回填纪律延续。
+- **证据**:S1 `probes/s1-presentation.md`(exact Siren/裁剪/呈现链/新鲜度四类/
+  路线对比,6 用例 exit 0)、S2 `probes/s2-history-citations.md`(17 用例 exit 0,
+  步骤 1–7 分步实证)、S3 `probes/s3-layout-session.md`(六视口几何、存续矩阵、
+  受控 SSE、clientView/键盘);复跑命令、退出码与 NOT RUN 清单见本 track
+  `evidence.md` E-P0.2–E-P0.4。
+- **影响**:`packages/engine/src/projection/work-thread.ts`(P1:成员卡 + version:1
+  声明,事件/写入模型零变化);`apps/web/src/components/canvas/canvas-body.tsx`
+  (P2:撤 noGaze 旁路)、`canvas/desk/` 与 `app-shell.tsx`(裸 `<a>` 改客户端导航,
+  S3 实证硬导航是丢草稿根因)、`components/chat/floating-chat.tsx`(剩余宽度停靠
+  替换「进线必停靠」,保留 dockedThread 记忆;补 Escape/焦点恢复);`ChatTurn` 与
+  `apps/web/src/app/api/chat/history/route.ts`(P3:join 扩展)。测试种子已常驻:
+  `apps/web/src/engine/service-tests/work-thread/presentation.test.ts`(S1,P1.1 种子)、
+  `apps/web/src/components/chat/citation-list.s2-probe.test.tsx` 与
+  `history-replay.s2-probe.test.tsx`(S2,P3 种子)、`probes/scripts/*.mjs`(S3,
+  P2 Red 母本)。T35 归档文件零改动。
