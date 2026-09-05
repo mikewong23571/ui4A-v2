@@ -4,8 +4,7 @@
 
 ## 活跃 Tracks
 
-（当前无活跃 Track）
-- [ ] **Track: T55 架构治理落地:审查结论 → 决策 → 门禁 → 重构**(输入 arch-review-2026-09-05.md v2 经独立双重审核;Phase 0 决策先行 D75 chat 编排重构/D76 service hub 降权(ExecOutcome 解环+exec() 六段归位,单原子队列不变)/D77 t22 位置 D52 修订案;Phase 1 治理盲区(GR2 中文词形/GR1 读依赖登记/check-size 测试分列);Phase 2 文档真源(AGENTS.md 补 agent-runner 引 D34/D36、arch-brief 修 apps/web/src/db 陈旧路径);Phase 3 chat POST 四段重构(route.ts ≤200 有效行,9 测试断言零删除);Phase 4 service.ts ≤350 有效行+零环;Phase 5 构建根收敛+复测报告+GR5;验收 AC-0–AC-6 见 spec §7) *Link: [tracks/t55-architecture-governance_20260905/index.md](./tracks/t55-architecture-governance_20260905/index.md)*
+- [~] **Track: T55 架构治理落地:审查结论 → 决策 → 门禁 → 重构**(输入 arch-review-2026-09-05.md v2 经独立双重审核;Phase 0 决策先行 D75 chat 编排重构/D76 service hub 降权(ExecOutcome 解环+exec() 六段归位,单原子队列不变)/D77 t22 位置 D52 修订案;Phase 1 治理盲区(GR2 中文词形/GR1 读依赖登记/check-size 测试分列);Phase 2 文档真源(AGENTS.md 补 agent-runner 引 D34/D36、arch-brief 修 apps/web/src/db 陈旧路径);Phase 3 chat POST 四段重构(route.ts ≤200 有效行,9 测试断言零删除);Phase 4 service.ts ≤350 有效行+零环;Phase 5 构建根收敛+复测报告+GR5;验收 AC-0–AC-6 见 spec §7) *Link: [tracks/t55-architecture-governance_20260905/index.md](./tracks/t55-architecture-governance_20260905/index.md)*
 
 
 - [x] **Track: T54 深度体验遗留缺口闭环(G01–G15)**（2026-09-05 完成:P1 四项全闭环——G01 严格策略确认批准经 executeMeta 同一事件计划(D74)/G02 停用面 403 族细化+稳定回执宿主(D73)/G03 知情确认卡+决定回读(rejectedBy 双侧持久化)/G04 证据时点诚实;P2——G05 预填(探针定位 actions-entity 切片)/G06 收尾动作(todo done.archive+post offline edit/archive,born-version 边界钉测)/G07 选择器收敛/G09 捕捉身份(bundle v8)/G11 历史口径/G13 审计过滤/G14 message 只读投影;部分:G08 处境+通用UI、G10 引用标签(真实 LLM NOT RUN)、G15 小修;G12 保留开放(复现未执行,零无证据修复);G07/G09/G11/G13 经 subagent 实施+编排亲跑复核;check 4097/e2e 79/invariants 20 全绿;部署站复验待用户发布;证据 evidence.md) *Link: [tracks/archive/t54-ux-gaps-closure_20260905/index.md](./tracks/archive/t54-ux-gaps-closure_20260905/index.md)*
