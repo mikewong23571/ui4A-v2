@@ -2,7 +2,20 @@
  * field-definition → JSON Schema(draft-07)派生。
  * RJSF v6 与 Ajv 的共同输入(spec:合同格式必须语言中立)。
  */
-import type { FieldDefinition } from '../core/types';
+import type { ActionDefinition, FieldDefinition } from '../core/types';
+
+/** The projected and executed parameter contract must collect the same declared fields. */
+export function actionParametersSchema(
+  action: ActionDefinition,
+  nodeFields: readonly FieldDefinition[],
+) {
+  return fieldDefinitionsToJsonSchema(
+    mergeFieldDefinitions(
+      action['collect-node-fields'] === false ? [] : nodeFields,
+      action.fields ?? [],
+    ),
+  );
+}
 
 /** 单字段 → JSON Schema 片段。 */
 function fieldToJsonSchema(field: FieldDefinition): Record<string, unknown> {

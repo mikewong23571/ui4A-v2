@@ -7,7 +7,7 @@ import type { EngineSnapshot, GuardRegistry } from '@ui4a/shared';
 import { GUARD_HINTS } from '@ui4a/shared';
 
 import { evaluateGuards } from '../../execution/judge';
-import { fieldDefinitionsToJsonSchema, mergeFieldDefinitions } from '../schema';
+import { actionParametersSchema } from '../schema';
 import type { ActionDefinition, FieldDefinition } from '../../core/types';
 import type { GuardResultEntry, SirenAction, SirenFieldPresentation } from './types';
 
@@ -36,15 +36,12 @@ export function toSirenAction(
   nodeFields: readonly FieldDefinition[],
   base: string | undefined,
 ): SirenAction {
-  const collectedNodeFields = action['collect-node-fields'] === false ? [] : nodeFields;
   const sirenAction: SirenAction = {
     name: action.name,
     title: action.title,
     method: action.method ?? 'POST',
     href: execHref(base),
-    fields: fieldDefinitionsToJsonSchema(
-      mergeFieldDefinitions(collectedNodeFields, action.fields ?? []),
-    ),
+    fields: actionParametersSchema(action, nodeFields),
   };
   if (action['requires-confirmation'] !== undefined) {
     sirenAction['requires-confirmation'] = action['requires-confirmation'];

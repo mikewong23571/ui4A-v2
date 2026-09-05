@@ -15,7 +15,7 @@ import type {
 } from '@ui4a/shared';
 
 import { actionEffects } from '../core/parse';
-import { fieldDefinitionsToJsonSchema, mergeFieldDefinitions } from '../contract/schema';
+import { actionParametersSchema } from '../contract/schema';
 import type {
   ActionDefinition,
   EffectDefinition,
@@ -196,9 +196,7 @@ export function judge(
   }
 
   // ③ schema 层:参数过 字段 schema(节点字段 ∪ 动作字段;Ajv draft-07,严格拒绝多余参数)。
-  const schema = fieldDefinitionsToJsonSchema(
-    mergeFieldDefinitions(node.fields ?? [], action.fields ?? []),
-  );
+  const schema = actionParametersSchema(action, node.fields ?? []);
   const ajv = new Ajv({ allErrors: true, strict: false });
   const validate = ajv.compile(schema);
   if (!validate(params)) {
