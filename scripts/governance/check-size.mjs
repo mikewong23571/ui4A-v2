@@ -12,27 +12,49 @@ import { REPO_ROOT, trackedFiles, effectiveLineCount } from './lib.mjs';
 const FILE_LIMIT = 500;
 const TEST_LIMIT = 800;
 const DIR_LIMIT = 4000;
+// T55 FR1.3: dirs at >=90% of the limit are reported with a test/non-test split
+// so "near-limit" is interpretable (A04: the pressure is mostly test lines).
+const NEAR_LIMIT_RATIO = 0.9;
 const BASELINE_PATH = 'scripts/governance/size-baseline.json';
 
 const isTest = (f) => /\.(test|spec)\.tsx?$/.test(f);
 
+/** Per-directory aggregation of effective lines into {total, test, nonTest}. */
+export function aggregateDirStats(entries) {
+  const stats = new Map();
+  for (const { path: filePath, lines, isTest: test } of entries) {
+    const dir = path.posix.dirname(filePath);
+    const current = stats.get(dir) ?? { total: 0, test: 0, nonTest: 0 };
+    if (test) current.test += lines;
+    else current.nonTest += lines;
+    current.total += lines;
+    stats.set(dir, current);
+  }
+  return stats;
+}
+
 export function checkSize() {
   const files = trackedFiles('*.ts', '*.tsx').filter((f) => !f.startsWith('scripts/governance/'));
   const overLimit = [];
-  const dirTotals = new Map();
+  const entries = [];
 
   for (const file of files) {
     const lines = effectiveLineCount(file);
-    const limit = isTest(file) ? TEST_LIMIT : FILE_LIMIT;
+    const test = isTest(file);
+    const limit = test ? TEST_LIMIT : FILE_LIMIT;
     if (lines > limit) overLimit.push({ path: file, lines, limit });
-    const dir = path.posix.dirname(file);
-    dirTotals.set(dir, (dirTotals.get(dir) ?? 0) + lines);
+    entries.push({ path: file, lines, isTest: test });
   }
-  const overLimitDirs = [...dirTotals.entries()]
-    .filter(([, total]) => total > DIR_LIMIT)
-    .map(([dir, total]) => ({ path: dir, lines: total, limit: DIR_LIMIT }));
+  const dirStats = aggregateDirStats(entries);
+  const overLimitDirs = [...dirStats.entries()]
+    .filter(([, s]) => s.total > DIR_LIMIT)
+    .map(([dir, s]) => ({ path: dir, lines: s.total, limit: DIR_LIMIT, ...s }));
+  const nearLimitDirs = [...dirStats.entries()]
+    .filter(([, s]) => s.total > DIR_LIMIT * NEAR_LIMIT_RATIO && s.total <= DIR_LIMIT)
+    .map(([dir, s]) => ({ path: dir, lines: s.total, limit: DIR_LIMIT, ...s }))
+    .sort((a, b) => b.lines - a.lines);
 
-  return { overLimit, overLimitDirs };
+  return { overLimit, overLimitDirs, nearLimitDirs, dirStats };
 }
 
 function loadBaseline() {
@@ -87,10 +109,24 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
 
   const baseline = loadBaseline();
   const { newViolations, grown, stale, remaining } = evaluate(overLimit, overLimitDirs, baseline);
+  const { nearLimitDirs } = checkSize();
   console.log(
     `check-size: limits file<=${FILE_LIMIT}, test<=${TEST_LIMIT}, dir<=${DIR_LIMIT} effective lines (GR3)`,
   );
   let failed = false;
+
+  const splitLine = (d) =>
+    `    ${d.path}: ${d.lines} total = test ${d.test} + non-test ${d.nonTest} (${Math.round(
+      (100 * d.test) / d.lines,
+    )}% test)`;
+  if (overLimitDirs.length > 0) {
+    console.log(`  over-limit dir(s) — test/non-test split:`);
+    for (const d of overLimitDirs.sort((a, b) => b.lines - a.lines)) console.log(splitLine(d));
+  }
+  if (nearLimitDirs.length > 0) {
+    console.log(`  near-limit dir(s) (>=${Math.round(NEAR_LIMIT_RATIO * 100)}% of ${DIR_LIMIT}) — test/non-test split:`);
+    for (const d of nearLimitDirs) console.log(splitLine(d));
+  }
 
   if (newViolations.length > 0) {
     failed = true;
