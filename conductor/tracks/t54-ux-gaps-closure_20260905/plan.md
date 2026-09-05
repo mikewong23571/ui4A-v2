@@ -54,19 +54,27 @@
   合同,agent 批准拒绝已由服务测试钉住)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `0aa984ab`
 
-## Phase 2 — G02/G04 诚实性小修
+## Phase 2 — G02/G04 诚实性小修 [checkpoint: ada58d41]
 
-- [ ] Task: G02a 停用后响应语义按 Phase 0 裁定实现(测试先行修订合同测试);
-  客户端「不可再访问」与网络/5xx 故障分型;不把所有 403 粗暴改 404
-- [ ] Task: G02b 稳定宿主成功回执:MetaEntityPage 错误分支切换不卸载丢失
+- [x] Task: G02a 停用后响应语义按 Phase 0 裁定实现(测试先行修订合同测试);
+  客户端「不可再访问」与网络/5xx 故障分型;不把所有 403 粗暴改 404 `ada58d41`
+  (D73 落地:application_deprecated/scope_insufficient 分型 + 活跃未授予对照例)
+- [x] Task: G02b 稳定宿主成功回执:MetaEntityPage 错误分支切换不卸载丢失
   lastOutcome/lastDisclosure;提供目录/返回出口;刷新后按授权合同呈现历史结果或
-  不可访问状态,不沿用临时成功快照冒充当前授权事实
-- [ ] Task: G04a 无依据陈述小修:「当前激活未附此项证据」事实陈述;沿已声明 Draft
-  关系到达现有 diff;缺字段不推断生成时间
-- [ ] Task: G04b 证据时点分离:「批准时依据/执行结果/当前事实」三层,优先从已有
+  不可访问状态,不沿用临时成功快照冒充当前授权事实 `ada58d41`
+  (meta-receipt context 页面级宿主 + 三态分型卡 + MetaEntityHttpError 携带结构化码;
+  「历史结果」口径标注;标点按 G08 全角纪律)
+- [x] Task: G04a 无依据陈述小修:「当前激活未附此项证据」事实陈述;沿已声明
+  Draft 关系到达现有 diff;缺字段不推断生成时间 `ada58d41`
+  (activation-view「旧日志」→「证据不可得,不作时间推断」+ 定义版本出口链接)
+- [x] Task: G04b 证据时点分离:「批准时依据/执行结果/当前事实」三层,优先从已有
   不可变版本/事件读取,未保存足够证据标记不可得;结构化数组/对象走通用回执渲染器
-  (不转义 JSON);新应用批准前未安装检查通过、批准后不把「现在已安装」当旧检查失败
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+  (不转义 JSON);新应用批准前未安装检查通过、批准后不把「现在已安装」当旧检查失败 `ada58d41`
+  (projectApplicationBundleDraft 对已安装目标附时点明细「当前事实,不是批准失败,
+  批准时依据以提交/接受事件为准」,不补造 PASS;draft checks 标题标注「按当前事实
+  重算」;回执结构化值经 DisclosureValue 既有渲染)
+  (GR3/D53 顺带拆解:components/meta 超限 → activation/ 子目录,镜像 renderers/generic 先例)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `ada58d41`
 
 ## Phase 3 — G03 知情确认与决定回执
 
