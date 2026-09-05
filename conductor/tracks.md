@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-（当前无活跃 Track）
+- [ ] **Track: T54 深度体验遗留缺口闭环(G01–G15)**(输入 docs/ux-review/2026-09-05/remaining-gaps.md;P1:G01 严格策略 Meta 确认批准、G02 停用响应语义与稳定回执、G03 知情确认与决定回读、G04 激活证据时点;P2:G05/G07/G09 操作顺畅性、G06 业务收尾另立小故事、G08/G10–G15 注意力与复现收敛;规划期事实核查 10 项断言 9 成立 1 部分成立(G11 预览截断已存在)落 spec §6;G02 的 D71.3-404 vs 实现-403 分歧列 Phase 0 裁定;每缺口按 commit/测试命令/部署 digest/浏览器复验证据关闭) *Link: [tracks/t54-ux-gaps-closure_20260905/index.md](./tracks/t54-ux-gaps-closure_20260905/index.md)*
 
 - [x] **Track: T52 Application Deprecation 受治理应用停用**（2026-09-05 完成:D71 落盘;application-deprecated 事件三处词汇+级联 fold(applications 删键/审计集/定义置废);APPLICATION_LIFECYCLE 双伪流+human-only+high 确认+default 地板;烧毁集三门统一(顺带修复 audit-only 安装洞);受众反 fail-open 双集解析+存在性隐藏;sitemap/flow-entry/chat 全联动收缩;浏览器/CLI 三门同门(CLI=agent 通道诚实拒绝+审计回读);e2e golden story 终验抓出并修复两真实缺陷(停用回执 500/烧毁集同进程不生效);check 4034/e2e 79/invariants 20 全绿;三轮设计复审+开工前事实复核全程留痕;US7 部署站清理待发布后执行） *Link: [tracks/archive/t52-application-deprecation_20260904/index.md](./tracks/archive/t52-application-deprecation_20260904/index.md)*
 
