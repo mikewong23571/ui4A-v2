@@ -30,7 +30,13 @@ export type GateExecFn = (input: {
 /** 拦截结果:executed(已提交)/ refused(裁决层拒)/ rejected(白名单外)。 */
 export type GateOutcome =
   | { outcome: 'executed'; entity: SirenEntity; subject?: SirenEntity }
-  | { outcome: 'refused'; status: number; layer: string; reason: string }
+  | {
+      outcome: 'refused';
+      status: number;
+      layer: string;
+      reason: string;
+      confirmation?: { rel: string };
+    }
   | { outcome: 'rejected'; reason: string };
 
 export interface ActionGate {
@@ -95,6 +101,7 @@ export function createActionGate(execFn: GateExecFn): ActionGate {
         status: result.status,
         layer: result.layer,
         reason: result.reason,
+        ...(result.confirmation === undefined ? {} : { confirmation: result.confirmation }),
       };
     },
   };

@@ -341,10 +341,7 @@ describe('ActionRunner T16 high-risk staging', () => {
     });
     expect(screen.getByRole('status').textContent).toContain('已执行');
     expect(onExecuted).toHaveBeenCalledWith('post:first-post');
-    expect(onOutcome).toHaveBeenCalledWith(
-      entity,
-      expect.objectContaining({ ok: true, entity }),
-    );
+    expect(onOutcome).toHaveBeenCalledWith(entity, expect.objectContaining({ ok: true, entity }));
     expect(trigger.hasAttribute('disabled')).toBe(true);
     fireEvent.click(trigger);
     expect(execFn).toHaveBeenCalledTimes(1);
@@ -388,4 +385,29 @@ describe('ActionRunner T16 high-risk staging', () => {
       params: undefined,
     });
   });
+});
+
+it('keeps a suspended action pending and exposes its confirmation through the Surface adapter', async () => {
+  const { createSurfaceActionSubmit } = await import('./actions/action-submit');
+  const submit = createSurfaceActionSubmit({
+    fetchEntity: async () => ({ ...entity, actions: [archiveAction] }),
+    exec: async () => ({
+      ok: false,
+      status: 202,
+      layer: 'confirmation-required',
+      reason: '操作尚未执行，等待确认。',
+      confirmation: { rel: 'confirmation:c4' },
+    }),
+  });
+  render(<ActionRunner rel="post:first-post" action={archiveAction} submit={submit} />);
+  fireEvent.click(screen.getByRole('button', { name: '归档' }));
+  fireEvent.click(screen.getByRole('button', { name: '确认并执行归档' }));
+  await waitFor(() =>
+    expect(screen.getByRole('link', { name: '查看待确认事项' }).getAttribute('href')).toBe(
+      '/canvas?focus=confirmation%3Ac4',
+    ),
+  );
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(screen.queryByText(/已执行/)).toBeNull();
+  expect((screen.getByRole('button', { name: '归档' }) as HTMLButtonElement).disabled).toBe(true);
 });

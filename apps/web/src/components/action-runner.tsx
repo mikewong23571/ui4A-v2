@@ -35,6 +35,7 @@ import { callerActionSchema, type SirenAction, type SirenEntity } from '@ui4a/en
 
 import type { ExecClientResult } from '@/components/exec-client';
 import { Button } from '@/components/ui/button';
+import { citationCanvasHref } from '@/presence/navigation';
 
 import {
   initialActionFormData,
@@ -208,11 +209,12 @@ export function ActionRunner({
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<SirenEntity | null>(null);
+  const [confirmationRel, setConfirmationRel] = useState<string>();
   // D50:参数表单单一默认收起(打开/关闭是零业务事件的 presentation interaction);
   // 阅读/任务面同默认,无双路径。打开后 prefill/焦点/两段式确认行为不变。
-  const [interaction, setInteraction] = useState<'closed' | 'form' | 'requested' | 'executed'>(
-    'closed',
-  );
+  const [interaction, setInteraction] = useState<
+    'closed' | 'form' | 'requested' | 'executed' | 'pending'
+  >('closed');
   const [pendingParams, setPendingParams] = useState<Record<string, unknown> | undefined>();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const formRegionRef = useRef<HTMLDivElement>(null);
@@ -263,6 +265,11 @@ export function ActionRunner({
         onExecuted?.(rel);
         return;
       }
+      if (result.confirmation !== undefined) {
+        setConfirmationRel(result.confirmation.rel);
+        setInteraction('pending');
+        return;
+      }
       const detail = result.detail !== undefined ? ` · ${JSON.stringify(result.detail)}` : '';
       setFailure(`[${result.layer}] ${result.reason}${detail}`);
     } catch (error) {
@@ -296,14 +303,24 @@ export function ActionRunner({
     restoreTrigger();
   }
 
-  const disabled = blocked || submitting || interaction === 'executed';
+  const disabled = blocked || submitting || interaction === 'executed' || interaction === 'pending';
   const hint = blocked ? blockReason : submitting ? '提交中…' : undefined;
   const toneClass =
     tone === 'danger'
       ? 'border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive'
       : undefined;
   const failureNode =
-    failure !== null ? (
+    confirmationRel !== undefined ? (
+      <p role="status" className="mt-2 text-sm">
+        操作尚未执行，等待确认。{' '}
+        <a
+          className="text-primary underline"
+          href={citationCanvasHref(window.location.href, confirmationRel)}
+        >
+          查看待确认事项
+        </a>
+      </p>
+    ) : failure !== null ? (
       <p role="alert" className="mt-1 text-xs text-destructive">
         {failure}
       </p>

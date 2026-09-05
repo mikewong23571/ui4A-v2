@@ -20,7 +20,14 @@ export const HUMAN_CHANNEL = {
 export type ExecClientResult =
   // ok 分支的 disclosure 仅由 meta exec(approve 激活,D70.1)携带;业务 exec 恒缺省。
   | { ok: true; entity: SirenEntity; subject?: SirenEntity; disclosure?: ActivationDisclosureView }
-  | { ok: false; status: number; layer: string; reason: string; detail?: unknown };
+  | {
+      ok: false;
+      status: number;
+      layer: string;
+      reason: string;
+      detail?: unknown;
+      confirmation?: { rel: string };
+    };
 
 function contractPrefix(rel: string): '' | '/_meta' {
   return rel.startsWith('meta/') || rel.startsWith('draft:') ? '/_meta' : '';
@@ -60,6 +67,21 @@ export async function execAction(input: {
   }
 
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  const confirmation = body.confirmation as { rel?: unknown } | undefined;
+  if (
+    response.status === 202 &&
+    body.status === 'suspended' &&
+    typeof confirmation?.rel === 'string' &&
+    confirmation.rel.startsWith('confirmation:')
+  ) {
+    return {
+      ok: false,
+      status: 202,
+      layer: 'confirmation-required',
+      reason: '操作尚未执行，等待确认。',
+      confirmation: { rel: confirmation.rel },
+    };
+  }
   if (response.ok && body.entity !== undefined) {
     // T35 F-31:裁决类 exec 携带被操作主体投影(collection 回链=inbox 等)。
     const subject = body.subject !== undefined ? { subject: body.subject as SirenEntity } : {};

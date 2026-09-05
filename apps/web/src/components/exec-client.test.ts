@@ -130,3 +130,24 @@ describe('401 认证错误跳转接线(T22 验证修复)', () => {
     expect(result).toMatchObject({ ok: false, status: 401 });
   });
 });
+
+it('preserves a suspended confirmation without claiming execution or an unknown error', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'suspended',
+          confirmation: { rel: 'confirmation:c4', id: 'c4' },
+        }),
+        { status: 202 },
+      ),
+    ),
+  );
+  expect(await execAction({ rel: 'todo:one', action: 'archive' })).toMatchObject({
+    ok: false,
+    status: 202,
+    layer: 'confirmation-required',
+    confirmation: { rel: 'confirmation:c4' },
+  });
+});

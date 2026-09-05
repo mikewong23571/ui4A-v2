@@ -115,6 +115,7 @@ function outcomeResult(outcome: SurfaceActionOutcome): ExecClientResult {
         status: outcome.status ?? 409,
         layer: outcome.code,
         reason: outcome.reason,
+        ...(outcome.confirmation === undefined ? {} : { confirmation: outcome.confirmation }),
       };
 }
 

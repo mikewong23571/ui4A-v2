@@ -68,6 +68,7 @@ export interface SurfaceActionRefused {
   layer?: string;
   expectedVersion?: string;
   currentVersion?: string | null;
+  confirmation?: { rel: string };
 }
 
 export type SurfaceActionOutcome = SurfaceActionExecuted | SurfaceActionRefused;
@@ -96,7 +97,7 @@ function refusal(
   stale: boolean,
   details: Pick<
     SurfaceActionRefused,
-    'status' | 'layer' | 'expectedVersion' | 'currentVersion'
+    'status' | 'layer' | 'expectedVersion' | 'currentVersion' | 'confirmation'
   > = {},
 ): SurfaceActionRefused {
   return {
@@ -303,6 +304,7 @@ export function createSurfaceActionAdapter(
         return refusal(input, 'exec-refused', result.reason, false, {
           status: result.status,
           layer: result.layer,
+          ...(result.confirmation === undefined ? {} : { confirmation: result.confirmation }),
         });
       }
       return refusal(input, 'action-undeclared', result.reason, true);
