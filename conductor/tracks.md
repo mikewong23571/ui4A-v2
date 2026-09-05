@@ -86,3 +86,7 @@
 - [x] **Track: T37 应用默认展示治理:导航合同修复(流→产物正向链接、全通道归属)+ 默认落点组合化(T30 组合机器消费;agent 浏览器视觉审核 U1–U5,覆盖三应用流程)** *Link: [tracks/archive/t37-app-default-composition_20260829/index.md](./tracks/archive/t37-app-default-composition_20260829/index.md)*
 - [x] **Track: T38 集合查询治理:合同层分页(无参数全量承诺)+ 声明式过滤 + 实体显示 hint(声明式概览列);agent 浏览器视觉审核 US1–US6,全应用横扫** *Link: [tracks/archive/t38-collection-query-governance_20260829/index.md](./tracks/archive/t38-collection-query-governance_20260829/index.md)*
 - [x] **Track: T49 聊天会话双轴:principal 所有权 × sessionId 会话,生产多会话与新会话语义修复(U1–U10 用户故事验收闭环)** *Link: [tracks/archive/t49-chat-session-two-axis_20260904/index.md](./tracks/archive/t49-chat-session-two-axis_20260904/index.md)*
+
+## 待实施 Tracks
+
+- [ ] **Track: T56 工作线工作台重构：目标、责任与共同上下文**（规划完成，未开工；自包含 spec/design/acceptance/plan，P0 三个探针与 P5 实现后 review/fixes/re-review 为必需门禁） *Link: [tracks/t56-work-thread-workspace_20260905/index.md](./tracks/t56-work-thread-workspace_20260905/index.md)*

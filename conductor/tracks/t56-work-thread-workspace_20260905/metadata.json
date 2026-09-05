@@ -1,0 +1,18 @@
+{
+  "trackId": "t56-work-thread-workspace_20260905",
+  "title": "T56 工作线工作台重构：目标、责任与共同上下文",
+  "type": "refactor",
+  "status": "new",
+  "createdAt": "2026-09-05",
+  "updatedAt": "2026-09-05",
+  "description": "以工作目标、当前责任与事实依据组织工作线；撤销恒三栏与本线即无注视的假设，复用合同投影、Presentation、动作裁决和聊天历史，完成浏览器验收及实现后 review/fix/re-review。当前仅规划。",
+  "dependsOn": [],
+  "artifacts": [
+    "index.md",
+    "spec.md",
+    "design.md",
+    "acceptance.md",
+    "plan.md",
+    "planning-review.md"
+  ]
+}
