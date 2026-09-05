@@ -9,12 +9,12 @@
 import type { AgentGoal } from '@ui4a/agent';
 import type { ClientViewReport } from '@ui4a/shared';
 
-import type { TrustedRequestAuditContext } from '../auth/request-identity';
-import { presentationContextForIdentity, situationForChat } from '../engine/chat-situation';
-import { attachChatMessageToThread } from '../engine/chat-thread';
-import { getDb, getEngine } from '../engine/service';
-import { appendChatProjection, appendConversationMessage, loadAgentConversation } from './session-events';
-import { resolveStartRel } from './start-chain';
+import type { TrustedRequestAuditContext } from '../../auth/request-identity';
+import { presentationContextForIdentity, situationForChat } from '../../engine/chat-situation';
+import { attachChatMessageToThread } from '../../engine/chat-thread';
+import { getDb, getEngine } from '../../engine/service';
+import { appendChatProjection, appendConversationMessage, loadAgentConversation } from '../session-events';
+import { resolveStartRel } from '../start-chain';
 
 // 本地 demo 的用户级 Sidecar 与 Chat session 解耦;生产则使用已认证 principal。
 const LOCAL_PRESENTATION_PRINCIPAL = 'local-user';

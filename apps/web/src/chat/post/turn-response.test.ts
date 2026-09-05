@@ -10,8 +10,8 @@ const mocks = vi.hoisted(() => ({
   resolveLlmConfig: vi.fn(),
 }));
 
-vi.mock('../temporal/delegation', () => ({ dispatchDelegation: mocks.dispatchDelegation }));
-vi.mock('./session-events', () => ({
+vi.mock('../../temporal/delegation', () => ({ dispatchDelegation: mocks.dispatchDelegation }));
+vi.mock('../session-events', () => ({
   appendChatProjection: mocks.appendChatProjection,
 }));
 vi.mock('@ui4a/agent', async (importOriginal) => {

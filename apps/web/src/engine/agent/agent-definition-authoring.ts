@@ -4,7 +4,7 @@ import { assertAgentAuthoringResult } from '@ui4a/shared';
 import type { DbExecutor } from '@ui4a/db/events';
 import { agentDefinitionDraftRegistryPort } from './agent-definitions';
 import { executeDraftMeta } from '../drafts/drafts';
-import type { EngineRuntime } from '../service';
+import type { EngineRuntime } from '../service-outcome';
 
 /** Local Application seam until result bridges become a shared definition-language vocabulary. */
 interface AgentDefinitionDraftBridge {

@@ -1558,6 +1558,12 @@
 - **影响**:`apps/web/src/app/api/chat/route.ts`(收缩);`apps/web/src/chat/`
   (新增 2–3 个编排模块 + 测试);既有 9 测试文件与其断言不动。
 
+- **修订(2026-09-05,实施期 GR3 拆解)**:Phase 3 落位后 `apps/web/src/chat`
+  直含文件达 4849 有效行,触达 GR3 目录上限(4000)。按 D53「膨胀即拆解」纪律
+  与本 track 约束(不新增基线条目),三个新编排模块(post-identity/turn-context/
+  turn-response 及其测试)落位 `src/chat/post/` 子域(POST 编排段;既有 chat 域
+  模块零移动、域目录结构不变);原句「模块落位 src/chat 邻接」按此修订。
+
 ## D76 service hub 降权:ExecOutcome 解环与 exec() 编排段归位(T55)
 
 - **背景**:arch-review-2026-09-05 A02:`apps/web/src/engine/service.ts` 已拆出 10 个

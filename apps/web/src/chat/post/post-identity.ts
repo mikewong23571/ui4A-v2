@@ -7,16 +7,16 @@
 // 深生产链路的端到端语义由 route.production-auth/route.delegated 测试覆盖。
 import { createBoundedBearerFetch, type FetchLike } from '@ui4a/agent';
 
-import { getProductionAgentTokenProvider } from '../auth/production-agent-token-provider';
-import { getProductionBrowserAuthentication } from '../auth/production/browser-authentication-runtime';
-import { resolveTrustedRequestOrigin } from '../auth/production/request-origin';
+import { getProductionAgentTokenProvider } from '../../auth/production-agent-token-provider';
+import { getProductionBrowserAuthentication } from '../../auth/production/browser-authentication-runtime';
+import { resolveTrustedRequestOrigin } from '../../auth/production/request-origin';
 import {
   authenticationErrorResponse,
   requestIdentityProfile,
   resolveTrustedRequestIdentity,
   type TrustedRequestAuditContext,
-} from '../auth/request-identity';
-import { runWebProductionDeploymentPreflight } from '../production-deployment-preflight';
+} from '../../auth/request-identity';
+import { runWebProductionDeploymentPreflight } from '../../production-deployment-preflight';
 
 export const AGENT_CONTRACT_PATHS = [
   '/.well-known/ui4a.json',

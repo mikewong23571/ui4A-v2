@@ -9,7 +9,7 @@ import {
 import type { DbExecutor, EventAppend } from '@ui4a/db/events';
 import { persistRejection } from './service-confirmation';
 import { appendWithSeq, applyForeignGaps, type CoreEventLogState } from './service-event-log';
-import type { ExecOutcome } from './service';
+import type { ExecOutcome } from './service-outcome';
 
 export interface ThreadExecDeps {
   toAppend: (event: EngineEvent) => EventAppend;

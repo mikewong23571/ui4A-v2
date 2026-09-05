@@ -18,25 +18,25 @@ const mocks = vi.hoisted(() => ({
   attachChatMessageToThread: vi.fn(),
 }));
 
-vi.mock('../engine/chat-situation', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../engine/chat-situation')>();
+vi.mock('../../engine/chat-situation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../engine/chat-situation')>();
   return {
     ...actual,
     situationForChat: mocks.situation,
     presentationContextForIdentity: mocks.presentationContext,
   };
 });
-vi.mock('../engine/chat-thread', () => ({ attachChatMessageToThread: mocks.attachChatMessageToThread }));
-vi.mock('../engine/service', () => ({
+vi.mock('../../engine/chat-thread', () => ({ attachChatMessageToThread: mocks.attachChatMessageToThread }));
+vi.mock('../../engine/service', () => ({
   getDb: () => ({ kind: 'test-db' }),
   getEngine: vi.fn(async () => mocks.engine),
 }));
-vi.mock('./session-events', () => ({
+vi.mock('../session-events', () => ({
   appendChatProjection: mocks.appendChatProjection,
   appendConversationMessage: mocks.appendConversationMessage,
   loadAgentConversation: mocks.loadAgentConversation,
 }));
-vi.mock('./start-chain', () => ({ resolveStartRel: mocks.resolveStartRel }));
+vi.mock('../start-chain', () => ({ resolveStartRel: mocks.resolveStartRel }));
 
 import { prepareTurnSession, resolveTurnSituation } from './turn-context';
 

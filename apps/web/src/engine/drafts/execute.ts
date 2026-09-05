@@ -14,7 +14,7 @@ import {
   payloadSha256,
   type ConnectableDb,
 } from '@ui4a/db/drafts';
-import type { EngineRuntime } from '../service';
+import type { EngineRuntime } from '../service-outcome';
 
 import {
   DRAFT_ACTIVATION_PREFIX,

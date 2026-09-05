@@ -25,7 +25,7 @@ import {
 
 import { getDraft, listDrafts, type AtomicCoreMutationPlan } from '@ui4a/db/drafts';
 import type { DbExecutor } from '@ui4a/db/events';
-import type { EngineRuntime } from '../service';
+import type { EngineRuntime } from '../service-outcome';
 import { projectApplicationBundleDraft } from './application-bundle';
 import { activationActions, draftActions, draftCreateAction } from './draft-action-schemas';
 

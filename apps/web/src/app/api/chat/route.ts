@@ -15,9 +15,9 @@
 //    `src/chat/inline-stream` 与 `src/chat/session-events`。
 // 服务无会话态:事件日志是真相,聊天会话是客户端投影(localStorage)。
 import { parseBody } from '../../../chat/request-body';
-import { buildTurnFetch, resolveProductionIdentity } from '../../../chat/post-identity';
-import { prepareTurnSession, resolveTurnSituation } from '../../../chat/turn-context';
-import { prepareTurnDispatch, respondToTurn } from '../../../chat/turn-response';
+import { buildTurnFetch, resolveProductionIdentity } from '../../../chat/post/post-identity';
+import { prepareTurnSession, resolveTurnSituation } from '../../../chat/post/turn-context';
+import { prepareTurnDispatch, respondToTurn } from '../../../chat/post/turn-response';
 import { getDb, getEngine } from '../../../engine/service';
 
 export const dynamic = 'force-dynamic';

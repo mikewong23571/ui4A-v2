@@ -4,7 +4,7 @@
  * (lastSeq, 自身 seq) 区间的外部事件收进 foreignGaps,覆写点后由
  * applyForeignGaps 统一补折(可交换性论证见原 service.ts 注释)。
  */
-import { fold, type LogEvent } from '@ui4a/engine';
+import { fold, type EngineEvent, type LogEvent } from '@ui4a/engine';
 import type { EngineSnapshot } from '@ui4a/shared';
 
 import {
@@ -69,6 +69,33 @@ export function applyForeignGaps(state: CoreEventLogState): void {
   const gaps = state.foreignGaps;
   state.foreignGaps = [];
   state.snapshot = fold(gaps, { flows: {} }, state.snapshot);
+}
+
+/**
+ * T52 application-deprecated 的选择性补折(T55/D76 自 service.ts exec 闭包迁入)。
+ * appendBatchWithSeq 推进水位使自身事件不进增量 fold(防双算);本 kind 是该
+ * 纪律的例外——deprecatedApplications 审计表是 fold 侧专属物化(条目 seq 由
+ * 日志层分配,纯裁决层在线不可知),不补折则同进程内烧毁名 create/validate
+ * 守卫读不到审计集(US4/D71.5 三门须即时 fail-closed)。仅折该 kind:其
+ * applier 与在线级联逐表幂等收敛(applications 删键 no-op、definitions 置废
+ * 同值、审计首写补上真 seq),在线快照与全量重放零漂移;其余自身事件
+ * (action-executed 等)不折——在线已由 outcome.snapshot 推进,重折会以旧
+ * 输入重裁决而漂移。flows 依赖与 applyForeignGaps 同口径({flows:{}}:该
+ * applier 不消费)。
+ */
+export function refoldApplicationDeprecations(
+  state: CoreEventLogState,
+  events: readonly EngineEvent[],
+  seqs: readonly number[],
+): void {
+  const deprecatedEvents: LogEvent[] = [];
+  for (const [index, event] of events.entries()) {
+    if (event.kind !== 'application-deprecated') continue;
+    deprecatedEvents.push({ ...event, seq: seqs[index]! });
+  }
+  if (deprecatedEvents.length > 0) {
+    state.snapshot = fold(deprecatedEvents, { flows: {} }, state.snapshot);
+  }
 }
 
 /** Incrementally fold committed suffixes; rebuild if commit order reveals a late lower seq. */

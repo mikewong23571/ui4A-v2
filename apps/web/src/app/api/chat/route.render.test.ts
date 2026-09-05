@@ -14,11 +14,11 @@ const streamSource = readFileSync(
   'utf8',
 );
 const turnContextSource = readFileSync(
-  new URL('../../../chat/turn-context.ts', import.meta.url),
+  new URL('../../../chat/post/turn-context.ts', import.meta.url),
   'utf8',
 );
 const turnResponseSource = readFileSync(
-  new URL('../../../chat/turn-response.ts', import.meta.url),
+  new URL('../../../chat/post/turn-response.ts', import.meta.url),
   'utf8',
 );
 const chatSituationSource = readFileSync(

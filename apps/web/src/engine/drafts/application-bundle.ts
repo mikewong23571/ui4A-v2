@@ -16,7 +16,7 @@ import {
 } from '@ui4a/engine';
 import type { ActivationCheck } from '@ui4a/shared';
 
-import type { EngineRuntime } from '../service';
+import type { EngineRuntime } from '../service-outcome';
 
 type EngineSnapshot = ReturnType<EngineRuntime['getSnapshot']>;
 

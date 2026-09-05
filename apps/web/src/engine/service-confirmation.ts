@@ -26,7 +26,9 @@ import {
   type CoreEventLogState,
 } from './service-event-log';
 import type { LogEvent } from '@ui4a/engine';
-import type { ExecOutcome } from './service';
+import type { ExecOutcome } from './service-outcome';
+import type { SuspendedConfirmation } from '@ui4a/engine';
+import type { EngineSnapshot } from '@ui4a/shared';
 import { CONFIRMATION_REL_PREFIX, paramsWithOrigins } from './service-request';
 
 /** execConfirmationDecision 的编排依赖(bootEngine 内闭包,调用点注入)。 */
@@ -64,6 +66,39 @@ export async function persistRejection(
         reason: verdict.reason,
         detail: verdict.detail,
       };
+}
+
+/**
+ * 挂起(非拒绝)物化段(T55/D76 自 service.ts exec 闭包迁入,行为逐字):
+ * confirmation-requested 伴随事件一次落库(detail 含 Cedar 策略 id 与原因)→
+ * 快照推进 → foreignGaps 补折 → confirmation:<id> 实体投影(不可投影即内部
+ * 不变式破坏)→ notify 派发(尽力而为,fire-and-forget:失败不影响挂起结果/
+ * 202;不入串行队列——派发不触快照,temporal/notify.ts 内部全兜底)。
+ */
+export async function materializeSuspension(args: {
+  db: DbExecutor;
+  logState: CoreEventLogState;
+  toAppend: (event: EngineEvent) => EventAppend;
+  projectDeps: () => ProjectDeps;
+  outcome: {
+    kind: 'suspended';
+    events: EngineEvent[];
+    snapshot: EngineSnapshot;
+    confirmation: SuspendedConfirmation;
+  };
+  dispatchNotify: (confirmation: SuspendedConfirmation) => void;
+}): Promise<ExecOutcome> {
+  const { db, logState, toAppend, projectDeps, outcome, dispatchNotify } = args;
+  await appendBatchWithSeq(db, logState, outcome.events.map((event) => toAppend(event)));
+  logState.snapshot = outcome.snapshot;
+  applyForeignGaps(logState);
+  const rel = `confirmation:${outcome.confirmation.id}`;
+  const entity = project(logState.snapshot, rel, projectDeps());
+  if (entity === undefined) {
+    throw new Error(`挂起后确认实体 "${rel}" 不可投影(内部不变式破坏)`);
+  }
+  void dispatchNotify(outcome.confirmation);
+  return { kind: 'suspended', entity, confirmation: outcome.confirmation };
 }
 
 /**

@@ -10,7 +10,7 @@ import {
 import { DRAFT_LIMITS } from '@ui4a/shared';
 
 import { appendDraftCommand, payloadSha256, type ConnectableDb } from '@ui4a/db/drafts';
-import type { EngineRuntime } from '../service';
+import type { EngineRuntime } from '../service-outcome';
 
 import { applicationBundleInstalled, applicationNameBurned } from './application-bundle';
 import {

@@ -3,7 +3,7 @@ import { seedGuardRegistry, type DraftValidation } from '@ui4a/shared';
 
 import { getDraftByOwner } from '@ui4a/db/drafts';
 import { appendEvent, type DbExecutor } from '@ui4a/db/events';
-import type { EngineRuntime } from '../service';
+import type { EngineRuntime } from '../service-outcome';
 import {
   capabilityExecutorClassRegistryFromEnvironment,
   nativeFunctionActivationRegistryFromEnvironment,

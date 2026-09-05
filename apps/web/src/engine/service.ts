@@ -36,30 +36,19 @@
  */
 import {
   activeDefinitionOf,
-  actionRejectedEvent,
   assertMetaBootstrapIntegrity,
   executeMeta,
-  executeWithGates,
-  executePlan,
-  fold,
   project,
   readRenderSpecsOf,
-  THREADS_REL,
-  THREAD_REL_PREFIX,
   type ConfirmationDeps,
   type EngineEvent,
   type ExecRequest,
   type ExecuteDeps,
   type FlowDefinition,
-  type JudgeLayer,
-  type LogEvent,
   type MetaDeps,
-  type PlanStepResult,
   type ProjectDeps,
-  type RawCollectionQuery,
   type Sitemap,
-  type SirenEntity,
-  type SuspendedConfirmation,
+  type LogEvent,
 } from '@ui4a/engine';
 import type { DeploymentEnvironment, EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
 import { seedGuardRegistry } from '@ui4a/shared';
@@ -82,36 +71,17 @@ import { bootstrapAndVerifyApplication } from './bootstrap';
 export { bootstrapAndVerifyApplication } from './bootstrap';
 import type { RenderSpec } from '../render/spec';
 import { dispatchNotify } from '../temporal/notify';
-import { resolveFlowRelAlias } from './flow-entry';
 import { readCollectionQueriedEntity } from './service-collection-query';
-import { preflightCodingResultDecision } from './agent/coding-result-decision';
-import {
-  createAndDispatchAgentRun,
-  prepareNativeAgentDispatch,
-  type PreparedNativeAgentDispatch,
-} from './agent/native-agent-dispatch';
-import {
-  prepareCapabilityDispatch,
-  startNativeFunctionDispatch,
-  type PreparedCapabilityDispatch,
-} from './capability/dispatch';
 import {
   capabilityExecutorClassRegistryFromEnvironment,
   nativeFunctionActivationRegistryFromEnvironment,
-  nativeFunctionProfileMapFromEnvironment,
 } from './capability/profile-config';
-import { dispatchNativeFunction } from '../temporal/native-function';
 import { scheduleNativeFunctionReconciliation } from './capability/reconciliation';
-import {
-  appendBatchWithSeq,
-  applyForeignGaps,
-  createCoreEventLogState,
-  refreshFromLog,
-} from './service-event-log';
-import { artifactModelFor, materializeSpawnArtifacts } from './service-artifacts';
+import { createCoreEventLogState, refreshFromLog } from './service-event-log';
 import { execConfirmationDecision, persistRejection } from './service-confirmation';
 import { engineEventToAppend as toAppend } from './service-event-append';
-import { persistFailedAgentDispatchCallback } from './service-capability-callback';
+import { execCore, execPlanCore, type ExecCoreDeps } from './service-exec';
+import type { EngineRuntime } from './service-outcome';
 import { execThreadAction } from './service-thread';
 import { createSitemapReaders, type MetaSitemap } from './service-sitemaps';
 import { freezeSpecCore, toRenderSpec, type FreezeSpecResult } from './service-render-specs';
@@ -120,82 +90,16 @@ export { LlmArtifactConfigurationError } from './service-artifacts';
 export type { MetaSitemap } from './service-sitemaps';
 export type { FreezeSpecResult } from './service-render-specs';
 import {
-  capabilityArtifactsForRequest,
   CONFIRMATION_REL_PREFIX,
   isMetaRel,
   paramsWithOrigins,
 } from './service-request';
 export { CONFIRMATION_REL_PREFIX, isMetaRel, paramsWithOrigins } from './service-request';
 
-/**
- * exec 结果(discriminated union;HTTP 层据此映射 200/202/4xx)。
- * accepted.subject:被操作主体实体的裁决后投影(仅主体≠受影响实体时携带,
- * 如 approve 主体=confirmation、受影响=目标)——主体的 collection 回链
- * (如 inbox)是渲染层精确失效的唯一合同来源(T35 F-31)。
- */
-export type ExecOutcome =
-  | { kind: 'accepted'; entity: SirenEntity; appended: string[]; subject?: SirenEntity }
-  | { kind: 'suspended'; entity: SirenEntity; confirmation: SuspendedConfirmation }
-  | { kind: 'rejected'; layer: JudgeLayer; reason: string; detail?: unknown };
-
-/**
- * exec-plan 结果(T6 批量裁决;HTTP 层映射 completed/rejected → 200,
- * suspended → 202——请求被完整处理,分步报告在 body,拒绝是步级数据)。
- * entities:受影响实体摘要(executed 步的目标与追加 rel,保序去重)。
- */
-export type PlanServiceOutcome =
-  | { kind: 'plan-completed'; results: PlanStepResult[]; entities: string[] }
-  | { kind: 'plan-rejected'; results: PlanStepResult[]; entities: string[] }
-  | {
-      kind: 'plan-suspended';
-      results: PlanStepResult[];
-      entities: string[];
-      confirmation: SuspendedConfirmation;
-    };
-
-export interface EngineRuntime {
-  /** 当前内存快照(boot/exec/增量 fold 维护;只读视图,不触库——需外部写者进度用 readSnapshot)。 */
-  getSnapshot(): EngineSnapshot;
-  /** 读路径快照:先增量 fold worker 等外部写者追加的事件,再返回(spec 决定 4)。 */
-  readSnapshot(): Promise<EngineSnapshot>;
-  /**
-   * rel → Siren 实体(含 guard-results 注入);返回前增量 fold 新事件;未知 rel 返回 undefined。
-   * rawQuery(T38 集合读面查询):分页/过滤原始参数,经引擎解析与目标裁决后
-   * 驱动成员集合切片;不带参数 = 全量;非法参数/非成员集合目标抛 CollectionQueryError。
-   */
-  getEntity(rel: string, rawQuery?: RawCollectionQuery): Promise<SirenEntity | undefined>;
-  /** meta rel → Siren 实体(_meta 站点;href 前缀 /_meta,同引擎同日志)。 */
-  getMetaEntity(rel: string): Promise<SirenEntity | undefined>;
-  /** 应用 sitemap(按活跃定义集内容 hash 缓存;定义激活即重生成)。 */
-  getSitemap(): Sitemap;
-  /** meta 站点 sitemap(meta rel 面;按 surfaces 内容 hash 缓存)。 */
-  getMetaSitemap(): MetaSitemap;
-  /** 执行动作(串行单 atom):同步外部写者 → 三层裁决 → 事件留痕 → 增量快照 → notify 派发(尽力而为)。 */
-  exec(request: ExecRequest): Promise<ExecOutcome>;
-  /**
-   * 批量裁决计划(T6):整个计划一次入串行队列(单事务)——同步外部写者 →
-   * executePlan 逐步裁决 → 伴随事件 + 拒绝留痕 + plan-executed 标记一次落库 →
-   * 增量快照 → (挂起时)notify 派发(尽力而为,与 exec 同口径)。
-   */
-  execPlan(steps: readonly ExecRequest[]): Promise<PlanServiceOutcome>;
-  /**
-   * 凝固渲染 spec(T7):串行队列内首冻追加 render-spec-frozen 事件并物化
-   * renderSpecs 表;同 concern 二次请求直接返回已凝固(不追加事件)。
-   * 入口校验(不合法抛错、不入日志):零字面校验器 + 词汇表词名 +
-   * concern 键一致(spec.concern === concern)。
-   */
-  freezeSpec(
-    concern: string,
-    spec: RenderSpec,
-    requestedBy?: { actor: 'human' | 'agent'; principal?: string },
-  ): Promise<FreezeSpecResult>;
-  /** 查询已凝固 spec(未凝固 undefined;快照读,不触库)。 */
-  getFrozenSpec(concern: string): RenderSpec | undefined;
-  /** 已凝固 spec 条目列表(日志序)。 */
-  listFrozenSpecs(): FrozenRenderSpec[];
-  /** Serialize an external adapter mutation with core exec/meta mutations. */
-  runExclusive<T>(run: () => Promise<T>): Promise<T>;
-}
+// T55/D76:ExecOutcome/PlanServiceOutcome/EngineRuntime 契约类型迁至叶子模块
+// service-outcome.ts(接口形状不变,仅位置下沉以解 type 环);hub 保留 re-export
+// 作为公共面,既有消费方 import 路径不变。
+export type { EngineRuntime, ExecOutcome, PlanServiceOutcome } from './service-outcome';
 
 const DEFAULT_DATABASE_URL = 'postgres://ui4a:ui4a@localhost:5433/ui4a';
 
@@ -327,6 +231,20 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
    * 前者 rel 与自身族不相交;后者与确认族 rel 相交但**字段级可交换**
    * (notified 标志不与 status/approvedBy 等字段互相覆盖),交换次序安全。
    */
+
+  // T55/D76:exec/execPlan 编排管线依赖束(队列回调内消费;编排本体见 service-exec.ts)。
+  const execDeps: ExecCoreDeps = {
+    db,
+    logState,
+    toAppend,
+    gateDeps,
+    confirmDeps,
+    projectDeps,
+    metaDeps,
+    dispatchNotify,
+    scheduleRecipes: scheduleRecipesForSnapshot,
+  };
+
   return {
     getSnapshot: () => logState.snapshot,
     readSnapshot: () =>
@@ -346,294 +264,13 @@ async function bootEngine(db: DbExecutor): Promise<EngineRuntime> {
     getSitemap: () => currentSitemap(),
     getMetaSitemap: () => currentMetaSitemap(),
     exec(request) {
-      return enqueue(state, async () => {
-        // 先同步外部写者进度再裁决(裁决器只见全序日志的最新折叠态);
-        // 已在串行队列内,直接调用(不重入 enqueue)。
-        await refreshFromLog(db, logState, scheduleRecipesForSnapshot);
-
-        // exec 同样吃 flow 别名:裁决与日志都记实例 rel(不产生幽灵实体)。
-        const aliased: ExecRequest = {
-          ...request,
-          rel: resolveFlowRelAlias(request.rel, logState.snapshot) ?? request.rel,
-        };
-
-        // 确认实体上的动作走人类裁决入口(approve/reject;铁律 5:审批不委托)。
-        if (aliased.rel.startsWith(CONFIRMATION_REL_PREFIX)) {
-          return execConfirmationDecision(
-            db,
-            logState,
-            { toAppend, confirmDeps, projectDeps },
-            aliased,
-          );
-        }
-
-        if (aliased.rel === THREADS_REL || aliased.rel.startsWith(THREAD_REL_PREFIX)) {
-          return execThreadAction(db, logState, { toAppend, projectDeps }, aliased);
-        }
-
-        // meta 平面(rel 前缀路由,T4 Phase B):编辑动词/生命周期动词过同一
-        // executeMeta 编排——同一裁决器(lifecycle 常量自举)、同一日志、同一
-        // 串行队列;后续事件落库/投影与业务 exec 共用同一套代码路径。
-        const outcome = isMetaRel(aliased.rel)
-          ? executeMeta(aliased, logState.snapshot, metaDeps())
-          : executeWithGates(aliased, logState.snapshot, gateDeps());
-
-        if (outcome.kind === 'rejected') {
-          // 拒绝即数据(I6):不改状态,结构化原因入日志;detail 携带 layer,
-          // HTTP 响应与本事件同源(同一 verdict 对象),口径必然一致。
-          return persistRejection(db, logState, toAppend, aliased, outcome);
-        }
-
-        if (outcome.kind === 'suspended') {
-          // 挂起(非拒绝):confirmation-requested 落库(detail 含 Cedar 策略 id
-          // 与原因,spec 验收 5),pending 实体物化进快照,业务状态不动。
-          await appendBatchWithSeq(
-            db,
-            logState,
-            outcome.events.map((event) => toAppend(event)),
-          );
-          logState.snapshot = outcome.snapshot;
-          applyForeignGaps(logState);
-          const rel = `confirmation:${outcome.confirmation.id}`;
-          const entity = project(logState.snapshot, rel, projectDeps());
-          if (entity === undefined) {
-            throw new Error(`挂起后确认实体 "${rel}" 不可投影(内部不变式破坏)`);
-          }
-          // notify 派发(尽力而为,fire-and-forget):失败不影响挂起结果/202;
-          // 不入串行队列——派发不触快照,temporal/notify.ts 内部全兜底。
-          void dispatchNotify(outcome.confirmation);
-          return { kind: 'suspended', entity, confirmation: outcome.confirmation };
-        }
-
-        let effectiveEvents = outcome.events;
-        const decisionInstance = logState.snapshot.instances[aliased.rel];
-        const decisionFlow =
-          decisionInstance === undefined
-            ? undefined
-            : activeDefinitionOf(logState.snapshot, decisionInstance.flow);
-        const decisionAction = decisionFlow?.nodes
-          .find((node) => node.name === decisionInstance?.node)
-          ?.actions.find((action) => action.name === aliased.action);
-        if (decisionAction?.decision !== undefined) {
-          const decision = await preflightCodingResultDecision(
-            db,
-            logState.snapshot,
-            aliased,
-            decisionAction,
-          );
-          if (
-            decision !== undefined &&
-            (decision.decision === 'denied' || decision.decision === 'stale')
-          ) {
-            return persistRejection(db, logState, toAppend, aliased, {
-              layer: 'guard-failed',
-              reason: decision.reason,
-              detail: decision,
-            });
-          }
-          if (decision !== undefined) {
-            effectiveEvents = outcome.events.map((event) =>
-              event.kind === 'action-executed'
-                ? {
-                    ...event,
-                    detail: {
-                      ...(event.detail as Record<string, unknown>),
-                      codingDecision: decision.receipt,
-                    },
-                  }
-                : event,
-            );
-          }
-        }
-
-        const artifactModel = artifactModelFor(logState, effectiveEvents, aliased);
-        const sourceInstance = logState.snapshot.instances[aliased.rel];
-        const spawnPolicyScope =
-          (sourceInstance === undefined
-            ? undefined
-            : activeDefinitionOf(logState.snapshot, sourceInstance.flow)?.app) ?? 'default';
-        const spawnPrincipal = aliased.principal ?? 'local-user';
-        const productionConfig = runWebProductionDeploymentPreflight();
-        const preparedDispatches = new Map<
-          EngineEvent,
-          PreparedCapabilityDispatch<PreparedNativeAgentDispatch>
-        >();
-        const nativeFunctionProfiles = nativeFunctionProfileMapFromEnvironment();
-        for (const event of effectiveEvents) {
-          if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
-          const capability = logState.snapshot.capabilities?.[event.capability];
-          if (capability === undefined) continue;
-          if (capability.executor === undefined) continue;
-          if (sourceInstance === undefined) throw new Error('spawn source instance is missing');
-          preparedDispatches.set(
-            event,
-            await prepareCapabilityDispatch(
-              {
-                event,
-                capability,
-                principal: spawnPrincipal,
-                policyScope: spawnPolicyScope,
-                actionParams: aliased.params ?? {},
-                source: { rel: sourceInstance.rel, fields: sourceInstance.fields },
-                artifacts: capabilityArtifactsForRequest(
-                  aliased,
-                  logState.snapshot,
-                  sourceInstance.rel,
-                ),
-              },
-              {
-                nativeFunctionProfiles,
-                prepareAgent: async () =>
-                  prepareNativeAgentDispatch(db, {
-                    principal: spawnPrincipal,
-                    policyScope: spawnPolicyScope,
-                    params: aliased.params ?? {},
-                    capability,
-                    ...(productionConfig === undefined ? {} : { productionConfig }),
-                  }),
-              },
-            ),
-          );
-        }
-        const spawned: {
-          event: EngineEvent;
-          seq: number;
-          prepared?: PreparedCapabilityDispatch<PreparedNativeAgentDispatch>;
-        }[] = [];
-        const effectiveSeqs = await appendBatchWithSeq(
-          db,
-          logState,
-          effectiveEvents.map((event) => toAppend(event, preparedDispatches.get(event))),
-        );
-        for (const [index, event] of effectiveEvents.entries()) {
-          const seq = effectiveSeqs[index]!;
-          if (event.kind === 'spawn-requested') {
-            const prepared = preparedDispatches.get(event);
-            spawned.push({ event, seq, ...(prepared === undefined ? {} : { prepared }) });
-          }
-        }
-        logState.snapshot = outcome.snapshot;
-        // T52 终验缺陷 B 修复:application-deprecated 的选择性补折。appendBatchWithSeq
-        // 推进水位使自身事件不进增量 fold(防双算,见 appendBatchWithSeq 注释);
-        // 本 kind 是该纪律的例外——deprecatedApplications 审计表是 fold 侧专属
-        // 物化(条目 seq 由日志层分配,纯裁决层在线不可知),不补折则同进程内
-        // 烧毁名 create/validate 守卫读不到审计集(US4/D71.5 三门须即时
-        // fail-closed)。仅折该 kind:其 applier 与在线级联逐表幂等收敛
-        // (applications 删键 no-op、definitions 置废同值、审计首写补上真 seq),
-        // 在线快照与全量重放零漂移;其余自身事件(action-executed 等)不折——
-        // 在线已由 outcome.snapshot 推进,重折会以旧输入重裁决而漂移。
-        // flows 依赖与 applyForeignGaps 同口径({flows:{}}:该 applier 不消费)。
-        const deprecatedEvents: LogEvent[] = [];
-        for (const [index, event] of effectiveEvents.entries()) {
-          if (event.kind !== 'application-deprecated') continue;
-          deprecatedEvents.push({ ...event, seq: effectiveSeqs[index]! });
-        }
-        if (deprecatedEvents.length > 0) {
-          logState.snapshot = fold(deprecatedEvents, { flows: {} }, logState.snapshot);
-        }
-        if (effectiveEvents.some((event) => event.kind === 'definition-activated')) {
-          scheduleRecipesForSnapshot(logState.snapshot);
-        }
-        await materializeSpawnArtifacts(db, logState, effectiveEvents, aliased, artifactModel);
-        for (const { event, seq, prepared } of spawned) {
-          if (event.kind !== 'spawn-requested' || typeof event.capability !== 'string') continue;
-          const capability = logState.snapshot.capabilities?.[event.capability];
-          if (capability?.executor === undefined) continue;
-          if (prepared === undefined)
-            throw new Error('spawn dispatch missed its prepared executor');
-          if (prepared.kind === 'native-function') {
-            await startNativeFunctionDispatch(prepared.prepared, seq, {
-              start: dispatchNativeFunction,
-            });
-            continue;
-          }
-          const run = await createAndDispatchAgentRun(db, {
-            prepared: prepared.prepared,
-            sourceSeq: seq,
-            sourceRel: aliased.rel,
-            sourceAction: aliased.action,
-            principal: spawnPrincipal,
-            policyScope: spawnPolicyScope,
-            onDoneAction: event['on-done'],
-            onErrorAction: event['on-error'],
-          });
-          await persistFailedAgentDispatchCallback(db, logState, run, gateDeps());
-        }
-        applyForeignGaps(logState);
-
-        // 受影响实体:append 产出新实例时返回新实体,否则返回执行实体的新投影。
-        const appended = effectiveEvents[0]?.appended ?? [];
-        const targetRel = appended.length > 0 ? appended[appended.length - 1]! : aliased.rel;
-        // T52 终验缺陷 A 修复(D71.3):受治理停用的受影响面是集合——伴随事件
-        // application-deprecated 使 meta/application:<name> 与「从未安装」同形
-        // (存在性隐藏恒 undefined,不是内部错误);回执改投影收缩后的
-        // meta/applications 集合(停用即离场,成员不含停用名)。其余 kind 保持
-        // 通用不变式:undefined 即内部不变式破坏,不静默放行。
-        const receiptRel =
-          effectiveEvents.at(-1)?.kind === 'application-deprecated'
-            ? 'meta/applications'
-            : targetRel;
-        const entity = project(logState.snapshot, receiptRel, projectDeps());
-        if (entity === undefined) {
-          throw new Error(`exec 后目标实体 "${receiptRel}" 不可投影(内部不变式破坏)`);
-        }
-        return { kind: 'accepted', entity, appended };
-      });
+      // T55/D76:编排段迁至 service-exec.execCore;此处只留单原子队列装配。
+      return enqueue(state, () => execCore(execDeps, request));
     },
     execPlan(steps) {
-      // 单事务:整个计划一次入串行队列(与 exec 无交错;批量裁决是一个 atom)。
-      return enqueue(state, async () => {
-        await refreshFromLog(db, logState, scheduleRecipesForSnapshot);
-
-        // 步级 flow 别名与 exec 同口径(flow:article-drafting → 唯一实例 rel)。
-        const aliased = steps.map((step) => ({
-          ...step,
-          rel: resolveFlowRelAlias(step.rel, logState.snapshot) ?? step.rel,
-        }));
-
-        const outcome = executePlan(aliased, logState.snapshot, gateDeps());
-
-        // 落库顺序 = 日志顺序:各步伴随事件 → 拒绝步留痕 → 批量裁决记录标记。
-        const batch = outcome.events.map((event) => toAppend(event));
-        const rejected = outcome.results.find((result) => result.outcome === 'rejected');
-        if (rejected !== undefined && rejected.rejection !== undefined) {
-          const request = aliased[rejected.step - 1]!;
-          batch.push(
-            toAppend({
-              ...actionRejectedEvent(request, rejected.rejection, {
-                plan: { step: rejected.step },
-              }),
-              params: paramsWithOrigins(request),
-            }),
-          );
-        }
-        batch.push(toAppend(outcome.record));
-        await appendBatchWithSeq(db, logState, batch);
-        logState.snapshot = outcome.snapshot;
-        applyForeignGaps(logState);
-
-        // entities 摘要:executed 步的目标与追加 rel(保序去重)。
-        const entities: string[] = [];
-        for (const result of outcome.results) {
-          if (result.outcome !== 'executed') continue;
-          if (!entities.includes(result.rel)) entities.push(result.rel);
-          for (const rel of result.appended ?? []) {
-            if (!entities.includes(rel)) entities.push(rel);
-          }
-        }
-
-        if (outcome.kind === 'plan-suspended') {
-          // 挂起步的 notify 派发(尽力而为,fire-and-forget,与 exec 同口径)。
-          void dispatchNotify(outcome.confirmation);
-          return {
-            kind: 'plan-suspended',
-            results: outcome.results,
-            entities,
-            confirmation: outcome.confirmation,
-          };
-        }
-        return { kind: outcome.kind, results: outcome.results, entities };
-      });
+      // T55/D76:批量裁决编排迁至 service-exec.execPlanCore;批量裁决仍是一个
+      // atom(整个计划一次入串行队列)。
+      return enqueue(state, () => execPlanCore(execDeps, steps));
     },
     freezeSpec(concern, spec, requestedBy) {
       // 串行队列内先同步外部写者,主流程(校验/首冻/物化)在 service-render-specs.ts。

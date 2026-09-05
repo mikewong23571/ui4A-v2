@@ -9,9 +9,9 @@ function source(path: string): string {
 const chatRoute = source('../../../../apps/web/src/app/api/chat/route.ts');
 // T55/D75:route.ts 收缩为编排壳,Situation/起步 rel 接线随会话编排段迁至
 // turn-context.ts;源码不变量断言随 wiring 归属迁移(语义不变,指针更新)。
-const chatTurnContext = source('../../../../apps/web/src/chat/turn-context.ts');
-const chatTurnResponse = source('../../../../apps/web/src/chat/turn-response.ts');
-const chatPostIdentity = source('../../../../apps/web/src/chat/post-identity.ts');
+const chatTurnContext = source('../../../../apps/web/src/chat/post/turn-context.ts');
+const chatTurnResponse = source('../../../../apps/web/src/chat/post/turn-response.ts');
+const chatPostIdentity = source('../../../../apps/web/src/chat/post/post-identity.ts');
 const chatPanel = source('../../../../apps/web/src/components/chat/chat-panel.tsx');
 const conversation = source('../../../../apps/web/src/chat/conversation.ts');
 const startChain = source('../../../../apps/web/src/chat/start-chain.ts');

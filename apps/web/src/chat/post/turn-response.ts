@@ -8,9 +8,9 @@
 import type { AgentGoal, FetchLike } from '@ui4a/agent';
 import { LlmConfigurationError, resolveLlmConfig } from '@ui4a/agent';
 
-import { dispatchDelegation } from '../temporal/delegation';
-import { sseResponse, streamAgentLoop } from './inline-stream';
-import { appendChatProjection } from './session-events';
+import { dispatchDelegation } from '../../temporal/delegation';
+import { sseResponse, streamAgentLoop } from '../inline-stream';
+import { appendChatProjection } from '../session-events';
 import type { TurnSession, TurnSituation } from './turn-context';
 
 export interface TurnDispatchPlan {
