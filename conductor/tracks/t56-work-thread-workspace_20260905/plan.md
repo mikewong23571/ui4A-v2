@@ -34,7 +34,7 @@
 - [x] Task: P1.1 Red：工作线读语义与授权 (a38c224)
   - [ ] 在最窄 pure 边界补角色/空/未知/终局/归档未验收与“归档仍有责任”的失败测试。
   - [ ] 补 owner/跨应用授权裁剪/派生计数与名称不泄露，以及只读 HTTP 与 UI 同源的合同负例。
-- [ ] Task: P1.2 Green：沿 P0 定案实现投影与呈现适配
+- [x] Task: P1.2 Green：沿 P0 定案实现投影与呈现适配 (aaea2cb)
   - [ ] 沿 D78 路线 A：active/approval 补 `thread-reference` 成员卡与 `presentation` version:1 认知声明；必要读字段可重建，生命周期与成员写语义不变；不推断新真相。
   - [ ] 将本线接入同一 Presentation/Recipe/Sidecar；语义声明与依赖版本接线，布局不写领域类型分支。
   - [ ] 沿功能边界拆分贴限模块；更新 DB 测试分类，不删验证证据。
