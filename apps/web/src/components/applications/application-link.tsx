@@ -23,7 +23,10 @@ export function ApplicationLink({
       className={`group min-w-0 rounded-lg border bg-card text-foreground transition-colors hover:border-foreground/20 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-[current=page]:border-foreground/30 aria-[current=page]:bg-accent ${compact ? 'flex min-h-11 items-center justify-center px-2 py-2 text-sm' : 'block h-full p-4'}`}
     >
       {compact ? (
-        <span className="truncate font-medium">{application.title}</span>
+        // Native truncation tooltip: hovering the clipped name reveals the full title.
+        <span className="truncate font-medium" title={application.title}>
+          {application.title}
+        </span>
       ) : (
         <>
           <span className="flex items-start justify-between gap-3">
