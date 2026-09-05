@@ -39,12 +39,12 @@
   - [x] 实现 `aggregateDirStats`/`nearLimitDirs`,`pnpm governance` 输出可见;抽查 `engine/src/definition` 非测试 = 1,134(精确)。
 - [x] Task: Phase Verification & Checkpoint(AC-1 三元证据:git notes @1f69a8d;`CI=true pnpm check` 546 文件/4112 测试全绿)
 
-## Phase 2 文档真源对齐(FR2 → AC-2)
+## Phase 2 文档真源对齐(FR2 → AC-2)[checkpoint: e3bd20]
 
-- [ ] Task: AGENTS.md 系统图补 `apps/agent-runner`(引 D34/D36;修正「三个可部署应用」;部署链路一句带过 DEPLOYMENT.local.md/release manifest)
-- [ ] Task: arch-brief §8.1 修正 `apps/web/src/db/presentation` 等已迁移路径(指向 `packages/db`)
-- [ ] Task: 全库叙述一致性 grep(`agent-runner` 命中、`apps/web/src/db` 在 conductor/refs 零残留;GOAL.md 若计数应用则同步)
-- [ ] Task: Phase Verification & Checkpoint(AC-2 证据:grep 输出 + commit)
+- [x] Task: AGENTS.md 系统图补 `apps/agent-runner`(引 D34/D36;「三个可部署应用」→「四个」;部署链路一句带过 Dockerfile → release manifest(deploy/oci/image-contract.json)→ DEPLOYMENT.local.md;标注 experimental 与非合同参与方)e3bd2031
+- [x] Task: arch-brief §8.1 修正已迁移路径(`apps/web/src/db/presentation` → `packages/db/src/presentation.ts`)e3bd2031
+- [x] Task: 全库叙述一致性 grep(`agent-runner` 在 AGENTS.md 3 处命中;`apps/web/src/db` 在 conductor/refs/GOAL/AGENTS 零命中;GOAL.md 无计数表述无需同步)e3bd2031
+- [x] Task: Phase Verification & Checkpoint(AC-2 证据:grep 输出留痕 git notes @e3bd20;commit e3bd2031)
 
 ## Phase 3 chat POST 编排重构(FR3 → AC-3;D75 边界)
 
