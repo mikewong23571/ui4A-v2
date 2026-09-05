@@ -6,20 +6,23 @@
 > 逐缺口闭环证据标准见 spec §4(逐缺口验收细节以 remaining-gaps.md 各节「验收」段
 > 为准,本 plan 不复制)。执行期发现新事实按 workflow「Task Correction」回写并注明。
 
-## Phase 0 — 开工前事实复核与语义裁定
+## Phase 0 — 开工前事实复核与语义裁定 [checkpoint: f335a021]
 
-- [ ] Task: 事实复核:spec §6 引用的 file:line 逐项复核(代码可能漂移),结论回写
-  本 plan 附录 A;G01/G05/G09 的探针方案按漂移情况修订
-- [ ] Task: G02 语义裁定(spec §4 D73 候选):核对 D51/D71.3「停用面=存在性隐藏
+- [x] Task: 事实复核:spec §6 引用的 file:line 逐项复核(代码可能漂移),结论回写
+  本 plan 附录 A;G01/G05/G09 的探针方案按漂移情况修订 `f335a021`
+- [x] Task: G02 语义裁定(spec §4 D73 候选):核对 D51/D71.3「停用面=存在性隐藏
   (404)」vs 实现钉 403 `scope_insufficient`(deprecated-applications.contract.test.ts)
   ——裁定「修正实现」或「落新决定」,DECISIONS 先行落盘;区分停用面/跨 principal
-  隐藏/从未存在/真正无权限四态映射
-- [ ] Task: G01 探针:隔离测试库(vitest db project,禁指开发库)+ 注入严格策略,
+  隐藏/从未存在/真正无权限四态映射 `f335a021`
+  (裁定 = D73:403 族细分 application_deprecated,维持 D51 失败语义,D71.3 尾句修订)
+- [x] Task: G01 探针:隔离测试库(vitest db project,禁指开发库)+ 注入严格策略,
   列出直接 Meta 执行与确认批准两条路径的事件差异清单;据此产出确认编排详细设计
   (与直连执行共享事件计划/engine 纯规划/web-db 事务装配/幂等与并发边界/只消费
   挂起精确请求),回写附录 B;「无伴随事件」现状测试(application-deprecation.test.ts:276-313)
-  的规范地位明确,按需先更新 DECISIONS
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+  的规范地位明确,按需先更新 DECISIONS `f335a021`
+  (探针绿:直连 [action-executed, application-deprecated] vs 批准 [action-rejected];
+  设计 = D74,附录 B.2;策略文件无注入口 → 事件直插 pending,fixture 惯例)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) `f335a021`
 
 ## Phase 1 — G01 严格策略确认批准(engine + web/db)
 
