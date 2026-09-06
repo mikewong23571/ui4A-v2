@@ -56,7 +56,7 @@ describe('turnContextRows', () => {
   it('有观察 → known 且携带当时 thread/focus;无观察或事件缺失 → 显式 unknown', () => {
     const rows = turnContextRows([
       turn({ turnId: 'turn-known', userContextKnown: true, clientView: VIEW }),
-      turn({ turnId: 'turn-legacy', userContextKnown: true }),
+      turn({ turnId: 'turn-noobsv', userContextKnown: true }),
       turn({ turnId: 'turn-orphan', userContextKnown: false }),
     ]);
     expect(rows).toHaveLength(3);
@@ -67,7 +67,7 @@ describe('turnContextRows', () => {
       thread: 'thread:t1',
       focus: 'idea:x',
     });
-    expect(rows[1]).toMatchObject({ turnId: 'turn-legacy', position: 2, known: false });
+    expect(rows[1]).toMatchObject({ turnId: 'turn-noobsv', position: 2, known: false });
     expect(rows[2]).toMatchObject({ turnId: 'turn-orphan', position: 3, known: false });
   });
 

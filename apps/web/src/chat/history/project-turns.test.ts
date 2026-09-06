@@ -165,17 +165,17 @@ describe('projectChatTurns(D78 决定 5 时点读)', () => {
     expect('clientView' in turns[0]!).toBe(false);
   });
 
-  it('缺失上下文两态可分:旧版(事件在场无观察)known=true,事件缺失 known=false', () => {
+  it('缺失上下文两态可分:事件在场但无观察 known=true,事件缺失 known=false', () => {
     const events = [
-      userMessage({ seq: 1, turnId: 'turn-legacy' }),
-      finalTurn({ seq: 2, turnId: 'turn-legacy' }),
+      userMessage({ seq: 1, turnId: 'turn-noobsv' }),
+      finalTurn({ seq: 2, turnId: 'turn-noobsv' }),
       finalTurn({ seq: 3, turnId: 'turn-orphan' }),
     ];
     const turns = projectChatTurns(events, { sessionId: SESSION });
-    const legacy = turns.find((turn) => turn.turnId === 'turn-legacy')!;
+    const noObsv = turns.find((turn) => turn.turnId === 'turn-noobsv')!;
     const orphan = turns.find((turn) => turn.turnId === 'turn-orphan')!;
-    expect(legacy.userContextKnown).toBe(true);
-    expect('clientView' in legacy).toBe(false);
+    expect(noObsv.userContextKnown).toBe(true);
+    expect('clientView' in noObsv).toBe(false);
     expect(orphan.userContextKnown).toBe(false);
     expect('clientView' in orphan).toBe(false);
   });
