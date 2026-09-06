@@ -4,8 +4,8 @@
  * 决策卡(身份行 + 动作行);动作数据全部来自成员合同(actions/guard-results/
  * properties),渲染器零类型分支(D50:责任点一等)。
  */
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
@@ -31,9 +31,30 @@ const rejectAction: SirenAction = {
   fields: { type: 'object', properties: {} },
 };
 
+function confirmationDocument(status = 'pending') {
+  return {
+    properties: {
+      rel: 'confirmation:c1',
+      'target-rel': 'post:post-welcome',
+      'target-action': 'archive',
+      'policy-reason': '完整审核依据',
+      status,
+      ...(status === 'pending' ? {} : { 'decided-by': { actor: 'human' } }),
+    },
+  };
+}
+
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(JSON.stringify(confirmationDocument()), { status: 200 })),
+  );
+});
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 function renderCard(props: Record<string, unknown>): void {
@@ -50,7 +71,49 @@ function renderCard(props: Record<string, unknown>): void {
 }
 
 describe('member-card 词条', () => {
-  it('成员带已声明动作 → 身份行 + 收起动作行(批准一击,零参数)', () => {
+  it('inbox resume does not replace full fresh decision facts or duplicate raw first-screen metadata', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            properties: {
+              rel: 'confirmation:c1',
+              'target-rel': 'post:post-welcome',
+              'target-action': 'archive',
+              'policy-reason': '需要核对完整的风险依据，而非截断摘要',
+              params: { explanation: '完整参数必须保留，不能随截断摘要一起消失' },
+              status: 'pending',
+            },
+          }),
+          { status: 200 },
+        ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    renderCard({
+      label: 'archive · 由 agent 提议',
+      rel: 'confirmation:c1',
+      status: 'pending',
+      detail: '对象 post:post-welcome · 截断摘要',
+      actions: [{ ...approveAction, 'requires-confirmation': 'high' }],
+    });
+    expect(fetchMock).toHaveBeenCalledWith('/api/entity?rel=confirmation%3Ac1', {
+      cache: 'no-store',
+    });
+    const info = await screen.findByTestId('decision-info');
+    expect(info.textContent).toContain('需要核对完整的风险依据，而非截断摘要');
+    expect(info.querySelector('[data-decision-row="change"]')?.textContent).toContain('未提供');
+    expect(info.querySelector('[data-decision-row="params"]')?.textContent).toContain(
+      '完整参数必须保留，不能随截断摘要一起消失',
+    );
+    expect(screen.queryByText('对象 post:post-welcome · 截断摘要')).toBeNull();
+    const audit = screen.getByText('合同详情').closest('details')!;
+    expect(audit.open).toBe(false);
+    expect(audit.textContent).toContain('confirmation:c1');
+    expect(screen.queryByText('你和助手使用同一合同，由同一规则裁决')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '批准' }));
+    expect(screen.getByRole('button', { name: '确认并执行批准' })).toBeTruthy();
+  });
+  it('确认读取后保留合同动作,机器标识按需披露', async () => {
     renderCard({
       label: 'archive · 由 agent 提议',
       rel: 'confirmation:c1',
@@ -62,13 +125,14 @@ describe('member-card 词条', () => {
     });
 
     expect(screen.getByText('archive · 由 agent 提议')).toBeTruthy();
-    expect(screen.getByText('confirmation:c1')).toBeTruthy();
-    const approve = screen.getByRole('button', { name: '批准' }) as HTMLButtonElement;
+    const approve = (await screen.findByRole('button', { name: '批准' })) as HTMLButtonElement;
+    expect(screen.getByRole('link', { name: '查看确认合同' }).getAttribute('href')).toBe(
+      '/canvas?focus=confirmation%3Ac1',
+    );
     expect(approve.dataset.action).toBe('approve');
     expect(approve.disabled).toBe(false);
     expect(screen.getByRole('button', { name: '驳回' })).toBeTruthy();
-    // 同一合同图例(D47.1)
-    expect(screen.getByText('你和助手使用同一合同，由同一规则裁决')).toBeTruthy();
+    expect(screen.queryByText('你和助手使用同一合同，由同一规则裁决')).toBeNull();
   });
 
   it('成员无动作 → 只有身份行,无动作区(渲染器零分支)', () => {
@@ -79,28 +143,75 @@ describe('member-card 词条', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
-  it('G03 知情确认:detail(resume)呈现对象与参数摘要;已决成员无动作面(陈旧确认无虚假操作)', () => {
+  it('已决 fresh 合同保留决定回执,不再呈现陈旧动作与resume', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () => new Response(JSON.stringify(confirmationDocument('rejected')), { status: 200 }),
+      ),
+    );
     renderCard({
-      label: 'archive〔需high确认〕 · 由 agent 提议',
+      label: 'archive · 由 agent 提议',
       rel: 'confirmation:c1',
-      detail: '对象 post:post-welcome · 需确认:requires-confirmation=high 且 actor=agent',
+      detail: '对象 post:post-welcome',
       status: 'pending',
       actions: [approveAction, rejectAction],
     });
-    expect(screen.getByText(/对象 post:post-welcome/)).toBeTruthy();
-    expect(screen.getByText(/需确认:/)).toBeTruthy();
-
-    cleanup();
-    renderCard({
-      label: 'archive · 已由 human 驳回',
-      rel: 'confirmation:c1',
-      detail: '对象 post:post-welcome',
-      status: 'rejected',
-      actions: [],
-    });
-    expect(screen.getByText('archive · 已由 human 驳回')).toBeTruthy();
-    expect(screen.getByText(/对象 post:post-welcome/)).toBeTruthy();
+    const info = await screen.findByTestId('decision-info');
+    expect(info.textContent).toContain('已由 human 驳回');
+    expect(screen.queryByText('对象 post:post-welcome')).toBeNull();
     expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('读取失败明确保留重试和合同入口,恢复后再呈现决定控件', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockImplementation(
+        async () => new Response(JSON.stringify(confirmationDocument()), { status: 200 }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    renderCard({
+      label: '待审核事项',
+      rel: 'confirmation:c1',
+      detail: '截断摘要',
+      actions: [approveAction],
+    });
+    const retry = await screen.findByRole('button', { name: '重试读取' });
+    expect(screen.getByRole('status').textContent).toContain('无法读取完整决定信息');
+    expect(screen.queryByRole('button', { name: '批准' })).toBeNull();
+    expect(screen.getByRole('link', { name: '待审核事项' }).getAttribute('href')).toBe(
+      '/canvas?focus=confirmation%3Ac1',
+    );
+    fireEvent.click(retry);
+    await screen.findByTestId('decision-info');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('button', { name: '批准' })).toBeTruthy();
+  });
+
+  it('an observed status change refreshes the same mounted confirmation and shows its receipt', async () => {
+    let document = confirmationDocument();
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(document), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const submit = vi.fn();
+    const viewOf = (status: string, actions: SirenAction[]) => (
+      <ActionSubmitProvider submit={submit}>
+        <MemberCardWord
+          label="待审核事项"
+          rel="confirmation:c1"
+          status={status}
+          actions={actions}
+        />
+      </ActionSubmitProvider>
+    );
+    const view = render(viewOf('pending', [approveAction]));
+    await screen.findByRole('button', { name: '批准' });
+    document = confirmationDocument('approved');
+    view.rerender(viewOf('approved', []));
+    expect(await screen.findByText('已由 human 批准')).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('button', { name: '批准' })).toBeNull();
+    expect(submit).not.toHaveBeenCalled();
   });
 
   it('与 member-table 共用 presentations 概览，正文可读且 identity/status 不重复', () => {

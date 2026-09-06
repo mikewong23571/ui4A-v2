@@ -56,6 +56,15 @@ export function collectionBacklinkOf(entity: SirenEntity): string | undefined {
   return undefined;
 }
 
+/** Embedded contract members also declare read dependencies when no reverse link is provided. */
+function containsMember(entity: SirenEntity, targets: ReadonlySet<string>): boolean {
+  return (entity.entities ?? []).some(
+    (member) =>
+      (typeof member.properties.rel === 'string' && targets.has(member.properties.rel)) ||
+      containsMember(member, targets),
+  );
+}
+
 /**
  * 页面级实体缓存(渲染器私有,agent 不发 updateDataModel;生命周期 =
  * 页面,跨页面共享/离线缓存不在本模块范围)。
@@ -164,11 +173,28 @@ export class PageEntityCache {
     // Discover aliases and read slices from observed identity/collection links. A mutation of
     // the canonical collection also changes empty, filtered or paged slices of that collection.
     const targets = new Set([rel]);
-    for (const [key, entity] of this.entities) {
-      if (key === rel || entity.properties.rel === rel || collectionBacklinkOf(entity) === rel) {
-        targets.add(key.split('?')[0]);
-        if (typeof entity.properties.rel === 'string') targets.add(entity.properties.rel);
+    let changed = true;
+    while (changed) {
+      const previousSize = targets.size;
+      for (const [key, entity] of this.entities) {
+        const keyRel = key.split('?')[0]!;
+        const canonical =
+          typeof entity.properties.rel === 'string' ? entity.properties.rel : keyRel;
+        const collection = collectionBacklinkOf(entity);
+        if (
+          targets.has(keyRel) ||
+          targets.has(canonical) ||
+          (collection !== undefined && targets.has(collection)) ||
+          containsMember(entity, targets)
+        ) {
+          targets.add(keyRel);
+          targets.add(canonical);
+          // A member may move into a previously empty sibling slice. Follow observed collection
+          // links to a fixed point, so cache insertion order cannot keep that sibling stale.
+          if (collection !== undefined) targets.add(collection);
+        }
       }
+      changed = targets.size > previousSize;
     }
     const matches = (key: string) => targets.has(key.split('?')[0]);
     for (const key of [...this.entities.keys()]) {

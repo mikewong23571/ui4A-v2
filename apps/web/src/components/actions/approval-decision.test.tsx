@@ -310,7 +310,7 @@ describe('member-card 确认责任卡的知情决定绑定(P3.2 单元面)', () 
     );
   });
 
-  it('读失败诚实回退:不编造决定信息,既有渲染(身份/状态/动作)保持', async () => {
+  it('读失败诚实回退:保留身份与合同到达,提供重试而不展示未知目标的决定按钮', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() => Promise.reject(new TypeError('network down'))),
@@ -320,7 +320,12 @@ describe('member-card 确认责任卡的知情决定绑定(P3.2 单元面)', () 
     expect(screen.getByText('archive · 由 agent 提议')).toBeTruthy();
     expect(screen.getByText(/confirmation:c1/)).toBeTruthy();
     await waitFor(() => expect(document.querySelector('[data-testid="decision-info"]')).toBeNull());
-    expect(screen.getByRole('button', { name: '批准' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: '重试读取' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '批准' })).toBeNull();
+    expect(screen.getByRole('status').textContent).toContain('无法读取完整决定信息');
+    expect(screen.getByRole('link', { name: 'archive · 由 agent 提议' }).getAttribute('href')).toBe(
+      '/canvas?focus=confirmation%3Ac1',
+    );
   });
 });
 

@@ -272,6 +272,11 @@ test('current responsibility stays expanded beside ordinary summary rows and rem
       .locator('[data-word="member-card"]')
       .filter({ has: page.locator('[data-action-group-item="approve"]') });
     await expect(card).toHaveCount(1);
+    await expect(card.getByTestId('decision-info')).toBeVisible();
+    await expect(card.locator('[data-decision-row="target"]')).toContainText('post:post-welcome');
+    await expect(card.locator('[data-decision-row="action"]')).toContainText('archive');
+    await expect(card.locator('[data-decision-row="change"]')).toContainText('未提供');
+    await expect(card.locator('[data-decision-row="basis"]')).toBeVisible();
     await expect(card.getByRole('button', { name: '批准', exact: true })).toBeVisible();
     await expect(card.getByRole('button', { name: '更多操作' })).toHaveCount(0);
     const row = page.locator(`[data-word="member-row"][data-rel="${rel}"]`);

@@ -79,3 +79,21 @@
     不能据此断言产品根因已证明；最终完整套件统一使用7237隔离执行历史。
 - 第一轮浏览器停在旧portal定位等待时由编排器SIGINT中止，退出后3100/3110均已释放，未中断无关服务。
 - 本任务拥有的Temporal7237为临时内存测试实例；不改7233开发环境，不清理其他人的7235。
+
+## 19ae4e49 后实际浏览器/模型复审修复
+
+- 完整浏览器第二轮：**99passed、1failed、29skipped（129用例，4.3m）**。唯一失败验证出工作线实体
+  没有collection回链时仍无法失效当前slice；继续补观察成员关系与同canonical集合兄弟slice的闭包失效。
+  单独无回链成员Red、先缓存空历史再缓存当前的Red均复现；最终cache4files/35tests通过。
+  此为通用读依赖失效，无业务实体名字条件；历史为空也不能漏刷新。
+- 亲看1440与390首页、责任混合、创建Dialog截图，发现有resume的inbox确认跳过完整知情面。
+  改为confirmation始终fresh read；读就绪显示对象/动作/参数/依据和未提供的前后信息，重复raw摘要退到
+  按需合同详情；读取失败可重试且不开放依据未知的执行控件，terminal事实屏蔽陈旧props动作，Meta桥保持。
+  词汇/动作聚合复跑**26files/132tests通过**，其中MemberCard/approval-decision19项。
+- 实际模型第一轮：unlocated discovery、跨应用工作线、T56同session三轮协作、S1/S3理解均已通过；
+  首页故事在模型调用前因测试请求limit=1000违反API的1..100范围失败，改为每页100的完整cursor遍历，
+  保留所有thread事件前后相等要求，不放宽为只看首屏事件。
+- G4绑定树7758 UTF-8字节；同一配置模型曾生成两次合法patch且真实HTTP200，但多次60s流超时。
+  已先按D79登记，将Revision默认对齐D43的300s单次上限；不加自动重试，不改provider或短deadline覆盖。
+  70s合法返回/300s中止/显式10ms中止的行为Red→Green，parent复跑deadline+parse**5tests通过**。
+  延长超时不等于改善实际延迟；本次源修复及首页/模型故事仍需最终复验。

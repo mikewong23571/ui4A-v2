@@ -44,7 +44,7 @@
   member-row 词汇或等价最小变体，先在两域 fixture 证明必要性。命名/shape 在 P0 定案。
 - 继续使用 ActionGroup/ActionRunner/ActionSubmit，不复制 exec、Cedar 或 RJSF validation。
 - 本地已有 button/card/collapsible/table/tooltip/skeleton 等 primitives；Dialog/Menu 缺 wrapper
-  时优先用已安装 Base UI 做薄封装。需新增依赖必须先证明必要并更新技术决策，不能默认安装新库。
+  时优先用已安装 primitives 做薄封装（实施核实为 Radix UI，见 D79）。需新增依赖必须先证明必要并更新技术决策，不能默认安装新库。
 - “popover/side sheet/modal”是宿主形态，不进入业务 cognitive traits；需要双方同时操作时采用非模态，
   模态则实施焦点限制、Escape、可见关闭与焦点返回。不得出现只做滑出动画却没有交互契约的假弹层。
 
@@ -69,7 +69,7 @@
 P0 要验证合适的责任引用保全/coverage 机制落点，不能仅要求“模型别漏掉”。
 任何保全校验仅检查已知授权引用、动作可达和声明，不判断业务重要性、不产生自然语言计划。
 
-## 4. 三个必做探针（实施 P0；本轮未运行）
+## 4. 三个必做探针（规划时假设；实施结果见 spike-report.md）
 
 ### S1 — 语义姿态和责任保全
 
@@ -146,3 +146,8 @@ fixture 分别为有责任、有 open 线但无 delegation、仅历史、全空�
 - [WAI Modal Dialog](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)：背景不可交互、焦点留在弹窗、Escape及关闭后焦点返回。
 
 这些链接是辅助规范；本 track 所需具体交互、测试尺寸和完成标准已在本目录明确，不依赖外部教程才能实施。
+
+## 7. 实施定案
+
+S1–S3 已执行，具体接口/版本/事务与拒绝方案见 [spike-report.md](./spike-report.md)。
+D79 替代上文来源必须单独预写与有动作即卡片的规划假设；最终实现与证据以该决定、spike-report、evidence为准。

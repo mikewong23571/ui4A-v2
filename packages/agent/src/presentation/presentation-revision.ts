@@ -115,7 +115,7 @@ export function createPresentationRevisionAgent(
           system:
             'You are an independent UI4A Presentation Revision Agent. Return semantic operations only.',
           prompt: buildPresentationRevisionPrompt(input),
-          abortSignal: AbortSignal.timeout(options.timeoutMs ?? 60_000),
+          abortSignal: AbortSignal.timeout(options.timeoutMs ?? 300_000),
           maxRetries: 0,
         });
         let text = '';

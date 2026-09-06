@@ -18,7 +18,8 @@
     "plan.md",
     "planning-review.md",
     "evidence.md",
-    "review.md"
+    "review.md",
+    "spike-report.md"
   ],
   "dependencyMode": "parallel-implementation-integration-before-closeout",
   "implementationBase": "bf58603d",

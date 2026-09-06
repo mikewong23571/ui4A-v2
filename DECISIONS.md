@@ -1733,3 +1733,4 @@
 - 责任不可因 Recipe/Sidecar 调整而丢失：在既有呈现校验/复用边界校验必需授权引用与动作可达，不另造业务责任清单。覆盖判定必须按当前事实解析可读标识/必填绑定，并考虑已保存的折叠状态；省略或隐藏责任的 patch/revert/promotion 在写入前拒绝，新责任使不再保全责任的旧 Sidecar 失效并重规划。catalog/策略改变提升版本使旧结构失效。
 - 不修订 D78.4 的 thread specialised 确认门现状，不新增 provider、worker、存储权威或规则智能。
 - 首页 `/` 的无显式 focus 观察由共享 HOME_WORKSPACE_DECLARATION 的源集合构造现有 selection；Web composition 与 clientView 使用同一声明，不新增观察类型/接口或复制事实。首页壳提供“与助手讨论”（打开既有会话）、“发起工作”（canonical threads action 面）与历史链接；不以新chat输入流写业务数据。
+- T57 G4 实测补正：同一已配置 DeepSeek profile 的 Revision 在 60s 硬上限被截断，绑定树仅7758 UTF-8字节；同一真实场景另一次已生成并接受两次合法Patch，说明不是缺配置或输入预算超限。Presentation Revision 单次流默认对齐 D43 的300s有界总时限，仍保留调用方更短 timeoutMs、零额外自动重试、失败不写Sidecar/业务事件；不扩展到其它呈现适配器、不新增provider特判。真实时延与真人便利性分别记录，不把延长期限声称为响应速度改善。

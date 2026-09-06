@@ -37,3 +37,63 @@ it.each(['source-items', 'item:one'])(
     expect(fetcher).toHaveBeenCalledTimes(7);
   },
 );
+
+it('invalidates a containing read slice when an observed member has no collection backlink', async () => {
+  let status = 'open';
+  const fetcher = vi.fn(async (rel: string) => ({
+    ...slice(rel, 1),
+    entities: [
+      {
+        class: ['object'],
+        properties: { rel: 'item:one', status },
+        actions: [],
+        links: [],
+      },
+    ],
+  }));
+  const cache = new PageEntityCache(fetcher);
+  await cache.get('current-items', 'v1');
+  await cache.get('current-items', 'v1', 'offset=0');
+  status = 'paused';
+  cache.invalidateAfterExecSources('item:one', [
+    {
+      class: ['object'],
+      properties: { rel: 'item:one', status },
+      actions: [],
+      links: [],
+    },
+  ]);
+  expect((await cache.get('current-items', 'v1'))?.entities?.[0]?.properties.status).toBe('paused');
+  expect(
+    (await cache.get('current-items', 'v1', 'offset=0'))?.entities?.[0]?.properties.status,
+  ).toBe('paused');
+  expect(fetcher).toHaveBeenCalledTimes(4);
+});
+
+it('propagates observed membership changes to an empty sibling slice through their canonical collection', async () => {
+  let finished = false;
+  const fetcher = vi.fn(async (rel: string) => ({
+    ...slice(rel, 0),
+    entities: (rel === 'past-items' ? finished : !finished)
+      ? [{ class: ['object'], properties: { rel: 'item:one' }, actions: [], links: [] }]
+      : [],
+  }));
+  const cache = new PageEntityCache(fetcher);
+  // Earlier insertion proves propagation does not depend on cache iteration order.
+  await cache.get('past-items', 'v1');
+  await cache.get('past-items', 'v1', 'offset=0');
+  await cache.get('current-items', 'v1');
+  finished = true;
+  cache.invalidateAfterExecSources('item:one', [
+    {
+      class: ['object'],
+      properties: { rel: 'item:one' },
+      actions: [],
+      links: [],
+    },
+  ]);
+  expect((await cache.get('current-items', 'v1'))?.entities).toHaveLength(0);
+  expect((await cache.get('past-items', 'v1'))?.entities).toHaveLength(1);
+  expect((await cache.get('past-items', 'v1', 'offset=0'))?.entities).toHaveLength(1);
+  expect(fetcher).toHaveBeenCalledTimes(6);
+});

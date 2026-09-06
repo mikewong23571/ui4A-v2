@@ -186,10 +186,20 @@ test('homepage question uses the visible authorized roots and current work witho
       }>;
     };
     const threadEvents = async () => {
-      const response = await fetch(`${base}/api/events?limit=1000`);
-      expect(response.ok).toBe(true);
-      const body = (await response.json()) as { events: StoredEventBody[] };
-      return body.events.filter((event) => event.kind.startsWith('thread-'));
+      const events: StoredEventBody[] = [];
+      let afterSeq = 0;
+      for (;;) {
+        const response = await fetch(`${base}/api/events?limit=100&afterSeq=${afterSeq}`);
+        expect(response.ok, await response.clone().text()).toBe(true);
+        const body = (await response.json()) as {
+          events: StoredEventBody[];
+          page: { hasMore: boolean; nextAfterSeq: number | null };
+        };
+        events.push(...body.events.filter((event) => event.kind.startsWith('thread-')));
+        if (!body.page.hasMore) return events;
+        expect(body.page.nextAfterSeq).toBeGreaterThan(afterSeq);
+        afterSeq = body.page.nextAfterSeq!;
+      }
     };
     const before = await Promise.all(roots.map(readAsOwner));
     const beforeEvents = await threadEvents();

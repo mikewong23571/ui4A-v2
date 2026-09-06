@@ -17,7 +17,8 @@
 5. [Plan](./plan.md)：P0–P5、TDD、实施后 review/fix/re-review。
 6. [Planning Review](./planning-review.md)：规划自审，不能替代实施验收。
 7. [Metadata](./metadata.json)：状态及依赖。
-8. [Evidence](./evidence.md) 与 [Review](./review.md)：执行证据和实际 diff 复审。
+8. [Spike Report](./spike-report.md)：S1–S3 的实证定案与最终接口。
+9. [Evidence](./evidence.md) 与 [Review](./review.md)：执行证据和实际 diff 复审。
 
 无需原聊天、个人 memory、线上测试账号或临时示意图即可理解范围。仓库根的 `AGENTS.md`、
 `GOAL.md`、`DECISIONS.md` 优先；另读 `conductor/product-vision.md`、`product.md`、

@@ -10,8 +10,8 @@
  *
  * T56 P3.2(US02/US04;D78 决定 2/4):工作线 approval 角色成员卡是责任卡,
  * 但线投影成员卡不带确认实体读字段(properties.resume 缺失)——决策所需
- * 的「对象/动作/依据」不可读。本词条对 rel 为 confirmation: 前缀且缺
- * detail 的成员卡(纯指针前缀 + 声明字段缺失判别,不解析自然语言),按 rel
+ * 的「对象/动作/依据」不可读。本词条对所有 confirmation: 成员卡按 rel
+ * 读取完整决定合同,包括已经带 resume 的收件箱卡(不解析自然语言),按 rel
  * 懒读被引确认实体(no-store,每挂载重读,同 citation chips 口径;数量以
  * approval 引用上界为界),复用 T54 知情确认/决定回执词汇:
  * - pending:对象/动作/依据(政策原因)同卡可读;确认合同无前值/影响声明
@@ -20,7 +20,7 @@
  * - 被引目标是 meta/ 定义(纯指针前缀判别)→ 本卡不渲染内联 approve/reject,
  *   显式跨入治理宿主路由(/meta/entity?rel=<target>;BIOS 审查不进本线内联面,
  *   D74 批准编排不经本卡新增路径);
- * - 读取失败诚实回退既有渲染,不编造决定信息。
+ * - 读取失败明确披露并支持重试/合同查看,决定信息未就绪时不显示执行控件。
  */
 import { useEffect, useState, type ReactNode } from 'react';
 
@@ -28,6 +28,8 @@ import type { SirenEntity } from '@ui4a/engine';
 
 import { cn } from '@/lib/utils';
 import { canvasEntityHref } from '@/presence/navigation';
+
+import { Button } from '../../components/ui/button';
 
 import { ActionGroup } from '../../components/actions/action-group';
 
@@ -61,6 +63,7 @@ interface ConfirmationDecisionFacts {
   status?: string;
   decidedByActor?: string;
   rejectedReason?: string;
+  params?: Record<string, unknown>;
 }
 
 function asString(value: unknown): string | undefined {
@@ -84,14 +87,26 @@ function decisionFactsOf(document: Record<string, unknown>): ConfirmationDecisio
     status: asString(source.status),
     decidedByActor: decidedBy === undefined ? undefined : asString(decidedBy.actor),
     rejectedReason: asString(source['rejected-reason']),
+    params:
+      typeof source.params === 'object' && source.params !== null && !Array.isArray(source.params)
+        ? (source.params as Record<string, unknown>)
+        : undefined,
   };
 }
 
-function useConfirmationRead(rel: string, enabled: boolean): ConfirmationRead {
+function useConfirmationRead(rel: string, enabled: boolean, revision: string) {
+  const [generation, setGeneration] = useState(0);
   // 读态与 rel 同槽存放:rel 漂移的瞬时未定态在渲染期派生为 loading,
   // effect 内只在外部系统回调里 setState(react-hooks 纪律)。
-  const [state, setState] = useState<{ rel: string; read: ConfirmationRead }>({
+  const [state, setState] = useState<{
+    rel: string;
+    generation: number;
+    revision: string;
+    read: ConfirmationRead;
+  }>({
     rel,
+    generation,
+    revision,
     read: { status: 'loading' },
   });
   useEffect(() => {
@@ -101,19 +116,34 @@ function useConfirmationRead(rel: string, enabled: boolean): ConfirmationRead {
       .then(async (response): Promise<ConfirmationRead> => {
         if (!response.ok) return { status: 'unreadable' };
         const document = (await response.json()) as unknown;
-        return typeof document === 'object' && document !== null
-          ? { status: 'readable', document: document as Record<string, unknown> }
-          : { status: 'unreadable' };
+        if (typeof document !== 'object' || document === null) return { status: 'unreadable' };
+        const entity = document as Record<string, unknown>;
+        const properties = entity.properties as Record<string, unknown> | undefined;
+        const facts = decisionFactsOf(entity);
+        if (
+          properties?.rel !== rel ||
+          facts.targetRel === undefined ||
+          facts.targetAction === undefined ||
+          !['pending', 'approved', 'rejected'].includes(facts.status ?? '')
+        )
+          return { status: 'unreadable' };
+        return { status: 'readable', document: entity };
       })
       .catch(() => ({ status: 'unreadable' }) as ConfirmationRead)
       .then((next) => {
-        if (!cancelled) setState({ rel, read: next });
+        if (!cancelled) setState({ rel, generation, revision, read: next });
       });
     return () => {
       cancelled = true;
     };
-  }, [rel, enabled]);
-  return state.rel === rel ? state.read : { status: 'loading' };
+  }, [rel, enabled, generation, revision]);
+  return {
+    read:
+      state.rel === rel && state.generation === generation && state.revision === revision
+        ? state.read
+        : ({ status: 'loading' } as ConfirmationRead),
+    retry: () => setGeneration((value) => value + 1),
+  };
 }
 
 function DecisionRow({
@@ -152,13 +182,16 @@ export function MemberCardWord(props: WordProps) {
   const density = asOptionalString(props.density, 'member-card', 'density');
   const compact = density === 'compact';
 
-  // T56 P3.2:线投影责任卡缺确认读字段(detail 缺失)且 rel 指向确认实体
-  // → 懒读补齐知情决定面;收件箱等宿主的确认卡已携带 resume,零读取。
-  const needsConfirmationRead = rel.startsWith(CONFIRMATION_REL_PREFIX) && detail === undefined;
-  const read = useConfirmationRead(rel, needsConfirmationRead);
+  // A summary is not the complete decision contract, including for inbox members.
+  const needsConfirmationRead = rel.startsWith(CONFIRMATION_REL_PREFIX);
+  const { read, retry } = useConfirmationRead(
+    rel,
+    needsConfirmationRead,
+    JSON.stringify([status, actions, guardResults]),
+  );
   const facts = read.status === 'readable' ? decisionFactsOf(read.document) : undefined;
   const metaTarget = facts?.targetRel?.startsWith(META_REL_PREFIX) === true;
-  const pendingDecision = facts !== undefined && (facts.status ?? 'pending') === 'pending';
+  const pendingDecision = facts !== undefined && facts.status === 'pending';
 
   // 决策卡只消费动作裁决所需的最小合同面;标识与预填取值来自成员投影。
   const entity: SirenEntity = {
@@ -190,20 +223,67 @@ export function MemberCardWord(props: WordProps) {
       >
         {label}
       </a>
-      {detail !== undefined && (
+      {facts === undefined && detail !== undefined && (
         <p className={cn('text-xs text-muted-foreground', compact ? 'mt-0 truncate' : 'mt-0.5')}>
           {detail}
         </p>
       )}
-      <p
-        className={cn(
-          'font-mono text-xs text-muted-foreground',
-          compact ? 'mt-0 truncate' : 'mt-0.5',
-        )}
-      >
-        {status !== undefined ? `${status} · ` : ''}
-        {rel}
-      </p>
+      {facts === undefined ? (
+        <p
+          className={cn(
+            'font-mono text-xs text-muted-foreground',
+            compact ? 'mt-0 truncate' : 'mt-0.5',
+          )}
+        >
+          {status !== undefined ? `${status} · ` : ''}
+          {rel}
+        </p>
+      ) : (
+        <details className="mt-2 text-xs text-muted-foreground">
+          <summary data-nav="presentation:confirmation-audit" className="cursor-pointer">
+            合同详情
+          </summary>
+          <p className="mt-1 break-words font-mono">
+            {facts.status} · {rel}
+          </p>
+          <a
+            href={canvasEntityHref(rel)}
+            data-nav="presentation:confirmation-contract"
+            className="underline"
+          >
+            查看确认合同
+          </a>
+        </details>
+      )}
+      {needsConfirmationRead && facts === undefined && (
+        <div className="mt-2 text-xs text-muted-foreground">
+          <p role="status">
+            {read.status === 'loading'
+              ? '正在读取决定信息…'
+              : '无法读取完整决定信息，请重试或查看确认合同。'}
+          </p>
+          {read.status === 'unreadable' && (
+            <div className="mt-1 flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-nav="presentation:retry-confirmation"
+                onClick={retry}
+              >
+                重试读取
+              </Button>
+              <a
+                href={canvasEntityHref(rel)}
+                data-nav="presentation:confirmation-recovery"
+                className="underline"
+              >
+                查看确认合同
+              </a>
+            </div>
+          )}
+        </div>
+      )}
       {facts !== undefined && (
         <section
           aria-label="决定信息"
@@ -233,14 +313,21 @@ export function MemberCardWord(props: WordProps) {
               {facts.targetAction}
             </DecisionRow>
           )}
+          {facts.params !== undefined && Object.keys(facts.params).length > 0 && (
+            <DecisionRow field="params" title="提交参数">
+              <pre className="whitespace-pre-wrap break-words font-sans">
+                {JSON.stringify(facts.params, null, 2)}
+              </pre>
+            </DecisionRow>
+          )}
           {pendingDecision && (
             <DecisionRow field="change" title="改变前后">
               {CHANGE_BEFORE_AFTER}
             </DecisionRow>
           )}
-          {facts.policyReason !== undefined && (
+          {(pendingDecision || facts.policyReason !== undefined) && (
             <DecisionRow field="basis" title="依据">
-              {facts.policyReason}
+              {facts.policyReason ?? '未提供'}
             </DecisionRow>
           )}
           {!pendingDecision && facts.decidedByActor !== undefined && (
@@ -287,9 +374,14 @@ export function MemberCardWord(props: WordProps) {
           </a>
         </section>
       ) : (
-        actions.length > 0 && (
+        actions.length > 0 &&
+        (!needsConfirmationRead || pendingDecision) && (
           <section aria-label="动作" className={compact ? 'mt-1' : 'mt-2'}>
-            <ActionGroup entity={entity} />
+            <ActionGroup
+              entity={entity}
+              density={facts === undefined ? 'default' : 'compact'}
+              onExecuted={needsConfirmationRead ? retry : undefined}
+            />
           </section>
         )
       )}
